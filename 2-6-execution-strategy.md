@@ -17,7 +17,7 @@ fn resume<T>(k: Continuation<T>, more: Bytes) -> Result<StreamOutcome<T>, ParseE
 ```
 
 * `run_stream` は **逐次供給**（ファイル・ソケット）向けで、`StreamOutcome` が Pending の場合は追加データが必要。
-* `StreamOutcome<T>` と `Feeder` / `Continuation<T>` の定義は [2.1 パーサ型](2-1-perser-type.md) のランナー節を参照。
+* `StreamOutcome<T>` と `Feeder` / `Continuation<T>` の定義は [2.1 パーサ型](2-1-parser-type.md) のランナー節を参照。
 * `resume` は Pending となった **継続**を受け取り、追加バイトで再開（§F）。
 
 ### A-2. 実行モード（`cfg.exec_mode`）

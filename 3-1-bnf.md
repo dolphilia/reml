@@ -221,5 +221,5 @@ NL             ::= *行末 (改行または `;`)*
 - [1.1 構文](1-1-syntax.md)
 - [1.2 型と推論](1-2-types-Inference.md)
 - [1.3 効果と安全性](1-3-effects-safety.md)
-- [2.1 パーサ型](2-1-perser-type.md)
+- [2.1 パーサ型](2-1-parser-type.md)
 - [2.5 エラー設計](2-5-error.md)
