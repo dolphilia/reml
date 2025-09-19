@@ -12,12 +12,13 @@
 ```kestrel
 fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> Result<(T, Span), ParseError>
 fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> Result<(T, Input, Span), ParseError>
-fn run_stream<T>(p: Parser<T>, feeder: Feeder, cfg: RunConfig = {}) -> Result<T, ParseError>
-fn resume<T>(k: Continuation<T>, more: Bytes) -> Result<Continuation<T> | (T, Span), ParseError>
+fn run_stream<T>(p: Parser<T>, feeder: Feeder, cfg: RunConfig = {}) -> Result<StreamOutcome<T>, ParseError>
+fn resume<T>(k: Continuation<T>, more: Bytes) -> Result<StreamOutcome<T>, ParseError>
 ```
 
-* `run_stream` は **逐次供給**（ファイル・ソケット）向け。
-* `resume` は **継続**を受け取り、追加バイトで再開（§F）。
+* `run_stream` は **逐次供給**（ファイル・ソケット）向けで、`StreamOutcome` が Pending の場合は追加データが必要。
+* `StreamOutcome<T>` と `Feeder` / `Continuation<T>` の定義は [2.1 パーサ型](2-1-perser-type.md) のランナー節を参照。
+* `resume` は Pending となった **継続**を受け取り、追加バイトで再開（§F）。
 
 ### A-2. 実行モード（`cfg.exec_mode`）
 
@@ -41,17 +42,25 @@ fn resume<T>(k: Continuation<T>, more: Bytes) -> Result<Continuation<T> | (T, Sp
 
 ```kestrel
 type RunConfig = {
-  /* 既定項目に加えて */
-  fuel_max_steps: Option<usize> = None,   // 評価ステップ上限
-  fuel_on_empty_loop: "error" | "warn" = "error",
+  exec_mode: "normal" | "packrat" | "hybrid" | "streaming" = "normal",
+  require_eof: Bool = false,
   packrat: Bool = false,
   left_recursion: "off" | "on" | "auto" = "auto",
-  packrat_window_bytes: Option<usize> = Some(1<<20), // 1MB 窓
-  memo_max_entries: Option<usize> = Some(1<<20),
+  fuel_max_steps: Option<usize> = None,
+  fuel_on_empty_loop: "error" | "warn" = "error",
+  packrat_window_bytes: Option<usize> = Some(1 << 20),
+  memo_max_entries: Option<usize> = Some(1 << 20),
   trace: Bool = false,
-  require_eof: Bool = false
+  merge_warnings: Bool = true,
+  stream_buffer_bytes: Option<usize> = Some(64 * 1024)
 }
 ```
+
+* `exec_mode` は Normal / Packrat / Hybrid / Streaming の各モードを切替える（既定は `normal`）。
+* `packrat` と `left_recursion` はメモ化と seed-growing 左再帰を手動で調整する。
+* `fuel_max_steps` / `fuel_on_empty_loop` は停止性の安全弁として機能する。
+* `packrat_window_bytes` / `memo_max_entries` はキャッシュのメモリ上限。
+* `stream_buffer_bytes` はストリーム入力のリングバッファ既定サイズ。
 
 * **空成功の繰返し**検出は必須（2.2 に準拠）。
 * `fuel_max_steps` 超過は `E_FUEL` としてエラー化（位置・直近ルール列を提示）。
@@ -133,6 +142,7 @@ fn with_trace<T>(p: Parser<T>, on_event: TraceEvent -> ()) -> Parser<T>
 
 * `Input.bytes` は **固定サイズリング**（既定 64KB〜任意）。
 * **先読み**が窓を越える場合は **ブロック（継続待ち）**。
+* Feeder は `pull(max_bytes)` で `FeederSignal::Ready` によりチャンクを返し、`::Await` / `::Closed` / `::Error` でバックプレッシャや終了を通知。
 * 文字モデル（1.4）の **境界表**（コードポイント/グラフェム）は **スライディングで増分更新**。
 
 ### F-2. 継続（Continuation）
@@ -141,11 +151,12 @@ fn with_trace<T>(p: Parser<T>, on_event: TraceEvent -> ()) -> Parser<T>
 type Continuation<T> = {
   state: Opaque,           // メモ/位置/進行中ルールの縮約スナップショット
   commit_watermark: usize, // 掃除可能基準
+  buffered: Input           // リングバッファに残っている未消費入力
 }
 ```
 
-* `run_stream` は **入力不足**で停止すると `Continuation` を返し、`resume` で再開。
-* **Fix**：`attempt` の境界より前のメモは **破棄可能**、`commit_watermark` より前は**安全に破棄**。
+* `run_stream` は **入力不足**で停止すると `StreamOutcome::Pending`（`Continuation` 付き）を返し、`resume` で再開。
+* **Fix**：`attempt` の境界より前のメモは **破棄可能**、`commit_watermark` より前は**安全に破棄**。`buffered` には再開時に利用する未消費入力が格納される。
 
 ### F-3. インクリメンタル再パース（IDE）
 

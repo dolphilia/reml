@@ -81,12 +81,17 @@ type SpanTrace = List<(name: String, span: Span)>
 
 ```kestrel
 type RunConfig = {
-  require_eof: Bool = false,     // 全消費を要求（parse_all 相当）
-  packrat: Bool = false,         // メモ化（線形時間）ON/OFF
-  left_recursion: Bool = false,  // 左再帰サポート（Packrat時のみONを推奨）
-  max_steps: Option<usize>,      // ステップ上限（無限ループ安全弁）
-  trace: Bool = false,           // SpanTrace 収集
-  merge_warnings: Bool = true    // 回復時の警告集約
+  exec_mode: "normal" | "packrat" | "hybrid" | "streaming" = "normal",
+  require_eof: Bool = false,            // 全消費を要求（parse_all 相当）
+  packrat: Bool = false,                // Packrat メモ化を明示的に有効化
+  left_recursion: "off" | "on" | "auto" = "auto",
+  fuel_max_steps: Option<usize> = None, // 評価ステップ上限（DoS/ループ防止）
+  fuel_on_empty_loop: "error" | "warn" = "error",
+  packrat_window_bytes: Option<usize> = Some(1 << 20),
+  memo_max_entries: Option<usize> = Some(1 << 20),
+  trace: Bool = false,
+  merge_warnings: Bool = true,
+  stream_buffer_bytes: Option<usize> = Some(64 * 1024)
 }
 
 type ParserId = u32  // ルール毎に安定ID（rule()/label() が付与）
@@ -95,7 +100,13 @@ type MemoVal<T> = Reply<T>  // Ok/Err ごと丸ごとキャッシュ
 type MemoTable = Map<MemoKey, Any>  // 実装上は型消去（内部用）
 ```
 
-* **デフォルトは軽量**（Packrat/左再帰/トレースは OFF）。
+* **RunConfig の主な項目**
+  - `exec_mode` で実行戦略を切替え（詳細は [2.6 実行戦略](2-6-execution-strategy.md)）。
+  - `packrat` と `left_recursion` は Packrat メモ化と seed-growing 左再帰を制御。
+  - `fuel_max_steps` / `fuel_on_empty_loop` は停止性の安全弁。
+  - `packrat_window_bytes` / `memo_max_entries` はキャッシュのメモリ上限。
+  - `stream_buffer_bytes` はストリーム入力のリングバッファ既定サイズ。
+  - それ以外は 1.1 で説明したエラー報告やトレースの挙動を調整する。
 * `rule(name, p)` が **ParserId とラベル**を付与し、Packrat と診断に使う。
 
 ---
@@ -147,8 +158,38 @@ fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> Result<(T, Span), P
 
 fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> Result<(T, Input, Span), ParseError>
 // 部分パース：残り Input も返す（REPL/トークナイザ向け）。
+
+fn run_stream<T>(p: Parser<T>, feeder: Feeder, cfg: RunConfig = {}) -> Result<StreamOutcome<T>, ParseError>
+// ストリーム入力。Pending が返った場合は続きが必要。
+
+fn resume<T>(cont: Continuation<T>, more: Bytes) -> Result<StreamOutcome<T>, ParseError>
+// 追加バイトを供給してストリームを再開。
+
+type StreamOutcome<T> =
+  | Completed(value: T, span: Span)
+  | Pending(Continuation<T>)
+
+type Feeder = {
+  pull: fn(max_bytes: usize) -> Result<Bytes, FeederSignal>
+}
+
+type FeederSignal =
+  | Ready
+  | Await
+  | Closed
+  | Error(StreamError)
+
+type StreamError = { kind: String, detail: Option<String> }
+
+type Continuation<T> = {
+  state: Opaque,
+  commit_watermark: usize,
+  buffered: Input
+}
 ```
 
+* `StreamOutcome::Pending` が返った場合は `resume` に `Continuation` と追加バイトを渡す。
+* `Feeder.pull` は `FeederSignal::Ready` でチャンクを返し、`::Await` でバックプレッシャ、`::Closed` で終端、`::Error` でストリームエラーを通知。
 * **ゼロコピー**：`src` は `Input.bytes` へ **参照共有**。
 * 文字モデル（1.4）により、列は**グラフェム**、`Span` は**バイトと行列の両方**を保持。
 
@@ -173,7 +214,7 @@ fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> Result<(T, 
   * キーは `(ParserId, byte_off)`、値は `Reply<T>`。
   * LRU/リングで上限を設け、巨大入力でのメモリ爆発を回避。
 * **左再帰**：`left_recursion=true` のとき、既知の **種別変換法**（seed-growing）を使用（ルールに `ParserId` が必須）。
-* **ステップ上限**：`max_steps` で無限ループ検出（診断に直近のルール列を含める）。
+* **ステップ上限**：`fuel_max_steps` で無限ループ検出（診断に直近のルール列を含める）。
 
 ---
 
@@ -207,7 +248,7 @@ let term: Parser<i64> =
 * [ ] `Reply` は **Ok/Err × consumed/committed** を表現（4状態）。
 * [ ] `Input` は UTF-8/COW、行=LF正規化、列=グラフェム、**ゼロコピー**。
 * [ ] `Span` は**開始/終了の行列＋バイト**を保持。
-* [ ] `run / run_partial` の外部 API を定義（`require_eof` など）。
+* [ ] `run / run_partial / run_stream / resume` の外部 API を定義（`require_eof` やストリーム継続など）。
 * [ ] `RunConfig` で **Packrat/左再帰/トレース**を切替。
 * [ ] `rule(name, p)` で **ParserId/ラベル**を付与（Packrat & 診断）。
 * [ ] `or/then/cut/label` の**合成規則**を確定。

@@ -25,8 +25,8 @@
 * 識別子：`XID_Start` + `XID_Continue*`（Unicode 準拠）。
   例）`parse`, `ユーザー`, `_aux1`。
 * 予約語（抜粋）：
-  `let`, `var`, `fn`, `type`, `match`, `with`, `if`, `then`, `else`, `use`, `pub`, `return`, `true`, `false`, `as`, `where`.
-* 演算子トークン（固定）：`|>`, `.` , `,`, `;`, `:`, `=`, `->`, `=>`, `(` `)` `[` `]` `{` `}`,
+  `let`, `var`, `fn`, `type`, `trait`, `impl`, `match`, `with`, `if`, `then`, `else`, `use`, `pub`, `return`, `for`, `while`, `loop`, `extern`, `unsafe`, `defer`, `true`, `false`, `as`, `where`.
+* 演算子トークン（固定）：`|>`, `.` , `,`, `;`, `:`, `=`, `:=`, `->`, `=>`, `(` `)` `[` `]` `{` `}`,
   `+ - * / % ^`, `== != < <= > >=`, `&& ||`, `!`, `?`, `..`.
 
 ### A.4 リテラル
@@ -75,37 +75,84 @@
 
 ### B.4 宣言の種類
 
-* 値束縛：
+* **値束縛と再代入**  \n  `let` は不変束縛、`var` は可変束縛。`var` で導入した変数はブロック内で `:=` による再代入が可能です（C.6 および [効果と安全性](1-3-effects-safety.md) を参照）。
 
   ```kestrel
-  let x = 42           // 不変
-  var y = 0            // 可変（ミュータブル）
-  let n: i64 = 10      // 型注釈（任意）
-  let (a, b) = pair    // パターン束縛（C.3）
+  let answer = 42
+  var total = 0
+  let (lhs, rhs) = pair
   ```
-* 関数：
 
-  * 式本体（単行）：
+* **関数宣言**  \n  本体は式かブロックで記述でき、名前付き引数・デフォルト引数・戻り値型をサポートします。`pub` を付けると公開関数になります。
 
-    ```kestrel
-    fn add(a: i64, b: i64) -> i64 = a + b
-    ```
-  * ブロック本体（複数行）：
+  ```kestrel
+  fn add(a: i64, b: i64) -> i64 = a + b
 
-    ```kestrel
-    fn fact(n: i64) -> i64 {
-      if n <= 1 then 1 else n * fact(n - 1)
-    }
-    ```
-* 型／代数的データ型（ADT）：
+  pub fn fact(n: i64) -> i64 {
+    if n <= 1 then 1 else n * fact(n - 1)
+  }
+  ```
+
+* **型宣言（ADT・エイリアス・ニュータイプ）**  \n  代数的データ型のほか、`type alias` や `type Name = new T` による零コストラッパを定義できます（詳細は [型と推論](1-2-types-Inference.md)）。
 
   ```kestrel
   type Expr =
     | Int(i64)
     | Add(Expr, Expr)
     | Neg(Expr)
+
+  type alias Bytes = [u8]
+  type UserId = new i64
   ```
-* （将来）trait/impl は 1.2／1.3 節へ。
+
+* **トレイト定義 (`trait`)**  \n  インターフェースを宣言し、メソッド署名やデフォルト実装を列挙します。型パラメータや `where` 制約を付与できます。
+
+  ```kestrel
+  trait Show<T> {
+    fn show(self) -> String
+  }
+  ```
+
+* **実装 (`impl`)**  \n  トレイト実装 `impl Trait for Type` と、型固有メソッド `impl Type` の両方をサポートします。ブロック内では通常の関数と同様に属性や可視性を付けられます。
+
+  ```kestrel
+  impl Show<i64> for i64 {
+    fn show(self) -> String = self.toString()
+  }
+
+  impl Vec<T> {
+    pub fn push(mut self, value: T) { ... }
+  }
+  ```
+
+* **外部宣言 (`extern`)**  \n  FFI で公開された関数を宣言します。呼び出しは `unsafe` 境界内で行います（1.3 節参照）。
+
+  ```kestrel
+  extern "C" fn puts(ptr: Ptr<u8>) -> i32;
+  extern "C" {
+    fn printf(fmt: Ptr<u8>, ...) -> i32;
+  }
+  ```
+
+
+### B.5 属性（Attributes）
+
+* 宣言やブロックの直前に `@name` 形式で付与し、直後の要素に契約や最適化ヒントを与えます。複数の属性は縦に並べることで併用できます。
+* 引数付き属性は `@name(arg1, key=value)` のように括弧で指定します（値は Kestrel の式）。
+* 効果契約（`@pure`, `@no_panic`, `@no_alloc` など）は [効果と安全性](1-3-effects-safety.md) にて意味が定義され、コンパイル時に検査されます。
+* 属性は `fn`・`type`・`trait`・`impl`・`extern` の各宣言、およびブロック式 `{ ... }` や `unsafe { ... }` に付与できます。
+
+```kestrel
+@pure
+@no_panic
+pub fn eval(expr: Expr) -> Result<i64, Error> = expr?
+
+impl Parser<T> {
+  @inline
+  fn map<U>(self, f: T -> U) -> Parser<U> { ... }
+}
+```
+
 
 ---
 
@@ -149,7 +196,19 @@
   | None    -> 0
   ```
 
-  網羅性は 1.3/2.5 で扱う（警告/エラー方針）。
+  網羅性は [効果と安全性](1-3-effects-safety.md) および [エラー設計](2-5-error.md) で扱う（警告/エラー方針）。
+
+* ループ：`while`・`for` は式として扱われ、結果は `()`（ユニット）です。`loop` は無条件ループで、`break`/`continue` は今後の拡張に備えて予約されています。
+
+  ```kestrel
+  while cond { work() }
+
+  for item in items {
+    total := total + item
+  }
+  ```
+
+  `for` の左辺にはパターンを置けるため、構造の分解や `Some(x)` などを直接受け取れます。詳細な効果は [1.3 節](1-3-effects-safety.md) を参照してください。
 
 ### C.5 無名関数（ラムダ）
 
@@ -169,6 +228,33 @@
 
 * 行間区切り、同一行は `;` で区切り可。
 * スコープは**静的（レキシカル）**。シャドウイングは許可（ツールで警告可）。
+* `var` 束縛は `名前 := 式` で再代入できます。`:=` は式としてユニット `()` を返し、副作用があるため値制限（1.3 節）に従います。
+* `defer 式` は現在のブロックを抜ける際に必ず実行される遅延アクションです（リソース解放など）。複数記述すると後入れ先出しで実行されます。
+
+### C.7 `unsafe` ブロック
+
+* `unsafe { exprs }` は未定義動作を引き起こし得る操作（FFI 呼び出し、生ポインタ操作など）を明示的に囲む境界です。内部で発生した `ffi` や `unsafe` 効果はブロック全体に付与されます（[1.3 節](1-3-effects-safety.md)）。
+* `unsafe` ブロック自体は式であり、最後の式の値を返します。属性を併用して `@pure` 等を禁止することもできます。
+
+```kestrel
+unsafe {
+  let ptr = buf.asPtr();
+  extern_printf(ptr);
+}
+```
+
+### C.8 伝播演算子 `?`
+
+* `expr?` は `Result<T, E>` や `Option<T>` のような短絡型を対象に、失敗を即座に呼び出し側へ伝播します。成功時は中身の値を返し、失敗時は現在の式全体を早期に終了します。
+* 対応する型と変換規則は [効果と安全性](1-3-effects-safety.md) で定義されます。`try` ブロックや `?` を含む関数は暗黙に同じ短絡型を返す必要があります。
+
+```kestrel
+fn readConfig(path: String) -> Result<Config, Error> = {
+  let text = readFile(path)?;
+  parseConfig(text)?
+}
+```
+
 
 ---
 
@@ -180,7 +266,7 @@
 
 | 優先 | 形式      | 演算子 / 構文                                | assoc | 例                         |     |     |            |     |
 | -: | ------- | --------------------------------------- | :---: | ------------------------- | --- | --- | ---------- | --- |
-|  9 | **後置**  | 関数呼び出し `(...)` / 添字 `[...]` / フィールド `.` |   L   | `f(x)`, `arr[i]`, `rec.x` |     |     |            |     |
+|  9 | **後置**  | 関数呼び出し `(...)` / 添字 `[...]` / フィールド `.` / 伝播 `?` |   L   | `f(x)`, `arr[i]`, `rec.x`, `value?` |     |     |            |     |
 |  8 | **単項**  | `!`（論理否定）, `-`（算術負）                     |   R   | `-x`, `!ok`               |     |     |            |     |
 |  7 | べき乗     | `^`                                     |   R   | `a ^ b`                   |     |     |            |     |
 |  6 | 乗除剰     | `*` `/` `%`                             |   L   | `a*b`, `a/b`              |     |     |            |     |
@@ -192,6 +278,7 @@
 |  0 | **パイプ** | \`                                      |  >\`  | L                         | \`x | > f | > g(a=1)\` |     |
 
 * **関数適用（後置）** は最強優先（演算子より強い）。
+* `?` は後置演算子として関数適用と同順位で評価され、短絡型の失敗を即座に伝播します（C.8 参照）。
 * `^` は右結合（`2 ^ 3 ^ 2 == 2 ^ (3 ^ 2)`)。
 * 比較/同値は**非結合**（連鎖不可）：`a < b < c` はエラー。
 * **パイプ `|>`** は最弱：左から右へ**データフロー**を明示。
@@ -278,41 +365,92 @@ fn abs(x: i64) -> i64 {
 > 型や意味は 1.2 以降。ここでは**形だけ**。
 
 ```
-Module      ::= { UseDecl | TopDecl }+
+Module      ::= { Attrs? PubDecl }+
 UseDecl     ::= "use" Path ( "{" Ident ("," Ident)* "}" )? ( "as" Ident )? NL
 
-TopDecl     ::= ValDecl | FnDecl | TypeDecl | PubDecl
-PubDecl     ::= "pub" TopDecl
+PubDecl     ::= ["pub"] Decl
+Decl        ::= ValDecl
+             | FnDecl
+             | TypeDecl
+             | TraitDecl
+             | ImplDecl
+             | ExternDecl
+
+Attrs       ::= Attribute+
+Attribute   ::= "@" Ident AttrArgs?
+AttrArgs    ::= "(" AttrArg ("," AttrArg)* ","? ")"
+AttrArg     ::= Expr
 
 ValDecl     ::= ("let" | "var") Pattern ( ":" Type )? "=" Expr NL
-FnDecl      ::= "fn" Ident "(" Params? ")" Ret? ( "=" Expr | Block )
+FnDecl      ::= FnSignature ( "=" Expr | Block )
+FnSignature ::= "fn" Ident GenericParams? "(" Params? ")" Ret? WhereClause?
 Params      ::= Param ( "," Param )*
-Param       ::= Ident ( ":" Type )? ( "=" Expr )?
+Param       ::= Pattern ( ":" Type )? ( "=" Expr )?
 Ret         ::= "->" Type
 
-TypeDecl    ::= "type" Ident "=" SumType NL
+TypeDecl    ::= "type" Ident GenericParams? "=" SumType NL
 SumType     ::= Variant ( "|" Variant )*
 Variant     ::= Ident "(" Types? ")"
 Types       ::= Type ( "," Type )*
 
+TraitDecl   ::= "trait" Ident GenericParams? WhereClause? TraitBody
+TraitBody   ::= "{" TraitItem* "}"
+TraitItem   ::= Attrs? FnSignature (";" | Block)
+
+ImplDecl    ::= "impl" GenericParams? ImplHead WhereClause? ImplBody
+ImplHead    ::= TraitRef "for" Type | Type
+TraitRef    ::= Ident GenericArgs?
+GenericParams ::= "<" Ident ("," Ident)* ">"
+GenericArgs ::= "<" Type ("," Type)* ">"
+WhereClause ::= "where" Constraint ("," Constraint)*
+Constraint  ::= Ident "<" Type ("," Type)* ">"
+
+ImplBody    ::= "{" ImplItem* "}"
+ImplItem    ::= Attrs? (FnDecl | ValDecl)
+
+ExternDecl  ::= "extern" StringLit ExternBody
+ExternBody  ::= FnSignature ";" | "{" ExternItem* "}"
+ExternItem  ::= Attrs? FnSignature ";"
+
 Block       ::= "{" { StmtSep }* (Stmt { StmtSep }+)* Expr? "}"
-Stmt        ::= ValDecl | Expr
+Stmt        ::= ValDecl | AssignStmt | DeferStmt | Expr
+AssignStmt  ::= LValue ":=" Expr
+LValue      ::= PostfixExpr
+DeferStmt   ::= "defer" Expr
 StmtSep     ::= NL | ";"
 
 Expr        ::= PipeExpr
 PipeExpr    ::= OrExpr ( "|>" CallExpr )*
 CallExpr    ::= PostfixExpr ( "(" Args? ")" )?
 Args        ::= NamedArg ( "," NamedArg )*
-NamedArg    ::= (Ident ":")? Expr
+NamedArg    ::= (Ident ":" )? Expr
 
-PostfixExpr ::= Primary ( "." Ident | "[" Expr "]" )*
+PostfixExpr ::= Primary PostfixOp*
+PostfixOp   ::= "." Ident
+             | "[" Expr "]"
+             | "(" Args? ")"
+             | "?"
 Primary     ::= Literal
-              | Ident
-              | "(" Expr ")"
-              | "(" Expr "," Expr ("," Expr)* ","? ")"
-              | "{" FieldInits? "}"
-              | "[" Expr ("," Expr)* ","? "]"
-              | Lambda
+             | Ident
+             | "(" Expr ")"
+             | "(" Expr "," Expr ("," Expr)* ","? ")"
+             | "{" FieldInits? "}"
+             | "[" Expr ("," Expr)* ","? "]"
+             | Lambda
+             | IfExpr
+             | MatchExpr
+             | WhileExpr
+             | ForExpr
+             | UnsafeBlock
+             | Block
+
+IfExpr      ::= "if" Expr "then" Expr ["else" Expr]
+MatchExpr   ::= "match" Expr "with" MatchArm+
+MatchArm    ::= "|" Pattern "->" Expr
+WhileExpr   ::= "while" Expr Block
+ForExpr     ::= "for" Pattern "in" Expr Block
+UnsafeBlock ::= "unsafe" Block
+
 FieldInits  ::= FieldInit ( "," FieldInit )* ","?
 FieldInit   ::= Ident ":" Expr
 
@@ -330,6 +468,7 @@ ConstrPat   ::= Ident "(" Pattern ( "," Pattern )* ","? ")"
 NL          ::= 行末（B.3 の規則に従う）
 ```
 
+
 ---
 
 ### まとめ
@@ -337,5 +476,3 @@ NL          ::= 行末（B.3 の規則に従う）
 * **行末ベースの簡潔な文法**＋**式指向**＋\*\*強い後置（適用/アクセス）\*\*で、DSL/コンビネータ記述が短く素直に書けます。
 * **パイプ `|>` と占位 `_`**がデシュガ可能な**一貫ルール**で、読みやすいデータフローを保証。
 * **パターン・ADT・ブロック終端式**で、構文も AST も“自然に”Kestrel→Core→IR へ落ちます。
-
-次は **1.2 型と推論** に進めます。必要なら、この 1.1 を元に**具体的な字句正規表現**や**テスト用ミニ文法**も出します。
