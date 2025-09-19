@@ -1,6 +1,30 @@
 # LLVMとの連携
 
-「LLVM IR文字列を実行できるランタイム（IR実行器）」がすでに存在していることを前提に、Kestrel → LLVM IR までの“実装プロセス”を、\*\*最小構成（MVP）→ 本命構成（本格）\*\*の順に具体化します。
+「LLVM IR文字列を実行できるランタイム（IR実行器）」がすでに存在していることを前提に、Kestrel → LLVM IR までの"実装プロセス"を、\*\*ブートストラップ（OCaml実装）→ 最小構成（MVP）→ 本命構成（本格）→ セルフホスト\*\*の順に具体化します。
+
+## ブートストラップ戦略
+
+**Phase 0: Bootstrap Implementation (OCaml)**
+- **目的**: 最初のKestrelコンパイラをOCamlで実装
+- **期間**: 2-3ヶ月（MVP）+ 4-6ヶ月（本格実装）
+- **理由**: HM型推論・ADT実装に最適、最短期間でKestrelコンパイラを実現
+- **成果物**: KestrelソースからLLVM IRを生成するOCaml製コンパイラ
+
+**Phase 1: Self-Bootstrap準備**
+- **目的**: OCaml実装でKestrel言語の基本機能を検証・安定化
+- **重要**: Nest.Parseライブラリの実装・検証
+- **成果物**: 安定したKestrel言語仕様とOCaml実装
+
+**Phase 2: Self-Host Transition**
+- **目的**: KestrelでKestrelコンパイラを書き直し
+- **期間**: 6-12ヶ月
+- **戦略**: 段階的移植（Parser → TypeChecker → CodeGen → 統合）
+- **成果物**: Kestrel自身で記述されたKestrelコンパイラ
+
+**Phase 3: Bootstrap完了**
+- **検証**: Kestrel(OCaml実装)とKestrel(Self-Host)の出力一致確認
+- **移行**: OCaml実装からSelf-Host実装への完全移行
+- **保守**: 以降はKestrel自身でKestrelを開発
 
 ---
 
@@ -22,7 +46,7 @@ Kestrel源コード
 
 ## 目的
 
-* Kestrelのソースを**AST**へ。Nest.Parse を使い、**エラー品質・左→右の読みやすさ**をそのまま享受。
+* Kestrelのソースを**AST**へ。**Bootstrap段階（OCaml実装）**: OCamlのパーサライブラリ（Menhir等）を使用。**Self-Host段階**: Nest.Parse を使い、**エラー品質・左→右の読みやすさ**をそのまま享受。
 
 ## やること
 
@@ -195,20 +219,22 @@ entry:
 * **MVP（最短）**
 
   * 型：`i64`, `bool`、単相関数。
-  * 機能：let/if/fn/app、演算子、標準I/O最小。
+  * 機能：let/if/fn/app、**基本演算子のみのトレイト**、標準I/O最小。
   * メモリ：プリミティブ中心（GC不要）。
   * **ゴール**：IR実行器で `main` が走る。
 
-* **Stage 2**
+* **Stage 2（本格実装）**
 
   * タプル/配列/文字列（RC管理）、クロージャ（env\*）。
   * モノモルフィゼーションでジェネリクス。
+  * **ユーザ定義トレイト**、where制約、制約解決。
 
-* **Stage 3**
+* **Stage 3（完全typeclass）**
 
-  * ADT/`match`/型クラス辞書、パターン網羅性チェック。
+  * ADT/`match`/型クラス**辞書パッシング**、パターン網羅性チェック。
   * 例外ではなく `Result` を一級化、`?` 演算子風デシュガ。
   * デバッグ情報（DWARF）、最適化フラグ（`-O2`相当）連携。
+  * **高階型クラス**、特殊化。
 
 * **Stage 4**
 

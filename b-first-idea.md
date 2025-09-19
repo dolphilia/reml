@@ -40,7 +40,7 @@
 
 # 2) 「理解しやすく書きやすい」ライブラリの特徴
 
-* **極小コア**：`map / ap / then / or / many / opt / between / sepBy / chainl / chainr / recursive` の**10数個**に集約。
+* **極小コア**：`map / ap / then / or / many / opt / between / sepBy / chainl / chainr / recursive` の**12-15個**に集約。
 * **字句解析ヘルパ**：`lexeme`, `symbol`, `space`, `comment`。**空白・コメントを自動で食う**。
 * **演算子優先度ビルダー**：`precedence { left "+", "-"; left "*", "/"; right "^" }` で**宣言して終わり**。
 * **エラー設計**：
@@ -65,11 +65,11 @@
 * **ML 系の型推論 + ADT + パターンマッチ + パイプ `|>`**
 * **ゼロコスト抽象**（インライン展開/逃げないラムダ）
 * **末尾再帰最適化 & トランポリン**
-* 文字列は **UTF-8**、`grapheme`, `char`, `byte` の3階層
+* 文字列は **UTF-8**、`byte`, `char`, `grapheme` の3階層
 
 ## ライブラリ: **Nest.Parse**
 
-* コア 12 個のコンビネータ + 字句/演算子/エラー拡張
+* コア 12-15個のコンビネータ + 字句/演算子/エラー拡張
 * `precedence { ... }`、`cut`, `label`, `recover`, `trace`
 * **左再帰ON/OFF**、**Packrat ON/OFF** を関数 1 つで切替
 
@@ -120,7 +120,7 @@ let expr : Lazy<Parser<Expr>> = lazy { parseExpr() }
 
 // 最小単位 (atom): 整数 or (expr) or 単項マイナス
 let atom : Parser<Expr> =
-  choice(
+  choice( // choice = 複数のorの糖衣
     // 単項マイナスは cut でコミットし、途中でやり直さない
     symbol("-").cut().then(lazy atom).map(|e| Expr::Neg(e)),
     lparen.then(expr).cut().then(rparen).map(|e| Expr::Paren(e)),
