@@ -6,6 +6,7 @@
 
 - はじめに
   - [概要](0-1-overview.md)
+  - [ロジェクトの目的と指針](0-2-project-purpose.md)
 - 言語コア仕様
   - [構文](1-1-syntax.md)
   - [型と推論](1-2-types-Inference.md)
