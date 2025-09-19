@@ -1,0 +1,325 @@
+# 2.3 字句レイヤ（Nest.Parse.Lex）
+
+> 目的：**Unicode 前提**で安全・高性能・書きやすい“字句レイヤ”を、**ごく少数の基礎プリミティブ**と**実用的ユーティリティ**で提供する。
+> 方針：
+>
+> * 既定は **UTF-8 / NFC 等価**（1.4）に整合。
+> * **ゼロコピー**で `Str`/`String` を返す。
+> * **小さな核 + 合成**で、必要十分な API 面に留める。
+> * エラーは **期待集合 + 最遠位置 + ラベル**で説明的（2.5 と整合）。
+
+---
+
+## A. 設計の核（プリミティブ 6）
+
+> この 6 つに、2.2 のコア・コンビネータを合わせれば大半の字句処理が書ける。
+
+```kestrel
+// 1) 一文字（コードポイント）判定
+fn satisfy(pred: Char -> Bool) -> Parser<Char>
+
+// 2) 固定文字列（最長一致、NFC 前提）
+fn string(s: Str) -> Parser<Str>
+
+// 3) 1 文字でも良い “集合”
+fn oneOf(chars: Str) -> Parser<Char>      // 任意の 1 文字が含まれていれば
+fn noneOf(chars: Str) -> Parser<Char>     // いずれでもない
+
+// 4) 走査（※空成功を返さない版も提供）
+fn takeWhile(pred: Char -> Bool)  -> Parser<Str>     // 0 文字以上
+fn takeWhile1(pred: Char -> Bool) -> Parser<Str>     // 1 文字以上（空なら失敗）
+
+// 5) 直後を覗くだけ（非消費）
+fn peek() -> Parser<Option<Char>>
+
+// 6) 行区切り（CR/LF/CRLF を LF へ正規化）
+fn lineEnding() -> Parser<()>    // 行末を 1 回読む（非返却）
+```
+
+**注意**
+
+* `string` は **バイト比較**の高速経路を持つ（ASCII/短文字列最適化）。
+* `takeWhile` は **空成功**を返すため、`many` と組み合わせるときは **`takeWhile1` を推奨**。
+
+---
+
+## B. 空白・改行・コメント（スキップ系）
+
+```kestrel
+// Unicode White_Space（UAX #44）、タブ/全角空白を含む
+fn whitespace() -> Parser<()>                   // 1 つ以上
+fn spaces0() -> Parser<()>                      // 0 以上
+fn hspace0() -> Parser<()>                      // 水平のみ
+fn vspace0() -> Parser<()>                      // 垂直のみ（改行系）
+
+// コメント
+fn commentLine(prefix: Str) -> Parser<()>       // 例: "//"
+fn commentBlock(start: Str, end: Str, nested: Bool = true) -> Parser<()>
+
+// スキップ合成：空白・コメントを任意数
+fn skipMany(p: Parser<()>) -> Parser<()>
+```
+
+**推奨定義（例）**
+
+```kestrel
+let sc =
+  (whitespace()
+   .or(commentLine("//"))
+   .or(commentBlock("/*","*/", nested=true)))
+  |> skipMany
+```
+
+---
+
+## C. トークン化の基本ユーティリティ
+
+```kestrel
+// 後ろの空白・コメントを食う “lexeme”
+fn lexeme<A>(space: Parser<()>, p: Parser<A>) -> Parser<A>
+
+// 固定記号（; , ( ) など）。成功時は () を返す
+fn symbol(space: Parser<()>, s: Str) -> Parser<()>   // = lexeme(space, string(s)).skipR(space)
+
+// 前後を食う
+fn padded<A>(p: Parser<A>, space: Parser<()>) -> Parser<A>
+
+// 位置付きトークン（値 + Span）
+fn token<A>(p: Parser<A>, space: Parser<()>) -> Parser<(A, Span)>
+```
+
+* `symbol(sc, "(")` は `"("` を読んで**後続の `sc` を必ず消費**。
+* `token` は AST へ**位置**を付与したいときの定番（`spanned` の字句版）。
+
+---
+
+## D. 識別子・キーワード（UAX #31 準拠）
+
+### D-1. プロファイル
+
+```kestrel
+type IdentifierProfile = {
+  allow_underscore: Bool = true,
+  start_pred: Char -> Bool,   // 既定: XID_Start or '_'
+  cont_pred:  Char -> Bool,   // 既定: XID_Continue or '_'
+  nfc_required: Bool = true,  // NFC でない識別子は拒否
+  forbid_bidi_ctrl: Bool = true,   // Bidi 制御文字禁止
+  confusable_warn: Bool = true     // 見かけ紛らわし警告
+}
+
+fn identifier(profile: IdentifierProfile = DefaultId) -> Parser<Str>
+```
+
+* 既定プロファイル `DefaultId` は **XID\_Start/XID\_Continue + '\_'**。
+* 文字モデル（1.4）に従い、**NFC でない**／**Bidi 制御含む**識別子は**エラー**。
+* \*\*紛らわし（UAX #39）\*\*は **警告**として `ParseError.notes` に蓄積。
+
+### D-2. キーワードと境界
+
+```kestrel
+// ident と同一文字列ならキーワードとして成功し、直後が ident-continue なら失敗
+fn keyword(space: Parser<()>, kw: Str) -> Parser<()>     // lexeme + 境界確認
+
+// 予約語集合をまとめて拒否（identifier と組み合わせ）
+fn reserved(profile: IdentifierProfile, set: Set<Str>) -> Parser<Never>
+```
+
+* `keyword(sc, "if")` は `ifx` を**誤認しない**（`notFollowedBy(ident-continue)` を内部使用）。
+
+---
+
+## E. 数値リテラル（区切り `_` / 基数 / 範囲チェック）
+
+> 単項マイナスは\*\*構文側（単項演算子）\*\*で扱う。ここでは **符号なし**を原則。
+
+```kestrel
+// 10 進（"1_234" 許容）
+fn int10() -> Parser<Str>                     // “文字列” として取得（桁を維持）
+fn int(radix: 2|8|10|16, allow_prefix: Bool = false) -> Parser<Str>
+// 0b / 0o / 0x プレフィックス対応
+fn intAuto() -> Parser<(radix: u8, digits: Str)> // 0x..., 0o..., 0b..., それ以外は 10
+
+// 浮動小数（10 進、"1.23", ".5", "1e-9", "1_000.0" など）
+fn float() -> Parser<Str>
+
+// 文字列から数値へ（範囲チェック付き）
+fn parseI64(digits: Str, radix: u8 = 10)  -> Result<i64, Overflow>
+fn parseU64(digits: Str, radix: u8 = 10)  -> Result<u64, Overflow>
+fn parseF64(repr: Str)                    -> Result<f64, ParseFloatError>
+```
+
+**指針**
+
+* 字句段階は **文字列で保持**（桁情報・原文再現）。
+* 値化は構文側で `map` して `parseI64/parseF64`。**オーバーフローは説明的エラー**に。
+
+---
+
+## F. 文字列・文字リテラル（エスケープ/生/複数行）
+
+```kestrel
+// 通常文字列（C 風エスケープ、\u{...} は Unicode スカラ値）
+fn stringLit() -> Parser<String>
+
+// 原文を保持したい場合（アンエスケープしない）
+fn stringRaw() -> Parser<Str>                // r" ... "
+fn stringRawHash(level: usize) -> Parser<Str>// r#" ... "#, r##" ... "## など
+
+// 複数行（トリプルクォート）。インデント除去オプション
+fn stringMultiline(dedent: Bool = true) -> Parser<String>
+
+// 1 文字リテラル（Unicode スカラ値 1 個）
+fn charLit() -> Parser<Char>
+```
+
+**エスケープ仕様（抜粋）**
+
+* `\n \r \t \\ \" \'`、`\/`（JSON 互換）、`\u{1F600}`（1〜6桁 hex、スカラ値必須）
+* 不正なエスケープ／サロゲート：**位置付きエラー**。
+* `stringMultiline(dedent=true)` は **最小共通インデント**を除去（ドキュメント文字列向け）。
+
+---
+
+## G. 汎用“取り込み”ユーティリティ
+
+```kestrel
+fn till<A>(end: Parser<A>) -> Parser<Str>            // end が来るまで（非貪欲）
+fn take(n_bytes: usize) -> Parser<Bytes>             // バイト数で取得（テキスト前提なし）
+fn takeCodepoints(n: usize) -> Parser<Str>           // コードポイント数で取得
+fn grapheme() -> Parser<Grapheme>                    // 拡張書記素 1 つ
+```
+
+* `till` は **ゼロ幅 end** に注意（実装で guard）。
+* `take` は **Bytes** を返し、**UTF-8 破壊の可能性を型で表す**（1.4 の方針に従う）。
+
+---
+
+## H. 行頭・行末・インデント（任意）
+
+Kestrel 本体はオフサイド規則を採用しないが、DSL 用に提供。
+
+```kestrel
+fn bol() -> Parser<()>                     // 行頭（BOL）
+fn eol() -> Parser<()>                     // 行末（EOL）
+fn indentEq(n: usize) -> Parser<()>        // その行の列 == n
+fn indentGt(n: usize) -> Parser<()>        // 列 > n
+fn column() -> Parser<usize>               // 現在列（グラフェム数）
+```
+
+---
+
+## I. セキュリティ・正規化（安全モード）
+
+```kestrel
+// 入力ストリームから Bidi 制御（U+2066…U+2069, RLO/LRO/RLE/LRE/PDF など）を拒否/警告
+fn forbidBidiControls() -> Parser<()>      // 文字列/コメント以外の出現でエラー
+
+// NFC でない連なりを検出（識別子などで使用）
+fn requireNfc(s: Str) -> Result<Str, NfcError>
+
+// 見かけ紛らわし（UAX #39）を検出して notes に追加
+fn warnConfusable(s: Str) -> ()
+```
+
+---
+
+## J. エラー品質のための流儀
+
+* **`label` と `expect`（= label+cut）**
+
+  ```kestrel
+  let sym(s) = expect("symbol '" + s + "'", symbol(sc, s))
+  let kw(s)  = expect("keyword " + s, keyword(sc, s))
+  ```
+* **“最長一致”の曖昧は `lookahead`/`notFollowedBy`** で解消
+  例：`ident` と `keyword("if")` の競合。
+* **繰返し本体の空成功を禁止**（ライブラリ側で検知し説明）。
+* **数値のオーバーフロー**は **字句 → 値化**の境界で検出し、**桁列**を含む診断に。
+
+---
+
+## K. 性能規約（実装者向け）
+
+* **ASCII 高速経路**：`string`, `oneOf/noneOf`, `takeWhile` に ASCII 専用分岐。
+* **テーブル駆動**：Unicode カテゴリ/プロパティは **生成済みテーブル**（ビルド時）を使用。
+* **NFA/Goto 最適化**：`identifier` などホットパスは **手書き状態機械**にコンパイル。
+* **ゼロコピー**：`Str` は親 `String` を参照、SSO と RC/COW による共有。
+* **Packrat**：字句パーサは一般に **左再帰なし**。`rule()` による ParserId 固定は忘れない。
+* **境界キャッシュ**：コードポイント/グラフェム境界は **lazy 構築**しビュー間で共有（1.4）。
+
+---
+
+## L. 代表的なレシピ
+
+### L-1. Kestrel 識別子/キーワード
+
+```kestrel
+let sc = (whitespace().or(commentLine("//")).or(commentBlock("/*","*/", true))) |> skipMany
+let sym(s) = symbol(sc, s)
+let kw(s)  = expect("keyword " + s, keyword(sc, s))
+
+let ident = lexeme(sc, identifier(DefaultId))
+  |> label("identifier")
+
+let reservedSet = {"fn","let","var","type","match","with","if","then","else","use","pub","return","true","false"}
+let nonReservedIdent =
+  ident.andThen(|name| if reservedSet.contains(name) then fail("reserved") else ok(name))
+```
+
+### L-2. 数値（整数 or 浮動小数）
+
+```kestrel
+let number: Parser<Either<i64,f64>> =
+  lexeme(sc,
+    float().map(|s| Right(parseF64(s)?))
+    .or(intAuto().andThen(|(r,d)| ok(Left(parseI64(d, r)?))))
+  ).label("number")
+```
+
+### L-3. 文字列（通常/生/複数行）
+
+```kestrel
+let strLit: Parser<String> =
+  lexeme(sc,
+    stringLit()
+    .or(stringRaw())
+    .or(stringMultiline(dedent=true))
+  ).label("string")
+```
+
+---
+
+## M. API 一覧（サマリ）
+
+**プリミティブ**：`satisfy` / `string` / `oneOf` / `noneOf` / `takeWhile` / `takeWhile1` / `peek` / `lineEnding`
+**空白・コメント**：`whitespace` / `spaces0` / `hspace0` / `vspace0` / `commentLine` / `commentBlock` / `skipMany`
+**トークン**：`lexeme` / `symbol` / `padded` / `token`
+**識別子**：`identifier(profile)` / `keyword(space, kw)` / `reserved`
+**数値**：`int10` / `int(radix, allow_prefix)` / `intAuto` / `float` / `parseI64` / `parseU64` / `parseF64`
+**文字列**：`stringLit` / `stringRaw` / `stringRawHash` / `stringMultiline` / `charLit`
+**走査**：`till` / `take(n_bytes)` / `takeCodepoints(n)` / `grapheme`
+**行頭・列**：`bol` / `eol` / `indentEq` / `indentGt` / `column`
+**安全**：`forbidBidiControls` / `requireNfc` / `warnConfusable`
+
+---
+
+## N. チェックリスト
+
+* [ ] 6 プリミティブを核に、**字句ユースケースの 95%** を網羅。
+* [ ] **UAX #31/29/14** に整合（識別子・グラフェム・行分割）。
+* [ ] **lexeme/symbol** が **エラー品質**（期待名/コミット）と噛み合う。
+* [ ] 数値/文字列は **原文保持 → 値化**の二段階、**範囲/不正**の診断が明快。
+* [ ] **Bidi/NFC/Confusable** の安全策を標準で同梱。
+* [ ] **ASCII 高速経路 + テーブル駆動 + ゼロコピー**で実用性能。
+
+---
+
+### まとめ
+
+Nest.Parse.Lex は **最小の核**（6 プリミティブ）に、
+
+* Unicode 正しい **空白/コメント/識別子/数値/文字列**の**実務ユーティリティ**を重ね、
+* `lexeme`/`symbol`/`keyword` と **`cut/label` の流儀**で、
+  **書きやすさ・読みやすさ・エラー品質**を最大化する。
+
+これで構文側（2.4 の演算子ビルダー）へ、**綺麗な字句面**を渡せます。
