@@ -168,117 +168,30 @@ type ParseError = {
 
 ---
 
-## 3. “書き心地”を示すサンプル
+## 3. 実装アプローチ
 
-### 3.1 四則演算 + 単項 − + べき乗（右結合）+ 括弧
+Kestrelは段階的な実装を想定しており、以下の順序で開発されます：
 
-```kestrel
-use Nest.Parse
-use Nest.Parse.{Lex, Op, Err}
+### 3.1 MVP（最小実装）
 
-type Expr =
-  | Int(i64) | Neg(Expr) | Add(Expr, Expr) | Sub(Expr, Expr)
-  | Mul(Expr, Expr) | Div(Expr, Expr) | Pow(Expr, Expr) | Paren(Expr)
+* **基本型**: `i64`, `Bool`, 単相関数
+* **構文**: let/if/fn/app、基本演算子のみのトレイト
+* **メモリ**: プリミティブ中心（GC不要）
+* **目標**: IR実行器で `main` が走ること
 
-let sc =
-  (Lex.spaceOrTabsOrNewlines
-     .or(Lex.commentLine("//"))
-     .or(Lex.commentBlock("/*","*/", nested=true)))
-  |> Lex.skipMany
+### 3.2 本格実装
 
-let sym(s)    = symbol(sc, s)
-let intLit    = lexeme(sc, Lex.int(10)).map(|n| Expr::Int(n))
+* **データ型**: タプル/配列/文字列（RC管理）、クロージャ
+* **型システム**: モノモルフィゼーションでジェネリクス
+* **トレイト**: ユーザ定義トレイト、where制約、制約解決
 
-let expr: Parser<Expr> = recursive(|expr| {
-  let atom =
-    choice([
-      sym("-").then(cut(expr.clone())).map(|(_, e)| Expr::Neg(e)),
-      delimited(sym("("), expr.clone(), sym(")")).map(Expr::Paren),
-      intLit
-    ]).label("number or '(' or unary '-'");
+### 3.3 完全実装
 
-  precedence(atom, { space: sc, operand_label: "expression" }) {
-    right sym("^").map(|_| (|a,b| Expr::Pow(a,b)))
-    left  sym("*").map(|_| (|a,b| Expr::Mul(a,b)))
-    left  sym("/").map(|_| (|a,b| Expr::Div(a,b)))
-    left  sym("+").map(|_| (|a,b| Expr::Add(a,b)))
-    left  sym("-").map(|_| (|a,b| Expr::Sub(a,b)))
-  }
-});
+* **高度な機能**: ADT/`match`/型クラス辞書パッシング
+* **エラー処理**: `Result`/`Option`の一級化、`?`演算子
+* **最適化**: DWARF デバッグ情報、最適化フラグ連携
 
-let parser = rule("expr", expr);
-
-fn eval(e: Expr) -> i64 =
-  match e with
-  | Int(n)   -> n
-  | Neg(x)   -> -eval(x)
-  | Add(a,b) -> eval(a) + eval(b)
-  | Sub(a,b) -> eval(a) - eval(b)
-  | Mul(a,b) -> eval(a) * eval(b)
-  | Div(a,b) -> eval(a) / eval(b)
-  | Pow(a,b) -> eval(a).pow(eval(b))
-  | Paren(x) -> eval(x)
-
-pub fn main() {
-  let cfg = { require_eof = true, packrat = true };
-  for s in ["1+2*3", "2^3^2", "-(2+3)*4", "1+(2* )"] {
-    match run(parser, s, cfg) with
-    | Ok((ast, _span)) -> println("{s} => {eval(ast)}")
-    | Err(e)           -> println(Err.pretty(s, e))
-  }
-}
-```
-
-**ポイント**
-
-* **優先度宣言 5 行**で演算子テーブルを記述。
-* `cut` を差し込むことで `- ( ... )` のような曖昧さを早期確定。
-* `run(..., { require_eof = true, packrat = true })` で全消費と Packrat メモ化をスイッチ 1 つで指定。
-
-### 3.2 JSON（抜粋：値・配列・オブジェクト）
-
-```kestrel
-type J =
-  | JNull | JBool(Bool) | JNum(f64) | JStr(String)
-  | JArr(List<J>) | JObj(List<(String, J)>)
-
-let sc = Lex.spaceOrTabsOrNewlines |> Lex.skipMany
-let str = Lex.jsonString().lexeme(sc).map(JStr)           // 既製ヘルパ
-let num = Lex.number().lexeme(sc).map(|n| JNum(n.toFloat()))
-
-let jvalue : Lazy<Parser<J>> = lazy { value() }
-
-let jnull = Lex.symbol(sc, "null").map(|_| JNull)
-let jbool = (Lex.symbol(sc, "true").map(|_| JBool(true))
-          | Lex.symbol(sc, "false").map(|_| JBool(false)))
-
-let jarray =
-  symbol("[").then(
-    jvalue.sepBy(symbol(","))
-  ).then(symbol("]"))
-   .map(|xs| JArr(xs))
-   .label("array")
-
-let pair =
-  str.then(symbol(":").cut()).then(jvalue).map(|(JStr(k), v)| (k, v))
-
-let jobject =
-  symbol("{").then(
-    pair.sepBy(symbol(","))
-  ).then(symbol("}"))
-   .map(|ps| JObj(ps))
-   .label("object")
-
-fn value() = choice(jnull, jbool, num, str, jarray, jobject)
-               .between(sc)
-               .ensureEof()
-```
-
-**ポイント**
-
-* `jsonString()` のような**字句ヘルパ**で現実的な文字列を一発。
-* `":"` の直後に `cut()` を入れることで**キー後の失敗を上に伝播**（「キーは読めた、値が欠けてる」を明確化）。
-* 期待集合と `label` により、`{ "a": 1, }` のような失敗が**具体的に説明**される。
+詳細な実装例とサンプルコードは、各仕様書で具体的に説明されています。
 
 ---
 
@@ -325,8 +238,34 @@ Builtin  ::= "i64" | "f64" | "Bool" | "String" | ...
 
 ---
 
-## 6. まとめ（Kestrelの“要点”）
+## 6. まとめ（Kestrelの"要点"）
 
 * **言語側**：パイプ・型推論・ADT・マッチ・末尾最適化・Unicode。
 * **ライブラリ側**：**少数精鋭のコンビネータ**＋**宣言的 precedence**＋**cut/label/recover/trace**。
-* **運用**：Packrat/左再帰を**必要時だけ**スイッチ、エラーは**期待集合ベース**で“人間語”。
+* **運用**：Packrat/左再帰を**必要時だけ**スイッチ、エラーは**期待集合ベース**で"人間語"。
+
+---
+
+## 関連仕様
+
+### 言語コア仕様
+
+* [1.1 構文](1-1-syntax.md) - 詳細な構文定義
+* [1.2 型と推論](1-2-types-Inference.md) - 型システムの完全仕様
+* [1.3 効果と安全性](1-3-effects-safety.md) - 効果システムと安全性
+* [1.4 文字モデル](1-4-test-unicode-model.md) - Unicode処理の詳細
+
+### 標準パーサーAPI仕様
+
+* [2.1 パーサ型](2-1-parser-type.md) - パーサの型と実行モデル
+* [2.2 コア・コンビネータ](2-2-core-combinator.md) - 基本コンビネータ詳細
+* [2.3 字句レイヤ](2-3-lexer.md) - 字句解析の実装
+* [2.4 演算子優先度ビルダー](2-4-op-builder.md) - 演算子の宣言的実装
+* [2.5 エラー設計](2-5-error.md) - エラー処理の完全仕様
+* [2.6 実行戦略](2-6-execution-strategy.md) - 実行時の戦略と最適化
+
+### 実装関連
+
+* [3.1 BNF文法仕様](3-1-bnf.md) - 形式的文法定義
+* [a-jit.md](a-jit.md) - LLVM連携とコンパイル戦略
+* [b-first-idea.md](b-first-idea.md) - 設計の原点となったアイデア

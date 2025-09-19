@@ -314,6 +314,35 @@ let strLit: Parser<String> =
 
 ---
 
+## O. 文字モデル統合（1.4 連携）
+
+文字モデル（[1.4 文字モデル](1-4-test-unicode-model.md)）で定義された三層構造（Byte/Char/Grapheme）を活用するパーサヘルパ群：
+
+```kestrel
+// 文字レベルでの解析
+fn grapheme() -> Parser<Grapheme>                    // 拡張書記素クラスタ単位
+fn char_where(pred: Char -> Bool) -> Parser<Char>    // Unicode スカラ値での条件解析
+
+// Unicode プロパティベース解析
+fn unicode_category(cat: String) -> Parser<Char>     // "Lu", "Nd" など
+fn unicode_script(name: String) -> Parser<Char>      // "Han", "Hiragana" など
+fn unicode_property(name: String) -> Parser<Char>    // "White_Space" など
+
+// UAX #31 識別子解析（安全性統合）
+fn identifier(profile: IdentifierProfile) -> Parser<Str>  // NFC・Bidi・Confusable検査含む
+```
+
+**文字モデル統合のポイント：**
+
+* **等価性判定**：[1.4](1-4-test-unicode-model.md) で定義されたNFC正規化ベースの等価性を使用
+* **位置情報**：グラフェム単位での列位置とバイトオフセットを併用
+* **セキュリティ**：Bidi制御文字の検出とConfusable文字の警告機能
+* **パフォーマンス**：境界キャッシュとテーブル駆動による高速化
+
+これらのAPIにより、**Unicode前提**での安全で高性能な字句解析が実現されます。
+
+---
+
 ### まとめ
 
 Nest.Parse.Lex は **最小の核**（6 プリミティブ）に、

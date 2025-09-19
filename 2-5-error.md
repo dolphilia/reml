@@ -269,3 +269,14 @@ help: put a space: "if x"
 * **最遠位置・期待集合・文脈**の三本柱で、**短く直せる**エラーを一貫生成。
 * `cut/label/attempt/recover` と **きれいに連動**し、`precedence` でも**欠落オペランド**や**非結合違反**を高品位に報告。
 * **Unicode/安全性**診断も標準化し、**IDE/LSP** へそのまま渡せる **FixIt** を同梱。
+
+---
+
+## 関連仕様
+
+* [1.4 文字モデル](1-4-test-unicode-model.md) - Unicode位置情報とセキュリティ診断の基盤
+* [2.1 パーサ型](2-1-parser-type.md) - エラー型とReply構造の定義
+* [2.2 コア・コンビネータ](2-2-core-combinator.md) - cut/label/attempt/recoverの動作仕様
+* [2.3 字句レイヤ](2-3-lexer.md) - 字句エラーとの統合
+* [2.4 演算子優先度ビルダー](2-4-op-builder.md) - 演算子特有のエラー処理
+* [2.6 実行戦略](2-6-execution-strategy.md) - エラー集約とトレースの実装

@@ -218,8 +218,18 @@ NL             ::= *行末 (改行または `;`)*
 
 ## 8. 参考リンク
 
-- [1.1 構文](1-1-syntax.md)
-- [1.2 型と推論](1-2-types-Inference.md)
-- [1.3 効果と安全性](1-3-effects-safety.md)
-- [2.1 パーサ型](2-1-parser-type.md)
-- [2.5 エラー設計](2-5-error.md)
+### 言語コア仕様
+
+* [1.1 構文](1-1-syntax.md) - 字句・意味論の詳細
+* [1.2 型と推論](1-2-types-Inference.md) - 型システムの解釈
+* [1.3 効果と安全性](1-3-effects-safety.md) - 効果システムの解釈
+* [1.4 文字モデル](1-4-test-unicode-model.md) - Unicode処理の詳細
+
+### 標準パーサーAPI仕様
+
+* [2.1 パーサ型](2-1-parser-type.md) - パーサの実装型
+* [2.2 コア・コンビネータ](2-2-core-combinator.md) - 基本コンビネータ
+* [2.3 字句レイヤ](2-3-lexer.md) - 字句解析の実装
+* [2.4 演算子優先度ビルダー](2-4-op-builder.md) - 演算子の実装
+* [2.5 エラー設計](2-5-error.md) - エラー処理の詳細
+* [2.6 実行戦略](2-6-execution-strategy.md) - 実行時の戦略
