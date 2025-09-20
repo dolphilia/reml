@@ -283,13 +283,23 @@ let render = with_capabilities({"template"}, renderParser)
 
 > DSL プラグインを登録し、Parser capability を管理するための暫定 API 案。
 
+### J-1. API 定義
+
 ```kestrel
 type CapabilitySet = Set<String>
 
 type PluginCapability = {
   name: String,
   version: SemVer,
-  traits: Set<String>
+  traits: Set<String>,
+  since: Option<SemVer>,
+  deprecated: Option<SemVer>
+}
+
+type PluginRegistrar = {
+  register_schema: fn(name: String, schema: Any) -> (),
+  register_parser: fn(name: String, factory: fn() -> Parser<Any>) -> (),
+  register_capability: fn(CapabilitySet) -> ()
 }
 
 type ParserPlugin = {
@@ -299,34 +309,43 @@ type ParserPlugin = {
   register: fn(PluginRegistrar) -> ()
 }
 
-fn register_plugin(plugin: ParserPlugin)
-
-fn with_capabilities(cap: CapabilitySet, p: Parser<A>) -> Parser<A>
-
-type PluginRegistrar = {
-  register_schema: fn(name: String, schema: Any) -> (),
-  register_parser: fn(name: String, factory: fn() -> Parser<Any>) -> (),
-  register_capability: fn(CapabilitySet) -> ()
-}
+fn register_plugin(plugin: ParserPlugin) -> Result<(), PluginError>
+fn with_capabilities<T>(cap: CapabilitySet, p: Parser<T>) -> Parser<T>
 ```
+
+| 構造体 | フィールド | 意味 |
+| --- | --- | --- |
+| `PluginCapability` | `name` | DSL 機能名。例: `"template"`, `"config"` |
+|  | `version` | Capability のバージョン (SemVer) |
+|  | `traits` | 提供する機能タグ（例: `render`, `diff`） |
+|  | `since` / `deprecated` | 利用可能開始バージョン、廃止予定バージョン |
+| `ParserPlugin` | `name` | プラグイン識別子 (却下時参照) |
+|  | `capabilities` | 提供する Capability の一覧 |
+|  | `register` | コンビネータやスキーマを登録する関数 |
+| `PluginRegistrar` | `register_schema` | スキーマ DSL を登録 |
+|  | `register_parser` | パーサ・コンビネータを登録 |
+|  | `register_capability` | 追加 Capability を宣言 |
 
 * `register_plugin` はプラグインが提供する DSL/コンビネータを登録し、`PluginRegistrar` 経由で `ParserId` を割り当てる。
 * `CapabilitySet` は `parser.requires({"template"})` のような照会・制約に利用。
 * `with_capabilities` はプラグインが要求する capability を宣言し、実行時に満たされない場合 `PluginError::MissingCapability` を返す。
 
-### J-1. 互換性とバージョン
+### J-2. 互換性とバージョン
 
-* `SemVer` 準拠。`register_plugin` は既存バージョンとの互換チェックを行い、競合時は `PluginConflict` を返す。
-* `PluginCapability` に `since` / `deprecated` メタデータを持たせ、利用側が警告を発行できるようにする。
+| ケース | ルール | エラー例 |
+| --- | --- | --- |
+| 同名プラグイン重複 | SemVer 互換なら最新版へ更新、非互換なら拒否 | `PluginError::Conflict { plugin, existing }` |
+| Capability 未満 | `with_capabilities` で指定した名前が未登録 | `PluginError::MissingCapability { name }` |
+| Deprecated | `deprecated` <= 現行バージョンで警告、将来削除 | `PluginWarning::DeprecatedCapability` |
 
-### J-2. サンプル（Draft）
+### J-3. サンプル（Draft）
 
 ```kestrel
 let templating = ParserPlugin {
   name = "Kestrel.Web.Templating",
   version = SemVer(1, 2, 0),
   capabilities = [
-    { name = "template", version = SemVer(1,0,0), traits = {"render"} }
+    { name = "template", version = SemVer(1,0,0), traits = {"render"}, since = Some(SemVer(1,0,0)), deprecated = None }
   ],
   register = |reg| {
     reg.register_schema("TemplateConfig", templateSchema);
@@ -334,7 +353,7 @@ let templating = ParserPlugin {
   }
 }
 
-register_plugin(templating)
+register_plugin(templating)?
 
 let render = with_capabilities({"template"}, renderParser)
 ```
