@@ -167,8 +167,8 @@ fn separatedListTrailing<A,S>(elem: Parser<A>, sep: Parser<S>) -> Parser<[A]> //
 ## E. 例：四則演算（べき乗右結合、カッコ、単項 -）
 
 ```reml
-use Nest.Parse
-use Nest.Parse.Lex
+use Core.Parse
+use Core.Parse.Lex
 
 let sc     = Lex.spaceOrTabsOrNewlines |> Lex.skipMany
 let sym(s) = symbol(sc, s)

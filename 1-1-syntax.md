@@ -54,8 +54,8 @@
 * 依存の導入：
 
   ```reml
-  use Nest.Parse
-  use Nest.Parse.{Lex, Op as Operator, Err}
+  use Core.Parse
+  use Core.Parse.{Lex, Op as Operator, Err}
   ```
 
   `as` で別名、`{ ... }` で限定インポート。
@@ -155,7 +155,7 @@ impl Parser<T> {
 
 ### B.6 スキーマ宣言（Draft）
 
-> 設定ファイルや宣言的 DSL を型安全に表現するための追加構文案。最終仕様は標準 API `Nest.Config` と共に確定する予定です。
+> 設定ファイルや宣言的 DSL を型安全に表現するための追加構文案。最終仕様は標準 API `Core.Config` と共に確定する予定です。
 
 * **基本形**
 
@@ -409,7 +409,7 @@ match v with | Some(n) -> n | None -> 0
 ## G. 例（仕様の運用感）
 
 ```reml
-use Nest.Parse.{Lex, Op}
+use Core.Parse.{Lex, Op}
 
 // 値と関数
 let sep = ", "

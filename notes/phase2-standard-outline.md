@@ -17,14 +17,14 @@
 - ホットリロード API: `reload(parser, state, diff)` の仕様案。
 - ✅ CLI 用の `reml-run` サブコマンド例を追加（2-6 節とガイド参照）
 
-## 3. 新章 `2-7 Nest.Config` (仮)
+## 3. 新章 `2-7 Core.Config` (仮)
 - スキーマ宣言 API: `schema { ... }` を構築するビルダ関数。
 - 差分検証: `compare(old, new) -> SchemaDiff`。
 - 条件付き設定: `when` / `requires` / `compute` に対応する API。
 - CLI 連携: `ConfigResult::audit()` など。
 - ✅ 設定テンプレートのマージ戦略（優先順位）の仕様ドラフトを追加
 
-## 4. 新章 `2-8 Nest.Data` (仮)
+## 4. 新章 `2-8 Core.Data` (仮)
 - データモデリング: `Schema`, `Column`, `ResourceId` の型定義。
 - バリデータ: `validate(schema, value)`。
 - スキーマ進化ユーティリティ: `diff`, `apply_migration`。

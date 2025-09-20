@@ -67,7 +67,7 @@
 * **末尾再帰最適化 & トランポリン**
 * 文字列は **UTF-8**、`byte`, `char`, `grapheme` の3階層
 
-## ライブラリ: **Nest.Parse**
+## ライブラリ: **Core.Parse**
 
 * コア 12-15個のコンビネータ + 字句/演算子/エラー拡張
 * `precedence { ... }`、`cut`, `label`, `recover`, `trace`
@@ -82,10 +82,10 @@
 
 ```reml
 // ── 依存 ──────────────────────────────────────────────
-use Nest.Parse // コア
-use Nest.Parse.Lex // lexeme/symbol/space 等
-use Nest.Parse.Op  // precedence ビルダー
-use Nest.Parse.Err // エラー型/整形
+use Core.Parse // コア
+use Core.Parse.Lex // lexeme/symbol/space 等
+use Core.Parse.Op  // precedence ビルダー
+use Core.Parse.Err // エラー型/整形
 
 // ── AST ───────────────────────────────────────────────
 type Expr =
@@ -196,4 +196,4 @@ pub fn main(args: List<String>) {
 | 国際化         | UTF-8/文字階層  | `char/grapheme` パーサ           |
 | IDE/REPL    | 効果分離        | トレース/インクリメンタル                 |
 
-> **Reml × Nest.Parse** は、FParsec の直感性、Megaparsec のエラー品質、FastParse の簡潔さ、PEG/Packrat の安定性を"必要な場面でだけ"取り込む構成です。
+> **Reml × Core.Parse** は、FParsec の直感性、Megaparsec のエラー品質、FastParse の簡潔さ、PEG/Packrat の安定性を"必要な場面でだけ"取り込む構成です。

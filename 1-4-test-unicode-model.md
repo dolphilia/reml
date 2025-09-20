@@ -183,7 +183,7 @@ impl Collator { fn new(locale: Locale) -> Collator; fn compare(&self, a: Str, b:
 * `Lex.whitespace()`：Unicode White\_Space に従う
 * `Lex.linebreak()`：UAX #14 での行分割候補
 
-> これらは **Nest.Parse** の“字句工具”に属するが、**文字モデル**が提供する正確な分類に依存する。
+> これらは **Core.Parse** の“字句工具”に属するが、**文字モデル**が提供する正確な分類に依存する。
 
 ---
 
@@ -223,7 +223,7 @@ Reml の文字モデルは **"文字（Char）/表示単位（Grapheme）/バイ
 
 * **NFC 基準の等価性**でバグと衝突を減らし、
 * **安全なスライスと豊富な分割 API**で実運用テキストを扱いやすくし、
-* **正確な位置情報と Unicode クラス**により **Nest.Parse** の字句・構文設計を強力に支える。
+* **正確な位置情報と Unicode クラス**により **Core.Parse** の字句・構文設計を強力に支える。
 
 この上で、**パーサーコンビネーター**は "Unicode を正しく意識した" トークナイザを小さな合成で記述できる。
 

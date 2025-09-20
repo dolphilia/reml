@@ -1,4 +1,4 @@
-# 2.3 字句レイヤ（Nest.Parse.Lex）
+# 2.3 字句レイヤ（Core.Parse.Lex）
 
 > 目的：**Unicode 前提**で安全・高性能・書きやすい“字句レイヤ”を、**ごく少数の基礎プリミティブ**と**実用的ユーティリティ**で提供する。
 > 方針：
@@ -345,7 +345,7 @@ fn identifier(profile: IdentifierProfile) -> Parser<Str>  // NFC・Bidi・Confus
 
 ### まとめ
 
-Nest.Parse.Lex は **最小の核**（6 プリミティブ）に、
+Core.Parse.Lex は **最小の核**（6 プリミティブ）に、
 
 * Unicode 正しい **空白/コメント/識別子/数値/文字列**の**実務ユーティリティ**を重ね、
 * `lexeme`/`symbol`/`keyword` と **`cut/label` の流儀**で、

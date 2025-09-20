@@ -1,4 +1,4 @@
-# 2.7 設定スキーマ API（Nest.Config） - Draft
+# 2.7 設定スキーマ API（Core.Config） - Draft
 
 > 目的：`schema` 構文で宣言された設定をプログラムから検証・差分適用するための標準 API を提供する。
 
