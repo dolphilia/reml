@@ -31,3 +31,9 @@ kestrel-config render --template config/prod.ks --env staging --output generated
 - ロールバックは `Config.apply_diff` で逆差分を適用し、`audit.log("config.rollback", diff)` と組み合わせる。
 
 > ガイド内容はフェーズ3で詳細化予定。
+
+## TODO / 制限事項
+
+- `Config.render` の戻り値は Draft 段階（Result/side effect の扱いは要検討）。
+- マージ戦略の細部（優先順位のカスタム値）は仕様確定待ち。
+- CLI とランタイムとの差分適用 API を一本化する必要あり。

@@ -222,3 +222,17 @@ let factor: Parser<i64> = rule("factor",
 * **12-15 個の最小コア**で、実務に必要な記法（分岐、繰返し、先読み、コミット、位置）が網羅され、
 * `attempt / cut / label / recover` の**四点セット**で **高品質エラー**と**制御可能なバックトラック**を両立。
 * 追加の便利関数は **派生**として提供し、コアを痩せたまま保つ。
+
+---
+
+## I. Capability 要求パターン（Draft）
+
+| コンビネータ | 備考 | 推奨 Capability |
+| --- | --- | --- |
+| `atomic` | `label+cut` を内包し、エラーを確定させる | `"parser.atomic"` |
+| `recover` | 回復処理を提供 | `"parser.recover"` |
+| `trace` | トレースイベントを生成 | `"parser.trace"` |
+| `chainl1` / `chainr1` | 演算子テーブルで利用 | `"parser.chain"` |
+
+* プラグインは `CapabilitySet = {"parser.recover", ...}` のように宣言し、利用側が `with_capabilities` で制約を課す。
+* 標準コアは常に全 capability をサポートする。
