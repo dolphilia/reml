@@ -228,3 +228,36 @@ type Continuation<T> = {
 * 必要に応じて **Packrat（線形化）**・**左再帰 seed-growing**・**スライディング窓**で実用性能とメモリのバランスを取る。
 * **ストリーミング/インクリメンタル**と **高品位エラー**が最初から設計に入っており、IDE/LSP にも直結できる。
   この実行戦略で、Kestrel のパーサは **小さなコア**のまま現実的な大規模入力・対話・言語処理に耐える。
+
+
+## K. ツール統合オプション（Draft）
+
+> IDE/LSP 連携や CLI/監査ツールとの統合に向けたランナー拡張案。
+
+### I-1. LSP / IDE メタデータ出力
+
+* `RunConfig.lsp = { highlight = true, completion = true, codeActions = true }` のような設定で、構文ハイライトや補完情報を生成。
+* `run_with_lsp(parser, src, cfg)` ヘルパを提供し、`to_lsp_diagnostics`（2.5節）と組み合わせて IDE へ送出。
+
+### I-2. 構造化ログ / CLI 連携
+
+* `RunConfig.log_format = "json"` により、実行イベントを JSON で出力。
+* `kestrel-run lint config.ks --format json` のような CLI コマンド例を提示し、CI/CD での利用を想定。
+
+### I-3. ホットリロード API（Draft）
+
+```kestrel
+fn reload<T>(parser: Parser<T>, state: ReloadState<T>, diff: SchemaDiff<Old, New>)
+  -> Result<ReloadState<T>, ReloadError>
+```
+
+* `state` には前回の継続・キャッシュを保持。
+* `diff` を適用後に `audit` ログへ記録し、失敗時はロールバック情報を返す。
+
+### I-4. 監査フック
+
+* `RunConfig.audit = Some(|event| audit_log(event))` で診断や差分を収集。
+* `audit` 効果と連携し、エラー発生時に自動で `audit_id` を付与。
+
+
+#

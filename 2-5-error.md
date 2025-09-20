@@ -201,6 +201,75 @@ fn pretty(src: Str, e: ParseError, o: PrettyOptions = {}) -> String
 fn toDiagnostics(src: Str, e: ParseError, o: PrettyOptions = {}) -> List<Diagnostic>
 ```
 
+### F-1. 拡張診断メタデータ（Draft）
+
+> 監査ログや設定差分を扱うシナリオで活用するための追加情報。
+
+* `domain: Option<ErrorDomain>` – `Config` / `Runtime` / `Network` / `Schema` 等の分類タグ。
+* `audit_id: Option<Uuid>` – `audit` 効果が発行する相関 ID。
+* `change_set: Option<List<Change>>` – 差分適用時の変更一覧（フィールドパス・旧値・新値）。
+
+```kestrel
+type ErrorDomain =
+  | Config | Runtime | Network | Parser | Schema | Security
+
+type Change = {
+  path: List<Str>,
+  before: Option<Any>,
+  after: Option<Any>
+}
+```
+
+#### F-1-1. エラーコード命名規約案
+
+| Domain | Prefix | 例 | 備考 |
+| --- | --- | --- | --- |
+| Config | `E4` | `E4001` | 設定スキーマ関連（`schema`, `Config` 章） |
+| Runtime | `E5` | `E5002` | ランタイム更新・ホットリロード失敗 |
+| Network | `E6` | `E6003` | クラウド/API/ネットワーク操作 |
+| Schema | `E7` | `E7001` | スキーマ差分検証の失敗 |
+| Security | `E8` | `E8004` | セキュリティ・ポリシー違反 |
+
+- 形式は `E{domain-prefix}{4桁}`。警告は `W{domain-prefix}{4桁}`。
+- 既存コード (`E1001` 等) は Parser domain に属するとみなし、`E1XXX` を継続利用。
+- `Diagnostic.code` にこの規約を適用し、監査ログでも同一コードを使用する。
+
+
+* FixIt テンプレート例:
+  * `FixIt::AddMissing(field, suggestion)` – スキーマ DSL で必須項目が欠落した際に提案。
+  * `FixIt::InsertToken(token)` – テンプレート/括弧の閉じ忘れを自動補完。
+  * `FixIt::ReplaceRange(range, text)` – 非結合演算子やポリシー置換を推奨。
+
+### F-2. IDE/LSP・監査連携（Draft）
+
+* **LSP 変換ヘルパ**: `to_lsp_diagnostics` は `audit_id` / `change_set` を `data` に埋め込み、IDE 側で監査ビューや差分レポートへジャンプできるようにする。
+* **構造化ログ**: `{"event":"kestrel.error", "domain":..., "audit_id":...}` の JSON フォーマットを推奨し、CI/CD や監査ツールでの集計を容易にする。
+* **監査ログ連携**: CLI は `audit_id` をキーに差分レポートを生成し、承認フローやロールバック手順を自動化できるようにする.
+
+
+### F-3. サンプル（Draft）
+
+```kestrel
+let cfg = parseConfig("app.ks")?
+match validateConfig(cfg) with
+| Ok(()) -> Ok(cfg)
+| Err(errs) -> {
+    audit.log("config.validate", errs)
+    Err(errs)
+}
+```
+
+```kestrel
+fn toStructuredLog(diag: Diagnostic) -> Json = json!({
+  "event": "kestrel.error",
+  "domain": diag.domain,
+  "code": diag.code,
+  "message": diag.message,
+  "audit_id": diag.audit_id,
+  "change_set": diag.change_set
+})
+```
+
 ---
 
 ## G. 2.1/2.2/2.4 との“かみ合わせ”規約

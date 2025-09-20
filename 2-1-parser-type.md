@@ -205,6 +205,67 @@ type Continuation<T> = {
 
 ---
 
+## I. プラグイン登録と Capability（Draft）
+
+> DSL プラグインを登録し、Parser capability を管理するための暫定 API 案。
+
+```kestrel
+type CapabilitySet = Set<String>
+
+type PluginCapability = {
+  name: String,
+  version: SemVer,
+  traits: Set<String>,
+  since: Option<SemVer>,
+  deprecated: Option<SemVer>
+}
+
+type PluginRegistrar = {
+  register_schema: fn(name: String, schema: Any) -> (),
+  register_parser: fn(name: String, factory: fn() -> Parser<Any>) -> (),
+  register_capability: fn(CapabilitySet) -> ()
+}
+
+type ParserPlugin = {
+  name: String,
+  version: SemVer,
+  capabilities: List<PluginCapability>,
+  register: fn(PluginRegistrar) -> ()
+}
+
+fn register_plugin(plugin: ParserPlugin) -> Result<(), PluginError>
+fn with_capabilities<T>(cap: CapabilitySet, p: Parser<T>) -> Parser<T>
+```
+
+* `register_plugin` はプラグインが提供する DSL/コンビネータを登録し、`PluginRegistrar` 経由で `ParserId` を割り当てる。
+* `CapabilitySet` は `parser.requires({"template"})` のような照会・制約に利用。
+* `with_capabilities` はプラグインが要求する capability を宣言し、満たされない場合 `PluginError::MissingCapability` を返す。
+
+### I-1. 互換性とバージョン
+
+* `SemVer` 準拠で互換性チェックを行い、競合時は `PluginError::Conflict { plugin, existing }` を返す。
+* `PluginCapability` の `since` / `deprecated` により、利用側が警告やフェーズアウトを制御できる。
+
+### I-2. サンプル（Draft）
+
+```kestrel
+let templating = ParserPlugin {
+  name = "Kestrel.Web.Templating",
+  version = SemVer(1, 2, 0),
+  capabilities = [
+    { name = "template", version = SemVer(1,0,0), traits = {"render"}, since = Some(SemVer(1,0,0)), deprecated = None }
+  ],
+  register = |reg| {
+    reg.register_schema("TemplateConfig", templateSchema);
+    reg.register_parser("render", || renderParser);
+  }
+}
+
+register_plugin(templating)?
+
+let render = with_capabilities({"template"}, renderParser)
+```
+
 ## I. メモリと性能（実装規約）
 
 * **Input**：COW/RC・SSO（短文字列インライン）・部分文字列は親バッファ参照。
@@ -218,7 +279,69 @@ type Continuation<T> = {
 
 ---
 
-## J. ミニ例（意味論の確認）
+## J. プラグイン登録と Capability（Draft）
+
+> DSL プラグインを登録し、Parser capability を管理するための暫定 API 案。
+
+```kestrel
+type CapabilitySet = Set<String>
+
+type PluginCapability = {
+  name: String,
+  version: SemVer,
+  traits: Set<String>
+}
+
+type ParserPlugin = {
+  name: String,
+  version: SemVer,
+  capabilities: List<PluginCapability>,
+  register: fn(PluginRegistrar) -> ()
+}
+
+fn register_plugin(plugin: ParserPlugin)
+
+fn with_capabilities(cap: CapabilitySet, p: Parser<A>) -> Parser<A>
+
+type PluginRegistrar = {
+  register_schema: fn(name: String, schema: Any) -> (),
+  register_parser: fn(name: String, factory: fn() -> Parser<Any>) -> (),
+  register_capability: fn(CapabilitySet) -> ()
+}
+```
+
+* `register_plugin` はプラグインが提供する DSL/コンビネータを登録し、`PluginRegistrar` 経由で `ParserId` を割り当てる。
+* `CapabilitySet` は `parser.requires({"template"})` のような照会・制約に利用。
+* `with_capabilities` はプラグインが要求する capability を宣言し、実行時に満たされない場合 `PluginError::MissingCapability` を返す。
+
+### J-1. 互換性とバージョン
+
+* `SemVer` 準拠。`register_plugin` は既存バージョンとの互換チェックを行い、競合時は `PluginConflict` を返す。
+* `PluginCapability` に `since` / `deprecated` メタデータを持たせ、利用側が警告を発行できるようにする。
+
+### J-2. サンプル（Draft）
+
+```kestrel
+let templating = ParserPlugin {
+  name = "Kestrel.Web.Templating",
+  version = SemVer(1, 2, 0),
+  capabilities = [
+    { name = "template", version = SemVer(1,0,0), traits = {"render"} }
+  ],
+  register = |reg| {
+    reg.register_schema("TemplateConfig", templateSchema);
+    reg.register_parser("render", || renderParser);
+  }
+}
+
+register_plugin(templating)
+
+let render = with_capabilities({"template"}, renderParser)
+```
+
+---
+
+## K. ミニ例（意味論の確認）
 
 ```kestrel
 // トークン

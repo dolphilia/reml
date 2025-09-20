@@ -153,6 +153,85 @@ impl Parser<T> {
 }
 ```
 
+### B.6 スキーマ宣言（Draft）
+
+> 設定ファイルや宣言的 DSL を型安全に表現するための追加構文案。最終仕様は標準 API `Nest.Config` と共に確定する予定です。
+
+* **基本形**
+
+  ```kestrel
+  schema AppConfig {
+    env: Env = Env::Dev
+    database: DbConfig
+    when env == Env::Prod {
+      logging.level = "info"
+    }
+  }
+  ```
+
+  * `schema Name { ... }` で構成要素を宣言。
+  * `=` による既定値、`when <expr> { ... }` による条件付き上書きを許可。
+
+* **フィールド宣言**
+
+  * `field: Type`（必須）/ `field: Type = default`（任意）。
+  * `field?: Type` でオプション値（`Option<Type>` 相当）を表現。
+  * ネストしたスキーマを型として参照可能（`database: DbConfig` など）。
+
+* **制約句/派生値**
+
+  * `requires expr` でバリデーション条件を付与。
+  * `compute field = expr` で派生値を宣言し、差分検証時に再計算する指針を示す。
+
+* **継承とテンプレート**
+
+  ```kestrel
+  schema BaseConfig {
+    logging.level: String = "warn"
+    database: DbConfig
+  }
+
+  schema ProdConfig extends BaseConfig {
+    when env == Env::Prod {
+      logging.level = "info"
+      compute deployment_tag = "prod-" + version
+    }
+  }
+
+  fn template(env: Env) -> ProdConfig =
+    ProdConfig.template().with(env=env)
+  ```
+
+  * `extends` で親スキーマからフィールドを継承し、追加/上書きを記述。
+  * `when` 句は宣言順に評価され、後勝ち（下に記述したものが優先）。
+  * テンプレート関数と組み合わせることで環境別プリセットを作成できる。
+
+### B.7 プラグインパッケージ構文（Draft）
+
+> DSL 拡張や設定スキーマを外部モジュールとして配布するための構文案。
+
+* **パッケージ宣言**
+
+  ```kestrel
+  package Kestrel.Web.Templating
+
+  @capability("template")
+  export schema TemplateConfig
+  export fn render
+  ```
+
+  * `package` で名前空間を宣言し、`export` で公開シンボルを列挙。
+  * `@capability` 属性で DSL の種別や互換バージョンをメタデータとして付与。
+
+* **プラグインの利用**
+
+  ```kestrel
+  use plugin Kestrel.Web.Templating (TemplateConfig, render)
+  ```
+
+  * `use plugin` 構文でプラグインを導入。バージョン pin や capability フィルタは将来拡張として検討。
+  * バージョン指定案：`use plugin Foo { version = "^1.2" }`、`@capability("template", since="1.1")` のような語彙を導入予定。
+
 
 ---
 

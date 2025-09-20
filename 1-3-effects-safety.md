@@ -197,10 +197,66 @@ fn strictlyPositive(n: i64) -> Result<i64, Error> = {
 fn total(xs: [i64]) -> Result<i64, Error> =
   xs |> map(strictlyPositive) |> sequence ? |> sumOk
 ```
+## K. 効果分類と運用ガイドライン（Draft）
+
+> 横断シナリオで必要とされる効果タグと運用パターンを整理する暫定案。標準 API や運用ガイドと連携して順次精緻化する。
+
+### K.1 効果カテゴリの拡張案
+
+| 効果タグ | 想定用途 | 備考 |
+| --- | --- | --- |
+| `config` | スキーマ読み込み・差分適用 | 設定 DSL (`schema`) と連動、失敗時に `audit` へ記録 |
+| `audit` | 監査ログ記録・変更履歴 | `2-5-error.md` の Diagnostic 拡張と結び付ける |
+| `runtime` | ホットリロード・ランタイム更新 | `unsafe` と併用し、整合性チェック必須 |
+| `db` | データベース操作 | トランザクション境界と型制約を明示 |
+| `network` | クラウド/ネットワーク更新 | タイムアウト/リトライとポリシー検証を要求 |
+| `gpu` | GPU/アクセラレータ制御 | リソース所有権と解放を `defer` で担保 |
+
+| 組合せ | 典型シナリオ | 注意点 |
+| --- | --- | --- |
+| `config` + `audit` | 設定差分の適用 | 監査ログに `change_set` を残し、ロールバック手順を準備 |
+| `runtime` + `network` | ランタイムでのクラウド API 切り替え | タイムアウト発生時に安全な再試行と巻き戻しを定義 |
+| `db` + `audit` | マイグレーション適用 | トランザクション完了前に監査ログを確定させない |
+| `gpu` + `runtime` | GPU カーネルホットスワップ | リソースリーク防止のため `defer` と `unsafe` 全てをレビュー |
+
+### K.2 FFI / ランタイム連携指針
+
+1. **クラウド API**: `network` 効果を要求し、署名・リトライ戦略を `audit` ログに残す。
+2. **GPU/アクセラレータ**: `runtime` + `unsafe` で扱い、ハンドル解放を `defer` で強制。
+3. **組み込み I/O**: `runtime` 効果＋明示的なメモリアラインメント検査を行い、レジスタ操作を型で表現。
+
+チェックリスト（Draft）
+
+- **クラウド API**: リトライポリシー / 認証キーの保護 / 監査 ID の付与。
+- **GPU**: メモリ割当・解放の対 / カーネル境界での `unsafe` ブロック / 監視メトリクス。
+- **組み込み**: レジスタマップの整合性検証 / 割込みマスク管理 / フェイルセーフシーケンス。
+
+### K.3 ホットリロード / 差分適用
+
+* `runtime` 効果を含む関数のみホットリロード対象とし、適用履歴を `audit` へ蓄積。
+* `config` 効果に伴う差分適用では `SchemaDiff` を評価し、安全なロールバック手順を定義。
+* 失敗時は `recover` コンビネータと連携して前世代へ復旧する。
+
+#### サンプル（Draft）
+
+```kestrel
+@requires(effect = {runtime, audit})
+fn reloadParser(parser: Parser<AppConfig>, diff: SchemaDiff<Old, New>)
+  -> Result<Parser<AppConfig>, ReloadError>
+  effect {runtime, audit} =
+    recover({
+      let updated = applyDiff(parser, diff)?;
+      audit.log("parser.reload", diff);
+      Ok(updated)
+    }, with: |err| {
+      audit.log("parser.reload.fail", err);
+      Err(err)
+    })
+```
 
 ---
 
-## K. 仕様チェックリスト（実装者向け）
+## L. 仕様チェックリスト（実装者向け）
 
 * [ ] 各式ノードに**効果ビット集合**を付与・合成（AST→TAST→MIR）。
 * [ ] `let` 一般化は **効果なし**かつ**純度がわかる式**に限定。
@@ -210,9 +266,8 @@ fn total(xs: [i64]) -> Result<i64, Error> =
 * [ ] エラーメッセージは**効果名 + 位置 + 修正提案**を必ず含む。
 * [ ] `Parser` 標準APIは**外界作用を持たない**ことを CI で回帰検査。
 
----
 
-### まとめ
+### M. まとめ
 
 * **純粋デフォルト**・**効果は属性で宣言/検査**という軽量設計で、MVP段階でも**読みやすさと実用**を両立。
 * **例外なし、Result/Option（`?`）**で失敗を型に昇格。

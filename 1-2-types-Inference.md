@@ -254,7 +254,88 @@ let c: f32 = 10   // 単一化で c : f32（数値多相の縮退）
 
 ---
 
-## J. まとめ（設計の要点）
+## J. ドメイン型拡張（Draft）
+
+> データパイプラインや機械学習 DSL、クラウド設定などで必要となる型を言語レベルで扱うための拡張案。フェーズ2以降で標準 API と連携しつつ精緻化する。
+
+1. **テンソル型**
+   - 型表記: `Tensor<Shape, T>`。`Shape` は `Vec<usize>` もしくは定数配列型。
+   - 基本規則: `Tensor<S, T> + Tensor<S, T> -> Tensor<S, T>`。異なる `Shape` の場合は `TensorOp` trait の制約解決を要求。
+   - ブロードキャスト: `Tensor<[m, n], T> + Tensor<[1, n], T>` のようなケースでは `Broadcast<S, R>` trait を導入し、`Shape` の互換性を判定する。
+
+2. **列型 / スキーマ型**
+   - 列型表記: `Column<T, Meta>`。`Meta` は統計情報や制約を表す（例: `Meta<{ nullable = false }>`）。
+   - スキーマ型: `Schema<{ field1: Column<T1>, field2: Column<T2>, ... }>`。
+   - スキーマ差分: `SchemaDiff<Old, New>` を型レベルで生成し、差分適用 DSL で利用する。
+
+3. **リソース ID 型**
+   - 表記: `Resource<P, K>`。`P`（Provider）と `K`（Kind）を型レベルタグとし、異なるプロバイダ間の混用を防止。
+   - 例: `Resource<Aws, S3Bucket>`, `Resource<Gcp, PubSubTopic>`。
+   - 型制約: `ResourceOps<P, K>` trait で操作を限定し、不正な FFI 呼び出しを型で検出。
+
+4. **効果タグ付き関数型**
+   - 記法案: `fn(args) -> T effect {db, audit}`。
+   - 推論: 効果タグは呼び出しチェーンで和集合を形成し、`@requires(effect)` 属性で静的検査。
+   - `1-3-effects-safety.md` の拡張効果分類と連携。
+
+5. **スキーマ進化の推論規則**
+   - `Schema<A>` と `Schema<B>` の単一化に失敗した場合、`SchemaDiff<A,B>` 制約を生成。
+   - マイグレーション DSL は `SchemaDiff` を解決する `upgrade` / `downgrade` 関数を要求。
+
+#### サンプル（Draft）
+
+```kestrel
+schema DbConfig {
+  url: Column<String>
+  pool_size: Column<i32> = 8
+}
+
+fn migrate(cfg: Schema<DbConfig>) -> Schema<DbConfig>
+  effect {config, audit} = {
+  cfg
+    .compute(|c| c.pool_size = max(c.pool_size, 4))
+    .requires(|c| c.url.startsWith("postgres://"))
+}
+
+fn train(model: Tensor<[batch, features], f32>, weights: Tensor<[features, 1], f32>)
+  -> Tensor<[batch, 1], f32>
+  effect {gpu} = model.matmul(weights)
+```
+
+### 推論規則（案）
+
+* テンソル演算: `TensorOp` trait の形で演算をモジュール化し、`Shape` の整合性やブロードキャスト可否を制約解決で判断。
+* スキーマ型: フィールドアクセス `config.database.url` は `Schema<...>` から `Column<String>` に推論し、`requires` 句は `Constraint` trait で実行。
+* 効果付き関数: `effect` タグは関数型推論で和集合を形成し、呼び出し側の効果要求に反映。
+
+```kestrel
+fn combine_effects(a: EffectSet, b: EffectSet) -> EffectSet =
+  a.union(b)
+
+fn call_with_effects<T>(f: Fn -> T effect E, g: Fn -> T effect F) -> T effect combine_effects(E, F)
+```
+
+サンプル：
+
+```kestrel
+let apply = |cfg: Schema<AppConfig>| -> AppConfig effect {config, audit} {
+  audit.log("config.apply", SchemaDiff::between(cfg, cfg))
+  cfg.realize()
+}
+
+let migrate = |old: Schema<AppConfig>, new: Schema<AppConfig>| {
+  match SchemaDiff::between(old, new) with
+  | Ok(_)      -> Ok(new)
+  | Err(diff)  -> Err(diff)
+}
+
+let (_ : SchemaDiff<AppConfig>) =
+  SchemaDiff::between(appSchema, prodSchema)
+```
+
+---
+
+## K. まとめ（設計の要点）
 
 * **HM + トレイト制約**という最小で強力な骨格。
 * **サブタイピングなし**で推論を安定化、**bidirectional + アノテ**でエラー品質を確保。
