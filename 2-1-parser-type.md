@@ -205,9 +205,9 @@ type Continuation<T> = {
 
 ---
 
-## I. プラグイン登録と Capability（Draft）
+## I. プラグイン登録と Capability
 
-> DSL プラグインを登録し、Parser capability を管理するための暫定 API 案。
+> DSL プラグインを登録し、Parser capability を管理するための標準 API を定義する。
 
 ```reml
 type CapabilitySet = Set<String>
@@ -230,23 +230,70 @@ type ParserPlugin = {
   name: String,
   version: SemVer,
   capabilities: List<PluginCapability>,
+  dependencies: List<PluginDependency>,
+  signature: Option<PluginSignature>,
   register: fn(PluginRegistrar) -> ()
 }
 
 fn register_plugin(plugin: ParserPlugin) -> Result<(), PluginError>
 fn with_capabilities<T>(cap: CapabilitySet, p: Parser<T>) -> Parser<T>
+fn register_bundle(bundle: PluginBundle) -> Result<(), PluginError>
+fn verify_plugin(plugin: &ParserPlugin, policy: VerificationPolicy) -> Result<(), PluginWarning>
+
+type PluginDependency = {
+  name: String,
+  version_req: VersionReq,
+  required_capabilities: CapabilitySet
+}
+
+type VersionReq = {
+  predicate: String
+}
+
+type PluginBundle = {
+  name: String,
+  version: SemVer,
+  plugins: List<ParserPlugin>,
+  manifest: BundleManifest
+}
+
+type BundleManifest = {
+  description: Option<Str>,
+  checksum: Hash256,
+  signed_by: Option<PluginSignature>
+}
+
+type PluginSignature = {
+  algorithm: "ed25519" | "rsa-pss",
+  certificate: Bytes,
+  issued_to: Str,
+  valid_until: Option<Timestamp>
+}
+
+type PluginError =
+  | MissingCapability { name: String }
+  | MissingDependency { name: String, required: VersionReq }
+  | Conflict { plugin: String, existing: SemVer, incoming: SemVer }
+  | RegistrationFailed { reason: String }
+  | VerificationFailed { plugin: String, reason: String }
+
+type PluginWarning =
+  | DeprecatedCapability { name: String, deprecated: SemVer }
+  | ExpiringSignature { plugin: String, valid_until: Timestamp }
 ```
 
 * `register_plugin` はプラグインが提供する DSL/コンビネータを登録し、`PluginRegistrar` 経由で `ParserId` を割り当てる。
+* `register_bundle` は署名付きのバンドルを一括登録し、依存解決・バージョン整合性・署名検証を順に適用する。
 * `CapabilitySet` は `parser.requires({"template"})` のような照会・制約に利用。
 * `with_capabilities` はプラグインが要求する capability を宣言し、満たされない場合 `PluginError::MissingCapability` を返す。
+* `verify_plugin` は署名・証明書チェーン・ハッシュを検証し、失効間近の場合は `PluginWarning::ExpiringSignature` を返す。
 
 ### I-1. 互換性とバージョン
 
 * `SemVer` 準拠で互換性チェックを行い、競合時は `PluginError::Conflict { plugin, existing }` を返す。
 * `PluginCapability` の `since` / `deprecated` により、利用側が警告やフェーズアウトを制御できる。
 
-### I-2. サンプル（Draft）
+### I-2. サンプル
 
 ```reml
 // 既存プラグイン（例: 基本構文サポート）
@@ -267,25 +314,33 @@ let templating = ParserPlugin {
   dependencies = [
     { name = "Reml.Core.Syntax", version_req = VersionReq{ predicate = "^1.5" } }
   ],
+  signature = Some(load_signature("templating.sig")),
   register = |reg| {
     reg.register_schema("TemplateConfig", templateSchema);
     reg.register_parser("render", || renderParser);
   }
 }
 
+verify_plugin(&templating, VerificationPolicy::Strict)?
 register_plugin(templating)?
 
 let render = with_capabilities({"template"}, renderParser)
 
 let bundle = PluginBundle {
   name = "reml-web-bundle",
-  plugins = [templating, syntaxPlugin]
+  version = SemVer(1, 0, 0),
+  plugins = [templating, syntaxPlugin],
+  manifest = {
+    description = Some("Web テンプレート DSL 一式"),
+    checksum = Hash256::from_file("bundle.sha256"),
+    signed_by = Some(load_signature("bundle.sig"))
+  }
 }
 
 register_bundle(bundle)?
 ```
 
-## I. メモリと性能（実装規約）
+## J. メモリと性能（実装規約）
 
 * **Input**：COW/RC・SSO（短文字列インライン）・部分文字列は親バッファ参照。
 * **Span**：必要最小を保持。`SpanTrace` は OFF 既定。
@@ -295,135 +350,6 @@ register_bundle(bundle)?
   * LRU/リングで上限を設け、巨大入力でのメモリ爆発を回避。
 * **左再帰**：`left_recursion=true` のとき、既知の **種別変換法**（seed-growing）を使用（ルールに `ParserId` が必須）。
 * **ステップ上限**：`fuel_max_steps` で無限ループ検出（診断に直近のルール列を含める）。
-
----
-
-## J. プラグイン登録と Capability（Draft）
-
-> DSL プラグインを登録し、Parser capability を管理するための暫定 API 案。
-
-### J-1. API 定義
-
-```reml
-type CapabilitySet = Set<String>
-
-type PluginCapability = {
-  name: String,
-  version: SemVer,
-  traits: Set<String>,
-  since: Option<SemVer>,
-  deprecated: Option<SemVer>
-}
-
-type PluginRegistrar = {
-  register_schema: fn(name: String, schema: Any) -> (),
-  register_parser: fn(name: String, factory: fn() -> Parser<Any>) -> (),
-  register_capability: fn(CapabilitySet) -> ()
-}
-
-type ParserPlugin = {
-  name: String,
-  version: SemVer,
-  capabilities: List<PluginCapability>,
-  register: fn(PluginRegistrar) -> ()
-}
-
-fn register_plugin(plugin: ParserPlugin) -> Result<(), PluginError>
-fn with_capabilities<T>(cap: CapabilitySet, p: Parser<T>) -> Parser<T>
-
-```
-
-type PluginError =
-  | MissingCapability { name: String }
-  | Conflict { plugin: String, existing: SemVer, incoming: SemVer }
-  | RegistrationFailed { reason: String }
-
-type PluginWarning =
-  | DeprecatedCapability { name: String, deprecated: SemVer }
-```
-
-| 構造体 | フィールド | 意味 |
-| --- | --- | --- |
-| `PluginCapability` | `name` | DSL 機能名。例: `"template"`, `"config"` |
-|  | `version` | Capability のバージョン (SemVer) |
-|  | `traits` | 提供する機能タグ（例: `render`, `diff`） |
-|  | `since` / `deprecated` | 利用可能開始バージョン、廃止予定バージョン |
-| `ParserPlugin` | `name` | プラグイン識別子 (却下時参照) |
-|  | `capabilities` | 提供する Capability の一覧 |
-|  | `register` | コンビネータやスキーマを登録する関数 |
-| `PluginRegistrar` | `register_schema` | スキーマ DSL を登録 |
-|  | `register_parser` | パーサ・コンビネータを登録 |
-|  | `register_capability` | 追加 Capability を宣言 |
-
-* `register_plugin` はプラグインが提供する DSL/コンビネータを登録し、`PluginRegistrar` 経由で `ParserId` を割り当てる。成功時は `Ok(())`、失敗時は `PluginError` を返す。
-* `CapabilitySet` は `parser.requires({"template"})` のような照会・制約に利用。
-* `with_capabilities` はプラグインが要求する capability を宣言し、実行時に満たされない場合 `PluginError::MissingCapability` を返す。
-
-### J-2. 互換性とバージョン
-
-| ケース | ルール | エラー例 |
-| --- | --- | --- |
-| 同名プラグイン重複 | SemVer 互換なら最新版へ更新、非互換なら拒否 | `PluginError::Conflict { plugin, existing }` |
-| Capability 未満 | `with_capabilities` で指定した名前が未登録 | `PluginError::MissingCapability { name }` |
-| Deprecated | `deprecated` <= 現行バージョンで警告、将来削除 | `PluginWarning::DeprecatedCapability` |
-
-### J-3. サンプル（Draft）
-
-```reml
-let templating = ParserPlugin {
-  name = "Reml.Web.Templating",
-  version = SemVer(1, 2, 0),
-  capabilities = [
-    { name = "template", version = SemVer(1,0,0), traits = {"render"}, since = Some(SemVer(1,0,0)), deprecated = None }
-  ],
-  dependencies = [
-    { name = "Reml.Core.Syntax", version_req = VersionReq{ predicate = "^1.5" } }
-  ],
-  register = |reg| {
-    reg.register_schema("TemplateConfig", templateSchema);
-    reg.register_parser("render", || renderParser);
-  }
-}
-
-register_plugin(templating)?
-
-let render = with_capabilities({"template"}, renderParser)
-
-let bundle = PluginBundle {
-  name = "reml-web-bundle",
-  plugins = [templating, syntaxPlugin]
-}
-
-register_bundle(bundle)?
-```
-
-
-### J-4. 依存関係と配布（Draft）
-
-| 項目 | 型 | 説明 |
-| --- | --- | --- |
-| `PluginDependency` | `name: String, version_req: VersionReq` | 依存プラグインと必要バージョン範囲 |
-| `PluginBundle` | `name: String, plugins: List<ParserPlugin>` | 配布単位。複数プラグインをまとめる |
-
-```reml
-type VersionReq = {
-  predicate: String // 例: "^1.2", ">=2.0, <3.0"
-}
-
-type ParserPlugin = {
-  name: String,
-  version: SemVer,
-  capabilities: List<PluginCapability>,
-  dependencies: List<PluginDependency>,
-  register: fn(PluginRegistrar) -> ()
-}
-
-fn register_bundle(bundle: PluginBundle) -> Result<(), PluginError>
-```
-
-* `register_plugin` は依存するプラグインが登録済であるかチェックする。未登録の場合は `PluginError::MissingDependency` を返す。
-* `register_bundle` は複数プラグインをまとめて登録し、依存解決を一括で行う。
-* CLI `reml-plugin install <bundle>` を想定し、プラグイン配布を標準化する（例: リポジトリからバンドルを取得し `register_bundle` を呼び出すユーティリティを提供）。
 
 ---
 

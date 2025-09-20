@@ -1,4 +1,4 @@
-# ランタイム連携ガイド（Draft）
+# ランタイム連携ガイド
 
 > 目的：FFI・ホットリロード・差分適用など実行基盤との橋渡しを行う際の指針を示す。
 
@@ -61,9 +61,30 @@ reml-run reload runtime.state diff.json --audit   | jq '.result | {status, audit
 | ロールバック | `RollbackInfo` を保存し、`reml-run reload --rollback` で復旧する | 監査ログにロールバック結果 (`status`, `audit_id`) を記録 |
 | メトリクス統合 | 遅延 (`latency_ms`), エラー率 (`error_rate`), スループットなどを構造化ログに出力 | 監視ツール（Prometheus等）と連携し SLA を監視 |
 
-> 詳細はフェーズ3でさらに事例を追加予定です。
+```reml
+type RuntimeMetrics = {
+  latency_ms: f64,
+  throughput_per_min: f64,
+  error_rate: f64,
+  last_audit_id: Option<Uuid>,
+  custom: Map<Str, Any>
+}
 
-## 7. GPU 運用フロー（Draft）
+fn emit_metrics(event: Str, metrics: RuntimeMetrics) {
+  log.json({
+    "event": event,
+    "audit_id": metrics.last_audit_id,
+    "latency_ms": metrics.latency_ms,
+    "throughput_per_min": metrics.throughput_per_min,
+    "error_rate": metrics.error_rate,
+    "custom": metrics.custom
+  })
+}
+```
+
+`RuntimeMetrics` は `guides/data-model-reference.md` で定義する品質指標と同一スキーマを共有し、LSP/CLI の `audit_id` と突合できる。
+
+## 7. GPU 運用フロー
 
 1. **初期化**
    - `gpu::init(device_id)` でデバイスを選択し、`audit.log("gpu.init", device_id)` を記録。
@@ -75,9 +96,10 @@ reml-run reload runtime.state diff.json --audit   | jq '.result | {status, audit
 
 3. **監視**
    - GPU 温度・エラーイベントを `audit` ログに出力し、監視ツールで収集。
+   - `emit_metrics("gpu.kernel", metrics)` でカーネルごとの遅延/エラー率を送信。
    - 重大なエラー時は `reml-run reload --rollback` を使用して安全な状態へ戻す。
 
-## 8. 組み込み運用フロー（Draft）
+## 8. 組み込み運用フロー
 
 1. **レジスタ設定**
    - `config` DSL でレジスタマップを宣言し、`Config.compare` で差分を検証。
@@ -89,5 +111,5 @@ reml-run reload runtime.state diff.json --audit   | jq '.result | {status, audit
 
 3. **テレメトリ**
    - 電圧・温度・エラーフラグを構造化ログとして出力し、監視システムに送信。
+   - `emit_metrics("embedded.telemetry", metrics)` を用いて SLA 指標を継続監視。
    - フィールド更新失敗時は `ConfigError::ValidationError` を返し、即座にロールバック。
-

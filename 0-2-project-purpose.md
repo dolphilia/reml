@@ -22,6 +22,16 @@
 - **ツールフレンドリーな情報保持**: `SpanTrace` や期待集合を保持し、IDE・可視化・インクリメンタル解析への連携を想定してデータを捨てない。
 - **段階的な最適化パイプライン**: 構文解析 → 型推論 → 降格 → MIR → LLVM IR の工程を明文化し、MVP から本格実装まで拡張しやすい構造にする。
 
+## 3.1 横断テーマと仕様配置
+
+フェーズ別に洗い出した横断テーマは、上記哲学を運用へ落とし込むための橋渡しとして配置される。
+
+- **型安全な設定**: `Core.Config`（[2-7](2-7-config.md)）、`Core.Data`（[2-8](2-8-data.md)）、`設定 CLI ワークフロー`（[guides/config-cli.md](guides/config-cli.md)）で、宣言 DSL → 差分 → 実行 → 監査を一貫管理する。
+- **ツール連携**: 実行戦略の LSP 出力（[2-6](2-6-execution-strategy.md)）、`LSP / IDE 連携ガイド`（[guides/lsp-integration.md](guides/lsp-integration.md)）、ランタイム橋渡し（[guides/runtime-bridges.md](guides/runtime-bridges.md)）で、IDE・CI・監査ログを共通メタデータで束ねる。
+- **プラグイン拡張**: プラグイン API（[2-1](2-1-parser-type.md):I）、`DSL プラグイン & Capability ガイド`（[guides/DSL-plugin.md](guides/DSL-plugin.md)）で、外部 DSL の署名・互換・配布フローを定義する。
+
+これらのテーマは `spec-update-plan.md` のフェーズ 2〜3 で進捗を追跡し、`scenario-requirements.md` のチェックリストと同期してクローズする。
+
 ## 4. 想定利用シナリオ（実用性優先順）
 
 - **実運用を視野に入れたツール開発**: LLVM 連携や FFI を前提に、JIT 実行・実行形式生成・ホスト言語との橋渡しを行うアプリケーションを最優先で想定する。

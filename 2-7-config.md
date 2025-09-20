@@ -1,4 +1,4 @@
-# 2.7 設定スキーマ API（Core.Config） - Draft
+# 2.7 設定スキーマ API（Core.Config）
 
 > 目的：`schema` 構文で宣言された設定をプログラムから検証・差分適用するための標準 API を提供する。
 
@@ -35,6 +35,23 @@ match diff with
 - `apply_diff(config, changes)` で差分を適用。`effect {config, audit}` を要求。
 - `plan(old, new)` は `SchemaDiff` を生成し、マイグレーション DSL と連携。
 
+```reml
+type Change = {
+  path: List<Str>,
+  kind: "Added" | "Removed" | "Modified",
+  before: Option<Any>,
+  after: Option<Any>,
+  rationale: Option<Str>
+}
+
+type SchemaDiff<T> = {
+  schema: Schema<T>,
+  changes: List<Change>,
+  breaking: Bool,
+  version: SemVer
+}
+```
+
 ## C. 条件付き設定・テンプレート
 
 - `Config.apply_when(config, predicate, patch)` で条件付き適用。
@@ -42,14 +59,15 @@ match diff with
 - `merge(base, overrides, precedence = Precedence::LaterWins)` でテンプレート同士のマージ戦略を制御。
 - `Config.render(template, env)` はランタイムでテンプレートを具現化し、`audit_id` を発番する。
 
-## D. CLI 連携（Draft）
+## D. CLI 連携
 
 - `reml-config validate config.ks` で検証、`--format json` で構造化ログ出力。
 - `reml-config diff old.ks new.ks` で `change_set` を表示。
 - `reml-config render --template prod.ks --env staging` でテンプレートを適用。
-- CLI は `audit_id` を生成し、JSON 出力の `audit_id` と一致させる。（2-5 の構造化ログ案と同期）
+- `reml-config approve <audit_id>` で差分承認フローを確定し、ホットリロード対象を決定する。
+- CLI は `audit_id` を生成し、JSON 出力の `audit_id` と一致させる（2-5 の構造化ログと同期）。
 
-## E. サンプルワークフロー（Draft）
+## E. サンプルワークフロー
 
 ```reml
 let base = Config.load("base.ks")?
@@ -58,14 +76,11 @@ let merged = Config.merge(base, overrides)
 
 match Config.compare(base, merged) with
 | Ok(()) -> Config.save("rendered/prod.ks", merged)
-| Err(diff) -> {
-    audit.log("config.diff", diff)
-    Err(diff)
+| Err(changes) -> {
+    audit.log("config.diff", changes)
+    Err(changes)
   }
 ```
-
-> 詳細仕様はフェーズ2で確定予定。API 名称やシグネチャは変更の可能性があります。
-> 運用手順については [設定 CLI ワークフロー](guides/config-cli.md) を参照してください。
 
 ## F. 型とエラー
 
@@ -103,3 +118,4 @@ fn render(template: Schema<T>, env: Map<String, Any>) -> Result<RenderedConfig, 
 
 ```
 
+`Core.Config` の API と `reml-config` CLI は [設定 CLI ワークフロー](guides/config-cli.md) で定義したパイプラインに従い、`audit_id`・`change_set`・`exit code` を共有することで CI/CD・ホットリロード・監査報告における整合性を保証する。

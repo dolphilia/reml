@@ -201,9 +201,9 @@ fn pretty(src: Str, e: ParseError, o: PrettyOptions = {}) -> String
 fn toDiagnostics(src: Str, e: ParseError, o: PrettyOptions = {}) -> List<Diagnostic>
 ```
 
-### F-1. 拡張診断メタデータ（Draft）
+### F-1. 拡張診断メタデータ
 
-> 監査ログや設定差分を扱うシナリオで活用するための追加情報。
+監査ログや設定差分を扱うシナリオで活用するための追加情報を、下記フィールドで標準化する。
 
 * `domain: Option<ErrorDomain>` – `Config` / `Runtime` / `Network` / `Schema` 等の分類タグ。
 * `audit_id: Option<Uuid>` – `audit` 効果が発行する相関 ID。
@@ -220,19 +220,20 @@ type Change = {
 }
 ```
 
-#### F-1-1. エラーコード命名規約案
+#### F-1-1. エラーコード命名規約
 
 | Domain | Prefix | 例 | 備考 |
 | --- | --- | --- | --- |
-| Config | `E4` | `E4001` | 設定スキーマ関連（`schema`, `Config` 章） |
-| Runtime | `E5` | `E5002` | ランタイム更新・ホットリロード失敗 |
-| Network | `E6` | `E6003` | クラウド/API/ネットワーク操作 |
-| Schema | `E7` | `E7001` | スキーマ差分検証の失敗 |
-| Security | `E8` | `E8004` | セキュリティ・ポリシー違反 |
+| Parser | `E1` / `W1` | `E1001` | コア構文・パーサエラー（既存コードと互換） |
+| Config | `E4` / `W4` | `E4001` | 設定スキーマ関連（`schema`, `Config` 章） |
+| Runtime | `E5` / `W5` | `E5002` | ランタイム更新・ホットリロード失敗 |
+| Network | `E6` / `W6` | `E6003` | クラウド/API/ネットワーク操作 |
+| Schema | `E7` / `W7` | `E7001` | データスキーマ検証の失敗 |
+| Security | `E8` / `W8` | `E8004` | セキュリティ・ポリシー違反 |
 
 - 形式は `E{domain-prefix}{4桁}`。警告は `W{domain-prefix}{4桁}`。
-- 既存コード (`E1001` 等) は Parser domain に属するとみなし、`E1XXX` を継続利用。
-- `Diagnostic.code` にこの規約を適用し、監査ログでも同一コードを使用する。
+- 既存コード (`E1001` 等) は Parser domain に属するとみなし、`E1xxx` を継続利用。
+- `Diagnostic.code` にこの規約を適用し、CLI (`reml-run`, `reml-config`) から出力される JSON でも同一コードを使用する。
 
 
 * FixIt テンプレート例:
@@ -240,14 +241,14 @@ type Change = {
   * `FixIt::InsertToken(token)` – テンプレート/括弧の閉じ忘れを自動補完。
   * `FixIt::ReplaceRange(range, text)` – 非結合演算子やポリシー置換を推奨。
 
-### F-2. IDE/LSP・監査連携（Draft）
+### F-2. IDE/LSP・監査連携
 
 * **LSP 変換ヘルパ**: `to_lsp_diagnostics` は `audit_id` / `change_set` を `data` に埋め込み、IDE 側で監査ビューや差分レポートへジャンプできるようにする。
-* **構造化ログ**: `{"event":"reml.error", "domain":..., "audit_id":...}` の JSON フォーマットを推奨し、CI/CD や監査ツールでの集計を容易にする。
-* **監査ログ連携**: CLI は `audit_id` をキーに差分レポートを生成し、承認フローやロールバック手順を自動化できるようにする.
+* **構造化ログ**: `{"event":"reml.error", "domain":..., "audit_id":..., "code":...}` の JSON フォーマットを推奨し、CI/CD や監査ツールでの集計を容易にする。
+* **監査ログ連携**: CLI は `audit_id` をキーに差分レポートを生成し、承認フローやロールバック手順を自動化できるようにする。
 
 
-### F-3. サンプル（Draft）
+### F-3. サンプル
 
 ```reml
 let cfg = parseConfig("app.ks")?

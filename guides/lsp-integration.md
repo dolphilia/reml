@@ -1,4 +1,4 @@
-# LSP / IDE 連携ガイド（Draft）
+# LSP / IDE 連携ガイド
 
 > 目的：Reml で生成した構文ハイライト・補完・診断情報を、Language Server Protocol (LSP) を通じて IDE に提供するための実装指針を整理する。
 
@@ -27,7 +27,7 @@ let cfg = {
 - `highlight` : トークン種別を LSP の `SemanticTokens` へ変換。
 - `completion` : プラグイン capability (`parser.requires`) を参照し DSL 別の補完候補を生成。
 - `codeActions` : FixIt 情報を LSP CodeAction として返す。
-- `semanticTokens` : 拡張（Draft）。`guides/runtime-bridges.md` と同様に構造化ログと連動。
+- `semanticTokens` : 拡張モジュール。`guides/runtime-bridges.md` と同様に構造化ログと連動。
 
 ## 2. メッセージマッピング
 
@@ -74,6 +74,20 @@ fn to_lsp_diagnostics(diags: List<Diagnostic>) -> List<LspDiagnostic> =
 | `modifier.syntax-highlight` | `"parser.syntax.highlight"` | syntax highlight 拡張で追加されるトークン |
 
 
+### 4.1 SemanticTokensLegend の標準分類
+
+| Legend | scope | 説明 |
+| --- | --- | --- |
+| `namespace.dsl` | Core | `use` 宣言で導入される DSL 名前空間 |
+| `type.config.required` | Config | 必須フィールドを表す型シンボル（`Core.Config` の `requires` でマーク） |
+| `type.config.optional` | Config | 任意フィールド。`optional` で生成され、警告時に別カラーで表示 |
+| `parameter.template.slot` | Template | テンプレート DSL のスロット名（`{{slot}}`） |
+| `property.data.metric` | Data | `Core.Data` の統計値（`mean`, `stddev` 等） |
+| `modifier.audit` | Audit | `audit` 効果で追跡される領域（`audit_id` を埋め込む） |
+
+Legend の拡張はプラグインが `register_capability` で `semantic_tokens.legend` を追加し、IDE 初期化時に `workspace/semanticTokens/refresh` を送信して再配布する。
+
+
 
 ## 5. CLI との一貫性
 
@@ -88,7 +102,8 @@ reml-run lint config.ks --format json --domain config   | jq '.diagnostics[] | {
 
 - **semanticTokens**: 上記表に基づき、標準トークンと capability 別トークンを組み合わせて `SemanticTokensLegend` を構築する。未定義のトークンは `namespace` や `type` にフォールバック。
 - **CodeAction 承認フロー**: FixIt 適用時は `audit_id` と関連する変更をプレビューし、ユーザが確認後に `workspace/applyEdit` を実行する。承認済みアクションは `PluginCapability` の `traits`（例: `"auto-fix"`）で識別。
+  1. サーバが `textDocument/codeAction` で `data.audit_id` を返却。
+  2. クライアントは承認ダイアログを表示し、承認後に `workspace/executeCommand`(`reml.applyFix`) を送信。
+  3. サーバは `audit.log("lsp.codeAction", { audit_id, command })` を記録し、`workspace/applyEdit` を発行。
 
 > 本ガイドはフェーズ3でさらに事例と図解を追加する予定です。
-
-

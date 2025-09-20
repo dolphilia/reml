@@ -230,21 +230,21 @@ type Continuation<T> = {
   この実行戦略で、Reml のパーサは **小さなコア**のまま現実的な大規模入力・対話・言語処理に耐える。
 
 
-## K. ツール統合オプション（Draft）
+## K. ツール統合オプション
 
-> IDE/LSP 連携や CLI/監査ツールとの統合に向けたランナー拡張案。
+IDE/LSP 連携や CLI/監査ツールとの統合に向けたランナー拡張仕様をここにまとめる。
 
-### I-1. LSP / IDE メタデータ出力
+### K-1. LSP / IDE メタデータ出力
 
 * `RunConfig.lsp = { highlight = true, completion = true, codeActions = true }` のような設定で、構文ハイライトや補完情報を生成。
 * `run_with_lsp(parser, src, cfg)` ヘルパを提供し、`to_lsp_diagnostics`（2.5節）と組み合わせて IDE へ送出。
 
-### I-2. 構造化ログ / CLI 連携
+### K-2. 構造化ログ / CLI 連携
 
 * `RunConfig.log_format = "json"` により、実行イベントを JSON で出力。
 * `reml-run lint config.ks --format json` のような CLI コマンド例を提示し、CI/CD での利用を想定。
 
-### I-3. ホットリロード API（Draft）
+### K-3. ホットリロード API
 
 ```reml
 fn reload<T>(parser: Parser<T>, state: ReloadState<T>, diff: SchemaDiff<Old, New>)
@@ -254,7 +254,27 @@ fn reload<T>(parser: Parser<T>, state: ReloadState<T>, diff: SchemaDiff<Old, New
 * `state` には前回の継続・キャッシュを保持。
 * `diff` を適用後に `audit` ログへ記録し、失敗時はロールバック情報を返す。
 
-### I-4. 監査フック
+```reml
+type ReloadState<T> = {
+  continuation: Option<Continuation<T>>,  // Pending セッションがあれば保存
+  memo: MemoTable,                        // Packrat キャッシュのスナップショット
+  version: SemVer                         // 適用済み設定のバージョン
+}
+
+type ReloadError =
+  | ValidationFailed(List<Diagnostic>)
+  | ApplyFailed { reason: String, rollback: RollbackInfo }
+  | IncompatibleVersion { running: SemVer, incoming: SemVer }
+
+type RollbackInfo = {
+  audit_id: Uuid,
+  actions: List<String>
+}
+```
+
+CLI `reml-run reload` は `ReloadError` を exit code `5`（Incompatible）、`6`（Validation）、`7`（ApplyFailed）に割り当て、`rollback` サブコマンドと同じフォーマットで `RollbackInfo` を出力する。
+
+### K-4. 監査フック
 
 * `RunConfig.audit = Some(|event| audit_log(event))` で診断や差分を収集。
 * `audit` 効果と連携し、エラー発生時に自動で `audit_id` を付与。

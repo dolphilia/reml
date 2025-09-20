@@ -1,4 +1,4 @@
-# DSL プラグイン & Capability ガイド（Draft）
+# DSL プラグイン & Capability ガイド
 
 > 目的：`ParserPlugin` / `CapabilitySet` を用いて DSL を拡張する際の設計手順とベストプラクティスを整理する。
 
@@ -46,20 +46,48 @@ register_plugin(templating)?
 2. 利用者は `Scenario-requirements.md` を参照して必要 capability を特定。
 3. CI/Pipeline で `register_plugin` → `with_capabilities` の成功可否を検証。
 
-## 5. TODO / 制限事項
-
-- `PluginRegistrar` が提供するその他の拡張ポイント（診断フック等）は今後追加予定。
-- プラグイン配布形式（バンドル、リポジトリ）の詳細仕様は標準化検討中。
-
-## 6. 依存解決と配布
+## 5. 依存解決と配布
 
 - プラグインは `dependencies: List<PluginDependency>` を宣言し、`register_plugin` 時に依存が満たされているかチェック。
 - 複数プラグインをまとめた `PluginBundle` を用意し、`register_bundle` で一括登録できる。
-- CLI `reml-plugin install <bundle>` を利用して、リポジトリからバンドルを取得→検証→登録するワークフローを想定。
+- CLI `kestrel-plugin install <bundle>` を利用して、リポジトリからバンドルを取得→検証→登録するワークフローを標準化する。
 - 推奨ディレクトリ構成：`reml-plugins/<plugin-name>/<version>/plugin.ks` とメタデータ (`plugin.toml`) を配置。
 
 ```bash
-reml-plugin install reml-web-bundle --source https://example.com/plugins
+kestrel-plugin install reml-web-bundle --source https://example.com/plugins --policy strict
 ```
 
-> 依存解決や配布形式の詳細標準化は進行中（2-1 節の案を参照）。
+## 6. CLI プロトコルとフロー
+
+1. `kestrel-plugin install <bundle>` を実行すると、CLI は以下の順序で処理する：
+   1. バンドルメタデータ (`plugin.toml`) を取得し、`checksum` を検証。
+   2. `PluginSignature` を `verify_plugin` API に渡し、公的鍵/証明書チェーンを検証。
+   3. 依存プラグインを解決し、未解決の場合は `PluginError::MissingDependency` を表示。
+   4. すべてのプラグインを `register_bundle` に渡し、成功時に `audit.log("plugin.install", {...})` を記録。
+2. `kestrel-plugin status` はインストール済みバンドルの一覧と署名有効期限を表示。
+3. `kestrel-plugin revoke <name>` は該当バンドルを無効化し、`PluginWarning::ExpiringSignature` が出た場合の自動更新フローを支援する。
+
+## 7. 署名と検証
+
+- 署名ファイルは `bundle.sig`（Ed25519 または RSA-PSS）を想定し、`PluginSignature` にメタデータを格納する。
+- `VerificationPolicy::Strict` は証明書の有効期限・失効リスト (CRL/OCSP) を必須チェックとし、`--policy permissive` では警告 (`PluginWarning::ExpiringSignature`) のみ発行。
+- 署名付きバンドルの JSON 例：
+
+```json
+{
+  "name": "reml-web-bundle",
+  "version": "1.0.0",
+  "checksum": "9b4d...",
+  "signature": {
+    "algorithm": "ed25519",
+    "certificate": "BASE64...",
+    "issued_to": "Reml Web Team",
+    "valid_until": "2030-01-01T00:00:00Z"
+  }
+}
+```
+
+## 8. 既知の制限
+
+- `PluginRegistrar` の診断フック・CodeAction 連携は `VerificationPolicy` に従い段階的に解禁される（今後の拡張候補）。
+- 署名の検証結果は CLI にキャッシュされるが、再検証のトリガーは `kestrel-plugin status --refresh` で手動実行する。
