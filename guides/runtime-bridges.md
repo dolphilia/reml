@@ -52,10 +52,13 @@ kestrel-run reload runtime.state diff.json --audit   | jq '.result | {status, au
 - 構造化ログ例：`{"event":"kestrel.reload", "audit_id":..., "change_set":...}`。
 - CLI と LSP/IDE の診断が同じ `audit_id` を共有することで、エラー追跡と承認フローを一体化できる。
 
-## 6. TODO / 制限事項
+## 6. チェックリストとメトリクス
 
-- GPU/組み込み向けの詳細チェックリストは Draft。実装者が補足予定。
-- `rollback` 戦略は運用ガイドに追記する必要あり。
-- ランタイム監視メトリクス（遅延、エラー率）との統合は今後検討。
+| 項目 | 内容 | 備考 |
+| --- | --- | --- |
+| GPU チェック | メモリ割当/解放のペア、カーネル境界での `unsafe` 区切り、`audit_id` を記録 | GPU 温度・エラーイベントを構造化ログに追加 |
+| 組み込みチェック | レジスタマップと DSL の整合性、割込みマスクの設定確認、フェイルセーフ手順 | `Config.compare` と `SchemaDiff` を使って差分を検証 |
+| ロールバック | `RollbackInfo` を保存し、`kestrel-run reload --rollback` で復旧する | 監査ログにロールバック結果 (`status`, `audit_id`) を記録 |
+| メトリクス統合 | 遅延 (`latency_ms`), エラー率 (`error_rate`), スループットなどを構造化ログに出力 | 監視ツール（Prometheus等）と連携し SLA を監視 |
 
-> 詳細はフェーズ3でさらに加筆予定です。
+> 詳細はフェーズ3でさらに事例を追加予定です。

@@ -66,3 +66,40 @@ match Config.compare(base, merged) with
 
 > 詳細仕様はフェーズ2で確定予定。API 名称やシグネチャは変更の可能性があります。
 > 運用手順については [設定 CLI ワークフロー](guides/config-cli.md) を参照してください。
+
+## F. 型とエラー
+
+```kestrel
+type RenderedConfig = {
+  source: String,
+  values: Map<String, Any>,
+  audit_id: Uuid
+}
+
+type ConfigError =
+  | ValidationError(List<Diagnostic>)
+  | RenderError(String)
+  | IoError(String)
+```
+
+- `RenderedConfig` はテンプレート適用後の設定と `audit_id` を保持。
+- `ConfigError` は検証失敗、レンダリング失敗、入出力失敗を表す。
+
+### F-1. `Config.render`
+
+```kestrel
+fn render(template: Schema<T>, env: Map<String, Any>) -> Result<RenderedConfig, ConfigError>
+```
+
+- 成功時は `RenderedConfig` を返し、`audit_id` を自動発行。
+- 失敗時は `ValidationError`（`Diagnostic` の一覧）などを返す。
+- CLI `kestrel-config render` はエラー種別に応じて exit code を決定（下表参照）。
+
+| ConfigError | exit code | 備考 |
+| --- | --- | --- |
+| `ValidationError` | 2 | スキーマ違反、`Diagnostic` を出力 |
+| `RenderError` | 3 | テンプレート内の計算失敗 |
+| `IoError` | 4 | ファイル読み書き・パーミッションエラー |
+
+```
+

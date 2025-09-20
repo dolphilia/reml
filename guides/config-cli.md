@@ -38,10 +38,16 @@ kestrel-config render --template config/prod.ks --env staging --output generated
 | 3. 承認後適用 | `kestrel-config diff --apply --audit` | `audit_id` 付き差分 JSON |
 | 4. デプロイ | `kestrel-run reload` | ランタイム適用ログ |
 
-## 5. TODO / 制限事項
+## 5. Exit Code と制限事項
 
-- `Config.render` の戻り値仕様は Draft。最終的な戻り値/エラー型を確定予定。
-- マージ戦略のカスタム優先順位（例: プロファイルごとの重み付け）は未定義。
-- CLI の exit code ポリシー（警告発生時に非ゼロを返すか等）は要検討。
+| 状態 | exit code | 備考 |
+| --- | --- | --- |
+| 正常終了 | 0 | 変更なし／検証成功 |
+| 警告あり | 1 | `--fail-on-warning` 未指定でも警告を通知（CI で閾値調整可） |
+| 検証エラー (`ValidationError`) | 2 | `ConfigError::ValidationError` を返し、`Diagnostic` を整形出力 |
+| レンダリング失敗 (`RenderError`) | 3 | テンプレート内の計算・依存不足 |
+| 入出力失敗 (`IoError`) | 4 | ファイルアクセス、権限不足 |
+
+- マージ戦略のカスタム優先順位（例: プロファイルごとの重み付け）は今後の検討課題。
 
 > 本ガイドはフェーズ3でさらに事例を追加する予定です。

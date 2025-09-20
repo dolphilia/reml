@@ -60,9 +60,18 @@ fn to_lsp_diagnostics(diags: List<Diagnostic>) -> List<LspDiagnostic> =
 
 ## 4. ハイライト・補完ツールチェーン
 
-1. `SemanticTokensLegend` を capability ごとに登録（例: `template.directive`, `config.field`）。
+1. `SemanticTokensLegend` を capability ごとに登録（例: `template.directive`, `config.field`）。下表に標準トークンとカスタムトークンの分類例を示す。
 2. エディタが `semanticTokens/full` を要求 -> パーサがトークン種別を返却。
 3. プラグイン側で追加トークンを登録する場合、`register_capability` で `syntax.highlight` を宣言。
+
+| Semantic Token | 対応 capability | 用途 |
+| --- | --- | --- |
+| `keyword.control.kestrel` | (標準) | `if` / `match` など言語キーワード |
+| `type.schema` | `"config"` | `schema` DSL で宣言された型 |
+| `property.template` | `"template"` | テンプレート DSL のディレクティブ |
+| `function.dsl` | プラグイン登録 | DSL が提供する関数名 |
+
+
 
 ## 5. CLI との一貫性
 
@@ -73,10 +82,11 @@ kestrel-run lint config.ks --format json --domain config   | jq '.diagnostics[] 
 - CLI と LSP の診断結果は同じ JSON フォーマットを共有し、CI/CD と IDE の結果照合が容易。
 - `audit_id` をキーにランタイムガイド（`guides/runtime-bridges.md`）で差分適用ログと結合する。
 
-## 6. TODO / 制限事項
+## 6. 運用メモ
 
-- `semanticTokens` 対応は Draft。トークン種別の正規化が必要。
-- CodeAction で複数 FixIt を提示する際、ユーザ承認フローを定義する必要がある。
-- `workspace/applyEdit` など LSP 拡張は未定義。プラグインごとの要件を整理予定。
+- **semanticTokens**: 上記表に基づき、標準トークンと capability 別トークンを組み合わせて `SemanticTokensLegend` を構築する。未定義のトークンは `namespace` や `type` にフォールバック。
+- **CodeAction 承認フロー**: FixIt 適用時は `audit_id` と関連する変更をプレビューし、ユーザが確認後に `workspace/applyEdit` を実行する。承認済みアクションは `PluginCapability` の `traits`（例: `"auto-fix"`）で識別。
 
 > 本ガイドはフェーズ3でさらに事例と図解を追加する予定です。
+
+
