@@ -311,6 +311,16 @@ type ParserPlugin = {
 
 fn register_plugin(plugin: ParserPlugin) -> Result<(), PluginError>
 fn with_capabilities<T>(cap: CapabilitySet, p: Parser<T>) -> Parser<T>
+
+```
+
+type PluginError =
+  | MissingCapability { name: String }
+  | Conflict { plugin: String, existing: SemVer, incoming: SemVer }
+  | RegistrationFailed { reason: String }
+
+type PluginWarning =
+  | DeprecatedCapability { name: String, deprecated: SemVer }
 ```
 
 | 構造体 | フィールド | 意味 |
@@ -326,7 +336,7 @@ fn with_capabilities<T>(cap: CapabilitySet, p: Parser<T>) -> Parser<T>
 |  | `register_parser` | パーサ・コンビネータを登録 |
 |  | `register_capability` | 追加 Capability を宣言 |
 
-* `register_plugin` はプラグインが提供する DSL/コンビネータを登録し、`PluginRegistrar` 経由で `ParserId` を割り当てる。
+* `register_plugin` はプラグインが提供する DSL/コンビネータを登録し、`PluginRegistrar` 経由で `ParserId` を割り当てる。成功時は `Ok(())`、失敗時は `PluginError` を返す。
 * `CapabilitySet` は `parser.requires({"template"})` のような照会・制約に利用。
 * `with_capabilities` はプラグインが要求する capability を宣言し、実行時に満たされない場合 `PluginError::MissingCapability` を返す。
 

@@ -9,26 +9,26 @@
 - エラーカテゴリ: `enum ErrorDomain { Config, Runtime, Network, ... }` を導入し、期待集合に紐づけ。
 - FixIt テンプレート: 再利用可能な提案（例: "Add missing field", "Insert closing tag"）。
 - IDE/LSP 連携: `to_lsp_diagnostics()` の仕様草案。
-- TODO: システム別エラーコードの命名規則を決定。 (サンプル例追加済/要最終調整)
+- ✅ システム別エラーコードの命名規則案を定義（2-5 節に表形式）
 
 ## 2. `2-6-execution-strategy.md` 拡張ポイント
 - LSP/IDE メタデータ出力: `with_syntax_highlight`, `with_completion_items` のようなランナーオプション。
 - 構造化ログ: `RunConfig.log_format = "json"` 等。
 - ホットリロード API: `reload(parser, state, diff)` の仕様案。
-- TODO: CLI 用の `kestrel-run` サブコマンド例を追加。 (サンプル例追加済/要最終調整)
+- ✅ CLI 用の `kestrel-run` サブコマンド例を追加（2-6 節とガイド参照）
 
 ## 3. 新章 `2-7 Nest.Config` (仮)
 - スキーマ宣言 API: `schema { ... }` を構築するビルダ関数。
 - 差分検証: `compare(old, new) -> SchemaDiff`。
 - 条件付き設定: `when` / `requires` / `compute` に対応する API。
 - CLI 連携: `ConfigResult::audit()` など。
-- TODO: 設定テンプレートのマージ戦略（優先順位）の仕様。 (文案追加済 Draft)
+- ✅ 設定テンプレートのマージ戦略（優先順位）の仕様ドラフトを追加
 
 ## 4. 新章 `2-8 Nest.Data` (仮)
 - データモデリング: `Schema`, `Column`, `ResourceId` の型定義。
 - バリデータ: `validate(schema, value)`。
 - スキーマ進化ユーティリティ: `diff`, `apply_migration`。
-- TODO: 検証結果を `Diagnostic` と結び付ける API。 (サンプル例追加済/要最終調整)
+- ✅ 検証結果と `Diagnostic` の連携サンプルを追加（2-8 節）
 
 ## 5. `2-1` / `2-2` でのプラグイン登録 API
 - `register_plugin(name, capabilities, parser_factory)`。

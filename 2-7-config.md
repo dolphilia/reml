@@ -65,3 +65,4 @@ match Config.compare(base, merged) with
 ```
 
 > 詳細仕様はフェーズ2で確定予定。API 名称やシグネチャは変更の可能性があります。
+> 運用手順については [設定 CLI ワークフロー](guides/config-cli.md) を参照してください。

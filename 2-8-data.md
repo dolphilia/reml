@@ -58,3 +58,4 @@ match Data.validate(schema, incoming) with
 ```
 
 > 詳細 API はフェーズ2のドラフトで確定予定。
+> ランタイム統合の運用手順は [ランタイム連携ガイド](guides/runtime-bridges.md) を参照してください。
