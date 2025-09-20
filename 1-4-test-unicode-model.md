@@ -1,4 +1,4 @@
-# 1.4 文字モデル（Text & Unicode Model）— Kestrel 言語コア仕様
+# 1.4 文字モデル（Text & Unicode Model）— Reml (Readable & Expressive Meta Language) 言語コア仕様
 
 > 目的：**Unicode 前提**で “書きやすく・読みやすく・誤りにくい” 文字列処理を提供し、**パーサーコンビネーター**が現実のテキスト（絵文字・結合記号・多言語）を安全に扱えるようにする。
 > 方針：**ランタイム表現は UTF-8**。**文字＝コードポイント（`Char`）**、**表示単位＝拡張書記素クラスタ（`Grapheme`）** を区別。**等価性は NFC 正規化で定義**しつつ、**バイト等価**や**コードポイント等価**も明示 API で提供する。
@@ -132,7 +132,7 @@
 
 ## I. 標準 API（抜粋シグネチャ）
 
-```kestrel
+```reml
 // 生成・変換
 fn string(bytes: Bytes, validate_utf8: Bool = true) -> Result<String, Utf8Error>
 fn to_string(chars: Iterator<Char>) -> String
@@ -219,7 +219,7 @@ impl Collator { fn new(locale: Locale) -> Collator; fn compare(&self, a: Str, b:
 
 ### まとめ
 
-Kestrel の文字モデルは **"文字（Char）/表示単位（Grapheme）/バイト" を分離**し、
+Reml の文字モデルは **"文字（Char）/表示単位（Grapheme）/バイト" を分離**し、
 
 * **NFC 基準の等価性**でバグと衝突を減らし、
 * **安全なスライスと豊富な分割 API**で実運用テキストを扱いやすくし、

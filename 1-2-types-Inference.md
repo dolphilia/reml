@@ -1,4 +1,4 @@
-# 1.2 型と推論（Types & Type Inference）— Kestrel 言語コア仕様
+# 1.2 型と推論（Types & Type Inference）— Reml (Readable & Expressive Meta Language) 言語コア仕様
 
 > 目的：**書きやすさ・読みやすさ・高品質エラー**を壊さず、**実用性能**と**静的安全**を両立。
 > 方針：**サブタイピングなし**（HM 系の推論をシンプルに保つ）。**ランク1の多相**を基本に、**型クラス風トレイト**で演算子等の静的オーバーロードを提供。
@@ -25,7 +25,7 @@
 * 関数：`(A1, A2, …, An) -> R`（右結合、`A -> B -> C` ≡ `A -> (B -> C)`）
 * 代数的データ型（ADT）：
 
-  ```kestrel
+  ```reml
   type Option<T> = | Some(T) | None
   type Result<T,E> = | Ok(T) | Err(E)
   ```
@@ -55,7 +55,7 @@
 
 ### B.1 トレイト宣言（概略）
 
-```kestrel
+```reml
 trait Add<A, B, R> { fn add(a: A, b: B) -> R }
 impl Add<i64, i64, i64> for i64 { fn add(a,b) = a + b }
 ```
@@ -75,7 +75,7 @@ impl Add<i64, i64, i64> for i64 { fn add(a,b) = a + b }
 
 * 関数型に **制約**を付与：
 
-  ```kestrel
+  ```reml
   fn sum<T>(xs: [T]) -> T where Add<T,T,T>, Zero<T> = ...
   ```
 
@@ -149,7 +149,7 @@ impl Add<i64, i64, i64> for i64 { fn add(a,b) = a + b }
 
 > パーサーコンビネータ記述が短くなるように、要の関数型は**一読で意図が分かる**シグネチャに。
 
-```kestrel
+```reml
 // Parser 型（簡略）
 type Parser<T>    // 実体は Input -> Result<T, ParseError>
 
@@ -187,7 +187,7 @@ let expr = chainl1(atom, addOp)                   // Parser<i64>
 
 ### H.1 let 一般化
 
-```kestrel
+```reml
 let id = |x| x               // id : ∀a. a -> a
 let n  = id(42)              // inst a := i64 → i64
 let s  = id("hi")            // inst a := String → String
@@ -195,28 +195,28 @@ let s  = id("hi")            // inst a := String → String
 
 ### H.2 制約の持ち上げ
 
-```kestrel
+```reml
 fn sum<T>(xs: [T]) -> T where Add<T,T,T>, Zero<T> =
   fold(xs, init=zero(), f=Add::add)
 ```
 
 呼出側：
 
-```kestrel
+```reml
 let r1 = sum([1,2,3])        // T := i64, 既存 impl で解決
 let r2 = sum(users)          // エラー（Add<User,User,User> が未定義）
 ```
 
 ### H.3 演算子の推論
 
-```kestrel
+```reml
 let f = |x, y| x + y         // 収集: Add<a,b,r>; 型: a -> b -> r
 let g = |n| n + 1            // 収集: Add<a,i64,r>; 不足 → 呼出で決定
 ```
 
 ### H.4 数値リテラルの既定
 
-```kestrel
+```reml
 let a = 10        // a : i64
 let b = 10.0      // b : f64
 let c: f32 = 10   // 単一化で c : f32（数値多相の縮退）
@@ -284,7 +284,7 @@ let c: f32 = 10   // 単一化で c : f32（数値多相の縮退）
 
 #### サンプル（Draft）
 
-```kestrel
+```reml
 schema DbConfig {
   url: Column<String>
   pool_size: Column<i32> = 8
@@ -308,7 +308,7 @@ fn train(model: Tensor<[batch, features], f32>, weights: Tensor<[features, 1], f
 * スキーマ型: フィールドアクセス `config.database.url` は `Schema<...>` から `Column<String>` に推論し、`requires` 句は `Constraint` trait で実行。
 * 効果付き関数: `effect` タグは関数型推論で和集合を形成し、呼び出し側の効果要求に反映。
 
-```kestrel
+```reml
 fn combine_effects(a: EffectSet, b: EffectSet) -> EffectSet =
   a.union(b)
 
@@ -317,7 +317,7 @@ fn call_with_effects<T>(f: Fn -> T effect E, g: Fn -> T effect F) -> T effect co
 
 サンプル：
 
-```kestrel
+```reml
 let apply = |cfg: Schema<AppConfig>| -> AppConfig effect {config, audit} {
   audit.log("config.apply", SchemaDiff::between(cfg, cfg))
   cfg.realize()
@@ -341,7 +341,7 @@ let (_ : SchemaDiff<AppConfig>) =
 * **サブタイピングなし**で推論を安定化、**bidirectional + アノテ**でエラー品質を確保。
 * **数値多相の既定**と**演算子=トレイト**で、日常コードを短く自然に。
 * **一般化の値制限**と**剛体変数**で予期せぬ推論"暴走"を抑止。
-* **パターン型付け**・**網羅性**・**制約の持ち上げ**が、Kestrel→Core→IR の変換を素直に支える。
+* **パターン型付け**・**網羅性**・**制約の持ち上げ**が、Reml→Core→IR の変換を素直に支える。
 
 ---
 

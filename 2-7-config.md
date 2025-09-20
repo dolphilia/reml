@@ -4,7 +4,7 @@
 
 ## A. スキーマビルダ
 
-```kestrel
+```reml
 let appSchema = Config.schema("AppConfig", |s| {
   s.field("env", Enum<Env>, default=Env::Dev)
    .field("database", Schema(DbConfig))
@@ -23,7 +23,7 @@ let appSchema = Config.schema("AppConfig", |s| {
 
 ## B. 差分検証
 
-```kestrel
+```reml
 let diff = Config.compare(oldConfig, newConfig)
 match diff with
 | Ok(same)      -> ...
@@ -44,14 +44,14 @@ match diff with
 
 ## D. CLI 連携（Draft）
 
-- `kestrel-config validate config.ks` で検証、`--format json` で構造化ログ出力。
-- `kestrel-config diff old.ks new.ks` で `change_set` を表示。
-- `kestrel-config render --template prod.ks --env staging` でテンプレートを適用。
+- `reml-config validate config.ks` で検証、`--format json` で構造化ログ出力。
+- `reml-config diff old.ks new.ks` で `change_set` を表示。
+- `reml-config render --template prod.ks --env staging` でテンプレートを適用。
 - CLI は `audit_id` を生成し、JSON 出力の `audit_id` と一致させる。（2-5 の構造化ログ案と同期）
 
 ## E. サンプルワークフロー（Draft）
 
-```kestrel
+```reml
 let base = Config.load("base.ks")?
 let overrides = Config.load("env/prod.ks")?
 let merged = Config.merge(base, overrides)
@@ -69,7 +69,7 @@ match Config.compare(base, merged) with
 
 ## F. 型とエラー
 
-```kestrel
+```reml
 type RenderedConfig = {
   source: String,
   values: Map<String, Any>,
@@ -87,13 +87,13 @@ type ConfigError =
 
 ### F-1. `Config.render`
 
-```kestrel
+```reml
 fn render(template: Schema<T>, env: Map<String, Any>) -> Result<RenderedConfig, ConfigError>
 ```
 
 - 成功時は `RenderedConfig` を返し、`audit_id` を自動発行。
 - 失敗時は `ValidationError`（`Diagnostic` の一覧）などを返す。
-- CLI `kestrel-config render` はエラー種別に応じて exit code を決定（下表参照）。
+- CLI `reml-config render` はエラー種別に応じて exit code を決定（下表参照）。
 
 | ConfigError | exit code | 備考 |
 | --- | --- | --- |

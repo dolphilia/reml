@@ -10,7 +10,7 @@
 
 ### A-1. ビルダーの入口
 
-```kestrel
+```reml
 // 基本：operand（最下位=原子）から、演算子テーブルで階層を組む
 fn precedence<A>(
   operand: Parser<A>,
@@ -24,7 +24,7 @@ fn precedence<A>(
 
 ### A-2. レベル宣言（fixity）
 
-```kestrel
+```reml
 // 1 つの“優先度レベル”を追加
 PrecedenceBuilder<A>.level(
   |lvl: Level<A>| {
@@ -50,7 +50,7 @@ type Ternary<A> = {
 
 ### A-3. 完成
 
-```kestrel
+```reml
 PrecedenceBuilder<A>.build() -> Parser<A>
 ```
 
@@ -58,7 +58,7 @@ PrecedenceBuilder<A>.build() -> Parser<A>
 
 ## B. 使い方（例）
 
-```kestrel
+```reml
 let sc     = Lex.spaceOrTabsOrNewlines |> Lex.skipMany
 let sym(s) = symbol(sc, s)
 let int    = lexeme(sc, Lex.int(10)).map(parseI64!)
@@ -140,7 +140,7 @@ let expr: Parser<i64> =
 
 ## E. 拡張：演算子パーサの“型”
 
-```kestrel
+```reml
 // sugar：文字列を演算子パーサへ持ち上げ
 fn op_str<A>(space: Parser<()>, s: Str, f: any) -> Parser<typeof f>
 // 例: op_str(sc, "+", (|a,b| Add(a,b)))
@@ -202,7 +202,7 @@ fn op_str<A>(space: Parser<()>, s: Str, f: any) -> Parser<typeof f>
 
 ### I-1. 右結合の `?:` 三項
 
-```kestrel
+```reml
 precedence(cond)
   .level(|lvl| {
     lvl.ternary({
@@ -216,7 +216,7 @@ precedence(cond)
 
 ### I-2. パイプ演算子（最弱）
 
-```kestrel
+```reml
 precedence(atom)
   // ... 他レベル ...
   .level(|lvl| {
@@ -227,7 +227,7 @@ precedence(atom)
 
 ### I-3. Postfix 呼出/添字/ドットを operand 側に
 
-```kestrel
+```reml
 let primary =
   atom.andThen(
     many(

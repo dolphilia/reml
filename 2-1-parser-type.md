@@ -8,7 +8,7 @@
 
 ## A. 主要型
 
-```kestrel
+```reml
 // コア：パーサは Input を読み、成功/失敗と残り入力を返す純関数
 type Parser<T> = fn(&mut State) -> Reply<T>
 
@@ -38,7 +38,7 @@ type State = {
 
 ## B. 入力モデル `Input`
 
-```kestrel
+```reml
 type Input = {
   source: SourceId,        // ファイル/文字列単位の識別子
   bytes: Bytes,            // UTF-8 本体（共有参照/COW）
@@ -59,7 +59,7 @@ type Input = {
 
 ## C. スパンとトレース
 
-```kestrel
+```reml
 type Span = {
   source: SourceId,
   byte_start: usize, byte_end: usize,
@@ -79,7 +79,7 @@ type SpanTrace = List<(name: String, span: Span)>
 
 ## D. 実行設定 `RunConfig` とメモ
 
-```kestrel
+```reml
 type RunConfig = {
   exec_mode: "normal" | "packrat" | "hybrid" | "streaming" = "normal",
   require_eof: Bool = false,            // 全消費を要求（parse_all 相当）
@@ -135,7 +135,7 @@ type MemoTable = Map<MemoKey, Any>  // 実装上は型消去（内部用）
 
 ## F. 失敗表現（最小要素：2.5 と両立）
 
-```kestrel
+```reml
 type ParseError = {
   at: Span,                           // 失敗位置（最狭）
   expected: Set<Expectation>,         // 期待集合（トークン/ラベル/EOF 等）
@@ -151,7 +151,7 @@ type ParseError = {
 
 ## G. ランナー API（外部からの呼び出し）
 
-```kestrel
+```reml
 fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> Result<(T, Span), ParseError>
 // 成功時は値と**全体のスパン**（開始〜終了）を返す。
 // cfg.require_eof=true なら残余があれば EOF 期待エラーを返す。
@@ -209,7 +209,7 @@ type Continuation<T> = {
 
 > DSL プラグインを登録し、Parser capability を管理するための暫定 API 案。
 
-```kestrel
+```reml
 type CapabilitySet = Set<String>
 
 type PluginCapability = {
@@ -248,10 +248,10 @@ fn with_capabilities<T>(cap: CapabilitySet, p: Parser<T>) -> Parser<T>
 
 ### I-2. サンプル（Draft）
 
-```kestrel
+```reml
 // 既存プラグイン（例: 基本構文サポート）
 let syntaxPlugin = ParserPlugin {
-  name = "Kestrel.Core.Syntax",
+  name = "Reml.Core.Syntax",
   version = SemVer(1, 5, 0),
   capabilities = [],
   dependencies = [],
@@ -259,13 +259,13 @@ let syntaxPlugin = ParserPlugin {
 }
 
 let templating = ParserPlugin {
-  name = "Kestrel.Web.Templating",
+  name = "Reml.Web.Templating",
   version = SemVer(1, 2, 0),
   capabilities = [
     { name = "template", version = SemVer(1,0,0), traits = {"render"}, since = Some(SemVer(1,0,0)), deprecated = None }
   ],
   dependencies = [
-    { name = "Kestrel.Core.Syntax", version_req = VersionReq{ predicate = "^1.5" } }
+    { name = "Reml.Core.Syntax", version_req = VersionReq{ predicate = "^1.5" } }
   ],
   register = |reg| {
     reg.register_schema("TemplateConfig", templateSchema);
@@ -278,7 +278,7 @@ register_plugin(templating)?
 let render = with_capabilities({"template"}, renderParser)
 
 let bundle = PluginBundle {
-  name = "kestrel-web-bundle",
+  name = "reml-web-bundle",
   plugins = [templating, syntaxPlugin]
 }
 
@@ -304,7 +304,7 @@ register_bundle(bundle)?
 
 ### J-1. API 定義
 
-```kestrel
+```reml
 type CapabilitySet = Set<String>
 
 type PluginCapability = {
@@ -369,15 +369,15 @@ type PluginWarning =
 
 ### J-3. サンプル（Draft）
 
-```kestrel
+```reml
 let templating = ParserPlugin {
-  name = "Kestrel.Web.Templating",
+  name = "Reml.Web.Templating",
   version = SemVer(1, 2, 0),
   capabilities = [
     { name = "template", version = SemVer(1,0,0), traits = {"render"}, since = Some(SemVer(1,0,0)), deprecated = None }
   ],
   dependencies = [
-    { name = "Kestrel.Core.Syntax", version_req = VersionReq{ predicate = "^1.5" } }
+    { name = "Reml.Core.Syntax", version_req = VersionReq{ predicate = "^1.5" } }
   ],
   register = |reg| {
     reg.register_schema("TemplateConfig", templateSchema);
@@ -390,7 +390,7 @@ register_plugin(templating)?
 let render = with_capabilities({"template"}, renderParser)
 
 let bundle = PluginBundle {
-  name = "kestrel-web-bundle",
+  name = "reml-web-bundle",
   plugins = [templating, syntaxPlugin]
 }
 
@@ -405,7 +405,7 @@ register_bundle(bundle)?
 | `PluginDependency` | `name: String, version_req: VersionReq` | 依存プラグインと必要バージョン範囲 |
 | `PluginBundle` | `name: String, plugins: List<ParserPlugin>` | 配布単位。複数プラグインをまとめる |
 
-```kestrel
+```reml
 type VersionReq = {
   predicate: String // 例: "^1.2", ">=2.0, <3.0"
 }
@@ -423,13 +423,13 @@ fn register_bundle(bundle: PluginBundle) -> Result<(), PluginError>
 
 * `register_plugin` は依存するプラグインが登録済であるかチェックする。未登録の場合は `PluginError::MissingDependency` を返す。
 * `register_bundle` は複数プラグインをまとめて登録し、依存解決を一括で行う。
-* CLI `kestrel-plugin install <bundle>` を想定し、プラグイン配布を標準化する（例: リポジトリからバンドルを取得し `register_bundle` を呼び出すユーティリティを提供）。
+* CLI `reml-plugin install <bundle>` を想定し、プラグイン配布を標準化する（例: リポジトリからバンドルを取得し `register_bundle` を呼び出すユーティリティを提供）。
 
 ---
 
 ## K. ミニ例（意味論の確認）
 
-```kestrel
+```reml
 // トークン
 let sym = |s: Str| rule("sym(" + s + ")", Lex.symbol(sc, s))
 

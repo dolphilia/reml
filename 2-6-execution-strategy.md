@@ -9,7 +9,7 @@
 
 ### A-1. ランナー API（外部インターフェイス）
 
-```kestrel
+```reml
 fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> Result<(T, Span), ParseError>
 fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> Result<(T, Input, Span), ParseError>
 fn run_stream<T>(p: Parser<T>, feeder: Feeder, cfg: RunConfig = {}) -> Result<StreamOutcome<T>, ParseError>
@@ -40,7 +40,7 @@ fn resume<T>(k: Continuation<T>, more: Bytes) -> Result<StreamOutcome<T>, ParseE
 
 `RunConfig` に燃料を設け、**停止性と DoS 耐性**を確保。
 
-```kestrel
+```reml
 type RunConfig = {
   exec_mode: "normal" | "packrat" | "hybrid" | "streaming" = "normal",
   require_eof: Bool = false,
@@ -75,7 +75,7 @@ type RunConfig = {
 
 ### C-1. メモ化キーと値
 
-```kestrel
+```reml
 type ParserId = u32
 type MemoKey = (ParserId, byte_off)
 type MemoVal<T> = Reply<T>  // Ok/Err 丸ごと
@@ -118,7 +118,7 @@ type MemoVal<T> = Reply<T>  // Ok/Err 丸ごと
 
 ### E-2. トレース・プロファイル（オプション）
 
-```kestrel
+```reml
 type TraceEvent =
   | Enter(ParserId, Input)
   | ExitOk(ParserId, Span)
@@ -147,7 +147,7 @@ fn with_trace<T>(p: Parser<T>, on_event: TraceEvent -> ()) -> Parser<T>
 
 ### F-2. 継続（Continuation）
 
-```kestrel
+```reml
 type Continuation<T> = {
   state: Opaque,           // メモ/位置/進行中ルールの縮約スナップショット
   commit_watermark: usize, // 掃除可能基準
@@ -227,7 +227,7 @@ type Continuation<T> = {
 * 既定は **前進解析 + cut/label による制御可能な BT**。
 * 必要に応じて **Packrat（線形化）**・**左再帰 seed-growing**・**スライディング窓**で実用性能とメモリのバランスを取る。
 * **ストリーミング/インクリメンタル**と **高品位エラー**が最初から設計に入っており、IDE/LSP にも直結できる。
-  この実行戦略で、Kestrel のパーサは **小さなコア**のまま現実的な大規模入力・対話・言語処理に耐える。
+  この実行戦略で、Reml のパーサは **小さなコア**のまま現実的な大規模入力・対話・言語処理に耐える。
 
 
 ## K. ツール統合オプション（Draft）
@@ -242,11 +242,11 @@ type Continuation<T> = {
 ### I-2. 構造化ログ / CLI 連携
 
 * `RunConfig.log_format = "json"` により、実行イベントを JSON で出力。
-* `kestrel-run lint config.ks --format json` のような CLI コマンド例を提示し、CI/CD での利用を想定。
+* `reml-run lint config.ks --format json` のような CLI コマンド例を提示し、CI/CD での利用を想定。
 
 ### I-3. ホットリロード API（Draft）
 
-```kestrel
+```reml
 fn reload<T>(parser: Parser<T>, state: ReloadState<T>, diff: SchemaDiff<Old, New>)
   -> Result<ReloadState<T>, ReloadError>
 ```

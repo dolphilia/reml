@@ -6,22 +6,22 @@
 
 | コマンド | 説明 | 主要オプション |
 | --- | --- | --- |
-| `kestrel-config validate <config.ks>` | スキーマに基づく検証を実行 | `--format json`, `--profile prod`, `--fail-on-warning` |
-| `kestrel-config diff <old.ks> <new.ks>` | スキーマ差分の表示 | `--format table`, `--apply`, `--audit` |
-| `kestrel-config render --template <file>` | テンプレートを具現化 | `--env prod`, `--output rendered.ks` |
-| `kestrel-config rollback <audit_id>` | 過去の差分をロールバック | `--dry-run`, `--confirm` |
+| `reml-config validate <config.ks>` | スキーマに基づく検証を実行 | `--format json`, `--profile prod`, `--fail-on-warning` |
+| `reml-config diff <old.ks> <new.ks>` | スキーマ差分の表示 | `--format table`, `--apply`, `--audit` |
+| `reml-config render --template <file>` | テンプレートを具現化 | `--env prod`, `--output rendered.ks` |
+| `reml-config rollback <audit_id>` | 過去の差分をロールバック | `--dry-run`, `--confirm` |
 
 ## 2. 実行例
 
 ```bash
 # 検証: JSON 出力からエラーのみ抽出
-kestrel-config validate config/app.ks --profile prod --format json   | jq '.diagnostics[] | {code, message, audit_id}'
+reml-config validate config/app.ks --profile prod --format json   | jq '.diagnostics[] | {code, message, audit_id}'
 
 # 差分: テーブル表示でレビュー
-kestrel-config diff config/base.ks config/prod.ks --format table
+reml-config diff config/base.ks config/prod.ks --format table
 
 # テンプレート: staging 向け設定を生成
-kestrel-config render --template config/prod.ks --env staging --output generated/staging.ks
+reml-config render --template config/prod.ks --env staging --output generated/staging.ks
 ```
 
 ## 3. 構造化ログと監査
@@ -33,10 +33,10 @@ kestrel-config render --template config/prod.ks --env staging --output generated
 
 | ステップ | 推奨コマンド | 成果物 |
 | --- | --- | --- |
-| 1. 検証 | `kestrel-config validate` | 診断 JSON（lint レポート） |
-| 2. 差分レビュー | `kestrel-config diff` | 差分テーブル / JSON |
-| 3. 承認後適用 | `kestrel-config diff --apply --audit` | `audit_id` 付き差分 JSON |
-| 4. デプロイ | `kestrel-run reload` | ランタイム適用ログ |
+| 1. 検証 | `reml-config validate` | 診断 JSON（lint レポート） |
+| 2. 差分レビュー | `reml-config diff` | 差分テーブル / JSON |
+| 3. 承認後適用 | `reml-config diff --apply --audit` | `audit_id` 付き差分 JSON |
+| 4. デプロイ | `reml-run reload` | ランタイム適用ログ |
 
 ## 5. Exit Code と制限事項
 

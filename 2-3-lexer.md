@@ -14,7 +14,7 @@
 
 > この 6 つに、2.2 のコア・コンビネータを合わせれば大半の字句処理が書ける。
 
-```kestrel
+```reml
 // 1) 一文字（コードポイント）判定
 fn satisfy(pred: Char -> Bool) -> Parser<Char>
 
@@ -45,7 +45,7 @@ fn lineEnding() -> Parser<()>    // 行末を 1 回読む（非返却）
 
 ## B. 空白・改行・コメント（スキップ系）
 
-```kestrel
+```reml
 // Unicode White_Space（UAX #44）、タブ/全角空白を含む
 fn whitespace() -> Parser<()>                   // 1 つ以上
 fn spaces0() -> Parser<()>                      // 0 以上
@@ -62,7 +62,7 @@ fn skipMany(p: Parser<()>) -> Parser<()>
 
 **推奨定義（例）**
 
-```kestrel
+```reml
 let sc =
   (whitespace()
    .or(commentLine("//"))
@@ -74,7 +74,7 @@ let sc =
 
 ## C. トークン化の基本ユーティリティ
 
-```kestrel
+```reml
 // 後ろの空白・コメントを食う “lexeme”
 fn lexeme<A>(space: Parser<()>, p: Parser<A>) -> Parser<A>
 
@@ -97,7 +97,7 @@ fn token<A>(p: Parser<A>, space: Parser<()>) -> Parser<(A, Span)>
 
 ### D-1. プロファイル
 
-```kestrel
+```reml
 type IdentifierProfile = {
   allow_underscore: Bool = true,
   start_pred: Char -> Bool,   // 既定: XID_Start or '_'
@@ -116,7 +116,7 @@ fn identifier(profile: IdentifierProfile = DefaultId) -> Parser<Str>
 
 ### D-2. キーワードと境界
 
-```kestrel
+```reml
 // ident と同一文字列ならキーワードとして成功し、直後が ident-continue なら失敗
 fn keyword(space: Parser<()>, kw: Str) -> Parser<()>     // lexeme + 境界確認
 
@@ -132,7 +132,7 @@ fn reserved(profile: IdentifierProfile, set: Set<Str>) -> Parser<Never>
 
 > 単項マイナスは\*\*構文側（単項演算子）\*\*で扱う。ここでは **符号なし**を原則。
 
-```kestrel
+```reml
 // 10 進（"1_234" 許容）
 fn int10() -> Parser<Str>                     // “文字列” として取得（桁を維持）
 fn int(radix: 2|8|10|16, allow_prefix: Bool = false) -> Parser<Str>
@@ -157,7 +157,7 @@ fn parseF64(repr: Str)                    -> Result<f64, ParseFloatError>
 
 ## F. 文字列・文字リテラル（エスケープ/生/複数行）
 
-```kestrel
+```reml
 // 通常文字列（C 風エスケープ、\u{...} は Unicode スカラ値）
 fn stringLit() -> Parser<String>
 
@@ -182,7 +182,7 @@ fn charLit() -> Parser<Char>
 
 ## G. 汎用“取り込み”ユーティリティ
 
-```kestrel
+```reml
 fn till<A>(end: Parser<A>) -> Parser<Str>            // end が来るまで（非貪欲）
 fn take(n_bytes: usize) -> Parser<Bytes>             // バイト数で取得（テキスト前提なし）
 fn takeCodepoints(n: usize) -> Parser<Str>           // コードポイント数で取得
@@ -196,9 +196,9 @@ fn grapheme() -> Parser<Grapheme>                    // 拡張書記素 1 つ
 
 ## H. 行頭・行末・インデント（任意）
 
-Kestrel 本体はオフサイド規則を採用しないが、DSL 用に提供。
+Reml 本体はオフサイド規則を採用しないが、DSL 用に提供。
 
-```kestrel
+```reml
 fn bol() -> Parser<()>                     // 行頭（BOL）
 fn eol() -> Parser<()>                     // 行末（EOL）
 fn indentEq(n: usize) -> Parser<()>        // その行の列 == n
@@ -210,7 +210,7 @@ fn column() -> Parser<usize>               // 現在列（グラフェム数）
 
 ## I. セキュリティ・正規化（安全モード）
 
-```kestrel
+```reml
 // 入力ストリームから Bidi 制御（U+2066…U+2069, RLO/LRO/RLE/LRE/PDF など）を拒否/警告
 fn forbidBidiControls() -> Parser<()>      // 文字列/コメント以外の出現でエラー
 
@@ -227,7 +227,7 @@ fn warnConfusable(s: Str) -> ()
 
 * **`label` と `expect`（= label+cut）**
 
-  ```kestrel
+  ```reml
   let sym(s) = expect("symbol '" + s + "'", symbol(sc, s))
   let kw(s)  = expect("keyword " + s, keyword(sc, s))
   ```
@@ -251,9 +251,9 @@ fn warnConfusable(s: Str) -> ()
 
 ## L. 代表的なレシピ
 
-### L-1. Kestrel 識別子/キーワード
+### L-1. Reml 識別子/キーワード
 
-```kestrel
+```reml
 let sc = (whitespace().or(commentLine("//")).or(commentBlock("/*","*/", true))) |> skipMany
 let sym(s) = symbol(sc, s)
 let kw(s)  = expect("keyword " + s, keyword(sc, s))
@@ -268,7 +268,7 @@ let nonReservedIdent =
 
 ### L-2. 数値（整数 or 浮動小数）
 
-```kestrel
+```reml
 let number: Parser<Either<i64,f64>> =
   lexeme(sc,
     float().map(|s| Right(parseF64(s)?))
@@ -278,7 +278,7 @@ let number: Parser<Either<i64,f64>> =
 
 ### L-3. 文字列（通常/生/複数行）
 
-```kestrel
+```reml
 let strLit: Parser<String> =
   lexeme(sc,
     stringLit()
@@ -318,7 +318,7 @@ let strLit: Parser<String> =
 
 文字モデル（[1.4 文字モデル](1-4-test-unicode-model.md)）で定義された三層構造（Byte/Char/Grapheme）を活用するパーサヘルパ群：
 
-```kestrel
+```reml
 // 文字レベルでの解析
 fn grapheme() -> Parser<Grapheme>                    // 拡張書記素クラスタ単位
 fn char_where(pred: Char -> Bool) -> Parser<Char>    // Unicode スカラ値での条件解析

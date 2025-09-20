@@ -15,7 +15,7 @@
 - LSP/IDE メタデータ出力: `with_syntax_highlight`, `with_completion_items` のようなランナーオプション。
 - 構造化ログ: `RunConfig.log_format = "json"` 等。
 - ホットリロード API: `reload(parser, state, diff)` の仕様案。
-- ✅ CLI 用の `kestrel-run` サブコマンド例を追加（2-6 節とガイド参照）
+- ✅ CLI 用の `reml-run` サブコマンド例を追加（2-6 節とガイド参照）
 
 ## 3. 新章 `2-7 Nest.Config` (仮)
 - スキーマ宣言 API: `schema { ... }` を構築するビルダ関数。

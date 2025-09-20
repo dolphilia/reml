@@ -4,7 +4,7 @@
 
 ## A. 型定義
 
-```kestrel
+```reml
 type Column<T, Meta = ()>
 type Schema<T>
 type ResourceId<P, K>
@@ -17,7 +17,7 @@ type ResourceId<P, K>
 
 ## B. 検証ユーティリティ
 
-```kestrel
+```reml
 fn validate<T>(schema: Schema<T>, value: T) -> Result<(), List<Diagnostic>>
 ```
 
@@ -27,7 +27,7 @@ fn validate<T>(schema: Schema<T>, value: T) -> Result<(), List<Diagnostic>>
 
 ## C. スキーマ進化
 
-```kestrel
+```reml
 fn diff(old: Schema<T>, new: Schema<T>) -> SchemaDiff<T>
 fn apply_migration<T>(value: T, diff: SchemaDiff<T>) -> Result<T, MigrationError>
 ```
@@ -43,7 +43,7 @@ fn apply_migration<T>(value: T, diff: SchemaDiff<T>) -> Result<T, MigrationError
 - クラウド構成 DSL で `ResourceId` 型を用いてリソースの重複作成を防止。
 - 機械学習 DSL で `Column<T>` の `Meta` に統計情報（平均・分散）を保持し、データドリフト検出を実装。
 
-```kestrel
+```reml
 let schema = Schema.build(|s| {
   s.field("user_id", Column<Guid, Unique>)
    .field("score", Column<f64, { nullable = false }>)

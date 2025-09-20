@@ -1,4 +1,4 @@
-# 1.1 構文（Syntax）— Kestrel 言語コア仕様
+# 1.1 構文（Syntax）— Reml (Readable & Expressive Meta Language) 言語コア仕様
 
 > 目的：**短く書けて、読みやすく、エラーが説明的**になること。
 > 前提：**UTF-8 / Unicode 前提**、式指向、静的型（1.2 で詳細）、パーサーコンビネーターを実装しやすい**素直な構文**。
@@ -53,7 +53,7 @@
 * ファイル = 1 モジュール。明示名は任意：`module math.number`（将来仕様、現状省略可）。
 * 依存の導入：
 
-  ```kestrel
+  ```reml
   use Nest.Parse
   use Nest.Parse.{Lex, Op as Operator, Err}
   ```
@@ -77,7 +77,7 @@
 
 * **値束縛と再代入**  \n  `let` は不変束縛、`var` は可変束縛。`var` で導入した変数はブロック内で `:=` による再代入が可能です（C.6 および [効果と安全性](1-3-effects-safety.md) を参照）。
 
-  ```kestrel
+  ```reml
   let answer = 42
   var total = 0
   let (lhs, rhs) = pair
@@ -85,7 +85,7 @@
 
 * **関数宣言**  \n  本体は式かブロックで記述でき、名前付き引数・デフォルト引数・戻り値型をサポートします。`pub` を付けると公開関数になります。
 
-  ```kestrel
+  ```reml
   fn add(a: i64, b: i64) -> i64 = a + b
 
   pub fn fact(n: i64) -> i64 {
@@ -95,7 +95,7 @@
 
 * **型宣言（ADT・エイリアス・ニュータイプ）**  \n  代数的データ型のほか、`type alias` や `type Name = new T` による零コストラッパを定義できます（詳細は [型と推論](1-2-types-Inference.md)）。
 
-  ```kestrel
+  ```reml
   type Expr =
     | Int(i64)
     | Add(Expr, Expr)
@@ -107,7 +107,7 @@
 
 * **トレイト定義 (`trait`)**  \n  インターフェースを宣言し、メソッド署名やデフォルト実装を列挙します。型パラメータや `where` 制約を付与できます。
 
-  ```kestrel
+  ```reml
   trait Show<T> {
     fn show(self) -> String
   }
@@ -115,7 +115,7 @@
 
 * **実装 (`impl`)**  \n  トレイト実装 `impl Trait for Type` と、型固有メソッド `impl Type` の両方をサポートします。ブロック内では通常の関数と同様に属性や可視性を付けられます。
 
-  ```kestrel
+  ```reml
   impl Show<i64> for i64 {
     fn show(self) -> String = self.toString()
   }
@@ -127,7 +127,7 @@
 
 * **外部宣言 (`extern`)**  \n  FFI で公開された関数を宣言します。呼び出しは `unsafe` 境界内で行います（1.3 節参照）。
 
-  ```kestrel
+  ```reml
   extern "C" fn puts(ptr: Ptr<u8>) -> i32;
   extern "C" {
     fn printf(fmt: Ptr<u8>, ...) -> i32;
@@ -138,11 +138,11 @@
 ### B.5 属性（Attributes）
 
 * 宣言やブロックの直前に `@name` 形式で付与し、直後の要素に契約や最適化ヒントを与えます。複数の属性は縦に並べることで併用できます。
-* 引数付き属性は `@name(arg1, key=value)` のように括弧で指定します（値は Kestrel の式）。
+* 引数付き属性は `@name(arg1, key=value)` のように括弧で指定します（値は Reml の式）。
 * 効果契約（`@pure`, `@no_panic`, `@no_alloc` など）は [効果と安全性](1-3-effects-safety.md) にて意味が定義され、コンパイル時に検査されます。
 * 属性は `fn`・`type`・`trait`・`impl`・`extern` の各宣言、およびブロック式 `{ ... }` や `unsafe { ... }` に付与できます。
 
-```kestrel
+```reml
 @pure
 @no_panic
 pub fn eval(expr: Expr) -> Result<i64, Error> = expr?
@@ -159,7 +159,7 @@ impl Parser<T> {
 
 * **基本形**
 
-  ```kestrel
+  ```reml
   schema AppConfig {
     env: Env = Env::Dev
     database: DbConfig
@@ -185,7 +185,7 @@ impl Parser<T> {
 
 * **継承とテンプレート**
 
-  ```kestrel
+  ```reml
   schema BaseConfig {
     logging.level: String = "warn"
     database: DbConfig
@@ -212,8 +212,8 @@ impl Parser<T> {
 
 * **パッケージ宣言**
 
-  ```kestrel
-  package Kestrel.Web.Templating
+  ```reml
+  package Reml.Web.Templating
 
   @capability("template")
   export schema TemplateConfig
@@ -225,8 +225,8 @@ impl Parser<T> {
 
 * **プラグインの利用**
 
-  ```kestrel
-  use plugin Kestrel.Web.Templating (TemplateConfig, render)
+  ```reml
+  use plugin Reml.Web.Templating (TemplateConfig, render)
   ```
 
   * `use plugin` 構文でプラグインを導入。バージョン pin や capability フィルタは将来拡張として検討。
@@ -264,12 +264,12 @@ impl Parser<T> {
 
 * `if` 式：
 
-  ```kestrel
+  ```reml
   if cond then expr1 else expr2
   ```
 * `match` 式（パターンマッチ）：
 
-  ```kestrel
+  ```reml
   match expr with
   | Some(x) -> x
   | None    -> 0
@@ -279,7 +279,7 @@ impl Parser<T> {
 
 * ループ：`while`・`for` は式として扱われ、結果は `()`（ユニット）です。`loop` は無条件ループで、`break`/`continue` は今後の拡張に備えて予約されています。
 
-  ```kestrel
+  ```reml
   while cond { work() }
 
   for item in items {
@@ -297,7 +297,7 @@ impl Parser<T> {
 
 ### C.6 ブロックと束縛
 
-```kestrel
+```reml
 {
   let x = 1
   let y = 2
@@ -315,7 +315,7 @@ impl Parser<T> {
 * `unsafe { exprs }` は未定義動作を引き起こし得る操作（FFI 呼び出し、生ポインタ操作など）を明示的に囲む境界です。内部で発生した `ffi` や `unsafe` 効果はブロック全体に付与されます（[1.3 節](1-3-effects-safety.md)）。
 * `unsafe` ブロック自体は式であり、最後の式の値を返します。属性を併用して `@pure` 等を禁止することもできます。
 
-```kestrel
+```reml
 unsafe {
   let ptr = buf.asPtr();
   extern_printf(ptr);
@@ -327,7 +327,7 @@ unsafe {
 * `expr?` は `Result<T, E>` や `Option<T>` のような短絡型を対象に、失敗を即座に呼び出し側へ伝播します。成功時は中身の値を返し、失敗時は現在の式全体を早期に終了します。
 * 対応する型と変換規則は [効果と安全性](1-3-effects-safety.md) で定義されます。`try` ブロックや `?` を含む関数は暗黙に同じ短絡型を返す必要があります。
 
-```kestrel
+```reml
 fn readConfig(path: String) -> Result<Config, Error> = {
   let text = readFile(path)?;
   parseConfig(text)?
@@ -377,7 +377,7 @@ fn readConfig(path: String) -> Result<Config, Error> = {
 
 ### E.1 タプル / レコード / 配列
 
-```kestrel
+```reml
 let t  = (1, true, "s")
 let p  = { x: 10, y: 20 }
 let xs = [1, 2, 3]
@@ -388,7 +388,7 @@ let xs = [1, 2, 3]
 
 ### E.2 代数的データ型（ADT）
 
-```kestrel
+```reml
 type Option<T> = | Some(T) | None
 let v = Some(42)
 match v with | Some(n) -> n | None -> 0
@@ -408,7 +408,7 @@ match v with | Some(n) -> n | None -> 0
 
 ## G. 例（仕様の運用感）
 
-```kestrel
+```reml
 use Nest.Parse.{Lex, Op}
 
 // 値と関数
@@ -554,7 +554,7 @@ NL          ::= 行末（B.3 の規則に従う）
 
 * **行末ベースの簡潔な文法**＋**式指向**＋**強い後置（適用/アクセス）**で、DSL/コンビネータ記述が短く素直に書けます。
 * **パイプ `|>` と占位 `_`**がデシュガ可能な**一貫ルール**で、読みやすいデータフローを保証。
-* **パターン・ADT・ブロック終端式**で、構文も AST も"自然に"Kestrel→Core→IR へ落ちます。
+* **パターン・ADT・ブロック終端式**で、構文も AST も"自然に"Reml→Core→IR へ落ちます。
 
 ---
 

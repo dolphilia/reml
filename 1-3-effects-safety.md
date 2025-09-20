@@ -1,4 +1,4 @@
-# 1.3 効果と安全性（Effects & Safety）— Kestrel 言語コア仕様
+# 1.3 効果と安全性（Effects & Safety）— Reml (Readable & Expressive Meta Language) 言語コア仕様
 
 > 目的：**書きやすさ・読みやすさ・高品質エラー**を保ったまま、**実用性能**と**静的安全**を両立。
 > 方針：MVPでは **HM 型推論 + 値制限 + 属性ベースの効果契約** を採用し、複雑な型レベル効果（行多相など）は**任意の拡張段**に留める。**純粋関数がデフォルト**、副作用は明示。
@@ -7,7 +7,7 @@
 
 ## A. 効果の分類（MVP）
 
-Kestrel は関数や式の“外界への作用”を次の**5種の効果フラグ**に分類し、**検出・表示**し、必要に応じて**静的に禁止**できる。
+Reml は関数や式の"外界への作用"を次の**5種の効果フラグ**に分類し、**検出・表示**し、必要に応じて**静的に禁止**できる。
 
 | 効果       | 意味                             | 例                            | 既定           |
 | -------- | ------------------------------ | ---------------------------- | ------------ |
@@ -27,7 +27,7 @@ Kestrel は関数や式の“外界への作用”を次の**5種の効果フラ
 * **効果検出**：本体に `mut/io/ffi/panic/unsafe` を含むと、関数は該当効果を**潜在効果**として持つ。
 * **値制限（1.2 で予告）**：`let` 束縛の一般化は**効果のない確定値**に限る。効果を含む右辺は**単相**。
 
-  ```kestrel
+  ```reml
   let id = |x| x                 // 一般化: ∀a. a -> a
   let line = readLine()          // io 効果 → 単相
   ```
@@ -38,7 +38,7 @@ Kestrel は関数や式の“外界への作用”を次の**5種の効果フラ
 
 型システムに効果を織り込みすぎないため、\*\*属性（アトリビュート）\*\*で「効果契約」を表明・検査する。
 
-```kestrel
+```reml
 @pure        // mut/io/ffi/panic/unsafe を禁止
 @no_panic    // panic を禁止（→ コンパイル時チェック）
 @no_alloc    // 文字列/ベクタ等のヒープ確保を禁止（MIR検査）
@@ -49,7 +49,7 @@ Kestrel は関数や式の“外界への作用”を次の**5種の効果フラ
 * **違反時は型エラー同等のわかりやすい診断**を出す。
 * 例：
 
-  ```kestrel
+  ```reml
   @pure
   fn sum(xs: [i64]) -> i64 = { print("x"); fold(xs, 0, (+)) }
   // error: @pure 関数で io 効果が検出されました … at print
@@ -63,7 +63,7 @@ Kestrel は関数や式の“外界への作用”を次の**5種の効果フラ
 * **失敗は型で扱う**：`Option<T>`, `Result<T,E>` を標準化。
 * **伝播糖衣 `?`**（MIR で早期 return に降格）：
 
-  ```kestrel
+  ```reml
   fn readConfig(path: String) -> Result<Config, Error> = {
     let s  = readFile(path)?       // Result の Err を自動伝播
     parseConfig(s)?
@@ -78,7 +78,7 @@ Kestrel は関数や式の“外界への作用”を次の**5種の効果フラ
 * **値は原則イミュータブル**。配列・レコード・文字列はデフォルト不変。
 * **再代入**は `var` 束縛に限定（`mut` 効果）。
 
-  ```kestrel
+  ```reml
   var acc = 0
   for x in xs { acc := acc + x }   // `:=` は再代入
   ```
@@ -94,7 +94,7 @@ Kestrel は関数や式の“外界への作用”を次の**5種の効果フラ
 
 * **FFI 宣言**：
 
-  ```kestrel
+  ```reml
   extern "C" fn puts(ptr: Ptr<u8>) -> i32
   ```
 
@@ -112,7 +112,7 @@ Kestrel は関数や式の“外界への作用”を次の**5種の効果フラ
 * **`defer expr`**：ブロック脱出時に `expr` を必ず実行。
   例：ファイルやロックの確実な解放。
 
-  ```kestrel
+  ```reml
   fn write(path: String, bytes: [u8]) -> Result<(), Error> = {
     let f = File.open(path, "wb")?; defer f.close()
     f.writeAll(bytes)?; Ok(())
@@ -149,7 +149,7 @@ Kestrel は関数や式の“外界への作用”を次の**5種の効果フラ
 
 ### J.1 パーサは純粋
 
-```kestrel
+```reml
 @pure
 fn intLit() -> Parser<i64> =
   digits().map(parseInt)             // 文字列→数値, 外界に作用しない
@@ -157,7 +157,7 @@ fn intLit() -> Parser<i64> =
 
 ### J.2 効果を持つ境界を薄くする
 
-```kestrel
+```reml
 @pure
 fn parseFile(path: String) -> Result<AST, Error> = {
   // error: io 効果の `readFile` は @pure で禁止
@@ -174,7 +174,7 @@ fn parseFile(path: String) -> Result<AST, Error> = {
 
 ### J.3 unsafe と FFI
 
-```kestrel
+```reml
 extern "C" fn qsort(ptr: Ptr<u8>, len: usize, elem: usize, cmp: Ptr<void>) -> void
 
 fn sortBytes(xs: Vec<u8>) -> Vec<u8> = {
@@ -187,7 +187,7 @@ fn sortBytes(xs: Vec<u8>) -> Vec<u8> = {
 
 ### J.4 `@no_panic` と `?`
 
-```kestrel
+```reml
 @no_panic
 fn strictlyPositive(n: i64) -> Result<i64, Error> = {
   if n <= 0 { return Err(Error::Invalid) }
@@ -239,7 +239,7 @@ fn total(xs: [i64]) -> Result<i64, Error> =
 
 #### サンプル（Draft）
 
-```kestrel
+```reml
 @requires(effect = {runtime, audit})
 fn reloadParser(parser: Parser<AppConfig>, diff: SchemaDiff<Old, New>)
   -> Result<Parser<AppConfig>, ReloadError>

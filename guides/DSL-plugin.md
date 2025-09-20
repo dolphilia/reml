@@ -10,9 +10,9 @@
 | `ParserPlugin.capabilities` | 提供する capability の一覧。`since` / `deprecated` を利用して互換性を管理。 |
 | `PluginRegistrar` | `register_schema`, `register_parser`, `register_capability` を提供し、プラグインが DSL を公開する。 |
 
-```kestrel
+```reml
 let templating = ParserPlugin {
-  name = "Kestrel.Web.Templating",
+  name = "Reml.Web.Templating",
   version = SemVer(1, 2, 0),
   capabilities = [
     { name = "template", version = SemVer(1,0,0), traits = {"render"}, since = Some(SemVer(1,0,0)), deprecated = None }
@@ -55,11 +55,11 @@ register_plugin(templating)?
 
 - プラグインは `dependencies: List<PluginDependency>` を宣言し、`register_plugin` 時に依存が満たされているかチェック。
 - 複数プラグインをまとめた `PluginBundle` を用意し、`register_bundle` で一括登録できる。
-- CLI `kestrel-plugin install <bundle>` を利用して、リポジトリからバンドルを取得→検証→登録するワークフローを想定。
-- 推奨ディレクトリ構成：`kestrel-plugins/<plugin-name>/<version>/plugin.ks` とメタデータ (`plugin.toml`) を配置。
+- CLI `reml-plugin install <bundle>` を利用して、リポジトリからバンドルを取得→検証→登録するワークフローを想定。
+- 推奨ディレクトリ構成：`reml-plugins/<plugin-name>/<version>/plugin.ks` とメタデータ (`plugin.toml`) を配置。
 
 ```bash
-kestrel-plugin install kestrel-web-bundle --source https://example.com/plugins
+reml-plugin install reml-web-bundle --source https://example.com/plugins
 ```
 
 > 依存解決や配布形式の詳細標準化は進行中（2-1 節の案を参照）。

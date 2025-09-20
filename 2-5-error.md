@@ -7,7 +7,7 @@
 
 ## A. 型（データモデル）
 
-```kestrel
+```reml
 type Severity = Error | Warning | Note
 
 type Expectation =
@@ -53,7 +53,7 @@ type ParseError = {
 
 ### B-1. 単一パーサの失敗を作る
 
-```kestrel
+```reml
 fn Err.expected(at: Span, xs: Set<Expectation>) -> ParseError
 fn Err.custom(at: Span, msg: Str) -> ParseError
 ```
@@ -92,7 +92,7 @@ fn Err.custom(at: Span, msg: Str) -> ParseError
 
 ## C. 表示（pretty）と多言語
 
-```kestrel
+```reml
 fn Err.pretty(src: Str, e: ParseError, opts: PrettyOptions) -> String
 
 type PrettyOptions = {
@@ -168,7 +168,7 @@ note: while parsing expression → term → factor
 
 ## E. `recover`（回復）の仕様
 
-```kestrel
+```reml
 fn recover<T>(p: Parser<T>, until: Parser<()>, with: T) -> Parser<T>
 ```
 
@@ -180,7 +180,7 @@ fn recover<T>(p: Parser<T>, until: Parser<()>, with: T) -> Parser<T>
 
 ## F. API（作る・混ぜる・見せる）
 
-```kestrel
+```reml
 // 作る
 fn expectedToken(at: Span, s: Str) -> ParseError =
   Err.expected(at, {Token(s)})
@@ -209,7 +209,7 @@ fn toDiagnostics(src: Str, e: ParseError, o: PrettyOptions = {}) -> List<Diagnos
 * `audit_id: Option<Uuid>` – `audit` 効果が発行する相関 ID。
 * `change_set: Option<List<Change>>` – 差分適用時の変更一覧（フィールドパス・旧値・新値）。
 
-```kestrel
+```reml
 type ErrorDomain =
   | Config | Runtime | Network | Parser | Schema | Security
 
@@ -243,13 +243,13 @@ type Change = {
 ### F-2. IDE/LSP・監査連携（Draft）
 
 * **LSP 変換ヘルパ**: `to_lsp_diagnostics` は `audit_id` / `change_set` を `data` に埋め込み、IDE 側で監査ビューや差分レポートへジャンプできるようにする。
-* **構造化ログ**: `{"event":"kestrel.error", "domain":..., "audit_id":...}` の JSON フォーマットを推奨し、CI/CD や監査ツールでの集計を容易にする。
+* **構造化ログ**: `{"event":"reml.error", "domain":..., "audit_id":...}` の JSON フォーマットを推奨し、CI/CD や監査ツールでの集計を容易にする。
 * **監査ログ連携**: CLI は `audit_id` をキーに差分レポートを生成し、承認フローやロールバック手順を自動化できるようにする.
 
 
 ### F-3. サンプル（Draft）
 
-```kestrel
+```reml
 let cfg = parseConfig("app.ks")?
 match validateConfig(cfg) with
 | Ok(()) -> Ok(cfg)
@@ -259,9 +259,9 @@ match validateConfig(cfg) with
 }
 ```
 
-```kestrel
+```reml
 fn toStructuredLog(diag: Diagnostic) -> Json = json!({
-  "event": "kestrel.error",
+  "event": "reml.error",
   "domain": diag.domain,
   "code": diag.code,
   "message": diag.message,

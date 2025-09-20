@@ -1,6 +1,6 @@
-# 0.1 Kestrel の概要
+# 0.1 Reml の概要
 
-Kestrel はパーサーコンビネーターに最適化された言語です。コンパイラやインタプリタを設計して実行するという難しい工程を最短で実現できることを目指します。Kestrel のコア仕様と標準APIは、書きやすさ・読みやすさ・エラーの品質が良さに徹底的に追求します。また、実用性能とUnicode前提であることも大切な点です。
+Reml (Readable & Expressive Meta Language) はパーサーコンビネーターに最適化された言語です。コンパイラやインタプリタを設計して実行するという難しい工程を最短で実現できることを目指します。Reml のコア仕様と標準APIは、書きやすさ・読みやすさ・エラーの品質が良さに徹底的に追求します。また、実用性能とUnicode前提であることも大切な点です。
 
 ---
 
@@ -16,13 +16,13 @@ Kestrel はパーサーコンビネーターに最適化された言語です。
 
 ---
 
-## 1. 言語コア仕様（Kestrel）
+## 1. 言語コア仕様（Reml）
 
 ### 1.1 構文（抜粋）
 
 * **宣言**
 
-  ```kestrel
+  ```reml
   let x = 42           // 不変（デフォルト）
   var y = 0            // 可変
   fn add(a: i64, b: i64) -> i64 = a + b
@@ -30,14 +30,14 @@ Kestrel はパーサーコンビネーターに最適化された言語です。
 
 * **型エイリアス / 代数的データ型（ADT）**
 
-  ```kestrel
+  ```reml
   type Result<T,E> = Ok(value: T) | Err(error: E)
   type Expr = Int(i64) | Neg(Expr) | Add(Expr, Expr) | ...
   ```
 
 * **パターンマッチ**
 
-  ```kestrel
+  ```reml
   match v with
   | Ok(x)  -> println(x)
   | Err(e) -> panic(e)
@@ -45,14 +45,14 @@ Kestrel はパーサーコンビネーターに最適化された言語です。
 
 * **パイプ / 関数合成**
 
-  ```kestrel
+  ```reml
   value |> f |> g(arg=1)    // 左→右に読む
   let h = f >> g            // 合成（h(x) = g(f(x)))
   ```
 
 * **インポート**
 
-  ```kestrel
+  ```reml
   use Nest.Parse
   use Nest.Parse.{Lex, Op, Err}
   ```
@@ -62,7 +62,7 @@ Kestrel はパーサーコンビネーターに最適化された言語です。
 * **Hindley-Milner 系推論**（明示注釈は任意、公開APIは型必須推奨）
 * **ADT + ジェネリクス + 型クラス相当（Traits）**
 
-  ```kestrel
+  ```reml
   trait Show { fn show(self) -> String }
   impl Show for i64 { fn show(self) = self.toString() }
   ```
@@ -82,11 +82,11 @@ Kestrel はパーサーコンビネーターに最適化された言語です。
 
 ## 2. 標準パーサAPI（Nest.Parse）仕様
 
-Kestrel の“核”。**小さく強いコア**＋**宣言ビルダー**＋**エラー工具**。
+Reml の"核"。**小さく強いコア**＋**宣言ビルダー**＋**エラー工具**。
 
 ### 2.1 パーサ型
 
-```kestrel
+```reml
 type Parser<T> = fn(&mut State) -> Reply<T>
 type Reply<T> =
   | Ok(value: T, rest: Input, span: Span, consumed: Bool)
@@ -111,7 +111,7 @@ type Reply<T> =
 
 ### 2.3 字句工具（Nest.Parse.Lex）
 
-```kestrel
+```reml
 let sc = Lex.spaceOrTabsOrNewlines
            | Lex.commentLine("//")
            | Lex.commentBlock("/*","*/")
@@ -126,7 +126,7 @@ let floatLit  = lexeme(Lex.float())
 
 ### 2.4 演算子優先度ビルダー（Nest.Parse.Op）
 
-```kestrel
+```reml
 precedence(atom) {
   right "^" using (|a,b| Expr::Pow(a,b))
   left  "*" using (|a,b| Expr::Mul(a,b))
@@ -143,7 +143,7 @@ precedence(atom) {
 
 ### 2.5 エラー設計（Nest.Parse.Err）
 
-```kestrel
+```reml
 type ParseError = {
   at: Span,                        // 失敗位置
   expected: Set<Expectation>,      // 期待集合（例: token(")"), rule("expr") など）
@@ -170,7 +170,7 @@ type ParseError = {
 
 ## 3. 実装アプローチ
 
-Kestrelは段階的な実装を想定しており、以下の順序で開発されます：
+Remlは段階的な実装を想定しており、以下の順序で開発されます：
 
 ### 3.1 MVP（最小実装）
 
@@ -227,7 +227,7 @@ Builtin  ::= "i64" | "f64" | "Bool" | "String" | ...
 
 ## 5. 実装ガイド（言語処理系の観点）
 
-* **フロントエンド**：Kestrel 自身も `Nest.Parse` で自己記述可能（ブートストラップ）。
+* **フロントエンド**：Reml 自身も `Nest.Parse` で自己記述可能（ブートストラップ）。
 * **エラーフォーマッタ**：`Err.pretty(src, e)` は**三点リーダ付近強調**・**期待候補上位5件**を提示。
 * **最適化**：
 
@@ -238,7 +238,7 @@ Builtin  ::= "i64" | "f64" | "Bool" | "String" | ...
 
 ---
 
-## 6. まとめ（Kestrelの"要点"）
+## 6. まとめ（Remlの"要点"）
 
 * **言語側**：パイプ・型推論・ADT・マッチ・末尾最適化・Unicode。
 * **ライブラリ側**：**少数精鋭のコンビネータ**＋**宣言的 precedence**＋**cut/label/recover/trace**。
