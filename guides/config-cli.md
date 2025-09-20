@@ -28,7 +28,7 @@ reml-config render --template config/prod.ks --env staging --output generated/st
 
 ## 3. 構造化ログと監査
 
-- `--format json` の出力は `2-5-error.md` の `Diagnostic` 拡張に準拠し、`domain` / `audit_id` / `change_set` を含む。
+- `--format json` の出力は `2-5-error.md` の `Diagnostic` 拡張に準拠し、`domain` / `audit_id` / `change_set` / `severity_hint` を含む。
 - `--audit` を指定すると `audit_id` を標準出力に含め、`guides/runtime-bridges.md` のホットリロード手順と連結できる。
 
 ## 4. CI/CD 連携
@@ -51,4 +51,4 @@ reml-config render --template config/prod.ks --env staging --output generated/st
 | レンダリング失敗 (`RenderError`) | 3 | テンプレート内の計算・依存不足 |
 | 入出力失敗 (`IoError`) | 4 | ファイルアクセス、権限不足 |
 
-`reml-config` の JSON 出力は `Diagnostic`／`Change`／`RuntimeMetrics` と同じキー（`audit_id`, `domain`, `change_set`）を共有し、IDE・ランタイム・データ品質ガイドと一貫した監査パイプラインを構築する。
+`reml-config` の JSON 出力は `Diagnostic`／`Change`／`RuntimeMetrics` と同じキー（`audit_id`, `domain`, `change_set`, `severity_hint`）を共有し、IDE・ランタイム・データ品質ガイドと一貫した監査パイプラインを構築する。

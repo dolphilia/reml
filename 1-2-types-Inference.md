@@ -254,40 +254,69 @@ let c: f32 = 10   // 単一化で c : f32（数値多相の縮退）
 
 ---
 
-## J. ドメイン型拡張（Draft）
+## J. ドメイン型拡張
 
-> データパイプラインや機械学習 DSL、クラウド設定などで必要となる型を言語レベルで扱うための拡張案。フェーズ2以降で標準 API と連携しつつ精緻化する。
+> データパイプライン・設定 DSL・クラウド運用を Reml の型推論で直接扱うための拡張。`Core.Config`・`Core.Data`（2-7/2-8 節）と連動し、**テンソル計算**・**スキーマ検証**・**リソース識別**・**効果タグ**を型システムが一貫して追跡する。
 
-1. **テンソル型**
-   - 型表記: `Tensor<Shape, T>`。`Shape` は `Vec<usize>` もしくは定数配列型。
-   - 基本規則: `Tensor<S, T> + Tensor<S, T> -> Tensor<S, T>`。異なる `Shape` の場合は `TensorOp` trait の制約解決を要求。
-   - ブロードキャスト: `Tensor<[m, n], T> + Tensor<[1, n], T>` のようなケースでは `Broadcast<S, R>` trait を導入し、`Shape` の互換性を判定する。
+### J.1 テンソル型
 
-2. **列型 / スキーマ型**
-   - 列型表記: `Column<T, Meta>`。`Meta` は統計情報や制約を表す（例: `Meta<{ nullable = false }>`）。
-   - スキーマ型: `Schema<{ field1: Column<T1>, field2: Column<T2>, ... }>`。
-   - スキーマ差分: `SchemaDiff<Old, New>` を型レベルで生成し、差分適用 DSL で利用する。
+* **表記**: `Tensor<Shape, T>`。`Shape` は長さ既知の配列（例: `[batch, features]`）または `ConstVec<usize>`。
+* **種 (kind)**: `Shape : Nat^k`、`T : Type`。したがって `Tensor<_, _> : Type`。
+* **単一化**: `Tensor<S, T>` と `Tensor<R, U>` の単一化は `(S = R) ∧ (T = U)` を要求。`S` が一致しない場合、`Broadcast<S, R, O>` 制約を生成し、成功時は `Tensor<O, T>` に解決する。
+* **演算**: 算術演算は `TensorOp<Op, L, R, Out>` トレイトに委譲。
 
-3. **リソース ID 型**
-   - 表記: `Resource<P, K>`。`P`（Provider）と `K`（Kind）を型レベルタグとし、異なるプロバイダ間の混用を防止。
-   - 例: `Resource<Aws, S3Bucket>`, `Resource<Gcp, PubSubTopic>`。
-   - 型制約: `ResourceOps<P, K>` trait で操作を限定し、不正な FFI 呼び出しを型で検出。
+```
+Γ ⊢ lhs : Tensor<S, T>
+Γ ⊢ rhs : Tensor<R, T>
+Γ ⊢ op : Add
+Γ ⊢ Broadcast<S, R, O>
+-----------------------------------------
+Γ ⊢ lhs + rhs : Tensor<O, T>
+```
 
-4. **効果タグ付き関数型**
-   - 記法案: `fn(args) -> T effect {db, audit}`。
-   - 推論: 効果タグは呼び出しチェーンで和集合を形成し、`@requires(effect)` 属性で静的検査。
-   - `1-3-effects-safety.md` の拡張効果分類と連携。
+* **効果**: テンソル演算自体は純粋 (`pure`)。ただし `Tensor` を `DeviceHandle` へ移す操作は `effect {gpu}` を伴い、`1-3` 節の `gpu` タグが要求される。
 
-5. **スキーマ進化の推論規則**
-   - `Schema<A>` と `Schema<B>` の単一化に失敗した場合、`SchemaDiff<A,B>` 制約を生成。
-   - マイグレーション DSL は `SchemaDiff` を解決する `upgrade` / `downgrade` 関数を要求。
+### J.2 列・スキーマ型
 
-#### サンプル（Draft）
+* **列型**: `Column<T, Meta>`。`Meta` は列プロパティ（`nullable`, `unique`, `check`）を記述する型レベルレコード。
+* **スキーマ型**: `Schema<Record>`。`Record` は `{ field: Column<...>, ... }` の形で、`Schema<AppConfig>` のように使用する。
+* **フィールドアクセス**:
+
+```
+Γ ⊢ cfg : Schema<{ database: Column<DbConfig>, ... }>
+-----------------------------------------------------
+Γ ⊢ cfg.database : Column<DbConfig>
+```
+
+* **条件付き束縛**: `when` や `let field if cond = expr` は `SchemaPatch<Record>` として型付けされ、`cond : Schema<Record> -> Bool` を要求。型検査では `cond` が純粋であることを確認する。
+* **差分**: `SchemaDiff<Old, New>` は `Old` と `New` の型レベル比較結果。`Schema<Old>` と `Schema<New>` の単一化が失敗すると `DiffConstraint<Old, New>` を生成し、クライアントは `SchemaDiff::between` を呼び出す義務を負う。
+
+### J.3 リソース ID 型
+
+* **表記**: `Resource<Provider, Kind>`。`Provider : TypeTag`、`Kind : TypeTag`。
+* **目的**: 異なるクラウド/環境の資源を混用しないよう型で制限。
+* **操作**: `ResourceOps<P, K, Capability>` トレイトが要求 Capability を規定。例えば `Capability::List` を持たない `Resource<Aws, S3Bucket>` に対する `list_objects` 呼び出しは型エラー。
+* **効果**: `Resource` 操作は `effect {network}` または `effect {config}` を伴い、`Capability` と `EffectTag` が同期しているか（`Capability::Audit` ↔ `audit`）を検査する。
+
+### J.4 効果タグ付き関数型
+
+* **表記**: `fn(args) -> T effect Eff`, ここで `Eff : EffectSet` は有限集合 (`{config, audit}` 等)。
+* **推論**: 効果は**遅延和集合**。関数本体から得られた潜在効果 `Σ` と注釈された `Eff` が一致しない場合、
+  * `Σ ⊆ Eff` でなければ型エラー（宣言したより強い効果は不可）。
+  * `Eff ⊂ Σ` であれば推論結果に不足効果を追加（警告 `W2201` を発行）。
+* **属性連携**: `@requires(effect = Eff)` は呼び出し側が `Eff` を満たしているか静的チェックする（1-3 節 K.2）。
+
+### J.5 スキーマ進化と制約生成
+
+* `Schema<A>` と `Schema<B>` の単一化が失敗した場合、型推論は `DiffConstraint<A, B>` を生成し、`DiffConstraint` が解決されないまま残ると `SchemaEvolutionRequired` エラーを報告する。
+* `SchemaDiff<A, B>` は `DiffConstraint` を満たす証明オブジェクト。`migrate : Schema<A> -> Schema<B> effect {config, audit}` のような関数は、コンパイラが自動的に `DiffConstraint<A, B>` を引数推論に挿入する。
+
+### サンプル
 
 ```reml
 schema DbConfig {
-  url: Column<String>
-  pool_size: Column<i32> = 8
+  url: Column<String, { nullable = false }>
+  pool_size: Column<i32, { min = 1 }> = 8
 }
 
 fn migrate(cfg: Schema<DbConfig>) -> Schema<DbConfig>
@@ -300,38 +329,29 @@ fn migrate(cfg: Schema<DbConfig>) -> Schema<DbConfig>
 fn train(model: Tensor<[batch, features], f32>, weights: Tensor<[features, 1], f32>)
   -> Tensor<[batch, 1], f32>
   effect {gpu} = model.matmul(weights)
-```
 
-### 推論規則（案）
-
-* テンソル演算: `TensorOp` trait の形で演算をモジュール化し、`Shape` の整合性やブロードキャスト可否を制約解決で判断。
-* スキーマ型: フィールドアクセス `config.database.url` は `Schema<...>` から `Column<String>` に推論し、`requires` 句は `Constraint` trait で実行。
-* 効果付き関数: `effect` タグは関数型推論で和集合を形成し、呼び出し側の効果要求に反映。
-
-```reml
-fn combine_effects(a: EffectSet, b: EffectSet) -> EffectSet =
-  a.union(b)
-
-fn call_with_effects<T>(f: Fn -> T effect E, g: Fn -> T effect F) -> T effect combine_effects(E, F)
-```
-
-サンプル：
-
-```reml
-let apply = |cfg: Schema<AppConfig>| -> AppConfig effect {config, audit} {
-  audit.log("config.apply", SchemaDiff::between(cfg, cfg))
-  cfg.realize()
+let promote = |aws_id: Resource<Aws, S3Bucket>| -> Resource<Aws, S3Bucket>
+  effect {network, audit} {
+  audit.log("resource.promote", aws_id)
+  aws_id.ensure_capability(Capability::Versioned)?
 }
 
-let migrate = |old: Schema<AppConfig>, new: Schema<AppConfig>| {
-  match SchemaDiff::between(old, new) with
-  | Ok(_)      -> Ok(new)
-  | Err(diff)  -> Err(diff)
+let apply = |cfg: Schema<AppConfig>| -> AppConfig effect {config, audit} {
+  let diff = SchemaDiff::between(cfg, cfg);
+  audit.log("config.apply", diff);
+  cfg.realize()
 }
 
 let (_ : SchemaDiff<AppConfig>) =
   SchemaDiff::between(appSchema, prodSchema)
 ```
+
+### 推論規則のポイント
+
+* **Tensor**: `Broadcast` 証明の存在を以て整合性を判断。証明は型クラス解決 (`impl Broadcast<[m, n], [1, n], [m, n]>`) によって供給。
+* **Schema/Column**: フィールドアクセスはレコード型分解で処理し、`Column<T, Meta>` の `Meta` は暗黙に単一化される。`Meta` の不一致は `ColumnMetaMismatch` として報告。
+* **Resource**: `Resource<P, K>` の呼び出しには対応する `ResourceOps<P, K, Cap>` がインスタンスとして必要。`Cap` が `audit` と整合しない場合、`MissingAuditCapability` を報告。
+* **EffectSet**: `effect` 注釈がない関数呼び出しでも、暗黙に推論された効果集合が引数・戻り値に伝搬する。関数型同士の単一化では効果集合も同時に比較する。
 
 ---
 

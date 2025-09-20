@@ -10,6 +10,26 @@
 ```reml
 type Severity = Error | Warning | Note
 
+type SeverityHint = Rollback | Retry | Ignore | Escalate
+
+type ErrorDomain =
+  | Parser
+  | Config
+  | Runtime
+  | Network
+  | Data
+  | Audit
+  | Security
+  | CLI
+
+type AuditId = Uuid
+
+type ChangeSetRef = {
+  id: Option<Str>,
+  fingerprint: Option<Hash256>,
+  diff: Option<Json>
+}
+
 type Expectation =
   | Token(Str)          // 具体トークン（")", "if", "+", …）
   | Keyword(Str)        // 識別子と衝突しない予約語
@@ -26,9 +46,13 @@ type FixIt =            // IDE 用 “その場で直せる” 提案
 
 type Diagnostic = {
   severity: Severity,
+  severity_hint: Option<SeverityHint>,
+  domain: ErrorDomain,
   code: Option<Str>,        // "E0001" など（安定ID）
   message: Str,             // 1 行要約
   at: Span,                 // 主位置（1.4: 列=グラフェム）
+  audit_id: Option<AuditId>,
+  change_set: Option<ChangeSetRef>,
   notes: List<(Span, Str)>, // 追加メモ（複数可）
   fixits: List<FixIt>
 }
@@ -46,6 +70,8 @@ type ParseError = {
 
 * **`ParseError` は集約用の“素の事実”**、**`Diagnostic` は表示用**（`Err.pretty` が `ParseError` から `Diagnostic` を起こす）。
 * `Expectation` は**種類別**に持ち、message 生成時に**まとまりで整形**（例：「期待：`)`・`number`・識別子のいずれか」）。
+* `domain` はエラーの責務領域を示し、CLI/監査ログでのフィルタリングに利用。`severity_hint` は運用側への推奨アクション（ロールバック・再試行・即時エスカレーションなど）を表す。
+* `change_set` は設定差分・マイグレーション計画など、影響範囲を同定するための指標。`fingerprint` は差分内容に対する安定ハッシュを提供する。
 
 ---
 
@@ -203,16 +229,15 @@ fn toDiagnostics(src: Str, e: ParseError, o: PrettyOptions = {}) -> List<Diagnos
 
 ### F-1. 拡張診断メタデータ
 
-監査ログや設定差分を扱うシナリオで活用するための追加情報を、下記フィールドで標準化する。
+監査ログや設定差分を扱うシナリオで活用するため、`Diagnostic` に以下のフィールドを追加した。
 
-* `domain: Option<ErrorDomain>` – `Config` / `Runtime` / `Network` / `Schema` 等の分類タグ。
-* `audit_id: Option<Uuid>` – `audit` 効果が発行する相関 ID。
-* `change_set: Option<List<Change>>` – 差分適用時の変更一覧（フィールドパス・旧値・新値）。
+* `domain: ErrorDomain` – `Parser` / `Config` / `Runtime` / `Network` / `Data` / `Audit` / `Security` / `CLI` の分類タグ。
+* `audit_id: Option<AuditId>` – `audit` 効果が発行する相関 ID（UUID）。
+* `change_set: Option<ChangeSetRef>` – 差分適用時の変更一覧・ハッシュ・サマリを含む参照構造。
+
+`ChangeSetRef.diff` には `List<Change>` を格納する慣習を推奨する。
 
 ```reml
-type ErrorDomain =
-  | Config | Runtime | Network | Parser | Schema | Security
-
 type Change = {
   path: List<Str>,
   before: Option<Any>,
@@ -225,15 +250,17 @@ type Change = {
 | Domain | Prefix | 例 | 備考 |
 | --- | --- | --- | --- |
 | Parser | `E1` / `W1` | `E1001` | コア構文・パーサエラー（既存コードと互換） |
-| Config | `E4` / `W4` | `E4001` | 設定スキーマ関連（`schema`, `Config` 章） |
+| Config | `E4` / `W4` | `E4001` | 設定スキーマ関連（`schema`, `Core.Config`） |
 | Runtime | `E5` / `W5` | `E5002` | ランタイム更新・ホットリロード失敗 |
 | Network | `E6` / `W6` | `E6003` | クラウド/API/ネットワーク操作 |
-| Schema | `E7` / `W7` | `E7001` | データスキーマ検証の失敗 |
+| Data | `E7` / `W7` | `E7001` | データモデリング・`Core.Data` の検証 |
 | Security | `E8` / `W8` | `E8004` | セキュリティ・ポリシー違反 |
+| Audit | `E9` / `W9` | `E9001` | 監査連携・承認フローのエラー |
+| CLI | `EA` / `WA` | `EA001` | CLI/ツール層での検証失敗 |
 
 - 形式は `E{domain-prefix}{4桁}`。警告は `W{domain-prefix}{4桁}`。
 - 既存コード (`E1001` 等) は Parser domain に属するとみなし、`E1xxx` を継続利用。
-- `Diagnostic.code` にこの規約を適用し、CLI (`reml-run`, `reml-config`) から出力される JSON でも同一コードを使用する。
+- `Diagnostic.code` にこの規約を適用し、CLI (`reml-run`, `reml-config`, `reml-data`) から出力される JSON でも同一コードを使用する。
 
 
 * FixIt テンプレート例:
@@ -243,8 +270,8 @@ type Change = {
 
 ### F-2. IDE/LSP・監査連携
 
-* **LSP 変換ヘルパ**: `to_lsp_diagnostics` は `audit_id` / `change_set` を `data` に埋め込み、IDE 側で監査ビューや差分レポートへジャンプできるようにする。
-* **構造化ログ**: `{"event":"reml.error", "domain":..., "audit_id":..., "code":...}` の JSON フォーマットを推奨し、CI/CD や監査ツールでの集計を容易にする。
+* **LSP 変換ヘルパ**: `to_lsp_diagnostics` は `domain`・`audit_id`・`change_set`・`severity_hint` を `data` に埋め込み、IDE 側で監査ビューや差分レポートへジャンプできるようにする。
+* **構造化ログ**: `{"event":"reml.error", "domain":..., "audit_id":..., "code":..., "severity_hint":...}` の JSON フォーマットを推奨し、CI/CD や監査ツールでの集計を容易にする。
 * **監査ログ連携**: CLI は `audit_id` をキーに差分レポートを生成し、承認フローやロールバック手順を自動化できるようにする。
 
 
@@ -265,9 +292,13 @@ fn toStructuredLog(diag: Diagnostic) -> Json = json!({
   "event": "reml.error",
   "domain": diag.domain,
   "code": diag.code,
+  "severity": diag.severity,
+  "severity_hint": diag.severity_hint,
   "message": diag.message,
   "audit_id": diag.audit_id,
-  "change_set": diag.change_set
+  "change_set": diag.change_set,
+  "notes": diag.notes,
+  "fixits": diag.fixits
 })
 ```
 

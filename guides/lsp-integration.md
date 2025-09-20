@@ -51,13 +51,15 @@ fn to_lsp_diagnostics(diags: List<Diagnostic>) -> List<LspDiagnostic> =
     data = Some(json!({
       "domain": d.domain,
       "audit_id": d.audit_id,
-      "change_set": d.change_set
+      "change_set": d.change_set,
+      "severity_hint": d.severity_hint
     }))
   })
 ```
 
 - `audit_id` を IDE 側で保持し、承認フローや差分レビューに利用。
 - `change_set` を JSON として埋め込むことで、設定差分を IDE 上で表示可能。
+- `severity_hint` に基づき、IDE 側で「ロールバック推奨」「再試行可」などのガイドを提示できる。
 
 ## 4. ハイライト・補完ツールチェーン
 

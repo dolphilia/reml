@@ -197,47 +197,51 @@ fn strictlyPositive(n: i64) -> Result<i64, Error> = {
 fn total(xs: [i64]) -> Result<i64, Error> =
   xs |> map(strictlyPositive) |> sequence ? |> sumOk
 ```
-## K. 効果分類と運用ガイドライン（Draft）
+## K. 効果分類と運用ガイドライン
 
-> 横断シナリオで必要とされる効果タグと運用パターンを整理する暫定案。標準 API や運用ガイドと連携して順次精緻化する。
+> 横断シナリオ（設定適用／監査／ホットリロード／分散実行）で必要となる**拡張効果タグ**を公式化し、`@requires(effect = …)` と `effect { … }` 表記が解釈すべき前提と義務を定義する。
 
-### K.1 効果カテゴリの拡張案
+### K.1 公式効果タグと意味論
 
-| 効果タグ | 想定用途 | 備考 |
-| --- | --- | --- |
-| `config` | スキーマ読み込み・差分適用 | 設定 DSL (`schema`) と連動、失敗時に `audit` へ記録 |
-| `audit` | 監査ログ記録・変更履歴 | `2-5-error.md` の Diagnostic 拡張と結び付ける |
-| `runtime` | ホットリロード・ランタイム更新 | `unsafe` と併用し、整合性チェック必須 |
-| `db` | データベース操作 | トランザクション境界と型制約を明示 |
-| `network` | クラウド/ネットワーク更新 | タイムアウト/リトライとポリシー検証を要求 |
-| `gpu` | GPU/アクセラレータ制御 | リソース所有権と解放を `defer` で担保 |
+Reml の効果システムは基礎 5 効果（A 節）に加えて、次の **領域別タグ** を持つ。タグは部分順序付き集合 `EffectTag` に属し、**静的検査**と **監査ログ** の両方で利用する。
 
-| 組合せ | 典型シナリオ | 注意点 |
-| --- | --- | --- |
-| `config` + `audit` | 設定差分の適用 | 監査ログに `change_set` を残し、ロールバック手順を準備 |
-| `runtime` + `network` | ランタイムでのクラウド API 切り替え | タイムアウト発生時に安全な再試行と巻き戻しを定義 |
-| `db` + `audit` | マイグレーション適用 | トランザクション完了前に監査ログを確定させない |
-| `gpu` + `runtime` | GPU カーネルホットスワップ | リソースリーク防止のため `defer` と `unsafe` 全てをレビュー |
+| タグ | 区分 | 定義 | 静的要件 | 監査要件 |
+| --- | --- | --- | --- | --- |
+| `config` | 設定適用 | スキーマ宣言／差分適用 API (`Core.Config`) を通じて永続設定を変更する操作 | `Schema<T>` / `SchemaDiff` を引数に持ち、失敗時は `Result` で伝播 | `audit_id` と `change_set` を `AuditRecord` に残す |
+| `audit` | 監査記録 | 変更・検証結果を永続監査ストアへ記録する | `AuditSink`（2-7）を経由して**コミット点**を明示し、エラーでも必ず `finalize()` | すべての `Diagnostic` に `domain`・`audit_id` を付与（2-5） |
+| `runtime` | ランタイム制御 | 実行時のホットリロード・コード差し替え・FFI ハンドル操作 | `unsafe`/`ffi` が混在する場合は `@requires(effect={runtime, unsafe})` を併記 | `AuditRecord.kind = RuntimeChange` を記録し、巻き戻し手順を添付 |
+| `db` | データストア | トランザクション駆動の永続データ変更（SQL/NoSQL） | `Transaction` / `Connection` 型を介して境界を固定。コミット前に `Result` が保証されること | `audit` と組み合わせ、コミットログに `change_set` を書き出す |
+| `network` | 分散操作 | クラウド API・RPC・リモートサービスへの変更要求 | タイムアウト・リトライ戦略を `RunConfig`（2-6）で明示。暗号化/署名は型レベルで検査 | 主要イベントごとに `AuditRecord.domain = Network` を付与 |
+| `gpu` | アクセラレータ | GPU / TPU などデバイスへの命令転送・メモリ確保 | `DeviceHandle` と `defer` 解放の組合せを強制。`unsafe` ブロックでの境界を厳格に | リソース利用量を `audit.metric` として集約 |
 
-### K.2 FFI / ランタイム連携指針
+> `audit` は**副作用そのもの**というより、他効果を伴う操作に「監査責務」を課す**ガバナンス効果**である。`audit` の付く関数は失敗・成功の双方で `audit.log`（もしくは等価 API）を**ちょうど 1 回以上**呼ぶ必要がある。
 
-1. **クラウド API**: `network` 効果を要求し、署名・リトライ戦略を `audit` ログに残す。
-2. **GPU/アクセラレータ**: `runtime` + `unsafe` で扱い、ハンドル解放を `defer` で強制。
-3. **組み込み I/O**: `runtime` 効果＋明示的なメモリアラインメント検査を行い、レジスタ操作を型で表現。
+### K.2 効果セットの組合せ規則
 
-チェックリスト（Draft）
+1. **タグの閉包**：`effect {config, audit}` のような宣言は、実行時に `config` が満たすべき監査義務を `audit` が補強する。`audit` を併用しない `config` 関数はコンパイラが警告（`W3101`）を発行する。
+2. **`audit` の必須フィールド**：`audit` を含む関数から生成される `Diagnostic` / `AuditRecord` には、`{ domain, audit_id, change_set }` が必須。欠落時は型検査段で `DiagnosticFieldsMissing` エラーを生成する。
+3. **コミット順序**：`db` と `audit` を同時に持つ場合、`audit.finalize()` はトランザクションコミット後かつ同一 `Span` で報告される必要がある。`@requires(effect = {db, audit})` はこの順序制約をチェックする。
+4. **ホットリロード**：`runtime` と `network` を併用する関数は、`RunConfig` に `with_syntax_highlight` や `with_structured_log` が設定されている場合のみホットリロード対象とみなされる（2-6, Phase2 要件）。
 
-- **クラウド API**: リトライポリシー / 認証キーの保護 / 監査 ID の付与。
-- **GPU**: メモリ割当・解放の対 / カーネル境界での `unsafe` ブロック / 監視メトリクス。
-- **組み込み**: レジスタマップの整合性検証 / 割込みマスク管理 / フェイルセーフシーケンス。
+### K.3 FFI / ランタイム連携指針
 
-### K.3 ホットリロード / 差分適用
+1. **クラウド API (`network`)**：署名・リトライを `RunConfig` に宣言し、すべてのリクエスト結果を `audit.log("network.call", …)` で永続化する。`timeout` が発生した場合は必ず `recover` で巻き戻し戦略を提示する。
+2. **GPU/アクセラレータ (`gpu`)**：`runtime` + `unsafe` を組み合わせ、`DeviceHandle` 取得と `defer handle.close()` を対にする。性能メトリクスは `AuditRecord.metrics` へ集約する。
+3. **組み込み I/O (`runtime`)**：メモリマップトレジスタ操作は `Resource<P, K>` 型で表現し、`@requires(effect={runtime, audit})` を付けて書き込み経路を監査する。
 
-* `runtime` 効果を含む関数のみホットリロード対象とし、適用履歴を `audit` へ蓄積。
-* `config` 効果に伴う差分適用では `SchemaDiff` を評価し、安全なロールバック手順を定義。
-* 失敗時は `recover` コンビネータと連携して前世代へ復旧する。
+チェックリスト
 
-#### サンプル（Draft）
+- **クラウド API**：リトライ・認証・`audit_id` の発番を `RunConfig` と `AuditRecord` の双方に記録したか。
+- **GPU**：割当/解放が `defer` で対になっているか。`unsafe` ブロックの境界が最小か。
+- **組み込み**：レジスタマップの検証・割込みマスク・フェイルセーフが型レベルで確認できるか。
+
+### K.4 ホットリロード / 差分適用
+
+* `runtime` を含む関数のみホットリロード対象とし、適用履歴は `audit` へ蓄積する（`AuditRecord.kind = Reload`）。
+* `config` 効果を伴う差分適用は `SchemaDiff` を評価し、`audit.change_set` に差分を JSON 形式で格納する。
+* 失敗時は `recover` コンビネータで旧世代へ復旧し、`Diagnostic.severity_hint = Rollback` を出力する。
+
+#### サンプル
 
 ```reml
 @requires(effect = {runtime, audit})
@@ -246,10 +250,19 @@ fn reloadParser(parser: Parser<AppConfig>, diff: SchemaDiff<Old, New>)
   effect {runtime, audit} =
     recover({
       let updated = applyDiff(parser, diff)?;
-      audit.log("parser.reload", diff);
+      audit.log("parser.reload", {
+        domain = "Core.Config",
+        audit_id = diff.audit_id(),
+        change_set = diff.asChangeSet()
+      });
       Ok(updated)
     }, with: |err| {
-      audit.log("parser.reload.fail", err);
+      audit.log("parser.reload.fail", {
+        domain = "Core.Config",
+        audit_id = diff.audit_id(),
+        change_set = diff.asChangeSet(),
+        diagnostics = err.toDiagnostics()
+      });
       Err(err)
     })
 ```

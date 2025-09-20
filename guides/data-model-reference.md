@@ -66,6 +66,7 @@ if !report.diagnostics.is_empty() {
 
 - `ValidationReport.stats` は列名→`ColumnStats` のマップ。`guides/runtime-bridges.md` の `RuntimeMetrics` と同じ JSON キー (`latency_ms` 等) を使用する。
 - `audit_id` が付与されると `reml-data validate` の JSON でも同じ値が出力され、CI で突合できる。
+- `severity_hint` はデータ品質に対する推奨アクション（`Retry`, `Rollback`, `Escalate` 等）を伝達し、運用ダッシュボードでの優先度付けに利用できる。
 
 ## 4. CLI サンプル
 

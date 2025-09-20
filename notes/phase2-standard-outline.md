@@ -5,10 +5,10 @@
 ---
 
 ## 1. `2-5-error.md` 拡張ポイント
-- 監査メタデータ: `Diagnostic` に `audit_id`, `change_set`, `severity_hint` などを追加。
-- エラーカテゴリ: `enum ErrorDomain { Config, Runtime, Network, ... }` を導入し、期待集合に紐づけ。
-- FixIt テンプレート: 再利用可能な提案（例: "Add missing field", "Insert closing tag"）。
-- IDE/LSP 連携: `to_lsp_diagnostics()` の仕様草案。
+- ✅ 監査メタデータ: `Diagnostic` に `audit_id`, `change_set`, `severity_hint` を追加済み。
+- ✅ エラーカテゴリ: `ErrorDomain` を導入し、CLI/LSP/監査で共通化。
+- ✅ FixIt テンプレート: 再利用可能な提案（"Add missing field" 等）を整理。
+- ✅ IDE/LSP 連携: `to_lsp_diagnostics()` に `severity_hint` を含めて仕様化。
 - ✅ システム別エラーコードの命名規則案を定義（2-5 節に表形式）
 
 ## 2. `2-6-execution-strategy.md` 拡張ポイント
@@ -31,8 +31,8 @@
 - ✅ 検証結果と `Diagnostic` の連携サンプルを追加（2-8 節）
 
 ## 5. `2-1` / `2-2` でのプラグイン登録 API
-- `register_plugin(name, capabilities, parser_factory)`。
-- Parser capability をチェックするための `CapabilitySet`。
+- ✅ `register_plugin(name, capabilities, parser_factory)` と Capability 要求パターンを明文化。
+- ✅ Parser capability をチェックするための `CapabilitySet` を表形式で整理。
 - バージョン互換性: `PluginVersion` 構造体と解決ルール。
 
 ---

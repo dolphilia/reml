@@ -9,27 +9,26 @@
   - プラグイン構文 (`package`/`use plugin`) についてバージョン管理や capability の語彙検討を継続。
 
 ## 1. `1-1-syntax.md` 追加要素案
-- **スキーマ宣言構文**（Draft 追加済 `B.6`、要追加サンプル）
-  - 継承/マージ、条件付きプロパティ (`when env == "prod"` など)。
-  - フィードバック: `schema` の再利用性、テンプレート関数との組み合わせ例を追加。
-- **条件付き束縛・構成**
-  - `let value if condition = ...` や `match config { case ... }` を設定 DSL に転用できる例を追加。
-- **モジュール / プラグイン構文**（Draft 追加済 `B.7`）
-  - `package` / `export` / `use plugin` の宣言で DSL パッケージを定義。
-  - プラグインメタデータ（version, capability）を記述する属性。
+- ✅ **スキーマ宣言構文**（`B.6`）
+  - 条件付き束縛 (`let … if …`)・`compute`・`requires` を仕様化。
+  - 継承/テンプレートと `Schema.template().with(...)` の例を掲載済み。
+- ✅ **条件付き束縛・構成**
+  - `when` ブロックと糖衣 `let field if cond = ...` の関係を定義。
+- ✅ **モジュール / プラグイン構文**（`B.7`）
+  - `@plugin` メタデータ・バージョン制約・Capability 宣言を明文化。
 - **DSL 拡張ポイントの例示**
   - テンプレート DSL（Web）、ルーティング DSL（Web）、IaC DSL（Cloud）などへの橋渡しを「例」節として示す。
 
 ## 2. `1-2-types-Inference.md` 追加要素案
-- **ドメイン型の導入**（Draft 追加済 `J`、サンプル追加済）
-  - テンソル型（`Tensor<Dim, T>`）、列型（`Column<T>`）、リソースID型（`Resource<Provider, Kind>`）。
-  - スキーマ型（`Schema<Record>`）を導入し、フィールドアクセス・差分検証の型ルールを定義。
-- **型と効果の接続**
-  - `effectful` な関数型（`fn(...) -> Result<T, Error> effect Db` のような表記）を検討。
-  - クラウド操作／リアルタイム制約と型の関係を説明する節を新設。
-- **推論ルールの拡張**
-  - 新型の単一化、既定型（numericsとの相互作用）、制約生成の追加例。
-  - スキーマ進化／差分（旧スキーマ vs 新スキーマ）を扱う型推論ガイドライン。
+- ✅ **ドメイン型の導入**（`J`）
+  - Tensor/Column/Schema/Resource の種と単一化ルールを定義。
+  - `SchemaDiff` と `DiffConstraint` の解決手順を記述。
+- ✅ **型と効果の接続**
+  - `effect` 注釈付き関数型と `EffectSet` の和集合規則を明文化。
+  - クラウド/GPU/監査へのマッピングを 1-3 節 `K` と接続。
+- ✅ **推論ルールの拡張**
+  - Tensor ブロードキャスト、Column メタデータ整合、Resource Capability の制約解決を整理。
+  - スキーマ進化の未解決制約を `SchemaEvolutionRequired` として報告する流れを記録。
 
 ## 3. `1-3-effects-safety.md` 追加要素案
 - **効果分類の拡張**（Draft 追加済 `K`、サンプル追加済）

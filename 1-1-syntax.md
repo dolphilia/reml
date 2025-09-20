@@ -153,84 +153,104 @@ impl Parser<T> {
 }
 ```
 
-### B.6 スキーマ宣言（Draft）
+### B.6 スキーマ宣言
 
-> 設定ファイルや宣言的 DSL を型安全に表現するための追加構文案。最終仕様は標準 API `Core.Config` と共に確定する予定です。
+> `schema` は設定 DSL やインフラ記述を **静的型付きデータ** として表現するための宣言構文であり、標準 API `Core.Config`（2-7 節）と 1:1 で対応する。
 
-* **基本形**
+**基本構文**
 
-  ```reml
-  schema AppConfig {
-    env: Env = Env::Dev
-    database: DbConfig
-    when env == Env::Prod {
-      logging.level = "info"
-    }
+```reml
+schema AppConfig {
+  env: Env = Env::Dev
+  database: DbConfig
+  logging: Logging = Logging::default()
+
+  when env == Env::Prod {
+    logging.level = "info"
+    let retention if logging.targets.contains("audit") = 30.days()
+    compute deployment_tag = "prod-" + version
   }
-  ```
+}
+```
 
-  * `schema Name { ... }` で構成要素を宣言。
-  * `=` による既定値、`when <expr> { ... }` による条件付き上書きを許可。
+* `schema Name { ... }` で宣言を開始し、ボディには**フィールド宣言**・**条件付き束縛**・**制約句**を混在させられる。
+* `=` による既定値、`when <expr> { … }` による条件付き上書きは宣言順に評価され、後勝ち（下にあるものほど優先）。
+* `let binding if cond = expr` は **スキーマ専用の糖衣**で、`when cond { binding = expr }` に展開される。フィールド・ネストスキーマの両方に適用できる。
 
-* **フィールド宣言**
+**フィールド宣言と型**
 
-  * `field: Type`（必須）/ `field: Type = default`（任意）。
-  * `field?: Type` でオプション値（`Option<Type>` 相当）を表現。
-  * ネストしたスキーマを型として参照可能（`database: DbConfig` など）。
+* `field: Type`（必須）/ `field: Type = default`（任意）。
+* `field?: Type` でオプション値（型は `Option<Type>` と同値）。
+* ネストしたスキーマを型として参照可能（`database: DbConfig` など）。
+* 配列やマップなどのコンポジット型も通常の型構文と同様に記述する。
 
-* **制約句/派生値**
+**制約と派生値**
 
-  * `requires expr` でバリデーション条件を付与。
-  * `compute field = expr` で派生値を宣言し、差分検証時に再計算する指針を示す。
+* `requires expr` でバリデーション条件を付与。`expr` は `Schema<Self>` を受け取り `Bool` を返す式でなければならない。
+* `compute field = expr` は再計算可能な派生値を定義し、差分検証時に常に再評価される。`field` は派生値であることが型システムに記録され、`Core.Config` での `Change` 生成時に「再計算不可」なフィールドとの差異を扱う基準となる。
 
-* **継承とテンプレート**
+**継承とテンプレート**
 
-  ```reml
-  schema BaseConfig {
-    logging.level: String = "warn"
-    database: DbConfig
+```reml
+schema BaseConfig {
+  logging.level: String = "warn"
+  database: DbConfig
+}
+
+schema ProdConfig extends BaseConfig {
+  when env == Env::Prod {
+    logging.level = "info"
+    compute deployment_tag = "prod-" + version
   }
+}
 
-  schema ProdConfig extends BaseConfig {
-    when env == Env::Prod {
-      logging.level = "info"
-      compute deployment_tag = "prod-" + version
-    }
-  }
+fn template(env: Env) -> ProdConfig =
+  ProdConfig.template().with(env=env)
+```
 
-  fn template(env: Env) -> ProdConfig =
-    ProdConfig.template().with(env=env)
-  ```
+* `extends` で親スキーマを継承し、追加/上書きを行う。継承先の `when` は親の評価後に順次適用される。
+* `Schema<T>.template()` はテンプレートの**初期値ビルダ**を返し、`with(key=value)` で差分を適用。テンプレートは `effect {config, audit}` を持つ関数から呼び出すことを推奨する。
+* 生成されたスキーマは `Schema<AppConfig>` 型として `Core.Config` API で利用できる。
 
-  * `extends` で親スキーマからフィールドを継承し、追加/上書きを記述。
-  * `when` 句は宣言順に評価され、後勝ち（下に記述したものが優先）。
-  * テンプレート関数と組み合わせることで環境別プリセットを作成できる。
+### B.7 プラグインパッケージ構文
 
-### B.7 プラグインパッケージ構文（Draft）
+> パーサや設定 DSL を外部モジュールとして配布するための公式構文。`kestrel-plugin` CLI（ガイド参照）と連携し、Capability/バージョン管理をメタデータで明示する。
 
-> DSL 拡張や設定スキーマを外部モジュールとして配布するための構文案。
+**パッケージ宣言とエクスポート**
 
-* **パッケージ宣言**
+```reml
+package Reml.Web.Templating
 
-  ```reml
-  package Reml.Web.Templating
+@plugin(version = "1.4.0", requires = {"parser.atomic", "parser.syntax.highlight"})
+@capability("template", since = "1.3")
+export schema TemplateConfig
+export fn render
+export parser htmlTemplate
+```
 
-  @capability("template")
-  export schema TemplateConfig
-  export fn render
-  ```
+* `package` はトップレベルで 1 度だけ使用し、以降の宣言に**完全修飾名**を与える。
+* `export` は公開するシンボルを列挙。`schema`・`fn`・`parser` など任意の宣言に適用できる。
+* `@plugin` 属性で**Semantic Version**・依存 Capability・互換性ポリシーを記述。`@capability` は個別シンボルに用途タグを付ける。
 
-  * `package` で名前空間を宣言し、`export` で公開シンボルを列挙。
-  * `@capability` 属性で DSL の種別や互換バージョンをメタデータとして付与。
+**プラグインの利用**
 
-* **プラグインの利用**
+```reml
+use plugin Reml.Web.Templating {
+  version = "^1.4",
+  capabilities = {"parser.atomic", "parser.syntax.highlight"},
+  aliases = { TemplateConfig as WebTemplate }
+}
+```
 
-  ```reml
-  use plugin Reml.Web.Templating (TemplateConfig, render)
-  ```
+* `use plugin` は導入時に **バージョン制約** と **Capability フィルタ** を指定できる。
+* `aliases` 節でローカル名を付け直す。省略時はエクスポート名そのまま。
+* プラグインが追加 Capability を要求する場合、利用側は `with_capabilities`（2-2 節）で省略不可のチェックを受ける。
 
-  * `use plugin` 構文でプラグインを導入。バージョン pin や capability フィルタは将来拡張として検討。
-  * バージョン指定案：`use plugin Foo { version = "^1.2" }`、`@capability("template", since="1.1")` のような語彙を導入予定。
+**メタデータと CLI 連携**
+
+* `@plugin` メタデータは `kestrel-plugin manifest` で JSON 化され、`reml-config`／`reml-data` の依存解決に再利用される。
+* `use plugin` 節は `spec` 生成時に `PluginLock` を出力し、CI での再現性を担保する。
+* プラグイン本文で `schema` を公開する場合、そのスキーマは自動的に `effect {config}` を要求するモジュールに認識される。
 
 
 ---

@@ -6,56 +6,51 @@
 
 ## 1. 型安全な設定／構成 DSL
 - **既存の記述**
-  - 基本的な束縛・レコード構文は `1-1-syntax.md:76` 付近で説明済み。
-  - 型推論は `1-2-types-Inference.md` 全般で定義されている（HM, traits, 値制限）。
-- **不足している要素**
-  - スキーマ宣言や設定ファイル向け構文の公式仕様がない。
-  - 条件付き構成、差分検証、テンプレート展開についての型/意味論が未定義。
-  - 標準 API には設定検証ユーティリティに相当する章が存在しない（`2-2` / `2-3` にも未掲載）。
+  - `1-1-syntax.md` の `B.6` に `schema` 構文・条件付き束縛・テンプレート展開が正式化。
+  - `2-7-config.md` がスキーマ API・差分検証・テンプレート適用を網羅。
+- **残課題**
+  - `guides/config-cli.md` へさらなる事例（大規模差分、承認フローのベストプラクティス）を追加。
+  - `SchemaDiff` の互換性マトリクス（破壊的変更と安全変更の分類）をフェーズ2で整理。
 
 ## 2. 高精度なエラー診断とリカバリ支援
 - **既存の記述**
-  - `2-5-error.md` で期待集合・FixIt・Diagnostic 型を定義。
-  - `1-3-effects-safety.md:113` 以降で `panic` や効果の制御を説明。
-- **不足している要素**
-  - 監査ログ連携やエラー分類のガイドラインがない。
-  - システム別エラーコード、FixIt テンプレート、変更履歴との統合が未整備。
-  - IDE/LSP へ診断を橋渡しする標準仕様が欠落。
+  - `2-5-error.md` が `ErrorDomain`・`SeverityHint`・`ChangeSetRef` を導入し、`toStructuredLog` を更新済み。
+  - LSP/CLI/監査ガイド（`guides/lsp-integration.md`, `guides/config-cli.md`）が同じ JSON を使用。
+- **残課題**
+  - `reml-run` / `reml-data` CLI の出力例に `severity_hint` を反映したサンプルを追加。
+  - `RuntimeMetrics` との関連（致命的エラー時の自動ロールバック指標）をフェーズ2で検討。
 
 ## 3. モジュール化された拡張ポイント（DSL プラグイン）
 - **既存の記述**
-  - `1-1-syntax.md:51` にモジュールと `use` の概要を簡単に記載。
-  - `2-1-parser-type.md` で `ParserId` や `rule` による命名が存在。
-- **不足している要素**
-  - DSL プラグインのパッケージング／公開方法が不透明。
-  - Parser capability、依存解決、バージョン互換のルールがない。
-  - 標準 API にプラグイン登録／拡張ポイントを扱う章が未設置。
+  - `1-1-syntax.md` の `B.7` と `2-2-core-combinator.md` の Capability 表が整合。
+  - `guides/DSL-plugin.md` が CLI (`kestrel-plugin`) と登録フローを記載。
+- **残課題**
+  - プラグイン署名の失効/更新手順を `guides/DSL-plugin.md` に図示。
+  - Capability バンドル（複数 Capability をまとめて要求）の設計をフェーズ2で評価。
 
 ## 4. ツール／エコシステムとのシームレスな連携
 - **既存の記述**
-  - `0-1-overview.md` や `0-2-project-purpose.md` にツールフレンドリーの目標が言及。
-  - `2-6-execution-strategy.md` はランナー API やストリーミング実行を定義。
-- **不足している要素**
-  - LSP 連携、構造化ログ、CLI 標準の仕様が未整備。
-  - IDE/CI/監査ツールとの統合ガイドが存在しない。
-  - `README.md` に横断テーマを把握できるリンクが不足。
+  - LSP ガイド・Runtime Bridges・Config CLI ガイドが `audit_id`／`change_set`／`severity_hint` を共有。
+  - `2-6-execution-strategy.md` に `RunConfig` オプション・ログ出力の整理が進行中。
+- **残課題**
+  - `README.md` にガイド一覧と横断テーマをリンクする目次を追加。
+  - `reml-data` CLI のワークフローガイドを新設し、`guides/data-model-reference.md` と接続。
 
 ## 5. 型システム拡張とデータモデリング
 - **既存の記述**
-  - ADT、traits、数値リテラルなど基礎型は `1-2-types-Inference.md` で網羅。
-- **不足している要素**
-  - テンソル型、列型、スキーマ型などドメイン型が未定義。
-  - 型と効果の結合（例: DB/クラウド操作）に関する仕様がない。
-  - 標準 API にスキーマ検証やデータモデルを扱うユーティリティがない。
+  - `1-2-types-Inference.md` の `J` で Tensor/Column/Schema/Resource/EffectSet を定義。
+  - `2-7-config.md`・`2-8`（計画中）と整合する差分制約が導入済み。
+- **残課題**
+  - `Core.Data` 章のドラフト（2-8）が未着手。
+  - `ResourceOps` の Capability と Effect のマッピングを追加で文書化。
 
 ## 6. 実行基盤との橋渡し（FFI／ランタイム連携）
 - **既存の記述**
-  - `1-3-effects-safety.md` が `ffi` / `unsafe` ブロックと所有権方針を説明。
-  - `2-6-execution-strategy.md` は run/run_stream/resume などの API を持つ。
-- **不足している要素**
-  - クラウド/GPU/組み込みなど領域別 FFI ガイドラインがない。
-  - 差分適用、ホットリロード、デプロイ戦略の標準 API が未定義。
-  - CLI/ツールとしての連携手順がドキュメント化されていない。
+  - `1-3-effects-safety.md` の `K` で効果タグ・監査義務・ホットリロード指針を定義。
+  - `guides/runtime-bridges.md` が `audit_id` / `change_set` とホットリロード CLI の連携を説明。
+- **残課題**
+  - GPU/組み込み向けの詳細なフェイルセーフシーケンス例を追加。
+  - `RunConfig` の JSON スキーマを付録化し、CLI 間で再利用できる形にする。
 
 ---
 

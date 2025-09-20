@@ -225,15 +225,47 @@ let factor: Parser<i64> = rule("factor",
 
 ---
 
-## I. Capability 要求パターン（Draft）
+## I. Capability 要求パターン
 
-| コンビネータ | 備考 | 推奨 Capability |
+Reml のパーサープラグインは、登録時に `register_capability`（2-1 節）で提供可能な機能を宣言し、利用側は `with_capabilities` で必要機能を要求する。以下は **標準で定義済みの Capability** と対応するコンビネータである。
+
+| Capability | 対応コンビネータ/機能 | 要約 |
 | --- | --- | --- |
-| `atomic` | `label+cut` を内包し、エラーを確定させる | `"parser.atomic"` |
-| `recover` | 回復処理を提供 | `"parser.recover"` |
-| `trace` | トレースイベントを生成 | `"parser.trace"` |
-| `chainl1` / `chainr1` | 演算子テーブルで利用 | `"parser.chain"` |
-| `syntax.highlight` | Semantic tokens, ハイライト拡張 | `"parser.syntax.highlight"` |
+| `parser.atomic` | `atomic(p)` | 分岐打ち切り (`label+cut`) を伴う原子的シーケンス。`Parser` は `Recoverable` トレイトを実装している必要がある。 |
+| `parser.recover` | `recover(p, with=...)` | 回復処理・診断集約を提供。同期トークンと監査ログ（`audit`）を要求。 |
+| `parser.trace` | `trace(p, tag)` | トレースイベントを生成し、`RunConfig.with_syntax_highlight` と整合する JSON メトリクスを出力。 |
+| `parser.chain` | `chainl1` / `chainr1` / `chain` | 演算子テーブル構築で左/右結合チェインを提供。 |
+| `parser.syntax.highlight` | `syntax.highlight(p)` | Semantic tokens を生成し、IDE へトークンストリームを供給。 |
+| `parser.capability.packrat` | `packrat(p)` | Packrat キャッシュを内部で保持。メモリ上限を `RunConfig` で指定する。 |
 
-* プラグインは `CapabilitySet = {"parser.recover", ...}` のように宣言し、利用側が `with_capabilities` で制約を課す。
-* 標準コアは常に全 capability をサポートする。
+**利用規約**
+
+1. プラグインは `register_capability({"parser.atomic", ...})` を呼び出し、提供可能な capability の集合を登録する。登録されていない capability を `with_capabilities` で要求した場合は `PluginError::MissingCapability` を返す。
+2. `with_capabilities(required, parser)` は `required ⊆ provided` であることを検査し、失敗時はコンパイル時に警告 (`W4201`)・実行時にエラーを生成する。
+3. `parser.recover` を利用するプラグインは、`2-5-error.md` の `Diagnostic` 拡張（`domain`, `audit_id`, `change_set`）との整合を保証すること。`recover` で復旧させた場合でも監査ログに `recovery` イベントを残す。
+4. `parser.syntax.highlight` と `parser.trace` は `RunConfig.with_syntax_highlight=true` のモードでのみ効果を発揮し、通常モードではゼロコストになるよう実装する。
+
+**サンプル**
+
+```reml
+let render =
+  htmlTemplate
+    |> with_capabilities({"parser.atomic", "parser.trace"})
+    |> trace("templating.render")
+
+register_plugin(ParserPlugin {
+  name = "Reml.Web.Templating",
+  version = SemVer(1,4,0),
+  capabilities = [
+    Capability::new("parser.atomic"),
+    Capability::new("parser.trace"),
+    Capability::new("parser.syntax.highlight")
+  ],
+  register = |reg| {
+    reg.register_capability({"parser.atomic", "parser.trace", "parser.syntax.highlight"});
+    reg.register_parser("render", || render);
+  }
+})
+```
+
+標準ライブラリ (`Core.Parse`) は上記 capability をすべて実装しており、`with_capabilities` の呼び出しは常に成功する。プラグインは必要な最小 capability のみ要求し、過剰な要求を避けることが推奨される。

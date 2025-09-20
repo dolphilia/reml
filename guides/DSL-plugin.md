@@ -13,11 +13,14 @@
 ```reml
 let templating = ParserPlugin {
   name = "Reml.Web.Templating",
-  version = SemVer(1, 2, 0),
+  version = SemVer(1, 4, 0),
   capabilities = [
-    { name = "template", version = SemVer(1,0,0), traits = {"render"}, since = Some(SemVer(1,0,0)), deprecated = None }
+    { name = "parser.atomic", version = SemVer(1,4,0), traits = {"cut"}, since = Some(SemVer(1,4,0)), deprecated = None },
+    { name = "parser.trace", version = SemVer(1,4,0), traits = {"telemetry"}, since = Some(SemVer(1,4,0)), deprecated = None },
+    { name = "parser.syntax.highlight", version = SemVer(1,4,0), traits = {"semantic-tokens"}, since = Some(SemVer(1,3,0)), deprecated = None }
   ],
   register = |reg| {
+    reg.register_capability({"parser.atomic", "parser.trace", "parser.syntax.highlight"});
     reg.register_schema("TemplateConfig", templateSchema);
     reg.register_parser("render", || renderParser);
   }
@@ -28,7 +31,7 @@ register_plugin(templating)?
 
 ## 2. Capability の使い方
 
-- 利用側は `with_capabilities({"template"}, parser)` のように要求 capability を指定。
+- 利用側は `with_capabilities({"parser.atomic", "parser.trace"}, parser)` のように要求 capability を指定。
 - 依存するコンビネータは `2-2-core-combinator.md` の `Capability 要求パターン` に従い、必要 capability を定義。
 - 不足している場合は `PluginError::MissingCapability` が返る。
 
