@@ -24,9 +24,24 @@
 - [演算子優先度ビルダー](2-4-op-builder.md)
 - [エラー設計](2-5-error.md)
 - [実行戦略](2-6-execution-strategy.md)
+- [設定スキーマ API](2-7-config.md)
+- [データモデリング API](2-8-data.md)
 
 ### 付録
 
 - [BNF文法仕様](3-1-bnf.md)
 - [LLVMとの連携](a-jit.md)
 - [最初のアイデア](b-first-idea.md)
+
+### ガイド
+
+- [LSP / IDE 連携ガイド](guides/lsp-integration.md)
+- [設定 CLI ワークフロー](guides/config-cli.md)
+- [ランタイム連携ガイド](guides/runtime-bridges.md)
+- [DSL プラグイン & Capability ガイド](guides/DSL-plugin.md)
+
+### 補助ドキュメント
+
+- [利用シナリオ別追加要件](scenario-requirements.md)
+- [横断テーマ優先度](scenario-priorities.md)
+- [仕様更新計画](spec-update-plan.md)
