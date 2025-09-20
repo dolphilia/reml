@@ -48,7 +48,18 @@ register_plugin(templating)?
 
 ## 5. TODO / 制限事項
 
-- `PluginRegistrar` が提供する API（schema、parser 以外の拡張ポイント）を追加整備予定。
-- DSL パッケージの依存解決（プラグイン間依存関係）は未定義。今後整理。 
-- プラグイン配布形式（バンドル、リポジトリ）に関する標準化は今後検討。
+- `PluginRegistrar` が提供するその他の拡張ポイント（診断フック等）は今後追加予定。
+- プラグイン配布形式（バンドル、リポジトリ）の詳細仕様は標準化検討中。
 
+## 6. 依存解決と配布
+
+- プラグインは `dependencies: List<PluginDependency>` を宣言し、`register_plugin` 時に依存が満たされているかチェック。
+- 複数プラグインをまとめた `PluginBundle` を用意し、`register_bundle` で一括登録できる。
+- CLI `kestrel-plugin install <bundle>` を利用して、リポジトリからバンドルを取得→検証→登録するワークフローを想定。
+- 推奨ディレクトリ構成：`kestrel-plugins/<plugin-name>/<version>/plugin.ks` とメタデータ (`plugin.toml`) を配置。
+
+```bash
+kestrel-plugin install kestrel-web-bundle --source https://example.com/plugins
+```
+
+> 依存解決や配布形式の詳細標準化は進行中（2-1 節の案を参照）。

@@ -249,11 +249,23 @@ fn with_capabilities<T>(cap: CapabilitySet, p: Parser<T>) -> Parser<T>
 ### I-2. サンプル（Draft）
 
 ```kestrel
+// 既存プラグイン（例: 基本構文サポート）
+let syntaxPlugin = ParserPlugin {
+  name = "Kestrel.Core.Syntax",
+  version = SemVer(1, 5, 0),
+  capabilities = [],
+  dependencies = [],
+  register = |reg| { /* ... */ }
+}
+
 let templating = ParserPlugin {
   name = "Kestrel.Web.Templating",
   version = SemVer(1, 2, 0),
   capabilities = [
     { name = "template", version = SemVer(1,0,0), traits = {"render"}, since = Some(SemVer(1,0,0)), deprecated = None }
+  ],
+  dependencies = [
+    { name = "Kestrel.Core.Syntax", version_req = VersionReq{ predicate = "^1.5" } }
   ],
   register = |reg| {
     reg.register_schema("TemplateConfig", templateSchema);
@@ -264,6 +276,13 @@ let templating = ParserPlugin {
 register_plugin(templating)?
 
 let render = with_capabilities({"template"}, renderParser)
+
+let bundle = PluginBundle {
+  name = "kestrel-web-bundle",
+  plugins = [templating, syntaxPlugin]
+}
+
+register_bundle(bundle)?
 ```
 
 ## I. メモリと性能（実装規約）
@@ -357,6 +376,9 @@ let templating = ParserPlugin {
   capabilities = [
     { name = "template", version = SemVer(1,0,0), traits = {"render"}, since = Some(SemVer(1,0,0)), deprecated = None }
   ],
+  dependencies = [
+    { name = "Kestrel.Core.Syntax", version_req = VersionReq{ predicate = "^1.5" } }
+  ],
   register = |reg| {
     reg.register_schema("TemplateConfig", templateSchema);
     reg.register_parser("render", || renderParser);
@@ -366,7 +388,42 @@ let templating = ParserPlugin {
 register_plugin(templating)?
 
 let render = with_capabilities({"template"}, renderParser)
+
+let bundle = PluginBundle {
+  name = "kestrel-web-bundle",
+  plugins = [templating, syntaxPlugin]
+}
+
+register_bundle(bundle)?
 ```
+
+
+### J-4. 依存関係と配布（Draft）
+
+| 項目 | 型 | 説明 |
+| --- | --- | --- |
+| `PluginDependency` | `name: String, version_req: VersionReq` | 依存プラグインと必要バージョン範囲 |
+| `PluginBundle` | `name: String, plugins: List<ParserPlugin>` | 配布単位。複数プラグインをまとめる |
+
+```kestrel
+type VersionReq = {
+  predicate: String // 例: "^1.2", ">=2.0, <3.0"
+}
+
+type ParserPlugin = {
+  name: String,
+  version: SemVer,
+  capabilities: List<PluginCapability>,
+  dependencies: List<PluginDependency>,
+  register: fn(PluginRegistrar) -> ()
+}
+
+fn register_bundle(bundle: PluginBundle) -> Result<(), PluginError>
+```
+
+* `register_plugin` は依存するプラグインが登録済であるかチェックする。未登録の場合は `PluginError::MissingDependency` を返す。
+* `register_bundle` は複数プラグインをまとめて登録し、依存解決を一括で行う。
+* CLI `kestrel-plugin install <bundle>` を想定し、プラグイン配布を標準化する（例: リポジトリからバンドルを取得し `register_bundle` を呼び出すユーティリティを提供）。
 
 ---
 

@@ -233,6 +233,7 @@ let factor: Parser<i64> = rule("factor",
 | `recover` | 回復処理を提供 | `"parser.recover"` |
 | `trace` | トレースイベントを生成 | `"parser.trace"` |
 | `chainl1` / `chainr1` | 演算子テーブルで利用 | `"parser.chain"` |
+| `syntax.highlight` | Semantic tokens, ハイライト拡張 | `"parser.syntax.highlight"` |
 
 * プラグインは `CapabilitySet = {"parser.recover", ...}` のように宣言し、利用側が `with_capabilities` で制約を課す。
 * 標準コアは常に全 capability をサポートする。

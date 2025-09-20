@@ -62,3 +62,32 @@ kestrel-run reload runtime.state diff.json --audit   | jq '.result | {status, au
 | メトリクス統合 | 遅延 (`latency_ms`), エラー率 (`error_rate`), スループットなどを構造化ログに出力 | 監視ツール（Prometheus等）と連携し SLA を監視 |
 
 > 詳細はフェーズ3でさらに事例を追加予定です。
+
+## 7. GPU 運用フロー（Draft）
+
+1. **初期化**
+   - `gpu::init(device_id)` でデバイスを選択し、`audit.log("gpu.init", device_id)` を記録。
+   - ハンドル管理は `unsafe` ブロック内で行い、`defer` で解放を保証。
+
+2. **カーネル実行**
+   - `gpu::launch(kernel, params)` を呼び出す前に `runtime` 効果を許可。
+   - 実行結果は構造化ログに `latency_ms`, `error_code` を含める。
+
+3. **監視**
+   - GPU 温度・エラーイベントを `audit` ログに出力し、監視ツールで収集。
+   - 重大なエラー時は `kestrel-run reload --rollback` を使用して安全な状態へ戻す。
+
+## 8. 組み込み運用フロー（Draft）
+
+1. **レジスタ設定**
+   - `config` DSL でレジスタマップを宣言し、`Config.compare` で差分を検証。
+   - `runtime` 効果内で `unsafe` を使用し、アクセスは専用 DSL 経由で行う。
+
+2. **割込み制御**
+   - 割込みマスクを DSL で宣言し、更新時には `audit.log("interrupt.update", diff)` を記録。
+   - フェイルセーフ手順（例: ウォッチドッグリセット）を `Runtime Bridges` のチェックリストに登録。
+
+3. **テレメトリ**
+   - 電圧・温度・エラーフラグを構造化ログとして出力し、監視システムに送信。
+   - フィールド更新失敗時は `ConfigError::ValidationError` を返し、即座にロールバック。
+

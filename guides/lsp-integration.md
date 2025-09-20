@@ -16,7 +16,8 @@ let cfg = {
     highlight = true,
     completion = true,
     codeActions = true,
-    semanticTokens = true
+    semanticTokens = true,
+    syntaxHighlight = true
   },
   log_format = "json",
   audit = Some(|event| audit_log(event))
@@ -62,7 +63,7 @@ fn to_lsp_diagnostics(diags: List<Diagnostic>) -> List<LspDiagnostic> =
 
 1. `SemanticTokensLegend` を capability ごとに登録（例: `template.directive`, `config.field`）。下表に標準トークンとカスタムトークンの分類例を示す。
 2. エディタが `semanticTokens/full` を要求 -> パーサがトークン種別を返却。
-3. プラグイン側で追加トークンを登録する場合、`register_capability` で `syntax.highlight` を宣言。
+3. プラグイン側で追加トークンを登録する場合、`register_capability` で `parser.syntax.highlight` を宣言。
 
 | Semantic Token | 対応 capability | 用途 |
 | --- | --- | --- |
@@ -70,6 +71,7 @@ fn to_lsp_diagnostics(diags: List<Diagnostic>) -> List<LspDiagnostic> =
 | `type.schema` | `"config"` | `schema` DSL で宣言された型 |
 | `property.template` | `"template"` | テンプレート DSL のディレクティブ |
 | `function.dsl` | プラグイン登録 | DSL が提供する関数名 |
+| `modifier.syntax-highlight` | `"parser.syntax.highlight"` | syntax highlight 拡張で追加されるトークン |
 
 
 
