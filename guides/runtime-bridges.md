@@ -113,3 +113,135 @@ fn emit_metrics(event: Str, metrics: RuntimeMetrics) {
    - 電圧・温度・エラーフラグを構造化ログとして出力し、監視システムに送信。
    - `emit_metrics("embedded.telemetry", metrics)` を用いて SLA 指標を継続監視。
    - フィールド更新失敗時は `ConfigError::ValidationError` を返し、即座にロールバック。
+
+## 9. ストリーミング / async ランナー活用例
+
+### 9.1 ゲームホットリロード（`FlowMode = "push"`）
+
+```reml
+let driver = StreamDriver {
+  parser = sceneParser,
+  feeder = assetWatcher.feeder(),         // ファイル変更をバイト列に変換
+  sink = |result| match result {
+    Completed { value, meta, .. } => apply_scene_update(value, meta),
+    Pending { demand, .. } => log.trace("scene.pending", demand)
+  },
+  flow = FlowController {
+    mode = "push",
+    high_watermark = 64 * 1024,
+    low_watermark = 16 * 1024,
+    policy = Auto { backpressure = { max_lag = Some(16.ms), debounce = Some(4.ms), throttle = None } }
+  },
+  on_diagnostic = |event| audit.log("parser.stream", event),
+  state = None,
+  meta = initial_meta()
+}
+
+game_loop.on_tick(|dt| {
+  driver.flow = driver.flow.adjust(dt);
+  driver.pump();
+})
+```
+
+- アセット変更が頻繁に届くため push モードを採用し、`BackpressureSpec.max_lag` を 16ms に設定してフレーム落ちを防止。
+- `StreamMeta` を `apply_scene_update` に渡してホットリロードの統計（再開回数/遅延）を HUD に表示。
+
+### 9.2 IDE 増分解析（`FlowMode = "pull"`）
+
+```reml
+fn handle_diff(diff: TextDiff) {
+  let demand = DemandHint {
+    min_bytes = diff.span.bytes,
+    preferred_bytes = Some(diff.span.bytes + 1024),
+    frame_boundary = Some(TokenClass::Statement)
+  };
+
+  driver.flow = driver.flow.with_mode("pull");
+  let chunk = file_cache.patch_and_slice(diff);
+  driver.state = Some(resume(driver.state?, chunk.bytes));
+  driver.on_diagnostic(Pending { reason = "InputExhausted", meta = driver.state?.meta });
+}
+```
+
+- エディタ差分で `DemandHint` を明示し、必要最小限の再解析バイトを供給。
+- `ContinuationMeta.expected_tokens` を LSP の補完エンジンに流し込み、キャレット位置で候補を表示。
+
+### 9.3 Web SSE パイプライン（`run_stream_async`）
+
+```reml
+let feeder_async: AsyncFeeder = |hint| async move {
+  let chunk = await sse_client.fetch(hint.preferred_bytes.unwrap_or(4096)).await;
+  match chunk {
+    Ok(bytes) => Poll::Ready(FeederYield::Chunk(bytes)),
+    Err(e) if e.is_retryable() => Poll::Pending { wake = retry_after(100.ms) },
+    Err(e) => Poll::Ready(FeederYield::Error(StreamError { kind = e.kind(), detail = Some(e.message()) }))
+  }
+};
+
+let task = run_stream_async(eventsParser, feeder_async, AsyncConfig {
+  executor = runtime.executor(),
+  max_inflight = 4,
+  backpressure = { max_lag = Some(250.ms), debounce = Some(25.ms), throttle = Some(50.ms) },
+  diagnostics = |event| log.json(event),
+  cancellation = shutdown_token.clone()
+});
+
+task.join().await?;
+```
+
+- SSE クライアントは `AsyncFeeder` として実装し、`DemandHint` の `preferred_bytes` を尊重してネットワークバッチを最適化。
+- `AsyncConfig.backpressure` と監査ログを一元化し、CLI と同じ指標をダッシュボードに送信。
+- `shutdown_token` を用いてデプロイ時に安全にタスクを停止する。
+
+---
+
+## 10. GC プロファイルと監査統合（ドラフト）
+
+### 10.1 プロファイルテンプレート
+
+| プロファイル | ポリシー | 目的 | 推奨設定 |
+| --- | --- | --- | --- |
+| `game` | Incremental | フレーム落ち回避 | `pause_target_ms = Some(4.0)`, `heap_max_bytes = Some(256 << 20)` |
+| `ide` | Generational | インタラクティブ編集 | `pause_target_ms = Some(8.0)`, `heap_max_bytes = None` |
+| `web` | Rc | レイテンシより throughput 重視 | `heap_max_bytes = Some(512 << 20)` |
+| `data` | Region | バッチ処理で明示的リリース | `pause_target_ms = None`, `heap_max_bytes = Some(2 << 30)` |
+
+`RunConfig.gc.profile` に上記 ID を指定すると、実装は既定値を適用しつつポリシーの上書きを許可する。カスタムプロファイル文字列を指定した場合は、`Core.Runtime` 側で事前登録が必要。
+
+### 10.2 監査ログ `gc.stats`
+
+```json
+{
+  "event": "gc.stats",
+  "policy": "Incremental",
+  "profile": "game",
+  "heap_bytes": 134217728,
+  "heap_limit": 268435456,
+  "last_pause_ms": 3.2,
+  "total_collections": 42,
+  "pause_target_ms": 4.0,
+  "run_id": "...",
+  "timestamp": "2025-06-14T12:34:56.123Z"
+}
+```
+
+- ランナーはコレクション完了時に `GcCapability.metrics()` を呼び、上記 JSON を生成して `audit.log("gc.stats", payload)` を実行する。
+- `run_id` はホットリロードや長期セッションごとに一意となる識別子。
+- `pause_target_ms` は `RunConfig.gc.pause_target_ms` と一致しない場合警告を出す。
+
+### 10.3 監査テストケース
+
+1. **Profile Consistency**: `RunConfig.gc.profile="game"` で起動したセッションが `gc.stats.profile="game"` を報告する。
+2. **Emergency Trigger**: `heap_bytes > heap_limit` のタイミングで `GcCapability.trigger("Emergency")` を呼び、監査ログに `reason="Emergency"` を残す。
+3. **Pause Budget**: `last_pause_ms > pause_target_ms` の場合、CLI に `gc.pause_budget_exceeded` 警告を表示し、ログに `severity="warn"` を添付する。
+4. **Policy Switch**: `policy` を `Generational` に変更した際、初回コレクションログで `policy="Generational"` と出力され、`total_collections=0` から再カウントされる。
+
+### 10.4 互換性チェックリスト
+
+| 項目 | 内容 | 参照 |
+| --- | --- | --- |
+| `gc.stats` JSON | すべてのフィールドが `guides/runtime-bridges.md#10-2` の例に従うか | 本節 |
+| プロファイル既定値 | `RunConfig.gc.profile` が `game/ide/web/data` の場合、テンプレート表の既定値が適用されるか | §10.1 |
+| Metrics API | `RuntimeCapabilities.metrics()` が `heap_bytes` 等 GC メトリクスを含む構造体を返すか | 2-9 実行時基盤 |
+| Legacy 互換 | GC 設定を指定しない場合でも従来の RC/ヒープ動作が維持されるか | 2-6 実行戦略 |
+| 監査連携 | `gc.stats` と `audit.log` のドメインが重複しないこと、既存ログ解析ツールが新フィールドを無視しても動作するか | 監査運用 |

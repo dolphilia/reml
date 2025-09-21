@@ -14,6 +14,7 @@ type ResourceId<P, K>
 - `ResourceId` はクラウド/ネットワークリソースを型安全に扱うタグ型。
 - `Schema` は `Schema<Record>` としてフィールド名→`Column` のマップを保持。
 - `SchemaDiff<T>` 型を提供し、旧/新スキーマの差分を表現。
+- `stat_plan` は列ごとの統計収集方針 (`StatType`) を宣言し、`StatsProvider` もしくは `run_quality` が参照する。
 ```reml
 type Column<T, Meta> = {
   dtype: TypeRef<T>,
@@ -24,7 +25,8 @@ type Column<T, Meta> = {
 type ColumnMeta = {
   nullable: Bool,
   description: Option<Str>,
-  stats: Option<ColumnStats>
+  stats: Option<ColumnStats>,
+  stat_plan: Option<StatType>
 }
 
 type ColumnStats = {
@@ -33,8 +35,31 @@ type ColumnStats = {
   min: Option<Numeric>,
   max: Option<Numeric>,
   mean: Option<f64>,
-  stddev: Option<f64>
+  stddev: Option<f64>,
+  percentiles: Option<Map<Percentile, f64>>,
+  histogram: Option<List<HistogramBucketState>>,
+  last_updated: Option<Timestamp>
 }
+
+type Percentile = f64   // 0.0〜1.0
+
+type HistogramBucket = {
+  label: Str,
+  min: Numeric,
+  max: Numeric
+}
+
+type HistogramBucketState = {
+  bucket: HistogramBucket,
+  count: u64
+}
+
+type StatType =
+  | MovingAverage { window: Duration }
+  | Histogram { buckets: List<HistogramBucket> }
+  | Counter { mode: CounterMode }
+
+type CounterMode = "Accumulate" | "ResetEachRun"
 
 type ResourceId<P, K> = {
   provider: P,
@@ -92,6 +117,14 @@ type ValidationReport = {
 
 fn validate_with_profile<T>(schema: Schema<T>, value: T, profile: &impl Profile)
   -> Result<ValidationReport, ValidationReport>
+
+type StatsProviderId = Str
+
+type StatsProvider = {
+  id: StatsProviderId,
+  collect: fn(Schema<any>, ProfileId) -> Result<Map<Str, ColumnStats>, Diagnostic>,
+  capabilities: Set<StatType>
+}
 ```
 
 ## C. スキーマ進化
@@ -146,3 +179,82 @@ match Data.validate(schema, incoming) with
 - CLI の JSON は `domain = "schema"` を設定し、`guides/data-model-reference.md` の品質指標と統合する。
 
 ランタイム統合やホットリロード時のデータ適用手順は [ランタイム連携ガイド](guides/runtime-bridges.md) を参照し、データ品質の詳細な指標とテンプレートは [データモデルリファレンス](guides/data-model-reference.md) に収録する。
+
+---
+
+## F. データ品質 DSL（ドラフト）
+
+```reml
+type QualityScope =
+  | Column { name: Str }
+  | Dataset
+  | Relation { columns: List<Str> }
+
+type QualitySeverity = "Warn" | "Error"
+
+type QualityRule<T> = {
+  id: Str,
+  scope: QualityScope,
+  severity: QualitySeverity,
+  check: fn(&T, &QualityContext) -> Result<(), Diagnostic>,
+  auto_fix: Option<fn(T) -> T>,
+  rationale: Option<Str>,
+  owner: Option<Str>
+}
+
+type QualityContext = {
+  path: List<Str>,
+  profile: ProfileId,
+  stats: Option<ColumnStats>,
+  audit_id: Option<Uuid>
+}
+
+type QualityProfile = {
+  id: ProfileId,
+  severity_overrides: Map<QualityRuleId, QualitySeverity>,
+  thresholds: Map<Str, Numeric>,
+  allow_auto_fix: Bool
+}
+
+type QualityRuleId = Str
+
+type QualityFinding = {
+  rule: QualityRuleId,
+  scope: QualityScope,
+  severity: QualitySeverity,
+  diagnostic: Diagnostic,
+  auto_fixed: Bool
+}
+
+type QualityReport = {
+  findings: List<QualityFinding>,
+  stats: Map<Str, ColumnStats>,
+  profile: ProfileId,
+  audit_id: Option<Uuid>,
+  generated_at: Timestamp
+}
+
+fn register_quality_rule<T>(schema: Schema<T>, rule: QualityRule<T>) -> Schema<T>
+
+fn run_quality<T, I>(schema: Schema<T>, data: I, profile: QualityProfile,
+                     provider: Option<StatsProvider>)
+  -> Result<QualityReport, QualityReport>
+  where I: Iterator<Item = T>
+```
+
+* `QualityRule` は列・データセット・リレーションの各スコープに適用でき、`auto_fix` を備えたルールはプロファイルで許可されていれば自動修正を試みる。
+* `QualityProfile` は環境別の閾値や自動修正可否を管理し、`severity_overrides` で特定ルールの重要度を調整する。
+* `run_quality` は成功・失敗いずれのケースでも `QualityReport` を返し、CLI・IDE・監査ログに同一フォーマットを提供する。致命的エラー時は `Err(report)` として返却される。
+* `StatsProvider` を指定すると統計収集を外部に委譲でき、指定がなければ `stat_plan` を参照して必要な統計を `run_quality` が推定する。
+
+### F-1. CLI との結合
+
+- `reml-data quality run <dataset>` は `QualityReport` を JSON で出力し、`audit_id`・`profile`・`findings` を構造化して監査ログへ送る。
+- `reml-data quality rules list` は登録済みルール ID・スコープ・現在の重要度を表示し、変更があれば `audit.log("data.quality.rule", …)` を発生させる。
+- `reml-data quality explain <rule_id>` は `rationale` と `owner` を提示し、責任者と根拠を素早く確認できる。
+
+### F-2. ガバナンス連携
+
+- `register_quality_rule` は登録/更新時に監査ログを出力し、承認フローを記録する。
+- `QualityReport.findings[].diagnostic` は 2.5 節の構造化エラーに準拠し、JSON スキーマは [データモデルリファレンス](guides/data-model-reference.md#quality-report-schema) に定義する。
+- `QualityReport.stats` は実行後の `ColumnStats` を更新し、`last_updated` の値を通じてデータドリフト監視に活用できる。

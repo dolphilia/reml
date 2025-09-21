@@ -82,6 +82,14 @@ reml-data diff --schema-old schemas/user_v1.ks --schema-new schemas/user_v2.ks -
 # マイグレーション適用（失敗時のロールバック情報を保存）
 reml-data migrate --diff diff.json --input data/import.parquet --output data/output.parquet \
   || cat rollback.json
+
+# データ品質評価（staging プロファイル）
+reml-data quality run data/users.json --schema schemas/user.ks --profile staging --format json \
+  | jq '.report | {audit_id, profile, severity_max, findings}'
+
+# StatsProvider を使った統計更新
+reml-data stats collect --schema schemas/user.ks --provider warehouse --format json \
+  | jq '.stats | keys'
 ```
 
 - CLI 出力の JSON は `2-8-data.md` の `SchemaDiff`/`MigrationStep`/`MigrationError` を直列化したもの。
@@ -94,18 +102,111 @@ reml-data migrate --diff diff.json --input data/import.parquet --output data/out
 | `reml.data.validate` | `reml-data validate` | `audit_id`, `diagnostics`, `profile`, `stats` |
 | `reml.data.migrate` | `reml-data migrate` | `audit_id`, `changes`, `duration_ms`, `status` |
 | `reml.data.rollback` | `reml-data migrate --rollback` | `audit_id`, `actions`, `reason` |
+| `reml.data.quality` | `reml-data quality run` | `audit_id`, `profile`, `findings`, `severity_max`, `stats` |
+| `reml.data.quality.rule` | `register_quality_rule`, `reml-data quality rules list` | `rule_id`, `scope`, `severity`, `owner` |
 
 - 監査ログは `guides/runtime-bridges.md` に記載の JSON 構造（`event`, `audit_id`, `change_set`）を踏襲。
 - IDE との連携では `guides/lsp-integration.md` の `data` フィールドに `domain = "schema"` を埋め込み、差分レビュー画面へリンクする。
 
-## 6. ベストプラクティス
+## 6. QualityReport スキーマ {#quality-report-schema}
+
+```json
+{
+  "$id": "https://spec.reml.dev/schema/quality-report.json",
+  "type": "object",
+  "required": ["profile", "findings", "stats", "generated_at"],
+  "properties": {
+    "profile": {"type": "string"},
+    "audit_id": {"type": ["string", "null"], "format": "uuid"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "severity_max": {"enum": ["None", "Warn", "Error"]},
+    "stats": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/definitions/columnStats"}
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule", "scope", "severity", "diagnostic", "auto_fixed"],
+        "properties": {
+          "rule": {"type": "string"},
+          "scope": {"$ref": "#/definitions/qualityScope"},
+          "severity": {"enum": ["Warn", "Error"]},
+          "diagnostic": {"$ref": "https://spec.reml.dev/schema/diagnostic.json"},
+          "auto_fixed": {"type": "boolean"}
+        }
+      }
+    }
+  },
+  "definitions": {
+    "qualityScope": {
+      "oneOf": [
+        {"type": "object", "required": ["Column"], "properties": {"Column": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}}}}},
+        {"const": "Dataset"},
+        {"type": "object", "required": ["Relation"], "properties": {"Relation": {"type": "object", "required": ["columns"], "properties": {"columns": {"type": "array", "items": {"type": "string"}}}}}}
+      ]
+    },
+    "columnStats": {
+      "type": "object",
+      "required": ["count"],
+      "properties": {
+        "count": {"type": "integer", "minimum": 0},
+        "distinct": {"type": ["integer", "null"], "minimum": 0},
+        "min": {"type": ["number", "null"]},
+        "max": {"type": ["number", "null"]},
+        "mean": {"type": ["number", "null"]},
+        "stddev": {"type": ["number", "null"]},
+        "percentiles": {
+          "type": ["object", "null"],
+          "additionalProperties": {"type": "number"}
+        },
+        "histogram": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "object",
+            "required": ["bucket", "count"],
+            "properties": {
+              "bucket": {
+                "type": "object",
+                "required": ["label", "min", "max"],
+                "properties": {
+                  "label": {"type": "string"},
+                  "min": {"type": "number"},
+                  "max": {"type": "number"}
+                }
+              },
+              "count": {"type": "integer", "minimum": 0}
+            }
+          }
+        },
+        "last_updated": {"type": ["string", "null"], "format": "date-time"}
+      }
+    }
+  }
+}
+```
+
+### 6.1 監査ログ整合テストケース
+
+1. **Severity Propagation**: `reml-data quality run` で `Error` finding を発生させ、CLI 出力と `audit.log("reml.data.quality")` の `severity_max` が一致するか確認。
+2. **Stats Drift Guard**: `ColumnStats.last_updated` を未来日時に偽装した入力を流し、CLI が `Diagnostic` を返して JSON スキーマ検証が失敗することをチェック。
+3. **Scope Serialization**: `Relation` スコープのルールで `findings[].scope.Relation.columns` が配列になるか `jq` テスト。
+4. **Auto Fix Flag**: 自動修正が実行されたケースで `findings[].auto_fixed=true` と監査ログの `auto_fix=true` が両立するか検証。
+
+### 6.2 StatsProvider との統合
+
+- `reml-data stats collect` の JSON は `columnStats` 定義と互換であり、`run_quality` が返す `QualityReport.stats` へマージしてもスキーマ検証を通過すること。
+- 異常系テスト: `StatsProvider` が重複したヒストグラム区間を返した場合、`run_quality` が `Diagnostic` を発生させ CLI exit code `8`（StatsInvalid）を返すことを確認。
+
+## 7. ベストプラクティス
 
 1. **スキーマ・コード同居**: `Schema.build` で定義した DSL をリポジトリ内の `schemas/` ディレクトリに集約し、CI で常に `reml-data validate` を実行する。
 2. **統計の自動更新**: バッチ処理後に `ColumnStats` を更新し、`stats.updated_at` をログへ出力する。
 3. **Breaking 変更の承認**: `MigrationStep` に `breaking=true` が含まれる場合、`kestrel-plugin` の承認者ロールと同じレビュー手順を経る。
 4. **可視化連携**: `RuntimeMetrics` を Prometheus や Grafana に輸出し、`audit_id` をキーにエラーとの関連を追跡。
 
-## 7. 参考リンク
+## 8. 参考リンク
 
 - [2.8 Core.Data](../2-8-data.md)
 - [ランタイム連携ガイド](runtime-bridges.md)

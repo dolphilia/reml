@@ -19,6 +19,7 @@ let appSchema = Config.schema("AppConfig", |s| {
   - `compute(name, (Config) -> Value)`
   - `requires((Config) -> Bool, message)`
   - `when((Config) -> Bool, Patch)` – 条件付きパッチ。
+- 第3引数 `options` に `ConfigSchemaOptions` を渡すと、`data_source` 等のメタ情報を付与できる（§G）。
 - `extends(baseSchema)` を呼び出すことで親スキーマを継承し、フィールドの上書き・追加が行える。
 
 ## B. 差分検証
@@ -119,3 +120,32 @@ fn render(template: Schema<T>, env: Map<String, Any>) -> Result<RenderedConfig, 
 ```
 
 `Core.Config` の API と `reml-config` CLI は [設定 CLI ワークフロー](guides/config-cli.md) で定義したパイプラインに従い、`audit_id`・`change_set`・`exit code` を共有することで CI/CD・ホットリロード・監査報告における整合性を保証する。
+
+---
+
+## G. データ品質連携（ドラフト）
+
+```reml
+type ConfigSchemaOptions = {
+  data_source: Option<DataSourceBinding>,
+  default_profile: Option<ProfileId>
+}
+
+type DataSourceBinding = {
+  schema: Schema<any>,
+  profile: Option<ProfileId>,
+  stats_provider: Option<StatsProviderId>
+}
+
+type DataProfileConfig = {
+  profile: ProfileId,
+  stats_provider: Option<StatsProviderId>,
+  audit: Bool,
+  emit_findings: Bool
+}
+```
+
+* `Config.schema(name, builder, options)` で `data_source` を指定すると、該当スキーマが `Core.Data` の `Schema<T>` と紐付き、`reml-data quality run` 実行時にデフォルトの `QualityProfile` が選択される。
+* `default_profile` は `RunConfig.data_profile`（2.6 節）の新規フィールドが未指定の場合に利用するフォールバック値。
+* `DataProfileConfig` は実行時に使用するプロファイルや統計バックエンドを宣言し、`audit=true` の場合は品質レポートを `reml.data.quality` ドメインで必ず記録する。
+* CLI では `reml-config schema describe` で `data_source` を確認でき、`profile`/`stats_provider` の整合性を検証する。

@@ -52,8 +52,20 @@ type RunConfig = {
   memo_max_entries: Option<usize> = Some(1 << 20),
   trace: Bool = false,
   merge_warnings: Bool = true,
-  stream_buffer_bytes: Option<usize> = Some(64 * 1024)
+  stream_buffer_bytes: Option<usize> = Some(64 * 1024),
+  gc: Option<GcConfig> = None
 }
+
+type GcConfig = {
+  policy: GcPolicy = "Incremental",
+  heap_max_bytes: Option<usize>,
+  pause_target_ms: Option<f64>,
+  profile: Option<GcProfileId>
+}
+
+type GcPolicy = "Rc" | "Incremental" | "Generational" | "Region"
+
+type GcProfileId = "game" | "ide" | "web" | "data" | String
 ```
 
 * `exec_mode` は Normal / Packrat / Hybrid / Streaming の各モードを切替える（既定は `normal`）。
@@ -61,6 +73,7 @@ type RunConfig = {
 * `fuel_max_steps` / `fuel_on_empty_loop` は停止性の安全弁として機能する。
 * `packrat_window_bytes` / `memo_max_entries` はキャッシュのメモリ上限。
 * `stream_buffer_bytes` はストリーム入力のリングバッファ既定サイズ。
+* `gc` を指定すると実行時に GC Capability へ通知され、ポリシー・ヒープ上限・停止時間目標を伝える（§G-1）。
 
 * **空成功の繰返し**検出は必須（2.2 に準拠）。
 * `fuel_max_steps` 超過は `E_FUEL` としてエラー化（位置・直近ルール列を提示）。
@@ -142,21 +155,45 @@ fn with_trace<T>(p: Parser<T>, on_event: TraceEvent -> ()) -> Parser<T>
 
 * `Input.bytes` は **固定サイズリング**（既定 64KB〜任意）。
 * **先読み**が窓を越える場合は **ブロック（継続待ち）**。
-* Feeder は `pull(max_bytes)` で `FeederSignal::Ready` によりチャンクを返し、`::Await` / `::Closed` / `::Error` でバックプレッシャや終了を通知。
+* Feeder は `pull(hint: DemandHint)` を受け取り、`FeederYield::Chunk` でチャンクを返し、`::Await` / `::Closed` / `::Error` でバックプレッシャや終了を通知。
 * 文字モデル（1.4）の **境界表**（コードポイント/グラフェム）は **スライディングで増分更新**。
 
-### F-2. 継続（Continuation）
+### F-2. `StreamOutcome`・継続とデマンドヒント
 
 ```reml
+type StreamOutcome<T> =
+  | Completed { value: T, span: Span, meta: StreamMeta }
+  | Pending { continuation: Continuation<T>, demand: DemandHint, meta: StreamMeta }
+```
+
+* `StreamMeta` は累積消費量や再開回数、バックプレッシャ関連指標をまとめた統計で、監査ログ `parser.stream` に添付する。
+* `Pending.demand` は次に必要な供給量のヒントを示し、Feeder／`FlowController` が入力バッチを調整する指針になる。
+
+```reml
+type DemandHint = {
+  min_bytes: usize,
+  preferred_bytes: Option<usize>,
+  frame_boundary: Option<TokenClass>
+}
+
 type Continuation<T> = {
-  state: Opaque,           // メモ/位置/進行中ルールの縮約スナップショット
-  commit_watermark: usize, // 掃除可能基準
-  buffered: Input           // リングバッファに残っている未消費入力
+  state: Opaque,
+  meta: ContinuationMeta
+}
+
+type ContinuationMeta = {
+  commit_watermark: usize,
+  buffered: Input,
+  resume_hint: Option<DemandHint>,
+  expected_tokens: Set<Expectation>,
+  last_checkpoint: Option<Span>,
+  trace_label: Option<String>
 }
 ```
 
-* `run_stream` は **入力不足**で停止すると `StreamOutcome::Pending`（`Continuation` 付き）を返し、`resume` で再開。
-* **Fix**：`attempt` の境界より前のメモは **破棄可能**、`commit_watermark` より前は**安全に破棄**。`buffered` には再開時に利用する未消費入力が格納される。
+* `commit_watermark` 以前のメモ化エントリは安全に破棄できる。`buffered` はリングバッファ内の未消費入力で、`resume` 時に再利用される。
+* `expected_tokens` / `last_checkpoint` は IDE 補完やロールバック処理のガイドとなる。`trace_label` は SpanTrace（2.5）と連動し、ログ上で継続の出処を追跡しやすくする。
+* `run_stream` が `Pending` を返した場合は `Continuation` と `DemandHint` を使って供給戦略を決め、`resume` に追加バイトを渡す。`Completed` のときは `StreamMeta` を監査・テレメトリへ記録する。
 
 ### F-3. インクリメンタル再パース（IDE）
 
@@ -167,6 +204,62 @@ type Continuation<T> = {
   3. 変更境界から**局所再パース**。
 * AST ノードは `Span` を鍵に **ロープ**状に結び直す（ゼロコピー維持）。
 
+### F-4. `StreamDriver` とフロー制御（ドラフト）
+
+```reml
+type StreamDriver<T, Sink> = {
+  parser: Parser<T>,
+  feeder: Feeder,
+  sink: Sink,
+  flow: FlowController,
+  on_diagnostic: StreamDiagnosticHook,
+  state: Option<Continuation<T>>,
+  meta: StreamMeta
+}
+
+type FlowController = {
+  mode: FlowMode,
+  high_watermark: usize,
+  low_watermark: usize,
+  policy: FlowPolicy
+}
+
+type FlowMode = "push" | "pull" | "hybrid"
+
+type FlowPolicy =
+  | Manual { on_demand: fn() -> Demand }
+  | Auto { backpressure: BackpressureSpec }
+
+type Demand = { bytes: usize, frames: usize }
+
+type BackpressureSpec = {
+  max_lag: Option<Duration>,
+  debounce: Option<Duration>,
+  throttle: Option<Duration>
+}
+```
+
+* `StreamDriver::pump()` は `run_stream` を 1 ステップ進め、`StreamOutcome` を `sink` へ渡す。`Pending` の場合は `state` に継続を保持し、`FlowController` の判定に従って再開タイミングを決定する。
+* `FlowController.mode` で IDE 向けの **pull**（差分が届いたときのみ `resume`）、リアルタイム処理の **push**、両者を組み合わせる **hybrid** を切り替える。
+* `Auto` ポリシーは `StreamMeta.lag_nanos` やバッファ充填率を監視し、しきい値を越えた場合にスロットリング／ドレインなどの内部イベントを発火させ、供給側へ通知する。
+
+### F-5. ストリーム診断フック
+
+```reml
+type StreamDiagnosticHook = fn(StreamEvent) -> ()
+
+type StreamEvent =
+  | Progress { consumed: usize, produced: usize, lap: Duration }
+  | Pending { reason: PendingReason, meta: ContinuationMeta }
+  | Error { diagnostic: ParseError, continuation: Option<ContinuationMeta> }
+
+type PendingReason = "Backpressure" | "InputExhausted" | "FeederAwait" | "FeederClosed"
+```
+
+* `Progress` はテレメトリや IDE ステータスバーに活用し、解析の進捗をリアルタイムで可視化する。
+* `Pending` イベントは `ContinuationMeta` を添付するため、補完候補提示や復旧 UI にそのまま渡せる。
+* `Error` は `ParseError` を構造化ログに出力しつつ、継続があれば添付する。`audit.log("parser.stream.error", …)` などで監査フローに統合する。
+
 ---
 
 ## G. 並列性・再入性
@@ -174,6 +267,39 @@ type Continuation<T> = {
 * パーサ値は **不変**・**スレッドセーフ**。
 * `State` は実行ごとに分離。`MemoTable` も run 単位。
 * **分割統治**（ファイル複数・モジュール複数）は **上位で並列**に回す想定（同一入力内での並列実行は非推奨：メモが競合する）。
+
+### G-1. GC 制御フロー（ドラフト）
+
+```reml
+type GcCapability = {
+  configure: fn(GcConfig) -> (),
+  register_root: fn(RootSet) -> (),
+  unregister_root: fn(RootSet) -> (),
+  write_barrier: fn(Object, Field) -> (),
+  metrics: fn() -> GcMetrics,
+  trigger: fn(GcReason) -> ()
+}
+
+type RootSet = {
+  stack_roots: List<Ptr<Object>>,
+  global_roots: List<Ptr<Object>>
+}
+
+type GcMetrics = {
+  heap_bytes: usize,
+  heap_limit: usize,
+  last_pause_ms: f64,
+  total_collections: u64,
+  policy: GcPolicy
+}
+
+type GcReason = "Manual" | "Threshold" | "Idle" | "Emergency"
+```
+
+* ランナーは `RunConfig.gc` が指定されていれば初期化時に `configure` を呼び、`RootSet` を登録する。パーサ評価中にローターンスレッドが変更される場合は `register_root`/`unregister_root` を再調整する。
+* 書き込みバリアは `Parser` が持つ mutable state から参照型を更新する際に呼び出し、世代間ポインタを GC へ通知する。
+* `metrics()` は `guides/runtime-bridges.md` で定義する `gc.stats` 監査ログと一致するメトリクスを返す。
+* `trigger` はポリシー固有のコレクションを明示的に走らせるためのフックであり、`pause_target_ms` を守れない場合は `GcReason::Emergency` として呼び出す。
 
 ---
 

@@ -166,32 +166,101 @@ fn resume<T>(cont: Continuation<T>, more: Bytes) -> Result<StreamOutcome<T>, Par
 // 追加バイトを供給してストリームを再開。
 
 type StreamOutcome<T> =
-  | Completed(value: T, span: Span)
-  | Pending(Continuation<T>)
+  | Completed { value: T, span: Span, meta: StreamMeta }
+  | Pending { continuation: Continuation<T>, demand: DemandHint, meta: StreamMeta }
 
-type Feeder = {
-  pull: fn(max_bytes: usize) -> Result<Bytes, FeederSignal>
+type StreamMeta = {
+  consumed_bytes: usize,
+  resume_count: usize,
+  lag_nanos: Option<u64>,
+  buffer_fill_ratio: Option<f32>
 }
 
-type FeederSignal =
-  | Ready
+type DemandHint = {
+  min_bytes: usize,
+  preferred_bytes: Option<usize>,
+  frame_boundary: Option<TokenClass>
+}
+
+type Continuation<T> = {
+  state: Opaque,
+  meta: ContinuationMeta
+}
+
+type ContinuationMeta = {
+  commit_watermark: usize,
+  buffered: Input,
+  resume_hint: Option<DemandHint>,
+  expected_tokens: Set<Expectation>,
+  last_checkpoint: Option<Span>,
+  trace_label: Option<String>
+}
+
+type Feeder = {
+  pull: fn(hint: DemandHint) -> FeederYield
+}
+
+type FeederYield =
+  | Chunk(Bytes)
   | Await
   | Closed
   | Error(StreamError)
 
 type StreamError = { kind: String, detail: Option<String> }
-
-type Continuation<T> = {
-  state: Opaque,
-  commit_watermark: usize,
-  buffered: Input
-}
 ```
 
-* `StreamOutcome::Pending` が返った場合は `resume` に `Continuation` と追加バイトを渡す。
-* `Feeder.pull` は `FeederSignal::Ready` でチャンクを返し、`::Await` でバックプレッシャ、`::Closed` で終端、`::Error` でストリームエラーを通知。
+* `StreamOutcome::Pending` が返った場合は `Continuation` と `demand` を参照し、必要量を供給して `resume` を呼び出す。
+* `Feeder.pull` は `DemandHint` を入力とし、`FeederYield::Chunk` でバイト列を返し、`::Await` でバックプレッシャ、`::Closed` で終端、`::Error` でストリームエラーを通知。
 * **ゼロコピー**：`src` は `Input.bytes` へ **参照共有**。
 * 文字モデル（1.4）により、列は**グラフェム**、`Span` は**バイトと行列の両方**を保持。
+
+### G-1. ストリーム補助型（ドラフト）
+
+```reml
+type StreamDriver<T, Sink> = {
+  parser: Parser<T>,
+  feeder: Feeder,
+  sink: Sink,
+  flow: FlowController,
+  on_diagnostic: StreamDiagnosticHook,
+  state: Option<Continuation<T>>,
+  meta: StreamMeta
+}
+
+type FlowController = {
+  mode: FlowMode,
+  high_watermark: usize,
+  low_watermark: usize,
+  policy: FlowPolicy
+}
+
+type FlowMode = "push" | "pull" | "hybrid"
+
+type FlowPolicy =
+  | Manual { on_demand: fn() -> Demand }
+  | Auto { backpressure: BackpressureSpec }
+
+type Demand = { bytes: usize, frames: usize }
+
+type BackpressureSpec = {
+  max_lag: Option<Duration>,
+  debounce: Option<Duration>,
+  throttle: Option<Duration>
+}
+
+type StreamDiagnosticHook = fn(StreamEvent) -> ()
+
+type StreamEvent =
+  | Progress { consumed: usize, produced: usize, lap: Duration }
+  | Pending { reason: PendingReason, meta: ContinuationMeta }
+  | Error { diagnostic: ParseError, continuation: Option<ContinuationMeta> }
+
+type PendingReason = "Backpressure" | "InputExhausted" | "FeederAwait" | "FeederClosed"
+```
+
+* `StreamDriver` は 2-6 節で説明する `pump`/`resume` の制御ループをカプセル化し、バックプレッシャや診断イベントを一元管理するためのヘルパ。
+* `FlowController` の `mode` と `policy` は IDE 向けの pull 型、ゲーム/リアルタイム向けの push 型、混合運用を切り替える。
+* `StreamDiagnosticHook` は `StreamEvent` を受け取り、監査ログ出力や IDE 連携に利用する。
 
 ---
 
@@ -350,6 +419,62 @@ register_bundle(bundle)?
   * LRU/リングで上限を設け、巨大入力でのメモリ爆発を回避。
 * **左再帰**：`left_recursion=true` のとき、既知の **種別変換法**（seed-growing）を使用（ルールに `ParserId` が必須）。
 * **ステップ上限**：`fuel_max_steps` で無限ループ検出（診断に直近のルール列を含める）。
+
+### J-4. Core.Async（ドラフト）
+
+```reml
+type Poll<T> =
+  | Ready(T)
+  | Pending { wake: Waker }
+
+type Waker = fn() -> ()
+
+type AsyncContext = {
+  task_id: TaskId,
+  scheduler: SchedulerHandle
+}
+
+type TaskId = Uuid
+type SchedulerHandle = Opaque
+
+type Future<T> = {
+  poll: fn(&mut AsyncContext) -> Poll<T>
+}
+
+type Task<T> = {
+  id: TaskId,
+  join: fn() -> Future<Result<T, Cancelled>>,
+  cancel: fn(CancelToken) -> (),
+  span: Option<Span>
+}
+
+type Cancelled = {
+  reason: Option<String>
+}
+
+type CancelToken = {
+  request: fn() -> (),
+  is_cancelled: fn() -> Bool
+}
+
+type AsyncFeeder = fn(DemandHint) -> Future<FeederYield>
+
+fn run_stream_async<T>(p: Parser<T>, feeder: AsyncFeeder, cfg: AsyncConfig = {})
+  -> Task<Result<T, ParseError>>
+
+type AsyncConfig = {
+  executor: SchedulerHandle,
+  max_inflight: usize,
+  backpressure: BackpressureSpec,
+  diagnostics: StreamDiagnosticHook,
+  cancellation: CancelToken
+}
+```
+
+* `Future` は `poll` ベースで定義し、`Poll::Pending` の際に `wake` を登録したスケジューラへ通知する。
+* `Task` は構造化並行性を想定し、`CancelToken` 経由で子タスクへキャンセルを伝播させる。
+* `AsyncFeeder` は `DemandHint` を受け取り非同期に `FeederYield` を返す。`run_stream_async` は `StreamOutcome` を内部で逐次処理しつつ `Task` を返却する。
+* `AsyncConfig.backpressure` は `FlowController` と同一の `BackpressureSpec` を共有し、同期ランナーと診断情報を揃える。
 
 ---
 

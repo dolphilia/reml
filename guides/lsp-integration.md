@@ -52,7 +52,9 @@ fn to_lsp_diagnostics(diags: List<Diagnostic>) -> List<LspDiagnostic> =
       "domain": d.domain,
       "audit_id": d.audit_id,
       "change_set": d.change_set,
-      "severity_hint": d.severity_hint
+      "severity_hint": d.severity_hint,
+      "stream": d.stream_meta,
+      "quality_report": d.quality_report_id
     }))
   })
 ```
@@ -60,6 +62,8 @@ fn to_lsp_diagnostics(diags: List<Diagnostic>) -> List<LspDiagnostic> =
 - `audit_id` を IDE 側で保持し、承認フローや差分レビューに利用。
 - `change_set` を JSON として埋め込むことで、設定差分を IDE 上で表示可能。
 - `severity_hint` に基づき、IDE 側で「ロールバック推奨」「再試行可」などのガイドを提示できる。
+- `stream` フィールドは `StreamEvent`/`ContinuationMeta` のサマリを格納し、ライブ補完やバックプレッシャ指標をステータスバーへ表示できる。
+- `quality_report` には `QualityReport.audit_id` の参照を保持し、データ品質診断を IDE から直接リンクできる。
 
 ## 4. ハイライト・補完ツールチェーン
 
@@ -109,3 +113,15 @@ reml-run lint config.ks --format json --domain config   | jq '.diagnostics[] | {
   3. サーバは `audit.log("lsp.codeAction", { audit_id, command })` を記録し、`workspace/applyEdit` を発行。
 
 > 本ガイドはフェーズ3でさらに事例と図解を追加する予定です。
+
+## 7. 互換性チェックリスト
+
+| 項目 | 内容 | 参照 |
+| --- | --- | --- |
+| `Diagnostic.data.stream` | `StreamDriver` ベースの差分解析をサポートするクライアントは `ContinuationMeta` のサマリを解釈できるか | 2-6 実行戦略 §F |
+| `Diagnostic.data.quality_report` | データ品質診断リンクが `guides/data-model-reference.md#quality-report-schema` に従うか | データモデルリファレンス |
+| `gc.stats` メッセージ | IDE が GC メトリクスを取得する場合 `guides/runtime-bridges.md#10-2` のスキーマを処理できるか | Runtime Bridges |
+| CLI / LSP 診断整合 | `reml-run lint --format json` と LSP 診断が同一 `audit_id` / `code` を保持しているか | 本ガイド §5 |
+| レガシークライアント | `Diagnostic.data` を無視しても従来どおり動作できるか（フォールバックポリシーの確認） | 互換性ポリシー |
+
+互換性テストは LSP サーバの CI で `lsp-sample-client`（仮称）によるスナップショット比較を行い、差分は `reml-backlog.md` の「LSP/CLI 互換性」セクションに記録する。

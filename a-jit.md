@@ -127,6 +127,29 @@ Reml源コード
 
 ## 必要な設計
 
+### 5.0 ターゲット ABI / データレイアウト（ドラフト）
+
+| 項目                  | 既定値 / 方針 | 備考 |
+| ------------------- | ------------ | ---- |
+| 主要ターゲット         | System V AMD64 (`x86_64-unknown-linux-gnu`)、Windows x64 (`x86_64-pc-windows-msvc`) | LLVM のデフォルト ABI から逸脱しない構成を優先。将来 ARM64 を追加予定。 |
+| エンディアン           | リトルエンディアン | LLVM `DataLayout` 文字列で宣言。 |
+| ポインタ幅             | 64bit (`p:64:64`) | Opaque Pointer 前提。FAT ポインタは構造体で表現。 |
+| 整数アラインメント      | `i8:8`, `i16:16`, `i32:32`, `i64:64` | System V 互換。Windows でも互換値。 |
+| 浮動小数点アラインメント | `f32:32`, `f64:64` | SSE2 対応前提。 |
+| 構造体パッキング        | デフォルト（自然境界）。`#[repr(C)]` 相当の再現を優先。 | Reml 側で `@repr(packed)` 等のシンタックスを導入するまでは暗黙で自然境界。 |
+| ベクトルアラインメント    | `v128:128` | SIMD 拡張予定時の互換性確保。 |
+
+* **DataLayout 文字列例**（System V）：`e-m:e-p:64:64-f64:64:64-v128:128:128-a:0:64`。
+* **呼出規約**：FFI 互換性のため、公開関数は `cc ccc`（C 既定）を採用。Windows では `cc win64` への切替オプションを `RunConfig` で後日提供予定。
+* **構造体レイアウト**：
+  * 代数的データ型は `{i32 tag, [payload]}` を基本とし、payload は最大幅の union または variant ごとの構造体に Lower。
+  * 文字列/スライスは `{ptr data, i64 len}`。FFI 渡し時は所有権ルール（下記）が必須。
+* **所有権モデル**：
+  * RC ベース。`extern` へ渡す場合は `inc_ref` で寿命を延長し、戻ったら `dec_ref`。逆方向で受け取る場合は FFI 側が `reml_release_*` を呼ぶ契約を `guides/reml-ffi-handbook.md` で定義する。
+  * `unsafe` 境界で未解放が起こらないよう、FFI シムは RAII 風ヘルパを提供予定。
+* **例外とパニック**：Reml は例外を持たず、`panic` は `abort` 相当。C++ 例外との境界では `noexcept` としてリンク。
+* **WASM/WASI**：DataLayout と ABI は未定。別途調査メモを参照し、この節に将来追加する。
+
 ### 5.1 型対応表
 
 | Reml     | LLVM IR                | 備考                               |
