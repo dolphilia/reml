@@ -22,14 +22,6 @@ type ErrorDomain =
   | Security
   | CLI
 
-type AuditId = Uuid
-
-type ChangeSetRef = {
-  id: Option<Str>,
-  fingerprint: Option<Hash256>,
-  diff: Option<Json>
-}
-
 type Expectation =
   | Token(Str)          // 具体トークン（")", "if", "+", …）
   | Keyword(Str)        // 識別子と衝突しない予約語
@@ -47,15 +39,14 @@ type FixIt =            // IDE 用 “その場で直せる” 提案
 type Diagnostic = {
   severity: Severity,
   severity_hint: Option<SeverityHint>,
-  domain: ErrorDomain,
+  domain: Option<ErrorDomain>,
   code: Option<Str>,        // "E0001" など（安定ID）
   message: Str,             // 1 行要約
   at: Span,                 // 主位置（1.4: 列=グラフェム）
-  audit_id: Option<AuditId>,
-  change_set: Option<ChangeSetRef>,
   expected_summary: Option<ExpectationSummary>,
   notes: List<(Span, Str)>, // 追加メモ（複数可）
-  fixits: List<FixIt>
+  fixits: List<FixIt>,
+  extensions: Map<Str, Any> // プラグインが追加情報を格納するための自由領域
 }
 
 // 期待集合を人間語へ整形するためのサマリ
@@ -81,8 +72,8 @@ type ParseError = {
 * **`ParseError` は集約用の“素の事実”**、**`Diagnostic` は表示用**（`Err.pretty` が `ParseError` から `Diagnostic` を起こす）。
 * `Expectation` は**種類別**に持ち、message 生成時に**まとまりで整形**（例：「期待：`)`・`number`・識別子のいずれか」）。
 * `expected_summary` はテンプレート ID と文脈を保持し、IDE/LSP がローカライズ済みメッセージを生成できるようにする。
-* `domain` はエラーの責務領域を示し、CLI/監査ログでのフィルタリングに利用。`severity_hint` は運用側への推奨アクション（ロールバック・再試行・即時エスカレーションなど）を表す。
-* `change_set` は設定差分・マイグレーション計画など、影響範囲を同定するための指標。`fingerprint` は差分内容に対する安定ハッシュを提供する。
+* `domain` は必要に応じて責務領域を付与する分類タグであり、省略した場合は純粋にパーサからの診断として扱われます。`severity_hint` は運用側への推奨アクション（ロールバック・再試行・即時エスカレーションなど）を表します。
+* `extensions` はプラグインやツールが任意の追加メタデータ（設定差分、監査情報、テレメトリなど）を格納する自由領域で、コア仕様はその内容に関与しません。
 
 ---
 
@@ -251,63 +242,33 @@ fn toDiagnostics(src: Str, e: ParseError, o: PrettyOptions = {}) -> List<Diagnos
 
 ### F-1. 拡張診断メタデータ
 
-監査ログや設定差分を扱うシナリオで活用するため、`Diagnostic` に以下のフィールドを追加した。
+`Diagnostic.domain` と `Diagnostic.extensions` を活用することで、プロジェクト固有の情報（例: 設定差分、監査 ID、テレメトリ）を診断へ付加できます。Reml コアはキー名や値の構造を規定せず、拡張側で運用に合わせたスキーマを定義します。
 
-* `domain: ErrorDomain` – `Parser` / `Config` / `Runtime` / `Network` / `Data` / `Audit` / `Security` / `CLI` の分類タグ。
-* `audit_id: Option<AuditId>` – `audit` 効果が発行する相関 ID（UUID）。
-* `change_set: Option<ChangeSetRef>` – 差分適用時の変更一覧・ハッシュ・サマリを含む参照構造。
+- `domain` によって CLI や IDE でのフィルタリングが行いやすくなります。未指定の場合は `Parser` 相当の扱いとなります。
+- `extensions["config.diff"]` のように名前空間付きキーを用いると、複数ツールが衝突せずメタデータを共有できます。
+- `severity_hint` は運用オペレーション（ロールバック推奨・再試行推奨など）を伝える簡易フラグとして利用します。
 
-`ChangeSetRef.diff` には `List<Change>` を格納する慣習を推奨する。
+#### F-1-1. エラーコード命名の推奨
 
-```reml
-type Change = {
-  path: List<Str>,
-  before: Option<Any>,
-  after: Option<Any>
-}
-```
-
-#### F-1-1. エラーコード命名規約
-
-| Domain | Prefix | 例 | 備考 |
-| --- | --- | --- | --- |
-| Parser | `E1` / `W1` | `E1001` | コア構文・パーサエラー（既存コードと互換） |
-| Config | `E4` / `W4` | `E4001` | 設定スキーマ関連（`schema`, `Core.Config`） |
-| Runtime | `E5` / `W5` | `E5002` | ランタイム更新・ホットリロード失敗 |
-| Network | `E6` / `W6` | `E6003` | クラウド/API/ネットワーク操作 |
-| Data | `E7` / `W7` | `E7001` | データモデリング・`Core.Data` の検証 |
-| Security | `E8` / `W8` | `E8004` | セキュリティ・ポリシー違反 |
-| Audit | `E9` / `W9` | `E9001` | 監査連携・承認フローのエラー |
-| CLI | `EA` / `WA` | `EA001` | CLI/ツール層での検証失敗 |
-
-- 形式は `E{domain-prefix}{4桁}`。警告は `W{domain-prefix}{4桁}`。
-- 既存コード (`E1001` 等) は Parser domain に属するとみなし、`E1xxx` を継続利用。
-- `Diagnostic.code` にこの規約を適用し、CLI (`reml-run`, `reml-config`, `reml-data`) から出力される JSON でも同一コードを使用する。
-
+ドメイン別のコード規約は実装側で自由に定義できます。参考として `E{domain-prefix}{4桁}`（例: `E1001`）という既存フォーマットを継続利用すると、CLI や IDE の統合が容易です。
 
 * FixIt テンプレート例:
-  * `FixIt::AddMissing(field, suggestion)` – スキーマ DSL で必須項目が欠落した際に提案。
-  * `FixIt::InsertToken(token)` – テンプレート/括弧の閉じ忘れを自動補完。
-  * `FixIt::ReplaceRange(range, text)` – 非結合演算子やポリシー置換を推奨。
+  * `FixIt::AddMissing(field, suggestion)` – 必須項目が欠落した際の補完。
+  * `FixIt::InsertToken(token)` – 括弧や記号の補完に利用。
+  * `FixIt::ReplaceRange(range, text)` – 誤った構文を置換する提案。
 
-### F-2. IDE/LSP・監査連携
+### F-2. IDE/LSP・ログ連携
 
-* **LSP 変換ヘルパ**: `to_lsp_diagnostics` は `domain`・`audit_id`・`change_set`・`severity_hint` を `data` に埋め込み、IDE 側で監査ビューや差分レポートへジャンプできるようにする。
-  * `expected_summary` が存在すれば `data.expected = { key, args, context }` を出力し、クライアント側でローカライズ済みの候補リストを構築可能にする。
-* **構造化ログ**: `{"event":"reml.error", "domain":..., "audit_id":..., "code":..., "severity_hint":...}` の JSON フォーマットを推奨し、CI/CD や監査ツールでの集計を容易にする。
-* **監査ログ連携**: CLI は `audit_id` をキーに差分レポートを生成し、承認フローやロールバック手順を自動化できるようにする。
-
+* `to_lsp_diagnostics` は `domain`・`severity_hint`・`expected_summary` を LSP データへ変換し、`extensions` は `data.extensions` にそのまま反映します。
+* 構造化ログを出力する場合は、`extensions` を JSON にそのまま埋め込むことで外部ツールが追加情報を解釈できます。
+* 監査や差分管理など高度な連携は、専用プラグインが `extensions` に必要なフィールドを定義し、利用側で合意したスキーマに従って処理してください。
 
 ### F-3. サンプル
 
 ```reml
-let cfg = parseConfig("app.ks")?
-match validateConfig(cfg) with
-| Ok(()) -> Ok(cfg)
-| Err(errs) -> {
-    audit.log("config.validate", errs)
-    Err(errs)
-}
+let mut diag = Err.pretty(src, parse_error, {});
+diag.extensions.insert("config.diff", diff.toJson());
+diag.extensions.insert("run_id", currentRunId());
 ```
 
 ```reml
@@ -318,8 +279,7 @@ fn toStructuredLog(diag: Diagnostic) -> Json = json!({
   "severity": diag.severity,
   "severity_hint": diag.severity_hint,
   "message": diag.message,
-  "audit_id": diag.audit_id,
-  "change_set": diag.change_set,
+  "extensions": diag.extensions,
   "notes": diag.notes,
   "fixits": diag.fixits
 })

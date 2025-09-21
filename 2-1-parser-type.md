@@ -91,18 +91,12 @@ type SpanTrace = List<(name: String, span: Span)>
 
 ```reml
 type RunConfig = {
-  exec_mode: "normal" | "packrat" | "hybrid" | "streaming" = "normal",
   require_eof: Bool = false,            // 全消費を要求（parse_all 相当）
   packrat: Bool = false,                // Packrat メモ化を明示的に有効化
   left_recursion: "off" | "on" | "auto" = "auto",
-  fuel_max_steps: Option<usize> = None, // 評価ステップ上限（DoS/ループ防止）
-  fuel_on_empty_loop: "error" | "warn" = "error",
-  packrat_window_bytes: Option<usize> = Some(1 << 20),
-  memo_max_entries: Option<usize> = Some(1 << 20),
   trace: Bool = false,
   merge_warnings: Bool = true,
-  stream_buffer_bytes: Option<usize> = Some(64 * 1024),
-  legacy_result: Bool = false
+  legacy_result: Bool = false          // 旧 API (`Result<(T, Span), ParseError>`) 互換
 }
 
 type ParserId = u32  // ルール毎に安定ID（rule()/label() が付与）
@@ -112,13 +106,11 @@ type MemoTable = Map<MemoKey, Any>  // 実装上は型消去（内部用）
 ```
 
 * **RunConfig の主な項目**
-  - `exec_mode` で実行戦略を切替え（詳細は [2.6 実行戦略](2-6-execution-strategy.md)）。
-  - `packrat` と `left_recursion` は Packrat メモ化と seed-growing 左再帰を制御。
-  - `fuel_max_steps` / `fuel_on_empty_loop` は停止性の安全弁。
-  - `packrat_window_bytes` / `memo_max_entries` はキャッシュのメモリ上限。
-  - `stream_buffer_bytes` はストリーム入力のリングバッファ既定サイズ。
-  - `legacy_result` は旧 API (`Result<(T, Span), ParseError>`) を返す互換モードを有効化（将来的に削除予定）。
-  - それ以外は 1.1 で説明したエラー報告やトレースの挙動を調整する。
+  - `require_eof` で余剰入力を許可するかを選択。
+  - `packrat` と `left_recursion` は Packrat メモ化と seed-growing 左再帰の利用可否を制御。
+  - `trace` は `SpanTrace` 収集を有効化し、診断に詳細な履歴を残す。
+  - `merge_warnings` は連続する回復警告を集約してノイズを抑制する。
+  - `legacy_result` は旧 API (`Result<(T, Span), ParseError>`) を返す互換モード（移行期間限定）。
 * `rule(name, p)` が **ParserId とラベル**を付与し、Packrat と診断に使う。
 
 ---
@@ -170,114 +162,16 @@ fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T>
 fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResultWithRest<T>
 // 部分パース：残り Input を `rest` に格納し、result.diagnostics も一緒に返す。
 
-fn run_stream<T>(p: Parser<T>, feeder: Feeder, cfg: RunConfig = {}) -> StreamOutcome<T>
-// ストリーム入力。Pending の間も diagnostics を蓄積する。
-
-fn resume<T>(cont: Continuation<T>, more: Bytes) -> StreamOutcome<T>
-// 追加バイトを供給してストリームを再開。
-
 type ParseResultWithRest<T> = {
   result: ParseResult<T>,
   rest: Option<Input>
 }
 
-type StreamOutcome<T> =
-  | Completed { result: ParseResult<T>, meta: StreamMeta }
-  | Pending { continuation: Continuation<T>, demand: DemandHint, meta: StreamMeta, result: ParseResult<T> }
+* `ParseResult` は成功/失敗にかかわらず診断を含むため、IDE や CI でのフィードバックが一貫する。
+* `ParseResultWithRest` は REPL や差分適用で再利用しやすいよう、未消費入力を同梱する。
+* `src` は `Input.bytes` へ参照共有され、コピーを発生させない。文字位置は 1.4 節の Unicode モデルに従う。
 
-type StreamMeta = {
-  consumed_bytes: usize,
-  resume_count: usize,
-  lag_nanos: Option<u64>,
-  buffer_fill_ratio: Option<f32>
-}
-
-type DemandHint = {
-  min_bytes: usize,
-  preferred_bytes: Option<usize>,
-  frame_boundary: Option<TokenClass>
-}
-
-type Continuation<T> = {
-  state: Opaque,
-  meta: ContinuationMeta
-}
-
-type ContinuationMeta = {
-  commit_watermark: usize,
-  buffered: Input,
-  resume_hint: Option<DemandHint>,
-  expected_tokens: Set<Expectation>,
-  last_checkpoint: Option<Span>,
-  trace_label: Option<String>
-}
-
-type Feeder = {
-  pull: fn(hint: DemandHint) -> FeederYield
-}
-
-type FeederYield =
-  | Chunk(Bytes)
-  | Await
-  | Closed
-  | Error(StreamError)
-
-type StreamError = { kind: String, detail: Option<String> }
-```
-
-* `StreamOutcome::Pending` は `result.diagnostics` に中間診断を蓄積しつつ、`Continuation` と `demand` を基に次の供給タイミングを決める。
-* `Feeder.pull` は `DemandHint` を入力とし、`FeederYield::Chunk` でバイト列を返し、`::Await` でバックプレッシャ、`::Closed` で終端、`::Error` でストリームエラーを通知。
-* **ゼロコピー**：`src` は `Input.bytes` へ **参照共有**。
-* 文字モデル（1.4）により、列は**グラフェム**、`Span` は**バイトと行列の両方**を保持。
-
-### G-1. ストリーム補助型（ドラフト）
-
-```reml
-type StreamDriver<T, Sink> = {
-  parser: Parser<T>,
-  feeder: Feeder,
-  sink: Sink,
-  flow: FlowController,
-  on_diagnostic: StreamDiagnosticHook,
-  state: Option<Continuation<T>>,
-  meta: StreamMeta
-}
-
-type FlowController = {
-  mode: FlowMode,
-  high_watermark: usize,
-  low_watermark: usize,
-  policy: FlowPolicy
-}
-
-type FlowMode = "push" | "pull" | "hybrid"
-
-type FlowPolicy =
-  | Manual { on_demand: fn() -> Demand }
-  | Auto { backpressure: BackpressureSpec }
-
-type Demand = { bytes: usize, frames: usize }
-
-type BackpressureSpec = {
-  max_lag: Option<Duration>,
-  debounce: Option<Duration>,
-  throttle: Option<Duration>
-}
-
-type StreamDiagnosticHook = fn(StreamEvent) -> ()
-
-type StreamEvent =
-  | Progress { consumed: usize, produced: usize, lap: Duration }
-  | Pending { reason: PendingReason, meta: ContinuationMeta }
-  | Error { diagnostic: ParseError, continuation: Option<ContinuationMeta> }
-
-type PendingReason = "Backpressure" | "InputExhausted" | "FeederAwait" | "FeederClosed"
-```
-
-* `StreamDriver` は 2-6 節で説明する `pump`/`resume` の制御ループをカプセル化し、バックプレッシャや診断イベントを一元管理するためのヘルパ。
-* `FlowController` の `mode` と `policy` は IDE 向けの pull 型、ゲーム/リアルタイム向けの push 型、混合運用を切り替える。
-* `StreamDiagnosticHook` は `StreamEvent` を受け取り、監査ログ出力や IDE 連携に利用する。
-
+> ストリーミング処理や継続再開、バックプレッシャ制御などの高度なランナーは `Core.Parse.Streaming` 拡張（別途定義）で提供します。コア仕様ではバッチ実行と部分パースのみを扱います。
 ---
 
 ## H. 代数則（使用者向けの直観）
@@ -290,140 +184,11 @@ type PendingReason = "Backpressure" | "InputExhausted" | "FeederAwait" | "Feeder
 
 ---
 
-## I. プラグイン登録と Capability
+## I. プラグイン連携の位置付け
 
-> DSL プラグインを登録し、Parser capability を管理するための標準 API を定義する。
+Reml コアの `Core.Parse` はプラグイン登録 API を持ちません。DSL 拡張や capability 管理が必要な場合は、別途提供されるプラグインガイド（`guides/DSL-plugin.md`）と関連拡張ライブラリを利用してください。これにより、コア API は小さく安定したまま、プロジェクト固有の拡張点を opt-in で追加できます。
 
-```reml
-type CapabilitySet = Set<String>
-
-type PluginCapability = {
-  name: String,
-  version: SemVer,
-  traits: Set<String>,
-  since: Option<SemVer>,
-  deprecated: Option<SemVer>
-}
-
-type PluginRegistrar = {
-  register_schema: fn(name: String, schema: Any) -> (),
-  register_parser: fn(name: String, factory: fn() -> Parser<Any>) -> (),
-  register_capability: fn(CapabilitySet) -> ()
-}
-
-type ParserPlugin = {
-  name: String,
-  version: SemVer,
-  capabilities: List<PluginCapability>,
-  dependencies: List<PluginDependency>,
-  signature: Option<PluginSignature>,
-  register: fn(PluginRegistrar) -> ()
-}
-
-fn register_plugin(plugin: ParserPlugin) -> Result<(), PluginError>
-fn with_capabilities<T>(cap: CapabilitySet, p: Parser<T>) -> Parser<T>
-fn register_bundle(bundle: PluginBundle) -> Result<(), PluginError>
-fn verify_plugin(plugin: &ParserPlugin, policy: VerificationPolicy) -> Result<(), PluginWarning>
-
-type PluginDependency = {
-  name: String,
-  version_req: VersionReq,
-  required_capabilities: CapabilitySet
-}
-
-type VersionReq = {
-  predicate: String
-}
-
-type PluginBundle = {
-  name: String,
-  version: SemVer,
-  plugins: List<ParserPlugin>,
-  manifest: BundleManifest
-}
-
-type BundleManifest = {
-  description: Option<Str>,
-  checksum: Hash256,
-  signed_by: Option<PluginSignature>
-}
-
-type PluginSignature = {
-  algorithm: "ed25519" | "rsa-pss",
-  certificate: Bytes,
-  issued_to: Str,
-  valid_until: Option<Timestamp>
-}
-
-type PluginError =
-  | MissingCapability { name: String }
-  | MissingDependency { name: String, required: VersionReq }
-  | Conflict { plugin: String, existing: SemVer, incoming: SemVer }
-  | RegistrationFailed { reason: String }
-  | VerificationFailed { plugin: String, reason: String }
-
-type PluginWarning =
-  | DeprecatedCapability { name: String, deprecated: SemVer }
-  | ExpiringSignature { plugin: String, valid_until: Timestamp }
-```
-
-* `register_plugin` はプラグインが提供する DSL/コンビネータを登録し、`PluginRegistrar` 経由で `ParserId` を割り当てる。
-* `register_bundle` は署名付きのバンドルを一括登録し、依存解決・バージョン整合性・署名検証を順に適用する。
-* `CapabilitySet` は `parser.requires({"template"})` のような照会・制約に利用。
-* `with_capabilities` はプラグインが要求する capability を宣言し、満たされない場合 `PluginError::MissingCapability` を返す。
-* `verify_plugin` は署名・証明書チェーン・ハッシュを検証し、失効間近の場合は `PluginWarning::ExpiringSignature` を返す。
-
-### I-1. 互換性とバージョン
-
-* `SemVer` 準拠で互換性チェックを行い、競合時は `PluginError::Conflict { plugin, existing }` を返す。
-* `PluginCapability` の `since` / `deprecated` により、利用側が警告やフェーズアウトを制御できる。
-
-### I-2. サンプル
-
-```reml
-// 既存プラグイン（例: 基本構文サポート）
-let syntaxPlugin = ParserPlugin {
-  name = "Reml.Core.Syntax",
-  version = SemVer(1, 5, 0),
-  capabilities = [],
-  dependencies = [],
-  register = |reg| { /* ... */ }
-}
-
-let templating = ParserPlugin {
-  name = "Reml.Web.Templating",
-  version = SemVer(1, 2, 0),
-  capabilities = [
-    { name = "template", version = SemVer(1,0,0), traits = {"render"}, since = Some(SemVer(1,0,0)), deprecated = None }
-  ],
-  dependencies = [
-    { name = "Reml.Core.Syntax", version_req = VersionReq{ predicate = "^1.5" } }
-  ],
-  signature = Some(load_signature("templating.sig")),
-  register = |reg| {
-    reg.register_schema("TemplateConfig", templateSchema);
-    reg.register_parser("render", || renderParser);
-  }
-}
-
-verify_plugin(&templating, VerificationPolicy::Strict)?
-register_plugin(templating)?
-
-let render = with_capabilities({"template"}, renderParser)
-
-let bundle = PluginBundle {
-  name = "reml-web-bundle",
-  version = SemVer(1, 0, 0),
-  plugins = [templating, syntaxPlugin],
-  manifest = {
-    description = Some("Web テンプレート DSL 一式"),
-    checksum = Hash256::from_file("bundle.sha256"),
-    signed_by = Some(load_signature("bundle.sig"))
-  }
-}
-
-register_bundle(bundle)?
-```
+---
 
 ## J. メモリと性能（実装規約）
 
@@ -434,63 +199,11 @@ register_bundle(bundle)?
   * キーは `(ParserId, byte_off)`、値は `Reply<T>`。
   * LRU/リングで上限を設け、巨大入力でのメモリ爆発を回避。
 * **左再帰**：`left_recursion=true` のとき、既知の **種別変換法**（seed-growing）を使用（ルールに `ParserId` が必須）。
-* **ステップ上限**：`fuel_max_steps` で無限ループ検出（診断に直近のルール列を含める）。
+* **ステップ上限**：必要に応じて実装側が安全弁を設ける（診断には直近のルール列を含めることを推奨）。
 
-### J-4. Core.Async（ドラフト）
+### J-4. 拡張（Core.Async への導線）
 
-```reml
-type Poll<T> =
-  | Ready(T)
-  | Pending { wake: Waker }
-
-type Waker = fn() -> ()
-
-type AsyncContext = {
-  task_id: TaskId,
-  scheduler: SchedulerHandle
-}
-
-type TaskId = Uuid
-type SchedulerHandle = Opaque
-
-type Future<T> = {
-  poll: fn(&mut AsyncContext) -> Poll<T>
-}
-
-type Task<T> = {
-  id: TaskId,
-  join: fn() -> Future<Result<T, Cancelled>>,
-  cancel: fn(CancelToken) -> (),
-  span: Option<Span>
-}
-
-type Cancelled = {
-  reason: Option<String>
-}
-
-type CancelToken = {
-  request: fn() -> (),
-  is_cancelled: fn() -> Bool
-}
-
-type AsyncFeeder = fn(DemandHint) -> Future<FeederYield>
-
-fn run_stream_async<T>(p: Parser<T>, feeder: AsyncFeeder, cfg: AsyncConfig = {})
-  -> Task<Result<T, ParseError>>
-
-type AsyncConfig = {
-  executor: SchedulerHandle,
-  max_inflight: usize,
-  backpressure: BackpressureSpec,
-  diagnostics: StreamDiagnosticHook,
-  cancellation: CancelToken
-}
-```
-
-* `Future` は `poll` ベースで定義し、`Poll::Pending` の際に `wake` を登録したスケジューラへ通知する。
-* `Task` は構造化並行性を想定し、`CancelToken` 経由で子タスクへキャンセルを伝播させる。
-* `AsyncFeeder` は `DemandHint` を受け取り非同期に `FeederYield` を返す。`run_stream_async` は `StreamOutcome` を内部で逐次処理しつつ `Task` を返却する。
-* `AsyncConfig.backpressure` は `FlowController` と同一の `BackpressureSpec` を共有し、同期ランナーと診断情報を揃える。
+非同期ランナーやバックプレッシャ制御を含むストリーミング実行はコア仕様の対象外です。必要に応じて `Core.Parse.Streaming` と `Core.Async` 系の拡張ライブラリを読み込み、ここで定義した `Parser` の意味論と互換な形で実装してください。
 
 ---
 
@@ -524,7 +237,7 @@ let term: Parser<i64> =
 * [ ] `Reply` は **Ok/Err × consumed/committed** を表現（4状態）。
 * [ ] `Input` は UTF-8/COW、行=LF正規化、列=グラフェム、**ゼロコピー**。
 * [ ] `Span` は**開始/終了の行列＋バイト**を保持。
-* [ ] `run / run_partial / run_stream / resume` の外部 API を定義（`require_eof` やストリーム継続など）。
+* [ ] `run / run_partial` の外部 API を定義（`require_eof` などバッチ実行に必要な選択肢のみ）。
 * [ ] `RunConfig` で **Packrat/左再帰/トレース**を切替。
 * [ ] `rule(name, p)` で **ParserId/ラベル**を付与（Packrat & 診断）。
 * [ ] `or/then/cut/label` の**合成規則**を確定。

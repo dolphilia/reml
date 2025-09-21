@@ -23,7 +23,7 @@
 ## 3. モジュール化された拡張ポイント（DSL プラグイン）
 - **既存の記述**
   - `1-1-syntax.md` の `B.7` と `2-2-core-combinator.md` の Capability 表が整合。
-  - `guides/DSL-plugin.md` が CLI (`kestrel-plugin`) と登録フローを記載。
+  - `guides/DSL-plugin.md` が CLI (`reml-plugin`) と登録フローを記載。
 - **残課題**
   - プラグイン署名の失効/更新手順を `guides/DSL-plugin.md` に図示。
   - Capability バンドル（複数 Capability をまとめて要求）の設計をフェーズ2で評価。

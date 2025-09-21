@@ -1,6 +1,6 @@
 # 2.7 設定スキーマ API（Core.Config）
 
-> 目的：`schema` 構文で宣言された設定をプログラムから検証・差分適用するための標準 API を提供する。
+> 目的：設定 DSL を Reml コアの外で安全に構築・検証・差分適用できるようにする。Reml コアには `schema` キーワードが存在しないため、ここで定義する `Core.Config.schema` API が公式なエントリポイントになる。
 
 ## A. スキーマビルダ
 
@@ -12,6 +12,8 @@ let appSchema = Config.schema("AppConfig", |s| {
 })
 ```
 
+Reml 本体に `schema` キーワードはありません。上記 API が言語レベルの糖衣に代わる標準的な記述方法です。必要であればマクロやプラグインがこの API を呼び出す形で従来風の構文を提供できます。
+
 - `schema(name, builder)` でスキーマを組み立てる。
 - ビルダチェーンで以下の関数を提供：
   - `field(name, Type, default=?)`
@@ -21,6 +23,24 @@ let appSchema = Config.schema("AppConfig", |s| {
   - `when((Config) -> Bool, Patch)` – 条件付きパッチ。
 - 第3引数 `options` に `ConfigSchemaOptions` を渡すと、`data_source` 等のメタ情報を付与できる（§G）。
 - `extends(baseSchema)` を呼び出すことで親スキーマを継承し、フィールドの上書き・追加が行える。
+
+### A.1 マクロによる糖衣
+
+`Core.Config.Dsl` モジュールは `schema` キーワード風のマクロを提供します。内部では本節のビルダ API を呼び出すため、生成される定義は全て `Core.Config.schema` と互換です。
+
+```reml
+use Core.Config.Dsl.schema;
+
+schema AppConfig do
+  field env: Enum<Env> := Env::Dev
+  field database: Schema(DbConfig)
+  when cfg.env == Env::Prod do
+    set "logging.level" = "info"
+  end
+end
+```
+
+マクロの導入は任意であり、プロジェクトポリシーに応じて DSL を採用するかどうかを制御できます。
 
 ## B. 差分検証
 
@@ -145,7 +165,7 @@ type DataProfileConfig = {
 }
 ```
 
-* `Config.schema(name, builder, options)` で `data_source` を指定すると、該当スキーマが `Core.Data` の `Schema<T>` と紐付き、`reml-data quality run` 実行時にデフォルトの `QualityProfile` が選択される。
-* `default_profile` は `RunConfig.data_profile`（2.6 節）の新規フィールドが未指定の場合に利用するフォールバック値。
-* `DataProfileConfig` は実行時に使用するプロファイルや統計バックエンドを宣言し、`audit=true` の場合は品質レポートを `reml.data.quality` ドメインで必ず記録する。
+* `Config.schema(name, builder, options)` で `data_source` を指定すると、該当スキーマを `Core.Data` の品質検証プロファイルへひも付けられる。
+* `default_profile` は品質チェック拡張がプロファイル未指定で起動された際に利用するフォールバック値。
+* `DataProfileConfig` は統計バックエンドや監査出力を宣言するための構造体であり、利用の有無は `reml-data` 系ツールのポリシーに依存する。
 * CLI では `reml-config schema describe` で `data_source` を確認でき、`profile`/`stats_provider` の整合性を検証する。

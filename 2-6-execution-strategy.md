@@ -10,22 +10,17 @@
 ### A-1. ランナー API（外部インターフェイス）
 
 ```reml
-fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> Result<(T, Span), ParseError>
-fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> Result<(T, Input, Span), ParseError>
-fn run_stream<T>(p: Parser<T>, feeder: Feeder, cfg: RunConfig = {}) -> Result<StreamOutcome<T>, ParseError>
-fn resume<T>(k: Continuation<T>, more: Bytes) -> Result<StreamOutcome<T>, ParseError>
+fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T>
+fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResultWithRest<T>
 ```
 
-* `run_stream` は **逐次供給**（ファイル・ソケット）向けで、`StreamOutcome` が Pending の場合は追加データが必要。
-* `StreamOutcome<T>` と `Feeder` / `Continuation<T>` の定義は [2.1 パーサ型](2-1-parser-type.md) のランナー節を参照。
-* `resume` は Pending となった **継続**を受け取り、追加バイトで再開（§F）。
+* `ParseResult` は 2.1 節と同様、成功時の値と診断をまとめて返す。
+* `ParseResultWithRest` は未消費入力を併せて返し、REPL やインクリメンタル更新に備える。
+* ストリーミング処理や継続再開は拡張モジュール `Core.Parse.Streaming` に委ねる（§F 参照）。
 
-### A-2. 実行モード（`cfg.exec_mode`）
+### A-2. 実行モードと拡張の棲み分け
 
-* `Normal`（既定）：前進解析（LL(\*) 相当）＋必要箇所のみバックトラック。
-* `Packrat`：**メモ化**で PEG 風の **O(n)**。左再帰には §C を推奨。
-* `Hybrid`：**スライディング窓**と**選択的メモ化**（ホットルールのみ）でメモリを節制。
-* `Streaming`：リングバッファ上で§Fの継続実行（インクリメンタル）。
+コア仕様の `RunConfig` はバッチ解析を前提とし、Packrat や左再帰の切替、追跡の有無など最小限の選択肢のみを持ちます。ストリーミング処理やハイブリッド実行、差分再利用といった高度な戦略は拡張モジュールで定義され、コアからは opt-in で利用します。
 
 ---
 
@@ -36,47 +31,26 @@ fn resume<T>(k: Continuation<T>, more: Bytes) -> Result<StreamOutcome<T>, ParseE
 * すべてのコンビネータは **ループ化**／**トランポリン**で実装し、**スタック深度は O(1)**。
 * 再帰下降は `call(rule_id)` → `jump`（継続渡し）で表現。
 
-### B-2. 実行燃料（fuel）
+### B-2. RunConfig のコアスイッチ
 
-`RunConfig` に燃料を設け、**停止性と DoS 耐性**を確保。
+`RunConfig` はバッチ解析に必要な最小限のスイッチだけを提供し、燃料制御や追加の安全弁は拡張モジュール側で定義する。
 
 ```reml
 type RunConfig = {
-  exec_mode: "normal" | "packrat" | "hybrid" | "streaming" = "normal",
   require_eof: Bool = false,
   packrat: Bool = false,
   left_recursion: "off" | "on" | "auto" = "auto",
-  fuel_max_steps: Option<usize> = None,
-  fuel_on_empty_loop: "error" | "warn" = "error",
-  packrat_window_bytes: Option<usize> = Some(1 << 20),
-  memo_max_entries: Option<usize> = Some(1 << 20),
   trace: Bool = false,
-  merge_warnings: Bool = true,
-  stream_buffer_bytes: Option<usize> = Some(64 * 1024),
-  gc: Option<GcConfig> = None
+  merge_warnings: Bool = true
 }
-
-type GcConfig = {
-  policy: GcPolicy = "Incremental",
-  heap_max_bytes: Option<usize>,
-  pause_target_ms: Option<f64>,
-  profile: Option<GcProfileId>
-}
-
-type GcPolicy = "Rc" | "Incremental" | "Generational" | "Region"
-
-type GcProfileId = "game" | "ide" | "web" | "data" | String
 ```
 
-* `exec_mode` は Normal / Packrat / Hybrid / Streaming の各モードを切替える（既定は `normal`）。
-* `packrat` と `left_recursion` はメモ化と seed-growing 左再帰を手動で調整する。
-* `fuel_max_steps` / `fuel_on_empty_loop` は停止性の安全弁として機能する。
-* `packrat_window_bytes` / `memo_max_entries` はキャッシュのメモリ上限。
-* `stream_buffer_bytes` はストリーム入力のリングバッファ既定サイズ。
-* `gc` を指定すると実行時に GC Capability へ通知され、ポリシー・ヒープ上限・停止時間目標を伝える（§G-1）。
+* `require_eof` で余剰入力を拒否するかどうかを切り替える。
+* `packrat` と `left_recursion` はメモ化と seed-growing 左再帰を制御する主要スイッチ。
+* `trace` は SpanTrace を収集し、`merge_warnings` は回復警告をまとめてノイズを抑制する。
+* 追加の燃料制御や GC 連携、ストリーミング用バッファは拡張モジュールが提供する設定として扱う。
 
 * **空成功の繰返し**検出は必須（2.2 に準拠）。
-* `fuel_max_steps` 超過は `E_FUEL` としてエラー化（位置・直近ルール列を提示）。
 
 ### B-3. 期待集合の早期確定
 
@@ -99,7 +73,7 @@ type MemoVal<T> = Reply<T>  // Ok/Err 丸ごと
 
 ### C-2. メモの窓（スライディング）
 
-* `packrat_window_bytes` で **前方最遠コミット水位**（`commit_watermark`）より**古いオフセット**のエントリを**段階的に破棄**。
+* 実装は **前方最遠コミット水位**（`commit_watermark`）を基準に古いエントリを段階的に破棄し、メモリ使用量を制御する。
 * `commit_watermark` は **最後に `committed=true` で確定した `byte_off` の最大値**。→ `cut` によって**安全に掃除**できる。
 
 ### C-3. 左再帰（seed-growing）
@@ -117,7 +91,7 @@ type MemoVal<T> = Reply<T>  // Ok/Err 丸ごと
 ## D. 選択的メモ化（Hybrid）
 
 * **ホットルール自動検出**：短時間に同位置で頻出する `ParserId` を **ホット**とみなし、それのみメモ化。
-* **閾値**と**上限**は `memo_max_entries`／LRU。
+* **閾値**と**上限**は実装側の LRU などポリシーに委ねる。
 * PEG 的線形性を緩く保ちつつ、**メモリ消費を数十 MB に抑制**できる。
 
 ---
@@ -151,157 +125,22 @@ fn with_trace<T>(p: Parser<T>, on_event: TraceEvent -> ()) -> Parser<T>
 
 ## F. ストリーミング＆インクリメンタル
 
-### F-1. 入力リングバッファ
+コア仕様ではストリーミングおよび差分適用の詳細を定義しません。これらの機能は `Core.Parse.Streaming` 拡張に委ねられ、`Parser` の意味論と互換な `run_stream`/`resume` API、継続メタデータ、バックプレッシャ制御を個別に定義します。詳細は [Core.Parse.Streaming 拡張ガイド](guides/core-parse-streaming.md) を参照してください。
 
-* `Input.bytes` は **固定サイズリング**（既定 64KB〜任意）。
-* **先読み**が窓を越える場合は **ブロック（継続待ち）**。
-* Feeder は `pull(hint: DemandHint)` を受け取り、`FeederYield::Chunk` でチャンクを返し、`::Await` / `::Closed` / `::Error` でバックプレッシャや終了を通知。
-* 文字モデル（1.4）の **境界表**（コードポイント/グラフェム）は **スライディングで増分更新**。
+ここでは以下の契約のみを前提とします。
 
-### F-2. `StreamOutcome`・継続とデマンドヒント
-
-```reml
-type StreamOutcome<T> =
-  | Completed { value: T, span: Span, meta: StreamMeta }
-  | Pending { continuation: Continuation<T>, demand: DemandHint, meta: StreamMeta }
-```
-
-* `StreamMeta` は累積消費量や再開回数、バックプレッシャ関連指標をまとめた統計で、監査ログ `parser.stream` に添付する。
-* `Pending.demand` は次に必要な供給量のヒントを示し、Feeder／`FlowController` が入力バッチを調整する指針になる。
-
-```reml
-type DemandHint = {
-  min_bytes: usize,
-  preferred_bytes: Option<usize>,
-  frame_boundary: Option<TokenClass>
-}
-
-type Continuation<T> = {
-  state: Opaque,
-  meta: ContinuationMeta
-}
-
-type ContinuationMeta = {
-  commit_watermark: usize,
-  buffered: Input,
-  resume_hint: Option<DemandHint>,
-  expected_tokens: Set<Expectation>,
-  last_checkpoint: Option<Span>,
-  trace_label: Option<String>
-}
-```
-
-* `commit_watermark` 以前のメモ化エントリは安全に破棄できる。`buffered` はリングバッファ内の未消費入力で、`resume` 時に再利用される。
-* `expected_tokens` / `last_checkpoint` は IDE 補完やロールバック処理のガイドとなる。`trace_label` は SpanTrace（2.5）と連動し、ログ上で継続の出処を追跡しやすくする。
-* `run_stream` が `Pending` を返した場合は `Continuation` と `DemandHint` を使って供給戦略を決め、`resume` に追加バイトを渡す。`Completed` のときは `StreamMeta` を監査・テレメトリへ記録する。
-
-### F-3. インクリメンタル再パース（IDE）
-
-* \*\*編集差分（byte range + delta）\*\*を受け取り、
-
-  1. その範囲を跨ぐメモを無効化、
-  2. **依存グラフ**（`ParserId`→呼出）で影響範囲を再評価、
-  3. 変更境界から**局所再パース**。
-* AST ノードは `Span` を鍵に **ロープ**状に結び直す（ゼロコピー維持）。
-
-### F-4. `StreamDriver` とフロー制御（ドラフト）
-
-```reml
-type StreamDriver<T, Sink> = {
-  parser: Parser<T>,
-  feeder: Feeder,
-  sink: Sink,
-  flow: FlowController,
-  on_diagnostic: StreamDiagnosticHook,
-  state: Option<Continuation<T>>,
-  meta: StreamMeta
-}
-
-type FlowController = {
-  mode: FlowMode,
-  high_watermark: usize,
-  low_watermark: usize,
-  policy: FlowPolicy
-}
-
-type FlowMode = "push" | "pull" | "hybrid"
-
-type FlowPolicy =
-  | Manual { on_demand: fn() -> Demand }
-  | Auto { backpressure: BackpressureSpec }
-
-type Demand = { bytes: usize, frames: usize }
-
-type BackpressureSpec = {
-  max_lag: Option<Duration>,
-  debounce: Option<Duration>,
-  throttle: Option<Duration>
-}
-```
-
-* `StreamDriver::pump()` は `run_stream` を 1 ステップ進め、`StreamOutcome` を `sink` へ渡す。`Pending` の場合は `state` に継続を保持し、`FlowController` の判定に従って再開タイミングを決定する。
-* `FlowController.mode` で IDE 向けの **pull**（差分が届いたときのみ `resume`）、リアルタイム処理の **push**、両者を組み合わせる **hybrid** を切り替える。
-* `Auto` ポリシーは `StreamMeta.lag_nanos` やバッファ充填率を監視し、しきい値を越えた場合にスロットリング／ドレインなどの内部イベントを発火させ、供給側へ通知する。
-
-### F-5. ストリーム診断フック
-
-```reml
-type StreamDiagnosticHook = fn(StreamEvent) -> ()
-
-type StreamEvent =
-  | Progress { consumed: usize, produced: usize, lap: Duration }
-  | Pending { reason: PendingReason, meta: ContinuationMeta }
-  | Error { diagnostic: ParseError, continuation: Option<ContinuationMeta> }
-
-type PendingReason = "Backpressure" | "InputExhausted" | "FeederAwait" | "FeederClosed"
-```
-
-* `Progress` はテレメトリや IDE ステータスバーに活用し、解析の進捗をリアルタイムで可視化する。
-* `Pending` イベントは `ContinuationMeta` を添付するため、補完候補提示や復旧 UI にそのまま渡せる。
-* `Error` は `ParseError` を構造化ログに出力しつつ、継続があれば添付する。`audit.log("parser.stream.error", …)` などで監査フローに統合する。
+* ストリーミングランナーは `run`/`run_partial` と同じ `ParseResult`/`Diagnostic` 形式を再利用する。
+* インクリメンタル再パースは `commit_watermark` と `ParserId` 依存グラフを利用して影響範囲を絞り込む。
+* Feeder や DemandHint などの詳細型は拡張側で定義され、コアからは不透明。
 
 ---
 
 ## G. 並列性・再入性
 
-* パーサ値は **不変**・**スレッドセーフ**。
-* `State` は実行ごとに分離。`MemoTable` も run 単位。
-* **分割統治**（ファイル複数・モジュール複数）は **上位で並列**に回す想定（同一入力内での並列実行は非推奨：メモが競合する）。
+* パーサ値は **不変**であり、`State` は実行ごとに分離される。共有を行う場合は拡張側でスレッド安全性を保証する。
+* 同一入力内での並列実行は推奨しないが、モジュール単位の分割統治は上位レイヤで並列化できる。
+* GC やランタイム統合に関する詳細なコールバックは `guides/runtime-bridges.md` に委ね、コア仕様では純粋性と境界の明示のみを要求する。
 
-### G-1. GC 制御フロー（ドラフト）
-
-```reml
-type GcCapability = {
-  configure: fn(GcConfig) -> (),
-  register_root: fn(RootSet) -> (),
-  unregister_root: fn(RootSet) -> (),
-  write_barrier: fn(Object, Field) -> (),
-  metrics: fn() -> GcMetrics,
-  trigger: fn(GcReason) -> ()
-}
-
-type RootSet = {
-  stack_roots: List<Ptr<Object>>,
-  global_roots: List<Ptr<Object>>
-}
-
-type GcMetrics = {
-  heap_bytes: usize,
-  heap_limit: usize,
-  last_pause_ms: f64,
-  total_collections: u64,
-  policy: GcPolicy
-}
-
-type GcReason = "Manual" | "Threshold" | "Idle" | "Emergency"
-```
-
-* ランナーは `RunConfig.gc` が指定されていれば初期化時に `configure` を呼び、`RootSet` を登録する。パーサ評価中にローターンスレッドが変更される場合は `register_root`/`unregister_root` を再調整する。
-* 書き込みバリアは `Parser` が持つ mutable state から参照型を更新する際に呼び出し、世代間ポインタを GC へ通知する。
-* `metrics()` は `guides/runtime-bridges.md` で定義する `gc.stats` 監査ログと一致するメトリクスを返す。
-* `trigger` はポリシー固有のコレクションを明示的に走らせるためのフックであり、`pause_target_ms` を守れない場合は `GcReason::Emergency` として呼び出す。
-
----
 
 ## H. パフォーマンス方針（実装規約）
 
@@ -330,80 +169,24 @@ type GcReason = "Manual" | "Threshold" | "Idle" | "Emergency"
 
 * **`precedence` を使う限り左再帰は不要**（デフォルト `left_recursion=auto` がそれを尊重）。
 * 既存 PEG ルールを移植する場合は `packrat=true` を推奨、メモ窓でメモリをコントロール。
-* 大規模入力・REPL・LSP 連携は `run_stream`/`resume` を使う。
+* 大規模入力・REPL・LSP 連携が必要な場合は `Core.Parse.Streaming` 拡張を利用する。
 
 ---
 
 ## J. 仕様チェックリスト
 
-* [ ] **モード**：Normal / Packrat / Hybrid / Streaming。
-* [ ] **トランポリン**＋**燃料**で停止性確保。
-* [ ] **Packrat**：キー `(ParserId, byte_off)`、窓/LRU、**cut で掃除**。
-* [ ] **左再帰**：seed-growing（on/auto）。`precedence` 併用で不要化。
-* [ ] **最遠エラー**：farthest-first、`cut` で期待再初期化。
-* [ ] **トレース**：Enter/ExitOk/ExitErr フック、SpanTrace。
-* [ ] **ストリーミング**：リングバッファ、Continuation、resume。
-* [ ] **インクリメンタル**：差分無効化→局所再パース。
-* [ ] **性能規約**：ASCII 高速・アリーナ・境界キャッシュ・ゼロコピー。
+* [ ] `run` / `run_partial` が `ParseResult` / `ParseResultWithRest` を返し、診断・未消費入力を一貫して扱う。
+* [ ] `RunConfig` のコアスイッチ（require_eof / packrat / left_recursion / trace / merge_warnings）を実装し、既定値を確認する。
+* [ ] Packrat メモ化：キー `(ParserId, byte_off)`、`commit_watermark` に基づく掃除、実装依存の窓上限を備える。
+* [ ] 左再帰は seed-growing で解決し、`left_recursion=auto` と `precedence` の協調を確認する。
+* [ ] 最遠エラー統合と `cut` による期待リセットが期待どおりに動作する。
+* [ ] `trace` と `merge_warnings` の挙動をテストし、診断ノイズを制御する。
+* [ ] インクリメンタル処理やストリーミングを提供する場合は `Core.Parse.Streaming` 拡張の契約に従うことを文書化する。
 
 ---
 
 ### まとめ
 
-* 既定は **前進解析 + cut/label による制御可能な BT**。
-* 必要に応じて **Packrat（線形化）**・**左再帰 seed-growing**・**スライディング窓**で実用性能とメモリのバランスを取る。
-* **ストリーミング/インクリメンタル**と **高品位エラー**が最初から設計に入っており、IDE/LSP にも直結できる。
-  この実行戦略で、Reml のパーサは **小さなコア**のまま現実的な大規模入力・対話・言語処理に耐える。
-
-
-## K. ツール統合オプション
-
-IDE/LSP 連携や CLI/監査ツールとの統合に向けたランナー拡張仕様をここにまとめる。
-
-### K-1. LSP / IDE メタデータ出力
-
-* `RunConfig.lsp = { highlight = true, completion = true, codeActions = true }` のような設定で、構文ハイライトや補完情報を生成。
-* `run_with_lsp(parser, src, cfg)` ヘルパを提供し、`to_lsp_diagnostics`（2.5節）と組み合わせて IDE へ送出。
-
-### K-2. 構造化ログ / CLI 連携
-
-* `RunConfig.log_format = "json"` により、実行イベントを JSON で出力。
-* `reml-run lint config.ks --format json` のような CLI コマンド例を提示し、CI/CD での利用を想定。
-
-### K-3. ホットリロード API
-
-```reml
-fn reload<T>(parser: Parser<T>, state: ReloadState<T>, diff: SchemaDiff<Old, New>)
-  -> Result<ReloadState<T>, ReloadError>
-```
-
-* `state` には前回の継続・キャッシュを保持。
-* `diff` を適用後に `audit` ログへ記録し、失敗時はロールバック情報を返す。
-
-```reml
-type ReloadState<T> = {
-  continuation: Option<Continuation<T>>,  // Pending セッションがあれば保存
-  memo: MemoTable,                        // Packrat キャッシュのスナップショット
-  version: SemVer                         // 適用済み設定のバージョン
-}
-
-type ReloadError =
-  | ValidationFailed(List<Diagnostic>)
-  | ApplyFailed { reason: String, rollback: RollbackInfo }
-  | IncompatibleVersion { running: SemVer, incoming: SemVer }
-
-type RollbackInfo = {
-  audit_id: Uuid,
-  actions: List<String>
-}
-```
-
-CLI `reml-run reload` は `ReloadError` を exit code `5`（Incompatible）、`6`（Validation）、`7`（ApplyFailed）に割り当て、`rollback` サブコマンドと同じフォーマットで `RollbackInfo` を出力する。
-
-### K-4. 監査フック
-
-* `RunConfig.audit = Some(|event| audit_log(event))` で診断や差分を収集。
-* `audit` 効果と連携し、エラー発生時に自動で `audit_id` を付与。
-
-
-#
+* 既定は **前進解析 + cut/label による制御可能なバックトラック**で、Packrat と左再帰サポートをスイッチ可能にする。
+* `RunConfig` は最小限のスイッチに留め、燃料制御・ストリーミング・GC 連携などは拡張モジュールで opt-in する。
+* 診断品質（最遠エラー、SpanTrace、警告集約）とゼロコピー入力を中核に据え、DSL から大規模入力まで一貫した挙動を提供する。

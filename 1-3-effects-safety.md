@@ -232,75 +232,9 @@ fn strictlyPositive(n: i64) -> Result<i64, Error> = {
 fn total(xs: [i64]) -> Result<i64, Error> =
   xs |> map(strictlyPositive) |> sequence ? |> sumOk
 ```
-## K. 効果分類と運用ガイドライン
+## K. 拡張効果タグの扱い
 
-> 横断シナリオ（設定適用／監査／ホットリロード／分散実行）で必要となる**拡張効果タグ**を公式化し、`@requires(effect = …)` と `effect { … }` 表記が解釈すべき前提と義務を定義する。
-
-### K.1 公式効果タグと意味論
-
-Reml の効果システムは基礎 5 効果（A 節）に加えて、次の **領域別タグ** を持つ。タグは部分順序付き集合 `EffectTag` に属し、**静的検査**と **監査ログ** の両方で利用する。
-
-| タグ | 区分 | 定義 | 静的要件 | 監査要件 |
-| --- | --- | --- | --- | --- |
-| `config` | 設定適用 | スキーマ宣言／差分適用 API (`Core.Config`) を通じて永続設定を変更する操作 | `Schema<T>` / `SchemaDiff` を引数に持ち、失敗時は `Result` で伝播 | `audit_id` と `change_set` を `AuditRecord` に残す |
-| `audit` | 監査記録 | 変更・検証結果を永続監査ストアへ記録する | `AuditSink`（2-7）を経由して**コミット点**を明示し、エラーでも必ず `finalize()` | すべての `Diagnostic` に `domain`・`audit_id` を付与（2-5） |
-| `runtime` | ランタイム制御 | 実行時のホットリロード・コード差し替え・FFI ハンドル操作 | `unsafe`/`ffi` が混在する場合は `@requires(effect={runtime, unsafe})` を併記 | `AuditRecord.kind = RuntimeChange` を記録し、巻き戻し手順を添付 |
-| `db` | データストア | トランザクション駆動の永続データ変更（SQL/NoSQL） | `Transaction` / `Connection` 型を介して境界を固定。コミット前に `Result` が保証されること | `audit` と組み合わせ、コミットログに `change_set` を書き出す |
-| `network` | 分散操作 | クラウド API・RPC・リモートサービスへの変更要求 | タイムアウト・リトライ戦略を `RunConfig`（2-6）で明示。暗号化/署名は型レベルで検査 | 主要イベントごとに `AuditRecord.domain = Network` を付与 |
-| `gpu` | アクセラレータ | GPU / TPU などデバイスへの命令転送・メモリ確保 | `DeviceHandle` と `defer` 解放の組合せを強制。`unsafe` ブロックでの境界を厳格に | リソース利用量を `audit.metric` として集約 |
-
-> `audit` は**副作用そのもの**というより、他効果を伴う操作に「監査責務」を課す**ガバナンス効果**である。`audit` の付く関数は失敗・成功の双方で `audit.log`（もしくは等価 API）を**ちょうど 1 回以上**呼ぶ必要がある。
-
-### K.2 効果セットの組合せ規則
-
-1. **タグの閉包**：`effect {config, audit}` のような宣言は、実行時に `config` が満たすべき監査義務を `audit` が補強する。`audit` を併用しない `config` 関数はコンパイラが警告（`W3101`）を発行する。
-2. **`audit` の必須フィールド**：`audit` を含む関数から生成される `Diagnostic` / `AuditRecord` には、`{ domain, audit_id, change_set }` が必須。欠落時は型検査段で `DiagnosticFieldsMissing` エラーを生成する。
-3. **コミット順序**：`db` と `audit` を同時に持つ場合、`audit.finalize()` はトランザクションコミット後かつ同一 `Span` で報告される必要がある。`@requires(effect = {db, audit})` はこの順序制約をチェックする。
-4. **ホットリロード**：`runtime` と `network` を併用する関数は、`RunConfig` に `with_syntax_highlight` や `with_structured_log` が設定されている場合のみホットリロード対象とみなされる（2-6, Phase2 要件）。
-
-### K.3 FFI / ランタイム連携指針
-
-1. **クラウド API (`network`)**：署名・リトライを `RunConfig` に宣言し、すべてのリクエスト結果を `audit.log("network.call", …)` で永続化する。`timeout` が発生した場合は必ず `recover` で巻き戻し戦略を提示する。
-2. **GPU/アクセラレータ (`gpu`)**：`runtime` + `unsafe` を組み合わせ、`DeviceHandle` 取得と `defer handle.close()` を対にする。性能メトリクスは `AuditRecord.metrics` へ集約する。
-3. **組み込み I/O (`runtime`)**：メモリマップトレジスタ操作は `Resource<P, K>` 型で表現し、`@requires(effect={runtime, audit})` を付けて書き込み経路を監査する。
-
-チェックリスト
-
-- **クラウド API**：リトライ・認証・`audit_id` の発番を `RunConfig` と `AuditRecord` の双方に記録したか。
-- **GPU**：割当/解放が `defer` で対になっているか。`unsafe` ブロックの境界が最小か。
-- **組み込み**：レジスタマップの検証・割込みマスク・フェイルセーフが型レベルで確認できるか。
-
-### K.4 ホットリロード / 差分適用
-
-* `runtime` を含む関数のみホットリロード対象とし、適用履歴は `audit` へ蓄積する（`AuditRecord.kind = Reload`）。
-* `config` 効果を伴う差分適用は `SchemaDiff` を評価し、`audit.change_set` に差分を JSON 形式で格納する。
-* 失敗時は `recover` コンビネータで旧世代へ復旧し、`Diagnostic.severity_hint = Rollback` を出力する。
-
-#### サンプル
-
-```reml
-@requires(effect = {runtime, audit})
-fn reloadParser(parser: Parser<AppConfig>, diff: SchemaDiff<Old, New>)
-  -> Result<Parser<AppConfig>, ReloadError>
-  effect {runtime, audit} =
-    recover({
-      let updated = applyDiff(parser, diff)?;
-      audit.log("parser.reload", {
-        domain = "Core.Config",
-        audit_id = diff.audit_id(),
-        change_set = diff.asChangeSet()
-      });
-      Ok(updated)
-    }, with: |err| {
-      audit.log("parser.reload.fail", {
-        domain = "Core.Config",
-        audit_id = diff.audit_id(),
-        change_set = diff.asChangeSet(),
-        diagnostics = err.toDiagnostics()
-      });
-      Err(err)
-    })
-```
+Reml コアで追跡する効果は `mut`・`io`・`ffi`・`panic`・`unsafe` の 5 種類に限定します。プロジェクト固有のガバナンス要件（設定変更の監査やクラウド API の統制など）が必要な場合は、標準ライブラリやプラグインが追加のタグ／属性を提供する想定です。コアコンパイラはそれらを知らなくても動作し、拡張側では `@requires(...)` などの属性を通じて独自検査を実装できます。
 
 ---
 
@@ -346,13 +280,13 @@ FFI 経由で取得した `Ptr<void>` は型情報を欠くため、以降のキ
 ### M.5 所有権とリソース管理
 
 RC で管理する値を指すポインタは `inc_ref`/`dec_ref` を `unsafe` ブロック内で対にし、`defer` による解放を推奨する。
-スレッド境界では `Send`/`Sync` 相当のマーカートレイトを付与しない限り `Ptr<T>` の共有を禁止し、必要な場合は `@requires(effect={runtime, unsafe})` を併記する。
-所有権の移譲や回収は `Result` と `audit.log` に記録し、監査タグ（K 節）と連動させる。
+スレッド境界では `Send`/`Sync` 相当のマーカートレイトを付与しない限り `Ptr<T>` の共有を禁止し、必要な場合は拡張で定義される効果契約（例: `@requires(runtime, unsafe)`）を併記して境界を明示する。
+所有権の移譲や回収は `Result` で伝播し、必要なら監査拡張が提供するロギング API と連携させる。
 
 ### M.6 適用シナリオ別ガイド
 
-- **FFI**: `extern "C"` 呼び出し時に `Ptr<u8>` や `FnPtr` を利用し、`ffi` 効果タグと `audit` 記録をセットにする。
-- **GPU/IO**: `Ptr<void>` をデバイスハンドルとして扱う場合は `effect {runtime, gpu, unsafe}` を宣言し、`defer` でリソース解放を保証。
+- **FFI**: `extern "C"` 呼び出し時に `Ptr<u8>` や `FnPtr` を利用し、`ffi` 効果タグと必要に応じて監査拡張の記録 API を組み合わせる。
+- **GPU/IO**: `Ptr<void>` をデバイスハンドルとして扱う場合は、拡張が提供する `runtime`/`gpu` 系の効果タグを用いて境界を明示し、`defer` でリソース解放を保証する。
 - **GC ルート**: `NonNullPtr<Object>` を `runtime::register_root` に渡し、`write_barrier` と連携して世代間更新を安全に処理する（[2-6-execution-strategy.md](2-6-execution-strategy.md#L284) 参照）。
 
 

@@ -203,7 +203,7 @@ reml-data stats collect --schema schemas/user.ks --provider warehouse --format j
 
 1. **スキーマ・コード同居**: `Schema.build` で定義した DSL をリポジトリ内の `schemas/` ディレクトリに集約し、CI で常に `reml-data validate` を実行する。
 2. **統計の自動更新**: バッチ処理後に `ColumnStats` を更新し、`stats.updated_at` をログへ出力する。
-3. **Breaking 変更の承認**: `MigrationStep` に `breaking=true` が含まれる場合、`kestrel-plugin` の承認者ロールと同じレビュー手順を経る。
+3. **Breaking 変更の承認**: `MigrationStep` に `breaking=true` が含まれる場合、`reml-plugin` の承認者ロールと同じレビュー手順を経る。
 4. **可視化連携**: `RuntimeMetrics` を Prometheus や Grafana に輸出し、`audit_id` をキーにエラーとの関連を追跡。
 
 ## 8. 参考リンク
