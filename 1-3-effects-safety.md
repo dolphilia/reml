@@ -314,8 +314,49 @@ fn reloadParser(parser: Parser<AppConfig>, diff: SchemaDiff<Old, New>)
 * [ ] エラーメッセージは**効果名 + 位置 + 修正提案**を必ず含む。
 * [ ] `Parser` 標準APIは**外界作用を持たない**ことを CI で回帰検査。
 
+<a id="unsafe-ptr-spec"></a>
+## M. unsafe ポインタ仕様
 
-### M. まとめ
+> 目的：`unsafe` 境界内での原始ポインタ操作を体系化し、FFI・GC・高性能バッファ処理を安全ラッパと共存させる。
+
+### M.1 原始ポインタ型の分類
+
+Reml は `Core.Unsafe.Ptr` モジュールで `Ptr<T>` / `MutPtr<T>` / `NonNullPtr<T>` / `Ptr<void>` / `FnPtr` を提供する（詳細は [Core.Unsafe.Ptr API 草案](notes/core-unsafe-ptr-api-draft.md)）。
+それぞれに `unsafe` 効果が付随し、`MutPtr<T>` と `FnPtr` は `ffi` 効果とも組み合わせて扱う。
+`NonNullPtr<T>` は NULL 不許可を静的に表現し、`Span<T>` など境界チェック付きビューの基礎となる。
+
+### M.2 生成と取得
+
+`addr_of` / `addr_of_mut` は評価順序を固定したまま参照のアドレスを取得し、`Buffer.asPtr` など安全ラッパからのダウングレードもここに集約する。
+外部ポインタは `require_non_null` を通じて `Option<NonNullPtr<T>>` に昇格させ、NULL を検出すれば `NullError` として `Result` に反映する。
+FFI 経由で取得した `Ptr<void>` は型情報を欠くため、以降のキャストは必ず `unsafe` ブロック内で行う（[guides/reml-ffi-handbook.md](guides/reml-ffi-handbook.md) 参照）。
+
+### M.3 読み書きと境界検査
+
+`read`/`write`/`copy_to` などの操作は整列や領域サイズを満たさないと未定義動作になる。
+境界保証が必要な場合は `Span<T>` や `Slice<T>` を経由し、ここから `Ptr<T>` へ降格する位置をコードレビューで明示する。
+`copy_nonoverlapping` と `copy_to` の区別により、`memcpy`/`memmove` を効率的に選択できる。
+
+### M.4 アドレス計算とキャスト
+
+`add`/`offset`/`byte_offset` は同一アロケーション内に留まる前提でのみ定義される。
+整数キャスト（`to_int`/`from_int`）や型変更（`cast`/`cast_mut`）は `unsafe` の明示と共に、整列要件を仕様書 (`a-jit.md` の ABI 節) に従わせる。
+ポインタ比較は `==`/`!=` のみに限定し、順序比較は未規定とする。
+
+### M.5 所有権とリソース管理
+
+RC で管理する値を指すポインタは `inc_ref`/`dec_ref` を `unsafe` ブロック内で対にし、`defer` による解放を推奨する。
+スレッド境界では `Send`/`Sync` 相当のマーカートレイトを付与しない限り `Ptr<T>` の共有を禁止し、必要な場合は `@requires(effect={runtime, unsafe})` を併記する。
+所有権の移譲や回収は `Result` と `audit.log` に記録し、監査タグ（K 節）と連動させる。
+
+### M.6 適用シナリオ別ガイド
+
+- **FFI**: `extern "C"` 呼び出し時に `Ptr<u8>` や `FnPtr` を利用し、`ffi` 効果タグと `audit` 記録をセットにする。
+- **GPU/IO**: `Ptr<void>` をデバイスハンドルとして扱う場合は `effect {runtime, gpu, unsafe}` を宣言し、`defer` でリソース解放を保証。
+- **GC ルート**: `NonNullPtr<Object>` を `runtime::register_root` に渡し、`write_barrier` と連携して世代間更新を安全に処理する（[2-6-execution-strategy.md](2-6-execution-strategy.md#L284) 参照）。
+
+
+## N. まとめ
 
 * **純粋デフォルト**・**効果は属性で宣言/検査**という軽量設計で、MVP段階でも**読みやすさと実用**を両立。
 * **例外なし、Result/Option（`?`）**で失敗を型に昇格。

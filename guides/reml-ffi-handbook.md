@@ -54,6 +54,49 @@
 - Rust 向け安全ラッパ生成ツール（`reml-bindgen` 仮称）。
 - `reml-backlog.md` に追記すべき課題：構造体の `repr(packed)` 対応、マルチリリースの互換テスト、C++ name mangling のガイド。
 
+## 9. unsafe ポインタ運用ガイド
+
+> 目的：FFI 境界で露出するポインタ操作を Reml 本体の安全方針（[1-3-effects-safety.md](../1-3-effects-safety.md#unsafe-ptr-spec)）と整合させ、実装とレビューの共通基準を提供する。
+
+### 9.1 ポインタ型マッピング
+
+| Reml | C | Rust | Swift | Zig | 備考 |
+| --- | --- | --- | --- | --- | --- |
+| `Ptr<T>` | `const T*` | `*const T` | `UnsafePointer<T>` | `[*]const T` | NULL 許容で読み取り専用 |
+| `MutPtr<T>` | `T*` | `*mut T` | `UnsafeMutablePointer<T>` | `[*]T` | 書き込み可能、データ競合に注意 |
+| `NonNullPtr<T>` | `T*` | `NonNull<T>` | `UnsafePointer<T>` | `*T` | 非NULL保証。`Span<T>` の基盤 |
+| `Ptr<void>` | `void*` | `*mut c_void` | `OpaquePointer` | `*anyopaque` | 型情報なし。ダウンキャスト必須 |
+| `FnPtr<A,R>` | `R (*)(A...)` | `extern "C" fn` | `@convention(c) (A) -> R` | `fn(A) callconv(.C) R` | クロージャ無しのコードポインタ |
+
+FFI 宣言ではこの対応表を基にシグネチャを決定し、`extern "C"` ブロック内で `Ptr<T>` 系を直接利用する。
+
+### 9.2 安全ラッパ設計指針
+
+低レベルポインタは `Span<T>` / `Buffer` / `StructView` 等の安全ラッパからのみ取得できるようにし、公開 API は可能な限りこれらラッパ型を返す。
+`Span<T>` は長さを保持するため、境界チェック付きの `read_exact`/`write_exact` を提供し、内部で `Ptr<T>` へ降格する箇所を局所化する。
+`StructView` は `byte_offset` を利用してフィールドにアクセスする構造体ビューであり、ABI 互換性は [a-jit.md](../a-jit.md#5-0-ターゲット-abi--データレイアウト（ドラフト）) の方針に従う。
+
+### 9.3 寿命とリファレンスカウント
+
+Reml ランタイムは参照カウントを使用するため、FFI に渡す前に `inc_ref`、不要になったら `reml_release_*` を呼ぶ契約を必ず明記する。
+`defer` と組み合わせることで例外経路でも解放が実行されるようにし、`audit.log("ffi.ptr.release", ...)` を使って監査証跡を残す。
+Rust など所有権モデルが存在する側では `ManuallyDrop` や `Box::into_raw` 相当の操作と組み合わせ、ダブルフリーを防止する。
+
+### 9.4 メモリレイアウトと整列制約
+
+ポインタのキャストや `copy_nonoverlapping` を行う前に、構造体が自然境界を満たすか `repr(C)` 互換かを [a-jit.md](../a-jit.md#5-0-ターゲット-abi--データレイアウト（ドラフト）) で確認する。
+アラインメント違反が懸念される場合は `read_unaligned`/`write_unaligned` を使用し、パフォーマンス影響を `benchmark/ffi/` のマイクロベンチで検証する。
+Swift や Zig のように追加メタデータが付与される言語では、呼び出し側で `withUnsafePointer` や `ptrFromInt` を利用して Reml の整列に合わせる。
+
+### 9.5 チェックリストとサンプル
+
+1. **FFI バインディング**: `ctest/ffi-smoke.c` に `Ptr<T>`/`MutPtr<T>` の往復テストを追加し、NULL/非NULL の両ケースを検証する。
+2. **GPU/IO ハンドラ**: `guides/runtime-bridges.md` の GPU チェックリストに従い、`effect {runtime, gpu, unsafe}` を宣言した例を `examples/gpu/` に配置する。
+3. **テストベンチ用スタブ**: `tests/ffi/mock_host.reml` で `FnPtr` コールバックを使ったスタブを用意し、`audit` ログが記録されることを確認する。
+
+これらのサンプルは `Core.Unsafe.Ptr` の API ドキュメントと連携させ、CI でリグレッションテストを行う。
+
+
 ---
 
 > **ドラフト状態**: 本ハンドブックはフェーズ0で骨子を作成した段階。各セクションはフェーズ1以降の PoC とレビュー結果に合わせて詳細化する。
