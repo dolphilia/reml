@@ -48,12 +48,12 @@
 ## 7. 今後の拡張タスク
 1. `Constraint` 登録 API に `capability` メタデータを追加し、プラグイン依存の明示化を検討。
 2. `guides/runtime-bridges.md` に制約評価時の監査ログ例を追加。
-3. `reml-data-modeling-roadmap.md` の品質DSLと本ガイドの用語を揃え、クロスリンクを設定。
-4. `spec-update-plan.md` に標準API・プラグインの境界チェックリストを追加。
+3. 品質DSLに関する用語と優先度を `guides/data-model-reference.md` と同期し、重複表現を整理。
+4. 標準APIとプラグインの境界チェックリストを本ガイドの付録として追加し、更新履歴を README に反映。
 
 ## 8. 参考資料
 - `2-7-config.md`
 - `2-8-data.md`
 - `2-5-error.md`
-- `reml-data-modeling-roadmap.md`
-- `scenario-requirements.md`
+- `guides/data-model-reference.md`
+- `guides/runtime-bridges.md`

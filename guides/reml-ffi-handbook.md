@@ -52,7 +52,7 @@
 - WASM/WASI の ABI 整備とホスト関数ブリッジ。
 - `async` ランタイムとの統合サンプル（io_uring / libuv）。
 - Rust 向け安全ラッパ生成ツール（`reml-bindgen` 仮称）。
-- `reml-backlog.md` に追記すべき課題：構造体の `repr(packed)` 対応、マルチリリースの互換テスト、C++ name mangling のガイド。
+- 今後の課題メモ：構造体の `repr(packed)` 対応、マルチリリースの互換テスト、C++ name mangling のガイドを追跡し、必要に応じて仕様書に反映する。
 
 ## 9. unsafe ポインタ運用ガイド
 

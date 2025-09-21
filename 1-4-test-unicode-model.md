@@ -220,7 +220,7 @@ impl Collator { fn new(locale: Locale) -> Collator; fn compare(&self, a: Str, b:
 
 ## N. バージョン管理と更新手順
 
-1. **基準バージョン**：Unicode 15.1 と ICU 74 を既定とし、更新時は `research-Reml-latest.md` が示す評価対象（Unicode 15.1.1、ICU 75 など）をレビューする。
+1. **基準バージョン**：Unicode 15.1 と ICU 74 を既定とし、更新時は Unicode コンソーシアムの公表資料と ICU リリースノートをレビュー対象に追加する。
 2. **実装評価**：`grapheme_len`・`display_width`・confusable 検査について、`ugrapheme` と ICU4X `segmenter` を比較し CPU/メモリ/バイナリサイズを測定。結果は `notes/unicode-refresh-<version>.md` に記録する。
 3. **テストデータ**：UAX #29/31/39 の公式 conformance データに加え、社内の confusable・表示幅ベンチを `guides/tests/unicode/` に保守し、誤検知率 < 2% を CI で確認する。
 4. **仕様更新**：新バージョンを採用した場合、本節と `2-3-lexer.md` にバージョン番号・導入日・依存ライブラリを追記し、互換性注意点をリリースノートへ掲載する。

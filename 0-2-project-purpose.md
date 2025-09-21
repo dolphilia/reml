@@ -30,7 +30,7 @@
 - **ツール連携**: 実行戦略の LSP 出力（[2-6](2-6-execution-strategy.md)）、`LSP / IDE 連携ガイド`（[guides/lsp-integration.md](guides/lsp-integration.md)）、ランタイム橋渡し（[guides/runtime-bridges.md](guides/runtime-bridges.md)）で、IDE・CI・監査ログを共通メタデータで束ねる。
 - **プラグイン拡張**: プラグイン API（[2-1](2-1-parser-type.md):I）、`DSL プラグイン & Capability ガイド`（[guides/DSL-plugin.md](guides/DSL-plugin.md)）で、外部 DSL の署名・互換・配布フローを定義する。
 
-これらのテーマは `spec-update-plan.md` のフェーズ 2〜3 で進捗を追跡し、`scenario-requirements.md` のチェックリストと同期してクローズする。
+これらのテーマは各仕様章とガイドの更新履歴で進捗を追跡し、利用シナリオからのフィードバックと照合して順次クローズする。
 
 ## 4. 想定利用シナリオ（実用性優先順）
 

@@ -124,4 +124,4 @@ reml-run lint config.ks --format json --domain config   | jq '.diagnostics[] | {
 | CLI / LSP 診断整合 | `reml-run lint --format json` と LSP 診断が同一 `audit_id` / `code` を保持しているか | 本ガイド §5 |
 | レガシークライアント | `Diagnostic.data` を無視しても従来どおり動作できるか（フォールバックポリシーの確認） | 互換性ポリシー |
 
-互換性テストは LSP サーバの CI で `lsp-sample-client`（仮称）によるスナップショット比較を行い、差分は `reml-backlog.md` の「LSP/CLI 互換性」セクションに記録する。
+互換性テストは LSP サーバの CI で `lsp-sample-client`（仮称）によるスナップショット比較を行い、差分はチーム内のバックログ（Issue トラッカー等）にまとめて共有する。
