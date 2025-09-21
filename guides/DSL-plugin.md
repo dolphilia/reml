@@ -1,10 +1,10 @@
 # DSL プラグイン & Capability ガイド
 
-> 目的：`ParserPlugin` / `CapabilitySet` を用いて DSL を拡張する際の設計手順とベストプラクティスを整理する。
+> 目的：`Core.Parse.Plugin` 拡張が提供する `ParserPlugin` / `CapabilitySet` を用いて DSL を拡張する際の設計手順とベストプラクティスを整理する。
 
 ## 0. 言語構文との関係
 
-Reml コアはプラグイン用の `package` 宣言や `use plugin` 構文を持ちません。プラグインは CLI (`reml-plugin`) やビルドパイプラインで配布・有効化し、アプリケーションコードでは `register_plugin` API か生成されたマニフェストを通じて読み込みます。
+Reml コアはプラグイン用の `package` 宣言や `use plugin` 構文を持ちません。プラグインは CLI (`reml-plugin`) やビルドパイプラインで配布・有効化し、アプリケーションコードでは `Core.Parse.Plugin` 拡張が提供する `register_plugin` API か生成されたマニフェストを通じて読み込みます。
 
 プラグインのメタデータは `plugin.toml`（または同等のマニフェスト）に記述し、例として以下を推奨します。
 

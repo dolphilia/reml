@@ -63,7 +63,10 @@ Params          ::= Param { "," Param }
 Param           ::= Pattern [":" Type] ["=" Expr]
 RetType         ::= "->" Type
 
-TypeDecl        ::= "type" Ident [GenericParams] "=" SumType NL
+TypeDecl        ::= "type" TypeDeclBody NL
+TypeDeclBody    ::= "alias" Ident [GenericParams] "=" Type
+                  | Ident [GenericParams] "=" SumType
+                  | Ident [GenericParams] "=" "new" Type
 SumType         ::= Variant { "|" Variant }
 Variant         ::= Ident "(" Types? ")"
 Types           ::= Type { "," Type }
@@ -107,7 +110,7 @@ LValue          ::= PostfixExpr
 ```
 Expr            ::= PipeExpr
 PipeExpr        ::= OrExpr { "|>" CallExpr }
-CallExpr        ::= UnaryExpr
+CallExpr        ::= PostfixExpr [ "(" Args? ")" ]
 Args            ::= Arg { "," Arg }
 Arg             ::= [Ident ":"] Expr
 

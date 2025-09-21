@@ -206,7 +206,7 @@ task.join().await?;
 | `web` | Rc | レイテンシより throughput 重視 | `heap_max_bytes = Some(512 << 20)` |
 | `data` | Region | バッチ処理で明示的リリース | `pause_target_ms = None`, `heap_max_bytes = Some(2 << 30)` |
 
-`RunConfig.gc.profile` に上記 ID を指定すると、実装は既定値を適用しつつポリシーの上書きを許可する。カスタムプロファイル文字列を指定した場合は、`Core.Runtime` 側で事前登録が必要。
+- `RunConfig.extensions["runtime"].gc.profile` に上記 ID を指定すると、実装は既定値を適用しつつポリシーの上書きを許可する。カスタムプロファイル文字列を指定した場合は、`Core.Runtime` 側で事前登録が必要。
 
 ### 10.2 監査ログ `gc.stats`
 
@@ -227,11 +227,11 @@ task.join().await?;
 
 - ランナーはコレクション完了時に `GcCapability.metrics()` を呼び、上記 JSON を生成して `audit.log("gc.stats", payload)` を実行する。
 - `run_id` はホットリロードや長期セッションごとに一意となる識別子。
-- `pause_target_ms` は `RunConfig.gc.pause_target_ms` と一致しない場合警告を出す。
+- `pause_target_ms` は `RunConfig.extensions["runtime"].gc.pause_target_ms` と一致しない場合警告を出す。
 
 ### 10.3 監査テストケース
 
-1. **Profile Consistency**: `RunConfig.gc.profile="game"` で起動したセッションが `gc.stats.profile="game"` を報告する。
+1. **Profile Consistency**: `RunConfig.extensions["runtime"].gc.profile="game"` で起動したセッションが `gc.stats.profile="game"` を報告する。
 2. **Emergency Trigger**: `heap_bytes > heap_limit` のタイミングで `GcCapability.trigger("Emergency")` を呼び、監査ログに `reason="Emergency"` を残す。
 3. **Pause Budget**: `last_pause_ms > pause_target_ms` の場合、CLI に `gc.pause_budget_exceeded` 警告を表示し、ログに `severity="warn"` を添付する。
 4. **Policy Switch**: `policy` を `Generational` に変更した際、初回コレクションログで `policy="Generational"` と出力され、`total_collections=0` から再カウントされる。
@@ -241,7 +241,7 @@ task.join().await?;
 | 項目 | 内容 | 参照 |
 | --- | --- | --- |
 | `gc.stats` JSON | すべてのフィールドが `guides/runtime-bridges.md#10-2` の例に従うか | 本節 |
-| プロファイル既定値 | `RunConfig.gc.profile` が `game/ide/web/data` の場合、テンプレート表の既定値が適用されるか | §10.1 |
+| プロファイル既定値 | `RunConfig.extensions["runtime"].gc.profile` が `game/ide/web/data` の場合、テンプレート表の既定値が適用されるか | §10.1 |
 | Metrics API | `RuntimeCapabilities.metrics()` が `heap_bytes` 等 GC メトリクスを含む構造体を返すか | 2-9 実行時基盤 |
 | Legacy 互換 | GC 設定を指定しない場合でも従来の RC/ヒープ動作が維持されるか | 2-6 実行戦略 |
 | 監査連携 | `gc.stats` と `audit.log` のドメインが重複しないこと、既存ログ解析ツールが新フィールドを無視しても動作するか | 監査運用 |

@@ -227,13 +227,13 @@ let factor: Parser<i64> = rule("factor",
 
 ## I. Capability 要求パターン
 
-Reml のパーサープラグインは、登録時に `register_capability`（2-1 節）で提供可能な機能を宣言し、利用側は `with_capabilities` で必要機能を要求する。以下は **標準で定義済みの Capability** と対応するコンビネータである。
+Reml のパーサープラグインは、登録時に `Core.Parse.Plugin` 拡張が提供する `register_capability` API を介して機能を公開し、利用側は `with_capabilities` で必要機能を要求する。以下は **拡張モジュールが定義する Capability** と対応するコンビネータである（純粋なコアのみを使用する場合は読み飛ばしてよい）。
 
 | Capability | 対応コンビネータ/機能 | 要約 |
 | --- | --- | --- |
-| `parser.atomic` | `atomic(p)` | 分岐打ち切り (`label+cut`) を伴う原子的シーケンス。`Parser` は `Recoverable` トレイトを実装している必要がある。 |
+| `parser.atomic` | `atomic(p)` | 分岐打ち切り (`label+cut`) を伴う原子的シーケンス。`Parser` は `Core.Parse.Plugin.Recoverable` トレイトを実装している必要がある。 |
 | `parser.recover` | `recover(p, with=...)` | 回復処理・診断集約を提供。同期トークンと監査ログ（`audit`）を要求。 |
-| `parser.trace` | `trace(p, tag)` | トレースイベントを生成し、`RunConfig.with_syntax_highlight` と整合する JSON メトリクスを出力。 |
+| `parser.trace` | `trace(p, tag)` | トレースイベントを生成し、`RunConfig.extensions["lsp"].syntaxHighlight` と整合する JSON メトリクスを出力。 |
 | `parser.chain` | `chainl1` / `chainr1` / `chain` | 演算子テーブル構築で左/右結合チェインを提供。 |
 | `parser.syntax.highlight` | `syntax.highlight(p)` | Semantic tokens を生成し、IDE へトークンストリームを供給。 |
 | `parser.capability.packrat` | `packrat(p)` | Packrat キャッシュを内部で保持。メモリ上限を `RunConfig` で指定する。 |
@@ -243,7 +243,7 @@ Reml のパーサープラグインは、登録時に `register_capability`（2-
 1. プラグインは `register_capability({"parser.atomic", ...})` を呼び出し、提供可能な capability の集合を登録する。登録されていない capability を `with_capabilities` で要求した場合は `PluginError::MissingCapability` を返す。
 2. `with_capabilities(required, parser)` は `required ⊆ provided` であることを検査し、失敗時はコンパイル時に警告 (`W4201`)・実行時にエラーを生成する。
 3. `parser.recover` を利用するプラグインは、`2-5-error.md` の `Diagnostic` 拡張（`domain`, `audit_id`, `change_set`）との整合を保証すること。`recover` で復旧させた場合でも監査ログに `recovery` イベントを残す。
-4. `parser.syntax.highlight` と `parser.trace` は `RunConfig.with_syntax_highlight=true` のモードでのみ効果を発揮し、通常モードではゼロコストになるよう実装する。
+4. `parser.syntax.highlight` と `parser.trace` は `RunConfig.extensions["lsp"].syntaxHighlight=true`（LSP 拡張）を有効にしたときのみ効果を発揮し、通常モードではゼロコストになるよう実装する。
 
 **サンプル**
 
@@ -268,4 +268,6 @@ register_plugin(ParserPlugin {
 })
 ```
 
-標準ライブラリ (`Core.Parse`) は上記 capability をすべて実装しており、`with_capabilities` の呼び出しは常に成功する。プラグインは必要な最小 capability のみ要求し、過剰な要求を避けることが推奨される。
+`Core.Parse.Plugin` 拡張は上記 capability をすべて実装しており、コアのみを読み込んだ場合は `with_capabilities` を呼んでも効果がない（no-op）。プラグインは必要な最小 capability のみ要求し、過剰な要求を避けることが推奨される。
+
+> `Core.Parse.Plugin.Recoverable` トレイトは、回復可能なパーサが `recover` や `atomic` を使用する際の補助契約を提供する。コア API だけを利用する場合は意識する必要はない。

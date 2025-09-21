@@ -96,8 +96,11 @@ type RunConfig = {
   left_recursion: "off" | "on" | "auto" = "auto",
   trace: Bool = false,
   merge_warnings: Bool = true,
-  legacy_result: Bool = false          // 旧 API (`Result<(T, Span), ParseError>`) 互換
+  legacy_result: Bool = false,         // 旧 API (`Result<(T, Span), ParseError>`) 互換
+  extensions: RunConfigExtensions = {} // モジュール毎の拡張設定
 }
+
+type RunConfigExtensions = Map<Str, Any>
 
 type ParserId = u32  // ルール毎に安定ID（rule()/label() が付与）
 type MemoKey  = (ParserId, usize /*byte_off*/)
@@ -111,6 +114,16 @@ type MemoTable = Map<MemoKey, Any>  // 実装上は型消去（内部用）
   - `trace` は `SpanTrace` 収集を有効化し、診断に詳細な履歴を残す。
   - `merge_warnings` は連続する回復警告を集約してノイズを抑制する。
   - `legacy_result` は旧 API (`Result<(T, Span), ParseError>`) を返す互換モード（移行期間限定）。
+  - `extensions` は LSP 連携・シンタックスハイライト・監査ログ・GC など、各拡張モジュールが提供する設定をネームスペース付きで保持する。例：`extensions["lsp"]`（LSP ガイド参照）、`extensions["runtime"]`（Core.Runtime 草案参照）。
+
+`extensions` の既定ネームスペース（推奨）
+
+| key | 用途 | 参照 |
+| --- | --- | --- |
+| `"lsp"` | LSP/IDE 連携の挙動・シンタックスハイライト設定 | guides/lsp-integration.md |
+| `"runtime"` | GC・監査・メトリクスなど実行時基盤の設定 | 2-9-runtime.md, guides/runtime-bridges.md |
+| `"logging"` | 構造化ログ・フォーマット設定（例：`format = "json"`） | guides/lsp-integration.md, guides/config-cli.md |
+| その他 | プロジェクト固有の拡張。キー重複を避けるため固有 prefix を推奨 | - |
 * `rule(name, p)` が **ParserId とラベル**を付与し、Packrat と診断に使う。
 
 ---
@@ -186,7 +199,7 @@ type ParseResultWithRest<T> = {
 
 ## I. プラグイン連携の位置付け
 
-Reml コアの `Core.Parse` はプラグイン登録 API を持ちません。DSL 拡張や capability 管理が必要な場合は、別途提供されるプラグインガイド（`guides/DSL-plugin.md`）と関連拡張ライブラリを利用してください。これにより、コア API は小さく安定したまま、プロジェクト固有の拡張点を opt-in で追加できます。
+Reml コアの `Core.Parse` はプラグイン登録 API を持ちません。DSL 拡張や capability 管理が必要な場合は、オプションモジュール `Core.Parse.Plugin`（`guides/DSL-plugin.md` 参照）を読み込み、そこで提供される `register_plugin`/`register_capability` 等を介して機能を注入してください。これにより、コア API は小さく安定したまま、プロジェクト固有の拡張点を opt-in で追加できます。
 
 ---
 

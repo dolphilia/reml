@@ -41,14 +41,19 @@ type RunConfig = {
   packrat: Bool = false,
   left_recursion: "off" | "on" | "auto" = "auto",
   trace: Bool = false,
-  merge_warnings: Bool = true
+  merge_warnings: Bool = true,
+  legacy_result: Bool = false,
+  extensions: RunConfigExtensions = {}
 }
+
+type RunConfigExtensions = Map<Str, Any>
 ```
 
 * `require_eof` で余剰入力を拒否するかどうかを切り替える。
 * `packrat` と `left_recursion` はメモ化と seed-growing 左再帰を制御する主要スイッチ。
 * `trace` は SpanTrace を収集し、`merge_warnings` は回復警告をまとめてノイズを抑制する。
-* 追加の燃料制御や GC 連携、ストリーミング用バッファは拡張モジュールが提供する設定として扱う。
+* `legacy_result` は旧来の戻り値形式を要求するツールチェーンとの互換用スイッチ。
+* 追加の燃料制御や GC 連携、ストリーミング用バッファ、LSP 設定などは `extensions` に格納されるモジュール固有設定として扱い、必要なときだけ読み込む（推奨ネームスペースは [2-1](2-1-parser-type.md) を参照）。
 
 * **空成功の繰返し**検出は必須（2.2 に準拠）。
 

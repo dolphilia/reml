@@ -105,6 +105,8 @@
   type UserId = new i64
   ```
 
+  `type alias`／`type ... = new ...` はどちらも `type` 宣言の派生形であり、型パラメータも他の宣言と同様に付与できます。
+
 * **トレイト定義 (`trait`)**  \n  インターフェースを宣言し、メソッド署名やデフォルト実装を列挙します。型パラメータや `where` 制約を付与できます。
 
   ```reml
@@ -396,7 +398,10 @@ Params      ::= Param ( "," Param )*
 Param       ::= Pattern ( ":" Type )? ( "=" Expr )?
 Ret         ::= "->" Type
 
-TypeDecl    ::= "type" Ident GenericParams? "=" SumType NL
+TypeDecl    ::= "type" TypeDeclBody NL
+TypeDeclBody::= "alias" Ident GenericParams? "=" Type
+             | Ident GenericParams? "=" SumType
+             | Ident GenericParams? "=" "new" Type
 SumType     ::= Variant ( "|" Variant )*
 Variant     ::= Ident "(" Types? ")"
 Types       ::= Type ( "," Type )*

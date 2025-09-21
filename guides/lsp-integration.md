@@ -6,28 +6,31 @@
 
 1. `reml-run lsp --stdio` を起動し、LSP サーバとして動作させる。
 2. エディタは `initialize` → `initialized` → `textDocument/didOpen` の順にメッセージを送信。
-3. サーバ側は `RunConfig` に `lsp` オプションを含めた状態で `run_with_lsp` を呼び出し、構文情報/診断を生成する。
+3. サーバ側は `RunConfig.extensions["lsp"]` を設定した状態で `run_with_lsp` を呼び出し、構文情報/診断を生成する。
 
 ### 1.1 RunConfig 例
 
 ```reml
 let cfg = {
-  lsp = {
-    highlight = true,
-    completion = true,
-    codeActions = true,
-    semanticTokens = true,
-    syntaxHighlight = true
-  },
-  log_format = "json",
-  audit = Some(|event| audit_log(event))
+  trace = false,
+  extensions = {
+    lsp = {
+      highlight = true,
+      completion = true,
+      codeActions = true,
+      semanticTokens = true,
+      syntaxHighlight = true
+    },
+    logging = { format = "json" },
+    audit = Some(|event| audit_log(event))
+  }
 }
 ```
 
-- `highlight` : トークン種別を LSP の `SemanticTokens` へ変換。
-- `completion` : プラグイン capability (`parser.requires`) を参照し DSL 別の補完候補を生成。
-- `codeActions` : FixIt 情報を LSP CodeAction として返す。
-- `semanticTokens` : 拡張モジュール。`guides/runtime-bridges.md` と同様に構造化ログと連動。
+- `extensions.lsp.highlight` : トークン種別を LSP の `SemanticTokens` へ変換。
+- `extensions.lsp.completion` : プラグイン capability (`parser.requires`) を参照し DSL 別の補完候補を生成。
+- `extensions.lsp.codeActions` : FixIt 情報を LSP CodeAction として返す。
+- `extensions.lsp.semanticTokens` : 拡張モジュール。`guides/runtime-bridges.md` と同様に構造化ログと連動。
 
 ## 2. メッセージマッピング
 
@@ -53,8 +56,8 @@ fn to_lsp_diagnostics(diags: List<Diagnostic>) -> List<LspDiagnostic> =
       "audit_id": d.audit_id,
       "change_set": d.change_set,
       "severity_hint": d.severity_hint,
-      "stream": d.stream_meta,
-      "quality_report": d.quality_report_id
+      "stream_meta": d.stream_meta,
+      "quality_report_id": d.quality_report_id
     }))
   })
 ```
@@ -62,8 +65,8 @@ fn to_lsp_diagnostics(diags: List<Diagnostic>) -> List<LspDiagnostic> =
 - `audit_id` を IDE 側で保持し、承認フローや差分レビューに利用。
 - `change_set` を JSON として埋め込むことで、設定差分を IDE 上で表示可能。
 - `severity_hint` に基づき、IDE 側で「ロールバック推奨」「再試行可」などのガイドを提示できる。
-- `stream` フィールドは `StreamEvent`/`ContinuationMeta` のサマリを格納し、ライブ補完やバックプレッシャ指標をステータスバーへ表示できる。
-- `quality_report` には `QualityReport.audit_id` の参照を保持し、データ品質診断を IDE から直接リンクできる。
+- `stream_meta` フィールドは `StreamEvent`/`ContinuationMeta` のサマリを格納し、ライブ補完やバックプレッシャ指標をステータスバーへ表示できる。
+- `quality_report_id` には `QualityReport.audit_id` の参照を保持し、データ品質診断を IDE から直接リンクできる。
 
 ## 4. ハイライト・補完ツールチェーン
 
@@ -119,7 +122,7 @@ reml-run lint config.ks --format json --domain config   | jq '.diagnostics[] | {
 | 項目 | 内容 | 参照 |
 | --- | --- | --- |
 | `Diagnostic.data.stream` | `StreamDriver` ベースの差分解析をサポートするクライアントは `ContinuationMeta` のサマリを解釈できるか | 2-6 実行戦略 §F |
-| `Diagnostic.data.quality_report` | データ品質診断リンクが `guides/data-model-reference.md#quality-report-schema` に従うか | データモデルリファレンス |
+| `Diagnostic.data.quality_report_id` | データ品質診断リンクが `guides/data-model-reference.md#quality-report-schema` に従うか | データモデルリファレンス |
 | `gc.stats` メッセージ | IDE が GC メトリクスを取得する場合 `guides/runtime-bridges.md#10-2` のスキーマを処理できるか | Runtime Bridges |
 | CLI / LSP 診断整合 | `reml-run lint --format json` と LSP 診断が同一 `audit_id` / `code` を保持しているか | 本ガイド §5 |
 | レガシークライアント | `Diagnostic.data` を無視しても従来どおり動作できるか（フォールバックポリシーの確認） | 互換性ポリシー |

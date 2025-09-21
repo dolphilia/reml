@@ -42,7 +42,7 @@ type GcMetrics = {
 type GcReason = "Manual" | "Threshold" | "Idle" | "Emergency"
 ```
 
-- `configure` は `RunConfig.gc` で渡された設定を適用し、ポリシー切替時は内部状態を再初期化する。
+- `configure` は `RunConfig.extensions["runtime"].gc`（runtime 拡張の設定）で渡された値を適用し、ポリシー切替時は内部状態を再初期化する。
 - `register_root` / `unregister_root` は実行スレッドのフレーム切替に合わせて呼ばれ、GC が到達可能集合を把握する。
 - `write_barrier` はミュータブル構造体の参照更新時に呼び出し、世代別／インクリメンタル GC の整合性を保つ。
 - `metrics` は `guides/runtime-bridges.md` の `gc.stats` と同じキーを持つ統計情報を返す。

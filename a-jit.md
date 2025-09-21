@@ -140,7 +140,7 @@ Reml源コード
 | ベクトルアラインメント    | `v128:128` | SIMD 拡張予定時の互換性確保。 |
 
 * **DataLayout 文字列例**（System V）：`e-m:e-p:64:64-f64:64:64-v128:128:128-a:0:64`。
-* **呼出規約**：FFI 互換性のため、公開関数は `cc ccc`（C 既定）を採用。Windows では `cc win64` への切替オプションを `RunConfig` で後日提供予定。
+* **呼出規約**：FFI 互換性のため、公開関数は `cc ccc`（C 既定）を採用。Windows では `RunConfig.extensions["runtime"].codegen.call_conv = "win64"` のような切替オプションを後日提供予定。
 * **構造体レイアウト**：
   * 代数的データ型は `{i32 tag, [payload]}` を基本とし、payload は最大幅の union または variant ごとの構造体に Lower。
   * 文字列/スライスは `{ptr data, i64 len}`。FFI 渡し時は所有権ルール（下記）が必須。
