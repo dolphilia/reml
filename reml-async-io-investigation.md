@@ -47,3 +47,42 @@
 - `2-6-execution-strategy.md`
 - `guides/runtime-bridges.md`
 - `scenario-requirements.md`
+
+## 8. 効果統合ガイド（ドラフト）
+### 8.1 効果フラグ拡張の提案
+- `io` を分解し、`io.async`（ノンブロッキングI/O）、`io.blocking`（ブロッキング呼び出し）、`io.timer`（タイマー/スケジューラ）をサブフラグとして管理。
+- 効果推論では `io` を上位集合とし、`io.async` を含む関数は自動的に `io` も保持する（逆は成立しない）。
+- `1-3-effects-safety.md:39` の属性検査を拡張し、`@async_free` で `io.async` を禁止、`@no_blocking` で `io.blocking` を禁止。
+- `async fn` は宣言時に `io.async` を暗黙付与し、ブロッキング操作は `await blocking { ... }` のような隔離構文へ押し込む方針を提案。
+
+### 8.2 属性検査と静的保証
+- `@pure` は従来通り `io` 全体を禁止する。`async` 関数に `@pure` を付けた場合はエラーを報告。
+- `@scheduler(bound="single"|"multi")` 属性を導入し、`FlowController` や `RunConfig.async` が要求するスレッド数制約と整合させる。
+- `@must_await` 属性を `Future` 型の戻り値に付与し、未使用時に警告を出す。（`1-3-effects-safety.md:58` の `@must_use` を再利用）
+- 非同期クロージャは `capture` 属性で捕捉変数の `Send`/`Sync` 相当マーカーを明示し、静的検証で失敗時に `Diagnostic` を返す。
+
+### 8.3 `async` 導入時の API 設計メモ
+1. **`Future<T>`/`Task<T>` の二層構造**
+   - `Future<T>` は値生成の制御フロー、`Task<T>` はスケジューラでの所有権とキャンセル制御を担当。
+   - `Task::spawn(future, cfg)` は `RunConfig` の `async` セクションを受け取り、イベントループまたはスレッドプールに登録する。
+2. **`AsyncFeeder` の導入**
+   - `run_stream_async(parser, feeder_async, cfg)` を追加し、`Feeder` を `Future<InputChunk>` として扱う。
+   - `DemandHint`（`reml-stream-reactive-extension.md`）を `Future` 側へ反映してバックプレッシャと同期。
+3. **キャンセルと構造化並行性**
+   - `scope async { ... }` 構文を想定し、スコープ終了時に子タスクへキャンセルシグナルを送る。
+   - `CancelToken` は `Result<T, Cancelled>` を返し、`ContinuationMeta.trace_id` と紐付けてトレース性を高める。
+4. **診断と監査**
+   - `guides/runtime-bridges.md:40` の監査ログに `async.op` ドメインを追加し、`TaskId`, `Scheduler`, `Latency` を送出。
+   - `2-5-error.md` の `Diagnostic` に `async_context` フィールドを追加する検討。
+
+### 8.4 既存仕様への反映ポイント
+- `1-3-effects-safety.md` に `io.async` サブフラグ、`@async_free`/`@no_blocking` 属性の記述を追加。
+- `2-1-parser-type.md` に `AsyncFeeder` と `run_stream_async` のシグネチャを追記。
+- `2-6-execution-strategy.md` の `RunConfig` 節に `async` セクション（スケジューラ選択、同時実行上限、バックプレッシャ統合）を追加。
+- `guides/runtime-bridges.md` に構造化並行性とキャンセル報告ルールを記載。
+
+### 8.5 今後の検証タスク
+1. 効果推論実装のスケッチ：`io.async` を持つラムダが一般化を阻害するケースのテストを書く。
+2. 属性検査の診断文例：`@no_blocking` を破った場合のエラーメッセージテンプレートを `2-5-error.md` に合わせて作成。
+3. `run_stream_async` のフェイルファスト条件：`FlowController` からのキャンセルと `CancellationToken` の整合性を確認。
+4. 代表シナリオごとの `async` ベストプラクティスを `guides` ディレクトリへ配布する計画を立案。

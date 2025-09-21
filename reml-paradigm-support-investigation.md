@@ -61,7 +61,24 @@
 4. **制約DSL・ポリシー検証の利用ガイド強化**
    - Core.Config/Core.Data を用いた制約記述と検証フローのベストプラクティスを文書化。標準APIに組み込む機能とプラグインで提供する機能の線引きを明確にする。
 
-## 6. まとめ
+## 6. 詳細検討成果
+### 6.1 ストリーム／リアクティブ拡張
+- `reml-stream-reactive-extension.md` を作成し、`StreamDriver`/`FlowController`/`StreamDiagnosticHook` といった共通ヘルパ案、`DemandHint` を含むバックプレッシャ契約、`ContinuationMeta` 拡張によるエラーメタデータの整理を実施。
+- `2-6-execution-strategy.md`・`2-5-error.md`・`guides/lsp-integration.md` への追補ポイントと、ホットリロード/IDE シナリオへの適用手順を明文化。
+
+### 6.2 並行支援と効果統合
+- `reml-async-io-investigation.md` の第8節として効果フラグ細分化（`io.async`/`io.blocking`/`io.timer`）、属性検査（`@async_free`/`@no_blocking`/`@scheduler`/`@must_await`）のドラフト、`Future`/`Task` 二層構造と `run_stream_async` の導入方針を整理。
+- `RunConfig`・`AsyncFeeder`・キャンセルモデルの整合性、監査ログ拡張の検討タスクを列挙。
+
+### 6.3 データモデリングロードマップ
+- `reml-data-modeling-roadmap.md` を策定し、品質DSL、統計型拡張、`Core.Config` 連携、ガバナンス/監査対応のロードマップをフェーズ別に提示。
+- `QualityRule`/`QualityProfile`/`StatsProvider` といった API 草案、CLI 連携、既存仕様への更新対象を明確化。
+
+### 6.4 制約DSLガイド強化
+- `guides/constraint-dsl-best-practices.md` を追加し、標準APIで扱う制約とプラグイン領域の線引き、診断メッセージ設計、運用パターンを整理。
+- `Constraint` 登録 API のメタデータ拡張や監査ログの統合手順といった今後のタスクをフォローアップ項目として列挙。
+
+## 7. まとめ
 - Reml のコア哲学に沿って、標準APIへ織り込む価値が高いパラダイムは「ストリーム／リアクティブ」「並行／Actor」「データ指向」の領域。
 - 関数型・宣言型・制約系は既存機構の強化やガイド整備で対応可能。
 - 機械学習やロジック完全対応は当面プラグイン・外部モジュールで扱う方針が適切。
