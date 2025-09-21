@@ -17,6 +17,15 @@ type Reply<T> =
   | Ok(value: T, rest: Input, span: Span, consumed: Bool)
   | Err(error: ParseError, consumed: Bool, committed: Bool)
 
+// ランナーが外部へ返す“エラー不可能”結果（AST + 診断）
+type ParseResult<T> = {
+  value: Option<T>,                 // 成功時は値、失敗時は None
+  span: Option<Span>,               // 値が存在する場合の全体スパン
+  diagnostics: List<Diagnostic>,    // 2.5 で定義される診断の列
+  recovered: Bool,                  // recover 等で補完した場合 true
+  legacy_error: Option<ParseError>  // 互換モード用（cfg.legacy_result=true）
+}
+
 // 実行状態（不変入力 + 可変の解析状態）
 type State = {
   input: Input,                // 現在の入力ビュー（不変データの参照＋オフセット）
@@ -33,6 +42,7 @@ type State = {
   `Ok(consumed=false/true)` / `Err(consumed=false/true, committed=false/true)`
   → `or` の分岐可否や `cut` の挙動を**分岐なし**で実装できる（Parsec 流の *empty/consumed* + *commit*）。
 * `span` は **そのパーサが消費した範囲**（`Ok` のみ）。ノード単位の位置取りに使う。
+* `ParseResult<T>` は **常に AST と Diagnostic の組**を返し、「値がないが診断が得られる」ケース（recover 後など）も扱う。旧来の `Result<(T, Span), ParseError>` は `RunConfig.legacy_result=true` で再利用できるが非推奨。
 
 ---
 
@@ -91,7 +101,8 @@ type RunConfig = {
   memo_max_entries: Option<usize> = Some(1 << 20),
   trace: Bool = false,
   merge_warnings: Bool = true,
-  stream_buffer_bytes: Option<usize> = Some(64 * 1024)
+  stream_buffer_bytes: Option<usize> = Some(64 * 1024),
+  legacy_result: Bool = false
 }
 
 type ParserId = u32  // ルール毎に安定ID（rule()/label() が付与）
@@ -106,6 +117,7 @@ type MemoTable = Map<MemoKey, Any>  // 実装上は型消去（内部用）
   - `fuel_max_steps` / `fuel_on_empty_loop` は停止性の安全弁。
   - `packrat_window_bytes` / `memo_max_entries` はキャッシュのメモリ上限。
   - `stream_buffer_bytes` はストリーム入力のリングバッファ既定サイズ。
+  - `legacy_result` は旧 API (`Result<(T, Span), ParseError>`) を返す互換モードを有効化（将来的に削除予定）。
   - それ以外は 1.1 で説明したエラー報告やトレースの挙動を調整する。
 * `rule(name, p)` が **ParserId とラベル**を付与し、Packrat と診断に使う。
 
@@ -152,22 +164,26 @@ type ParseError = {
 ## G. ランナー API（外部からの呼び出し）
 
 ```reml
-fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> Result<(T, Span), ParseError>
-// 成功時は値と**全体のスパン**（開始〜終了）を返す。
-// cfg.require_eof=true なら残余があれば EOF 期待エラーを返す。
+fn run<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T>
+// AST と診断を常に返す。cfg.require_eof=true なら余剰入力は Diagnostic として報告。
 
-fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> Result<(T, Input, Span), ParseError>
-// 部分パース：残り Input も返す（REPL/トークナイザ向け）。
+fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResultWithRest<T>
+// 部分パース：残り Input を `rest` に格納し、result.diagnostics も一緒に返す。
 
-fn run_stream<T>(p: Parser<T>, feeder: Feeder, cfg: RunConfig = {}) -> Result<StreamOutcome<T>, ParseError>
-// ストリーム入力。Pending が返った場合は続きが必要。
+fn run_stream<T>(p: Parser<T>, feeder: Feeder, cfg: RunConfig = {}) -> StreamOutcome<T>
+// ストリーム入力。Pending の間も diagnostics を蓄積する。
 
-fn resume<T>(cont: Continuation<T>, more: Bytes) -> Result<StreamOutcome<T>, ParseError>
+fn resume<T>(cont: Continuation<T>, more: Bytes) -> StreamOutcome<T>
 // 追加バイトを供給してストリームを再開。
 
+type ParseResultWithRest<T> = {
+  result: ParseResult<T>,
+  rest: Option<Input>
+}
+
 type StreamOutcome<T> =
-  | Completed { value: T, span: Span, meta: StreamMeta }
-  | Pending { continuation: Continuation<T>, demand: DemandHint, meta: StreamMeta }
+  | Completed { result: ParseResult<T>, meta: StreamMeta }
+  | Pending { continuation: Continuation<T>, demand: DemandHint, meta: StreamMeta, result: ParseResult<T> }
 
 type StreamMeta = {
   consumed_bytes: usize,
@@ -209,7 +225,7 @@ type FeederYield =
 type StreamError = { kind: String, detail: Option<String> }
 ```
 
-* `StreamOutcome::Pending` が返った場合は `Continuation` と `demand` を参照し、必要量を供給して `resume` を呼び出す。
+* `StreamOutcome::Pending` は `result.diagnostics` に中間診断を蓄積しつつ、`Continuation` と `demand` を基に次の供給タイミングを決める。
 * `Feeder.pull` は `DemandHint` を入力とし、`FeederYield::Chunk` でバイト列を返し、`::Await` でバックプレッシャ、`::Closed` で終端、`::Error` でストリームエラーを通知。
 * **ゼロコピー**：`src` は `Input.bytes` へ **参照共有**。
 * 文字モデル（1.4）により、列は**グラフェム**、`Span` は**バイトと行列の両方**を保持。

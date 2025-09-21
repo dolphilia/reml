@@ -126,6 +126,7 @@
 * **正規化コスト**
 
   * 生成時 NFC を基本。大量入力のときは **遅延正規化**モードを選べる実装を許容（等価/ハッシュ計算時に normalize）。
+  * グラフェム分割は **Unicode 15.1** に準拠した UAX #29 を基準とし、`ugrapheme` または ICU4X `segmenter::GraphemeClusterBreakSegmenter` のアルゴリズムと照合テストを実施する。
 * **境界 API の安全性**：`slice_codepoints` / `slice_graphemes` は**常に整合**、`slice_bytes` は `Bytes` 返却で**型で危険を表明**。
 
 ---
@@ -209,11 +210,20 @@ impl Collator { fn new(locale: Locale) -> Collator; fn compare(&self, a: Str, b:
 * [ ] `Str` はコードポイント境界保証。`slice_*` の整合を型で担保。
 * [ ] 生成時 NFC（または遅延正規化＋等価/ハッシュ時に NFC）。
 * [ ] 既定の `==`/`hash` は NFC 基準で定義。
-* [ ] `graphemes()` は UAX #29（拡張 GCB）。ZWJ/emoji シーケンス対応。
+* [ ] `graphemes()` は Unicode 15.1 の UAX #29（拡張 GCB）。ZWJ/emoji シーケンス対応。
 * [ ] 位置情報はグラフェム列＋バイトオフセットを保持。
 * [ ] UAX #31 識別子、Bidi/Confusable のガードを実装。
 * [ ] `Lex` の Unicode 分類 API はテーブル生成（ビルド時）の静的データで高速化。
-* [ ] 正規化・大小変換は Unicode データファイルに基づく（バージョン固定、将来更新可能）。
+* [ ] 正規化・大小変換は Unicode データファイル（基準: Unicode 15.1 / ICU 74）に基づく（バージョン固定、将来更新可能）。
+
+---
+
+## N. バージョン管理と更新手順
+
+1. **基準バージョン**：Unicode 15.1 と ICU 74 を既定とし、更新時は `research-Reml-latest.md` が示す評価対象（Unicode 15.1.1、ICU 75 など）をレビューする。
+2. **実装評価**：`grapheme_len`・`display_width`・confusable 検査について、`ugrapheme` と ICU4X `segmenter` を比較し CPU/メモリ/バイナリサイズを測定。結果は `notes/unicode-refresh-<version>.md` に記録する。
+3. **テストデータ**：UAX #29/31/39 の公式 conformance データに加え、社内の confusable・表示幅ベンチを `guides/tests/unicode/` に保守し、誤検知率 < 2% を CI で確認する。
+4. **仕様更新**：新バージョンを採用した場合、本節と `2-3-lexer.md` にバージョン番号・導入日・依存ライブラリを追記し、互換性注意点をリリースノートへ掲載する。
 
 ---
 

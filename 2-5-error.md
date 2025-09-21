@@ -53,8 +53,18 @@ type Diagnostic = {
   at: Span,                 // 主位置（1.4: 列=グラフェム）
   audit_id: Option<AuditId>,
   change_set: Option<ChangeSetRef>,
+  expected_summary: Option<ExpectationSummary>,
   notes: List<(Span, Str)>, // 追加メモ（複数可）
   fixits: List<FixIt>
+}
+
+// 期待集合を人間語へ整形するためのサマリ
+type ExpectationSummary = {
+  message_key: Option<Str>,          // LSP/翻訳用キー（例: "expected.token")
+  locale_args: List<Str>,            // メッセージテンプレートに渡す引数
+  humanized: Option<Str>,            // テンプレート未設定時の自然言語
+  context_note: Option<Str>,         // 文脈説明（例: "+ の後に式"）
+  alternatives: List<Expectation>    // 優先順に並べ替えた候補一覧
 }
 
 type ParseError = {
@@ -70,6 +80,7 @@ type ParseError = {
 
 * **`ParseError` は集約用の“素の事実”**、**`Diagnostic` は表示用**（`Err.pretty` が `ParseError` から `Diagnostic` を起こす）。
 * `Expectation` は**種類別**に持ち、message 生成時に**まとまりで整形**（例：「期待：`)`・`number`・識別子のいずれか」）。
+* `expected_summary` はテンプレート ID と文脈を保持し、IDE/LSP がローカライズ済みメッセージを生成できるようにする。
 * `domain` はエラーの責務領域を示し、CLI/監査ログでのフィルタリングに利用。`severity_hint` は運用側への推奨アクション（ロールバック・再試行・即時エスカレーションなど）を表す。
 * `change_set` は設定差分・マイグレーション計画など、影響範囲を同定するための指標。`fingerprint` は差分内容に対する安定ハッシュを提供する。
 
@@ -114,6 +125,14 @@ fn Err.custom(at: Span, msg: Str) -> ParseError
 * `Rule("expression")` があり、`Token(")")` 等の**具体トークン**があれば、**具体を優先表示**（抽象は補助に落とす）。
 * 多数 (>8) のときは **カテゴリ分け＋上位 N 件**を表示し、残りは「…他 X 件」。
 
+### B-7. 期待集合のサマリ生成
+
+1. **分類**：`Expectation` を `Token` / `Keyword` / `Class` / `Rule` / `Custom` に分け、`alternatives` を優先順位で整列（具体トークン → 文字クラス → ルール順）。
+2. **テンプレート照合**：`PrettyOptions.expectation_templates` または CLI/LSP の登録テンプレートから `message_key` に一致する文を取得し、`locale_args` を埋め込む。
+3. **文脈付与**：`ParseError.context` と `ExpectationSummary.context_note` を結合し、「`+` の後に式が必要」のような自然文を生成。
+4. **フォールバック**：テンプレートが無い場合は `humanized` を生成（例：「ここで `)` または 数値 が必要です」）。
+5. **LSP 連携**：`toDiagnostics` は `expected_summary.message_key` と `locale_args` を `data.expected` に埋め込み、クライアント側でのローカライズと候補提示を可能にする。
+
 ---
 
 ## C. 表示（pretty）と多言語
@@ -127,7 +146,9 @@ type PrettyOptions = {
   show_bytes: Bool = true,           // (byte 134) などを併記
   snippet_lines: usize = 2,          // 前後の抜粋行数
   color: Bool = true,                // 終端色付け
-  locale: Locale = "ja"              // メッセージ言語
+  locale: Locale = "ja",             // メッセージ言語
+  expectation_locale: Option<Locale> = None,   // 期待メッセージのロケール（未指定なら locale を使用）
+  expectation_templates: Map<Str, Str> = {}    // message_key -> テンプレート（"{0}", "{1}" 形式）
 }
 ```
 
@@ -135,6 +156,7 @@ type PrettyOptions = {
 * **主語**：「expected …, found ‘…’」形式だが、ロケールにより語順差し替え。
 * **`context`**：「while parsing *expression* → *term* → *factor*」のように**内側 3 段**まで表示。
 * **FixIt** は `^` 行に \*\*「ここに ‘)’ を挿入」\*\*のように注記。
+* **期待テンプレート**：`expectation_templates` に登録された `message_key` を優先使用し、未登録時は `humanized` フォールバックを採用。
 
 **例（括弧閉じ忘れ）**
 
@@ -271,6 +293,7 @@ type Change = {
 ### F-2. IDE/LSP・監査連携
 
 * **LSP 変換ヘルパ**: `to_lsp_diagnostics` は `domain`・`audit_id`・`change_set`・`severity_hint` を `data` に埋め込み、IDE 側で監査ビューや差分レポートへジャンプできるようにする。
+  * `expected_summary` が存在すれば `data.expected = { key, args, context }` を出力し、クライアント側でローカライズ済みの候補リストを構築可能にする。
 * **構造化ログ**: `{"event":"reml.error", "domain":..., "audit_id":..., "code":..., "severity_hint":...}` の JSON フォーマットを推奨し、CI/CD や監査ツールでの集計を容易にする。
 * **監査ログ連携**: CLI は `audit_id` をキーに差分レポートを生成し、承認フローやロールバック手順を自動化できるようにする。
 
