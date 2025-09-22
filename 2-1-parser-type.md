@@ -97,6 +97,7 @@ type RunConfig = {
   trace: Bool = false,
   merge_warnings: Bool = true,
   legacy_result: Bool = false,         // 旧 API (`Result<(T, Span), ParseError>`) 互換
+  locale: Option<Locale> = None,       // 診断・Pretty 表示のロケール
   extensions: RunConfigExtensions = {} // モジュール毎の拡張設定
 }
 
@@ -114,6 +115,10 @@ type MemoTable = Map<MemoKey, Any>  // 実装上は型消去（内部用）
   - `trace` は `SpanTrace` 収集を有効化し、診断に詳細な履歴を残す。
   - `merge_warnings` は連続する回復警告を集約してノイズを抑制する。
   - `legacy_result` は旧 API (`Result<(T, Span), ParseError>`) を返す互換モード（移行期間限定）。
+  - `locale` は **呼び出し元指定 → 環境変数（`REML_LOCALE` / `LANG`）→ 既定値 (`Locale::EN_US`)** の優先順位で決定する。
+    解決したロケールは `PrettyOptions.locale` と `PrettyOptions.expectation_locale` の既定値に同期され、`PrettyOptions` 側で
+    個別指定がある場合はそちらを尊重する。CLI・LSP などフロントエンドは `RunConfig.locale` に値を渡す際、明示指定が無く
+    環境変数も欠落していれば **初回のみ「ロケール未指定」警告を出して英語 UI へフォールバック**する。
   - `extensions` は LSP 連携・シンタックスハイライト・監査ログ・GC など、各拡張モジュールが提供する設定をネームスペース付きで保持する。例：`extensions["lsp"]`（LSP ガイド参照）、`extensions["runtime"]`（Core.Runtime 草案参照）。
 
 `extensions` の既定ネームスペース（推奨）
@@ -123,6 +128,7 @@ type MemoTable = Map<MemoKey, Any>  // 実装上は型消去（内部用）
 | `"lsp"` | LSP/IDE 連携の挙動・シンタックスハイライト設定 | guides/lsp-integration.md |
 | `"runtime"` | GC・監査・メトリクスなど実行時基盤の設定 | 2-9-runtime.md, guides/runtime-bridges.md |
 | `"logging"` | 構造化ログ・フォーマット設定（例：`format = "json"`） | guides/lsp-integration.md, guides/config-cli.md |
+| `"i18n"` | ロケール検出・未翻訳メッセージの記録、翻訳カタログのホットリロード | guides/lsp-integration.md |
 | その他 | プロジェクト固有の拡張。キー重複を避けるため固有 prefix を推奨 | - |
 * `rule(name, p)` が **ParserId とラベル**を付与し、Packrat と診断に使う。
 
