@@ -1,4 +1,4 @@
-# 4.6 Core IO & Path（フェーズ3 ドラフト）
+# 3.5 Core IO & Path（フェーズ3 ドラフト）
 
 Status: Draft（内部レビュー中）
 
@@ -11,7 +11,7 @@ Status: Draft（内部レビュー中）
 | ステータス | Draft（フェーズ3） |
 | 効果タグ | `effect {io}`, `effect {mut}`, `effect {mem}`, `effect {blocking}`, `effect {async}` |
 | 依存モジュール | `Core.Prelude`, `Core.Text`, `Core.Collections`, `Core.Diagnostics`, `Core.Numeric & Time` |
-| 相互参照 | [2.6 実行戦略](2-6-execution-strategy.md), [4.5 Core Numeric & Time](4-5-core-numeric-time.md), Guides: [ランタイム連携](guides/runtime-bridges.md) |
+| 相互参照 | [2.6 実行戦略](2-6-execution-strategy.md), [3.4 Core Numeric & Time](3-4-core-numeric-time.md), Guides: [ランタイム連携](guides/runtime-bridges.md) |
 
 ## 1. IO モジュール構成
 
@@ -151,7 +151,7 @@ fn load_config(path: Str, audit: AuditSink) -> Result<AppConfig, Diagnostic> =
   Ok(config)
 ```
 
-- `with_reader` と `buffered` を組み合わせ、`Config.parse_yaml`（Chapter 4.8 予定）に渡す例。
+- `with_reader` と `buffered` を組み合わせ、`Config.parse_yaml`（Chapter 3.7）に渡す例。
 - 所要時間を `log_io` で監査ログに記録し、`audit_id` を伝播。
 
-> 関連: [4.5 Core Numeric & Time](4-5-core-numeric-time.md), [2.6 実行戦略](2-6-execution-strategy.md), [guides/runtime-bridges.md](guides/runtime-bridges.md)
+> 関連: [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [2.6 実行戦略](2-6-execution-strategy.md), [guides/runtime-bridges.md](guides/runtime-bridges.md)

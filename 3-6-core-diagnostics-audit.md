@@ -1,4 +1,4 @@
-# 4.7 Core Diagnostics & Audit（フェーズ3 ドラフト）
+# 3.6 Core Diagnostics & Audit（フェーズ3 ドラフト）
 
 Status: Draft（内部レビュー中）
 
@@ -11,7 +11,7 @@ Status: Draft（内部レビュー中）
 | ステータス | Draft（フェーズ3） |
 | 効果タグ | `@pure`, `effect {audit}`, `effect {debug}`, `effect {trace}` |
 | 依存モジュール | `Core.Prelude`, `Core.Text`, `Core.Numeric & Time`, `Core.Config`, `Core.Data` |
-| 相互参照 | [2.5 エラー設計](2-5-error.md), [4.5 Core Numeric & Time](4-5-core-numeric-time.md), [4.8 Core Config & Data](4-8-core-config-data.md) |
+| 相互参照 | [2.5 エラー設計](2-5-error.md), [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.7 Core Config & Data](3-7-core-config-data.md) |
 
 ## 1. `Diagnostic` 構造体
 
@@ -39,7 +39,7 @@ pub type SpanLabel = {
 pub enum Severity = Error | Warning | Info | Hint
 ```
 
-- `timestamp` は [4.5](4-5-core-numeric-time.md) の `Timestamp` を利用し、診断生成時に `Core.Numeric.now()` を呼び出す。
+- `timestamp` は [3.4](3-4-core-numeric-time.md) の `Timestamp` を利用し、診断生成時に `Core.Numeric.now()` を呼び出す。
 - `AuditEnvelope` は監査情報を同梱する構造（後述）。
 - `ExpectedSummary` は LSP/CLI でメッセージを国際化するための鍵と引数を保持する。
 
@@ -154,4 +154,4 @@ fn validate_config(cfg: AppConfig, audit: AuditSink) -> Result<(), Diagnostic> =
 - `ensure` と `tap_diag` を組み合わせ、検証失敗時に監査ログへ自動送出。
 - `from_change` により `change_set` を `AuditEnvelope` へ変換し、監査と診断に共通語彙を適用する。
 
-> 関連: [2.5 エラー設計](2-5-error.md), [4.5 Core Numeric & Time](4-5-core-numeric-time.md), [4.8 Core Config & Data](4-8-core-config-data.md)
+> 関連: [2.5 エラー設計](2-5-error.md), [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.7 Core Config & Data](3-7-core-config-data.md)
