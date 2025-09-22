@@ -1,6 +1,6 @@
 # Reml FFI ハンドブック（ドラフト）
 
-> 目的：Reml と外部ランタイム（C/C++/Rust/システムライブラリ等）との安全な接続方法を明文化し、`a-jit.md`・`1-3-effects-safety.md`・`guides/runtime-bridges.md` に分散している知識を一本化する。
+> 目的：Reml と外部ランタイム（C/C++/Rust/システムライブラリ等）との安全な接続方法を明文化し、[LLVM連携ノート](llvm-integration-notes.md)・`1-3-effects-safety.md`・`guides/runtime-bridges.md` に分散している知識を一本化する。
 
 ## 1. 適用範囲と位置付け
 - 既定ターゲット：System V AMD64 / Windows x64。将来 ARM64 / WASM を追加予定。
@@ -8,7 +8,7 @@
 - FFI で橋渡しする典型シナリオ：データベースドライバ、クラウド SDK、GPU ライブラリ、既存サービスとの IPC、ホットリロード可能なプラグイン。
 
 ## 2. ABI・データレイアウトの要約
-- 詳細は `a-jit.md` の「5.0 ターゲット ABI / データレイアウト」を参照。
+- 詳細は [LLVM連携ノート](llvm-integration-notes.md) の「ターゲット ABI / データレイアウト」を参照。
 - Reml から公開される構造体／列挙型は `repr(C)` 等価の自然境界を前提。
 - 文字列・スライス：`{ ptr data, i64 len }`。所有権は RC、境界を超える場合は明示的に `inc_ref`/`dec_ref`。
 - 例外／パニック伝播は定義しない。Reml → C 方向は `abort`、C++ 例外は外に逃さない。
@@ -74,7 +74,7 @@ FFI 宣言ではこの対応表を基にシグネチャを決定し、`extern "C
 
 低レベルポインタは `Span<T>` / `Buffer` / `StructView` 等の安全ラッパからのみ取得できるようにし、公開 API は可能な限りこれらラッパ型を返す。
 `Span<T>` は長さを保持するため、境界チェック付きの `read_exact`/`write_exact` を提供し、内部で `Ptr<T>` へ降格する箇所を局所化する。
-`StructView` は `byte_offset` を利用してフィールドにアクセスする構造体ビューであり、ABI 互換性は [a-jit.md](../a-jit.md#5-0-ターゲット-abi--データレイアウト（ドラフト）) の方針に従う。
+`StructView` は `byte_offset` を利用してフィールドにアクセスする構造体ビューであり、ABI 互換性は [LLVM連携ノート](llvm-integration-notes.md) の方針に従う。
 
 ### 9.3 寿命とリファレンスカウント
 
@@ -84,7 +84,7 @@ Rust など所有権モデルが存在する側では `ManuallyDrop` や `Box::i
 
 ### 9.4 メモリレイアウトと整列制約
 
-ポインタのキャストや `copy_nonoverlapping` を行う前に、構造体が自然境界を満たすか `repr(C)` 互換かを [a-jit.md](../a-jit.md#5-0-ターゲット-abi--データレイアウト（ドラフト）) で確認する。
+ポインタのキャストや `copy_nonoverlapping` を行う前に、構造体が自然境界を満たすか `repr(C)` 互換かを [LLVM連携ノート](llvm-integration-notes.md) で確認する。
 アラインメント違反が懸念される場合は `read_unaligned`/`write_unaligned` を使用し、パフォーマンス影響を `benchmark/ffi/` のマイクロベンチで検証する。
 Swift や Zig のように追加メタデータが付与される言語では、呼び出し側で `withUnsafePointer` や `ptrFromInt` を利用して Reml の整列に合わせる。
 

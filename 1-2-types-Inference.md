@@ -307,4 +307,4 @@ Reml のコア型システムは代数的データ型とトレイト制約を中
 * [1.3 効果と安全性](1-3-effects-safety.md) - 効果システムとの連携
 * [1.4 文字モデル](1-4-test-unicode-model.md) - Unicode型システム
 * [2.5 エラー設計](2-5-error.md) - 型エラーの報告
-* [a-jit.md](a-jit.md) - LLVM連携での型情報利用
+* [LLVM連携ノート](guides/llvm-integration-notes.md) - LLVM連携での型情報利用
