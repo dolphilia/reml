@@ -6,8 +6,8 @@
 
 | コマンド | 説明 | 主要オプション |
 | --- | --- | --- |
-| `reml-config validate <config.ks>` | スキーマに基づく検証を実行 | `--format json`, `--profile prod`, `--fail-on-warning` |
-| `reml-config diff <old.ks> <new.ks>` | スキーマ差分の表示 | `--format table`, `--apply`, `--audit` |
+| `reml-config validate <config.ks>` | スキーマに基づく検証を実行 | `--format json`, `--profile prod`, `--locale ja-JP`, `--fail-on-warning` |
+| `reml-config diff <old.ks> <new.ks>` | スキーマ差分の表示 | `--format table`, `--apply`, `--audit`, `--locale en-US` |
 | `reml-config render --template <file>` | テンプレートを具現化 | `--env prod`, `--output rendered.ks` |
 | `reml-config approve <audit_id>` | レビュー済み差分を確定 | `--assign owner`, `--note <msg>` |
 | `reml-config rollback <audit_id>` | 過去の差分をロールバック | `--dry-run`, `--confirm` |
@@ -16,10 +16,11 @@
 
 ```bash
 # 検証: JSON 出力からエラーのみ抽出
-reml-config validate config/app.ks --profile prod --format json   | jq '.diagnostics[] | {code, message, audit_id}'
+reml-config validate config/app.ks --profile prod --format json --locale ja-JP \
+  | jq '.diagnostics[] | {code, message, locale, audit_id}'
 
 # 差分: テーブル表示でレビューし承認まで実行
-reml-config diff config/base.ks config/prod.ks --format table --audit | tee diff.json
+reml-config diff config/base.ks config/prod.ks --format table --audit --locale en-US | tee diff.json
 reml-config approve "$(jq -r '.audit_id' diff.json)" --assign sre-team --note "prod rollout"
 
 # テンプレート: staging 向け設定を生成
@@ -30,6 +31,18 @@ reml-config render --template config/prod.ks --env staging --output generated/st
 
 - `--format json` の出力は `2-5-error.md` の `Diagnostic` 拡張に準拠し、`domain` / `audit_id` / `change_set` / `severity_hint` を含む。
 - `--audit` を指定すると `audit_id` を標準出力に含め、`guides/runtime-bridges.md` のホットリロード手順と連結できる。
+
+## 3.1 ロケール指定と RunConfig 連携
+
+1. CLI は `--locale <lang-tag>` オプションを解析し、指定があればその値を `RunConfig.locale` として `RunConfig` / `PrettyOptions`
+   を初期化する。
+2. オプションが無い場合は `REML_LOCALE` → `LANG` の順で環境変数を参照し、見つからなければ `Locale::EN_US` をセットする。環境
+   で得たロケールも `PrettyOptions.locale` / `expectation_locale` へコピーする。
+3. 呼び出し元・環境のどちらからもロケールが得られなかった場合は **初回のみ標準エラーに警告**を出し、英語 UI へフォールバック
+   する。`--quiet` 時は警告を抑制し、`--format json` 時は `diagnostics.warnings` 配列に `message_key = "cli.locale.default"`
+   として追記する。
+4. JSON 出力では各診断のメタデータに `diagnostics[].locale` を追加する。`message_key` / `locale_args` と組み合わせることで IDE や
+   ダッシュボードが翻訳キャッシュを再利用できる。ヒューマンリーダブル表示では `PrettyOptions.locale` を使用して整形する。
 
 ## 4. CI/CD 連携
 

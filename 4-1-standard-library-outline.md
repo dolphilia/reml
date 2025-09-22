@@ -20,6 +20,7 @@
 | 4.9 | Core Runtime & Capability Registry | GC capability、メトリクス API、プラグイン／Capability の統合窓口 | 📝 アウトライン確定中 |
 | 4.10 | Core Async / FFI / Unsafe（将来拡張） | `Future`/`Task`、`ffi` 効果、`unsafe` 境界、互換性ポリシー | 🧭 調査メモ準備中 |
 
+
 ## 3. 索引用ハイレベルリンク
 - Chapter 2（Core.Parse）から Chapter 4 への参照は、`use Core` 経由での導入例とパーサ以外のユーティリティを対比して整理する。【F:2-1-parser-type.md†L1-L9】
 - Config/Data/Runtime 既存章の内容は Chapter 4.7/4.8 に再編し、差分は今後のドラフトで提示する計画とする。【F:2-7-config.md†L1-L7】【F:2-8-data.md†L1-L6】【F:2-9-runtime.md†L1-L7】

@@ -42,6 +42,8 @@ let hardenedSchema = userSchema.with(|s| {
 
 - `ConstraintContext.profile` は `prod` / `staging` 等の識別子。閾値を `Profile::overrides()` で差し替え可能。
 - `Diagnostic` には `domain = "schema"` とエラーコード（`E7001` など）を付与し、`guides/lsp-integration.md` の CodeAction と整合させる。
+- JSON 直列化時には `diagnostics[].locale` と `message_key` / `locale_args` を含め、CLI・LSP いずれからも同じ翻訳カタログを再
+  利用できるようにする。
 
 ## 3. プロファイル別検証
 
@@ -72,25 +74,34 @@ if !report.diagnostics.is_empty() {
 
 ```bash
 # スキーマ検証（prod プロファイル）
-reml-data validate data/users.json --schema schemas/user.ks --profile prod --format json \
-  | jq '.report | {audit_id, diagnostics, stats}'
+reml-data validate data/users.json --schema schemas/user.ks --profile prod --format json --locale ja-JP \
+  | jq '.report | {audit_id, locales: (.diagnostics | map(.locale) | unique), diagnostics, stats}'
 
 # スキーマ差分（マイグレーション計画）
-reml-data diff --schema-old schemas/user_v1.ks --schema-new schemas/user_v2.ks --format json \
+reml-data diff --schema-old schemas/user_v1.ks --schema-new schemas/user_v2.ks --format json --locale en-US \
   | jq '.changes[] | {path, kind, breaking}'
 
 # マイグレーション適用（失敗時のロールバック情報を保存）
-reml-data migrate --diff diff.json --input data/import.parquet --output data/output.parquet \
+reml-data migrate --diff diff.json --input data/import.parquet --output data/output.parquet --locale en-US \
   || cat rollback.json
 
 # データ品質評価（staging プロファイル）
-reml-data quality run data/users.json --schema schemas/user.ks --profile staging --format json \
+reml-data quality run data/users.json --schema schemas/user.ks --profile staging --format json --locale ja-JP \
   | jq '.report | {audit_id, profile, severity_max, findings}'
 
 # StatsProvider を使った統計更新
 reml-data stats collect --schema schemas/user.ks --provider warehouse --format json \
   | jq '.stats | keys'
 ```
+
+### 4.1 ロケール伝搬と警告ポリシー
+
+1. `reml-data` 系 CLI は `--locale <lang-tag>` を `RunConfig.locale` に写し、解析・整形の両レイヤで同じロケールを使用する。
+2. 指定が無い場合は `REML_LOCALE` → `LANG` を参照し、いずれも無ければ `Locale::EN_US` を採用して `PrettyOptions` にも同期する。
+3. 既定ロケールへフォールバックしたときは **最初の実行でのみ警告**を表示する。`--format json` のときは警告を `report.diagnostics`
+   に `severity = "Warning"`, `message_key = "cli.locale.default"`, `locale = "en-US"` として添付し、サイレントモードでは抑制する。
+4. 解析結果の JSON は `diagnostics[].locale` を含むため、IDE や監査ダッシュボードが後段で別ロケールに再整形する際の基準として
+   利用できる。
 
 - CLI 出力の JSON は `2-8-data.md` の `SchemaDiff`/`MigrationStep`/`MigrationError` を直列化したもの。
 - `--format json` の `report.metrics` セクションは `RuntimeMetrics` に準拠し、監視基盤へ直接送信できる。

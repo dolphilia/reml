@@ -162,6 +162,65 @@ type PrettyOptions = {
 * **FixIt** は `^` 行に \*\*「ここに ‘)’ を挿入」\*\*のように注記。
 * **期待テンプレート**：`expectation_templates` に登録された `message_key` を優先使用し、未登録時は `humanized` フォールバックを採用。
 
+### C-1. 診断メッセージの国際化ポリシー
+
+#### メッセージキーとテンプレート
+
+* `message_key` は `領域.機能.イベント`（例: `parser.expectation.missing_token`）の **小文字ドット区切り** を原則とし、`RunConfig` やプラグインは自分の名前空間（`plugin.<id>.…`）内で衝突を避ける。
+* `locale_args` は 0 オリジンの位置引数 `{0}`, `{1}`, … で参照し、**すべて文字列化済み**とする（構造値は JSON 化して渡す）。
+* テンプレート解決順序は以下の通りで固定する。
+  1. **診断個別のオーバーライド**：`Diagnostic.extensions["templates"][locale][message_key]` 等、エミッタが明示的に添付したテンプレート。
+  2. **`PrettyOptions.expectation_templates`**：実行時オプションで注入された共有テンプレート。
+  3. **既定言語辞書**：ビルトインの `default_locale`（通常は `"en"`）のテンプレートまたは `ExpectationSummary.humanized`。
+
+#### 翻訳対象とロケール解決手順
+
+診断の翻訳対象は以下のフィールド全体に及ぶ。
+
+* `Diagnostic.message`（一次見出し）
+* `Diagnostic.notes` の各文、および `Span` を伴う注釈
+* `FixIt` の `text`（`Insert`/`Replace`/`Delete`）
+* `Diagnostic.severity_hint` を人間語に変換した説明文
+* `ExpectationSummary` の `message_key` と `context_note`
+
+CLI／IDE／LSP に渡す際のロケール解決は次の段階で行う。
+
+1. **基準ロケールの決定**：`PrettyOptions.locale` を最優先し、LSP ではクライアントからの `initializeParams.locale` 要求があればそれを `PrettyOptions.locale` へ反映する。
+2. **期待メッセージの分岐**：`PrettyOptions.expectation_locale` が `Some` の場合は期待テンプレートのみそのロケールを使用し、`None` なら `locale` を共有する。
+3. **辞書検索**：上記のテンプレート解決順序で `message_key` を探索し、未対応ロケールで見つからなければクライアント要求ロケールから **既定言語へフォールバック**。
+4. **フォールバック適用**：テンプレートが得られない場合は、`ExpectationSummary.humanized` や `Diagnostic.message` の既定文をそのまま表示し、`locale_args` の整形も既定ルールに従う。
+
+#### 翻訳辞書のロードと検証
+
+| ステップ | 内容 | 例 |
+| --- | --- | --- |
+| 読み込み | `Locale` ごとに JSON/YAML 辞書をロードし、`message_key -> template` を構築する | `load_dictionary("ja")` |
+| キャッシュ | `Arc<LruCache<Locale, TemplateMap>>` でロケール単位の辞書をキャッシュし、ホットパスでの I/O を回避する | `TEMPLATE_CACHE.get_or_try_insert(locale, load)` |
+| 検証 | 各テンプレートの `{n}` が `locale_args.len()` と整合するか検査し、欠落や過剰があれば警告ログとともに既定言語へフォールバック | `validate_args(message_key, template, locale_args)` |
+
+テンプレート解決の擬似コード例：
+
+```pseudo
+fn render(key, locale, args, opts, diag_override): String {
+  let dict = resolve_dictionary(locale, diag_override, opts);
+  let template = dict.get(key)
+    .or_else(|| resolve_dictionary(DEFAULT_LOCALE, None, opts).get(key));
+  if !validate_arity(template, args.len()) {
+    log.warn("template arity mismatch", key, locale);
+    return render_default(key, args);
+  }
+  return interpolate(template, args);
+}
+```
+
+`DEFAULT_LOCALE` は CLI 設定またはサーバ既定で定義されたフォールバック言語コード（例: `"en"`）。
+
+`RunConfig` やプラグイン拡張が独自メッセージを追加する場合、以下の手続きを踏む。
+
+1. **キー空間の予約**：`RunConfig` は `config.<feature>.…`、プラグインは `plugin.<id>.…` の接頭辞を採用し、重複した `message_key` を禁止する。
+2. **検証フック**：`RunConfig::register_locale_templates(locale, map)` またはプラグイン API で辞書登録時に `validate_args` を通過させ、キー重複や引数不一致を検査する。
+3. **失敗時の例外ポリシー**：重大な不整合（欠落テンプレートや重複キー）は `Err::InvalidTemplate` を送出してロードを失敗させ、ランタイムは既定言語で継続しつつ警告ログを残す。実行中に見つかった場合は当該メッセージのみフォールバックし、IDE/LSP へは `data.localeFallback = true` を通知する。
+
 **例（括弧閉じ忘れ）**
 
 ```
@@ -215,6 +274,22 @@ note: while parsing expression → term → factor
 
   * 主エラー：`expected EOF`
   * `notes` に**余剰先頭 32 文字**を抜粋。
+
+8. **数値変換失敗（`as` キャスト／リテラル解決）**
+
+* 共通方針：`Severity = Error`、`domain = Some(Parser)`、`code = Some("E710x")` を割り当て、`message` に**元の値と対象型**を必ず含める。
+* **`E7101`（整数→整数）**：
+  * `message`: `value {value} does not fit into {target}`。
+  * `notes`: `allowed range is {min}..={max}; rounding: none` を添付し、`RunConfig.extensions["type"].numeric_defaults.integer` で選ばれた既定整数型を `notes` に明示する（例：「default integer type: i64」）。
+  * `secondaries`: 可能であれば **元のリテラル位置**へ `FixIt::Replace` の候補（例: `value.clamp(min, max)` を示唆）を追加。
+* **`E7102`（浮動小数→整数）**：
+  * `message`: `cannot convert {value} ({classification}) to {target}`。`classification` には `NaN` / `+∞` / `-∞` / `out of range` のいずれかを入れる。
+  * `notes`: `rounding mode: toward zero; valid interval: {min}..={max}` を付記。
+* **`E7103`（コードポイント外）**：
+  * `message`: `value {value} is not a valid Unicode scalar value`。
+  * `notes`: `Unicode scalar range: 0x0000..=0x10FFFF except surrogates` を定型で入れる。
+* いずれも `RunConfig.extensions["type"].numeric_defaults` を参照し、曖昧な数値リテラルが **どの型へ既定解決されたか**を `notes` に残す。未設定時は `{ integer: "i64", float: "f64" }` を既定とし、この既定値は CLI/IDE に露出する。
+* `RunConfig.extensions["type"].numeric_defaults = { integer: Ident, float: Ident }` をオプションとして予約し、プロジェクト単位でリテラル既定型（例：`integer="i32"`）を差し替えた場合も診断が同じテンプレートを利用できるようにする。
 
 ---
 
