@@ -216,6 +216,22 @@ note: while parsing expression → term → factor
   * 主エラー：`expected EOF`
   * `notes` に**余剰先頭 32 文字**を抜粋。
 
+8. **数値変換失敗（`as` キャスト／リテラル解決）**
+
+* 共通方針：`Severity = Error`、`domain = Some(Parser)`、`code = Some("E710x")` を割り当て、`message` に**元の値と対象型**を必ず含める。
+* **`E7101`（整数→整数）**：
+  * `message`: `value {value} does not fit into {target}`。
+  * `notes`: `allowed range is {min}..={max}; rounding: none` を添付し、`RunConfig.extensions["type"].numeric_defaults.integer` で選ばれた既定整数型を `notes` に明示する（例：「default integer type: i64」）。
+  * `secondaries`: 可能であれば **元のリテラル位置**へ `FixIt::Replace` の候補（例: `value.clamp(min, max)` を示唆）を追加。
+* **`E7102`（浮動小数→整数）**：
+  * `message`: `cannot convert {value} ({classification}) to {target}`。`classification` には `NaN` / `+∞` / `-∞` / `out of range` のいずれかを入れる。
+  * `notes`: `rounding mode: toward zero; valid interval: {min}..={max}` を付記。
+* **`E7103`（コードポイント外）**：
+  * `message`: `value {value} is not a valid Unicode scalar value`。
+  * `notes`: `Unicode scalar range: 0x0000..=0x10FFFF except surrogates` を定型で入れる。
+* いずれも `RunConfig.extensions["type"].numeric_defaults` を参照し、曖昧な数値リテラルが **どの型へ既定解決されたか**を `notes` に残す。未設定時は `{ integer: "i64", float: "f64" }` を既定とし、この既定値は CLI/IDE に露出する。
+* `RunConfig.extensions["type"].numeric_defaults = { integer: Ident, float: Ident }` をオプションとして予約し、プロジェクト単位でリテラル既定型（例：`integer="i32"`）を差し替えた場合も診断が同じテンプレートを利用できるようにする。
+
 ---
 
 ## E. `recover`（回復）の仕様
