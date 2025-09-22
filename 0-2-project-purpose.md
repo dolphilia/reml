@@ -16,7 +16,7 @@
 
 ## 3. 設計を貫く基本哲学
 
-- **小さく強いコア**: 言語も標準パーサ API も 12-15個の本質的プリミティブに凝縮し、残りは合成で表現する。Chapter 4 の標準ライブラリ章では、この哲学を Core.* モジュールへ拡張し、再利用しやすい API 群として体系化する。【F:4-1-standard-library-outline.md†L1-L20】
+- **小さく強いコア**: 言語も標準パーサ API も 12-15個の本質的プリミティブに凝縮し、残りは合成で表現する。Chapter 4 の標準ライブラリ章では、この哲学を Core.* モジュールへ拡張し、再利用しやすい API 群として体系化する。
 - **宣言で終わらせる操作性**: 演算子優先度・空白処理・字句規則を宣言的に与えることで、記述者が「何をしたいか」に集中できるようにする。
 - **効果の制御と安全なバックトラック**: `cut`, `label`, `recover`, `trace` などの効果を明示し、失敗の伝播や復旧をプログラマが設計できるようにする。
 - **ツールフレンドリーな情報保持**: `SpanTrace` や期待集合を保持し、IDE・可視化・インクリメンタル解析への連携を想定してデータを捨てない。
@@ -26,11 +26,19 @@
 
 フェーズ別に洗い出した横断テーマは、上記哲学を運用へ落とし込むための橋渡しとして配置される。
 
-- **型安全な設定**: `Core.Config`（[2-7](2-7-config.md)）、`Core.Data`（[2-8](2-8-data.md)）、`設定 CLI ワークフロー`（[guides/config-cli.md](guides/config-cli.md)）で、宣言 DSL → 差分 → 実行 → 監査を一貫管理する。Chapter 4 の 4.7 節で共通 API を再編し、仕様と運用ガイド間の役割を整理する予定である。【F:4-1-standard-library-outline.md†L24-L30】
-- **ツール連携**: 実行戦略の LSP 出力（[2-6](2-6-execution-strategy.md)）、`LSP / IDE 連携ガイド`（[guides/lsp-integration.md](guides/lsp-integration.md)）、ランタイム橋渡し（[guides/runtime-bridges.md](guides/runtime-bridges.md)）で、IDE・CI・監査ログを共通メタデータで束ねる。4.6 節で `Core.Diagnostics`/`Core.Audit` を定義し、各ガイドへの逆リンクを整備する。【F:4-1-standard-library-outline.md†L24-L30】
-- **プラグイン拡張**: プラグイン API（[2-1](2-1-parser-type.md):I）、`DSL プラグイン & Capability ガイド`（[guides/DSL-plugin.md](guides/DSL-plugin.md)）で、外部 DSL の署名・互換・配布フローを定義する。Chapter 4 では Capability Registry（4.8 節）と将来拡張（4.9 節）を通じてランタイム権限と安全境界を整理する。【F:4-1-standard-library-outline.md†L24-L30】
+- **型安全な設定**: `Core.Config`（[2-7](2-7-config.md)）、`Core.Data`（[2-8](2-8-data.md)）、`設定 CLI ワークフロー`（[guides/config-cli.md](guides/config-cli.md)）で、宣言 DSL → 差分 → 実行 → 監査を一貫管理する。
+- **ツール連携**: 実行戦略の LSP 出力（[2-6](2-6-execution-strategy.md)）、`LSP / IDE 連携ガイド`（[guides/lsp-integration.md](guides/lsp-integration.md)）、ランタイム橋渡し（[guides/runtime-bridges.md](guides/runtime-bridges.md)）で、IDE・CI・監査ログを共通メタデータで束ねる。
+- **プラグイン拡張**: プラグイン API（[2-1](2-1-parser-type.md):I）、`DSL プラグイン & Capability ガイド`（[guides/DSL-plugin.md](guides/DSL-plugin.md)）で、外部 DSL の署名・互換・配布フローを定義する。
 
 これらのテーマは各仕様章とガイドの更新履歴で進捗を追跡し、利用シナリオからのフィードバックと照合して順次クローズする。
+
+## 3.2 Chapter 4 への展開計画
+
+標準ライブラリ（`Core.*`）は Reml の非機能要件と横断テーマを支えるための共通 API 群として整理中である。フェーズ1の範囲定義では失敗処理・可変構造・Unicode・監査・プラグインなど、Core.Parse 以外で補完すべき領域と採否基準を洗い出した。【F:4-0-standard-library-scope.md†L1-L48】
+
+フェーズ2の骨子では Prelude、Collections、Text/Unicode、Numeric/Time、IO/Path、Diagnostics/Audit、Config/Data、Runtime/Capability Registry、Async/FFI/Unsafe といった章立てを仮配置し、各テーマごとの参照関係を整理している。【F:4-1-standard-library-outline.md†L1-L31】
+
+この計画を通じて、横断テーマで掲げた型安全な設定、ツール連携、プラグイン拡張を Chapter 4 各節の API として公式化し、運用ガイドとの往復参照を確立することを目標とする。【F:4-1-standard-library-outline.md†L20-L31】
 
 ## 4. 想定利用シナリオ（実用性優先順）
 
