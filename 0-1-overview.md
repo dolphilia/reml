@@ -26,6 +26,12 @@ Reml はコア哲学（小さく強いコア・宣言的な操作・高品質な
 
 これらの柱は `0-2-project-purpose.md` の目的群と同期し、フェーズ更新時も設計意図を再確認できるよう整理されている。
 
+## 0.6 Chapter 4 連携メモ
+
+標準パーサ API で蓄積した設計と診断ノウハウを、Chapter 4 で標準ライブラリ（`Core.*`）へ拡張する準備を進めている。フェーズ1では標準ライブラリがカバーすべき範囲と優先度を整理し、フェーズ2では Prelude、Collections、Text などの章立てとクロスリファレンスの骨子を固めた。【F:4-0-standard-library-scope.md†L1-L48】【F:4-1-standard-library-outline.md†L1-L31】
+
+今後は `Core.Diagnostics`/`Core.Audit`、`Core.Runtime`/Capability Registry など、横断テーマの要素を Chapter 4 内の各節へ落とし込み、既存ガイドとの往復参照を整備する計画である。【F:4-1-standard-library-outline.md†L20-L31】
+
 ---
 
 ## 1. 言語コア仕様（Reml）
