@@ -13,6 +13,7 @@
 ```reml
 let cfg = {
   trace = false,
+  locale = Some(Locale::new("ja-JP")),
   extensions = {
     lsp = {
       highlight = true,
@@ -20,6 +21,10 @@ let cfg = {
       codeActions = true,
       semanticTokens = true,
       syntaxHighlight = true
+    },
+    i18n = {
+      sources = ["workspace://l10n/ja"],
+      fallback = "en-US"
     },
     logging = { format = "json" },
     audit = Some(|event| audit_log(event))
@@ -31,6 +36,21 @@ let cfg = {
 - `extensions.lsp.completion` : プラグイン capability (`parser.requires`) を参照し DSL 別の補完候補を生成。
 - `extensions.lsp.codeActions` : FixIt 情報を LSP CodeAction として返す。
 - `extensions.lsp.semanticTokens` : 拡張モジュール。`guides/runtime-bridges.md` と同様に構造化ログと連動。
+- `locale` が `Some` のときは `RunConfig` から `PrettyOptions` へロケールを伝搬し、診断メッセージと期待テンプレートの両方を同じ言語で整形する。
+- `extensions.i18n` は LSP 側の翻訳カタログの監視・ホットリロード設定を保持し、`workspace/didChangeWatchedFiles` で更新を拾う。
+
+### 1.2 ロケールネゴシエーション
+
+1. クライアントは `initialize` の `params.locale`、または `initializationOptions.i18n.locale` に優先ロケールを指定する。サーバはこの
+   値を `RunConfig.locale` に設定し、`PrettyOptions` の既定値と `extensions["i18n"].active_locale` に反映する。
+2. `initialize` でロケールが指定されなかった場合は `REML_LOCALE` → `LANG` を参照し、いずれも無ければ `Locale::EN_US` を選択す
+   る。フォールバック時は `window/showMessage` (`Warning`) で一度だけ通知し、以降は `RunConfig.extensions["i18n"].fallback_hits`
+   をインクリメントするだけに留める。
+3. `workspace/didChangeConfiguration` で `reml.language.locale` が更新されたら、差分検出後に `RunConfig.locale` と
+   `PrettyOptions` を再構築し、既存セッションの診断を `textDocument/publishDiagnostics` で再送する。未指定 (`null`) に戻された場
+   合は環境変数→既定値の順で再解決する。
+4. LSP 側で翻訳カタログをホットリロードしたら `extensions["i18n"].catalog_version` を更新し、次回診断整形時に `message_key` と
+   `locale` の組でキャッシュを引き直す。
 
 ## 2. メッセージマッピング
 
@@ -57,6 +77,9 @@ fn to_lsp_diagnostics(diags: List<Diagnostic>) -> List<LspDiagnostic> =
     message = d.message,
     code = d.code,
     data = Some(json!({
+      "message_key": d.message_key,
+      "locale": d.locale,
+      "locale_args": d.locale_args,
       "domain": d.domain,
       "audit_id": d.audit_id,
       "change_set": d.change_set,
@@ -72,6 +95,18 @@ fn to_lsp_diagnostics(diags: List<Diagnostic>) -> List<LspDiagnostic> =
 - `severity_hint` に基づき、IDE 側で「ロールバック推奨」「再試行可」などのガイドを提示できる。
 - `stream_meta` フィールドは `StreamEvent`/`ContinuationMeta` のサマリを格納し、ライブ補完やバックプレッシャ指標をステータスバーへ表示できる。
 - `quality_report_id` には `QualityReport.audit_id` の参照を保持し、データ品質診断を IDE から直接リンクできる。
+
+### 3.1 多言語診断の運用モデル
+
+1. サーバは `PrettyOptions.locale` に基づく整形済み文字列を `message` へ格納しつつ、`data.message_key` と `data.locale` を併記
+   する。クライアントは `message_key` で翻訳テーブルを引き、ユーザ設定ロケールと異なる場合は `locale_args` を用いて再整形できる。
+2. `workspace/didChangeConfiguration` でクライアント側ロケールが変わった際は、既存診断の `data.message_key` + `data.locale_args`
+   を使って即座に再翻訳し、`message` がサーバロケールであっても UI 上ではクライアントロケールへ差し替えられる。
+3. `Diagnostic.data.locale` と `extensions["i18n"].catalog_version` を突合することで、IDE は翻訳カタログが古い場合に差分取得を促
+   すトースト通知を表示できる。
+4. **未対応クライアントへのフォールバック例**：`data` を無視する LSP クライアントではサーバ側で整形した `message`（環境から解決
+   したロケール、既定は `en-US`）がそのまま表示される。`RunConfig.locale` を `None` のままにすれば英語 UI を前提とした互換モード
+   を維持できる。
 
 ## 4. ハイライト・補完ツールチェーン
 
