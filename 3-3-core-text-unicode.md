@@ -1,7 +1,5 @@
 # 3.3 Core Text & Unicode
 
-Status: 正式仕様（2025年版）
-
 > 目的：`byte/char/grapheme` の三層モデルを標準 API 化し、文字列操作・正規化・セグメンテーション・Lex 連携を統一する。
 
 ## 0. 仕様メタデータ

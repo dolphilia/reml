@@ -1,7 +1,5 @@
 # 3.8 Core Runtime & Capability Registry
 
-Status: 正式仕様（2025年版）
-
 > 目的：Reml ランタイムの能力（GC、メトリクス、監査、プラグイン）を統一的に管理する `Capability Registry` を定義し、標準ライブラリ各章から利用できる公式 API を提供する。
 
 ## 0. 仕様メタデータ

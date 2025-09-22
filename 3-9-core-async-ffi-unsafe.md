@@ -1,7 +1,5 @@
 # 3.9 Core Async / FFI / Unsafe
 
-Status: 正式仕様（2025年版）
-
 > 目的：Reml の非同期実行 (`Core.Async`)・FFI (`Core.Ffi`)・unsafe ブロック (`Core.Unsafe`) に関する基本方針と効果タグの枠組みを整理し、今後の詳細仕様策定に備える。
 
 ## 0. 仕様メタデータ

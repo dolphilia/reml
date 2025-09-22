@@ -1,7 +1,5 @@
 # 3.6 Core Diagnostics & Audit
 
-Status: 正式仕様（2025年版）
-
 > 目的：Reml 全体で統一された診断 (`Diagnostic`) と監査 (`audit_id`, `change_set`) モデルを提供し、パーサ・標準ライブラリ・ツールが同一の情報粒度でログ・レポートを生成できるようにする。
 
 ## 0. 仕様メタデータ

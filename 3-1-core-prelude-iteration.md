@@ -1,7 +1,5 @@
 # 3.1 Core Prelude & Iteration
 
-Status: 正式仕様（2025年版）
-
 > 目的：Reml の「例外なし」「左→右パイプ」「宣言的スタイル」を支える基本 API を標準化し、全ての DSL から同一の `Option`/`Result`/`Iter` モデルを利用できるようにする。
 
 ## 0. 仕様メタデータ
