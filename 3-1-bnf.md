@@ -161,6 +161,8 @@ ParamList       ::= Param { "," Param }
 LambdaBody      ::= Expr | Block
 ```
 
+[^pipe-desugar]: `PipeExpr` は左結合で畳み込まれ、各段が `value |> f(args)` → `f(value, args)` のようにデシュガリングされる。評価順序と短絡は [1.1 構文 C.9](1-1-syntax.md#c9-評価順序と短絡規則) に従い、左から右へ段階的に適用する。
+
 ---
 
 ## 5. パターン
