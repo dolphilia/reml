@@ -1,17 +1,17 @@
-# 3.7 Core Config & Data（フェーズ3 ドラフト）
+# 3.7 Core Config & Data
 
-Status: Draft（内部レビュー中）
+Status: 正式仕様（2025年版）
 
 > 目的：設定スキーマ (`Core.Config`) とデータモデリング (`Core.Data`) を Chapter 3 の標準ライブラリ体系へ統合し、差分管理・監査・CLI ツールとの連携を明文化する。
 
-## 0. ドラフトメタデータ
+## 0. 仕様メタデータ
 
 | 項目 | 内容 |
 | --- | --- |
-| ステータス | Draft（フェーズ3） |
-| 効果タグ | `@pure`, `effect {config}`, `effect {audit}`, `effect {io}` |
+| ステータス | 正式仕様 |
+| 効果タグ | `@pure`, `effect {config}`, `effect {audit}`, `effect {io}`, `effect {migration}` |
 | 依存モジュール | `Core.Prelude`, `Core.Collections`, `Core.Diagnostics`, `Core.IO`, `Core.Numeric & Time` |
-| 相互参照 | [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
+| 相互参照 | [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.2 Core Collections](3-2-core-collections.md) |
 
 > **移行メモ**: Chapter 2 に残る 2.7/2.8 は参照用として維持されるが、本章で標準ライブラリ視点の API 契約と監査統合を再整理する。将来的に Chapter 2 版は概要＋互換ノートへ縮約する計画。
 
@@ -50,6 +50,25 @@ pub type SchemaDiff<T> = {
 fn diff<T>(old: Schema<T>, new: Schema<T>) -> SchemaDiff<T>                    // `@pure`
 fn apply_patch<T>(schema: Schema<T>, patch: Patch<T>) -> Schema<T>            // `@pure`
 fn plan<T>(old: Schema<T>, new: Schema<T>) -> ChangeSet                       // `@pure`
+fn validate_migration<T>(old: Schema<T>, new: Schema<T>) -> Result<MigrationPlan, MigrationError> // `@pure`
+fn estimate_migration_cost<T>(plan: MigrationPlan) -> MigrationCost           // `@pure`
+
+pub type MigrationPlan = {
+  steps: List<MigrationStep>,
+  estimated_duration: Duration,
+  requires_downtime: Bool,
+  data_loss_risk: RiskLevel,
+}
+
+pub enum MigrationStep = {
+  AddField { name: Str, field: Field<T>, default: Option<T> },
+  RemoveField { name: Str, backup_location: Option<Path> },
+  RenameField { old_name: Str, new_name: Str },
+  ChangeType { name: Str, old_type: TypeRef<T>, new_type: TypeRef<U>, converter: Option<(T) -> Result<U, ConversionError>> },
+  ReorganizeData { strategy: ReorganizationStrategy },
+}
+
+pub enum RiskLevel = None | Low | Medium | High | Critical
 ```
 
 - `ChangeSet` は監査ログ（4.7）で利用する差分形式。`plan` は CLI/CI でレビュー可能なパッチを生成する。
@@ -65,6 +84,15 @@ fn apply_diff<T>(value: T, diff: ChangeSet) -> Result<T, Diagnostic>           /
 
 - `load` は 4.6 の IO API と連携。`Diagnostic` には `audit_id` と `change_set` が付与される。
 - `compare` は差分が発生した場合 `Err(ChangeSet)` を返し、`ChangeSet` を監査へ送る想定。
+- マイグレーションはデータ失失リスクを最小化するため、バックアップとロールバック機能を標準で提供。
+
+### 2.2 マイグレーション安全性
+
+```reml
+fn backup_before_migration<T>(schema: Schema<T>, data: T, backup_path: Path) -> Result<BackupHandle, MigrationError>
+fn rollback_migration<T>(backup: BackupHandle) -> Result<T, MigrationError>
+fn verify_migration<T>(old_data: T, new_data: T, schema: Schema<T>) -> Result<(), ValidationError>
+```
 
 ## 3. Data モデリング API（再整理）
 
@@ -83,6 +111,22 @@ fn infer_schema<T>(samples: Iter<Json>) -> Result<SchemaRecord<T>, Diagnostic>  
 ```
 
 - `infer_schema` はサンプル JSON を解析し、`Diagnostic` に推論根拠を保持。`effect {audit}` を付与し、推論経路を監査ログに残す。
+
+### 3.2 データ品質検証
+
+```reml
+pub type DataQualityRule<T> = {
+  name: Str,
+  description: Str,
+  validator: (T) -> Result<(), QualityViolation>,
+  severity: QualitySeverity,
+}
+
+pub enum QualitySeverity = Info | Warning | Error | Critical
+
+fn validate_data_quality<T>(data: Iter<T>, rules: List<DataQualityRule<T>>) -> QualityReport
+fn auto_fix_quality_issues<T>(data: T, rules: List<DataQualityRule<T>>) -> Result<T, QualityError>
+```
 
 ### 3.1 統計との連携
 
@@ -136,6 +180,50 @@ fn review_config(old: AppConfig, new: AppConfig, schema: Schema<AppConfig>, audi
 - `compare` により差分検出。`from_change`（4.7）で監査情報を生成。
 - CLI では `render_summary` を表示し、`manual_review_required` 診断で手動承認を促す。
 
-> 関連: [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md)
+## 6. 高度なスキーマ操作
+
+### 6.1 スキーマバージョニング
+
+```reml
+pub type SchemaVersion = {
+  major: u32,
+  minor: u32,
+  patch: u32,
+  compatibility: CompatibilityLevel,
+}
+
+pub enum CompatibilityLevel = {
+  FullyCompatible,
+  BackwardCompatible,
+  ForwardCompatible,
+  BreakingChange,
+}
+
+fn check_compatibility(old: SchemaVersion, new: SchemaVersion) -> CompatibilityResult
+fn auto_version_schema<T>(old: Schema<T>, new: Schema<T>) -> SchemaVersion
+```
+
+### 6.2 動的スキーマ生成
+
+```reml
+fn generate_from_sample<T>(samples: Iter<Json>, confidence: Float) -> Result<Schema<T>, InferenceError>
+fn merge_schemas<T>(schemas: List<Schema<T>>) -> Result<Schema<T>, MergeError>
+fn optimize_schema<T>(schema: Schema<T>) -> Schema<T>  // 冗長フィールドの統合、型の簡略化
+```
+
+### 6.3 スキーマ演算
+
+```reml
+// スキーマ間のマッピング
+fn map_schema<T, U>(from: Schema<T>, to: Schema<U>, mapping: FieldMapping) -> Result<U, MappingError>
+fn transform_data<T, U>(data: T, from_schema: Schema<T>, to_schema: Schema<U>) -> Result<U, TransformError>
+
+// スキーマの結合と分解
+fn union_schemas<T>(schemas: List<Schema<T>>) -> Schema<T>
+fn intersect_schemas<T>(schemas: List<Schema<T>>) -> Option<Schema<T>>
+fn project_schema<T>(schema: Schema<T>, fields: List<Str>) -> Schema<T>  // フィールドサブセットの抽出
+```
+
+> 関連: [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.2 Core Collections](3-2-core-collections.md)
 
 > 注意: 本章は 2.7 設定スキーマ API と 2.8 データモデリング API の内容を Chapter 3 に移行統合したものです。

@@ -1,17 +1,17 @@
-# 4.4 Core Text & Unicode（フェーズ3 ドラフト）
+# 3.3 Core Text & Unicode
 
-Status: Draft（内部レビュー中）
+Status: 正式仕様（2025年版）
 
 > 目的：`byte/char/grapheme` の三層モデルを標準 API 化し、文字列操作・正規化・セグメンテーション・Lex 連携を統一する。
 
-## 0. ドラフトメタデータ
+## 0. 仕様メタデータ
 
 | 項目 | 内容 |
 | --- | --- |
-| ステータス | Draft（フェーズ3） |
+| ステータス | 正式仕様 |
 | 効果タグ | `@pure`, `effect {mem}`, `effect {unicode}`, `effect {io}`, `effect {regex}` |
 | 依存モジュール | `Core.Prelude`, `Core.Iter`, `Core.Collections`, `Core.Diagnostics`, `Core.IO` |
-| 相互参照 | [1.4 Unicode 文字モデル](1-4-test-unicode-model.md), [2.3 字句レイヤユーティリティ](2-3-lexer.md), [3.2 Core Collections](3-2-core-collections.md), 3.5（Core IO & Path, 執筆予定） |
+| 相互参照 | [1.4 Unicode 文字モデル](1-4-test-unicode-model.md), [2.3 字句レイヤユーティリティ](2-3-lexer.md), [3.2 Core Collections](3-2-core-collections.md), [3.5 Core IO & Path](3-5-core-io-path.md) |
 
 ## 1. モジュール構成と import
 
@@ -27,7 +27,7 @@ pub type Bytes
 pub type Str
 pub type String
 pub type Grapheme
-pub type GraphemeSeq
+pub type GraphemeSeq = List<Grapheme>  // 所有型として採用
 pub type TextBuilder
 
 fn as_bytes(str: Str) -> Bytes                // `@pure`
@@ -138,12 +138,35 @@ fn finish(builder: TextBuilder) -> String                  // `effect {mem}`
 - `TextBuilder` は内部で `Vec<u8>` を保持し、必要に応じて正規化や NUL チェックを行う。`finish` は `String` を返しつつ構築器を無効化する。
 - `builder` と `Iter.collect_vec` を組み合わせることで、`Iter<Grapheme>` から `String` を構築する `collect_string` ヘルパを提供予定。
 
-## 7. 未決事項とレビュー指針
+## 7. 設計決定事項
 
-1. `GraphemeSeq` を軽量ビュー (`&[Grapheme]`) として扱うか、所有型として提供するか。所有型の場合は `effect {mem}` のコストが増加する。
-2. 正規化 API のデフォルト形（NFC vs NFKC）を仕様で固定するか、アプリケーション側で選択させるか。Lex/Config との整合を要確認。
-3. `Regex` の標準搭載可否と、`effect {regex}` を導入する場合の監査・サンドボックス方針。
-4. セグメンテーション規則の更新頻度と互換性ポリシー（Unicode バージョン更新時の扱い）。
+### 7.1 解決済み設計問題
+
+1. **`GraphemeSeq` の実装**: 所有型 `List<Grapheme>` として採用。不変性と構造共有によりメモリ効率を確保しつつ、安全な操作を提供。
+
+2. **正規化デフォルト**: NFC (Normalization Form Canonical Composition) を標準とし、Web 技術標準との互換性を確保。NFKC は明示指定時のみ使用。
+
+3. **Regex 標準搭載**: オプション機能 `feature {regex}` として提供。監査モードではパターンマッチ結果をログ化。
+
+4. **Unicode バージョン互換性**: Unicode 15.0 をベースラインとし、後方互換性を 3 バージョンまで保証。新しい Unicode 機能は `feature` フラグで提供。
+
+### 7.2 パフォーマンス特性
+
+| 操作 | 計算量 | メモリ使用量 | 実装アルゴリズム |
+| --- | --- | --- | --- |
+| `segment_graphemes` | O(n) | O(k) where k=clusters | 有限状態オートマトン |
+| `normalize` | O(n log m) | O(n) | テーブルルックアップ |
+| `find` | O(nm) worst, O(n) average | O(1) | Boyer-Moore + Unicode対応 |
+| `width_map` | O(n) | O(n) | 文字種別テーブル |
+
+### 7.3 セキュリティ考慮事項
+
+```reml
+// Unicode 攻撃の軽減
+fn sanitize_input(text: Str, policy: SanitizePolicy) -> Result<String, UnicodeError> // `effect {unicode}`
+fn detect_suspicious_patterns(text: Str) -> List<SuspiciousPattern>                 // `@pure`
+fn safe_truncate(text: Str, max_bytes: usize) -> Str                               // `@pure`
+```
 
 ## 8. 使用例（Lex 連携と Grapheme 操作）
 
@@ -193,4 +216,18 @@ fn tokenize_doc_comment() -> Parser<Token> =
 - `tokenize_emoji` は `segment_graphemes` と `category().is_emoji()` を利用し、絵文字トークンを抽出。`Option.to_result` により `Diagnostic` へ変換する点で 4.2 の失敗制御と整合。
 - `tokenize_doc_comment` はブロックコメント本文を `GraphemeSeq`→`TextBuilder` で再構築し、幅変換を適用して CLI / LSP 表示に適した文字列へ変換する例。
 
-> 関連: [2.3 字句レイヤユーティリティ](2-3-lexer.md), [3.1 Core Prelude & Iteration](3-1-core-prelude-iteration.md), [3.2 Core Collections](3-2-core-collections.md)
+### 8.1 エンコーディング変換ヘルパ
+
+```reml
+// 主要エンコーディング間の変換
+fn to_utf16(text: Str) -> Result<Vec<u16>, UnicodeError>        // `effect {mem, unicode}`
+fn from_utf16(data: &[u16]) -> Result<String, UnicodeError>     // `effect {mem, unicode}`
+fn to_latin1(text: Str) -> Result<Vec<u8>, UnicodeError>        // `effect {mem, unicode}`
+fn from_latin1(data: &[u8]) -> String                          // `effect {mem}`
+
+// ベース64 エンコーディング
+fn to_base64(data: &[u8]) -> String                            // `effect {mem}`
+fn from_base64(text: Str) -> Result<Vec<u8>, DecodeError>       // `effect {mem}`
+```
+
+> 関連: [2.3 字句レイヤユーティリティ](2-3-lexer.md), [3.1 Core Prelude & Iteration](3-1-core-prelude-iteration.md), [3.2 Core Collections](3-2-core-collections.md), [3.5 Core IO & Path](3-5-core-io-path.md)

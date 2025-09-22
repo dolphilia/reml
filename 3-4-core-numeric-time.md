@@ -1,17 +1,17 @@
-# 4.5 Core Numeric & Time（フェーズ3 ドラフト）
+# 3.4 Core Numeric & Time
 
-Status: Draft（内部レビュー中）
+Status: 正式仕様（2025年版）
 
 > 目的：Reml の数値演算・測定・時間表現を統一し、データ品質 API（Core.Data）や診断ログから一貫したメトリクスを生成できるようにする。
 
-## 0. ドラフトメタデータ
+## 0. 仕様メタデータ
 
 | 項目 | 内容 |
 | --- | --- |
-| ステータス | Draft（フェーズ3） |
+| ステータス | 正式仕様 |
 | 効果タグ | `@pure`, `effect {mem}`, `effect {audit}`, `effect {time}` |
 | 依存モジュール | `Core.Prelude`, `Core.Iter`, `Core.Collections`, `Core.Diagnostics` |
-| 相互参照 | [3.7 Core Config & Data](3-7-core-config-data.md), [3.2 Core Collections](3-2-core-collections.md), 3.6（Core Diagnostics, 執筆予定） |
+| 相互参照 | [3.7 Core Config & Data](3-7-core-config-data.md), [3.2 Core Collections](3-2-core-collections.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
 
 ## 1. 数値プリミティブとユーティリティ
 
@@ -35,6 +35,9 @@ fn lerp<T: Numeric + Copy>(start: T, end: T, t: Float) -> T // `@pure`
 fn mean<T: Numeric>(iter: Iter<T>) -> Option<T>             // `@pure`
 fn variance<T: Numeric>(iter: Iter<T>) -> Option<T>         // `@pure`
 fn percentile(iter: Iter<Float>, p: Float) -> Option<Float> // `@pure`
+fn median<T: Numeric + Ord>(iter: Iter<T>) -> Option<T>     // `@pure`
+fn mode<T: Numeric + Eq + Hash>(iter: Iter<T>) -> Option<T> // `@pure`
+fn range<T: Numeric + Ord>(iter: Iter<T>) -> Option<(T, T)> // `@pure`
 ```
 
 - `Numeric` トレイトは Reml コンパイラが型推論で利用する制約（`where Numeric<T>`）としても定義される。
@@ -55,10 +58,20 @@ pub type HistogramBucketState = {
 fn histogram(iter: Iter<Float>, buckets: List<HistogramBucket>) -> Result<List<HistogramBucketState>, Diagnostic> // `@pure`
 fn rolling_average(window: usize, values: Iter<Float>) -> Iter<Float>                                            // `@pure`
 fn z_score(value: Float, mean: Float, stddev: Float) -> Option<Float>                                            // `@pure`
-fn quantiles(iter: Iter<Float>, points: List<Float>) -> Result<Map<Float, Float>, Diagnostic>                     // `@pure`
+fn quantiles(iter: Iter<Float>, points: List<Float>) -> Result<Map<Float, Float>, StatisticsError>             // `@pure`
+fn correlation(x: Iter<Float>, y: Iter<Float>) -> Result<Float, StatisticsError>                               // `@pure`
+fn linear_regression(points: Iter<(Float, Float)>) -> Result<LinearModel, StatisticsError>                      // `@pure`
+
+pub type StatisticsError = {
+  kind: StatisticsErrorKind,
+  message: Str,
+}
+
+pub enum StatisticsErrorKind = InsufficientData | InvalidParameter | NumericalInstability
 ```
 
-- `histogram` はバケット境界の妥当性を検証し、不正な区間が含まれる場合 `Diagnostic` を返す。
+- `histogram` はバケット境界の妥当性を検証し、不正な区間が含まれる場合 `StatisticsError` を返す。
+- 数値的不安定性（オーバーフロー、アンダーフロー、NaN）は自動的に検出され `StatisticsError::NumericalInstability` として報告される。
 - `rolling_average` は遅延 `Iter` として実装され、`Core.Collections` の `Vec` を内部バッファに利用する場合 `effect {mem}` が付与される。
 - `quantiles` は `points` をソートし `Map` へ格納するため `Core.Collections` を利用する。
 
@@ -83,7 +96,25 @@ fn sleep(duration: Duration) -> Result<(), TimeError>         // `effect {time}`
 ```
 
 - `Timestamp` は UNIX エポック基準。`Duration` は最大 2^63-1 秒までをサポートする。
-- `TimeError` は OS からのエラーを `Diagnostic` と互換の形式で保持する。
+- `TimeError` は OS からのエラーをラップし、`IntoDiagnostic` トレイト経由で診断システムと連携する。
+
+```reml
+pub type TimeError = {
+  kind: TimeErrorKind,
+  message: Str,
+  timestamp: Option<Timestamp>,
+}
+
+pub enum TimeErrorKind = SystemClockUnavailable | InvalidTimezone | TimeOverflow
+
+impl IntoDiagnostic for TimeError {
+  fn into_diagnostic(self) -> Diagnostic {
+    Diagnostic::system_error(self.message)
+      .with_code(format!("TIME_{:?}", self.kind))
+      .with_metadata("timestamp", self.timestamp)
+  }
+}
+```
 
 ### 3.1 時刻フォーマット
 
@@ -94,7 +125,21 @@ fn format(ts: Timestamp, fmt: TimeFormat) -> Result<String, Diagnostic> // `effe
 fn parse(str: Str, fmt: TimeFormat) -> Result<Timestamp, Diagnostic>    // `effect {unicode}`
 ```
 
-- `Custom` フォーマットは ICU ベースのパターン。解析失敗時は `Diagnostic::invalid_value` を返す。
+- `Custom` フォーマットは ICU ベースのパターン。解析失敗時は `TimeError` を経由して `Diagnostic` へ変換される。
+
+### 3.2 タイムゾーンサポート
+
+```reml
+pub type Timezone = {
+  name: Str,
+  offset: Duration,
+}
+
+fn utc() -> Timezone                                              // `@pure`
+fn local() -> Result<Timezone, TimeError>                         // `effect {time}`
+fn timezone(name: Str) -> Result<Timezone, TimeError>             // `effect {time}`
+fn convert_timezone(ts: Timestamp, from: Timezone, to: Timezone) -> Result<Timestamp, TimeError> // `@pure`
+```
 
 ## 4. メトリクスと監査連携
 
@@ -141,4 +186,30 @@ fn summarize_latency(samples: Iter<Duration>, audit: AuditSink) -> Result<Metric
 - `Duration` からミリ秒へ変換し、`quantiles` と `mean` を利用してメトリクスを生成。
 - `emit_metric` で監査ログへ出力しつつ、平均値を呼び出し元へ返す。
 
-> 関連: [3.7 Core Config & Data](3-7-core-config-data.md), [3.2 Core Collections](3-2-core-collections.md), [3.6 Core Diagnostics & Audit（予定）]
+## 6. 数値精度と丸め設定
+
+### 6.1 数値精度の制御
+
+```reml
+pub enum Precision = {
+  Float32,
+  Float64,
+  Decimal { scale: u8, precision: u8 },
+  Arbitrary,
+}
+
+fn with_precision<T>(value: T, precision: Precision) -> Result<T, NumericError>    // `@pure`
+fn round_to<T: Numeric>(value: T, places: u8) -> T                                // `@pure`
+fn truncate_to<T: Numeric>(value: T, places: u8) -> T                             // `@pure`
+```
+
+### 6.2 金融計算向け最適化
+
+```reml
+// 金融計算用の高精度 Decimal 型
+fn currency_add(a: Decimal, b: Decimal, currency: CurrencyCode) -> Result<Decimal, NumericError> // `@pure`
+fn compound_interest(principal: Decimal, rate: Float, periods: u32) -> Result<Decimal, NumericError> // `@pure`
+fn net_present_value(cashflows: Iter<Decimal>, rate: Float) -> Result<Decimal, NumericError>    // `@pure`
+```
+
+> 関連: [3.7 Core Config & Data](3-7-core-config-data.md), [3.2 Core Collections](3-2-core-collections.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md)

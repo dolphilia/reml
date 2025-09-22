@@ -1,17 +1,17 @@
-# 3.5 Core IO & Path（フェーズ3 ドラフト）
+# 3.5 Core IO & Path
 
-Status: Draft（内部レビュー中）
+Status: 正式仕様（2025年版）
 
 > 目的：ファイル・ストリーム・パス操作と効果タグ (`effect {io}`) を標準化し、`defer` によるリソース解放や監査ログとの連携を保証する。
 
-## 0. ドラフトメタデータ
+## 0. 仕様メタデータ
 
 | 項目 | 内容 |
 | --- | --- |
-| ステータス | Draft（フェーズ3） |
-| 効果タグ | `effect {io}`, `effect {mut}`, `effect {mem}`, `effect {blocking}`, `effect {async}` |
+| ステータス | 正式仕様 |
+| 効果タグ | `effect {io}`, `effect {mut}`, `effect {mem}`, `effect {blocking}`, `effect {async}`, `effect {security}` |
 | 依存モジュール | `Core.Prelude`, `Core.Text`, `Core.Collections`, `Core.Diagnostics`, `Core.Numeric & Time` |
-| 相互参照 | [2.6 実行戦略](2-6-execution-strategy.md), [3.4 Core Numeric & Time](3-4-core-numeric-time.md), Guides: [ランタイム連携](guides/runtime-bridges.md) |
+| 相互参照 | [2.6 実行戦略](2-6-execution-strategy.md), [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), Guides: [ランタイム連携](guides/runtime-bridges.md) |
 
 ## 1. IO モジュール構成
 
@@ -37,7 +37,35 @@ fn copy<R: Reader, W: Writer>(reader: &mut R, writer: &mut W) -> Result<u64, IoE
 fn with_reader<T>(path: Path, f: (FileReader) -> Result<T, IoError>) -> Result<T, IoError> // `effect {io, blocking}`
 ```
 
-- `IoError` は `kind: IoErrorKind` と `message: Str`、`path: Option<Path>` を保持し `Diagnostic` へ変換可能。
+- `IoError` は `kind: IoErrorKind` と `message: Str`、`path: Option<Path>` を保持し `IntoDiagnostic` トレイト経由で診断システムと連携する。
+
+```reml
+pub type IoError = {
+  kind: IoErrorKind,
+  message: Str,
+  path: Option<Path>,
+  context: Option<IoContext>,
+}
+
+pub enum IoErrorKind = {
+  NotFound,
+  PermissionDenied,
+  ConnectionRefused,
+  InvalidInput,
+  TimedOut,
+  WriteZero,
+  Interrupted,
+  UnexpectedEof,
+  OutOfMemory,
+  SecurityViolation,
+}
+
+pub type IoContext = {
+  operation: Str,
+  bytes_processed: Option<u64>,
+  timestamp: Timestamp,
+}
+```
 - `with_reader` はファイルを開きクロージャへ渡した後、`defer` 相当で自動的に閉じる。
 
 ## 3. ファイルとストリーム
@@ -86,6 +114,15 @@ fn glob(pattern: Str) -> Result<List<Path>, PathError>           // `effect {io}
 
 - `PathError` はプラットフォーム依存文字列や無効な UTF-8 バイト列を報告する。
 - `normalize` は `.` や `..` を処理し、危険なエスケープを取り除く。
+- パストラバーサル攻撃、シンボリックリンク攻撃などのセキュリティ脆弱性を緩和する。
+
+### 4.2 セキュリティヘルパ
+
+```reml
+fn validate_path(path: Path, policy: SecurityPolicy) -> Result<Path, SecurityError>  // `effect {security}`
+fn sandbox_path(path: Path, root: Path) -> Result<Path, SecurityError>             // `effect {security}`
+fn is_safe_symlink(path: Path) -> Result<Bool, IoError>                           // `effect {io, security}`
+```
 
 ### 4.1 ファイル監視（オプション）
 
@@ -97,6 +134,17 @@ fn close(watcher: Watcher) -> Result<(), IoError>                               
 ```
 
 - `effect {async}` を明示し、イベントループとの連携を必要とする。
+- 大量のファイル変更監視時にはシステムリソースを保護するメカニズムを提供。
+
+```reml
+fn watch_with_limits(paths: List<Path>, limits: WatchLimits, callback: (WatchEvent) -> ()) -> Result<Watcher, IoError>
+
+pub type WatchLimits = {
+  max_events_per_second: u32,
+  max_depth: Option<u8>,
+  exclude_patterns: List<Str>,
+}
+```
 
 ## 5. リソース解放と `defer`
 
@@ -114,6 +162,13 @@ fn into_inner<T>(guard: ScopeGuard<T>) -> T                        // `@pure`
 
 - `with_reader` / `with_writer` は内部で `ScopeGuard` を利用して `File.close` を保証する。
 - `defer` キーワードは `ScopeGuard` の糖衣であり、`effect` を変化させない。
+- リソースリークを防ぐために、未解放リソースの監視機能を提供。
+
+```reml
+fn track_resources(enabled: Bool) -> ()                           // `effect {debug}`
+fn list_open_resources() -> List<ResourceHandle>                  // `effect {debug}`
+fn force_cleanup_resources() -> Result<u32, IoError>              // `effect {io, debug}`
+```
 
 ## 6. 監査ログ連携
 
@@ -154,4 +209,31 @@ fn load_config(path: Str, audit: AuditSink) -> Result<AppConfig, Diagnostic> =
 - `with_reader` と `buffered` を組み合わせ、`Config.parse_yaml`（Chapter 3.7）に渡す例。
 - 所要時間を `log_io` で監査ログに記録し、`audit_id` を伝播。
 
-> 関連: [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [2.6 実行戦略](2-6-execution-strategy.md), [guides/runtime-bridges.md](guides/runtime-bridges.md)
+## 8. 非同期 IO との統合
+
+### 8.1 同期・非同期ブリッジ
+
+```reml
+// 同期 IO を非同期コンテキストで使用
+fn async_read<R: Reader>(reader: R) -> AsyncResult<Bytes>          // `effect {io.async}`
+fn async_write<W: Writer>(writer: W, data: Bytes) -> AsyncResult<usize> // `effect {io.async}`
+
+// バッチ処理とストリーミング
+fn batch_process_files(paths: List<Path>, processor: (Path) -> Result<T, IoError>) -> AsyncResult<List<T>>
+fn stream_file_contents(path: Path) -> AsyncResult<AsyncIter<Bytes>>
+```
+
+### 8.2 リソースプールと最適化
+
+```reml
+pub type IoPool = {
+  max_concurrent: u32,
+  timeout: Duration,
+  retry_policy: RetryPolicy,
+}
+
+fn with_io_pool<T>(pool: IoPool, operation: () -> Result<T, IoError>) -> Result<T, IoError>
+fn parallel_file_ops<T>(operations: List<() -> Result<T, IoError>>, pool: IoPool) -> Result<List<T>, IoError>
+```
+
+> 関連: [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [2.6 実行戦略](2-6-execution-strategy.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [guides/runtime-bridges.md](guides/runtime-bridges.md)

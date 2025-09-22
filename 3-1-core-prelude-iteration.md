@@ -1,6 +1,17 @@
-# 4.2 Core Prelude & Iteration（フェーズ3 ドラフト）
+# 3.1 Core Prelude & Iteration
+
+Status: 正式仕様（2025年版）
 
 > 目的：Reml の「例外なし」「左→右パイプ」「宣言的スタイル」を支える基本 API を標準化し、全ての DSL から同一の `Option`/`Result`/`Iter` モデルを利用できるようにする。
+
+## 0. 仕様メタデータ
+
+| 項目 | 内容 |
+| --- | --- |
+| ステータス | 正式仕様 |
+| 効果タグ | `@pure`, `effect {mut}`, `effect {mem}`, `effect {debug}` |
+| 依存モジュール | なし（基盤モジュール） |
+| 相互参照 | [1.1 構文仕様](1-1-syntax.md), [1.3 効果システム](1-3-effects-safety.md), [3.2 Core Collections](3-2-core-collections.md) |
 
 ## 1. モジュール構成と import 規則
 
@@ -137,13 +148,20 @@ fn try_unfold<S, T, E>(state: S, f: (S) -> Result<Option<(S, T)>, E>) -> Result<
 | `Iter.try_collect` | `fn try_collect<T, C, E>(self: Iter<Result<T, E>>, builder: Collector<T, C>) -> Result<C, E>` | `Result` を包含した列の収集。 | `@pure` |
 
 - `Collector<T, C>` は `Core.Iter` が提供するビルダインターフェイスで、`Vec`/`Set`/`Map` 等の収集先を抽象化する。`Collector::push` が `Err` を返した場合、`Iter.try_collect` 全体が伝播する。
-- `Collector` は次の最小インターフェイスを持つ。`CollectError` は各収集先が定義する任意型であり、`Result` として呼び出し側へ伝播される。
+- `Collector` は関連型 `Error` を通じて収集時エラーを表現し、`IntoDiagnostic` トレイト経由で診断システムと連携する。
+- `with_capacity` はメモリ事前確保により効率化を図り、`reserve` は動的拡張をサポートする。
+- `finish` は所有権を消費して結果を返し、`into_inner` は型変換のみを行う軽量版として提供される。
 
 ```reml
 trait Collector<T, C> {
-  fn new() -> Self;
-  fn push(self: &mut Self, value: T) -> Result<(), CollectError>;
-  fn finish(self) -> C;
+  type Error: IntoDiagnostic;
+
+  fn new() -> Self;                                                     // `@pure`
+  fn with_capacity(capacity: usize) -> Self;                            // `effect {mem}`
+  fn push(self: &mut Self, value: T) -> Result<(), Self::Error>;         // `effect {mut}`
+  fn reserve(self: &mut Self, additional: usize) -> Result<(), Self::Error>; // `effect {mut, mem}`
+  fn finish(self) -> C;                                                 // `effect {mem}`
+  fn into_inner(self) -> C;                                             // `@pure`
 }
 ```
 
@@ -170,13 +188,88 @@ fn sum_positive(xs: List<Int>) -> Result<Int, Diagnostic> =
 - 可変コンテナ（`Vec`/`Cell`）を収集先とする場合、`Collector` 実装が `effect {mut}` を宣言し、`Iter` 側はタグを転写する。これにより `mut` 効果を局所化しつつ宣言的パイプラインを維持できる。
 - Unicode 分解・正規化は `Iter.map`/`Iter.flat_map` と `Core.Text` の helper を接続することで段階的に適用でき、Lex レイヤでの字句検査とも互換となる。【F:notes/core-library-scope.md†L7-L24】
 
-## 4. 相互運用と今後の課題
+## 4. 高度な収集操作
 
-1. `Core.Collections` で定義する永続リスト／マップと `Iter` のブリッジ（`Iter.collect_map` 等）を追加する。フェーズ3 内で同時策定予定。【F:notes/core-library-scope.md†L33-L41】
-2. CLI/診断ガイドでは `Result.tap_err` と監査 API の連携サンプルを拡充し、`audit_id` との結び付けを明示する。フェーズ4 で追記。
-3. `Core.Async`（将来拡張）の `Stream` 型と互換のアダプタ（`Iter.from_stream` 等）を調査メモに記載する。`effect {io.async}` の扱いが課題。
+### 4.1 専用コレクタ
 
-### 2.6 使用例リンク
+```reml
+struct ListCollector<T>;
+struct VecCollector<T>;
+struct MapCollector<K, V>;
+struct SetCollector<T>;
+struct StringCollector;
+
+fn collect_list<T>(iter: Iter<T>) -> List<T>                           // `@pure`
+fn collect_vec<T>(iter: Iter<T>) -> Result<Vec<T>, MemoryError>         // `effect {mut, mem}`
+fn collect_map<K: Ord, V>(iter: Iter<(K, V)>) -> Result<Map<K, V>, CollectError> // `@pure`
+fn collect_set<T: Ord>(iter: Iter<T>) -> Result<Set<T>, CollectError>   // `@pure`
+fn collect_string(iter: Iter<char>) -> Result<String, StringError>      // `effect {mem}`
+```
+
+### 4.2 カスタムコレクタの実装例
+
+```reml
+struct HistogramCollector {
+  buckets: Map<Range<f64>, u32>,
+}
+
+impl Collector<f64, Histogram> for HistogramCollector {
+  type Error = HistogramError;
+
+  fn new() -> Self {
+    Self { buckets: Map::empty() }
+  }
+
+  fn push(self: &mut Self, value: f64) -> Result<(), Self::Error> {
+    let bucket = self.find_bucket(value)
+      .ok_or(HistogramError::OutOfRange(value))?;
+    self.buckets = self.buckets.update(bucket, |count| count.unwrap_or(0) + 1);
+    Ok(())
+  }
+
+  fn finish(self) -> Histogram {
+    Histogram::new(self.buckets)
+  }
+}
+```
+
+## 5. パフォーマンス考慮事項
+
+### 5.1 遅延評価の最適化
+
+- `Iter` チェーンは実際に終端操作が呼ばれるまで評価されない。
+- `buffered` オペレーターで先読みバッファを調整できる。
+- `collect` 系操作では事前容量指定により再配置コストを削減する。
+
+### 5.2 メモリ使用量の制御
+
+```reml
+fn process_large_dataset(data: Iter<Record>) -> Result<Summary, ProcessError> =
+  data
+    |> Iter.buffered(1000)  // 1000件先読みバッファ
+    |> Iter.map(validate_record)
+    |> Iter.try_fold(Summary::empty(), |summary, record| {
+        summary.update(record?)
+      })
+```
+
+## 6. 相互運用と将来拡張
+
+### 6.1 標準ライブラリとの連携
+
+- [3.2 Core Collections](3-2-core-collections.md) で定義する永続データ構造との双方向変換
+- [3.3 Core Text & Unicode](3-3-core-text-unicode.md) での文字列処理パイプライン
+- [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) での監査ログ統合
+
+### 6.2 非同期処理との将来統合
+
+```reml
+// 将来の async Stream との統合例（予定）
+fn from_async_stream<T>(stream: AsyncStream<T>) -> Iter<Future<T>>  // `effect {io.async}`
+fn to_async_stream<T>(iter: Iter<T>) -> AsyncStream<T>              // `effect {io.async}`
+```
+
+### 6.3 使用例リンク
 
 - `Option`/`Result` の `tap` 系ヘルパと `Iter.try_collect` の組み合わせサンプルは [3.2 Core Collections](3-2-core-collections.md#7-使用例iter-パイプライン) を参照。
 - Unicode 正規化／Lex 連携を含む文字列処理の例は [3.3 Core Text & Unicode](3-3-core-text-unicode.md#8-使用例lex-連携と-grapheme-操作) を参照。
