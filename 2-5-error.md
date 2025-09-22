@@ -45,6 +45,7 @@ type Diagnostic = {
   at: Span,                 // 主位置（1.4: 列=グラフェム）
   expected_summary: Option<ExpectationSummary>,
   notes: List<(Span, Str)>, // 追加メモ（複数可）
+  span_trace: Option<SpanTrace>, // RunConfig.trace=true のときに付与される成功履歴
   fixits: List<FixIt>,
   audit_id: Option<Uuid>,   // Config/Audit 系機能と共有する識別子
   change_set: Option<Json>, // 設定差分などを JSON で保持
@@ -79,6 +80,7 @@ type ParseError = {
 * `domain` は必要に応じて責務領域を付与する分類タグであり、省略した場合は純粋にパーサからの診断として扱われます。`severity_hint` は運用側への推奨アクション（ロールバック・再試行・即時エスカレーションなど）を表します。
 * `audit_id` / `change_set` / `stream_meta` / `quality_report_id` は、それぞれ Config ツール・差分レビュー・ストリーミング実行・データ品質検証から渡される共通メタデータであり、存在しない場合は `None`。`change_set` は [2-7](2-7-config.md) で定義される `Change` の配列（JSON 化）を保持する。
 * `extensions` はプラグインやツールが任意の追加メタデータ（上記以外の設定差分、監査情報、テレメトリなど）を格納する自由領域で、コア仕様はその内容に関与しません。
+* `span_trace` は `RunConfig.trace=true` のときにのみ設定され、最外層→失敗地点の順に成功スパンを格納する（[2-1 C](2-1-parser-type.md#c-スパンとトレース)）。IDE はこれを利用して「どのルールを通って失敗したか」を可視化できる。
 
 ---
 
@@ -128,6 +130,12 @@ fn Err.custom(at: Span, msg: Str) -> ParseError
 3. **文脈付与**：`ParseError.context` と `ExpectationSummary.context_note` を結合し、「`+` の後に式が必要」のような自然文を生成。
 4. **フォールバック**：テンプレートが無い場合は `humanized` を生成（例：「ここで `)` または 数値 が必要です」）。
 5. **LSP 連携**：`toDiagnostics` は `expected_summary.message_key` と `locale_args` を `data.expected` に埋め込み、クライアント側でのローカライズと候補提示を可能にする。
+
+### B-8. SpanTrace の付与
+
+* `RunConfig.trace=true`（[2-1 D](2-1-parser-type.md#d-実行設定-runconfig-とメモ)）のとき、ランタイムは成功区間の履歴 `SpanTrace` を収集する。
+* `ParseError` と併せて得られたトレースは、診断生成時に `Diagnostic.span_trace` へそのまま転写する。既定では `Error`/`Warning` で常に保持し、`Note` のみ省略してノイズを抑える。
+* CLI 表示では末尾から `PrettyOptions.context_depth` 件を `note: trace: rule @ span` の形式で追加し、LSP 連携では `data.spanTrace = Diagnostic.span_trace` として JSON 配列で共有する。これにより IDE は「どのルールが最終的に失敗へ至ったか」を視覚化できる。
 
 ---
 
@@ -264,8 +272,9 @@ fn toDiagnostics(src: Str, e: ParseError, o: PrettyOptions = {}) -> List<Diagnos
 
 ### F-2. IDE/LSP・ログ連携
 
-* `to_lsp_diagnostics` は `domain`・`severity_hint`・`expected_summary` を LSP データへ変換し、`extensions` は `data.extensions` にそのまま反映します。
-* 構造化ログを出力する場合は、`extensions` を JSON にそのまま埋め込むことで外部ツールが追加情報を解釈できます。
+* `to_lsp_diagnostics` は `domain`・`severity_hint`・`expected_summary` を LSP データへ変換し、`span_trace` があれば `data.spanTrace` に転写する。`extensions` は `data.extensions` にそのまま反映される。
+* パターン網羅性や期待集合など機械可読な情報は、`extensions["coverage.missing"]`（残余バリアントの列挙）や `data.coverage = { "missing": [...], "lintLevel": "warning" | "error" }` のように公開することで、IDE が自動補完候補やクイックフィックスを提示できる。
+* 構造化ログを出力する場合は、`span_trace`・`extensions` を JSON にそのまま埋め込むことで外部ツールが追加情報を解釈できます。
 * 監査や差分管理など高度な連携は、専用プラグインが `extensions` に必要なフィールドを定義し、利用側で合意したスキーマに従って処理してください。
 
 ### F-3. サンプル
@@ -349,6 +358,22 @@ error[E1203]: expected whitespace after keyword 'if'
    1 | ifx (a) {}
      | ^^ 'if' is a keyword; 'ifx' is an identifier
 help: put a space: "if x"
+```
+
+**3) 非網羅な `match`（警告→属性でエラー）**
+
+```
+input:
+  match color with
+  | Red   -> "warm"
+  | Blue  -> "cool"
+
+warning[W4101]: non-exhaustive match; missing variants: Green
+  --> palette.ks:2:3
+   2 |   match color with
+     |   ^^^^^^^^^^^^^^^ missing cases fall back to `panic`
+note: this warning becomes error under @no_panic / lint.non_exhaustive_match = "error"
+help: add an arm such as `| Green -> ...`
 ```
 
 ---
