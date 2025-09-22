@@ -50,19 +50,34 @@
 
 ### B.1 モジュールとインポート
 
-* ファイル = 1 モジュール。明示名は任意：`module math.number`（将来仕様、現状省略可）。
-* 依存の導入：
+* **ファイル = 1 モジュール**。先頭に `module math.number` を記述すると、このファイルの公開パスを固定できます（未記述時はパッケージ設定とファイルパスから導出）。`module` ヘッダは 1 ファイル 1 回まで。
+* モジュールパスは **`.` 区切りの識別子列**で表現し、以下の成分を持ちます。
+
+  | 成分 | 例 | 説明 |
+  | --- | --- | --- |
+  | ルート指定 | `::Core.Parse` | 先頭の `::` はパッケージ（crate）ルートから解決することを指示。`module` ヘッダで宣言した最上位モジュールもここから辿ります。 |
+  | 相対指定 | `self.syntax`, `super.lexer` | `self` は現在のモジュール、`super` は 1 つ上のモジュール。`super.super.io` のように連続利用可能。 |
+  | 既定探索 | `Core.Parse.Lex` | ルート指定が無い場合は **(1) 現在のモジュール内の宣言/`use`**, **(2) 親モジュールを遡った宣言**, **(3) ルートモジュール**, **(4) ビルトインプレリュード（`Core` など）** の順に探索します。 |
+  | 別名 | `use Core.Parse.Op as Operator` | `as` でローカル名を付与。中括弧の個別項目でも使用可（`{Lex, Op as Operator}`）。 |
+
+* `use` 文で依存を導入します。
 
   ```reml
-  use Core.Parse
+  use ::Core.Parse          // ルートから
+  use self.checks.Lex       // 現在ファイル配下
   use Core.Parse.{Lex, Op as Operator, Err}
   ```
 
-  `as` で別名、`{ ... }` で限定インポート。
+  中括弧は 1 階層以上のネストに対応し、`use Core.Parse.{Lex, Op.{Infix, Prefix}}` のように部分展開できます。
 
-### B.2 可視性
+### B.2 可視性と `use` が導入するシンボル
 
-* 既定は **非公開**。`pub` を前置で公開：`pub fn parse(...) = ...`
+* 既定は **非公開**。宣言に `pub` を付けると、そのモジュールを経由して外部から参照できます。`pub` の可視性境界は **現在のモジュールの親**で、親モジュールからさらに `pub` で公開された場合にパッケージ全体へ伝播します。
+* `pub use` は再エクスポートです。`pub use Core.Parse.Lex` は `Lex` を自モジュールの公開 API に含め、呼び出し側からは `current_module.Lex` として参照できます。再エクスポートされた名前は元の宣言と同じ可視性・シンボル種別（型/値/モジュール）を保持します。
+* `use` は**最後のセグメント**（または `as` で指定した別名）を現在モジュールに束縛し、モジュール内のトップレベル宣言と同一の名前空間で解決されます。
+  * 同一スコープに既存の宣言や他の `use` が同名で存在する場合は **コンパイルエラー**です（一致先が同一シンボルでも明示的に `as` で回避する必要があります）。
+  * 束縛は値・型・モジュールを区別せず単一の名前空間で扱うため、衝突を避けるには別名または限定パス（`module.name`）を使用します。
+  * `use` で導入したシンボルは読み取り専用のビューであり、再代入や `let` での再束縛はできません。
 
 ### B.3 文の終端
 
@@ -393,8 +408,22 @@ fn abs(x: i64) -> i64 {
 > 型や意味は 1.2 以降。ここでは**形だけ**。
 
 ```
-Module      ::= { Attrs? PubDecl }+
-UseDecl     ::= "use" Path ( "{" Ident ("," Ident)* "}" )? ( "as" Ident )? NL
+Module      ::= ModuleHeader? { UseDecl | Attrs? PubDecl }+
+ModuleHeader ::= "module" ModulePath NL
+ModulePath  ::= Ident ( "." Ident )*
+UseDecl     ::= "use" UseTree NL
+UseTree     ::= UsePath ["as" Ident]
+             | UsePath "." UseBrace
+UsePath     ::= RootPath
+             | RelativePath
+RootPath    ::= "::" ModulePath
+RelativePath ::= RelativeHead ( "." Ident )*
+RelativeHead ::= "self"
+             | SuperPath
+             | Ident
+SuperPath   ::= "super" ( "." "super" )*
+UseBrace    ::= "{" UseItem ( "," UseItem )* ","? "}"
+UseItem     ::= Ident ["as" Ident] [ "." UseBrace ]
 
 PubDecl     ::= ["pub"] Decl
 Decl        ::= ValDecl

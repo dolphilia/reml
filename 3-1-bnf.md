@@ -19,12 +19,26 @@
 ## 1. トップレベル
 
 ```
-CompilationUnit ::= { UseDecl | Attrs? PubDecl }+
+CompilationUnit ::= ModuleHeader? { UseDecl | Attrs? PubDecl }+
 
-UseDecl         ::= "use" Path [UseBrace] ["as" Ident] NL
-UseBrace        ::= "{" Ident { "," Ident } "}"
+ModuleHeader   ::= "module" ModulePath NL
+ModulePath     ::= Ident { "." Ident }
 
-PubDecl         ::= ["pub"] Decl NL*
+UseDecl        ::= "use" UseTree NL
+UseTree        ::= UsePath ["as" Ident]
+                 | UsePath "." UseBrace
+UsePath        ::= RootPath
+                 | RelativePath
+RootPath       ::= "::" ModulePath
+RelativePath   ::= RelativeHead { "." Ident }
+RelativeHead   ::= "self"
+                 | SuperPath
+                 | Ident
+SuperPath      ::= "super" { "." "super" }
+UseBrace       ::= "{" UseItem { "," UseItem } [","] "}"
+UseItem        ::= Ident ["as" Ident] [ "." UseBrace ]
+
+PubDecl        ::= ["pub"] Decl NL*
 Decl            ::= ValDecl
                   | FnDecl
                   | TypeDecl
@@ -41,7 +55,6 @@ AttrArg         ::= Expr
 ### 1.1 共通構成要素
 
 ```
-Path            ::= Ident { "::" Ident }
 GenericParams   ::= "<" Ident { "," Ident } ">"
 GenericArgs     ::= "<" Type { "," Type } ">"
 WhereClause     ::= "where" Constraint { "," Constraint }
