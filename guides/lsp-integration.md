@@ -42,6 +42,11 @@ let cfg = {
 | `textDocument/codeAction` | FixIt テンプレートを `CodeAction` に変換 | `audit_id` を `data` フィールドへ埋め込み |
 | `workspace/didChangeConfiguration` | `Config.compare` を利用して設定差分を検証 | 監査ログへ `change_set` を記録 |
 
+### 2.1 モジュール解決支援
+
+- `textDocument/completion` で `use` 文や `module` ヘッダ内にカーソルがある場合、名前解決の探索順（同一モジュール → 親 → ルート → プレリュード）を反映した候補リストを返します。最上位候補として `self`, `super`, `::` を提示し、`super` は連続入力に応じて `super.super` などを生成します。
+- `use` の別名指定（`as`）はドキュメントシンボルの別名テーブルに記録し、衝突検知で既存シンボルと重複した場合に `Diagnostic` (`namespace.conflict`) を返します。再エクスポート（`pub use`）で公開名が変わる際は、モジュールシグネチャへ `exported=true` フラグを付与して IDE 側の API ビューと同期します。
+
 ## 3. 診断と監査の連携
 
 ```reml
