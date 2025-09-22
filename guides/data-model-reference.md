@@ -16,7 +16,7 @@ let userSchema = Schema.build("User", |s| {
 })
 ```
 
-- `Schema.build(name, builder)` は `2-8-data.md` の `Schema<T>` を組み立てる高水準ユーティリティ。
+- `Schema.build(name, builder)` は `3-7-core-config-data.md` の `Schema<T>` を組み立てる高水準ユーティリティ。
 - `ColumnMeta` の `stats` は計測値をキャッシュし、`reml-data validate` の出力と突合する。
 
 ## 2. 制約と品質チェック
@@ -103,7 +103,7 @@ reml-data stats collect --schema schemas/user.ks --provider warehouse --format j
 4. 解析結果の JSON は `diagnostics[].locale` を含むため、IDE や監査ダッシュボードが後段で別ロケールに再整形する際の基準として
    利用できる。
 
-- CLI 出力の JSON は `2-8-data.md` の `SchemaDiff`/`MigrationStep`/`MigrationError` を直列化したもの。
+- CLI 出力の JSON は `3-7-core-config-data.md` の `SchemaDiff`/`MigrationStep`/`MigrationError` を直列化したもの。
 - `--format json` の `report.metrics` セクションは `RuntimeMetrics` に準拠し、監視基盤へ直接送信できる。
 
 ## 5. 監査ログの統合
@@ -219,7 +219,7 @@ reml-data stats collect --schema schemas/user.ks --provider warehouse --format j
 
 ## 8. 参考リンク
 
-- [2.8 Core.Data](../2-8-data.md)
+- [3.7 Core Config & Data](../3-7-core-config-data.md)
 - [ランタイム連携ガイド](runtime-bridges.md)
 - [LSP / IDE 連携ガイド](lsp-integration.md)
 - [設定 CLI ワークフロー](config-cli.md)

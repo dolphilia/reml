@@ -23,7 +23,7 @@
 
 ## 3. 索引用ハイレベルリンク
 - Chapter 2（Core.Parse）から Chapter 4 への参照は、`use Core` 経由での導入例とパーサ以外のユーティリティを対比して整理する。【F:2-1-parser-type.md†L1-L9】
-- Config/Data/Runtime 既存章の内容は Chapter 4.7/4.8 に再編し、差分は今後のドラフトで提示する計画とする。【F:2-7-config.md†L1-L7】【F:2-8-data.md†L1-L6】【F:2-9-runtime.md†L1-L7】
+- Config/Data/Runtime 既存章の内容は Chapter 3.7/3.8 に移行済み。元ファイル（2-7〜2-9）は削除済み。
 - 横断テーマを扱うガイド（設定 CLI、LSP、Runtime、FFI、プラグイン）は対応する Chapter 4 節への逆リンクを設ける想定で README 索引を更新する。【F:guides/config-cli.md†L1-L7】【F:guides/lsp-integration.md†L1-L6】【F:guides/runtime-bridges.md†L1-L6】【F:guides/reml-ffi-handbook.md†L1-L6】【F:guides/DSL-plugin.md†L1-L6】
 
 ## 4. 次ステップ（フェーズ3 への引き継ぎ）

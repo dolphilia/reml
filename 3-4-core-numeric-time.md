@@ -11,7 +11,7 @@ Status: Draft（内部レビュー中）
 | ステータス | Draft（フェーズ3） |
 | 効果タグ | `@pure`, `effect {mem}`, `effect {audit}`, `effect {time}` |
 | 依存モジュール | `Core.Prelude`, `Core.Iter`, `Core.Collections`, `Core.Diagnostics` |
-| 相互参照 | [2.8 データモデリング API](2-8-data.md), [3.2 Core Collections](3-2-core-collections.md), 3.6（Core Diagnostics, 執筆予定） |
+| 相互参照 | [3.7 Core Config & Data](3-7-core-config-data.md), [3.2 Core Collections](3-2-core-collections.md), 3.6（Core Diagnostics, 執筆予定） |
 
 ## 1. 数値プリミティブとユーティリティ
 
@@ -141,4 +141,4 @@ fn summarize_latency(samples: Iter<Duration>, audit: AuditSink) -> Result<Metric
 - `Duration` からミリ秒へ変換し、`quantiles` と `mean` を利用してメトリクスを生成。
 - `emit_metric` で監査ログへ出力しつつ、平均値を呼び出し元へ返す。
 
-> 関連: [2.8 データモデリング API](2-8-data.md), [3.2 Core Collections](3-2-core-collections.md), [3.6 Core Diagnostics & Audit（予定）]
+> 関連: [3.7 Core Config & Data](3-7-core-config-data.md), [3.2 Core Collections](3-2-core-collections.md), [3.6 Core Diagnostics & Audit（予定）]

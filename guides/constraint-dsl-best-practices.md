@@ -7,13 +7,13 @@
 
 ## 2. 標準APIで提供するべき機能
 ### 2.1 Core.Config における制約記述
-- `schema` ビルダの `requires`, `when`, `compute` を活用し、設定整合性を静的に検証 `2-7-config.md:6`
-- `Change` と `SchemaDiff` を監査ログに出力し、`audit_id` をCLIと共有 `2-7-config.md:24`
+- `schema` ビルダの `requires`, `when`, `compute` を活用し、設定整合性を静的に検証 `3-7-core-config-data.md:6`
+- `Change` と `SchemaDiff` を監査ログに出力し、`audit_id` をCLIと共有 `3-7-core-config-data.md:24`
 - 条件付きパッチ `apply_when` を使用し、環境差分を宣言的に扱う。
 
 ### 2.2 Core.Data における制約検証
-- `Constraint<T>` トレイトで列・レコードレベルの制約を表現 `2-8-data.md:38`
-- `validate_with_profile` を用いて環境別プロファイルを適用 `2-8-data.md:48`
+- `Constraint<T>` トレイトで列・レコードレベルの制約を表現 `3-7-core-config-data.md:38`
+- `validate_with_profile` を用いて環境別プロファイルを適用 `3-7-core-config-data.md:48`
 - `ValidationReport` の `diagnostics` と `stats` を監査フローへ統合。
 
 ### 2.3 共通ガイドライン
@@ -31,7 +31,7 @@
 2. 標準制約を `requires` / `Constraint<T>` として登録。
 3. プロファイル別閾値を `Config`/`QualityProfile` で管理。
 4. 検証実行時に `ValidationReport` / `QualityReport` を生成し、監査ログ保存。
-5. プラグイン制約が必要な場合は Capability を介して `ConstraintContext` の `profile` や `audit_id` を受け渡す `2-8-data.md:43`。
+5. プラグイン制約が必要な場合は Capability を介して `ConstraintContext` の `profile` や `audit_id` を受け渡す `3-7-core-config-data.md:43`。
 
 ## 5. 運用パターン
 | パターン | 標準API利用範囲 | プラグイン範囲 | 備考 |
@@ -52,8 +52,7 @@
 4. 標準APIとプラグインの境界チェックリストを本ガイドの付録として追加し、更新履歴を README に反映。
 
 ## 8. 参考資料
-- `2-7-config.md`
-- `2-8-data.md`
+- `3-7-core-config-data.md`
 - `2-5-error.md`
 - `guides/data-model-reference.md`
 - `guides/runtime-bridges.md`

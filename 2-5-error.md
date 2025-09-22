@@ -79,7 +79,7 @@ type ParseError = {
 * `Expectation` は**種類別**に持ち、message 生成時に**まとまりで整形**（例：「期待：`)`・`number`・識別子のいずれか」）。
 * `expected_summary` はテンプレート ID と文脈を保持し、IDE/LSP がローカライズ済みメッセージを生成できるようにする。
 * `domain` は必要に応じて責務領域を付与する分類タグであり、省略した場合は純粋にパーサからの診断として扱われます。`severity_hint` は運用側への推奨アクション（ロールバック・再試行・即時エスカレーションなど）を表します。
-* `audit_id` / `change_set` / `stream_meta` / `quality_report_id` は、それぞれ Config ツール・差分レビュー・ストリーミング実行・データ品質検証から渡される共通メタデータであり、存在しない場合は `None`。`change_set` は [2-7](2-7-config.md) で定義される `Change` の配列（JSON 化）を保持する。
+* `audit_id` / `change_set` / `stream_meta` / `quality_report_id` は、それぞれ Config ツール・差分レビュー・ストリーミング実行・データ品質検証から渡される共通メタデータであり、存在しない場合は `None`。`change_set` は [3-7](3-7-core-config-data.md) で定義される `Change` の配列（JSON 化）を保持する。
 * `extensions` はプラグインやツールが任意の追加メタデータ（上記以外の設定差分、監査情報、テレメトリなど）を格納する自由領域で、コア仕様はその内容に関与しません。
 * `span_trace` は `RunConfig.trace=true` のときにのみ設定され、最外層→失敗地点の順に成功スパンを格納する（[2-1 C](2-1-parser-type.md#c-スパンとトレース)）。IDE はこれを利用して「どのルールを通って失敗したか」を可視化できる。
 

@@ -1,4 +1,4 @@
-# 4.9 Core Runtime & Capability Registry（フェーズ3 ドラフト）
+# 3.8 Core Runtime & Capability Registry（フェーズ3 ドラフト）
 
 Status: Draft（内部レビュー中）
 
@@ -11,7 +11,7 @@ Status: Draft（内部レビュー中）
 | ステータス | Draft（フェーズ3） |
 | 効果タグ | `@pure`, `effect {runtime}`, `effect {audit}`, `effect {unsafe}` |
 | 依存モジュール | `Core.Prelude`, `Core.Diagnostics`, `Core.Numeric & Time`, `Core.IO`, `Core.Config` |
-| 相互参照 | [2.9 実行時基盤ドラフト](2-9-runtime.md), [4.5 Core Numeric & Time](4-5-core-numeric-time.md), [4.6 Core IO & Path](4-6-core-io-path.md), [4.7 Core Diagnostics & Audit](4-7-core-diagnostics-audit.md) |
+| 相互参照 | [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
 
 ## 1. Capability Registry の基本構造
 
@@ -64,7 +64,7 @@ pub type GcCapability = {
 ```
 
 - すべて `Result` を返し、失敗時は `CapabilityError` にラップする。
-- `GcMetrics` は [4.5](4-5-core-numeric-time.md) の `MetricPoint` と互換のフィールド構造を持つ。
+- `GcMetrics` は [3.4](3-4-core-numeric-time.md) の `MetricPoint` と互換のフィールド構造を持つ。
 
 ## 3. Metrics & Audit Capability
 
@@ -94,7 +94,7 @@ pub type IoCapability = {
 }
 ```
 
-- 4.6 の同期 IO API が内部で利用するバックエンドとして定義。
+- 3.5 の同期 IO API が内部で利用するバックエンドとして定義。
 - 実装は OS ごとに差し替え可能。
 
 ## 5. プラグイン Capability
@@ -115,7 +115,7 @@ pub type PluginMetadata = {
 ```
 
 - `SemVer` と `PluginHandle` は将来のプラグイン拡張章（予定）と整合する。
-- `verify_signature` は 4.7 の監査モジュールと連携して署名検証結果をログ化する。
+- `verify_signature` は 3.6 の監査モジュールと連携して署名検証結果をログ化する。
 
 ## 6. 使用例（GC + Metrics 登録）
 
@@ -135,6 +135,8 @@ fn collect_gc_metrics() -> Result<MetricPoint<Float>, CapabilityError> =
 ```
 
 - 起動時に `gc` と `metrics` を登録し、`registry()` 経由で取得可能とする。
-- 取得したメトリクスは Chapter 4.5 の `metric_point` を再利用して監査へ送出する。
+- 取得したメトリクスは Chapter 3.4 の `metric_point` を再利用して監査へ送出する。
 
-> 関連: [2.9 実行時基盤ドラフト](2-9-runtime.md), [4.5 Core Numeric & Time](4-5-core-numeric-time.md), [4.7 Core Diagnostics & Audit](4-7-core-diagnostics-audit.md)
+> 関連: [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md)
+
+> 注意: 本章は 2.9 実行時基盤ドラフトの内容を Chapter 3 に移行し、正式化したものです。

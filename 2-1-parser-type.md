@@ -126,7 +126,7 @@ type MemoTable = Map<MemoKey, Any>  // 実装上は型消去（内部用）
 | key | 用途 | 参照 |
 | --- | --- | --- |
 | `"lsp"` | LSP/IDE 連携の挙動・シンタックスハイライト設定 | guides/lsp-integration.md |
-| `"runtime"` | GC・監査・メトリクスなど実行時基盤の設定 | 2-9-runtime.md, guides/runtime-bridges.md |
+| `"runtime"` | GC・監査・メトリクスなど実行時基盤の設定 | 3-8-core-runtime-capability.md, guides/runtime-bridges.md |
 | `"logging"` | 構造化ログ・フォーマット設定（例：`format = "json"`） | guides/lsp-integration.md, guides/config-cli.md |
 | `"i18n"` | ロケール検出・未翻訳メッセージの記録、翻訳カタログのホットリロード | guides/lsp-integration.md |
 | その他 | プロジェクト固有の拡張。キー重複を避けるため固有 prefix を推奨 | - |

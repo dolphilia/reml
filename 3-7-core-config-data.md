@@ -1,8 +1,8 @@
-# 4.8 Core Config & Data（フェーズ3 ドラフト）
+# 3.7 Core Config & Data（フェーズ3 ドラフト）
 
 Status: Draft（内部レビュー中）
 
-> 目的：設定スキーマ (`Core.Config`) とデータモデリング (`Core.Data`) を Chapter 4 の標準ライブラリ体系へ統合し、差分管理・監査・CLI ツールとの連携を明文化する。
+> 目的：設定スキーマ (`Core.Config`) とデータモデリング (`Core.Data`) を Chapter 3 の標準ライブラリ体系へ統合し、差分管理・監査・CLI ツールとの連携を明文化する。
 
 ## 0. ドラフトメタデータ
 
@@ -11,7 +11,7 @@ Status: Draft（内部レビュー中）
 | ステータス | Draft（フェーズ3） |
 | 効果タグ | `@pure`, `effect {config}`, `effect {audit}`, `effect {io}` |
 | 依存モジュール | `Core.Prelude`, `Core.Collections`, `Core.Diagnostics`, `Core.IO`, `Core.Numeric & Time` |
-| 相互参照 | [2.7 設定スキーマ API](2-7-config.md), [2.8 データモデリング API](2-8-data.md), [4.7 Core Diagnostics & Audit](4-7-core-diagnostics-audit.md) |
+| 相互参照 | [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
 
 > **移行メモ**: Chapter 2 に残る 2.7/2.8 は参照用として維持されるが、本章で標準ライブラリ視点の API 契約と監査統合を再整理する。将来的に Chapter 2 版は概要＋互換ノートへ縮約する計画。
 
@@ -92,7 +92,7 @@ fn merge_stats(left: ColumnStats, right: ColumnStats) -> ColumnStats            
 fn as_metric(points: ColumnStats) -> List<MetricPoint<Float>>                               // `@pure`
 ```
 
-- `MetricPoint` は [4.5](4-5-core-numeric-time.md) で定義。データ品質監査へ転送するためのラッパ。
+- `MetricPoint` は [3.4](3-4-core-numeric-time.md) で定義。データ品質監査へ転送するためのラッパ。
 
 ## 4. CLI / ツール連携
 
@@ -104,7 +104,7 @@ fn render_summary(diff: ChangeSet, fmt: OutputFormat) -> String            // `e
 fn attach_exit_code(diag: Diagnostic) -> ExitCode                          // `@pure`
 ```
 
-- `Table` は 4.3 の可変コレクション。CLI 表形式へ変換する際に使用。
+- `Table` は 3.2 の可変コレクション。CLI 表形式へ変換する際に使用。
 - `OutputFormat` は CLI/JSON/Markdown 等に対応。
 - `ExitCode` は CLI ツールが戻す整数コード。
 
@@ -136,4 +136,6 @@ fn review_config(old: AppConfig, new: AppConfig, schema: Schema<AppConfig>, audi
 - `compare` により差分検出。`from_change`（4.7）で監査情報を生成。
 - CLI では `render_summary` を表示し、`manual_review_required` 診断で手動承認を促す。
 
-> 関連: [2.7 設定スキーマ API](2-7-config.md), [2.8 データモデリング API](2-8-data.md), [4.7 Core Diagnostics & Audit](4-7-core-diagnostics-audit.md)
+> 関連: [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md)
+
+> 注意: 本章は 2.7 設定スキーマ API と 2.8 データモデリング API の内容を Chapter 3 に移行統合したものです。

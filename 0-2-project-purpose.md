@@ -26,7 +26,7 @@
 
 フェーズ別に洗い出した横断テーマは、上記哲学を運用へ落とし込むための橋渡しとして配置される。
 
-- **型安全な設定**: `Core.Config`（[2-7](2-7-config.md)）、`Core.Data`（[2-8](2-8-data.md)）、`設定 CLI ワークフロー`（[guides/config-cli.md](guides/config-cli.md)）で、宣言 DSL → 差分 → 実行 → 監査を一貫管理する。
+- **型安全な設定**: `Core.Config`（[3-7](3-7-core-config-data.md)）、`Core.Data`（[3-7](3-7-core-config-data.md)）、`設定 CLI ワークフロー`（[guides/config-cli.md](guides/config-cli.md)）で、宣言 DSL → 差分 → 実行 → 監査を一貫管理する。
 - **ツール連携**: 実行戦略の LSP 出力（[2-6](2-6-execution-strategy.md)）、`LSP / IDE 連携ガイド`（[guides/lsp-integration.md](guides/lsp-integration.md)）、ランタイム橋渡し（[guides/runtime-bridges.md](guides/runtime-bridges.md)）で、IDE・CI・監査ログを共通メタデータで束ねる。
 - **プラグイン拡張**: プラグイン API（[2-1](2-1-parser-type.md):I）、`DSL プラグイン & Capability ガイド`（[guides/DSL-plugin.md](guides/DSL-plugin.md)）で、外部 DSL の署名・互換・配布フローを定義する。
 

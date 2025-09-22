@@ -64,7 +64,7 @@ fn partition<T: Ord>(set: Set<T>, pred: (T) -> Bool) -> (Set<T>, Set<T>)
 ```
 
 - `Map` のデフォルト実装は平衡二分木（赤黒木）。`keys` は順序付き反復を提供し、監査ログや CLI 出力で安定性を確保する。
-- `merge` と `diff` は `Core.Data` の `SchemaDiff` や `Change` と整合し、監査ログで差分を共有する前提を提供する。【F:2-8-data.md†L16-L55】
+- `merge` と `diff` は `Core.Data` の `SchemaDiff` や `Change` と整合し、監査ログで差分を共有する前提を提供する。【F:3-7-core-config-data.md†L16-L55】
 - `Set` は `Map<T, Unit>` の薄いラッパーであり、`Collector` 実装を共有する。
 
 ### 2.3 バッチ変換ヘルパ
