@@ -46,3 +46,20 @@
 - Tier 0/Tier 1 モジュールから仕様ドラフトを作成し、効果タグ・診断モデルとの相互参照を明文化する。
 - Async/FFI/Unsafe については将来の設計レビュー用に調査メモと互換性ポリシー素案を準備する。
 
+## 6. Config/Data/Runtime 再配置テンプレート
+
+### 6.1 差分作成の手順テンプレート
+
+1. **章ファイルの複製**：`2-7-config.md` / `2-8-data.md` / `2-9-runtime.md` の本文を Chapter 4 用に複製し、`4-8` / `4-8` / `4-9` へ配置。差分を可視化するため元ファイルには「移行済み」ヘッダを追加する。【F:2-7-config.md†L1-L80】【F:2-8-data.md†L1-L50】【F:2-9-runtime.md†L1-L40】
+2. **文書先頭の目的文更新**：Chapter 4 側では「標準ライブラリ観点」の解説を追記し、既存ガイドへの逆リンクを整備する。旧 Chapter 2 側は `See Chapter 4.x` のリダイレクト記述に置き換える。
+3. **効果タグ・共通語彙の差分整理**：`audit_id` / `change_set` / `capability` など横断語彙を共通節へ集約し、差分ではその節へのリンクを追加する。
+4. **サンプルコード検証**：Prelude/Iter/API に沿うよう `use Core;` へ書き換え、Chapter 4 ドキュメントで参照されるコレクション・テキスト API と整合させる。
+5. **ドラフトステータスの明示**：各新章に `Status: Draft/Review/Published` メタデータ行を追加し、4.1 の進捗表と同期させる。
+
+### 6.2 リンク更新チェックリスト
+
+- [x] README の Chapter 2 セクションから Config/Data/Runtime への直接リンクを Chapter 4 へ差し替え。
+- [x] 0-1 / 0-2 の横断テーマ節で、標準ライブラリ章への参照を追加・更新。【F:0-1-overview.md†L42-L53】【F:0-2-project-purpose.md†L35-L41】
+- [ ] Guides (`config-cli`, `runtime-bridges`, `DSL-plugin`) からのリンクを Chapter 4 の該当節へ更新し、旧位置への逆リンクを削除。【F:guides/config-cli.md†L1-L40】【F:guides/runtime-bridges.md†L1-L35】【F:guides/DSL-plugin.md†L1-L50】
+- [ ] `2-5-error.md` 内の `Diagnostic` 説明で参照する章番号を Chapter 4 に合わせる。
+- [ ] LSP/CLI ドキュメントの索引や目次で `Core.Config` 等の参照先が二重管理になっていないか確認し、必要に応じて脚注で旧番号を明記する。

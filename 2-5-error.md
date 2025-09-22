@@ -2,6 +2,7 @@
 
 > 目的：**説明的で短く、修正指向**の診断を、**最遠位置＋期待集合＋文脈**で一貫して出す。
 > 前提：2.1 の `Reply{consumed, committed}`・`Span`、2.2 の `cut/label/attempt/recover`、2.4 の `precedence(operand, …)` と整合。
+> **移行ガイド**: 診断モデルと監査連携の全体像は Chapter 3 の [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) に再整理されています。本章は Core.Parse 観点からの土台を提供します。
 
 ---
 

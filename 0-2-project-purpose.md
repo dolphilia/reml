@@ -16,7 +16,7 @@
 
 ## 3. 設計を貫く基本哲学
 
-- **小さく強いコア**: 言語も標準パーサ API も 12-15個の本質的プリミティブに凝縮し、残りは合成で表現する。Chapter 4 の標準ライブラリ章では、この哲学を Core.* モジュールへ拡張し、再利用しやすい API 群として体系化する。
+- **小さく強いコア**: 言語も標準パーサ API も 12-15個の本質的プリミティブに凝縮し、残りは合成で表現する。Chapter 3 の標準ライブラリ章では、この哲学を Core.* モジュールへ拡張し、再利用しやすい API 群として体系化する。
 - **宣言で終わらせる操作性**: 演算子優先度・空白処理・字句規則を宣言的に与えることで、記述者が「何をしたいか」に集中できるようにする。
 - **効果の制御と安全なバックトラック**: `cut`, `label`, `recover`, `trace` などの効果を明示し、失敗の伝播や復旧をプログラマが設計できるようにする。
 - **ツールフレンドリーな情報保持**: `SpanTrace` や期待集合を保持し、IDE・可視化・インクリメンタル解析への連携を想定してデータを捨てない。
@@ -32,13 +32,13 @@
 
 これらのテーマは各仕様章とガイドの更新履歴で進捗を追跡し、利用シナリオからのフィードバックと照合して順次クローズする。
 
-## 3.2 Chapter 4 への展開計画
+## 3.2 Chapter 3 への展開計画
 
-標準ライブラリ（`Core.*`）は Reml の非機能要件と横断テーマを支えるための共通 API 群として整理中である。フェーズ1の範囲定義では失敗処理・可変構造・Unicode・監査・プラグインなど、Core.Parse 以外で補完すべき領域と採否基準を洗い出した。【F:4-0-standard-library-scope.md†L1-L48】
+標準ライブラリ（`Core.*`）は Reml の非機能要件と横断テーマを支えるための共通 API 群として整理中である。フェーズ1の範囲定義では失敗処理・可変構造・Unicode・監査・プラグインなど、Core.Parse 以外で補完すべき領域と採否基準を洗い出した。【F:notes/core-library-scope.md†L1-L48】
 
-フェーズ2の骨子では Prelude、Collections、Text/Unicode、Numeric/Time、IO/Path、Diagnostics/Audit、Config/Data、Runtime/Capability Registry、Async/FFI/Unsafe といった章立てを仮配置し、各テーマごとの参照関係を整理している。【F:4-1-standard-library-outline.md†L1-L31】
+フェーズ2の骨子では Prelude、Collections、Text/Unicode、Numeric/Time、IO/Path、Diagnostics/Audit、Config/Data、Runtime/Capability Registry、Async/FFI/Unsafe といった章立てを仮配置し、各テーマごとの参照関係を整理している。【F:notes/core-library-outline.md†L1-L31】Chapter 3 ではこれらの仕様をドラフトとして公開しており、Chapter 2 の既存文書から段階的に移行する計画である。
 
-この計画を通じて、横断テーマで掲げた型安全な設定、ツール連携、プラグイン拡張を Chapter 4 各節の API として公式化し、運用ガイドとの往復参照を確立することを目標とする。【F:4-1-standard-library-outline.md†L20-L31】
+この計画を通じて、横断テーマで掲げた型安全な設定、ツール連携、プラグイン拡張を Chapter 3 各節の API として公式化し、運用ガイドとの往復参照を確立することを目標とする。【F:notes/core-library-outline.md†L20-L31】
 
 ## 4. 想定利用シナリオ（実用性優先順）
 

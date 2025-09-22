@@ -1,5 +1,7 @@
 # 2.9 実行時基盤（Core.Runtime）ドラフト
 
+> **移行ガイド**: Runtime Capability の正式仕様は Chapter 3 へ移行しました。最新版は [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md) を参照してください。本章は初期ドラフトの参考用として保持します。
+
 > 目的：`RunConfig` や GC/監査・計測といった実行時インフラを抽象化し、パーサランナーや将来の self-host 実装が共通の Capability を利用できるようにする。
 
 ## A. GC Capability インターフェイス

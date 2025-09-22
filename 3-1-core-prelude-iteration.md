@@ -58,6 +58,7 @@ pub type Never = Result<Never, Never> // 空集合を示す記号的型。実体
 - `expr?` は `Result<T, E>` または `Option<T>` を返す式に適用でき、`Err`/`None` を検出した瞬間に現在の関数・ブロックを同型のエラーで終了する。【F:1-1-syntax.md†L276-L295】
 - `?` は `Core.Prelude` が定義する `Try` トレイト相当の内部インターフェイスにより実装される。標準ライブラリでは `Result` と `Option` のみが `Try` を実装し、外部型が拡張する場合は `effect {unsafe}` 承認を要する。
 - `expr?` を含む式は `@pure` を保つが、`Result` が `effect` を伴う計算（`effect {io}` 等）を含む場合は呼び出し側の関数も同じ効果タグを要求する。
+- `Never` を返す関数では `Result<Never, E>` を利用することで「到達不能」分岐を表現し、`?` による早期リターンと型推論の両立を図る。`Never` を経由したケースは exhaustiveness チェックを満たすため、診断に余計なハンドラを追加する必要がない。
 
 ### 2.4 パターン補助とパイプ連携
 
@@ -72,6 +73,12 @@ pub type Never = Result<Never, Never> // 空集合を示す記号的型。実体
 
 - `tap_*` は返り値をそのまま返し、副作用を `effect` タグとして伝搬する。監査ログ出力や計測に利用することを想定。`Result.tap_err` は `effect {audit}` を明示すれば監査 API と安全に連携できる。【F:2-5-error.md†L60-L87】
 - `match` 関数は `|>` パイプと組み合わせることで、DSL 内でも宣言的な分岐を保つ。
+
+### 2.5 診断・監査との連携
+
+- `Result.tap_err` と `ensure` を併用することで、失敗時に `Diagnostic` を加工しつつ元のエラー型を維持できる。監査ログを出力する場合は `effect {audit}` を付与し、Chapter 3.6（Core Diagnostics & Audit）の共通語彙と整合させる。【F:notes/core-library-outline.md†L17-L19】【F:2-5-error.md†L50-L83】
+- `Option.match` / `Result.match` の戻り値に `Diagnostic` や `AuditEvent` を割り当てることで、CLI・LSP 双方の出力整形に必要なメタデータを付与できる。`change_set` や `audit_id` の注入は共通ヘルパで次章以降に定義予定。
+- `panic` に依存せず `Result` ベースで情報を集約することがコア哲学であり、`try_collect` 等の終端操作でまとめて報告するワークフローを推奨する。【F:notes/core-library-scope.md†L1-L46】
 
 ## 3. 反復子 API（Core.Iter）
 
@@ -157,9 +164,19 @@ fn sum_positive(xs: List<Int>) -> Result<Int, Diagnostic> =
 - `ensure` が返す `Result` を `?` で伝播しつつ、`Iter.try_fold` で集計することで「例外なし」「宣言的スタイル」の原則を保つ。【F:0-1-overview.md†L90-L109】【F:1-3-effects-safety.md†L228-L268】
 - `Iter.try_fold` 内のクロージャが `Err` を返した場合、残りの要素は評価されない。これにより診断や監査で必要な早期中断を行える。
 
+### 3.6 Collections / Text への橋渡し
+
+- `Iter.collect_list` や `Iter.try_collect` の戻り値は Chapter 3.2 で定義する永続コレクション、および 3.3 で定義する `String`/`GraphemeSeq` と組み合わせられる想定である。【F:notes/core-library-outline.md†L13-L16】
+- 可変コンテナ（`Vec`/`Cell`）を収集先とする場合、`Collector` 実装が `effect {mut}` を宣言し、`Iter` 側はタグを転写する。これにより `mut` 効果を局所化しつつ宣言的パイプラインを維持できる。
+- Unicode 分解・正規化は `Iter.map`/`Iter.flat_map` と `Core.Text` の helper を接続することで段階的に適用でき、Lex レイヤでの字句検査とも互換となる。【F:notes/core-library-scope.md†L7-L24】
+
 ## 4. 相互運用と今後の課題
 
-1. `Core.Collections` で定義する永続リスト／マップと `Iter` のブリッジ（`Iter.collect_map` 等）を追加する。フェーズ3 内で同時策定予定。【F:4-0-standard-library-scope.md†L33-L41】
+1. `Core.Collections` で定義する永続リスト／マップと `Iter` のブリッジ（`Iter.collect_map` 等）を追加する。フェーズ3 内で同時策定予定。【F:notes/core-library-scope.md†L33-L41】
 2. CLI/診断ガイドでは `Result.tap_err` と監査 API の連携サンプルを拡充し、`audit_id` との結び付けを明示する。フェーズ4 で追記。
 3. `Core.Async`（将来拡張）の `Stream` 型と互換のアダプタ（`Iter.from_stream` 等）を調査メモに記載する。`effect {io.async}` の扱いが課題。
 
+### 2.6 使用例リンク
+
+- `Option`/`Result` の `tap` 系ヘルパと `Iter.try_collect` の組み合わせサンプルは [3.2 Core Collections](3-2-core-collections.md#7-使用例iter-パイプライン) を参照。
+- Unicode 正規化／Lex 連携を含む文字列処理の例は [3.3 Core Text & Unicode](3-3-core-text-unicode.md#8-使用例lex-連携と-grapheme-操作) を参照。
