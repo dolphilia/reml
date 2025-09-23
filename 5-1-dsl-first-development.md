@@ -586,114 +586,485 @@ fn merge_dsl_results<A, B, C>(
 - 早期警告システム
 - 自動復旧トリガー
 
-### 4.4 DSL特化の制御アプローチ
+### 4.4 DSL特化オーケストレーション：Conductor Pattern
 
-#### 4.4.1 文法指向オーケストレーション
+#### 4.4.1 設計原則とアーキテクチャ概要
+
+Remlは「パーサーコンビネーターに最適化された言語」という設計思想に基づき、DSL制御においても**コンビネーター的合成可能性**を重視します。調査したオーケストレーション技術の知見を活かし、以下の原則でDSL制御システムを設計します：
+
+##### 核となる設計原則
+
+1. **型安全な合成性**: Core.Parseコンビネーターと同様の合成可能性をDSL制御に適用
+2. **宣言的制御**: Kubernetesの望ましい状態記述を参考とした設定駆動制御
+3. **障害分離**: Erlang/Akkaの"Let it crash"アプローチによる局所化された障害処理
+4. **適応的フロー制御**: リアクティブストリームのバックプレッシャー機構を応用
+5. **効果システム統合**: Remlの効果システムによる副作用の安全な制御
+
+##### アーキテクチャ層構成
 
 ```reml
-// DSL制御のための専用構文例
-orchestrate {
-  ui_dsl: UISystem {
-    depends_on: []
-    resources: { memory: "100MB", cpu: "0.5" }
-    restart_policy: "always"
+// DSL制御の階層構造
+Core.Parse        // 基盤：パーサーコンビネーター
+    ↓
+DSL.Conductor     // DSL制御層：orchestration専用構文
+    ↓
+Core.Async        // 実行層：非同期・並行処理
+    ↓
+Core.Runtime      // ランタイム層：capability management
+```
+
+#### 4.4.2 Conductor構文仕様
+
+従来の`orchestrate`構文を改良し、Remlの言語特性を最大限活用した`conductor`構文を導入します：
+
+```reml
+// 改良されたDSL制御構文
+conductor game_application {
+  // DSL定義（パーサーコンビネーター風の合成）
+  config_dsl: ConfigParser =
+    rule("config", many(config_item).map(Config::from_items))
+    |> with_capabilities(["fs.read", "env.access"])
+    |> with_resource_limits(memory: "100MB", cpu: "0.5")
+    |> with_restart_policy("always", max_attempts: 5)
+
+  game_dsl: GameLogic =
+    rule("game", game_rules.then(game_state))
+    |> depends_on([config_dsl])  // 依存関係の型安全な記述
+    |> with_resource_limits(memory: "500MB", cpu: "2.0")
+    |> with_restart_policy("on_failure", max_attempts: 3)
+
+  ui_dsl: UISystem =
+    rule("ui", ui_components.many1())
+    |> depends_on([config_dsl, game_dsl])
+    |> with_resource_limits(memory: "200MB", cpu: "1.0")
+    |> with_restart_policy("never")
+
+  // 型安全な通信チャネル定義
+  channels {
+    config_dsl.settings ~> game_dsl.configure : ConfigChannel<Settings, GameConfig>
+    game_dsl.events ~> ui_dsl.render : EventChannel<GameEvent, UIUpdate>
+    ui_dsl.interactions ~> game_dsl.input : InputChannel<UserInput, GameAction>
   }
 
-  game_dsl: GameLogic {
-    depends_on: [ui_dsl]
-    resources: { memory: "500MB", cpu: "2.0" }
-    restart_policy: "on_failure"
+  // 実行戦略（パフォーマンス要件に対応）
+  execution {
+    strategy: "adaptive_parallel"  // 依存関係考慮の適応的並列実行
+    backpressure: BackpressurePolicy.adaptive(
+      high_watermark: 1000,
+      low_watermark: 100,
+      strategy: "drop_oldest"
+    )
+    error_propagation: ErrorPolicy.isolate_with_circuit_breaker
+    scheduling: SchedulePolicy.fair_share_with_priority
   }
 
-  scenario_dsl: ScenarioEngine {
-    depends_on: [game_dsl]
-    resources: { memory: "200MB", cpu: "0.5" }
-    restart_policy: "never"
-  }
-
-  connections: {
-    ui_dsl.events -> game_dsl.input
-    game_dsl.state -> ui_dsl.display
-    game_dsl.events -> scenario_dsl.trigger
-  }
-
-  monitoring: {
-    health_check_interval: "5s"
-    max_restart_attempts: 3
-    failure_threshold: 0.1
+  // 監視・診断（Core.Diagnosticsとの統合）
+  monitoring with Core.Diagnostics {
+    health_check: every("5s") using dsl_health_probe
+    metrics: collect([
+      "dsl.latency" -> LatencyHistogram,
+      "dsl.throughput" -> CounterMetric,
+      "dsl.error_rate" -> RatioGauge
+    ])
+    tracing: when(RunConfig.trace_enabled) collect_spans
+    audit: log_to(AuditLogger.security_events)
   }
 }
 ```
 
-#### 4.4.2 パーサーコンビネーター協調
+#### 4.4.3 型安全チャネルシステム
 
-##### Monad-based effect tracking
+DSL間通信における型安全性を保証するチャネルシステムを提供します：
 
-- 副作用の追跡と制御
-- DSL間の副作用干渉検出
-- 純粋性の保証と最適化
+```reml
+// チャネル型定義
+struct Channel<Send, Recv> where Send: Serialize, Recv: Deserialize {
+  sender: DslSender<Send>,
+  receiver: DslReceiver<Recv>,
+  codec: Codec<Send, Recv>,
+  buffer_size: usize,
+  overflow_policy: OverflowPolicy,
+}
 
-##### Parser state sharing
+// チャネル作成API
+fn create_channel<S, R>(
+  buffer_size: usize,
+  codec: Codec<S, R>
+) -> (DslSender<S>, DslReceiver<R>)                           // `effect {io.async}`
 
-- DSL間での解析状態共有
-- 構文コンテキストの継承
-- 効率的なクロスDSL解析
+// 型安全な送受信
+fn send<T>(sender: DslSender<T>, msg: T) -> Future<Result<(), SendError>>
+fn recv<T>(receiver: DslReceiver<T>) -> Future<Result<T, RecvError>>
 
-##### Incremental parsing coordination
+// チャネル合成（コンビネーター風）
+fn merge_channels<T>(
+  channels: [DslReceiver<T>]
+) -> DslReceiver<T>                                           // `effect {io.async}`
 
-- 変更時の効率的再解析
-- DSL間依存関係考慮の増分更新
-- リアルタイム編集支援
+fn split_channel<T>(
+  channel: DslReceiver<T>,
+  predicate: T -> Bool
+) -> (DslReceiver<T>, DslReceiver<T>)                        // `effect {io.async}`
+```
 
-#### 4.4.3 実行時適応制御
+#### 4.4.4 パーサーコンビネーター統合によるDSL制御
 
-##### Dynamic load balancing
+Core.Parseコンビネーターの設計思想をDSL制御に応用し、小さな制御プリミティブの合成による複雑なオーケストレーションを実現します：
 
-- DSL間の動的負荷分散
-- ワークロード変化への自動適応
-- リソース使用率最適化
+```reml
+// DSL制御のコンビネーター
+fn sequence_dsls<A, B>(
+  dsl_a: DSLSpec<A>,
+  dsl_b: A -> DSLSpec<B>
+) -> DSLSpec<B>                                               // andThenに相当
 
-##### Adaptive scheduling
+fn parallel_dsls<A, B>(
+  dsl_a: DSLSpec<A>,
+  dsl_b: DSLSpec<B>
+) -> DSLSpec<(A, B)>                                          // thenに相当
 
-- 実行パターンに基づく適応的スケジューリング
-- 優先度動的調整
-- レスポンス時間最適化
+fn choose_dsl<T>(
+  condition: DSLSpec<Bool>,
+  then_dsl: DSLSpec<T>,
+  else_dsl: DSLSpec<T>
+) -> DSLSpec<T>                                               // orに相当
 
-##### Hot-swapping
+fn repeat_dsl<T>(
+  dsl: DSLSpec<T>,
+  policy: RepeatPolicy
+) -> DSLSpec<[T]>                                             // manyに相当
 
-- 実行中のDSL実装更新
-- ゼロダウンタイム更新
-- バージョン管理とロールバック
+fn attempt_dsl<T>(
+  dsl: DSLSpec<T>
+) -> DSLSpec<T>                                               // attemptに相当（障害時の巻き戻し）
 
-### 4.5 実装戦略
+fn cut_dsl<T>(
+  dsl: DSLSpec<T>
+) -> DSLSpec<T>                                               // cutに相当（障害時のcommit）
 
-#### 4.5.1 段階的実装アプローチ
+fn recover_dsl<T>(
+  dsl: DSLSpec<T>,
+  recovery_strategy: RecoveryStrategy<T>
+) -> DSLSpec<T>                                               // recoverに相当
+```
 
-1. **基本オーケストレーション**: 順次実行制御
-2. **並行実行**: 独立DSLの並列実行
-3. **通信機構**: DSL間メッセージパッシング
-4. **障害処理**: エラー伝播と回復
-5. **動的制御**: 実行時の適応的制御
+##### 実用的な制御パターン
 
-#### 4.5.2 性能考慮
+```reml
+// パイプライン制御（left-to-rightの流れ）
+let data_pipeline =
+  input_dsl
+  |> transform_dsl
+  |> validate_dsl
+  |> output_dsl
 
-##### Zero-copy messaging
+// 分岐制御
+let conditional_processing =
+  condition_checker
+  |> choose_dsl(
+       then_dsl = heavy_processing,
+       else_dsl = light_processing
+     )
 
-- コピーなしデータ交換
-- 共有メモリアクセス最適化
-- 大容量データの効率転送
+// 冗長化制御（複数DSLの並列実行）
+let redundant_processing =
+  parallel_dsls(primary_dsl, backup_dsl)
+  |> first_success  // いずれか成功したら完了
 
-##### Lock-free algorithms
+// 段階的フォールバック
+let fallback_chain =
+  attempt_dsl(fast_dsl)
+  |> or(attempt_dsl(medium_dsl))
+  |> or(slow_but_reliable_dsl)
+```
 
-- ロックフリーな並行制御
-- 競合状態の回避
-- 高並行性の実現
+#### 4.4.5 リアクティブストリーム統合
 
-##### NUMA awareness
+DSL間でのデータ流れをリアクティブストリームとして管理し、適応的なフロー制御を実現します：
 
-- ハードウェア特性考慮
-- メモリアクセス最適化
-- CPU affinity 制御
+```reml
+// リアクティブDSLストリーム
+struct DslStream<T> {
+  source: DSLSpec<T>,
+  operators: [StreamOperator<T>],
+  sink: StreamSink<T>,
+}
+
+// ストリーム演算子
+fn map_stream<A, B>(
+  stream: DslStream<A>,
+  f: A -> B
+) -> DslStream<B>
+
+fn filter_stream<T>(
+  stream: DslStream<T>,
+  predicate: T -> Bool
+) -> DslStream<T>
+
+fn merge_streams<T>(
+  streams: [DslStream<T>]
+) -> DslStream<T>
+
+fn buffer_stream<T>(
+  stream: DslStream<T>,
+  size: usize,
+  policy: BufferPolicy
+) -> DslStream<[T]>
+
+// バックプレッシャー制御
+fn with_backpressure<T>(
+  stream: DslStream<T>,
+  policy: BackpressurePolicy
+) -> DslStream<T>                                             // `effect {io.async}`
+```
+
+#### 4.4.6 監視・診断システム
+
+Core.Diagnosticsと統合したオーケストレーション監視機能を提供します：
+
+```reml
+// DSL実行状況の監視
+struct DslMetrics {
+  execution_count: Counter,
+  success_rate: RatioGauge,
+  latency: LatencyHistogram,
+  resource_usage: ResourceGauge,
+  error_details: ErrorCollector,
+}
+
+// ヘルスチェック
+fn dsl_health_check(dsl_id: DslId) -> HealthStatus = {
+  let recent_metrics = metrics_collector.get_recent(dsl_id, duration: "1m")
+
+  match recent_metrics {
+    case metrics if metrics.error_rate > 0.1 => HealthStatus.Unhealthy
+    case metrics if metrics.latency.p99 > threshold => HealthStatus.Degraded
+    case _ => HealthStatus.Healthy
+  }
+}
+
+// 分散トレーシング
+fn trace_dsl_execution<T>(
+  dsl: DSLSpec<T>,
+  trace_context: TraceContext
+) -> DSLSpec<T>                                               // `effect {audit}`
+
+// 構造化ログ
+fn log_dsl_event(
+  event: DslEvent,
+  context: ExecutionContext
+) -> ()                                                       // `effect {audit}`
+```
+
+### 4.5 Conductor Pattern実装戦略
+
+#### 4.5.1 段階的実装ロードマップ
+
+##### Phase 1: Conductor基本構文 (0-4ヶ月)
+
+**目標**: `conductor`構文のパーサー実装とCore.Parse統合
+
+**対象仕様**: [2.1 パーサ型](2-1-parser-type.md), [2.2 コア・コンビネータ](2-2-core-combinator.md)
+
+**実装項目**:
+- `conductor`ブロック専用の字句・構文解析器
+- DSL定義構文の基本パーサー (`config_dsl: ConfigParser = ...`)
+- 依存関係宣言の解析 (`depends_on([...])`)
+- パイプライン演算子 (`|>`) のパーサー統合
+
+**成功指標**:
+- 基本的な`conductor`ブロックが構文解析できる
+- DSL定義から`DSLSpec`型への変換が動作
+- 単純な依存関係グラフの構築が可能
+
+**技術詳細**:
+```reml
+// Phase 1で実装するパーサー
+let conductor_parser: Parser<ConductorSpec> =
+  rule("conductor",
+    keyword("conductor")
+    .skipR(identifier)  // conductor名
+    .skipR(symbol("{"))
+    .then(many(dsl_definition))
+    .skipL(symbol("}"))
+    .map(ConductorSpec::new)
+  )
+```
+
+##### Phase 2: 型安全チャネルシステム (2-6ヶ月)
+
+**目標**: DSL間通信の型安全な実装
+
+**対象仕様**: [3.9 Core Async / FFI / Unsafe](3-9-core-async-ffi-unsafe.md)
+
+**実装項目**:
+- `Channel<Send, Recv>`型の実装
+- 型安全な送受信API (`send`, `recv`)
+- チャネル合成コンビネーター (`merge_channels`, `split_channel`)
+- 通信プロトコルのコンパイル時検証
+
+**成功指標**:
+- 型が一致しないチャネル接続でコンパイルエラー
+- 複数DSL間での非同期メッセージパッシング動作
+- バックプレッシャー機構の基本動作確認
+
+**技術詳細**:
+```reml
+// Phase 2で実装する型安全チャネル
+struct TypedChannel<S: Send, R: Receive> {
+  internal_channel: AsyncChannel<Bytes>,
+  send_codec: Codec<S, Bytes>,
+  recv_codec: Codec<Bytes, R>,
+}
+```
+
+##### Phase 3: DSL制御コンビネーター (4-8ヶ月)
+
+**目標**: パーサーコンビネーター風のDSL制御API
+
+**対象仕様**: Core.Parse コンビネーター設計の応用
+
+**実装項目**:
+- DSL制御プリミティブ (`sequence_dsls`, `parallel_dsls`, `choose_dsl`)
+- 障害処理コンビネーター (`attempt_dsl`, `recover_dsl`)
+- 実用的制御パターンの標準ライブラリ
+- パフォーマンス最適化 (遅延評価、最適化パス)
+
+**成功指標**:
+- Core.Parseと同様の合成可能性を実現
+- 複雑なDSL制御フローが簡潔に記述可能
+- 障害時の適切な分離と回復動作
+
+**技術詳細**:
+```reml
+// Phase 3で実装する制御コンビネーター
+fn parallel_dsls<A, B>(
+  dsl_a: DSLSpec<A>,
+  dsl_b: DSLSpec<B>
+) -> DSLSpec<(A, B)> = {
+  DSLSpec::new(|runtime| async {
+    let future_a = dsl_a.spawn(runtime.clone());
+    let future_b = dsl_b.spawn(runtime.clone());
+    try_join!(future_a, future_b)
+  })
+}
+```
+
+##### Phase 4: リアクティブストリーム統合 (6-10ヶ月)
+
+**目標**: 適応的フロー制御とストリーム処理
+
+**実装項目**:
+- リアクティブDSLストリーム (`DslStream<T>`)
+- ストリーム演算子 (`map_stream`, `filter_stream`, `buffer_stream`)
+- バックプレッシャー制御アルゴリズム
+- ストリーム合成とフロー最適化
+
+**成功指標**:
+- 高負荷時の適応的バックプレッシャー動作
+- ストリーム演算子による柔軟なデータ変換
+- メモリ使用量の効率的制御
+
+##### Phase 5: 監視・診断統合 (8-12ヶ月)
+
+**目標**: Core.Diagnosticsとの完全統合
+
+**対象仕様**: [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md)
+
+**実装項目**:
+- DSL実行メトリクス収集
+- 分散トレーシング機能
+- ヘルスチェック自動化
+- 構造化ログとの統合
+
+**成功指標**:
+- リアルタイムでのDSL性能監視
+- 障害時の詳細な診断情報出力
+- 監査ログによる実行追跡可能性
+
+#### 4.5.2 性能最適化戦略
+
+##### コンパイル時最適化
+
+**依存関係解析最適化**:
+- コンパイル時での依存関係グラフ分析
+- 不要な同期ポイントの除去
+- 並列実行可能パスの自動検出
+
+```reml
+// コンパイル時依存関係最適化例
+conductor optimized_flow {
+  // 自動的に並列実行されるDSL群
+  independent_dsls: [dsl_a, dsl_b, dsl_c] = parallel_independent_execution
+
+  // 依存関係に基づく最適な実行順序
+  dependent_chain: dsl_d |> dsl_e |> dsl_f = optimized_sequential_execution
+}
+```
+
+##### 実行時最適化
+
+**適応的リソース管理**:
+- DSL実行パターンの学習
+- 動的リソース配分調整
+- ホットパス検出と特化最適化
+
+**ゼロコピー最適化**:
+- チャネル間でのデータコピー最小化
+- 共有メモリを活用した効率転送
+- 大容量データの参照渡し最適化
+
+```reml
+// ゼロコピー最適化の実装例
+fn zero_copy_transfer<T>(
+  data: &T,
+  channel: &Channel<&T, &T>
+) -> Future<Result<(), TransferError>>
+where T: SharedMemoryCompatible
+```
+
+##### 並行制御最適化
+
+**ロックフリーアルゴリズム**:
+- Compare-and-Swap (CAS) ベースの制御構造
+- Wait-freeなデータ構造の活用
+- 競合回避アルゴリズムの導入
+
+**NUMA対応**:
+- プロセッサ親和性を考慮したDSL配置
+- メモリアクセスパターンの最適化
+- キャッシュ効率を考慮した実行戦略
+
+#### 4.5.3 品質保証戦略
+
+##### テスト戦略
+
+**単体テスト**:
+- 各DSL制御コンビネーターの動作検証
+- エラー処理パスの網羅的テスト
+- 性能特性の回帰テスト
+
+**統合テスト**:
+- 複数DSL間の連携動作確認
+- 障害シナリオでの回復テスト
+- 負荷テストによる性能検証
+
+**プロパティベーステスト**:
+- DSL制御の不変条件検証
+- ランダム入力に対する堅牢性確認
+- コンビネーター合成の数学的性質検証
+
+##### 継続的性能監視
+
+**ベンチマーク自動化**:
+- CI/CDパイプラインでの性能回帰検出
+- 実用ワークロードでの性能測定
+- リソース使用効率の継続追跡
+
+**プロダクション監視**:
+- リアルタイム性能ダッシュボード
+- 異常検知とアラート機能
+- 性能劣化の早期警告システム
 
 ## 5. 統合的ビジョンと実装ロードマップ
 
