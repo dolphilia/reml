@@ -131,6 +131,7 @@ fn foreign_slice<T>(ptr: ForeignPtr<T>, len: usize) -> Result<ForeignSlice<T>, F
 fn copy_from_foreign<T: Copy>(ptr: ForeignPtr<T>) -> Result<T, FfiError>       // `effect {unsafe, mem}`
 fn copy_to_foreign<T: Copy>(value: T, ptr: ForeignPtr<T>) -> Result<(), FfiError> // `effect {unsafe}`
 ```
+
 - `call_ffi` は `unsafe` を要求し、境界で `AuditEnvelope` を付与することが推奨される。
 
 ## 3. Core.Unsafe の指針
