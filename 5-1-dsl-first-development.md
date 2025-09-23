@@ -615,7 +615,7 @@ Core.Runtime      // ランタイム層：capability management
 
 #### 4.4.2 Conductor構文仕様
 
-従来の`orchestrate`構文を改良し、Remlの言語特性を最大限活用した`conductor`構文を導入します：
+従来の`orchestrate`構文を改良し、Remlの言語特性を最大限活用した`conductor`構文を導入します。この設計は **宣言的制御**（Kubernetesの概念）と **合成可能性**（パーサーコンビネーターの概念）を統合したものです：
 
 ```reml
 // 改良されたDSL制御構文
@@ -672,9 +672,36 @@ conductor game_application {
 }
 ```
 
+##### 構文要素の技術的解説
+
+**DSL定義部分**では、各DSLをCore.Parseの`rule()`から開始し、パイプライン演算子(`|>`)で機能を合成します。これにより：
+
+- **`rule("config", ...)`**: Core.Parseのルール定義と同様に、DSLに名前を付けてPackratメモ化とトレーシングに使用
+- **`with_capabilities(...)`**: [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md)と統合し、実行時権限を宣言的に制限
+- **`with_resource_limits(...)`**: Kubernetes Podの概念を応用し、メモリ・CPU使用量の上限を設定
+- **`depends_on([...])`**: 依存関係をコンパイル時に検証し、起動順序と障害伝播を制御
+
+**通信チャネル部分**では、DSL間の型安全な通信路を定義します：
+
+- **`~>`演算子**: 一方向の型安全データフローを表現（Rustのチャネル記法を参考）
+- **`ConfigChannel<Settings, GameConfig>`**: 送信型と受信型を明示し、型変換を型システムで保証
+- **自動的な依存関係推論**: チャネル定義から暗黙的な依存関係を推論し、実行順序を最適化
+
+**実行戦略部分**では、現代的なオーケストレーション技術を統合：
+
+- **`adaptive_parallel`**: DAGsterのasset-centricアプローチを参考に、依存関係を満たしつつ最大並列度で実行
+- **`BackpressurePolicy.adaptive`**: リアクティブストリームの概念を応用し、負荷に応じた適応的フロー制御
+- **`ErrorPolicy.isolate_with_circuit_breaker`**: Erlangの"Let it crash"哲学とNetflixのHystrixパターンを統合
+
+**監視・診断部分**では、Remlの横断テーマと統合：
+
+- **`every("5s") using dsl_health_probe`**: Kubernetesのliveness/readiness probeに相当
+- **メトリクス収集**: Prometheusスタイルのメトリクス体系をReml型システムで型安全に定義
+- **`when(RunConfig.trace_enabled)`**: OpenTelemetryの概念をRemlの条件コンパイルで効率化
+
 #### 4.4.3 型安全チャネルシステム
 
-DSL間通信における型安全性を保証するチャネルシステムを提供します：
+DSL間通信における型安全性を保証するチャネルシステムを提供します。この設計は **アクターモデル**（Erlang/Akka）の型安全メッセージングと **リアクティブストリーム**のバックプレッシャー機構を統合したものです：
 
 ```reml
 // チャネル型定義
@@ -705,6 +732,41 @@ fn split_channel<T>(
   channel: DslReceiver<T>,
   predicate: T -> Bool
 ) -> (DslReceiver<T>, DslReceiver<T>)                        // `effect {io.async}`
+```
+
+##### 型安全性の技術的実現
+
+**`Channel<Send, Recv>`構造体**は、送信側と受信側で異なる型を許可することで **型変換を明示的**に扱います：
+
+- **`Send: Serialize, Recv: Deserialize`**: trait境界により、シリアライゼーション可能な型のみ通信を許可
+- **`Codec<Send, Recv>`**: 型変換ロジックを分離し、チャネル層での型安全性を保証
+- **`buffer_size`と`overflow_policy`**: リアクティブストリームのバックプレッシャー概念を適用し、メモリ使用量を制御
+
+**効果システムとの統合**により、チャネル操作の副作用を明示：
+
+- **`effect {io.async}`**: 非同期I/O操作であることを型レベルで表現
+- **`Future<Result<T, Error>>`**: Go言語のチャネルとRustの結果型を統合した安全なエラーハンドリング
+
+##### チャネル合成の設計思想
+
+**`merge_channels`と`split_channel`**は、Core.Parseコンビネーターの概念をチャネルシステムに応用：
+
+- **`merge_channels`**: 複数チャネルを単一ストリームに合流（`choice`コンビネーターに相当）
+- **`split_channel`**: 条件による分岐処理（`or`コンビネーターの逆操作）
+
+この設計により、複雑なDSL間通信パターンを **小さなプリミティブの合成**で実現可能になります：
+
+```reml
+// 実用的なチャネル合成例
+let error_handler =
+  split_channel(main_channel, |msg| msg.is_error())
+  |> first()  // エラーメッセージのみ取得
+  |> map_channel(|err| LogEntry::from_error(err))
+
+let normal_flow =
+  split_channel(main_channel, |msg| !msg.is_error())
+  |> second()  // 正常メッセージのみ取得
+  |> buffer_channel(size: 100, policy: "drop_oldest")
 ```
 
 #### 4.4.4 パーサーコンビネーター統合によるDSL制御
@@ -750,6 +812,8 @@ fn recover_dsl<T>(
 
 ##### 実用的な制御パターン
 
+Core.Parseコンビネーターの概念をDSL制御に応用することで、**数学的に健全で合成可能**な制御パターンを実現します。以下は実際のユースケースに対応した制御パターンです：
+
 ```reml
 // パイプライン制御（left-to-rightの流れ）
 let data_pipeline =
@@ -778,9 +842,37 @@ let fallback_chain =
   |> or(slow_but_reliable_dsl)
 ```
 
+##### 制御パターンの技術的解説
+
+**パイプライン制御**は **Unix pipeline**の概念をDSL制御に適用：
+
+- **`|>`演算子**: 左から右への明確なデータフロー（Remlの設計原則「読みやすい」に対応）
+- **型安全性**: 各段階の出力型が次の段階の入力型と一致することをコンパイル時に保証
+- **段階的最適化**: 各DSLの実行時統計に基づく動的最適化が可能
+
+**分岐制御**は **関数型プログラミング**のパターンマッチングをDSL実行時判定に拡張：
+
+- **`condition_checker`**: 実行時条件を評価するDSL（例：システム負荷、データサイズ、利用可能リソース）
+- **`choose_dsl`**: Core.Parseの`or`コンビネーターに相当し、条件に基づく動的DSL選択
+- **型統一**: `then_dsl`と`else_dsl`の結果型が同一であることを型システムで保証
+
+**冗長化制御**は **分散システム**の可用性向上技術を統合：
+
+- **`parallel_dsls`**: 複数DSLの同時実行（Akkaのスーパーバイザー戦略を参考）
+- **`first_success`**: 最初に成功したDSLの結果を採用（レース条件の活用）
+- **リソース効率**: 成功時点で他のDSLを適切に停止し、リソース使用量を最適化
+
+**段階的フォールバック**は **回路ブレーカーパターン**（Netflix Hystrix）を応用：
+
+- **`attempt_dsl`**: Core.Parseの`attempt`に相当し、失敗時の安全な巻き戻し
+- **`or`チェーン**: 複数の代替戦略を順次試行（fast → medium → slow）
+- **性能特性**: 高速処理優先で、段階的に確実性を重視する戦略
+
+この設計により、**障害に強く性能効率の良いDSL制御**が宣言的な記述で実現できます。
+
 #### 4.4.5 リアクティブストリーム統合
 
-DSL間でのデータ流れをリアクティブストリームとして管理し、適応的なフロー制御を実現します：
+DSL間でのデータ流れをリアクティブストリームとして管理し、適応的なフロー制御を実現します。この設計は **Project Reactor**と **RxJava**の知見を活用し、RemlのCore.Parseコンビネーターの概念と統合したものです：
 
 ```reml
 // リアクティブDSLストリーム
@@ -817,6 +909,61 @@ fn with_backpressure<T>(
   policy: BackpressurePolicy
 ) -> DslStream<T>                                             // `effect {io.async}`
 ```
+
+##### リアクティブプログラミングの技術的実現
+
+**`DslStream<T>`構造体**は、DSLの実行結果を **無限ストリーム**として扱います：
+
+- **`source: DSLSpec<T>`**: ストリームの起点となるDSL定義（Publisher-SubscriberパターンのPublisher）
+- **`operators: [StreamOperator<T>]`**: 変換演算子のチェーン（Project Reactorの**Operator Chaining**を応用）
+- **`sink: StreamSink<T>`**: ストリームの終点（Subscriber相当）
+
+**ストリーム演算子の設計思想**：
+
+- **`map_stream`**: 関数型プログラミングの`map`をストリーム処理に拡張
+- **`filter_stream`**: 条件フィルタリング（Reactivex Observableの概念を継承）
+- **`merge_streams`**: 複数ストリームの合流（Core.Parseの`choice`に相当）
+- **`buffer_stream`**: 時間窓またはサイズ窓でのバッファリング
+
+##### バックプレッシャー機構の詳細
+
+**適応的フロー制御**は、リアクティブストリーム仕様の核心機能です：
+
+```reml
+// バックプレッシャー戦略の実装例
+enum BackpressurePolicy {
+  Drop,              // 新規データを破棄（最新データ優先）
+  DropOldest,        // 古いデータを破棄（最新データ優先）
+  Buffer(size: usize), // 指定サイズまでバッファ
+  Block,             // 上流を一時停止（同期的制御）
+  Adaptive {         // 負荷に応じた動的制御
+    high_watermark: usize,
+    low_watermark: usize,
+    strategy: AdaptiveStrategy
+  }
+}
+```
+
+**技術的利点**：
+
+1. **メモリ安全性**: バッファオーバーフローの防止
+2. **CPU効率**: 不要な計算の回避
+3. **レスポンス性**: 高負荷時の応答性維持
+4. **安定性**: システム全体の安定動作保証
+
+##### Core.Parseとの概念的統合
+
+リアクティブストリームの演算子をCore.Parseコンビネーターと対応付け：
+
+| リアクティブストリーム | Core.Parseコンビネーター | 意味 |
+|---|---|---|
+| `map_stream` | `map` | データ変換 |
+| `filter_stream` | 条件付き`or` | 選択的処理 |
+| `merge_streams` | `choice` | 複数入力の統合 |
+| `buffer_stream` | `many` | 複数要素の集約 |
+| `with_backpressure` | `cut` | フロー制御の確定 |
+
+この統合により、**パーサーコンビネーターの数学的健全性**をストリーム処理にも適用できます。
 
 #### 4.4.6 監視・診断システム
 
@@ -878,6 +1025,9 @@ fn log_dsl_event(
 - 単純な依存関係グラフの構築が可能
 
 **技術詳細**:
+
+このフェーズでは、既存のCore.Parseコンビネーターを活用して`conductor`構文専用のパーサーを構築します。既存の[2.2 コア・コンビネータ](2-2-core-combinator.md)で定義された`rule`, `keyword`, `symbol`, `many`などを組み合わせることで、新しい構文を効率的に実装できます：
+
 ```reml
 // Phase 1で実装するパーサー
 let conductor_parser: Parser<ConductorSpec> =
@@ -890,6 +1040,11 @@ let conductor_parser: Parser<ConductorSpec> =
     .map(ConductorSpec::new)
   )
 ```
+
+**実装における技術的課題**：
+- **パイプライン演算子(`|>`)の右結合性**: Remlの既存演算子優先度との整合性確保
+- **依存関係グラフの循環検出**: コンパイル時でのデッドロック防止
+- **型推論の拡張**: DSL定義から`DSLSpec<T>`型への自動変換
 
 ##### Phase 2: 型安全チャネルシステム (2-6ヶ月)
 
@@ -909,6 +1064,9 @@ let conductor_parser: Parser<ConductorSpec> =
 - バックプレッシャー機構の基本動作確認
 
 **技術詳細**:
+
+型安全チャネルの実装では、**ゼロコスト抽象化**（Rustの概念）を適用し、コンパイル時の型検証と実行時の最適化を両立させます。内部的には非同期チャネルを使用し、型変換レイヤーで安全性を保証します：
+
 ```reml
 // Phase 2で実装する型安全チャネル
 struct TypedChannel<S: Send, R: Receive> {
@@ -917,6 +1075,11 @@ struct TypedChannel<S: Send, R: Receive> {
   recv_codec: Codec<Bytes, R>,
 }
 ```
+
+**実装における技術的課題**：
+- **型変換の最適化**: 不要なシリアライゼーション・デシリアライゼーションの除去
+- **バックプレッシャーの伝播**: 型安全レイヤーを透過した圧力制御機構
+- **エラーハンドリングの統合**: 通信エラーと型エラーの統一的処理
 
 ##### Phase 3: DSL制御コンビネーター (4-8ヶ月)
 
@@ -936,6 +1099,9 @@ struct TypedChannel<S: Send, R: Receive> {
 - 障害時の適切な分離と回復動作
 
 **技術詳細**:
+
+DSL制御コンビネーターの実装では、**モナド則**（関数型プログラミングの数学的基盤）を満たすことで、合成時の予測可能性を保証します。Core.Parseコンビネーターと同様の設計原則により、複雑な制御フローも直感的に記述できます：
+
 ```reml
 // Phase 3で実装する制御コンビネーター
 fn parallel_dsls<A, B>(
@@ -949,6 +1115,11 @@ fn parallel_dsls<A, B>(
   })
 }
 ```
+
+**実装における技術的課題**：
+- **モナド則の検証**: `bind`, `return`, `join`操作の数学的正確性
+- **リソース管理**: 並列実行時のメモリ・CPU使用量の制御
+- **障害伝播**: 部分的失敗時の適切なクリーンアップ処理
 
 ##### Phase 4: リアクティブストリーム統合 (6-10ヶ月)
 
@@ -964,6 +1135,15 @@ fn parallel_dsls<A, B>(
 - 高負荷時の適応的バックプレッシャー動作
 - ストリーム演算子による柔軟なデータ変換
 - メモリ使用量の効率的制御
+
+**技術詳細**:
+
+このフェーズでは**Reactive Streams仕様**（Java 9のFlow API）を参考に、DSL実行結果を無限ストリームとして扱う機構を実装します。**Publisher-Subscriber**パターンを基盤とし、型安全なバックプレッシャー制御を実現：
+
+**実装における技術的課題**：
+- **メモリリーク防止**: 長時間実行ストリームでのリソース管理
+- **並行性の制御**: 複数ストリーム間での適切な同期
+- **性能測定**: リアルタイムでのスループット・レイテンシ監視
 
 ##### Phase 5: 監視・診断統合 (8-12ヶ月)
 
@@ -981,6 +1161,15 @@ fn parallel_dsls<A, B>(
 - リアルタイムでのDSL性能監視
 - 障害時の詳細な診断情報出力
 - 監査ログによる実行追跡可能性
+
+**技術詳細**:
+
+このフェーズでは**OpenTelemetry**の概念をRemlの型システムと統合し、DSL実行の完全な可観測性を実現します。[3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md)で定義されたメトリクス・トレーシング機能との緊密な連携により、本番運用での信頼性を確保：
+
+**実装における技術的課題**：
+- **オーバーヘッド最小化**: 監視機能が本来のDSL性能に与える影響の抑制
+- **分散トレーシング**: 複数DSL間を跨ぐリクエスト追跡の実現
+- **アラート統合**: 異常検知から自動対応までの一貫したワークフロー
 
 #### 4.5.2 性能最適化戦略
 
