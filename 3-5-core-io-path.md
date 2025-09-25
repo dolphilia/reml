@@ -56,6 +56,7 @@ pub enum IoErrorKind = {
   UnexpectedEof,
   OutOfMemory,
   SecurityViolation,
+  UnsupportedPlatform,
 }
 
 pub type IoContext = {
@@ -64,6 +65,7 @@ pub type IoContext = {
   timestamp: Timestamp,
 }
 ```
+- Windows 固有 API や POSIX 拡張に依存する操作は、対象プラットフォームで提供されない場合に `IoErrorKind::UnsupportedPlatform` を返す。診断 `target.config.unsupported_value`（[2-5](2-5-error.md#b-9-条件付きコンパイル関連診断)）と連動し、`notes` に要求した機能と検出済みプラットフォームを記録する。
 - `with_reader` はファイルを開きクロージャへ渡した後、`defer` 相当で自動的に閉じる。
 
 ## 3. ファイルとストリーム
@@ -122,7 +124,23 @@ fn sandbox_path(path: Path, root: Path) -> Result<Path, SecurityError>          
 fn is_safe_symlink(path: Path) -> Result<Bool, IoError>                           // `effect {io, security}`
 ```
 
-### 4.1 ファイル監視（オプション）
+### 4.3 文字列ユーティリティ（クロスプラットフォーム）
+
+```reml
+pub enum PathStyle = Native | Posix | Windows
+
+fn normalize_path(text: Str, style: PathStyle = Native) -> Result<Str, PathError>    // `@pure`
+fn join_paths(parts: List<Str>, style: PathStyle = Native) -> Result<Str, PathError>  // `@pure`
+fn is_absolute_str(text: Str, style: PathStyle = Native) -> Bool                      // `@pure`
+```
+
+* `Native` は `platform_info().os`（[3-8](3-8-core-runtime-capability.md)）に基づいてセパレータとドライブ表現を選択する。`Posix` は `/` 区切り、`Windows` は `\` 区切りとドライブレター/UNC を許可する。
+* `normalize_path` は重複セパレータと `.` / `..` を畳み込み、危険なドライブプレフィックスを拒否する。結果は選択した `style` に揃えた文字列で返す。`Path` へ変換する場合は `path(normalize_path(...))` を利用する。
+* `join_paths` は `parts` の各要素を検証し、`style` に従ってエスケープやセパレータ補完を行う。絶対パスが途中に現れた場合は先頭に揃えて後続部分を安全に結合する。
+* `is_absolute_str` は入力が完全修飾パスかどうかを判定する。Windows ではドライブレター (`C:`) や UNC (`\\server\\share`) を認識する。
+* 文字列ユーティリティでエラーが発生した場合は `PathError` に `PathErrorKind::InvalidEncoding` / `UnsupportedPlatform` を設定し、併せて `IoErrorKind::UnsupportedPlatform` へ変換可能とする。IDE へは `Diagnostic.extensions["cfg"].evaluated` を通じてプラットフォーム差異を説明することを推奨する。
+
+### 4.4 ファイル監視（オプション）
 
 ```reml
 type WatchEvent = Created(Path) | Modified(Path) | Deleted(Path)

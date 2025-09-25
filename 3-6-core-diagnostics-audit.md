@@ -229,7 +229,23 @@ fn attach_channel_link(span: TraceSpan, channel_id: ChannelId, direction: Channe
 - `attach_channel_link` はチャネル間リンク（`~>`）を可視化するメタデータを追加する。
 - `DslOutcome` は成功/失敗/フォールバック経路を表し、`finish_dsl_span` がメトリクス更新と同期する。
 
+### 6.3 ターゲット診断メトリクス
+
+```reml
+fn record_target_diagnostics(metrics: DslMetricsHandle, diag: Diagnostic) -> () = {
+  let target_errors = diag.extensions.get("cfg").and_then(|cfg| cfg.get("target_config_errors")).unwrap_or(0);
+  if target_errors > 0 {
+    metrics.error_rate.increment_with_tag("target", target_errors);
+  }
+}
+```
+
+- `Diagnostic.extensions["cfg"]` に格納された `target_config_errors` や `effects_cfg_contract` を読み取り、CI でのポータビリティ回帰を検知する。
+- `guides/ci-strategy.md` に記載の構造化ログと併用し、`RunConfig.extensions["target"]` の変更が期待どおりの挙動を保っているかを定期的に可視化する。
+- 重大なポータビリティ診断が発生した場合は `AuditEnvelope.metadata["target"]` にターゲット概要を付与し、監査ログやダッシュボードで迅速に追跡できるようにする。
+
 ## 7. 使用例（CLI エラー報告）
+
 
 ```reml
 use Core;

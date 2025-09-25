@@ -8,8 +8,8 @@
 | --- | --- |
 | ステータス | 正式仕様 |
 | 効果タグ | `@pure`, `effect {runtime}`, `effect {audit}`, `effect {unsafe}`, `effect {security}` |
-| 依存モジュール | `Core.Prelude`, `Core.Diagnostics`, `Core.Numeric & Time`, `Core.IO`, `Core.Config` |
-| 相互参照 | [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3.9 Core Async / FFI / Unsafe](3-9-core-async-ffi-unsafe.md) |
+| 依存モジュール | `Core.Prelude`, `Core.Diagnostics`, `Core.Numeric & Time`, `Core.IO`, `Core.Config`, `Core.Env` |
+| 相互参照 | [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3.9 Core Async / FFI / Unsafe](3-9-core-async-ffi-unsafe.md), [3-10 Core Env & Platform Bridge](3-10-core-env.md) |
 
 ## 1. Capability Registry の基本構造
 
@@ -55,6 +55,58 @@ pub enum IsolationLevel = None | Sandboxed | FullIsolation
 
 fn verify_capability_security(handle: CapabilityHandle, security: CapabilitySecurity) -> Result<(), SecurityError>
 ```
+
+### 1.3 プラットフォーム情報と能力 {#platform-info}
+
+```reml
+pub type PlatformInfo = {
+  os: OS,
+  arch: Architecture,
+  family: TargetFamily,
+  variant: Option<Str>,
+  features: Set<Str>,
+  capabilities: Set<RuntimeCapability>,
+}
+
+pub enum OS = Windows | Linux | MacOS | FreeBSD | Wasm | Other(Str)
+pub enum Architecture = X64 | ARM64 | X86 | ARM | WASM32 | RISCV64 | Other(Str)
+pub enum TargetFamily = Unix | Windows | Wasm | Other(Str)
+
+pub enum RuntimeCapability = {
+  SIMD,
+  HardwareRng,
+  CryptoExtensions,
+  GPU,
+  ThreadLocal,
+  Vector512,
+}
+
+fn platform_info() -> PlatformInfo                       // `effect {runtime}`
+fn platform_features() -> Set<Str>                        // `effect {runtime}`
+fn platform_capabilities() -> Set<RuntimeCapability>      // `effect {runtime}`
+fn platform_variant() -> Option<Str>                      // `effect {runtime}`
+fn has_capability(cap: RuntimeCapability) -> Bool         // `effect {runtime}`
+fn family_tag(info: PlatformInfo) -> Str                  // `@pure`
+```
+
+* `PlatformInfo` は `Core.Env`（[3-10](3-10-core-env.md)）や `RunConfig.extensions["target"]` と同期させる。CLI が指定したターゲットと実行時情報が乖離した場合は `target.config.unsupported_value` を発行し、`Diagnostic.extensions["cfg"].evaluated` に両者を記録する。
+* `features` は `@cfg(feature = "...")` と連携し、ビルドプロファイルや CLI オプションで有効にした拡張機能の集合を表す。`capabilities` にはハードウェア検出結果を格納し、`RunConfig` の最適化スイッチ（Packrat/左再帰/トレース等）の既定値に利用できる。
+* `family_tag` は `"unix"` や `"windows"` といったスカラー文字列を返し、`RunConfig.extensions["target"]` の `family` フィールドを埋める際に使用する。
+* Capability Registry は `register("platform", handle)` を通じてプラットフォーム情報提供者を差し替え可能。未登録時はホスト依存の既定実装が自動登録される。
+* `platform_features()` はビルド時フィーチャ集合を直接返し、`platform_capabilities()` は検出済みハードウェア機能（`RuntimeCapability`）を提供する。`platform_variant()` には libc バージョンやベンダー拡張など追加識別子を格納できる。
+* ランタイム最適化時は次のように利用する：
+
+```reml
+let info = platform_info();
+if info.capabilities.contains(RuntimeCapability::SIMD) {
+  enable_simd_pipeline();
+}
+if platform_features().contains("packrat_default") {
+  cfg.extensions["target"].features.insert("packrat_default");
+}
+```
+
+* `FfiCapability`（[3-9](3-9-core-async-ffi-unsafe.md)）は `platform_info()` と `resolve_calling_convention` を参照し、ターゲットごとの ABI を自動選択する。Capability Registry でプラットフォーム情報を更新すると FFI バインディングも同時に反映される。
 
 ### 1.1 CapabilityError
 

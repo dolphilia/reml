@@ -97,7 +97,35 @@ enum AdaptiveStrategy = DropNewest | SlowProducer | SignalDownstream
 - `ExecutionPlan` は `conductor` の `execution { ... }` ブロックと 1:1 で対応し、スケジューラーへ渡す実行ポリシーを保持する。
 - `with_execution_plan` は DSL 定義時に計画を合成するコンビネータであり、バックプレッシャー制御やエラー隔離を `Core.Async` ランタイムへ伝える。
 
+### 1.5 プラットフォーム適応スケジューラ
+
+```reml
+fn default_scheduler_config() -> SchedulerConfig = {
+  let info = platform_info();
+  let hints = scheduler_hints(info); // Core.Async が提供する CPU/IO 推奨値
+  SchedulerConfig {
+    worker_threads: Some(if has_capability(RuntimeCapability::Vector512) {
+      hints.prefer_physical_threads
+    } else {
+      hints.prefer_logical_threads
+    }),
+    max_blocking_threads: if platform_features().contains("io.blocking.strict") {
+      Some(hints.blocking_guard_threads)
+    } else {
+      None
+    },
+    io_driver: info.family == TargetFamily::Unix,
+    time_driver: true,
+  }
+}
+```
+
+* `platform_info()` は `Core.Runtime` から取得した実行環境を返し、`RuntimeCapability` に応じてスケジューラ構成を切り替えられる。
+* `platform_features()` で `RunConfig.extensions["target"].features` と同期したフラグ（例: `feature = "io.blocking.strict"`）を参照し、DSL ごとのバックプレッシャ設定やタスクプールサイズを調整する。
+* Core.DSL モジュールはこの関数を利用して `ExecutionPlan` の既定値を決定し、`@cfg` で有効化した機能と矛盾しないようにする。
+
 ### 1.1 AsyncError
+
 
 ```reml
 pub type AsyncError = {
@@ -129,6 +157,7 @@ struct FfiSignature = { params: [FfiType], return_type: FfiType }
 struct FfiBinding   = { name: Str, signature: FfiSignature, conventions: CallingConvention }
 struct TypedForeignFn = { call: fn(Bytes) -> Result<Bytes, FfiError>, symbol: ForeignFunction, metadata: FfiBinding }
 struct FfiCapability = { call_function: fn(SymbolHandle, Bytes) -> Result<Bytes, FfiError>, sandbox: Option<FfiSandbox>, audit: AuditHandle }
+struct LibraryMetadata = { path: Path, preferred_convention: Option<CallingConvention>, required_capabilities: Set<RuntimeCapability> }
 ```
 
 - `auto_bind` は署名情報からシリアライザ/デシリアライザを自動生成し、返却された `TypedForeignFn` 経由で型安全な `call` を提供する。
@@ -166,7 +195,22 @@ let add_numbers = foreign_fn!("math", "add", "fn(i32, i32) -> i32");
 let result = add_numbers.call([42, 24])?; // タイプセーフな呼び出し
 ```
 
-### 2.2 メモリ管理と所有権
+### 2.2 呼出規約とプラットフォーム適応
+
+```reml
+pub enum CallingConvention = C | StdCall | FastCall | SysV | WasmSystemV | Custom(Str)
+
+fn resolve_calling_convention(target: PlatformInfo, foreign: LibraryMetadata) -> Result<CallingConvention, FfiError> // `effect {runtime}`
+fn link_foreign_library(path: Path, target: PlatformInfo) -> Result<LibraryHandle, FfiError> // `effect {ffi}`
+fn with_abi_adaptation(fn_ptr: ForeignFunction, conv: CallingConvention) -> Result<ForeignFunction, FfiError> // `effect {ffi, unsafe}`
+```
+
+* 既定では `RunConfig.extensions["target"]` を用いて呼出規約を決定し、`platform_info()`（[3-8](3-8-core-runtime-capability.md)）が提供する実行時情報と突き合わせる。
+* ターゲットの `family` が `Windows` かつ `arch = X64` の場合は `StdCall` を採用し、`Unix` ファミリでは `SysV` を既定とする。WASM ターゲットでは `WasmSystemV` を利用し、サポート外の場合は `FfiErrorKind::UnsupportedPlatform` を返す。
+* `resolve_calling_convention` は `LibraryMetadata` に含まれる `preferred_convention` を尊重しつつ、実行環境で利用できない場合は `target.config.unsupported_value` 診断を併せて発行する。診断は `Diagnostic.extensions["cfg"].evaluated` にターゲット値とライブラリ要求を記録する。
+* `with_abi_adaptation` は必要に応じてシム層を挿入し、レジスタ引数配置やスタック整列を調整する。性能への影響を抑えるため、変換は初回呼び出し時にキャッシュする。
+
+### 2.3 メモリ管理と所有権
 
 ```reml
 pub type ForeignPtr<T> = {

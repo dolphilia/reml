@@ -55,6 +55,51 @@ type RunConfigExtensions = Map<Str, Any>
 * `legacy_result` は旧来の戻り値形式を要求するツールチェーンとの互換用スイッチ。
 * 追加の燃料制御や GC 連携、ストリーミング用バッファ、LSP 設定などは `extensions` に格納されるモジュール固有設定として扱い、必要なときだけ読み込む（推奨ネームスペースは [2-1](2-1-parser-type.md) を参照）。
 
+#### B-2-1. ターゲット情報拡張 `extensions["target"]`
+
+* `@cfg` やバックエンド切替に必要なターゲット情報は `RunConfig.extensions["target"]` に格納する。既定のキー構造は以下の通り。
+
+```reml
+RunConfig.extensions["target"] = {
+  os: "windows" | "linux" | "macos" | "freebsd" | "other",
+  family: "unix" | "windows" | "wasm" | Str,
+  arch: "x86_64" | "aarch64" | "wasm32" | Str,
+  env: Option<Str>,                 // msvc / gnu などツールチェーン識別子
+  features: Set<Str>,               // ビルド時フィーチャ
+  extra: Map<Str, Str>              // プロジェクト固有キー
+}
+```
+
+* CLI やビルドツールは上記情報を `RunConfig` へ注入し、パーサーはパース段階で `@cfg` に渡す。未設定の場合は全キーが未定義とみなされ、`@cfg` は `target.config.unknown_key` を報告する。
+* `extra` 以下のキーは `@cfg` から参照可能だが、辞書登録時に `RunConfig::register_target_key(name, allowed_values)` で値テーブルを宣言し、誤字を防ぐ。
+* 実行時にターゲットを切り替える場合は `RunConfig.extensions["target"].features` を差し替え、`platform_info()`（[3-8](3-8-core-runtime-capability.md)）と同期させる。
+
+* `RunConfig.extensions["target"].diagnostics = true` を設定すると、`@cfg` 評価の詳細ログを `Diagnostic.extensions["cfg"]` へ出力する。
+
+#### B-2-2. プラットフォーム適応設定サンプル
+
+```reml
+fn specialise_config(profile: BuildProfile) -> RunConfig = {
+  let info = platform_info();
+  let mut cfg = RunConfig { extensions = { "target": default_target(profile) } };
+  if has_capability(RuntimeCapability::SIMD) {
+    cfg.packrat = true;
+  }
+  if platform_features().contains("io.blocking.strict") {
+    cfg.extensions["target"].extra.insert("io.blocking", "strict");
+    cfg.merge_warnings = false; // ブロッキング時の警告を逐次報告
+  }
+  if info.family == TargetFamily::Wasm {
+    cfg.left_recursion = "off";
+  }
+  cfg
+}
+```
+
+* `platform_info()` と `platform_features()` を併用し、ランタイム最適化（Packrat 有効化/無効化、左再帰サポート切替など）をプラットフォームごとに調整する。
+* `default_target(profile)` は `Core.Env.infer_target_from_env()` や CLI パラメータから構築した基準値であり、ここで追加した `extra` キーは `@cfg` による宣言切替と診断に利用できる。
+* WASM や一時的な実験ターゲットでは左再帰やブロッキング I/O を制限し、`guides/portability.md` のチェックリストに従って差異を記録する。
+
 * **空成功の繰返し**検出は必須（2.2 に準拠）。
 
 ### B-3. 期待集合の早期確定
@@ -127,6 +172,48 @@ fn with_trace<T>(p: Parser<T>, on_event: TraceEvent -> ()) -> Parser<T>
 * どの分岐が一度も走っていないかを `ParserId` 単位で可視化（テスト補助）。
 
 ---
+
+## G. 新ターゲット戦略（ドラフト）
+
+### G.1 WASM / WASI
+
+```reml
+fn wasm_run<T>(p: Parser<T>, bytes: Bytes, cfg: RunConfig) -> Result<T, Diagnostic> = {
+  let mut wasm_cfg = cfg;
+  wasm_cfg.left_recursion = "off";
+  wasm_cfg.packrat = false; // メモリ制約に合わせる
+  wasm_cfg.extensions["target"].extra.insert("wasi", "preview2");
+  run(p, bytes, wasm_cfg)
+}
+```
+
+* `target_family = "wasm"` の場合、Packrat/左再帰を既定で無効化し、`guides/runtime-bridges.md` の WASI サンドボックス指針に従って I/O を限定する。
+* エラー診断は `Diagnostic.extensions["cfg"].evaluated` に `wasi` プロファイルを記録し、ホストとの差異を監査可能にする。
+
+### G.2 ARM64 / 組み込み
+
+```reml
+fn specialise_for_arm64(cfg: RunConfig) -> RunConfig = {
+  let mut cfg = cfg;
+  cfg.extensions["target"].extra.insert("cache_policy", "conservative");
+  cfg.merge_warnings = false; // フラッシュ遅延を即時通知
+  cfg
+}
+```
+
+* ARM64 ではキャッシュ戦略やメモリ消費を抑えるため `RunConfig.extensions["target"].extra` に制約を記録し、`@cfg` 経由でヒープ確保・GC の挙動を切り替える。
+
+### G.3 クラウドネイティブ / コンテナ
+
+```reml
+fn container_profile(profile: &str) -> RunConfig = match profile {
+  | "serverless" -> RunConfig { packrat = false, merge_warnings = true, ..default }
+  | "latency"   -> RunConfig { packrat = true, left_recursion = "auto", ..default }
+  | _            -> default,
+}
+```
+
+* コンテナ上での実行を想定し、プロファイルごとに Packrat/左再帰や診断の集約ポリシーを切り替える。`guides/portability.md` のフェーズ指針に沿って追加ターゲットを段階的に導入する。
 
 ## F. ストリーミング＆インクリメンタル
 
@@ -203,4 +290,3 @@ fn with_trace<T>(p: Parser<T>, on_event: TraceEvent -> ()) -> Parser<T>
 - `ExecutionPlan.strategy` が `adaptive_parallel` の場合、ランナーは依存 DAG を解析し、Packrat/左再帰の設定を自動調整する。
 - `ExecutionPlan.backpressure` は `run` 実行時にチャネル深度監視を有効化し、メトリクス名 `dsl.in_flight`（[3-6 Core Diagnostics](3-6-core-diagnostics-audit.md)）へ数値を転送する。
 - DSLごとの成功/失敗は `RunConfig` の `extensions` を通じて `record_dsl_success` / `record_dsl_failure` に引き渡し、監査ログと性能指標を同期させる。
-

@@ -22,6 +22,7 @@ Reml はコア哲学（小さく強いコア・宣言的な操作・高品質な
 
 - **型安全な設定**：`Core.Config`（[3-7](3-7-core-config-data.md)）と CLI ガイドで、宣言 DSL → スキーマ検証 → 差分適用 → 実運用(Audit) の安全線を確立する。
 - **ツール連携**：`RunConfig.extensions["lsp"]` / 構造化ログ（[2-6](2-6-execution-strategy.md)）と IDE/LSP ガイドに加え、監査・メトリクス API（[3-4](3-4-core-numeric-time.md), [3-6](3-6-core-diagnostics-audit.md)）で共通 JSON メタデータを揃える。
+- **ターゲット適応**：`RunConfig.extensions["target"]` で OS/アーキテクチャ/フィーチャ情報を供給し、`@cfg`（[1-1](1-1-syntax.md#条件付きコンパイル属性-cfg)）と `platform_info()`（[3-8](3-8-core-runtime-capability.md)）を連動させて安全に分岐する。CLI/ビルドツールはここに整形済みターゲット情報を登録し、診断は `target.config.*` メッセージで誤設定を即座に指摘する。
 - **プラグイン拡張**：`ParserPlugin` / `CapabilitySet`（[2-1](2-1-parser-type.md):I 節）と DSL プラグインガイド、Capability Registry（[3-8](3-8-core-runtime-capability.md)）で外部 DSL の登録・互換・署名検証まで一貫して扱う。
 
 これらの柱は `0-2-project-purpose.md` の目的群と同期し、フェーズ更新時も設計意図を再確認できるよう整理されている。

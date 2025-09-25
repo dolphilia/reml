@@ -2,6 +2,12 @@
 
 > 目的：FFI・ホットリロード・差分適用など実行基盤との橋渡しを行う際の指針を示す。ここで言及する `config` / `audit` / `runtime` 等の効果タグは Reml コアの5効果に追加される拡張タグであり、監査プラグインが提供する属性として実装する。
 
+## 0. ターゲット同期と `@cfg`
+
+* `Core.Env.infer_target_from_env()`（[3-10](../3-10-core-env.md)）で得たターゲット情報を `RunConfig.extensions["target"]` へマージし、コンパイル時と実行時のプラットフォーム差異を監視する。
+* ランタイム起動時は `platform_info()`（[3-8](../3-8-core-runtime-capability.md)）を取得し、`extensions["target"].diagnostics=true` を設定すると `@cfg` 評価のログを `Diagnostic.extensions["cfg"]` に反映できる。
+* CI では `REML_TARGET`, `REML_FEATURES` 等の環境変数をセットし、`Core.Env` が期待通りに解決したか `target.config.*` 診断を確認する。誤ったプロファイルで起動した場合は即座に `Error` を発生させて差異を明らかにする。
+
 ## 1. FFI 境界の設計
 
 | 対象 | 推奨効果 | 安全対策 |
@@ -99,22 +105,29 @@ fn emit_metrics(event: Str, metrics: RuntimeMetrics) {
    - `emit_metrics("gpu.kernel", metrics)` でカーネルごとの遅延/エラー率を送信。
    - 重大なエラー時は `reml-run reload --rollback` を使用して安全な状態へ戻す。
 
-## 8. 組み込み運用フロー
-
-1. **レジスタ設定**
-   - `config` DSL でレジスタマップを宣言し、`Config.compare` で差分を検証。
-   - `runtime` 効果内で `unsafe` を使用し、アクセスは専用 DSL 経由で行う。
-
-2. **割込み制御**
-   - 割込みマスクを DSL で宣言し、更新時には `audit.log("interrupt.update", diff)` を記録。
-   - フェイルセーフ手順（例: ウォッチドッグリセット）を `Runtime Bridges` のチェックリストに登録。
-
 3. **テレメトリ**
    - 電圧・温度・エラーフラグを構造化ログとして出力し、監視システムに送信。
    - `emit_metrics("embedded.telemetry", metrics)` を用いて SLA 指標を継続監視。
    - フィールド更新失敗時は `ConfigError::ValidationError` を返し、即座にロールバック。
 
-## 9. ストリーミング / async ランナー活用例
+## 9. WASM / クラウド連携
+
+### 9.1 WASI での実行
+
+```reml
+fn run_wasi(parser: Parser<T>, bytes: Bytes) -> Result<T, Diagnostic> =
+  wasm_run(parser, bytes, RunConfig { left_recursion = "off", packrat = false, ..default });
+```
+
+- `guides/portability.md` のチェックリストに従い、`RunConfig.left_recursion` と `packrat` の既定値を `off` にする。
+- I/O は WASI 標準の `stdin`/`stdout` のみに限定し、`Core.Env` を通じて環境変数取得を行う。
+
+### 9.2 コンテナ / サーバーレス
+
+- `container_profile("serverless")` をベースに `RunConfig` を初期化し、短時間ジョブ向けに診断を最小化する。
+- ローリングデプロイでは `guides/ci-strategy.md` の構造化ログを活用し、`target_config_errors` をダッシュボード表示する。
+
+## 10. ストリーミング / async ランナー活用例
 
 ### 9.1 ゲームホットリロード（`FlowMode = "push"`）
 

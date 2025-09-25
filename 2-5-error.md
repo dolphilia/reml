@@ -138,6 +138,19 @@ fn Err.custom(at: Span, msg: Str) -> ParseError
 * `ParseError` と併せて得られたトレースは、診断生成時に `Diagnostic.span_trace` へそのまま転写する。既定では `Error`/`Warning` で常に保持し、`Note` のみ省略してノイズを抑える。
 * CLI 表示では末尾から `PrettyOptions.context_depth` 件を `note: trace: rule @ span` の形式で追加し、LSP 連携では `data.spanTrace = Diagnostic.span_trace` として JSON 配列で共有する。これにより IDE は「どのルールが最終的に失敗へ至ったか」を視覚化できる。
 
+### B-9. 条件付きコンパイル関連診断
+
+| message_key | severity | domain | 説明 |
+| --- | --- | --- | --- |
+| `target.config.unknown_key` | Error | Config | `@cfg` が参照したキーが `RunConfig.extensions["target"]` で宣言されていない場合に発行。`notes` に既知キー一覧を提示し、FixIt で最も近いキー候補（編集距離ベース）を提案する。 |
+| `target.config.unsupported_value` | Error | Config | キーは既知だが値がサポートされない場合に使用。`expected_summary` へ許可値を `Expectation::Custom` で列挙する。 |
+| `unresolved.symbol.cfg` | Error | Parser | `@cfg` で無効化された宣言のみが存在し、参照解決できない場合。`notes` に「このシンボルは有効なターゲットが存在しません」と明示する。 |
+| `effects.cfg.contract_violation` | Error | Parser | `@cfg` による条件分岐で `@pure` 等の契約を満たさない分岐が残る場合。`notes` へ効果集合の差分を表示する。 |
+| `effects.cfg.unreachable` | Warning | Config | `@cfg` 論理式が恒偽であり、宣言が到達不能な場合。後続解析を省くために削除候補として FixIt を提示する。 |
+
+* 上記メッセージは `Diagnostic.extensions["cfg"]` に評価ログを添付できる。`RunConfig` は `extensions["target"].diagnostics = Bool` で詳細ログ出力を切り替える。
+* LSP での `@cfg` 可視化を支援するため、`Diagnostic.extensions["cfg"]` に `{ keys: List<Str>, evaluated: Map<Str, Str>, active: Bool }` を載せ、IDE が分岐条件を表示できるようにする。
+
 ---
 
 ## C. 表示（pretty）と多言語
