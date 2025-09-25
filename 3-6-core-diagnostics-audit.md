@@ -191,7 +191,45 @@ fn record_change_set<T>(value: T, diff: ChangeSet) -> Result<T, Diagnostic>   //
 - `Change`/`ChangeSet` は Chapter 4.8 で定義。
 - `record_change_set` は差分を監査ログに記録し、`effect {audit}` を要求する。
 
-## 5. 使用例（CLI エラー報告）
+## 6. DSLオーケストレーション向け可観測性
+
+### 6.1 メトリクスプリセット
+
+```reml
+pub struct DslMetricsHandle = {
+  latency: LatencyHistogram,
+  throughput: CounterMetric,
+  error_rate: RatioGauge,
+  in_flight: GaugeMetric,
+}
+
+fn register_dsl_metrics(registry: MetricsRegistry, dsl_id: DslId) -> Result<DslMetricsHandle, Diagnostic> // `effect {trace}`
+fn record_dsl_success(handle: DslMetricsHandle, duration: Duration) -> ()                                  // `effect {trace}`
+fn record_dsl_failure(handle: DslMetricsHandle, error: Diagnostic, duration: Duration) -> ()               // `effect {trace, audit}`
+fn observe_backpressure(handle: DslMetricsHandle, depth: usize) -> ()                                      // `effect {trace}`
+```
+
+- デフォルトメトリクス名（指標 → 型）:
+  - `dsl.latency` → `LatencyHistogram`（p50/p95/p99 を追跡）
+  - `dsl.throughput` → `CounterMetric`（1秒あたりの完了数）
+  - `dsl.error_rate` → `RatioGauge`（成功/失敗比率）
+  - `dsl.in_flight` → `GaugeMetric`（実行中タスク数）
+- `register_dsl_metrics` は `conductor` で宣言された DSL ID ごとにメトリクスを初期化し、`Core.Async` ランタイムへハンドルを戻す。
+- 成功/失敗の記録は `ExecutionPlan` のエラーポリシーと連動し、監査ログ `AuditEnvelope` を自動的に添付できる。
+
+### 6.2 トレース統合
+
+```reml
+fn start_dsl_span(tracer: Tracer, dsl_id: DslId, context: TraceContext) -> TraceSpan // `effect {trace}`
+fn finish_dsl_span(span: TraceSpan, outcome: DslOutcome) -> ()                        // `effect {trace}`
+fn attach_channel_link(span: TraceSpan, channel_id: ChannelId, direction: ChannelDirection) -> () // `effect {trace}`
+```
+
+- `start_dsl_span` は DSL 実行ごとのトレーススパンを生成し、`TraceContext` を継承して分散トレースに組み込む。
+- `attach_channel_link` はチャネル間リンク（`~>`）を可視化するメタデータを追加する。
+- `DslOutcome` は成功/失敗/フォールバック経路を表し、`finish_dsl_span` がメトリクス更新と同期する。
+
+## 7. 使用例（CLI エラー報告）
 
 ```reml
 use Core;
@@ -215,9 +253,9 @@ fn validate_config(cfg: AppConfig, audit: AuditSink) -> Result<(), Diagnostic> =
 - `ensure` と `tap_diag` を組み合わせ、検証失敗時に監査ログへ自動送出。
 - `from_change` により `change_set` を `AuditEnvelope` へ変換し、監査と診断に共通語彙を適用する。
 
-## 6. CLI/LSP 連携の具体例
+## 8. CLI/LSP 連携の具体例
 
-### 6.1 CLI ツール統合
+### 8.1 CLI ツール統合
 
 ```reml
 // CLI コマンドラインオプション
@@ -236,7 +274,7 @@ fn setup_cli_diagnostics(args: CliArgs) -> AuditSink {
 }
 ```
 
-### 6.2 LSP サーバー統合
+### 8.2 LSP サーバー統合
 
 ```reml
 // LSP プロトコル対応
@@ -254,7 +292,7 @@ fn diagnostic_to_lsp(diag: Diagnostic) -> LspDiagnostic {
 fn batch_publish_diagnostics(diagnostics: List<Diagnostic>, client: LspClient) -> Result<(), AuditError>
 ```
 
-### 6.3 メトリクス監視ダッシュボード
+### 8.3 メトリクス監視ダッシュボード
 
 ```reml
 fn diagnostic_metrics(diagnostics: Iter<Diagnostic>) -> DiagnosticMetrics {

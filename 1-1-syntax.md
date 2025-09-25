@@ -26,7 +26,7 @@
   例）`parse`, `ユーザー`, `_aux1`。
 * 予約語（抜粋）：
   `let`, `var`, `fn`, `type`, `trait`, `impl`, `match`, `with`, `if`, `then`, `else`, `use`, `pub`, `return`, `for`, `while`, `loop`, `extern`, `unsafe`, `defer`, `true`, `false`, `as`, `where`.
-* 演算子トークン（固定）：`|>`, `.` , `,`, `;`, `:`, `=`, `:=`, `->`, `=>`, `(` `)` `[` `]` `{` `}`,
+* 演算子トークン（固定）：`|>`, `~>`, `.` , `,`, `;`, `:`, `=`, `:=`, `->`, `=>`, `(` `)` `[` `]` `{` `}`,
   `+ - * / % ^`, `== != < <= > >=`, `&& ||`, `!`, `?`, `..`.
 
 ### A.4 リテラル
@@ -180,6 +180,40 @@ Reml コア仕様には `schema` キーワードによる設定 DSL は含まれ
 
 
 ---
+
+## B.8 DSL制御ブロック `conductor`
+
+### B.8.1 文法概略
+
+```ebnf
+ConductorDecl   ::= "conductor" Ident ConductorBody
+ConductorBody   ::= "{" ConductorSection* "}"
+ConductorSection::= ConductorDslDef | ConductorChannels | ConductorExecution | ConductorMonitoring
+ConductorDslDef ::= Ident ":" Ident ("=" PipelineSpec)? ConductorDslTail*
+ConductorDslTail::= "|>" Ident "(" ConductorArgList? ")"
+ConductorChannels ::= "channels" ConductorChannelBody
+ConductorChannelBody ::= "{" (ChannelRoute NL)* "}"
+ChannelRoute    ::= ConductorEndpoint "~>" ConductorEndpoint ":" Type
+ConductorExecution ::= "execution" Block
+ConductorMonitoring ::= "monitoring" (Ident | ConductorQualifiedName) Block
+```
+
+* `conductor` は**トップレベル宣言**として扱い、`fn` や `type` と同等に配置できる。
+* `|>` の優先順位は従来通り最下位（D.1 参照）。`~>` は **チャネル定義専用トークン**であり、通常の式パーサには現れない。
+* DSL定義内で記述する `depends_on`, `with_capabilities` などのビルダ API はパイプライン合成として解釈され、`Core.Parse`/`Core.Runtime` の API 呼び出しに展開される。
+
+### B.8.2 DSL定義ワークフロー指針
+
+1. **構文設計** — `rule` など Core.Parse コンビネータで DSL のパーサーを定義し、名前付きルールとして登録する。
+2. **型モデリング** — DSL が生成する値を ADT/型クラスで表現し、効果タグを明示する。
+3. **実行統合** — `conductor` 内で DSL を組み合わせ、依存関係・リソース制限・Capability を宣言する。
+4. **観測性整備** — `monitoring` セクションで診断・トレース・メトリクス収集を設定する。
+
+### B.8.3 設計指針（価値と課題の要約）
+
+- **価値**: 型安全な DSL 合成、再利用可能なドメイン抽象、Core.Diagnostics による高い可観測性。
+- **主な課題**: 初期構築コストと学習曲線、DSL層とアプリ層のデバッグ複雑性、エコシステム断片化リスク。
+- **軽減策**: テンプレート・ジェネレータによる段階的導入、`label`/`recover` など標準エラー機構の活用、Capability/プラグイン標準での横断連携。
 
 ## C. 式・項・パターン
 

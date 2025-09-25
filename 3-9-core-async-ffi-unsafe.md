@@ -65,6 +65,38 @@ fn filter_async<T>(stream: AsyncStream<T>, pred: (T) -> Future<Bool>) -> AsyncSt
 fn collect_async<T>(stream: AsyncStream<T>) -> Future<List<T>>                  // `effect {io.async, mem}`
 ```
 
+### 1.4 DSLオーケストレーション支援 API
+
+```reml
+pub struct Channel<Send, Recv> where Send: Serialize, Recv: Deserialize {
+  sender: DslSender<Send>,
+  receiver: DslReceiver<Recv>,
+  codec: Codec<Send, Recv>,
+  buffer_size: usize,
+  overflow: OverflowPolicy,
+}
+
+fn create_channel<S, R>(buffer_size: usize, codec: Codec<S, R>) -> Result<(DslSender<S>, DslReceiver<R>), AsyncError> // `effect {io.async}`
+fn merge_channels<T>(channels: List<DslReceiver<T>>) -> DslReceiver<T>                                             // `effect {io.async}`
+fn split_channel<T>(channel: DslReceiver<T>, predicate: (T) -> Bool) -> (DslReceiver<T>, DslReceiver<T>)           // `effect {io.async}`
+fn with_execution_plan<T>(dsl: DslSpec<T>, plan: ExecutionPlan) -> DslSpec<T>                                     // `effect {io.async}`
+
+struct ExecutionPlan = {
+  strategy: ExecutionStrategy,
+  backpressure: BackpressurePolicy,
+  error: ErrorPropagationPolicy,
+  scheduling: SchedulingPolicy,
+}
+
+enum BackpressurePolicy = Drop | DropOldest | Buffer(usize) | Block | Adaptive { high_watermark: usize, low_watermark: usize, strategy: AdaptiveStrategy }
+
+enum AdaptiveStrategy = DropNewest | SlowProducer | SignalDownstream
+```
+
+- `Channel<Send, Recv>` は DSL 間通信を型安全に扱い、コード変換を `Codec<Send, Recv>` へ委譲する。
+- `ExecutionPlan` は `conductor` の `execution { ... }` ブロックと 1:1 で対応し、スケジューラーへ渡す実行ポリシーを保持する。
+- `with_execution_plan` は DSL 定義時に計画を合成するコンビネータであり、バックプレッシャー制御やエラー隔離を `Core.Async` ランタイムへ伝える。
+
 ### 1.1 AsyncError
 
 ```reml
@@ -85,6 +117,23 @@ fn bind_library(path: Path) -> Result<LibraryHandle, FfiError>               // 
 fn get_function(handle: LibraryHandle, name: Str) -> Result<ForeignFunction, FfiError> // `effect {ffi}`
 fn call_ffi(fn_ptr: ForeignFunction, args: Bytes) -> Result<Bytes, FfiError>  // `effect {ffi, unsafe}`
 ```
+
+### 2.0 バインディング生成と Capability 連携
+
+```reml
+fn auto_bind(handle: LibraryHandle, name: Str, signature: FfiSignature) -> Result<TypedForeignFn, FfiError> // `effect {ffi}`
+fn auto_bind_all(handle: LibraryHandle, spec: [FfiBinding]) -> Result<BoundLibrary, FfiError>               // `effect {ffi}`
+fn call_with_capability(cap: FfiCapability, symbol: ForeignFunction, args: Bytes) -> Result<Bytes, FfiError> // `effect {ffi, runtime}`
+
+struct FfiSignature = { params: [FfiType], return_type: FfiType }
+struct FfiBinding   = { name: Str, signature: FfiSignature, conventions: CallingConvention }
+struct TypedForeignFn = { call: fn(Bytes) -> Result<Bytes, FfiError>, symbol: ForeignFunction, metadata: FfiBinding }
+struct FfiCapability = { call_function: fn(SymbolHandle, Bytes) -> Result<Bytes, FfiError>, sandbox: Option<FfiSandbox>, audit: AuditHandle }
+```
+
+- `auto_bind` は署名情報からシリアライザ/デシリアライザを自動生成し、返却された `TypedForeignFn` 経由で型安全な `call` を提供する。
+- `auto_bind_all` は複数シンボルを一括登録し、Capability Registry と連携する `BoundLibrary` を構築する。
+- `call_with_capability`（および `FfiCapability.call_function`）は [3.8](3-8-core-runtime-capability.md) の `CapabilityRegistry` 経由で取得した権限を通じて FFI 呼び出しを実行し、監査ログやサンドボックスを適用する。
 
 - `FfiError` は OS 依存エラーやシンボル解決失敗をラップ。
 

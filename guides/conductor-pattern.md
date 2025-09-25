@@ -1,0 +1,89 @@
+# Conductor パターン実践ガイド
+
+Conductor 構文を活用して複数DSLを協調実行する際の設計パターンとベストプラクティスをまとめる。
+
+## 1. 基本構造
+
+```reml
+conductor pipeline_app {
+  source: SourceDsl = load_source()
+    |> with_capabilities(["fs.read"])
+    |> with_resource_limits(memory: "128MB", cpu: "0.5")
+
+  transform: TransformDsl = rule("transform", pipeline_rules)
+    |> depends_on([source])
+    |> with_execution_plan(strategy: Strategy.parallel())
+
+  sink: SinkDsl = render_output()
+    |> depends_on([transform])
+    |> with_execution_plan(strategy: Strategy.sequential())
+
+  channels {
+    source.items ~> transform.input : Channel<ItemBatch, ItemBatch>
+    transform.events ~> sink.consume : Channel<Event, Event>
+  }
+
+  execution {
+    strategy: "adaptive_parallel"
+    backpressure: BackpressurePolicy.adaptive(high_watermark: 1000, low_watermark: 100, strategy: "drop_oldest")
+    error_propagation: ErrorPolicy.isolate_with_circuit_breaker
+    scheduling: SchedulePolicy.fair_share_with_priority
+  }
+
+  monitoring with Core.Diagnostics {
+    health_check: every("5s") using dsl_health_probe
+    metrics: collect([
+      "dsl.latency" -> LatencyHistogram,
+      "dsl.throughput" -> CounterMetric,
+      "dsl.error_rate" -> RatioGauge
+    ])
+    tracing: when(RunConfig.trace_enabled) collect_spans
+  }
+}
+```
+
+## 2. 設計パターン
+
+### 2.1 パイプライン構成
+
+- 各 DSL を `rule` + ビルダ関数で構成し、`|>` で宣言的に機能を合成する。
+- `depends_on` はコンパイル時に循環を検出するため、DSL ID を厳密に指定する。
+
+### 2.2 チャネル設計
+
+- `Channel<Send, Recv>` で型変換を明示し、`Codec` によるシリアライズを標準化する。
+- `overflow` ポリシーと `buffer_size` を ExecutePlan と整合させ、背圧とメモリ使用量を管理する。
+
+### 2.3 実行ポリシー
+
+- `ExecutionPlan` の `strategy` は DAG をもとに自動最適化される。必要に応じて `with_execution_plan` で手動上書きする。
+- `ErrorPolicy.isolate_with_circuit_breaker` などフォールトトレランス設定は、プラグインの既定値と一致させる。
+
+### 2.4 監視
+
+- Core.Diagnostics で宣言するメトリクスは `dsl.latency`, `dsl.throughput`, `dsl.error_rate`, `dsl.in_flight` の4種を最低限含める。
+- `health_check` は Capability Registry 経由で提供されるプローブを利用する。
+
+## 3. ベストプラクティス
+
+1. **小さな DSL から統合** — 大規模な DSL を一度に導入せず、段階的に Conductor へ組み込む。
+2. **Capability 宣言の明確化** — `with_capabilities`・`with_resource_limits` を全DSLで必須化し、権限忘れを防止。
+3. **フォールバック戦略の準備** — `attempt_dsl` や `first_success` コンビネータで冗長化パスを事前に定義。
+4. **観測データの活用** — `start_dsl_span` で生成されるトレースIDをログ・アラートと連携させる。
+5. **テンプレートプラグインとの連携** — `reml-plugin-dsl-template` が生成する構成をベースに、プロジェクト固有の DSL を追加する。
+
+## 4. トラブルシューティング
+
+| 症状 | 原因例 | 対応 |
+| --- | --- | --- |
+| DSL 起動順が期待と異なる | `depends_on` を記述していない | 依存関係を追加し、循環チェックを実行する |
+| チャネルで型エラー | `Codec` の Serialize/Deserialize 実装不足 | `Codec` を追加するか、`auto_bind` で生成する |
+| バックプレッシャーが効かない | `ExecutionPlan.backpressure` の閾値が適切でない | 高低水位を見直し、Adaptive 戦略を有効化する |
+| 監視データが欠落 | `register_dsl_metrics` 未呼び出し | プラグインまたは Conductor `monitoring` セクションで登録する |
+
+## 5. 参考
+
+- [1-1 構文仕様 B.8節](../1-1-syntax.md)
+- [3-9 Core Async / FFI / Unsafe 1.4節](../3-9-core-async-ffi-unsafe.md)
+- [3-6 Core Diagnostics & Audit 6章](../3-6-core-diagnostics-audit.md)
+- [notes/dsl-plugin-roadmap.md](../notes/dsl-plugin-roadmap.md)

@@ -195,3 +195,12 @@ fn with_trace<T>(p: Parser<T>, on_event: TraceEvent -> ()) -> Parser<T>
 * 既定は **前進解析 + cut/label による制御可能なバックトラック**で、Packrat と左再帰サポートをスイッチ可能にする。
 * `RunConfig` は最小限のスイッチに留め、燃料制御・ストリーミング・GC 連携などは拡張モジュールで opt-in する。
 * 診断品質（最遠エラー、SpanTrace、警告集約）とゼロコピー入力を中核に据え、DSL から大規模入力まで一貫した挙動を提供する。
+---
+
+## K. Conductor 統合ポイント
+
+- Conductor 構文（[1-1 B.8](1-1-syntax.md)）で宣言された `ExecutionPlan` は本章のランナー設定と同一概念を共有し、`strategy`/`backpressure`/`error`/`scheduling` を `RunConfig.extensions` にエンコードして Core.Async へ伝達する。
+- `ExecutionPlan.strategy` が `adaptive_parallel` の場合、ランナーは依存 DAG を解析し、Packrat/左再帰の設定を自動調整する。
+- `ExecutionPlan.backpressure` は `run` 実行時にチャネル深度監視を有効化し、メトリクス名 `dsl.in_flight`（[3-6 Core Diagnostics](3-6-core-diagnostics-audit.md)）へ数値を転送する。
+- DSLごとの成功/失敗は `RunConfig` の `extensions` を通じて `record_dsl_success` / `record_dsl_failure` に引き渡し、監査ログと性能指標を同期させる。
+

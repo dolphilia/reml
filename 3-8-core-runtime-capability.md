@@ -123,6 +123,13 @@ pub type AuditCapability = {
 - `MetricDescriptor` は登録済みメトリクスのメタデータ（名前、型、説明）。
 - `AuditStatus` は監査シンクの状態（接続/遅延/停止）を表す。
 
+
+### 3.1 DSLメトリクス連携
+
+- Conductor で宣言された DSL ID ごとに `register_dsl_metrics` を呼び出し、`MetricsCapability.emit` を通じて `dsl.latency` などのメトリクスを登録する。
+- `MetricsCapability.list` は DSL メトリクスを含むディスクリプタを返し、ダッシュボードプラグインが自動検出できるようにする。
+- トレース連携は [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) の `start_dsl_span` を利用し、`TraceContext` を Capability Registry 経由で伝搬させる。
+
 ## 4. IO Capability
 
 ```reml
@@ -174,6 +181,13 @@ pub type SandboxConfig = {
 pub enum NetworkAccess = None | Restricted(List<NetworkPattern>) | Full
 pub enum FileAccess = None | ReadOnly(List<PathPattern>) | Restricted(List<PathPattern>) | Full
 ```
+
+
+### 5.2 DSLプラグイン指針
+
+- DSL テンプレート／オブザーバビリティ拡張は `PluginCapability.register` で Capability Registry に自己記述メタデータを登録する。
+- プラグインの責務と配布ポリシーは [notes/dsl-plugin-roadmap.md](notes/dsl-plugin-roadmap.md) および [AGENTS.md](AGENTS.md) を参照し、互換テストを必須化する。
+- `plugins` セクションで FfiCapability や AsyncCapability を要求する場合は、Conductor 側の `with_capabilities` と同一IDを使用して権限を同期させる。
 
 ## 6. 使用例（GC + Metrics 登録）
 
