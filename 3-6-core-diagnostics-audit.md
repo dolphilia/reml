@@ -144,6 +144,51 @@ fn apply_policy(diag: Diagnostic, policy: AuditPolicy) -> Option<Diagnostic>  //
 fn audit_with_policy(diag: Diagnostic, sink: AuditSink, policy: AuditPolicy) -> Result<(), AuditError>
 ```
 
+### 3.3 監査コンテキストとシステム呼び出し連携
+
+`Core.Runtime` の `SyscallCapability` など、長時間に渡る監査対象処理では `AuditContext` を利用してログの一貫性を確保する。
+
+```reml
+pub struct AuditContext {
+  domain: Str,
+  subject: Str,
+  sink: AuditSink,
+  metadata: Map<Str, Json>,
+}
+
+impl AuditContext {
+  fn new(domain: Str, subject: Str) -> Result<AuditContext, AuditError>     // `effect {audit}`
+  fn with_metadata(self, metadata: Map<Str, Json>) -> Self;                // `@pure`
+  fn log(self, event: Str, payload: Json) -> Result<(), AuditError>;       // `effect {audit}`
+  fn log_with_span(self, event: Str, span: Span, payload: Json) -> Result<(), AuditError>; // `effect {audit}`
+}
+
+fn audited_syscall<T>(
+  syscall_name: Str,
+  operation: () -> Result<T, SyscallError>,
+  sink: AuditSink,
+) -> Result<T, SyscallError> // `effect {audit, syscall}`
+```
+
+- `AuditContext::new` はドメイン（例: "syscall"）と対象（例: システムコール名）を起点に監査セッションを構築する。\
+- `audited_syscall` は [3-8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md) で定義された `SyscallCapability.audited_syscall` の呼び出しモデルと一致し、`effect {audit}` を要求する。\
+- `AuditContext::log` で記録した JSON ペイロードは `AuditEnvelope.metadata["event"]` として `Diagnostic` に格納され、`security_audit`（§4.2）へ転送可能。\
+- メタデータに `policy_digest` や `security_policy` を埋め込むことで、`SecurityCapability.enforce_security_policy` の実行結果と相互参照できる。
+
+```reml
+fn example_syscall(fd: i32, sink: AuditSink) -> Result<usize, SyscallError> = {
+  let ctx = AuditContext::new("syscall", "read")?.with_metadata({ "fd": fd.into() });
+  audited_syscall("read", || {
+    SyscallCapability::raw_syscall(SYS_READ, [fd as i64, 0, 0, 0, 0, 0])
+      .map(|ret| ret as usize)
+  }, multi_audit_sink([sink, console_audit_sink]))?
+  ctx.log("syscall.completed", json!({ "result": "ok" }))?;
+  Ok(ret)
+}
+```
+
+このパターンにより、`effect {audit}` を付与した API は常に監査ログを伴い、`CapabilitySecurity.effect_scope` で宣言した `audit` タグと整合が保たれる。
+
 ## 4. プライバシー保護とセキュリティ
 
 ### 4.1 個人情報の除去

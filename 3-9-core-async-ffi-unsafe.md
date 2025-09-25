@@ -7,7 +7,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | ステータス | 正式仕様 |
-| 効果タグ | `effect {io.async}`, `effect {ffi}`, `effect {unsafe}`, `effect {blocking}`, `effect {security}` |
+| 効果タグ | `effect {io.async}`, `effect {io.blocking}`, `effect {io.timer}`, `effect {ffi}`, `effect {unsafe}`, `effect {security}`, `effect {audit}` |
 | 依存モジュール | `Core.Prelude`, `Core.Iter`, `Core.IO`, `Core.Runtime`, `Core.Diagnostics` |
 | 相互参照 | [2.6 実行戦略](2-6-execution-strategy.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [guides/runtime-bridges.md](guides/runtime-bridges.md), [guides/reml-ffi-handbook.md](guides/reml-ffi-handbook.md) |
 
@@ -26,8 +26,8 @@ pub struct Task<T> {
 }
 
 fn spawn<T>(future: Future<T>, scheduler: SchedulerHandle) -> Task<T>        // `effect {io.async}`
-fn block_on<T>(future: Future<T>) -> Result<T, AsyncError>                    // `effect {blocking}`
-fn sleep_async(duration: Duration) -> Future<()>                             // `effect {io.async}`
+fn block_on<T>(future: Future<T>) -> Result<T, AsyncError>                    // `effect {io.blocking}`
+fn sleep_async(duration: Duration) -> Future<()>                             // `effect {io.async, io.timer}`
 ```
 
 - `Context` は Waker を含む非同期実行コンテキスト。
@@ -59,10 +59,10 @@ pub type AsyncStream<T> = {
 }
 
 fn from_iter<T>(iter: Iter<T>) -> AsyncStream<T>                               // `effect {io.async}`
-fn buffer<T>(stream: AsyncStream<T>, size: usize) -> AsyncStream<T>             // `effect {io.async, mem}`
+fn buffer<T>(stream: AsyncStream<T>, size: usize) -> AsyncStream<T>             // `effect {io.async, memory}`
 fn map_async<T, U>(stream: AsyncStream<T>, f: (T) -> Future<U>) -> AsyncStream<U> // `effect {io.async}`
 fn filter_async<T>(stream: AsyncStream<T>, pred: (T) -> Future<Bool>) -> AsyncStream<T> // `effect {io.async}`
-fn collect_async<T>(stream: AsyncStream<T>) -> Future<List<T>>                  // `effect {io.async, mem}`
+fn collect_async<T>(stream: AsyncStream<T>) -> Future<List<T>>                  // `effect {io.async, memory}`
 ```
 
 ### 1.4 DSLオーケストレーション支援 API
@@ -139,11 +139,14 @@ pub enum AsyncErrorKind = Cancelled | Timeout | RuntimeUnavailable
 ## 2. Core.Ffi の枠組み
 
 ```reml
-pub type ForeignFunction = unsafe fn(*mut c_void) -> *mut c_void
+pub type ForeignFunction = FnPtr<(VoidPtr,), VoidPtr>
 
 fn bind_library(path: Path) -> Result<LibraryHandle, FfiError>               // `effect {ffi}`
 fn get_function(handle: LibraryHandle, name: Str) -> Result<ForeignFunction, FfiError> // `effect {ffi}`
-fn call_ffi(fn_ptr: ForeignFunction, args: Bytes) -> Result<Bytes, FfiError>  // `effect {ffi, unsafe}`
+fn call_ffi(fn_ptr: ForeignFunction, args: FfiArgs) -> Result<FfiValue, FfiError> // `effect {ffi, unsafe}`
+
+pub type FfiArgs = Span<u8>
+pub type FfiValue = Span<u8>
 ```
 
 ### 2.0 バインディング生成と Capability 連携
@@ -151,12 +154,13 @@ fn call_ffi(fn_ptr: ForeignFunction, args: Bytes) -> Result<Bytes, FfiError>  //
 ```reml
 fn auto_bind(handle: LibraryHandle, name: Str, signature: FfiSignature) -> Result<TypedForeignFn, FfiError> // `effect {ffi}`
 fn auto_bind_all(handle: LibraryHandle, spec: [FfiBinding]) -> Result<BoundLibrary, FfiError>               // `effect {ffi}`
-fn call_with_capability(cap: FfiCapability, symbol: ForeignFunction, args: Bytes) -> Result<Bytes, FfiError> // `effect {ffi, runtime}`
+fn call_with_capability(cap: FfiCapability, symbol: ForeignFunction, args: FfiArgs) -> Result<FfiValue, FfiError> // `effect {ffi, security, audit}`
 
 struct FfiSignature = { params: [FfiType], return_type: FfiType }
 struct FfiBinding   = { name: Str, signature: FfiSignature, conventions: CallingConvention }
-struct TypedForeignFn = { call: fn(Bytes) -> Result<Bytes, FfiError>, symbol: ForeignFunction, metadata: FfiBinding }
-struct FfiCapability = { call_function: fn(SymbolHandle, Bytes) -> Result<Bytes, FfiError>, sandbox: Option<FfiSandbox>, audit: AuditHandle }
+struct SymbolHandle = { library: LibraryHandle, function: ForeignFunction }
+struct TypedForeignFn = { call: fn(FfiArgs) -> Result<FfiValue, FfiError>, symbol: ForeignFunction, metadata: FfiBinding }
+struct FfiCapability = { call_function: fn(SymbolHandle, FfiArgs) -> Result<FfiValue, FfiError>, sandbox: Option<FfiSandbox>, audit: AuditHandle }
 struct LibraryMetadata = { path: Path, preferred_convention: Option<CallingConvention>, required_capabilities: Set<RuntimeCapability> }
 ```
 
@@ -192,8 +196,12 @@ macro foreign_fn(lib: Str, name: Str, signature: Str) -> ForeignFunction
 
 // 使用例
 let add_numbers = foreign_fn!("math", "add", "fn(i32, i32) -> i32");
-let result = add_numbers.call([42, 24])?; // タイプセーフな呼び出し
+let args = ffi::encode_args(&(42i32, 24i32));
+let raw = add_numbers.call(args)?;            // raw は FfiValue (Span<u8>)
+let sum: i32 = ffi::decode_result(raw)?;
 ```
+
+`ffi::encode_args` / `ffi::decode_result` は `FfiSignature` と互換のシリアライズヘルパで、`Span<u8>` を安全に生成・復元する。低レベル API を直接利用する場合は `span_from_raw_parts` と `CapabilitySecurity.effect_scope` を併用し、境界検査と監査記録を怠らないこと。
 
 ### 2.2 呼出規約とプラットフォーム適応
 
@@ -210,24 +218,77 @@ fn with_abi_adaptation(fn_ptr: ForeignFunction, conv: CallingConvention) -> Resu
 * `resolve_calling_convention` は `LibraryMetadata` に含まれる `preferred_convention` を尊重しつつ、実行環境で利用できない場合は `target.config.unsupported_value` 診断を併せて発行する。診断は `Diagnostic.extensions["cfg"].evaluated` にターゲット値とライブラリ要求を記録する。
 * `with_abi_adaptation` は必要に応じてシム層を挿入し、レジスタ引数配置やスタック整列を調整する。性能への影響を抑えるため、変換は初回呼び出し時にキャッシュする。
 
-### 2.3 メモリ管理と所有権
+### 2.3 メモリ管理と所有権境界
 
 ```reml
 pub type ForeignPtr<T> = {
-  ptr: *mut T,
-  size: Option<usize>,
-  deallocator: Option<fn(*mut T)>,
+  raw: Ptr<T>,
+  layout: Option<Layout>,
+  release: Option<FnPtr<(VoidPtr,), ()>>,
 }
 
-fn wrap_foreign_ptr<T>(ptr: *mut T, size: Option<usize>) -> ForeignPtr<T>       // `effect {unsafe}`
-fn foreign_slice<T>(ptr: ForeignPtr<T>, len: usize) -> Result<ForeignSlice<T>, FfiError> // `effect {unsafe}`
-fn copy_from_foreign<T: Copy>(ptr: ForeignPtr<T>) -> Result<T, FfiError>       // `effect {unsafe, mem}`
-fn copy_to_foreign<T: Copy>(value: T, ptr: ForeignPtr<T>) -> Result<(), FfiError> // `effect {unsafe}`
+pub type ForeignBuffer = {
+  span: Span<u8>,
+  release: Option<FnPtr<(VoidPtr,), ()>>,
+  ownership: Ownership,
+}
+
+pub enum Ownership = Borrowed | Owned | Transferred
+
+fn wrap_foreign_ptr<T>(raw: Ptr<T>, layout: Option<Layout>) -> Result<ForeignPtr<T>, FfiError>      // `effect {unsafe}`
+fn borrow_span<T>(raw: Ptr<T>, len: usize) -> Result<Span<T>, FfiError>                             // `effect {unsafe}`
+fn acquire_mut_span<T>(raw: MutPtr<T>, len: usize) -> Result<Span<T>, FfiError>                     // `effect {unsafe}`
+fn release_foreign_ptr<T>(ptr: ForeignPtr<T>) -> Result<(), FfiError>                               // `effect {unsafe, memory}`
+fn transfer_buffer(buffer: ForeignBuffer, release: FnPtr<(VoidPtr,), ()>) -> Result<(), FfiError>   // `effect {unsafe, memory}`
 ```
 
-- `call_ffi` は `unsafe` を要求し、境界で `AuditEnvelope` を付与することが推奨される。
+- `ForeignPtr<T>` は `Ptr<T>` を内包し、必要に応じて `NonNullPtr<T>` へ昇格して利用する。`layout` には [3-13 Core Memory](3-13-core-memory.md) で定義する `Layout` 情報を格納する。
+- `ForeignBuffer` は `Span<u8>` と所有権メタデータを保持し、`Ownership::Borrowed` の場合は解放禁止とする。
+- `call_ffi` は `unsafe` を要求し、境界で `AuditEnvelope` を付与することが推奨される。`transfer_buffer` では Capability Registry を通じて `MemoryCapability` の監査フックを呼び出す。
 
-## 3. Core.Unsafe の指針
+## 3. Core.Unsafe.Ptr API
+
+```reml
+// 基本ポインタ型
+type Ptr<T>
+type MutPtr<T>
+type NonNullPtr<T>
+type VoidPtr
+type FnPtr<Args, Ret>
+type Span<T> = { ptr: NonNullPtr<T>, len: usize }
+
+// 基本操作
+fn read<T>(ptr: Ptr<T>) -> Result<T, UnsafeError>                               // `effect {unsafe}`
+fn write<T>(ptr: MutPtr<T>, value: T) -> Result<(), UnsafeError>                // `effect {unsafe}`
+fn copy_to<T>(src: Ptr<T>, dst: MutPtr<T>, count: usize) -> Result<(), UnsafeError> // `effect {unsafe, memory}`
+fn cast<T, U>(ptr: Ptr<T>) -> Ptr<U>                                            // `effect {unsafe}`
+fn offset<T>(ptr: Ptr<T>, count: isize) -> Ptr<T>                               // `effect {unsafe}`
+fn as_non_null<T>(ptr: Ptr<T>) -> Result<NonNullPtr<T>, UnsafeError>            // `effect {unsafe}`
+
+// Span ユーティリティ
+fn span_from_raw_parts<T>(ptr: Ptr<T>, len: usize) -> Result<Span<T>, UnsafeError>     // `effect {unsafe}`
+fn span_split_at<T>(span: Span<T>, index: usize) -> Result<(Span<T>, Span<T>), UnsafeError> // `effect {unsafe}`
+fn span_as_ptr<T>(span: Span<T>) -> Ptr<T>                                              // `effect {unsafe}`
+fn span_as_mut_ptr<T>(span: Span<T>) -> MutPtr<T>                                       // `effect {unsafe}`
+
+// VoidPtr / FnPtr ブリッジ
+fn to_void_ptr<T>(ptr: Ptr<T>) -> VoidPtr                                      // `effect {unsafe}`
+fn from_void_ptr<T>(ptr: VoidPtr) -> Ptr<T>                                    // `effect {unsafe}`
+fn bind_fn_ptr<Args, Ret>(ptr: FnPtr<Args, Ret>) -> Result<ForeignStub<Args, Ret>, UnsafeError> // `effect {unsafe}`
+
+pub type ForeignStub<Args, Ret> = {
+  call: fn(Args) -> Ret,
+  raw: FnPtr<Args, Ret>,
+}
+```
+
+* `Span<T>` は `len = 0` の場合でも `ptr` は無効な非NULLダングリング値を許容しないため、ゼロ長スライスは安全に扱える。
+* `copy_to` は `memory` 効果を併発し、`CapabilitySecurity.effect_scope` に `memory` を含む API からのみ呼び出す。
+* `bind_fn_ptr` は FFI の `foreign_fn!` マクロと連携し、ABI 検証後に型安全な呼び出しを生成する。
+
+---
+
+## 4. Core.Unsafe の指針
 
 ```reml
 fn unsafe_block<T>(f: () -> T) -> T                      // `effect {unsafe}`
@@ -239,12 +300,12 @@ fn transmute<T, U>(value: T) -> U                        // `effect {unsafe}`
 - `assume` はコンパイラに対するヒントであり、偽の場合は未定義動作となる。
 - `transmute` は型の同じビット表現を再解釈する際に使用。
 
-### 3.1 安全性検証メカニズム
+### 4.1 安全性検証メカニズム
 
 ```reml
-fn verify_memory_safety(ptr: *const u8, size: usize) -> Result<(), UnsafeError> // `effect {unsafe}`
-fn check_alignment<T>(ptr: *const T) -> Bool                                   // `effect {unsafe}`
-fn bounds_check(ptr: *const u8, offset: isize, bounds: (usize, usize)) -> Result<(), UnsafeError> // `effect {unsafe}`
+fn verify_memory_safety(ptr: Ptr<u8>, size: usize) -> Result<(), UnsafeError>  // `effect {unsafe}`
+fn check_alignment<T>(ptr: Ptr<T>) -> Bool                                     // `effect {unsafe}`
+fn bounds_check(ptr: Ptr<u8>, offset: isize, bounds: (usize, usize)) -> Result<(), UnsafeError> // `effect {unsafe}`
 
 pub type UnsafeError = {
   kind: UnsafeErrorKind,
@@ -262,7 +323,7 @@ pub enum UnsafeErrorKind = {
 }
 ```
 
-### 3.2 監査された unsafe 操作
+### 4.2 監査された unsafe 操作
 
 ```reml
 fn audited_unsafe_block<T>(operation: Str, f: () -> T) -> T                    // `effect {unsafe, audit}`
@@ -284,9 +345,9 @@ pub enum UnsafeOperationType = {
 }
 ```
 
-## 4. Capability Registry との連携
+## 5. Capability Registry との連携
 
-### 4.1 非同期 Capability
+### 5.1 非同期 Capability
 
 ```reml
 pub type AsyncCapability = {
@@ -305,7 +366,7 @@ pub type AsyncRuntimeConfig = {
 }
 ```
 
-### 4.2 FFI Capability
+### 5.2 FFI Capability
 
 ```reml
 pub type FfiCapability = {
@@ -322,15 +383,15 @@ pub type FfiSecurity = {
 }
 ```
 
-### 4.3 Unsafe Capability
+### 5.3 Unsafe Capability
 
 ```reml
 pub type UnsafeCapability = {
   enable_raw_pointers: fn(UnsafePolicy) -> Result<(), CapabilityError>,
-  allocate_raw: fn(usize, usize) -> Result<*mut u8, CapabilityError>,
-  deallocate_raw: fn(*mut u8, usize, usize) -> Result<(), CapabilityError>,
-  track_allocation: fn(*mut u8, usize) -> Result<AllocationId, CapabilityError>,
-  verify_pointer: fn(*const u8) -> Result<PointerInfo, CapabilityError>,
+  allocate_raw: fn(usize, usize) -> Result<MutPtr<u8>, CapabilityError>,
+  deallocate_raw: fn(MutPtr<u8>, usize, usize) -> Result<(), CapabilityError>,
+  track_allocation: fn(NonNullPtr<u8>, usize) -> Result<AllocationId, CapabilityError>,
+  verify_pointer: fn(Ptr<u8>) -> Result<PointerInfo, CapabilityError>,
 }
 
 pub type UnsafePolicy = {
@@ -342,7 +403,7 @@ pub type UnsafePolicy = {
 }
 ```
 
-## 5. 使用例（調査メモ）
+## 6. 使用例（調査メモ）
 
 ```reml
 use Core;
@@ -365,9 +426,9 @@ fn async_file_copy(src: Path, dest: Path) -> Result<(), Diagnostic> =
 - 将来的な AsyncFile API の利用例（現時点では概念メモ）。`await` 構文は Reml の非同期拡張候補。
 - エラーは `Diagnostic` へ変換し、監査連携の対象にする思考過程を示す。
 
-## 6. セキュリティとベストプラクティス
+## 7. セキュリティとベストプラクティス
 
-### 6.1 非同期セキュリティ
+### 7.1 非同期セキュリティ
 
 ```reml
 // タイムアウトとリソース制限
@@ -380,11 +441,11 @@ pub type AsyncLimits = {
 }
 ```
 
-### 6.2 FFI セキュリティ
+### 7.2 FFI セキュリティ
 
 ```reml
 // サンドボックス内での FFI 呼び出し
-fn call_sandboxed<T>(foreign_fn: ForeignFunction, args: FfiArgs, sandbox: FfiSandbox) -> Result<T, FfiError>
+fn call_sandboxed<T>(foreign_fn: ForeignFunction, args: FfiArgs, sandbox: FfiSandbox) -> Result<T, FfiError> // `effect {ffi, unsafe, security, audit}`
 
 pub type FfiSandbox = {
   memory_limit: usize,
@@ -395,7 +456,7 @@ pub type FfiSandbox = {
 }
 ```
 
-### 6.3 Unsafe セキュリティ
+### 7.3 Unsafe セキュリティ
 
 ```reml
 // メモリ安全性の動的検証
@@ -410,9 +471,9 @@ pub type SanitizerConfig = {
 }
 ```
 
-## 7. パフォーマンス最適化
+## 8. パフォーマンス最適化
 
-### 7.1 非同期最適化
+### 8.1 非同期最適化
 
 ```reml
 // タスクスケジューリングの調整
@@ -424,7 +485,7 @@ fn batch_futures<T>(futures: List<Future<T>>, batch_size: usize) -> Future<List<
 fn stream_with_backpressure<T>(stream: AsyncStream<T>, buffer_size: usize) -> AsyncStream<T>
 ```
 
-### 7.2 FFI 最適化
+### 8.2 FFI 最適化
 
 ```reml
 // 関数呼び出しのキャッシュ
@@ -435,9 +496,9 @@ fn batch_ffi_calls(calls: List<FfiCall>) -> Result<List<FfiValue>, FfiError>
 fn compile_ffi_wrapper(signature: FfiSignature) -> Result<CompiledWrapper, FfiError>  // `effect {jit}`
 ```
 
-## 8. デバッグとテストサポート
+## 9. デバッグとテストサポート
 
-### 8.1 非同期デバッグ
+### 9.1 非同期デバッグ
 
 ```reml
 fn trace_async_execution(future: Future<T>) -> Future<(T, ExecutionTrace)>      // `effect {debug}`
@@ -445,14 +506,14 @@ fn debug_deadlock_detection() -> Result<List<DeadlockInfo>, DebugError>        /
 fn async_test_harness<T>(test: Future<T>, timeout: Duration) -> TestResult<T>   // `effect {test}`
 ```
 
-### 8.2 FFI テスト
+### 9.2 FFI テスト
 
 ```reml
 fn mock_foreign_function(signature: FfiSignature, behavior: MockBehavior) -> MockForeignFunction
 fn verify_ffi_contract(foreign_fn: ForeignFunction, contract: FfiContract) -> Result<(), FfiError>
 ```
 
-### 8.3 Unsafe テスト
+### 9.3 Unsafe テスト
 
 ```reml
 fn simulate_memory_corruption(pattern: CorruptionPattern) -> ()                 // `effect {unsafe, test}`

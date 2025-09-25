@@ -11,7 +11,7 @@ module Core.Unsafe.Ptr {
   type NonNullPtr<T>
   type VoidPtr = Ptr<void>
   type FnPtr<Args, Ret>
-  type Span<T> = { base: NonNullPtr<T>, len: usize }
+  type Span<T> = { ptr: NonNullPtr<T>, len: usize }
 }
 ```
 
@@ -20,7 +20,7 @@ module Core.Unsafe.Ptr {
 - `NonNullPtr<T>`: 非NULL保証を持つ `Ptr<T>`。`Span<T>` など境界検査付きラッパの基礎。
 - `VoidPtr`: 型不明境界。FFI でのキャスト前提。
 - `FnPtr<Args, Ret>`: FFI の関数ポインタ、クロージャを含まない素のコードポインタ。
-- `Span<T>`: `base` + `len` の境界付きビュー。`unsafe` なしでも読み取り可能な API を別モジュールで提供する予定。
+- `Span<T>`: `ptr` + `len` の境界付きビュー。`unsafe` なしでも読み取り可能な API を別モジュールで提供する予定。
 
 ## 2. 生成・変換 API
 
@@ -59,15 +59,23 @@ fn fill<T>(dst: MutPtr<T>, value: T, count: usize) unsafe
 ## 4. アドレス計算
 
 ```reml
-fn add<T>(ptr: Ptr<T>, count: usize) -> Ptr<T>
-fn add_mut<T>(ptr: MutPtr<T>, count: usize) -> MutPtr<T>
-fn offset<T>(ptr: Ptr<T>, delta: isize) -> Ptr<T>
-fn byte_offset<T>(ptr: Ptr<T>, bytes: isize) -> Ptr<T>
+fn add<T>(ptr: Ptr<T>, count: usize) -> Ptr<T> unsafe
+fn add_mut<T>(ptr: MutPtr<T>, count: usize) -> MutPtr<T> unsafe
+fn offset<T>(ptr: Ptr<T>, delta: isize) -> Ptr<T> unsafe
+fn byte_offset<T>(ptr: Ptr<T>, bytes: isize) -> Ptr<T> unsafe
+
+fn span_from_raw_parts<T>(ptr: Ptr<T>, len: usize) -> Result<Span<T>, UnsafeError>
+fn span_split_at<T>(span: Span<T>, index: usize) -> Result<(Span<T>, Span<T>), UnsafeError>
+fn span_as_ptr<T>(span: Span<T>) -> Ptr<T>
+fn span_as_mut_ptr<T>(span: Span<T>) -> MutPtr<T>
 ```
 
 - `add`/`add_mut`: 正方向だけを対象にし、同一アロケーション内での使用を想定。
 - `offset`: 正負の任意移動。境界外に出ると UB。
 - `byte_offset`: バイト単位移動。構造体ビュー構築に利用。
+- `span_from_raw_parts`: `Ptr<T>` と長さから `Span<T>` を生成。`len = 0` の場合も `ptr` が無効な非NULLにならないよう検証する。
+- `span_split_at`: スパンを安全に分割。境界外インデックスでは `UnsafeErrorKind::OutOfBounds`。
+- `span_as_ptr` / `span_as_mut_ptr`: `Span<T>` から `Ptr`/`MutPtr` を得る際は、後続操作が `effect {memory}` を伴うことをドキュメントする。
 
 ## 5. 監査・診断補助
 
@@ -119,7 +127,7 @@ fn c_strlen(input: String) -> usize = {
 ```reml
 fn parse_header(bytes: Span<u8>) -> Result<Header, ParseError> = {
   if bytes.len < HEADER_LEN { return Err(ParseError::Truncated) }
-  let field_ptr = unsafe { bytes.base.add(OFFSET_VERSION) }
+  let field_ptr = unsafe { bytes.ptr.add(OFFSET_VERSION) }
   let version = unsafe { field_ptr.read() }
   ...
 }
@@ -154,15 +162,47 @@ impl Drop for RootGuard {
 * `register_root`/`unregister_root` は `unsafe`。
 * `Drop` 実装で `defer` 相当の解放を保証する。
 
+### 7.4 FFI コールバック: `bind_fn_ptr` の利用
+
+```reml
+extern "C" {
+  fn register_callback(cb: FnPtr<(i32,), ()>);
+}
+
+fn install_callback(audit: AuditSink) -> Result<(), Diagnostic> = {
+  unsafe {
+    let stub = bind_fn_ptr(|value: i32| {
+      AuditContext::new("ffi", "callback")?
+        .log("ffi.callback", json!({ "value": value }))?;
+      Ok(())
+    })?; // Result<ForeignStub<(i32,), ()>, UnsafeError>
+
+    register_callback(stub.raw);
+  }
+  Ok(())
+}
+```
+
+* `bind_fn_ptr` は Reml クロージャを ABI 検証済みの `ForeignStub` に変換し、シンボル登録前に `UnsafeErrorKind::InvalidSignature` を検出できる。
+* コールバック内部では `AuditContext` を使用して `effect {audit}` を発生させ、FFI 経由の非同期イベントでも監査ログと Capability 設定を同期する。
+
 ## 8. CI スモークテスト要件
 
 1. **ffi-smoke**: C 側の `strlen` と同等の関数を呼び出し、`Ptr<u8>` の NULL 非許容／NULL 許容双方を検証する。`audit.log` に `ffi.call` が残ることをアサート。
 2. **buffer-span**: `Span<u8>` から `Ptr<u8>` を降格後、`read`/`write`/`copy_nonoverlapping` を試し、境界外アクセス時に安全 API がエラーを返すことをテスト。
-3. **gc-root-guard**: `RootGuard` 相当のユーティリティで `register_root`/`unregister_root` がペアになることを確認し、`defer`/`Drop` 経由でも確実に解放されることを追跡。
-4. **alignment-check**: `read_unaligned`/`write_unaligned` の挙動をアライメント違反ケースで検証し、`read`/`write` が UB になる条件を文書化した診断メッセージと整合することを確認。
-5. **thread-send-audit**: `@requires(effect={runtime, unsafe})` を付与したポインタ共有ユースケースで `audit` ログが作成されるか検証し、`Send`/`Sync` マーカー無しで共有した場合にビルドエラーとなることを確認。
 
-各スモークテストは CI で `core-unsafe-ptr` ジョブとして実行し、失敗時は `Diagnostic` に `effect_flags` と `ptr_label` が含まれることを必須要件とする。
+
+## 9. 改訂タスクリスト（状態トラッカー）
+
+| ステータス | 項目 |
+| --- | --- |
+| ✅ | `Span<T>` 定義の更新 (`ptr: NonNullPtr<T>, len: usize`) と `span_from_raw_parts` 系ユーティリティの追記 |
+| ✅ | `bind_fn_ptr` のコールバック例を追加し、監査ログと併用するパターンを明示 |
+| 🔄 | `effect {memory}` を伴う操作と `CapabilitySecurity.effect_scope` の対応チェックリストを作成 |
+| 🔄 | `MappedMemory` ⇄ `Span<u8>` 変換ガイドラインを追加（Core.Memory 連携） |
+| 🔄 | `audited_unsafe_block` + `AuditContext` を用いた低レベル監査サンプルを整備 |
+
+開発中の CI スモークテスト (`ffi-smoke` / `buffer-span` / `gc-root-guard` / `alignment-check` / `thread-send-audit`) は、`core-unsafe-ptr` ジョブで実行し、失敗時に `Diagnostic` が `effect_flags` と `ptr_label` を含むことを検証する。
 
 
 ---

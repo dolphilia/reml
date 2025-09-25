@@ -132,6 +132,19 @@ let shim = with_abi_adaptation(symbol, conv)?;
 | FFI | `LibraryMetadata` に呼出規約と必要 Capability を記述したか |
 | 診断 | CI で `target.config.*` が検出された際の運用手順を整備したか |
 
+## 9. システムプログラミングモジュールとターゲット差異
+
+| モジュール | 主な `@cfg` キー | プラットフォーム注意点 |
+| --- | --- | --- |
+| `Core.System` (3-11) | `target_os`, `target_arch` | `PlatformSyscalls` を `supports` で確認し、未実装 OS では `raw_syscall` へのフォールバックと監査ログを用意する |
+| `Core.Process` (3-12) | `target_family`, `feature = "job_control"` | Windows のハンドル vs POSIX PID の差異を抽象化し、終了コードの意味付けを明示する |
+| `Core.Memory` (3-13) | `feature = "shared_memory"`, `target_os` | `mmap`/`MapViewOfFile` のサポート状況、`Fixed` マッピングをポリシーで禁止する |
+| `Core.Signal` (3-14) | `target_family`, `feature = "sigqueue"` | Windows では擬似シグナル (`CTRL_C_EVENT` など) を `Custom(i32)` へマップする |
+| `Core.Hardware` (3-15) | `target_arch`, `feature = "rdtsc"` | 権限不足時は `HardwareErrorKind::PermissionDenied` を返し、監査で権限不足を通知 |
+| `Core.RealTime` (3-16) | `feature = "realtime"`, `target_os` | `SCHED_DEADLINE` や `mlock` が非対応の場合は `RealTimeErrorKind::Unsupported` を返却 |
+
+これらモジュールを利用する際は `CapabilitySecurity.effect_scope` と `SecurityPolicy` をターゲットごとに調整し、`guides/system-programming-primer.md` で紹介する監査テンプレートと併用することを推奨する。
+
 ---
 
 ポータビリティ対応は段階的な取り組みが推奨されます。Phase 1 の項目を満たした後は、`guides/ci-strategy.md`（未作成）でマルチターゲットテスト基盤を整備し、Phase 2 以降の TODO を進めてください。

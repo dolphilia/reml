@@ -97,6 +97,61 @@ Swift や Zig のように追加メタデータが付与される言語では、
 これらのサンプルは `Core.Unsafe.Ptr` の API ドキュメントと連携させ、CI でリグレッションテストを行う。
 
 
+## 10. `FfiArgs` / `FfiValue` とシリアライズヘルパ
+
+Reml 3.9 章では FFI 呼び出しの引数・戻り値を `Span<u8>` で表現する `FfiArgs` / `FfiValue` が定義された。ハンドブックでは次の約束を採用する。
+
+```reml
+let args = ffi::encode_args(&(u32::from(42), "hello".to_bytes()));
+let raw  = foreign_fn.call(args)?;        // FfiValue = Span<u8>
+let reply: (u32, Bool) = ffi::decode_result(raw)?;
+```
+
+- `encode_args` は Reml のタプル/レコードを `Span<u8>` に直列化するユーティリティであり、構造体レイアウトは `FfiSignature` に従う。
+- `decode_result` は戻り値を同じ `FfiSignature` に基づいて復元する。失敗時は `FfiErrorKind::InvalidSignature` を返し、`audit.log("ffi.decode_failed", ...)` に詳細を残す。
+- 手動で `Span<u8>` を構築する場合は `span_from_raw_parts(ptr, len)` を利用し、`capability.effect_scope` に `memory` が含まれることを確認する。
+
+## 11. 監査テンプレートと Capability 連携
+
+FFI 呼び出しは `call_with_capability` を介することで `CapabilityRegistry` と連携し、監査ログとセキュリティポリシーが適用される。
+
+```reml
+fn call_db(cap: FfiCapability, handle: SymbolHandle, params: DbParams, audit: AuditSink) -> Result<DbResult, FfiError> = {
+  let args = ffi::encode_args(&params);
+  let ctx  = AuditContext::new("ffi", handle.symbol_name())?;
+  ctx.log("ffi.call.start", json!({ "library": handle.library_path(), "symbol": handle.symbol_name() }))?;
+
+  let value = cap.call_function(handle, args)?;     // effect {ffi, security, audit}
+  ctx.log("ffi.call.end", json!({ "latency_ns": ctx.elapsed()?.as_nanos(), "status": "ok" }))?;
+
+  ffi::decode_result(value)
+}
+```
+
+- `call_function` は `effect {ffi, security, audit}` を持ち、`SecurityCapability` と `AuditContext` を通じて許可・記録を行う。
+- 署名検証が有効な場合、`FfiCapability.verify_abi` によって `FfiSignature` と実際のシンボルが一致するか確認される。
+- 失敗時は `FfiErrorKind::SecurityViolation` や `FfiErrorKind::CallFailed` が返るため、`Diagnostic` へ変換して CLI/LSP に通知する。
+
+### 11.1 Capability 登録チェックリスト
+
+1. `CapabilitySecurity.effect_scope` に `{ffi, audit, security}` を含める。
+2. サンドボックスが必要な場合、`FfiSecurity.sandbox_calls = true` とし、CPU/メモリ制限やシステムコールホワイトリストを設定する。
+3. `call_sandboxed` を利用するラッパでは `FFI Sandbox` の制約（`memory_limit`, `syscall_whitelist` など）を監査ログへ残す。
+4. プラットフォーム差異：`resolve_calling_convention` の結果を `CapabilitySecurity.policy` と照合し、非対応時は `unsupported_target` 診断を発行する。
+
+### 11.2 プラットフォーム別注意事項
+
+- **Linux**: `libdl` を利用した遅延ロード。`RTLD_DEEPBIND` は未使用推奨。System V ABI を前提。
+- **Windows**: `LoadLibraryW` + `GetProcAddress`。`__stdcall` (`StdCall`) を既定とし、`ForeignFunction` 取得時にキャッシュする。
+- **macOS**: `dlopen` (`NSAddImage`) を利用。コードサイン制約に注意。
+- **WASI/WASM**: 現在はホワイトリスト方式のみサポート。`call_with_capability` は `SecurityPolicy` に定義されたホスト関数へルーティングする。
+
+## 12. 今後の拡張ロードマップ
+
+- フェーズ1（〜6ヶ月）: FFI ランタイムの最小構成（`encode_args`/`decode_result`, 監査テンプレ）を安定化。
+- フェーズ2（6〜12ヶ月）: `async` ランタイムとの統合、タイムアウト／キャンセル連携を提供。
+- フェーズ3（12ヶ月〜）: 多言語バインディング（Rust / Go / Python）の公式パッケージ化、`reml-bindgen` ツール公開、WASI/wasi-nn 等への対応。
+
 ---
 
 > **ドラフト状態**: 本ハンドブックはフェーズ0で骨子を作成した段階。各セクションはフェーズ1以降の PoC とレビュー結果に合わせて詳細化する。

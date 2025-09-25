@@ -22,6 +22,13 @@ pub struct CapabilityRegistry {
   audit: AuditCapability,
   metrics: MetricsCapability,
   plugins: PluginCapability,
+  system: Option<SyscallCapability>,
+  process: Option<ProcessCapability>,
+  memory: Option<MemoryCapability>,
+  signal: Option<SignalCapability>,
+  hardware: Option<HardwareCapability>,
+  realtime: Option<RealTimeCapability>,
+  security: SecurityCapability,
 }
 
 fn registry() -> &'static CapabilityRegistry                  // `effect {runtime}`
@@ -33,6 +40,38 @@ fn get(cap: CapabilityId) -> Option<CapabilityHandle>          // `effect {runti
 - `register` は起動時に呼び出され、重複登録時は `CapabilityError::AlreadyRegistered` を返す。
 - セキュリティ強化のため、Capability は署名検証とアクセス制御をサポートする。
 
+### 1.1 CapabilityHandle のバリアント
+
+```reml
+pub enum CapabilityHandle =
+  | Gc(GcCapability)
+  | Io(IoCapability)
+  | Audit(AuditCapability)
+  | Metrics(MetricsCapability)
+  | Plugin(PluginCapability)
+  | System(SyscallCapability)
+  | Process(ProcessCapability)
+  | Memory(MemoryCapability)
+  | Signal(SignalCapability)
+  | Hardware(HardwareCapability)
+  | RealTime(RealTimeCapability)
+  | Security(SecurityCapability);
+```
+
+各 Capability の概要は以下の通りで、詳細仕様は該当章（3-11〜3-16）に委ねる。
+
+| Capability | 主担当効果 | 役割 | 参照章 |
+| --- | --- | --- | --- |
+| `SyscallCapability` | `syscall`, `memory`, `unsafe` | OS システムコール呼び出しと監査フック | 3-11 Core System (予定) |
+| `ProcessCapability` | `process`, `thread` | プロセス生成・スレッド管理 | 3-12 Core Process (予定) |
+| `MemoryCapability` | `memory` | メモリマップ/共有メモリ/保護制御 | 3-13 Core Memory (予定) |
+| `SignalCapability` | `signal` | シグナル登録・送信・待機 | 3-14 Core Signal (予定) |
+| `HardwareCapability` | `hardware` | CPU 検出・性能カウンタ・NUMA | 3-15 Core Hardware (予定) |
+| `RealTimeCapability` | `realtime`, `io.timer` | リアルタイムスケジューラ・高精度タイマ | 3-16 Core RealTime (予定) |
+| `SecurityCapability` | `security`, `audit` | セキュリティポリシー適用と証跡記録 | 本章 §1.2, §2.7 |
+
+Capability Registry は上記バリアントを通じてシステム API を表面化し、効果タグと runtime 権限を整合させる。
+
 ### 1.2 セキュリティモデル
 
 ```reml
@@ -41,6 +80,9 @@ pub type CapabilitySecurity = {
   permissions: Set<Permission>,
   isolation_level: IsolationLevel,
   audit_required: Bool,
+  effect_scope: Set<EffectTag>,
+  policy: Option<SecurityPolicyRef>,
+  sandbox: Option<SandboxProfile>,
 }
 
 pub enum Permission = {
@@ -55,6 +97,10 @@ pub enum IsolationLevel = None | Sandboxed | FullIsolation
 
 fn verify_capability_security(handle: CapabilityHandle, security: CapabilitySecurity) -> Result<(), SecurityError>
 ```
+
+* `EffectTag` は [1.3 効果と安全性](1-3-effects-safety.md) に定義された `Σ` のタグ名。Capability が生成し得る効果を宣言し、`register` 時に `effect_scope ⊇ actual_effects` を検証する。
+* `SecurityPolicyRef` は `SecurityCapability` が管理するポリシーへの参照で、`enforce_security_policy` 実行時に `verify_capability_security` と一致することを要求する。
+* `SandboxProfile` は CPU・メモリ・ネットワークの制約を記述する共通構造体で、§6.1 の `SandboxConfig` を再利用して定義する。
 
 ### 1.3 プラットフォーム情報と能力 {#platform-info}
 
@@ -108,7 +154,7 @@ if platform_features().contains("packrat_default") {
 
 * `FfiCapability`（[3-9](3-9-core-async-ffi-unsafe.md)）は `platform_info()` と `resolve_calling_convention` を参照し、ターゲットごとの ABI を自動選択する。Capability Registry でプラットフォーム情報を更新すると FFI バインディングも同時に反映される。
 
-### 1.1 CapabilityError
+### 1.4 CapabilityError
 
 ```reml
 pub type CapabilityError = {
@@ -116,14 +162,114 @@ pub type CapabilityError = {
   message: Str,
 }
 
-pub enum CapabilityErrorKind = AlreadyRegistered | NotFound | InvalidHandle | UnsafeViolation
+pub enum CapabilityErrorKind = AlreadyRegistered | NotFound | InvalidHandle | UnsafeViolation | SecurityViolation
 ```
 
 - `InvalidHandle` は型不一致や ABI 不整合を検出した際に報告する。
 - `UnsafeViolation` は `effect {unsafe}` 経由でのみ返される。
 - `SecurityViolation` はアクセス制御違反や不正なケーパビリティ操作時に発生する。
 
-## 2. GC Capability インターフェイス
+## 2. システムプログラミング Capability 概要
+
+`Σ_system` に対応する Capability は、低レベル API をランタイム経由で公開しつつ、安全性と監査を維持するためのゲートとして機能する。各 Capability は `CapabilitySecurity.effect_scope` と一致する効果タグを生成し、登録時に署名およびポリシー検証を受ける。
+
+### 2.1 SyscallCapability
+
+```reml
+pub type SyscallCapability = {
+  raw_syscall: fn(SyscallNumber, [i64; 6]) -> Result<i64, SyscallError>,      // effect {syscall, unsafe}
+  platform_syscalls: PlatformSyscalls,                                        // effect {syscall}
+  audited_syscall: fn(SyscallDescriptor, SyscallThunk) -> Result<SyscallRet, SyscallError>, // effect {syscall, audit}
+  supports: fn(SyscallId) -> Bool,
+}
+
+pub type SyscallThunk = fn() -> Result<SyscallRet, SyscallError>;
+```
+
+* `PlatformSyscalls` は OS 別ラッパ（Linux/Windows/macOS 等）をカプセル化し、型安全な高レベル API を提供する。
+* `audited_syscall` は [3-6](3-6-core-diagnostics-audit.md) の監査ロガーと統合し、`audit` 効果を標準化する。
+
+### 2.2 ProcessCapability
+
+```reml
+pub type ProcessCapability = {
+  spawn_process: fn(Command, Environment) -> Result<ProcessHandle, ProcessError>,    // effect {process}
+  kill_process: fn(ProcessHandle, Signal) -> Result<(), ProcessError>,               // effect {process, signal}
+  wait_process: fn(ProcessHandle, Option<Duration>) -> Result<ExitStatus, ProcessError>, // effect {process, blocking}
+  create_thread: fn(ThreadStart, ThreadOptions) -> Result<ThreadHandle, ThreadError>,    // effect {thread}
+  join_thread: fn(ThreadHandle, Option<Duration>) -> Result<ThreadResult, ThreadError>,  // effect {thread, blocking}
+  set_thread_affinity: fn(ThreadHandle, Set<CpuId>) -> Result<(), ThreadError>,          // effect {thread, hardware}
+}
+```
+
+### 2.3 MemoryCapability
+
+```reml
+pub type MemoryCapability = {
+  mmap: fn(MmapRequest) -> Result<MappedMemory, MemoryError>,          // effect {memory, unsafe}
+  munmap: fn(MappedMemory) -> Result<(), MemoryError>,                 // effect {memory}
+  mprotect: fn(&mut MappedMemory, MemoryProtection) -> Result<(), MemoryError>, // effect {memory}
+  shared_open: fn(SharedMemoryRequest) -> Result<SharedMemory, MemoryError>,    // effect {memory, process}
+  msync: fn(&MappedMemory, SyncFlags) -> Result<(), MemoryError>,      // effect {memory, io}
+}
+```
+
+### 2.4 SignalCapability
+
+```reml
+pub type SignalCapability = {
+  register_handler: fn(Signal, SignalHandler) -> Result<PreviousHandler, SignalError>, // effect {signal, unsafe}
+  mask: fn(Set<Signal>) -> Result<SignalMask, SignalError>,                             // effect {signal}
+  unmask: fn(SignalMask) -> Result<(), SignalError>,                                   // effect {signal}
+  send: fn(ProcessId, Signal) -> Result<(), SignalError>,                              // effect {signal, process}
+  wait: fn(Set<Signal>, Option<Duration>) -> Result<SignalInfo, SignalError>,          // effect {signal, blocking}
+  raise: fn(Signal) -> Result<(), SignalError>,                                        // effect {signal}
+}
+```
+
+### 2.5 HardwareCapability
+
+```reml
+pub type HardwareCapability = {
+  read_cpu_id: fn() -> CpuId,                                  // effect {hardware}
+  cpu_features: fn() -> CpuFeatures,                           // effect {hardware}
+  rdtsc: fn() -> u64,                                          // effect {hardware, timing}
+  rdtscp: fn() -> (u64, u32),                                  // effect {hardware, timing}
+  prefetch: fn<T>(Ptr<T>, PrefetchLocality) -> (),              // effect {hardware}
+  numa_nodes: fn() -> List<NumaNode>,                           // effect {hardware}
+  bind_numa: fn(NumaNode) -> Result<(), HardwareError>,        // effect {hardware, thread}
+}
+```
+
+### 2.6 RealTimeCapability
+
+```reml
+pub type RealTimeCapability = {
+  set_scheduler: fn(SchedulingPolicy, Priority) -> Result<PreviousScheduler, RealTimeError>, // effect {realtime}
+  lock_memory: fn(VoidPtr, usize) -> Result<(), MemoryError>,                                 // effect {realtime, memory}
+  unlock_memory: fn(VoidPtr, usize) -> Result<(), MemoryError>,                               // effect {realtime, memory}
+  sleep_precise: fn(Duration) -> Result<Duration, RealTimeError>,                             // effect {realtime, blocking}
+  create_timer: fn(Duration, TimerHandler) -> Result<TimerHandle, RealTimeError>,             // effect {realtime, io.timer}
+}
+```
+
+### 2.7 SecurityCapability
+
+```reml
+pub type SecurityCapability = {
+  enforce_security_policy: fn(SecurityPolicy) -> Result<(), SecurityError>,    // effect {security, audit}
+  current_policy: fn() -> SecurityPolicy,                                       // effect {security}
+  verify_signature: fn(CapabilityId, DigitalSignature) -> Result<(), SecurityError>, // effect {security}
+  audit_violation: fn(SecurityViolationReport) -> Result<(), CapabilityError>,  // effect {audit}
+  policy_digest: fn() -> PolicyDigest,                                          // @pure
+}
+```
+
+`SecurityPolicy` は [system-programming-analysis.md](system-programming-analysis.md) で提案された構造（許可システムコール、メモリ制限、ネットワーク範囲等）を採用し、`policy_digest` は監査ログやキャッシュで使用するハッシュ値を返す。
+
+---
+
+## 3. GC Capability インターフェイス
 
 Chapter 2.9 のドラフトを正式化する。
 
@@ -142,7 +288,7 @@ pub type GcCapability = {
 - `GcMetrics` は [3.4](3-4-core-numeric-time.md) の `MetricPoint` と互換のフィールド構造を持つ。
 - GC 操作は監査ログに記録され、パフォーマンス監視とデバッグを支援する。
 
-### 2.1 メモリ管理の高度制御
+### 3.1 メモリ管理の高度制御
 
 ```reml
 fn configure_gc_advanced(config: AdvancedGcConfig) -> Result<(), CapabilityError>;
@@ -158,7 +304,7 @@ pub type AdvancedGcConfig = {
 pub enum GcFrequency = Aggressive | Normal | Conservative | Manual
 ```
 
-## 3. Metrics & Audit Capability
+## 4. Metrics & Audit Capability
 
 ```reml
 pub type MetricsCapability = {
@@ -176,13 +322,13 @@ pub type AuditCapability = {
 - `AuditStatus` は監査シンクの状態（接続/遅延/停止）を表す。
 
 
-### 3.1 DSLメトリクス連携
+### 4.1 DSLメトリクス連携
 
 - Conductor で宣言された DSL ID ごとに `register_dsl_metrics` を呼び出し、`MetricsCapability.emit` を通じて `dsl.latency` などのメトリクスを登録する。
 - `MetricsCapability.list` は DSL メトリクスを含むディスクリプタを返し、ダッシュボードプラグインが自動検出できるようにする。
 - トレース連携は [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) の `start_dsl_span` を利用し、`TraceContext` を Capability Registry 経由で伝搬させる。
 
-## 4. IO Capability
+## 5. IO Capability
 
 ```reml
 pub type IoCapability = {
@@ -196,7 +342,7 @@ pub type IoCapability = {
 - 3.5 の同期 IO API が内部で利用するバックエンドとして定義。
 - 実装は OS ごとに差し替え可能。
 
-## 5. プラグイン Capability
+## 6. プラグイン Capability
 
 ```reml
 pub type PluginCapability = {
@@ -217,7 +363,7 @@ pub type PluginMetadata = {
 - `verify_signature` は 3.6 の監査モジュールと連携して署名検証結果をログ化する。
 - プラグインのライフサイクル管理（ロード、アンロード、アップデート）を安全に行うメカニズムを提供。
 
-### 5.1 プラグインサンドボックス
+### 6.1 プラグインサンドボックス
 
 ```reml
 fn load_plugin_sandboxed(metadata: PluginMetadata, sandbox: SandboxConfig) -> Result<PluginHandle, CapabilityError>
@@ -235,13 +381,13 @@ pub enum FileAccess = None | ReadOnly(List<PathPattern>) | Restricted(List<PathP
 ```
 
 
-### 5.2 DSLプラグイン指針
+### 6.2 DSLプラグイン指針
 
 - DSL テンプレート／オブザーバビリティ拡張は `PluginCapability.register` で Capability Registry に自己記述メタデータを登録する。
 - プラグインの責務と配布ポリシーは [notes/dsl-plugin-roadmap.md](notes/dsl-plugin-roadmap.md) および [AGENTS.md](AGENTS.md) を参照し、互換テストを必須化する。
 - `plugins` セクションで FfiCapability や AsyncCapability を要求する場合は、Conductor 側の `with_capabilities` と同一IDを使用して権限を同期させる。
 
-## 6. 使用例（GC + Metrics 登録）
+## 7. 使用例（GC + Metrics 登録）
 
 ```reml
 use Core;
@@ -261,9 +407,9 @@ fn collect_gc_metrics() -> Result<MetricPoint<Float>, CapabilityError> =
 - 起動時に `gc` と `metrics` を登録し、`registry()` 経由で取得可能とする。
 - 取得したメトリクスは Chapter 3.4 の `metric_point` を再利用して監査へ送出する。
 
-## 7. ランタイム監視とデバッグ
+## 8. ランタイム監視とデバッグ
 
-### 7.1 リアルタイムメトリクス
+### 8.1 リアルタイムメトリクス
 
 ```reml
 fn start_metrics_collection(interval: Duration) -> Result<MetricsCollector, CapabilityError>
@@ -285,7 +431,7 @@ pub type MemoryUsage = {
 }
 ```
 
-### 7.2 パフォーマンスプロファイリング
+### 8.2 パフォーマンスプロファイリング
 
 ```reml
 fn enable_profiling(config: ProfilingConfig) -> Result<Profiler, CapabilityError>
@@ -305,7 +451,7 @@ pub type ProfileData = {
 }
 ```
 
-### 7.3 ランタイムデバッグ
+### 8.3 ランタイムデバッグ
 
 ```reml
 fn attach_debugger(config: DebuggerConfig) -> Result<Debugger, CapabilityError>  // `effect {debug, unsafe}`

@@ -7,7 +7,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | ステータス | 正式仕様 |
-| 効果タグ | `effect {io}`, `effect {mut}`, `effect {mem}`, `effect {blocking}`, `effect {async}`, `effect {security}` |
+| 効果タグ | `effect {io}`, `effect {mut}`, `effect {memory}`, `effect {io.blocking}`, `effect {io.async}`, `effect {security}` |
 | 依存モジュール | `Core.Prelude`, `Core.Text`, `Core.Collections`, `Core.Diagnostics`, `Core.Numeric & Time` |
 | 相互参照 | [2.6 実行戦略](2-6-execution-strategy.md), [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), Guides: [ランタイム連携](guides/runtime-bridges.md) |
 
@@ -15,24 +15,24 @@
 
 - `use Core.IO;` は同期 IO API（`Reader`, `Writer`, `File`, `Stdin`, `Stdout`）を公開する。
 - `use Core.Path;` はパス抽象（`Path`, `PathBuf`, `Glob`, `Watcher`）を提供する。
-- すべての IO 関数は `effect {io}` を明記し、`effect {blocking}` フラグで同期ブロッキングの可能性を示す。
+- すべての IO 関数は `effect {io}` を明記し、`effect {io.blocking}` フラグで同期ブロッキングの可能性を示す。
 - `defer` キーワードと `ScopeGuard` 型を利用してリソース解放を保証する設計を前提とする。
 
 ## 2. Reader / Writer 抽象
 
 ```reml
 trait Reader {
-  fn read(&mut self, buf: &mut Bytes) -> Result<usize, IoError>;            // `effect {io, blocking}`
-  fn read_exact(&mut self, size: usize) -> Result<Bytes, IoError>;          // `effect {io, blocking}`
+  fn read(&mut self, buf: &mut Bytes) -> Result<usize, IoError>;            // `effect {io, io.blocking}`
+  fn read_exact(&mut self, size: usize) -> Result<Bytes, IoError>;          // `effect {io, io.blocking}`
 }
 
 trait Writer {
-  fn write(&mut self, buf: Bytes) -> Result<usize, IoError>;                // `effect {io, blocking}`
-  fn flush(&mut self) -> Result<(), IoError>;                               // `effect {io, blocking}`
+  fn write(&mut self, buf: Bytes) -> Result<usize, IoError>;                // `effect {io, io.blocking}`
+  fn flush(&mut self) -> Result<(), IoError>;                               // `effect {io, io.blocking}`
 }
 
-fn copy<R: Reader, W: Writer>(reader: &mut R, writer: &mut W) -> Result<u64, IoError> // `effect {io, blocking}`
-fn with_reader<T>(path: Path, f: (FileReader) -> Result<T, IoError>) -> Result<T, IoError> // `effect {io, blocking}`
+fn copy<R: Reader, W: Writer>(reader: &mut R, writer: &mut W) -> Result<u64, IoError> // `effect {io, io.blocking}`
+fn with_reader<T>(path: Path, f: (FileReader) -> Result<T, IoError>) -> Result<T, IoError> // `effect {io, io.blocking}`
 ```
 
 - `IoError` は `kind: IoErrorKind` と `message: Str`、`path: Option<Path>` を保持し `IntoDiagnostic` トレイト経由で診断システムと連携する。
@@ -76,11 +76,11 @@ struct File {
   path: PathBuf,
 }
 
-fn open(path: Path) -> Result<File, IoError>                       // `effect {io, blocking}`
-fn create(path: Path, options: FileOptions) -> Result<File, IoError> // `effect {io, blocking}`
-fn metadata(path: Path) -> Result<FileMetadata, IoError>           // `effect {io, blocking}`
-fn remove(path: Path) -> Result<(), IoError>                       // `effect {io, blocking}`
-fn sync(file: &mut File) -> Result<(), IoError>                    // `effect {io, blocking}`
+fn open(path: Path) -> Result<File, IoError>                       // `effect {io, io.blocking}`
+fn create(path: Path, options: FileOptions) -> Result<File, IoError> // `effect {io, io.blocking}`
+fn metadata(path: Path) -> Result<FileMetadata, IoError>           // `effect {io, io.blocking}`
+fn remove(path: Path) -> Result<(), IoError>                       // `effect {io, io.blocking}`
+fn sync(file: &mut File) -> Result<(), IoError>                    // `effect {io, io.blocking}`
 ```
 
 - `FileOptions` は `append`, `truncate`, `permissions` を保持し、`UnixMode`/`WindowsAttributes` を統一的に扱う。
@@ -90,12 +90,13 @@ fn sync(file: &mut File) -> Result<(), IoError>                    // `effect {i
 
 ```reml
 type BufferedReader<R: Reader>
-fn buffered<R: Reader>(reader: R, capacity: usize) -> BufferedReader<R> // `effect {mem}`
-fn read_line(reader: &mut BufferedReader<Reader>) -> Result<Option<Str>, IoError> // `effect {io, blocking}`
+fn buffered<R: Reader>(reader: R, capacity: usize) -> BufferedReader<R> // `effect {memory}`
+fn read_line(reader: &mut BufferedReader<Reader>) -> Result<Option<Str>, IoError> // `effect {io, io.blocking}`
 ```
 
-- バッファ確保時に `effect {mem}` を要求。
+- バッファ確保時に `effect {memory}` を要求。
 - `read_line` は `Str` を返す。`Core.Text` の正規化は呼び出し側で行う。
+- `Core.Memory`（予定章 3-13）で定義する `MappedMemory` や `Span<u8>` と連携する場合は、`memory` 効果が `CapabilitySecurity.effect_scope` に含まれていることを確認する。
 
 ## 4. Path 抽象
 
@@ -109,7 +110,7 @@ fn join(base: Path, segment: Str) -> Path                        // `@pure`
 fn parent(path: Path) -> Option<Path>                            // `@pure`
 fn normalize(path: Path) -> Path                                 // `@pure`
 fn is_absolute(path: Path) -> Bool                               // `@pure`
-fn glob(pattern: Str) -> Result<List<Path>, PathError>           // `effect {io}`
+fn glob(pattern: Str) -> Result<List<Path>, PathError>           // `effect {io, io.blocking}`
 ```
 
 - `PathError` はプラットフォーム依存文字列や無効な UTF-8 バイト列を報告する。
@@ -121,7 +122,7 @@ fn glob(pattern: Str) -> Result<List<Path>, PathError>           // `effect {io}
 ```reml
 fn validate_path(path: Path, policy: SecurityPolicy) -> Result<Path, SecurityError>  // `effect {security}`
 fn sandbox_path(path: Path, root: Path) -> Result<Path, SecurityError>             // `effect {security}`
-fn is_safe_symlink(path: Path) -> Result<Bool, IoError>                           // `effect {io, security}`
+fn is_safe_symlink(path: Path) -> Result<Bool, IoError>                           // `effect {io, io.blocking, security}`
 ```
 
 ### 4.3 文字列ユーティリティ（クロスプラットフォーム）
@@ -145,7 +146,7 @@ fn is_absolute_str(text: Str, style: PathStyle = Native) -> Bool                
 ```reml
 type WatchEvent = Created(Path) | Modified(Path) | Deleted(Path)
 
-fn watch(paths: List<Path>, callback: (WatchEvent) -> ()) -> Result<Watcher, IoError> // `effect {io, async}`
+fn watch(paths: List<Path>, callback: (WatchEvent) -> ()) -> Result<Watcher, IoError> // `effect {io, io.async}`
 fn close(watcher: Watcher) -> Result<(), IoError>                                      // `effect {io}`
 ```
 
@@ -153,7 +154,7 @@ fn close(watcher: Watcher) -> Result<(), IoError>                               
 - 大量のファイル変更監視時にはシステムリソースを保護するメカニズムを提供。
 
 ```reml
-fn watch_with_limits(paths: List<Path>, limits: WatchLimits, callback: (WatchEvent) -> ()) -> Result<Watcher, IoError>
+fn watch_with_limits(paths: List<Path>, limits: WatchLimits, callback: (WatchEvent) -> ()) -> Result<Watcher, IoError> // `effect {io, io.async}`
 
 pub type WatchLimits = {
   max_events_per_second: u32,
@@ -193,6 +194,7 @@ fn log_io(event: Str, path: Option<Path>, duration: Duration, audit: AuditSink) 
 ```
 
 - IO 操作の所要時間を `Core.Numeric & Time` の `Duration` で記録し、`audit_id` と `change_set` を付与するテンプレートを提供。
+- IO 操作の所要時間を `Core.Numeric & Time` の `Duration` で記録し、`audit_id` と `change_set` を付与するテンプレートを提供。`AuditContext`（[3.6](3-6-core-diagnostics-audit.md)）と組み合わせることで、`SyscallCapability.audited_syscall` の前後で統一された監査レコードを生成できる。
 
 ## 7. 使用例（設定ファイル読み込み）
 
