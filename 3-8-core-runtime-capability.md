@@ -387,7 +387,75 @@ pub enum FileAccess = None | ReadOnly(List<PathPattern>) | Restricted(List<PathP
 - プラグインの責務と配布ポリシーは [notes/dsl-plugin-roadmap.md](notes/dsl-plugin-roadmap.md) および [AGENTS.md](AGENTS.md) を参照し、互換テストを必須化する。
 - `plugins` セクションで FfiCapability や AsyncCapability を要求する場合は、Conductor 側の `with_capabilities` と同一IDを使用して権限を同期させる。
 
-## 7. 使用例（GC + Metrics 登録）
+## 7. DSL Capability Utility {#dsl-capability-utility}
+
+DSL エクスポートの互換性検証と性能推定をランタイムで支援するために、`Core.Runtime.DslCapability` 名前空間を定義する。Chapter 1 の `DslExportSignature`（1-2 §G）と Chapter 3.7 のマニフェスト API を連携させ、CLI や LSP からのクエリに応答できるようにする。
+
+```reml
+pub type DslCapabilityProfile = {
+  category: DslCategory,
+  produces: DslCategory,
+  requires: List<DslCategory>,
+  allows_effects: Set<EffectTag>,
+  capabilities: Set<CapabilityId>,
+  manifest: Option<DslEntry>,
+  performance: Option<DslPerformanceHints>,
+}
+
+pub type DslPerformanceHints = {
+  baseline_latency: Duration,
+  throughput: Option<Float>,
+  memory_ceiling: Option<usize>,
+  notes: Option<Str>,
+}
+
+pub type DslCompatibilityReport = {
+  compatible: Bool,
+  missing_capabilities: Set<CapabilityId>,
+  effect_delta: Set<EffectTag>,
+  category_mismatch: Option<(DslCategory, DslCategory)>,
+  notes: List<Str>,
+}
+
+fn register_dsl_profile(profile: DslCapabilityProfile) -> Result<(), CapabilityError>       // `effect {runtime}`
+fn resolve_dsl_profile(name: Str) -> Option<DslCapabilityProfile>                          // `effect {runtime}`
+fn analyze_dsl_compatibility(lhs: DslCapabilityProfile, rhs: DslCapabilityProfile) -> DslCompatibilityReport // `@pure`
+fn benchmark_dsl(entry: DslExportSignature<Json>, harness: BenchmarkHarness) -> Result<DslPerformanceHints, CapabilityError> // `effect {runtime, audit}`
+```
+
+```reml
+pub type BenchmarkHarness = {
+  input_generator: fn() -> Json,                     // `effect {runtime}`
+  iterations: u32,
+  warmup: u32,
+  metrics: List<MetricPoint<Float>>,                // `@pure`
+  trace: Option<TraceSink>,
+}
+```
+
+- `register_dsl_profile` は `reml.toml` とコンパイラが収集した `DslExportSignature` を統合し、Capability Registry にキャッシュする。
+- `resolve_dsl_profile` は CLI が `reml dsl info <name>` のようなコマンドで利用し、互換性情報を JSON で返す際の基礎メタデータを提供する。
+- `analyze_dsl_compatibility` は `requires` / `capabilities` / `allows_effects` を比較し、Chapter 1.3 §I.1 の効果境界検査を再利用して差分を報告する。`effect_delta` が空で `missing_capabilities` も空の場合に互換と判定する。
+- `benchmark_dsl` はパーサーのホットパスを計測し、`MetricsCapability.emit` を通じて `dsl.performance.*` メトリクスを収集する。`TraceSink` が指定された場合は [3-6](3-6-core-diagnostics-audit.md) のトレース API と連携して結果を可視化する。
+- `DslPerformanceHints` は 0-2 指針の性能基準（10MB 線形解析等）を記録し、CLI/IDE が閾値を超過した場合に警告を出せるようにする。
+
+### 7.1 プロファイル生成フロー
+
+1. `load_manifest`（3-7 §1.2）で取得した DSL セクションを `register_dsl_profile` に渡す。
+2. コンパイラが `@dsl_export` を解析して `DslExportSignature` を得たら、`benchmark_dsl` の事前ウォームアップにより性能ヒントを更新する。
+3. `analyze_dsl_compatibility` を用いて、Conductor が依存する DSL の `requires` セットが満たされているか、`allows_effects` の差異が許容範囲かを確認する。
+4. 結果は `CliDiagnosticEnvelope.summary.stats["dsl_compat"]`（3-6 §9）に集計され、CLI 出力や LSP が利用できる。
+
+### 7.2 互換性診断との連携
+
+- `DslCompatibilityReport` が `compatible=false` を返した場合、`diagnostic("dsl.compatibility.failed")` を生成し、`missing_capabilities` と `effect_delta` を期待集合として提示する。
+- `category_mismatch` が発生した場合は型検査段階のエラー (`manifest.dsl.category_mismatch`) と同期し、重複報告を避ける。
+- `performance.notes` に `baseline_latency` が 0-2 指針の閾値を超えた旨が記録されている場合は、`Severity::Warning` で CLI に表示し、CI では `--fail-on-performance` フラグでエラーに昇格できる。
+
+---
+
+
+## 8. 使用例（GC + Metrics 登録）
 
 ```reml
 use Core;
@@ -407,9 +475,9 @@ fn collect_gc_metrics() -> Result<MetricPoint<Float>, CapabilityError> =
 - 起動時に `gc` と `metrics` を登録し、`registry()` 経由で取得可能とする。
 - 取得したメトリクスは Chapter 3.4 の `metric_point` を再利用して監査へ送出する。
 
-## 8. ランタイム監視とデバッグ
+## 9. ランタイム監視とデバッグ
 
-### 8.1 リアルタイムメトリクス
+### 9.1 リアルタイムメトリクス
 
 ```reml
 fn start_metrics_collection(interval: Duration) -> Result<MetricsCollector, CapabilityError>
@@ -431,7 +499,7 @@ pub type MemoryUsage = {
 }
 ```
 
-### 8.2 パフォーマンスプロファイリング
+### 9.2 パフォーマンスプロファイリング
 
 ```reml
 fn enable_profiling(config: ProfilingConfig) -> Result<Profiler, CapabilityError>
@@ -451,7 +519,7 @@ pub type ProfileData = {
 }
 ```
 
-### 8.3 ランタイムデバッグ
+### 9.3 ランタイムデバッグ
 
 ```reml
 fn attach_debugger(config: DebuggerConfig) -> Result<Debugger, CapabilityError>  // `effect {debug, unsafe}`

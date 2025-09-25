@@ -367,3 +367,48 @@ fn diagnostic_metrics(diagnostics: Iter<Diagnostic>) -> DiagnosticMetrics {
 ```
 
 > 関連: [2.5 エラー設計](2-5-error.md), [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.7 Core Config & Data](3-7-core-config-data.md)
+
+## 9. CLI コマンドプロトコル {#cli-protocol}
+
+`reml build`, `reml test`, `reml fmt`, `reml check` などの公式 CLI は、診断と監査の統合を保証するため `CliDiagnosticEnvelope` 構造を介して出力を共通化する。
+
+```reml
+type CliDiagnosticEnvelope = {
+  command: CliCommand,
+  phase: CliPhase,
+  diagnostics: List<Diagnostic>,
+  summary: CliSummary,
+  exit_code: ExitCode,
+}
+
+type CliSummary = {
+  inputs: List<Path>,
+  started_at: Timestamp,
+  finished_at: Timestamp,
+  artifact: Option<Path>,
+  stats: Map<Str, Json>,
+}
+
+enum CliCommand = Build | Test | Fmt | Check | Publish | New
+
+enum CliPhase = Parsing | TypeCheck | EffectCheck | Codegen | Execution | Formatting | Reporting
+```
+
+- `command` は CLI が実行した操作。`Fmt` や `Check` を追加しても `Diagnostic` フローは共通。
+- `phase` は診断が発生した処理段階を示し、`Diagnostic.expected` や `AuditEnvelope.metadata["phase"]` と合わせて LSP/IDE が不具合箇所を可視化できる。
+- `summary.stats` には `parsed_files`, `tests_passed`, `formatting_changes` 等のコマンド固有メトリクスを格納し、JSON モードで `--summary` フラグが `true` の場合に必須。
+
+CLI は出力モードに応じて次のフォーマットで `CliDiagnosticEnvelope` をシリアライズする。
+
+| オプション | 出力 | 説明 |
+| --- | --- | --- |
+| `--output human` | 標準エラーへ人間向け整形（ターミナル色付け可）。 | `Diagnostic` を逐次表示し、終了時に `summary` をテキスト化。 |
+| `--output json` | 標準出力へ JSON 行（NDJSON）。 | 各 `CliDiagnosticEnvelope` を 1 行 JSON で書き出し、`diagnostics` は配列。 |
+| `--output lsp` | LSP transport 適合のメッセージ。 | `publishDiagnostics` と `window/logMessage` にマッピング。 |
+
+`CliDiagnosticEnvelope.exit_code` は [3.7 Core Config & Data](3-7-core-config-data.md) の `attach_exit_code` と一致し、`diagnostics` 中で `Severity::Error` が 1 件以上ある場合は `ExitCode::Failure`（非ゼロ）を返す。`severity=Warning` のみの場合は `ExitCode::Warning` を返し、CI ツールが閾値を設定できるようにする。
+
+`AuditEnvelope` の `metadata` には CLI 固有の `command`, `phase`, `run_id` を必ず含めること。`run_id` は `Uuid` で、`reml` サブコマンドの 1 実行あたり 1 つ発行される。これにより CLI/IDE/監査ログ間でトレースを結び付けられる。
+
+CLI は `CliDiagnosticEnvelope` を生成した後、`emit(envelope.diagnostics[i], sink)` を順次呼び出し、構造化ログと人間向け表示の両方を実現する。`summary` の最終書き出し後に `exit_code` をプロセスの終了コードとして使用する。
+

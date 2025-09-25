@@ -70,6 +70,34 @@
 
   中括弧は 1 階層以上のネストに対応し、`use Core.Parse.{Lex, Op.{Infix, Prefix}}` のように部分展開できます。
 
+### B.1.1 DSLエントリーポイント宣言 {#dsl-entry-declaration}
+
+`reml.toml` の `[dsl]` セクションで宣言された `entry` は、1 ファイル 1 モジュールの原則に従い、該当モジュールのトップレベル公開シンボルと一致しなければならない。`exports` 配列の各名前は、以下の要件を満たすトップレベル宣言を指す。
+
+- 宣言は `pub` であり、コンパイラが DSL メタデータを収集できるよう **`@dsl_export` 属性** を付与する。
+- 宣言されるシンボルは次のいずれかの形である。
+  - `pub let NAME: Parser<T>` または `pub const NAME: Parser<T>`（値としてのエクスポート）。
+  - `pub fn NAME(args) -> Parser<T>`（関数としてのエクスポート。`args` の既定値や名前付き引数は通常の関数規則に従う）。
+  - `conductor NAME { ... }`（Conductor パターンをエントリーポイントとして公開する場合）。
+- `Parser<T>` を返すエントリは **副作用のない純粋値**が既定であり、`@dsl_export` に `allows_effects=[...]` を明示しない限り `Σ` のいずれの効果も持てない。
+- `conductor` を公開する場合は、内部で組み合わされる DSL が `exports` に含まれる他のシンボルと整合するように、同一モジュール内で名前解決できなければならない。
+- `@dsl_export` の `category` パラメータは `reml.toml` 側の `dsl.<name>.kind`（後述のマニフェスト仕様）と一致させ、型検査ではこの値を用いて DSL 間の互換性を検証する。
+
+```reml
+module sample.config
+
+@dsl_export(category="config", capabilities=["Core.Config.Manifest"], version="0.1")
+pub fn ConfigDSL() -> Parser<AppConfig> =
+  root_object(|builder| { ... })
+
+@dsl_export(category="config")
+conductor ConfigOrchestrator {
+  ConfigDSL |> validate |> emit
+}
+```
+
+`reml.toml` で `entry = "src/sample/config.reml"`、`exports = ["ConfigDSL", "ConfigOrchestrator"]` と宣言した場合、上記のようにモジュールと公開シンボルが揃っていることを検証する。カテゴリや Capability 情報は Chapter 3 のマニフェスト API と連携して CLI へ引き渡される。
+
 ### B.2 可視性と `use` が導入するシンボル
 
 * 既定は **非公開**。宣言に `pub` を付けると、そのモジュールを経由して外部から参照できます。`pub` の可視性境界は **現在のモジュールの親**で、親モジュールからさらに `pub` で公開された場合にパッケージ全体へ伝播します。

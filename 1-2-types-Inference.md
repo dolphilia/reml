@@ -176,6 +176,45 @@ impl Add<i64, i64, i64> for i64 { fn add(a,b) = a + b }
 
 ---
 
+## G. DSLエクスポートと互換性メタデータ {#dsl-export-typing}
+
+`@dsl_export` 属性（[1.1 §B.1.1](1-1-syntax.md#dsl-entry-declaration)）は型検査段階で **`DslExportSignature`** を生成し、マニフェスト (`reml.toml`) 側の `dsl.<name>` 宣言と突き合わせる。コンパイラは以下の手順でメタデータを構築する。
+
+1. 宣言の最終的な型 `τ` を推論し、次の何れかの形に正規化する。
+   - `Parser<T>` もしくは型エイリアスでラップされた `Parser<T>`。
+   - `fn(args) -> Parser<T>`（`args` は任意の個数・名前付き引数を含んでもよい）。
+   - `ConductorSpec<U>`（`conductor` 宣言から導出されるランタイム表現。詳細は 1.3 §I で扱う）。
+2. 正規化結果が上記に一致しない場合は `E1301`（DSL エクスポート型不一致）を報告し、`@dsl_export` を外すか型を修正するよう促す。
+3. 属性パラメータを解析し、以下のフィールドを持つ `DslExportSignature` を組み立てる。
+
+```reml
+type DslExportSignature<T> = {
+  name: Str,
+  category: DslCategory,
+  root_type: TypeRef<T>,
+  produces: DslCategory,
+  requires: List<DslCategory>,
+  capabilities: List<CapabilityId>,
+  allows_effects: Set<EffectTag>,
+  version: Option<SemVer>,
+}
+```
+
+- `category` はマニフェストの `dsl.<name>.kind` と同一の文字列で、互換判定ではインターン済みシンボルとして比較する。
+- `produces` は省略時に `category` と同値とする。`Parser<T>` の場合は `T` の型情報を持つ DSL 生成物カテゴリを推定し、`T` が `DslOutput<Category>` を実装していればその関連型を採用する。
+- `requires` は conductor など複数 DSL を束ねる宣言で使用し、参照する DSL カテゴリが `exports` 内または依存マニフェストに含まれることを検証する。
+- `allows_effects` は 1.3 の効果集合に対するサブセットであり、空集合の場合は純粋値として扱う。
+
+4. `Parser<T>` を返す関数では **引数の型変数を一般化前に固定**し、`DslExportSignature` に引数ごとの型情報（`input_shape`）を添付する。これにより CLI や LSP が利用者へ API ドキュメントを提示できる。
+
+`DslExportSignature` は `Core.Config.Manifest`（3.7）に引き渡され、`dsl.<name>.exports[*]` の `signature` として書き戻される。互換性検査は以下の規則で行う。
+
+- **カテゴリ互換**: 同一カテゴリで major バージョン (`version.major`) が一致しているか、または `reml.toml` で `allow_prerelease=true` を明示している。
+- **能力互換**: `capabilities` に列挙されたランタイム Capability がターゲット環境で利用可能（3.8 §1）である。未解決の Capability がある場合は `diagnostic("dsl.capability.unsatisfied")` を発行する。
+- **効果境界**: `allows_effects ⊆ declared_effects(manifest)`。宣言より広い効果集合を持つ場合は型検査エラー `E1302` を報告する。
+
+互換性の失敗は型付け段階で診断を生成し、`DslExportSignature` の `span` とマニフェスト側の反映先行番号を結び付けた差分が `Core.Diagnostics` へ渡される。
+
 ## F. 代表的な型（標準 API・コンビネータ想定）
 
 > パーサーコンビネータ記述が短くなるように、要の関数型は**一読で意図が分かる**シグネチャに。
