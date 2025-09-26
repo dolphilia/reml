@@ -20,6 +20,7 @@ pub type Diagnostic = {
   id: Option<Uuid>,
   message: Str,
   severity: Severity,
+  domain: Option<DiagnosticDomain>,
   code: Option<Str>,
   primary: Span,
   secondary: List<SpanLabel>,
@@ -37,6 +38,7 @@ pub type SpanLabel = {
 pub enum Severity = Error | Warning | Info | Hint
 ```
 
+- `domain` は診断が属する責務領域（構文、型、ターゲット等）を表す。`None` の場合はコンポーネント既定値を利用する。
 - `timestamp` は [3.4](3-4-core-numeric-time.md) の `Timestamp` を利用し、診断生成時に `Core.Numeric.now()` を呼び出す。
 - `AuditEnvelope` は監査情報を同梱する構造（後述）。
 - `ExpectedSummary` は LSP/CLI でメッセージを国際化するための鍵と引数を保持する。
@@ -56,6 +58,30 @@ pub type AuditEnvelope = {
 - `capability` はランタイム機能（Core.Runtime）との整合に利用。
 - `metadata` は拡張用の自由領域で、プラグインが追加情報を埋め込む。
 
+### 1.2 診断ドメイン `DiagnosticDomain`
+
+```reml
+pub enum DiagnosticDomain = {
+  Syntax,
+  Parser,
+  Type,
+  Effect,
+  Runtime,
+  Config,
+  Manifest,
+  Target,
+  Security,
+  Plugin,
+  Cli,
+  Lsp,
+  Other(Str),
+}
+```
+
+- ドメインは診断を機能領域ごとに分類し、CLI/LSP/監査ログでのフィルタリングや集計に利用する。
+- `Target` はクロスコンパイルやターゲットプロファイル整合性に関する診断を表し、本節 §7 でメッセージ定義を示す。
+- `Other(Str)` は将来の拡張やユーザープロジェクト固有の分類に使用し、名前は `snake_case` 推奨とする。
+
 ## 2. 診断生成ヘルパ
 
 ```reml
@@ -68,6 +94,7 @@ struct DiagnosticBuilder {
 impl DiagnosticBuilder {
   fn with_span(self, span: Span) -> Self;                             // `@pure`
   fn with_severity(self, severity: Severity) -> Self;                 // `@pure`
+  fn with_domain(self, domain: DiagnosticDomain) -> Self;             // `@pure`
   fn with_code(self, code: Str) -> Self;                              // `@pure`
   fn add_hint(self, hint: Hint) -> Self;                              // `@pure`
   fn attach_audit(self, audit: AuditEnvelope) -> Self;                // `@pure`
@@ -289,7 +316,60 @@ fn record_target_diagnostics(metrics: DslMetricsHandle, diag: Diagnostic) -> () 
 - `guides/ci-strategy.md` に記載の構造化ログと併用し、`RunConfig.extensions["target"]` の変更が期待どおりの挙動を保っているかを定期的に可視化する。
 - 重大なポータビリティ診断が発生した場合は `AuditEnvelope.metadata["target"]` にターゲット概要を付与し、監査ログやダッシュボードで迅速に追跡できるようにする。
 
-## 7. 使用例（CLI エラー報告）
+## 7. ターゲット診断ドメイン (Target) {#diagnostic-target}
+
+> 目的：クロスコンパイルやターゲットプロファイルの整合性に関するエラー／警告を体系化し、CLI・IDE・監査ログで一貫して扱う。
+
+### 7.1 メッセージキー一覧
+
+| `message_key` | 既定 Severity | 発生条件 | 推奨対応 |
+| --- | --- | --- | --- |
+| `target.profile.missing` | Error | `profile_id` が要求されたにもかかわらず、`RunConfigTarget.profile_id` が `None`（環境変数未設定、CLI オプション欠如等） | `REML_TARGET_PROFILE`・`reml build --target` などでプロファイルを明示。CI ではフェイルストップ。 |
+| `target.abi.mismatch` | Error | `TargetProfile.runtime_revision` / `stdlib_version` とコンパイラ生成メタデータが不一致 | `reml toolchain install` で正しいランタイム/stdlib を取得し直し、`RunArtifactMetadata` を更新。 |
+| `target.config.mismatch` | Warning（再現性検証時は Error 推奨） | `PlatformInfo` と `RunConfigTarget` の `os`/`arch`/`family`/`triple` などが一致しない | ホスト・クロスターゲット両方の設定値を確認し、CI では `--fail-on-warning` でエラー昇格を推奨。 |
+| `target.capability.unknown` | Error | `@cfg(capability = "...")` または `RunConfigTarget.capabilities` に未知の Capability が含まれる | `capability_name(TargetCapability::...)` で定義されたカノニカル名を使用。独自拡張時は Capability Registry に登録。 |
+| `target.config.unsupported_value` | Error | `RunConfigTarget.extra` 等で実装が未対応の値が指定された | サポートされる値を `RunConfig::register_target_key` で確認し、プロファイルを修正。 |
+
+- 既定 Severity は CLI で `--fail-on-warning` やポリシーファイルにより変更可能。`Core.Env`・`Core.Runtime` は本表を基準に重大度を設定する。
+- `Diagnostic.code` は `TARGET01`（profile missing）、`TARGET02`（ABI mismatch）、`TARGET03`（config mismatch）、`TARGET04`（capability unknown）、`TARGET05`（unsupported value）を推奨する。
+
+### 7.2 拡張データフォーマット
+
+`Diagnostic.domain = Some(DiagnosticDomain::Target)` の診断には、以下の拡張フィールドを `Diagnostic.extensions["target"]` として付与する。
+
+```json
+{
+  "profile_id": "desktop-x86_64",
+  "requested": {
+    "os": "linux",
+    "arch": "x86_64",
+    "triple": "x86_64-unknown-linux-gnu"
+  },
+  "detected": {
+    "os": "macos",
+    "arch": "aarch64"
+  },
+  "capability": "unicode.nfc",
+  "runtime_revision": {
+    "profile": "rc-2024-09",
+    "artifact": "rc-2024-08"
+  }
+}
+```
+
+- `requested` は `TargetProfile` / `RunConfigTarget` から取得した値、`detected` は `PlatformInfo` 由来の値を格納する。
+- `capability` は Capability 名（`capability_name` の戻り値）を指し、該当しない場合は省略可能。
+- `runtime_revision` や `stdlib_version` は比較対象をペアで格納し、監査ログでの差分追跡を容易にする。
+- 監査ログでは `AuditEnvelope.metadata["target"] = extensions["target"]` を推奨し、ポータビリティ検証結果を一元化する。
+
+### 7.3 運用ガイドライン
+
+- CLI は `CliDiagnosticEnvelope.phase = CliPhase::Codegen` または `CliPhase::Execution` に `Target` ドメイン診断を紐付け、`summary.stats["target_failures"]` を更新する。
+- CI では `DiagnosticDomain::Target` を優先的に集計し、`guides/ci-strategy.md` に定義するマトリクス上で失敗ターゲットを特定する。
+- IDE/LSP では `Target` ドメイン診断をワークスペースレベル警告として表示し、該当ファイルが無い場合でも `RunConfigTarget` 情報を提示する。
+- `Core.Env` と `Core.Runtime` はターゲット診断を発生させた際、`RunArtifactMetadata.hash` を `extensions["target"].hash` に追加し、再ビルドのトレーサビリティを確保する。
+
+## 8. 使用例（CLI エラー報告）
 
 
 ```reml
@@ -314,7 +394,7 @@ fn validate_config(cfg: AppConfig, audit: AuditSink) -> Result<(), Diagnostic> =
 - `ensure` と `tap_diag` を組み合わせ、検証失敗時に監査ログへ自動送出。
 - `from_change` により `change_set` を `AuditEnvelope` へ変換し、監査と診断に共通語彙を適用する。
 
-## 8. CLI/LSP 連携の具体例
+## 9. CLI/LSP 連携の具体例
 
 ### 8.1 CLI ツール統合
 
@@ -368,7 +448,7 @@ fn diagnostic_metrics(diagnostics: Iter<Diagnostic>) -> DiagnosticMetrics {
 
 > 関連: [2.5 エラー設計](2-5-error.md), [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.7 Core Config & Data](3-7-core-config-data.md)
 
-## 9. CLI コマンドプロトコル {#cli-protocol}
+## 10. CLI コマンドプロトコル {#cli-protocol}
 
 `reml build`, `reml test`, `reml fmt`, `reml check` などの公式 CLI は、診断と監査の統合を保証するため `CliDiagnosticEnvelope` 構造を介して出力を共通化する。
 
@@ -411,4 +491,3 @@ CLI は出力モードに応じて次のフォーマットで `CliDiagnosticEnve
 `AuditEnvelope` の `metadata` には CLI 固有の `command`, `phase`, `run_id` を必ず含めること。`run_id` は `Uuid` で、`reml` サブコマンドの 1 実行あたり 1 つ発行される。これにより CLI/IDE/監査ログ間でトレースを結び付けられる。
 
 CLI は `CliDiagnosticEnvelope` を生成した後、`emit(envelope.diagnostics[i], sink)` を順次呼び出し、構造化ログと人間向け表示の両方を実現する。`summary` の最終書き出し後に `exit_code` をプロセスの終了コードとして使用する。
-

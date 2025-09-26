@@ -21,12 +21,36 @@
 - `reml.toml` の `project` / `dependencies` / `dsl` 情報をどのように公開するか。
 - 署名メタデータ、SBOM、セキュリティ勧告の付与。
 - `DslCapabilityProfile`（3-8 §7）との同期。
+- ターゲットメタデータの標準化：`targets` 配列を必須とし、各エントリに `profile_id`, `triple`, `runtime_revision`, `stdlib_version`, `capabilities`, `artifact`（URL）、`hash`, `format`（`remlpkg`, `staticlib` 等）を格納。
+
+### 2.1 ターゲットメタデータ仕様
+
+| フィールド | 型 | 説明 |
+| --- | --- | --- |
+| `profile_id` | `Str` | `TargetProfile.id`。`reml target list` で表示される ID と一致させる。 |
+| `triple` | `Str` | LLVM triple (`x86_64-unknown-linux-gnu` 等)。`RunArtifactMetadata.llvm_triple` と突合。 |
+| `runtime_revision` | `Str` | ランタイム互換リビジョン。`target.abi.mismatch` を防ぐため、CLI 側のランタイムと一致する必要がある。 |
+| `stdlib_version` | `SemVer` | バンドル済み標準ライブラリのバージョン。`Core.Env.resolve_run_config_target` が検証。 |
+| `capabilities` | `List<Str>` | `capability_name(TargetCapability::…)` で列挙した機能集合。`target.capability.unknown` 診断の根拠。 |
+| `artifact` | `Url` | 対象ターゲット用バイナリアーティファクトまたは `remlpkg` への署名付き URL。 |
+| `hash` | `Digest` | `RunArtifactMetadata.hash`。`sha256:` などアルゴリズムプレフィックス付き。 |
+| `format` | `Str` | `"remlpkg"`, `"staticlib"`, `"cdylib"` 等。レジストリが MIME を決定する際に利用。 |
+| `signature` | `Str` | 任意。Ed25519/Minisign 等の署名値。署名が無い場合は `null`。 |
+
+- レジストリは `targets` 配列を `profile_id` でインデックス化し、`GET /packages/{name}/{version}` で JSON 応答を提供する。CLI は `profile_id` に基づいて適切なアーティファクトを選択し、`hash`/`signature` 検証を実行する。
+- パッケージがターゲットを提供しない場合（ソースのみ）は `targets = []` を明示し、`requires_source_build = true` を添付して `reml add` が `--allow-source-build` を促すようにする。
 
 ## 3. 公開ワークフロー
 
 1. `reml publish` 実行時のパイプライン（検証→ビルド→署名→アップロード→検証）。
 2. 署名アルゴリズム（Ed25519 予定）と証明書チェーン。
 3. アーティファクト再現性（deterministic tarball / lockfile）。
+- ターゲット検証ステップ：アップロード前に CLI が `RunArtifactMetadata` を収集し、レジストリへ `targets[*]` を送信。レジストリは以下をチェックする。
+  - `runtime_revision` と登録済みランタイム互換表（toolchain チャネル）を照合。失敗時は `target.abi.mismatch` を応答し、publish を拒否。
+  - `capabilities` が既知か、`TargetCapability` または登録済みカスタム Capability と一致するか。未知の値は `400 target.capability.unknown` として返却。
+  - `hash` が既存のアーティファクトと一致する場合は再アップロード禁止（リプレイ攻撃防止）。
+  - `signature` が添付されている場合は公開鍵チェーンを検証し、`AuditEnvelope.metadata["signature"]` に記録する。
+- 成功後、レジストリは `publish_receipt` を返し、`targets[*].artifact` に署名付き URL を生成。CLI はこの情報を `publish.log` と `CliDiagnosticEnvelope.summary.stats` に書き込む。
 
 ## 4. 配布ポリシー
 

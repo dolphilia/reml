@@ -202,15 +202,30 @@ impl Parser<T> {
 
 * `@cfg` は宣言・`use`・文ブロックに条件付きの有効/無効を与えるコンパイル時属性で、**パース段階**で評価されます。無効化された要素は以降の解析・型検査から完全に除去されます。
 * 書式は `@cfg(<predicate>)`。述語は次のキーによる等価比較と論理演算で構成します。
-  * `target_os`: `"windows"` / `"linux"` / `"macos"` / `"freebsd"` など具体的 OS 名
-  * `target_family`: `"unix"`, `"windows"`, `"wasm"` など OS ファミリ
-  * `target_arch`: `"x86_64"`, `"aarch64"`, `"wasm32"` などアーキテクチャ名
-  * `feature`: パッケージまたはビルド構成で有効化されたフィーチャ名
-  * 追加キーは `RunConfig.extensions["target"]` に登録されたもののみ利用可能
+
+  | キー | 例 | 説明 |
+  | --- | --- | --- |
+  | `target_os` | `@cfg(target_os = "linux")` | 対象 OS。CLI/ランタイムが提供する既定値と一致する必要がある。 |
+  | `target_family` | `@cfg(target_family = "unix")` | OS ファミリ。POSIX 系をまとめるなど広義の分岐に使用。 |
+  | `target_arch` | `@cfg(target_arch = "aarch64")` | CPU アーキテクチャ。命令セットの切替に利用。 |
+  | `target_abi` | `@cfg(target_abi = "gnu")` | ABI/ツールチェーン識別子。`RunConfigTarget.abi` を参照。 |
+  | `target_env` | `@cfg(target_env = "msvc")` | 環境（libc/CRT）。省略時は `None`。 |
+  | `target_vendor` | `@cfg(target_vendor = "apple")` | ベンダ識別子（トリプル構成要素）。 |
+  | `target_profile` / `profile_id` | `@cfg(profile_id = "desktop-x86_64")` | CLI で選択した TargetProfile の ID。エイリアス `target_profile` も同義。 |
+  | `runtime_revision` | `@cfg(runtime_revision = "rc-2024-09")` | 利用中ランタイムの互換リビジョン。 |
+  | `stdlib_version` | `@cfg(stdlib_version = "1.0.0")` | バンドルされた標準ライブラリの SemVer。 |
+  | `feature` | `@cfg(feature = "gpu_accel")` | ビルド構成フィーチャ（Cargo の feature に相当）。 |
+  | `capability` | `@cfg(capability = "unicode.nfc")` | `Core.Runtime` が提供する Capability。`TargetCapability` から初期化。 |
+  | `extra.*` | `@cfg(extra.io.blocking = "strict")` | プロジェクト固有キー。`RunConfigTarget.extra` で宣言済みのものに限る。 |
+  | `has_target_profile` | `@cfg(has_target_profile = "desktop-x86_64")` | プロファイルの存在確認。CLI で未登録の場合に条件分岐可能。 |
+
+  追加キーは `RunConfig.extensions["target"]` に登録されたもののみ利用可能で、登録されていないキーは `target.config.unknown_key` 診断を生成する。
 * 述語構文：
   * `@cfg(key = "value")` … 単純比較
   * `@cfg(any(expr1, expr2, ...))`、`@cfg(all(expr1, expr2, ...))`、`@cfg(not(expr))` を組み合わせて任意のブール式を表現できます。空の `any`/`all` は許可されません。
-* 評価順序は **外側の論理演算から短絡評価**します。`RunConfig` から提供されないキー、または値のスペルミスが検出された場合はコンパイラが `target.config.unknown_key` 診断を生成し、ビルドを中断します。
+* 評価順序は **外側の論理演算から短絡評価**します。`RunConfig` から提供されないキー、または値のスペルミスが検出された場合はコンパイラが `target.config.unknown_key` 診断を生成し、ビルドを中断します。`target_profile` / `profile_id` が参照されたのに `RunConfigTarget.profile_id` が空の場合は `target.profile.missing`、`capability` キーで未知の Capability 名が使用された場合は `target.capability.unknown` を報告します。
+* `runtime_revision` と `stdlib_version` の不一致（CLI やレジストリが提供した値とコンパイラが生成したメタデータの差異）は `target.abi.mismatch` 診断で扱い、エコシステム仕様に準拠した再ビルドを要求します。
+* `capability` キーは `RunConfigTarget.capabilities` セットを参照し、`Core.Runtime` が Capability Registry で公開する識別子と一致している場合のみ有効です。推論段階では Capability の存在が効果契約に反映され、到達不能な宣言は無効化されます。
 * 無効化された宣言を参照するコードが存在した場合、その参照は通常の解決フェーズでエラーとなり、`unresolved.symbol.cfg` 診断で報告されます。
 * `@cfg` 自体は副作用を持たず、`@cfg` の内側/外側で効果タグの整合性が保たれるように使用する必要があります（詳細は [効果と安全性](1-3-effects-safety.md#cfg-attribute) を参照）。
 

@@ -57,24 +57,53 @@ type RunConfigExtensions = Map<Str, Any>
 
 #### B-2-1. ターゲット情報拡張 `extensions["target"]`
 
-* `@cfg` やバックエンド切替に必要なターゲット情報は `RunConfig.extensions["target"]` に格納する。既定のキー構造は以下の通り。
+* `@cfg` やバックエンド切替に必要なターゲット情報は `RunConfig.extensions["target"]` に格納する。コア仕様では `RunConfigTarget` を次のように定義する。
 
 ```reml
-RunConfig.extensions["target"] = {
-  os: "windows" | "linux" | "macos" | "freebsd" | "other",
-  family: "unix" | "windows" | "wasm" | Str,
-  arch: "x86_64" | "aarch64" | "wasm32" | Str,
-  env: Option<Str>,                 // msvc / gnu などツールチェーン識別子
-  features: Set<Str>,               // ビルド時フィーチャ
-  extra: Map<Str, Str>              // プロジェクト固有キー
+type RunConfigTarget = {
+  os: Str,
+  family: Str,
+  arch: Str,
+  abi: Option<Str>,            // gnu / msvc / musl 等
+  vendor: Option<Str>,
+  env: Option<Str>,            // 追加ツールチェーン識別子
+  profile_id: Option<Str>,
+  triple: Option<Str>,
+  features: Set<Str>,
+  capabilities: Set<Str>,
+  stdlib_version: Option<SemVer>,
+  runtime_revision: Option<Str>,
+  diagnostics: Bool,
+  extra: Map<Str, Str>
+}
+
+RunConfig.extensions["target"] = RunConfigTarget
+```
+
+* CLI やビルドツールは `RunConfigTarget` を構築して `RunConfig` へ注入し、パーサーはパース段階で `@cfg` に渡す。未設定の場合は `profile_id` を含む任意のキー参照で `target.profile.missing` を報告し、ビルドを停止する。
+* `capabilities` セットは `Core.Runtime` の Capability Registry で宣言された識別子と同期する。存在しない Capability を参照した場合は `target.capability.unknown` を生成し、性能 1.1 を損なわずに誤設定を早期検出する。
+* `extra` 以下のキーは `@cfg` から参照可能だが、辞書登録時に `RunConfig::register_target_key(name, allowed_values)` で値テーブルを宣言し、誤字を防ぐ。
+* 実行時にターゲットを切り替える場合は `RunConfigTarget.features` または `capabilities` を差し替え、`platform_info()`（[3-8](3-8-core-runtime-capability.md)）と同期させる。
+* `diagnostics = true` を設定すると `@cfg` 評価ログを `Diagnostic.extensions["cfg"]` に出力し、CI/IDE でターゲット分岐の可視化を行える。
+
+##### B-2-1-a. コンパイラメタデータの生成
+
+```reml
+type RunArtifactMetadata = {
+  target: RunConfigTarget,
+  llvm_triple: Str,
+  data_layout: Str,
+  runtime_revision: Str,
+  stdlib_version: SemVer,
+  emitted_capabilities: Set<Str>,
+  timestamp: DateTime,
+  hash: Str
 }
 ```
 
-* CLI やビルドツールは上記情報を `RunConfig` へ注入し、パーサーはパース段階で `@cfg` に渡す。未設定の場合は全キーが未定義とみなされ、`@cfg` は `target.config.unknown_key` を報告する。
-* `extra` 以下のキーは `@cfg` から参照可能だが、辞書登録時に `RunConfig::register_target_key(name, allowed_values)` で値テーブルを宣言し、誤字を防ぐ。
-* 実行時にターゲットを切り替える場合は `RunConfig.extensions["target"].features` を差し替え、`platform_info()`（[3-8](3-8-core-runtime-capability.md)）と同期させる。
-
-* `RunConfig.extensions["target"].diagnostics = true` を設定すると、`@cfg` 評価の詳細ログを `Diagnostic.extensions["cfg"]` へ出力する。
+* コンパイラはクロスビルド時に `RunArtifactMetadata` を生成し、バイナリや `.remlpkg` に添付する。`runtime_revision` や `stdlib_version` が CLI/レジストリから提供された値と一致しない場合、ビルド中に `target.abi.mismatch` を発行して停止する。
+* `llvm_triple` と `data_layout` は LLVM バックエンドへ渡す最終値であり、`RunConfigTarget.triple` が存在する場合は一致していなければならない。不一致時は `target.config.unknown_value`（詳細値付き）を生成する。
+* CLI は `RunArtifactMetadata.hash` を利用して標準ライブラリのキャッシュを検証し、性能 1.1 の線形処理を保つ。ハッシュ計算は入力サイズに対して線形成分のみに限定する。
 
 #### B-2-2. プラットフォーム適応設定サンプル
 

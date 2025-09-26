@@ -59,31 +59,78 @@ fn has_capability(cap: Capability) -> Bool                       // `effect {run
 ```
 
 * `PlatformInfo` と `Capability` は [3-8](3-8-core-runtime-capability.md#platform-info) にて定義される。`Core.Env` は単なるフェデレーションモジュールであり、`Core.Runtime` の Capability Registry からデータを引き出して公開する。
-* `platform_info()` の結果は `RunConfig.extensions["target"]` と同期する責務がある。CLI はコンパイル時ターゲット、ランタイムは実行中ターゲットを提供するが、差異がある場合は `Diagnostic` に `data.cfg.mismatch = true` を付けて警告を促すこと。
+* `platform_info()` の結果は `RunConfig.extensions["target"]` と同期する責務がある。CLI はコンパイル時ターゲット、ランタイムは実行中ターゲットを提供するが、差異がある場合は `Diagnostic.domain = Target`（3-6 §7 新設）で `data.cfg.mismatch = true` を付けて警告を促す。
 
 ## 4. `@cfg` 連携ガイドライン
 
-* `@cfg` の評価は言語仕様側（[1-1](1-1-syntax.md#条件付きコンパイル属性-cfg)）で行われるが、`Core.Env` は `RunConfig.extensions["target"]` の初期化補助を提供する。
+* `@cfg` の評価は言語仕様側（[1-1](1-1-syntax.md#条件付きコンパイル属性-cfg)）で行われるが、`Core.Env` は `RunConfigTarget` と `TargetProfile` を構築する補助を提供する。
 
 ```reml
-fn infer_target_from_env() -> Result<RunConfigTarget, EnvError>  // `effect {io}`
-
-struct RunConfigTarget = {
+pub type TargetProfile = {
+  id: Str,
+  triple: Str,
   os: Str,
   family: Str,
   arch: Str,
+  abi: Option<Str>,
+  vendor: Option<Str>,
   env: Option<Str>,
+  stdlib_version: Option<SemVer>,
+  runtime_revision: Option<Str>,
   features: Set<Str>,
-  extra: Map<Str, Str>,
+  capabilities: Set<Str>,
+  diagnostics: Bool,
+  extra: Map<Str, Str>
 }
+
+pub type RunConfigTarget = {
+  os: Str,
+  family: Str,
+  arch: Str,
+  abi: Option<Str>,
+  vendor: Option<Str>,
+  env: Option<Str>,
+  profile_id: Option<Str>,
+  triple: Option<Str>,
+  features: Set<Str>,
+  capabilities: Set<Str>,
+  stdlib_version: Option<SemVer>,
+  runtime_revision: Option<Str>,
+  diagnostics: Bool,
+  extra: Map<Str, Str>
+}
+
+fn infer_target_from_env() -> Result<TargetProfile, EnvError>    // `effect {io}`
+fn resolve_run_config_target(profile: TargetProfile) -> RunConfigTarget
+fn merge_runtime_target(cfg: RunConfigTarget, runtime: PlatformInfo) -> RunConfigTarget
 ```
 
-* `RunConfigTarget` は `os`, `family`, `arch`, `features` を保持する構造体で、`RunConfig.extensions["target"]` へマージできる。
-* CI やクロスコンパイル環境では `REML_TARGET`, `REML_FEATURES` 等の環境変数から値を取得する。未設定のキーは `Ok(default)` で返し、型安全な整形は CLI 側に任せる。
+* `TargetProfile` は CLI やレジストリ（4-2）で配布されるターゲット宣言を表し、`infer_target_from_env` は環境変数・プロセス情報から `TargetProfile` を起こす。環境変数名は以下の通り（存在しない場合は `None`）。
+
+  | 環境変数 | 例 | 対応フィールド |
+  | --- | --- | --- |
+  | `REML_TARGET_PROFILE` | `desktop-x86_64` | `id` |
+  | `REML_TARGET_TRIPLE`  | `x86_64-unknown-linux-gnu` | `triple`（`os`/`arch`/`vendor`/`abi` を分解） |
+  | `REML_TARGET_OS` / `REML_TARGET_FAMILY` / `REML_TARGET_ARCH` | `linux` / `unix` / `x86_64` | `os`/`family`/`arch`（`TRIPLE` が無い場合のフォールバック） |
+  | `REML_TARGET_ENV` | `msvc` | `env` |
+  | `REML_TARGET_VENDOR` | `apple` | `vendor` |
+  | `REML_TARGET_ABI` | `gnu` | `abi` |
+  | `REML_STD_VERSION` | `1.0.0` | `stdlib_version` |
+  | `REML_RUNTIME_REVISION` | `rc-2024-09` | `runtime_revision` |
+  | `REML_TARGET_FEATURES` | `simd,packrat` | `features`（カンマ区切り） |
+  | `REML_TARGET_CAPABILITIES` | `unicode.nfc,fs.case_sensitive` | `capabilities` |
+  | `REML_TARGET_DIAGNOSTICS` | `1` | `diagnostics`（`true`/`false` も可） |
+  | `REML_TARGET_EXTRA_*` | `REML_TARGET_EXTRA_io.blocking=strict` | `extra["io.blocking"]` |
+
+* すべての文字列は UTF-8 とし、無効なフォーマットや未知キーは `EnvErrorKind::InvalidEncoding` / `EnvErrorKind::UnsupportedPlatform` で報告する。`features` と `capabilities` は余白を除去した上で小文字に正規化する。
+* `resolve_run_config_target` は `TargetProfile` を `RunConfigTarget` に昇格し、`profile_id = Some(profile.id)` と `triple = Some(profile.triple)` を設定する。`diagnostics` は `profile.diagnostics` を引き継ぐ。
+* `merge_runtime_target` は `PlatformInfo` の情報で `RunConfigTarget` を補正し、`os`/`family`/`arch` が不一致の場合は `DiagnosticDomain::Target` で `target.config.mismatch` を生成する（3-6 §7）。
+* CI やクロスコンパイル環境では `infer_target_from_env()?` の結果をマニフェスト/CLI 由来の `TargetProfile` と突き合わせ、差異がある場合は `target.profile.missing` または `target.abi.mismatch` を返す。既定値を補うだけの場合は `Ok(profile)` を返し、最終的な `RunConfigTarget` は `RunConfig.extensions["target"]` へ挿入される。
 
 ## 5. 診断と監査
 
 * すべての `EnvError` は `Diagnostic.domain = Some(Config)`、`message_key = "env.access.failed"` を既定とし、`extensions["cfg"].evaluated` に `platform_info()` の抜粋を添付する。
+* `TargetProfile` / `RunConfigTarget` の構築で発生したエラーは `DiagnosticDomain::Target`（3-6 §7）で報告し、`target.profile.missing` / `target.abi.mismatch` / `target.config.mismatch` / `target.capability.unknown` を使用する。追加情報として `extensions["target"] = { profile_id, triple, compared_with }` を添付し、CI でのトリアージを容易にする。
 * `set_env`/`remove_env` は成功時にも `AuditEvent::EnvMutation` を記録し、`Core.Diagnostics` のポリシーによりマスク・匿名化を適用する。保持期間は `Core.Diagnostics` の監査ポリシー（3-6）に準拠。
 
 ## 6. 将来拡張メモ

@@ -11,12 +11,27 @@
 | Windows Server 2022 | x86_64 | `windows-msvc` | `@cfg(target_os = "windows")` 分岐、Registry/Path 操作、MSVC 呼出規約を検証 |
 | WASI Preview 2 | wasm32 | `wasi-sim` | `RunConfig.left_recursion` を `off` にした実行戦略、I/O 機能制限の確認 |
 
+ジョブ開始時に以下のセットアップステップを追加すると、ターゲット差異の検出が容易になります。
+
+```yaml
+- name: Prepare Target Profile
+  run: |
+    reml target list
+    reml target sync --write-cache
+    reml toolchain install ${{ matrix.profile }} --auto-approve
+    reml toolchain verify ${{ matrix.profile }} --output json > target-verify.json
+  env:
+    REML_TARGET_PROFILE: ${{ matrix.profile }}
+    REML_TARGET_TRIPLE: ${{ matrix.triple }}
+    REML_TARGET_CAPABILITIES: ${{ matrix.capabilities }}
+```
+
 各ジョブでは以下の共通ステップを推奨します。
 
-1. `remlc --target` で対象 Triple を指定しビルド。
-2. `RunConfig.extensions["target"]` を JSON としてエクスポートし、アーティファクトに保存。
-3. `reml-test`（将来の公式テストドライバ）または独自スクリプトで言語仕様テストを実行。
-4. 失敗時の `Diagnostic.extensions["cfg"]` を収集し、ポータビリティ回帰を即座に可視化。
+1. `reml target validate` と `reml toolchain verify` を実行し、`target.profile.missing` / `target.abi.mismatch` が出ないことを確認。
+2. `reml build --target $REML_TARGET_PROFILE --emit-metadata build/target.json` でビルドし、`RunArtifactMetadata` を保存。
+3. `reml test --target $REML_TARGET_PROFILE --runtime smoke` などでテストを実行し、エミュレーション対象では `--runtime emulator=<name>` を指定する。
+4. 失敗時の `Diagnostic.domain = Target` を `ci-artifacts/diagnostics.json` として収集し、ダッシュボードで可視化。
 
 ## 2. 環境変数と秘密情報
 
@@ -24,13 +39,38 @@
 
 | 変数 | 意味 | 例 |
 | --- | --- | --- |
-| `REML_TARGET` | 既定ターゲット Triple | `x86_64-unknown-linux-gnu` |
-| `REML_FEATURES` | カンマ区切りフィーチャ | `packrat_default,io.blocking.strict` |
-| `REML_PROFILE` | ビルドプロファイル名 | `release`, `ci` |
+| `REML_TARGET_PROFILE` | 使用する TargetProfile ID | `desktop-x86_64` |
+| `REML_TARGET_TRIPLE` | 既定ターゲット Triple | `x86_64-unknown-linux-gnu` |
+| `REML_TARGET_CAPABILITIES` | カンマ区切り Capability | `unicode.nfc,fs.case_sensitive` |
+| `REML_TARGET_FEATURES` | カンマ区切りフィーチャ | `packrat_default,io.blocking.strict` |
+| `REML_STD_VERSION` | 標準ライブラリの要求バージョン | `1.0.0` |
+| `REML_RUNTIME_REVISION` | ランタイム互換リビジョン | `rc-2024-09` |
 
 秘密情報（API キー等）が必要なテストでは、`Core.Env` の `set_env`/`remove_env` を利用してスコープを限定し、`AuditEvent::EnvMutation` が監査ログに記録されるようにします。
 
-## 3. FFI・ABI テスト
+## 3. キャッシュとアーティファクト管理
+
+### 3.1 Toolchain キャッシュ
+
+- `REML_TOOLCHAIN_HOME` を CI キャッシュディレクトリ（例: `~/.cache/reml-toolchains`）に設定し、`actions/cache` で `toolchain-manifest.toml` と `std/`, `runtime/` ディレクトリを保存します。
+- キャッシュヒット後は `reml toolchain verify --all --output json` を実行し、破損したアーティファクトがないかを検証します。失敗時はキャッシュを削除して再インストールしてください。
+
+### 3.2 ビルドメタデータ
+
+- `reml build --emit-metadata` が生成した `RunArtifactMetadata` をアーティファクトとしてアップロードし、後続ジョブやリリースパイプラインで再利用します。
+- メタデータは `profile_id`・`hash`・`runtime_revision` を含むため、レジストリ公開 (`reml publish`) 前に差分比較が可能です。
+
+## 4. エミュレーションとリモートテスト
+
+| ターゲット | 推奨ランタイム | 設定 |
+| --- | --- | --- |
+| WASI Preview 2 | `wasmtime` | `reml test --target wasi-preview2 --runtime emulator=wasmtime --runtime-flags "--dir=."` |
+| Linux/ARM64 on x86 CI | `qemu-aarch64` | `reml test --target mobile-arm64 --runtime emulator=qemu-aarch64 --runtime-flags "-L /usr/aarch64-linux-gnu"` |
+
+- エミュレーションジョブでは `reml target sync --runtime emulator` を実行して実行時差異を明示し、`target.config.mismatch` を Warning としてレポートします。
+- 実機検証が必要な場合は `guides/cross-compilation.md` に記載のリモート実行テンプレートを利用してください。
+
+## 5. FFI・ABI テスト
 
 ### 3.1 呼出規約の確認
 
@@ -42,7 +82,7 @@
 * Windows/MSVC 用バイナリは `REML_NATIVE_LIB_DIR` 等の環境変数でパスを渡し、CI 上での DLL 解決を追跡します。
 * WASI テストでは FFI をスキップし、`@cfg` で無効化されたコードパスがコンパイルされないことを `cargo check` 相当のステップで確認します。
 
-## 4. 診断メトリクスの収集
+## 6. 診断メトリクスの収集
 
 `guides/runtime-bridges.md` に記載された構造化ログを利用し、次の JSON フィールドを CI からメトリクスベースへ送信します。
 
@@ -61,19 +101,19 @@
 
 `target_config_errors` が 0 以外の場合は即座に失敗させ、レポートから問題の `@cfg` 分岐を特定します。
 
-## 5. 推奨ワークフロー
+## 7. 推奨ワークフロー
 
 1. **設定**: `setup-target` ステップで `REML_TARGET` と `RunConfig.extensions["target"]` を同期。
-2. **ビルド**: `remlc --target` と `reml lint` を実行（syntax/spec 回帰を検出）。
-3. **テスト**: プラットフォーム固有の統合テストを実行し、`Diagnostic` JSON を収集。
+2. **ビルド**: `reml build --target` と `reml fmt --check` を実行し、構文/仕様回帰を検出。
+3. **テスト**: プラットフォーム固有の統合テストを実行し、`CliDiagnosticEnvelope` を収集。
 4. **レポート**: `guides/portability.md` のチェックリストに沿って結果を整理し、GitHub Projects などでトラッキング。
-5. **自動化**: `platform_info()` から得た `capabilities` を使い、重いテスト（例: SIMD ベンチマーク）を必要ターゲットでのみ有効化。
+5. **自動化**: `platform_info()` から得た `runtime_capabilities` を使い、重いテスト（例: SIMD ベンチマーク）を必要ターゲットでのみ有効化。
 
 ---
 
 今後、Phase 3 の新ターゲット（WASM/WASI・ARM64 組み込みなど）を組み込む際は、本ガイドをベースに追加チェックリストを拡張してください。
 
-## 6. WASM 実機検証手順
+## 8. WASM 実機検証手順
 
 ### 6.1 実装タスク
 
@@ -90,4 +130,3 @@
 5. **レポート**: 実機テスト結果を `ci-artifacts/wasi/diagnostics.json` として保存し、`guides/portability.md` のチェックリストに沿って差分をレビューします。
 
 > メモ: 実行時間の長いテストは nightly ジョブへ分離し、軽量スモークテストのみを PR 必須にすることで CI コストを抑えます。
-

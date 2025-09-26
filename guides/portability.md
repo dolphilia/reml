@@ -2,11 +2,22 @@
 
 本ガイドは Reml プロジェクトで複数プラットフォームを対象とした開発を行う際の実務手順をまとめたものです。`0-2-project-purpose.md` が掲げる「実用性能」と「安全性」を満たしつつ、ターゲット差異を安全に扱うための仕様導線と実例を以下に整理します。
 
-## 1. ビルドターゲットの宣言
+## 1. ターゲットプロファイルとツールチェーン整備
 
-### 1.1 `remlc` のターゲット指定
+### 1.1 `reml target` によるプロファイル選択
 
-`remlc --target` で LLVM Triple を明示します（README.md 参照）。
+1. `reml target list` で利用可能な `TargetProfile` を確認し、`profile_id` と `runtime_revision` を把握します。
+2. 必要に応じて `reml target show <profile>` で `capabilities`・`stdlib_version` の詳細を閲覧し、`TargetCapability` が要求する機能を理解します。
+3. プロジェクト固有のプロファイルを作成する場合は `reml target scaffold <id>` を実行し、生成された `profiles/<id>.toml` に `capabilities = ["unicode.nfc", ...]` のような宣言を記述します。
+4. CI や新しいマシンでは `reml target validate <id>` を用いてプロファイル整合性を確認し、`target.profile.missing` や `target.capability.unknown` を早期に検知します。
+
+### 1.2 `reml toolchain` と事前ビルド標準ライブラリ
+
+`reml toolchain install <profile>` を実行して対応する標準ライブラリ（`artifact/std/<triple>/<hash>`）とランタイム（`runtime/<profile>`）を取得します。`toolchain-manifest.toml` に記録された `hash`/`runtime_revision` は `RunArtifactMetadata` と一致する必要があり、不一致が検出された場合は `target.abi.mismatch` が報告されます。
+
+### 1.3 `remlc` のターゲット指定
+
+`remlc --target` で LLVM Triple を明示します（README.md 参照）。Toolchain をインストール済みであれば、コンパイル時に `RunConfigTarget.triple` が `remlc --target` と一致しているかを自動検証できます。
 
 ```bash
 # Windows 向けビルド
@@ -16,30 +27,36 @@ remlc --target x86_64-pc-windows-msvc src/main.reml
 remlc --target aarch64-apple-darwin src/main.reml
 ```
 
-CI/CD では `REML_TARGET`・`REML_FEATURES` 等の環境変数を設定し、後述の `Core.Env.infer_target_from_env` で取得します。
+CI/CD では `REML_TARGET_PROFILE`・`REML_TARGET_TRIPLE`・`REML_TARGET_CAPABILITIES` 等の環境変数を設定し、後述の `Core.Env.infer_target_from_env` で取得します。
 
-### 1.2 `RunConfig.extensions["target"]`
+### 1.4 `RunConfig.extensions["target"]`
 
-`2-6-execution-strategy.md` に定義された構造体を利用し、パーサー実行時にターゲット情報を供給します。
+`2-6-execution-strategy.md` に定義された構造体を利用し、コンパイル時/実行時ターゲットを同期します。
 
 ```reml
 let cfg = RunConfig {
-  packrat = platform_info().capabilities.contains(SIMD),
+  packrat = platform_info().runtime_capabilities.contains(RuntimeCapability::SIMD),
   extensions = {
     "target": {
       os: platform_info().os.to_string(),
-      family: platform_info().family_tag(),
+      family: family_tag(platform_info()),
       arch: platform_info().arch.to_string(),
-      env: platform_info().variant,
+      abi: Some("gnu"),
+      vendor: platform_info().variant,
+      profile_id: Some("desktop-x86_64"),
+      triple: Some("x86_64-unknown-linux-gnu"),
       features: project_features(active_profile),
-      extra: { "gpu": "cuda" },
+      capabilities: target_capabilities(),
+      stdlib_version: Some(semver!("1.0.0")),
+      runtime_revision: Some("rc-2024-09"),
       diagnostics: true,
+      extra: { "gpu": "cuda" }
     }
   }
 }
 ```
 
-`diagnostics=true` を設定すると `@cfg` 評価ログが `Diagnostic.extensions["cfg"]` に出力され、誤設定を検出できます（2-5-error.md）。
+`diagnostics=true` を設定すると `@cfg` 評価ログが `Diagnostic.extensions["cfg"]` に出力され、誤設定を検出できます（2-5-error.md）。`profile_id` や `runtime_revision` が欠落している場合は `target.profile.missing` が、値が不整合な場合は `target.abi.mismatch` / `target.config.mismatch` が発生します。
 
 ## 2. 条件付きコンパイルの設計
 
@@ -64,6 +81,11 @@ fn open_registry() -> Result<(), PlatformError> { ... }
 | `target_os` | OS 判別 | `"windows"`, `"linux"`, `"macos"`, `"freebsd"`, `"wasm"` |
 | `target_family` | 共通分岐 | `"unix"`, `"windows"`, `"wasm"` |
 | `target_arch` | ABI/命令差異 | `"x86_64"`, `"aarch64"`, `"wasm32"` |
+| `target_abi` | ツールチェーン/ABI 分岐 | `"gnu"`, `"msvc"`, `"musl"` |
+| `target_profile` / `profile_id` | プロファイル固有切替 | `"desktop-x86_64"`, `"mobile-arm64"` |
+| `runtime_revision` | ランタイム互換性 | `"rc-2024-09"` |
+| `stdlib_version` | 標準ライブラリ互換性 | `"1.0.0"` |
+| `capability` | ターゲット Capability | `"unicode.nfc"`, `"fs.case_insensitive"`, `"ffi.callconv.win64"` |
 | `feature` | ビルド切替 | `"gpu_acceleration"`, `"use_packrat"` |
 | `extra.*` | プロジェクト拡張 | 例: `extra.gpu = "cuda"` |
 
@@ -73,13 +95,13 @@ fn open_registry() -> Result<(), PlatformError> { ... }
 
 * `get_env` / `set_env` / `remove_env` で環境変数アクセスを統一。
 * `get_temp_dir` や `cache_dir` を利用し、XDG/AppData などプラットフォーム標準のパスを取得。
-* `infer_target_from_env` は `RunConfigTarget` を返し、`RunConfig.extensions["target"]` へマージできます。
+* `infer_target_from_env` は `TargetProfile` を返し、`resolve_run_config_target` → `merge_runtime_target` を経て `RunConfig.extensions["target"]` へマージできます。エラー発生時は `Diagnostic.domain = Target` でレポートされるため、CI では `--fail-on-warning` を有効にしてポータビリティ回帰を即停止させます。
 
 ```reml
-match infer_target_from_env()? {
-  Ok(target) => cfg.extensions["target"].merge(target),
-  Err(err) => diagnostics.emit(env_to_diagnostic(err)),
-}
+let profile = infer_target_from_env()?;
+let target = resolve_run_config_target(profile);
+let merged = merge_runtime_target(target, platform_info());
+cfg.extensions.insert("target", merged);
 ```
 
 ### 3.2 `platform_info()`（3-8-core-runtime-capability.md）
@@ -111,28 +133,46 @@ let shim = with_abi_adaptation(symbol, conv)?;
 
 ## 6. 診断とテレメトリ
 
-* `target.config.*` / `effects.cfg.*` を用いた診断は 2-5-error.md の B-9 表を参照し、IDE/LSP へ `Diagnostic.extensions["cfg"] = { keys, evaluated, active }` を送信します。
-* `Core.Diagnostics` と連携する場合、`set_env` や FFI 呼び出し時に `AuditEvent` を発行し、監査証跡を保持します。
+* `target.profile.missing`, `target.abi.mismatch`, `target.config.mismatch`, `target.capability.unknown` など `DiagnosticDomain::Target` の診断を `reml build --emit-metadata target.json` で収集し、CI で `guides/ci-strategy.md` に従って集計します。
+* `Diagnostic.extensions["target"]` に `requested` / `detected` / `capability` 等の情報が含まれるため、構造化ログとして保存し、再現手順を短縮します。
+* `Core.Diagnostics` と連携する場合、`set_env` や FFI 呼び出し時に `AuditEvent` を発行し、監査証跡を保持します。ターゲット関連イベントは `AuditEnvelope.metadata["target"]` を添付することで `reml toolchain verify` と整合します。
 
-## 7. 推奨ワークフロー
+## 7. ターゲット Capability リファレンス
+
+| Capability 名 | キー | 主な効果 |
+| --- | --- | --- |
+| Unicode NFC 正規化 | `unicode.nfc` | `Core.Text.normalize` で NFC 処理が利用可能 |
+| 拡張書記素クラスタ | `unicode.grapheme` | `Core.Text.grapheme_iter` が完全サポート |
+| ファイルシステム（大文字小文字区別） | `fs.case_sensitive` | POSIX 互換の挙動。`Path` 比較時に小文字化不要 |
+| ファイルシステム（大文字小文字無視） | `fs.case_insensitive` | Windows/一部 Mac の挙動。パス衝突回避ロジックが必要 |
+| Path UTF-8 | `fs.path_utf8` | UTF-8 パスを想定。未対応環境ではバイト列 API を使用 |
+| Thread Local Storage | `thread.local` | `Core.Runtime` の TLS API が有効 |
+| Job Control | `process.job_control` | `Core.Process` でジョブ制御が利用可能 |
+| 呼出規約 (C / SysV / Win64 / Wasm) | `ffi.callconv.*` | `Core.Async.Ffi` が指定の ABI を提供 |
+
+Capability 名は `capability_name(TargetCapability::…)` の戻り値と一致させます。`@cfg(capability = "...")` の判定にも同じ文字列を使用してください。
+
+## 8. 推奨ワークフロー
 
 1. **ターゲット初期化**: `infer_target_from_env` → `RunConfig.extensions["target"]`。
 2. **条件付き宣言**: `@cfg` 属性でモジュールや API を切り替える。
 3. **ファイル・Env 操作**: `Core.Path` と `Core.Env` を経由して依存を統一。
 4. **FFI/ABI 適応**: `resolve_calling_convention` + `with_abi_adaptation` でプラットフォーム差異を吸収。
-5. **診断の可視化**: `diagnostics=true` と `Diagnostic.extensions["cfg"]` で IDE/CI にフィードバック。
+5. **診断の可視化**: `diagnostics=true` と `Diagnostic.extensions["cfg"]` / `extensions["target"]` で IDE/CI にフィードバック。
+6. **ツールチェーン検証**: `reml toolchain verify` を定期的に実行し、`target_failures` をダッシュボードで監視。
 
-## 8. チェックリスト
+## 9. チェックリスト
 
 | 項目 | 内容 |
 | --- | --- |
-| CLI ターゲット | `remlc --target` と `RunConfigTarget` が一致しているか |
+| CLI ターゲット | `reml build --target` の出力メタデータ (`RunArtifactMetadata`) がプロファイルと一致しているか |
 | @cfg 分岐 | すべての分岐で効果タグが整合し、到達不能診断が出ていないか |
-| パス操作 | `PathStyle::Native` と `normalize_path` を利用しているか |
-| FFI | `LibraryMetadata` に呼出規約と必要 Capability を記述したか |
-| 診断 | CI で `target.config.*` が検出された際の運用手順を整備したか |
+| パス操作 | `PathStyle::Native` と `normalize_path` を利用し、Capability (`fs.case_*`) に応じて分岐しているか |
+| FFI | `LibraryMetadata` に呼出規約と必要 Capability (`ffi.callconv.*`) を記述したか |
+| 診断 | CI で `target.config.*` / `target.capability.*` が検出された際の運用手順を整備したか |
+| ツールチェーン | `reml toolchain list` で `runtime_revision` が最新か、不要なハッシュが残っていないか |
 
-## 9. システムプログラミングモジュールとターゲット差異
+## 10. システムプログラミングモジュールとターゲット差異
 
 | モジュール | 主な `@cfg` キー | プラットフォーム注意点 |
 | --- | --- | --- |

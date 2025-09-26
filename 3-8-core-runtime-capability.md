@@ -111,7 +111,12 @@ pub type PlatformInfo = {
   family: TargetFamily,
   variant: Option<Str>,
   features: Set<Str>,
-  capabilities: Set<RuntimeCapability>,
+  runtime_capabilities: Set<RuntimeCapability>,
+  target_capabilities: Set<TargetCapability>,
+  profile_id: Option<Str>,
+  triple: Option<Str>,
+  stdlib_version: Option<SemVer>,
+  runtime_revision: Option<Str>,
 }
 
 pub enum OS = Windows | Linux | MacOS | FreeBSD | Wasm | Other(Str)
@@ -127,32 +132,59 @@ pub enum RuntimeCapability = {
   Vector512,
 }
 
+pub enum TargetCapability = {
+  UnicodeNfc,                 // 対応: `unicode.nfc`
+  UnicodeExtendedGrapheme,    // 対応: `unicode.grapheme`
+  FilesystemCaseSensitive,    // 対応: `fs.case_sensitive`
+  FilesystemCaseInsensitive,  // 対応: `fs.case_insensitive`
+  FilesystemCasePreserving,   // 対応: `fs.case_preserving`
+  PathUtf8Encoding,           // 対応: `fs.path_utf8`
+  ThreadLocalStorage,         // 対応: `thread.local`
+  JobControl,                 // 対応: `process.job_control`
+  MonotonicClock,             // 対応: `clock.monotonic`
+  HighResolutionClock,        // 対応: `clock.highres`
+  FfiCallConvC,               // 対応: `ffi.callconv.c`
+  FfiCallConvSysv,            // 対応: `ffi.callconv.sysv`
+  FfiCallConvWin64,           // 対応: `ffi.callconv.win64`
+  FfiCallConvWasm,            // 対応: `ffi.callconv.wasm`
+}
+
 fn platform_info() -> PlatformInfo                       // `effect {runtime}`
 fn platform_features() -> Set<Str>                        // `effect {runtime}`
 fn platform_capabilities() -> Set<RuntimeCapability>      // `effect {runtime}`
+fn runtime_capabilities() -> Set<RuntimeCapability>       // `effect {runtime}`
+fn target_capabilities() -> Set<TargetCapability>         // `effect {runtime}`
 fn platform_variant() -> Option<Str>                      // `effect {runtime}`
 fn has_capability(cap: RuntimeCapability) -> Bool         // `effect {runtime}`
+fn has_target_capability(cap: TargetCapability) -> Bool   // `effect {runtime}`
+fn capability_name(cap: TargetCapability) -> &'static Str // `@pure`
 fn family_tag(info: PlatformInfo) -> Str                  // `@pure`
 ```
 
-* `PlatformInfo` は `Core.Env`（[3-10](3-10-core-env.md)）や `RunConfig.extensions["target"]` と同期させる。CLI が指定したターゲットと実行時情報が乖離した場合は `target.config.unsupported_value` を発行し、`Diagnostic.extensions["cfg"].evaluated` に両者を記録する。
-* `features` は `@cfg(feature = "...")` と連携し、ビルドプロファイルや CLI オプションで有効にした拡張機能の集合を表す。`capabilities` にはハードウェア検出結果を格納し、`RunConfig` の最適化スイッチ（Packrat/左再帰/トレース等）の既定値に利用できる。
+* `PlatformInfo` は `Core.Env`（[3-10](3-10-core-env.md)）や `RunConfig.extensions["target"]` と同期させる。CLI が指定したターゲットと実行時情報が乖離した場合は `DiagnosticDomain::Target` で `target.config.mismatch` を発行し、`Diagnostic.extensions["target"]` に `profile_id` / `triple` / 差異一覧を記録する。
+* `features` は `@cfg(feature = "...")` と連携し、ビルドプロファイルや CLI オプションで有効にした拡張機能の集合を表す。`runtime_capabilities` にはハードウェア検出結果を格納し、`RunConfig` の最適化スイッチ（Packrat/左再帰/トレース等）の既定値に利用できる。`target_capabilities` はターゲット固有挙動（Unicode/ファイルシステム/ABI 等）を表し、`@cfg(capability = "...")` や `RunConfigTarget.capabilities` と同期する。
+* `profile_id` / `triple` / `stdlib_version` / `runtime_revision` は `TargetProfile` 由来のメタデータを保持し、コンパイラが生成した `RunArtifactMetadata`（2-6 §B-2-1-a）と一致することを保証する。
 * `family_tag` は `"unix"` や `"windows"` といったスカラー文字列を返し、`RunConfig.extensions["target"]` の `family` フィールドを埋める際に使用する。
 * Capability Registry は `register("platform", handle)` を通じてプラットフォーム情報提供者を差し替え可能。未登録時はホスト依存の既定実装が自動登録される。
-* `platform_features()` はビルド時フィーチャ集合を直接返し、`platform_capabilities()` は検出済みハードウェア機能（`RuntimeCapability`）を提供する。`platform_variant()` には libc バージョンやベンダー拡張など追加識別子を格納できる。
+* `platform_features()` はビルド時フィーチャ集合を直接返し、`platform_capabilities()` / `runtime_capabilities()` は検出済みハードウェア機能（`RuntimeCapability`）を提供する。`target_capabilities()` はターゲット挙動能力（`TargetCapability`）を返す。`platform_variant()` には libc バージョンやベンダー拡張など追加識別子を格納できる。
+* `TargetCapability` の列挙値は `capability_name(cap)` により `unicode.nfc` 等のカノニカル文字列へ変換され、`@cfg(capability = "...")`、`RunConfigTarget.capabilities`、および環境変数 `REML_TARGET_CAPABILITIES` で利用される。列挙外のカスタム Capability を導入する際は、実装側で `CapabilityRegistry::register_custom_target_capability(name: Str)` を提供し、名前と診断を登録することが推奨される。
 * ランタイム最適化時は次のように利用する：
 
 ```reml
 let info = platform_info();
-if info.capabilities.contains(RuntimeCapability::SIMD) {
+if info.runtime_capabilities.contains(RuntimeCapability::SIMD) {
   enable_simd_pipeline();
 }
 if platform_features().contains("packrat_default") {
   cfg.extensions["target"].features.insert("packrat_default");
 }
+if has_target_capability(TargetCapability::FilesystemCaseInsensitive) {
+  cfg.extensions["target"].extra.insert("fs.case", "insensitive");
+}
 ```
 
 * `FfiCapability`（[3-9](3-9-core-async-ffi-unsafe.md)）は `platform_info()` と `resolve_calling_convention` を参照し、ターゲットごとの ABI を自動選択する。Capability Registry でプラットフォーム情報を更新すると FFI バインディングも同時に反映される。
+* `Core.Env.resolve_run_config_target` / `merge_runtime_target`（3-10 §4）は `target_capabilities()` を利用して `RunConfigTarget.capabilities` を初期化し、`TargetProfile` の宣言値と実行時検出結果を統合する。不一致は `DiagnosticDomain::Target` の `target.capability.unknown` または `target.config.mismatch` として報告される。
 
 ### 1.4 CapabilityError
 

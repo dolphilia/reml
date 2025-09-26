@@ -5,8 +5,9 @@
 ## 0. ターゲット同期と `@cfg`
 
 * `Core.Env.infer_target_from_env()`（[3-10](../3-10-core-env.md)）で得たターゲット情報を `RunConfig.extensions["target"]` へマージし、コンパイル時と実行時のプラットフォーム差異を監視する。
-* ランタイム起動時は `platform_info()`（[3-8](../3-8-core-runtime-capability.md)）を取得し、`extensions["target"].diagnostics=true` を設定すると `@cfg` 評価のログを `Diagnostic.extensions["cfg"]` に反映できる。
-* CI では `REML_TARGET`, `REML_FEATURES` 等の環境変数をセットし、`Core.Env` が期待通りに解決したか `target.config.*` 診断を確認する。誤ったプロファイルで起動した場合は即座に `Error` を発生させて差異を明らかにする。
+* ランタイム起動時は `platform_info()`（[3-8](../3-8-core-runtime-capability.md)）を取得し、`extensions["target"].diagnostics=true` を設定すると `@cfg` 評価のログを `Diagnostic.extensions["cfg"]` に反映できる。`Diagnostic.domain = Target` の詳細から `requested` / `detected` を比較し、クロスリンカ設定の齟齬を特定できる。
+* クロスコンパイル時は `reml toolchain verify` と `reml target validate` を実行し、`ffi.callconv.*` を含む `TargetCapability` が満たされているか確認する。手順は `guides/cross-compilation.md` を参照。
+* CI では `REML_TARGET_PROFILE`, `REML_TARGET_CAPABILITIES` 等の環境変数をセットし、`Core.Env` が期待通りに解決したか `target.config.*` 診断を確認する。誤ったプロファイルで起動した場合は即座に `Error` を発生させて差異を明らかにする。
 
 ## 1. FFI 境界の設計
 
@@ -19,6 +20,13 @@
 
 - `unsafe` ブロックではリソース管理 (`defer`) と `audit` ログを必須とする。
 - 効果タグの組み合わせは `1-3-effects-safety.md` の表を参照。
+
+### 1.1 クロスリンカと ABI 検証
+
+1. **ターゲットの確定**: `RunConfigTarget.capabilities` に `ffi.callconv.*` が含まれていることを `reml target show` で確認します。未知の Capability がある場合は `target.capability.unknown` を解消してから進めてください。
+2. **リンカ設定**: `reml build --emit-metadata build/target.json` から `llvm_triple`・`data_layout` を取得し、外部リンカ（`clang`, `lld`, `link.exe` 等）に同じ値を渡します。値が異なると `target.config.mismatch` が発生します。
+3. **検証ステップ**: CI で `reml toolchain verify <profile>` を実行し、結果を `audit.log("toolchain.verify", report)` として保存すると、ランタイム差異のトレースが容易になります。
+4. **テスト**: `resolve_calling_convention(platform_info(), metadata)` を用いた単体テストを各ターゲットで実行し、期待する `CallingConvention` が返らない場合は `RunConfigTarget` とプロファイルを再確認してください。
 
 ## 2. ホットリロード
 
@@ -119,7 +127,7 @@ fn run_wasi(parser: Parser<T>, bytes: Bytes) -> Result<T, Diagnostic> =
   wasm_run(parser, bytes, RunConfig { left_recursion = "off", packrat = false, ..default });
 ```
 
-- `guides/portability.md` のチェックリストに従い、`RunConfig.left_recursion` と `packrat` の既定値を `off` にする。
+- `guides/portability.md` のチェックリストに従い、`RunConfig.left_recursion` と `packrat` の既定値を `off` にし、`RunConfig.extensions["target"].profile_id = Some("wasi-preview2")` を設定して誤ったランタイムを検知する。
 - I/O は WASI 標準の `stdin`/`stdout` のみに限定し、`Core.Env` を通じて環境変数取得を行う。
 
 ### 9.2 コンテナ / サーバーレス
