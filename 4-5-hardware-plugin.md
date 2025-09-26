@@ -1,15 +1,16 @@
-# 3.15 Core Hardware — CPU & Platform Introspection (Draft)
+# 4.5 Hardware Capability プラグイン — CPU & Platform Introspection
 
-> 目的：CPU 特性・ハードウェア資源・NUMA 情報などを取得する `Core.Hardware` API を定義し、`HardwareCapability` を通じて最適化や運用制御に活用する。
+> 位置付け: 公式プラグイン（オプション）。ハードウェア情報の取得はプラットフォーム依存であり、環境によっては特権操作を伴うため、標準APIから分離して運用審査を経る。
 
 ## 0. 仕様メタデータ
 
 | 項目 | 内容 |
 | --- | --- |
-| ステータス | ドラフト |
+| ステータス | ドラフト（公式プラグイン） |
+| プラグインID | `core.hardware` |
 | 効果タグ | `effect {hardware}`, `effect {unsafe}`, `effect {security}`, `effect {thread}`, `effect {audit}` |
-| 依存モジュール | `Core.Runtime`, `Core.Process` (3-12), `Core.System` (3-11), `Core.Diagnostics`, `Core.Numeric & Time` |
-| 相互参照 | [3-8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
+| 依存モジュール | `Core.Runtime`, [4-2 Process Capability プラグイン](4-2-process-plugin.md), [4-1 System Capability プラグイン](4-1-system-plugin.md), `Core.Diagnostics`, `Core.Numeric & Time` |
+| 相互参照 | [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
 
 ## 1. HardwareCapability API
 
@@ -27,7 +28,7 @@ pub type HardwareCapability = {
 
 - `rdtsc` / `rdtscp` は高精度タイムスタンプ。使用時は `effect {hardware}` に加え `timing` サブ効果を検討する。
 - `prefetch` は CPU キャッシュへのプリフェッチヒント。
-- NUMA 関連は `Core.Process::set_thread_affinity` と連携。
+- NUMA 関連は [4-2 Process Capability プラグイン](4-2-process-plugin.md) の `set_thread_affinity` と連携。
 
 ## 2. 型定義
 
@@ -89,4 +90,4 @@ pub enum HardwareErrorKind = Unsupported | PermissionDenied | InvalidNode | Oper
 
 ---
 
-*本章はドラフトです。実装に先立ちプラットフォーム別サポート状況とセキュリティ制約を整理します。*
+*本章はドラフトであり、公式プラグインとしての配布・審査プロセスは `Chapter 4` のエコシステム仕様と連携して今後更新される。*

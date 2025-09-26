@@ -51,13 +51,13 @@ conductor pipeline_app {
 
 ### 2.2 チャネル設計
 
-- `Channel<Send, Recv>` で型変換を明示し、`Codec` によるシリアライズを標準化する。
-- `overflow` ポリシーと `buffer_size` を ExecutePlan と整合させ、背圧とメモリ使用量を管理する。
+- `Channel`/`Codec` の契約と失敗モードは [Core.Async 仕様 1.4 節](../3-9-core-async-ffi-unsafe.md#14-2-channel-契約) に従う。このガイドでは、そのパラメータを実運用へ最適化する手順に集中する。
+- `buffer_size` と `OverflowPolicy` は仕様で定義された上限を守りつつ、期待スループットに合わせてプロファイルし、`merge_channels` の前後でメトリクスを観測する。
 
 ### 2.3 実行ポリシー
 
-- `ExecutionPlan` の `strategy` は DAG をもとに自動最適化される。必要に応じて `with_execution_plan` で手動上書きする。
-- `ErrorPolicy.isolate_with_circuit_breaker` などフォールトトレランス設定は、プラグインの既定値と一致させる。
+- `ExecutionPlan` の契約は [Core.Async 仕様 1.4.3 節](../3-9-core-async-ffi-unsafe.md#14-3-executionplan-の整合性) に従い、ガイドでは DAG 分析や `RetryPolicy` のチューニング手順を提示する。
+- `ErrorPolicy.isolate_with_circuit_breaker` や `RetryPolicy` の数値は、本番ワークロードの負荷テストで決め、`async.plan.invalid` 診断が出ないか CI で検証する。
 
 ### 2.4 監視
 
@@ -77,8 +77,8 @@ conductor pipeline_app {
 | 症状 | 原因例 | 対応 |
 | --- | --- | --- |
 | DSL 起動順が期待と異なる | `depends_on` を記述していない | 依存関係を追加し、循環チェックを実行する |
-| チャネルで型エラー | `Codec` の Serialize/Deserialize 実装不足 | `Codec` を追加するか、`auto_bind` で生成する |
-| バックプレッシャーが効かない | `ExecutionPlan.backpressure` の閾値が適切でない | 高低水位を見直し、Adaptive 戦略を有効化する |
+| チャネルで型エラー | 仕様 1.4.2 の前提（`Codec` 互換）が破られている | `Codec` を揃えるか `AsyncErrorKind::CodecFailure` の診断で差異を特定する |
+| バックプレッシャーが効かない | `ExecutionPlan.backpressure` の閾値が適切でない | 閾値を見直し、`async.plan.invalid` 診断が出ていないか確認する |
 | 監視データが欠落 | `register_dsl_metrics` 未呼び出し | プラグインまたは Conductor `monitoring` セクションで登録する |
 
 ## 5. 参考

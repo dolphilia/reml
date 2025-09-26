@@ -1,15 +1,16 @@
-# 3.13 Core Memory — Virtual Memory & Shared Regions (Draft)
+# 4.3 Memory Capability プラグイン — Virtual Memory & Shared Regions
 
-> 目的：OS の仮想メモリ機能および共有メモリを Reml から利用するための `Core.Memory` API を定義し、`CapabilityRegistry` の `MemoryCapability` と連携して安全な低レベル操作を提供する。
+> 位置付け: 公式プラグイン（オプション）。仮想メモリや共有領域の操作は `effect {memory}` `effect {unsafe}` を多用するため、標準APIから分離し、`SecurityCapability` による導入審査を前提とする。
 
 ## 0. 仕様メタデータ
 
 | 項目 | 内容 |
 | --- | --- |
-| ステータス | ドラフト |
+| ステータス | ドラフト（公式プラグイン） |
+| プラグインID | `core.memory` |
 | 効果タグ | `effect {memory}`, `effect {syscall}`, `effect {unsafe}`, `effect {process}`, `effect {security}` |
-| 依存モジュール | `Core.Runtime`, `Core.System` (3-11), `Core.Process` (3-12), `Core.Diagnostics`, `Core.Unsafe.Ptr`, `Core.IO` |
-| 相互参照 | [3-8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-5 Core IO & Path](3-5-core-io-path.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
+| 依存モジュール | `Core.Runtime`, [4-1 System Capability プラグイン](4-1-system-plugin.md), [4-2 Process Capability プラグイン](4-2-process-plugin.md), `Core.Diagnostics`, `Core.Unsafe.Ptr`, `Core.IO` |
+| 相互参照 | [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-5 Core IO & Path](3-5-core-io-path.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
 
 ## 1. MemoryCapability API
 
@@ -24,9 +25,9 @@ pub type MemoryCapability = {
 }
 ```
 
-- `mmap` / `munmap` / `mprotect` / `msync` は POSIX の仮想メモリ API に準拠。Windows では `MapViewOfFile` 等に相当する実装を提供する。
+- `mmap` / `munmap` / `mprotect` / `msync` は POSIX の仮想メモリ API に準拠し、Windows 等では同等機能をラップする。
 - `shared_open` は名前付き共有メモリを作成・接続し、プロセス間通信を可能にする。
-- すべての API は `audit` ログで操作対象と許可を記録することが推奨される。
+- すべての API は `AuditContext` を通じて操作対象と許可を記録することが推奨される。
 
 ## 2. 型定義
 
@@ -109,7 +110,7 @@ fn log_mmap(request: MmapRequest, result: Result<MappedMemory, MemoryError>, aud
 
 - `request` の `protection`・`flags`・`file` を JSON で保存。
 - `result` が成功した場合は `ptr` と `len` を記録。失敗した場合は `MemoryError` 詳細を記録。
-- `AuditContext`（3.6）と組み合わせることで `SyscallCapability.audited_syscall` のラッパとして利用できる。
+- `AuditContext`（3.6）と組み合わせることで [4-1 System Capability プラグイン](4-1-system-plugin.md) の `SyscallCapability.audited_syscall` をラップできる。
 
 ## 6. 高レベルユーティリティ
 
@@ -137,4 +138,4 @@ fn remap(memory: &mut MappedMemory, new_len: usize) -> Result<(), MemoryError>  
 
 ---
 
-*この章はドラフトです。今後の更新で OS 別のサポート状況、詳細な監査イベント定義、サンプルコードを追加する予定です。*
+*本章はドラフトであり、公式プラグインとしての配布・審査プロセスは `Chapter 5` のエコシステム仕様と連携して今後更新される。*

@@ -1,15 +1,16 @@
-# 3.16 Core RealTime — Scheduling & High-Precision Timers (Draft)
+# 4.6 RealTime Capability プラグイン — Scheduling & High-Precision Timers
 
-> 目的：リアルタイムスケジューリングや精密タイマー制御を Reml から利用するための `Core.RealTime` API を定義し、`RealTimeCapability` を通じて OS のリアルタイム機能を安全に操作する。
+> 位置付け: 公式プラグイン（オプション）。リアルタイムスケジューリングや精密タイマーは OS 権限を要求し `effect {realtime}` を含むため、標準APIから切り離して運用審査を前提とする。
 
 ## 0. 仕様メタデータ
 
 | 項目 | 内容 |
 | --- | --- |
-| ステータス | ドラフト |
+| ステータス | ドラフト（公式プラグイン） |
+| プラグインID | `core.realtime` |
 | 効果タグ | `effect {realtime}`, `effect {thread}`, `effect {memory}`, `effect {io.timer}`, `effect {security}`, `effect {audit}` |
-| 依存モジュール | `Core.Runtime`, `Core.Process` (3-12), `Core.System` (3-11), `Core.Memory` (3-13), `Core.Diagnostics`, `Core.Numeric & Time` |
-| 相互参照 | [3-8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3-5 Core IO & Path](3-5-core-io-path.md) |
+| 依存モジュール | `Core.Runtime`, [4-2 Process Capability プラグイン](4-2-process-plugin.md), [4-1 System Capability プラグイン](4-1-system-plugin.md), [4-3 Memory Capability プラグイン](4-3-memory-plugin.md), `Core.Diagnostics`, `Core.Numeric & Time` |
+| 相互参照 | [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3-5 Core IO & Path](3-5-core-io-path.md) |
 
 ## 1. RealTimeCapability API
 
@@ -24,7 +25,7 @@ pub type RealTimeCapability = {
 }
 ```
 
-- `lock_memory` / `unlock_memory` は `mlock` / `munlock` 相当。`MemoryCapability` と連携し `effect {memory}` を共有する。
+- `lock_memory` / `unlock_memory` は `mlock` / `munlock` 相当であり、[4-3 Memory Capability プラグイン](4-3-memory-plugin.md) と連携する。
 - `sleep_precise` はナノ秒精度のスリープ。戻り値に実際に経過した時間を返す。
 - `create_timer` はリアルタイムタイマーを登録し、`TimerHandler` はバックグラウンドスレッドで実行される。
 
@@ -81,4 +82,4 @@ pub enum RealTimeErrorKind = Unsupported | PermissionDenied | InvalidPolicy | Ti
 
 ---
 
-*本章はドラフトです。実装時にはターゲット OS ごとのリアルタイムサポート状況と必要な権限（CAP_SYS_NICE 等）を追記します。*
+*本章はドラフトであり、公式プラグインとしての配布・審査プロセスは `Chapter 5` のエコシステム仕様と連携して今後更新される。*

@@ -8,7 +8,7 @@
 - `RunConfig.extensions["target"]` と `@cfg` は [1-1-syntax.md](1-1-syntax.md)・[3-10-core-env.md](3-10-core-env.md)・[3-8-core-runtime-capability.md](3-8-core-runtime-capability.md) で個別に定義されているが、クロスビルド時の一貫した初期化手順が欠落。
 - ランタイム/FFI の ABI 設定は [3-9-core-async-ffi-unsafe.md](3-9-core-async-ffi-unsafe.md) や [guides/llvm-integration-notes.md](guides/llvm-integration-notes.md) でターゲット依存項目を列挙するのみで、ビルド成果物と連動する仕組みが存在しない。
 - 標準ライブラリ `Core.*` はポータビリティを意識した API 定義を進めている（例: [3-5-core-io-path.md](3-5-core-io-path.md), [3-10-core-env.md](3-10-core-env.md)）が、ターゲット別ビルド成果物の配布や検証フローはこれから。
-- エコシステム章（Chapter 4）は CLI・レジストリ等のドラフト段階で、クロスコンパイルに関する記述はない（[4-1-package-manager-cli.md](4-1-package-manager-cli.md), [4-3-developer-toolchain.md](4-3-developer-toolchain.md) 参照）。
+- エコシステム章（Chapter 5）は CLI・レジストリ等のドラフト段階で、クロスコンパイルに関する記述はない（[5-1-package-manager-cli.md](5-1-package-manager-cli.md), [5-3-developer-toolchain.md](5-3-developer-toolchain.md) 参照）。
 
 ## 2. クロスコンパイル調査サマリ
 
@@ -67,16 +67,16 @@
 
 ### 4.5 レジストリ / パッケージ連携
 
-- [4-2-registry-distribution.md](4-2-registry-distribution.md) と連携し、パッケージのメタデータに `targets = ["x86_64-unknown-linux-gnu", ...]` を追加。
+- [5-2-registry-distribution.md](5-2-registry-distribution.md) と連携し、パッケージのメタデータに `targets = ["x86_64-unknown-linux-gnu", ...]` を追加。
 - `reml publish` はクロスビルド成果物を添付する場合、ターゲット毎にハッシュ+署名+互換バージョン範囲を記録。
 - `reml add` は互換ターゲットが存在しない場合に警告または失敗とし、`--allow-source-build` でソースビルドへフォールバック。
 
 ## 5. 今後のタスク提案
 
 1. `TargetProfile` ドラフト仕様の執筆（4.x 章に節を追加）。
-2. CLI 仕様（[4-1-package-manager-cli.md](4-1-package-manager-cli.md)）へターゲット管理サブコマンドの追記。
+2. CLI 仕様（[5-1-package-manager-cli.md](5-1-package-manager-cli.md)）へターゲット管理サブコマンドの追記。
 3. `Core.Env` / `Core.Runtime` / `Core.Diagnostics` への必要拡張を Chapter 3 ドキュメントに反映。
-4. レジストリ仕様（[4-2-registry-distribution.md](4-2-registry-distribution.md)）へターゲットメタデータ規定を追加。
+4. レジストリ仕様（[5-2-registry-distribution.md](5-2-registry-distribution.md)）へターゲットメタデータ規定を追加。
 5. 将来のセルフホスト計画（[guides/llvm-integration-notes.md](guides/llvm-integration-notes.md)）と整合するビルドパイプライン図を作成し、クロスリンカ/エミュレーション手順を別途まとめる。
 
 ---

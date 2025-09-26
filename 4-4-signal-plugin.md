@@ -1,15 +1,16 @@
-# 3.14 Core Signal — Inter-Process Signals & Handlers (Draft)
+# 4.4 Signal Capability プラグイン — Inter-Process Signals & Handlers
 
-> 目的：OS シグナル機構を Reml から利用するための `Core.Signal` API を定義し、`ProcessCapability` / `SyscallCapability` と連携して安全にハンドラ登録・配信・マスク操作を行う。
+> 位置付け: 公式プラグイン（オプション）。OS シグナルは `unsafe` 操作とプロセス制御を伴うため、標準APIから切り離し、`Core.Process` / `Core.System` の各プラグインと組み合わせて利用する。
 
 ## 0. 仕様メタデータ
 
 | 項目 | 内容 |
 | --- | --- |
-| ステータス | ドラフト |
+| ステータス | ドラフト（公式プラグイン） |
+| プラグインID | `core.signal` |
 | 効果タグ | `effect {signal}`, `effect {process}`, `effect {unsafe}`, `effect {audit}`, `effect {security}`, `effect {io.blocking}` |
-| 依存モジュール | `Core.Runtime`, `Core.System` (3-11), `Core.Process` (3-12), `Core.Diagnostics`, `Core.Unsafe.Ptr` |
-| 相互参照 | [3-8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
+| 依存モジュール | `Core.Runtime`, [4-1 System Capability プラグイン](4-1-system-plugin.md), [4-2 Process Capability プラグイン](4-2-process-plugin.md), `Core.Diagnostics`, `Core.Unsafe.Ptr` |
+| 相互参照 | [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
 
 ## 1. SignalCapability API
 
@@ -76,7 +77,7 @@ fn install_shutdown_handler(audit: AuditSink) -> Result<(), SignalError> = {
 }
 ```
 
-- ハンドラ内では非同期安全な操作のみを行う。必要な処理はワーカースレッドへ通知。
+- ハンドラ内では非同期安全な操作のみを行い、必要な処理はワーカースレッドへ通知する。
 
 ### 4.2 シグナル待ち
 
@@ -95,4 +96,4 @@ fn wait_for_child() -> Result<SignalInfo, SignalError> =
 
 ---
 
-*本章はドラフトです。最終仕様ではプラットフォームごとの制約と安全なハンドラ構造、再入性対策を詳細化します。*
+*本章はドラフトであり、公式プラグインとしての配布・審査プロセスは `Chapter 5` のエコシステム仕様と連携して更新される。*

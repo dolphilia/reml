@@ -1,4 +1,4 @@
-# 4.3 Developer Toolchain（ドラフト）
+# 5.3 Developer Toolchain（ドラフト）
 
 > 目的：IDE/LSP、フォーマッタ、リンター、デバッガー、プロファイラーなどの開発者ツールチェーン仕様を統合し、Reml 言語・標準ライブラリとの結節点を示す。
 

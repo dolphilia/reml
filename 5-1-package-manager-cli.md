@@ -1,4 +1,4 @@
-# 4.1 Package Manager & CLI（ドラフト）
+# 5.1 Package Manager & CLI（ドラフト）
 
 > 目的：Reml エコシステムの基盤となる公式 CLI (`reml`) およびパッケージマネージャーの仕様を定義し、Chapter 1-3 で規定された言語・標準API・ランタイム機能と統合する。現段階では 4-0 の統合計画に基づくアウトラインであり、今後の章立て作業の指針を提供する。
 
@@ -7,7 +7,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | ステータス | 草案（Draft） |
-| 参照文書 | [reml-ecosystem-analysis.md](reml-ecosystem-analysis.md), [4-0-ecosystem-integration-plan.md](4-0-ecosystem-integration-plan.md) |
+| 参照文書 | [reml-ecosystem-analysis.md](reml-ecosystem-analysis.md), [5-0-ecosystem-integration-plan.md](5-0-ecosystem-integration-plan.md) |
 | 主要関連章 | 1-1, 1-2, 1-3, 3-6, 3-7, 3-8 |
 
 ## 1. CLI 全体像

@@ -1,4 +1,4 @@
-# 4.2 Registry & Distribution（ドラフト）
+# 5.2 Registry & Distribution（ドラフト）
 
 > 目的：Reml パッケージレジストリおよび配布モデル（分散・中央ハイブリッド）を仕様化し、`reml publish` コマンド・依存解決の基盤を定義する。現状はアウトライン段階。
 

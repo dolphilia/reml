@@ -96,7 +96,7 @@ fn read_line(reader: &mut BufferedReader<Reader>) -> Result<Option<Str>, IoError
 
 - バッファ確保時に `effect {memory}` を要求。
 - `read_line` は `Str` を返す。`Core.Text` の正規化は呼び出し側で行う。
-- `Core.Memory`（予定章 3-13）で定義する `MappedMemory` や `Span<u8>` と連携する場合は、`memory` 効果が `CapabilitySecurity.effect_scope` に含まれていることを確認する。
+- `Core.Memory`（公式プラグイン [4-3](4-3-memory-plugin.md)）で定義する `MappedMemory` や `Span<u8>` と連携する場合は、`memory` 効果が `CapabilitySecurity.effect_scope` に含まれていることを確認する。
 
 ## 4. Path 抽象
 

@@ -1,4 +1,4 @@
-# 4.6 Risk & Governance（ドラフト）
+# 5.6 Risk & Governance（ドラフト）
 
 > 目的：技術・市場・リソースリスクと、その軽減戦略、運営ガバナンスモデルを仕様化する。reml-ecosystem-analysis §5.4 の延長。
 

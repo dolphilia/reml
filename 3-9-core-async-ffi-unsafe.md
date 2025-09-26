@@ -97,6 +97,59 @@ enum AdaptiveStrategy = DropNewest | SlowProducer | SignalDownstream
 - `ExecutionPlan` は `conductor` の `execution { ... }` ブロックと 1:1 で対応し、スケジューラーへ渡す実行ポリシーを保持する。
 - `with_execution_plan` は DSL 定義時に計画を合成するコンビネータであり、バックプレッシャー制御やエラー隔離を `Core.Async` ランタイムへ伝える。
 
+#### 1.4.1 Codec 契約
+
+```reml
+pub struct Codec<Send, Recv> {
+  name: Str,
+  version: Option<SemVer>,
+  encode: fn(Send) -> Result<Bytes, CodecError>,
+  decode: fn(Bytes) -> Result<Recv, CodecError>,
+  validate: fn(&Recv) -> Result<(), CodecError>,
+}
+
+pub type CodecError = {
+  kind: CodecErrorKind,
+  message: Str,
+  cause: Option<Json>,
+}
+
+pub enum CodecErrorKind = EncodeFailed | DecodeFailed | ValidationFailed | UnsupportedVersion
+```
+
+- `encode`/`decode` は **純粋** な関数であり、呼び出しに追加の副作用タグは不要である。
+- `Bytes` は `Core.Text.Bytes`、`SemVer` は `Core.Numeric.SemVer` を利用する。
+- `validate` はデコード後の追加整合チェックに利用し、失敗時は `CodecErrorKind::ValidationFailed` を返す。
+- `name` と `version` は監査ログおよび互換性照合に使用され、`version` の不一致は `CodecErrorKind::UnsupportedVersion` で報告する。
+
+#### 1.4.2 Channel 契約
+
+- `create_channel` は `buffer_size > 0` を要求し、違反した場合は `AsyncErrorKind::InvalidConfiguration` を返す。
+- `codec.encode` / `codec.decode` がエラーを返した場合、`AsyncErrorKind::CodecFailure` として伝播する。
+- `OverflowPolicy::Buffer(n)` は `n >= buffer_size` を禁止し、違反時には `AsyncErrorKind::InvalidConfiguration`。
+- `merge_channels` はすべての `DslReceiver` が同一型かつ同一 `Codec` を共有していることを前提とし、不一致が検出された場合は `AsyncErrorKind::CodecFailure`。
+- `split_channel` の `predicate` は副作用を持たないことが推奨され、例外相当の失敗は `AsyncErrorKind::RuntimeUnavailable` にマップされる。
+
+#### 1.4.3 ExecutionPlan の整合性
+
+```reml
+pub enum ExecutionStrategy = Serial | Parallel { max_concurrency: Option<usize> } | Streaming
+
+pub enum ErrorPropagationPolicy = FailFast | Isolate { circuit_breaker: Option<Duration> } | Retry { policy: RetryPolicy }
+
+pub enum SchedulingPolicy = Auto | Explicit(SchedulerConfig)
+```
+
+- `ExecutionPlan.strategy` で `Parallel` を指定する場合、`max_concurrency` に `Some(0)` を設定することは禁止とし `AsyncErrorKind::InvalidConfiguration` を返す。
+- `ErrorPropagationPolicy::Retry` は `RetryPolicy.max_attempts >= 1` を要求し、違反時は即座にエラーを返す。
+- `SchedulingPolicy::Explicit` を選択する場合、`SchedulerConfig` は `default_scheduler_config()` の制約（`worker_threads` が 1 以上、`max_blocking_threads <= worker_threads`）を満たす必要がある。同条件違反時は `AsyncErrorKind::InvalidConfiguration`。
+
+#### 1.4.4 診断と監査
+
+- すべてのチャンネル操作は `Diagnostic.domain = Async` とし、`extensions["channel"]` に `name`、`codec`、`buffer_size`、`overflow` を記録することを推奨する。
+- `CodecError` が発生した場合は `Diagnostic.code = Some("async.codec.failure")` を用い、`cause` を診断拡張に埋め込む。
+- `ExecutionPlan` の整合性エラーは `Diagnostic.code = Some("async.plan.invalid")` を既定とし、`plan` のスナップショットを JSON で添付する。
+
 ### 1.5 プラットフォーム適応スケジューラ
 
 ```reml
@@ -133,7 +186,7 @@ pub type AsyncError = {
   message: Str,
 }
 
-pub enum AsyncErrorKind = Cancelled | Timeout | RuntimeUnavailable
+pub enum AsyncErrorKind = Cancelled | Timeout | RuntimeUnavailable | InvalidConfiguration | CodecFailure
 ```
 
 ## 2. Core.Ffi の枠組み
@@ -242,7 +295,7 @@ fn release_foreign_ptr<T>(ptr: ForeignPtr<T>) -> Result<(), FfiError>           
 fn transfer_buffer(buffer: ForeignBuffer, release: FnPtr<(VoidPtr,), ()>) -> Result<(), FfiError>   // `effect {unsafe, memory}`
 ```
 
-- `ForeignPtr<T>` は `Ptr<T>` を内包し、必要に応じて `NonNullPtr<T>` へ昇格して利用する。`layout` には [3-13 Core Memory](3-13-core-memory.md) で定義する `Layout` 情報を格納する。
+- `ForeignPtr<T>` は `Ptr<T>` を内包し、必要に応じて `NonNullPtr<T>` へ昇格して利用する。`layout` には [4-3 Memory Capability プラグイン](4-3-memory-plugin.md) で定義する `Layout` 情報を格納する。
 - `ForeignBuffer` は `Span<u8>` と所有権メタデータを保持し、`Ownership::Borrowed` の場合は解放禁止とする。
 - `call_ffi` は `unsafe` を要求し、境界で `AuditEnvelope` を付与することが推奨される。`transfer_buffer` では Capability Registry を通じて `MemoryCapability` の監査フックを呼び出す。
 

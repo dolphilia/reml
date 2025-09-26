@@ -1,6 +1,6 @@
 # System Programming Primer for Reml (Draft)
 
-> 目的：Reml でシステムプログラミング機能を活用する際の導入ガイドを提供し、Core.System〜Core.RealTime の各章で定義した API を横断的に理解できるようにする。
+> 目的：Reml でシステムプログラミング機能を活用する際の導入ガイドを提供し、Chapter 5 公式プラグイン（System〜RealTime）で定義した API を横断的に理解できるようにする。
 
 ## 1. 対象読者
 - Reml で OS 連携・FFI を行う DSL 開発者
@@ -8,12 +8,12 @@
 - 監査・セキュリティポリシーの設計者
 
 ## 2. 概要と依存関係
-- Core.System (3-11): システムコールとプラットフォームラッパ
-- Core.Process (3-12): プロセス/スレッド制御
-- Core.Memory (3-13): メモリマップ・共有メモリ
-- Core.Signal (3-14): シグナル登録・待機
-- Core.Hardware (3-15): CPU/NUMA 情報
-- Core.RealTime (3-16): リアルタイムスケジューラ・精密タイマー
+- System Capability プラグイン (5-1): システムコールとプラットフォームラッパ
+- Process Capability プラグイン (5-2): プロセス/スレッド制御
+- Memory Capability プラグイン (5-3): メモリマップ・共有メモリ
+- Signal Capability プラグイン (5-4): シグナル登録・待機
+- Hardware Capability プラグイン (5-5): CPU/NUMA 情報
+- RealTime Capability プラグイン (5-6): リアルタイムスケジューラ・精密タイマー
 - その他: Core.Diagnostics (監査), Core.Unsafe.Ptr, guides/reml-ffi-handbook, guides/core-unsafe-ptr-api-draft
 
 ## 3. Capability Registry のセットアップ

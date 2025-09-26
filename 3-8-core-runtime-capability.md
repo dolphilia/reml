@@ -58,16 +58,16 @@ pub enum CapabilityHandle =
   | Security(SecurityCapability);
 ```
 
-各 Capability の概要は以下の通りで、詳細仕様は該当章（3-11〜3-16）に委ねる。
+各 Capability の概要は以下の通りで、OS／プラットフォーム依存コンポーネントは公式プラグイン仕様（Chapter 4）に詳細を委ねる。標準配布では未登録状態を既定とし、導入時に `SecurityCapability` で審査する。
 
 | Capability | 主担当効果 | 役割 | 参照章 |
 | --- | --- | --- | --- |
-| `SyscallCapability` | `syscall`, `memory`, `unsafe` | OS システムコール呼び出しと監査フック | 3-11 Core System (予定) |
-| `ProcessCapability` | `process`, `thread` | プロセス生成・スレッド管理 | 3-12 Core Process (予定) |
-| `MemoryCapability` | `memory` | メモリマップ/共有メモリ/保護制御 | 3-13 Core Memory (予定) |
-| `SignalCapability` | `signal` | シグナル登録・送信・待機 | 3-14 Core Signal (予定) |
-| `HardwareCapability` | `hardware` | CPU 検出・性能カウンタ・NUMA | 3-15 Core Hardware (予定) |
-| `RealTimeCapability` | `realtime`, `io.timer` | リアルタイムスケジューラ・高精度タイマ | 3-16 Core RealTime (予定) |
+| `SyscallCapability` | `syscall`, `memory`, `unsafe` | OS システムコール呼び出しと監査フック | [4-1 System Capability プラグイン](4-1-system-plugin.md) |
+| `ProcessCapability` | `process`, `thread` | プロセス生成・スレッド管理 | [4-2 Process Capability プラグイン](4-2-process-plugin.md) |
+| `MemoryCapability` | `memory` | メモリマップ/共有メモリ/保護制御 | [4-3 Memory Capability プラグイン](4-3-memory-plugin.md) |
+| `SignalCapability` | `signal` | シグナル登録・送信・待機 | [4-4 Signal Capability プラグイン](4-4-signal-plugin.md) |
+| `HardwareCapability` | `hardware` | CPU 検出・性能カウンタ・NUMA | [4-5 Hardware Capability プラグイン](4-5-hardware-plugin.md) |
+| `RealTimeCapability` | `realtime`, `io.timer` | リアルタイムスケジューラ・高精度タイマ | [4-6 RealTime Capability プラグイン](4-6-realtime-plugin.md) |
 | `SecurityCapability` | `security`, `audit` | セキュリティポリシー適用と証跡記録 | 本章 §1.2, §2.7 |
 
 Capability Registry は上記バリアントを通じてシステム API を表面化し、効果タグと runtime 権限を整合させる。

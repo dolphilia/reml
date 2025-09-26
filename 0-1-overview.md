@@ -285,6 +285,6 @@ Builtin  ::= "i64" | "f64" | "Bool" | "String" | ...
 
 ### 実装関連
 
-* [形式文法リファレンス (BNF)](guides/formal-grammar-bnf.md) - 形式的文法定義
+* [形式文法リファレンス (BNF)](1-5-formal-grammar-bnf.md) - 形式的文法定義
 * [LLVM 連携ノート](guides/llvm-integration-notes.md) - LLVM連携とコンパイル戦略
 * [初期設計コンセプト](guides/early-design-concepts.md) - 設計の原点となったアイデア

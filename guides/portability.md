@@ -176,12 +176,12 @@ Capability 名は `capability_name(TargetCapability::…)` の戻り値と一致
 
 | モジュール | 主な `@cfg` キー | プラットフォーム注意点 |
 | --- | --- | --- |
-| `Core.System` (3-11) | `target_os`, `target_arch` | `PlatformSyscalls` を `supports` で確認し、未実装 OS では `raw_syscall` へのフォールバックと監査ログを用意する |
-| `Core.Process` (3-12) | `target_family`, `feature = "job_control"` | Windows のハンドル vs POSIX PID の差異を抽象化し、終了コードの意味付けを明示する |
-| `Core.Memory` (3-13) | `feature = "shared_memory"`, `target_os` | `mmap`/`MapViewOfFile` のサポート状況、`Fixed` マッピングをポリシーで禁止する |
-| `Core.Signal` (3-14) | `target_family`, `feature = "sigqueue"` | Windows では擬似シグナル (`CTRL_C_EVENT` など) を `Custom(i32)` へマップする |
-| `Core.Hardware` (3-15) | `target_arch`, `feature = "rdtsc"` | 権限不足時は `HardwareErrorKind::PermissionDenied` を返し、監査で権限不足を通知 |
-| `Core.RealTime` (3-16) | `feature = "realtime"`, `target_os` | `SCHED_DEADLINE` や `mlock` が非対応の場合は `RealTimeErrorKind::Unsupported` を返却 |
+| System Capability プラグイン (5-1) | `target_os`, `target_arch` | `PlatformSyscalls` を `supports` で確認し、未実装 OS では `raw_syscall` へのフォールバックと監査ログを用意する |
+| Process Capability プラグイン (5-2) | `target_family`, `feature = "job_control"` | Windows のハンドル vs POSIX PID の差異を抽象化し、終了コードの意味付けを明示する |
+| Memory Capability プラグイン (5-3) | `feature = "shared_memory"`, `target_os` | `mmap`/`MapViewOfFile` のサポート状況、`Fixed` マッピングをポリシーで禁止する |
+| Signal Capability プラグイン (5-4) | `target_family`, `feature = "sigqueue"` | Windows では擬似シグナル (`CTRL_C_EVENT` など) を `Custom(i32)` へマップする |
+| Hardware Capability プラグイン (5-5) | `target_arch`, `feature = "rdtsc"` | 権限不足時は `HardwareErrorKind::PermissionDenied` を返し、監査で権限不足を通知 |
+| RealTime Capability プラグイン (5-6) | `feature = "realtime"`, `target_os` | `SCHED_DEADLINE` や `mlock` が非対応の場合は `RealTimeErrorKind::Unsupported` を返却 |
 
 これらモジュールを利用する際は `CapabilitySecurity.effect_scope` と `SecurityPolicy` をターゲットごとに調整し、`guides/system-programming-primer.md` で紹介する監査テンプレートと併用することを推奨する。
 
