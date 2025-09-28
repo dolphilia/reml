@@ -3,6 +3,7 @@
 Reml 仕様書で繰り返し登場する専門用語と概念をまとめた。各項目は仕様書内の該当セクションへのリンクを添え、詳細な定義や背景を参照できるようにしている。
 
 ## 言語コアと型システム
+
 - **Hindley–Milner 型推論 (HM)**: Reml の型推論は Hindley–Milner 系 (Algorithm W) を採用し、サブタイピングを導入せずに合一ベースで多相型を導出する。[1-2 型システムと推論](1-2-types-Inference.md) に設計意図と制約が整理されている。
 - **ランク1多相 (Rank-1 Polymorphism)**: 多相はトップレベル `let` など 1 階層でのみ量化され、高ランク多相は将来的な拡張扱い。[1-2 型システムと推論](1-2-types-Inference.md) では一般化タイミングが明示されている。
 - **型スキーム (Type Scheme)**: `∀a1 … an. τ` 形式で量化された型。Reml では一般化された束縛をスキームとして保存し、呼び出しごとに具体化する。[1-2 型システムと推論](1-2-types-Inference.md) 参照。
@@ -34,6 +35,10 @@ Reml 仕様書で繰り返し登場する専門用語と概念をまとめた。
 - **`Span`**: ソース上の開始/終了位置を保持する構造体で、AST に位置情報を付与するために使われる。[2-1 パーサ型](2-1-parser-type.md#c-スパンとトレース) を参照。
 - **`SpanTrace`**: 成功した部分パースの履歴を収集するオプション機能。`RunConfig.trace` 有効時に診断補助として利用される。[2-1 パーサ型](2-1-parser-type.md#c-スパンとトレース) 参照。
 - **`Diagnostic`**: エラーや警告を構造化して保持する報告単位。[2-5 エラーハンドリング](2-5-error.md) と [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) でメッセージ整形と監査連携が規定される。
+- **Pratt パーサー**: 演算子の結合力を binding power で管理し、前置/中置/後置演算子を宣言的に処理する手法。Reml の `precedence` ビルダーは Pratt 法と連鎖畳み込みのハイブリッド実装を採用し、[2-4 演算子優先度ビルダー](2-4-op-builder.md) に設計理由が記載される。
+- **結合力 (Binding Power)**: Pratt パーサーが演算子の優先順位を比較するために用いる数値。高い binding power を持つ演算子ほど強く右項を結び付け、[2-4 演算子優先度ビルダー](2-4-op-builder.md) でレベル順に調整される。
+- **Fixity（結合方向）**: 演算子が左結合 (`infixl`)、右結合 (`infixr`)、非結合 (`infixn`) などどのように束縛されるかを表す属性。[2-4 演算子優先度ビルダー](2-4-op-builder.md) の `level` 宣言で指定する。
+- **seed-growing 左再帰**: Packrat メモ化と組み合わせて左再帰規則を安全に展開する手法。`RunConfig.left_recursion="auto"` が必要に応じて適用し、[2-6 実行戦略](2-6-execution-strategy.md#c-メモ化packratと左再帰) に挙動が説明される。
 
 ## Unicode とテキスト処理
 - **Unicode 3層モデル (Byte / Char / Grapheme)**: Reml はバイト列・Unicode スカラー値・拡張書記素クラスタの 3 レイヤで文字を扱い、API ごとに適切な粒度を選択する。[1-4 Unicode 文字モデル](1-4-test-unicode-model.md) 参照。
@@ -50,6 +55,22 @@ Reml 仕様書で繰り返し登場する専門用語と概念をまとめた。
 - **SecurityCapability**: Capability の署名検証、許可、隔離レベルを管理するセキュリティ用ハンドル。[3-8 Core Runtime & Capability](3-8-core-runtime-capability.md#12-セキュリティモデル) が構造体と検証手順を示す。
 - **RuntimeCapability / TargetCapability**: 実行環境が備える命令セットやクロックなどの機能一覧。CI や `Core.Env` が環境適合性を確認するために利用し、[3-8 Core Runtime & Capability](3-8-core-runtime-capability.md#13-プラットフォーム情報と能力) に列挙がある。
 - **SandboxProfile**: Capability 利用時に課すリソース制限を記述する共通プロファイル。`SecurityCapability` と連携して監査方針を適用する。[3-8 Core Runtime & Capability](3-8-core-runtime-capability.md#12-セキュリティモデル) 参照。
+- **RunConfigTarget**: `RunConfig.extensions["target"]` に格納されるターゲットプロファイルで、OS/ABI/Capability 情報をまとめて `@cfg` 条件分岐へ渡す構造体。[2-6 実行戦略](2-6-execution-strategy.md#b-2-runconfig-のコアスイッチ) に項目一覧が記載される。
+- **PlatformInfo**: 実行中プラットフォームの OS・アーキテクチャ・利用可能能力を報告する構造体。`platform_info()` が返し、Capability Registry と整合させて最適化や制限判断を行う。[3-8 Core Runtime & Capability](3-8-core-runtime-capability.md#13-プラットフォーム情報と能力) 参照。
+
+## 診断と監査
+- **`DiagnosticDomain`**: 診断メッセージを構文/型/ターゲットなどの領域別に分類する列挙型。[3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md#12-診断ドメイン-diagnosticdomain) で正式定義され、CLI や LSP のフィルタリングに利用される。
+- **`AuditEnvelope`**: 診断に付随する監査情報（`audit_id`、`change_set`、Capability との紐付けなど）を保持する構造体。[3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md#11-auditenvelope) を参照。
+- **`AuditSink`**: 監査ログの出力先を抽象化した関数型で、CLI/LSP/リモート送信など複数のシンクを統一インターフェースで扱う。[3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md#3-監査ログ出力) が API を示す。
+- **`Stage` (Experimental/Beta/Stable)**: 診断・Capability・効果拡張がどの安定段階にあるかを記録する列挙。未成熟機能の扱いをツール側が調整するため、[3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md#13-効果診断拡張-effects) と [3-8 Core Runtime & Capability](3-8-core-runtime-capability.md) で共有される。
+
+## 非同期実行と FFI
+- **`Future<T>` / `Poll<T>`**: 非同期計算を表すコア抽象で、ポーリングによって `Ready` か `Pending` を返す。Reml の `Core.Async` は [3-9 Core Async / FFI / Unsafe](3-9-core-async-ffi-unsafe.md#1-coreasync-の枠組み) で型と挙動を規定する。
+- **`SchedulerHandle` / `Task`**: 非同期ランタイムのスケジューラを指すハンドルと、そこで実行されるジョブのラッパ。Capability Registry から取得し、[3-9 Core Async / FFI / Unsafe](3-9-core-async-ffi-unsafe.md#1-coreasync-の枠組み) で使用法が示される。
+- **バックプレッシャー (Backpressure)**: チャネルやストリームで過剰なデータを抑制する制御ポリシー。`BackpressurePolicy` と `OverflowPolicy` の設定は DSL オーケストレーションで重要となり、[3-9 Core Async / FFI / Unsafe](3-9-core-async-ffi-unsafe.md#14-dslオーケストレーション支援-api) に種類と制約が定義される。
+- **`ExecutionPlan`**: `conductor` DSL の実行戦略・スケジューリング・エラー伝播方針をまとめた構造体。[3-9 Core Async / FFI / Unsafe](3-9-core-async-ffi-unsafe.md#14-dslオーケストレーション支援-api) がフィールドと整合チェックを説明する。
+- **`Codec`**: DSL 間通信で使うシリアライズ/デシリアライズ契約。`encode`/`decode`/`validate` を持ち、監査や互換性チェックに利用される。[3-9 Core Async / FFI / Unsafe](3-9-core-async-ffi-unsafe.md#141-codec-契約) を参照。
+- **`RetryPolicy`**: `retry` コンビネータが失敗時の再試行回数・バックオフ戦略を管理する設定。`BackoffStrategy` と組み合わせて [3-9 Core Async / FFI / Unsafe](3-9-core-async-ffi-unsafe.md#12-高度な非同期パターン) に定義される。
 
 ## エラー処理と診断システム
 - **Diagnostic**: エラーや警告を構造化して保持する報告単位。位置情報、期待集合、FixIt 提案、監査メタデータを含む。[2-5 エラーハンドリング](2-5-error.md) と [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) で詳細が定義される。

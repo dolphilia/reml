@@ -11,6 +11,20 @@
 5. **検証**: `reml target validate desktop-x86_64 && reml toolchain verify desktop-x86_64`。
 6. **公開準備**: `build/target.json` をレジストリ用メタデータ（`targets` 配列）にマージし、`reml publish --targets listed` を実行。
 
+### 1.1 ターゲット別ビルド例
+
+Reml コンパイラ `remlc` は `RunConfig.extensions["target"]` に整形済みターゲット情報を渡す。クロスビルド時は以下のスニペットを基準として、`@cfg` と標準ライブラリのプラットフォーム抽象（[3-5](../3-5-core-io-path.md)、[3-10](../3-10-core-env.md)）を同期させる。事前に `reml target list` / `reml toolchain install <profile>` で必要なプロファイルと標準ライブラリを取得し、本ガイドの残りの節で整合性チェックを進める。
+
+```bash
+# Windows 用バイナリを Linux ホストで生成
+remlc --target x86_64-pc-windows-msvc src/main.reml
+
+# Apple Silicon 向けビルド
+remlc --target aarch64-apple-darwin src/main.reml
+```
+
+ターゲット指定に合わせて `RunConfig.extensions["target"]` を初期化することで、`@cfg` の条件分岐や FFI 呼出規約（[3-9](../3-9-core-async-ffi-unsafe.md)）が一貫した状態で評価される。CI/CD では `REML_TARGET_PROFILE`, `REML_TARGET_TRIPLE`, `REML_TARGET_CAPABILITIES`, `REML_TARGET_FEATURES`, `REML_STD_VERSION`, `REML_RUNTIME_REVISION` などの環境変数を設定し、`Core.Env.infer_target_from_env()` が期待通りに解決したか `Diagnostic.domain = Target` のメッセージで確認する。
+
 ## 2. ターゲットプロファイルのライフサイクル
 
 ### 2.1 プロファイル作成
