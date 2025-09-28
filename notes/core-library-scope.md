@@ -1,11 +1,11 @@
 # 4.0 標準ライブラリ仕様: 範囲定義メモ（フェーズ1）
 
 ## 1. 設計ゴールと横断テーマの再確認
-- **小さく強いコア × 実用性能**: 末尾最適化や Packrat を必要時のみ有効化し、ゼロコスト抽象を重視するという方針を尊重する。【F:0-1-overview.md†L5-L16】
-- **読みやすさ・宣言的スタイル**: 左→右パイプ、名前付き引数、推論の強さを損なわず DSL を組み上げられる API を優先する。【F:0-1-overview.md†L13-L26】
-- **高品質診断と監査連携**: 共通の JSON メタデータや `Diagnostic` モデルで CLI/LSP/監査ログを横断する方針と整合させる。【F:0-1-overview.md†L19-L24】
-- **Unicode 前提**: `byte/char/grapheme` の三層モデルを前提とした文字列 API を標準化する。【F:0-1-overview.md†L27-L40】
-- **横断テーマの統合**: 型安全な設定、ツール連携、プラグイン拡張を支える Core モジュール群と整合する。【F:0-1-overview.md†L42-L53】
+- **小さく強いコア × 実用性能**: 末尾最適化や Packrat を必要時のみ有効化し、ゼロコスト抽象を重視するという方針を尊重する。【F:0-0-overview.md†L5-L16】
+- **読みやすさ・宣言的スタイル**: 左→右パイプ、名前付き引数、推論の強さを損なわず DSL を組み上げられる API を優先する。【F:0-0-overview.md†L13-L26】
+- **高品質診断と監査連携**: 共通の JSON メタデータや `Diagnostic` モデルで CLI/LSP/監査ログを横断する方針と整合させる。【F:0-0-overview.md†L19-L24】
+- **Unicode 前提**: `byte/char/grapheme` の三層モデルを前提とした文字列 API を標準化する。【F:0-0-overview.md†L27-L40】
+- **横断テーマの統合**: 型安全な設定、ツール連携、プラグイン拡張を支える Core モジュール群と整合する。【F:0-0-overview.md†L42-L53】
 
 ## 2. 標準 API がカバーすべき領域
 | ドメイン | Reml における主な責務 | 近縁言語の参考点 |
@@ -59,7 +59,7 @@
 ### 6.2 リンク更新チェックリスト
 
 - [x] README の Chapter 2 セクションから Config/Data/Runtime への直接リンクを Chapter 4 へ差し替え。
-- [x] 0-1 / 0-2 の横断テーマ節で、標準ライブラリ章への参照を追加・更新。【F:0-1-overview.md†L42-L53】【F:0-2-project-purpose.md†L35-L41】
+- [x] 0-0 / 0-1 の横断テーマ節で、標準ライブラリ章への参照を追加・更新。【F:0-0-overview.md†L42-L53】【F:0-1-project-purpose.md†L35-L41】
 - [ ] Guides (`config-cli`, `runtime-bridges`, `DSL-plugin`) からのリンクを Chapter 4 の該当節へ更新し、旧位置への逆リンクを削除。【F:guides/config-cli.md†L1-L40】【F:guides/runtime-bridges.md†L1-L35】【F:guides/DSL-plugin.md†L1-L50】
 - [ ] `2-5-error.md` 内の `Diagnostic` 説明で参照する章番号を Chapter 4 に合わせる。
 - [ ] LSP/CLI ドキュメントの索引や目次で `Core.Config` 等の参照先が二重管理になっていないか確認し、必要に応じて脚注で旧番号を明記する。

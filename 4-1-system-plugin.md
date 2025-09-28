@@ -1,6 +1,6 @@
 # 4.1 System Capability プラグイン — Syscall Interface & Platform Bindings
 
-> 位置付け: 公式プラグイン（オプション）。標準API（Chapter 3）には同梱せず、必要なプロジェクトが `CapabilityRegistry` へ明示的に登録することで利用する。`0-2-project-purpose.md` が定める安全性・段階的習得の原則を守るため、プラットフォーム依存かつ `unsafe` 効果を伴う API 群を別章に分離した。
+> 位置付け: 公式プラグイン（オプション）。標準API（Chapter 3）には同梱せず、必要なプロジェクトが `CapabilityRegistry` へ明示的に登録することで利用する。`0-1-project-purpose.md` が定める安全性・段階的習得の原則を守るため、プラットフォーム依存かつ `unsafe` 効果を伴う API 群を別章に分離した。
 
 ## 0. 仕様メタデータ
 

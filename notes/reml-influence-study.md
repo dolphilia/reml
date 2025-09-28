@@ -2,10 +2,10 @@
 
 ## 1. 言語コアに影響を与えたと推測される技術
 
-- **Haskell / OCaml / F# 系**（`1-2-types-Inference.md`, `0-1-overview.md`）
+- **Haskell / OCaml / F# 系**（`1-2-types-Inference.md`, `0-0-overview.md`）
   - Hindley–Milner 型推論とランク1多相、代数的データ型、パターンマッチ、パイプ演算子など関数型言語の中核機能を採用。
   - 型クラス風トレイトや `match` 構文、宣言的な関数合成スタイルが強く反映されている。
-- **Rust**（`0-1-overview.md`, `1-1-syntax.md`, `notes/core-library-scope.md`）
+- **Rust**（`0-0-overview.md`, `1-1-syntax.md`, `notes/core-library-scope.md`）
   - `Result`/`Option` と `?` 演算子、`trait`/`impl`、安全境界としての `unsafe` ブロック、`@cfg` 条件付きコンパイル、所有権を意識したゼロコスト抽象志向などを共有。
   - DSL や標準ライブラリの設計で Capability Registry や CLI 統合を重視する姿勢も Rust エコシステムと共通。
 - **Koka / Eff 系効果システム研究**（`1-3-effects-safety.md`）
@@ -34,7 +34,7 @@
 
 - **Rust / F# / OCaml 標準ライブラリ**（`notes/core-library-scope.md`）
   - コレクション、テキスト、診断 API などでこれらのエコシステムを比較参照し、Reml の API 範囲と優先度を決定。
-- **DSL ファースト思想**（`0-2-project-purpose.md`, `guides/early-design-concepts.md`）
+- **DSL ファースト思想**（`0-1-project-purpose.md`, `guides/early-design-concepts.md`）
   - パーサーコンビネーターを言語コアに内蔵し、DSL 構築と相互運用を最優先する設計哲学。既存 DSL ツール（ANTLR, PEG.js 等）との性能比較を意識。
 
 ## 6. まとめ

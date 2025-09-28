@@ -45,7 +45,7 @@ fn builder() -> TextBuilder                    // `effect {mem}`
 | `TextBuilder` | 可変構築器。複数段階で文字列を構成。 | `append`, `push_grapheme`, `finish` | `effect {mem, unicode}` |
 
 - `String`/`Str` は `Core.Collections` の `Vec<u8>` を内部利用し、`Iter.collect_vec` からの構築を効率化する計画である。【F:3-2-core-collections.md†L42-L60】
-- `Bytes -> String` 変換は `Result<String, DecodeError>` を返し、0-1 章で強調した「例外なし」の方針を維持する。【F:0-1-overview.md†L27-L40】
+- `Bytes -> String` 変換は `Result<String, DecodeError>` を返し、0-0 章で強調した「例外なし」の方針を維持する。【F:0-0-overview.md†L27-L40】
 
 ## 3. 正規化とケース変換
 
