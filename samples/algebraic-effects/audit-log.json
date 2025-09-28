@@ -1,0 +1,13 @@
+{
+  "event": "ffi.call",
+  "stage": "experimental",
+  "symbol": "service",
+  "payload_bytes": 128,
+  "status": "stubbed",
+  "capability": "foreign-call",
+  "effects": {
+    "before": ["ffi"],
+    "handled": ["ffi"],
+    "residual": []
+  }
+}

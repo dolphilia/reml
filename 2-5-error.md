@@ -151,6 +151,21 @@ fn Err.custom(at: Span, msg: Str) -> ParseError
 * 上記メッセージは `Diagnostic.extensions["cfg"]` に評価ログを添付できる。`RunConfig` は `extensions["target"].diagnostics = Bool` で詳細ログ出力を切り替える。
 * LSP での `@cfg` 可視化を支援するため、`Diagnostic.extensions["cfg"]` に `{ keys: List<Str>, evaluated: Map<Str, Str>, active: Bool }` を載せ、IDE が分岐条件を表示できるようにする。
 
+### B-10. 効果宣言・ハンドラ関連診断（実験段階）
+
+> `-Zalgebraic-effects` フラグが有効な場合に出力される。`stage` 情報は 3.6 §1 で定義する拡張メタデータに格納される。
+
+| message_key | severity | domain | 説明 |
+| --- | --- | --- | --- |
+| `effects.contract.mismatch` | Error | Effect | ハンドラ適用後の残余効果 `Σ_after` が `@pure` や `@handles`、`@dsl_export(allows_effects=...)` の契約を超過している場合に発行。`notes` に `expected` / `actual` の差集合を表示し、`extensions["effects"].residual` に JSON で残余タグを格納する。 |
+| `effects.stage.missing_opt_in` | Error | Effect | `stage = Experimental` の効果を利用しているにも関わらず `@requires_capability(stage="experimental")` が付与されていない場合に発行。`extensions["effects"].stage` に要求された stage と現在の Capability 設定を記録。 |
+| `effects.handler.unhandled_operation` | Error | Effect | ハンドラが宣言した `operation` を実装していない場合、または `resume` を呼ばずに終了し残余効果が消えない場合に発行。`notes` で未捕捉操作を列挙し、`extensions["effects"].unhandled` に操作シグネチャを記録。 |
+| `effects.handler.invalid_resume` | Error | Effect | `resume` を複数回呼び出した／`@reentrant` が無い状態で再入を試みた場合に発行。Capability Registry が拒否した場合は `notes` に `CapabilityError` の内容を併記。 |
+| `effects.stage.promote_without_checks` | Warning | Effect | `stage` を `Beta`/`Stable` に更新した効果宣言に対し、対応する `@dsl_export` やマニフェストが旧ステージのままの場合に発行し、整合チェックの再実行を促す。 |
+
+* `Diagnostic.extensions["effects"]` には `{ stage: Str, before: Set<Str>, handled: Set<Str>, residual: Set<Str>, handler: Option<Str>, unhandled: List<Str> }` を格納する。`before` はハンドラ適用前の潜在効果集合、`handled` は捕捉成功した集合。
+* CLI は `--effects-debug` オプションが有効な場合、`extensions["effects"]` を整形して追加表示し、LSP は `data.effects` を参照して UI に残余タグを提示できる。
+
 ---
 
 ## C. 表示（pretty）と多言語

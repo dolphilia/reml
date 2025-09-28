@@ -27,7 +27,7 @@
 * 識別子：`XID_Start` + `XID_Continue*`（Unicode 準拠）。
   例）`parse`, `ユーザー`, `_aux1`。
 * 予約語（抜粋）：
-  `let`, `var`, `fn`, `type`, `trait`, `impl`, `match`, `with`, `if`, `then`, `else`, `use`, `pub`, `return`, `for`, `while`, `loop`, `extern`, `unsafe`, `defer`, `true`, `false`, `as`, `where`.
+  `let`, `var`, `fn`, `type`, `trait`, `impl`, `match`, `with`, `if`, `then`, `else`, `use`, `pub`, `return`, `for`, `while`, `loop`, `extern`, `unsafe`, `defer`, `true`, `false`, `as`, `where`, `effect`, `handle`, `perform`, `resume`.
 * 演算子トークン（固定）：`|>`, `~>`, `.` , `,`, `;`, `:`, `=`, `:=`, `->`, `=>`, `(` `)` `[` `]` `{` `}`,
   `+ - * / % ^`, `== != < <= > >=`, `&& ||`, `!`, `?`, `..`.
 
@@ -182,7 +182,66 @@ conductor ConfigOrchestrator {
   ```
 
 
-### B.5 属性（Attributes）
+### B.5 効果宣言とハンドラ構文（実験段階）
+
+> `-Zalgebraic-effects` フラグが有効な場合に限り使用可能。安定化後に文言を更新予定。
+
+* **効果宣言**
+  `effect` で操作集合を宣言し、既存の効果タグへ紐付ける。
+
+  ```reml
+  effect Console : io {
+    operation log : Text -> Unit
+    operation ask : Text -> Text
+  }
+  ```
+
+  * `effect <Name> : <tag>` が基本形。タグは 1.3 節の `Σ` から選択し、Capability Registry（3.8 節）で stage を管理する。
+  * `operation` には型注釈が必須。戻り値型は `resume` に渡す値と一致させる。
+
+* **効果の実行 (`perform` / `do`)**
+  効果操作は式内で呼び出す。`perform Effect.operation(args)` と `do Effect.operation(args)` は同義。
+
+  ```reml
+  fn greet() -> Text {
+    let name = do Console.ask("name?")
+    do Console.log("hi " + name)
+    name
+  }
+  ```
+
+  * 発生した効果は潜在効果集合に追加され、`@pure` や `@dsl_export` の検査対象となる。
+
+* **ハンドラ構文 (`handle ... with`)**
+  効果をローカルに捕捉し、任意の挙動を与える。
+
+  ```reml
+  handle greet() with
+    handler Console {
+      operation log(msg, resume) {
+        println("LOG: " + msg)
+        resume(())
+      }
+      operation ask(prompt, resume) {
+        resume("Reml")
+      }
+      return value {
+        value
+      }
+    }
+  ```
+
+  * `handler <EffectName>` ブロックで対象操作を列挙し、必要に応じて `return` 節を定義する。
+  * `resume` はワンショットが既定。複数回呼び出す場合は `@reentrant` 属性と Capability 許可が必要（3.8 節）。
+
+* **属性拡張**
+  効果ハンドラ導入に伴い、以下の属性を追加する。詳細な検査規則は 1.3 節および 3.8 節を参照。
+
+  - `@handles(Console, ...)` — 関数やハンドラが捕捉可能な効果を宣言し、残余効果計算と整合させる。
+  - `@requires_capability(stage="experimental")` — 実験的 Capability を要求する API に付与し、ランタイム設定で opt-in を強制する。
+
+
+### B.6 属性（Attributes）
 
 * 宣言やブロックの直前に `@name` 形式で付与し、直後の要素に契約や最適化ヒントを与えます。複数の属性は縦に並べることで併用できます。
 * 引数付き属性は `@name(arg1, key=value)` のように括弧で指定します（値は Reml の式）。

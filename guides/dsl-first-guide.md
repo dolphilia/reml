@@ -1,12 +1,13 @@
 # DSLファースト導入ガイド
 
-Reml の DSL ファースト戦略をプロジェクトへ導入するための実践ガイド。`5-1-dsl-first-development.md` の仕様書を踏まえ、現場での立ち上げ手順とチェックリストを整理する。
+Reml の DSL ファースト戦略をプロジェクトへ導入するための実践ガイド。`5-1-dsl-first-development.md` の仕様書を踏まえ、現場での立ち上げ手順とチェックリストを整理する。段階的学習ポリシーを守るため、代数的効果やハンドラなどの高度機能は `-Z` 実験フラグを併用し、DSL ごとに `stage = Experimental | Beta | Stable` を宣言することを推奨する。
 
 ## 1. 背景と準備
 
 - Reml の価値観（実用性能・安全性・可観測性）をプロジェクト関係者と共有する。
 - Core.Parse / Core.Async / Core.Diagnostics の対応バージョンを確認し、依存を固定する。
 - Capability Registry の初期設定（FFI、Async、Diagnostics）を `runtime.cap.toml` 等で準備する。
+- DSL マニフェストに `stage` を記録し、Experimental の DSL はサンドボックス環境での PoC 専用とする。Beta 以上へ昇格させる際は `guides/manifest-authoring.md` の互換チェックリストを完了する。
 
 ## 2. 導入ステップ
 

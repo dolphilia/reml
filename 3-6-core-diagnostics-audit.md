@@ -11,6 +11,8 @@
 | 依存モジュール | `Core.Prelude`, `Core.Text`, `Core.Numeric & Time`, `Core.Config`, `Core.Data`, `Core.IO` |
 | 相互参照 | [2.5 エラー設計](2-5-error.md), [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.7 Core Config & Data](3-7-core-config-data.md) |
 
+> **段階的導入ポリシー**: 新しい効果カテゴリや Capability と連携する診断は、`Diagnostic.extensions["effects"].stage`に `Experimental` / `Beta` / `Stable` を記録し、実験フラグで有効化した機能を明示する。CLI と LSP は `stage` が `Experimental` の診断をデフォルトで `Warning` に落とし、`--ack-experimental-diagnostics` を指定した場合のみ `Error` へ昇格させる運用を推奨する。
+
 ## 1. `Diagnostic` 構造体
 
 既存の Chapter 2.5 で提示した構造を標準ライブラリ側で正式定義する。
@@ -59,6 +61,26 @@ pub type AuditEnvelope = {
 - `metadata` は拡張用の自由領域で、プラグインが追加情報を埋め込む。
 
 ### 1.2 診断ドメイン `DiagnosticDomain`
+
+### 1.3 効果診断拡張 `effects`
+
+効果宣言やハンドラに由来する診断では `Diagnostic.extensions["effects"]` を使用し、次の構造を格納する。
+
+```reml
+type EffectsExtension = {
+  stage: Stage,                    // Experimental | Beta | Stable
+  before: Set<EffectTag>,          // ハンドラ適用前の潜在効果集合
+  handled: Set<EffectTag>,         // 捕捉に成功した効果集合
+  residual: Set<EffectTag>,        // ハンドラ適用後に残った効果集合
+  handler: Option<Str>,            // ハンドラ名（存在する場合）
+  unhandled_operations: List<Str>, // 未実装 operation の一覧
+  capability: Option<CapabilityId> // 必要とされる Capability（任意）
+}
+
+enum Stage = Experimental | Beta | Stable
+```
+
+`Stage` は Capability Registry（3.8 §1）と共有される列挙で、CLI/LSP は `Stage` に基づき表示レベルを調整する。`before` / `handled` / `residual` は 1.3 §I の効果計算結果に対応し、`residual = ∅` の場合は純粋化可能であることを意味する。`unhandled_operations` は `effects.handler.unhandled_operation` 診断（2.5 §B-10）で IDE へ提示する一覧として使用する。
 
 ```reml
 pub enum DiagnosticDomain = {

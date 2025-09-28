@@ -155,3 +155,46 @@ fn call_db(cap: FfiCapability, handle: SymbolHandle, params: DbParams, audit: Au
 ---
 
 > **ドラフト状態**: 本ハンドブックはフェーズ0で骨子を作成した段階。各セクションはフェーズ1以降の PoC とレビュー結果に合わせて詳細化する。
+## 10. 効果ハンドラによるスタブ化（実験段階）
+
+FFI 呼び出しをテスト用スタブへ差し替える場合は、`ForeignCall` 効果と Capability stage を併用する。
+
+```reml
+effect ForeignCall : ffi {
+  operation call(name: Text, payload: Bytes) -> Result<Bytes, FfiError>
+}
+
+@handles(ForeignCall)
+@requires_capability(stage="experimental")
+pub fn with_foreign_stub(req: Request) -> Result<Response, FfiError> ! {} =
+  handle do ForeignCall.call("service", encode(req)) with
+    handler ForeignCall {
+      operation call(name, payload, resume) {
+        audit.log("ffi.call", { "name": name, "bytes": payload.len() })
+        resume(Ok(stub_response(name, payload)))
+      }
+      return result { result.and_then(decode_response) }
+    }
+```
+
+### 10.1 Stage 運用フロー
+
+1. Experimental で opt-in: `reml capability enable foreign-call --stage experimental`。
+2. PoC 実行: `reml run -Zalgebraic-effects test ffi::with_foreign_stub --effects-debug` で `Diagnostic.extensions["effects"].residual = []` を確認。
+3. Beta 昇格: `reml capability stage promote foreign-call --to beta`。CLI やマニフェスト (`expect_effects_stage`) を更新し、監査ログに `stage: "beta"` が出力されることを確認。
+4. Stable 化: 実運用で問題ないことが確認できたら `--to stable` を実行し、実験フラグなしのビルドを完了させる。
+
+### 10.2 監査テンプレート
+
+```json
+{
+  "event": "ffi.call",
+  "stage": "experimental",
+  "symbol": "service",
+  "payload_bytes": 128,
+  "status": "stubbed"
+}
+```
+
+監査ログに `stage` フィールドを常に含めることで、実験環境からの呼び出しが本番へ紛れ込んでいないかを監視できる。`effects.stage.promote_without_checks` 診断が発生した場合は、Capability とマニフェスト側の stage 設定を見直す。
+

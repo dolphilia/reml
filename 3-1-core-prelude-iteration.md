@@ -186,6 +186,38 @@ fn sum_positive(xs: List<Int>) -> Result<Int, Diagnostic> =
 - 可変コンテナ（`Vec`/`Cell`）を収集先とする場合、`Collector` 実装が `effect {mut}` を宣言し、`Iter` 側はタグを転写する。これにより `mut` 効果を局所化しつつ宣言的パイプラインを維持できる。
 - Unicode 分解・正規化は `Iter.map`/`Iter.flat_map` と `Core.Text` の helper を接続することで段階的に適用でき、Lex レイヤでの字句検査とも互換となる。【F:notes/core-library-scope.md†L7-L24】
 
+### 3.7 効果許容ポリシーと `@pure` 両立サンプル（実験段階）
+
+Prelude/Iter は `@pure` を基本としつつ、効果ハンドラ経由で副作用付き処理を分離できる設計とする。
+
+```reml
+@handles(Console)
+pub fn collect_logs(iter: Iter<Text>) -> Result<List<Text>, Diagnostic> ! {} =
+  handle iter.try_fold(List::empty(), |acc, msg| {
+    do Console.log(msg)
+    Ok(acc.push(msg))
+  }) with
+    handler Console {
+      operation log(msg, resume) {
+        audit.log("iter.log", msg)
+        resume(())
+      }
+      return result {
+        result
+      }
+    }
+```
+
+- `Iter.try_fold` 自体は `@pure` を維持し、外部効果をハンドラへ委譲する。残余効果が空の場合、呼び出し側は `@pure` な関数として扱える。
+- `@handles` を付与した関数に `stage` を要求する場合は `@requires_capability(stage="experimental")` を併用し、Capability Registry で opt-in した環境でのみ利用可能にする。
+
+効果許容ポリシーは以下を原則とする。
+
+1. Prelude/Iter が提供する公開 API は既定で `@pure`。内包処理で効果が必要な場合はハンドラで捕捉する。
+2. `Iter` のクロージャが効果を発生させる場合でも、残余効果集合 `Σ_after` が空であれば `Iter` 利用側で `@pure` 契約を維持できる。
+3. 実験的効果を扱う補助 API は `Stage` を記録し、`notes/algebraic-effects-implementation-roadmap-revised.md` の昇格手順に従って安定化する。
+
+
 ## 4. 高度な収集操作
 
 ### 4.1 専用コレクタ

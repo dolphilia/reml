@@ -1,6 +1,8 @@
 # ランタイム連携ガイド
 
 > 目的：FFI・ホットリロード・差分適用など実行基盤との橋渡しを行う際の指針を示す。ここで言及する `config` / `audit` / `runtime` 等の効果タグは Reml コアの5効果に追加される拡張タグであり、監査プラグインが提供する属性として実装する。
+>
+> **段階的導入メモ**: 代数的効果や新 Capability を利用する機能は `reml run -Z<feature>` で opt-in し、`RuntimeBridge.stage = Experimental | Beta | Stable` を設定しておく。`Experimental` ステージのブリッジはロールバック手順と監査ログを必須とし、`Beta` でフィールド検証を終えたのちに `Stable` へ昇格させる。
 
 ## 0. ターゲット同期と `@cfg`
 
@@ -266,3 +268,54 @@ task.join().await?;
 | Metrics API | `RuntimeCapabilities.metrics()` が `heap_bytes` 等 GC メトリクスを含む構造体を返すか | 2-9 実行時基盤 |
 | Legacy 互換 | GC 設定を指定しない場合でも従来の RC/ヒープ動作が維持されるか | 2-6 実行戦略 |
 | 監査連携 | `gc.stats` と `audit.log` のドメインが重複しないこと、既存ログ解析ツールが新フィールドを無視しても動作するか | 監査運用 |
+
+## 11. 効果ハンドラと Stage 運用（実験段階）
+
+`-Zalgebraic-effects` を用いてランタイム機能を差し替える際は、ステージ管理と Capability の整合を必ず記録する。
+
+### 11.1 Async 差し替えのチェックリスト
+
+1. **実験フラグを有効化**: `reml run -Zalgebraic-effects test async::collect_logs`.
+2. **Capability を opt-in**: `reml capability enable console --stage experimental`.
+3. **ハンドラ実装**: `@handles(Console)` と `@requires_capability(stage="experimental")` を併用し、`Diagnostic.extensions["effects"].stage` が `Experimental` であることを確認する。
+4. **昇格手順**: テスト完了後、`reml capability stage promote console --to beta` → 再テスト → `--to stable`。CLI は `effects.stage.promote_without_checks` が残っていれば失敗させる。
+
+サンプル CLI 出力（`--effects-debug` 有効時）:
+
+```json
+{
+  "effects": {
+    "stage": "experimental",
+    "before": ["io"],
+    "handled": ["io"],
+    "residual": [],
+    "handler": "Console"
+  },
+  "message": "effects.contract.mismatch resolved"
+}
+```
+
+### 11.2 FFI サンドボックスと監査
+
+`ForeignCall` 効果を捕捉してモック応答を返す際の標準的なフロー。
+
+```reml
+effect ForeignCall : ffi {
+  operation call(name: Text, payload: Bytes) -> Result<Bytes, FfiError>
+}
+
+@handles(ForeignCall)
+@requires_capability(stage="experimental")
+fn with_foreign_stub(req: Request) -> Result<Response, FfiError> ! {} =
+  handle do ForeignCall.call("service", encode(req)) with
+    handler ForeignCall {
+      operation call(name, payload, resume) {
+        audit.log("ffi.call", { "name": name, "bytes": payload.len() })
+        resume(Ok(stub_response(name, payload)))
+      }
+      return result { result.and_then(decode_response) }
+    }
+```
+
+昇格時は `reml capability stage promote foreign-call --to beta` を実行し、マニフェスト側の `expect_effects_stage` を同じ値に更新する。監査ログには `stage` と `capability` を必ず含め、運用時に Experimental 機能が残っていないかダッシュボードで確認する。
+

@@ -142,6 +142,29 @@ impl Add<i64, i64, i64> for i64 { fn add(a,b) = a + b }
 * **数値リテラル**は `Num<T>` 制約を持つ多相リテラル。曖昧時はデフォルト `i64` / `f64`（小数点の有無で分岐）。
 * **演算子**は対応トレイトで解決。`a + b` は `Add<typeof a, typeof b, r>` の `r` を新鮮変数で導入し、単一化。
 
+### C.6 効果行とハンドラの型付け（実験段階）
+
+> `-Zalgebraic-effects` フラグが有効な場合に適用。安定化後に行多相の範囲・ランク制限を再評価する。
+
+* **効果注釈**: 関数型は `A -> B ! {io, panic}` のように効果集合を伴う。省略時は空集合。ハンドラは `handler Console : {Console.log, Console.ask} -> {}` のように捕捉効果と残余効果を宣言する。
+* **行多相 (ランク1)**: トップレベル `let` のみ効果行変数 `!ε` を一般化し、スキーム `∀ε. τ ! ε` を生成する。再帰関数は効果集合の収束後に一般化する。
+* **制約生成の拡張**:
+  ```
+  Γ ⊢ e : τ ! Σ
+  ------------------------------- (perform)
+  Γ ⊢ perform Console.log(x) : Unit ! (Σ ∪ {io})
+
+  Γ ⊢ comp : τ ! Σ_before      Γ ⊢ handler : τ -> σ ! Σ_residual
+  Σ_after = (Σ_before - Σ_handler) ∪ Σ_residual
+  ------------------------------------------------------------------- (handle)
+  Γ ⊢ handle comp with handler : σ ! Σ_after
+  ```
+  `Σ_handler` は `handler` ブロックまたは `@handles` 属性で宣言された集合。`Σ_residual` はハンドラ本体で発生する効果集合。
+* **契約検査**: `@handles` は解析時に `Σ_handler` を確定させ、残余効果 `Σ_after` が `@pure` や `@dsl_export(allows_effects=...)` の条件を満たすか検証する。違反時は `effects.contract.mismatch` または `dsl.export.effect_violation` を報告。
+* **Stage と Capability**: `stage = Experimental` の効果を扱う場合、シグネチャに `@requires_capability(stage="experimental")` を含め、Capability Registry が許可した環境でのみビルドできるようにする。
+
+### C.7 失敗時の方針（エラー）
+
 ### C.6 失敗時の方針（エラー）
 
 * **期待/実際**・**候補トレイト**・**不足制約**を列挙。

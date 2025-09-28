@@ -12,6 +12,8 @@
 | 相互参照 | [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.2 Core Collections](3-2-core-collections.md) |
 
 > **移行メモ**: Chapter 2 に残る 2.7/2.8 は参照用として維持されるが、本章で標準ライブラリ視点の API 契約と監査統合を再整理する。将来的に Chapter 2 版は概要＋互換ノートへ縮約する計画。
+>
+> **段階的導入ポリシー**: マニフェストやスキーマに新しい効果タグや Capability を追加する場合は、`Manifest.expect_effects_stage` や `Schema.metadata.stage` へ `Experimental` / `Beta` / `Stable` を記録し、`reml config lint` が未承認のステージを警告できるようにする。実験機能を本番へ昇格させる際は `notes/algebraic-effects-implementation-roadmap-revised.md` のチェックリストに従い、`@dsl_export` とマニフェスト値が一致することを確認する。
 
 ## 1. Core.Config.Manifest — `reml.toml` スキーマ {#manifest}
 
@@ -85,6 +87,22 @@ fn iter_dsl(manifest: Manifest) -> Iter<(Str, DslEntry)>                // `@pur
 - `declared_effects` は CLI が `@dsl_export(allows_effects=...)` との差異を比較するために利用し、`update_dsl_signature` はコンパイラが型検査後にマニフェストへ署名情報を書き戻す際に使用する。
 
 ### 1.3 DSL セクションと型システム連携
+### 1.4 効果宣言との連動（`@dsl_export`）
+
+- `@dsl_export(allows_effects=...)` と `reml.toml` の `dsl.<name>.expect_effects` は、効果宣言 `effect Foo : ...` およびステージ管理 (`Stage = Experimental | Beta | Stable`) と同期する。
+- 型検査時に得られた `DslExportSignature.allows_effects`、Stage 情報、Capability 要求をマニフェストへ書き戻し、`declared_effects` と比較する。差分がある場合は `manifest.dsl.effect_mismatch` を発生させる。
+- `expect_effects_stage`（オプション）をマニフェストに追加すると、`Stage` が昇格した際に CLI が未更新のエントリを警告する。例:
+
+```toml
+[dsl.example]
+entry = "src/example.reml"
+exports = ["ExampleDSL"]
+expect_effects = ["io.console"]
+expect_effects_stage = "experimental"
+```
+
+- Stage を `beta`/`stable` へ更新した場合は、マニフェストと `@requires_capability(stage=...)` の値を同時に更新し、`effects.stage.promote_without_checks` 診断が出ないことを確認する。
+
 
 1. `load_manifest` で DSL エントリを収集し、`entry` ごとに `exports[*].name` を記録。
 2. コンパイラが `@dsl_export` を処理して `DslExportSignature` を生成したら、`update_dsl_signature` によって対応する `exports[*]` へ埋め込む。

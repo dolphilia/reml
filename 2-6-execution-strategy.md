@@ -131,6 +131,16 @@ fn specialise_config(profile: BuildProfile) -> RunConfig = {
 
 * **空成功の繰返し**検出は必須（2.2 に準拠）。
 
+### B-3. 効果ハンドラと継続管理（実験段階）
+
+> `-Zalgebraic-effects` フラグが有効な場合の挙動。安定化時に最終仕様へ更新する。
+
+* **ワンショット継続**: ハンドラ適用時は継続フレームをヒープに退避し、`resume` 呼び出し後に即破棄する。フレームは `EffectFrame { handler_id, resume_ptr, stage }` で管理し、`stage` が `Experimental` の場合は Capability Registry を介した opt-in を要求する。
+* **マルチショット禁止（既定）**: `resume` を複数回呼び出した場合は `effects.handler.invalid_resume` を生成し、`stage = Experimental` の環境であっても `@reentrant` 属性と Capability 許可がなければコンパイルエラーとする。
+* **RunConfig 拡張**: `RunConfig.extensions["effects"].max_handler_depth` を導入し、深いハンドラネストによるスタック肥大を防ぐ。未設定時は `32` を推奨値とし、超過時は `AsyncErrorKind::RuntimeUnavailable` 相当の実行時エラーを発生させる。
+* **残余効果検査**: ハンドラ適用後の残余効果 `Σ_after` は 1-3 §I に従って計算され、`Diagnostic.extensions["effects"].residual` に保存する。`Σ_after = ∅` であればハンドラ式は純粋扱いとなり、`@pure` との整合が確認される。
+
+
 ### B-3. 期待集合の早期確定
 
 * `cut_here()` を通過したら **親の期待集合を破棄**し、その地点からの期待を再構築（2.5 と同一）。

@@ -11,6 +11,8 @@
 | 依存モジュール | `Core.Prelude`, `Core.Diagnostics`, `Core.Numeric & Time`, `Core.IO`, `Core.Config`, `Core.Env` |
 | 相互参照 | [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3.9 Core Async / FFI / Unsafe](3-9-core-async-ffi-unsafe.md), [3-10 Core Env & Platform Bridge](3-10-core-env.md) |
 
+> **段階的導入ポリシー**: Capability の追加や効果カテゴリの拡張は `-Z` 実験フラグ経由で opt-in し、`CapabilityRegistry::register` に渡すメタデータで `stage = Experimental | Beta | Stable` を明示する。`stage` が `Experimental` の Capability は `@requires_capability(stage="experimental")` を伴う API からのみ呼び出せる。ベータ／安定化の手順は `notes/algebraic-effects-implementation-roadmap-revised.md` を参照し、`@pure`/`@dsl_export` 契約との整合チェックを完了してから `stage = Stable` へ更新すること。
+
 ## 1. Capability Registry の基本構造
 
 ```reml
@@ -167,6 +169,13 @@ fn family_tag(info: PlatformInfo) -> Str                  // `@pure`
 * `family_tag` は `"unix"` や `"windows"` といったスカラー文字列を返し、`RunConfig.extensions["target"]` の `family` フィールドを埋める際に使用する。
 * Capability Registry は `register("platform", handle)` を通じてプラットフォーム情報提供者を差し替え可能。未登録時はホスト依存の既定実装が自動登録される。
 * `platform_features()` はビルド時フィーチャ集合を直接返し、`platform_capabilities()` / `runtime_capabilities()` は検出済みハードウェア機能（`RuntimeCapability`）を提供する。`target_capabilities()` はターゲット挙動能力（`TargetCapability`）を返す。`platform_variant()` には libc バージョンやベンダー拡張など追加識別子を格納できる。
+
+#### 1.3.1 `@dsl_export` との整合
+
+- `@dsl_export` で宣言された `allows_effects` と効果宣言の `effect_scope` は、Capability Registry 登録時に比較される。差分がある場合は登録を拒否し、`CapabilityError::SecurityViolation` を返す。
+- Stage 昇格 (`reml capability stage promote`) のたびに `Diagnostic.extensions["effects"].stage` と `DslExportSignature.stage` が一致しているか確認し、マニフェストの `expect_effects` / `expect_effects_stage` を更新する。
+- CLI は今後追加予定の `manifest.dsl.stage_mismatch` 診断を通じて、未更新の DSL エントリが残っていないか検査する。
+
 * `TargetCapability` の列挙値は `capability_name(cap)` により `unicode.nfc` 等のカノニカル文字列へ変換され、`@cfg(capability = "...")`、`RunConfigTarget.capabilities`、および環境変数 `REML_TARGET_CAPABILITIES` で利用される。列挙外のカスタム Capability を導入する際は、実装側で `CapabilityRegistry::register_custom_target_capability(name: Str)` を提供し、名前と診断を登録することが推奨される。
 * ランタイム最適化時は次のように利用する：
 

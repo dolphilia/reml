@@ -1,0 +1,9 @@
+capability: console
+stage: experimental
+allowed_effects:
+  - io
+  - audit
+handlers:
+  - name: collect_logs
+    module: Core.Async.Mock
+    stage: experimental

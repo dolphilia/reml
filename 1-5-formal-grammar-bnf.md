@@ -45,6 +45,8 @@ Decl            ::= ValDecl
                   | TraitDecl
                   | ImplDecl
                   | ExternDecl
+                  | EffectDecl
+                  | HandlerDecl
 
 Attrs           ::= Attribute+
 Attribute       ::= "@" Ident [AttrArgs]
@@ -71,10 +73,12 @@ AssignStmt      ::= LValue ":=" Expr NL
 DeferStmt       ::= "defer" Expr NL
 
 FnDecl          ::= FnSignature ("=" Expr | Block)
-FnSignature     ::= "fn" Ident [GenericParams] "(" Params? ")" [RetType] [WhereClause]
+FnSignature     ::= "fn" Ident [GenericParams] "(" Params? ")" [RetType] [WhereClause] [EffectAnnot]
 Params          ::= Param { "," Param }
 Param           ::= Pattern [":" Type] ["=" Expr]
 RetType         ::= "->" Type
+EffectAnnot     ::= "!" "{" EffectTags? "}"
+EffectTags      ::= Ident { "," Ident }
 
 TypeDecl        ::= "type" TypeDeclBody NL
 TypeDeclBody    ::= "alias" Ident [GenericParams] "=" Type
@@ -97,6 +101,17 @@ ImplItem        ::= Attrs? (FnDecl | ValDecl)
 ExternDecl      ::= "extern" StringLiteral ExternBody
 ExternBody      ::= FnSignature ";" | "{" ExternItem* "}"
 ExternItem      ::= Attrs? FnSignature ";"
+
+EffectDecl      ::= "effect" Ident ":" Ident EffectBody NL
+EffectBody      ::= "{" OperationDecl+ "}"
+OperationDecl   ::= Attrs? "operation" Ident ":" Type NL
+
+HandlerDecl     ::= "handler" Ident HandlerBody NL
+HandlerBody     ::= "{" HandlerEntry+ "}"
+HandlerEntry    ::= "operation" Ident "(" HandlerParams? ")" HandlerBlock
+                  | "return" Ident HandlerBlock
+HandlerParams   ::= Param { "," Param }
+HandlerBlock    ::= Block
 ```
 
 ---
@@ -156,6 +171,9 @@ Primary         ::= Literal
                   | ForExpr
                   | UnsafeBlock
                   | Block
+                  | PerformExpr
+                  | DoExpr
+                  | HandleExpr
 
 TupleLiteral    ::= "(" Expr "," Expr { "," Expr } [","] ")"
 RecordLiteral   ::= "{" FieldInit { "," FieldInit } [","] "}"
@@ -172,6 +190,12 @@ UnsafeBlock     ::= "unsafe" Block
 Lambda          ::= "|" ParamList? "|" ["->" Type] LambdaBody
 ParamList       ::= Param { "," Param }
 LambdaBody      ::= Expr | Block
+
+EffectPath      ::= Ident { "." Ident }
+PerformExpr     ::= "perform" EffectPath "(" Args? ")"
+DoExpr          ::= "do" EffectPath "(" Args? ")"
+HandleExpr      ::= "handle" Expr "with" HandlerLiteral
+HandlerLiteral  ::= "handler" Ident HandlerBody
 ```
 
 [^pipe-desugar]: `PipeExpr` は左結合で畳み込まれ、各段が `value |> f(args)` → `f(value, args)` のようにデシュガリングされる。評価順序と短絡は [1.1 構文 C.9](1-1-syntax.md#c9-評価順序と短絡規則) に従い、左から右へ段階的に適用する。

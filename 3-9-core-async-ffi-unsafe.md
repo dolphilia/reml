@@ -177,7 +177,41 @@ fn default_scheduler_config() -> SchedulerConfig = {
 * `platform_features()` で `RunConfig.extensions["target"].features` と同期したフラグ（例: `feature = "io.blocking.strict"`）を参照し、DSL ごとのバックプレッシャ設定やタスクプールサイズを調整する。
 * Core.DSL モジュールはこの関数を利用して `ExecutionPlan` の既定値を決定し、`@cfg` で有効化した機能と矛盾しないようにする。
 
-### 1.1 AsyncError
+### 1.6 効果ハンドラによる Async 差し替え
+
+実験的な代数的効果ハンドラを用いることで、`io.async` を発生させる API をテスト用モックへ差し替えたり、能力別に stage を切り替えることができる。
+
+```reml
+@handles(Console)
+fn with_console_mock() -> Result<Text, AsyncError> ! {} =
+  handle greet() with
+    handler Console {
+      operation log(msg, resume) {
+        audit.log("console.log", msg)
+        resume(())
+      }
+      operation ask(_, resume) {
+        resume("Reml")
+      }
+      return value {
+        Ok(value)
+      }
+    }
+```
+
+- `@handles(Console)` で捕捉効果を宣言し、ハンドラ内部では `resume` をワンショットで呼び出す。
+- `Diagnostic.extensions["effects"].stage = Experimental` を付随情報として付け、`@requires_capability(stage="experimental")` を付与した API からのみ呼び出せるようにする。
+
+### 1.7 Stage 切り替え手順
+
+1. **Stage 設定**: `effect Console : io { ... }` で `stage = Experimental` を宣言し、Capability Registry に登録する。
+2. **PoC/テスト**: 実験フラグ `-Zalgebraic-effects` を有効化した環境でハンドラを用いたテストを実施し、`Diagnostic.extensions["effects"].residual = {}` を確認する。
+3. **Beta へ昇格**: 実運用で必要なモジュールに `@requires_capability(stage="beta")` を付与し、Capability Registry の設定を更新する。`effects.stage.promote_without_checks` 診断が発生しないことを確認する。
+4. **Stable 化**: 監査ログや CLI の互換性チェックを通過したら `stage = Stable` へ更新し、実験フラグ無しでビルドを通す。
+
+`Stage` は 3.6 §1.3 の `EffectsExtension.stage`、3.8 節の Capability stage と同期している。昇格時には `@dsl_export` の `allows_effects` とマニフェスト側 `expect_effects` の更新を忘れないこと。
+
+### 1.8 AsyncError
 
 
 ```reml
@@ -241,7 +275,38 @@ pub enum FfiErrorKind = {
 }
 ```
 
-### 2.1 タイプセーフな FFI ラッパー
+### 2.1 効果ハンドラによる FFI サンドボックス（実験段階）
+
+`ffi` 効果を捕捉するハンドラを用意すると、危険なネイティブ呼び出しをテスト用スタブや監査ロガーへ差し替えられる。
+
+```reml
+effect ForeignCall : ffi {
+  operation call(name: Text, payload: Bytes) -> Result<Bytes, FfiError>
+}
+
+@handles(ForeignCall)
+@requires_capability(stage="experimental")
+fn with_foreign_stub(request: Request) -> Result<Response, FfiError> ! {} =
+  handle do ForeignCall.call("service", encode(request)) with
+    handler ForeignCall {
+      operation call(name, payload, resume) {
+        audit.log("ffi.call", {"name": name, "bytes": payload.len()})
+        // スタブ応答を返し、本物の FFI を呼び出さず終了
+        resume(Ok(stub_response(name, payload)))
+      }
+      return result {
+        result.and_then(decode_response)
+      }
+    }
+```
+
+- `@handles(ForeignCall)` で捕捉可能な効果を宣言し、`resume` に `Result<Bytes, FfiError>` を渡して元の計算へ戻す。
+- Stage が `Experimental` の間は `@requires_capability(stage="experimental")` を併用し、Capability Registry 側で明示的に opt-in した環境でのみこのハンドラを利用できるようにする。
+- `effects.handler.unhandled_operation` 診断を避けるため、`ForeignCall` で定義されたすべての `operation` を実装すること。
+
+ステージを `Beta`/`Stable` へ引き上げる際は、Async と同様に `Diagnostic.extensions["effects"].stage` を更新し、`effects.stage.promote_without_checks` が解消されてから Capability Registry とマニフェストの整合を取る（§1.7）。
+
+### 2.2 タイプセーフな FFI ラッパー
 
 ```reml
 // 自動的なラッパー生成
@@ -256,7 +321,7 @@ let sum: i32 = ffi::decode_result(raw)?;
 
 `ffi::encode_args` / `ffi::decode_result` は `FfiSignature` と互換のシリアライズヘルパで、`Span<u8>` を安全に生成・復元する。低レベル API を直接利用する場合は `span_from_raw_parts` と `CapabilitySecurity.effect_scope` を併用し、境界検査と監査記録を怠らないこと。
 
-### 2.2 呼出規約とプラットフォーム適応
+### 2.3 呼出規約とプラットフォーム適応
 
 ```reml
 pub enum CallingConvention = C | StdCall | FastCall | SysV | WasmSystemV | Custom(Str)
@@ -271,7 +336,7 @@ fn with_abi_adaptation(fn_ptr: ForeignFunction, conv: CallingConvention) -> Resu
 * `resolve_calling_convention` は `LibraryMetadata` に含まれる `preferred_convention` を尊重しつつ、実行環境で利用できない場合は `target.config.unsupported_value` 診断を併せて発行する。診断は `Diagnostic.extensions["cfg"].evaluated` にターゲット値とライブラリ要求を記録する。
 * `with_abi_adaptation` は必要に応じてシム層を挿入し、レジスタ引数配置やスタック整列を調整する。性能への影響を抑えるため、変換は初回呼び出し時にキャッシュする。
 
-### 2.3 メモリ管理と所有権境界
+### 2.4 メモリ管理と所有権境界
 
 ```reml
 pub type ForeignPtr<T> = {
