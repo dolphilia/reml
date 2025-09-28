@@ -26,8 +26,14 @@
 
 * 識別子：`XID_Start` + `XID_Continue*`（Unicode 準拠）。
   例）`parse`, `ユーザー`, `_aux1`。
-* 予約語（抜粋）：
-  `let`, `var`, `fn`, `type`, `trait`, `impl`, `match`, `with`, `if`, `then`, `else`, `use`, `pub`, `return`, `for`, `while`, `loop`, `extern`, `unsafe`, `defer`, `true`, `false`, `as`, `where`, `effect`, `handle`, `perform`, `resume`.
+* 予約語（全一覧）：
+  - **モジュール/可視性**: `module`, `use`, `as`, `pub`, `self`, `super`
+  - **宣言と定義**: `let`, `var`, `fn`, `type`, `alias`, `new`, `trait`, `impl`, `extern`, `effect`, `operation`, `handler`, `conductor`, `channels`, `execution`, `monitoring`
+  - **制御構文**: `if`, `then`, `else`, `match`, `with`, `for`, `in`, `while`, `loop`, `return`, `defer`, `unsafe`
+  - **効果操作**: `perform`, `do`, `handle`
+  - **型制約**: `where`
+  - **真偽リテラル**: `true`, `false`
+* 将来の拡張に備えて `break`, `continue` を予約語として確保しています。
 * 演算子トークン（固定）：`|>`, `~>`, `.` , `,`, `;`, `:`, `=`, `:=`, `->`, `=>`, `(` `)` `[` `]` `{` `}`,
   `+ - * / % ^`, `== != < <= > >=`, `&& ||`, `!`, `?`, `..`.
 
