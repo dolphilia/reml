@@ -1,0 +1,99 @@
+module samples.language_impl_comparison.pl0
+
+use ::Core.Collection.List as List
+use ::Core.Collection.Map as Map
+use ::Core.Prelude.Result::{self, Result}
+use ::Core.Text::{self, Text}
+
+/// PL/0 風サブセットの抽象構文木。
+type Stmt =
+  | Assign { name: Text, expr: Expr }
+  | While { cond: Expr, body: List<Stmt> }
+  | Write { expr: Expr }
+
+/// 式は 4 則演算のみ対応する。
+type Expr =
+  | Number(i64)
+  | Var(Text)
+  | Binary { op: Op, lhs: Box<Expr>, rhs: Box<Expr> }
+
+type Op = Add | Sub | Mul | Div
+
+type Runtime = { vars: Map<Text, i64>, output: List<i64> }
+
+type ParseError = { message: Text }
+
+type ExecError = { reason: Text }
+
+fn parse_program(source: Text) -> Result<List<Stmt>, ParseError> {
+  // 実装のシンプルさを優先し、ここではあらかじめトークン済みと仮定した疑似実装を示す。
+  Result.ok([
+    Assign { name: "x", expr: Number(1) },
+    While {
+      cond: Var("x"),
+      body: [
+        Write { expr: Var("x") },
+        Assign {
+          name: "x",
+          expr: Binary { op: Sub, lhs: Box.of(Var("x")), rhs: Box.of(Number(1)) },
+        },
+      ],
+    },
+  ])
+}
+
+fn exec(program: List<Stmt>) -> Result<Runtime, ExecError> {
+  let mut rt = { vars: Map.empty(), output: List.empty() }
+  for stmt in List.to_vec(program) {
+    rt = exec_stmt(stmt, rt)?
+  }
+  Result.ok(rt)
+}
+
+fn exec_stmt(stmt: Stmt, runtime: Runtime) -> Result<Runtime, ExecError> {
+  match stmt with
+  | Assign { name, expr } ->
+    let (value, vars) = eval_expr(expr, runtime.vars)?
+    Result.ok({ vars, output: runtime.output })
+  | While { cond, body } -> exec_while(cond, body, runtime)
+  | Write { expr } ->
+    let (value, vars) = eval_expr(expr, runtime.vars)?
+    Result.ok({ vars, output: List.push_back(runtime.output, value) })
+}
+
+fn exec_while(cond: Expr, body: List<Stmt>, runtime: Runtime) -> Result<Runtime, ExecError> {
+  var current = runtime
+  loop {
+    let (value, vars) = eval_expr(cond, current.vars)?
+    if value == 0 {
+      return Result.ok({ vars, output: current.output })
+    }
+    current = { vars, output: current.output }
+    for stmt in List.to_vec(body) {
+      current = exec_stmt(stmt, current)?
+    }
+  }
+}
+
+fn eval_expr(expr: Expr, vars: Map<Text, i64>) -> Result<(i64, Map<Text, i64>), ExecError> {
+  match expr with
+  | Number(n) -> Result.ok((n, vars))
+  | Var(name) ->
+    match Map.get(vars, name) with
+    | Some(value) -> Result.ok((value, vars))
+    | None -> Result.err({ reason: format("未定義変数: {name}") })
+  | Binary { op, lhs, rhs } ->
+    let (l, vars_after_lhs) = eval_expr(*lhs, vars)?
+    let (r, vars_after_rhs) = eval_expr(*rhs, vars_after_lhs)?
+    let result = match op with
+      | Add -> l + r
+      | Sub -> l - r
+      | Mul -> l * r
+      | Div -> if r == 0 { return Result.err({ reason: "0 で割ることはできません" }) } else { l / r }
+    Result.ok((result, vars_after_rhs))
+}
+
+// 利用例
+// parse_program("begin x := 1; while x do write x; x := x - 1 end")
+//   |> exec
+//   => Ok({ output: [1, 0], .. })

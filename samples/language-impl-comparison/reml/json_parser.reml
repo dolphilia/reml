@@ -1,0 +1,176 @@
+module samples.language_impl_comparison.json_parser
+
+use ::Core.Collection.List as List
+use ::Core.Collection.Map as Map
+use ::Core.Prelude.Result::{self, Result}
+use ::Core.Text::{self, Text}
+
+/// JSON 構文を解析して汎用値型に変換する。
+type JsonValue =
+  | JNull
+  | JBool(bool)
+  | JNumber(f64)
+  | JString(Text)
+  | JArray(List<JsonValue>)
+  | JObject(Map<Text, JsonValue>)
+
+type ParseState = { tokens: List<Token> }
+
+type Token =
+  | LBrace
+  | RBrace
+  | LBracket
+  | RBracket
+  | Colon
+  | Comma
+  | StringLiteral(Text)
+  | NumberLiteral(f64)
+  | BoolLiteral(bool)
+  | NullLiteral
+
+type ParseError =
+  | UnexpectedEOF
+  | UnexpectedToken { expected: Text, found: Token }
+
+fn parse_json(source: Text) -> Result<JsonValue, ParseError> {
+  let tokens = tokenize(source)
+  let state = { tokens }
+  let (value, rest) = parse_value(state)?
+  if List.is_empty(rest.tokens) {
+    Result.ok(value)
+  } else {
+    Result.err(UnexpectedToken {
+      expected: "入力の終端",
+      found: List.head(rest.tokens).unwrap(),
+    })
+  }
+}
+
+fn tokenize(source: Text) -> List<Token> {
+  var tokens = List.empty()
+  var index = 0
+  while index < Text.len(source) {
+    let ch = Text.char_at(source, index)
+    match ch with
+    | ' ' | '\n' | '\t' | '\r' -> index += 1
+    | '{' -> { tokens = List.push_back(tokens, LBrace); index += 1 }
+    | '}' -> { tokens = List.push_back(tokens, RBrace); index += 1 }
+    | '[' -> { tokens = List.push_back(tokens, LBracket); index += 1 }
+    | ']' -> { tokens = List.push_back(tokens, RBracket); index += 1 }
+    | ':' -> { tokens = List.push_back(tokens, Colon); index += 1 }
+    | ',' -> { tokens = List.push_back(tokens, Comma); index += 1 }
+    | 't' | 'f' ->
+      let (value, next) = read_bool(source, index)
+      tokens = List.push_back(tokens, BoolLiteral(value))
+      index = next
+    | 'n' ->
+      index = read_null(source, index)
+      tokens = List.push_back(tokens, NullLiteral)
+    | '"' ->
+      let (literal, next) = read_string(source, index + 1)
+      tokens = List.push_back(tokens, StringLiteral(literal))
+      index = next
+    | _ ->
+      let (number, next) = read_number(source, index)
+      tokens = List.push_back(tokens, NumberLiteral(number))
+      index = next
+  }
+  tokens
+}
+
+fn parse_value(state: ParseState) -> Result<(JsonValue, ParseState), ParseError> {
+  match List.pop_front(state.tokens) with
+  | None -> Result.err(UnexpectedEOF)
+  | Some((token, rest)) ->
+    match token with
+    | NullLiteral -> Result.ok((JNull, { tokens: rest }))
+    | BoolLiteral(flag) -> Result.ok((JBool(flag), { tokens: rest }))
+    | NumberLiteral(num) -> Result.ok((JNumber(num), { tokens: rest }))
+    | StringLiteral(text) -> Result.ok((JString(text), { tokens: rest }))
+    | LBracket -> parse_array({ tokens: rest })
+    | LBrace -> parse_object({ tokens: rest })
+    | other -> Result.err(UnexpectedToken { expected: "値", found: other })
+}
+
+fn parse_array(state: ParseState) -> Result<(JsonValue, ParseState), ParseError> {
+  var items = List.empty()
+  var current = state
+  match List.pop_front(current.tokens) with
+  | Some((RBracket, rest)) -> Result.ok((JArray(items), { tokens: rest }))
+  | _ -> {
+      loop {
+        let (value, next) = parse_value(current)?
+        items = List.push_back(items, value)
+        current = next
+        match List.pop_front(current.tokens) with
+        | Some((Comma, rest)) -> current = { tokens: rest }
+        | Some((RBracket, rest)) ->
+          return Result.ok((JArray(items), { tokens: rest }))
+        | Some((token, _)) ->
+          return Result.err(UnexpectedToken { expected: "]", found: token })
+        | None -> return Result.err(UnexpectedEOF)
+      }
+    }
+}
+
+fn parse_object(state: ParseState) -> Result<(JsonValue, ParseState), ParseError> {
+  var pairs = Map.empty()
+  var current = state
+  match List.pop_front(current.tokens) with
+  | Some((RBrace, rest)) -> Result.ok((JObject(pairs), { tokens: rest }))
+  | _ -> {
+      loop {
+        let (key_token, after_key) = expect_string(current)?
+        let key = match key_token with
+          | StringLiteral(text) -> text
+          | _ -> Text.empty()
+        
+        let after_colon = expect_token(after_key, Colon)?
+        let (value, after_value) = parse_value(after_colon)?
+        pairs = Map.insert(pairs, key, value)
+
+        match List.pop_front(after_value.tokens) with
+        | Some((Comma, rest)) -> current = { tokens: rest }
+        | Some((RBrace, rest)) ->
+          return Result.ok((JObject(pairs), { tokens: rest }))
+        | Some((token, _)) ->
+          return Result.err(UnexpectedToken { expected: "}", found: token })
+        | None -> return Result.err(UnexpectedEOF)
+      }
+    }
+}
+
+fn expect_string(state: ParseState) -> Result<(Token, ParseState), ParseError> {
+  match List.pop_front(state.tokens) with
+  | Some((token @ StringLiteral(_), rest)) -> Result.ok((token, { tokens: rest }))
+  | Some((token, _)) -> Result.err(UnexpectedToken { expected: "文字列", found: token })
+  | None -> Result.err(UnexpectedEOF)
+}
+
+fn expect_token(state: ParseState, expected: Token) -> Result<ParseState, ParseError> {
+  match List.pop_front(state.tokens) with
+  | Some((token, rest)) ->
+    if token == expected {
+      Result.ok({ tokens: rest })
+    } else {
+      Result.err(UnexpectedToken { expected: format_token(expected), found: token })
+    }
+  | None -> Result.err(UnexpectedEOF)
+}
+
+fn format_token(token: Token) -> Text {
+  match token with
+  | LBrace -> "{" | RBrace -> "}"
+  | LBracket -> "[" | RBracket -> "]"
+  | Colon -> ":" | Comma -> ","
+  | StringLiteral(_) -> "文字列"
+  | NumberLiteral(_) -> "数値"
+  | BoolLiteral(_) -> "真偽値"
+  | NullLiteral -> "null"
+}
+
+// 補助関数群（TODO: 実用段階ではエスケープ処理や指数表記を含む完全な解析に差し替える）
+fn read_bool(source: Text, start: i64) -> (bool, i64) { (true, start + 4) }
+fn read_null(_source: Text, start: i64) -> i64 = start + 4
+fn read_string(_source: Text, start: i64) -> (Text, i64) { ("", start + 1) }
+fn read_number(_source: Text, start: i64) -> (f64, i64) { (0.0, start + 1) }
