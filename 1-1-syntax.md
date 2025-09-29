@@ -579,125 +579,225 @@ fn abs(x: i64) -> i64 {
 > 型や意味は 1.2 以降。ここでは**形だけ**。
 
 ```
-Module      ::= ModuleHeader? { UseDecl | Attrs? PubDecl }+
-ModuleHeader ::= "module" ModulePath NL
-ModulePath  ::= Ident ( "." Ident )*
-UseDecl     ::= "use" UseTree NL
-UseTree     ::= UsePath ["as" Ident]
-             | UsePath "." UseBrace
-UsePath     ::= RootPath
-             | RelativePath
-RootPath    ::= "::" ModulePath
-RelativePath ::= RelativeHead ( "." Ident )*
-RelativeHead ::= "self"
-             | SuperPath
-             | Ident
-SuperPath   ::= "super" ( "." "super" )*
-UseBrace    ::= "{" UseItem ( "," UseItem )* ","? "}"
-UseItem     ::= Ident ["as" Ident] [ "." UseBrace ]
+CompilationUnit ::= ModuleHeader? { Attrs? (UseDecl | PubDecl) }+
 
-PubDecl     ::= ["pub"] Decl
-Decl        ::= ValDecl
-             | FnDecl
-             | TypeDecl
-             | TraitDecl
-             | ImplDecl
-             | ExternDecl
+ModuleHeader   ::= "module" ModulePath NL
+ModulePath     ::= Ident { "." Ident }
 
-Attrs       ::= Attribute+
-Attribute   ::= "@" Ident AttrArgs?
-AttrArgs    ::= "(" AttrArg ("," AttrArg)* ","? ")"
-AttrArg     ::= Expr
+UseDecl        ::= "use" UseTree NL
+UseTree        ::= UsePath ["as" Ident]
+                 | UsePath "." UseBrace
+UsePath        ::= RootPath
+                 | RelativePath
+RootPath       ::= "::" ModulePath
+RelativePath   ::= RelativeHead { "." Ident }
+RelativeHead   ::= "self"
+                 | SuperPath
+                 | Ident
+SuperPath      ::= "super" { "." "super" }
+UseBrace       ::= "{" UseItem { "," UseItem } [","] "}"
+UseItem        ::= Ident ["as" Ident] [ "." UseBrace ]
 
-ValDecl     ::= ("let" | "var") Pattern ( ":" Type )? "=" Expr NL
-FnDecl      ::= FnSignature ( "=" Expr | Block )
-FnSignature ::= "fn" Ident GenericParams? "(" Params? ")" Ret? WhereClause?
-Params      ::= Param ( "," Param )*
-Param       ::= Pattern ( ":" Type )? ( "=" Expr )?
-Ret         ::= "->" Type
+PubDecl        ::= ["pub"] Decl NL*
+Decl           ::= ValDecl
+                 | FnDecl
+                 | TypeDecl
+                 | TraitDecl
+                 | ImplDecl
+                 | ExternDecl
+                 | EffectDecl
+                 | HandlerDecl
+                 | ConductorDecl
 
-TypeDecl    ::= "type" TypeDeclBody NL
-TypeDeclBody::= "alias" Ident GenericParams? "=" Type
-             | Ident GenericParams? "=" SumType
-             | Ident GenericParams? "=" "new" Type
-SumType     ::= Variant ( "|" Variant )*
-Variant     ::= Ident "(" Types? ")"
-Types       ::= Type ( "," Type )*
+Attrs          ::= Attribute+
+Attribute      ::= "@" Ident [AttrArgs]
+AttrArgs       ::= "(" AttrArg { "," AttrArg } [","] ")"
+AttrArg        ::= Expr
 
-TraitDecl   ::= "trait" Ident GenericParams? WhereClause? TraitBody
-TraitBody   ::= "{" TraitItem* "}"
-TraitItem   ::= Attrs? FnSignature (";" | Block)
+GenericParams  ::= "<" Ident { "," Ident } ">"
+GenericArgs    ::= "<" Type { "," Type } ">"
+WhereClause    ::= "where" Constraint { "," Constraint }
+Constraint     ::= Ident "<" Type { "," Type } ">"
 
-ImplDecl    ::= "impl" GenericParams? ImplHead WhereClause? ImplBody
-ImplHead    ::= TraitRef "for" Type | Type
-TraitRef    ::= Ident GenericArgs?
-GenericParams ::= "<" Ident ("," Ident)* ">"
-GenericArgs ::= "<" Type ("," Type)* ">"
-WhereClause ::= "where" Constraint ("," Constraint)*
-Constraint  ::= Ident "<" Type ("," Type)* ">"
+ValDecl        ::= ("let" | "var") Pattern [":" Type] "=" Expr NL
+AssignStmt     ::= LValue ":=" Expr NL
+DeferStmt      ::= "defer" Expr NL
 
-ImplBody    ::= "{" ImplItem* "}"
-ImplItem    ::= Attrs? (FnDecl | ValDecl)
+FnDecl         ::= FnSignature ("=" Expr | Block)
+FnSignature    ::= "fn" Ident [GenericParams] "(" Params? ")" [RetType] [WhereClause] [EffectAnnot]
+Params         ::= Param { "," Param }
+Param          ::= Pattern [":" Type] ["=" Expr]
+RetType        ::= "->" Type
+EffectAnnot    ::= "!" "{" EffectTags? "}"
+EffectTags     ::= Ident { "," Ident }
 
-ExternDecl  ::= "extern" StringLit ExternBody
-ExternBody  ::= FnSignature ";" | "{" ExternItem* "}"
-ExternItem  ::= Attrs? FnSignature ";"
+TypeDecl       ::= "type" TypeDeclBody NL
+TypeDeclBody   ::= "alias" Ident [GenericParams] "=" Type
+                 | Ident [GenericParams] "=" SumType
+                 | Ident [GenericParams] "=" "new" Type
+SumType        ::= Variant { "|" Variant }
+Variant        ::= Ident "(" Types? ")"
+Types          ::= Type { "," Type }
 
-Block       ::= "{" { StmtSep }* (Stmt { StmtSep }+)* Expr? "}"
-Stmt        ::= ValDecl | AssignStmt | DeferStmt | Expr
-AssignStmt  ::= LValue ":=" Expr
-LValue      ::= PostfixExpr
-DeferStmt   ::= "defer" Expr
-StmtSep     ::= NL | ";"
+TraitDecl      ::= "trait" Ident [GenericParams] [WhereClause] TraitBody
+TraitBody      ::= "{" TraitItem* "}"
+TraitItem      ::= Attrs? FnSignature (";" | Block)
 
-Expr        ::= PipeExpr
-PipeExpr    ::= OrExpr ( "|>" CallExpr )*
-CallExpr    ::= PostfixExpr ( "(" Args? ")" )?
-Args        ::= NamedArg ( "," NamedArg )*
-NamedArg    ::= (Ident ":" )? Expr
+ImplDecl       ::= "impl" [GenericParams] ImplHead [WhereClause] ImplBody
+ImplHead       ::= TraitRef "for" Type | Type
+TraitRef       ::= Ident [GenericArgs]
+ImplBody       ::= "{" ImplItem* "}"
+ImplItem       ::= Attrs? (FnDecl | ValDecl)
 
-PostfixExpr ::= Primary PostfixOp*
-PostfixOp   ::= "." Ident
-             | "[" Expr "]"
-             | "(" Args? ")"
-             | "?"
-Primary     ::= Literal
-             | Ident
-             | "(" Expr ")"
-             | "(" Expr "," Expr ("," Expr)* ","? ")"
-             | "{" FieldInits? "}"
-             | "[" Expr ("," Expr)* ","? "]"
-             | Lambda
-             | IfExpr
-             | MatchExpr
-             | WhileExpr
-             | ForExpr
-             | UnsafeBlock
-             | Block
+ExternDecl     ::= "extern" StringLiteral ExternBody
+ExternBody     ::= FnSignature ";" | "{" ExternItem* "}"
+ExternItem     ::= Attrs? FnSignature ";"
 
-IfExpr      ::= "if" Expr "then" Expr ["else" Expr]
-MatchExpr   ::= "match" Expr "with" MatchArm+
-MatchArm    ::= "|" Pattern "->" Expr
-WhileExpr   ::= "while" Expr Block
-ForExpr     ::= "for" Pattern "in" Expr Block
-UnsafeBlock ::= "unsafe" Block
+EffectDecl     ::= "effect" Ident ":" Ident EffectBody NL
+EffectBody     ::= "{" OperationDecl+ "}"
+OperationDecl  ::= Attrs? "operation" Ident ":" Type NL
 
-FieldInits  ::= FieldInit ( "," FieldInit )* ","?
-FieldInit   ::= Ident ":" Expr
+HandlerDecl    ::= "handler" Ident HandlerBody NL
+HandlerBody    ::= "{" HandlerEntry+ "}"
+HandlerEntry   ::= "operation" Ident "(" HandlerParams? ")" HandlerBlock
+                 | "return" Ident HandlerBlock
+HandlerParams  ::= Param { "," Param }
+HandlerBlock   ::= Block
 
-Lambda      ::= "|" ParamList? "|" ( "->" Type )? ( Expr | Block )
-ParamList   ::= Param ( "," Param )*
+ConductorDecl  ::= "conductor" Ident ConductorBody NL*
+ConductorBody  ::= "{" NL* ConductorSection* "}"
+ConductorSection ::= ConductorDslDef
+                   | ConductorChannels
+                   | ConductorExecution
+                   | ConductorMonitoring
+ConductorDslDef ::= Ident ":" Ident ["=" PipelineSpec] ConductorDslTail* NL*
+ConductorDslTail ::= NL* "|>" Ident "(" ConductorArgs? ")"
+ConductorArgs  ::= ConductorArg { "," ConductorArg } [","]
+ConductorArg   ::= [Ident ":"] Expr
+PipelineSpec   ::= Expr
+ConductorChannels ::= "channels" ConductorChannelBody NL*
+ConductorChannelBody ::= "{" (ChannelRoute NL)* "}"
+ChannelRoute   ::= ConductorEndpoint "~>" ConductorEndpoint ":" Type
+ConductorEndpoint ::= Ident { "." Ident }
+ConductorExecution ::= "execution" Block NL*
+ConductorMonitoring ::= "monitoring" ConductorMonitoringSpec? Block NL*
+ConductorMonitoringSpec ::= "with" ModulePath
+                          | ConductorEndpoint
 
-Literal     ::= IntLit | FloatLit | StringLit | CharLit | "true" | "false"
+Block          ::= Attrs? "{" BlockElems? "}"
+BlockElems     ::= { Stmt StmtSep }* [Expr]
+StmtSep        ::= NL | ";"
 
-Pattern     ::= "_" | Ident | TuplePat | RecordPat | ConstrPat
-TuplePat    ::= "(" Pattern ( "," Pattern )* ","? ")"
-RecordPat   ::= "{" FieldPat ( "," FieldPat )* ","? "}"
-FieldPat    ::= Ident ( ":" Pattern )?
-ConstrPat   ::= Ident "(" Pattern ( "," Pattern )* ","? ")"
+Stmt           ::= ValDecl
+                 | AssignStmt
+                 | DeferStmt
+                 | ReturnStmt
+                 | Expr
 
-NL          ::= 行末（B.3 の規則に従う）
+ReturnStmt     ::= "return" Expr NL
+LValue         ::= PostfixExpr
+
+Expr           ::= PipeExpr
+PipeExpr       ::= OrExpr { "|>" CallExpr }
+CallExpr       ::= PostfixExpr [ "(" Args? ")" ]
+Args           ::= Arg { "," Arg }
+Arg            ::= [Ident ":"] Expr
+
+OrExpr         ::= AndExpr { "||" AndExpr }
+AndExpr        ::= EqExpr { "&&" EqExpr }
+EqExpr         ::= RelExpr { ("==" | "!=") RelExpr }
+RelExpr        ::= AddExpr { ("<" | "<=" | ">" | ">=") AddExpr }
+AddExpr        ::= MulExpr { ("+" | "-") MulExpr }
+MulExpr        ::= PowExpr { ("*" | "/" | "%") PowExpr }
+PowExpr        ::= UnaryExpr { "^" UnaryExpr }
+UnaryExpr      ::= PostfixExpr
+                 | ("-" | "!") UnaryExpr
+
+PostfixExpr    ::= Primary { PostfixOp }
+PostfixOp      ::= "." Ident
+                 | "[" Expr "]"
+                 | "(" Args? ")"
+                 | "?"
+
+Primary        ::= Literal
+                 | Ident
+                 | "(" Expr ")"
+                 | TupleLiteral
+                 | RecordLiteral
+                 | ArrayLiteral
+                 | Lambda
+                 | IfExpr
+                 | MatchExpr
+                 | WhileExpr
+                 | ForExpr
+                 | LoopExpr
+                 | UnsafeBlock
+                 | Block
+                 | PerformExpr
+                 | DoExpr
+                 | HandleExpr
+
+TupleLiteral   ::= "(" Expr "," Expr { "," Expr } [","] ")"
+RecordLiteral  ::= "{" FieldInit { "," FieldInit } [","] "}"
+FieldInit      ::= Ident ":" Expr
+ArrayLiteral   ::= "[" Expr { "," Expr } [","] "]"
+
+IfExpr         ::= "if" Expr "then" Expr ["else" Expr]
+MatchExpr      ::= "match" Expr "with" MatchArm { MatchArm }
+MatchArm       ::= "|" Pattern "->" Expr
+WhileExpr      ::= "while" Expr Block
+ForExpr        ::= "for" Pattern "in" Expr Block
+LoopExpr       ::= "loop" Block
+UnsafeBlock    ::= Attrs? "unsafe" Block
+
+Lambda         ::= "|" ParamList? "|" ["->" Type] LambdaBody
+ParamList      ::= Param { "," Param }
+LambdaBody     ::= Expr | Block
+
+EffectPath     ::= Ident { "." Ident }
+PerformExpr    ::= "perform" EffectPath "(" Args? ")"
+DoExpr         ::= "do" EffectPath "(" Args? ")"
+HandleExpr     ::= "handle" Expr "with" HandlerLiteral
+HandlerLiteral ::= "handler" Ident HandlerBody
+
+Pattern        ::= "_"
+                 | Ident
+                 | TuplePattern
+                 | RecordPattern
+                 | ConstructorPattern
+
+TuplePattern   ::= "(" Pattern { "," Pattern } [","] ")"
+RecordPattern  ::= "{" FieldPattern { "," FieldPattern } [","] "}"
+FieldPattern   ::= Ident [":" Pattern]
+ConstructorPattern ::= Ident "(" Pattern { "," Pattern } [","] ")"
+
+Type           ::= SimpleType
+                 | FnType
+                 | TupleType
+                 | RecordType
+
+SimpleType     ::= Ident [GenericArgs]
+FnType         ::= "(" Type { "," Type } ")" "->" Type
+TupleType      ::= "(" Type { "," Type } [","] ")"
+RecordType     ::= "{" FieldType { "," FieldType } [","] "}"
+FieldType      ::= Ident ":" Type
+
+Literal        ::= IntLiteral
+                 | FloatLiteral
+                 | StringLiteral
+                 | CharLiteral
+                 | "true"
+                 | "false"
+
+Ident          ::= *Unicode XID スタート + 続行を満たす識別子*
+StringLiteral  ::= *UTF-8 文字列 (通常/生/複数行)*
+IntLiteral     ::= *基数 / 桁区切り付き整数*
+FloatLiteral   ::= *指数/小数表記を含む浮動小数*
+CharLiteral    ::= *Unicode スカラ値 1 文字*
+NL             ::= 行末（B.3 の規則に従う）
 ```
+
+`conductor` ブロックの運用指針は本節 B.8 と [guides/conductor-pattern.md](guides/conductor-pattern.md) を参照。ブロックや `unsafe` に付与する属性の評価は B.6 に記載した規則に従う。
 
 
 ---

@@ -19,7 +19,7 @@
 ## 1. トップレベル
 
 ```
-CompilationUnit ::= ModuleHeader? { UseDecl | Attrs? PubDecl }+
+CompilationUnit ::= ModuleHeader? { Attrs? (UseDecl | PubDecl) }+
 
 ModuleHeader   ::= "module" ModulePath NL
 ModulePath     ::= Ident { "." Ident }
@@ -47,6 +47,7 @@ Decl            ::= ValDecl
                   | ExternDecl
                   | EffectDecl
                   | HandlerDecl
+                  | ConductorDecl
 
 Attrs           ::= Attribute+
 Attribute       ::= "@" Ident [AttrArgs]
@@ -112,24 +113,55 @@ HandlerEntry    ::= "operation" Ident "(" HandlerParams? ")" HandlerBlock
                   | "return" Ident HandlerBlock
 HandlerParams   ::= Param { "," Param }
 HandlerBlock    ::= Block
+
+ConductorDecl   ::= "conductor" Ident ConductorBody NL*
+ConductorBody   ::= "{" NL* ConductorSection* "}"
+ConductorSection::= ConductorDslDef
+                  | ConductorChannels
+                  | ConductorExecution
+                  | ConductorMonitoring
+
+ConductorDslDef ::= Ident ":" Ident ["=" PipelineSpec] ConductorDslTail* NL*
+ConductorDslTail::= NL* "|>" Ident "(" ConductorArgs? ")"
+ConductorArgs   ::= ConductorArg { "," ConductorArg } [","]
+ConductorArg    ::= [Ident ":"] Expr
+PipelineSpec    ::= Expr
+
+ConductorChannels ::= "channels" ConductorChannelBody NL*
+ConductorChannelBody ::= "{" (ChannelRoute NL)* "}"
+ChannelRoute    ::= ConductorEndpoint "~>" ConductorEndpoint ":" Type
+ConductorEndpoint ::= Ident { "." Ident }
+
+ConductorExecution ::= "execution" Block NL*
+
+ConductorMonitoring ::= "monitoring" ConductorMonitoringSpec? Block NL*
+ConductorMonitoringSpec ::= "with" ModulePath
+                          | ConductorEndpoint
 ```
+
+`conductor` ブロックにおけるセクション構成や監査要件は [1.1 構文 B.8](1-1-syntax.md#b8-dsl制御ブロック-conductor) および [guides/conductor-pattern.md](guides/conductor-pattern.md) を参照してください。
 
 ---
 
 ## 3. 文とブロック
 
 ```
-Block           ::= "{" BlockElems? "}"
+Block           ::= Attrs? "{" BlockElems? "}"
 BlockElems      ::= { Stmt StmtSep }* [Expr]
 StmtSep         ::= NL | ";"
 
 Stmt            ::= ValDecl
                   | AssignStmt
                   | DeferStmt
+                  | ReturnStmt
                   | Expr
+
+ReturnStmt      ::= "return" Expr NL
 
 LValue          ::= PostfixExpr
 ```
+
+ブロック式へ付与する属性（`@cfg` など）の扱いは [1.1 構文 B.6](1-1-syntax.md#b6-属性attributes) に準拠します。
 
 ---
 
@@ -169,6 +201,7 @@ Primary         ::= Literal
                   | MatchExpr
                   | WhileExpr
                   | ForExpr
+                  | LoopExpr
                   | UnsafeBlock
                   | Block
                   | PerformExpr
@@ -185,7 +218,8 @@ MatchExpr       ::= "match" Expr "with" MatchArm { MatchArm }
 MatchArm        ::= "|" Pattern "->" Expr
 WhileExpr       ::= "while" Expr Block
 ForExpr         ::= "for" Pattern "in" Expr Block
-UnsafeBlock     ::= "unsafe" Block
+LoopExpr        ::= "loop" Block
+UnsafeBlock     ::= Attrs? "unsafe" Block
 
 Lambda          ::= "|" ParamList? "|" ["->" Type] LambdaBody
 ParamList       ::= Param { "," Param }
