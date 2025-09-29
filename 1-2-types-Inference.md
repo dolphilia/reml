@@ -187,15 +187,17 @@ type RunConfigTarget = {
   capabilities: Set<Str>,
   stdlib_version: Option<SemVer>,
   runtime_revision: Option<Str>,
+  diagnostics: Bool,
   extra: Map<Str, Str>
 }
 ```
 
-* `RunConfigTarget` は CLI が解決した TargetProfile と実行中プラットフォーム (`Core.Env.infer_target_from_env`, `platform_info()`) から統合的に構築され、`RunConfig.extensions["target"]` に注入される。型検査フェーズでは `@cfg` 判定の結果をこの構造体から取得し、条件付き宣言の有効/無効を決定する。
+* `RunConfigTarget` は CLI が解決した TargetProfile と実行中プラットフォーム (`Core.Env.infer_target_from_env`, `platform_info()`) から統合的に構築され、`RunConfig.extensions["target"]` に注入される。型検査フェーズでは `@cfg` 判定の結果をこの構造体から取得し、条件付き宣言の有効/無効を決定する。正式なフィールド一覧は本節を基準とし、2.6 §B-2 でも同じ定義を参照する。
 * `profile_id` が未設定の状態で `@cfg(profile_id = "...")` を評価した場合、型検査は `target.profile.missing` を生成し、宣言を常に無効として扱う。これにより 0-2 指針 1.2 の安全性を満たす（曖昧なターゲットではビルドを進めない）。
 * `capabilities` セットは `Core.Runtime` の Capability Registry から初期化される。型検査は Capability 起因で無効化された分岐にアクセスした参照に対し `unresolved.symbol.cfg` を報告し、 Capability を有効化した場合のみ到達可能とみなす。
 * `stdlib_version` と `runtime_revision` は ABI 互換性の保証に使用され、宣言が要求するバージョンと一致しない場合は `target.abi.mismatch` を発生させる。診断には `RunConfigTarget` に含まれる `triple` と `extra` の抜粋が添付され、性能 1.1 で求める線形処理を保ったまま原因を特定できる。
 * `features` や `extra` を参照する型レベルロジックは単純な等価比較に限定される。複雑な依存を導入する場合は標準ライブラリの設定 API（3-7）で明示的に型を表現する。
+* `diagnostics` が `true` の場合、`@cfg` 判定で得た詳細ログを `Diagnostic.extensions["cfg"]` に添付する（2.5 §B-9）。
 
 ---
 

@@ -154,6 +154,7 @@ fn Err.custom(at: Span, msg: Str) -> ParseError
 ### B-10. 効果宣言・ハンドラ関連診断（実験段階）
 
 > `-Zalgebraic-effects` フラグが有効な場合に出力される。`stage` 情報は 3.6 §1 で定義する拡張メタデータに格納される。
+> ステージ遷移と Capability 要求の詳細は [1.3 §I.4](1-3-effects-safety.md#i4-stage-と-capability-の整合) を参照する。
 
 | message_key | severity | domain | 説明 |
 | --- | --- | --- | --- |

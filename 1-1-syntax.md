@@ -193,6 +193,7 @@ conductor config_orchestrator {
 ### B.5 効果宣言とハンドラ構文（実験段階）
 
 > `-Zalgebraic-effects` フラグが有効な場合に限り使用可能。安定化後に文言を更新予定。
+> ステージ管理と Capability の整合性は [1.3 §I.4](1-3-effects-safety.md#i4-stage-と-capability-の整合) を参照し、仕様上の基準を一元化する。
 
 * **効果宣言**
   `effect` で操作集合を宣言し、既存の効果タグへ紐付ける。

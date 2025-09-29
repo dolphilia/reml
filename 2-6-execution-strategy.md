@@ -80,6 +80,8 @@ type RunConfigTarget = {
 RunConfig.extensions["target"] = RunConfigTarget
 ```
 
+この定義は 1-2 §C.7 の型検査仕様と同一であり、フィールドの増減は両章で同時に更新する。
+
 * CLI やビルドツールは `RunConfigTarget` を構築して `RunConfig` へ注入し、パーサーはパース段階で `@cfg` に渡す。未設定の場合は `profile_id` を含む任意のキー参照で `target.profile.missing` を報告し、ビルドを停止する。
 * `capabilities` セットは `Core.Runtime` の Capability Registry で宣言された識別子と同期する。存在しない Capability を参照した場合は `target.capability.unknown` を生成し、性能 1.1 を損なわずに誤設定を早期検出する。
 * `extra` 以下のキーは `@cfg` から参照可能だが、辞書登録時に `RunConfig::register_target_key(name, allowed_values)` で値テーブルを宣言し、誤字を防ぐ。
@@ -134,6 +136,7 @@ fn specialise_config(profile: BuildProfile) -> RunConfig = {
 ### B-3. 効果ハンドラと継続管理（実験段階）
 
 > `-Zalgebraic-effects` フラグが有効な場合の挙動。安定化時に最終仕様へ更新する。
+> ステージ遷移と Capability の要件は [1.3 §I.4](1-3-effects-safety.md#i4-stage-と-capability-の整合) を参照する。
 
 * **ワンショット継続**: ハンドラ適用時は継続フレームをヒープに退避し、`resume` 呼び出し後に即破棄する。フレームは `EffectFrame { handler_id, resume_ptr, stage }` で管理し、`stage` が `Experimental` の場合は Capability Registry を介した opt-in を要求する。
 * **マルチショット禁止（既定）**: `resume` を複数回呼び出した場合は `effects.handler.invalid_resume` を生成し、`stage = Experimental` の環境であっても `@reentrant` 属性と Capability 許可がなければコンパイルエラーとする。
@@ -304,15 +307,15 @@ fn container_profile(profile: &str) -> RunConfig = match profile {
 
 ---
 
-## J. 仕様チェックリスト
+## J. 仕様チェックポイント
 
-* [ ] `run` / `run_partial` が `ParseResult` / `ParseResultWithRest` を返し、診断・未消費入力を一貫して扱う。
-* [ ] `RunConfig` のコアスイッチ（require_eof / packrat / left_recursion / trace / merge_warnings）を実装し、既定値を確認する。
-* [ ] Packrat メモ化：キー `(ParserId, byte_off)`、`commit_watermark` に基づく掃除、実装依存の窓上限を備える。
-* [ ] 左再帰は seed-growing で解決し、`left_recursion=auto` と `precedence` の協調を確認する。
-* [ ] 最遠エラー統合と `cut` による期待リセットが期待どおりに動作する。
-* [ ] `trace` と `merge_warnings` の挙動をテストし、診断ノイズを制御する。
-* [ ] インクリメンタル処理やストリーミングを提供する場合は `Core.Parse.Streaming` 拡張の契約に従うことを文書化する。
+- `run` / `run_partial` が `ParseResult` / `ParseResultWithRest` を返し、診断・未消費入力を一貫して扱うことを確認する。
+- `RunConfig` のコアスイッチ（require_eof / packrat / left_recursion / trace / merge_warnings）を実装し、既定値を明記する。
+- Packrat メモ化でキー `(ParserId, byte_off)` と `commit_watermark` に基づく掃除、実装依存の窓上限を備える。
+- 左再帰は seed-growing で解決し、`left_recursion=auto` と `precedence` の協調動作を検証する。
+- 最遠エラー統合と `cut` による期待リセットが期待どおりに動作する。
+- `trace` と `merge_warnings` の挙動をテストし、診断ノイズを制御する。
+- インクリメンタル処理やストリーミングを提供する場合は `Core.Parse.Streaming` 拡張の契約に従うことを文書化する。
 
 ---
 
