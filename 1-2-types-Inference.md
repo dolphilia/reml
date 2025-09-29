@@ -270,7 +270,7 @@ type DslExportSignature<T> = {
 
 ```reml
 // Parser 型（簡略）
-type Parser<T>    // 実体は Input -> Result<T, ParseError>
+type Parser<T> = fn(&mut State) -> Reply<T>  // 実体は 2.1 §A（State/Reply 定義）に従う
 
 // コア・コンビネータ（抜粋）
 fn map<A,B>(p: Parser<A>, f: A -> B) -> Parser<B>
@@ -285,6 +285,8 @@ let int  = digit.many1().map(parseInt)            // Parser<i64>
 let atom = or(int, between(sym("("), expr, sym(")")))
 let expr = chainl1(atom, addOp)                   // Parser<i64>
 ```
+
+- `Parser<T>` の戻り値型 `Reply<T>` および解析状態 `State` の項目は [2.1 §A](2-1-parser-type.md#a-主要型) にて定義されています。旧来の `Input -> Result<T, ParseError>` 形は `RunConfig.legacy_result` による互換層のみが提供され、型推論仕様の基準からは除外されました。
 
 ---
 
