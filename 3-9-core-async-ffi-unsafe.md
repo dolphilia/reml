@@ -32,7 +32,7 @@ fn sleep_async(duration: Duration) -> Future<()>                             // 
 
 - `Context` は Waker を含む非同期実行コンテキスト。
 - `SchedulerHandle` は `Core.Runtime` の Capability Registry から取得する。
-- `block_on` は同期ブロックするため `effect {blocking}` を要求し、CLI ツールなどで使用する際は注意が必要。
+- `block_on` は同期ブロックするため `effect {io.blocking}` を要求し、CLI ツールなどで使用する際は注意が必要。
 
 ### 1.2 高度な非同期パターン
 
@@ -59,10 +59,10 @@ pub type AsyncStream<T> = {
 }
 
 fn from_iter<T>(iter: Iter<T>) -> AsyncStream<T>                               // `effect {io.async}`
-fn buffer<T>(stream: AsyncStream<T>, size: usize) -> AsyncStream<T>             // `effect {io.async, memory}`
+fn buffer<T>(stream: AsyncStream<T>, size: usize) -> AsyncStream<T>             // `effect {io.async, mem}`
 fn map_async<T, U>(stream: AsyncStream<T>, f: (T) -> Future<U>) -> AsyncStream<U> // `effect {io.async}`
 fn filter_async<T>(stream: AsyncStream<T>, pred: (T) -> Future<Bool>) -> AsyncStream<T> // `effect {io.async}`
-fn collect_async<T>(stream: AsyncStream<T>) -> Future<List<T>>                  // `effect {io.async, memory}`
+fn collect_async<T>(stream: AsyncStream<T>) -> Future<List<T>>                  // `effect {io.async, mem}`
 ```
 
 ### 1.4 DSLオーケストレーション支援 API

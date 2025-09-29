@@ -7,7 +7,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | ステータス | 正式仕様 |
-| 効果タグ | `effect {io}`, `effect {mut}`, `effect {memory}`, `effect {io.blocking}`, `effect {io.async}`, `effect {security}` |
+| 効果タグ | `effect {io}`, `effect {mut}`, `effect {mem}`, `effect {io.blocking}`, `effect {io.async}`, `effect {security}` |
 | 依存モジュール | `Core.Prelude`, `Core.Text`, `Core.Collections`, `Core.Diagnostics`, `Core.Numeric & Time` |
 | 相互参照 | [2.6 実行戦略](2-6-execution-strategy.md), [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), Guides: [ランタイム連携](guides/runtime-bridges.md) |
 
@@ -90,11 +90,11 @@ fn sync(file: &mut File) -> Result<(), IoError>                    // `effect {i
 
 ```reml
 type BufferedReader<R: Reader>
-fn buffered<R: Reader>(reader: R, capacity: usize) -> BufferedReader<R> // `effect {memory}`
+fn buffered<R: Reader>(reader: R, capacity: usize) -> BufferedReader<R> // `effect {mem}`
 fn read_line(reader: &mut BufferedReader<Reader>) -> Result<Option<Str>, IoError> // `effect {io, io.blocking}`
 ```
 
-- バッファ確保時に `effect {memory}` を要求。
+- バッファ確保時に `effect {mem}` を要求。
 - `read_line` は `Str` を返す。`Core.Text` の正規化は呼び出し側で行う。
 - `Core.Memory`（公式プラグイン [4-3](4-3-memory-plugin.md)）で定義する `MappedMemory` や `Span<u8>` と連携する場合は、`memory` 効果が `CapabilitySecurity.effect_scope` に含まれていることを確認する。
 
@@ -150,7 +150,7 @@ fn watch(paths: List<Path>, callback: (WatchEvent) -> ()) -> Result<Watcher, IoE
 fn close(watcher: Watcher) -> Result<(), IoError>                                      // `effect {io}`
 ```
 
-- `effect {async}` を明示し、イベントループとの連携を必要とする。
+- `effect {io.async}` を明示し、イベントループとの連携を必要とする。
 - 大量のファイル変更監視時にはシステムリソースを保護するメカニズムを提供。
 
 ```reml
@@ -193,7 +193,6 @@ fn force_cleanup_resources() -> Result<u32, IoError>              // `effect {io
 fn log_io(event: Str, path: Option<Path>, duration: Duration, audit: AuditSink) -> Result<(), Diagnostic> // `effect {audit}`
 ```
 
-- IO 操作の所要時間を `Core.Numeric & Time` の `Duration` で記録し、`audit_id` と `change_set` を付与するテンプレートを提供。
 - IO 操作の所要時間を `Core.Numeric & Time` の `Duration` で記録し、`audit_id` と `change_set` を付与するテンプレートを提供。`AuditContext`（[3.6](3-6-core-diagnostics-audit.md)）と組み合わせることで、`SyscallCapability.audited_syscall` の前後で統一された監査レコードを生成できる。
 
 ## 7. 使用例（設定ファイル読み込み）

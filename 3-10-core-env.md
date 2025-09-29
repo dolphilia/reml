@@ -135,5 +135,5 @@ fn merge_runtime_target(cfg: RunConfigTarget, runtime: PlatformInfo) -> RunConfi
 
 ## 6. 将来拡張メモ
 
-* Phase 2 で `watch_env`（環境変数変更監視）と `ScopedEnv`（with-style スコープ設定）を検討。これらは `effect {io, async}` を要求するため、非同期実行基盤が整った段階でドラフトを追加する。
+* Phase 2 で `watch_env`（環境変数変更監視）と `ScopedEnv`（with-style スコープ設定）を検討。これらは `effect {io, io.async}` を要求するため、非同期実行基盤が整った段階でドラフトを追加する。
 * プロセス以外の設定ソース（例：クラウドシークレット、HashiCorp Vault 等）との統合はプラグイン (`Core.Env.SecretProviders`) として別文書で扱う。

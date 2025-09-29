@@ -7,7 +7,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | ステータス | 正式仕様 |
-| 効果タグ | `@pure`, `effect {mut}`, `effect {mem}`, `effect {cell}`, `effect {rc}`, `effect {audit}` |
+| 効果タグ | `@pure`, `effect {mut}`, `effect {mem}`, `effect {cell}`, `effect {rc}`, `effect {audit}`, `effect {io}` |
 | 依存モジュール | `Core.Prelude`, `Core.Iter`, `Core.Diagnostics`, `Core.Text` |
 | 相互参照 | [3.1 Core Prelude & Iteration](3-1-core-prelude-iteration.md), [3.3 Core Text & Unicode](3-3-core-text-unicode.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
 

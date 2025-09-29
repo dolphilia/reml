@@ -7,7 +7,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | ステータス | 正式仕様 |
-| 効果タグ | `@pure`, `effect {mem}`, `effect {audit}`, `effect {time}` |
+| 効果タグ | `@pure`, `effect {mem}`, `effect {audit}`, `effect {time}`, `effect {unicode}` |
 | 依存モジュール | `Core.Prelude`, `Core.Iter`, `Core.Collections`, `Core.Diagnostics` |
 | 相互参照 | [3.7 Core Config & Data](3-7-core-config-data.md), [3.2 Core Collections](3-2-core-collections.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) |
 
