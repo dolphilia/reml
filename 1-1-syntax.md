@@ -134,7 +134,11 @@ conductor config_orchestrator {
   let answer = 42
   var total = 0
   let (lhs, rhs) = pair
+  let { name, version, .. } = manifest
+  let Cons(head, tail) = list
   ```
+
+  束縛パターンは `match` と同じ構文を受け付け、タプル・レコード・列挙・リストの分解や `..` による残余束縛、`_` による無視束縛を利用できる。網羅性が満たされない場合はコンパイル時に拒否されるため、初期化コードで `panic` を誘発する心配がない。【F:samples/language-impl-comparison/reml/pl0_combinator.reml†L150-L173】
 
 * **関数宣言**  \n  本体は式かブロックで記述でき、名前付き引数・デフォルト引数・戻り値型をサポートします。`pub` を付けると公開関数になります。
 

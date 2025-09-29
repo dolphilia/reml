@@ -81,6 +81,12 @@ fn lexeme<A>(space: Parser<()>, p: Parser<A>) -> Parser<A>
 // 固定記号（; , ( ) など）。成功時は () を返す
 fn symbol(space: Parser<()>, s: Str) -> Parser<()>   // = lexeme(space, string(s)).skipR(space)
 
+// 先頭側だけをスキップする糖衣
+fn leading<A>(space: Parser<()>, p: Parser<A>) -> Parser<A>
+
+// 前後をまとめて処理する（`leading` + `lexeme`）
+fn trim<A>(space: Parser<()>, p: Parser<A>) -> Parser<A>
+
 // 前後を食う
 fn padded<A>(p: Parser<A>, space: Parser<()>) -> Parser<A>
 
@@ -89,6 +95,8 @@ fn token<A>(p: Parser<A>, space: Parser<()>) -> Parser<(A, Span)>
 ```
 
 * `symbol(sc, "(")` は `"("` を読んで**後続の `sc` を必ず消費**。
+* `leading(sc, expr)` は `skipL(sc, expr)` と等価で、構文側の空白処理を 1 行にまとめる。
+* `trim(sc, expr)` は `leading` と `lexeme` を組み合わせた糖衣。JSON や PL/0 サンプルのように両端の空白を許容する際に有効。【F:samples/language-impl-comparison/reml/pl0_combinator.reml†L95-L107】
 * `token` は AST へ**位置**を付与したいときの定番（`spanned` の字句版）。
 
 ---

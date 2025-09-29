@@ -22,6 +22,7 @@ let sc: Parser<()> =
 
 let lexeme<A>(p: Parser<A>) -> Parser<A> = Lex.lexeme(sc, p)
 let sym(text: Str) -> Parser<()> = symbol(sc, text)
+let trim<A>(p: Parser<A>) -> Parser<A> = Lex.trim(sc, p)
 
 /// 数値リテラルを f64 へ変換する。
 let json_number: Parser<JsonValue> =
@@ -96,8 +97,7 @@ let json_value: Parser<JsonValue> =
 /// 先頭・末尾の空白を許容しつつ EOF まで読む。
 let json_document: Parser<JsonValue> =
   rule("json.document",
-    skipR(skipL(sc, json_value), sc)
-      |> skipR(eof())
+    skipR(trim(json_value), eof())
   )
 
 // 使用例

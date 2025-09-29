@@ -43,11 +43,12 @@ fn parse_program(source: Text) -> Result<List<Stmt>, ParseError> {
 }
 
 fn exec(program: List<Stmt>) -> Result<Runtime, ExecError> {
-  let mut rt = { vars: Map.empty(), output: List.empty() }
-  for stmt in List.to_vec(program) {
-    rt = exec_stmt(stmt, rt)?
-  }
-  Result.ok(rt)
+  List.fold(program, Result.ok(initial_runtime()), |acc_res, stmt| {
+    match acc_res with
+    | Err(err) -> Result.err(err)
+    | Ok(state) -> exec_stmt(stmt, state)
+    end
+  })
 }
 
 fn exec_stmt(stmt: Stmt, runtime: Runtime) -> Result<Runtime, ExecError> {
@@ -68,10 +69,14 @@ fn exec_while(cond: Expr, body: List<Stmt>, runtime: Runtime) -> Result<Runtime,
     if value == 0 {
       return Result.ok({ vars, output: current.output })
     }
-    current = { vars, output: current.output }
-    for stmt in List.to_vec(body) {
-      current = exec_stmt(stmt, current)?
-    }
+    let start = { vars, output: current.output }
+    let next_state = List.fold(body, Result.ok(start), |acc_res, stmt| {
+      match acc_res with
+      | Err(err) -> Result.err(err)
+      | Ok(state) -> exec_stmt(stmt, state)
+      end
+    })?
+    current = next_state
   }
 }
 
@@ -79,9 +84,8 @@ fn eval_expr(expr: Expr, vars: Map<Text, i64>) -> Result<(i64, Map<Text, i64>), 
   match expr with
   | Number(n) -> Result.ok((n, vars))
   | Var(name) ->
-    match Map.get(vars, name) with
-    | Some(value) -> Result.ok((value, vars))
-    | None -> Result.err({ reason: format("未定義変数: {name}") })
+    let value = Map.get(vars, name).ok_or(|| { reason: format("未定義変数: {name}") })?
+    Result.ok((value, vars))
   | Binary { op, lhs, rhs } ->
     let (l, vars_after_lhs) = eval_expr(*lhs, vars)?
     let (r, vars_after_rhs) = eval_expr(*rhs, vars_after_lhs)?
@@ -92,6 +96,8 @@ fn eval_expr(expr: Expr, vars: Map<Text, i64>) -> Result<(i64, Map<Text, i64>), 
       | Div -> if r == 0 { return Result.err({ reason: "0 で割ることはできません" }) } else { l / r }
     Result.ok((result, vars_after_rhs))
 }
+
+fn initial_runtime() -> Runtime = { vars: Map.empty(), output: List.empty() }
 
 // 利用例
 // parse_program("begin x := 1; while x do write x; x := x - 1 end")

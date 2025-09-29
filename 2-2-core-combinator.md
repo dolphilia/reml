@@ -137,7 +137,11 @@ fn list1<A,S>(elem: Parser<A>, sep: Parser<S>) -> Parser<[A]>      // ~ sepBy1
 fn atomic<T>(p: Parser<T>) -> Parser<T>                             // = label+cut の糖衣
 fn expect<T>(name: String, p: Parser<T>) -> Parser<T>               // = label(name, cut(p))
 fn separatedListTrailing<A,S>(elem: Parser<A>, sep: Parser<S>) -> Parser<[A]> // 末尾区切り許容
+fn expect_keyword(space: Parser<()>, kw: Str) -> Parser<()>        // = expect(kw, keyword(space, kw))
+fn expect_symbol(space: Parser<()>, text: Str) -> Parser<()>        // = expect(text, symbol(space, text))
 ```
+
+`expect_keyword`/`expect_symbol` は `Core.Parse.Lex` のトークン API と `expect` を合成した糖衣で、キーワードや記号の欠落時に「`then` を期待しました」のようなメッセージを自動生成する。PL/0 サンプルで多用される `skipL(sc, kw("while"))`／`label+cut` の記述を 1 行にまとめ、DSL の差分実装時に診断の一貫性を確保できる。【F:samples/language-impl-comparison/reml/pl0_combinator.reml†L103-L111】
 
 ---
 

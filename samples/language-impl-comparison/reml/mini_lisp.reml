@@ -80,28 +80,30 @@ fn eval_expr(expr: Expr, env: Env) -> Result<Value, Text> {
   match expr with
   | Number(n) -> Result.ok(VNumber(n))
   | Symbol(name) ->
-    match Map.get(env, name) with
-    | Some(value) -> Result.ok(value)
-    | None -> Result.err(format("未定義シンボル: {name}"))
+    Map.get(env, name).ok_or(|| format("未定義シンボル: {name}"))
   | List(items) -> eval_list(items, env)
 }
 
 fn eval_list(items: List<Expr>, env: Env) -> Result<Value, Text> {
-  match List.to_vec(items) with
-  | [] -> Result.err("空のリストは評価できません")
-  | head :: tail ->
+  match List.pop_front(items) with
+  | None -> Result.err("空のリストは評価できません")
+  | Some((head, rest)) ->
     let callee = eval_expr(head, env)?
-    let args = evaluate_args(tail, env)?
+    let args = evaluate_args(rest, env)?
     apply(callee, args)
 }
 
 fn evaluate_args(exprs: List<Expr>, env: Env) -> Result<List<Value>, Text> {
-  var acc = List.empty()
-  for expr in List.iter(exprs) {
-    let value = eval_expr(expr, env)?
-    acc = List.push_back(acc, value)
-  }
-  Result.ok(acc)
+  List.fold(exprs, Result.ok(List.empty()), |acc_res, expr| {
+    match acc_res with
+    | Err(err) -> Result.err(err)
+    | Ok(acc) ->
+      match eval_expr(expr, env) with
+      | Ok(value) -> Result.ok(List.push_back(acc, value))
+      | Err(err) -> Result.err(err)
+      end
+    end
+  })
 }
 
 fn apply(callee: Value, args: List<Value>) -> Result<Value, Text> {
@@ -127,11 +129,14 @@ fn apply_lambda(lambda: { params: List<Text>, body: Expr, env: Env }, args: List
 }
 
 fn default_env() -> Env {
-  Map.empty()
-    |> Map.insert("+", VBuiltin(builtin_numeric(|a, b| a + b)))
-    |> Map.insert("-", VBuiltin(builtin_numeric(|a, b| a - b)))
-    |> Map.insert("*", VBuiltin(builtin_numeric(|a, b| a * b)))
-    |> Map.insert("/", VBuiltin(builtin_numeric(|a, b| a / b)))
+  match Map.from_pairs([
+    ("+", VBuiltin(builtin_numeric(|a, b| a + b))),
+    ("-", VBuiltin(builtin_numeric(|a, b| a - b))),
+    ("*", VBuiltin(builtin_numeric(|a, b| a * b))),
+    ("/", VBuiltin(builtin_numeric(|a, b| a / b))),
+  ]) with
+  | Ok(env) -> env
+  | Err(_) -> Map.empty()
 }
 
 fn builtin_numeric(op: |f64, f64| -> f64) -> NativeFn {

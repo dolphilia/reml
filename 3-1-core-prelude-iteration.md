@@ -46,6 +46,7 @@ pub type Never = Result<Never, Never> // 空集合を示す記号的型。実体
 | `Option.is_some` | `fn is_some<T>(self: Option<T>) -> Bool` | `Some` かを判定。 | `@pure` |
 | `Option.map` | `fn map<T, U>(self: Option<T>, f: (T) -> U) -> Option<U>` | 値を変換。 | `@pure` |
 | `Option.and_then` | `fn and_then<T, U>(self: Option<T>, f: (T) -> Option<U>) -> Option<U>` | 連鎖。 | `@pure` |
+| `Option.ok_or` | `fn ok_or<T, E>(self: Option<T>, err: () -> E) -> Result<T, E>` | 欠損時に遅延評価したエラーを付与。 | `@pure` |
 | `Option.unwrap_or` | `fn unwrap_or<T>(self: Option<T>, default: T) -> T` | `None` 時の代替値。 | `@pure` |
 | `Option.expect` | `fn expect<T>(self: Option<T>, message: Str) -> T` | `None` の場合は `panic` を発生（開発時のみ）。 | `effect {debug}` |
 | `Result.map` | `fn map<T, E, U>(self: Result<T, E>, f: (T) -> U) -> Result<U, E>` | 正常値を変換。 | `@pure` |
@@ -58,6 +59,8 @@ pub type Never = Result<Never, Never> // 空集合を示す記号的型。実体
 | `Result.from_option` | `fn from_option<T, E>(opt: Option<T>, err: E) -> Result<T, E>` | 代替エラーを付与。 | `@pure` |
 | `ensure` | `fn ensure(cond: Bool, err: () -> E) -> Result<(), E>` | 条件が偽なら `Err(err())`。 | `@pure` |
 | `ensure_not_null` | `fn ensure_not_null<T>(ptr: Option<T>, err: () -> E) -> Result<T, E>` | `Option` から `Result` へ昇格。 | `@pure` |
+
+`Option.ok_or` と `Result.from_option` は `Map.get` などが返す `Option` を `Result` へ持ち上げる際の共通パターンを吸収し、Lisp/PL/0 などの DSL パーサで頻出する「存在しないキー」の扱いを 1 行で表現できるようにした。エラーメッセージを遅延評価できるため、`format` のコストを必要時まで遅らせることができる。【F:samples/language-impl-comparison/reml/mini_lisp_combinator.reml†L81-L92】
 
 - `expect` 系は `effect {debug}` のみを要求し、本番ビルドでは使用を禁止する lint を用意する。`panic` は 0-1 章で述べた通りデバッグ用途でのみ許容される。【F:0-1-overview.md†L90-L100】
 - `ensure` はガード節やテンプレート DSL で利用する共通ヘルパ。`ensure_not_null` は FFI やプラグインから渡されるポインタ検証用。【F:1-3-effects-safety.md†L228-L268】

@@ -74,9 +74,11 @@ fn partition<T: Ord>(set: Set<T>, pred: (T) -> Bool) -> (Set<T>, Set<T>)
 | `List.of_iter` | `fn of_iter<T>(iter: Iter<T>) -> List<T>` | `@pure` | `Iter` から永続リストを生成。 |
 | `Map.from_iter` | `fn from_iter<K: Ord, V>(iter: Iter<(K,V)>) -> Result<Map<K,V>, CollectError>` | `@pure` | キー重複時は `CollectError::DuplicateKey`。 |
 | `Map.merge` | `fn merge<K, V>(base: Map<K, V>, delta: Map<K, V>, f: (V, V) -> V) -> Map<K, V>` | `@pure` | 差分マージ。 |
+| `Map.from_pairs` | `fn from_pairs<K: Ord, V>(pairs: List<(K, V)>) -> Result<Map<K, V>, CollectError>` | `@pure` | 小規模セットアップ向けの軽量ビルダ。 |
 | `Set.diff` | `fn diff<T>(left: Set<T>, right: Set<T>) -> Set<T>` | `@pure` | 差集合。 |
 | `Set.partition` | `fn partition<T>(set: Set<T>, pred: (T) -> Bool) -> (Set<T>, Set<T>)` | `@pure` | 条件で 2 分割。 |
 
+`Map.from_pairs` は DSL の標準環境やテーブル初期値を記述するためのユーティリティで、`List` など永続構造からの変換時に重複キーを `CollectError::DuplicateKey` として検出する。初期化コードでの `Map.insert` 連鎖を排除し、Lisp サンプルの `default_env` のような定数マップを構造的に宣言できる。【F:samples/language-impl-comparison/reml/mini_lisp_combinator.reml†L118-L138】
 ## 3. 可変コレクション（`effect {mut}`）
 
 | 型 | 主要操作 | 効果タグ |

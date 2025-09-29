@@ -33,6 +33,7 @@ let sc: Parser<()> =
 
 let lexeme<A>(p: Parser<A>) -> Parser<A> = Lex.lexeme(sc, p)
 let sym(token: Str) -> Parser<()> = symbol(sc, token)
+let trim<A>(p: Parser<A>) -> Parser<A> = Lex.trim(sc, p)
 
 let number_atom: Parser<Expr> =
   rule("lisp.number",
@@ -65,8 +66,7 @@ let list_expr: Parser<Expr> =
 
 let program: Parser<Expr> =
   rule("lisp.program",
-    sc.then(expr).then(sc).then(eof())
-      .map(|(_, value, _, _)| value)
+    skipR(trim(sc, expr), eof())
   )
 
 fn parse(source: Text) -> Result<Expr, ParseError> =
@@ -77,29 +77,26 @@ fn eval_expr(expr: Expr, env: Env) -> Result<Value, Text> {
   match expr with
   | Number(n) -> Result.ok(VNumber(n))
   | Symbol(name) ->
-    match Map.get(env, name) with
-    | Some(value) -> Result.ok(value)
-    | None -> Result.err(format("未定義シンボル: {name}"))
+    Map.get(env, name).ok_or(|| format("未定義シンボル: {name}"))
   | ListExpr(items) -> eval_list(items, env)
 }
 
 fn eval_list(items: List<Expr>, env: Env) -> Result<Value, Text> {
   match List.pop_front(items) with
   | None -> Result.err("空の式は評価できません")
-  | Some((head, tail)) ->
+  | Some((head, rest)) ->
     let callee = eval_expr(head, env)?
-    var rest = tail
-    var evaluated = List.empty()
-    loop {
-      match List.pop_front(rest) with
-      | None -> break
-      | Some((expr, next)) ->
-        let value = eval_expr(expr, env)?
-        evaluated = List.push_back(evaluated, value)
-        rest = next
+    let args = List.fold(rest, Result.ok(List.empty()), |acc_res, expr| {
+      match acc_res with
+      | Err(err) -> Result.err(err)
+      | Ok(acc) ->
+        match eval_expr(expr, env) with
+        | Ok(value) -> Result.ok(List.push_back(acc, value))
+        | Err(err) -> Result.err(err)
+        end
       end
-    }
-    apply(callee, evaluated)
+    })?
+    apply(callee, args)
 }
 
 fn apply(callee: Value, args: List<Value>) -> Result<Value, Text> {
@@ -125,11 +122,14 @@ fn apply_lambda(lambda: { params: List<Text>, body: Expr, env: Env }, args: List
 }
 
 fn default_env() -> Env {
-  Map.empty()
-    |> Map.insert("+", VBuiltin(builtin_numeric(|a, b| a + b)))
-    |> Map.insert("-", VBuiltin(builtin_numeric(|a, b| a - b)))
-    |> Map.insert("*", VBuiltin(builtin_numeric(|a, b| a * b)))
-    |> Map.insert("/", VBuiltin(builtin_numeric(|a, b| a / b)))
+  match Map.from_pairs([
+    ("+", VBuiltin(builtin_numeric(|a, b| a + b))),
+    ("-", VBuiltin(builtin_numeric(|a, b| a - b))),
+    ("*", VBuiltin(builtin_numeric(|a, b| a * b))),
+    ("/", VBuiltin(builtin_numeric(|a, b| a / b))),
+  ]) with
+  | Ok(env) -> env
+  | Err(_) -> Map.empty()
 }
 
 fn builtin_numeric(op: |f64, f64| -> f64) -> NativeFn {

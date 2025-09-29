@@ -35,8 +35,10 @@ let sc: Parser<()> =
   |> Lex.skipMany
 
 let lexeme<A>(p: Parser<A>) -> Parser<A> = Lex.lexeme(sc, p)
+let trim<A>(p: Parser<A>) -> Parser<A> = Lex.trim(sc, p)
 let sym(token: Str) -> Parser<()> = symbol(sc, token)
-let kw(name: Str) -> Parser<()> = Lex.keyword(sc, name)
+let expect_kw(name: Str) -> Parser<()> = expect_keyword(sc, name)
+let expect_sym(text: Str) -> Parser<()> = expect_symbol(sc, text)
 
 let identifier: Parser<Text> =
   rule("pl0.identifier", lexeme(Lex.identifier()))
@@ -76,7 +78,7 @@ let mul_op: Parser<(Expr, Expr) -> Expr> =
 
 let factor: Parser<Expr> =
   rule("pl0.factor",
-    (sym("(").then(cut(expr)).then(sym(")"))
+    (expect_sym("(").then(cut(expr)).then(expect_sym(")"))
       .map(|(_, inner, _)| inner))
       .or(integer)
       .or(variable)
@@ -85,21 +87,21 @@ let factor: Parser<Expr> =
 let assign_stmt: Parser<Stmt> =
   rule("pl0.assign",
     identifier
-      .then(skipL(sym(":="), expr))
+      .then(skipL(expect_sym(":="), expr))
       .map(|(name, value)| Assign { name, expr: value })
   )
 
 let write_stmt: Parser<Stmt> =
   rule("pl0.write",
-    skipL(kw("write"), expr)
+    skipL(expect_kw("write"), expr)
       .map(|value| Write { expr: value })
   )
 
 let while_stmt: Parser<Stmt> =
   rule("pl0.while",
-    kw("while")
+    expect_kw("while")
       .then(expr)
-      .then(skipL(kw("do"), block))
+      .then(skipL(expect_kw("do"), block))
       .map(|((_, condition), body)| While { cond: condition, body })
   )
 
@@ -114,16 +116,15 @@ let stmt: Parser<Stmt> =
 
 let block: Parser<List<Stmt>> =
   rule("pl0.block",
-    between(kw("begin"), sepBy1(stmt, sym(";")), kw("end"))
+    between(expect_kw("begin"), sepBy1(stmt, expect_sym(";")), expect_kw("end"))
   )
-
-let block_with_prefix: Parser<List<Stmt>> = skipL(sc, block)
-let block_with_suffix: Parser<List<Stmt>> = skipR(block_with_prefix, opt(sym(".")))
-let block_trimmed: Parser<List<Stmt>> = skipR(block_with_suffix, sc)
 
 let program: Parser<List<Stmt>> =
   rule("pl0.program",
-    skipR(block_trimmed, eof())
+    trim(block)
+      .then(opt(sym(".")))
+      .then(eof())
+      .map(|(body, _, _)| body)
   )
 
 fn parse_program(source: Text) -> ParseResult<List<Stmt>> =
@@ -131,11 +132,12 @@ fn parse_program(source: Text) -> ParseResult<List<Stmt>> =
 
 /// --- 実行モデル ---
 fn exec(program: List<Stmt>) -> Result<Runtime, Text> {
-  var runtime = { vars: Map.empty(), output: List.empty() }
-  for stmt in List.to_vec(program) {
-    runtime = exec_stmt(stmt, runtime)?
-  }
-  Result.ok(runtime)
+  List.fold(program, Result.ok(create_runtime()), |acc_res, stmt| {
+    match acc_res with
+    | Err(err) -> Result.err(err)
+    | Ok(state) -> exec_stmt(stmt, state)
+    end
+  })
 }
 
 fn exec_stmt(stmt: Stmt, runtime: Runtime) -> Result<Runtime, Text> {
@@ -156,11 +158,13 @@ fn exec_while(cond: Expr, body: List<Stmt>, runtime: Runtime) -> Result<Runtime,
     if value == 0 {
       return Result.ok(state)
     }
-    var inner = state
-    for stmt in List.to_vec(body) {
-      inner = exec_stmt(stmt, inner)?
-    }
-    state = inner
+    let next_state = List.fold(body, Result.ok(state), |acc_res, stmt| {
+      match acc_res with
+      | Err(err) -> Result.err(err)
+      | Ok(current) -> exec_stmt(stmt, current)
+      end
+    })?
+    state = next_state
   }
 }
 
@@ -168,9 +172,7 @@ fn eval_expr(expr: Expr, vars: Map<Text, i64>) -> Result<i64, Text> {
   match expr with
   | Number(n) -> Result.ok(n)
   | Var(name) ->
-    match Map.get(vars, name) with
-    | Some(value) -> Result.ok(value)
-    | None -> Result.err(format("未定義変数: {name}"))
+    Map.get(vars, name).ok_or(|| format("未定義変数: {name}"))
   | Binary { op, lhs, rhs } ->
     let left = eval_expr(*lhs, vars)?
     let right = eval_expr(*rhs, vars)?
