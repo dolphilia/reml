@@ -84,9 +84,9 @@
 
 - 宣言は `pub` であり、コンパイラが DSL メタデータを収集できるよう **`@dsl_export` 属性** を付与する。
 - 宣言されるシンボルは次のいずれかの形である。
-  - `pub let NAME: Parser<T>` または `pub const NAME: Parser<T>`（値としてのエクスポート）。
-  - `pub fn NAME(args) -> Parser<T>`（関数としてのエクスポート。`args` の既定値や名前付き引数は通常の関数規則に従う）。
-  - `conductor NAME { ... }`（Conductor パターンをエントリーポイントとして公開する場合）。
+  - `pub let entry_name: Parser<T>` または `pub const entry_name: Parser<T>`（値としてのエクスポート）。
+  - `pub fn entry_name(args) -> Parser<T>`（関数としてのエクスポート。`args` の既定値や名前付き引数は通常の関数規則に従う）。
+  - `conductor entry_name { ... }`（Conductor パターンをエントリーポイントとして公開する場合）。
 - `Parser<T>` を返すエントリは **副作用のない純粋値**が既定であり、`@dsl_export` に `allows_effects=[...]` を明示しない限り `Σ` のいずれの効果も持てない。
 - `conductor` を公開する場合は、内部で組み合わされる DSL が `exports` に含まれる他のシンボルと整合するように、同一モジュール内で名前解決できなければならない。
 - `@dsl_export` の `category` パラメータは `reml.toml` 側の `dsl.<name>.kind`（後述のマニフェスト仕様）と一致させ、型検査ではこの値を用いて DSL 間の互換性を検証する。
@@ -95,16 +95,18 @@
 module sample.config
 
 @dsl_export(category="config", capabilities=["Core.Config.Manifest"], version="0.1")
-pub fn ConfigDSL() -> Parser<AppConfig> =
+pub fn config_dsl() -> Parser<AppConfig> =
   root_object(|builder| { ... })
 
 @dsl_export(category="config")
-conductor ConfigOrchestrator {
-  ConfigDSL |> validate |> emit
+conductor config_orchestrator {
+  config_dsl
+    |> validate
+    |> emit
 }
 ```
 
-`reml.toml` で `entry = "src/sample/config.reml"`、`exports = ["ConfigDSL", "ConfigOrchestrator"]` と宣言した場合、上記のようにモジュールと公開シンボルが揃っていることを検証する。カテゴリや Capability 情報は Chapter 3 のマニフェスト API と連携して CLI へ引き渡される。
+`reml.toml` で `entry = "src/sample/config.reml"`、`exports = ["config_dsl", "config_orchestrator"]` と宣言した場合、上記のようにモジュールと公開シンボルが揃っていることを検証する。カテゴリや Capability 情報は Chapter 3 のマニフェスト API と連携して CLI へ引き渡される。
 
 ### B.2 可視性と `use` が導入するシンボル
 
@@ -170,7 +172,7 @@ conductor ConfigOrchestrator {
 
   ```reml
   impl Show<i64> for i64 {
-    fn show(self) -> String = self.toString()
+    fn show(self) -> String = self.to_string()
   }
 
   impl Vec<T> {
@@ -354,7 +356,13 @@ ConductorMonitoring ::= "monitoring" (Ident | ConductorQualifiedName) Block
 * **名前付き引数**：`render(src=doc, width=80)`
 * **デフォルト引数**（定義側）：`fn render(src: Doc, width: i32 = 80) = ...`
 * 可変長（将来）：`fn log(...args: String) = ...`
-* **部分適用**（占位）：`pipe(xs) |> map(_ + 1)`
+* **部分適用**（占位）：
+
+  ```reml
+  pipe(xs)
+    |> map(_ + 1)
+  ```
+
   `_` は左側パイプ値の**代入位置**（D.3 に詳細）。
 
 ### C.3 パターン（束縛・`match` で共通）
@@ -426,7 +434,7 @@ ConductorMonitoring ::= "monitoring" (Ident | ConductorQualifiedName) Block
 
 ```reml
 unsafe {
-  let ptr = buf.asPtr();
+  let ptr = buf.as_ptr();
   extern_printf(ptr);
 }
 ```
@@ -437,9 +445,9 @@ unsafe {
 * 対応する型と変換規則は [効果と安全性](1-3-effects-safety.md) で定義されます。`try` ブロックや `?` を含む関数は暗黙に同じ短絡型を返す必要があります。
 
 ```reml
-fn readConfig(path: String) -> Result<Config, Error> = {
-  let text = readFile(path)?;
-  parseConfig(text)?
+fn read_config(path: String) -> Result<Config, Error> = {
+  let text = read_file(path)?;
+  parse_config(text)?
 }
 ```
 
@@ -496,7 +504,7 @@ fn readConfig(path: String) -> Result<Config, Error> = {
 * **占位 `_`** を使うと位置を指定：
   `x |> fold(init=0, f=(_ + 1))` → `fold(x, init=0, f=...)` / `x |> pow(_, 3)` → `pow(x, 3)`
   `x |> between("(", ")", _)` → 第3引数に挿入。
-* **ネスト**は左結合で直列化：`a|>f|>g|>h`。
+* **ネスト**は左結合で直列化：`a |> f |> g |> h`。
 
 ---
 
@@ -546,7 +554,7 @@ fn join3(a: String, b: String, c: String) -> String =
 // ラムダとパイプ
 let r = "1 2 3"
   |> split(" ")
-  |> map(|s| parseInt(s))
+  |> map(|s| parse_int(s))
   |> fold(init=0, f=(_ + 1))
   //           ↑ パイプ値の占位
 

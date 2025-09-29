@@ -197,7 +197,7 @@ fn tokenize_emoji() -> Parser<Token> =
     |> Option.to_result(|| Diagnostic::expected("emoji"))
 
 fn tokenize_doc_comment() -> Parser<Token> =
-  commentBlock("/**", "*/", nested=false)
+  comment_block("/**", "*/", nested=false)
     .map(|text|
       text
         |> GraphemeSeq::new
