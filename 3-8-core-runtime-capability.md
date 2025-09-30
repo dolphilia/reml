@@ -510,6 +510,26 @@ pub type BenchmarkHarness = {
 - `category_mismatch` が発生した場合は型検査段階のエラー (`manifest.dsl.category_mismatch`) と同期し、重複報告を避ける。
 - `performance.notes` に `baseline_latency` が 0-2 指針の閾値を超えた旨が記録されている場合は、`Severity::Warning` で CLI に表示し、CI では `--fail-on-performance` フラグでエラーに昇格できる。
 
+### 7.3 テンプレート Capability プリセット
+
+```reml
+pub enum TemplateCapability =
+  | RenderHtml
+  | RenderText
+  | RegisterFilter
+  | BypassEscape
+
+fn capability_name(cap: TemplateCapability) -> CapabilityId
+fn requires_stage(cap: TemplateCapability) -> StageId
+```
+
+- `RenderHtml` は HTML/XML などエスケープ前提のテンプレート出力を許可し、Stage `runtime` を要求する。`Core.Text.Template.render` が HTML エスケープを有効にした状態で利用されることを前提とし、`template.escape.bypassed` が Warning を発生させた際は監査ログへ記録する。
+- `RenderText` はログ・診断メッセージなどプレーンテキスト出力向けで、`Stage::audit` または `Stage::cli` と組み合わせる。`EscapePolicy` は緩和できるが、`RenderHtml` を要求するテンプレートと同時に利用する場合は `with_escape_policy` で明示する。
+- `RegisterFilter` は `TemplateFilterRegistry.register_secure` に必要な Capability であり、フィルター実装側で追加の Capability を再確認する。プラグインがこの Capability を要求する場合、`CapAuthPolicy` は署名検証 (`verify_signature`) の成功を必須とする。
+- `BypassEscape` は危険操作のためデフォルトで無効。`Stage::unsafe` を要求し、`CapabilityRegistry` 側でプロジェクト単位の許可が必要。CI では `--deny-capability template.bypass_escape` を推奨する。
+- `capability_name(TemplateCapability::RenderHtml)` は `"template.render_html"` のようなカノニカル名を返し、`DSL` マニフェスト・`conductor` 設定と一致させる。
+- `requires_stage` は Stage/Capability 整合を強制し、`RenderHtml`/`RenderText` は `Stage::runtime`、`RegisterFilter` は `Stage::build`、`BypassEscape` は `Stage::unsafe` を返す。Stage 不一致時は `CapabilityError::StageViolation` を返し、`diagnostic("template.capability.stage_violation")` を生成する。
+
 ---
 
 

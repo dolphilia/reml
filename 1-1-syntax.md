@@ -348,6 +348,17 @@ ConductorMonitoring ::= "monitoring" (Ident | ConductorQualifiedName) Block
 - **主な課題**: 初期構築コストと学習曲線、DSL層とアプリ層のデバッグ複雑性、エコシステム断片化リスク。
 - **軽減策**: テンプレート・ジェネレータによる段階的導入、`label`/`recover` など標準エラー機構の活用、Capability/プラグイン標準での横断連携。
 
+### B.8.4 テンプレート DSL 安全設計指針
+
+- **Core.Text.Template の活用**: テンプレート構文を DSL として公開する際は、`Core.Text.Template` の `TemplateSegment`/`TemplateFilter` を利用し、レンダリング面の機能を標準APIに委譲する。これにより Unicode 幅計算・正規化・ストリーム処理の最適化が既定で有効になり、0-1章で定義した性能基準（10MB 線形処理など）を満たす経路を保持できる。[^purpose-perf]
+- **安全なフィルター登録**: HTML エスケープやシリアライザなど副作用を伴うフィルターは `TemplateFilterRegistry.register_secure` を通じて登録し、Capability Registry (`Core.Runtime.Capability`) と診断モジュール (`Core.Diagnostics`) を連携させる。`Result` で失敗を返し、未登録フィルターや署名検証失敗時は `Diagnostic` を即時生成する。[^purpose-safe]
+- **効果と Capability の両立**: テンプレート実行で `effect {io, runtime, security}` を要求する場合は `@dsl_export` の残余効果と照合し、`conductor` で `with_capabilities(TemplateCapability::RenderHtml)` のように明示する。Capability の欠落はステージング時に `template.capability.missing` 診断を発生させ、監査ログへ転送する。
+- **テストと監査**: テンプレート DSL を導入したプロジェクトでは、`Core.Diagnostics.Audit` の `record_dsl_failure` を利用してレンダリング失敗・エスケープ逸脱・フィルター例外を監査ストアに記録し、CI や LSP での可観測性を確保する。`guides/plugin-authoring.md` のテンプレート拡張例と合わせ、エラー再現手順とロールバック方針を共有する。
+
+[^purpose-perf]: [0-1-project-purpose.md](0-1-project-purpose.md) §1.1「実用に耐える性能」を参照。テンプレートレンダリングでも線形時間処理とメモリ制約を満たすことを目標とする。
+[^purpose-safe]: [0-1-project-purpose.md](0-1-project-purpose.md) §1.2「安全性の確保」を参照。`Result` ベースのエラー処理と Capability 検証により、未ハンドル例外や権限逸脱を防止する。
+
+
 ## C. 式・項・パターン
 
 ### C.1 式は**式指向**（最後の式が値）

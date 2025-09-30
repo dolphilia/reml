@@ -172,7 +172,98 @@ fn detect_suspicious_patterns(text: Str) -> List<SuspiciousPattern>             
 fn safe_truncate(text: Str, max_bytes: usize) -> Str                               // `@pure`
 ```
 
-## 8. 使用例（Lex 連携と Grapheme 操作）
+## 8. テンプレート文字列 API {#template-text}
+
+> 目的：テンプレート DSL のレンダリングに必要な文字列分解・フィルター管理・安全なエスケープ戦略を標準化し、性能と安全性の両立を図る。
+
+### 8.1 セグメント構造と抽象構文
+
+```reml
+pub type TemplateSegmentId = u32
+
+pub type TemplateSegment =
+  | Literal(str: Str)
+  | Interpolate(expr: TemplateExpr, filters: List<TemplateFilterId>)
+  | Control(block: TemplateBlock, body: List<TemplateSegment>)
+  | Comment(str: Str)
+
+pub type TemplateExpr =
+  | Path(IdentPath)
+  | Literal(TemplateLiteral)
+  | Call(IdentPath, args: List<TemplateExpr>)
+
+pub type TemplateBlock =
+  | If(condition: TemplateExpr, else_body: Option<List<TemplateSegment>>)
+  | For(bind: Ident, iter: TemplateExpr)
+  | Scoped(scope: Ident, params: List<TemplateExpr>)
+
+pub type TemplateLiteral = Str | Bool | Int | Float | Json
+```
+
+- `IdentPath` は `Core.Parse` の識別子正規化と整合し、`Path::from_template` が NFC 正規化後に `Result<Path, TemplateError>` を返す。
+- `TemplateSegment` は `List` ベースで保持し、`TemplateProgram` 生成時に共有構造を採用することでメモリ効率を確保する。[^template-perf]
+- `Control::Scoped` はテンプレート固有のネームスペースを表し、プラグインで拡張できる余地を残す。
+- `Value` は Chapter 3.7 の `Core.Config`/`Core.Data` が提供する `Value` を再利用し、テンプレートと設定ファイルのシリアライズ仕様を統一する。
+
+### 8.2 フィルター登録と Capability 連携
+
+```reml
+pub type TemplateFilter = fn(Value, args: List<Value>, ctx: &TemplateRenderCtx) -> Result<Value, TemplateError>
+
+pub struct TemplateFilterRegistry
+
+pub type TemplateFilterId = u32
+
+fn register_secure(registry: &mut TemplateFilterRegistry, name: Str, filter: TemplateFilter, requires: CapabilityId) -> Result<(), TemplateFilterError> // `effect {security}`
+fn register_pure(registry: &mut TemplateFilterRegistry, name: Str, filter: TemplateFilter) -> Result<(), TemplateFilterError>                        // `@pure`
+fn lookup(registry: &TemplateFilterRegistry, id: TemplateFilterId) -> Option<(TemplateFilter, CapabilityId)>
+```
+
+- `register_secure` は Capability Registry (3.8 節) の検証フローを呼び出し、権限未付与の場合は `TemplateError::CapabilityMissing` を返す。`TemplateFilterError` は `Diagnostic` に変換し、`template.filter.register_failed` を発火させる。
+- `register_pure` は `@pure` なフィルター向けで、`requires` を持たず Capability チェックをスキップする。
+- `TemplateFilterId` は登録時に生成され、テンプレート解析段階でシンボル解決を行う。
+
+### 8.3 コンパイルとレンダリング API
+
+```reml
+pub type TemplateProgram
+pub type TemplateContext = Map<Str, Value>
+pub type TemplateRenderCtx
+pub type TemplateSink = fn(Chunk) -> Result<(), TemplateError>
+pub enum EscapePolicy = HtmlStrict | Text | Custom(fn(Str) -> Result<String, TemplateError>)
+
+fn compile(template: Str, registry: &TemplateFilterRegistry) -> Result<TemplateProgram, TemplateError> // `effect {unicode, mem}`
+fn render(program: &TemplateProgram, context: TemplateContext, sink: TemplateSink) -> Result<(), TemplateError> // `effect {runtime, io, security}`
+fn render_to_string(program: &TemplateProgram, context: TemplateContext) -> Result<String, TemplateError>        // `effect {runtime, mem, security}`
+fn with_escape_policy(program: &TemplateProgram, policy: EscapePolicy) -> TemplateProgram                       // `@pure`
+```
+
+- `compile` は `Core.Parse.Template` の構文解析を再利用し、`TemplateSegment` を分析して `TemplateProgram` を生成する。複数回レンダリングする場合でもパース済み構造を再利用できるよう、イミュータブルな共有ノードを採用する。
+- `render` はストリーミング出力を前提に `TemplateSink` へ逐次チャンクを渡す。`Chunk` は `Str` と `GraphemeSeq` を組み合わせた所有型であり、`Core.Text` が提供する幅計算を利用できる。
+- `with_escape_policy` はデフォルトの `EscapePolicy::HtmlStrict`（制御文字・危険タグの除去）を切り替えるユーティリティであり、Context ごとのエスケープ差異を明示的に扱う。
+
+### 8.4 エラーモデル
+
+```reml
+pub enum TemplateError =
+  | ParseError(Diagnostic)
+  | FilterMissing{name: Str, available: List<Str>}
+  | CapabilityMissing{id: CapabilityId, filter: Str}
+  | RenderPanic{reason: Str, backtrace: Option<TraceId>}
+  | SinkFailed{diagnostic: Diagnostic}
+
+fn to_diagnostic(err: TemplateError, span: Option<Span>) -> Diagnostic
+fn from_parse_error(parse: ParseError) -> TemplateError
+```
+
+- `FilterMissing` は `available` に候補フィルターを提示し、`Core.Diagnostics` と連携して修正候補を表示する。[^template-safe]
+- `RenderPanic` はフィルター側で未捕捉例外が発生した場合に利用し、`Core.Diagnostics.Audit` の `record_dsl_failure` が検証ログを生成する。
+- `SinkFailed` は IO/ネットワーク書き込みエラーを保持し、`Diagnostic.domain` を `DiagnosticDomain::Template` に設定する。
+
+[^template-perf]: [0-1-project-purpose.md](0-1-project-purpose.md) §1.1 で示す性能基準を満たすため、`TemplateProgram` は解析済み構造を共有し、レンダリング時の再パースを避ける。
+[^template-safe]: [0-1-project-purpose.md](0-1-project-purpose.md) §1.2 の安全性方針に基づき、未定義フィルターや権限逸脱を `Result`/`Diagnostic` で検出する。
+
+## 9. 使用例（Lex 連携と Grapheme 操作）
 
 ```reml
 use Core;
@@ -220,7 +311,7 @@ fn tokenize_doc_comment() -> Parser<Token> =
 - `tokenize_emoji` は `segment_graphemes` と `category().is_emoji()` を利用し、絵文字トークンを抽出。`Option.to_result` により `Diagnostic` へ変換する点で 4.2 の失敗制御と整合。
 - `tokenize_doc_comment` はブロックコメント本文を `GraphemeSeq`→`TextBuilder` で再構築し、幅変換を適用して CLI / LSP 表示に適した文字列へ変換する例。
 
-### 8.1 エンコーディング変換ヘルパ
+### 9.1 エンコーディング変換ヘルパ
 
 ```reml
 // 主要エンコーディング間の変換

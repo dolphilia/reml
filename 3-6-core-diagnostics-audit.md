@@ -402,6 +402,43 @@ fn record_target_diagnostics(metrics: DslMetricsHandle, diag: Diagnostic) -> () 
 - `guides/ci-strategy.md` に記載の構造化ログと併用し、`RunConfig.extensions["target"]` の変更が期待どおりの挙動を保っているかを定期的に可視化する。
 - 重大なポータビリティ診断が発生した場合は `AuditEnvelope.metadata["target"]` にターゲット概要を付与し、監査ログやダッシュボードで迅速に追跡できるようにする。
 
+### 6.4 テンプレート診断ドメイン
+
+> 目的：テンプレート DSL のレンダリング失敗・フィルター欠落・エスケープ逸脱を一元的に検出し、安全性（0-1章 §1.2）と性能（同 §1.1）の要件を満たす運用を支援する。
+
+```reml
+pub enum DiagnosticDomain = ... | Template
+
+pub enum TemplateMessageKey =
+  | RenderFailure                   // `template.render.failure`
+  | FilterUnknown                   // `template.filter.unknown`
+  | CapabilityMissing               // `template.capability.missing`
+  | EscapeBypassed                  // `template.escape.bypassed`
+
+fn diagnostic_template(key: TemplateMessageKey, span: Option<Span>, data: TemplateDiagData) -> Diagnostic
+
+pub type TemplateDiagData = {
+  template_id: Option<Str>,
+  segment: Option<TemplateSegmentId>,
+  filter: Option<Str>,
+  capability: Option<CapabilityId>,
+  escape_policy: Option<EscapePolicy>,
+  context_snapshot: Option<Json>,
+}
+```
+
+| `message_key` | 既定 Severity | 発生条件 | 推奨対応 |
+| --- | --- | --- | --- |
+| `template.render.failure` | Error | `Core.Text.Template.render` が `TemplateError::RenderPanic`/`SinkFailed` を返した | `context_snapshot` を確認し、フィルターコードまたは出力先を修正。CI では `AuditEnvelope` を添付して再発分析を行う。 |
+| `template.filter.unknown` | Error | テンプレート内で未登録フィルターが参照された (`TemplateError::FilterMissing`) | `TemplateFilterRegistry.register_*` でフィルターを登録、またはテンプレートを修正。補完候補は `available` から提示。 |
+| `template.capability.missing` | Error | フィルターに必要な Capability が欠落 (`TemplateError::CapabilityMissing`) | `conductor.with_capabilities` または `CapabilityRegistry` で該当 Capability を付与。 |
+| `template.escape.bypassed` | Warning | `EscapePolicy::None` など緩和ポリシーが明示された | コンテキストに応じて Escaping を再検討し、`EscapePolicy::HtmlStrict` を既定に戻す。監査ポリシーで Warning→Error 昇格を推奨。 |
+
+- `template_id` は `TemplateProgram` の識別子 (`manifest.dsl.id`) を推奨し、IDE での参照・差分比較に利用する。
+- `segment` はテンプレート AST 内のセグメント ID を指し、LSP が該当箇所へジャンプできるようハイライト用オフセットを格納する。
+- `context_snapshot` は `TemplateError` に添付された JSON を埋め込み、個人情報を含む場合は 4.1 節の `redact_pii` で匿名化する。
+- `diagnostic_template` は `Core.Text.Template.to_diagnostic` から呼び出され、`TemplateDiagData` を `Diagnostic.extensions["template"]` に保存する。
+
 ## 7. ターゲット診断ドメイン (Target) {#diagnostic-target}
 
 > 目的：クロスコンパイルやターゲットプロファイルの整合性に関するエラー／警告を体系化し、CLI・IDE・監査ログで一貫して扱う。
