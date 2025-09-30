@@ -215,9 +215,46 @@ fn with_trace<T>(p: Parser<T>, on_event: TraceEvent -> ()) -> Parser<T>
 
 ---
 
-## G. 新ターゲット戦略（ドラフト）
+## F. Regex 実行連携 {#regex-run-policy}
 
-### G.1 WASM / WASI
+`feature {regex}` を有効化した場合、`RunConfig.extensions["regex"]` には次の構造体を渡す。
+
+```reml
+type RegexRunConfig = {
+  engine: RegexEngineMode = "auto",
+  memo: RegexMemoPolicy = "auto",
+  unicode_profile: Option<UnicodeClassProfile> = None,
+  max_backtrack_depth: usize = 256,
+  timeout: Option<Duration> = None,
+}
+
+enum RegexEngineMode = "nfa" | "dfa" | "jit" | "auto"
+enum RegexMemoPolicy = "auto" | "force" | "off"
+```
+
+* **エンジン選択**: `engine = "auto"` は [3.8 §1.4](3-8-core-runtime-capability.md#regex-capability) の Capability を参照し、`RegexJit` が利用可能で `PatternFlags::Jit` が指定されたときのみ JIT を起動する。Capability が無い場合は `nfa` を選ぶ。
+* **メモ化ポリシー**: `memo = "auto"` は `RunConfig.packrat` と連動し、`regex_capture`／`regex_token` が 3 段以上ネストした場合に限り Packrat を強制する。`force` は常時 Packrat、`off` は必ず無効化する。
+* **Unicode 整合**: `unicode_profile` を指定しない場合でも `RegexHandle` 側のプロフィールと `RunConfig.extensions["target"].features` を突き合わせ、差異があれば `regex.unicode.mismatch` を発行する（0-1 §3.1 の国際化要件）。
+* **安全弁**: `max_backtrack_depth` を超えた場合は `regex.backtrack.limit` を診断し、実行を停止する。`timeout` を設定すると `Duration` 経過後に `regex.timeout` を返す。いずれも `DiagnosticDomain::Regex` に分類される。
+* **性能配慮**: `memo="auto"` と `timeout` の組み合わせで、0-1 §1.1 に掲げる線形時間目標を維持する。JIT が無効な環境でも NFA 実装で 50MB 入力を O(n) で処理できることを確認する。
+
+---
+
+## G. ストリーミング＆インクリメンタル
+
+コア仕様ではストリーミングおよび差分適用の詳細を定義しません。これらの機能は `Core.Parse.Streaming` 拡張に委ねられ、`Parser` の意味論と互換な `run_stream`/`resume` API、継続メタデータ、バックプレッシャ制御を個別に定義します。詳細は [Core.Parse.Streaming 拡張ガイド](guides/core-parse-streaming.md) を参照してください。
+
+ここでは以下の契約のみを前提とします。
+
+* ストリーミングランナーは `run`/`run_partial` と同じ `ParseResult`/`Diagnostic` 形式を再利用する。
+* インクリメンタル再パースは `commit_watermark` と `ParserId` 依存グラフを利用して影響範囲を絞り込む。
+* Feeder や DemandHint などの詳細型は拡張側で定義され、コアからは不透明。
+
+---
+
+## H. 新ターゲット戦略（ドラフト）
+
+### H.1 WASM / WASI
 
 ```reml
 fn wasm_run<T>(p: Parser<T>, bytes: Bytes, cfg: RunConfig) -> Result<T, Diagnostic> = {
@@ -232,7 +269,7 @@ fn wasm_run<T>(p: Parser<T>, bytes: Bytes, cfg: RunConfig) -> Result<T, Diagnost
 * `target_family = "wasm"` の場合、Packrat/左再帰を既定で無効化し、`guides/runtime-bridges.md` の WASI サンドボックス指針に従って I/O を限定する。
 * エラー診断は `Diagnostic.extensions["cfg"].evaluated` に `wasi` プロファイルを記録し、ホストとの差異を監査可能にする。
 
-### G.2 ARM64 / 組み込み
+### H.2 ARM64 / 組み込み
 
 ```reml
 fn specialise_for_arm64(cfg: RunConfig) -> RunConfig = {
@@ -245,7 +282,7 @@ fn specialise_for_arm64(cfg: RunConfig) -> RunConfig = {
 
 * ARM64 ではキャッシュ戦略やメモリ消費を抑えるため `RunConfig.extensions["target"].extra` に制約を記録し、`@cfg` 経由でヒープ確保・GC の挙動を切り替える。
 
-### G.3 クラウドネイティブ / コンテナ
+### H.3 クラウドネイティブ / コンテナ
 
 ```reml
 fn container_profile(profile: &str) -> RunConfig = match profile {
@@ -257,26 +294,16 @@ fn container_profile(profile: &str) -> RunConfig = match profile {
 
 * コンテナ上での実行を想定し、プロファイルごとに Packrat/左再帰や診断の集約ポリシーを切り替える。`guides/portability.md` のフェーズ指針に沿って追加ターゲットを段階的に導入する。
 
-## F. ストリーミング＆インクリメンタル
-
-コア仕様ではストリーミングおよび差分適用の詳細を定義しません。これらの機能は `Core.Parse.Streaming` 拡張に委ねられ、`Parser` の意味論と互換な `run_stream`/`resume` API、継続メタデータ、バックプレッシャ制御を個別に定義します。詳細は [Core.Parse.Streaming 拡張ガイド](guides/core-parse-streaming.md) を参照してください。
-
-ここでは以下の契約のみを前提とします。
-
-* ストリーミングランナーは `run`/`run_partial` と同じ `ParseResult`/`Diagnostic` 形式を再利用する。
-* インクリメンタル再パースは `commit_watermark` と `ParserId` 依存グラフを利用して影響範囲を絞り込む。
-* Feeder や DemandHint などの詳細型は拡張側で定義され、コアからは不透明。
-
 ---
 
-## G. 並列性・再入性
+## I. 並列性・再入性
 
 * パーサ値は **不変**であり、`State` は実行ごとに分離される。共有を行う場合は拡張側でスレッド安全性を保証する。
 * 同一入力内での並列実行は推奨しないが、モジュール単位の分割統治は上位レイヤで並列化できる。
 * GC やランタイム統合に関する詳細なコールバックは `guides/runtime-bridges.md` に委ね、コア仕様では純粋性と境界の明示のみを要求する。
 
 
-## H. パフォーマンス方針（実装規約）
+## J. パフォーマンス方針（実装規約）
 
 1. **ホット経路を手でループ化**
 
@@ -299,7 +326,7 @@ fn container_profile(profile: &str) -> RunConfig = match profile {
 
 ---
 
-## I. 互換と移行
+## K. 互換と移行
 
 * **`precedence` を使う限り左再帰は不要**（デフォルト `left_recursion=auto` がそれを尊重）。
 * 既存 PEG ルールを移植する場合は `packrat=true` を推奨、メモ窓でメモリをコントロール。
@@ -307,7 +334,7 @@ fn container_profile(profile: &str) -> RunConfig = match profile {
 
 ---
 
-## J. 仕様チェックポイント
+## L. 仕様チェックポイント
 
 - `run` / `run_partial` が `ParseResult` / `ParseResultWithRest` を返し、診断・未消費入力を一貫して扱うことを確認する。
 - `RunConfig` のコアスイッチ（require_eof / packrat / left_recursion / trace / merge_warnings）を実装し、既定値を明記する。
@@ -326,7 +353,7 @@ fn container_profile(profile: &str) -> RunConfig = match profile {
 * 診断品質（最遠エラー、SpanTrace、警告集約）とゼロコピー入力を中核に据え、DSL から大規模入力まで一貫した挙動を提供する。
 ---
 
-## K. Conductor 統合ポイント
+## M. Conductor 統合ポイント
 
 - Conductor 構文（[1-1 B.8](1-1-syntax.md)）で宣言された `ExecutionPlan` は本章のランナー設定と同一概念を共有し、`strategy`/`backpressure`/`error`/`scheduling` を `RunConfig.extensions` にエンコードして Core.Async へ伝達する。
 - `ExecutionPlan.strategy` が `adaptive_parallel` の場合、ランナーは依存 DAG を解析し、Packrat/左再帰の設定を自動調整する。

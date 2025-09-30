@@ -149,6 +149,8 @@ pub enum RuntimeCapability = {
   GPU,
   ThreadLocal,
   Vector512,
+  RegexJit,
+  RegexMetrics,
 }
 
 pub enum TargetCapability = {
@@ -212,7 +214,19 @@ if has_target_capability(TargetCapability::FilesystemCaseInsensitive) {
 * `FfiCapability`（[3-9](3-9-core-async-ffi-unsafe.md)）は `platform_info()` と `resolve_calling_convention` を参照し、ターゲットごとの ABI を自動選択する。Capability Registry でプラットフォーム情報を更新すると FFI バインディングも同時に反映される。
 * `Core.Env.resolve_run_config_target` / `merge_runtime_target`（3-10 §4）は `target_capabilities()` を利用して `RunConfigTarget.capabilities` を初期化し、`TargetProfile` の宣言値と実行時検出結果を統合する。不一致は `DiagnosticDomain::Target` の `target.capability.unknown` または `target.config.mismatch` として報告される。
 
-### 1.4 CapabilityError
+### 1.4 Regex Capability {#regex-capability}
+
+| Capability | 説明 | 主な利用者 |
+| --- | --- | --- |
+| `RuntimeCapability::RegexJit` | 正規表現の JIT コンパイルとネイティブ実行を許可。JIT 未対応プラットフォームでは `Core.Regex` が自動的に NFA 実装へフォールバック。 | `Core.Regex`, `Core.Parse.Regex`, `RunConfig` (`RegexRunConfig.engine = "auto"`) |
+| `RuntimeCapability::RegexMetrics` | マッチング時間・バックトラック深度などの計測値を収集し、監査ログとメトリクスに公開。 | `Core.Regex`, `Core.Diagnostics`, `AuditSink` |
+
+* `RuntimeCapability::RegexJit` が無効な場合、`PatternFlag::Jit` は `RegexErrorKind::CapabilityRequired` を返し、`feature {regex}` は NFA/Hybrid 実装のみを利用する（2.6 §F）。
+* `RuntimeCapability::RegexMetrics` を有効化すると `RunConfig.extensions["regex"].metrics=true` が要求され、`regex.match.duration` / `regex.backtrack.depth` をメトリクスストリームへ送信する。無効な場合はメトリクス計測を省略する。
+* Capability Registry は `register("regex", CapabilityHandle::Plugin(...))` を通じてサードパーティエンジンを差し替え可能とし、登録時に `UnicodeClassProfile.version` を `platform_features()` と照合する。
+* 監査強度ポリシー（3-6 §2.7）が `High` のときは `RegexRunConfig.audit` を省略できず、`RuntimeCapability::RegexMetrics` が未登録であれば `regex.audit.capability_missing` を発行する。
+
+### 1.5 CapabilityError
 
 ```reml
 pub type CapabilityError = {

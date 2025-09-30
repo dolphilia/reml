@@ -326,3 +326,101 @@ fn from_base64(text: Str) -> Result<Vec<u8>, DecodeError>       // `effect {mem}
 ```
 
 > 関連: [2.3 字句レイヤユーティリティ](2-3-lexer.md), [3.1 Core Prelude & Iteration](3-1-core-prelude-iteration.md), [3.2 Core Collections](3-2-core-collections.md), [3.5 Core IO & Path](3-5-core-io-path.md)
+---
+
+## 10. Regex エンジン連携 {#regex-engine}
+
+> 目的：`Core.Regex` と `Core.Parse` の責務境界を明示し、Unicode クラスと性能上の契約を統一する。
+
+### 10.1 API と型
+
+```reml
+module Core.Regex
+
+fn compile(pattern: Str, options: RegexOptions) -> Result<RegexHandle, RegexError> // `effect {regex}`
+fn run(handle: RegexHandle, text: Str, mode: RegexRunMode = default) -> RegexMatch // `effect {regex}`
+fn is_match(handle: RegexHandle, text: Str) -> Bool                                // `effect {regex}`
+fn to_diagnostic(error: RegexError) -> Diagnostic                                 // `@pure`
+
+type RegexOptions = {
+  unicode_profile: UnicodeClassProfile = UnicodeClassProfile::Unicode15,
+  flags: Set<PatternFlag> = {},
+  literal: Bool = false,
+  max_ast_nodes: usize = 4096,
+  audit: Option<AuditSink> = None,
+}
+
+enum PatternFlag =
+  | CaseInsensitive
+  | MultiLine
+  | DotMatchesNewline
+  | UnicodeClass
+  | GraphemeMode
+  | Jit
+
+type RegexRunMode = {
+  start_at: Option<ByteIndex> = None,
+  end_at: Option<ByteIndex> = None,
+  find_all: Bool = false,
+  timeout: Option<Duration> = None,
+}
+
+type RegexMatch = {
+  spans: List<Option<SpanBytes>>,
+  captures: List<Option<Str>>,
+  remainder: Option<SpanBytes>,
+  diagnostics: List<Diagnostic>,
+}
+
+type RegexError = {
+  kind: RegexErrorKind,
+  span: Option<Span>,
+  message: Str,
+  suggested_profile: Option<UnicodeClassProfile>,
+}
+
+enum RegexErrorKind =
+  | Syntax
+  | UnsupportedUnicodeClass
+  | UnsupportedFlag
+  | TooManyNodes
+  | Timeout
+  | CapabilityRequired
+
+type UnicodeClassProfile = {
+  version: UnicodeVersion,
+  enabled_sets: Set<Str>,
+  custom_sets: Map<Str, UnicodeSet>,
+}
+
+type UnicodeSet = {
+  name: Str,
+  ranges: List<(u32, u32)>,
+  description: Option<Str>,
+}
+```
+
+* `compile` は `RegexHandle` にコンパイル済みオートマトンと `UnicodeClassProfile` を格納する。`literal=true` の場合は正規表現メタ文字を無効化する。
+* `run` は `PatternFlag::GraphemeMode` が設定されている場合、書記素境界で停止位置を返す（`captures` も書記素単位）。
+* `RegexMatch.diagnostics` には回復時の警告や `timeout`・`max_ast_nodes` 超過が蓄積され、`Core.Parse.Regex.regex_capture`（2.2 §H-1）から `Diagnostic` へ転送される。
+* `UnicodeSet` は `Unicode.segment_graphemes`／`Unicode.category` の定義域と互換なコードポイント範囲を記録し、DSL 向けに追加クラスを導入できる。
+
+### 10.2 Unicode プロファイル運用
+
+- 既定の `UnicodeClassProfile::Unicode15` は Unicode 15.0 の一般カテゴリと絵文字クラスを含む。更新時は `version` を変更しつつ過去 3 バージョンとの互換テーブルを保持する（0-1 §3.1 準拠）。
+- `custom_sets` に登録したクラスは `\p{dsl:Name}` 形式で参照できる。`enabled_sets` に存在しない名前を使用した場合は `RegexErrorKind::UnsupportedUnicodeClass` を返す。
+- `Core.Parse` は `RegexHandle` の `unicode_profile.version` と `RunConfig.extensions["regex"].unicode_profile` を比較し、差異があれば `regex.unicode.mismatch` を `DiagnosticDomain::Regex` で生成する（2.2 §H-3）。
+
+### 10.3 Core.Parse 連携
+
+- `Core.Parse.Regex`（2.2 §H-1）の派生コンビネータは `run` の結果を `Parser` の `Reply` に変換し、`memo=auto` の判定に `RegexMatch.remainder` を利用する。
+- `RegexHandle` は `RunConfig.packrat` が `false` の場合でも、`PatternFlag::GraphemeMode` や `find_all=true` で内部的にメモ化を要求することがある。その際は `RegexMemoPolicy::Force` が暗黙に設定され、`RunConfig` 側へ警告（`regex.memo.promoted`）が追加される。
+- `regex_token` で得たトークンは `SpanBytes` と `Span` の両方を保持し、`Core.Diagnostics.highlights` が Grapheme 幅と整合するよう `Core.Text.display_width` を併用する。
+
+### 10.4 Capability・監査との整合
+
+- `PatternFlag::Jit` を指定する場合は [3.8 §1.4](3-8-core-runtime-capability.md#regex-capability) の `RuntimeCapability::RegexJit` が必要。未登録のプラットフォームで `Jit` を用いると `RegexErrorKind::CapabilityRequired` が返る。
+- `audit` を指定すると `RegexMatch.diagnostics` に照合イベントを記録し、`AuditSink` へ `regex.match` / `regex.timeout` / `regex.memo.promoted` といったイベントを送信する。`audit` が `None` のときはゼロコストで無効化される。
+- 実行統計（平均マッチ時間、最大バックトラック深度等）は `RuntimeCapability::RegexMetrics` が登録されている場合に限り収集され、`RunConfig.extensions["regex"].metrics=true` で opt-in する。
+
+> **0-1 指針との整合**：Unicode プロファイルの同期と Capability チェックにより、安全性（1.2）と国際化（3.1）を確保しつつ、`memo=auto` と JIT 選択で実用性能（1.1）を満たす。

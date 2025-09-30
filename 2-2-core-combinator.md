@@ -229,6 +229,39 @@ let factor: Parser<i64> = rule("factor",
 
 ---
 
+## H. Core.Regex 連携ガイド
+
+> 目的：正規表現エンジン（`Core.Regex`）を `Parser` 上で安全かつ高速に利用できるよう、責務境界と既定ポリシーを明確化する。
+
+### H-1. 派生コンビネータ（`Core.Parse.Regex` 名前空間）
+
+| API | 説明 | 効果 |
+| --- | --- | --- |
+| `regex(handle: RegexHandle) -> Parser<Str>` | 入力の先頭から `handle` にマッチした範囲を返す。失敗時は空失敗扱い。 | `effect {regex}` |
+| `regex_capture(handle: RegexHandle) -> Parser<List<Str>>` | キャプチャ群を `List<Str>` で返す。ゼロ幅先読み（lookaround）は `Str::empty` を返す。 | `effect {regex}` |
+| `regex_token(handle: RegexHandle, to_token: Str -> Token) -> Parser<Token>` | マッチ結果をトークン化し、`Core.Parse.Lex` のトークン列へ組み込む。 | `effect {regex}` |
+
+* これらは **派生コンビネータ**であり、実装は `regex(handle)` → `position()` → `Core.Regex.run` の合成で表現される。`Core.Parse` の最小公理系には追加されない。
+* `RegexHandle` の取得は [3.3 §9 Regex エンジン](3-3-core-text-unicode.md#regex-engine) の `Core.Regex.compile` を通じて行う。
+* `regex_token` は [2.3 字句レイヤ](2-3-lexer.md) の `Lex.token` と組み合わせ、字句層での効率的なパターン処理を提供する。
+
+### H-2. 責務境界
+
+1. **`Core.Regex`**（[3.3 §9](3-3-core-text-unicode.md#regex-engine)）はパターン解析・オートマトン構築・Unicode クラス互換性を担当する。
+2. **`Core.Parse`** は `RegexHandle` を受け取り、入力スライスと `Span` を管理する。`Parser` の `Reply` 契約（2.1）を尊重し、消費位置とコミットビットを正しく更新する。
+3. **`RunConfig`**（[2.6 §F](2-6-execution-strategy.md#regex-run-policy)）は Packrat/メモ化ポリシーとエンジン選択を制御し、既定値として `memo = Auto` を採用する。`Auto` は `regex_capture` が 3 段以上ネストしたケースでのみ Packrat を要求し、通常の字句認識ではキャッシュを使わない。
+4. JIT ベースのエンジンは [3.8 §1.4](3-8-core-runtime-capability.md#regex-capability) の Capability を満たすプラットフォームでのみ有効化される。Capability が無い場合は安全な NFA 実装にフォールバックする。
+
+### H-3. Unicode クラスの互換保証
+
+* `RegexHandle` は常に `UnicodeClassProfile`（3.3 §9-2）を保持し、`Core.Parse` は入力側の `UnicodeVersion` と一致するか検証する。差異がある場合は `DiagnosticDomain::Regex` の `regex.unicode.mismatch` を即時報告し、解析を中断する。
+* `RunConfig.extensions["regex"].unicode_profile` を指定すると、`Core.Regex.compile` が互換性チェックを行う。未指定時は `Unicode 15.0` を既定値とし、将来の更新は `feature {unicode-next}` フラグ経由で試験導入する。
+* Grapheme 単位での照合は `regex_capture` 後に `Core.Text.grapheme_seq` を利用し、`display_width` 計算（3.3 §5.1）と整合する。`regex(handle)` はバイト境界を返すが、`regex_capture` に `@g` フラグを付与すると書記素境界での切り出しを強制する。
+
+> **0-1 指針との適合**：`Auto` メモ化と Capability 連携により、性能原則（1.1）と安全性原則（1.2）を損なわずに正規表現 DSL を段階的に導入できる。
+
+---
+
 ## I. Capability 要求パターン
 
 Reml のパーサープラグインは、登録時に `Core.Parse.Plugin` 拡張が提供する `register_capability` API を介して機能を公開し、利用側は `with_capabilities` で必要機能を要求する。以下は **拡張モジュールが定義する Capability** と対応するコンビネータである（純粋なコアのみを使用する場合は読み飛ばしてよい）。
