@@ -181,6 +181,25 @@ fn resolve_catalog(namespace: Str) -> Option<DiagnosticCatalog>
 - `Parse.fail` から個別コードを利用する場合、`from_parse_error` に `code` を渡す前に `DiagnosticCatalog` に登録済みであることを確認し、未登録コードは拒否する。これにより 0-1 §2.2 が求める「修正候補と期待値」の事前審査が可能になる。
 - CLI/LSP はカタログの `docs_url` を `Diagnostic` の `extensions["docs"]` に反映し、開発者が即座にトラブルシューティング手順へアクセスできるようにする。
 
+### 2.4 効果診断メッセージ (Effect Domain) {#diagnostic-effect}
+
+> 1-3-effects-safety.md §I.5 と 3-8-core-runtime-capability.md §1.2 で定義した効果行整列・Stage/Capability 検査を `Diagnostic` と監査ログに落とし込むための共通仕様。
+
+| `message_key` | 既定 Severity | 発生条件 | 監査メタデータ | 推奨対応 |
+| --- | --- | --- | --- | --- |
+| `effects.contract.stage_mismatch` | Error | `@handles` や `@requires_capability` による Stage 宣言と、Capability Registry が認証した Stage（`EffectsExtension.stage`）が一致しない。 | `AuditEnvelope.metadata` に `effect.stage.required`, `effect.stage.actual`, `effect.capability` を格納し、`effects` 拡張の `residual` を JSON として添付する。 | ハンドラ／呼び出し元に正しい `@requires_capability(stage=...)` を付与し、Stage 昇格フローと整合させる。CI では `--deny experimental` を併用して検出を強制。 |
+| `effects.contract.reordered` | Warning（`Σ_after` が変化する場合は Error に昇格） | 効果ハンドラの並び替えによって `EffectsExtension.residual` が変化、捕捉対象が曖昧になる、または 1-3-effects-safety.md §I.5 の整列規約から逸脱。 | `AuditEnvelope.metadata` に `effect.order.before`, `effect.order.after`, `effect.residual.diff` を格納し、必要なら `recommendation` に最小修正案を記録する。 | 関連テストとリスク評価を添えたうえで整列規約へ戻すか、差分許容時は仕様書へ根拠を追記。CI では `--fail-on-warning` でブロックを推奨。 |
+
+両診断は `DiagnosticDomain::Effect` を既定とし、`Diagnostic.extensions["effects"]` に Stage・効果集合・未処理 operation を記録する。`AuditCapability` はこれらのメタデータを利用して Stage 昇格レビューを自動起案し、`RunConfig.extensions["effects"]` のポリシーで拒否された場合は `effects.contract.stage_mismatch` をエミットする。
+
+監査ログに出力する最低限のキーは次の通り。
+
+- `effect.stage.required` / `effect.stage.actual`: Stage 不一致の根拠。
+- `effect.residual.diff`: ハンドラ順序変更による残余効果の差分。空集合であれば情報系ログとして扱い、Severity を Warning に留める。
+- `effect.capability`: Stage チェックと紐づく Capability ID。`CapabilityRegistry::register` の記録と突き合わせて整合性を検証する。
+
+これらのキーは `AuditPolicy.exclude_patterns` で除外しない限り永続化され、`CapabilityAudit` レポートや LSP の効果ビューで差分分析に利用できる。
+
 ## 3. 監査ログ出力
 
 ```reml
