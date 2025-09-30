@@ -121,6 +121,12 @@ fn replace(str: Str, pattern: TextPattern, with: Str) -> Result<String, UnicodeE
 - `TextDecodeOptions` にはバッファサイズ・BOM 要否・不正バイトハンドリング（`Replace`/`Error`）を定義する。
 - `log_grapheme_stats` は `audit_id` と `change_set` を共通語彙として持ち、Chapter 3.6 で定義する監査モデルに合流する想定。
 
+### 5.1 Diagnostic ハイライト統合
+
+- `Core.Diagnostics.from_parse_error` と `Diagnostic.pretty` は、`Span` が示す範囲を `Core.Text.slice_graphemes` で抽出し、**`display_width` または `GraphemeSeq::width`** を利用して列オフセットと下線の長さを計算する。これにより、結合文字や絵文字を含む行でも 0-1 章で掲げる「分かりやすいエラーメッセージ」の条件を満たす。
+- `Core.Parse` から受け取る `Input` の `g_index` / `cp_index` キャッシュを再利用し、行頭からの累積幅は `display_width(Str::slice_graphemes(..))` の結果を合計して求める。再スキャンや手動の `grapheme_at` 逐次走査は避ける。
+- IDE / CLI での再描画は `GraphemeSeq` を保持したまま行い、均等幅フォント・可変幅フォントの双方で `width_map`・`grapheme_width` と整合することを確認する。幅計算を独自ロジックで複製しない（Unicode 仕様更新時の揺れを防ぐため）。
+
 ## 6. テキスト構築とビルダー
 
 ```reml
