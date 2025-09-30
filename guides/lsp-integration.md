@@ -90,13 +90,20 @@ fn to_lsp_diagnostics(diags: List<Diagnostic>) -> List<LspDiagnostic> =
   })
 ```
 
+### 3.1 `display_width` を利用した列同期
+
+- `span_to_range` では 1-4 §G.1 / 2-5 §B-11 / 3-3 §5.1 の規約に従い、行頭から対象スパンまでを `Core.Text.slice_graphemes` で抽出し、`Core.Text.display_width` で列オフセットと長さを算出する。ASCII 長に基づく `len()` や手動の `String.grapheme_at` 反復は禁止。
+- LSP の `Range` と CLI 抜粋表示を一致させるため、`RunConfig` が提供する `Input.g_index` / `cp_index` キャッシュを再利用し、`span_to_range` 内で O(1) の列計算を行う。必要な補助データ（グラフェム幅ベクトルなど）が無い場合は、`Diagnostic.extensions["lsp"].display_cache` に格納してクライアントと共有する。
+- 未更新 IDE の互換性を保つには、`Diagnostic.extensions["lsp"].utf16_len` といった UTF-16 コード単位の補助情報を保持しつつ、下線描画自体は display width 基準で行う。
+- CI テストでは結合文字列（例: `"Å"`, `"👨‍👩‍👧"`）を含むスナップショットを追加し、CLI (`reml-run lint --format text`) と LSP (`textDocument/publishDiagnostics`) が同一の列開始/終了値を出力することを検証する。
+
 - `audit_id` を IDE 側で保持し、承認フローや差分レビューに利用。
 - `change_set` を JSON として埋め込むことで、設定差分を IDE 上で表示可能。
 - `severity_hint` に基づき、IDE 側で「ロールバック推奨」「再試行可」などのガイドを提示できる。
 - `stream_meta` フィールドは `StreamEvent`/`ContinuationMeta` のサマリを格納し、ライブ補完やバックプレッシャ指標をステータスバーへ表示できる。
 - `quality_report_id` には `QualityReport.audit_id` の参照を保持し、データ品質診断を IDE から直接リンクできる。
 
-### 3.1 多言語診断の運用モデル
+### 3.2 多言語診断の運用モデル
 
 1. サーバは `PrettyOptions.locale` に基づく整形済み文字列を `message` へ格納しつつ、`data.message_key` と `data.locale` を併記
    する。クライアントは `message_key` で翻訳テーブルを引き、ユーザ設定ロケールと異なる場合は `locale_args` を用いて再整形できる。

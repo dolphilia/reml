@@ -1,8 +1,8 @@
 module samples.language_impl_comparison.markdown_parser
 
 use ::Core.Collection.List as List
+use ::Core.Text as Text
 use ::Core.Text.String as String
-use ::Core.Text.Grapheme as Grapheme
 use ::Core.Text.Char as Char
 
 /// Markdown AST の要素型。
@@ -30,6 +30,7 @@ type ParseState = {
   input: String,
   pos: Int,        // バイト位置
   line: Int,
+  line_start: Int, // 現在行のバイト先頭
   col: Int,
   errors: List<String>
 }
@@ -37,16 +38,11 @@ type ParseState = {
 type ParseResult<T> = Result<(T, ParseState), String>
 
 /// 手続き的パーサー：Unicode 3層モデルを意識した実装。
-/// Byte/Char/Grapheme の使い分けを明示的に行う。
+/// Byte/Char を追跡しつつ `display_width` で Grapheme 単位の表示幅を計算する。
 
 /// 現在位置の1文字（Char）を取得。
 let peek(state: ParseState) -> Option<Char> =
   String.char_at(state.input, state.pos)
-
-/// 現在位置の1書記素クラスター（Grapheme）を取得。
-/// 絵文字や結合文字の扱いに必要。
-let peek_grapheme(state: ParseState) -> Option<Grapheme> =
-  String.grapheme_at(state.input, state.pos)
 
 /// 1文字（Char）を消費して進める。
 let advance_char(state: ParseState) -> ParseState =
@@ -55,22 +51,13 @@ let advance_char(state: ParseState) -> ParseState =
   | Some(ch) ->
     let byte_len = Char.utf8_len(ch)
     let new_pos = state.pos + byte_len
-    let (new_line, new_col) =
-      if ch == '\n' then (state.line + 1, 0)
-      else (state.line, state.col + 1)
-    { state with pos = new_pos, line = new_line, col = new_col }
-
-/// 1書記素クラスター（Grapheme）を消費して進める。
-/// 絵文字や結合文字を正しく1単位として扱う。
-let advance_grapheme(state: ParseState) -> ParseState =
-  match peek_grapheme(state) with
-  | None -> state
-  | Some(grapheme) ->
-    let byte_len = Grapheme.byte_len(grapheme)
-    let new_pos = state.pos + byte_len
-    // Grapheme単位でのカラム計算（表示幅考慮）
-    let new_col = state.col + Grapheme.display_width(grapheme)
-    { state with pos = new_pos, col = new_col }
+    let (new_line, new_line_start, new_col) =
+      if ch == '\n' then (state.line + 1, new_pos, 0)
+      else
+        let line_slice = String.slice(state.input, state.line_start, new_pos)
+        let width = Text.display_width(line_slice)
+        (state.line, state.line_start, width)
+    { state with pos = new_pos, line = new_line, line_start = new_line_start, col = new_col }
 
 /// 固定文字列をマッチ（NFC正規化前提）。
 let match_string(target: String, state: ParseState) -> Option<ParseState> =
@@ -236,6 +223,7 @@ pub fn parse(input: String) -> Result<Document, String> =
     input: input,
     pos: 0,
     line: 1,
+    line_start: 0,
     col: 0,
     errors: []
   }
