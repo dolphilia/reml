@@ -189,6 +189,13 @@ fn sum_positive(xs: List<Int>) -> Result<Int, Diagnostic> =
 - 可変コンテナ（`Vec`/`Cell`）を収集先とする場合、`Collector` 実装が `effect {mut}` を宣言し、`Iter` 側はタグを転写する。これにより `mut` 効果を局所化しつつ宣言的パイプラインを維持できる。
 - Unicode 分解・正規化は `Iter.map`/`Iter.flat_map` と `Core.Text` の helper を接続することで段階的に適用でき、Lex レイヤでの字句検査とも互換となる。【F:notes/core-library-scope.md†L7-L24】
 
+#### 3.6.1 標準コレクションへの収集契約
+
+- `Iter.collect_list`/`Iter.collect_vec` は入力イテレータの訪問順をそのまま保持し、`List`/`Vec` での添字アクセスや診断表示がパイプラインの実行順と一致するように保証する。これにより「実用に耐える性能」を満たしつつ、再実行時のトレース容易性を確保する。【F:0-1-project-purpose.md†L11-L37】
+- `MapCollector` は内部でキーを `Ord` に従って挿入し、永続 `Map` が常に昇順イテレーションを返す前提を維持する。診断ログや監査ログで差分を比較する際に行番号がぶれないよう、`Map.try_collect` 系はキー競合時に `CollectError::DuplicateKey` を返す契約を共有する。【F:3-6-core-diagnostics-audit.md†L42-L88】
+- `ListCollector`/`SetCollector` は構造共有を前提とした参照カウントを維持し、`Iter` パイプライン側からは `@pure` 契約を壊さない。`List.fold` と `Iter.fold` はどちらも左結合で評価し、DSL 作者が `List` ベースと `Iter` ベースを同じ計算モデルとして学習できるようにする。【F:0-1-project-purpose.md†L29-L44】【F:3-2-core-collections.md†L24-L86】
+- `Iter.from_list` → `Iter.try_collect(MapCollector)` のような二段変換では、中間リストが保持していた順序が `Map` でソートされる点を仕様上で明示し、`Table` や `Vec` に収集するパスと挙動を比較しやすくする。必要に応じて `TableCollector` を用いることで挿入順を保持したまま DSL のエラーメッセージを生成できる。
+
 ### 3.7 効果許容ポリシーと `@pure` 両立サンプル（実験段階）
 
 Prelude/Iter は `@pure` を基本としつつ、効果ハンドラ経由で副作用付き処理を分離できる設計とする。
