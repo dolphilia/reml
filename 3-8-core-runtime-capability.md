@@ -104,6 +104,23 @@ fn verify_capability_security(handle: CapabilityHandle, security: CapabilitySecu
 * `SecurityPolicyRef` は `SecurityCapability` が管理するポリシーへの参照で、`enforce_security_policy` 実行時に `verify_capability_security` と一致することを要求する。
 * `SandboxProfile` は CPU・メモリ・ネットワークの制約を記述する共通構造体で、§6.1 の `SandboxConfig` を再利用して定義する。
 
+#### 効果ステージとハンドラ契約 {#capability-stage-contract}
+
+| 効果 `stage` | 必須属性 | Capability Registry の検証 | 備考 |
+| --- | --- | --- | --- |
+| `Experimental` | `@requires_capability(stage="experimental")` を必須とし、`@handles` で捕捉する際も同属性を付与する。 | `register` 時に `effect_scope` と合わせて Stage 情報を格納し、ハンドラ適用時に `CapabilityRegistry::get` へ問い合わせて許可済みか検査する。 | PoC/社内実験用途。CI では `--deny experimental` フラグで一括拒否可能。 |
+| `Beta` | `@requires_capability(stage="beta")` を推奨（省略時は `experimental` と同等の検査を行う）。 | Stage 昇格時に `SecurityCapability` が監査証跡を確認し、`effect_scope` の差分が無いか検証する。 | 機能フリーズ前の互換性検証フェーズ。 |
+| `Stable` | Capability 属性は任意。`@handles` のみで捕捉可能。 | `register` 後は Stage 情報を `CapabilityRegistry::stage_of(effect_tag)` にキャッシュし、ドキュメント生成と IDE へ公開する。 | LTS ポリシー対象。 |
+
+ハンドラが捕捉する効果タグ `Σ_handler` を評価する際、ランタイムは次の手順で認証を行う。
+
+1. `EffectDecl`（1-3 §I.1）から `stage` と `effect_scope` を取得し、Capability Registry に登録済みか照会する。
+2. ハンドラに付与された `@requires_capability` / `@handles` 属性から宣言済みの Stage を抽出し、表の条件を満たしているかを比較する。
+3. 不一致の場合は `CapabilityError::SecurityViolation` を生成し、`effects.contract.stage_mismatch` 診断で呼び出し元に伝播する。
+4. 診断メッセージは 0-1-project-purpose.md §1.2 の安全性基準に従い、拒否理由と必要な Capability/Stage を列挙する。
+
+この検査結果は §4 で定義する `AuditCapability` のシンクへ送信され、`Core.Diagnostics`（3.6 節）の `audit` 効果経由で共有される。IDE/LSP から参照する場合は、[notes/dsl-plugin-roadmap.md §5](notes/dsl-plugin-roadmap.md#effect-handling-matrix) の比較表を利用してガイダンスを提示する。
+
 ### 1.3 プラットフォーム情報と能力 {#platform-info}
 
 ```reml

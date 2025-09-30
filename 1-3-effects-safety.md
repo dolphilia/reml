@@ -267,6 +267,32 @@ Chapter 3 の標準ライブラリは `Σ_core` / `Σ_system` を細分化する
 * `stage = Experimental` の効果を捕捉・発生させる、または `@reentrant` を付与するハンドラには `@requires_capability(stage="experimental")` を併用しなければならない。Capability Registry は登録時に stage を検証し、未承認の場合は `CapabilityError::SecurityViolation` を返す。
 * `stage` を `Beta`/`Stable` に昇格させる際は、残余効果計算と `@dsl_export` / マニフェスト（3.7 節）の期待集合が一致することを整合チェックで確認する。
 
+### I.5 効果行の整列とハンドラ合成順序 {#effect-line-ordering}
+
+> 0-1-project-purpose.md §2.3 の「段階的な抽象化拡張」を満たすため、効果の列挙とハンドラ構成を読者が一目で追えるよう規約を定義する。
+
+* **効果行の整列基準**：`fn ... -> R with ...`、`handler ... for ...`、およびドキュメントコメント内の効果一覧は、次の優先順位で並べる。
+  1. ビルトイン効果タグ（`mut` → `io` → `panic` → `unsafe` → `ffi` → `runtime`）。
+  2. ビルトインタグに属するサブタグ（例：`io (async, timer)`）は括弧内をアルファベット順に並べる。
+  3. ユーザー定義効果は基底タグ名を辞書順に整列し、同一タグに型パラメータがある場合は型名を再帰的に辞書順で比較する。
+  4. Capability に結び付いたタグ（3.8 節）を列挙する際は、要求される `stage` が高いもの（`Experimental` → `Beta` → `Stable` の順）を先に書き、ポリシー差分を明示する。
+  順序は実行時の意味に影響しないが、仕様・ドキュメント・診断出力で同一順序を維持することで差分レビューと自動生成物の整合性を確保する。
+
+* **`perform` の評価順序**：`perform Effect.operation(arg1, arg2, …)` は [1-1-syntax.md §C.9](1-1-syntax.md#c9-評価順序と短絡規則) に従い、
+  1. `Effect` と `operation` の解決を静的に行う。
+  2. 引数を左から順に評価し、途中で例外が発生した場合は以降の引数評価・効果発火を行わない。
+  3. 潜在効果集合 `Σ_before` に `Effect.tag` を追加したのち、スタック上のハンドラ探索に移る。
+
+* **ハンドラ探索と合成順序**：
+  - `handle h1 do handle h2 do expr` のようにネストした場合、内側から外側へ順に探索する。`h2` が対象タグを捕捉すれば `resume` 先は `h2` より外側のフレームに転送され、`h1` は残余効果にのみ作用する。
+  - `resume` を複数回呼び出した場合、各 `resume` 呼び出しは呼び出し順に同じ continuation を再開し、継続から戻った効果を再び `Σ_residual` へ合成する。`resume` 前後で `stage` や Capability 要件が変化した場合は [3-8-core-runtime-capability.md §1.2](3-8-core-runtime-capability.md#capability-stage-contract) の検査を再評価する。
+
+* **ハンドラの入れ替え規則**：
+  - 動的順序が意味に影響するため、ハンドラの再配置は `Σ_after` が変わらないことを条件にのみ認める。`State` → `Except` → `Choose` を `Choose` → `State` → `Except` に並び替えると `State` の操作が複数回実行され得るため、変更理由をコメントで明示し、テストで挙動を検証する。
+  - `@handles` 属性を持つハンドラを別段に移動する場合は、捕捉順序の差異を `effects.contract.reordered` 診断として通知する（新設予定）。
+
+* **診断とドキュメント生成**：効果行の整列基準に従っていない場合、ドキュメント生成と LSP 診断は整列済みのリストを提示し、開発者に差分を提示する。これにより、DSL エクスポートや Capability Registry（3.8 節）と同じ序列で比較できる。
+
 ---
 
 ## J. 効果と型推論の接続（実装規約）
