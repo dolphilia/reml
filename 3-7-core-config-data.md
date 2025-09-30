@@ -109,7 +109,46 @@ expect_effects_stage = "experimental"
 3. `declared_effects` と `signature.allows_effects` を比較し、一致しない場合は `diagnostic("manifest.dsl.effect_mismatch")` を生成（Chapter 3.6 §9 で CLI へ伝播）。
 4. `kind` と `signature.category` が一致しない場合は型検査を中断し、`diagnostic("manifest.dsl.category_mismatch")` を返す。
 
-このワークフローにより、マニフェスト・言語仕様・CLI が同じ DSL メタデータを共有できる。詳細な記述ガイドは `guides/manifest-authoring.md` で扱う。
+### 1.5 互換モード（`ConfigCompatibility`）
+
+JSON5 や TOML など、現実の構成ファイルは標準仕様にない拡張（コメント、トレーリングカンマ、bare key 等）を持つ。Reml ではこれらを Stage/監査ポリシーに沿って制御するため、互換モードを以下の構造で表現する。
+
+```reml
+type ConfigCompatibility = {
+  trivia: ConfigTriviaProfile = ConfigTriviaProfile::strict_json,
+  trailing_comma: TrailingCommaMode = TrailingCommaMode::Forbid,
+  unquoted_key: KeyPolicy = KeyPolicy::Forbid,
+  duplicate_key: DuplicateKeyPolicy = DuplicateKeyPolicy::Error,
+  number: NumberCompatibility = NumberCompatibility::Strict,
+  feature_guard: Set<Str> = {},
+}
+
+enum TrailingCommaMode = Forbid | Arrays | Objects | ArraysAndObjects
+enum KeyPolicy = Forbid | AllowAlpha | AllowAlphaNumeric
+enum DuplicateKeyPolicy = Error | LastWriteWins | CollectAll
+enum NumberCompatibility = Strict | AllowLeadingPlus | AllowHexFloat
+
+fn compatibility_profile(format: ConfigFormat, stage: Stage) -> ConfigCompatibility
+fn resolve_compat(cfg: RunConfig, format: ConfigFormat) -> ConfigCompatibility
+fn with_compat(cfg: RunConfig, compat: ConfigCompatibility) -> RunConfig
+```
+
+- `trivia` は 2-3 §G-1 の `ConfigTriviaProfile` を参照し、字句レベルの互換挙動（コメント・shebang 等）を共有する。CLI/LSP は `RunConfig.extensions["config"].trivia` を設定して一貫性を確保する。
+- `trailing_comma` は寛容モードを選択しても `Diagnostic.notes += { label = "config.compat", value = "trailing_comma" }` を追加し、監査ログが互換拡張の使用箇所を追跡できる（3-6 §2.4）。
+- `unquoted_key` は bare key の許容範囲を制御する。禁止状態で検出した場合は `Diagnostic.code = "config.key.unquoted"` を報告し、`AllowAlpha` は `[A-Za-z_]`、`AllowAlphaNumeric` は `[A-Za-z0-9_\-]` まで許容する。
+- `duplicate_key` が `CollectAll` の場合、CLI は `ChangeSet.duplicates` に値を追加し、レビューで衝突解消を促す。`LastWriteWins` は JSON5 互換挙動だが、`RunConfig.extensions["config"].policy = "warn"` を既定にする。
+- `number=AllowHexFloat` は HPC 系設定で使われるが、0-1 §1.1 の性能要求を満たすために `Diagnostic.extensions["config"].number_mode` に正規化済み桁情報を保持する。
+- `feature_guard` は `RunConfig.extensions["config"].features` と一致させ、`compatibility_profile` が Stage ごとに推奨値（`Experimental` は最も寛容）を返す。未承認の機能を本番で有効化しようとすると `Diagnostic.code = "config.feature.unapproved"` を返し、3-6 §3.2 の監査ポリシーに従って拒否する。
+
+`resolve_compat` は以下の優先順位でプロファイルを決定する：
+
+1. `RunConfig.extensions["config"].compat` が存在すればそれを採用。
+2. `reml.toml` の `config.compatibility.<format>` を Stage と feature guard を検証した上でマージ。
+3. それ以外は `compatibility_profile(format, Stage::Stable)` を既定値とする。
+
+互換モードを切り替えた際は `Core.Diagnostics` が `AuditEvent::ConfigCompatChanged` を記録し、`Diagnostic.severity` を `Warning` 以上に設定することで 0-1 §1.2 の安全性を維持する。CLI/LSP/ビルドは `resolve_compat` の結果を共通で使用し、環境差異による設定解析の不一致を防止する。
+
+このワークフローにより、マニフェスト・言語仕様・CLI が同じ DSL メタデータと互換モードを共有できる。詳細な記述ガイドは `guides/manifest-authoring.md` と `guides/config-compatibility.md`（新規作成予定）で扱う。
 
 ## 2. Config スキーマ API（再整理）
 

@@ -51,6 +51,24 @@ fn config_dir(app: Str) -> Result<Path, EnvError>                  // `effect {i
 * `cache_dir` / `config_dir` は XDG / AppData / Library 以下など**プラットフォームごとの標準位置**を解決し、`Core.Path.normalize_path`（[3-5](3-5-core-io-path.md)）で正規化した `Path` を返す。
 * 生成されるディレクトリは呼び出し側が作成・権限調整を行う。自動作成は行わない（ライフサイクルはアプリケーション責務）。
 
+### 2.1 設定互換フラグの解決
+
+設定ファイルの互換モード（3-7 §1.5）は `RunConfig.extensions["config"]` を通じて供給される。CLI/CI は環境変数でオーバーライドできるよう、以下のキーを予約する。
+
+| 環境変数 | 例 | 説明 |
+| --- | --- | --- |
+| `REML_CONFIG_COMPAT` | `json.relaxed` | 互換プロファイル名（`compatibility_profile` が解決できる識別子）。|
+| `REML_CONFIG_FEATURES` | `trailing_comma,hex_float` | 明示的に許可する互換機能（カンマ区切り、下線・スペース不可）。|
+| `REML_CONFIG_TRIVIA` | `shebang=true;hash_inline=true` | `ConfigTriviaProfile` の追加フラグ。キー=値をセミコロン区切り。|
+
+解決アルゴリズム：
+
+1. `REML_CONFIG_COMPAT` を読み取り、`compatibility_profile(format, Stage::Stable)` から派生した設定をベースにする。未知の値は `EnvErrorKind::UnsupportedPlatform` で拒否し、`Diagnostic.code = "config.compat.unknown_profile"` を出力。
+2. `REML_CONFIG_FEATURES` を解析し、`feature_guard` に挿入する。`RunConfig.extensions["config"].features` へも同じ集合をセットし、3-7 §1.5 の検証を満たす。
+3. `REML_CONFIG_TRIVIA` が指定されていれば `ConfigTriviaProfile` を調整し、`RunConfig.extensions["config"].trivia` を更新する。未知キーは `EnvErrorKind::UnsupportedPlatform`。
+
+これらの値は `infer_target_from_env` と同様に `RunConfig` 構築時へ反映され、LSP・CLI・ビルドが同じ互換プロファイルを使用する。0-1 §1.2 の安全性を守るため、互換機能が本番で有効化された場合は `AuditEvent::ConfigCompatChanged` を必ず発行し、`RunConfig.extensions["audit"].policy` に従ってレビューを促す。
+
 ## 3. プラットフォーム情報の取得
 
 ```reml

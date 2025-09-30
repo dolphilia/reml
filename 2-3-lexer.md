@@ -200,6 +200,48 @@ fn grapheme() -> Parser<Grapheme>                    // 拡張書記素 1 つ
 * `till` は **ゼロ幅 end** に注意（実装で guard）。
 * `take` は **Bytes** を返し、**UTF-8 破壊の可能性を型で表す**（1.4 の方針に従う）。
 
+### G-1. 設定ファイル互換プロファイル
+
+> 目的：JSON/TOML などの設定 DSL が要求する「コメント許可」「トレーリングカンマ許容」等の互換性要件を、再利用可能なプロファイルと診断一貫性のあるユーティリティに集約する。0-1 §1.1 の性能と 0-1 §1.2 の安全性を守りつつ、開発現場で一般的な拡張仕様へ素早く適応できるようにする。
+
+```reml
+type ConfigTriviaProfile = {
+  line: List<Str> = ["//"],
+  block: List<CommentPair> = [CommentPair("/*", "*/", nested=false)],
+  shebang: Bool = false,
+  hash_inline: Bool = false,
+  doc_comment: Option<Str> = None,
+}
+
+type CommentPair = {
+  start: Str,
+  end: Str,
+  nested: Bool = true,
+}
+
+const ConfigTriviaProfile::strict_json: ConfigTriviaProfile
+const ConfigTriviaProfile::json_relaxed: ConfigTriviaProfile
+const ConfigTriviaProfile::toml_relaxed: ConfigTriviaProfile
+
+fn config_trivia(profile: ConfigTriviaProfile) -> Parser<()>
+fn config_lexeme<A>(profile: ConfigTriviaProfile, p: Parser<A>) -> Parser<A>
+fn config_symbol(profile: ConfigTriviaProfile, s: Str) -> Parser<()>
+```
+
+* `strict_json` はコメント禁止・`shebang=false`・`hash_inline=false`。JSON 仕様準拠の入力に使用する。
+* `json_relaxed` は `line=["//"]`・`block=[CommentPair("/*","*/", nested=false)]`・`shebang=true` を既定とし、`samples/language-impl-comparison/reml/json_extended.reml` が手書きしていた設定を置き換えられる。
+* `toml_relaxed` は `line=["#","//"]`・`block=[]`・`hash_inline=true` を既定とし、`Cargo.toml` 互換のコメント挙動を提供する。
+
+**診断と RunConfig 連携**
+
+* `config_trivia` は `whitespace()`/`commentLine()`/`commentBlock()` を内部で合成し、`shebang` が有効な場合は入力先頭に限り `#!` を読み飛ばす。複数回呼び出しても二行目以降の `#!` はコメント扱いしない。
+* 失敗時には `ParseError.label = "lex.config.trivia"` を付与し、3-6 §2.2 の `from_parse_error` で `Diagnostic.code = "config.trivia.invalid"` が生成される。
+* `doc_comment=Some(prefix)` の場合、そのコメントを `Diagnostic.notes` に `comment.doc` ラベルで追記し、LSP/CLI が設定項目の説明を提示できるようにする。
+* `RunConfig.extensions["config"].trivia` に `ConfigTriviaProfile` を格納すると、`config_trivia`/`config_lexeme`/`config_symbol` が同じプロファイルを共有し、CLI・LSP・テストが互換モードを自動で揃えられる。未指定時は `strict_json`。
+* トレーリングカンマや未定義フィールドなど、構文側で処理すべき互換機能は 3-7 §1.5 の `ConfigCompatibility` と連携する。字句段階はカンマの存在を正確に報告し、許可されていない場合は構文が `Diagnostic.severity = Error` として拒否する。
+
+> **実装メモ**: `ConfigTriviaProfile` は `RunConfig.extensions["config"].features` による feature guard と併用し、互換機能を本番環境で段階的に有効化できるようにする（3-10 §2）。
+
 ---
 
 ## H. 行頭・行末・インデント（任意）
