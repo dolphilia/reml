@@ -2,19 +2,37 @@
 
 このディレクトリは Reml の記述性や読みやすさを他言語と比較するための試行的な小規模言語実装をまとめています。対象は以下の通りです。
 
-- Reml 擬似コード: `reml/`
-- Rust 実装: `rust/`
-- OCaml 実装: `ocaml/`
-- Haskell 実装: `haskell/`
-- Elixir 実装: `elixir/`
+## Remlと比較対象となる言語・機能
+
+- Reml（擬似コード）: `reml/`
+- Rust: `rust/`
+- OCaml: `ocaml/`
+- OCaml 5: `ocaml5/`
+- Haskell: `haskell/`
+- Elixir: `elixir/`
+- F#: `fsharp/`
+- Koka: `koka/`
+- Raku: `raku/`
+- Scala 3: `scala3/`
+- Elm: `elm/`
+- Swift: `swift/`
+- Nim: `nim/`
 - パーサーコンビネーター利用例: `parser-combinator/`
 - パーサージェネレーター利用例: `parser-generator/`
 
-各サブディレクトリには、以下の 3 種類のミニ言語を題材にしたサンプルが含まれています。
+## 実装する小規模言語
 
-1. ミニ Lisp 評価機: `mini_lisp.*`
-2. JSON パーサー: `json_parser.*`
-3. PL/0 風トイ言語コンパイラ断片: `pl0.*`
+1. **ミニ Lisp 評価機** (`mini_lisp.*`)
+2. **JSON パーサー** (`json_parser.*`)
+3. **PL/0 風トイ言語コンパイラ断片** (`pl0.*`)
+4. **Markdown風軽量マークアップパーサー** (`markdown_parser.*`)
+5. **SQL風クエリ言語パーサー** (`sql_parser.*`)
+6. **代数的効果を使うミニ言語** (`algebraic_effects.*`)
+7. **正規表現エンジン** (`regex_engine.*`)
+8. **YAML風パーサー** (`yaml_parser.*`)
+9. **TOML風設定ファイルパーサー** (`toml_parser.*`)
+10. **テンプレート言語** (`template_engine.*`)
+11. **JSON拡張版** (`json_extended.*`)
 
 Reml 版は仕様記述に合わせて `reml` 言語タグのコードブロックを用いています。他言語のサンプルはコンパイル可能な構造を意識しつつも、比較のため読みやすさを優先した最小実装に留めています。関数型言語（Haskell/OCaml）では純粋性と型推論の違い、Elixir では BEAM 上のパターンマッチとプロセス指向という観点で Reml と対比できるよう構成しています。
 
