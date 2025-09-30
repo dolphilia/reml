@@ -167,6 +167,20 @@ fn Err.custom(at: Span, msg: Str) -> ParseError
 * `Diagnostic.extensions["effects"]` には `{ stage: Str, before: Set<Str>, handled: Set<Str>, residual: Set<Str>, handler: Option<Str>, unhandled: List<Str> }` を格納する。`before` はハンドラ適用前の潜在効果集合、`handled` は捕捉成功した集合。
 * CLI は `--effects-debug` オプションが有効な場合、`extensions["effects"]` を整形して追加表示し、LSP は `data.effects` を参照して UI に残余タグを提示できる。
 
+### B-11. `Parse.fail` / `Parse.recover` から `Diagnostic` へ接続する手順
+
+> 0-1 §2.2「分かりやすいエラーメッセージ」を満たすため、`Parse.fail` に素朴な文字列を渡すだけで終わらせず、ここで定める手順で `Diagnostic` を構築する。
+
+1. **スパンの決定**：現在位置を 2.1 §C のスパン取得ヘルパで取得し、`at` にはグラフェム境界を含む最小スパンを渡す。トークンを先読み済みの場合は、消費済み領域と現在位置を比較して誤差を ±1 グラフェム以内に補正する。
+2. **期待集合の整備**：語句や記号が明確な場合は `Err.expected(at, {Token("}")})` のように構造化した `Expectation` を使い、自由形式メッセージが必要な場合のみ `Err.custom` を使用する。単純な文字列を直接 `Parse.fail` に渡すと期待集合が失われるため、最低限 `Expectation::Rule` か `Expectation::Custom` を付与しておく。
+3. **文脈の付加**：`label` / `rule` を設定済みの箇所では `Err.withContext(error, "rule-name")` を必ず通し、`context` が空になるケースを避ける。特に DSL では「while parsing block → statement」のように 2 階層以上の文脈を確保する。
+4. **診断生成ヘルパの利用**：`Err.toDiagnostics(src, error, opts)` を呼び出し、`opts` には `PrettyOptions{ locale = run_config.locale }` を渡す。これにより 3.6 §2.2 で定める変換規約が適用され、監査メタや `expected_summary` が自動的に作成される。
+5. **監査メタの橋渡し**：`RunConfig.extensions["audit"].envelope` などで取得した監査コンテキストがある場合、返却する `Diagnostic` の `audit_id` / `change_set` を保持したまま呼び出し元へ伝播させる。`Parse.recover` は失敗診断を `ParseError.secondaries` へ複製し、回復後も監査ログに残るようにする。
+6. **エラーコードと Severity**：デフォルトでは `Severity::Error`, `DiagnosticDomain::Parser`, `code = None` とする。個別コードを割り当てる場合は 3.6 §2 で登録済みのカタログを参照し、未登録コードを直接埋め込まない。
+7. **品質検証**：`Err.pretty` の結果が 0-1 §2.2 の指標（行列表示・期待値提示・修正候補）を満たすかをテストや CLI で継続的に検証する。`RunConfig.merge_warnings=false` のモードで回復診断を確認し、曖昧な `Parse.fail` が混入した場合に検知する。
+
+`Parse.recover` の実装は上記の `Parse.fail` と同じ経路で `Diagnostic` を生成し、復旧地点に `FixIt::Insert` や `FixIt::Replace` を自動付与する。これにより `Parse.recover` の戻り値として AST 内に挿入される `ErrorNode` と診断情報が一致し、IDE 上での可視化と監査出力が同期する。
+
 ---
 
 ## C. 表示（pretty）と多言語

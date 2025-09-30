@@ -137,6 +137,50 @@ fn tap_diag<T>(result: Result<T, Diagnostic>, inspect: (Diagnostic) -> ()) -> Re
 - `IntoDiagnostic` トレイトにより任意のエラー型を `Diagnostic` へ変換。
 - `tap_diag` は監査ログ出力や統計集計に利用でき、`effect {audit}` を明示する。
 
+### 2.2 Core.Parse 連携（`Parse.fail` / `Parse.recover`）
+
+```reml
+type ParseDiagnosticOptions = {
+  severity: Severity = Severity::Error,
+  domain: DiagnosticDomain = DiagnosticDomain::Parser,
+  code: Option<Str> = None,
+  locale: Option<Locale> = None,
+  audit: Option<AuditEnvelope> = None,
+  attach_span_trace: Bool = true,
+}
+
+fn from_parse_error(src: Str, err: ParseError, opts: ParseDiagnosticOptions) -> Diagnostic      // `@pure`
+fn from_parse_errors(src: Str, errs: List<ParseError>, opts: ParseDiagnosticOptions) -> List<Diagnostic> // `@pure`
+```
+
+- `locale` は 2.5 §B-11 の手順で `RunConfig.locale` を渡し、未指定時は CLI/LSP 側の既定値を利用する。
+- `audit` へ値を渡すと `Diagnostic.audit` が事前に設定され、監査ライン（§3）でそのまま利用できる。`RunConfig.extensions["audit"].envelope` を `Some(AuditEnvelope)` にしておくと、`Core.Parse` は `Parse.fail` 実行時にこの値を引き継ぐ。
+- `attach_span_trace=false` とすると、`ParseError.span_trace` があっても `Diagnostic.span_trace` へコピーしない。ストリーミング実行などで診断サイズを抑えたい場合に使用する。
+- `Parse.recover` は `from_parse_error` で得られた `Diagnostic` を `secondary` として保持しつつ、復旧位置に FixIt を追加する。復旧成功後でも診断の `severity` は原則変更しない（CLI 側で `merge_warnings` を有効化すると Warning へ落とす運用が可能）。
+
+`Err.toDiagnostics`（2.5 §F）と CLI/LSP 実装は上記 API を共有し、1 回の失敗につき 1 件以上の `Diagnostic` を生成する。`ParseError.secondaries` に複数の補助診断がある場合、`from_parse_errors` は順序を保持したまま結合し、`Diagnostic.secondary` へ変換する。
+
+### 2.3 エラーコードカタログ
+
+```reml
+type DiagnosticCatalog = Map<Str, DiagnosticTemplate>
+
+type DiagnosticTemplate = {
+  default_message: Str,
+  default_severity: Severity,
+  default_domain: DiagnosticDomain,
+  docs_url: Option<Str>,
+}
+
+fn register_catalog(namespace: Str, catalog: DiagnosticCatalog)
+fn resolve_catalog(namespace: Str) -> Option<DiagnosticCatalog>
+```
+
+- `namespace` は `parser`, `config`, `runtime` など責務単位で区切る。プラグインは `plugin.<id>` を使用する。
+- `register_catalog` は起動時に一度だけ呼び、重複キーがある場合は `diagnostic("catalog.duplicate_key")` を返す。
+- `Parse.fail` から個別コードを利用する場合、`from_parse_error` に `code` を渡す前に `DiagnosticCatalog` に登録済みであることを確認し、未登録コードは拒否する。これにより 0-1 §2.2 が求める「修正候補と期待値」の事前審査が可能になる。
+- CLI/LSP はカタログの `docs_url` を `Diagnostic` の `extensions["docs"]` に反映し、開発者が即座にトラブルシューティング手順へアクセスできるようにする。
+
 ## 3. 監査ログ出力
 
 ```reml
@@ -162,6 +206,7 @@ fn filtered_audit_sink(sink: AuditSink, filter: (Diagnostic) -> Bool) -> AuditSi
 ```
 - `with_context` で監査特有の文脈（リクエスト ID 等）を付与。
 - `redact` はポリシーに基づき個人情報などをマスクする。
+- `RunConfig.extensions["audit"]` は `{ envelope: Option<AuditEnvelope>, policy: Option<AuditPolicy> }` を格納することを推奨し、`from_parse_error` は `envelope` を自動的に引き継ぐ。`policy` が設定されている場合は CLI 側で §3.2 の `apply_policy` を既定で呼び出す。
 
 ### 3.1 `AuditError`
 

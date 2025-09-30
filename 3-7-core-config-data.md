@@ -190,6 +190,13 @@ fn rollback_migration<T>(backup: BackupHandle) -> Result<T, MigrationError>
 fn verify_migration<T>(old_data: T, new_data: T, schema: Schema<T>) -> Result<(), ValidationError>
 ```
 
+### 3.2 パーサ診断連携
+
+- `load` / `validate` / `apply_diff` は 3.6 §2.2 の `from_parse_error` を利用して `Diagnostic` を生成する。`RunConfig.locale` が指定されていれば、パーサ段階と同じロケールでエラーメッセージを整形する。
+- コンフィグ差分の解析で `Parse.fail` が発生した場合、監査用の `ChangeSet` と `AuditEnvelope` を `Diagnostic.audit` へ転写し、`extensions["config"].diff` に差分の概略（例: `{"missing": ["host"], "unexpected": ["timeout"]}`）を格納する。
+- CLI では `RunConfig.extensions["audit"].policy` を参照し、構成ファイルの読み込み時に自動的に §3.2 の `apply_policy` を適用する。これにより、本番環境で求められる監査証跡と 0-1 §2.2 の「分かりやすいエラーメッセージ」の両立が保証される。
+- `compare` / `plan` が返す `ChangeSet` に由来する警告は、同じ `AuditEnvelope` を共有することでレビュー履歴とリンクできる。`Diagnostic.code` を `config.diff.*` 名前空間で登録しておくと、差分種別ごとの追跡が容易になる。
+
 ## 4. Data モデリング API（再整理）
 
 ```reml
