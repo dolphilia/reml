@@ -319,3 +319,19 @@ fn with_foreign_stub(req: Request) -> Result<Response, FfiError> ! {} =
 
 昇格時は `reml capability stage promote foreign-call --to beta` を実行し、マニフェスト側の `expect_effects_stage` を同じ値に更新する。監査ログには `stage` と `capability` を必ず含め、運用時に Experimental 機能が残っていないかダッシュボードで確認する。
 
+
+## 11. Actor / 分散メッセージング
+
+| チェック項目 | 詳細 | 推奨設定 |
+| --- | --- | --- |
+| Capability 登録 | `RuntimeCapability::AsyncScheduler` と `ActorMailbox` が `CapabilityRegistry` に登録されているか確認。`DistributedActor` を利用する場合は TLS 設定を含む。 | `reml capability list --stage stable` で確認し、欠落時はフォールバック構成を検討 |
+| Mailbox 水位 | `ActorSystem.config.mailbox_high_watermark` と `mailbox_low_watermark` を 0-1-project-purpose.md §1.1 の性能基準に合わせて設定。 | ハイ 4096 / ロー 1024 を初期値とし、`AsyncBackpressure` が無い場合は DropNew を有効化 |
+| 監査ログ | `audit.log("async.actor.*")` が有効になっているか、`SecurityCapability.permissions` に `Network` が含まれるか。 | `audit` 効果を必須化し、`CapabilityRegistry::stage_of(effect {io.async})` を Stable で運用 |
+| トランスポート | `TransportHandle.secure` の TLS/ALPN 設定と再接続ポリシー、`TransportMetrics` からの遅延監視。 | `transport.secure = TLS`、`retry = exponential` を既定にする |
+
+1. `runtime.actor_system()` を初期化する前に `CapabilityRegistry::get("async")` と `CapabilityRegistry::get("actor")` を検証する。欠落時は `async.actor.capability_missing` を生成し、フォールバックパス（逐次実行）を提示する。
+2. 分散構成では `route(node, actor)` の結果をキャッシュし、失敗時に `audit.log("async.transport.fail", {...})` を必ず残す。0-1-project-purpose.md §1.2 の安全性基準に従い、暗号化が無い場合は警告を昇格させる。
+3. CI では `reml-run lint --domain async --deny experimental` を実行し、`@requires_capability(stage="experimental")` が残っていないか監査する。`DistributedActor` が `experimental` のときは本番ビルドから除外する。
+4. IDE/LSP 連携では `ActorContext.span` を `AsyncTracing` から受け取り、`async.trace.latency` メトリクスをダッシュボードに流す。メトリクス未対応ならトレースを無効化し、警告を一度だけ表示する。
+
+> 参考: Reml Actor DSL の追加コード生成フローは `3-9-core-async-ffi-unsafe.md §1.9` を参照。Transport 設定の CLI ワークフローは今後 `guides/runtime-bridges.md` に拡充予定。

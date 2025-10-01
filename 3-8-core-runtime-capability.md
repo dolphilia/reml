@@ -21,6 +21,8 @@ pub type CapabilityId = Str
 pub struct CapabilityRegistry {
   gc: Option<GcCapability>,
   io: IoCapability,
+  async_runtime: Option<AsyncCapability>,
+  actor: Option<ActorRuntimeCapability>,
   audit: AuditCapability,
   metrics: MetricsCapability,
   plugins: PluginCapability,
@@ -48,6 +50,8 @@ fn get(cap: CapabilityId) -> Option<CapabilityHandle>          // `effect {runti
 pub enum CapabilityHandle =
   | Gc(GcCapability)
   | Io(IoCapability)
+  | Async(AsyncCapability)
+  | Actor(ActorRuntimeCapability)
   | Audit(AuditCapability)
   | Metrics(MetricsCapability)
   | Plugin(PluginCapability)
@@ -64,6 +68,8 @@ pub enum CapabilityHandle =
 
 | Capability | 主担当効果 | 役割 | 参照章 |
 | --- | --- | --- | --- |
+| `AsyncCapability` | `io.async`, `io.timer` | スケジューラ・Waker・バックプレッシャ API を公開し、`Core.Async` を支える | 本章 §1.4, [3-9](3-9-core-async-ffi-unsafe.md) §1.1 |
+| `ActorRuntimeCapability` | `io.async`, `audit` | Mailbox や分散トランスポート、Actor 監査フックを提供 | 本章 §1.4, [3-9](3-9-core-async-ffi-unsafe.md) §1.9 |
 | `SyscallCapability` | `syscall`, `memory`, `unsafe` | OS システムコール呼び出しと監査フック | [4-1 System Capability プラグイン](4-1-system-plugin.md) |
 | `ProcessCapability` | `process`, `thread` | プロセス生成・スレッド管理 | [4-2 Process Capability プラグイン](4-2-process-plugin.md) |
 | `MemoryCapability` | `memory` | メモリマップ/共有メモリ/保護制御 | [4-3 Memory Capability プラグイン](4-3-memory-plugin.md) |
@@ -148,6 +154,11 @@ pub enum RuntimeCapability = {
   CryptoExtensions,
   GPU,
   ThreadLocal,
+  AsyncScheduler,
+  AsyncBackpressure,
+  ActorMailbox,
+  DistributedActor,
+  AsyncTracing,
   Vector512,
   RegexJit,
   RegexMetrics,
@@ -214,7 +225,66 @@ if has_target_capability(TargetCapability::FilesystemCaseInsensitive) {
 * `FfiCapability`（[3-9](3-9-core-async-ffi-unsafe.md)）は `platform_info()` と `resolve_calling_convention` を参照し、ターゲットごとの ABI を自動選択する。Capability Registry でプラットフォーム情報を更新すると FFI バインディングも同時に反映される。
 * `Core.Env.resolve_run_config_target` / `merge_runtime_target`（3-10 §4）は `target_capabilities()` を利用して `RunConfigTarget.capabilities` を初期化し、`TargetProfile` の宣言値と実行時検出結果を統合する。不一致は `DiagnosticDomain::Target` の `target.capability.unknown` または `target.config.mismatch` として報告される。
 
-### 1.4 Regex Capability {#regex-capability}
+### 1.4 非同期・Actor Capability {#async-actor-capability}
+
+| Capability | 説明 | 主な利用者 |
+| --- | --- | --- |
+| `RuntimeCapability::AsyncScheduler` | マルチスレッドスケジューラと Waker 実装を提供し、`Core.Async` の `spawn`/`block_on` を安定化させる。 | `Core.Async`, `RunConfig.execution`, `guides/core-parse-streaming.md` |
+| `RuntimeCapability::AsyncBackpressure` | メールボックスやストリームの高水位制御をサポートし、`send`/`run_stream_async` が `Pending` を返せる。 | `Core.Async`, `StreamDriver`, `guides/runtime-bridges.md` |
+| `RuntimeCapability::ActorMailbox` | 固定長リングバッファ付き Mailbox と `link`/`monitor` 用の監査フックを有効化する。 | `Core.Async` §1.9, `3-6` 監査拡張 |
+| `RuntimeCapability::DistributedActor` | `TransportHandle` によるリモート mail box 統合と TLS 設定検証を提供する。 | `Core.Async` §1.9.2, `guides/runtime-bridges.md` §11 |
+| `RuntimeCapability::AsyncTracing` | 非同期タスクの span 追跡（`DiagnosticSpan` の継承と `async.trace.*` メトリクス）を記録する。 | `Core.Diagnostics`, LSP トレース, 監査ログ |
+
+- これら Capability は 0-1-project-purpose.md §1.1 の性能基準を満たすため、最低でも `AsyncScheduler` を安定ステージで登録することを求める。未登録の場合は `Core.Async` が逐次実行フォールバックへ切り替わり、`async.actor.capability_missing` 診断で通知される。
+- `AsyncBackpressure` が無い環境では `send` の `Pending` が `DropNew` に置き換わるため、DSL は高水位閾値を保守的に設定し、`guides/runtime-bridges.md §11` のテーブルに従って警告を発行する。
+- `DistributedActor` を利用する場合は `SecurityCapability.permissions` に `Network` を含めること。暗号化オプションが未設定なら `SecurityCapability` が `CapabilityError::SecurityViolation` を返す。
+- `AsyncTracing` が有効な環境では `DiagnosticSpan` を `CapabilityRegistry::get("tracing")` から取得し、`ActorContext.span` に継承する。メトリクス未対応環境ではトレースセクションをスキップする。
+- `CapabilityRegistry::stage_of(RuntimeCapability)` はこれらの Capability についても Stage 管理を提供し、`experimental` から `beta` へ昇格させる際は `notes/dsl-plugin-roadmap.md` のチェックリストを満たす必要がある。
+
+```reml
+pub struct AsyncCapability {
+  scheduler: SchedulerHandle,
+  spawn_task: fn(Future<Any>) -> TaskHandle,
+  supports_mailbox: fn() -> Bool,
+  tracing: Option<AsyncTracingHooks>,
+}
+
+pub struct TaskHandle {
+  id: Uuid,
+  cancel: fn() -> Bool,
+  metrics: TaskMetrics,
+}
+
+pub struct ActorRuntimeCapability {
+  allocate_mailbox: fn<Message>(ActorId, MailboxConfig) -> Result<MailboxHandle<Message>, CapabilityError>,
+  register_transport: fn(TransportHandle) -> Result<(), CapabilityError>,
+  diagnostics: ActorDiagnosticsHooks,
+}
+
+pub struct MailboxConfig {
+  capacity: usize,
+  overflow: OverflowPolicy,
+  priority: Option<PriorityPolicy>,
+}
+
+pub struct ActorDiagnosticsHooks {
+  on_spawn: fn(ActorId, NodeId) -> (),
+  on_exit: fn(ActorId, ExitStatus) -> (),
+  on_backpressure: fn(ActorId, MailboxStats) -> (),
+}
+
+pub struct MailboxStats {
+  pending: usize,
+  dropped: usize,
+  high_watermark: usize,
+}
+
+pub enum PriorityPolicy = FIFO | Priority { levels: u8 }
+```
+
+
+
+### 1.5 Regex Capability {#regex-capability}
 
 | Capability | 説明 | 主な利用者 |
 | --- | --- | --- |
@@ -226,7 +296,7 @@ if has_target_capability(TargetCapability::FilesystemCaseInsensitive) {
 * Capability Registry は `register("regex", CapabilityHandle::Plugin(...))` を通じてサードパーティエンジンを差し替え可能とし、登録時に `UnicodeClassProfile.version` を `platform_features()` と照合する。
 * 監査強度ポリシー（3-6 §2.7）が `High` のときは `RegexRunConfig.audit` を省略できず、`RuntimeCapability::RegexMetrics` が未登録であれば `regex.audit.capability_missing` を発行する。
 
-### 1.5 CapabilityError
+### 1.6 CapabilityError
 
 ```reml
 pub type CapabilityError = {

@@ -223,6 +223,132 @@ pub type AsyncError = {
 pub enum AsyncErrorKind = Cancelled | Timeout | RuntimeUnavailable | InvalidConfiguration | CodecFailure
 ```
 
+### 1.9 アクターモデルと分散メッセージング {#core-async-actor}
+
+```reml
+pub type ActorId = Uuid
+pub type NodeId = Str
+
+pub struct MailboxHandle<Message> {
+  capacity: usize,
+  overflow: OverflowPolicy,
+  enqueue: fn(Message) -> Result<(), AsyncError>,
+  metrics: MailboxStats,
+}
+
+pub struct TransportMetrics {
+  throughput: Counter,
+  latency: Histogram,
+}
+
+pub struct ActorSystem {
+  scheduler: SchedulerHandle,
+  transport: Option<TransportHandle>,
+  registry: CapabilityRegistry,
+  config: ActorSystemConfig,
+}
+
+pub struct ActorSystemConfig {
+  mailbox_high_watermark: usize,
+  mailbox_low_watermark: usize,
+  ask_timeout: Duration,
+}
+
+pub struct ActorRef<Message> {
+  id: ActorId,
+  mailbox: MailboxHandle<Message>,
+  system: &'static ActorSystem,
+}
+
+pub struct ActorContext {
+  self_ref: ActorRef<Any>,
+  tags: Set<EffectTag>,
+  span: DiagnosticSpan,
+}
+
+fn spawn_actor<Message, State>(system: &ActorSystem, init: () -> State,
+  handler: fn(Message, &mut State, &mut ActorContext) -> Future<()>)
+  -> Result<ActorRef<Message>, AsyncError>                             // `effect {io.async}`
+
+fn send<Message>(target: ActorRef<Message>, message: Message)
+  -> Result<(), AsyncError>                                            // `effect {io.async}`
+
+fn ask<Message, Reply>(target: ActorRef<Message>, message: Message,
+  timeout: Duration) -> Future<Result<Reply, AsyncError>>              // `effect {io.async, io.timer}`
+
+fn link(l: ActorRef<Any>, r: ActorRef<Any>) -> Result<(), AsyncError>  // `effect {io.async}`
+fn monitor(actor: ActorRef<Any>) -> Future<ExitStatus>                 // `effect {io.async}`
+```
+
+- `ActorSystem` は `CapabilityRegistry` から `RuntimeCapability::AsyncScheduler` と `RuntimeCapability::ActorMailbox` を必須とし、未登録の場合は `AsyncErrorKind::RuntimeUnavailable` を返す。
+- `ActorRef<Message>` はメッセージ型に `Serialize + Deserialize` を要求する。分散環境では `TransportHandle` が `Codec<Bytes>` を用いて透過的にエンコードする。
+- メールボックス容量は `ActorSystem.config.mailbox_high_watermark` と `mailbox_low_watermark` を尊重し、0-1-project-purpose.md §1.1 の性能基準（線形スループット）を損なわないようバッチ配送を既定とする。
+- `ActorContext.tags` は生成元 DSL の効果タグを保持し、`effect {audit}` が含まれる場合は自動で監査ログ (`Diagnostic.domain = Async`) を送出する。
+
+#### 1.9.1 Mailbox 契約
+
+| 契約項目 | 説明 | 安全対策 |
+| --- | --- | --- |
+| スループット | 1 actor あたり 1 秒間に 100k メッセージを目標とし、バッチ出力で O(n) を維持する | キュー実装は固定長リングバッファを推奨し、`AsyncErrorKind::InvalidConfiguration` で限度超過を検出 |
+| 優先度 | `mailbox.policy = { kind: FIFO | Priority, drop: DropNew | DropOld }` | 優先度変更は `link`/`monitor` が監査タグ `async.mailbox.policy_changed` を発行 |
+| バックプレッシャ | 高水位到達時は `send` が `Pending` を返し、`RuntimeCapability::AsyncBackpressure` が無い場合は `DropNew` 強制 | `ask` のタイムアウトは `CapabilityRegistry` の監査経由で `async.ask.timeout` を記録 |
+
+#### 1.9.2 分散トランスポート
+
+```reml
+pub struct TransportHandle {
+  name: Str,
+  codec: Codec<Bytes, Bytes>,
+  secure: TransportSecurity,
+  metrics: TransportMetrics,
+}
+
+fn register_transport(system: &ActorSystem, transport: TransportHandle)
+  -> Result<(), AsyncError>                                             // `effect {io.async, audit}`
+
+fn route(system: &ActorSystem, node: NodeId, actor: ActorId)
+  -> Result<ActorRef<Bytes>, AsyncError>                                // `effect {io.async}`
+
+pub enum TransportSecurity = None | TLS { alpn: Str, pin: Option<Bytes> }
+```
+
+- 分散モードを有効化する場合、`RuntimeCapability::DistributedActor` と `SecurityCapability` の `Network` 許可が必要。欠落時は `AsyncErrorKind::RuntimeUnavailable` を診断 `async.transport.capability_missing` とともに返す。
+- `register_transport` は `audit.log("async.transport.register", transport.name)` を必須とし、0-1-project-purpose.md §1.2 に従い暗号化が無い場合は `Diagnostic.severity = Warning` を発行する。
+- `route` はリモート mail box へプロキシ `ActorRef<Bytes>` を返す。接続確立まで `Pending` を返し、失敗時は `AsyncErrorKind::Timeout`。
+
+#### 1.9.3 DSL からの利用例
+
+```reml
+let system = runtime.actor_system()?;
+
+actor spec Greeter {
+  state = { greeted: Set<Text> }
+
+  on Message::Greet(name) -> ! { io.async } {
+    if !state.greeted.contains(name) {
+      state.greeted.insert(name);
+      log.info("greet", name);
+    }
+    reply(Message::Hello(name))?;
+  }
+}
+
+let greeter = system.spawn(Greeter::new())?;
+let response = await system.ask(greeter, Message::Greet("Reml"), 2.s)?;
+```
+
+- `actor spec` はコード生成フェーズで上記 API を呼ぶテンプレートを展開し、`Core.Async` が提供するバックプレッシャ制御を透過的に利用する。
+- リモート呼び出しの場合は `system.link_remote(greeter, node)` を明示し、`CapabilityRegistry::stage_of(effect {io.async})` が `Stable` であることを確認する。
+- LSP は `actor spec` の診断を `Diagnostic.domain = Async` とし、`async.actor.unhandled_message` を未処理パターンの検出に用いる。
+
+#### 1.9.4 Capability 検証手順
+
+1. `CapabilityRegistry::get("runtime.async")` で `RuntimeCapability::AsyncScheduler` を確認し、`SchedulerHandle::supports_mailbox()` が `true` であること。
+2. `CapabilityRegistry::get("runtime.actor")` で `ActorRuntimeCapability` を取得し、`stage` が `Experimental` の場合は `@requires_capability(stage="experimental")` を付与する。
+3. 分散を有効化する DSL は `guides/runtime-bridges.md §11` のチェックリスト（監査・TLS・再接続ポリシー）を満たす。
+4. いずれかが欠落した場合は `Diagnostic.code = Some("async.actor.capability_missing")` を返し、復旧手順を提示する。
+
+
 ## 2. Core.Ffi の枠組み
 
 ```reml
