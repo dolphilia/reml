@@ -1,0 +1,622 @@
+module samples.language_impl_comparison.config_manifest_lifecycle
+
+use ::Core.Config as Config
+use ::Core.Config.Manifest as Manifest
+use ::Core.Env as Env
+use ::Core.Diagnostics as Diag
+use ::Core.IO as IO
+use ::Core.Path as Path
+use ::Core.Text.String as Str
+use ::Core.Collection.List as List
+use ::Core.Collection.Map as Map
+use ::Core.Data.Json as Json
+
+/// Core.Config.Manifest と Core.Env を組み合わせ、
+/// reml.toml 読み込み→環境変数による互換モード上書き→Diagnostic 生成までを
+/// 一連で示す。
+///
+/// **検証対象**:
+/// - 3-7-core-config-data.md:18 と 3-10-core-env.md:1 のワークフロー
+/// - reml.toml 読み込み→環境変数による互換モード上書き→Diagnostic 生成
+/// - ConfigCompatibility の差分記録や AuditEvent::ConfigCompatChanged の扱い
+/// - 公式APIに不足するバリデーション
+///   （未知互換フラグやStage遷移の警告）を炙り出し
+///
+/// **想定ユースケース**:
+/// CI/開発環境で異なる互換モード（JSON5拡張、TOML bare key 等）を
+/// 環境変数で切り替え、監査ログへ記録する。
+
+/// ============================================================================
+/// 1. 設定ライフサイクルの型定義
+/// ============================================================================
+
+/// 設定ソース（どこから読み込んだか）
+type ConfigSource =
+  | ManifestFile { path: Path }
+  | EnvironmentVariable { key: Str }
+  | CommandLineArgument { arg: Str }
+  | DefaultValue
+
+/// 設定変更履歴（監査用）
+type ConfigChange = {
+  field: Str,
+  old_value: Option<Json>,
+  new_value: Json,
+  source: ConfigSource,
+  timestamp: Int,
+}
+
+/// 設定ライフサイクル状態
+type ConfigLifecycle = {
+  manifest: Manifest,
+  compatibility: Config.ConfigCompatibility,
+  changes: List<ConfigChange>,
+  diagnostics: List<Diagnostic>,
+}
+
+/// ============================================================================
+/// 2. マニフェスト読み込み
+/// ============================================================================
+
+/// reml.toml を読み込み、基本検証を行う
+/// 効果: {io, config}
+fn load_manifest_with_validation(path: Path) -> Result<Manifest, Diagnostic>  // effect {io, config}
+  = do {
+    // マニフェストファイルを読み込み
+    IO.println(Str.concat("Loading manifest from: ", Path.to_string(path)));
+    let manifest = Manifest.load_manifest(path)?;
+
+    // 基本検証: 必須フィールド・バージョン範囲・Capability
+    Manifest.validate_manifest(manifest)?;
+
+    // DSL エントリの存在確認
+    Manifest.iter_dsl(manifest)
+      |> List.from_iter()
+      |> List.for_each(|(dsl_name, entry)| {
+        if !Path.exists(entry.entry) {
+          return Err(Diagnostic {
+            id: Some(Diag.new_uuid()),
+            message: Str.concat("DSL entry file not found: ", Path.to_string(entry.entry)),
+            severity: Severity.Error,
+            domain: Some(DiagnosticDomain.Config),
+            code: Some("manifest.entry.missing"),
+            primary: Span.empty(),
+            secondary: [],
+            hints: [Hint.text(Str.concat("Check ", dsl_name, " entry path in reml.toml"))],
+            expected: None,
+            audit: AuditEnvelope {
+              audit_id: Some(Diag.new_uuid()),
+              change_set: None,
+              capability: None,
+              metadata: Map.from_list([("dsl_name", Json.String(dsl_name))]),
+            },
+            timestamp: current_timestamp(),
+          });
+        }
+        Ok(())
+      })?;
+
+    Ok(manifest)
+  }
+
+/// ============================================================================
+/// 3. 環境変数による互換モード上書き
+/// ============================================================================
+
+/// 環境変数から ConfigCompatibility を構築し、デフォルトから差分を記録する
+/// 効果: {io, config, audit}
+fn override_compatibility_from_env(
+  default: Config.ConfigCompatibility
+) -> Result<(Config.ConfigCompatibility, List<ConfigChange>), Diagnostic>  // effect {io, config, audit}
+  = do {
+    let mut compat = default;
+    let mut changes = [];
+
+    // 環境変数: REML_CONFIG_TRAILING_COMMA
+    match Env.get_env("REML_CONFIG_TRAILING_COMMA")? {
+      | Some(value) -> {
+        let new_mode = parse_trailing_comma_mode(value)?;
+        if new_mode != compat.trailing_comma {
+          changes := List.append(changes, ConfigChange {
+            field: "trailing_comma",
+            old_value: Some(Json.String(format_trailing_comma(compat.trailing_comma))),
+            new_value: Json.String(format_trailing_comma(new_mode)),
+            source: ConfigSource.EnvironmentVariable { key: "REML_CONFIG_TRAILING_COMMA" },
+            timestamp: current_timestamp(),
+          });
+          compat.trailing_comma := new_mode;
+
+          // 監査イベント発行
+          Diag.emit_audit_event(AuditEvent.ConfigCompatChanged {
+            field: "trailing_comma",
+            old_value: format_trailing_comma(default.trailing_comma),
+            new_value: format_trailing_comma(new_mode),
+            source: "env:REML_CONFIG_TRAILING_COMMA",
+            timestamp: current_timestamp(),
+          });
+        }
+      }
+      | None -> {}
+    }
+
+    // 環境変数: REML_CONFIG_UNQUOTED_KEY
+    match Env.get_env("REML_CONFIG_UNQUOTED_KEY")? {
+      | Some(value) -> {
+        let new_policy = parse_key_policy(value)?;
+        if new_policy != compat.unquoted_key {
+          changes := List.append(changes, ConfigChange {
+            field: "unquoted_key",
+            old_value: Some(Json.String(format_key_policy(compat.unquoted_key))),
+            new_value: Json.String(format_key_policy(new_policy)),
+            source: ConfigSource.EnvironmentVariable { key: "REML_CONFIG_UNQUOTED_KEY" },
+            timestamp: current_timestamp(),
+          });
+          compat.unquoted_key := new_policy;
+
+          Diag.emit_audit_event(AuditEvent.ConfigCompatChanged {
+            field: "unquoted_key",
+            old_value: format_key_policy(default.unquoted_key),
+            new_value: format_key_policy(new_policy),
+            source: "env:REML_CONFIG_UNQUOTED_KEY",
+            timestamp: current_timestamp(),
+          });
+        }
+      }
+      | None -> {}
+    }
+
+    // 環境変数: REML_CONFIG_DUPLICATE_KEY
+    match Env.get_env("REML_CONFIG_DUPLICATE_KEY")? {
+      | Some(value) -> {
+        let new_policy = parse_duplicate_key_policy(value)?;
+        if new_policy != compat.duplicate_key {
+          changes := List.append(changes, ConfigChange {
+            field: "duplicate_key",
+            old_value: Some(Json.String(format_duplicate_key_policy(compat.duplicate_key))),
+            new_value: Json.String(format_duplicate_key_policy(new_policy)),
+            source: ConfigSource.EnvironmentVariable { key: "REML_CONFIG_DUPLICATE_KEY" },
+            timestamp: current_timestamp(),
+          });
+          compat.duplicate_key := new_policy;
+
+          Diag.emit_audit_event(AuditEvent.ConfigCompatChanged {
+            field: "duplicate_key",
+            old_value: format_duplicate_key_policy(default.duplicate_key),
+            new_value: format_duplicate_key_policy(new_policy),
+            source: "env:REML_CONFIG_DUPLICATE_KEY",
+            timestamp: current_timestamp(),
+          });
+        }
+      }
+      | None -> {}
+    }
+
+    // 環境変数: REML_CONFIG_NUMBER_COMPAT
+    match Env.get_env("REML_CONFIG_NUMBER_COMPAT")? {
+      | Some(value) -> {
+        let new_compat = parse_number_compatibility(value)?;
+        if new_compat != compat.number {
+          changes := List.append(changes, ConfigChange {
+            field: "number",
+            old_value: Some(Json.String(format_number_compatibility(compat.number))),
+            new_value: Json.String(format_number_compatibility(new_compat)),
+            source: ConfigSource.EnvironmentVariable { key: "REML_CONFIG_NUMBER_COMPAT" },
+            timestamp: current_timestamp(),
+          });
+          compat.number := new_compat;
+
+          Diag.emit_audit_event(AuditEvent.ConfigCompatChanged {
+            field: "number",
+            old_value: format_number_compatibility(default.number),
+            new_value: format_number_compatibility(new_compat),
+            source: "env:REML_CONFIG_NUMBER_COMPAT",
+            timestamp: current_timestamp(),
+          });
+        }
+      }
+      | None -> {}
+    }
+
+    // 環境変数: REML_CONFIG_FEATURE_GUARD（カンマ区切りリスト）
+    match Env.get_env("REML_CONFIG_FEATURE_GUARD")? {
+      | Some(value) -> {
+        let features = Str.split(value, ",")
+          |> List.map(Str.trim)
+          |> Set.from_list();
+
+        if features != compat.feature_guard {
+          changes := List.append(changes, ConfigChange {
+            field: "feature_guard",
+            old_value: Some(Json.Array(Set.to_list(compat.feature_guard) |> List.map(Json.String))),
+            new_value: Json.Array(Set.to_list(features) |> List.map(Json.String)),
+            source: ConfigSource.EnvironmentVariable { key: "REML_CONFIG_FEATURE_GUARD" },
+            timestamp: current_timestamp(),
+          });
+          compat.feature_guard := features;
+
+          Diag.emit_audit_event(AuditEvent.ConfigCompatChanged {
+            field: "feature_guard",
+            old_value: Str.join(Set.to_list(default.feature_guard), ","),
+            new_value: Str.join(Set.to_list(features), ","),
+            source: "env:REML_CONFIG_FEATURE_GUARD",
+            timestamp: current_timestamp(),
+          });
+        }
+      }
+      | None -> {}
+    }
+
+    Ok((compat, changes))
+  }
+
+/// ============================================================================
+/// 4. 互換性検証と診断生成
+/// ============================================================================
+
+/// ConfigCompatibility の整合性を検証し、診断を生成する
+/// 効果: @pure
+fn validate_compatibility(compat: Config.ConfigCompatibility) -> List<Diagnostic>  // @pure
+  = do {
+    let mut diagnostics = [];
+
+    // feature_guard に未知のフラグが含まれている場合は警告
+    let known_features = Set.from_list(["json5", "toml_bare_key", "yaml_flow", "experimental_syntax"]);
+    let unknown_features = Set.difference(compat.feature_guard, known_features);
+
+    if !Set.is_empty(unknown_features) {
+      diagnostics := List.append(diagnostics, Diagnostic {
+        id: Some(Diag.new_uuid()),
+        message: Str.concat("Unknown feature guards: ", Str.join(Set.to_list(unknown_features), ", ")),
+        severity: Severity.Warning,
+        domain: Some(DiagnosticDomain.Config),
+        code: Some("config.compatibility.unknown_feature"),
+        primary: Span.empty(),
+        secondary: [],
+        hints: [
+          Hint.text("Known features: json5, toml_bare_key, yaml_flow, experimental_syntax"),
+          Hint.text("Remove unknown features or update REML_CONFIG_FEATURE_GUARD"),
+        ],
+        expected: None,
+        audit: AuditEnvelope {
+          audit_id: Some(Diag.new_uuid()),
+          change_set: Some(Json.Array(Set.to_list(unknown_features) |> List.map(Json.String))),
+          capability: None,
+          metadata: Map.empty(),
+        },
+        timestamp: current_timestamp(),
+      });
+    }
+
+    // feature_guard に "experimental_syntax" が含まれる場合、Stage 検証を要求
+    if Set.contains(compat.feature_guard, "experimental_syntax") {
+      diagnostics := List.append(diagnostics, Diagnostic {
+        id: Some(Diag.new_uuid()),
+        message: "Experimental syntax feature is enabled",
+        severity: Severity.Info,
+        domain: Some(DiagnosticDomain.Config),
+        code: Some("config.compatibility.experimental_stage"),
+        primary: Span.empty(),
+        secondary: [],
+        hints: [
+          Hint.text("Ensure all DSL entries have expect_effects_stage set to 'experimental'"),
+          Hint.text("Use --ack-experimental-diagnostics to suppress this warning"),
+        ],
+        expected: None,
+        audit: AuditEnvelope {
+          audit_id: Some(Diag.new_uuid()),
+          change_set: None,
+          capability: None,
+          metadata: Map.from_list([("stage", Json.String("experimental"))]),
+        },
+        timestamp: current_timestamp(),
+      });
+    }
+
+    diagnostics
+  }
+
+/// ============================================================================
+/// 5. Stage 遷移検証
+/// ============================================================================
+
+/// Manifest の DSL エントリにおける Stage 遷移を検証
+/// 効果: @pure
+fn validate_stage_transitions(manifest: Manifest) -> List<Diagnostic>  // @pure
+  = do {
+    let mut diagnostics = [];
+
+    Manifest.iter_dsl(manifest)
+      |> List.from_iter()
+      |> List.for_each(|(dsl_name, entry)| {
+        // expect_effects_stage が未設定の場合は警告
+        match entry.metadata.get("expect_effects_stage") {
+          | None -> {
+            diagnostics := List.append(diagnostics, Diagnostic {
+              id: Some(Diag.new_uuid()),
+              message: Str.concat("DSL '", dsl_name, "' has no expect_effects_stage specified"),
+              severity: Severity.Warning,
+              domain: Some(DiagnosticDomain.Config),
+              code: Some("manifest.dsl.stage_missing"),
+              primary: Span.empty(),
+              secondary: [],
+              hints: [
+                Hint.text("Add expect_effects_stage = \"experimental\" | \"beta\" | \"stable\" in reml.toml"),
+                Hint.text("Stage transitions should be documented and audited"),
+              ],
+              expected: None,
+              audit: AuditEnvelope {
+                audit_id: Some(Diag.new_uuid()),
+                change_set: None,
+                capability: None,
+                metadata: Map.from_list([("dsl_name", Json.String(dsl_name))]),
+              },
+              timestamp: current_timestamp(),
+            });
+          }
+          | Some(stage_value) -> {
+            // Stage が "experimental" から "stable" へ直接遷移している場合は警告
+            if stage_value == "stable" && !entry.allow_prerelease {
+              diagnostics := List.append(diagnostics, Diagnostic {
+                id: Some(Diag.new_uuid()),
+                message: Str.concat("DSL '", dsl_name, "' may have skipped 'beta' stage"),
+                severity: Severity.Info,
+                domain: Some(DiagnosticDomain.Config),
+                code: Some("manifest.dsl.stage_transition_skip"),
+                primary: Span.empty(),
+                secondary: [],
+                hints: [
+                  Hint.text("Ensure Stage transition from experimental → beta → stable is documented"),
+                  Hint.text("Check notes/algebraic-effects-implementation-roadmap-revised.md for checklist"),
+                ],
+                expected: None,
+                audit: AuditEnvelope {
+                  audit_id: Some(Diag.new_uuid()),
+                  change_set: Some(Json.String(stage_value)),
+                  capability: None,
+                  metadata: Map.from_list([("dsl_name", Json.String(dsl_name))]),
+                },
+                timestamp: current_timestamp(),
+              });
+            }
+          }
+        }
+      });
+
+    diagnostics
+  }
+
+/// ============================================================================
+/// 6. ライフサイクル統合
+/// ============================================================================
+
+/// 設定ライフサイクル全体を実行し、診断を収集
+/// 効果: {io, config, audit}
+fn run_config_lifecycle(manifest_path: Path) -> Result<ConfigLifecycle, Diagnostic>  // effect {io, config, audit}
+  = do {
+    IO.println("=== Config Lifecycle Start ===");
+
+    // 1. マニフェスト読み込み
+    let manifest = load_manifest_with_validation(manifest_path)?;
+    IO.println("Manifest loaded and validated");
+
+    // 2. デフォルト互換モード
+    let default_compat = Config.ConfigCompatibility.default();
+
+    // 3. 環境変数による上書き
+    let (compat, changes) = override_compatibility_from_env(default_compat)?;
+    IO.println(Str.concat("Applied ", Str.from_int(List.length(changes)), " config changes from environment"));
+
+    // 4. 互換性検証
+    let compat_diagnostics = validate_compatibility(compat);
+    IO.println(Str.concat("Generated ", Str.from_int(List.length(compat_diagnostics)), " compatibility diagnostics"));
+
+    // 5. Stage 遷移検証
+    let stage_diagnostics = validate_stage_transitions(manifest);
+    IO.println(Str.concat("Generated ", Str.from_int(List.length(stage_diagnostics)), " stage transition diagnostics"));
+
+    // 6. 全診断を統合
+    let all_diagnostics = List.concat([compat_diagnostics, stage_diagnostics]);
+
+    // 7. 監査ログ出力
+    List.for_each(changes, |change| {
+      IO.println(Str.concat("  - ", change.field, ": ", format_config_change(change)));
+    });
+
+    IO.println("=== Config Lifecycle End ===");
+
+    Ok(ConfigLifecycle {
+      manifest: manifest,
+      compatibility: compat,
+      changes: changes,
+      diagnostics: all_diagnostics,
+    })
+  }
+
+/// ============================================================================
+/// 7. パース・フォーマットヘルパー
+/// ============================================================================
+
+fn parse_trailing_comma_mode(s: Str) -> Result<Config.TrailingCommaMode, Diagnostic>  // @pure
+  = match s {
+    | "forbid" -> Ok(Config.TrailingCommaMode.Forbid)
+    | "arrays" -> Ok(Config.TrailingCommaMode.Arrays)
+    | "objects" -> Ok(Config.TrailingCommaMode.Objects)
+    | "arrays_and_objects" -> Ok(Config.TrailingCommaMode.ArraysAndObjects)
+    | _ -> Err(invalid_config_value_diagnostic("trailing_comma", s))
+  }
+
+fn format_trailing_comma(mode: Config.TrailingCommaMode) -> Str  // @pure
+  = match mode {
+    | Config.TrailingCommaMode.Forbid -> "forbid"
+    | Config.TrailingCommaMode.Arrays -> "arrays"
+    | Config.TrailingCommaMode.Objects -> "objects"
+    | Config.TrailingCommaMode.ArraysAndObjects -> "arrays_and_objects"
+  }
+
+fn parse_key_policy(s: Str) -> Result<Config.KeyPolicy, Diagnostic>  // @pure
+  = match s {
+    | "forbid" -> Ok(Config.KeyPolicy.Forbid)
+    | "allow_alpha" -> Ok(Config.KeyPolicy.AllowAlpha)
+    | "allow_alphanumeric" -> Ok(Config.KeyPolicy.AllowAlphaNumeric)
+    | _ -> Err(invalid_config_value_diagnostic("unquoted_key", s))
+  }
+
+fn format_key_policy(policy: Config.KeyPolicy) -> Str  // @pure
+  = match policy {
+    | Config.KeyPolicy.Forbid -> "forbid"
+    | Config.KeyPolicy.AllowAlpha -> "allow_alpha"
+    | Config.KeyPolicy.AllowAlphaNumeric -> "allow_alphanumeric"
+  }
+
+fn parse_duplicate_key_policy(s: Str) -> Result<Config.DuplicateKeyPolicy, Diagnostic>  // @pure
+  = match s {
+    | "error" -> Ok(Config.DuplicateKeyPolicy.Error)
+    | "last_write_wins" -> Ok(Config.DuplicateKeyPolicy.LastWriteWins)
+    | "collect_all" -> Ok(Config.DuplicateKeyPolicy.CollectAll)
+    | _ -> Err(invalid_config_value_diagnostic("duplicate_key", s))
+  }
+
+fn format_duplicate_key_policy(policy: Config.DuplicateKeyPolicy) -> Str  // @pure
+  = match policy {
+    | Config.DuplicateKeyPolicy.Error -> "error"
+    | Config.DuplicateKeyPolicy.LastWriteWins -> "last_write_wins"
+    | Config.DuplicateKeyPolicy.CollectAll -> "collect_all"
+  }
+
+fn parse_number_compatibility(s: Str) -> Result<Config.NumberCompatibility, Diagnostic>  // @pure
+  = match s {
+    | "strict" -> Ok(Config.NumberCompatibility.Strict)
+    | "allow_leading_plus" -> Ok(Config.NumberCompatibility.AllowLeadingPlus)
+    | "allow_hex_float" -> Ok(Config.NumberCompatibility.AllowHexFloat)
+    | _ -> Err(invalid_config_value_diagnostic("number", s))
+  }
+
+fn format_number_compatibility(compat: Config.NumberCompatibility) -> Str  // @pure
+  = match compat {
+    | Config.NumberCompatibility.Strict -> "strict"
+    | Config.NumberCompatibility.AllowLeadingPlus -> "allow_leading_plus"
+    | Config.NumberCompatibility.AllowHexFloat -> "allow_hex_float"
+  }
+
+fn invalid_config_value_diagnostic(field: Str, value: Str) -> Diagnostic  // @pure
+  = Diagnostic {
+    id: Some(Diag.new_uuid()),
+    message: Str.concat("Invalid value for config field '", field, "': ", value),
+    severity: Severity.Error,
+    domain: Some(DiagnosticDomain.Config),
+    code: Some("config.invalid_value"),
+    primary: Span.empty(),
+    secondary: [],
+    hints: [Hint.text("Check environment variable or command-line argument")],
+    expected: None,
+    audit: AuditEnvelope {
+      audit_id: Some(Diag.new_uuid()),
+      change_set: None,
+      capability: None,
+      metadata: Map.from_list([("field", Json.String(field)), ("value", Json.String(value))]),
+    },
+    timestamp: current_timestamp(),
+  }
+
+fn format_config_change(change: ConfigChange) -> Str  // @pure
+  = Str.concat(
+    Json.stringify(change.old_value),
+    " → ",
+    Json.stringify(change.new_value),
+    " (source: ",
+    format_config_source(change.source),
+    ")"
+  )
+
+fn format_config_source(source: ConfigSource) -> Str  // @pure
+  = match source {
+    | ConfigSource.ManifestFile { path } -> Str.concat("file:", Path.to_string(path))
+    | ConfigSource.EnvironmentVariable { key } -> Str.concat("env:", key)
+    | ConfigSource.CommandLineArgument { arg } -> Str.concat("cli:", arg)
+    | ConfigSource.DefaultValue -> "default"
+  }
+
+fn current_timestamp() -> Int  // effect {io}
+  = 1704067200  // 仮値
+
+/// ============================================================================
+/// 8. エントリーポイント
+/// ============================================================================
+
+fn main() -> Result<(), Str>  // effect {io, config, audit}
+  = do {
+    let manifest_path = Path.from_string("reml.toml");
+
+    match run_config_lifecycle(manifest_path) {
+      | Ok(lifecycle) -> {
+        // 診断を出力
+        List.for_each(lifecycle.diagnostics, |diag| {
+          Diag.emit_diagnostic(diag);
+        });
+
+        IO.println(Str.concat("Total diagnostics: ", Str.from_int(List.length(lifecycle.diagnostics))));
+        Ok(())
+      }
+      | Err(diag) -> {
+        Diag.emit_diagnostic(diag);
+        Err("Config lifecycle failed")
+      }
+    }
+  }
+
+/// ============================================================================
+/// 9. 仕様ギャップの洗い出しコメント
+/// ============================================================================
+
+// **検証結果メモ**:
+//
+// 1. **ConfigCompatibility のデフォルト値が未定義**:
+//    - 3-7-core-config-data.md:115 で `ConfigCompatibility` の構造は示されているが、
+//      `default()` メソッドの仕様が不明確。
+//    - 推奨: `ConfigCompatibility::default() -> ConfigCompatibility` を標準APIとして定義し、
+//      strict JSON/TOML モードをデフォルトとする。
+//
+// 2. **環境変数による上書きの優先順位が未記述**:
+//    - 環境変数、コマンドライン引数、マニフェストファイルの優先順位が仕様に記載されていない。
+//    - 推奨: 3-10-core-env.md に優先順位ルール（CLI > Env > Manifest > Default）を追加。
+//
+// 3. **AuditEvent::ConfigCompatChanged の標準化不足**:
+//    - 本サンプルでは `Diag.emit_audit_event` を手動呼び出ししているが、
+//      `override_compatibility_from_env` が **自動的に** 監査イベントを発行する仕様が望ましい。
+//    - 推奨: `Config.ConfigCompatibility.apply_env_overrides() -> (ConfigCompatibility, List<AuditEvent>)`
+//      を追加し、監査イベント生成を標準化。
+//
+// 4. **未知互換フラグの検証が手動**:
+//    - `feature_guard` に未知のフラグが含まれている場合、
+//      手動で `validate_compatibility` を呼び出す必要がある。
+//    - 推奨: `Manifest.validate_manifest` が `feature_guard` の整合性も自動検証する。
+//
+// 5. **Stage 遷移の監査証跡が不足**:
+//    - DSL の Stage が experimental → beta → stable と遷移する際、
+//      変更履歴（誰が、いつ、なぜ昇格したか）を記録する標準機構が存在しない。
+//    - 推奨: `AuditEvent::StagePromoted { dsl: Str, from: Stage, to: Stage, rationale: Str }`
+//      を追加し、3-6-core-diagnostics-audit.md で定義。
+//
+// 6. **互換モードと @cfg の整合性が未検証**:
+//    - `feature_guard` に "json5" が含まれている場合、
+//      コードの `@cfg(feature="json5")` ブロックが有効化されるべきだが、
+//      この整合性を検証する機構が不明確。
+//    - 推奨: コンパイラが `RunConfig.extensions["target"].features` と
+//      `ConfigCompatibility.feature_guard` を自動同期する。
+//
+// 7. **Diagnostic.extensions["config"] の標準フォーマット不足**:
+//    - Config 関連診断で `extensions["config"]` に記録すべき情報
+//      （互換モード差分、Stage 情報）の標準フォーマットが未定義。
+//    - 推奨: 3-6-core-diagnostics-audit.md で `ConfigExtension` 型を追加:
+//      ```reml
+//      type ConfigExtension = {
+//        compatibility: ConfigCompatibility,
+//        changes: List<ConfigChange>,
+//        stage: Option<Stage>,
+//      }
+//      ```
+//
+// 8. **バリデーション関数の効果タグ不整合**:
+//    - `validate_compatibility` と `validate_stage_transitions` は `@pure` だが、
+//      実際には診断生成（`Diag.new_uuid()`, `current_timestamp()`）で `effect {io}` が必要。
+//    - 推奨: 診断生成を純粋な構造体構築と分離し、`emit_diagnostics` で一括発行する設計に変更。

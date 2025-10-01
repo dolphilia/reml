@@ -1,0 +1,417 @@
+module samples.language_impl_comparison.async_actor_supervision
+
+use ::Core.Async as Async
+use ::Core.Runtime as Runtime
+use ::Core.Diagnostics as Diag
+use ::Core.Collection.List as List
+use ::Core.Collection.Map as Map
+use ::Core.IO as IO
+use ::Core.Text.String as Str
+
+/// Core.Async の Actor/Channel API と CapabilityRegistry を用いた
+/// 簡易チャット or ワークキューパターン。
+///
+/// **検証対象**:
+/// - 3-8-core-runtime-capability.md:96 で示される Stage 検証
+/// - effect {io.async} ハンドリングをコードで再現
+/// - AsyncError の伝播や監査イベント発火を確認
+/// - 並行例により非同期契約の曖昧さ
+///   （スケジューラ構成やbackpressureメトリクス）を特定
+///
+/// **想定ユースケース**:
+/// 複数ワーカーが非同期タスクを処理し、スーパーバイザーが
+/// エラー監視・再起動・監査ログ記録を行う。
+
+/// ============================================================================
+/// 1. メッセージ型定義
+/// ============================================================================
+
+/// ワーカーへ送信するタスクメッセージ
+type TaskMessage =
+  | Process { id: Int, payload: Str }
+  | Shutdown
+
+/// ワーカーからスーパーバイザーへの応答
+type WorkerResponse =
+  | Success { id: Int, result: Str }
+  | Failure { id: Int, error: Str }
+  | WorkerReady { worker_id: Int }
+
+/// スーパーバイザーコマンド
+type SupervisorCommand =
+  | SubmitTask { id: Int, payload: Str }
+  | RestartWorker { worker_id: Int }
+  | GetStats
+  | Terminate
+
+/// スーパーバイザーからの応答
+type SupervisorResponse =
+  | TaskQueued { id: Int }
+  | WorkerRestarted { worker_id: Int }
+  | Stats { tasks_completed: Int, tasks_failed: Int, workers_active: Int }
+  | Terminated
+
+/// ============================================================================
+/// 2. Actor 定義: ワーカー
+/// ============================================================================
+
+/// ワーカーアクター: タスクを受け取り処理する
+/// 効果: {io.async, audit}
+fn worker_actor(
+  worker_id: Int,
+  supervisor: Async.DslSender<WorkerResponse>,
+  receiver: Async.DslReceiver<TaskMessage>
+) -> Result<(), Str>  // effect {io.async, audit}
+  = do {
+    // Capability 検証: io.async が利用可能か確認
+    let registry = Runtime.get_capability_registry();
+    Runtime.verify_capability_stage(registry, "io.async", Stage.Stable)?;
+
+    // 準備完了を通知
+    Async.send(supervisor, WorkerResponse.WorkerReady { worker_id: worker_id }).await?;
+
+    // 監査イベント: ワーカー起動
+    Diag.emit_audit_event(AuditEvent.WorkerStarted {
+      worker_id: worker_id,
+      timestamp: current_timestamp(),
+    });
+
+    // メッセージループ
+    loop {
+      match Async.receive(receiver).await? {
+        | TaskMessage.Process { id, payload } -> {
+          // タスク処理（仮想的な処理）
+          let result = process_task(id, payload);
+
+          match result {
+            | Ok(output) -> {
+              Async.send(supervisor, WorkerResponse.Success {
+                id: id,
+                result: output,
+              }).await?;
+            }
+            | Err(err) -> {
+              // エラーをスーパーバイザーへ報告
+              Async.send(supervisor, WorkerResponse.Failure {
+                id: id,
+                error: err,
+              }).await?;
+
+              // 監査イベント: タスク失敗
+              Diag.emit_audit_event(AuditEvent.TaskFailed {
+                worker_id: worker_id,
+                task_id: id,
+                error: err,
+                timestamp: current_timestamp(),
+              });
+            }
+          }
+        }
+        | TaskMessage.Shutdown -> {
+          // シャットダウン通知
+          Diag.emit_audit_event(AuditEvent.WorkerStopped {
+            worker_id: worker_id,
+            timestamp: current_timestamp(),
+          });
+          return Ok(());
+        }
+      }
+    }
+  }
+
+/// タスク処理ロジック（仮想実装）
+fn process_task(id: Int, payload: Str) -> Result<Str, Str>  // @pure
+  = if Str.length(payload) > 10 {
+      Ok(Str.concat("Processed: ", payload))
+    } else {
+      Err("Payload too short")
+    }
+
+/// ============================================================================
+/// 3. Actor 定義: スーパーバイザー
+/// ============================================================================
+
+/// スーパーバイザー状態
+type SupervisorState = {
+  workers: Map<Int, Async.DslSender<TaskMessage>>,
+  task_queue: List<(Int, Str)>,
+  tasks_completed: Int,
+  tasks_failed: Int,
+  workers_active: Int,
+}
+
+/// スーパーバイザーアクター: ワーカーを管理し、タスクを分配する
+/// 効果: {io.async, audit}
+fn supervisor_actor(
+  num_workers: Int,
+  command_receiver: Async.DslReceiver<SupervisorCommand>,
+  response_sender: Async.DslSender<SupervisorResponse>
+) -> Result<(), Str>  // effect {io.async, audit}
+  = do {
+    // Capability 検証
+    let registry = Runtime.get_capability_registry();
+    Runtime.verify_capability_stage(registry, "io.async", Stage.Stable)?;
+
+    // ワーカーを起動
+    let (worker_senders, worker_response_receiver) = spawn_workers(num_workers)?;
+
+    // 初期状態
+    let mut state = SupervisorState {
+      workers: Map.from_list(List.enumerate(worker_senders)),
+      task_queue: [],
+      tasks_completed: 0,
+      tasks_failed: 0,
+      workers_active: num_workers,
+    };
+
+    // 監査イベント: スーパーバイザー起動
+    Diag.emit_audit_event(AuditEvent.SupervisorStarted {
+      num_workers: num_workers,
+      timestamp: current_timestamp(),
+    });
+
+    // メッセージループ
+    loop {
+      // コマンドまたはワーカー応答を受信
+      match Async.select([
+        Async.map_future(Async.receive(command_receiver), |cmd| Either.Left(cmd)),
+        Async.map_future(Async.receive(worker_response_receiver), |resp| Either.Right(resp)),
+      ]).await? {
+        | Either.Left(cmd) -> {
+          match cmd {
+            | SupervisorCommand.SubmitTask { id, payload } -> {
+              // タスクをキューへ追加
+              state.task_queue := List.append(state.task_queue, (id, payload));
+              Async.send(response_sender, SupervisorResponse.TaskQueued { id: id }).await?;
+
+              // アイドルワーカーがいれば即座に割り当て
+              try_dispatch_task(&mut state);
+            }
+            | SupervisorCommand.RestartWorker { worker_id } -> {
+              // ワーカー再起動（仮想実装）
+              restart_worker(&mut state, worker_id)?;
+              Async.send(response_sender, SupervisorResponse.WorkerRestarted { worker_id: worker_id }).await?;
+            }
+            | SupervisorCommand.GetStats -> {
+              Async.send(response_sender, SupervisorResponse.Stats {
+                tasks_completed: state.tasks_completed,
+                tasks_failed: state.tasks_failed,
+                workers_active: state.workers_active,
+              }).await?;
+            }
+            | SupervisorCommand.Terminate -> {
+              // 全ワーカーへシャットダウン通知
+              shutdown_all_workers(&state.workers).await?;
+
+              Diag.emit_audit_event(AuditEvent.SupervisorStopped {
+                tasks_completed: state.tasks_completed,
+                tasks_failed: state.tasks_failed,
+                timestamp: current_timestamp(),
+              });
+
+              Async.send(response_sender, SupervisorResponse.Terminated).await?;
+              return Ok(());
+            }
+          }
+        }
+        | Either.Right(response) -> {
+          match response {
+            | WorkerResponse.Success { id, result } -> {
+              state.tasks_completed := state.tasks_completed + 1;
+              // タスク完了ログ
+              IO.println(Str.concat("Task ", Str.from_int(id), " completed: ", result));
+            }
+            | WorkerResponse.Failure { id, error } -> {
+              state.tasks_failed := state.tasks_failed + 1;
+              // エラーログと診断発行
+              Diag.emit_diagnostic(Diagnostic {
+                id: Some(Diag.new_uuid()),
+                message: Str.concat("Task ", Str.from_int(id), " failed: ", error),
+                severity: Severity.Warning,
+                domain: Some(DiagnosticDomain.Async),
+                code: Some("async.task.failure"),
+                primary: Span.empty(),
+                secondary: [],
+                hints: [Hint.text("Consider resubmitting the task or checking worker health")],
+                expected: None,
+                audit: AuditEnvelope {
+                  audit_id: Some(Diag.new_uuid()),
+                  change_set: None,
+                  capability: Some("io.async"),
+                  metadata: Map.from_list([("task_id", Json.Number(id))]),
+                },
+                timestamp: current_timestamp(),
+              });
+            }
+            | WorkerResponse.WorkerReady { worker_id } -> {
+              // ワーカー準備完了、次のタスクを割り当て
+              try_dispatch_task(&mut state);
+            }
+          }
+        }
+      }
+    }
+  }
+
+/// ワーカーを生成し、応答チャネルを統合
+fn spawn_workers(num_workers: Int) -> Result<(List<Async.DslSender<TaskMessage>>, Async.DslReceiver<WorkerResponse>), Str>  // effect {io.async}
+  = do {
+    let (supervisor_sender, supervisor_receiver) = Async.create_channel(buffer_size: 100, codec: identity_codec())?;
+
+    let worker_senders = List.range(0, num_workers)
+      |> List.map(|worker_id| {
+        let (sender, receiver) = Async.create_channel(buffer_size: 10, codec: identity_codec())?;
+        Async.spawn(worker_actor(worker_id, supervisor_sender, receiver), default_scheduler())?;
+        Ok(sender)
+      })
+      |> List.collect_results()?;
+
+    Ok((worker_senders, supervisor_receiver))
+  }
+
+/// タスクをアイドルワーカーへ割り当て（仮想実装）
+fn try_dispatch_task(state: &mut SupervisorState) -> ()  // @pure
+  = ()  // 実装省略（キューとワーカー状態を管理）
+
+/// ワーカー再起動（仮想実装）
+fn restart_worker(state: &mut SupervisorState, worker_id: Int) -> Result<(), Str>  // effect {io.async, audit}
+  = do {
+    Diag.emit_audit_event(AuditEvent.WorkerRestarted {
+      worker_id: worker_id,
+      timestamp: current_timestamp(),
+    });
+    Ok(())
+  }
+
+/// 全ワーカーへシャットダウン通知
+fn shutdown_all_workers(workers: &Map<Int, Async.DslSender<TaskMessage>>) -> Result<(), Str>  // effect {io.async}
+  = do {
+    Map.iter(workers)
+      |> List.from_iter()
+      |> List.for_each(|(_, sender)| {
+        Async.send(sender, TaskMessage.Shutdown).await
+      })
+  }
+
+/// ============================================================================
+/// 4. ヘルパー関数
+/// ============================================================================
+
+/// 現在タイムスタンプ（Unix エポック秒）
+fn current_timestamp() -> Int  // effect {io}
+  = 1704067200  // 仮値
+
+/// 恒等Codec（型変換なし）
+fn identity_codec<T>() -> Codec<T, T>  // @pure
+  = Codec {
+    name: "identity",
+    version: None,
+    encode: |x| Ok(serialize(x)),
+    decode: |bytes| Ok(deserialize(bytes)),
+    validate: |_| Ok(()),
+  }
+
+/// デフォルトスケジューラ
+fn default_scheduler() -> SchedulerHandle  // effect {io}
+  = Runtime.get_default_scheduler()
+
+/// シリアライズ（仮想実装）
+fn serialize<T>(value: T) -> Bytes  // @pure
+  = []  // 実装省略
+
+/// デシリアライズ（仮想実装）
+fn deserialize<T>(bytes: Bytes) -> T  // @pure
+  = panic("Not implemented")
+
+/// ============================================================================
+/// 5. エントリーポイント
+/// ============================================================================
+
+/// メイン関数: スーパーバイザーを起動してタスクを投入
+fn main() -> Result<(), Str>  // effect {io, io.async, audit}
+  = do {
+    // Capability Registry から必要な権限を取得
+    let registry = Runtime.get_capability_registry();
+    Runtime.verify_capability_stage(registry, "io.async", Stage.Stable)?;
+
+    // スーパーバイザー起動
+    let (command_sender, command_receiver) = Async.create_channel(buffer_size: 50, codec: identity_codec())?;
+    let (response_sender, response_receiver) = Async.create_channel(buffer_size: 50, codec: identity_codec())?;
+
+    Async.spawn(supervisor_actor(num_workers: 3, command_receiver, response_sender), default_scheduler())?;
+
+    // タスクを投入
+    Async.send(command_sender, SupervisorCommand.SubmitTask { id: 1, payload: "task_payload_1" }).await?;
+    Async.send(command_sender, SupervisorCommand.SubmitTask { id: 2, payload: "short" }).await?;
+    Async.send(command_sender, SupervisorCommand.SubmitTask { id: 3, payload: "task_payload_3" }).await?;
+
+    // 統計取得
+    Async.send(command_sender, SupervisorCommand.GetStats).await?;
+    match Async.receive(response_receiver).await? {
+      | SupervisorResponse.Stats { tasks_completed, tasks_failed, workers_active } -> {
+        IO.println(Str.concat("Stats: completed=", Str.from_int(tasks_completed), ", failed=", Str.from_int(tasks_failed), ", active=", Str.from_int(workers_active)));
+      }
+      | _ -> {}
+    }
+
+    // 終了
+    Async.send(command_sender, SupervisorCommand.Terminate).await?;
+    Async.receive(response_receiver).await?;
+
+    Ok(())
+  }
+
+/// ============================================================================
+/// 6. 仕様ギャップの洗い出しコメント
+/// ============================================================================
+
+// **検証結果メモ**:
+//
+// 1. **Stage 検証の曖昧さ**:
+//    - 3-8-core-runtime-capability.md:96 では Stage (Experimental/Beta/Stable) を
+//      `@requires_capability(stage="...")` で宣言するが、
+//      `Runtime.verify_capability_stage` の API 定義が不明確。
+//    - 推奨: `CapabilityRegistry::verify_stage(effect: EffectTag, stage: Stage) -> Result<(), CapabilityError>`
+//      を標準 API として定義。
+//
+// 2. **AsyncError の伝播チェーン**:
+//    - `Async.send` / `Async.receive` が返す `AsyncError` には以下のバリアントが想定される:
+//      - `AsyncErrorKind::ChannelClosed`
+//      - `AsyncErrorKind::CodecFailure`
+//      - `AsyncErrorKind::Timeout`
+//    - しかし、エラー発生時のスタックトレースや因果関係（cause chain）の
+//      標準フォーマットが未定義。
+//    - 推奨: `AsyncError` に `cause: Option<Box<AsyncError>>` フィールドを追加し、
+//      診断システムと統合する。
+//
+// 3. **監査イベントの発火タイミング**:
+//    - `Diag.emit_audit_event` が同期/非同期どちらで実行されるか不明確。
+//    - 非同期コンテキストでは `effect {audit}` が `effect {io.async}` に
+//      依存する可能性があるが、効果の合成規則が未記述。
+//    - 推奨: 3-6-core-diagnostics-audit.md で `emit_audit_event` の効果シグネチャを
+//      `effect {audit, io.async?}` と明記。
+//
+// 4. **スケジューラ構成の検証不足**:
+//    - `default_scheduler()` が返す `SchedulerHandle` の構成
+//      （worker_threads, max_blocking_threads）が実行時まで不明。
+//    - コンパイル時に `@cfg(feature="io.blocking.strict")` で制約できるが、
+//      スケジューラ構成との整合性検証が手動。
+//    - 推奨: `SchedulerConfig` の契約違反を静的に検出する lint ルールを追加。
+//
+// 5. **backpressure メトリクスの欠如**:
+//    - チャネルの `buffer_size` と `overflow` ポリシーは宣言できるが、
+//      実行時のバックプレッシャー状況（キュー深度、ドロップ数）を
+//      監視するメトリクスが標準化されていない。
+//    - 推奨: `Async.channel_metrics(receiver: DslReceiver<T>) -> ChannelMetrics`
+//      を追加し、`monitoring` セクションで自動収集。
+//
+// 6. **Actor パターンの標準化不足**:
+//    - 本サンプルは Actor/Supervisor パターンを手動で実装しているが、
+//      Core.Async に標準的な `spawn_supervised` や `restart_strategy` が存在しない。
+//    - 推奨: Erlang/OTP の Supervisor 相当の抽象化を Core.Async へ追加。
+//
+// 7. **CapabilityRegistry と効果ハンドラの統合**:
+//    - `@handles(Console)` など代数的効果ハンドラが Capability を要求する際、
+//      `CapabilityRegistry` との整合性検証が未実装。
+//    - 推奨: ハンドラ適用時に `verify_capability_security` を自動呼び出しする
+//      コンパイラ機構を追加（3-8-core-runtime-capability.md:106 参照）。
