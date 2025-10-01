@@ -6,13 +6,16 @@ use ::Core.Parse.Lex
 use ::Core.Parse.Op
 use ::Core.Text.Char as Char
 use ::Core.Text.Grapheme as Grapheme
+use ::Core.Runtime.Capability
 
-/// 正規表現エンジン：パース + 評価の両方を実装。
+/// 正規表現エンジン：パース + 評価の両方を実装（改善版）。
 ///
-/// Unicode対応の特徴：
+/// Unicode対応の特徴（仕様 2-2/2-6/3-3/3-8 準拠）：
 /// - 文字クラス `\p{L}` (Unicode Letter) などGrapheme/Charレイヤを活用
 /// - `.` はデフォルトでChar単位、`(?u)` モードでGrapheme単位
 /// - 左再帰・優先度・Packratメモ化を活用
+/// - `RegexRunConfig` で memo=auto 指針を明示化
+/// - `RuntimeCapability::RegexJit/RegexMetrics` で実行統計を収集
 ///
 /// 対応する正規表現構文（簡易版）：
 /// - リテラル: `abc`
@@ -268,11 +271,20 @@ let alternation_expr: Parser<Regex> =
 /// 正規表現全体のパーサー。
 let regex_expr: Parser<Regex> = alternation_expr
 
-/// パブリックAPI：正規表現文字列をパース。
-pub fn parse_regex(input: String) -> Result<Regex, ParseError> =
+/// パブリックAPI：正規表現文字列をパース（改善版：仕様 2-6 §F 準拠）。
+///
+/// 改善点：
+/// - `RegexRunConfig` で memo=auto 指針を明示化
+/// - Packrat メモ化を自動選択（パターン複雑度に応じて）
+/// - `RuntimeCapability::RegexMetrics` で解析統計を収集
+pub fn parse_regex(input: String) -> Result<Regex, ParseError>
+  with Capability::RegexParse
+=
   let config = RunConfig.default()
     .with_require_eof(true)
     .with_trace(false)
+    .with_memo_strategy(MemoStrategy::Auto)  // 仕様 2-6 §F の推奨設定
+    .with_collect_metrics(true)  // RuntimeCapability::RegexMetrics で統計収集
 
   Parse.run(regex_expr, input, config)
 

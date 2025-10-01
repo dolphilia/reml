@@ -119,11 +119,22 @@ let json_value: Parser<JsonValue> =
     ])
   )
 
-/// パブリックAPI：JSON文字列をパース。
+/// パブリックAPI：JSON文字列をパース（改善版：仕様 2-3/3-7/3-10 準拠）。
+///
+/// 改善点：
+/// - `ConfigCompatibility` で標準JSON/JSON5モード切り替えを設定可能に
+/// - `ConfigTriviaProfile` でコメント・トレーリングカンマ許可ポリシーを明示化
+/// - `REML_CONFIG_*` 環境変数（3-10 §2.1）との連携を想定
 pub fn parse(input: String) -> Result<JsonValue, ParseError> =
+  // 仕様 3-7 §1.5: ConfigCompatibility で互換モード設定
+  let compat_mode = Config.get_compatibility_mode("json")
+    |> Option.unwrap_or(CompatibilityMode::Extended)  // デフォルトは拡張モード
+
   let config = RunConfig.default()
     .with_require_eof(true)
     .with_trace(false)
+    .with_compatibility_mode(compat_mode)  // 互換性スイッチ
+    .with_trivia_profile(ConfigTriviaProfile::AllowAll)  // コメント・カンマ許可
 
   Parse.run(
     sc.skipR(json_value).skipL(sc),

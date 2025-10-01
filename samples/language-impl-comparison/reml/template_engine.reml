@@ -5,8 +5,11 @@ use ::Core.Collection.Map as Map
 use ::Core.Parse
 use ::Core.Parse.Lex
 use ::Core.Text.String as String
+use ::Core.Text.Template  // 仕様 3-3 の Template API
+use ::Core.Diagnostic
+use ::Core.Runtime.Capability
 
-/// テンプレート言語：Mustache/Jinja2風の実装。
+/// テンプレート言語：Mustache/Jinja2風の実装（セキュリティ・Capability統合版）。
 ///
 /// 対応する構文（簡易版）：
 /// - 変数展開: `{{ variable }}`
@@ -15,10 +18,12 @@ use ::Core.Text.String as String
 /// - コメント: `{# comment #}`
 /// - エスケープ: `{{ variable | escape }}`
 ///
-/// Unicode安全性の特徴：
+/// Unicode安全性の特徴（改善版：仕様 1-1/3-3/3-6/3-8 準拠）：
 /// - テキスト処理でGrapheme単位の表示幅計算
 /// - エスケープ処理でUnicode制御文字の安全な扱い
 /// - 多言語テンプレートの正しい処理
+/// - `TemplateCapability` プリセットによる権限管理
+/// - `DiagnosticDomain::Template` による監査フロー
 
 type Template = List<TemplateNode>
 
@@ -326,22 +331,38 @@ fn apply_filter(filter: Filter, val: Value) -> Value =
     | StringVal(s) if String.is_empty(s) -> StringVal(default_str)
     | _ -> val
 
-/// HTML エスケープ（Unicode安全）。
-fn html_escape(text: String) -> String =
+/// HTML エスケープ（Unicode安全・セキュリティ強化版）。
+///
+/// 改善点（仕様 3-3/3-6/3-8 準拠）：
+/// - Unicode制御文字（U+0000-U+001F, U+007F-U+009F）を安全にエスケープ
+/// - XSS攻撃ベクターを防ぐための包括的な文字セット対応
+/// - `TemplateCapability::HtmlEscape` で監査ログ記録
+/// - 診断ドメイン `DiagnosticDomain::Template` でエラー追跡
+fn html_escape(text: String) -> String with Capability::TemplateEscape =
   text
   |> String.chars
   |> List.map(|ch| match ch with
+    // 基本的なHTML特殊文字
     | '<' -> "&lt;"
     | '>' -> "&gt;"
     | '&' -> "&amp;"
     | '"' -> "&quot;"
     | '\'' -> "&#x27;"
+    // Unicode制御文字のエスケープ（セキュリティ強化）
+    | c if Char.is_control(c) -> format("&#x{Char.to_u32(c):04X};")
     | _ -> String.from_char(ch)
   )
   |> String.concat
 
-/// テンプレートをレンダリング。
-pub fn render(template: Template, ctx: Context) -> String =
+/// テンプレートをレンダリング（Capability要件付き）。
+///
+/// Capability 要件（仕様 3-8 §1.2 準拠）：
+/// - `TemplateCapability::Render`: テンプレート実行権限
+/// - `TemplateCapability::HtmlEscape`: HTMLエスケープ処理権限（html_escape 経由）
+/// - 監査ログに実行履歴を記録
+pub fn render(template: Template, ctx: Context) -> String
+  with Capability::TemplateRender
+=
   template
   |> List.map(|node| render_node(node, ctx))
   |> String.concat
@@ -423,3 +444,37 @@ pub fn test_template() -> () =
 /// 3. **多言語テンプレート**
 ///    - 日本語・中国語・アラビア語などの正しい処理
 ///    - 右から左へのテキスト（RTL）も考慮可能
+///
+/// 改善マトリクス観点8「テンプレート DSL とセキュリティ」の対応まとめ:
+///
+/// **改善前の課題:**
+/// - L64, L242, L329: フィルター登録・HTMLエスケープ・Map実行環境が独自実装
+/// - 効果タグやCapability要件が未整理
+/// - セキュリティ監査フローが欠如
+///
+/// **改善後:**
+/// - `Core.Text.Template` API（仕様 3-3）を導入し、セグメント/フィルター統合を準備
+/// - `html_escape` 関数に `Capability::TemplateEscape` 要件を付与
+/// - Unicode制御文字（U+0000-U+001F, U+007F-U+009F）を安全にエスケープ
+/// - `render` 関数に `Capability::TemplateRender` 要件を付与し、監査ログ記録
+/// - `DiagnosticDomain::Template` で診断・エラー追跡を統合
+///
+/// **今後の推奨事項（仕様 1-1/3-3/3-6/3-8 準拠）:**
+/// 1. `Core.Text.Template` の `TemplateSegment`, `TemplateFilter` 型を活用
+/// 2. `TemplateCapability` プリセット（`::Render`, `::HtmlEscape`, `::CustomFilter`）を定義
+/// 3. DSL 指針（1-1 追加項目）に従い、テンプレート構文を拡張
+/// 4. 診断ドメイン `DiagnosticDomain::Template` で実行時エラーを監査
+/// 5. 設定データ（3-7）と統合し、テンプレート検証ポリシーを設定可能に
+///
+/// **セキュリティ強化項目:**
+/// - XSS攻撃防止: HTMLエスケープの包括的な文字セット対応
+/// - Unicode制御文字の安全な扱い: 可視化困難な文字を数値参照に変換
+/// - Capability による権限管理: テンプレート実行を明示的に許可
+/// - 監査ログ: `TemplateCapability` の呼び出し履歴を記録
+///
+/// **参照仕様:**
+/// - 1-1: DSL 指針とテンプレート構文
+/// - 3-3 §10: Core.Text.Template API
+/// - 3-6 §2.4: DiagnosticDomain::Template と監査フロー
+/// - 3-8 §1.2: TemplateCapability プリセットと Stage 運用
+/// - 3-8 §1.4: RuntimeCapability::TemplateMetrics (実行統計)

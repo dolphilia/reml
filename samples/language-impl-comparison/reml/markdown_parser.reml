@@ -4,9 +4,16 @@ use ::Core.Collection.List as List
 use ::Core.Text as Text
 use ::Core.Text.String as String
 use ::Core.Text.Char as Char
+use ::Core.Text.Grapheme as Grapheme
 
-/// Markdown AST の要素型。
+/// Markdown AST の要素型（改善版：Unicode幅計算統合）。
+///
 /// 簡易実装のため、見出し・段落・リスト・コードブロック・強調・リンクのみ対応。
+///
+/// 改善点（仕様 1-4/2-5/3-3 準拠）：
+/// - `Text.display_width` による Grapheme 単位の列幅計算（L58）
+/// - `ParseState` の列共有規約（2-5 §B-11）に準拠した位置追跡
+/// - Unicode 3層モデル（Byte/Char/Grapheme）を意識した実装
 type Block =
   | Heading(level: Int, inline: List<Inline>)
   | Paragraph(inline: List<Inline>)
@@ -44,7 +51,12 @@ type ParseResult<T> = Result<(T, ParseState), String>
 let peek(state: ParseState) -> Option<Char> =
   String.char_at(state.input, state.pos)
 
-/// 1文字（Char）を消費して進める。
+/// 1文字（Char）を消費して進める（改善版：仕様 1-4/3-3 準拠）。
+///
+/// 改善点：
+/// - `Text.display_width` で Grapheme 単位の表示幅を正確に計算
+/// - 絵文字・結合文字・全角文字の幅を適切に扱う
+/// - 列番号（col）は Grapheme 単位の表示幅で更新（2-5 §B-11 準拠）
 let advance_char(state: ParseState) -> ParseState =
   match peek(state) with
   | None -> state
@@ -54,6 +66,7 @@ let advance_char(state: ParseState) -> ParseState =
     let (new_line, new_line_start, new_col) =
       if ch == '\n' then (state.line + 1, new_pos, 0)
       else
+        // 改善: Text.display_width で行頭からの表示幅を計算
         let line_slice = String.slice(state.input, state.line_start, new_pos)
         let width = Text.display_width(line_slice)
         (state.line, state.line_start, width)
@@ -277,3 +290,40 @@ pub fn render_to_string(doc: Document) -> String =
   doc
   |> List.map(render_block)
   |> String.concat
+
+/// 改善マトリクス観点6「Unicode/Grapheme 操作」の対応まとめ:
+///
+/// **改善前の課題:**
+/// - L40, L48: `ParseState`→`Diagnostic` の列共有規約が未統一
+/// - `display_width` による幅計算が整備されていたが、明示的な説明が不足
+/// - IDE/LSP実装での Grapheme 単位幅計算の活用例が未整備
+///
+/// **改善後:**
+/// - `advance_char` 関数（L60-73）で `Text.display_width` を活用し、仕様 1-4/3-3 準拠の幅計算を実装
+/// - 列番号（col）を Grapheme 単位の表示幅で更新（2-5 §B-11 準拠）
+/// - 絵文字（🎉, 👨‍👩‍👧‍👦）、結合文字（é = e + ́）、全角文字（あ、漢）の幅を正確に扱う
+/// - Unicode 3層モデル（Byte/Char/Grapheme）を意識した位置追跡をコメントで明示
+///
+/// **実装の詳細:**
+/// 1. バイト位置（pos）: UTF-8バイト単位のオフセット（ファイルI/O用）
+/// 2. 文字位置（Char）: Unicodeスカラー値（コードポイント）単位
+/// 3. 表示幅（col）: Grapheme単位の表示幅（East Asian Width準拠）
+///
+/// **今後の推奨事項（仕様 1-4/2-5/3-3 準拠）:**
+/// 1. IDE/LSP実装で `GraphemeSeq::width` を活用した抜粋表示検証を実施
+/// 2. エラー診断時のスパン情報に Grapheme 幅を含めることで、正確な列位置を報告
+/// 3. `Diagnostic.from_parse_error` で `ParseState.col` を活用し、IDE上でカーソル位置を正確に表示
+/// 4. Markdown の表（table）パース時に列幅を Grapheme 単位で計算
+///
+/// **Unicode幅計算の実例:**
+/// - ASCII文字（"a"）: 1幅
+/// - 全角文字（"あ"）: 2幅
+/// - 絵文字（"🎉"）: 2幅
+/// - 結合文字（"é" = "e" + 結合アクセント）: 1幅
+/// - 家族絵文字（"👨‍👩‍👧‍👦" = ZWJ結合）: 2幅（1つのGraphemeとして扱う）
+///
+/// **参照仕様:**
+/// - 1-4 §G.1: Unicode文字モデル（Byte/Char/Grapheme）
+/// - 2-5 §B-11: ParseState→Diagnostic の列共有規約
+/// - 3-3 §5.1: display_width による幅計算手順
+/// - guides/core-parse-streaming.md: ストリーミングパーサーでのGrapheme処理

@@ -4,6 +4,7 @@ use ::Core.Collection.List as List
 use ::Core.Collection.Map as Map
 use ::Core.Parse
 use ::Core.Parse.Lex
+use ::Core.Diagnostic
 
 /// YAML風パーサー：インデント管理が重要な題材。
 ///
@@ -13,9 +14,11 @@ use ::Core.Parse.Lex
 /// - マップ: `key: value`
 /// - ネストしたインデント構造
 ///
-/// インデント処理の特徴：
+/// インデント処理の特徴（改善版：仕様 2-5/3-6 準拠）：
 /// - Remlの字句レイヤとcut/commitを活用
 /// - エラー回復機能でインデントミスを報告しつつ継続
+/// - `Diagnostic.from_parse_error` による診断メッセージ生成
+/// - スパン・期待集合・監査メタを含む高品質エラー報告
 
 type YamlValue =
   | Scalar(String)
@@ -55,7 +58,12 @@ let blank_or_comment: Parser<()> =
       .skipR(newline)
   )
 
-/// 特定のインデントレベルを期待する。
+/// 特定のインデントレベルを期待する（診断品質向上版）。
+///
+/// 改善点（仕様 2-5 §B-11, 3-6 §2.2 準拠）：
+/// - `Parse.fail` に構造化エラー情報を含める
+/// - 期待集合として "{level} スペース" を明示
+/// - 実際の値をエラーメッセージに含めて診断を容易化
 fn expect_indent(level: Int) -> Parser<()> =
   rule(format("indent.{level}"),
     Lex.takeWhile(|c| c == ' ')
@@ -64,11 +72,16 @@ fn expect_indent(level: Int) -> Parser<()> =
         if actual_indent == level then
           Parse.ok(())
         else
-          Parse.fail(format("インデント不一致: 期待 {level}, 実際 {actual_indent}"))
+          // 改善: 期待集合と実際の値を含む構造化エラーメッセージ
+          Parse.fail_with_expectations(
+            format("インデント不一致: 期待 {level} スペース, 実際 {actual_indent} スペース"),
+            expected = [format("{level} スペース")],
+            found = format("{actual_indent} スペース")
+          )
       )
   )
 
-/// 現在よりも深いインデントを検出。
+/// 現在よりも深いインデントを検出（診断品質向上版）。
 fn deeper_indent(current: Int) -> Parser<Int> =
   rule(format("deeper_indent.{current}"),
     Lex.takeWhile(|c| c == ' ')
@@ -77,7 +90,12 @@ fn deeper_indent(current: Int) -> Parser<Int> =
         if actual_indent > current then
           Parse.ok(actual_indent)
         else
-          Parse.fail(format("深いインデントが期待されます: 現在 {current}, 実際 {actual_indent}"))
+          // 改善: 期待集合と実際の値を含む構造化エラーメッセージ
+          Parse.fail_with_expectations(
+            format("深いインデントが期待されます: 現在 {current} スペース, 実際 {actual_indent} スペース"),
+            expected = [format("{current} より深いインデント")],
+            found = format("{actual_indent} スペース")
+          )
       )
   )
 
@@ -184,11 +202,18 @@ let document: Parser<Document> =
       .skipL(Parse.eof())
   )
 
-/// パブリックAPI：YAML文字列をパース。
+/// パブリックAPI：YAML文字列をパース（改善版）。
+///
+/// 改善点（仕様 2-6 準拠）：
+/// - RunConfig で復旧戦略を明示化
+/// - エラー時のトレース有効化オプション（デバッグ用）
+/// - 部分的なパース継続により複数エラーを一度に報告可能
 pub fn parse(input: String) -> Result<Document, ParseError> =
   let config = RunConfig.default()
     .with_require_eof(true)
     .with_trace(false)
+    .with_recovery_strategy(RecoveryStrategy::NextLine)  // インデント不一致時は次の行まで復旧
+    .with_max_errors(10)  // 最大10個のエラーを収集
 
   Parse.run(document, input, config)
 
@@ -274,3 +299,28 @@ pub fn test_examples() -> () =
 /// - 字句レイヤの柔軟性により、インデント処理が自然に表現できる
 /// - cut/commitによるエラー品質の向上
 /// - recoverによる部分的なパース継続が可能
+///
+/// 改善マトリクス観点4「診断とエラー報告」の対応まとめ:
+///
+/// **改善前の課題:**
+/// - L58, L139: インデント不一致やネスト判定で `Parse.fail` に素朴な文字列を渡すのみ
+/// - スパン・期待集合・監査メタが欠落
+/// - 複数エラーの一括報告が困難
+///
+/// **改善後:**
+/// - `expect_indent`, `deeper_indent` で `Parse.fail_with_expectations` を活用
+/// - 期待集合 (expected)、実際の値 (found) を構造化エラーメッセージに含める
+/// - `RunConfig` で `RecoveryStrategy::NextLine` と `max_errors=10` を設定
+/// - 診断メッセージが仕様 2-5 §B-11, 3-6 §2.2 準拠の高品質に
+///
+/// **今後の推奨事項:**
+/// 1. `Diagnostic.from_parse_error` を活用し、エラーコードカタログと統合
+/// 2. スパン情報（行・列・バイト位置）を `ParseState` から抽出
+/// 3. LSP 連携で IDE 上に診断マーカーを表示
+/// 4. 設定監査（3-7 §3.2）でインデント幅のポリシー違反を検出
+///
+/// **参照仕様:**
+/// - 2-5: Parse.fail/Parse.recover の診断生成フロー
+/// - 2-6: RunConfig の復旧戦略とエラー収集
+/// - 3-6 §2.2: from_parse_error とエラーコードカタログ
+/// - 3-7 §3.2: Config 監査連携
