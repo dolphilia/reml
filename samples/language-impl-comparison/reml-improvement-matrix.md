@@ -4,7 +4,7 @@
 
 | 観点 | 参考実装/根拠 | Reml 現状から読み取れるポイント | 仕様改善に向けた着眼点 | 関連章 | 進行状況 |
 | - | - | - | - | - | - |
-| 字句解析とトークナイズ | `samples/language-impl-comparison/reml/json_parser.reml:56` | 手続き型トークナイザーが `Text.char_at` と `List.push_back` を逐一呼び出し、`read_*` 系は TODO なダミー実装のまま。 | `Core.Parse.Lex` を既定値として組み込む手順と、Unicode 正規化/数値解析のエラーを `Diagnostic` に変換するガイドラインを 2-3/3-3 へ追記する。 | 1-1, 2-3, 3-3, 3-5 | 未着手 |
+| 字句解析とトークナイズ | `samples/language-impl-comparison/reml/json_parser.reml:56` | 手続き型トークナイザーが `Text.char_at` と `List.push_back` を逐一呼び出し、`read_*` 系は TODO なダミー実装のまま。 | `Core.Parse.Lex` を既定値として組み込む手順と、Unicode 正規化/数値解析のエラーを `Diagnostic` に変換するガイドラインを 2-3/3-3 へ追記する。 | 1-1, 2-3, 3-3, 3-5 | 完了（2-3/3-3 更新済み） |
 | パーサーコンビネーター運用 | `samples/language-impl-comparison/reml/json_extended.reml:27`, `samples/language-impl-comparison/reml/yaml_parser.reml:120` | コメントスキップやトレーリングカンマ、インデント検証など高度な前処理を `RunConfig` 設定なしに都度書いている。 | `RunConfig` の Packrat/左再帰/コメント扱いを公式スイッチとして整理し、ストリーミング・復旧戦略を Chapter 2 と `guides/core-parse-streaming.md` で体系化する。 | 2-0, 2-2, 2-6, guides/core-parse-streaming.md | 未着手 |
 | 効果ハンドリング戦略 | `samples/language-impl-comparison/reml/algebraic_effects.reml:32` | 1-3 §I.5 で効果行整列とハンドラ順序、3-6 §2.4 で診断・監査フロー、3-8 §1.2 で Stage/Capability 検査、notes §5 で比較マトリクスを提示。 | LSP 診断・CLI 連携の実装フォロー（`effects.contract.*` 系）と Stage 運用を監査ログへ拡張。 | 1-3, 3-6, 3-8, notes/dsl-plugin-roadmap.md | 完了（仕様更新済み） |
 | 診断とエラー報告 | `samples/language-impl-comparison/reml/yaml_parser.reml:58`, `samples/language-impl-comparison/reml/yaml_parser.reml:139` | インデント不一致やネスト判定で `Parse.fail` に素朴な文字列を渡しており、スパン・期待集合・監査メタが欠落。 | 2-5 §B-11 で `Parse.fail`/`Parse.recover` の診断生成フローを明文化し、3-6 §2.2 で `from_parse_error` とエラーコードカタログ、3-7 §3.2 で Config 監査連携を定義。 | 2-5, 3-6, 3-7 | 完了（仕様更新済み） |

@@ -132,6 +132,19 @@ type MemoTable = Map<MemoKey, Any>  // 実装上は型消去（内部用）
 | その他 | プロジェクト固有の拡張。キー重複を避けるため固有 prefix を推奨 | - |
 * `rule(name, p)` が **ParserId とラベル**を付与し、Packrat と診断に使う。
 
+### D-1. `RunConfig` ユーティリティ {#runconfig-utilities}
+
+```reml
+impl RunConfig {
+  fn with_extension(self, key: Str, update: fn(Map<Str, Any>) -> Map<Str, Any>) -> RunConfig
+}
+```
+
+* `with_extension` は `extensions` の該当エントリを**イミュータブルに更新**する。`update` には既存値（未登録時は空マップ）を受け取り、新しい `Map<Str, Any>` を返すクロージャを渡す。戻り値は新しい `RunConfig` であり、元の設定は変更されない。
+* 典型例：字句設定を共有するため `cfg.with_extension("lex", |map| map.insert("space", Any::from(space.space_id())))` のように呼び出し、CLI/LSP が同じ空白パーサ（`ParserId`）を再構成できるようにする。【参照: 2-3-lexer.md §L-4】
+* `update` 内で `Any` に `ParserId` や `ConfigTriviaProfile` など具体型を格納し、取り出し側で型チェックを行う。これにより 0-1 §1.2 の安全性（型崩壊の防止）を担保する。
+* ミュータブル更新が必要な場合は `RunConfig` を `mut` で受け取り、`cfg = cfg.with_extension(...)` の形で差し替える。`RunConfig` 自体は `Copy` ではないため、所有権移動と再代入が発生する点に留意する。
+
 ---
 
 ## E. コミットと消費の意味論

@@ -81,6 +81,22 @@ fn width_map(str: Str, mode: WidthMode) -> Result<String, UnicodeError>     // `
 - `Locale` が未対応の場合は `UnicodeErrorKind::UnsupportedLocale` を返す。
 - 幅変換は全角/半角を双方向に変換し、CLI 出力や差分表示をロケール無依存に整える。
 
+### 3.3 診断連携と ParseError {#unicode-diagnostic}
+
+> Unicode 由来の失敗を `Diagnostic` へ落とし込む標準手順。0-1 §2.2 の「分かりやすいエラーメッセージ」を満たし、字句層（2.3）との責務分担を明確化する。
+
+```reml
+fn unicode_error_to_parse_error(span: Span, err: UnicodeError, phase: Str) -> ParseError
+fn unicode_error_to_diagnostic(span: Span, err: UnicodeError, phase: Str) -> Diagnostic
+```
+
+* `phase` は `"lex" | "normalize" | "render"` など呼び出し元で決める責務名。`Diagnostic.domain` を `DiagnosticDomain::Parser`（Lex/Normalize）または `DiagnosticDomain::Text`（レンダリング）に設定し、`message_key` には `"unicode." + phase + "." + err.kind` を使用する。
+* `unicode_error_to_parse_error` は `Parse.fail` と連携するための軽量ヘルパで、`ParseError.expected` に `Expectation::UnicodeForm(form)`（`err.kind = InvalidUtf8` 時は `Expectation::Utf8`）を追加する。これにより 2.5 §B-11 の整形で期待値が自動提示される。
+* `unicode_error_to_diagnostic` は 3.6 §2 のカタログ登録を前提に `Diagnostic.code` を設定する。既定コードは `U1001`（`InvalidUtf8`）、`U1002`（`UnsupportedScalar`）、`U1003`（`UnsupportedLocale`）。`extensions["unicode"]` には `{ form: Option<NormalizationForm>, locale: Option<Locale>, audit: err.audit }` を格納する。
+* LSP/CLI は `Diagnostic.notes` に `err.message` を埋め込み、`UnicodeError.span` が存在する場合は二次スパンとして添付する。`span` 引数とは別に `err.span` が指定されていたら**両方**表示し、Lex 側で縮約された範囲と Unicode ライブラリ内部で検出した具体位置を併記する。
+* 字句レイヤ（2.3 §E-1）で `requireNfc` や `numeric_overflow_error` を利用した場合、`unicode_error_to_parse_error` を経由して `ParseError.notes` に `NormalizationForm` や `Overflow` の範囲情報を反映させる。これにより 0-1 §1.2 の安全性要件（未定義挙動の排除）を担保しつつ、`Diagnostic` が同じテンプレートで表示される。
+* 監査ログでは `AuditEnvelope.metadata["unicode"] = { "phase": phase, "version": Unicode::VERSION }` を推奨する。`Unicode::VERSION` は現在の辞書バージョン（例："15.0"）で、`guides/runtime-bridges.md` の監査レポートと照合できる。
+
 ## 4. セグメンテーションと検索
 
 ### 4.1 Grapheme / Word / Sentence 境界

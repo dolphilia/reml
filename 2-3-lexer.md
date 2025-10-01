@@ -161,6 +161,26 @@ fn parseF64(repr: Str)                    -> Result<f64, ParseFloatError>
 * 字句段階は **文字列で保持**（桁情報・原文再現）。
 * 値化は構文側で `map` して `parseI64/parseF64`。**オーバーフローは説明的エラー**に。
 
+### E-1. 数値エラーの診断変換 {#numeric-diagnostic}
+
+> 0-1 §1.1 の性能基準と 0-1 §1.2 の安全原則を守りつつ、数値リテラルの失敗を一貫した `Diagnostic` に落とし込むための共通ヘルパ。
+
+```reml
+type NumericOverflow = {
+  min: Str,
+  max: Str,
+  target: Str,
+}
+
+fn numeric_overflow_error(span: Span, digits: Str, info: NumericOverflow, radix: u8) -> ParseError
+fn numeric_parse_error(span: Span, repr: Str, cause: ParseFloatError) -> ParseError
+```
+
+* `numeric_overflow_error` は `parseI64`/`parseU64` が返した `Overflow` 情報から `NumericOverflow` を構築し、`DiagnosticDomain::Parser`・`message_key = "parser.number.overflow"`・`expected = {Range(info.target)}` を設定する。`notes` には `min`/`max` を記録し、`extensions["numeric"].radix = radix` を付与することで IDE が基数を明示できる。
+* `numeric_parse_error` は `parseF64`（および今後追加される浮動小数系）で発生した `ParseFloatError` を `message_key = "parser.number.invalid"` に変換し、`cause` を `extensions["numeric"].cause` として保持する。指数部や桁区切り `_` の不正もここで扱う。
+* いずれのヘルパも `Parse.fail(numeric_overflow_error(...))` のように使用し、2.5 §B-11 のフローで `Diagnostic` へ変換される。`RunConfig.locale` は `PrettyOptions` に伝播し、0-1 §2.2 が求める多言語化を満たす。
+* CLI/IDE は `Diagnostic.code = Some("E7101")`（整数オーバーフロー）または `Some("E7102")`（浮動小数の不正値）を割り当てる運用を推奨し、3.6 §2.3 のカタログ登録でメッセージテンプレートを共有する。
+
 ---
 
 ## F. 文字列・文字リテラル（エスケープ/生/複数行）
@@ -336,6 +356,41 @@ let strLit: Parser<String> =
     .or(stringMultiline(dedent=true))
   ).label("string")
 ```
+
+### L-4. 既定ランナー統合
+
+```reml
+use Core.Parse
+use Core.Parse.Lex
+
+struct LexPack = {
+  space: Parser<()>,
+  symbol: fn(Str) -> Parser<()>,
+  ident: Parser<Str>,
+}
+
+fn lex_pack(profile: ConfigTriviaProfile = ConfigTriviaProfile::strict_json) -> LexPack =
+  let space = config_trivia(profile)
+  LexPack {
+    space,
+    symbol: |text| symbol(space, text),
+    ident: lexeme(space, identifier(DefaultId)),
+  }
+
+fn parse_entry<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult<T> =
+  let lex = lex_pack(cfg.extensions.get("config").unwrap_or(ConfigTriviaProfile::strict_json))
+  run(
+    p.with_space(lex.space),
+    src,
+    cfg.with_extension("lex", {|map| map.insert("space", lex.space_id())})
+  )
+```
+
+* `lex_pack` はコードベースで 1 箇所だけ定義し、空白・コメント・識別子スキーマを共有する。`ConfigTriviaProfile` を受け取ることで JSON/TOML 対応などの互換モードを即座に選べる。
+* `parse_entry` のようなエントリポイントで `LexPack` を初期化し、`RunConfig.extensions["lex"].space` に格納する。これにより CLI/LSP が字句スキップ設定を把握でき、`config_trivia` の変更が検査ポリシーや監査ログと同期する。【参照: 3-7-core-config-data.md §1.5】
+* `cfg.with_extension` は `RunConfig` に対するイミュータブル更新ヘルパで、`Map<Str, Any>` を受け取り新しい `RunConfig` を返す。これにより 0-1 §1.1 が求める共有メモリ戦略を崩さずに設定を差し替えられる。
+* `with_space` は構文パーサ内で `lexeme` と同一の空白処理を共有するヘルパ（`Parser<T>` にメソッド追加）。`space_id()` は字句スキップパーサの安定 ID (`ParserId`) を返し、ストリーミング実行やパーサ差分検証で空白設定が一致しているかチェックする。
+* この構成により、0-1 §1.1 が求める「線形時間・ゼロコピー」を保ったまま、LSP や CLI で `RunConfig` から既定 lex 設定を再構成できる。`cfg.extensions` を通じて IDE が同じプロフィールを再利用すると、字句/構文の診断が 0-1 §2.2 の一貫性要件を満たす。
 
 ---
 
