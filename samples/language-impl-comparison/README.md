@@ -34,10 +34,24 @@
 9. **TOML風設定ファイルパーサー** (`toml_parser.*`)
 10. **テンプレート言語** (`template_engine.*`)
 11. **JSON拡張版** (`json_extended.*`)
+12. **Basic言語インタープリタ** (`basic_interpreter.*`)
 
 Reml 版は仕様記述に合わせて `reml` 言語タグのコードブロックを用いています。他言語のサンプルはコンパイル可能な構造を意識しつつも、比較のため読みやすさを優先した最小実装に留めています。関数型言語（Haskell/OCaml）では純粋性と型推論の違い、Elixir では BEAM 上のパターンマッチとプロセス指向という観点で Reml と対比できるよう構成しています。
 
 Reml ディレクトリには手続き的な解析器に加え、`Core.Parse` コンビネーターを用いた JSON / Lisp / PL/0 の実装（`json_parser_combinator.reml`、`mini_lisp_combinator.reml`、`pl0_combinator.reml`）も収録しており、Chapter 2 の標準 API を利用した記述スタイルを確認できます。
+
+### Basic言語インタープリタについて
+
+`basic_interpreter.*` は、LET, PRINT, IF, FOR, WHILE, GOTO, GOSUB, RETURN, DIM, END などの基本命令を持つBasic言語のインタープリタ実装です。各言語で次の特徴を比較できます：
+
+- **Swift**: Result型とenum-based ADT、パターンマッチを活用した関数型スタイル
+- **Scala 3**: 新しいenum構文、Either型を用いた関数合成、不変データ構造
+- **Nim**: object variants、Result型、手続き型と関数型のハイブリッドスタイル
+- **Koka**: 効果システムを活用したエラーハンドリング（runtime効果）、代数的データ型
+- **Go**: インターフェースベースの型表現、エラーハンドリング、再帰的実行
+- **Rust**: 代数的データ型（ADT）、Result型、所有権システム、パターンマッチング
+
+各実装は言語の慣用的な書き方を重視しており、エラーハンドリングの違い（例外 vs Result型 vs 効果システム）やデータ構造の表現方法（tagged union, enum, interface, object variants）を比較する良い教材となります。
 
 > **注記**: これらの実装はドキュメント用途のため、依存管理やビルドスクリプトは付属しません。必要に応じて利用者側で補完してください。
 
