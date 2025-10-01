@@ -17,6 +17,7 @@
 - Elm: `elm/`
 - Swift: `swift/`
 - Nim: `nim/`
+- Go: `go/`
 - パーサーコンビネーター利用例: `parser-combinator/`
 - パーサージェネレーター利用例: `parser-generator/`
 
