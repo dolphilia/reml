@@ -43,6 +43,7 @@ type RunConfig = {
   trace: Bool = false,
   merge_warnings: Bool = true,
   legacy_result: Bool = false,
+  locale: Option<Locale> = None,
   extensions: RunConfigExtensions = {}
 }
 
@@ -53,7 +54,22 @@ type RunConfigExtensions = Map<Str, Any>
 * `packrat` と `left_recursion` はメモ化と seed-growing 左再帰を制御する主要スイッチ。
 * `trace` は SpanTrace を収集し、`merge_warnings` は回復警告をまとめてノイズを抑制する。
 * `legacy_result` は旧来の戻り値形式を要求するツールチェーンとの互換用スイッチ。
+* `locale` は 2-1 §D と同様に診断表示の言語を固定し、バッチ・ストリーミングの両ランナーで共有される。
 * 追加の燃料制御や GC 連携、ストリーミング用バッファ、LSP 設定などは `extensions` に格納されるモジュール固有設定として扱い、必要なときだけ読み込む（推奨ネームスペースは [2-1](2-1-parser-type.md) を参照）。
+
+#### B-2-2. Packrat/左再帰/コメント設定の運用指針
+
+* **Packrat と左再帰**: `packrat=true` の場合のみ左再帰の実装（C 節）が有効化される。`left_recursion="auto"` は `rule` で直接左再帰が検出されたときだけ種成長ループを開始し、演算子宣言（2.4 参照）には通常必要ない。CI では 10MB クラスの入力で `packrat=false`/`left_recursion="off"` を同時実行し、性能退行と左再帰サポートの両方を監視することを推奨する（0-1 §1.1）。
+* **コメント・空白**: `extensions["lex"].profile = ConfigTriviaProfile` を設定し、`with_space`/`lexeme` を通じて空白・コメント処理を自動化する。`profile` が未設定の場合は `ConfigTriviaProfile::strict_json` を既定とし、サンプルのように手動でコメントスキップを書くことを禁則とする。互換モードは `extensions["config"].compat` に集約し、`RunConfig` を共有する環境（CLI/LSP/テスト）が同じ挙動を保証する。
+* **復旧戦略**: `recover` を利用する場合、`extensions["recover"].sync_tokens` に同期トークン集合を記録し、ストリーミング実行でも同じ集合を利用できるようにする。`merge_warnings=true` のままでも監査ログ（3-6 §2.2）が個別イベントを保持するため、可観測性は損なわれない。
+
+#### B-2-3. ストリーミング連携
+
+ストリーミング拡張（§F）を併用する場合、次の情報を `RunConfig` と共有する：
+
+1. `extensions["stream"].checkpoint` に最後の確定スパンを格納し、バッチランナーが `commit_watermark` と同期を取れるようにする（A-1）。
+2. `extensions["stream"].resume_hint` に `DemandHint` を保持し、ハイブリッド実行時の再開条件を統一する。`guides/core-parse-streaming.md` では同じ構造体を `ContinuationMeta.resume_hint` に格納するため、ランナー間の相互運用が容易になる。
+3. インクリメンタル再パースで `recover` を利用する際は、`extensions["recover"].notes=true` を設定して `Diagnostic.notes` を必須化し、部分的な診断が IDE 側で欠落しないようにする。
 
 #### B-2-1. ターゲット情報拡張 `extensions["target"]`
 

@@ -137,7 +137,7 @@ impl Parser<()> {
 ```
 
 * `with_space` は `Parser` 全体に既定の空白パーサを紐付ける。内部で生成される `lexeme` / `symbol` / `keyword` 等の字句ユーティリティは、この設定を検出すると `space` を既定値として利用する。複数回呼び出した場合は**最後に適用した空白**で上書きされる。
-* `space` は通常 `config_trivia(profile)` など `Parser<()>` を使い、字句レイヤ（2.3）で定義したコメント・ホワイトスペース処理を再利用する。`with_space` はパーサの意味論を変えず、空白処理が省略された箇所（例：`symbol("if")`）へ自動注入する糖衣である。
+* `space` は通常 `config_trivia(profile)` など `Parser<()>` を使い、字句レイヤ（2.3）で定義したコメント・ホワイトスペース処理を再利用する。`RunConfig.extensions["lex"].profile` を共有すると IDE/CLI/テストが同じスキップ戦略を採用できる。`with_space` はパーサの意味論を変えず、空白処理が省略された箇所（例：`symbol("if")`）へ自動注入する糖衣である。
 * `space_id` は空白パーサに安定した `ParserId` を割り当てる。`rule` で既に ID が確保されている場合はその値を返し、未登録の場合は内部で匿名の `rule("space")` を差し込んで ID を生成する。`RunConfig.extensions["lex"]` 等に格納して IDE/CLI と共有する用途を想定している。【参照: 2-3-lexer.md §L-4】
 * `space_id` が返す ID は Packrat メモ化と同じ仕組みを利用する。したがって `Parser<()>` をコピーしても ID は保持され、0-1 §1.1 の性能要件（共有メモ化）を満たす。
 

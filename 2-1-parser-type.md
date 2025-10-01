@@ -145,6 +145,34 @@ impl RunConfig {
 * `update` 内で `Any` に `ParserId` や `ConfigTriviaProfile` など具体型を格納し、取り出し側で型チェックを行う。これにより 0-1 §1.2 の安全性（型崩壊の防止）を担保する。
 * ミュータブル更新が必要な場合は `RunConfig` を `mut` で受け取り、`cfg = cfg.with_extension(...)` の形で差し替える。`RunConfig` 自体は `Copy` ではないため、所有権移動と再代入が発生する点に留意する。
 
+### D-2. 公式スイッチと既定値 {#runconfig-official-switches}
+
+| 項目 | 目的 | 既定値 | 0-1 との整合 |
+| --- | --- | --- | --- |
+| `require_eof` | 入力全体の消費を強制し、潜在的な設定ミスを即時検出する。 | `false` | 2.2（明確な診断）: 余剰入力を `Diagnostic` 化して早期警告。 |
+| `packrat` | 線形時間を保証するためにメモ化を常時有効化するかを切り替える。 | `false` | 1.1（性能）: 大規模入力での O(n) 維持に寄与。 |
+| `left_recursion` | `"off" | "on" | "auto"` の 3 段階で seed-growing 左再帰を適用。 | `"auto"` | 1.1（性能）: 必要箇所のみ左再帰処理を有効化。 |
+| `trace` | `SpanTrace` を収集し、IDE/CLI で解析過程を可視化。 | `false` | 2.2（診断の透明性）: 必要時のみ情報を開示し過剰負荷を回避。 |
+| `merge_warnings` | 回復警告 (`recover`) の連続発生を集約。 | `true` | 2.2: ノイズを抑えつつ要点を共有。 |
+| `legacy_result` | 旧 API (`Result<(T, Span), ParseError>`) を返す互換スイッチ。 | `false` | 3.2（エコシステム連携）: 移行期間の後方互換を確保。 |
+| `locale` | 診断表示のロケールを明示指定。 | `None` | 2.2: 翻訳済み診断を利用しつつ既定を英語にフォールバック。 |
+
+コメント・互換設定・ストリーミングなど追加の挙動は `extensions` を通して opt-in で提供し、コアの性能特性（0-1 §1.1）と単純さ（0-1 §2.1）を損なわないようにする。
+
+### D-3. 標準拡張ネームスペース {#runconfig-extension-namespaces}
+
+以下のエントリは Reml 仕様で予約されており、IDE・CLI・プラグインが相互運用する際の契約を提供する。
+
+| key | 代表キー | 役割 | 参照 |
+| --- | --- | --- | --- |
+| `"lex"` | `space_id: ParserId`, `profile: ConfigTriviaProfile` | `Core.Parse.Lex` による空白・コメント処理を共有し、手書きのスキップ処理を排除する。 | 2-3 §L-4, 3-7 §1.5 |
+| `"config"` | `compat: ConfigCompatibility`, `trivia: ConfigTriviaProfile` | 設定ファイル互換モード（コメント許容・トレーリングカンマ等）と診断メタを一元化。 | 3-7 §1.5, 3-6 §2.4 |
+| `"recover"` | `sync_tokens: Set<TokenClass>`, `notes: Bool` | `recover` 時の同期トークン集合と監査ログ出力を共有し、CLI/LSP が同じ復旧戦略を再現できるようにする。 | 2-5 §B-11, 3-6 §2.2 |
+| `"stream"` | `checkpoint: Option<Span>`, `resume_hint: DemandHint` | ストリーミング実行（`run_stream`）で保持した継続情報をバッチランナーへ橋渡しする。 | 2-6 §F, guides/core-parse-streaming.md |
+| `"lsp"` | `syntax_highlight: Bool`, `semantic_tokens: Bool` | LSP 拡張でのトークン生成・トレース同期。 | guides/lsp-integration.md |
+
+`lex` と `config` を組み合わせることで、コメント・空白・互換モードの情報を `RunConfig` に集約し、サンプル群が独自のスキップ処理を持たずに済む。これにより、0-1 §1.1 が求める性能と 0-1 §2.2 の診断一貫性を同時に満たす。
+
 ---
 
 ## E. コミットと消費の意味論

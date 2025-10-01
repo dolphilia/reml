@@ -144,3 +144,14 @@ type StreamMeta = {
 
 - `guides/runtime-bridges.md` にホットリロード／差分適用のワークフロー例を掲載。
 - 非同期実行が必要な場合は `Core.Async` 拡張を併用し、`Feeder` を `Future` ベースで実装する。
+
+## 9. RunConfig との統合
+
+ストリーミング実装がバッチランナーと同じ診断品質・復旧性能を維持するために、以下の情報を `RunConfig` と共有する。
+
+- **コメント・互換設定**: `RunConfig.extensions["lex"].profile` と `extensions["config"].compat` をそのまま継承し、字句処理や JSON5 互換モードをストリーミング側で再構成する。入力チャンクを切り替えてもコメントスキップの実装差が生まれない。
+- **復旧戦略**: `extensions["recover"].sync_tokens` と `extensions["recover"].notes` を参照し、`Pending` 状態でも同じ同期トークンで回復を図る。`StreamDriver::pump` は `notes=true` のとき `StreamEvent::Pending` に復旧候補を添付し、LSP 側が提案できるようにする。
+- **継続ヒント**: `extensions["stream"].resume_hint` を `ContinuationMeta.resume_hint` にコピーし、差分実行とバッチ実行でデマンドヒントを共通化する。`min_bytes`/`preferred_bytes` の推奨値は 0-1 §1.1 の性能指標（10MB 入力を線形時間で処理）を基準に計測する。
+- **診断ロケール**: `RunConfig.locale` を尊重し、`StreamOutcome::Completed` の `ParseResult` がバッチ時と同じ翻訳済みメッセージを生成する。
+
+`RunConfig` を共有する方針により、サンプル群が `RunConfig` を省略していた際のコメントスキップや復旧戦略の重複実装を排除し、0-1 §2.2 の診断整合性と §1.1 の性能要件を同時に満たせる。
