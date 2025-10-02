@@ -178,6 +178,37 @@ fn report_manifest(manifest: Manifest, audit: AuditSink) -> Result<(), Diagnosti
 
 - 上記の `tap_diag` は 3-6 §2 で定義された `effect {diagnostic, audit}` を用い、複数の検証結果を一括で記録できる。`feature_guard` や `compatibility_profile` の検証も同一パターンで扱い、診断の再現性と監査ログの連携を保証する。
 
+#### 1.5.4 Config 診断拡張の適用
+
+- Config 関連 API が診断を生成する際は、3-6 §6.1.3 で定義した `ConfigDiagnosticExtension` を `Diagnostic.extensions["config"]` に格納する。これにより CLI/LSP/監査ログが同じ情報粒度で設定問題を提示できる。
+- `source` は `resolve_compat` の優先順位に沿って決定する。CLI で明示された場合は常に `ConfigSource::Cli` とし、環境変数からの上書き時は `ConfigSource::Env` を設定して `AuditEnvelope.metadata["config.source"] = "env"` を記録する。
+- `key_path` は設定ファイルのルートからの完全パスを表し、TOML のテーブルや配列を `ConfigKeySegment` のリストとして保持する。`manifest_path` が `Some(path)` の場合、LSP はこの情報を利用して直接該当位置をハイライトする。
+- `compatibility` と `feature_guard` は `ConfigCompatibility`／`feature_guard` の検証結果を反映させる。たとえば Stage ミスマッチを検出した場合は `FeatureGuardDigest.actual_stage = Stage::Experimental`、`expected_stage = Stage::Stable` とし、`cfg_condition` に `@cfg(target = "prod")` のような実際の条件を記録する。
+- 差分検証（`compare`, `plan`, `apply_diff` 等）では `diff` を必ず埋め、`missing` や `unexpected` のキーは `ConfigKeySegment` と同じ順序で再構築できるよう `Str` ベースで表現する。非公開データが含まれる場合は `snapshot` を空にし、`AuditPolicy.anonymize_pii = true` のときのみダンプを許可する。
+
+```reml
+fn config_extension_from_ctx(ctx: ConfigLintContext, issue: ConfigIssue) -> ConfigDiagnosticExtension =
+  ConfigDiagnosticExtension {
+    source: ctx.source,
+    manifest_path: ctx.manifest_path,
+    key_path: issue.key_path,
+    profile: ctx.profile,
+    compatibility: ctx.compatibility.map(|compat|
+      ConfigCompatibilityDigest {
+        format: compat.format,
+        profile: compat.profile,
+        stage: compat.stage,
+      }),
+    feature_guard: issue.feature_guard,
+    schema: issue.schema_id,
+    diff: issue.diff_summary,
+    snapshot: ctx.snapshot,
+  }
+```
+
+- 上記ユーティリティは `ConfigLintContext`（CLI 側で収集したメタデータ）と `ConfigIssue`（検証結果）を組み合わせ、`ConfigDiagnosticExtension` を組み立てる例である。`feature_guard` が `None` の場合でも構造は維持されるため、後続ツールは空値を検知して「同期済み」と判断できる。
+- `AuditEnvelope.metadata` には `config_extension_from_ctx` の結果をコピーし、`config.diff` や `config.feature_guard` を JSON 化したうえで保存する。監査ログの再解析時に元の診断を再構築できることが 0-1 §1.2 の安全性要件を満たす条件となる。
+
 ## 2. Config スキーマ API（再整理）
 
 `Core.Config.schema` を中心に、差分・監査・CLI 連携を明記する。

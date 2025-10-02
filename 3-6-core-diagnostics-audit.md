@@ -417,9 +417,170 @@ fn observe_backpressure(handle: DslMetricsHandle, depth: usize) -> ()           
 | `channel.producer_latency` / `channel.consumer_latency` | 同 `producer_latency` / `consumer_latency` | 生産者・消費者の各遅延を記録し、責務境界を特定する | §2.2 分かりやすい診断 |
 | `channel.throughput` | 同 `throughput` | チャネル単位の処理件数を記録し、DSL 全体の throughput と連携する | §1.1 スケーラビリティ |
 
-- `conductor` の `monitoring` ブロックで `metrics` セクションを省略した場合、ランタイムは上記 8 項目を自動登録し、`register_dsl_metrics` と 3.9 §1.4.5 `channel_metrics` を内部で呼び出す。利用者が追加メトリクスを指定しても、既定項目は必ず保持する。
-- `channel.*` メトリクスは `ChannelMetricOptions` の既定値 (`collect_* = true`) を利用し、`manifest.conductor.channels[].id` をプレフィックスとして系列を生成する。
-- CLI/監査ログは `dsl.error_rate` が `0.05` を超えた時点で `Severity::Warning` の診断 `conductor.metrics.error_rate_high` を発行し、`channel.queue_depth` が `ExecutionPlan.backpressure.high_watermark` を連続 3 サイクル超過した場合は `Severity::Error` へ昇格させる。診断には `AuditEnvelope.metadata` にサンプリング時刻と計測値を添付する。
+- `conductor` の `monitoring` ブロックで `metrics` セクションを省略した場合、ランタイムは上記 8 項目を自動登録し、`register_dsl_metrics` と 3.9 §1.4.5 `channel_metrics` を内部で呼び出す。利用者が追加メトリクスを指定しても、既定項目は必ず保持する。生成される診断は §6.1.2 の `MonitoringDigest` を介してメトリクス内容を共有する。
+- `channel.*` メトリクスは `ChannelMetricOptions` の既定値 (`collect_* = true`) を利用し、`manifest.conductor.channels[].id` をプレフィックスとして系列を生成する。`ChannelLinkDigest` の `channel` にはこのプレフィックスを含めること。
+- CLI/監査ログは `dsl.error_rate` が `0.05` を超えた時点で `Severity::Warning` の診断 `conductor.metrics.error_rate_high` を発行し、`channel.queue_depth` が `ExecutionPlan.backpressure.high_watermark` を連続 3 サイクル超過した場合は `Severity::Error` へ昇格させる。診断には `AuditEnvelope.metadata` にサンプリング時刻と計測値を添付し、`conductor.monitoring.metrics` キーに `MonitoringDigest.metrics` を保存する。
+- メトリクス転送時は §4 のプライバシー保護手順を適用し、個人情報を含む値は `redact_pii` による匿名化後に CLI/LSP へ渡す。これにより 0-1 §1.2 の安全性と §2.2 の分かりやすい診断を両立する。
+
+#### 6.1.2 Conductor 診断拡張 `conductor`
+
+```reml
+pub type ConductorDiagnosticExtension = {
+  conductor_id: Str,
+  node_id: Str,
+  dsl_id: Option<DslId>,
+  depends_on: List<Str>,
+  capabilities: List<CapabilityId>,
+  execution: Option<ExecutionPlanDigest>,
+  resource_limits: List<ResourceLimitDigest>,
+  monitoring: MonitoringDigest,
+  channels: List<ChannelLinkDigest>,
+  issue: ConductorIssueKind,
+  audit_reference: Option<AuditReference>,
+  snapshot: Option<Json>,
+}
+
+pub type ExecutionPlanDigest = {
+  strategy: ExecutionStrategy,
+  backpressure: Option<BackpressureWindow>,
+  scheduling: Option<SchedulingPolicy>,
+  error: ErrorPropagationPolicy,
+}
+
+pub type BackpressureWindow = {
+  high_watermark: Option<usize>,
+  low_watermark: Option<usize>,
+}
+
+pub type ResourceLimitDigest = {
+  kind: ResourceLimitKind,
+  raw: Str,
+  normalized: Option<Json>,
+}
+
+pub enum ResourceLimitKind = Memory | Cpu | Io | Custom(Str)
+
+pub type MonitoringDigest = {
+  metrics: List<Str>,
+  health_check: Option<HealthCheckDigest>,
+  tracing: Option<TracingDigest>,
+}
+
+pub type HealthCheckDigest = {
+  interval: Duration,
+  probe: Option<Str>,
+}
+
+pub type TracingDigest = {
+  mode: TracingMode,
+  trigger: Option<Str>,
+}
+
+pub enum TracingMode = Disabled | Conditional | Always
+
+pub type ChannelLinkDigest = {
+  from: Str,
+  to: Str,
+  channel: Str,
+  buffer: Option<usize>,
+  codec: Option<Str>,
+}
+
+pub type AuditReference = {
+  audit_id: Option<Uuid>,
+  events: List<Str>,
+}
+
+pub enum ConductorIssueKind = CapabilityMismatch | ResourceLimit | ExecutionPlan | Channel | Monitoring | Custom(Str)
+```
+
+- `conductor_id` と `node_id` は診断対象の DSL ノードを一意に示し、LSP/CLI は `depends_on` と `channels` を利用して依存グラフをハイライトする。
+- `ExecutionPlanDigest` は 3-9 §1.4 の構成要素を縮約し、`BackpressureWindow` が `None` の場合でも `ExecutionPlan.strategy` を表示する。閾値不正（例: `high_watermark <= low_watermark`）は `ConductorIssueKind::ExecutionPlan` を設定する。
+- `ResourceLimitDigest.normalized` はバイト数や CPU クォータを正規化した JSON を格納し、CLI は 0-1 §1.1 の性能要件に照らして再検証する。未正規化の場合は `normalized = None` として実装の判断が残っていることを示す。
+- `MonitoringDigest.metrics` には §6.1 の既定メトリクスを含め、利用者が任意に追加したキーも保持する。`TracingDigest.mode = Conditional` は `trigger` に `@cfg` 条件や `RunConfig.trace_enabled` を記録する。
+- `AuditReference` は §3 の監査ログと結合するためのメタデータで、`events` に `AuditEvent::PipelineStarted` などのイベント名を列挙する。`audit_id` が `None` の場合は監査連携されていない診断であると見なす。
+
+| AuditEnvelope.metadata キー | `ConductorDiagnosticExtension` の対応フィールド | 用途 |
+| --- | --- | --- |
+| `conductor.id` | `conductor_id` | 監査レポートで同一 Conductor の診断を集約する |
+| `conductor.node` | `node_id` | ノード単位でのレビュー（例: `transform`） |
+| `conductor.capabilities` | `capabilities` | Stage/Capability レビュー (0-1 §1.2 準拠) |
+| `conductor.execution` | `execution` | Backpressure/スケジューリング比較 |
+| `conductor.resource_limits` | `resource_limits` | リソース制限の追跡と逸脱検出 |
+| `conductor.monitoring.metrics` | `monitoring.metrics` | CLI/LSP のメトリクス表示 |
+| `conductor.channels` | `channels` | チャネル ID とバッファ設定の参照 |
+
+- CLI/監査ログは `ConductorIssueKind` を Severity 判定の補助として使用し、`CapabilityMismatch` は `Severity::Error`、`Monitoring` は `Severity::Warning` を既定値とする。`Custom` を利用する場合は `issue` と同じ値を `AuditEnvelope.metadata["conductor.issue"]` に保存し、根拠となる仕様ノート（`notes/` 配下）へのリンクを付与する。
+- `snapshot` は DSL ノードの部分構造や `ExecutionPlan` の JSON を格納し、0-1 §2.2 の「分かりやすい診断」を満たすために UI が差分表示できるようにする。個人情報や秘匿データを含む場合は §4 の手順でマスクする。
+
+#### 6.1.3 Config 診断拡張 `config`
+
+```reml
+pub type ConfigDiagnosticExtension = {
+  source: ConfigSource,
+  manifest_path: Option<Path>,
+  key_path: List<ConfigKeySegment>,
+  profile: Option<Str>,
+  compatibility: Option<ConfigCompatibilityDigest>,
+  feature_guard: Option<FeatureGuardDigest>,
+  schema: Option<Str>,
+  diff: Option<ConfigDiffSummary>,
+  snapshot: Option<Json>,
+}
+
+pub enum ConfigSource = Manifest | Env | Cli | Runtime | Generated | Custom(Str)
+
+pub type ConfigKeySegment = {
+  key: Str,
+  index: Option<usize>,
+}
+
+pub type ConfigCompatibilityDigest = {
+  format: Str,
+  profile: Str,
+  stage: Stage,
+}
+
+pub type FeatureGuardDigest = {
+  feature: Str,
+  expected_stage: Stage,
+  actual_stage: Stage,
+  cfg_condition: Option<Str>,
+}
+
+pub type ConfigDiffSummary = {
+  missing: List<Str>,
+  unexpected: List<Str>,
+  changed: List<ChangedValue>,
+}
+
+pub type ChangedValue = {
+  key: Str,
+  before: Option<Json>,
+  after: Option<Json>,
+}
+```
+
+- `source` は値がどこから供給されたかを明示し、`Cli` > `Env` > `Manifest` > `Runtime` の優先順位（3-7 §1.5.2）を UI 側で再現できるようにする。
+- `key_path` は配列インデックスを含む完全な階層を保持し、LSP は `manifest_path` と併用して該当セクションへジャンプする。`index` は 0 起点とする。
+- `ConfigCompatibilityDigest.stage` に記録した Stage は 0-1 §1.2 の安全性指針に従い、`Stage::Experimental` の値を `Severity::Warning` 以上で通知する根拠となる。
+- `FeatureGuardDigest` は `feature_guard` と `@cfg` の同期状態を比較し、未同期の場合は `actual_stage` と `cfg_condition` を併記する。`cfg_condition = None` の場合は RunConfig がオフラインであることを示す。
+- `ConfigDiffSummary` は `load_manifest` / `validate_manifest` で得られた差分を要約し、`missing` / `unexpected` / `changed` を別リストで保持する。`ChangedValue` の `before` / `after` は `Json` 表現で保存し、CLI ではサンプル数を制限して可視化する。
+- `snapshot` には検証対象の断片（例: TOML テーブル全体）を格納し、機密情報が含まれる場合は §4 に従ってマスクする。
+
+| AuditEnvelope.metadata キー | `ConfigDiagnosticExtension` の対応フィールド | 用途 |
+| --- | --- | --- |
+| `config.source` | `source` | 優先順位の再現と監査経路の追跡 |
+| `config.path` | `manifest_path` | 監査ログからファイル位置へ遷移 |
+| `config.key_path` | `key_path` | 設定キーの特定と差分レビュー |
+| `config.profile` | `profile` | プロファイル別の逸脱検知 |
+| `config.compatibility` | `compatibility` | Stage と互換モードの整合確認 |
+| `config.feature_guard` | `feature_guard` | Feature Gate の審査 |
+| `config.diff` | `diff` | 変更点サマリのレビュー |
+
+- CLI/LSP は `source` を基に 3-7 §1.5.2 の優先順位アイコンを表示し、`manifest_path` が `None` の場合は生成値 (`Runtime`) であると判断する。`ConfigDiffSummary` が空の場合は `diff = None` とし、診断は構造的問題（型不一致等）に集中していることを示す。
+- `FeatureGuardDigest.actual_stage` が `Stage::Experimental` かつ `expected_stage` が `Stage::Stable` の場合は `Severity::Error` を推奨し、0-1 §1.2 の安全性維持に利用する。`cfg_condition` を `AuditEnvelope.metadata["config.feature_guard.cfg"]` に転写し、ビルドログで追跡可能にする。
+- `snapshot` に含める JSON/TOML 断片は `AuditPolicy.anonymize_pii = true` の場合に自動マスクされるべきであり、ツールは `config.snapshot` を出力する前に `redact_pii` を適用する。
 
 ### 6.2 トレース統合
 
