@@ -228,6 +228,55 @@ type AsyncDiagnosticExtension = {
 
 これらの手順は 0-1 §1.2 と §2.2 に沿って、原因追跡と再現性を改善する。CLI/LSP は `AsyncDiagnosticExtension` を持つ診断をツリー表示する UI を提供することが推奨される。
 
+#### 2.5.1 Supervisor 診断拡張 {#diagnostic-async-supervisor}
+
+```reml
+pub type SupervisorDiagnosticExtension = {
+  supervisor_id: Uuid,
+  supervisor_name: Str,
+  actor_id: ActorId,
+  outcome: SupervisorOutcome,
+  restart_count: u16,
+  strategy: RestartStrategyDigest,
+  budget: Option<RestartBudgetDigest>,
+  exhausted: Bool,
+  stage_required: Option<Stage>,
+  stage_actual: Option<Stage>,
+}
+
+pub type RestartStrategyDigest = {
+  kind: RestartStrategyKind,
+  budget: Option<RestartBudgetDigest>,
+}
+
+pub enum RestartStrategyKind = OneForOne | OneForAll | Temporary
+
+pub type RestartBudgetDigest = {
+  max_restarts: NonZeroU16,
+  within: Duration,
+  cooldown: Duration,
+  restarts_in_window: u16,
+  window_started_at: Timestamp,
+}
+```
+
+- `SupervisorDiagnosticExtension` は 3.9 §1.9.5 の `SupervisorEvent` から組み立てられ、`Diagnostic.extensions["async.supervisor"]` に格納する。`outcome` は `SupervisorOutcome`（3.9 §1.9.5）を再利用し、CLI/LSP は `restart_count` と `restarts_in_window` を可視化することで 0-1 §1.2 の安全基準（過剰再起動の抑制）を監視できる。
+- `stage_required` と `stage_actual` は Capability Registry が返した Stage 情報を記録し、`async.supervisor.capability_missing` 発生時に不足ステージを提示する。再起動系診断では `None` のままとし、Stage を UI 表示から省略して差分強調に集中させる。
+- `exhausted = true` の診断は `Severity::Error` を既定とし、`RestartBudgetDigest` を必須化する。`Temporary` 戦略の子役者が停止した場合は `budget = None` のまま `SupervisorOutcome::Stopped` を記録し、再起動を行わない。
+- `AuditEnvelope.metadata` には `async.supervisor.id`, `async.supervisor.name`, `async.supervisor.actor`, `async.supervisor.restart_count`、`async.supervisor.strategy`（`kind` を文字列化）を保存し、`AuditEvent::AsyncSupervisorRestarted` や `AsyncSupervisorExhausted` と連動させる。監査レポートはこれらのキーを用いて Stage 評価と Capability レビューを自動照合する。
+
+推奨診断コード：
+
+| `Diagnostic.code` | 既定 Severity | 発生条件 | 主な対応 |
+| --- | --- | --- | --- |
+| `async.supervisor.capability_missing` | Error | `RuntimeCapability::AsyncSupervisor` が未登録、または `stage_actual < stage_required` | `stage_required` / `stage_actual` を比較表示し、`CapabilityRegistry::register` の Stage 更新や `@requires_capability` の調整を案内する。 |
+| `async.supervisor.restart` | Info | `SupervisorOutcome::Restarted` が観測された | `restart_count` と `RestartBudgetDigest` を表示し、利用者に再起動頻度を通知する。閾値が近づいた場合は CLI が Warning を提案できるよう `restarts_in_window` を添付する。 |
+| `async.supervisor.escalation` | Warning | `SupervisorOutcome::Escalated`、もしくは `SupervisorHandle.restart` が `AsyncErrorKind::InvalidConfiguration` を返した | エスカレーション先の Capability と `SupervisorDiagnosticExtension` を確認し、`RestartStrategy` または子役者の `tags` を見直す。必要に応じて `CapabilityRegistry` で Stage 昇格を申請する。 |
+| `async.supervisor.exhausted` | Error | `SupervisorOutcome::Exhausted` が記録され、`SupervisorDiagnosticExtension.exhausted = true` | DSL 側で `ExecutionPlan` を隔離し、`SupervisorSpec.strategy` や `ChildRestartPolicy` を再評価する。監査ログには `AuditEvent::AsyncSupervisorExhausted` を必須で添付する。 |
+
+- LSP/CLI は `SupervisorDiagnosticExtension.exhausted` を閾値判定の入力に利用し、`async.supervisor.restart` が一定回数以上発生した場合に自動で Quick Fix（再起動予算の見直し）を提示することが推奨される。
+- `async.supervisor.escalation` は 0-1 §1.2 の安全性を損なう潜在リスクとして扱い、`RunConfig.extensions["supervisor"].escalation_policy` が存在しない環境では `Severity::Error` に昇格させる。監査レポートでは `async.supervisor.strategy` と `CapabilityRegistry::stage_of` を突き合わせ、未承認の Stage へ再起動が波及していないかを確認する。
+
 ## 3. 監査ログ出力
 
 ```reml

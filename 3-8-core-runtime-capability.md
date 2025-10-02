@@ -159,6 +159,7 @@ pub enum RuntimeCapability = {
   ActorMailbox,
   DistributedActor,
   AsyncTracing,
+  AsyncSupervisor,
   Vector512,
   RegexJit,
   RegexMetrics,
@@ -234,12 +235,15 @@ if has_target_capability(TargetCapability::FilesystemCaseInsensitive) {
 | `RuntimeCapability::ActorMailbox` | 固定長リングバッファ付き Mailbox と `link`/`monitor` 用の監査フックを有効化する。 | `Core.Async` §1.9, `3-6` 監査拡張 |
 | `RuntimeCapability::DistributedActor` | `TransportHandle` によるリモート mail box 統合と TLS 設定検証を提供する。 | `Core.Async` §1.9.2, `guides/runtime-bridges.md` §11 |
 | `RuntimeCapability::AsyncTracing` | 非同期タスクの span 追跡（`DiagnosticSpan` の継承と `async.trace.*` メトリクス）を記録する。 | `Core.Diagnostics`, LSP トレース, 監査ログ |
+| `RuntimeCapability::AsyncSupervisor` | `spawn_supervised`/`SupervisorSpec` の再起動制御と監査フックを有効化し、RestartBudget の強制と `async.supervisor.*` 診断を提供する。 | `Core.Async` §1.9.5, `Core.Diagnostics` §2.5.1 |
 
 - これら Capability は 0-1-project-purpose.md §1.1 の性能基準を満たすため、最低でも `AsyncScheduler` を安定ステージで登録することを求める。未登録の場合は `Core.Async` が逐次実行フォールバックへ切り替わり、`async.actor.capability_missing` 診断で通知される。
 - `AsyncBackpressure` が無い環境では `send` の `Pending` が `DropNew` に置き換わるため、DSL は高水位閾値を保守的に設定し、`guides/runtime-bridges.md §11` のテーブルに従って警告を発行する。
 - `DistributedActor` を利用する場合は `SecurityCapability.permissions` に `Network` を含めること。暗号化オプションが未設定なら `SecurityCapability` が `CapabilityError::SecurityViolation` を返す。
 - `AsyncTracing` が有効な環境では `DiagnosticSpan` を `CapabilityRegistry::get("tracing")` から取得し、`ActorContext.span` に継承する。メトリクス未対応環境ではトレースセクションをスキップする。
 - `CapabilityRegistry::stage_of(RuntimeCapability)` はこれらの Capability についても Stage 管理を提供し、`experimental` から `beta` へ昇格させる際は `notes/dsl-plugin-roadmap.md` のチェックリストを満たす必要がある。
+- `RuntimeCapability::AsyncSupervisor` は登録時に `stage` を明示し、`Stage::Experimental` のまま提供する場合は `spawn_supervised`/`SupervisorSpec` 側で `@requires_capability(stage="experimental")` を必須とする。`stage >= Stage::Beta` へ昇格した後は `SupervisorSpec.health_check` と `RestartBudget` のリポートを監査に添付できることを確認してから `Stage::Stable` へ更新する。
+- `CapabilityRegistry::require(RuntimeCapability::AsyncSupervisor)` は Stage 不整合時に `CapabilityError::SecurityViolation` を返し、`Core.Async` 側で `AsyncErrorKind::RuntimeUnavailable` として再マッピングする。診断は 3-6 §2.5.1 の `async.supervisor.capability_missing` を使用し、`extensions["async.supervisor"].stage_required` / `stage_actual` を記録する。CLI は `reml capability stage promote async.supervisor` を通じて昇格ログを生成し、0-1 §1.2 の安全性レビュー資料に添付する。
 
 ```reml
 pub struct AsyncCapability {

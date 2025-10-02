@@ -12,5 +12,5 @@
 - [3.6 診断と監査](3-6-core-diagnostics-audit.md): `Diagnostic` 構造と監査ログ、プライバシー制御、CLI/LSP 統合やメトリクス連携のベストプラクティスを示します。
 - [3.7 設定とデータ管理](3-7-core-config-data.md): `reml.toml` マニフェスト、Config/Data スキーマ API、互換モード `ConfigCompatibility` と監査連携、マイグレーション安全性をまとめます。
 - [3.8 ランタイムと Capability レジストリ](3-8-core-runtime-capability.md): Capability Registry の構造、セキュリティモデル、各 Capability の概要と DSL プロファイル生成フローを解説します。
-- [3.9 非同期・FFI・アンセーフ](3-9-core-async-ffi-unsafe.md): 非同期実行モデル、FFI サンドボックス、`Core.Unsafe` 指針と Capability 連携、`ExecutionPlan` 静的検証とセキュリティ/性能最適化を扱います。
+- [3.9 非同期・FFI・アンセーフ](3-9-core-async-ffi-unsafe.md): 非同期実行モデル、FFI サンドボックス、`Core.Unsafe` 指針と Capability 連携、`ExecutionPlan` 静的検証とセキュリティ/性能最適化を扱います。`SupervisorSpec` / `RestartStrategy` による標準 Supervisor パターンと診断・監査の連携手順もここで定義します。
 - [3.10 環境機能とプラットフォーム連携](3-10-core-env.md): 環境変数アクセス、プラットフォーム情報取得、`REML_CONFIG_*` による互換フラグ供給、`@cfg` 連携ガイドラインと将来拡張メモを提供します。
