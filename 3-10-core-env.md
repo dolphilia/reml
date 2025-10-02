@@ -71,6 +71,8 @@ fn config_dir(app: Str) -> Result<Path, EnvError>                  // `effect {i
 
 これらの値は `infer_target_from_env` と同様に `RunConfig` 構築時へ反映され、LSP・CLI・ビルドが同じ互換プロファイルを使用する。0-1 §1.2 の安全性を守るため、互換機能が本番で有効化された場合は `AuditEvent::ConfigCompatChanged` を必ず発行し、`RunConfig.extensions["audit"].policy` に従ってレビューを促す。また、`Core.Env` は CLI 層が優先されることを保証するために `config_compat_cli_wins` 準拠テストを提供し、環境変数とマニフェストが CLI 指定を上書きした場合は失敗として扱う。
 
+`resolve_run_config_target` は構文解析フェーズから渡された `CfgFeatureSet` を `RunConfigTarget.feature_requirements` へ格納し、`feature_requirements ⊆ features` を保証する。`resolve_compat` 完了時には `ConfigCompatibility.feature_guard`, `RunConfigTarget.features`, `RunConfigTarget.feature_requirements` を比較して差異がないか検証し、ずれが検出された場合は `config.feature.mismatch`（3-6 §6.1.3）を発行する。CLI/LSP は `missing_in_target` を即時エラーとして扱い、`missing_in_compat` や `extra_in_compat` は `--fix` オプションで `feature_guard` を自動同期する。診断詳細は `Diagnostic.extensions["config"].feature_guard` に格納し、監査ログでは `config.feature_guard` メタデータで同じ情報を追跡する。
+
 ## 3. プラットフォーム情報の取得
 
 ```reml
@@ -80,6 +82,7 @@ fn has_capability(cap: Capability) -> Bool                       // `effect {run
 
 * `PlatformInfo` と `Capability` は [3-8](3-8-core-runtime-capability.md#platform-info) にて定義される。`Core.Env` は単なるフェデレーションモジュールであり、`Core.Runtime` の Capability Registry からデータを引き出して公開する。
 * `platform_info()` の結果は `RunConfig.extensions["target"]` と同期する責務がある。CLI はコンパイル時ターゲット、ランタイムは実行中ターゲットを提供するが、差異がある場合は `Diagnostic.domain = Target`（3-6 §7 新設）で `data.cfg.mismatch = true` を付けて警告を促す。
+* `RunConfigTarget.feature_requirements` は `@cfg(feature = "...")` で参照された機能集合を保持し、`resolve_run_config_target` が `features` との整合性を確認した上で格納する。`merge_runtime_target` はランタイムが追加機能を報告した場合でも `feature_requirements` を変更せず、ビルド時要求との比較に利用する。
 
 ## 4. `@cfg` 連携ガイドライン
 
@@ -113,6 +116,7 @@ pub type RunConfigTarget = {
   profile_id: Option<Str>,
   triple: Option<Str>,
   features: Set<Str>,
+  feature_requirements: Set<Str>,
   capabilities: Set<Str>,
   stdlib_version: Option<SemVer>,
   runtime_revision: Option<Str>,

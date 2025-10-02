@@ -209,6 +209,23 @@ fn config_extension_from_ctx(ctx: ConfigLintContext, issue: ConfigIssue) -> Conf
 - 上記ユーティリティは `ConfigLintContext`（CLI 側で収集したメタデータ）と `ConfigIssue`（検証結果）を組み合わせ、`ConfigDiagnosticExtension` を組み立てる例である。`feature_guard` が `None` の場合でも構造は維持されるため、後続ツールは空値を検知して「同期済み」と判断できる。
 - `AuditEnvelope.metadata` には `config_extension_from_ctx` の結果をコピーし、`config.diff` や `config.feature_guard` を JSON 化したうえで保存する。監査ログの再解析時に元の診断を再構築できることが 0-1 §1.2 の安全性要件を満たす条件となる。
 
+#### 1.5.5 feature_guard と `@cfg` の同期検証
+
+- `feature_guard` は設定ファイルが前提とする互換機能の **ソースオブトゥルース** であり、`RunConfig.extensions["config"].features` と `RunConfigTarget.features` の双方を通じてコンパイラへ共有される。CLI/ビルドはこの集合を `ResolveFeatureGuard` フェーズで確定し、以降の `@cfg` 評価と診断生成で再利用する。
+- 構文解析は `@cfg(feature = "...")`、`@cfg(any(...))`、`@cfg(all(...))` で参照された機能名を `CfgFeatureSet` として収集する。`CfgFeatureSet` はマクロ展開・DSL 展開後の AST 単位で重複を排除し、`RunConfig.extensions["target"].feature_requirements` に保存する。
+- 検証アルゴリズム：
+  1. `compat_declared = ConfigCompatibility.feature_guard`
+  2. `target_active = RunConfigTarget.features`
+  3. `cfg_required = RunConfig.extensions["target"].feature_requirements`
+  4. 差集合を求める：
+     - `missing_in_compat = cfg_required \ compat_declared`
+     - `missing_in_target = cfg_required \ target_active`
+     - `extra_in_compat = compat_declared \ target_active`
+  5. いずれかが非空の場合、診断 `config.feature.mismatch` を生成する。
+- `config.feature.mismatch` は `Diagnostic.extensions["config"].feature_guard = Some(FeatureGuardDigest)` を要求し、`FeatureGuardDigest.feature` には差集合ごとに検出した機能名を格納する。`cfg_condition` には該当する `@cfg` 条件式（例：`any(feature = "json5", feature = "experimental_syntax")`）を文字列化して保存し、再現性を保証する。
+- `missing_in_target` が非空の場合は Stage に関わらず `Severity::Error` を既定とし、0-1 §1.2 の安全性原則を満たすためにビルドを失敗させる。`extra_in_compat` のみが非空の場合は `Severity::Warning` を推奨し、CLI は自動修正 (`--fix`) で `feature_guard` をターゲット値へ同期できるようにする。`missing_in_compat` は Stage::Stable では `Severity::Error`、Stage::Experimental では `Severity::Warning` を推奨する。
+- CLI/LSP は `config.feature_guard` の差分を UI 上で強調表示し、`resolve_compat` 実行後に `RunConfig.extensions["config"].features = compat_declared` を再設定する。これにより `feature_guard` が同期した状態で `@cfg` 判定が行われ、実行時挙動の差異を抑止できる。
+
 ## 2. Config スキーマ API（再整理）
 
 `Core.Config.schema` を中心に、差分・監査・CLI 連携を明記する。

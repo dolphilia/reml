@@ -110,6 +110,7 @@ Chapter 3 の標準ライブラリは `Σ_core` / `Σ_system` を細分化する
 * `@cfg` によって無効化されたブロックでのみ `unsafe` や `ffi` を使用する構成は許可されない。コンパイラは **全条件が偽になる可能性** を考慮し、常に少なくとも 1 つは有効になることを証明できない `@cfg` の組合せには `effects.cfg.unreachable` 警告を出す。
 * `@cfg` で分岐させる際は、**効果タグが整合するように設計**すること。特定プラットフォームのみ追加効果を許容する場合は、関数全体の効果集合にそのタグが含まれる前提で API を設計するか、プラットフォーム別モジュールへ分割する。
 * `RunConfig.extensions["target"]` を用いたカスタムキーを `@cfg` に供給する場合は、ビルドスクリプトや CLI が同じキー名を提供しないと `target.config.unknown_key` が発生する。
+* `@cfg(feature = "...")` 系の条件で参照された機能集合と、`ConfigCompatibility.feature_guard`（3-7 §1.5.5）・`RunConfigTarget.features`（3-10 §4）に登録された集合は常に一致していなければならない。構文解析フェーズは `@cfg` で使用された機能名を収集し、ターゲット解決フェーズで `feature_guard` と突き合わせる。差異がある場合、コンパイラは `Diagnostic.code = "config.feature.mismatch"` を発行し、`Diagnostic.extensions["config"].feature_guard` に `FeatureGuardDigest` を格納して未同期機能と `@cfg` 条件を明示する。この診断は Stage::Stable 以上では `Severity::Error` を推奨し、0-1 §1.2 の安全性原則に従って本番環境での挙動差を遮断する。
 
 
 ### C.2 監査・セキュリティ効果の扱い

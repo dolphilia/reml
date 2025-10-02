@@ -592,6 +592,12 @@ pub type ChangedValue = {
 - `FeatureGuardDigest.actual_stage` が `Stage::Experimental` かつ `expected_stage` が `Stage::Stable` の場合は `Severity::Error` を推奨し、0-1 §1.2 の安全性維持に利用する。`cfg_condition` を `AuditEnvelope.metadata["config.feature_guard.cfg"]` に転写し、ビルドログで追跡可能にする。
 - `snapshot` に含める JSON/TOML 断片は `AuditPolicy.anonymize_pii = true` の場合に自動マスクされるべきであり、ツールは `config.snapshot` を出力する前に `redact_pii` を適用する。
 
+推奨診断コード：
+
+| `Diagnostic.code` | 既定 Severity | 発生条件 | 対応 |
+| --- | --- | --- | --- |
+| `config.feature.mismatch` | `Error`（`missing_in_target` 有り）、それ以外は `Warning` | `feature_guard`, `RunConfigTarget.features`, `RunConfigTarget.feature_requirements` のいずれかに差異がある | CLI/LSP は差集合を提示し、`--fix` で `feature_guard` 同期を提案。`missing_in_target` が発生した場合はビルド停止。 |
+
 ### 6.2 トレース統合
 
 ```reml
