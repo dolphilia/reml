@@ -13,7 +13,7 @@
 
 ## 1. モジュール構成と import 規則
 
-- `use Core;` で `Core.Prelude` と `Core.Iter` を一括導入できる。既存の Chapter 2 モジュール（`Core.Parse`）と同様、Prelude は**型推論を阻害しない軽量な宣言**のみを公開する。【F:0-1-overview.md†L90-L109】
+- `use Core;` で `Core.Prelude` と `Core.Iter` を一括導入できる。既存の Chapter 2 モジュール（`Core.Parse`）と同様、Prelude は**型推論を阻害しない軽量な宣言**のみを公開する。【F:0-1-project-purpose.md†L90-L109】
 - `Core.Prelude` は `Option`/`Result`/`Never` 型と演算子糖衣（`?`, パイプ `_` 占位、ガード補助）を提供し、例外を排した失敗制御スタイルを保証する。【F:1-1-syntax.md†L276-L295】【F:1-3-effects-safety.md†L64-L75】
 - `Core.Iter` は不変データ構造と親和性の高い**遅延列 `Iter<T>`**を定義し、`|>` パイプと組み合わせた宣言的データフローを実現する。【F:1-1-syntax.md†L291-L339】
 - Prelude / Iter はいずれも `@pure` がデフォルト。`effect` を要求する関数はシグネチャにタグを明記する（例：`Iter.collect_vec` は `effect {mut}`）。【F:1-3-effects-safety.md†L40-L75】
@@ -62,7 +62,7 @@ pub type Never = Result<Never, Never> // 空集合を示す記号的型。実体
 
 `Option.ok_or` と `Result.from_option` は `Map.get` などが返す `Option` を `Result` へ持ち上げる際の共通パターンを吸収し、Lisp/PL/0 などの DSL パーサで頻出する「存在しないキー」の扱いを 1 行で表現できるようにした。エラーメッセージを遅延評価できるため、`format` のコストを必要時まで遅らせることができる。【F:samples/language-impl-comparison/reml/mini_lisp_combinator.reml†L81-L92】
 
-- `expect` 系は `effect {debug}` のみを要求し、本番ビルドでは使用を禁止する lint を用意する。`panic` は 0-1 章で述べた通りデバッグ用途でのみ許容される。【F:0-1-overview.md†L90-L100】
+- `expect` 系は `effect {debug}` のみを要求し、本番ビルドでは使用を禁止する lint を用意する。`panic` は 0-1 章で述べた通りデバッグ用途でのみ許容される。【F:0-1-project-purpose.md†L90-L100】
 - `ensure` はガード節やテンプレート DSL で利用する共通ヘルパ。`ensure_not_null` は FFI やプラグインから渡されるポインタ検証用。【F:1-3-effects-safety.md†L228-L268】
 
 ### 2.3 伝播演算子 `?`
@@ -180,7 +180,7 @@ fn sum_positive(xs: List<Int>) -> Result<Int, Diagnostic> =
     |> Iter.try_fold(0, |acc, x| Ok(acc + x))
 ```
 
-- `ensure` が返す `Result` を `?` で伝播しつつ、`Iter.try_fold` で集計することで「例外なし」「宣言的スタイル」の原則を保つ。【F:0-1-overview.md†L90-L109】【F:1-3-effects-safety.md†L228-L268】
+- `ensure` が返す `Result` を `?` で伝播しつつ、`Iter.try_fold` で集計することで「例外なし」「宣言的スタイル」の原則を保つ。【F:0-1-project-purpose.md†L90-L109】【F:1-3-effects-safety.md†L228-L268】
 - `Iter.try_fold` 内のクロージャが `Err` を返した場合、残りの要素は評価されない。これにより診断や監査で必要な早期中断を行える。
 
 ### 3.6 Collections / Text への橋渡し

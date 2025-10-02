@@ -325,7 +325,7 @@ pub enum PriorityPolicy = FIFO | Priority { levels: u8 }
 * `RuntimeCapability::RegexJit` が無効な場合、`PatternFlag::Jit` は `RegexErrorKind::CapabilityRequired` を返し、`feature {regex}` は NFA/Hybrid 実装のみを利用する（2.6 §F）。
 * `RuntimeCapability::RegexMetrics` を有効化すると `RunConfig.extensions["regex"].metrics=true` が要求され、`regex.match.duration` / `regex.backtrack.depth` をメトリクスストリームへ送信する。無効な場合はメトリクス計測を省略する。
 * Capability Registry は `register("regex", CapabilityHandle::Plugin(...))` を通じてサードパーティエンジンを差し替え可能とし、登録時に `UnicodeClassProfile.version` を `platform_features()` と照合する。
-* 監査強度ポリシー（3-6 §2.7）が `High` のときは `RegexRunConfig.audit` を省略できず、`RuntimeCapability::RegexMetrics` が未登録であれば `regex.audit.capability_missing` を発行する。
+* 監査ポリシー（3-6 §3.2）で `AuditLevel::Debug` 以上を要求する場合は `RegexRunConfig.audit` を省略できず、`RuntimeCapability::RegexMetrics` が未登録であれば `regex.audit.capability_missing` を発行する。
 
 ### 1.6 CapabilityError
 

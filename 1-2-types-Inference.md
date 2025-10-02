@@ -165,13 +165,11 @@ impl Add<i64, i64, i64> for i64 { fn add(a,b) = a + b }
 
 ### C.7 失敗時の方針（エラー）
 
-### C.6 失敗時の方針（エラー）
-
 * **期待/実際**・**候補トレイト**・**不足制約**を列挙。
 * 量化変数が関係する場合は **“ここで一般化/インスタンス化が必要”** を示す。
 * 位置は **式ごとに最狭スパン**で報告（Core.Parse.Err と連携）。
 
-### C.7 `RunConfigTarget` と型検査の整合
+### C.8 `RunConfigTarget` と型検査の整合
 
 ```reml
 type RunConfigTarget = {
