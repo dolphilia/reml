@@ -183,6 +183,32 @@ fn Err.custom(at: Span, msg: Str) -> ParseError
 
 `Parse.recover` の実装は上記の `Parse.fail` と同じ経路で `Diagnostic` を生成し、復旧地点に `FixIt::Insert` や `FixIt::Replace` を自動付与する。これにより `Parse.recover` の戻り値として AST 内に挿入される `ErrorNode` と診断情報が一致し、IDE 上での可視化と監査出力が同期する。
 
+### B-12. `Async.timeout` 由来の診断を統一する
+
+> ストリーミング DSL や外部 DSL ブリッジでは、`Async.timeout` を経由した失敗を `ParseError` の補助診断として取り扱うケースが多い。ここでは `AsyncError` との接続手順を定義し、0-1 §1.2（安全性）と §2.2（分かりやすいエラー）の両立を図る。
+
+1. **`AsyncError` を保持する**：`Async.timeout(...)` の結果が `Err(e)` だった場合、`e` を破棄せず保持し、`AsyncError.kind` が `Timeout` であることを確認する。`kind != Timeout` の場合は従来通り `async.error.<kind>` コードに従う。
+2. **メタデータ抽出**：`AsyncError::timeout_info()` を呼び出し、`TimeoutInfo{ waited, limit, origin }` を取得する。取得できなかった場合は `metadata["timeout"]` を直接参照し、最低限 `waited` と `limit` を `PrettyOptions` のノートへ残す。
+3. **診断生成**：`Diagnostic` を組み立てる際は `domain = Some(Runtime)`, `code = Some("async.timeout")`, `severity = Error` を既定とする。`extensions["async"]["timeout"] = { "waited": waited, "limit": limit, "origin": origin }` を埋め込み、監査ログと一貫させる。
+4. **補助ノート**：`notes.push((span, "execution exceeded {limit}, waited {waited}")` のように、人間が即座に閾値を把握できる文章を追加する。`origin` が `Capability(id)` の場合は `notes` に「Capability `<id>` が設定した期限を超過」と追記し、Capability レジストリの再設定を促す。
+5. **後方互換ヘルパ**：旧 `TimeoutError` 型を受け取る API へ渡す必要がある場合は、`AsyncError::into_timeout_info()` を使用して `TimeoutInfo` を取り出し、`TimeoutError`（`#[deprecated]` エイリアス）へ変換する。新規コードでは直接 `AsyncError` を扱い、二重エラー構造を避ける。
+
+```reml
+let result = await Async.timeout(parse_stream(stream), 1.s);
+match result {
+  Ok(value) -> continue(value),
+  Err(e) -> {
+    if let Some(info) = e.timeout_info() {
+      let diag = Diagnostic::runtime_timeout(span, info);
+      return Err(Err.attach(parse_error, diag));
+    }
+    return Err(Err.attach(parse_error, e.into_diagnostic(span)));
+  }
+}
+```
+
+CLI/LSP 実装は `async.timeout` コードを認識して専用テンプレート（例: `"操作が {limit} の期限内に完了しませんでした"`）を適用し、`limit`・`waited` を置換する。これにより、旧サンプルのような `Async.TimeoutError` / `Async.AsyncError::Timeout` の二重管理が発生せず、利用者は統一したガイドラインに従って監査・再試行判断を行える。
+
 ---
 
 ## C. 表示（pretty）と多言語

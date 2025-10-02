@@ -255,6 +255,7 @@ type AsyncDiagnosticExtension = {
 ```
 
 - `Diagnostic.domain` が未設定の場合は `DiagnosticDomain::Runtime` を適用する。`code` は `async.error.<kind>`（`kind` は `AsyncErrorKind` を `snake_case` に変換）を既定値とし、CLI/LSP のハイライトに利用する。
+- `Core.Async.timeout` 由来の `AsyncErrorKind::Timeout` は常に `code = Some("async.timeout")` とし、`extensions["async"]["timeout"]` に `waited`・`limit`・`origin` を構造化して保存する。既存の `async.error.timeout` 表記は後方互換のエイリアスとして扱い、UI はどちらも同一イベントにマップする。
 - `Diagnostic.primary` は `AsyncError.span` を利用し、値が無い場合は 1-1 §B の合成 Span 規約で生成した位置を割り当てる。
 - `AsyncError.cause` の各要素は順序を保持したまま `Diagnostic.secondary` の `SpanLabel` に変換する。`SpanLabel.message` には `AsyncErrorLink.message` を格納し、`origin` と `metadata` から抽出したキー（例: `retry_attempt`, `channel`）を括弧書きで併記する。
 - `Diagnostic.extensions["async"]` には上記構造を格納し、`metadata` フィールドに `AsyncError.metadata` をマージする。`diagnostic_id` キーが存在する場合は `AuditEnvelope.metadata["async.diagnostic_id"]` にも反映し、重複報告を避ける。

@@ -33,13 +33,15 @@ fn sleep_async(duration: Duration) -> Future<()>                             // 
 - `Context` は Waker を含む非同期実行コンテキスト。
 - `SchedulerHandle` は `Core.Runtime` の Capability Registry から取得する。
 - `block_on` は同期ブロックするため `effect {io.blocking}` を要求し、CLI ツールなどで使用する際は注意が必要。
+- `timeout` は期限超過時に `AsyncErrorKind::Timeout` を返し、`AsyncError.metadata["timeout"]` に `{ "waited": Duration, "limit": Duration, "origin": Str }` を格納する。これにより 0-1 §1.2 で定義された安全性（監査可能性）を満たし、診断では `async.timeout` コードで統一表示される。
+- `AsyncError::timeout_info` / `into_timeout_info` はメタデータを構造化して取得するための標準ヘルパであり、既存コードの `TimeoutError` 依存は `#[deprecated]` の型エイリアス経由で段階的移行できる。
 
 ### 1.2 高度な非同期パターン
 
 ```reml
 fn join<T, U>(future1: Future<T>, future2: Future<U>) -> Future<(T, U)>         // `effect {io.async}`
 fn select<T>(futures: List<Future<T>>) -> Future<(usize, T)>                   // `effect {io.async}`
-fn timeout<T>(future: Future<T>, duration: Duration) -> Future<Result<T, TimeoutError>> // `effect {io.async}`
+fn timeout<T>(future: Future<T>, duration: Duration) -> Future<Result<T, AsyncError>> // `effect {io.async}`
 fn retry<T>(future: () -> Future<T>, policy: RetryPolicy) -> Future<T>         // `effect {io.async}`
 
 pub type RetryPolicy = {
@@ -49,6 +51,20 @@ pub type RetryPolicy = {
 }
 
 pub enum BackoffStrategy = Linear(Duration) | Exponential { base: Duration, max: Duration } | Custom((u32) -> Duration)
+
+pub struct TimeoutInfo = {
+  waited: Duration,
+  limit: Duration,
+  origin: TimeoutOrigin,
+}
+
+pub enum TimeoutOrigin = UserDeadline | RuntimeDefault | Capability(Str) | External(Str)
+
+fn AsyncError::timeout_info(&self) -> Option<&TimeoutInfo>
+fn AsyncError::into_timeout_info(self) -> Option<TimeoutInfo>
+
+#[deprecated(since = "1.0.0-beta2", note = "AsyncError::Timeout へ統一されたため")]
+pub type TimeoutError = TimeoutInfo
 ```
 
 ### 1.3 ストリームとアシンクイテレータ
