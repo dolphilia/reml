@@ -128,6 +128,8 @@ enum KeyPolicy = Forbid | AllowAlpha | AllowAlphaNumeric
 enum DuplicateKeyPolicy = Error | LastWriteWins | CollectAll
 enum NumberCompatibility = Strict | AllowLeadingPlus | AllowHexFloat
 
+fn ConfigCompatibility::default() -> ConfigCompatibility
+fn ConfigCompatibility::stable(format: ConfigFormat) -> ConfigCompatibility
 fn compatibility_profile(format: ConfigFormat, stage: Stage) -> ConfigCompatibility
 fn resolve_compat(cfg: RunConfig, format: ConfigFormat) -> ConfigCompatibility
 fn with_compat(cfg: RunConfig, compat: ConfigCompatibility) -> RunConfig
@@ -140,13 +142,22 @@ fn with_compat(cfg: RunConfig, compat: ConfigCompatibility) -> RunConfig
 - `number=AllowHexFloat` は HPC 系設定で使われるが、0-1 §1.1 の性能要求を満たすために `Diagnostic.extensions["config"].number_mode` に正規化済み桁情報を保持する。
 - `feature_guard` は `RunConfig.extensions["config"].features` と一致させ、`compatibility_profile` が Stage ごとに推奨値（`Experimental` は最も寛容）を返す。未承認の機能を本番で有効化しようとすると `Diagnostic.code = "config.feature.unapproved"` を返し、3-6 §3.2 の監査ポリシーに従って拒否する。
 
+#### 1.5.1 既定プロファイルと整合性
+
+- `ConfigCompatibility::default()` は JSON/TOML を問わず Stage::Stable を前提にした厳格プロファイルを返し、上記のフィールド既定値と完全に一致する。0-1 §1.2 の安全性原則を満たすため、コメントや曖昧な数値表現を許容しない設定を明示的に採用する。
+- `ConfigCompatibility::stable(format)` はフォーマットごとの列挙値（例: TOML は bare key を `AllowAlphaNumeric` まで許可）を Stage::Stable 基準で返す。`compatibility_profile(format, Stage::Stable)` の返り値と等価であり、CLI が厳格プロファイルを初期化する際の省略形として利用する。
+- 仕様変更で既定値を緩和する場合は `AuditEvent::ConfigCompatChanged` を必須とし、マニフェストの `config.compatibility.<format>` に対して自動的に `compatibility=relaxed` といったタグを追加して履歴を残す。
+
+#### 1.5.2 解決順序と責務
+
 `resolve_compat` は以下の優先順位でプロファイルを決定する：
 
-1. `RunConfig.extensions["config"].compat` が存在すればそれを採用。
-2. `reml.toml` の `config.compatibility.<format>` を Stage と feature guard を検証した上でマージ。
-3. それ以外は `compatibility_profile(format, Stage::Stable)` を既定値とする。
+1. CLI パラメータ（`RunConfig.cli_overrides.compat`）が存在すればそれを採用する。`reml config lint --compat relaxed-json` などのオプションはここへ反映され、監査ログに `source = "cli"` を必ず残す。
+2. 環境変数による上書き（3-10 §2.1）を `RunConfig.extensions["config"].env_compat` として取り込み、CLI 指定がない場合にのみ適用する。互換プロファイル名と feature guard の双方が対象であり、未知値は `Diagnostic.code = "config.compat.env_invalid"` で拒否する。
+3. `reml.toml` の `config.compatibility.<format>` を Stage と feature guard を検証した上でマージし、欠落フィールドは厳格プロファイル側を優先する。
+4. それ以外は `ConfigCompatibility::stable(format)`（=`compatibility_profile(format, Stage::Stable)`）へフォールバックする。
 
-互換モードを切り替えた際は `Core.Diagnostics` が `AuditEvent::ConfigCompatChanged` を記録し、`Diagnostic.severity` を `Warning` 以上に設定することで 0-1 §1.2 の安全性を維持する。CLI/LSP/ビルドは `resolve_compat` の結果を共通で使用し、環境差異による設定解析の不一致を防止する。
+互換モードを切り替えた際は `Core.Diagnostics` が `AuditEvent::ConfigCompatChanged` を記録し、`Diagnostic.severity` を `Warning` 以上に設定することで 0-1 §1.2 の安全性を維持する。CLI/LSP/ビルドは `resolve_compat` の結果を共通で使用し、環境差異による設定解析の不一致を防止する。また CLI/CI は優先順位が実装どおりであることを保証するための準拠テスト（CLI 指定 > 環境変数 > マニフェスト > 既定値）を `Core.TestKit::config_compat_order` で提供し、逆順の上書きが発生した場合はビルドを失敗させる。
 
 このワークフローにより、マニフェスト・言語仕様・CLI が同じ DSL メタデータと互換モードを共有できる。詳細な記述ガイドは `guides/manifest-authoring.md` と `guides/config-compatibility.md`（新規作成予定）で扱う。
 

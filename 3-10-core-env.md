@@ -53,7 +53,7 @@ fn config_dir(app: Str) -> Result<Path, EnvError>                  // `effect {i
 
 ### 2.1 設定互換フラグの解決
 
-設定ファイルの互換モード（3-7 §1.5）は `RunConfig.extensions["config"]` を通じて供給される。CLI/CI は環境変数でオーバーライドできるよう、以下のキーを予約する。
+設定ファイルの互換モード（3-7 §1.5）は `RunConfig.extensions["config"]` を通じて供給される。優先順位は **CLI オプション > 環境変数 > マニフェスト > 既定値** とし、CLI が `RunConfig.cli_overrides.compat` を設定した場合はそれ以降の層を無視する。CLI/CI は環境変数でオーバーライドできるよう、以下のキーを予約する。
 
 | 環境変数 | 例 | 説明 |
 | --- | --- | --- |
@@ -63,11 +63,13 @@ fn config_dir(app: Str) -> Result<Path, EnvError>                  // `effect {i
 
 解決アルゴリズム：
 
-1. `REML_CONFIG_COMPAT` を読み取り、`compatibility_profile(format, Stage::Stable)` から派生した設定をベースにする。未知の値は `EnvErrorKind::UnsupportedPlatform` で拒否し、`Diagnostic.code = "config.compat.unknown_profile"` を出力。
-2. `REML_CONFIG_FEATURES` を解析し、`feature_guard` に挿入する。`RunConfig.extensions["config"].features` へも同じ集合をセットし、3-7 §1.5 の検証を満たす。
-3. `REML_CONFIG_TRIVIA` が指定されていれば `ConfigTriviaProfile` を調整し、`RunConfig.extensions["config"].trivia` を更新する。未知キーは `EnvErrorKind::UnsupportedPlatform`。
+1. CLI オプション（例: `--config-compat relaxed-json`）が指定されている場合は `RunConfig.cli_overrides.compat` に `ConfigCompatibility` を設定し、以下の環境変数は参照しない。CLI 側では `AuditEvent::ConfigCompatChanged` の `source="cli"` を必須とする。
+2. CLI 指定がない場合のみ `REML_CONFIG_COMPAT` を読み取り、`ConfigCompatibility::stable(format)` をベースに差分を作成する。未知の値は `EnvErrorKind::UnsupportedPlatform` で拒否し、`Diagnostic.code = "config.compat.unknown_profile"` を出力する。
+3. `REML_CONFIG_FEATURES` を解析し、`feature_guard` に挿入する。`RunConfig.extensions["config"].features` へも同じ集合をセットし、3-7 §1.5.2 の検証を満たす。
+4. `REML_CONFIG_TRIVIA` が指定されていれば `ConfigTriviaProfile` を調整し、`RunConfig.extensions["config"].trivia` を更新する。未知キーは `EnvErrorKind::UnsupportedPlatform`。
+5. 上記で得られた互換設定は `RunConfig.extensions["config"].env_compat` として保存し、`resolve_compat` 実行時に CLI 指定の次に適用される。
 
-これらの値は `infer_target_from_env` と同様に `RunConfig` 構築時へ反映され、LSP・CLI・ビルドが同じ互換プロファイルを使用する。0-1 §1.2 の安全性を守るため、互換機能が本番で有効化された場合は `AuditEvent::ConfigCompatChanged` を必ず発行し、`RunConfig.extensions["audit"].policy` に従ってレビューを促す。
+これらの値は `infer_target_from_env` と同様に `RunConfig` 構築時へ反映され、LSP・CLI・ビルドが同じ互換プロファイルを使用する。0-1 §1.2 の安全性を守るため、互換機能が本番で有効化された場合は `AuditEvent::ConfigCompatChanged` を必ず発行し、`RunConfig.extensions["audit"].policy` に従ってレビューを促す。また、`Core.Env` は CLI 層が優先されることを保証するために `config_compat_cli_wins` 準拠テストを提供し、環境変数とマニフェストが CLI 指定を上書きした場合は失敗として扱う。
 
 ## 3. プラットフォーム情報の取得
 
