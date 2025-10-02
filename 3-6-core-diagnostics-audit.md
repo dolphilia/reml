@@ -200,6 +200,27 @@ fn resolve_catalog(namespace: Str) -> Option<DiagnosticCatalog>
 
 これらのキーは `AuditPolicy.exclude_patterns` で除外しない限り永続化され、`CapabilityAudit` レポートや LSP の効果ビューで差分分析に利用できる。
 
+### 2.5 AsyncError と診断統合 {#diagnostic-async}
+
+`Core.Async` が返す `AsyncError`（3.9 §1.8）は `IntoDiagnostic` を実装し、以下のルールで `Diagnostic` と統合する。
+
+```reml
+type AsyncDiagnosticExtension = {
+  kind: AsyncErrorKind,
+  origin: AsyncErrorOrigin,
+  metadata: Map<Str, Json>,
+  cause_chain: List<AsyncErrorLink>,
+}
+```
+
+- `Diagnostic.domain` が未設定の場合は `DiagnosticDomain::Runtime` を適用する。`code` は `async.error.<kind>`（`kind` は `AsyncErrorKind` を `snake_case` に変換）を既定値とし、CLI/LSP のハイライトに利用する。
+- `Diagnostic.primary` は `AsyncError.span` を利用し、値が無い場合は 1-1 §B の合成 Span 規約で生成した位置を割り当てる。
+- `AsyncError.cause` の各要素は順序を保持したまま `Diagnostic.secondary` の `SpanLabel` に変換する。`SpanLabel.message` には `AsyncErrorLink.message` を格納し、`origin` と `metadata` から抽出したキー（例: `retry_attempt`, `channel`）を括弧書きで併記する。
+- `Diagnostic.extensions["async"]` には上記構造を格納し、`metadata` フィールドに `AsyncError.metadata` をマージする。`diagnostic_id` キーが存在する場合は `AuditEnvelope.metadata["async.diagnostic_id"]` にも反映し、重複報告を避ける。
+- `AuditEnvelope.metadata["async.cause_chain"]` へ `AsyncError.cause` を JSON 化して保存し、監査ポリシーが `Trace` 未満でも最初の要素を残す。
+
+これらの手順は 0-1 §1.2 と §2.2 に沿って、原因追跡と再現性を改善する。CLI/LSP は `AsyncDiagnosticExtension` を持つ診断をツリー表示する UI を提供することが推奨される。
+
 ## 3. 監査ログ出力
 
 ```reml

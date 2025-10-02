@@ -218,10 +218,29 @@ fn with_console_mock() -> Result<Text, AsyncError> ! {} =
 pub type AsyncError = {
   kind: AsyncErrorKind,
   message: Str,
+  span: Option<Span>,
+  cause: List<AsyncErrorLink>,
+  metadata: Map<Str, Json>,
 }
+
+pub type AsyncErrorLink = {
+  kind: AsyncErrorKind,
+  message: Str,
+  origin: AsyncErrorOrigin,
+  span: Option<Span>,
+  metadata: Map<Str, Json>,
+}
+
+pub enum AsyncErrorOrigin = Task | Channel | Actor | Scheduler | Timer | Capability(Str) | Ffi | Config | External(Str)
 
 pub enum AsyncErrorKind = Cancelled | Timeout | RuntimeUnavailable | InvalidConfiguration | CodecFailure
 ```
+
+- `span` はエラー発生地点のソース情報を保持する。取得できない場合は 1-1 §B の合成 Span 規約に従い疑似位置を割り当て、診断の主たる位置を欠損させない。
+- `cause` は最新の原因を先頭に並べた逆時系列リストであり、Actor -> Channel -> Scheduler のような多段の伝搬を追跡できる。`origin` により分析時のフィルタリングが容易になる。
+- `metadata` には `retry_attempt`, `task_id`, `channel`, `scheduler`, `diagnostic_id` 等のキーを格納する。`diagnostic_id` は 3.6 §2.5 の遡及診断連携に利用し、重複する診断生成を防ぐ。
+- `AsyncErrorOrigin::Capability(id)` は Capability Registry (3.8 §1.2) に登録された ID を指し、Stage 不整合や権限不足を Async レイヤで可視化する。`External` はホストランタイムやプラグインなど Reml 外部のソースを表す。
+- `AsyncError` は `IntoDiagnostic` を実装し、`cause` および `metadata` を 3.6 §2.5 で定義する `Diagnostic.secondary` と `Diagnostic.extensions["async"]` へ写像する。これにより 0-1 §1.2 と §2.2 が求める安全性・説明責任を満たす。
 
 ### 1.9 アクターモデルと分散メッセージング {#core-async-actor}
 
