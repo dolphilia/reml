@@ -254,3 +254,58 @@ fn parallel_file_ops<T>(operations: List<() -> Result<T, IoError>>, pool: IoPool
 ```
 
 > 関連: [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [2.6 実行戦略](2-6-execution-strategy.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [guides/runtime-bridges.md](guides/runtime-bridges.md)
+
+## 9. Resource Limit ユーティリティ (`Core.Resource`)
+
+> 目的：Conductor、Sandbox、RunConfig が共通のリソース制限表現を共有し、0-1 §1.1（性能）および §1.2（安全性）の基準に沿って静的検証できるようにする。
+
+```reml
+pub module Core.Resource
+
+pub enum MemoryLimit =
+  | Unlimited
+  | Absolute { bytes: NonZeroU64 }
+  | Relative { percent_of_physical: Float }
+  | Soft { soft_bytes: NonZeroU64, hard_bytes: Option<NonZeroU64> };
+
+pub enum CpuQuota =
+  | Unlimited
+  | Fraction { share: Float }
+  | MilliCores(NonZeroU32)
+  | FixedCores(NonZeroU16);
+
+pub type MemoryLimitResolved = {
+  declaration: MemoryLimit,
+  hard_bytes: NonZeroU64,
+  soft_bytes: Option<NonZeroU64>,
+}
+
+pub type CpuQuotaNormalized = {
+  declaration: CpuQuota,
+  scheduler_slots: NonZeroU16,
+  share: Float,
+}
+
+pub enum ResourceLimitError =
+  | ZeroOrNegative
+  | PercentageOutOfRange { min: Float, max: Float }
+  | MissingBaseline
+  | ExceedsPhysicalMemory { requested: u64, available: u64 }
+  | SchedulingOverflow { requested: u16, available: u16 };
+
+fn MemoryLimit::hard(bytes: NonZeroU64) -> MemoryLimit
+fn MemoryLimit::mebibytes(mib: NonZeroU64) -> MemoryLimit
+fn MemoryLimit::relative(percent: Float) -> Result<MemoryLimit, ResourceLimitError>
+fn MemoryLimit::resolve(total_physical: Option<NonZeroU64>) -> Result<MemoryLimitResolved, ResourceLimitError>
+
+fn CpuQuota::fraction(share: Float) -> Result<CpuQuota, ResourceLimitError>
+fn CpuQuota::milli_cores(mcores: NonZeroU32) -> CpuQuota
+fn CpuQuota::cores(cores: NonZeroU16) -> CpuQuota
+fn CpuQuota::normalize(logical_cores: NonZeroU16, scheduler_parallelism: NonZeroU16) -> Result<CpuQuotaNormalized, ResourceLimitError>
+```
+
+- `Relative.percent_of_physical` は `0.01 <= share <= 1.0` を要求し、`resolve` 時に物理メモリ総量が提供されない場合は `ResourceLimitError::MissingBaseline` を返す。要求値が総量を超えた場合は `ExceedsPhysicalMemory` を報告し、診断 `conductor.resource.limit_exceeded`（3-6 §6.1.2）に変換される。
+- `Soft` はガーベジコレクタやページングを許容する設定であり、`hard_bytes` が指定された場合は `hard_bytes >= soft_bytes` を保証する。省略した場合でも `resolve` は `soft_bytes` を返却し、ランタイムが監視する閾値となる。
+- `CpuQuota::fraction` は `0.05 <= share <= 1.0` を満たす必要がある。`normalize` は論理コア数と `ExecutionPlan.strategy` から得られる並列度を考慮し、必要スロット数を切り上げて算出する。スロットが `scheduler_parallelism` を超えた場合は `SchedulingOverflow`。
+- これらの型は `serde` 互換なリテラル（例: `{ memory = { absolute = { bytes = 134217728 } } }`）と DSL からのビルダー（例: `MemoryLimit::mebibytes(128)`、`CpuQuota::fraction(0.5)`）の双方で構築できる。文字列表現（"128MB" 等）は廃止し、コンパイラが型チェック可能な API へ移行する。
+- Conductor/RunConfig/Sandbox は `MemoryLimitResolved` と `CpuQuotaNormalized` を共有して監査・診断へ記録する。正規化ロジックを再利用し、実行前に単位換算が完了している状態を標準とする。

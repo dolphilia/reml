@@ -512,8 +512,8 @@ fn load_plugin_sandboxed(metadata: PluginMetadata, sandbox: SandboxConfig) -> Re
 
 pub type SandboxConfig = {
   allowed_capabilities: Set<CapabilityId>,
-  memory_limit: Option<usize>,
-  cpu_limit: Option<Duration>,
+  memory_limit: Option<MemoryLimit>,
+  cpu_limit: Option<CpuQuota>,
   network_access: NetworkAccess,
   file_access: FileAccess,
 }
@@ -521,6 +521,9 @@ pub type SandboxConfig = {
 pub enum NetworkAccess = None | Restricted(List<NetworkPattern>) | Full
 pub enum FileAccess = None | ReadOnly(List<PathPattern>) | Restricted(List<PathPattern>) | Full
 ```
+
+- `memory_limit` と `cpu_limit` は 3.5 §9 の `MemoryLimit` / `CpuQuota` を利用し、`load_plugin_sandboxed` 内で `MemoryLimit::resolve` と `CpuQuota::normalize` を必ず実行する。正規化結果は `CapabilityRegistry::registry().memory` 等と統合され、Stage/Capability 審査で監査ログへ記録する。
+- 物理メモリや論理コア数は `PlatformInfo`（本章 §1.3）から取得し、`Relative` や `Fraction` 指定の妥当性を検証する。制限超過時は `CapabilityError::SecurityViolation` を返し、診断 `sandbox.limit.invalid`（3-6 §6.1.2）を生成する。
 
 
 ### 6.2 DSLプラグイン指針

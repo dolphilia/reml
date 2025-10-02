@@ -453,12 +453,22 @@ pub type BackpressureWindow = {
 }
 
 pub type ResourceLimitDigest = {
-  kind: ResourceLimitKind,
-  raw: Str,
-  normalized: Option<Json>,
+  memory: Option<MemoryLimitSnapshot>,
+  cpu: Option<CpuQuotaSnapshot>,
+  custom: Map<Str, Json>,
 }
 
-pub enum ResourceLimitKind = Memory | Cpu | Io | Custom(Str)
+pub type MemoryLimitSnapshot = {
+  declaration: MemoryLimit,
+  hard_bytes: NonZeroU64,
+  soft_bytes: Option<NonZeroU64>,
+}
+
+pub type CpuQuotaSnapshot = {
+  declaration: CpuQuota,
+  scheduler_slots: NonZeroU16,
+  share: Float,
+}
 
 pub type MonitoringDigest = {
   metrics: List<Str>,
@@ -496,7 +506,7 @@ pub enum ConductorIssueKind = CapabilityMismatch | ResourceLimit | ExecutionPlan
 
 - `conductor_id` と `node_id` は診断対象の DSL ノードを一意に示し、LSP/CLI は `depends_on` と `channels` を利用して依存グラフをハイライトする。
 - `ExecutionPlanDigest` は 3-9 §1.4 の構成要素を縮約し、`BackpressureWindow` が `None` の場合でも `ExecutionPlan.strategy` を表示する。閾値不正（例: `high_watermark <= low_watermark`）は `ConductorIssueKind::ExecutionPlan` を設定する。
-- `ResourceLimitDigest.normalized` はバイト数や CPU クォータを正規化した JSON を格納し、CLI は 0-1 §1.1 の性能要件に照らして再検証する。未正規化の場合は `normalized = None` として実装の判断が残っていることを示す。
+- `ResourceLimitDigest.memory` と `ResourceLimitDigest.cpu` は 3.5 §9 の `MemoryLimitResolved` / `CpuQuotaNormalized` を縮約して格納する。CLI/LSP は `hard_bytes` と `scheduler_slots` を用いて 0-1 §1.1 の性能要件を再検証し、設定値が Stage や Capability の制約を満たしているか確認する。
 - `MonitoringDigest.metrics` には §6.1 の既定メトリクスを含め、利用者が任意に追加したキーも保持する。`TracingDigest.mode = Conditional` は `trigger` に `@cfg` 条件や `RunConfig.trace_enabled` を記録する。
 - `AuditReference` は §3 の監査ログと結合するためのメタデータで、`events` に `AuditEvent::PipelineStarted` などのイベント名を列挙する。`audit_id` が `None` の場合は監査連携されていない診断であると見なす。
 
