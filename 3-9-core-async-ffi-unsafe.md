@@ -418,10 +418,11 @@ let response = await system.ask(greeter, Message::Greet("Reml"), 2.s)?;
 
 #### 1.9.4 Capability 検証手順
 
-1. `CapabilityRegistry::get("runtime.async")` で `RuntimeCapability::AsyncScheduler` を確認し、`SchedulerHandle::supports_mailbox()` が `true` であること。
-2. `CapabilityRegistry::get("runtime.actor")` で `ActorRuntimeCapability` を取得し、`stage` が `Experimental` の場合は `@requires_capability(stage="experimental")` を付与する。
-3. 分散を有効化する DSL は `guides/runtime-bridges.md §11` のチェックリスト（監査・TLS・再接続ポリシー）を満たす。
-4. いずれかが欠落した場合は `Diagnostic.code = Some("async.actor.capability_missing")` を返し、復旧手順を提示する。
+1. `ExecutionPlan::validate_capabilities`（3-9 §1.4.3）で `CapabilityRegistry::verify_conductor_contract` を呼び出し、`with_capabilities` から得た `ConductorCapabilityRequirement` が全て満たされているか静的に確認する。検証結果は `AuditEvent::CapabilityMismatch` として監査ログへ送信され、0-1-project-purpose.md §1.2 の安全性指針に沿って欠落をブロックする。
+2. ランタイム起動時は `CapabilityRegistry::verify_capability_stage("runtime.async", StageRequirement::AtLeast(StageId::Stable))` を実行し、返された `CapabilityHandle` から `SchedulerHandle::supports_mailbox()` が `true` であることを確認する。Stage 不足は `CapabilityError::StageViolation` と `async.actor.capability_missing` 診断で報告する。
+3. `ActorRuntimeCapability` は `verify_capability_stage("runtime.actor", StageRequirement::AtLeast(StageId::Experimental))` で取得し、`StageId::Experimental` の場合は公開 API に `@requires_capability(stage="experimental")` を付与する。Stage が `Beta` 以上であれば属性は任意だが、`@cfg(capability = "runtime.actor")` と同期させる。
+4. 分散を有効化する DSL は `guides/runtime-bridges.md §11` のチェックリスト（監査・TLS・再接続ポリシー）を満たした上で、`verify_conductor_contract` の結果に基づき `RuntimeCapability::DistributedActor` の Stage を `AtLeast(StageId::Beta)` として要求する。
+5. いずれかの検証が失敗した場合は `Diagnostic.code = Some("async.actor.capability_missing")` を返し、`Diagnostic.extensions["capability"].required_stage` / `.actual_stage` を添付して復旧手順を提示する。
 
 #### 1.9.5 Supervisor パターンと再起動戦略
 

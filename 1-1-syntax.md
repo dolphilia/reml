@@ -358,6 +358,32 @@ ConductorMonitoring ::= "monitoring" (Ident | ConductorQualifiedName) Block
 [^purpose-perf]: [0-1-project-purpose.md](0-1-project-purpose.md) §1.1「実用に耐える性能」を参照。テンプレートレンダリングでも線形時間処理とメモリ制約を満たすことを目標とする。
 [^purpose-safe]: [0-1-project-purpose.md](0-1-project-purpose.md) §1.2「安全性の確保」を参照。`Result` ベースのエラー処理と Capability 検証により、未ハンドル例外や権限逸脱を防止する。
 
+### B.8.5 Capability 検証契約と `with_capabilities`
+
+`with_capabilities` はコンパイル時に **Capability 契約** を生成し、`CapabilityRegistry::verify_capability_stage`（3-8 §1.2）へ渡すメタデータを蓄積する。契約は次の項目で構成される。
+
+```reml
+pub type ConductorCapabilityRequirement = {
+  id: CapabilityId,
+  stage: StageRequirement,        // 既定は StageRequirement::AtLeast(StageId::Stable)
+  declared_effects: Set<EffectTag>,
+  source_span: SourceSpan,
+}
+
+pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
+```
+
+`StageId` は 3-8 §1.2 で定義された効果ステージ列挙を参照する。
+
+契約生成と検証は以下の順序で行われる。
+
+1. DSL パーサは `with_capabilities(["io.async", ...])` の呼び出しを検知し、指定文字列を `CapabilityId` として登録する。`StageRequirement` を明示しない場合は `AtLeast(StageId::Stable)` を採用し、`@requires_capability(stage="experimental")` などの属性が同一チャネル内に存在する場合は `AtLeast(StageId::Experimental)` に引き上げる。
+2. `@cfg(capability = "...")` が付与されたブロックやチャネルは、解析段階で `CapabilityId` を抽出し、`with_capabilities` に未登録であれば構文エラーとする。これにより 0-1-project-purpose.md §1.2 の安全性指針に従い、実行環境差による挙動分岐を未然に防ぐ。
+3. `conductor` 宣言の型検査フェーズでは、全チャネルの残余効果集合と `declared_effects` を比較する。差分が存在する場合は `effects.contract.mismatch` 標準診断を発行し、契約が満たされるまでビルドを中断する。
+4. 上記で確定した `ConductorCapabilityRequirement` の集合を `CapabilityRegistry::verify_conductor_contract`（3-8 §1.2）へ連携する。CLI (`reml lint`, `reml build`) と IDE/LSP は同一契約を利用し、Capability ステージが `StageRequirement` を満たさない場合はビルドエラーとして報告する。
+
+`with_capabilities` を複数回呼び出した場合、要求集合は和集合で解釈される。同一 `CapabilityId` に異なる Stage 要件が提示された場合は最も厳しい（高い）要件を採用し、重複エントリは自動的に正規化される。これらの挙動は `ExecutionPlan` の静的検証（3-9 §1.4.3）と共有され、CLI の `--deny-capability` オプションや CI ポリシーと一致させる。
+
 
 ## C. 式・項・パターン
 
