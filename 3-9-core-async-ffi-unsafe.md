@@ -418,7 +418,7 @@ let response = await system.ask(greeter, Message::Greet("Reml"), 2.s)?;
 
 #### 1.9.4 Capability 検証手順
 
-1. `ExecutionPlan::validate_capabilities`（3-9 §1.4.3）で `CapabilityRegistry::verify_conductor_contract` を呼び出し、`with_capabilities` から得た `ConductorCapabilityRequirement` が全て満たされているか静的に確認する。検証結果は `AuditEvent::CapabilityMismatch` として監査ログへ送信され、0-1-project-purpose.md §1.2 の安全性指針に沿って欠落をブロックする。
+1. `ExecutionPlan::validate_capabilities`（3-9 §1.4.3）で `CapabilityRegistry::verify_conductor_contract` を呼び出し、`with_capabilities` から得た `ConductorCapabilityRequirement` が全て満たされているか静的に確認する。検証結果は `AuditEvent::CapabilityMismatch`（3-6 §1.1.1）として監査ログへ送信され、0-1-project-purpose.md §1.2 の安全性指針に沿って欠落をブロックする。
 2. ランタイム起動時は `CapabilityRegistry::verify_capability_stage("runtime.async", StageRequirement::AtLeast(StageId::Stable))` を実行し、返された `CapabilityHandle` から `SchedulerHandle::supports_mailbox()` が `true` であることを確認する。Stage 不足は `CapabilityError::StageViolation` と `async.actor.capability_missing` 診断で報告する。
 3. `ActorRuntimeCapability` は `verify_capability_stage("runtime.actor", StageRequirement::AtLeast(StageId::Experimental))` で取得し、`StageId::Experimental` の場合は公開 API に `@requires_capability(stage="experimental")` を付与する。Stage が `Beta` 以上であれば属性は任意だが、`@cfg(capability = "runtime.actor")` と同期させる。
 4. 分散を有効化する DSL は `guides/runtime-bridges.md §11` のチェックリスト（監査・TLS・再接続ポリシー）を満たした上で、`verify_conductor_contract` の結果に基づき `RuntimeCapability::DistributedActor` の Stage を `AtLeast(StageId::Beta)` として要求する。
@@ -505,7 +505,7 @@ pub struct SupervisorHealthCheck = {
 - `RestartBudget` は `max_restarts` 回数（0 は許可しない）と監視期間 `within` を定義し、期間内に閾値を超えた場合は `SupervisorOutcome::Exhausted` を生成する。`cooldown` に達するまでは再起動を抑制し、再起動スパイクが性能要件（0-1 §1.1）を破らないようにする。
 - `ChildRestartPolicy::Temporary` の子役者は失敗しても再起動しない。`Transient` は `RestartStrategy::OneForAll` の場合のみ親 supervisor の判断で再起動される。`Permanent` は常に再起動対象であり、`backoff` が指定されていない場合は指数バックオフ (`BackoffStrategy::Exponential`) を既定とする。
 - `observe` は `SupervisorEvent` のストリームを返し、CLI や監視ツールがリアルタイムで `async.supervisor.restart` / `async.supervisor.escalation` 診断（3.6 §2.5.1）を受け取れるようにする。`diagnostic` に `Some` が格納されている場合はその診断を `AuditEnvelope` に転写する。
-- `SupervisorStats.exhausted = true` の場合、ランタイムは `AuditEvent::AsyncSupervisorExhausted`（3.6 §2.5.1 に準拠）を発行し、当該 DSL ノードを `ExecutionPlan` レベルで隔離する。隔離中は `restart` の呼び出しを拒否し、`AsyncErrorKind::InvalidConfiguration` を返す。
+- `SupervisorStats.exhausted = true` の場合、ランタイムは `AuditEvent::AsyncSupervisorExhausted`（3.6 §1.1.1 / §2.5.1 に準拠）を発行し、当該 DSL ノードを `ExecutionPlan` レベルで隔離する。隔離中は `restart` の呼び出しを拒否し、`AsyncErrorKind::InvalidConfiguration` を返す。
 - `SupervisorHealthCheck` は `interval` ごとに `probe` を実行し、失敗すると `SupervisorOutcome::Failed` を `diagnostic` 付きで報告する。ヘルスチェック自体は `effect {io.timer}` を内部的に要求し、`probe` が `Ok` を返すまで再起動を試行しない。
 - Supervisor で再起動が発生した場合、`SupervisorDescriptor.children` に含まれる `ChildDigest` の `tags` と `SupervisorSpec.children[].tags` を比較し、`effect {audit}` が欠落している子役者に対しては `AsyncErrorKind::InvalidConfiguration` を返す。これにより監査対象外のタスクが無制限に再起動することを防ぐ。
 

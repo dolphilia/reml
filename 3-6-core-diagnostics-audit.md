@@ -60,6 +60,40 @@ pub type AuditEnvelope = {
 - `capability` はランタイム機能（Core.Runtime）との整合に利用。
 - `metadata` は拡張用の自由領域で、プラグインが追加情報を埋め込む。
 
+#### 1.1.1 監査イベント `AuditEvent`
+
+```reml
+pub enum AuditEvent = {
+  PipelineStarted,
+  PipelineCompleted,
+  PipelineFailed,
+  CapabilityMismatch,
+  AsyncSupervisorRestarted,
+  AsyncSupervisorExhausted,
+  ConfigCompatChanged,
+  EnvMutation,
+  Custom(Str),
+}
+```
+
+- 既定バリアントは Reml ランタイムと CLI が共有する監査カテゴリであり、文字列表現は `snake_case` に変換して `AuditEnvelope.metadata["event.kind"]` に記録する。例: `AuditEvent::PipelineStarted` → `"pipeline_started"`。
+- `Custom(Str)` はプラグインや将来拡張向けの逃げ道で、アプリケーション固有のイベント名を格納する。組織内ガイドラインを遵守する場合も `snake_case` を推奨し、`AuditPolicy.include_patterns` と組み合わせてフィルタリング可能にする。
+- `AuditEnvelope.metadata` にはイベントごとの必須キーを付与し、診断・CI・監査ツールが同じ情報粒度で追跡できるようにする。`metadata["event.id"]` に UUID を保存すると、同一イベント系列を多チャネルで相関させやすい。
+
+| バリアント | 主な発火条件 | 必須メタデータ (`AuditEnvelope.metadata`) | 0-1 参照 | 関連章 |
+| --- | --- | --- | --- | --- |
+| `PipelineStarted` | Conductor が DSL 実行を開始したとき | `"pipeline.id"`, `"pipeline.dsl_id"`, `"pipeline.node"`, `"timestamp"` | §1.1 性能、§2.2 診断可視化 | 3-9 §1.4 |
+| `PipelineCompleted` | 実行が正常終了したとき | 上記 + `"pipeline.outcome" = "success"`, 処理件数 (`"pipeline.count"`) | §1.1 | 3-9 §1.4.4 |
+| `PipelineFailed` | 実行中に致命エラーで停止したとき | 上記 + `"error.code"`, `"error.message"`, `"error.severity"` | §1.2 安全性 | 3-9 §1.8 |
+| `CapabilityMismatch` | Stage/Capability の整合検証で不一致を検出 | `"capability.id"`, `"capability.expected_stage"`, `"capability.actual_stage"`, `"dsl.node"` | §1.2 安全性 | 3-8 §1.2, 3-9 §1.4.3 |
+| `AsyncSupervisorRestarted` | Supervisor が子役者を再起動 | `"async.supervisor.id"`, `"async.supervisor.actor"`, `"async.supervisor.restart_count"` | §1.2 安全性 | 3-9 §1.9.5 |
+| `AsyncSupervisorExhausted` | 再起動予算を消費し尽くした | 直前列 + `"async.supervisor.budget"`, `"async.supervisor.outcome"` | §1.2 安全性 | 3-9 §1.9.5 |
+| `ConfigCompatChanged` | 互換モードを CLI/Env/Manifest 等が変更 | `"config.source"`, `"config.format"`, `"config.profile"`, `"config.compatibility"` | §1.2 安全性, §2.2 可視性 | 3-7 §1.5, 3-10 §2 |
+| `EnvMutation` | `set_env`/`remove_env` など環境を書き換え | `"env.operation"`, `"env.key"`, `"env.scope"`, `"requested_by"` | §1.2 安全性 | 3-10 §1 |
+
+- 追加メタデータ（例: `"pipeline.latency_ms"`, `"async.supervisor.strategy"`）は自由に拡張してよいが、必須キーが欠落した場合は `AuditEvent::Custom` を使用しない限り仕様違反として扱う。CI は `AuditPolicy.level = AuditLevel::Warning` 以上のときに必須キーの欠落を検出し、0-1 §1.2 の安全性保証を担保する。
+- イベントを `Diagnostic` と結合する場合は `AuditReference.events`（§6.1.2）へ列挙し、CLI/LSP で相関ビューを提供する。`AuditEvent::PipelineFailed` は `Severity::Error`、`AuditEvent::ConfigCompatChanged` は少なくとも `Severity::Warning` を推奨する。
+
 ### 1.2 診断ドメイン `DiagnosticDomain`
 
 ### 1.3 効果診断拡張 `effects`

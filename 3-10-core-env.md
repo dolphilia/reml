@@ -21,7 +21,7 @@ fn remove_env(key: Str) -> Result<(), EnvError>                    // `effect {i
 
 * `get_env` は存在しないキーで `Ok(None)` を返し、値は UTF-8 を期待（無効バイト列は `EnvErrorKind::InvalidEncoding` で報告）。
 * `set_env` / `remove_env` はプロセス環境の変更権限がない場合に `EnvErrorKind::PermissionDenied` を返す。CI や限定的環境ではノーオペレーションで成功させず、明示的にエラーとする。 
-* 変更系 API は監査トレース向けに `Core.Diagnostics` の `AuditEvent::EnvMutation` を発行する。`RunConfig.extensions["audit"].capture_env=true`（任意）で詳細ログを有効化。
+* 変更系 API は監査トレース向けに `Core.Diagnostics` の `AuditEvent::EnvMutation`（3-6 §1.1.1）を発行し、`AuditEnvelope.metadata` に `env.operation`, `env.key`, `env.scope`, `requested_by` を必ず格納する。`RunConfig.extensions["audit"].capture_env=true`（任意）で詳細ログを有効化。
 
 ```reml
 pub type EnvError = {
@@ -63,13 +63,13 @@ fn config_dir(app: Str) -> Result<Path, EnvError>                  // `effect {i
 
 解決アルゴリズム：
 
-1. CLI オプション（例: `--config-compat relaxed-json`）が指定されている場合は `RunConfig.cli_overrides.compat` に `ConfigCompatibility` を設定し、以下の環境変数は参照しない。CLI 側では `AuditEvent::ConfigCompatChanged` の `source="cli"` を必須とする。
+1. CLI オプション（例: `--config-compat relaxed-json`）が指定されている場合は `RunConfig.cli_overrides.compat` に `ConfigCompatibility` を設定し、以下の環境変数は参照しない。CLI 側では `AuditEvent::ConfigCompatChanged` の `config.source = "cli"` を必須とし、`config.format` / `config.profile` / `config.compatibility` も 3-6 §1.1.1 に従って記録する。
 2. CLI 指定がない場合のみ `REML_CONFIG_COMPAT` を読み取り、`ConfigCompatibility::stable(format)` をベースに差分を作成する。未知の値は `EnvErrorKind::UnsupportedPlatform` で拒否し、`Diagnostic.code = "config.compat.unknown_profile"` を出力する。
 3. `REML_CONFIG_FEATURES` を解析し、`feature_guard` に挿入する。`RunConfig.extensions["config"].features` へも同じ集合をセットし、3-7 §1.5.2 の検証を満たす。
 4. `REML_CONFIG_TRIVIA` が指定されていれば `ConfigTriviaProfile` を調整し、`RunConfig.extensions["config"].trivia` を更新する。未知キーは `EnvErrorKind::UnsupportedPlatform`。
 5. 上記で得られた互換設定は `RunConfig.extensions["config"].env_compat` として保存し、`resolve_compat` 実行時に CLI 指定の次に適用される。
 
-これらの値は `infer_target_from_env` と同様に `RunConfig` 構築時へ反映され、LSP・CLI・ビルドが同じ互換プロファイルを使用する。0-1 §1.2 の安全性を守るため、互換機能が本番で有効化された場合は `AuditEvent::ConfigCompatChanged` を必ず発行し、`RunConfig.extensions["audit"].policy` に従ってレビューを促す。また、`Core.Env` は CLI 層が優先されることを保証するために `config_compat_cli_wins` 準拠テストを提供し、環境変数とマニフェストが CLI 指定を上書きした場合は失敗として扱う。
+これらの値は `infer_target_from_env` と同様に `RunConfig` 構築時へ反映され、LSP・CLI・ビルドが同じ互換プロファイルを使用する。0-1 §1.2 の安全性を守るため、互換機能が本番で有効化された場合は `AuditEvent::ConfigCompatChanged` を必ず発行し、`config.source = "env"` などのメタデータを残した上で `RunConfig.extensions["audit"].policy` に従ってレビューを促す。また、`Core.Env` は CLI 層が優先されることを保証するために `config_compat_cli_wins` 準拠テストを提供し、環境変数とマニフェストが CLI 指定を上書きした場合は失敗として扱う。
 
 `resolve_run_config_target` は構文解析フェーズから渡された `CfgFeatureSet` を `RunConfigTarget.feature_requirements` へ格納し、`feature_requirements ⊆ features` を保証する。`resolve_compat` 完了時には `ConfigCompatibility.feature_guard`, `RunConfigTarget.features`, `RunConfigTarget.feature_requirements` を比較して差異がないか検証し、ずれが検出された場合は `config.feature.mismatch`（3-6 §6.1.3）を発行する。CLI/LSP は `missing_in_target` を即時エラーとして扱い、`missing_in_compat` や `extra_in_compat` は `--fix` オプションで `feature_guard` を自動同期する。診断詳細は `Diagnostic.extensions["config"].feature_guard` に格納し、監査ログでは `config.feature_guard` メタデータで同じ情報を追跡する。
 

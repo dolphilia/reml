@@ -152,7 +152,7 @@ fn verify_conductor_contract(contract: ConductorCapabilityContract) -> Result<()
 - `StageRequirement` は 1-1 §B.8.5 で定義した契約と互換で、`Exact` は厳密一致、`AtLeast` は `StageId` の順序（`Experimental < Beta < Stable`）での下限を意味する。順序関係は 0-1 §1.2 の「安全性の確保」に基づき、より高い Stage での運用を許容しつつ、下限を破る構成を拒否する。
 - `verify_capability` は Capability の存在検証のみを行い、Stage 条件は評価しない。`verify_capability_stage` は Stage 条件と `effect_scope` の両方を検査し、不足時に `CapabilityError::StageViolation` を返す。`effects.contract.stage_mismatch` 診断はこの関数を通じて生成される。
 - `verify_conductor_contract` は `with_capabilities`（1-1 §B.8.5）から生成された契約集合を受け取り、各要素に `verify_capability_stage` を適用する。`manifest_path` が存在する場合は `reml.toml` の `run.target.capabilities` と突き合わせ、CLI/IDE が同一結果を共有できるようにする。
-- `@cfg(capability = "...")` で除外された分岐は契約から自動的に削除されるが、`verify_conductor_contract` は `ConductorCapabilityRequirement.source_span` を監査ログに残すため、実行環境ごとの差異を追跡できる。差分は `AuditEvent::CapabilityMismatch`（3-6 §6.1.2）に集約され、0-1 §1.2 の安全性レビュー資料に添付する。
+- `@cfg(capability = "...")` で除外された分岐は契約から自動的に削除されるが、`verify_conductor_contract` は `ConductorCapabilityRequirement.source_span` を監査ログに残すため、実行環境ごとの差異を追跡できる。差分は `AuditEvent::CapabilityMismatch`（3-6 §1.1.1 / §6.1.2）に集約され、0-1 §1.2 の安全性レビュー資料に添付する。
 
 ### 1.3 プラットフォーム情報と能力 {#platform-info}
 

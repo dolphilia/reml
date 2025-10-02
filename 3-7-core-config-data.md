@@ -146,13 +146,13 @@ fn with_compat(cfg: RunConfig, compat: ConfigCompatibility) -> RunConfig
 
 - `ConfigCompatibility::default()` は JSON/TOML を問わず Stage::Stable を前提にした厳格プロファイルを返し、上記のフィールド既定値と完全に一致する。0-1 §1.2 の安全性原則を満たすため、コメントや曖昧な数値表現を許容しない設定を明示的に採用する。
 - `ConfigCompatibility::stable(format)` はフォーマットごとの列挙値（例: TOML は bare key を `AllowAlphaNumeric` まで許可）を Stage::Stable 基準で返す。`compatibility_profile(format, Stage::Stable)` の返り値と等価であり、CLI が厳格プロファイルを初期化する際の省略形として利用する。
-- 仕様変更で既定値を緩和する場合は `AuditEvent::ConfigCompatChanged` を必須とし、マニフェストの `config.compatibility.<format>` に対して自動的に `compatibility=relaxed` といったタグを追加して履歴を残す。
+- 仕様変更で既定値を緩和する場合は `AuditEvent::ConfigCompatChanged`（3-6 §1.1.1）を必須とし、`AuditEnvelope.metadata` へ `config.source` / `config.format` / `config.profile` / `config.compatibility` を必ず記録する。マニフェストの `config.compatibility.<format>` には `compatibility=relaxed` などのタグを追加し、履歴を追跡可能にする。
 
 #### 1.5.2 解決順序と責務
 
 `resolve_compat` は以下の優先順位でプロファイルを決定する：
 
-1. CLI パラメータ（`RunConfig.cli_overrides.compat`）が存在すればそれを採用する。`reml config lint --compat relaxed-json` などのオプションはここへ反映され、監査ログに `source = "cli"` を必ず残す。
+1. CLI パラメータ（`RunConfig.cli_overrides.compat`）が存在すればそれを採用する。`reml config lint --compat relaxed-json` などのオプションはここへ反映され、監査ログでは `AuditEvent::ConfigCompatChanged` の `config.source` を `"cli"` として保存する。
 2. 環境変数による上書き（3-10 §2.1）を `RunConfig.extensions["config"].env_compat` として取り込み、CLI 指定がない場合にのみ適用する。互換プロファイル名と feature guard の双方が対象であり、未知値は `Diagnostic.code = "config.compat.env_invalid"` で拒否する。
 3. `reml.toml` の `config.compatibility.<format>` を Stage と feature guard を検証した上でマージし、欠落フィールドは厳格プロファイル側を優先する。
 4. それ以外は `ConfigCompatibility::stable(format)`（=`compatibility_profile(format, Stage::Stable)`）へフォールバックする。
