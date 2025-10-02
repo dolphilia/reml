@@ -150,6 +150,48 @@ pub enum SchedulingPolicy = Auto | Explicit(SchedulerConfig)
 - `CodecError` が発生した場合は `Diagnostic.code = Some("async.codec.failure")` を用い、`cause` を診断拡張に埋め込む。
 - `ExecutionPlan` の整合性エラーは `Diagnostic.code = Some("async.plan.invalid")` を既定とし、`plan` のスナップショットを JSON で添付する。
 
+#### 1.4.5 チャネルメトリクス API
+
+```reml
+pub struct ChannelMetricsHandle = {
+  queue_depth: GaugeMetric,
+  dropped_messages: CounterMetric,
+  producer_latency: LatencyHistogram,
+  consumer_latency: LatencyHistogram,
+  throughput: CounterMetric,
+}
+
+pub struct ChannelMetricsSample = {
+  queue_depth: usize,
+  dropped_messages: u64,
+  producer_latency_p95: Duration,
+  consumer_latency_p95: Duration,
+  throughput_per_sec: f64,
+  observed_at: Timestamp,
+}
+
+fn channel_metrics<T>(recv: &DslReceiver<T>,
+  registry: MetricsRegistry,
+  channel_id: ChannelId,
+  opts: ChannelMetricOptions = ChannelMetricOptions::default())
+  -> Result<ChannelMetricsHandle, AsyncError>                            // `effect {io.async}`
+
+fn snapshot_channel_metrics(handle: &ChannelMetricsHandle)
+  -> Result<ChannelMetricsSample, AsyncError>                            // `effect {io.async}`
+
+pub struct ChannelMetricOptions = {
+  collect_dropped_messages: Bool = true,
+  collect_latency: Bool = true,
+  collect_throughput: Bool = true,
+}
+```
+
+- `ChannelMetricsHandle` は 3.6 §6.1 の `DslMetricsHandle` と同じ `MetricsRegistry` を利用し、`channel_id` を名前空間に含めた計測キー（例: `channel.data_pipeline.source.items.queue_depth`）を生成する。
+- `channel_id` は `conductor` マニフェストのチャネル識別子（`manifest.conductor.channels[].id`）と一致させ、CLI/LSP の差分表示で人間が追跡しやすいようにする。
+- すべてのオプションが既定で `true` のため、監視メトリクスを省略した場合でも `queue_depth`、`dropped_messages`、`producer_latency`、`consumer_latency`、`throughput` を自動収集する。
+- `snapshot_channel_metrics` は CLI/テレメトリバッチ収集で利用し、`throughput_per_sec` は `throughput` カウンタのデルタから算出する。`observed_at` のタイムスタンプにより 0-1 §1.1 が求める性能監視を支援する。異常値は `Diagnostic.code = Some("async.channel.backpressure")` を推奨し、`AuditEnvelope.metadata["queue_depth"]` へ数値を添付する。
+- `collect_dropped_messages=false` を指定した場合でも、水位超過による `Drop` ポリシー発生時には `AsyncErrorKind::Backpressure` を `Diagnostic.domain = Async` とともに記録し、運用時の安全性（0-1 §1.2）を損なわないようにする。
+
 ### 1.5 プラットフォーム適応スケジューラ
 
 ```reml

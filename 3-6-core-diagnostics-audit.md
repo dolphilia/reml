@@ -396,6 +396,23 @@ fn observe_backpressure(handle: DslMetricsHandle, depth: usize) -> ()           
 - `register_dsl_metrics` は `conductor` で宣言された DSL ID ごとにメトリクスを初期化し、`Core.Async` ランタイムへハンドルを戻す。
 - 成功/失敗の記録は `ExecutionPlan` のエラーポリシーと連動し、監査ログ `AuditEnvelope` を自動的に添付できる。
 
+#### 6.1.1 Conductor 監視ベースライン
+
+| メトリクス | 取得手段 | 説明 | 0-1 章との対応 |
+| --- | --- | --- | --- |
+| `dsl.latency` | `register_dsl_metrics` が返す `latency` | DSL 実行 1 リクエストの所要時間をヒストグラム (p50/p95/p99) で計測し、遅延増大を検知する | §1.1 実用性能 |
+| `dsl.throughput` | 上記ハンドルの `throughput` | 1 秒あたりの完了件数をカウントし、スケーラビリティ低下を早期把握する | §1.1 スケーラビリティ |
+| `dsl.error_rate` | 上記ハンドルの `error_rate` | 成功/失敗比率を追跡し、エラー発生を迅速に診断へ接続する | §1.2 安全性 |
+| `dsl.in_flight` | 上記ハンドルの `in_flight` | 実行中タスク数を測定し、バックプレッシャ兆候を把握する | §1.1 性能 & §1.2 安全性 |
+| `channel.queue_depth` | 3.9 §1.4.5 `ChannelMetricsHandle.queue_depth` | チャネル待機数を計測し、閾値超過時に警告を発火する | §1.2 安全性 |
+| `channel.dropped_messages` | 同 `dropped_messages` | ドロップ件数を累積し、オーケストレーション損失を追跡する | §1.2 安全性 |
+| `channel.producer_latency` / `channel.consumer_latency` | 同 `producer_latency` / `consumer_latency` | 生産者・消費者の各遅延を記録し、責務境界を特定する | §2.2 分かりやすい診断 |
+| `channel.throughput` | 同 `throughput` | チャネル単位の処理件数を記録し、DSL 全体の throughput と連携する | §1.1 スケーラビリティ |
+
+- `conductor` の `monitoring` ブロックで `metrics` セクションを省略した場合、ランタイムは上記 8 項目を自動登録し、`register_dsl_metrics` と 3.9 §1.4.5 `channel_metrics` を内部で呼び出す。利用者が追加メトリクスを指定しても、既定項目は必ず保持する。
+- `channel.*` メトリクスは `ChannelMetricOptions` の既定値 (`collect_* = true`) を利用し、`manifest.conductor.channels[].id` をプレフィックスとして系列を生成する。
+- CLI/監査ログは `dsl.error_rate` が `0.05` を超えた時点で `Severity::Warning` の診断 `conductor.metrics.error_rate_high` を発行し、`channel.queue_depth` が `ExecutionPlan.backpressure.high_watermark` を連続 3 サイクル超過した場合は `Severity::Error` へ昇格させる。診断には `AuditEnvelope.metadata` にサンプリング時刻と計測値を添付する。
+
 ### 6.2 トレース統合
 
 ```reml
@@ -459,6 +476,13 @@ pub type TemplateDiagData = {
 - `segment` はテンプレート AST 内のセグメント ID を指し、LSP が該当箇所へジャンプできるようハイライト用オフセットを格納する。
 - `context_snapshot` は `TemplateError` に添付された JSON を埋め込み、個人情報を含む場合は 4.1 節の `redact_pii` で匿名化する。
 - `diagnostic_template` は `Core.Text.Template.to_diagnostic` から呼び出され、`TemplateDiagData` を `Diagnostic.extensions["template"]` に保存する。
+
+### 6.5 監視メトリクスの CLI/LSP 連携
+
+- CLI サブコマンド（例: `reml conductor monitor`）は 3.9 §1.4.5 `snapshot_channel_metrics` と本節 §6.1 `diagnostic_metrics` を併用し、`CliDiagnosticEnvelope.summary.stats` に `channel.queue_depth`, `channel.dropped_messages`, `dsl.latency_p95` 等を格納する。
+- LSP は `workspace/diagnosticMetrics` 拡張で、`channel.queue_depth` が高水位を超過したチャネルを `CodeActionKind::QuickFix` と併せて表示し、利用者に `ExecutionPlan.backpressure` の再調整を促す。
+- CLI/LSP から発行されるメトリクス通知は `AuditEnvelope.metadata` に `metric_kind`, `channel_id`, `observed_at`, `value` を必須項目として含め、監査ログと可観測性ツールで単一トレースに結合できるようにする。
+- メトリクス転送時は §4 のプライバシー保護手順を適用し、個人情報を含む値は `redact_pii` による匿名化後に CLI/LSP へ渡す。これにより 0-1 §1.2 の安全性と §2.2 の分かりやすい診断を両立する。
 
 ## 7. ターゲット診断ドメイン (Target) {#diagnostic-target}
 
