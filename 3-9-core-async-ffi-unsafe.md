@@ -143,12 +143,14 @@ pub enum SchedulingPolicy = Auto | Explicit(SchedulerConfig)
 - `ExecutionPlan.strategy` で `Parallel` を指定する場合、`max_concurrency` に `Some(0)` を設定することは禁止とし `AsyncErrorKind::InvalidConfiguration` を返す。
 - `ErrorPropagationPolicy::Retry` は `RetryPolicy.max_attempts >= 1` を要求し、違反時は即座にエラーを返す。
 - `SchedulingPolicy::Explicit` を選択する場合、`SchedulerConfig` は `default_scheduler_config()` の制約（`worker_threads` が 1 以上、`max_blocking_threads <= worker_threads`）を満たす必要がある。同条件違反時は `AsyncErrorKind::InvalidConfiguration`。
+- `BackpressurePolicy::Adaptive` は `high_watermark > low_watermark` かつ `low_watermark >= 1` を要求し、閾値の逆転やゼロ指定は静的検証段階でビルドを停止する。`BackpressurePolicy::Buffer(n)` も `n >= 1` を必須とし、`Adaptive.strategy = SlowProducer` を選択する場合は `ExecutionStrategy::Streaming` と併用したときのみ許可される。
+- コンパイラ (`remlc`) と CLI (`reml lint`, `reml build`) は `ExecutionPlan` を DSL/Conductor マニフェストと合成した段階で静的検証し、上記制約違反や `SchedulerConfig` の矛盾（`worker_threads` 未設定、`max_blocking_threads` の超過、`Parallel` 指定時の `Some(0)` など）をビルドエラーとする。検証は 0-1 §1.1–1.2 で定めた性能・安全性指針に従い、実行前に Backpressure 設定とスケジューラ構成を確定させる。
 
 #### 1.4.4 診断と監査
 
 - すべてのチャンネル操作は `Diagnostic.domain = Async` とし、`extensions["channel"]` に `name`、`codec`、`buffer_size`、`overflow` を記録することを推奨する。
 - `CodecError` が発生した場合は `Diagnostic.code = Some("async.codec.failure")` を用い、`cause` を診断拡張に埋め込む。
-- `ExecutionPlan` の整合性エラーは `Diagnostic.code = Some("async.plan.invalid")` を既定とし、`plan` のスナップショットを JSON で添付する。
+- `ExecutionPlan` の整合性エラーは静的検証・実行時に関わらず `Diagnostic.code = Some("async.plan.invalid")` を既定とし、`Diagnostic.severity = Error` で報告する。CLI は `extensions["async.plan"].reason` に検出理由と `plan` スナップショット JSON を添付し、LSP/CI から同一フォーマットで参照できるようにする。
 
 #### 1.4.5 チャネルメトリクス API
 
