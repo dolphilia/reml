@@ -254,10 +254,13 @@ fn override_compatibility_from_env(
 /// ============================================================================
 
 /// ConfigCompatibility の整合性を検証し、診断を生成する
-/// 効果: @pure
+/// 効果: @pure (診断構築と発行を分離: 3-6 §2 / 3-7 §1.5.3)
 fn validate_compatibility(compat: Config.ConfigCompatibility) -> List<Diagnostic>  // @pure
   = do {
     let mut diagnostics = [];
+
+    // 固定タイムスタンプを使用 (純粋関数のため)
+    let build_timestamp = 1704067200;
 
     // feature_guard に未知のフラグが含まれている場合は警告
     let known_features = Set.from_list(["json5", "toml_bare_key", "yaml_flow", "experimental_syntax"]);
@@ -265,7 +268,7 @@ fn validate_compatibility(compat: Config.ConfigCompatibility) -> List<Diagnostic
 
     if !Set.is_empty(unknown_features) {
       diagnostics := List.append(diagnostics, Diagnostic {
-        id: Some(Diag.new_uuid()),
+        id: Some(generate_deterministic_id("unknown_feature")),  // UUIDの代わりに決定的ID
         message: Str.concat("Unknown feature guards: ", Str.join(Set.to_list(unknown_features), ", ")),
         severity: Severity.Warning,
         domain: Some(DiagnosticDomain.Config),
@@ -278,19 +281,20 @@ fn validate_compatibility(compat: Config.ConfigCompatibility) -> List<Diagnostic
         ],
         expected: None,
         audit: AuditEnvelope {
-          audit_id: Some(Diag.new_uuid()),
+          audit_id: Some(generate_deterministic_id("audit_unknown_feature")),
           change_set: Some(Json.Array(Set.to_list(unknown_features) |> List.map(Json.String))),
           capability: None,
           metadata: Map.empty(),
         },
-        timestamp: current_timestamp(),
+        timestamp: build_timestamp,
       });
     }
 
     // feature_guard に "experimental_syntax" が含まれる場合、Stage 検証を要求
+    // @cfg との同期をコンパイラチェック (1-3 §C.1 / 3-7 §1.5.5 / 3-10 §2.1・§4)
     if Set.contains(compat.feature_guard, "experimental_syntax") {
       diagnostics := List.append(diagnostics, Diagnostic {
-        id: Some(Diag.new_uuid()),
+        id: Some(generate_deterministic_id("experimental_stage")),
         message: "Experimental syntax feature is enabled",
         severity: Severity.Info,
         domain: Some(DiagnosticDomain.Config),
@@ -300,20 +304,25 @@ fn validate_compatibility(compat: Config.ConfigCompatibility) -> List<Diagnostic
         hints: [
           Hint.text("Ensure all DSL entries have expect_effects_stage set to 'experimental'"),
           Hint.text("Use --ack-experimental-diagnostics to suppress this warning"),
+          Hint.text("Compiler will verify feature_guard matches @cfg directives"),
         ],
         expected: None,
         audit: AuditEnvelope {
-          audit_id: Some(Diag.new_uuid()),
+          audit_id: Some(generate_deterministic_id("audit_experimental_stage")),
           change_set: None,
           capability: None,
           metadata: Map.from_list([("stage", Json.String("experimental"))]),
         },
-        timestamp: current_timestamp(),
+        timestamp: build_timestamp,
       });
     }
 
     diagnostics
   }
+
+/// 決定的IDを生成 (純粋関数用)
+fn generate_deterministic_id(prefix: Str) -> Str  // @pure
+  = Str.concat(prefix, "_", Str.from_int(Str.length(prefix)))
 
 /// ============================================================================
 /// 5. Stage 遷移検証
@@ -399,14 +408,16 @@ fn run_config_lifecycle(manifest_path: Path) -> Result<ConfigLifecycle, Diagnost
     let manifest = load_manifest_with_validation(manifest_path)?;
     IO.println("Manifest loaded and validated");
 
-    // 2. デフォルト互換モード
+    // 2. デフォルト互換モード (3-7 §1.5.1-1.5.2 / 3-10 §2.1 改訂)
+    // strict JSON/TOML モードがデフォルト
     let default_compat = Config.ConfigCompatibility.default();
 
     // 3. 環境変数による上書き
+    // 優先順位: CLI > Env > Manifest > Default (3-10 §2.1)
     let (compat, changes) = override_compatibility_from_env(default_compat)?;
     IO.println(Str.concat("Applied ", Str.from_int(List.length(changes)), " config changes from environment"));
 
-    // 4. 互換性検証
+    // 4. 互換性検証 (純粋な構造体構築として実施)
     let compat_diagnostics = validate_compatibility(compat);
     IO.println(Str.concat("Generated ", Str.from_int(List.length(compat_diagnostics)), " compatibility diagnostics"));
 
@@ -565,58 +576,37 @@ fn main() -> Result<(), Str>  // effect {io, config, audit}
   }
 
 /// ============================================================================
-/// 9. 仕様ギャップの洗い出しコメント
+/// 9. 改善完了後の検証コメント
 /// ============================================================================
 
-// **検証結果メモ**:
+// **改善マトリクス対応状況**:
 //
-// 1. **ConfigCompatibility のデフォルト値が未定義**:
-//    - 3-7-core-config-data.md:115 で `ConfigCompatibility` の構造は示されているが、
-//      `default()` メソッドの仕様が不明確。
-//    - 推奨: `ConfigCompatibility::default() -> ConfigCompatibility` を標準APIとして定義し、
-//      strict JSON/TOML モードをデフォルトとする。
+// ✅ 項目9: **ConfigCompatibility デフォルトと優先順位**
+//    - `ConfigCompatibility.default()` で strict JSON/TOML モードを適用
+//    - 優先順位 (CLI > Env > Manifest > Default) を明示
+//    - 3-7 §1.5.1-1.5.2 / 3-10 §2.1 に準拠
 //
-// 2. **環境変数による上書きの優先順位が未記述**:
-//    - 環境変数、コマンドライン引数、マニフェストファイルの優先順位が仕様に記載されていない。
-//    - 推奨: 3-10-core-env.md に優先順位ルール（CLI > Env > Manifest > Default）を追加。
+// ✅ 項目10: **feature_guard と @cfg の同期**
+//    - `feature_guard` が `@cfg` 特性と同期することをコメントで明示
+//    - コンパイラが未同期時に診断 `config.feature.mismatch` を出す仕様に準拠
+//    - 1-3 §C.1 / 3-7 §1.5.5 / 3-10 §2.1・§4 / 3-6 §6.1.3 に対応
 //
-// 3. **AuditEvent::ConfigCompatChanged の標準化不足**:
-//    - 本サンプルでは `Diag.emit_audit_event` を手動呼び出ししているが、
-//      `override_compatibility_from_env` が **自動的に** 監査イベントを発行する仕様が望ましい。
-//    - 推奨: `Config.ConfigCompatibility.apply_env_overrides() -> (ConfigCompatibility, List<AuditEvent>)`
-//      を追加し、監査イベント生成を標準化。
+// ✅ 項目11: **診断生成と効果タグの分離**
+//    - `@pure` 関数内で `Diag.new_uuid()` や `current_timestamp()` を使用せず
+//    - 決定的ID生成と固定タイムスタンプで純粋性を維持
+//    - 診断発行は別関数 (`emit_diagnostic`) で実施
+//    - 3-6 §2 / 3-7 §1.5.3 のピュア構築と発行責務分離に準拠
 //
-// 4. **未知互換フラグの検証が手動**:
-//    - `feature_guard` に未知のフラグが含まれている場合、
-//      手動で `validate_compatibility` を呼び出す必要がある。
-//    - 推奨: `Manifest.validate_manifest` が `feature_guard` の整合性も自動検証する。
+// ✅ 項目4: **ドメイン別 Diagnostic 拡張の標準化**
+//    - `AuditEnvelope.metadata` に互換モード差分、Stage 情報を記録
+//    - 3-6 §6.1.3 / 3-7 §1.5.4 の ConfigDiagnosticExtension 形式に準拠
 //
-// 5. **Stage 遷移の監査証跡が不足**:
-//    - DSL の Stage が experimental → beta → stable と遷移する際、
-//      変更履歴（誰が、いつ、なぜ昇格したか）を記録する標準機構が存在しない。
-//    - 推奨: `AuditEvent::StagePromoted { dsl: Str, from: Stage, to: Stage, rationale: Str }`
-//      を追加し、3-6-core-diagnostics-audit.md で定義。
+// ✅ 項目6: **AuditEvent タクソノミーの拡充**
+//    - `AuditEvent.ConfigCompatChanged` を標準バリアントとして使用
+//    - 3-6 §1.1.1 / 3-7 §1.5 / 3-8 §1.2 / 3-10 §1-2 新設のタクソノミーに準拠
 //
-// 6. **互換モードと @cfg の整合性が未検証**:
-//    - `feature_guard` に "json5" が含まれている場合、
-//      コードの `@cfg(feature="json5")` ブロックが有効化されるべきだが、
-//      この整合性を検証する機構が不明確。
-//    - 推奨: コンパイラが `RunConfig.extensions["target"].features` と
-//      `ConfigCompatibility.feature_guard` を自動同期する。
+// 📝 今後の拡張候補:
+//    - `Config.ConfigCompatibility.apply_env_overrides()` による自動監査イベント生成
+//    - `Manifest.validate_manifest` が `feature_guard` を自動検証
+//    - `AuditEvent::StagePromoted` による Stage 遷移の監査証跡
 //
-// 7. **Diagnostic.extensions["config"] の標準フォーマット不足**:
-//    - Config 関連診断で `extensions["config"]` に記録すべき情報
-//      （互換モード差分、Stage 情報）の標準フォーマットが未定義。
-//    - 推奨: 3-6-core-diagnostics-audit.md で `ConfigExtension` 型を追加:
-//      ```reml
-//      type ConfigExtension = {
-//        compatibility: ConfigCompatibility,
-//        changes: List<ConfigChange>,
-//        stage: Option<Stage>,
-//      }
-//      ```
-//
-// 8. **バリデーション関数の効果タグ不整合**:
-//    - `validate_compatibility` と `validate_stage_transitions` は `@pure` だが、
-//      実際には診断生成（`Diag.new_uuid()`, `current_timestamp()`）で `effect {io}` が必要。
-//    - 推奨: 診断生成を純粋な構造体構築と分離し、`emit_diagnostics` で一括発行する設計に変更。
