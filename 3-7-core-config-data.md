@@ -7,7 +7,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | ステータス | 正式仕様 |
-| 効果タグ | `@pure`, `effect {config}`, `effect {audit}`, `effect {io}`, `effect {migration}` |
+| 効果タグ | `@pure`, `effect {diagnostic}`, `effect {config}`, `effect {audit}`, `effect {io}`, `effect {migration}` |
 | 依存モジュール | `Core.Prelude`, `Core.Collections`, `Core.Diagnostics`, `Core.IO`, `Core.Numeric & Time` |
 | 相互参照 | [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.2 Core Collections](3-2-core-collections.md) |
 
@@ -160,6 +160,23 @@ fn with_compat(cfg: RunConfig, compat: ConfigCompatibility) -> RunConfig
 互換モードを切り替えた際は `Core.Diagnostics` が `AuditEvent::ConfigCompatChanged` を記録し、`Diagnostic.severity` を `Warning` 以上に設定することで 0-1 §1.2 の安全性を維持する。CLI/LSP/ビルドは `resolve_compat` の結果を共通で使用し、環境差異による設定解析の不一致を防止する。また CLI/CI は優先順位が実装どおりであることを保証するための準拠テスト（CLI 指定 > 環境変数 > マニフェスト > 既定値）を `Core.TestKit::config_compat_order` で提供し、逆順の上書きが発生した場合はビルドを失敗させる。
 
 このワークフローにより、マニフェスト・言語仕様・CLI が同じ DSL メタデータと互換モードを共有できる。詳細な記述ガイドは `guides/manifest-authoring.md` と `guides/config-compatibility.md`（新規作成予定）で扱う。
+
+#### 1.5.3 診断生成と効果タグ
+
+- `load_manifest` や `validate_manifest` など `@pure` 指定の API は診断レコードを構築するだけに留め、`Diag.new_uuid()` や `Core.Numeric.now()` などの効果を直接呼び出してはならない。`AuditEnvelope` やコード、Severity は引数や戻り値を通じて受け渡し、発行タイミングを制御する。
+- CLI/ランタイムは `effect {diagnostic, audit}` の文脈で `Core.Diagnostics.emit` を呼び出し、`id` や `timestamp` が未設定の診断に自動付番を行う。これにより 0-1 §1.2 の安全性と §2.2 の分かりやすいエラーメッセージ指針を両立させられる。
+- 推奨パターン：`Result<(), Diagnostic>` を返す純粋な検証と、`Result<(), Diagnostic>` を監査付きで送出する関数を分離し、以下のように `AuditSink` へ委譲する。
+
+```reml
+fn check_manifest(manifest: Manifest) -> Result<(), Diagnostic> =
+  ensure(manifest.project.name.is_valid(), || diagnostic("manifest.project.invalid"))?;
+  Ok(());
+
+fn report_manifest(manifest: Manifest, audit: AuditSink) -> Result<(), Diagnostic> =
+  check_manifest(manifest).tap_diag(|diag| { emit(diag, audit).ok(); })
+```
+
+- 上記の `tap_diag` は 3-6 §2 で定義された `effect {diagnostic, audit}` を用い、複数の検証結果を一括で記録できる。`feature_guard` や `compatibility_profile` の検証も同一パターンで扱い、診断の再現性と監査ログの連携を保証する。
 
 ## 2. Config スキーマ API（再整理）
 

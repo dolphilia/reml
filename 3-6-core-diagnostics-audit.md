@@ -7,7 +7,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | ステータス | 正式仕様 |
-| 効果タグ | `@pure`, `effect {audit}`, `effect {debug}`, `effect {trace}`, `effect {privacy}` |
+| 効果タグ | `@pure`, `effect {diagnostic}`, `effect {audit}`, `effect {debug}`, `effect {trace}`, `effect {privacy}` |
 | 依存モジュール | `Core.Prelude`, `Core.Text`, `Core.Numeric & Time`, `Core.Config`, `Core.Data`, `Core.IO` |
 | 相互参照 | [2.5 エラー設計](2-5-error.md), [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.7 Core Config & Data](3-7-core-config-data.md) |
 
@@ -127,15 +127,22 @@ impl DiagnosticBuilder {
 - `DiagnosticBuilder` は不可変操作で `Diagnostic` を組み立てる。
 - 監査情報を伴う場合は `attach_audit` を利用し、`AuditEnvelope` を再利用できるようにする。
 
+#### ピュア構築と発行責務
+
+- `diagnostic`、`DiagnosticBuilder`、`from_parse_error` など `@pure` 指定の API は診断レコードをデータとして構築するだけであり、乱数・時刻・I/O を伴う処理を内部で呼び出してはならない。`Diag.new_uuid()` や `Core.Numeric.now()` などの効果が必要な値は呼び出し側で生成し、`with_code` や `attach_audit` 等の純粋操作で埋め込む。
+- 診断を利用者へ公開するのは `tap_diag` や `emit` など `effect {diagnostic}` を要求する層の責務とする。これらの API は `id` や `timestamp` が未設定の診断に対して、自動的に `Uuid` や `Timestamp` を割り当てた上で監査ポリシーへ転送する。
+- すべての `@pure` な検証関数は診断値を返すだけに留め、呼び出し元（CLI、LSP、ランタイム）が `effect {diagnostic, audit}` の文脈でまとめて送出する。これにより 0-1 §1.2（安全性）と §2.2（分かりやすいエラーメッセージ）に沿った決定的な再現性が確保される。
+- 推奨パターン：`fn build_diag(...) -> Diagnostic // @pure` と `fn report_diag(...) -> Result<(), AuditError> // effect {diagnostic, audit}` を分離し、後者で `emit` や `AuditSink` へ委譲する。
+
 ### 2.1 `Result`/`Option` との連携
 
 ```reml
 fn expect_ok<T, E: IntoDiagnostic>(result: Result<T, E>) -> Result<T, Diagnostic> // `@pure`
-fn tap_diag<T>(result: Result<T, Diagnostic>, inspect: (Diagnostic) -> ()) -> Result<T, Diagnostic> // `effect {audit}`
+fn tap_diag<T>(result: Result<T, Diagnostic>, inspect: (Diagnostic) -> ()) -> Result<T, Diagnostic> // `effect {diagnostic, audit}`
 ```
 
 - `IntoDiagnostic` トレイトにより任意のエラー型を `Diagnostic` へ変換。
-- `tap_diag` は監査ログ出力や統計集計に利用でき、`effect {audit}` を明示する。
+- `tap_diag` は監査ログ出力や統計集計に利用でき、`effect {diagnostic, audit}` により診断発行と監査送出を同時に扱う。
 
 ### 2.2 Core.Parse 連携（`Parse.fail` / `Parse.recover`）
 
@@ -226,12 +233,13 @@ type AsyncDiagnosticExtension = {
 ```reml
 pub type AuditSink = fn(Diagnostic) -> Result<(), AuditError>          // `effect {audit}`
 
-fn emit(diag: Diagnostic, sink: AuditSink) -> Result<(), AuditError>    // `effect {audit}`
+fn emit(diag: Diagnostic, sink: AuditSink) -> Result<(), AuditError>    // `effect {diagnostic, audit}`
 fn with_context(diag: Diagnostic, ctx: Json) -> Diagnostic              // `@pure`
 fn redact(diag: Diagnostic, policy: RedactPolicy) -> Diagnostic         // `@pure`
 ```
 
 - `AuditSink` は CLI/LSP/Runtime の橋渡しを抽象化した関数型。
+- `emit` は診断の `id`・`timestamp`・`audit.audit_id` が未設定の場合に `effect {diagnostic}` で補完し、`tap_diag` などのユーティリティからも同じ振る舞いで発行される。
 
 ```reml
 // 具体的な AuditSink 実装例
