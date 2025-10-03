@@ -96,6 +96,7 @@ fn create_channel<S, R>(buffer_size: usize, codec: Codec<S, R>) -> Result<(DslSe
 fn merge_channels<T>(channels: List<DslReceiver<T>>) -> DslReceiver<T>                                             // `effect {io.async}`
 fn split_channel<T>(channel: DslReceiver<T>, predicate: (T) -> Bool) -> (DslReceiver<T>, DslReceiver<T>)           // `effect {io.async}`
 fn with_execution_plan<T>(dsl: DslSpec<T>, plan: ExecutionPlan) -> DslSpec<T>                                     // `effect {io.async}`
+fn with_plan<T>(stream: AsyncStream<T>, plan: ExecutionPlan) -> AsyncStream<T>                                    // `effect {io.async}`
 fn with_resource_limits<T>(dsl: DslSpec<T>, limits: ResourceLimitSet) -> DslSpec<T>                               // `effect {io.async}`
 
 struct ExecutionPlan = {
@@ -121,6 +122,7 @@ enum AdaptiveStrategy = DropNewest | SlowProducer | SignalDownstream
 - `Channel<Send, Recv>` は DSL 間通信を型安全に扱い、コード変換を `Codec<Send, Recv>` へ委譲する。
 - `ExecutionPlan` は `conductor` の `execution { ... }` ブロックと 1:1 で対応し、スケジューラーへ渡す実行ポリシーを保持する。
 - `with_execution_plan` は DSL 定義時に計画を合成するコンビネータであり、バックプレッシャー制御やエラー隔離を `Core.Async` ランタイムへ伝える。
+- `with_plan` は `AsyncStream` に実行計画を適用し、上流で構築した `ExecutionPlan` の `strategy`/`backpressure`/`error`/`scheduling` 設定をストリームの実行器と共有する。適用時に `ExecutionPlan::validate_capabilities` を呼び出し、対応するスケジューラ Capability が不足している場合は即座に `AsyncErrorKind::InvalidConfiguration` を返す。
 - `ResourceLimitSet` は `with_resource_limits` 経由で DSL ノードへ適用され、3.5 §9 の `MemoryLimit` / `CpuQuota` を保持する。`ResourceLimitSet::new` は `annotations = {}` を既定化し、typed 値のみを指定したいケースで簡潔に構築できる。`annotations` はベンダー固有拡張（IO 制限や GPU クォータ等）を JSON で記録し、監査ログにそのまま渡す用途に限定する。
 
 #### 1.4.1 Codec 契約
@@ -173,12 +175,15 @@ pub enum SchedulingPolicy = Auto | Explicit(SchedulerConfig)
 - `ResourceLimitSet.memory` と `ResourceLimitSet.cpu` はビルド時に `MemoryLimit::resolve` / `CpuQuota::normalize` を実行し、物理メモリ・論理コア数が不明な場合や閾値超過時は `AsyncErrorKind::InvalidConfiguration` を生成する。相対指定（`Relative`・`Fraction`）を利用する場合は、`RunConfig.extensions["runtime"].resource_limits` に基準値が存在することを要求する。
 - `RunConfig.extensions["runtime"].resource_limits` は `ResourceLimitSet` と同じ構造体を保持し、Conductor DSL と CLI/LSP が同一の正規化結果を共有する。CLI は `MemoryLimitResolved.hard_bytes` と `CpuQuotaNormalized.scheduler_slots` を監査ログ（3-6 §6.1.2）へ送信し、0-1 §1.2 の安全性レポート要件を満たす。
 - コンパイラ (`remlc`) と CLI (`reml lint`, `reml build`) は `ExecutionPlan` を DSL/Conductor マニフェストと合成した段階で静的検証し、上記制約違反や `SchedulerConfig` の矛盾（`worker_threads` 未設定、`max_blocking_threads` の超過、`Parallel` 指定時の `Some(0)` など）をビルドエラーとする。検証は 0-1 §1.1–1.2 で定めた性能・安全性指針に従い、実行前に Backpressure 設定とスケジューラ構成を確定させる。
+- `with_plan` は適用対象の `AsyncStream` が内部で `ExecutionPlan.strategy = Streaming` を要求する場合に、`Streaming` 対応スケジューラが存在するかを実行前に照合する。未対応の場合は `AsyncErrorKind::InvalidConfiguration` を返し、`Diagnostic.code = Some("async.plan.unsupported")` と `extensions["async.plan"].missing_capability` を設定して運用監査可能性（0-1 §1.2）を維持する。
 
 #### 1.4.4 診断と監査
 
 - すべてのチャンネル操作は `Diagnostic.domain = Async` とし、`extensions["channel"]` に `name`、`codec`、`buffer_size`、`overflow` を記録することを推奨する。
 - `CodecError` が発生した場合は `Diagnostic.code = Some("async.codec.failure")` を用い、`cause` を診断拡張に埋め込む。
 - `ExecutionPlan` の整合性エラーは静的検証・実行時に関わらず `Diagnostic.code = Some("async.plan.invalid")` を既定とし、`Diagnostic.severity = Error` で報告する。CLI は `extensions["async.plan"].reason` に検出理由と `plan` スナップショット JSON を添付し、LSP/CI から同一フォーマットで参照できるようにする。
+- `with_execution_plan` と `with_plan` によって計画が適用された DSL / ストリームは、運用時診断に `extensions["async.plan"] = { "applied": true, "strategy": plan.strategy.to_string(), "backpressure": plan.backpressure.to_string() }` を追加する。列挙名をそのまま文字列化し、Plan ハッシュ `plan_hash`（`Blake3` 128bit）を併せて記録することで 0-1 §1.1 の性能監査指標を追跡しやすくする。
+- `with_plan` がスケジューラ Capability 不足で失敗した場合は `Diagnostic.code = Some("async.plan.unsupported")` を返し、`extensions["async.plan"].missing_capability` に `RuntimeCapabilityId` を格納する。`severity = Error` を既定とし、`audit_id` を保持して監査ログと突合できるようにする。
 
 #### 1.4.5 チャネルメトリクス API
 

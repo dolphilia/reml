@@ -279,6 +279,7 @@ type AsyncDiagnosticExtension = {
 - `AsyncError.cause` の各要素は順序を保持したまま `Diagnostic.secondary` の `SpanLabel` に変換する。`SpanLabel.message` には `AsyncErrorLink.message` を格納し、`origin` と `metadata` から抽出したキー（例: `retry_attempt`, `channel`）を括弧書きで併記する。
 - `Diagnostic.extensions["async"]` には上記構造を格納し、`metadata` フィールドに `AsyncError.metadata` をマージする。`diagnostic_id` キーが存在する場合は `AuditEnvelope.metadata["async.diagnostic_id"]` にも反映し、重複報告を避ける。
 - `AuditEnvelope.metadata["async.cause_chain"]` へ `AsyncError.cause` を JSON 化して保存し、監査ポリシーが `Trace` 未満でも最初の要素を残す。
+- 実行計画エラーは `code = Some("async.plan.invalid")` または `code = Some("async.plan.unsupported")` を利用し、`extensions["async.plan"]` に `{ "plan_hash": Str, "strategy": Str, "backpressure": Str, "missing_capability": Option<RuntimeCapabilityId> }` を格納する。`plan_hash` は 128bit の `Blake3` を 32 文字の 16 進表現で記録し、性能監査（0-1 §1.1）と安全監査（0-1 §1.2）を両立させる。`missing_capability` は `async.plan.unsupported` の場合のみ必須。
 
 これらの手順は 0-1 §1.2 と §2.2 に沿って、原因追跡と再現性を改善する。CLI/LSP は `AsyncDiagnosticExtension` を持つ診断をツリー表示する UI を提供することが推奨される。
 

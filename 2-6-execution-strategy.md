@@ -374,4 +374,5 @@ fn container_profile(profile: &str) -> RunConfig = match profile {
 - Conductor 構文（[1-1 B.8](1-1-syntax.md)）で宣言された `ExecutionPlan` は本章のランナー設定と同一概念を共有し、`strategy`/`backpressure`/`error`/`scheduling` を `RunConfig.extensions` にエンコードして Core.Async へ伝達する。
 - `ExecutionPlan.strategy` が `adaptive_parallel` の場合、ランナーは依存 DAG を解析し、Packrat/左再帰の設定を自動調整する。
 - `ExecutionPlan.backpressure` は `run` 実行時にチャネル深度監視を有効化し、メトリクス名 `dsl.in_flight`（[3-6 Core Diagnostics](3-6-core-diagnostics-audit.md)）へ数値を転送する。
+- `RunConfig.extensions["async"].execution_plan` は Core.Async の `with_plan`（3-9 §1.4）から参照され、ストリーム処理パイプラインに実行計画を適用する。適用後の診断には `extensions["async.plan"]` が付与され、0-1 §1.1 の性能指標を検証できる。
 - DSLごとの成功/失敗は `RunConfig` の `extensions` を通じて `record_dsl_success` / `record_dsl_failure` に引き渡し、監査ログと性能指標を同期させる。
