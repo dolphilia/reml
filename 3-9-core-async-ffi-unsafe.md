@@ -124,6 +124,7 @@ enum AdaptiveStrategy = DropNewest | SlowProducer | SignalDownstream
 - `with_execution_plan` は DSL 定義時に計画を合成するコンビネータであり、バックプレッシャー制御やエラー隔離を `Core.Async` ランタイムへ伝える。
 - `with_plan` は `AsyncStream` に実行計画を適用し、上流で構築した `ExecutionPlan` の `strategy`/`backpressure`/`error`/`scheduling` 設定をストリームの実行器と共有する。適用時に `ExecutionPlan::validate_capabilities` を呼び出し、対応するスケジューラ Capability が不足している場合は即座に `AsyncErrorKind::InvalidConfiguration` を返す。
 - `ResourceLimitSet` は `with_resource_limits` 経由で DSL ノードへ適用され、3.5 §9 の `MemoryLimit` / `CpuQuota` を保持する。`ResourceLimitSet::new` は `annotations = {}` を既定化し、typed 値のみを指定したいケースで簡潔に構築できる。`annotations` はベンダー固有拡張（IO 制限や GPU クォータ等）を JSON で記録し、監査ログにそのまま渡す用途に限定する。
+- `with_execution_plan` / `with_resource_limits` で指定した情報は `Runtime::execution_scope` によって統合され、未指定項目は `RunConfig.extensions["runtime"].resource_limits` を既定値として補完する。スコープは `ResourceLimitSet` を正規化した `ResourceLimitDigest` を保持し、`ExecutionPlan` とともに 3-6 §6.1 の診断へ転写されるため、0-1 §1.1（性能）と §1.2（安全性）の評価が漏れなく行える。
 
 #### 1.4.1 Codec 契約
 
@@ -205,8 +206,8 @@ pub struct ChannelMetricsSample = {
   observed_at: Timestamp,
 }
 
-fn channel_metrics<T>(recv: &DslReceiver<T>,
-  registry: MetricsRegistry,
+fn channel_metrics<T>(scope: &ExecutionMetricsScope,
+  recv: &DslReceiver<T>,
   channel_id: ChannelId,
   opts: ChannelMetricOptions = ChannelMetricOptions::default())
   -> Result<ChannelMetricsHandle, AsyncError>                            // `effect {io.async}`
@@ -221,10 +222,10 @@ pub struct ChannelMetricOptions = {
 }
 ```
 
-- `ChannelMetricsHandle` は 3.6 §6.1 の `DslMetricsHandle` と同じ `MetricsRegistry` を利用し、`channel_id` を名前空間に含めた計測キー（例: `channel.data_pipeline.source.items.queue_depth`）を生成する。
-- `channel_id` は `conductor` マニフェストのチャネル識別子（`manifest.conductor.channels[].id`）と一致させ、CLI/LSP の差分表示で人間が追跡しやすいようにする。
+- `ChannelMetricsHandle` は 3.6 §6.1 の `DslMetricsHandle` と同じ `ExecutionMetricsScope` を利用し、`scope.registry()` に対して `channel_id` を名前空間に含めた計測キー（例: `channel.data_pipeline.source.items.queue_depth`）を登録する。
+- `channel_id` は `conductor` マニフェストのチャネル識別子（`manifest.conductor.channels[].id`）と一致させ、CLI/LSP の差分表示で人間が追跡しやすいようにする。`scope.node_path` にチャネル経路が追加されるため、Nested DSL でも衝突を避けられる。
 - すべてのオプションが既定で `true` のため、監視メトリクスを省略した場合でも `queue_depth`、`dropped_messages`、`producer_latency`、`consumer_latency`、`throughput` を自動収集する。
-- `snapshot_channel_metrics` は CLI/テレメトリバッチ収集で利用し、`throughput_per_sec` は `throughput` カウンタのデルタから算出する。`observed_at` のタイムスタンプにより 0-1 §1.1 が求める性能監視を支援する。異常値は `Diagnostic.code = Some("async.channel.backpressure")` を推奨し、`AuditEnvelope.metadata["queue_depth"]` へ数値を添付する。
+- `snapshot_channel_metrics` は CLI/テレメトリバッチ収集で利用し、`throughput_per_sec` は `throughput` カウンタのデルタから算出する。`observed_at` のタイムスタンプにより 0-1 §1.1 が求める性能監視を支援する。異常値は `Diagnostic.code = Some("async.channel.backpressure")` を推奨し、`AuditEnvelope.metadata["queue_depth"]` へ数値を添付する。`scope.resolved_limits()` は `ChannelMetricsHandle` 生成時に `ResourceLimitDigest` をキャッシュし、警告診断へ `resource_limits` を自動添付する。
 - `collect_dropped_messages=false` を指定した場合でも、水位超過による `Drop` ポリシー発生時には `AsyncErrorKind::Backpressure` を `Diagnostic.domain = Async` とともに記録し、運用時の安全性（0-1 §1.2）を損なわないようにする。
 
 ##### Stage 差分診断と Capability 検証

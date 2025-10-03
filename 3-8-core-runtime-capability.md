@@ -527,15 +527,37 @@ pub type AuditCapability = {
   emit: fn(Diagnostic) -> Result<(), CapabilityError>,       // `effect {audit}`
   status: fn() -> Result<AuditStatus, CapabilityError>,
 }
+
+pub struct ExecutionMetricsScope = {
+  registry: MetricsRegistry,
+  conductor_id: Str,
+  pipeline_id: Str,
+  node_path: List<Str>,
+  resolved_limits: ResourceLimitDigest,
+  execution_plan: Option<ExecutionPlanDigest>,
+}
+
+fn Runtime::execution_scope(conductor_id: Str,
+  pipeline_id: Str,
+  node_path: List<Str>,
+  plan: Option<ExecutionPlan>,
+  limits: Option<ResourceLimitSet>) -> Result<ExecutionMetricsScope, CapabilityError>
+
+fn ExecutionMetricsScope::sub_scope(&self, node_path: List<Str>) -> ExecutionMetricsScope
+fn ExecutionMetricsScope::registry(&self) -> &MetricsRegistry
+fn ExecutionMetricsScope::resolved_limits(&self) -> &ResourceLimitDigest
 ```
 
 - `MetricDescriptor` は登録済みメトリクスのメタデータ（名前、型、説明）。
 - `AuditStatus` は監査シンクの状態（接続/遅延/停止）を表す。
+- `ExecutionMetricsScope` は Conductor パイプライン単位の可観測性コンテキストを表現し、`registry` を DSL/チャネル間で共有する。`resolved_limits` と `execution_plan` はそれぞれ 3-6 §6.1.2 で定義された `ResourceLimitDigest` / `ExecutionPlanDigest` の形で保持され、監査診断とダッシュボードが同一情報を参照できる。
+- `Runtime::execution_scope` は Conductor/DSL から宣言された `ExecutionPlan` と `ResourceLimitSet` を突き合わせ、未指定項目は `RunConfig.extensions["runtime"].resource_limits` を既定値として利用する。これにより 0-1 §1.1 の性能要件（リソース監視）と §1.2 の安全性（リミット強制）を同時に満たす。
+- `ExecutionMetricsScope::sub_scope` は DSL ノード内のネスト（例: `map` 内で生成されるサブステップ）に対応し、上位スコープの `resolved_limits` を継承したうえで部分的な `node_path` を差し替える。これにより `register_dsl_metrics` と `channel_metrics` が必ず同一リソース文脈で動作する。
 
 
 ### 4.1 DSLメトリクス連携
 
-- Conductor で宣言された DSL ID ごとに `register_dsl_metrics` を呼び出し、`MetricsCapability.emit` を通じて `dsl.latency` などのメトリクスを登録する。
+- Conductor で宣言された DSL ID ごとに `execution_scope = Runtime::execution_scope(conductor_id, pipeline_id, [dsl_id], plan, resource_limits)` を取得し、`register_dsl_metrics(&execution_scope, dsl_id)` を通じて `dsl.latency` などのメトリクスを登録する。`MetricsCapability.emit` は `execution_scope.registry()` を共有バックエンドとして利用する。
 - `MetricsCapability.list` は DSL メトリクスを含むディスクリプタを返し、ダッシュボードプラグインが自動検出できるようにする。
 - トレース連携は [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) の `start_dsl_span` を利用し、`TraceContext` を Capability Registry 経由で伝搬させる。
 

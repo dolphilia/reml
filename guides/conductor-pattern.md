@@ -70,6 +70,7 @@ conductor pipeline_app {
 
 - Core.Diagnostics で宣言するメトリクスは `dsl.latency`, `dsl.throughput`, `dsl.error_rate`, `dsl.in_flight` の4種を最低限含める。
 - `health_check` は Capability Registry 経由で提供されるプローブを利用する。
+- `Runtime::execution_scope` を通じて `ExecutionMetricsScope` を取得し、`register_dsl_metrics` と `channel_metrics` を同一スコープで呼び出す。これにより DSL メトリクスとチャネルメトリクスのリソース文脈が一致し、監査ログに `ResourceLimitDigest` が自動連携される。
 
 ## 3. ベストプラクティス
 
@@ -86,7 +87,7 @@ conductor pipeline_app {
 | DSL 起動順が期待と異なる | `depends_on` を記述していない | 依存関係を追加し、循環チェックを実行する |
 | チャネルで型エラー | 仕様 1.4.2 の前提（`Codec` 互換）が破られている | `Codec` を揃えるか `AsyncErrorKind::CodecFailure` の診断で差異を特定する |
 | バックプレッシャーが効かない | `ExecutionPlan.backpressure` の閾値が適切でない | 閾値を見直し、`async.plan.invalid` 診断が出ていないか確認する |
-| 監視データが欠落 | `register_dsl_metrics` 未呼び出し | プラグインまたは Conductor `monitoring` セクションで登録する |
+| 監視データが欠落 | `ExecutionMetricsScope` を取得せずに DSL/チャネルを起動 | プラグインまたは Conductor `monitoring` セクションで `Runtime::execution_scope` を呼び出し、`register_dsl_metrics` と `channel_metrics` を同じスコープで登録する |
 
 ## 5. 参考
 

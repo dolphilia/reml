@@ -494,7 +494,7 @@ pub struct DslMetricsHandle = {
   in_flight: GaugeMetric,
 }
 
-fn register_dsl_metrics(registry: MetricsRegistry, dsl_id: DslId) -> Result<DslMetricsHandle, Diagnostic> // `effect {trace}`
+fn register_dsl_metrics(scope: &ExecutionMetricsScope, dsl_id: DslId) -> Result<DslMetricsHandle, Diagnostic> // `effect {trace}`
 fn record_dsl_success(handle: DslMetricsHandle, duration: Duration) -> ()                                  // `effect {trace}`
 fn record_dsl_failure(handle: DslMetricsHandle, error: Diagnostic, duration: Duration) -> ()               // `effect {trace, audit}`
 fn observe_backpressure(handle: DslMetricsHandle, depth: usize) -> ()                                      // `effect {trace}`
@@ -505,7 +505,8 @@ fn observe_backpressure(handle: DslMetricsHandle, depth: usize) -> ()           
   - `dsl.throughput` → `CounterMetric`（1秒あたりの完了数）
   - `dsl.error_rate` → `RatioGauge`（成功/失敗比率）
   - `dsl.in_flight` → `GaugeMetric`（実行中タスク数）
-- `register_dsl_metrics` は `conductor` で宣言された DSL ID ごとにメトリクスを初期化し、`Core.Async` ランタイムへハンドルを戻す。
+- `register_dsl_metrics` は 3-8 §4 の `ExecutionMetricsScope` を入力に取り、`scope.registry()` を利用して DSL メトリクスを初期化する。これにより `Core.Async` の `channel_metrics` と同一スコープで収集され、パイプライン単位の集約が容易になる。
+- `scope.resolved_limits()` に含まれる `ResourceLimitDigest` は `DslMetricsHandle` の診断拡張に転写され、`record_dsl_failure` 時に自動で `resource_limits` を添付する。`ExecutionPlanDigest` が存在する場合は `ExecutionMetricsScope.execution_plan` も同時に複写し、性能・安全性レビューの追跡可能性を高める（0-1 §1.1, §1.2）。
 - 成功/失敗の記録は `ExecutionPlan` のエラーポリシーと連動し、監査ログ `AuditEnvelope` を自動的に添付できる。
 
 #### 6.1.1 Conductor 監視ベースライン
@@ -521,7 +522,7 @@ fn observe_backpressure(handle: DslMetricsHandle, depth: usize) -> ()           
 | `channel.producer_latency` / `channel.consumer_latency` | 同 `producer_latency` / `consumer_latency` | 生産者・消費者の各遅延を記録し、責務境界を特定する | §2.2 分かりやすい診断 |
 | `channel.throughput` | 同 `throughput` | チャネル単位の処理件数を記録し、DSL 全体の throughput と連携する | §1.1 スケーラビリティ |
 
-- `conductor` の `monitoring` ブロックで `metrics` セクションを省略した場合、ランタイムは上記 8 項目を自動登録し、`register_dsl_metrics` と 3.9 §1.4.5 `channel_metrics` を内部で呼び出す。利用者が追加メトリクスを指定しても、既定項目は必ず保持する。生成される診断は §6.1.2 の `MonitoringDigest` を介してメトリクス内容を共有する。
+- `conductor` の `monitoring` ブロックで `metrics` セクションを省略した場合、ランタイムは上記 8 項目を自動登録し、`ExecutionMetricsScope` を暗黙に生成したうえで `register_dsl_metrics` と 3.9 §1.4.5 `channel_metrics` を内部で呼び出す。利用者が追加メトリクスを指定しても、既定項目は必ず保持する。生成される診断は §6.1.2 の `MonitoringDigest` を介してメトリクス内容を共有する。
 - `channel.*` メトリクスは `ChannelMetricOptions` の既定値 (`collect_* = true`) を利用し、`manifest.conductor.channels[].id` をプレフィックスとして系列を生成する。`ChannelLinkDigest` の `channel` にはこのプレフィックスを含めること。
 - CLI/監査ログは `dsl.error_rate` が `0.05` を超えた時点で `Severity::Warning` の診断 `conductor.metrics.error_rate_high` を発行し、`channel.queue_depth` が `ExecutionPlan.backpressure.high_watermark` を連続 3 サイクル超過した場合は `Severity::Error` へ昇格させる。診断には `AuditEnvelope.metadata` にサンプリング時刻と計測値を添付し、`conductor.monitoring.metrics` キーに `MonitoringDigest.metrics` を保存する。
 - メトリクス転送時は §4 のプライバシー保護手順を適用し、個人情報を含む値は `redact_pii` による匿名化後に CLI/LSP へ渡す。これにより 0-1 §1.2 の安全性と §2.2 の分かりやすい診断を両立する。
@@ -609,8 +610,8 @@ pub enum ConductorIssueKind = CapabilityMismatch | ResourceLimit | ExecutionPlan
 ```
 
 - `conductor_id` と `node_id` は診断対象の DSL ノードを一意に示し、LSP/CLI は `depends_on` と `channels` を利用して依存グラフをハイライトする。
-- `ExecutionPlanDigest` は 3-9 §1.4 の構成要素を縮約し、`BackpressureWindow` が `None` の場合でも `ExecutionPlan.strategy` を表示する。閾値不正（例: `high_watermark <= low_watermark`）は `ConductorIssueKind::ExecutionPlan` を設定する。
-- `ResourceLimitDigest.memory` と `ResourceLimitDigest.cpu` は 3.5 §9 の `MemoryLimitResolved` / `CpuQuotaNormalized` を縮約して格納する。CLI/LSP は `hard_bytes` と `scheduler_slots` を用いて 0-1 §1.1 の性能要件を再検証し、設定値が Stage や Capability の制約を満たしているか確認する。
+- `ExecutionPlanDigest` は 3-9 §1.4 の構成要素を縮約し、`BackpressureWindow` が `None` の場合でも `ExecutionPlan.strategy` を表示する。値は `ExecutionMetricsScope.execution_plan` から自動取得され、閾値不正（例: `high_watermark <= low_watermark`）は `ConductorIssueKind::ExecutionPlan` を設定する。
+- `ResourceLimitDigest.memory` と `ResourceLimitDigest.cpu` は 3.5 §9 の `MemoryLimitResolved` / `CpuQuotaNormalized` を縮約して格納し、値は `ExecutionMetricsScope.resolved_limits()` から自動転写される。CLI/LSP は `hard_bytes` と `scheduler_slots` を用いて 0-1 §1.1 の性能要件を再検証し、設定値が Stage や Capability の制約を満たしているか確認する。
 - `MonitoringDigest.metrics` には §6.1 の既定メトリクスを含め、利用者が任意に追加したキーも保持する。`TracingDigest.mode = Conditional` は `trigger` に `@cfg` 条件や `RunConfig.trace_enabled` を記録する。
 - `AuditReference` は §3 の監査ログと結合するためのメタデータで、`events` に `AuditEvent::PipelineStarted` などのイベント名を列挙する。`audit_id` が `None` の場合は監査連携されていない診断であると見なす。
 
