@@ -234,6 +234,23 @@ type PrettyOptions = {
 * **FixIt** は `^` 行に \*\*「ここに ‘)’ を挿入」\*\*のように注記。
 * **期待テンプレート**：`expectation_templates` に登録された `message_key` を優先使用し、未登録時は `humanized` フォールバックを採用。
 
+### C-0. ParseError 診断プリセットの利用
+
+- `Diag.parse_error_defaults(input_name)` を経由して `ParseDiagnosticOptions` を構築する。これにより 3-6 §2.4.1 で義務付けられた `parse.*` メタデータが `AuditEnvelope` と `Diagnostic.extensions["parse"]` の双方に揃う。手動で `ParseDiagnosticOptions` を初期化する場合は、同じ値を明示的に設定しなければ仕様違反となる。
+- プリセットを受け取ったら通常のレコード更新で `code` や `locale` を補強する。ロケールを指定しなかった場合は CLI/LSP の既定が利用され、`parse.locale` は未設定のままとなる。
+- 追加の監査メタデータ（DSL 名や Capability ID など）が必要なときは、`opts.audit.metadata = Map.merge(opts.audit.metadata, extra)` のように追記する。`Diag.from_parse_error` は既存キーを壊さずに `parse.*` を補う。
+- CLI/LSP 実装は `Diagnostic.extensions["parse"]` を描画し、`parse.expected_overview` や `parse.context_path` を UI 上のヒントやフィルタ条件として利用する。拡張が欠落していた場合はプリセットの適用漏れとして監査ログに記録し、テストで検出する。
+
+```reml
+let diagnostics = Err.toDiagnostics(
+  source,
+  error,
+  Diag.parse_error_defaults("GraphQL schema"),
+);
+```
+
+この流れを統一すると、外部 DSL ブリッジや設定インポーターでも 0-1 §1.2（安全性）と §2.2（分かりやすいエラーメッセージ）が維持され、ロケール差分や監査トレーサビリティの漏れを防げる。
+
 ### C-1. 診断メッセージの国際化ポリシー
 
 #### メッセージキーとテンプレート

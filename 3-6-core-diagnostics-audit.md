@@ -190,15 +190,19 @@ type ParseDiagnosticOptions = {
   code: Option<Str> = None,
   locale: Option<Locale> = None,
   audit: Option<AuditEnvelope> = None,
+  input_name: Option<Str> = None,
   attach_span_trace: Bool = true,
 }
 
+fn parse_error_defaults(input_name: Str) -> ParseDiagnosticOptions // `@pure`
 fn from_parse_error(src: Str, err: ParseError, opts: ParseDiagnosticOptions) -> Diagnostic      // `@pure`
 fn from_parse_errors(src: Str, errs: List<ParseError>, opts: ParseDiagnosticOptions) -> List<Diagnostic> // `@pure`
 ```
 
 - `locale` は 2.5 §B-11 の手順で `RunConfig.locale` を渡し、未指定時は CLI/LSP 側の既定値を利用する。
 - `audit` へ値を渡すと `Diagnostic.audit` が事前に設定され、監査ライン（§3）でそのまま利用できる。`RunConfig.extensions["audit"].envelope` を `Some(AuditEnvelope)` にしておくと、`Core.Parse` は `Parse.fail` 実行時にこの値を引き継ぐ。
+- `input_name` は CLI/LSP で表示する入力名や DSL 名を保持する。指定しなかった場合は `"<unknown>"` が暗黙に使われ、監査メタデータでは `parse.input_name` に記録される。
+- `parse_error_defaults(input_name)` は 0-1 §2.2 の「分かりやすいエラーメッセージ」を満たす初期値を組み立てるヘルパであり、`severity = Error`・`domain = Parser`・`input_name = Some(input_name)`・`attach_span_trace = true` を固定し、`audit = Some(AuditEnvelope { audit_id: None, change_set: None, capability: None, metadata: Map::empty() })` として `parse.input_name` を事前登録する。戻り値は通常のレコード更新で `code` や `locale` を補強して利用する。
 - `attach_span_trace=false` とすると、`ParseError.span_trace` があっても `Diagnostic.span_trace` へコピーしない。ストリーミング実行などで診断サイズを抑えたい場合に使用する。
 - `Parse.recover` は `from_parse_error` で得られた `Diagnostic` を `secondary` として保持しつつ、復旧位置に FixIt を追加する。復旧成功後でも診断の `severity` は原則変更しない（CLI 側で `merge_warnings` を有効化すると Warning へ落とす運用が可能）。
 
@@ -225,7 +229,38 @@ fn resolve_catalog(namespace: Str) -> Option<DiagnosticCatalog>
 - `Parse.fail` から個別コードを利用する場合、`from_parse_error` に `code` を渡す前に `DiagnosticCatalog` に登録済みであることを確認し、未登録コードは拒否する。これにより 0-1 §2.2 が求める「修正候補と期待値」の事前審査が可能になる。
 - CLI/LSP はカタログの `docs_url` を `Diagnostic` の `extensions["docs"]` に反映し、開発者が即座にトラブルシューティング手順へアクセスできるようにする。
 
-### 2.4 効果診断メッセージ (Effect Domain) {#diagnostic-effect}
+### 2.4 ドメイン別診断プリセット {#diagnostic-presets}
+
+> 0-1 §1.2 と §2.2 が求める「安全性」と「分かりやすい診断」を守るため、ドメインごとに最低限のメタデータとエラー構造を共通化する。`Diag.*` のプリセットは CLI/LSP/監査で同じ情報を再利用することを前提とする。
+
+#### 2.4.1 Core.Parse プリセット `parse_error_defaults` {#diagnostic-parse}
+
+`Diag.parse_error_defaults(input_name)` は `ParseDiagnosticOptions` を初期化し、`Diag.from_parse_error` が同一の監査コンテキストを再構築できるようにする。戻り値は `audit = Some(AuditEnvelope { audit_id: None, change_set: None, capability: None, metadata: Map::empty() })` を基準とし、以下の監査キーを保証する（既に設定されている値は上書きしない）。
+
+| 監査キー | 値の型 | 生成規則 |
+| --- | --- | --- |
+| `parse.input_name` | `Json.String` | `options.input_name` が `Some` であればその値、未指定時は `"<unknown>"`。 |
+| `parse.context_path` | `Json.Array(Json.String)` | `ParseError.context` を外側→内側の順で格納。空配列は許容。 |
+| `parse.expected_overview` | `Json.Object` | `ExpectationSummary` を `{ "message_key": Str?, "humanized": Str?, "alternatives": Json.Array }` として埋め込む。 |
+| `parse.committed` | `Json.Bool` | `ParseError.committed` の値。 |
+| `parse.far_consumed` | `Json.Bool` | `ParseError.far_consumed` の値。 |
+| `parse.hint_count` | `Json.Number` | `ParseError.hints` の要素数。 |
+| `parse.locale` | `Json.String` | `options.locale` が `Some(locale)` の場合に限り、`Locale::to_string()` を格納。 |
+| `parse.secondaries` | `Json.Number` | `ParseError.secondaries` の件数。 |
+
+同じ情報は `Diagnostic.extensions["parse"]` にもコピーし、CLI/LSP が監査ログと同じ粒度で可視化できるようにする。`parse_error_defaults` が返す `AuditEnvelope` は空の `metadata` を持つが、呼び出し側が追加で `Map.merge` した値も `from_parse_error` 実行後に保持される。
+
+```reml
+let diagnostic = Diag.from_parse_error(
+  source,
+  error,
+  Diag.parse_error_defaults("GraphQL schema"),
+);
+```
+
+このプリセットにより、外部 DSL や設定ファイルのブリッジでも `parse.input_name`・`parse.expected_overview` などの必須情報が欠落しなくなり、0-1 §2.2 の指標（行列表示・期待値提示・修正候補）を満たした診断を安定的に生成できる。監査ポリシーはこれらキーを用いて失敗傾向やロケールの逸脱を集計する。
+
+#### 2.4.2 効果診断メッセージ (Effect Domain) {#diagnostic-effect}
 
 > 1-3-effects-safety.md §I.5 と 3-8-core-runtime-capability.md §1.2 で定義した効果行整列・Stage/Capability 検査を `Diagnostic` と監査ログに落とし込むための共通仕様。
 
@@ -244,7 +279,7 @@ fn resolve_catalog(namespace: Str) -> Option<DiagnosticCatalog>
 
 これらのキーは `AuditPolicy.exclude_patterns` で除外しない限り永続化され、`CapabilityAudit` レポートや LSP の効果ビューで差分分析に利用できる。
 
-#### 2.4.1 Stage 差分プリセット `EffectDiagnostic` {#effect-diagnostic-stage}
+#### 2.4.3 Stage 差分プリセット `EffectDiagnostic` {#effect-diagnostic-stage}
 
 ```reml
 pub struct EffectDiagnostic;
