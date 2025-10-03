@@ -38,11 +38,13 @@ pub struct CapabilityRegistry {
 fn registry() -> &'static CapabilityRegistry                  // `effect {runtime}`
 fn register(cap: CapabilityId, value: CapabilityHandle) -> Result<(), CapabilityError> // `effect {runtime}`
 fn get(cap: CapabilityId) -> Option<CapabilityHandle>          // `effect {runtime}`
+fn describe(cap: CapabilityId) -> Option<CapabilityDescriptor> // `effect {runtime}`
 ```
 
 - `CapabilityHandle` は実装依存のポインタ/関数テーブルをラップする型（不透明指針）。
 - `register` は起動時に呼び出され、重複登録時は `CapabilityError::AlreadyRegistered` を返す。
 - セキュリティ強化のため、Capability は署名検証とアクセス制御をサポートする。
+- `describe` は登録済み Capability のメタデータ（`CapabilityDescriptor`）を返し、診断や監査で Stage 情報・効果タグ・提供者を共有する際の公式 API として利用する。`None` が返る場合は Capability が未登録であることを示す。
 
 ### 1.1 CapabilityHandle のバリアント
 
@@ -150,9 +152,29 @@ fn verify_conductor_contract(contract: ConductorCapabilityContract) -> Result<()
 ```
 
 - `StageRequirement` は 1-1 §B.8.5 で定義した契約と互換で、`Exact` は厳密一致、`AtLeast` は `StageId` の順序（`Experimental < Beta < Stable`）での下限を意味する。順序関係は 0-1 §1.2 の「安全性の確保」に基づき、より高い Stage での運用を許容しつつ、下限を破る構成を拒否する。
-- `verify_capability` は Capability の存在検証のみを行い、Stage 条件は評価しない。`verify_capability_stage` は Stage 条件と `effect_scope` の両方を検査し、不足時に `CapabilityError::StageViolation` を返す。`effects.contract.stage_mismatch` 診断はこの関数を通じて生成される。
+- `verify_capability` は Capability の存在検証のみを行い、Stage 条件は評価しない。`verify_capability_stage` は Stage 条件と `effect_scope` の両方を検査し、不足時は `CapabilityError::StageViolation` を返す。このバリアントには `required_stage`・`actual_stage`・`capability_metadata` が必須で含まれ、`Diag.EffectDiagnostic.stage_violation`（3-6 §2.4.1）と `effects.contract.stage_mismatch` 診断が直ちに生成できるようになっている。
 - `verify_conductor_contract` は `with_capabilities`（1-1 §B.8.5）から生成された契約集合を受け取り、各要素に `verify_capability_stage` を適用する。`manifest_path` が存在する場合は `reml.toml` の `run.target.capabilities` と突き合わせ、CLI/IDE が同一結果を共有できるようにする。
 - `@cfg(capability = "...")` で除外された分岐は契約から自動的に削除されるが、`verify_conductor_contract` は `ConductorCapabilityRequirement.source_span` を監査ログに残すため、実行環境ごとの差異を追跡できる。差分は `AuditEvent::CapabilityMismatch`（3-6 §1.1.1 / §6.1.2）に集約され、0-1 §1.2 の安全性レビュー資料に添付する。
+
+```reml
+pub type CapabilityDescriptor = {
+  id: CapabilityId,
+  stage: StageId,
+  effect_scope: Set<EffectTag>,
+  provider: CapabilityProvider,
+  manifest_path: Option<Path>,
+  last_verified_at: Option<Timestamp>,
+}
+
+pub enum CapabilityProvider = Core
+  | Plugin { package: Str, version: Option<SemVer> }
+  | ExternalBridge { name: Str, version: Option<SemVer> }
+  | RuntimeComponent { name: Str };
+```
+
+- `CapabilityDescriptor` は `CapabilityRegistry::describe` が返す公開メタデータであり、監査ログや診断へ転写することを想定する。`effect_scope` と `stage` は登録時点の設定を示し、0-1 §1.2 の安全性基準に合致するかを確認する根拠となる。
+- `provider` は Capability を提供する主体を特定し、`Core`（標準組み込み）、`Plugin`（プラグインモジュール）、`ExternalBridge`（外部 DSL ブリッジなど）、`RuntimeComponent`（ランタイム内部構成要素）を区別する。`manifest_path` は `reml.toml` など構成ファイル上の位置を指し、`last_verified_at` は `verify_capability_stage` が成功した最新時刻（3-4 §1 `Timestamp`）を格納する。
+- `verify_capability_stage` が失敗した場合は `CapabilityDescriptor.stage` を `CapabilityError.actual_stage` として埋め込み、診断側で要求 Stage との差分を即座に計算できるようにする。成功時は `last_verified_at` を更新し、キャッシュの鮮度を維持する。
 
 ### 1.3 プラットフォーム情報と能力 {#platform-info}
 
@@ -333,14 +355,29 @@ pub enum PriorityPolicy = FIFO | Priority { levels: u8 }
 pub type CapabilityError = {
   kind: CapabilityErrorKind,
   message: Str,
+  capability_id: Option<CapabilityId>,
+  required_stage: Option<StageRequirement>,
+  actual_stage: Option<StageId>,
+  capability_metadata: Option<CapabilityDescriptor>,
 }
 
-pub enum CapabilityErrorKind = AlreadyRegistered | NotFound | InvalidHandle | UnsafeViolation | SecurityViolation
+pub enum CapabilityErrorKind =
+  AlreadyRegistered
+  | NotFound
+  | InvalidHandle
+  | UnsafeViolation
+  | SecurityViolation
+  | StageViolation;
 ```
 
+- `capability_id` は失敗対象となった Capability を特定するための ID。登録前に失敗した場合は `None` となる。
+- `required_stage` は呼び出し元が要求した Stage 条件を保持し、`verify_capability_stage` / `verify_conductor_contract` からのエラーで必須となる。
+- `actual_stage` は Capability Registry に記録されている Stage を返し、存在しない場合（`CapabilityErrorKind::NotFound`）のみ `None` になる。Stage 違反は 0-1 §1.2 の安全性基準上クリティカルなため、`StageViolation` では必ず `Some` を返す。
+- `capability_metadata` には `CapabilityDescriptor` を格納し、効果タグや提供主体を診断・監査へ転写できるようにする。`SecurityViolation` および `StageViolation` では Err 値に必須で含める。
 - `InvalidHandle` は型不一致や ABI 不整合を検出した際に報告する。
 - `UnsafeViolation` は `effect {unsafe}` 経由でのみ返される。
 - `SecurityViolation` はアクセス制御違反や不正なケーパビリティ操作時に発生する。
+- `StageViolation` は Stage 条件を満たさない場合の専用バリアントであり、`capability_id`/`required_stage`/`actual_stage` を全て埋めた上で `Diag.EffectDiagnostic`（3-6 §2.4.1）へ渡すことを前提とする。
 
 ## 2. システムプログラミング Capability 概要
 

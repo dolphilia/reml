@@ -222,6 +222,13 @@ pub struct ChannelMetricOptions = {
 - `snapshot_channel_metrics` は CLI/テレメトリバッチ収集で利用し、`throughput_per_sec` は `throughput` カウンタのデルタから算出する。`observed_at` のタイムスタンプにより 0-1 §1.1 が求める性能監視を支援する。異常値は `Diagnostic.code = Some("async.channel.backpressure")` を推奨し、`AuditEnvelope.metadata["queue_depth"]` へ数値を添付する。
 - `collect_dropped_messages=false` を指定した場合でも、水位超過による `Drop` ポリシー発生時には `AsyncErrorKind::Backpressure` を `Diagnostic.domain = Async` とともに記録し、運用時の安全性（0-1 §1.2）を損なわないようにする。
 
+##### Stage 差分診断と Capability 検証
+
+1. `channel_metrics`・`merge_channels` などランタイム起動時に Capability を検証する API は、まず `Runtime.verify_capability_stage("runtime.async", StageRequirement::AtLeast(StageId::Stable))` を呼び出し、成功した `CapabilityHandle` をコンテキストに保持する。
+2. `Result::Err(err)` が返り、`err.kind = CapabilityErrorKind::StageViolation` の場合は `Diag.EffectDiagnostic.stage_violation(span, cap_id, err)`（3-6 §2.4.1）を即座に作成し、`AsyncErrorKind::RuntimeUnavailable` へラップして呼び出し側へ伝搬する。`span` は呼び出し元 DSL/Conductor の源情報を指し、`cap_id` は検証対象となった Capability ID である。
+3. 生成された診断は `Diagnostic.extensions["effects"]` に `required_stage`・`actual_stage`・`capability_metadata` を含み、`AuditEnvelope.metadata` へ `effect.provider`・`effect.manifest_path` を転写する。これにより 0-1 §1.2 の安全保障レビューが参照する Stage 差分を即時に共有できる。
+4. Stage 不在による `CapabilityErrorKind::NotFound` と区別するため、`AsyncError` 側では `err.actual_stage.is_none()` を検証し、`Diagnostics` へ「Capability 未登録」と明示するか `StageViolation` として詳細を示すかを判定する。`StageViolation` で `None` が返るケースはランタイム実装の欠陥と見なして監査ログへ警告を残す。
+
 ### 1.5 プラットフォーム適応スケジューラ
 
 ```reml
@@ -438,7 +445,7 @@ let response = await system.ask(greeter, Message::Greet("Reml"), 2.s)?;
 2. ランタイム起動時は `CapabilityRegistry::verify_capability_stage("runtime.async", StageRequirement::AtLeast(StageId::Stable))` を実行し、返された `CapabilityHandle` から `SchedulerHandle::supports_mailbox()` が `true` であることを確認する。Stage 不足は `CapabilityError::StageViolation` と `async.actor.capability_missing` 診断で報告する。
 3. `ActorRuntimeCapability` は `verify_capability_stage("runtime.actor", StageRequirement::AtLeast(StageId::Experimental))` で取得し、`StageId::Experimental` の場合は公開 API に `@requires_capability(stage="experimental")` を付与する。Stage が `Beta` 以上であれば属性は任意だが、`@cfg(capability = "runtime.actor")` と同期させる。
 4. 分散を有効化する DSL は `guides/runtime-bridges.md §11` のチェックリスト（監査・TLS・再接続ポリシー）を満たした上で、`verify_conductor_contract` の結果に基づき `RuntimeCapability::DistributedActor` の Stage を `AtLeast(StageId::Beta)` として要求する。
-5. いずれかの検証が失敗した場合は `Diagnostic.code = Some("async.actor.capability_missing")` を返し、`Diagnostic.extensions["capability"].required_stage` / `.actual_stage` を添付して復旧手順を提示する。
+5. いずれかの検証が失敗した場合は `Diagnostic.code = Some("async.actor.capability_missing")` を返し、Stage 違反であれば `Diag.EffectDiagnostic.stage_violation(span, cap_id, err)`（3-6 §2.4.1）を利用して `extensions["effects"]` に差分を格納する。その他のエラーでも `extensions["capability"].required_stage` / `.actual_stage` を併用し、復旧手順と監査ログの突き合わせを支援する。
 
 #### 1.9.5 Supervisor パターンと再起動戦略
 

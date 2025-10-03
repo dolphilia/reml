@@ -108,13 +108,16 @@ type EffectsExtension = {
   residual: Set<EffectTag>,        // ハンドラ適用後に残った効果集合
   handler: Option<Str>,            // ハンドラ名（存在する場合）
   unhandled_operations: List<Str>, // 未実装 operation の一覧
-  capability: Option<CapabilityId> // 必要とされる Capability（任意）
+  capability: Option<CapabilityId>,                    // 必要とされる Capability（任意）
+  required_stage: Option<Runtime.StageRequirement>,    // Stage 要件（3-8 §1.2）
+  actual_stage: Option<Stage>,                         // Capability Registry に登録された Stage
+  capability_metadata: Option<Runtime.CapabilityDescriptor>, // `describe` から得たメタデータ
 }
 
 enum Stage = Experimental | Beta | Stable
 ```
 
-`Stage` は Capability Registry（3.8 §1）と共有される列挙で、CLI/LSP は `Stage` に基づき表示レベルを調整する。`before` / `handled` / `residual` は 1.3 §I の効果計算結果に対応し、`residual = ∅` の場合は純粋化可能であることを意味する。`unhandled_operations` は `effects.handler.unhandled_operation` 診断（2.5 §B-10）で IDE へ提示する一覧として使用する。
+`Stage` は Capability Registry（3.8 §1）と共有される列挙で、CLI/LSP は `Stage` に基づき表示レベルを調整する。`before` / `handled` / `residual` は 1.3 §I の効果計算結果に対応し、`residual = ∅` の場合は純粋化可能であることを意味する。`unhandled_operations` は `effects.handler.unhandled_operation` 診断（2.5 §B-10）で IDE へ提示する一覧として使用する。`required_stage` と `actual_stage` は Capability 要件と実際の Stage の差分を記録し、0-1 §1.2 の安全性指針に基づく是正アクションを促す基礎データとなる。`capability_metadata` には `Runtime.CapabilityDescriptor` を保持し、提供主体・効果タグ・最終検証時刻を監査ログへ転写する。
 
 ```reml
 pub enum DiagnosticDomain = {
@@ -240,6 +243,22 @@ fn resolve_catalog(namespace: Str) -> Option<DiagnosticCatalog>
 - `effect.capability`: Stage チェックと紐づく Capability ID。`CapabilityRegistry::register` の記録と突き合わせて整合性を検証する。
 
 これらのキーは `AuditPolicy.exclude_patterns` で除外しない限り永続化され、`CapabilityAudit` レポートや LSP の効果ビューで差分分析に利用できる。
+
+#### 2.4.1 Stage 差分プリセット `EffectDiagnostic` {#effect-diagnostic-stage}
+
+```reml
+pub struct EffectDiagnostic;
+
+impl EffectDiagnostic {
+  fn stage_violation(span: Span, capability: CapabilityId, err: Runtime.CapabilityError)
+    -> Diagnostic // `@pure`
+}
+```
+
+- `stage_violation` は `Runtime.verify_capability_stage` などから返された `CapabilityError::StageViolation` を受け取り、`Diagnostic.extensions["effects"]` に `required_stage`・`actual_stage`・`capability_metadata` を埋め込んだ `Diagnostic` を生成するためのユーティリティである。
+- 戻り値の `Diagnostic` は `Diagnostic.domain = Some(DiagnosticDomain::Effect)`、`code = Some("effects.contract.stage_mismatch")` を既定とし、0-1 §2.2 が求める分かりやすいエラー提示を満たす。`message` は Stage 差分を自然言語で説明し、`capability`・`provider`・`last_verified_at` をヒントとして自動付与する。
+- `AuditEnvelope.metadata` には `effect.stage.required` / `effect.stage.actual` / `effect.capability` に加えて `effect.provider`・`effect.manifest_path` を転写する。これにより監査ログから直接 Capability 設定の履歴を追跡でき、0-1 §1.2 の安全性レビューに必要な証跡を確保する。
+- `err.actual_stage` が `None` の場合は `Diagnostic.severity = Error` のまま `expected` 情報のみを提示し、Capability 未登録（`CapabilityErrorKind::NotFound`）との区別を明示する。`StageViolation` では `None` を許容しないため、これが発生した場合はランタイム実装側のバグとして別途報告する。
 
 ### 2.5 AsyncError と診断統合 {#diagnostic-async}
 
