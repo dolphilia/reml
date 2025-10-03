@@ -115,6 +115,7 @@ type RemlDslEntry = {
   output_type: RemlType,
   effects: List<Str>,
   capabilities: List<Str>,
+  stage_bounds: Runtime.StageBounds,
 }
 
 /// ============================================================================
@@ -358,6 +359,10 @@ fn graphql_field_to_reml_entry(field: GraphQLField) -> RemlDslEntry  // @pure
       output_type: output_type,
       effects: ["io"],  // GraphQL クエリは通常 IO 効果を持つ
       capabilities: ["network.http"],  // HTTP リクエストが必要
+      stage_bounds: Runtime.StageBounds {
+        min_stage: Runtime.StageId.Beta,
+        max_stage: Runtime.StageId.Stable,
+      },
     }
   }
 
@@ -426,7 +431,62 @@ fn validate_reml_entry(
 
         Err(diagnostic)
       } else {
-        Ok(())
+        // Capability の整合性チェック
+        let declared_capabilities = Set.from_list(entry.capabilities);
+        let expected_capabilities = signature.requires_capabilities;
+
+        if !Set.is_subset(declared_capabilities, expected_capabilities) {
+          let missing_capabilities = Set.difference(declared_capabilities, expected_capabilities);
+
+          let diagnostic = Diag.diagnostic("DSL capabilities mismatch")
+            |> Diag.with_severity(Diag.Severity.Error)
+            |> Diag.with_domain(Diag.DiagnosticDomain.Effect)
+            |> Diag.with_code("manifest.dsl.capability_mismatch")
+            |> Diag.attach_audit(Diag.AuditEnvelope {
+              audit_id: Some(Diag.new_uuid()),
+              change_set: None,
+              capability: None,
+              metadata: Map.from_list([
+                ("dsl_name", Json.String(entry.name)),
+                ("missing_capabilities", Json.Array(
+                  List.map(Set.to_list(missing_capabilities), Json.String)
+                )),
+              ]),
+            })
+            |> Diag.finish();
+
+          Err(diagnostic)
+        } else {
+          // Stage の整合性チェック
+          let stage_compatible = Runtime.check_stage_compatibility(
+            entry.stage_bounds,
+            signature.stage_bounds
+          );
+
+          if !stage_compatible {
+            let diagnostic = Diag.diagnostic("DSL stage bounds mismatch")
+              |> Diag.with_severity(Diag.Severity.Error)
+              |> Diag.with_domain(Diag.DiagnosticDomain.Effect)
+              |> Diag.with_code("manifest.dsl.stage_mismatch")
+              |> Diag.attach_audit(Diag.AuditEnvelope {
+                audit_id: Some(Diag.new_uuid()),
+                change_set: None,
+                capability: None,
+                metadata: Map.from_list([
+                  ("dsl_name", Json.String(entry.name)),
+                  ("declared_min_stage", Json.String(stage_to_string(entry.stage_bounds.min_stage))),
+                  ("declared_max_stage", Json.String(stage_to_string(entry.stage_bounds.max_stage))),
+                  ("expected_min_stage", Json.String(stage_to_string(signature.stage_bounds.min_stage))),
+                  ("expected_max_stage", Json.String(stage_to_string(signature.stage_bounds.max_stage))),
+                ]),
+              })
+              |> Diag.finish();
+
+            Err(diagnostic)
+          } else {
+            Ok(())
+          }
+        }
       }
     }
   }
@@ -443,11 +503,11 @@ fn parse_error_to_diagnostic(
   input_name: Str
 ) -> Diag.Diagnostic  // @pure
   = do {
-    let opts = Diag.ParseDiagnosticOptions {
-      severity: Diag.Severity.Error,
-      domain: Diag.DiagnosticDomain.Parser,
+    // parse_error_defaults でプリセットを取得し、カスタマイズ
+    let default_opts = Diag.parse_error_defaults(input_name);
+
+    let opts = default_opts {
       code: Some("external.dsl.parse_error"),
-      locale: None,
       audit: Some(Diag.AuditEnvelope {
         audit_id: Some(Diag.new_uuid()),
         change_set: None,
@@ -455,9 +515,10 @@ fn parse_error_to_diagnostic(
         metadata: Map.from_list([
           ("input_name", Json.String(input_name)),
           ("error_kind", Json.String(parse_error_kind_to_string(error.kind))),
+          ("error_position", Json.Number(error.position)),
+          ("parse.error.source", Json.String("external_dsl")),
         ]),
       }),
-      attach_span_trace: true,
     };
 
     Diag.from_parse_error(source, error, opts)
@@ -732,4 +793,11 @@ fn type_to_string(ty: RemlType) -> Str  // @pure
     | RemlType.List { inner } -> Str.concat("List<", Str.concat(type_to_string(*inner), ">"))
     | RemlType.Record { fields } -> "Record"
     | RemlType.Custom { name } -> name
+  }
+
+fn stage_to_string(stage: Runtime.StageId) -> Str  // @pure
+  = match stage {
+    | Runtime.StageId.Experimental -> "Experimental"
+    | Runtime.StageId.Beta -> "Beta"
+    | Runtime.StageId.Stable -> "Stable"
   }

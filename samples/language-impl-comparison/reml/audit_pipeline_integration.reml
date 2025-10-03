@@ -194,13 +194,39 @@ fn verify_pipeline_capabilities(
           IO.println(Str.concat("✓ Capability verified: ", cap_id));
           Ok(())
         }
-        | Err(err) -> {
-          let (expected, actual) = match stage_req {
-            | Runtime.StageRequirement.Exact(stage) -> (stage, Runtime.StageId.Experimental)
-            | Runtime.StageRequirement.AtLeast(stage) -> (stage, Runtime.StageId.Experimental)
+        | Err(Runtime.CapabilityError {
+          capability_id,
+          actual_stage,
+          capability_metadata
+        }) -> {
+          // 実際の Stage 情報をエラーから取得（仮置き値を排除）
+          let expected_stage = match stage_req {
+            | Runtime.StageRequirement.Exact(stage) -> stage
+            | Runtime.StageRequirement.AtLeast(stage) -> stage
           };
 
-          emit_capability_mismatch(cap_id, expected, actual)?;
+          // メタデータを診断に含める
+          let diagnostic = Diag.diagnostic(
+              Str.concat("Capability stage mismatch: ", capability_id)
+            )
+            |> Diag.with_severity(Diag.Severity.Error)
+            |> Diag.with_domain(Diag.DiagnosticDomain.Effect)
+            |> Diag.with_code("effects.contract.stage_mismatch")
+            |> Diag.attach_audit(Diag.AuditEnvelope {
+              audit_id: Some(Diag.new_uuid()),
+              change_set: None,
+              capability: Some(capability_id),
+              metadata: Map.from_list([
+                ("capability.id", Json.String(capability_id)),
+                ("capability.expected_stage", Json.String(stage_to_string(expected_stage))),
+                ("capability.actual_stage", Json.String(stage_to_string(actual_stage))),
+                ("capability.metadata", capability_metadata),
+                ("timestamp", Json.Number(current_timestamp())),
+              ]),
+            })
+            |> Diag.finish();
+
+          Diag.emit(diagnostic, Diag.console_audit_sink)?;
           Err(Str.concat("Capability verification failed: ", cap_id))
         }
       }
@@ -217,34 +243,38 @@ fn verify_pipeline_capabilities(
 /// 効果: {runtime}
 fn setup_resource_limits_and_metrics(
   pipeline_id: Str
-) -> Result<Diag.DslMetricsHandle, Str>  // effect {runtime}
+) -> Result<(Runtime.ExecutionMetricsScope, Async.ResourceLimitSet), Str>  // effect {runtime}
   = do {
+    // パイプライン単位の ExecutionMetricsScope を作成
+    let metrics_scope = Runtime.create_execution_metrics_scope(pipeline_id)?;
+
     // リソース制限の設定
     let limits = Async.ResourceLimitSet.new(
       memory: Some(Resource.MemoryLimit.from_mb(256)),
       cpu: Some(Resource.CpuQuota.from_ratio(0.75))
     );
 
+    // ExecutionPlan にリソース制限を連動
+    Runtime.link_resource_limits(metrics_scope, limits)?;
+
     IO.println("Resource limits configured:");
     IO.println(Str.concat("  Memory: 256MB"));
     IO.println(Str.concat("  CPU: 75%"));
+    IO.println(Str.concat("  Metrics scope: ", pipeline_id));
 
-    // メトリクスハンドルを作成
-    let metrics_registry = Runtime.create_metrics_registry();
-    let metrics_handle = Diag.register_dsl_metrics(metrics_registry, pipeline_id)?;
-
-    Ok(metrics_handle)
+    Ok((metrics_scope, limits))
   }
 
 /// バックプレッシャーイベントを記録
 /// 効果: {trace, audit}
 fn record_backpressure_event(
-  handle: Diag.DslMetricsHandle,
+  scope: Runtime.ExecutionMetricsScope,
   channel_id: Str,
   queue_depth: Int
 ) -> ()  // effect {trace, audit}
   = do {
-    Diag.observe_backpressure(handle, queue_depth);
+    // ExecutionMetricsScope 経由でバックプレッシャーを記録
+    Runtime.observe_backpressure(scope, channel_id, queue_depth);
 
     IO.println(Str.concat(
       "⚠ Backpressure detected on channel ",
@@ -260,17 +290,18 @@ fn record_backpressure_event(
 /// 効果: {io.async}
 fn monitor_channel_metrics(
   receiver: Async.DslReceiver<PipelineInput>,
-  channel_id: Str
+  channel_id: Str,
+  scope: Runtime.ExecutionMetricsScope
 ) -> Result<Async.ChannelMetricsHandle, Async.AsyncError>  // effect {io.async}
   = do {
-    let registry = Runtime.create_metrics_registry();
+    // ExecutionMetricsScope を共有してチャネルメトリクスを登録
     let opts = Async.ChannelMetricOptions {
       collect_dropped_messages: true,
       collect_latency: true,
       collect_throughput: true,
     };
 
-    let metrics = Async.channel_metrics(receiver, registry, channel_id, opts)?;
+    let metrics = Async.channel_metrics_with_scope(receiver, scope, channel_id, opts)?;
 
     IO.println(Str.concat("✓ Channel metrics enabled for: ", channel_id));
 
@@ -379,12 +410,12 @@ fn run_pipeline_normal(
       ("audit", Runtime.StageRequirement.AtLeast(Runtime.StageId.Stable)),
     ])?;
 
-    // メトリクス設定
-    let metrics = setup_resource_limits_and_metrics(pipeline_id)?;
+    // メトリクス設定とリソース制限
+    let (metrics_scope, limits) = setup_resource_limits_and_metrics(pipeline_id)?;
 
     // チャネル作成
     let (sender, receiver) = Async.create_channel(100, Async.Codec.json())?;
-    let channel_metrics = monitor_channel_metrics(receiver, "input_channel")?;
+    let channel_metrics = monitor_channel_metrics(receiver, "input_channel", metrics_scope)?;
 
     // データ処理
     let outputs = List.map(inputs, |input| {
@@ -429,7 +460,30 @@ fn run_pipeline_timeout(
         emit_pipeline_completed(pipeline_id, 0)?;
         Ok([])
       }
-      | Err(Async.AsyncError.Timeout) -> {
+      | Err(Async.AsyncError.Timeout(timeout_info)) -> {
+        // TimeoutInfo メタデータを含めた診断生成
+        let diagnostic = Diag.diagnostic(
+            Str.concat("Pipeline timed out after ", Str.concat(Str.from_int(timeout_ms), "ms"))
+          )
+          |> Diag.with_severity(Diag.Severity.Error)
+          |> Diag.with_domain(Diag.DiagnosticDomain.Async)
+          |> Diag.with_code("async.timeout")
+          |> Diag.attach_audit(Diag.AuditEnvelope {
+            audit_id: Some(Diag.new_uuid()),
+            change_set: None,
+            capability: None,
+            metadata: Map.from_list([
+              ("pipeline.id", Json.String(pipeline_id)),
+              ("timeout.duration_ms", Json.Number(timeout_ms)),
+              ("timeout.elapsed_ms", Json.Number(timeout_info.elapsed_ms)),
+              ("timeout.context", Json.String(timeout_info.context)),
+              ("timestamp", Json.Number(current_timestamp())),
+            ]),
+          })
+          |> Diag.finish();
+
+        Diag.emit(diagnostic, Diag.console_audit_sink)?;
+
         emit_pipeline_failed(
           pipeline_id,
           "async.timeout",
