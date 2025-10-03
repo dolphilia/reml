@@ -253,7 +253,8 @@ fn family_tag(info: PlatformInfo) -> Str                  // `@pure`
 #### 1.3.1 `@dsl_export` との整合
 
 - `@dsl_export` で宣言された `allows_effects` と効果宣言の `effect_scope` は、Capability Registry 登録時に比較される。差分がある場合は登録を拒否し、`CapabilityError::SecurityViolation` を返す。
-- Stage 昇格 (`reml capability stage promote`) のたびに `Diagnostic.extensions["effects"].stage` と `DslExportSignature.stage` が一致しているか確認し、マニフェストの `expect_effects` / `expect_effects_stage` を更新する。
+- Stage 昇格 (`reml capability stage promote`) のたびに `Diagnostic.extensions["effects"].stage` と `DslExportSignature.stage_bounds.declared` が一致しているか確認し、必要であれば `stage_bounds.minimum`・`stage_bounds.maximum` を再評価したうえでマニフェストの `expect_effects` / `expect_effects_stage` を更新する。
+- `requires_capabilities` の各要素は `CapabilityRegistry::verify_capability_stage` で逐次検査し、Stage 下限を満たさない Capability があれば `CapabilityError::StageViolation` に `required_stage` と `actual_stage` を格納する。`effect_scope` の差分は `diagnostic("dsl.capability.effect_scope_mismatch")` で報告する。
 - CLI は今後追加予定の `manifest.dsl.stage_mismatch` 診断を通じて、未更新の DSL エントリが残っていないか検査する。
 
 * `TargetCapability` の列挙値は `capability_name(cap)` により `unicode.nfc` 等のカノニカル文字列へ変換され、`@cfg(capability = "...")`、`RunConfigTarget.capabilities`、および環境変数 `REML_TARGET_CAPABILITIES` で利用される。列挙外のカスタム Capability を導入する際は、実装側で `CapabilityRegistry::register_custom_target_capability(name: Str)` を提供し、名前と診断を登録することが推奨される。
@@ -611,6 +612,8 @@ pub type DslCapabilityProfile = {
   requires: List<DslCategory>,
   allows_effects: Set<EffectTag>,
   capabilities: Set<CapabilityId>,
+  requires_capabilities: List<DslCapabilityRequirement>,
+  stage_bounds: DslStageBounds,
   manifest: Option<DslEntry>,
   performance: Option<DslPerformanceHints>,
 }
@@ -627,6 +630,7 @@ pub type DslCompatibilityReport = {
   missing_capabilities: Set<CapabilityId>,
   effect_delta: Set<EffectTag>,
   category_mismatch: Option<(DslCategory, DslCategory)>,
+  stage_delta: Option<(StageId, StageRequirement)>,
   notes: List<Str>,
 }
 
@@ -646,9 +650,9 @@ pub type BenchmarkHarness = {
 }
 ```
 
-- `register_dsl_profile` は `reml.toml` とコンパイラが収集した `DslExportSignature` を統合し、Capability Registry にキャッシュする。
+- `register_dsl_profile` は `reml.toml` とコンパイラが収集した `DslExportSignature` を統合し、Capability Registry にキャッシュする。`requires_capabilities` が存在する場合は ID 集合を `capabilities` へ射影し、Stage 範囲を `stage_bounds` に格納する。
 - `resolve_dsl_profile` は CLI が `reml dsl info <name>` のようなコマンドで利用し、互換性情報を JSON で返す際の基礎メタデータを提供する。
-- `analyze_dsl_compatibility` は `requires` / `capabilities` / `allows_effects` を比較し、Chapter 1.3 §I.1 の効果境界検査を再利用して差分を報告する。`effect_delta` が空で `missing_capabilities` も空の場合に互換と判定する。
+- `analyze_dsl_compatibility` は `requires` / `requires_capabilities` / `allows_effects` を比較し、Chapter 1.3 §I.1 の効果境界検査を再利用して差分を報告する。`stage_delta` には `stage_bounds.minimum` を満たさない側の Stage を格納し、`effect_delta` と `missing_capabilities` が空、かつ `stage_delta = None` の場合に互換と判定する。
 - `benchmark_dsl` はパーサーのホットパスを計測し、`MetricsCapability.emit` を通じて `dsl.performance.*` メトリクスを収集する。`TraceSink` が指定された場合は [3-6](3-6-core-diagnostics-audit.md) のトレース API と連携して結果を可視化する。
 - `DslPerformanceHints` は 0-2 指針の性能基準（10MB 線形解析等）を記録し、CLI/IDE が閾値を超過した場合に警告を出せるようにする。
 
@@ -656,12 +660,12 @@ pub type BenchmarkHarness = {
 
 1. `load_manifest`（3-7 §1.2）で取得した DSL セクションを `register_dsl_profile` に渡す。
 2. コンパイラが `@dsl_export` を解析して `DslExportSignature` を得たら、`benchmark_dsl` の事前ウォームアップにより性能ヒントを更新する。
-3. `analyze_dsl_compatibility` を用いて、Conductor が依存する DSL の `requires` セットが満たされているか、`allows_effects` の差異が許容範囲かを確認する。
+3. `analyze_dsl_compatibility` を用いて、Conductor が依存する DSL の `requires` セット・`requires_capabilities` の Stage 条件・`allows_effects` の差異が許容範囲かを確認する。
 4. 結果は `CliDiagnosticEnvelope.summary.stats["dsl_compat"]`（3-6 §9）に集計され、CLI 出力や LSP が利用できる。
 
 ### 7.2 互換性診断との連携
 
-- `DslCompatibilityReport` が `compatible=false` を返した場合、`diagnostic("dsl.compatibility.failed")` を生成し、`missing_capabilities` と `effect_delta` を期待集合として提示する。
+- `DslCompatibilityReport` が `compatible=false` を返した場合、`diagnostic("dsl.compatibility.failed")` を生成し、`missing_capabilities`・`effect_delta`・`stage_delta` を期待集合として提示する。`stage_delta` が存在する場合は `CapabilityError::StageViolation` と同一の監査メタデータを添付する。
 - `category_mismatch` が発生した場合は型検査段階のエラー (`manifest.dsl.category_mismatch`) と同期し、重複報告を避ける。
 - `performance.notes` に `baseline_latency` が 0-2 指針の閾値を超えた旨が記録されている場合は、`Severity::Warning` で CLI に表示し、CI では `--fail-on-performance` フラグでエラーに昇格できる。
 
@@ -684,6 +688,40 @@ fn requires_stage(cap: TemplateCapability) -> StageId
 - `BypassEscape` は危険操作のためデフォルトで無効。`Stage::unsafe` を要求し、`CapabilityRegistry` 側でプロジェクト単位の許可が必要。CI では `--deny-capability template.bypass_escape` を推奨する。
 - `capability_name(TemplateCapability::RenderHtml)` は `"template.render_html"` のようなカノニカル名を返し、`DSL` マニフェスト・`conductor` 設定と一致させる。
 - `requires_stage` は Stage/Capability 整合を強制し、`RenderHtml`/`RenderText` は `Stage::runtime`、`RegisterFilter` は `Stage::build`、`BypassEscape` は `Stage::unsafe` を返す。Stage 不一致時は `CapabilityError::StageViolation` を返し、`diagnostic("template.capability.stage_violation")` を生成する。
+
+---
+
+
+### 7.4 Capability マニフェスト変換ユーティリティ {#capability-bridge}
+
+```reml
+pub type CapabilityBridgeRecord = {
+  id: CapabilityId,
+  stage: StageRequirement,
+  effect_scope: Set<EffectTag>,
+  aliases: List<Str>,
+}
+
+pub type CapabilityBridgeManifest = {
+  capabilities: List<CapabilityBridgeRecord>,
+  stage_bounds: Option<DslStageBounds>,
+}
+
+pub type CapabilityBridgeSnapshot = {
+  requirements: List<DslCapabilityRequirement>,
+  stage_bounds: DslStageBounds,
+}
+
+fn transform_capability_manifest_to_reml(
+  manifest: CapabilityBridgeManifest,
+  defaults: DslStageBounds
+) -> Result<CapabilityBridgeSnapshot, CapabilityError>              // `@pure`
+```
+
+- `CapabilityBridgeRecord` は外部 DSL や GraphQL 等から取り込んだ Capability 情報を表し、`aliases` で外部 ID を保持しつつ Reml の `CapabilityId` へ正規化する。`effect_scope` は外部マニフェストが割り当てる効果タグ一覧で、`DslCapabilityRequirement.effect_scope` へ転写される。
+- `CapabilityBridgeManifest.stage_bounds` は DSL 全体の Stage ポリシーを上書きできる。指定がない場合は `defaults` をそのまま返し、`StageRequirement::Exact` が指定された場合は `defaults.maximum` を `Some(stage)` に更新する。
+- `transform_capability_manifest_to_reml` は 0-1 §1.2 の安全性指針に従い、Stage 順序 (`Experimental < Beta < Stable`) を厳守する。外部マニフェストが不正な Stage を要求した場合は `CapabilityError::StageViolation` を返し、`CapabilityBridgeSnapshot` を生成しない。成功時は `requirements` を `DslExportSignature.requires_capabilities` へ、`stage_bounds` を `DslExportSignature.stage_bounds` へ適用する。
+- CLI/IDE が `CapabilityBridgeSnapshot` を利用する際は、`aliases` を監査ログへ記録し、外部システムの ID と Reml Capability ID の対応を追跡できるようにする。これにより 0-1 §2.2 の「分かりやすいエラーメッセージ」指針に沿った診断を提供できる。
 
 ---
 

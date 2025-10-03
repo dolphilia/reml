@@ -71,6 +71,8 @@ type RegistrySection = {
 - `DslExportRef.signature` はコンパイラが `@dsl_export` から抽出した `DslExportSignature` を JSON にシリアライズして格納する（未解析時は `None`）。
 - `expect_effects` は 1.3 §I.1 の効果境界と突き合わせるための期待集合。CI などではこれを上限として用いる。
 - `allow_prerelease` が `true` の場合、互換判定で pre-release バージョンを許容する（1.2 §G 参照）。
+- `signature.requires_capabilities` は Capability Registry で検証済みの Stage 要件と効果スコープを保持し、`capabilities` フィールドはその ID を投影した派生値として扱う。`transform_capability_manifest_to_reml`（3-8 §7.4）で外部マニフェストと同期する際は、この集合に `StageRequirement` が落とし込まれる。
+- `signature.stage_bounds` は DSL エクスポートの公開ステージ・下限・上限を記録し、`expect_effects_stage` や `reml capability stage promote` の結果と突き合わせる。`maximum = None` の場合は上限を未設定として扱い、Capability 側の判定を優先する。
 
 ### 1.2 API
 
@@ -108,6 +110,13 @@ expect_effects_stage = "experimental"
 2. コンパイラが `@dsl_export` を処理して `DslExportSignature` を生成したら、`update_dsl_signature` によって対応する `exports[*]` へ埋め込む。
 3. `declared_effects` と `signature.allows_effects` を比較し、一致しない場合は `diagnostic("manifest.dsl.effect_mismatch")` を生成（Chapter 3.6 §9 で CLI へ伝播）。
 4. `kind` と `signature.category` が一致しない場合は型検査を中断し、`diagnostic("manifest.dsl.category_mismatch")` を返す。
+
+#### 1.4.1 Capability マニフェストとの同期
+
+1. 外部システムから提供された Capability マニフェスト（GraphQL/JSON Schema 等）は `Core.Runtime.DslCapability.transform_capability_manifest_to_reml`（3-8 §7.4）で `CapabilityBridgeSnapshot`（以下 `snapshot`）として取り込む。
+2. `update_dsl_signature` は `snapshot.requirements` の各要素について `StageRequirement`・`effect_scope` を再構成し、`capabilities` に派生値を設定する。Stage 要件がマニフェスト側の上限 (`stage_bounds.maximum`) を超える場合は `diagnostic("manifest.dsl.stage_mismatch")` を生成する。
+3. `validate_manifest` は DSL ごとに `requires_capabilities` と `dsl.<name>.capabilities` の差分を検証し、未宣言の Capability を検出した場合は `diagnostic("manifest.dsl.capability_missing")` を返す。Stage 下限 (`snapshot.stage_bounds.minimum`) を満たさない環境構成が見つかった場合は `ConfigDiagnosticExtension.capability` に詳細を格納して監査ログへ送る。
+4. 0-1 §1.2 の安全性指針に基づき、Stage 範囲が不一致のまま `allow_prerelease=true` を利用することは禁止とし、`snapshot.stage_bounds.maximum` が設定されている場合は必ず優先し、該当ケースでは `diagnostic("manifest.dsl.stage_prerelease_conflict")` を返す。
 
 ### 1.5 互換モード（`ConfigCompatibility`）
 

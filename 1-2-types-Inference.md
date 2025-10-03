@@ -237,6 +237,18 @@ type RunConfigTarget = {
 3. 属性パラメータを解析し、以下のフィールドを持つ `DslExportSignature` を組み立てる。
 
 ```reml
+type DslCapabilityRequirement = {
+  id: CapabilityId,
+  stage: StageRequirement,
+  effect_scope: Set<EffectTag>,
+}
+
+type DslStageBounds = {
+  declared: StageId,
+  minimum: StageRequirement,
+  maximum: Option<StageId>,
+}
+
 type DslExportSignature<T> = {
   name: Str,
   category: DslCategory,
@@ -244,7 +256,9 @@ type DslExportSignature<T> = {
   produces: DslCategory,
   requires: List<DslCategory>,
   capabilities: List<CapabilityId>,
+  requires_capabilities: List<DslCapabilityRequirement>,
   allows_effects: Set<EffectTag>,
+  stage_bounds: DslStageBounds,
   version: Option<SemVer>,
 }
 ```
@@ -252,15 +266,19 @@ type DslExportSignature<T> = {
 - `category` はマニフェストの `dsl.<name>.kind` と同一の文字列で、互換判定ではインターン済みシンボルとして比較する。
 - `produces` は省略時に `category` と同値とする。`Parser<T>` の場合は `T` の型情報を持つ DSL 生成物カテゴリを推定し、`T` が `DslOutput<Category>` を実装していればその関連型を採用する。
 - `requires` は conductor など複数 DSL を束ねる宣言で使用し、参照する DSL カテゴリが `exports` 内または依存マニフェストに含まれることを検証する。
+- `capabilities` は後方互換のために保持している単純な Capability ID 一覧であり、`requires_capabilities` の `id` を投影した派生値として扱う。
+- `requires_capabilities` は `@requires_capability` や Capability マニフェストから抽出した Stage 付き要件を格納し、各要素が `effect_scope` で影響範囲を明示する。Stage 判定は 0-1 §1.2 の安全性優先原則に従い、`StageRequirement::AtLeast` の場合でもマニフェスト側の上限を超えないよう検証する。
 - `allows_effects` は 1.3 の効果集合に対するサブセットであり、空集合の場合は純粋値として扱う。
+- `stage_bounds` は DSL エクスポートそのものの Stage 運用ルールを表し、`declared` に現在の公開ステージ、`minimum` に受け入れ下限、`maximum` に外部ブリッジで許容される上限を記録する。`maximum = None` の場合は `minimum` の判定のみを適用する。
 
 4. `Parser<T>` を返す関数では **引数の型変数を一般化前に固定**し、`DslExportSignature` に引数ごとの型情報（`input_shape`）を添付する。これにより CLI や LSP が利用者へ API ドキュメントを提示できる。
 
 `DslExportSignature` は `Core.Config.Manifest`（3.7）に引き渡され、`dsl.<name>.exports[*]` の `signature` として書き戻される。互換性検査は以下の規則で行う。
 
 - **カテゴリ互換**: 同一カテゴリで major バージョン (`version.major`) が一致しているか、または `reml.toml` で `allow_prerelease=true` を明示している。
-- **能力互換**: `capabilities` に列挙されたランタイム Capability がターゲット環境で利用可能（3.8 §1）である。未解決の Capability がある場合は `diagnostic("dsl.capability.unsatisfied")` を発行する。
+- **能力互換**: `requires_capabilities` の各要素について `CapabilityRegistry::verify_capability_stage`（3.8 §1.2）を適用し、Stage 条件と効果境界が満たされているか確認する。未解決の Capability がある場合は `diagnostic("dsl.capability.unsatisfied")` を発行し、Stage 不一致は `diagnostic("dsl.capability.stage_mismatch")` へ昇格する。
 - **効果境界**: `allows_effects ⊆ declared_effects(manifest)`。宣言より広い効果集合を持つ場合は型検査エラー `E1302` を報告する。
+- **ステージ互換**: `stage_bounds.declared` が `stage_bounds.minimum` を満たし、Capability マニフェストや `reml.toml` 側の Stage 上限が存在する場合は `stage_bounds.maximum` 以下であることを保証する。境界を破った場合は `manifest.dsl.stage_mismatch` を生成し、0-1 §1.2 の安全性レビューに従って適用を拒否する。
 
 互換性の失敗は型付け段階で診断を生成し、`DslExportSignature` の `span` とマニフェスト側の反映先行番号を結び付けた差分が `Core.Diagnostics` へ渡される。
 
