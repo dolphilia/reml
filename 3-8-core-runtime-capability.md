@@ -292,6 +292,7 @@ if has_target_capability(TargetCapability::FilesystemCaseInsensitive) {
 | `RuntimeCapability::DistributedActor` | `TransportHandle` によるリモート mail box 統合と TLS 設定検証を提供する。 | `Core.Async` §1.9.2, `guides/runtime-bridges.md` §11 |
 | `RuntimeCapability::AsyncTracing` | 非同期タスクの span 追跡（`DiagnosticSpan` の継承と `async.trace.*` メトリクス）を記録する。 | `Core.Diagnostics`, LSP トレース, 監査ログ |
 | `RuntimeCapability::AsyncSupervisor` | `spawn_supervised`/`SupervisorSpec` の再起動制御と監査フックを有効化し、RestartBudget の強制と `async.supervisor.*` 診断を提供する。 | `Core.Async` §1.9.5, `Core.Diagnostics` §2.5.1 |
+| `RuntimeCapability::ExternalBridge(id)` | Runtime Bridge Registry で登録されたブリッジを Capability として公開し、`bridge.contract.*` 診断と Stage 検証を統合する。 | `RuntimeBridgeRegistry`（§10.1）, `3-6` §8 |
 
 - これら Capability は 0-1-project-purpose.md §1.1 の性能基準を満たすため、最低でも `AsyncScheduler` を安定ステージで登録することを求める。未登録の場合は `Core.Async` が逐次実行フォールバックへ切り替わり、`async.actor.capability_missing` 診断で通知される。
 - `AsyncBackpressure` が無い環境では `send` の `Pending` が `DropNew` に置き換わるため、DSL は高水位閾値を保守的に設定し、`guides/runtime-bridges.md §11` のテーブルに従って警告を発行する。
@@ -353,6 +354,7 @@ pub enum PriorityPolicy = FIFO | Priority { levels: u8 }
 
 * `RuntimeCapability::RegexJit` が無効な場合、`PatternFlag::Jit` は `RegexErrorKind::CapabilityRequired` を返し、`feature {regex}` は NFA/Hybrid 実装のみを利用する（2.6 §F）。
 * `RuntimeCapability::RegexMetrics` を有効化すると `RunConfig.extensions["regex"].metrics=true` が要求され、`regex.match.duration` / `regex.backtrack.depth` をメトリクスストリームへ送信する。無効な場合はメトリクス計測を省略する。
+* `RuntimeCapability::ExternalBridge(id)` は `RuntimeBridgeDescriptor.required_capabilities` の検証後に登録され、未整合時は `bridge.contract.violation` として報告される。`PlatformInfo.runtime_capabilities` にも同 ID を追加し、CLI/LSP がブリッジ可用性を可視化できるようにする。
 * Capability Registry は `register("regex", CapabilityHandle::Plugin(...))` を通じてサードパーティエンジンを差し替え可能とし、登録時に `UnicodeClassProfile.version` を `platform_features()` と照合する。
 * 監査ポリシー（3-6 §3.2）で `AuditLevel::Debug` 以上を要求する場合は `RegexRunConfig.audit` を省略できず、`RuntimeCapability::RegexMetrics` が未登録であれば `regex.audit.capability_missing` を発行する。
 
@@ -929,6 +931,7 @@ Runtime Bridge は Capability と同じ 3 段階 Stage（`Experimental` / `Beta`
 - Stage 検証に失敗した場合は `RuntimeBridgeError::StageViolation` を返し、`Diagnostic.extensions["bridge"].stage` に `actual` と `required` を格納する。
 - Capability 契約は `ConductorCapabilityContract`（§1.2）と同様の検証手順を共有する。`RuntimeBridgeDescriptor.required_capabilities` は `verify_conductor_contract` にマージ可能な形式で保持し、DSL からの `with_bridges` 宣言（将来拡張）とも互換とする。
 - ランタイムは Stage 判定結果を `PlatformInfo.runtime_capabilities`（§1.3）に反映し、IDE/LSP がブリッジ可用性を把握できるようにする。
+- 生成される `bridge.*` 診断の詳細と拡張メタデータは [3-6-core-diagnostics-audit.md](3-6-core-diagnostics-audit.md) §8 を参照し、CLI/LSP の表示と監査ログを同期させる。
 
 ### 10.3 Reload 契約
 

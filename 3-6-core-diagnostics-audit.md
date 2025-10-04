@@ -898,7 +898,45 @@ pub type TemplateDiagData = {
 - IDE/LSP では `Target` ドメイン診断をワークスペースレベル警告として表示し、該当ファイルが無い場合でも `RunConfigTarget` 情報を提示する。
 - `Core.Env` と `Core.Runtime` はターゲット診断を発生させた際、`RunArtifactMetadata.hash` を `extensions["target"].hash` に追加し、再ビルドのトレーサビリティを確保する。
 
-## 8. 使用例（CLI エラー報告）
+## 8. Runtime Bridge 診断 (Runtime) {#diagnostic-bridge}
+
+Runtime Bridge 契約（[3-8-core-runtime-capability.md](3-8-core-runtime-capability.md) §10）で検証される Stage・Capability・ターゲット整合性は `DiagnosticDomain::Runtime` として報告する。CLI/LSP は `RuntimeCapability::ExternalBridge(id)` と紐付けて可用性を表示し、監査ログは `AuditEnvelope` と `RuntimeBridgeAuditSpec` を同期させる。
+
+### 8.1 拡張データ `bridge`
+
+```reml
+pub type BridgeDiagnostic = {
+  id: RuntimeBridgeId,
+  stage_required: Option<Runtime.StageRequirement>,
+  stage_actual: Option<Runtime.StageId>,
+  target_requested: Option<Str>,
+  target_detected: Option<Str>,
+  manifest_path: Option<Path>,
+  checklist_missing: List<Text>,
+}
+```
+
+- `id` は `RuntimeBridgeRegistry::describe_bridge` で取得できる識別子。CLI (`reml bridge describe`) はこの値を基に詳細情報を表示する。
+- `stage_required` / `stage_actual` は `verify_capability_stage` と同じ列挙で、`RuntimeBridgeError::StageViolation` の根拠を提示する。
+- `target_requested` / `target_detected` は `RunConfig.extensions["target"].profile_id` と `RuntimeBridgeDescriptor.target_profiles` の差分を表し、ターゲット不一致時の再現性調査に利用する。
+- `manifest_path` は `reml.toml` 等の設定ファイル上の宣言位置。IDE は該当ファイルへのジャンプに使用する。
+- `checklist_missing` は `RuntimeBridgeAuditSpec.rollout_checklist`／`mandatory_events` の未達項目を列挙し、監査レビューでの確認を促す。
+
+### 8.2 診断コード一覧
+
+| コード | Severity | 発火条件 | 拡張データ / 監査 | 推奨対応 |
+| --- | --- | --- | --- | --- |
+| `bridge.contract.violation` | Error | `RuntimeBridgeRegistry::acquire_bridge` が Capability 検証や Stage 条件で失敗。 | `extensions["bridge"].id`, `stage_required`, `stage_actual`, `AuditEnvelope.metadata["bridge.capability"] = capability_id` | 必要 Capability の Stage を昇格させるか、`RuntimeBridgeDescriptor.required_capabilities` を調整する。 |
+| `bridge.stage.experimental` | Warning | `RuntimeBridgeDescriptor.stage = Stage::Experimental` のブリッジを起動した際、最低 1 度記録。 | `extensions["bridge"].stage_required = Some(StageRequirement::Exact(Experimental))`, `stage_actual = Some(Experimental)` | ロールバック手順と監査ログ (`bridge.stage`) を確認し、安定化後は Stage 昇格を実施する。 |
+| `bridge.target.mismatch` | Error | `RuntimeBridgeDescriptor.target_profiles` と `RunConfig.extensions["target"].profile_id` が不一致。 | `target_requested`, `target_detected`, `AuditEnvelope.metadata["target.profile.requested"]` | ターゲットプロファイルの設定を見直し、互換プロファイルで再登録する。 |
+| `bridge.audit.missing_event` | Error | `RuntimeBridgeAuditSpec.mandatory_events` に列挙したイベントが監査ログに存在しない。 | `checklist_missing`, `AuditEnvelope.metadata["bridge.missing_events"]` | 監査ログで `audit.log("bridge.*", …)` を再実行し、`requires_audit_effect = true` を満たす。 |
+| `bridge.diff.invalid` | Error | `RuntimeBridgeReloadSpec.diff_format` に合わない差分がホットリロードへ渡された。 | `AuditEnvelope.metadata["bridge.diff.expected"]`, `"bridge.diff.received"` | `Config.compare`（3-7 §4.2）で生成した差分形式を用い、形式不一致時はロールバックを実行する。 |
+
+- すべての `bridge.*` 診断は `Diagnostic.domain = DiagnosticDomain::Runtime` を既定とし、`AuditEnvelope.metadata["bridge.id"] = extensions["bridge"].id` を必須とする。
+- `RuntimeCapability::ExternalBridge(id)` が Stage 不整合で無効化された場合は `bridge.contract.violation` が発生し、同時に `PlatformInfo.runtime_capabilities` から該当 ID を除外する。
+- CI で実験段階ブリッジを禁止する際は `--deny experimental` を指定し、`bridge.stage.experimental` を検出した時点で失敗させる運用を推奨する。
+
+## 9. 使用例（CLI エラー報告）
 
 
 ```reml
@@ -923,9 +961,9 @@ fn validate_config(cfg: AppConfig, audit: AuditSink) -> Result<(), Diagnostic> =
 - `ensure` と `tap_diag` を組み合わせ、検証失敗時に監査ログへ自動送出。
 - `from_change` により `change_set` を `AuditEnvelope` へ変換し、監査と診断に共通語彙を適用する。
 
-## 9. CLI/LSP 連携の具体例
+## 10. CLI/LSP 連携の具体例
 
-### 8.1 CLI ツール統合
+### 10.1 CLI ツール統合
 
 ```reml
 // CLI コマンドラインオプション
@@ -944,7 +982,7 @@ fn setup_cli_diagnostics(args: CliArgs) -> AuditSink {
 }
 ```
 
-### 8.2 LSP サーバー統合
+### 10.2 LSP サーバー統合
 
 ```reml
 // LSP プロトコル対応
@@ -962,7 +1000,7 @@ fn diagnostic_to_lsp(diag: Diagnostic) -> LspDiagnostic {
 fn batch_publish_diagnostics(diagnostics: List<Diagnostic>, client: LspClient) -> Result<(), AuditError>
 ```
 
-### 8.3 メトリクス監視ダッシュボード
+### 10.3 メトリクス監視ダッシュボード
 
 ```reml
 fn diagnostic_metrics(diagnostics: Iter<Diagnostic>) -> DiagnosticMetrics {
@@ -977,7 +1015,7 @@ fn diagnostic_metrics(diagnostics: Iter<Diagnostic>) -> DiagnosticMetrics {
 
 > 関連: [2.5 エラー設計](2-5-error.md), [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.7 Core Config & Data](3-7-core-config-data.md)
 
-## 10. CLI コマンドプロトコル {#cli-protocol}
+## 11. CLI コマンドプロトコル {#cli-protocol}
 
 `reml build`, `reml test`, `reml fmt`, `reml check` などの公式 CLI は、診断と監査の統合を保証するため `CliDiagnosticEnvelope` 構造を介して出力を共通化する。
 

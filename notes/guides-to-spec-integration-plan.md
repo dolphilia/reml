@@ -67,10 +67,10 @@
 - **検証ポイント**: ✅ `4-0-official-plugins-overview.md` と `README.md`、`0-0-overview.md` のリンク構成を更新済み。
 
 ## 4. 横断作業
-- README (`README.md`)、概説 (`0-0-overview.md`, `0-1-overview.md`) に新節を追記し、リンク構造を更新。
-- 用語集 (`0-2-glossary.md`) に新規用語（DemandHint, RuntimeBridge, Capability Stage 等）を追加。
-- `3-6-core-diagnostics-audit.md` と `3-8-core-runtime-capability.md` の診断コード・Capability 表を統合対象に合わせて更新。
-- `notes/dsl-plugin-roadmap.md` など関連ノートへ、仕様統合済み項目のステータス更新を記録。
+- ✅ README (`README.md`)、概説 (`0-0-overview.md`, `0-1-project-purpose.md`) に統合ハイライト節を追加し、2-7/3-7/3-8/3-9/4-7 への導線を明示。
+- ✅ 用語集 (`0-2-glossary.md`) に DemandHint／FlowController／RuntimeBridge／StageRequirement を追記し、Capability Stage の説明を診断メタデータと連携させた。
+- ✅ `3-6-core-diagnostics-audit.md` に Runtime Bridge 診断セクション（§8）を新設し、`3-8-core-runtime-capability.md` の Capability 表へ `RuntimeCapability::ExternalBridge` を追加。
+- ✅ `notes/dsl-plugin-roadmap.md` に統合ステータス節を設け、ガイド→仕様移管の完了と監査チェックリストの参照先を明記。
 
 ## 5. 実施順序（提案）
 1. Core.Parse.Streaming と Core.Unsafe.Ptr を先行統合（Parser/Unsafe API の基盤整備）。
