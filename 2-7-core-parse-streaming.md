@@ -55,7 +55,7 @@ type StreamingConfig = {
 
 ---
 
-## B. Feeder と DemandHint
+## B. Feeder と DemandHint {#feeder-demandhint}
 
 ### B-1. 入出力契約
 
@@ -138,7 +138,7 @@ struct ContinuationMeta {
 
 ---
 
-## D. フロー制御とバックプレッシャ
+## D. フロー制御とバックプレッシャ {#flow-controller}
 
 ```reml
 type FlowController = {
@@ -171,7 +171,7 @@ struct BackpressureSpec {
 
 ---
 
-## E. StreamDriver ヘルパ
+## E. StreamDriver ヘルパ {#streamdriver-helper}
 
 ```reml
 struct StreamDriver<T, Sink> {

@@ -24,7 +24,7 @@ type StreamOutcome<T> =
 
 ## 2. Feeder とデマンドヒント
 
-*仕様参照: [2-7 §B](../2-7-core-parse-streaming.md#b-feeder-と-demandhint)*
+*仕様参照: [2-7 §B](../2-7-core-parse-streaming.md#feeder-demandhint)*
 
 ```reml
 type DemandHint = {
@@ -72,7 +72,7 @@ type ContinuationMeta = {
 
 ## 4. FlowController とバックプレッシャ
 
-*仕様参照: [2-7 §D](../2-7-core-parse-streaming.md#d-フロー制御とバックプレッシャ)*
+*仕様参照: [2-7 §D](../2-7-core-parse-streaming.md#flow-controller)*
 
 ```reml
 type FlowController = {
@@ -103,7 +103,7 @@ type BackpressureSpec = {
 
 ## 5. StreamDriver ヘルパ
 
-*仕様参照: [2-7 §E](../2-7-core-parse-streaming.md#e-streamdriver-ヘルパ)*
+*仕様参照: [2-7 §E](../2-7-core-parse-streaming.md#streamdriver-helper)*
 
 ```reml
 type StreamDriver<T, Sink> = {

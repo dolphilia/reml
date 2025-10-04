@@ -26,8 +26,8 @@ Reml 仕様書で繰り返し登場する専門用語と概念をまとめた。
 - **`Parser<T>`**: `fn(&mut State) -> Reply<T>` という関数型で表現されるパーサの基本単位。[2-1 パーサ型](2-1-parser-type.md) に入出力モデルが定義されている。
 - **`Reply<T>`**: 成功/失敗と「入力を消費したか」「コミット済みか」を 2 ビットで保持する戻り値。[2-1 パーサ型](2-1-parser-type.md) で 4 状態の意味論が説明される。
 - **`RunConfig`**: Packrat の有無、左再帰処理、`require_eof`、ロケールなど実行時オプションを集約した設定構造体。エクステンションフック `RunConfig.extensions` もここに含まれ、[2-1 パーサ型](2-1-parser-type.md) D 節で解説される。
-- **DemandHint**: ストリーミング実行時に次の入力バッチに必要なサイズ・優先度を伝えるヒント構造体。`Pending` 継続とともに返却され、`Feeder` がバックプレッシャー制御を行う指針となる。[2-7 ストリーミング実行](2-7-core-parse-streaming.md#b-feeder-と-demandhint) を参照。
-- **FlowController**: ストリーミングランナーが `resume`／`pump` の進行管理に利用する制御ハンドル。`DemandHint` と組み合わせてチャンク投入タイミングを決め、`RunConfig.extensions["stream"]` とも連携する。[2-7 ストリーミング実行](2-7-core-parse-streaming.md#c-streamdriver-と-flowcontroller) 参照。
+- **DemandHint**: ストリーミング実行時に次の入力バッチに必要なサイズ・優先度を伝えるヒント構造体。`Pending` 継続とともに返却され、`Feeder` がバックプレッシャー制御を行う指針となる。[2-7 ストリーミング実行](2-7-core-parse-streaming.md#feeder-demandhint) を参照。
+- **FlowController**: ストリーミングランナーが `resume`／`pump` の進行管理に利用する制御ハンドル。`DemandHint` と組み合わせてチャンク投入タイミングを決め、`RunConfig.extensions["stream"]` とも連携する。[2-7 ストリーミング実行](2-7-core-parse-streaming.md#flow-controller) 参照。
 - **Packrat パース**: 入力位置とパーサ ID をキーとするメモ化でバックトラックを高速化する戦略。[2-6 実行戦略](2-6-execution-strategy.md) がメモテーブルの利用方針を示す。
 - **左再帰サポート**: Packrat と組み合わせて `auto`/`on` 設定で seed-growing を行い、左再帰文法を安全に処理する仕組み。[2-6 実行戦略](2-6-execution-strategy.md) を参照。
 - **トランポリン (Trampoline)**: 再帰的なパーサ合成をループに変換し、末尾再帰のスタック消費を抑えるテクニック。[2-6 実行戦略](2-6-execution-strategy.md) に最適化理由が記載される。
