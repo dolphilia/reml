@@ -9,7 +9,7 @@
 | ステータス | 正式仕様 |
 | 効果タグ | `effect {io.async}`, `effect {io.blocking}`, `effect {io.timer}`, `effect {ffi}`, `effect {unsafe}`, `effect {security}`, `effect {audit}` |
 | 依存モジュール | `Core.Prelude`, `Core.Iter`, `Core.IO`, `Core.Runtime`, `Core.Diagnostics` |
-| 相互参照 | [2.6 実行戦略](2-6-execution-strategy.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [guides/runtime-bridges.md](guides/runtime-bridges.md), [guides/reml-ffi-handbook.md](guides/reml-ffi-handbook.md) |
+| 相互参照 | [2.6 実行戦略](2-6-execution-strategy.md), [3.8 Core Runtime & Capability Registry](3-8-core-runtime-capability.md), [guides/runtime-bridges.md](guides/runtime-bridges.md), [guides/reml-ffi-handbook.md](guides/reml-ffi-handbook.md), [guides/core-unsafe-ptr-api-draft.md](guides/core-unsafe-ptr-api-draft.md) |
 
 ## 1. Core.Async の枠組み
 
@@ -682,43 +682,151 @@ fn transfer_buffer(buffer: ForeignBuffer, release: FnPtr<(VoidPtr,), ()>) -> Res
 
 ## 3. Core.Unsafe.Ptr API
 
+> 目的：`unsafe` 境界で扱う生ポインタ操作を公式 API として定義し、FFI・低レベルバッファ操作・GC 連携に必要な安全策と監査契約を明文化する。
+
+### 3.1 型定義
+
 ```reml
-// 基本ポインタ型
-type Ptr<T>
-type MutPtr<T>
-type NonNullPtr<T>
-type VoidPtr
-type FnPtr<Args, Ret>
-type Span<T> = { ptr: NonNullPtr<T>, len: usize }
-
-// 基本操作
-fn read<T>(ptr: Ptr<T>) -> Result<T, UnsafeError>                               // `effect {unsafe}`
-fn write<T>(ptr: MutPtr<T>, value: T) -> Result<(), UnsafeError>                // `effect {unsafe}`
-fn copy_to<T>(src: Ptr<T>, dst: MutPtr<T>, count: usize) -> Result<(), UnsafeError> // `effect {unsafe, memory}`
-fn cast<T, U>(ptr: Ptr<T>) -> Ptr<U>                                            // `effect {unsafe}`
-fn offset<T>(ptr: Ptr<T>, count: isize) -> Ptr<T>                               // `effect {unsafe}`
-fn as_non_null<T>(ptr: Ptr<T>) -> Result<NonNullPtr<T>, UnsafeError>            // `effect {unsafe}`
-
-// Span ユーティリティ
-fn span_from_raw_parts<T>(ptr: Ptr<T>, len: usize) -> Result<Span<T>, UnsafeError>     // `effect {unsafe}`
-fn span_split_at<T>(span: Span<T>, index: usize) -> Result<(Span<T>, Span<T>), UnsafeError> // `effect {unsafe}`
-fn span_as_ptr<T>(span: Span<T>) -> Ptr<T>                                              // `effect {unsafe}`
-fn span_as_mut_ptr<T>(span: Span<T>) -> MutPtr<T>                                       // `effect {unsafe}`
-
-// VoidPtr / FnPtr ブリッジ
-fn to_void_ptr<T>(ptr: Ptr<T>) -> VoidPtr                                      // `effect {unsafe}`
-fn from_void_ptr<T>(ptr: VoidPtr) -> Ptr<T>                                    // `effect {unsafe}`
-fn bind_fn_ptr<Args, Ret>(ptr: FnPtr<Args, Ret>) -> Result<ForeignStub<Args, Ret>, UnsafeError> // `effect {unsafe}`
-
-pub type ForeignStub<Args, Ret> = {
-  call: fn(Args) -> Ret,
-  raw: FnPtr<Args, Ret>,
+module Core.Unsafe.Ptr {
+  type Ptr<T>
+  type MutPtr<T>
+  type NonNullPtr<T>
+  type VoidPtr = Ptr<void>
+  type FnPtr<Args, Ret>
+  type Span<T> = { ptr: NonNullPtr<T>, len: usize }
+  type TaggedPtr<T> = { raw: Ptr<T>, label: Option<Str> }
 }
 ```
 
-* `Span<T>` は `len = 0` の場合でも `ptr` は無効な非NULLダングリング値を許容しないため、ゼロ長スライスは安全に扱える。
-* `copy_to` は `memory` 効果を併発し、`CapabilitySecurity.effect_scope` に `memory` を含む API からのみ呼び出す。
-* `bind_fn_ptr` は FFI の `foreign_fn!` マクロと連携し、ABI 検証後に型安全な呼び出しを生成する。
+- `Ptr<T>` は NULL 許容で読み取り専用。`MutPtr<T>` は書き込みを許可するがデータ競合は未定義動作（UB）となる。
+- `NonNullPtr<T>` は非 NULL を静的に保証し、`Span<T>` や GC ルート管理の基盤となる。
+- `Span<T>` は `{ptr, len}` の境界情報付きビューであり、`len = 0` の場合でも `ptr` は無効な非 NULL にならない。
+- `TaggedPtr<T>` は監査・診断向けに任意ラベルを添付したポインタ。
+
+### 3.2 生成・変換 API
+
+```reml
+fn addr_of<T>(value: &T) -> Ptr<T>
+fn addr_of_mut<T>(value: &mut T) -> MutPtr<T>
+fn from_option<T>(value: Option<NonNullPtr<T>>) -> Ptr<T>
+fn require_non_null<T>(ptr: Ptr<T>) -> Result<NonNullPtr<T>, UnsafeError>
+fn cast<T, U>(ptr: Ptr<T>) -> Ptr<U> unsafe
+fn cast_mut<T, U>(ptr: MutPtr<T>) -> MutPtr<U> unsafe
+fn to_int<T>(ptr: Ptr<T>) -> usize unsafe
+fn from_int<T>(addr: usize) -> Ptr<T> unsafe
+```
+
+- `addr_of*` は評価順序を固定してアドレスを取得し、未初期化メモリへの参照生成を避ける。
+- `require_non_null` は NULL を検証し、失敗時は `UnsafeErrorKind::NullPointer` を生成してアドレス値を `message` に含める。
+- `cast*` / `to_int` / `from_int` は整列・サイズ違反が UB となるため `unsafe` を必須とし、実装は `check_alignment` 等の補助関数を併用すること。
+
+### 3.3 読み書き・コピー API
+
+```reml
+fn read<T>(ptr: Ptr<T>) -> Result<T, UnsafeError> unsafe
+fn read_unaligned<T>(ptr: Ptr<T>) -> Result<T, UnsafeError> unsafe
+fn write<T>(ptr: MutPtr<T>, value: T) -> Result<(), UnsafeError> unsafe
+fn write_unaligned<T>(ptr: MutPtr<T>, value: T) -> Result<(), UnsafeError> unsafe
+fn copy_to<T>(src: Ptr<T>, dst: MutPtr<T>, count: usize) -> Result<(), UnsafeError> unsafe
+fn copy_nonoverlapping<T>(src: Ptr<T>, dst: MutPtr<T>, count: usize) -> Result<(), UnsafeError> unsafe
+fn fill<T: Copy>(dst: MutPtr<T>, value: T, count: usize) -> Result<(), UnsafeError> unsafe
+```
+
+- `read`/`write` は自然整列が満たされている必要があり、違反時は `UnsafeErrorKind::InvalidAlignment` を返す。整列保証が無い場合は `*_unaligned` を利用する。
+- `copy_to` は重複領域を許容（`memmove` 相当）、`copy_nonoverlapping` は高速化のために非重複を前提とし違反時は `UnsafeErrorKind::OutOfBounds` を返す。
+- `fill` は `T: Copy` を要求し、部分的に初期化された領域を一括初期化するユーティリティ。
+
+### 3.4 アドレス計算と Span ユーティリティ
+
+```reml
+fn add<T>(ptr: Ptr<T>, count: usize) -> Ptr<T> unsafe
+fn add_mut<T>(ptr: MutPtr<T>, count: usize) -> MutPtr<T> unsafe
+fn offset<T>(ptr: Ptr<T>, delta: isize) -> Ptr<T> unsafe
+fn byte_offset<T>(ptr: Ptr<T>, bytes: isize) -> Ptr<T> unsafe
+
+fn span_from_raw_parts<T>(ptr: Ptr<T>, len: usize) -> Result<Span<T>, UnsafeError>
+fn span_split_at<T>(span: Span<T>, index: usize) -> Result<(Span<T>, Span<T>), UnsafeError>
+fn span_as_ptr<T>(span: Span<T>) -> Ptr<T>
+fn span_as_mut_ptr<T>(span: Span<T>) -> MutPtr<T>
+```
+
+- `add`/`offset` は同一アロケーション内での移動のみを想定し、境界外アクセスは UB。`span_from_raw_parts` は境界チェックを行い、ゼロ長スパンでも `ptr` が非 NULL になるよう検証する。
+- `span_split_at` は境界外インデックスで `UnsafeErrorKind::OutOfBounds` を返却する。
+- `span_as_*` は `Span<T>` から生ポインタへ降格するため、直後の操作が `unsafe` 境界内に収まるようにする。
+
+### 3.5 診断・監査補助
+
+```reml
+fn tag<T>(ptr: Ptr<T>, label: Str) -> TaggedPtr<T>
+fn debug_repr<T>(ptr: Ptr<T>) -> Str
+```
+
+- `tag` はデバッグビルドで監査ログやテスト診断に付与するメタデータを保持し、リリースビルドではオプションで No-Op にできる。`TaggedPtr` は `raw` と `label` を保持し、`label` は監査ログ `ptr.label` として記録される。
+- `debug_repr` は `0x` 接頭辞付き 16 進アドレスを返し、監査ログや `Diagnostic.note` にコピーできる文字列として利用する。
+
+### 3.6 代表ユースケース
+
+#### 3.6.1 FFI コール境界
+
+```reml
+extern "C" fn strlen(ptr: Ptr<u8>) -> usize
+
+fn c_strlen(input: Str) -> usize = {
+  unsafe {
+    let bytes = input.asBytes();
+    let ptr = bytes.asPtr();
+    strlen(ptr)
+  }
+}
+```
+
+- FFI 側が NULL を返す場合は `require_non_null` を組み合わせ、`UnsafeErrorKind::NullPointer` を `FfiError` に昇格させる。
+- `bind_fn_ptr` により Reml クロージャを ABI 検証済み `ForeignStub` へ変換し、`audit.log("ffi.call", {"label": tag_label})` と組み合わせて監査を残す。
+
+#### 3.6.2 バッファ操作
+
+```reml
+fn parse_header(bytes: Span<u8>) -> Result<Header, ParseError> = {
+  if bytes.len < HEADER_LEN { return Err(ParseError::Truncated) }
+  let version_ptr = unsafe { bytes.ptr.add(OFFSET_VERSION) };
+  let version = unsafe { version_ptr.read()? };
+  Ok(Header { version, ..default })
+}
+```
+
+- `Span<T>` による境界チェックを行った後、局所的な `unsafe` ブロックを閉じ込めて利用すること。
+- 長さ不明の外部入力を扱う場合は `span_split_at` や `span_from_raw_parts` を併用し、`UnsafeError` を `ParseError` へ変換する。
+
+#### 3.6.3 GC ルート登録
+
+```reml
+struct RootGuard {
+  ptr: NonNullPtr<Object>,
+}
+
+impl RootGuard {
+  fn new(ptr: NonNullPtr<Object>) -> Result<RootGuard, UnsafeError> = {
+    unsafe { runtime::register_root(ptr)? }
+    Ok(RootGuard { ptr })
+  }
+
+  fn release(self) -> Result<(), UnsafeError> = {
+    unsafe { runtime::unregister_root(self.ptr) }
+  }
+}
+```
+
+- `register_root`/`unregister_root` は `unsafe` 操作であり、`RuntimeCapability::Gc` の監査フックを通じて `audit.log("gc.root", {"ptr": debug_repr(self.ptr)})` を残す。
+
+### 3.7 CI と監査要件
+
+| テスト | 目的 | 成功条件 |
+| --- | --- | --- |
+| `ffi-smoke` | NULL 許容／非許容ポインタの検証 | `audit.log("ffi.call")` に `ptr_label` が出力され、`UnsafeError` が発生しない |
+| `buffer-span` | バッファ操作と境界チェック | `span_from_raw_parts` が境界外で `UnsafeErrorKind::OutOfBounds` を返し、`Diagnostic.code = "unsafe.span.out_of_bounds"` を生成 |
+| `gc-root-guard` | GC ルートの登録・解除 | `audit.log("gc.root")` と `audit.log("gc.root.release")` が対で出力される |
+
+監査ログでは `audited_unsafe_block`（§4.2）が `TaggedPtr` ラベルを `audit_id` と紐付け、Capability Registry の `SecurityCapability.effect_scope` に `{unsafe, audit}` が含まれていることを検証する。
 
 ---
 

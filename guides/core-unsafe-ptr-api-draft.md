@@ -1,6 +1,7 @@
-# Core.Unsafe.Ptr API 草案
+# Core.Unsafe.Ptr 運用ガイド
 
-> 目的：Reml の `unsafe` セクションで利用する原始ポインタ API を整理し、FFI・バッファ操作・GC 連携のユースケースを検証可能な形で定義する。
+> 目的：仕様章 [3.9 Core Async / FFI / Unsafe](../3-9-core-async-ffi-unsafe.md#3-coreunsafeptr-api) で正式化された `Core.Unsafe.Ptr` API を安全かつ効率的に活用するためのベストプラクティスをまとめる。
+> 仕様参照：型・関数の定義は 3.9 §3 に従う。本ガイドでは利用時のチェックリスト、監査フロー、補助的なサンプルを提供する。
 
 ## 1. 型定義
 
@@ -12,15 +13,17 @@ module Core.Unsafe.Ptr {
   type VoidPtr = Ptr<void>
   type FnPtr<Args, Ret>
   type Span<T> = { ptr: NonNullPtr<T>, len: usize }
+  type TaggedPtr<T> = { raw: Ptr<T>, label: Option<Str> }
 }
 ```
 
 - `Ptr<T>`: NULL 許容。読み取り専用操作のみ許可。
 - `MutPtr<T>`: 可変参照相当。重複書き込みで未定義動作の可能性。
-- `NonNullPtr<T>`: 非NULL保証を持つ `Ptr<T>`。`Span<T>` など境界検査付きラッパの基礎。
+- `NonNullPtr<T>`: 非 NULL 保証を持つ `Ptr<T>`。`Span<T>` など境界検査付きラッパの基礎。
 - `VoidPtr`: 型不明境界。FFI でのキャスト前提。
 - `FnPtr<Args, Ret>`: FFI の関数ポインタ、クロージャを含まない素のコードポインタ。
-- `Span<T>`: `ptr` + `len` の境界付きビュー。`unsafe` なしでも読み取り可能な API を別モジュールで提供する予定。
+- `Span<T>`: `ptr` + `len` の境界付きビュー。`len = 0` の場合でも `ptr` は非 NULL を維持する。
+- `TaggedPtr<T>`: 監査やテスト診断に利用するラベル付きポインタ。`tag` API で生成する。
 
 ## 2. 生成・変換 API
 
@@ -28,7 +31,7 @@ module Core.Unsafe.Ptr {
 fn addr_of<T>(value: &T) -> Ptr<T>
 fn addr_of_mut<T>(value: &mut T) -> MutPtr<T>
 fn from_option<T>(opt: Option<NonNullPtr<T>>) -> Ptr<T>
-fn require_non_null<T>(ptr: Ptr<T>) -> Result<NonNullPtr<T>, NullError>
+fn require_non_null<T>(ptr: Ptr<T>) -> Result<NonNullPtr<T>, UnsafeError>
 fn cast<T, U>(ptr: Ptr<T>) -> Ptr<U> unsafe
 fn cast_mut<T, U>(ptr: MutPtr<T>) -> MutPtr<U> unsafe
 fn to_int<T>(ptr: Ptr<T>) -> usize unsafe
@@ -36,19 +39,19 @@ fn from_int<T>(addr: usize) -> Ptr<T> unsafe
 ```
 
 - `addr_of/addr_of_mut`: 評価順序を固定し、未初期化の借用に頼らずにアドレス取得。
-- `require_non_null`: 安全境界で Option 化。`NullError` はメッセージとアドレス値を保持。
+- `require_non_null`: 安全境界で Option 化。失敗時は `UnsafeErrorKind::NullPointer` を返し、メッセージにアドレス値を含める。
 - `cast*` / `to_int` / `from_int`: 常に `unsafe`。整列・サイズ制約違反が UB になることを仕様に記載。
 
 ## 3. 読み書き・コピー API
 
 ```reml
-fn read<T>(ptr: Ptr<T>) -> T unsafe
-fn read_unaligned<T>(ptr: Ptr<T>) -> T unsafe
-fn write<T>(ptr: MutPtr<T>, value: T) unsafe
-fn write_unaligned<T>(ptr: MutPtr<T>, value: T) unsafe
-fn copy_to<T>(src: Ptr<T>, dst: MutPtr<T>, count: usize) unsafe
-fn copy_nonoverlapping<T>(src: Ptr<T>, dst: MutPtr<T>, count: usize) unsafe
-fn fill<T>(dst: MutPtr<T>, value: T, count: usize) unsafe
+fn read<T>(ptr: Ptr<T>) -> Result<T, UnsafeError> unsafe
+fn read_unaligned<T>(ptr: Ptr<T>) -> Result<T, UnsafeError> unsafe
+fn write<T>(ptr: MutPtr<T>, value: T) -> Result<(), UnsafeError> unsafe
+fn write_unaligned<T>(ptr: MutPtr<T>, value: T) -> Result<(), UnsafeError> unsafe
+fn copy_to<T>(src: Ptr<T>, dst: MutPtr<T>, count: usize) -> Result<(), UnsafeError> unsafe
+fn copy_nonoverlapping<T>(src: Ptr<T>, dst: MutPtr<T>, count: usize) -> Result<(), UnsafeError> unsafe
+fn fill<T: Copy>(dst: MutPtr<T>, value: T, count: usize) -> Result<(), UnsafeError> unsafe
 ```
 
 - `read`/`write`: 標準整列を要求。違反時は UB。`*_unaligned` で回避可能。
@@ -80,8 +83,8 @@ fn span_as_mut_ptr<T>(span: Span<T>) -> MutPtr<T>
 ## 5. 監査・診断補助
 
 ```reml
-fn tag<T>(ptr: Ptr<T>, label: String) -> TaggedPtr<T>
-fn debug_repr<T>(ptr: Ptr<T>) -> String
+fn tag<T>(ptr: Ptr<T>, label: Str) -> TaggedPtr<T>
+fn debug_repr<T>(ptr: Ptr<T>) -> Str
 ```
 
 - `tag`: デバッグビルドでアサーションや監査ログへメタデータを添付するためのフック（Release では no-op 想定）。
@@ -144,18 +147,20 @@ struct RootGuard {
 }
 
 impl RootGuard {
-  fn new(ptr: NonNullPtr<Object>) -> RootGuard = {
-    unsafe { runtime::register_root(ptr) }
-    RootGuard { ptr }
+  fn new(ptr: NonNullPtr<Object>) -> Result<RootGuard, UnsafeError> = {
+    unsafe { runtime::register_root(ptr)? }
+    Ok(RootGuard { ptr })
   }
 
-  fn release(self) {
+  fn release(self) -> Result<(), UnsafeError> = {
     unsafe { runtime::unregister_root(self.ptr) }
   }
 }
 
 impl Drop for RootGuard {
-  fn drop(self) = self.release()
+  fn drop(self) {
+    let _ = self.release();
+  }
 }
 ```
 
@@ -201,10 +206,10 @@ fn install_callback(audit: AuditSink) -> Result<(), Diagnostic> = {
 | 🔄 | `effect {memory}` を伴う操作と `CapabilitySecurity.effect_scope` の対応チェックリストを作成 |
 | 🔄 | `MappedMemory` ⇄ `Span<u8>` 変換ガイドラインを追加（Core.Memory 連携） |
 | 🔄 | `audited_unsafe_block` + `AuditContext` を用いた低レベル監査サンプルを整備 |
+| 🔄 | `alignment-check` / `thread-send-audit` テストのサンプルコードを補完 |
 
 開発中の CI スモークテスト (`ffi-smoke` / `buffer-span` / `gc-root-guard` / `alignment-check` / `thread-send-audit`) は、`core-unsafe-ptr` ジョブで実行し、失敗時に `Diagnostic` が `effect_flags` と `ptr_label` を含むことを検証する。
 
 
 ---
-
-> TODO: 上記 API を仕様書の該当章へ取り込み、同時に `Core.Unsafe` 内の命名規則 (`snake_case`) とドキュメント整備ポリシーを定義する。
+> TODO: 監査ログテンプレートと CI スクリプト断片（`alignment-check`, `thread-send-audit`）を追記し、仕様 3.9 §3 との整合テーブルを付録化する。

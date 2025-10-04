@@ -168,7 +168,7 @@ impl RunConfig {
 | `"lex"` | `space_id: ParserId`, `profile: ConfigTriviaProfile` | `Core.Parse.Lex` による空白・コメント処理を共有し、手書きのスキップ処理を排除する。 | 2-3 §L-4, 3-7 §1.5 |
 | `"config"` | `compat: ConfigCompatibility`, `trivia: ConfigTriviaProfile` | 設定ファイル互換モード（コメント許容・トレーリングカンマ等）と診断メタを一元化。 | 3-7 §1.5, 3-6 §2.4 |
 | `"recover"` | `sync_tokens: Set<TokenClass>`, `notes: Bool` | `recover` 時の同期トークン集合と監査ログ出力を共有し、CLI/LSP が同じ復旧戦略を再現できるようにする。 | 2-5 §B-11, 3-6 §2.2 |
-| `"stream"` | `checkpoint: Option<Span>`, `resume_hint: DemandHint` | ストリーミング実行（`run_stream`）で保持した継続情報をバッチランナーへ橋渡しする。 | 2-6 §F, guides/core-parse-streaming.md |
+| `"stream"` | `checkpoint: Option<Span>`, `resume_hint: DemandHint` | ストリーミング実行（`run_stream`）で保持した継続情報をバッチランナーへ橋渡しする。 | 2-6 §B-2-3, 2-7 |
 | `"lsp"` | `syntax_highlight: Bool`, `semantic_tokens: Bool` | LSP 拡張でのトークン生成・トレース同期。 | guides/lsp-integration.md |
 
 `lex` と `config` を組み合わせることで、コメント・空白・互換モードの情報を `RunConfig` に集約し、サンプル群が独自のスキップ処理を持たずに済む。これにより、0-1 §1.1 が求める性能と 0-1 §2.2 の診断一貫性を同時に満たす。

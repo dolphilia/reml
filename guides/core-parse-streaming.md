@@ -1,8 +1,11 @@
-# Core.Parse.Streaming 拡張ガイド
+# Core.Parse.Streaming 運用ガイド
 
-> 目的：`Core.Parse.Streaming` モジュールが提供するストリーミング実行・継続再開・インクリメンタル解析 API の仕様をまとめ、Reml コアとの境界を明確にする。
+> 目的：仕様章 [2.7 Core.Parse.Streaming](../2-7-core-parse-streaming.md) で定義された API に基づき、実務でのチャンク処理・継続再開・監査連携の運用パターンを整理する。
+> 注意：ランナー API や型定義の公式仕様は 2.7 に移管済み。本ガイドでは実装・運用時の補足ノート、ベストプラクティス、チェックリストに焦点を当てる。
 
 ## 1. ランナー API
+
+*仕様参照: [2-7 §A](../2-7-core-parse-streaming.md#a-ランナー-api)*
 
 ```reml
 fn run_stream<T>(p: Parser<T>, feeder: Feeder, cfg: StreamingConfig = {}) -> StreamOutcome<T>
@@ -20,6 +23,8 @@ type StreamOutcome<T> =
 ```
 
 ## 2. Feeder とデマンドヒント
+
+*仕様参照: [2-7 §B](../2-7-core-parse-streaming.md#b-feeder-と-demandhint)*
 
 ```reml
 type DemandHint = {
@@ -44,6 +49,8 @@ type FeederYield =
 
 ## 3. 継続メタデータ
 
+*仕様参照: [2-7 §C](../2-7-core-parse-streaming.md#c-継続とメタデータ)*
+
 ```reml
 type Continuation<T> = {
   state: Opaque,
@@ -64,6 +71,8 @@ type ContinuationMeta = {
 - `expected_tokens` と `last_checkpoint` は IDE 補完や自動復旧に利用され、`trace_label` は SpanTrace (2.5) と連動する。
 
 ## 4. FlowController とバックプレッシャ
+
+*仕様参照: [2-7 §D](../2-7-core-parse-streaming.md#d-フロー制御とバックプレッシャ)*
 
 ```reml
 type FlowController = {
@@ -94,6 +103,8 @@ type BackpressureSpec = {
 
 ## 5. StreamDriver ヘルパ
 
+*仕様参照: [2-7 §E](../2-7-core-parse-streaming.md#e-streamdriver-ヘルパ)*
+
 ```reml
 type StreamDriver<T, Sink> = {
   parser: Parser<T>,
@@ -120,6 +131,8 @@ type PendingReason = "Backpressure" | "InputExhausted" | "FeederAwait" | "Feeder
 
 ## 6. インクリメンタル再パース
 
+*仕様参照: [2-7 §F](../2-7-core-parse-streaming.md#f-インクリメンタル再パース)*
+
 1. 編集差分（byte range + delta）を受け取ったら該当範囲を跨ぐ memo を無効化。
 2. `ParserId` 依存グラフで影響範囲を計算し、局所的に `run_stream`/`resume` を再実行。
 3. AST ノードは `Span` をキーにロープ状データ構造へ差し替え、元のバッファを維持する。
@@ -127,6 +140,8 @@ type PendingReason = "Backpressure" | "InputExhausted" | "FeederAwait" | "Feeder
 この手順は `Core.Parse.Streaming` 拡張の `apply_diff`（または同等ヘルパ）で提供することを推奨する。
 
 ## 7. 監視とメタデータ
+
+*仕様参照: [2-7 §G](../2-7-core-parse-streaming.md#g-診断・監査・runconfig-との統合)*
 
 ```reml
 type StreamMeta = {
@@ -142,10 +157,14 @@ type StreamMeta = {
 
 ## 8. 参考実装
 
+*仕様参照: 2.7 §E, §G（監査連携）*
+
 - `guides/runtime-bridges.md` にホットリロード／差分適用のワークフロー例を掲載。
 - 非同期実行が必要な場合は `Core.Async` 拡張を併用し、`Feeder` を `Future` ベースで実装する。
 
 ## 9. RunConfig との統合
+
+*仕様参照: [2-7 §G-2](../2-7-core-parse-streaming.md#g-2-runconfig-共有キー)*
 
 ストリーミング実装がバッチランナーと同じ診断品質・復旧性能を維持するために、以下の情報を `RunConfig` と共有する。
 

@@ -16,7 +16,7 @@ fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult
 
 * `ParseResult` は 2.1 節と同様、成功時の値と診断をまとめて返す。
 * `ParseResultWithRest` は未消費入力を併せて返し、REPL やインクリメンタル更新に備える。
-* ストリーミング処理や継続再開は拡張モジュール `Core.Parse.Streaming` に委ねる（§F 参照）。
+* ストリーミング処理や継続再開は [2.7](2-7-core-parse-streaming.md) で定義する `Core.Parse.Streaming` ランナーに委ねる。
 
 ### A-2. 実行モードと拡張の棲み分け
 
@@ -65,7 +65,7 @@ type RunConfigExtensions = Map<Str, Any>
 
 #### B-2-3. ストリーミング連携
 
-ストリーミング拡張（§F）を併用する場合、次の情報を `RunConfig` と共有する：
+ストリーミング拡張（[2.7](2-7-core-parse-streaming.md)）を併用する場合、次の情報を `RunConfig` と共有する：
 
 1. `extensions["stream"].checkpoint` に最後の確定スパンを格納し、バッチランナーが `commit_watermark` と同期を取れるようにする（A-1）。
 2. `extensions["stream"].resume_hint` に `DemandHint` を保持し、ハイブリッド実行時の再開条件を統一する。`guides/core-parse-streaming.md` では同じ構造体を `ContinuationMeta.resume_hint` に格納するため、ランナー間の相互運用が容易になる。
@@ -258,7 +258,7 @@ enum RegexMemoPolicy = "auto" | "force" | "off"
 
 ## G. ストリーミング＆インクリメンタル
 
-コア仕様ではストリーミングおよび差分適用の詳細を定義しません。これらの機能は `Core.Parse.Streaming` 拡張に委ねられ、`Parser` の意味論と互換な `run_stream`/`resume` API、継続メタデータ、バックプレッシャ制御を個別に定義します。詳細は [Core.Parse.Streaming 拡張ガイド](guides/core-parse-streaming.md) を参照してください。
+ストリーミングおよび差分適用の詳細仕様は [2.7 Core.Parse.Streaming](2-7-core-parse-streaming.md) にまとめている。`run_stream`/`resume` の契約、継続メタデータ、バックプレッシャ制御は 2.7 を参照し、本節ではバッチランナーの挙動のみを規定する。
 
 ここでは以下の契約のみを前提とします。
 
