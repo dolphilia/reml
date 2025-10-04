@@ -307,19 +307,47 @@ let render =
     |> with_capabilities({"parser.atomic", "parser.trace"})
     |> trace("templating.render")
 
-register_plugin(ParserPlugin {
-  name = "Reml.Web.Templating",
+let metadata = PluginMetadata {
+  id = "Reml.Web.Templating",
   version = SemVer(1,4,0),
-  capabilities = [
-    Capability::new("parser.atomic"),
-    Capability::new("parser.trace"),
-    Capability::new("parser.syntax.highlight")
-  ],
+  checksum = None,
+  description = Some("HTML テンプレート DSL"),
+  homepage = Some(Url::parse("https://example.com")),
+  license = Some("Apache-2.0"),
+  required_core = SemVerRange::from("^1.4"),
+  required_cli = Some(SemVerRange::from("^1.3")),
+}
+
+let cap_atomic = ParserPluginCapability {
+  name = "parser.atomic",
+  version = SemVer(1,4,0),
+  stage = StageRequirement::AtLeast(Stable),
+  effect_scope = Set::from(["parser", "audit"]),
+  traits = Set::from(["cut"]),
+  since = Some(SemVer(1,4,0)),
+  deprecated = None,
+}
+
+let cap_trace = ParserPluginCapability {
+  name = "parser.trace",
+  version = SemVer(1,4,0),
+  stage = StageRequirement::AtLeast(Beta),
+  effect_scope = Set::from(["parser", "telemetry"]),
+  traits = Set::from(["semantic-tokens"]),
+  since = Some(SemVer(1,3,0)),
+  deprecated = None,
+}
+
+register_plugin(ParserPlugin {
+  metadata = metadata,
+  capabilities = [cap_atomic.clone(), cap_trace.clone()],
+  dependencies = [],
   register = |reg| {
-    reg.register_capability({"parser.atomic", "parser.trace", "parser.syntax.highlight"});
-    reg.register_parser("render", || render);
+    reg.register_capability(cap_atomic.clone())?;
+    reg.register_capability(cap_trace.clone())?;
+    reg.register_parser("render", || render)?;
   }
-})
+})?
 ```
 
 `Core.Parse.Plugin` 拡張は上記 capability をすべて実装しており、コアのみを読み込んだ場合は `with_capabilities` を呼んでも効果がない（no-op）。プラグインは必要な最小 capability のみ要求し、過剰な要求を避けることが推奨される。

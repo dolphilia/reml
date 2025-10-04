@@ -176,6 +176,12 @@ pub enum CapabilityProvider = Core
 - `provider` は Capability を提供する主体を特定し、`Core`（標準組み込み）、`Plugin`（プラグインモジュール）、`ExternalBridge`（外部 DSL ブリッジなど）、`RuntimeComponent`（ランタイム内部構成要素）を区別する。`manifest_path` は `reml.toml` など構成ファイル上の位置を指し、`last_verified_at` は `verify_capability_stage` が成功した最新時刻（3-4 §1 `Timestamp`）を格納する。
 - `verify_capability_stage` が失敗した場合は `CapabilityDescriptor.stage` を `CapabilityError.actual_stage` として埋め込み、診断側で要求 Stage との差分を即座に計算できるようにする。成功時は `last_verified_at` を更新し、キャッシュの鮮度を維持する。
 
+```reml
+pub type CapabilitySet = Set<CapabilityId>
+```
+
+- `CapabilitySet` は DSL プラグインやランタイムブリッジが公開する Capability ID の集合を表し、Chapter 4（とくに [4-7](4-7-core-parse-plugin.md)）の登録 API と共有する共通表現である。
+
 ### 1.3 プラットフォーム情報と能力 {#platform-info}
 
 ```reml
@@ -561,7 +567,9 @@ fn ExecutionMetricsScope::resolved_limits(&self) -> &ResourceLimitDigest
 - `MetricsCapability.list` は DSL メトリクスを含むディスクリプタを返し、ダッシュボードプラグインが自動検出できるようにする。
 - トレース連携は [3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md) の `start_dsl_span` を利用し、`TraceContext` を Capability Registry 経由で伝搬させる。
 
-## 5. IO Capability
+## 5. IO / FFI Capability
+
+### 5.1 IoCapability
 
 ```reml
 pub type IoCapability = {
@@ -575,26 +583,45 @@ pub type IoCapability = {
 - 3.5 の同期 IO API が内部で利用するバックエンドとして定義。
 - 実装は OS ごとに差し替え可能。
 
+### 5.2 FFI Capability
+
+> 目的：ネイティブライブラリ呼び出しに必要な権限を明文化し、`Core.Ffi`（3-9 §2）と Capability Registry の Stage/効果ポリシーを同期する。
+
+- `FfiCapability` は `call_with_capability` を通じて外部関数を実行し、`CapabilitySecurity.effect_scope` に `{ffi, audit, security}` を最低限含める。
+- 監査ログは [3-6 §5.1](3-6-core-diagnostics-audit.md#ffi-呼び出し監査テンプレート) のテンプレートを `audit` シンクへ転送する。`CapabilitySecurity.audit_required = true` が既定値。
+- `verify_capability_security` 実行時はプラットフォーム情報（§1.3）と `LibraryMetadata.required_capabilities` を突き合わせ、未登録 Capability を拒否する。
+
+#### 5.2.1 CapabilitySecurity チェックリスト（FFI）
+
+| 項目 | 必須条件 | 備考 |
+| --- | --- | --- |
+| 効果タグ | `CapabilitySecurity.effect_scope ⊇ { ffi, audit, security }` | `io.blocking` / `io.async` / `io.timer` は対応 API に応じて追加 | 
+| Stage | `Stage::Stable` を推奨。`Experimental`/`Beta` の場合は `capability_stage` を監査ログに記録し CI で承認制にする | Stage 情報は 3-6 §5.1 の `capability_stage` へ連携 |
+| 監査ハンドラ | `audit_required = true` かつ `FfiCapability.audit` が監査テンプレートを転送 | `AuditCapability.emit` へフォールバックする場合もテンプレ遵守 |
+| サンドボックス | `CapabilitySecurity.sandbox` を設定し、`FfiSecurity.sandbox_calls = true` のときに CPU/メモリ制限を強制 | `guides/reml-ffi-handbook.md` の運用セクションを参照 |
+| シグネチャ検証 | `permissions` に `Runtime(RuntimeOperation::VerifyAbi)` を含め、`verify_abi` を必須化 | `FfiErrorKind::InvalidSignature` を `CapabilityError::SecurityViolation` に昇格 |
+| 監査照合 | `policy` で FFI 呼び出し専用ポリシーを指定し、`AuditEnvelope.metadata["ffi"]` の `effect_flags` と比較 | 逸脱時は `CapabilityError::SecurityViolation` を返す |
+
+- `CapabilityRegistry::register("ffi", CapabilityHandle::Ffi(...))` は上記チェックリストを満たさない場合、`CapabilityError::SecurityViolation` を返す。エラーには `capability_metadata` を含め、`effect_scope` や Stage の不足を診断できるようにする。
+- `call_with_capability` で得られた監査情報は `ExecutionMetricsScope`（§4）と結合し、`capability_usage` メトリクス（§9.1）にも反映する。これにより、FFI 呼び出し頻度と Stage 状態をダッシュボードで追跡できる。
+
 ## 6. プラグイン Capability
 
 ```reml
 pub type PluginCapability = {
-  register: fn(PluginMetadata) -> Result<(), CapabilityError>,
-  verify_signature: fn(PluginMetadata) -> Result<(), CapabilityError>,
-  load: fn(Path) -> Result<PluginHandle, CapabilityError>,
-}
-
-pub type PluginMetadata = {
-  id: Str,
-  version: SemVer,
-  capabilities: List<CapabilityId>,
-  signature: Option<Bytes>,
+  register_plugin: fn(ParserPlugin) -> Result<CapabilitySet, PluginError>,               // effect {runtime}
+  register_bundle: fn(PluginBundleManifest) -> Result<List<CapabilitySet>, PluginError>, // effect {runtime}
+  revoke_plugin: fn(PluginId) -> Result<(), PluginError>,                               // effect {runtime, audit}
+  verify_signature: fn(PluginSignature, VerificationPolicy) -> Result<(), PluginError>, // effect {runtime, security}
+  load: fn(Path) -> Result<PluginHandle, PluginError>,                                   // effect {runtime, security}
 }
 ```
 
-- `SemVer` と `PluginHandle` は将来のプラグイン拡張章（予定）と整合する。
-- `verify_signature` は 3.6 の監査モジュールと連携して署名検証結果をログ化する。
-- プラグインのライフサイクル管理（ロード、アンロード、アップデート）を安全に行うメカニズムを提供。
+- `PluginId`, `PluginMetadata`, `ParserPlugin`, `ParserPluginCapability`, `PluginBundleManifest`, `PluginSignature`, `VerificationPolicy`, `PluginError` は [4-7 Core.Parse.Plugin](4-7-core-parse-plugin.md) で定義される。
+- `register_plugin` / `register_bundle` は DSL プラグインの Capability 情報を Registry に公開し、戻り値として登録された Capability ID の集合（`CapabilitySet`）を返す。これにより `CapabilityDescriptor.provider = Plugin` として参照可能になる。
+- `revoke_plugin` はアンインストール時の監査イベント `plugin.revoke` を必須化し、`CapabilityRegistry::describe` における `provider` を更新する。
+- `verify_signature` は [3-6 §1.3](3-6-core-diagnostics-audit.md#signature-verification) の監査モジュールと連携して署名検証結果をログ化し、`VerificationPolicy` に応じた警告/エラーを生成する。
+- `load` はプラグイン実装を安全なサンドボックスに配置し、戻り値の `PluginHandle`（将来のプラグイン拡張章で定義予定）を `register_plugin` 呼び出しへ提供する。
 
 ### 6.1 プラグインサンドボックス
 
@@ -615,11 +642,12 @@ pub enum FileAccess = None | ReadOnly(List<PathPattern>) | Restricted(List<PathP
 
 - `memory_limit` と `cpu_limit` は 3.5 §9 の `MemoryLimit` / `CpuQuota` を利用し、`load_plugin_sandboxed` 内で `MemoryLimit::resolve` と `CpuQuota::normalize` を必ず実行する。正規化結果は `CapabilityRegistry::registry().memory` 等と統合され、Stage/Capability 審査で監査ログへ記録する。
 - 物理メモリや論理コア数は `PlatformInfo`（本章 §1.3）から取得し、`Relative` や `Fraction` 指定の妥当性を検証する。制限超過時は `CapabilityError::SecurityViolation` を返し、診断 `sandbox.limit.invalid`（3-6 §6.1.2）を生成する。
+- `PluginCapability.load` は `load_plugin_sandboxed` が返す `CapabilityError` を受け取り、`PluginError::VerificationFailed` もしくは `PluginError::IO` に変換して呼び出し元へ伝播させる。
 
 
 ### 6.2 DSLプラグイン指針
 
-- DSL テンプレート／オブザーバビリティ拡張は `PluginCapability.register` で Capability Registry に自己記述メタデータを登録する。
+- DSL テンプレート／オブザーバビリティ拡張は `PluginCapability.register_plugin` で Capability Registry に自己記述メタデータを登録する。
 - プラグインの責務と配布ポリシーは [notes/dsl-plugin-roadmap.md](notes/dsl-plugin-roadmap.md) および [AGENTS.md](AGENTS.md) を参照し、互換テストを必須化する。
 - `plugins` セクションで FfiCapability や AsyncCapability を要求する場合は、Conductor 側の `with_capabilities` と同一IDを使用して権限を同期させる。
 

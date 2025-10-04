@@ -591,7 +591,37 @@ pub enum FfiErrorKind = {
 }
 ```
 
-### 2.1 効果ハンドラによる FFI サンドボックス（実験段階）
+### 2.1 ABI とデータレイアウト
+
+- 既定ターゲットは System V AMD64 と Windows x64 を対象とし、将来的な ARM64 / WASM 追加は [guides/llvm-integration-notes.md](guides/llvm-integration-notes.md#ターゲット-abi--データレイアウト) で追跡する。
+- Reml からエクスポートされる複合型は `repr(C)` と等価な自然境界を保持し、未定義のパディングやフィールド再配置を禁止する。
+- FFI 境界で共有する主要レイアウトは次の表に従う。
+
+| 型カテゴリ | ABI 表現 | 備考 |
+| --- | --- | --- |
+| レコード（構造体・列挙型） | C ABI と等価。フィールド順序はソース宣言通り、アラインはターゲット ABI の自然境界 | `#[repr(C)]` 想定。可変長メンバは末尾に限定 |
+| `Text` / `Str` | `{ data: Ptr<u8>, len: i64 }` | `len` は 64bit。UTF-8 を前提に RC カウンタを共有し、引き渡し前に `inc_ref` を行う |
+| `Span<T>` / `ForeignBuffer` | `{ ptr: NonNullPtr<T>, len: usize }` | `ptr` は NULL 非許容。所有権は `Ownership` メタデータで示し、`len = 0` でもダングリング不可 |
+| 例外・パニック | 伝播禁止。Reml→C/C++ は `abort`、C++ 例外は FFI 内で捕捉・消費する | 異常終了は `FfiErrorKind::CallFailed` へ変換し、戻り値で通知 |
+
+- 上記と異なるレイアウトを要求する場合は `FfiSignature` で明示し、`resolve_calling_convention`（§2.5）と整合させる。
+
+### 2.2 効果タグと unsafe 境界
+
+- すべての FFI 呼び出しは `effect {ffi}` を伴い、`unsafe` ブロック内部でのみ許可する。`call_ffi` / `call_with_capability` は `effect {ffi, unsafe}` を最小要件とし、追加の I/O 効果はシナリオに応じて宣言する。
+- `CapabilitySecurity.effect_scope` は `{ffi, audit, security}` を最低限含め、[3-8](3-8-core-runtime-capability.md) §5.2 のステージ検証と一致させる。
+- 効果タグと推奨アトリビュートの組み合わせは次の通り。
+
+| シナリオ | 必須効果タグ | 推奨アトリビュート | 備考 |
+| --- | --- | --- | --- |
+| 同期 FFI 呼び出し | `ffi`, `unsafe` | `@no_blocking` を付与してブロッキング禁止を明示 | CPU バインド処理向け |
+| ブロッキング I/O ラッパ | `ffi`, `unsafe`, `io.blocking` | `@no_timer` を付与し、タイマ依存を拒否 | スレッド待機を伴うデータベース等 |
+| 非同期ハンドオフ | `ffi`, `unsafe`, `io.async` | `@async_free` を付与してランタイム制約を共有 | `libuv` / `io_uring` 経由の呼び出し |
+| タイマ・イベント登録 | `ffi`, `unsafe`, `io.timer` | `@async_free`, `@no_blocking` を併用 | 外部イベントループやスケジューラ連携 |
+
+- 効果タグの整合性検証は [1-3-effects-safety.md](1-3-effects-safety.md#unsafe-ptr-spec) の安全規則に従い、`ForeignCall` 効果を導入する際は `@requires_capability(stage=...)` で Stage 条件を明示する。
+
+### 2.3 効果ハンドラによる FFI サンドボックス（実験段階）
 
 `ffi` 効果を捕捉するハンドラを用意すると、危険なネイティブ呼び出しをテスト用スタブや監査ロガーへ差し替えられる。
 
@@ -622,7 +652,7 @@ fn with_foreign_stub(request: Request) -> Result<Response, FfiError> ! {} =
 
 ステージを `Beta`/`Stable` へ引き上げる際は、Async と同様に `Diagnostic.extensions["effects"].stage` を更新し、`effects.stage.promote_without_checks` が解消されてから Capability Registry とマニフェストの整合を取る（§1.7）。
 
-### 2.2 タイプセーフな FFI ラッパー
+### 2.4 タイプセーフな FFI ラッパー
 
 ```reml
 // 自動的なラッパー生成
@@ -637,7 +667,7 @@ let sum: i32 = ffi::decode_result(raw)?;
 
 `ffi::encode_args` / `ffi::decode_result` は `FfiSignature` と互換のシリアライズヘルパで、`Span<u8>` を安全に生成・復元する。低レベル API を直接利用する場合は `span_from_raw_parts` と `CapabilitySecurity.effect_scope` を併用し、境界検査と監査記録を怠らないこと。
 
-### 2.3 呼出規約とプラットフォーム適応
+### 2.5 呼出規約とプラットフォーム適応
 
 ```reml
 pub enum CallingConvention = C | StdCall | FastCall | SysV | WasmSystemV | Custom(Str)
@@ -652,7 +682,7 @@ fn with_abi_adaptation(fn_ptr: ForeignFunction, conv: CallingConvention) -> Resu
 * `resolve_calling_convention` は `LibraryMetadata` に含まれる `preferred_convention` を尊重しつつ、実行環境で利用できない場合は `target.config.unsupported_value` 診断を併せて発行する。診断は `Diagnostic.extensions["cfg"].evaluated` にターゲット値とライブラリ要求を記録する。
 * `with_abi_adaptation` は必要に応じてシム層を挿入し、レジスタ引数配置やスタック整列を調整する。性能への影響を抑えるため、変換は初回呼び出し時にキャッシュする。
 
-### 2.4 メモリ管理と所有権境界
+### 2.6 メモリ管理と所有権境界
 
 ```reml
 pub type ForeignPtr<T> = {
@@ -679,6 +709,38 @@ fn transfer_buffer(buffer: ForeignBuffer, release: FnPtr<(VoidPtr,), ()>) -> Res
 - `ForeignPtr<T>` は `Ptr<T>` を内包し、必要に応じて `NonNullPtr<T>` へ昇格して利用する。`layout` には [4-3 Memory Capability プラグイン](4-3-memory-plugin.md) で定義する `Layout` 情報を格納する。
 - `ForeignBuffer` は `Span<u8>` と所有権メタデータを保持し、`Ownership::Borrowed` の場合は解放禁止とする。
 - `call_ffi` は `unsafe` を要求し、境界で `AuditEnvelope` を付与することが推奨される。`transfer_buffer` では Capability Registry を通じて `MemoryCapability` の監査フックを呼び出す。
+- Reml → C へ値を移譲する際は RC カウンタを `inc_ref` で増加させ、ホスト側が保有を終了するときに `reml_release_*`（将来提供予定のラッパ）または `ForeignPtr.release` を呼び出す契約とする。違反時は `UnsafeErrorKind::MemoryLeak` を `FfiErrorKind::CallFailed` へ昇格し、監査ログ `ffi.call.status = "leak"` を記録する。
+- C / C++ → Reml で渡されるポインタは `wrap_foreign_ptr` で `Ownership::Borrowed` として包み、ライフタイムが呼び出し中に限定されることを明文化する。恒常的に保持する場合は `Ownership::Transferred` を選び、`release` ハンドラで解放手順を登録する。
+- エラーは `FfiError` を起点に `Diagnostic` へ変換し、`Diagnostic.domain = Some(DiagnosticDomain::Runtime)` と `code = Some("ffi.call.failed")` を既定とする。監査テンプレートの `status`（§2.7）と整合させ、CLI/LSP が同一粒度で表示できるようにする。
+
+### 2.7 監査テンプレートと可観測性
+
+- すべての FFI 呼び出しは `audit.log("ffi.call", ...)` を通じて記録し、ログフォーマットは [3-6](3-6-core-diagnostics-audit.md#ffi-呼び出し監査テンプレート) §5.1 に定義するテンプレートへ従う。
+- 収集すべきキーと意味は次の通り。
+
+| キー | 必須 | 内容 | 参照 |
+| --- | --- | --- | --- |
+| `library` | Required | 実行中に解決したライブラリパスまたは識別子 | `LibraryMetadata.path` |
+| `symbol` | Required | 呼び出したシンボル名 | `FfiBinding.name` |
+| `call_site` | Optional | 呼び出し元ソース位置（`SourceSpan`） | `Diagnostic.primary` |
+| `effect_flags` | Required | 実際に付与した効果タグの集合 | §2.2 |
+| `latency_ns` | Optional | 呼び出し完了までのナノ秒計測値 | 3-6 §2.5 |
+| `status` | Required | `success` / `failed` / `stubbed` などの実行結果 | `FfiErrorKind`, 3-6 §5.1 |
+
+```json
+{
+  "event": "ffi.call",
+  "library": "libcrypto.so",
+  "symbol": "EVP_DigestInit_ex",
+  "call_site": "core/crypto.reml:218",
+  "effect_flags": ["ffi", "unsafe", "io.blocking"],
+  "latency_ns": 32050,
+  "status": "success"
+}
+```
+
+- `status = "stubbed"` の場合は §2.3 の効果ハンドラ経由であることを示し、`CapabilityRegistry::stage` が `Experimental`/`Beta` のいずれかを返したかを `Diagnostic.extensions["effects"].stage` に複写する。
+- Capability レジストリと連携する場合は、`call_with_capability` の戻り値に含まれる `FfiCapability.audit` を介して上記テンプレートを自動転送し、`CapabilitySecurity` チェックリスト（3-8 §5.2.1）で効果タグ・Stage の整合を検証する。
 
 ## 3. Core.Unsafe.Ptr API
 

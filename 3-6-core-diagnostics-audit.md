@@ -517,6 +517,42 @@ fn record_change_set<T>(value: T, diff: ChangeSet) -> Result<T, Diagnostic>   //
 - `Change`/`ChangeSet` は Chapter 4.8 で定義。
 - `record_change_set` は差分を監査ログに記録し、`effect {audit}` を要求する。
 
+### 5.1 FFI 呼び出し監査テンプレート {#ffi-呼び出し監査テンプレート}
+
+> 目的：`Core.Ffi`（3-9 §2.7）が要求する監査証跡を統一フォーマットで残し、Capability Registry および CI が呼び出し履歴を検証できるようにする。
+
+`AuditEnvelope.metadata["ffi"]` に次の JSON オブジェクトを格納する。
+
+| フィールド | 型 | 必須 | 説明 | 参照 |
+| --- | --- | --- | --- | --- |
+| `event` | Str | Required | 常に `"ffi.call"` を設定し、他の監査イベントと区別する | 3-9 §2.7 |
+| `library` | Str | Required | 解決したライブラリパスまたは Capability が返す識別子 | `LibraryMetadata.path` |
+| `symbol` | Str | Required | 呼び出したシンボル名 | `FfiBinding.name` |
+| `call_site` | Str | Optional | 呼び出し元ソース位置 (`module:line`) | `Diagnostic.primary` |
+| `effect_flags` | List<Str> | Required | 実際に付与した効果タグ。辞書順へ正規化する | 3-9 §2.2 |
+| `latency_ns` | u64 | Optional | 呼び出し所要時間（ナノ秒）。測定不能な場合は省略 | 3-9 §2.7 |
+| `status` | Str | Required | `success` / `failed` / `stubbed` / `leak` など実行結果を列挙する | `FfiErrorKind`, 3-9 §2.6 |
+| `capability` | Str | Optional | `call_with_capability` を利用した場合の Capability ID | 3-8 §5.2 |
+| `capability_stage` | Str | Optional | 当該 Capability の Stage（`Experimental` / `Beta` / `Stable`） | 3-8 §5.2.1 |
+
+```json
+{
+  "event": "ffi.call",
+  "library": "libcrypto.so",
+  "symbol": "EVP_DigestInit_ex",
+  "call_site": "core/crypto.reml:218",
+  "effect_flags": ["ffi", "unsafe", "io.blocking"],
+  "latency_ns": 32050,
+  "status": "success",
+  "capability": "runtime.ffi.default",
+  "capability_stage": "stable"
+}
+```
+
+- `status = "failed"` の場合は `Diagnostic.code = Some("ffi.call.failed")` を必須とし、`FfiErrorKind` と `message` を `AuditEnvelope.change_set` へ複写する。
+- `status = "stubbed"` は 3-9 §2.3 の効果ハンドラ経由であることを示す。Stage 情報を `capability_stage` に記録し、CI は `Beta` 以上でない場合に警告を発行する。
+- `capability` が設定されていない場合でも、`effect_flags` を `CapabilitySecurity.effect_scope` と突き合わせ、`audit_required = true` の Capability では監査漏れを CI が検出できるようにする。
+
 ## 6. DSLオーケストレーション向け可観測性
 
 ### 6.1 メトリクスプリセット

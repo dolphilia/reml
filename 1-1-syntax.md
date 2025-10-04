@@ -309,7 +309,7 @@ Reml コア仕様には `schema` キーワードによる設定 DSL は含まれ
 
 ### B.7 プラグイン関連構文
 
-`package` 宣言や `use plugin` ブロックといったプラグイン配布専用のメタデータ構文は、Reml コアから切り離しました。バージョン管理や Capability 指定は `reml-plugin` CLI と外部マニフェストで扱い、言語仕様としては通常の `use` とモジュールシステムのみを定義します。プラグイン連携の詳細は `guides/DSL-plugin.md` を参照し、必要なプロジェクトで opt-in してください。
+`package` 宣言や `use plugin` ブロックといったプラグイン配布専用のメタデータ構文は、Reml コアから切り離しました。バージョン管理や Capability 指定は `reml-plugin` CLI と外部マニフェストで扱い、言語仕様としては通常の `use` とモジュールシステムのみを定義します。API 契約は [4-7-core-parse-plugin.md](4-7-core-parse-plugin.md) を参照し、運用面のベストプラクティスは `guides/DSL-plugin.md` を参照してください。
 
 
 ---

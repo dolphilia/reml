@@ -8,18 +8,21 @@
 - FFI で橋渡しする典型シナリオ：データベースドライバ、クラウド SDK、GPU ライブラリ、既存サービスとの IPC、ホットリロード可能なプラグイン。
 
 ## 2. ABI・データレイアウトの要約
-- 詳細は [LLVM連携ノート](llvm-integration-notes.md) の「ターゲット ABI / データレイアウト」を参照。
-- Reml から公開される構造体／列挙型は `repr(C)` 等価の自然境界を前提。
-- 文字列・スライス：`{ ptr data, i64 len }`。所有権は RC、境界を超える場合は明示的に `inc_ref`/`dec_ref`。
-- 例外／パニック伝播は定義しない。Reml → C 方向は `abort`、C++ 例外は外に逃さない。
+
+> 公式仕様: [3-9 §2.1](../3-9-core-async-ffi-unsafe.md#21-abi-とデータレイアウト) を参照。ここでは実務での確認手順とツール連携のみをまとめる。
+
+- `remlc --emit-header`（将来実装予定）で生成した C ヘッダと [guides/llvm-integration-notes.md](llvm-integration-notes.md#ターゲット-abi--データレイアウト) の定義を突き合わせ、構造体・列挙体が `repr(C)` の制約を満たしているか `llvm-readobj --sd` で検証する。
+- 文字列／スライスは 3-9 §2.1 の `{ ptr, len }` レイアウトを前提にする。ゼロコピーを要求する場合は、RC カウンタの増減を呼び出しコードで確認し、`audit.log("ffi.call", ...)` に `status = "success"` を出力できることを CI でチェックする。
+- 例外は境界を越えて伝播しない。C++ 例外を扱う場合はガードレイヤで捕捉・エラーマッピングし、`FfiErrorKind::CallFailed` に変換する実装メモをここへ残す。
+- ARM64 / WASM など未正式対応ターゲットに関する調査結果は `notes/` に記録し、仕様が更新されたら本ガイドからリンクのみを残す。
 
 ## 3. 効果タグと `unsafe` 境界
-- FFI 呼び出しは必ず `ffi` 効果を持ち、`unsafe {}` 内でのみ許可。
-- `io.async` / `io.blocking` / `io.timer` の分類と接続：
-  - 非同期ハンドオフ（libuv, io_uring 等）は `io.async`。
-  - ブロッキング I/O やスレッド待機は `io.blocking`。
-  - タイマー／イベント登録は `io.timer`。
-- `@async_free` / `@no_blocking` / `@no_timer` を利用してラッパ API の静的保証を付与。
+
+> 公式仕様: [3-9 §2.2–2.3](../3-9-core-async-ffi-unsafe.md#22-効果タグと-unsafe-境界) を参照。ここではラッパ実装時の現場メモを補足する。
+
+- `effect` 宣言は仕様で定義された最小集合（`{ffi, unsafe}`）を基準に、I/O 性質に応じて `io.blocking` / `io.async` / `io.timer` を追加する。ガイドでは `@no_blocking` 等の属性を付与する場所（ラッパ関数 or Capability 宣言）をコードレビューで確認するチェックリストを共有する。
+- `ForeignCall` 効果でスタブ化する場合は Stage を `Experimental` から始め、`reml capability stage promote` 実行ログをリポジトリに残す。仕様のステージ要件に従い、`audit.log` で `status = "stubbed"` を確認する手順を CI ワークフローに追加する。
+- エフェクト違反を検出するには `--effects-debug` フラグを利用し、`Diagnostic.extensions["effects"].residual` が空であるか手元で検証する。記録した出力は本ガイドにメモとして追記し、将来の Stage 昇格レビューで参照できるようにする。
 
 ## 4. リンクとビルドの手順
 1. ヘッダ生成：`remlc --emit-header foo.reml`（将来実装）で C 用シグネチャを生成。
@@ -30,23 +33,31 @@
 4. デバッグ情報を有効化する場合は `-g` 付き LLVM IR を生成し、`lldb` / `windbg` で解析。
 
 ## 5. 所有権とライフタイム契約
-- RC ベース API：
-  - Reml → C：値を渡す前に `inc_ref`。C 側が保持をやめたタイミングで `reml_release_*`（生成予定）を呼ぶ契約。
-  - C → Reml：C が所有するポインタは `unsafe` でラップする。Mutating callback は `ffi` + `mut` を持つ。
-- ゼロコピー文字列は UTF-8 前提。書記素単位の操作は Reml 側で行い、FFI ではバイト列扱い。
-- エラーハンドリング：`Result<T, Diagnostic>` 風の構造体を C 用 `struct` として提供し、失敗時は `span`／`trace_id` を含む。
+
+> 公式仕様: [3-9 §2.6](../3-9-core-async-ffi-unsafe.md#26-メモリ管理と所有権境界)。ここでは多言語バインディングのチェックリストを共有する。
+
+1. **Reml → C**: 値を渡す前に `inc_ref` を呼び、ホスト側で `reml_release_*`（暫定）または `ForeignPtr.release` を必ず呼ぶ。CI では `ffi-smoke` テストで `status = "leak"` が出ないことを監査ログから確認する。
+2. **C / C++ → Reml**: 受け取ったポインタは `wrap_foreign_ptr` で `Ownership::Borrowed` に設定し、呼び出しスコープを抜ける前に `release_foreign_ptr` を呼ぶか、`Ownership::Transferred` として解放関数を登録する。
+3. **ゼロコピー文字列**: UTF-8 前提。書記素操作が必要な場合は Reml 側で実行し、C 側にはバイト列として渡す。`Span<u8>` を使う場合は `span_from_raw_parts` の戻り値を即座に `ForeignBuffer` へ昇格し、監査ログには `effect_flags` を記録する。
+4. **エラーハンドリング**: FFI 側の失敗は `FfiError` を経由して `Diagnostic.domain = Runtime` と `code = "ffi.call.failed"` を付与する。ガイドでは主なエラーパターン（NULL、整列違反など）を随時追記する。
+
+> 多言語サンプルは継続的に追加予定。寄稿時は仕様の契約を満たすことを確認したうえで、該当するサンプルにリンクを張ってください。
 
 ## 6. 監査・可観測性
-- すべての FFI 呼び出しを `audit.log("ffi.call", {...})` へ記録するテンプレートを提供。
-- 収集項目例：`library`, `symbol`, `call_site`, `effect_flags`, `latency_ns`, `status`。
-- 実行時タイムアウト／キャンセルは `CancelToken`（async 連携）経由で統一。FFI 側に伝えるためのコールバックを約束。
+
+> 公式仕様: [3-9 §2.7](../3-9-core-async-ffi-unsafe.md#27-監査テンプレートと可観測性)、[3-6 §5.1](../3-6-core-diagnostics-audit.md#ffi-呼び出し監査テンプレート)。
+
+- 監査ログは `AuditEnvelope.metadata["ffi"]` にテンプレートを格納する。ガイドでは `audit.log("ffi.call", template)` を呼び出すヘルパ関数例と、CI で `status` が期待値になっているかを検証する `jq` スニペットを掲載する。
+- 実験的なサンドボックス構成（`call_with_capability` + `sandbox`）では、`capability_stage` が `Experimental` のまま本番で使われていないかメトリクスを監視する。ダッシュボード例は `monitoring/ffi-dashboard.json` を参照。
+- 監査漏れを検出するには `AuditCapability.emit` をモック化し、`effect_flags` に `ffi` が含まれているかチェックするテストを用意する。判定ルールはチームごとに追記し、本ガイドではテストの雛形のみ保持する。
 
 ## 7. テストと検証
-- ABI 互換性チェック：
-  - `ctest/ffi-smoke.c` で基本データ型の round-trip。
-  - `ctest/struct-layout.c` で構造体パッキングを確認。
-- サニタイザ連携：`ASan`/`UBSan` で `inc_ref/dec_ref` の対応漏れを検出。
-- マルチプラットフォーム CI で Linux/Windows のビルドログとテスト結果を保管。
+
+> 公式仕様: [3-9 §2.6–2.7](../3-9-core-async-ffi-unsafe.md#26-メモリ管理と所有権境界) の CI 要件を参照。ここでは追加で行っている検証のメモを残す。
+
+- **ABI チェック**: `ctest/ffi-smoke.c` と `ctest/struct-layout.c` を継続利用。結果が仕様の表と一致したかを `tests/ffi/README.md` に記録し、差分が発生した場合は `notes/` に原因調査メモを残す。
+- **サニタイザ運用**: `asan`/`ubsan` を有効化したビルド手順を `scripts/ffi-sanitized-build.sh` にまとめる。False Positive が発生した場合の抑制パターンを併記する。
+- **多言語バインディング検証**: Rust ラッパや Python C-API の PoC は `samples/ffi/` 配下で管理し、仕様更新時に再実行する。期待する監査ログ（`status = "success"` など）が出力されるか `jq` ベースのスモークテストで確認する。
 
 ## 8. 今後の拡張予定
 - WASM/WASI の ABI 整備とホスト関数ブリッジ。

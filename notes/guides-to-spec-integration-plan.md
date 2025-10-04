@@ -52,19 +52,19 @@
 - **現状**: ABI/データレイアウト、所有権契約、監査テンプレートなど Core.Ffi の基礎仕様を包含。
 - **収容先**: `3-9` に `Core.Ffi` 節を整備し、ABI 表やエラーモデルを正式化。LLVM 詳細は `guides/llvm-integration-notes.md` へリンク。
 - **主な作業**:
-  - ABI テーブル、所有権契約、効果タグ整理を仕様へ移植。
-  - 監査テンプレートを `3-6` 参照付きで統合し、`CapabilitySecurity` チェックリストを 3-8 に反映。
-  - ガイド側は多言語サンプル・段階的ロードマップに縮約。
-- **検証ポイント**: `guides/core-unsafe-ptr-api-draft.md` と重複するポインタ運用記述の整理。
+  - ✅ ABI テーブル、所有権契約、効果タグ整理を仕様へ移植（`3-9-core-async-ffi-unsafe.md` §2.1–§2.7）。
+  - ✅ 監査テンプレートを `3-6` 参照付きで統合し、`CapabilitySecurity` チェックリストを 3-8 に反映。
+  - ✅ ガイド側は多言語サンプル・段階的ロードマップに縮約し、仕様への参照を追記。
+- **検証ポイント**: ✅ `guides/core-unsafe-ptr-api-draft.md` と重複するポインタ運用記述を整理（仕様に統合した内容へ誘導）。
 
 ### 3.6 DSL プラグイン & Capability (`guides/DSL-plugin.md:1`)
 - **現状**: `ParserPlugin` 構造、署名検証、CLI プロトコルを定義。`notes/dsl-plugin-roadmap.md` と連携。
 - **収容先**: Chapter 4 に「4.7 Core.Parse.Plugin 仕様」節を追加し、CLI フローは付録化。
 - **主な作業**:
-  - プラグインメタデータ、`register_plugin`/`register_bundle` API の仕様化。
-  - 署名検証ワークフローを Stage/Capability 監査と接続。
-  - ガイド側には導入手順・ベストプラクティスを残し、仕様へのリンクを追記。
-- **検証ポイント**: `4-0-official-plugins-overview.md` の構成と整合、README のガイド一覧更新。
+  - ✅ プラグインメタデータ、`register_plugin`/`register_bundle` API を [4-7-core-parse-plugin.md](../4-7-core-parse-plugin.md) に仕様化し、Bundle 識別子・エラーモデルまで定義。
+  - ✅ 署名検証ワークフローを Stage/Capability 監査と接続（`4-7` §3、`3-8-core-runtime-capability.md` §1.2 と連動）。
+  - ✅ ガイド側には導入手順・ベストプラクティスを残し、仕様へのリンクを追記（`guides/DSL-plugin.md`、`notes/dsl-plugin-roadmap.md`）。
+- **検証ポイント**: ✅ `4-0-official-plugins-overview.md` と `README.md`、`0-0-overview.md` のリンク構成を更新済み。
 
 ## 4. 横断作業
 - README (`README.md`)、概説 (`0-0-overview.md`, `0-1-overview.md`) に新節を追記し、リンク構造を更新。

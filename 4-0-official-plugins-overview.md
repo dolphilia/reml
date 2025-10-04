@@ -10,3 +10,4 @@
 - [4.4 プロセス間シグナル](4-4-signal-plugin.md): シグナル API と型、安全なハンドリング、運用例と将来拡張をまとめます。
 - [4.5 ハードウェア情報取得](4-5-hardware-plugin.md): ハードウェア Capability の API 構造、監査付きプロービング、利用例と拡張の見通しを提供します。
 - [4.6 スケジューリングと高精度タイマー](4-6-realtime-plugin.md): リアルタイム Capability の API、エラー・監査設計、高精度タイマー活用の指針と拡張アイデアを整理します。
+- [4.7 Core.Parse.Plugin と DSL 拡張契約](4-7-core-parse-plugin.md): DSL プラグインが `Core.Parse` に Capability を注入する際の API 契約、署名検証、監査・Stage 連携を定義します。
