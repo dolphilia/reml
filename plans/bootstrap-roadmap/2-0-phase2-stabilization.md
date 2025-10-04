@@ -21,36 +21,42 @@ Phase 2 は OCaml 実装を用いて Reml 言語仕様の全体を検証し、MV
 | M4: 仕様レビュー完了 | Chapter 1〜3 の仕様サンプルを実行検証し、ギャップを解消 | 仕様レビュー記録（`0-3-audit-and-metrics.md`） | 開始後 18 週 |
 
 ## 2.0.4 実装タスク
-1. **型クラスと辞書渡し**
+
+> **ターゲット方針継続**: Phase 2 も Phase 1 と同様に **x86_64 Linux (System V ABI)** を主ターゲットとする。Phase 2 では **Windows x64 (MSVC ABI) 対応を必須タスクとして追加**し、マルチターゲット対応の基盤を整備する。ARM64 macOS は Phase 3 のクロスコンパイル機能で対応予定。
+
+1. **型クラス実装戦略の確定（辞書渡し vs モノモルフィゼーション）**
    - コンパイラ IR に辞書引数を追加し、`1-2` の制約解決アルゴリズムを OCaml で実装。
-   - LLVM IR で辞書構造体を生成し、`-target arm64-apple-macos12.0` 指定時に Mach-O シンボルが正しく解決されるよう関数シグネチャを整備する。
+   - 並行して**モノモルフィゼーション**方式も実装し、性能・コードサイズ・デバッグ容易性を比較評価（`notes/llvm-spec-status-survey.md` 参照）。
+   - LLVM IR で辞書構造体を生成し、**x86_64 Linux 向け** ELF シンボルが正しく解決されるよう関数シグネチャを整備する。
+   - **Phase 2 終了時に本格採用する方式を決定**し、決定理由と却下理由を `0-4-risk-handling.md` に記録。
 2. **効果システム統合**
    - `effect` 注釈を AST/TAST に保持し、Stage 要求 (`StageRequirement::{Exact, AtLeast}`) を型チェック時に検証。
-   - ARM64 macOS の Capability 構成（Sandbox, NativeSystem, ObjectiveFFI 等）を `3-8` の Stage テーブルと照合し、実機テストで検証。
+   - x86_64 Linux の Capability 構成を `3-8` の Stage テーブルと照合し、CI テストで検証。
 3. **FFI 契約の拡張**
-   - `3-9-core-async-ffi-unsafe.md` の ABI/所有権表を OCaml 実装に反映し、`clang -target arm64-apple-macos12.0` でビルドしたブリッジコードを通じて RC 以外の借用が発生した場合は診断警告を出す。
-   - FFI 呼び出しの追跡ログを `AuditEnvelope.metadata` に記録し、macOS 固有のフレームワーク呼び出し（`CoreFoundation` など）をサンプルに含める。
+   - `3-9-core-async-ffi-unsafe.md` の ABI/所有権表を OCaml 実装に反映し、x86_64 Linux (System V) と Windows x64 (MSVC) の両方でビルドしたブリッジコードを検証。
+   - FFI 呼び出しの追跡ログを `AuditEnvelope.metadata` に記録し、標準的な C ライブラリ呼び出しをサンプルに含める。
 4. **診断・監査パイプライン**
    - `Diagnostic` に `extensions` フィールドを追加し、`effect.stage.*` や `bridge.stage.*` を出力。
-   - 監査ログを JSON で出力し、`3-6` のキーセットに照合する自動テストを実装。Apple Silicon 上でのログ整形差異を吸収するテンプレートを用意。
+   - 監査ログを JSON で出力し、`3-6` のキーセットに照合する自動テストを実装。
 5. **仕様差分の補正**
    - 仕様書の表記ゆれや不足項目をレビューし、必要に応じて Chapter 1〜3 を更新。
    - 更新した仕様には計画書から脚注リンクを追加し、`0-3-audit-and-metrics.md` に差分概要を記録。
-6. **ARM64 macOS 向け最適化検証**
-   - `llc -mtriple=arm64-apple-macos12.0 -mcpu=apple-m1` の出力をベンチマークし、辞書渡し導入後のコードサイズ・性能変化を観測。
-   - Linux/SysV・Windows への展開計画は TODO として別途管理し、Phase 3 着手前に優先度を見直す。
+6. **Windows x64 (MSVC ABI) 対応**
+   - **`-target x86_64-pc-windows-msvc`** でのビルドパイプラインを確立し、呼出規約・名前マングリングの差異を検証。
+   - `llc -mtriple=x86_64-pc-windows-msvc` で生成した PE バイナリを Windows 環境で実行（CI: GitHub Actions windows-latest）。
+   - DataLayout・ABI の差異を `guides/llvm-integration-notes.md` §5.0 の表に従って実装。
 
 ## 2.0.5 測定と検証
-- **性能トレンド**: Phase 1 と同じベンチマークを継続し、型クラス導入によるオーバーヘッドを定量化。
+- **性能トレンド**: Phase 1 と同じベンチマークを継続し、型クラス導入によるオーバーヘッドを定量化。辞書渡しとモノモルフィゼーションの比較結果を記録。
 - **安全性**: 効果タグと Capability Stage のミスマッチが 0 件であることを CI で確認。
 - **診断品質**: 代表的な型クラス失敗・Stage ミスマッチ・FFI 契約違反の診断をレビューし、仕様通りのメッセージが得られるかチェック。
-- **ターゲット適合性**: ARM64 macOS 向けに生成した辞書引数付き LLVM IR が `lldb`/`otool -l` で検証可能なシンボル/セクション構造になっているかを確認。
+- **マルチターゲット適合性**: x86_64 Linux と Windows x64 の両方で生成した LLVM IR が `opt -verify` を通過し、各プラットフォームで実行可能なバイナリが生成されることを確認。
 
 ## 2.0.6 リスクとフォローアップ
-- **辞書膨張**: 多数の型クラス実装によるコードサイズ増を監視し、Phase 3 でモノモルフィゼーション最適化を検討。
+- **型クラス実装方式の決定遅延**: 辞書渡しとモノモルフィゼーションの評価が Phase 2 終了までに完了しない場合、Phase 3 への影響大。M1 マイルストーンで中間評価を実施し、早期に方針を固める。
 - **効果タグと Capability のずれ**: 仕様更新と実装の差異が発生した場合、`0-4-risk-handling.md` に TODO を登録し、Phase 3 の着手条件に設定。
 - **FFI 所有権**: 参照カウントのデバッグ支援ツールが不足しているため、Phase 3 でツール化タスクを追加予定。
-- **ツールチェーン依存**: Apple Clang/LLVM のメジャーアップデートに追随できないリスクがあるため、`0-4-risk-handling.md` にサポート窓口とロールバック手順を記録。
+- **マルチターゲット対応の負荷**: Windows x64 対応により Phase 2 の工数が増加する可能性。Linux 優先で進め、Windows は並行開発とすることでリスク軽減。
 
 ---
 
