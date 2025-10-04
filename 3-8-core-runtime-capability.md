@@ -823,3 +823,141 @@ fn inspect_capability_state(cap_id: CapabilityId) -> Result<CapabilityState, Deb
 > 関連: [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3.9 Core Async / FFI / Unsafe](3-9-core-async-ffi-unsafe.md)
 
 > 注意: 本章は 2.9 実行時基盤ドラフトの内容を Chapter 3 に移行し、正式化したものです。
+
+## 10. Runtime Bridge 契約 {#runtime-bridge-contract}
+
+> 目的：`RuntimeBridge` を通じて外部ランタイムやホットリロード機構と統合する際の公式契約を定義し、Capability Registry と同一の Stage/監査ポリシーで運用できるようにする。`guides/runtime-bridges.md` は実運用ケーススタディと CLI 手順に限定し、本節で定義する契約を参照する。
+
+### 10.1 RuntimeBridgeRegistry とメタデータ
+
+```reml
+pub type RuntimeBridgeId = Str
+
+pub struct RuntimeBridgeRegistry
+
+fn runtime_bridge_registry() -> &'static RuntimeBridgeRegistry                     // `effect {runtime}`
+fn register_bridge(descriptor: RuntimeBridgeDescriptor) -> Result<(), RuntimeBridgeError> // `effect {runtime}`
+fn describe_bridge(id: RuntimeBridgeId) -> Option<RuntimeBridgeDescriptor>         // `effect {runtime}`
+fn acquire_bridge(id: RuntimeBridgeId) -> Result<RuntimeBridgeHandle, RuntimeBridgeError> // `effect {runtime}`
+```
+
+- `RuntimeBridgeRegistry` は Capability Registry と同じライフサイクルで初期化され、ランタイム起動時にブリッジ定義を登録する。登録順序は定義に依存せず、`register_bridge` は重複 ID を `RuntimeBridgeError::AlreadyRegistered` として拒否する。
+- `acquire_bridge` はブリッジ種別ごとのハンドルを返し、Capability 契約・Stage 条件・ターゲット互換性を検証した上で実行コンテキストに結び付ける。検証詳細は診断として `Diagnostic.code = Some("bridge.contract.violation")` を生成し、`extensions["bridge"].id` に ID を格納する。
+- `describe_bridge` から得られるメタデータは監査ログや IDE 連携に使用され、Capability Registry の `CapabilityDescriptor` と同一の Stage/効果タグを利用して整合性を保つ。
+
+```reml
+pub type RuntimeBridgeDescriptor = {
+  id: RuntimeBridgeId,
+  stage: StageId,
+  required_capabilities: Set<CapabilityId>,
+  required_effects: Set<EffectTag>,
+  target_profiles: Set<Str>,          // 例: "native-x86_64", "wasi-preview2"
+  reload: Option<RuntimeBridgeReloadSpec>,
+  audit: RuntimeBridgeAuditSpec,
+  manifest_path: Option<Path>,
+}
+
+pub struct RuntimeBridgeHandle {
+  id: RuntimeBridgeId,
+  stage: StageId,
+  reload: Option<RuntimeBridgeReloadHandle>,
+}
+```
+
+- `required_capabilities` は `verify_capability_stage`（§1.2）を通じて検証される。`StageRequirement::AtLeast` を用いて Capability 側の Stage が下限を満たすか確認し、失敗時は `RuntimeBridgeError::CapabilityViolation` を返す。
+- `target_profiles` は `RunConfig.extensions["target"].profile_id` と照合する。`Core.Env.infer_target_from_env`（3-10 §2）で得た情報を `RuntimeBridgeDescriptor` にマージし、互換性が無い場合は `Diagnostic.code = Some("bridge.target.mismatch")` を発行する。
+- `manifest_path` は `reml.toml` など構成ファイル上のパスを指し、監査レポートや CLI (`reml bridge describe`) で参照できるようにする。
+
+```reml
+pub type RuntimeBridgeAuditSpec = {
+  audit_domain: Str,                  // 例: "bridge.reload"
+  mandatory_events: Set<Str>,         // 例: {"bridge.reload", "bridge.rollback"}
+  requires_audit_effect: Bool,
+  rollout_checklist: List<Text>,
+}
+
+pub enum RuntimeBridgeError =
+  | AlreadyRegistered { id: RuntimeBridgeId }
+  | CapabilityViolation { id: RuntimeBridgeId, capability: CapabilityId, required_stage: StageRequirement, actual_stage: StageId }
+  | TargetMismatch { id: RuntimeBridgeId, requested: Str, detected: Str }
+  | StageViolation { id: RuntimeBridgeId, required: StageRequirement, actual: StageId }
+  | ReloadUnsupported { id: RuntimeBridgeId }
+  | ReloadFailure { id: RuntimeBridgeId, detail: Option<Text> };
+```
+
+- `audit_domain` は `Core.Diagnostics`（3-6）と共有するイベント名であり、`mandatory_events` に列挙したイベントが生成されなかった場合は `Diagnostic.code = Some("bridge.audit.missing_event")` を発生させる。
+- `rollout_checklist` は Stage 昇格レビューで確認する項目を列挙し、`guides/runtime-bridges.md` の CLI テンプレートと同期する。チェックリストは `AuditCapability` へ転写され、`audit.log("bridge.rollout", {...})` のベースとなる。
+
+### 10.2 Stage ポリシーと Capability 契約
+
+Runtime Bridge は Capability と同じ 3 段階 Stage（`Experimental` / `Beta` / `Stable`）を持ち、以下の追加制約を課す。Stage 情報は `RuntimeBridgeDescriptor.stage` に保存され、`RuntimeBridgeRegistry` 登録時に検証される。
+
+| Stage | 必須要件 | 診断/監査要件 |
+| --- | --- | --- |
+| `Experimental` | `required_capabilities` 全件に対し `StageRequirement::AtLeast(Experimental)` を指定し、`RuntimeBridgeAuditSpec.requires_audit_effect = true` を必須化。ロールバック手順 (`reload.rollback`) の実装が必要。 | `Diagnostic.code = "bridge.stage.experimental"` を最低 1 度出力し、`audit.log("bridge.stage", {...})` に `stage="experimental"` を記録する。 |
+| `Beta` | `StageRequirement::AtLeast(Beta)` を満たした Capability セットと、`rollout_checklist` の完了ログを添付する。`RuntimeBridgeAuditSpec.mandatory_events` に `"bridge.smoke_test"` を追加する。 | `audit.log("bridge.promote", {...})` でフィールド検証結果を残し、`Diagnostic.severity = Warning` のみを許容する。 |
+| `Stable` | `StageRequirement::Exact(Stable)` または `AtLeast(Stable)` を用いて Capability を固定化し、`required_effects` に `effect {audit}` を含める。 | `audit.log("bridge.rollout", {...})` の `outcome = "stable"` を記録し、監査ログ欠落時は `bridge.audit.missing_event` を Error とする。 |
+
+- Stage 検証に失敗した場合は `RuntimeBridgeError::StageViolation` を返し、`Diagnostic.extensions["bridge"].stage` に `actual` と `required` を格納する。
+- Capability 契約は `ConductorCapabilityContract`（§1.2）と同様の検証手順を共有する。`RuntimeBridgeDescriptor.required_capabilities` は `verify_conductor_contract` にマージ可能な形式で保持し、DSL からの `with_bridges` 宣言（将来拡張）とも互換とする。
+- ランタイムは Stage 判定結果を `PlatformInfo.runtime_capabilities`（§1.3）に反映し、IDE/LSP がブリッジ可用性を把握できるようにする。
+
+### 10.3 Reload 契約
+
+`RuntimeBridgeDescriptor.reload` が `Some` を返すブリッジはホットリロード互換であり、以下の契約を満たさなければならない。
+
+```reml
+pub type RuntimeBridgeReloadSpec = {
+  diff_format: Str,                    // 例: "SchemaDiff<Old, New>"
+  state_format: Str,                   // 例: "ReloadState<T>"
+  requires_audit_id: Bool,
+  rollback: RuntimeBridgeRollbackPolicy,
+  diagnostics: RuntimeBridgeReloadDiagnostics,
+}
+
+pub enum RuntimeBridgeRollbackPolicy = Required | Optional | Unsupported
+
+pub type RuntimeBridgeReloadDiagnostics = {
+  reload_event: Str,                   // 例: "bridge.reload"
+  rollback_event: Option<Str>,         // 例: Some("bridge.rollback")
+  diff_diagnostic: Str,                // 例: "bridge.diff.rejected"
+}
+
+pub struct RuntimeBridgeReloadHandle {
+  fn reload<T>(state: ReloadState<T>, diff: Bytes) -> Result<ReloadState<T>, ReloadError>
+  fn rollback<T>(state: ReloadState<T>) -> Result<ReloadState<T>, ReloadError>
+}
+
+pub enum ReloadError = ValidationFailed | ApplyFailed | RollbackFailed | AuditIncomplete
+```
+
+```reml
+fn reload<T>(parser: Parser<T>, state: ReloadState<T>, diff: SchemaDiff<Old, New>)
+  -> Result<ReloadState<T>, ReloadError>
+```
+
+- `diff` は `RuntimeBridgeReloadSpec.diff_format` に従い、`Config.compare`（3-7 §4.2）から生成した差分であることを `ValidationFailed` で確認する。形式が一致しない場合は `Diagnostic.code = Some("bridge.diff.invalid")` を返す。
+- `ReloadState<T>` にはランタイム固有メタデータ（例: `run_id`, `last_applied_at`）を含め、`state_format` に従ってシリアライズされる。`requires_audit_id = true` の場合は `audit_id` を付与しなければならない。
+- `rollback` が `Required` の場合、`RuntimeBridgeReloadDiagnostics.rollback_event` が `None` であってはならず、`reload` 失敗時にロールバックが自動実行される。`Unsupported` の場合は `RuntimeBridgeError::ReloadUnsupported` を返し、CLI がロールバックフラグを拒否する。
+- `AuditCapability` へは `reload_event`・`rollback_event` を用いてログを送信し、`mandatory_events` に定義されたイベントがすべて発生したことを `AuditIncomplete` で検証する。
+
+- 監査ログ例（`requires_audit_id = true`）：
+
+```json
+{
+  "event": "bridge.reload",
+  "bridge_id": "core.runtime",
+  "stage": "beta",
+  "audit_id": "reload-2025-06-14T12:34:56Z",
+  "diff": { "change_set": 12, "breaking": false },
+  "state": { "run_id": "session-42", "last_applied_at": "2025-06-14T12:33:10.000Z" }
+}
+```
+
+### 10.4 ターゲット互換性とポータビリティ
+
+- WASI 環境でブリッジを利用する場合、`target_profiles` に `"wasi-preview2"` を含め、`RuntimeBridgeDescriptor.required_capabilities` に `CapabilityId = "runtime.async"` と `StageRequirement::AtLeast(Beta)` を指定する。`Core.Env.platform_info()`（§1.3）から得た `TargetCapability::WasiPreview2` を検証し、不一致時は `RuntimeBridgeError::TargetMismatch` を返す。
+- コンテナ／サーバーレス運用では `target_profiles` にデプロイ対象のプロファイル ID（例: `"container.serverless"`）を登録し、`RuntimeBridgeAuditSpec.rollout_checklist` にローリングデプロイ時の監査項目（例: "verify target_config_errors dashboard"）を加える。`guides/portability.md` のチェックリストと差異が無いか更新時に確認する。
+- `RunConfig.extensions["runtime"].profile` と `RuntimeBridgeDescriptor.target_profiles` が一致しない場合は `bridge.target.mismatch` 診断を即座に発行し、ホットリロードや Streaming API の起動を防止する。
+- ブリッジを通じて追加 Capability を有効化する場合は、`PlatformInfo.runtime_capabilities` に `RuntimeCapability::ExternalBridge(id)` を追加し、`describe_bridge` で返すメタデータを IDE/LSP へ共有する。
+- ガイド（`guides/runtime-bridges.md`）は本節で定義した契約を前提とし、CLI サンプルやケーススタディを維持する。仕様とガイドで情報が乖離した場合は本節を優先し、ガイドに脚注を追加して読者を本節へ誘導すること。

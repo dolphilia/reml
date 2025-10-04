@@ -1,8 +1,10 @@
 # ランタイム連携ガイド
 
-> 目的：FFI・ホットリロード・差分適用など実行基盤との橋渡しを行う際の指針を示す。ここで言及する `config` / `audit` / `runtime` 等の効果タグは Reml コアの5効果に追加される拡張タグであり、監査プラグインが提供する属性として実装する。
+> 目的：FFI・ホットリロード・差分適用など実行基盤との橋渡しを行う際の指針を示す。ここで言及する `config` / `audit` / `runtime` 等の効果タグは Reml コアの 5 効果に追加される拡張タグであり、監査プラグインが提供する属性として実装する。
 >
-> **段階的導入メモ**: 代数的効果や新 Capability を利用する機能は `reml run -Z<feature>` で opt-in し、`RuntimeBridge.stage = Experimental | Beta | Stable` を設定しておく。`Experimental` ステージのブリッジはロールバック手順と監査ログを必須とし、`Beta` でフィールド検証を終えたのちに `Stable` へ昇格させる。
+> **仕様リンク**: Runtime Bridge の公式契約・Stage ポリシー・監査要件は [3-8 Core Runtime & Capability Registry §10](../3-8-core-runtime-capability.md#runtime-bridge-contract) に統合されました。本ガイドは同節の契約に基づく運用手順とケーススタディを提供します。
+>
+> **段階的導入メモ**: 実験機能を利用する場合は `reml run -Z<feature>` で opt-in し、`RuntimeBridgeDescriptor.stage` に応じたチェックリストを完了してください。`Experimental` ブリッジはロールバック手順と監査ログ (`bridge.reload` / `bridge.rollback`) を必須とし、`Beta` → `Stable` 昇格時は §10 の Stage 要件に従って `audit.log("bridge.promote", ...)` / `audit.log("bridge.rollout", ...)` を記録します。
 
 ## 0. ターゲット同期と `@cfg`
 
@@ -98,7 +100,7 @@ fn emit_metrics(event: Str, metrics: RuntimeMetrics) {
 }
 ```
 
-`RuntimeMetrics` は `guides/data-model-reference.md` で定義する品質指標と同一スキーマを共有し、LSP/CLI の `audit_id` と突合できる。
+`RuntimeMetrics` は [3-7-core-config-data.md](../3-7-core-config-data.md#43-プロファイル別評価とメトリクス) で定義する品質指標と同じフィールドを共有し、LSP/CLI の `audit_id` と突合できる。
 
 ## 7. GPU 運用フロー
 

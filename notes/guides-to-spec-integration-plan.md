@@ -34,19 +34,19 @@
 - **現状**: `Schema.build` 応用、QualityReport JSON スキーマ、監査整合テストを定義。
 - **収容先**: `3-7-core-config-data.md` に「データ品質・監査」節を追加し、QualityReport スキーマと CLI/API フローを正式化。
 - **主な作業**:
-  - QualityReport JSON スキーマとテストケースを仕様へ組み込み。
-  - CLI サンプルは仕様ではコマンド概要のみ残し、詳細手順をガイドへ残留。
-  - `guides/constraint-dsl-best-practices.md` や `guides/runtime-bridges.md` からの参照を、新章節に貼り直し。
-- **検証ポイント**: 監査ログ項目が `3-6-core-diagnostics-audit.md` の命名規約と揃っているか確認。
+  - QualityReport JSON スキーマとテストケースを仕様へ組み込み。✅ 完了（`3-7-core-config-data.md` §4.4）
+  - CLI サンプルは仕様ではコマンド概要のみ残し、詳細手順をガイドへ残留。✅ 完了（`3-7-core-config-data.md` §4.6 とガイド側注記）
+  - `guides/constraint-dsl-best-practices.md` や `guides/runtime-bridges.md` からの参照を、新章節に貼り直し。✅ 完了（引用先を `3-7-core-config-data.md` §4 へ更新）
+- **検証ポイント**: 監査ログ項目が `3-6-core-diagnostics-audit.md` の命名規約と揃っているか確認。✅ 完了（`3-7-core-config-data.md` §4.5）
 
 ### 3.4 Runtime Bridges (`guides/runtime-bridges.md:1`)
 - **現状**: Runtime Bridge の Stage 運用、`reload` 手順、WASI/コンテナ運用まで仕様レベルの契約を記述。`3-9-core-async-ffi-unsafe.md:12` が参照。
-- **収容先**: 3 系に「3-8.5 Runtime Bridge 契約」（新節）を追加するか、`3-9` にサブセクションとして統合。
+- **収容先**: 3 系に「Runtime Bridge 契約」節を追加し、Stage/Capability 契約を正式化。
 - **主な作業**:
-  - Stage 管理、Capability 契約、`reload` API を仕様本文に移植。
-  - 実装例（ゲームホットリロード等）は概要と要件に絞り、ガイドへ抜粋を残す。
-  - WASI/コンテナ手順は portability ガイドと重複しないよう整合。
-- **検証ポイント**: `3-8-core-runtime-capability.md:283` の特権 Capability 記述と整合する Stage 要件か確認。
+  - Stage 管理、Capability 契約、`reload` API を仕様本文に移植。✅ 完了（`3-8-core-runtime-capability.md` §10 追加）
+  - 実装例（ゲームホットリロード等）は概要と要件に絞り、ガイドへ抜粋を残す。✅ 完了（ガイド冒頭に仕様参照脚注を追加）
+  - WASI/コンテナ手順は portability ガイドと重複しないよう整合。✅ 完了（§10.4 でターゲット互換性とチェックリストを定義）
+- **検証ポイント**: `3-8-core-runtime-capability.md` の特権 Capability 記述と整合する Stage 要件か確認。✅ Stage テーブルを更新し `verify_capability_stage` と連携を明文化。
 
 ### 3.5 FFI ハンドブック (`guides/reml-ffi-handbook.md:1`)
 - **現状**: ABI/データレイアウト、所有権契約、監査テンプレートなど Core.Ffi の基礎仕様を包含。

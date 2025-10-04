@@ -323,6 +323,24 @@ fn verify_migration<T>(old_data: T, new_data: T, schema: Schema<T>) -> Result<()
 
 ## 4. Data モデリング API（再整理）
 
+### 4.1 Nest.Data スキーマ構築 {#nest-data-schema}
+
+```reml
+use Nest.Data
+
+let userSchema = Schema.build("User", |s| {
+  s.field("id", Column<Guid, { nullable = false }>)
+   .field("email", Column<Text, { nullable = false, description = "連絡先" }>)
+   .field("signup_at", Column<DateTime, { nullable = false }>)
+   .field("score", Column<f64, { nullable = true, stats = Some({ mean = 0.0, stddev = 1.0, ..ColumnStats::zero }) }))
+   .index("pk_user", columns = ["id"], unique = true)
+})
+```
+
+- `Schema.build` は `SchemaBuilder` のチェーン API を利用して列・制約・インデックスを宣言する。`ColumnMeta.stats` を指定すると `reml-data validate --stats` と監査ログに同じ統計が出力される。
+- `Column<Text, ColumnMeta>` の `description` は CLI/LSP の診断やドキュメント生成に利用される。
+- インデックス定義は `SchemaDiff`（§2.1）で追跡され、破壊的変更は `ChangeSet` を通じてレビューされる。
+
 ```reml
 pub type Column<T, Meta> = {
   dtype: TypeRef<T>,
@@ -337,9 +355,167 @@ fn resource<P, K>(prefix: P, key: K) -> ResourceId<P, K>                        
 fn infer_schema<T>(samples: Iter<Json>) -> Result<SchemaRecord<T>, Diagnostic>             // `effect {audit}`
 ```
 
-- `infer_schema` はサンプル JSON を解析し、`Diagnostic` に推論根拠を保持。`effect {audit}` を付与し、推論経路を監査ログに残す。
+- `infer_schema` はサンプル JSON から推論したカラム統計を返し、`Diagnostic.extensions["data"].inference` に推論根拠を格納する。`effect {audit}` を伴い、推論経路を監査ログへ残す。
 
-### 4.1 データ品質検証
+### 4.2 制約とプロファイル検証
+
+```reml
+struct EmailFormat;
+impl Constraint<Text> for EmailFormat {
+  fn id() -> Str = "constraint.email.format"
+  fn check(value: &Text, ctx: ConstraintContext) -> Result<(), Diagnostic> {
+    if Regex::is_match("^[^@]+@[^@]+$", value) {
+      Ok(())
+    } else {
+      Err(Diagnostic::error(ctx.path, "メールアドレス形式が不正です")
+            .with_code("data.email.format")
+            .finish())
+    }
+  }
+}
+
+let hardenedSchema = userSchema.with(|s| {
+  s.constraint("email", EmailFormat)
+   .constraint("score", Range::new(-10.0, 10.0))
+})
+```
+
+- `ConstraintContext.profile` は `prod`/`staging` などのプロファイル識別子を提供し、`Profile::overrides()` で閾値を差し替える。診断には `domain = "schema"` と `code` を必ず付与する。
+- `Constraint::id()` は CLI/監査ログで利用される識別子であり、値が変更された場合は `guides/data-model-reference.md` の用語集と同期する。
+
+### 4.3 プロファイル別評価とメトリクス
+
+```reml
+struct ProdProfile;
+impl Profile for ProdProfile {
+  fn id(&self) -> ProfileId = ProfileId::new("prod")
+  fn overrides(&self) -> Map<Str, Any> = map!{ "score.max" => 5.0 }
+}
+
+let report = validate_with_profile(hardenedSchema, incoming, &ProdProfile)?;
+if !report.diagnostics.is_empty() {
+  emit_metrics("data.validation", {
+    latency_ms = 12.4,
+    throughput_per_min = 320.0,
+    error_rate = report.diagnostics.len() as f64 / incoming.len() as f64,
+    last_audit_id = report.audit_id,
+    custom = map!{ "profile" => "prod" }
+  })
+}
+```
+
+- `ValidationReport.audit_id` は `reml-data` の JSON と監査イベント `reml.data.validate` で共有される。`emit_metrics` は 0-1 §1.1 の性能指標を同時に送信する。
+- `custom.profile` を利用してダッシュボード上でプロファイル別の品質傾向を追跡する。
+
+### 4.4 QualityReport スキーマ {#quality-report-schema}
+
+Quality レポートは JSON スキーマで公開され、CLI/LSP/監査で共通に利用する。
+
+```json
+{
+  "$id": "https://spec.reml.dev/schema/quality-report.json",
+  "type": "object",
+  "required": ["profile", "findings", "stats", "generated_at"],
+  "properties": {
+    "profile": {"type": "string"},
+    "audit_id": {"type": ["string", "null"], "format": "uuid"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "severity_max": {"enum": ["None", "Warn", "Error"]},
+    "stats": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/definitions/columnStats"}
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule", "scope", "severity", "diagnostic", "auto_fixed"],
+        "properties": {
+          "rule": {"type": "string"},
+          "scope": {"$ref": "#/definitions/qualityScope"},
+          "severity": {"enum": ["Warn", "Error"]},
+          "diagnostic": {"$ref": "https://spec.reml.dev/schema/diagnostic.json"},
+          "auto_fixed": {"type": "boolean"}
+        }
+      }
+    }
+  },
+  "definitions": {
+    "qualityScope": {
+      "oneOf": [
+        {"type": "object", "required": ["Column"], "properties": {"Column": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}}}}},
+        {"const": "Dataset"},
+        {"type": "object", "required": ["Relation"], "properties": {"Relation": {"type": "object", "required": ["columns"], "properties": {"columns": {"type": "array", "items": {"type": "string"}}}}}}
+      ]
+    },
+    "columnStats": {
+      "type": "object",
+      "required": ["count"],
+      "properties": {
+        "count": {"type": "integer", "minimum": 0},
+        "distinct": {"type": ["integer", "null"], "minimum": 0},
+        "min": {"type": ["number", "null"]},
+        "max": {"type": ["number", "null"]},
+        "mean": {"type": ["number", "null"]},
+        "stddev": {"type": ["number", "null"]},
+        "percentiles": {
+          "type": ["object", "null"],
+          "additionalProperties": {"type": "number"}
+        },
+        "histogram": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "object",
+            "required": ["bucket", "count"],
+            "properties": {
+              "bucket": {
+                "type": "object",
+                "required": ["label", "min", "max"],
+                "properties": {
+                  "label": {"type": "string"},
+                  "min": {"type": "number"},
+                  "max": {"type": "number"}
+                }
+              },
+              "count": {"type": "integer", "minimum": 0}
+            }
+          }
+        },
+        "last_updated": {"type": ["string", "null"], "format": "date-time"}
+      }
+    }
+  }
+}
+```
+
+- `severity_max` は CLI / 監査ログの両方で整合させる。スキーマ違反を検出するテストケースは `qualityReportSchema` JSON を利用し、CI で `jsonschema` 検証を行う。
+- `columnStats.histogram` に重複バケットが存在する場合、`Diagnostic.code = "data.stats.invalid_bucket"` を返す。
+
+### 4.5 監査ログ統合
+
+| イベント ID | 出所 | 主なフィールド |
+| --- | --- | --- |
+| `reml.data.validate` | `reml-data validate` | `audit_id`, `diagnostics`, `profile`, `stats` |
+| `reml.data.migrate` | `reml-data migrate` | `audit_id`, `changes`, `duration_ms`, `status` |
+| `reml.data.rollback` | `reml-data migrate --rollback` | `audit_id`, `actions`, `reason` |
+| `reml.data.quality` | `reml-data quality run` | `audit_id`, `profile`, `findings`, `severity_max`, `stats` |
+| `reml.data.quality.rule` | `register_quality_rule`, `reml-data quality rules list` | `rule_id`, `scope`, `severity`, `owner` |
+
+- 監査イベントは [3.6](3-6-core-diagnostics-audit.md) の JSON 契約に従い、`audit_id` をもとに CLI 出力と監査ログを照合する。`severity_max` の不一致は `AuditEvent::DataQualityMismatch` を生成して即時に失敗させる。
+
+### 4.6 CLI / ツール連携
+
+代表的な `reml-data` コマンドは以下の通りで、すべて `QualityReport` スキーマと互換である。
+
+- `reml-data validate data/users.json --schema schemas/user.ks --profile prod --format json --locale ja-JP`
+- `reml-data diff --schema-old schemas/user_v1.ks --schema-new schemas/user_v2.ks --format json --locale en-US`
+- `reml-data migrate --diff diff.json --input data/import.parquet --output data/output.parquet --locale en-US`
+- `reml-data quality run data/users.json --schema schemas/user.ks --profile staging --format json --locale ja-JP`
+- `reml-data stats collect --schema schemas/user.ks --provider warehouse --format json`
+
+各コマンドは `audit_id` と `diagnostics[].locale` を含む JSON を出力し、LSP/CI が翻訳カタログと統計を共有できる。
+
+### 4.7 データ品質検証 API
 
 ```reml
 pub type DataQualityRule<T> = {
@@ -355,7 +531,10 @@ fn validate_data_quality<T>(data: Iter<T>, rules: List<DataQualityRule<T>>) -> Q
 fn auto_fix_quality_issues<T>(data: T, rules: List<DataQualityRule<T>>) -> Result<T, QualityError>
 ```
 
-### 4.2 統計との連携
+- `QualityReport` の `findings[].auto_fixed` は `auto_fix_quality_issues` の結果と同期し、監査ログの `reml.data.quality` イベントで `auto_fix=true` と一致しなければならない。
+- `validator` が `Err` を返した場合、`QualityViolation` は `Diagnostic` を内包し、CLI は `severity` に応じて Exit Code を決定する。
+
+### 4.8 統計との連携
 
 ```reml
 fn update_stats(column: ColumnStats, values: Iter<Json>) -> Result<ColumnStats, Diagnostic> // `@pure`
@@ -363,11 +542,19 @@ fn merge_stats(left: ColumnStats, right: ColumnStats) -> ColumnStats            
 fn as_metric(points: ColumnStats) -> List<MetricPoint<Float>>                               // `@pure`
 ```
 
-- `MetricPoint` は [3.4](3-4-core-numeric-time.md) で定義。データ品質監査へ転送するためのラッパ。
+- `ColumnStats` は `count`・`distinct`・`percentiles` などの指標を保持する。`update_stats` は重複したヒストグラム区間を検出すると `Diagnostic.code = "data.stats.invalid_bucket"` を返す。
+- `as_metric` は [3.4](3-4-core-numeric-time.md) の `MetricPoint` を用いて監視基盤へ送信する値を生成する。
+
+### 4.9 ベストプラクティス
+
+1. スキーマとコードを単一リポジトリで管理し、CI で常に `reml-data validate` を実行する。
+2. バッチ処理後に `ColumnStats.last_updated` を更新し、監査ログへ出力する。
+3. `MigrationStep.breaking=true` を含む差分はプラグイン承認フローと同等のレビューを要求する。
+4. 監視メトリクスと監査ログで `audit_id` を共有し、品質逸脱と統計ドリフトを同じダッシュボードで追跡する。
 
 ## 5. CLI / ツール連携
 
-設定 CLI や LSP から利用するユーティリティを明示する。
+CLI や LSP から利用するユーティリティを明示する。代表的な `reml-data` コマンドは §4.6 を参照。
 
 ```reml
 fn diff_to_table(diff: ChangeSet) -> Table<Str, Json>                      // `effect {mut}`
