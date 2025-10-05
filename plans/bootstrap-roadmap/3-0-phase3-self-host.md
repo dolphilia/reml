@@ -1,78 +1,74 @@
-# 3.0 Phase 3 — Self-Host Transition
+# 3.0 Phase 3 — Core Library 完成
 
-Phase 3 は Reml 自身で Reml コンパイラを実装するセルフホスト移行段階である。OCaml 実装と Reml 実装を並行稼働させながら、Parser → TypeChecker → CodeGen → Runtime の順に置き換え、互換性と性能を保ちながら段階的に移行する。
+Phase 3 では、Reml 標準ライブラリ Chapter 3 の正式仕様を Reml 実装へ揃えます。Prelude から Runtime Capability までの各モジュールを仕様と照合し、効果タグ・監査・Capability 契約が一貫して動作する状態を構築します。
 
 ## 3.0.1 目的
-- Parser/TypeChecker/CodeGen/Runtime を Reml で再実装し、Reml ソースから生成されたバイナリが OCaml 実装と同一の LLVM IR（または差異が許容範囲内）になることを確認する。
-- `2-7-core-parse-streaming.md` のストリーミング実行モデル、`3-8-core-runtime-capability.md` の Stage 契約を Reml 実装で満たし、セルフホスト後のランタイムが仕様通りに稼働することを検証する。
-- コンパイラ内部 API を標準ライブラリ (`Core.*`) と再利用可能な形で整理し、DSL/プラグイン開発者が参照できるベースラインを整える。
+- `Core.Prelude`/`Core.Collections`/`Core.Text`/`Core.Numeric`/`Core.IO`/`Core.Diagnostics`/`Core.Config`/`Core.Runtime` の API を Reml で実装し、仕様書と相互参照が成立した状態で提供する。
+- 効果タグと Capability Stage の境界を検証し、Chapter 3 全体の診断・監査連携が `3-6-core-diagnostics-audit.md` と一致するように統合する。
+- 標準ライブラリのコード例・サンプル・メトリクスを最新化し、Phase 4 の移行とエコシステム展開に備えたベースラインを整備する。
 
 ## 3.0.2 スコープ境界
-- **含む**: Reml 実装の Parser/TypeChecker/CodeGen/Runtime、**クロスコンパイル機能**（x86_64 Linux/Windows + ARM64 macOS 対応）、セルフホスト用ビルドパイプライン、互換性テスト、CI ワークフロー、**メモリ管理戦略の評価（RC 継続 vs GC 導入）**。
-- **含まない**: フル JIT（Phase 4 以降または別計画）。
-- **前提条件**: Phase 2 の成果物と性能ベースライン、`notes/llvm-spec-status-survey.md` における決定済み仕様、**`notes/cross-compilation-spec-intro.md` および `notes/cross-compilation-spec-update-plan.md` のクロスコンパイル計画**、`0-3-audit-and-metrics.md` の計測フレーム。
+- **含む**: Core Prelude/Collections/Text/Numeric/IO/Diagnostics/Config/Runtime Capability の実装・テスト・ドキュメント更新、効果タグ・Capability 検証、監査／メトリクスの記録。
+- **含まない**: 非同期ランタイム (`3-9`)、プラグイン／DSL 拡張 (`4-x`)、エコシステム仕様 (`5-x`) の本格対応（Phase 4 以降に委譲）。
+- **前提条件**: Phase 2 で確定した型クラス・効果システム・診断仕様が利用可能であり、`0-3-audit-and-metrics.md` と `0-4-risk-handling.md` に基準値・リスク管理手順が登録済みであること。
 
 ## 3.0.3 成果物とマイルストーン
 | マイルストーン | 内容 | 検証方法 | 期限目安 |
 |----------------|------|----------|----------|
-| M1: Parser 移植 | Core.Parse API を Reml で実装し、OCaml 実装と AST を比較 | AST スナップショット比較、`2-7` のストリーミングテスト | Phase 3 開始後 8 週 |
-| M2: TypeChecker 移植 | HM/型クラス/効果チェックを Reml で再実装 | 型推論差分テスト、診断比較 | 開始後 16 週 |
-| M3: クロスコンパイル実装 | x86_64 Linux/Windows と ARM64 macOS のターゲット対応とプロファイル管理 | マルチターゲット IR 生成テスト、CI マトリクス | 開始後 20 週 |
-| M4: CodeGen 移植 | Core/MIR/LLVM IR 生成を Reml で再現、RC 所有権を準拠実装 | IR 比較テスト、`opt -verify` | 開始後 26 週 |
-| M5: ランタイム統合 | Reml 実装で最小ランタイムを構築し、Capability/Stage を反映 | Stage テスト、監査ログ比較 | 開始後 30 週 |
-| M6: セルフホストビルド | Reml コンパイラ自身を Reml 実装でビルドし、x86_64 Linux バイナリ生成 | ビルド再帰テスト、マルチターゲット検証 | 開始後 34 週 |
+| M1: Prelude & Iteration | `Option`/`Result`/`Iter` と Collector を実装し効果タグを整合 | API テスト、効果タグ静的検証、サンプル実行 | Phase 3 開始後 8 週 |
+| M2: Collections | 永続・可変コレクションと差分 API を実装 | 構造共有プロパティテスト、`CollectError` シナリオ CI | 開始後 16 週 |
+| M3: Text & Unicode | 文字列三層モデル・Unicode 正規化・Builder を実装 | UAX コンフォーマンス、Decode/Encode ストリーミングテスト | 開始後 20 週 |
+| M4: Numeric / IO & Path | 統計・時間 API と IO 抽象／Path セキュリティを実装 | ベンチマーク ±15% 以内、IO/Path 統合テスト | 開始後 26 週 |
+| M5: Diagnostics & Config | Diagnostic/Audit と Manifest/Schema を統合 | 診断スナップショット、Config Lint、監査ログ比較 | 開始後 30 週 |
+| M6: Runtime Capability | Capability Registry と Stage 検証を完成 | Capability テストマトリクス、Manifest 契約検証 | 開始後 34 週 |
 
-## 3.0.4 実装タスク
+## 3.0.4 主要タスク
 
-> **ターゲット方針**: Phase 3 では **x86_64 Linux を主ターゲット**とし、Windows x64 と ARM64 macOS へのクロスコンパイル機能を実装する。セルフホストコンパイラは開発環境（macOS/Linux）で x86_64 Linux バイナリを生成できることを必須条件とする。
-
-1. **Reml Parser 実装**
-   - `Core.Parse` を利用したコンパイラフロントエンドを構築し、ストリーミング API (`run_stream`, `FlowController`) をテスト。
-   - x86_64 Linux 向けランタイムと統合テストを優先し、CLI 利用フローを検証。
-   - Syntax 拡張や DSL 用フック (`4-7-core-parse-plugin.md`) を考慮したプラグインポイントを設計。
-2. **TypeChecker 再実装**
-   - `Core.Result`/`Core.Option` ベースで推論ワークフローを書き換え、`effect` タグと Capability Stage 判定を再利用。
-   - 型クラス辞書生成（またはモノモルフィゼーション、Phase 2 の決定に従う）を Reml の代数的データ型で表現し、性能計測結果を `0-3-audit-and-metrics.md` に反映。
-3. **クロスコンパイル機能の実装**
-   - **`notes/cross-compilation-spec-update-plan.md` の Phase A〜C を組み込み**:
-     - Phase A: `RunConfigTarget` と `@cfg` キー拡張（`1-1-syntax.md`、`2-6-execution-strategy.md` 更新）
-     - Phase B: `TargetCapability` グループと `infer_target_from_env` 拡張（`3-10-core-env.md`、`3-8-core-runtime-capability.md` 更新）
-     - Phase C: `reml build --target <profile>` の実装、ターゲット別標準ライブラリ配布基盤
-   - 主要ターゲット: **x86_64-unknown-linux-gnu**, **x86_64-pc-windows-msvc**, **aarch64-apple-darwin**
-   - CI マトリクスで 3 ターゲット全てのビルド・スモークテストを実行。
-4. **中間 IR と CodeGen**
-   - Reml で Core IR/MIR データ構造を定義し、モノモルフィゼーションを最適化（`notes/llvm-spec-status-survey.md` の未決課題を参照）。
-   - LLVM IR 生成で `guides/llvm-integration-notes.md` の型マッピング・ABI を遵守し、ターゲットごとに適切な DataLayout・呼出規約を適用。
-5. **ランタイムと Capability**
-   - `Core.Runtime` 系モジュールを整理し、Stage/Capability の検証 API (`verify_capability_stage`) を組み込む。
-   - ターゲットごとの Capability 差異（例: POSIX vs Windows API）を `TargetCapability` で表現し、FFI ラッパーで吸収。
-6. **メモリ管理戦略の評価**
-   - RC 継続 vs GC 導入の評価タスクを追加:
-     - RC の性能・メモリリーク検出ツールの整備状況を評価
-     - GC 候補（例: Boehm GC、自作世代別 GC）の統合コストを見積もり
-     - Phase 3 終了時に方針を決定し、`0-4-risk-handling.md` に記録
-7. **セルフホストビルドパイプライン**
-   - OCaml 実装 → Reml 実装 → Reml 自己ビルドの 3 段階 CI を構築し、**x86_64 Linux ランナー**で検証を優先実施。
-   - クロスコンパイルにより、開発環境（macOS/Linux）から全ターゲット向けバイナリを生成できることを確認。
-   - ビルド成果物のバイナリ互換性をチェックし、IR/診断ログの差分を自動比較する。
-8. **ドキュメントと仕様フィードバック**
-   - Reml 実装特有の仕様変更が生じた場合は、関連する言語仕様書を更新し、本計画書から脚注を追加。
-   - クロスコンパイル機能により判明した仕様ギャップを `notes/llvm-spec-status-survey.md` に追記し、Phase 4 の改善テーマを明確化する。
+1. **Core Prelude & Iteration** (`3-1`)
+   - `Option`/`Result`/`Never` と `Iter` 本体・アダプタ・終端操作を Reml で実装。
+   - 効果タグと `@must_use` 属性を静的解析し、Chapter 1 の構文・効果仕様と一致させる。
+   - `Collector` 契約を定義し、`Core.Collections`／`Core.Text` から再利用できるよう拡張。
+2. **Core Collections** (`3-2`)
+   - 永続構造（List/Map/Set）と可変構造（Vec/Cell/Ref/Table）を実装し、構造共有・順序保持・効果タグを検証。
+   - `Iter` との相互運用（`collect_*`, `Map.from_iter`）と監査差分 (`ChangeSet`) を整備。
+3. **Core Text & Unicode** (`3-3`)
+   - 文字列三層モデル（Bytes/Str/String）と `GraphemeSeq`/`TextBuilder` を実装。
+   - Unicode 正規化・ケース変換・幅変換 API を `UnicodeError` と診断変換で統合。
+   - IO/Diagnostics と連携したストリーミング decode・監査ログ API (`log_grapheme_stats`) を検証。
+4. **Core Numeric & Time** (`3-4`)
+   - 数値トレイト／統計ヘルパ／Histogram／回帰 API を実装し、`Iter` ベースでテスト。
+   - `Timestamp`/`Duration`/`Timezone` とフォーマット／パースを整備し、`Core.IO` と統合。
+   - `MetricPoint` と監査メトリクス送出を整備し、`AuditEnvelope` メタデータを共通化。
+5. **Core IO & Path** (`3-5`)
+   - `Reader`/`Writer` 抽象、ファイル API、バッファリング、IO エラー体系を実装。
+   - Path 抽象・セキュリティヘルパ・ファイル監視 (オプション) を整備し、クロスプラットフォーム差異を `TargetCapability` で吸収。
+6. **Core Diagnostics & Audit** (`3-6`)
+   - `Diagnostic` 構造・`AuditEnvelope`・`TraitResolutionTelemetry` 等を実装。
+   - CLI/LSP 出力フォーマット、ステージ別フィルタ・抑制ポリシー、監査ログ記録を統合。
+7. **Core Config & Data** (`3-7`)
+   - `Manifest`/`Schema`/`ConfigCompatibility` API を実装し、DSL エクスポート情報・Capability Stage を同期。
+   - Config Diff・ChangeSet を Diagnostics/Audit に連携し、CLI (`reml config lint/diff`) フローを整備。
+8. **Core Runtime & Capability** (`3-8`)
+   - `CapabilityRegistry`・`CapabilityHandle`・`verify_capability_stage`・`verify_conductor_contract` を実装。
+   - Stage/Capability 情報を Diagnostics/Config/Runtime 各層で共有し、監査イベント (`CapabilityMismatch`) を記録。
+9. **横断タスク**
+   - API ドキュメント・サンプル・ガイド（`guides/runtime-bridges.md`, `notes/dsl-plugin-roadmap.md` 等）を更新。
+   - `0-3-audit-and-metrics.md` へベンチマーク・監査指標を継続記録し、差分理由を明示。
 
 ## 3.0.5 測定と検証
-- **性能比較**: OCaml 実装との性能差を `0-3-audit-and-metrics.md` で可視化。差異が ±10% を超えた場合はフォローアップを起票。
-- **IR 一致率**: LLVM IR の差分（関数単位）を比較し、差異の理由をレビューで承認。
-- **診断整合**: 代表的なエラーケースで出力が一致するか比較し、差異がある場合は仕様・ガイドのどちらを更新するか決定。
-- **マルチターゲット検証**: x86_64 Linux、Windows x64、ARM64 macOS の 3 ターゲット全てで、セルフホスト成果物が正常にビルド・実行されることを CI で確認。
-- **クロスコンパイル正確性**: 開発環境（macOS または Linux）から生成したクロスターゲットバイナリが、実際のターゲット環境（実機または VM/エミュレータ）で動作することを検証。
+- **API 完全性**: 仕様書に列挙された公開 API が Reml 実装に存在し、効果タグ・属性が一致することを静的チェックと API テストで確認。
+- **効果タグ／Capability 整合**: `effect` タグと `CapabilityStage` の組み合わせを検証し、違反時は Diagnostics で再現できることを確認。
+- **性能ベンチマーク**: Prelude/Collections/Numeric/IO の代表関数で OCaml 実装比 ±15% 以内を目標に測定し、結果を `0-3-audit-and-metrics.md` に記録。
+- **ドキュメント同調**: 仕様書・ガイド・サンプルが更新され、リンク切れ・用語揺れがないことをレビュー。
+- **監査／診断スナップショット**: `Diagnostic` と `AuditEnvelope` の出力をゴールデンテスト化し、CI で差分を検出。
 
 ## 3.0.6 リスクとフォローアップ
-- **パフォーマンス回帰**: Reml 実装で性能低下が発生した場合は、OCaml 実装を並行維持しつつ最適化タスクを `0-4-risk-handling.md` に登録。
-- **メモリ管理戦略の決定遅延**: RC vs GC の評価が Phase 3 終了までに完了しない場合、Phase 4 への影響大。M6 マイルストーン前（開始後 28 週）までに中間評価を実施し、方針を固める。
-- **クロスコンパイル機能の工数超過**: Phase 3 は 34 週と長期のため、M3 クロスコンパイル実装を優先し、遅延リスクを早期検出。
-- **ツールチェーン複雑化**: Reml 実装 + OCaml 実装の二重管理が複雑になるため、CI 自動化の整備を優先する。マルチターゲット CI マトリクスによる実行時間増加に対応。
-- **Phase 3 の前提条件**: x86_64 Linux と Windows x64 の両方が Phase 2 で完了していること。未完了の場合は Phase 3 開始を延期。
+- **効果タグの逸脱**: 実装と仕様で効果タグが不一致の場合、クロスレビューとツール支援を追加し、`0-4-risk-handling.md` に改善タスクを登録。
+- **Unicode/IO の性能劣化**: UAX コンフォーマンスを優先した結果として性能が不足する場合、キャッシュ・バッファリング戦略の改善や Phase 4 の最適化項目として記録。
+- **Config/Capability のルール変更**: Manifest と Capability の整合が難航した場合、Phase 4 の移行計画と連携し、`notes/dsl-plugin-roadmap.md` に暫定運用を明記。
+- **テストボリューム増加**: Chapter 3 全体の CI 実行時間が長くなる恐れがあるため、テスト分割・キャッシュ・nightly ジョブを検討。
+- **Phase 2 実装との差分**: 型クラス方式や効果システムが Phase 2 結果と異なる場合、差分を `notes/llvm-spec-status-survey.md` にまとめ、Phase 4 の移行判断に備える。
 
 ---
 
-Phase 3 の完了により、Reml はセルフホスト可能なコンパイラを獲得し、以降のフェーズで完全移行とエコシステム展開を進める基盤が整う。
+Phase 3 完了時点で Reml 標準ライブラリの基盤が整い、Phase 4 ではマルチターゲット互換性検証とエコシステム移行に集中できる状態になる。
