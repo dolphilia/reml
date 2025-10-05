@@ -16,15 +16,16 @@
 **担当領域**: 構文仕様の形式化
 
 1.1. **構文要素の棚卸し**
-- `1-1-syntax.md` から式・宣言・パターン・型注釈の全構文要素をリスト化
+- `1-1-syntax.md` から式・宣言・パターン・型注釈・モジュールヘッダの全構文要素をリスト化
 - 優先順位テーブル（`precedence` 宣言）を抽出し、固定演算子リストを作成
-- キーワード一覧を確定し、予約語として登録
+- 予約語・演算子トークン一覧を UTF-8/XID 前提で網羅し、Unicode 識別子ルールを `1-1-syntax.md` A.3 に沿って整理
+- 宣言カテゴリ（`let`/`fn`/`type`/`trait`/`impl`/`extern`/`effect`/`handler`/`module` 等）と DSL 属性の AST への写像を確認
 
 1.2. **AST ノード設計**
-- 式ノード: `Expr::Literal | Call | Lambda | Match | Pipe | ...`
-- 宣言ノード: `Decl::Let | Fn | Type | Use | Precedence | ...`
-- パターンノード: `Pattern::Var | Tuple | Record | Wildcard | ...`
-- 各ノードに `Span { start: usize, end: usize }` を付与
+- 式ノード: `Expr::Literal | Call | Lambda | Match | Pipe | ModulePath | ...`
+- 宣言ノード: `Decl::Let | Fn | Type | Trait | Impl | Extern | Effect | Handler | Module | Use | Precedence | Attribute | ...`
+- パターンノード: `Pattern::Var | Tuple | Record | Enum | Wildcard | Rest | ...`
+- 各ノードに `Span { start: usize, end: usize }` を付与し、属性・効果注釈を保持するメタデータ領域を確保
 
 1.3. **文法ドラフト作成**
 - Menhir用 `.mly` ファイルのスケルトンを作成
@@ -37,15 +38,16 @@
 **担当領域**: 字句解析
 
 2.1. **基本トークン実装**
-- 識別子: `[a-zA-Z_][a-zA-Z0-9_]*`
-- 数値リテラル: 整数、浮動小数点、2/8/16進数対応
-- 文字列リテラル: エスケープシーケンス処理、複数行対応
-- コメント: 行コメント `//`、ブロックコメント `/* */`
+- 識別子: Unicode `XID_Start` + `XID_Continue*`（`1-1-syntax.md` A.3 に準拠）
+- 数値リテラル: 整数、浮動小数点、2/8/16 進数、下線区切り
+- 文字列リテラル: エスケープシーケンス処理、生文字列、複数行文字列
+- コメント: 行コメント `//`、ブロックコメント `/* */`（入れ子対応）
+- 文字リテラル・ブール値・タプル/配列表現などのリテラル種別
 
 2.2. **空白処理とレイアウト**
-- 空白・タブ・改行の処理ルール
-- インデントベースの構文（必要に応じて）
+- 空白・タブ・改行の扱いと文末候補（`1-1-syntax.md` B.3）
 - 位置情報（行番号、列番号）の追跡
+- Unicode 正規化や BOM 有無の確認
 
 2.3. **エラーハンドリング**
 - 不正文字の検出とレポート
@@ -66,8 +68,11 @@
 3.2. **宣言パーサ実装**
 - `let`/`var` 束縛宣言
 - 関数宣言 `fn`
-- 型定義 `type`
-- モジュール `use` 宣言
+- 型定義 `type`（ADT/alias/newtype）
+- トレイト宣言 `trait` と `impl`
+- モジュール `module` ヘッダと `use` 宣言
+- `extern` 宣言と効果宣言 (`effect`/`handler`)
+- DSL 属性（`@dsl_export`, `@requires_capability` 等）の付与
 
 3.3. **型注釈パーサ**
 - 基本型: `i32`, `f64`, `bool`, `string`
@@ -192,4 +197,3 @@
 - [2-0-parser-api-overview.md](../../2-0-parser-api-overview.md)
 - [2-5-error.md](../../2-5-error.md)
 - [guides/llvm-integration-notes.md](../../guides/llvm-integration-notes.md)
-

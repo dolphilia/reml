@@ -17,13 +17,13 @@
 1.1. **効果タグとStage定義の抽出**
 - `1-3-effects-safety.md` から効果タグの全種類をリスト化
 - `3-8-core-runtime-capability.md` の Stage 定義をデータ構造化
-- Stage 要件（`Exact`, `AtLeast`, `AtMost`）の形式化
+- Stage 要件（`Exact`, `AtLeast`）の形式化と順序関係の確認
 - プラットフォーム別 Stage テーブルの整理
 
 1.2. **データモデル設計**
 - AST/TAST/IR への `EffectTag` フィールド追加
-- `StageRequirement` 型の定義と検証ルール
-- 効果注釈の構文表現（`@effect[Pure]` 等）
+- `StageRequirement` 型の定義と検証ルール（`@requires_capability(stage=...)` と `allows_effects` 属性に対応）
+- 効果注釈は既存の属性 (`@pure`, `@requires_capability`, `allows_effects`) を解析し、追加構文を導入しない設計
 - 既存 API との後方互換性確保
 
 1.3. **型システムとの統合方針**
@@ -38,7 +38,7 @@
 **担当領域**: 構文解析
 
 2.1. **効果構文の実装**
-- 効果注釈の字句解析（`@effect`, `@stage` 等）
+- `@requires_capability`, `@handles`, `allows_effects`, `@pure` など既存属性の解析
 - 関数宣言・式への効果注釈の付与
 - ネストした効果の構文解析
 - エラーハンドリング（不正な効果指定）
@@ -92,7 +92,7 @@
 4.2. **Stage チェックロジック**
 - コンパイル時の Stage 検証
 - ランタイム Capability の照合（将来拡張用）
-- Stage ミスマッチの詳細レポート
+- Stage ミスマッチの詳細レポート（`Exact` / `AtLeast` の比較）
 - テスト用の Capability モック機構
 
 4.3. **プラットフォーム対応**
@@ -110,7 +110,7 @@
 - `Diagnostic.extensions` に `effect.stage.*` を追加
 - Stage ミスマッチの詳細メッセージ
 - 効果タグの不一致エラー
-- 候補 Stage の提示（"Available stages: ..."）
+- 候補 Stage の提示（`Exact`/`AtLeast` の結果を列挙）
 
 5.2. **CLI 出力統合**
 - 効果情報の CLI 表示
@@ -136,7 +136,7 @@
 - `tests/effects/` ディレクトリの新設
 
 6.2. **Stage 検証テスト**
-- `Exact`, `AtLeast`, `AtMost` の各要件テスト
+- `Exact`, `AtLeast` の各要件テスト
 - プラットフォーム別の Capability テスト
 - ランタイム Stage の境界値テスト
 - ゴールデンテスト（診断出力）
@@ -210,4 +210,3 @@
 - [3-8-core-runtime-capability.md](../../3-8-core-runtime-capability.md)
 - [3-6-core-diagnostics-audit.md](../../3-6-core-diagnostics-audit.md)
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
-

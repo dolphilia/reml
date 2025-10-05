@@ -5,7 +5,7 @@
 - `1-2-types-Inference.md` の型クラス仕様と `notes/llvm-spec-status-survey.md` に整理された懸案を検証し、Phase 3 以降のセルフホスト化に備える。
 
 ## スコープ
-- **含む**: 辞書生成・渡しの実装、代表型クラス (`Eq`, `Ord`, `Iterable`) の性能測定、PoC モノモルフィゼーションの評価、メトリクス記録。
+- **含む**: 辞書生成・渡しの実装、代表型クラス (`Eq`, `Ord`, `Collector`) の性能測定、PoC モノモルフィゼーションの評価、メトリクス記録。
 - **含まない**: 全型クラスのモノモルフィゼーション、特殊化の最適化、プラグイン型クラスの処理。必要に応じて Phase 3 で検討。
 - **前提**: Phase 1 の Typer/Core IR/LLVM が安定稼働し、辞書引数を扱える拡張が可能であること。
 
@@ -22,7 +22,7 @@
 
 1.2. **制約解決エンジン設計**
 - Typer に制約収集・単一化・解決のパイプラインを追加
-- `Eq`, `Ord`, `Iterable` の制約規則を実装
+- `Eq`, `Ord`, `Collector` の制約規則を実装（`Collector` は `Core.Iter` で公開されるビルダトレイト）
 - 制約グラフの構築と依存関係の追跡
 - 循環依存・未解決制約の検出ロジック
 
@@ -60,7 +60,7 @@
 **担当領域**: 代替手法の評価
 
 3.1. **テンプレート展開エンジン**
-- `Eq`, `Ord`, `Iterable` に限定したインスタンス化
+- `Eq`, `Ord`, `Collector` に限定したインスタンス化
 - 型パラメータの具体型への置換ルール
 - シンボル名のマングリング規約
 - 展開済みコードの重複排除
@@ -207,4 +207,3 @@
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
 - [0-4-risk-handling.md](0-4-risk-handling.md)
 - [notes/llvm-spec-status-survey.md](../../notes/llvm-spec-status-survey.md)
-

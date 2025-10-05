@@ -16,15 +16,16 @@
 **担当領域**: 型表現とデータ構造
 
 1.1. **型表現の定義**
-- `Type` バリアント: `TVar | TCon | TApp | TArrow | TTuple | TRecord`
+- `Type` バリアント: `TVar | TCon | TApp | TArrow | TTuple | TRecord | TArray | TSlice | TUnit | TNever`
 - `TypeScheme`: `∀α₁...αₙ. τ` の表現（量化変数リスト + 型）
 - 型変数ID生成器の実装（単調増加、スレッドセーフ不要）
-- 組み込み型の定義: `i32`, `i64`, `f64`, `bool`, `string`
+- 組み込み型の定義: 1-2 §A.1/A.2 に列挙された整数族（`i8`〜`i64`,`u8`〜`u64`,`isize`,`usize`）、浮動小数（`f32`,`f64`）、`Bool`、`Char`、`String`、`()`、`Never`
 
 1.2. **型環境（Type Environment）設計**
 - `Env`: 識別子 → TypeScheme のマップ
 - スコープネストの表現（親環境への参照）
-- 初期環境（プレリュード関数の型定義）
+- 初期環境: `Core.Prelude`/`Core.Iter` の基本関数、`Option`/`Result` コンストラクタ、演算子トレイト別の既定辞書（Phase 2 との接続）
+- `RunConfig` の既定数値/浮動設定との整合（1-2 §C.5）
 
 1.3. **型制約システム**
 - `Constraint`: `Unify(τ₁, τ₂)` の表現
@@ -60,6 +61,7 @@
 - `generalize(env, τ) -> TypeScheme`
 - 自由型変数の計算 `ftv(τ)`, `ftv(env)`
 - let束縛時の量化変数決定
+- 値制限（1-2 §C.3）に基づき、副作用や可変参照を含む式は単相に制限
 
 3.2. **型スキームのインスタンス化**
 - `instantiate(scheme) -> τ`
@@ -190,4 +192,3 @@
 - [1-2-types-Inference.md](../../1-2-types-Inference.md)
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
 - [notes/llvm-spec-status-survey.md](../../notes/llvm-spec-status-survey.md)
-

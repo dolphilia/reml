@@ -15,14 +15,16 @@
 **担当領域**: ランタイムインタフェース定義
 
 1.1. **必須API仕様策定**
-- メモリ管理: `void* mem_alloc(size_t size)`, `void mem_free(void* ptr)`
-- 参照カウント: `void inc_ref(void* obj)`, `void dec_ref(void* obj)`
-- エラー処理: `void panic(const char* msg, const char* file, int line)`
-- 初期化/終了: `void runtime_init()`, `void runtime_cleanup()`
+- 最小ランタイム（`guides/llvm-integration-notes.md` §5.4 / `notes/llvm-spec-status-survey.md` §2.5）と同一の関数セットを採用
+  - メモリ管理: `void* mem_alloc(size_t size)`, `void mem_free(void* ptr)`
+  - 参照カウント: `void inc_ref(void* ptr)`, `void dec_ref(void* ptr)`
+  - エラー処理: `void panic(const char* msg)`
+  - 観測用ユーティリティ: `void print_i64(int64_t value)`
+- 拡張 API（`runtime_init` 等）は将来の Phase 2 以降で検討し、本フェーズでは設計ノートに TODO として記録
 
 1.2. **データ構造定義**
-- ヒープオブジェクトヘッダ: `{ uint32_t refcount; uint32_t type_tag; }`
-- 型タグの割り当て規則（文字列=1, タプル=2, ...）
+- ヒープオブジェクトヘッダ: `{ uint32_t refcount; uint32_t type_tag; }`（RC ベース、型タグは `notes/llvm-spec-status-survey.md` の分類に合わせる）
+- 型タグの割り当て規則と `panic` 診断コードとの対応表
 - アラインメント要件（8バイト境界）
 
 1.3. **ヘッダファイル作成**
@@ -86,9 +88,8 @@
 - ログファイル出力（設定可能）
 
 4.3. **終了処理**
-- `runtime_cleanup` の呼び出し
-- リソース解放（ファイル、メモリ等）
-- 異常終了コード（`exit(1)`）
+- `panic` からの異常終了コード（`exit(1)`）
+- 追加フックが必要な場合は Phase 2 の TODO として `notes/llvm-spec-status-survey.md` に記録
 
 **成果物**: `runtime/panic.c`, パニックテスト
 
@@ -129,7 +130,7 @@
 6.3. **リンク手順統合**
 - CLI での `--link-runtime` フラグ実装
 - `libreml_runtime.a` の自動リンク
-- 初期化コード（`runtime_init`）の挿入
+- `panic`/RC 関数のシグネチャ整合チェックを CI に組み込み、追加初期化が必要な場合は TODO を記録
 
 **成果物**: `llvm_gen/runtime_link.ml`, リンク統合
 
@@ -188,4 +189,3 @@
 - [guides/llvm-integration-notes.md](../../guides/llvm-integration-notes.md)
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
 - [notes/llvm-spec-status-survey.md](../../notes/llvm-spec-status-survey.md)
-

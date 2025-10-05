@@ -15,19 +15,20 @@
 **担当領域**: IR型定義とデータモデル
 
 1.1. **基本IR型の定義**
-- `Expr`: `Literal | Var | App | Let | If | Match | Primitive` の定義
-- `Stmt`: `Assign | Return | Jump | Branch | Phi` の定義
+- `Expr`: `Literal | Var | App | Let | If | Match | Primitive | Closure | DictLookup | CapabilityCheck | ...`
+- `Stmt`: `Assign | Return | Jump | Branch | Phi | EffectMarker` の定義
 - `Block`: ラベル + 命令列 + 終端命令
-- `Function`: 引数・ブロックリスト・戻り型の構造体
+- `Function`: 引数・ブロックリスト・戻り型の構造体、辞書/Capability/効果情報を保持するフィールド
 
 1.2. **型情報の保持**
 - TypedASTからの型情報マッピング
-- プリミティブ型のIR型表現（`i32`, `f64`, `bool`, `string`）
-- 複合型のメタデータ（タプル/レコード構造）
+- プリミティブ型（整数族/浮動小数/Bool/Char/String）、複合型（タプル/レコード/配列/スライス）の IR 型表現
+- 辞書インスタンスや Capability 情報の型付けメタデータ
 
 1.3. **メタデータ設計**
 - Span情報の引き継ぎ（診断用）
-- `3-6-core-diagnostics-audit.md` 準拠のタグ付け
+- `3-6-core-diagnostics-audit.md` 準拠のタグ付けと効果集合（`Σ`）の追跡
+- Capability/Stage 参照を保持し、最適化時に破壊しないガードを設ける
 - 最適化可否フラグ（DCE除外マーカー）
 
 **成果物**: `core_ir/ir.ml`, IR型定義ドキュメント
@@ -39,11 +40,13 @@
 - `match` 式を条件分岐・フィールドアクセス・タグ検査へ分解
 - ネストパターンの段階的展開
 - 網羅性検査結果の反映（未到達分岐の除去）
+- 代数的データ型の `{tag, payload}` 表現を生成
 
 2.2. **パイプ演算子の展開**
 - `a |> b |> c` → `let t1 = b(a) in c(t1)` への変換
 - 一時変数の自動生成と命名規則
 - Span情報の保存（エラー追跡用）
+- クロージャ環境の `{env_ptr, code_ptr}` 表現と RC フックの付与
 
 2.3. **let再束縛の正規化**
 - 同名変数の再束縛をSSA形式へ変換準備
@@ -119,6 +122,7 @@
 - パス実行順序の定義（Desugar → CFG → ConstFold → DCE）
 - 不動点反復の実装（畳み込み→DCE→畳み込み...）
 - 停止条件の設定（変更なし or 上限回数）
+- 効果メタデータ・Capability 情報・辞書インスタンスが各パスで保持されることを検証
 
 6.2. **パス設定管理**
 - 最適化レベルのフラグ（`-O0`, `-O1`）
@@ -188,4 +192,3 @@
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
 - [guides/llvm-integration-notes.md](../../guides/llvm-integration-notes.md)
 - [3-6-core-diagnostics-audit.md](../../3-6-core-diagnostics-audit.md)
-

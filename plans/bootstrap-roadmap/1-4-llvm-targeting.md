@@ -35,15 +35,19 @@
 **担当領域**: Reml型とLLVM型の対応付け
 
 2.1. **プリミティブ型マッピング**
-- `i32` → `i32`, `i64` → `i64`, `f64` → `double`
-- `bool` → `i1`, `string` → `ptr`（ヒープ割当文字列）
+- 整数族（`i8/i16/i32/i64/isize`、`u8/u16/u32/u64/usize`）→ `i8/i16/i32/i64` 等 サイズに応じた LLVM 整数型
+- 浮動小数（`f32`, `f64`）→ `float`, `double`
+- `Bool` → `i1`
+- `Char` → `i32`
+- `String`/スライス → `{ ptr, i64 }`
 - `unit` → `void` の特殊処理
 
 2.2. **複合型マッピング**
 - タプル → 構造体（フィールド順序保証）
 - レコード → 名前付き構造体
-- 関数型 → 関数ポインタ型
-- 代数的データ型 → タグ付きユニオン（Phase 2で本格化）
+- 配列・スライス → 固定長配列 / `{ptr,len}`
+- 関数型 → 関数ポインタ型（クロージャは `{env_ptr, code_ptr}`）
+- 代数的データ型 → `{i32 tag, payload}` のタグ付きユニオン表現
 
 2.3. **型マッピング表の実装**
 - `guides/llvm-integration-notes.md` §4のマッピング表をコード化
@@ -97,14 +101,13 @@
 **担当領域**: System V ABI準拠
 
 5.1. **引数渡し規約**
-- レジスタ渡し（RDI, RSI, RDX, RCX, R8, R9）
-- スタック渡しのオフセット計算
-- 構造体引数の処理（byval属性）
+- LLVM の `cc ccc` 呼び出し規約に委譲し、`llvm::TargetMachine` による ABI 処理を活用
+- 構造体引数・戻り値は LLVM 属性（`sret`, `byval` 等）で表現
+- System V / Windows で差異が出る箇所は `llvm::DataLayout` から取得し、手動でのレジスタ割り当てを避ける
 
 5.2. **戻り値規約**
-- RAXでの戻り値
-- 構造体戻り値（sret属性）
-- 複数戻り値の対応（タプル）
+- LLVM の ABI 情報から戻り値ハンドリング（レジスタ/メモリ戻り）を取得
+- 構造体戻り値は `sret` 属性を使い、タプル等の複数値は IR 上の構造体として返却
 
 5.3. **ランタイム関数宣言**
 - `mem_alloc`, `inc_ref`, `dec_ref`, `panic` のシグネチャ
@@ -189,4 +192,3 @@
 - [guides/llvm-integration-notes.md](../../guides/llvm-integration-notes.md)
 - [notes/llvm-spec-status-survey.md](../../notes/llvm-spec-status-survey.md)
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
-

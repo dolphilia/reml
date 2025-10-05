@@ -21,10 +21,10 @@
 - 構造体レイアウト・アライメントルールの定義
 
 1.2. **所有権契約の設計**
-- 所有権注釈の種類（`@own`, `@borrow`, `@shared` 等）
+- `notes/llvm-spec-status-survey.md` §2.4 の RC 契約を OCaml データ構造化（`Ownership::Transferred`/`Borrowed` 等）
 - FFI 境界での所有権移転ルール
 - メモリ安全性の検証ポリシー
-- Unsafe コードとの境界定義
+- `effect {ffi}`/`effect {unsafe}` 境界との連携
 
 1.3. **ターゲット設定システム**
 - ターゲット別の ABI 設定テーブル
@@ -38,14 +38,13 @@
 **担当領域**: FFI 構文解析
 
 2.1. **FFI 宣言構文の実装**
-- `extern` キーワードの字句解析
-- ABI 属性（`@abi[C]`, `@abi[Stdcall]` 等）の構文
-- 所有権注釈の構文解析
-- リンケージ指定（`@link["libname"]`）
+- `extern "C"` ヘッダおよび複数宣言ブロックの構文（1-1 §B.4）
+- ライブラリ指定や名前マングリングのオプションを既存仕様の拡張ポイント（コメント/属性）として扱い、新構文を導入しない
+- 所有権契約はシグネチャ付随メタデータとして格納（構文レイヤでは属性追加を行わない）
 
 2.2. **AST ノード拡張**
 - `Decl::Extern` ノードの追加
-- `abi: AbiKind`, `ownership: Ownership[]` フィールド
+- ターゲットトリプル/呼出規約/所有権メタデータを保持するフィールド
 - Span 情報の保持
 - デバッグ用の AST pretty printer 更新
 
@@ -76,7 +75,7 @@
 - ターゲット別の ABI ルール適用
 - 呼出規約の検証
 - 名前マングリングの生成
-- Phase 2 効果システムとの連携（`@effect[Unsafe]`）
+- Phase 2 効果システムとの連携（`effect {ffi}`, `effect {unsafe}` による契約確認）
 
 **成果物**: FFI 型検証、所有権チェック、ABI 検証
 
@@ -211,4 +210,3 @@
 - [guides/runtime-bridges.md](../../guides/runtime-bridges.md)
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
 - [0-4-risk-handling.md](0-4-risk-handling.md)
-
