@@ -119,6 +119,70 @@ enum Stage = Experimental | Beta | Stable
 
 `Stage` は Capability Registry（3.8 §1）と共有される列挙で、CLI/LSP は `Stage` に基づき表示レベルを調整する。`before` / `handled` / `residual` は 1.3 §I の効果計算結果に対応し、`residual = ∅` の場合は純粋化可能であることを意味する。`unhandled_operations` は `effects.handler.unhandled_operation` 診断（2.5 §B-10）で IDE へ提示する一覧として使用する。`required_stage` と `actual_stage` は Capability 要件と実際の Stage の差分を記録し、0-1 §1.2 の安全性指針に基づく是正アクションを促す基礎データとなる。`capability_metadata` には `Runtime.CapabilityDescriptor` を保持し、提供主体・効果タグ・最終検証時刻を監査ログへ転写する。
 
+### 1.4 型クラス診断拡張 `typeclass`
+
+型クラス制約の解決に関する診断では `Diagnostic.extensions["typeclass"]` を利用し、辞書渡し方式およびモノモルフィゼーション評価で必要となるメタデータを共有する。最低限、次の構造体を格納する。
+
+```reml
+type TypeclassExtension = {
+  constraint: TraitConstraintSummary,                 // 診断対象の制約
+  resolution_state: ResolutionState,                  // 成功/失敗/保留などの状態
+  candidates: List<TraitCandidateSummary>,            // 解決候補の一覧
+  selected: Option<TraitCandidateSummary>,            // 採用された候補（存在する場合）
+  pending: List<TraitConstraintSummary>,              // 連鎖して発生した未解決制約
+  generalized_typevars: List<TypeVarSummary>,         // 一般化された型変数情報
+  dictionary: Option<DictLayoutSummary>,              // 生成・利用した辞書の概要
+  graph: Option<ConstraintGraphSummary>,              // 制約グラフのサマリ（Graphviz 等）
+}
+
+type TraitConstraintSummary = {
+  trait: Str,                     // 例: "Eq"
+  parameters: List<TypeRepr>,     // 1-2 §A/B の表示規約で整形した型
+  span: Span,                     // 制約が導入された位置
+  origin: ConstraintOrigin,       // 推論器が付与する導入理由
+}
+
+enum ResolutionState = Pending | Satisfied | Failed
+
+type TraitCandidateSummary = {
+  impl_id: Str,                   // 実装 ID（モジュール修飾名）
+  score: Option<Float>,           // 評価関数による採点（辞書渡し計測用）
+  requires_where: Bool,           // 追加 where 制約を持つか
+  source: CandidateSource,        // 派生/ユーザ定義などの由来
+}
+
+enum CandidateSource = Builtin | User | Derived | Auto
+
+type DictLayoutSummary = {
+  dict_type: TypeRepr,            // Core IR 上の `DictType`
+  slots: List<DictSlotSummary>,   // vtable/フィールド構成
+  metadata: Map<Str, Json>,       // 追加情報（任意）
+}
+
+type DictSlotSummary = {
+  name: Str,                      // メソッドまたはフィールド名
+  ty: TypeRepr,                   // スロットの型
+  index: u32,                     // vtable 上のインデックス
+  inlined: Bool,                  // インライン化されたか
+}
+
+type ConstraintGraphSummary = {
+  nodes: List<TraitConstraintSummary>,
+  edges: List<(usize, usize)>,    // `nodes` のインデックスで表現
+  export_dot: Option<Str>,        // `Graphviz DOT` 文字列（任意）
+}
+
+type TypeVarSummary = {
+  name: Str,                      // 例: "a"
+  kind: Str,                      // 例: "*" / "* -> *"
+  rigidity: Str,                  // "flex" | "rigid"
+}
+
+enum ConstraintOrigin = Parameter | WhereClause | AssociatedType | Implicit | Plugin
+```
+
+`TypeRepr` は 1-2 §A/B の表示規約に従う文字列表現とし、CLI/LSP はこの構造体を用いて候補比較ビューや辞書可視化を実装する。`candidates` は優先度順（解決アルゴリズムが算出したスコア降順）で並べる。`graph.export_dot` が存在する場合、開発者向けに `--emit-dict-graph` などのデバッグフラグで Graphviz を出力できるようにする。`AuditEnvelope.metadata["typeclass"]` には `TypeclassExtension` を JSON 化したものを格納し、Phase 2 診断タスクで要求される辞書メタデータ監査（2-1 §5.2）と整合させる。辞書が存在しない（モノモルフィゼーション経路）場合は `dictionary = None` を設定し、`candidates` と `resolution_state` のみで差分を説明する。
+
 ```reml
 pub enum DiagnosticDomain = {
   Syntax,

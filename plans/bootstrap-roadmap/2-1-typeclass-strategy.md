@@ -106,7 +106,7 @@
 **担当領域**: エラー報告
 
 5.1. **型クラス診断拡張**
-- `3-6-core-diagnostics-audit.md` の `typeclass.*` 拡張定義
+- `3-6-core-diagnostics-audit.md` に `extensions.typeclass.*` の定義を追記
 - 制約解決失敗時の詳細メッセージ
 - 候補インスタンスの提示（"Did you mean...?"）
 - スーパークラス制約の欠落検出
@@ -115,7 +115,7 @@
 - 辞書引数の型情報を診断に含める
 - vtable レイアウトのデバッグ出力（`--emit-dict-layout`）
 - 制約グラフの可視化（Graphviz 形式）
-- `AuditEnvelope.extensions` への辞書メタデータ記録
+- `AuditEnvelope.metadata` への辞書メタデータ記録
 
 5.3. **エラー回復戦略**
 - 未解決制約時のデフォルト型推定
