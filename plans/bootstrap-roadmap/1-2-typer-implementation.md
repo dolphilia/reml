@@ -16,10 +16,10 @@
 **担当領域**: 型表現とデータ構造
 
 1.1. **型表現の定義**
-- `Type` バリアント: `TVar | TCon | TApp | TArrow | TTuple | TRecord | TArray | TSlice | TUnit | TNever`
+- `Type` バリアント: `TVar | TCon | TApp | TArrow | TTuple | TRecord | TArray | TSlice | TUnit | TNever`（`TNever` は `Core.Prelude` が提供する空型 `Never` の表現）
 - `TypeScheme`: `∀α₁...αₙ. τ` の表現（量化変数リスト + 型）
 - 型変数ID生成器の実装（単調増加、スレッドセーフ不要）
-- 組み込み型の定義: 1-2 §A.1/A.2 に列挙された整数族（`i8`〜`i64`,`u8`〜`u64`,`isize`,`usize`）、浮動小数（`f32`,`f64`）、`Bool`、`Char`、`String`、`()`、`Never`
+- 組み込み型の定義: 1-2 §A.1/A.2 に列挙された整数族（`i8`〜`i64`,`u8`〜`u64`,`isize`,`usize`）、浮動小数（`f32`,`f64`）、`Bool`、`Char`、`String`、`()` を基準とし、`Never` は [3-1-core-prelude-iteration.md](../../3-1-core-prelude-iteration.md) の定義に従って `TNever` に写像
 
 1.2. **型環境（Type Environment）設計**
 - `Env`: 識別子 → TypeScheme のマップ
