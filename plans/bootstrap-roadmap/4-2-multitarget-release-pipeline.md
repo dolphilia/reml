@@ -50,7 +50,7 @@
 - シークレット管理（署名鍵、証明書の安全な保管）
 
 2.2. **ビルドジョブの実装**
-- 3-7 のセルフホストビルドスクリプトの統合
+- Phase 3 計画（[3-0-phase3-self-host.md](3-0-phase3-self-host.md)）で整備したセルフホストビルドスクリプトの統合
 - ターゲット別環境セットアップ（Ubuntu/Windows/macOS ランナー）
 - 依存関係のキャッシュ戦略（LLVM、OCaml、標準ライブラリ）
 - ビルド成果物のアーティファクトとしての保存
@@ -259,10 +259,9 @@
 ## 参考資料
 - [4-0-phase4-migration.md](4-0-phase4-migration.md)
 - [4-1-multitarget-compatibility-verification.md](4-1-multitarget-compatibility-verification.md)
-- [3-7-self-host-build-pipeline.md](3-7-self-host-build-pipeline.md)
+- [3-0-phase3-self-host.md](3-0-phase3-self-host.md)
 - [5-3-developer-toolchain.md](../../5-3-developer-toolchain.md)
 - [5-2-registry-distribution.md](../../5-2-registry-distribution.md)
 - [5-5-roadmap-metrics.md](../../5-5-roadmap-metrics.md)
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
 - [0-4-risk-handling.md](0-4-risk-handling.md)
-

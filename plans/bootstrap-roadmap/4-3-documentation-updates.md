@@ -259,7 +259,7 @@
 - [4-0-phase4-migration.md](4-0-phase4-migration.md)
 - [4-2-multitarget-release-pipeline.md](4-2-multitarget-release-pipeline.md)
 - [4-4-ecosystem-migration.md](4-4-ecosystem-migration.md)
-- [3-8-doc-spec-feedback.md](3-8-doc-spec-feedback.md)
+- [notes/guides-to-spec-integration-plan.md](../../notes/guides-to-spec-integration-plan.md)
 - [0-0-overview.md](../../0-0-overview.md)
 - [0-2-glossary.md](../../0-2-glossary.md)
 - [README.md](../../README.md)
@@ -268,4 +268,3 @@
 - [guides/runtime-bridges.md](../../guides/runtime-bridges.md)
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
 - [0-4-risk-handling.md](0-4-risk-handling.md)
-
