@@ -41,6 +41,7 @@ let _ = match record with
 - 先頭 bare コンストラクタの前に短縮形フィールドを置く、または後続フィールドを `field: pattern` 形式にすると成功する。
 - エラーメッセージは常に `構文エラー: 入力を解釈できません` で、診断位置は後続フィールド先頭（例: `3:16`、`3:14`）に固定される。
 - 既存のレコードパターン網羅テストでは未捕捉だったため、`compiler/ocaml/tests/test_pattern_matching.ml:333` の `test_record_pattern_limitations` を追加し、成功/失敗の境界条件を固定化した。
+- `record_pattern_entry` に先頭フィールド専用の非終端を導入して `pattern -> ident` を分離する案を検証したが、Menhir の state 238/239 の reduce/reduce 衝突は解消されず、依然として `tests/tmp_record_issue.reml` が失敗することを確認した（コード変更は差分影響が大きいためロールバック済み）。
 
 #### 回避策
 
@@ -63,6 +64,7 @@ let _ = match record with
 - パーサの文法ルール `record_pattern_entry_list` を調査
 - Menhir の conflict resolution を確認
 - 修正と回帰テストの追加
+- `pattern` 文法をコンテキスト別に分離する際は、単純な非終端分割では衝突が残るため、(a) `IDENT` を大文字・小文字でトークン分割する、(b) Menhir のパラメータ付き非終端で「パターン文脈」を持ち回る、等の追加ディスアンビギュエーションが必要。
 
 **成功基準**:
 - 複数アームでのレコードパターン + コンストラクタ + 短縮形が動作
