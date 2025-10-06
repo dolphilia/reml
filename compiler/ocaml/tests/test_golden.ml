@@ -78,6 +78,7 @@ let () =
     exit 1
   end;
   compare_with_golden "simple" "tests/simple.reml";
+  compare_with_golden "qualified_patterns" "tests/qualified_patterns.reml";
   Printf.printf "\n";
   Printf.printf "====================\n";
   Printf.printf "All Golden tests passed!\n"

@@ -21,6 +21,9 @@ let tuple_index_from_literal (value, base) =
     )
   | _ -> failwith "tuple index must be decimal"
 
+let make_qualified_ident parts span =
+  make_ident (String.concat "." parts) span
+
 %}
 
 (* トークン定義 *)
@@ -800,13 +803,6 @@ pattern:
     {
       make_pattern (PatConstructor (ctor, [])) ctor.span
     }
-  | path = ident_list; DOT; ctor = upper_ident
-    {
-      let names = List.map (fun id -> id.name) path @ [ctor.name] in
-      let span = make_span $startpos $endpos in
-      let qualified = make_ident (String.concat "." names) span in
-      make_pattern (PatConstructor (qualified, [])) span
-    }
   | UNDERSCORE
     {
       let span = make_span $startpos $endpos in
@@ -829,12 +825,35 @@ pattern:
       let span = make_span $startpos $endpos in
       make_pattern (PatConstructor (name, args)) span
     }
-  | path = ident_list; DOT; name = upper_ident; LPAREN; args = pattern_arg_list_opt; RPAREN
+  | head = ident; DOT; rest = separated_nonempty_list(DOT, ident)
     {
-      let names = List.map (fun id -> id.name) path @ [name.name] in
+      let ids = head :: rest in
       let span = make_span $startpos $endpos in
-      let qualified = make_ident (String.concat "." names) span in
-      make_pattern (PatConstructor (qualified, args)) span
+      match List.rev ids with
+      | ctor :: rev_prefix ->
+          let ctor_ident =
+            if rev_prefix = [] then ctor
+            else
+              let prefix = List.rev rev_prefix |> List.map (fun id -> id.name) in
+              make_qualified_ident (prefix @ [ctor.name]) span
+          in
+          make_pattern (PatConstructor (ctor_ident, [])) span
+      | [] -> assert false
+    }
+  | head = ident; DOT; rest = separated_nonempty_list(DOT, ident); LPAREN; args = pattern_arg_list_opt; RPAREN
+    {
+      let ids = head :: rest in
+      let span = make_span $startpos $endpos in
+      match List.rev ids with
+      | ctor :: rev_prefix ->
+          let ctor_ident =
+            if rev_prefix = [] then ctor
+            else
+              let prefix = List.rev rev_prefix |> List.map (fun id -> id.name) in
+              make_qualified_ident (prefix @ [ctor.name]) span
+          in
+          make_pattern (PatConstructor (ctor_ident, args)) span
+      | [] -> assert false
     }
   | LBRACE; body = record_pattern_body; RBRACE
     {

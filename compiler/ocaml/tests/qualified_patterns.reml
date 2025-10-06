@@ -1,0 +1,16 @@
+module test.qualified.patterns
+
+let handle_option(value) =
+  match value with
+  | Option.Some(x) -> x
+  | Option.None -> 0
+
+let handle_dsl(node) =
+  match node with
+  | DSL.Node(tag) -> tag
+  | DSL.Leaf -> 0
+
+let inspect_record(record) =
+  match record with
+  | { status: Option.None, payload } -> payload
+  | { status: Option.Some(value), .. } -> value

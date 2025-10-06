@@ -46,7 +46,9 @@ let _ = match record with
 - Rust (`rustc` パーサ) など LR 系実装では、先頭トークンの分類を lexer 段階で細分化し（例: `IDENT` と `FIELD_IDENT` を分ける）、さらに「パターン文脈」情報を再帰下降パーサに持たせて `record_pat_field` を式コンテキストと切り離している。Reml で同手法を採用する場合、lexer でフィールド名を区別するか、Menhir のパラメータ化非終端で「record-field context」を明示する必要がある。
 - 新規アプローチとして、Lexer で先頭大文字の識別子を `UPPER_IDENT` トークンへ分類し、パターン側では `UPPER_IDENT` をゼロ引数コンストラクタとして解釈するように修正した。これにより `{ x: None, y }`・`{ x: None, .. }` など問題だったケースが成功することをパターンテスト・パーサユニットテストの両方で確認した。
 - `UPPER_IDENT` 化によって `record_pattern_entry` が式文脈とトークンを共有しなくなったため、Menhir の `state 238/239` で発生していた `pattern` vs `primary_expr` の競合が解消され、既存の期待失敗テストを成功シナリオに更新済み。
-- モジュール修飾付き列挙子（例: `Option.None`, `DSL.Node(tag)`）をパターンに記述するケースを追加テストし、`ident_list` + `UPPER_IDENT` の組み合わせを `PatConstructor` に写像する規則を導入した。これにより `compiler/ocaml/tests/test_parser.ml:307` で追加したシナリオがパース可能になり、`Option.None` も `{ x: Option.None }` のように扱えることを確認した。
+- モジュール修飾付き列挙子（例: `Option.None`, `DSL.Node(tag)`）をパターンに記述するケースを追加テストし、複数セグメントの `ident` シーケンスを `PatConstructor` へ写像する規則を導入した。これにより `compiler/ocaml/tests/test_parser.ml:307` で追加したシナリオがパース可能になり、`Option.None` も `{ x: Option.None }` のように扱えることを確認した。
+- ゴールデン AST テスト `tests/qualified_patterns.reml` / `tests/golden/qualified_patterns.golden` を追加し、モジュール修飾付き列挙子を含むパターンが AST に正しく反映されることをスナップショットで担保した。
+- `primary_expr` は `ident`（`IDENT` と `UPPER_IDENT` を包含）を `Var` として受理する設計であり、Lexer 分割後も式文脈の挙動が変わらないことをドライバ実行で確認済み。Phase 2 で仕様書 §1-1 識別子規則へ反映する。
 
 #### 回避策
 

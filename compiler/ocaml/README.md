@@ -124,6 +124,7 @@ dune exec -- ./tests/test_types.exe
 
 - **test_golden**: サンプルファイルのAST出力をスナップショットと比較
   - `tests/simple.reml`: 基本的な宣言と式のゴールデンテスト
+  - `tests/qualified_patterns.reml`: モジュール修飾列挙子・レコードパターンを含む検証
   - ゴールデンファイル (`tests/golden/*.golden`) が存在しない場合は失敗し、`tests/golden/_actual/` に最新出力を保存
   - 差分が出た場合も `_actual` ディレクトリへ出力するので、意図した変更ならゴールデンを更新する
 
@@ -193,8 +194,10 @@ dune exec -- ./tests/test_types.exe
   - 実用例を含むサンプルファイル `tests/pattern_examples.reml` を追加
   - **Phase 1 で要求される全パターンマッチ機能の動作を確認済み**
 
-### 🚧 既知の制限事項
-- **レコードパターンの複数アーム制限**: `{ field: Constructor(x), other }` の形式（コンストラクタ+短縮形フィールド）を複数アームで使用すると、パーサが構文エラーを報告する既知の問題がある。回避策として、各フィールドを明示的に `field: pattern` の形式で記述するか、単一アームの match を使用する。Phase 2 で修正予定。
+### ✅ ガード付きレコードパターン（2025-10-06 更新）
+- Lexer を `IDENT` / `UPPER_IDENT` に分割し、モジュール修飾付き列挙子（例: `Option.None`）をゼロ/多引数コンストラクタとして扱えるよう更新済み。
+- `tests/qualified_patterns.reml` / `qualified_patterns.golden` により、`{ status: Option.None, .. }` を含むレコードパターンがパースできることを継続的に検証。
+- 詳細は [技術的負債メモ](compiler/ocaml/docs/technical-debt.md) の「レコードパターンの複数アーム制限」節を参照。
 
 ### 📝 Phase 2 への移行
 

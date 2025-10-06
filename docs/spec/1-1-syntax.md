@@ -26,6 +26,8 @@
 
 * 識別子：`XID_Start` + `XID_Continue*`（Unicode 準拠）。
   例）`parse`, `ユーザー`, `_aux1`。
+  - **トークン分類**: Lexer は先頭文字が大文字の識別子を `UPPER_IDENT`、それ以外を `IDENT` として返す。両者とも同じ Unicode 制約を共有し、構文解析では `ident` 非終端を通じて共通的に扱う。
+  - **目的**: `UPPER_IDENT` を導入することで、パターン文脈で列挙子（`Option.None` など）と変数の曖昧さを解消し、Menhir 上での縮約衝突を防ぐ。
 * 予約語（全一覧）：
   - **モジュール/可視性**: `module`, `use`, `as`, `pub`, `self`, `super`
   - **宣言と定義**: `let`, `var`, `fn`, `type`, `alias`, `new`, `trait`, `impl`, `extern`, `effect`, `operation`, `handler`, `conductor`, `channels`, `execution`, `monitoring`
@@ -36,6 +38,8 @@
 * 将来の拡張に備えて `break`, `continue` を予約語として確保しています。
 * 演算子トークン（固定）：`|>`, `~>`, `.` , `,`, `;`, `:`, `=`, `:=`, `->`, `=>`, `(` `)` `[` `]` `{` `}`,
   `+ - * / % ^`, `== != < <= > >=`, `&& ||`, `!`, `?`, `..`.
+
+> 備考: Lexer 実装（Phase 1 時点）は ASCII ベースだが、Phase 2 で Unicode XID へ拡張予定。Token 型および仕様上の識別子区分は先行して定義済み。
 
 ### A.4 リテラル
 
@@ -414,6 +418,7 @@ pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
 * タプル：`(x, y, _)`
 * レコード：`{ x, y: y0 }`（`x: x` は `x` に省略可）
 * 代数型：`Some(x)`, `Add(Int(a), b)`
+  - **モジュール修飾列挙子**: コンストラクタは `Option.None` や `DSL.Node(tag)` のように `.` 区切りで修飾できる。`Option.None` の末尾 `None`（先頭大文字）が列挙子とみなされ、前置の `Option` はモジュール／型名として扱われる。
 * ガード：`p if cond`
 
 ### C.4 制御構文
