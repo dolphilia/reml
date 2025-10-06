@@ -11,7 +11,7 @@
  (public_name reml_ocaml.parser)
  (wrapped false)
  (modules ast ast_printer token lexer parser diagnostic parser_driver
-          types type_env constraint)
+          types type_env constraint typed_ast type_inference)
  (libraries menhirLib))
 
 (executable

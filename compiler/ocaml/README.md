@@ -1,6 +1,6 @@
 # compiler/ocaml ワークスペース
 
-**現在のフェーズ**: Phase 1 完了 → Phase 2 準備中
+**現在のフェーズ**: Phase 2 進行中（型推論実装）
 
 Phase 1 ブートストラップ計画に基づき、OCaml 製 Reml コンパイラを構築するための作業領域です。対応するタスクは主に [`docs/plans/bootstrap-roadmap/1-x`](../../docs/plans/bootstrap-roadmap/) に定義されています。
 
@@ -13,8 +13,9 @@ Phase 1 ブートストラップ計画に基づき、OCaml 製 Reml コンパイ
 
 **詳細**: [Phase 1 完了報告書](docs/phase1-completion-report.md)
 
-### 🚀 Phase 2 準備完了
-- **M2: Typer MVP** - 開始準備完了
+### 🚀 Phase 2 進行中（2025-10-06開始）
+- **M2: Typer MVP** - 実装中
+- **進捗**: Week 1 完了、Week 2-3 実装中
 - **引き継ぎ**: [Phase 2 ハンドオーバー](docs/phase2-handover.md)
 - **チェックリスト**: [Phase 2 開始前チェックリスト](docs/phase2-checklist.md)
 
@@ -207,17 +208,61 @@ dune exec tests/test_golden.exe
    - Phase 1 からの既知の問題
    - 優先度別の対応計画
 
-#### Phase 2 で実装する主要機能（進行中）
+#### Phase 2 実装状況（2025-10-06 更新）
 
-- ✅ **型システム基盤** (`src/types.ml`, `src/type_env.ml`, `src/constraint.ml`) - **完了**
+**✅ 完了済み (Week 1)**
+
+- ✅ **型システム基盤** (`src/types.ml`, `src/type_env.ml`, `src/constraint.ml`)
   - 型表現とスキームの定義
   - 型環境とスコープ管理
   - 型制約システムと単一化アルゴリズム
   - 165+ ユニットテスト全て成功
-- 🚧 **Typed AST 定義** (`src/typed_ast.ml`) - 次のステップ
-- 🚧 **型推論エンジン** (`src/type_inference.ml`) - Week 3-4 予定
-- 🚧 **型エラーメッセージ** (`src/type_error.ml`) - Week 5-6 予定
-- 🚧 **型推論テストスイート** (`tests/test_type_inference.ml`) - Week 5-6 予定
+
+- ✅ **Typed AST 定義** (`src/typed_ast.ml`)
+  - 型付き式ノード (`typed_expr`): 推論された型情報を保持
+  - 型付き宣言ノード (`typed_decl`): 型スキームを含む
+  - 型付きパターンノード (`typed_pattern`): 束縛変数と型のマッピング
+  - デバッグ用の文字列表現関数
+  - ビルド成功、警告ゼロ
+
+- ✅ **型推論エンジン基礎** (`src/type_inference.ml`)
+  - 型注釈の変換 (AST型注釈 → Types.ty)
+  - 一般化 (`generalize`): let束縛で自由型変数を量化
+  - インスタンス化 (`instantiate`): 型スキームを具体化
+  - リテラルの型推論 (i64, f64, Bool, Char, String)
+  - 変数参照の型推論 (型環境から検索してインスタンス化)
+
+**🚧 次のステップ (Week 2-3)**
+
+- ⏳ **関数適用の型推論**
+  - 制約収集と単一化
+  - 引数と返り値の型チェック
+
+- ⏳ **ラムダ式の型推論**
+  - パラメータの型推論
+  - 関数型の構築
+
+- ⏳ **if式の型推論**
+  - 条件式のBool型チェック
+  - then/else分岐の型統一
+
+- ⏳ **let束縛の型推論**
+  - 式の推論と一般化
+  - 型環境への追加
+  - 値制限の実装
+
+**📋 後続タスク (Week 4-6)**
+
+- 🔜 **パターンマッチの型推論** (Week 4)
+- 🔜 **型エラーメッセージ** (`src/type_error.ml`) (Week 5-6)
+- 🔜 **型推論テストスイート** (`tests/test_type_inference.ml`) (Week 5-6)
+- 🔜 **CLI統合**: `--emit-tast` オプション (Week 6)
+
+**📝 技術的メモ**
+
+- **名前衝突の解決**: `Typed_ast.TVar` (型付き式の変数参照) と `Types.TVar` (型の型変数) の衝突を `Types.TVar` と明示的に修飾して解決
+- **ビルドシステム**: Duneに `typed_ast` と `type_inference` モジュールを追加済み
+- **テスト戦略**: 基本機能の実装完了後、Week 5-6 でテストスイートを整備予定
 
 ## 技術詳細
 
