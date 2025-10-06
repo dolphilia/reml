@@ -65,6 +65,9 @@ let tuple_index_from_literal (value, base) =
 %right UMINUS UNOT  (* 単項演算子 *)
 %left DOT LPAREN LBRACKET QUESTION
 
+(* match アーム境界のための特別な優先順位レベル *)
+%nonassoc MATCH_ARM
+
 (* 開始シンボル *)
 %start <Ast.compilation_unit> compilation_unit
 
@@ -440,16 +443,7 @@ expr:
   | e = pipe_expr { e }
 
 expr_base:
-  | lit = literal
-    {
-      let span = make_span $startpos $endpos in
-      make_expr (Literal lit) span
-    }
-  | id = ident
-    {
-      make_expr (Var id) id.span
-    }
-  | e = call_expr { e }
+  | e = postfix_expr { e }
   | e = binary_expr { e }
   | e = unary_expr { e }
   | e = if_expr { e }
@@ -461,6 +455,17 @@ expr_base:
   | e = return_expr { e }
   | e = defer_expr { e }
   | e = unsafe_expr { e }
+
+primary_expr:
+  | lit = literal
+    {
+      let span = make_span $startpos $endpos in
+      make_expr (Literal lit) span
+    }
+  | id = ident
+    {
+      make_expr (Var id) id.span
+    }
   | e = block_expr { e }
   | LPAREN; first = expr; COMMA; rest = tuple_expr_rest; RPAREN
     {
@@ -481,29 +486,32 @@ literal:
   | LBRACKET; elements = expr_list_opt; RBRACKET { Array elements }
   | LBRACE; fields = record_field_list_opt; RBRACE { Record fields }
 
-call_expr:
-  | func = expr_base; LPAREN; args = arg_list_opt; RPAREN
+(* 後置演算子（関数呼び出し、フィールドアクセス、インデックスなど）
+ * Menhir は左再帰を処理できるので、postfix_expr を左再帰で構築 *)
+postfix_expr:
+  | e = primary_expr { e }
+  | func = postfix_expr; LPAREN; args = arg_list_opt; RPAREN
     {
       let span = merge_span func.expr_span (make_span $endpos $endpos) in
       make_expr (Call (func, args)) span
     }
-  | target = call_expr; DOT; field = ident
+  | target = postfix_expr; DOT; field = ident
     {
       let span = make_span $startpos $endpos in
       make_expr (FieldAccess (target, field)) span
     }
-  | target = call_expr; DOT; index_lit = INT
+  | target = postfix_expr; DOT; index_lit = INT
     {
       let index = tuple_index_from_literal index_lit in
       let span = make_span $startpos $endpos in
       make_expr (TupleAccess (target, index)) span
     }
-  | target = call_expr; LBRACKET; idx = expr; RBRACKET
+  | target = postfix_expr; LBRACKET; idx = expr; RBRACKET
     {
       let span = make_span $startpos $endpos in
       make_expr (Index (target, idx)) span
     }
-  | target = call_expr; QUESTION
+  | target = postfix_expr; QUESTION
     {
       let span = make_span $startpos $endpos in
       make_expr (Propagate target) span
@@ -728,7 +736,8 @@ stmt_list:
   | stmts = stmt_list; s = stmt { stmts @ [s] }
 
 stmt:
-  | d = decl { DeclStmt d }
+  | d = decl; SEMICOLON { DeclStmt d }
+  | d = decl { DeclStmt d }  (* 最後の宣言はセミコロン省略可 *)
   | name = ident; COLONEQ; value = expr; SEMICOLON { AssignStmt (name, value) }
   | DEFER; value = expr; SEMICOLON { DeferStmt value }
   | e = expr; SEMICOLON { ExprStmt e }
@@ -737,6 +746,11 @@ stmt:
 (* ========== パターン ========== *)
 
 pattern:
+  | lit = literal
+    {
+      let span = make_span $startpos $endpos in
+      make_pattern (PatLiteral lit) span
+    }
   | id = ident
     {
       make_pattern (PatVar id) id.span

@@ -65,6 +65,7 @@ let rec string_of_literal = function
 
 and string_of_pattern pat =
   match pat.pat_kind with
+  | PatLiteral lit -> string_of_literal lit
   | PatVar id -> string_of_ident id
   | PatWildcard -> "_"
   | PatTuple pats ->

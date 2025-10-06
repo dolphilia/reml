@@ -158,11 +158,99 @@ let test_exprs () =
   expect_ok "expr: unsafe" "let _ = unsafe { raw_ptr_deref(p) }";
   expect_ok "expr: return" "fn f() { return 42 }";
   expect_ok "expr: defer" "fn f() { defer cleanup(); work() }";
-  expect_fail "expr: field access (todo)" "let _ = point.x";
-  expect_fail "expr: tuple access (todo)" "let _ = tuple.0";
-  expect_fail "expr: index (todo)" "let _ = arr[0]";
-  expect_fail "expr: loop (todo)" "let _ = loop { break }";
-  expect_fail "expr: block (todo)" "let _ = { let x = 1; x + 1 }"
+  expect_ok "expr: field access" "let _ = point.x";
+  expect_ok "expr: tuple access" "let _ = tuple.0";
+  expect_ok "expr: index" "let _ = arr[0]";
+  expect_ok "expr: loop" "let _ = loop { work() }";
+  (* ブロック式は `= expr` の形式で使える。関数ブロック本体 `{ ... }` とは異なる *)
+  expect_ok "expr: block in fn" "fn f() { let x = 1; x + 1 }";
+  expect_ok "expr: block standalone" "fn f() = unsafe { let x = 1; x + 1 }"
+
+(* ========== match/while/for の複雑ケーステスト ========== *)
+
+let test_control_flow_complex () =
+  (* match 式の複雑なケース *)
+  expect_ok "match: multiple arms" {|
+let _ = match value with
+  | 0 -> "zero"
+  | 1 -> "one"
+  | 2 -> "two"
+  | _ -> "other"
+|};
+  expect_ok "match: nested patterns" {|
+let _ = match pair with
+  | (Some(x), Some(y)) -> x + y
+  | (Some(x), None) -> x
+  | (None, Some(y)) -> y
+  | (None, None) -> 0
+|};
+  expect_ok "match: guard conditions" {|
+let _ = match x with
+  | n if n < 0 -> "negative"
+  | n if n == 0 -> "zero"
+  | n if n > 0 -> "positive"
+|};
+  expect_ok "match: nested match" {|
+let _ = match outer with
+  | Some(inner) -> match inner with
+    | Left(x) -> x
+    | Right(y) -> y
+  | None -> 0
+|};
+  (* 単一アームも引き続き動作 *)
+  expect_ok "match: single arm" "let _ = match opt with | Some(x) -> x";
+
+  (* while 式の複雑なケース *)
+  expect_ok "while: nested" {|
+fn process() {
+  while outer_cond {
+    while inner_cond {
+      work()
+    }
+  }
+}
+|};
+  expect_ok "while: with side effects" {|
+fn count() {
+  var i = 0;
+  while i < 10 {
+    i := i + 1
+  }
+}
+|};
+
+  (* for 式の複雑なケース *)
+  expect_ok "for: pattern destructure" {|
+let _ = for (key, value) in map {
+  process(key, value)
+}
+|};
+  expect_ok "for: nested loops" {|
+fn matrix() {
+  for row in rows {
+    for cell in row {
+      process(cell)
+    }
+  }
+}
+|};
+  expect_ok "for: option pattern" {|
+let _ = for Some(x) in list {
+  use_value(x)
+}
+|};
+
+  (* loop 式の基本テスト *)
+  expect_ok "loop: basic" "let _ = loop { work() }";
+  expect_ok "loop: nested" {|
+fn run() {
+  loop {
+    loop {
+      inner_work()
+    }
+  }
+}
+|}
 
 (* ========== パターンマッチテスト ========== *)
 
@@ -284,6 +372,10 @@ let () =
 
   Printf.printf "Expressions:\n";
   test_exprs ();
+  Printf.printf "\n";
+
+  Printf.printf "Control Flow (Complex):\n";
+  test_control_flow_complex ();
   Printf.printf "\n";
 
   Printf.printf "Patterns:\n";

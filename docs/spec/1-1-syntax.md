@@ -429,10 +429,18 @@ pub enum StageRequirement = Exact(StageId) | AtLeast(StageId)
   match expr with
   | Some(x) -> x
   | None    -> 0
+
+  // リテラルパターンの使用例
+  match status_code with
+  | 0   -> "success"
+  | 404 -> "not found"
+  | 500 -> "server error"
+  | _   -> "unknown"
   ```
 
   * スクラティニー `expr` を**最初に評価**し、その結果を保持したまま各アームを検査する。
   * アームは**上から順に**照合され、先に一致した分岐のみが評価される。
+  * パターンには、ワイルドカード `_`、リテラル（整数、文字列、真偽値など）、変数、タプル、レコード、コンストラクタが使用できる。
   * ガード `| pat if cond -> ...` の `cond` は、`pat` が一致した後で束縛を共有して評価され、`cond` が偽なら次のアームへ進む（以降のアームでは再評価しない）。
   網羅性は [効果と安全性](1-3-effects-safety.md) および [エラー設計](2-5-error.md) で扱う（警告/エラー方針）。
 
@@ -803,6 +811,7 @@ HandleExpr     ::= "handle" Expr "with" HandlerLiteral
 HandlerLiteral ::= "handler" Ident HandlerBody
 
 Pattern        ::= "_"
+                 | Literal
                  | Ident
                  | TuplePattern
                  | RecordPattern

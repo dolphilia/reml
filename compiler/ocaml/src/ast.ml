@@ -133,6 +133,7 @@ and pattern = {
 }
 
 and pattern_kind =
+  | PatLiteral of literal
   | PatVar of ident
   | PatWildcard
   | PatTuple of pattern list
