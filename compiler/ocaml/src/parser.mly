@@ -430,11 +430,50 @@ operation_decl:
 
 handler_decl:
   | name = ident; body = handler_body
-    { { handler_name = name; handler_body = body } }
+    { { handler_name = name; handler_entries = body } }
 
 handler_body:
-  | block = block_expr { block }
-  | e = expr { e }
+  | LBRACE; entries = handler_entry_list; RBRACE { entries }
+
+handler_entry_list:
+  | entry = handler_entry { [entry] }
+  | entries = handler_entry_list; entry = handler_entry { entries @ [entry] }
+
+handler_entry:
+  | attrs = attribute_list; OPERATION; name = ident; LPAREN; params = handler_param_list_opt; RPAREN; block = handler_block
+    {
+      let stmts, _ = block in
+      ignore attrs;
+      let span = make_span $startpos $endpos in
+      HandlerOperation {
+        handler_op_name = name;
+        handler_op_params = params;
+        handler_op_body = stmts;
+        handler_op_span = span;
+      }
+    }
+  | attrs = attribute_list; RETURN; value = ident; block = handler_block
+    {
+      let stmts, _ = block in
+      ignore attrs;
+      let span = make_span $startpos $endpos in
+      HandlerReturn {
+        handler_return_name = value;
+        handler_return_body = stmts;
+        handler_return_span = span;
+      }
+    }
+
+handler_param_list_opt:
+  | (* empty *) { [] }
+  | params = param_list { params }
+
+handler_block:
+  | LBRACE; stmts = stmt_list; RBRACE
+    {
+      let span = make_span $startpos $endpos in
+      (stmts, span)
+    }
 
 (* ========== 式 ========== *)
 

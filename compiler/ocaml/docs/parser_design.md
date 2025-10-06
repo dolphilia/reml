@@ -360,7 +360,24 @@ and operation_decl = {
 
 and handler_decl = {
   handler_name: ident;
-  handler_body: expr;
+  handler_entries: handler_entry list;
+}
+
+and handler_entry =
+  | HandlerOperation of handler_operation
+  | HandlerReturn of handler_return
+
+and handler_operation = {
+  handler_op_name: ident;
+  handler_op_params: param list;
+  handler_op_body: stmt list;
+  handler_op_span: span;
+}
+
+and handler_return = {
+  handler_return_name: ident;
+  handler_return_body: stmt list;
+  handler_return_span: span;
 }
 
 and conductor_decl = {

@@ -196,10 +196,9 @@ Phase 1 から引き継ぐ既知の問題は [technical-debt.md](./technical-deb
    - 優先度: 中
    - 影響範囲: 限定的
 
-2. **Handler 宣言のパース問題**
-   - 問題: TODO テストが予期せず成功
-   - 優先度: 低
-   - 影響範囲: handler 構文の一部
+2. **Handler 宣言のパース問題**（2025-10-06 解消済み）
+   - 対応内容: `handler` 本体を `operation`/`return` エントリで構成する正式文法を導入し、テストを更新
+   - フォローアップ: `technical-debt.md` の解決済み項目を参照
 
 ### 任意対応（Phase 2 以降）
 

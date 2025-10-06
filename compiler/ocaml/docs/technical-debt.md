@@ -68,40 +68,6 @@ let _ = match record with
 
 ---
 
-### 2. Handler 宣言のパース問題
-
-**分類**: パーサの予期しない動作
-**優先度**: 🟠 High
-**発見日**: 2025-10-06
-
-#### 問題の詳細
-
-`test_parser.ml` の以下のテストが予期せず成功する：
-
-```ocaml
-expect_fail "handler: block body (todo)" handler_src
-```
-
-**想定される動作**: パースエラーで失敗すべき
-**実際の動作**: パース成功
-
-#### 調査結果
-
-Handler のブロック本体が仕様書で未定義または TODO 状態のため、パーサが不完全な実装で通してしまっている可能性。
-
-#### 対応計画
-
-**Phase 2 Week 3**:
-- [1-1-syntax.md](../../../docs/spec/1-1-syntax.md) の Handler 仕様を再確認
-- Handler パーサルールの実装状態を調査
-- 正しい文法定義に修正
-
-**成功基準**:
-- Handler の仕様準拠パース
-- テストケースの更新
-
----
-
 ## 🟡 Medium Priority（Phase 2-3 で対応）
 
 ### 3. Unicode XID 識別子の未対応
@@ -212,22 +178,21 @@ Phase 1 で以下の性能測定が未実施：
 
 ## 除外項目（対応不要）
 
-### Handler の TODO テスト
-
-**理由**: 仕様が Phase 2 以降で確定するため、現時点では TODO が適切
-
----
-
 ## 対応状況トラッキング
 
 | ID | 項目 | 優先度 | ステータス | 担当 Phase | 備考 |
 |----|------|--------|-----------|-----------|------|
 | 1  | レコードパターン複数アーム | 🟠 High | 未対応 | Phase 2 W1-2 | パーサ修正 |
-| 2  | Handler パース問題 | 🟠 High | 未対応 | Phase 2 W3 | 仕様確認 |
-| 3  | Unicode XID | 🟡 Medium | 未対応 | Phase 2-3 | ライブラリ選定 |
-| 4  | AST Printer 改善 | 🟡 Medium | 未対応 | Phase 2 W8 | Pretty Print |
-| 5  | 性能測定 | 🟢 Low | 未対応 | Phase 3 | ベンチマーク |
-| 6  | エラー回復強化 | 🟢 Low | 未対応 | Phase 3 | 診断改善 |
+| 2  | Unicode XID | 🟡 Medium | 未対応 | Phase 2-3 | ライブラリ選定 |
+| 3  | AST Printer 改善 | 🟡 Medium | 未対応 | Phase 2 W8 | Pretty Print |
+| 4  | 性能測定 | 🟢 Low | 未対応 | Phase 3 | ベンチマーク |
+| 5  | エラー回復強化 | 🟢 Low | 未対応 | Phase 3 | 診断改善 |
+
+---
+
+## ✅ 解決済み項目
+
+- **2025-10-06**: Handler 宣言のパースを仕様準拠に更新し、`tests/test_parser.ml` の TODO ケースを廃止（`compiler/ocaml/src/parser.mly` の `handler_body` を `handler_entry` 列挙へ置換）。
 
 ---
 
@@ -237,6 +202,7 @@ Phase 1 で以下の性能測定が未実施：
   - レコードパターン問題を記録
   - Handler パース問題を記録
   - Unicode XID 未対応を記録
+- **2025-10-06**: Handler パース問題を解消し、追跡リストから除外
 
 ---
 

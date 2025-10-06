@@ -177,6 +177,16 @@ and string_of_param param =
   in
   pat ^ ty ^ default
 
+and string_of_handler_entry = function
+  | HandlerOperation op ->
+      let params = op.handler_op_params |> List.map string_of_param |> String.concat ", " in
+      let params_str = Printf.sprintf "(%s)" params in
+      let body = op.handler_op_body |> List.map string_of_stmt |> String.concat "; " in
+      Printf.sprintf "operation %s%s { %s }" (string_of_ident op.handler_op_name) params_str body
+  | HandlerReturn ret ->
+      let body = ret.handler_return_body |> List.map string_of_stmt |> String.concat "; " in
+      Printf.sprintf "return %s { %s }" (string_of_ident ret.handler_return_name) body
+
 and string_of_decl_kind = function
   | LetDecl (pat, ty, expr) ->
       let ty_str = match ty with None -> "" | Some ty -> ": " ^ string_of_type ty in
@@ -312,7 +322,12 @@ and string_of_decl_kind = function
       in
       Printf.sprintf "effect %s : %s { %s }" (string_of_ident eff.effect_name) (string_of_ident eff.effect_tag) ops
   | HandlerDecl handler ->
-      Printf.sprintf "handler %s = %s" (string_of_ident handler.handler_name) (string_of_expr handler.handler_body)
+      let entries =
+        handler.handler_entries
+        |> List.map string_of_handler_entry
+        |> String.concat "; "
+      in
+      Printf.sprintf "handler %s { %s }" (string_of_ident handler.handler_name) entries
   | ConductorDecl conductor ->
       let section_count = List.length conductor.conductor_body in
       Printf.sprintf "conductor %s {sections=%d}" (string_of_ident conductor.conductor_name) section_count

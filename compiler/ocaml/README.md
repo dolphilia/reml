@@ -88,16 +88,13 @@ dune exec -- remlc --emit-ast ../../examples/language-impl-comparison/reml/pl0_c
 dune test
 ```
 
-- 現状 `tests/test_parser.exe` の TODO ケース（handler ブロック）が失敗するため、`dune test` は終了コード 1 になる。
-- 既知の失敗については [docs/technical-debt.md](docs/technical-debt.md) の「Handler 宣言のパース問題」を確認する。
-
 ### 個別のテストを実行
 
 ```bash
 # Lexer ユニットテスト
 dune exec -- ./tests/test_lexer.exe
 
-# Parser ユニットテスト（handler TODO で失敗するのが既知挙動）
+# Parser ユニットテスト
 dune exec -- ./tests/test_parser.exe
 
 # Golden テスト
@@ -119,7 +116,7 @@ dune exec -- ./tests/test_types.exe
 
 - **test_parser**: 構文解析の成功ケースを検証
   - モジュールヘッダ、use宣言
-  - let/var/fn/type/extern 宣言（trait/impl/handler は TODO として失敗を期待）
+  - let/var/fn/type/extern/handler 宣言（trait/impl は TODO として失敗を期待）
   - 式（リテラル、二項演算、パイプ、関数呼び出し、if/match/while/for、unsafe など）
   - 未実装の構文（フィールドアクセス、`loop` など）は `todo` テストで明示
   - パターンマッチ、属性、基本的な効果宣言

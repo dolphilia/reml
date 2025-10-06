@@ -239,9 +239,5 @@ eval $(opam env --switch=5.2.1)
 ```bash
 cd /path/to/kestrel/compiler/ocaml
 dune build
-
-# handler TODO が解消されるまでは、`dune test` が失敗する点に注意
 dune test
 ```
-
-- 個別テストの実行方法や既知の失敗については、`compiler/ocaml/README.md` の「テスト実行」を参照する。

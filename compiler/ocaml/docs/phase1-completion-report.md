@@ -121,7 +121,7 @@ Phase 1 のマイルストーン M1（Parser MVP）が完了しました。OCaml
 
 **影響範囲**: 限定的（handler 構文の一部）
 
-**対応予定**: Phase 2
+**対応状況**: Phase 2 初期に `handler_entry` を導入する parser 更新で解消済み（2025-10-06）。
 
 ## Phase 2 への引き継ぎ事項
 
@@ -134,7 +134,7 @@ Phase 1 のマイルストーン M1（Parser MVP）が完了しました。OCaml
 
 2. **既知の問題修正**
    - レコードパターンのパーサ改善
-   - Handler 宣言の正しい処理
+   - Handler 宣言の正しい処理（2025-10-06 に解消済み）
    - Unicode XID 対応
 
 ### 推奨対応項目

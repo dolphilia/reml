@@ -78,6 +78,53 @@ let expect_effect_ops desc expected input =
       Printf.printf "%s\n" (Diagnostic.to_string diag);
       exit 1
 
+type expected_handler_entry =
+  | ExpectedOp of string * string list * int
+  | ExpectedReturn of string * int
+
+let expect_handler_entries desc expected input =
+  match parse_string input with
+  | Ok cu ->
+      begin match cu.decls with
+      | { decl_kind = HandlerDecl handler; _ } :: _ ->
+          let actual = handler.handler_entries in
+          let rec compare expected actual =
+            match expected, actual with
+            | [], [] -> true
+            | ExpectedOp (name, params, body_len) :: et, HandlerOperation op :: at ->
+                let op_name = op.handler_op_name.name in
+                let actual_params =
+                  op.handler_op_params
+                  |> List.map (fun param ->
+                         match param.pat.pat_kind with
+                         | PatVar id -> id.name
+                         | _ -> "<non-var>")
+                in
+                if op_name = name && actual_params = params && List.length op.handler_op_body = body_len then
+                  compare et at
+                else false
+            | ExpectedReturn (name, body_len) :: et, HandlerReturn ret :: at ->
+                let ret_name = ret.handler_return_name.name in
+                if ret_name = name && List.length ret.handler_return_body = body_len then
+                  compare et at
+                else false
+            | _ -> false
+          in
+          if compare expected actual then
+            Printf.printf "✓ %s\n" desc
+          else begin
+            Printf.printf "✗ %s: handler entries mismatch\n" desc;
+            exit 1
+          end
+      | _ ->
+          Printf.printf "✗ %s: first decl is not a handler\n" desc;
+          exit 1
+      end
+  | Error diag ->
+      Printf.printf "✗ %s: parse failed\n" desc;
+      Printf.printf "%s\n" (Diagnostic.to_string diag);
+      exit 1
+
 (* ========== モジュールヘッダテスト ========== *)
 
 let test_module_header () =
@@ -314,11 +361,21 @@ effect Console : io {
 
   let handler_src = {|
 handler ConsoleLogger {
-  let message = take();
-  emit(message)
+  operation write(message, resume) {
+    emit(message);
+    resume(())
+  }
+  return value {
+    value
+  }
 }
 |} in
-  expect_fail "handler: block body (todo)" handler_src
+  expect_handler_entries
+    "handler: operations and return"
+    [ ExpectedOp ("write", ["message"; "resume"], 2)
+    ; ExpectedReturn ("value", 1)
+    ]
+    handler_src
 
 (* ========== エラーケーステスト ========== *)
 
