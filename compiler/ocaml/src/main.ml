@@ -36,14 +36,8 @@ let () =
 
     (* AST 出力 *)
     if !emit_ast then begin
-      Printf.printf "Compilation unit parsed successfully.\n";
-      Printf.printf "Header: %s\n" (match ast.Ast.header with
-        | None -> "None"
-        | Some h -> "module " ^ (match h.module_path with
-          | Ast.Root ids -> "::" ^ String.concat "." (List.map (fun i -> i.Ast.name) ids)
-          | Ast.Relative (head, tail) -> "relative path"));
-      Printf.printf "Uses: %d declarations\n" (List.length ast.uses);
-      Printf.printf "Decls: %d declarations\n" (List.length ast.decls);
+      let rendered = Ast_printer.string_of_compilation_unit ast in
+      Printf.printf "%s\n" rendered;
     end;
 
     exit 0

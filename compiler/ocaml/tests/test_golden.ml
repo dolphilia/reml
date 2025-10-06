@@ -1,172 +1,83 @@
 (* test_golden.ml — ゴールデンテスト
  *
- * サンプルファイルを解析して、AST 出力のスナップショットと比較する。
- * 差分が検出された場合はテスト失敗。
+ * AST 出力をスナップショットと比較し、仕様からの逸脱を検知する。
  *)
 
 open Ast
+open Ast_printer
 
-(* AST を読みやすい文字列に変換 *)
+let project_root =
+  match Sys.getenv_opt "DUNE_SOURCEROOT" with
+  | Some root -> root
+  | None -> Filename.dirname Sys.argv.(0)
 
-let rec string_of_ident i = i.name
+let resolve path = Filename.concat project_root path
 
-let string_of_module_path = function
-  | Root ids -> "::" ^ String.concat "." (List.map string_of_ident ids)
-  | Relative (head, tail) ->
-      let head_str = match head with
-        | Self -> "self"
-        | Super n -> String.concat "." (List.init n (fun _ -> "super"))
-        | PlainIdent id -> string_of_ident id
-      in
-      if tail = [] then head_str
-      else head_str ^ "." ^ String.concat "." (List.map string_of_ident tail)
+let golden_dir = resolve "tests/golden"
 
-let string_of_visibility = function
-  | Public -> "pub "
-  | Private -> ""
+let golden_path name = Filename.concat golden_dir (name ^ ".golden")
 
-let rec string_of_type_annot ty =
-  match ty.ty_kind with
-  | TyIdent id -> string_of_ident id
-  | TyApp (id, args) ->
-      string_of_ident id ^ "<" ^ String.concat ", " (List.map string_of_type_annot args) ^ ">"
-  | TyTuple tys ->
-      "(" ^ String.concat ", " (List.map string_of_type_annot tys) ^ ")"
-  | TyRecord fields ->
-      "{ " ^ String.concat ", " (List.map (fun (id, ty) ->
-        string_of_ident id ^ ": " ^ string_of_type_annot ty) fields) ^ " }"
-  | TyFn (args, ret) ->
-      String.concat " -> " (List.map string_of_type_annot (args @ [ret]))
+let fail_missing_golden name path actual =
+  Printf.eprintf "✗ %s: ゴールデンファイル %s が存在しません。\n" name path;
+  Printf.eprintf "  現在の出力:\n%s\n" actual;
+  Printf.eprintf "  必要に応じてゴールデンを作成し直してください。\n";
+  exit 1
 
-let string_of_decl_kind = function
-  | LetDecl (pat, ty, _) ->
-      "let " ^ (match ty with
-        | Some t -> ": " ^ string_of_type_annot t
-        | None -> "")
-  | VarDecl (pat, ty, _) ->
-      "var " ^ (match ty with
-        | Some t -> ": " ^ string_of_type_annot t
-        | None -> "")
-  | FnDecl fn ->
-      "fn " ^ string_of_ident fn.fn_name ^
-      (if fn.fn_generic_params = [] then "" else "<" ^ String.concat ", " (List.map string_of_ident fn.fn_generic_params) ^ ">") ^
-      "(...)" ^
-      (match fn.fn_ret_type with Some rt -> " -> " ^ string_of_type_annot rt | None -> "")
-  | TypeDecl td -> (match td with
-      | AliasDecl (name, _, _) -> "type alias " ^ string_of_ident name
-      | NewtypeDecl (name, _, _) -> "type " ^ string_of_ident name ^ " = new ..."
-      | SumDecl (name, _, _) -> "type " ^ string_of_ident name ^ " = ...")
-  | TraitDecl tr -> "trait " ^ string_of_ident tr.trait_name
-  | ImplDecl impl -> "impl ..."
-  | ExternDecl ext -> "extern \"" ^ ext.extern_abi ^ "\""
-  | EffectDecl eff -> "effect " ^ string_of_ident eff.effect_name
-  | HandlerDecl h -> "handler " ^ string_of_ident h.handler_name
-  | ConductorDecl c -> "conductor " ^ string_of_ident c.conductor_name
+let write_actual_snapshot name actual =
+  let actual_dir = Filename.concat golden_dir "_actual" in
+  if not (Sys.file_exists actual_dir) then Unix.mkdir actual_dir 0o755;
+  let path = Filename.concat actual_dir (name ^ ".actual") in
+  Out_channel.with_open_text path (fun oc ->
+      output_string oc actual;
+      output_char oc '\n');
+  path
 
-let string_of_use_tree = function
-  | UsePath (path, alias) ->
-      "use " ^ string_of_module_path path ^
-      (match alias with Some a -> " as " ^ string_of_ident a | None -> "")
-  | UseBrace (path, items) ->
-      "use " ^ string_of_module_path path ^ ".{...}"
-
-let string_of_ast cu =
-  let lines = [] in
-
-  (* モジュールヘッダ *)
-  let lines = match cu.header with
-    | Some h -> lines @ ["module " ^ string_of_module_path h.module_path]
-    | None -> lines
-  in
-
-  (* use 宣言 *)
-  let lines = lines @ (List.map (fun u ->
-    (if u.use_pub then "pub " else "") ^ string_of_use_tree u.use_tree
-  ) cu.uses) in
-
-  (* 宣言 *)
-  let lines = lines @ (List.map (fun d ->
-    string_of_visibility d.decl_vis ^ string_of_decl_kind d.decl_kind
-  ) cu.decls) in
-
-  String.concat "\n" lines
-
-(* ゴールデンファイルのパス *)
-
-let golden_dir = "tests/golden"
-
-let golden_path name =
-  Filename.concat golden_dir (name ^ ".golden")
-
-(* ゴールデンテスト実行 *)
-
-let test_golden name input_file =
-  (* 入力ファイルを解析 *)
-  let ic = open_in input_file in
+let compare_with_golden name input_file =
+  let ic = open_in (resolve input_file) in
   let lexbuf = Lexing.from_channel ic in
   lexbuf.Lexing.lex_curr_p <- { lexbuf.Lexing.lex_curr_p with Lexing.pos_fname = input_file };
-
-  let ast = try
-    let cu = Parser.compilation_unit Lexer.token lexbuf in
-    close_in ic;
-    Some cu
-  with
-  | Parser.Error ->
+  let cu =
+    try
+      let parsed = Parser.compilation_unit Lexer.token lexbuf in
       close_in ic;
-      Printf.eprintf "Parse error in %s\n" input_file;
-      None
-  | Lexer.Lexer_error (msg, span) ->
-      close_in ic;
-      Printf.eprintf "Lexer error in %s: %s\n" input_file msg;
-      None
+      parsed
+    with
+    | Parser.Error ->
+        close_in ic;
+        Printf.eprintf "✗ %s: Parser error in %s\n" name input_file;
+        exit 1
+    | Lexer.Lexer_error (msg, span) ->
+        close_in ic;
+        Printf.eprintf "✗ %s: Lexer error in %s (%d-%d): %s\n"
+          name input_file span.Ast.start span.end_ msg;
+        exit 1
   in
-
-  match ast with
-  | None ->
-      Printf.printf "✗ %s: parse failed\n" name;
-      exit 1
-  | Some cu ->
-      let actual = string_of_ast cu in
-      let golden_file = golden_path name in
-
-      (* ゴールデンファイルが存在するか確認 *)
-      if Sys.file_exists golden_file then begin
-        (* 既存のゴールデンファイルと比較 *)
-        let expected = In_channel.with_open_text golden_file In_channel.input_all in
-        let expected = String.trim expected in
-        let actual = String.trim actual in
-
-        if expected = actual then
-          Printf.printf "✓ %s\n" name
-        else begin
-          Printf.printf "✗ %s: output differs from golden file\n" name;
-          Printf.printf "Expected:\n%s\n\n" expected;
-          Printf.printf "Actual:\n%s\n\n" actual;
-          Printf.printf "To update golden file: cp actual.txt %s\n" golden_file;
-          exit 1
-        end
-      end else begin
-        (* ゴールデンファイルが存在しない場合は作成 *)
-        let oc = open_out golden_file in
-        output_string oc actual;
-        output_char oc '\n';
-        close_out oc;
-        Printf.printf "✓ %s: created golden file\n" name
-      end
-
-(* テストケース *)
+  let actual = string_of_compilation_unit cu |> String.trim in
+  let golden_file = golden_path name in
+  if not (Sys.file_exists golden_file) then
+    fail_missing_golden name golden_file actual;
+  let expected = In_channel.with_open_text golden_file (fun ic ->
+      In_channel.input_all ic |> String.trim)
+  in
+  if expected = actual then begin
+    Printf.printf "✓ %s\n" name;
+  end else begin
+    Printf.printf "✗ %s: ゴールデンとの差分を検出\n" name;
+    Printf.printf "  ゴールデン: %s\n" golden_file;
+    let actual_path = write_actual_snapshot name actual in
+    Printf.printf "  現在の出力を %s に書き出しました。\n" actual_path;
+    Printf.printf "  差分を確認し、意図的な変更であればゴールデンを更新してください。\n";
+    exit 1
+  end
 
 let () =
   Printf.printf "Running Golden Tests\n";
   Printf.printf "====================\n\n";
-
-  (* golden ディレクトリが存在しない場合は作成 *)
-  if not (Sys.file_exists golden_dir) then
-    Unix.mkdir golden_dir 0o755;
-
-  (* simple.reml テスト *)
-  test_golden "simple" "tests/simple.reml";
-
+  if not (Sys.file_exists golden_dir) then begin
+    Printf.eprintf "✗ golden directory %s が存在しません。\n" golden_dir;
+    exit 1
+  end;
+  compare_with_golden "simple" "tests/simple.reml";
   Printf.printf "\n";
   Printf.printf "====================\n";
   Printf.printf "All Golden tests passed!\n"

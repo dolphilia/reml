@@ -44,6 +44,7 @@ _opam/
 
 # テスト成果物
 tests/golden/*.golden
+!tests/golden/simple.golden
 tests/**/*.actual
 tests/**/*.diff
 

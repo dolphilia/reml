@@ -1,0 +1,6 @@
+module test.simple
+use ::Core.Parse
+let answer = int(42:base10)
+fn add(x, y) -> i64 = binary(var(x) + var(y))
+fn fact(n) -> i64 {block 1 stmts}
+let result = call(var(add))[int(10:base10), int(20:base10)]

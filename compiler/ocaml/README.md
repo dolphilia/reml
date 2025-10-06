@@ -86,15 +86,16 @@ dune exec tests/test_golden.exe
 
 - **test_parser**: 構文解析の成功ケースを検証
   - モジュールヘッダ、use宣言
-  - let/var/fn/type/trait/impl/extern宣言
-  - 式（リテラル、二項演算、パイプ、関数呼び出し、if/match/while/for など）
-  - パターンマッチ、属性
+  - let/var/fn/type/extern 宣言（trait/impl/handler は TODO として失敗を期待）
+  - 式（リテラル、二項演算、パイプ、関数呼び出し、if/match/while/for、unsafe など）
+  - 未実装の構文（フィールドアクセス、`loop` など）は `todo` テストで明示
+  - パターンマッチ、属性、基本的な効果宣言
   - エラーケース（構文エラーの検出）
 
 - **test_golden**: サンプルファイルのAST出力をスナップショットと比較
   - `tests/simple.reml`: 基本的な宣言と式のゴールデンテスト
-  - 初回実行時にゴールデンファイル (`tests/golden/*.golden`) を自動生成
-  - 2回目以降は既存ゴールデンファイルと比較
+  - ゴールデンファイル (`tests/golden/*.golden`) が存在しない場合は失敗し、`tests/golden/_actual/` に最新出力を保存
+  - 差分が出た場合も `_actual` ディレクトリへ出力するので、意図した変更ならゴールデンを更新する
 
 ### テスト対象ファイル
 
@@ -150,3 +151,7 @@ dune exec tests/test_golden.exe
 ### Unicode 対応
 - Phase 1: ASCII 識別子のみサポート (`[a-zA-Z_][a-zA-Z0-9_]*`)
 - Phase 2 以降: Unicode XID 完全対応予定
+
+### AST ダンプ
+- `src/ast_printer.ml` で CLI とテスト向けの共通 AST 文字列表現を提供
+- ゴールデンテストと `--emit-ast` の出力はこのプリンタを利用

@@ -13,9 +13,6 @@ let make_span start_pos end_pos = {
   start = start_pos.Lexing.pos_cnum;
   end_ = end_pos.Lexing.pos_cnum;
 }
-
-let merge_spans s1 s2 = merge_span s1 s2
-
 let tuple_index_from_literal (value, base) =
   match base with
   | Base10 -> (
@@ -114,12 +111,27 @@ pub_opt:
 use_tree:
   | path = module_path; alias = use_alias_opt
     { UsePath (path, alias) }
-  | path = module_path; DOT; LBRACE; items = use_item_list; RBRACE
-    { UseBrace (path, items) }
+  | prefix = use_brace_prefix; DOT; LBRACE; items = use_item_list; RBRACE
+    { UseBrace (prefix, items) }
 
 use_alias_opt:
   | (* empty *) { None }
   | AS; id = ident { Some id }
+
+use_brace_prefix:
+  | base = use_brace_base { base }
+  | prefix = use_brace_prefix; DOT; id = ident
+    {
+      match prefix with
+      | Root ids -> Root (ids @ [id])
+      | Relative (head, tail) -> Relative (head, tail @ [id])
+    }
+
+use_brace_base:
+  | COLON; COLON; ids = ident_list { Root ids }
+  | SELF { Relative (Self, []) }
+  | count = super_list { Relative (Super count, []) }
+  | id = ident { Relative (PlainIdent id, []) }
 
 use_item_list:
   | item = use_item { [item] }
@@ -139,12 +151,12 @@ module_path:
 
 relative_head:
   | SELF { Self }
-  | supers = super_list { Super (List.length supers) }
+  | count = super_list { Super count }
   | id = ident { PlainIdent id }
 
 super_list:
-  | SUPER { [SUPER] }
-  | supers = super_list; DOT; SUPER { supers @ [SUPER] }
+  | SUPER { 1 }
+  | count = super_list; DOT; SUPER { count + 1 }
 
 relative_tail:
   | (* empty *) { [] }

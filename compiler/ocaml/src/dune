@@ -4,12 +4,13 @@
 
 (menhir
  (modules parser)
- (flags --explain))
+ (flags --explain --external-tokens Token))
 
 (library
  (name reml_parser)
  (public_name reml_ocaml.parser)
- (modules ast token lexer parser))
+ (wrapped false)
+ (modules ast ast_printer token lexer parser))
 
 (executable
  (name main)

@@ -85,6 +85,7 @@ _opam/
 
 # ゴールデンテスト成果物
 compiler/ocaml/tests/golden/*.golden
+!compiler/ocaml/tests/golden/simple.golden
 
 # その他
 .cache/

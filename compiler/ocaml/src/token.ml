@@ -4,7 +4,7 @@
  * docs/spec/1-1-syntax.md §A に基づく。
  *)
 
-type t =
+type token =
   (* キーワード *)
   | MODULE | USE | AS | PUB | SELF | SUPER
   | LET | VAR | FN | TYPE | ALIAS | NEW | TRAIT | IMPL | EXTERN
@@ -39,14 +39,16 @@ type t =
   | UNDERSCORE     (* _ *)
 
   (* リテラル *)
-  | INT of string * Ast.int_base
+  | INT of (string * Ast.int_base)
   | FLOAT of string
   | CHAR of string
-  | STRING of string * Ast.string_kind
+  | STRING of (string * Ast.string_kind)
   | IDENT of string
 
   (* その他 *)
   | EOF
+
+type t = token
 
 (** トークンを文字列表現に変換 (デバッグ用) *)
 let to_string = function

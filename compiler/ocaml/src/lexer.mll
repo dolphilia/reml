@@ -59,8 +59,9 @@ let hex_int = "0x" hex_digit (hex_digit | '_')*
 
 (* 浮動小数リテラル *)
 let exponent = ['e' 'E'] ['+' '-']? digit+
-let float_lit = digit+ '.' digit* exponent?
-              | digit+ exponent
+let frac_part = digit (digit | '_')*
+let float_lit = dec_int '.' frac_part? exponent?
+              | dec_int exponent
 
 (* メイントークナイザ *)
 rule token = parse

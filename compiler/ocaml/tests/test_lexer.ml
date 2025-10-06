@@ -20,6 +20,11 @@ let lex_one s =
   let lexbuf = Lexing.from_string s in
   Lexer.token lexbuf
 
+let rec lex_all lexbuf =
+  match Lexer.token lexbuf with
+  | EOF -> ()
+  | _ -> lex_all lexbuf
+
 let expect_tokens desc expected actual =
   if expected = actual then
     Printf.printf "✓ %s\n" desc
@@ -39,6 +44,21 @@ let expect_token desc expected actual =
     Printf.printf "  Actual:   %s\n" (Token.to_string actual);
     exit 1
   end
+
+let expect_lexer_error desc input expected_prefix =
+  let lexbuf = Lexing.from_string input in
+  try
+    lex_all lexbuf;
+    Printf.printf "✗ %s: expected lexer error but none occurred\n" desc;
+    exit 1
+  with
+  | Lexer.Lexer_error (msg, span) ->
+      if expected_prefix = "" || String.starts_with ~prefix:expected_prefix msg then
+        Printf.printf "✓ %s (span %d-%d)\n" desc span.start span.end_
+      else begin
+        Printf.printf "✗ %s: unexpected message '%s'\n" desc msg;
+        exit 1
+      end
 
 (* ========== キーワードテスト ========== *)
 
@@ -139,6 +159,13 @@ let test_token_sequence () =
     [IDENT "x"; PIPE; IDENT "f"; PIPE; IDENT "g"; EOF]
     (lex_string "x |> f |> g")
 
+(* ========== エラーテスト ========== *)
+
+let test_lexer_errors () =
+  expect_lexer_error "lexer error: unexpected char" "$invalid" "Unexpected character";
+  expect_lexer_error "lexer error: unterminated string" "\"hello" "Unterminated string";
+  expect_lexer_error "lexer error: unterminated comment" "/* not closed" "Unterminated block comment"
+
 (* ========== メイン ========== *)
 
 let () =
@@ -179,6 +206,10 @@ let () =
 
   Printf.printf "Token Sequences:\n";
   test_token_sequence ();
+  Printf.printf "\n";
+
+  Printf.printf "Errors:\n";
+  test_lexer_errors ();
   Printf.printf "\n";
 
   Printf.printf "=========================\n";
