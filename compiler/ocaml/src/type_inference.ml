@@ -632,6 +632,27 @@ and infer_match_arm (env: env) (arm: match_arm) (scrutinee_ty: ty) (subst: subst
 
   Ok (tarm, body_ty, s2)
 
+(** 関数本体の型推論: infer_fn_body(env, body)
+ *
+ * Phase 2 Week 5: FnExpr（式）とFnBlock（文のリスト）の両方に対応
+ *
+ * @param env 型環境（パラメータで拡張済み）
+ * @param body 関数本体（AST）
+ * @return (型付き関数本体, 本体の型, 代入)
+ *)
+and infer_fn_body (env: env) (body: fn_body)
+    : (typed_fn_body * ty * substitution, type_error) result =
+  match body with
+  | FnExpr expr ->
+      (* 式の場合: 直接推論 *)
+      let* (texpr, ty, s) = infer_expr env expr in
+      Ok (TFnExpr texpr, ty, s)
+
+  | FnBlock stmts ->
+      (* ブロックの場合: 文のリストを推論 *)
+      let* (tstmts, ty, s) = infer_stmts env stmts empty_subst in
+      Ok (TFnBlock tstmts, ty, s)
+
 (** 文リストの型推論: infer_stmts(env, stmts, subst)
  *
  * Phase 2 Week 5: ブロック式のための文リスト型推論
@@ -772,9 +793,87 @@ and infer_decl (env: env) (decl: decl)
 
       Ok (tdecl, new_env)
 
-  | FnDecl _fn ->
-      (* 関数宣言: Phase 2 Week 4 で実装 *)
-      failwith "Function declaration not yet implemented"
+  | FnDecl fn ->
+      (* 関数宣言の型推論
+       *
+       * Phase 2 Week 5: 関数宣言の型推論を実装
+       *
+       * 1. ジェネリック型パラメータを型変数に変換
+       * 2. パラメータの型推論
+       * 3. 再帰関数のための暫定型を構築
+       * 4. 関数本体の型推論
+       * 5. 返り値型の検証
+       * 6. 関数型の一般化
+       *)
+
+      (* 1. ジェネリック型パラメータを型変数に変換 *)
+      let generic_bindings = List.map (fun id ->
+        (id, TypeVarGen.fresh (Some id.name))
+      ) fn.fn_generic_params in
+
+      (* 2. ジェネリック型を型環境に追加 *)
+      let env_with_generics = List.fold_left (fun acc (id, tv) ->
+        extend id.name (mono_scheme (Types.TVar tv)) acc
+      ) env generic_bindings in
+
+      (* 3. パラメータの型推論 *)
+      let* (tparams, param_tys, param_env, _s1) =
+        infer_params env_with_generics fn.fn_params empty_subst in
+
+      (* 4. 再帰関数のための暫定型を構築 *)
+      let temp_ret_var = TypeVarGen.fresh None in
+      let temp_fn_ty = List.fold_right (fun param_ty acc ->
+        TArrow (param_ty, acc)
+      ) param_tys (Types.TVar temp_ret_var) in
+
+      (* 5. 関数名を型環境に追加（再帰呼び出しに対応） *)
+      let env_with_fn = extend fn.fn_name.name
+        (mono_scheme temp_fn_ty) param_env in
+
+      (* 6. 関数本体の型推論 *)
+      let* (tbody, body_ty, s2) = infer_fn_body env_with_fn fn.fn_body in
+
+      (* 7. 返り値型注釈があれば単一化 *)
+      let* (final_ret_ty, s3) = match fn.fn_ret_type with
+        | Some annot ->
+            let expected_ret_ty = convert_type_annot annot in
+            let* s = unify s2 body_ty expected_ret_ty decl.decl_span in
+            Ok (apply_subst s body_ty, s)
+        | None ->
+            Ok (body_ty, s2)
+      in
+
+      (* 8. 最終的な関数型を構築 *)
+      let fn_ty = List.fold_right (fun param_ty acc ->
+        TArrow (apply_subst s3 param_ty, acc)
+      ) param_tys final_ret_ty in
+
+      (* 9. 一般化してスキームを生成 *)
+      let env' = apply_subst_env s3 env in
+      let scheme = generalize env' fn_ty in
+
+      (* 10. 型付き関数宣言を構築 *)
+      let tfn = {
+        tfn_name = fn.fn_name;
+        tfn_generic_params = generic_bindings;
+        tfn_params = tparams;
+        tfn_ret_type = final_ret_ty;
+        tfn_where_clause = fn.fn_where_clause;
+        tfn_effect_annot = fn.fn_effect_annot;
+        tfn_body = tbody;
+      } in
+
+      let tdecl = make_typed_decl
+        decl.decl_attrs
+        decl.decl_vis
+        (TFnDecl tfn)
+        scheme
+        decl.decl_span in
+
+      (* 11. 型環境に追加 *)
+      let new_env = extend fn.fn_name.name scheme env' in
+
+      Ok (tdecl, new_env)
 
   | _ ->
       (* その他の宣言 *)

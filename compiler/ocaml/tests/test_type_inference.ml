@@ -490,6 +490,173 @@ let test_block_expressions () =
     | Error _ -> failwith "Should not reach here"
   )
 
+(* ========== 関数宣言テスト ========== *)
+
+let test_function_declarations () =
+  Printf.printf "\nFunction Declaration Tests:\n";
+
+  (* 単純な関数宣言（式本体） *)
+  run_test "infer_decl: fn add(x: i64, y: i64) -> i64 = x + y" (fun () ->
+    (* 二項演算が未実装なので、単純な変数返却に変更 *)
+    let env = initial_env in
+    let fn_decl = {
+      decl_attrs = [];
+      decl_vis = Private;
+      decl_kind = FnDecl {
+        fn_name = { name = "add"; span = dummy_span };
+        fn_generic_params = [];
+        fn_params = [
+          { pat = { pat_kind = PatVar { name = "x"; span = dummy_span }; pat_span = dummy_span };
+            ty = Some { ty_kind = TyIdent { name = "i64"; span = dummy_span }; ty_span = dummy_span };
+            default = None;
+            param_span = dummy_span };
+          { pat = { pat_kind = PatVar { name = "y"; span = dummy_span }; pat_span = dummy_span };
+            ty = Some { ty_kind = TyIdent { name = "i64"; span = dummy_span }; ty_span = dummy_span };
+            default = None;
+            param_span = dummy_span };
+        ];
+        fn_ret_type = Some { ty_kind = TyIdent { name = "i64"; span = dummy_span }; ty_span = dummy_span };
+        fn_where_clause = [];
+        fn_effect_annot = None;
+        fn_body = FnExpr { expr_kind = Var { name = "x"; span = dummy_span }; expr_span = dummy_span };
+      };
+      decl_span = dummy_span;
+    } in
+    let result = infer_decl env fn_decl in
+    assert_ok result "Function declaration should succeed";
+    match result with
+    | Ok (tdecl, _) ->
+        (* 関数型: i64 -> i64 -> i64 *)
+        let expected_ty = TArrow (ty_i64, TArrow (ty_i64, ty_i64)) in
+        assert_type_eq expected_ty tdecl.tdecl_scheme.body "Function type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* 型注釈なしのパラメータ *)
+  run_test "infer_decl: fn identity(x) = x" (fun () ->
+    let env = initial_env in
+    let fn_decl = {
+      decl_attrs = [];
+      decl_vis = Private;
+      decl_kind = FnDecl {
+        fn_name = { name = "identity"; span = dummy_span };
+        fn_generic_params = [];
+        fn_params = [
+          { pat = { pat_kind = PatVar { name = "x"; span = dummy_span }; pat_span = dummy_span };
+            ty = None;
+            default = None;
+            param_span = dummy_span };
+        ];
+        fn_ret_type = None;
+        fn_where_clause = [];
+        fn_effect_annot = None;
+        fn_body = FnExpr { expr_kind = Var { name = "x"; span = dummy_span }; expr_span = dummy_span };
+      };
+      decl_span = dummy_span;
+    } in
+    let result = infer_decl env fn_decl in
+    assert_ok result "Identity function should succeed";
+    match result with
+    | Ok (tdecl, _) ->
+        (* 型変数が一般化される: ∀t. t -> t *)
+        (* 量化変数が1つあることを確認 *)
+        if List.length tdecl.tdecl_scheme.quantified < 1 then
+          failwith "Identity function should have at least one quantified variable"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* ブロック本体の関数 *)
+  run_test "infer_decl: fn const_forty_two() -> i64 { 42 }" (fun () ->
+    let env = initial_env in
+    let fn_decl = {
+      decl_attrs = [];
+      decl_vis = Private;
+      decl_kind = FnDecl {
+        fn_name = { name = "const_forty_two"; span = dummy_span };
+        fn_generic_params = [];
+        fn_params = [];
+        fn_ret_type = Some { ty_kind = TyIdent { name = "i64"; span = dummy_span }; ty_span = dummy_span };
+        fn_where_clause = [];
+        fn_effect_annot = None;
+        fn_body = FnBlock [
+          ExprStmt { expr_kind = Literal (Int ("42", Base10)); expr_span = dummy_span }
+        ];
+      };
+      decl_span = dummy_span;
+    } in
+    let result = infer_decl env fn_decl in
+    assert_ok result "Const function should succeed";
+    match result with
+    | Ok (tdecl, _) ->
+        (* 関数型: () -> i64 (パラメータなし) *)
+        assert_type_eq ty_i64 tdecl.tdecl_scheme.body "Const function type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* 再帰関数の準備（簡易版：パラメータを返す） *)
+  run_test "infer_decl: fn fact(n: i64) -> i64 = n" (fun () ->
+    let env = initial_env in
+    let fn_decl = {
+      decl_attrs = [];
+      decl_vis = Private;
+      decl_kind = FnDecl {
+        fn_name = { name = "fact"; span = dummy_span };
+        fn_generic_params = [];
+        fn_params = [
+          { pat = { pat_kind = PatVar { name = "n"; span = dummy_span }; pat_span = dummy_span };
+            ty = Some { ty_kind = TyIdent { name = "i64"; span = dummy_span }; ty_span = dummy_span };
+            default = None;
+            param_span = dummy_span };
+        ];
+        fn_ret_type = Some { ty_kind = TyIdent { name = "i64"; span = dummy_span }; ty_span = dummy_span };
+        fn_where_clause = [];
+        fn_effect_annot = None;
+        (* 再帰呼び出しのテストは二項演算実装後に追加 *)
+        fn_body = FnExpr { expr_kind = Var { name = "n"; span = dummy_span }; expr_span = dummy_span };
+      };
+      decl_span = dummy_span;
+    } in
+    let result = infer_decl env fn_decl in
+    assert_ok result "Function with parameter reference should succeed"
+  );
+
+  (* 複数文を含むブロック本体 *)
+  run_test "infer_decl: fn multi_stmt() -> i64 { let x = 1; x }" (fun () ->
+    let env = initial_env in
+    let fn_decl = {
+      decl_attrs = [];
+      decl_vis = Private;
+      decl_kind = FnDecl {
+        fn_name = { name = "multi_stmt"; span = dummy_span };
+        fn_generic_params = [];
+        fn_params = [];
+        fn_ret_type = Some { ty_kind = TyIdent { name = "i64"; span = dummy_span }; ty_span = dummy_span };
+        fn_where_clause = [];
+        fn_effect_annot = None;
+        fn_body = FnBlock [
+          DeclStmt {
+            decl_attrs = [];
+            decl_vis = Private;
+            decl_kind = LetDecl (
+              { pat_kind = PatVar { name = "x"; span = dummy_span }; pat_span = dummy_span },
+              None,
+              { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span }
+            );
+            decl_span = dummy_span;
+          };
+          ExprStmt { expr_kind = Var { name = "x"; span = dummy_span }; expr_span = dummy_span };
+        ];
+      };
+      decl_span = dummy_span;
+    } in
+    let result = infer_decl env fn_decl in
+    assert_ok result "Multi-statement function should succeed";
+    match result with
+    | Ok (tdecl, _) ->
+        assert_type_eq ty_i64 tdecl.tdecl_scheme.body "Multi-statement function type"
+    | Error _ -> failwith "Should not reach here"
+  )
+
 (* ========== メイン ========== *)
 
 let () =
@@ -499,4 +666,5 @@ let () =
   test_nested_patterns ();
   test_match_expressions ();
   test_block_expressions ();
+  test_function_declarations ();
   Printf.printf "\nAll type inference tests passed! ✓\n"
