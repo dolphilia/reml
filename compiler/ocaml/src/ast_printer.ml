@@ -97,7 +97,7 @@ and string_of_arg = function
 and string_of_stmt = function
   | DeclStmt decl -> "decl:" ^ string_of_decl_kind decl.decl_kind
   | ExprStmt expr -> "expr:" ^ string_of_expr expr
-  | AssignStmt (id, expr) -> Printf.sprintf "assign %s := %s" (string_of_ident id) (string_of_expr expr)
+  | AssignStmt (lvalue, rvalue) -> Printf.sprintf "assign %s := %s" (string_of_expr lvalue) (string_of_expr rvalue)
   | DeferStmt expr -> Printf.sprintf "defer %s" (string_of_expr expr)
 
 and string_of_binary_op = function
@@ -165,7 +165,7 @@ and string_of_expr expr =
   | Return None -> "return"
   | Return (Some expr) -> Printf.sprintf "return %s" (string_of_expr expr)
   | Defer expr -> Printf.sprintf "defer %s" (string_of_expr expr)
-  | Assign (id, expr) -> Printf.sprintf "%s := %s" (string_of_ident id) (string_of_expr expr)
+  | Assign (lvalue, rvalue) -> Printf.sprintf "%s := %s" (string_of_expr lvalue) (string_of_expr rvalue)
 
 and string_of_param param =
   let pat = string_of_pattern param.pat in

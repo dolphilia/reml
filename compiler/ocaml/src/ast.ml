@@ -110,7 +110,7 @@ and expr_kind =
   | Unsafe of expr
   | Return of expr option
   | Defer of expr
-  | Assign of ident * expr                  (** name := expr *)
+  | Assign of expr * expr                   (** lvalue := rvalue (lvalue は postfix_expr) *)
 
 (** 関数引数 *)
 and arg =
@@ -160,7 +160,7 @@ and type_kind =
 and stmt =
   | DeclStmt of decl
   | ExprStmt of expr
-  | AssignStmt of ident * expr
+  | AssignStmt of expr * expr  (** lvalue := rvalue (lvalue は postfix_expr) *)
   | DeferStmt of expr
 
 (* ========== 宣言 ========== *)

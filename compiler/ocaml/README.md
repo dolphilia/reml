@@ -147,9 +147,14 @@ dune exec tests/test_golden.exe
   - ネストした match 式
   - ガード条件 (`if`) 付きパターン
 
+### ✅ 完了（2025-10-06 更新 - 代入文対応）
+- [x] **代入文の左辺値拡張**
+  - `LValue := Expr` の `LValue` を `ident` から `postfix_expr` に拡張
+  - フィールドアクセス (`obj.field := value`)、インデックスアクセス (`arr[i] := value`)、タプルアクセス (`tuple.0 := value`) に対応
+  - AST定義、パーサルール、AST Printerを更新し、仕様書 §D.2 `AssignStmt ::= LValue ":=" Expr` に準拠
+
 ### 🚧 既知の制限事項
 - **パターンマッチの完全実装**: ネストパターンやガード条件付きの複雑なケースは一部未検証
-- **代入文のパース**: 一部のケースで構文エラーが発生（Phase 1 後半で修正予定）
 
 ### 📝 TODO (Phase 1 後半)
 - [ ] `1-2-typer-implementation.md` で求められる Typed AST/型推論テストのひな型作成

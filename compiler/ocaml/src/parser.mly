@@ -738,7 +738,8 @@ stmt_list:
 stmt:
   | d = decl; SEMICOLON { DeclStmt d }
   | d = decl { DeclStmt d }  (* 最後の宣言はセミコロン省略可 *)
-  | name = ident; COLONEQ; value = expr; SEMICOLON { AssignStmt (name, value) }
+  | lvalue = postfix_expr; COLONEQ; rvalue = expr; SEMICOLON { AssignStmt (lvalue, rvalue) }
+  | lvalue = postfix_expr; COLONEQ; rvalue = expr { AssignStmt (lvalue, rvalue) }  (* セミコロン省略可 *)
   | DEFER; value = expr; SEMICOLON { DeferStmt value }
   | e = expr; SEMICOLON { ExprStmt e }
   | e = expr { ExprStmt e }  (* 最後の式はセミコロン省略可 *)
