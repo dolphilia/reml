@@ -21,13 +21,21 @@ let expect_ok name src =
       Printf.printf "✗ %s: %s\n" name diag.Diagnostic.message;
       exit 1
 
-(* 現在は使用していないが将来のために残す *)
-let _expect_fail name src =
+(* 既知の失敗挙動を明示的に検証するヘルパー *)
+let expect_fail name src =
   match parse_string src with
   | Result.Ok _ ->
-      Printf.printf "✗ %s: should have failed but succeeded\n" name;
+      Printf.printf "✗ %s: 失敗を期待していましたが成功しました\n" name;
       exit 1
-  | Result.Error _ -> Printf.printf "✓ %s (expected failure)\n" name
+  | Result.Error diag ->
+      let open Diagnostic in
+      let loc = diag.span.start_pos in
+      Printf.printf
+        "✓ %s (期待通り失敗: %s @ %d:%d)\n"
+        name
+        diag.message
+        loc.line
+        loc.column
 
 (* ========== ネストパターンテスト ========== *)
 
@@ -320,6 +328,48 @@ let _ = match record with
 | { x, y, .. } -> x + y
 |}
 
+(* ========== 既知の制限ケース検証 ========== *)
+
+let test_record_pattern_limitations () =
+  Printf.printf "\nRecord Pattern 制限ケース:\n";
+
+  (* 成功するケースの再確認 *)
+  expect_ok "record: 先頭フィールドが引数付きコンストラクタ" {|
+let _ = match record with
+| { x: Some(value), y } -> value + y
+| _ -> 0
+|};
+  expect_ok "record: 先頭以外なら bare コンストラクタでも成功" {|
+let _ = match record with
+| { y, x: None } -> y
+| _ -> 0
+|};
+  expect_ok "record: 後続フィールドを明示指定すれば成功" {|
+let _ = match record with
+| { x: None, y: value } -> value
+| _ -> 0
+|};
+
+  (* 失敗するパターンの再現 *)
+  expect_fail "record: 先頭 bare コンストラクタ + 短縮フィールド" {|
+let _ = match record with
+| { x: None, y } -> y
+| _ -> 0
+|};
+  expect_fail "record: 先頭 bare コンストラクタ + rest" {|
+let _ = match record with
+| { x: None, .. } -> 0
+| _ -> 1
+|};
+  expect_fail "let bind: 先頭 bare コンストラクタ + 短縮フィールド" {|
+let { x: None, y } = record
+|};
+  expect_fail "for loop: 先頭 bare コンストラクタ + 短縮フィールド" {|
+let _ = for { x: None, y } in records {
+  use_value(y)
+}
+|}
+
 (* ========== メイン実行 ========== *)
 
 let () =
@@ -333,6 +383,7 @@ let () =
   test_literal_patterns ();
   test_complex_combinations ();
   test_edge_cases ();
+  test_record_pattern_limitations ();
 
   Printf.printf "\n==============================================\n";
   Printf.printf "✓ All pattern matching tests passed!\n"
