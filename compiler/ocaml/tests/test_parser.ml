@@ -255,13 +255,44 @@ fn run() {
 (* ========== パターンマッチテスト ========== *)
 
 let test_patterns () =
+  (* 基本パターン *)
   expect_ok "pattern: var" "let x = 42";
   expect_ok "pattern: wildcard" "let _ = 42";
   expect_ok "pattern: tuple" "let (x, y) = (1, 2)";
   expect_ok "pattern: constructor" "let _ = match opt with | Some(x) -> x | None -> 0";
   expect_ok "pattern: record" "let { x, y } = point";
   expect_ok "pattern: record rest" "let { x, .. } = point";
-  expect_ok "pattern: guard" "let _ = match x with | n if n > 0 -> n | _ -> 0"
+  expect_ok "pattern: guard" "let _ = match x with | n if n > 0 -> n | _ -> 0";
+
+  (* ネストパターンの追加テスト *)
+  expect_ok "pattern: nested Some(Some(x))" {|
+let _ = match opt with
+| Some(Some(x)) -> x
+| Some(None) -> 0
+| None -> -1
+|};
+  expect_ok "pattern: nested tuple (Some(x), Some(y))" {|
+let _ = match pair with
+| (Some(x), Some(y)) -> x + y
+| _ -> 0
+|};
+  expect_ok "pattern: nested record { x: Some(v) }" {|
+let _ = match rec with
+| { x: Some(value) } -> value
+| { x: None } -> 0
+|};
+
+  (* ガード条件の追加テスト *)
+  expect_ok "pattern: guard with multiple vars" {|
+let _ = match pair with
+| (x, y) if x > y -> x
+| (x, y) -> y
+|};
+  expect_ok "pattern: guard on nested pattern" {|
+let _ = match opt with
+| Some(Some(x)) if x > 0 -> x
+| _ -> 0
+|}
 
 (* ========== 属性テスト ========== *)
 

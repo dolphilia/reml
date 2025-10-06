@@ -1,11 +1,27 @@
-# compiler/ocaml ワークスペース（Phase 1）
+# compiler/ocaml ワークスペース
+
+**現在のフェーズ**: Phase 1 完了 → Phase 2 準備中
 
 Phase 1 ブートストラップ計画に基づき、OCaml 製 Reml コンパイラを構築するための作業領域です。対応するタスクは主に [`docs/plans/bootstrap-roadmap/1-x`](../../docs/plans/bootstrap-roadmap/) に定義されています。
+
+## 📊 進捗状況
+
+### ✅ Phase 1 完了（2025-10-06）
+- **M1: Parser MVP** - 完全実装
+- **パターンマッチ検証** - 35+ テストケース全て成功
+- **テストインフラ** - 165+ テストケース
+
+**詳細**: [Phase 1 完了報告書](docs/phase1-completion-report.md)
+
+### 🚀 Phase 2 準備完了
+- **M2: Typer MVP** - 開始準備完了
+- **引き継ぎ**: [Phase 2 ハンドオーバー](docs/phase2-handover.md)
+- **チェックリスト**: [Phase 2 開始前チェックリスト](docs/phase2-checklist.md)
 
 ## ディレクトリ
 - `src/`: コンパイラ本体（パーサー、型推論、Core IR、LLVM 出力など）
 - `tests/`: ゴールデン AST・型推論スナップショット・IR 検証などのテストコード
-- `docs/`: 実装メモ、設計ノート、調査結果
+- `docs/`: 実装メモ、設計ノート、Phase 移行ドキュメント
 
 ## セットアップ
 
@@ -153,13 +169,50 @@ dune exec tests/test_golden.exe
   - フィールドアクセス (`obj.field := value`)、インデックスアクセス (`arr[i] := value`)、タプルアクセス (`tuple.0 := value`) に対応
   - AST定義、パーサルール、AST Printerを更新し、仕様書 §D.2 `AssignStmt ::= LValue ":=" Expr` に準拠
 
-### 🚧 既知の制限事項
-- **パターンマッチの完全実装**: ネストパターンやガード条件付きの複雑なケースは一部未検証
+### ✅ 完了（2025-10-06 更新 - パターンマッチの完全検証）
+- [x] **パターンマッチの網羅的テスト実装**
+  - ネストパターン（2層・3層）の完全検証: `Some(Some(x))`, `Ok(Some(value))`, `((a, b), (c, d))`
+  - ガード条件の複雑ケース: 複数変数参照、ネストパターン+ガード
+  - リテラルパターン（整数・文字列・文字・真偽値）の網羅的テスト
+  - レコードパターン+コンストラクタ+rest の組み合わせ
+  - 専用テストスイート `tests/test_pattern_matching.ml` (35+ テストケース) を追加
+  - 実用例を含むサンプルファイル `tests/pattern_examples.reml` を追加
+  - **Phase 1 で要求される全パターンマッチ機能の動作を確認済み**
 
-### 📝 TODO (Phase 1 後半)
-- [ ] `1-2-typer-implementation.md` で求められる Typed AST/型推論テストのひな型作成
-- [ ] `1-3`〜`1-5` のタスクに合わせた Core IR/LLVM/ランタイム連携の stub 追加
-- [ ] 計測フック（`1-6`, `1-7`）の連携手順を記録
+### 🚧 既知の制限事項
+- **レコードパターンの複数アーム制限**: `{ field: Constructor(x), other }` の形式（コンストラクタ+短縮形フィールド）を複数アームで使用すると、パーサが構文エラーを報告する既知の問題がある。回避策として、各フィールドを明示的に `field: pattern` の形式で記述するか、単一アームの match を使用する。Phase 2 で修正予定。
+
+### 📝 Phase 2 への移行
+
+**Phase 1 は完了しました。Phase 2（型推論実装）への移行準備が整っています。**
+
+#### Phase 2 開始前に確認すべきドキュメント
+
+1. **[Phase 1 完了報告書](docs/phase1-completion-report.md)**
+   - Phase 1 の成果物と統計情報
+   - テスト結果サマリー
+   - 既知の制限事項
+
+2. **[Phase 2 ハンドオーバー](docs/phase2-handover.md)**
+   - Phase 2 の目標とタスク
+   - 既存コードベースの構造
+   - 実装する主要コンポーネント
+
+3. **[Phase 2 開始前チェックリスト](docs/phase2-checklist.md)**
+   - 環境確認（46 項目）
+   - 仕様書の理解
+   - 技術的準備
+
+4. **[技術的負債リスト](docs/technical-debt.md)**
+   - Phase 1 からの既知の問題
+   - 優先度別の対応計画
+
+#### Phase 2 で実装する主要機能
+
+- **Typed AST 定義** (`src/typed_ast.ml`)
+- **型推論エンジン** (`src/type_inference.ml`)
+- **型エラーメッセージ** (`src/type_error.ml`)
+- **型推論テストスイート** (`tests/test_type_inference.ml`)
 
 ## 技術詳細
 
