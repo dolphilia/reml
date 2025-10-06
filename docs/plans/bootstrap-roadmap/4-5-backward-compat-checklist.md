@@ -55,7 +55,7 @@
 2.2. **診断比較スクリプト**
 - テストスイートからの診断収集
 - OCaml 版 vs セルフホスト版の差分抽出
-- 診断キーの照合（`3-6-core-diagnostics-audit.md` 準拠）
+- 診断キーの照合（[3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) 準拠）
 - 不一致箇所のカテゴリ分類（重大/軽微）
 
 2.3. **性能測定スクリプト**

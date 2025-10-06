@@ -9,6 +9,13 @@
 - **含まない**: ARM64 Windows、MinGW、UWP 対応。必要に応じて別計画とする。
 - **前提**: Phase 1 の x86_64 Linux ターゲットが安定、Phase 2 の型クラス/効果/FFI 実装が Windows でビルドできるよう調整済み。
 
+## 作業ディレクトリ
+- `compiler/ocaml/` : Windows 対応ビルド設定・ターゲット切替
+- `runtime/native/windows`（想定）: MSVC ABI 向けランタイム実装
+- `tooling/ci`, `.github/workflows/` : Windows ランナーの CI 定義と補助スクリプト
+- `docs/guides/llvm-integration-notes.md`, `docs/spec/3-9-core-async-ffi-unsafe.md` : Windows 章の更新
+- `docs/notes/llvm-spec-status-survey.md` : プラットフォーム差分・リスクの記録
+
 ## 作業ブレークダウン
 
 ### 1. Toolchain 調査と環境準備（17-18週目）
@@ -211,4 +218,3 @@
 - [notes/llvm-spec-status-survey.md](../../notes/llvm-spec-status-survey.md)
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
 - [0-4-risk-handling.md](0-4-risk-handling.md)
-

@@ -2,12 +2,19 @@
 
 ## 目的
 - Phase 2 マイルストーン M1 に向け、辞書渡し方式を主実装としつつモノモルフィゼーションを PoC 規模で比較し、採用方針を決定する。
-- `1-2-types-Inference.md` の型クラス仕様と `docs/notes/llvm-spec-status-survey.md` に整理された懸案を検証し、Phase 3 以降のセルフホスト化に備える。
+- [1-2-types-Inference.md](../../spec/1-2-types-Inference.md) の型クラス仕様と `docs/notes/llvm-spec-status-survey.md` に整理された懸案を検証し、Phase 3 以降のセルフホスト化に備える。
 
 ## スコープ
 - **含む**: 辞書生成・渡しの実装、代表型クラス (`Eq`, `Ord`, `Collector`) の性能測定、PoC モノモルフィゼーションの評価、メトリクス記録。
 - **含まない**: 全型クラスのモノモルフィゼーション、特殊化の最適化、プラグイン型クラスの処理。必要に応じて Phase 3 で検討。
 - **前提**: Phase 1 の Typer/Core IR/LLVM が安定稼働し、辞書引数を扱える拡張が可能であること。
+
+## 作業ディレクトリ
+- `compiler/ocaml/src/typer` : 型クラス辞書渡しの実装および PoC モジュール
+- `compiler/ocaml/src/codegen` : LLVM への辞書引数連携
+- `compiler/ocaml/tests` : 型クラス関連の回帰テスト
+- `docs/notes/dsl-plugin-roadmap.md`, `docs/notes/llvm-spec-status-survey.md` : 評価結果・リスクのログ
+- `docs/spec/1-2-types-Inference.md` : 仕様差分が発生した際の更新対象
 
 ## 作業ブレークダウン
 
@@ -15,7 +22,7 @@
 **担当領域**: 型クラス基盤設計
 
 1.1. **辞書データ構造定義**
-- `1-2-types-Inference.md` の型クラス仕様を OCaml データ型に写像
+- [1-2-types-Inference.md](../../spec/1-2-types-Inference.md) の型クラス仕様を OCaml データ型に写像
 - 辞書レイアウト: `{ vtable: fn_ptr[], type_info: metadata }` の設計
 - Core IR に `DictType`, `DictInstance`, `DictParam` ノードを追加
 - ABI との整合性を確保（Phase 2 FFI タスクと連携）
@@ -106,7 +113,7 @@
 **担当領域**: エラー報告
 
 5.1. **型クラス診断拡張**
-- `3-6-core-diagnostics-audit.md` に `extensions.typeclass.*` の定義を追記
+- [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) に `extensions.typeclass.*` の定義を追記
 - 制約解決失敗時の詳細メッセージ
 - 候補インスタンスの提示（"Did you mean...?"）
 - スーパークラス制約の欠落検出
@@ -151,8 +158,8 @@
 **担当領域**: 仕様整合
 
 7.1. **仕様書フィードバック**
-- `1-2-types-Inference.md` への実装差分の反映
-- 辞書構造の ABI 仕様を `3-9-core-async-ffi-unsafe.md` に追記
+- [1-2-types-Inference.md](../../spec/1-2-types-Inference.md) への実装差分の反映
+- 辞書構造の ABI 仕様を [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md) に追記
 - 制約解決アルゴリズムの擬似コードを追加
 - 新規サンプルコードの追加
 
@@ -172,7 +179,7 @@
 **担当領域**: 品質保証
 
 8.1. **統合テスト整備**
-- `1-2-types-Inference.md` の全サンプルの実行テスト
+- [1-2-types-Inference.md](../../spec/1-2-types-Inference.md) の全サンプルの実行テスト
 - 型クラス制約の複雑な組み合わせテスト
 - Phase 1 のテストスイートとの統合
 - ゴールデンテスト（IR/診断出力）の更新
@@ -192,7 +199,7 @@
 **成果物**: 統合テストスイート、CI 設定、安定版
 
 ## 成果物と検証
-- 辞書渡し方式で `1-2-types-Inference.md` のサンプルが全て通過すること。
+- 辞書渡し方式で [1-2-types-Inference.md](../../spec/1-2-types-Inference.md) のサンプルが全て通過すること。
 - PoC モノモルフィゼーションの出力を LLVM IR で比較し、差分とコストを `docs/notes/llvm-spec-status-survey.md` に追記。
 - メトリクスが `0-3-audit-and-metrics.md` に記録され、CI でレポート化される。
 

@@ -2,7 +2,7 @@
 
 ## 目的
 - Phase 4 マイルストーン M2 に合わせ、Linux/Windows/macOS 向けの自動ビルド・テスト・署名・配布パイプラインを構築し、正式リリースを支える。
-- `5-3-developer-toolchain.md` の手順を具体化し、リリースノートと成果物の配布を標準化する。
+- [5-3-developer-toolchain.md](../../spec/5-3-developer-toolchain.md) の手順を具体化し、リリースノートと成果物の配布を標準化する。
 
 ## スコープ
 - **含む**: CI/CD 構成、成果物署名、圧縮形式統一、配布ポータル更新、ログ記録。
@@ -137,7 +137,7 @@
 - プレリリース/正式版のマーキング
 
 5.2. **配布サイトの更新**
-- `5-2-registry-distribution.md` に基づくレジストリ更新
+- [5-2-registry-distribution.md](../../spec/5-2-registry-distribution.md) に基づくレジストリ更新
 - ダウンロードページの HTML/Markdown 更新
 - ダイレクトリンクの提供（最新版、特定バージョン）
 - ダウンロード統計の設定（GitHub Insights 活用）
@@ -160,7 +160,7 @@
 **担当領域**: ドキュメント生成
 
 6.1. **リリースノートテンプレート作成**
-- `5-5-roadmap-metrics.md` に基づくテンプレート定義
+- [5-5-roadmap-metrics.md](../../spec/5-5-roadmap-metrics.md) に基づくテンプレート定義
 - セクション構成: サマリ、新機能、修正、既知の問題、移行ガイド
 - Markdown 形式での標準化
 - バージョン情報の自動埋め込み

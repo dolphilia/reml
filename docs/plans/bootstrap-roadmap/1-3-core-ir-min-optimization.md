@@ -9,6 +9,12 @@
 - **含まない**: 高度な最適化（ループ最適化、共通部分式除去、インライン展開）。これらは Phase 2 の検討対象。
 - **前提**: TypedAST が安定しており、型付き情報を参照しながら IR を生成できること。
 
+## 作業ディレクトリ
+- `compiler/ocaml/src/ir`（想定）: IR 型定義、Desugar/Optimization パス
+- `compiler/ocaml/tests/ir` : IR ゴールデン出力、最適化パスの回帰テスト
+- `compiler/ocaml/docs` : IR 設計、最適化方針、既知の制約をまとめる
+- `docs/notes/llvm-spec-status-survey.md` : Core IR と LLVM の整合性およびベンチ結果を追記
+
 ## 作業ブレークダウン
 
 ### 1. Core IR データ構造設計（9週目）
@@ -27,7 +33,7 @@
 
 1.3. **メタデータ設計**
 - Span情報の引き継ぎ（診断用）
-- `3-6-core-diagnostics-audit.md` 準拠のタグ付けと効果集合（`Σ`）の追跡
+- [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) 準拠のタグ付けと効果集合（`Σ`）の追跡
 - Capability/Stage 参照を保持し、最適化時に破壊しないガードを設ける
 - 最適化可否フラグ（DCE除外マーカー）
 
@@ -184,7 +190,7 @@
 
 ## リスクとフォローアップ
 - SSA 生成を Phase 1 で扱わない場合でも、phi ノード設計を前提にしておかないと Phase 2 でリファクタが発生する恐れがあるため、構造だけ先行定義する。
-- DCE の適用範囲が広すぎると診断用ノードが除去される可能性があるので、`3-6-core-diagnostics-audit.md` に示されたメタデータを保持するタグを IR 上に確保する。
+- DCE の適用範囲が広すぎると診断用ノードが除去される可能性があるので、[3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) に示されたメタデータを保持するタグを IR 上に確保する。
 - Core IR から LLVM IR への写像を検証するため、IR 変換時のタグ情報をログに出力し、`0-3-audit-and-metrics.md` で追跡する。
 
 ## 参考資料

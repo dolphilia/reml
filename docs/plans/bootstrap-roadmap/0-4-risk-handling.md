@@ -1,6 +1,6 @@
 # 0.4 リスク管理とフォローアップ
 
-本章はブートストラップ計画におけるリスク登録、フォローアップ、移行期間中の意思決定手順を定義する。`0-1-project-purpose.md` の判断フレームワークと `docs/notes/llvm-spec-status-survey.md` の未決課題を参照し、リスクが可視化された状態でフェーズを進める。
+本章はブートストラップ計画におけるリスク登録、フォローアップ、移行期間中の意思決定手順を定義する。[0-1-project-purpose.md](../../spec/0-1-project-purpose.md) の判断フレームワークと `docs/notes/llvm-spec-status-survey.md` の未決課題を参照し、リスクが可視化された状態でフェーズを進める。
 
 ## 0.4.1 リスク登録カテゴリ
 | カテゴリ | 説明 | 例 | 対応フェーズ |
@@ -28,7 +28,7 @@
 ## 0.4.3 エスカレーション基準
 - **性能指標が 10% 超過**: `parse_throughput` または `memory_peak_ratio` が目標値から 10% 以上逸脱した場合、Phase 進行を停止し、対策タスクを作成。
 - **Stage ミスマッチ発生**: `stage_mismatch_count` > 0 の場合、ミスマッチが解消されるまで新機能導入を凍結。
-- **診断差分未解決**: `diagnostic_regressions` が 7 日以上解決されない場合、`3-6-core-diagnostics-audit.md` を見直し、必要なら仕様変更を先行実施。
+- **診断差分未解決**: `diagnostic_regressions` が 7 日以上解決されない場合、[3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) を見直し、必要なら仕様変更を先行実施。
 
 ## 0.4.4 フォローアッププロセス
 1. リスク登録後 24 時間以内に担当者を割当。

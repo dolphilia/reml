@@ -9,6 +9,13 @@
 - **含まない**: Windows/MSVC や ARM64 向けのターゲットコード生成、JIT 実行、デバッグ情報の高度な最適化。
 - **前提**: Core IR が安定しており、型情報が LLVM 型へマッピングできる状態であること。
 
+## 作業ディレクトリ
+- `compiler/ocaml/src/codegen`（想定）: LLVM ビルダー、型マッピング、ABI 実装
+- `compiler/ocaml/tests/codegen` : IR ゴールデンテスト、`opt`/`llc` 検証結果
+- `runtime/native` : ランタイム関数のシンボル確認、ABI 整合
+- `tooling/ci` / `.github/workflows/` : LLVM ツールチェーンを利用するビルド/テストフロー
+- `docs/notes/llvm-spec-status-survey.md` : ターゲット差分やデータレイアウト情報の記録
+
 ## 作業ブレークダウン
 
 ### 1. LLVM基盤セットアップ（13週目）
@@ -127,7 +134,7 @@
 6.2. **エラー診断統合**
 - LLVM検証エラーのパース
 - Span情報へのマッピング（逆変換）
-- `3-6-core-diagnostics-audit.md` 形式での報告
+- [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) 形式での報告
 
 6.3. **CI統合**
 - GitHub Actions での検証パイプライン実行

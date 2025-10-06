@@ -1,14 +1,20 @@
 # 1.1 Parser 実装詳細計画
 
 ## 目的
-- Phase 1 のマイルストーン M1 を達成できるよう、`1-1-syntax.md` の式・宣言構文を全て OCaml 製パーサで扱える状態にする。
-- `2-0-parser-api-overview.md` が定義する `Parser<T>` 契約を OCaml の抽象データ型で写像し、後続フェーズで Reml 実装へ移植しやすい構造を確立する。
-- エラーレポート用の Span 情報を AST に格納し、`2-5-error.md` の診断モデルと整合を取る。
+- Phase 1 のマイルストーン M1 を達成できるよう、[1-1-syntax.md](../../spec/1-1-syntax.md) の式・宣言構文を全て OCaml 製パーサで扱える状態にする。
+- [2-0-parser-api-overview.md](../../spec/2-0-parser-api-overview.md) が定義する `Parser<T>` 契約を OCaml の抽象データ型で写像し、後続フェーズで Reml 実装へ移植しやすい構造を確立する。
+- エラーレポート用の Span 情報を AST に格納し、[2-5-error.md](../../spec/2-5-error.md) の診断モデルと整合を取る。
 
 ## スコープ
 - **含む**: 字句解析・構文解析の OCaml 実装、Menhir 等のパーサジェネレータ設定、AST 生成、Span 付与、演算子優先順位テーブル（固定版）。
 - **含まない**: DSL 用構文拡張、ユーザー定義演算子テーブル、パーサと連動する型解決。これらは Phase 2 以降で実装する。
 - **前提**: LLVM toolchain セットアップ、Menhir または ocamlyacc のビルド環境、既存サンプル（`examples/language-impl-comparison/`）。
+
+## 作業ディレクトリ
+- `compiler/ocaml/src/parser`（想定）: `parser.mly`/`lexer.mll`/`ast.ml` 等を配置
+- `compiler/ocaml/tests/parser`（想定）: Golden AST・差分テスト
+- `compiler/ocaml/docs` : 文法メモ、表記揺れ一覧、レビューログ
+- `.github/workflows/` + `tooling/ci` : Menhir を含むビルド/テストジョブ。CI 化時に参照
 
 ## 作業ブレークダウン
 
@@ -16,9 +22,9 @@
 **担当領域**: 構文仕様の形式化
 
 1.1. **構文要素の棚卸し**
-- `1-1-syntax.md` から式・宣言・パターン・型注釈・モジュールヘッダの全構文要素をリスト化
+- [1-1-syntax.md](../../spec/1-1-syntax.md) から式・宣言・パターン・型注釈・モジュールヘッダの全構文要素をリスト化
 - 優先順位テーブル（`precedence` 宣言）を抽出し、固定演算子リストを作成
-- 予約語・演算子トークン一覧を UTF-8/XID 前提で網羅し、Unicode 識別子ルールを `1-1-syntax.md` A.3 に沿って整理
+- 予約語・演算子トークン一覧を UTF-8/XID 前提で網羅し、Unicode 識別子ルールを [1-1-syntax.md](../../spec/1-1-syntax.md) A.3 に沿って整理
 - 宣言カテゴリ（`let`/`fn`/`type`/`trait`/`impl`/`extern`/`effect`/`handler`/`module` 等）と DSL 属性の AST への写像を確認
 
 1.2. **AST ノード設計**
@@ -38,14 +44,14 @@
 **担当領域**: 字句解析
 
 2.1. **基本トークン実装**
-- 識別子: Unicode `XID_Start` + `XID_Continue*`（`1-1-syntax.md` A.3 に準拠）
+- 識別子: Unicode `XID_Start` + `XID_Continue*`（[1-1-syntax.md](../../spec/1-1-syntax.md) A.3 に準拠）
 - 数値リテラル: 整数、浮動小数点、2/8/16 進数、下線区切り
 - 文字列リテラル: エスケープシーケンス処理、生文字列、複数行文字列
 - コメント: 行コメント `//`、ブロックコメント `/* */`（入れ子対応）
 - 文字リテラル・ブール値・タプル/配列表現などのリテラル種別
 
 2.2. **空白処理とレイアウト**
-- 空白・タブ・改行の扱いと文末候補（`1-1-syntax.md` B.3）
+- 空白・タブ・改行の扱いと文末候補（[1-1-syntax.md](../../spec/1-1-syntax.md) B.3）
 - 位置情報（行番号、列番号）の追跡
 - Unicode 正規化や BOM 有無の確認
 
@@ -97,7 +103,7 @@
 4.3. **診断情報の準備**
 - エラー位置の正確な特定機能
 - 期待トークン情報の収集
-- `2-5-error.md` のフォーマットとの整合
+- [2-5-error.md](../../spec/2-5-error.md) のフォーマットとの整合
 
 **成果物**: Span統合版AST、`--emit-ast` CLI機能
 
@@ -130,7 +136,7 @@
 - 予期しないトークンでの同期ポイント
 
 6.2. **期待値提示**
-- `2-5-error.md` に従った期待トークン集合の構築
+- [2-5-error.md](../../spec/2-5-error.md) に従った期待トークン集合の構築
 - コンテキスト依存の提案メッセージ
 - 複数候補がある場合のランク付け
 
@@ -189,7 +195,7 @@
 ## リスクとフォローアップ
 - Menhir の依存が開発者環境ごとにばらつくリスクがあるため、`0-3-audit-and-metrics.md` に必要なバージョン固定情報を記録。
 - 演算子優先順位の固定テーブルが Phase 2 で拡張される見込みなので、テーブル定義を外部 JSON/再読込可能な形式に切り出し、後続フェーズで差し替えやすくしておく。
-- ストリーミングパーサ API (`2-7-core-parse-streaming.md`) との整合は Phase 3 で必須となるため、現段階で AST 生成を純粋関数化し副作用を最小限にする。
+- ストリーミングパーサ API ([2-7-core-parse-streaming.md](../../spec/2-7-core-parse-streaming.md)) との整合は Phase 3 で必須となるため、現段階で AST 生成を純粋関数化し副作用を最小限にする。
 
 ## 参考資料
 - [1-0-phase1-bootstrap.md](1-0-phase1-bootstrap.md)

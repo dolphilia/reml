@@ -5,19 +5,19 @@
 ## 0.2.1 文書体系
 | 系列 | 目的 | 主な内容 | 主参照仕様 |
 |------|------|----------|------------|
-| 0.x | 原則・運用ガバナンス | 基本原則（0-1）、文書構造と更新プロセス（0-2）、測定指標（0-3）、リスク管理（0-4） | `0-1-project-purpose.md`, `0-0-overview.md` |
-| 1.x | Phase 1 ブートストラップ計画 | OCaml 実装の最小パイプライン構築と性能ベースライン | `docs/guides/llvm-integration-notes.md`, `1-1-syntax.md` |
-| 2.x | Phase 2 仕様安定化計画 | 型システム・効果タグ・診断の安定化 | `1-2-types-Inference.md`, `3-6-core-diagnostics-audit.md` |
-| 3.x | Phase 3 Self-Host 計画 | Reml 実装への移行と互換性維持 | `2-7-core-parse-streaming.md`, `3-8-core-runtime-capability.md` |
-| 4.x | Phase 4 移行完了計画 | リリース体制、ツールチェーン移行、エコシステム支援 | `5-3-developer-toolchain.md`, `docs/notes/llvm-spec-status-survey.md` |
+| 0.x | 原則・運用ガバナンス | 基本原則（0-1）、文書構造と更新プロセス（0-2）、測定指標（0-3）、リスク管理（0-4） | [0-1-project-purpose.md](../../spec/0-1-project-purpose.md), [0-0-overview.md](../../spec/0-0-overview.md) |
+| 1.x | Phase 1 ブートストラップ計画 | OCaml 実装の最小パイプライン構築と性能ベースライン | `docs/guides/llvm-integration-notes.md`, [1-1-syntax.md](../../spec/1-1-syntax.md) |
+| 2.x | Phase 2 仕様安定化計画 | 型システム・効果タグ・診断の安定化 | [1-2-types-Inference.md](../../spec/1-2-types-Inference.md), [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) |
+| 3.x | Phase 3 Self-Host 計画 | Reml 実装への移行と互換性維持 | [2-7-core-parse-streaming.md](../../spec/2-7-core-parse-streaming.md), [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) |
+| 4.x | Phase 4 移行完了計画 | リリース体制、ツールチェーン移行、エコシステム支援 | [5-3-developer-toolchain.md](../../spec/5-3-developer-toolchain.md), `docs/notes/llvm-spec-status-survey.md` |
 
 各系列のドキュメントは、仕様書と同様に章番号をタイトルに付与し、関連する仕様章からの相互参照を明記する。新しい文書を追加する場合は、上表へ行を追加し、README/概要のリンクを更新する。
 
 ## 0.2.2 フェーズと仕様領域のマッピング
-- **Phase 1 (Bootstrap 実装)**: Parser/Resolver/CodeGen の最小要件を `1-0-phase1-bootstrap.md` で定義し、言語仕様の MVP 範囲を `1-1-syntax.md` と照合する。
-- **Phase 2 (仕様安定化)**: 型推論・診断の成熟度評価を `2-0-phase2-stabilization.md` に集約し、`1-2-types-Inference.md` や `3-6-core-diagnostics-audit.md` の更新条件を併記する。
+- **Phase 1 (Bootstrap 実装)**: Parser/Resolver/CodeGen の最小要件を `1-0-phase1-bootstrap.md` で定義し、言語仕様の MVP 範囲を [1-1-syntax.md](../../spec/1-1-syntax.md) と照合する。
+- **Phase 2 (仕様安定化)**: 型推論・診断の成熟度評価を `2-0-phase2-stabilization.md` に集約し、[1-2-types-Inference.md](../../spec/1-2-types-Inference.md) や [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) の更新条件を併記する。
 - **Phase 3 (Self-Host 移行)**: Core ランタイム・Capability 整合を `3-0-phase3-self-host.md` で整理し、`3-8`/`3-9` の Stage 契約と連携させる。
-- **Phase 4 (移行完了)**: 出力一致検証・ローリングリリース戦略を `4-0-phase4-migration.md` に定義し、`5-3-developer-toolchain.md` のツールチェーンフローと同期する。
+- **Phase 4 (移行完了)**: 出力一致検証・ローリングリリース戦略を `4-0-phase4-migration.md` に定義し、[5-3-developer-toolchain.md](../../spec/5-3-developer-toolchain.md) のツールチェーンフローと同期する。
 
 ## 0.2.3 更新フローと差分管理
 1. 計画書更新時は、該当フェーズの仕様章を確認し、矛盾があれば仕様書を先に修正する。

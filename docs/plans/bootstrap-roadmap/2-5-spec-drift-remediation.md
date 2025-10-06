@@ -9,19 +9,26 @@
 - **含まない**: 新機能追加、仕様の大規模刷新。必要な場合は別タスクとして起票。
 - **前提**: Phase 2 の実装タスク（型クラス、効果、FFI、診断）が概ね完了し、差分が明確になっていること。
 
+## 作業ディレクトリ
+- `docs/spec/` : Chapter 0〜3 の本文・図表・脚注更新
+- `docs/guides/` : 仕様変更に追随するガイド修正
+- `docs/notes/` : レビュー結果や TODO を記録（例: `docs/notes/guides-to-spec-integration-plan.md`）
+- `docs/README.md`, `README.md` : 目次・導線の同期
+- `docs/plans/repository-restructure-plan.md`, `docs/notes/llvm-spec-status-survey.md` : 作業ログとリスク管理
+
 ## 作業ブレークダウン
 
 ### 1. レビュー計画と体制整備（31週目）
 **担当領域**: 計画策定
 
 1.1. **レビュースコープの決定**
-- Chapter 1（言語コア）: `1-1-syntax.md`, `1-2-types-Inference.md`, `1-3-effects-safety.md`
-- Chapter 2（パーサーAPI）: `2-0-parser-api-overview.md`〜`2-6-execution-strategy.md`
-- Chapter 3（標準ライブラリ）: `3-0-core-library-overview.md`〜`3-10-core-env.md`
+- Chapter 1（言語コア）: [1-1-syntax.md](../../spec/1-1-syntax.md), [1-2-types-Inference.md](../../spec/1-2-types-Inference.md), [1-3-effects-safety.md](../../spec/1-3-effects-safety.md)
+- Chapter 2（パーサーAPI）: [2-0-parser-api-overview.md](../../spec/2-0-parser-api-overview.md)〜[2-6-execution-strategy.md](../../spec/2-6-execution-strategy.md)
+- Chapter 3（標準ライブラリ）: [3-0-core-library-overview.md](../../spec/3-0-core-library-overview.md)〜[3-10-core-env.md](../../spec/3-10-core-env.md)
 - 優先順位付け（セルフホストに影響する順）
 
 1.2. **レビュー観点チェックリスト作成**
-- 用語統一（`0-2-glossary.md` との整合）
+- 用語統一（[0-2-glossary.md](../../spec/0-2-glossary.md) との整合）
 - サンプルコードの構文妥当性
 - データ構造の実装との一致
 - 相互参照リンクの正確性
@@ -38,23 +45,23 @@
 ### 2. Chapter 1 差分抽出（31-32週目）
 **担当領域**: 言語コア仕様レビュー
 
-2.1. **構文仕様のレビュー（`1-1-syntax.md`）**
+2.1. **構文仕様のレビュー（[1-1-syntax.md](../../spec/1-1-syntax.md)）**
 - Phase 1 Parser 実装との差分抽出
 - 効果注釈構文の追加反映（Phase 2）
 - FFI 宣言構文の追加反映（Phase 2）
 - サンプルコードの検証（実際にパース可能か）
 
-2.2. **型システムのレビュー（`1-2-types-Inference.md`）**
+2.2. **型システムのレビュー（[1-2-types-Inference.md](../../spec/1-2-types-Inference.md)）**
 - Phase 2 型クラス実装との差分抽出
 - 辞書渡しの仕様追記
 - 制約解決アルゴリズムの擬似コード検証
 - サンプルコードの型推論結果検証
 
-2.3. **効果システムのレビュー（`1-3-effects-safety.md`）**
+2.3. **効果システムのレビュー（[1-3-effects-safety.md](../../spec/1-3-effects-safety.md)）**
 - Phase 2 効果実装との差分抽出
 - Stage 要件の記述精緻化
 - 効果推論ルールの擬似コード追加
-- `3-8-core-runtime-capability.md` との整合
+- [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) との整合
 
 **成果物**: Chapter 1 差分リスト、修正案ドラフト
 
@@ -137,7 +144,7 @@
 - 脚注・TODO の追加
 
 6.2. **用語集・索引の更新**
-- `0-2-glossary.md` の用語追加・更新
+- [0-2-glossary.md](../../spec/0-2-glossary.md) の用語追加・更新
 - 新規概念の定義追加
 - 廃止された用語の非推奨マーク
 - 用語の統一チェック
@@ -155,9 +162,9 @@
 
 7.1. **索引系ドキュメントの更新**
 - `README.md` の目次更新
-- `0-0-overview.md` の概要更新
-- `0-1-project-purpose.md` の目的・方針の見直し
-- `0-3-code-style-guide.md` のコード例更新
+- [0-0-overview.md](../../spec/0-0-overview.md) の概要更新
+- [0-1-project-purpose.md](../../spec/0-1-project-purpose.md) の目的・方針の見直し
+- [0-3-code-style-guide.md](../../spec/0-3-code-style-guide.md) のコード例更新
 
 7.2. **相互参照リンクの検証**
 - 全 Markdown ファイルのリンク抽出
@@ -211,4 +218,3 @@
 - [0-0-overview.md](../../spec/0-0-overview.md)
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
 - [0-4-risk-handling.md](0-4-risk-handling.md)
-

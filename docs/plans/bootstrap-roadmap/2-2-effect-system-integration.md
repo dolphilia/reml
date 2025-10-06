@@ -1,7 +1,7 @@
 # 2.2 効果システム統合計画
 
 ## 目的
-- `1-3-effects-safety.md` と `3-8-core-runtime-capability.md` に定義される効果タグと Stage 要件を Phase 2 で OCaml 実装へ統合する。
+- [1-3-effects-safety.md](../../spec/1-3-effects-safety.md) と [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) に定義される効果タグと Stage 要件を Phase 2 で OCaml 実装へ統合する。
 - Parser/Typer/Lint/Runtime が同一の Stage 判定ロジックを共有し、セルフホスト前の整合を確保する。
 
 ## スコープ
@@ -9,14 +9,21 @@
 - **含まない**: ランタイム Stage の動的変更、プラグインによる Stage 拡張。これらは Phase 3 以降。
 - **前提**: Parser が効果構文を取り込み、Typer が型クラス拡張と競合しない設計であること。
 
+## 作業ディレクトリ
+- `compiler/ocaml/src/parser`, `compiler/ocaml/src/typer` : 効果タグ解析と型検証
+- `compiler/ocaml/src/ir`, `compiler/ocaml/src/codegen` : 効果タグの IR 伝播と Capability チェック
+- `runtime/native` : Stage/Capability 監査の実装
+- `tooling/ci` : 効果タグと Stage 整合性を検証する CI ジョブ
+- `docs/spec/1-3-effects-safety.md`, `docs/spec/3-8-core-runtime-capability.md`, `docs/spec/3-6-core-diagnostics-audit.md` : 仕様更新の対象
+
 ## 作業ブレークダウン
 
 ### 1. 効果システム設計と仕様整理（24-25週目）
 **担当領域**: 効果システム基盤設計
 
 1.1. **効果タグとStage定義の抽出**
-- `1-3-effects-safety.md` から効果タグの全種類をリスト化
-- `3-8-core-runtime-capability.md` の Stage 定義をデータ構造化
+- [1-3-effects-safety.md](../../spec/1-3-effects-safety.md) から効果タグの全種類をリスト化
+- [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) の Stage 定義をデータ構造化
 - Stage 要件（`Exact`, `AtLeast`）の形式化と順序関係の確認
 - プラットフォーム別 Stage テーブルの整理
 
@@ -84,7 +91,7 @@
 **担当領域**: ランタイム検証
 
 4.1. **Capability テーブル埋め込み**
-- `3-8-core-runtime-capability.md` の Stage テーブルを OCaml に写像
+- [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) の Stage テーブルを OCaml に写像
 - プラットフォーム別の Capability 定義
 - Stage 判定の共通モジュール実装
 - 動的 Stage 変更の検討（Phase 3 以降）
@@ -116,7 +123,7 @@
 - 効果情報の CLI 表示
 - `--emit-effects` フラグの実装
 - カラー出力対応（効果タグごとの色分け）
-- `3-6-core-diagnostics-audit.md` との整合
+- [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) との整合
 
 5.3. **AuditEnvelope 統合**
 - 効果メタデータの `AuditEnvelope` への記録
@@ -153,13 +160,13 @@
 **担当領域**: 仕様整合
 
 7.1. **仕様書フィードバック**
-- `1-3-effects-safety.md` への実装差分の反映
+- [1-3-effects-safety.md](../../spec/1-3-effects-safety.md) への実装差分の反映
 - 効果推論ルールの擬似コードを追加
 - 新規サンプルコードの追加
 - 実装上の制約・TODO の明示
 
 7.2. **Capability 仕様の更新**
-- `3-8-core-runtime-capability.md` の Stage テーブル更新
+- [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) の Stage テーブル更新
 - プラットフォーム別の差異を文書化
 - 将来拡張（プラグイン Stage）の検討メモ
 - Phase 3 への引き継ぎ事項

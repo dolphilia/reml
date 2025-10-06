@@ -16,7 +16,7 @@
 
 1.1. **セルフホスト版パッケージの準備**
 - 4-2 で生成された 3 ターゲット全ての成果物を収集
-- パッケージメタデータの作成（`5-2-registry-distribution.md` §2 に準拠）
+- パッケージメタデータの作成（[5-2-registry-distribution.md](../../spec/5-2-registry-distribution.md) §2 に準拠）
 - `runtime_revision`、`stdlib_version`、`capabilities` の確認
 - ハッシュと署名情報の検証
 
@@ -52,7 +52,7 @@
 2.2. **guides/runtime-bridges.md の更新**
 - セルフホスト版ランタイムブリッジの実装詳細
 - ターゲット別の実装差分（Linux/Windows/macOS）
-- FFI 契約の最新化（`3-9-core-async-ffi-unsafe.md` 準拠）
+- FFI 契約の最新化（[3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md) 準拠）
 - デバッグ手法とトラブルシューティング
 
 2.3. **コード例の更新**

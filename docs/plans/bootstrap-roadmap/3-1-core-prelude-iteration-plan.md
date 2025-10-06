@@ -15,7 +15,7 @@
 ### 1. 仕様精査と API インベントリ化（35週目）
 **担当領域**: 設計調整
 
-1.1. `3-1-core-prelude-iteration.md` の API 一覧を機械可読な表に整理し、既存実装との差分 (新規/変更/廃止) を抽出する。
+1.1. [3-1-core-prelude-iteration.md](../../spec/3-1-core-prelude-iteration.md) の API 一覧を機械可読な表に整理し、既存実装との差分 (新規/変更/廃止) を抽出する。
 1.2. 効果タグ・属性 (`@must_use`, `effect {debug}` 等) の整合表を作成し、Phase 2 の Diagnostic 実装で要求されるメタデータ列と突き合わせる。
 1.3. Option/Result の内部実装スタイル (enum vs struct, インライン最適化) を評価し、性能/サイズベンチマークの計測指標を確定する。
 

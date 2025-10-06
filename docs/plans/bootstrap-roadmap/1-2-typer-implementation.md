@@ -2,13 +2,19 @@
 
 ## 目的
 - Hindley–Milner 基盤の型推論を OCaml で実装し、Phase 1 マイルストーン M2 (`Typer MVP`) の達成を保証する。
-- `1-2-types-Inference.md` に記載された単相/let 多相のケースを再現し、辞書渡し・効果タグなしの単純化モデルで安定動作させる。
+- [1-2-types-Inference.md](../../spec/1-2-types-Inference.md) に記載された単相/let 多相のケースを再現し、辞書渡し・効果タグなしの単純化モデルで安定動作させる。
 - 解析結果を Core IR へ橋渡しできる `TypedAST` を作り、後続の最適化と LLVM 生成に供給する。
 
 ## スコープ
 - **含む**: 型推論エンジン、型注釈の取り込み、一般化/インスタンス化、型別名・レコード・列挙の最小サポート、エラー生成。
 - **含まない**: 型クラス、効果タグ、サブタイピング、所有権解析。これらは Phase 2 以降の課題とする。
 - **前提**: Parser 実装が TypedAST 用の構造を提供していること、`docs/notes/llvm-spec-status-survey.md` の M1 計測対象が把握されていること。
+
+## 作業ディレクトリ
+- `compiler/ocaml/src/typer`（想定）: 型表現・制約生成・Unifier 実装
+- `compiler/ocaml/tests/typer` : 型推論スナップショットと回帰テスト
+- `compiler/ocaml/docs` : 型推論設計メモや計測結果の記録
+- `docs/notes/core-library-outline.md`, `docs/notes/llvm-spec-status-survey.md` : 仕様差分・性能指標のログ
 
 ## 作業ブレークダウン
 
@@ -30,7 +36,7 @@
 1.3. **型制約システム**
 - `Constraint`: `Unify(τ₁, τ₂)` の表現
 - 制約収集と解決の分離設計
-- `1-2-types-Inference.md` との整合確認
+- [1-2-types-Inference.md](../../spec/1-2-types-Inference.md) との整合確認
 
 **成果物**: `typer/types.ml`, 型環境モジュール
 
@@ -71,7 +77,7 @@
 3.3. **多相再帰の処理**
 - 再帰関数の型推論戦略
 - 暫定型の仮定と制約解決
-- `1-2-types-Inference.md` §3.2 の再帰パターン検証
+- [1-2-types-Inference.md](../../spec/1-2-types-Inference.md) §3.2 の再帰パターン検証
 
 **成果物**: 一般化/インスタンス化モジュール、再帰テスト
 
@@ -124,7 +130,7 @@
 - エラーコンテキスト（期待型、実際の型）
 
 6.2. **診断メッセージ生成**
-- `2-5-error.md` フォーマットへの準拠
+- [2-5-error.md](../../spec/2-5-error.md) フォーマットへの準拠
 - 型の人間可読表示（型変数の名前付け）
 - 複数エラーの収集と報告
 

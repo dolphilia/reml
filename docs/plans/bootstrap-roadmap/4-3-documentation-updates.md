@@ -1,7 +1,7 @@
 # 4.3 ドキュメント更新計画
 
 ## 目的
-- Phase 4 マイルストーン M3 を支援するため、`README.md`・`0-0-overview.md`・`docs/guides/llvm-integration-notes.md` など主要ドキュメントをセルフホスト版前提に更新する。
+- Phase 4 マイルストーン M3 を支援するため、`README.md`・[0-0-overview.md](../../spec/0-0-overview.md)・`docs/guides/llvm-integration-notes.md` など主要ドキュメントをセルフホスト版前提に更新する。
 - 正式ターゲット (Linux > Windows > macOS) と配布経路を明示し、コミュニティへ周知する。
 
 ## スコープ
@@ -15,10 +15,10 @@
 **担当領域**: ドキュメント分析
 
 1.1. **更新対象ファイルのリスト化**
-- コアドキュメント: `README.md`、`0-0-overview.md`、`0-1-project-purpose.md`
+- コアドキュメント: `README.md`、[0-0-overview.md](../../spec/0-0-overview.md)、[0-1-project-purpose.md](../../spec/0-1-project-purpose.md)
 - ガイド類: `docs/guides/llvm-integration-notes.md`、`docs/guides/plugin-authoring.md`、`docs/guides/runtime-bridges.md`
-- 標準ライブラリ仕様: `3-8-core-runtime-capability.md`、`3-10-core-env.md`
-- エコシステム: `5-1-package-manager-cli.md`、`5-2-registry-distribution.md`、`5-3-developer-toolchain.md`
+- 標準ライブラリ仕様: [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md)、[3-10-core-env.md](../../spec/3-10-core-env.md)
+- エコシステム: [5-1-package-manager-cli.md](../../spec/5-1-package-manager-cli.md)、[5-2-registry-distribution.md](../../spec/5-2-registry-distribution.md)、[5-3-developer-toolchain.md](../../spec/5-3-developer-toolchain.md)
 
 1.2. **変更内容の分類**
 - **Critical**: OCaml実装 → セルフホスト版への移行、ターゲット情報の更新
@@ -120,9 +120,9 @@
 - 制限事項と既知の問題
 
 4.4. **仕様書への反映**
-- `1-1-syntax.md` への `@cfg` 構文最終確認
-- `3-10-core-env.md` へのターゲット検出機能追記
-- `5-3-developer-toolchain.md` へのターゲット別ツール情報
+- [1-1-syntax.md](../../spec/1-1-syntax.md) への `@cfg` 構文最終確認
+- [3-10-core-env.md](../../spec/3-10-core-env.md) へのターゲット検出機能追記
+- [5-3-developer-toolchain.md](../../spec/5-3-developer-toolchain.md) へのターゲット別ツール情報
 - サンプルコードの追加・更新
 
 **成果物**: ターゲット情報文書、更新済み仕様書
@@ -171,7 +171,7 @@
 - 削除・移動したセクションの整理
 
 6.3. **用語統一の確認**
-- `0-2-glossary.md` との整合性
+- [0-2-glossary.md](../../spec/0-2-glossary.md) との整合性
 - 新規用語の追加
 - 表記ゆれの統一（ツールによる自動検出）
 - 外来語の原語併記ルール徹底
@@ -251,7 +251,7 @@
 ## リスクとフォローアップ
 - ドキュメント量が多いため、優先順位を設定し分割してレビュー。
 - コミュニティ周知が遅れると移行が滞る可能性があるため、告知計画を早期に準備。
-- 翻訳が必要な場合に備え、用語統一を `0-2-glossary.md` と同期。
+- 翻訳が必要な場合に備え、用語統一を [0-2-glossary.md](../../spec/0-2-glossary.md) と同期。
 - サンプルコードの検証でエラーが発生した場合、仕様書または実装の修正を検討し、`0-4-risk-handling.md` に記録。
 - リンクチェックツールで検出されないエラー（アンカーの不一致等）に対応するため、手動レビューも並行実施。
 

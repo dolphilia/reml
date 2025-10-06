@@ -4,13 +4,20 @@ Phase 4 は Reml セルフホスト実装を正式版として採用し、OCaml 
 
 ## 4.0.1 目的
 - Reml セルフホスト実装の出力が OCaml 実装と機能的に一致することを証明し、**x86_64 Linux を正式版のターゲット**として正式なリリースパイプラインへ組み込む。
-- `5-3-developer-toolchain.md` に沿ったツールチェーン整備（パッケージ管理、CI/CD、診断集計）を完了させる。
+- [5-3-developer-toolchain.md](../../spec/5-3-developer-toolchain.md) に沿ったツールチェーン整備（パッケージ管理、CI/CD、診断集計）を完了させる。
 - OCaml 実装は移行期間中の LTS として維持し、**後方互換チェックリスト**（詳細は本章で定義）を通過後にアーカイブする。
 
 ## 4.0.2 スコープ境界
 - **含む**: 出力一致検証、ローリングリリース戦略、ドキュメント更新、エコシステム（パッケージ、プラグイン、CI テンプレート）への周知、**マルチターゲット（x86_64 Linux/Windows + ARM64 macOS）の正式サポート確立**。
 - **含まない**: 追加ターゲット（WASM/WASI/他アーキテクチャ）の正式サポート、JIT/最適化高度化。これらは別計画または次期フェーズへ引き継ぐ。
 - **前提条件**: Phase 3 のセルフホスト成果（マルチターゲット対応完了）、`0-3-audit-and-metrics.md` での性能/診断ベンチマーク、`0-4-risk-handling.md` の未解決リスク一覧。
+
+## 4.0.2a 作業ディレクトリ
+- `tooling/ci`, `.github/workflows/` : マルチターゲット CI と成果物検証
+- `tooling/release` : 署名・notarization・配布スクリプト
+- `compiler/ocaml/`, `runtime/native` : セルフホスト成果物の最終ビルド
+- `docs/spec/`, `docs/guides/`, `docs/notes/` : ドキュメント更新とリスク記録
+- `examples/` : 出力比較・回帰テストで使用するサンプル
 
 ## 4.0.3 成果物とマイルストーン
 | マイルストーン | 内容 | 検証方法 | 期限目安 |
@@ -28,20 +35,20 @@ Phase 4 は Reml セルフホスト実装を正式版として採用し、OCaml 
    - LLVM IR の構造差分（関数単位）を**x86_64 Linux、Windows x64、ARM64 macOS の 3 ターゲット全て**で比較し、差分がある場合は `docs/notes/llvm-spec-status-survey.md` の未決項目に照らして承認または修正。
    - **x86_64 Linux (ELF) 成果物を基準**にし、`llvm-diff` と `dwarfdump` でデバッグ情報・シンボル整合を確認する。
    - Windows (PE) と macOS (Mach-O) の成果物も同様に検証し、ターゲット固有の差異は許容範囲として記録。
-   - 診断メッセージの差分を比較し、`3-6-core-diagnostics-audit.md` のキーセットに準拠するか確認。
+   - 診断メッセージの差分を比較し、[3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) のキーセットに準拠するか確認。
 2. **マルチターゲットリリースパイプライン構築**
-   - `5-3-developer-toolchain.md` の手順に従い、ビルド→テスト→署名→配布までを自動化。
+   - [5-3-developer-toolchain.md](../../spec/5-3-developer-toolchain.md) の手順に従い、ビルド→テスト→署名→配布までを自動化。
    - **3 ターゲット全てのアーティファクト生成を CI で自動化**:
      - x86_64 Linux: `.tar.gz` + 署名
      - Windows x64: `.zip` + オプションでコードサイニング
      - ARM64 macOS: `.tar.gz` + Apple notarization (`codesign`/`notarytool`)
-   - 公式リリースノートフォーマット（`5-5-roadmap-metrics.md` 参照）でセルフホスト移行の進捗を報告。
+   - 公式リリースノートフォーマット（[5-5-roadmap-metrics.md](../../spec/5-5-roadmap-metrics.md) 参照）でセルフホスト移行の進捗を報告。
 3. **ドキュメント更新**
-   - `README.md` と `0-0-overview.md` にセルフホスト完了と **x86_64 Linux を正式版の第一ターゲット**とする旨を明記。
+   - `README.md` と [0-0-overview.md](../../spec/0-0-overview.md) にセルフホスト完了と **x86_64 Linux を正式版の第一ターゲット**とする旨を明記。
    - Windows x64 と ARM64 macOS も公式サポート対象として併記し、ダウンロードリンクを提供。
    - `docs/guides/llvm-integration-notes.md` をアップデートし、Phase 4 以降の拡張計画（WASM/WASI/JIT 等）を付録化。
 4. **エコシステム整備**
-   - パッケージレジストリ (`5-2-registry-distribution.md`) にセルフホスト版を登録し、**3 ターゲット全てのバイナリを配布**。x86_64 Linux を推奨ターゲットとして明示。OCaml 版を非推奨マーク。
+   - パッケージレジストリ ([5-2-registry-distribution.md](../../spec/5-2-registry-distribution.md)) にセルフホスト版を登録し、**3 ターゲット全てのバイナリを配布**。x86_64 Linux を推奨ターゲットとして明示。OCaml 版を非推奨マーク。
    - プラグイン開発ガイド (`docs/guides/DSL-plugin.md`) をセルフホスト ABI 前提に更新し、マルチターゲット対応の注意点を追加。
 5. **後方互換チェックリストの定義と実施**
    - 後方互換チェックリストを `0-3-audit-and-metrics.md` に追加し、以下を含める:

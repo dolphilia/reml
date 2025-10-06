@@ -3,14 +3,21 @@
 Phase 2 は OCaml 実装を用いて Reml 言語仕様の全体を検証し、MVP から正式仕様へ昇格させる工程である。型クラス・効果システム・診断メタデータなど `1-2`〜`1-3` および `3-6` に記述された要素を段階的に有効化し、パーサ/タイパ/ランタイムの仕様差異を解消する。
 
 ## 2.0.1 目的
-- `1-2-types-Inference.md` に定義された型クラス制約・辞書渡し・局所型推論を OCaml 実装に反映し、セルフホスト移行前に挙動を固める。
-- `1-3-effects-safety.md` の効果タグと `3-8-core-runtime-capability.md` の Stage 契約をパーサとタイプチェッカで検証し、`effect` 注釈と Capability Stage の相互整合を確立する。
-- `3-6-core-diagnostics-audit.md` で定義された監査ログフォーマットを実装し、診断・監査パイプラインを安定化する。
+- [1-2-types-Inference.md](../../spec/1-2-types-Inference.md) に定義された型クラス制約・辞書渡し・局所型推論を OCaml 実装に反映し、セルフホスト移行前に挙動を固める。
+- [1-3-effects-safety.md](../../spec/1-3-effects-safety.md) の効果タグと [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) の Stage 契約をパーサとタイプチェッカで検証し、`effect` 注釈と Capability Stage の相互整合を確立する。
+- [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) で定義された監査ログフォーマットを実装し、診断・監査パイプラインを安定化する。
 
 ## 2.0.2 スコープ境界
 - **含む**: 型クラス/辞書渡し、代数的効果タグの静的検証、`RuntimeBridge` との Stage 整合、FFI 所有権契約の正式化、診断メタデータの出力。
 - **含まない**: セルフホスト化、Reml 実装での再構築、JIT ターゲット・クロスコンパイル最適化。これらは Phase 3 以降で実施。
 - **前提条件**: Phase 1 の成果物、`docs/guides/llvm-integration-notes.md` の Phase 2 要件、`docs/notes/llvm-spec-status-survey.md` で列挙された未決領域リスト。
+
+## 2.0.2a 作業ディレクトリ
+- `compiler/ocaml/src` : 型クラス・効果タグ対応の実装
+- `runtime/native` : FFI 所有権更新や追加 Capability 対応
+- `tooling/cli` / `tooling/ci` : 診断・監査パイプラインを CLI/CI に組み込む
+- `docs/spec/` 各章 : 仕様変更に伴うリンク・表の更新
+- `docs/notes/` : 型クラス評価やリスク登録 (`docs/notes/llvm-spec-status-survey.md`, `docs/notes/dsl-plugin-roadmap.md` など)
 
 ## 2.0.3 成果物とマイルストーン
 | マイルストーン | 内容 | 検証方法 | 期限目安 |
@@ -33,7 +40,7 @@ Phase 2 は OCaml 実装を用いて Reml 言語仕様の全体を検証し、MV
    - `effect` 注釈を AST/TAST に保持し、Stage 要求 (`StageRequirement::{Exact, AtLeast}`) を型チェック時に検証。
    - x86_64 Linux の Capability 構成を `3-8` の Stage テーブルと照合し、CI テストで検証。
 3. **FFI 契約の拡張**
-   - `3-9-core-async-ffi-unsafe.md` の ABI/所有権表を OCaml 実装に反映し、x86_64 Linux (System V) と Windows x64 (MSVC) の両方でビルドしたブリッジコードを検証。
+   - [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md) の ABI/所有権表を OCaml 実装に反映し、x86_64 Linux (System V) と Windows x64 (MSVC) の両方でビルドしたブリッジコードを検証。
    - FFI 呼び出しの追跡ログを `AuditEnvelope.metadata` に記録し、標準的な C ライブラリ呼び出しをサンプルに含める。
 4. **診断・監査パイプライン**
    - `Diagnostic` に `extensions` フィールドを追加し、`effect.stage.*` や `bridge.stage.*` を出力。

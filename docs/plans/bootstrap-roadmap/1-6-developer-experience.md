@@ -2,12 +2,19 @@
 
 ## 目的
 - `remlc-ocaml` CLI を Phase 1 で整備し、開発者が解析結果・IR・診断を観測できる開発体験を提供する。
-- `3-6-core-diagnostics-audit.md` のフィールド定義に従い、出力フォーマットを将来のセルフホスト版と一致させる。
+- [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) のフィールド定義に従い、出力フォーマットを将来のセルフホスト版と一致させる。
 
 ## スコープ
 - **含む**: CLI インタフェース設計、サブコマンド実装、出力フォーマット整備、診断メッセージの国際化方針（日本語 + 原語併記）、ドキュメント整備。
 - **含まない**: GUI、LSP サーバ、IDE プラグイン。これらは Phase 2 以降に計画。
 - **前提**: Parser/TypeChecker/Core IR/LLVM が CLI から呼び出せる状態であること。
+
+## 作業ディレクトリ
+- `tooling/cli` : CLI 実装、オプション処理、ヘルプ出力
+- `tooling/cli/tests`（想定）: CLI スナップショット・メトリクス収集テスト
+- `compiler/ocaml/src` : CLI から呼び出すパイプライン統合ポイント
+- `docs/guides` : CLI 使⽤ガイドの更新。とくに `docs/guides/cli-workflow.md`
+- `tooling/ci` : CLI を exercise する CI ジョブ
 
 ## 作業ブレークダウン
 
@@ -55,7 +62,7 @@
 **担当領域**: エラー・警告の表示
 
 3.1. **Diagnostic構造体実装**
-- `3-6-core-diagnostics-audit.md` 準拠のフィールド定義
+- [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) 準拠のフィールド定義
 - Span情報との統合
 - 重大度レベル（error, warning, info, hint）
 
@@ -186,4 +193,3 @@
 - [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md)
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
 - [guides/llvm-integration-notes.md](../../guides/llvm-integration-notes.md)
-

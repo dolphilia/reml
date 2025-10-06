@@ -9,6 +9,13 @@
 - **含まない**: ガベージコレクタ、Fiber/Async ランタイム、Capability Stage の動的切替。これらは Phase 3 以降。
 - **前提**: LLVM IR 生成がランタイム関数を呼び出す設計になっていること。x86_64 Linux のツールチェーンが構築済みであること。
 
+## 作業ディレクトリ
+- `runtime/native` : C/LLVM 実装とビルドスクリプト
+- `runtime/native/tests`（想定）: RC・メモリアロケータのユニット/統合テスト
+- `compiler/ocaml/src/codegen` : ランタイム呼び出し側 (FFI 宣言、リンク設定)
+- `compiler/ocaml/tests/codegen` : ランタイム連携を含むエンドツーエンドテスト
+- `tooling/ci` : ランタイムをリンクする CI ジョブ、Valgrind/ASan 等の検証スクリプト
+
 ## 作業ブレークダウン
 
 ### 1. ランタイムAPI設計（13週目）
@@ -84,7 +91,7 @@
 
 4.2. **診断情報収集**
 - 実行時情報（PID, 時刻等）の付加
-- `3-6-core-diagnostics-audit.md` 形式への整形
+- [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) 形式への整形
 - ログファイル出力（設定可能）
 
 4.3. **終了処理**

@@ -33,7 +33,7 @@
 - デバッグセクション（DWARF）の扱い
 
 1.4. **診断比較基準**
-- `3-6-core-diagnostics-audit.md` のキー定義を参照
+- [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) のキー定義を参照
 - メッセージテキストの一致性（ワーディング）
 - 位置情報の正確性（Span）
 - エラーコードの整合性

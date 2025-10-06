@@ -9,6 +9,13 @@
 - **含まない**: Windows/macOS ランナー、長時間ベンチマーク、本番配布。これらは Phase 2 以降で追加。
 - **前提**: CLI と各フェーズのテストがコマンドラインから実行可能になっていること。
 
+## 作業ディレクトリ
+- `.github/workflows/` : GitHub Actions 定義
+- `tooling/ci` : ローカル再現スクリプト、CI 用ユーティリティ
+- `compiler/ocaml/` : CI でビルドするソース、テスト資産
+- `runtime/native` : ランタイムビルド/リンク検証
+- `docs/notes/llvm-spec-status-survey.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` : CI 結果・指標の記録先
+
 ## 作業ブレークダウン
 
 ### 1. CI設計とワークフロー定義（9週目）
@@ -188,4 +195,3 @@
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
 - [0-4-risk-handling.md](0-4-risk-handling.md)
 - [guides/llvm-integration-notes.md](../../guides/llvm-integration-notes.md)
-

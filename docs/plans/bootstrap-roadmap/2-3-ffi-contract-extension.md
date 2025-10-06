@@ -1,7 +1,7 @@
 # 2.3 FFI 契約拡張計画
 
 ## 目的
-- Phase 2 で `3-9-core-async-ffi-unsafe.md` に定義された ABI/所有権契約を OCaml 実装へ反映し、x86_64 Linux (System V) と Windows x64 (MSVC) の両方でブリッジコードを検証する。
+- Phase 2 で [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md) に定義された ABI/所有権契約を OCaml 実装へ反映し、x86_64 Linux (System V) と Windows x64 (MSVC) の両方でブリッジコードを検証する。
 - `AuditEnvelope` に FFI 呼び出しのメタデータを記録し、診断と監査の一貫性を確保する。
 
 ## スコープ
@@ -9,13 +9,20 @@
 - **含まない**: 非同期ランタイム実装の刷新、プラグイン経由の FFI 自動生成。これらは Phase 3 以降。
 - **前提**: Phase 1 のランタイム連携が完成し、Phase 2 の効果システム統合と衝突しない設計であること。
 
+## 作業ディレクトリ
+- `compiler/ocaml/src/parser`, `compiler/ocaml/src/typer` : FFI 宣言解析と型検証
+- `compiler/ocaml/src/codegen` : ブリッジコード生成、ABI 設定
+- `runtime/native` : 所有権ヘルパ・FFI スタブ
+- `tooling/ci` : Linux/Windows 両ターゲットでのブリッジ検証
+- `docs/spec/3-9-core-async-ffi-unsafe.md`, `docs/notes/llvm-spec-status-survey.md` : 契約・測定記録
+
 ## 作業ブレークダウン
 
 ### 1. ABI モデル設計と仕様整理（29-30週目）
 **担当領域**: FFI 基盤設計
 
 1.1. **ABI 仕様の抽出**
-- `3-9-core-async-ffi-unsafe.md` の ABI テーブルを OCaml データ型に写像
+- [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md) の ABI テーブルを OCaml データ型に写像
 - System V ABI (x86_64 Linux) と MSVC ABI (x86_64 Windows) の差分整理
 - 呼出規約（calling convention）の形式化
 - 構造体レイアウト・アライメントルールの定義
@@ -115,7 +122,7 @@
 - FFI 型エラーの詳細メッセージ
 - 所有権違反の説明と修正提案
 - ABI ミスマッチの検出とレポート
-- `3-6-core-diagnostics-audit.md` との整合
+- [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) との整合
 
 5.3. **監査ログの出力**
 - `--emit-audit` での FFI 情報出力
@@ -175,7 +182,7 @@
 **担当領域**: 仕様整合と引き継ぎ
 
 8.1. **仕様書フィードバック**
-- `3-9-core-async-ffi-unsafe.md` への実装差分の反映
+- [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md) への実装差分の反映
 - ABI 差分の詳細化
 - 所有権契約の擬似コードを追加
 - 新規サンプルコードの追加

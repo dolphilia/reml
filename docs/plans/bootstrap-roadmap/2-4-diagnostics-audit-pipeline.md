@@ -9,13 +9,20 @@
 - **含まない**: 外部監査システム連携、GUI ビューワ。必要に応じて Phase 4 で検討。
 - **前提**: Phase 1 の CLI 整備が完了し、診断結果を CLI から閲覧できる状態であること。
 
+## 作業ディレクトリ
+- `compiler/ocaml/src` : Diagnostic/AuditEnvelope 生成プログラム
+- `tooling/cli` : CLI 出力、`--emit-diagnostic` などの整形
+- `tooling/lsp` : 将来の LSP 連携に向けた仕様メモ
+- `tooling/ci` : 診断 diff / JSON スキーマ検証ワークフロー
+- `docs/spec/3-6-core-diagnostics-audit.md`, `docs/notes/guides-to-spec-integration-plan.md` : スキーマ更新と追跡
+
 ## 作業ブレークダウン
 
 ### 1. 診断データ構造の再設計（26-27週目）
 **担当領域**: 診断基盤設計
 
 1.1. **Diagnostic 構造の拡張**
-- `3-6-core-diagnostics-audit.md` の仕様を OCaml データ型に写像
+- [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) の仕様を OCaml データ型に写像
 - `extensions: (string * json) list` フィールドの追加
 - `related: Diagnostic list` フィールドの追加（関連診断のリンク）
 - `codes: string list` フィールドの追加（診断コード）
@@ -153,7 +160,7 @@
 **担当領域**: 仕様整合
 
 7.1. **仕様書フィードバック**
-- `3-6-core-diagnostics-audit.md` への実装差分の反映
+- [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) への実装差分の反映
 - メタデータキー一覧の追加
 - 診断フォーマットの例示
 - 新規サンプルコードの追加
@@ -210,4 +217,3 @@
 - [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md)
 - [guides/ai-integration.md](../../guides/ai-integration.md)
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
-
