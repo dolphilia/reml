@@ -184,7 +184,7 @@ dune exec tests/test_golden.exe
 
 ### 📝 Phase 2 への移行
 
-**Phase 1 は完了しました。Phase 2（型推論実装）への移行準備が整っています。**
+**Phase 1 は完了しました。Phase 2（型推論実装）が開始されています。**
 
 #### Phase 2 開始前に確認すべきドキュメント
 
@@ -207,12 +207,17 @@ dune exec tests/test_golden.exe
    - Phase 1 からの既知の問題
    - 優先度別の対応計画
 
-#### Phase 2 で実装する主要機能
+#### Phase 2 で実装する主要機能（進行中）
 
-- **Typed AST 定義** (`src/typed_ast.ml`)
-- **型推論エンジン** (`src/type_inference.ml`)
-- **型エラーメッセージ** (`src/type_error.ml`)
-- **型推論テストスイート** (`tests/test_type_inference.ml`)
+- ✅ **型システム基盤** (`src/types.ml`, `src/type_env.ml`, `src/constraint.ml`) - **完了**
+  - 型表現とスキームの定義
+  - 型環境とスコープ管理
+  - 型制約システムと単一化アルゴリズム
+  - 165+ ユニットテスト全て成功
+- 🚧 **Typed AST 定義** (`src/typed_ast.ml`) - 次のステップ
+- 🚧 **型推論エンジン** (`src/type_inference.ml`) - Week 3-4 予定
+- 🚧 **型エラーメッセージ** (`src/type_error.ml`) - Week 5-6 予定
+- 🚧 **型推論テストスイート** (`tests/test_type_inference.ml`) - Week 5-6 予定
 
 ## 技術詳細
 
