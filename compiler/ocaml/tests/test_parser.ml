@@ -7,33 +7,28 @@ open Ast
 
 (* テストヘルパー関数 *)
 
-let parse_string s =
-  let lexbuf = Lexing.from_string s in
-  try
-    Some (Parser.compilation_unit Lexer.token lexbuf)
-  with
-  | Parser.Error -> None
-  | Lexer.Lexer_error _ -> None
+let parse_string s = Parser_driver.parse_string s
 
 let expect_ok desc input =
   match parse_string input with
-  | Some _ ->
+  | Ok _ ->
       Printf.printf "✓ %s\n" desc
-  | None ->
+  | Error diag ->
       Printf.printf "✗ %s: parse failed\n" desc;
+      Printf.printf "%s\n" (Diagnostic.to_string diag);
       exit 1
 
 let expect_fail desc input =
   match parse_string input with
-  | None ->
+  | Error _ ->
       Printf.printf "✓ %s\n" desc
-  | Some _ ->
+  | Ok _ ->
       Printf.printf "✗ %s: expected parse failure but succeeded\n" desc;
       exit 1
 
 let expect_decl_count desc expected input =
   match parse_string input with
-  | Some cu ->
+  | Ok cu ->
       let actual = List.length cu.decls in
       if actual = expected then
         Printf.printf "✓ %s\n" desc
@@ -41,13 +36,14 @@ let expect_decl_count desc expected input =
         Printf.printf "✗ %s: expected %d decls, got %d\n" desc expected actual;
         exit 1
       end
-  | None ->
+  | Error diag ->
       Printf.printf "✗ %s: parse failed\n" desc;
+      Printf.printf "%s\n" (Diagnostic.to_string diag);
       exit 1
 
 let expect_use_count desc expected input =
   match parse_string input with
-  | Some cu ->
+  | Ok cu ->
       let actual = List.length cu.uses in
       if actual = expected then
         Printf.printf "✓ %s\n" desc
@@ -55,13 +51,14 @@ let expect_use_count desc expected input =
         Printf.printf "✗ %s: expected %d uses, got %d\n" desc expected actual;
         exit 1
       end
-  | None ->
+  | Error diag ->
       Printf.printf "✗ %s: parse failed\n" desc;
+      Printf.printf "%s\n" (Diagnostic.to_string diag);
       exit 1
 
 let expect_effect_ops desc expected input =
   match parse_string input with
-  | Some cu ->
+  | Ok cu ->
       begin match cu.decls with
       | { decl_kind = EffectDecl eff; _ } :: _ ->
           let ops = List.map (fun op -> op.op_name.name) eff.operations in
@@ -76,8 +73,9 @@ let expect_effect_ops desc expected input =
           Printf.printf "✗ %s: first decl is not an effect\n" desc;
           exit 1
       end
-  | None ->
+  | Error diag ->
       Printf.printf "✗ %s: parse failed\n" desc;
+      Printf.printf "%s\n" (Diagnostic.to_string diag);
       exit 1
 
 (* ========== モジュールヘッダテスト ========== *)
@@ -211,6 +209,19 @@ let test_error_cases () =
   expect_fail "error: invalid token" "let x = @@@";
   expect_fail "error: unclosed string" "let x = \"hello"
 
+let test_diagnostic_metadata () =
+  match Parser_driver.parse_string "let x =" with
+  | Result.Error diag ->
+      if diag.Diagnostic.span.start_pos.line = 1 then
+        Printf.printf "✓ diagnostic: start position captured\n"
+      else begin
+        Printf.printf "✗ diagnostic metadata: unexpected line %d\n" diag.Diagnostic.span.start_pos.line;
+        exit 1
+      end
+  | Result.Ok _ ->
+      Printf.printf "✗ diagnostic metadata: expected parse failure\n";
+      exit 1
+
 (* ========== 統合テスト ========== *)
 
 let test_integration () =
@@ -289,6 +300,10 @@ let () =
 
   Printf.printf "Error Cases:\n";
   test_error_cases ();
+  Printf.printf "\n";
+
+  Printf.printf "Diagnostics:\n";
+  test_diagnostic_metadata ();
   Printf.printf "\n";
 
   Printf.printf "Integration Tests:\n";

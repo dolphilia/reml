@@ -122,10 +122,9 @@ dune exec tests/test_golden.exe
   - Parser ユニットテスト (`tests/test_parser.ml`)
   - ゴールデンテスト (`tests/test_golden.ml`)
   - Dune テストルール (`tests/dune`)
+- [x] `Parser_driver` による Result ベースの診断出力と CLI 連携
 
 ### 🚧 進行中
-- [ ] エラー回復戦略の実装
-- [ ] 診断モデル ([2-5-error.md](../../docs/spec/2-5-error.md) 準拠)
 - [ ] 完全な構文要素のカバレッジ (match, while, for, 等)
 - [ ] パターンマッチの完全実装
 

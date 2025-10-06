@@ -29,32 +29,15 @@ let () =
   let lexbuf = Lexing.from_channel ic in
   lexbuf.Lexing.lex_curr_p <- { lexbuf.Lexing.lex_curr_p with Lexing.pos_fname = !input_file };
 
-  try
-    (* パースを実行 *)
-    let ast = Parser.compilation_unit Lexer.token lexbuf in
-    close_in ic;
-
-    (* AST 出力 *)
-    if !emit_ast then begin
-      let rendered = Ast_printer.string_of_compilation_unit ast in
-      Printf.printf "%s\n" rendered;
-    end;
-
-    exit 0
-
-  with
-  | Lexer.Lexer_error (msg, span) ->
+  match Parser_driver.parse lexbuf with
+  | Ok ast ->
       close_in ic;
-      Printf.eprintf "Lexer error at %d-%d: %s\n" span.Ast.start span.end_ msg;
-      exit 1
-  | Parser.Error ->
+      if !emit_ast then begin
+        let rendered = Ast_printer.string_of_compilation_unit ast in
+        Printf.printf "%s\n" rendered;
+      end;
+      exit 0
+  | Error diag ->
       close_in ic;
-      let pos = lexbuf.Lexing.lex_curr_p in
-      Printf.eprintf "Parse error at line %d, column %d\n"
-        pos.Lexing.pos_lnum
-        (pos.Lexing.pos_cnum - pos.Lexing.pos_bol);
-      exit 1
-  | e ->
-      close_in ic;
-      Printf.eprintf "Unexpected error: %s\n" (Printexc.to_string e);
+      Printf.eprintf "%s\n" (Diagnostic.to_string diag);
       exit 1
