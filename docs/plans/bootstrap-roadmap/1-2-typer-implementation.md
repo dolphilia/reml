@@ -10,6 +10,13 @@
 - **含まない**: 型クラス、効果タグ、サブタイピング、所有権解析。これらは Phase 2 以降の課題とする。
 - **前提**: Parser 実装が TypedAST 用の構造を提供していること、`docs/notes/llvm-spec-status-survey.md` の M1 計測対象が把握されていること。
 
+## 進捗状況（2025-10-06 時点）
+- ✅ Week 1: `types.ml`・`type_env.ml`・`constraint.ml` を整備し、型表現・型環境・制約生成/単一化の最小セットを実装済み。
+- ✅ Week 2-3: `typed_ast.ml`・`type_inference.ml`・`type_error.ml` を追加し、リテラル/変数/関数適用/ラムダ/if/let を対象とした推論経路と一般化/インスタンス化を実装済み。
+- 🚧 Week 4-6: パターンマッチ推論、診断整備、スナップショットテスト、`--emit-tast` CLI オプションの追加を着手予定。
+- ⚠️ 既知の制約: `dune test` は `tests/test_parser.exe` の TODO ケース（handler ブロック）が失敗するため、個別テスト実行時は既知不具合として扱うこと（詳細は `compiler/ocaml/docs/technical-debt.md` 参照）。
+- 📌 進捗ログ: 最新のタスク状況と実行コマンドは `compiler/ocaml/README.md` に日次で追記する。
+
 ## 作業ディレクトリ
 - `compiler/ocaml/src/typer`（想定）: 型表現・制約生成・Unifier 実装
 - `compiler/ocaml/tests/typer` : 型推論スナップショットと回帰テスト

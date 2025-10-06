@@ -59,15 +59,22 @@ opam install dune menhir --yes
 # プロジェクトルート (compiler/ocaml) で実行
 dune build
 
-# 実行可能ファイルのパス
-./_build/default/src/remlc.exe
+# opam のスイッチを明示したい場合
+opam exec -- dune build
 ```
+
+- Dune が生成する実行バイナリのファイル名は `remlc.exe` ではなく `main.exe` になる（`src/dune` で `name main` を指定しているため）。
+- 直接実行する場合は `./_build/default/src/main.exe` を利用する。
+- 最も確実なのは `dune exec -- remlc …` を使う方法で、クロスプラットフォームに同じ引数で動作する。
 
 ## 使用方法
 
 ```bash
 # AST を出力
 dune exec -- remlc --emit-ast <input.reml>
+
+# ビルド成果物を直接呼び出したい場合（macOS）
+./_build/default/src/main.exe --emit-ast <input.reml>
 
 # 例
 dune exec -- remlc --emit-ast ../../examples/language-impl-comparison/reml/pl0_combinator.reml
@@ -81,17 +88,26 @@ dune exec -- remlc --emit-ast ../../examples/language-impl-comparison/reml/pl0_c
 dune test
 ```
 
+- 現状 `tests/test_parser.exe` の TODO ケース（handler ブロック）が失敗するため、`dune test` は終了コード 1 になる。
+- 既知の失敗については [docs/technical-debt.md](docs/technical-debt.md) の「Handler 宣言のパース問題」を確認する。
+
 ### 個別のテストを実行
 
 ```bash
 # Lexer ユニットテスト
-dune exec tests/test_lexer.exe
+dune exec -- ./tests/test_lexer.exe
 
-# Parser ユニットテスト
-dune exec tests/test_parser.exe
+# Parser ユニットテスト（handler TODO で失敗するのが既知挙動）
+dune exec -- ./tests/test_parser.exe
 
 # Golden テスト
-dune exec tests/test_golden.exe
+dune exec -- ./tests/test_golden.exe
+
+# パターンマッチ専用テスト
+dune exec -- ./tests/test_pattern_matching.exe
+
+# 型システムユニットテスト
+dune exec -- ./tests/test_types.exe
 ```
 
 ### テストの説明
