@@ -143,11 +143,8 @@ let ftv_env env =
 
 (* ========== 制約解決（Phase 2 Week 3-4 で実装） ========== *)
 
-(** 型エラー（Phase 2 Week 5-6 で詳細実装） *)
-type type_error =
-  | UnificationFailure of ty * ty * span      (** 型不一致 *)
-  | OccursCheck of type_var * ty * span       (** 無限型検出 *)
-  | UnboundVariable of string * span          (** 未定義変数 *)
+(** 型エラーは type_error.ml で定義 *)
+open Type_error
 
 (** let* 演算子（Result モナド） *)
 let (let*) = Result.bind
@@ -189,7 +186,7 @@ let rec unify subst t1 t2 span =
   | (TVar tv, t) | (t, TVar tv) ->
       (* Occurs check *)
       if occurs_check tv t then
-        Error (OccursCheck (tv, t, span))
+        Error (occurs_check_error tv t span)
       else
         (* 新しい代入を追加 *)
         Ok ((tv, t) :: subst)
@@ -230,7 +227,7 @@ let rec unify subst t1 t2 span =
 
   | _ ->
       (* 型不一致 *)
-      Error (UnificationFailure (t1', t2', span))
+      Error (unification_error t1' t2' span)
 
 (** リストの単一化 *)
 and unify_list subst pairs span =
@@ -248,7 +245,7 @@ and unify_record subst fields1 fields2 span =
 
   (* フィールド数と名前が一致するか確認 *)
   if List.length sorted1 <> List.length sorted2 then
-    Error (UnificationFailure (TRecord fields1, TRecord fields2, span))
+    Error (unification_error (TRecord fields1) (TRecord fields2) span)
   else
     try
       let pairs = List.map2 (fun (n1, t1) (n2, t2) ->
@@ -259,7 +256,7 @@ and unify_record subst fields1 fields2 span =
       ) sorted1 sorted2 in
       unify_list subst pairs span
     with Failure _ ->
-      Error (UnificationFailure (TRecord fields1, TRecord fields2, span))
+      Error (unification_error (TRecord fields1) (TRecord fields2) span)
 
 (** 制約解決: solve(constraints)
  *
@@ -291,14 +288,4 @@ let string_of_subst subst =
   ) subst in
   "[" ^ String.concat ", " bindings ^ "]"
 
-(** 型エラーの文字列表現（簡易版） *)
-let string_of_error = function
-  | UnificationFailure (t1, t2, span) ->
-      Printf.sprintf "Type mismatch: expected %s, found %s at %d:%d"
-        (string_of_ty t1) (string_of_ty t2) span.start span.end_
-  | OccursCheck (tv, ty, span) ->
-      Printf.sprintf "Occurs check failed: %s occurs in %s at %d:%d"
-        (string_of_type_var tv) (string_of_ty ty) span.start span.end_
-  | UnboundVariable (name, span) ->
-      Printf.sprintf "Unbound variable: %s at %d:%d"
-        name span.start span.end_
+(* 型エラーの文字列表現は type_error.ml で定義 *)
