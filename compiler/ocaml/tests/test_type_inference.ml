@@ -325,6 +325,171 @@ let test_match_expressions () =
     | Error _ -> failwith "Should not reach here"
   )
 
+(* ========== ブロック式テスト ========== *)
+
+let test_block_expressions () =
+  Printf.printf "\nBlock Expression Tests:\n";
+
+  (* 空のブロック *)
+  run_test "infer_expr: empty block {}" (fun () ->
+    let env = initial_env in
+    let block_expr = {
+      expr_kind = Block [];
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env block_expr in
+    assert_ok result "Empty block should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        assert_type_eq ty_unit ty "Empty block type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* 式のみのブロック *)
+  run_test "infer_expr: block with single expr { 42 }" (fun () ->
+    let env = initial_env in
+    let block_expr = {
+      expr_kind = Block [
+        ExprStmt { expr_kind = Literal (Int ("42", Base10)); expr_span = dummy_span }
+      ];
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env block_expr in
+    assert_ok result "Block with single expr should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        assert_type_eq ty_i64 ty "Block with single expr type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* let束縛を含むブロック（簡易版：二項演算を使わない） *)
+  run_test "infer_expr: block with let binding { let x = 1; x }" (fun () ->
+    let env = initial_env in
+    (* let x = 1 *)
+    let let_decl = {
+      decl_attrs = [];
+      decl_vis = Private;
+      decl_kind = LetDecl (
+        { pat_kind = PatVar { name = "x"; span = dummy_span }; pat_span = dummy_span },
+        None,
+        { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span }
+      );
+      decl_span = dummy_span;
+    } in
+    (* x *)
+    let x_expr = {
+      expr_kind = Var { name = "x"; span = dummy_span };
+      expr_span = dummy_span;
+    } in
+    let block_expr = {
+      expr_kind = Block [
+        DeclStmt let_decl;
+        ExprStmt x_expr;
+      ];
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env block_expr in
+    assert_ok result "Block with let binding should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        assert_type_eq ty_i64 ty "Block with let binding type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* 複数の文を含むブロック *)
+  run_test "infer_expr: block with multiple statements" (fun () ->
+    let env = initial_env in
+    (* let x = 1 *)
+    let let_x = {
+      decl_attrs = [];
+      decl_vis = Private;
+      decl_kind = LetDecl (
+        { pat_kind = PatVar { name = "x"; span = dummy_span }; pat_span = dummy_span },
+        None,
+        { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span }
+      );
+      decl_span = dummy_span;
+    } in
+    (* let y = 2 *)
+    let let_y = {
+      decl_attrs = [];
+      decl_vis = Private;
+      decl_kind = LetDecl (
+        { pat_kind = PatVar { name = "y"; span = dummy_span }; pat_span = dummy_span },
+        None,
+        { expr_kind = Literal (Int ("2", Base10)); expr_span = dummy_span }
+      );
+      decl_span = dummy_span;
+    } in
+    (* x (最後の式) *)
+    let x_expr = {
+      expr_kind = Var { name = "x"; span = dummy_span };
+      expr_span = dummy_span;
+    } in
+    let block_expr = {
+      expr_kind = Block [
+        DeclStmt let_x;
+        DeclStmt let_y;
+        ExprStmt x_expr;
+      ];
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env block_expr in
+    assert_ok result "Block with multiple statements should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        assert_type_eq ty_i64 ty "Block with multiple statements type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* ブロックの最後が宣言文 → Unit型 *)
+  run_test "infer_expr: block ending with decl -> Unit" (fun () ->
+    let env = initial_env in
+    let let_decl = {
+      decl_attrs = [];
+      decl_vis = Private;
+      decl_kind = LetDecl (
+        { pat_kind = PatVar { name = "x"; span = dummy_span }; pat_span = dummy_span },
+        None,
+        { expr_kind = Literal (Int ("42", Base10)); expr_span = dummy_span }
+      );
+      decl_span = dummy_span;
+    } in
+    let block_expr = {
+      expr_kind = Block [DeclStmt let_decl];
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env block_expr in
+    assert_ok result "Block ending with decl should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        assert_type_eq ty_unit ty "Block ending with decl type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* ネストしたブロック *)
+  run_test "infer_expr: nested blocks" (fun () ->
+    let env = initial_env in
+    (* 内側のブロック: { 42 } *)
+    let inner_block = {
+      expr_kind = Block [
+        ExprStmt { expr_kind = Literal (Int ("42", Base10)); expr_span = dummy_span }
+      ];
+      expr_span = dummy_span;
+    } in
+    (* 外側のブロック: { { 42 } } *)
+    let outer_block = {
+      expr_kind = Block [ExprStmt inner_block];
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env outer_block in
+    assert_ok result "Nested blocks should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        assert_type_eq ty_i64 ty "Nested blocks type"
+    | Error _ -> failwith "Should not reach here"
+  )
+
 (* ========== メイン ========== *)
 
 let () =
@@ -333,4 +498,5 @@ let () =
   test_constructor_patterns ();
   test_nested_patterns ();
   test_match_expressions ();
+  test_block_expressions ();
   Printf.printf "\nAll type inference tests passed! ✓\n"

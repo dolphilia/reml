@@ -299,9 +299,24 @@ let rec infer_expr (env: env) (expr: expr) : (infer_result, type_error) result =
         let texpr = make_typed_expr (TMatch (tscrutinee, rest_tarms)) final_ty expr.expr_span in
         Ok (texpr, final_ty, s_final)
 
-  | Block _stmts ->
-      (* ブロック式: Phase 2 Week 4 で実装 *)
-      failwith "Block expression not yet implemented"
+  | Block stmts ->
+      (* ブロック式: Phase 2 Week 5 で実装
+       *
+       * 仕様書 1-1 §C.6: ブロックの最後の式が値
+       * - 空のブロック → Unit型
+       * - 文のリストを順次処理し、型環境を更新
+       * - 最後の要素が式文なら、その式の型がブロック全体の型
+       * - 最後の要素が宣言文・代入文・defer文なら Unit型
+       *)
+      if stmts = [] then
+        (* 空のブロック *)
+        let texpr = make_typed_expr (TBlock []) ty_unit expr.expr_span in
+        Ok (texpr, ty_unit, empty_subst)
+      else
+        (* 文を順次処理 *)
+        let* (tstmts, final_ty, s_final) = infer_stmts env stmts empty_subst in
+        let texpr = make_typed_expr (TBlock tstmts) final_ty expr.expr_span in
+        Ok (texpr, final_ty, s_final)
 
   | _ ->
       (* その他の式は Phase 2 で順次実装 *)
@@ -617,11 +632,92 @@ and infer_match_arm (env: env) (arm: match_arm) (scrutinee_ty: ty) (subst: subst
 
   Ok (tarm, body_ty, s2)
 
+(** 文リストの型推論: infer_stmts(env, stmts, subst)
+ *
+ * Phase 2 Week 5: ブロック式のための文リスト型推論
+ *
+ * @param env 現在の型環境
+ * @param stmts 文のリスト
+ * @param subst 現在の代入
+ * @return (型付き文リスト, 最終型, 最終代入)
+ *)
+and infer_stmts (env: env) (stmts: stmt list) (subst: substitution)
+    : (typed_stmt list * ty * substitution, type_error) result =
+  (* 最後の文を特別扱い *)
+  let rec process_stmts env stmts acc_tstmts subst =
+    match stmts with
+    | [] ->
+        (* 空リスト: Unit型 *)
+        Ok (List.rev acc_tstmts, ty_unit, subst)
+    | [last_stmt] ->
+        (* 最後の文: ExprStmtなら式の型、それ以外はUnit *)
+        (match last_stmt with
+         | ExprStmt expr ->
+             (* 最後の式文: 式の型がブロック全体の型 *)
+             let env' = apply_subst_env subst env in
+             let* (texpr, expr_ty, s) = infer_expr env' expr in
+             let tstmt = TExprStmt texpr in
+             Ok (List.rev (tstmt :: acc_tstmts), expr_ty, s)
+         | _ ->
+             (* 最後の文が宣言/代入/defer: Unit型 *)
+             let* (tstmt, _new_env, s) = infer_stmt env last_stmt subst in
+             Ok (List.rev (tstmt :: acc_tstmts), ty_unit, s))
+    | stmt :: rest ->
+        (* 中間の文: 処理して環境更新 *)
+        let* (tstmt, new_env, s) = infer_stmt env stmt subst in
+        process_stmts new_env rest (tstmt :: acc_tstmts) s
+  in
+  process_stmts env stmts [] subst
+
+(** 文の型推論: infer_stmt(env, stmt, subst)
+ *
+ * Phase 2 Week 5: 文の型推論
+ *
+ * @param env 現在の型環境
+ * @param stmt 文（AST）
+ * @param subst 現在の代入
+ * @return (型付き文, 新しい型環境, 新しい代入)
+ *)
+and infer_stmt (env: env) (stmt: stmt) (subst: substitution)
+    : (typed_stmt * env * substitution, type_error) result =
+  match stmt with
+  | DeclStmt decl ->
+      (* 宣言文: 型推論して型環境を更新 *)
+      let env' = apply_subst_env subst env in
+      let* (tdecl, new_env) = infer_decl env' decl in
+      Ok (TDeclStmt tdecl, new_env, subst)
+
+  | ExprStmt expr ->
+      (* 式文: 式を推論（型環境は変更なし）*)
+      let env' = apply_subst_env subst env in
+      let* (texpr, _ty, s) = infer_expr env' expr in
+      Ok (TExprStmt texpr, env, s)
+
+  | AssignStmt (lhs, rhs) ->
+      (* 代入文: 左辺と右辺を推論して型を統一
+       *
+       * 仕様書 1-1 §C.6: var 束縛の再代入 `:=` は Unit型を返す
+       *)
+      let env' = apply_subst_env subst env in
+      let* (tlhs, lhs_ty, s1) = infer_expr env' lhs in
+      let env'' = apply_subst_env s1 env' in
+      let* (trhs, rhs_ty, s2) = infer_expr env'' rhs in
+      (* 左辺と右辺の型を単一化 *)
+      let lhs_ty' = apply_subst s2 lhs_ty in
+      let* s3 = unify s2 lhs_ty' rhs_ty rhs.expr_span in
+      Ok (TAssignStmt (tlhs, trhs), env, s3)
+
+  | DeferStmt expr ->
+      (* defer文: 式を推論（Unit型、型環境は変更なし）*)
+      let env' = apply_subst_env subst env in
+      let* (texpr, _ty, s) = infer_expr env' expr in
+      Ok (TDeferStmt texpr, env, s)
+
 (** 宣言の型推論: infer_decl(env, decl)
  *
  * Phase 2 Week 3-4 で実装
  *)
-let infer_decl (env: env) (decl: decl)
+and infer_decl (env: env) (decl: decl)
     : (typed_decl * env, type_error) result =
   match decl.decl_kind with
   | LetDecl (pat, ty_annot, expr) ->
