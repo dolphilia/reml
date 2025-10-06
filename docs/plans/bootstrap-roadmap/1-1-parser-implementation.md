@@ -11,10 +11,22 @@
 - **前提**: LLVM toolchain セットアップ、Menhir または ocamlyacc のビルド環境、既存サンプル（`examples/language-impl-comparison/`）。
 
 ## 作業ディレクトリ
-- `compiler/ocaml/src/parser`（想定）: `parser.mly`/`lexer.mll`/`ast.ml` 等を配置
-- `compiler/ocaml/tests/parser`（想定）: Golden AST・差分テスト
+- `compiler/ocaml/src` : `ast.ml`/`parser.mly`/`lexer.mll` などパーサ関連モジュールを配置（将来的に `src/parser/` へ分割予定）
+- `compiler/ocaml/tests` : Golden AST・差分テスト
 - `compiler/ocaml/docs` : 文法メモ、表記揺れ一覧、レビューログ
 - `.github/workflows/` + `tooling/ci` : Menhir を含むビルド/テストジョブ。CI 化時に参照
+
+## 進捗サマリー（2025-10-06 時点）
+| ステップ | 状況 | メモ |
+|----------|------|------|
+| 1. 文法資産の抽出と設計 | 完了 | AST/トークン定義と Menhir スケルトンを整備済み。[^progress-2025-10-06] |
+| 2. Lexer 実装 | 完了 | ASCII 識別子・数値・文字列・コメントの処理が実装済み。Unicode 拡張は Phase 2 に延期。|
+| 3. Parser 実装 | 部分完了 | 基本式・宣言は解析可能。`match`/`while` 等の一部構文は TODO として残存。|
+| 4. AST と Span 統合 | 完了 | 全ノードに Span を保持し `--emit-ast` で出力可能。|
+| 5. パーサジェネレータ統合とビルド | 完了 | Dune 連携と CLI に加えて Linux 向け `dune test` ワークフロー（`.github/workflows/ocaml-dune-test.yml`）を整備済み。|
+| 6. エラー回復戦略 | 未着手 | 期待トークン提示と同期点は実装前。|
+| 7. テスト整備とゴールデンテスト | 部分完了 | Lexer/Parser/Golden テストは稼働。エラーパス・性能計測は未導入。|
+| 8. ドキュメント整備とレビュー準備 | 部分完了 | `parser_design.md` など整備済み。メトリクス記録・レビュー資料はこれから。|
 
 ## 作業ブレークダウン
 
@@ -39,6 +51,7 @@
 - OCamlの型定義 `ast.ml` を作成
 
 **成果物**: `parser/ast.ml`, `parser/parser.mly`, `parser/lexer.mll` のドラフト版
+- **現状 (2025-10-06)**: `compiler/ocaml/src/ast.ml` と `compiler/ocaml/src/parser.mly` が確定版としてコミット済み。演算子表は固定テーブルで実装済み。
 
 ### 2. Lexer 実装（1-2週目）
 **担当領域**: 字句解析
@@ -61,6 +74,7 @@
 - Span情報付きエラーメッセージ
 
 **成果物**: `lexer.mll` 完成版、字句解析テスト
+- **現状 (2025-10-06)**: `compiler/ocaml/src/lexer.mll` は整数・浮動小数・文字列・コメント対応を実装済み。Unicode `XID` 対応と BOM 取扱いは未着手。
 
 ### 3. Parser 実装（2-3週目）
 **担当領域**: 構文解析
@@ -86,6 +100,7 @@
 - ジェネリック型パラメータ `<T>`
 
 **成果物**: `parser.mly` 完成版、構文解析テスト
+- **現状 (2025-10-06)**: `compiler/ocaml/src/parser.mly` が基本式・宣言をカバー。`match`/`while`/`for` 等の一部構文は TODO として残っている。
 
 ### 4. AST と Span 統合（3週目）
 **担当領域**: AST構築とメタデータ
@@ -106,6 +121,7 @@
 - [2-5-error.md](../../spec/2-5-error.md) のフォーマットとの整合
 
 **成果物**: Span統合版AST、`--emit-ast` CLI機能
+- **現状 (2025-10-06)**: AST ノードは `span` フィールドを保持し、`compiler/ocaml/src/ast_printer.ml` を通じて CLI とテストで利用可能。診断向けの行・列計算は未実装。
 
 ### 5. パーサジェネレータ統合とビルド（3-4週目）
 **担当領域**: ビルドシステム
@@ -126,6 +142,7 @@
 - ドキュメントへのバージョン情報記録
 
 **成果物**: 完全なビルドシステム、CI設定
+- **現状 (2025-10-06)**: `compiler/ocaml/src/dune` で Menhir ルールを構成済み。`reml_ocaml.opam` に加えて GitHub Actions ワークフロー `ocaml-dune-test.yml` を追加し、Linux で `dune test` を自動実行可能。今後は macOS/Windows ジョブ拡張が検討事項。
 
 ### 6. エラー回復戦略（4週目）
 **担当領域**: 診断とエラー処理
@@ -144,6 +161,8 @@
 - Span情報を使った正確な位置表示
 - ソースコードスニペットの抽出
 - カラー出力対応（オプション）
+
+- **現状 (2025-10-06)**: 診断メッセージは未整備。エラーハンドリングは例外送出に依存しており、`Result` ベースの設計に統合する必要がある。
 
 **成果物**: エラー回復機能、診断メッセージシステム
 
@@ -167,6 +186,7 @@
 - `0-3-audit-and-metrics.md` への記録
 
 **成果物**: 完全なテストスイート、性能ベースライン
+- **現状 (2025-10-06)**: Lexer/Parser/Golden テストは `dune test` で稼働。エラーパス検証と 10MB 入力での性能測定は未着手。
 
 ### 8. ドキュメント整備とレビュー準備（4週目）
 **担当領域**: ドキュメント
@@ -187,6 +207,7 @@
 - 次フェーズへの引き継ぎ事項
 
 **成果物**: 完全なドキュメント、レビュー資料
+- **現状 (2025-10-06)**: `compiler/ocaml/docs/parser_design.md` と `test_implementation_summary.md` を整備済み。メトリクス記録とレビュー用サマリー作成が残作業。
 
 ## 成果物と検証
 - `parser/` ディレクトリ（仮）に OCaml 実装を配置し、CI で `dune build parser` が通ること。
@@ -197,6 +218,8 @@
 - Menhir の依存が開発者環境ごとにばらつくリスクがあるため、`0-3-audit-and-metrics.md` に必要なバージョン固定情報を記録。
 - 演算子優先順位の固定テーブルが Phase 2 で拡張される見込みなので、テーブル定義を外部 JSON/再読込可能な形式に切り出し、後続フェーズで差し替えやすくしておく。
 - ストリーミングパーサ API ([2-7-core-parse-streaming.md](../../spec/2-7-core-parse-streaming.md)) との整合は Phase 3 で必須となるため、現段階で AST 生成を純粋関数化し副作用を最小限にする。
+
+[^progress-2025-10-06]: `compiler/ocaml/README.md`（2025-10-06 時点の進捗整理）。
 
 ## 参考資料
 - [1-0-phase1-bootstrap.md](1-0-phase1-bootstrap.md)

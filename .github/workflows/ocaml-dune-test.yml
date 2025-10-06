@@ -1,0 +1,38 @@
+name: OCaml dune test
+
+on:
+  push:
+    paths:
+      - 'compiler/ocaml/**'
+      - '.github/workflows/ocaml-dune-test.yml'
+      - 'docs/plans/bootstrap-roadmap/**'
+  pull_request:
+    paths:
+      - 'compiler/ocaml/**'
+      - '.github/workflows/ocaml-dune-test.yml'
+      - 'docs/plans/bootstrap-roadmap/**'
+  workflow_dispatch:
+
+jobs:
+  linux-dune-test:
+    runs-on: ubuntu-latest
+    name: Linux / dune test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.2.1
+
+      - name: Install dependencies
+        run: |
+          opam install . --deps-only --with-test --yes
+        working-directory: compiler/ocaml
+
+      - name: dune test
+        run: |
+          opam exec -- dune test
+        working-directory: compiler/ocaml
