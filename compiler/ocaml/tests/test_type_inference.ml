@@ -495,10 +495,18 @@ let test_block_expressions () =
 let test_function_declarations () =
   Printf.printf "\nFunction Declaration Tests:\n";
 
-  (* 単純な関数宣言（式本体） *)
+  (* 単純な関数宣言（式本体）: x + y *)
   run_test "infer_decl: fn add(x: i64, y: i64) -> i64 = x + y" (fun () ->
-    (* 二項演算が未実装なので、単純な変数返却に変更 *)
     let env = initial_env in
+    (* x + y を構築 *)
+    let add_expr = {
+      expr_kind = Binary (
+        Add,
+        { expr_kind = Var { name = "x"; span = dummy_span }; expr_span = dummy_span },
+        { expr_kind = Var { name = "y"; span = dummy_span }; expr_span = dummy_span }
+      );
+      expr_span = dummy_span;
+    } in
     let fn_decl = {
       decl_attrs = [];
       decl_vis = Private;
@@ -518,7 +526,7 @@ let test_function_declarations () =
         fn_ret_type = Some { ty_kind = TyIdent { name = "i64"; span = dummy_span }; ty_span = dummy_span };
         fn_where_clause = [];
         fn_effect_annot = None;
-        fn_body = FnExpr { expr_kind = Var { name = "x"; span = dummy_span }; expr_span = dummy_span };
+        fn_body = FnExpr add_expr;
       };
       decl_span = dummy_span;
     } in
@@ -593,9 +601,53 @@ let test_function_declarations () =
     | Error _ -> failwith "Should not reach here"
   );
 
-  (* 再帰関数の準備（簡易版：パラメータを返す） *)
-  run_test "infer_decl: fn fact(n: i64) -> i64 = n" (fun () ->
+  (* 再帰関数: if n <= 1 then 1 else n * fact(n - 1) *)
+  run_test "infer_decl: fn fact(n: i64) -> i64 = if n <= 1 then 1 else n * fact(n - 1)" (fun () ->
     let env = initial_env in
+    (* n <= 1 *)
+    let cond_expr = {
+      expr_kind = Binary (
+        Le,
+        { expr_kind = Var { name = "n"; span = dummy_span }; expr_span = dummy_span },
+        { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span }
+      );
+      expr_span = dummy_span;
+    } in
+    (* n - 1 *)
+    let n_minus_1 = {
+      expr_kind = Binary (
+        Sub,
+        { expr_kind = Var { name = "n"; span = dummy_span }; expr_span = dummy_span },
+        { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span }
+      );
+      expr_span = dummy_span;
+    } in
+    (* fact(n - 1) *)
+    let fact_call = {
+      expr_kind = Call (
+        { expr_kind = Var { name = "fact"; span = dummy_span }; expr_span = dummy_span },
+        [PosArg n_minus_1]
+      );
+      expr_span = dummy_span;
+    } in
+    (* n * fact(n - 1) *)
+    let else_expr = {
+      expr_kind = Binary (
+        Mul,
+        { expr_kind = Var { name = "n"; span = dummy_span }; expr_span = dummy_span },
+        fact_call
+      );
+      expr_span = dummy_span;
+    } in
+    (* if n <= 1 then 1 else n * fact(n - 1) *)
+    let fact_body = {
+      expr_kind = If (
+        cond_expr,
+        { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span },
+        Some else_expr
+      );
+      expr_span = dummy_span;
+    } in
     let fn_decl = {
       decl_attrs = [];
       decl_vis = Private;
@@ -611,13 +663,18 @@ let test_function_declarations () =
         fn_ret_type = Some { ty_kind = TyIdent { name = "i64"; span = dummy_span }; ty_span = dummy_span };
         fn_where_clause = [];
         fn_effect_annot = None;
-        (* 再帰呼び出しのテストは二項演算実装後に追加 *)
-        fn_body = FnExpr { expr_kind = Var { name = "n"; span = dummy_span }; expr_span = dummy_span };
+        fn_body = FnExpr fact_body;
       };
       decl_span = dummy_span;
     } in
     let result = infer_decl env fn_decl in
-    assert_ok result "Function with parameter reference should succeed"
+    assert_ok result "Recursive factorial function should succeed";
+    match result with
+    | Ok (tdecl, _) ->
+        (* 関数型: i64 -> i64 *)
+        let expected_ty = TArrow (ty_i64, ty_i64) in
+        assert_type_eq expected_ty tdecl.tdecl_scheme.body "Factorial function type"
+    | Error _ -> failwith "Should not reach here"
   );
 
   (* 複数文を含むブロック本体 *)
