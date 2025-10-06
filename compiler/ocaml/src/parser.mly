@@ -16,6 +16,14 @@ let make_span start_pos end_pos = {
 
 let merge_spans s1 s2 = merge_span s1 s2
 
+let tuple_index_from_literal (value, base) =
+  match base with
+  | Base10 -> (
+      try int_of_string value with
+      | Failure _ -> failwith "tuple index must be decimal"
+    )
+  | _ -> failwith "tuple index must be decimal"
+
 %}
 
 (* トークン定義 *)
@@ -32,7 +40,7 @@ let merge_spans s1 s2 = merge_span s1 s2
 
 (* 演算子・区切り *)
 %token PIPE CHANNEL_PIPE
-%token DOT COMMA SEMICOLON COLON AT EQ COLONEQ ARROW DARROW
+%token DOT COMMA SEMICOLON COLON AT BAR EQ COLONEQ ARROW DARROW
 %token LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE
 %token PLUS MINUS STAR SLASH PERCENT POW
 %token EQEQ NE LT LE GT GE
@@ -176,19 +184,25 @@ decl_kind:
   | VAR; pat = pattern; ty = type_annot_opt; EQ; e = expr
     { VarDecl (pat, ty, e) }
   | fn = fn_decl { FnDecl fn }
-  (* Phase 1 では他の宣言種別は TODO *)
+  | TYPE; decl = type_decl { TypeDecl decl }
+  | TRAIT; decl = trait_decl { TraitDecl decl }
+  | IMPL; decl = impl_decl { ImplDecl decl }
+  | EXTERN; decl = extern_decl { ExternDecl decl }
+  | EFFECT; decl = effect_decl { EffectDecl decl }
+  | HANDLER; decl = handler_decl { HandlerDecl decl }
 
 fn_decl:
-  | FN; name = ident; params = fn_params; ret = return_type_opt; body = fn_body
+  | FN; name = ident; generics = generic_params_opt; params = fn_params;
+    ret = return_type_opt; where_clause = where_clause_opt;
+    effects = effect_annot_opt; body = fn_body
     {
-      let span = make_span $startpos $endpos in
       {
         name;
-        generic_params = [];  (* TODO: Phase 1 では省略 *)
+        generic_params = generics;
         params;
         ret_type = ret;
-        where_clause = [];
-        effect_annot = None;
+        where_clause;
+        effect_annot = effects;
         body;
       }
     }
@@ -197,16 +211,55 @@ fn_params:
   | LPAREN; RPAREN { [] }
   | LPAREN; ps = param_list; RPAREN { ps }
 
+generic_params_opt:
+  | (* empty *) { [] }
+  | LT; params = generic_param_list; GT { params }
+
+generic_param_list:
+  | id = ident { [id] }
+  | params = generic_param_list; COMMA; id = ident { params @ [id] }
+
+where_clause_opt:
+  | (* empty *) { [] }
+  | WHERE; clauses = constraint_list { clauses }
+
+constraint_list:
+  | c = constraint_spec { [c] }
+  | cs = constraint_list; COMMA; c = constraint_spec { cs @ [c] }
+
+constraint_spec:
+  | trait_id = ident; LT; args = type_arg_list; GT
+    {
+      let span = make_span $startpos $endpos in
+      { constraint_trait = trait_id; constraint_types = args; constraint_span = span }
+    }
+
+type_arg_list:
+  | ty = type_annot { [ty] }
+  | tys = type_arg_list; COMMA; ty = type_annot { tys @ [ty] }
+
+effect_annot_opt:
+  | (* empty *) { None }
+  | NOT; LBRACE; tags = effect_tag_list; RBRACE { Some tags }
+
+effect_tag_list:
+  | id = ident { [id] }
+  | tags = effect_tag_list; COMMA; id = ident { tags @ [id] }
+
 param_list:
   | p = param { [p] }
   | ps = param_list; COMMA; p = param { ps @ [p] }
 
 param:
-  | pat = pattern; ty = type_annot_opt
+  | pat = pattern; ty = type_annot_opt; default = default_expr_opt
     {
       let span = make_span $startpos $endpos in
-      { pat; ty; default = None; param_span = span }
+      { pat; ty; default; param_span = span }
     }
+
+default_expr_opt:
+  | (* empty *) { None }
+  | EQ; e = expr { Some e }
 
 return_type_opt:
   | (* empty *) { None }
@@ -215,6 +268,158 @@ return_type_opt:
 fn_body:
   | EQ; e = expr { FnExpr e }
   | block = block_stmt { FnBlock block }
+
+(* ========== 型宣言 ========== *)
+
+type_decl:
+  | ALIAS; name = ident; generics = generic_params_opt; EQ; ty = type_annot
+    { AliasDecl (name, generics, ty) }
+  | name = ident; generics = generic_params_opt; EQ; NEW; ty = type_annot
+    { NewtypeDecl (name, generics, ty) }
+  | name = ident; generics = generic_params_opt; EQ; variants = sum_variant_list
+    { SumDecl (name, generics, variants) }
+
+sum_variant_list:
+  | first = sum_variant { [first] }
+  | BAR; first = sum_variant { [first] }
+  | variants = sum_variant_list; BAR; v = sum_variant { variants @ [v] }
+
+sum_variant:
+  | name = ident; payload = variant_payload_opt
+    {
+      let span = make_span $startpos $endpos in
+      { variant_name = name; variant_types = payload; variant_span = span }
+    }
+
+variant_payload_opt:
+  | (* empty *) { [] }
+  | LPAREN; args = type_arg_list_opt; RPAREN { args }
+
+type_arg_list_opt:
+  | (* empty *) { [] }
+  | args = type_arg_list { args }
+
+(* ========== トレイト宣言 ========== *)
+
+trait_decl:
+  | name = ident; generics = generic_params_opt; where_clause = where_clause_opt; body = trait_body
+    { { trait_name = name; trait_params = generics; trait_where = where_clause; trait_items = body } }
+
+trait_body:
+  | LBRACE; items = trait_item_list; RBRACE { items }
+
+trait_item_list:
+  | (* empty *) { [] }
+  | items = trait_item_list; item = trait_item { items @ [item] }
+
+trait_item:
+  | attrs = attribute_list; sig_ = fn_signature_only; default = trait_default_opt
+    { { item_attrs = attrs; item_sig = sig_; item_default = default } }
+
+fn_signature_only:
+  | FN; name = ident; generics = generic_params_opt; params = fn_params;
+    ret = return_type_opt; where_clause = where_clause_opt; effects = effect_annot_opt
+    {
+      {
+        sig_name = name;
+        sig_params = generics;
+        sig_args = params;
+        sig_ret = ret;
+        sig_where = where_clause;
+        sig_effects = effects;
+      }
+    }
+
+trait_default_opt:
+  | (* empty *) { None }
+  | EQ; e = expr { Some (FnExpr e) }
+  | block = block_stmt { Some (FnBlock block) }
+
+(* ========== impl 宣言 ========== *)
+
+impl_decl:
+  | generics = generic_params_opt; target = impl_target; where_clause = where_clause_opt; body = impl_body
+    {
+      let trait_ref, ty = target in
+      { impl_params = generics; impl_trait = trait_ref; impl_type = ty; impl_where = where_clause; impl_items = body }
+    }
+
+impl_target:
+  | trait_ref = trait_reference; FOR; ty = type_annot { (Some trait_ref, ty) }
+  | ty = type_annot { (None, ty) }
+
+trait_reference:
+  | name = ident; args = generic_args_opt { (name, args) }
+
+generic_args_opt:
+  | (* empty *) { [] }
+  | LT; args = type_arg_list; GT { args }
+
+impl_body:
+  | LBRACE; items = impl_item_list; RBRACE { items }
+
+impl_item_list:
+  | (* empty *) { [] }
+  | items = impl_item_list; item = impl_item { items @ [item] }
+
+impl_item:
+  | attrs = attribute_list; fn = fn_decl
+    { ignore attrs; ImplFn fn }
+  | LET; pat = pattern; ty = type_annot_opt; EQ; e = expr
+    { ImplLet (pat, ty, e) }
+  | VAR; pat = pattern; ty = type_annot_opt; EQ; e = expr
+    { ImplLet (pat, ty, e) }
+
+(* ========== extern 宣言 ========== *)
+
+extern_decl:
+  | abi = extern_abi; body = extern_body
+    { { extern_abi = abi; extern_items = body } }
+
+extern_abi:
+  | s = STRING { fst s }
+
+extern_body:
+  | sig_ = fn_signature_only; SEMICOLON
+    { [ { extern_attrs = []; extern_sig = sig_ } ] }
+  | LBRACE; items = extern_item_list; RBRACE { items }
+
+extern_item_list:
+  | (* empty *) { [] }
+  | items = extern_item_list; item = extern_item { items @ [item] }
+
+extern_item:
+  | attrs = attribute_list; sig_ = fn_signature_only; SEMICOLON
+    { { extern_attrs = attrs; extern_sig = sig_ } }
+
+(* ========== effect / handler 宣言 ========== *)
+
+effect_decl:
+  | name = ident; COLON; tag = ident; body = effect_body
+    { { effect_name = name; effect_tag = tag; operations = body } }
+
+effect_body:
+  | LBRACE; ops = operation_list; RBRACE { ops }
+
+operation_list:
+  | (* empty *) { [] }
+  | ops = operation_list; op = operation_decl { ops @ [op] }
+
+operation_decl:
+  | attrs = attribute_list; OPERATION; name = ident; COLON; ty = type_annot
+    {
+      let span = make_span $startpos $endpos in
+      ignore attrs;
+      { op_name = name; op_type = ty; op_span = span }
+    }
+
+handler_decl:
+  | name = ident; body = handler_body
+    { { handler_name = name; handler_body = body } }
+
+handler_body:
+  | block = block_expr { block }
+  | e = expr { e }
 
 (* ========== 式 ========== *)
 
@@ -236,7 +441,21 @@ expr_base:
   | e = binary_expr { e }
   | e = unary_expr { e }
   | e = if_expr { e }
+  | e = lambda_expr { e }
+  | e = match_expr { e }
+  | e = while_expr { e }
+  | e = for_expr { e }
+  | e = loop_expr { e }
+  | e = return_expr { e }
+  | e = defer_expr { e }
+  | e = unsafe_expr { e }
   | e = block_expr { e }
+  | LPAREN; first = expr; COMMA; rest = tuple_expr_rest; RPAREN
+    {
+      let elements = first :: rest in
+      let span = make_span $startpos $endpos in
+      make_expr (Literal (Tuple elements)) span
+    }
   | LPAREN; e = expr; RPAREN { e }
 
 literal:
@@ -247,12 +466,35 @@ literal:
   | TRUE { Bool true }
   | FALSE { Bool false }
   | LPAREN; RPAREN { Unit }
+  | LBRACKET; elements = expr_list_opt; RBRACKET { Array elements }
+  | LBRACE; fields = record_field_list_opt; RBRACE { Record fields }
 
 call_expr:
   | func = expr_base; LPAREN; args = arg_list_opt; RPAREN
     {
       let span = merge_span func.span (make_span $endpos $endpos) in
       make_expr (Call (func, args)) span
+    }
+  | target = call_expr; DOT; field = ident
+    {
+      let span = make_span $startpos $endpos in
+      make_expr (FieldAccess (target, field)) span
+    }
+  | target = call_expr; DOT; index_lit = INT
+    {
+      let index = tuple_index_from_literal index_lit in
+      let span = make_span $startpos $endpos in
+      make_expr (TupleAccess (target, index)) span
+    }
+  | target = call_expr; LBRACKET; idx = expr; RBRACKET
+    {
+      let span = make_span $startpos $endpos in
+      make_expr (Index (target, idx)) span
+    }
+  | target = call_expr; QUESTION
+    {
+      let span = make_span $startpos $endpos in
+      make_expr (Propagate target) span
     }
 
 arg_list_opt:
@@ -369,6 +611,94 @@ else_branch_opt:
   | (* empty *) { None }
   | ELSE; e = expr { Some e }
 
+lambda_expr:
+  | BAR; params = lambda_param_list_opt; BAR; ret = return_type_opt; body = lambda_body
+    {
+      let span = make_span $startpos $endpos in
+      make_expr (Lambda (params, ret, body)) span
+    }
+
+lambda_param_list_opt:
+  | (* empty *) { [] }
+  | params = lambda_param_list { params }
+
+lambda_param_list:
+  | p = param { [p] }
+  | ps = lambda_param_list; COMMA; p = param { ps @ [p] }
+
+lambda_body:
+  | block = block_expr { block }
+  | e = expr { e }
+
+match_expr:
+  | MATCH; scrutinee = expr; WITH; arms = match_arm_list
+    {
+      let span = make_span $startpos $endpos in
+      make_expr (Match (scrutinee, arms)) span
+    }
+
+match_arm_list:
+  | arm = match_arm { [arm] }
+  | arms = match_arm_list; arm = match_arm { arms @ [arm] }
+
+match_arm:
+  | BAR; pat = pattern; guard = match_guard_opt; ARROW; body = expr
+    {
+      let span = make_span $startpos $endpos in
+      { pattern = pat; guard; body; arm_span = span }
+    }
+
+match_guard_opt:
+  | (* empty *) { None }
+  | IF; e = expr { Some e }
+
+while_expr:
+  | WHILE; cond = expr; body = block_expr
+    {
+      let span = make_span $startpos $endpos in
+      make_expr (While (cond, body)) span
+    }
+
+for_expr:
+  | FOR; pat = pattern; IN; source = expr; body = block_expr
+    {
+      let span = make_span $startpos $endpos in
+      make_expr (For (pat, source, body)) span
+    }
+
+loop_expr:
+  | LOOP; body = block_expr
+    {
+      let span = make_span $startpos $endpos in
+      make_expr (Loop body) span
+    }
+
+return_expr:
+  | RETURN; value = expr
+    {
+      let span = make_span $startpos $endpos in
+      make_expr (Return (Some value)) span
+    }
+  | RETURN
+    {
+      let span = make_span $startpos $endpos in
+      make_expr (Return None) span
+    }
+
+defer_expr:
+  | DEFER; e = expr
+    {
+      let span = make_span $startpos $endpos in
+      make_expr (Defer e) span
+    }
+
+unsafe_expr:
+  | UNSAFE; body = block_expr
+    {
+      let span = make_span $startpos $endpos in
+      make_expr (Unsafe body) span
+    }
+
 block_expr:
   | LBRACE; stmts = stmt_list; RBRACE
     {
@@ -387,6 +717,8 @@ stmt_list:
 
 stmt:
   | d = decl { DeclStmt d }
+  | name = ident; COLONEQ; value = expr; SEMICOLON { AssignStmt (name, value) }
+  | DEFER; value = expr; SEMICOLON { DeferStmt value }
   | e = expr; SEMICOLON { ExprStmt e }
   | e = expr { ExprStmt e }  (* 最後の式はセミコロン省略可 *)
 
@@ -402,6 +734,52 @@ pattern:
       let span = make_span $startpos $endpos in
       make_pattern PatWildcard span
     }
+  | LPAREN; pat = pattern; RPAREN { pat }
+  | LPAREN; first = pattern; COMMA; rest = pattern_list; RPAREN
+    {
+      let patterns = first :: rest in
+      let span = make_span $startpos $endpos in
+      make_pattern (PatTuple patterns) span
+    }
+  | name = ident; LPAREN; args = pattern_arg_list_opt; RPAREN
+    {
+      let span = make_span $startpos $endpos in
+      make_pattern (PatConstructor (name, args)) span
+    }
+  | LBRACE; body = record_pattern_body; RBRACE
+    {
+      let fields, has_rest = body in
+      let span = make_span $startpos $endpos in
+      make_pattern (PatRecord (fields, has_rest)) span
+    }
+
+pattern_list:
+  | p = pattern { [p] }
+  | ps = pattern_list; COMMA; p = pattern { ps @ [p] }
+
+pattern_arg_list_opt:
+  | (* empty *) { [] }
+  | args = pattern_arg_list { args }
+
+pattern_arg_list:
+  | p = pattern { [p] }
+  | ps = pattern_arg_list; COMMA; p = pattern { ps @ [p] }
+
+record_pattern_body:
+  | DOTDOT { ([], true) }
+  | entries = record_pattern_entry_list; rest = record_pattern_rest_opt { (entries, rest) }
+
+record_pattern_entry_list:
+  | entry = record_pattern_entry { [entry] }
+  | entries = record_pattern_entry_list; COMMA; entry = record_pattern_entry { entries @ [entry] }
+
+record_pattern_entry:
+  | name = ident; COLON; pat = pattern { (name, Some pat) }
+  | name = ident { (name, None) }
+
+record_pattern_rest_opt:
+  | (* empty *) { false }
+  | COMMA; DOTDOT { true }
 
 (* ========== 型注釈 ========== *)
 
@@ -410,10 +788,39 @@ type_annot_opt:
   | COLON; ty = type_annot { Some ty }
 
 type_annot:
-  | id = ident
+  | ty = type_primary { ty }
+  | lhs = type_primary; ARROW; rhs = type_annot
     {
-      make_type (TyIdent id) id.span
+      let span = make_span $startpos $endpos in
+      make_type (TyFn ([lhs], rhs)) span
     }
+
+type_primary:
+  | id = ident; args = generic_args_opt
+    {
+      let span = make_span $startpos $endpos in
+      match args with
+      | [] -> make_type (TyIdent id) span
+      | _ -> make_type (TyApp (id, args)) span
+    }
+  | LPAREN; ty = type_annot; RPAREN { ty }
+  | LPAREN; first = type_annot; COMMA; rest = type_arg_list; RPAREN
+    {
+      let span = make_span $startpos $endpos in
+      make_type (TyTuple (first :: rest)) span
+    }
+  | LBRACE; fields = type_record_fields; RBRACE
+    {
+      let span = make_span $startpos $endpos in
+      make_type (TyRecord fields) span
+    }
+
+type_record_fields:
+  | field = type_record_field { [field] }
+  | fields = type_record_fields; COMMA; field = type_record_field { fields @ [field] }
+
+type_record_field:
+  | name = ident; COLON; ty = type_annot { (name, ty) }
 
 (* ========== ヘルパー ========== *)
 
@@ -431,6 +838,25 @@ ident_list:
 expr_list:
   | e = expr { [e] }
   | es = expr_list; COMMA; e = expr { es @ [e] }
+
+expr_list_opt:
+  | (* empty *) { [] }
+  | exprs = expr_list { exprs }
+
+record_field_list_opt:
+  | (* empty *) { [] }
+  | fields = record_field_list { fields }
+
+record_field_list:
+  | field = record_field { [field] }
+  | fields = record_field_list; COMMA; field = record_field { fields @ [field] }
+
+record_field:
+  | name = ident; COLON; value = expr { (name, value) }
+
+tuple_expr_rest:
+  | e = expr { [e] }
+  | rest = tuple_expr_rest; COMMA; e = expr { rest @ [e] }
 
 (* ========== 仮トークン (未実装部分) ========== *)
 

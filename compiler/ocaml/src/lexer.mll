@@ -83,6 +83,7 @@ rule token = parse
   | ">="        { GE }
   | "&&"        { AND }
   | "||"        { OR }
+  | '|'         { BAR }
   | ".."        { DOTDOT }
   | '.'         { DOT }
   | ','         { COMMA }

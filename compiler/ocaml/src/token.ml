@@ -23,6 +23,7 @@ type t =
   | SEMICOLON      (* ; *)
   | COLON          (* : *)
   | AT             (* @ *)
+  | BAR            (* | *)
   | EQ             (* = *)
   | COLONEQ        (* := *)
   | ARROW          (* -> *)
@@ -98,6 +99,7 @@ let to_string = function
   | SEMICOLON -> ";"
   | COLON -> ":"
   | AT -> "@"
+  | BAR -> "|"
   | EQ -> "="
   | COLONEQ -> ":="
   | ARROW -> "->"
