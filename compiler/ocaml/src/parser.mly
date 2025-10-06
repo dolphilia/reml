@@ -32,12 +32,12 @@ let merge_spans s1 s2 = merge_span s1 s2
 
 (* 演算子・区切り *)
 %token PIPE CHANNEL_PIPE
-%token DOT COMMA SEMICOLON COLON EQ COLONEQ ARROW DARROW
+%token DOT COMMA SEMICOLON COLON AT EQ COLONEQ ARROW DARROW
 %token LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE
 %token PLUS MINUS STAR SLASH PERCENT POW
 %token EQEQ NE LT LE GT GE
 %token AND OR NOT
-%token QUESTION DOTDOT
+%token QUESTION DOTDOT UNDERSCORE
 
 (* リテラル *)
 %token <string * Ast.int_base> INT
@@ -433,7 +433,5 @@ expr_list:
   | es = expr_list; COMMA; e = expr { es @ [e] }
 
 (* ========== 仮トークン (未実装部分) ========== *)
-
-%token AT UNDERSCORE
 
 %%

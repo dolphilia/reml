@@ -22,6 +22,7 @@ type t =
   | COMMA          (* , *)
   | SEMICOLON      (* ; *)
   | COLON          (* : *)
+  | AT             (* @ *)
   | EQ             (* = *)
   | COLONEQ        (* := *)
   | ARROW          (* -> *)
@@ -34,6 +35,7 @@ type t =
   | AND | OR | NOT
   | QUESTION       (* ? *)
   | DOTDOT         (* .. *)
+  | UNDERSCORE     (* _ *)
 
   (* リテラル *)
   | INT of string * Ast.int_base
@@ -95,6 +97,7 @@ let to_string = function
   | COMMA -> ","
   | SEMICOLON -> ";"
   | COLON -> ":"
+  | AT -> "@"
   | EQ -> "="
   | COLONEQ -> ":="
   | ARROW -> "->"
@@ -122,6 +125,7 @@ let to_string = function
   | NOT -> "!"
   | QUESTION -> "?"
   | DOTDOT -> ".."
+  | UNDERSCORE -> "_"
   | INT (s, _) -> "INT(" ^ s ^ ")"
   | FLOAT s -> "FLOAT(" ^ s ^ ")"
   | CHAR s -> "CHAR(" ^ s ^ ")"

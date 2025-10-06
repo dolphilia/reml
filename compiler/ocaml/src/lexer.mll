@@ -88,6 +88,7 @@ rule token = parse
   | ','         { COMMA }
   | ';'         { SEMICOLON }
   | ':'         { COLON }
+  | '@'         { AT }
   | '='         { EQ }
   | '('         { LPAREN }
   | ')'         { RPAREN }
@@ -145,6 +146,7 @@ rule token = parse
   | "\"\"\""  { Buffer.clear string_buffer; string_multiline lexbuf }
 
   (* 識別子とキーワード *)
+  | '_'         { UNDERSCORE }
   | ident as s  { keyword_or_ident s }
 
   (* EOF *)
