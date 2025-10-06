@@ -958,9 +958,30 @@ and infer_decl (env: env) (decl: decl)
       failwith "Declaration not yet implemented"
 
 (** コンパイル単位の型推論 *)
-let infer_compilation_unit (_cu: compilation_unit)
+let infer_compilation_unit (cu: compilation_unit)
     : (typed_compilation_unit, type_error) result =
-  failwith "Compilation unit inference not yet implemented"
+  (* 初期型環境を作成 *)
+  let init_env = initial_env in
+
+  (* 各宣言を順次推論し、型環境を更新 *)
+  let rec infer_items env items acc_decls =
+    match items with
+    | [] -> Ok (List.rev acc_decls, env)
+    | item :: rest ->
+        match infer_decl env item with
+        | Ok (typed_decl, new_env) ->
+            infer_items new_env rest (typed_decl :: acc_decls)
+        | Error err -> Error err
+  in
+
+  match infer_items init_env cu.decls [] with
+  | Ok (typed_items, _final_env) ->
+      Ok {
+        tcu_module_header = cu.header;
+        tcu_use_decls = cu.uses;
+        tcu_items = typed_items;
+      }
+  | Error err -> Error err
 
 (* ========== デバッグ用 ========== *)
 

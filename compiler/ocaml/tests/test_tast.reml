@@ -1,0 +1,9 @@
+// Test file for --emit-tast option
+
+let x = 42
+let y = 3.14
+let name = "hello"
+
+fn identity(a) = a
+
+let result = identity(10)

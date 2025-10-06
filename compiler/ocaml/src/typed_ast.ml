@@ -284,3 +284,8 @@ let string_of_typed_decl tdecl =
       Printf.sprintf "handler ... : %s" scheme_str
   | TConductorDecl _ ->
       Printf.sprintf "conductor ... : %s" scheme_str
+
+(** 型付きコンパイル単位の文字列表現 *)
+let string_of_typed_compilation_unit tcu =
+  let items_str = String.concat "\n\n" (List.map string_of_typed_decl tcu.tcu_items) in
+  Printf.sprintf "=== Typed AST ===\n\n%s" items_str

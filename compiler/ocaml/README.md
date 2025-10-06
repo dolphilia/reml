@@ -73,11 +73,16 @@ opam exec -- dune build
 # AST を出力
 dune exec -- remlc --emit-ast <input.reml>
 
+# Typed AST を出力（型推論結果）
+dune exec -- remlc --emit-tast <input.reml>
+
 # ビルド成果物を直接呼び出したい場合（macOS）
 ./_build/default/src/main.exe --emit-ast <input.reml>
+./_build/default/src/main.exe --emit-tast <input.reml>
 
 # 例
 dune exec -- remlc --emit-ast ../../examples/language-impl-comparison/reml/pl0_combinator.reml
+dune exec -- remlc --emit-tast tests/simple.reml
 ```
 
 ## テスト実行
@@ -331,11 +336,17 @@ dune exec -- ./tests/test_types.exe
   - パイプ演算子（|>）のサポート
   - 6個の新規テストケース追加（全成功: 26/26）
 
-**🚧 次のステップ (Week 6)**
+**✅ 完了 (Week 6: 2025-10-07)**
 
-**📋 後続タスク (Week 6)**
+- ✅ **CLI統合**: `--emit-tast` オプション
+  - `infer_compilation_unit` 関数の実装
+  - `string_of_typed_compilation_unit` の追加
+  - `main.ml` への `--emit-tast` フラグ追加
+  - 型エラーメッセージの統合
+  - 動作確認完了（`tests/simple.reml`, `tests/test_tast.reml`）
 
-- 🔜 **CLI統合**: `--emit-tast` オプション
+**📋 後続タスク (Week 6-7)**
+
 - 🔜 **エラー診断品質の向上**
 - 🔜 **let多相の網羅的テスト**
 

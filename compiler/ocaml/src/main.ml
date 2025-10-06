@@ -6,10 +6,12 @@
 
 let usage_msg = "remlc-ocaml [options] <file>"
 let emit_ast = ref false
+let emit_tast = ref false
 let input_file = ref ""
 
 let speclist = [
   ("--emit-ast", Arg.Set emit_ast, "Emit AST to stdout");
+  ("--emit-tast", Arg.Set emit_tast, "Emit Typed AST to stdout");
 ]
 
 let anon_fun filename =
@@ -35,6 +37,16 @@ let () =
       if !emit_ast then begin
         let rendered = Ast_printer.string_of_compilation_unit ast in
         Printf.printf "%s\n" rendered;
+      end;
+      if !emit_tast then begin
+        (* 型推論を実行 *)
+        match Type_inference.infer_compilation_unit ast with
+        | Ok tast ->
+            let rendered = Typed_ast.string_of_typed_compilation_unit tast in
+            Printf.printf "%s\n" rendered;
+        | Error type_err ->
+            Printf.eprintf "Type Error: %s\n" (Type_error.string_of_error type_err);
+            exit 1
       end;
       exit 0
   | Error diag ->
