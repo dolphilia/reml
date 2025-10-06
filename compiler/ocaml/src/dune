@@ -1,0 +1,16 @@
+(* Dune ビルド設定 — Reml OCaml コンパイラ (Phase 1) *)
+
+(ocamllex lexer)
+
+(menhir
+ (modules parser)
+ (flags --explain))
+
+(library
+ (name reml_parser)
+ (modules ast token lexer parser))
+
+(executable
+ (name remlc)
+ (modules main)
+ (libraries reml_parser))
