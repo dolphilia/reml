@@ -657,6 +657,139 @@ let test_function_declarations () =
     | Error _ -> failwith "Should not reach here"
   )
 
+(* ========== 二項演算テスト ========== *)
+
+let test_binary_operations () =
+  Printf.printf "\nBinary Operation Tests:\n";
+
+  (* 算術演算: 1 + 2 *)
+  run_test "infer_expr: 1 + 2" (fun () ->
+    let env = initial_env in
+    let expr = {
+      expr_kind = Binary (
+        Add,
+        { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span },
+        { expr_kind = Literal (Int ("2", Base10)); expr_span = dummy_span }
+      );
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env expr in
+    assert_ok result "Arithmetic addition should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        assert_type_eq ty_i64 ty "Addition result type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* 算術演算: 3.0 * 2.0 *)
+  run_test "infer_expr: 3.0 * 2.0" (fun () ->
+    let env = initial_env in
+    let expr = {
+      expr_kind = Binary (
+        Mul,
+        { expr_kind = Literal (Float "3.0"); expr_span = dummy_span },
+        { expr_kind = Literal (Float "2.0"); expr_span = dummy_span }
+      );
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env expr in
+    assert_ok result "Arithmetic multiplication should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        assert_type_eq ty_f64 ty "Multiplication result type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* 比較演算: 5 == 5 *)
+  run_test "infer_expr: 5 == 5" (fun () ->
+    let env = initial_env in
+    let expr = {
+      expr_kind = Binary (
+        Eq,
+        { expr_kind = Literal (Int ("5", Base10)); expr_span = dummy_span },
+        { expr_kind = Literal (Int ("5", Base10)); expr_span = dummy_span }
+      );
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env expr in
+    assert_ok result "Equality comparison should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        assert_type_eq ty_bool ty "Equality result type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* 論理演算: true && false *)
+  run_test "infer_expr: true && false" (fun () ->
+    let env = initial_env in
+    let expr = {
+      expr_kind = Binary (
+        And,
+        { expr_kind = Literal (Bool true); expr_span = dummy_span },
+        { expr_kind = Literal (Bool false); expr_span = dummy_span }
+      );
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env expr in
+    assert_ok result "Logical AND should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        assert_type_eq ty_bool ty "Logical AND result type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* 混合演算: (1 + 2) * 3 *)
+  run_test "infer_expr: (1 + 2) * 3" (fun () ->
+    let env = initial_env in
+    let inner_expr = {
+      expr_kind = Binary (
+        Add,
+        { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span },
+        { expr_kind = Literal (Int ("2", Base10)); expr_span = dummy_span }
+      );
+      expr_span = dummy_span;
+    } in
+    let outer_expr = {
+      expr_kind = Binary (
+        Mul,
+        inner_expr,
+        { expr_kind = Literal (Int ("3", Base10)); expr_span = dummy_span }
+      );
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env outer_expr in
+    assert_ok result "Nested arithmetic should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        assert_type_eq ty_i64 ty "Nested arithmetic result type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* パイプ演算: 42 |> identity *)
+  run_test "infer_expr: 42 |> identity" (fun () ->
+    let env = initial_env in
+    (* identity関数を環境に追加: ∀a. a -> a *)
+    let tv_a = TypeVarGen.fresh (Some "a") in
+    let identity_ty = TArrow (Types.TVar tv_a, Types.TVar tv_a) in
+    let env_with_identity = extend "identity"
+      { quantified = [tv_a]; body = identity_ty } env in
+
+    let expr = {
+      expr_kind = Binary (
+        PipeOp,
+        { expr_kind = Literal (Int ("42", Base10)); expr_span = dummy_span },
+        { expr_kind = Var { name = "identity"; span = dummy_span }; expr_span = dummy_span }
+      );
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env_with_identity expr in
+    assert_ok result "Pipe operation should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        assert_type_eq ty_i64 ty "Pipe result type"
+    | Error _ -> failwith "Should not reach here"
+  )
+
 (* ========== メイン ========== *)
 
 let () =
@@ -667,4 +800,5 @@ let () =
   test_match_expressions ();
   test_block_expressions ();
   test_function_declarations ();
+  test_binary_operations ();
   Printf.printf "\nAll type inference tests passed! ✓\n"

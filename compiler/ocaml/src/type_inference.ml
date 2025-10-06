@@ -214,9 +214,29 @@ let rec infer_expr (env: env) (expr: expr) : (infer_result, type_error) result =
       let texpr = make_typed_expr (TLambda (tparams, ret_ty_opt, tbody)) fn_ty expr.expr_span in
       Ok (texpr, fn_ty, s3)
 
-  | Binary (_op, _e1, _e2) ->
-      (* 二項演算: Phase 2 Week 3 で実装 *)
-      failwith "Binary operators not yet implemented"
+  | Binary (op, e1, e2) ->
+      (* 二項演算の型推論
+       *
+       * 仕様書 1-2 §C.5: 演算子はトレイトで解決
+       * Phase 2 MVP: 基本演算子の組み込みトレイトのみ（i64, f64, Bool, String対応）
+       *
+       * 1. 左辺と右辺を推論
+       * 2. 演算子に応じた型制約を生成
+       * 3. 返り値型を決定
+       *)
+      (* 左辺を推論 *)
+      let* (te1, ty1, s1) = infer_expr env e1 in
+
+      (* 右辺を推論 *)
+      let env' = apply_subst_env s1 env in
+      let* (te2, ty2, s2) = infer_expr env' e2 in
+
+      (* 演算子に応じた型推論 *)
+      let* (ret_ty, s3) = infer_binary_op op ty1 ty2 s2 e1.expr_span e2.expr_span in
+
+      (* 型付き式を構築 *)
+      let texpr = make_typed_expr (TBinary (op, te1, te2)) ret_ty expr.expr_span in
+      Ok (texpr, ret_ty, s3)
 
   | If (cond, then_e, else_e) ->
       (* if式の型推論
@@ -594,6 +614,64 @@ and extract_function_args (ty: ty) : (ty list * ty) =
       (arg_ty :: args, result)
   | _ ->
       ([], ty)
+
+(** 二項演算子の型推論
+ *
+ * Phase 2 MVP: 基本演算子の組み込みトレイトのみ（i64, f64, Bool, String対応）
+ *
+ * @param op 演算子
+ * @param ty1 左辺の型
+ * @param ty2 右辺の型
+ * @param subst 現在の代入
+ * @param span1 左辺のSpan
+ * @param span2 右辺のSpan
+ * @return (返り値型, 新しい代入)
+ *)
+and infer_binary_op (op: Ast.binary_op) (ty1: ty) (ty2: ty)
+    (subst: substitution) (span1: span) (span2: span)
+    : (ty * substitution, type_error) result =
+  match op with
+  (* 算術演算子: + - * / % ^ *)
+  | Add | Sub | Mul | Div | Mod | Pow ->
+      (* 仕様書 1-2 §C.5: 数値型（i64, f64）のみサポート *)
+      (* ty1 と ty2 を単一化し、返り値型も同じ *)
+      let ty1' = apply_subst subst ty1 in
+      let ty2' = apply_subst subst ty2 in
+      let* s1 = unify subst ty1' ty2' span2 in
+      (* 単一化された型を返す *)
+      let unified_ty = apply_subst s1 ty1' in
+      Ok (unified_ty, s1)
+
+  (* 比較演算子: == != < <= > >= *)
+  | Eq | Ne | Lt | Le | Gt | Ge ->
+      (* 左辺と右辺を単一化し、返り値は Bool *)
+      let ty1' = apply_subst subst ty1 in
+      let ty2' = apply_subst subst ty2 in
+      let* s1 = unify subst ty1' ty2' span2 in
+      Ok (ty_bool, s1)
+
+  (* 論理演算子: && || *)
+  | And | Or ->
+      (* 左辺と右辺をBool型と単一化 *)
+      let ty1' = apply_subst subst ty1 in
+      let ty2' = apply_subst subst ty2 in
+      let* s1 = unify subst ty1' ty_bool span1 in
+      let* s2 = unify s1 ty2' ty_bool span2 in
+      Ok (ty_bool, s2)
+
+  (* パイプ演算子: |> *)
+  | PipeOp ->
+      (* x |> f は f(x) に等価
+       * ty1 : A, ty2 : A -> B のとき、返り値は B
+       *)
+      let ty1' = apply_subst subst ty1 in
+      let ty2' = apply_subst subst ty2 in
+      let ret_var = TypeVarGen.fresh None in
+      let ret_ty = Types.TVar ret_var in
+      let expected_fn_ty = TArrow (ty1', ret_ty) in
+      let* s1 = unify subst ty2' expected_fn_ty span2 in
+      let final_ret_ty = apply_subst s1 ret_ty in
+      Ok (final_ret_ty, s1)
 
 (** match アームの型推論
  *
