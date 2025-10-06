@@ -274,20 +274,46 @@ dune exec -- ./tests/test_types.exe
   - 型環境への追加
   - 型注釈のサポート
 
-**🚧 次のステップ (Week 4-6)**
+**✅ 完了 (Week 4: 2025-10-06)**
 
-**📋 後続タスク (Week 4-6)**
+- ✅ **パターンマッチの型推論**
+  - 全パターン種別の実装完了（PatVar, PatWildcard, PatLiteral, PatTuple, PatConstructor, PatRecord, PatGuard）
+  - ネストパターンのサポート（2層、3層以上）
+  - ガード条件の型推論（Bool型）
+  - match式の型推論（複数アーム、型統一）
+  - コンストラクタ型環境の整備（Option<T>, Result<T,E>）
 
-- 🔜 **パターンマッチの型推論** (Week 4)
-- 🔜 **型エラーメッセージ** (`src/type_error.ml`) (Week 5-6)
-- 🔜 **型推論テストスイート** (`tests/test_type_inference.ml`) (Week 5-6)
+- ✅ **型推論テストスイート** (`tests/test_type_inference.ml`)
+  - 基本パターン: 3テストケース
+  - タプルパターン: 1テストケース
+  - コンストラクタパターン: 2テストケース
+  - ネストパターン: 1テストケース
+  - match式: 2テストケース
+  - **全テスト成功（9/9）**
+
+- ✅ **パターンマッチ固有のエラーメッセージ**
+  - ConstructorArityMismatch（コンストラクタ引数数不一致）
+  - TupleArityMismatch（タプル要素数不一致）
+  - RecordFieldMissing（レコードフィールド不足）
+  - RecordFieldUnknown（レコードフィールド不明）
+  - NotARecord, NotATuple, EmptyMatch
+
+**🚧 次のステップ (Week 5-6)**
+
+**📋 後続タスク (Week 5-6)**
+
+- 🔜 **ブロック式の型推論** (Week 5)
+- 🔜 **関数宣言の型推論** (Week 5)
+- 🔜 **二項演算の型推論** (Week 5)
 - 🔜 **CLI統合**: `--emit-tast` オプション (Week 6)
+- 🔜 **エラー診断品質の向上** (Week 6)
 
 **📝 技術的メモ**
 
 - **名前衝突の解決**: `Typed_ast.TVar` (型付き式の変数参照) と `Types.TVar` (型の型変数) の衝突を `Types.TVar` と明示的に修飾して解決
-- **ビルドシステム**: Duneに `typed_ast` と `type_inference` モジュールを追加済み
-- **テスト戦略**: 基本機能の実装完了後、Week 5-6 でテストスイートを整備予定
+- **ビルドシステム**: Duneに `typed_ast`, `type_inference`, `test_type_inference` を追加済み
+- **型等価性判定**: `Types.type_equal` を追加し、構造的等価性をサポート
+- **コンストラクタ型環境**: `initial_env` で Option/Result の型変数を正しく量化
 
 ## 技術詳細
 

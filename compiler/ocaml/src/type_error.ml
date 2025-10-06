@@ -39,6 +39,28 @@ type type_error =
       expr_ty: ty;
       span: span;
     }
+  | ConstructorArityMismatch of {             (* コンストラクタ引数数不一致 *)
+      constructor: string;
+      expected: int;
+      actual: int;
+      span: span;
+    }
+  | TupleArityMismatch of {                   (* タプル要素数不一致 *)
+      expected: int;
+      actual: int;
+      span: span;
+    }
+  | RecordFieldMissing of {                   (* レコードフィールド不足 *)
+      missing_fields: string list;
+      span: span;
+    }
+  | RecordFieldUnknown of {                   (* レコードフィールド不明 *)
+      field: string;
+      span: span;
+    }
+  | NotARecord of ty * span                   (** レコード型でない型に対するレコードパターン *)
+  | NotATuple of ty * span                    (** タプル型でない型に対するタプルパターン *)
+  | EmptyMatch of span                        (** 空のmatch式 *)
 
 (* ========== エラーメッセージ生成 ========== *)
 
@@ -101,6 +123,52 @@ let string_of_error = function
         (string_of_ty pattern_ty)
         (string_of_ty expr_ty)
 
+  | ConstructorArityMismatch { constructor; expected; actual; span } ->
+      Printf.sprintf
+        "Constructor arity mismatch at %d:%d\n  Constructor '%s' expects %d argument%s, but got %d"
+        span.start span.end_
+        constructor
+        expected
+        (if expected = 1 then "" else "s")
+        actual
+
+  | TupleArityMismatch { expected; actual; span } ->
+      Printf.sprintf
+        "Tuple arity mismatch at %d:%d\n  Expected %d element%s, but pattern has %d"
+        span.start span.end_
+        expected
+        (if expected = 1 then "" else "s")
+        actual
+
+  | RecordFieldMissing { missing_fields; span } ->
+      Printf.sprintf
+        "Missing record fields at %d:%d\n  Missing fields: %s"
+        span.start span.end_
+        (String.concat ", " missing_fields)
+
+  | RecordFieldUnknown { field; span } ->
+      Printf.sprintf
+        "Unknown record field at %d:%d\n  Field '%s' not found in record type"
+        span.start span.end_
+        field
+
+  | NotARecord (ty, span) ->
+      Printf.sprintf
+        "Not a record type at %d:%d\n  Cannot use record pattern on type: %s"
+        span.start span.end_
+        (string_of_ty ty)
+
+  | NotATuple (ty, span) ->
+      Printf.sprintf
+        "Not a tuple type at %d:%d\n  Cannot use tuple pattern on type: %s"
+        span.start span.end_
+        (string_of_ty ty)
+
+  | EmptyMatch span ->
+      Printf.sprintf
+        "Empty match expression at %d:%d\n  Match expression must have at least one arm"
+        span.start span.end_
+
 (* ========== エラー生成ヘルパー ========== *)
 
 (** 型不一致エラーを生成 *)
@@ -134,3 +202,11 @@ let branch_type_mismatch_error then_ty else_ty span =
 (** パターンと式の型不一致エラーを生成 *)
 let pattern_type_mismatch_error pattern_ty expr_ty span =
   PatternTypeMismatch { pattern_ty; expr_ty; span }
+
+(** カスタムメッセージで型エラーを生成（一時的なヘルパー）
+ *
+ * TODO: より具体的なエラー型を追加してこの関数を削除
+ *)
+let type_error_with_message message span =
+  (* 仮実装: UnboundVariable として表現 *)
+  UnboundVariable (message, span)

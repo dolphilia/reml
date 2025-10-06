@@ -83,35 +83,34 @@ let initial_env =
    * Some : ∀a. a -> Option<a>
    * None : ∀a. Option<a>
    *)
+  let a_some = TypeVarGen.fresh (Some "a") in
   let env = extend "Some" {
-    quantified = [TypeVarGen.fresh (Some "a")];
-    body = TArrow (
-      TVar (TypeVarGen.fresh (Some "a")),
-      ty_option (TVar (TypeVarGen.fresh (Some "a")))
-    )
+    quantified = [a_some];
+    body = TArrow (TVar a_some, ty_option (TVar a_some))
   } env in
 
+  let a_none = TypeVarGen.fresh (Some "a") in
   let env = extend "None" {
-    quantified = [TypeVarGen.fresh (Some "a")];
-    body = ty_option (TVar (TypeVarGen.fresh (Some "a")))
+    quantified = [a_none];
+    body = ty_option (TVar a_none)
   } env in
 
   (* Result<T, E> のコンストラクタ
    * Ok : ∀a, e. a -> Result<a, e>
    * Err : ∀a, e. e -> Result<a, e>
    *)
-  let a = TypeVarGen.fresh (Some "a") in
-  let e = TypeVarGen.fresh (Some "e") in
+  let a_ok = TypeVarGen.fresh (Some "a") in
+  let e_ok = TypeVarGen.fresh (Some "e") in
   let env = extend "Ok" {
-    quantified = [a; e];
-    body = TArrow (TVar a, ty_result (TVar a) (TVar e))
+    quantified = [a_ok; e_ok];
+    body = TArrow (TVar a_ok, ty_result (TVar a_ok) (TVar e_ok))
   } env in
 
-  let a = TypeVarGen.fresh (Some "a") in
-  let e = TypeVarGen.fresh (Some "e") in
+  let a_err = TypeVarGen.fresh (Some "a") in
+  let e_err = TypeVarGen.fresh (Some "e") in
   let env = extend "Err" {
-    quantified = [a; e];
-    body = TArrow (TVar e, ty_result (TVar a) (TVar e))
+    quantified = [a_err; e_err];
+    body = TArrow (TVar e_err, ty_result (TVar a_err) (TVar e_err))
   } env in
 
   (* Never 型（空集合、到達不能を表現）

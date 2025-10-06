@@ -226,3 +226,43 @@ let string_of_scheme scheme =
   | vars ->
       let var_names = String.concat " " (List.map string_of_type_var vars) in
       Printf.sprintf "∀%s. %s" var_names (string_of_ty scheme.body)
+
+(* ========== 型の等価性判定 ========== *)
+
+(** 型変数の等価性判定 *)
+let type_var_equal tv1 tv2 =
+  tv1.tv_id = tv2.tv_id
+
+(** 型定数の等価性判定 *)
+let type_const_equal tc1 tc2 =
+  match (tc1, tc2) with
+  | (TCBool, TCBool) -> true
+  | (TCChar, TCChar) -> true
+  | (TCString, TCString) -> true
+  | (TCInt it1, TCInt it2) -> it1 = it2
+  | (TCFloat ft1, TCFloat ft2) -> ft1 = ft2
+  | (TCUser n1, TCUser n2) -> n1 = n2
+  | _ -> false
+
+(** 型の等価性判定（構造的等価性） *)
+let rec type_equal t1 t2 =
+  match (t1, t2) with
+  | (TVar tv1, TVar tv2) -> type_var_equal tv1 tv2
+  | (TCon tc1, TCon tc2) -> type_const_equal tc1 tc2
+  | (TApp (t11, t12), TApp (t21, t22)) ->
+      type_equal t11 t21 && type_equal t12 t22
+  | (TArrow (t11, t12), TArrow (t21, t22)) ->
+      type_equal t11 t21 && type_equal t12 t22
+  | (TTuple tys1, TTuple tys2) ->
+      List.length tys1 = List.length tys2 &&
+      List.for_all2 type_equal tys1 tys2
+  | (TRecord fields1, TRecord fields2) ->
+      List.length fields1 = List.length fields2 &&
+      List.for_all2 (fun (n1, t1) (n2, t2) ->
+        n1 = n2 && type_equal t1 t2
+      ) fields1 fields2
+  | (TArray t1, TArray t2) -> type_equal t1 t2
+  | (TSlice (t1, n1), TSlice (t2, n2)) -> type_equal t1 t2 && n1 = n2
+  | (TUnit, TUnit) -> true
+  | (TNever, TNever) -> true
+  | _ -> false

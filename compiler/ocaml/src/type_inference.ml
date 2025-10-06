@@ -254,9 +254,50 @@ let rec infer_expr (env: env) (expr: expr) : (infer_result, type_error) result =
       let texpr = make_typed_expr (TIf (tcond, tthen, telse_opt)) final_ty expr.expr_span in
       Ok (texpr, final_ty, s4)
 
-  | Match (_scrutinee, _arms) ->
-      (* match式: Phase 2 Week 4 で実装 *)
-      failwith "Match expression not yet implemented"
+  | Match (scrutinee, arms) ->
+      (* match式の型推論
+       *
+       * 1. スクラティニー（検査対象）式の型推論
+       * 2. 各アームのパターン推論と型環境更新
+       * 3. ガード条件の型推論（Bool型）
+       * 4. 各アームのボディを推論
+       * 5. 全アームの型を統一
+       *)
+      (* スクラティニー式を推論 *)
+      let* (tscrutinee, scrutinee_ty, s1) = infer_expr env scrutinee in
+
+      (* アームが空の場合はエラー *)
+      if arms = [] then
+        Error (type_error_with_message
+          "Match expression must have at least one arm"
+          expr.expr_span)
+      else
+        (* 最初のアームを処理 *)
+        let first_arm = List.hd arms in
+        let* (first_tarm, first_body_ty, s2) = infer_match_arm
+          (apply_subst_env s1 env) first_arm scrutinee_ty s1 in
+
+        (* 残りのアームを処理して型を統一 *)
+        let* (rest_tarms, final_ty, s_final) =
+          List.fold_left (fun acc arm ->
+            match acc with
+            | Error e -> Error e
+            | Ok (tarms, unified_ty, s_acc) ->
+                let env' = apply_subst_env s_acc env in
+                let scrutinee_ty' = apply_subst s_acc scrutinee_ty in
+                let* (tarm, arm_body_ty, s_new) = infer_match_arm env' arm scrutinee_ty' s_acc in
+
+                (* 型を統一 *)
+                let* s_unified = unify s_new (apply_subst s_new unified_ty) arm_body_ty arm.arm_span in
+                let new_unified_ty = apply_subst s_unified unified_ty in
+
+                Ok (tarms @ [tarm], new_unified_ty, s_unified)
+          ) (Ok ([first_tarm], first_body_ty, s2)) (List.tl arms)
+        in
+
+        (* 型付き式を構築 *)
+        let texpr = make_typed_expr (TMatch (tscrutinee, rest_tarms)) final_ty expr.expr_span in
+        Ok (texpr, final_ty, s_final)
 
   | Block _stmts ->
       (* ブロック式: Phase 2 Week 4 で実装 *)
@@ -343,11 +384,238 @@ and infer_params (env: env) (params: param list) (subst: substitution)
 
 (** パターンの型推論: infer_pattern(env, pat, expected_ty)
  *
- * Phase 2 Week 4 で実装
+ * パターンを推論し、束縛変数を型環境に追加する
+ *
+ * @param env 現在の型環境
+ * @param pat パターン（AST）
+ * @param expected_ty パターンの期待される型
+ * @return (型付きパターン, 束縛変数を追加した型環境)
  *)
-let infer_pattern (_env: env) (_pat: pattern) (_expected_ty: ty)
+and infer_pattern (env: env) (pat: pattern) (expected_ty: ty)
     : (typed_pattern * env, type_error) result =
-  failwith "Pattern inference not yet implemented"
+  match pat.pat_kind with
+  | PatLiteral lit ->
+      (* リテラルパターン: リテラルの型と expected_ty を単一化 *)
+      let lit_ty = infer_literal lit pat.pat_span in
+      let* _subst = unify empty_subst lit_ty expected_ty pat.pat_span in
+      let tpat = make_typed_pattern (TPatLiteral lit) expected_ty [] pat.pat_span in
+      Ok (tpat, env)
+
+  | PatVar id ->
+      (* 変数パターン: 変数を環境に追加 *)
+      let bindings = [(id.name, expected_ty)] in
+      let env' = extend id.name (mono_scheme expected_ty) env in
+      let tpat = make_typed_pattern (TPatVar id) expected_ty bindings pat.pat_span in
+      Ok (tpat, env')
+
+  | PatWildcard ->
+      (* ワイルドカードパターン: 任意の型にマッチ、束縛なし *)
+      let tpat = make_typed_pattern TPatWildcard expected_ty [] pat.pat_span in
+      Ok (tpat, env)
+
+  | PatTuple pats ->
+      (* タプルパターン: タプル型を構築して単一化 *)
+      (* expected_ty がタプル型でない場合はエラー *)
+      (match expected_ty with
+       | TTuple expected_tys when List.length pats = List.length expected_tys ->
+           (* 各要素パターンを推論 *)
+           let* (tpats, env', all_bindings) =
+             List.fold_left2 (fun acc pat expected_elem_ty ->
+               match acc with
+               | Error e -> Error e
+               | Ok (tpats, env_acc, bindings_acc) ->
+                   let* (tpat, env_new) = infer_pattern env_acc pat expected_elem_ty in
+                   Ok (tpats @ [tpat], env_new, bindings_acc @ tpat.tpat_bindings)
+             ) (Ok ([], env, [])) pats expected_tys
+           in
+           let tpat = make_typed_pattern (TPatTuple tpats) expected_ty all_bindings pat.pat_span in
+           Ok (tpat, env')
+
+       | TTuple _ ->
+           (* タプルの要素数が不一致 *)
+           Error (type_error_with_message
+             (Printf.sprintf "Tuple pattern has %d elements, but type has different arity"
+               (List.length pats))
+             pat.pat_span)
+
+       | _ ->
+           (* expected_ty がタプル型でない場合は新しいタプル型を作成して単一化 *)
+           let elem_vars = List.map (fun _ -> Types.TVar (TypeVarGen.fresh None)) pats in
+           let tuple_ty = TTuple elem_vars in
+           let* _subst = unify empty_subst expected_ty tuple_ty pat.pat_span in
+           (* 再帰的に推論 *)
+           infer_pattern env pat tuple_ty)
+
+  | PatConstructor (id, arg_pats) ->
+      (* コンストラクタパターン: コンストラクタの型スキームを取得してインスタンス化 *)
+      (match lookup id.name env with
+       | Some scheme ->
+           (* 型スキームをインスタンス化 *)
+           let ctor_ty = instantiate scheme in
+
+           (* コンストラクタ型から引数型と結果型を抽出 *)
+           let (arg_tys, result_ty) = extract_function_args ctor_ty in
+
+           (* 引数の数が一致するか確認 *)
+           if List.length arg_pats <> List.length arg_tys then
+             Error (type_error_with_message
+               (Printf.sprintf "Constructor %s expects %d arguments, but got %d"
+                 id.name (List.length arg_tys) (List.length arg_pats))
+               pat.pat_span)
+           else
+             (* 結果型と expected_ty を単一化 *)
+             let* _subst = unify empty_subst result_ty expected_ty pat.pat_span in
+
+             (* 各引数パターンを推論 *)
+             let* (targ_pats, env', all_bindings) =
+               List.fold_left2 (fun acc arg_pat arg_ty ->
+                 match acc with
+                 | Error e -> Error e
+                 | Ok (tpats, env_acc, bindings_acc) ->
+                     let* (tpat, env_new) = infer_pattern env_acc arg_pat arg_ty in
+                     Ok (tpats @ [tpat], env_new, bindings_acc @ tpat.tpat_bindings)
+               ) (Ok ([], env, [])) arg_pats arg_tys
+             in
+
+             let tpat = make_typed_pattern
+               (TPatConstructor (id, targ_pats))
+               expected_ty
+               all_bindings
+               pat.pat_span in
+             Ok (tpat, env')
+
+       | None ->
+           Error (unbound_variable_error id.name pat.pat_span))
+
+  | PatRecord (fields, has_rest) ->
+      (* レコードパターン: Phase 2 では基本実装のみ *)
+      (match expected_ty with
+       | TRecord expected_fields ->
+           (* 各フィールドパターンを推論 *)
+           let* (tfield_pats, env', all_bindings) =
+             List.fold_left (fun acc (field_id, field_pat_opt) ->
+               match acc with
+               | Error e -> Error e
+               | Ok (tfields, env_acc, bindings_acc) ->
+                   (* expected_fields からフィールド型を検索 *)
+                   (match List.assoc_opt field_id.name expected_fields with
+                    | Some field_ty ->
+                        (* フィールドパターンがある場合は推論、ない場合は変数束縛 *)
+                        (match field_pat_opt with
+                         | Some field_pat ->
+                             let* (tpat, env_new) = infer_pattern env_acc field_pat field_ty in
+                             Ok (tfields @ [(field_id, Some tpat)], env_new,
+                                 bindings_acc @ tpat.tpat_bindings)
+                         | None ->
+                             (* フィールド名を変数として束縛 *)
+                             let bindings = [(field_id.name, field_ty)] in
+                             let env_new = extend field_id.name (mono_scheme field_ty) env_acc in
+                             let tpat = make_typed_pattern
+                               (TPatVar field_id) field_ty bindings pat.pat_span in
+                             Ok (tfields @ [(field_id, Some tpat)], env_new,
+                                 bindings_acc @ bindings))
+                    | None ->
+                        Error (type_error_with_message
+                          (Printf.sprintf "Field %s not found in record type" field_id.name)
+                          pat.pat_span))
+             ) (Ok ([], env, [])) fields
+           in
+
+           (* rest (..) がない場合、全フィールドをカバーしているか確認 *)
+           if not has_rest then
+             let pattern_fields = List.map (fun (id, _) -> id.name) fields in
+             let type_fields = List.map fst expected_fields in
+             let missing_fields = List.filter (fun f ->
+               not (List.mem f pattern_fields)
+             ) type_fields in
+             if missing_fields <> [] then
+               Error (type_error_with_message
+                 (Printf.sprintf "Missing fields in record pattern: %s"
+                   (String.concat ", " missing_fields))
+                 pat.pat_span)
+             else
+               let tpat = make_typed_pattern
+                 (TPatRecord (tfield_pats, has_rest))
+                 expected_ty
+                 all_bindings
+                 pat.pat_span in
+               Ok (tpat, env')
+           else
+             let tpat = make_typed_pattern
+               (TPatRecord (tfield_pats, has_rest))
+               expected_ty
+               all_bindings
+               pat.pat_span in
+             Ok (tpat, env')
+
+       | _ ->
+           Error (type_error_with_message
+             "Record pattern requires a record type"
+             pat.pat_span))
+
+  | PatGuard (inner_pat, guard_expr) ->
+      (* ガード付きパターン: 内部パターンを推論後、ガード式を Bool 型として推論 *)
+      let* (tinner_pat, env') = infer_pattern env inner_pat expected_ty in
+
+      (* ガード式を Bool 型として推論 *)
+      let* (tguard_expr, guard_ty, _) = infer_expr env' guard_expr in
+      let* _ = unify empty_subst guard_ty ty_bool guard_expr.expr_span in
+
+      let tpat = make_typed_pattern
+        (TPatGuard (tinner_pat, tguard_expr))
+        expected_ty
+        tinner_pat.tpat_bindings  (* 束縛は内部パターンから継承 *)
+        pat.pat_span in
+      Ok (tpat, env')
+
+(** 関数型から引数型のリストと結果型を抽出
+ *
+ * TArrow (A, TArrow (B, C)) → ([A; B], C)
+ *)
+and extract_function_args (ty: ty) : (ty list * ty) =
+  match ty with
+  | TArrow (arg_ty, rest_ty) ->
+      let (args, result) = extract_function_args rest_ty in
+      (arg_ty :: args, result)
+  | _ ->
+      ([], ty)
+
+(** match アームの型推論
+ *
+ * @param env 型環境
+ * @param arm match アーム
+ * @param scrutinee_ty スクラティニー式の型
+ * @param subst 現在の代入
+ * @return (型付きアーム, ボディの型, 新しい代入)
+ *)
+and infer_match_arm (env: env) (arm: match_arm) (scrutinee_ty: ty) (subst: substitution)
+    : (typed_match_arm * ty * substitution, type_error) result =
+  (* パターンを推論 *)
+  let* (tpat, pat_env) = infer_pattern env arm.arm_pattern scrutinee_ty in
+
+  (* ガード条件があれば推論 *)
+  let* (tguard_opt, s1) = match arm.arm_guard with
+    | Some guard_expr ->
+        let* (tguard, guard_ty, s) = infer_expr pat_env guard_expr in
+        let* s' = unify s guard_ty ty_bool guard_expr.expr_span in
+        Ok (Some tguard, s')
+    | None ->
+        Ok (None, subst)
+  in
+
+  (* ボディを推論 *)
+  let env' = apply_subst_env s1 pat_env in
+  let* (tbody, body_ty, s2) = infer_expr env' arm.arm_body in
+
+  (* 型付きアームを構築 *)
+  let tarm = {
+    tarm_pattern = tpat;
+    tarm_guard = tguard_opt;
+    tarm_body = tbody;
+    tarm_span = arm.arm_span;
+  } in
+
+  Ok (tarm, body_ty, s2)
 
 (** 宣言の型推論: infer_decl(env, decl)
  *
