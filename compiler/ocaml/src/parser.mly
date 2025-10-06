@@ -50,6 +50,7 @@ let tuple_index_from_literal (value, base) =
 %token <string> CHAR
 %token <string * Ast.string_kind> STRING
 %token <string> IDENT
+%token <string> UPPER_IDENT
 
 %token EOF
 
@@ -791,9 +792,20 @@ pattern:
       let span = make_span $startpos $endpos in
       make_pattern (PatLiteral lit) span
     }
-  | id = ident
+  | id = lower_ident
     {
       make_pattern (PatVar id) id.span
+    }
+  | ctor = upper_ident
+    {
+      make_pattern (PatConstructor (ctor, [])) ctor.span
+    }
+  | path = ident_list; DOT; ctor = upper_ident
+    {
+      let names = List.map (fun id -> id.name) path @ [ctor.name] in
+      let span = make_span $startpos $endpos in
+      let qualified = make_ident (String.concat "." names) span in
+      make_pattern (PatConstructor (qualified, [])) span
     }
   | UNDERSCORE
     {
@@ -807,10 +819,22 @@ pattern:
       let span = make_span $startpos $endpos in
       make_pattern (PatTuple patterns) span
     }
-  | name = ident; LPAREN; args = pattern_arg_list_opt; RPAREN
+  | name = upper_ident; LPAREN; args = pattern_arg_list_opt; RPAREN
     {
       let span = make_span $startpos $endpos in
       make_pattern (PatConstructor (name, args)) span
+    }
+  | name = lower_ident; LPAREN; args = pattern_arg_list_opt; RPAREN
+    {
+      let span = make_span $startpos $endpos in
+      make_pattern (PatConstructor (name, args)) span
+    }
+  | path = ident_list; DOT; name = upper_ident; LPAREN; args = pattern_arg_list_opt; RPAREN
+    {
+      let names = List.map (fun id -> id.name) path @ [name.name] in
+      let span = make_span $startpos $endpos in
+      let qualified = make_ident (String.concat "." names) span in
+      make_pattern (PatConstructor (qualified, args)) span
     }
   | LBRACE; body = record_pattern_body; RBRACE
     {
@@ -890,12 +914,23 @@ type_record_field:
 
 (* ========== ヘルパー ========== *)
 
-ident:
+lower_ident:
   | id = IDENT
     {
       let span = make_span $startpos $endpos in
       make_ident id span
     }
+
+upper_ident:
+  | id = UPPER_IDENT
+    {
+      let span = make_span $startpos $endpos in
+      make_ident id span
+    }
+
+ident:
+  | id = lower_ident { id }
+  | id = upper_ident { id }
 
 ident_list:
   | id = ident { [id] }

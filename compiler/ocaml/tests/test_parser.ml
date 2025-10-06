@@ -307,6 +307,16 @@ let test_patterns () =
   expect_ok "pattern: wildcard" "let _ = 42";
   expect_ok "pattern: tuple" "let (x, y) = (1, 2)";
   expect_ok "pattern: constructor" "let _ = match opt with | Some(x) -> x | None -> 0";
+  expect_ok "pattern: qualified constructor" {|
+let _ = match value with
+| Option.None -> 0
+| Option.Some(x) -> x
+|};
+  expect_ok "pattern: DSL uppercase ident" {|
+let _ = match node with
+| DSL.Node(tag) -> process(tag)
+| DSL.Leaf -> 0
+|};
   expect_ok "pattern: record" "let { x, y } = point";
   expect_ok "pattern: record rest" "let { x, .. } = point";
   expect_ok "pattern: guard" "let _ = match x with | n if n > 0 -> n | _ -> 0";

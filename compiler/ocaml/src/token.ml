@@ -43,7 +43,8 @@ type token =
   | FLOAT of string
   | CHAR of string
   | STRING of (string * Ast.string_kind)
-  | IDENT of string
+  | IDENT of string          (** 先頭が小文字/アンダースコアの識別子 *)
+  | UPPER_IDENT of string    (** 先頭が大文字の識別子（列挙子など） *)
 
   (* その他 *)
   | EOF
@@ -135,6 +136,7 @@ let to_string = function
   | CHAR s -> "CHAR(" ^ s ^ ")"
   | STRING (s, _) -> "STRING(\"" ^ String.escaped s ^ "\")"
   | IDENT s -> "IDENT(" ^ s ^ ")"
+  | UPPER_IDENT s -> "UPPER_IDENT(" ^ s ^ ")"
   | EOF -> "EOF"
 
 (** 予約語テーブル *)
@@ -184,7 +186,17 @@ let keyword_table = [
 ]
 
 (** 識別子を予約語と照合 *)
+let is_uppercase_ident str =
+  match str with
+  | "" -> false
+  | _ ->
+      let c = str.[0] in
+      let upper = Char.uppercase_ascii c in
+      let lower = Char.lowercase_ascii c in
+      upper = c && lower <> c
+
 let keyword_or_ident str =
   match List.assoc_opt str keyword_table with
   | Some tok -> tok
-  | None -> IDENT str
+  | None ->
+      if is_uppercase_ident str then UPPER_IDENT str else IDENT str

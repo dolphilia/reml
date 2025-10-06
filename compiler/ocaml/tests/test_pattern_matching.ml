@@ -22,7 +22,7 @@ let expect_ok name src =
       exit 1
 
 (* 既知の失敗挙動を明示的に検証するヘルパー *)
-let expect_fail name src =
+let _expect_fail name src =
   match parse_string src with
   | Result.Ok _ ->
       Printf.printf "✗ %s: 失敗を期待していましたが成功しました\n" name;
@@ -351,20 +351,20 @@ let _ = match record with
 |};
 
   (* 失敗するパターンの再現 *)
-  expect_fail "record: 先頭 bare コンストラクタ + 短縮フィールド" {|
+  expect_ok "record: 先頭 bare コンストラクタ + 短縮フィールド" {|
 let _ = match record with
 | { x: None, y } -> y
 | _ -> 0
 |};
-  expect_fail "record: 先頭 bare コンストラクタ + rest" {|
+  expect_ok "record: 先頭 bare コンストラクタ + rest" {|
 let _ = match record with
 | { x: None, .. } -> 0
 | _ -> 1
 |};
-  expect_fail "let bind: 先頭 bare コンストラクタ + 短縮フィールド" {|
+  expect_ok "let bind: 先頭 bare コンストラクタ + 短縮フィールド" {|
 let { x: None, y } = record
 |};
-  expect_fail "for loop: 先頭 bare コンストラクタ + 短縮フィールド" {|
+  expect_ok "for loop: 先頭 bare コンストラクタ + 短縮フィールド" {|
 let _ = for { x: None, y } in records {
   use_value(y)
 }

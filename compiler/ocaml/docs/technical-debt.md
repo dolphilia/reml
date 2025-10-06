@@ -44,6 +44,9 @@ let _ = match record with
 - `record_pattern_entry` に先頭フィールド専用の非終端を導入して `pattern -> ident` を分離する案を検証したが、Menhir の state 238/239 の reduce/reduce 衝突は解消されず、依然として `tests/tmp_record_issue.reml` が失敗することを確認した（コード変更は差分影響が大きいためロールバック済み）。
 - 既存処理系の調査では、OCaml 本体がレコードパターンを専用規則 `record_pat_field` で解析し、`ラベル -> (型注釈)? -> (= パターン)?` の順で必ず `ラベル` を消費することで衝突を回避している（`/Users/dolphilia/.opam/5.2.1/.opam-switch/sources/ocaml-base-compiler.5.2.1/parsing/parser.mly:3003`）。パターン略記（pun）の場合は `= pattern` を省略しても構文木構築時に `pat_of_label` へ差し替えるため、Menhir 側で裸識別子をパターンとして扱う場面がなくなる。
 - Rust (`rustc` パーサ) など LR 系実装では、先頭トークンの分類を lexer 段階で細分化し（例: `IDENT` と `FIELD_IDENT` を分ける）、さらに「パターン文脈」情報を再帰下降パーサに持たせて `record_pat_field` を式コンテキストと切り離している。Reml で同手法を採用する場合、lexer でフィールド名を区別するか、Menhir のパラメータ化非終端で「record-field context」を明示する必要がある。
+- 新規アプローチとして、Lexer で先頭大文字の識別子を `UPPER_IDENT` トークンへ分類し、パターン側では `UPPER_IDENT` をゼロ引数コンストラクタとして解釈するように修正した。これにより `{ x: None, y }`・`{ x: None, .. }` など問題だったケースが成功することをパターンテスト・パーサユニットテストの両方で確認した。
+- `UPPER_IDENT` 化によって `record_pattern_entry` が式文脈とトークンを共有しなくなったため、Menhir の `state 238/239` で発生していた `pattern` vs `primary_expr` の競合が解消され、既存の期待失敗テストを成功シナリオに更新済み。
+- モジュール修飾付き列挙子（例: `Option.None`, `DSL.Node(tag)`）をパターンに記述するケースを追加テストし、`ident_list` + `UPPER_IDENT` の組み合わせを `PatConstructor` に写像する規則を導入した。これにより `compiler/ocaml/tests/test_parser.ml:307` で追加したシナリオがパース可能になり、`Option.None` も `{ x: Option.None }` のように扱えることを確認した。
 
 #### 回避策
 
@@ -63,14 +66,16 @@ let _ = match record with
 #### 対応計画
 
 **Phase 2 Week 1-2**:
-- パーサの文法ルール `record_pattern_entry_list` を調査
-- Menhir の conflict resolution を確認
-- 修正と回帰テストの追加
-- `pattern` 文法をコンテキスト別に分離する際は、単純な非終端分割では衝突が残るため、(a) `IDENT` を大文字・小文字でトークン分割する、(b) Menhir のパラメータ付き非終端で「パターン文脈」を持ち回る、等の追加ディスアンビギュエーションが必要。
+- Lexer を `IDENT` / `UPPER_IDENT` に二分し、パターン側でゼロ引数コンストラクタを正しく構築する変更を実装済み。追加で以下を確認する。
+  - モジュールパス付き列挙子（例: `Option.None`）や DSL 固有の識別子が適切に分類されるかの追加テスト。
+  - `UPPER_IDENT` を式文脈で `Var` として扱ってよいか（仕様レビュー）を Phase 2 タスクに追加。
+- Menhir の conflict resolution を再確認し、残存する shift/reduce 警告がレコードパターンに影響しないことをレポート。
+- テストスイート強化（ゴールデン AST / `--emit-ast` 出力の比較）を実施し、今回の修正で新たな回帰がないことを保証する。
 
 **成功基準**:
-- 複数アームでのレコードパターン + コンストラクタ + 短縮形が動作
-- 既存テストが全て成功
+- 複数アームでのレコードパターン + コンストラクタ + 短縮形が動作（`tests/test_pattern_matching.ml` 追加ケースで検証済み）
+- 既存テストが全て成功（`tests/test_parser.exe` / `tests/test_pattern_matching.exe` 実行済み）
+- 仕様に基づく追加シナリオ（モジュール修飾列挙子など）のテストが整備されること
 
 ---
 
@@ -188,7 +193,7 @@ Phase 1 で以下の性能測定が未実施：
 
 | ID | 項目 | 優先度 | ステータス | 担当 Phase | 備考 |
 |----|------|--------|-----------|-----------|------|
-| 1  | レコードパターン複数アーム | 🟠 High | 未対応 | Phase 2 W1-2 | パーサ修正 |
+| 1  | レコードパターン複数アーム | 🟠 High | 暫定解消（要レビュー） | Phase 2 W1-2 | Lexer 分割 + テスト強化 |
 | 2  | Unicode XID | 🟡 Medium | 未対応 | Phase 2-3 | ライブラリ選定 |
 | 3  | AST Printer 改善 | 🟡 Medium | 未対応 | Phase 2 W8 | Pretty Print |
 | 4  | 性能測定 | 🟢 Low | 未対応 | Phase 3 | ベンチマーク |
