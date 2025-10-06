@@ -42,6 +42,8 @@ let _ = match record with
 - エラーメッセージは常に `構文エラー: 入力を解釈できません` で、診断位置は後続フィールド先頭（例: `3:16`、`3:14`）に固定される。
 - 既存のレコードパターン網羅テストでは未捕捉だったため、`compiler/ocaml/tests/test_pattern_matching.ml:333` の `test_record_pattern_limitations` を追加し、成功/失敗の境界条件を固定化した。
 - `record_pattern_entry` に先頭フィールド専用の非終端を導入して `pattern -> ident` を分離する案を検証したが、Menhir の state 238/239 の reduce/reduce 衝突は解消されず、依然として `tests/tmp_record_issue.reml` が失敗することを確認した（コード変更は差分影響が大きいためロールバック済み）。
+- 既存処理系の調査では、OCaml 本体がレコードパターンを専用規則 `record_pat_field` で解析し、`ラベル -> (型注釈)? -> (= パターン)?` の順で必ず `ラベル` を消費することで衝突を回避している（`/Users/dolphilia/.opam/5.2.1/.opam-switch/sources/ocaml-base-compiler.5.2.1/parsing/parser.mly:3003`）。パターン略記（pun）の場合は `= pattern` を省略しても構文木構築時に `pat_of_label` へ差し替えるため、Menhir 側で裸識別子をパターンとして扱う場面がなくなる。
+- Rust (`rustc` パーサ) など LR 系実装では、先頭トークンの分類を lexer 段階で細分化し（例: `IDENT` と `FIELD_IDENT` を分ける）、さらに「パターン文脈」情報を再帰下降パーサに持たせて `record_pat_field` を式コンテキストと切り離している。Reml で同手法を採用する場合、lexer でフィールド名を区別するか、Menhir のパラメータ化非終端で「record-field context」を明示する必要がある。
 
 #### 回避策
 
