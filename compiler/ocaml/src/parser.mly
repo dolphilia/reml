@@ -156,7 +156,7 @@ decl:
   | attrs = attribute_list; vis = visibility; kind = decl_kind
     {
       let span = make_span $startpos $endpos in
-      { attrs; vis; kind; span }
+      { decl_attrs = attrs; decl_vis = vis; decl_kind = kind; decl_span = span }
     }
 
 attribute_list:
@@ -167,7 +167,7 @@ attribute:
   | AT; name = ident; args = attribute_args_opt
     {
       let span = make_span $startpos $endpos in
-      { name; args; attr_span = span }
+      { attr_name = name; attr_args = args; attr_span = span }
     }
 
 attribute_args_opt:
@@ -197,13 +197,13 @@ fn_decl:
     effects = effect_annot_opt; body = fn_body
     {
       {
-        name;
-        generic_params = generics;
-        params;
-        ret_type = ret;
-        where_clause;
-        effect_annot = effects;
-        body;
+        fn_name = name;
+        fn_generic_params = generics;
+        fn_params = params;
+        fn_ret_type = ret;
+        fn_where_clause = where_clause;
+        fn_effect_annot = effects;
+        fn_body = body;
       }
     }
 
@@ -472,7 +472,7 @@ literal:
 call_expr:
   | func = expr_base; LPAREN; args = arg_list_opt; RPAREN
     {
-      let span = merge_span func.span (make_span $endpos $endpos) in
+      let span = merge_span func.expr_span (make_span $endpos $endpos) in
       make_expr (Call (func, args)) span
     }
   | target = call_expr; DOT; field = ident
@@ -512,72 +512,72 @@ arg:
 binary_expr:
   | lhs = expr; PLUS; rhs = expr
     {
-      let span = merge_span lhs.span rhs.span in
+      let span = merge_span lhs.expr_span rhs.expr_span in
       make_expr (Binary (Add, lhs, rhs)) span
     }
   | lhs = expr; MINUS; rhs = expr
     {
-      let span = merge_span lhs.span rhs.span in
+      let span = merge_span lhs.expr_span rhs.expr_span in
       make_expr (Binary (Sub, lhs, rhs)) span
     }
   | lhs = expr; STAR; rhs = expr
     {
-      let span = merge_span lhs.span rhs.span in
+      let span = merge_span lhs.expr_span rhs.expr_span in
       make_expr (Binary (Mul, lhs, rhs)) span
     }
   | lhs = expr; SLASH; rhs = expr
     {
-      let span = merge_span lhs.span rhs.span in
+      let span = merge_span lhs.expr_span rhs.expr_span in
       make_expr (Binary (Div, lhs, rhs)) span
     }
   | lhs = expr; PERCENT; rhs = expr
     {
-      let span = merge_span lhs.span rhs.span in
+      let span = merge_span lhs.expr_span rhs.expr_span in
       make_expr (Binary (Mod, lhs, rhs)) span
     }
   | lhs = expr; POW; rhs = expr
     {
-      let span = merge_span lhs.span rhs.span in
+      let span = merge_span lhs.expr_span rhs.expr_span in
       make_expr (Binary (Pow, lhs, rhs)) span
     }
   | lhs = expr; EQEQ; rhs = expr
     {
-      let span = merge_span lhs.span rhs.span in
+      let span = merge_span lhs.expr_span rhs.expr_span in
       make_expr (Binary (Eq, lhs, rhs)) span
     }
   | lhs = expr; NE; rhs = expr
     {
-      let span = merge_span lhs.span rhs.span in
+      let span = merge_span lhs.expr_span rhs.expr_span in
       make_expr (Binary (Ne, lhs, rhs)) span
     }
   | lhs = expr; LT; rhs = expr
     {
-      let span = merge_span lhs.span rhs.span in
+      let span = merge_span lhs.expr_span rhs.expr_span in
       make_expr (Binary (Lt, lhs, rhs)) span
     }
   | lhs = expr; LE; rhs = expr
     {
-      let span = merge_span lhs.span rhs.span in
+      let span = merge_span lhs.expr_span rhs.expr_span in
       make_expr (Binary (Le, lhs, rhs)) span
     }
   | lhs = expr; GT; rhs = expr
     {
-      let span = merge_span lhs.span rhs.span in
+      let span = merge_span lhs.expr_span rhs.expr_span in
       make_expr (Binary (Gt, lhs, rhs)) span
     }
   | lhs = expr; GE; rhs = expr
     {
-      let span = merge_span lhs.span rhs.span in
+      let span = merge_span lhs.expr_span rhs.expr_span in
       make_expr (Binary (Ge, lhs, rhs)) span
     }
   | lhs = expr; AND; rhs = expr
     {
-      let span = merge_span lhs.span rhs.span in
+      let span = merge_span lhs.expr_span rhs.expr_span in
       make_expr (Binary (And, lhs, rhs)) span
     }
   | lhs = expr; OR; rhs = expr
     {
-      let span = merge_span lhs.span rhs.span in
+      let span = merge_span lhs.expr_span rhs.expr_span in
       make_expr (Binary (Or, lhs, rhs)) span
     }
 
@@ -596,7 +596,7 @@ unary_expr:
 pipe_expr:
   | lhs = expr; PIPE; rhs = expr
     {
-      let span = merge_span lhs.span rhs.span in
+      let span = merge_span lhs.expr_span rhs.expr_span in
       make_expr (Pipe (lhs, rhs)) span
     }
 
@@ -645,7 +645,7 @@ match_arm:
   | BAR; pat = pattern; guard = match_guard_opt; ARROW; body = expr
     {
       let span = make_span $startpos $endpos in
-      { pattern = pat; guard; body; arm_span = span }
+      { arm_pattern = pat; arm_guard = guard; arm_body = body; arm_span = span }
     }
 
 match_guard_opt:

@@ -7,14 +7,36 @@ Phase 1 ブートストラップ計画に基づき、OCaml 製 Reml コンパイ
 - `tests/`: ゴールデン AST・型推論スナップショット・IR 検証などのテストコード
 - `docs/`: 実装メモ、設計ノート、調査結果
 
-## ビルド方法
+## セットアップ
 
 ### 前提条件
-- OCaml >= 4.14
+- OCaml >= 4.14 (推奨: 5.2.1)
 - Dune >= 3.0
 - Menhir >= 20201216
 
-### ビルド手順
+### 詳細なセットアップ手順
+
+**📖 [環境セットアップガイド](docs/environment-setup.md)** を参照してください。
+
+macOS、Linux、Windows (WSL) での詳細な手順を提供しています。
+
+### クイックスタート（macOS）
+
+```bash
+# opamのインストール
+brew install opam
+opam init --auto-setup --yes
+eval $(opam env)
+
+# OCaml 5.2.1のインストール
+opam switch create 5.2.1
+eval $(opam env --switch=5.2.1)
+
+# 必要なパッケージをインストール
+opam install dune menhir --yes
+```
+
+## ビルド方法
 
 ```bash
 # プロジェクトルート (compiler/ocaml) で実行
@@ -24,7 +46,7 @@ dune build
 ./_build/default/src/remlc.exe
 ```
 
-### 使用方法
+## 使用方法
 
 ```bash
 # AST を出力
@@ -33,6 +55,50 @@ dune exec -- remlc --emit-ast <input.reml>
 # 例
 dune exec -- remlc --emit-ast ../../examples/language-impl-comparison/reml/pl0_combinator.reml
 ```
+
+## テスト実行
+
+### すべてのテストを実行
+
+```bash
+dune test
+```
+
+### 個別のテストを実行
+
+```bash
+# Lexer ユニットテスト
+dune exec tests/test_lexer.exe
+
+# Parser ユニットテスト
+dune exec tests/test_parser.exe
+
+# Golden テスト
+dune exec tests/test_golden.exe
+```
+
+### テストの説明
+
+- **test_lexer**: 字句解析の境界ケースと基本機能を検証
+  - キーワード、識別子、リテラル（整数、浮動小数、文字、文字列）
+  - 演算子、コメント（行コメント、入れ子ブロックコメント）
+  - 複合トークン列
+
+- **test_parser**: 構文解析の成功ケースを検証
+  - モジュールヘッダ、use宣言
+  - let/var/fn/type/trait/impl/extern宣言
+  - 式（リテラル、二項演算、パイプ、関数呼び出し、if/match/while/for など）
+  - パターンマッチ、属性
+  - エラーケース（構文エラーの検出）
+
+- **test_golden**: サンプルファイルのAST出力をスナップショットと比較
+  - `tests/simple.reml`: 基本的な宣言と式のゴールデンテスト
+  - 初回実行時にゴールデンファイル (`tests/golden/*.golden`) を自動生成
+  - 2回目以降は既存ゴールデンファイルと比較
+
+### テスト対象ファイル
+
+- `tests/simple.reml`: Phase 1 の基本機能テスト用サンプル
 
 ## 現在の実装状況 (M1 マイルストーン)
 
@@ -50,11 +116,15 @@ dune exec -- remlc --emit-ast ../../examples/language-impl-comparison/reml/pl0_c
   - Span 情報付与
 - [x] Dune ビルドシステム
 - [x] CLI エントリポイント (`src/main.ml`)
+- [x] テストインフラ整備
+  - Lexer ユニットテスト (`tests/test_lexer.ml`)
+  - Parser ユニットテスト (`tests/test_parser.ml`)
+  - ゴールデンテスト (`tests/test_golden.ml`)
+  - Dune テストルール (`tests/dune`)
 
 ### 🚧 進行中
 - [ ] エラー回復戦略の実装
 - [ ] 診断モデル ([2-5-error.md](../../docs/spec/2-5-error.md) 準拠)
-- [ ] Golden AST テスト整備
 - [ ] 完全な構文要素のカバレッジ (match, while, for, 等)
 - [ ] パターンマッチの完全実装
 

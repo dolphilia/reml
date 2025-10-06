@@ -1,0 +1,5 @@
+; Dune テストルール — Reml OCaml コンパイラテスト
+
+(tests
+ (names test_lexer test_parser test_golden)
+ (libraries reml_parser unix))

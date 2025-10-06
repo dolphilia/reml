@@ -84,8 +84,8 @@ and unary_op =
 
 (** 式ノード *)
 and expr = {
-  kind : expr_kind;
-  span : span;
+  expr_kind : expr_kind;
+  expr_span : span;
 }
 
 and expr_kind =
@@ -119,17 +119,17 @@ and arg =
 
 (** match アーム *)
 and match_arm = {
-  pattern : pattern;
-  guard : expr option;
-  body : expr;
+  arm_pattern : pattern;
+  arm_guard : expr option;
+  arm_body : expr;
   arm_span : span;
 }
 
 (* ========== パターン ========== *)
 
 and pattern = {
-  kind : pattern_kind;
-  span : span;
+  pat_kind : pattern_kind;
+  pat_span : span;
 }
 
 and pattern_kind =
@@ -165,17 +165,17 @@ and stmt =
 (* ========== 宣言 ========== *)
 
 and decl = {
-  attrs : attribute list;
-  vis : visibility;
-  kind : decl_kind;
-  span : span;
+  decl_attrs : attribute list;
+  decl_vis : visibility;
+  decl_kind : decl_kind;
+  decl_span : span;
 }
 
 and visibility = Public | Private
 
 and attribute = {
-  name : ident;
-  args : expr list;
+  attr_name : ident;
+  attr_args : expr list;
   attr_span : span;
 }
 
@@ -193,13 +193,13 @@ and decl_kind =
 
 (* 関数宣言 *)
 and fn_decl = {
-  name : ident;
-  generic_params : ident list;
-  params : param list;
-  ret_type : type_annot option;
-  where_clause : constraint_ list;
-  effect_annot : ident list option;         (** !{io, mut} *)
-  body : fn_body;
+  fn_name : ident;
+  fn_generic_params : ident list;
+  fn_params : param list;
+  fn_ret_type : type_annot option;
+  fn_where_clause : constraint_ list;
+  fn_effect_annot : ident list option;         (** !{io, mut} *)
+  fn_body : fn_body;
 }
 
 and fn_body =
@@ -363,10 +363,10 @@ let merge_span s1 s2 = {
 let make_ident name span = { name; span }
 
 (** 式の作成 *)
-let make_expr kind span = { kind; span }
+let make_expr expr_kind expr_span = { expr_kind; expr_span }
 
 (** パターンの作成 *)
-let make_pattern kind span = { kind; span }
+let make_pattern pat_kind pat_span = { pat_kind; pat_span }
 
 (** 型注釈の作成 *)
 let make_type ty_kind ty_span = { ty_kind; ty_span }

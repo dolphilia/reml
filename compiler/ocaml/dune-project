@@ -1,5 +1,6 @@
 (lang dune 3.0)
 (name reml_ocaml)
+(using menhir 2.1)
 
 (generate_opam_files true)
 

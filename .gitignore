@@ -50,6 +50,42 @@ __pycache__/
 env/
 venv/
 
+# OCaml / Dune / opam
+# ビルド成果物
+_build/
+*.exe
+*.bc
+*.native
+*.byte
+*.cmx
+*.cmi
+*.cmo
+*.cmxa
+*.cma
+*.a
+*.o
+*.so
+*.dylib
+*.dll
+
+# Dune生成ファイル
+*.install
+*.opam.locked
+dune-project.backup
+
+# Merlin（OCaml IDE補助ツール）
+.merlin
+
+# opamローカル設定
+_opam/
+*.opam.template
+
+# OCaml toplevel
+.ocamlinit
+
+# ゴールデンテスト成果物
+compiler/ocaml/tests/golden/*.golden
+
 # その他
 .cache/
 *.orig

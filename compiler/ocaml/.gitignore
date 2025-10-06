@@ -1,0 +1,52 @@
+# OCaml コンパイラプロジェクト固有の.gitignore
+
+# Duneビルド成果物
+_build/
+*.install
+
+# OCamlコンパイル成果物
+*.exe
+*.bc
+*.native
+*.byte
+*.cmx
+*.cmi
+*.cmo
+*.cmxa
+*.cma
+*.cmxs
+*.cmt
+*.cmti
+*.annot
+
+# ネイティブコード成果物
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+
+# Menhir生成ファイル
+src/parser.ml
+src/parser.mli
+src/parser.conflicts
+src/parser.automaton
+
+# ocamllex生成ファイル
+src/lexer.ml
+
+# エディタ/IDEファイル
+.merlin
+.ocamlinit
+
+# opamローカルスイッチ
+_opam/
+
+# テスト成果物
+tests/golden/*.golden
+tests/**/*.actual
+tests/**/*.diff
+
+# デバッグファイル
+*.log
+*.tmp
