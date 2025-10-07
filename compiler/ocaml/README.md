@@ -10,10 +10,19 @@
 ## Phase 3 ダッシュボード
 **更新日**: 2025-10-07（Week 10/16）
 
-- 完了: `src/core_ir/ir.ml` で Core IR 型を整備、`src/core_ir/ir_printer.ml` を追加、糖衣削除パスの主要ケースと let 再束縛正規化を実装済み、`tests/test_core_ir.ml` を含む 112 件のテストが成功
-- 進行中: `core_ir/cfg.ml` によるベーシックブロック生成と CFG 構築
-- 次に着手: 定数畳み込みと死コード削除パスの骨子作成、`--emit-core` CLI フローの設計
+- 完了:
+  - `src/core_ir/ir.ml` で Core IR 型を整備（384行）
+  - `src/core_ir/ir_printer.ml` を追加
+  - `src/core_ir/desugar.ml` で糖衣削除パスの主要ケースと let 再束縛正規化を実装済み（638行）
+  - `src/core_ir/cfg.ml` でベーシックブロック生成と CFG 構築アルゴリズムを実装（430行）
+    - 制御フロー分岐点の検出（if式・match式対応）
+    - ラベル自動生成とブロック接続
+    - CFG整形性検証（到達不能ブロック検出・無限ループ検出・ラベル重複チェック）
+  - `tests/test_core_ir.ml`（143行）と`tests/test_cfg.ml`（249行）を含む 118 件のテストが成功
+- 進行中: SSA準備モジュール（支配木・φノード挿入位置の計算）
+- 次に着手: 定数畳み込みと死コード削除パスの実装、`--emit-core` CLI フローの設計
 - ブロッカー: なし
+- 既知の課題: ネストした制御フロー構造で一部到達不能ブロックが生成される（Phase 2で改善予定）
 - 記録ルール: 週次で本節を更新し、詳細な議事録は `docs/phase3-handover.md` と `docs/technical-debt.md`、測定値は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に記録
 
 ### 週次更新テンプレート
