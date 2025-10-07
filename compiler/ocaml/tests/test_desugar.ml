@@ -161,6 +161,237 @@ let test_desugar_block_empty () =
   | _ ->
       failwith "空ブロックの変換に失敗"
 
+(* ========== タプルパターン変換テスト ========== *)
+
+let test_desugar_tuple_pattern_simple () =
+  Printf.printf "test_desugar_tuple_pattern_simple ... ";
+  (* let (x, y) = (1, 2) in x + y *)
+  let x_id = { name = "x"; span = dummy_span } in
+  let y_id = { name = "y"; span = dummy_span } in
+  let x_pat = { tpat_kind = TPatVar x_id; tpat_ty = ty_i64; tpat_bindings = [("x", ty_i64)]; tpat_span = dummy_span } in
+  let y_pat = { tpat_kind = TPatVar y_id; tpat_ty = ty_i64; tpat_bindings = [("y", ty_i64)]; tpat_span = dummy_span } in
+  let tuple_pat = { tpat_kind = TPatTuple [x_pat; y_pat]; tpat_ty = TTuple [ty_i64; ty_i64]; tpat_bindings = [("x", ty_i64); ("y", ty_i64)]; tpat_span = dummy_span } in
+
+  let bound = make_typed_expr (TLiteral (Int ("1", Base10))) ty_i64 in
+  let rest = make_typed_expr (TLiteral (Int ("2", Base10))) ty_i64 in
+
+  let map = create_scope_map () in
+  let bound_ir = desugar_expr map bound in
+  let rest_ir = desugar_expr map rest in
+  let result = desugar_pattern_binding map tuple_pat bound_ir rest_ir ty_i64 dummy_span in
+
+  (* Let ($tuple, ..., Let ($tuple_elem0, ..., Let ($tuple_elem1, ..., rest))) の形式を期待 *)
+  match result.expr_kind with
+  | Let (_tuple_var, _bound, _inner) ->
+      Printf.printf "OK\n"
+  | _ ->
+      failwith "タプルパターン変換に失敗"
+
+let test_desugar_tuple_pattern_nested () =
+  Printf.printf "test_desugar_tuple_pattern_nested ... ";
+  (* let ((a, b), c) = ((1, 2), 3) *)
+  let a_id = { name = "a"; span = dummy_span } in
+  let b_id = { name = "b"; span = dummy_span } in
+  let c_id = { name = "c"; span = dummy_span } in
+
+  let a_pat = { tpat_kind = TPatVar a_id; tpat_ty = ty_i64; tpat_bindings = [("a", ty_i64)]; tpat_span = dummy_span } in
+  let b_pat = { tpat_kind = TPatVar b_id; tpat_ty = ty_i64; tpat_bindings = [("b", ty_i64)]; tpat_span = dummy_span } in
+  let inner_tuple_pat = { tpat_kind = TPatTuple [a_pat; b_pat]; tpat_ty = TTuple [ty_i64; ty_i64]; tpat_bindings = [("a", ty_i64); ("b", ty_i64)]; tpat_span = dummy_span } in
+  let c_pat = { tpat_kind = TPatVar c_id; tpat_ty = ty_i64; tpat_bindings = [("c", ty_i64)]; tpat_span = dummy_span } in
+  let outer_tuple_pat = { tpat_kind = TPatTuple [inner_tuple_pat; c_pat]; tpat_ty = TTuple [TTuple [ty_i64; ty_i64]; ty_i64]; tpat_bindings = [("a", ty_i64); ("b", ty_i64); ("c", ty_i64)]; tpat_span = dummy_span } in
+
+  let bound = make_typed_expr (TLiteral (Int ("1", Base10))) ty_i64 in
+  let rest = make_typed_expr (TLiteral (Int ("2", Base10))) ty_i64 in
+
+  let map = create_scope_map () in
+  let bound_ir = desugar_expr map bound in
+  let rest_ir = desugar_expr map rest in
+  let result = desugar_pattern_binding map outer_tuple_pat bound_ir rest_ir ty_i64 dummy_span in
+
+  match result.expr_kind with
+  | Let (_outer_tuple_var, _bound, _inner) ->
+      Printf.printf "OK\n"
+  | _ ->
+      failwith "ネストタプルパターン変換に失敗"
+
+let test_desugar_tuple_pattern_with_wildcard () =
+  Printf.printf "test_desugar_tuple_pattern_with_wildcard ... ";
+  (* let (x, _, z) = (1, 2, 3) *)
+  let x_id = { name = "x"; span = dummy_span } in
+  let z_id = { name = "z"; span = dummy_span } in
+
+  let x_pat = { tpat_kind = TPatVar x_id; tpat_ty = ty_i64; tpat_bindings = [("x", ty_i64)]; tpat_span = dummy_span } in
+  let wild_pat = { tpat_kind = TPatWildcard; tpat_ty = ty_i64; tpat_bindings = []; tpat_span = dummy_span } in
+  let z_pat = { tpat_kind = TPatVar z_id; tpat_ty = ty_i64; tpat_bindings = [("z", ty_i64)]; tpat_span = dummy_span } in
+  let tuple_pat = { tpat_kind = TPatTuple [x_pat; wild_pat; z_pat]; tpat_ty = TTuple [ty_i64; ty_i64; ty_i64]; tpat_bindings = [("x", ty_i64); ("z", ty_i64)]; tpat_span = dummy_span } in
+
+  let bound = make_typed_expr (TLiteral (Int ("1", Base10))) ty_i64 in
+  let rest = make_typed_expr (TLiteral (Int ("2", Base10))) ty_i64 in
+
+  let map = create_scope_map () in
+  let bound_ir = desugar_expr map bound in
+  let rest_ir = desugar_expr map rest in
+  let result = desugar_pattern_binding map tuple_pat bound_ir rest_ir ty_i64 dummy_span in
+
+  match result.expr_kind with
+  | Let (_tuple_var, _bound, _inner) ->
+      Printf.printf "OK\n"
+  | _ ->
+      failwith "ワイルドカード混在タプルパターン変換に失敗"
+
+(* ========== レコードパターン変換テスト ========== *)
+
+let test_desugar_record_pattern_basic () =
+  Printf.printf "test_desugar_record_pattern_basic ... ";
+  (* let { x, y } = { x: 1, y: 2 } *)
+  let x_id = { name = "x"; span = dummy_span } in
+  let y_id = { name = "y"; span = dummy_span } in
+
+  let record_pat = {
+    tpat_kind = TPatRecord ([(x_id, None); (y_id, None)], false);
+    tpat_ty = ty_i64;  (* 仮の型 *)
+    tpat_bindings = [("x", ty_i64); ("y", ty_i64)];
+    tpat_span = dummy_span
+  } in
+
+  let bound = make_typed_expr (TLiteral (Int ("1", Base10))) ty_i64 in
+  let rest = make_typed_expr (TLiteral (Int ("2", Base10))) ty_i64 in
+
+  let map = create_scope_map () in
+  let bound_ir = desugar_expr map bound in
+  let rest_ir = desugar_expr map rest in
+  let result = desugar_pattern_binding map record_pat bound_ir rest_ir ty_i64 dummy_span in
+
+  match result.expr_kind with
+  | Let (_record_var, _bound, _inner) ->
+      Printf.printf "OK\n"
+  | _ ->
+      failwith "レコードパターン変換に失敗"
+
+let test_desugar_record_pattern_with_rest () =
+  Printf.printf "test_desugar_record_pattern_with_rest ... ";
+  (* let { x, .. } = { x: 1, y: 2, z: 3 } *)
+  let x_id = { name = "x"; span = dummy_span } in
+
+  let record_pat = {
+    tpat_kind = TPatRecord ([(x_id, None)], true);
+    tpat_ty = ty_i64;
+    tpat_bindings = [("x", ty_i64)];
+    tpat_span = dummy_span
+  } in
+
+  let bound = make_typed_expr (TLiteral (Int ("1", Base10))) ty_i64 in
+  let rest = make_typed_expr (TLiteral (Int ("2", Base10))) ty_i64 in
+
+  let map = create_scope_map () in
+  let bound_ir = desugar_expr map bound in
+  let rest_ir = desugar_expr map rest in
+  let result = desugar_pattern_binding map record_pat bound_ir rest_ir ty_i64 dummy_span in
+
+  match result.expr_kind with
+  | Let (_record_var, _bound, _inner) ->
+      Printf.printf "OK\n"
+  | _ ->
+      failwith "rest付きレコードパターン変換に失敗"
+
+let test_desugar_record_pattern_nested () =
+  Printf.printf "test_desugar_record_pattern_nested ... ";
+  (* let { inner: { value } } = { inner: { value: 42 } } *)
+  let value_id = { name = "value"; span = dummy_span } in
+  let inner_id = { name = "inner"; span = dummy_span } in
+
+  let value_pat = { tpat_kind = TPatVar value_id; tpat_ty = ty_i64; tpat_bindings = [("value", ty_i64)]; tpat_span = dummy_span } in
+  let inner_record_pat = {
+    tpat_kind = TPatRecord ([(value_id, Some value_pat)], false);
+    tpat_ty = ty_i64;
+    tpat_bindings = [("value", ty_i64)];
+    tpat_span = dummy_span
+  } in
+  let outer_record_pat = {
+    tpat_kind = TPatRecord ([(inner_id, Some inner_record_pat)], false);
+    tpat_ty = ty_i64;
+    tpat_bindings = [("value", ty_i64)];
+    tpat_span = dummy_span
+  } in
+
+  let bound = make_typed_expr (TLiteral (Int ("42", Base10))) ty_i64 in
+  let rest = make_typed_expr (TLiteral (Int ("0", Base10))) ty_i64 in
+
+  let map = create_scope_map () in
+  let bound_ir = desugar_expr map bound in
+  let rest_ir = desugar_expr map rest in
+  let result = desugar_pattern_binding map outer_record_pat bound_ir rest_ir ty_i64 dummy_span in
+
+  match result.expr_kind with
+  | Let (_outer_record_var, _bound, _inner) ->
+      Printf.printf "OK\n"
+  | _ ->
+      failwith "ネストレコードパターン変換に失敗"
+
+(* ========== コンストラクタパターン変換テスト ========== *)
+
+let test_desugar_constructor_pattern_some () =
+  Printf.printf "test_desugar_constructor_pattern_some ... ";
+  (* match opt with | Some(x) -> x *)
+  let x_id = { name = "x"; span = dummy_span } in
+  let some_id = { name = "Some"; span = dummy_span } in
+
+  let x_pat = { tpat_kind = TPatVar x_id; tpat_ty = ty_i64; tpat_bindings = [("x", ty_i64)]; tpat_span = dummy_span } in
+  let some_pat = {
+    tpat_kind = TPatConstructor (some_id, [x_pat]);
+    tpat_ty = TApp (TCon (TCUser "Option"), ty_i64);
+    tpat_bindings = [("x", ty_i64)];
+    tpat_span = dummy_span
+  } in
+
+  let bound = make_typed_expr (TLiteral (Int ("42", Base10))) ty_i64 in
+  let rest = make_typed_expr (TVar (x_id, { quantified = []; body = ty_i64 })) ty_i64 in
+
+  let map = create_scope_map () in
+  let bound_ir = desugar_expr map bound in
+  let rest_ir = desugar_expr map rest in
+  let result = desugar_pattern_binding map some_pat bound_ir rest_ir ty_i64 dummy_span in
+
+  match result.expr_kind with
+  | Let (_adt_var, _bound, _inner) ->
+      Printf.printf "OK\n"
+  | _ ->
+      failwith "Some(x)パターン変換に失敗"
+
+let test_desugar_constructor_pattern_nested () =
+  Printf.printf "test_desugar_constructor_pattern_nested ... ";
+  (* match opt with | Some(Some(x)) -> x *)
+  let x_id = { name = "x"; span = dummy_span } in
+  let some_id = { name = "Some"; span = dummy_span } in
+
+  let x_pat = { tpat_kind = TPatVar x_id; tpat_ty = ty_i64; tpat_bindings = [("x", ty_i64)]; tpat_span = dummy_span } in
+  let inner_some_pat = {
+    tpat_kind = TPatConstructor (some_id, [x_pat]);
+    tpat_ty = TApp (TCon (TCUser "Option"), ty_i64);
+    tpat_bindings = [("x", ty_i64)];
+    tpat_span = dummy_span
+  } in
+  let outer_some_pat = {
+    tpat_kind = TPatConstructor (some_id, [inner_some_pat]);
+    tpat_ty = TApp (TCon (TCUser "Option"), TApp (TCon (TCUser "Option"), ty_i64));
+    tpat_bindings = [("x", ty_i64)];
+    tpat_span = dummy_span
+  } in
+
+  let bound = make_typed_expr (TLiteral (Int ("42", Base10))) ty_i64 in
+  let rest = make_typed_expr (TVar (x_id, { quantified = []; body = ty_i64 })) ty_i64 in
+
+  let map = create_scope_map () in
+  let bound_ir = desugar_expr map bound in
+  let rest_ir = desugar_expr map rest in
+  let result = desugar_pattern_binding map outer_some_pat bound_ir rest_ir ty_i64 dummy_span in
+
+  match result.expr_kind with
+  | Let (_outer_adt_var, _bound, _inner) ->
+      Printf.printf "OK\n"
+  | _ ->
+      failwith "Some(Some(x))パターン変換に失敗"
+
 (* ========== メインテストランナー ========== *)
 
 let run_tests () =
@@ -188,6 +419,23 @@ let run_tests () =
   Printf.printf "\n--- ブロック式 ---\n";
   test_desugar_block_single_expr ();
   test_desugar_block_empty ();
+
+  (* タプルパターン *)
+  Printf.printf "\n--- タプルパターン変換 ---\n";
+  test_desugar_tuple_pattern_simple ();
+  test_desugar_tuple_pattern_nested ();
+  test_desugar_tuple_pattern_with_wildcard ();
+
+  (* レコードパターン *)
+  Printf.printf "\n--- レコードパターン変換 ---\n";
+  test_desugar_record_pattern_basic ();
+  test_desugar_record_pattern_with_rest ();
+  test_desugar_record_pattern_nested ();
+
+  (* コンストラクタパターン *)
+  Printf.printf "\n--- コンストラクタパターン変換 ---\n";
+  test_desugar_constructor_pattern_some ();
+  test_desugar_constructor_pattern_nested ();
 
   Printf.printf "\n=== 全テスト成功 ===\n\n"
 
