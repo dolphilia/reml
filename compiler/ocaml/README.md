@@ -1,6 +1,6 @@
 # compiler/ocaml ワークスペース
 
-**現在のフェーズ**: Phase 2 完了 → Phase 3 準備中（Core IR & LLVM 生成）
+**現在のフェーズ**: Phase 3 進行中（Core IR & LLVM 生成 - Week 9/16）
 
 Phase 1 ブートストラップ計画に基づき、OCaml 製 Reml コンパイラを構築するための作業領域です。対応するタスクは主に [`docs/plans/bootstrap-roadmap/1-x`](../../docs/plans/bootstrap-roadmap/) に定義されています。
 
@@ -21,9 +21,12 @@ Phase 1 ブートストラップ計画に基づき、OCaml 製 Reml コンパイ
 
 **詳細**: [Phase 2 完了報告書](docs/phase2-completion-report.md)
 
-### 🔜 Phase 3 準備中
-- **M3: CodeGen MVP** - Core IR → LLVM IR 生成
+### 🚀 Phase 3 進行中（2025-10-07 開始）
+- **M3: CodeGen MVP** - Core IR → LLVM IR 生成（Week 9-12）
+- **進捗**: Week 9 完了 - Core IR データ構造設計 ✅
+- **次**: Week 9-10 - 糖衣削除パスと Typed AST → Core IR 変換
 - **引き継ぎ**: [Phase 3 ハンドオーバー](docs/phase3-handover.md)
+- **計画書**: [1-3-core-ir-min-optimization.md](../../docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md)
 
 ## ディレクトリ
 - `src/`: コンパイラ本体（パーサー、型推論、Core IR、LLVM 出力など）
@@ -435,6 +438,59 @@ Phase 2 の全実装が完了しました。詳細は [Phase 2 完了報告書](
 **📋 後続タスク (Week 11-12)**
 
 - 🔜 **Phase 2 完了報告書の作成**
+
+### 🚀 Phase 3 開始（2025-10-07）
+
+**Phase 3 では Core IR & LLVM 生成を実装します。**
+
+計画書: [1-3-core-ir-min-optimization.md](../../docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md)
+
+**✅ 完了 (Week 9: 2025-10-07)**
+
+- ✅ **Core IR データ構造設計** (`src/core_ir/ir.ml` - 383行)
+  - 変数ID生成器（SSA形式準備）: 一意IDによる変数識別
+  - ラベル生成器: 基本ブロックラベルの自動生成
+  - プリミティブ演算: 20種類の演算子（算術、比較、論理、ビット演算）
+  - 効果とCapabilityメタデータ: 診断・監査用の効果集合、Capability要件
+  - クロージャ情報: 環境キャプチャと関数ポインタ
+  - 辞書参照: 型クラス/トレイトの辞書パッシング準備
+  - Core IR式: 14種類の式コンストラクタ（Literal, Var, App, Let, If, Match, Primitive, Closure, DictLookup, CapabilityCheck, TupleAccess, RecordAccess, ArrayAccess, ADTConstruct/Project）
+  - Core IR文: 6種類（Assign, Return, Jump, Branch, Phi, EffectMarker, ExprStmt）
+  - 終端命令: 5種類（TermReturn, TermJump, TermBranch, TermSwitch, TermUnreachable）
+  - 基本ブロック: ラベル、パラメータ、命令列、終端命令を含む構造
+  - 関数定義: パラメータ、返り値型、ブロックリスト、メタデータ
+  - モジュール定義: 型定義、グローバル変数、関数定義
+
+- ✅ **IR Pretty Printer** (`src/core_ir/ir_printer.ml` - 312行)
+  - 人間可読な階層表示（インデント付き）
+  - 型情報の明示: すべての式に型注釈を表示
+  - すべてのIR構造に対応: 式、文、ブロック、関数、モジュール
+
+- ✅ **Core IR テストスイート** (`tests/test_core_ir.ml` - 143行)
+  - 変数ID生成テスト: 一意性とリセット機能の検証
+  - ラベル生成テスト: 自動インクリメントの確認
+  - 基本式構築テスト: リテラル、変数、プリミティブ演算
+  - Let式・If式テスト: 複合式の構築と型検証
+  - メタデータテスト: 最適化フラグと効果集合のデフォルト値
+  - Pretty Printerテスト: 演算子とパターンの文字列化
+  - **全9テスト成功** ✅
+
+**📊 Week 9 統計**
+- 総実装行数: 695行（ir.ml 383行 + ir_printer.ml 312行）
+- テスト行数: 143行
+- テスト成功率: 100% (9/9)
+- ビルド警告: 0件
+- 全体テストスイート: 112テスト全成功（Phase 1-3 統合）
+
+**🔑 重要な設計判断**
+- **SSA形式への準備**: Phiノード、基本ブロックパラメータを先行定義。変数IDに一意識別子を付与し、将来のSSA変換を容易に。
+- **メタデータの完全保持**: Span情報（診断用）、効果集合（`effect {diagnostic}` 準拠）、Capability情報（Phase 2後半で拡張予定）、最適化フラグ（DCE除外マーカー含む）を全て保持。
+- **型情報の完全マッピング**: Typed ASTの型（`Types.ty`）をそのまま引き継ぐ。プリミティブ型、複合型（タプル、レコード、ADT）を網羅し、LLVM IR生成時の型レイアウト決定を容易に。
+
+**🎯 次のステップ (Week 9-10)**
+- 糖衣削除（Desugaring）パス: パターンマッチ、パイプ演算子、let再束縛の正規化
+- Typed AST → Core IR 変換: `ir_builder.ml`の実装
+- CFG構築: 制御フローグラフの生成
 
 **📝 技術的メモ**
 
