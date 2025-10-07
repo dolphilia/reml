@@ -23,6 +23,19 @@
  * E7013: NotARecord                - 非レコード型へのレコードパターン
  * E7014: NotATuple                 - 非タプル型へのタプルパターン
  * E7015: EmptyMatch                - 空のmatch式
+ *
+ * KNOWN ISSUES (7件の失敗テスト - Phase 2 Week 9):
+ * 現在の型推論エンジンは、一部のケースで文脈依存の専用エラー型ではなく
+ * 汎用的な UnificationFailure を返します。これは制約ベース型推論の実装方式に
+ * 起因します。詳細: compiler/ocaml/docs/technical-debt.md#7-型エラー生成順序の問題
+ *
+ * 失敗するテスト:
+ * - E7007: BranchTypeMismatch (1件) - if式の分岐型不一致
+ * - E7005: NotAFunction (2件) - 非関数型への関数適用
+ * - E7006: ConditionNotBool (2件) - 条件式が非Bool型
+ * - E7014: NotATuple (1件) - 非タプル型へのタプルパターン
+ *
+ * 対応予定: Phase 2 後半（Week 10-12）で修正
  *)
 
 open Types

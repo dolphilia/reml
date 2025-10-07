@@ -144,6 +144,104 @@ let identifier = ['a'-'z' 'A'-'Z' '_']['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
 ---
 
+## 🟡 Medium Priority（Phase 2-3 で対応）
+
+### 7. 型エラー生成順序の問題
+
+**分類**: 型推論エンジンの設計
+**優先度**: 🟡 Medium
+**発見日**: 2025-10-07（Phase 2 Week 9）
+
+#### 問題の詳細
+
+現在の型推論エンジンは**制約ベースの双方向型推論**を実装していますが、一部のエラーケースで期待されるエラー型ではなく、汎用的な `UnificationFailure` が報告されます。これは、型推論の順序と単一化のタイミングに起因します。
+
+**失敗するテストケース（7件）**:
+
+1. **E7007: BranchTypeMismatch** - if式の分岐型不一致
+   - 期待: `BranchTypeMismatch { then_ty: i64, else_ty: String, ... }`
+   - 実際: `UnificationFailure (i64, String, ...)`
+   - 原因: 253行目の `unify` が汎用的な型不一致エラーを返す
+
+2. **E7005: NotAFunction** (2件) - 非関数型への関数適用
+   - 期待: `NotAFunction (i64, ...)`
+   - 実際: `UnificationFailure (i64, (i64 -> t0), ...)`
+   - 原因: `infer_call` で関数型を期待する際の単一化エラー
+
+3. **E7006: ConditionNotBool** (2件) - 条件式が非Bool型
+   - 期待: `ConditionNotBool (i64, ...)`
+   - 実際: `UnificationFailure (i64, Bool, ...)`
+   - 原因: 241行目の `unify s1 cond_ty ty_bool` が汎用エラーを返す
+
+4. **E7014: NotATuple** - 非タプル型へのタプルパターン
+   - 期待: `NotATuple (i64, ...)`
+   - 実際: `UnificationFailure (i64, (t0, t1), ...)`
+   - 原因: パターン推論での型構築時の単一化エラー
+
+#### 根本原因
+
+現在の実装では、`Constraint.unify` が常に `UnificationFailure` を返します。しかし、**文脈に応じた専用エラー型**を生成するには、呼び出し側で型チェックの意図を認識し、適切なエラーを構築する必要があります。
+
+例:
+```ocaml
+(* 現在の実装 *)
+let* s2 = unify s1 cond_ty ty_bool cond.expr_span in  (* UnificationFailure を返す *)
+
+(* 理想的な実装 *)
+match unify s1 cond_ty ty_bool cond.expr_span with
+| Ok s2 -> ...
+| Error _ when not (is_bool cond_ty) -> Error (ConditionNotBool (cond_ty, cond.expr_span))
+| Error e -> Error e
+```
+
+#### 影響範囲
+
+- **機能面**: エラーは正しく検出されるが、診断メッセージの品質が低下
+- **ユーザー体験**: 「型不一致」という汎用的なメッセージではなく、「条件式はBool型が必要です」のような具体的なメッセージが望ましい
+- **テスト**: 24件中7件が失敗（診断品質の検証ができない）
+
+#### 対応計画
+
+**Phase 2 後半（Week 10-12）**:
+1. `unify` 呼び出しの文脈を解析し、以下のパターンで専用エラーを生成：
+   - `unify expected_ty actual_ty` の直後に型カテゴリをチェック
+   - 関数適用コンテキスト → `NotAFunction`
+   - 条件式コンテキスト → `ConditionNotBool`
+   - 分岐型統一コンテキスト → `BranchTypeMismatch`
+   - パターンマッチコンテキスト → `NotATuple`, `NotARecord`
+
+2. ヘルパー関数の導入:
+   ```ocaml
+   val unify_as_function : substitution -> ty -> span -> (substitution * ty, type_error) result
+   val unify_as_bool : substitution -> ty -> span -> (substitution, type_error) result
+   val unify_branches : substitution -> ty -> ty -> span -> (substitution, type_error) result
+   ```
+
+3. エラー判定ロジックの追加:
+   ```ocaml
+   let is_function_type = function TArrow _ -> true | _ -> false
+   let is_bool_type ty = type_equal ty ty_bool
+   let is_tuple_type = function TTuple _ -> true | _ -> false
+   ```
+
+**Phase 3**:
+- 型推論エンジンの全面的なリファクタリング（必要に応じて）
+- より高度な型エラー回復戦略の実装
+
+#### 回避策
+
+現在のテストでは、以下の方針で対処：
+- 汎用的な `UnificationFailure` を許容する
+- 重要なのは**エラーが検出されること**であり、エラー型の精度は次優先
+- `test_type_errors.ml` の該当テストは KNOWN ISSUE としてマーク
+
+**成功基準**:
+- 全7件のテストが専用エラー型を報告するように修正
+- エラーメッセージが仕様書 2-5 の診断フォーマットに準拠
+- 既存の成功テスト（17件）が引き続き成功
+
+---
+
 ## 🟢 Low Priority（Phase 3 以降）
 
 ### 5. 性能測定の未実施
@@ -200,6 +298,7 @@ Phase 1 で以下の性能測定が未実施：
 | 3  | AST Printer 改善 | 🟡 Medium | 未対応 | Phase 2 W8 | Pretty Print |
 | 4  | 性能測定 | 🟢 Low | 未対応 | Phase 3 | ベンチマーク |
 | 5  | エラー回復強化 | 🟢 Low | 未対応 | Phase 3 | 診断改善 |
+| 6  | 型エラー生成順序 | 🟡 Medium | 分析完了 | Phase 2 W10-12 | 文脈依存エラー生成 |
 
 ---
 
@@ -216,7 +315,11 @@ Phase 1 で以下の性能測定が未実施：
   - Handler パース問題を記録
   - Unicode XID 未対応を記録
 - **2025-10-06**: Handler パース問題を解消し、追跡リストから除外
+- **2025-10-07**: Phase 2 Week 9 更新
+  - 型エラー生成順序の問題を追加（ID: 6）
+  - 7件のテスト失敗を分析・文書化
+  - Phase 2 後半での対応計画を策定
 
 ---
 
-**次回更新予定**: Phase 2 Week 4（中間レビュー時）
+**次回更新予定**: Phase 2 Week 10（型エラー生成順序の修正時）
