@@ -394,10 +394,25 @@ dune exec -- ./tests/test_types.exe
     - 影響: 診断メッセージの品質低下（機能は正常）
     - 対応: Phase 2 後半（Week 10-12）で修正予定
 
-**📋 後続タスク (Week 9-10)**
+**✅ 完了 (Week 9-10: 2025-10-07)**
 
-- 🔜 **CLI統合と診断出力の改善**
+- ✅ **CLI統合と診断出力の改善**
+  - 型エラー → 診断変換関数の実装（`Type_error.to_diagnostic`）
+  - 日本語エラーメッセージの実装（全15種類のエラーコード: E7001-E7015）
+  - FixIt（修正提案）の自動生成（型注釈追加、フィールド補完、タプルワイルドカード）
+  - Span変換ヘルパーの改善（バイトオフセット → 行列番号計算）
+  - `main.ml` の診断統合（`to_diagnostic_with_source` の使用）
+  - **実装内容**:
+    - `Type_error.compute_line_column`: ソース文字列から行列番号を計算
+    - `Type_error.span_to_diagnostic_span_with_source`: 正確な位置情報を含む診断Spanを生成
+    - `Type_error.to_diagnostic_with_source`: ソース情報を使った診断生成（全15種類対応）
+    - 型差分の構造的説明（`explain_type_mismatch`）
+    - 類似変数名の提案（Levenshtein距離ベース）
+
+**📋 後続タスク (Week 10-12)**
+
 - 🔜 **let多相の網羅的テスト**
+- 🔜 **型エラー生成順序の改善**（technical-debt.md §7）
 
 **📝 技術的メモ**
 

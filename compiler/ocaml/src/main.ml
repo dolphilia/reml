@@ -26,14 +26,17 @@ let () =
     exit 1
   end;
 
-  (* ファイルを開く *)
+  (* ファイルを開いてソース文字列を読み込む *)
   let ic = open_in !input_file in
-  let lexbuf = Lexing.from_channel ic in
+  let source = really_input_string ic (in_channel_length ic) in
+  close_in ic;
+
+  (* パース用にソース文字列から lexbuf を作成 *)
+  let lexbuf = Lexing.from_string source in
   lexbuf.Lexing.lex_curr_p <- { lexbuf.Lexing.lex_curr_p with Lexing.pos_fname = !input_file };
 
   match Parser_driver.parse lexbuf with
   | Ok ast ->
-      close_in ic;
       if !emit_ast then begin
         let rendered = Ast_printer.string_of_compilation_unit ast in
         Printf.printf "%s\n" rendered;
@@ -45,11 +48,12 @@ let () =
             let rendered = Typed_ast.string_of_typed_compilation_unit tast in
             Printf.printf "%s\n" rendered;
         | Error type_err ->
-            Printf.eprintf "Type Error: %s\n" (Type_error.string_of_error type_err);
+            (* ソース情報を使って正確な診断を生成 *)
+            let diag = Type_error.to_diagnostic_with_source source !input_file type_err in
+            Printf.eprintf "%s\n" (Diagnostic.to_string diag);
             exit 1
       end;
       exit 0
   | Error diag ->
-      close_in ic;
       Printf.eprintf "%s\n" (Diagnostic.to_string diag);
       exit 1

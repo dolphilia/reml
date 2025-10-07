@@ -213,13 +213,55 @@ let type_error_with_message message span =
 
 (* ========== Diagnostic への変換 ========== *)
 
-(** Ast.span から Diagnostic.span への変換 *)
+(** バイトオフセットから行列番号を計算
+ *
+ * ソース文字列を線形走査して、指定されたオフセットの行列番号を計算する
+ *)
+let compute_line_column (source: string) (offset: int) : (int * int) =
+  let len = String.length source in
+  let safe_offset = min offset len in
+
+  let rec loop line col idx =
+    if idx >= safe_offset then
+      (line, col)
+    else
+      let c = source.[idx] in
+      if c = '\n' then
+        loop (line + 1) 1 (idx + 1)
+      else
+        loop line (col + 1) (idx + 1)
+  in
+  loop 1 1 0
+
+(** Ast.span から Diagnostic.span への変換（ソース文字列付き） *)
+let span_to_diagnostic_span_with_source (source: string) (filename: string) (ast_span: span) : Diagnostic.span =
+  let (start_line, start_col) = compute_line_column source ast_span.start in
+  let (end_line, end_col) = compute_line_column source ast_span.end_ in
+  {
+    Diagnostic.start_pos = {
+      Diagnostic.filename;
+      line = start_line;
+      column = start_col;
+      offset = ast_span.start;
+    };
+    Diagnostic.end_pos = {
+      Diagnostic.filename;
+      line = end_line;
+      column = end_col;
+      offset = ast_span.end_;
+    };
+  }
+
+(** Ast.span から Diagnostic.span への変換（簡易版・後方互換）
+ *
+ * ソース文字列が利用できない場合の簡易実装
+ *)
 let span_to_diagnostic_span (ast_span: span) : Diagnostic.span =
-  (* ダミーの location を作成（Phase 2では簡易実装） *)
+  (* ダミーの location を作成（後方互換のため維持） *)
   let make_loc offset =
     {
       Diagnostic.filename = "<入力>";
-      line = 1;  (* TODO: バイトオフセットから行番号を計算 *)
+      line = 1;  (* 簡易版では行番号を計算しない *)
       column = offset + 1;
       offset;
     }
@@ -613,3 +655,295 @@ let to_diagnostic_with_env ?(available_names: string list = []) (err: type_error
   | other_error ->
       (* その他のエラーは通常の変換を使用 *)
       to_diagnostic other_error
+
+(** ソースコード情報を使った診断情報の生成
+ *
+ * 正確な行列番号を含む診断情報を生成する
+ *)
+let to_diagnostic_with_source
+    ?(available_names: string list = [])
+    (source: string)
+    (filename: string)
+    (err: type_error) : Diagnostic.t =
+  let open Diagnostic in
+
+  (* Span変換用のヘルパー関数 *)
+  let make_span = span_to_diagnostic_span_with_source source filename in
+
+  match err with
+  | UnificationFailure (expected, actual, span) ->
+      let message = "型が一致しません" in
+      let diag_span = make_span span in
+
+      (* 型差分の詳細説明 *)
+      let detailed_explanation = match explain_type_mismatch expected actual with
+        | Some explanation -> [(None, explanation)]
+        | None -> []
+      in
+
+      let notes = [
+        (None, Printf.sprintf "期待される型: %s" (string_of_ty expected));
+        (None, Printf.sprintf "実際の型:     %s" (string_of_ty actual));
+      ] @ detailed_explanation in
+
+      (* FixIt: 型注釈の追加を提案 *)
+      let fixits =
+        match expected with
+        | Types.TVar _ ->
+            [Insert { at = diag_span; text = Printf.sprintf ": %s" (string_of_ty actual) }]
+        | _ -> []
+      in
+
+      make_type_error
+        ~code:"E7001"
+        ~message
+        ~span:diag_span
+        ~notes
+        ~fixits
+        ()
+
+  | OccursCheck (tv, ty, span) ->
+      let message = "無限型が検出されました" in
+      let diag_span = make_span span in
+      let notes = [
+        (None, Printf.sprintf "型変数 %s が型 %s の中に出現しています"
+           (string_of_type_var tv) (string_of_ty ty));
+        (None, "再帰型を定義する場合は、明示的な型注釈が必要です");
+      ] in
+
+      make_type_error
+        ~code:"E7002"
+        ~message
+        ~span:diag_span
+        ~notes
+        ()
+
+  | UnboundVariable (name, span) ->
+      let message = Printf.sprintf "変数 '%s' が定義されていません" name in
+      let diag_span = make_span span in
+
+      (* 類似変数名の提案 *)
+      let suggestions = suggest_similar_names name available_names in
+      let suggestion_notes = match suggestions with
+        | [] -> [(None, "この変数はスコープ内に存在しません")]
+        | names ->
+            let candidates = String.concat ", " names in
+            [
+              (None, "この変数はスコープ内に存在しません");
+              (None, Printf.sprintf "もしかして: %s ?" candidates);
+            ]
+      in
+
+      make_type_error
+        ~code:"E7003"
+        ~message
+        ~span:diag_span
+        ~notes:suggestion_notes
+        ()
+
+  | ArityMismatch { expected; actual; span } ->
+      let message = Printf.sprintf "引数の数が一致しません（期待: %d、実際: %d）" expected actual in
+      let diag_span = make_span span in
+      let notes = [
+        (None, Printf.sprintf "この関数は %d 個の引数を期待していますが、%d 個の引数が渡されました"
+           expected actual);
+      ] in
+
+      make_type_error
+        ~code:"E7004"
+        ~message
+        ~span:diag_span
+        ~notes
+        ()
+
+  | NotAFunction (ty, span) ->
+      let message = "関数ではない値に引数を適用しようとしています" in
+      let diag_span = make_span span in
+      let notes = [
+        (None, Printf.sprintf "この式の型は %s ですが、関数型が必要です" (string_of_ty ty));
+      ] in
+
+      make_type_error
+        ~code:"E7005"
+        ~message
+        ~span:diag_span
+        ~notes
+        ()
+
+  | ConditionNotBool (ty, span) ->
+      let message = "条件式は Bool 型である必要があります" in
+      let diag_span = make_span span in
+      let notes = [
+        (None, Printf.sprintf "この条件式の型は %s です" (string_of_ty ty));
+      ] in
+
+      make_type_error
+        ~code:"E7006"
+        ~message
+        ~span:diag_span
+        ~notes
+        ()
+
+  | BranchTypeMismatch { then_ty; else_ty; span } ->
+      let message = "if 式の分岐の型が一致しません" in
+      let diag_span = make_span span in
+      let notes = [
+        (None, Printf.sprintf "then 分岐の型: %s" (string_of_ty then_ty));
+        (None, Printf.sprintf "else 分岐の型: %s" (string_of_ty else_ty));
+        (None, "if 式の両方の分岐は同じ型を返す必要があります");
+      ] in
+
+      make_type_error
+        ~code:"E7007"
+        ~message
+        ~span:diag_span
+        ~notes
+        ()
+
+  | PatternTypeMismatch { pattern_ty; expr_ty; span } ->
+      let message = "パターンと式の型が一致しません" in
+      let diag_span = make_span span in
+      let notes = [
+        (None, Printf.sprintf "パターンの期待型: %s" (string_of_ty pattern_ty));
+        (None, Printf.sprintf "式の実際の型:     %s" (string_of_ty expr_ty));
+      ] in
+
+      make_type_error
+        ~code:"E7008"
+        ~message
+        ~span:diag_span
+        ~notes
+        ()
+
+  | ConstructorArityMismatch { constructor; expected; actual; span } ->
+      let message = Printf.sprintf "コンストラクタ '%s' の引数の数が一致しません" constructor in
+      let diag_span = make_span span in
+
+      (* 使用例を提供 *)
+      let example =
+        if expected = 0 then
+          Printf.sprintf "%s" constructor
+        else if expected = 1 then
+          Printf.sprintf "%s(_)" constructor
+        else
+          let args = String.concat ", " (List.init expected (fun _ -> "_")) in
+          Printf.sprintf "%s(%s)" constructor args
+      in
+
+      let notes = [
+        (None, Printf.sprintf "期待される引数の数: %d" expected);
+        (None, Printf.sprintf "実際の引数の数:     %d" actual);
+        (None, Printf.sprintf "正しい使用例: %s" example);
+      ] in
+
+      make_type_error
+        ~code:"E7009"
+        ~message
+        ~span:diag_span
+        ~notes
+        ()
+
+  | TupleArityMismatch { expected; actual; span } ->
+      let message = "タプルの要素数が一致しません" in
+      let diag_span = make_span span in
+      let notes = [
+        (None, Printf.sprintf "期待される要素数: %d" expected);
+        (None, Printf.sprintf "パターンの要素数: %d" actual);
+      ] in
+
+      (* FixIt: 要素数が不足している場合はワイルドカードの追加を提案 *)
+      let fixits =
+        if actual < expected then
+          let missing = expected - actual in
+          let wildcards = String.concat ", " (List.init missing (fun _ -> "_")) in
+          [Insert { at = diag_span; text = Printf.sprintf ", %s" wildcards }]
+        else
+          []
+      in
+
+      make_type_error
+        ~code:"E7010"
+        ~message
+        ~span:diag_span
+        ~notes
+        ~fixits
+        ()
+
+  | RecordFieldMissing { missing_fields; span } ->
+      let message = "レコードに必須フィールドが不足しています" in
+      let diag_span = make_span span in
+      let fields_str = String.concat ", " missing_fields in
+      let notes = [
+        (None, Printf.sprintf "不足しているフィールド: %s" fields_str);
+      ] in
+
+      (* FixIt: 不足フィールドの挿入を提案 *)
+      let fixits =
+        missing_fields |> List.map (fun field ->
+          Insert { at = diag_span; text = Printf.sprintf "%s: /* 値を入力 */, " field }
+        )
+      in
+
+      make_type_error
+        ~code:"E7011"
+        ~message
+        ~span:diag_span
+        ~notes
+        ~fixits
+        ()
+
+  | RecordFieldUnknown { field; span } ->
+      let message = Printf.sprintf "レコード型に存在しないフィールド '%s' が指定されています" field in
+      let diag_span = make_span span in
+      let notes = [
+        (None, "このフィールドはレコード型で定義されていません");
+      ] in
+
+      make_type_error
+        ~code:"E7012"
+        ~message
+        ~span:diag_span
+        ~notes
+        ()
+
+  | NotARecord (ty, span) ->
+      let message = "レコード型ではない型に対してレコードパターンを使用しています" in
+      let diag_span = make_span span in
+      let notes = [
+        (None, Printf.sprintf "この式の型は %s ですが、レコード型が必要です" (string_of_ty ty));
+      ] in
+
+      make_type_error
+        ~code:"E7013"
+        ~message
+        ~span:diag_span
+        ~notes
+        ()
+
+  | NotATuple (ty, span) ->
+      let message = "タプル型ではない型に対してタプルパターンを使用しています" in
+      let diag_span = make_span span in
+      let notes = [
+        (None, Printf.sprintf "この式の型は %s ですが、タプル型が必要です" (string_of_ty ty));
+      ] in
+
+      make_type_error
+        ~code:"E7014"
+        ~message
+        ~span:diag_span
+        ~notes
+        ()
+
+  | EmptyMatch span ->
+      let message = "match 式にはアームが少なくとも1つ必要です" in
+      let diag_span = make_span span in
+      let notes = [
+        (None, "パターンマッチのケースを追加してください");
+      ] in
+
+      make_type_error
+        ~code:"E7015"
+        ~message
+        ~span:diag_span
+        ~notes
+        ()
