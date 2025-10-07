@@ -200,7 +200,8 @@ match unify s1 cond_ty ty_bool cond.expr_span with
 
 - **機能面**: エラーは正しく検出されるが、診断メッセージの品質が低下
 - **ユーザー体験**: 「型不一致」という汎用的なメッセージではなく、「条件式はBool型が必要です」のような具体的なメッセージが望ましい
-- **テスト**: 24件中7件が失敗（診断品質の検証ができない）
+- **テスト（修正前）**: 24件中7件が失敗（診断品質の検証ができない）
+- **テスト（修正後）**: 論理演算・matchガード・パターンガード・パイプ演算子を含む30件すべて成功
 
 #### 対応計画
 
@@ -316,8 +317,8 @@ match unify s1 cond_ty ty_bool cond.expr_span with
   パターンガード、`|>` パイプ演算、およびタプルパターン分岐が
   新しいヘルパーを利用するように更新され、`ConditionNotBool`
   `BranchTypeMismatch` `NotAFunction` `NotATuple` が適切に出力される。
-- `compiler/ocaml/tests/test_type_errors.ml` の期待値を更新し、
-  `dune exec -- ./tests/test_type_errors.exe` で 24/24 件すべて成功を確認。
+- `compiler/ocaml/tests/test_type_errors.ml` の期待値と追加サンプルを更新し、
+  `dune exec -- ./tests/test_type_errors.exe` で 30/30 件すべて成功を確認。
 - 既存の回避策（汎用 `UnificationFailure` の許容）は撤廃でき、
   Phase 2 後半以降のタスクは追加最適化フェーズへ移行可能。
 - 残課題: 追加で導入予定の効果システムや型クラス導入時に同様の
@@ -382,7 +383,7 @@ Phase 1 で以下の性能測定が未実施：
 | 3  | AST Printer 改善 | 🟡 Medium | 未対応 | Phase 2 W8 | Pretty Print |
 | 4  | 性能測定 | 🟢 Low | 未対応 | Phase 3 | ベンチマーク |
 | 5  | エラー回復強化 | 🟢 Low | 未対応 | Phase 3 | 診断改善 |
-| 6  | 型エラー生成順序 | ✅ 完了 | 完了（Phase 2 W10） | Phase 2 W10 | 文脈ヘルパー導入・`test_type_errors` 24/24 成功 |
+| 6  | 型エラー生成順序 | ✅ 完了 | 完了（Phase 2 W10） | Phase 2 W10 | 文脈ヘルパー導入・`test_type_errors` 30/30 成功 |
 
 ---
 
@@ -411,9 +412,9 @@ Phase 1 で以下の性能測定が未実施：
   - 対応状況トラッキング表を更新（診断層完了・型推論層未対応）
 - **2025-10-07**: Phase 2 Week 10 更新
   - 型推論エンジンに文脈依存ヘルパーを導入し、診断用エラー型を完全生成
-  - `dune exec -- ./tests/test_type_errors.exe` を実行し 24/24 件の成功を確認
+  - `dune exec -- ./tests/test_type_errors.exe` を実行し 30/30 件の成功を確認
   - 技術的負債トラッキングのステータスを「完了」に更新
 
 ---
 
-**次回更新予定**: Phase 2 Week 10-12（型エラー生成順序の修正時）
+**次回更新予定**: Phase 2 Week 11-12（let多相テスト拡張時に再評価）

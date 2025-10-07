@@ -26,7 +26,7 @@
  *
 * 2025-10-07 更新（Phase 2 Week 10）:
 * - 文脈依存ヘルパーを導入し、既知の失敗テスト7件を解消
-* - `dune exec -- ./tests/test_type_errors.exe` が 24/24 件成功することを確認
+* - `dune exec -- ./tests/test_type_errors.exe` が 30/30 件成功することを確認
 * - 詳細は technical-debt.md §7 を参照
 *)
 
@@ -202,6 +202,43 @@ let test_branch_type_mismatch () =
     (match result with
      | Error err -> verify_diagnostic_quality err "E7007"
      | _ -> ())
+  );
+
+  (* A-6. match式の分岐型不一致 *)
+  run_test "E7007: match branch type mismatch" (fun () ->
+    let env = initial_env in
+    let pat_true = {
+      pat_kind = PatLiteral (Bool true);
+      pat_span = dummy_span;
+    } in
+    let pat_false = {
+      pat_kind = PatLiteral (Bool false);
+      pat_span = dummy_span;
+    } in
+    let arm_then = {
+      arm_pattern = pat_true;
+      arm_guard = None;
+      arm_body = { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span };
+      arm_span = dummy_span;
+    } in
+    let arm_else = {
+      arm_pattern = pat_false;
+      arm_guard = None;
+      arm_body = { expr_kind = Literal (String ("oops", Normal)); expr_span = dummy_span };
+      arm_span = dummy_span;
+    } in
+    let match_expr = {
+      expr_kind = Match (
+        { expr_kind = Literal (Bool true); expr_span = dummy_span },
+        [arm_then; arm_else]
+      );
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env match_expr in
+    assert_error "BranchTypeMismatch" result "match arms must have same type";
+    match result with
+    | Error err -> verify_diagnostic_quality err "E7007"
+    | _ -> ()
   )
 
 let test_pattern_type_mismatch () =
@@ -465,6 +502,24 @@ let test_not_a_function () =
     match result with
     | Error err -> verify_diagnostic_quality err "E7005"
     | _ -> ()
+  );
+
+  (* D-3. パイプ演算子の右辺が関数でない *)
+  run_test "E7005: not a function (pipe target)" (fun () ->
+    let env = initial_env in
+    let expr = {
+      expr_kind = Binary (
+        PipeOp,
+        { expr_kind = Literal (Int ("42", Base10)); expr_span = dummy_span },
+        { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span }
+      );
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env expr in
+    assert_error "NotAFunction" result "Pipe target must be callable";
+    match result with
+    | Error err -> verify_diagnostic_quality err "E7005"
+    | _ -> ()
   )
 
 let test_condition_not_bool () =
@@ -501,6 +556,92 @@ let test_condition_not_bool () =
     } in
     let result = infer_expr env if_expr in
     assert_error "ConditionNotBool" result "if condition must be Bool";
+    match result with
+    | Error err -> verify_diagnostic_quality err "E7006"
+    | _ -> ()
+  );
+
+  (* D-5. 論理演算子 && の左辺が非Bool型 *)
+  run_test "E7006: condition not Bool (logical lhs)" (fun () ->
+    let env = initial_env in
+    let expr = {
+      expr_kind = Binary (
+        And,
+        { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span },
+        { expr_kind = Literal (Bool true); expr_span = dummy_span }
+      );
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env expr in
+    assert_error "ConditionNotBool" result "logical operand must be Bool";
+    match result with
+    | Error err -> verify_diagnostic_quality err "E7006"
+    | _ -> ()
+  );
+
+  (* D-6. 論理演算子 || の右辺が非Bool型 *)
+  run_test "E7006: condition not Bool (logical rhs)" (fun () ->
+    let env = initial_env in
+    let expr = {
+      expr_kind = Binary (
+        Or,
+        { expr_kind = Literal (Bool false); expr_span = dummy_span },
+        { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span }
+      );
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env expr in
+    assert_error "ConditionNotBool" result "logical operand must be Bool";
+    match result with
+    | Error err -> verify_diagnostic_quality err "E7006"
+    | _ -> ()
+  );
+
+  (* D-7. matchアームのガードが非Bool型 *)
+  run_test "E7006: condition not Bool (match guard)" (fun () ->
+    let env = initial_env in
+    let ident_x = { name = "x"; span = dummy_span } in
+    let arm_guard = {
+      arm_pattern = {
+        pat_kind = PatVar ident_x;
+        pat_span = dummy_span;
+      };
+      arm_guard = Some { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span };
+      arm_body = { expr_kind = Var ident_x; expr_span = dummy_span };
+      arm_span = dummy_span;
+    } in
+    let arm_fallback = {
+      arm_pattern = { pat_kind = PatWildcard; pat_span = dummy_span };
+      arm_guard = None;
+      arm_body = { expr_kind = Literal (Bool false); expr_span = dummy_span };
+      arm_span = dummy_span;
+    } in
+    let match_expr = {
+      expr_kind = Match (
+        { expr_kind = Literal (Bool true); expr_span = dummy_span },
+        [arm_guard; arm_fallback]
+      );
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env match_expr in
+    assert_error "ConditionNotBool" result "match guard must be Bool";
+    match result with
+    | Error err -> verify_diagnostic_quality err "E7006"
+    | _ -> ()
+  );
+
+  (* D-8. パターンガードが非Bool型 *)
+  run_test "E7006: condition not Bool (pattern guard)" (fun () ->
+    let env = initial_env in
+    let pattern = {
+      pat_kind = PatGuard (
+        { pat_kind = PatVar { name = "x"; span = dummy_span }; pat_span = dummy_span },
+        { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span }
+      );
+      pat_span = dummy_span;
+    } in
+    let result = infer_pattern env pattern ty_bool in
+    assert_error "ConditionNotBool" result "pattern guard must be Bool";
     match result with
     | Error err -> verify_diagnostic_quality err "E7006"
     | _ -> ()
