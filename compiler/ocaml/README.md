@@ -389,10 +389,9 @@ dune exec -- ./tests/test_types.exe
     - E7013: NotARecord
     - E7015: EmptyMatch
     - ネストパターンエラー: Some(None(x))
-  - **既知の問題**: 型エラーテスト7件が失敗（詳細: [technical-debt.md](docs/technical-debt.md#7-型エラー生成順序の問題)）
-    - 原因: `unify` が常に `UnificationFailure` を返すため、文脈依存の専用エラー型が生成されない
-    - 影響: 診断メッセージの品質低下（機能は正常）
-    - 対応: Phase 2 後半（Week 10-12）で修正予定
+  - **成果補足** (Week 10: 2025-10-07): 文脈依存ヘルパー導入により
+    `test_type_errors` 24件がすべて成功。詳細は
+    [technical-debt.md §7](docs/technical-debt.md#7-型エラー生成順序の問題) を参照。
 
 **✅ 完了 (Week 9-10: 2025-10-07)**
 
@@ -412,7 +411,6 @@ dune exec -- ./tests/test_types.exe
 **📋 後続タスク (Week 10-12)**
 
 - 🔜 **let多相の網羅的テスト**
-- 🔜 **型エラー生成順序の改善**（technical-debt.md §7）
 
 **📝 技術的メモ**
 

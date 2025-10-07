@@ -86,7 +86,8 @@ let _ = match record with
 ### 3. Unicode XID 識別子の未対応
 
 **分類**: 機能未実装
-**優先度**: 🟡 Medium
+**優先度**: 🟠 High
+**ステータス**: ✅ 完了（2025-10-07 / Phase 2 Week 10）
 **発見日**: Phase 1 開始時（計画的延期）
 
 #### 問題の詳細
@@ -149,7 +150,8 @@ let identifier = ['a'-'z' 'A'-'Z' '_']['a'-'z' 'A'-'Z' '0'-'9' '_']*
 ### 7. 型エラー生成順序の問題
 
 **分類**: 型推論エンジンの設計
-**優先度**: 🟡 Medium
+**優先度**: 🟠 High
+**ステータス**: ✅ 完了（2025-10-07 / Phase 2 Week 10）
 **発見日**: 2025-10-07（Phase 2 Week 9）
 
 #### 問題の詳細
@@ -305,6 +307,23 @@ match unify s1 cond_ty ty_bool cond.expr_span with
 - 当初 🟡 Medium Priority としていたが、診断品質への影響が大きいため 🟠 High Priority に引き上げを推奨
 - Phase 2 完了前（Week 10-12）に対応することで、ユーザー体験が大幅に向上する
 
+#### 対応結果（2025-10-07 Phase 2 Week 10）
+
+- `compiler/ocaml/src/type_inference.ml` に文脈依存のヘルパー関数
+  `unify_as_bool`・`unify_branch_types`・`unify_as_function` を追加し、
+  条件式・分岐・関数適用の各パスで専用エラーを生成するよう修正。
+- `infer_binary_op` の論理演算子、`if` 式、`match` アーム、
+  パターンガード、`|>` パイプ演算、およびタプルパターン分岐が
+  新しいヘルパーを利用するように更新され、`ConditionNotBool`
+  `BranchTypeMismatch` `NotAFunction` `NotATuple` が適切に出力される。
+- `compiler/ocaml/tests/test_type_errors.ml` の期待値を更新し、
+  `dune exec -- ./tests/test_type_errors.exe` で 24/24 件すべて成功を確認。
+- 既存の回避策（汎用 `UnificationFailure` の許容）は撤廃でき、
+  Phase 2 後半以降のタスクは追加最適化フェーズへ移行可能。
+- 残課題: 追加で導入予定の効果システムや型クラス導入時に同様の
+  ヘルパーが必要になる可能性があるため、Phase 2-3 の設計レビューで
+  再評価する。
+
 ---
 
 ## 🟢 Low Priority（Phase 3 以降）
@@ -363,7 +382,7 @@ Phase 1 で以下の性能測定が未実施：
 | 3  | AST Printer 改善 | 🟡 Medium | 未対応 | Phase 2 W8 | Pretty Print |
 | 4  | 性能測定 | 🟢 Low | 未対応 | Phase 3 | ベンチマーク |
 | 5  | エラー回復強化 | 🟢 Low | 未対応 | Phase 3 | 診断改善 |
-| 6  | 型エラー生成順序 | 🟠 High | 診断層完了・型推論層未対応 | Phase 2 W10-12 | 診断統合完了（W9-10）、型推論修正が必要 |
+| 6  | 型エラー生成順序 | ✅ 完了 | 完了（Phase 2 W10） | Phase 2 W10 | 文脈ヘルパー導入・`test_type_errors` 24/24 成功 |
 
 ---
 
@@ -390,6 +409,10 @@ Phase 1 で以下の性能測定が未実施：
   - 優先度を 🟡 Medium → 🟠 High に引き上げを推奨
   - 文脈依存の unify ヘルパー関数の実装案を追加
   - 対応状況トラッキング表を更新（診断層完了・型推論層未対応）
+- **2025-10-07**: Phase 2 Week 10 更新
+  - 型推論エンジンに文脈依存ヘルパーを導入し、診断用エラー型を完全生成
+  - `dune exec -- ./tests/test_type_errors.exe` を実行し 24/24 件の成功を確認
+  - 技術的負債トラッキングのステータスを「完了」に更新
 
 ---
 

@@ -24,19 +24,11 @@
  * E7014: NotATuple                 - 非タプル型へのタプルパターン
  * E7015: EmptyMatch                - 空のmatch式
  *
- * KNOWN ISSUES (7件の失敗テスト - Phase 2 Week 9):
- * 現在の型推論エンジンは、一部のケースで文脈依存の専用エラー型ではなく
- * 汎用的な UnificationFailure を返します。これは制約ベース型推論の実装方式に
- * 起因します。詳細: compiler/ocaml/docs/technical-debt.md#7-型エラー生成順序の問題
- *
- * 失敗するテスト:
- * - E7007: BranchTypeMismatch (1件) - if式の分岐型不一致
- * - E7005: NotAFunction (2件) - 非関数型への関数適用
- * - E7006: ConditionNotBool (2件) - 条件式が非Bool型
- * - E7014: NotATuple (1件) - 非タプル型へのタプルパターン
- *
- * 対応予定: Phase 2 後半（Week 10-12）で修正
- *)
+* 2025-10-07 更新（Phase 2 Week 10）:
+* - 文脈依存ヘルパーを導入し、既知の失敗テスト7件を解消
+* - `dune exec -- ./tests/test_type_errors.exe` が 24/24 件成功することを確認
+* - 詳細は technical-debt.md §7 を参照
+*)
 
 open Types
 open Type_env
@@ -205,8 +197,11 @@ let test_branch_type_mismatch () =
       expr_span = dummy_span;
     } in
     let result = infer_expr env if_expr in
-    (* タプルの要素数が異なるため型不一致 *)
-    assert_error "UnificationFailure" result "Tuple arities differ"
+    (* タプルの要素数が異なるため分岐型不一致 *)
+    assert_error "BranchTypeMismatch" result "Tuple arities differ";
+    (match result with
+     | Error err -> verify_diagnostic_quality err "E7007"
+     | _ -> ())
   )
 
 let test_pattern_type_mismatch () =

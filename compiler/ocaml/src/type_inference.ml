@@ -111,6 +111,60 @@ type infer_result = typed_expr * ty * substitution
 (** let* 演算子（Result モナド） *)
 let (let*) = Result.bind
 
+(** 文脈依存の単一化ヘルパー
+ *
+ * 汎用的な `UnificationFailure` を、利用箇所に応じた専用エラーへ
+ * 変換するための補助関数群。technical-debt.md §7 で指摘された
+ * 「型エラー生成順序の問題」への対処として導入する。
+ *)
+
+let is_function_type = function
+  | TArrow _ -> true
+  | _ -> false
+
+let unify_as_bool (subst : substitution) (ty : ty) (span : span)
+    : (substitution, type_error) result =
+  let ty' = apply_subst subst ty in
+  if type_equal ty' ty_bool then
+    Ok subst
+  else
+    match ty' with
+    | TVar _ -> unify subst ty' ty_bool span
+    | _ ->
+        (match unify subst ty' ty_bool span with
+         | Ok s -> Ok s
+         | Error (UnificationFailure _) ->
+             Error (condition_not_bool_error ty' span)
+         | Error e -> Error e)
+
+let unify_branch_types (subst : substitution) (then_ty : ty) (else_ty : ty) (span : span)
+    : (substitution, type_error) result =
+  let then' = apply_subst subst then_ty in
+  let else' = apply_subst subst else_ty in
+  match unify subst then' else' span with
+  | Ok s -> Ok s
+  | Error (UnificationFailure _) ->
+      Error (branch_type_mismatch_error then' else' span)
+  | Error e -> Error e
+
+let unify_as_function (subst : substitution) (fn_ty : ty) (expected_fn_ty : ty) (span : span)
+    : (substitution, type_error) result =
+  let fn_ty' = apply_subst subst fn_ty in
+  let expected' = apply_subst subst expected_fn_ty in
+  match fn_ty' with
+  | TArrow _ | TVar _ ->
+      (match unify subst fn_ty' expected' span with
+       | Ok s -> Ok s
+       | Error (UnificationFailure (lhs, rhs, span')) ->
+           let lhs_ty = apply_subst subst lhs in
+           let rhs_ty = apply_subst subst rhs in
+           if (not (is_function_type lhs_ty)) && is_function_type rhs_ty then
+             Error (not_a_function_error lhs_ty span)
+           else
+             Error (UnificationFailure (lhs_ty, rhs_ty, span'))
+       | Error e -> Error e)
+  | _ -> Error (not_a_function_error fn_ty' span)
+
 (** 式の型推論: infer_expr(env, expr)
  *
  * Phase 2 Week 2-3: 基本的な式の推論を実装
@@ -157,8 +211,7 @@ let rec infer_expr (env: env) (expr: expr) : (infer_result, type_error) result =
       ) arg_tys ret_ty in
 
       (* 関数型と単一化 *)
-      let fn_ty' = apply_subst s2 fn_ty in
-      let* s3 = unify s2 fn_ty' expected_fn_ty expr.expr_span in
+      let* s3 = unify_as_function s2 fn_ty expected_fn_ty expr.expr_span in
 
       (* 返り値型に代入を適用 *)
       let final_ret_ty = apply_subst s3 ret_ty in
@@ -238,7 +291,7 @@ let rec infer_expr (env: env) (expr: expr) : (infer_result, type_error) result =
       let* (tcond, cond_ty, s1) = infer_expr env cond in
 
       (* 条件式をBool型と単一化 *)
-      let* s2 = unify s1 cond_ty ty_bool cond.expr_span in
+      let* s2 = unify_as_bool s1 cond_ty cond.expr_span in
 
       (* then分岐を推論 *)
       let env' = apply_subst_env s2 env in
@@ -250,7 +303,7 @@ let rec infer_expr (env: env) (expr: expr) : (infer_result, type_error) result =
             let env'' = apply_subst_env s3 env' in
             let* (telse, else_ty, s) = infer_expr env'' else_expr in
             (* then分岐とelse分岐の型を統一 *)
-            let* s' = unify s (apply_subst s then_ty) else_ty else_expr.expr_span in
+            let* s' = unify_branch_types s then_ty else_ty else_expr.expr_span in
             let unified_ty = apply_subst s' then_ty in
             Ok (Some telse, unified_ty, s')
         | None ->
@@ -295,7 +348,7 @@ let rec infer_expr (env: env) (expr: expr) : (infer_result, type_error) result =
                 let* (tarm, arm_body_ty, s_new) = infer_match_arm env' arm scrutinee_ty' s_acc in
 
                 (* 型を統一 *)
-                let* s_unified = unify s_new (apply_subst s_new unified_ty) arm_body_ty arm.arm_span in
+                let* s_unified = unify_branch_types s_new unified_ty arm_body_ty arm.arm_span in
                 let new_unified_ty = apply_subst s_unified unified_ty in
 
                 Ok (tarms @ [tarm], new_unified_ty, s_unified)
@@ -558,9 +611,13 @@ and infer_pattern (env: env) (pat: pattern) (expected_ty: ty)
            (* expected_ty がタプル型でない場合は新しいタプル型を作成して単一化 *)
            let elem_vars = List.map (fun _ -> Types.TVar (TypeVarGen.fresh None)) pats in
            let tuple_ty = TTuple elem_vars in
-           let* _subst = unify empty_subst expected_ty tuple_ty pat.pat_span in
-           (* 再帰的に推論 *)
-           infer_pattern env pat tuple_ty)
+           (match unify empty_subst expected_ty tuple_ty pat.pat_span with
+            | Ok _ ->
+                (* 再帰的に推論 *)
+                infer_pattern env pat tuple_ty
+            | Error (UnificationFailure _) ->
+                Error (NotATuple (expected_ty, pat.pat_span))
+            | Error e -> Error e))
 
   | PatConstructor (id, arg_pats) ->
       (* コンストラクタパターン: コンストラクタの型スキームを取得してインスタンス化 *)
@@ -676,7 +733,7 @@ and infer_pattern (env: env) (pat: pattern) (expected_ty: ty)
 
       (* ガード式を Bool 型として推論 *)
       let* (tguard_expr, guard_ty, _) = infer_expr env' guard_expr in
-      let* _ = unify empty_subst guard_ty ty_bool guard_expr.expr_span in
+      let* _ = unify_as_bool empty_subst guard_ty guard_expr.expr_span in
 
       let tpat = make_typed_pattern
         (TPatGuard (tinner_pat, tguard_expr))
@@ -737,8 +794,8 @@ and infer_binary_op (op: Ast.binary_op) (ty1: ty) (ty2: ty)
       (* 左辺と右辺をBool型と単一化 *)
       let ty1' = apply_subst subst ty1 in
       let ty2' = apply_subst subst ty2 in
-      let* s1 = unify subst ty1' ty_bool span1 in
-      let* s2 = unify s1 ty2' ty_bool span2 in
+      let* s1 = unify_as_bool subst ty1' span1 in
+      let* s2 = unify_as_bool s1 ty2' span2 in
       Ok (ty_bool, s2)
 
   (* パイプ演算子: |> *)
@@ -747,11 +804,10 @@ and infer_binary_op (op: Ast.binary_op) (ty1: ty) (ty2: ty)
        * ty1 : A, ty2 : A -> B のとき、返り値は B
        *)
       let ty1' = apply_subst subst ty1 in
-      let ty2' = apply_subst subst ty2 in
       let ret_var = TypeVarGen.fresh None in
       let ret_ty = Types.TVar ret_var in
       let expected_fn_ty = TArrow (ty1', ret_ty) in
-      let* s1 = unify subst ty2' expected_fn_ty span2 in
+      let* s1 = unify_as_function subst ty2 expected_fn_ty span2 in
       let final_ret_ty = apply_subst s1 ret_ty in
       Ok (final_ret_ty, s1)
 
@@ -772,7 +828,7 @@ and infer_match_arm (env: env) (arm: match_arm) (scrutinee_ty: ty) (subst: subst
   let* (tguard_opt, s1) = match arm.arm_guard with
     | Some guard_expr ->
         let* (tguard, guard_ty, s) = infer_expr pat_env guard_expr in
-        let* s' = unify s guard_ty ty_bool guard_expr.expr_span in
+        let* s' = unify_as_bool s guard_ty guard_expr.expr_span in
         Ok (Some tguard, s')
     | None ->
         Ok (None, subst)
