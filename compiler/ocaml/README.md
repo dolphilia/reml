@@ -8,7 +8,7 @@
 - Phase 3 — Core IR & LLVM 生成（進行中: Week 10/16）: [docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md](../../docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md), [docs/phase3-handover.md](docs/phase3-handover.md)
 
 ## Phase 3 ダッシュボード
-**更新日**: 2025-10-07（Week 10/16）
+**更新日**: 2025-10-07（Week 10/16 後半）
 
 - 完了:
   - `src/core_ir/ir.ml` で Core IR 型を整備（384行）
@@ -19,11 +19,19 @@
     - ラベル自動生成とブロック接続
     - CFG整形性検証（到達不能ブロック検出・無限ループ検出・ラベル重複チェック）
   - `tests/test_core_ir.ml`（143行）と`tests/test_cfg.ml`（249行）を含む 118 件のテストが成功
-- 進行中: SSA準備モジュール（支配木・φノード挿入位置の計算）
-- 次に着手: 定数畳み込みと死コード削除パスの実装、`--emit-core` CLI フローの設計
-- ブロッカー: なし
-- 既知の課題: 現時点で重大なブロッカーなし（CFG到達不能ブロック誤検出は 2025-10-07 修正済み）
+  - **NEW**: `src/core_ir/const_fold.ml` 定数畳み込みパスの骨格を実装（460行、未完成）
+    - 算術演算・比較演算・論理演算の畳み込み
+    - 定数伝播と不動点反復
+    - 条件分岐の静的評価
+    - **状態**: ビルドエラー（Ast.literal型の不一致）
+- 進行中: 定数畳み込みパスの修正（リテラル変換関数が必要）
+- 次に着手: リテラル変換関数の実装、定数畳み込みテストの修正、死コード削除パスの実装
+- ブロッカー: `Ast.literal` 型と評価済み値（int64/float）の変換処理
+- 既知の課題:
+  - `Ast.literal` は文字列+基数で保持されるため、`int64`/`float` への変換関数が必要
+  - テストコードの `span` 構造が間違っている（`Ast.dummy_span` を使用すべき）
 - 記録ルール: 週次で本節を更新し、詳細な議事録は `docs/phase3-handover.md` と `docs/technical-debt.md`、測定値は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に記録
+- 詳細進捗: [docs/phase3-week10-progress.md](docs/phase3-week10-progress.md)
 
 ### 週次更新テンプレート
 ```text
