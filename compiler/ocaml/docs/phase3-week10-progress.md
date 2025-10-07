@@ -192,3 +192,63 @@ let parse_int_literal (s: string) (base: Ast.int_base) : int64 =
 2. テストが全て通るか
 3. 既存テスト（118件）が破壊されていないか
 4. ビルドが成功するか
+
+---
+
+## ✅ Phase 3 Week 10-11 完了報告（2025-10-07）
+
+### 完了した作業
+
+Phase 3 Week 10-11（定数畳み込み、死コード削除、最適化パイプライン統合）を完了しました。
+
+#### 1. 定数畳み込みパス最終化
+- ✅ リテラル変換関数の実装完了（Base2/8/10/16対応）
+- ✅ すべてのテストケース成功（26/26）
+- ✅ 既存テスト回帰なし
+
+#### 2. 死コード削除（DCE）パス実装
+- ✅ `src/core_ir/dce.ml` 実装完了（377行）
+- ✅ 生存解析（liveness analysis）の実装
+- ✅ 未使用束縛の削除
+- ✅ 到達不能ブロックの除去
+- ✅ テスト実装（9/9成功）
+
+#### 3. 最適化パイプライン統合
+- ✅ `src/core_ir/pipeline.ml` 実装完了（216行）
+- ✅ 不動点反復フレームワーク実装
+- ✅ O0/O1最適化レベル対応
+- ✅ 統計収集機能
+- ✅ テスト実装（7/7成功）
+
+### 最終統計
+
+| カテゴリ | 値 | 備考 |
+|----------|-----|------|
+| 総コード行数 | 5,642行 | Core IR関連全実装 |
+| 実装ファイル | 7ファイル | ir.ml, desugar.ml, cfg.ml, const_fold.ml, dce.ml, pipeline.ml, ir_printer.ml |
+| テスト総数 | 42件 | test_core_ir, test_desugar, test_cfg, test_const_fold (26), test_dce (9), test_pipeline (7) |
+| テスト成功率 | 100% (42/42) | 回帰なし |
+
+### 技術的成果
+
+1. **定数畳み込み**: 算術演算、論理演算、条件分岐の静的評価を実装
+2. **死コード削除**: 生存解析に基づく未使用コード除去
+3. **パイプライン統合**: 不動点反復による多段階最適化の自動化
+
+### 次のフェーズ
+
+Phase 3 Week 12-16: LLVM IR 生成（[1-4-llvm-targeting.md](../../../docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md)）への移行
+
+### ドキュメント更新
+
+- ✅ `1-3-core-ir-min-optimization.md` 完了マーカー追加
+- ✅ `0-3-audit-and-metrics.md` 統計記録
+- ✅ `phase3-handover.md` 完了コンポーネント更新
+- ✅ `technical-debt.md` 解決済み項目マーキング
+- ✅ 完了報告書作成（`phase3-week10-11-completion.md`）
+
+### 引き継ぎ事項
+
+- Core IR最適化パスは安定しており、Phase 3 Week 12以降のLLVM IR生成に利用可能
+- すべてのテストが成功しており、回帰なし
+- 最適化統計は `0-3-audit-and-metrics.md` に記録済み

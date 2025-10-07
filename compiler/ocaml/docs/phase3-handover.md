@@ -165,56 +165,90 @@ compiler/ocaml/
 - IR レベルのエラーメッセージ
 - LLVM 生成時の診断
 
-## Phase 3 で実装する主要コンポーネント
+## ✅ Phase 3 Week 10-11 で完了した主要コンポーネント
 
-### 1. Core IR 定義
+### 1. Core IR 定義 ✅ 完了
 
-新規ファイル: `src/core_ir/ir.ml`（想定）
+実装ファイル: `src/core_ir/ir.ml` (384行)
 
-**含むべき内容**:
-- Core IR データ構造
+**実装済み内容**:
+- Core IR データ構造（Expr, Stmt, Block, Function）
 - 基本ブロックとCFG（制御フローグラフ）
 - IR レベルの型情報
 - メタデータ（Span、効果、Capability）
 
 **参考**:
-- [1-3-core-ir-min-optimization.md](../../../docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md)
+- [1-3-core-ir-min-optimization.md](../../../docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md) §1
 - [guides/llvm-integration-notes.md](../../../docs/guides/llvm-integration-notes.md)
 
-### 2. 糖衣削除（Desugaring）
+### 2. 糖衣削除（Desugaring） ✅ 完了
 
-新規ファイル: `src/core_ir/desugar.ml`（想定）
+実装ファイル: `src/core_ir/desugar.ml` (638行)
 
-**主要機能**:
+**実装済み機能**:
 - パターンマッチの分解
 - パイプ演算子の展開
 - let 再束縛の正規化
 - クロージャ変換
 
-**インターフェース例**:
+**インターフェース**:
 ```ocaml
 val desugar_expr : Typed_ast.typed_expr -> Core_ir.expr
 val desugar_compilation_unit : Typed_ast.typed_compilation_unit -> Core_ir.module_
 ```
 
-### 3. 最小最適化パス
+**参考**: [1-3-core-ir-min-optimization.md](../../../docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md) §2
 
-新規ファイル: `src/core_ir/optimize.ml`（想定）
+### 3. 最小最適化パス ✅ 完了
 
-**主要機能**:
-- 定数畳み込み
-- 死コード削除（DCE）
-- 簡易代入伝播
-- CFG 構築
+実装ファイル:
+- `src/core_ir/const_fold.ml` (519行) - 定数畳み込み
+- `src/core_ir/dce.ml` (377行) - 死コード削除
+- `src/core_ir/cfg.ml` (430行) - CFG 構築
+- `src/core_ir/pipeline.ml` (216行) - パイプライン統合
 
-**インターフェース例**:
+**実装済み機能**:
+- 定数畳み込み（算術・比較・論理演算）
+- 定数伝播と不動点反復
+- 死コード削除（生存解析、未使用束縛削除、到達不能ブロック除去）
+- 最適化パイプライン（O0/O1レベル、統計収集）
+
+**インターフェース**:
 ```ocaml
-val const_fold : Core_ir.expr -> Core_ir.expr
-val dead_code_elimination : Core_ir.module_ -> Core_ir.module_
-val optimize_pipeline : optimization_level -> Core_ir.module_ -> Core_ir.module_
+(* const_fold.ml *)
+val optimize_function : ?config:fold_config -> function_def -> function_def * fold_stats
+val optimize_module : ?config:fold_config -> module_def -> module_def * fold_stats
+
+(* dce.ml *)
+val optimize_function : function_def -> function_def * dce_stats
+val optimize_module : module_def -> module_def * dce_stats
+
+(* pipeline.ml *)
+val optimize_function : ?config:pipeline_config -> function_def -> function_def * pipeline_stats
+val optimize_module : ?config:pipeline_config -> module_def -> module_def * pipeline_stats
 ```
 
-### 4. LLVM IR 生成
+**テスト**: 42件（const_fold: 26件、dce: 9件、pipeline: 7件）- 全て成功
+
+**参考**: [1-3-core-ir-min-optimization.md](../../../docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md) §3-6
+
+### 4. IR 検査ツールと出力 ✅ 部分完了
+
+実装ファイル: `src/core_ir/ir_printer.ml` (348行)
+
+**実装済み機能**:
+- 人間可読な IR 出力フォーマット
+- Span情報の保持
+
+**未実装**:
+- `--emit-core` CLI（Phase 3 後半で実装予定）
+- 中間段階の保存・差分表示
+
+**参考**: [1-3-core-ir-min-optimization.md](../../../docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md) §7
+
+## Phase 3 Week 12-16 で実装する主要コンポーネント
+
+### 5. LLVM IR 生成（次のステップ）
 
 新規ファイル: `src/llvm_gen/codegen.ml`（想定）
 
@@ -230,15 +264,16 @@ val codegen_module : Core_ir.module_ -> Llvm.llmodule
 val emit_llvm_ir : Llvm.llmodule -> string -> unit
 ```
 
-### 5. テストスイート
+**参考**: [1-4-llvm-targeting.md](../../../docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md)
 
-新規ファイル: `tests/test_core_ir.ml`, `tests/test_llvm_gen.ml`（想定）
+### 6. LLVM IR テストスイート（次のステップ）
+
+新規ファイル: `tests/test_llvm_gen.ml`（想定）
 
 **テストケース例**:
-- Core IR 生成の正当性
-- 最適化パスの効果検証
 - LLVM IR の妥当性（`llvm-as`/`opt` 検証）
 - エンドツーエンドテスト（ソース → 実行）
+- ランタイム連携テスト
 
 ## 既知の問題と技術的負債
 

@@ -467,13 +467,41 @@ Phase 1 で以下の性能測定が未実施：
 | 6  | 型エラー生成順序 | 🟠 High | ✅ 完了 | Phase 2 W10 | 文脈ヘルパー導入・`test_type_errors` 30/30 成功 |
 | 7  | Handler 宣言パース | 🟠 High | ✅ 完了 | Phase 2 開始前 | `handler_entry` 導入 |
 | 8  | 配列リテラル型推論 | 🟡 Medium | 未対応 | Phase 3 前半 | `infer_literal` 拡張 |
-| 9  | CFG構築時の到達不能ブロック生成 | 🟡 Medium | 未対応 | Phase 3 W11-12 | ネスト制御フロー・到達可能性解析 |
+| 9  | CFG構築時の到達不能ブロック生成 | 🟡 Medium | ✅ 完了 | Phase 3 W10 | `find_unreachable_blocks` 修正完了 |
 
 ---
 
 ## ✅ 解決済み項目
 
 - **2025-10-06**: Handler 宣言のパースを仕様準拠に更新し、`tests/test_parser.ml` の TODO ケースを廃止（`compiler/ocaml/src/parser.mly` の `handler_body` を `handler_entry` 列挙へ置換）。
+
+### 9. CFG構築時の到達不能ブロック生成（解決済み）
+
+**分類**: Core IR / CFG構築アルゴリズム
+**優先度**: 🟡 Medium → ✅ 完了
+**ステータス**: 解決済み（Phase 3 Week 10）
+**発見日**: 2025-10-07 / Phase 3 Week 10
+**解決日**: 2025-10-07
+
+#### 問題の詳細
+
+ネストした制御フロー構造（特にネストした if 式）を `CFG.build_cfg_from_expr` で変換すると、到達不能ブロック検出が誤作動していた。
+
+#### 根本原因
+
+`compiler/ocaml/src/core_ir/cfg.ml` の `find_unreachable_blocks` が、探索開始時にエントリブロックを先に `Hashtbl.add` してしまい、再帰 DFS が即座に終了していた。その結果、実際には接続されている then/else/merge ブロックが訪問されず、すべて未到達扱いになっていた。
+
+#### 対応内容（2025-10-07）
+
+- `find_unreachable_blocks` を全面リライトし、以下を実施
+  - ブロックラベル→ブロック本体のルックアップテーブルを事前構築
+  - エントリブロックを訪問済み扱いする前に DFS へ渡し、`TermBranch` / `TermJump` / `TermSwitch` の後続を漏れなく再帰訪問
+  - 未定義ラベルは解析対象外とし、`validate_cfg` 側のエラー検知に委譲
+- 変更ファイル: `compiler/ocaml/src/core_ir/cfg.ml`
+
+#### 検証結果
+
+ネストした if を含む 118 件の既存テストを再実行し、回帰がないことを確認済み。到達不能ブロック警告が正しく動作することを確認。
 
 ---
 

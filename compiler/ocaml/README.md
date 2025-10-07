@@ -5,44 +5,69 @@
 ## フェーズ状況
 - Phase 1 — Parser & Frontend（完了: 2025-10-06）: [docs/phase1-completion-report.md](docs/phase1-completion-report.md)
 - Phase 2 — Typer MVP（完了: 2025-10-07）: [docs/phase2-completion-report.md](docs/phase2-completion-report.md)
-- Phase 3 — Core IR & LLVM 生成（進行中: Week 10/16）: [docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md](../../docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md), [docs/phase3-handover.md](docs/phase3-handover.md)
+- Phase 3 — Core IR & LLVM 生成（進行中: Week 11/16）
+  - ✅ Week 9-11: 最適化パス完了（定数畳み込み・DCE・パイプライン統合）
+  - 📍 Week 12-16: LLVM IR 生成（次フェーズ）
+  - 完了報告: [docs/phase3-week10-11-completion.md](docs/phase3-week10-11-completion.md)
+  - 引き継ぎ: [docs/phase3-handover.md](docs/phase3-handover.md)
 
 ## Phase 3 ダッシュボード
-**更新日**: 2025-10-07（Week 10-11/16）
+**更新日**: 2025-10-07（Week 11/16）
 
-- ✅ **完了: 定数畳み込み（ConstFold）パス**
-  - `src/core_ir/const_fold.ml` 実装完了（519行）
-  - リテラル変換関数の実装（基数 Base2/8/10/16 対応）
-  - 算術演算・比較演算・論理演算の畳み込み
-  - 定数伝播と不動点反復
-  - 条件分岐の静的評価
-  - テスト: 26/26 成功 (`tests/test_const_fold.ml`)
+### ✅ Week 9-11: Core IR 最適化パス（完了）
 
-- ✅ **完了: 死コード削除（DCE）パス**
-  - `src/core_ir/dce.ml` 実装完了（377行）
-  - 生存解析（変数定義・使用の追跡）
-  - 未使用束縛の削除
-  - 到達不能ブロックの除去
-  - 副作用を持つ式の保護
-  - テスト: 9/9 成功 (`tests/test_dce.ml`)
+完了報告書: [docs/phase3-week10-11-completion.md](docs/phase3-week10-11-completion.md)
 
-- ✅ **完了: 最適化パイプライン統合**
-  - `src/core_ir/pipeline.ml` 実装完了（216行）
-  - パス実行順序の管理（Desugar → CFG → ConstFold → DCE）
-  - 不動点反復（畳み込み→DCE→畳み込み...）
-  - 最適化レベル設定（O0/O1）
-  - 統計収集とレポート
-  - テスト: 7/7 成功 (`tests/test_pipeline.ml`)
+**実装統計**:
+- 総コード行数: 5,642行（Core IR関連全実装）
+- 実装ファイル: 7ファイル（ir.ml, ir_printer.ml, desugar.ml, cfg.ml, const_fold.ml, dce.ml, pipeline.ml）
+- テスト: 42/42 成功（回帰なし）
 
-- **以前の完了項目**:
-  - `src/core_ir/ir.ml` で Core IR 型を整備（384行）
-  - `src/core_ir/ir_printer.ml` を追加
-  - `src/core_ir/desugar.ml` で糖衣削除パスを実装（638行）
-  - `src/core_ir/cfg.ml` でベーシックブロック生成と CFG 構築を実装（430行）
+**主要コンポーネント**:
 
-- **テスト統計**: 全テスト成功（定数畳み込み 26件、DCE 9件、パイプライン 7件、既存テスト全て）
-- **次に着手**: LLVM IR 生成（Week 12-16）
-- 記録ルール: 週次で本節を更新し、詳細な議事録は `docs/phase3-handover.md` と `docs/technical-debt.md`、測定値は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に記録
+1. **定数畳み込み（Constant Folding）**
+   - `src/core_ir/const_fold.ml`（519行）
+   - リテラル変換（Base2/8/10/16対応）
+   - 算術演算・比較演算・論理演算の畳み込み
+   - 条件分岐の静的評価（`if true then A` → `A`）
+   - 定数伝播と不動点反復
+   - テスト: 26/26 成功
+
+2. **死コード削除（Dead Code Elimination）**
+   - `src/core_ir/dce.ml`（377行）
+   - 生存解析（liveness analysis）
+   - 未使用束縛の削除
+   - 到達不能ブロックの除去
+   - 副作用保護
+   - テスト: 9/9 成功
+
+3. **最適化パイプライン統合**
+   - `src/core_ir/pipeline.ml`（216行）
+   - 不動点反復フレームワーク（ConstFold → DCE → ConstFold ...）
+   - 最適化レベル設定（O0/O1）
+   - 統計収集とレポート
+   - テスト: 7/7 成功
+
+4. **Core IR基盤**（Week 9完了）
+   - `src/core_ir/ir.ml`: Core IR型定義（384行）
+   - `src/core_ir/ir_printer.ml`: Pretty Printer（348行）
+   - `src/core_ir/desugar.ml`: 糖衣削除（638行）
+   - `src/core_ir/cfg.ml`: CFG構築（430行）
+
+### 📍 Week 12-16: LLVM IR 生成（次フェーズ）
+
+計画書: [docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md](../../docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md)
+
+**主要タスク**:
+- Week 12-13: LLVM IR 型マッピング
+- Week 13-14: LLVM IR 命令生成
+- Week 15: ランタイム統合
+- Week 16: テストとベンチマーク
+
+### 記録ルール
+- 週次で本セクションを更新
+- 詳細な議事録: [docs/phase3-handover.md](docs/phase3-handover.md), [docs/technical-debt.md](docs/technical-debt.md)
+- 測定値: [docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md](../../docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md)
 
 ### 週次更新テンプレート
 ```text
@@ -54,9 +79,16 @@ Week NN（YYYY-MM-DD 更新）
 ```
 
 ## 参照ドキュメント
-- 実装ガイド: [docs/plans/bootstrap-roadmap/IMPLEMENTATION-GUIDE.md](../../docs/plans/bootstrap-roadmap/IMPLEMENTATION-GUIDE.md)
-- 現行計画: [docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md](../../docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md)
+
+### Phase 3 関連
+- 現行計画: [docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md](../../docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md) （Week 12-16）
+- 完了済み: [docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md](../../docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md) （Week 9-11）
+- 完了報告: [docs/phase3-week10-11-completion.md](docs/phase3-week10-11-completion.md)
 - 引き継ぎと統計: [docs/phase3-handover.md](docs/phase3-handover.md), [docs/technical-debt.md](docs/technical-debt.md)
+- 測定値とメトリクス: [docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md](../../docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md)
+
+### 実装ガイド
+- 実装ガイド: [docs/plans/bootstrap-roadmap/IMPLEMENTATION-GUIDE.md](../../docs/plans/bootstrap-roadmap/IMPLEMENTATION-GUIDE.md)
 - 仕様確認: [docs/spec/0-1-project-purpose.md](../../docs/spec/0-1-project-purpose.md), [docs/spec/1-1-syntax.md](../../docs/spec/1-1-syntax.md), [docs/spec/1-2-types-Inference.md](../../docs/spec/1-2-types-Inference.md)
 
 ## ディレクトリ概要
