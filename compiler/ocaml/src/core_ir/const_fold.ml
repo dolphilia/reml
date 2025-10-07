@@ -294,6 +294,20 @@ let lookup_const (env: const_env) (var: var_id) : literal option =
 let bind_const (env: const_env) (var: var_id) (lit: literal) : unit =
   Hashtbl.replace env var.vid lit
 
+let unbind_const (env: const_env) (var: var_id) : unit =
+  Hashtbl.remove env var.vid
+
+let with_const_binding (env: const_env) (var: var_id) (lit: literal)
+    (f: unit -> 'a) : 'a =
+  let previous = lookup_const env var in
+  bind_const env var lit;
+  let result = f () in
+  begin match previous with
+  | Some prev_lit -> bind_const env var prev_lit
+  | None -> unbind_const env var
+  end;
+  result
+
 
 (* ========== 式の畳み込み ========== *)
 
@@ -348,13 +362,12 @@ let rec fold_expr (env: const_env) (stats: fold_stats) (e: expr) : expr =
   (* Let束縛: 定数環境を更新 *)
   | Let (var, bound, body) ->
       let folded_bound = fold_expr env stats bound in
-      (* 束縛が定数リテラルなら環境に追加 *)
-      begin match folded_bound.expr_kind with
-      | Literal lit ->
-          bind_const env var lit
-      | _ -> ()
-      end;
-      let folded_body = fold_expr env stats body in
+      let folded_body =
+        match folded_bound.expr_kind with
+        | Literal lit ->
+            with_const_binding env var lit (fun () -> fold_expr env stats body)
+        | _ -> fold_expr env stats body
+      in
       make_expr (Let (var, folded_bound, folded_body)) e.expr_ty e.expr_span
 
   (* Match式: scrutinee と各アームを畳み込み *)

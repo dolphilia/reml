@@ -227,7 +227,6 @@ let test_if_constant_condition () =
 
 (* ========== 定数伝播のテスト ========== *)
 
-(* TODO: Let式の定数伝播テストは、Let式自体が残るため別の検証方法が必要
 let test_let_constant_propagation () =
   (* let x = 42 in x + 10 → let x = 42 in 52 *)
   let var = VarIdGen.fresh "x" ty_i64 dummy_span in
@@ -269,7 +268,6 @@ let test_nested_let_propagation () =
       | _ -> assert false
       end
   | _ -> assert false
-*)
 
 (* ========== エラーケースのテスト ========== *)
 
@@ -336,9 +334,8 @@ let () =
     ("if_true", test_if_true);
     ("if_false", test_if_false);
     ("if_constant_condition", test_if_constant_condition);
-    (* TODO: Let式の定数伝播テストはLet式自体が残るため、別のテスト方法が必要 *)
-    (* ("let_constant_propagation", test_let_constant_propagation); *)
-    (* ("nested_let_propagation", test_nested_let_propagation); *)
+    ("let_constant_propagation", test_let_constant_propagation);
+    ("nested_let_propagation", test_nested_let_propagation);
     ("division_by_zero", test_division_by_zero);
     ("modulo_by_zero", test_modulo_by_zero);
     ("complex_expression", test_complex_expression);
