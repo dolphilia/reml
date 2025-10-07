@@ -339,47 +339,39 @@ let build_cfg_from_expr (expr: expr) : block list =
  * @return 到達不能ブロックのラベルリスト
  *)
 let find_unreachable_blocks (blocks: block list) : label list =
-  (* 簡易実装: エントリブロックから到達可能なブロックをマーク *)
+  (* ラベルからブロックへのルックアップを事前計算 *)
+  let block_table = Hashtbl.create (List.length blocks) in
+  List.iter (fun blk -> Hashtbl.replace block_table blk.label blk) blocks;
+
+  (* 到達可能ラベル集合 *)
   let reachable = Hashtbl.create (List.length blocks) in
 
-  (* エントリブロック (最初のブロック) をマーク *)
-  begin match blocks with
-  | [] -> ()
-  | entry :: _ -> Hashtbl.add reachable entry.label ()
-  end;
-
-  (* 到達可能性を再帰的に計算 *)
   let rec mark_reachable lbl =
-    if not (Hashtbl.mem reachable lbl) then begin
-      Hashtbl.add reachable lbl ();
-      (* このブロックの後続ブロックをマーク *)
-      match List.find_opt (fun b -> b.label = lbl) blocks with
-      | None -> ()
-      | Some blk ->
-          begin match blk.terminator with
-          | TermReturn _ -> ()
-          | TermJump target -> mark_reachable target
-          | TermBranch (_, then_lbl, else_lbl) ->
-              mark_reachable then_lbl;
-              mark_reachable else_lbl
-          | TermSwitch (_, cases, default_lbl) ->
-              List.iter (fun (_, lbl) -> mark_reachable lbl) cases;
-              mark_reachable default_lbl
-          | TermUnreachable -> ()
-          end
-    end
+    match Hashtbl.find_opt block_table lbl with
+    | None -> ()
+    | Some _ when Hashtbl.mem reachable lbl -> ()
+    | Some blk ->
+        Hashtbl.add reachable lbl ();
+        begin match blk.terminator with
+        | TermReturn _ | TermUnreachable -> ()
+        | TermJump target -> mark_reachable target
+        | TermBranch (_, then_lbl, else_lbl) ->
+            mark_reachable then_lbl;
+            mark_reachable else_lbl
+        | TermSwitch (_, cases, default_lbl) ->
+            List.iter (fun (_, lbl) -> mark_reachable lbl) cases;
+            mark_reachable default_lbl
+        end
   in
 
-  (* エントリから到達可能性を計算 *)
+  (* エントリブロックから探索開始 *)
   begin match blocks with
   | [] -> ()
   | entry :: _ -> mark_reachable entry.label
   end;
 
-  (* 到達不能ブロックを収集 *)
   List.filter_map (fun blk ->
-    if Hashtbl.mem reachable blk.label then None
-    else Some blk.label
+    if Hashtbl.mem reachable blk.label then None else Some blk.label
   ) blocks
 
 (** 無限ループの検出

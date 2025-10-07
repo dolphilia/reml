@@ -176,117 +176,52 @@ let arr = [1, 2, 3]  // 型推論失敗
 ### 9. CFG構築時の到達不能ブロック生成
 
 **分類**: Core IR / CFG構築アルゴリズム
-**優先度**: 🟡 Medium
-**ステータス**: 未対応（Phase 3 Week 10 で発見）
+**優先度**: 🟡 Medium → ✅ 解消
+**ステータス**: 対応済（Phase 3 Week 10）
 **発見日**: 2025-10-07 / Phase 3 Week 10
 
 #### 問題の詳細
 
-ネストした制御フロー構造（特にネストしたif式）でCFGを構築すると、一部の基本ブロックが到達不能と判定される：
+ネストした制御フロー構造（特にネストした if 式）を `CFG.build_cfg_from_expr` で変換すると、テストベンチが大量の到達不能ブロック警告を出していた。
 
 ```ocaml
 (* if cond1 then (if cond2 then e1 else e2) else e3 *)
 let inner_if = IR.make_expr (IR.If (cond2, e1, e2)) ty_i64 dummy_span in
 let outer_if = IR.make_expr (IR.If (cond1, inner_if, e3)) ty_i64 dummy_span in
 let blocks = CFG.build_cfg_from_expr outer_if in
-(* 結果: 7ブロック生成されるが、うち6ブロックが到達不能と判定される *)
 ```
 
-**テスト結果**:
-- `test_nested_if`: 7ブロック生成、到達不能ブロック: `if_then_1`, `if_then_4`, `if_else_5`, `if_merge_6`, `if_else_2`, `if_merge_3`
-- `test_unreachable_detection`: 4ブロック生成、到達不能ブロック: 3個
+**修正前のテスト観測値**:
+- `test_unreachable_detection`: 到達不能ブロック数 3
+- `test_nested_if`: `if_then_1`, `if_then_4`, `if_else_5`, `if_merge_6`, `if_else_2`, `if_merge_3` の6ブロックが警告対象
 
-**根本原因**:
+#### 根本原因
 
-`compiler/ocaml/src/core_ir/cfg.ml` の `linearize_if` 関数が再帰的に呼ばれた際、以下の問題が発生している：
+`compiler/ocaml/src/core_ir/cfg.ml` の `find_unreachable_blocks` が、探索開始時にエントリブロックを先に `Hashtbl.add` してしまい、再帰 DFS が即座に終了していた。その結果、実際には接続されている then/else/merge ブロックが訪問されず、すべて未到達扱いになっていた。
 
-1. **ブロック接続の不整合**:
-   - `linearize_if` が `finish_block` でエントリブロックを終了し、then/else/merge ブロックを生成する
-   - 内側のif式が評価される際、外側のthenブロック内で再度 `linearize_if` が呼ばれる
-   - このとき、`builder.current_label` の状態管理が不完全で、新しいブロックが正しく接続されない
+#### 対応内容（2025-10-07）
 
-2. **ラベル参照の不一致**:
-   - 終端命令（`TermBranch`・`TermJump`）が参照するラベルと、実際に生成されたブロックのラベルが一致しないケースがある
-   - 例: `TermJump "if_merge_0"` を持つブロックが生成されるが、`if_merge_0` ラベルを持つブロックが生成されていない
+- `find_unreachable_blocks` を全面リライトし、以下を実施
+  - ブロックラベル→ブロック本体のルックアップテーブルを事前構築
+  - エントリブロックを訪問済み扱いする前に DFS へ渡し、`TermBranch` / `TermJump` / `TermSwitch` の後続を漏れなく再帰訪問
+  - 未定義ラベルは解析対象外とし、`validate_cfg` 側のエラー検知に委譲
+- 変更ファイル: `compiler/ocaml/src/core_ir/cfg.ml`
 
-3. **線形化の順序問題**:
-   - 現在の実装では、式を深さ優先で線形化するが、ブロックの追加順序と制御フローの接続順序が一致していない
-   - 特に、内側のif式のmergeブロックと外側のthenブロックの関係が正しく構築されていない
-
-**具体例（デバッグ出力から）**:
+#### 検証結果
 
 ```
-生成されたブロック数: 7
-ブロックラベル: entry_0       (終端: TermBranch -> if_then_1, if_else_2)
-ブロックラベル: if_then_1     (終端: TermBranch -> if_then_4, if_else_5)  -- 到達不能
-ブロックラベル: if_else_2     (終端: TermJump -> if_merge_3)             -- 到達不能
-ブロックラベル: if_merge_3    (終端: TermReturn)                          -- 到達不能
-ブロックラベル: if_then_4     (終端: TermJump -> if_merge_6)              -- 到達不能
-ブロックラベル: if_else_5     (終端: TermJump -> if_merge_6)              -- 到達不能
-ブロックラベル: if_merge_6    (終端: TermJump -> if_merge_3)              -- 到達不能
+dune exec -- ./tests/test_cfg.exe
+  → test_unreachable_detection: 到達不能ブロック 0
+  → test_nested_if: 警告なしで通過
 ```
 
-問題点:
-- `entry_0` は `if_then_1` へジャンプするが、`if_then_1` はエントリから到達不能と判定される
-- これは、`find_unreachable_blocks` の実装が最初のブロック（`entry_0`）のみをエントリとして扱い、その後続ブロックを正しく追跡していないため
+ネストした if を含む 118 件の既存テストを再実行し、回帰がないことを確認済み。
 
-#### 影響範囲
+#### 今後のフォローアップ
 
-- **機能的影響**: 生成されたCFGは構造的には正しく、LLVM IR生成時に使用可能
-- **検証への影響**: CFG整形性検証で到達不能ブロック警告が大量に出力される
-- **最適化への影響**: 死コード削除パスで誤って必要なブロックを削除する可能性がある
-
-#### 回避策
-
-Phase 1 簡易実装では以下の対応で運用：
-
-1. **到達不能ブロック警告の許容**: テストでは到達不能ブロックの存在を許容し、ラベル重複・未定義ラベルのみをエラーとする
-2. **CFG検証の緩和**: `validate_cfg` で到達不能ブロックを警告扱いにし、致命的エラーとしない
-
-```ocaml
-(* tests/test_cfg.ml での対応 *)
-let has_critical_error = List.exists (fun err ->
-  String.length err > 0 && (
-    (String.sub err 0 (min 6 (String.length err))) = "ラベル" ||
-    (String.sub err 0 (min 3 (String.length err))) = "未定義"
-  )
-) errors in
-assert (not has_critical_error);  (* ラベル関連エラーのみチェック *)
-```
-
-#### 対応計画
-
-**Phase 3 Week 11-12**（優先度: Medium）:
-
-1. **ブロック接続ロジックの修正**:
-   - `linearize_if` での `current_label` 状態管理を改善
-   - 内側の制御フロー構造完了後、外側のブロックに正しく戻る仕組みを実装
-   - ブロック生成と終端命令のラベル参照を一貫させる
-
-2. **到達可能性解析の改善**:
-   - `find_unreachable_blocks` のアルゴリズムを見直し
-   - 後続ブロックの追跡ロジックを修正（現在は最初のブロックからのみ探索）
-   - ブロックグラフの構造を保持し、全ての前駆・後続関係を正しく計算
-
-3. **テストの拡充**:
-   - 2重・3重ネストのif式テストケースを追加
-   - 各ブロックの到達可能性を個別に検証するテストを作成
-   - CFG可視化ツール（Graphviz出力など）を導入してデバッグを容易に
-
-**代替案（Phase 2以降）**:
-
-完全なSSA形式への変換時に、支配木（dominator tree）と支配境界（dominance frontier）を正しく計算すれば、到達不能ブロックの問題は自然に解消される可能性がある。そのため、Phase 3 Week 11-12 での修正は最小限に留め、Phase 2のSSA変換で抜本的に解決する選択肢もある。
-
-**成功基準**:
-- ネストしたif式で到達不能ブロックが生成されないこと
-- `find_unreachable_blocks` が正しく到達可能性を判定すること
-- CFG検証テストが警告なしで成功すること
-- 既存の118件のテストが引き続き成功すること
-
-**ファイル**:
-- 修正対象: `compiler/ocaml/src/core_ir/cfg.ml` (430行)
-- テスト: `compiler/ocaml/tests/test_cfg.ml` (249行)
-- 関連: `compiler/ocaml/src/core_ir/ir.ml` (block/terminator定義)
+1. 定数畳み込みを導入した後、静的に到達不能となるブランチを除去する拡張を検討
+2. CFG 可視化（Graphviz など）を追加し、複雑な制御フローのデバッグを容易にする
+3. SSA 変換パス導入時に支配関係解析と統合し、探索ロジックを再検証
 
 ---
 
