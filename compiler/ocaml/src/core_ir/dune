@@ -1,4 +1,4 @@
 (library
  (name core_ir)
- (modules ir ir_printer desugar cfg const_fold)
- (libraries reml_parser))
+ (modules ir ir_printer desugar cfg const_fold dce pipeline)
+ (libraries reml_parser unix))

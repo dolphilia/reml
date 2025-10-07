@@ -64,15 +64,18 @@ let literal_to_int64 (lit: literal) : int64 option =
   | Int (s, base) ->
       begin
         try
-          let radix = match base with
-            | Base2 -> "0b"
-            | Base8 -> "0o"
-            | Base10 -> ""
-            | Base16 -> "0x"
+          (* Ast.literal の Int は文字列に既にプレフィックスを含む
+           * 例: "0b1010", "0x10", "123" など
+           * Base10 の場合はプレフィックスなし
+           * OCaml の Int64.of_string はプレフィックスをそのまま認識する *)
+          let s_clean = match base with
+            | Base10 -> s
+            | Base2 | Base8 | Base16 ->
+                (* プレフィックスが既に含まれているはずだが、念のため確認 *)
+                if String.length s >= 2 && s.[0] = '0' then s
+                else s  (* プレフィックスなしの場合はそのまま *)
           in
-          (* OCaml の Int64.of_string は 0b/0o/0x プレフィックスを認識 *)
-          let s_with_prefix = if radix = "" then s else radix ^ (String.sub s 2 (String.length s - 2)) in
-          Some (Int64.of_string s_with_prefix)
+          Some (Int64.of_string s_clean)
         with _ -> None
       end
   | _ -> None
