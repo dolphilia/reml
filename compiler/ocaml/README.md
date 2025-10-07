@@ -1,6 +1,6 @@
 # compiler/ocaml ワークスペース
 
-**現在のフェーズ**: Phase 2 進行中（型推論実装）
+**現在のフェーズ**: Phase 2 完了 → Phase 3 準備中（Core IR & LLVM 生成）
 
 Phase 1 ブートストラップ計画に基づき、OCaml 製 Reml コンパイラを構築するための作業領域です。対応するタスクは主に [`docs/plans/bootstrap-roadmap/1-x`](../../docs/plans/bootstrap-roadmap/) に定義されています。
 
@@ -13,11 +13,17 @@ Phase 1 ブートストラップ計画に基づき、OCaml 製 Reml コンパイ
 
 **詳細**: [Phase 1 完了報告書](docs/phase1-completion-report.md)
 
-### 🚀 Phase 2 進行中（2025-10-06開始）
-- **M2: Typer MVP** - 実装中
-- **進捗**: Week 1 完了、Week 2-3 実装中
-- **引き継ぎ**: [Phase 2 ハンドオーバー](docs/phase2-handover.md)
-- **チェックリスト**: [Phase 2 開始前チェックリスト](docs/phase2-checklist.md)
+### ✅ Phase 2 完了（2025-10-07）
+- **M2: Typer MVP** - 完全実装
+- **型推論エンジン** - Hindley-Milner 型システム（単相・let多相）
+- **テストインフラ** - 103+ テストケース（全成功）
+- **診断システム** - 15種類の型エラー（E7001-E7015）
+
+**詳細**: [Phase 2 完了報告書](docs/phase2-completion-report.md)
+
+### 🔜 Phase 3 準備中
+- **M3: CodeGen MVP** - Core IR → LLVM IR 生成
+- **引き継ぎ**: [Phase 3 ハンドオーバー](docs/phase3-handover.md)
 
 ## ディレクトリ
 - `src/`: コンパイラ本体（パーサー、型推論、Core IR、LLVM 出力など）
@@ -204,34 +210,35 @@ dune exec -- ./tests/test_types.exe
 - `tests/qualified_patterns.reml` / `qualified_patterns.golden` により、`{ status: Option.None, .. }` を含むレコードパターンがパースできることを継続的に検証。
 - 詳細は [技術的負債メモ](compiler/ocaml/docs/technical-debt.md) の「レコードパターンの複数アーム制限」節を参照。
 
-### 📝 Phase 2 への移行
+### 📝 Phase 3 への移行
 
-**Phase 1 は完了しました。Phase 2（型推論実装）が開始されています。**
+**Phase 2 は完了しました。Phase 3（Core IR & LLVM 生成）の準備が整いました。**
 
-#### Phase 2 開始前に確認すべきドキュメント
+#### Phase 3 開始前に確認すべきドキュメント
 
-1. **[Phase 1 完了報告書](docs/phase1-completion-report.md)**
-   - Phase 1 の成果物と統計情報
-   - テスト結果サマリー
-   - 既知の制限事項
+1. **[Phase 2 完了報告書](docs/phase2-completion-report.md)**
+   - Phase 2 の成果物と統計情報
+   - 型推論エンジンの実装詳細
+   - Phase 3 への引き継ぎ事項
 
-2. **[Phase 2 ハンドオーバー](docs/phase2-handover.md)**
-   - Phase 2 の目標とタスク
+2. **[Phase 3 ハンドオーバー](docs/phase3-handover.md)**
+   - Phase 3 の目標とタスク（M3: CodeGen MVP）
    - 既存コードベースの構造
    - 実装する主要コンポーネント
 
-3. **[Phase 2 開始前チェックリスト](docs/phase2-checklist.md)**
-   - 環境確認（46 項目）
-   - 仕様書の理解
-   - 技術的準備
+3. **[技術的負債リスト](docs/technical-debt.md)**
+   - Phase 2 で解消された問題
+   - Phase 3 に持ち越す項目
 
-4. **[技術的負債リスト](docs/technical-debt.md)**
-   - Phase 1 からの既知の問題
-   - 優先度別の対応計画
+#### Phase 2 実装完了サマリー（2025-10-07）
 
-#### Phase 2 実装状況（2025-10-06 更新）
+**✅ 全タスク完了 (Week 1-11)**
 
-**✅ 完了済み (Week 1)**
+Phase 2 の全実装が完了しました。詳細は [Phase 2 完了報告書](docs/phase2-completion-report.md) を参照してください。
+
+以下は主要な実装項目の概要です：
+
+**✅ Week 1: 型システム基盤**
 
 - ✅ **型システム基盤** (`src/types.ml`, `src/type_env.ml`, `src/constraint.ml`)
   - 型表現とスキームの定義

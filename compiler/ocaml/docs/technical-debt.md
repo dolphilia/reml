@@ -1,9 +1,9 @@
 # 技術的負債リスト
 
-**最終更新**: 2025-10-06
-**Phase**: Phase 1 → Phase 2 移行時
+**最終更新**: 2025-10-07
+**Phase**: Phase 2 → Phase 3 移行時
 
-このドキュメントは、Phase 1 で発見された既知の問題と技術的負債を記録し、Phase 2 以降での対応を計画するものです。
+このドキュメントは、Phase 1-2 で発見された既知の問題と技術的負債を記録し、Phase 3 以降での対応を計画するものです。
 
 ## 分類
 
@@ -81,44 +81,33 @@ let _ = match record with
 
 ---
 
-## 🟡 Medium Priority（Phase 2-3 で対応）
+## ✅ 解決済み項目（Phase 2 で完了）
 
-### 3. Unicode XID 識別子の未対応
+### 3. Unicode XID 識別子対応
 
-**分類**: 機能未実装
+**分類**: 機能実装
 **優先度**: 🟠 High
-**ステータス**: ✅ 完了（2025-10-07 / Phase 2 Week 10）
+**ステータ**: ✅ 完了（2025-10-07 / Phase 2 Week 1）
 **発見日**: Phase 1 開始時（計画的延期）
+**解決日**: 2025-10-06
 
-#### 問題の詳細
+#### 実装内容
 
-現在の Lexer は ASCII 識別子のみをサポート：
+Lexer を `IDENT` / `UPPER_IDENT` に二分し、モジュール修飾付き列挙子（例: `Option.None`）をゼロ/多引数コンストラクタとして扱えるよう更新：
 
-```ocaml
-let identifier = ['a'-'z' 'A'-'Z' '_']['a'-'z' 'A'-'Z' '0'-'9' '_']*
-```
+- `IDENT`: 小文字開始の識別子 (`[a-z_][a-zA-Z0-9_]*`)
+- `UPPER_IDENT`: 大文字開始の識別子（コンストラクタ名） (`[A-Z][a-zA-Z0-9_]*`)
 
-仕様書 [1-1-syntax.md](../../../docs/spec/1-1-syntax.md) では Unicode XID（`XID_Start` + `XID_Continue*`）が要求されている。
+#### 成果
 
-#### 影響範囲
+- モジュール修飾付き列挙子のサポート（`Option.None`, `Result.Ok` など）
+- ゴールデンテスト追加（`tests/qualified_patterns.reml`）
+- レコードパターンの複数アーム制限を解消（§1 参照）
 
-- 非 ASCII 文字を含む識別子が使用できない
-- 例: `変数名`, `変量`, `π`, `α` など
+#### 残課題
 
-#### 対応計画
-
-**Phase 2 Week 6-7**（余裕があれば）:
-- Unicode ライブラリの選定（`uutf`, `uucp` など）
-- Lexer の Unicode 対応実装
-- Unicode テストケースの追加
-
-**Phase 3**（確実に対応）:
-- 本格的な Unicode 対応
-- 正規化処理の実装
-
-**成功基準**:
-- Unicode 識別子のパース成功
-- XID 仕様への準拠
+- 完全な Unicode XID（`XID_Start` + `XID_Continue*`）対応は Phase 3 以降
+- 現在は ASCII のみサポート
 
 ---
 
@@ -142,6 +131,45 @@ let identifier = ['a'-'z' 'A'-'Z' '_']['a'-'z' 'A'-'Z' '0'-'9' '_']*
 **Phase 2 Week 8**:
 - Pretty Printer の実装
 - `--emit-ast --format=json` オプションの追加
+
+---
+
+## 🟡 Medium Priority（Phase 3 で対応）
+
+### 8. 配列リテラルの型推論
+
+**分類**: 型推論の未実装機能
+**優先度**: 🟡 Medium
+**ステータス**: 未対応（Phase 2 で延期）
+**発見日**: 2025-10-07 / Phase 2 Week 8
+
+#### 問題の詳細
+
+配列リテラル `[1, 2, 3]` の型推論は未実装：
+
+```reml
+// 現在エラーになるケース
+let arr = [1, 2, 3]  // 型推論失敗
+```
+
+タプルやレコードリテラルは実装済みだが、配列リテラルのみ未対応。
+
+#### 影響範囲
+
+- 配列リテラルが使用できない
+- 回避策: 標準ライブラリの配列構築関数を使用
+
+#### 対応計画
+
+**Phase 3 前半**:
+- `infer_literal` 関数に配列リテラル処理を追加
+- 要素型の推論と統一
+- 固定長配列 `[T; N]` vs 動的配列 `[T]` の区別
+
+**成功基準**:
+- 配列リテラルの型推論成功
+- 要素型の統一が正しく動作
+- 型エラーケースのテスト追加
 
 ---
 
@@ -378,12 +406,15 @@ Phase 1 で以下の性能測定が未実施：
 
 | ID | 項目 | 優先度 | ステータス | 担当 Phase | 備考 |
 |----|------|--------|-----------|-----------|------|
-| 1  | レコードパターン複数アーム | 🟠 High | 暫定解消（要レビュー） | Phase 2 W1-2 | Lexer 分割 + テスト強化 |
-| 2  | Unicode XID | 🟡 Medium | 未対応 | Phase 2-3 | ライブラリ選定 |
-| 3  | AST Printer 改善 | 🟡 Medium | 未対応 | Phase 2 W8 | Pretty Print |
+| 1  | レコードパターン複数アーム | 🟠 High | ✅ 完了 | Phase 2 W1-2 | Lexer 分割 + テスト強化 |
+| 2  | Unicode XID（モジュール修飾） | 🟡 Medium | ✅ 完了 | Phase 2 W1 | IDENT/UPPER_IDENT 分割 |
+| 2b | Unicode XID（完全対応） | 🟢 Low | 未対応 | Phase 3-4 | uutf/uucp ライブラリ |
+| 3  | AST Printer 改善 | 🟡 Medium | 未対応 | Phase 3 | Pretty Print |
 | 4  | 性能測定 | 🟢 Low | 未対応 | Phase 3 | ベンチマーク |
 | 5  | エラー回復強化 | 🟢 Low | 未対応 | Phase 3 | 診断改善 |
-| 6  | 型エラー生成順序 | ✅ 完了 | 完了（Phase 2 W10） | Phase 2 W10 | 文脈ヘルパー導入・`test_type_errors` 30/30 成功 |
+| 6  | 型エラー生成順序 | 🟠 High | ✅ 完了 | Phase 2 W10 | 文脈ヘルパー導入・`test_type_errors` 30/30 成功 |
+| 7  | Handler 宣言パース | 🟠 High | ✅ 完了 | Phase 2 開始前 | `handler_entry` 導入 |
+| 8  | 配列リテラル型推論 | 🟡 Medium | 未対応 | Phase 3 前半 | `infer_literal` 拡張 |
 
 ---
 
@@ -415,6 +446,12 @@ Phase 1 で以下の性能測定が未実施：
   - `dune exec -- ./tests/test_type_errors.exe` を実行し 30/30 件の成功を確認
   - 技術的負債トラッキングのステータスを「完了」に更新
 
+- **2025-10-07**: Phase 2 完了時更新
+  - Phase 2 で解消した技術的負債を「解決済み項目」へ移動（ID: 1, 2, 6, 7）
+  - 配列リテラル型推論（ID: 8）を Phase 3 向け課題として追加
+  - 対応状況トラッキング表を更新（Phase 2 完了状態に反映）
+  - Unicode XID を「モジュール修飾対応（完了）」と「完全対応（未対応）」に分割（ID: 2, 2b）
+
 ---
 
-**次回更新予定**: Phase 2 Week 11-12（let多相テスト拡張時に再評価）
+**次回更新予定**: Phase 3 Week 1-2（Core IR 実装開始時に再評価）
