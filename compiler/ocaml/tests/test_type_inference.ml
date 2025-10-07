@@ -847,6 +847,190 @@ let test_binary_operations () =
     | Error _ -> failwith "Should not reach here"
   )
 
+(* ========== 複合リテラルテスト ========== *)
+
+let test_composite_literals () =
+  Printf.printf "\nComposite Literal Tests:\n";
+
+  (* タプルリテラル: (1, "hello", true) *)
+  run_test "infer_expr: tuple literal (1, \"hello\", true)" (fun () ->
+    let env = initial_env in
+    let expr = {
+      expr_kind = Literal (Tuple [
+        { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span };
+        { expr_kind = Literal (String ("hello", Normal)); expr_span = dummy_span };
+        { expr_kind = Literal (Bool true); expr_span = dummy_span };
+      ]);
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env expr in
+    assert_ok result "Tuple literal should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        let expected_ty = TTuple [ty_i64; ty_string; ty_bool] in
+        assert_type_eq expected_ty ty "Tuple literal type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* 空タプル: () *)
+  run_test "infer_expr: empty tuple ()" (fun () ->
+    let env = initial_env in
+    let expr = {
+      expr_kind = Literal (Tuple []);
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env expr in
+    assert_ok result "Empty tuple should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        assert_type_eq ty_unit ty "Empty tuple type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* ネストしたタプル: ((1, 2), (3, 4)) *)
+  run_test "infer_expr: nested tuple ((1, 2), (3, 4))" (fun () ->
+    let env = initial_env in
+    let expr = {
+      expr_kind = Literal (Tuple [
+        { expr_kind = Literal (Tuple [
+            { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span };
+            { expr_kind = Literal (Int ("2", Base10)); expr_span = dummy_span };
+          ]);
+          expr_span = dummy_span };
+        { expr_kind = Literal (Tuple [
+            { expr_kind = Literal (Int ("3", Base10)); expr_span = dummy_span };
+            { expr_kind = Literal (Int ("4", Base10)); expr_span = dummy_span };
+          ]);
+          expr_span = dummy_span };
+      ]);
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env expr in
+    assert_ok result "Nested tuple should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        let expected_ty = TTuple [
+          TTuple [ty_i64; ty_i64];
+          TTuple [ty_i64; ty_i64]
+        ] in
+        assert_type_eq expected_ty ty "Nested tuple type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* レコードリテラル: { x: 42, y: "test" } *)
+  run_test "infer_expr: record literal { x: 42, y: \"test\" }" (fun () ->
+    let env = initial_env in
+    let expr = {
+      expr_kind = Literal (Record [
+        ({ name = "x"; span = dummy_span },
+         { expr_kind = Literal (Int ("42", Base10)); expr_span = dummy_span });
+        ({ name = "y"; span = dummy_span },
+         { expr_kind = Literal (String ("test", Normal)); expr_span = dummy_span });
+      ]);
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env expr in
+    assert_ok result "Record literal should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        let expected_ty = TRecord [("x", ty_i64); ("y", ty_string)] in
+        assert_type_eq expected_ty ty "Record literal type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* レコードリテラル（フィールド順序確認）: { name: "Alice", age: 30 } *)
+  run_test "infer_expr: record literal { name: \"Alice\", age: 30 }" (fun () ->
+    let env = initial_env in
+    let expr = {
+      expr_kind = Literal (Record [
+        ({ name = "name"; span = dummy_span },
+         { expr_kind = Literal (String ("Alice", Normal)); expr_span = dummy_span });
+        ({ name = "age"; span = dummy_span },
+         { expr_kind = Literal (Int ("30", Base10)); expr_span = dummy_span });
+      ]);
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env expr in
+    assert_ok result "Record literal with different fields should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        let expected_ty = TRecord [("name", ty_string); ("age", ty_i64)] in
+        assert_type_eq expected_ty ty "Record literal type with different fields"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* ネストしたレコード: { outer: { inner: 42 } } *)
+  run_test "infer_expr: nested record { outer: { inner: 42 } }" (fun () ->
+    let env = initial_env in
+    let expr = {
+      expr_kind = Literal (Record [
+        ({ name = "outer"; span = dummy_span },
+         { expr_kind = Literal (Record [
+             ({ name = "inner"; span = dummy_span },
+              { expr_kind = Literal (Int ("42", Base10)); expr_span = dummy_span });
+           ]);
+           expr_span = dummy_span });
+      ]);
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env expr in
+    assert_ok result "Nested record should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        let expected_ty = TRecord [("outer", TRecord [("inner", ty_i64)])] in
+        assert_type_eq expected_ty ty "Nested record type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* タプルとレコードの混在: (1, { x: 2 }) *)
+  run_test "infer_expr: tuple with record (1, { x: 2 })" (fun () ->
+    let env = initial_env in
+    let expr = {
+      expr_kind = Literal (Tuple [
+        { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span };
+        { expr_kind = Literal (Record [
+            ({ name = "x"; span = dummy_span },
+             { expr_kind = Literal (Int ("2", Base10)); expr_span = dummy_span });
+          ]);
+          expr_span = dummy_span };
+      ]);
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env expr in
+    assert_ok result "Tuple with record should succeed";
+    match result with
+    | Ok (_, ty, _) ->
+        let expected_ty = TTuple [ty_i64; TRecord [("x", ty_i64)]] in
+        assert_type_eq expected_ty ty "Tuple with record type"
+    | Error _ -> failwith "Should not reach here"
+  )
+
+(* ========== 複合リテラル エラーケーステスト ========== *)
+
+let test_composite_literal_errors () =
+  Printf.printf "\nComposite Literal Error Tests:\n";
+
+  (* 配列リテラルは未実装 *)
+  run_test "infer_expr: array literal [1, 2, 3] should fail (not yet implemented)" (fun () ->
+    let env = initial_env in
+    let expr = {
+      expr_kind = Literal (Array [
+        { expr_kind = Literal (Int ("1", Base10)); expr_span = dummy_span };
+        { expr_kind = Literal (Int ("2", Base10)); expr_span = dummy_span };
+        { expr_kind = Literal (Int ("3", Base10)); expr_span = dummy_span };
+      ]);
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env expr in
+    match result with
+    | Ok _ -> failwith "Array literal should fail (not yet implemented)"
+    | Error e ->
+        (* エラーメッセージを確認 *)
+        let error_msg = Type_error.string_of_error e in
+        if not (String.length error_msg > 0) then
+          failwith "Error message should not be empty"
+  )
+
 (* ========== メイン ========== *)
 
 let () =
@@ -858,4 +1042,6 @@ let () =
   test_block_expressions ();
   test_function_declarations ();
   test_binary_operations ();
+  test_composite_literals ();
+  test_composite_literal_errors ();
   Printf.printf "\nAll type inference tests passed! ✓\n"

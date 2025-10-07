@@ -111,29 +111,18 @@ type infer_result = typed_expr * ty * substitution
 (** let* 演算子（Result モナド） *)
 let (let*) = Result.bind
 
-(** リテラルの型推論 *)
-let infer_literal (lit: literal) (_span: span) : ty =
-  match lit with
-  | Int (_, _) -> ty_i64                        (* Phase 2: デフォルト i64 *)
-  | Float _ -> ty_f64                           (* Phase 2: デフォルト f64 *)
-  | Char _ -> ty_char
-  | String (_, _) -> ty_string
-  | Bool _ -> ty_bool
-  | Unit -> ty_unit
-  | Tuple _ | Array _ | Record _ ->
-      (* 複合リテラルはPhase 2後半で実装 *)
-      failwith "Composite literals not yet implemented"
-
 (** 式の型推論: infer_expr(env, expr)
  *
  * Phase 2 Week 2-3: 基本的な式の推論を実装
+ * Phase 2 Week 8: 複合リテラル（Tuple/Record）対応
  *)
 let rec infer_expr (env: env) (expr: expr) : (infer_result, type_error) result =
   match expr.expr_kind with
   | Literal lit ->
-      let ty = infer_literal lit expr.expr_span in
-      let texpr = make_typed_expr (TLiteral lit) ty expr.expr_span in
-      Ok (texpr, ty, empty_subst)
+      (* 複合リテラル（Tuple/Record）もサポート *)
+      let* (ty, typed_lit, s) = infer_literal env lit expr.expr_span in
+      let texpr = make_typed_expr (TLiteral typed_lit) ty expr.expr_span in
+      Ok (texpr, ty, s)
 
   | Var id ->
       (* 変数参照: 型環境から検索してインスタンス化 *)
@@ -417,6 +406,99 @@ and infer_params (env: env) (params: param list) (subst: substitution)
         Ok (tparams @ [tparam], param_tys @ [param_ty], param_env', s)
   ) (Ok ([], [], env, subst)) params
 
+(** タプル要素の型推論
+ *
+ * Phase 2 Week 8: タプルリテラルの各要素を推論
+ *
+ * @param env 型環境
+ * @param exprs タプル要素の式リスト
+ * @return (型付き式リスト, 型リスト, 代入)
+ *)
+and infer_tuple_elements (env: env) (exprs: expr list)
+    : (typed_expr list * ty list * substitution, type_error) result =
+  List.fold_left (fun acc expr ->
+    match acc with
+    | Error e -> Error e
+    | Ok (typed_exprs, tys, s) ->
+        let env' = apply_subst_env s env in
+        let* (texpr, ty, s') = infer_expr env' expr in
+        let s'' = compose_subst s' s in
+        Ok (typed_exprs @ [texpr], tys @ [ty], s'')
+  ) (Ok ([], [], empty_subst)) exprs
+
+(** レコードフィールドの型推論
+ *
+ * Phase 2 Week 8: レコードリテラルの各フィールドを推論
+ *
+ * @param env 型環境
+ * @param fields レコードフィールド (識別子, 式) のリスト
+ * @return (型付きフィールド, 型フィールド, 代入)
+ *)
+and infer_record_fields (env: env) (fields: (ident * expr) list)
+    : ((ident * typed_expr) list * (string * ty) list * substitution, type_error) result =
+  List.fold_left (fun acc (field_id, expr) ->
+    match acc with
+    | Error e -> Error e
+    | Ok (typed_fields, field_tys, s) ->
+        let env' = apply_subst_env s env in
+        let* (texpr, ty, s') = infer_expr env' expr in
+        let s'' = compose_subst s' s in
+        Ok (typed_fields @ [(field_id, texpr)],
+            field_tys @ [(field_id.name, ty)],
+            s'')
+  ) (Ok ([], [], empty_subst)) fields
+
+(** リテラルの型推論
+ *
+ * Phase 2 Week 8: 複合リテラル（Tuple/Record）の推論を追加
+ *)
+and infer_literal (env: env) (lit: literal) (span: span)
+    : (ty * literal * substitution, type_error) result =
+  match lit with
+  | Int (_, _) ->
+      (* Phase 2: デフォルト i64 *)
+      Ok (ty_i64, lit, empty_subst)
+  | Float _ ->
+      (* Phase 2: デフォルト f64 *)
+      Ok (ty_f64, lit, empty_subst)
+  | Char _ ->
+      Ok (ty_char, lit, empty_subst)
+  | String (_, _) ->
+      Ok (ty_string, lit, empty_subst)
+  | Bool _ ->
+      Ok (ty_bool, lit, empty_subst)
+  | Unit ->
+      Ok (ty_unit, lit, empty_subst)
+  | Tuple exprs ->
+      (* タプルリテラル: (1, "hello", true)
+       *
+       * 1. 各要素を推論
+       * 2. タプル型を構築
+       *)
+      if exprs = [] then
+        (* 空タプル: Unit型 *)
+        Ok (ty_unit, Unit, empty_subst)
+      else
+        let* (_typed_exprs, elem_tys, s) = infer_tuple_elements env exprs in
+        let tuple_ty = TTuple elem_tys in
+        (* 型付きリテラルを構築（元のliteralを返す） *)
+        Ok (tuple_ty, lit, s)
+  | Record fields ->
+      (* レコードリテラル: { x: 42, y: "test" }
+       *
+       * 1. 各フィールドの式を推論
+       * 2. レコード型を構築（構造的）
+       *)
+      let* (_typed_fields, field_tys, s) = infer_record_fields env fields in
+      let record_ty = TRecord field_tys in
+      (* 型付きリテラルを構築（元のliteralを返す） *)
+      Ok (record_ty, lit, s)
+  | Array _ ->
+      (* 配列リテラルは Phase 2 後半で実装 *)
+      Error (type_error_with_message
+        "Array literals not yet implemented"
+        span)
+
 (** パターンの型推論: infer_pattern(env, pat, expected_ty)
  *
  * パターンを推論し、束縛変数を型環境に追加する
@@ -431,7 +513,7 @@ and infer_pattern (env: env) (pat: pattern) (expected_ty: ty)
   match pat.pat_kind with
   | PatLiteral lit ->
       (* リテラルパターン: リテラルの型と expected_ty を単一化 *)
-      let lit_ty = infer_literal lit pat.pat_span in
+      let* (lit_ty, _typed_lit, _) = infer_literal env lit pat.pat_span in
       let* _subst = unify empty_subst lit_ty expected_ty pat.pat_span in
       let tpat = make_typed_pattern (TPatLiteral lit) expected_ty [] pat.pat_span in
       Ok (tpat, env)

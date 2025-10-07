@@ -365,9 +365,18 @@ dune exec -- ./tests/test_types.exe
   - 診断メッセージの品質検証機能を追加
   - 未実装機能：タプルリテラル推論、一部のパターンマッチエラー
 
-**📋 後続タスク (Week 8)**
+**✅ 完了 (Week 8: 2025-10-07)**
 
-- 🔜 **複合リテラル（Tuple/Record）の型推論実装**
+- ✅ **複合リテラル（Tuple/Record）の型推論実装**
+  - タプルリテラル `(1, "hello", true)` の型推論
+  - レコードリテラル `{ x: 42, y: "test" }` の型推論
+  - ネストしたタプル・レコードのサポート
+  - 空タプル `()` の Unit 型推論
+  - 7個の新規テストケース追加（全成功: 33/33）
+  - 配列リテラルは Phase 2 後半に延期（エラーケーステスト追加済み）
+
+**📋 後続タスク (Week 9)**
+
 - 🔜 **パターンマッチエラーの改善**
 - 🔜 **CLI統合と診断出力の改善**
 - 🔜 **let多相の網羅的テスト**
@@ -378,6 +387,7 @@ dune exec -- ./tests/test_types.exe
 - **ビルドシステム**: Duneに `typed_ast`, `type_inference`, `test_type_inference` を追加済み
 - **型等価性判定**: `Types.type_equal` を追加し、構造的等価性をサポート
 - **コンストラクタ型環境**: `initial_env` で Option/Result の型変数を正しく量化
+- **複合リテラルの型推論**: `infer_literal` のシグネチャを `env -> literal -> span -> (ty * literal * substitution, type_error) result` に変更し、タプル・レコードリテラルをサポート。`infer_tuple_elements` と `infer_record_fields` の補助関数を追加
 
 ## 技術詳細
 
