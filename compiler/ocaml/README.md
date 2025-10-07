@@ -23,8 +23,15 @@ Phase 1 ブートストラップ計画に基づき、OCaml 製 Reml コンパイ
 
 ### 🚀 Phase 3 進行中（2025-10-07 開始）
 - **M3: CodeGen MVP** - Core IR → LLVM IR 生成（Week 9-12）
-- **進捗**: Week 9 完了 - Core IR データ構造設計 ✅
-- **次**: Week 9-10 - 糖衣削除パスと Typed AST → Core IR 変換
+- **進捗**: Week 9-10 進行中 - 糖衣削除パスの基本実装 ✅
+  - Core IR データ構造設計完了（Week 9）
+  - 糖衣削除パス基本フレームワーク完了（Week 9-10）
+  - リテラル・変数・関数適用の変換実装完了
+  - パイプ演算子展開実装完了
+  - if式・ブロック式変換実装完了
+  - パターンマッチ決定木の基本構造定義完了
+  - 8件のテストケース全成功
+- **次**: Week 10 - パターンマッチ変換の完全実装
 - **引き継ぎ**: [Phase 3 ハンドオーバー](docs/phase3-handover.md)
 - **計画書**: [1-3-core-ir-min-optimization.md](../../docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md)
 

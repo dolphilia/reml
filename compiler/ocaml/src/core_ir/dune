@@ -1,4 +1,4 @@
 (library
  (name core_ir)
- (modules ir ir_printer)
+ (modules ir ir_printer desugar)
  (libraries reml_parser))
