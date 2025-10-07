@@ -375,9 +375,23 @@ dune exec -- ./tests/test_types.exe
   - 7個の新規テストケース追加（全成功: 33/33）
   - 配列リテラルは Phase 2 後半に延期（エラーケーステスト追加済み）
 
-**📋 後続タスク (Week 9)**
+**✅ 完了 (Week 9: 2025-10-07)**
 
-- 🔜 **パターンマッチエラーの改善**
+- ✅ **パターンマッチエラーの改善**
+  - 専用エラー型の完全実装（TupleArityMismatch, ConstructorArityMismatch, RecordFieldMissing, RecordFieldUnknown, NotARecord, EmptyMatch）
+  - `type_error_with_message` の汎用エラーを専用型に置き換え（6箇所）
+  - 診断メッセージの品質向上
+    - TupleArityMismatch: ワイルドカード補完の FixIt 追加
+    - ConstructorArityMismatch: 正しい使用例を Notes に追加
+  - パターンマッチエラーテスト6件追加（全成功: 39/39）
+    - E7009: ConstructorArityMismatch（Some(), None(x)）
+    - E7010: TupleArityMismatch
+    - E7013: NotARecord
+    - E7015: EmptyMatch
+    - ネストパターンエラー: Some(None(x))
+
+**📋 後続タスク (Week 9-10)**
+
 - 🔜 **CLI統合と診断出力の改善**
 - 🔜 **let多相の網羅的テスト**
 

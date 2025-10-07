@@ -277,9 +277,7 @@ let rec infer_expr (env: env) (expr: expr) : (infer_result, type_error) result =
 
       (* アームが空の場合はエラー *)
       if arms = [] then
-        Error (type_error_with_message
-          "Match expression must have at least one arm"
-          expr.expr_span)
+        Error (EmptyMatch expr.expr_span)
       else
         (* 最初のアームを処理 *)
         let first_arm = List.hd arms in
@@ -548,12 +546,13 @@ and infer_pattern (env: env) (pat: pattern) (expected_ty: ty)
            let tpat = make_typed_pattern (TPatTuple tpats) expected_ty all_bindings pat.pat_span in
            Ok (tpat, env')
 
-       | TTuple _ ->
+       | TTuple expected_tys ->
            (* タプルの要素数が不一致 *)
-           Error (type_error_with_message
-             (Printf.sprintf "Tuple pattern has %d elements, but type has different arity"
-               (List.length pats))
-             pat.pat_span)
+           Error (TupleArityMismatch {
+             expected = List.length expected_tys;
+             actual = List.length pats;
+             span = pat.pat_span;
+           })
 
        | _ ->
            (* expected_ty がタプル型でない場合は新しいタプル型を作成して単一化 *)
@@ -575,10 +574,12 @@ and infer_pattern (env: env) (pat: pattern) (expected_ty: ty)
 
            (* 引数の数が一致するか確認 *)
            if List.length arg_pats <> List.length arg_tys then
-             Error (type_error_with_message
-               (Printf.sprintf "Constructor %s expects %d arguments, but got %d"
-                 id.name (List.length arg_tys) (List.length arg_pats))
-               pat.pat_span)
+             Error (ConstructorArityMismatch {
+               constructor = id.name;
+               expected = List.length arg_tys;
+               actual = List.length arg_pats;
+               span = pat.pat_span;
+             })
            else
              (* 結果型と expected_ty を単一化 *)
              let* _subst = unify empty_subst result_ty expected_ty pat.pat_span in
@@ -632,9 +633,10 @@ and infer_pattern (env: env) (pat: pattern) (expected_ty: ty)
                              Ok (tfields @ [(field_id, Some tpat)], env_new,
                                  bindings_acc @ bindings))
                     | None ->
-                        Error (type_error_with_message
-                          (Printf.sprintf "Field %s not found in record type" field_id.name)
-                          pat.pat_span))
+                        Error (RecordFieldUnknown {
+                          field = field_id.name;
+                          span = pat.pat_span;
+                        }))
              ) (Ok ([], env, [])) fields
            in
 
@@ -646,10 +648,10 @@ and infer_pattern (env: env) (pat: pattern) (expected_ty: ty)
                not (List.mem f pattern_fields)
              ) type_fields in
              if missing_fields <> [] then
-               Error (type_error_with_message
-                 (Printf.sprintf "Missing fields in record pattern: %s"
-                   (String.concat ", " missing_fields))
-                 pat.pat_span)
+               Error (RecordFieldMissing {
+                 missing_fields;
+                 span = pat.pat_span;
+               })
              else
                let tpat = make_typed_pattern
                  (TPatRecord (tfield_pats, has_rest))
@@ -666,9 +668,7 @@ and infer_pattern (env: env) (pat: pattern) (expected_ty: ty)
              Ok (tpat, env')
 
        | _ ->
-           Error (type_error_with_message
-             "Record pattern requires a record type"
-             pat.pat_span))
+           Error (NotARecord (expected_ty, pat.pat_span)))
 
   | PatGuard (inner_pat, guard_expr) ->
       (* ガード付きパターン: 内部パターンを推論後、ガード式を Bool 型として推論 *)

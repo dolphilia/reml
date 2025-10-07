@@ -450,9 +450,22 @@ let to_diagnostic (err: type_error) : Diagnostic.t =
   | ConstructorArityMismatch { constructor; expected; actual; span } ->
       let message = Printf.sprintf "コンストラクタ '%s' の引数の数が一致しません" constructor in
       let diag_span = span_to_diagnostic_span span in
+
+      (* 使用例を提供 *)
+      let example =
+        if expected = 0 then
+          Printf.sprintf "%s" constructor
+        else if expected = 1 then
+          Printf.sprintf "%s(_)" constructor
+        else
+          let args = String.concat ", " (List.init expected (fun _ -> "_")) in
+          Printf.sprintf "%s(%s)" constructor args
+      in
+
       let notes = [
         (None, Printf.sprintf "期待される引数の数: %d" expected);
         (None, Printf.sprintf "実際の引数の数:     %d" actual);
+        (None, Printf.sprintf "正しい使用例: %s" example);
       ] in
 
       make_type_error
@@ -470,11 +483,22 @@ let to_diagnostic (err: type_error) : Diagnostic.t =
         (None, Printf.sprintf "パターンの要素数: %d" actual);
       ] in
 
+      (* FixIt: 要素数が不足している場合はワイルドカードの追加を提案 *)
+      let fixits =
+        if actual < expected then
+          let missing = expected - actual in
+          let wildcards = String.concat ", " (List.init missing (fun _ -> "_")) in
+          [Insert { at = diag_span; text = Printf.sprintf ", %s" wildcards }]
+        else
+          []
+      in
+
       make_type_error
         ~code:"E7010"
         ~message
         ~span:diag_span
         ~notes
+        ~fixits
         ()
 
   | RecordFieldMissing { missing_fields; span } ->

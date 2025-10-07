@@ -1031,6 +1031,161 @@ let test_composite_literal_errors () =
           failwith "Error message should not be empty"
   )
 
+(* ========== パターンマッチエラーテスト ========== *)
+
+let test_pattern_match_errors () =
+  Printf.printf "\nPattern Match Error Tests:\n";
+
+  (* E7009: ConstructorArityMismatch - Some() *)
+  run_test "error: ConstructorArityMismatch Some()" (fun () ->
+    let env = initial_env in
+    let pattern = {
+      pat_kind = PatConstructor (
+        { name = "Some"; span = dummy_span },
+        [] (* 引数なし - エラー *)
+      );
+      pat_span = dummy_span;
+    } in
+    let expected_ty = ty_option ty_i64 in
+    let result = infer_pattern env pattern expected_ty in
+    match result with
+    | Error (ConstructorArityMismatch { constructor; expected; actual; _ }) ->
+        if constructor = "Some" && expected = 1 && actual = 0 then
+          ()
+        else
+          failwith "Constructor arity error details mismatch"
+    | Error e ->
+        let msg = Type_error.string_of_error e in
+        failwith (Printf.sprintf "Expected ConstructorArityMismatch, got: %s" msg)
+    | Ok _ -> failwith "Should fail with ConstructorArityMismatch"
+  );
+
+  (* E7009: ConstructorArityMismatch - None(x) *)
+  run_test "error: ConstructorArityMismatch None(x)" (fun () ->
+    let env = initial_env in
+    let pattern = {
+      pat_kind = PatConstructor (
+        { name = "None"; span = dummy_span },
+        [{ pat_kind = PatVar { name = "x"; span = dummy_span }; pat_span = dummy_span }]
+      );
+      pat_span = dummy_span;
+    } in
+    let expected_ty = ty_option ty_i64 in
+    let result = infer_pattern env pattern expected_ty in
+    match result with
+    | Error (ConstructorArityMismatch { constructor; expected; actual; _ }) ->
+        if constructor = "None" && expected = 0 && actual = 1 then
+          ()
+        else
+          failwith "Constructor arity error details mismatch"
+    | Error e ->
+        let msg = Type_error.string_of_error e in
+        failwith (Printf.sprintf "Expected ConstructorArityMismatch, got: %s" msg)
+    | Ok _ -> failwith "Should fail with ConstructorArityMismatch"
+  );
+
+  (* E7010: TupleArityMismatch - (x, y) vs (1, 2, 3) *)
+  run_test "error: TupleArityMismatch (x, y) vs 3-tuple" (fun () ->
+    let env = initial_env in
+    let pattern = {
+      pat_kind = PatTuple [
+        { pat_kind = PatVar { name = "x"; span = dummy_span }; pat_span = dummy_span };
+        { pat_kind = PatVar { name = "y"; span = dummy_span }; pat_span = dummy_span };
+      ];
+      pat_span = dummy_span;
+    } in
+    let expected_ty = TTuple [ty_i64; ty_i64; ty_i64] in
+    let result = infer_pattern env pattern expected_ty in
+    match result with
+    | Error (TupleArityMismatch { expected; actual; _ }) ->
+        if expected = 3 && actual = 2 then
+          ()
+        else
+          failwith "Tuple arity error details mismatch"
+    | Error e ->
+        let msg = Type_error.string_of_error e in
+        failwith (Printf.sprintf "Expected TupleArityMismatch, got: %s" msg)
+    | Ok _ -> failwith "Should fail with TupleArityMismatch"
+  );
+
+  (* E7013: NotARecord - レコードパターンを非レコード型に適用 *)
+  run_test "error: NotARecord { x } vs i64" (fun () ->
+    let env = initial_env in
+    let pattern = {
+      pat_kind = PatRecord (
+        [
+          ({ name = "x"; span = dummy_span },
+           Some { pat_kind = PatVar { name = "x"; span = dummy_span }; pat_span = dummy_span })
+        ],
+        false
+      );
+      pat_span = dummy_span;
+    } in
+    let expected_ty = ty_i64 in
+    let result = infer_pattern env pattern expected_ty in
+    match result with
+    | Error (NotARecord (ty, _)) ->
+        if Types.type_equal ty ty_i64 then
+          ()
+        else
+          failwith "NotARecord error type mismatch"
+    | Error e ->
+        let msg = Type_error.string_of_error e in
+        failwith (Printf.sprintf "Expected NotARecord, got: %s" msg)
+    | Ok _ -> failwith "Should fail with NotARecord"
+  );
+
+  (* E7015: EmptyMatch - 空のmatch式 *)
+  run_test "error: EmptyMatch" (fun () ->
+    (* 変数 x を環境に追加 *)
+    let env = extend "x" (mono_scheme ty_i64) initial_env in
+    let match_expr = {
+      expr_kind = Match (
+        { expr_kind = Var { name = "x"; span = dummy_span }; expr_span = dummy_span },
+        [] (* アームなし *)
+      );
+      expr_span = dummy_span;
+    } in
+    let result = infer_expr env match_expr in
+    match result with
+    | Error (EmptyMatch _) -> ()
+    | Error e ->
+        let msg = Type_error.string_of_error e in
+        failwith (Printf.sprintf "Expected EmptyMatch, got: %s" msg)
+    | Ok _ -> failwith "Should fail with EmptyMatch"
+  );
+
+  (* ネストしたパターンエラー: Some(None(x)) *)
+  run_test "error: nested pattern Some(None(x))" (fun () ->
+    let env = initial_env in
+    let pattern = {
+      pat_kind = PatConstructor (
+        { name = "Some"; span = dummy_span },
+        [{
+          pat_kind = PatConstructor (
+            { name = "None"; span = dummy_span },
+            [{ pat_kind = PatVar { name = "x"; span = dummy_span }; pat_span = dummy_span }]
+          );
+          pat_span = dummy_span;
+        }]
+      );
+      pat_span = dummy_span;
+    } in
+    let expected_ty = ty_option (ty_option ty_i64) in
+    let result = infer_pattern env pattern expected_ty in
+    match result with
+    | Error (ConstructorArityMismatch { constructor; expected; actual; _ }) ->
+        (* None は引数を取らないのでエラー *)
+        if constructor = "None" && expected = 0 && actual = 1 then
+          ()
+        else
+          failwith "Nested pattern error details mismatch"
+    | Error e ->
+        let msg = Type_error.string_of_error e in
+        failwith (Printf.sprintf "Expected ConstructorArityMismatch for None, got: %s" msg)
+    | Ok _ -> failwith "Should fail with ConstructorArityMismatch"
+  )
+
 (* ========== メイン ========== *)
 
 let () =
@@ -1044,4 +1199,5 @@ let () =
   test_binary_operations ();
   test_composite_literals ();
   test_composite_literal_errors ();
+  test_pattern_match_errors ();
   Printf.printf "\nAll type inference tests passed! ✓\n"

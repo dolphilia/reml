@@ -575,7 +575,8 @@ let test_empty_match () =
 
   (* F-1. 空のmatch式 *)
   run_test "E7015: empty match" (fun () ->
-    let env = initial_env in
+    (* 変数 x を環境に追加 *)
+    let env = extend "x" (mono_scheme ty_i64) initial_env in
     (* match x with *)
     let match_expr = {
       expr_kind = Match (
