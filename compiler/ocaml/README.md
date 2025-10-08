@@ -54,15 +54,34 @@
    - `src/core_ir/desugar.ml`: 糖衣削除（638行）
    - `src/core_ir/cfg.ml`: CFG構築（430行）
 
-### 📍 Week 12-16: LLVM IR 生成（次フェーズ）
+### 📍 Week 12-13: LLVM IR 型マッピング（進行中）
 
 計画書: [docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md](../../docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md)
 
-**主要タスク**:
-- Week 12-13: LLVM IR 型マッピング
-- Week 13-14: LLVM IR 命令生成
-- Week 15: ランタイム統合
-- Week 16: テストとベンチマーク
+**実装状況**（2025-10-09 更新）:
+
+✅ **完了項目**:
+
+- `src/llvm_gen/type_mapping.ml` — Reml型からLLVM型への変換（280行）
+- `src/llvm_gen/target_config.ml` — DataLayoutとターゲット設定（180行）
+- プリミティブ型マッピング（Bool→i1, i64→i64, String→FAT pointer等）
+- 複合型マッピング（タプル、レコード、配列、関数型）
+- FAT pointer構造（`{ptr, i64}`）の実装
+- Tagged union（ADT）構造（`{i32, payload}`）の実装
+- DataLayout設定（x86_64 Linux: `e-m:e-p:64:64-f64:64:64-v128:128:128-a:0:64`）
+- テストスイート（`tests/test_llvm_type_mapping.ml`, 36件）
+- 技術文書（`docs/llvm-type-mapping.md`）
+- 環境構築ガイド更新（`docs/environment-setup.md`）
+
+🔄 **進行中**:
+
+- LLVMバインディングのビルド統合（opam依存関係）
+
+📍 **次のステップ（Week 13-14）**:
+
+- Week 13: LLVM IRビルダー実装（モジュール・関数・基本ブロック生成）
+- Week 14-15: ABI・呼び出し規約の実装
+- Week 16: LLVM IR検証パイプライン
 
 ### 記録ルール
 - 週次で本セクションを更新

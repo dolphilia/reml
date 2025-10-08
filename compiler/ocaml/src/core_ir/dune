@@ -1,4 +1,5 @@
 (library
  (name core_ir)
+ (public_name reml_ocaml.core_ir)
  (modules ir ir_printer desugar cfg const_fold dce pipeline)
  (libraries reml_parser unix))

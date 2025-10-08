@@ -1,0 +1,8 @@
+; Dune ビルド設定 — LLVM IR 生成 (Phase 3 Week 12-16)
+
+(library
+ (name llvm_gen)
+ (public_name reml_ocaml.llvm_gen)
+ (wrapped false)
+ (modules type_mapping target_config)
+ (libraries llvm reml_ocaml.core_ir reml_parser))
