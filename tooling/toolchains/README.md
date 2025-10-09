@@ -29,6 +29,11 @@
    - `x86_64-unknown-linux-gnu/env.sh` が生成され、`PATH` などの環境変数が定義されていること。
    - `x86_64-unknown-linux-gnu/.stamp-prepared` が更新され、構築時刻と使用ソース（cache / archive）が記録されていること。
 
+## サンプルバイナリの生成
+- Reml コンパイラとクロスツールチェーンが準備できたら、`scripts/toolchain/build-linux-sample.sh` を実行すると `tooling/toolchains/examples/hello-linux`（ELF）と同名の `.ll` を自動生成できます。
+- ランタイムを同時にクロスビルドしたい場合は `--build-runtime` を付与してください（sysroot に glibc のヘッダが必要です）。
+- 出力された ELF は macOS 上では実行できないため、`scripts/cross/run-linux-qemu.sh` などで QEMU 経由のスモークテストを行ってください。
+
 ## バージョンとハッシュの管理
 - `versions.toml` に記載された値は、Homebrew 依存のリビジョンや sysroot アーカイブのハッシュを追跡する基準です。更新を行った場合は、差分を `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に登録し、四半期レビューで確認します。
 - sysroot アーカイブのハッシュは `tooling/toolchains/checksums.txt` と同期させ、`shasum -a 256 --check` で検証できる状態を維持してください。

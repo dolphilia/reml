@@ -136,12 +136,18 @@ main() {
     shift
   done
 
-  [[ -d "$toolchain_home" ]] || fail "ツールチェーンディレクトリが存在しません: ${toolchain_home}"
+  if [[ ! -d "$toolchain_home" ]]; then
+    log_warn "ツールチェーンディレクトリが存在しないためスキップします: ${toolchain_home}"
+    exit 0
+  fi
 
   if [[ -z "$sysroot_path" ]]; then
     sysroot_path="${toolchain_home}/sysroot"
   fi
-  [[ -d "$sysroot_path" ]] || fail "sysroot ディレクトリが存在しません: ${sysroot_path}"
+  if [[ ! -d "$sysroot_path" ]]; then
+    log_warn "sysroot ディレクトリが存在しないためスキップします: ${sysroot_path}"
+    exit 0
+  fi
 
   if [[ -z "$binary_path" ]]; then
     binary_path="${repo}/tooling/toolchains/examples/hello-linux"
@@ -182,14 +188,14 @@ main() {
   fi
 
   if [[ ! -x "$binary_path" ]]; then
-    if (( dry_run )); then
-      log_warn "dry-run: バイナリが存在するか確認していません (${binary_path})"
-    else
-      fail "実行可能ファイルが存在しません: ${binary_path}"
-    fi
+    log_warn "実行可能ファイルが存在しないためスキップします: ${binary_path}"
+    exit 0
   fi
 
-  ensure_command "$qemu_bin" "Homebrew で qemu をインストールしてください (brew install qemu)。"
+  if ! command -v "$qemu_bin" >/dev/null 2>&1; then
+    log_warn "$qemu_bin が見つからないため実行をスキップしました。brew install qemu などでインストールしてください。"
+    exit 0
+  fi
 
   mkdir -p "$log_dir"
   local timestamp

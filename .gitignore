@@ -27,6 +27,7 @@ Thumbs.db
 *.bak
 *.backup
 *~
+tmp/
 
 # ドキュメント作業ファイル
 *.draft
@@ -119,6 +120,8 @@ tooling/toolchains/x86_64-unknown-linux-gnu/
 tooling/toolchains/cache/debian-bookworm-x86_64.tar.zst
 tooling/toolchains/cache/*.tar.zst
 tooling/toolchains/cache/*.tar.gz
+tooling/toolchains/examples/hello-linux
+tooling/toolchains/examples/hello-linux.ll
 
 # 静的解析・カバレッジ
 *.gcda
