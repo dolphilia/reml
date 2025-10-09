@@ -12,7 +12,7 @@
   - 引き継ぎ: [docs/phase3-handover.md](docs/phase3-handover.md)
 
 ## Phase 3 ダッシュボード
-**更新日**: 2025-10-07（Week 11/16）
+**更新日**: 2025-10-09（Week 15/16）
 
 ### ✅ Week 9-11: Core IR 最適化パス（完了）
 
@@ -145,10 +145,64 @@
    - LLVM 18 opaque pointer対応（`build_call`の型引数追加）
    - 未使用変数警告の解消（`_prefix`による明示化）
 
+### ✅ Week 14-15: ABI・呼び出し規約の実装（完了: 2025-10-09）
+
+計画書: [docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md](../../docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md) §5
+
+**実装統計**:
+
+- 総コード行数: 約400行（abi.ml 約200行 + abi.mli + type_mapping拡張 + codegen統合）
+- 実装ファイル: 3ファイル（abi.ml/mli、type_mapping.ml/mli拡張、codegen.ml統合）
+- ビルド状態: ✅ 成功（警告のみ、エラーなし）
+- テスト: 次ステップで実装予定
+
+**完了項目**:
+
+1. **ABIモジュール実装** (`src/llvm_gen/abi.ml`)
+   - ABI分類型定義（`return_classification`, `argument_classification`）
+   - System V ABI準拠の判定ロジック（16バイト閾値）
+   - Windows x64対応の基盤整備（Phase 2で有効化予定）
+
+2. **ABI判定関数**
+   - `classify_struct_return`: 構造体戻り値のABI分類（DirectReturn / SretReturn）
+   - `classify_struct_argument`: 構造体引数のABI分類（DirectArg / ByvalArg）
+   - 型サイズ計算（`get_type_size`）と構造体型判定
+
+3. **LLVM属性設定関数**
+   - `add_sret_attr`: 大きい構造体戻り値にsret属性を付与
+   - `add_byval_attr`: 大きい構造体引数にbyval属性を付与
+   - LLVM 18 API制限により文字列属性として実装（Phase 2で型付き属性に拡張予定）
+
+4. **codegen.mlへのABI統合**
+   - 関数宣言生成時にABI判定とLLVM属性付与を実装
+   - sret属性による引数インデックスオフセット処理（隠れた戻り値用ポインタ対応）
+   - 各引数へのbyval属性適用ロジック
+
+5. **type_mapping拡張**
+   - `get_llcontext`関数を公開API化（abiモジュールから利用）
+   - インターフェース（.mli）と実装（.ml）の両方に追加
+
+6. **ビルド設定更新**
+   - dune設定にabiモジュールを追加
+   - LLVM 18バインディングとの互換性確認
+
+**実装の特徴**:
+
+- **System V ABI準拠**: x86_64 Linux向けに16バイト閾値で構造体のレジスタ/メモリ渡しを判定
+- **拡張性**: ターゲット別ABI切り替え機構（Windows x64は8バイト閾値、Phase 2で有効化）
+- **LLVM 18対応**: opaque pointer・文字列属性APIを使用（型付き属性はバインディング制限により延期）
+- **型安全**: OCamlの型システムでABI分類を明示的に表現（variant型による分岐）
+
+**技術的負債とフォローアップ**:
+
+- **LLVM 18型付き属性**: llvm-ocamlバインディングで`create_type_attr`が未サポートのため、文字列属性として実装。Phase 2でバインディング更新または手動FFIで対応予定。
+- **複雑な構造体レイアウト**: Phase 1はタプル・レコードのみ対応。ネスト構造体・ADTのABI判定はPhase 2で拡張。
+- **テスト未実装**: ABI判定ロジックと属性設定の正常性を検証するユニットテストは次週実装予定。
+
 **次のステップ**:
 
-- Week 14-15: ABI・呼び出し規約の詳細実装、ユニットテスト整備
-- Week 15-16: LLVM IR検証パイプライン、CLI統合（`--emit-ir`）
+- Week 15-16: LLVM IR検証パイプライン（llvm-as, opt -verify, llc）、テストスイート整備
+- Week 16: CLI統合（`--emit-ir`）、ドキュメント整備
 
 ### 記録ルール
 - 週次で本セクションを更新

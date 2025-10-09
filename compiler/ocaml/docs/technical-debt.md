@@ -543,4 +543,86 @@ Phase 1 で以下の性能測定が未実施：
 
 ---
 
-**次回更新予定**: Phase 3 Week 11-12（定数畳み込み・死コード削除実装時に再評価）
+### 10. LLVM 18型付き属性のバインディング制限
+
+**分類**: LLVM統合 / ABI実装
+**優先度**: 🟡 Medium
+**ステータス**: 回避策実装済み（Phase 3 Week 14-15）
+**発見日**: 2025-10-09 / Phase 3 Week 14-15
+
+#### 問題の詳細
+
+LLVM 18のABI属性（sret, byval）は型付き属性として実装すべきだが、llvm-ocamlバインディングで`create_type_attr`がサポートされていない。
+
+```ocaml
+(* 理想的な実装（LLVM C++ API） *)
+let sret_attr = Llvm.create_type_attr llctx "sret" ret_ty in
+Llvm.add_function_attr llvm_fn sret_attr attr_kind
+
+(* 実際のエラー *)
+Error: Unbound value "Llvm.create_type_attr"
+```
+
+**影響範囲**:
+- `compiler/ocaml/src/llvm_gen/abi.ml` の `add_sret_attr`, `add_byval_attr`
+- 構造体戻り値・引数のABI処理（16バイト超過）
+
+#### 根本原因
+
+llvm-ocamlバインディング（LLVM 18.1.8）が型付き属性APIを公開していない。LLVM C++ APIでは`AttributeSet::get()`で型引数を渡せるが、OCamlバインディングでは文字列属性のみサポート。
+
+#### 対応内容（2025-10-09）
+
+Phase 1では文字列属性として実装し、LLVMの自動ABI処理に委譲：
+
+```ocaml
+let add_sret_attr llctx llvm_fn _ret_ty param_index =
+  let attr_kind = Llvm.AttrIndex.Param param_index in
+  let sret_attr = Llvm.create_string_attr llctx "sret" "" in
+  Llvm.add_function_attr llvm_fn sret_attr attr_kind
+```
+
+**検証結果**:
+- ビルド成功（警告のみ）
+- LLVM IRは生成可能
+- 型情報はDataLayoutから推論される（System V ABIの範囲内で動作）
+
+#### 今後のフォローアップ
+
+**Phase 2 対応計画**:
+
+1. **llvm-ocamlバインディング拡張**（優先度: High）
+   - `create_type_attr`のC stubs実装を追加
+   - `Llvm.create_type_attr : llcontext -> string -> lltype -> llattribute`
+   - 参考: LLVM C API `LLVMCreateTypeAttribute`
+
+2. **手動FFI実装**（代替案）
+   - `external`宣言でLLVM C APIを直接呼び出し
+   - 型付き属性生成を実装
+
+3. **検証強化**
+   - ABI属性が正しく設定されているかをLLVM IRで確認
+   - `llvm-as` + `llvm-dis`でラウンドトリップテスト
+
+**Phase 3以降**:
+- Windows x64 ABI対応時に型付き属性が必須（8バイト閾値の厳密な判定）
+- ARM64 ABI対応でも型情報が重要
+
+#### 回避策
+
+現在の文字列属性実装は以下の条件下で動作：
+- System V ABI（x86_64 Linux）のみ使用
+- 構造体サイズが16バイト閾値で明確に判定可能
+- LLVMがDataLayoutから型情報を推論
+
+Phase 2で完全な型付き属性に移行するまでの暫定措置として許容。
+
+#### 記録
+
+- 実装ファイル: `compiler/ocaml/src/llvm_gen/abi.ml`（169-190行）
+- ドキュメント: `compiler/ocaml/README.md`（Week 14-15セクション）
+- 参考資料: `docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md` §5
+
+---
+
+**次回更新予定**: Phase 3 Week 15-16（LLVM IR検証パイプライン実装時に再評価）

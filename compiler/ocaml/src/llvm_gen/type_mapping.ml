@@ -34,6 +34,9 @@ let create_context module_name =
     type_cache = Hashtbl.create 128;
   }
 
+(** LLVM コンテキストを取得 *)
+let get_llcontext ctx = ctx.llctx
+
 (* ========== プリミティブ型マッピング ========== *)
 
 (** プリミティブ型を LLVM 型に変換

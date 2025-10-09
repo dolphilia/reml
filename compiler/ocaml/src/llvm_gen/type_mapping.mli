@@ -30,6 +30,13 @@ type type_mapping_context = {
 (** 型マッピングコンテキストの作成 *)
 val create_context : string -> type_mapping_context
 
+(** LLVM コンテキストを取得
+ *
+ * @param ctx 型マッピングコンテキスト
+ * @return LLVM コンテキスト
+ *)
+val get_llcontext : type_mapping_context -> llvm_context
+
 (** Reml 型を LLVM 型に変換
  *
  * すべての Reml 型を対応する LLVM IR 型に変換する。

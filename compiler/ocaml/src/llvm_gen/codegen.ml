@@ -548,6 +548,32 @@ let codegen_function_decl ctx fn_def =
   (* System V calling convention を設定 *)
   Llvm.set_function_call_conv Llvm.CallConv.c llvm_fn;
 
+  (* ABI属性の設定（Phase 3 Week 14-15）
+   * System V ABI: 16バイト超過の構造体には sret/byval 属性を付与 *)
+
+  (* 戻り値のABI分類を判定 *)
+  let return_class = Abi.classify_struct_return ctx.target ctx.type_ctx fn_def.fn_return_ty in
+  let sret_offset = match return_class with
+  | Abi.SretReturn ->
+      (* 戻り値が大きい構造体の場合、第1引数に sret 属性を追加 *)
+      let ret_llty = Type_mapping.reml_type_to_llvm ctx.type_ctx fn_def.fn_return_ty in
+      Abi.add_sret_attr ctx.llctx llvm_fn ret_llty 0;
+      1  (* 以降の引数インデックスは +1 オフセット *)
+  | Abi.DirectReturn ->
+      0  (* オフセットなし *)
+  in
+
+  (* 各引数のABI分類を判定し、byval 属性を追加 *)
+  List.iteri (fun i param ->
+    let arg_class = Abi.classify_struct_argument ctx.target ctx.type_ctx param.param_var.vty in
+    match arg_class with
+    | Abi.ByvalArg arg_llty ->
+        (* 大きい構造体引数には byval 属性を追加 *)
+        Abi.add_byval_attr ctx.llctx llvm_fn arg_llty (i + sret_offset)
+    | Abi.DirectArg ->
+        () (* レジスタ渡し、属性不要 *)
+  ) fn_def.fn_params;
+
   (* 関数マップに登録 *)
   Hashtbl.add ctx.fn_map fn_def.fn_name llvm_fn;
 
