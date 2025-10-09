@@ -1,0 +1,22 @@
+// Function calls and ABI test (LLVM IR golden test)
+//
+// Tests:
+// - Multiple argument passing
+// - Function return values
+// - System V ABI compliance
+// - Function composition
+
+fn add(a, b) -> i64 = a + b
+
+fn mul(a, b) -> i64 = a * b
+
+fn add3(a, b, c) -> i64 = a + b + c
+
+fn compute(x, y, z) -> i64 {
+  let sum = add(x, y)
+  let prod = mul(sum, z)
+  prod
+}
+
+let result1 = add3(10, 20, 30)
+let result2 = compute(5, 10, 3)

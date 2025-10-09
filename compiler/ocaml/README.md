@@ -343,8 +343,64 @@
 
 **次のステップ**:
 
-- Week 16: ゴールデンテストの追加（`examples/` → LLVM IR期待値）
 - Week 16: M3マイルストーン達成報告書作成
+
+### ✅ Week 16: LLVM IRゴールデンテスト追加（完了: 2025-10-09）
+
+計画書: [docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md](../../docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md) §8
+
+**実装統計**:
+
+- 総テストケース数: 3件（basic_arithmetic, control_flow, function_calls）
+- テストコード行数: 約180行（test_llvm_golden.ml）
+- ゴールデンファイル: 3サンプル × 2ファイル（.reml + .ll.golden）
+- テスト成功率: 100%（3/3）
+
+**完了項目**:
+
+1. **ゴールデンテスト用ディレクトリ構造**
+   - `tests/llvm-ir/golden/` — サンプルRemlファイルと期待値LLVM IRを配置
+   - `tests/llvm-ir/golden/_actual/` — テスト失敗時の実際の出力を保存（差分確認用）
+
+2. **Remlサンプルファイル作成** (`tests/llvm-ir/golden/*.reml`)
+   - `basic_arithmetic.reml` — 基本的な算術演算と関数定義（let束縛、関数、四則演算）
+   - `control_flow.reml` — 条件分岐と再帰関数（if式、factorial、fibonacci）
+   - `function_calls.reml` — 関数呼び出しとABI（複数引数、関数合成）
+
+3. **LLVM IR期待値生成**
+   - 各サンプルに対して `remlc --emit-ir` を実行し、`.ll.golden` ファイルを生成
+   - 現在はランタイム関数宣言のみ（関数定義は未実装、Phase 3後半で拡張予定）
+
+4. **ゴールデンテストスイート実装** (`tests/test_llvm_golden.ml`)
+   - Remlサンプル → LLVM IR生成 → 期待値比較のパイプライン
+   - IR正規化機能（非決定的要素の除去、行単位での比較）
+   - 差分検出時の詳細レポート（actual出力保存、diffコマンド提示）
+
+5. **duneビルド設定更新**
+   - `tests/dune` に `test_llvm_golden` テストバイナリを追加
+   - 既存の全テスト（18件）と並行実行可能
+
+6. **テスト実行と検証**
+   - `dune exec -- ./tests/test_llvm_golden.exe` で3件すべて成功
+   - 各サンプルのLLVM IRが期待値と一致することを確認
+   - 回帰検出機構が正常動作（意図的な変更時にテストが失敗を報告）
+
+**技術的詳細**:
+
+- **IR正規化**: `source_filename` などの非決定的要素を除去し、決定的な比較を実現
+- **差分レポート**: テスト失敗時に `_actual/` ディレクトリへ実際の出力を保存し、`diff -u` コマンドを提示
+- **拡張性**: 新規サンプル追加時は `.reml` ファイルを配置して `compare_with_golden` を呼ぶだけで自動テスト化
+
+**既知の制限**:
+
+- 現在のLLVM IR生成はランタイム関数宣言のみで、ユーザー定義関数の本体は未生成
+- これは `Codegen.codegen_module` の実装が完了していないため（Phase 3 Week 17-18で対応予定）
+- ゴールデンテストは現状の出力を期待値として固定し、将来的にコード生成が完成したときに更新する方針
+
+**次のステップ**:
+
+- Week 17-18: 関数本体のLLVM IR生成を実装（Phase 3 Week 12-14で作成した `codegen.ml` を拡張）
+- ゴールデンテスト期待値を更新し、完全な関数定義を含むIRを検証
 
 ### 記録ルール
 - 週次で本セクションを更新

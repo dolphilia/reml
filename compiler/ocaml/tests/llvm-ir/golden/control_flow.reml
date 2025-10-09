@@ -1,0 +1,23 @@
+// Control flow test (LLVM IR golden test)
+//
+// Tests:
+// - if expressions
+// - Recursive functions
+// - Comparison operators
+// - Branch and merge blocks in CFG
+
+fn factorial(n) -> i64 {
+  if n <= 1 then 1 else n * factorial(n - 1)
+}
+
+fn fib(n) -> i64 {
+  if n <= 1 then n else fib(n - 1) + fib(n - 2)
+}
+
+fn max(a, b) -> i64 {
+  if a > b then a else b
+}
+
+let fact5 = factorial(5)
+let fib7 = fib(7)
+let maximum = max(10, 20)

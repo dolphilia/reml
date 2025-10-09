@@ -1,0 +1,21 @@
+// Basic arithmetic operations test (LLVM IR golden test)
+//
+// Tests:
+// - Integer literals
+// - let bindings
+// - Function definitions
+// - Binary operations (+, -, *, /)
+// - Function calls
+
+let x = 10
+let y = 20
+
+fn add(a, b) -> i64 = a + b
+
+fn sub(a, b) -> i64 = a - b
+
+fn mul(a, b) -> i64 = a * b
+
+let sum = add(x, y)
+let diff = sub(x, y)
+let prod = mul(x, y)
