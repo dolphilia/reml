@@ -29,9 +29,20 @@
   - コンパイラ側との整合確認：`panic` のシグネチャを FAT ポインタ形式 `(ptr, i64)` に統一
   - ディレクトリ構造整備：`runtime/native/{include,src,tests}/` を作成
   - 簡易実装例として `runtime/native/src/print_i64.c` を追加し、ヘッダのコンパイル妥当性を検証済み
-- ⏳ **メモリアロケータ**: `runtime/native/src/mem_alloc.c`（次のステップ: malloc ベース、8 バイト境界調整、デバッグフック）を実装。
-- **参照カウント**: `runtime/refcount.c` で RC 操作と型別デストラクタ呼び出しを整備。
-- **パニックハンドラ**: `runtime/panic.c` で診断フォーマットと終了処理 (`exit(1)`) を実装。
+- ✅ **メモリアロケータ**: `runtime/native/src/mem_alloc.c` を実装完了（2025-10-10）
+  - malloc ベースの実装 + ヘッダ初期化（refcount=1, type_tag 設定可能）
+  - 8 バイト境界への自動調整（`align_to_8` 関数）
+  - アロケーション失敗時の `panic` 呼び出し
+  - デバッグビルド時のアロケーション追跡（alloc_count / free_count）
+  - 二重解放検出（DEBUG モード）
+  - ユーティリティ関数：`reml_set_type_tag`, `reml_get_type_tag`, `reml_debug_print_alloc_stats`
+  - テストスイート：6 件のテストケース（基本 alloc/free、アラインメント、NULL 安全性、大容量メモリ、型タグ、複数アロケーション）すべて成功
+  - ビルドシステム：`runtime/native/Makefile` 整備（macOS SDK 対応、AddressSanitizer 統合）
+- ✅ **パニックハンドラ**: `runtime/native/src/panic.c` を実装完了（2025-10-10）
+  - エラーメッセージの stderr 出力（タイムスタンプ、PID、メッセージ）
+  - `exit(1)` による異常終了
+  - Phase 2 向け拡張版 `panic_at` 追加（ファイル名・行番号付き）
+- ⏳ **参照カウント**: `runtime/refcount.c` で RC 操作と型別デストラクタ呼び出しを整備（次のステップ）。
 - **ビルドシステム**: `runtime/Makefile`（`-O2`/`-Wall -Wextra`/`-g`）を用意し、プラットフォーム検出と依存関係を整理。
 - **LLVM 連携**: `compiler/ocaml/src/llvm_gen/codegen.ml` と `abi.ml` でランタイムシンボル宣言・属性設定・リンクフラグを統合（`llvm_attr.ml` + C スタブで `sret` / `byval` の型付き属性を付与）。
 - **テストと検証**: `runtime/native/tests/` と `compiler/ocaml/tests/codegen/` に単体/統合テストを追加し、Valgrind/ASan のジョブを CI に組み込む。

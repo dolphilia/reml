@@ -88,6 +88,57 @@ compiler/ocaml/tests/golden/*.golden
 !compiler/ocaml/tests/golden/simple.golden
 !compiler/ocaml/tests/golden/qualified_patterns.golden
 
+# C/C++ / ランタイム
+# ビルド成果物ディレクトリ
+runtime/native/build/
+runtime/*/build/
+build/
+target/
+
+# C/C++ コンパイル成果物（既に上で *.o, *.a, *.so 等は定義済み）
+*.out
+*.app
+*.i
+*.s
+*.ii
+*.su
+*.idb
+*.pdb
+*.ilk
+*.map
+*.dSYM/
+
+# テスト実行バイナリ
+runtime/native/tests/test_*
+!runtime/native/tests/*.c
+!runtime/native/tests/*.cpp
+!runtime/native/tests/*.h
+
+# 静的解析・カバレッジ
+*.gcda
+*.gcno
+*.gcov
+coverage/
+*.profdata
+*.profraw
+
+# デバッグファイル
+*.dSYM
+*.dwarf
+core
+core.*
+vgcore.*
+
+# Valgrind
+*.valgrind
+valgrind-*.log
+
+# AddressSanitizer / MemorySanitizer
+*.asan
+*.msan
+*.tsan
+*.ubsan
+
 # その他
 .cache/
 *.orig

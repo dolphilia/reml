@@ -148,4 +148,29 @@ void print_i64(int64_t value);
 #define REML_GET_HEADER(ptr) \
     ((reml_object_header_t*)((char*)(ptr) - sizeof(reml_object_header_t)))
 
+/* ========== ユーティリティ関数（テスト用） ========== */
+
+/**
+ * オブジェクトの型タグを設定
+ *
+ * @param ptr オブジェクトへのポインタ（ヘッダの直後）
+ * @param type_tag 設定する型タグ (reml_type_tag_t)
+ */
+void reml_set_type_tag(void* ptr, uint32_t type_tag);
+
+/**
+ * オブジェクトの型タグを取得
+ *
+ * @param ptr オブジェクトへのポインタ（ヘッダの直後）
+ * @return 型タグ (reml_type_tag_t)
+ */
+uint32_t reml_get_type_tag(void* ptr);
+
+#ifdef DEBUG
+/**
+ * アロケーション統計情報を出力（デバッグビルド時のみ）
+ */
+void reml_debug_print_alloc_stats(void);
+#endif
+
 #endif // REML_RUNTIME_H
