@@ -5,14 +5,16 @@
 ## フェーズ状況
 - Phase 1 — Parser & Frontend（完了: 2025-10-06）: [docs/phase1-completion-report.md](docs/phase1-completion-report.md)
 - Phase 2 — Typer MVP（完了: 2025-10-07）: [docs/phase2-completion-report.md](docs/phase2-completion-report.md)
-- Phase 3 — Core IR & LLVM 生成（進行中: Week 11/16）
+- Phase 3 — Core IR & LLVM 生成（✅ **完了: 2025-10-09**）
   - ✅ Week 9-11: 最適化パス完了（定数畳み込み・DCE・パイプライン統合）
-  - 📍 Week 12-16: LLVM IR 生成（次フェーズ）
-  - 完了報告: [docs/phase3-week10-11-completion.md](docs/phase3-week10-11-completion.md)
-  - 引き継ぎ: [docs/phase3-handover.md](docs/phase3-handover.md)
+  - ✅ Week 12-17: LLVM IR 生成完了（型マッピング・ABI・検証パイプライン・関数本体生成）
+  - **M3マイルストーン達成**: [docs/phase3-m3-completion-report.md](docs/phase3-m3-completion-report.md)
+  - Phase 2引き継ぎ: [docs/phase3-to-phase2-handover.md](docs/phase3-to-phase2-handover.md)
+  - 残タスク管理: [docs/phase3-remaining-tasks.md](docs/phase3-remaining-tasks.md)
 
 ## Phase 3 ダッシュボード
-**更新日**: 2025-10-09（Week 15/16）
+**更新日**: 2025-10-09（Week 17完了）
+**ステータス**: ✅ **M3マイルストーン達成 - Phase 3完了**
 
 ### ✅ Week 9-11: Core IR 最適化パス（完了）
 
@@ -414,24 +416,57 @@
 - `scripts/verify_llvm_ir.sh`
   - `llvm-as` / `opt -verify` / `llc` の失敗時に 2/3/4 で終了するよう修正し、`Verify` モジュールのエラーマッピングを正規化
 
-**フォローアップ**:
+---
 
-- `tests/llvm-ir/golden/*.ll.golden` を継続的に拡張し、分岐・再帰・多引数呼び出しのカバレッジを広げる
-- ループ・効果マーカーを含む Core IR サンプルを追加し、`pending_phis` の検証ケースを拡充
+## ✅ Phase 3完了サマリー（2025-10-09）
 
-### 記録ルール
-- 週次で本セクションを更新
-- 詳細な議事録: [docs/phase3-handover.md](docs/phase3-handover.md), [docs/technical-debt.md](docs/technical-debt.md)
-- 測定値: [docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md](../../docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md)
+### M3マイルストーン達成
 
-### 週次更新テンプレート
-```text
-Week NN（YYYY-MM-DD 更新）
-- 完了: ...
-- 進行中: ...
-- 次に着手: ...
-- ブロッカー: ...
-```
+**達成条件**:
+
+- ✅ C1: 基本関数定義のLLVM IR生成完了
+- ✅ C2: LLVM IR検証パイプライン完了
+- ✅ C3: `--emit-ir` CLI統合
+
+**実装統計**:
+
+- 総コード行数: 約13,000行（Core IR 5,642行 + LLVM生成 7,300行）
+- 実装ファイル: 19ファイル（Core IR 7 + LLVM生成 12）
+- テスト成功率: 100%（143/143テスト成功）
+  - Core IR最適化: 42件
+  - LLVM型マッピング: 35件
+  - ABI判定: 61件
+  - LLVM IR検証: 2件
+  - ゴールデンテスト: 3件
+
+**技術的成果**:
+
+- LLVM 18完全対応（opaque pointer、型マッピング、検証パイプライン）
+- System V ABI準拠実装（16バイト閾値、sret/byval属性）
+- CI/CD統合完了（GitHub Actions、自動検証）
+
+**詳細**: [docs/phase3-m3-completion-report.md](docs/phase3-m3-completion-report.md)
+
+### Phase 2への引き継ぎ
+
+**High優先度タスク**:
+
+- H1: 型マッピングのTODO解消（ADT/ジェネリック/DataLayoutサイズ計算）
+- H2: Windows x64 ABI検証（8バイト閾値）
+- H3: ゴールデンテストの拡充（ネスト制御フロー、クロージャ、パターンマッチ）
+- H4: CFG線形化の完成
+
+**Medium優先度タスク**:
+
+- M1-M9: 配列リテラル、Unicode XID、Switch文、レコード、配列アクセス、型クラス辞書、診断強化
+
+**技術的負債**:
+
+- LLVM 18型付き属性のバインディング制限（回避策実装済み、Phase 2で完全対応）
+
+**詳細**: [docs/phase3-to-phase2-handover.md](docs/phase3-to-phase2-handover.md), [docs/phase3-remaining-tasks.md](docs/phase3-remaining-tasks.md)
+
+---
 
 ## 参照ドキュメント
 
@@ -440,6 +475,7 @@ Week NN（YYYY-MM-DD 更新）
 - 完了済み: [docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md](../../docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md) （Week 9-11）
 - 完了報告: [docs/phase3-week10-11-completion.md](docs/phase3-week10-11-completion.md)
 - 引き継ぎと統計: [docs/phase3-handover.md](docs/phase3-handover.md), [docs/technical-debt.md](docs/technical-debt.md)
+- **残タスク管理**: [docs/phase3-remaining-tasks.md](docs/phase3-remaining-tasks.md) - Phase 3時点の残タスクを優先度別に分類
 - 測定値とメトリクス: [docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md](../../docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md)
 
 ### 実装ガイド
