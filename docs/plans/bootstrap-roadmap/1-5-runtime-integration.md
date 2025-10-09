@@ -29,6 +29,11 @@
   - 観測用ユーティリティ: `void print_i64(int64_t value)`
 - 拡張 API（`runtime_init` 等）は将来の Phase 2 以降で検討し、本フェーズでは設計ノートに TODO として記録
 
+**シグネチャ注意事項**:
+- **panic の実装形式**: Phase 1 では LLVM IR 側で `declare void @panic(ptr, i64) noreturn` として FAT ポインタ形式（文字列の `{ptr, len}` 表現）で宣言される。C 実装側は `panic(const char* msg)` として受け取り、NULL 終端文字列として扱う。長さパラメータ（i64）は実装側で無視可能。
+- **mem_free および print_i64**: これらはコンパイラから直接呼ばれず、実装内部（dec_ref, デバッグ出力等）で使用される。LLVM IR での明示的な宣言は不要。
+- **型付き属性との連携**: `sret`/`byval` 属性は `compiler/ocaml/src/llvm_gen/llvm_attr.ml` + C スタブ経由で生成される。mem_alloc が返すポインタは 8 バイト境界に調整済みであり、ABI 規約に準拠する。
+
 1.2. **データ構造定義**
 - ヒープオブジェクトヘッダ: `{ uint32_t refcount; uint32_t type_tag; }`（RC ベース、型タグは `docs/notes/llvm-spec-status-survey.md` の分類に合わせる）
 - 型タグの割り当て規則と `panic` 診断コードとの対応表

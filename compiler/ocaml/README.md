@@ -22,8 +22,14 @@
 - ランタイム API と RC モデルのテスト結果・計測値を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に記録し、`compiler/ocaml/docs/` に検証ノートを残す。
 
 ### 作業トラック（詳細は計画書 §1〜§8 を参照）
-- **API 定義**: `runtime/reml_runtime.h` を作成し、関数シグネチャ・ヘッダ構成・型タグ規約を決める。
-- **メモリアロケータ**: `runtime/mem_alloc.c`（malloc ベース、8 バイト境界調整、デバッグフック）を実装。
+- ✅ **API 定義**: `runtime/native/include/reml_runtime.h` を作成し、関数シグネチャ・型タグ規約を確定（2025-10-10 完了）
+  - 6 関数の最小 API 定義完了：`mem_alloc`, `mem_free`, `inc_ref`, `dec_ref`, `panic`, `print_i64`
+  - 型タグ enum 定義（`REML_TAG_INT` 〜 `REML_TAG_ADT`）、9 種類の基本型を Phase 1 でサポート
+  - ヒープオブジェクトヘッダ構造 `reml_object_header_t` の定義（refcount + type_tag、8 バイト）
+  - コンパイラ側との整合確認：`panic` のシグネチャを FAT ポインタ形式 `(ptr, i64)` に統一
+  - ディレクトリ構造整備：`runtime/native/{include,src,tests}/` を作成
+  - 簡易実装例として `runtime/native/src/print_i64.c` を追加し、ヘッダのコンパイル妥当性を検証済み
+- ⏳ **メモリアロケータ**: `runtime/native/src/mem_alloc.c`（次のステップ: malloc ベース、8 バイト境界調整、デバッグフック）を実装。
 - **参照カウント**: `runtime/refcount.c` で RC 操作と型別デストラクタ呼び出しを整備。
 - **パニックハンドラ**: `runtime/panic.c` で診断フォーマットと終了処理 (`exit(1)`) を実装。
 - **ビルドシステム**: `runtime/Makefile`（`-O2`/`-Wall -Wextra`/`-g`）を用意し、プラットフォーム検出と依存関係を整理。
