@@ -18,6 +18,7 @@ open Types
 open Type_mapping
 open Target_config
 open Abi
+open Llvm_attr
 
 (* ========== テストユーティリティ ========== *)
 
@@ -465,6 +466,22 @@ let test_byval_attribute () =
   let _ir_string_multi = Llvm.string_of_llvalue test_fn_multi in
   assert_true "byval 属性が複数引数の第2引数に設定されている（関数が有効）" true
 
+let test_llvm_attr_fallback () =
+  Printf.printf "\n=== LLVM 属性フォールバックテスト ===\n";
+  let llctx = get_llcontext test_ctx in
+  let llty = reml_type_to_llvm test_ctx (TTuple [ty_i64; ty_i64; ty_i64]) in
+
+  (* 未知の属性名は文字列属性にフォールバックする *)
+  let fallback_name = "__reml_unknown_attr__" in
+  let fallback_attr = create_attr_with_fallback fallback_name llctx llty in
+  let fallback_kind, fallback_value =
+    match Llvm.repr_of_attr fallback_attr with
+    | Llvm.AttrRepr.String (kind, value) -> kind, value
+    | _ -> ("<unexpected>", "<unexpected>")
+  in
+  assert_true "未知属性は文字列属性として生成される" (fallback_kind = fallback_name);
+  assert_true "フォールバック属性の値は空文字列" (fallback_value = "")
+
 (* ========== デバッグ関数テスト ========== *)
 
 let test_debug_string_functions () =
@@ -502,6 +519,7 @@ let () =
   test_classify_argument_sysv ();
   test_sret_attribute ();
   test_byval_attribute ();
+  test_llvm_attr_fallback ();
   test_debug_string_functions ();
 
   (* 統計出力 *)

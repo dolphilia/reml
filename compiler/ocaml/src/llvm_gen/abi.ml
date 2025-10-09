@@ -169,10 +169,7 @@ let classify_struct_argument target ctx ty =
  *)
 let add_sret_attr llctx llvm_fn ret_ty param_index =
   let attr_kind = Llvm.AttrIndex.Param param_index in
-  let sret_attr =
-    try Llvm_attr.create_sret_attr llctx ret_ty
-    with Llvm.UnknownAttribute _ -> Llvm.create_string_attr llctx "sret" ""
-  in
+  let sret_attr = Llvm_attr.create_sret_attr llctx ret_ty in
   Llvm.add_function_attr llvm_fn sret_attr attr_kind
 
 (** byval属性を関数引数に追加
@@ -187,10 +184,7 @@ let add_sret_attr llctx llvm_fn ret_ty param_index =
  *)
 let add_byval_attr llctx llvm_fn arg_ty param_index =
   let attr_kind = Llvm.AttrIndex.Param param_index in
-  let byval_attr =
-    try Llvm_attr.create_byval_attr llctx arg_ty
-    with Llvm.UnknownAttribute _ -> Llvm.create_string_attr llctx "byval" ""
-  in
+  let byval_attr = Llvm_attr.create_byval_attr llctx arg_ty in
   Llvm.add_function_attr llvm_fn byval_attr attr_kind
 
 (* ========== デバッグ・診断関数 ========== *)
