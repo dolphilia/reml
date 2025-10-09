@@ -114,7 +114,7 @@ main() {
 
   # ステップ2: opt -verify（検証パス）
   echo "[2/3] opt -verify: LLVM 検証パス実行..."
-  if ! "$OPT" -verify "$temp_bc" -o "$temp_bc" 2>&1; then
+  if ! "$OPT" -passes=verify -disable-output "$temp_bc" 2>&1; then
     error "opt -verify が失敗しました（終了コード: 3）"
   fi
   echo "✓ opt -verify 成功"

@@ -42,7 +42,7 @@ val verify_llvm_ir_file : string -> verification_result
  * @param span ソースコード位置（オプション）
  * @return 診断メッセージ
  *)
-val error_to_diagnostic : verification_error -> Ast.span option -> Diagnostic.t
+val error_to_diagnostic : verification_error -> Diagnostic.span option -> Diagnostic.t
 
 (** 検証エラーを文字列化
  *

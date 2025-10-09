@@ -3,8 +3,6 @@
  * このモジュールは生成されたLLVM IRを検証し、エラーを診断形式で報告する。
  *)
 
-open Ast
-
 (* ========== エラー型 ========== *)
 
 type verification_error =
@@ -33,20 +31,27 @@ let temp_file_path prefix suffix =
 
 (** 検証スクリプトパス取得 *)
 let get_verify_script_path () =
-  (* プロジェクトルートからの相対パス *)
-  let script_path = "compiler/ocaml/scripts/verify_llvm_ir.sh" in
-
-  (* カレントディレクトリからの相対パスを試行 *)
-  if Sys.file_exists script_path then
-    script_path
-  else
-    (* 代替: src/llvm_gen からの相対パス *)
-    let alt_path = "../../scripts/verify_llvm_ir.sh" in
-    if Sys.file_exists alt_path then
-      alt_path
+  let rec search dir depth =
+    if depth > 8 then
+      None
     else
-      (* エラー: スクリプトが見つからない *)
-      failwith (Printf.sprintf "検証スクリプトが見つかりません: %s" script_path)
+      let candidate_scripts = [
+        Filename.concat dir "scripts/verify_llvm_ir.sh";
+        Filename.concat dir "compiler/ocaml/scripts/verify_llvm_ir.sh";
+      ] in
+      match List.find_opt Sys.file_exists candidate_scripts with
+      | Some path -> Some path
+      | None ->
+          let parent = Filename.dirname dir in
+          if parent = dir then
+            None
+          else
+            search parent (depth + 1)
+  in
+  match search (Sys.getcwd ()) 0 with
+  | Some path -> path
+  | None ->
+      failwith "検証スクリプトが見つかりません: compiler/ocaml/scripts/verify_llvm_ir.sh"
 
 (* ========== 検証実装 ========== *)
 
@@ -115,6 +120,24 @@ let verify_llvm_ir llmodule =
 
   result
 
+(* ========== ユーティリティ ========== *)
+
+(** List.take 互換実装（OCaml 4.14 対応） *)
+let rec take n lst =
+  if n <= 0 then []
+  else match lst with
+    | [] -> []
+    | x :: xs -> x :: take (n - 1) xs
+
+(* String.starts_with 互換実装（OCaml < 4.13） *)
+let string_starts_with ~prefix str =
+  let prefix_len = String.length prefix in
+  let str_len = String.length str in
+  if prefix_len > str_len then
+    false
+  else
+    String.sub str 0 prefix_len = prefix
+
 (* ========== 診断変換 ========== *)
 
 (** 検証エラーを文字列化 *)
@@ -134,9 +157,15 @@ let error_to_diagnostic error span_opt =
     | ScriptError _ -> "E9004"
   in
   let message = string_of_error error in
+  let dummy_loc = Diagnostic.{
+    filename = "<unknown>";
+    line = 0;
+    column = 0;
+    offset = 0;
+  } in
   let span = match span_opt with
     | Some s -> s
-    | None -> { file = "<unknown>"; start_line = 0; start_col = 0; end_line = 0; end_col = 0 }
+    | None -> { Diagnostic.start_pos = dummy_loc; end_pos = dummy_loc }
   in
 
   (* LLVM エラー出力から詳細情報を抽出（簡易実装） *)
@@ -144,37 +173,22 @@ let error_to_diagnostic error span_opt =
     | VerifyError msg when String.length msg > 0 ->
         let lines = String.split_on_char '\n' msg in
         let relevant_lines = List.filter (fun line ->
-          String.length line > 0 && not (String.starts_with ~prefix:"[" line)
+          String.length line > 0 && not (string_starts_with ~prefix:"[" line)
         ) lines in
         List.map (fun line ->
-          { Diagnostic.message = line; span = span }
-        ) (List.take 5 relevant_lines)  (* 最大5行まで *)
+          (Some span, line)  (* notes は (span option * string) list 型 *)
+        ) (take 5 relevant_lines)  (* 最大5行まで *)
     | _ -> []
   in
 
   {
     Diagnostic.severity;
-    code;
+    severity_hint = None;
+    domain = Some Diagnostic.CLI;
+    code = Some code;
     message;
     span;
+    expected_summary = None;
     notes;
-    fixit = [];  (* LLVM エラーには自動修正提案なし *)
+    fixits = [];  (* LLVM エラーには自動修正提案なし *)
   }
-
-(* ========== ユーティリティ ========== *)
-
-(** List.take 互換実装（OCaml 4.14 対応） *)
-let rec take n lst =
-  if n <= 0 then []
-  else match lst with
-    | [] -> []
-    | x :: xs -> x :: take (n - 1) xs
-
-(* String.starts_with 互換実装（OCaml < 4.13） *)
-let starts_with ~prefix str =
-  let prefix_len = String.length prefix in
-  let str_len = String.length str in
-  if prefix_len > str_len then
-    false
-  else
-    String.sub str 0 prefix_len = prefix

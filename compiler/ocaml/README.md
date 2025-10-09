@@ -266,10 +266,10 @@
 
 **実装統計**:
 
-- 総コード行数: 約600行（verify.ml 約250行 + test_llvm_verify.ml 約350行）
-- 実装ファイル: 5ファイル（verify.ml/mli, test_llvm_verify.ml, scripts/verify_llvm_ir.sh, CI設定）
+- 総コード行数: 約380行（verify.ml 約240行 + test_llvm_verify.ml 約120行）
+- 実装ファイル: 4ファイル（verify.ml/mli, test_llvm_verify.ml, scripts/verify_llvm_ir.sh）
 - ビルド状態: ✅ 成功（警告なし）
-- テスト: 7/7 成功（正常ケース）
+- テスト: 2/2 成功（正常ケース + エラーケース）
 
 **完了項目**:
 
@@ -286,15 +286,11 @@
    - 4種類の検証エラー型（E9001-E9004）
 
 3. **テストスイート** (`tests/test_llvm_verify.ml`)
-   - 正常ケーステスト（7件）:
-     - 基本的な関数（引数なし・戻り値i64）
-     - 関数呼び出し（引数渡し・型整合性）
-     - 条件分岐（if式・φノード）
-     - 算術演算（プリミティブ演算子）
-     - 空関数（境界値: void戻り値）
-     - 複数ブロック（CFG検証・ネスト制御フロー）
-     - let束縛（変数代入・スコープ）
-   - 全テスト成功（7/7）
+   - 正常ケース:
+     - LLVM API で組み立てた `const42` 関数モジュールを検証し、`verify_llvm_ir` が成功を返すことを確認
+   - エラーケース:
+     - 故意に壊した `.ll` ファイルを `verify_llvm_ir_file` に渡し、`AssembleError` が返ることを検証
+   - 2ケースとも成功
 
 4. **CI統合** (`.github/workflows/ocaml-dune-test.yml`)
    - LLVM 18ツールチェーン自動インストール（ubuntu-latest）
@@ -310,10 +306,9 @@
 
 **検証結果**:
 
-- llvm-as: 全7件のテストで構文エラーなし
-- opt -verify: SSA形式・型整合性・基本ブロック構造が妥当
-- llc: x86_64 Linux向けオブジェクトファイル生成成功
-- CI: GitHub Actions で自動検証パイプライン実行成功
+- llvm-as: 正常ケースで成功、エラーケースでは想定どおり失敗コード(2)を返す
+- opt -verify / llc: 正常ケースで完走、エラーケースでは実行前に停止
+- CI: GitHub Actions で自動検証パイプライン実行成功（既存設定を継続利用）
 
 **技術的詳細**:
 
@@ -337,9 +332,17 @@
    - Windows x64向け検証（`x86_64-pc-windows-msvc`）
    - ARM64向け検証（クロスコンパイル環境）
 
+### ✅ Week 16: CLIフラグ統合確認（完了: 2025-10-09）
+
+**対象**: `--emit-ir`, `--emit-bc`, `--verify-ir`, `--out-dir`, `--target`
+
+- `src/main.ml` の CLI パイプラインを再確認し、`--emit-ir`/`--verify-ir` 使用時に型推論 → Core IR → LLVM 生成 → 検証が直列で実行されることを手動確認
+- `tests/test_llvm_verify.ml` を再構成し、`Verify` モジュール経由で検証スクリプトが呼び出される経路を最小ケースでカバー
+- `opam exec -- dune build` で CLI を含む全バイナリのコンパイルが成功することを確認
+- フォローアップ: CLIフラグ使用時の出力先検証（`--out-dir` と組み合わせたゴールデンテスト）は Week 16 後半で追加予定
+
 **次のステップ**:
 
-- Week 16: CLI統合（`--emit-ir` + `--verify-ir`フラグ）
 - Week 16: ゴールデンテストの追加（`examples/` → LLVM IR期待値）
 - Week 16: M3マイルストーン達成報告書作成
 

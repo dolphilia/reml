@@ -1,0 +1,19 @@
+// Test file for CLI LLVM IR generation (Phase 3 Week 16)
+//
+// このファイルは --emit-ir, --emit-bc, --verify-ir の動作確認に使用します。
+
+let x = 42
+
+fn double(n) = n * 2
+
+let result = double(x)
+
+fn add(a, b) = a + b
+
+let sum = add(10, 20)
+
+fn factorial(n) -> i64 {
+  if n <= 1 then 1 else n * factorial(n - 1)
+}
+
+let fact5 = factorial(5)
