@@ -43,3 +43,14 @@
 ---
 
 本章は計画期間中に常に更新される生きたリスク台帳として扱う。未解決のリスクが存在する限り、次フェーズへ進む前に状態をレビューし、必要なタスクを各フェーズ文書（`1-x`〜`4-x` 系列）へ反映させる。
+
+## 0.4.6 現在のリスク登録
+- 登録日: 2025-10-10
+- タイトル: Debian sysroot アーカイブのハッシュ未確定
+- カテゴリ: 互換性
+- 詳細: macOS → Linux x86_64 クロスコンパイルで使用する `tooling/toolchains/cache/debian-bookworm-x86_64.tar.zst` の実体がリポジトリ内に存在せず、SHA-256 を算出できない。`tooling/toolchains/versions.toml` および `tooling/toolchains/checksums.txt` の値が `PENDING` のままであり、ハッシュ検証を行えない状態。
+- 対応案: アーカイブを取得後に `shasum -a 256 tooling/toolchains/cache/debian-bookworm-x86_64.tar.zst` を実行し、`versions.toml` と `tooling/toolchains/checksums.txt` を更新。更新結果をレビューし、`docs/plans/bootstrap-roadmap/1-5-runtime-integration.md` で共有する。
+- 期限: 2025-10-17
+- 状態: Open
+- 関連フェーズ: Phase 1
+- 参照: `tooling/toolchains/versions.toml`, `tooling/toolchains/checksums.txt`, `docs/plans/bootstrap-roadmap/1-5-runtime-integration.md` §10

@@ -62,6 +62,7 @@
 - `runtime/native/` の既存ファイル構成と CI スクリプト (`compiler/ocaml/scripts/verify_llvm_ir.sh` など) を確認し、ランタイム検証を追加する際の差分影響を把握する。
 - Docker ベースの Linux 検証フロー（`scripts/docker/build-runtime-container.sh`, `scripts/docker/run-runtime-tests.sh`, `scripts/docker/smoke-linux.sh`）を実行し、CI で利用するタグとローカル環境の整合を取る。
 - 計測結果を追記するための記録先（`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`）とリスク登録先（`docs/plans/bootstrap-roadmap/0-4-risk-handling.md`）のフォーマットを再確認する。
+- macOS での Linux x86_64 クロスビルド手順（`docs/plans/bootstrap-roadmap/1-5-runtime-integration.md` §10）を検討し、必要なツールチェーン・sysroot・QEMU 実行環境の準備可否を確認する。
 
 ## 関連ドキュメント
 - **計画書**: `docs/plans/bootstrap-roadmap/IMPLEMENTATION-GUIDE.md`, `docs/plans/bootstrap-roadmap/1-0-phase1-bootstrap.md`, `docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md`, `docs/plans/bootstrap-roadmap/1-5-runtime-integration.md`

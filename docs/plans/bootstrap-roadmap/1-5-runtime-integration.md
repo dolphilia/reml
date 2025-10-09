@@ -215,17 +215,75 @@
 - コンテナ更新後は `scripts/docker/smoke-linux.sh` を追加し、Phase 1 のスモークテストを 5 分以内で完了できるか測定する
 - `docs/plans/bootstrap-roadmap/1-7-linux-validation-infra.md` と同期し、CI ジョブの `container` タグ変更時にレビューチェック項目を設ける
 
+### 10. macOS → Linux x86_64 クロスコンパイル環境整備（15-16週目）
+**担当領域**: ネイティブ macOS からのクロスビルドとエミュレーションテスト
+
+**依存関係と準備**
+- `docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md` で定義したターゲット設定と DataLayout を前提とし、`compiler/ocaml/src/llvm_gen/target_config.ml` の出力と整合させる。
+- `docs/notes/cross-compilation-spec-update-plan.md` の Phase A/B に沿って `RunConfigTarget`・`TargetCapability` を維持し、ツールチェーン側のメタデータと突き合わせる。
+- `compiler/ocaml/docs/technical-debt.md` の High 優先度項目（型マッピング TODO、CFG 線形化）を並行解消し、クロスビルド検証での偽陽性を避ける。
+
+**完了基準**
+- macOS (ARM64/Intel) で `scripts/toolchain/prepare-linux-x86_64.sh` → `scripts/cross/run-linux-qemu.sh` の順に実行し、`examples/hello.reml` 相当の出力が QEMU 上で一致する。
+- クロスコンパイル成果物のメタデータ (`RunArtifactMetadata`) が `x86_64-unknown-linux-gnu` / `e-m:e-p:64:64-f64:64:64-v128:128:128-a:0:64` と一致し、`0-3-audit-and-metrics.md` に記録される。
+- `.github/workflows/ocaml-dune-test.yml` の macOS ジョブでクロスビルド・QEMU 実行を 10 分以内に完走し、`tooling/toolchains/metrics.json` が更新される。
+
+10.1. **クロスツールチェーン選定と取得**
+- LLVM/Clang 既存パイプラインを活用し、`clang --target=x86_64-unknown-linux-gnu` と `ld.lld` を既定とする。Homebrew から `llvm@18`, `lld`, `gnu-tar`, `coreutils`, `pkg-config` を取得し、バージョンを `tooling/toolchains/versions.toml`（新設）で固定する。
+- Debian 12 (bookworm) の `sysroot` アーカイブを `tooling/toolchains/cache/debian-bookworm-x86_64.tar.zst` として保存し、解凍後に `usr/lib/x86_64-linux-gnu` などを `sysroot/` 以下に再配置する。glibc バージョンは `2.37` を想定し、更新時は `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に差分を登録する。
+- ツール配置先: `tooling/toolchains/x86_64-unknown-linux-gnu/{bin,lib,sysroot,share}` を階層化し、`bin/x86_64-unknown-linux-gnu-*` 形式でシンボリックリンクを張る。PATH 汚染を避けるため `env.sh` に `export REML_TOOLCHAIN_HOME=$(pwd)/tooling/toolchains/x86_64-unknown-linux-gnu` を記録する。
+
+| アプローチ | 主な構成 | 長所 | 短所 | 運用コスト評価 |
+| --- | --- | --- | --- | --- |
+| **LLVM/Clang + Debian sysroot**（採用） | Homebrew `llvm` + `lld`, Debian 12 glibc/sysroot tarball, gnu binutils ラッパ | 既存 CodeGen/verify フローと整合、Clang ドライバの挙動をそのまま使える、GLIBC 更新手順が確立済み | sysroot の定期更新が必要、glibc バージョン差異を追跡する負荷 | 🟢 低〜中（四半期更新で管理可能） |
+| Zig cc バンドル | `zig` 提供のクロスコンパイル機能（libc, ld 一体） | 単一バイナリで依存が少ない、sysroot 準備不要 | Clang front-end と警告挙動が異なる、Zig リリースサイクルに依存 | 🟠 中（リリース差分検証が必要） |
+| crosstool-ng ビルド | 独自にビルドした GCC/glibc toolchain | フルコントロール、glibc/ld のバリエーションを細かく調整可能 | 構築時間・学習コストが高い、LLVM 主体のフローと二重化 | 🔴 高（メンテナンス負荷が大きい） |
+
+> **採用方針**: Phase 1 の LLVM ベースパイプラインを最優先するため、`clang --target=x86_64-unknown-linux-gnu` + Debian sysroot 構成を標準ツールチェーンとして採用する。Zig cc・crosstool-ng はバックアップ案として保持し、問題発生時に検討する。選定理由と比較結果は `docs/notes/llvm-spec-status-survey.md` に追記する。
+
+10.2. **ツールチェーン構築スクリプト**
+- `scripts/toolchain/prepare-linux-x86_64.sh` を作成し、Homebrew 経由（オンライン）、アーカイブ展開（オフライン）、事前キャッシュ利用の 3 モードに対応させる。引数で `--brew`, `--archive`, `--cache` を切り替え、再実行時は idempotent になるよう `STAMP` ファイルを配置する。
+- ダウンロード済みアーカイブのハッシュを `tooling/toolchains/checksums.txt` にまとめ、`shasum -a 256 --check` を CI で毎回検証する。整合性エラーは `exit 1` し、`docs/plans/bootstrap-roadmap/0-4-risk-handling.md` にイベントを記録する。
+- `binutils` 相当（`x86_64-linux-gnu-ar`, `ld`, `ranlib`, `strip`, `objcopy`, `objdump`, `readelf`）を macOS 用に同梱し、`PATH`／`LLVM_CONFIG` の衝突を避けるエイリアスを `tooling/toolchains/env.sh` に定義する。既存の `llvm-config` とは `REML_LLVM_HOME` 変数で切り替える。
+- 構築後に `tooling/toolchains/README.md`（新設）へ利用手順・依存パッケージ・確認コマンド（`clang --target=... -v`、`ld.lld --version`、`readelf --help`）を記載し、サポート対象 macOS バージョン（11 以降）と Rosetta 2 の扱いを明記する。
+
+10.3. **クロスリンク & ランタイムビルド検証**
+- `make CROSS=1` で `llc` 生成物から ELF バイナリを生成できるよう `runtime/Makefile` にオプションを追加し、`AR`, `LD`, `RANLIB`, `STRIP`, `OBJCOPY` を `$(REML_TOOLCHAIN_HOME)/bin` 側に切り替える。`make CROSS=1 check` でランタイム単体テストが sysroot 上の glibc とリンクできることを確認する。
+- `compiler/ocaml/scripts/verify_llvm_ir.sh` に `--cross` フラグを追加し、`llc -mtriple=x86_64-unknown-linux-gnu` → `ld.lld` → `objcopy --set-section-flags` のフローを実行する。実行ログは `artifacts/cross/verify.log` として保存し、CI ではアーティファクト化する。
+- サンプルプログラムをクロスビルドして `tooling/toolchains/examples/hello-linux` として保存し、手順書から参照する。成功時の `readelf -h` 出力を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に貼り付け、エントリポイント・ABI を固定する。
+- 生成物の依存ライブラリを `readelf -d`/`ldd`（QEMU chroot 内）で確認し、必要に応じて `sysroot/lib` へシンボリックリンクを追加する。glibc 以外の依存が発生した場合は `tooling/toolchains/patches/` に差分を記録する。
+
+10.4. **QEMU によるエミュレーションテスト**
+- `qemu-x86_64` を Homebrew 経由でインストールし（`brew install qemu`）、`scripts/cross/install-qemu.sh` でバージョンを固定する。ARM64 macOS では Rosetta を経由せず動作することを `tooling/toolchains/README.md` に記載する。
+- `scripts/cross/run-linux-qemu.sh` を追加し、`dune build` → クロスリンク → QEMU 実行 → 期待出力検証を自動化する。`--snapshot` オプションで QEMU イメージを共有し、初回のみ `debootstrap` した `images/debian-bookworm.qcow2` を利用する。
+- QEMU 実行時のライブラリ探索 (`LD_LIBRARY_PATH`, `QEMU_LD_PREFIX`) を `sysroot` と同期させ、CI での再現手順を `tooling/ci/README.md` に追記する。`run-linux-qemu.sh --dump-env` で使用環境をログに残す。
+- パフォーマンス測定（起動時間、完了時間、QEMU exit code）を `tooling/toolchains/metrics.json` に記録し、`0-3-audit-and-metrics.md` へ転記する。基準値は 5 秒以内の起動、15 秒以内の完了を目安とする。
+
+10.5. **CI・ドキュメント連携**
+- `.github/workflows/ocaml-dune-test.yml` に `macos-latest` クロスビルドジョブを追加し、`toolchains` キャッシュ（`actions/cache`）と QEMU 実行を組み合わせた smoke テストを行う。CI 落下時は `cache: restore-keys` を利用して差分診断を高速化する。
+- `compiler/ocaml/README.md` の「直近の準備チェックリスト」にクロスツールチェーン導入手順と QEMU スモークテスト手順を追記し、フェーズ進捗レポートには `Runtime Cross Build Status: GREEN/AMBER/RED` を追加する。
+- クロスビルド手順を `docs/guides/llvm-integration-notes.md` §6 と `docs/notes/cross-compilation-spec-update-plan.md` に反映し、Docker ベースの運用（§9）との役割分担を明文化する。ローカル実行と CI 実行の差異は表形式で整理する。
+- 失敗時のトリアージフロー（ツールチェーン破損、sysroot ドリフト、QEMU 互換性）を `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に登録し、`Severity` と `Mitigation` を記入する。トリアージ担当は Phase 1 チーム（macOS）と Phase 1-7 Linux 検証チームで二重化する。
+
+10.6. **クロス環境監査と継続的メンテナンス**
+- 月次で `scripts/toolchain/audit-linux-x86_64.sh` を実行し、`clang --version`・`ld.lld --version`・`readelf -V`・glibc バージョンを収集して `tooling/toolchains/audit.log` に追記する。結果は `0-3-audit-and-metrics.md` にサマリを記録する。
+- ツールチェーン更新時は `docs/notes/llvm-spec-status-survey.md` のクロスコンパイルセクションに差分を追記し、`docs/notes/cross-compilation-spec-intro.md` にリンクする。互換性が崩れた場合は `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` で `Severity: High` として管理する。
+- `tooling/toolchains/versions.toml` を基準に Renovate/Dependabot で月次チェックを行い、更新候補が出た場合は `docs/plans/bootstrap-roadmap/IMPLEMENTATION-GUIDE.md` の週次レビュー項目に追加する。
+- クロスビルド計測値（ビルド時間、elf サイズ、QEMU 実行時間）は Phase 3 のセルフホスト移行指標として `docs/plans/bootstrap-roadmap/1-7-linux-validation-infra.md` に転記し、教訓を次フェーズへフィードバックする。
+
 ## 成果物と検証
 - `runtime/` ディレクトリにソースコードとビルド設定が追加され、`make runtime` や `dune build @runtime` が成功。
 - RC テストでリークゼロ、ダングリング検出ゼロを確認し、結果を `0-3-audit-and-metrics.md` に記録。
 - CLI で `--link-runtime` オプションが利用可能となり、生成バイナリが x86_64 Linux 上で実行できる。
 - `tooling/ci/docker/bootstrap-runtime.Dockerfile` に基づくコンテナを `scripts/docker/run-runtime-tests.sh` で起動し、CI と同一手順でのビルド・検証が成功する。
+- macOS 環境で `scripts/toolchain/prepare-linux-x86_64.sh` → `scripts/cross/run-linux-qemu.sh` を実行し、クロス生成バイナリが QEMU 上で期待通り動作する。
 
 ## リスクとフォローアップ
 - macOS 等で開発時にクロスビルドが必要になるため、Docker イメージまたは cross toolchain の利用手順を `docs/notes/llvm-spec-status-survey.md` に共有。
 - RC のオーバーヘッドが大きい場合に備え、計測値を Phase 3 のメモリ管理戦略検討へフィードバック。
 - ランタイム API が今後拡張されることを想定し、ヘッダにバージョンフィールドと互換性ポリシーを記載しておく。
 - Docker ベースイメージの脆弱性や LLVM バージョン差異を検知するため、月次で `docker scout cves`（もしくは `trivy`）を実行し、重大度 High 以上は `0-4-risk-handling.md` に登録してホットフィックスイメージを発行する。
+- クロスツールチェーンの sysroot 更新や QEMU のバージョンドリフトでビルドが不安定化する可能性があるため、`tooling/toolchains/metrics.json` の更新トリガとロールバック手順を `0-4-risk-handling.md` に明記してメンテナンス負荷を可視化する。
 
 ## 参考資料
 - [1-0-phase1-bootstrap.md](1-0-phase1-bootstrap.md)
