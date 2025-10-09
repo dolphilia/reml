@@ -197,7 +197,133 @@ let declare_runtime_functions ctx =
   let panic_ty = Llvm.function_type void_ty [| ptr_ty; i64_ty |] in
   let panic = Llvm.declare_function "panic" panic_ty ctx.llmodule in
   Llvm.add_function_attr panic (Llvm.create_enum_attr ctx.llctx "noreturn" 0L) Llvm.AttrIndex.Function;
-  Hashtbl.replace ctx.fn_map "panic" panic
+  Hashtbl.replace ctx.fn_map "panic" panic;
+
+  (* print_i64: (i64) -> void *)
+  let print_i64_ty = Llvm.function_type void_ty [| i64_ty |] in
+  let print_i64 = Llvm.declare_function "print_i64" print_i64_ty ctx.llmodule in
+  Hashtbl.replace ctx.fn_map "print_i64" print_i64
+
+(* ========== ランタイムヘルパー関数 ========== *)
+
+(** mem_alloc を呼び出してヒープメモリを割り当てる
+ *
+ * @param ctx コードジェネレーションコンテキスト
+ * @param size_bytes 割り当てるサイズ（バイト数）
+ * @param type_tag 型タグ (REML_TAG_* の値)
+ * @return 割り当てられたメモリへのポインタ（ヘッダの直後）
+ *
+ * Note: Phase 1-5 の実装完了時に使用されるため、現時点では未使用警告を抑制
+ *)
+let call_mem_alloc ctx size_bytes type_tag =
+  let i64_ty = Llvm.i64_type ctx.llctx in
+  let i32_ty = Llvm.i32_type ctx.llctx in
+  let ptr_ty = Llvm.pointer_type ctx.llctx in
+
+  (* mem_alloc を取得 *)
+  let mem_alloc =
+    match Hashtbl.find_opt ctx.fn_map "mem_alloc" with
+    | Some fn -> fn
+    | None -> codegen_error "mem_alloc not declared"
+  in
+
+  (* mem_alloc(size) を呼び出し *)
+  let size_val = Llvm.const_int i64_ty size_bytes in
+  let mem_alloc_ty = Llvm.function_type ptr_ty [| i64_ty |] in
+  let ptr = Llvm.build_call mem_alloc_ty mem_alloc [| size_val |] "alloc_tmp" ctx.builder in
+
+  (* 型タグを設定（reml_set_type_tag相当の処理）*)
+  (* ヘッダは mem_alloc が初期化するが、型タグは呼び出し側で設定 *)
+  (* ヘッダ構造: {uint32 refcount, uint32 type_tag} = 8 bytes *)
+  (* type_tag オフセット = 4 bytes *)
+  let header_ptr = Llvm.build_in_bounds_gep ptr_ty ptr
+    [| Llvm.const_int i64_ty (-8) |] "header_ptr" ctx.builder in
+  let type_tag_ptr = Llvm.build_in_bounds_gep ptr_ty header_ptr
+    [| Llvm.const_int i64_ty 4 |] "type_tag_ptr" ctx.builder in
+  let type_tag_val = Llvm.const_int i32_ty type_tag in
+  ignore (Llvm.build_store type_tag_val type_tag_ptr ctx.builder);
+
+  ptr
+[@@warning "-32"]
+
+(** inc_ref を呼び出して参照カウントをインクリメント
+ *
+ * @param ctx コードジェネレーションコンテキスト
+ * @param ptr オブジェクトへのポインタ
+ *
+ * Note: Phase 1-5 の実装完了時に使用されるため、現時点では未使用警告を抑制
+ *)
+let call_inc_ref ctx ptr =
+  let ptr_ty = Llvm.pointer_type ctx.llctx in
+  let void_ty = Llvm.void_type ctx.llctx in
+
+  let inc_ref =
+    match Hashtbl.find_opt ctx.fn_map "inc_ref" with
+    | Some fn -> fn
+    | None -> codegen_error "inc_ref not declared"
+  in
+
+  let inc_ref_ty = Llvm.function_type void_ty [| ptr_ty |] in
+  ignore (Llvm.build_call inc_ref_ty inc_ref [| ptr |] "" ctx.builder)
+[@@warning "-32"]
+
+(** dec_ref を呼び出して参照カウントをデクリメント
+ *
+ * @param ctx コードジェネレーションコンテキスト
+ * @param ptr オブジェクトへのポインタ
+ *
+ * Note: Phase 1-5 の実装完了時に使用されるため、現時点では未使用警告を抑制
+ *)
+let call_dec_ref ctx ptr =
+  let ptr_ty = Llvm.pointer_type ctx.llctx in
+  let void_ty = Llvm.void_type ctx.llctx in
+
+  let dec_ref =
+    match Hashtbl.find_opt ctx.fn_map "dec_ref" with
+    | Some fn -> fn
+    | None -> codegen_error "dec_ref not declared"
+  in
+
+  let dec_ref_ty = Llvm.function_type void_ty [| ptr_ty |] in
+  ignore (Llvm.build_call dec_ref_ty dec_ref [| ptr |] "" ctx.builder)
+[@@warning "-32"]
+
+(** panic を呼び出してプログラムを異常終了させる
+ *
+ * @param ctx コードジェネレーションコンテキスト
+ * @param msg エラーメッセージ文字列
+ *
+ * Note: Phase 1-5 の実装完了時に使用されるため、現時点では未使用警告を抑制
+ *)
+let call_panic ctx msg =
+  let ptr_ty = Llvm.pointer_type ctx.llctx in
+  let i64_ty = Llvm.i64_type ctx.llctx in
+  let void_ty = Llvm.void_type ctx.llctx in
+
+  let panic =
+    match Hashtbl.find_opt ctx.fn_map "panic" with
+    | Some fn -> fn
+    | None -> codegen_error "panic not declared"
+  in
+
+  (* メッセージ文字列をグローバル定数として定義 *)
+  let str_const = Llvm.const_stringz ctx.llctx msg in
+  let str_global = Llvm.define_global "panic_msg" str_const ctx.llmodule in
+
+  (* 文字列ポインタを取得 *)
+  let zero = Llvm.const_int (Llvm.i32_type ctx.llctx) 0 in
+  let str_ptr = Llvm.const_gep ptr_ty str_global [| zero |] in
+
+  (* 長さを取得（NULL終端なので実際には使われないが、シグネチャに必要） *)
+  let len = Llvm.const_int i64_ty (String.length msg) in
+
+  (* panic(ptr, len) を呼び出し *)
+  let panic_ty = Llvm.function_type void_ty [| ptr_ty; i64_ty |] in
+  ignore (Llvm.build_call panic_ty panic [| str_ptr; len |] "" ctx.builder);
+
+  (* unreachable 命令を挿入（panic は決して戻らない） *)
+  Llvm.build_unreachable ctx.builder
+[@@warning "-32"]
 
 (* ========== 型判定ヘルパー ========== *)
 

@@ -1,0 +1,9 @@
+// Phase 1-5 ランタイム連携テスト
+// 簡単な算術演算と print_i64 呼び出し
+
+fn add(a: i64, b: i64) -> i64 = a + b
+
+pub fn main() -> i64 = {
+  let result = add(2, 40);
+  result
+}

@@ -12,6 +12,8 @@ let emit_tast = ref false
 let emit_ir = ref false
 let emit_bc = ref false
 let verify_ir = ref false
+let link_runtime = ref false
+let runtime_path = ref "runtime/native/build/libreml_runtime.a"
 let out_dir = ref "."
 let target = ref "x86_64-linux"
 let input_file = ref ""
@@ -22,6 +24,8 @@ let speclist = [
   ("--emit-ir", Arg.Set emit_ir, "Emit LLVM IR (.ll) to output directory");
   ("--emit-bc", Arg.Set emit_bc, "Emit LLVM Bitcode (.bc) to output directory");
   ("--verify-ir", Arg.Set verify_ir, "Verify generated LLVM IR");
+  ("--link-runtime", Arg.Set link_runtime, "Link with runtime library to produce executable");
+  ("--runtime-path", Arg.Set_string runtime_path, "Path to runtime library (default: runtime/native/build/libreml_runtime.a)");
   ("--out-dir", Arg.Set_string out_dir, "Output directory (default: current directory)");
   ("--target", Arg.Set_string target, "Target triple (default: x86_64-linux)");
 ]
@@ -36,6 +40,40 @@ let output_filename basename suffix =
 (** ベース名取得（拡張子除去） *)
 let get_basename filepath =
   Filename.remove_extension (Filename.basename filepath)
+
+(** ランタイムライブラリとリンクして実行可能ファイルを生成
+ *
+ * @param ll_file LLVM IR ファイルパス
+ * @param runtime_lib ランタイムライブラリパス
+ * @param output_exe 出力実行可能ファイルパス
+ *)
+let link_with_runtime ll_file runtime_lib output_exe =
+  (* LLVM IR → オブジェクトファイル *)
+  let obj_file = (Filename.remove_extension ll_file) ^ ".o" in
+  let llc_cmd = Printf.sprintf "llc -filetype=obj %s -o %s" ll_file obj_file in
+
+  Printf.printf "Compiling to object file: %s\n" obj_file;
+  let llc_result = Sys.command llc_cmd in
+  if llc_result <> 0 then begin
+    Printf.eprintf "Error: llc failed with exit code %d\n" llc_result;
+    exit 1
+  end;
+
+  (* オブジェクトファイル + ランタイム → 実行可能ファイル *)
+  (* clang に標準ライブラリリンクを任せる（デフォルト動作） *)
+  let link_cmd = Printf.sprintf "cc %s %s -o %s" obj_file runtime_lib output_exe in
+
+  Printf.printf "Linking with runtime: %s\n" output_exe;
+  let link_result = Sys.command link_cmd in
+  if link_result <> 0 then begin
+    Printf.eprintf "Error: linking failed with exit code %d\n" link_result;
+    exit 1
+  end;
+
+  (* 一時オブジェクトファイルを削除 *)
+  Sys.remove obj_file;
+
+  Printf.printf "Executable created: %s\n" output_exe
 
 let () =
   Arg.parse speclist anon_fun usage_msg;
@@ -105,11 +143,13 @@ let () =
                 end;
 
                 (* LLVM IR テキスト出力 *)
+                let ll_file_opt = ref None in
                 if !emit_ir then begin
                   let basename = get_basename !input_file in
                   let output_path = output_filename basename ".ll" in
                   Codegen.emit_llvm_ir llvm_module output_path;
                   Printf.printf "LLVM IR written to: %s\n" output_path;
+                  ll_file_opt := Some output_path;
                 end;
 
                 (* LLVM IR ビットコード出力 *)
@@ -118,6 +158,35 @@ let () =
                   let output_path = output_filename basename ".bc" in
                   Codegen.emit_llvm_bc llvm_module output_path;
                   Printf.printf "LLVM Bitcode written to: %s\n" output_path;
+                end;
+
+                (* ランタイムとリンク *)
+                if !link_runtime then begin
+                  let basename = get_basename !input_file in
+                  (* LLVM IR ファイルが必要なので、まだ生成されていなければ一時ファイルとして生成 *)
+                  let ll_file = match !ll_file_opt with
+                    | Some path -> path
+                    | None ->
+                        let temp_path = output_filename basename ".ll" in
+                        Codegen.emit_llvm_ir llvm_module temp_path;
+                        temp_path
+                  in
+
+                  (* ランタイムライブラリの存在確認 *)
+                  if not (Sys.file_exists !runtime_path) then begin
+                    Printf.eprintf "Error: runtime library not found: %s\n" !runtime_path;
+                    Printf.eprintf "Please build the runtime first with: make -C runtime/native runtime\n";
+                    exit 1
+                  end;
+
+                  (* リンクして実行可能ファイルを生成 *)
+                  let output_exe = output_filename basename "" in
+                  link_with_runtime ll_file !runtime_path output_exe;
+
+                  (* 一時 LLVM IR ファイルを削除（--emit-ir が指定されていない場合） *)
+                  if !ll_file_opt = None && not !emit_ir then begin
+                    Sys.remove ll_file
+                  end;
                 end;
 
               with
