@@ -147,16 +147,22 @@ prepare_sysroot_from_archive() {
   log_info "sysroot を展開します: ${archive_path}"
   rm -rf "${dest:?}/"*
 
+  local -a tar_opts=("--exclude=dev/*")
+
   case "$archive_path" in
     *.tar.zst)
-      ensure_command zstd "brew install zstd を実行してください。"
-      tar --use-compress-program zstd -xf "$archive_path" -C "$dest"
+      if tar --help 2>&1 | grep -q -- "--zstd"; then
+        tar --zstd "${tar_opts[@]}" -xf "$archive_path" -C "$dest"
+      else
+        ensure_command zstd "brew install zstd を実行してください。"
+        zstd -dc "$archive_path" | tar "${tar_opts[@]}" -xf - -C "$dest"
+      fi
       ;;
     *.tar.gz|*.tgz)
-      tar -xzf "$archive_path" -C "$dest"
+      tar "${tar_opts[@]}" -xzf "$archive_path" -C "$dest"
       ;;
     *.tar)
-      tar -xf "$archive_path" -C "$dest"
+      tar "${tar_opts[@]}" -xf "$archive_path" -C "$dest"
       ;;
     *)
       fail "未対応のアーカイブ形式です: ${archive_path}"
@@ -188,24 +194,28 @@ generate_wrappers() {
   write_wrapper "${toolchain_home}/bin/${target_triple}-clang++" "\"${clangxx_path}\"" "--target=\"\${target_triple}\" --sysroot=\"\${sysroot_dir}\""
   write_wrapper "${toolchain_home}/bin/${target_triple}-ld" "\"${lld_path}\"" "--sysroot=\"\${sysroot_dir}\""
 
-  local -A binutils_map=(
-    ["ar"]="${binutils_prefix}/bin/${target_triple}-ar"
-    ["ranlib"]="${binutils_prefix}/bin/${target_triple}-ranlib"
-    ["objcopy"]="${binutils_prefix}/bin/${target_triple}-objcopy"
-    ["objdump"]="${binutils_prefix}/bin/${target_triple}-objdump"
-    ["strip"]="${binutils_prefix}/bin/${target_triple}-strip"
-    ["readelf"]="${binutils_prefix}/bin/${target_triple}-readelf"
-  )
+  if [[ -n "${binutils_prefix}" ]]; then
+    local -A binutils_map=(
+      ["ar"]="${binutils_prefix}/bin/${target_triple}-ar"
+      ["ranlib"]="${binutils_prefix}/bin/${target_triple}-ranlib"
+      ["objcopy"]="${binutils_prefix}/bin/${target_triple}-objcopy"
+      ["objdump"]="${binutils_prefix}/bin/${target_triple}-objdump"
+      ["strip"]="${binutils_prefix}/bin/${target_triple}-strip"
+      ["readelf"]="${binutils_prefix}/bin/${target_triple}-readelf"
+    )
 
-  for tool in "${!binutils_map[@]}"; do
-    local candidate="${binutils_map[$tool]}"
-    if [[ -x "$candidate" ]]; then
-      ln -sf "$candidate" "${toolchain_home}/bin/${target_triple}-${tool}"
-      log_info "リンク作成: ${toolchain_home}/bin/${target_triple}-${tool}"
-    else
-      log_warn "${candidate} が見つかりません。${tool} は LLVM 版で代替してください。"
-    fi
-  done
+    for tool in "${!binutils_map[@]}"; do
+      local candidate="${binutils_map[$tool]}"
+      if [[ -x "$candidate" ]]; then
+        ln -sf "$candidate" "${toolchain_home}/bin/${target_triple}-${tool}"
+        log_info "リンク作成: ${toolchain_home}/bin/${target_triple}-${tool}"
+      else
+        log_warn "${candidate} が見つかりません。${tool} は LLVM 版で代替してください。"
+      fi
+    done
+  else
+    log_warn "binutils プレフィックスが設定されていないため、binutils のラッパ生成をスキップします。"
+  fi
 }
 
 main() {
@@ -224,9 +234,9 @@ main() {
   sysroot_source="cache"
   local sysroot_archive="$default_cache"
 
-  local llvm_prefix=""
-  local lld_prefix=""
-  local binutils_prefix=""
+  local llvm_prefix="${LLVM_PREFIX_OVERRIDE:-}"
+  local lld_prefix="${LLD_PREFIX_OVERRIDE:-}"
+  local binutils_prefix="${BINUTILS_PREFIX_OVERRIDE:-}"
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -313,6 +323,10 @@ main() {
     generate_wrappers
   else
     log_warn "Homebrew セットアップをスキップしました (--no-brew)"
+    if [[ -z "${llvm_prefix}" || -z "${lld_prefix}" ]]; then
+      fail "LLVM_PREFIX_OVERRIDE と LLD_PREFIX_OVERRIDE を指定してください (--no-brew 利用時)。"
+    fi
+    generate_wrappers
   fi
 
   case "$sysroot_source" in

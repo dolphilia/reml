@@ -114,6 +114,12 @@ runtime/native/tests/test_*
 !runtime/native/tests/*.cpp
 !runtime/native/tests/*.h
 
+# クロスツールチェーン生成物
+tooling/toolchains/x86_64-unknown-linux-gnu/
+tooling/toolchains/cache/debian-bookworm-x86_64.tar.zst
+tooling/toolchains/cache/*.tar.zst
+tooling/toolchains/cache/*.tar.gz
+
 # 静的解析・カバレッジ
 *.gcda
 *.gcno

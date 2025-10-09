@@ -48,9 +48,9 @@
 - 登録日: 2025-10-10
 - タイトル: Debian sysroot アーカイブのハッシュ未確定
 - カテゴリ: 互換性
-- 詳細: macOS → Linux x86_64 クロスコンパイルで使用する `tooling/toolchains/cache/debian-bookworm-x86_64.tar.zst` の実体がリポジトリ内に存在せず、SHA-256 を算出できない。`tooling/toolchains/versions.toml` および `tooling/toolchains/checksums.txt` の値が `PENDING` のままであり、ハッシュ検証を行えない状態。
-- 対応案: アーカイブを取得後に `shasum -a 256 tooling/toolchains/cache/debian-bookworm-x86_64.tar.zst` を実行し、`versions.toml` と `tooling/toolchains/checksums.txt` を更新。更新結果をレビューし、`docs/plans/bootstrap-roadmap/1-5-runtime-integration.md` で共有する。
-- 期限: 2025-10-17
-- 状態: Open
+- 詳細: macOS → Linux x86_64 クロスコンパイルで使用する `tooling/toolchains/cache/debian-bookworm-x86_64.tar.zst` の SHA-256 を算出し、`tooling/toolchains/versions.toml` および `tooling/toolchains/checksums.txt` に `49b9ee8917f7235b6f20aaff3f983d616c53f29354ad180782ed024186df5452` を登録済み。
+- 対応案: 登録済みの値を四半期レビューで検証し、sysroot 更新時は再計算して報告する。
+- 期限: 2025-10-10
+- 状態: Resolved
 - 関連フェーズ: Phase 1
 - 参照: `tooling/toolchains/versions.toml`, `tooling/toolchains/checksums.txt`, `docs/plans/bootstrap-roadmap/1-5-runtime-integration.md` §10

@@ -1,3 +1,2 @@
 # format: <sha256>  <relative_path>
-# TODO: アーカイブ取得後に sha256 を更新する。
-PENDING  tooling/toolchains/cache/debian-bookworm-x86_64.tar.zst
+49b9ee8917f7235b6f20aaff3f983d616c53f29354ad180782ed024186df5452  tooling/toolchains/cache/debian-bookworm-x86_64.tar.zst

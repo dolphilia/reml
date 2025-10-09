@@ -12,12 +12,19 @@
    ```bash
    scripts/toolchain/prepare-linux-x86_64.sh --dry-run
    ```
-2. 本構築を実行  
+2. 本構築を実行（Homebrew 依存を使う場合）  
    ```bash
    scripts/toolchain/prepare-linux-x86_64.sh --cache
    ```
    - `cache/` にアーカイブが存在しない場合はエラーになります。事前に社内共有のストレージから取得するか、`--archive <PATH>` で明示指定してください。
-   - Homebrew を使用せず既存の LLVM/LLD を使う場合は `--no-brew` を指定し、`versions.toml` に使用したバージョンを追記します。
+   - Homebrew を使用せず既存の LLVM/LLD を使う場合は `--no-brew` を指定し、以下の環境変数でパスを指示します。
+     ```bash
+     LLVM_PREFIX_OVERRIDE=/opt/homebrew/opt/llvm@18 \
+     LLD_PREFIX_OVERRIDE=/opt/homebrew/opt/lld \
+     BINUTILS_PREFIX_OVERRIDE=/opt/homebrew/opt/binutils \
+     scripts/toolchain/prepare-linux-x86_64.sh --no-brew --cache
+     ```
+     `binutils` が無い場合は `BINUTILS_PREFIX_OVERRIDE` を省略できます（ラッパ生成がスキップされます）。
 3. 生成物の確認  
    - `x86_64-unknown-linux-gnu/env.sh` が生成され、`PATH` などの環境変数が定義されていること。
    - `x86_64-unknown-linux-gnu/.stamp-prepared` が更新され、構築時刻と使用ソース（cache / archive）が記録されていること。

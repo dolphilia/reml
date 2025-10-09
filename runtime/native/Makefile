@@ -10,9 +10,37 @@
 
 CC = clang
 AR = ar
+RANLIB =
 CFLAGS = -Wall -Wextra -std=c11 -O2 -g
 LDFLAGS =
 INCLUDES = -Iinclude
+CROSS ?= 0
+CROSS_PREFIX ?= x86_64-unknown-linux-gnu
+CROSS_SYSROOT ?=
+
+ifeq ($(CROSS),1)
+CC = $(CROSS_PREFIX)-clang
+CFLAGS += --target=$(CROSS_PREFIX)
+LDFLAGS += --target=$(CROSS_PREFIX)
+
+AR_CANDIDATE := $(shell command -v $(CROSS_PREFIX)-ar 2>/dev/null)
+ifeq ($(strip $(AR_CANDIDATE)),)
+AR = llvm-ar
+else
+AR = $(CROSS_PREFIX)-ar
+endif
+
+RANLIB ?= ranlib
+RANLIB_CANDIDATE := $(shell command -v $(CROSS_PREFIX)-ranlib 2>/dev/null)
+ifneq ($(strip $(RANLIB_CANDIDATE)),)
+RANLIB = $(CROSS_PREFIX)-ranlib
+endif
+
+ifneq ($(strip $(CROSS_SYSROOT)),)
+CFLAGS += --sysroot=$(CROSS_SYSROOT)
+LDFLAGS += --sysroot=$(CROSS_SYSROOT)
+endif
+endif
 
 # macOS SDK パスを追加（必要に応じて）
 UNAME_S := $(shell uname -s)
@@ -55,6 +83,9 @@ runtime: $(RUNTIME_LIB)
 $(RUNTIME_LIB): $(OBJECTS)
 	@mkdir -p $(OBJ_DIR)
 	$(AR) rcs $@ $^
+ifdef RANLIB
+	$(RANLIB) $@
+endif
 	@echo "Built runtime library: $@"
 
 # オブジェクトファイルのコンパイル
