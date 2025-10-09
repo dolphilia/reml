@@ -54,28 +54,40 @@
    - `src/core_ir/desugar.ml`: 糖衣削除（638行）
    - `src/core_ir/cfg.ml`: CFG構築（430行）
 
-### 📍 Week 12-13: LLVM IR 型マッピング（進行中）
+### ✅ Week 12-13: LLVM IR 型マッピング（完了: 2025-10-09）
 
 計画書: [docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md](../../docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md)
 
-**実装状況**（2025-10-09 更新）:
+**実装統計**:
 
-✅ **完了項目**:
+- 総コード行数: 540行（LLVM型マッピング関連全実装）
+- 実装ファイル: 4ファイル（type_mapping.ml/mli, target_config.ml/mli）
+- テスト: 35/35 成功（回帰なし）
 
-- `src/llvm_gen/type_mapping.ml` — Reml型からLLVM型への変換（280行）
-- `src/llvm_gen/target_config.ml` — DataLayoutとターゲット設定（180行）
-- プリミティブ型マッピング（Bool→i1, i64→i64, String→FAT pointer等）
-- 複合型マッピング（タプル、レコード、配列、関数型）
-- FAT pointer構造（`{ptr, i64}`）の実装
-- Tagged union（ADT）構造（`{i32, payload}`）の実装
-- DataLayout設定（x86_64 Linux: `e-m:e-p:64:64-f64:64:64-v128:128:128-a:0:64`）
-- テストスイート（`tests/test_llvm_type_mapping.ml`, 36件）
-- 技術文書（`docs/llvm-type-mapping.md`）
-- 環境構築ガイド更新（`docs/environment-setup.md`）
+**完了項目**:
 
-🔄 **進行中**:
+1. **LLVM 18 バインディング統合**
+   - opam パッケージ: `llvm.18-static` インストール済み
+   - opaque pointer 対応（LLVM 18 の新仕様に準拠）
+   - dune-project バージョン制約: `>= 15.0 & < 20`
+   - ビルド検証完了（警告なし）
 
-- LLVMバインディングのビルド統合（opam依存関係）
+2. **型マッピング実装**
+   - `src/llvm_gen/type_mapping.ml` — Reml型からLLVM型への変換（280行）
+   - プリミティブ型マッピング（Bool→i1, i64→i64, String→FAT pointer等）
+   - 複合型マッピング（タプル、レコード、配列、関数型）
+   - FAT pointer構造（`{ptr, i64}`）の実装
+   - Tagged union（ADT）構造（`{i32, payload}`）の実装
+
+3. **ターゲット設定実装**
+   - `src/llvm_gen/target_config.ml` — DataLayoutとターゲット設定（180行）
+   - DataLayout設定（x86_64 Linux: `e-m:e-p:64:64-f64:64:64-v128:128:128-a:0:64`）
+   - ターゲットトリプル: `x86_64-unknown-linux-gnu`
+
+4. **テストとドキュメント**
+   - テストスイート（`tests/test_llvm_type_mapping.ml`, 35件）- 全成功
+   - 技術文書（`docs/llvm-type-mapping.md`）
+   - 環境構築ガイド更新（`docs/environment-setup.md`）- LLVM 18 対応手順を追記
 
 📍 **次のステップ（Week 13-14）**:
 

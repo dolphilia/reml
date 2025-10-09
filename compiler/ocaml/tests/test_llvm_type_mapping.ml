@@ -156,9 +156,7 @@ let test_composite_types () =
   let slice_ty = reml_type_to_llvm ctx (TArray ty_i32) in
   let slice_str = lltype_to_string slice_ty in
   (* FAT pointer: { ptr, i64 } *)
-  assert_equal "スライス [i32] → FAT pointer"
-    true
-    (String.length slice_str > 0 && String.contains slice_str '{');
+  assert (String.length slice_str > 0 && String.contains slice_str '{');
 
   (* 固定長配列 [i64; 5] *)
   let array_ty = reml_type_to_llvm ctx (TSlice (ty_i64, Some 5)) in
@@ -196,19 +194,15 @@ let test_fat_pointer () =
   Printf.printf "\n=== FAT pointer 構造テスト ===\n";
   let ctx = create_context "test_fat_pointer" in
 
-  (* String → { i8*, i64 } *)
+  (* String → { ptr, i64 } *)
   let string_ty = reml_type_to_llvm ctx ty_string in
   let string_str = lltype_to_string string_ty in
-  assert_equal "String → FAT pointer { ptr, i64 }"
-    true
-    (String.length string_str > 0 && String.contains string_str '{');
+  assert (String.length string_str > 0 && String.contains string_str '{');
 
-  (* [Bool] → { i1*, i64 } *)
+  (* [Bool] → { ptr, i64 } *)
   let bool_slice_ty = reml_type_to_llvm ctx (TArray ty_bool) in
   let bool_slice_str = lltype_to_string bool_slice_ty in
-  assert_equal "[Bool] → FAT pointer { ptr, i64 }"
-    true
-    (String.length bool_slice_str > 0 && String.contains bool_slice_str '{')
+  assert (String.length bool_slice_str > 0 && String.contains bool_slice_str '{')
 
 (* ========== サイズとアラインメントのテスト ========== *)
 

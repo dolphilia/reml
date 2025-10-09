@@ -79,12 +79,9 @@ let rec reml_primitive_to_llvm ctx = function
  * スライス型や String 型で使用される { ptr, i64 } 構造体
  * element_ty が None の場合は i8* を使用（String の場合）
  *)
-and make_fat_pointer ctx element_ty_opt =
-  let ptr_ty =
-    match element_ty_opt with
-    | Some element_ty -> Llvm.pointer_type element_ty
-    | None -> Llvm.pointer_type (Llvm.i8_type ctx.llctx)
-  in
+and make_fat_pointer ctx _element_ty_opt =
+  (* LLVM 18+ では opaque pointer を使用（型付きポインタは廃止） *)
+  let ptr_ty = Llvm.pointer_type ctx.llctx in
   let len_ty = Llvm.i64_type ctx.llctx in
   Llvm.struct_type ctx.llctx [| ptr_ty; len_ty |]
 
@@ -100,9 +97,10 @@ and make_tagged_union ctx payload_ty =
  *
  * { env_ptr*, code_ptr } 構造体
  *)
-and make_closure ctx fn_ty =
-  let env_ptr_ty = Llvm.pointer_type (Llvm.i8_type ctx.llctx) in
-  let code_ptr_ty = Llvm.pointer_type fn_ty in
+and make_closure ctx _fn_ty =
+  (* LLVM 18+ では opaque pointer を使用 *)
+  let env_ptr_ty = Llvm.pointer_type ctx.llctx in
+  let code_ptr_ty = Llvm.pointer_type ctx.llctx in
   Llvm.struct_type ctx.llctx [| env_ptr_ty; code_ptr_ty |]
 
 (* ========== 複合型マッピング ========== *)
@@ -130,7 +128,7 @@ and reml_type_to_llvm_impl ctx = function
   | TCon tc -> reml_primitive_to_llvm ctx tc
 
   (* 型適用（ジェネリック型） *)
-  | TApp (constructor, arg) ->
+  | TApp (constructor, _arg) ->
       (* TODO: ジェネリック型の展開 *)
       (* 現在は constructor を評価（モノモルフィゼーション前提） *)
       reml_type_to_llvm ctx constructor
@@ -179,8 +177,8 @@ and reml_type_to_llvm_impl ctx = function
  * ターゲットマシンの DataLayout に基づく。
  * Phase 3 Week 12 では x86_64 固定で実装。
  *)
-let get_type_size ctx ty =
-  let llty = reml_type_to_llvm ctx ty in
+let rec get_type_size ctx ty =
+  let _llty = reml_type_to_llvm ctx ty in
   (* LLVM の DataLayout から型サイズを取得 *)
   (* TODO: Llvm_target.DataLayout.size_of_type を使用 *)
   (* 現在は簡易実装 *)
@@ -208,7 +206,7 @@ let get_type_size ctx ty =
  *
  * System V ABI x86_64 のアラインメント規則に従う。
  *)
-let get_type_alignment ctx ty =
+let rec get_type_alignment ctx ty =
   match ty with
   | TCon TCBool -> 1
   | TCon TCChar -> 4
