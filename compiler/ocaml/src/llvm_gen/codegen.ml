@@ -32,6 +32,7 @@ type function_codegen_info = {
   return_type: Llvm.lltype;                              (** Reml関数の論理的戻り値型 *)
   return_class: Abi.return_classification;               (** ABI上の戻り値分類 *)
   param_classes: Abi.argument_classification list;       (** 引数ごとの ABI 分類 *)
+  llvm_fn_type: Llvm.lltype;                             (** LLVM 関数型 *)
 }
 
 type current_function_state = {
@@ -309,8 +310,27 @@ and codegen_app ctx fn_expr arg_exprs =
   let arg_values = List.map (codegen_expr ctx) arg_exprs in
   let arg_values_array = Array.of_list arg_values in
 
-  (* 関数の型を取得 *)
-  let fn_ty = Llvm.type_of fn_value in
+  (* 関数の型を取得（ポインタの場合は要素型を取り出す） *)
+  let fn_ptr_ty = Llvm.type_of fn_value in
+  let fn_ty =
+    let info_ty =
+      match fn_expr.expr_kind with
+      | Var var_id ->
+          Option.map (fun info -> info.llvm_fn_type)
+            (Hashtbl.find_opt ctx.fn_info_map var_id.vname)
+      | _ -> None
+    in
+    match info_ty with
+    | Some ty -> ty
+    | None ->
+        begin match Llvm.classify_type fn_ptr_ty with
+        | Llvm.TypeKind.Pointer -> Llvm.element_type fn_ptr_ty
+        | Llvm.TypeKind.Function -> fn_ptr_ty
+        | _ ->
+            codegen_errorf "関数呼び出し対象が関数型ではありません: %s"
+              (Llvm.string_of_lltype fn_ptr_ty)
+        end
+  in
 
   (* 関数呼び出しを生成 (LLVM 18 opaque pointer 対応) *)
   Llvm.build_call fn_ty fn_value arg_values_array "call_tmp" ctx.builder
@@ -706,7 +726,7 @@ let codegen_function_decl ctx fn_def =
   ) fn_def.fn_params;
 
   (* 関数メタ情報を記録 *)
-  let info = { return_type = ret_ty; return_class; param_classes } in
+  let info = { return_type = ret_ty; return_class; param_classes; llvm_fn_type = fn_ty } in
   Hashtbl.replace ctx.fn_info_map fn_def.fn_name info;
 
   llvm_fn

@@ -406,6 +406,9 @@
   - `codegen_context` に関数メタ情報（SRet/ByVal分類、pending φ ノード）を保持する仕組みを追加
   - `begin_function`/`end_function` フローで SSA 変数マッピングを初期化し、φ ノードは遅延解決で `Llvm.add_incoming` を実行
   - `emit_return` を導入して `unit` 戻り値と `sret` ハンドリングを統合、関数参照のフォールバックとして `fn_map` 参照を追加
+- `core_ir/desugar.ml`
+  - パターン束縛を CPS 化し、`let` 束縛のスコープを後続ステートメントへ正しく伝搬
+  - Typed AST の `TFnDecl` から `Core_ir.Ir.function_def` を生成し、再帰呼び出しも含めたブロック構築を実装
 - `tests/test_llvm_verify.ml`
   - LLVM 18 の `Llvm.define_function` が暗黙にエントリーブロックを持つ挙動へ追随し、`Llvm.declare_function` ベースで検証モジュールを構築
 - `scripts/verify_llvm_ir.sh`
@@ -413,8 +416,8 @@
 
 **フォローアップ**:
 
-- Core IR が関数本体を供給できるようになった段階で `tests/llvm-ir/golden/*.ll.golden` を更新
-- ループ・再帰を含む Core IR CGF サンプルを作成し、`pending_phis` の検証ケースを追加
+- `tests/llvm-ir/golden/*.ll.golden` を継続的に拡張し、分岐・再帰・多引数呼び出しのカバレッジを広げる
+- ループ・効果マーカーを含む Core IR サンプルを追加し、`pending_phis` の検証ケースを拡充
 
 ### 記録ルール
 - 週次で本セクションを更新

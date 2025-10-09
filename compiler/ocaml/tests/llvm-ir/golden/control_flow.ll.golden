@@ -12,4 +12,60 @@ declare void @dec_ref(ptr)
 ; Function Attrs: noreturn
 declare void @panic(ptr, i64) #0
 
+define i64 @factorial(i64 %n) {
+entry:
+  %icmp_le = icmp sle i64 %n, 1
+  br i1 %icmp_le, label %if_then, label %if_else
+
+if_then:                                          ; preds = %entry
+  br label %if_merge
+
+if_else:                                          ; preds = %entry
+  %sub_tmp = sub i64 %n, 1
+  %call_tmp = call i64 @factorial(i64 %sub_tmp)
+  %mul_tmp = mul i64 %n, %call_tmp
+  br label %if_merge
+
+if_merge:                                         ; preds = %if_else, %if_then
+  %if_tmp = phi i64 [ 1, %if_then ], [ %mul_tmp, %if_else ]
+  ret i64 %if_tmp
+}
+
+define i64 @fib(i64 %n) {
+entry:
+  %icmp_le = icmp sle i64 %n, 1
+  br i1 %icmp_le, label %if_then, label %if_else
+
+if_then:                                          ; preds = %entry
+  br label %if_merge
+
+if_else:                                          ; preds = %entry
+  %sub_tmp = sub i64 %n, 1
+  %call_tmp = call i64 @fib(i64 %sub_tmp)
+  %sub_tmp1 = sub i64 %n, 2
+  %call_tmp2 = call i64 @fib(i64 %sub_tmp1)
+  %add_tmp = add i64 %call_tmp, %call_tmp2
+  br label %if_merge
+
+if_merge:                                         ; preds = %if_else, %if_then
+  %if_tmp = phi i64 [ %n, %if_then ], [ %add_tmp, %if_else ]
+  ret i64 %if_tmp
+}
+
+define i64 @max(i64 %a, i64 %b) {
+entry:
+  %icmp_gt = icmp sgt i64 %a, %b
+  br i1 %icmp_gt, label %if_then, label %if_else
+
+if_then:                                          ; preds = %entry
+  br label %if_merge
+
+if_else:                                          ; preds = %entry
+  br label %if_merge
+
+if_merge:                                         ; preds = %if_else, %if_then
+  %if_tmp = phi i64 [ %a, %if_then ], [ %b, %if_else ]
+  ret i64 %if_tmp
+}
+
 attributes #0 = { noreturn }

@@ -178,7 +178,7 @@ let test_desugar_tuple_pattern_simple () =
   let map = create_scope_map () in
   let bound_ir = desugar_expr map bound in
   let rest_ir = desugar_expr map rest in
-  let result = desugar_pattern_binding map tuple_pat bound_ir rest_ir ty_i64 dummy_span in
+  let result = desugar_pattern_binding map tuple_pat bound_ir ~cont:(fun () -> rest_ir) ty_i64 dummy_span in
 
   (* Let ($tuple, ..., Let ($tuple_elem0, ..., Let ($tuple_elem1, ..., rest))) の形式を期待 *)
   match result.expr_kind with
@@ -206,7 +206,7 @@ let test_desugar_tuple_pattern_nested () =
   let map = create_scope_map () in
   let bound_ir = desugar_expr map bound in
   let rest_ir = desugar_expr map rest in
-  let result = desugar_pattern_binding map outer_tuple_pat bound_ir rest_ir ty_i64 dummy_span in
+  let result = desugar_pattern_binding map outer_tuple_pat bound_ir ~cont:(fun () -> rest_ir) ty_i64 dummy_span in
 
   match result.expr_kind with
   | Let (_outer_tuple_var, _bound, _inner) ->
@@ -231,7 +231,7 @@ let test_desugar_tuple_pattern_with_wildcard () =
   let map = create_scope_map () in
   let bound_ir = desugar_expr map bound in
   let rest_ir = desugar_expr map rest in
-  let result = desugar_pattern_binding map tuple_pat bound_ir rest_ir ty_i64 dummy_span in
+  let result = desugar_pattern_binding map tuple_pat bound_ir ~cont:(fun () -> rest_ir) ty_i64 dummy_span in
 
   match result.expr_kind with
   | Let (_tuple_var, _bound, _inner) ->
@@ -260,7 +260,7 @@ let test_desugar_record_pattern_basic () =
   let map = create_scope_map () in
   let bound_ir = desugar_expr map bound in
   let rest_ir = desugar_expr map rest in
-  let result = desugar_pattern_binding map record_pat bound_ir rest_ir ty_i64 dummy_span in
+  let result = desugar_pattern_binding map record_pat bound_ir ~cont:(fun () -> rest_ir) ty_i64 dummy_span in
 
   match result.expr_kind with
   | Let (_record_var, _bound, _inner) ->
@@ -286,7 +286,7 @@ let test_desugar_record_pattern_with_rest () =
   let map = create_scope_map () in
   let bound_ir = desugar_expr map bound in
   let rest_ir = desugar_expr map rest in
-  let result = desugar_pattern_binding map record_pat bound_ir rest_ir ty_i64 dummy_span in
+  let result = desugar_pattern_binding map record_pat bound_ir ~cont:(fun () -> rest_ir) ty_i64 dummy_span in
 
   match result.expr_kind with
   | Let (_record_var, _bound, _inner) ->
@@ -320,7 +320,7 @@ let test_desugar_record_pattern_nested () =
   let map = create_scope_map () in
   let bound_ir = desugar_expr map bound in
   let rest_ir = desugar_expr map rest in
-  let result = desugar_pattern_binding map outer_record_pat bound_ir rest_ir ty_i64 dummy_span in
+  let result = desugar_pattern_binding map outer_record_pat bound_ir ~cont:(fun () -> rest_ir) ty_i64 dummy_span in
 
   match result.expr_kind with
   | Let (_outer_record_var, _bound, _inner) ->
@@ -350,7 +350,7 @@ let test_desugar_constructor_pattern_some () =
   let map = create_scope_map () in
   let bound_ir = desugar_expr map bound in
   let rest_ir = desugar_expr map rest in
-  let result = desugar_pattern_binding map some_pat bound_ir rest_ir ty_i64 dummy_span in
+  let result = desugar_pattern_binding map some_pat bound_ir ~cont:(fun () -> rest_ir) ty_i64 dummy_span in
 
   match result.expr_kind with
   | Let (_adt_var, _bound, _inner) ->
@@ -384,7 +384,7 @@ let test_desugar_constructor_pattern_nested () =
   let map = create_scope_map () in
   let bound_ir = desugar_expr map bound in
   let rest_ir = desugar_expr map rest in
-  let result = desugar_pattern_binding map outer_some_pat bound_ir rest_ir ty_i64 dummy_span in
+  let result = desugar_pattern_binding map outer_some_pat bound_ir ~cont:(fun () -> rest_ir) ty_i64 dummy_span in
 
   match result.expr_kind with
   | Let (_outer_adt_var, _bound, _inner) ->

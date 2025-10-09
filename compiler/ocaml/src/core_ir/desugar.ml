@@ -126,13 +126,49 @@ let rec desugar_expr (map: var_scope_map) (texpr: typed_expr) : expr =
   | TPipe (e1, e2) ->
       desugar_pipe map e1 e2 ty span
 
-  | TBinary (_op, e1, e2) ->
-      (* 二項演算子はプリミティブ演算に変換 *)
-      (* TODO: 演算子の完全な対応表を実装 *)
+  | TBinary (op, e1, e2) ->
       let lhs = desugar_expr map e1 in
       let rhs = desugar_expr map e2 in
-      (* 仮実装: 加算のみ *)
-      make_expr (Primitive (PrimAdd, [lhs; rhs])) ty span
+      let prim_op =
+        match op with
+        | Add -> PrimAdd
+        | Sub -> PrimSub
+        | Mul -> PrimMul
+        | Div -> PrimDiv
+        | Mod -> PrimMod
+        | Eq -> PrimEq
+        | Ne -> PrimNe
+        | Lt -> PrimLt
+        | Le -> PrimLe
+        | Gt -> PrimGt
+        | Ge -> PrimGe
+        | And -> PrimAnd
+        | Or -> PrimOr
+        | Pow ->
+            desugar_error "累乗演算子 (**) の Core IR 変換は未実装です" span
+        | PipeOp ->
+            desugar_error "パイプ演算子 (|>) は TPipe で処理されるべきです" span
+      in
+      make_expr (Primitive (prim_op, [lhs; rhs])) ty span
+
+  | TUnary (op, expr) ->
+      let operand = desugar_expr map expr in
+      begin match op with
+      | Not ->
+          make_expr (Primitive (PrimNot, [operand])) ty span
+      | Neg ->
+          (* 0 - operand *)
+          let zero_literal =
+            match expr.texpr_ty with
+            | TCon (TCInt _) ->
+                make_expr (Literal (Int ("0", Base10))) expr.texpr_ty span
+            | TCon (TCFloat _) ->
+                make_expr (Literal (Float "0.0")) expr.texpr_ty span
+            | _ ->
+                desugar_error "この型に対する単項マイナスは未対応です" span
+          in
+          make_expr (Primitive (PrimSub, [zero_literal; operand])) ty span
+      end
 
   | TIf (cond, then_e, else_opt) ->
       let cond_expr = desugar_expr map cond in
@@ -231,15 +267,15 @@ and desugar_block_with_decl (map: var_scope_map) (decl: typed_decl) (rest: typed
   match decl.tdecl_kind with
   | TLetDecl (pat, e) ->
       let bound_expr = desugar_expr map e in
-      let rest_expr = desugar_block map rest result_ty span in
-      (* パターン束縛を let に変換 *)
-      desugar_pattern_binding map pat bound_expr rest_expr result_ty span
+      let continuation () = desugar_block map rest result_ty span in
+      (* パターン束縛を let に変換（スコープを先に拡張） *)
+      desugar_pattern_binding map pat bound_expr ~cont:continuation result_ty span
 
   | TVarDecl (pat, e) ->
       (* var 宣言も同様（可変性は後で処理） *)
       let bound_expr = desugar_expr map e in
-      let rest_expr = desugar_block map rest result_ty span in
-      desugar_pattern_binding map pat bound_expr rest_expr result_ty span
+      let continuation () = desugar_block map rest result_ty span in
+      desugar_pattern_binding map pat bound_expr ~cont:continuation result_ty span
 
   | TFnDecl _ ->
       (* 関数宣言はトップレベル処理（ブロック内関数は後のフェーズ） *)
@@ -250,17 +286,19 @@ and desugar_block_with_decl (map: var_scope_map) (decl: typed_decl) (rest: typed
 
 (* ========== パターン束縛の変換 ========== *)
 
-and desugar_pattern_binding (map: var_scope_map) (pat: typed_pattern) (bound_expr: expr) (rest_expr: expr) (result_ty: ty) (span: span) : expr =
+and desugar_pattern_binding (map: var_scope_map) (pat: typed_pattern) (bound_expr: expr) ~(cont: unit -> expr) (result_ty: ty) (span: span) : expr =
   match pat.tpat_kind with
   | TPatVar id ->
       (* 単純な変数束縛 *)
       let var = VarIdGen.fresh id.name (convert_ty pat.tpat_ty) pat.tpat_span in
       bind_var map id.name var;
+      let rest_expr = cont () in
       make_expr (Let (var, bound_expr, rest_expr)) result_ty span
 
   | TPatWildcard ->
       (* ワイルドカード → 値を無視 *)
       let dummy_var = fresh_temp_var "wildcard" (convert_ty pat.tpat_ty) pat.tpat_span in
+      let rest_expr = cont () in
       make_expr (Let (dummy_var, bound_expr, rest_expr)) result_ty span
 
   | TPatTuple pats ->
@@ -272,49 +310,65 @@ and desugar_pattern_binding (map: var_scope_map) (pat: typed_pattern) (bound_exp
         (sub_pat, access_expr)
       ) pats in
       (* ネストした let 束縛を生成 *)
-      let inner_expr = List.fold_right (fun (sub_pat, access) acc ->
-        desugar_pattern_binding map sub_pat access acc result_ty span
-      ) bindings rest_expr in
-      make_expr (Let (temp_var, bound_expr, inner_expr)) result_ty span
+      let rec build_bindings pairs cont_fn =
+        match pairs with
+        | [] -> cont_fn ()
+        | (sub_pat, access) :: rest ->
+            desugar_pattern_binding map sub_pat access
+              ~cont:(fun () -> build_bindings rest cont_fn) result_ty span
+      in
+      let rest_expr = build_bindings bindings cont in
+      make_expr (Let (temp_var, bound_expr, rest_expr)) result_ty span
 
   | TPatRecord (fields, _has_rest) ->
       (* レコードパターン → フィールドアクセスで分解 *)
       let temp_var = fresh_temp_var "record" (convert_ty pat.tpat_ty) pat.tpat_span in
-      let inner_expr = List.fold_right (fun (field_name, field_pat_opt) acc ->
-        match field_pat_opt with
-        | Some field_pat ->
-            (* { field: pattern } 形式 *)
-            let access_expr = make_expr
-              (RecordAccess (make_expr (Var temp_var) (convert_ty pat.tpat_ty) pat.tpat_span, field_name.name))
-              (convert_ty field_pat.tpat_ty) field_pat.tpat_span in
-            desugar_pattern_binding map field_pat access_expr acc result_ty span
-        | None ->
-            (* { field } 短縮形 → { field: field } として扱う *)
-            let field_var = VarIdGen.fresh field_name.name ty_i64 field_name.span in
-            bind_var map field_name.name field_var;
-            let access_expr = make_expr
-              (RecordAccess (make_expr (Var temp_var) (convert_ty pat.tpat_ty) pat.tpat_span, field_name.name))
-              ty_i64 field_name.span in
-            make_expr (Let (field_var, access_expr, acc)) result_ty span
-      ) fields rest_expr in
-      make_expr (Let (temp_var, bound_expr, inner_expr)) result_ty span
+      let rec bind_fields field_list cont_fn =
+        match field_list with
+        | [] -> cont_fn ()
+        | (field_name, field_pat_opt) :: rest ->
+            match field_pat_opt with
+            | Some field_pat ->
+                (* { field: pattern } 形式 *)
+                let access_expr = make_expr
+                  (RecordAccess (make_expr (Var temp_var) (convert_ty pat.tpat_ty) pat.tpat_span, field_name.name))
+                  (convert_ty field_pat.tpat_ty) field_pat.tpat_span in
+                desugar_pattern_binding map field_pat access_expr
+                  ~cont:(fun () -> bind_fields rest cont_fn) result_ty span
+            | None ->
+                (* { field } 短縮形 → { field: field } として扱う *)
+                let field_var = VarIdGen.fresh field_name.name ty_i64 field_name.span in
+                bind_var map field_name.name field_var;
+                let access_expr = make_expr
+                  (RecordAccess (make_expr (Var temp_var) (convert_ty pat.tpat_ty) pat.tpat_span, field_name.name))
+                  ty_i64 field_name.span in
+                let rest_expr = bind_fields rest cont_fn in
+                make_expr (Let (field_var, access_expr, rest_expr)) result_ty span
+      in
+      let rest_expr = bind_fields fields cont in
+      make_expr (Let (temp_var, bound_expr, rest_expr)) result_ty span
 
   | TPatConstructor (_ctor_name, arg_pats) ->
       (* コンストラクタパターン → タグ検査 + payload 射影 *)
       let temp_var = fresh_temp_var "adt" (convert_ty pat.tpat_ty) pat.tpat_span in
       (* payload の取り出しと各引数パターンへの束縛 *)
-      let inner_expr = List.fold_right (fun (idx, arg_pat) acc ->
-        let project_expr = make_expr
-          (ADTProject (make_expr (Var temp_var) (convert_ty pat.tpat_ty) pat.tpat_span, idx))
-          (convert_ty arg_pat.tpat_ty) arg_pat.tpat_span in
-        desugar_pattern_binding map arg_pat project_expr acc result_ty span
-      ) (List.mapi (fun i p -> (i, p)) arg_pats) rest_expr in
-      make_expr (Let (temp_var, bound_expr, inner_expr)) result_ty span
+      let rec bind_args args cont_fn =
+        match args with
+        | [] -> cont_fn ()
+        | (idx, arg_pat) :: rest ->
+            let project_expr = make_expr
+              (ADTProject (make_expr (Var temp_var) (convert_ty pat.tpat_ty) pat.tpat_span, idx))
+              (convert_ty arg_pat.tpat_ty) arg_pat.tpat_span in
+            desugar_pattern_binding map arg_pat project_expr
+              ~cont:(fun () -> bind_args rest cont_fn) result_ty span
+      in
+      let rest_expr = bind_args (List.mapi (fun i p -> (i, p)) arg_pats) cont in
+      make_expr (Let (temp_var, bound_expr, rest_expr)) result_ty span
 
   | TPatGuard (inner_pat, guard_expr) ->
       (* ガード付きパターン → 内側のパターンを先に束縛し、ガードを if 式に変換 *)
       let guard_ir = desugar_expr map guard_expr in
-      let then_branch = desugar_pattern_binding map inner_pat bound_expr rest_expr result_ty span in
+      let then_branch = desugar_pattern_binding map inner_pat bound_expr ~cont result_ty span in
       let else_branch = desugar_error "パターンマッチ失敗（ガード条件不一致）" span in
       make_expr (If (guard_ir, then_branch, else_branch)) result_ty span
 
@@ -322,7 +376,7 @@ and desugar_pattern_binding (map: var_scope_map) (pat: typed_pattern) (bound_exp
       (* リテラルパターン → 等価性チェック（通常は match で処理されるが念のため） *)
       let lit_expr = make_expr (Literal lit) (convert_ty pat.tpat_ty) pat.tpat_span in
       let cond = make_expr (Primitive (PrimEq, [bound_expr; lit_expr])) ty_bool pat.tpat_span in
-      let then_branch = rest_expr in
+      let then_branch = cont () in
       let else_branch = desugar_error "パターンマッチ失敗（リテラル不一致）" span in
       make_expr (If (cond, then_branch, else_branch)) result_ty span
 
@@ -616,11 +670,71 @@ and compile_test_expr (var: var_id) (test: test_kind) (span: span) : expr =
 
 (* ========== トップレベル変換 ========== *)
 
+(** 関数パラメータの変換 *)
+let desugar_param (fn_scope: var_scope_map) (fn_return_ty: ty) (index: int) (param: typed_param)
+    : param =
+  let span = param.tparam_span in
+  let pat = param.tpat in
+  let resolved_ty =
+    match pat.tpat_ty with
+    | TVar _ ->
+        begin match fn_return_ty with
+        | TCon _ -> fn_return_ty
+        | _ -> ty_i64
+        end
+    | ty -> ty
+  in
+  let ty = convert_ty resolved_ty in
+  (match param.tdefault with
+   | Some _ ->
+       desugar_error "デフォルト引数はまだ Core IR へ変換できません" span
+   | None -> ());
+  let var =
+    match pat.tpat_kind with
+    | TPatVar id ->
+        let v = VarIdGen.fresh id.name ty pat.tpat_span in
+        bind_var fn_scope id.name v;
+        v
+    | TPatWildcard ->
+        VarIdGen.fresh (Printf.sprintf "_arg%d" index) ty pat.tpat_span
+    | _ ->
+        desugar_error "関数パラメータに複雑なパターンは使用できません（未実装）" span
+  in
+  { param_var = var; param_default = None }
+
+(** 関数宣言の変換 *)
+let desugar_fn_decl (decl: typed_decl) (fn_decl: typed_fn_decl) : function_def =
+  let fn_scope = create_scope_map () in
+  let fn_name = fn_decl.tfn_name.name in
+  let return_ty = convert_ty fn_decl.tfn_ret_type in
+  let params =
+    List.mapi (fun idx param -> desugar_param fn_scope fn_decl.tfn_ret_type idx param) fn_decl.tfn_params
+  in
+  let body_expr =
+    match fn_decl.tfn_body with
+    | TFnExpr expr ->
+        desugar_expr fn_scope expr
+    | TFnBlock stmts ->
+        desugar_block fn_scope stmts return_ty decl.tdecl_span
+  in
+  let entry_block =
+    make_block
+      "entry"
+      []
+      []
+      (TermReturn body_expr)
+      decl.tdecl_span
+  in
+  let metadata = default_metadata decl.tdecl_span in
+  make_function fn_name params return_ty [entry_block] metadata
+
 (** トップレベル宣言の変換 *)
-let desugar_decl (_map: var_scope_map) (_decl: typed_decl) : function_def option =
-  (* 関数宣言のみを Core IR に変換 *)
-  (* その他の宣言（型定義、グローバル変数）は後のフェーズで実装 *)
-  None
+let desugar_decl (_map: var_scope_map) (decl: typed_decl) : function_def option =
+  match decl.tdecl_kind with
+  | TFnDecl fn_decl ->
+      Some (desugar_fn_decl decl fn_decl)
+  | _ ->
+      None
 
 (** コンパイル単位の変換 *)
 let desugar_compilation_unit (tcu: typed_compilation_unit) : module_def =
