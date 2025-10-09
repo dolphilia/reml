@@ -26,6 +26,22 @@ let codegen_error msg = raise (CodegenError msg)
 let codegen_errorf fmt =
   Printf.ksprintf codegen_error fmt
 
+(* ========== 関数ごとのメタ情報 ========== *)
+
+type function_codegen_info = {
+  return_type: Llvm.lltype;                              (** Reml関数の論理的戻り値型 *)
+  return_class: Abi.return_classification;               (** ABI上の戻り値分類 *)
+  param_classes: Abi.argument_classification list;       (** 引数ごとの ABI 分類 *)
+}
+
+type current_function_state = {
+  info: function_codegen_info;                           (** 関数のメタ情報 *)
+  llvm_fn: Llvm.llvalue;                                 (** LLVM 関数値 *)
+  mutable pending_phis: (Llvm.llvalue * (label * var_id) list) list;
+                                                        (** 後で解決する φ ノード一覧 *)
+  sret_param: Llvm.llvalue option;                      (** sret 用ポインタ引数（必要時） *)
+}
+
 (* ========== コードジェネレーションコンテキスト ========== *)
 
 (** コードジェネレーションコンテキスト
@@ -43,6 +59,9 @@ type codegen_context = {
   mutable fn_map: (string, Llvm.llvalue) Hashtbl.t;       (** 関数名 → LLVM関数 *)
   mutable var_map: (var_id, Llvm.llvalue) Hashtbl.t;      (** 変数ID → LLVM値 *)
   mutable block_map: (label, Llvm.llbasicblock) Hashtbl.t; (** ラベル → LLVM基本ブロック *)
+  mutable fn_info_map: (string, function_codegen_info) Hashtbl.t;
+                                                          (** 関数名 → コード生成メタ情報 *)
+  mutable current_function: current_function_state option; (** 現在生成中の関数状態 *)
 }
 
 (* ========== コンテキスト管理 ========== *)
@@ -72,6 +91,8 @@ let create_codegen_context module_name ?(target_name="x86_64-linux") () =
     fn_map = Hashtbl.create 128;
     var_map = Hashtbl.create 256;
     block_map = Hashtbl.create 128;
+    fn_info_map = Hashtbl.create 64;
+    current_function = None;
   }
 
 (** LLVM モジュールを取得 *)
@@ -79,6 +100,70 @@ let get_llmodule ctx = ctx.llmodule
 
 (** LLVM ビルダーを取得 *)
 let get_builder ctx = ctx.builder
+
+let reset_function_context ctx =
+  Hashtbl.reset ctx.var_map;
+  Hashtbl.reset ctx.block_map
+
+let ensure_function_info ctx fn_name =
+  match Hashtbl.find_opt ctx.fn_info_map fn_name with
+  | Some info -> info
+  | None -> codegen_errorf "関数 %s のコード生成メタ情報が登録されていません" fn_name
+
+let begin_function ctx fn_def llvm_fn =
+  reset_function_context ctx;
+  let info = ensure_function_info ctx fn_def.fn_name in
+  let llvm_params = Llvm.params llvm_fn in
+  let param_offset =
+    match info.return_class with
+    | Abi.SretReturn ->
+        if Array.length llvm_params < 1 then
+          codegen_errorf "関数 %s の sret 引数が欠落しています" fn_def.fn_name;
+        1
+    | Abi.DirectReturn -> 0
+  in
+  let sret_param =
+    match info.return_class with
+    | Abi.SretReturn -> Some llvm_params.(0)
+    | Abi.DirectReturn -> None
+  in
+  List.iteri (fun i param ->
+    let idx = i + param_offset in
+    if idx >= Array.length llvm_params then
+      codegen_errorf "関数 %s の引数インデックス %d が型と一致しません" fn_def.fn_name idx;
+    let llvm_param = llvm_params.(idx) in
+    Hashtbl.replace ctx.var_map param.param_var llvm_param
+  ) fn_def.fn_params;
+  ctx.current_function <- Some { info; llvm_fn; pending_phis = []; sret_param }
+
+let current_function_state ctx =
+  match ctx.current_function with
+  | Some state -> state
+  | None -> codegen_error "現在コード生成中の関数が存在しません"
+
+let resolve_pending_phis ctx =
+  let state = current_function_state ctx in
+  List.iter (fun (phi_node, incoming) ->
+    List.iter (fun (label, incoming_var) ->
+      let block =
+        match Hashtbl.find_opt ctx.block_map label with
+        | Some b -> b
+        | None -> codegen_errorf "φ ノードが参照する未定義ブロック %s" label
+      in
+      let value =
+        match Hashtbl.find_opt ctx.var_map incoming_var with
+        | Some v -> v
+        | None -> codegen_errorf "φ ノードが参照する未定義変数 %s" incoming_var.vname
+      in
+      Llvm.add_incoming (value, block) phi_node
+    ) incoming
+  ) (List.rev state.pending_phis);
+  state.pending_phis <- []
+
+let end_function ctx =
+  resolve_pending_phis ctx;
+  ctx.current_function <- None;
+  reset_function_context ctx
 
 (* ========== ランタイム関数宣言 ========== *)
 
@@ -95,29 +180,34 @@ let declare_runtime_functions ctx =
   (* mem_alloc: (i64) -> ptr *)
   let mem_alloc_ty = Llvm.function_type ptr_ty [| i64_ty |] in
   let mem_alloc = Llvm.declare_function "mem_alloc" mem_alloc_ty ctx.llmodule in
-  Hashtbl.add ctx.fn_map "mem_alloc" mem_alloc;
+  Hashtbl.replace ctx.fn_map "mem_alloc" mem_alloc;
 
   (* inc_ref: (ptr) -> void *)
   let inc_ref_ty = Llvm.function_type void_ty [| ptr_ty |] in
   let inc_ref = Llvm.declare_function "inc_ref" inc_ref_ty ctx.llmodule in
-  Hashtbl.add ctx.fn_map "inc_ref" inc_ref;
+  Hashtbl.replace ctx.fn_map "inc_ref" inc_ref;
 
   (* dec_ref: (ptr) -> void *)
   let dec_ref_ty = Llvm.function_type void_ty [| ptr_ty |] in
   let dec_ref = Llvm.declare_function "dec_ref" dec_ref_ty ctx.llmodule in
-  Hashtbl.add ctx.fn_map "dec_ref" dec_ref;
+  Hashtbl.replace ctx.fn_map "dec_ref" dec_ref;
 
   (* panic: (ptr, i64) -> void (noreturn) *)
   let panic_ty = Llvm.function_type void_ty [| ptr_ty; i64_ty |] in
   let panic = Llvm.declare_function "panic" panic_ty ctx.llmodule in
   Llvm.add_function_attr panic (Llvm.create_enum_attr ctx.llctx "noreturn" 0L) Llvm.AttrIndex.Function;
-  Hashtbl.add ctx.fn_map "panic" panic
+  Hashtbl.replace ctx.fn_map "panic" panic
 
 (* ========== 型判定ヘルパー ========== *)
 
 let is_float_type ty =
   match ty with
   | TCon (TCFloat _) -> true
+  | _ -> false
+
+let is_unit_type ty =
+  match ty with
+  | TUnit -> true
   | _ -> false
 
 (* ========== 式のコード生成（前方宣言） ========== *)
@@ -202,7 +292,12 @@ and codegen_literal ctx lit ty =
 and codegen_var ctx var_id =
   match Hashtbl.find_opt ctx.var_map var_id with
   | Some llvalue -> llvalue
-  | None -> codegen_errorf "Undefined variable: %s" var_id.vname
+  | None ->
+      (* ローカル変数として登録されていない場合はグローバル関数を参照している可能性を考慮 *)
+      begin match Hashtbl.find_opt ctx.fn_map var_id.vname with
+      | Some fn -> fn
+      | None -> codegen_errorf "Undefined variable: %s" var_id.vname
+      end
 
 (* ========== 関数適用のコード生成 ========== *)
 
@@ -227,7 +322,7 @@ and codegen_let ctx var_id bound_expr body_expr =
   let bound_value = codegen_expr ctx bound_expr in
 
   (* 変数マップに登録 *)
-  Hashtbl.add ctx.var_map var_id bound_value;
+  Hashtbl.replace ctx.var_map var_id bound_value;
 
   (* 本体式をコード生成 *)
   codegen_expr ctx body_expr
@@ -428,11 +523,30 @@ and codegen_array_access _ctx _array_expr _index_expr =
 
 (* ========== 終端命令のコード生成 ========== *)
 
+let emit_return ctx expr =
+  let state = current_function_state ctx in
+  if is_unit_type expr.expr_ty then begin
+    let _ = codegen_expr ctx expr in
+    Llvm.build_ret_void ctx.builder
+  end else
+    let ret_val = codegen_expr ctx expr in
+    match state.info.return_class with
+    | Abi.DirectReturn ->
+        Llvm.build_ret ret_val ctx.builder
+    | Abi.SretReturn ->
+        let sret_param =
+          match state.sret_param with
+          | Some p -> p
+          | None ->
+              codegen_error "sret パラメータが存在しない状態で sret 戻り値を生成しようとしました"
+        in
+        let _ = Llvm.build_store ret_val sret_param ctx.builder in
+        Llvm.build_ret_void ctx.builder
+
 let codegen_terminator ctx terminator =
   match terminator with
   | TermReturn expr ->
-      let ret_val = codegen_expr ctx expr in
-      Llvm.build_ret ret_val ctx.builder
+      emit_return ctx expr
 
   | TermJump label ->
       begin match Hashtbl.find_opt ctx.block_map label with
@@ -465,11 +579,10 @@ let codegen_stmt ctx stmt =
   match stmt with
   | Assign (var_id, expr) ->
       let value = codegen_expr ctx expr in
-      Hashtbl.add ctx.var_map var_id value
+      Hashtbl.replace ctx.var_map var_id value
 
   | Return expr ->
-      let ret_val = codegen_expr ctx expr in
-      let _ = Llvm.build_ret ret_val ctx.builder in
+      let _ = emit_return ctx expr in
       ()
 
   | Jump label ->
@@ -494,19 +607,11 @@ let codegen_stmt ctx stmt =
 
   | Phi (var_id, incoming) ->
       (* φ ノードを生成 *)
-      let _llvm_ty = Type_mapping.reml_type_to_llvm ctx.type_ctx var_id.vty in
-      let incoming_values = List.map (fun (label, incoming_var) ->
-        match Hashtbl.find_opt ctx.var_map incoming_var with
-        | Some llvalue ->
-            begin match Hashtbl.find_opt ctx.block_map label with
-            | Some block -> (llvalue, block)
-            | None -> codegen_errorf "Undefined block label in phi: %s" label
-            end
-        | None ->
-            codegen_errorf "Undefined variable in phi: %s" incoming_var.vname
-      ) incoming in
-      let phi_node = Llvm.build_phi incoming_values var_id.vname ctx.builder in
-      Hashtbl.add ctx.var_map var_id phi_node
+      let llvm_ty = Type_mapping.reml_type_to_llvm ctx.type_ctx var_id.vty in
+      let phi_node = Llvm.build_empty_phi llvm_ty var_id.vname ctx.builder in
+      Hashtbl.replace ctx.var_map var_id phi_node;
+      let state = current_function_state ctx in
+      state.pending_phis <- (phi_node, incoming) :: state.pending_phis
 
   | EffectMarker _ ->
       (* Phase 1: 効果マーカーは無視 *)
@@ -539,49 +644,70 @@ let codegen_function_decl ctx fn_def =
   (* 返り値型を変換 *)
   let ret_ty = Type_mapping.reml_type_to_llvm ctx.type_ctx fn_def.fn_return_ty in
 
-  (* 関数型を生成 *)
-  let fn_ty = Llvm.function_type ret_ty param_types_array in
+  (* 戻り値のABI分類を判定 *)
+  let return_class = Abi.classify_struct_return ctx.target ctx.type_ctx fn_def.fn_return_ty in
 
-  (* 関数を宣言 *)
+  (* sret の場合は先頭にポインタ引数を追加し、戻り値型を void にする *)
+  let actual_ret_ty, actual_param_types_array, sret_offset =
+    match return_class with
+    | Abi.DirectReturn ->
+        ret_ty, param_types_array, 0
+    | Abi.SretReturn ->
+        let sret_ptr_ty = Llvm.pointer_type ctx.llctx in
+        let extended_params =
+          Array.init (Array.length param_types_array + 1) (fun i ->
+            if i = 0 then sret_ptr_ty else param_types_array.(i - 1)
+          )
+        in
+        Llvm.void_type ctx.llctx, extended_params, 1
+  in
+
+  (* 関数型を生成 *)
+  let fn_ty = Llvm.function_type actual_ret_ty actual_param_types_array in
+
+  (* 関数を宣言（後続で基本ブロックを追加して定義にする） *)
   let llvm_fn = Llvm.declare_function fn_def.fn_name fn_ty ctx.llmodule in
 
   (* System V calling convention を設定 *)
   Llvm.set_function_call_conv Llvm.CallConv.c llvm_fn;
 
-  (* ABI属性の設定（Phase 3 Week 14-15）
-   * System V ABI: 16バイト超過の構造体には sret/byval 属性を付与 *)
-
-  (* 戻り値のABI分類を判定 *)
-  let return_class = Abi.classify_struct_return ctx.target ctx.type_ctx fn_def.fn_return_ty in
-  let sret_offset = match return_class with
-  | Abi.SretReturn ->
-      (* 戻り値が大きい構造体の場合、第1引数に sret 属性を追加 *)
-      let ret_llty = Type_mapping.reml_type_to_llvm ctx.type_ctx fn_def.fn_return_ty in
-      Abi.add_sret_attr ctx.llctx llvm_fn ret_llty 0;
-      1  (* 以降の引数インデックスは +1 オフセット *)
-  | Abi.DirectReturn ->
-      0  (* オフセットなし *)
-  in
+  (* sret 属性の付与（必要な場合） *)
+  (match return_class with
+   | Abi.SretReturn ->
+       Abi.add_sret_attr ctx.llctx llvm_fn ret_ty 0
+   | Abi.DirectReturn ->
+       ());
 
   (* 各引数のABI分類を判定し、byval 属性を追加 *)
-  List.iteri (fun i param ->
-    let arg_class = Abi.classify_struct_argument ctx.target ctx.type_ctx param.param_var.vty in
-    match arg_class with
-    | Abi.ByvalArg arg_llty ->
-        (* 大きい構造体引数には byval 属性を追加 *)
-        Abi.add_byval_attr ctx.llctx llvm_fn arg_llty (i + sret_offset)
-    | Abi.DirectArg ->
-        () (* レジスタ渡し、属性不要 *)
-  ) fn_def.fn_params;
+  let param_classes =
+    List.mapi (fun i param ->
+      let arg_class = Abi.classify_struct_argument ctx.target ctx.type_ctx param.param_var.vty in
+      begin match arg_class with
+      | Abi.ByvalArg arg_llty ->
+          Abi.add_byval_attr ctx.llctx llvm_fn arg_llty (i + sret_offset)
+      | Abi.DirectArg -> ()
+      end;
+      arg_class
+    ) fn_def.fn_params
+  in
 
   (* 関数マップに登録 *)
-  Hashtbl.add ctx.fn_map fn_def.fn_name llvm_fn;
+  Hashtbl.replace ctx.fn_map fn_def.fn_name llvm_fn;
 
   (* パラメータに名前を設定 *)
+  (match return_class with
+   | Abi.SretReturn ->
+       let sret_param = Llvm.param llvm_fn 0 in
+       Llvm.set_value_name "__sret_ptr" sret_param
+   | Abi.DirectReturn -> ());
   List.iteri (fun i param ->
-    let llvm_param = Llvm.param llvm_fn i in
+    let llvm_param = Llvm.param llvm_fn (i + sret_offset) in
     Llvm.set_value_name param.param_var.vname llvm_param
   ) fn_def.fn_params;
+
+  (* 関数メタ情報を記録 *)
+  let info = { return_type = ret_ty; return_class; param_classes } in
+  Hashtbl.replace ctx.fn_info_map fn_def.fn_name info;
 
   llvm_fn
 
@@ -626,7 +752,7 @@ let codegen_blocks ctx llvm_fn blocks =
   (* Phase 1: 全てのブロックを作成 *)
   List.iter (fun block ->
     let llvm_block = Llvm.append_block ctx.llctx block.label llvm_fn in
-    Hashtbl.add ctx.block_map block.label llvm_block
+    Hashtbl.replace ctx.block_map block.label llvm_block
   ) blocks;
 
   (* Phase 2: 各ブロックの命令を生成 *)
@@ -677,7 +803,9 @@ let codegen_module ?(target_name="x86_64-linux") module_def =
   (* 関数本体を生成 *)
   List.iter (fun fn_def ->
     let llvm_fn = Hashtbl.find ctx.fn_map fn_def.fn_name in
-    codegen_blocks ctx llvm_fn fn_def.fn_blocks
+    begin_function ctx fn_def llvm_fn;
+    codegen_blocks ctx llvm_fn fn_def.fn_blocks;
+    end_function ctx
   ) module_def.function_defs;
 
   ctx.llmodule

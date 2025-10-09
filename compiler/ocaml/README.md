@@ -393,14 +393,28 @@
 
 **既知の制限**:
 
-- 現在のLLVM IR生成はランタイム関数宣言のみで、ユーザー定義関数の本体は未生成
-- これは `Codegen.codegen_module` の実装が完了していないため（Phase 3 Week 17-18で対応予定）
-- ゴールデンテストは現状の出力を期待値として固定し、将来的にコード生成が完成したときに更新する方針
+- Core IR 側でまだ関数本体が生成されていないため、ゴールデン期待値は引き続きランタイム宣言のみ（`codegen.ml` は任意の関数ブロックを処理できる状態）
+- ループや複合効果を含む Core IR のカバレッジは未着手（φノードの遅延解決は導入済みだが検証ケースを追加する必要あり）
 
-**次のステップ**:
+### ✅ Week 17: LLVM 関数本体生成（完了: 2025-10-09）
 
-- Week 17-18: 関数本体のLLVM IR生成を実装（Phase 3 Week 12-14で作成した `codegen.ml` を拡張）
-- ゴールデンテスト期待値を更新し、完全な関数定義を含むIRを検証
+計画書: [docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md](../../docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md) §4-6
+
+**実装ハイライト**:
+
+- `llvm_gen/codegen.ml`
+  - `codegen_context` に関数メタ情報（SRet/ByVal分類、pending φ ノード）を保持する仕組みを追加
+  - `begin_function`/`end_function` フローで SSA 変数マッピングを初期化し、φ ノードは遅延解決で `Llvm.add_incoming` を実行
+  - `emit_return` を導入して `unit` 戻り値と `sret` ハンドリングを統合、関数参照のフォールバックとして `fn_map` 参照を追加
+- `tests/test_llvm_verify.ml`
+  - LLVM 18 の `Llvm.define_function` が暗黙にエントリーブロックを持つ挙動へ追随し、`Llvm.declare_function` ベースで検証モジュールを構築
+- `scripts/verify_llvm_ir.sh`
+  - `llvm-as` / `opt -verify` / `llc` の失敗時に 2/3/4 で終了するよう修正し、`Verify` モジュールのエラーマッピングを正規化
+
+**フォローアップ**:
+
+- Core IR が関数本体を供給できるようになった段階で `tests/llvm-ir/golden/*.ll.golden` を更新
+- ループ・再帰を含む Core IR CGF サンプルを作成し、`pending_phis` の検証ケースを追加
 
 ### 記録ルール
 - 週次で本セクションを更新

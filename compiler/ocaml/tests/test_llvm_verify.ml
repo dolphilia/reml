@@ -33,8 +33,12 @@ let build_constant_module () =
   let llmodule = Llvm.create_module ctx "verify_constant" in
   let i64 = Llvm.i64_type ctx in
   let fn_ty = Llvm.function_type i64 [||] in
-  let fn = Llvm.define_function "const42" fn_ty llmodule in
-  let entry_block = Llvm.append_block ctx "entry" fn in
+  let fn = Llvm.declare_function "const42" fn_ty llmodule in
+  let entry_block =
+    match Llvm.basic_blocks fn with
+    | [||] -> Llvm.append_block ctx "entry" fn
+    | blocks -> blocks.(0)
+  in
   let builder = Llvm.builder_at_end ctx entry_block in
   ignore (Llvm.build_ret (Llvm.const_int i64 42) builder);
   llmodule

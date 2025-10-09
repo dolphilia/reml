@@ -108,21 +108,24 @@ main() {
   # ステップ1: llvm-as（アセンブル）
   echo "[1/3] llvm-as: アセンブル (.ll → .bc)..."
   if ! "$LLVM_AS" "$input_ll" -o "$temp_bc" 2>&1; then
-    error "llvm-as が失敗しました（終了コード: 2）"
+    echo "llvm-as が失敗しました（終了コード: 2）" >&2
+    exit 2
   fi
   echo "✓ llvm-as 成功"
 
   # ステップ2: opt -verify（検証パス）
   echo "[2/3] opt -verify: LLVM 検証パス実行..."
   if ! "$OPT" -passes=verify -disable-output "$temp_bc" 2>&1; then
-    error "opt -verify が失敗しました（終了コード: 3）"
+    echo "opt -verify が失敗しました（終了コード: 3）" >&2
+    exit 3
   fi
   echo "✓ opt -verify 成功"
 
   # ステップ3: llc（ネイティブコード生成）
   echo "[3/3] llc: ネイティブコード生成 (.bc → .o)..."
   if ! "$LLC" -filetype=obj "$temp_bc" -o "$temp_obj" 2>&1; then
-    error "llc が失敗しました（終了コード: 4）"
+    echo "llc が失敗しました（終了コード: 4）" >&2
+    exit 4
   fi
   echo "✓ llc 成功"
 

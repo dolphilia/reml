@@ -104,6 +104,8 @@
 
 **成果物**: `llvm_gen/codegen.ml`, IR生成コア
 
+> **2025-10-09 更新**: `codegen_module` が Core IR 基本ブロックを LLVM 基本ブロックへ展開するパイプラインを実装。`codegen_context` に関数スコープの pending φ ノード解決、SRet/ByVal 属性の付与、SSA 変数マッピングの初期化処理を追加し、今後のブロックパラメータ／ループ最適化へ備えた。
+
 ### 5. ABI・呼び出し規約の実装（15週目）
 **担当領域**: System V ABI準拠
 
@@ -142,6 +144,8 @@
 - 検証結果の `0-3-audit-and-metrics.md` への記録
 
 **成果物**: `scripts/verify_llvm_ir.sh`, CI検証ジョブ
+
+> **2025-10-09 更新**: `verify_llvm_ir.sh` の異常系を exit code 2/3/4 で正規化し、`Verify.verify_llvm_ir` が `AssembleError`／`VerifyError`／`CodegenError` を正しく識別できるように修正。ユニットテスト `test_llvm_verify` も LLVM 18 のエントリーブロック挙動に合わせて更新済み。
 
 ### 7. `--emit-ir` 出力機能（16週目）
 **担当領域**: IRダンプとデバッグ支援
