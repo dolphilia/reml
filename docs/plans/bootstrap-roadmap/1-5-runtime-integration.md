@@ -127,6 +127,7 @@
 - LLVM IRでのランタイムシンボル宣言
 - 関数属性の付与（`noreturn` for `panic`等）
 - リンケージ設定（external）
+- `sret` / `byval` など型付き属性は `compiler/ocaml/src/llvm_gen/llvm_attr.ml` の FFI 経由で生成し、構造体シグネチャに正しい型情報を付与する
 
 6.2. **ランタイム呼び出し挿入**
 - メモリ割り当て時の `mem_alloc` 呼び出し

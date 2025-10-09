@@ -158,35 +158,39 @@ let classify_struct_argument target ctx ty =
 
 (** sret属性を関数に追加
  *
- * LLVM 18+ の llvm-ocaml バインディングでは型付き属性のAPIが制限されているため、
- * Phase 1 では文字列属性として設定する（Phase 2 で完全な型付き属性に拡張）。
+ * llvm-ocaml 標準バインディングが公開していない型付き属性 API を補うため、
+ * `Llvm_attr.create_sret_attr` で `LLVMCreateTypeAttribute` を直接呼び出す。
+ * 何らかの理由で属性種別が解決できない場合は、従来通りの文字列属性にフォールバックする。
  *
  * @param llctx LLVM コンテキスト
  * @param llvm_fn LLVM関数値
- * @param _ret_ty 戻り値のLLVM型（Phase 1では未使用、Phase 2で型付き属性に利用）
+ * @param ret_ty 戻り値のLLVM型（構造体戻り値の場合は対象構造体）
  * @param param_index パラメータインデックス（通常0）
  *)
-let add_sret_attr llctx llvm_fn _ret_ty param_index =
-  (* Phase 1: 文字列属性として sret を設定
-   * LLVM 18 の型付き属性は llvm-ocaml バインディングで未サポートのため、
-   * 現段階では属性名のみを設定し、LLVM の ABI 処理に委譲する *)
+let add_sret_attr llctx llvm_fn ret_ty param_index =
   let attr_kind = Llvm.AttrIndex.Param param_index in
-  let sret_attr = Llvm.create_string_attr llctx "sret" "" in
+  let sret_attr =
+    try Llvm_attr.create_sret_attr llctx ret_ty
+    with Llvm.UnknownAttribute _ -> Llvm.create_string_attr llctx "sret" ""
+  in
   Llvm.add_function_attr llvm_fn sret_attr attr_kind
 
 (** byval属性を関数引数に追加
  *
- * Phase 1 では文字列属性として設定（Phase 2 で型付き属性に拡張）。
+ * `Llvm_attr.create_byval_attr` により型付き属性を設定する。
+ * 属性種別が取得できないパスでは文字列属性へフォールバックする。
  *
  * @param llctx LLVM コンテキスト
  * @param llvm_fn LLVM関数値
- * @param _arg_ty 引数のLLVM型（Phase 1では未使用、Phase 2で型付き属性に利用）
+ * @param arg_ty 引数のLLVM型（構造体 byval の場合は対象構造体）
  * @param param_index パラメータインデックス
  *)
-let add_byval_attr llctx llvm_fn _arg_ty param_index =
-  (* Phase 1: 文字列属性として byval を設定 *)
+let add_byval_attr llctx llvm_fn arg_ty param_index =
   let attr_kind = Llvm.AttrIndex.Param param_index in
-  let byval_attr = Llvm.create_string_attr llctx "byval" "" in
+  let byval_attr =
+    try Llvm_attr.create_byval_attr llctx arg_ty
+    with Llvm.UnknownAttribute _ -> Llvm.create_string_attr llctx "byval" ""
+  in
   Llvm.add_function_attr llvm_fn byval_attr attr_kind
 
 (* ========== デバッグ・診断関数 ========== *)
