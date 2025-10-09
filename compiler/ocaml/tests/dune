@@ -1,5 +1,5 @@
 ; Dune テストルール — Reml OCaml コンパイラテスト
 
 (tests
- (names test_lexer test_parser test_golden test_pattern_matching test_types test_type_inference test_type_errors test_let_polymorphism test_core_ir test_desugar test_cfg test_const_fold test_dce test_pipeline test_llvm_type_mapping test_abi)
+ (names test_lexer test_parser test_golden test_pattern_matching test_types test_type_inference test_type_errors test_let_polymorphism test_core_ir test_desugar test_cfg test_const_fold test_dce test_pipeline test_llvm_type_mapping test_abi test_llvm_verify)
  (libraries reml_parser reml_ocaml.core_ir reml_ocaml.llvm_gen llvm unix str))

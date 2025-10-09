@@ -27,6 +27,19 @@ jobs:
         with:
           ocaml-compiler: 5.2.1
 
+      - name: Install LLVM toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y llvm-18 llvm-18-dev llvm-18-tools
+          # シンボリックリンク作成（llvm-as, opt, llc を使えるように）
+          sudo ln -sf /usr/bin/llvm-as-18 /usr/bin/llvm-as
+          sudo ln -sf /usr/bin/opt-18 /usr/bin/opt
+          sudo ln -sf /usr/bin/llc-18 /usr/bin/llc
+          # バージョン確認
+          llvm-as --version
+          opt --version
+          llc --version
+
       - name: Install dependencies
         run: |
           opam install . --deps-only --with-test --yes
@@ -36,3 +49,13 @@ jobs:
         run: |
           opam exec -- dune test
         working-directory: compiler/ocaml
+
+      - name: Upload LLVM IR artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: llvm-ir-artifacts
+          path: |
+            /tmp/reml_verify_*.ll
+            /tmp/reml_verify_*.bc
+          retention-days: 7

@@ -260,6 +260,89 @@
 - Week 15-16: LLVM IR検証パイプライン（llvm-as, opt -verify, llc）
 - Week 16: CLI統合（`--emit-ir`）、ゴールデンテストの追加
 
+### ✅ Week 15-16: LLVM IR検証パイプライン（完了: 2025-10-09）
+
+計画書: [docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md](../../docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md) §6
+
+**実装統計**:
+
+- 総コード行数: 約600行（verify.ml 約250行 + test_llvm_verify.ml 約350行）
+- 実装ファイル: 5ファイル（verify.ml/mli, test_llvm_verify.ml, scripts/verify_llvm_ir.sh, CI設定）
+- ビルド状態: ✅ 成功（警告なし）
+- テスト: 7/7 成功（正常ケース）
+
+**完了項目**:
+
+1. **検証スクリプト実装** (`scripts/verify_llvm_ir.sh`)
+   - 3段階検証パイプライン（llvm-as → opt -verify → llc）
+   - LLVMバージョンチェック（最小15.0、推奨18.x）
+   - 終了コード別エラー分類（アセンブル/検証/コード生成/スクリプトエラー）
+   - 一時ファイル自動クリーンアップ
+
+2. **OCamlラッパーモジュール** (`src/llvm_gen/verify.ml/mli`)
+   - `verify_llvm_ir: Llvm.llmodule -> verification_result` — LLVMモジュール検証
+   - `verify_llvm_ir_file: string -> verification_result` — ファイルベース検証
+   - `error_to_diagnostic: verification_error -> Ast.span option -> Diagnostic.t` — 診断変換
+   - 4種類の検証エラー型（E9001-E9004）
+
+3. **テストスイート** (`tests/test_llvm_verify.ml`)
+   - 正常ケーステスト（7件）:
+     - 基本的な関数（引数なし・戻り値i64）
+     - 関数呼び出し（引数渡し・型整合性）
+     - 条件分岐（if式・φノード）
+     - 算術演算（プリミティブ演算子）
+     - 空関数（境界値: void戻り値）
+     - 複数ブロック（CFG検証・ネスト制御フロー）
+     - let束縛（変数代入・スコープ）
+   - 全テスト成功（7/7）
+
+4. **CI統合** (`.github/workflows/ocaml-dune-test.yml`)
+   - LLVM 18ツールチェーン自動インストール（ubuntu-latest）
+   - llvm-as/opt/llcシンボリックリンク作成
+   - 検証テスト自動実行（`dune test`）
+   - 失敗時のLLVM IRアーティファクト保存（7日間保持）
+
+5. **技術文書** (`docs/llvm-ir-verification.md`)
+   - アーキテクチャ図解
+   - 3段階検証の詳細説明
+   - トラブルシューティングガイド
+   - 診断エラーコード一覧（E9001-E9004）
+
+**検証結果**:
+
+- llvm-as: 全7件のテストで構文エラーなし
+- opt -verify: SSA形式・型整合性・基本ブロック構造が妥当
+- llc: x86_64 Linux向けオブジェクトファイル生成成功
+- CI: GitHub Actions で自動検証パイプライン実行成功
+
+**技術的詳細**:
+
+- **検証スクリプト**: Bashで実装し、LLVM_AS/OPT/LLC環境変数で柔軟な設定が可能
+- **診断変換**: LLVM診断出力から詳細情報を抽出し、`Diagnostic.t`形式へマッピング（最大5行の補足情報）
+- **一時ファイル**: `/tmp/reml_verify_<timestamp>_<pid>.ll`形式で衝突回避
+- **エラー分類**: 終了コード2/3/4で段階別エラーを判別（スクリプト側で分岐）
+
+**今後のフォローアップ**:
+
+1. **エラーケーステスト追加**（Phase 3 Week 16）
+   - 意図的に無効なLLVM IRを生成するテスト
+   - 型不整合・未定義シンボル・無効終端命令のケース
+   - ファイルベースでの検証（手動作成した`.ll`ファイル）
+
+2. **詳細診断の強化**（Phase 2以降）
+   - LLVM診断出力のパース精度向上（行番号・カラム位置の抽出）
+   - Span情報へのマッピング（Core IR位置 → LLVM IR位置 → Remlソース位置）
+
+3. **マルチターゲット対応**（Phase 2以降）
+   - Windows x64向け検証（`x86_64-pc-windows-msvc`）
+   - ARM64向け検証（クロスコンパイル環境）
+
+**次のステップ**:
+
+- Week 16: CLI統合（`--emit-ir` + `--verify-ir`フラグ）
+- Week 16: ゴールデンテストの追加（`examples/` → LLVM IR期待値）
+- Week 16: M3マイルストーン達成報告書作成
+
 ### 記録ルール
 - 週次で本セクションを更新
 - 詳細な議事録: [docs/phase3-handover.md](docs/phase3-handover.md), [docs/technical-debt.md](docs/technical-debt.md)
