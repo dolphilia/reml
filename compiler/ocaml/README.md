@@ -42,7 +42,14 @@
   - エラーメッセージの stderr 出力（タイムスタンプ、PID、メッセージ）
   - `exit(1)` による異常終了
   - Phase 2 向け拡張版 `panic_at` 追加（ファイル名・行番号付き）
-- ⏳ **参照カウント**: `runtime/refcount.c` で RC 操作と型別デストラクタ呼び出しを整備（次のステップ）。
+- ✅ **参照カウント**: `runtime/native/src/refcount.c` で RC 操作と型別デストラクタ呼び出しを実装完了（2025-10-10）
+  - inc_ref / dec_ref の基本操作実装（単一スレッド、Phase 1）
+  - 型別デストラクタディスパッチ（STRING, TUPLE, RECORD, CLOSURE, ADT, プリミティブ型）
+  - 再帰的な子オブジェクト解放（クロージャ環境、ADT payload）
+  - テストスイート：8 件のテストケース（基本 inc/dec、ゼロ到達解放、NULL 安全性、型別デストラクタ、リークゼロ検証）すべて成功
+  - AddressSanitizer 統合：リーク・ダングリングゼロ
+  - デバッグ統計機能：`reml_debug_print_refcount_stats` でカウンタ確認可能
+  - Phase 2 向けTODO: アトミック操作（並行対応）、循環参照検出、型メタデータテーブル
 - **ビルドシステム**: `runtime/Makefile`（`-O2`/`-Wall -Wextra`/`-g`）を用意し、プラットフォーム検出と依存関係を整理。
 - **LLVM 連携**: `compiler/ocaml/src/llvm_gen/codegen.ml` と `abi.ml` でランタイムシンボル宣言・属性設定・リンクフラグを統合（`llvm_attr.ml` + C スタブで `sret` / `byval` の型付き属性を付与）。
 - **テストと検証**: `runtime/native/tests/` と `compiler/ocaml/tests/codegen/` に単体/統合テストを追加し、Valgrind/ASan のジョブを CI に組み込む。

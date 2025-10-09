@@ -26,6 +26,14 @@ void reml_debug_print_alloc_stats(void) {
     fprintf(stderr, "[DEBUG] Total allocations: %zu, frees: %zu, leaked: %zu\n",
             allocs, frees, allocs - frees);
 }
+
+size_t reml_debug_get_alloc_count(void) {
+    return atomic_load(&alloc_count);
+}
+
+size_t reml_debug_get_free_count(void) {
+    return atomic_load(&free_count);
+}
 #endif
 
 /* ========== ヘルパー関数 ========== */

@@ -171,6 +171,21 @@ uint32_t reml_get_type_tag(void* ptr);
  * アロケーション統計情報を出力（デバッグビルド時のみ）
  */
 void reml_debug_print_alloc_stats(void);
+
+/**
+ * アロケーション回数を取得（デバッグビルド時のみ）
+ */
+size_t reml_debug_get_alloc_count(void);
+
+/**
+ * 解放回数を取得（デバッグビルド時のみ）
+ */
+size_t reml_debug_get_free_count(void);
+
+/**
+ * 参照カウント統計情報を出力（デバッグビルド時のみ）
+ */
+void reml_debug_print_refcount_stats(void);
 #endif
 
 #endif // REML_RUNTIME_H
