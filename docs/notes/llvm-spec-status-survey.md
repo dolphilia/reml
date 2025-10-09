@@ -489,6 +489,16 @@ cl /Fe:foo.exe foo.c foo.ll libreml_runtime.lib
 5. **メモリ安全**: `inc_ref/dec_ref`のリーク/二重解放をサニタイザで監視
 6. **パターンマッチ網羅**: 非網羅時に警告/エラー（将来的に必須）
 
+### 6.4 Docker ベース x86_64 Linux 環境（1-5-runtime-integration.md §9）
+
+- **ベースイメージ**: `ubuntu:22.04`、LLVM 18 / clang-18 / opam 2.1 を事前インストール
+- **Dockerfile**: `tooling/ci/docker/bootstrap-runtime.Dockerfile` — 非特権ユーザ `reml`、`ocaml-base-compiler.5.2.1` スイッチ、`dune/menhir/llvm/odoc` を pre-install
+- **ビルドスクリプト**: `scripts/docker/build-runtime-container.sh` — `docker buildx` / `podman build` 両対応、`--push`・`--build-arg` をサポート
+- **実行スクリプト**: `scripts/docker/run-runtime-tests.sh` — `dune build`, `dune runtest`, `compiler/ocaml/scripts/verify_llvm_ir.sh`, `make -C runtime/native runtime` を一括実行
+- **スモークテスト**: `scripts/docker/smoke-linux.sh` — `examples/language-impl-comparison/reml/basic_interpreter.reml` を `remlc --emit-ir --verify-ir` でビルド
+- **メトリクス**: `tooling/ci/docker/metrics.json` にビルド所要時間/イメージサイズを記録し、`0-3-audit-and-metrics.md` へ転記
+- **脆弱性監査**: `docker scout cves ghcr.io/reml/bootstrap-runtime:<tag>` または `trivy image` で月次チェックし、重大度 High 以上は `0-4-risk-handling.md` に登録
+
 ---
 
 ## 7. 未決定・今後の課題

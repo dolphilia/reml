@@ -113,6 +113,7 @@
 - 2025-10-06 / compiler/ocaml / パーサードライバーを `Result<Ast, Diagnostic>` へ移行し、`tests/test_parser.ml` に診断メタデータ検証を追加。`diagnostic_regressions` 指標は `dune test` による差分チェックで監視。
 - 2025-10-07 / compiler/ocaml / Phase 3 Week 10-11 完了: Core IR 最適化パス（定数畳み込み、死コード削除、パイプライン統合）を実装。総コード行数: 約5,642行、テスト: 42件全て成功。
 - 2025-10-09 / compiler/ocaml / Phase 3 Week 15 完了: ABI判定・属性設定のユニットテスト実装。総テストケース: 61件（既存45件 + 新規16件）、成功率: 100%。16バイト境界の正確な判定を検証済み。
+- 2025-10-09 / tooling/ci/docker / `ghcr.io/reml/bootstrap-runtime:dev-local` を linux/amd64 でビルド（所要 ~530 秒、圧縮前 4.09GB）。`scripts/docker/run-runtime-tests.sh` と `scripts/docker/smoke-linux.sh` を実行し、既知の失敗（Let Polymorphism A2、LLVM ゴールデン差分、`basic_interpreter.reml` の構文エラー）を確認。計測値を `tooling/ci/docker/metrics.json` に記録。
 
 ---
 

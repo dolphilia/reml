@@ -1,0 +1,19 @@
+{
+  "image": {
+    "tag": "ghcr.io/reml/bootstrap-runtime:dev-local",
+    "base": "ubuntu:22.04 (linux/amd64)",
+    "last_built": "2025-10-09T16:22:34Z",
+    "size_mb": 4086.16
+  },
+  "tests": {
+    "dune_build_seconds": null,
+    "dune_runtest_seconds": 1.51,
+    "smoke_seconds": 1.65,
+    "status": {
+      "dune_runtest": "failed: existing let polymorphism test A2 (expected i64, actual t2)",
+      "llvm_golden": "failed: print_i64 declaration not reflected in golden",
+      "smoke": "failed: parser error at examples/language-impl-comparison/reml/basic_interpreter.reml line 5"
+    },
+    "notes": "Container build succeeded; test commands executed but halted on pre-existing repository failures. Metrics capture wall-clock durations until failure."
+  }
+}

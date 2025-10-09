@@ -60,6 +60,7 @@
 - `compiler/ocaml/src/llvm_gen/` で呼び出しているランタイム関数を洗い出し、必要なシグネチャが計画書と一致しているか確認する（特に `panic` の属性と `inc_ref`/`dec_ref` の呼び出し箇所）。
 - `compiler/ocaml/docs/phase3-to-phase2-handover.md`・`compiler/ocaml/docs/technical-debt.md` の High 優先度項目（型マッピング TODO, CFG 線形化など）がランタイム統合のブロッカーにならないよう対応状況を見直す。
 - `runtime/native/` の既存ファイル構成と CI スクリプト (`compiler/ocaml/scripts/verify_llvm_ir.sh` など) を確認し、ランタイム検証を追加する際の差分影響を把握する。
+- Docker ベースの Linux 検証フロー（`scripts/docker/build-runtime-container.sh`, `scripts/docker/run-runtime-tests.sh`, `scripts/docker/smoke-linux.sh`）を実行し、CI で利用するタグとローカル環境の整合を取る。
 - 計測結果を追記するための記録先（`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`）とリスク登録先（`docs/plans/bootstrap-roadmap/0-4-risk-handling.md`）のフォーマットを再確認する。
 
 ## 関連ドキュメント

@@ -15,6 +15,7 @@
 - `compiler/ocaml/src/codegen` : ランタイム呼び出し側 (FFI 宣言、リンク設定)
 - `compiler/ocaml/tests/codegen` : ランタイム連携を含むエンドツーエンドテスト
 - `tooling/ci` : ランタイムをリンクする CI ジョブ、Valgrind/ASan 等の検証スクリプト
+- `tooling/ci/docker`（新設）: x86_64 Linux 用 Dockerfile・ビルドスクリプト・ローカル再現ドキュメント
 
 ## 作業ブレークダウン
 
@@ -187,18 +188,48 @@
 
 **成果物**: 完全なドキュメント、CI統合
 
+### 9. Linux x86_64 Docker 環境整備（15-16週目）
+**担当領域**: ローカルテスト・CI 共有基盤
+
+9.1. **ベースイメージ設計**
+- `ubuntu:22.04`（または互換性のある LTS リリース）をベースに、System V ABI 準拠の `x86_64-unknown-linux-gnu` ツールチェーンを事前構築
+- `opam`, `dune`, `llvm-18`, `clang`, `gcc`, `make`, `valgrind`, `libunwind` をインストールし、Phase 1 のビルド・テストが容器内で完結するようにする
+- `tooling/ci/docker/bootstrap-runtime.Dockerfile` を作成し、ベースイメージのタグ・インストール手順・検証コマンドをコメントとして明記
+- パッケージバージョンと導入理由を `docs/notes/llvm-spec-status-survey.md` に追記し、LLVM 依存のドリフトを監視する
+
+9.2. **ビルドと配布の自動化**
+- `scripts/docker/build-runtime-container.sh` を追加し、`docker buildx` と `podman` の両方でビルドできるようエントリポイントを統一
+- GitHub Container Registry (`ghcr.io/reml/bootstrap-runtime:<version>`) へのプッシュ手順を `tooling/ci/README.md` に記載し、CI とローカルで同一イメージを共有
+- コンテナビルドログとベースレイヤのハッシュを `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に記録し、破損時のロールバック手順（最新安定版タグへの切替）を明示
+- `1-7-linux-validation-infra.md` のワークフローからコンテナタグを参照し、CI 側でのキャッシュ再利用戦略（`build-push-action`）を同期
+
+9.3. **開発者向け利用ガイド**
+- `scripts/docker/run-runtime-tests.sh` を用意し、`dune build`, `dune test`, `scripts/verify_llvm_ir.sh`, `make -C runtime/native runtime` を一括実行できるようにする
+- ボリュームマウント（`-v $(pwd):/workspace`）と UID/GID 調整オプションを定義し、macOS/Windows ホストでもパーミッション崩れを防ぐ
+- `compiler/ocaml/README.md` のチェックリストへ Docker ワークフローを追加し、開発者が CI と同一環境で検証できることを明示
+- Podman/Colima 利用時の注意点（cgroup v2、rootless 実行）を `tooling/ci/docker/README.md` にまとめ、既存の CI ガイドと差分管理する
+
+9.4. **検証とメトリクス**
+- コンテナ内で Valgrind/ASan を実行し、ホスト環境のレポートと一致するかを比較
+- `tooling/ci/docker/metrics.json` にビルド時間・テスト時間・イメージサイズを記録し、`0-3-audit-and-metrics.md` に集計値を転記
+- コンテナ更新後は `scripts/docker/smoke-linux.sh` を追加し、Phase 1 のスモークテストを 5 分以内で完了できるか測定する
+- `docs/plans/bootstrap-roadmap/1-7-linux-validation-infra.md` と同期し、CI ジョブの `container` タグ変更時にレビューチェック項目を設ける
+
 ## 成果物と検証
 - `runtime/` ディレクトリにソースコードとビルド設定が追加され、`make runtime` や `dune build @runtime` が成功。
 - RC テストでリークゼロ、ダングリング検出ゼロを確認し、結果を `0-3-audit-and-metrics.md` に記録。
 - CLI で `--link-runtime` オプションが利用可能となり、生成バイナリが x86_64 Linux 上で実行できる。
+- `tooling/ci/docker/bootstrap-runtime.Dockerfile` に基づくコンテナを `scripts/docker/run-runtime-tests.sh` で起動し、CI と同一手順でのビルド・検証が成功する。
 
 ## リスクとフォローアップ
 - macOS 等で開発時にクロスビルドが必要になるため、Docker イメージまたは cross toolchain の利用手順を `docs/notes/llvm-spec-status-survey.md` に共有。
 - RC のオーバーヘッドが大きい場合に備え、計測値を Phase 3 のメモリ管理戦略検討へフィードバック。
 - ランタイム API が今後拡張されることを想定し、ヘッダにバージョンフィールドと互換性ポリシーを記載しておく。
+- Docker ベースイメージの脆弱性や LLVM バージョン差異を検知するため、月次で `docker scout cves`（もしくは `trivy`）を実行し、重大度 High 以上は `0-4-risk-handling.md` に登録してホットフィックスイメージを発行する。
 
 ## 参考資料
 - [1-0-phase1-bootstrap.md](1-0-phase1-bootstrap.md)
 - [guides/llvm-integration-notes.md](../../guides/llvm-integration-notes.md)
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
 - [notes/llvm-spec-status-survey.md](../../notes/llvm-spec-status-survey.md)
+- [1-7-linux-validation-infra.md](1-7-linux-validation-infra.md)
