@@ -103,6 +103,57 @@ let instantiate (scheme: type_scheme) : ty =
     ) scheme.quantified in
     apply_subst subst scheme.body
 
+(** 型付きパラメータに代入を適用するヘルパー
+ *
+ * 関数宣言やラムダ式の最終型が確定したあとで呼び出し、
+ * パラメータの型情報（パターン含む）を最新化する。
+ *)
+let apply_subst_to_tparam (subst: substitution) (tparam: typed_param) : typed_param =
+  let rec normalize_ty ty =
+    let ty' = apply_subst subst ty in
+    if type_equal ty ty' then
+      ty'
+    else
+      normalize_ty ty'
+  in
+  let updated_ty = normalize_ty tparam.tty in
+  let updated_bindings =
+    List.map (fun (name, ty) -> (name, normalize_ty ty)) tparam.tpat.tpat_bindings
+  in
+  let updated_pattern = {
+    tparam.tpat with
+    tpat_ty = normalize_ty tparam.tpat.tpat_ty;
+    tpat_bindings = updated_bindings;
+  } in
+  { tparam with tty = updated_ty; tpat = updated_pattern }
+
+let resolve_params (subst: substitution) (param_env: env) (params: typed_param list)
+    : typed_param list =
+  let env' = apply_subst_env subst param_env in
+  List.map (fun param ->
+    let param_subst = apply_subst_to_tparam subst param in
+    match param_subst.tpat.tpat_kind with
+    | TPatVar id ->
+        let resolved_ty =
+          match lookup id.name env' with
+          | Some scheme -> scheme.body
+          | None -> param_subst.tty
+        in
+        (* Phase 3 Week 17 改善: 型変数が残っている場合は i64 へフォールバック *)
+        let concrete_ty = match resolved_ty with
+          | TVar _tv -> ty_i64
+          | _ -> resolved_ty
+        in
+        let updated_bindings =
+          List.map (fun (name, _) -> (name, concrete_ty)) param_subst.tpat.tpat_bindings
+        in
+        { param_subst with
+          tty = concrete_ty;
+          tpat = { param_subst.tpat with tpat_ty = concrete_ty; tpat_bindings = updated_bindings; };
+        }
+    | _ -> param_subst
+  ) params
+
 (* ========== 型推論エンジン ========== *)
 
 (** 推論結果: 型付き式、推論された型、代入 *)
@@ -215,10 +266,11 @@ let rec infer_expr (env: env) (expr: expr) : (infer_result, type_error) result =
 
       (* 返り値型に代入を適用 *)
       let final_ret_ty = apply_subst s3 ret_ty in
+      let s_final = compose_subst s3 s2 in
 
       (* 型付き式を構築 *)
       let texpr = make_typed_expr (TCall (tfn, targs)) final_ret_ty expr.expr_span in
-      Ok (texpr, final_ret_ty, s3)
+      Ok (texpr, final_ret_ty, s_final)
 
   | Lambda (params, ret_ty_annot, body) ->
       (* ラムダ式の型推論
@@ -230,7 +282,7 @@ let rec infer_expr (env: env) (expr: expr) : (infer_result, type_error) result =
        * 5. 関数型を構築
        *)
       (* パラメータの型推論 *)
-      let* (tparams, param_tys, param_env, s1) = infer_params env params empty_subst in
+      let* (tparams, _param_tys, param_env, s1) = infer_params env params empty_subst in
 
       (* 本体式を推論 *)
       let env' = apply_subst_env s1 param_env in
@@ -246,14 +298,18 @@ let rec infer_expr (env: env) (expr: expr) : (infer_result, type_error) result =
             Ok (body_ty, s2)
       in
 
+      (* パラメータへ代入を適用 *)
+      let tparams' = resolve_params s3 param_env tparams in
+      let param_tys_resolved = List.map (fun p -> p.tty) tparams' in
+
       (* 関数型を構築: param1 -> param2 -> ... -> body_ty *)
       let fn_ty = List.fold_right (fun param_ty acc ->
         TArrow (param_ty, acc)
-      ) param_tys final_body_ty in
+      ) param_tys_resolved final_body_ty in
 
       (* 型付き式を構築 *)
       let ret_ty_opt = Option.map convert_type_annot ret_ty_annot in
-      let texpr = make_typed_expr (TLambda (tparams, ret_ty_opt, tbody)) fn_ty expr.expr_span in
+      let texpr = make_typed_expr (TLambda (tparams', ret_ty_opt, tbody)) fn_ty expr.expr_span in
       Ok (texpr, fn_ty, s3)
 
   | Binary (op, e1, e2) ->
@@ -274,11 +330,13 @@ let rec infer_expr (env: env) (expr: expr) : (infer_result, type_error) result =
       let* (te2, ty2, s2) = infer_expr env' e2 in
 
       (* 演算子に応じた型推論 *)
-      let* (ret_ty, s3) = infer_binary_op op ty1 ty2 s2 e1.expr_span e2.expr_span in
+      let s_combined = compose_subst s2 s1 in
+      let* (ret_ty, s3) = infer_binary_op op ty1 ty2 s_combined e1.expr_span e2.expr_span in
+      let s_final = compose_subst s3 s_combined in
 
       (* 型付き式を構築 *)
       let texpr = make_typed_expr (TBinary (op, te1, te2)) ret_ty expr.expr_span in
-      Ok (texpr, ret_ty, s3)
+      Ok (texpr, ret_ty, s_final)
 
   | If (cond, then_e, else_e) ->
       (* if式の型推論
@@ -772,21 +830,69 @@ and infer_binary_op (op: Ast.binary_op) (ty1: ty) (ty2: ty)
   match op with
   (* 算術演算子: + - * / % ^ *)
   | Add | Sub | Mul | Div | Mod | Pow ->
-      (* 仕様書 1-2 §C.5: 数値型（i64, f64）のみサポート *)
-      (* ty1 と ty2 を単一化し、返り値型も同じ *)
+      (* 仕様書 1-2 §C.5: 数値型（i64, f64）のみサポート
+       * Phase 3 Week 17 改善: 型変数を単一化前に i64 へ解決して具体化 *)
       let ty1' = apply_subst subst ty1 in
       let ty2' = apply_subst subst ty2 in
-      let* s1 = unify subst ty1' ty2' span2 in
-      (* 単一化された型を返す *)
-      let unified_ty = apply_subst s1 ty1' in
-      Ok (unified_ty, s1)
+
+      (* ステップ1: 型変数を数値型デフォルト（i64）へ解決 *)
+      let resolve_numeric_default s ty =
+        match apply_subst s ty with
+        | TVar tv ->
+            compose_subst [(tv, ty_i64)] s
+        | _ -> s
+      in
+      let s_resolved = resolve_numeric_default (resolve_numeric_default subst ty1') ty2' in
+
+      (* ステップ2: 解決後の型を再適用 *)
+      let ty1'' = apply_subst s_resolved ty1' in
+      let ty2'' = apply_subst s_resolved ty2' in
+
+      (* ステップ3: 単一化（両方とも具体型になっているはず） *)
+      let* s1 = unify s_resolved ty1'' ty2'' span2 in
+      let unified_ty = apply_subst s1 ty1'' in
+
+      (* ステップ4: 最終確認 *)
+      (match unified_ty with
+       | TCon (TCInt _) | TCon (TCFloat _) ->
+           Ok (unified_ty, s1)
+       | TVar tv ->
+           (* ここに到達することは通常ないが、安全のため残す *)
+           let s2 = compose_subst [(tv, ty_i64)] s1 in
+           Ok (ty_i64, s2)
+       | _ ->
+           Error (type_error_with_message
+             "算術演算子は数値型 (i64 / f64) にのみ適用できます"
+             span1))
 
   (* 比較演算子: == != < <= > >= *)
-  | Eq | Ne | Lt | Le | Gt | Ge ->
+  | Eq | Ne ->
       (* 左辺と右辺を単一化し、返り値は Bool *)
       let ty1' = apply_subst subst ty1 in
       let ty2' = apply_subst subst ty2 in
       let* s1 = unify subst ty1' ty2' span2 in
+      Ok (ty_bool, s1)
+  | Lt | Le | Gt | Ge ->
+      (* 左辺と右辺を単一化し、返り値は Bool
+       * Phase 3 Week 17 改善: 型変数を単一化前に i64 へ解決 *)
+      let ty1' = apply_subst subst ty1 in
+      let ty2' = apply_subst subst ty2 in
+
+      (* ステップ1: 型変数を数値型デフォルト（i64）へ解決 *)
+      let resolve_numeric_default s ty =
+        match apply_subst s ty with
+        | TVar tv ->
+            compose_subst [(tv, ty_i64)] s
+        | _ -> s
+      in
+      let s_resolved = resolve_numeric_default (resolve_numeric_default subst ty1') ty2' in
+
+      (* ステップ2: 解決後の型を再適用 *)
+      let ty1'' = apply_subst s_resolved ty1' in
+      let ty2'' = apply_subst s_resolved ty2' in
+
+      (* ステップ3: 単一化 *)
+      let* s1 = unify s_resolved ty1'' ty2'' span2 in
       Ok (ty_bool, s1)
 
   (* 論理演算子: && || *)
@@ -1059,10 +1165,14 @@ and infer_decl (env: env) (decl: decl)
             Ok (body_ty, s2)
       in
 
+      (* 8b. パラメータへ代入を適用 *)
+      let tparams' = resolve_params s3 param_env tparams in
+      let param_tys_resolved = List.map (fun p -> p.tty) tparams' in
+
       (* 8. 最終的な関数型を構築 *)
       let fn_ty = List.fold_right (fun param_ty acc ->
-        TArrow (apply_subst s3 param_ty, acc)
-      ) param_tys final_ret_ty in
+        TArrow (param_ty, acc)
+      ) param_tys_resolved final_ret_ty in
 
       (* 9. 一般化してスキームを生成 *)
       let env' = apply_subst_env s3 env in
@@ -1072,7 +1182,7 @@ and infer_decl (env: env) (decl: decl)
       let tfn = {
         tfn_name = fn.fn_name;
         tfn_generic_params = generic_bindings;
-        tfn_params = tparams;
+        tfn_params = tparams';
         tfn_ret_type = final_ret_ty;
         tfn_where_clause = fn.fn_where_clause;
         tfn_effect_annot = fn.fn_effect_annot;

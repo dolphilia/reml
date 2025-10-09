@@ -671,20 +671,11 @@ and compile_test_expr (var: var_id) (test: test_kind) (span: span) : expr =
 (* ========== トップレベル変換 ========== *)
 
 (** 関数パラメータの変換 *)
-let desugar_param (fn_scope: var_scope_map) (fn_return_ty: ty) (index: int) (param: typed_param)
+let desugar_param (fn_scope: var_scope_map) (index: int) (param: typed_param)
     : param =
   let span = param.tparam_span in
   let pat = param.tpat in
-  let resolved_ty =
-    match pat.tpat_ty with
-    | TVar _ ->
-        begin match fn_return_ty with
-        | TCon _ -> fn_return_ty
-        | _ -> ty_i64
-        end
-    | ty -> ty
-  in
-  let ty = convert_ty resolved_ty in
+  let ty = convert_ty param.tty in
   (match param.tdefault with
    | Some _ ->
        desugar_error "デフォルト引数はまだ Core IR へ変換できません" span
@@ -708,7 +699,7 @@ let desugar_fn_decl (decl: typed_decl) (fn_decl: typed_fn_decl) : function_def =
   let fn_name = fn_decl.tfn_name.name in
   let return_ty = convert_ty fn_decl.tfn_ret_type in
   let params =
-    List.mapi (fun idx param -> desugar_param fn_scope fn_decl.tfn_ret_type idx param) fn_decl.tfn_params
+    List.mapi (fun idx param -> desugar_param fn_scope idx param) fn_decl.tfn_params
   in
   let body_expr =
     match fn_decl.tfn_body with

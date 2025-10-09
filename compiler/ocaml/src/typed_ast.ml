@@ -268,8 +268,21 @@ let string_of_typed_decl tdecl =
       Printf.sprintf "var %s = ... : %s"
         (string_of_typed_pattern pat) scheme_str
   | TFnDecl fn ->
-      Printf.sprintf "fn %s(...) : %s"
-        fn.tfn_name.name scheme_str
+      let params_str =
+        match fn.tfn_params with
+        | [] -> "()"
+        | params ->
+            params
+            |> List.map (fun param ->
+                 match param.tpat.tpat_kind with
+                 | TPatVar id ->
+                     Printf.sprintf "%s: %s" id.name (string_of_ty param.tty)
+                 | _ ->
+                     string_of_typed_pattern param.tpat)
+            |> String.concat ", "
+      in
+      Printf.sprintf "fn %s(%s) : %s"
+        fn.tfn_name.name params_str scheme_str
   | TTypeDecl _ ->
       Printf.sprintf "type ... : %s" scheme_str
   | TTraitDecl _ ->

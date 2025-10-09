@@ -17,6 +17,7 @@ open Type_env
 open Type_inference
 open Parser_driver
 open Ast
+open Typed_ast
 
 (* ========== テストヘルパー ========== *)
 
@@ -537,6 +538,59 @@ let test_function_declarations () =
         (* 関数型: i64 -> i64 -> i64 *)
         let expected_ty = TArrow (ty_i64, TArrow (ty_i64, ty_i64)) in
         assert_type_eq expected_ty tdecl.tdecl_scheme.body "Function type"
+    | Error _ -> failwith "Should not reach here"
+  );
+
+  (* 型注釈なしのパラメータ *)
+  run_test "infer_decl: fn inferred_add(x, y) = x + y" (fun () ->
+    let env = initial_env in
+    let add_expr = {
+      expr_kind = Binary (
+        Add,
+        { expr_kind = Var { name = "x"; span = dummy_span }; expr_span = dummy_span },
+        { expr_kind = Var { name = "y"; span = dummy_span }; expr_span = dummy_span }
+      );
+      expr_span = dummy_span;
+    } in
+    let fn_decl = {
+      decl_attrs = [];
+      decl_vis = Private;
+      decl_kind = FnDecl {
+        fn_name = { name = "inferred_add"; span = dummy_span };
+        fn_generic_params = [];
+        fn_params = [
+          { pat = { pat_kind = PatVar { name = "x"; span = dummy_span }; pat_span = dummy_span };
+            ty = None;
+            default = None;
+            param_span = dummy_span };
+          { pat = { pat_kind = PatVar { name = "y"; span = dummy_span }; pat_span = dummy_span };
+            ty = None;
+            default = None;
+            param_span = dummy_span };
+        ];
+        fn_ret_type = None;
+        fn_where_clause = [];
+        fn_effect_annot = None;
+        fn_body = FnExpr add_expr;
+      };
+      decl_span = dummy_span;
+    } in
+    let result = infer_decl env fn_decl in
+    assert_ok result "Inferred add function should succeed";
+    match result with
+    | Ok (tdecl, _) ->
+        begin match tdecl.tdecl_kind with
+        | Typed_ast.TFnDecl tfn ->
+            List.iteri (fun idx param ->
+              let msg = Printf.sprintf "Parameter %d type should default to i64" (idx + 1) in
+              assert_type_eq ty_i64 param.tty msg;
+              assert_type_eq ty_i64 param.tpat.tpat_ty msg
+            ) tfn.tfn_params;
+            let expected_ty = TArrow (ty_i64, TArrow (ty_i64, ty_i64)) in
+            assert_type_eq expected_ty tdecl.tdecl_scheme.body "Inferred add function type"
+        | _ ->
+            failwith "Expected a function declaration"
+        end
     | Error _ -> failwith "Should not reach here"
   );
 
