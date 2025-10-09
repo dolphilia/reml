@@ -89,11 +89,62 @@
    - 技術文書（`docs/llvm-type-mapping.md`）
    - 環境構築ガイド更新（`docs/environment-setup.md`）- LLVM 18 対応手順を追記
 
-📍 **次のステップ（Week 13-14）**:
+### 📍 Week 13-14: LLVM IRビルダー実装（進行中: 2025-10-09）
 
-- Week 13: LLVM IRビルダー実装（モジュール・関数・基本ブロック生成）
-- Week 14-15: ABI・呼び出し規約の実装
-- Week 16: LLVM IR検証パイプライン
+計画書: [docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md](../../docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md) §4
+
+**実装統計**:
+
+- 総コード行数: 775行（codegen.ml 662行 + codegen.mli 113行）
+- 実装ファイル: 2ファイル（codegen.ml/mli）
+- テスト: 未実装（次ステップ）
+
+**完了項目**:
+
+1. **コードジェネレーションコンテキスト**
+   - LLVM コンテキスト・モジュール・ビルダー統合
+   - ターゲット設定適用（x86_64 Linux System V ABI）
+   - 関数・変数・ブロックマッピング管理
+
+2. **ランタイム関数宣言**
+   - `mem_alloc`, `inc_ref`, `dec_ref`, `panic`の外部宣言
+   - noreturn属性設定（panicのみ）
+
+3. **式のコード生成**（9種類対応）
+   - Literal（整数・浮動小数・Bool・Char・String・Unit）
+   - Var（変数参照）
+   - App（関数適用）
+   - Let（let束縛）
+   - If（条件分岐、φノード生成）
+   - Primitive（17種類の演算：算術・比較・論理・ビット）
+   - TupleAccess（タプル要素アクセス）
+
+4. **終端命令生成**
+   - TermReturn、TermJump、TermBranch、TermUnreachable
+
+5. **文のコード生成**（6種類）
+   - Assign、Return、Jump、Branch、Phi、ExprStmt
+
+6. **関数・モジュール生成**
+   - 関数宣言生成（System V calling convention）
+   - グローバル変数生成骨格
+   - 基本ブロック生成（2フェーズ：全ブロック作成→命令生成）
+   - モジュール全体生成パイプライン
+
+7. **LLVM IR出力**
+   - テキスト形式（.ll）出力
+   - ビットコード形式（.bc）出力
+
+8. **ビルド設定**
+   - dune設定更新（codegen追加、llvm.bitwriter依存追加）
+
+**進行中**:
+- 🔧 Core_ir.Ir型インポートエラー修正（名前空間の問題）
+
+**次のステップ**:
+- Week 13-14 残タスク: 型エラー修正、ビルド検証、ユニットテスト実装
+- Week 14-15: ABI・呼び出し規約の詳細実装
+- Week 16: LLVM IR検証パイプライン、CLI統合
 
 ### 記録ルール
 - 週次で本セクションを更新
