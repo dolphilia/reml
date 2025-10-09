@@ -89,7 +89,7 @@
    - 技術文書（`docs/llvm-type-mapping.md`）
    - 環境構築ガイド更新（`docs/environment-setup.md`）- LLVM 18 対応手順を追記
 
-### 📍 Week 13-14: LLVM IRビルダー実装（進行中: 2025-10-09）
+### ✅ Week 13-14: LLVM IRビルダー実装（完了: 2025-10-09）
 
 計画書: [docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md](../../docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md) §4
 
@@ -97,6 +97,7 @@
 
 - 総コード行数: 775行（codegen.ml 662行 + codegen.mli 113行）
 - 実装ファイル: 2ファイル（codegen.ml/mli）
+- ビルド状態: ✅ 成功（警告なし）
 - テスト: 未実装（次ステップ）
 
 **完了項目**:
@@ -113,7 +114,7 @@
 3. **式のコード生成**（9種類対応）
    - Literal（整数・浮動小数・Bool・Char・String・Unit）
    - Var（変数参照）
-   - App（関数適用）
+   - App（関数適用、LLVM 18 opaque pointer対応）
    - Let（let束縛）
    - If（条件分岐、φノード生成）
    - Primitive（17種類の演算：算術・比較・論理・ビット）
@@ -138,13 +139,16 @@
 8. **ビルド設定**
    - dune設定更新（codegen追加、llvm.bitwriter依存追加）
 
-**進行中**:
-- 🔧 Core_ir.Ir型インポートエラー修正（名前空間の問題）
+9. **型インポートエラー修正（2025-10-09）**
+   - `Ast.literal` コンストラクタへの統一（`Int`, `Float`, `Bool`, `Char`, `String`, `Unit`）
+   - 複合リテラル（`Tuple`, `Array`, `Record`）のエラーハンドリング追加
+   - LLVM 18 opaque pointer対応（`build_call`の型引数追加）
+   - 未使用変数警告の解消（`_prefix`による明示化）
 
 **次のステップ**:
-- Week 13-14 残タスク: 型エラー修正、ビルド検証、ユニットテスト実装
-- Week 14-15: ABI・呼び出し規約の詳細実装
-- Week 16: LLVM IR検証パイプライン、CLI統合
+
+- Week 14-15: ABI・呼び出し規約の詳細実装、ユニットテスト整備
+- Week 15-16: LLVM IR検証パイプライン、CLI統合（`--emit-ir`）
 
 ### 記録ルール
 - 週次で本セクションを更新

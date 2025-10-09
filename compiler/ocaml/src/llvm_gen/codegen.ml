@@ -145,24 +145,27 @@ let rec codegen_expr ctx expr =
 
 and codegen_literal ctx lit ty =
   match lit with
-  | LitInt (i, _base) ->
+  | Ast.Int (s, _base) ->
       (* 型に応じて適切な整数定数を生成 *)
       let llvm_ty = Type_mapping.reml_type_to_llvm ctx.type_ctx ty in
+      let i = Int64.of_string s in
       Llvm.const_int llvm_ty (Int64.to_int i)
 
-  | LitFloat (f, _) ->
+  | Ast.Float s ->
       let llvm_ty = Type_mapping.reml_type_to_llvm ctx.type_ctx ty in
+      let f = float_of_string s in
       Llvm.const_float llvm_ty f
 
-  | LitBool b ->
+  | Ast.Bool b ->
       let i1_ty = Llvm.i1_type ctx.llctx in
       Llvm.const_int i1_ty (if b then 1 else 0)
 
-  | LitChar c ->
+  | Ast.Char s ->
       let i32_ty = Llvm.i32_type ctx.llctx in
+      let c = if String.length s > 0 then String.get s 0 else '\x00' in
       Llvm.const_int i32_ty (Char.code c)
 
-  | LitString s ->
+  | Ast.String (s, _kind) ->
       (* FAT pointer { ptr, i64 } を構築 *)
       (* Phase 1: 簡易実装 - グローバル文字列定数を作成 *)
       let str_const = Llvm.const_stringz ctx.llctx s in
@@ -180,10 +183,19 @@ and codegen_literal ctx lit ty =
       (* 構造体を構築 *)
       Llvm.const_struct ctx.llctx [| str_ptr; len_const |]
 
-  | LitUnit ->
+  | Ast.Unit ->
       (* unit は void として扱う（実際には値を返さない） *)
       (* Phase 1: undef を返す *)
       Llvm.undef (Llvm.void_type ctx.llctx)
+
+  | Ast.Tuple _ ->
+      codegen_errorf "Tuple literals not yet implemented in Phase 1"
+
+  | Ast.Array _ ->
+      codegen_errorf "Array literals not yet implemented in Phase 1"
+
+  | Ast.Record _ ->
+      codegen_errorf "Record literals not yet implemented in Phase 1"
 
 (* ========== 変数参照のコード生成 ========== *)
 
@@ -202,8 +214,11 @@ and codegen_app ctx fn_expr arg_exprs =
   let arg_values = List.map (codegen_expr ctx) arg_exprs in
   let arg_values_array = Array.of_list arg_values in
 
-  (* 関数呼び出しを生成 *)
-  Llvm.build_call fn_value arg_values_array "call_tmp" ctx.builder
+  (* 関数の型を取得 *)
+  let fn_ty = Llvm.type_of fn_value in
+
+  (* 関数呼び出しを生成 (LLVM 18 opaque pointer 対応) *)
+  Llvm.build_call fn_ty fn_value arg_values_array "call_tmp" ctx.builder
 
 (* ========== Let 束縛のコード生成 ========== *)
 
@@ -403,11 +418,11 @@ and codegen_tuple_access ctx tuple_expr index =
   let tuple_val = codegen_expr ctx tuple_expr in
   Llvm.build_extractvalue tuple_val index "tuple_access" ctx.builder
 
-and codegen_record_access ctx record_expr field =
+and codegen_record_access _ctx _record_expr field =
   (* Phase 1: レコードフィールドアクセスは未実装 *)
   codegen_errorf "Record access not yet implemented in Phase 1: %s" field
 
-and codegen_array_access ctx array_expr index_expr =
+and codegen_array_access _ctx _array_expr _index_expr =
   (* Phase 1: 配列アクセスは未実装 *)
   codegen_errorf "Array access not yet implemented in Phase 1"
 
@@ -437,7 +452,7 @@ let codegen_terminator ctx terminator =
           codegen_errorf "Undefined block label in branch"
       end
 
-  | TermSwitch (expr, cases, default_label) ->
+  | TermSwitch (_expr, _cases, _default_label) ->
       (* Phase 1: Switch は未実装 *)
       codegen_errorf "Switch terminator not yet implemented in Phase 1"
 
@@ -479,7 +494,7 @@ let codegen_stmt ctx stmt =
 
   | Phi (var_id, incoming) ->
       (* φ ノードを生成 *)
-      let llvm_ty = Type_mapping.reml_type_to_llvm ctx.type_ctx var_id.vty in
+      let _llvm_ty = Type_mapping.reml_type_to_llvm ctx.type_ctx var_id.vty in
       let incoming_values = List.map (fun (label, incoming_var) ->
         match Hashtbl.find_opt ctx.var_map incoming_var with
         | Some llvalue ->
@@ -594,7 +609,7 @@ let codegen_blocks ctx llvm_fn blocks =
     Llvm.position_at_end llvm_block ctx.builder;
 
     (* ブロックパラメータを変数マップに登録 *)
-    List.iter (fun param ->
+    List.iter (fun _param ->
       (* φノードとして実装される場合は後で処理 *)
       (* Phase 1: 簡易実装 *)
       ()
