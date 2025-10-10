@@ -42,6 +42,8 @@ opam exec -- dune exec -- remlc examples/cli/trace_sample.reml --trace --stats
 | ランタイムリンク | `add.reml` | `opam exec -- dune exec -- remlc examples/cli/add.reml --link-runtime --out-dir build/bin` | 指定した `--out-dir` に実行ファイルが生成され、リンクが成功すること |
 | 診断 JSON 出力 | `type_error.reml` | `opam exec -- dune exec -- remlc examples/cli/type_error.reml --format=json 2>diagnostic.json` | JSON 構造が [docs/guides/diagnostic-format.md](../../docs/guides/diagnostic-format.md) に準拠していること |
 | トレースと統計 | `trace_sample.reml` | `opam exec -- dune exec -- remlc examples/cli/trace_sample.reml --trace --stats 2>trace.log` | `trace.log` にフェーズ計測と統計サマリが出力されること |
+| メトリクスファイル出力（JSON） | `trace_sample.reml` | `opam exec -- dune exec -- remlc examples/cli/trace_sample.reml --metrics metrics.json` | `metrics.json` がスキーマ [`docs/schemas/remlc-metrics.schema.json`](../../docs/schemas/remlc-metrics.schema.json) に準拠すること |
+| メトリクスファイル出力（CSV） | `trace_sample.reml` | `opam exec -- dune exec -- remlc examples/cli/trace_sample.reml --metrics metrics.csv --metrics-format csv` | `metrics.csv` にフェーズ別のタイミング情報が含まれること |
 
 各オプションの詳細や推奨ワークフローは [`docs/guides/cli-workflow.md`](../../docs/guides/cli-workflow.md) を参照してください。
 

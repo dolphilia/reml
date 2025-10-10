@@ -165,6 +165,22 @@ let print_stats () =
     ) global_stats.phase_timings;
     Printf.eprintf "[STATS] Total time: %.3fs\n%!" global_stats.total_elapsed_seconds;
     Printf.eprintf "[STATS] Total allocated: %d bytes\n%!" global_stats.total_allocated_bytes;
+
+    (* フェーズ別ランキング出力（時間降順） *)
+    Printf.eprintf "[STATS] Phase timings (ranked by time):\n%!";
+    let ranked_phases =
+      List.sort (fun Trace.{ elapsed_seconds = t1; _ } Trace.{ elapsed_seconds = t2; _ } ->
+        compare t2 t1  (* 降順: 大きい方が先 *)
+      ) global_stats.phase_timings
+    in
+    List.iteri (fun i Trace.{ phase; elapsed_seconds; time_ratio; allocated_bytes } ->
+      Printf.eprintf "[STATS]   %d. %s: %.3fs (%.1f%%, %d bytes)\n%!"
+        (i + 1)
+        (Trace.string_of_phase phase)
+        elapsed_seconds
+        (time_ratio *. 100.0)
+        allocated_bytes
+    ) ranked_phases;
   end;
   (match global_stats.peak_memory_bytes with
   | Some peak -> Printf.eprintf "[STATS] Peak memory: %d bytes\n%!" peak
@@ -206,3 +222,24 @@ let to_json () =
     ]
   in
   Y.pretty_to_string (`Assoc assoc)
+
+(** 統計情報をCSV形式で出力
+ *
+ * フェーズ別のタイミング情報をCSV形式で返す。
+ * ヘッダー行とデータ行を含む。
+ *
+ * @return CSV文字列
+ *)
+let to_csv () =
+  let buffer = Buffer.create 1024 in
+  (* ヘッダー行 *)
+  Buffer.add_string buffer "phase,elapsed_seconds,time_ratio,allocated_bytes\n";
+  (* データ行 *)
+  List.iter (fun Trace.{ phase; elapsed_seconds; time_ratio; allocated_bytes } ->
+    Printf.bprintf buffer "%s,%.6f,%.6f,%d\n"
+      (Trace.string_of_phase phase)
+      elapsed_seconds
+      time_ratio
+      allocated_bytes
+  ) global_stats.phase_timings;
+  Buffer.contents buffer

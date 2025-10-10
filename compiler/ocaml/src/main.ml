@@ -286,6 +286,31 @@ let () =
       if opts.trace then
         Cli.Trace.print_summary ?summary_data:trace_summary ();
 
+      (* Phase 1-6 Week 16: メトリクス出力（--metrics指定時） *)
+      (match opts.metrics_path with
+      | Some path ->
+          (* トレース情報を統計に統合（まだの場合） *)
+          (match trace_summary with
+          | Some summary when not opts.stats ->
+              Cli.Stats.update_trace_summary summary
+          | _ -> ());
+
+          (* メトリクスをファイルに出力 *)
+          let content = match opts.metrics_format with
+            | Cli.Options.MetricsJson -> Cli.Stats.to_json ()
+            | Cli.Options.MetricsCsv -> Cli.Stats.to_csv ()
+          in
+          (try
+            let oc = open_out path in
+            output_string oc content;
+            close_out oc;
+            Printf.eprintf "[METRICS] Metrics written to: %s\n%!" path
+          with
+          | Sys_error msg ->
+              Printf.eprintf "[METRICS] Error writing metrics file: %s\n%!" msg;
+              exit 1)
+      | None -> ());
+
       exit 0
   | Error diag ->
       (* Phase 1-6 Week 15: パース失敗時はトレース終了 *)

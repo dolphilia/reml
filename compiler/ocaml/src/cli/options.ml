@@ -9,6 +9,11 @@ type output_format =
   | Text  (** テキスト形式（デフォルト） *)
   | Json  (** JSON 形式（LSP 互換） *)
 
+(** メトリクス出力フォーマット *)
+type metrics_format =
+  | MetricsJson  (** JSON 形式 *)
+  | MetricsCsv   (** CSV 形式 *)
+
 (** カラーモード *)
 type color_mode =
   | Auto    (** TTY への出力時のみカラー表示 *)
@@ -41,6 +46,9 @@ let print_full_help () =
     "  --trace             フェーズ別トレースを標準エラーに表示";
     "  --stats             コンパイル統計情報を標準エラーに表示";
     "  --verbose <0-3>     ログ詳細度（環境変数 REMLC_LOG でも指定可）";
+    "  --metrics <path>    統計情報をファイルに出力";
+    "  --metrics-format <json|csv>";
+    "                       メトリクス出力形式（既定: json）";
     "";
     "コンパイル設定:";
     "  --target <triple>   ターゲットトリプル（既定: x86_64-linux）";
@@ -81,6 +89,8 @@ type options = {
   trace: bool;                  (** コンパイルフェーズのトレースを有効化 *)
   stats: bool;                  (** コンパイル統計情報を表示 *)
   verbose: int;                 (** ログの詳細度レベル (0-3) *)
+  metrics_path: string option;  (** メトリクス出力ファイルパス *)
+  metrics_format: metrics_format; (** メトリクス出力形式 *)
 
   (* コンパイル *)
   target: string;               (** ターゲットトリプル *)
@@ -106,6 +116,8 @@ let default_options = {
   trace = false;
   stats = false;
   verbose = 1;
+  metrics_path = None;
+  metrics_format = MetricsJson;
 
   target = "x86_64-linux";
   link_runtime = false;
@@ -158,6 +170,8 @@ let parse_args argv =
   let trace = ref false in
   let stats = ref false in
   let verbose = ref 1 in
+  let metrics_path = ref None in
+  let metrics_format_str = ref "json" in
   let target = ref "x86_64-linux" in
   let link_runtime = ref false in
   let runtime_path = ref "runtime/native/build/libreml_runtime.a" in
@@ -182,6 +196,8 @@ let parse_args argv =
     ("--trace", Arg.Set trace, "Enable phase tracing");
     ("--stats", Arg.Set stats, "Show compilation statistics");
     ("--verbose", Arg.Set_int verbose, "<0-3> Verbosity level (default: 1)");
+    ("--metrics", Arg.String (fun path -> metrics_path := Some path), "<path> Output metrics to file");
+    ("--metrics-format", Arg.Set_string metrics_format_str, "<json|csv> Metrics output format (default: json)");
 
     (* コンパイルオプション *)
     ("--target", Arg.Set_string target, "<triple> Target triple (default: x86_64-linux)");
@@ -230,6 +246,15 @@ let parse_args argv =
         else !verbose
       in
 
+      (* metrics_format_str を metrics_format に変換 *)
+      let metrics_fmt = match !metrics_format_str with
+        | "json" -> MetricsJson
+        | "csv" -> MetricsCsv
+        | other ->
+            prerr_endline (Printf.sprintf "Warning: unknown metrics format '%s', using 'json'" other);
+            MetricsJson
+      in
+
       Ok {
         input_file = !input_file;
         use_stdin = false;
@@ -246,6 +271,8 @@ let parse_args argv =
         trace = !trace;
         stats = !stats;
         verbose = verbose_level;
+        metrics_path = !metrics_path;
+        metrics_format = metrics_fmt;
 
         target = !target;
         link_runtime = !link_runtime;

@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://reml-lang.org/schemas/remlc-metrics.schema.json",
+  "title": "Reml Compiler Metrics",
+  "description": "統計情報およびパフォーマンスメトリクスのスキーマ定義（Phase 1-6）",
+  "type": "object",
+  "required": [
+    "tokens_parsed",
+    "ast_nodes",
+    "unify_calls",
+    "optimization_passes",
+    "llvm_instructions",
+    "phase_timings",
+    "total_elapsed_seconds",
+    "total_allocated_bytes"
+  ],
+  "properties": {
+    "tokens_parsed": {
+      "type": "integer",
+      "description": "パースしたトークン総数",
+      "minimum": 0
+    },
+    "ast_nodes": {
+      "type": "integer",
+      "description": "生成したASTノード総数",
+      "minimum": 0
+    },
+    "unify_calls": {
+      "type": "integer",
+      "description": "型推論のunify呼び出し回数",
+      "minimum": 0
+    },
+    "optimization_passes": {
+      "type": "integer",
+      "description": "適用した最適化パス数",
+      "minimum": 0
+    },
+    "llvm_instructions": {
+      "type": "integer",
+      "description": "生成したLLVM IR命令数",
+      "minimum": 0
+    },
+    "phase_timings": {
+      "type": "array",
+      "description": "フェーズ別のタイミング情報",
+      "items": {
+        "type": "object",
+        "required": ["phase", "elapsed_seconds", "time_ratio", "allocated_bytes"],
+        "properties": {
+          "phase": {
+            "type": "string",
+            "description": "フェーズ名",
+            "enum": ["Parsing", "TypeChecking", "CoreIR", "Optimization", "CodeGen"]
+          },
+          "elapsed_seconds": {
+            "type": "number",
+            "description": "フェーズ実行時間（秒）",
+            "minimum": 0
+          },
+          "time_ratio": {
+            "type": "number",
+            "description": "全体時間に対する比率（0.0-1.0）",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "allocated_bytes": {
+            "type": "integer",
+            "description": "フェーズで割り当てたメモリ量（バイト）",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "total_elapsed_seconds": {
+      "type": "number",
+      "description": "全フェーズの合計実行時間（秒）",
+      "minimum": 0
+    },
+    "total_allocated_bytes": {
+      "type": "integer",
+      "description": "全フェーズの合計アロケーション量（バイト）",
+      "minimum": 0
+    },
+    "peak_memory_bytes": {
+      "type": ["integer", "null"],
+      "description": "計測期間中のピークメモリ使用量（バイト）。未計測の場合はnull",
+      "minimum": 0
+    },
+    "memory_peak_ratio": {
+      "type": ["number", "null"],
+      "description": "peak_memory_bytes / input_size_bytes。入力サイズ未設定の場合はnull",
+      "minimum": 0
+    },
+    "input_size_bytes": {
+      "type": ["integer", "null"],
+      "description": "処理した入力ファイルのサイズ（バイト）。未設定の場合はnull",
+      "minimum": 0
+    }
+  }
+}

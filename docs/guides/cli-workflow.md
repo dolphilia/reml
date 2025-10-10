@@ -101,7 +101,23 @@ opam exec -- dune exec -- remlc examples/cli/trace_sample.reml --trace
 
 ### 3.3 コンパイル統計
 
-`--stats` でトークン数・AST ノード数・unify 呼び出しなどを収集できる。`Cli.Stats.to_json` を利用するとテストから JSON を取得できる。詳細は [docs/guides/trace-output.md](trace-output.md) を参照。
+`--stats` でトークン数・AST ノード数・unify 呼び出しなどを収集できる。詳細は [docs/guides/trace-output.md](trace-output.md) を参照。
+
+### 3.4 メトリクスファイル出力（Phase 1-6 Week 16 追加）
+
+`--metrics <path>` オプションを使用すると、統計情報をファイルに出力できます。
+出力形式は `--metrics-format` で `json`（デフォルト）または `csv` を選択できます。
+
+```bash
+# JSON形式で出力（CI連携用）
+opam exec -- dune exec -- remlc examples/cli/trace_sample.reml --metrics metrics.json
+
+# CSV形式で出力（表計算ソフトで分析）
+opam exec -- dune exec -- remlc examples/cli/trace_sample.reml --metrics metrics.csv --metrics-format csv
+```
+
+JSON出力はスキーマ定義 [`docs/schemas/remlc-metrics.schema.json`](../schemas/remlc-metrics.schema.json) に準拠します。
+これにより、CI パイプラインでの性能回帰検出やメトリクスダッシュボードへの統合が容易になります。
 
 ---
 
@@ -120,17 +136,23 @@ opam exec -- dune exec -- remlc examples/cli/trace_sample.reml --trace
 - **GitHub Actions** 例
 
 ```yaml
-    - name: Compile sample
-      run: opam exec -- dune exec -- remlc examples/cli/trace_sample.reml --trace --stats 2>trace.log
-    - name: Archive trace
+    - name: Compile sample with metrics
+      run: |
+        opam exec -- dune exec -- remlc examples/cli/trace_sample.reml \
+          --trace --stats --metrics metrics.json 2>trace.log
+
+    - name: Archive metrics and trace
       uses: actions/upload-artifact@v4
       with:
-        name: remlc-trace
-        path: trace.log
+        name: remlc-metrics
+        path: |
+          metrics.json
+          trace.log
 ```
 
 - **JSON 診断収集**: `--format=json` を指定して標準エラーを収集し、LSP 互換のパイプラインに連携する。
 - **スモークテスト**: `--emit-ir --verify-ir` を主要サンプルに対して実行し、リンク工程は必要に応じて nightly ジョブに移す。
+- **性能回帰検出**: `--metrics` で出力したJSONをCI上で過去の実行結果と比較し、parse_throughputやmemory_peak_ratioの異常値を検出する。
 
 ---
 

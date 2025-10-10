@@ -93,10 +93,31 @@
 [STATS] ====================================
 ```
 
-### JSON 取得
+### フェーズ別ランキング出力
 
-Phase 1-6 では CLI からの JSON 出力は未実装だが、`Cli.Stats.to_json` を介してテストや CI から直接 JSON 文字列を取得できる。  
-将来 `--stats-format=json` を導入する際の互換性基盤として活用する。
+Phase 1-6 Week 16 で、統計出力に時間比率降順のランキングが追加されました。
+最も時間がかかったフェーズから順に表示されるため、パフォーマンスのボトルネック特定が容易になります。
+
+```text
+[STATS] Phase timings (ranked by time):
+[STATS]   1. TypeChecking: 0.048s (78.7%, 960 bytes)
+[STATS]   2. Parsing: 0.013s (21.3%, 704 bytes)
+```
+
+### メトリクスファイル出力
+
+`--metrics <path>` オプションを使用すると、統計情報をファイルに出力できます。
+出力形式は `--metrics-format` で `json`（デフォルト）または `csv` を選択できます。
+
+```bash
+# JSON形式で出力
+opam exec -- dune exec -- remlc sample.reml --metrics metrics.json
+
+# CSV形式で出力
+opam exec -- dune exec -- remlc sample.reml --metrics metrics.csv --metrics-format csv
+```
+
+JSON出力はスキーマ定義 [`docs/schemas/remlc-metrics.schema.json`](../schemas/remlc-metrics.schema.json) に準拠します。
 
 JSON には以下のフィールドが追加される。
 
@@ -115,9 +136,23 @@ JSON には以下のフィールドが追加される。
 ## 運用ガイドライン
 
 - **CI ログ収集**: `dune exec -- remlc-ocaml sample.reml --trace --stats 2> trace.log` により標準エラーをファイルへリダイレクトし、フェーズ毎の回帰を検出する。
-- **メトリクス更新**: 10MB 規模の入力に対する `--stats` 出力を [0-3-audit-and-metrics.md](../plans/bootstrap-roadmap/0-3-audit-and-metrics.md) に追記し、性能トレンドを記録する。`memory_peak_ratio` = `peak_memory_bytes / input_size_bytes` を定義し、計測値を同ドキュメントの `memory_peak_ratio` 指標へ転記する。
+- **メトリクス更新**: 10MB 規模の入力に対する `--metrics` 出力を [0-3-audit-and-metrics.md](../plans/bootstrap-roadmap/0-3-audit-and-metrics.md) に追記し、性能トレンドを記録する。`scripts/benchmark-parse-throughput.sh` を使用して計測を自動化できます。
 - **診断との整合**: `--format=json` を併用する場合でも `--trace` / `--stats` は標準エラー出力を使用するため、CI 上でのログ分離（ファイル分割やプレフィックス付与）を推奨する。
 - **将来拡張**: `--verbose` レベルに応じたトレース粒度やメモリピーク値の記録は Phase 2-5 で扱う予定なため、追加要件は [1-5-to-1-6-handover.md](../plans/bootstrap-roadmap/1-5-to-1-6-handover.md) のフォローアップ欄、または後続フェーズのハンドオーバー資料に追記して共有する。
+
+## 10MB入力プロファイル計測
+
+`parse_throughput` 指標の基準値を確立するため、以下のスクリプトを使用します。
+
+```bash
+# 10MB入力ファイルを生成
+./scripts/generate-large-input.sh examples/benchmark/large_input.reml
+
+# parse_throughput を計測（3回平均）
+./scripts/benchmark-parse-throughput.sh examples/benchmark/large_input.reml
+```
+
+計測結果は `0-3-audit-and-metrics.md` に手動で記録してください。
 
 ## API 連携の概要
 
