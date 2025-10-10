@@ -227,7 +227,7 @@
 **完了基準**
 - macOS (ARM64/Intel) で `scripts/toolchain/prepare-linux-x86_64.sh` → `scripts/cross/run-linux-remote.sh` の順に実行し、SSH 経由で接続した Linux x86_64 検証ノード上で `examples/hello.reml` 相当の出力が一致する。ローカルでエミュレータを利用できる場合は `scripts/cross/run-linux-qemu.sh` をオプションとして提供し、選択した経路を `tooling/toolchains/metrics.json` に記録する。
 - クロスコンパイル成果物のメタデータ (`RunArtifactMetadata`) が `x86_64-unknown-linux-gnu` / `e-m:e-p:64:64-f64:64:64-v128:128:128-a:0:64` と一致し、`0-3-audit-and-metrics.md` に記録される。
-- `.github/workflows/ocaml-dune-test.yml` の macOS ジョブでクロスビルド → `run-linux-remote.sh --ci` を用いたリモート実行を 10 分以内に完走し、検証ログと計測値が `tooling/toolchains/metrics.json` に反映される。
+- `.github/workflows/bootstrap-linux.yml` の macOS ジョブでクロスビルド → `run-linux-remote.sh --ci` を用いたリモート実行を 10 分以内に完走し、検証ログと計測値が `tooling/toolchains/metrics.json` に反映される。
 
 10.1. **クロスツールチェーン選定と取得**
 - LLVM/Clang 既存パイプラインを活用し、`clang --target=x86_64-unknown-linux-gnu` と `ld.lld` を既定とする。Homebrew から `llvm@18`, `lld`, `gnu-tar`, `coreutils`, `pkg-config` を取得し、バージョンを `tooling/toolchains/versions.toml`（新設）で固定する。
@@ -262,7 +262,7 @@
 - ローカル即時検証が必要な場合は `scripts/cross/run-linux-vm.sh`（任意、UTM/Parallels 等の VM ラッパー）または従来の `run-linux-qemu.sh` を補助スクリプトとして提供し、どの手段を採用したかを `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` へ記録する。
 
 10.5. **CI・ドキュメント連携**
-- `.github/workflows/ocaml-dune-test.yml` に `macos-latest` クロスビルドジョブを追加し、`toolchains` キャッシュ（`actions/cache`）と `run-linux-remote.sh --ci` を組み合わせた smoke テストを行う。CI 落下時は `cache: restore-keys` を利用して差分診断を高速化する。
+- `.github/workflows/bootstrap-linux.yml` に `macos-latest` クロスビルドジョブを追加し、`toolchains` キャッシュ（`actions/cache`）と `run-linux-remote.sh --ci` を組み合わせた smoke テストを行う。CI 落下時は `cache: restore-keys` を利用して差分診断を高速化する。
 - `compiler/ocaml/README.md` の「直近の準備チェックリスト」にクロスツールチェーン導入手順とリモート実行フロー（および代替エミュレーション手段）を追記し、フェーズ進捗レポートには `Runtime Cross Build Status: GREEN/AMBER/RED` を追加する。
 - クロスビルド手順を `docs/guides/llvm-integration-notes.md` §6 と `docs/notes/cross-compilation-spec-update-plan.md` に反映し、Docker ベースの運用（§9）との役割分担を明文化する。ローカル実行と CI 実行の差異は表形式で整理する。
 - 失敗時のトリアージフロー（ツールチェーン破損、sysroot ドリフト、リモートホスト障害／代替エミュレータ不整合）を `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に登録し、`Severity` と `Mitigation` を記入する。トリアージ担当は Phase 1 チーム（macOS）と Phase 1-7 Linux 検証チームで二重化する。

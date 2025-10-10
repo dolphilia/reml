@@ -1,0 +1,233 @@
+name: Bootstrap Linux CI
+
+on:
+  push:
+    paths:
+      - 'compiler/ocaml/**'
+      - 'runtime/native/**'
+      - '.github/workflows/bootstrap-linux.yml'
+      - 'docs/plans/bootstrap-roadmap/**'
+  pull_request:
+    paths:
+      - 'compiler/ocaml/**'
+      - 'runtime/native/**'
+      - '.github/workflows/bootstrap-linux.yml'
+      - 'docs/plans/bootstrap-roadmap/**'
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.2.1
+
+      - name: Install dependencies
+        run: |
+          opam install . --deps-only --with-test --yes
+        working-directory: compiler/ocaml
+
+      - name: Check formatting
+        run: |
+          opam exec -- dune build @fmt
+          git diff --exit-code
+        working-directory: compiler/ocaml
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.2.1
+
+      - name: Install LLVM toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y llvm-18 llvm-18-dev llvm-18-tools
+          sudo ln -sf /usr/bin/llvm-as-18 /usr/bin/llvm-as
+          sudo ln -sf /usr/bin/opt-18 /usr/bin/opt
+          sudo ln -sf /usr/bin/llc-18 /usr/bin/llc
+          llvm-as --version
+          opt --version
+          llc --version
+
+      - name: Install dependencies
+        run: |
+          opam install . --deps-only --with-test --yes
+        working-directory: compiler/ocaml
+
+      - name: Build compiler
+        run: |
+          opam exec -- dune build
+        working-directory: compiler/ocaml
+
+      - name: Build runtime library
+        run: |
+          make runtime
+        working-directory: runtime/native
+
+      - name: Prepare build artifacts
+        run: |
+          mkdir -p artifacts/build
+          cp compiler/ocaml/_build/default/compiler/ocaml/src/main.exe artifacts/build/remlc-ocaml
+          cp runtime/native/build/libreml_runtime.a artifacts/build/
+          if ls runtime/native/build/*.o >/dev/null 2>&1; then
+            cp runtime/native/build/*.o artifacts/build/
+          fi
+
+      - name: Upload build outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: artifacts/build
+          retention-days: 30
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.2.1
+
+      - name: Install LLVM toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y llvm-18 llvm-18-dev llvm-18-tools
+          sudo ln -sf /usr/bin/llvm-as-18 /usr/bin/llvm-as
+          sudo ln -sf /usr/bin/opt-18 /usr/bin/opt
+          sudo ln -sf /usr/bin/llc-18 /usr/bin/llc
+          llvm-as --version
+          opt --version
+          llc --version
+
+      - name: Install dependencies
+        run: |
+          opam install . --deps-only --with-test --yes
+        working-directory: compiler/ocaml
+
+      - name: dune build
+        run: |
+          opam exec -- dune build
+        working-directory: compiler/ocaml
+
+      - name: dune test
+        run: |
+          opam exec -- dune runtest
+        working-directory: compiler/ocaml
+
+      - name: Install Valgrind
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y valgrind
+
+      - name: Build runtime library
+        run: |
+          make runtime
+        working-directory: runtime/native
+
+      - name: Run runtime tests
+        run: |
+          make test
+        working-directory: runtime/native
+
+      - name: Run runtime tests with Valgrind
+        run: |
+          echo "Running Valgrind leak checks..."
+          for test in build/test_*; do
+            if [ -x "$test" ]; then
+              echo "Checking $test with Valgrind..."
+              valgrind --leak-check=full --error-exitcode=1 --suppressions=/dev/null "$test" || exit 1
+            fi
+          done
+        working-directory: runtime/native
+
+      - name: Run runtime tests with AddressSanitizer
+        run: |
+          make clean
+          DEBUG=1 make runtime
+          DEBUG=1 make test
+        working-directory: runtime/native
+
+      - name: Upload LLVM IR artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: llvm-ir-artifacts
+          path: |
+            /tmp/reml_verify_*.ll
+            /tmp/reml_verify_*.bc
+          retention-days: 7
+
+      - name: Upload runtime test failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-test-failures
+          path: |
+            runtime/native/build/test_*
+            /tmp/reml_runtime_*.log
+          retention-days: 7
+
+  artifact:
+    name: Artifact Bundle
+    runs-on: ubuntu-latest
+    needs:
+      - build
+      - test
+    if: always()
+
+    steps:
+      - name: Download build outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-build
+          path: artifacts/linux-build
+
+      - name: Download runtime test failures
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: runtime-test-failures
+          path: artifacts/test-failures
+
+      - name: Download LLVM IR artifacts
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: llvm-ir-artifacts
+          path: artifacts/llvm-ir
+
+      - name: Create bundle archive
+        run: |
+          mkdir -p bundle
+          tar -czf bundle/linux-ci-bundle.tar.gz -C artifacts .
+
+      - name: Upload CI bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-ci-bundle
+          path: bundle/linux-ci-bundle.tar.gz
+          retention-days: 30

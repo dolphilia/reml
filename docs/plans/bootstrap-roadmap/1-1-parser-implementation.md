@@ -23,7 +23,7 @@
 | 2. Lexer 実装 | 完了 | ASCII 識別子・数値・文字列・コメントの処理が実装済み。Unicode 拡張は Phase 2 に延期。|
 | 3. Parser 実装 | 完了 | 基本式・宣言・パターンマッチを含む全構文を実装。制御フロー (`match`/`while`/`for`/`loop`) も完全対応。|
 | 4. AST と Span 統合 | 完了 | 全ノードに Span を保持し `--emit-ast` で出力可能。|
-| 5. パーサジェネレータ統合とビルド | 完了 | Dune 連携と CLI に加えて Linux 向け `dune test` ワークフロー（`.github/workflows/ocaml-dune-test.yml`）を整備済み。|
+| 5. パーサジェネレータ統合とビルド | 完了 | Dune 連携と CLI に加えて Linux 向け `dune test` ワークフロー（`.github/workflows/bootstrap-linux.yml`）を整備済み。|
 | 6. エラー回復戦略 | 完了 | `Parser_driver` で Result/Diagnostic を返却し、CLI 出力に統合済み。|
 | 7. テスト整備とゴールデンテスト | 完了 | ユニットテスト・ゴールデンテスト・**パターンマッチ専用テストスイート**（35+ ケース）を追加し、診断メタ情報の検証も実装。|
 | 8. ドキュメント整備とレビュー準備 | 完了 | 診断更新・パターンマッチ検証完了を計画書・README・監査ログに反映。Phase 1 の M1 マイルストーン達成。|
@@ -142,7 +142,7 @@
 - ドキュメントへのバージョン情報記録
 
 **成果物**: 完全なビルドシステム、CI設定
-- **現状 (2025-10-06)**: `compiler/ocaml/src/dune` で Menhir ルールを構成済み。`reml_ocaml.opam` に加えて GitHub Actions ワークフロー `ocaml-dune-test.yml` を追加し、Linux で `dune test` を自動実行可能。今後は macOS/Windows ジョブ拡張が検討事項。
+- **現状 (2025-10-06)**: `compiler/ocaml/src/dune` で Menhir ルールを構成済み。`reml_ocaml.opam` に加えて GitHub Actions ワークフロー `bootstrap-linux.yml` を追加し、Linux で `dune test` を自動実行可能。今後は macOS/Windows ジョブ拡張が検討事項。
 
 ### 6. エラー回復戦略（4週目）
 **担当領域**: 診断とエラー処理
