@@ -14,7 +14,8 @@
  (synopsis "Reml compiler bootstrap (OCaml implementation)")
  (description "Phase 1-3 bootstrap implementation of the Reml compiler in OCaml")
  (depends
-  (ocaml (>= 4.14))
-  (dune (>= 3.0))
-  (menhir (>= 20201216))
-  (llvm (and (>= 15.0) (< 20)))))
+ (ocaml (>= 4.14))
+ (dune (>= 3.0))
+ (menhir (>= 20201216))
+ yojson
+ (llvm (and (>= 15.0) (< 20)))))

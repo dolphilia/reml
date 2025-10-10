@@ -37,6 +37,8 @@
    - `Cli.Trace` / `Cli.Stats` で保持しているフェーズ履歴を再集計し、総時間に対する割合とアロケーション指標を出力する方式を確定（§5.1・§5.2 の未完タスクを細分化）
    - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md) の `parse_throughput` / `memory_peak_ratio` 指標と突き合わせ、ピークメモリ測定方法とサンプリング頻度を決定
    - `--metrics` 出力および JSON/CSV スキーマ（`docs/schemas/` 配下）を定義し、CI 連携時のアーティファクト更新フローを設計（§5.3 参照）
+3. **CI 依存関係修正**:
+   - ✅ GitHub Actions（ubuntu-latest）での `opam exec -- dune test` 失敗原因となっていた `yojson` 未解決依存を `dune-project`／`reml_ocaml.opam` の `depends` に追加し、テストジョブのビルドフェーズが通過することを確認予定
 
 ## 目的
 - `remlc-ocaml` CLI を Phase 1 で整備し、開発者が解析結果・IR・診断を観測できる開発体験を提供する。

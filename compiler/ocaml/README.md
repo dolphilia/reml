@@ -10,6 +10,7 @@
 - **Phase 1-6 — 開発者体験整備（進行中）**: `docs/plans/bootstrap-roadmap/1-6-developer-experience.md`
   - ✅ 診断出力システム強化（Week 14 完了）
   - ✅ トレース・ログ機能（Week 15 完了）
+  - ✅ GitHub Actions 依存関係エラー修正（`yojson` を `dune-project` / `reml_ocaml.opam` へ追加）
   - ⏳ ヘルプ・ドキュメント整備（Week 16 進行中、サンプル整備と man ページ生成スクリプト `tooling/cli/scripts/update-man-pages.sh` を追加済み）
   - 進捗: 87% (7/8タスク完了)
 
