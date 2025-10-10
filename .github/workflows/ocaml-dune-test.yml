@@ -4,11 +4,13 @@ on:
   push:
     paths:
       - 'compiler/ocaml/**'
+      - 'runtime/native/**'
       - '.github/workflows/ocaml-dune-test.yml'
       - 'docs/plans/bootstrap-roadmap/**'
   pull_request:
     paths:
       - 'compiler/ocaml/**'
+      - 'runtime/native/**'
       - '.github/workflows/ocaml-dune-test.yml'
       - 'docs/plans/bootstrap-roadmap/**'
   workflow_dispatch:
@@ -50,6 +52,45 @@ jobs:
           opam exec -- dune test
         working-directory: compiler/ocaml
 
+      - name: Install Valgrind
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y valgrind
+
+      - name: Build runtime library
+        run: |
+          make runtime
+        working-directory: runtime/native
+
+      - name: Run runtime tests
+        run: |
+          make test
+        working-directory: runtime/native
+
+      - name: Run runtime tests with Valgrind
+        run: |
+          make clean
+          DEBUG=1 make runtime
+          DEBUG=1 make test
+          # Valgrind でリーク検出
+          echo "Running Valgrind leak checks..."
+          for test in build/test_*; do
+            if [ -x "$test" ]; then
+              echo "Checking $test with Valgrind..."
+              valgrind --leak-check=full --error-exitcode=1 --suppressions=/dev/null "$test" || exit 1
+            fi
+          done
+        working-directory: runtime/native
+
+      - name: Upload runtime artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-artifacts
+          path: |
+            runtime/native/build/libreml_runtime.a
+            runtime/native/build/*.o
+          retention-days: 30
+
       - name: Upload LLVM IR artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -58,4 +99,14 @@ jobs:
           path: |
             /tmp/reml_verify_*.ll
             /tmp/reml_verify_*.bc
+          retention-days: 7
+
+      - name: Upload runtime test failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-test-failures
+          path: |
+            runtime/native/build/test_*
+            /tmp/reml_runtime_*.log
           retention-days: 7

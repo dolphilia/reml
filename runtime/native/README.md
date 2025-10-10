@@ -33,9 +33,60 @@ Phase 1 の最小ランタイムおよび Phase 2 以降の Capability 拡張を
 
 ### 次のステップ（Phase 1-5 §4-8）
 - [ ] LLVM 連携統合（コンパイラ側からの呼び出し検証）
-- [ ] CI 統合（GitHub Actions でのランタイムビルド・テスト）
+- [x] CI 統合（GitHub Actions でのランタイムビルド・テスト）
 - [ ] 監査・メトリクス計測に関する補助スクリプトの配置
 - [ ] Windows/MSVC 対応や追加 Capability を Phase 2 計画と同期
+
+## CI 統合
+
+### GitHub Actions での自動テスト
+
+ランタイムのビルドとテストは `.github/workflows/ocaml-dune-test.yml` で自動実行されます：
+
+1. **ランタイムビルド**: `make runtime` で `libreml_runtime.a` を生成
+2. **基本テスト**: `make test` でメモリアロケータ・参照カウントのテストを実行（14件）
+3. **Valgrind 検証**: AddressSanitizer 有効化（`DEBUG=1`）でリーク・ダングリング検出
+4. **アーティファクト収集**:
+   - 成功時: `libreml_runtime.a` と `.o` ファイルを 30 日保持
+   - 失敗時: テストバイナリとログを 7 日保持
+
+### ローカルでの再現手順
+
+CI と同じテストをローカルで実行する方法：
+
+```bash
+# 基本テスト
+make clean && make runtime && make test
+
+# Valgrind 統合テスト
+make clean && DEBUG=1 make runtime && DEBUG=1 make test
+for test in build/test_*; do
+  valgrind --leak-check=full --error-exitcode=1 "$test"
+done
+```
+
+### Docker での検証
+
+CI 環境と同じ Ubuntu 22.04 + LLVM 18 環境で検証する場合：
+
+```bash
+# Docker イメージを使用してランタイムテストを実行
+scripts/docker/run-runtime-tests.sh --tag ghcr.io/reml/bootstrap-runtime:local
+
+# カスタムコマンドを実行
+scripts/docker/run-runtime-tests.sh -- "cd runtime/native && make clean && DEBUG=1 make test"
+```
+
+### アーティファクトの取得
+
+GitHub Actions の成果物は以下から取得できます：
+
+- **ランタイムライブラリ**: Actions タブ → 該当ワークフロー → Artifacts → `runtime-artifacts`
+- **失敗時のテストバイナリ**: Actions タブ → 失敗したワークフロー → Artifacts → `runtime-test-failures`
+
+保持期間:
+- `runtime-artifacts`: 30 日
+- `runtime-test-failures`: 7 日
 
 ## ビルド方法
 
