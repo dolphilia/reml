@@ -19,10 +19,19 @@ opam exec -- dune exec -- remlc <入力ファイル.reml> [オプション]
 
 ### 1.2 最小のサンプル
 
-リポジトリには `examples/cli/add.reml`（加算サンプル）が同梱されている。以下で AST/IR を確認できる。
+リポジトリには `examples/cli/` 配下に以下のベースサンプルがある。
+
+- `add.reml`: 最小構成の算術コード。リンクと IR 生成の疎通確認に利用する。
+- `emit_suite.reml`: 条件分岐と関数呼び出しを含むベースライン。`--emit-*` オプションの複合検証に使用する。
+- `trace_sample.reml`: トレースと統計を確認するやや長いコード。
+- `type_error.reml`: 診断出力を検証するための意図的な型エラー。
+
+代表的な実行例:
 
 ```bash
 opam exec -- dune exec -- remlc examples/cli/add.reml --emit-ir
+
+opam exec -- dune exec -- remlc examples/cli/emit_suite.reml --emit-ast --emit-tast --emit-ir --out-dir build/emit
 ```
 
 生成された `out.ll` / `out.bc` は `--out-dir` で出力先を指定できる。自分のコードを試す場合は `tmp/` 配下などにファイルを複製して編集する。

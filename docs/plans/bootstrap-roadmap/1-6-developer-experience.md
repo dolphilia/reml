@@ -6,9 +6,9 @@
 |---------|--------|-----------|--------|
 | Week 14 | 診断出力システム | ✅ 完了 | 100% |
 | Week 15 | トレース・ログ | ✅ 完了 | 100% |
-| Week 16 | ヘルプ・ドキュメント & サンプル | ⏸️ 進行中 | 50% |
+| Week 16 | ヘルプ・ドキュメント & サンプル | ⏸️ 進行中 | 75% |
 
-**全体進捗**: 63% (5/8タスク完了)
+**全体進捗**: 75% (6/8タスク完了)
 
 ### 完了した項目（Week 14）
 - ✅ ソースコードスニペット表示実装（`diagnostic_formatter.ml`）
@@ -31,8 +31,8 @@
 1. **ヘルプ・ドキュメント整備**:
    - ✅ `--help` 出力のセクション化・使用例追加（`options.ml`）
    - ✅ `docs/guides/cli-workflow.md` の初稿整備とトレースガイドへの相互リンク
-   - ⏳ `examples/cli/` サンプル整備（ベース追加済み、フォローアップ継続）
-   - ❌ man ページ生成と同期テンプレート整備
+   - ✅ `examples/cli/` サンプル整備（`emit_suite.reml` 追加、チェックリスト整備）
+   - ⏳ man ページ生成と同期テンプレート整備（テンプレート確立、生成スクリプト統合は次週）
 2. **統計機能の拡張計画**:
    - フェーズ別時間比率やピークメモリなど残タスクの洗い出し
    - JSON/CSV など外部連携フォーマットの要件整理
@@ -166,24 +166,24 @@
 - ✅ `--help` / `-help` での詳細ヘルプ表示
 - ⏳ ログレベル別の説明・環境変数一覧の追記
 
-6.2. **manページ生成** ❌
-- `remlc-ocaml.1` マニュアルページの作成
-- インストール時の配置（`/usr/local/share/man`）
-- 🔁 **同期ポリシー**: `print_full_help`（`options.ml`）を一次ソースとし、man ページは同一内容をテンプレート経由で生成する。Phase 1-7 で `docs/guides/cli-help-template.md`（仮）を追加し、ヘルプ更新時は (1) `options.ml` → (2) テンプレート → (3) man ページの順に反映させるチェックリストを運用する。
+6.2. **manページ生成** ⏳
+- `remlc-ocaml.1` マニュアルページ用テンプレートを作成（`docs/guides/man/remlc-ocaml.1.md`）
+- 生成手順と同期チェックリストを `docs/guides/cli-help-template.md` に整備
+- インストール時の配置（`/usr/local/share/man`）と CI 自動生成は Phase 1-7 で実装予定
 
 6.3. **ユーザーガイド作成** ⏸️
 - ✅ `docs/guides/cli-workflow.md` 初稿（ワークフロー・トレース活用・CI 連携）
-- ❌ サンプルプロジェクトとの連動、トラブルシューティング詳細
-- ❌ CLI テンプレート（`examples/cli/`）の整備
+- ⏳ サンプルプロジェクトとの連動、トラブルシューティング詳細（`examples/cli/README.md` にチェックリスト追加済み）
+- ⏳ CLI テンプレート（`examples/cli/`）の整備（段階的サンプルは整備済み、テンプレ自動生成は未着手）
 
-**成果物**: `options.ml` 拡張済みヘルプ、`docs/guides/cli-workflow.md` 初稿、man ページ・サンプル整備は未了
+**成果物**: `options.ml` 拡張済みヘルプ、`docs/guides/cli-workflow.md` 初稿、`docs/guides/cli-help-template.md` と `docs/guides/man/remlc-ocaml.1.md` を追加（man ページ自動生成は未了）
 
 ### 7. サンプルプロジェクト整備（15-16週目）⏸️ 部分完了
 **担当領域**: 実践的な使用例
 
 7.1. **サンプルコード拡充** ⏸️
-- ✅ `examples/cli/` ディレクトリ新設、`add.reml`/`type_error.reml`/`trace_sample.reml` 追加
-- ⏳ Hello World 以外の段階的サンプル（ベンチマーク・診断応用）の拡張
+- ✅ `examples/cli/` ディレクトリ新設、`add.reml`/`type_error.reml`/`trace_sample.reml`/`emit_suite.reml` を整備
+- ⏳ Hello World 以外の段階的サンプル（ベンチマーク・診断応用）の拡張（`emit_suite.reml` で基礎カバレッジを追加済み）
 - ❌ CLI サンプル README の自動生成（現状は手動）
 
 7.2. **ワークフロー実演** ⏸️
@@ -232,3 +232,7 @@
 - [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md)
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
 - [guides/llvm-integration-notes.md](../../guides/llvm-integration-notes.md)
+- [guides/cli-workflow.md](../../guides/cli-workflow.md)
+- [guides/cli-help-template.md](../../guides/cli-help-template.md)
+- [guides/man/remlc-ocaml.1.md](../../guides/man/remlc-ocaml.1.md)
+- [examples/cli/README.md](../../examples/cli/README.md)

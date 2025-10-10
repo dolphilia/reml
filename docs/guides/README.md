@@ -4,6 +4,8 @@ Reml の実装・運用に関するガイドをカテゴリ別に整理してい
 
 ## 開発ワークフロー & ツールチェーン
 - [cli-workflow.md](cli-workflow.md)
+- [cli-help-template.md](cli-help-template.md)
+- [man/remlc-ocaml.1.md](man/remlc-ocaml.1.md)
 - [trace-output.md](trace-output.md)
 - [config-cli.md](config-cli.md)
 - [ci-strategy.md](ci-strategy.md)
