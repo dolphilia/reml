@@ -34,8 +34,9 @@
    - ✅ `examples/cli/` サンプル整備（`emit_suite.reml` 追加、チェックリスト整備）
    - ✅ man ページ生成と同期テンプレート整備（`tooling/cli/scripts/update-man-pages.sh` と `tooling/cli/man/remlc-ocaml.1` を追加済み、CI 統合は Phase 1-7 で実施予定）
 2. **統計機能の拡張計画**:
-   - フェーズ別時間比率やピークメモリなど残タスクの洗い出し
-   - JSON/CSV など外部連携フォーマットの要件整理
+   - `Cli.Trace` / `Cli.Stats` で保持しているフェーズ履歴を再集計し、総時間に対する割合とアロケーション指標を出力する方式を確定（§5.1・§5.2 の未完タスクを細分化）
+   - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md) の `parse_throughput` / `memory_peak_ratio` 指標と突き合わせ、ピークメモリ測定方法とサンプリング頻度を決定
+   - `--metrics` 出力および JSON/CSV スキーマ（`docs/schemas/` 配下）を定義し、CI 連携時のアーティファクト更新フローを設計（§5.3 参照）
 
 ## 目的
 - `remlc-ocaml` CLI を Phase 1 で整備し、開発者が解析結果・IR・診断を観測できる開発体験を提供する。
@@ -142,19 +143,33 @@
 
 5.1. **時間計測** ⏸️
 - ✅ フェーズ別実行時間の取得（`Cli.Trace.print_summary`）
-- ❌ パーセンテージ表示やフェーズ別ランキング
-- ❌ トレースと統計の統合ビュー（Phase 2 へ繰越）
+- ❌ パーセンテージ表示やフェーズ別ランキング（総時間が 0 秒の場合の扱いを含むフォーマット仕様を確定）
+- ❌ 集計 API の定義（`Cli.Trace.summary` 仮称。`elapsed_seconds`・`time_ratio`・`allocated_bytes` を保持し、`Cli.Stats` からも参照できるようにする）
+- ❌ トレースと統計の統合ビュー（`Cli.Trace.summary` と `Cli.Stats` カウンタをまとめて JSON/CSV に変換する中間データ構造を設計）
+- ❌ 10MB 入力計測プロファイルを固定し、`parse_throughput` 更新手順を [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md) へリンクさせる
 
 5.2. **メモリ使用量** ❌
-- プロセスメモリ使用量のサンプリング
-- ピークメモリの記録
-- GC統計（OCaml GC）
+- ❌ プロセスメモリ使用量のサンプリング手段を決定（macOS/Linux 共通で利用可能な `Gc.quick_stat ().heap_words` と `/proc/self/statm` の優先順位を整理）
+- ❌ ピークメモリの記録方法を仕様化（ピークバイト数と入力サイズから `memory_peak_ratio` を算出し、計算式と例をドキュメント化）
+- ❌ GC統計（OCaml GC）との差分検証を追加（`tests/test_cli_trace.ml` にピークメモリ検証ケースを追加し、回帰検知を自動化）
+- ❌ 新しい取得フローと制約を `docs/guides/trace-output.md` に追記
 
 5.3. **メトリクス出力** ⏸️
 - ✅ `Cli.Stats.to_json` による JSON 取得
-- ❌ `--metrics` フラグおよびファイル出力
-- ❌ `0-3-audit-and-metrics.md` への自動書き出し
-- ❌ CSV 等のバルクエクスポート
+- ❌ `--metrics` フラグおよびファイル出力（`--metrics <path>` / `--metrics-format={json,csv}` の CLI 契約を策定）
+- ❌ `0-3-audit-and-metrics.md` への自動書き出し（サマリー結果を週次レポートへ転記するスクリプト／ワークフローを設計）
+- ❌ CSV 等のバルクエクスポート（列名を固定し、CI アーティファクト `tooling/ci/docker/metrics.json` と整合させる）
+- ❌ JSON スキーマの策定（`docs/schemas/remlc-metrics.schema.json` 仮称。フェーズ時間、メモリ比率、統計カウンタを必須フィールドとして定義）
+
+収集対象メトリクス（ドラフト）
+
+| キー | 説明 | 出典 |
+|------|------|------|
+| `phase_timings` | フェーズごとの `elapsed_seconds` と `time_ratio` の配列 | `Cli.Trace.summary` |
+| `peak_memory_bytes` | 計測期間中の最大メモリアロケーション量 | `Cli.Trace.summary` / `Gc.quick_stat` |
+| `memory_peak_ratio` | `peak_memory_bytes / input_size_bytes` | [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md) |
+| `tokens_parsed` ほか | 既存カウンタ値（トークン数、AST ノード数等） | `Cli.Stats` |
+| `parse_throughput` | 10MB 入力時の解析速度 (ms) | [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md) |
 
 **成果物**: ❌ `cli/metrics.ml`, メトリクス機能（未実装）
 
