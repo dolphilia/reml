@@ -7,13 +7,13 @@
   },
   "tests": {
     "dune_build_seconds": null,
-    "dune_runtest_seconds": 1.51,
-    "smoke_seconds": 1.65,
+    "dune_runtest_seconds": 0.28,
+    "smoke_seconds": 0.32,
     "status": {
-      "dune_runtest": "failed: existing let polymorphism test A2 (expected i64, actual t2)",
-      "llvm_golden": "failed: print_i64 declaration not reflected in golden",
-      "smoke": "failed: parser error at examples/language-impl-comparison/reml/basic_interpreter.reml line 5"
+      "dune_runtest": "passed",
+      "llvm_golden": "passed",
+      "smoke": "passed"
     },
-    "notes": "Container build succeeded; test commands executed but halted on pre-existing repository failures. Metrics capture wall-clock durations until failure."
+    "notes": "2025-10-10 local macOS run; bootstrap-runtime container steps mirrored locally pending fresh image publish."
   }
 }

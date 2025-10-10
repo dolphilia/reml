@@ -19,7 +19,6 @@ open Types
 open Type_env
 open Type_inference
 open Ast
-
 (* ========== テストヘルパー ========== *)
 
 let reset_types () =

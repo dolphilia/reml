@@ -13,6 +13,19 @@ open Types
 
 (* ========== 型環境の定義 ========== *)
 
+(** 初期環境専用の型変数生成
+ *
+ * `TypeVarGen.reset ()` がテストで頻繁に呼ばれるため、初期環境で使用する
+ * 型変数は通常のカウンタとは独立させ、ID 衝突を避ける。
+ * ここでは負の ID を割り当て、実装側の生成する非負 ID と住み分ける。
+ *)
+let fresh_builtin_var =
+  let counter = ref (-1) in
+  fun name ->
+    let id = !counter in
+    decr counter;
+    { tv_id = id; tv_name = Some name }
+
 (** 型環境
  *
  * bindings: 現在のスコープの束縛
@@ -83,13 +96,13 @@ let initial_env =
    * Some : ∀a. a -> Option<a>
    * None : ∀a. Option<a>
    *)
-  let a_some = TypeVarGen.fresh (Some "a") in
+  let a_some = fresh_builtin_var "Option.a" in
   let env = extend "Some" {
     quantified = [a_some];
     body = TArrow (TVar a_some, ty_option (TVar a_some))
   } env in
 
-  let a_none = TypeVarGen.fresh (Some "a") in
+  let a_none = fresh_builtin_var "Option.a" in
   let env = extend "None" {
     quantified = [a_none];
     body = ty_option (TVar a_none)
@@ -99,15 +112,15 @@ let initial_env =
    * Ok : ∀a, e. a -> Result<a, e>
    * Err : ∀a, e. e -> Result<a, e>
    *)
-  let a_ok = TypeVarGen.fresh (Some "a") in
-  let e_ok = TypeVarGen.fresh (Some "e") in
+  let a_ok = fresh_builtin_var "Result.a" in
+  let e_ok = fresh_builtin_var "Result.e" in
   let env = extend "Ok" {
     quantified = [a_ok; e_ok];
     body = TArrow (TVar a_ok, ty_result (TVar a_ok) (TVar e_ok))
   } env in
 
-  let a_err = TypeVarGen.fresh (Some "a") in
-  let e_err = TypeVarGen.fresh (Some "e") in
+  let a_err = fresh_builtin_var "Result.a" in
+  let e_err = fresh_builtin_var "Result.e" in
   let env = extend "Err" {
     quantified = [a_err; e_err];
     body = TArrow (TVar e_err, ty_result (TVar a_err) (TVar e_err))

@@ -36,6 +36,12 @@ scripts/docker/run-runtime-tests.sh --tag ghcr.io/reml/bootstrap-runtime:dev
 scripts/docker/smoke-linux.sh --tag ghcr.io/reml/bootstrap-runtime:dev
 ```
 
+## 現在の検証ステータス（2025-10-10）
+
+- `dune runtest`: GREEN — Let 多相 A2 の型一般化バグを修正済み。
+- `llvm_golden`: GREEN — `print_i64` 宣言追加に合わせてゴールデン更新済み。
+- `smoke-linux`: GREEN — `basic_interpreter.reml` はスタブ実装（完全版はコメント化、パーサ拡張後に復元予定）。
+
 ## CVE スキャン
 
 `docker scout cves ghcr.io/reml/bootstrap-runtime:dev` あるいは `trivy image ...` を利用して

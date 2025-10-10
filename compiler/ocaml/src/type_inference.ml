@@ -127,22 +127,16 @@ let apply_subst_to_tparam (subst: substitution) (tparam: typed_param) : typed_pa
   } in
   { tparam with tty = updated_ty; tpat = updated_pattern }
 
-let resolve_params (subst: substitution) (param_env: env) (params: typed_param list)
+let resolve_params ?(force_numeric_default=false)
+    (subst: substitution) (_param_env: env) (params: typed_param list)
     : typed_param list =
-  let env' = apply_subst_env subst param_env in
   List.map (fun param ->
     let param_subst = apply_subst_to_tparam subst param in
     match param_subst.tpat.tpat_kind with
-    | TPatVar id ->
-        let resolved_ty =
-          match lookup id.name env' with
-          | Some scheme -> scheme.body
-          | None -> param_subst.tty
-        in
-        (* Phase 3 Week 17 改善: 型変数が残っている場合は i64 へフォールバック *)
-        let concrete_ty = match resolved_ty with
-          | TVar _tv -> ty_i64
-          | _ -> resolved_ty
+    | TPatVar _id ->
+        let concrete_ty = match param_subst.tty, force_numeric_default with
+          | TVar _, true -> ty_i64
+          | ty, _ -> ty
         in
         let updated_bindings =
           List.map (fun (name, _) -> (name, concrete_ty)) param_subst.tpat.tpat_bindings
@@ -1166,7 +1160,11 @@ and infer_decl (env: env) (decl: decl)
       in
 
       (* 8b. パラメータへ代入を適用 *)
-      let tparams' = resolve_params s3 param_env tparams in
+      let force_numeric =
+        fn.fn_generic_params = []
+      in
+      let tparams' = resolve_params
+        ~force_numeric_default:force_numeric s3 param_env tparams in
       let param_tys_resolved = List.map (fun p -> p.tty) tparams' in
 
       (* 8. 最終的な関数型を構築 *)

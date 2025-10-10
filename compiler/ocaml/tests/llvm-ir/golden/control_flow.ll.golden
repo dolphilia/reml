@@ -12,6 +12,8 @@ declare void @dec_ref(ptr)
 ; Function Attrs: noreturn
 declare void @panic(ptr, i64) #0
 
+declare void @print_i64(i64)
+
 define i64 @factorial(i64 %n) {
 entry:
   %icmp_le = icmp sle i64 %n, 1

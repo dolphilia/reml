@@ -12,6 +12,8 @@ declare void @dec_ref(ptr)
 ; Function Attrs: noreturn
 declare void @panic(ptr, i64) #0
 
+declare void @print_i64(i64)
+
 define i64 @add(i64 %a, i64 %b) {
 entry:
   %add_tmp = add i64 %a, %b
