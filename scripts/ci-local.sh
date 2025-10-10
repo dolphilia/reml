@@ -8,6 +8,7 @@
 #   ./scripts/ci-local.sh [オプション]
 #
 # オプション:
+#   --target <TARGET> ターゲットプラットフォーム（linux または macos、デフォルト: 自動検出）
 #   --skip-lint       Lint ステップをスキップ
 #   --skip-build      Build ステップをスキップ
 #   --skip-test       Test ステップをスキップ
@@ -33,6 +34,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # デフォルト設定
+TARGET=""
 SKIP_LINT=0
 SKIP_BUILD=0
 SKIP_TEST=0
@@ -80,6 +82,11 @@ check_command() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --target)
+      shift || { log_error "--target の後に値を指定してください"; exit 1; }
+      TARGET="$1"
+      shift
+      ;;
     --skip-lint)
       SKIP_LINT=1
       shift
@@ -116,12 +123,44 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# ========== プラットフォーム検出 ==========
+
+if [[ -z "$TARGET" ]]; then
+  case "$(uname -s)" in
+    Linux*)
+      TARGET="linux"
+      ;;
+    Darwin*)
+      TARGET="macos"
+      ;;
+    *)
+      log_error "サポートされていないプラットフォーム: $(uname -s)"
+      log_error "--target オプションで明示的に指定してください（linux または macos）"
+      exit 1
+      ;;
+  esac
+fi
+
+log_info "ターゲットプラットフォーム: $TARGET"
+
 # ========== 環境チェック ==========
 
 log_info "環境チェック中..."
 
 check_command opam
 check_command dune
+
+# プラットフォーム固有の LLVM パス設定
+if [[ "$TARGET" == "macos" ]]; then
+  # macOS: Homebrew でインストールされた LLVM を使用
+  if [ -d "/usr/local/opt/llvm@18/bin" ]; then
+    export PATH="/usr/local/opt/llvm@18/bin:$PATH"
+    log_info "LLVM パスを設定: /usr/local/opt/llvm@18/bin"
+  else
+    log_warn "Homebrew LLVM パスが見つかりません。tooling/ci/macos/setup-env.sh を実行してください。"
+  fi
+fi
+
 check_command llvm-as
 check_command opt
 check_command llc
@@ -133,6 +172,21 @@ log_info "OCaml バージョン: $OCAML_VERSION"
 # LLVM バージョンチェック
 LLVM_VERSION=$(llvm-as --version 2>&1 | grep -oE "[0-9]+\.[0-9]+\.[0-9]+" | head -1)
 log_info "LLVM バージョン: $LLVM_VERSION"
+
+# プラットフォーム固有の依存関係チェック
+if [[ "$TARGET" == "macos" ]]; then
+  # Homebrew チェック
+  if ! command -v brew >/dev/null 2>&1; then
+    log_warn "Homebrew が見つかりません。tooling/ci/macos/setup-env.sh でセットアップしてください。"
+  fi
+
+  # Xcode Command Line Tools チェック
+  if ! xcode-select -p >/dev/null 2>&1; then
+    log_error "Xcode Command Line Tools がインストールされていません。"
+    log_error "インストール: xcode-select --install"
+    exit 1
+  fi
+fi
 
 # ========== Lint ステップ ==========
 
@@ -204,18 +258,22 @@ if (( ! SKIP_TEST )); then
 
     log_success "ランタイムテスト完了"
 
-    # Valgrind チェック（利用可能な場合のみ）
-    if command -v valgrind >/dev/null 2>&1; then
-      log_info "Valgrind メモリチェックを実行中..."
-      for test in build/test_*; do
-        if [ -x "$test" ]; then
-          log_info "  Checking $(basename "$test")..."
-          valgrind --leak-check=full --error-exitcode=1 --suppressions=/dev/null "$test" || exit 1
-        fi
-      done
-      log_success "Valgrind メモリチェック完了"
+    # Valgrind チェック（Linux のみ、利用可能な場合）
+    if [[ "$TARGET" == "linux" ]]; then
+      if command -v valgrind >/dev/null 2>&1; then
+        log_info "Valgrind メモリチェックを実行中..."
+        for test in build/test_*; do
+          if [ -x "$test" ]; then
+            log_info "  Checking $(basename "$test")..."
+            valgrind --leak-check=full --error-exitcode=1 --suppressions=/dev/null "$test" || exit 1
+          fi
+        done
+        log_success "Valgrind メモリチェック完了"
+      else
+        log_warn "Valgrind が見つかりません。メモリチェックをスキップしました。"
+      fi
     else
-      log_warn "Valgrind が見つかりません。メモリチェックをスキップしました。"
+      log_info "macOS では Valgrind をスキップします（AddressSanitizer を使用）"
     fi
 
     # AddressSanitizer チェック

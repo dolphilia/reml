@@ -7,6 +7,7 @@
 #   ./tooling/ci/record-metrics.sh [オプション]
 #
 # オプション:
+#   --target <TARGET>        ターゲットプラットフォーム（linux または macos、デフォルト: linux）
 #   --build-time <TIME>      ビルド時間（例: "5m 32s"）
 #   --test-count <COUNT>     テスト件数（例: "143"）
 #   --test-result <RESULT>   テスト結果（success/failure）
@@ -34,6 +35,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 METRICS_FILE="$REPO_ROOT/docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md"
 
 # デフォルト値
+TARGET="linux"
 BUILD_TIME="${BUILD_TIME:-unknown}"
 TEST_COUNT="${TEST_COUNT:-unknown}"
 TEST_RESULT="${TEST_RESULT:-unknown}"
@@ -60,6 +62,11 @@ log_error() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --target)
+      shift || { log_error "--target の後に値を指定してください"; exit 1; }
+      TARGET="$1"
+      shift
+      ;;
     --build-time)
       shift || { log_error "--build-time の後に値を指定してください"; exit 1; }
       BUILD_TIME="$1"
@@ -145,12 +152,19 @@ WORKFLOW_NAME="${GITHUB_WORKFLOW:-Unknown Workflow}"
 BRANCH_NAME="${GITHUB_REF#refs/heads/}"
 BRANCH_NAME="${BRANCH_NAME#refs/tags/}"
 
+# ターゲット表示名
+TARGET_DISPLAY="Linux"
+if [[ "$TARGET" == "macos" ]]; then
+  TARGET_DISPLAY="macOS"
+fi
+
 # 記録内容
 METRICS_ENTRY="
-### CI 実行結果（$TIMESTAMP）
+### CI 実行結果 - $TARGET_DISPLAY（$TIMESTAMP）
 
 - **ワークフロー**: $WORKFLOW_NAME
 - **ブランチ**: $BRANCH_NAME
+- **ターゲット**: $TARGET_DISPLAY
 - **ラン ID**: $CI_RUN_ID
 - **ビルド時間**: $BUILD_TIME
 - **テスト件数**: $TEST_COUNT

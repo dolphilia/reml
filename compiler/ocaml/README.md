@@ -107,67 +107,192 @@
 - 計測結果を追記するための記録先（`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`）とリスク登録先（`docs/plans/bootstrap-roadmap/0-4-risk-handling.md`）のフォーマットを再確認する。
 - macOS での Linux x86_64 クロスビルド手順（`docs/plans/bootstrap-roadmap/1-5-runtime-integration.md` §10）を確認し、必要なツールチェーン・sysroot・リモート実行環境（SSH 接続できる Linux ノード、または補助エミュレータ）の準備可否を確認する。
 
-## Phase 1-8 への準備
+## Phase 1-8: macOS プレビルド対応（完了）
 
-Phase 1-7（x86_64 Linux 検証インフラ）の完了を受けて、Phase 1-8（macOS プレビルド対応）への移行準備が整いました。
+Phase 1-8 では macOS 開発者が Linux クロスビルドに依存せずに日常開発を行える環境を整備しました。
 
-### Phase 1-8 の概要
+### macOS 開発環境のセットアップ
 
-macOS 開発者が Linux クロスビルドに依存せずに日常開発を行える環境を整備します。
+#### 自動セットアップスクリプトの使用（推奨）
 
-**主要目標**:
-- GitHub Actions macOS ランナーでの CI パイプライン構築
-- Homebrew ベースのツールチェーン整備（LLVM, OCaml, opam）
-- Mach-O ターゲット向けランタイムビルド規則の追加
-- x86_64-apple-darwin での LLVM IR 検証フローの確立
-- Linux CI と整合したメトリクス記録とアーティファクト管理
+最も簡単な方法は、提供されているセットアップスクリプトを使用することです：
 
-**期待される成果物**:
-- `.github/workflows/bootstrap-macos.yml`（新規）
-- `tooling/ci/macos/`（macOS 向けセットアップスクリプト）
-- `runtime/native/Makefile`（Mach-O 向け設定追加）
-- `scripts/ci-local.sh`（`--target macos` オプション追加）
-- `compiler/ocaml/README.md`（macOS 手元検証ガイド追記）
+```bash
+# リポジトリルートから実行
+./tooling/ci/macos/setup-env.sh
+```
 
-**推定期間**: Week 18-22（約 5 週間）
+このスクリプトは以下を自動的に実行します：
+- Homebrew の確認
+- Xcode Command Line Tools のバージョン確認
+- LLVM 18 のインストールとパス設定
+- OCaml 5.2.1 環境のセットアップ（opam）
+- 必要なツール（pkg-config, libtool）のインストール
 
-### macOS 開発者向け準備手順
+スクリプトのオプション：
+```bash
+# ヘルプを表示
+./tooling/ci/macos/setup-env.sh --help
 
-Phase 1-8 開始前に以下を確認してください：
+# LLVM のみをスキップ
+./tooling/ci/macos/setup-env.sh --skip-llvm
 
-1. **Homebrew のインストール**
-   ```bash
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-   ```
+# 実行せずコマンドのみ確認
+./tooling/ci/macos/setup-env.sh --dry-run
+```
 
-2. **Xcode Command Line Tools のインストール**
-   ```bash
-   xcode-select --install
-   # バージョン確認
-   xcode-select -p
-   clang --version
-   ```
+#### 手動セットアップ
 
-3. **LLVM と opam のインストール**
-   ```bash
-   brew install llvm@15 opam pkg-config libtool
-   # LLVM のパス設定
-   echo 'export PATH="/usr/local/opt/llvm@15/bin:$PATH"' >> ~/.zshrc
-   source ~/.zshrc
-   ```
+自動スクリプトを使用しない場合は、以下の手順で手動セットアップできます：
 
-4. **OCaml 環境のセットアップ**
-   ```bash
-   opam init
-   opam switch create 4.14.2
-   eval $(opam env)
-   ```
+**1. Homebrew のインストール**
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
 
-5. **依存関係のインストール**
-   ```bash
-   cd /path/to/kestrel/compiler/ocaml
-   opam install . --deps-only --with-test
-   ```
+**2. Xcode Command Line Tools のインストール**
+```bash
+xcode-select --install
+# バージョン確認
+xcode-select -p
+clang --version
+```
+
+**3. LLVM と opam のインストール**
+```bash
+brew install llvm@18 opam pkg-config libtool
+# LLVM のパス設定
+echo 'export PATH="/usr/local/opt/llvm@18/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+
+# LLVM バージョン確認
+llvm-as --version  # 18.x.x を確認
+opt --version
+llc --version
+```
+
+**4. OCaml 環境のセットアップ**
+```bash
+opam init
+opam switch create 5.2.1
+eval $(opam env)
+
+# OCaml バージョン確認
+ocaml -version  # 5.2.1 を確認
+```
+
+**5. 依存関係のインストール**
+```bash
+cd /path/to/kestrel/compiler/ocaml
+opam install . --deps-only --with-test
+```
+
+### macOS でのビルドとテスト
+
+**基本的なビルド**:
+```bash
+cd /path/to/kestrel/compiler/ocaml
+opam exec -- dune build
+```
+
+**テストの実行**:
+```bash
+opam exec -- dune runtest
+```
+
+**ランタイムのビルド**:
+```bash
+cd /path/to/kestrel/runtime/native
+make runtime
+```
+
+### macOS でのローカル CI 再現
+
+GitHub Actions と同じ検証手順をローカルで実行できます：
+
+```bash
+# リポジトリルートから実行
+./scripts/ci-local.sh --target macos
+
+# 特定のステップをスキップ
+./scripts/ci-local.sh --target macos --skip-lint --skip-runtime
+
+# ヘルプを表示
+./scripts/ci-local.sh --help
+```
+
+ローカル CI スクリプトは以下を実行します：
+1. **Lint**: コードフォーマットチェック
+2. **Build**: コンパイラ・ランタイムのビルド
+3. **Test**: 単体テスト・統合テスト
+4. **Memory Check**: AddressSanitizer（Valgrind は macOS でスキップ）
+5. **LLVM IR Verification**: `llvm-as` → `opt -verify` → `llc -mtriple=x86_64-apple-darwin`
+
+### macOS 固有の注意事項
+
+#### LLVM バージョンの統一
+- **macOS**: Homebrew で LLVM 18 を使用
+- **Linux CI**: LLVM 18 を使用
+
+macOS と Linux で同じ LLVM 18 を使用することで、プラットフォーム間の一貫性を確保しています。
+
+#### Valgrind の非サポート
+macOS では Valgrind が正式にサポートされていないため、代わりに AddressSanitizer を使用します：
+
+```bash
+cd /path/to/kestrel/runtime/native
+make clean
+DEBUG=1 make runtime
+DEBUG=1 make test
+```
+
+#### Mach-O vs ELF
+macOS では Mach-O 形式の実行ファイルが生成されます。LLVM IR 検証では `x86_64-apple-darwin` ターゲットを使用します：
+
+```bash
+# macOS ターゲットでの IR 検証
+./compiler/ocaml/scripts/verify_llvm_ir.sh \
+  --target x86_64-apple-darwin \
+  path/to/output.ll
+```
+
+### トラブルシューティング
+
+**Homebrew LLVM が見つからない**:
+```bash
+# LLVM のリンクを確認
+brew link --force llvm@18
+
+# パスを確認
+echo $PATH | grep llvm
+
+# 見つからない場合は明示的にパスを追加
+export PATH="/usr/local/opt/llvm@18/bin:$PATH"
+```
+
+**opam 環境変数が設定されていない**:
+```bash
+# opam 環境変数を再設定
+eval $(opam env)
+
+# シェル起動時に自動設定
+echo 'eval $(opam env)' >> ~/.zshrc
+```
+
+**Xcode Command Line Tools のエラー**:
+```bash
+# 再インストール
+sudo rm -rf /Library/Developer/CommandLineTools
+xcode-select --install
+```
+
+**ビルドエラー（SDK パス）**:
+```bash
+# SDK パスを確認
+xcrun --show-sdk-path
+
+# SDK が見つからない場合は Xcode を再インストール
+```
 
 ### Phase 1-7 から引き継ぐ資産
 

@@ -11,6 +11,7 @@
 #   ./scripts/verify_llvm_ir.sh [オプション] <input.ll>
 #
 # 主なオプション:
+#   --target <TRIPLE>        ターゲットトリプル（x86_64-unknown-linux-gnu または x86_64-apple-darwin）
 #   --cross                  x86_64-unknown-linux-gnu 向けクロスリンクを実行
 #   --cross-prefix <TRIPLE>  ターゲットトリプル（既定: x86_64-unknown-linux-gnu）
 #   --sysroot <PATH>         クロスリンクに使用する sysroot（既定: REML_TOOLCHAIN_HOME/sysroot）
@@ -35,12 +36,15 @@ set -euo pipefail
 
 # ========== 設定 ==========
 
-LLVM_MIN_VERSION="15.0"
+LLVM_MIN_VERSION="18.0"
 
 # llvm-as, opt, llc のパス（環境変数で上書き可能）
 LLVM_AS="${LLVM_AS:-llvm-as}"
 OPT="${OPT:-opt}"
 LLC="${LLC:-llc}"
+
+# ターゲット関連
+TARGET_TRIPLE=""
 
 # クロス関連デフォルト
 CROSS_MODE=0
@@ -91,8 +95,8 @@ check_llvm_version() {
   local major_version
   major_version=$(echo "$version_output" | cut -d. -f1)
 
-  if (( major_version < 15 )); then
-    error "LLVM $version_output が検出されましたが、LLVM 15+ が必要です。"
+  if (( major_version < 18 )); then
+    error "LLVM $version_output が検出されましたが、LLVM 18+ が必要です。"
   fi
 
   echo "LLVM $version_output を使用します。"
@@ -157,6 +161,11 @@ main() {
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
+      --target)
+        shift || error "--target の直後にターゲットトリプルを指定してください"
+        TARGET_TRIPLE="$1"
+        shift
+        ;;
       --cross)
         CROSS_MODE=1
         shift
@@ -265,9 +274,16 @@ main() {
 
   echo "[3/3] llc: ネイティブコード生成 (.bc → .o)..."
   local -a llc_cmd=("$LLC" "-filetype=obj")
-  if (( CROSS_MODE )); then
+
+  # --target が指定されている場合はそれを使用
+  if [[ -n "$TARGET_TRIPLE" ]]; then
+    llc_cmd+=("-mtriple=$TARGET_TRIPLE")
+    echo "ターゲットトリプル: $TARGET_TRIPLE"
+  elif (( CROSS_MODE )); then
     llc_cmd+=("-mtriple=$CROSS_PREFIX")
+    echo "ターゲットトリプル: $CROSS_PREFIX"
   fi
+
   if ! "${llc_cmd[@]}" "$temp_bc" -o "$temp_obj" 2>&1; then
     echo "llc が失敗しました（終了コード: 4）" >&2
     exit 4
