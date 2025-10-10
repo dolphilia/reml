@@ -143,16 +143,17 @@
 
 5.1. **時間計測** ⏸️
 - ✅ フェーズ別実行時間の取得（`Cli.Trace.print_summary`）
-- ❌ パーセンテージ表示やフェーズ別ランキング（総時間が 0 秒の場合の扱いを含むフォーマット仕様を確定）
-- ❌ 集計 API の定義（`Cli.Trace.summary` 仮称。`elapsed_seconds`・`time_ratio`・`allocated_bytes` を保持し、`Cli.Stats` からも参照できるようにする）
-- ❌ トレースと統計の統合ビュー（`Cli.Trace.summary` と `Cli.Stats` カウンタをまとめて JSON/CSV に変換する中間データ構造を設計）
+- ✅ パーセンテージ表示（総時間が 0 秒の場合は 0% として出力）とフェーズ別アロケーション表示を整備
+- ❌ フェーズ別ランキング出力（比率順ソート）は未実装
+- ✅ 集計 API の定義（`Cli.Trace.summary`。`elapsed_seconds`・`time_ratio`・`allocated_bytes` を保持し、`Cli.Stats` から参照可能）
+- ✅ トレースと統計の統合ビュー（`Cli.Trace.summary` を `Cli.Stats.update_trace_summary` で取り込み、JSON/テキスト出力へ反映）
 - ❌ 10MB 入力計測プロファイルを固定し、`parse_throughput` 更新手順を [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md) へリンクさせる
 
-5.2. **メモリ使用量** ❌
-- ❌ プロセスメモリ使用量のサンプリング手段を決定（macOS/Linux 共通で利用可能な `Gc.quick_stat ().heap_words` と `/proc/self/statm` の優先順位を整理）
-- ❌ ピークメモリの記録方法を仕様化（ピークバイト数と入力サイズから `memory_peak_ratio` を算出し、計算式と例をドキュメント化）
-- ❌ GC統計（OCaml GC）との差分検証を追加（`tests/test_cli_trace.ml` にピークメモリ検証ケースを追加し、回帰検知を自動化）
-- ❌ 新しい取得フローと制約を `docs/guides/trace-output.md` に追記
+5.2. **メモリ使用量** ✅
+- ✅ プロセスメモリ使用量のサンプリング手段を `Gc.stat ().top_heap_words` 基準で統一し、64bit/32bit の `Sys.word_size` に応じて換算
+- ✅ ピークメモリの記録方法を仕様化（`peak_memory_bytes` と `memory_peak_ratio = peak_memory_bytes / input_size_bytes` を計算）
+- ✅ GC統計（OCaml GC）との差分検証を `test_cli_trace.ml` に追加し、回帰検知を自動化
+- ✅ 新しい取得フローと制約を `docs/guides/trace-output.md` に追記
 
 5.3. **メトリクス出力** ⏸️
 - ✅ `Cli.Stats.to_json` による JSON 取得

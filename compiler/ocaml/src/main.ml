@@ -86,17 +86,29 @@ let () =
   let source = really_input_string ic (in_channel_length ic) in
   close_in ic;
 
+  if opts.stats then
+    Cli.Stats.set_input_size_bytes (String.length source);
+
+  let collect_trace = opts.trace || opts.stats in
+  let emit_trace_logs = opts.trace in
+  let record_start phase =
+    if collect_trace then Cli.Trace.start_phase ~emit_log:emit_trace_logs phase
+  in
+  let record_end phase =
+    if collect_trace then Cli.Trace.end_phase ~emit_log:emit_trace_logs phase
+  in
+
   (* パース用にソース文字列から lexbuf を作成 *)
   let lexbuf = Lexing.from_string source in
   lexbuf.Lexing.lex_curr_p <- { lexbuf.Lexing.lex_curr_p with Lexing.pos_fname = opts.input_file };
 
   (* Phase 1-6 Week 15: トレース開始 *)
-  if opts.trace then Cli.Trace.start_phase Parsing;
+  record_start Parsing;
 
   match Parser_driver.parse lexbuf with
   | Ok ast ->
       (* Phase 1-6 Week 15: パース完了 *)
-      if opts.trace then Cli.Trace.end_phase Parsing;
+      record_end Parsing;
 
       (* Phase 1: AST 出力 *)
       if opts.emit_ast then begin
@@ -107,12 +119,12 @@ let () =
       (* Phase 2+: 型推論が必要な処理 *)
       if opts.emit_tast || opts.emit_ir || opts.emit_bc || opts.verify_ir then begin
         (* Phase 1-6 Week 15: 型推論開始 *)
-        if opts.trace then Cli.Trace.start_phase TypeChecking;
+        record_start TypeChecking;
 
         match Type_inference.infer_compilation_unit ast with
         | Ok tast ->
             (* Phase 1-6 Week 15: 型推論完了 *)
-            if opts.trace then Cli.Trace.end_phase TypeChecking;
+            record_end TypeChecking;
 
             (* Phase 2: Typed AST 出力 *)
             if opts.emit_tast then begin
@@ -124,14 +136,14 @@ let () =
             if opts.emit_ir || opts.emit_bc || opts.verify_ir then begin
               try
                 (* Phase 1-6 Week 15: Core IR 生成開始 *)
-                if opts.trace then Cli.Trace.start_phase CoreIR;
+                record_start CoreIR;
 
                 (* Typed AST → Core IR (糖衣削除) *)
                 let core_ir = Core_ir.Desugar.desugar_compilation_unit tast in
 
                 (* Phase 1-6 Week 15: Core IR 生成完了、最適化開始 *)
-                if opts.trace then Cli.Trace.end_phase CoreIR;
-                if opts.trace then Cli.Trace.start_phase Optimization;
+                record_end CoreIR;
+                record_start Optimization;
 
                 (* Core IR 最適化 (O1レベル) *)
                 let opt_config = Core_ir.Pipeline.{
@@ -145,14 +157,14 @@ let () =
                 let (optimized_ir, _stats) = Core_ir.Pipeline.optimize_module ~config:opt_config core_ir in
 
                 (* Phase 1-6 Week 15: 最適化完了、コード生成開始 *)
-                if opts.trace then Cli.Trace.end_phase Optimization;
-                if opts.trace then Cli.Trace.start_phase CodeGen;
+                record_end Optimization;
+                record_start CodeGen;
 
                 (* Core IR → LLVM IR *)
                 let llvm_module = Codegen.codegen_module ~target_name:opts.target optimized_ir in
 
                 (* Phase 1-6 Week 15: コード生成完了 *)
-                if opts.trace then Cli.Trace.end_phase CodeGen;
+                record_end CodeGen;
 
                 (* LLVM IR 検証 *)
                 if opts.verify_ir then begin
@@ -262,13 +274,22 @@ let () =
       end;
 
       (* Phase 1-6 Week 15: トレース・統計サマリー出力（正常終了時） *)
-      if opts.trace then Cli.Trace.print_summary ();
-      if opts.stats then Cli.Stats.print_stats ();
+      let trace_summary =
+        if collect_trace then Some (Cli.Trace.summary ()) else None
+      in
+      if opts.stats then begin
+        (match trace_summary with
+        | Some summary -> Cli.Stats.update_trace_summary summary
+        | None -> ());
+        Cli.Stats.print_stats ()
+      end;
+      if opts.trace then
+        Cli.Trace.print_summary ?summary_data:trace_summary ();
 
       exit 0
   | Error diag ->
       (* Phase 1-6 Week 15: パース失敗時はトレース終了 *)
-      if opts.trace then Cli.Trace.end_phase Parsing;
+      if collect_trace then Cli.Trace.end_phase ~emit_log:emit_trace_logs Parsing;
 
       print_diagnostic opts (Some source) diag;
       exit 1

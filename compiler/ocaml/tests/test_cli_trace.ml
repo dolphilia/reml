@@ -3,6 +3,9 @@
  * Phase 1-6 Week 15 のトレース機能実装の動作確認テスト
  *)
 
+module Json = Yojson.Basic
+module JU = Yojson.Basic.Util
+
 (* テストヘルパー: トレースをリセット *)
 let reset_trace () =
   Cli.Trace.reset ();
@@ -17,8 +20,13 @@ let assert_bool msg cond =
   if not cond then
     failwith (Printf.sprintf "Assertion failed: %s" msg)
 
-let assert_failure msg =
-  failwith msg
+let assert_float_close ~msg ?(epsilon = 1e-6) expected actual =
+  if abs_float (expected -. actual) > epsilon then
+    failwith (Printf.sprintf "Assertion failed: %s (expected: %.6f, actual: %.6f)" msg expected actual)
+
+let is_some = function
+  | Some _ -> true
+  | None -> false
 
 (* テスト1: トレース機能の基本動作 *)
 let test_trace_basic () =
@@ -43,7 +51,7 @@ let test_trace_basic () =
   | Some t ->
       assert_bool "パース時間が0秒以上であるべき" (t >= 0.0)
   | None ->
-      assert_failure "パース時間が記録されていない";
+      assert_equal ~msg:"パース時間が記録されていない" 1 0;
   Printf.printf "✓ test_trace_basic passed\n%!"
 
 (* テスト2: 統計情報収集の基本動作 *)
@@ -124,14 +132,55 @@ let test_stats_reset () =
 let test_stats_json () =
   reset_trace ();
 
+  Cli.Trace.start_phase ~emit_log:false Cli.Trace.Parsing;
+  Cli.Trace.end_phase ~emit_log:false Cli.Trace.Parsing;
+
+  Cli.Stats.incr_token_count ();
+  Cli.Stats.incr_ast_node_count ();
+  Cli.Stats.set_input_size_bytes 1024;
+  Cli.Stats.update_trace_summary (Cli.Trace.summary ());
+
   Cli.Stats.incr_token_count ();
   Cli.Stats.incr_ast_node_count ();
 
-  let json = Cli.Stats.to_json () in
-  (* JSON形式であることを確認（簡易チェック） *)
-  assert_bool "JSONに 'tokens_parsed' が含まれる" (String.contains json '{');
-  assert_bool "JSONに 'tokens_parsed' が含まれる" (Str.string_match (Str.regexp ".*tokens_parsed.*") json 0);
+  let json = Cli.Stats.to_json () |> Json.from_string in
+  assert_equal ~msg:"tokens_parsed" 2 (JU.member "tokens_parsed" json |> JU.to_int);
+  assert_bool "phase_timings 配列が存在する"
+    ((JU.member "phase_timings" json |> JU.to_list) |> List.length >= 0);
+  assert_bool "memory_peak_ratio が null ではない"
+    (match JU.member "memory_peak_ratio" json with `Null -> false | _ -> true);
   Printf.printf "✓ test_stats_json passed\n%!"
+
+(* テスト7: サマリー生成と Stats 連携 *)
+let test_trace_summary_stats_integration () =
+  reset_trace ();
+
+  Cli.Trace.start_phase ~emit_log:false Cli.Trace.Parsing;
+  Unix.sleepf 0.001;
+  Cli.Trace.end_phase ~emit_log:false Cli.Trace.Parsing;
+
+  Cli.Trace.start_phase ~emit_log:false Cli.Trace.TypeChecking;
+  Unix.sleepf 0.001;
+  Cli.Trace.end_phase ~emit_log:false Cli.Trace.TypeChecking;
+
+  let trace_summary = Cli.Trace.summary () in
+  let open Cli.Trace in
+  assert_equal ~msg:"summary phases" 2 (List.length trace_summary.phases);
+  assert_bool "total elapsed is non-negative" (trace_summary.total_elapsed_seconds >= 0.0);
+
+  let ratio_sum =
+    List.fold_left (fun acc phase -> acc +. phase.time_ratio) 0.0 trace_summary.phases
+  in
+  if trace_summary.total_elapsed_seconds > 0.0 then
+    assert_float_close ~msg:"time_ratio sum close to 1.0" ~epsilon:0.05 1.0 ratio_sum;
+
+  Cli.Stats.set_input_size_bytes 2048;
+  Cli.Stats.update_trace_summary trace_summary;
+  let stats = Cli.Stats.get_stats () in
+  assert_equal ~msg:"stats phase timings" 2 (List.length stats.phase_timings);
+  assert_bool "peak memory recorded (Some)" (is_some stats.peak_memory_bytes);
+  assert_bool "memory_peak_ratio recorded (Some)" (is_some stats.memory_peak_ratio);
+  Printf.printf "✓ test_trace_summary_stats_integration passed\n%!"
 
 (* テストスイート *)
 let () =
@@ -142,4 +191,5 @@ let () =
   test_trace_reset ();
   test_stats_reset ();
   test_stats_json ();
+  test_trace_summary_stats_integration ();
   Printf.printf "\nAll tests passed! ✓\n%!"
