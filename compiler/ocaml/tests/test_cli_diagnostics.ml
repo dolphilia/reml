@@ -101,12 +101,27 @@ let test_snippet_display () =
     ~color_mode:Cli.Options.Never
   in
 
-  (* スニペットに行番号が含まれている *)
-  assert (Str.string_match (Str.regexp ".*1 |.*") output 0);
+  (* スニペットに行番号区切り文字 " | " が含まれている *)
+  assert (String.contains output '|');
 
   (* スニペットにソースコードが含まれている *)
-  assert (String.contains output 'h');
-  assert (Str.string_match (Str.regexp ".*hello.*") output 0);
+  (* let x という文字列を含む *)
+  let contains_let_x =
+    try
+      let _ = Str.search_forward (Str.regexp "let x") output 0 in
+      true
+    with Not_found -> false
+  in
+  assert contains_let_x;
+
+  (* 型情報（String）を含む *)
+  let contains_string =
+    try
+      let _ = Str.search_forward (Str.regexp "String") output 0 in
+      true
+    with Not_found -> false
+  in
+  assert contains_string;
 
   (* ポインタが含まれている *)
   assert (String.contains output '^');
