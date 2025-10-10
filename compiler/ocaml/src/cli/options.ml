@@ -204,6 +204,8 @@ let parse_args argv =
     ("--link-runtime", Arg.Set link_runtime, "Link with runtime library to produce executable");
     ("--runtime-path", Arg.Set_string runtime_path, "<path> Path to runtime library");
     ("--verify-ir", Arg.Set verify_ir, "Verify generated LLVM IR");
+    ("--version", Arg.Unit (fun () -> Version.print_version (); exit 0), "Show version information");
+    ("-version", Arg.Unit (fun () -> Version.print_version (); exit 0), "Show version information");
     ("--help", Arg.Unit (fun () -> print_full_help (); exit 0), "Show detailed help");
     ("-help", Arg.Unit (fun () -> print_full_help (); exit 0), "Show detailed help");
   ] in

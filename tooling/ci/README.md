@@ -26,7 +26,44 @@ scripts/docker/smoke-linux.sh --tag ghcr.io/reml/bootstrap-runtime:dev
 - `docker scout cves ghcr.io/reml/bootstrap-runtime:dev` などで脆弱性を月次確認し、重大度 High 以上は `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に登録する。
 - メトリクス (`tooling/ci/docker/metrics.json`) を更新し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に転記する。
 
-## TODO
-- [ ] GitHub Actions ワークフローに対応する補助スクリプトを追加
-- [ ] ローカル検証用の `scripts/ci-local.sh` などユーティリティを整備
-- [ ] Phase 1 `docs/plans/bootstrap-roadmap/1-7-linux-validation-infra.md` のチェックリストを反映したテンプレートを用意
+## CI 自動化ツール（Phase 1-7 完了）
+
+### ローカル再現スクリプト
+
+`scripts/ci-local.sh` により、GitHub Actions と同じ手順をローカルで実行できます：
+
+```bash
+# リポジトリルートから実行
+./scripts/ci-local.sh
+
+# 特定のステップをスキップ
+./scripts/ci-local.sh --skip-lint --skip-runtime
+
+# ヘルプを表示
+./scripts/ci-local.sh --help
+```
+
+### メトリクス記録スクリプト
+
+`tooling/ci/record-metrics.sh` により、CI 実行結果を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に記録します：
+
+```bash
+./tooling/ci/record-metrics.sh \
+  --build-time "5m 32s" \
+  --test-count "143" \
+  --test-result success \
+  --llvm-verify success
+```
+
+## 完了タスク（Phase 1-7）
+
+- ✅ GitHub Actions ワークフローに対応する補助スクリプトを追加
+- ✅ ローカル検証用の `scripts/ci-local.sh` などユーティリティを整備
+- ✅ Phase 1 `docs/plans/bootstrap-roadmap/1-7-linux-validation-infra.md` のチェックリストを反映
+
+## 残りタスク（Phase 2 以降）
+
+- [ ] カバレッジレポート生成の自動化
+- [ ] メトリクス可視化ツールの統合
+- [ ] Windows 環境への対応（Phase 2-6）
+- [ ] macOS 環境への対応（Phase 1-8 または Phase 2-7）

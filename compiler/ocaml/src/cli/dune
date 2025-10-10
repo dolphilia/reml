@@ -1,4 +1,4 @@
 (library
  (name cli)
- (modules options color diagnostic_formatter json_formatter trace stats)
+ (modules options color diagnostic_formatter json_formatter trace stats version)
  (libraries unix yojson reml_parser))

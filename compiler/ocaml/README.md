@@ -7,12 +7,16 @@
 - Phase 2 — Typer MVP（完了: 2025-10-07）: `compiler/ocaml/docs/phase2-completion-report.md`
 - Phase 3 — Core IR & LLVM 生成（完了: 2025-10-09）: `compiler/ocaml/docs/phase3-m3-completion-report.md`
 - Phase 1-5 — ランタイム連携（完了: 2025-10-10）: `compiler/ocaml/docs/phase1-5-completion-report.md`
-- **Phase 1-6 — 開発者体験整備（進行中）**: `docs/plans/bootstrap-roadmap/1-6-developer-experience.md`
-  - ✅ 診断出力システム強化（Week 14 完了）
-  - ✅ トレース・ログ機能（Week 15 完了）
-  - ✅ GitHub Actions 依存関係エラー修正（`yojson` を `dune-project` / `reml_ocaml.opam` へ追加）
-  - ⏳ ヘルプ・ドキュメント整備（Week 16 進行中、サンプル整備と man ページ生成スクリプト `tooling/cli/scripts/update-man-pages.sh` を追加済み）
-  - 進捗: 87% (7/8タスク完了)
+- Phase 1-6 — 開発者体験整備（完了: 2025-10-10）: `compiler/ocaml/docs/phase1-6-completion-report.md`
+- **Phase 1-7 — x86_64 Linux 検証インフラ（完了: 2025-10-10）**: `compiler/ocaml/docs/phase1-7-completion-report.md`
+  - ✅ GitHub Actions ワークフロー構築
+  - ✅ ローカル CI 再現スクリプト
+  - ✅ メトリクス記録スクリプト
+  - ✅ LLVM IR 検証の明示化
+  - ✅ コンパイラバイナリの命名とバージョン対応
+  - ✅ テスト結果の JUnit XML 出力
+  - ✅ LLVM IR・Bitcode の統合アーティファクト化
+  - 進捗: 100% (全タスク完了)
 
 過去フェーズの週次レポートや統計は `compiler/ocaml/docs/` 配下の各完了報告・引き継ぎ資料に集約しています。
 
@@ -114,6 +118,30 @@ opam exec -- dune test        # テスト一式
 opam exec -- dune exec -- remlc --emit-ir samples/basic.reml
 ```
 ランタイム連携後は `--link-runtime` オプションおよび `runtime/Makefile` のビルド結果を CI で検証します。
+
+### ローカル CI 再現
+
+GitHub Actions と同じ検証手順をローカルで実行できます：
+
+```bash
+# リポジトリルートから実行
+./scripts/ci-local.sh
+
+# 特定のステップをスキップ
+./scripts/ci-local.sh --skip-lint --skip-runtime
+
+# ヘルプを表示
+./scripts/ci-local.sh --help
+```
+
+このスクリプトは以下を実行します：
+1. **Lint**: コードフォーマットチェック (`dune build @fmt`)
+2. **Build**: コンパイラ・ランタイムのビルド
+3. **Test**: 単体テスト・統合テスト・ランタイムテスト
+4. **Memory Check**: Valgrind + AddressSanitizer
+5. **LLVM IR Verification**: `llvm-as` → `opt -verify` → `llc`
+
+詳細は [docs/plans/bootstrap-roadmap/1-7-linux-validation-infra.md](../../docs/plans/bootstrap-roadmap/1-7-linux-validation-infra.md) を参照してください。
 
 ## 過去フェーズの詳細
 - Phase 1/2 の仕様・テスト整備: `compiler/ocaml/docs/phase1-completion-report.md`, `compiler/ocaml/docs/phase2-completion-report.md`
