@@ -8,7 +8,7 @@
 - Phase 3 — Core IR & LLVM 生成（完了: 2025-10-09）: `compiler/ocaml/docs/phase3-m3-completion-report.md`
 - Phase 1-5 — ランタイム連携（完了: 2025-10-10）: `compiler/ocaml/docs/phase1-5-completion-report.md`
 - Phase 1-6 — 開発者体験整備（完了: 2025-10-10）: `compiler/ocaml/docs/phase1-6-completion-report.md`
-- **Phase 1-7 — x86_64 Linux 検証インフラ（完了: 2025-10-10）**: `compiler/ocaml/docs/phase1-7-completion-report.md`
+- Phase 1-7 — x86_64 Linux 検証インフラ（完了: 2025-10-10）: `compiler/ocaml/docs/phase1-7-completion-report.md`
   - ✅ GitHub Actions ワークフロー構築
   - ✅ ローカル CI 再現スクリプト
   - ✅ メトリクス記録スクリプト
@@ -17,6 +17,13 @@
   - ✅ テスト結果の JUnit XML 出力
   - ✅ LLVM IR・Bitcode の統合アーティファクト化
   - 進捗: 100% (全タスク完了)
+- **Phase 1-8 — macOS プレビルド対応（準備中: 2025-10-11〜）**
+  - ⏳ GitHub Actions macOS ワークフロー設計
+  - ⏳ Homebrew ツールチェーン準備
+  - ⏳ Mach-O ランタイムビルド規則整備
+  - ⏳ LLVM IR 検証フローの macOS 対応
+  - ⏳ メトリクス記録とアーティファクト管理
+  - 進捗: 0% (Phase 1-7 完了、Phase 1-8 開始準備完了)
 
 過去フェーズの週次レポートや統計は `compiler/ocaml/docs/` 配下の各完了報告・引き継ぎ資料に集約しています。
 
@@ -100,10 +107,87 @@
 - 計測結果を追記するための記録先（`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`）とリスク登録先（`docs/plans/bootstrap-roadmap/0-4-risk-handling.md`）のフォーマットを再確認する。
 - macOS での Linux x86_64 クロスビルド手順（`docs/plans/bootstrap-roadmap/1-5-runtime-integration.md` §10）を確認し、必要なツールチェーン・sysroot・リモート実行環境（SSH 接続できる Linux ノード、または補助エミュレータ）の準備可否を確認する。
 
+## Phase 1-8 への準備
+
+Phase 1-7（x86_64 Linux 検証インフラ）の完了を受けて、Phase 1-8（macOS プレビルド対応）への移行準備が整いました。
+
+### Phase 1-8 の概要
+
+macOS 開発者が Linux クロスビルドに依存せずに日常開発を行える環境を整備します。
+
+**主要目標**:
+- GitHub Actions macOS ランナーでの CI パイプライン構築
+- Homebrew ベースのツールチェーン整備（LLVM, OCaml, opam）
+- Mach-O ターゲット向けランタイムビルド規則の追加
+- x86_64-apple-darwin での LLVM IR 検証フローの確立
+- Linux CI と整合したメトリクス記録とアーティファクト管理
+
+**期待される成果物**:
+- `.github/workflows/bootstrap-macos.yml`（新規）
+- `tooling/ci/macos/`（macOS 向けセットアップスクリプト）
+- `runtime/native/Makefile`（Mach-O 向け設定追加）
+- `scripts/ci-local.sh`（`--target macos` オプション追加）
+- `compiler/ocaml/README.md`（macOS 手元検証ガイド追記）
+
+**推定期間**: Week 18-22（約 5 週間）
+
+### macOS 開発者向け準備手順
+
+Phase 1-8 開始前に以下を確認してください：
+
+1. **Homebrew のインストール**
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   ```
+
+2. **Xcode Command Line Tools のインストール**
+   ```bash
+   xcode-select --install
+   # バージョン確認
+   xcode-select -p
+   clang --version
+   ```
+
+3. **LLVM と opam のインストール**
+   ```bash
+   brew install llvm@15 opam pkg-config libtool
+   # LLVM のパス設定
+   echo 'export PATH="/usr/local/opt/llvm@15/bin:$PATH"' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+
+4. **OCaml 環境のセットアップ**
+   ```bash
+   opam init
+   opam switch create 4.14.2
+   eval $(opam env)
+   ```
+
+5. **依存関係のインストール**
+   ```bash
+   cd /path/to/kestrel/compiler/ocaml
+   opam install . --deps-only --with-test
+   ```
+
+### Phase 1-7 から引き継ぐ資産
+
+Phase 1-8 では Phase 1-7 で構築した以下の資産を再利用します：
+
+- **CI ワークフロー設計**: ステージ構成（Lint → Build → Test → LLVM Verify → Artifact）
+- **依存関係キャッシュ戦略**: `actions/cache` によるツールチェーンキャッシュ
+- **アーティファクト管理手法**: 命名規則、保持期間、収集対象
+- **メトリクス記録スクリプト**: `tooling/ci/record-metrics.sh` の拡張
+- **LLVM IR 検証フロー**: `scripts/verify_llvm_ir.sh` の macOS 対応
+
+詳細は [docs/plans/bootstrap-roadmap/1-7-to-1-8-handover.md](../../docs/plans/bootstrap-roadmap/1-7-to-1-8-handover.md) を参照してください。
+
+---
+
 ## 関連ドキュメント
-- **計画書**: `docs/plans/bootstrap-roadmap/IMPLEMENTATION-GUIDE.md`, `docs/plans/bootstrap-roadmap/1-0-phase1-bootstrap.md`, `docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md`, `docs/plans/bootstrap-roadmap/1-5-runtime-integration.md`
+- **計画書**: `docs/plans/bootstrap-roadmap/IMPLEMENTATION-GUIDE.md`, `docs/plans/bootstrap-roadmap/1-0-phase1-bootstrap.md`, `docs/plans/bootstrap-roadmap/1-7-linux-validation-infra.md`, `docs/plans/bootstrap-roadmap/1-8-macos-prebuild-support.md`
+- **引き継ぎ**: `docs/plans/bootstrap-roadmap/1-7-to-1-8-handover.md`
 - **仕様・ガイド**: `docs/spec/0-1-project-purpose.md`, `docs/spec/1-1-syntax.md`, `docs/guides/llvm-integration-notes.md`, `docs/notes/llvm-spec-status-survey.md`
-- **進捗記録**: `compiler/ocaml/docs/phase3-m3-completion-report.md`, `compiler/ocaml/docs/phase3-to-phase2-handover.md`, `compiler/ocaml/docs/technical-debt.md`, `compiler/ocaml/docs/phase3-remaining-tasks.md`
+- **進捗記録**: `compiler/ocaml/docs/phase1-7-completion-report.md`, `compiler/ocaml/docs/technical-debt.md`
 
 ## ワークスペース概要
 - `compiler/ocaml/src/`: パーサー、型推論、Core IR、LLVM 生成、CLI
