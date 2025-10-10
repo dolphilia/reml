@@ -1,3 +1,4 @@
 (library
  (name cli)
- (libraries))
+ (modules options color diagnostic_formatter json_formatter)
+ (libraries unix yojson reml_parser))

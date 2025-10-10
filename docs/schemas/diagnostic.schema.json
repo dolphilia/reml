@@ -1,0 +1,149 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://reml-lang.org/schemas/diagnostic.schema.json",
+  "title": "Reml Diagnostic Output",
+  "description": "JSON schema for Reml compiler diagnostic messages",
+  "type": "object",
+  "required": ["diagnostics"],
+  "properties": {
+    "diagnostics": {
+      "type": "array",
+      "description": "List of diagnostic messages",
+      "items": {
+        "$ref": "#/definitions/Diagnostic"
+      }
+    }
+  },
+  "definitions": {
+    "Diagnostic": {
+      "type": "object",
+      "required": ["severity", "message", "location"],
+      "properties": {
+        "severity": {
+          "type": "string",
+          "enum": ["error", "warning", "note"],
+          "description": "Severity level of the diagnostic"
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^E[0-9]{4,5}$",
+          "description": "Stable error code (e.g., E7001)"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Diagnostic domain (e.g., '構文解析', '型システム')"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "description": "One-line summary message"
+        },
+        "location": {
+          "$ref": "#/definitions/Location",
+          "description": "Error location in source code"
+        },
+        "notes": {
+          "type": "array",
+          "description": "Additional notes and context",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expected": {
+          "type": "array",
+          "description": "Expected inputs or values",
+          "items": {
+            "type": "string"
+          }
+        },
+        "fixits": {
+          "type": "array",
+          "description": "Fix-it suggestions for IDE integration",
+          "items": {
+            "$ref": "#/definitions/FixIt"
+          }
+        }
+      }
+    },
+    "Location": {
+      "type": "object",
+      "required": ["file", "line", "column", "endLine", "endColumn"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "File path"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Start line number (1-indexed)"
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Start column number (1-indexed)"
+        },
+        "endLine": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "End line number (1-indexed)"
+        },
+        "endColumn": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "End column number (1-indexed)"
+        }
+      }
+    },
+    "FixIt": {
+      "type": "object",
+      "required": ["kind", "range"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["insert", "replace", "delete"],
+          "description": "Type of fix-it action"
+        },
+        "range": {
+          "$ref": "#/definitions/Range",
+          "description": "Range to apply the fix-it"
+        },
+        "text": {
+          "type": "string",
+          "description": "Replacement text (for insert and replace)"
+        }
+      }
+    },
+    "Range": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": {
+          "$ref": "#/definitions/Position",
+          "description": "Start position"
+        },
+        "end": {
+          "$ref": "#/definitions/Position",
+          "description": "End position"
+        }
+      }
+    },
+    "Position": {
+      "type": "object",
+      "required": ["line", "character"],
+      "properties": {
+        "line": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Line number (0-indexed, for LSP compatibility)"
+        },
+        "character": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Character offset (0-indexed, for LSP compatibility)"
+        }
+      }
+    }
+  }
+}

@@ -5,7 +5,30 @@
  * Phase 2 M2: --emit-tast オプション
  * Phase 3 M3: --emit-ir, --verify-ir オプション
  * Phase 1-6: CLI オプション管理を Cli.Options モジュールに移行
+ * Phase 1-6: 診断出力を Diagnostic_formatter / Json_formatter に移行
  *)
+
+(** カラーモードを解決する *)
+let resolve_color_mode opts =
+  Cli.Color.resolve_color_mode
+    ~requested:opts.Cli.Options.color
+    ~is_tty:(Cli.Color.is_tty Unix.stderr)
+
+(** 診断を出力する
+ *
+ * @param opts コマンドラインオプション
+ * @param source ソースコード文字列（オプション）
+ * @param diag 診断情報
+ *)
+let print_diagnostic opts source diag =
+  let color_mode = resolve_color_mode opts in
+  let output = match opts.Cli.Options.format with
+    | Cli.Options.Text ->
+        Cli.Diagnostic_formatter.format_diagnostic ~source ~diag ~color_mode
+    | Cli.Options.Json ->
+        Cli.Json_formatter.diagnostic_to_json diag
+  in
+  Printf.eprintf "%s\n" output
 
 (** 出力ファイル名生成 *)
 let output_filename out_dir basename suffix =
@@ -112,7 +135,7 @@ let () =
                       Printf.printf "LLVM IR verification passed.\n"
                   | Error err ->
                       let diag = Verify.error_to_diagnostic err None in
-                      Printf.eprintf "%s\n" (Diagnostic.to_string diag);
+                      print_diagnostic opts None diag;
                       exit 1
                 end;
 
@@ -181,7 +204,7 @@ let () =
                     notes = [];
                     fixits = [];
                   } in
-                  Printf.eprintf "%s\n" (Diagnostic.to_string diag);
+                  print_diagnostic opts (Some source) diag;
                   exit 1
               | Codegen.CodegenError msg ->
                   let dummy_loc = Diagnostic.{
@@ -201,18 +224,18 @@ let () =
                     notes = [];
                     fixits = [];
                   } in
-                  Printf.eprintf "%s\n" (Diagnostic.to_string diag);
+                  print_diagnostic opts None diag;
                   exit 1
             end;
 
         | Error type_err ->
             (* 型推論エラー *)
             let diag = Type_error.to_diagnostic_with_source source opts.input_file type_err in
-            Printf.eprintf "%s\n" (Diagnostic.to_string diag);
+            print_diagnostic opts (Some source) diag;
             exit 1
       end;
 
       exit 0
   | Error diag ->
-      Printf.eprintf "%s\n" (Diagnostic.to_string diag);
+      print_diagnostic opts (Some source) diag;
       exit 1
