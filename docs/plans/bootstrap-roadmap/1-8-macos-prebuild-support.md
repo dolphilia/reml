@@ -30,7 +30,7 @@
 - `actions/cache` キーをターゲット別（`macos`）に分離し、Homebrew のキャッシュ対象（`~/Library/Caches/Homebrew/downloads`）を明示。
 
 ### 3. ツールチェーンセットアップ（19週目）
-- Homebrew 経由で `llvm@15`, `opam`, `pkg-config`, `libtool` をインストールし、パス設定を `tooling/ci/macos/setup-env.sh` に記述。
+- Homebrew 経由で `llvm@18`, `opam`, `pkg-config`, `libtool` をインストールし、パス設定を `tooling/ci/macos/setup-env.sh` に記述。
 - Xcode Command Line Tools のバージョンをチェックし `xcode-select --install` の要否を確認、GitHub Actions での差分を `docs/notes/llvm-spec-status-survey.md` に記録。
 - `opam switch create 4.14.2` と `opam install . --deps-only --with-test` をワークフローに組み込み、インストール時間を測定して `metrics.json` に反映。
 
