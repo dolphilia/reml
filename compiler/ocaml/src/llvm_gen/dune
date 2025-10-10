@@ -4,7 +4,7 @@
  (name llvm_gen)
  (public_name reml_ocaml.llvm_gen)
  (wrapped false)
- (modules type_mapping target_config llvm_attr abi codegen verify)
+ (modules type_mapping target_config llvm_attr abi codegen verify runtime_link)
  (libraries llvm llvm.bitwriter reml_ocaml.core_ir reml_parser unix)
  (foreign_stubs
   (language c)

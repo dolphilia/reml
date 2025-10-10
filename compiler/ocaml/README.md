@@ -21,6 +21,22 @@
 - `compiler/ocaml/src/llvm_gen/` からランタイム関数を宣言・呼び出し、`--link-runtime` オプションでバイナリ生成まで通す。
 - ランタイム API と RC モデルのテスト結果・計測値を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に記録し、`compiler/ocaml/docs/` に検証ノートを残す。
 
+### 進捗状況（2025-10-10 更新）
+
+**完了タスク** ✅:
+- §6.1 ランタイム関数宣言生成（`mem_alloc`, `inc_ref`, `dec_ref`, `panic`, `print_i64`, `memcpy`）
+- §6.2 文字列リテラル生成時の `mem_alloc` 呼び出し実装
+- §6.3 リンクヘルパー実装（`runtime_link.ml`）と CLI 統合（`--link-runtime`）
+- 統合テスト作成（`tests/test_runtime_integration.sh`）
+
+**進行中** 🚧:
+- タプル/レコード生成時の `mem_alloc` 呼び出し
+- スコープ終了時の `dec_ref` 挿入
+- 実行可能ファイル生成 E2E テスト
+- メモリリーク検証（Valgrind/ASan）
+
+**詳細**: [phase1-5-llvm-integration-report.md](docs/phase1-5-llvm-integration-report.md)
+
 ### 作業トラック（詳細は計画書 §1〜§8 を参照）
 - ✅ **API 定義**: `runtime/native/include/reml_runtime.h` を作成し、関数シグネチャ・型タグ規約を確定（2025-10-10 完了）
   - 6 関数の最小 API 定義完了：`mem_alloc`, `mem_free`, `inc_ref`, `dec_ref`, `panic`, `print_i64`
@@ -51,7 +67,8 @@
   - デバッグ統計機能：`reml_debug_print_refcount_stats` でカウンタ確認可能
   - Phase 2 向けTODO: アトミック操作（並行対応）、循環参照検出、型メタデータテーブル
 - **ビルドシステム**: `runtime/Makefile`（`-O2`/`-Wall -Wextra`/`-g`）を用意し、プラットフォーム検出と依存関係を整理。
-- **LLVM 連携**: `compiler/ocaml/src/llvm_gen/codegen.ml` と `abi.ml` でランタイムシンボル宣言・属性設定・リンクフラグを統合（`llvm_attr.ml` + C スタブで `sret` / `byval` の型付き属性を付与）。
+- ✅ **LLVM 連携**: `compiler/ocaml/src/llvm_gen/codegen.ml` と `abi.ml` でランタイムシンボル宣言・属性設定・リンクフラグを統合（`llvm_attr.ml` + C スタブで `sret` / `byval` の型付き属性を付与）完了（2025-10-10）
+- ✅ **リンクヘルパー**: `runtime_link.ml` でプラットフォーム検出とリンカーコマンド生成を実装完了（2025-10-10）
 - **テストと検証**: `runtime/native/tests/` と `compiler/ocaml/tests/codegen/` に単体/統合テストを追加し、Valgrind/ASan のジョブを CI に組み込む。
 - **ドキュメントと CI**: `docs/guides/llvm-integration-notes.md` および `compiler/ocaml/docs/` を更新し、GitHub Actions でランタイムビルドと検証を自動化。
 

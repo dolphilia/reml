@@ -202,9 +202,20 @@ let declare_runtime_functions ctx =
   (* print_i64: (i64) -> void *)
   let print_i64_ty = Llvm.function_type void_ty [| i64_ty |] in
   let print_i64 = Llvm.declare_function "print_i64" print_i64_ty ctx.llmodule in
-  Hashtbl.replace ctx.fn_map "print_i64" print_i64
+  Hashtbl.replace ctx.fn_map "print_i64" print_i64;
+
+  (* memcpy: llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1) -> void *)
+  let memcpy_ty = Llvm.function_type void_ty [| ptr_ty; ptr_ty; i64_ty; Llvm.i1_type ctx.llctx |] in
+  let memcpy = Llvm.declare_function "llvm.memcpy.p0.p0.i64" memcpy_ty ctx.llmodule in
+  Hashtbl.replace ctx.fn_map "memcpy" memcpy
 
 (* ========== ランタイムヘルパー関数 ========== *)
+
+(** memcpy を取得または宣言する *)
+let declare_memcpy ctx =
+  match Hashtbl.find_opt ctx.fn_map "memcpy" with
+  | Some fn -> fn
+  | None -> codegen_error "memcpy not declared (should be called after declare_runtime_functions)"
 
 (** mem_alloc を呼び出してヒープメモリを割り当てる
  *
@@ -212,8 +223,6 @@ let declare_runtime_functions ctx =
  * @param size_bytes 割り当てるサイズ（バイト数）
  * @param type_tag 型タグ (REML_TAG_* の値)
  * @return 割り当てられたメモリへのポインタ（ヘッダの直後）
- *
- * Note: Phase 1-5 の実装完了時に使用されるため、現時点では未使用警告を抑制
  *)
 let call_mem_alloc ctx size_bytes type_tag =
   let i64_ty = Llvm.i64_type ctx.llctx in
@@ -244,14 +253,13 @@ let call_mem_alloc ctx size_bytes type_tag =
   ignore (Llvm.build_store type_tag_val type_tag_ptr ctx.builder);
 
   ptr
-[@@warning "-32"]
 
 (** inc_ref を呼び出して参照カウントをインクリメント
  *
  * @param ctx コードジェネレーションコンテキスト
  * @param ptr オブジェクトへのポインタ
  *
- * Note: Phase 1-5 の実装完了時に使用されるため、現時点では未使用警告を抑制
+ * Note: Phase 2 で使用予定（タプル/レコード/クロージャのコピー時）
  *)
 let call_inc_ref ctx ptr =
   let ptr_ty = Llvm.pointer_type ctx.llctx in
@@ -272,7 +280,7 @@ let call_inc_ref ctx ptr =
  * @param ctx コードジェネレーションコンテキスト
  * @param ptr オブジェクトへのポインタ
  *
- * Note: Phase 1-5 の実装完了時に使用されるため、現時点では未使用警告を抑制
+ * Note: Phase 2 で使用予定（スコープ終了時、変数上書き時）
  *)
 let call_dec_ref ctx ptr =
   let ptr_ty = Llvm.pointer_type ctx.llctx in
@@ -293,7 +301,7 @@ let call_dec_ref ctx ptr =
  * @param ctx コードジェネレーションコンテキスト
  * @param msg エラーメッセージ文字列
  *
- * Note: Phase 1-5 の実装完了時に使用されるため、現時点では未使用警告を抑制
+ * Note: Phase 2 で使用予定（境界チェック失敗、アサーション失敗時）
  *)
 let call_panic ctx msg =
   let ptr_ty = Llvm.pointer_type ctx.llctx in
@@ -384,20 +392,34 @@ and codegen_literal ctx lit ty =
 
   | Ast.String (s, _kind) ->
       (* FAT pointer { ptr, i64 } を構築 *)
-      (* Phase 1: 簡易実装 - グローバル文字列定数を作成 *)
-      let str_const = Llvm.const_stringz ctx.llctx s in
-      let str_global = Llvm.define_global "str_const" str_const ctx.llmodule in
-
-      (* FAT pointer 構造体 { ptr, len } *)
-      let ptr_ty = Llvm.pointer_type ctx.llctx in
+      (* Phase 1-5: ランタイム連携 - mem_alloc でヒープ割り当て *)
       let len = String.length s in
-      let len_const = Llvm.const_int (Llvm.i64_type ctx.llctx) len in
+      let i64_ty = Llvm.i64_type ctx.llctx in
+      let ptr_ty = Llvm.pointer_type ctx.llctx in
 
-      (* GEP で文字列の先頭ポインタを取得 *)
+      (* mem_alloc(len + 1) を呼び出し（NULL終端用に+1） *)
+      let alloc_size = len + 1 in
+      let str_ptr = call_mem_alloc ctx alloc_size 4 (* REML_TAG_STRING *) in
+
+      (* 文字列データをコピー *)
+      let str_const = Llvm.const_stringz ctx.llctx s in
+      let str_global = Llvm.define_global "str_literal" str_const ctx.llmodule in
+      Llvm.set_linkage Llvm.Linkage.Private str_global;
       let zero = Llvm.const_int (Llvm.i32_type ctx.llctx) 0 in
-      let str_ptr = Llvm.const_gep ptr_ty str_global [| zero |] in
+      let src_ptr = Llvm.const_gep ptr_ty str_global [| zero |] in
 
-      (* 構造体を構築 *)
+      (* memcpy(str_ptr, src_ptr, len + 1) を呼び出し *)
+      let memcpy_fn = declare_memcpy ctx in
+      let size_val = Llvm.const_int i64_ty (alloc_size) in
+      let is_volatile = Llvm.const_int (Llvm.i1_type ctx.llctx) 0 in
+      ignore (Llvm.build_call
+        (Llvm.element_type (Llvm.type_of memcpy_fn))
+        memcpy_fn
+        [| str_ptr; src_ptr; size_val; is_volatile |]
+        "" ctx.builder);
+
+      (* FAT pointer 構造体 { ptr, len } を構築 *)
+      let len_const = Llvm.const_int i64_ty len in
       Llvm.const_struct ctx.llctx [| str_ptr; len_const |]
 
   | Ast.Unit ->
