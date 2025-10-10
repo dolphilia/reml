@@ -64,6 +64,7 @@
   - エラーメッセージの stderr 出力（タイムスタンプ、PID、メッセージ）
   - `exit(1)` による異常終了
   - Phase 2 向け拡張版 `panic_at` 追加（ファイル名・行番号付き）
+  - GitHub Actions の `pid_t` 未定義エラーに対応するため `<sys/types.h>` を追加し、`make runtime` ビルドを復旧
 - ✅ **参照カウント**: `runtime/native/src/refcount.c` で RC 操作と型別デストラクタ呼び出しを実装完了（2025-10-10）
   - inc_ref / dec_ref の基本操作実装（単一スレッド、Phase 1）
   - 型別デストラクタディスパッチ（STRING, TUPLE, RECORD, CLOSURE, ADT, プリミティブ型）
