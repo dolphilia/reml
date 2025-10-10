@@ -23,6 +23,7 @@
   - ⏳ Mach-O ランタイムビルド規則整備
   - ⏳ LLVM IR 検証フローの macOS 対応
   - ⏳ メトリクス記録とアーティファクト管理
+  - 📄 2025-10-12: Bootstrap Linux CI（Run ID: bootstrap-linux/2025-10-12）で Lint ステージが `ocamlformat 0.26.5` 導入後に成功したログを記録
   - 進捗: 0% (Phase 1-7 完了、Phase 1-8 開始準備完了)
 
 過去フェーズの週次レポートや統計は `compiler/ocaml/docs/` 配下の各完了報告・引き継ぎ資料に集約しています。

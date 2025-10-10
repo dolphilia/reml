@@ -34,6 +34,11 @@ jobs:
           opam install . --deps-only --with-test --yes
         working-directory: compiler/ocaml
 
+      - name: Pin ocamlformat version
+        run: |
+          opam install ocamlformat.0.26.5 --yes
+        working-directory: compiler/ocaml
+
       - name: Check formatting
         run: |
           opam exec -- dune build @fmt
