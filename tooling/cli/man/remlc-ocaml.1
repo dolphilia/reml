@@ -1,0 +1,125 @@
+.SH 名前
+remlc-ocaml \[em] Reml OCaml ブートストラップ版コンパイラ CLI
+.SH 書式
+\f[CR]remlc <入力ファイル.reml> [オプション]\f[R]
+.PP
+入力ファイルが省略された場合はエラーを返す。標準入力対応は Phase 2
+で導入予定。
+.SH 説明
+\f[CR]remlc-ocaml\f[R] は Reml 言語の Phase 1 実装で、構文解析から LLVM
+IR 生成までを一括実行する。
+.PD 0
+.P
+.PD
+\f[CR]--emit-*\f[R] オプションで中間成果物を観測し、\f[CR]--trace\f[R]
+や \f[CR]--stats\f[R] でフェーズ別の挙動を診断できる。
+.SH オプション
+.SS 入力と出力制御
+.TP
+\f[CR]--emit-ast\f[R]
+構文解析結果（AST）を標準出力に表示する。
+.TP
+\f[CR]--emit-tast\f[R]
+型推論後の AST（Typed AST）を標準出力に表示する。
+.TP
+\f[CR]--emit-ir\f[R]
+LLVM IR (\f[CR].ll\f[R]) を出力ディレクトリに生成する。
+.TP
+\f[CR]--emit-bc\f[R]
+LLVM Bitcode (\f[CR].bc\f[R]) を出力ディレクトリに生成する。
+.TP
+\f[CR]--out-dir <dir>\f[R]
+中間成果物の出力先ディレクトリを指定する（既定値: \f[CR].\f[R]）。
+.SS 診断とフォーマット
+.TP
+\f[CR]--format <text|json>\f[R]
+診断メッセージの出力形式を切り替える。\f[CR]json\f[R] は LSP
+互換の構造化出力。
+.TP
+\f[CR]--color <auto|always|never>\f[R]
+カラー表示を制御する。\f[CR]NO_COLOR\f[R]
+環境変数が設定されている場合は自動的に \f[CR]never\f[R] になる。
+.SS トレースと統計
+.TP
+\f[CR]--trace\f[R]
+コンパイルフェーズごとのトレースを標準エラーに出力する。
+.TP
+\f[CR]--stats\f[R]
+パースしたトークン数、AST ノード数、unify
+呼び出し回数などの統計情報を標準エラーに出力する。
+.TP
+\f[CR]--verbose <0-3>\f[R]
+ログ詳細度を設定する。\f[CR]REMLC_LOG\f[R]
+環境変数でも同じ値を指定できる。
+.SS コンパイル設定
+.TP
+\f[CR]--target <triple>\f[R]
+ターゲットトリプルを指定する（既定値: \f[CR]x86_64-linux\f[R]）。
+.TP
+\f[CR]--link-runtime\f[R]
+ランタイムライブラリとリンクして実行可能ファイルを生成する。
+.TP
+\f[CR]--runtime-path <path>\f[R]
+ランタイム静的ライブラリのパスを指定する（既定値:
+\f[CR]runtime/native/build/libreml_runtime.a\f[R]）。
+.TP
+\f[CR]--verify-ir\f[R]
+生成した LLVM IR を検証する。
+.SS ヘルプ
+.TP
+\f[CR]--help\f[R], \f[CR]-help\f[R]
+セクション化された詳細ヘルプを表示して終了する。
+.SH 例
+最小サンプルの IR を生成する:
+.IP
+.EX
+opam exec -- dune exec -- \[rs]
+  remlc examples/cli/add.reml --emit-ir
+.EE
+.PP
+中間成果物をまとめて出力する:
+.IP
+.EX
+opam exec -- dune exec -- \[rs]
+  remlc examples/cli/emit_suite.reml \[rs]
+  --emit-ast --emit-tast --emit-ir \[rs]
+  --out-dir build/emit
+.EE
+.PP
+トレースと統計を収集する:
+.IP
+.EX
+opam exec -- dune exec -- \[rs]
+  remlc examples/cli/trace_sample.reml \[rs]
+  --trace --stats 2>trace.log
+.EE
+.PP
+実行可能ファイルを生成し、ランタイムとリンクする:
+.IP
+.EX
+opam exec -- dune exec -- \[rs]
+  remlc examples/cli/add.reml \[rs]
+  --link-runtime --out-dir build/bin
+.EE
+.SH 環境変数
+.TP
+\f[CR]REMLC_LOG\f[R]
+\f[CR]error\f[R] / \f[CR]warn\f[R] / \f[CR]info\f[R] / \f[CR]debug\f[R]
+のいずれかでログ詳細度を設定する。
+.TP
+\f[CR]NO_COLOR\f[R]
+設定されている場合はカラー表示を無効化する。
+.SH ファイル
+.TP
+\f[CR]runtime/native/build/libreml_runtime.a\f[R]
+既定でリンクされるランタイム静的ライブラリ。
+.SH 関連項目
+\f[CR]docs/guides/cli-workflow.md\f[R],
+.PD 0
+.P
+.PD
+\f[CR]docs/guides/trace-output.md\f[R],
+.PD 0
+.P
+.PD
+\f[CR]docs/guides/diagnostic-format.md\f[R]

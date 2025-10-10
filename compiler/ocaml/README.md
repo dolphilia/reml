@@ -10,8 +10,8 @@
 - **Phase 1-6 — 開発者体験整備（進行中）**: `docs/plans/bootstrap-roadmap/1-6-developer-experience.md`
   - ✅ 診断出力システム強化（Week 14 完了）
   - ✅ トレース・ログ機能（Week 15 完了）
-  - ⏳ ヘルプ・ドキュメント整備（Week 16 進行中、サンプルとテンプレートを追加済み）
-  - 進捗: 75% (6/8タスク完了)
+  - ⏳ ヘルプ・ドキュメント整備（Week 16 進行中、サンプル整備と man ページ生成スクリプト `tooling/cli/scripts/update-man-pages.sh` を追加済み）
+  - 進捗: 87% (7/8タスク完了)
 
 過去フェーズの週次レポートや統計は `compiler/ocaml/docs/` 配下の各完了報告・引き継ぎ資料に集約しています。
 

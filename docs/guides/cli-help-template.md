@@ -13,7 +13,7 @@
 ## 2. 更新手順チェックリスト
 1. `options.ml` のオプション説明・例を修正する。
 2. 本テンプレート内の表と脚注を更新する。
-3. `docs/guides/man/remlc-ocaml.1.md` を更新し、`pandoc` で出力を検証する。
+3. `docs/guides/man/remlc-ocaml.1.md` を更新し、`tooling/cli/scripts/update-man-pages.sh` を実行して `tooling/cli/man/remlc-ocaml.1` を再生成する（`--check` オプションで差分確認）。
 4. 関連ガイド（`cli-workflow.md` など）の該当箇所を反映する。
 5. `docs/plans/bootstrap-roadmap/1-6-developer-experience.md` の進捗欄と TODO を更新する。
 6. 変更内容を `docs/plans/bootstrap-roadmap/1-6-developer-experience.md` §「Week 16 ヘルプ・ドキュメント整備」に記録する。
@@ -43,17 +43,18 @@
 
 ## 4. man ページテンプレート
 - テンプレート本文: [`docs/guides/man/remlc-ocaml.1.md`](man/remlc-ocaml.1.md)
-- 生成コマンド例:
+- 生成スクリプト: `tooling/cli/scripts/update-man-pages.sh`（`--check` でテンプレートとの差分を確認可能）
+- `pandoc` を直接利用する場合のコマンド例:
 
 ```bash
 pandoc \
   --from markdown \
   --to man \
-  --output remlc-ocaml.1 \
+  --output tooling/cli/man/remlc-ocaml.1 \
   docs/guides/man/remlc-ocaml.1.md
 ```
 
-生成物 `remlc-ocaml.1` を `man1/` へ配置し、`CMAKE_INSTALL_MANDIR` 相当のディレクトリへインストールする（Phase 1-7 で `tooling/cli` のビルドスクリプトに組み込む見込み）。
+生成物 `tooling/cli/man/remlc-ocaml.1` をインストール手順で `man1/` へ配置し、`CMAKE_INSTALL_MANDIR` 相当のディレクトリへインストールする（CI への組み込みは Phase 1-7 で実施予定）。
 
 ## 5. 同期確認ポイント
 - `print_full_help` と man テンプレートの文言・区切り順が一致しているか。
@@ -62,7 +63,8 @@ pandoc \
 - 参考リンクで `docs/guides/cli-workflow.md` と `docs/guides/trace-output.md` を案内しているか。
 
 ## 6. TODO / 追加検討
-- [ ] Phase 1-7 で `tooling/cli` に man ページ生成スクリプトを追加し、CI で整合性チェックを実施する。
+- [x] `tooling/cli/scripts/update-man-pages.sh` を追加してテンプレートとの同期手順を確立する（Phase 1-6 完了）。
+- [ ] Phase 1-7 で CI に man ページ生成スクリプトを組み込み、整合性チェックを自動化する。
 - [ ] `pandoc` に依存しない最小ジェネレーター（OCaml スクリプト）の検討。
 - [ ] `docs/guides/diagnostic-format.md` の JSON スキーマ確定後に man ページへリンクする。
 

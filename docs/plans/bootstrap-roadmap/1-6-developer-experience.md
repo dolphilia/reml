@@ -6,9 +6,9 @@
 |---------|--------|-----------|--------|
 | Week 14 | 診断出力システム | ✅ 完了 | 100% |
 | Week 15 | トレース・ログ | ✅ 完了 | 100% |
-| Week 16 | ヘルプ・ドキュメント & サンプル | ⏸️ 進行中 | 75% |
+| Week 16 | ヘルプ・ドキュメント & サンプル | ⏸️ 進行中 | 83% |
 
-**全体進捗**: 75% (6/8タスク完了)
+**全体進捗**: 87% (7/8タスク完了)
 
 ### 完了した項目（Week 14）
 - ✅ ソースコードスニペット表示実装（`diagnostic_formatter.ml`）
@@ -32,7 +32,7 @@
    - ✅ `--help` 出力のセクション化・使用例追加（`options.ml`）
    - ✅ `docs/guides/cli-workflow.md` の初稿整備とトレースガイドへの相互リンク
    - ✅ `examples/cli/` サンプル整備（`emit_suite.reml` 追加、チェックリスト整備）
-   - ⏳ man ページ生成と同期テンプレート整備（テンプレート確立、生成スクリプト統合は次週）
+   - ✅ man ページ生成と同期テンプレート整備（`tooling/cli/scripts/update-man-pages.sh` と `tooling/cli/man/remlc-ocaml.1` を追加済み、CI 統合は Phase 1-7 で実施予定）
 2. **統計機能の拡張計画**:
    - フェーズ別時間比率やピークメモリなど残タスクの洗い出し
    - JSON/CSV など外部連携フォーマットの要件整理
@@ -166,17 +166,17 @@
 - ✅ `--help` / `-help` での詳細ヘルプ表示
 - ⏳ ログレベル別の説明・環境変数一覧の追記
 
-6.2. **manページ生成** ⏳
-- `remlc-ocaml.1` マニュアルページ用テンプレートを作成（`docs/guides/man/remlc-ocaml.1.md`）
-- 生成手順と同期チェックリストを `docs/guides/cli-help-template.md` に整備
-- インストール時の配置（`/usr/local/share/man`）と CI 自動生成は Phase 1-7 で実装予定
+6.2. **manページ生成** ✅
+- `remlc-ocaml.1` マニュアルページ用テンプレートを維持（`docs/guides/man/remlc-ocaml.1.md`）。テンプレート更新時は同一コミットでスクリプトを実行する。
+- `tooling/cli/scripts/update-man-pages.sh` を追加し、`pandoc` を用いて `tooling/cli/man/remlc-ocaml.1` を自動生成できるようにした（`--check` モードで同期確認可能）。
+- 生成済み man ページをリポジトリに含めた。インストールパスと CI 自動生成は Phase 1-7 で整備する。
 
 6.3. **ユーザーガイド作成** ⏸️
 - ✅ `docs/guides/cli-workflow.md` 初稿（ワークフロー・トレース活用・CI 連携）
 - ⏳ サンプルプロジェクトとの連動、トラブルシューティング詳細（`examples/cli/README.md` にチェックリスト追加済み）
 - ⏳ CLI テンプレート（`examples/cli/`）の整備（段階的サンプルは整備済み、テンプレ自動生成は未着手）
 
-**成果物**: `options.ml` 拡張済みヘルプ、`docs/guides/cli-workflow.md` 初稿、`docs/guides/cli-help-template.md` と `docs/guides/man/remlc-ocaml.1.md` を追加（man ページ自動生成は未了）
+**成果物**: `options.ml` 拡張済みヘルプ、`docs/guides/cli-workflow.md` 初稿、`docs/guides/cli-help-template.md` と `docs/guides/man/remlc-ocaml.1.md`、`tooling/cli/scripts/update-man-pages.sh`、`tooling/cli/man/remlc-ocaml.1`（自動生成スクリプトは Phase 1-7 で CI へ組み込み予定）
 
 ### 7. サンプルプロジェクト整備（15-16週目）⏸️ 部分完了
 **担当領域**: 実践的な使用例
