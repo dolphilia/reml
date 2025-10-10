@@ -50,9 +50,9 @@ let print_full_help () =
     "  --verify-ir         生成した LLVM IR を検証";
     "";
     "例:";
-    "  remlc tmp/add.reml --emit-ir --trace";
-    "  remlc tmp/add.reml --link-runtime --out-dir build";
-    "  remlc tmp/add.reml --format=json --stats";
+    "  remlc examples/cli/add.reml --emit-ir --trace";
+    "  remlc examples/cli/add.reml --link-runtime --out-dir build";
+    "  remlc examples/cli/trace_sample.reml --trace --stats";
     "";
     "関連ドキュメント:";
     "  docs/guides/cli-workflow.md    CLI ワークフローガイド";

@@ -11,7 +11,7 @@
 
 ### 1.1 実行コマンド
 
-`remlc` (Phase 1-6 OCaml ブートストラップ版、計画書では `remlc-ocaml` と記載) は `dune exec` 経由で利用する。
+`remlc`（Phase 1-6 OCaml ブートストラップ版、計画書では `remlc-ocaml` と記載）は `dune exec` 経由で利用する。
 
 ```bash
 opam exec -- dune exec -- remlc <入力ファイル.reml> [オプション]
@@ -19,18 +19,13 @@ opam exec -- dune exec -- remlc <入力ファイル.reml> [オプション]
 
 ### 1.2 最小のサンプル
 
-以下のコードを `tmp/add.reml` など任意のパスに保存する。
-
-```reml
-fn add(a: i64, b: i64) -> i64 = a + b
-fn main() -> i64 = add(2, 40)
-```
+リポジトリには `examples/cli/add.reml`（加算サンプル）が同梱されている。以下で AST/IR を確認できる。
 
 ```bash
-opam exec -- dune exec -- remlc tmp/add.reml --emit-ir
+opam exec -- dune exec -- remlc examples/cli/add.reml --emit-ir
 ```
 
-生成された `out.ll` / `out.bc` は `--out-dir` で出力先を指定できる。
+生成された `out.ll` / `out.bc` は `--out-dir` で出力先を指定できる。自分のコードを試す場合は `tmp/` 配下などにファイルを複製して編集する。
 
 ### 1.3 ランタイムとリンク
 
@@ -38,7 +33,7 @@ opam exec -- dune exec -- remlc tmp/add.reml --emit-ir
 
 ```bash
 opam exec -- dune exec -- \
-  remlc tmp/add.reml \
+  remlc examples/cli/add.reml \
   --link-runtime \
   --out-dir build
 ```
@@ -71,12 +66,18 @@ opam exec -- dune exec -- \
 
 カラー出力は `--color=auto|always|never` で制御する。`NO_COLOR` や `FORCE_COLOR` 環境変数も考慮される。
 
+```bash
+opam exec -- dune exec -- remlc examples/cli/type_error.reml --format=json
+```
+
+上記コマンドで JSON 診断を確認できる（`type_error.reml` は `if` 条件に整数を渡す誤りを含む）。
+
 ### 3.2 フェーズトレース
 
 `--trace` を有効化するとパーサーから LLVM 生成までの各フェーズが標準エラーに記録される。
 
 ```bash
-opam exec -- dune exec -- remlc tmp/add.reml --trace
+opam exec -- dune exec -- remlc examples/cli/trace_sample.reml --trace
 ```
 
 出力例:
@@ -111,7 +112,7 @@ opam exec -- dune exec -- remlc tmp/add.reml --trace
 
 ```yaml
     - name: Compile sample
-      run: opam exec -- dune exec -- remlc tmp/add.reml --trace --stats 2>trace.log
+      run: opam exec -- dune exec -- remlc examples/cli/trace_sample.reml --trace --stats 2>trace.log
     - name: Archive trace
       uses: actions/upload-artifact@v4
       with:
