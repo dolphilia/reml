@@ -29,11 +29,17 @@
 - §6.3 リンクヘルパー実装（`runtime_link.ml`）と CLI 統合（`--link-runtime`）
 - 統合テスト作成（`tests/test_runtime_integration.sh`）
 
-**進行中** 🚧:
-- タプル/レコード生成時の `mem_alloc` 呼び出し
-- スコープ終了時の `dec_ref` 挿入
-- 実行可能ファイル生成 E2E テスト
-- メモリリーク検証（Valgrind/ASan）
+**Phase 2 へ延期** ⏳:
+- タプル/レコード生成時の `mem_alloc` 呼び出し（Core IR の TupleConstruct ノード実装が必要）
+- スコープ終了時の `dec_ref` 挿入（所有権解析と型情報に基づく正確な実装が必要）
+- 実行可能ファイル生成 E2E テスト（文字列パラメータ処理の課題により延期）
+- メモリリーク検証（実行可能バイナリ生成後に実施）
+
+**Phase 1-5 で達成した内容** ✅:
+- 文字列リテラル生成時の `mem_alloc` 呼び出し実装
+- ランタイム関数宣言とリンク統合
+- メモリ検証スクリプト作成（`scripts/verify_memory.sh`）
+- E2E テストフレームワーク整備（`tests/test_runtime_integration.sh`）
 
 **詳細**: [phase1-5-llvm-integration-report.md](docs/phase1-5-llvm-integration-report.md)
 

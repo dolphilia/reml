@@ -38,6 +38,7 @@ type function_codegen_info = {
 type current_function_state = {
   info: function_codegen_info;                           (** 関数のメタ情報 *)
   llvm_fn: Llvm.llvalue;                                 (** LLVM 関数値 *)
+  fn_def: function_def;                                  (** Core IR 関数定義 *)
   mutable pending_phis: (Llvm.llvalue * (label * var_id) list) list;
                                                         (** 後で解決する φ ノード一覧 *)
   sret_param: Llvm.llvalue option;                      (** sret 用ポインタ引数（必要時） *)
@@ -135,7 +136,7 @@ let begin_function ctx fn_def llvm_fn =
     let llvm_param = llvm_params.(idx) in
     Hashtbl.replace ctx.var_map param.param_var llvm_param
   ) fn_def.fn_params;
-  ctx.current_function <- Some { info; llvm_fn; pending_phis = []; sret_param }
+  ctx.current_function <- Some { info; llvm_fn; fn_def; pending_phis = []; sret_param }
 
 let current_function_state ctx =
   match ctx.current_function with
@@ -294,7 +295,7 @@ let call_dec_ref ctx ptr =
 
   let dec_ref_ty = Llvm.function_type void_ty [| ptr_ty |] in
   ignore (Llvm.build_call dec_ref_ty dec_ref [| ptr |] "" ctx.builder)
-[@@warning "-32"]
+[@@warning "-32"] (* Phase 2 で使用予定 *)
 
 (** panic を呼び出してプログラムを異常終了させる
  *
@@ -428,7 +429,9 @@ and codegen_literal ctx lit ty =
       Llvm.undef (Llvm.void_type ctx.llctx)
 
   | Ast.Tuple _ ->
-      codegen_errorf "Tuple literals not yet implemented in Phase 1"
+      (* Phase 1-5: タプルリテラルは糖衣削除で Core IR に変換される前提 *)
+      (* Phase 2 で TupleConstruct ノードとして実装予定 *)
+      codegen_errorf "Tuple literals not yet implemented in Phase 1 (requires Core IR TupleConstruct node)"
 
   | Ast.Array _ ->
       codegen_errorf "Array literals not yet implemented in Phase 1"
@@ -693,6 +696,13 @@ and codegen_array_access _ctx _array_expr _index_expr =
 
 let emit_return ctx expr =
   let state = current_function_state ctx in
+
+  (* Phase 1-5: dec_ref 挿入はスキップ *)
+  (* 理由: FAT pointer { ptr, i64 } は構造体として渡されるため、 *)
+  (*       単純なポインタ判定では正しく処理できない *)
+  (* Phase 2: 所有権解析と型情報に基づき、ヒープオブジェクトのみ dec_ref *)
+  ignore state.fn_def.fn_params; (* 警告抑制 *)
+
   if is_unit_type expr.expr_ty then begin
     let _ = codegen_expr ctx expr in
     Llvm.build_ret_void ctx.builder
