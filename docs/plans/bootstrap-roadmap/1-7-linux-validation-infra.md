@@ -180,6 +180,43 @@
 
 **成果物**: ローカル再現スクリプト、Dockerイメージ、ドキュメント
 
+## macOS 向けビルド計画の再検討
+
+### 現状認識
+- 開発者の主環境は macOS だが、正式な macOS ビルドパイプラインは Phase 3 以降に後ろ倒しされている。
+- Phase 2 では Windows 対応（[2-6-windows-support.md](2-6-windows-support.md)）がクリティカルパスになるため、macOS を長期間放置すると検証遅延が顕著になる。
+- 既存の Linux CI 設計（本ドキュメント）を流用できるが、ランタイム ABI（Mach-O）、署名/Notarization、ARM64 対応など macOS 固有要素の調整が必要。
+
+### 着手タイミング候補の比較
+
+| タイミング | 長所 | 課題・前提 | 推奨アクション |
+|------------|------|------------|-----------------|
+| **1.8（Phase 1 内新設）** | Linux CI 設計をほぼそのまま転用可能。開発者環境との不整合を早期解消。Phase 2 で Windows と並行する負荷を軽減。 | GitHub Actions macOS ランナーの安定運用、LLVM 15 の Homebrew 提供状況と Xcode Command Line Tools の整備、Mach-O ランタイム差分の暫定整理。 | 1-8 計画書を新設し、クロスビルド + 最小テストの確立をゴールに設定。`0-3-audit-and-metrics.md` に macOS 測定項目を追加。 |
+| **2.7（Phase 2 内新設）** | Windows 対応と同じフェーズでマルチターゲット化を図れる。型クラス・診断強化との整合を同時検証。 | Phase 2 の負荷増大（Windows と macOS の二正面作戦）。開発者の手元検証は引き続き Linux クロスビルド依存。 | 2-7 計画書を合わせて起案し、Windows 2-6 の成果物（クロスツールチェーン）を流用。macOS ARM64 のテスト観測点を Windows 計画と共通化。 |
+| **Phase 3 以降** | Self-Host 準備と同時に ARM64 macOS を含む本格対応ができる。 | macOS 開発者が Phase 2 まで常にクロスビルドを強いられる。セルフホスト移行と衝突すると検証リソースが逼迫。 | Phase 3 の 3-3 クロスコンパイル計画に吸収。Docker/仮想化に頼る前提で進行。 |
+
+現状の開発リソースと macOS 利用率を踏まえ、**1.8 での早期着手**を推奨する。Phase 1 のコンテキストに留めることで、Linux CI と構成要素を共有しつつ、Phase 2 の Windows 対応と分離してリスクを平準化できる。
+
+### 推奨シナリオ（1.8 macOS プレビルド対応）
+1. **1-8 計画書の雛形作成**  
+   - スコープ: GitHub Actions macOS ランナーでの `dune build` / `dune test`、Mach-O ターゲットの LLVM 検証（`-target x86_64-apple-darwin`）。  
+   - 成果物: `bootstrap-macos.yml`（ワークフロー）、`tooling/ci/macos/`（セットアップスクリプト）。
+2. **ランタイム互換性評価**  
+   - `runtime/native` のビルド手順を `clang` + `libtool` ベースで再検証し、Mach-O 向けビルドルールを追加。  
+   - Phase 1-5 ランタイム連携計画と矛盾しないよう `docs/plans/bootstrap-roadmap/1-5-runtime-integration.md` に必要な TODO を明示。
+3. **ツールチェーン差分の記録**  
+   - `docs/notes/llvm-spec-status-survey.md` に macOS 向けの LLVM 入手手順、`codesign` テストの観測点を追記。  
+   - `0-3-audit-and-metrics.md` へ macOS 計測行項目（ビルド時間、IR 検証結果、ランタイムサイズ）を追加。
+4. **移行準備リストの整備**  
+   - `compiler/ocaml/README.md` に macOS 手元検証手順（Homebrew での依存導入、`opam switch create 4.14.2` 等）を記載。  
+   - `docs/plans/bootstrap-roadmap/SUMMARY.md` に 1-8 の新タスクを登録し、Phase 2 以降での依存関係を更新。
+
+### Phase 1-7 と並行して進める前倒し準備
+- **CI 設計の抽象化**: Linux ワークフローのジョブ定義を `tooling/ci/templates/` に切り出し、macOS ジョブとの共通化を見据える。
+- **キャッシュ/依存パラメータの整理**: `actions/cache` のキーをターゲット（`linux`, `macos`）別に分離できるよう、1-7 の段階で戦略を文書化。
+- **クロスビルドチェックポイント**: 1-7 で生成するアーティファクトに `llvm-ir/macos` プレースホルダを用意し、後続フェーズで macOS 産出物を追加する導線を確保。
+- **リスク登録**: macOS 固有問題（Xcode CLT の更新ズレ、GitHub Actions コスト）を `0-4-risk-handling.md` に記録し、1.8 計画の開始条件として管理。
+
 ## 成果物と検証
 - GitHub Actions の定期実行（push/pr）で全テストが通過することを確認。
 - アーティファクトが 30 日保持され、レビューで差分確認に利用できる。

@@ -54,3 +54,21 @@
 - 状態: Resolved
 - 関連フェーズ: Phase 1
 - 参照: `tooling/toolchains/versions.toml`, `tooling/toolchains/checksums.txt`, `docs/plans/bootstrap-roadmap/1-5-runtime-integration.md` §10
+- 登録日: 2025-10-12
+- タイトル: Homebrew 版 LLVM の頻繁な更新による再現性低下
+- カテゴリ: 互換性
+- 詳細: Phase 1-8 で使用予定の `brew install llvm@15` が頻繁に更新され、CI とローカル環境で異なるビルド番号が導入される懸念がある。`llvm-config` の出力差異が出た場合、IR 検証に失敗する可能性がある。
+- 対応案: `brew extract` によるフォーミュラ固定、もしくは GitHub Actions 内でのバイナリアーカイブ展開を採用する。決定後は `docs/notes/llvm-spec-status-survey.md` に手順を記録し、`bootstrap-macos.yml` に反映する。
+- 期限: 2025-10-26
+- 状態: Open
+- 関連フェーズ: Phase 1 (1-8)
+- 参照: `docs/plans/bootstrap-roadmap/1-8-macos-prebuild-support.md` §3, `docs/notes/llvm-spec-status-survey.md`
+- 登録日: 2025-10-12
+- タイトル: GitHub Actions macOS ランナーの起動待ち時間長期化
+- カテゴリ: スケジュール
+- 詳細: macOS ランナーのジョブ待機時間が 15 分を超えるケースが増加すると、Phase 1-8 の CI フィードバックが遅延し、`ci_build_time_macos` 指標の収集に影響が出る。Linux CI よりもスループットが低下する懸念がある。
+- 対応案: 待機時間が 10 分を超えた状態が 2 週間継続した場合、セルフホストランナー導入またはジョブスケジュールの週次バッチ化を検討する。判断結果を `docs/plans/bootstrap-roadmap/1-8-macos-prebuild-support.md` §7 に追記する。
+- 期限: 2025-11-02
+- 状態: Open
+- 関連フェーズ: Phase 1 (1-8)
+- 参照: `docs/plans/bootstrap-roadmap/1-8-macos-prebuild-support.md` §2, `0-3-audit-and-metrics.md`

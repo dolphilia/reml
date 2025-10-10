@@ -37,6 +37,7 @@
 5. **[1-5-runtime-integration.md](1-5-runtime-integration.md)**: 最小ランタイム、RC所有権モデル
 6. **[1-6-developer-experience.md](1-6-developer-experience.md)**: CLI整備、診断出力
 7. **[1-7-linux-validation-infra.md](1-7-linux-validation-infra.md)**: x86_64 Linux CI構築
+8. **[1-8-macos-prebuild-support.md](1-8-macos-prebuild-support.md)**: macOS プレビルド対応とCI整備
 
 ### 技術的ハイライト
 - Menhirパーサジェネレータによる高品質な構文解析

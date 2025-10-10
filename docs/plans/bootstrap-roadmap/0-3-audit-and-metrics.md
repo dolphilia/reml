@@ -12,6 +12,17 @@
 | DX | `diagnostic_regressions` | 診断差分の件数 | PR ごと | [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) |
 | DX | `error_resolution_latency` | 重大バグの修正までの日数 | 月次 | [0-1-project-purpose.md](../../spec/0-1-project-purpose.md) §2.2 |
 
+### macOS 追加指標（Phase 1-8 以降）
+| カテゴリ | 指標 | 定義 | 収集タイミング | 計画参照 |
+|----------|------|------|----------------|----------|
+| CI | `ci_build_time_macos` | `bootstrap-macos` ワークフローにおける `dune build` の実行時間（分） | push/pr ごと | [1-8-macos-prebuild-support.md](1-8-macos-prebuild-support.md) §5 |
+| CI | `ci_test_time_macos` | `bootstrap-macos` ワークフローにおける `dune runtest` の実行時間（分） | push/pr ごと | 同上 |
+| 品質 | `llvm_verify_macos` | `llvm-as` → `opt -verify` → `llc -mtriple=x86_64-apple-darwin` の成否（0=成功,1=失敗） | CI 実行ごと | 同上 |
+| 成果物 | `runtime_macho_size` | `libreml_runtime.a` (Mach-O) のファイルサイズ（KB） | 週次 | 同上 |
+| 運用 | `macos_runner_queue_time` | GitHub Actions macOS ランナーの待機時間（分） | 週次レビュー | 同上 |
+
+> **補足**: macOS 指標は Linux 指標との比較を想定し、`metrics.json` にターゲット別セクションを設けて記録する。乖離が 15% を超えた場合は `0-4-risk-handling.md` に登録して原因調査を開始する。
+
 ## 0.3.2 レポートテンプレート
 - **週次レポート**: `reports/week-YYYYMMDD.md`（将来追加予定）に以下の項目を記録する。
   - 主要マイルストーン進捗
