@@ -45,8 +45,9 @@ Phase 1 の最小ランタイムおよび Phase 2 以降の Capability 拡張を
 
 1. **ランタイムビルド**: `make runtime` で `libreml_runtime.a` を生成
 2. **基本テスト**: `make test` でメモリアロケータ・参照カウントのテストを実行（14件）
-3. **Valgrind 検証**: AddressSanitizer 有効化（`DEBUG=1`）でリーク・ダングリング検出
-4. **アーティファクト収集**:
+3. **Valgrind 検証**: リリースビルドのテストバイナリに対してリーク・ダングリング検出を実行
+4. **AddressSanitizer 検証**: `DEBUG=1` で再ビルドし、ASan を有効にしたテストを実行
+5. **アーティファクト収集**:
    - 成功時: `libreml_runtime.a` と `.o` ファイルを 30 日保持
    - 失敗時: テストバイナリとログを 7 日保持
 
@@ -58,12 +59,16 @@ CI と同じテストをローカルで実行する方法：
 # 基本テスト
 make clean && make runtime && make test
 
-# Valgrind 統合テスト
-make clean && DEBUG=1 make runtime && DEBUG=1 make test
+# Valgrind 統合テスト（リリースビルドを使用）
 for test in build/test_*; do
   valgrind --leak-check=full --error-exitcode=1 "$test"
 done
+
+# AddressSanitizer テスト
+make clean && DEBUG=1 make runtime && DEBUG=1 make test
 ```
+
+Valgrind と AddressSanitizer は同時に有効化するとメモリマップが衝突するため、上記のようにビルドを分けて実行してください。
 
 ### Docker での検証
 
@@ -73,8 +78,11 @@ CI 環境と同じ Ubuntu 22.04 + LLVM 18 環境で検証する場合：
 # Docker イメージを使用してランタイムテストを実行
 scripts/docker/run-runtime-tests.sh --tag ghcr.io/reml/bootstrap-runtime:local
 
-# カスタムコマンドを実行
-scripts/docker/run-runtime-tests.sh -- "cd runtime/native && make clean && DEBUG=1 make test"
+# カスタムコマンドを実行（Valgrind 対応）
+scripts/docker/run-runtime-tests.sh -- "cd runtime/native && make clean && make runtime && make test && for t in build/test_*; do valgrind --leak-check=full --error-exitcode=1 \"\$t\"; done"
+
+# AddressSanitizer テスト
+scripts/docker/run-runtime-tests.sh -- "cd runtime/native && make clean && DEBUG=1 make runtime && DEBUG=1 make test"
 ```
 
 ### アーティファクトの取得

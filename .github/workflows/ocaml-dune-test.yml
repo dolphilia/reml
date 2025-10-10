@@ -69,10 +69,6 @@ jobs:
 
       - name: Run runtime tests with Valgrind
         run: |
-          make clean
-          DEBUG=1 make runtime
-          DEBUG=1 make test
-          # Valgrind でリーク検出
           echo "Running Valgrind leak checks..."
           for test in build/test_*; do
             if [ -x "$test" ]; then
@@ -80,6 +76,13 @@ jobs:
               valgrind --leak-check=full --error-exitcode=1 --suppressions=/dev/null "$test" || exit 1
             fi
           done
+        working-directory: runtime/native
+
+      - name: Run runtime tests with AddressSanitizer
+        run: |
+          make clean
+          DEBUG=1 make runtime
+          DEBUG=1 make test
         working-directory: runtime/native
 
       - name: Upload runtime artifacts

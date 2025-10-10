@@ -77,6 +77,7 @@
 - ✅ **LLVM 連携**: `compiler/ocaml/src/llvm_gen/codegen.ml` と `abi.ml` でランタイムシンボル宣言・属性設定・リンクフラグを統合（`llvm_attr.ml` + C スタブで `sret` / `byval` の型付き属性を付与）完了（2025-10-10）
 - ✅ **リンクヘルパー**: `runtime_link.ml` でプラットフォーム検出とリンカーコマンド生成を実装完了（2025-10-10）
 - **テストと検証**: `runtime/native/tests/` と `compiler/ocaml/tests/codegen/` に単体/統合テストを追加し、Valgrind/ASan のジョブを CI に組み込む。
+  - Valgrind はリリースビルド、AddressSanitizer は `DEBUG=1` ビルドで個別に実行するよう GitHub Actions を調整し、両者の併用による衝突を回避
 - **ドキュメントと CI**: `docs/guides/llvm-integration-notes.md` および `compiler/ocaml/docs/` を更新し、GitHub Actions でランタイムビルドと検証を自動化。
 
 ## 直近の準備チェックリスト
