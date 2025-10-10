@@ -27,6 +27,8 @@ scripts/docker/run-runtime-tests.sh --tag ghcr.io/reml/bootstrap-runtime:dev
 - デフォルトコマンドは `dune build`, `dune runtest`, `make -C runtime/native runtime` を実行し、
   LLVM ゴールデンファイルの検証を行います。
 - 任意のコマンドを実行する場合は `--` 以降に Bash コマンドを指定します。
+- クロスコンパイル済みバイナリのスモークテストは `scripts/docker/run-cross-binary.sh --tag ghcr.io/reml/bootstrap-runtime:dev -- artifacts/cross/hello-linux`
+  のように実行できます（`artifacts/cross/` 配下の成果物を想定）。
 
 スモークテスト用のショートカット:
 

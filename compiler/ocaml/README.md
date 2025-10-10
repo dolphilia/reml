@@ -61,8 +61,9 @@
 - `compiler/ocaml/docs/phase3-to-phase2-handover.md`・`compiler/ocaml/docs/technical-debt.md` の High 優先度項目（型マッピング TODO, CFG 線形化など）がランタイム統合のブロッカーにならないよう対応状況を見直す。
 - `runtime/native/` の既存ファイル構成と CI スクリプト (`compiler/ocaml/scripts/verify_llvm_ir.sh` など) を確認し、ランタイム検証を追加する際の差分影響を把握する。
 - Docker ベースの Linux 検証フロー（`scripts/docker/build-runtime-container.sh`, `scripts/docker/run-runtime-tests.sh`, `scripts/docker/smoke-linux.sh`）を実行し、CI で利用するタグとローカル環境の整合を取る。
+- クロスコンパイル成果物は `scripts/docker/run-cross-binary.sh -- artifacts/cross/hello-linux` などのコマンドで Docker コンテナ上からスモークテストし、リモート検証ノードの結果と比較する。
 - 計測結果を追記するための記録先（`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`）とリスク登録先（`docs/plans/bootstrap-roadmap/0-4-risk-handling.md`）のフォーマットを再確認する。
-- macOS での Linux x86_64 クロスビルド手順（`docs/plans/bootstrap-roadmap/1-5-runtime-integration.md` §10）を検討し、必要なツールチェーン・sysroot・QEMU 実行環境の準備可否を確認する。
+- macOS での Linux x86_64 クロスビルド手順（`docs/plans/bootstrap-roadmap/1-5-runtime-integration.md` §10）を確認し、必要なツールチェーン・sysroot・リモート実行環境（SSH 接続できる Linux ノード、または補助エミュレータ）の準備可否を確認する。
 
 ## 関連ドキュメント
 - **計画書**: `docs/plans/bootstrap-roadmap/IMPLEMENTATION-GUIDE.md`, `docs/plans/bootstrap-roadmap/1-0-phase1-bootstrap.md`, `docs/plans/bootstrap-roadmap/1-4-llvm-targeting.md`, `docs/plans/bootstrap-roadmap/1-5-runtime-integration.md`
