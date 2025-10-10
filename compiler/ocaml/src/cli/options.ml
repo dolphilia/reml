@@ -15,6 +15,51 @@ type color_mode =
   | Always  (** 常にカラー表示（パイプ時も） *)
   | Never   (** カラー表示を無効化 *)
 
+let print_full_help () =
+  let lines = [
+    "Reml OCaml コンパイラ CLI — Phase 1-6 開発者体験整備";
+    "";
+    "使い方:";
+    "  remlc <入力ファイル.reml> [オプション]";
+    "";
+    "入力:";
+    "  <file>              コンパイル対象の Reml ソースファイル";
+    "";
+    "出力制御:";
+    "  --emit-ast          AST を標準出力に書き出す";
+    "  --emit-tast         型付き AST を標準出力に書き出す";
+    "  --emit-ir           LLVM IR (.ll) を出力ディレクトリに生成";
+    "  --emit-bc           LLVM Bitcode (.bc) を出力ディレクトリに生成";
+    "  --out-dir <dir>     中間成果物の出力先ディレクトリ（既定: .）";
+    "";
+    "診断・フォーマット:";
+    "  --format <text|json>  診断出力形式（既定: text）";
+    "  --color <auto|always|never>";
+    "                       カラー表示の制御（既定: auto）";
+    "";
+    "トレース・統計:";
+    "  --trace             フェーズ別トレースを標準エラーに表示";
+    "  --stats             コンパイル統計情報を標準エラーに表示";
+    "  --verbose <0-3>     ログ詳細度（環境変数 REMLC_LOG でも指定可）";
+    "";
+    "コンパイル設定:";
+    "  --target <triple>   ターゲットトリプル（既定: x86_64-linux）";
+    "  --link-runtime      ランタイムライブラリとリンクして実行可能ファイルを生成";
+    "  --runtime-path <path>";
+    "                       ランタイムライブラリへのパス（既定: runtime/native/build/libreml_runtime.a）";
+    "  --verify-ir         生成した LLVM IR を検証";
+    "";
+    "例:";
+    "  remlc tmp/add.reml --emit-ir --trace";
+    "  remlc tmp/add.reml --link-runtime --out-dir build";
+    "  remlc tmp/add.reml --format=json --stats";
+    "";
+    "関連ドキュメント:";
+    "  docs/guides/cli-workflow.md    CLI ワークフローガイド";
+    "  docs/guides/trace-output.md    トレース・統計出力の詳細";
+  ] in
+  List.iter (fun line -> Printf.printf "%s\n" line) lines
+
 (** コマンドラインオプション設定 *)
 type options = {
   (* 入力 *)
@@ -143,63 +188,73 @@ let parse_args argv =
     ("--link-runtime", Arg.Set link_runtime, "Link with runtime library to produce executable");
     ("--runtime-path", Arg.Set_string runtime_path, "<path> Path to runtime library");
     ("--verify-ir", Arg.Set verify_ir, "Verify generated LLVM IR");
+    ("--help", Arg.Unit (fun () -> print_full_help (); exit 0), "Show detailed help");
+    ("-help", Arg.Unit (fun () -> print_full_help (); exit 0), "Show detailed help");
   ] in
 
   let anon_fun filename =
     input_file := filename
   in
 
-  Arg.parse_argv argv speclist anon_fun usage_msg;
+  let current = ref 0 in
+  try
+    Arg.parse_argv ~current argv speclist anon_fun usage_msg;
 
-  (* 入力ファイルのチェック *)
-  if !input_file = "" then
-    Error "Error: no input file"
-  else
-    (* format_str を output_format に変換 *)
-    let format = match !format_str with
-      | "text" -> Text
-      | "json" -> Json
-      | other ->
-          prerr_endline (Printf.sprintf "Warning: unknown format '%s', using 'text'" other);
-          Text
-    in
+    (* 入力ファイルのチェック *)
+    if !input_file = "" then
+      Error "Error: no input file"
+    else
+      (* format_str を output_format に変換 *)
+      let format = match !format_str with
+        | "text" -> Text
+        | "json" -> Json
+        | other ->
+            prerr_endline (Printf.sprintf "Warning: unknown format '%s', using 'text'" other);
+            Text
+      in
 
-    (* color_str を color_mode に変換 *)
-    let color = match !color_str with
-      | "auto" -> Auto
-      | "always" -> Always
-      | "never" -> Never
-      | other ->
-          prerr_endline (Printf.sprintf "Warning: unknown color mode '%s', using 'auto'" other);
-          Auto
-    in
+      (* color_str を color_mode に変換 *)
+      let color = match !color_str with
+        | "auto" -> Auto
+        | "always" -> Always
+        | "never" -> Never
+        | other ->
+            prerr_endline (Printf.sprintf "Warning: unknown color mode '%s', using 'auto'" other);
+            Auto
+      in
 
-    (* verbose レベルの範囲チェック *)
-    let verbose_level =
-      if !verbose < 0 then 0
-      else if !verbose > 3 then 3
-      else !verbose
-    in
+      (* verbose レベルの範囲チェック *)
+      let verbose_level =
+        if !verbose < 0 then 0
+        else if !verbose > 3 then 3
+        else !verbose
+      in
 
-    Ok {
-      input_file = !input_file;
-      use_stdin = false;
+      Ok {
+        input_file = !input_file;
+        use_stdin = false;
 
-      emit_ast = !emit_ast;
-      emit_tast = !emit_tast;
-      emit_ir = !emit_ir;
-      emit_bc = !emit_bc;
-      out_dir = !out_dir;
+        emit_ast = !emit_ast;
+        emit_tast = !emit_tast;
+        emit_ir = !emit_ir;
+        emit_bc = !emit_bc;
+        out_dir = !out_dir;
 
-      format = format;
-      color = color;
+        format = format;
+        color = color;
 
-      trace = !trace;
-      stats = !stats;
-      verbose = verbose_level;
+        trace = !trace;
+        stats = !stats;
+        verbose = verbose_level;
 
-      target = !target;
-      link_runtime = !link_runtime;
-      runtime_path = !runtime_path;
-      verify_ir = !verify_ir;
-    }
+        target = !target;
+        link_runtime = !link_runtime;
+        runtime_path = !runtime_path;
+        verify_ir = !verify_ir;
+      }
+  with
+  | Arg.Help _ ->
+      print_full_help ();
+      exit 0
+  | Arg.Bad msg ->
+      Error msg
