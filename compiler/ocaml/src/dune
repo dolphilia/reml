@@ -19,4 +19,4 @@
  (public_name remlc)
  (package reml_ocaml)
  (modules main)
- (libraries reml_parser reml_ocaml.core_ir reml_ocaml.llvm_gen))
+ (libraries cli reml_parser reml_ocaml.core_ir reml_ocaml.llvm_gen))
