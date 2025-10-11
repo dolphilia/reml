@@ -21,25 +21,60 @@
 ### 1. 辞書渡し型システム設計（17-18週目）
 **担当領域**: 型クラス基盤設計
 
-1.1. **辞書データ構造定義**
-- [1-2-types-Inference.md](../../spec/1-2-types-Inference.md) の型クラス仕様を OCaml データ型に写像
-- 辞書レイアウト: `{ vtable: fn_ptr[], type_info: metadata }` の設計
-- Core IR に `DictType`, `DictInstance`, `DictParam` ノードを追加
-- ABI との整合性を確保（Phase 2 FFI タスクと連携）
+#### 1.1. **辞書データ構造定義** ✅ 基盤完了（2025-10-15）
+- ✅ [1-2-types-Inference.md](../../spec/1-2-types-Inference.md) の型クラス仕様を OCaml データ型に写像
+  - `types.ml` に `trait_constraint` 型を導入し、トレイト名・型引数を保持する構造を確立
+  - `constrained_scheme` 型で型スキームと制約リストを結合
+- ✅ Core IR に辞書関連ノードを追加
+  - `ir.ml` に `dict_ref`, `dict_instance`, `dict_method` 型を定義
+  - `DictConstruct`, `DictMethodCall` を `expr_kind` に追加
+- 🚧 辞書レイアウト `{ vtable: fn_ptr[], type_info: metadata }` の詳細設計（Phase 2 Week 19-20 で実装予定）
+- 🚧 ABI との整合性確保（Phase 2 FFI タスクと連携、Week 20-21 で実装予定）
 
-1.2. **制約解決エンジン設計**
-- Typer に制約収集・単一化・解決のパイプラインを追加
-- `Eq`, `Ord`, `Collector` の制約規則を実装（`Collector` は `Core.Iter` で公開されるビルダトレイト）
-- 制約グラフの構築と依存関係の追跡
-- 循環依存・未解決制約の検出ロジック
+**変更ファイル**:
+- `compiler/ocaml/src/types.ml` (trait_constraint, constrained_scheme)
+- `compiler/ocaml/src/core_ir/ir.ml` (dict_ref, dict_instance, DictConstruct, DictMethodCall)
 
-1.3. **辞書生成パス構築**
-- インスタンス宣言から辞書初期化コードを生成
-- 型パラメータごとの辞書引数挿入ポイントの決定
-- 選択子（メソッド呼び出し）の vtable インデックス計算
-- LLVM IR への辞書構造体の lowering
+#### 1.2. **制約解決エンジン設計** 🚧 部分完了（2025-10-15）
+- ✅ 型環境を制約付きスキームベースに刷新
+  - `type_env.ml` で `constrained_scheme` を全面採用
+  - 既存の let 多相を空の制約リストとして保持
+- ✅ `Constraint` モジュールの制約伝搬機能を拡張
+  - `constraint.ml` に `apply_subst_cscheme` を実装し、代入適用時に制約を保持
+  - 自由型変数収集を制約込みで再実装（`free_vars_cscheme`）
+- ✅ 型推論パイプラインを制約付きスキーム対応へ移行
+  - `type_inference.ml` の `generalize`, `instantiate`, `make_typed_decl` を更新
+  - Typed AST (`typed_ast.ml`) が制約情報を保持
+- 🚧 制約解決器のインターフェース更新（Week 19-20 で実装予定）
+  - `Eq`, `Ord`, `Collector` の制約規則実装
+  - 制約グラフの構築と依存関係の追跡
+  - 循環依存・未解決制約の検出ロジック
 
-**成果物**: 辞書型定義、制約解決エンジン、辞書生成パス
+**変更ファイル**:
+- `compiler/ocaml/src/type_env.ml` (constrained_scheme ベース)
+- `compiler/ocaml/src/constraint.ml` (apply_subst_cscheme, free_vars_cscheme)
+- `compiler/ocaml/src/type_inference.ml` (generalize, instantiate 更新)
+- `compiler/ocaml/src/typed_ast.ml` (制約情報保持)
+
+#### 1.3. **辞書生成パス構築** 🚧 準備中（Week 19-20 開始予定）
+- ✅ Core IR と後続パスのスタブ実装完了
+  - `cfg.ml`, `dce.ml`, `const_fold.ml` が `DictConstruct`/`DictMethodCall` を認識
+  - `codegen.ml` は辞書ノードを未実装扱いとしてエラーメッセージ出力
+- 🚧 インスタンス宣言から辞書初期化コードを生成（Week 19-20）
+- 🚧 型パラメータごとの辞書引数挿入ポイントの決定（Week 19-20）
+- 🚧 選択子（メソッド呼び出し）の vtable インデックス計算（Week 20-21）
+- 🚧 LLVM IR への辞書構造体の lowering（Week 21-22）
+
+**変更ファイル**:
+- `compiler/ocaml/src/core_ir/cfg.ml` (スタブ実装済み)
+- `compiler/ocaml/src/core_ir/dce.ml` (スタブ実装済み)
+- `compiler/ocaml/src/core_ir/const_fold.ml` (スタブ実装済み)
+- `compiler/ocaml/src/llvm_gen/codegen.ml` (未実装扱い、Week 21-22 で実装)
+
+**成果物**:
+- ✅ 辞書型定義（基盤構造）
+- 🚧 制約解決エンジン（インターフェース準備中）
+- 🚧 辞書生成パス（スタブ実装完了、本実装は Week 19-22）
 
 ### 2. Typer 統合と制約解決（18-19週目）
 **担当領域**: 型推論拡張
@@ -198,17 +233,97 @@
 
 **成果物**: 統合テストスイート、CI 設定、安定版
 
-## 進捗ログ（2025-10-15 更新）
-- `Type_env` を `constrained_scheme` ベースに刷新し、型クラス制約付きスキームを環境全体で扱えるようにした。既存の let 多相は空の制約リストとして保持し、辞書引数を導入するための基盤を確保。
-- `Constraint` モジュールの代入適用・自由型変数収集を制約リスト込みで再実装し、今後の制約伝搬で辞書レイアウト情報が欠落しないようにした。
-- 型推論・Typed AST を制約付きスキーム対応へ移行し、`generalize` / `instantiate` / `make_typed_decl` など辞書情報を保持する経路を確認済み。既存テストも `scheme_to_constrained` を介して更新。
-- Core IR と CFG/DCE/ConstFold/CodeGen が `DictConstruct` / `DictMethodCall` ノードを認識するように調整し、辞書生成と vtable 呼び出しを後続パスで扱うためのスタブを追加。
-- LLVM バックエンドは現時点で辞書ノードを未実装扱いとしつつ、エラーメッセージで Phase 2 のブロッカーを明示。今後の辞書 lowering 実装が必要。
+## 進捗ログ
 
-### フォローアップ
-- 制約付きスキームに蓄えた `trait_constraint` を解決フェーズへ流すため、制約解決器 (`constraint_solver`) のインターフェース更新が必要。
-- Core IR の辞書ノードが実際に生成される経路（脱糖・型推論）を実装し、CodeGen での辞書レイアウト確定まで接続するタスクを追加する。
-- `docs/spec/1-2-types-Inference.md` と辞書 ABI 仕様 (`docs/spec/3-9-core-async-ffi-unsafe.md`) へ今回の構造変更を反映し、用語集・リスクログの更新を検討。
+### 2025-10-15 更新（Week 17 完了）
+
+**完了タスク** ✅:
+
+1. **型環境の制約付きスキーム対応** (`type_env.ml`)
+   - `Type_env` を `constrained_scheme` ベースに刷新し、型クラス制約付きスキームを環境全体で扱えるようにした
+   - 既存の let 多相は空の制約リストとして保持し、辞書引数を導入するための基盤を確保
+   - 変更ファイル: `compiler/ocaml/src/type_env.ml`
+
+2. **制約伝搬機能の拡張** (`constraint.ml`)
+   - `Constraint` モジュールの代入適用・自由型変数収集を制約リスト込みで再実装
+   - `apply_subst_cscheme`, `free_vars_cscheme` を追加し、制約伝搬で辞書レイアウト情報が欠落しないように対応
+   - 変更ファイル: `compiler/ocaml/src/constraint.ml`
+
+3. **型推論パイプラインの移行** (`type_inference.ml`, `typed_ast.ml`)
+   - 型推論・Typed AST を制約付きスキーム対応へ移行
+   - `generalize` / `instantiate` / `make_typed_decl` など辞書情報を保持する経路を確認
+   - 既存テストも `scheme_to_constrained` を介して更新し、後方互換性を維持
+   - 変更ファイル: `compiler/ocaml/src/type_inference.ml`, `compiler/ocaml/src/typed_ast.ml`
+
+4. **Core IR への辞書ノード追加** (`ir.ml`)
+   - `dict_ref`, `dict_instance`, `dict_method` 型を定義
+   - `DictConstruct`, `DictMethodCall` を `expr_kind` に追加
+   - 変更ファイル: `compiler/ocaml/src/core_ir/ir.ml`
+
+5. **後続パスのスタブ実装** (`cfg.ml`, `dce.ml`, `const_fold.ml`, `codegen.ml`)
+   - CFG/DCE/ConstFold が `DictConstruct` / `DictMethodCall` ノードを認識
+   - LLVM バックエンドは辞書ノードを未実装扱いとし、Phase 2 Week 19-22 のブロッカーとして明示
+   - 変更ファイル:
+     - `compiler/ocaml/src/core_ir/cfg.ml`
+     - `compiler/ocaml/src/core_ir/dce.ml`
+     - `compiler/ocaml/src/core_ir/const_fold.ml`
+     - `compiler/ocaml/src/llvm_gen/codegen.ml`
+
+**テスト状況**:
+- 既存の型推論テスト全件成功（制約付きスキーム対応による回帰なし）
+- Core IR 生成テスト成功（辞書ノードのスタブ認識を確認）
+
+**ビルド状況**:
+- `dune build` 成功
+- `dune runtest` 全テスト通過
+
+### 次週（Week 18-19）の計画
+
+**優先度 High**:
+
+1. **制約解決器のインターフェース設計** (§1.2 完了)
+   - `constraint_solver.ml` モジュール新設
+   - `Eq`, `Ord`, `Collector` の制約規則実装
+   - 制約グラフの構築と依存関係追跡
+   - 目標: 制約付きスキームから辞書引数への変換パイプライン確立
+
+2. **辞書生成の基本実装** (§1.3 開始)
+   - インスタンス宣言（`impl Trait for Type`）のパース対応
+   - 辞書初期化コード生成の基本フレームワーク
+   - 目標: 単純な型クラス（`Eq<i64>`）で辞書生成が動作
+
+3. **型推論との統合** (§2.1 開始)
+   - 制約収集を型推論パイプラインに統合
+   - 型クラス制約の単一化ルール実装
+   - 目標: 型推論時に `trait_constraint` が正しく収集される
+
+**優先度 Medium**:
+
+4. **ABI 仕様の整合性確認**
+   - 辞書レイアウト `{ vtable: fn_ptr[], type_info: metadata }` の詳細設計
+   - Phase 2 FFI タスク（2-3-ffi-contracts.md）と連携
+   - 目標: 辞書構造体の LLVM 型マッピング確定
+
+5. **ドキュメント更新**
+   - `docs/spec/1-2-types-Inference.md` に制約付きスキームの説明追加
+   - 用語集 (`docs/spec/0-2-glossary.md`) に型クラス関連用語を追加
+   - 目標: 実装と仕様書の同期
+
+### フォローアップ項目
+
+**Week 19-20 で対応**:
+- 制約付きスキームに蓄えた `trait_constraint` を解決フェーズへ流すため、制約解決器 (`constraint_solver`) のインターフェース更新
+- Core IR の辞書ノードが実際に生成される経路（脱糖・型推論）を実装
+- CodeGen での辞書レイアウト確定まで接続
+
+**Week 20-21 で対応**:
+- `docs/spec/1-2-types-Inference.md` と辞書 ABI 仕様 (`docs/spec/3-9-core-async-ffi-unsafe.md`) へ構造変更を反映
+- 用語集・リスクログの更新
+- 性能測定用のベンチマーク準備（§4.1-4.3）
+
+**Week 22-23 で対応**:
+- 診断システムへの型クラスエラー統合（§5.1-5.2）
+- 評価レビューと方針決定（§6.1-6.3）
 
 ## 成果物と検証
 - 辞書渡し方式で [1-2-types-Inference.md](../../spec/1-2-types-Inference.md) のサンプルが全て通過すること。
