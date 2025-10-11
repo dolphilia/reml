@@ -6,6 +6,9 @@
 (** 出力フォーマット *)
 type output_format = Text  (** テキスト形式（デフォルト） *) | Json  (** JSON 形式（LSP 互換） *)
 
+(** メトリクス出力フォーマット *)
+type metrics_format = MetricsJson  (** JSON 形式 *) | MetricsCsv  (** CSV 形式 *)
+
 (** カラーモード *)
 type color_mode =
   | Auto  (** TTY への出力時のみカラー表示 *)
@@ -29,6 +32,8 @@ type options = {
   trace : bool;  (** コンパイルフェーズのトレースを有効化 *)
   stats : bool;  (** コンパイル統計情報を表示 *)
   verbose : int;  (** ログの詳細度レベル (0-3) *)
+  metrics_path : string option;  (** メトリクス出力ファイルパス *)
+  metrics_format : metrics_format;  (** メトリクス出力形式 *)
   (* コンパイル *)
   target : string;  (** ターゲットトリプル *)
   link_runtime : bool;  (** ランタイムライブラリとリンクして実行可能ファイルを生成 *)
