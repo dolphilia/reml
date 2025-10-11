@@ -114,7 +114,7 @@ let test_basic_let_polymorphism () =
       assert_ok result "Identity function should succeed";
 
       match result with
-      | Ok (tdecl, _) ->
+      | Ok (tdecl, _, _) ->
           (* 型スキーム: ∀a,b. a -> b （実装では引数と返り値で別の型変数が生成される） *)
           (* 単一化後に同じ型変数になることを期待するが、実装詳細により異なる可能性がある *)
           if List.length tdecl.tdecl_scheme.quantified < 1 then
@@ -169,7 +169,7 @@ let test_basic_let_polymorphism () =
 
       (* まずidを環境に追加 *)
       match infer_decl env let_id with
-      | Ok (_, env') -> (
+      | Ok (_, env', _) -> (
           (* id(42) *)
           let id_42 =
             {
@@ -194,7 +194,7 @@ let test_basic_let_polymorphism () =
           assert_ok result_n "id(42) should succeed";
 
           (match result_n with
-          | Ok (_, ty_n, _) ->
+          | Ok (_, ty_n, _, _) ->
               assert_type_eq ty_i64 ty_n "id(42) should have type i64"
           | Error _ -> failwith "Should not reach here");
 
@@ -222,7 +222,7 @@ let test_basic_let_polymorphism () =
           assert_ok result_s "id(\"hello\") should succeed";
 
           match result_s with
-          | Ok (_, ty_s, _) ->
+          | Ok (_, ty_s, _, _) ->
               assert_type_eq ty_string ty_s
                 "id(\"hello\") should have type String"
           | Error _ -> failwith "Should not reach here")
@@ -276,7 +276,7 @@ let test_basic_let_polymorphism () =
       in
 
       match infer_decl env let_id with
-      | Ok (_, env1) -> (
+      | Ok (_, env1, _) -> (
           (* const = |x, y| x *)
           let const_lambda =
             {
@@ -330,7 +330,7 @@ let test_basic_let_polymorphism () =
           in
 
           match infer_decl env1 let_const with
-          | Ok (tdecl_const, env2) -> (
+          | Ok (tdecl_const, env2, _) -> (
               (* const は ∀a,b. a -> b -> a という多相型を持つべき *)
               if List.length tdecl_const.tdecl_scheme.quantified < 2 then
                 failwith "const should have 2 quantified vars";
@@ -379,7 +379,7 @@ let test_basic_let_polymorphism () =
               assert_ok result "const(id(42), \"ignore\") should succeed";
 
               match result with
-              | Ok (_, ty, _) ->
+              | Ok (_, ty, _, _) ->
                   assert_type_eq ty_i64 ty
                     "const(id(42), \"ignore\") should have type i64"
               | Error _ -> failwith "Should not reach here")
@@ -448,7 +448,7 @@ let test_basic_let_polymorphism () =
     assert_ok result "Tuple pattern let binding should succeed";
 
     match result with
-    | Ok (_, env') ->
+    | Ok (_, env', _) ->
         (* f と g が環境に追加されているか確認 *)
         (match lookup "f" env' with
          | Some scheme_f ->
@@ -533,7 +533,7 @@ let test_basic_let_polymorphism () =
       assert_ok result "Annotated let binding should succeed";
 
       match result with
-      | Ok (tdecl, _) ->
+      | Ok (tdecl, _, _) ->
           (* 型注釈があるので多相化されない（単相型になる） *)
           assert_quantified_count 0 tdecl.tdecl_scheme
             "Annotated function should be monomorphic";
@@ -644,7 +644,7 @@ let test_basic_let_polymorphism () =
       assert_ok result "Block with polymorphic let should succeed";
 
       match result with
-      | Ok (_, ty, _) ->
+      | Ok (_, ty, _, _) ->
           let expected_ty = TTuple [ ty_i64; ty_string ] in
           assert_type_eq expected_ty ty "Block result type"
       | Error _ -> failwith "Should not reach here");
@@ -696,7 +696,7 @@ let test_basic_let_polymorphism () =
       in
 
       match infer_decl env let_id1 with
-      | Ok (_, env1) -> (
+      | Ok (_, env1, _) -> (
           (* let id2 = id1 *)
           let let_id2 =
             {
@@ -718,7 +718,7 @@ let test_basic_let_polymorphism () =
           in
 
           match infer_decl env1 let_id2 with
-          | Ok (tdecl_id2, env2) -> (
+          | Ok (tdecl_id2, env2, _) -> (
               (* id2 も多相型を保持すべき *)
               if List.length tdecl_id2.tdecl_scheme.quantified < 1 then
                 failwith "id2 should preserve polymorphism";
@@ -747,7 +747,7 @@ let test_basic_let_polymorphism () =
               assert_ok result "id2(42) should succeed";
 
               match result with
-              | Ok (_, ty, _) ->
+              | Ok (_, ty, _, _) ->
                   assert_type_eq ty_i64 ty "id2(42) should have type i64"
               | Error _ -> failwith "Should not reach here")
           | Error _ -> failwith "let id2 declaration should succeed")
@@ -800,7 +800,7 @@ let test_basic_let_polymorphism () =
       in
 
       match infer_decl env let_id with
-      | Ok (_, env') -> (
+      | Ok (_, env', _) -> (
           (* id(id) *)
           let id_id =
             {
@@ -842,7 +842,7 @@ let test_basic_let_polymorphism () =
           assert_ok result "id(id)(42) should succeed";
 
           match result with
-          | Ok (_, ty, _) ->
+          | Ok (_, ty, _, _) ->
               assert_type_eq ty_i64 ty "id(id)(42) should have type i64"
           | Error _ -> failwith "Should not reach here")
       | Error _ -> failwith "let id declaration should succeed")
@@ -979,7 +979,7 @@ let test_recursive_polymorphism () =
       assert_ok result "Factorial function should succeed";
 
       match result with
-      | Ok (tdecl, _) ->
+      | Ok (tdecl, _, _) ->
           (* 型注釈があるので単相型 *)
           assert_quantified_count 0 tdecl.tdecl_scheme
             "Factorial should be monomorphic";
@@ -1090,7 +1090,7 @@ let test_recursive_polymorphism () =
       assert_ok result "Length function should succeed";
 
       match result with
-      | Ok (tdecl, _) ->
+      | Ok (tdecl, _, _) ->
           (* 型パラメータがあるので多相型になるべき *)
           (* ただし、現在の実装では型パラメータのサポートが限定的なため、
              量化変数数は実装依存 *)
@@ -1158,7 +1158,7 @@ let test_value_restriction () =
       assert_ok result "Lambda value should succeed";
 
       match result with
-      | Ok (tdecl, _) ->
+      | Ok (tdecl, _, _) ->
           (* ラムダは確定的な値なので一般化される *)
           if List.length tdecl.tdecl_scheme.quantified < 1 then
             failwith "Lambda should be generalized"
@@ -1192,7 +1192,7 @@ let test_value_restriction () =
       assert_ok result "Literal binding should succeed";
 
       match result with
-      | Ok (tdecl, _) ->
+      | Ok (tdecl, _, _) ->
           (* リテラルは具体型なので量化変数なし *)
           assert_quantified_count 0 tdecl.tdecl_scheme
             "Literal should not be generalized";
@@ -1244,7 +1244,7 @@ let test_value_restriction () =
       assert_ok result "Constructor application should succeed";
 
       match result with
-      | Ok (tdecl, _) ->
+      | Ok (tdecl, _, _) ->
           (* コンストラクタ適用結果は確定的な値 *)
           (* ただし、Some(42)はOption<i64>という具体型なので、通常は一般化されない *)
           (* 実装によっては0個の量化変数になる *)
@@ -1322,7 +1322,7 @@ let test_operators_and_constraints () =
       assert_ok result "Function with operator should succeed";
 
       match result with
-      | Ok (tdecl, env') -> (
+      | Ok (tdecl, env', _) -> (
           (* 演算子により型が具体化される可能性がある *)
           (* n + 1 の1がi64なので、nもi64に決まる *)
           (* したがって、add_one : i64 -> i64（単相） *)
@@ -1352,7 +1352,7 @@ let test_operators_and_constraints () =
           assert_ok result_app "add_one(42) should succeed";
 
           match result_app with
-          | Ok (_, ty, _) ->
+          | Ok (_, ty, _, _) ->
               assert_type_eq ty_i64 ty "add_one(42) should have type i64"
           | Error _ -> failwith "Should not reach here")
       | Error _ -> failwith "Should not reach here");
@@ -1385,7 +1385,7 @@ let test_operators_and_constraints () =
       assert_ok result "Integer literal should succeed";
 
       match result with
-      | Ok (tdecl, _) ->
+      | Ok (tdecl, _, _) ->
           (* デフォルト型はi64 *)
           assert_type_eq ty_i64 tdecl.tdecl_scheme.body
             "Integer literal default type should be i64"
@@ -1417,7 +1417,7 @@ let test_operators_and_constraints () =
       assert_ok result "Float literal should succeed";
 
       match result with
-      | Ok (tdecl, _) ->
+      | Ok (tdecl, _, _) ->
           (* デフォルト型はf64 *)
           assert_type_eq ty_f64 tdecl.tdecl_scheme.body
             "Float literal default type should be f64"
@@ -1501,7 +1501,7 @@ let test_higher_order_functions () =
       assert_ok result "Apply function should succeed";
 
       match result with
-      | Ok (tdecl, _) ->
+      | Ok (tdecl, _, _) ->
           (* apply は多相型を持つべき: ∀a,b. (a->b) -> a -> b *)
           if List.length tdecl.tdecl_scheme.quantified < 2 then
             failwith "Apply function should have at least 2 quantified vars"
@@ -1611,7 +1611,7 @@ let test_higher_order_functions () =
       assert_ok result "Compose function should succeed";
 
       match result with
-      | Ok (tdecl, _) ->
+      | Ok (tdecl, _, _) ->
           (* compose は多相型を持つべき: ∀a,b,c. (b->c) -> (a->b) -> (a->c) *)
           if List.length tdecl.tdecl_scheme.quantified < 3 then
             failwith "Compose function should have at least 3 quantified vars"

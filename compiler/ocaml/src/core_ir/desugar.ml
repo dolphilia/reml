@@ -53,50 +53,100 @@ let bind_var (map : var_scope_map) (name : string) (var : var_id) : unit =
 (** スコープのコピー（分岐処理用） *)
 let copy_scope_map (map : var_scope_map) : var_scope_map = Hashtbl.copy map
 
-(* ========== 辞書生成パスの基礎（Phase 2 Week 18-19） ========== *)
+(* ========== 辞書生成パスの設計（Phase 2 Week 19-20 文書化） ========== *)
+
+(** 【辞書生成パスの概要】
+ *
+ * Typed AST で収集されたトレイト制約を Core IR の辞書ノードへ変換する。
+ * このパスは型推論後、制約解決後に実行される。
+ *
+ * 【処理フロー】（Week 21-22 実装予定）
+ * 1. Constraint_solver.solve_constraints の結果（dict_ref list）を受け取る
+ * 2. 各 dict_ref を DictLookup ノードに変換
+ * 3. 関数宣言に辞書パラメータを挿入
+ * 4. メソッド呼び出しを DictMethodCall に変換
+ *
+ * 【データフロー】
+ * Typed AST + 制約リスト → Constraint Solver → Dict Refs → Core IR (DictLookup/DictMethodCall)
+ *
+ * 【参考】
+ * - type_inference.ml の solve_trait_constraints
+ * - constraint_solver.ml の DictImplicit/DictParam/DictLocal
+ * - ir.ml の DictConstruct/DictMethodCall/DictLookup
+ * - docs/plans/bootstrap-roadmap/2-1-typeclass-strategy.md §1.3
+ * ======================================================================= *)
 
 (** 標準トレイトのvtableメソッド順序
  *
  * 各トレイトのメソッドをvtableインデックス順に定義する。
  * この順序はConstraint_solverと一致させる必要がある。
+ *
+ * Week 21-22 実装時には、ir.ml の calculate_dict_layout と整合させる。
  *)
 let trait_method_indices = function
   | "Eq" ->
+      (* 仕様書 1-2 §B.1: 等価性比較 *)
       [
-        ("eq", 0);
-        ("ne", 1);
+        ("eq", 0);   (* a == b *)
+        ("ne", 1);   (* a != b *)
       ]
   | "Ord" ->
+      (* 仕様書 1-2 §B.1: 順序付け（Eq をスーパートレイトとして要求） *)
       [
-        ("cmp", 0);
-        ("lt", 1);
-        ("le", 2);
-        ("gt", 3);
-        ("ge", 4);
+        ("cmp", 0);  (* a.cmp(b) → Ordering *)
+        ("lt", 1);   (* a < b *)
+        ("le", 2);   (* a <= b *)
+        ("gt", 3);   (* a > b *)
+        ("ge", 4);   (* a >= b *)
       ]
   | "Collector" ->
+      (* 仕様書 3-1 §2.2: コレクション反復 *)
       [
-        ("iter", 0);
-        ("collect", 1);
+        ("iter", 0);    (* for x in collection *)
+        ("collect", 1); (* collection.collect() *)
       ]
   | _ -> []  (* 未知のトレイトはメソッド情報なし *)
 
-(** トレイトメソッド名からvtableインデックスを取得 *)
+(** トレイトメソッド名からvtableインデックスを取得
+ *
+ * Week 21-22 実装時、DictMethodCall の生成に使用。
+ *)
 let get_method_index (trait_name : string) (method_name : string) : int option =
   let methods = trait_method_indices trait_name in
   List.assoc_opt method_name methods
 
-(** 辞書初期化コード生成のスタブ
+(** 辞書初期化コード生成のスタブ（Week 21-22 実装予定）
  *
- * Phase 2 Week 19-20で実装予定。
- * 現在は型とトレイト名の組み合わせに対して、
- * ダミーの辞書参照を生成する。
+ * 【実装手順】
+ * 1. インスタンス宣言の検索
+ *    - 型環境から `impl Trait for Type` を探す
+ *    - 見つからない場合は組み込み実装を使用（Eq<i64> 等）
+ *
+ * 2. vtableの構築
+ *    - trait_method_indices で定義された順序でメソッドを並べる
+ *    - 各メソッドへの関数ポインタを収集
+ *
+ * 3. 辞書構造体の初期化
+ *    - DictConstruct ノードを生成
+ *    - ir.ml の make_dict_type でレイアウト情報を付与
+ *
+ * 【生成例】
+ * ```reml
+ * let add_i64(a: i64, b: i64) -> i64 = a + b
+ * // ↓ 辞書生成後
+ * let __dict_Add_i64 = DictConstruct {
+ *   trait: "Add",
+ *   impl_ty: i64,
+ *   methods: [("add", add_i64)],
+ *   layout: { vtable_size: 8, method_offsets: [("add", 0)], alignment: 8 }
+ * }
+ * ```
  *)
 let generate_dict_init (trait_name : string) (ty : ty) (span : span) : expr option =
-  (* TODO: Week 19-20で実装
+  (* TODO(Week 21-22): 本実装
    * - インスタンス宣言の検索
    * - vtableの構築
-   * - 辞書構造体の初期化
+   * - 辞書構造体の初期化（DictConstruct ノード生成）
    *)
   let _ = (trait_name, ty, span) in
   None  (* 現時点では未実装 *)

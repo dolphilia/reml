@@ -166,8 +166,15 @@ let resolve_params ?(force_numeric_default = false) (subst : substitution)
 
 (* ========== 型推論エンジン ========== *)
 
-type infer_result = typed_expr * ty * substitution
-(** 推論結果: 型付き式、推論された型、代入 *)
+type infer_result = typed_expr * ty * substitution * trait_constraint list
+(** 推論結果: 型付き式、推論された型、代入、トレイト制約のリスト
+ *
+ * Phase 2 Week 21-22: 制約リストを追加し、型クラスサポートの基盤を整備
+ * - 型付き式: 型推論の結果生成される型付きAST
+ * - 推論された型: 式の型
+ * - 代入: 型変数への代入（単一化の結果）
+ * - トレイト制約: 式の評価に必要なトレイト実装の制約
+ *)
 
 (** let* 演算子（Result モナド） *)
 let ( let* ) = Result.bind
@@ -221,6 +228,89 @@ let unify_as_function (subst : substitution) (fn_ty : ty) (expected_fn_ty : ty)
           else Error (UnificationFailure (lhs_ty, rhs_ty, span'))
       | Error e -> Error e)
   | _ -> Error (not_a_function_error fn_ty' span)
+
+(* ========== 制約マージと収集ヘルパー（Phase 2 Week 19-22） ========== *)
+
+(** 制約リストのマージ
+ *
+ * 複数の部分式から収集された制約を結合する。
+ * Week 21-22: 複合式（Call, Let, If等）で制約を伝播する際に使用。
+ *
+ * @param cs1 第一の制約リスト
+ * @param cs2 第二の制約リスト
+ * @return マージされた制約リスト
+ *)
+let merge_constraints (cs1 : trait_constraint list) (cs2 : trait_constraint list) : trait_constraint list =
+  cs1 @ cs2
+
+(** 複数の制約リストをマージ
+ *
+ * リストのリストを平坦化する。
+ *
+ * @param css 制約リストのリスト
+ * @return 全ての制約を含むリスト
+ *)
+let merge_constraints_many (css : trait_constraint list list) : trait_constraint list =
+  List.concat css
+
+(* ========== 制約収集ヘルパー（Phase 2 Week 19-20 準備） ========== *)
+
+(** 演算子からトレイト名へのマッピング
+ *
+ * Week 21-22 実装時に使用予定。
+ * 二項演算子に対応するトレイト名を返す。
+ *
+ * @param op 二項演算子
+ * @return トレイト名（None の場合は組み込み演算）
+ *)
+let trait_name_of_binary_op (op : Ast.binary_op) : string option =
+  match op with
+  | Add -> Some "Add"
+  | Sub -> Some "Sub"
+  | Mul -> Some "Mul"
+  | Div -> Some "Div"
+  | Mod -> Some "Mod"
+  | Pow -> Some "Pow"
+  | Eq | Ne -> Some "Eq"
+  | Lt | Le | Gt | Ge -> Some "Ord"
+  | And | Or | PipeOp -> None  (* 組み込み演算 *)
+
+(** トレイト制約の生成（Week 21-22 実装予定）
+ *
+ * 演算子と型から trait_constraint を生成する。
+ * 現在は未使用だが、将来の統合準備として定義。
+ *
+ * @param trait_name トレイト名
+ * @param type_args 型引数リスト
+ * @param span 制約が生じた位置
+ * @return 生成されたトレイト制約
+ *)
+let make_trait_constraint (trait_name : string) (type_args : ty list) (span : span) : trait_constraint =
+  {
+    trait_name;
+    type_args;
+    constraint_span = span;
+  }
+
+(** 二項演算子からトレイト制約を生成（Week 21-22 実装予定）
+ *
+ * 二項演算子の型推論時に呼び出し、対応するトレイト制約を生成する。
+ * Week 21-22 実装時には infer_binary_op から呼び出される予定。
+ *
+ * @param op 二項演算子
+ * @param ty1 左辺の型
+ * @param ty2 右辺の型
+ * @param span 演算子の位置
+ * @return 生成されたトレイト制約のリスト
+ *)
+let collect_binary_op_constraints (op : Ast.binary_op) (ty1 : ty) (_ty2 : ty) (span : span) : trait_constraint list =
+  match trait_name_of_binary_op op with
+  | Some trait_name ->
+      (* 例: Add<i64, i64, i64> の場合、現在は ty1 のみを型引数とする簡易実装 *)
+      [ make_trait_constraint trait_name [ty1] span ]
+  | None ->
+      (* 組み込み演算（&&, ||, |>）には制約なし *)
+      []
 
 (* ========== 制約解決の統合（Phase 2 Week 18-19） ========== *)
 
@@ -297,19 +387,23 @@ let rec infer_expr (env : env) (expr : expr) : (infer_result, type_error) result
     =
   match expr.expr_kind with
   | Literal lit ->
-      (* 複合リテラル（Tuple/Record）もサポート *)
+      (* 複合リテラル（Tuple/Record）もサポート
+       * 制約: リテラルは制約を生成しない（空リスト）
+       *)
       let* ty, typed_lit, s = infer_literal env lit expr.expr_span in
       let texpr = make_typed_expr (TLiteral typed_lit) ty expr.expr_span in
-      Ok (texpr, ty, s)
+      Ok (texpr, ty, s, [])
   | Var id -> (
-      (* 変数参照: 型環境から検索してインスタンス化 *)
+      (* 変数参照: 型環境から検索してインスタンス化
+       * 制約: 変数自体は制約を生成しない（制約は変数の型スキームに含まれる）
+       *)
       match lookup id.name env with
       | Some scheme ->
           let ty = instantiate scheme in
           let texpr =
             make_typed_expr (Typed_ast.TVar (id, scheme)) ty expr.expr_span
           in
-          Ok (texpr, ty, empty_subst)
+          Ok (texpr, ty, empty_subst, [])
       | None -> Error (unbound_variable_error id.name expr.expr_span))
   | Call (fn_expr, args) ->
       (* 関数適用の型推論
@@ -318,11 +412,12 @@ let rec infer_expr (env : env) (expr : expr) : (infer_result, type_error) result
        * 2. 引数を推論
        * 3. 関数型を構築して単一化
        * 4. 返り値型を返す
+       * 制約: 関数と引数の制約をマージ
        *)
-      let* tfn, fn_ty, s1 = infer_expr env fn_expr in
+      let* tfn, fn_ty, s1, fn_constraints = infer_expr env fn_expr in
 
       (* 引数を推論 *)
-      let* targs, arg_tys, s2 = infer_args (apply_subst_env s1 env) args s1 in
+      let* targs, arg_tys, s2, arg_constraints = infer_args (apply_subst_env s1 env) args s1 in
 
       (* 返り値型用の新鮮な型変数 *)
       let ret_var = TypeVarGen.fresh None in
@@ -340,11 +435,14 @@ let rec infer_expr (env : env) (expr : expr) : (infer_result, type_error) result
       let final_ret_ty = apply_subst s3 ret_ty in
       let s_final = compose_subst s3 s2 in
 
+      (* 制約をマージ *)
+      let all_constraints = merge_constraints fn_constraints arg_constraints in
+
       (* 型付き式を構築 *)
       let texpr =
         make_typed_expr (TCall (tfn, targs)) final_ret_ty expr.expr_span
       in
-      Ok (texpr, final_ret_ty, s_final)
+      Ok (texpr, final_ret_ty, s_final, all_constraints)
   | Lambda (params, ret_ty_annot, body) ->
       (* ラムダ式の型推論
        *
@@ -353,6 +451,7 @@ let rec infer_expr (env : env) (expr : expr) : (infer_result, type_error) result
        * 3. 本体を推論
        * 4. 返り値型注釈があれば単一化
        * 5. 関数型を構築
+       * 制約: 本体の制約を伝播
        *)
       (* パラメータの型推論 *)
       let* tparams, _param_tys, param_env, s1 =
@@ -361,7 +460,7 @@ let rec infer_expr (env : env) (expr : expr) : (infer_result, type_error) result
 
       (* 本体式を推論 *)
       let env' = apply_subst_env s1 param_env in
-      let* tbody, body_ty, s2 = infer_expr env' body in
+      let* tbody, body_ty, s2, body_constraints = infer_expr env' body in
 
       (* 返り値型注釈があれば単一化 *)
       let* final_body_ty, s3 =
@@ -391,7 +490,7 @@ let rec infer_expr (env : env) (expr : expr) : (infer_result, type_error) result
           (TLambda (tparams', ret_ty_opt, tbody))
           fn_ty expr.expr_span
       in
-      Ok (texpr, fn_ty, s3)
+      Ok (texpr, fn_ty, s3, body_constraints)
   | Binary (op, e1, e2) ->
       (* 二項演算の型推論
        *
@@ -401,13 +500,14 @@ let rec infer_expr (env : env) (expr : expr) : (infer_result, type_error) result
        * 1. 左辺と右辺を推論
        * 2. 演算子に応じた型制約を生成
        * 3. 返り値型を決定
+       * 制約: 左辺・右辺の制約をマージし、演算子から生成された制約を追加
        *)
       (* 左辺を推論 *)
-      let* te1, ty1, s1 = infer_expr env e1 in
+      let* te1, ty1, s1, constraints1 = infer_expr env e1 in
 
       (* 右辺を推論 *)
       let env' = apply_subst_env s1 env in
-      let* te2, ty2, s2 = infer_expr env' e2 in
+      let* te2, ty2, s2, constraints2 = infer_expr env' e2 in
 
       (* 演算子に応じた型推論 *)
       let s_combined = compose_subst s2 s1 in
@@ -416,51 +516,61 @@ let rec infer_expr (env : env) (expr : expr) : (infer_result, type_error) result
       in
       let s_final = compose_subst s3 s_combined in
 
+      (* 演算子からトレイト制約を生成（Week 21-22で本格実装） *)
+      let op_constraints = collect_binary_op_constraints op ty1 ty2 expr.expr_span in
+
+      (* 全制約をマージ *)
+      let all_constraints = merge_constraints_many [constraints1; constraints2; op_constraints] in
+
       (* 型付き式を構築 *)
       let texpr =
         make_typed_expr (TBinary (op, te1, te2)) ret_ty expr.expr_span
       in
-      Ok (texpr, ret_ty, s_final)
+      Ok (texpr, ret_ty, s_final, all_constraints)
   | If (cond, then_e, else_e) ->
       (* if式の型推論
        *
        * 1. 条件式を推論してBool型と単一化
        * 2. then分岐を推論
        * 3. else分岐を推論してthen分岐と統一
+       * 制約: 条件式、then分岐、else分岐の制約をマージ
        *)
       (* 条件式を推論 *)
-      let* tcond, cond_ty, s1 = infer_expr env cond in
+      let* tcond, cond_ty, s1, cond_constraints = infer_expr env cond in
 
       (* 条件式をBool型と単一化 *)
       let* s2 = unify_as_bool s1 cond_ty cond.expr_span in
 
       (* then分岐を推論 *)
       let env' = apply_subst_env s2 env in
-      let* tthen, then_ty, s3 = infer_expr env' then_e in
+      let* tthen, then_ty, s3, then_constraints = infer_expr env' then_e in
 
       (* else分岐を推論 *)
-      let* telse_opt, final_ty, s4 =
+      let* telse_opt, final_ty, s4, else_constraints =
         match else_e with
         | Some else_expr ->
             let env'' = apply_subst_env s3 env' in
-            let* telse, else_ty, s = infer_expr env'' else_expr in
+            let* telse, else_ty, s, else_cs = infer_expr env'' else_expr in
             (* then分岐とelse分岐の型を統一 *)
             let* s' =
               unify_branch_types s then_ty else_ty else_expr.expr_span
             in
             let unified_ty = apply_subst s' then_ty in
-            Ok (Some telse, unified_ty, s')
+            Ok (Some telse, unified_ty, s', else_cs)
         | None ->
             (* else分岐がない場合、then分岐はUnit型でなければならない *)
             let* s = unify s3 then_ty ty_unit then_e.expr_span in
-            Ok (None, ty_unit, s)
+            Ok (None, ty_unit, s, [])
       in
+
+      (* 全制約をマージ *)
+      let all_constraints = merge_constraints_many [cond_constraints; then_constraints; else_constraints] in
 
       (* 型付き式を構築 *)
       let texpr =
         make_typed_expr (TIf (tcond, tthen, telse_opt)) final_ty expr.expr_span
       in
-      Ok (texpr, final_ty, s4)
+      Ok (texpr, final_ty, s4, all_constraints)
   | Match (scrutinee, arms) ->
       (* match式の型推論
        *
@@ -470,28 +580,30 @@ let rec infer_expr (env : env) (expr : expr) : (infer_result, type_error) result
        * 4. 各アームのボディを推論
        * 5. 全アームの型を統一
        *)
-      (* スクラティニー式を推論 *)
-      let* tscrutinee, scrutinee_ty, s1 = infer_expr env scrutinee in
+      (* スクラティニー式を推論
+       * 制約: スクラティニーと全アームの制約をマージ
+       *)
+      let* tscrutinee, scrutinee_ty, s1, scrutinee_constraints = infer_expr env scrutinee in
 
       (* アームが空の場合はエラー *)
       if arms = [] then Error (EmptyMatch expr.expr_span)
       else
         (* 最初のアームを処理 *)
         let first_arm = List.hd arms in
-        let* first_tarm, first_body_ty, s2 =
+        let* first_tarm, first_body_ty, s2, first_constraints =
           infer_match_arm (apply_subst_env s1 env) first_arm scrutinee_ty s1
         in
 
         (* 残りのアームを処理して型を統一 *)
-        let* rest_tarms, final_ty, s_final =
+        let* rest_tarms, final_ty, s_final, arms_constraints =
           List.fold_left
             (fun acc arm ->
               match acc with
               | Error e -> Error e
-              | Ok (tarms, unified_ty, s_acc) ->
+              | Ok (tarms, unified_ty, s_acc, cs_acc) ->
                   let env' = apply_subst_env s_acc env in
                   let scrutinee_ty' = apply_subst s_acc scrutinee_ty in
-                  let* tarm, arm_body_ty, s_new =
+                  let* tarm, arm_body_ty, s_new, arm_cs =
                     infer_match_arm env' arm scrutinee_ty' s_acc
                   in
 
@@ -500,11 +612,15 @@ let rec infer_expr (env : env) (expr : expr) : (infer_result, type_error) result
                     unify_branch_types s_new unified_ty arm_body_ty arm.arm_span
                   in
                   let new_unified_ty = apply_subst s_unified unified_ty in
+                  let merged_cs = merge_constraints cs_acc arm_cs in
 
-                  Ok (tarms @ [ tarm ], new_unified_ty, s_unified))
-            (Ok ([ first_tarm ], first_body_ty, s2))
+                  Ok (tarms @ [ tarm ], new_unified_ty, s_unified, merged_cs))
+            (Ok ([ first_tarm ], first_body_ty, s2, first_constraints))
             (List.tl arms)
         in
+
+        (* 全制約をマージ *)
+        let all_constraints = merge_constraints scrutinee_constraints arms_constraints in
 
         (* 型付き式を構築 *)
         let texpr =
@@ -512,7 +628,7 @@ let rec infer_expr (env : env) (expr : expr) : (infer_result, type_error) result
             (TMatch (tscrutinee, rest_tarms))
             final_ty expr.expr_span
         in
-        Ok (texpr, final_ty, s_final)
+        Ok (texpr, final_ty, s_final, all_constraints)
   | Block stmts ->
       (* ブロック式: Phase 2 Week 5 で実装
        *
@@ -523,14 +639,14 @@ let rec infer_expr (env : env) (expr : expr) : (infer_result, type_error) result
        * - 最後の要素が宣言文・代入文・defer文なら Unit型
        *)
       if stmts = [] then
-        (* 空のブロック *)
+        (* 空のブロック: 制約なし *)
         let texpr = make_typed_expr (TBlock []) ty_unit expr.expr_span in
-        Ok (texpr, ty_unit, empty_subst)
+        Ok (texpr, ty_unit, empty_subst, [])
       else
-        (* 文を順次処理 *)
-        let* tstmts, final_ty, s_final = infer_stmts env stmts empty_subst in
+        (* 文を順次処理: 制約を収集 *)
+        let* tstmts, final_ty, s_final, constraints = infer_stmts env stmts empty_subst in
         let texpr = make_typed_expr (TBlock tstmts) final_ty expr.expr_span in
-        Ok (texpr, final_ty, s_final)
+        Ok (texpr, final_ty, s_final, constraints)
   | _ ->
       (* その他の式は Phase 2 で順次実装 *)
       failwith "Expression not yet implemented"
@@ -538,29 +654,32 @@ let rec infer_expr (env : env) (expr : expr) : (infer_result, type_error) result
 (** 引数リストの型推論
  *
  * 位置引数と名前付き引数の両方をサポート
+ * Phase 2 Week 21-22: 制約リストを収集
  *)
 and infer_args (env : env) (args : arg list) (subst : substitution) :
-    (typed_arg list * ty list * substitution, type_error) result =
+    (typed_arg list * ty list * substitution * trait_constraint list, type_error) result =
   List.fold_left
     (fun acc arg ->
       match acc with
       | Error e -> Error e
-      | Ok (targs, arg_tys, s) -> (
+      | Ok (targs, arg_tys, s, constraints) -> (
           let env' = apply_subst_env s env in
           match arg with
           | PosArg expr -> (
               match infer_expr env' expr with
-              | Ok (texpr, ty, s') ->
+              | Ok (texpr, ty, s', expr_constraints) ->
                   let s'' = compose_subst s' s in
-                  Ok (targs @ [ TPosArg texpr ], arg_tys @ [ ty ], s'')
+                  let all_constraints = merge_constraints constraints expr_constraints in
+                  Ok (targs @ [ TPosArg texpr ], arg_tys @ [ ty ], s'', all_constraints)
               | Error e -> Error e)
           | NamedArg (id, expr) -> (
               match infer_expr env' expr with
-              | Ok (texpr, ty, s') ->
+              | Ok (texpr, ty, s', expr_constraints) ->
                   let s'' = compose_subst s' s in
-                  Ok (targs @ [ TNamedArg (id, texpr) ], arg_tys @ [ ty ], s'')
+                  let all_constraints = merge_constraints constraints expr_constraints in
+                  Ok (targs @ [ TNamedArg (id, texpr) ], arg_tys @ [ ty ], s'', all_constraints)
               | Error e -> Error e)))
-    (Ok ([], [], subst))
+    (Ok ([], [], subst, []))
     args
 
 (** パラメータリストの型推論
@@ -621,50 +740,55 @@ and infer_params (env : env) (params : param list) (subst : substitution) :
 (** タプル要素の型推論
  *
  * Phase 2 Week 8: タプルリテラルの各要素を推論
+ * Phase 2 Week 21-22: 制約リストを収集
  *
  * @param env 型環境
  * @param exprs タプル要素の式リスト
- * @return (型付き式リスト, 型リスト, 代入)
+ * @return (型付き式リスト, 型リスト, 代入, 制約リスト)
  *)
 and infer_tuple_elements (env : env) (exprs : expr list) :
-    (typed_expr list * ty list * substitution, type_error) result =
+    (typed_expr list * ty list * substitution * trait_constraint list, type_error) result =
   List.fold_left
     (fun acc expr ->
       match acc with
       | Error e -> Error e
-      | Ok (typed_exprs, tys, s) ->
+      | Ok (typed_exprs, tys, s, constraints) ->
           let env' = apply_subst_env s env in
-          let* texpr, ty, s' = infer_expr env' expr in
+          let* texpr, ty, s', expr_constraints = infer_expr env' expr in
           let s'' = compose_subst s' s in
-          Ok (typed_exprs @ [ texpr ], tys @ [ ty ], s''))
-    (Ok ([], [], empty_subst))
+          let all_constraints = merge_constraints constraints expr_constraints in
+          Ok (typed_exprs @ [ texpr ], tys @ [ ty ], s'', all_constraints))
+    (Ok ([], [], empty_subst, []))
     exprs
 
 (** レコードフィールドの型推論
  *
  * Phase 2 Week 8: レコードリテラルの各フィールドを推論
+ * Phase 2 Week 21-22: 制約リストを収集
  *
  * @param env 型環境
  * @param fields レコードフィールド (識別子, 式) のリスト
- * @return (型付きフィールド, 型フィールド, 代入)
+ * @return (型付きフィールド, 型フィールド, 代入, 制約リスト)
  *)
 and infer_record_fields (env : env) (fields : (ident * expr) list) :
-    ( (ident * typed_expr) list * (string * ty) list * substitution,
+    ( (ident * typed_expr) list * (string * ty) list * substitution * trait_constraint list,
       type_error )
     result =
   List.fold_left
     (fun acc (field_id, expr) ->
       match acc with
       | Error e -> Error e
-      | Ok (typed_fields, field_tys, s) ->
+      | Ok (typed_fields, field_tys, s, constraints) ->
           let env' = apply_subst_env s env in
-          let* texpr, ty, s' = infer_expr env' expr in
+          let* texpr, ty, s', expr_constraints = infer_expr env' expr in
           let s'' = compose_subst s' s in
+          let all_constraints = merge_constraints constraints expr_constraints in
           Ok
             ( typed_fields @ [ (field_id, texpr) ],
               field_tys @ [ (field_id.name, ty) ],
-              s'' ))
-    (Ok ([], [], empty_subst))
+              s'',
+              all_constraints ))
+    (Ok ([], [], empty_subst, []))
     fields
 
 (** リテラルの型推論
@@ -690,10 +814,11 @@ and infer_literal (env : env) (lit : literal) (span : span) :
        * 1. 各要素を推論
        * 2. タプル型を構築
        *)
-      if exprs = [] then (* 空タプル: Unit型 *)
+      if exprs = [] then (* 空タプル: Unit型、制約なし *)
         Ok (ty_unit, Unit, empty_subst)
       else
-        let* _typed_exprs, elem_tys, s = infer_tuple_elements env exprs in
+        (* タプル要素を推論: 制約は現在リテラルでは使用しない（将来の拡張用） *)
+        let* _typed_exprs, elem_tys, s, _constraints = infer_tuple_elements env exprs in
         let tuple_ty = TTuple elem_tys in
         (* 型付きリテラルを構築（元のliteralを返す） *)
         Ok (tuple_ty, lit, s)
@@ -703,7 +828,8 @@ and infer_literal (env : env) (lit : literal) (span : span) :
        * 1. 各フィールドの式を推論
        * 2. レコード型を構築（構造的）
        *)
-      let* _typed_fields, field_tys, s = infer_record_fields env fields in
+      (* レコードフィールドを推論: 制約は現在リテラルでは使用しない（将来の拡張用） *)
+      let* _typed_fields, field_tys, s, _constraints = infer_record_fields env fields in
       let record_ty = TRecord field_tys in
       (* 型付きリテラルを構築（元のliteralを返す） *)
       Ok (record_ty, lit, s)
@@ -920,11 +1046,13 @@ and infer_pattern (env : env) (pat : pattern) (expected_ty : ty) :
             Ok (tpat, env')
       | _ -> Error (NotARecord (expected_ty, pat.pat_span)))
   | PatGuard (inner_pat, guard_expr) ->
-      (* ガード付きパターン: 内部パターンを推論後、ガード式を Bool 型として推論 *)
+      (* ガード付きパターン: 内部パターンを推論後、ガード式を Bool 型として推論
+       * 注: ガード式の制約は現在破棄される（パターンマッチは制約を生成しない）
+       *)
       let* tinner_pat, env' = infer_pattern env inner_pat expected_ty in
 
-      (* ガード式を Bool 型として推論 *)
-      let* tguard_expr, guard_ty, _ = infer_expr env' guard_expr in
+      (* ガード式を Bool 型として推論: 制約は破棄 *)
+      let* tguard_expr, guard_ty, _, _guard_constraints = infer_expr env' guard_expr in
       let* _ = unify_as_bool empty_subst guard_ty guard_expr.expr_span in
 
       let tpat =
@@ -960,10 +1088,42 @@ and extract_function_args (ty : ty) : ty list * ty =
 and infer_binary_op (op : Ast.binary_op) (ty1 : ty) (ty2 : ty)
     (subst : substitution) (span1 : span) (span2 : span) :
     (ty * substitution, type_error) result =
+  (* ========== Phase 2 Week 19-20: トレイト制約収集の設計文書 ==========
+   *
+   * 【目的】
+   * 本関数は二項演算子の型推論を行うが、Phase 2 完全実装では
+   * 以下のトレイト制約を収集し、Constraint_solver へ渡す必要がある。
+   *
+   * 【演算子とトレイト制約のマッピング】
+   * | 演算子    | トレイト          | 型制約                 | 例                |
+   * |----------|-------------------|----------------------|-------------------|
+   * | +        | Add<T, T, T>      | T: 数値型 (i64, f64)  | 1 + 2 : i64      |
+   * | -, *, /  | Sub/Mul/Div<T,T,T>| 同上                  | 3.0 * 2.0 : f64  |
+   * | %, ^     | Mod/Pow<T, T, T>  | 整数型 (i64)          | 10 % 3 : i64     |
+   * | ==, !=   | Eq<T>             | T: 比較可能型         | "a" == "b" : Bool|
+   * | <, <=, >, >= | Ord<T>        | T: 順序付け可能型     | 1 < 2 : Bool     |
+   * | &&, \|\| | なし              | T = Bool (組み込み)   | true && false    |
+   * | \|>      | なし              | f: T -> U (関数適用)  | x \|> f          |
+   *
+   * 【Week 21-22 実装手順】
+   * 1. 演算子から対応するトレイト制約を生成（collect_trait_constraint 関数）
+   * 2. 制約リストを infer_result に追加して返す
+   * 3. 関数宣言の generalize 時に制約を含める
+   * 4. Constraint_solver.solve_constraints を呼び出し
+   * 5. 解決された辞書参照を Core IR の DictLookup に変換
+   *
+   * 【参考資料】
+   * - constraint_solver.ml の solve_eq, solve_ord
+   * - docs/spec/1-2-types-Inference.md §B（トレイト）
+   * - docs/plans/bootstrap-roadmap/2-1-typeclass-strategy.md
+   * ================================================================= *)
   match op with
   (* 算術演算子: + - * / % ^ *)
   | Add | Sub | Mul | Div | Mod | Pow -> (
-      (* 仕様書 1-2 §C.5: 数値型（i64, f64）のみサポート
+      (* TODO(Week 21-22): Add<ty1, ty2, ret_ty> 制約を収集
+       * 例: 1 + 2 なら Add<i64, i64, i64> 制約を生成
+       *
+       * 仕様書 1-2 §C.5: 数値型（i64, f64）のみサポート
        * Phase 3 Week 17 改善: 型変数を単一化前に i64 へ解決して具体化 *)
       let ty1' = apply_subst subst ty1 in
       let ty2' = apply_subst subst ty2 in
@@ -998,12 +1158,17 @@ and infer_binary_op (op : Ast.binary_op) (ty1 : ty) (ty2 : ty)
             (type_error_with_message "算術演算子は数値型 (i64 / f64) にのみ適用できます" span1))
   (* 比較演算子: == != < <= > >= *)
   | Eq | Ne ->
-      (* 左辺と右辺を単一化し、返り値は Bool *)
+      (* TODO(Week 21-22): Eq<T> 制約を収集
+       * 例: x == y なら Eq<typeof(x)> 制約を生成
+       * 左辺と右辺を単一化し、返り値は Bool *)
       let ty1' = apply_subst subst ty1 in
       let ty2' = apply_subst subst ty2 in
       let* s1 = unify subst ty1' ty2' span2 in
       Ok (ty_bool, s1)
   | Lt | Le | Gt | Ge ->
+      (* TODO(Week 21-22): Ord<T> 制約を収集（Eq<T> も自動的に要求される）
+       * 例: x < y なら Ord<typeof(x)> 制約を生成
+       * 制約解決器が Ord→Eq のスーパートレイト依存を解決 *)
       (* 左辺と右辺を単一化し、返り値は Bool
        * Phase 3 Week 17 改善: 型変数を単一化前に i64 へ解決 *)
       let ty1' = apply_subst subst ty1 in
@@ -1057,23 +1222,28 @@ and infer_binary_op (op : Ast.binary_op) (ty1 : ty) (ty2 : ty)
  *)
 and infer_match_arm (env : env) (arm : match_arm) (scrutinee_ty : ty)
     (subst : substitution) :
-    (typed_match_arm * ty * substitution, type_error) result =
+    (typed_match_arm * ty * substitution * trait_constraint list, type_error) result =
   (* パターンを推論 *)
   let* tpat, pat_env = infer_pattern env arm.arm_pattern scrutinee_ty in
 
-  (* ガード条件があれば推論 *)
-  let* tguard_opt, s1 =
+  (* ガード条件があれば推論
+   * 制約: ガードとボディの制約をマージ
+   *)
+  let* tguard_opt, s1, guard_constraints =
     match arm.arm_guard with
     | Some guard_expr ->
-        let* tguard, guard_ty, s = infer_expr pat_env guard_expr in
+        let* tguard, guard_ty, s, guard_cs = infer_expr pat_env guard_expr in
         let* s' = unify_as_bool s guard_ty guard_expr.expr_span in
-        Ok (Some tguard, s')
-    | None -> Ok (None, subst)
+        Ok (Some tguard, s', guard_cs)
+    | None -> Ok (None, subst, [])
   in
 
   (* ボディを推論 *)
   let env' = apply_subst_env s1 pat_env in
-  let* tbody, body_ty, s2 = infer_expr env' arm.arm_body in
+  let* tbody, body_ty, s2, body_constraints = infer_expr env' arm.arm_body in
+
+  (* 制約をマージ *)
+  let all_constraints = merge_constraints guard_constraints body_constraints in
 
   (* 型付きアームを構築 *)
   let tarm =
@@ -1085,7 +1255,7 @@ and infer_match_arm (env : env) (arm : match_arm) (scrutinee_ty : ty)
     }
   in
 
-  Ok (tarm, body_ty, s2)
+  Ok (tarm, body_ty, s2, all_constraints)
 
 (** 関数本体の型推論: infer_fn_body(env, body)
  *
@@ -1096,16 +1266,16 @@ and infer_match_arm (env : env) (arm : match_arm) (scrutinee_ty : ty)
  * @return (型付き関数本体, 本体の型, 代入)
  *)
 and infer_fn_body (env : env) (body : fn_body) :
-    (typed_fn_body * ty * substitution, type_error) result =
+    (typed_fn_body * ty * substitution * trait_constraint list, type_error) result =
   match body with
   | FnExpr expr ->
       (* 式の場合: 直接推論 *)
-      let* texpr, ty, s = infer_expr env expr in
-      Ok (TFnExpr texpr, ty, s)
+      let* texpr, ty, s, constraints = infer_expr env expr in
+      Ok (TFnExpr texpr, ty, s, constraints)
   | FnBlock stmts ->
       (* ブロックの場合: 文のリストを推論 *)
-      let* tstmts, ty, s = infer_stmts env stmts empty_subst in
-      Ok (TFnBlock tstmts, ty, s)
+      let* tstmts, ty, s, constraints = infer_stmts env stmts empty_subst in
+      Ok (TFnBlock tstmts, ty, s, constraints)
 
 (** 文リストの型推論: infer_stmts(env, stmts, subst)
  *
@@ -1117,32 +1287,37 @@ and infer_fn_body (env : env) (body : fn_body) :
  * @return (型付き文リスト, 最終型, 最終代入)
  *)
 and infer_stmts (env : env) (stmts : stmt list) (subst : substitution) :
-    (typed_stmt list * ty * substitution, type_error) result =
-  (* 最後の文を特別扱い *)
-  let rec process_stmts env stmts acc_tstmts subst =
+    (typed_stmt list * ty * substitution * trait_constraint list, type_error) result =
+  (* 最後の文を特別扱い
+   * 制約: 全ての文の制約をマージ
+   *)
+  let rec process_stmts env stmts acc_tstmts subst acc_constraints =
     match stmts with
     | [] ->
-        (* 空リスト: Unit型 *)
-        Ok (List.rev acc_tstmts, ty_unit, subst)
+        (* 空リスト: Unit型、制約なし *)
+        Ok (List.rev acc_tstmts, ty_unit, subst, acc_constraints)
     | [ last_stmt ] -> (
         (* 最後の文: ExprStmtなら式の型、それ以外はUnit *)
         match last_stmt with
         | ExprStmt expr ->
             (* 最後の式文: 式の型がブロック全体の型 *)
             let env' = apply_subst_env subst env in
-            let* texpr, expr_ty, s = infer_expr env' expr in
+            let* texpr, expr_ty, s, expr_constraints = infer_expr env' expr in
             let tstmt = TExprStmt texpr in
-            Ok (List.rev (tstmt :: acc_tstmts), expr_ty, s)
+            let all_constraints = merge_constraints acc_constraints expr_constraints in
+            Ok (List.rev (tstmt :: acc_tstmts), expr_ty, s, all_constraints)
         | _ ->
             (* 最後の文が宣言/代入/defer: Unit型 *)
-            let* tstmt, _new_env, s = infer_stmt env last_stmt subst in
-            Ok (List.rev (tstmt :: acc_tstmts), ty_unit, s))
+            let* tstmt, _new_env, s, stmt_constraints = infer_stmt env last_stmt subst in
+            let all_constraints = merge_constraints acc_constraints stmt_constraints in
+            Ok (List.rev (tstmt :: acc_tstmts), ty_unit, s, all_constraints))
     | stmt :: rest ->
         (* 中間の文: 処理して環境更新 *)
-        let* tstmt, new_env, s = infer_stmt env stmt subst in
-        process_stmts new_env rest (tstmt :: acc_tstmts) s
+        let* tstmt, new_env, s, stmt_constraints = infer_stmt env stmt subst in
+        let merged_constraints = merge_constraints acc_constraints stmt_constraints in
+        process_stmts new_env rest (tstmt :: acc_tstmts) s merged_constraints
   in
-  process_stmts env stmts [] subst
+  process_stmts env stmts [] subst []
 
 (** 文の型推論: infer_stmt(env, stmt, subst)
  *
@@ -1154,42 +1329,50 @@ and infer_stmts (env : env) (stmts : stmt list) (subst : substitution) :
  * @return (型付き文, 新しい型環境, 新しい代入)
  *)
 and infer_stmt (env : env) (stmt : stmt) (subst : substitution) :
-    (typed_stmt * env * substitution, type_error) result =
+    (typed_stmt * env * substitution * trait_constraint list, type_error) result =
   match stmt with
   | DeclStmt decl ->
-      (* 宣言文: 型推論して型環境を更新 *)
+      (* 宣言文: 型推論して型環境を更新
+       * 制約: 宣言の式から生成される制約を伝播
+       *)
       let env' = apply_subst_env subst env in
-      let* tdecl, new_env = infer_decl env' decl in
-      Ok (TDeclStmt tdecl, new_env, subst)
+      let* tdecl, new_env, decl_constraints = infer_decl env' decl in
+      Ok (TDeclStmt tdecl, new_env, subst, decl_constraints)
   | ExprStmt expr ->
-      (* 式文: 式を推論（型環境は変更なし）*)
+      (* 式文: 式を推論（型環境は変更なし）
+       * 制約: 式の制約を伝播
+       *)
       let env' = apply_subst_env subst env in
-      let* texpr, _ty, s = infer_expr env' expr in
-      Ok (TExprStmt texpr, env, s)
+      let* texpr, _ty, s, expr_constraints = infer_expr env' expr in
+      Ok (TExprStmt texpr, env, s, expr_constraints)
   | AssignStmt (lhs, rhs) ->
       (* 代入文: 左辺と右辺を推論して型を統一
        *
        * 仕様書 1-1 §C.6: var 束縛の再代入 `:=` は Unit型を返す
+       * 制約: 左辺と右辺の制約をマージ
        *)
       let env' = apply_subst_env subst env in
-      let* tlhs, lhs_ty, s1 = infer_expr env' lhs in
+      let* tlhs, lhs_ty, s1, lhs_constraints = infer_expr env' lhs in
       let env'' = apply_subst_env s1 env' in
-      let* trhs, rhs_ty, s2 = infer_expr env'' rhs in
+      let* trhs, rhs_ty, s2, rhs_constraints = infer_expr env'' rhs in
       (* 左辺と右辺の型を単一化 *)
       let lhs_ty' = apply_subst s2 lhs_ty in
       let* s3 = unify s2 lhs_ty' rhs_ty rhs.expr_span in
-      Ok (TAssignStmt (tlhs, trhs), env, s3)
+      let all_constraints = merge_constraints lhs_constraints rhs_constraints in
+      Ok (TAssignStmt (tlhs, trhs), env, s3, all_constraints)
   | DeferStmt expr ->
-      (* defer文: 式を推論（Unit型、型環境は変更なし）*)
+      (* defer文: 式を推論（Unit型、型環境は変更なし）
+       * 制約: 式の制約を伝播
+       *)
       let env' = apply_subst_env subst env in
-      let* texpr, _ty, s = infer_expr env' expr in
-      Ok (TDeferStmt texpr, env, s)
+      let* texpr, _ty, s, expr_constraints = infer_expr env' expr in
+      Ok (TDeferStmt texpr, env, s, expr_constraints)
 
 (** 宣言の型推論: infer_decl(env, decl)
  *
  * Phase 2 Week 3-4 で実装
  *)
-and infer_decl (env : env) (decl : decl) : (typed_decl * env, type_error) result
+and infer_decl (env : env) (decl : decl) : (typed_decl * env * trait_constraint list, type_error) result
     =
   match decl.decl_kind with
   | LetDecl (pat, ty_annot, expr) ->
@@ -1200,9 +1383,10 @@ and infer_decl (env : env) (decl : decl) : (typed_decl * env, type_error) result
        * 3. パターンの型推論
        * 4. 一般化してスキームを生成
        * 5. 型環境に追加
+       * 制約: 式の制約を伝播
        *)
       (* 式を推論 *)
-      let* texpr, expr_ty, s1 = infer_expr env expr in
+      let* texpr, expr_ty, s1, expr_constraints = infer_expr env expr in
 
       (* 型注釈があれば単一化 *)
       let* final_ty, s2 =
@@ -1255,7 +1439,7 @@ and infer_decl (env : env) (decl : decl) : (typed_decl * env, type_error) result
       (* 型環境に追加 *)
       let new_env = extend pat_name scheme env' in
 
-      Ok (tdecl, new_env)
+      Ok (tdecl, new_env, expr_constraints)
   | FnDecl fn ->
       (* 関数宣言の型推論
        *
@@ -1306,8 +1490,10 @@ and infer_decl (env : env) (decl : decl) : (typed_decl * env, type_error) result
           param_env
       in
 
-      (* 6. 関数本体の型推論 *)
-      let* tbody, body_ty, s2 = infer_fn_body env_with_fn fn.fn_body in
+      (* 6. 関数本体の型推論
+       * 制約: 関数本体の制約を伝播
+       *)
+      let* tbody, body_ty, s2, body_constraints = infer_fn_body env_with_fn fn.fn_body in
 
       (* 7. 返り値型注釈があれば単一化 *)
       let* final_ret_ty, s3 =
@@ -1369,9 +1555,11 @@ and infer_decl (env : env) (decl : decl) : (typed_decl * env, type_error) result
       (* 11. 型環境に追加 *)
       let new_env = extend fn.fn_name.name scheme env' in
 
-      Ok (tdecl, new_env)
+      Ok (tdecl, new_env, body_constraints)
   | _ ->
-      (* その他の宣言 *)
+      (* その他の宣言
+       * 制約: 現時点では空リスト
+       *)
       failwith "Declaration not yet implemented"
 
 (** コンパイル単位の型推論 *)
@@ -1380,13 +1568,16 @@ let infer_compilation_unit (cu : compilation_unit) :
   (* 初期型環境を作成 *)
   let init_env = initial_env in
 
-  (* 各宣言を順次推論し、型環境を更新 *)
+  (* 各宣言を順次推論し、型環境を更新
+   * 制約: 現時点では制約を収集するが使用しない（Week 21-22 で統合予定）
+   *)
   let rec infer_items env items acc_decls =
     match items with
     | [] -> Ok (List.rev acc_decls, env)
     | item :: rest -> (
         match infer_decl env item with
-        | Ok (typed_decl, new_env) ->
+        | Ok (typed_decl, new_env, _constraints) ->
+            (* TODO Week 21-22: ここで制約を蓄積して最終的に解決 *)
             infer_items new_env rest (typed_decl :: acc_decls)
         | Error err -> Error err)
   in
@@ -1403,8 +1594,18 @@ let infer_compilation_unit (cu : compilation_unit) :
 
 (* ========== デバッグ用 ========== *)
 
-(** 推論結果の文字列表現 *)
-let string_of_infer_result (texpr, ty, subst) =
-  Printf.sprintf "%s : %s [%s]"
+(** 推論結果の文字列表現
+ * Phase 2 Week 21-22: 制約リストを含む4要素タプルに対応
+ *)
+let string_of_infer_result (texpr, ty, subst, constraints) =
+  let constraints_str =
+    if constraints = [] then "no constraints"
+    else
+      String.concat ", "
+        (List.map string_of_trait_constraint constraints)
+  in
+  Printf.sprintf "%s : %s [%s] {%s}"
     (string_of_typed_expr texpr)
-    (string_of_ty ty) (string_of_subst subst)
+    (string_of_ty ty)
+    (string_of_subst subst)
+    constraints_str

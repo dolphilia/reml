@@ -310,7 +310,7 @@ let test_match_expressions () =
       let result = infer_expr env match_expr in
       assert_ok result "Match expression should succeed";
       match result with
-      | Ok (_, ty, _) -> assert_type_eq ty_i64 ty "Match expression result type"
+      | Ok (_, ty, _, _) -> assert_type_eq ty_i64 ty "Match expression result type"
       | Error _ -> failwith "Should not reach here");
 
   (* ネストしたmatch: Option<Option<i64>> *)
@@ -387,7 +387,7 @@ let test_match_expressions () =
       let result = infer_expr env match_expr in
       assert_ok result "Nested match expression should succeed";
       match result with
-      | Ok (_, ty, _) ->
+      | Ok (_, ty, _, _) ->
           assert_type_eq ty_i64 ty "Nested match expression result type"
       | Error _ -> failwith "Should not reach here")
 
@@ -403,7 +403,7 @@ let test_block_expressions () =
       let result = infer_expr env block_expr in
       assert_ok result "Empty block should succeed";
       match result with
-      | Ok (_, ty, _) -> assert_type_eq ty_unit ty "Empty block type"
+      | Ok (_, ty, _, _) -> assert_type_eq ty_unit ty "Empty block type"
       | Error _ -> failwith "Should not reach here");
 
   (* 式のみのブロック *)
@@ -426,7 +426,7 @@ let test_block_expressions () =
       let result = infer_expr env block_expr in
       assert_ok result "Block with single expr should succeed";
       match result with
-      | Ok (_, ty, _) -> assert_type_eq ty_i64 ty "Block with single expr type"
+      | Ok (_, ty, _, _) -> assert_type_eq ty_i64 ty "Block with single expr type"
       | Error _ -> failwith "Should not reach here");
 
   (* let束縛を含むブロック（簡易版：二項演算を使わない） *)
@@ -467,7 +467,7 @@ let test_block_expressions () =
       let result = infer_expr env block_expr in
       assert_ok result "Block with let binding should succeed";
       match result with
-      | Ok (_, ty, _) -> assert_type_eq ty_i64 ty "Block with let binding type"
+      | Ok (_, ty, _, _) -> assert_type_eq ty_i64 ty "Block with let binding type"
       | Error _ -> failwith "Should not reach here");
 
   (* 複数の文を含むブロック *)
@@ -527,7 +527,7 @@ let test_block_expressions () =
       let result = infer_expr env block_expr in
       assert_ok result "Block with multiple statements should succeed";
       match result with
-      | Ok (_, ty, _) ->
+      | Ok (_, ty, _, _) ->
           assert_type_eq ty_i64 ty "Block with multiple statements type"
       | Error _ -> failwith "Should not reach here");
 
@@ -558,7 +558,7 @@ let test_block_expressions () =
       let result = infer_expr env block_expr in
       assert_ok result "Block ending with decl should succeed";
       match result with
-      | Ok (_, ty, _) -> assert_type_eq ty_unit ty "Block ending with decl type"
+      | Ok (_, ty, _, _) -> assert_type_eq ty_unit ty "Block ending with decl type"
       | Error _ -> failwith "Should not reach here");
 
   (* ネストしたブロック *)
@@ -586,7 +586,7 @@ let test_block_expressions () =
       let result = infer_expr env outer_block in
       assert_ok result "Nested blocks should succeed";
       match result with
-      | Ok (_, ty, _) -> assert_type_eq ty_i64 ty "Nested blocks type"
+      | Ok (_, ty, _, _) -> assert_type_eq ty_i64 ty "Nested blocks type"
       | Error _ -> failwith "Should not reach here")
 
 (* ========== 関数宣言テスト ========== *)
@@ -674,7 +674,7 @@ let test_function_declarations () =
       let result = infer_decl env fn_decl in
       assert_ok result "Function declaration should succeed";
       match result with
-      | Ok (tdecl, _) ->
+      | Ok (tdecl, _, _) ->
           (* 関数型: i64 -> i64 -> i64 *)
           let expected_ty = TArrow (ty_i64, TArrow (ty_i64, ty_i64)) in
           assert_type_eq expected_ty tdecl.tdecl_scheme.body "Function type"
@@ -742,7 +742,7 @@ let test_function_declarations () =
       let result = infer_decl env fn_decl in
       assert_ok result "Inferred add function should succeed";
       match result with
-      | Ok (tdecl, _) -> (
+      | Ok (tdecl, _, _) -> (
           match tdecl.tdecl_kind with
           | Typed_ast.TFnDecl tfn ->
               List.iteri
@@ -801,7 +801,7 @@ let test_function_declarations () =
       let result = infer_decl env fn_decl in
       assert_ok result "Identity function should succeed";
       match result with
-      | Ok (tdecl, _) ->
+      | Ok (tdecl, _, _) ->
           (* 型変数が一般化される: ∀t. t -> t *)
           (* 量化変数が1つあることを確認 *)
           if List.length tdecl.tdecl_scheme.quantified < 1 then
@@ -846,7 +846,7 @@ let test_function_declarations () =
       let result = infer_decl env fn_decl in
       assert_ok result "Const function should succeed";
       match result with
-      | Ok (tdecl, _) ->
+      | Ok (tdecl, _, _) ->
           (* 関数型: () -> i64 (パラメータなし) *)
           assert_type_eq ty_i64 tdecl.tdecl_scheme.body "Const function type"
       | Error _ -> failwith "Should not reach here");
@@ -975,7 +975,7 @@ let test_function_declarations () =
       let result = infer_decl env fn_decl in
       assert_ok result "Recursive factorial function should succeed";
       match result with
-      | Ok (tdecl, _) ->
+      | Ok (tdecl, _, _) ->
           (* 関数型: i64 -> i64 *)
           let expected_ty = TArrow (ty_i64, ty_i64) in
           assert_type_eq expected_ty tdecl.tdecl_scheme.body
@@ -1037,7 +1037,7 @@ let test_function_declarations () =
       let result = infer_decl env fn_decl in
       assert_ok result "Multi-statement function should succeed";
       match result with
-      | Ok (tdecl, _) ->
+      | Ok (tdecl, _, _) ->
           assert_type_eq ty_i64 tdecl.tdecl_scheme.body
             "Multi-statement function type"
       | Error _ -> failwith "Should not reach here")
@@ -1069,7 +1069,7 @@ let test_binary_operations () =
       let result = infer_expr env expr in
       assert_ok result "Arithmetic addition should succeed";
       match result with
-      | Ok (_, ty, _) -> assert_type_eq ty_i64 ty "Addition result type"
+      | Ok (_, ty, _, _) -> assert_type_eq ty_i64 ty "Addition result type"
       | Error _ -> failwith "Should not reach here");
 
   (* 算術演算: 3.0 * 2.0 *)
@@ -1088,7 +1088,7 @@ let test_binary_operations () =
       let result = infer_expr env expr in
       assert_ok result "Arithmetic multiplication should succeed";
       match result with
-      | Ok (_, ty, _) -> assert_type_eq ty_f64 ty "Multiplication result type"
+      | Ok (_, ty, _, _) -> assert_type_eq ty_f64 ty "Multiplication result type"
       | Error _ -> failwith "Should not reach here");
 
   (* 比較演算: 5 == 5 *)
@@ -1113,7 +1113,7 @@ let test_binary_operations () =
       let result = infer_expr env expr in
       assert_ok result "Equality comparison should succeed";
       match result with
-      | Ok (_, ty, _) -> assert_type_eq ty_bool ty "Equality result type"
+      | Ok (_, ty, _, _) -> assert_type_eq ty_bool ty "Equality result type"
       | Error _ -> failwith "Should not reach here");
 
   (* 論理演算: true && false *)
@@ -1132,7 +1132,7 @@ let test_binary_operations () =
       let result = infer_expr env expr in
       assert_ok result "Logical AND should succeed";
       match result with
-      | Ok (_, ty, _) -> assert_type_eq ty_bool ty "Logical AND result type"
+      | Ok (_, ty, _, _) -> assert_type_eq ty_bool ty "Logical AND result type"
       | Error _ -> failwith "Should not reach here");
 
   (* 混合演算: (1 + 2) * 3 *)
@@ -1170,7 +1170,7 @@ let test_binary_operations () =
       let result = infer_expr env outer_expr in
       assert_ok result "Nested arithmetic should succeed";
       match result with
-      | Ok (_, ty, _) ->
+      | Ok (_, ty, _, _) ->
           assert_type_eq ty_i64 ty "Nested arithmetic result type"
       | Error _ -> failwith "Should not reach here");
 
@@ -1206,7 +1206,7 @@ let test_binary_operations () =
       let result = infer_expr env_with_identity expr in
       assert_ok result "Pipe operation should succeed";
       match result with
-      | Ok (_, ty, _) -> assert_type_eq ty_i64 ty "Pipe result type"
+      | Ok (_, ty, _, _) -> assert_type_eq ty_i64 ty "Pipe result type"
       | Error _ -> failwith "Should not reach here")
 
 (* ========== 複合リテラルテスト ========== *)
@@ -1239,7 +1239,7 @@ let test_composite_literals () =
       let result = infer_expr env expr in
       assert_ok result "Tuple literal should succeed";
       match result with
-      | Ok (_, ty, _) ->
+      | Ok (_, ty, _, _) ->
           let expected_ty = TTuple [ ty_i64; ty_string; ty_bool ] in
           assert_type_eq expected_ty ty "Tuple literal type"
       | Error _ -> failwith "Should not reach here");
@@ -1251,7 +1251,7 @@ let test_composite_literals () =
       let result = infer_expr env expr in
       assert_ok result "Empty tuple should succeed";
       match result with
-      | Ok (_, ty, _) -> assert_type_eq ty_unit ty "Empty tuple type"
+      | Ok (_, ty, _, _) -> assert_type_eq ty_unit ty "Empty tuple type"
       | Error _ -> failwith "Should not reach here");
 
   (* ネストしたタプル: ((1, 2), (3, 4)) *)
@@ -1302,7 +1302,7 @@ let test_composite_literals () =
       let result = infer_expr env expr in
       assert_ok result "Nested tuple should succeed";
       match result with
-      | Ok (_, ty, _) ->
+      | Ok (_, ty, _, _) ->
           let expected_ty =
             TTuple [ TTuple [ ty_i64; ty_i64 ]; TTuple [ ty_i64; ty_i64 ] ]
           in
@@ -1335,7 +1335,7 @@ let test_composite_literals () =
       let result = infer_expr env expr in
       assert_ok result "Record literal should succeed";
       match result with
-      | Ok (_, ty, _) ->
+      | Ok (_, ty, _, _) ->
           let expected_ty = TRecord [ ("x", ty_i64); ("y", ty_string) ] in
           assert_type_eq expected_ty ty "Record literal type"
       | Error _ -> failwith "Should not reach here");
@@ -1366,7 +1366,7 @@ let test_composite_literals () =
       let result = infer_expr env expr in
       assert_ok result "Record literal with different fields should succeed";
       match result with
-      | Ok (_, ty, _) ->
+      | Ok (_, ty, _, _) ->
           let expected_ty = TRecord [ ("name", ty_string); ("age", ty_i64) ] in
           assert_type_eq expected_ty ty
             "Record literal type with different fields"
@@ -1402,7 +1402,7 @@ let test_composite_literals () =
       let result = infer_expr env expr in
       assert_ok result "Nested record should succeed";
       match result with
-      | Ok (_, ty, _) ->
+      | Ok (_, ty, _, _) ->
           let expected_ty =
             TRecord [ ("outer", TRecord [ ("inner", ty_i64) ]) ]
           in
@@ -1442,7 +1442,7 @@ let test_composite_literals () =
       let result = infer_expr env expr in
       assert_ok result "Tuple with record should succeed";
       match result with
-      | Ok (_, ty, _) ->
+      | Ok (_, ty, _, _) ->
           let expected_ty = TTuple [ ty_i64; TRecord [ ("x", ty_i64) ] ] in
           assert_type_eq expected_ty ty "Tuple with record type"
       | Error _ -> failwith "Should not reach here")

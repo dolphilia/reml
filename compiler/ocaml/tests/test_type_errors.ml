@@ -122,7 +122,7 @@ let test_unification_failure () =
       in
       let result = infer_expr env expr in
       match result with
-      | Ok (_, actual_ty, _) -> (
+      | Ok (_, actual_ty, _, _) -> (
           let expected_ty = ty_i64 in
           let unify_result =
             Constraint.unify [] expected_ty actual_ty dummy_span
@@ -329,7 +329,7 @@ let test_pattern_type_mismatch () =
       let expected_ty = TTuple [ ty_i64; ty_i64 ] in
       let result = infer_expr env expr in
       match result with
-      | Ok (_, actual_ty, _) ->
+      | Ok (_, actual_ty, _, _) ->
           let unify_result =
             Constraint.unify [] expected_ty actual_ty dummy_span
           in
@@ -448,7 +448,7 @@ let test_arity_mismatch () =
       (* 型推論自体は成功するが、返り値が i64 -> i64 になる *)
       let result = infer_expr env call_expr in
       match result with
-      | Ok (_, ty, _) -> (
+      | Ok (_, ty, _, _) -> (
           (* 部分適用により関数型が返る *)
           match ty with
           | TArrow _ -> () (* 期待通り *)
