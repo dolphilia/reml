@@ -53,6 +53,70 @@ let bind_var (map : var_scope_map) (name : string) (var : var_id) : unit =
 (** スコープのコピー（分岐処理用） *)
 let copy_scope_map (map : var_scope_map) : var_scope_map = Hashtbl.copy map
 
+(* ========== 辞書生成パスの基礎（Phase 2 Week 18-19） ========== *)
+
+(** 標準トレイトのvtableメソッド順序
+ *
+ * 各トレイトのメソッドをvtableインデックス順に定義する。
+ * この順序はConstraint_solverと一致させる必要がある。
+ *)
+let trait_method_indices = function
+  | "Eq" ->
+      [
+        ("eq", 0);
+        ("ne", 1);
+      ]
+  | "Ord" ->
+      [
+        ("cmp", 0);
+        ("lt", 1);
+        ("le", 2);
+        ("gt", 3);
+        ("ge", 4);
+      ]
+  | "Collector" ->
+      [
+        ("iter", 0);
+        ("collect", 1);
+      ]
+  | _ -> []  (* 未知のトレイトはメソッド情報なし *)
+
+(** トレイトメソッド名からvtableインデックスを取得 *)
+let get_method_index (trait_name : string) (method_name : string) : int option =
+  let methods = trait_method_indices trait_name in
+  List.assoc_opt method_name methods
+
+(** 辞書初期化コード生成のスタブ
+ *
+ * Phase 2 Week 19-20で実装予定。
+ * 現在は型とトレイト名の組み合わせに対して、
+ * ダミーの辞書参照を生成する。
+ *)
+let generate_dict_init (trait_name : string) (ty : ty) (span : span) : expr option =
+  (* TODO: Week 19-20で実装
+   * - インスタンス宣言の検索
+   * - vtableの構築
+   * - 辞書構造体の初期化
+   *)
+  let _ = (trait_name, ty, span) in
+  None  (* 現時点では未実装 *)
+
+(** 型クラスメソッド呼び出しを辞書メソッドコールに変換
+ *
+ * 将来的に、トレイトメソッド呼び出しを検出して
+ * DictMethodCall ノードに変換する。
+ * Phase 2 Week 19-20で実装予定。
+ *)
+let try_convert_to_dict_method_call (fn_expr : expr) (args : expr list) (ret_ty : ty) (span : span) : expr option =
+  (* TODO: Week 19-20で実装
+   * 1. fn_exprがトレイトメソッド参照か判定
+   * 2. 辞書引数を抽出
+   * 3. メソッドインデックスを計算
+   * 4. DictMethodCallノードを生成
+   *)
+  let _ = (fn_expr, args, ret_ty, span) in
+  None  (* 現時点では未実装 *)
+
 (* ========== パターンマッチ決定木 ========== *)
 
 (** 決定木ノード

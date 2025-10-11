@@ -12,6 +12,7 @@
 open Types
 open Type_env
 open Constraint
+open Constraint_solver
 open Type_error
 open Ast
 open Typed_ast
@@ -220,6 +221,72 @@ let unify_as_function (subst : substitution) (fn_ty : ty) (expected_fn_ty : ty)
           else Error (UnificationFailure (lhs_ty, rhs_ty, span'))
       | Error e -> Error e)
   | _ -> Error (not_a_function_error fn_ty' span)
+
+(* ========== 制約解決の統合（Phase 2 Week 18-19） ========== *)
+
+(** 制約解決エラーを型エラーに変換
+ *
+ * Constraint_solver のエラーを Type_error に変換して、
+ * 統一的な診断システムで報告できるようにする
+ *)
+let constraint_error_to_type_error (err : Constraint_solver.constraint_error) :
+    type_error =
+  match err.reason with
+  | Constraint_solver.NoImpl ->
+      let reason = "この型に対するトレイト実装が見つかりません" in
+      TraitConstraintFailure
+        {
+          trait_name = err.trait_name;
+          type_args = err.type_args;
+          reason;
+          span = err.span;
+        }
+  | Constraint_solver.AmbiguousImpl dict_refs ->
+      let candidates =
+        List.map Constraint_solver.string_of_dict_ref dict_refs
+      in
+      AmbiguousTraitImpl
+        {
+          trait_name = err.trait_name;
+          type_args = err.type_args;
+          candidates;
+          span = err.span;
+        }
+  | Constraint_solver.CyclicConstraint cycle ->
+      let cycle_names =
+        List.map
+          (fun (c : trait_constraint) ->
+            let type_args_str =
+              String.concat ", " (List.map string_of_ty c.type_args)
+            in
+            Printf.sprintf "%s<%s>" c.trait_name type_args_str)
+          cycle
+      in
+      CyclicTraitConstraint { cycle = cycle_names; span = err.span }
+  | Constraint_solver.UnresolvedTypeVar tv ->
+      let reason =
+        Printf.sprintf "型変数 %s が未解決です" (string_of_type_var tv)
+      in
+      TraitConstraintFailure
+        {
+          trait_name = err.trait_name;
+          type_args = err.type_args;
+          reason;
+          span = err.span;
+        }
+
+(** 制約リストを解決し、型エラーに変換
+ *
+ * 制約解決器を呼び出し、成功時は辞書参照リストを、
+ * 失敗時は型エラーを返す
+ *)
+let solve_trait_constraints (constraints : trait_constraint list) :
+    (dict_ref list, type_error) result =
+  match Constraint_solver.solve_constraints constraints with
+  | Ok dict_refs -> Ok dict_refs
+  | Error errors ->
+      (* 複数のエラーがある場合は最初のエラーを返す *)
+      Error (constraint_error_to_type_error (List.hd errors))
 
 (** 式の型推論: infer_expr(env, expr)
  *
@@ -1165,6 +1232,19 @@ and infer_decl (env : env) (decl : decl) : (typed_decl * env, type_error) result
       let env' = apply_subst_env s2 env in
       let scheme = generalize env' final_ty in
 
+      (* Phase 2 Week 18-19: 型クラス制約の解決
+       *
+       * 制約が空でない場合は解決を試みる。
+       * 現時点では制約収集は未実装のため、常に空リストだが、
+       * 将来的に制約収集が実装されたときに自動的に解決される。
+       *)
+      let* _dict_refs =
+        if scheme.constraints = [] then Ok []
+        else
+          (* 制約を解決 *)
+          solve_trait_constraints scheme.constraints
+      in
+
       (* 型付き宣言を構築 *)
       let tdecl =
         make_typed_decl decl.decl_attrs decl.decl_vis
@@ -1256,6 +1336,17 @@ and infer_decl (env : env) (decl : decl) : (typed_decl * env, type_error) result
       (* 9. 一般化してスキームを生成 *)
       let env' = apply_subst_env s3 env in
       let scheme = generalize env' fn_ty in
+
+      (* Phase 2 Week 18-19: 型クラス制約の解決
+       *
+       * 関数宣言でも制約を解決する。
+       *)
+      let* _dict_refs =
+        if scheme.constraints = [] then Ok []
+        else
+          (* 制約を解決 *)
+          solve_trait_constraints scheme.constraints
+      in
 
       (* 10. 型付き関数宣言を構築 *)
       let tfn =

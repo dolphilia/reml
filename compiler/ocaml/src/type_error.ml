@@ -61,6 +61,26 @@ type type_error =
   | NotARecord of ty * span  (** レコード型でない型に対するレコードパターン *)
   | NotATuple of ty * span  (** タプル型でない型に対するタプルパターン *)
   | EmptyMatch of span  (** 空のmatch式 *)
+  (* Phase 2 Week 18-19: 型クラス関連エラー *)
+  | TraitConstraintFailure of {
+      (* トレイト制約の解決失敗 *)
+      trait_name : string;
+      type_args : ty list;
+      reason : string;
+      span : span;
+    }
+  | AmbiguousTraitImpl of {
+      (* トレイト実装の曖昧性 *)
+      trait_name : string;
+      type_args : ty list;
+      candidates : string list;
+      span : span;
+    }
+  | CyclicTraitConstraint of {
+      (* トレイト制約の循環依存 *)
+      cycle : string list;  (* トレイト名のリスト *)
+      span : span;
+    }
 
 (* ========== エラーメッセージ生成 ========== *)
 
@@ -140,6 +160,27 @@ let string_of_error = function
       Printf.sprintf
         "Empty match expression at %d:%d\n\
         \  Match expression must have at least one arm" span.start span.end_
+  | TraitConstraintFailure { trait_name; type_args; reason; span } ->
+      let type_args_str =
+        String.concat ", " (List.map string_of_ty type_args)
+      in
+      Printf.sprintf
+        "Trait constraint '%s<%s>' cannot be satisfied at %d:%d\n  Reason: %s"
+        trait_name type_args_str span.start span.end_ reason
+  | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
+      let type_args_str =
+        String.concat ", " (List.map string_of_ty type_args)
+      in
+      let candidates_str = String.concat "\n  - " candidates in
+      Printf.sprintf
+        "Ambiguous trait implementation for '%s<%s>' at %d:%d\n\
+        \  Multiple candidates found:\n  - %s"
+        trait_name type_args_str span.start span.end_ candidates_str
+  | CyclicTraitConstraint { cycle; span } ->
+      let cycle_str = String.concat " -> " cycle in
+      Printf.sprintf
+        "Cyclic trait constraint detected at %d:%d\n  Cycle: %s -> ..."
+        span.start span.end_ cycle_str
 
 (* ========== エラー生成ヘルパー ========== *)
 
@@ -530,6 +571,54 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       let notes = [ (None, "パターンマッチのケースを追加してください") ] in
 
       make_type_error ~code:"E7015" ~message ~span:diag_span ~notes ()
+  | TraitConstraintFailure { trait_name; type_args; reason; span } ->
+      let type_args_str =
+        String.concat ", " (List.map string_of_ty type_args)
+      in
+      let message =
+        Printf.sprintf "トレイト制約 '%s<%s>' を満たすことができません"
+          trait_name type_args_str
+      in
+      let diag_span = span_to_diagnostic_span span in
+      let notes =
+        [
+          (None, Printf.sprintf "理由: %s" reason);
+          (None, "この型に対するトレイト実装が見つかりません");
+        ]
+      in
+
+      make_type_error ~code:"E7016" ~message ~span:diag_span ~notes ()
+  | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
+      let type_args_str =
+        String.concat ", " (List.map string_of_ty type_args)
+      in
+      let message =
+        Printf.sprintf "トレイト '%s<%s>' の実装が曖昧です"
+          trait_name type_args_str
+      in
+      let diag_span = span_to_diagnostic_span span in
+      let candidates_str = String.concat "\n  - " candidates in
+      let notes =
+        [
+          (None, "複数の候補実装が見つかりました:");
+          (None, Printf.sprintf "  - %s" candidates_str);
+          (None, "型注釈を追加して曖昧性を解消してください");
+        ]
+      in
+
+      make_type_error ~code:"E7017" ~message ~span:diag_span ~notes ()
+  | CyclicTraitConstraint { cycle; span } ->
+      let cycle_str = String.concat " -> " cycle in
+      let message = "トレイト制約に循環依存が検出されました" in
+      let diag_span = span_to_diagnostic_span span in
+      let notes =
+        [
+          (None, Printf.sprintf "循環: %s -> ..." cycle_str);
+          (None, "トレイト制約の依存関係に循環があると解決できません");
+        ]
+      in
+
+      make_type_error ~code:"E7018" ~message ~span:diag_span ~notes ()
 
 (** 環境情報を使った診断情報の生成
  *
@@ -782,3 +871,51 @@ let to_diagnostic_with_source ?(available_names : string list = [])
       let notes = [ (None, "パターンマッチのケースを追加してください") ] in
 
       make_type_error ~code:"E7015" ~message ~span:diag_span ~notes ()
+  | TraitConstraintFailure { trait_name; type_args; reason; span } ->
+      let type_args_str =
+        String.concat ", " (List.map string_of_ty type_args)
+      in
+      let message =
+        Printf.sprintf "トレイト制約 '%s<%s>' を満たすことができません"
+          trait_name type_args_str
+      in
+      let diag_span = make_span span in
+      let notes =
+        [
+          (None, Printf.sprintf "理由: %s" reason);
+          (None, "この型に対するトレイト実装が見つかりません");
+        ]
+      in
+
+      make_type_error ~code:"E7016" ~message ~span:diag_span ~notes ()
+  | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
+      let type_args_str =
+        String.concat ", " (List.map string_of_ty type_args)
+      in
+      let message =
+        Printf.sprintf "トレイト '%s<%s>' の実装が曖昧です"
+          trait_name type_args_str
+      in
+      let diag_span = make_span span in
+      let candidates_str = String.concat "\n  - " candidates in
+      let notes =
+        [
+          (None, "複数の候補実装が見つかりました:");
+          (None, Printf.sprintf "  - %s" candidates_str);
+          (None, "型注釈を追加して曖昧性を解消してください");
+        ]
+      in
+
+      make_type_error ~code:"E7017" ~message ~span:diag_span ~notes ()
+  | CyclicTraitConstraint { cycle; span } ->
+      let cycle_str = String.concat " -> " cycle in
+      let message = "トレイト制約に循環依存が検出されました" in
+      let diag_span = make_span span in
+      let notes =
+        [
+          (None, Printf.sprintf "循環: %s -> ..." cycle_str);
+          (None, "トレイト制約の依存関係に循環があると解決できません");
+        ]
+      in
+
+      make_type_error ~code:"E7018" ~message ~span:diag_span ~notes ()
