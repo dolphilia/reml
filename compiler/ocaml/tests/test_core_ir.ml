@@ -69,7 +69,9 @@ let test_primitive_expr () =
   let v2 = IR.VarIdGen.fresh "b" ty_i64 dummy_span in
   let e1 = IR.make_expr (IR.Var v1) ty_i64 dummy_span in
   let e2 = IR.make_expr (IR.Var v2) ty_i64 dummy_span in
-  let expr = IR.make_expr (IR.Primitive (IR.PrimAdd, [e1; e2])) ty_i64 dummy_span in
+  let expr =
+    IR.make_expr (IR.Primitive (IR.PrimAdd, [ e1; e2 ])) ty_i64 dummy_span
+  in
 
   assert (type_equal expr.IR.expr_ty ty_i64);
   let str = Printer.string_of_expr expr in
@@ -82,7 +84,9 @@ let test_primitive_expr () =
 let test_let_expr () =
   IR.VarIdGen.reset ();
   let var = IR.VarIdGen.fresh "x" ty_i64 dummy_span in
-  let bound = IR.make_expr (IR.Literal (Ast.Int ("10", Ast.Base10))) ty_i64 dummy_span in
+  let bound =
+    IR.make_expr (IR.Literal (Ast.Int ("10", Ast.Base10))) ty_i64 dummy_span
+  in
   let body = IR.make_expr (IR.Var var) ty_i64 dummy_span in
   let expr = IR.make_expr (IR.Let (var, bound, body)) ty_i64 dummy_span in
 
@@ -96,13 +100,18 @@ let test_let_expr () =
 let test_if_expr () =
   IR.VarIdGen.reset ();
   let cond = IR.make_expr (IR.Literal (Ast.Bool true)) ty_bool dummy_span in
-  let then_e = IR.make_expr (IR.Literal (Ast.Int ("1", Ast.Base10))) ty_i64 dummy_span in
-  let else_e = IR.make_expr (IR.Literal (Ast.Int ("2", Ast.Base10))) ty_i64 dummy_span in
+  let then_e =
+    IR.make_expr (IR.Literal (Ast.Int ("1", Ast.Base10))) ty_i64 dummy_span
+  in
+  let else_e =
+    IR.make_expr (IR.Literal (Ast.Int ("2", Ast.Base10))) ty_i64 dummy_span
+  in
   let expr = IR.make_expr (IR.If (cond, then_e, else_e)) ty_i64 dummy_span in
 
   assert (type_equal expr.IR.expr_ty ty_i64);
   let str = Printer.string_of_expr expr in
-  assert (String.length str > 0);  (* if式が出力されることを確認 *)
+  assert (String.length str > 0);
+  (* if式が出力されることを確認 *)
   print_endline "✓ test_if_expr passed"
 
 (* ========== メタデータのテスト ========== *)

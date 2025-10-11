@@ -20,25 +20,24 @@ open Ast
 
 (* ========== 変数とラベル ========== *)
 
+type var_id = {
+  vname : string;  (** 変数名 *)
+  vid : int;  (** 一意ID *)
+  vty : ty;  (** 型 *)
+  vspan : span;  (** 定義位置 *)
+}
 (** 変数ID (SSA形式準備)
  *
  * 各変数は一意なIDを持ち、型情報を保持する。
  * SSA変換時に同名変数を区別するために使用。
  *)
-type var_id = {
-  vname: string;                                  (** 変数名 *)
-  vid: int;                                       (** 一意ID *)
-  vty: ty;                                        (** 型 *)
-  vspan: span;                                    (** 定義位置 *)
-}
 
-(** ラベル (基本ブロック識別子) *)
 type label = string
+(** ラベル (基本ブロック識別子) *)
 
 (** 変数ID生成器 *)
 module VarIdGen = struct
   let counter = ref 0
-
   let reset () = counter := 0
 
   let fresh name ty span =
@@ -50,7 +49,6 @@ end
 (** ラベル生成器 *)
 module LabelGen = struct
   let counter = ref 0
-
   let reset () = counter := 0
 
   let fresh prefix =
@@ -68,152 +66,146 @@ end
  *)
 type prim_op =
   (* 算術演算 *)
-  | PrimAdd                                       (** 加算 (整数/浮動小数) *)
-  | PrimSub                                       (** 減算 *)
-  | PrimMul                                       (** 乗算 *)
-  | PrimDiv                                       (** 除算 *)
-  | PrimMod                                       (** 剰余 (整数のみ) *)
-  | PrimPow                                       (** 累乗 *)
-
+  | PrimAdd  (** 加算 (整数/浮動小数) *)
+  | PrimSub  (** 減算 *)
+  | PrimMul  (** 乗算 *)
+  | PrimDiv  (** 除算 *)
+  | PrimMod  (** 剰余 (整数のみ) *)
+  | PrimPow  (** 累乗 *)
   (* 比較演算 *)
-  | PrimEq                                        (** 等価 *)
-  | PrimNe                                        (** 非等価 *)
-  | PrimLt                                        (** 未満 *)
-  | PrimLe                                        (** 以下 *)
-  | PrimGt                                        (** 超過 *)
-  | PrimGe                                        (** 以上 *)
-
+  | PrimEq  (** 等価 *)
+  | PrimNe  (** 非等価 *)
+  | PrimLt  (** 未満 *)
+  | PrimLe  (** 以下 *)
+  | PrimGt  (** 超過 *)
+  | PrimGe  (** 以上 *)
   (* 論理演算 *)
-  | PrimAnd                                       (** 論理積 (Bool) *)
-  | PrimOr                                        (** 論理和 (Bool) *)
-  | PrimNot                                       (** 論理否定 (Bool) *)
-
+  | PrimAnd  (** 論理積 (Bool) *)
+  | PrimOr  (** 論理和 (Bool) *)
+  | PrimNot  (** 論理否定 (Bool) *)
   (* ビット演算 (将来拡張) *)
-  | PrimBitAnd                                    (** ビット積 *)
-  | PrimBitOr                                     (** ビット和 *)
-  | PrimBitXor                                    (** ビット排他的論理和 *)
-  | PrimBitNot                                    (** ビット否定 *)
-  | PrimShl                                       (** 左シフト *)
-  | PrimShr                                       (** 右シフト *)
+  | PrimBitAnd  (** ビット積 *)
+  | PrimBitOr  (** ビット和 *)
+  | PrimBitXor  (** ビット排他的論理和 *)
+  | PrimBitNot  (** ビット否定 *)
+  | PrimShl  (** 左シフト *)
+  | PrimShr  (** 右シフト *)
 
 (* ========== 効果とCapability ========== *)
 
+type effect_tag = {
+  effect_name : string;  (** 効果名 (例: "diagnostic", "io") *)
+  effect_span : span;  (** 宣言位置 *)
+}
 (** 効果タグ
  *
  * 仕様書 3-6 §1: 診断・監査用の効果情報
  *)
-type effect_tag = {
-  effect_name: string;                            (** 効果名 (例: "diagnostic", "io") *)
-  effect_span: span;                              (** 宣言位置 *)
-}
 
+type effect_set = { declared : effect_tag list; residual : effect_tag list }
 (** 効果集合
  *
  * 関数が持つ効果の集合。
  * declared: 明示的に宣言された効果
  * residual: 推論された残余効果
  *)
-type effect_set = {
-  declared: effect_tag list;
-  residual: effect_tag list;
-}
 
+type capability_id = {
+  cap_name : string;  (** Capability名 *)
+  cap_span : span;  (** 参照位置 *)
+}
 (** Capability ID
  *
  * ランタイム機能へのアクセス権限を表す。
  * Phase 3 では基本構造のみ定義、詳細は Phase 2 後半で実装。
  *)
-type capability_id = {
-  cap_name: string;                               (** Capability名 *)
-  cap_span: span;                                 (** 参照位置 *)
-}
 
 (** Stage 要件
  *
  * Capability の成熟度要件。
  *)
 type stage_requirement =
-  | StageExact of string                          (** 正確なステージ一致 *)
-  | StageAtLeast of string                        (** 最低限のステージ *)
+  | StageExact of string  (** 正確なステージ一致 *)
+  | StageAtLeast of string  (** 最低限のステージ *)
 
-(** Capability 集合 *)
 type capability_set = {
-  required: capability_id list;                   (** 必要な Capability *)
-  stage: stage_requirement option;                (** ステージ要件 *)
+  required : capability_id list;  (** 必要な Capability *)
+  stage : stage_requirement option;  (** ステージ要件 *)
 }
+(** Capability 集合 *)
 
+type dict_ref = {
+  trait_name : string;  (** トレイト名 *)
+  type_args : ty list;  (** 型引数 *)
+  dict_span : span;  (** 参照位置 *)
+}
 (** 辞書参照 (型クラス/トレイト)
  *
  * 型クラス制約を満たす辞書への参照。
  * Phase 2 後半で詳細実装。
  *)
-type dict_ref = {
-  trait_name: string;                             (** トレイト名 *)
-  type_args: ty list;                             (** 型引数 *)
-  dict_span: span;                                (** 参照位置 *)
-}
 
-(** 辞書インスタンス *)
 type dict_instance = {
-  trait: string;                                  (** トレイト名 *)
-  impl_ty: ty;                                    (** 実装型 *)
-  methods: (string * var_id) list;                (** メソッド名 → 関数ID *)
+  trait : string;  (** トレイト名 *)
+  impl_ty : ty;  (** 実装型 *)
+  methods : (string * var_id) list;  (** メソッド名 → 関数ID *)
 }
+(** 辞書インスタンス *)
 
 (* ========== クロージャ ========== *)
 
+type closure_info = {
+  env_vars : var_id list;  (** キャプチャされた変数 *)
+  fn_ref : string;  (** 関数名への参照 *)
+  closure_span : span;  (** 生成位置 *)
+}
 (** クロージャ情報
  *
  * クロージャの環境キャプチャと関数ポインタ情報。
  * LLVM IR では { env_ptr*, code_ptr } として表現される。
  *)
-type closure_info = {
-  env_vars: var_id list;                          (** キャプチャされた変数 *)
-  fn_ref: string;                                 (** 関数名への参照 *)
-  closure_span: span;                             (** 生成位置 *)
-}
 
 (* ========== Core IR 式 ========== *)
 
+type expr = {
+  expr_kind : expr_kind;
+  expr_ty : ty;  (** 式の型 *)
+  expr_span : span;  (** 位置情報 *)
+}
 (** Core IR 式
  *
  * すべての式は型情報 (ty) と位置情報 (span) を保持する。
  * Typed AST から糖衣を剥がした正規化された形式。
  *)
-type expr = {
-  expr_kind: expr_kind;
-  expr_ty: ty;                                    (** 式の型 *)
-  expr_span: span;                                (** 位置情報 *)
-}
 
 and expr_kind =
-  | Literal of literal                            (** リテラル値 *)
-  | Var of var_id                                 (** 変数参照 *)
-  | App of expr * expr list                       (** 関数適用 *)
-  | Let of var_id * expr * expr                   (** let 束縛 *)
-  | If of expr * expr * expr                      (** if 式 (else 必須) *)
-  | Match of expr * case list                     (** match 式 (糖衣削除後) *)
-  | Primitive of prim_op * expr list              (** プリミティブ演算 *)
-  | Closure of closure_info                       (** クロージャ生成 *)
-  | DictLookup of dict_ref                        (** 辞書参照 (型クラス) *)
-  | CapabilityCheck of capability_id              (** Capability チェック *)
-  | TupleAccess of expr * int                     (** タプル要素アクセス *)
-  | RecordAccess of expr * string                 (** レコードフィールドアクセス *)
-  | ArrayAccess of expr * expr                    (** 配列インデックスアクセス *)
-  | ADTConstruct of string * expr list            (** ADT コンストラクタ *)
-  | ADTProject of expr * int                      (** ADT フィールド射影 *)
+  | Literal of literal  (** リテラル値 *)
+  | Var of var_id  (** 変数参照 *)
+  | App of expr * expr list  (** 関数適用 *)
+  | Let of var_id * expr * expr  (** let 束縛 *)
+  | If of expr * expr * expr  (** if 式 (else 必須) *)
+  | Match of expr * case list  (** match 式 (糖衣削除後) *)
+  | Primitive of prim_op * expr list  (** プリミティブ演算 *)
+  | Closure of closure_info  (** クロージャ生成 *)
+  | DictLookup of dict_ref  (** 辞書参照 (型クラス) *)
+  | CapabilityCheck of capability_id  (** Capability チェック *)
+  | TupleAccess of expr * int  (** タプル要素アクセス *)
+  | RecordAccess of expr * string  (** レコードフィールドアクセス *)
+  | ArrayAccess of expr * expr  (** 配列インデックスアクセス *)
+  | ADTConstruct of string * expr list  (** ADT コンストラクタ *)
+  | ADTProject of expr * int  (** ADT フィールド射影 *)
 
+and case = {
+  case_pattern : simple_pattern;  (** 簡略化されたパターン *)
+  case_guard : expr option;  (** ガード条件 *)
+  case_body : expr;  (** 本体式 *)
+  case_span : span;
+}
 (** match ケース
  *
  * パターンマッチの各ケース。
  * 糖衣削除後は決定木に変換される。
  *)
-and case = {
-  case_pattern: simple_pattern;                   (** 簡略化されたパターン *)
-  case_guard: expr option;                        (** ガード条件 *)
-  case_body: expr;                                (** 本体式 *)
-  case_span: span;
-}
 
 (** 簡略化パターン
  *
@@ -221,9 +213,9 @@ and case = {
  * ここでは基本的なパターンのみ保持。
  *)
 and simple_pattern =
-  | PLiteral of literal                           (** リテラルパターン *)
-  | PVar of var_id                                (** 変数束縛 *)
-  | PWildcard                                     (** ワイルドカード *)
+  | PLiteral of literal  (** リテラルパターン *)
+  | PVar of var_id  (** 変数束縛 *)
+  | PWildcard  (** ワイルドカード *)
   | PConstructor of string * simple_pattern list  (** コンストラクタパターン *)
 
 (* ========== Core IR 文 ========== *)
@@ -234,110 +226,110 @@ and simple_pattern =
  * SSA形式への変換を容易にするための設計。
  *)
 type stmt =
-  | Assign of var_id * expr                       (** 代入 *)
-  | Return of expr                                (** 関数からの復帰 *)
-  | Jump of label                                 (** 無条件ジャンプ *)
-  | Branch of expr * label * label                (** 条件分岐 *)
-  | Phi of var_id * (label * var_id) list         (** φノード (SSA) *)
-  | EffectMarker of effect_info                   (** 効果マーカー *)
-  | ExprStmt of expr                              (** 式文 *)
+  | Assign of var_id * expr  (** 代入 *)
+  | Return of expr  (** 関数からの復帰 *)
+  | Jump of label  (** 無条件ジャンプ *)
+  | Branch of expr * label * label  (** 条件分岐 *)
+  | Phi of var_id * (label * var_id) list  (** φノード (SSA) *)
+  | EffectMarker of effect_info  (** 効果マーカー *)
+  | ExprStmt of expr  (** 式文 *)
 
+and effect_info = {
+  effect_tag : effect_tag;
+  effect_expr : expr option;  (** 効果を引き起こす式 *)
+}
 (** 効果情報
  *
  * 診断・監査用の効果追跡情報。
  *)
-and effect_info = {
-  effect_tag: effect_tag;
-  effect_expr: expr option;                       (** 効果を引き起こす式 *)
-}
 
 (** 終端命令
  *
  * 基本ブロックの末尾に配置される制御フロー命令。
  *)
 type terminator =
-  | TermReturn of expr                            (** 関数復帰 *)
-  | TermJump of label                             (** 無条件ジャンプ *)
-  | TermBranch of expr * label * label            (** 条件分岐 *)
+  | TermReturn of expr  (** 関数復帰 *)
+  | TermJump of label  (** 無条件ジャンプ *)
+  | TermBranch of expr * label * label  (** 条件分岐 *)
   | TermSwitch of expr * (literal * label) list * label  (** switch (match用) *)
-  | TermUnreachable                               (** 到達不能 *)
+  | TermUnreachable  (** 到達不能 *)
 
 (* ========== 基本ブロック ========== *)
 
+type block = {
+  label : label;  (** ブロックラベル *)
+  params : var_id list;  (** ブロックパラメータ (SSA) *)
+  stmts : stmt list;  (** 命令列 *)
+  terminator : terminator;  (** 終端命令 *)
+  block_span : span;  (** ブロック全体の位置 *)
+}
 (** 基本ブロック
  *
  * ラベル + 命令列 + 終端命令からなる。
  * CFG (Control Flow Graph) の基本単位。
  *)
-type block = {
-  label: label;                                   (** ブロックラベル *)
-  params: var_id list;                            (** ブロックパラメータ (SSA) *)
-  stmts: stmt list;                               (** 命令列 *)
-  terminator: terminator;                         (** 終端命令 *)
-  block_span: span;                               (** ブロック全体の位置 *)
-}
 
 (* ========== 関数定義 ========== *)
 
-(** 関数パラメータ *)
 type param = {
-  param_var: var_id;                              (** パラメータ変数 *)
-  param_default: expr option;                     (** デフォルト値 *)
+  param_var : var_id;  (** パラメータ変数 *)
+  param_default : expr option;  (** デフォルト値 *)
 }
+(** 関数パラメータ *)
 
-(** 最適化フラグ *)
 type opt_flags = {
-  allow_dce: bool;                                (** 死コード削除を許可 *)
-  allow_inline: bool;                             (** インライン展開を許可 *)
-  preserve_for_diagnostics: bool;                 (** 診断用に保持 *)
+  allow_dce : bool;  (** 死コード削除を許可 *)
+  allow_inline : bool;  (** インライン展開を許可 *)
+  preserve_for_diagnostics : bool;  (** 診断用に保持 *)
 }
+(** 最適化フラグ *)
 
-(** 関数メタデータ *)
 type fn_metadata = {
-  fn_span: span;                                  (** 関数全体の位置 *)
-  effects: effect_set;                            (** 効果集合 *)
-  capabilities: capability_set;                   (** Capability 集合 *)
-  dict_instances: dict_instance list;             (** 辞書インスタンス *)
-  opt_flags: opt_flags;                           (** 最適化フラグ *)
+  fn_span : span;  (** 関数全体の位置 *)
+  effects : effect_set;  (** 効果集合 *)
+  capabilities : capability_set;  (** Capability 集合 *)
+  dict_instances : dict_instance list;  (** 辞書インスタンス *)
+  opt_flags : opt_flags;  (** 最適化フラグ *)
 }
+(** 関数メタデータ *)
 
-(** 関数定義 *)
 type function_def = {
-  fn_name: string;                                (** 関数名 *)
-  fn_params: param list;                          (** パラメータリスト *)
-  fn_return_ty: ty;                               (** 返り値型 *)
-  fn_blocks: block list;                          (** 基本ブロックリスト *)
-  fn_metadata: fn_metadata;                       (** メタデータ *)
+  fn_name : string;  (** 関数名 *)
+  fn_params : param list;  (** パラメータリスト *)
+  fn_return_ty : ty;  (** 返り値型 *)
+  fn_blocks : block list;  (** 基本ブロックリスト *)
+  fn_metadata : fn_metadata;  (** メタデータ *)
 }
+(** 関数定義 *)
 
 (* ========== モジュール定義 ========== *)
 
-(** グローバル変数定義 *)
 type global_def = {
-  global_var: var_id;                             (** グローバル変数 *)
-  global_init: expr;                              (** 初期化式 *)
-  global_mutable: bool;                           (** 可変性 *)
+  global_var : var_id;  (** グローバル変数 *)
+  global_init : expr;  (** 初期化式 *)
+  global_mutable : bool;  (** 可変性 *)
 }
+(** グローバル変数定義 *)
 
-(** 型定義 (ADT) *)
 type type_def = {
-  type_name: string;                              (** 型名 *)
-  type_params: string list;                       (** 型パラメータ *)
-  type_variants: variant list;                    (** バリアント *)
+  type_name : string;  (** 型名 *)
+  type_params : string list;  (** 型パラメータ *)
+  type_variants : variant list;  (** バリアント *)
 }
+(** 型定義 (ADT) *)
 
 and variant = {
-  variant_name: string;                           (** バリアント名 *)
-  variant_fields: ty list;                        (** フィールド型 *)
+  variant_name : string;  (** バリアント名 *)
+  variant_fields : ty list;  (** フィールド型 *)
 }
 
-(** モジュール定義 *)
 type module_def = {
-  module_name: string;                            (** モジュール名 *)
-  type_defs: type_def list;                       (** 型定義 *)
-  global_defs: global_def list;                   (** グローバル変数 *)
-  function_defs: function_def list;               (** 関数定義 *)
+  module_name : string;  (** モジュール名 *)
+  type_defs : type_def list;  (** 型定義 *)
+  global_defs : global_def list;  (** グローバル変数 *)
+  function_defs : function_def list;  (** 関数定義 *)
 }
+(** モジュール定義 *)
 
 (* ========== ヘルパー関数 ========== *)
 
@@ -351,33 +343,30 @@ let make_block label params stmts terminator span =
 
 (** 関数の構築 *)
 let make_function name params return_ty blocks metadata =
-  { fn_name = name; fn_params = params; fn_return_ty = return_ty;
-    fn_blocks = blocks; fn_metadata = metadata }
+  {
+    fn_name = name;
+    fn_params = params;
+    fn_return_ty = return_ty;
+    fn_blocks = blocks;
+    fn_metadata = metadata;
+  }
 
 (** 最適化フラグのデフォルト *)
-let default_opt_flags = {
-  allow_dce = true;
-  allow_inline = true;
-  preserve_for_diagnostics = false;
-}
+let default_opt_flags =
+  { allow_dce = true; allow_inline = true; preserve_for_diagnostics = false }
 
 (** 空の効果集合 *)
-let empty_effect_set = {
-  declared = [];
-  residual = [];
-}
+let empty_effect_set = { declared = []; residual = [] }
 
 (** 空のCapability集合 *)
-let empty_capability_set = {
-  required = [];
-  stage = None;
-}
+let empty_capability_set = { required = []; stage = None }
 
 (** デフォルトのメタデータ *)
-let default_metadata span = {
-  fn_span = span;
-  effects = empty_effect_set;
-  capabilities = empty_capability_set;
-  dict_instances = [];
-  opt_flags = default_opt_flags;
-}
+let default_metadata span =
+  {
+    fn_span = span;
+    effects = empty_effect_set;
+    capabilities = empty_capability_set;
+    dict_instances = [];
+    opt_flags = default_opt_flags;
+  }

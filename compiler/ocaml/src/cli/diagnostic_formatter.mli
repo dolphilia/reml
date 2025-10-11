@@ -4,6 +4,12 @@
  * ソースコードのコンテキストとポインタを表示する機能を提供する。
  *)
 
+val format_snippet :
+  source:string ->
+  span:Diagnostic.span ->
+  color_mode:Options.color_mode ->
+  severity:Diagnostic.severity ->
+  string
 (** ソースコードスニペットを抽出して表示
  *
  * エラー位置の前後の行を含めたソースコードスニペットを生成し、
@@ -21,13 +27,12 @@
  * @param severity 診断の重要度（ポインタの色付けに使用）
  * @return フォーマットされたスニペット文字列
  *)
-val format_snippet :
-  source:string ->
-  span:Diagnostic.span ->
-  color_mode:Options.color_mode ->
-  severity:Diagnostic.severity ->
-  string
 
+val format_diagnostic :
+  source:string option ->
+  diag:Diagnostic.t ->
+  color_mode:Options.color_mode ->
+  string
 (** 診断全体をテキスト形式で出力
  *
  * 診断メッセージのヘッダー、ソースコードスニペット、期待値、ノート、
@@ -38,12 +43,12 @@ val format_snippet :
  * @param color_mode カラーモード
  * @return フォーマットされた診断文字列
  *)
-val format_diagnostic :
+
+val format_diagnostics :
   source:string option ->
-  diag:Diagnostic.t ->
+  diags:Diagnostic.t list ->
   color_mode:Options.color_mode ->
   string
-
 (** 複数の診断をバッチ出力
  *
  * 複数の診断を改行で区切って出力する。
@@ -53,8 +58,3 @@ val format_diagnostic :
  * @param color_mode カラーモード
  * @return フォーマットされた診断文字列（改行区切り）
  *)
-val format_diagnostics :
-  source:string option ->
-  diags:Diagnostic.t list ->
-  color_mode:Options.color_mode ->
-  string

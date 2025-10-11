@@ -18,25 +18,20 @@
 exception LinkError of string
 
 let link_error msg = raise (LinkError msg)
-
-let link_errorf fmt =
-  Printf.ksprintf link_error fmt
+let link_errorf fmt = Printf.ksprintf link_error fmt
 
 (* ========== プラットフォーム検出 ========== *)
 
-type platform =
-  | MacOS
-  | Linux
-  | Windows
-  | Unknown
+type platform = MacOS | Linux | Windows | Unknown
 
 let detect_platform () =
-  let uname = try
-    let ic = Unix.open_process_in "uname -s" in
-    let result = input_line ic in
-    let _ = Unix.close_process_in ic in
-    result
-  with _ -> "Unknown"
+  let uname =
+    try
+      let ic = Unix.open_process_in "uname -s" in
+      let result = input_line ic in
+      let _ = Unix.close_process_in ic in
+      result
+    with _ -> "Unknown"
   in
   match uname with
   | "Darwin" -> MacOS
@@ -55,19 +50,19 @@ let detect_platform () =
  *)
 let find_runtime_library () =
   (* 1. 環境変数チェック *)
-  let env_path = try Some (Sys.getenv "REML_RUNTIME_PATH") with Not_found -> None in
+  let env_path =
+    try Some (Sys.getenv "REML_RUNTIME_PATH") with Not_found -> None
+  in
   match env_path with
   | Some path when Sys.file_exists path -> path
   | _ ->
       (* 2. ローカルビルドパス *)
       let local_path = "runtime/native/build/libreml_runtime.a" in
-      if Sys.file_exists local_path then
-        local_path
+      if Sys.file_exists local_path then local_path
       else
         (* 3. インストール版パス *)
         let installed_path = "/usr/local/lib/reml/libreml_runtime.a" in
-        if Sys.file_exists installed_path then
-          installed_path
+        if Sys.file_exists installed_path then installed_path
         else
           link_errorf
             "ランタイムライブラリが見つかりません。\n\
@@ -89,17 +84,16 @@ let generate_linker_command platform obj_file runtime_lib output_file =
   match platform with
   | MacOS ->
       (* macOS: clang を使用 *)
-      Printf.sprintf "clang %s %s -o %s -lSystem"
-        obj_file runtime_lib output_file
+      Printf.sprintf "clang %s %s -o %s -lSystem" obj_file runtime_lib
+        output_file
   | Linux ->
       (* Linux: clang または gcc を使用 *)
-      Printf.sprintf "clang %s %s -o %s -lc -lm"
-        obj_file runtime_lib output_file
+      Printf.sprintf "clang %s %s -o %s -lc -lm" obj_file runtime_lib
+        output_file
   | Windows ->
       (* Windows: lld-link を使用（未実装） *)
       link_error "Windows リンクは Phase 2 で対応予定"
-  | Unknown ->
-      link_errorf "サポートされていないプラットフォーム: %s" (Sys.os_type)
+  | Unknown -> link_errorf "サポートされていないプラットフォーム: %s" Sys.os_type
 
 (* ========== 統合リンク関数 ========== *)
 
@@ -117,19 +111,19 @@ let link_with_runtime ir_file output_file =
   let llc_cmd = Printf.sprintf "llc -filetype=obj %s -o %s" ir_file obj_file in
   Printf.eprintf "実行: %s\n%!" llc_cmd;
   let llc_status = Sys.command llc_cmd in
-  if llc_status <> 0 then
-    link_errorf "llc でのオブジェクトファイル生成に失敗: %d" llc_status;
+  if llc_status <> 0 then link_errorf "llc でのオブジェクトファイル生成に失敗: %d" llc_status;
 
   (* 2. オブジェクトファイル + ランタイム → 実行ファイル *)
-  let linker_cmd = generate_linker_command platform obj_file runtime_lib output_file in
+  let linker_cmd =
+    generate_linker_command platform obj_file runtime_lib output_file
+  in
   Printf.eprintf "実行: %s\n%!" linker_cmd;
   let link_status = Sys.command linker_cmd in
 
   (* 一時ファイルを削除 *)
   (try Sys.remove obj_file with _ -> ());
 
-  if link_status <> 0 then
-    link_errorf "リンクに失敗: %d" link_status
+  if link_status <> 0 then link_errorf "リンクに失敗: %d" link_status
 
 (** 簡易リンク（オブジェクトファイルが既にある場合）
  *
@@ -140,9 +134,10 @@ let link_object_with_runtime obj_file output_file =
   let platform = detect_platform () in
   let runtime_lib = find_runtime_library () in
 
-  let linker_cmd = generate_linker_command platform obj_file runtime_lib output_file in
+  let linker_cmd =
+    generate_linker_command platform obj_file runtime_lib output_file
+  in
   Printf.eprintf "実行: %s\n%!" linker_cmd;
   let link_status = Sys.command linker_cmd in
 
-  if link_status <> 0 then
-    link_errorf "リンクに失敗: %d" link_status
+  if link_status <> 0 then link_errorf "リンクに失敗: %d" link_status

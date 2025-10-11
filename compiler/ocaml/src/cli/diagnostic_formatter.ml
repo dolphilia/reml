@@ -11,8 +11,7 @@
  *)
 
 (** ソース文字列を行の配列に分割 *)
-let split_into_lines source =
-  String.split_on_char '\n' source |> Array.of_list
+let split_into_lines source = String.split_on_char '\n' source |> Array.of_list
 
 (** ソースコードスニペットを抽出して表示
  *
@@ -46,52 +45,72 @@ let format_snippet ~source ~span ~color_mode ~severity =
       (* エラー行かどうかで表示を変える *)
       let is_error_line = line_num >= start_line && line_num <= end_line in
 
-      if is_error_line then begin
+      if is_error_line then (
         (* エラー行: 行番号 + " | " + 行内容 *)
         let prefix = line_num_str ^ " | " in
         snippet_lines := (prefix ^ line_content) :: !snippet_lines;
 
         (* ポインタ行を追加（エラー箇所を ^^^ で示す） *)
-        if line_num = start_line && line_num = end_line then begin
+        if line_num = start_line && line_num = end_line then
           (* 単一行エラー *)
-          let pointer_offset = String.length (Printf.sprintf "%4d | " line_num) in
+          let pointer_offset =
+            String.length (Printf.sprintf "%4d | " line_num)
+          in
           let pointer_start = start_col - 1 in
           let pointer_length = max 1 (end_col - start_col) in
-          let pointer_padding = String.make (pointer_offset + pointer_start) ' ' in
+          let pointer_padding =
+            String.make (pointer_offset + pointer_start) ' '
+          in
           let pointer = String.make pointer_length '^' in
-          let colored_pointer = Color.colorize_pointer color_mode severity pointer in
+          let colored_pointer =
+            Color.colorize_pointer color_mode severity pointer
+          in
           snippet_lines := (pointer_padding ^ colored_pointer) :: !snippet_lines
-        end else if line_num = start_line then begin
+        else if line_num = start_line then
           (* 複数行エラーの開始行 *)
-          let pointer_offset = String.length (Printf.sprintf "%4d | " line_num) in
+          let pointer_offset =
+            String.length (Printf.sprintf "%4d | " line_num)
+          in
           let pointer_start = start_col - 1 in
-          let pointer_length = max 1 (String.length line_content - pointer_start) in
-          let pointer_padding = String.make (pointer_offset + pointer_start) ' ' in
+          let pointer_length =
+            max 1 (String.length line_content - pointer_start)
+          in
+          let pointer_padding =
+            String.make (pointer_offset + pointer_start) ' '
+          in
           let pointer = String.make pointer_length '^' in
-          let colored_pointer = Color.colorize_pointer color_mode severity pointer in
+          let colored_pointer =
+            Color.colorize_pointer color_mode severity pointer
+          in
           snippet_lines := (pointer_padding ^ colored_pointer) :: !snippet_lines
-        end else if line_num = end_line then begin
+        else if line_num = end_line then
           (* 複数行エラーの終了行 *)
-          let pointer_offset = String.length (Printf.sprintf "%4d | " line_num) in
+          let pointer_offset =
+            String.length (Printf.sprintf "%4d | " line_num)
+          in
           let pointer_length = max 1 end_col in
           let pointer_padding = String.make pointer_offset ' ' in
           let pointer = String.make pointer_length '^' in
-          let colored_pointer = Color.colorize_pointer color_mode severity pointer in
+          let colored_pointer =
+            Color.colorize_pointer color_mode severity pointer
+          in
           snippet_lines := (pointer_padding ^ colored_pointer) :: !snippet_lines
-        end else begin
+        else
           (* 複数行エラーの中間行 *)
-          let pointer_offset = String.length (Printf.sprintf "%4d | " line_num) in
+          let pointer_offset =
+            String.length (Printf.sprintf "%4d | " line_num)
+          in
           let pointer_length = String.length line_content in
           let pointer_padding = String.make pointer_offset ' ' in
           let pointer = String.make pointer_length '^' in
-          let colored_pointer = Color.colorize_pointer color_mode severity pointer in
-          snippet_lines := (pointer_padding ^ colored_pointer) :: !snippet_lines
-        end
-      end else begin
+          let colored_pointer =
+            Color.colorize_pointer color_mode severity pointer
+          in
+          snippet_lines := (pointer_padding ^ colored_pointer) :: !snippet_lines)
+      else
         (* コンテキスト行: 行番号 + " | " + 行内容 *)
         let prefix = line_num_str ^ " | " in
         snippet_lines := (prefix ^ line_content) :: !snippet_lines
-      end
   done;
 
   (* 逆順に追加していたので反転 *)
@@ -108,24 +127,23 @@ let format_header ~diag ~color_mode =
 
   (* 重要度ラベルを色付け *)
   let severity_label = Diagnostic.severity_label diag.severity in
-  let colored_severity = Color.colorize_by_severity color_mode diag.severity severity_label in
+  let colored_severity =
+    Color.colorize_by_severity color_mode diag.severity severity_label
+  in
 
   (* ヘッダー行を構築 *)
   match (diag.code, diag.domain) with
-  | (Some code, Some domain) ->
+  | Some code, Some domain ->
       let domain_label = Diagnostic.domain_label domain in
-      Printf.sprintf "%s: %s[%s] (%s): %s"
-        loc colored_severity code domain_label diag.message
-  | (Some code, None) ->
-      Printf.sprintf "%s: %s[%s]: %s"
-        loc colored_severity code diag.message
-  | (None, Some domain) ->
+      Printf.sprintf "%s: %s[%s] (%s): %s" loc colored_severity code
+        domain_label diag.message
+  | Some code, None ->
+      Printf.sprintf "%s: %s[%s]: %s" loc colored_severity code diag.message
+  | None, Some domain ->
       let domain_label = Diagnostic.domain_label domain in
-      Printf.sprintf "%s: %s (%s): %s"
-        loc colored_severity domain_label diag.message
-  | (None, None) ->
-      Printf.sprintf "%s: %s: %s"
-        loc colored_severity diag.message
+      Printf.sprintf "%s: %s (%s): %s" loc colored_severity domain_label
+        diag.message
+  | None, None -> Printf.sprintf "%s: %s: %s" loc colored_severity diag.message
 
 (** 診断全体をテキスト形式で出力
  *
@@ -138,51 +156,58 @@ let format_diagnostic ~source ~diag ~color_mode =
   let header = format_header ~diag ~color_mode in
 
   (* ソースコードスニペット *)
-  let snippet = match source with
+  let snippet =
+    match source with
     | Some src ->
-        "\n" ^ format_snippet ~source:src ~span:diag.span ~color_mode ~severity:diag.severity
-    | None ->
-        ""
+        "\n"
+        ^ format_snippet ~source:src ~span:diag.span ~color_mode
+            ~severity:diag.severity
+    | None -> ""
   in
 
   (* 期待値サマリ *)
-  let expected_str = match diag.expected_summary with
+  let expected_str =
+    match diag.expected_summary with
     | None -> ""
     | Some summary ->
-        let alternatives_str = match summary.alternatives with
+        let alternatives_str =
+          match summary.alternatives with
           | [] -> ""
           | items ->
-              let body = items
+              let body =
+                items
                 |> List.map Diagnostic.string_of_expectation
-                |> String.concat ", " in
+                |> String.concat ", "
+              in
               "\n期待される入力: " ^ body
         in
-        let humanized_str = match summary.humanized with
-          | None -> ""
-          | Some s -> "\n" ^ s
+        let humanized_str =
+          match summary.humanized with None -> "" | Some s -> "\n" ^ s
         in
-        let context_str = match summary.context_note with
-          | None -> ""
-          | Some c -> "\n文脈: " ^ c
+        let context_str =
+          match summary.context_note with None -> "" | Some c -> "\n文脈: " ^ c
         in
         alternatives_str ^ humanized_str ^ context_str
   in
 
   (* 追加ノート *)
-  let notes_str = match diag.notes with
+  let notes_str =
+    match diag.notes with
     | [] -> ""
     | notes ->
         notes
         |> List.map (function
-            | (None, note) -> "\n補足: " ^ note
-            | (Some span, note) ->
-                Printf.sprintf "\n補足 [%s]: %s" (Diagnostic.format_span span) note
-        )
+             | None, note -> "\n補足: " ^ note
+             | Some span, note ->
+                 Printf.sprintf "\n補足 [%s]: %s"
+                   (Diagnostic.format_span span)
+                   note)
         |> String.concat ""
   in
 
   (* 修正提案 *)
-  let fixits_str = match diag.fixits with
+  let fixits_str =
+    match diag.fixits with
     | [] -> ""
     | fixits ->
         let fixit_lines =
@@ -192,7 +217,8 @@ let format_diagnostic ~source ~diag ~color_mode =
   in
 
   (* 重要度ヒント *)
-  let hint_str = match diag.severity_hint with
+  let hint_str =
+    match diag.severity_hint with
     | None -> ""
     | Some Rollback -> "\n推奨アクション: ロールバック"
     | Some Retry -> "\n推奨アクション: 再試行"

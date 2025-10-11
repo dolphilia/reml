@@ -20,19 +20,15 @@ open Types
 type llvm_context = Llvm.llcontext
 
 type type_mapping_context = {
-  llctx: llvm_context;
-  llmodule: Llvm.llmodule;
-  mutable type_cache: (ty, Llvm.lltype) Hashtbl.t;
+  llctx : llvm_context;
+  llmodule : Llvm.llmodule;
+  mutable type_cache : (ty, Llvm.lltype) Hashtbl.t;
 }
 
 let create_context module_name =
   let llctx = Llvm.global_context () in
   let llmodule = Llvm.create_module llctx module_name in
-  {
-    llctx;
-    llmodule;
-    type_cache = Hashtbl.create 128;
-  }
+  { llctx; llmodule; type_cache = Hashtbl.create 128 }
 
 (** LLVM コンテキストを取得 *)
 let get_llcontext ctx = ctx.llctx
@@ -46,30 +42,24 @@ let get_llcontext ctx = ctx.llctx
 let rec reml_primitive_to_llvm ctx = function
   (* Bool → i1 *)
   | TCBool -> Llvm.i1_type ctx.llctx
-
   (* Char → i32 (Unicode scalar value) *)
   | TCChar -> Llvm.i32_type ctx.llctx
-
   (* String → FAT pointer { ptr, i64 } *)
   | TCString -> make_fat_pointer ctx None
-
   (* 整数型 → LLVM 整数型 *)
   | TCInt I8 -> Llvm.i8_type ctx.llctx
   | TCInt I16 -> Llvm.i16_type ctx.llctx
   | TCInt I32 -> Llvm.i32_type ctx.llctx
   | TCInt I64 -> Llvm.i64_type ctx.llctx
-  | TCInt Isize -> Llvm.i64_type ctx.llctx  (* x86_64 では 64bit *)
-
+  | TCInt Isize -> Llvm.i64_type ctx.llctx (* x86_64 では 64bit *)
   | TCInt U8 -> Llvm.i8_type ctx.llctx
   | TCInt U16 -> Llvm.i16_type ctx.llctx
   | TCInt U32 -> Llvm.i32_type ctx.llctx
   | TCInt U64 -> Llvm.i64_type ctx.llctx
   | TCInt Usize -> Llvm.i64_type ctx.llctx (* x86_64 では 64bit *)
-
   (* 浮動小数型 → LLVM 浮動小数型 *)
   | TCFloat F32 -> Llvm.float_type ctx.llctx
   | TCFloat F64 -> Llvm.double_type ctx.llctx
-
   (* ユーザ定義型（将来拡張） *)
   | TCUser name ->
       (* TODO: 型定義から構造を取得 *)
@@ -124,52 +114,43 @@ let rec reml_type_to_llvm ctx ty =
 and reml_type_to_llvm_impl ctx = function
   (* 型変数（エラー：型推論後は存在しないはず） *)
   | TVar tv ->
-      failwith (Printf.sprintf "型変数 %s が LLVM IR 生成時に残存"
-                  (string_of_type_var tv))
-
+      failwith
+        (Printf.sprintf "型変数 %s が LLVM IR 生成時に残存" (string_of_type_var tv))
   (* 型定数 *)
   | TCon tc -> reml_primitive_to_llvm ctx tc
-
   (* 型適用（ジェネリック型） *)
   | TApp (constructor, _arg) ->
       (* TODO: ジェネリック型の展開 *)
       (* 現在は constructor を評価（モノモルフィゼーション前提） *)
       reml_type_to_llvm ctx constructor
-
   (* 関数型 A -> B *)
   | TArrow (arg_ty, ret_ty) ->
       let arg_llty = reml_type_to_llvm ctx arg_ty in
       let ret_llty = reml_type_to_llvm ctx ret_ty in
       Llvm.function_type ret_llty [| arg_llty |]
-
   (* タプル型 (T1, T2, ..., Tn) *)
   | TTuple tys ->
       let lltys = Array.of_list (List.map (reml_type_to_llvm ctx) tys) in
       Llvm.struct_type ctx.llctx lltys
-
   (* レコード型 { x: T1, y: T2, ... } *)
   | TRecord fields ->
-      let lltys = Array.of_list (List.map (fun (_, ty) ->
-        reml_type_to_llvm ctx ty
-      ) fields) in
+      let lltys =
+        Array.of_list
+          (List.map (fun (_, ty) -> reml_type_to_llvm ctx ty) fields)
+      in
       Llvm.struct_type ctx.llctx lltys
-
   (* 配列型 [T] (スライス、動的配列) *)
   | TArray element_ty ->
       let element_llty = reml_type_to_llvm ctx element_ty in
       make_fat_pointer ctx (Some element_llty)
-
   (* スライス型 [T; N] (固定長配列) *)
-  | TSlice (element_ty, n_opt) ->
+  | TSlice (element_ty, n_opt) -> (
       let element_llty = reml_type_to_llvm ctx element_ty in
-      begin match n_opt with
+      match n_opt with
       | Some n -> Llvm.array_type element_llty n
-      | None -> make_fat_pointer ctx (Some element_llty)
-      end
-
+      | None -> make_fat_pointer ctx (Some element_llty))
   (* 単位型 () → void *)
   | TUnit -> Llvm.void_type ctx.llctx
-
   (* Never 型 → void (実際には到達不能) *)
   | TNever -> Llvm.void_type ctx.llctx
 
@@ -195,15 +176,18 @@ let rec get_type_size ctx ty =
   | TCon (TCInt Isize) | TCon (TCInt Usize) -> 8 (* x86_64 *)
   | TCon (TCFloat F32) -> 4
   | TCon (TCFloat F64) -> 8
-  | TCon TCString -> 16  (* FAT pointer: { ptr(8), len(8) } *)
-  | TArray _ -> 16       (* FAT pointer *)
+  | TCon TCString -> 16 (* FAT pointer: { ptr(8), len(8) } *)
+  | TArray _ -> 16 (* FAT pointer *)
   | TSlice (_, Some n) ->
-      let elem_size = get_type_size ctx (match ty with TSlice (t, _) -> t | _ -> assert false) in
+      let elem_size =
+        get_type_size ctx
+          (match ty with TSlice (t, _) -> t | _ -> assert false)
+      in
       elem_size * n
-  | TSlice (_, None) -> 16  (* FAT pointer *)
+  | TSlice (_, None) -> 16 (* FAT pointer *)
   | TUnit -> 0
   | TNever -> 0
-  | _ -> 8  (* デフォルト（ポインタサイズ） *)
+  | _ -> 8 (* デフォルト（ポインタサイズ） *)
 
 (** 型のアラインメントを取得（バイト単位）
  *
@@ -220,19 +204,17 @@ let rec get_type_alignment ctx ty =
   | TCon (TCInt Isize) | TCon (TCInt Usize) -> 8
   | TCon (TCFloat F32) -> 4
   | TCon (TCFloat F64) -> 8
-  | TCon TCString -> 8   (* ポインタアラインメント *)
+  | TCon TCString -> 8 (* ポインタアラインメント *)
   | TArray _ -> 8
   | TSlice _ -> 8
   | TTuple tys ->
       (* タプルのアラインメントは最大要素のアラインメント *)
-      List.fold_left (fun acc ty ->
-        max acc (get_type_alignment ctx ty)
-      ) 1 tys
+      List.fold_left (fun acc ty -> max acc (get_type_alignment ctx ty)) 1 tys
   | TRecord fields ->
       (* レコードのアラインメントは最大フィールドのアラインメント *)
-      List.fold_left (fun acc (_, ty) ->
-        max acc (get_type_alignment ctx ty)
-      ) 1 fields
+      List.fold_left
+        (fun acc (_, ty) -> max acc (get_type_alignment ctx ty))
+        1 fields
   | TUnit -> 1
   | TNever -> 1
-  | _ -> 8  (* デフォルト（ポインタアラインメント） *)
+  | _ -> 8 (* デフォルト（ポインタアラインメント） *)

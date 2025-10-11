@@ -21,29 +21,25 @@ let lex_one s =
   Lexer.token lexbuf
 
 let rec lex_all lexbuf =
-  match Lexer.token lexbuf with
-  | EOF -> ()
-  | _ -> lex_all lexbuf
+  match Lexer.token lexbuf with EOF -> () | _ -> lex_all lexbuf
 
 let expect_tokens desc expected actual =
-  if expected = actual then
-    Printf.printf "✓ %s\n" desc
-  else begin
+  if expected = actual then Printf.printf "✓ %s\n" desc
+  else (
     Printf.printf "✗ %s\n" desc;
-    Printf.printf "  Expected: [%s]\n" (String.concat "; " (List.map Token.to_string expected));
-    Printf.printf "  Actual:   [%s]\n" (String.concat "; " (List.map Token.to_string actual));
-    exit 1
-  end
+    Printf.printf "  Expected: [%s]\n"
+      (String.concat "; " (List.map Token.to_string expected));
+    Printf.printf "  Actual:   [%s]\n"
+      (String.concat "; " (List.map Token.to_string actual));
+    exit 1)
 
 let expect_token desc expected actual =
-  if expected = actual then
-    Printf.printf "✓ %s\n" desc
-  else begin
+  if expected = actual then Printf.printf "✓ %s\n" desc
+  else (
     Printf.printf "✗ %s\n" desc;
     Printf.printf "  Expected: %s\n" (Token.to_string expected);
     Printf.printf "  Actual:   %s\n" (Token.to_string actual);
-    exit 1
-  end
+    exit 1)
 
 let expect_lexer_error desc input expected_prefix =
   let lexbuf = Lexing.from_string input in
@@ -51,14 +47,12 @@ let expect_lexer_error desc input expected_prefix =
     lex_all lexbuf;
     Printf.printf "✗ %s: expected lexer error but none occurred\n" desc;
     exit 1
-  with
-  | Lexer.Lexer_error (msg, span) ->
-      if expected_prefix = "" || String.starts_with ~prefix:expected_prefix msg then
-        Printf.printf "✓ %s (span %d-%d)\n" desc span.start span.end_
-      else begin
-        Printf.printf "✗ %s: unexpected message '%s'\n" desc msg;
-        exit 1
-      end
+  with Lexer.Lexer_error (msg, span) ->
+    if expected_prefix = "" || String.starts_with ~prefix:expected_prefix msg
+    then Printf.printf "✓ %s (span %d-%d)\n" desc span.start span.end_
+    else (
+      Printf.printf "✗ %s: unexpected message '%s'\n" desc msg;
+      exit 1)
 
 (* ========== キーワードテスト ========== *)
 
@@ -79,7 +73,8 @@ let test_identifiers () =
   expect_token "identifier: simple" (IDENT "foo") (lex_one "foo");
   expect_token "identifier: underscore" (IDENT "_aux") (lex_one "_aux");
   expect_token "identifier: camelCase" (IDENT "parseExpr") (lex_one "parseExpr");
-  expect_token "identifier: snake_case" (IDENT "parse_expr") (lex_one "parse_expr");
+  expect_token "identifier: snake_case" (IDENT "parse_expr")
+    (lex_one "parse_expr");
   expect_token "identifier: digits" (IDENT "var123") (lex_one "var123");
   (* Phase 1 では ASCII のみサポート *)
   (* expect_token "identifier: unicode" (IDENT "解析器") (lex_one "解析器") *)
@@ -92,7 +87,9 @@ let test_integers () =
   expect_token "integer: binary" (INT ("1010", Ast.Base2)) (lex_one "0b1010");
   expect_token "integer: octal" (INT ("755", Ast.Base8)) (lex_one "0o755");
   expect_token "integer: hex" (INT ("FF", Ast.Base16)) (lex_one "0xFF");
-  expect_token "integer: underscore" (INT ("1000000", Ast.Base10)) (lex_one "1_000_000")
+  expect_token "integer: underscore"
+    (INT ("1000000", Ast.Base10))
+    (lex_one "1_000_000")
 
 (* ========== 浮動小数リテラルテスト ========== *)
 
@@ -113,10 +110,18 @@ let test_chars () =
 (* ========== 文字列リテラルテスト ========== *)
 
 let test_strings () =
-  expect_token "string: normal" (STRING ("hello", Ast.Normal)) (lex_one "\"hello\"");
-  expect_token "string: escape" (STRING ("line1\nline2", Ast.Normal)) (lex_one "\"line1\\nline2\"");
-  expect_token "string: raw" (STRING ("\\n\\t", Ast.Raw)) (lex_one "r\"\\n\\t\"");
-  expect_token "string: multiline" (STRING ("line1\nline2", Ast.Multiline)) (lex_one "\"\"\"line1\nline2\"\"\"")
+  expect_token "string: normal"
+    (STRING ("hello", Ast.Normal))
+    (lex_one "\"hello\"");
+  expect_token "string: escape"
+    (STRING ("line1\nline2", Ast.Normal))
+    (lex_one "\"line1\\nline2\"");
+  expect_token "string: raw"
+    (STRING ("\\n\\t", Ast.Raw))
+    (lex_one "r\"\\n\\t\"");
+  expect_token "string: multiline"
+    (STRING ("line1\nline2", Ast.Multiline))
+    (lex_one "\"\"\"line1\nline2\"\"\"")
 
 (* ========== 演算子テスト ========== *)
 
@@ -137,34 +142,45 @@ let test_operators () =
 
 let test_comments () =
   expect_tokens "line comment"
-    [IDENT "before"; IDENT "after"; EOF]
+    [ IDENT "before"; IDENT "after"; EOF ]
     (lex_string "before // comment\nafter");
   expect_tokens "block comment"
-    [IDENT "before"; IDENT "after"; EOF]
+    [ IDENT "before"; IDENT "after"; EOF ]
     (lex_string "before /* comment */ after");
   expect_tokens "nested block comment"
-    [IDENT "before"; IDENT "after"; EOF]
+    [ IDENT "before"; IDENT "after"; EOF ]
     (lex_string "before /* outer /* inner */ outer */ after")
 
 (* ========== 複合トークン列テスト ========== *)
 
 let test_token_sequence () =
   expect_tokens "let binding"
-    [LET; IDENT "x"; EQ; INT ("42", Ast.Base10); EOF]
+    [ LET; IDENT "x"; EQ; INT ("42", Ast.Base10); EOF ]
     (lex_string "let x = 42");
   expect_tokens "function call"
-    [IDENT "add"; LPAREN; INT ("1", Ast.Base10); COMMA; INT ("2", Ast.Base10); RPAREN; EOF]
+    [
+      IDENT "add";
+      LPAREN;
+      INT ("1", Ast.Base10);
+      COMMA;
+      INT ("2", Ast.Base10);
+      RPAREN;
+      EOF;
+    ]
     (lex_string "add(1, 2)");
   expect_tokens "pipe expression"
-    [IDENT "x"; PIPE; IDENT "f"; PIPE; IDENT "g"; EOF]
+    [ IDENT "x"; PIPE; IDENT "f"; PIPE; IDENT "g"; EOF ]
     (lex_string "x |> f |> g")
 
 (* ========== エラーテスト ========== *)
 
 let test_lexer_errors () =
-  expect_lexer_error "lexer error: unexpected char" "$invalid" "Unexpected character";
-  expect_lexer_error "lexer error: unterminated string" "\"hello" "Unterminated string";
-  expect_lexer_error "lexer error: unterminated comment" "/* not closed" "Unterminated block comment"
+  expect_lexer_error "lexer error: unexpected char" "$invalid"
+    "Unexpected character";
+  expect_lexer_error "lexer error: unterminated string" "\"hello"
+    "Unterminated string";
+  expect_lexer_error "lexer error: unterminated comment" "/* not closed"
+    "Unterminated block comment"
 
 (* ========== メイン ========== *)
 

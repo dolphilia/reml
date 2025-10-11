@@ -4,6 +4,7 @@
  * LSP（Language Server Protocol）互換の JSON 形式で出力する機能を提供する。
  *)
 
+val diagnostics_to_json : ?lsp_compatible:bool -> Diagnostic.t list -> string
 (** 複数の診断を JSON 配列に変換
  *
  * 出力形式（Reml 独自形式、デフォルト）:
@@ -50,12 +51,11 @@
  * @param lsp_compatible LSP 互換形式を使用するか（デフォルト: false）
  * @return JSON 文字列（整形済み）
  *)
-val diagnostics_to_json : ?lsp_compatible:bool -> Diagnostic.t list -> string
 
+val diagnostic_to_json : ?lsp_compatible:bool -> Diagnostic.t -> string
 (** 単一の診断を JSON 文字列に変換
  *
  * @param diag 診断情報
  * @param lsp_compatible LSP 互換形式を使用するか（デフォルト: false）
  * @return JSON 文字列（整形済み）
  *)
-val diagnostic_to_json : ?lsp_compatible:bool -> Diagnostic.t -> string

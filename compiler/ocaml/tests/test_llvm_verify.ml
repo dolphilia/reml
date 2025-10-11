@@ -18,9 +18,8 @@ let run_test name fn =
   try
     fn ();
     incr passed;
-    print_endline "成功";
-  with exn ->
-    Printf.printf "失敗\n    %s\n" (Printexc.to_string exn)
+    print_endline "成功"
+  with exn -> Printf.printf "失敗\n    %s\n" (Printexc.to_string exn)
 
 let finish () =
   Printf.printf "\n結果: %d / %d テスト成功\n%!" !passed !test_index;
@@ -48,10 +47,10 @@ let with_temp_file contents k =
   Fun.protect
     ~finally:(fun () -> Sys.remove filename)
     (fun () ->
-       let oc = open_out filename in
-       output_string oc contents;
-       close_out oc;
-       k filename)
+      let oc = open_out filename in
+      output_string oc contents;
+      close_out oc;
+      k filename)
 
 (* ========== テストケース ========== *)
 
@@ -59,24 +58,25 @@ let test_verify_success () =
   let llmodule = build_constant_module () in
   match verify_llvm_ir llmodule with
   | Ok () -> ()
-  | Error err ->
-      failwith (Printf.sprintf "検証が失敗しました: %s" (string_of_error err))
+  | Error err -> failwith (Printf.sprintf "検証が失敗しました: %s" (string_of_error err))
 
 let test_verify_failure () =
   (* 明らかに壊れたIR（関数終端がない）を渡して失敗を確認する *)
-  let invalid_ir = {|
+  let invalid_ir =
+    {|
 ; ModuleID = 'broken'
 define i64 @broken() {
 entry:
   %0 = add i64 1, 2
-|} in
+|}
+  in
   with_temp_file invalid_ir (fun path ->
       match verify_llvm_ir_file path with
       | Error (AssembleError _) -> ()
       | Error err ->
-          failwith (Printf.sprintf "期待したAssembleErrorではありません: %s" (string_of_error err))
-      | Ok () ->
-          failwith "無効なIRが検証を通過しました")
+          failwith
+            (Printf.sprintf "期待したAssembleErrorではありません: %s" (string_of_error err))
+      | Ok () -> failwith "無効なIRが検証を通過しました")
 
 (* ========== エントリポイント ========== *)
 

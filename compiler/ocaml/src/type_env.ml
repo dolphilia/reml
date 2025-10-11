@@ -26,15 +26,12 @@ let fresh_builtin_var =
     decr counter;
     { tv_id = id; tv_name = Some name }
 
+type env = { bindings : (string * type_scheme) list; parent : env option }
 (** 型環境
  *
  * bindings: 現在のスコープの束縛
  * parent: 親スコープの環境（Noneはトップレベル）
  *)
-type env = {
-  bindings: (string * type_scheme) list;
-  parent: env option;
-}
 
 (* ========== 基本操作 ========== *)
 
@@ -55,17 +52,14 @@ let extend name scheme env =
 let rec lookup name env =
   match List.assoc_opt name env.bindings with
   | Some scheme -> Some scheme
-  | None ->
-      match env.parent with
-      | Some parent -> lookup name parent
-      | None -> None
+  | None -> (
+      match env.parent with Some parent -> lookup name parent | None -> None)
 
 (** 新しいスコープに入る
  *
  * 現在の環境を親として持つ新しい空の環境を作成
  *)
-let enter_scope env =
-  { bindings = []; parent = Some env }
+let enter_scope env = { bindings = []; parent = Some env }
 
 (** スコープから出る
  *
@@ -97,16 +91,21 @@ let initial_env =
    * None : ∀a. Option<a>
    *)
   let a_some = fresh_builtin_var "Option.a" in
-  let env = extend "Some" {
-    quantified = [a_some];
-    body = TArrow (TVar a_some, ty_option (TVar a_some))
-  } env in
+  let env =
+    extend "Some"
+      {
+        quantified = [ a_some ];
+        body = TArrow (TVar a_some, ty_option (TVar a_some));
+      }
+      env
+  in
 
   let a_none = fresh_builtin_var "Option.a" in
-  let env = extend "None" {
-    quantified = [a_none];
-    body = ty_option (TVar a_none)
-  } env in
+  let env =
+    extend "None"
+      { quantified = [ a_none ]; body = ty_option (TVar a_none) }
+      env
+  in
 
   (* Result<T, E> のコンストラクタ
    * Ok : ∀a, e. a -> Result<a, e>
@@ -114,25 +113,30 @@ let initial_env =
    *)
   let a_ok = fresh_builtin_var "Result.a" in
   let e_ok = fresh_builtin_var "Result.e" in
-  let env = extend "Ok" {
-    quantified = [a_ok; e_ok];
-    body = TArrow (TVar a_ok, ty_result (TVar a_ok) (TVar e_ok))
-  } env in
+  let env =
+    extend "Ok"
+      {
+        quantified = [ a_ok; e_ok ];
+        body = TArrow (TVar a_ok, ty_result (TVar a_ok) (TVar e_ok));
+      }
+      env
+  in
 
   let a_err = fresh_builtin_var "Result.a" in
   let e_err = fresh_builtin_var "Result.e" in
-  let env = extend "Err" {
-    quantified = [a_err; e_err];
-    body = TArrow (TVar e_err, ty_result (TVar a_err) (TVar e_err))
-  } env in
+  let env =
+    extend "Err"
+      {
+        quantified = [ a_err; e_err ];
+        body = TArrow (TVar e_err, ty_result (TVar a_err) (TVar e_err));
+      }
+      env
+  in
 
   (* Never 型（空集合、到達不能を表現）
    * 仕様書 3-1 §2.1: Never = Result<Never, Never>
    *)
-  let env = extend "Never" {
-    quantified = [];
-    body = ty_never
-  } env in
+  let env = extend "Never" { quantified = []; body = ty_never } env in
 
   env
 
@@ -140,24 +144,23 @@ let initial_env =
 
 (** 環境に複数の束縛を一度に追加 *)
 let extend_many bindings env =
-  List.fold_left (fun env (name, scheme) ->
-    extend name scheme env
-  ) env bindings
+  List.fold_left (fun env (name, scheme) -> extend name scheme env) env bindings
 
 (** 環境の文字列表現（デバッグ用） *)
 let rec string_of_env env =
-  let bindings_str = List.map (fun (name, scheme) ->
-    Printf.sprintf "  %s : %s" name (string_of_scheme scheme)
-  ) env.bindings in
+  let bindings_str =
+    List.map
+      (fun (name, scheme) ->
+        Printf.sprintf "  %s : %s" name (string_of_scheme scheme))
+      env.bindings
+  in
   let current = String.concat "\n" bindings_str in
   match env.parent with
   | None -> current
-  | Some parent ->
-      current ^ "\n--- parent scope ---\n" ^ string_of_env parent
+  | Some parent -> current ^ "\n--- parent scope ---\n" ^ string_of_env parent
 
 (** 環境内の識別子の存在確認 *)
-let mem name env =
-  Option.is_some (lookup name env)
+let mem name env = Option.is_some (lookup name env)
 
 (** 環境から識別子を取得（見つからない場合は例外） *)
 let find name env =

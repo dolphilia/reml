@@ -8,8 +8,8 @@
 
 open Llvm
 
-external create_type_attr_by_kind
-  : llcontext -> llattrkind -> lltype -> llattribute
+external create_type_attr_by_kind :
+  llcontext -> llattrkind -> lltype -> llattribute
   = "reml_llvm_create_type_attr_by_kind"
 
 (** 任意の属性名に対して型付き属性を生成する。
@@ -33,9 +33,7 @@ let create_attr_with_fallback attr_name llctx llty =
   with Llvm.UnknownAttribute _ -> Llvm.create_string_attr llctx attr_name ""
 
 (** sret 用の型付き属性を生成する *)
-let create_sret_attr llctx llty =
-  create_attr_with_fallback "sret" llctx llty
+let create_sret_attr llctx llty = create_attr_with_fallback "sret" llctx llty
 
 (** byval 用の型付き属性を生成する *)
-let create_byval_attr llctx llty =
-  create_attr_with_fallback "byval" llctx llty
+let create_byval_attr llctx llty = create_attr_with_fallback "byval" llctx llty

@@ -6,46 +6,92 @@
 
 type token =
   (* キーワード *)
-  | MODULE | USE | AS | PUB | SELF | SUPER
-  | LET | VAR | FN | TYPE | ALIAS | NEW | TRAIT | IMPL | EXTERN
-  | EFFECT | OPERATION | HANDLER | CONDUCTOR | CHANNELS | EXECUTION | MONITORING
-  | IF | THEN | ELSE | MATCH | WITH | FOR | IN | WHILE | LOOP | RETURN | DEFER | UNSAFE
-  | PERFORM | DO | HANDLE
+  | MODULE
+  | USE
+  | AS
+  | PUB
+  | SELF
+  | SUPER
+  | LET
+  | VAR
+  | FN
+  | TYPE
+  | ALIAS
+  | NEW
+  | TRAIT
+  | IMPL
+  | EXTERN
+  | EFFECT
+  | OPERATION
+  | HANDLER
+  | CONDUCTOR
+  | CHANNELS
+  | EXECUTION
+  | MONITORING
+  | IF
+  | THEN
+  | ELSE
+  | MATCH
+  | WITH
+  | FOR
+  | IN
+  | WHILE
+  | LOOP
+  | RETURN
+  | DEFER
+  | UNSAFE
+  | PERFORM
+  | DO
+  | HANDLE
   | WHERE
-  | TRUE | FALSE
-  | BREAK | CONTINUE  (* 将来予約 *)
-
+  | TRUE
+  | FALSE
+  | BREAK
+  | CONTINUE (* 将来予約 *)
   (* 演算子・区切り *)
-  | PIPE           (* |> *)
-  | CHANNEL_PIPE   (* ~> *)
-  | DOT            (* . *)
-  | COMMA          (* , *)
-  | SEMICOLON      (* ; *)
-  | COLON          (* : *)
-  | AT             (* @ *)
-  | BAR            (* | *)
-  | EQ             (* = *)
-  | COLONEQ        (* := *)
-  | ARROW          (* -> *)
-  | DARROW         (* => *)
-  | LPAREN | RPAREN
-  | LBRACKET | RBRACKET
-  | LBRACE | RBRACE
-  | PLUS | MINUS | STAR | SLASH | PERCENT | POW  (* ^ *)
-  | EQEQ | NE | LT | LE | GT | GE
-  | AND | OR | NOT
-  | QUESTION       (* ? *)
-  | DOTDOT         (* .. *)
-  | UNDERSCORE     (* _ *)
-
+  | PIPE (* |> *)
+  | CHANNEL_PIPE (* ~> *)
+  | DOT (* . *)
+  | COMMA (* , *)
+  | SEMICOLON (* ; *)
+  | COLON (* : *)
+  | AT (* @ *)
+  | BAR (* | *)
+  | EQ (* = *)
+  | COLONEQ (* := *)
+  | ARROW (* -> *)
+  | DARROW (* => *)
+  | LPAREN
+  | RPAREN
+  | LBRACKET
+  | RBRACKET
+  | LBRACE
+  | RBRACE
+  | PLUS
+  | MINUS
+  | STAR
+  | SLASH
+  | PERCENT
+  | POW (* ^ *)
+  | EQEQ
+  | NE
+  | LT
+  | LE
+  | GT
+  | GE
+  | AND
+  | OR
+  | NOT
+  | QUESTION (* ? *)
+  | DOTDOT (* .. *)
+  | UNDERSCORE (* _ *)
   (* リテラル *)
   | INT of (string * Ast.int_base)
   | FLOAT of string
   | CHAR of string
   | STRING of (string * Ast.string_kind)
-  | IDENT of string          (** 先頭が小文字/アンダースコアの識別子 *)
-  | UPPER_IDENT of string    (** 先頭が大文字の識別子（列挙子など） *)
-
+  | IDENT of string  (** 先頭が小文字/アンダースコアの識別子 *)
+  | UPPER_IDENT of string  (** 先頭が大文字の識別子（列挙子など） *)
   (* その他 *)
   | EOF
 
@@ -140,50 +186,51 @@ let to_string = function
   | EOF -> "EOF"
 
 (** 予約語テーブル *)
-let keyword_table = [
-  ("module", MODULE);
-  ("use", USE);
-  ("as", AS);
-  ("pub", PUB);
-  ("self", SELF);
-  ("super", SUPER);
-  ("let", LET);
-  ("var", VAR);
-  ("fn", FN);
-  ("type", TYPE);
-  ("alias", ALIAS);
-  ("new", NEW);
-  ("trait", TRAIT);
-  ("impl", IMPL);
-  ("extern", EXTERN);
-  ("effect", EFFECT);
-  ("operation", OPERATION);
-  ("handler", HANDLER);
-  ("conductor", CONDUCTOR);
-  ("channels", CHANNELS);
-  ("execution", EXECUTION);
-  ("monitoring", MONITORING);
-  ("if", IF);
-  ("then", THEN);
-  ("else", ELSE);
-  ("match", MATCH);
-  ("with", WITH);
-  ("for", FOR);
-  ("in", IN);
-  ("while", WHILE);
-  ("loop", LOOP);
-  ("return", RETURN);
-  ("defer", DEFER);
-  ("unsafe", UNSAFE);
-  ("perform", PERFORM);
-  ("do", DO);
-  ("handle", HANDLE);
-  ("where", WHERE);
-  ("true", TRUE);
-  ("false", FALSE);
-  ("break", BREAK);
-  ("continue", CONTINUE);
-]
+let keyword_table =
+  [
+    ("module", MODULE);
+    ("use", USE);
+    ("as", AS);
+    ("pub", PUB);
+    ("self", SELF);
+    ("super", SUPER);
+    ("let", LET);
+    ("var", VAR);
+    ("fn", FN);
+    ("type", TYPE);
+    ("alias", ALIAS);
+    ("new", NEW);
+    ("trait", TRAIT);
+    ("impl", IMPL);
+    ("extern", EXTERN);
+    ("effect", EFFECT);
+    ("operation", OPERATION);
+    ("handler", HANDLER);
+    ("conductor", CONDUCTOR);
+    ("channels", CHANNELS);
+    ("execution", EXECUTION);
+    ("monitoring", MONITORING);
+    ("if", IF);
+    ("then", THEN);
+    ("else", ELSE);
+    ("match", MATCH);
+    ("with", WITH);
+    ("for", FOR);
+    ("in", IN);
+    ("while", WHILE);
+    ("loop", LOOP);
+    ("return", RETURN);
+    ("defer", DEFER);
+    ("unsafe", UNSAFE);
+    ("perform", PERFORM);
+    ("do", DO);
+    ("handle", HANDLE);
+    ("where", WHERE);
+    ("true", TRUE);
+    ("false", FALSE);
+    ("break", BREAK);
+    ("continue", CONTINUE);
+  ]
 
 (** 識別子を予約語と照合 *)
 let is_uppercase_ident str =
@@ -198,5 +245,4 @@ let is_uppercase_ident str =
 let keyword_or_ident str =
   match List.assoc_opt str keyword_table with
   | Some tok -> tok
-  | None ->
-      if is_uppercase_ident str then UPPER_IDENT str else IDENT str
+  | None -> if is_uppercase_ident str then UPPER_IDENT str else IDENT str

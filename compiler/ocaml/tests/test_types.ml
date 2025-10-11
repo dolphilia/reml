@@ -18,14 +18,14 @@ let assert_equal_int msg expected actual =
     failwith (Printf.sprintf "%s: expected %d, got %d" msg expected actual)
 
 let assert_equal msg expected actual =
-  if expected <> actual then
-    failwith (Printf.sprintf "%s: mismatch" msg)
+  if expected <> actual then failwith (Printf.sprintf "%s: mismatch" msg)
 
 let assert_true msg cond =
   if not cond then failwith (Printf.sprintf "%s: assertion failed" msg)
 
 let assert_false msg cond =
-  if cond then failwith (Printf.sprintf "%s: assertion failed (expected false)" msg)
+  if cond then
+    failwith (Printf.sprintf "%s: assertion failed (expected false)" msg)
 
 let assert_some msg = function
   | Some _ -> ()
@@ -80,16 +80,12 @@ let test_type_scheme () =
 
   (* 多相型: ∀a. a -> a *)
   let a = TypeVarGen.fresh (Some "a") in
-  let id_scheme = {
-    quantified = [a];
-    body = TArrow (TVar a, TVar a);
-  } in
+  let id_scheme = { quantified = [ a ]; body = TArrow (TVar a, TVar a) } in
   assert_true "id_scheme is polymorphic" (is_polymorphic id_scheme);
 
   (* 型スキームの文字列表現 *)
   let id_str = string_of_scheme id_scheme in
-  assert_true "id_scheme string contains forall"
-    (String.length id_str > 0);
+  assert_true "id_scheme string contains forall" (String.length id_str > 0);
 
   Printf.printf "  ✓ Type scheme tests passed\n"
 
@@ -109,16 +105,14 @@ let test_type_env () =
   assert_some "lookup x" (lookup "x" env);
 
   (match lookup "x" env with
-   | Some scheme ->
-       assert_equal "x type" ty_i64 (scheme_body scheme)
-   | None -> failwith "lookup x failed");
+  | Some scheme -> assert_equal "x type" ty_i64 (scheme_body scheme)
+  | None -> failwith "lookup x failed");
 
   (* シャドーイング *)
   let env = extend "x" (mono_scheme ty_string) env in
   (match lookup "x" env with
-   | Some scheme ->
-       assert_equal "x shadowed" ty_string (scheme_body scheme)
-   | None -> failwith "lookup x after shadow failed");
+  | Some scheme -> assert_equal "x shadowed" ty_string (scheme_body scheme)
+  | None -> failwith "lookup x after shadow failed");
 
   (* スコープのネスト *)
   let env = extend "y" (mono_scheme ty_bool) env in
@@ -130,15 +124,13 @@ let test_type_env () =
   (* 子スコープで上書き *)
   let env2 = extend "y" (mono_scheme ty_char) env2 in
   (match lookup "y" env2 with
-   | Some scheme ->
-       assert_equal "y in child scope" ty_char (scheme_body scheme)
-   | None -> failwith "lookup y in child scope failed");
+  | Some scheme -> assert_equal "y in child scope" ty_char (scheme_body scheme)
+  | None -> failwith "lookup y in child scope failed");
 
   (* 親スコープは変更されていない *)
   (match lookup "y" env with
-   | Some scheme ->
-       assert_equal "y in parent scope" ty_bool (scheme_body scheme)
-   | None -> failwith "lookup y in parent scope failed");
+  | Some scheme -> assert_equal "y in parent scope" ty_bool (scheme_body scheme)
+  | None -> failwith "lookup y in parent scope failed");
 
   Printf.printf "  ✓ Type environment tests passed\n"
 
@@ -196,7 +188,7 @@ let test_substitution () =
 
   (* 型変数への代入 *)
   let a = TypeVarGen.fresh (Some "a") in
-  let subst = [(a, ty_i64)] in
+  let subst = [ (a, ty_i64) ] in
 
   (* 代入の適用 *)
   let result = apply_subst subst (TVar a) in
@@ -208,9 +200,9 @@ let test_substitution () =
   assert_equal "apply subst to arrow" (TArrow (ty_i64, ty_i64)) result;
 
   (* タプル型への代入 *)
-  let tuple_ty = TTuple [TVar a; ty_bool] in
+  let tuple_ty = TTuple [ TVar a; ty_bool ] in
   let result = apply_subst subst tuple_ty in
-  assert_equal "apply subst to tuple" (TTuple [ty_i64; ty_bool]) result;
+  assert_equal "apply subst to tuple" (TTuple [ ty_i64; ty_bool ]) result;
 
   Printf.printf "  ✓ Substitution tests passed\n"
 
@@ -237,7 +229,7 @@ let test_free_type_vars () =
   assert_equal_int "two free vars in arrow" 2 (List.length fvs);
 
   (* 型スキームの自由変数（量化変数は除外） *)
-  let scheme = { quantified = [a]; body = TArrow (TVar a, TVar b) } in
+  let scheme = { quantified = [ a ]; body = TArrow (TVar a, TVar b) } in
   let fvs = ftv_scheme scheme in
   assert_equal_int "one free var in scheme" 1 (List.length fvs);
 
@@ -263,7 +255,7 @@ let test_occurs_check () =
   assert_true "occurs in arrow" (occurs_check a fn_ty);
 
   (* タプル内に出現 *)
-  let tuple_ty = TTuple [ty_bool; TVar a] in
+  let tuple_ty = TTuple [ ty_bool; TVar a ] in
   assert_true "occurs in tuple" (occurs_check a tuple_ty);
 
   Printf.printf "  ✓ Occurs check tests passed\n"
@@ -280,18 +272,18 @@ let test_unification () =
   (* 同じ型定数の単一化 *)
   let result = unify empty_subst ty_i64 ty_i64 span in
   (match result with
-   | Ok subst -> assert_equal_int "same const unify" 0 (List.length subst)
-   | Error _ -> failwith "same const unify failed");
+  | Ok subst -> assert_equal_int "same const unify" 0 (List.length subst)
+  | Error _ -> failwith "same const unify failed");
 
   (* 型変数と型定数の単一化 *)
   let a = TypeVarGen.fresh (Some "a") in
   let result = unify empty_subst (TVar a) ty_i64 span in
   (match result with
-   | Ok subst ->
-       assert_equal_int "var-const unify" 1 (List.length subst);
-       let result = apply_subst subst (TVar a) in
-       assert_equal "var substituted" ty_i64 result
-   | Error _ -> failwith "var-const unify failed");
+  | Ok subst ->
+      assert_equal_int "var-const unify" 1 (List.length subst);
+      let result = apply_subst subst (TVar a) in
+      assert_equal "var substituted" ty_i64 result
+  | Error _ -> failwith "var-const unify failed");
 
   (* 関数型の単一化 *)
   TypeVarGen.reset ();
@@ -301,18 +293,18 @@ let test_unification () =
   let fn2 = TArrow (ty_bool, TVar b) in
   let result = unify empty_subst fn1 fn2 span in
   (match result with
-   | Ok subst ->
-       assert_equal_int "arrow unify" 2 (List.length subst);
-       let result = apply_subst subst fn1 in
-       assert_equal "arrow unified" (TArrow (ty_bool, ty_i64)) result
-   | Error _ -> failwith "arrow unify failed");
+  | Ok subst ->
+      assert_equal_int "arrow unify" 2 (List.length subst);
+      let result = apply_subst subst fn1 in
+      assert_equal "arrow unified" (TArrow (ty_bool, ty_i64)) result
+  | Error _ -> failwith "arrow unify failed");
 
   (* 型不一致 *)
   let result = unify empty_subst ty_i64 ty_bool span in
   (match result with
-   | Ok _ -> failwith "should fail on type mismatch"
-   | Error (UnificationFailure _) -> ()
-   | Error _ -> failwith "wrong error type");
+  | Ok _ -> failwith "should fail on type mismatch"
+  | Error (UnificationFailure _) -> ()
+  | Error _ -> failwith "wrong error type");
 
   (* Occurs check エラー *)
   TypeVarGen.reset ();
@@ -320,9 +312,9 @@ let test_unification () =
   let recursive = TArrow (TVar a, TVar a) in
   let result = unify empty_subst (TVar a) recursive span in
   (match result with
-   | Ok _ -> failwith "should fail on occurs check"
-   | Error (OccursCheck _) -> ()
-   | Error _ -> failwith "wrong error type");
+  | Ok _ -> failwith "should fail on occurs check"
+  | Error (OccursCheck _) -> ()
+  | Error _ -> failwith "wrong error type");
 
   Printf.printf "  ✓ Unification tests passed\n"
 

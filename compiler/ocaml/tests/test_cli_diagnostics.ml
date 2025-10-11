@@ -5,32 +5,24 @@
 
 (** テスト用の診断情報を生成 *)
 let make_test_diagnostic () =
-  let start_pos = Diagnostic.{
-    filename = "test.reml";
-    line = 2;
-    column = 5;
-    offset = 15;
-  } in
-  let end_pos = Diagnostic.{
-    filename = "test.reml";
-    line = 2;
-    column = 11;
-    offset = 21;
-  } in
-  Diagnostic.{
-    severity = Error;
-    severity_hint = None;
-    domain = Some Type;
-    code = Some "E7001";
-    message = "型が一致しません";
-    span = { start_pos; end_pos };
-    expected_summary = None;
-    notes = [
-      (None, "期待される型: i64");
-      (None, "実際の型:     String");
-    ];
-    fixits = [];
-  }
+  let start_pos =
+    Diagnostic.{ filename = "test.reml"; line = 2; column = 5; offset = 15 }
+  in
+  let end_pos =
+    Diagnostic.{ filename = "test.reml"; line = 2; column = 11; offset = 21 }
+  in
+  Diagnostic.
+    {
+      severity = Error;
+      severity_hint = None;
+      domain = Some Type;
+      code = Some "E7001";
+      message = "型が一致しません";
+      span = { start_pos; end_pos };
+      expected_summary = None;
+      notes = [ (None, "期待される型: i64"); (None, "実際の型:     String") ];
+      fixits = [];
+    }
 
 (** テスト用のソースコード *)
 let test_source = "fn main() -> i64 =\n  let x: String = \"hello\" in\n  x + 42"
@@ -40,18 +32,16 @@ let test_color_output () =
   let diag = make_test_diagnostic () in
 
   (* カラーなしでの出力 *)
-  let no_color_output = Cli.Diagnostic_formatter.format_diagnostic
-    ~source:(Some test_source)
-    ~diag
-    ~color_mode:Cli.Options.Never
+  let no_color_output =
+    Cli.Diagnostic_formatter.format_diagnostic ~source:(Some test_source) ~diag
+      ~color_mode:Cli.Options.Never
   in
   assert (not (String.contains no_color_output '\027'));
 
   (* カラーありでの出力 *)
-  let color_output = Cli.Diagnostic_formatter.format_diagnostic
-    ~source:(Some test_source)
-    ~diag
-    ~color_mode:Cli.Options.Always
+  let color_output =
+    Cli.Diagnostic_formatter.format_diagnostic ~source:(Some test_source) ~diag
+      ~color_mode:Cli.Options.Always
   in
   assert (String.contains color_output '\027');
 
@@ -75,15 +65,19 @@ let test_json_output () =
   assert (List.length diag_list = 1);
 
   let first_diag = List.hd diag_list in
-  let severity = first_diag
+  let severity =
+    first_diag
     |> Yojson.Basic.Util.member "severity"
-    |> Yojson.Basic.Util.to_string in
-  let code = first_diag
-    |> Yojson.Basic.Util.member "code"
-    |> Yojson.Basic.Util.to_string in
-  let message = first_diag
+    |> Yojson.Basic.Util.to_string
+  in
+  let code =
+    first_diag |> Yojson.Basic.Util.member "code" |> Yojson.Basic.Util.to_string
+  in
+  let message =
+    first_diag
     |> Yojson.Basic.Util.member "message"
-    |> Yojson.Basic.Util.to_string in
+    |> Yojson.Basic.Util.to_string
+  in
 
   assert (severity = "error");
   assert (code = "E7001");
@@ -95,10 +89,9 @@ let test_snippet_display () =
   let diag = make_test_diagnostic () in
 
   (* ソースコード付き出力を生成 *)
-  let output = Cli.Diagnostic_formatter.format_diagnostic
-    ~source:(Some test_source)
-    ~diag
-    ~color_mode:Cli.Options.Never
+  let output =
+    Cli.Diagnostic_formatter.format_diagnostic ~source:(Some test_source) ~diag
+      ~color_mode:Cli.Options.Never
   in
 
   (* スニペットに行番号区切り文字 " | " が含まれている *)
@@ -130,13 +123,12 @@ let test_snippet_display () =
 (** 複数診断のバッチ出力テスト *)
 let test_multiple_diagnostics () =
   let diag1 = make_test_diagnostic () in
-  let diag2 = { diag1 with
-    Diagnostic.message = "別のエラー";
-    code = Some "E7002";
-  } in
+  let diag2 =
+    { diag1 with Diagnostic.message = "別のエラー"; code = Some "E7002" }
+  in
 
   (* 複数診断の JSON 出力 *)
-  let json_str = Cli.Json_formatter.diagnostics_to_json [diag1; diag2] in
+  let json_str = Cli.Json_formatter.diagnostics_to_json [ diag1; diag2 ] in
   let json = Yojson.Basic.from_string json_str in
   let diagnostics = json |> Yojson.Basic.Util.member "diagnostics" in
   let diag_list = diagnostics |> Yojson.Basic.Util.to_list in

@@ -13,10 +13,11 @@
 type severity = Error | Warning | Note
 
 type severity_hint =
-  | Rollback    (* ロールバック推奨 *)
-  | Retry       (* 再試行推奨 *)
-  | Ignore      (* 無視可能 *)
-  | Escalate    (* エスカレーション必要 *)
+  | Rollback (* ロールバック推奨 *)
+  | Retry (* 再試行推奨 *)
+  | Ignore (* 無視可能 *)
+  | Escalate
+(* エスカレーション必要 *)
 
 (* ========== エラードメイン ========== *)
 
@@ -25,29 +26,20 @@ type severity_hint =
  * 仕様書 2-5 §A で定義されたドメイン分類
  *)
 type error_domain =
-  | Parser      (* 構文解析 *)
-  | Type        (* 型システム *)
-  | Config      (* 設定 *)
-  | Runtime     (* 実行時 *)
-  | Network     (* ネットワーク *)
-  | Data        (* データ *)
-  | Audit       (* 監査 *)
-  | Security    (* セキュリティ *)
-  | CLI         (* コマンドライン *)
+  | Parser (* 構文解析 *)
+  | Type (* 型システム *)
+  | Config (* 設定 *)
+  | Runtime (* 実行時 *)
+  | Network (* ネットワーク *)
+  | Data (* データ *)
+  | Audit (* 監査 *)
+  | Security (* セキュリティ *)
+  | CLI (* コマンドライン *)
 
 (* ========== 位置情報 ========== *)
 
-type location = {
-  filename : string;
-  line : int;
-  column : int;
-  offset : int;
-}
-
-type span = {
-  start_pos : location;
-  end_pos : location;
-}
+type location = { filename : string; line : int; column : int; offset : int }
+type span = { start_pos : location; end_pos : location }
 
 (* ========== 期待値 ========== *)
 
@@ -56,16 +48,17 @@ type span = {
  * 仕様書 2-5 §A の Expectation
  *)
 type expectation =
-  | Token of string         (* 具体トークン: ")", "if", "+" *)
-  | Keyword of string       (* キーワード *)
-  | Rule of string          (* 構文規則: "expression", "pattern" *)
-  | Eof                     (* 入力終端 *)
-  | Not of string           (* 否定: "直後に英数字が続かないこと" *)
-  | Class of string         (* 文字クラス: "digit", "identifier" *)
-  | Custom of string        (* 任意メッセージ *)
+  | Token of string (* 具体トークン: ")", "if", "+" *)
+  | Keyword of string (* キーワード *)
+  | Rule of string (* 構文規則: "expression", "pattern" *)
+  | Eof (* 入力終端 *)
+  | Not of string (* 否定: "直後に英数字が続かないこと" *)
+  | Class of string (* 文字クラス: "digit", "identifier" *)
+  | Custom of string (* 任意メッセージ *)
   (* 型関連の期待値 *)
-  | TypeExpected of string  (* 期待される型: "i64", "Bool" *)
-  | TraitBound of string    (* トレイト境界: "Eq", "Ord" *)
+  | TypeExpected of string (* 期待される型: "i64", "Bool" *)
+  | TraitBound of string
+(* トレイト境界: "Eq", "Ord" *)
 
 (* ========== 修正提案 ========== *)
 
@@ -74,49 +67,46 @@ type expectation =
  * 仕様書 2-5 §A の FixIt
  *)
 type fixit =
-  | Insert of { at: span; text: string }
-  | Replace of { at: span; text: string }
-  | Delete of { at: span }
+  | Insert of { at : span; text : string }
+  | Replace of { at : span; text : string }
+  | Delete of { at : span }
 
 (* ========== 期待値サマリ ========== *)
 
+type expectation_summary = {
+  message_key : string option; (* LSP/翻訳用キー *)
+  locale_args : string list; (* メッセージ引数 *)
+  humanized : string option; (* 自然言語フォールバック *)
+  context_note : string option; (* 文脈説明 *)
+  alternatives : expectation list; (* 候補一覧（優先順） *)
+}
 (** 期待値の人間可読サマリ
  *
  * 仕様書 2-5 §B-7 の ExpectationSummary
  *)
-type expectation_summary = {
-  message_key: string option;         (* LSP/翻訳用キー *)
-  locale_args: string list;           (* メッセージ引数 *)
-  humanized: string option;           (* 自然言語フォールバック *)
-  context_note: string option;        (* 文脈説明 *)
-  alternatives: expectation list;     (* 候補一覧（優先順） *)
-}
 
 (* ========== 診断情報 ========== *)
 
-(** 診断情報の完全な表現
- *
- * 仕様書 2-5 §A の Diagnostic
- *)
 type t = {
   severity : severity;
   severity_hint : severity_hint option;
   domain : error_domain option;
-  code : string option;               (* 安定ID: "E0001", "E7101" *)
-  message : string;                   (* 1行要約 *)
-  span : span;                        (* 主位置 *)
+  code : string option; (* 安定ID: "E0001", "E7101" *)
+  message : string; (* 1行要約 *)
+  span : span; (* 主位置 *)
   expected_summary : expectation_summary option;
-  notes : (span option * string) list;  (* 追加メモ（位置付き） *)
-  fixits : fixit list;                (* 修正提案 *)
+  notes : (span option * string) list; (* 追加メモ（位置付き） *)
+  fixits : fixit list; (* 修正提案 *)
 }
+(** 診断情報の完全な表現
+ *
+ * 仕様書 2-5 §A の Diagnostic
+ *)
 
 (* ========== ヘルパー関数 ========== *)
 
 (** 重要度ラベル（日本語） *)
-let severity_label = function
-  | Error -> "エラー"
-  | Warning -> "警告"
-  | Note -> "注記"
+let severity_label = function Error -> "エラー" | Warning -> "警告" | Note -> "注記"
 
 (** エラードメインラベル（日本語） *)
 let domain_label = function
@@ -134,7 +124,7 @@ let domain_label = function
 let location_of_pos (pos : Lexing.position) : location =
   let column = pos.pos_cnum - pos.pos_bol + 1 in
   {
-    filename = if pos.pos_fname = "" then "<入力>" else pos.pos_fname;
+    filename = (if pos.pos_fname = "" then "<入力>" else pos.pos_fname);
     line = pos.pos_lnum;
     column;
     offset = pos.pos_cnum;
@@ -147,18 +137,9 @@ let span_of_positions start_pos end_pos =
 (* ========== 診断情報の構築 ========== *)
 
 (** 診断情報の構築（Phase 1互換） *)
-let make
-    ?(severity = Error)
-    ?severity_hint
-    ?domain
-    ?code
-    ?(expected_summary = None)
-    ?(notes = [])
-    ?(fixits = [])
-    ~message
-    ~start_pos
-    ~end_pos
-    () =
+let make ?(severity = Error) ?severity_hint ?domain ?code
+    ?(expected_summary = None) ?(notes = []) ?(fixits = []) ~message ~start_pos
+    ~end_pos () =
   {
     severity;
     severity_hint;
@@ -172,16 +153,8 @@ let make
   }
 
 (** 型エラー用の診断情報を構築 *)
-let make_type_error
-    ?(severity = Error)
-    ?severity_hint
-    ?code
-    ?expected_summary
-    ?(notes = [])
-    ?(fixits = [])
-    ~message
-    ~span
-    () =
+let make_type_error ?(severity = Error) ?severity_hint ?code ?expected_summary
+    ?(notes = []) ?(fixits = []) ~message ~span () =
   {
     severity;
     severity_hint;
@@ -200,13 +173,16 @@ let of_lexer_error ~message ~start_pos ~end_pos =
 
 (** Parserエラー用（Phase 1互換） *)
 let of_parser_error ~message ~start_pos ~end_pos ~expected =
-  let expected_summary = Some {
-    message_key = None;
-    locale_args = [];
-    humanized = None;
-    context_note = None;
-    alternatives = expected;
-  } in
+  let expected_summary =
+    Some
+      {
+        message_key = None;
+        locale_args = [];
+        humanized = None;
+        context_note = None;
+        alternatives = expected;
+      }
+  in
   make ~domain:Parser ~expected_summary ~message ~start_pos ~end_pos ()
 
 (* ========== 期待値の文字列表現 ========== *)
@@ -231,98 +207,97 @@ let format_span span =
   if span.start_pos.line = span.end_pos.line then
     Printf.sprintf "%s (列 %d-%d)"
       (format_location span.start_pos)
-      span.start_pos.column
-      span.end_pos.column
+      span.start_pos.column span.end_pos.column
   else
     Printf.sprintf "%s - %s"
       (format_location span.start_pos)
       (format_location span.end_pos)
 
 let format_fixit = function
-  | Insert { at; text } ->
-      Printf.sprintf "挿入 [%s]: '%s'" (format_span at) text
-  | Replace { at; text } ->
-      Printf.sprintf "置換 [%s]: '%s'" (format_span at) text
-  | Delete { at } ->
-      Printf.sprintf "削除 [%s]" (format_span at)
+  | Insert { at; text } -> Printf.sprintf "挿入 [%s]: '%s'" (format_span at) text
+  | Replace { at; text } -> Printf.sprintf "置換 [%s]: '%s'" (format_span at) text
+  | Delete { at } -> Printf.sprintf "削除 [%s]" (format_span at)
 
 (** 診断情報の文字列表現 *)
 let to_string diag =
   let loc = format_location diag.span.start_pos in
 
   (* ヘッダー行 *)
-  let header = match (diag.code, diag.domain) with
-    | (Some code, Some domain) ->
-        Printf.sprintf "%s: %s[%s] (%s): %s"
-          loc (severity_label diag.severity) code (domain_label domain) diag.message
-    | (Some code, None) ->
-        Printf.sprintf "%s: %s[%s]: %s"
-          loc (severity_label diag.severity) code diag.message
-    | (None, Some domain) ->
-        Printf.sprintf "%s: %s (%s): %s"
-          loc (severity_label diag.severity) (domain_label domain) diag.message
-    | (None, None) ->
-        Printf.sprintf "%s: %s: %s"
-          loc (severity_label diag.severity) diag.message
+  let header =
+    match (diag.code, diag.domain) with
+    | Some code, Some domain ->
+        Printf.sprintf "%s: %s[%s] (%s): %s" loc
+          (severity_label diag.severity)
+          code (domain_label domain) diag.message
+    | Some code, None ->
+        Printf.sprintf "%s: %s[%s]: %s" loc
+          (severity_label diag.severity)
+          code diag.message
+    | None, Some domain ->
+        Printf.sprintf "%s: %s (%s): %s" loc
+          (severity_label diag.severity)
+          (domain_label domain) diag.message
+    | None, None ->
+        Printf.sprintf "%s: %s: %s" loc
+          (severity_label diag.severity)
+          diag.message
   in
 
   (* 期待値サマリ *)
-  let expected_str = match diag.expected_summary with
+  let expected_str =
+    match diag.expected_summary with
     | None -> []
     | Some summary ->
-        let alternatives_str = match summary.alternatives with
+        let alternatives_str =
+          match summary.alternatives with
           | [] -> None
           | items ->
-              let body = items
-                |> List.map string_of_expectation
-                |> String.concat ", " in
+              let body =
+                items |> List.map string_of_expectation |> String.concat ", "
+              in
               Some ("期待される入力: " ^ body)
         in
-        let humanized_str = match summary.humanized with
-          | None -> []
-          | Some s -> [s]
+        let humanized_str =
+          match summary.humanized with None -> [] | Some s -> [ s ]
         in
-        let context_str = match summary.context_note with
+        let context_str =
+          match summary.context_note with
           | None -> []
-          | Some c -> ["文脈: " ^ c]
+          | Some c -> [ "文脈: " ^ c ]
         in
-        (match alternatives_str with None -> [] | Some s -> [s])
+        (match alternatives_str with None -> [] | Some s -> [ s ])
         @ humanized_str @ context_str
   in
 
   (* 追加ノート *)
-  let notes_str = match diag.notes with
+  let notes_str =
+    match diag.notes with
     | [] -> []
     | notes ->
-        notes |> List.map (function
-          | (None, note) -> "補足: " ^ note
-          | (Some span, note) ->
-              Printf.sprintf "補足 [%s]: %s" (format_span span) note
-        )
+        notes
+        |> List.map (function
+             | None, note -> "補足: " ^ note
+             | Some span, note ->
+                 Printf.sprintf "補足 [%s]: %s" (format_span span) note)
   in
 
   (* 修正提案 *)
-  let fixits_str = match diag.fixits with
+  let fixits_str =
+    match diag.fixits with
     | [] -> []
     | fixits ->
-        ["修正候補:"]
-        @ (fixits |> List.map (fun f -> "  - " ^ format_fixit f))
+        [ "修正候補:" ] @ (fixits |> List.map (fun f -> "  - " ^ format_fixit f))
   in
 
   (* 重要度ヒント *)
-  let hint_str = match diag.severity_hint with
+  let hint_str =
+    match diag.severity_hint with
     | None -> []
-    | Some Rollback -> ["推奨アクション: ロールバック"]
-    | Some Retry -> ["推奨アクション: 再試行"]
-    | Some Ignore -> ["推奨アクション: 無視可能"]
-    | Some Escalate -> ["推奨アクション: エスカレーション"]
+    | Some Rollback -> [ "推奨アクション: ロールバック" ]
+    | Some Retry -> [ "推奨アクション: 再試行" ]
+    | Some Ignore -> [ "推奨アクション: 無視可能" ]
+    | Some Escalate -> [ "推奨アクション: エスカレーション" ]
   in
 
-  let parts =
-    [header]
-    @ expected_str
-    @ notes_str
-    @ fixits_str
-    @ hint_str
-  in
+  let parts = [ header ] @ expected_str @ notes_str @ fixits_str @ hint_str in
   String.concat "\n" parts

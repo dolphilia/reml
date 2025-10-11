@@ -39,10 +39,12 @@ let severity_to_string = function
  * ```
  *)
 let location_to_json (loc : Diagnostic.location) : Yojson.Basic.t =
-  `Assoc [
-    ("line", `Int (loc.line - 1));       (* LSP は 0 始まり *)
-    ("character", `Int (loc.column - 1)) (* LSP は 0 始まり *)
-  ]
+  `Assoc
+    [
+      ("line", `Int (loc.line - 1));
+      (* LSP は 0 始まり *)
+      ("character", `Int (loc.column - 1)) (* LSP は 0 始まり *);
+    ]
 
 (** スパンを LSP Range に変換
  *
@@ -55,38 +57,45 @@ let location_to_json (loc : Diagnostic.location) : Yojson.Basic.t =
  * ```
  *)
 let span_to_lsp_range (span : Diagnostic.span) : Yojson.Basic.t =
-  `Assoc [
-    ("start", location_to_json span.start_pos);
-    ("end", location_to_json span.end_pos)
-  ]
+  `Assoc
+    [
+      ("start", location_to_json span.start_pos);
+      ("end", location_to_json span.end_pos);
+    ]
 
 (** 期待値を JSON に変換 *)
 let expectation_to_json (exp : Diagnostic.expectation) : Yojson.Basic.t =
   match exp with
-  | Token s -> `Assoc [("type", `String "token"); ("value", `String s)]
-  | Keyword s -> `Assoc [("type", `String "keyword"); ("value", `String s)]
-  | Rule s -> `Assoc [("type", `String "rule"); ("value", `String s)]
-  | Eof -> `Assoc [("type", `String "eof")]
-  | Not s -> `Assoc [("type", `String "not"); ("value", `String s)]
-  | Class s -> `Assoc [("type", `String "class"); ("value", `String s)]
-  | Custom s -> `Assoc [("type", `String "custom"); ("value", `String s)]
-  | TypeExpected t -> `Assoc [("type", `String "type"); ("value", `String t)]
-  | TraitBound t -> `Assoc [("type", `String "trait"); ("value", `String t)]
+  | Token s -> `Assoc [ ("type", `String "token"); ("value", `String s) ]
+  | Keyword s -> `Assoc [ ("type", `String "keyword"); ("value", `String s) ]
+  | Rule s -> `Assoc [ ("type", `String "rule"); ("value", `String s) ]
+  | Eof -> `Assoc [ ("type", `String "eof") ]
+  | Not s -> `Assoc [ ("type", `String "not"); ("value", `String s) ]
+  | Class s -> `Assoc [ ("type", `String "class"); ("value", `String s) ]
+  | Custom s -> `Assoc [ ("type", `String "custom"); ("value", `String s) ]
+  | TypeExpected t -> `Assoc [ ("type", `String "type"); ("value", `String t) ]
+  | TraitBound t -> `Assoc [ ("type", `String "trait"); ("value", `String t) ]
 
 (** 期待値サマリを JSON に変換 *)
-let expectation_summary_to_json (summary : Diagnostic.expectation_summary) : Yojson.Basic.t =
-  let fields = [
-    ("alternatives", `List (List.map expectation_to_json summary.alternatives));
-  ] in
-  let fields = match summary.message_key with
+let expectation_summary_to_json (summary : Diagnostic.expectation_summary) :
+    Yojson.Basic.t =
+  let fields =
+    [
+      ("alternatives", `List (List.map expectation_to_json summary.alternatives));
+    ]
+  in
+  let fields =
+    match summary.message_key with
     | Some key -> ("message_key", `String key) :: fields
     | None -> fields
   in
-  let fields = match summary.humanized with
+  let fields =
+    match summary.humanized with
     | Some h -> ("humanized", `String h) :: fields
     | None -> fields
   in
-  let fields = match summary.context_note with
+  let fields =
+    match summary.context_note with
     | Some c -> ("context_note", `String c) :: fields
     | None -> fields
   in
@@ -96,33 +105,28 @@ let expectation_summary_to_json (summary : Diagnostic.expectation_summary) : Yoj
 let note_to_json (span_opt, note) : Yojson.Basic.t =
   match span_opt with
   | Some span ->
-      `Assoc [
-        ("message", `String note);
-        ("location", span_to_lsp_range span)
-      ]
-  | None ->
-      `Assoc [("message", `String note)]
+      `Assoc [ ("message", `String note); ("location", span_to_lsp_range span) ]
+  | None -> `Assoc [ ("message", `String note) ]
 
 (** 修正提案（FixIt）を JSON に変換 *)
 let fixit_to_json (fixit : Diagnostic.fixit) : Yojson.Basic.t =
   match fixit with
   | Insert { at; text } ->
-      `Assoc [
-        ("kind", `String "insert");
-        ("range", span_to_lsp_range at);
-        ("text", `String text)
-      ]
+      `Assoc
+        [
+          ("kind", `String "insert");
+          ("range", span_to_lsp_range at);
+          ("text", `String text);
+        ]
   | Replace { at; text } ->
-      `Assoc [
-        ("kind", `String "replace");
-        ("range", span_to_lsp_range at);
-        ("text", `String text)
-      ]
+      `Assoc
+        [
+          ("kind", `String "replace");
+          ("range", span_to_lsp_range at);
+          ("text", `String text);
+        ]
   | Delete { at } ->
-      `Assoc [
-        ("kind", `String "delete");
-        ("range", span_to_lsp_range at)
-      ]
+      `Assoc [ ("kind", `String "delete"); ("range", span_to_lsp_range at) ]
 
 (** 診断情報を LSP 互換の JSON に変換
  *
@@ -139,21 +143,25 @@ let fixit_to_json (fixit : Diagnostic.fixit) : Yojson.Basic.t =
  * ```
  *)
 let diagnostic_to_lsp_json (diag : Diagnostic.t) : Yojson.Basic.t =
-  let fields = [
-    ("range", span_to_lsp_range diag.span);
-    ("severity", `Int (severity_to_lsp_int diag.severity));
-    ("message", `String diag.message);
-    ("source", `String "remlc");
-  ] in
+  let fields =
+    [
+      ("range", span_to_lsp_range diag.span);
+      ("severity", `Int (severity_to_lsp_int diag.severity));
+      ("message", `String diag.message);
+      ("source", `String "remlc");
+    ]
+  in
 
   (* コードを追加 *)
-  let fields = match diag.code with
+  let fields =
+    match diag.code with
     | Some code -> ("code", `String code) :: fields
     | None -> fields
   in
 
   (* ドメインを追加 *)
-  let fields = match diag.domain with
+  let fields =
+    match diag.domain with
     | Some domain ->
         let domain_label = Diagnostic.domain_label domain in
         ("domain", `String domain_label) :: fields
@@ -164,12 +172,12 @@ let diagnostic_to_lsp_json (diag : Diagnostic.t) : Yojson.Basic.t =
   let fields =
     if diag.notes <> [] then
       ("relatedInformation", `List (List.map note_to_json diag.notes)) :: fields
-    else
-      fields
+    else fields
   in
 
   (* 期待値サマリを追加 *)
-  let fields = match diag.expected_summary with
+  let fields =
+    match diag.expected_summary with
     | Some summary ->
         ("expected", expectation_summary_to_json summary) :: fields
     | None -> fields
@@ -179,8 +187,7 @@ let diagnostic_to_lsp_json (diag : Diagnostic.t) : Yojson.Basic.t =
   let fields =
     if diag.fixits <> [] then
       ("fixits", `List (List.map fixit_to_json diag.fixits)) :: fields
-    else
-      fields
+    else fields
   in
 
   `Assoc fields
@@ -205,26 +212,32 @@ let diagnostic_to_lsp_json (diag : Diagnostic.t) : Yojson.Basic.t =
  * ```
  *)
 let diagnostic_to_reml_json (diag : Diagnostic.t) : Yojson.Basic.t =
-  let fields = [
-    ("severity", `String (severity_to_string diag.severity));
-    ("message", `String diag.message);
-    ("location", `Assoc [
-      ("file", `String diag.span.start_pos.filename);
-      ("line", `Int diag.span.start_pos.line);
-      ("column", `Int diag.span.start_pos.column);
-      ("endLine", `Int diag.span.end_pos.line);
-      ("endColumn", `Int diag.span.end_pos.column);
-    ]);
-  ] in
+  let fields =
+    [
+      ("severity", `String (severity_to_string diag.severity));
+      ("message", `String diag.message);
+      ( "location",
+        `Assoc
+          [
+            ("file", `String diag.span.start_pos.filename);
+            ("line", `Int diag.span.start_pos.line);
+            ("column", `Int diag.span.start_pos.column);
+            ("endLine", `Int diag.span.end_pos.line);
+            ("endColumn", `Int diag.span.end_pos.column);
+          ] );
+    ]
+  in
 
   (* コードを追加 *)
-  let fields = match diag.code with
+  let fields =
+    match diag.code with
     | Some code -> ("code", `String code) :: fields
     | None -> fields
   in
 
   (* ドメインを追加 *)
-  let fields = match diag.domain with
+  let fields =
+    match diag.domain with
     | Some domain ->
         let domain_label = Diagnostic.domain_label domain in
         ("domain", `String domain_label) :: fields
@@ -236,16 +249,18 @@ let diagnostic_to_reml_json (diag : Diagnostic.t) : Yojson.Basic.t =
     if diag.notes <> [] then
       let note_messages = List.map (fun (_, note) -> `String note) diag.notes in
       ("notes", `List note_messages) :: fields
-    else
-      fields
+    else fields
   in
 
   (* 期待値を追加 *)
-  let fields = match diag.expected_summary with
+  let fields =
+    match diag.expected_summary with
     | Some summary when summary.alternatives <> [] ->
-        let expectations = List.map (fun exp ->
-          `String (Diagnostic.string_of_expectation exp)
-        ) summary.alternatives in
+        let expectations =
+          List.map
+            (fun exp -> `String (Diagnostic.string_of_expectation exp))
+            summary.alternatives
+        in
         ("expected", `List expectations) :: fields
     | _ -> fields
   in
@@ -254,8 +269,7 @@ let diagnostic_to_reml_json (diag : Diagnostic.t) : Yojson.Basic.t =
   let fields =
     if diag.fixits <> [] then
       ("fixits", `List (List.map fixit_to_json diag.fixits)) :: fields
-    else
-      fields
+    else fields
   in
 
   `Assoc fields
@@ -266,10 +280,13 @@ let diagnostic_to_reml_json (diag : Diagnostic.t) : Yojson.Basic.t =
  * @param lsp_compatible LSP 互換形式を使用するか（デフォルト: false）
  * @return JSON 文字列
  *)
-let diagnostics_to_json ?(lsp_compatible=false) (diags : Diagnostic.t list) : string =
-  let json_converter = if lsp_compatible then diagnostic_to_lsp_json else diagnostic_to_reml_json in
+let diagnostics_to_json ?(lsp_compatible = false) (diags : Diagnostic.t list) :
+    string =
+  let json_converter =
+    if lsp_compatible then diagnostic_to_lsp_json else diagnostic_to_reml_json
+  in
   let diagnostics_json = `List (List.map json_converter diags) in
-  let root = `Assoc [("diagnostics", diagnostics_json)] in
+  let root = `Assoc [ ("diagnostics", diagnostics_json) ] in
   Yojson.Basic.pretty_to_string root
 
 (** 単一の診断を JSON 文字列に変換
@@ -278,5 +295,6 @@ let diagnostics_to_json ?(lsp_compatible=false) (diags : Diagnostic.t list) : st
  * @param lsp_compatible LSP 互換形式を使用するか（デフォルト: false）
  * @return JSON 文字列
  *)
-let diagnostic_to_json ?(lsp_compatible=false) (diag : Diagnostic.t) : string =
-  diagnostics_to_json ~lsp_compatible [diag]
+let diagnostic_to_json ?(lsp_compatible = false) (diag : Diagnostic.t) : string
+    =
+  diagnostics_to_json ~lsp_compatible [ diag ]

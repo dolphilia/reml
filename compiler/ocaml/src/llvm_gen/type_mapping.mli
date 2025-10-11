@@ -14,29 +14,30 @@
  * - docs/spec/1-2-types-Inference.md
  *)
 
-(** LLVM コンテキスト *)
 type llvm_context = Llvm.llcontext
+(** LLVM コンテキスト *)
 
+type type_mapping_context = {
+  llctx : llvm_context;  (** LLVM コンテキスト *)
+  llmodule : Llvm.llmodule;  (** LLVM モジュール *)
+  mutable type_cache : (Types.ty, Llvm.lltype) Hashtbl.t;  (** 型変換キャッシュ *)
+}
 (** 型マッピングコンテキスト
  *
  * LLVM モジュールと型キャッシュを保持する。
  *)
-type type_mapping_context = {
-  llctx: llvm_context;                                (** LLVM コンテキスト *)
-  llmodule: Llvm.llmodule;                            (** LLVM モジュール *)
-  mutable type_cache: (Types.ty, Llvm.lltype) Hashtbl.t; (** 型変換キャッシュ *)
-}
 
-(** 型マッピングコンテキストの作成 *)
 val create_context : string -> type_mapping_context
+(** 型マッピングコンテキストの作成 *)
 
+val get_llcontext : type_mapping_context -> llvm_context
 (** LLVM コンテキストを取得
  *
  * @param ctx 型マッピングコンテキスト
  * @return LLVM コンテキスト
  *)
-val get_llcontext : type_mapping_context -> llvm_context
 
+val reml_type_to_llvm : type_mapping_context -> Types.ty -> Llvm.lltype
 (** Reml 型を LLVM 型に変換
  *
  * すべての Reml 型を対応する LLVM IR 型に変換する。
@@ -46,8 +47,8 @@ val get_llcontext : type_mapping_context -> llvm_context
  * @param ty Reml 型
  * @return LLVM IR 型
  *)
-val reml_type_to_llvm : type_mapping_context -> Types.ty -> Llvm.lltype
 
+val get_type_size : type_mapping_context -> Types.ty -> int
 (** 型のサイズを取得（バイト単位）
  *
  * ターゲットアーキテクチャにおける型のサイズを返す。
@@ -57,8 +58,8 @@ val reml_type_to_llvm : type_mapping_context -> Types.ty -> Llvm.lltype
  * @param ty Reml 型
  * @return サイズ（バイト）
  *)
-val get_type_size : type_mapping_context -> Types.ty -> int
 
+val get_type_alignment : type_mapping_context -> Types.ty -> int
 (** 型のアラインメントを取得（バイト単位）
  *
  * ターゲットアーキテクチャにおける型のアラインメント要件を返す。
@@ -67,8 +68,8 @@ val get_type_size : type_mapping_context -> Types.ty -> int
  * @param ty Reml 型
  * @return アラインメント（バイト）
  *)
-val get_type_alignment : type_mapping_context -> Types.ty -> int
 
+val make_fat_pointer : type_mapping_context -> Llvm.lltype option -> Llvm.lltype
 (** FAT pointer 型を作成
  *
  * スライス型や String 型で使用される { ptr, i64 } 構造体を生成する。
@@ -77,8 +78,8 @@ val get_type_alignment : type_mapping_context -> Types.ty -> int
  * @param element_ty 要素型（スライスの場合）
  * @return FAT pointer の LLVM 構造体型
  *)
-val make_fat_pointer : type_mapping_context -> Llvm.lltype option -> Llvm.lltype
 
+val make_tagged_union : type_mapping_context -> Llvm.lltype -> Llvm.lltype
 (** Tagged union 型を作成
  *
  * ADT（代数的データ型）で使用される { i32 tag, payload } 構造体を生成する。
@@ -87,8 +88,8 @@ val make_fat_pointer : type_mapping_context -> Llvm.lltype option -> Llvm.lltype
  * @param payload_ty ペイロード型
  * @return Tagged union の LLVM 構造体型
  *)
-val make_tagged_union : type_mapping_context -> Llvm.lltype -> Llvm.lltype
 
+val make_closure : type_mapping_context -> Llvm.lltype -> Llvm.lltype
 (** クロージャ型を作成
  *
  * クロージャで使用される { env_ptr*, code_ptr } 構造体を生成する。
@@ -97,4 +98,3 @@ val make_tagged_union : type_mapping_context -> Llvm.lltype -> Llvm.lltype
  * @param fn_ty 関数ポインタ型
  * @return クロージャの LLVM 構造体型
  *)
-val make_closure : type_mapping_context -> Llvm.lltype -> Llvm.lltype

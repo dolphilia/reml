@@ -13,13 +13,8 @@ open Types
 
 (* ========== ABI分類型 ========== *)
 
-type return_classification =
-  | DirectReturn
-  | SretReturn
-
-type argument_classification =
-  | DirectArg
-  | ByvalArg of Llvm.lltype
+type return_classification = DirectReturn | SretReturn
+type argument_classification = DirectArg | ByvalArg of Llvm.lltype
 
 (* ========== 定数定義 ========== *)
 
@@ -46,26 +41,26 @@ let rec get_type_size llctx llty =
   (* size_of は ConstantInt を返すため、整数値に変換 *)
   match Llvm.int64_of_const size_llvalue with
   | Some n -> Int64.to_int n
-  | None ->
+  | None -> (
       (* フォールバック: 基本型のサイズを推定 *)
       let kind = Llvm.classify_type llty in
-      begin match kind with
+      match kind with
       | Llvm.TypeKind.Integer ->
           let width = Llvm.integer_bitwidth llty in
-          (width + 7) / 8  (* ビット幅をバイトに変換 *)
+          (width + 7) / 8 (* ビット幅をバイトに変換 *)
       | Llvm.TypeKind.Float -> 4
       | Llvm.TypeKind.Double -> 8
-      | Llvm.TypeKind.Pointer -> 8  (* 64bit ポインタ前提 *)
+      | Llvm.TypeKind.Pointer -> 8 (* 64bit ポインタ前提 *)
       | Llvm.TypeKind.Struct ->
           (* 構造体フィールドサイズの合計を計算 *)
           let element_types = Llvm.struct_element_types llty in
           let total_size = ref 0 in
-          Array.iter (fun elem_ty ->
-            total_size := !total_size + get_type_size llctx elem_ty
-          ) element_types;
+          Array.iter
+            (fun elem_ty ->
+              total_size := !total_size + get_type_size llctx elem_ty)
+            element_types;
           !total_size
-      | _ -> 8  (* デフォルト: ポインタサイズ *)
-      end
+      | _ -> 8 (* デフォルト: ポインタサイズ *))
 
 (* ========== 構造体型判定 ========== *)
 
@@ -75,9 +70,7 @@ let rec get_type_size llctx llty =
  * @return true: 構造体型、false: それ以外
  *)
 let is_struct_type ty =
-  match ty with
-  | TTuple _ | TRecord _ -> true
-  | _ -> false
+  match ty with TTuple _ | TRecord _ -> true | _ -> false
 
 (* ========== ABI判定関数 ========== *)
 
@@ -93,8 +86,7 @@ let is_struct_type ty =
  *)
 let classify_struct_return target ctx ty =
   (* 構造体型でなければ常に DirectReturn *)
-  if not (is_struct_type ty) then
-    DirectReturn
+  if not (is_struct_type ty) then DirectReturn
   else
     (* LLVM型に変換してサイズを計算 *)
     let llty = Type_mapping.reml_type_to_llvm ctx ty in
@@ -102,21 +94,20 @@ let classify_struct_return target ctx ty =
     let size = get_type_size llctx llty in
 
     (* ターゲット別の判定 *)
-    let threshold = match target.Target_config.triple with
-    | triple when String.starts_with ~prefix:"x86_64-" triple &&
-                  String.contains triple 'l' (* linux *) ->
-        sysv_struct_register_threshold
-    | triple when String.starts_with ~prefix:"x86_64-pc-windows" triple ->
-        win64_struct_register_threshold  (* Phase 2 で有効化 *)
-    | _ ->
-        (* デフォルト: System V ABI *)
-        sysv_struct_register_threshold
+    let threshold =
+      match target.Target_config.triple with
+      | triple
+        when String.starts_with ~prefix:"x86_64-" triple
+             && String.contains triple 'l' (* linux *) ->
+          sysv_struct_register_threshold
+      | triple when String.starts_with ~prefix:"x86_64-pc-windows" triple ->
+          win64_struct_register_threshold (* Phase 2 で有効化 *)
+      | _ ->
+          (* デフォルト: System V ABI *)
+          sysv_struct_register_threshold
     in
 
-    if size <= threshold then
-      DirectReturn
-    else
-      SretReturn
+    if size <= threshold then DirectReturn else SretReturn
 
 (** 構造体引数のABI分類を判定
  *
@@ -129,8 +120,7 @@ let classify_struct_return target ctx ty =
  *)
 let classify_struct_argument target ctx ty =
   (* 構造体型でなければ常に DirectArg *)
-  if not (is_struct_type ty) then
-    DirectArg
+  if not (is_struct_type ty) then DirectArg
   else
     (* LLVM型に変換してサイズを計算 *)
     let llty = Type_mapping.reml_type_to_llvm ctx ty in
@@ -138,21 +128,20 @@ let classify_struct_argument target ctx ty =
     let size = get_type_size llctx llty in
 
     (* ターゲット別の判定 *)
-    let threshold = match target.Target_config.triple with
-    | triple when String.starts_with ~prefix:"x86_64-" triple &&
-                  String.contains triple 'l' (* linux *) ->
-        sysv_struct_register_threshold
-    | triple when String.starts_with ~prefix:"x86_64-pc-windows" triple ->
-        win64_struct_register_threshold  (* Phase 2 で有効化 *)
-    | _ ->
-        (* デフォルト: System V ABI *)
-        sysv_struct_register_threshold
+    let threshold =
+      match target.Target_config.triple with
+      | triple
+        when String.starts_with ~prefix:"x86_64-" triple
+             && String.contains triple 'l' (* linux *) ->
+          sysv_struct_register_threshold
+      | triple when String.starts_with ~prefix:"x86_64-pc-windows" triple ->
+          win64_struct_register_threshold (* Phase 2 で有効化 *)
+      | _ ->
+          (* デフォルト: System V ABI *)
+          sysv_struct_register_threshold
     in
 
-    if size <= threshold then
-      DirectArg
-    else
-      ByvalArg llty
+    if size <= threshold then DirectArg else ByvalArg llty
 
 (* ========== LLVM属性設定関数 ========== *)
 

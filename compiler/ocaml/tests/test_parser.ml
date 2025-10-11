@@ -11,8 +11,7 @@ let parse_string s = Parser_driver.parse_string s
 
 let expect_ok desc input =
   match parse_string input with
-  | Ok _ ->
-      Printf.printf "✓ %s\n" desc
+  | Ok _ -> Printf.printf "✓ %s\n" desc
   | Error diag ->
       Printf.printf "✗ %s: parse failed\n" desc;
       Printf.printf "%s\n" (Diagnostic.to_string diag);
@@ -20,8 +19,7 @@ let expect_ok desc input =
 
 let expect_fail desc input =
   match parse_string input with
-  | Error _ ->
-      Printf.printf "✓ %s\n" desc
+  | Error _ -> Printf.printf "✓ %s\n" desc
   | Ok _ ->
       Printf.printf "✗ %s: expected parse failure but succeeded\n" desc;
       exit 1
@@ -30,12 +28,10 @@ let expect_decl_count desc expected input =
   match parse_string input with
   | Ok cu ->
       let actual = List.length cu.decls in
-      if actual = expected then
-        Printf.printf "✓ %s\n" desc
-      else begin
+      if actual = expected then Printf.printf "✓ %s\n" desc
+      else (
         Printf.printf "✗ %s: expected %d decls, got %d\n" desc expected actual;
-        exit 1
-      end
+        exit 1)
   | Error diag ->
       Printf.printf "✗ %s: parse failed\n" desc;
       Printf.printf "%s\n" (Diagnostic.to_string diag);
@@ -45,12 +41,10 @@ let expect_use_count desc expected input =
   match parse_string input with
   | Ok cu ->
       let actual = List.length cu.uses in
-      if actual = expected then
-        Printf.printf "✓ %s\n" desc
-      else begin
+      if actual = expected then Printf.printf "✓ %s\n" desc
+      else (
         Printf.printf "✗ %s: expected %d uses, got %d\n" desc expected actual;
-        exit 1
-      end
+        exit 1)
   | Error diag ->
       Printf.printf "✗ %s: parse failed\n" desc;
       Printf.printf "%s\n" (Diagnostic.to_string diag);
@@ -58,21 +52,19 @@ let expect_use_count desc expected input =
 
 let expect_effect_ops desc expected input =
   match parse_string input with
-  | Ok cu ->
-      begin match cu.decls with
+  | Ok cu -> (
+      match cu.decls with
       | { decl_kind = EffectDecl eff; _ } :: _ ->
           let ops = List.map (fun op -> op.op_name.name) eff.operations in
-          if ops = expected then
-            Printf.printf "✓ %s\n" desc
-          else begin
-            Printf.printf "✗ %s: expected operations [%s], got [%s]\n"
-              desc (String.concat ", " expected) (String.concat ", " ops);
-            exit 1
-          end
+          if ops = expected then Printf.printf "✓ %s\n" desc
+          else (
+            Printf.printf "✗ %s: expected operations [%s], got [%s]\n" desc
+              (String.concat ", " expected)
+              (String.concat ", " ops);
+            exit 1)
       | _ ->
           Printf.printf "✗ %s: first decl is not an effect\n" desc;
-          exit 1
-      end
+          exit 1)
   | Error diag ->
       Printf.printf "✗ %s: parse failed\n" desc;
       Printf.printf "%s\n" (Diagnostic.to_string diag);
@@ -84,14 +76,15 @@ type expected_handler_entry =
 
 let expect_handler_entries desc expected input =
   match parse_string input with
-  | Ok cu ->
-      begin match cu.decls with
+  | Ok cu -> (
+      match cu.decls with
       | { decl_kind = HandlerDecl handler; _ } :: _ ->
           let actual = handler.handler_entries in
           let rec compare expected actual =
-            match expected, actual with
+            match (expected, actual) with
             | [], [] -> true
-            | ExpectedOp (name, params, body_len) :: et, HandlerOperation op :: at ->
+            | ( ExpectedOp (name, params, body_len) :: et,
+                HandlerOperation op :: at ) ->
                 let op_name = op.handler_op_name.name in
                 let actual_params =
                   op.handler_op_params
@@ -100,26 +93,27 @@ let expect_handler_entries desc expected input =
                          | PatVar id -> id.name
                          | _ -> "<non-var>")
                 in
-                if op_name = name && actual_params = params && List.length op.handler_op_body = body_len then
-                  compare et at
+                if
+                  op_name = name && actual_params = params
+                  && List.length op.handler_op_body = body_len
+                then compare et at
                 else false
             | ExpectedReturn (name, body_len) :: et, HandlerReturn ret :: at ->
                 let ret_name = ret.handler_return_name.name in
-                if ret_name = name && List.length ret.handler_return_body = body_len then
-                  compare et at
+                if
+                  ret_name = name
+                  && List.length ret.handler_return_body = body_len
+                then compare et at
                 else false
             | _ -> false
           in
-          if compare expected actual then
-            Printf.printf "✓ %s\n" desc
-          else begin
+          if compare expected actual then Printf.printf "✓ %s\n" desc
+          else (
             Printf.printf "✗ %s: handler entries mismatch\n" desc;
-            exit 1
-          end
+            exit 1)
       | _ ->
           Printf.printf "✗ %s: first decl is not a handler\n" desc;
-          exit 1
-      end
+          exit 1)
   | Error diag ->
       Printf.printf "✗ %s: parse failed\n" desc;
       Printf.printf "%s\n" (Diagnostic.to_string diag);
@@ -155,7 +149,8 @@ let test_fn_decls () =
   expect_decl_count "fn: no params" 1 "fn answer() = 42";
   expect_decl_count "fn: with params" 1 "fn add(x, y) = x + y";
   expect_decl_count "fn: with return type" 1 "fn add(x, y) -> i64 = x + y";
-  expect_decl_count "fn: with block" 1 "fn fact(n) { if n <= 1 then 1 else n * fact(n - 1) }";
+  expect_decl_count "fn: with block" 1
+    "fn fact(n) { if n <= 1 then 1 else n * fact(n - 1) }";
   expect_ok "fn: generic params" "fn identity<T>(x: T) -> T = x";
   expect_ok "fn: default arg" "fn greet(name = \"World\") = name"
 
@@ -171,21 +166,27 @@ let test_type_decls () =
 
 let test_trait_decls () =
   expect_fail "trait: simple (todo)" "trait Show { fn show(self) -> Str }";
-  expect_fail "trait: generic (todo)" "trait Eq<T> { fn eq(self, other: T) -> Bool }";
-  expect_fail "trait: where clause (todo)" "trait Clone where Self: Sized { fn clone(self) -> Self }"
+  expect_fail "trait: generic (todo)"
+    "trait Eq<T> { fn eq(self, other: T) -> Bool }";
+  expect_fail "trait: where clause (todo)"
+    "trait Clone where Self: Sized { fn clone(self) -> Self }"
 
 (* ========== impl 宣言テスト ========== *)
 
 let test_impl_decls () =
-  expect_fail "impl: inherent (todo)" "impl Point { fn new() = Point { x: 0, y: 0 } }";
-  expect_fail "impl: trait for type (todo)" "impl Show for i64 { fn show(self) = \"int\" }";
-  expect_fail "impl: generic (todo)" "impl<T> Show for Vec<T> { fn show(self) = \"vec\" }"
+  expect_fail "impl: inherent (todo)"
+    "impl Point { fn new() = Point { x: 0, y: 0 } }";
+  expect_fail "impl: trait for type (todo)"
+    "impl Show for i64 { fn show(self) = \"int\" }";
+  expect_fail "impl: generic (todo)"
+    "impl<T> Show for Vec<T> { fn show(self) = \"vec\" }"
 
 (* ========== extern 宣言テスト ========== *)
 
 let test_extern_decls () =
   expect_decl_count "extern: single fn" 1 "extern \"C\" fn puts(s: Str) -> i32;";
-  expect_ok "extern: block" "extern \"C\" { fn malloc(size: usize) -> Ptr<u8>; }"
+  expect_ok "extern: block"
+    "extern \"C\" { fn malloc(size: usize) -> Ptr<u8>; }"
 
 (* ========== 式のテスト ========== *)
 
@@ -217,27 +218,31 @@ let test_exprs () =
 
 let test_control_flow_complex () =
   (* match 式の複雑なケース *)
-  expect_ok "match: multiple arms" {|
+  expect_ok "match: multiple arms"
+    {|
 let _ = match value with
   | 0 -> "zero"
   | 1 -> "one"
   | 2 -> "two"
   | _ -> "other"
 |};
-  expect_ok "match: nested patterns" {|
+  expect_ok "match: nested patterns"
+    {|
 let _ = match pair with
   | (Some(x), Some(y)) -> x + y
   | (Some(x), None) -> x
   | (None, Some(y)) -> y
   | (None, None) -> 0
 |};
-  expect_ok "match: guard conditions" {|
+  expect_ok "match: guard conditions"
+    {|
 let _ = match x with
   | n if n < 0 -> "negative"
   | n if n == 0 -> "zero"
   | n if n > 0 -> "positive"
 |};
-  expect_ok "match: nested match" {|
+  expect_ok "match: nested match"
+    {|
 let _ = match outer with
   | Some(inner) -> match inner with
     | Left(x) -> x
@@ -248,7 +253,8 @@ let _ = match outer with
   expect_ok "match: single arm" "let _ = match opt with | Some(x) -> x";
 
   (* while 式の複雑なケース *)
-  expect_ok "while: nested" {|
+  expect_ok "while: nested"
+    {|
 fn process() {
   while outer_cond {
     while inner_cond {
@@ -257,7 +263,8 @@ fn process() {
   }
 }
 |};
-  expect_ok "while: with side effects" {|
+  expect_ok "while: with side effects"
+    {|
 fn count() {
   var i = 0;
   while i < 10 {
@@ -267,12 +274,14 @@ fn count() {
 |};
 
   (* for 式の複雑なケース *)
-  expect_ok "for: pattern destructure" {|
+  expect_ok "for: pattern destructure"
+    {|
 let _ = for (key, value) in map {
   process(key, value)
 }
 |};
-  expect_ok "for: nested loops" {|
+  expect_ok "for: nested loops"
+    {|
 fn matrix() {
   for row in rows {
     for cell in row {
@@ -281,7 +290,8 @@ fn matrix() {
   }
 }
 |};
-  expect_ok "for: option pattern" {|
+  expect_ok "for: option pattern"
+    {|
 let _ = for Some(x) in list {
   use_value(x)
 }
@@ -289,7 +299,8 @@ let _ = for Some(x) in list {
 
   (* loop 式の基本テスト *)
   expect_ok "loop: basic" "let _ = loop { work() }";
-  expect_ok "loop: nested" {|
+  expect_ok "loop: nested"
+    {|
 fn run() {
   loop {
     loop {
@@ -306,13 +317,16 @@ let test_patterns () =
   expect_ok "pattern: var" "let x = 42";
   expect_ok "pattern: wildcard" "let _ = 42";
   expect_ok "pattern: tuple" "let (x, y) = (1, 2)";
-  expect_ok "pattern: constructor" "let _ = match opt with | Some(x) -> x | None -> 0";
-  expect_ok "pattern: qualified constructor" {|
+  expect_ok "pattern: constructor"
+    "let _ = match opt with | Some(x) -> x | None -> 0";
+  expect_ok "pattern: qualified constructor"
+    {|
 let _ = match value with
 | Option.None -> 0
 | Option.Some(x) -> x
 |};
-  expect_ok "pattern: DSL uppercase ident" {|
+  expect_ok "pattern: DSL uppercase ident"
+    {|
 let _ = match node with
 | DSL.Node(tag) -> process(tag)
 | DSL.Leaf -> 0
@@ -322,30 +336,35 @@ let _ = match node with
   expect_ok "pattern: guard" "let _ = match x with | n if n > 0 -> n | _ -> 0";
 
   (* ネストパターンの追加テスト *)
-  expect_ok "pattern: nested Some(Some(x))" {|
+  expect_ok "pattern: nested Some(Some(x))"
+    {|
 let _ = match opt with
 | Some(Some(x)) -> x
 | Some(None) -> 0
 | None -> -1
 |};
-  expect_ok "pattern: nested tuple (Some(x), Some(y))" {|
+  expect_ok "pattern: nested tuple (Some(x), Some(y))"
+    {|
 let _ = match pair with
 | (Some(x), Some(y)) -> x + y
 | _ -> 0
 |};
-  expect_ok "pattern: nested record { x: Some(v) }" {|
+  expect_ok "pattern: nested record { x: Some(v) }"
+    {|
 let _ = match rec with
 | { x: Some(value) } -> value
 | { x: None } -> 0
 |};
 
   (* ガード条件の追加テスト *)
-  expect_ok "pattern: guard with multiple vars" {|
+  expect_ok "pattern: guard with multiple vars"
+    {|
 let _ = match pair with
 | (x, y) if x > y -> x
 | (x, y) -> y
 |};
-  expect_ok "pattern: guard on nested pattern" {|
+  expect_ok "pattern: guard on nested pattern"
+    {|
 let _ = match opt with
 | Some(Some(x)) if x > 0 -> x
 | _ -> 0
@@ -360,16 +379,19 @@ let test_attributes () =
 (* ========== 効果・ハンドラ宣言テスト ========== *)
 
 let test_effects_handlers () =
-  let effect_src = {|
+  let effect_src =
+    {|
 effect Console : io {
   @requires_capability(Log)
   operation write: Str -> Unit
   operation flush: Unit -> Unit
 }
-|} in
-  expect_effect_ops "effect: operation names" ["write"; "flush"] effect_src;
+|}
+  in
+  expect_effect_ops "effect: operation names" [ "write"; "flush" ] effect_src;
 
-  let handler_src = {|
+  let handler_src =
+    {|
 handler ConsoleLogger {
   operation write(message, resume) {
     emit(message);
@@ -379,11 +401,12 @@ handler ConsoleLogger {
     value
   }
 }
-|} in
-  expect_handler_entries
-    "handler: operations and return"
-    [ ExpectedOp ("write", ["message"; "resume"], 2)
-    ; ExpectedReturn ("value", 1)
+|}
+  in
+  expect_handler_entries "handler: operations and return"
+    [
+      ExpectedOp ("write", [ "message"; "resume" ], 2);
+      ExpectedReturn ("value", 1);
     ]
     handler_src
 
@@ -400,10 +423,10 @@ let test_diagnostic_metadata () =
   | Result.Error diag ->
       if diag.Diagnostic.span.start_pos.line = 1 then
         Printf.printf "✓ diagnostic: start position captured\n"
-      else begin
-        Printf.printf "✗ diagnostic metadata: unexpected line %d\n" diag.Diagnostic.span.start_pos.line;
-        exit 1
-      end
+      else (
+        Printf.printf "✗ diagnostic metadata: unexpected line %d\n"
+          diag.Diagnostic.span.start_pos.line;
+        exit 1)
   | Result.Ok _ ->
       Printf.printf "✗ diagnostic metadata: expected parse failure\n";
       exit 1
@@ -411,7 +434,8 @@ let test_diagnostic_metadata () =
 (* ========== 統合テスト ========== *)
 
 let test_integration () =
-  let simple_program = {|
+  let simple_program =
+    {|
 module test.simple
 
 use ::Core.Parse
@@ -425,7 +449,8 @@ fn fact(n) -> i64 {
 }
 
 let result = add(10, 20)
-|} in
+|}
+  in
   expect_ok "integration: simple program" simple_program;
   expect_decl_count "integration: decl count" 4 simple_program;
   expect_use_count "integration: use count" 1 simple_program

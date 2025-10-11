@@ -20,12 +20,12 @@ let assert_block_count expected blocks =
 (** 終端命令の種別チェック *)
 let assert_terminator_kind expected_kind block =
   match (expected_kind, block.IR.terminator) with
-  | ("return", IR.TermReturn _) -> ()
-  | ("jump", IR.TermJump _) -> ()
-  | ("branch", IR.TermBranch _) -> ()
-  | ("switch", IR.TermSwitch _) -> ()
-  | ("unreachable", IR.TermUnreachable) -> ()
-  | (kind, _) -> failwith (Printf.sprintf "終端命令が '%s' ではありません" kind)
+  | "return", IR.TermReturn _ -> ()
+  | "jump", IR.TermJump _ -> ()
+  | "branch", IR.TermBranch _ -> ()
+  | "switch", IR.TermSwitch _ -> ()
+  | "unreachable", IR.TermUnreachable -> ()
+  | kind, _ -> failwith (Printf.sprintf "終端命令が '%s' ではありません" kind)
 
 (* ========== テストケース 1: 単純な式 ========== *)
 
@@ -35,15 +35,20 @@ let test_simple_expr () =
   (* let x = 42 in x *)
   IR.VarIdGen.reset ();
   let x_var = IR.VarIdGen.fresh "x" ty_i64 dummy_span in
-  let lit_expr = IR.make_expr (IR.Literal (Ast.Int ("42", Ast.Base10))) ty_i64 dummy_span in
+  let lit_expr =
+    IR.make_expr (IR.Literal (Ast.Int ("42", Ast.Base10))) ty_i64 dummy_span
+  in
   let var_expr = IR.make_expr (IR.Var x_var) ty_i64 dummy_span in
-  let let_expr = IR.make_expr (IR.Let (x_var, lit_expr, var_expr)) ty_i64 dummy_span in
+  let let_expr =
+    IR.make_expr (IR.Let (x_var, lit_expr, var_expr)) ty_i64 dummy_span
+  in
 
   (* CFG構築 *)
   let blocks = CFG.build_cfg_from_expr let_expr in
 
   (* 検証 *)
-  assert_block_count 1 blocks;  (* エントリブロックのみ *)
+  assert_block_count 1 blocks;
+  (* エントリブロックのみ *)
   let entry = List.hd blocks in
   assert_terminator_kind "return" entry;
 
@@ -58,15 +63,21 @@ let test_if_expr () =
   IR.VarIdGen.reset ();
   IR.LabelGen.reset ();
   let cond = IR.make_expr (IR.Literal (Ast.Bool true)) ty_bool dummy_span in
-  let then_e = IR.make_expr (IR.Literal (Ast.Int ("1", Ast.Base10))) ty_i64 dummy_span in
-  let else_e = IR.make_expr (IR.Literal (Ast.Int ("2", Ast.Base10))) ty_i64 dummy_span in
+  let then_e =
+    IR.make_expr (IR.Literal (Ast.Int ("1", Ast.Base10))) ty_i64 dummy_span
+  in
+  let else_e =
+    IR.make_expr (IR.Literal (Ast.Int ("2", Ast.Base10))) ty_i64 dummy_span
+  in
   let if_expr = IR.make_expr (IR.If (cond, then_e, else_e)) ty_i64 dummy_span in
 
   (* CFG構築 *)
   let blocks = CFG.build_cfg_from_expr if_expr in
 
   (* 検証: ブロック数のみをチェック（ラベル名は実装依存） *)
-  assert_block_count 4 blocks;  (* entry, then, else, merge *)
+  assert_block_count 4 blocks;
+
+  (* entry, then, else, merge *)
 
   (* 各ブロックの終端命令をチェック *)
   (* 最初のブロック（エントリ）は分岐終端を持つ *)
@@ -97,21 +108,29 @@ let test_match_expr () =
   let x_var = IR.VarIdGen.fresh "x" ty_i64 dummy_span in
   let scrut = IR.make_expr (IR.Var x_var) ty_i64 dummy_span in
 
-  let case1 = {
-    IR.case_pattern = IR.PLiteral (Ast.Int ("1", Ast.Base10));
-    IR.case_guard = None;
-    IR.case_body = IR.make_expr (IR.Literal (Ast.Int ("10", Ast.Base10))) ty_i64 dummy_span;
-    IR.case_span = dummy_span;
-  } in
+  let case1 =
+    {
+      IR.case_pattern = IR.PLiteral (Ast.Int ("1", Ast.Base10));
+      IR.case_guard = None;
+      IR.case_body =
+        IR.make_expr (IR.Literal (Ast.Int ("10", Ast.Base10))) ty_i64 dummy_span;
+      IR.case_span = dummy_span;
+    }
+  in
 
-  let case2 = {
-    IR.case_pattern = IR.PLiteral (Ast.Int ("2", Ast.Base10));
-    IR.case_guard = None;
-    IR.case_body = IR.make_expr (IR.Literal (Ast.Int ("20", Ast.Base10))) ty_i64 dummy_span;
-    IR.case_span = dummy_span;
-  } in
+  let case2 =
+    {
+      IR.case_pattern = IR.PLiteral (Ast.Int ("2", Ast.Base10));
+      IR.case_guard = None;
+      IR.case_body =
+        IR.make_expr (IR.Literal (Ast.Int ("20", Ast.Base10))) ty_i64 dummy_span;
+      IR.case_span = dummy_span;
+    }
+  in
 
-  let match_expr = IR.make_expr (IR.Match (scrut, [case1; case2])) ty_i64 dummy_span in
+  let match_expr =
+    IR.make_expr (IR.Match (scrut, [ case1; case2 ])) ty_i64 dummy_span
+  in
 
   (* CFG構築 *)
   let blocks = CFG.build_cfg_from_expr match_expr in
@@ -150,8 +169,12 @@ let test_unreachable_detection () =
   IR.VarIdGen.reset ();
   IR.LabelGen.reset ();
   let cond = IR.make_expr (IR.Literal (Ast.Bool true)) ty_bool dummy_span in
-  let then_e = IR.make_expr (IR.Literal (Ast.Int ("1", Ast.Base10))) ty_i64 dummy_span in
-  let else_e = IR.make_expr (IR.Literal (Ast.Int ("2", Ast.Base10))) ty_i64 dummy_span in
+  let then_e =
+    IR.make_expr (IR.Literal (Ast.Int ("1", Ast.Base10))) ty_i64 dummy_span
+  in
+  let else_e =
+    IR.make_expr (IR.Literal (Ast.Int ("2", Ast.Base10))) ty_i64 dummy_span
+  in
   let if_expr = IR.make_expr (IR.If (cond, then_e, else_e)) ty_i64 dummy_span in
 
   let blocks = CFG.build_cfg_from_expr if_expr in
@@ -171,7 +194,8 @@ let test_unreachable_detection () =
   (* 実装によっては一部ブロックが到達不能と判定される可能性があるため、
      アサーションを緩和 *)
   if List.length unreachable > 0 then
-    print_endline (Printf.sprintf "警告: %d個の到達不能ブロックが検出されました" (List.length unreachable));
+    print_endline
+      (Printf.sprintf "警告: %d個の到達不能ブロックが検出されました" (List.length unreachable));
 
   print_endline "✓ test_unreachable_detection passed (定数畳み込み未実装)"
 
@@ -183,10 +207,12 @@ let test_cfg_validation () =
   (* 正常なCFG *)
   IR.VarIdGen.reset ();
   IR.LabelGen.reset ();
-  let expr = IR.make_expr (IR.Literal (Ast.Int ("42", Ast.Base10))) ty_i64 dummy_span in
+  let expr =
+    IR.make_expr (IR.Literal (Ast.Int ("42", Ast.Base10))) ty_i64 dummy_span
+  in
   let blocks = CFG.build_cfg_from_expr expr in
 
-  let (is_valid, errors) = CFG.validate_cfg blocks in
+  let is_valid, errors = CFG.validate_cfg blocks in
   assert is_valid;
   assert (List.length errors = 0);
 
@@ -202,9 +228,15 @@ let test_nested_if () =
   IR.LabelGen.reset ();
   let cond1 = IR.make_expr (IR.Literal (Ast.Bool true)) ty_bool dummy_span in
   let cond2 = IR.make_expr (IR.Literal (Ast.Bool false)) ty_bool dummy_span in
-  let e1 = IR.make_expr (IR.Literal (Ast.Int ("1", Ast.Base10))) ty_i64 dummy_span in
-  let e2 = IR.make_expr (IR.Literal (Ast.Int ("2", Ast.Base10))) ty_i64 dummy_span in
-  let e3 = IR.make_expr (IR.Literal (Ast.Int ("3", Ast.Base10))) ty_i64 dummy_span in
+  let e1 =
+    IR.make_expr (IR.Literal (Ast.Int ("1", Ast.Base10))) ty_i64 dummy_span
+  in
+  let e2 =
+    IR.make_expr (IR.Literal (Ast.Int ("2", Ast.Base10))) ty_i64 dummy_span
+  in
+  let e3 =
+    IR.make_expr (IR.Literal (Ast.Int ("3", Ast.Base10))) ty_i64 dummy_span
+  in
 
   let inner_if = IR.make_expr (IR.If (cond2, e1, e2)) ty_i64 dummy_span in
   let outer_if = IR.make_expr (IR.If (cond1, inner_if, e3)) ty_i64 dummy_span in
@@ -219,20 +251,21 @@ let test_nested_if () =
   (* 注: 実際のブロック数は実装による。ここでは最低限のチェック *)
   assert (List.length blocks >= 4);
 
-  let (is_valid, errors) = CFG.validate_cfg blocks in
-  if not is_valid then begin
+  let is_valid, errors = CFG.validate_cfg blocks in
+  if not is_valid then (
     print_endline "CFG検証エラー:";
     List.iter (fun err -> print_endline ("  - " ^ err)) errors;
     (* Phase 1 簡易実装では到達不能ブロック警告を許容 *)
-    print_endline "注: Phase 1 では到達不能ブロック警告を許容します"
-  end;
+    print_endline "注: Phase 1 では到達不能ブロック警告を許容します");
   (* CFG検証のアサーションを緩和: ラベル重複や未定義ラベルのみチェック *)
-  let has_critical_error = List.exists (fun err ->
-    String.length err > 0 && (
-      (String.sub err 0 (min 6 (String.length err))) = "ラベル" ||
-      (String.sub err 0 (min 3 (String.length err))) = "未定義"
-    )
-  ) errors in
+  let has_critical_error =
+    List.exists
+      (fun err ->
+        String.length err > 0
+        && (String.sub err 0 (min 6 (String.length err)) = "ラベル"
+           || String.sub err 0 (min 3 (String.length err)) = "未定義"))
+      errors
+  in
   assert (not has_critical_error);
 
   print_endline "✓ test_nested_if passed"

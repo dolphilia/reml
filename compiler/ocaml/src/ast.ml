@@ -12,46 +12,43 @@
 
 (* ========== 位置情報 ========== *)
 
-(** バイトオフセットによる位置範囲 *)
 type span = {
-  start : int;   (** 開始位置 (バイトオフセット) *)
-  end_ : int;    (** 終了位置 (バイトオフセット) *)
+  start : int;  (** 開始位置 (バイトオフセット) *)
+  end_ : int;  (** 終了位置 (バイトオフセット) *)
 }
+(** バイトオフセットによる位置範囲 *)
 
 (** 空のSpan (ダミー用) *)
 let dummy_span = { start = 0; end_ = 0 }
 
 (* ========== 識別子とパス ========== *)
 
+type ident = { name : string; span : span }
 (** 識別子 *)
-type ident = {
-  name : string;
-  span : span;
-}
 
 (** モジュールパス *)
 type module_path =
-  | Root of ident list                      (** ::Core.Parse *)
+  | Root of ident list  (** ::Core.Parse *)
   | Relative of relative_head * ident list  (** self.module, super.module *)
 
 and relative_head =
   | Self
-  | Super of int                            (** super の連続数 (super.super → 2) *)
+  | Super of int  (** super の連続数 (super.super → 2) *)
   | PlainIdent of ident
 
 (* ========== リテラル ========== *)
 
 (** 整数リテラルの基数 *)
 type int_base =
-  | Base2   (** 2進数 0b... *)
-  | Base8   (** 8進数 0o... *)
+  | Base2  (** 2進数 0b... *)
+  | Base8  (** 8進数 0o... *)
   | Base10  (** 10進数 *)
   | Base16  (** 16進数 0x... *)
 
 (** 文字列リテラルの種類 *)
 type string_kind =
-  | Normal     (** "..." C系エスケープ *)
-  | Raw        (** r"..." バックスラッシュ非解釈 *)
+  | Normal  (** "..." C系エスケープ *)
+  | Raw  (** r"..." バックスラッシュ非解釈 *)
   | Multiline  (** """...""" 複数行 *)
 
 (** リテラル値 *)
@@ -65,42 +62,46 @@ type literal =
   | Tuple of expr list
   | Array of expr list
   | Record of (ident * expr) list
-
 (* ========== 演算子 ========== *)
 
 (** 二項演算子 *)
 and binary_op =
-  | Add | Sub | Mul | Div | Mod | Pow
-  | Eq | Ne | Lt | Le | Gt | Ge
-  | And | Or
+  | Add
+  | Sub
+  | Mul
+  | Div
+  | Mod
+  | Pow
+  | Eq
+  | Ne
+  | Lt
+  | Le
+  | Gt
+  | Ge
+  | And
+  | Or
   | PipeOp
 
 (** 単項演算子 *)
-and unary_op =
-  | Not  (** ! *)
-  | Neg  (** - *)
-
+and unary_op = Not  (** ! *) | Neg  (** - *)
 (* ========== 式 ========== *)
 
+and expr = { expr_kind : expr_kind; expr_span : span }
 (** 式ノード *)
-and expr = {
-  expr_kind : expr_kind;
-  expr_span : span;
-}
 
 and expr_kind =
   | Literal of literal
   | Var of ident
-  | ModulePath of module_path * ident       (** Core.Parse.rule *)
+  | ModulePath of module_path * ident  (** Core.Parse.rule *)
   | Call of expr * arg list
   | Lambda of param list * type_annot option * expr
-  | Pipe of expr * expr                     (** x |> f *)
+  | Pipe of expr * expr  (** x |> f *)
   | Binary of binary_op * expr * expr
   | Unary of unary_op * expr
-  | FieldAccess of expr * ident             (** obj.field *)
-  | TupleAccess of expr * int               (** tuple.0 *)
-  | Index of expr * expr                    (** arr[i] *)
-  | Propagate of expr                       (** expr? *)
+  | FieldAccess of expr * ident  (** obj.field *)
+  | TupleAccess of expr * int  (** tuple.0 *)
+  | Index of expr * expr  (** arr[i] *)
+  | Propagate of expr  (** expr? *)
   | If of expr * expr * expr option
   | Match of expr * match_arm list
   | While of expr * expr
@@ -110,53 +111,43 @@ and expr_kind =
   | Unsafe of expr
   | Return of expr option
   | Defer of expr
-  | Assign of expr * expr                   (** lvalue := rvalue (lvalue は postfix_expr) *)
+  | Assign of expr * expr  (** lvalue := rvalue (lvalue は postfix_expr) *)
 
 (** 関数引数 *)
-and arg =
-  | PosArg of expr
-  | NamedArg of ident * expr
+and arg = PosArg of expr | NamedArg of ident * expr
 
-(** match アーム *)
 and match_arm = {
   arm_pattern : pattern;
   arm_guard : expr option;
   arm_body : expr;
   arm_span : span;
 }
+(** match アーム *)
 
 (* ========== パターン ========== *)
-
-and pattern = {
-  pat_kind : pattern_kind;
-  pat_span : span;
-}
+and pattern = { pat_kind : pattern_kind; pat_span : span }
 
 and pattern_kind =
   | PatLiteral of literal
   | PatVar of ident
   | PatWildcard
   | PatTuple of pattern list
-  | PatRecord of (ident * pattern option) list * bool  (** bool = has_rest (..) *)
+  | PatRecord of (ident * pattern option) list * bool
+      (** bool = has_rest (..) *)
   | PatConstructor of ident * pattern list
   | PatGuard of pattern * expr
 
 (* ========== 型注釈 ========== *)
-
-and type_annot = {
-  ty_kind : type_kind;
-  ty_span : span;
-}
+and type_annot = { ty_kind : type_kind; ty_span : span }
 
 and type_kind =
   | TyIdent of ident
-  | TyApp of ident * type_annot list        (** Vec<T> *)
+  | TyApp of ident * type_annot list  (** Vec<T> *)
   | TyTuple of type_annot list
   | TyRecord of (ident * type_annot) list
-  | TyFn of type_annot list * type_annot    (** A -> B *)
+  | TyFn of type_annot list * type_annot  (** A -> B *)
 
 (* ========== 文 ========== *)
-
 and stmt =
   | DeclStmt of decl
   | ExprStmt of expr
@@ -164,7 +155,6 @@ and stmt =
   | DeferStmt of expr
 
 (* ========== 宣言 ========== *)
-
 and decl = {
   decl_attrs : attribute list;
   decl_vis : visibility;
@@ -173,12 +163,7 @@ and decl = {
 }
 
 and visibility = Public | Private
-
-and attribute = {
-  attr_name : ident;
-  attr_args : expr list;
-  attr_span : span;
-}
+and attribute = { attr_name : ident; attr_args : expr list; attr_span : span }
 
 and decl_kind =
   | LetDecl of pattern * type_annot option * expr
@@ -199,13 +184,11 @@ and fn_decl = {
   fn_params : param list;
   fn_ret_type : type_annot option;
   fn_where_clause : constraint_ list;
-  fn_effect_annot : ident list option;         (** !{io, mut} *)
+  fn_effect_annot : ident list option;  (** !{io, mut} *)
   fn_body : fn_body;
 }
 
-and fn_body =
-  | FnExpr of expr
-  | FnBlock of stmt list
+and fn_body = FnExpr of expr | FnBlock of stmt list
 
 and param = {
   pat : pattern;
@@ -243,7 +226,8 @@ and trait_item = {
 (* impl 宣言 *)
 and impl_decl = {
   impl_params : ident list;
-  impl_trait : (ident * type_annot list) option;  (** Some (trait, args) for "impl Trait for Type" *)
+  impl_trait : (ident * type_annot list) option;
+      (** Some (trait, args) for "impl Trait for Type" *)
   impl_type : type_annot;
   impl_where : constraint_ list;
   impl_items : impl_item list;
@@ -254,15 +238,8 @@ and impl_item =
   | ImplLet of pattern * type_annot option * expr
 
 (* extern 宣言 *)
-and extern_decl = {
-  extern_abi : string;
-  extern_items : extern_item list;
-}
-
-and extern_item = {
-  extern_attrs : attribute list;
-  extern_sig : fn_signature;
-}
+and extern_decl = { extern_abi : string; extern_items : extern_item list }
+and extern_item = { extern_attrs : attribute list; extern_sig : fn_signature }
 
 (* 効果宣言 (実験段階) *)
 and effect_decl = {
@@ -271,11 +248,7 @@ and effect_decl = {
   operations : operation_decl list;
 }
 
-and operation_decl = {
-  op_name : ident;
-  op_type : type_annot;
-  op_span : span;
-}
+and operation_decl = { op_name : ident; op_type : type_annot; op_span : span }
 
 (* ハンドラ宣言 (実験段階) *)
 and handler_decl = {
@@ -307,7 +280,8 @@ and conductor_decl = {
 }
 
 and conductor_section =
-  | DslDef of ident * ident * expr option * ident list  (** name : type = init |> pipes *)
+  | DslDef of ident * ident * expr option * ident list
+      (** name : type = init |> pipes *)
   | Channels of channel_route list
   | Execution of stmt list
   | Monitoring of ident * stmt list
@@ -339,27 +313,21 @@ and fn_signature = {
 (* ========== use 宣言 ========== *)
 
 type use_tree =
-  | UsePath of module_path * ident option   (** use ::Core.Parse [as P] *)
-  | UseBrace of module_path * use_item list (** use Core.{Lex, Op as Operator} *)
+  | UsePath of module_path * ident option  (** use ::Core.Parse [as P] *)
+  | UseBrace of module_path * use_item list
+      (** use Core.{Lex, Op as Operator} *)
 
 and use_item = {
   item_name : ident;
   item_alias : ident option;
-  item_nested : use_item list option;       (** ネスト展開対応 Core.{Lex.{...}} *)
+  item_nested : use_item list option;  (** ネスト展開対応 Core.{Lex.{...}} *)
 }
 
-type use_decl = {
-  use_pub : bool;
-  use_tree : use_tree;
-  use_span : span;
-}
+type use_decl = { use_pub : bool; use_tree : use_tree; use_span : span }
 
 (* ========== モジュールヘッダ ========== *)
 
-type module_header = {
-  module_path : module_path;
-  header_span : span;
-}
+type module_header = { module_path : module_path; header_span : span }
 
 (* ========== コンパイル単位 ========== *)
 
@@ -372,10 +340,8 @@ type compilation_unit = {
 (* ========== ヘルパー関数 ========== *)
 
 (** Span の結合 *)
-let merge_span s1 s2 = {
-  start = min s1.start s2.start;
-  end_ = max s1.end_ s2.end_;
-}
+let merge_span s1 s2 =
+  { start = min s1.start s2.start; end_ = max s1.end_ s2.end_ }
 
 (** 識別子の作成 *)
 let make_ident name span = { name; span }

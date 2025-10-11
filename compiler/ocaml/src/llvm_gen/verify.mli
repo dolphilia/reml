@@ -14,39 +14,40 @@
 
 (** 検証エラー型 *)
 type verification_error =
-  | AssembleError of string    (** llvm-as エラー *)
-  | VerifyError of string       (** opt -verify エラー *)
-  | CodegenError of string      (** llc エラー *)
-  | ScriptError of string       (** スクリプト実行エラー *)
+  | AssembleError of string  (** llvm-as エラー *)
+  | VerifyError of string  (** opt -verify エラー *)
+  | CodegenError of string  (** llc エラー *)
+  | ScriptError of string  (** スクリプト実行エラー *)
 
-(** 検証結果 *)
 type verification_result = (unit, verification_error) result
+(** 検証結果 *)
 
+val verify_llvm_ir : Llvm.llmodule -> verification_result
 (** LLVM IR を検証
  *
  * @param llmodule LLVM モジュール
  * @return 検証結果（成功時は Ok ()、失敗時は Error エラー詳細）
  *)
-val verify_llvm_ir : Llvm.llmodule -> verification_result
 
+val verify_llvm_ir_file : string -> verification_result
 (** LLVM IR ファイルを検証
  *
  * @param llvm_ir_path LLVM IR ファイルパス (.ll)
  * @return 検証結果
  *)
-val verify_llvm_ir_file : string -> verification_result
 
+val error_to_diagnostic :
+  verification_error -> Diagnostic.span option -> Diagnostic.t
 (** 検証エラーを診断形式へ変換
  *
  * @param error 検証エラー
  * @param span ソースコード位置（オプション）
  * @return 診断メッセージ
  *)
-val error_to_diagnostic : verification_error -> Diagnostic.span option -> Diagnostic.t
 
+val string_of_error : verification_error -> string
 (** 検証エラーを文字列化
  *
  * @param error 検証エラー
  * @return エラーメッセージ
  *)
-val string_of_error : verification_error -> string

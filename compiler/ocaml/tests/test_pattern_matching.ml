@@ -30,11 +30,7 @@ let _expect_fail name src =
   | Result.Error diag ->
       let open Diagnostic in
       let loc = diag.span.start_pos in
-      Printf.printf
-        "✓ %s (期待通り失敗: %s @ %d:%d)\n"
-        name
-        diag.message
-        loc.line
+      Printf.printf "✓ %s (期待通り失敗: %s @ %d:%d)\n" name diag.message loc.line
         loc.column
 
 (* ========== ネストパターンテスト ========== *)
@@ -43,14 +39,16 @@ let test_nested_constructors () =
   Printf.printf "Nested Constructor Patterns:\n";
 
   (* 2層ネスト *)
-  expect_ok "nested: Some(Some(x))" {|
+  expect_ok "nested: Some(Some(x))"
+    {|
 let _ = match opt with
 | Some(Some(x)) -> x
 | Some(None) -> 0
 | None -> -1
 |};
 
-  expect_ok "nested: Ok(Some(x))" {|
+  expect_ok "nested: Ok(Some(x))"
+    {|
 let _ = match result with
 | Ok(Some(value)) -> value
 | Ok(None) -> 0
@@ -58,7 +56,8 @@ let _ = match result with
 |};
 
   (* 3層ネスト *)
-  expect_ok "nested: Some(Ok(Some(x)))" {|
+  expect_ok "nested: Some(Ok(Some(x)))"
+    {|
 let _ = match triple_opt with
 | Some(Ok(Some(x))) -> x
 | Some(Ok(None)) -> 0
@@ -67,7 +66,8 @@ let _ = match triple_opt with
 |};
 
   (* 複数引数コンストラクタのネスト *)
-  expect_ok "nested: Pair(Some(a), Some(b))" {|
+  expect_ok "nested: Pair(Some(a), Some(b))"
+    {|
 let _ = match pair with
 | Pair(Some(a), Some(b)) -> a + b
 | Pair(Some(a), None) -> a
@@ -81,7 +81,8 @@ let test_nested_tuples () =
   Printf.printf "\nNested Tuple Patterns:\n";
 
   (* タプル内にコンストラクタ *)
-  expect_ok "nested tuple: (Some(x), Some(y))" {|
+  expect_ok "nested tuple: (Some(x), Some(y))"
+    {|
 let _ = match pair with
 | (Some(x), Some(y)) -> x + y
 | (Some(x), None) -> x
@@ -90,18 +91,21 @@ let _ = match pair with
 |};
 
   (* 深いタプルネスト *)
-  expect_ok "nested tuple: ((a, b), (c, d))" {|
+  expect_ok "nested tuple: ((a, b), (c, d))"
+    {|
 let _ = match nested with
 | ((a, b), (c, d)) -> a + b + c + d
 |};
 
-  expect_ok "nested tuple: (x, (y, (z, w)))" {|
+  expect_ok "nested tuple: (x, (y, (z, w)))"
+    {|
 let _ = match deep_nested with
 | (x, (y, (z, w))) -> x + y + z + w
 |};
 
   (* タプルとコンストラクタの混在 *)
-  expect_ok "nested tuple+constructor: ((Some(a), b), c)" {|
+  expect_ok "nested tuple+constructor: ((Some(a), b), c)"
+    {|
 let _ = match complex with
 | ((Some(a), b), c) -> a + b + c
 | ((None, b), c) -> b + c
@@ -113,20 +117,23 @@ let test_nested_records () =
   Printf.printf "\nNested Record Patterns:\n";
 
   (* レコード内のコンストラクタ *)
-  expect_ok "nested record: { x: Some(value) }" {|
+  expect_ok "nested record: { x: Some(value) }"
+    {|
 let _ = match record with
 | { x: Some(value) } -> value
 | { x: None } -> 0
 |};
 
   (* レコード内のレコード *)
-  expect_ok "nested record: { outer: { inner: value } }" {|
+  expect_ok "nested record: { outer: { inner: value } }"
+    {|
 let _ = match nested_record with
 | { outer: { inner: value } } -> value
 |};
 
   (* レコード内のタプル *)
-  expect_ok "nested record: { point: (x, y) }" {|
+  expect_ok "nested record: { point: (x, y) }"
+    {|
 let _ = match record with
 | { point: (x, y) } -> x + y
 |};
@@ -134,7 +141,8 @@ let _ = match record with
   (* rest とネストの組み合わせ *)
   (* Note: 複数アームでのレコードパターン + コンストラクタ + rest の組み合わせは
    * Phase 1 では既知の制限として残す *)
-  expect_ok "nested record with rest: { field: Some(x), .. }" {|
+  expect_ok "nested record with rest: { field: Some(x), .. }"
+    {|
 let _ = match record with
 | { important: Some(x), .. } -> x
 |}
@@ -145,7 +153,8 @@ let test_guard_conditions () =
   Printf.printf "\nGuard Conditions:\n";
 
   (* 単純な束縛変数の使用 *)
-  expect_ok "guard: simple binding" {|
+  expect_ok "guard: simple binding"
+    {|
 let _ = match value with
 | Some(x) if x > 10 -> "large"
 | Some(x) if x > 0 -> "positive"
@@ -154,7 +163,8 @@ let _ = match value with
 |};
 
   (* 複数変数の参照 *)
-  expect_ok "guard: multiple variables" {|
+  expect_ok "guard: multiple variables"
+    {|
 let _ = match pair with
 | (x, y) if x > y -> "x bigger"
 | (x, y) if x < y -> "y bigger"
@@ -162,7 +172,8 @@ let _ = match pair with
 |};
 
   (* ネストパターン + ガード *)
-  expect_ok "guard: nested pattern" {|
+  expect_ok "guard: nested pattern"
+    {|
 let _ = match nested with
 | Some(Some(x)) if x != 0 -> x
 | Some(Some(x)) -> 1
@@ -171,7 +182,8 @@ let _ = match nested with
 |};
 
   (* タプル分解 + ガード *)
-  expect_ok "guard: tuple destructure" {|
+  expect_ok "guard: tuple destructure"
+    {|
 let _ = match point with
 | (x, y) if x == 0 && y == 0 -> "origin"
 | (x, y) if x > 0 && y > 0 -> "quadrant1"
@@ -180,14 +192,16 @@ let _ = match point with
 |};
 
   (* レコードパターン + ガード *)
-  expect_ok "guard: record pattern" {|
+  expect_ok "guard: record pattern"
+    {|
 let _ = match person with
 | { age, name } if age >= 18 -> "adult"
 | { age, name } -> "minor"
 |};
 
   (* コンストラクタ + ガード (複雑) *)
-  expect_ok "guard: constructor complex" {|
+  expect_ok "guard: constructor complex"
+    {|
 let _ = match result with
 | Ok(value) if value > 100 -> "too large"
 | Ok(value) if value >= 0 -> "ok"
@@ -202,7 +216,8 @@ let test_literal_patterns () =
   Printf.printf "\nLiteral Patterns:\n";
 
   (* 整数リテラル *)
-  expect_ok "literal: integer" {|
+  expect_ok "literal: integer"
+    {|
 let _ = match code with
 | 0 -> "success"
 | 1 -> "warning"
@@ -211,7 +226,8 @@ let _ = match code with
 |};
 
   (* 文字列リテラル *)
-  expect_ok "literal: string" {|
+  expect_ok "literal: string"
+    {|
 let _ = match status with
 | "ok" -> 0
 | "error" -> 1
@@ -220,14 +236,16 @@ let _ = match status with
 |};
 
   (* 真偽値リテラル *)
-  expect_ok "literal: boolean" {|
+  expect_ok "literal: boolean"
+    {|
 let _ = match flag with
 | true -> 1
 | false -> 0
 |};
 
   (* 文字リテラル *)
-  expect_ok "literal: char" {|
+  expect_ok "literal: char"
+    {|
 let _ = match ch with
 | 'a' -> 1
 | 'b' -> 2
@@ -235,7 +253,8 @@ let _ = match ch with
 |};
 
   (* 混在リテラル + 構造パターン *)
-  expect_ok "literal: mixed with structure" {|
+  expect_ok "literal: mixed with structure"
+    {|
 let _ = match value with
 | Some(0) -> "zero"
 | Some(1) -> "one"
@@ -249,7 +268,8 @@ let test_complex_combinations () =
   Printf.printf "\nComplex Combinations:\n";
 
   (* 深いネスト + ガード + リテラル *)
-  expect_ok "complex: deep nest + guard + literal" {|
+  expect_ok "complex: deep nest + guard + literal"
+    {|
 let _ = match data with
 | Some((Ok(0), Some("success"))) -> "perfect"
 | Some((Ok(n), Some(msg))) if n > 0 -> "ok with value"
@@ -260,7 +280,8 @@ let _ = match data with
 |};
 
   (* レコード + タプル + コンストラクタ *)
-  expect_ok "complex: record + tuple + constructor" {|
+  expect_ok "complex: record + tuple + constructor"
+    {|
 let _ = match response with
 | { status: Ok((code, msg)), data: Some(value) } -> value
 | { status: Ok((code, msg)), data: None } -> 0
@@ -268,7 +289,8 @@ let _ = match response with
 |};
 
   (* 複数アーム、それぞれが複雑なパターン *)
-  expect_ok "complex: multiple complex arms" {|
+  expect_ok "complex: multiple complex arms"
+    {|
 let _ = match input with
 | Some({ x: (a, b), y: Some(c) }) if a + b > c -> "case1"
 | Some({ x: (a, b), y: None }) if a > 0 -> "case2"
@@ -277,7 +299,8 @@ let _ = match input with
 |};
 
   (* ネストしたmatch式 *)
-  expect_ok "complex: nested match expressions" {|
+  expect_ok "complex: nested match expressions"
+    {|
 let _ = match outer with
 | Some(inner) ->
   match inner with
@@ -310,7 +333,8 @@ let _ = match value with
 |};
 
   (* 多重ワイルドカードとネスト *)
-  expect_ok "edge: multiple wildcards nested" {|
+  expect_ok "edge: multiple wildcards nested"
+    {|
 let _ = match complex with
 | Some((_, Some(_))) -> 1
 | Some((_, None)) -> 2
@@ -318,12 +342,14 @@ let _ = match complex with
 |};
 
   (* rest パターンの様々な位置 *)
-  expect_ok "edge: rest in different positions" {|
+  expect_ok "edge: rest in different positions"
+    {|
 let _ = match record with
 | { x, .. } -> x
 |};
 
-  expect_ok "edge: rest with multiple fields" {|
+  expect_ok "edge: rest with multiple fields"
+    {|
 let _ = match record with
 | { x, y, .. } -> x + y
 |}
@@ -334,37 +360,44 @@ let test_record_pattern_limitations () =
   Printf.printf "\nRecord Pattern 制限ケース:\n";
 
   (* 成功するケースの再確認 *)
-  expect_ok "record: 先頭フィールドが引数付きコンストラクタ" {|
+  expect_ok "record: 先頭フィールドが引数付きコンストラクタ"
+    {|
 let _ = match record with
 | { x: Some(value), y } -> value + y
 | _ -> 0
 |};
-  expect_ok "record: 先頭以外なら bare コンストラクタでも成功" {|
+  expect_ok "record: 先頭以外なら bare コンストラクタでも成功"
+    {|
 let _ = match record with
 | { y, x: None } -> y
 | _ -> 0
 |};
-  expect_ok "record: 後続フィールドを明示指定すれば成功" {|
+  expect_ok "record: 後続フィールドを明示指定すれば成功"
+    {|
 let _ = match record with
 | { x: None, y: value } -> value
 | _ -> 0
 |};
 
   (* 失敗するパターンの再現 *)
-  expect_ok "record: 先頭 bare コンストラクタ + 短縮フィールド" {|
+  expect_ok "record: 先頭 bare コンストラクタ + 短縮フィールド"
+    {|
 let _ = match record with
 | { x: None, y } -> y
 | _ -> 0
 |};
-  expect_ok "record: 先頭 bare コンストラクタ + rest" {|
+  expect_ok "record: 先頭 bare コンストラクタ + rest"
+    {|
 let _ = match record with
 | { x: None, .. } -> 0
 | _ -> 1
 |};
-  expect_ok "let bind: 先頭 bare コンストラクタ + 短縮フィールド" {|
+  expect_ok "let bind: 先頭 bare コンストラクタ + 短縮フィールド"
+    {|
 let { x: None, y } = record
 |};
-  expect_ok "for loop: 先頭 bare コンストラクタ + 短縮フィールド" {|
+  expect_ok "for loop: 先頭 bare コンストラクタ + 短縮フィールド"
+    {|
 let _ = for { x: None, y } in records {
   use_value(y)
 }

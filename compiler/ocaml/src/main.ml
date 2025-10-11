@@ -10,8 +10,7 @@
 
 (** カラーモードを解決する *)
 let resolve_color_mode opts =
-  Cli.Color.resolve_color_mode
-    ~requested:opts.Cli.Options.color
+  Cli.Color.resolve_color_mode ~requested:opts.Cli.Options.color
     ~is_tty:(Cli.Color.is_tty Unix.stderr)
 
 (** 診断を出力する
@@ -22,11 +21,11 @@ let resolve_color_mode opts =
  *)
 let print_diagnostic opts source diag =
   let color_mode = resolve_color_mode opts in
-  let output = match opts.Cli.Options.format with
+  let output =
+    match opts.Cli.Options.format with
     | Cli.Options.Text ->
         Cli.Diagnostic_formatter.format_diagnostic ~source ~diag ~color_mode
-    | Cli.Options.Json ->
-        Cli.Json_formatter.diagnostic_to_json diag
+    | Cli.Options.Json -> Cli.Json_formatter.diagnostic_to_json diag
   in
   Printf.eprintf "%s\n" output
 
@@ -46,26 +45,26 @@ let get_basename filepath =
  *)
 let link_with_runtime ll_file runtime_lib output_exe =
   (* LLVM IR → オブジェクトファイル *)
-  let obj_file = (Filename.remove_extension ll_file) ^ ".o" in
+  let obj_file = Filename.remove_extension ll_file ^ ".o" in
   let llc_cmd = Printf.sprintf "llc -filetype=obj %s -o %s" ll_file obj_file in
 
   Printf.printf "Compiling to object file: %s\n" obj_file;
   let llc_result = Sys.command llc_cmd in
-  if llc_result <> 0 then begin
+  if llc_result <> 0 then (
     Printf.eprintf "Error: llc failed with exit code %d\n" llc_result;
-    exit 1
-  end;
+    exit 1);
 
   (* オブジェクトファイル + ランタイム → 実行可能ファイル *)
   (* clang に標準ライブラリリンクを任せる（デフォルト動作） *)
-  let link_cmd = Printf.sprintf "cc %s %s -o %s" obj_file runtime_lib output_exe in
+  let link_cmd =
+    Printf.sprintf "cc %s %s -o %s" obj_file runtime_lib output_exe
+  in
 
   Printf.printf "Linking with runtime: %s\n" output_exe;
   let link_result = Sys.command link_cmd in
-  if link_result <> 0 then begin
+  if link_result <> 0 then (
     Printf.eprintf "Error: linking failed with exit code %d\n" link_result;
-    exit 1
-  end;
+    exit 1);
 
   (* 一時オブジェクトファイルを削除 *)
   Sys.remove obj_file;
@@ -74,7 +73,8 @@ let link_with_runtime ll_file runtime_lib output_exe =
 
 let () =
   (* Phase 1-6: Cli.Options を使用したオプション解析 *)
-  let opts = match Cli.Options.parse_args Sys.argv with
+  let opts =
+    match Cli.Options.parse_args Sys.argv with
     | Ok opts -> opts
     | Error msg ->
         prerr_endline msg;
@@ -86,8 +86,7 @@ let () =
   let source = really_input_string ic (in_channel_length ic) in
   close_in ic;
 
-  if opts.stats then
-    Cli.Stats.set_input_size_bytes (String.length source);
+  if opts.stats then Cli.Stats.set_input_size_bytes (String.length source);
 
   let collect_trace = opts.trace || opts.stats in
   let emit_trace_logs = opts.trace in
@@ -100,7 +99,8 @@ let () =
 
   (* パース用にソース文字列から lexbuf を作成 *)
   let lexbuf = Lexing.from_string source in
-  lexbuf.Lexing.lex_curr_p <- { lexbuf.Lexing.lex_curr_p with Lexing.pos_fname = opts.input_file };
+  lexbuf.Lexing.lex_curr_p <-
+    { lexbuf.Lexing.lex_curr_p with Lexing.pos_fname = opts.input_file };
 
   (* Phase 1-6 Week 15: トレース開始 *)
   record_start Parsing;
@@ -111,13 +111,12 @@ let () =
       record_end Parsing;
 
       (* Phase 1: AST 出力 *)
-      if opts.emit_ast then begin
-        let rendered = Ast_printer.string_of_compilation_unit ast in
-        Printf.printf "%s\n" rendered;
-      end;
+      (if opts.emit_ast then
+         let rendered = Ast_printer.string_of_compilation_unit ast in
+         Printf.printf "%s\n" rendered);
 
       (* Phase 2+: 型推論が必要な処理 *)
-      if opts.emit_tast || opts.emit_ir || opts.emit_bc || opts.verify_ir then begin
+      if opts.emit_tast || opts.emit_ir || opts.emit_bc || opts.verify_ir then (
         (* Phase 1-6 Week 15: 型推論開始 *)
         record_start TypeChecking;
 
@@ -127,13 +126,12 @@ let () =
             record_end TypeChecking;
 
             (* Phase 2: Typed AST 出力 *)
-            if opts.emit_tast then begin
-              let rendered = Typed_ast.string_of_typed_compilation_unit tast in
-              Printf.printf "%s\n" rendered;
-            end;
+            (if opts.emit_tast then
+               let rendered = Typed_ast.string_of_typed_compilation_unit tast in
+               Printf.printf "%s\n" rendered);
 
             (* Phase 3: LLVM IR 生成パイプライン *)
-            if opts.emit_ir || opts.emit_bc || opts.verify_ir then begin
+            if opts.emit_ir || opts.emit_bc || opts.verify_ir then (
               try
                 (* Phase 1-6 Week 15: Core IR 生成開始 *)
                 record_start CoreIR;
@@ -146,149 +144,180 @@ let () =
                 record_start Optimization;
 
                 (* Core IR 最適化 (O1レベル) *)
-                let opt_config = Core_ir.Pipeline.{
-                  opt_level = O1;
-                  enable_const_fold = true;
-                  enable_dce = true;
-                  max_iterations = 10;
-                  verbose = false;
-                  emit_intermediate = false;
-                } in
-                let (optimized_ir, _stats) = Core_ir.Pipeline.optimize_module ~config:opt_config core_ir in
+                let opt_config =
+                  Core_ir.Pipeline.
+                    {
+                      opt_level = O1;
+                      enable_const_fold = true;
+                      enable_dce = true;
+                      max_iterations = 10;
+                      verbose = false;
+                      emit_intermediate = false;
+                    }
+                in
+                let optimized_ir, _stats =
+                  Core_ir.Pipeline.optimize_module ~config:opt_config core_ir
+                in
 
                 (* Phase 1-6 Week 15: 最適化完了、コード生成開始 *)
                 record_end Optimization;
                 record_start CodeGen;
 
                 (* Core IR → LLVM IR *)
-                let llvm_module = Codegen.codegen_module ~target_name:opts.target optimized_ir in
+                let llvm_module =
+                  Codegen.codegen_module ~target_name:opts.target optimized_ir
+                in
 
                 (* Phase 1-6 Week 15: コード生成完了 *)
                 record_end CodeGen;
 
                 (* LLVM IR 検証 *)
-                if opts.verify_ir then begin
-                  match Verify.verify_llvm_ir llvm_module with
-                  | Ok () ->
-                      Printf.printf "LLVM IR verification passed.\n"
-                  | Error err ->
-                      let diag = Verify.error_to_diagnostic err None in
-                      print_diagnostic opts None diag;
-                      exit 1
-                end;
+                (if opts.verify_ir then
+                   match Verify.verify_llvm_ir llvm_module with
+                   | Ok () -> Printf.printf "LLVM IR verification passed.\n"
+                   | Error err ->
+                       let diag = Verify.error_to_diagnostic err None in
+                       print_diagnostic opts None diag;
+                       exit 1);
 
                 (* LLVM IR テキスト出力 *)
                 let ll_file_opt = ref None in
-                if opts.emit_ir then begin
+                if opts.emit_ir then (
                   let basename = get_basename opts.input_file in
-                  let output_path = output_filename opts.out_dir basename ".ll" in
+                  let output_path =
+                    output_filename opts.out_dir basename ".ll"
+                  in
                   Codegen.emit_llvm_ir llvm_module output_path;
                   Printf.printf "LLVM IR written to: %s\n" output_path;
-                  ll_file_opt := Some output_path;
-                end;
+                  ll_file_opt := Some output_path);
 
                 (* LLVM IR ビットコード出力 *)
-                if opts.emit_bc then begin
+                if opts.emit_bc then (
                   let basename = get_basename opts.input_file in
-                  let output_path = output_filename opts.out_dir basename ".bc" in
+                  let output_path =
+                    output_filename opts.out_dir basename ".bc"
+                  in
                   Codegen.emit_llvm_bc llvm_module output_path;
-                  Printf.printf "LLVM Bitcode written to: %s\n" output_path;
-                end;
+                  Printf.printf "LLVM Bitcode written to: %s\n" output_path);
 
                 (* ランタイムとリンク *)
-                if opts.link_runtime then begin
+                if opts.link_runtime then (
                   let basename = get_basename opts.input_file in
                   (* LLVM IR ファイルが必要なので、まだ生成されていなければ一時ファイルとして生成 *)
-                  let ll_file = match !ll_file_opt with
+                  let ll_file =
+                    match !ll_file_opt with
                     | Some path -> path
                     | None ->
-                        let temp_path = output_filename opts.out_dir basename ".ll" in
+                        let temp_path =
+                          output_filename opts.out_dir basename ".ll"
+                        in
                         Codegen.emit_llvm_ir llvm_module temp_path;
                         temp_path
                   in
 
                   (* ランタイムライブラリの存在確認 *)
-                  if not (Sys.file_exists opts.runtime_path) then begin
-                    Printf.eprintf "Error: runtime library not found: %s\n" opts.runtime_path;
-                    Printf.eprintf "Please build the runtime first with: make -C runtime/native runtime\n";
-                    exit 1
-                  end;
+                  if not (Sys.file_exists opts.runtime_path) then (
+                    Printf.eprintf "Error: runtime library not found: %s\n"
+                      opts.runtime_path;
+                    Printf.eprintf
+                      "Please build the runtime first with: make -C \
+                       runtime/native runtime\n";
+                    exit 1);
 
                   (* リンクして実行可能ファイルを生成 *)
                   let output_exe = output_filename opts.out_dir basename "" in
                   link_with_runtime ll_file opts.runtime_path output_exe;
 
                   (* 一時 LLVM IR ファイルを削除（--emit-ir が指定されていない場合） *)
-                  if !ll_file_opt = None && not opts.emit_ir then begin
-                    Sys.remove ll_file
-                  end;
-                end;
-
+                  if !ll_file_opt = None && not opts.emit_ir then
+                    Sys.remove ll_file)
               with
               | Core_ir.Desugar.DesugarError (msg, ast_span) ->
                   (* Ast.span を Diagnostic.span に変換 *)
-                  let diag_span = Diagnostic.{
-                    start_pos = { filename = opts.input_file; line = 0; column = 0; offset = ast_span.Ast.start };
-                    end_pos = { filename = opts.input_file; line = 0; column = 0; offset = ast_span.Ast.end_ };
-                  } in
-                  let diag = Diagnostic.{
-                    severity = Error;
-                    severity_hint = None;
-                    domain = None;
-                    code = Some "E8001";
-                    message = Printf.sprintf "Core IR 変換エラー: %s" msg;
-                    span = diag_span;
-                    expected_summary = None;
-                    notes = [];
-                    fixits = [];
-                  } in
+                  let diag_span =
+                    Diagnostic.
+                      {
+                        start_pos =
+                          {
+                            filename = opts.input_file;
+                            line = 0;
+                            column = 0;
+                            offset = ast_span.Ast.start;
+                          };
+                        end_pos =
+                          {
+                            filename = opts.input_file;
+                            line = 0;
+                            column = 0;
+                            offset = ast_span.Ast.end_;
+                          };
+                      }
+                  in
+                  let diag =
+                    Diagnostic.
+                      {
+                        severity = Error;
+                        severity_hint = None;
+                        domain = None;
+                        code = Some "E8001";
+                        message = Printf.sprintf "Core IR 変換エラー: %s" msg;
+                        span = diag_span;
+                        expected_summary = None;
+                        notes = [];
+                        fixits = [];
+                      }
+                  in
                   print_diagnostic opts (Some source) diag;
                   exit 1
               | Codegen.CodegenError msg ->
-                  let dummy_loc = Diagnostic.{
-                    filename = opts.input_file;
-                    line = 0;
-                    column = 0;
-                    offset = 0;
-                  } in
-                  let diag = Diagnostic.{
-                    severity = Error;
-                    severity_hint = None;
-                    domain = None;
-                    code = Some "E8002";
-                    message = Printf.sprintf "LLVM IR 生成エラー: %s" msg;
-                    span = { start_pos = dummy_loc; end_pos = dummy_loc };
-                    expected_summary = None;
-                    notes = [];
-                    fixits = [];
-                  } in
+                  let dummy_loc =
+                    Diagnostic.
+                      {
+                        filename = opts.input_file;
+                        line = 0;
+                        column = 0;
+                        offset = 0;
+                      }
+                  in
+                  let diag =
+                    Diagnostic.
+                      {
+                        severity = Error;
+                        severity_hint = None;
+                        domain = None;
+                        code = Some "E8002";
+                        message = Printf.sprintf "LLVM IR 生成エラー: %s" msg;
+                        span = { start_pos = dummy_loc; end_pos = dummy_loc };
+                        expected_summary = None;
+                        notes = [];
+                        fixits = [];
+                      }
+                  in
                   print_diagnostic opts None diag;
-                  exit 1
-            end;
-
+                  exit 1)
         | Error type_err ->
             (* 型推論エラー *)
-            let diag = Type_error.to_diagnostic_with_source source opts.input_file type_err in
+            let diag =
+              Type_error.to_diagnostic_with_source source opts.input_file
+                type_err
+            in
             print_diagnostic opts (Some source) diag;
-            exit 1
-      end;
+            exit 1);
 
       (* Phase 1-6 Week 15: トレース・統計サマリー出力（正常終了時） *)
       let trace_summary =
         if collect_trace then Some (Cli.Trace.summary ()) else None
       in
-      if opts.stats then begin
+      if opts.stats then (
         (match trace_summary with
         | Some summary -> Cli.Stats.update_trace_summary summary
         | None -> ());
-        Cli.Stats.print_stats ()
-      end;
-      if opts.trace then
-        Cli.Trace.print_summary ?summary_data:trace_summary ();
+        Cli.Stats.print_stats ());
+      if opts.trace then Cli.Trace.print_summary ?summary_data:trace_summary ();
 
       (* Phase 1-6 Week 16: メトリクス出力（--metrics指定時） *)
       (match opts.metrics_path with
-      | Some path ->
+      | Some path -> (
           (* トレース情報を統計に統合（まだの場合） *)
           (match trace_summary with
           | Some summary when not opts.stats ->
@@ -296,25 +325,26 @@ let () =
           | _ -> ());
 
           (* メトリクスをファイルに出力 *)
-          let content = match opts.metrics_format with
+          let content =
+            match opts.metrics_format with
             | Cli.Options.MetricsJson -> Cli.Stats.to_json ()
             | Cli.Options.MetricsCsv -> Cli.Stats.to_csv ()
           in
-          (try
+          try
             let oc = open_out path in
             output_string oc content;
             close_out oc;
             Printf.eprintf "[METRICS] Metrics written to: %s\n%!" path
-          with
-          | Sys_error msg ->
-              Printf.eprintf "[METRICS] Error writing metrics file: %s\n%!" msg;
-              exit 1)
+          with Sys_error msg ->
+            Printf.eprintf "[METRICS] Error writing metrics file: %s\n%!" msg;
+            exit 1)
       | None -> ());
 
       exit 0
   | Error diag ->
       (* Phase 1-6 Week 15: パース失敗時はトレース終了 *)
-      if collect_trace then Cli.Trace.end_phase ~emit_log:emit_trace_logs Parsing;
+      if collect_trace then
+        Cli.Trace.end_phase ~emit_log:emit_trace_logs Parsing;
 
       print_diagnostic opts (Some source) diag;
       exit 1

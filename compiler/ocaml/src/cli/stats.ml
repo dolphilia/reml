@@ -28,46 +28,49 @@
  *   [STATS] ====================================
  *)
 
-(** フェーズタイミング情報（Trace.phase_metrics のエイリアス） *)
 type phase_timing = Trace.phase_metrics
+(** フェーズタイミング情報（Trace.phase_metrics のエイリアス） *)
 
-(** 統計情報カウンタ *)
 type stats = {
-  mutable token_count: int;          (** パースしたトークン数 *)
-  mutable ast_node_count: int;       (** 生成したASTノード数 *)
-  mutable unify_calls: int;          (** 型推論のunify呼び出し回数 *)
-  mutable optimization_passes: int;  (** 最適化パスの適用回数 *)
-  mutable llvm_instructions: int;    (** 生成したLLVM IR命令数 *)
-  mutable phase_timings: phase_timing list;  (** フェーズ別統計（`--trace`/summary 共有） *)
-  mutable total_elapsed_seconds: float;      (** フェーズ合計時間（秒） *)
-  mutable total_allocated_bytes: int;        (** フェーズ合計アロケーション量（バイト） *)
-  mutable peak_memory_bytes: int option;     (** 計測期間中のピークメモリ（バイト） *)
-  mutable memory_peak_ratio: float option;   (** `peak_memory_bytes / input_size_bytes` *)
-  mutable input_size_bytes: int option;      (** 処理した入力サイズ（バイト） *)
+  mutable token_count : int;  (** パースしたトークン数 *)
+  mutable ast_node_count : int;  (** 生成したASTノード数 *)
+  mutable unify_calls : int;  (** 型推論のunify呼び出し回数 *)
+  mutable optimization_passes : int;  (** 最適化パスの適用回数 *)
+  mutable llvm_instructions : int;  (** 生成したLLVM IR命令数 *)
+  mutable phase_timings : phase_timing list;
+      (** フェーズ別統計（`--trace`/summary 共有） *)
+  mutable total_elapsed_seconds : float;  (** フェーズ合計時間（秒） *)
+  mutable total_allocated_bytes : int;  (** フェーズ合計アロケーション量（バイト） *)
+  mutable peak_memory_bytes : int option;  (** 計測期間中のピークメモリ（バイト） *)
+  mutable memory_peak_ratio : float option;
+      (** `peak_memory_bytes / input_size_bytes` *)
+  mutable input_size_bytes : int option;  (** 処理した入力サイズ（バイト） *)
 }
+(** 統計情報カウンタ *)
 
 (** グローバル統計カウンタ *)
-let global_stats : stats = {
-  token_count = 0;
-  ast_node_count = 0;
-  unify_calls = 0;
-  optimization_passes = 0;
-  llvm_instructions = 0;
-  phase_timings = [];
-  total_elapsed_seconds = 0.0;
-  total_allocated_bytes = 0;
-  peak_memory_bytes = None;
-  memory_peak_ratio = None;
-  input_size_bytes = None;
-}
+let global_stats : stats =
+  {
+    token_count = 0;
+    ast_node_count = 0;
+    unify_calls = 0;
+    optimization_passes = 0;
+    llvm_instructions = 0;
+    phase_timings = [];
+    total_elapsed_seconds = 0.0;
+    total_allocated_bytes = 0;
+    peak_memory_bytes = None;
+    memory_peak_ratio = None;
+    input_size_bytes = None;
+  }
 
 (** memory_peak_ratio 再計算 *)
 let recompute_memory_peak_ratio () =
-  match global_stats.peak_memory_bytes, global_stats.input_size_bytes with
+  match (global_stats.peak_memory_bytes, global_stats.input_size_bytes) with
   | Some peak, Some size when size > 0 ->
-      global_stats.memory_peak_ratio <- Some (float_of_int peak /. float_of_int size)
-  | _ ->
-      global_stats.memory_peak_ratio <- None
+      global_stats.memory_peak_ratio <-
+        Some (float_of_int peak /. float_of_int size)
+  | _ -> global_stats.memory_peak_ratio <- None
 
 (** 統計カウンタをリセット（テスト用）
  *
@@ -152,36 +155,37 @@ let print_stats () =
   Printf.eprintf "[STATS] Tokens parsed: %d\n%!" global_stats.token_count;
   Printf.eprintf "[STATS] AST nodes: %d\n%!" global_stats.ast_node_count;
   Printf.eprintf "[STATS] Unify calls: %d\n%!" global_stats.unify_calls;
-  Printf.eprintf "[STATS] Optimization passes: %d\n%!" global_stats.optimization_passes;
-  Printf.eprintf "[STATS] LLVM instructions: %d\n%!" global_stats.llvm_instructions;
-  if global_stats.phase_timings <> [] then begin
+  Printf.eprintf "[STATS] Optimization passes: %d\n%!"
+    global_stats.optimization_passes;
+  Printf.eprintf "[STATS] LLVM instructions: %d\n%!"
+    global_stats.llvm_instructions;
+  if global_stats.phase_timings <> [] then (
     Printf.eprintf "[STATS] Phase timings:\n%!";
-    List.iter (fun Trace.{ phase; elapsed_seconds; time_ratio; allocated_bytes } ->
-      Printf.eprintf "[STATS]   %s: %.3fs (%.1f%%, %d bytes)\n%!"
-        (Trace.string_of_phase phase)
-        elapsed_seconds
-        (time_ratio *. 100.0)
-        allocated_bytes
-    ) global_stats.phase_timings;
-    Printf.eprintf "[STATS] Total time: %.3fs\n%!" global_stats.total_elapsed_seconds;
-    Printf.eprintf "[STATS] Total allocated: %d bytes\n%!" global_stats.total_allocated_bytes;
+    List.iter
+      (fun Trace.{ phase; elapsed_seconds; time_ratio; allocated_bytes } ->
+        Printf.eprintf "[STATS]   %s: %.3fs (%.1f%%, %d bytes)\n%!"
+          (Trace.string_of_phase phase)
+          elapsed_seconds (time_ratio *. 100.0) allocated_bytes)
+      global_stats.phase_timings;
+    Printf.eprintf "[STATS] Total time: %.3fs\n%!"
+      global_stats.total_elapsed_seconds;
+    Printf.eprintf "[STATS] Total allocated: %d bytes\n%!"
+      global_stats.total_allocated_bytes;
 
     (* フェーズ別ランキング出力（時間降順） *)
     Printf.eprintf "[STATS] Phase timings (ranked by time):\n%!";
     let ranked_phases =
-      List.sort (fun Trace.{ elapsed_seconds = t1; _ } Trace.{ elapsed_seconds = t2; _ } ->
-        compare t2 t1  (* 降順: 大きい方が先 *)
-      ) global_stats.phase_timings
+      List.sort
+        (fun Trace.{ elapsed_seconds = t1; _ } Trace.{ elapsed_seconds = t2; _ } ->
+          compare t2 t1 (* 降順: 大きい方が先 *))
+        global_stats.phase_timings
     in
-    List.iteri (fun i Trace.{ phase; elapsed_seconds; time_ratio; allocated_bytes } ->
-      Printf.eprintf "[STATS]   %d. %s: %.3fs (%.1f%%, %d bytes)\n%!"
-        (i + 1)
-        (Trace.string_of_phase phase)
-        elapsed_seconds
-        (time_ratio *. 100.0)
-        allocated_bytes
-    ) ranked_phases;
-  end;
+    List.iteri
+      (fun i Trace.{ phase; elapsed_seconds; time_ratio; allocated_bytes } ->
+        Printf.eprintf "[STATS]   %d. %s: %.3fs (%.1f%%, %d bytes)\n%!" (i + 1)
+          (Trace.string_of_phase phase)
+          elapsed_seconds (time_ratio *. 100.0) allocated_bytes)
+      ranked_phases);
   (match global_stats.peak_memory_bytes with
   | Some peak -> Printf.eprintf "[STATS] Peak memory: %d bytes\n%!" peak
   | None -> ());
@@ -197,14 +201,17 @@ let print_stats () =
 let to_json () =
   let module Y = Yojson.Basic in
   let phase_list =
-    `List (List.map (fun Trace.{ phase; elapsed_seconds; time_ratio; allocated_bytes } ->
-        `Assoc [
-          ("phase", `String (Trace.string_of_phase phase));
-          ("elapsed_seconds", `Float elapsed_seconds);
-          ("time_ratio", `Float time_ratio);
-          ("allocated_bytes", `Int allocated_bytes);
-        ]
-      ) global_stats.phase_timings)
+    `List
+      (List.map
+         (fun Trace.{ phase; elapsed_seconds; time_ratio; allocated_bytes } ->
+           `Assoc
+             [
+               ("phase", `String (Trace.string_of_phase phase));
+               ("elapsed_seconds", `Float elapsed_seconds);
+               ("time_ratio", `Float time_ratio);
+               ("allocated_bytes", `Int allocated_bytes);
+             ])
+         global_stats.phase_timings)
   in
   let assoc =
     [
@@ -216,9 +223,18 @@ let to_json () =
       ("phase_timings", phase_list);
       ("total_elapsed_seconds", `Float global_stats.total_elapsed_seconds);
       ("total_allocated_bytes", `Int global_stats.total_allocated_bytes);
-      ("peak_memory_bytes", match global_stats.peak_memory_bytes with Some v -> `Int v | None -> `Null);
-      ("memory_peak_ratio", match global_stats.memory_peak_ratio with Some v -> `Float v | None -> `Null);
-      ("input_size_bytes", match global_stats.input_size_bytes with Some v -> `Int v | None -> `Null);
+      ( "peak_memory_bytes",
+        match global_stats.peak_memory_bytes with
+        | Some v -> `Int v
+        | None -> `Null );
+      ( "memory_peak_ratio",
+        match global_stats.memory_peak_ratio with
+        | Some v -> `Float v
+        | None -> `Null );
+      ( "input_size_bytes",
+        match global_stats.input_size_bytes with
+        | Some v -> `Int v
+        | None -> `Null );
     ]
   in
   Y.pretty_to_string (`Assoc assoc)
@@ -235,11 +251,10 @@ let to_csv () =
   (* ヘッダー行 *)
   Buffer.add_string buffer "phase,elapsed_seconds,time_ratio,allocated_bytes\n";
   (* データ行 *)
-  List.iter (fun Trace.{ phase; elapsed_seconds; time_ratio; allocated_bytes } ->
-    Printf.bprintf buffer "%s,%.6f,%.6f,%d\n"
-      (Trace.string_of_phase phase)
-      elapsed_seconds
-      time_ratio
-      allocated_bytes
-  ) global_stats.phase_timings;
+  List.iter
+    (fun Trace.{ phase; elapsed_seconds; time_ratio; allocated_bytes } ->
+      Printf.bprintf buffer "%s,%.6f,%.6f,%d\n"
+        (Trace.string_of_phase phase)
+        elapsed_seconds time_ratio allocated_bytes)
+    global_stats.phase_timings;
   Buffer.contents buffer

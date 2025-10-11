@@ -39,12 +39,10 @@ let aarch64_linux_triple = "aarch64-unknown-linux-gnu"
  *
  * 参考: docs/guides/llvm-integration-notes.md §5.0
  *)
-let x86_64_linux_datalayout =
-  "e-m:e-p:64:64-f64:64:64-v128:128:128-a:0:64"
+let x86_64_linux_datalayout = "e-m:e-p:64:64-f64:64:64-v128:128:128-a:0:64"
 
 (** x86_64 Windows (MSVC) の DataLayout（将来実装） *)
-let x86_64_windows_datalayout =
-  "e-m:w-p:64:64-f64:64:64-v128:128:128-a:0:64"
+let x86_64_windows_datalayout = "e-m:w-p:64:64-f64:64:64-v128:128:128-a:0:64"
 
 (** ARM64 Linux の DataLayout（将来実装） *)
 let aarch64_linux_datalayout =
@@ -80,74 +78,77 @@ let pointer_size_bits = function
   | "x86_64-unknown-linux-gnu" -> 64
   | "x86_64-pc-windows-msvc" -> 64
   | "aarch64-unknown-linux-gnu" -> 64
-  | _ -> 64  (* デフォルト *)
+  | _ -> 64 (* デフォルト *)
 
 (** ターゲット別のポインタサイズ（バイト単位） *)
-let pointer_size_bytes target_triple =
-  (pointer_size_bits target_triple) / 8
+let pointer_size_bytes target_triple = pointer_size_bits target_triple / 8
 
 (* ========== アラインメント設定 ========== *)
 
+type alignment_spec = {
+  i8_align : int;
+  i16_align : int;
+  i32_align : int;
+  i64_align : int;
+  f32_align : int;
+  f64_align : int;
+  ptr_align : int;
+  aggregate_align : int;
+}
 (** プリミティブ型のアラインメント（バイト単位）
  *
  * System V ABI x86_64 の規則に従う。
  *)
-type alignment_spec = {
-  i8_align: int;
-  i16_align: int;
-  i32_align: int;
-  i64_align: int;
-  f32_align: int;
-  f64_align: int;
-  ptr_align: int;
-  aggregate_align: int;
-}
 
-let x86_64_linux_alignment = {
-  i8_align = 1;
-  i16_align = 2;
-  i32_align = 4;
-  i64_align = 8;
-  f32_align = 4;
-  f64_align = 8;
-  ptr_align = 8;
-  aggregate_align = 8;
-}
+let x86_64_linux_alignment =
+  {
+    i8_align = 1;
+    i16_align = 2;
+    i32_align = 4;
+    i64_align = 8;
+    f32_align = 4;
+    f64_align = 8;
+    ptr_align = 8;
+    aggregate_align = 8;
+  }
 
-let x86_64_windows_alignment = {
-  i8_align = 1;
-  i16_align = 2;
-  i32_align = 4;
-  i64_align = 8;
-  f32_align = 4;
-  f64_align = 8;
-  ptr_align = 8;
-  aggregate_align = 8;
-}
+let x86_64_windows_alignment =
+  {
+    i8_align = 1;
+    i16_align = 2;
+    i32_align = 4;
+    i64_align = 8;
+    f32_align = 4;
+    f64_align = 8;
+    ptr_align = 8;
+    aggregate_align = 8;
+  }
 
 (** ターゲット別のアラインメント仕様を取得 *)
 let get_alignment_spec = function
   | "x86_64-unknown-linux-gnu" -> x86_64_linux_alignment
   | "x86_64-pc-windows-msvc" -> x86_64_windows_alignment
-  | _ -> x86_64_linux_alignment  (* デフォルト *)
+  | _ -> x86_64_linux_alignment
+(* デフォルト *)
 
 (* ========== ターゲット設定の取得 ========== *)
 
-(** ターゲット設定 *)
 type target_config = {
-  triple: string;
-  datalayout: string;
-  calling_conv: string;
-  alignment: alignment_spec;
+  triple : string;
+  datalayout : string;
+  calling_conv : string;
+  alignment : alignment_spec;
 }
+(** ターゲット設定 *)
 
 (** デフォルトターゲット（x86_64 Linux） *)
-let default_target = {
-  triple = x86_64_linux_triple;
-  datalayout = x86_64_linux_datalayout;
-  calling_conv = calling_convention_sysv;
-  alignment = x86_64_linux_alignment;
-}
+let default_target =
+  {
+    triple = x86_64_linux_triple;
+    datalayout = x86_64_linux_datalayout;
+    calling_conv = calling_convention_sysv;
+    alignment = x86_64_linux_alignment;
+  }
 
 (** ターゲット名からターゲット設定を取得 *)
 let get_target_config = function

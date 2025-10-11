@@ -10,8 +10,20 @@
  (name reml_parser)
  (public_name reml_ocaml.parser)
  (wrapped false)
- (modules ast ast_printer token lexer parser diagnostic parser_driver
-          types type_env constraint type_error typed_ast type_inference)
+ (modules
+  ast
+  ast_printer
+  token
+  lexer
+  parser
+  diagnostic
+  parser_driver
+  types
+  type_env
+  constraint
+  type_error
+  typed_ast
+  type_inference)
  (libraries menhirLib))
 
 (executable
