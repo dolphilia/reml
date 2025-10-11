@@ -21,6 +21,7 @@
   types
   type_env
   constraint
+  constraint_solver
   type_error
   typed_ast
   type_inference)

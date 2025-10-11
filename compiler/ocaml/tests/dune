@@ -10,6 +10,7 @@
   test_type_inference
   test_type_errors
   test_let_polymorphism
+  test_constraint_solver
   test_core_ir
   test_desugar
   test_cfg
