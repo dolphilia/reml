@@ -179,10 +179,21 @@ if (( ! SKIP_LLVM )); then
   run_command brew link --force llvm@$LLVM_VERSION || true
 
   # LLVM パス設定
-  LLVM_PATH="/usr/local/opt/llvm@$LLVM_VERSION/bin"
+  LLVM_PATH=""
+  LLVM_CANDIDATES=(
+    "/usr/local/opt/llvm@$LLVM_VERSION/bin"
+    "/opt/homebrew/opt/llvm@$LLVM_VERSION/bin"
+  )
+
+  for candidate in "${LLVM_CANDIDATES[@]}"; do
+    if [[ -d "$candidate" ]]; then
+      LLVM_PATH="$candidate"
+      break
+    fi
+  done
 
   if (( ! DRY_RUN )); then
-    if [ -d "$LLVM_PATH" ]; then
+    if [[ -n "$LLVM_PATH" ]]; then
       log_info "LLVM パス: $LLVM_PATH"
 
       # パス設定を .zshrc または .bash_profile に追加
@@ -211,7 +222,7 @@ if (( ! SKIP_LLVM )); then
       # 現在のセッションでパスを設定
       export PATH="$LLVM_PATH:$PATH"
     else
-      log_warn "LLVM パスが見つかりません: $LLVM_PATH"
+      log_warn "LLVM パスが見つかりません（Homebrew のインストール先を確認してください）"
     fi
 
     # LLVM バージョン確認
@@ -335,7 +346,13 @@ log_info ""
 log_info "次のステップ:"
 log_info "  1. シェルを再起動するか、以下を実行してパスを有効化:"
 log_info "     eval \"\$(opam env)\""
-log_info "     export PATH=\"/usr/local/opt/llvm@$LLVM_VERSION/bin:\$PATH\""
+if [[ -n "$LLVM_PATH" ]]; then
+  log_info "     export PATH=\"$LLVM_PATH:\$PATH\""
+else
+  log_info "     # Homebrew のインストール先に合わせて LLVM のパスを追加してください"
+  log_info "     export PATH=\"/usr/local/opt/llvm@$LLVM_VERSION/bin:\$PATH\"  # 例: インテル Mac"
+  log_info "     export PATH=\"/opt/homebrew/opt/llvm@$LLVM_VERSION/bin:\$PATH\"  # 例: Apple Silicon"
+fi
 log_info ""
 log_info "  2. コンパイラをビルド:"
 log_info "     cd $REPO_ROOT/compiler/ocaml"

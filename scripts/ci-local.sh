@@ -9,6 +9,7 @@
 #
 # オプション:
 #   --target <TARGET> ターゲットプラットフォーム（linux または macos、デフォルト: 自動検出）
+#   --arch <ARCH>     ターゲットアーキテクチャ（x86_64 / arm64、デフォルト: ホスト自動判定）
 #   --skip-lint       Lint ステップをスキップ
 #   --skip-build      Build ステップをスキップ
 #   --skip-test       Test ステップをスキップ
@@ -43,6 +44,8 @@ SKIP_RUNTIME=0
 VERBOSE=0
 CLI_TARGET_NAME=""
 LLVM_TARGET_TRIPLE=""
+ARCH="auto"
+HOST_ARCH=""
 
 # 色付き出力
 RED='\033[0;31m'
@@ -89,6 +92,11 @@ while [[ $# -gt 0 ]]; do
       TARGET="$1"
       shift
       ;;
+    --arch)
+      shift || { log_error "--arch の後に値を指定してください"; exit 1; }
+      ARCH="$1"
+      shift
+      ;;
     --skip-lint)
       SKIP_LINT=1
       shift
@@ -125,6 +133,29 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+normalize_arch() {
+  case "$1" in
+    auto|"") echo "auto" ;;
+    x86_64|amd64|x64) echo "x86_64" ;;
+    arm64|aarch64) echo "arm64" ;;
+    *)
+      log_error "サポートされていないアーキテクチャ指定: $1"
+      exit 1
+      ;;
+  esac
+}
+
+ARCH="$(normalize_arch "$ARCH")"
+
+detect_host_arch() {
+  local uname_arch
+  uname_arch=$(uname -m)
+  normalize_arch "$uname_arch"
+}
+
+HOST_ARCH="$(detect_host_arch)"
+log_info "ホストアーキテクチャ: $HOST_ARCH"
+
 # ========== プラットフォーム検出 ==========
 
 if [[ -z "$TARGET" ]]; then
@@ -151,8 +182,26 @@ case "$TARGET" in
     LLVM_TARGET_TRIPLE="x86_64-unknown-linux-gnu"
     ;;
   macos)
-    CLI_TARGET_NAME="x86_64-apple-darwin"
-    LLVM_TARGET_TRIPLE="x86_64-apple-darwin"
+    selected_arch="$ARCH"
+    if [[ "$selected_arch" == "auto" ]]; then
+      selected_arch="$HOST_ARCH"
+    fi
+
+    case "$selected_arch" in
+      arm64)
+        CLI_TARGET_NAME="arm64-apple-darwin"
+        LLVM_TARGET_TRIPLE="arm64-apple-darwin"
+        ;;
+      x86_64)
+        CLI_TARGET_NAME="x86_64-apple-darwin"
+        LLVM_TARGET_TRIPLE="x86_64-apple-darwin"
+        ;;
+      *)
+        log_error "macOS ターゲットでサポートされていないアーキテクチャ: $selected_arch"
+        exit 1
+        ;;
+    esac
+    log_info "macOS ターゲットアーキテクチャ: $selected_arch"
     ;;
   *)
     CLI_TARGET_NAME=""
@@ -177,10 +226,22 @@ check_command dune
 # プラットフォーム固有の LLVM パス設定
 if [[ "$TARGET" == "macos" ]]; then
   # macOS: Homebrew でインストールされた LLVM を使用
-  if [ -d "/usr/local/opt/llvm@18/bin" ]; then
-    export PATH="/usr/local/opt/llvm@18/bin:$PATH"
-    log_info "LLVM パスを設定: /usr/local/opt/llvm@18/bin"
-  else
+  llvm_candidates=(
+    "/usr/local/opt/llvm@18/bin"
+    "/opt/homebrew/opt/llvm@18/bin"
+  )
+
+  LLVM_PATH_FOUND=""
+  for llvm_path in "${llvm_candidates[@]}"; do
+    if [[ -d "$llvm_path" ]]; then
+      LLVM_PATH_FOUND="$llvm_path"
+      export PATH="$llvm_path:$PATH"
+      log_info "LLVM パスを設定: $llvm_path"
+      break
+    fi
+  done
+
+  if [[ -z "$LLVM_PATH_FOUND" ]]; then
     log_warn "Homebrew LLVM パスが見つかりません。tooling/ci/macos/setup-env.sh を実行してください。"
   fi
 fi

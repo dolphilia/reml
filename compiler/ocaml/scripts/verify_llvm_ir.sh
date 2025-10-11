@@ -11,7 +11,7 @@
 #   ./scripts/verify_llvm_ir.sh [オプション] <input.ll>
 #
 # 主なオプション:
-#   --target <TRIPLE>        ターゲットトリプル（x86_64-unknown-linux-gnu または x86_64-apple-darwin）
+#   --target <TRIPLE>        ターゲットトリプル（x86_64-unknown-linux-gnu / x86_64-apple-darwin / arm64-apple-darwin）
 #   --cross                  x86_64-unknown-linux-gnu 向けクロスリンクを実行
 #   --cross-prefix <TRIPLE>  ターゲットトリプル（既定: x86_64-unknown-linux-gnu）
 #   --sysroot <PATH>         クロスリンクに使用する sysroot（既定: REML_TOOLCHAIN_HOME/sysroot）

@@ -4,10 +4,11 @@
 - Phase 1 の完了時点で x86_64 macOS 向けの最小ビルド・検証フローを確立し、macOS 開発者が Linux クロスビルドに依存せずに日常開発を行える状態を用意する。
 - Linux CI（[1-7-linux-validation-infra.md](1-7-linux-validation-infra.md)）で整備したパイプライン資産を再利用しつつ、Mach-O ランタイム差分および LLVM Toolchain の整合性を確認する。
 - Phase 2 で開始予定の Windows 対応（[2-6-windows-support.md](2-6-windows-support.md)）と競合しないタイミングで macOS の課題洗い出しを前倒しし、後続フェーズでのマルチターゲット化を円滑にする。
+- Apple Silicon (arm64) ホストでのローカルビルド／検証を Linux クロスビルドに頼らず実行できるようにし、x86_64 と arm64 の両ターゲットを切り替えて運用できるよう整備する。
 
 ## スコープ
-- **含む**: GitHub Actions macOS ランナーのワークフロー定義、Homebrew ベースのツールチェーン準備、`dune build` / `dune runtest` の自動化、Mach-O での LLVM IR 検証、ランタイムビルド手順の整理、macOS 計測指標の追加。
-- **含まない**: ARM64 ネイティブ最適化、Notarization/署名処理、GUI 向けバイナリ配布、Xcode プロジェクト生成。本計画では Intel macOS（x86_64）での CLI コンパイラ動作検証に限定する。
+- **含む**: GitHub Actions macOS ランナーのワークフロー定義、Homebrew ベースのツールチェーン準備、`dune build` / `dune runtest` の自動化、Mach-O での LLVM IR 検証、ランタイムビルド手順の整理、macOS 計測指標の追加、Apple Silicon (arm64-apple-darwin) 向けターゲットトリプル切り替えとローカル再現スクリプトの整備。
+- **含まない**: ARM64 専用最適化（ベクトル命令や CPU 拡張向けチューニング）、Notarization/署名処理、GUI 向けバイナリ配布、Xcode プロジェクト生成。本計画では CLI コンパイラの x86_64 / arm64 双方での最小動作検証に留める。
 - **前提**: Phase 1-7 の Linux CI が運用開始済みであり、`compiler/ocaml` のビルドとテストが安定していること。macOS 開発者用の Homebrew と Xcode Command Line Tools が各自の環境に導入されていること。
 
 ## 作業ディレクトリ
@@ -28,6 +29,10 @@
   - GitHub Actions の `Bootstrap Linux CI` がフォーマット検証を含めて成功するスクリーンショット／ログを `compiler/ocaml/README.md` の進捗欄に追記。
   - `docs/plans/bootstrap-roadmap/1-7-linux-validation-infra.md` に Linux CI 修正内容を脚注で追記し、macOS CI 設計時に再利用できるよう差分を整理する。
   - 2025-10-13: GitHub Actions の制限に備え、`scripts/ci-local.sh` を x86_64 macOS トリプル固定で更新し、ローカル環境のみで Lint/Build/Test/LLVM Verify を完結できることを確認。変更内容は `compiler/ocaml/README.md` と本計画書に記録し、macOS 開発者が CI 依存せずに進められる体制を用意する。
+- ローカル Apple Silicon 対応（2025-10-13〜）：
+  - `scripts/ci-local.sh` に `--arch` オプションとホストアーキテクチャ自動判定を導入し、`x86_64-apple-darwin` と `arm64-apple-darwin` を切り替えながらローカル検証できるようにする。
+  - `tooling/ci/macos/setup-env.sh` で Homebrew の `/opt/homebrew` パスを自動探索し、Apple Silicon 環境でも LLVM 18 を PATH に登録できるようにする。
+  - Apple Silicon 特有の検証結果差分（AddressSanitizer のログ出力、Mach-O のストリップ挙動）を README と計画書に追記し、後続タスクのリスク管理に反映する。
 
 ### 1. 計画キックオフと要件整理（18週目）
 - macOS 向けビルドの期待成果物、最小検証項目、リスク項目を `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に登録。
@@ -53,11 +58,11 @@
 
 ### 5. テストジョブ実装（20週目）
 - `dune runtest` を実行し、ゴールデンテスト（AST/TAST/Core IR/LLVM IR）結果に macOS 固有差分がないか確認。
-- `scripts/verify_llvm_ir.sh` を `--target x86_64-apple-darwin` で実行可能に拡張し、macOS 用 IR 検証パスを確立。
+- `scripts/verify_llvm_ir.sh` を `--target x86_64-apple-darwin` / `--target arm64-apple-darwin` で実行可能に拡張し、macOS 用 IR 検証パスをターゲット切替に対応させる。
 - テスト失敗時のログ収集を強化し、`_build/default/**/*.log` を `test-results-macos` としてアップロード。
 
 ### 6. LLVM/Mach-O 検証（20-21週目）
-- `llvm-as`, `opt -verify`, `llc -mtriple=x86_64-apple-darwin` を実行し、Mach-O オブジェクト生成までを CI に組み込む。
+- `llvm-as`, `opt -verify`, `llc -mtriple={x86_64|arm64}-apple-darwin` を実行し、Mach-O オブジェクト生成までを CI に組み込む。
 - `clang` でリンクした最小バイナリを実行し、`DYLD_LIBRARY_PATH` の設定が不要であることを確認。
 - `otool -L` でリンク先ライブラリを検証し、不要な依存が混入していないかチェックして結果を `docs/notes/llvm-spec-status-survey.md` に追記。
 
@@ -67,7 +72,7 @@
 - `tooling/ci/docker/metrics.json` に macOS セクションを追加し、CI 実行時間のトレンドを可視化。
 
 ### 8. ローカル再現とドキュメント整備（21-22週目）
-- `scripts/ci-local.sh` に `--target macos` オプションを追加し、開発者が GitHub Actions と同等の手順をローカルで再現できるようにする。
+- `scripts/ci-local.sh` に `--target macos` / `--arch {x86_64,arm64}` オプションを揃え、開発者が GitHub Actions と同等の手順をローカルで再現しつつターゲットを切り替えられるようにする。
 - `compiler/ocaml/README.md` に macOS 手元検証ガイド（Homebrew セットアップ、`opam env` の読み込み、LLVM パス設定）を追記。
 - `docs/plans/bootstrap-roadmap/1-5-runtime-integration.md` へ Mach-O 向け TODO を脚注で追加し、Phase 2 以降に検討すべき項目（Notarization、ARM64 対応）を記録。
 

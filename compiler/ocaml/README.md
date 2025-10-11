@@ -26,8 +26,9 @@
   - 📄 2025-10-12: dune-project の構文エラーを修正し、ocamlformat 0.26.2 を導入
   - 📄 2025-10-12: macOS ローカル環境で ocamlformat インストール完了、全コードをフォーマット
   - 📄 2025-10-12: Bootstrap Linux CI の Lint ステージブロッカーを解消（dune-project 修正、.ocamlformat 作成）
-  - 📄 2025-10-13: `scripts/ci-local.sh` を x86_64 macOS トリプル固定で更新し、GitHub Actions なしでもローカル検証できる手順を整備
-  - 進捗: 15% (Linux CI ブロッカー解消、ローカル環境セットアップ完了)
+  - 📄 2025-10-14: `scripts/ci-local.sh` に `--arch` 切替とホスト自動判定を実装し、x86_64 / arm64 の双方でローカル検証できるように整備
+  - 📄 2025-10-14: `tooling/ci/macos/setup-env.sh` で `/usr/local` と `/opt/homebrew` の両パスを解決し、Apple Silicon 環境でも LLVM 18 を自動登録
+  - 進捗: 20% (Linux CI ブロッカー解消、ローカル環境セットアップ完了、Apple Silicon 向けローカル検証導線を整備)
 
 過去フェーズの週次レポートや統計は `compiler/ocaml/docs/` 配下の各完了報告・引き継ぎ資料に集約しています。
 
@@ -221,6 +222,12 @@ GitHub Actions と同じ検証手順をローカルで実行できます：
 # 特定のステップをスキップ
 ./scripts/ci-local.sh --target macos --skip-lint --skip-runtime
 
+# Apple Silicon で arm64 ターゲットを明示
+./scripts/ci-local.sh --target macos --arch arm64
+
+# Intel Mac で x86_64 ターゲットを固定
+./scripts/ci-local.sh --target macos --arch x86_64
+
 # ヘルプを表示
 ./scripts/ci-local.sh --help
 ```
@@ -230,9 +237,9 @@ GitHub Actions と同じ検証手順をローカルで実行できます：
 2. **Build**: コンパイラ・ランタイムのビルド
 3. **Test**: 単体テスト・統合テスト
 4. **Memory Check**: AddressSanitizer（Valgrind は macOS でスキップ）
-5. **LLVM IR Verification**: `llvm-as` → `opt -verify` → `llc -mtriple=x86_64-apple-darwin`
+5. **LLVM IR Verification**: `llvm-as` → `opt -verify` → `llc -mtriple=${LLVM_TARGET_TRIPLE}`（既定は `x86_64-apple-darwin`、Apple Silicon 環境では `arm64-apple-darwin` を自動選択）
 
-Apple Silicon 環境でも `--target macos`（または自動検出）で実行すると、CI と同じく `x86_64-apple-darwin` 向けに強制して検証します。ホストが `arm64` でも IR のトリプルがぶれないため、Mach-O バイナリ差分を気にせず手元で確認できます。
+Apple Silicon 環境では `--target macos` のみで `arm64-apple-darwin` が自動選択されます。Intel Mac 互換の x86_64 IR を検証したい場合は `--arch x86_64`、逆に Intel Mac から Apple Silicon 向け IR を確認する場合は `--arch arm64` を指定してください。引数を省略した場合はホストの `uname -m` に基づいてターゲットを決定します。
 
 ### macOS 固有の注意事項
 
@@ -253,10 +260,15 @@ DEBUG=1 make test
 ```
 
 #### Mach-O vs ELF
-macOS では Mach-O 形式の実行ファイルが生成されます。LLVM IR 検証では `x86_64-apple-darwin` ターゲットを使用します：
+macOS では Mach-O 形式の実行ファイルが生成されます。LLVM IR 検証では用途に応じて `x86_64-apple-darwin` または `arm64-apple-darwin` を指定します：
 
 ```bash
-# macOS ターゲットでの IR 検証
+# 例: Apple Silicon で arm64 ターゲットを検証
+./compiler/ocaml/scripts/verify_llvm_ir.sh \
+  --target arm64-apple-darwin \
+  path/to/output.ll
+
+# 例: Intel 互換の x86_64 ターゲットを明示して検証
 ./compiler/ocaml/scripts/verify_llvm_ir.sh \
   --target x86_64-apple-darwin \
   path/to/output.ll
