@@ -408,3 +408,61 @@ let default_metadata span =
     dict_instances = [];
     opt_flags = default_opt_flags;
   }
+
+(* ========== 辞書レイアウト計算 ========== *)
+
+(** 辞書レイアウト情報を計算する
+ *
+ * vtableはメソッドごとに関数ポインタ（8バイト）を保持し、
+ * 型情報メタデータ用に追加の8バイトを確保する。
+ *
+ * Phase 2 Week 19-20:
+ * - ポインタサイズは x86_64 を想定（8バイト）
+ * - アラインメントはポインタサイズに合わせる
+ * - メソッドの順序は辞書順でソート
+ *
+ * @param methods メソッド名と型のリスト
+ * @return 計算されたレイアウト情報
+ *)
+let calculate_dict_layout (methods : (string * ty) list) : dict_layout_info =
+  let ptr_size = 8 in  (* x86_64 ポインタサイズ *)
+  let metadata_size = 8 in  (* 型情報メタデータ *)
+
+  (* メソッドを名前順にソート（vtable順序の決定） *)
+  let sorted_methods = List.sort (fun (n1, _) (n2, _) -> String.compare n1 n2) methods in
+
+  (* 各メソッドのオフセットを計算 *)
+  let method_offsets =
+    List.mapi (fun i (name, _ty) ->
+      (name, i * ptr_size)
+    ) sorted_methods
+  in
+
+  (* vtableサイズ = メソッド数 × ポインタサイズ + メタデータサイズ *)
+  let vtable_size = (List.length sorted_methods * ptr_size) + metadata_size in
+
+  {
+    vtable_size;
+    method_offsets;
+    alignment = ptr_size;  (* ポインタサイズに合わせる *)
+  }
+
+(** デフォルトの辞書型を構築する
+ *
+ * Phase 2 Week 19-20:
+ * - トレイト名と実装型から辞書型を構築
+ * - メソッドリストは空の場合もある（後で埋める）
+ *
+ * @param trait_name トレイト名
+ * @param impl_ty 実装対象の型
+ * @param methods メソッド名と型のリスト
+ * @return 構築された辞書型
+ *)
+let make_dict_type (trait_name : string) (impl_ty : ty) (methods : (string * ty) list) : dict_type =
+  let layout = calculate_dict_layout methods in
+  {
+    dict_trait = trait_name;
+    dict_impl_ty = impl_ty;
+    dict_methods = methods;
+    dict_layout_info = Some layout;
+  }
