@@ -78,7 +78,7 @@ let rec convert_type_annot (tannot : type_annot) : ty =
  *
  * 仕様書 1-2 §C.1: let束縛で自由型変数を量化
  *)
-let generalize (env : env) (ty : ty) : type_scheme =
+let generalize (env : env) (ty : ty) : constrained_scheme =
   let env_vars = ftv_env env in
   let ty_vars = ftv_ty ty in
   (* 環境に出現しない自由変数を量化 *)
@@ -88,13 +88,13 @@ let generalize (env : env) (ty : ty) : type_scheme =
         not (List.exists (fun env_tv -> env_tv.tv_id = tv.tv_id) env_vars))
       ty_vars
   in
-  { quantified; body = ty }
+  { quantified; constraints = []; body = ty }
 
 (** 型スキームのインスタンス化: instantiate(scheme)
  *
  * 量化変数を新鮮な型変数で置き換え
  *)
-let instantiate (scheme : type_scheme) : ty =
+let instantiate (scheme : constrained_scheme) : ty =
   if scheme.quantified = [] then scheme.body
   else
     (* 量化変数 → 新鮮な型変数のマッピングを作成 *)
@@ -541,7 +541,11 @@ and infer_params (env : env) (params : param list) (subst : substitution) :
           in
 
           (* 型環境に追加 *)
-          let param_env' = extend param_name (mono_scheme param_ty) param_env in
+          let param_env' =
+            extend param_name
+              (scheme_to_constrained (mono_scheme param_ty))
+              param_env
+          in
 
           Ok (tparams @ [ tparam ], param_tys @ [ param_ty ], param_env', s))
     (Ok ([], [], env, subst))
@@ -663,7 +667,11 @@ and infer_pattern (env : env) (pat : pattern) (expected_ty : ty) :
   | PatVar id ->
       (* 変数パターン: 変数を環境に追加 *)
       let bindings = [ (id.name, expected_ty) ] in
-      let env' = extend id.name (mono_scheme expected_ty) env in
+      let env' =
+        extend id.name
+          (scheme_to_constrained (mono_scheme expected_ty))
+          env
+      in
       let tpat =
         make_typed_pattern (TPatVar id) expected_ty bindings pat.pat_span
       in
@@ -800,7 +808,8 @@ and infer_pattern (env : env) (pat : pattern) (expected_ty : ty) :
                             (* フィールド名を変数として束縛 *)
                             let bindings = [ (field_id.name, field_ty) ] in
                             let env_new =
-                              extend field_id.name (mono_scheme field_ty)
+                              extend field_id.name
+                                (scheme_to_constrained (mono_scheme field_ty))
                                 env_acc
                             in
                             let tpat =
@@ -1190,7 +1199,10 @@ and infer_decl (env : env) (decl : decl) : (typed_decl * env, type_error) result
       (* 2. ジェネリック型を型環境に追加 *)
       let env_with_generics =
         List.fold_left
-          (fun acc (id, tv) -> extend id.name (mono_scheme (Types.TVar tv)) acc)
+          (fun acc (id, tv) ->
+            extend id.name
+              (scheme_to_constrained (mono_scheme (Types.TVar tv)))
+              acc)
           env generic_bindings
       in
 
@@ -1209,7 +1221,9 @@ and infer_decl (env : env) (decl : decl) : (typed_decl * env, type_error) result
 
       (* 5. 関数名を型環境に追加（再帰呼び出しに対応） *)
       let env_with_fn =
-        extend fn.fn_name.name (mono_scheme temp_fn_ty) param_env
+        extend fn.fn_name.name
+          (scheme_to_constrained (mono_scheme temp_fn_ty))
+          param_env
       in
 
       (* 6. 関数本体の型推論 *)

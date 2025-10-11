@@ -52,6 +52,28 @@ let string_of_var_id var =
 
 let string_of_label lbl = lbl
 
+let string_of_dict_type dict =
+  let methods_str =
+    match dict.dict_methods with
+    | [] -> ""
+    | methods ->
+        let entries =
+          join_with ", "
+            (fun (name, ty) -> Printf.sprintf "%s: %s" name (string_of_ty ty))
+            methods
+        in
+        Printf.sprintf " [%s]" entries
+  in
+  let layout_str =
+    match dict.dict_layout_info with
+    | None -> ""
+    | Some layout ->
+        Printf.sprintf " {size=%d align=%d}" layout.vtable_size layout.alignment
+  in
+  Printf.sprintf "%s for %s%s%s" dict.dict_trait
+    (string_of_ty dict.dict_impl_ty)
+    methods_str layout_str
+
 (* ========== リテラルの表示 ========== *)
 
 let rec string_of_literal = function
@@ -140,6 +162,18 @@ let rec string_of_expr ?(depth = 0) expr =
   | DictLookup { trait_name; type_args; _ } ->
       let ty_args_str = join_with ", " string_of_ty type_args in
       Printf.sprintf "%s(dict %s<%s> : %s)" ind trait_name ty_args_str ty_str
+  | DictConstruct dict ->
+      Printf.sprintf "%s(dict.construct %s : %s)" ind
+        (string_of_dict_type dict) ty_str
+  | DictMethodCall (dict_expr, method_name, args) ->
+      let dict_str = string_of_expr ~depth:0 dict_expr |> String.trim in
+      let args_str =
+        join_with ", "
+          (fun arg -> string_of_expr ~depth:0 arg |> String.trim)
+          args
+      in
+      Printf.sprintf "%s(dict.call %s.%s(%s) : %s)" ind dict_str method_name
+        args_str ty_str
   | CapabilityCheck cap ->
       Printf.sprintf "%s(capability %s : %s)" ind cap.cap_name ty_str
   | TupleAccess (e, idx) ->

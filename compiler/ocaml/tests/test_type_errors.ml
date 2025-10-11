@@ -385,8 +385,12 @@ let test_unbound_variable () =
   (* B-4. 未定義変数（類似名提案のテスト） *)
   run_test "E7003: unbound variable with similar names" (fun () ->
       (* 環境に類似名を追加 *)
-      let env = extend "value" (mono_scheme ty_i64) initial_env in
-      let env = extend "result" (mono_scheme ty_i64) env in
+      let env =
+        extend "value" (scheme_to_constrained (mono_scheme ty_i64)) initial_env
+      in
+      let env =
+        extend "result" (scheme_to_constrained (mono_scheme ty_i64)) env
+      in
 
       (* "resul" という typo した変数を参照 *)
       let expr =
@@ -417,7 +421,9 @@ let test_arity_mismatch () =
       let env = initial_env in
       (* add: i64 -> i64 -> i64 を環境に追加 *)
       let add_ty = TArrow (ty_i64, TArrow (ty_i64, ty_i64)) in
-      let env = extend "add" (mono_scheme add_ty) env in
+      let env =
+        extend "add" (scheme_to_constrained (mono_scheme add_ty)) env
+      in
 
       (* add(1) - 引数が1つ不足 *)
       let call_expr =
@@ -454,7 +460,11 @@ let test_arity_mismatch () =
       let env = initial_env in
       (* identity: i64 -> i64 を環境に追加 *)
       let identity_ty = TArrow (ty_i64, ty_i64) in
-      let env = extend "identity" (mono_scheme identity_ty) env in
+      let env =
+        extend "identity"
+          (scheme_to_constrained (mono_scheme identity_ty))
+          env
+      in
 
       (* identity(1, 2) - 引数が多すぎ *)
       let call_expr =
@@ -567,7 +577,9 @@ let test_not_a_function () =
   run_test "E7005: not a function (apply to i64)" (fun () ->
       let env = initial_env in
       (* let x = 42; x(1) *)
-      let env = extend "x" (mono_scheme ty_i64) env in
+      let env =
+        extend "x" (scheme_to_constrained (mono_scheme ty_i64)) env
+      in
       let call_expr =
         {
           expr_kind =
@@ -919,7 +931,9 @@ let test_empty_match () =
   (* F-1. 空のmatch式 *)
   run_test "E7015: empty match" (fun () ->
       (* 変数 x を環境に追加 *)
-      let env = extend "x" (mono_scheme ty_i64) initial_env in
+      let env =
+        extend "x" (scheme_to_constrained (mono_scheme ty_i64)) initial_env
+      in
       (* match x with *)
       let match_expr =
         {

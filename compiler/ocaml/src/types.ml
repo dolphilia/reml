@@ -263,3 +263,75 @@ let rec type_equal t1 t2 =
   | TUnit, TUnit -> true
   | TNever, TNever -> true
   | _ -> false
+
+(* ========== 型クラス・トレイト（Phase 2） ========== *)
+
+(** トレイト制約
+ *
+ * 仕様書 1-2 §B: トレイト制約の表記
+ * 例: Add<T,T,T>, Eq<T>, Ord<T>
+ *)
+type trait_constraint = {
+  trait_name : string;  (** トレイト名（例: "Add", "Eq", "Ord"） *)
+  type_args : ty list;  (** 型引数のリスト *)
+  constraint_span : Ast.span;  (** 制約の出現位置 *)
+}
+
+(** 辞書レイアウト
+ *
+ * トレイト実装の実行時表現（vtable構造）
+ * Phase 2 前半では基本構造のみ定義、詳細はLLVM生成時に確定
+ *)
+type dict_layout = {
+  trait : string;  (** トレイト名 *)
+  impl_ty : ty;  (** 実装対象の型 *)
+  methods : (string * ty) list;  (** メソッド名と型のリスト（vtable順） *)
+  size_bytes : int option;  (** レイアウトサイズ（バイト単位、Phase 2後半で確定） *)
+}
+
+(** 拡張型スキーム（制約付き）
+ *
+ * 仕様書 1-2 §B.3: 関数型に制約を付与
+ * 例: fn sum<T>(xs: [T]) -> T where Add<T,T,T>, Zero<T>
+ *)
+type constrained_scheme = {
+  quantified : type_var list;  (** 量化変数 *)
+  constraints : trait_constraint list;  (** トレイト制約のリスト *)
+  body : ty;  (** 型本体 *)
+}
+
+(** 型スキームから制約付きスキームへの変換（制約なし） *)
+let scheme_to_constrained (scheme : type_scheme) : constrained_scheme =
+  { quantified = scheme.quantified; constraints = []; body = scheme.body }
+
+(** 制約付きスキームから型スキームへの変換（制約を破棄） *)
+let constrained_to_scheme (cscheme : constrained_scheme) : type_scheme =
+  { quantified = cscheme.quantified; body = cscheme.body }
+
+(* ========== デバッグ用: 制約の表示 ========== *)
+
+(** トレイト制約の文字列表現 *)
+let string_of_trait_constraint tc =
+  let type_args_str =
+    String.concat ", " (List.map string_of_ty tc.type_args)
+  in
+  Printf.sprintf "%s<%s>" tc.trait_name type_args_str
+
+(** 制約付きスキームの文字列表現 *)
+let string_of_constrained_scheme cscheme =
+  let quantified_str =
+    match cscheme.quantified with
+    | [] -> ""
+    | vars ->
+        "∀"
+        ^ String.concat " " (List.map string_of_type_var vars)
+        ^ ". "
+  in
+  let constraints_str =
+    match cscheme.constraints with
+    | [] -> ""
+    | cs ->
+        " where "
+        ^ String.concat ", " (List.map string_of_trait_constraint cs)
+  in
+  quantified_str ^ string_of_ty cscheme.body ^ constraints_str

@@ -101,35 +101,37 @@ let test_type_env () =
   assert_none "empty env lookup" (lookup "x" env);
 
   (* 束縛の追加 *)
-  let env = extend "x" (mono_scheme ty_i64) env in
+  let env = extend "x" (scheme_to_constrained (mono_scheme ty_i64)) env in
   assert_some "lookup x" (lookup "x" env);
 
   (match lookup "x" env with
-  | Some scheme -> assert_equal "x type" ty_i64 (scheme_body scheme)
+  | Some scheme -> assert_equal "x type" ty_i64 scheme.body
   | None -> failwith "lookup x failed");
 
   (* シャドーイング *)
-  let env = extend "x" (mono_scheme ty_string) env in
+  let env = extend "x" (scheme_to_constrained (mono_scheme ty_string)) env in
   (match lookup "x" env with
-  | Some scheme -> assert_equal "x shadowed" ty_string (scheme_body scheme)
+  | Some scheme -> assert_equal "x shadowed" ty_string scheme.body
   | None -> failwith "lookup x after shadow failed");
 
   (* スコープのネスト *)
-  let env = extend "y" (mono_scheme ty_bool) env in
+  let env = extend "y" (scheme_to_constrained (mono_scheme ty_bool)) env in
   let env2 = enter_scope env in
 
   (* 親スコープの変数にアクセス *)
   assert_some "parent scope y" (lookup "y" env2);
 
   (* 子スコープで上書き *)
-  let env2 = extend "y" (mono_scheme ty_char) env2 in
+  let env2 =
+    extend "y" (scheme_to_constrained (mono_scheme ty_char)) env2
+  in
   (match lookup "y" env2 with
-  | Some scheme -> assert_equal "y in child scope" ty_char (scheme_body scheme)
+  | Some scheme -> assert_equal "y in child scope" ty_char scheme.body
   | None -> failwith "lookup y in child scope failed");
 
   (* 親スコープは変更されていない *)
   (match lookup "y" env with
-  | Some scheme -> assert_equal "y in parent scope" ty_bool (scheme_body scheme)
+  | Some scheme -> assert_equal "y in parent scope" ty_bool scheme.body
   | None -> failwith "lookup y in parent scope failed");
 
   Printf.printf "  ✓ Type environment tests passed\n"
@@ -230,7 +232,7 @@ let test_free_type_vars () =
 
   (* 型スキームの自由変数（量化変数は除外） *)
   let scheme = { quantified = [ a ]; body = TArrow (TVar a, TVar b) } in
-  let fvs = ftv_scheme scheme in
+  let fvs = ftv_cscheme (scheme_to_constrained scheme) in
   assert_equal_int "one free var in scheme" 1 (List.length fvs);
 
   Printf.printf "  ✓ Free type variables tests passed\n"

@@ -327,7 +327,9 @@ let test_match_expressions () =
 
       (* nested_opt を環境に追加 *)
       let env =
-        extend "nested_opt" (mono_scheme (ty_option (ty_option ty_i64))) env
+        extend "nested_opt"
+          (scheme_to_constrained (mono_scheme (ty_option (ty_option ty_i64))))
+          env
       in
 
       let arms =
@@ -1179,7 +1181,10 @@ let test_binary_operations () =
       let tv_a = TypeVarGen.fresh (Some "a") in
       let identity_ty = TArrow (Types.TVar tv_a, Types.TVar tv_a) in
       let env_with_identity =
-        extend "identity" { quantified = [ tv_a ]; body = identity_ty } env
+        extend "identity"
+          (scheme_to_constrained
+             { quantified = [ tv_a ]; body = identity_ty })
+          env
       in
 
       let expr =
@@ -1604,7 +1609,9 @@ let test_pattern_match_errors () =
   (* E7015: EmptyMatch - 空のmatch式 *)
   run_test "error: EmptyMatch" (fun () ->
       (* 変数 x を環境に追加 *)
-      let env = extend "x" (mono_scheme ty_i64) initial_env in
+      let env =
+        extend "x" (scheme_to_constrained (mono_scheme ty_i64)) initial_env
+      in
       let match_expr =
         {
           expr_kind =

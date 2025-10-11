@@ -386,6 +386,10 @@ let rec codegen_expr ctx expr =
   | ADTConstruct _ ->
       codegen_errorf "ADTConstruct not yet implemented in Phase 1"
   | ADTProject _ -> codegen_errorf "ADTProject not yet implemented in Phase 1"
+  | DictConstruct _ ->
+      codegen_errorf "DictConstruct not yet implemented in Phase 1"
+  | DictMethodCall _ ->
+      codegen_errorf "DictMethodCall not yet implemented in Phase 1"
 
 (* ========== リテラルのコード生成 ========== *)
 

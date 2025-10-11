@@ -219,6 +219,34 @@ let rec linearize_expr (builder : cfg_builder) (expr : expr) : var_id =
       let result = VarIdGen.fresh "$dict" expr.expr_ty expr.expr_span in
       add_stmt builder (Assign (result, expr));
       result
+  | DictConstruct dict ->
+      let result =
+        VarIdGen.fresh "$dict_init" expr.expr_ty expr.expr_span
+      in
+      let dict_expr =
+        make_expr (DictConstruct dict) expr.expr_ty expr.expr_span
+      in
+      add_stmt builder (Assign (result, dict_expr));
+      result
+  | DictMethodCall (dict_expr, method_name, args) ->
+      let dict_var = linearize_expr builder dict_expr in
+      let arg_vars = List.map (linearize_expr builder) args in
+      let dict_ref =
+        make_expr (Var dict_var) dict_var.vty dict_var.vspan
+      in
+      let arg_exprs =
+        List.map (fun v -> make_expr (Var v) v.vty v.vspan) arg_vars
+      in
+      let call_expr =
+        make_expr
+          (DictMethodCall (dict_ref, method_name, arg_exprs))
+          expr.expr_ty expr.expr_span
+      in
+      let result =
+        VarIdGen.fresh "$dict_call" expr.expr_ty expr.expr_span
+      in
+      add_stmt builder (Assign (result, call_expr));
+      result
   | CapabilityCheck _cap_id ->
       (* Capability チェック → 後のフェーズで実装 *)
       let result = VarIdGen.fresh "$cap" expr.expr_ty expr.expr_span in

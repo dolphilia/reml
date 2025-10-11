@@ -26,7 +26,8 @@ type typed_expr = {
 
 and typed_expr_kind =
   | TLiteral of literal
-  | TVar of ident * type_scheme  (** 変数参照 + インスタンス化された型スキーム *)
+  | TVar of ident * constrained_scheme
+      (** 変数参照 + インスタンス化された型スキーム *)
   | TModulePath of module_path * ident
   | TCall of typed_expr * typed_arg list
   | TLambda of typed_param list * ty option * typed_expr
@@ -100,7 +101,7 @@ and typed_decl = {
   tdecl_attrs : attribute list;
   tdecl_vis : visibility;
   tdecl_kind : typed_decl_kind;
-  tdecl_scheme : type_scheme;  (** 宣言の型スキーム *)
+  tdecl_scheme : constrained_scheme;  (** 宣言の型スキーム *)
   tdecl_span : span;
 }
 (** 型付き宣言ノード *)
@@ -257,7 +258,7 @@ and string_of_typed_pattern tpat =
 
 (** 型付き宣言の文字列表現（簡易版） *)
 let string_of_typed_decl tdecl =
-  let scheme_str = string_of_scheme tdecl.tdecl_scheme in
+  let scheme_str = string_of_constrained_scheme tdecl.tdecl_scheme in
   match tdecl.tdecl_kind with
   | TLetDecl (pat, _) ->
       Printf.sprintf "let %s = ... : %s"

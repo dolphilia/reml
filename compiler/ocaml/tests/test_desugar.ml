@@ -59,7 +59,7 @@ let test_desugar_unit_literal () =
 let test_desugar_var () =
   Printf.printf "test_desugar_var ... ";
   let id = { name = "x"; span = dummy_span } in
-  let scheme = { quantified = []; body = ty_i64 } in
+  let scheme = scheme_to_constrained { quantified = []; body = ty_i64 } in
   let texpr = make_typed_expr (TVar (id, scheme)) ty_i64 in
   let map = create_scope_map () in
   let result = desugar_expr map texpr in
@@ -75,7 +75,9 @@ let test_desugar_pipe_simple () =
   (* 42 |> f の変換 *)
   let arg = make_typed_expr (TLiteral (Int ("42", Base10))) ty_i64 in
   let fn_id = { name = "f"; span = dummy_span } in
-  let fn_scheme = { quantified = []; body = TArrow (ty_i64, ty_i64) } in
+  let fn_scheme =
+    scheme_to_constrained { quantified = []; body = TArrow (ty_i64, ty_i64) }
+  in
   let fn =
     make_typed_expr (TVar (fn_id, fn_scheme)) (TArrow (ty_i64, ty_i64))
   in
@@ -449,7 +451,9 @@ let test_desugar_constructor_pattern_some () =
 
   let bound = make_typed_expr (TLiteral (Int ("42", Base10))) ty_i64 in
   let rest =
-    make_typed_expr (TVar (x_id, { quantified = []; body = ty_i64 })) ty_i64
+    make_typed_expr
+      (TVar (x_id, scheme_to_constrained { quantified = []; body = ty_i64 }))
+      ty_i64
   in
 
   let map = create_scope_map () in
@@ -499,7 +503,9 @@ let test_desugar_constructor_pattern_nested () =
 
   let bound = make_typed_expr (TLiteral (Int ("42", Base10))) ty_i64 in
   let rest =
-    make_typed_expr (TVar (x_id, { quantified = []; body = ty_i64 })) ty_i64
+    make_typed_expr
+      (TVar (x_id, scheme_to_constrained { quantified = []; body = ty_i64 }))
+      ty_i64
   in
 
   let map = create_scope_map () in

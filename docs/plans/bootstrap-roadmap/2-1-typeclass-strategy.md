@@ -198,6 +198,18 @@
 
 **成果物**: 統合テストスイート、CI 設定、安定版
 
+## 進捗ログ（2025-10-15 更新）
+- `Type_env` を `constrained_scheme` ベースに刷新し、型クラス制約付きスキームを環境全体で扱えるようにした。既存の let 多相は空の制約リストとして保持し、辞書引数を導入するための基盤を確保。
+- `Constraint` モジュールの代入適用・自由型変数収集を制約リスト込みで再実装し、今後の制約伝搬で辞書レイアウト情報が欠落しないようにした。
+- 型推論・Typed AST を制約付きスキーム対応へ移行し、`generalize` / `instantiate` / `make_typed_decl` など辞書情報を保持する経路を確認済み。既存テストも `scheme_to_constrained` を介して更新。
+- Core IR と CFG/DCE/ConstFold/CodeGen が `DictConstruct` / `DictMethodCall` ノードを認識するように調整し、辞書生成と vtable 呼び出しを後続パスで扱うためのスタブを追加。
+- LLVM バックエンドは現時点で辞書ノードを未実装扱いとしつつ、エラーメッセージで Phase 2 のブロッカーを明示。今後の辞書 lowering 実装が必要。
+
+### フォローアップ
+- 制約付きスキームに蓄えた `trait_constraint` を解決フェーズへ流すため、制約解決器 (`constraint_solver`) のインターフェース更新が必要。
+- Core IR の辞書ノードが実際に生成される経路（脱糖・型推論）を実装し、CodeGen での辞書レイアウト確定まで接続するタスクを追加する。
+- `docs/spec/1-2-types-Inference.md` と辞書 ABI 仕様 (`docs/spec/3-9-core-async-ffi-unsafe.md`) へ今回の構造変更を反映し、用語集・リスクログの更新を検討。
+
 ## 成果物と検証
 - 辞書渡し方式で [1-2-types-Inference.md](../../spec/1-2-types-Inference.md) のサンプルが全て通過すること。
 - PoC モノモルフィゼーションの出力を LLVM IR で比較し、差分とコストを `docs/notes/llvm-spec-status-survey.md` に追記。

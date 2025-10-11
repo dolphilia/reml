@@ -364,6 +364,13 @@ let rec fold_expr (env : const_env) (stats : fold_stats) (e : expr) : expr =
   | ADTProject (e1, idx) ->
       let folded_e1 = fold_expr env stats e1 in
       make_expr (ADTProject (folded_e1, idx)) e.expr_ty e.expr_span
+  | DictConstruct dict ->
+      make_expr (DictConstruct dict) e.expr_ty e.expr_span
+  | DictMethodCall (dict_expr, method_name, args) ->
+      let dict' = fold_expr env stats dict_expr in
+      let args' = List.map (fold_expr env stats) args in
+      make_expr (DictMethodCall (dict', method_name, args')) e.expr_ty
+        e.expr_span
   (* その他のノードはそのまま（Phase 1 で未実装のケース） *)
   | Closure _ | DictLookup _ | CapabilityCheck _ -> e
 

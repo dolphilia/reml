@@ -77,7 +77,12 @@ let rec collect_used_vars (e : expr) : VarSet.t =
         (fun acc arg -> VarSet.union acc (collect_used_vars arg))
         VarSet.empty args
   | ADTProject (e1, _) -> collect_used_vars e1
-  | Closure _ | DictLookup _ | CapabilityCheck _ ->
+  | DictMethodCall (dict_expr, _, args) ->
+      let dict_vars = collect_used_vars dict_expr in
+      List.fold_left
+        (fun acc arg -> VarSet.union acc (collect_used_vars arg))
+        dict_vars args
+  | Closure _ | DictLookup _ | DictConstruct _ | CapabilityCheck _ ->
       (* Phase 1 では簡易実装 *)
       VarSet.empty
 
@@ -134,6 +139,9 @@ let rec has_side_effect (e : expr) : bool =
       has_side_effect e1
   | ArrayAccess (e1, e2) -> has_side_effect e1 || has_side_effect e2
   | ADTConstruct (_, args) -> List.exists has_side_effect args
+  | DictConstruct _ -> false
+  | DictMethodCall (dict_expr, _, args) ->
+      has_side_effect dict_expr || List.exists has_side_effect args
   | Closure _ | DictLookup _ | CapabilityCheck _ ->
       (* 保守的に副作用ありと判定 *)
       true
@@ -154,7 +162,7 @@ let _has_stmt_side_effect (stmt : stmt) : bool =
 let rec dce_expr (used_vars : VarSet.t) (stats : dce_stats) (e : expr) : expr =
   match e.expr_kind with
   | Literal _ | Var _ | Primitive _ | Closure _ | DictLookup _
-  | CapabilityCheck _ ->
+  | DictConstruct _ | CapabilityCheck _ ->
       e
   | App (fn, args) ->
       let fn' = dce_expr used_vars stats fn in
@@ -198,6 +206,11 @@ let rec dce_expr (used_vars : VarSet.t) (stats : dce_stats) (e : expr) : expr =
   | ADTProject (e1, idx) ->
       let e1' = dce_expr used_vars stats e1 in
       make_expr (ADTProject (e1', idx)) e.expr_ty e.expr_span
+  | DictMethodCall (dict_expr, method_name, args) ->
+      let dict' = dce_expr used_vars stats dict_expr in
+      let args' = List.map (dce_expr used_vars stats) args in
+      make_expr (DictMethodCall (dict', method_name, args')) e.expr_ty
+        e.expr_span
 
 (* ========== 文・ブロックの最適化 ========== *)
 

@@ -26,7 +26,10 @@ let fresh_builtin_var =
     decr counter;
     { tv_id = id; tv_name = Some name }
 
-type env = { bindings : (string * type_scheme) list; parent : env option }
+type env = {
+  bindings : (string * constrained_scheme) list;
+  parent : env option;
+}
 (** 型環境
  *
  * bindings: 現在のスコープの束縛
@@ -93,17 +96,19 @@ let initial_env =
   let a_some = fresh_builtin_var "Option.a" in
   let env =
     extend "Some"
-      {
-        quantified = [ a_some ];
-        body = TArrow (TVar a_some, ty_option (TVar a_some));
-      }
+      (scheme_to_constrained
+         {
+           quantified = [ a_some ];
+           body = TArrow (TVar a_some, ty_option (TVar a_some));
+         })
       env
   in
 
   let a_none = fresh_builtin_var "Option.a" in
   let env =
     extend "None"
-      { quantified = [ a_none ]; body = ty_option (TVar a_none) }
+      (scheme_to_constrained
+         { quantified = [ a_none ]; body = ty_option (TVar a_none) })
       env
   in
 
@@ -115,10 +120,11 @@ let initial_env =
   let e_ok = fresh_builtin_var "Result.e" in
   let env =
     extend "Ok"
-      {
-        quantified = [ a_ok; e_ok ];
-        body = TArrow (TVar a_ok, ty_result (TVar a_ok) (TVar e_ok));
-      }
+      (scheme_to_constrained
+         {
+           quantified = [ a_ok; e_ok ];
+           body = TArrow (TVar a_ok, ty_result (TVar a_ok) (TVar e_ok));
+         })
       env
   in
 
@@ -126,17 +132,22 @@ let initial_env =
   let e_err = fresh_builtin_var "Result.e" in
   let env =
     extend "Err"
-      {
-        quantified = [ a_err; e_err ];
-        body = TArrow (TVar e_err, ty_result (TVar a_err) (TVar e_err));
-      }
+      (scheme_to_constrained
+         {
+           quantified = [ a_err; e_err ];
+           body = TArrow (TVar e_err, ty_result (TVar a_err) (TVar e_err));
+         })
       env
   in
 
   (* Never 型（空集合、到達不能を表現）
    * 仕様書 3-1 §2.1: Never = Result<Never, Never>
    *)
-  let env = extend "Never" { quantified = []; body = ty_never } env in
+  let env =
+    extend "Never"
+      (scheme_to_constrained { quantified = []; body = ty_never })
+      env
+  in
 
   env
 
@@ -151,7 +162,7 @@ let rec string_of_env env =
   let bindings_str =
     List.map
       (fun (name, scheme) ->
-        Printf.sprintf "  %s : %s" name (string_of_scheme scheme))
+        Printf.sprintf "  %s : %s" name (string_of_constrained_scheme scheme))
       env.bindings
   in
   let current = String.concat "\n" bindings_str in

@@ -78,11 +78,11 @@ let compose_subst s1 s2 =
   (* s1 と s2' を結合（s1 が優先） *)
   s1 @ s2'
 
-(** 型スキームへの代入適用
+(** 制約付き型スキームへの代入適用
  *
  * 量化変数は代入から除外する
  *)
-let apply_subst_scheme subst scheme =
+let apply_subst_cscheme subst scheme =
   (* 量化変数を代入から除外 *)
   let subst' =
     List.filter
@@ -90,13 +90,23 @@ let apply_subst_scheme subst scheme =
         not (List.exists (fun qtv -> qtv.tv_id = tv.tv_id) scheme.quantified))
       subst
   in
-  { scheme with body = apply_subst subst' scheme.body }
+  let body' = apply_subst subst' scheme.body in
+  let constraints' =
+    List.map
+      (fun constraint_ ->
+        {
+          constraint_ with
+          type_args = List.map (apply_subst subst') constraint_.type_args;
+        })
+      scheme.constraints
+  in
+  { scheme with body = body'; constraints = constraints' }
 
 (** 型環境への代入適用 *)
 let apply_subst_env subst env =
   Type_env.extend_many
     (List.map
-       (fun (name, scheme) -> (name, apply_subst_scheme subst scheme))
+       (fun (name, scheme) -> (name, apply_subst_cscheme subst scheme))
        (Type_env.bindings env))
     Type_env.empty
 
@@ -119,8 +129,12 @@ let rec ftv_ty = function
  *
  * 量化変数は除外
  *)
-let ftv_scheme scheme =
-  let all_vars = ftv_ty scheme.body in
+let ftv_cscheme scheme =
+  let constraint_vars =
+    List.concat_map (fun tc -> List.concat_map ftv_ty tc.type_args)
+      scheme.constraints
+  in
+  let all_vars = ftv_ty scheme.body @ constraint_vars in
   List.filter
     (fun tv ->
       not (List.exists (fun qtv -> qtv.tv_id = tv.tv_id) scheme.quantified))
@@ -128,7 +142,7 @@ let ftv_scheme scheme =
 
 (** 型環境に含まれる自由型変数を収集 *)
 let ftv_env env =
-  List.concat_map (fun (_, scheme) -> ftv_scheme scheme) (Type_env.bindings env)
+  List.concat_map (fun (_, scheme) -> ftv_cscheme scheme) (Type_env.bindings env)
 
 (* ========== 制約解決（Phase 2 Week 3-4 で実装） ========== *)
 

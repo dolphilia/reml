@@ -142,7 +142,7 @@ type dict_ref = {
 (** 辞書参照 (型クラス/トレイト)
  *
  * 型クラス制約を満たす辞書への参照。
- * Phase 2 後半で詳細実装。
+ * Phase 2 で辞書渡しの基盤として使用。
  *)
 
 type dict_instance = {
@@ -151,6 +151,38 @@ type dict_instance = {
   methods : (string * var_id) list;  (** メソッド名 → 関数ID *)
 }
 (** 辞書インスタンス *)
+
+(** 辞書型（Phase 2: 辞書渡し型システム）
+ *
+ * トレイト実装の実行時表現。vtable構造として扱われ、
+ * LLVM IRでは関数ポインタ配列を含む構造体に変換される。
+ *)
+type dict_type = {
+  dict_trait : string;  (** トレイト名 *)
+  dict_impl_ty : ty;  (** 実装対象の型 *)
+  dict_methods : (string * ty) list;  (** メソッド名と型 (vtable順) *)
+  dict_layout_info : dict_layout_info option;  (** レイアウト情報（Phase 2後半で確定） *)
+}
+
+(** 辞書レイアウト情報
+ *
+ * LLVM IR生成時に必要な具体的なメモリレイアウト情報
+ *)
+and dict_layout_info = {
+  vtable_size : int;  (** vtableサイズ（バイト） *)
+  method_offsets : (string * int) list;  (** メソッド名 → オフセット(バイト) *)
+  alignment : int;  (** アラインメント要件（バイト） *)
+}
+
+(** 辞書パラメータ（暗黙的引数）
+ *
+ * 関数が型クラス制約を持つ場合に自動挿入される辞書引数
+ *)
+type dict_param = {
+  param_constraint : Types.trait_constraint;  (** 対応するトレイト制約 *)
+  param_name : string;  (** パラメータ名（デバッグ用、例: "__dict_Add_T"） *)
+  param_ty : ty;  (** 辞書型 *)
+}
 
 (* ========== クロージャ ========== *)
 
@@ -188,6 +220,12 @@ and expr_kind =
   | Primitive of prim_op * expr list  (** プリミティブ演算 *)
   | Closure of closure_info  (** クロージャ生成 *)
   | DictLookup of dict_ref  (** 辞書参照 (型クラス) *)
+  | DictConstruct of dict_type  (** 辞書構築（Phase 2: vtable初期化） *)
+  | DictMethodCall of expr * string * expr list
+      (** 辞書メソッド呼び出し
+       * expr: 辞書値、string: メソッド名、expr list: 引数
+       * vtableインデックスへ変換される
+       *)
   | CapabilityCheck of capability_id  (** Capability チェック *)
   | TupleAccess of expr * int  (** タプル要素アクセス *)
   | RecordAccess of expr * string  (** レコードフィールドアクセス *)
