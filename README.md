@@ -1,6 +1,7 @@
 # Reml プロジェクト概要
 
 [![Bootstrap Linux CI](https://github.com/dolphilia/kestrel/actions/workflows/bootstrap-linux.yml/badge.svg)](https://github.com/dolphilia/kestrel/actions/workflows/bootstrap-linux.yml)
+[![Bootstrap macOS CI](https://github.com/dolphilia/kestrel/actions/workflows/bootstrap-macos.yml/badge.svg)](https://github.com/dolphilia/kestrel/actions/workflows/bootstrap-macos.yml)
 
 Reml (Readable & Expressive Meta Language) はパーサーコンビネーターと静的保証に重点を置いた言語設計プロジェクトです。本リポジトリは仕様、設計ガイド、ブートストラップ実装計画、サンプル実装を集約し、言語実装とエコシステム整備を進めるための中枢ドキュメントとして機能します。
 
