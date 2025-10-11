@@ -41,6 +41,8 @@ SKIP_TEST=0
 SKIP_LLVM=0
 SKIP_RUNTIME=0
 VERBOSE=0
+CLI_TARGET_NAME=""
+LLVM_TARGET_TRIPLE=""
 
 # 色付き出力
 RED='\033[0;31m'
@@ -142,6 +144,28 @@ if [[ -z "$TARGET" ]]; then
 fi
 
 log_info "ターゲットプラットフォーム: $TARGET"
+
+case "$TARGET" in
+  linux)
+    CLI_TARGET_NAME="x86_64-linux"
+    LLVM_TARGET_TRIPLE="x86_64-unknown-linux-gnu"
+    ;;
+  macos)
+    CLI_TARGET_NAME="x86_64-apple-darwin"
+    LLVM_TARGET_TRIPLE="x86_64-apple-darwin"
+    ;;
+  *)
+    CLI_TARGET_NAME=""
+    LLVM_TARGET_TRIPLE=""
+    ;;
+esac
+
+if [[ -n "$CLI_TARGET_NAME" ]]; then
+  log_info "コンパイラターゲット: $CLI_TARGET_NAME"
+fi
+if [[ -n "$LLVM_TARGET_TRIPLE" ]]; then
+  log_info "LLVM ターゲットトリプル: $LLVM_TARGET_TRIPLE"
+fi
 
 # ========== 環境チェック ==========
 
@@ -307,7 +331,11 @@ if (( ! SKIP_LLVM )); then
   for example in examples/cli/*.reml; do
     if [ -f "$example" ]; then
       log_info "  Generating IR for $(basename "$example")..."
-      opam exec -- dune exec -- remlc "$example" --emit-ir --out-dir="$LLVM_IR_DIR" || true
+      if [[ -n "$CLI_TARGET_NAME" ]]; then
+        opam exec -- dune exec -- remlc "$example" --target "$CLI_TARGET_NAME" --emit-ir --out-dir="$LLVM_IR_DIR" || true
+      else
+        opam exec -- dune exec -- remlc "$example" --emit-ir --out-dir="$LLVM_IR_DIR" || true
+      fi
     fi
   done
 
@@ -317,7 +345,11 @@ if (( ! SKIP_LLVM )); then
   for ir_file in "$LLVM_IR_DIR"/*.ll; do
     if [ -f "$ir_file" ]; then
       log_info "  Verifying $(basename "$ir_file")..."
-      "$REPO_ROOT/compiler/ocaml/scripts/verify_llvm_ir.sh" "$ir_file" || exit 1
+      if [[ -n "$LLVM_TARGET_TRIPLE" ]]; then
+        "$REPO_ROOT/compiler/ocaml/scripts/verify_llvm_ir.sh" --target "$LLVM_TARGET_TRIPLE" "$ir_file" || exit 1
+      else
+        "$REPO_ROOT/compiler/ocaml/scripts/verify_llvm_ir.sh" "$ir_file" || exit 1
+      fi
     fi
   done
 

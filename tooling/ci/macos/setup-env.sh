@@ -10,7 +10,7 @@
 # オプション:
 #   --skip-llvm       LLVM インストールをスキップ
 #   --skip-opam       opam セットアップをスキップ
-#   --llvm-version    LLVM バージョン（デフォルト: 15）
+#   --llvm-version    LLVM バージョン（デフォルト: 18）
 #   --ocaml-version   OCaml バージョン（デフォルト: 5.2.1）
 #   --dry-run         実際にはインストールせず、コマンドのみ表示
 #   -h, --help        このヘルプを表示

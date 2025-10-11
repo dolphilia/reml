@@ -27,6 +27,7 @@
 - 復旧確認：
   - GitHub Actions の `Bootstrap Linux CI` がフォーマット検証を含めて成功するスクリーンショット／ログを `compiler/ocaml/README.md` の進捗欄に追記。
   - `docs/plans/bootstrap-roadmap/1-7-linux-validation-infra.md` に Linux CI 修正内容を脚注で追記し、macOS CI 設計時に再利用できるよう差分を整理する。
+  - 2025-10-13: GitHub Actions の制限に備え、`scripts/ci-local.sh` を x86_64 macOS トリプル固定で更新し、ローカル環境のみで Lint/Build/Test/LLVM Verify を完結できることを確認。変更内容は `compiler/ocaml/README.md` と本計画書に記録し、macOS 開発者が CI 依存せずに進められる体制を用意する。
 
 ### 1. 計画キックオフと要件整理（18週目）
 - macOS 向けビルドの期待成果物、最小検証項目、リスク項目を `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に登録。

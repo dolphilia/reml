@@ -26,6 +26,7 @@
   - 📄 2025-10-12: dune-project の構文エラーを修正し、ocamlformat 0.26.2 を導入
   - 📄 2025-10-12: macOS ローカル環境で ocamlformat インストール完了、全コードをフォーマット
   - 📄 2025-10-12: Bootstrap Linux CI の Lint ステージブロッカーを解消（dune-project 修正、.ocamlformat 作成）
+  - 📄 2025-10-13: `scripts/ci-local.sh` を x86_64 macOS トリプル固定で更新し、GitHub Actions なしでもローカル検証できる手順を整備
   - 進捗: 15% (Linux CI ブロッカー解消、ローカル環境セットアップ完了)
 
 過去フェーズの週次レポートや統計は `compiler/ocaml/docs/` 配下の各完了報告・引き継ぎ資料に集約しています。
@@ -230,6 +231,8 @@ GitHub Actions と同じ検証手順をローカルで実行できます：
 3. **Test**: 単体テスト・統合テスト
 4. **Memory Check**: AddressSanitizer（Valgrind は macOS でスキップ）
 5. **LLVM IR Verification**: `llvm-as` → `opt -verify` → `llc -mtriple=x86_64-apple-darwin`
+
+Apple Silicon 環境でも `--target macos`（または自動検出）で実行すると、CI と同じく `x86_64-apple-darwin` 向けに強制して検証します。ホストが `arm64` でも IR のトリプルがぶれないため、Mach-O バイナリ差分を気にせず手元で確認できます。
 
 ### macOS 固有の注意事項
 
