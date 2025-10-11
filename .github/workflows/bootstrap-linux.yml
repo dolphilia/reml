@@ -36,7 +36,7 @@ jobs:
 
       - name: Pin ocamlformat version
         run: |
-          opam install ocamlformat.0.26.5 --yes
+          opam install ocamlformat.0.26.2 --yes
         working-directory: compiler/ocaml
 
       - name: Check formatting

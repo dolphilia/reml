@@ -37,7 +37,7 @@
 Phase 1-8 では macOS プレビルド対応により、macOS 開発者が日常開発を円滑に行える環境を整備します：
 
 ### Phase 1-7 からの未解決課題（2025-10-12 更新）
-- **Linux Lint ジョブのフォーマッタ不足**: `bootstrap-linux.yml` の Lint ステージで `opam exec -- dune build @fmt` が `ocamlformat` 未インストールにより失敗している。Phase 1-8 の macOS CI 着手前に、`ocamlformat` のバージョン固定（`dune-project` での `using fmt` または `opam install ocamlformat.0.26.5 --yes`）とキャッシュキー更新を実施して Linux CI を安定化させる。対応内容は `docs/plans/bootstrap-roadmap/1-8-macos-prebuild-support.md` §0 に記録し、完了後のログを `compiler/ocaml/README.md` に追記する。
+- **Linux Lint ジョブのフォーマッタ不足**: `bootstrap-linux.yml` の Lint ステージで `opam exec -- dune build @fmt` が `ocamlformat` 未インストールにより失敗している。Phase 1-8 の macOS CI 着手前に、`ocamlformat` のバージョン固定（`dune-project` での `using fmt` または `opam install ocamlformat.0.26.2 --yes`）とキャッシュキー更新を実施して Linux CI を安定化させる。対応内容は `docs/plans/bootstrap-roadmap/1-8-macos-prebuild-support.md` §0 に記録し、完了後のログを `compiler/ocaml/README.md` に追記する。
 
 ### 主要タスク（Week 18-22）
 

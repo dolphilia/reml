@@ -22,7 +22,7 @@
 ### 0. Linux CI ブロッカーの解消（前提）
 - `.github/workflows/bootstrap-linux.yml` の Lint ステージで `opam exec -- dune build @fmt` が `ocamlformat` 未インストールにより失敗している（2025-10-12 GitHub Actions ログ確認済み）。Phase 1-8 の macOS CI 着手前に Linux パイプラインを復旧させ、Lint/Build/Test 各ジョブが成功する状態を必須前提とする。
 - 対応内容：
-  - `compiler/ocaml` の `dune-project` へ `using fmt` 宣言と `ocamlformat` 固定バージョン（例: `0.26.5`）を追加し、`opam install . --deps-only --with-test` で自動インストールされるようにする。即時対応としては Lint ジョブに `opam install ocamlformat.0.26.5 --yes` を追記し、フォーマッタ導入を強制する。
+- `compiler/ocaml` の `dune-project` へ `using fmt` 宣言と `ocamlformat` 固定バージョン（例: `0.26.2`）を追加し、`opam install . --deps-only --with-test` で自動インストールされるようにする。即時対応としては Lint ジョブに `opam install ocamlformat.0.26.2 --yes` を追記し、フォーマッタ導入を強制する。
   - Linux CI のキャッシュが古い ocamlformat 実行ファイルを抱えないよう、`~/.cache/dune` を含むフォーマットキャッシュの削除またはキー更新を行う。更新後は `opam exec -- dune build @fmt` → `git diff --exit-code` を Lint ジョブ内で再検証する。
 - 復旧確認：
   - GitHub Actions の `Bootstrap Linux CI` がフォーマット検証を含めて成功するスクリーンショット／ログを `compiler/ocaml/README.md` の進捗欄に追記。
@@ -36,13 +36,13 @@
 ### 2. ワークフロー設計（18-19週目）
 - `.github/workflows/bootstrap-macos.yml` を作成し、`on` トリガー（push, pull_request, schedule）と `runs-on: macos-13` を設定。
 - Linux CI と同じステージ構成（Lint → Build → Test → Artifact → LLVM Verify）を採用し、`needs` 依存を調整。
-- Lint ステージでは Linux CI と同様に `ocamlformat` のバージョン固定（`opam install ocamlformat.0.26.5 --yes` もしくは `dune-project` での `using fmt` 宣言）を行い、`dune build @fmt` が macOS でも確実に実行できるようにする。Linux CI 側で導入した手順をテンプレート化し、`bootstrap-macos.yml` に転用する。
+- Lint ステージでは Linux CI と同様に `ocamlformat` のバージョン固定（`opam install ocamlformat.0.26.2 --yes` もしくは `dune-project` での `using fmt` 宣言）を行い、`dune build @fmt` が macOS でも確実に実行できるようにする。Linux CI 側で導入した手順をテンプレート化し、`bootstrap-macos.yml` に転用する。
 - `actions/cache` キーをターゲット別（`macos`）に分離し、Homebrew のキャッシュ対象（`~/Library/Caches/Homebrew/downloads`）を明示。
 
 ### 3. ツールチェーンセットアップ（19週目）
 - Homebrew 経由で `llvm@18`, `opam`, `pkg-config`, `libtool` をインストールし、パス設定を `tooling/ci/macos/setup-env.sh` に記述。
 - Xcode Command Line Tools のバージョンをチェックし `xcode-select --install` の要否を確認、GitHub Actions での差分を `docs/notes/llvm-spec-status-survey.md` に記録。
-- `opam install . --deps-only --with-test --yes` で `ocamlformat` が導入されることを確認し、導入できない場合はワークフロー内で明示的にインストールする。Linux CI で使用したバージョンと揃えることで、フォーマット差分による PR ノイズを防止する。
+- `opam install . --deps-only --with-test --yes` で `ocamlformat` が導入されることを確認し、導入できない場合はワークフロー内で明示的にインストールする。Linux CI で使用したバージョン（0.26.2）と揃えることで、フォーマット差分による PR ノイズを防止する。
 - `opam switch create 4.14.2` と `opam install . --deps-only --with-test` をワークフローに組み込み、インストール時間を測定して `metrics.json` に反映。
 
 ### 4. ビルドジョブ実装（19-20週目）

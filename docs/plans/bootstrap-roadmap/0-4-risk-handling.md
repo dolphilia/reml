@@ -76,7 +76,7 @@
 - タイトル: Linux CI フォーマットジョブで ocamlformat が未導入
 - カテゴリ: 技術的負債
 - 詳細: `Bootstrap Linux CI` の Lint ステージにおいて `opam exec -- dune build @fmt` が `ocamlformat` 実行ファイル不在で失敗している。Phase 1-8 の macOS CI 着手条件として Linux CI の健全性を維持する必要があり、Lint チェックの継続失敗は PR マージのボトルネックとなる。
-- 対応案: `ocamlformat` バージョン固定（`dune-project` での `using fmt` 宣言と `opam install` による dev-dependency 化）を実施し、暫定的には Lint ステージで `opam install ocamlformat.0.26.5 --yes` を追加する。修正完了後は GitHub Actions ログと `compiler/ocaml/README.md` の進捗欄に復旧記録を残す。
+- 対応案: `ocamlformat` バージョン固定（`dune-project` での `using fmt` 宣言と `opam install` による dev-dependency 化）を実施し、暫定的には Lint ステージで `opam install ocamlformat.0.26.2 --yes` を追加する。修正完了後は GitHub Actions ログと `compiler/ocaml/README.md` の進捗欄に復旧記録を残す。
 - 期限: 2025-10-14
 - 状態: Mitigating
 - 関連フェーズ: Phase 1 (1-8)
