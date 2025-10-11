@@ -17,18 +17,20 @@
   - ✅ テスト結果の JUnit XML 出力
   - ✅ LLVM IR・Bitcode の統合アーティファクト化
   - 進捗: 100% (全タスク完了)
-- **Phase 1-8 — macOS プレビルド対応（進行中: 2025-10-11〜）**
-  - ⏳ GitHub Actions macOS ワークフロー設計
-  - ⏳ Homebrew ツールチェーン準備
-  - ⏳ Mach-O ランタイムビルド規則整備
-  - ⏳ LLVM IR 検証フローの macOS 対応
-  - ⏳ メトリクス記録とアーティファクト管理
+- **Phase 1-8 — macOS プレビルド対応（完了: 2025-10-11）**
+  - ✅ GitHub Actions macOS ワークフロー設計（ARM64 ネイティブ対応）
+  - ✅ Homebrew ツールチェーン準備（LLVM 18, OCaml 5.2.1）
+  - ✅ Mach-O ランタイムビルド規則整備（ARM64/x86_64 両対応）
+  - ✅ LLVM IR 検証フローの macOS ARM64 対応
+  - ✅ メトリクス記録とアーティファクト管理
   - 📄 2025-10-12: dune-project の構文エラーを修正し、ocamlformat 0.26.2 を導入
   - 📄 2025-10-12: macOS ローカル環境で ocamlformat インストール完了、全コードをフォーマット
   - 📄 2025-10-12: Bootstrap Linux CI の Lint ステージブロッカーを解消（dune-project 修正、.ocamlformat 作成）
   - 📄 2025-10-14: `scripts/ci-local.sh` に `--arch` 切替とホスト自動判定を実装し、x86_64 / arm64 の双方でローカル検証できるように整備
   - 📄 2025-10-14: `tooling/ci/macos/setup-env.sh` で `/usr/local` と `/opt/homebrew` の両パスを解決し、Apple Silicon 環境でも LLVM 18 を自動登録
-  - 進捗: 20% (Linux CI ブロッカー解消、ローカル環境セットアップ完了、Apple Silicon 向けローカル検証導線を整備)
+  - 📄 2025-10-11: GitHub Actions ワークフロー (`bootstrap-macos.yml`) を macos-14 (ARM64) に更新、全ステージ ARM64 対応完了
+  - 📄 2025-10-11: メトリクス記録に ARM64 実測値を追加（ビルド時間 2.4秒、ランタイムサイズ 56KB）
+  - 進捗: 100% (全タスク完了、ARM64 ネイティブサポート確立)
 
 過去フェーズの週次レポートや統計は `compiler/ocaml/docs/` 配下の各完了報告・引き継ぎ資料に集約しています。
 

@@ -20,8 +20,8 @@ on:
 
 jobs:
   lint:
-    name: Lint (macOS)
-    runs-on: macos-13
+    name: Lint (macOS ARM64)
+    runs-on: macos-14
 
     steps:
       - name: Checkout repository
@@ -44,8 +44,8 @@ jobs:
         working-directory: compiler/ocaml
 
   build:
-    name: Build (macOS)
-    runs-on: macos-13
+    name: Build (macOS ARM64)
+    runs-on: macos-14
     needs: lint
 
     steps:
@@ -56,29 +56,29 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/Library/Caches/Homebrew/downloads
-          key: homebrew-${{ runner.os }}-${{ hashFiles('tooling/ci/macos/setup-env.sh') }}
+          key: homebrew-${{ runner.os }}-arm64-${{ hashFiles('tooling/ci/macos/setup-env.sh') }}
           restore-keys: |
-            homebrew-${{ runner.os }}-
+            homebrew-${{ runner.os }}-arm64-
 
       - name: Cache LLVM
         uses: actions/cache@v4
         with:
-          path: /usr/local/opt/llvm@18
-          key: llvm-18-macos-${{ runner.os }}
+          path: /opt/homebrew/opt/llvm@18
+          key: llvm-18-macos-arm64-${{ runner.os }}
           restore-keys: |
-            llvm-18-macos-
+            llvm-18-macos-arm64-
 
       - name: Install LLVM toolchain via Homebrew
         run: |
           brew install llvm@18
           brew link --force llvm@18
-          echo "/usr/local/opt/llvm@18/bin" >> $GITHUB_PATH
+          echo "/opt/homebrew/opt/llvm@18/bin" >> $GITHUB_PATH
 
       - name: Verify LLVM installation
         run: |
-          /usr/local/opt/llvm@18/bin/llvm-as --version
-          /usr/local/opt/llvm@18/bin/opt --version
-          /usr/local/opt/llvm@18/bin/llc --version
+          llvm-as --version
+          opt --version
+          llc --version
 
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
@@ -120,8 +120,8 @@ jobs:
           retention-days: 30
 
   test:
-    name: Test (macOS)
-    runs-on: macos-13
+    name: Test (macOS ARM64)
+    runs-on: macos-14
     needs: build
 
     steps:
@@ -131,22 +131,22 @@ jobs:
       - name: Cache LLVM
         uses: actions/cache@v4
         with:
-          path: /usr/local/opt/llvm@18
-          key: llvm-18-macos-${{ runner.os }}
+          path: /opt/homebrew/opt/llvm@18
+          key: llvm-18-macos-arm64-${{ runner.os }}
           restore-keys: |
-            llvm-18-macos-
+            llvm-18-macos-arm64-
 
       - name: Install LLVM toolchain via Homebrew
         run: |
           brew install llvm@18
           brew link --force llvm@18
-          echo "/usr/local/opt/llvm@18/bin" >> $GITHUB_PATH
+          echo "/opt/homebrew/opt/llvm@18/bin" >> $GITHUB_PATH
 
       - name: Verify LLVM installation
         run: |
-          /usr/local/opt/llvm@18/bin/llvm-as --version
-          /usr/local/opt/llvm@18/bin/opt --version
-          /usr/local/opt/llvm@18/bin/llc --version
+          llvm-as --version
+          opt --version
+          llc --version
 
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
@@ -281,8 +281,8 @@ jobs:
           retention-days: 7
 
   llvm-verify:
-    name: LLVM IR Verification (macOS)
-    runs-on: macos-13
+    name: LLVM IR Verification (macOS ARM64)
+    runs-on: macos-14
     needs: test
 
     steps:
@@ -292,22 +292,22 @@ jobs:
       - name: Cache LLVM
         uses: actions/cache@v4
         with:
-          path: /usr/local/opt/llvm@18
-          key: llvm-18-macos-${{ runner.os }}
+          path: /opt/homebrew/opt/llvm@18
+          key: llvm-18-macos-arm64-${{ runner.os }}
           restore-keys: |
-            llvm-18-macos-
+            llvm-18-macos-arm64-
 
       - name: Install LLVM toolchain via Homebrew
         run: |
           brew install llvm@18
           brew link --force llvm@18
-          echo "/usr/local/opt/llvm@18/bin" >> $GITHUB_PATH
+          echo "/opt/homebrew/opt/llvm@18/bin" >> $GITHUB_PATH
 
       - name: Verify LLVM installation
         run: |
-          /usr/local/opt/llvm@18/bin/llvm-as --version
-          /usr/local/opt/llvm@18/bin/opt --version
-          /usr/local/opt/llvm@18/bin/llc --version
+          llvm-as --version
+          opt --version
+          llc --version
 
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
@@ -332,18 +332,17 @@ jobs:
           mkdir -p /tmp/llvm-ir-verify-macos
           for example in examples/cli/*.reml; do
             echo "Generating LLVM IR for $example..."
-            opam exec -- dune exec -- remlc "$example" --emit-ir --out-dir=/tmp/llvm-ir-verify-macos || true
+            opam exec -- dune exec -- remlc "$example" --target arm64-apple-darwin --emit-ir --out-dir=/tmp/llvm-ir-verify-macos || true
           done
         working-directory: compiler/ocaml
 
       - name: Verify generated LLVM IR
         run: |
           chmod +x compiler/ocaml/scripts/verify_llvm_ir.sh
-          export PATH="/usr/local/opt/llvm@15/bin:$PATH"
           for ir_file in /tmp/llvm-ir-verify-macos/*.ll; do
             if [ -f "$ir_file" ]; then
               echo "Verifying $ir_file..."
-              compiler/ocaml/scripts/verify_llvm_ir.sh "$ir_file" --target x86_64-apple-darwin || exit 1
+              compiler/ocaml/scripts/verify_llvm_ir.sh "$ir_file" --target arm64-apple-darwin || exit 1
             fi
           done
 
@@ -366,8 +365,8 @@ jobs:
           retention-days: 7
 
   record-metrics:
-    name: Record Metrics (macOS)
-    runs-on: macos-13
+    name: Record Metrics (macOS ARM64)
+    runs-on: macos-14
     needs:
       - build
       - test
@@ -416,8 +415,8 @@ jobs:
         continue-on-error: true
 
   artifact:
-    name: Artifact Bundle (macOS)
-    runs-on: macos-13
+    name: Artifact Bundle (macOS ARM64)
+    runs-on: macos-14
     needs:
       - build
       - test
