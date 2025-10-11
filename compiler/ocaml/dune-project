@@ -1,10 +1,6 @@
 (lang dune 3.0)
 (name reml_ocaml)
 (using menhir 2.1)
-(using fmt 1.5)
-
-(fmt
- (version 0.26.2))
 
 (generate_opam_files true)
 
@@ -23,4 +19,4 @@
  (menhir (>= 20201216))
  yojson
  (llvm (and (>= 15.0) (< 20)))
- (ocamlformat (= 0.26.2) :dev true)))
+ (ocamlformat (= 0.26.2))))

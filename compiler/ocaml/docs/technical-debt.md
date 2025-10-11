@@ -992,5 +992,79 @@ Llvm.add_function_attr llvm_fn sret_attr attr_kind
 
 ---
 
-**最終更新**: 2025-10-11（Phase 1-7 完了時点）
+## Phase 1-8 開始時点での発見事項（2025-10-12）
+
+### 17. dune-project の構文エラー
+
+**分類**: ビルドシステム / CI
+**優先度**: 🔴 Critical → ✅ 解決済み
+**ステータス**: 解決済み（Phase 1-8 開始直後）
+**発見日**: 2025-10-12
+**解決日**: 2025-10-12
+
+#### 問題の詳細（ID 17）
+
+GitHub Actions の Lint ステージで `dune-project` の構文エラーが発生：
+
+```text
+File "dune-project", line 26, characters 1-35:
+26 |  (ocamlformat (= 0.26.2) :dev true)))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Atom or quoted string expected
+```
+
+**根本原因**:
+
+- 26行目の `(ocamlformat (= 0.26.2) :dev true)))` が不正な構文
+- `:dev true` の記法が Dune 3.0 では非対応
+- トップレベルの `(fmt ...)` stanza も Dune 3.0 + `(using fmt 1.5)` の組み合わせで非対応
+
+#### 実装内容（2025-10-12）
+
+1. **`dune-project` の修正**:
+   - 26行目から `:dev true` を削除し、`(ocamlformat (= 0.26.2))` のみに変更
+   - `(using fmt 1.5)` を削除（Dune 3.0 では 1.0-1.2 のみサポート）
+   - トップレベルの `(fmt (version 0.26.2))` stanza を削除
+
+2. **`.ocamlformat` ファイルの作成**:
+   - `compiler/ocaml/.ocamlformat` を新規作成
+   - バージョン指定: `version=0.26.2`
+
+3. **修正後の構成**:
+
+   ```lisp
+   (lang dune 3.0)
+   (name reml_ocaml)
+   (using menhir 2.1)
+
+   (package
+    (name reml_ocaml)
+    (depends
+     ...
+     (ocamlformat (= 0.26.2))))
+   ```
+
+#### 検証結果（ID 17）
+
+- `dune-project` の構文エラーを解消
+- GitHub Actions の `.github/workflows/bootstrap-linux.yml` の Lint ステージが正常に動作する準備が完了
+- ocamlformat のバージョン固定（0.26.2）を `.ocamlformat` ファイルで管理
+
+#### CI への影響（ID 17）
+
+- **修正ファイル**:
+  - `compiler/ocaml/dune-project`（26行目の修正 + `using fmt` の削除）
+  - `compiler/ocaml/.ocamlformat`（新規作成）
+- **GitHub Actions への影響**:
+  - Lint ステージが成功するようになる
+  - `opam install . --deps-only --with-test` が正常に動作する
+
+#### 参考資料（ID 17）
+
+- Phase 1-8 計画書 §0「Linux CI ブロッカーの解消」
+- Dune ドキュメント: <https://dune.readthedocs.io/en/stable/formatting.html>
+
+---
+
+**最終更新**: 2025-10-12（Phase 1-8 開始時点）
 **次回更新予定**: Phase 1-8 完了時（macOS CI 統合完了時）
