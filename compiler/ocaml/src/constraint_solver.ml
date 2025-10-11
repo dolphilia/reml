@@ -352,25 +352,176 @@ let build_constraint_graph constraints =
   in
   { nodes; edges }
 
-(** 循環依存の検出（Tarjanアルゴリズムのシンプル版）
+(** Tarjanアルゴリズムによる強連結成分検出
  *
- * Phase 2 Week 18-19 では基本実装のみ
- * 完全なアルゴリズムは Phase 2 後半で実装予定
+ * 強連結成分（Strongly Connected Components, SCC）を検出し、
+ * サイズ2以上のSCCを循環依存として返す。
+ *
+ * アルゴリズム:
+ * 1. DFSで各ノードにindexとlowlinkを割り当て
+ * 2. スタックを使ってSCCを識別
+ * 3. lowlink == indexとなったノードがSCCのルート
+ *
+ * 参考: Robert Tarjan, "Depth-First Search and Linear Graph Algorithms" (1972)
  *)
-let find_cycles _graph =
-  (* TODO: Phase 2 Week 19-20 で完全実装 *)
-  (* 現在はシンプルなパス検索で循環検出 *)
-  []
+let find_cycles graph =
+  (* Tarjanアルゴリズムの状態 *)
+  let index_counter = ref 0 in
+  let stack = ref [] in
+  let indices = Hashtbl.create 10 in
+  let lowlinks = Hashtbl.create 10 in
+  let on_stack = Hashtbl.create 10 in
+  let sccs = ref [] in
 
-(** トポロジカルソート（Kahnアルゴリズム）
+  (* 制約のハッシュ値を生成（Hashtblのキーとして使用） *)
+  let constraint_hash (c : trait_constraint) =
+    Hashtbl.hash (c.trait_name, List.map (fun ty -> string_of_ty ty) c.type_args)
+  in
+
+  (* 制約が訪問済みか確認 *)
+  let is_visited (c : trait_constraint) = Hashtbl.mem indices (constraint_hash c) in
+
+  (* 隣接ノード（依存先）を取得 *)
+  let get_neighbors (c : trait_constraint) : trait_constraint list =
+    List.filter_map
+      (fun (dep, target) ->
+        if constraint_equal target c then Some dep else None)
+      graph.edges
+  in
+
+  (* Tarjan DFS *)
+  let rec strongconnect (node_v : trait_constraint) : unit =
+    let v_hash = constraint_hash node_v in
+    (* node_vにindexとlowlinkを割り当て *)
+    Hashtbl.add indices v_hash !index_counter;
+    Hashtbl.add lowlinks v_hash !index_counter;
+    index_counter := !index_counter + 1;
+
+    (* スタックにプッシュ *)
+    stack := node_v :: !stack;
+    Hashtbl.add on_stack v_hash true;
+
+    (* 隣接ノードを探索 *)
+    List.iter
+      (fun node_w ->
+        let w_hash = constraint_hash node_w in
+        if not (is_visited node_w) then (
+          (* node_wが未訪問ならDFS *)
+          strongconnect node_w;
+          (* lowlinkを更新 *)
+          let v_lowlink = Hashtbl.find lowlinks v_hash in
+          let w_lowlink = Hashtbl.find lowlinks w_hash in
+          Hashtbl.replace lowlinks v_hash (min v_lowlink w_lowlink))
+        else if Hashtbl.mem on_stack w_hash then
+          (* node_wがスタック上にある（バックエッジ） *)
+          let v_lowlink = Hashtbl.find lowlinks v_hash in
+          let w_index = Hashtbl.find indices w_hash in
+          Hashtbl.replace lowlinks v_hash (min v_lowlink w_index))
+      (get_neighbors node_v);
+
+    (* node_v がSCCのルートか確認 *)
+    let v_index = Hashtbl.find indices v_hash in
+    let v_lowlink = Hashtbl.find lowlinks v_hash in
+    if v_lowlink = v_index then (
+      (* SCCを抽出 *)
+      let rec pop_scc acc =
+        match !stack with
+        | [] -> acc
+        | node_w :: rest ->
+            stack := rest;
+            Hashtbl.remove on_stack (constraint_hash node_w);
+            if constraint_equal node_w node_v then node_w :: acc
+            else pop_scc (node_w :: acc)
+      in
+      let scc = pop_scc [] in
+      sccs := scc :: !sccs)
+  in
+
+  (* 全ノードを探索 *)
+  List.iter
+    (fun node ->
+      if not (is_visited node) then strongconnect node)
+    graph.nodes;
+
+  (* サイズ2以上のSCCを循環依存として返す *)
+  List.filter (fun scc -> List.length scc >= 2) !sccs
+
+(** Kahnアルゴリズムによるトポロジカルソート
  *
- * Phase 2 Week 18-19 では基本実装のみ
- * 完全なアルゴリズムは Phase 2 後半で実装予定
+ * 制約グラフをトポロジカル順にソートする。
+ * 循環依存がある場合はNoneを返す。
+ *
+ * アルゴリズム:
+ * 1. 各ノードの入次数を計算
+ * 2. 入次数0のノードをキューに追加
+ * 3. キューからノードを取り出し、結果リストに追加
+ * 4. 隣接ノードの入次数を減らし、0になったらキューに追加
+ * 5. 全ノードが処理されたらSome、そうでなければNone
+ *
+ * 参考: Arthur B. Kahn, "Topological Sorting of Large Networks" (1962)
  *)
 let topological_sort graph =
-  (* TODO: Phase 2 Week 19-20 で完全実装 *)
-  (* 現在は単純に入力順を返す *)
-  Some graph.nodes
+  (* 入次数を計算 *)
+  let in_degrees = Hashtbl.create (List.length graph.nodes) in
+
+  (* 制約のハッシュ値を生成 *)
+  let constraint_hash (c : trait_constraint) =
+    Hashtbl.hash (c.trait_name, List.map (fun ty -> string_of_ty ty) c.type_args)
+  in
+
+  (* 全ノードの入次数を0で初期化 *)
+  List.iter (fun (node : trait_constraint) -> Hashtbl.add in_degrees (constraint_hash node) 0) graph.nodes;
+
+  (* エッジから入次数を計算 *)
+  List.iter
+    (fun ((_dep : trait_constraint), (target : trait_constraint)) ->
+      let target_hash = constraint_hash target in
+      let current = Hashtbl.find in_degrees target_hash in
+      Hashtbl.replace in_degrees target_hash (current + 1))
+    graph.edges;
+
+  (* 入次数0のノードをキューに追加 *)
+  let queue = Queue.create () in
+  List.iter
+    (fun (node : trait_constraint) ->
+      let node_hash = constraint_hash node in
+      if Hashtbl.find in_degrees node_hash = 0 then
+        Queue.add node queue)
+    graph.nodes;
+
+  (* トポロジカルソート *)
+  let result = ref [] in
+  let processed_count = ref 0 in
+
+  while not (Queue.is_empty queue) do
+    let node = Queue.take queue in
+    result := node :: !result;
+    processed_count := !processed_count + 1;
+
+    (* 隣接ノード（依存元）を取得 *)
+    let neighbors =
+      List.filter_map
+        (fun ((dep : trait_constraint), (target : trait_constraint)) ->
+          if constraint_equal dep node then Some target else None)
+        graph.edges
+    in
+
+    (* 隣接ノードの入次数を減らす *)
+    List.iter
+      (fun (neighbor : trait_constraint) ->
+        let neighbor_hash = constraint_hash neighbor in
+        let current = Hashtbl.find in_degrees neighbor_hash in
+        let new_degree = current - 1 in
+        Hashtbl.replace in_degrees neighbor_hash new_degree;
+        if new_degree = 0 then Queue.add neighbor queue)
+      neighbors
+  done;
+
+  (* 全ノードが処理されたか確認 *)
+  if !processed_count = List.length graph.nodes then
+    Some (List.rev !result)
+  else
+    None  (* 循環依存がある *)
 
 (* ========== デバッグ用 ========== *)
 

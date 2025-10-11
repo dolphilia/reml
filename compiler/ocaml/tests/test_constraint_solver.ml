@@ -222,7 +222,119 @@ let test_build_constraint_graph_recursive () =
     print_endline "✓ test_build_constraint_graph_recursive"
   else failwith "Expected Eq<(i64, String)> to depend on Eq<i64> and Eq<String>"
 
-(* ========== 5. デバッグ出力のテスト ========== *)
+(* ========== 5. 循環依存検出とトポロジカルソートのテスト ========== *)
+
+(** 循環依存のないグラフ *)
+let test_find_cycles_no_cycle () =
+  (* グラフ: Ord<i64> → Eq<i64> （循環なし） *)
+  let constraints =
+    [
+      make_constraint "Eq" [ ty_i64 ];
+      make_constraint "Ord" [ ty_i64 ];
+    ]
+  in
+  let graph = build_constraint_graph constraints in
+  let cycles = find_cycles graph in
+  if List.length cycles = 0 then
+    print_endline "✓ test_find_cycles_no_cycle"
+  else failwith "Expected no cycles"
+
+(** 自己参照制約（理論上のケース） *)
+let test_find_cycles_self_reference () =
+  (* 実際のRemlでは発生しないが、アルゴリズムのテストとして *)
+  let constraint_a = make_constraint "SelfRef" [ ty_i64 ] in
+  (* 自己参照エッジを手動で作成 *)
+  let graph = { nodes = [ constraint_a ]; edges = [ (constraint_a, constraint_a) ] } in
+  let cycles = find_cycles graph in
+  (* 自己参照は1ノードのSCCとして検出される（サイズ1なので循環扱いしない） *)
+  if List.length cycles = 0 then
+    print_endline "✓ test_find_cycles_self_reference"
+  else failwith (Printf.sprintf "Expected no cycles for self-reference, got %d" (List.length cycles))
+
+(** 相互参照制約 A → B → A *)
+let test_find_cycles_mutual_reference () =
+  let constraint_a = make_constraint "TraitA" [ ty_i64 ] in
+  let constraint_b = make_constraint "TraitB" [ ty_i64 ] in
+  (* A → B, B → A の循環を作成 *)
+  let graph =
+    {
+      nodes = [ constraint_a; constraint_b ];
+      edges = [ (constraint_a, constraint_b); (constraint_b, constraint_a) ];
+    }
+  in
+  let cycles = find_cycles graph in
+  (* サイズ2のSCCが1つ検出されるはず *)
+  if List.length cycles = 1 && List.length (List.hd cycles) = 2 then
+    print_endline "✓ test_find_cycles_mutual_reference"
+  else failwith (Printf.sprintf "Expected 1 cycle of size 2, got %d cycles" (List.length cycles))
+
+(** トポロジカルソート（循環なし） *)
+let test_topological_sort_success () =
+  (* グラフ: Ord<i64> → Eq<i64> *)
+  let eq_constraint = make_constraint "Eq" [ ty_i64 ] in
+  let ord_constraint = make_constraint "Ord" [ ty_i64 ] in
+  let graph = build_constraint_graph [ eq_constraint; ord_constraint ] in
+  match topological_sort graph with
+  | Some sorted ->
+      (* Eq が Ord の前に来るはず *)
+      let eq_index = List.find_index (constraint_equal eq_constraint) sorted in
+      let ord_index = List.find_index (constraint_equal ord_constraint) sorted in
+      (match (eq_index, ord_index) with
+      | Some ei, Some oi when ei < oi ->
+          print_endline "✓ test_topological_sort_success"
+      | _ -> failwith "Expected Eq to come before Ord in topological order")
+  | None -> failwith "Expected Some (sorted list), got None"
+
+(** トポロジカルソート（循環あり） *)
+let test_topological_sort_with_cycle () =
+  let constraint_a = make_constraint "TraitA" [ ty_i64 ] in
+  let constraint_b = make_constraint "TraitB" [ ty_i64 ] in
+  (* A → B, B → A の循環を作成 *)
+  let graph =
+    {
+      nodes = [ constraint_a; constraint_b ];
+      edges = [ (constraint_a, constraint_b); (constraint_b, constraint_a) ];
+    }
+  in
+  match topological_sort graph with
+  | None ->
+      (* 循環があるのでNoneが返るはず *)
+      print_endline "✓ test_topological_sort_with_cycle"
+  | Some _ -> failwith "Expected None for graph with cycle"
+
+(** トポロジカルソート（複雑な依存関係） *)
+let test_topological_sort_complex () =
+  (* グラフ: A → B, A → C, B → D, C → D
+   * 期待される順序: D, B, C, A または D, C, B, A
+   *)
+  let constraint_a = make_constraint "TraitA" [ ty_i64 ] in
+  let constraint_b = make_constraint "TraitB" [ ty_i64 ] in
+  let constraint_c = make_constraint "TraitC" [ ty_i64 ] in
+  let constraint_d = make_constraint "TraitD" [ ty_i64 ] in
+  let graph =
+    {
+      nodes = [ constraint_a; constraint_b; constraint_c; constraint_d ];
+      edges =
+        [
+          (constraint_b, constraint_a);
+          (constraint_c, constraint_a);
+          (constraint_d, constraint_b);
+          (constraint_d, constraint_c);
+        ];
+    }
+  in
+  match topological_sort graph with
+  | Some sorted ->
+      (* Dが最初、Aが最後に来るはず *)
+      let d_index = List.find_index (constraint_equal constraint_d) sorted in
+      let a_index = List.find_index (constraint_equal constraint_a) sorted in
+      (match (d_index, a_index) with
+      | Some di, Some ai when di < ai ->
+          print_endline "✓ test_topological_sort_complex"
+      | _ -> failwith "Expected D to come before A in topological order")
+  | None -> failwith "Expected Some (sorted list) for acyclic graph"
+
+(* ========== 6. デバッグ出力のテスト ========== *)
 
 (** 辞書参照の文字列表現 *)
 let test_string_of_dict_ref () =
@@ -279,7 +391,15 @@ let () =
   test_build_constraint_graph_simple ();
   test_build_constraint_graph_recursive ();
   print_endline "";
-  print_endline "=== 5. Debug Output Tests ===";
+  print_endline "=== 5. Cycle Detection and Topological Sort ===";
+  test_find_cycles_no_cycle ();
+  test_find_cycles_self_reference ();
+  test_find_cycles_mutual_reference ();
+  test_topological_sort_success ();
+  test_topological_sort_with_cycle ();
+  test_topological_sort_complex ();
+  print_endline "";
+  print_endline "=== 6. Debug Output Tests ===";
   test_string_of_dict_ref ();
   test_string_of_constraint_error ();
   print_endline "";
