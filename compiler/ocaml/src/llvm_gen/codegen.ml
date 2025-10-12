@@ -1099,6 +1099,158 @@ let codegen_blocks ctx llvm_fn blocks =
       ())
     blocks
 
+(* ========== 型クラスビルトインメソッド生成（Phase 2 Week 22-23） ========== *)
+
+(** ビルトイン型クラスメソッドを生成
+ *
+ * 組み込み型（i64, String, Bool）に対する型クラス実装を自動生成する。
+ * 現在サポートされているのは以下のメソッド:
+ * - __Eq_i64_eq(i64, i64) returns Bool
+ * - __Eq_String_eq(String_ptr, String_ptr) returns Bool
+ * - __Eq_Bool_eq(Bool, Bool) returns Bool
+ * - __Ord_i64_compare(i64, i64) returns i32
+ * - __Ord_String_compare(String_ptr, String_ptr) returns i32
+ *
+ * @param ctx コード生成コンテキスト
+ *)
+let generate_builtin_trait_methods ctx =
+  let i1_ty = Llvm.i1_type ctx.llctx in
+  let i32_ty = Llvm.i32_type ctx.llctx in
+  let i64_ty = Llvm.i64_type ctx.llctx in
+  let ptr_ty = Llvm.pointer_type ctx.llctx in
+
+  (* 1. __Eq_i64_eq(i64, i64) returns Bool *)
+  let eq_i64_fn_ty = Llvm.function_type i1_ty [| i64_ty; i64_ty |] in
+  let eq_i64_fn = Llvm.declare_function "__Eq_i64_eq" eq_i64_fn_ty ctx.llmodule in
+  Hashtbl.replace ctx.fn_map "__Eq_i64_eq" eq_i64_fn;
+
+  let entry_bb = Llvm.append_block ctx.llctx "entry" eq_i64_fn in
+  Llvm.position_at_end entry_bb ctx.builder;
+
+  let x = Llvm.param eq_i64_fn 0 in
+  let y = Llvm.param eq_i64_fn 1 in
+  Llvm.set_value_name "x" x;
+  Llvm.set_value_name "y" y;
+
+  let cmp_result = Llvm.build_icmp Llvm.Icmp.Eq x y "eq_result" ctx.builder in
+  let _ = Llvm.build_ret cmp_result ctx.builder in
+
+  (* 2. __Eq_String_eq for String pointers returns Bool *)
+  let eq_string_fn_ty = Llvm.function_type i1_ty [| ptr_ty; ptr_ty |] in
+  let eq_string_fn =
+    Llvm.declare_function "__Eq_String_eq" eq_string_fn_ty ctx.llmodule
+  in
+  Hashtbl.replace ctx.fn_map "__Eq_String_eq" eq_string_fn;
+
+  (* ランタイム関数 string_eq を宣言 *)
+  let string_eq_fn_ty = Llvm.function_type i32_ty [| ptr_ty; ptr_ty |] in
+  let string_eq_fn =
+    match Llvm.lookup_function "string_eq" ctx.llmodule with
+    | Some f -> f
+    | None -> Llvm.declare_function "string_eq" string_eq_fn_ty ctx.llmodule
+  in
+
+  let entry_bb = Llvm.append_block ctx.llctx "entry" eq_string_fn in
+  Llvm.position_at_end entry_bb ctx.builder;
+
+  let s1 = Llvm.param eq_string_fn 0 in
+  let s2 = Llvm.param eq_string_fn 1 in
+  Llvm.set_value_name "s1" s1;
+  Llvm.set_value_name "s2" s2;
+
+  (* string_eq(s1, s2) を呼び出し *)
+  let call_result =
+    Llvm.build_call string_eq_fn_ty string_eq_fn [| s1; s2 |]
+      "string_eq_result" ctx.builder
+  in
+
+  (* i32 の結果を i1 に変換（0 でなければ true） *)
+  let zero = Llvm.const_int i32_ty 0 in
+  let bool_result =
+    Llvm.build_icmp Llvm.Icmp.Ne call_result zero "to_bool" ctx.builder
+  in
+  let _ = Llvm.build_ret bool_result ctx.builder in
+
+  (* 3. __Eq_Bool_eq(Bool, Bool) -> Bool *)
+  let eq_bool_fn_ty = Llvm.function_type i1_ty [| i1_ty; i1_ty |] in
+  let eq_bool_fn =
+    Llvm.declare_function "__Eq_Bool_eq" eq_bool_fn_ty ctx.llmodule
+  in
+  Hashtbl.replace ctx.fn_map "__Eq_Bool_eq" eq_bool_fn;
+
+  let entry_bb = Llvm.append_block ctx.llctx "entry" eq_bool_fn in
+  Llvm.position_at_end entry_bb ctx.builder;
+
+  let b1 = Llvm.param eq_bool_fn 0 in
+  let b2 = Llvm.param eq_bool_fn 1 in
+  Llvm.set_value_name "b1" b1;
+  Llvm.set_value_name "b2" b2;
+
+  let cmp_result = Llvm.build_icmp Llvm.Icmp.Eq b1 b2 "eq_result" ctx.builder in
+  let _ = Llvm.build_ret cmp_result ctx.builder in
+
+  (* 4. __Ord_i64_compare(i64, i64) returns i32 *)
+  let ord_i64_fn_ty = Llvm.function_type i32_ty [| i64_ty; i64_ty |] in
+  let ord_i64_fn =
+    Llvm.declare_function "__Ord_i64_compare" ord_i64_fn_ty ctx.llmodule
+  in
+  Hashtbl.replace ctx.fn_map "__Ord_i64_compare" ord_i64_fn;
+
+  let entry_bb = Llvm.append_block ctx.llctx "entry" ord_i64_fn in
+  Llvm.position_at_end entry_bb ctx.builder;
+
+  let x = Llvm.param ord_i64_fn 0 in
+  let y = Llvm.param ord_i64_fn 1 in
+  Llvm.set_value_name "x" x;
+  Llvm.set_value_name "y" y;
+
+  (* x < y なら -1、x == y なら 0、x > y なら 1 *)
+  let lt_result = Llvm.build_icmp Llvm.Icmp.Slt x y "lt" ctx.builder in
+  let gt_result = Llvm.build_icmp Llvm.Icmp.Sgt x y "gt" ctx.builder in
+
+  let neg_one = Llvm.const_int i32_ty (-1) in
+  let zero = Llvm.const_int i32_ty 0 in
+  let one = Llvm.const_int i32_ty 1 in
+
+  let result1 = Llvm.build_select lt_result neg_one zero "sel1" ctx.builder in
+  let result2 = Llvm.build_select gt_result one result1 "sel2" ctx.builder in
+  let _ = Llvm.build_ret result2 ctx.builder in
+
+  (* 5. __Ord_String_compare for String pointers returns i32 *)
+  let ord_string_fn_ty = Llvm.function_type i32_ty [| ptr_ty; ptr_ty |] in
+  let ord_string_fn =
+    Llvm.declare_function "__Ord_String_compare" ord_string_fn_ty ctx.llmodule
+  in
+  Hashtbl.replace ctx.fn_map "__Ord_String_compare" ord_string_fn;
+
+  (* ランタイム関数 string_compare を宣言 *)
+  let string_compare_fn_ty = Llvm.function_type i32_ty [| ptr_ty; ptr_ty |] in
+  let string_compare_fn =
+    match Llvm.lookup_function "string_compare" ctx.llmodule with
+    | Some f -> f
+    | None ->
+        Llvm.declare_function "string_compare" string_compare_fn_ty ctx.llmodule
+  in
+
+  let entry_bb = Llvm.append_block ctx.llctx "entry" ord_string_fn in
+  Llvm.position_at_end entry_bb ctx.builder;
+
+  let s1 = Llvm.param ord_string_fn 0 in
+  let s2 = Llvm.param ord_string_fn 1 in
+  Llvm.set_value_name "s1" s1;
+  Llvm.set_value_name "s2" s2;
+
+  (* string_compare(s1, s2) を呼び出し *)
+  let call_result =
+    Llvm.build_call string_compare_fn_ty string_compare_fn [| s1; s2 |]
+      "string_compare_result" ctx.builder
+  in
+  let _ = Llvm.build_ret call_result ctx.builder in
+
+  ()
+
+(* Note: ビルダーの位置は次の関数生成時に自動的にリセットされます *)
+
 (* ========== モジュール生成 ========== *)
 
 (** モジュール全体を生成
@@ -1114,6 +1266,9 @@ let codegen_module ?(target_name = "x86_64-linux") module_def =
 
   (* ランタイム関数を宣言 *)
   declare_runtime_functions ctx;
+
+  (* 型クラスビルトインメソッドを生成（Phase 2 Week 22-23） *)
+  generate_builtin_trait_methods ctx;
 
   (* グローバル変数を生成 *)
   List.iter (codegen_global_def ctx) module_def.global_defs;

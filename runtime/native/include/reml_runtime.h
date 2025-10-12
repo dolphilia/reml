@@ -133,6 +133,35 @@ void panic(const char* msg) __attribute__((noreturn));
  */
 void print_i64(int64_t value);
 
+/* ========== 型クラスビルトイン実装（Phase 2 Week 22-23） ========== */
+
+/**
+ * Reml String 型の構造（C側での便宜的定義）
+ * LLVM IR では { ptr, i64 } として表現される
+ */
+typedef struct {
+    const char* data;  ///< 文字列データへのポインタ
+    int64_t length;    ///< 文字列の長さ（バイト数）
+} reml_string_t;
+
+/**
+ * 文字列の等価比較（Eq<String>::eq の実装）
+ *
+ * @param s1 比較対象の文字列1
+ * @param s2 比較対象の文字列2
+ * @return 等しければ1（true）、異なれば0（false）
+ */
+int32_t string_eq(const reml_string_t* s1, const reml_string_t* s2);
+
+/**
+ * 文字列の順序比較（Ord<String>::compare の実装）
+ *
+ * @param s1 比較対象の文字列1
+ * @param s2 比較対象の文字列2
+ * @return s1 < s2 なら負の値、s1 == s2 なら 0、s1 > s2 なら正の値
+ */
+int32_t string_compare(const reml_string_t* s1, const reml_string_t* s2);
+
 /* ========== 内部ヘルパー（実装側で使用） ========== */
 
 /**

@@ -286,6 +286,63 @@
 
 ## 進捗ログ
 
+### 2025-10-12 更新（Week 22-23 / ビルトインメソッド実装自動生成完了）✨
+
+**作業サマリー** ✅:
+
+Phase 2 Week 22-23 のタスク「ビルトインメソッド実装の自動生成」を完了しました。組み込み型（i64/String/Bool）に対する型クラスメソッド（Eq/Ord）がLLVM IR として自動生成され、辞書構造体のvtableから呼び出し可能になりました。
+
+**実装完了内容** ✅:
+
+1. **ランタイム文字列比較関数の追加** (`runtime/native/src/string_compare.c`, 約80行)
+   - `string_eq(String*, String*) -> i32`: 文字列等価比較（memcmp利用）
+   - `string_compare(String*, String*) -> i32`: 文字列順序比較（辞書順）
+   - FAT pointer（`{ptr, i64}`）形式に対応
+   - `reml_runtime.h` に関数宣言と `reml_string_t` 型定義を追加
+
+2. **LLVM IRビルトインメソッド生成** (`codegen.ml:1102-1255`, 約150行)
+   - `generate_builtin_trait_methods()` 関数を新規実装
+   - 5つのビルトインメソッドを自動生成:
+     - `__Eq_i64_eq(i64, i64) -> Bool`: icmp eq による直接比較
+     - `__Eq_String_eq(String*, String*) -> Bool`: string_eq() 呼び出し
+     - `__Eq_Bool_eq(Bool, Bool) -> Bool`: icmp eq による直接比較
+     - `__Ord_i64_compare(i64, i64) -> i32`: 3way比較（select命令利用）
+     - `__Ord_String_compare(String*, String*) -> i32`: string_compare() 呼び出し
+   - ランタイム関数（string_eq/string_compare）の宣言を自動追加
+   - 関数マップに登録し、辞書構造体からの参照を可能に
+
+3. **コード生成パイプラインへの統合** (`codegen.ml:1273`)
+   - `codegen_module()` でランタイム関数宣言直後にビルトインメソッドを生成
+   - ユーザー定義関数の前に生成することで、fn_mapへの登録を保証
+   - LLVM 18のopaque pointer対応（`Llvm.build_call`の型引数修正）
+
+**検証結果** ✅:
+
+- ✅ `make runtime` 成功（string_compare.c コンパイル・リンク）
+- ✅ `dune build` 成功（エラー0件、警告はリンカの重複ライブラリのみ）
+- ✅ `test_parser.exe` 全件成功（回帰なし確認）
+
+**達成マイルストーン** ✅:
+
+- **タスク1「ビルトインメソッド実装の自動生成」**: **100%完了**
+- **残存課題から解消**: 「ビルトインメソッド実装の自動生成」が完了
+- **M1マイルストーン進捗**: 辞書渡し方式の実装完了率 約80%（ビルトインメソッド生成完了）
+
+**残存課題** 🚧:
+
+- エンドツーエンドテストの作成（型クラス制約付き関数の実行検証）
+- ユーザ定義impl宣言のパース対応（`impl Eq for i64 { ... }` 構文）
+- ドキュメント更新（仕様書1-2への実装差分反映）
+- 型情報から正確なトレイト名・vtableサイズを取得する改善
+
+**次回セッションタスク** 🚧:
+
+- タスク2: エンドツーエンドテスト作成（Week 22-23継続）
+- タスク3: impl宣言パーサ対応（Week 23-24）
+- タスク4: ドキュメント更新（Week 23-24）
+
+---
+
 ### 2025-10-12 更新（Week 21-22 / LLVM辞書構造体完全実装完了）✨
 
 **作業サマリー** ✅:
