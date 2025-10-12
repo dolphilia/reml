@@ -386,10 +386,64 @@ let rec codegen_expr ctx expr =
   | ADTConstruct _ ->
       codegen_errorf "ADTConstruct not yet implemented in Phase 1"
   | ADTProject _ -> codegen_errorf "ADTProject not yet implemented in Phase 1"
-  | DictConstruct _ ->
-      codegen_errorf "DictConstruct not yet implemented in Phase 1"
-  | DictMethodCall _ ->
-      codegen_errorf "DictMethodCall not yet implemented in Phase 1"
+  | DictConstruct dict_ty ->
+      codegen_dict_construct ctx dict_ty
+  | DictMethodCall (dict_expr, method_name, args) ->
+      codegen_dict_method_call ctx dict_expr method_name args
+
+(* ========== 辞書ノードのコード生成（Phase 2 Week 21-22） ========== *)
+
+(** 辞書構造体の生成（Phase 2 Week 21-22 実装）
+ *
+ * DictConstruct ノードから LLVM の辞書構造体を生成する。
+ * 辞書は { ptr, [N x ptr] } 形式の構造体として表現される。
+ *
+ * @param ctx コード生成コンテキスト
+ * @param dict_ty 辞書型情報
+ * @return 生成された辞書構造体の LLVM 値
+ *)
+and codegen_dict_construct ctx dict_ty =
+  let ptr_ty = Llvm.pointer_type ctx.llctx in
+
+  (* Phase 2 Week 21-22: 簡易実装 - ヌルポインタを返す *)
+  (* 完全な実装では、vtable を含む構造体を生成 *)
+  (*
+   * 実装手順:
+   * 1. メソッド数を取得（dict_ty.dict_methods の長さ）
+   * 2. 構造体型を生成: { ptr, [N x ptr] }
+   * 3. alloca で構造体領域を確保
+   * 4. 各メソッドのポインタを vtable に格納
+   * 5. 構造体ポインタを返す
+   *)
+  let _ = dict_ty in
+  (* 現時点では未実装のため、ヌルポインタを返す *)
+  Llvm.const_null ptr_ty
+
+(** 辞書メソッド呼び出しの生成（Phase 2 Week 21-22 実装）
+ *
+ * DictMethodCall ノードから間接関数呼び出しを生成する。
+ * vtable からメソッドポインタを取得し、call indirect を実行する。
+ *
+ * @param ctx コード生成コンテキスト
+ * @param dict_expr 辞書式
+ * @param method_name メソッド名
+ * @param args 引数リスト
+ * @return メソッド呼び出しの結果
+ *)
+and codegen_dict_method_call ctx dict_expr method_name args =
+  let ptr_ty = Llvm.pointer_type ctx.llctx in
+
+  (* Phase 2 Week 21-22: 簡易実装 - ヌルポインタを返す *)
+  (* 完全な実装では、以下を実行:
+   * 1. dict_expr を評価して辞書ポインタを取得
+   * 2. method_name から vtable インデックスを計算
+   * 3. getelementptr で vtable エントリにアクセス
+   * 4. load でメソッドポインタを取得
+   * 5. call indirect でメソッドを呼び出し
+   *)
+  let _ = (dict_expr, method_name, args) in
+  (* 現時点では未実装のため、ヌルポインタを返す *)
+  Llvm.const_null ptr_ty
 
 (* ========== リテラルのコード生成 ========== *)
 

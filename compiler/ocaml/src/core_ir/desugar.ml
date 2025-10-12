@@ -143,29 +143,101 @@ let get_method_index (trait_name : string) (method_name : string) : int option =
  * ```
  *)
 let generate_dict_init (trait_name : string) (ty : ty) (span : span) : expr option =
-  (* TODO(Week 21-22): 本実装
-   * - インスタンス宣言の検索
-   * - vtableの構築
-   * - 辞書構造体の初期化（DictConstruct ノード生成）
-   *)
-  let _ = (trait_name, ty, span) in
-  None  (* 現時点では未実装 *)
+  (* Phase 2 Week 19-22 実装: 辞書初期化コード生成 *)
 
-(** 型クラスメソッド呼び出しを辞書メソッドコールに変換
+  (* 組み込み実装の判定ヘルパー *)
+  let has_builtin_impl trait ty =
+    match (trait, ty) with
+    | ("Eq", TCon (TCInt _)) | ("Eq", TCon (TCFloat _))
+    | ("Eq", TCon TCBool) | ("Eq", TCon TCChar) | ("Eq", TCon TCString)
+    | ("Eq", TUnit) -> true
+    | ("Ord", TCon (TCInt _)) | ("Ord", TCon (TCFloat _))
+    | ("Ord", TCon TCBool) | ("Ord", TCon TCChar) | ("Ord", TCon TCString) -> true
+    | _ -> false
+  in
+
+  (* メソッドシグネチャ取得ヘルパー *)
+  let get_method_sig trait method_name impl_ty =
+    match (trait, method_name) with
+    | ("Eq", "eq") | ("Eq", "ne") -> Some (TArrow (impl_ty, TArrow (impl_ty, ty_bool)))
+    | ("Ord", "lt") | ("Ord", "le") | ("Ord", "gt") | ("Ord", "ge") ->
+        Some (TArrow (impl_ty, TArrow (impl_ty, ty_bool)))
+    | _ -> None
+  in
+
+  (* 1. 組み込み実装の判定 *)
+  if not (has_builtin_impl trait_name ty) then None
+  else
+    (* 2. vtable の構築 *)
+    let methods = trait_method_indices trait_name in
+    let methods_with_sigs =
+      List.filter_map
+        (fun (method_name, _) ->
+          match get_method_sig trait_name method_name ty with
+          | Some sig_ty -> Some (method_name, sig_ty)
+          | None -> None)
+        methods
+    in
+
+    if methods_with_sigs = [] then None
+    else
+      (* 3. 辞書型の構築 *)
+      let dict_ty = make_dict_type trait_name ty methods_with_sigs in
+      (* 4. DictConstruct ノードの生成 *)
+      Some (make_expr (DictConstruct dict_ty) (TCon (TCUser "Dict")) span)
+
+(** 型クラスメソッド呼び出しを辞書メソッドコールに変換（Phase 2 Week 19-22 実装）
  *
- * 将来的に、トレイトメソッド呼び出しを検出して
- * DictMethodCall ノードに変換する。
- * Phase 2 Week 19-20で実装予定。
+ * トレイトメソッド呼び出しを検出して DictMethodCall ノードに変換する。
+ *
+ * 現時点での実装制限:
+ * - 辞書は関数パラメータとして明示的に渡されることを前提
+ * - メソッド名は変数名から推測（例: `eq`, `lt` など）
+ * - 将来的には型推論からのメタデータを利用
+ *
+ * @param fn_expr 関数式（メソッド参照の可能性がある）
+ * @param args 引数リスト
+ * @param ret_ty 戻り値の型
+ * @param span 診断用位置情報
+ * @return DictMethodCall ノード（該当する場合）
  *)
 let try_convert_to_dict_method_call (fn_expr : expr) (args : expr list) (ret_ty : ty) (span : span) : expr option =
-  (* TODO: Week 19-20で実装
-   * 1. fn_exprがトレイトメソッド参照か判定
-   * 2. 辞書引数を抽出
-   * 3. メソッドインデックスを計算
-   * 4. DictMethodCallノードを生成
+  (* Phase 2 Week 19-22 実装:
+   *
+   * 現時点では、関数名ベースの簡易検出のみを実装。
+   * 完全な実装には、型推論からのトレイト情報が必要。
+   *
+   * 検出パターン:
+   * 1. fn_expr が Var で、名前が既知のトレイトメソッド名と一致
+   * 2. 第一引数が辞書型（Dict）の変数
+   *
+   * 例: eq(__dict_Eq_0, x, y) → DictMethodCall(__dict_Eq_0, "eq", [x, y])
    *)
-  let _ = (fn_expr, args, ret_ty, span) in
-  None  (* 現時点では未実装 *)
+  match fn_expr.expr_kind with
+  | Var var when List.length args >= 1 ->
+      let method_name = var.vname in
+      (* 既知のトレイトメソッド名かチェック *)
+      let is_trait_method trait_name =
+        List.exists (fun (m, _) -> m = method_name) (trait_method_indices trait_name)
+      in
+      let trait_opt =
+        if is_trait_method "Eq" then Some "Eq"
+        else if is_trait_method "Ord" then Some "Ord"
+        else if is_trait_method "Collector" then Some "Collector"
+        else None
+      in
+      (match trait_opt with
+      | Some _trait_name ->
+          (* 第一引数が辞書かチェック *)
+          let dict_arg = List.hd args in
+          let method_args = List.tl args in
+          (match dict_arg.expr_kind with
+          | Var dict_var when String.starts_with ~prefix:"__dict_" dict_var.vname ->
+              (* DictMethodCall ノードを生成 *)
+              Some (make_expr (DictMethodCall (dict_arg, method_name, method_args)) ret_ty span)
+          | _ -> None)
+      | None -> None)
+  | _ -> None
 
 (* ========== パターンマッチ決定木 ========== *)
 
@@ -218,7 +290,10 @@ let rec desugar_expr (map : var_scope_map) (texpr : typed_expr) : expr =
   | TCall (fn, args) ->
       let fn_expr = desugar_expr map fn in
       let arg_exprs = List.map (desugar_arg map) args in
-      make_expr (App (fn_expr, arg_exprs)) ty span
+      (* Phase 2 Week 19-22: トレイトメソッド呼び出しの検出 *)
+      (match try_convert_to_dict_method_call fn_expr arg_exprs ty span with
+      | Some dict_call -> dict_call
+      | None -> make_expr (App (fn_expr, arg_exprs)) ty span)
   | TLambda (_params, _ret_ty, _body) ->
       (* クロージャ変換は後のフェーズで実装 *)
       (* Phase 1 では簡易実装: 環境キャプチャなし *)
@@ -835,6 +910,31 @@ and compile_test_expr (var : var_id) (test : test_kind) (span : span) : expr =
 
 (* ========== トップレベル変換 ========== *)
 
+(** 辞書パラメータの生成（Phase 2 Week 19-22 実装）
+ *
+ * トレイト制約のリストから辞書パラメータを生成する。
+ * 例: [Eq<T>, Ord<T>] → [__dict_Eq_T, __dict_Ord_T]
+ *
+ * @param fn_scope 関数スコープ
+ * @param constraints トレイト制約リスト
+ * @param span 診断用位置情報
+ * @return 生成された辞書パラメータのリスト
+ *)
+let generate_dict_params (fn_scope : var_scope_map) (constraints : Types.trait_constraint list) (span : span) : param list =
+  List.mapi
+    (fun idx constraint_info ->
+      let trait_name = constraint_info.Types.trait_name in
+      (* 辞書パラメータ名: __dict_<Trait>_<index> *)
+      let param_name = Printf.sprintf "__dict_%s_%d" trait_name idx in
+      (* 辞書型: Dict (現時点では簡略化) *)
+      let dict_ty = TCon (TCUser "Dict") in
+      (* 辞書パラメータ変数を生成 *)
+      let dict_var = VarIdGen.fresh param_name dict_ty span in
+      (* スコープに登録（辞書ルックアップ時に参照） *)
+      bind_var fn_scope param_name dict_var;
+      { param_var = dict_var; param_default = None })
+    constraints
+
 (** 関数パラメータの変換 *)
 let desugar_param (fn_scope : var_scope_map) (index : int) (param : typed_param)
     : param =
@@ -856,17 +956,31 @@ let desugar_param (fn_scope : var_scope_map) (index : int) (param : typed_param)
   in
   { param_var = var; param_default = None }
 
-(** 関数宣言の変換 *)
+(** 関数宣言の変換（Phase 2 Week 19-22: 辞書パラメータ挿入対応）
+ *
+ * 型クラス制約を持つ関数に対して、辞書パラメータを自動挿入する。
+ * 例: fn f<T: Eq>(x: T) -> Bool { ... }
+ *   → fn f(__dict_Eq_0: Dict, x: T) -> Bool { ... }
+ *)
 let desugar_fn_decl (decl : typed_decl) (fn_decl : typed_fn_decl) : function_def
     =
   let fn_scope = create_scope_map () in
   let fn_name = fn_decl.tfn_name.name in
   let return_ty = convert_ty fn_decl.tfn_ret_type in
-  let params =
+
+  (* Phase 2 Week 19-22: 制約から辞書パラメータを生成 *)
+  let dict_params = generate_dict_params fn_scope decl.tdecl_scheme.constraints decl.tdecl_span in
+
+  (* 通常のパラメータを変換 *)
+  let user_params =
     List.mapi
       (fun idx param -> desugar_param fn_scope idx param)
       fn_decl.tfn_params
   in
+
+  (* 辞書パラメータを先頭に配置 *)
+  let all_params = dict_params @ user_params in
+
   let body_expr =
     match fn_decl.tfn_body with
     | TFnExpr expr -> desugar_expr fn_scope expr
@@ -876,7 +990,7 @@ let desugar_fn_decl (decl : typed_decl) (fn_decl : typed_fn_decl) : function_def
     make_block "entry" [] [] (TermReturn body_expr) decl.tdecl_span
   in
   let metadata = default_metadata decl.tdecl_span in
-  make_function fn_name params return_ty [ entry_block ] metadata
+  make_function fn_name all_params return_ty [ entry_block ] metadata
 
 (** トップレベル宣言の変換 *)
 let desugar_decl (_map : var_scope_map) (decl : typed_decl) :

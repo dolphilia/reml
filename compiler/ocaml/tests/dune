@@ -13,6 +13,7 @@
   test_constraint_solver
   test_core_ir
   test_desugar
+  test_dict_gen
   test_cfg
   test_const_fold
   test_dce
