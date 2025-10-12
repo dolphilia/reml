@@ -1070,6 +1070,52 @@ and extract_function_args (ty : ty) : ty list * ty =
       (arg_ty :: args, result)
   | _ -> ([], ty)
 
+(** impl itemの型推論
+ *
+ * Phase 2 Week 23: impl宣言内のアイテムを推論
+ *
+ * @param env 型環境（ジェネリック型パラメータを含む）
+ * @param items impl itemのリスト
+ * @return (型付きimpl item, 制約リスト)
+ *)
+and infer_impl_items (env : env) (items : impl_item list) :
+    (impl_item list * trait_constraint list, type_error) result =
+  (* 各アイテムを順次推論し、制約を収集 *)
+  List.fold_left
+    (fun acc item ->
+      match acc with
+      | Error e -> Error e
+      | Ok (timpl_items, constraints) -> (
+          match item with
+          | ImplFn fn ->
+              (* メソッド定義の型推論 *)
+              let* _tfn, _new_env, fn_constraints =
+                (* fnをdeclとしてラップして推論 *)
+                let dummy_decl =
+                  {
+                    decl_attrs = [];
+                    decl_vis = Private;
+                    decl_kind = FnDecl fn;
+                    decl_span = dummy_span;
+                  }
+                in
+                infer_decl env dummy_decl
+              in
+              (* impl itemは元のASTを保持（後でLLVMコード生成で使用） *)
+              Ok
+                (timpl_items @ [ ImplFn fn ],
+                 merge_constraints constraints fn_constraints)
+          | ImplLet (pat, ty_annot, expr) ->
+              (* let束縛の型推論（簡易版） *)
+              let* texpr, expr_ty, _s, expr_constraints = infer_expr env expr in
+              (* 型注釈があれば検証（後で実装） *)
+              let _ = (pat, ty_annot, texpr, expr_ty) in
+              Ok
+                (timpl_items @ [ ImplLet (pat, ty_annot, expr) ],
+                 merge_constraints constraints expr_constraints)))
+    (Ok ([], []))
+    items
+
 (** 二項演算子の型推論
  *
  * Phase 2 MVP: 基本演算子の組み込みトレイトのみ（i64, f64, Bool, String対応）
@@ -1560,6 +1606,66 @@ and infer_decl (env : env) (decl : decl) : (typed_decl * env * trait_constraint 
       let new_env = extend fn.fn_name.name scheme env' in
 
       Ok (tdecl, new_env, body_constraints)
+  | ImplDecl impl ->
+      (* impl宣言の型推論
+       *
+       * Phase 2 Week 23: impl宣言の型推論を実装
+       *
+       * 1. ジェネリック型パラメータを型変数に変換
+       * 2. impl対象型を変換
+       * 3. トレイト情報があれば処理
+       * 4. 各メソッドの型推論
+       * 5. トレイト制約の検証（where句）
+       *)
+
+      (* 1. ジェネリック型パラメータを型変数に変換 *)
+      let generic_bindings =
+        List.map
+          (fun id -> (id, TypeVarGen.fresh (Some id.name)))
+          impl.impl_params
+      in
+
+      (* 2. ジェネリック型を型環境に追加 *)
+      let env_with_generics =
+        List.fold_left
+          (fun acc (id, tv) ->
+            extend id.name
+              (scheme_to_constrained (mono_scheme (Types.TVar tv)))
+              acc)
+          env generic_bindings
+      in
+
+      (* 3. impl対象型を変換 *)
+      let _impl_target_ty = convert_type_annot impl.impl_type in
+
+      (* 4. トレイト情報があれば変換 *)
+      let _trait_info_opt =
+        Option.map
+          (fun (trait_id, trait_args) ->
+            (trait_id, List.map convert_type_annot trait_args))
+          impl.impl_trait
+      in
+
+      (* 5. 各impl itemを推論 *)
+      let* _timpl_items, item_constraints =
+        infer_impl_items env_with_generics impl.impl_items
+      in
+
+      (* 6. impl宣言の型スキームを構築
+       * impl宣言自体は値を持たないため、Unitスキーム
+       *)
+      let impl_scheme = mono_scheme ty_unit in
+
+      (* 7. 型付きimpl宣言を構築 *)
+      let tdecl =
+        make_typed_decl decl.decl_attrs decl.decl_vis
+          (TImplDecl impl)
+          (scheme_to_constrained impl_scheme)
+          decl.decl_span
+      in
+
+      (* impl宣言は環境を変更しない（メソッドは辞書経由で解決） *)
+      Ok (tdecl, env, item_constraints)
   | _ ->
       (* その他の宣言
        * 制約: 現時点では空リスト

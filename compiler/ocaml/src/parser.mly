@@ -939,6 +939,11 @@ lower_ident:
       let span = make_span $startpos $endpos in
       make_ident id span
     }
+  | SELF
+    {
+      let span = make_span $startpos $endpos in
+      make_ident "self" span
+    }
 
 upper_ident:
   | id = UPPER_IDENT

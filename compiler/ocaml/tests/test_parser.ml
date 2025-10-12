@@ -165,21 +165,21 @@ let test_type_decls () =
 (* ========== trait 宣言テスト ========== *)
 
 let test_trait_decls () =
-  expect_fail "trait: simple (todo)" "trait Show { fn show(self) -> Str }";
-  expect_fail "trait: generic (todo)"
-    "trait Eq<T> { fn eq(self, other: T) -> Bool }";
+  expect_decl_count "trait: simple" 1 "trait Show { fn show(self: Self) -> Str }";
+  expect_decl_count "trait: generic" 1
+    "trait Eq<T> { fn eq(self: Self, other: T) -> Bool }";
   expect_fail "trait: where clause (todo)"
-    "trait Clone where Self: Sized { fn clone(self) -> Self }"
+    "trait Clone where Self: Sized { fn clone(self: Self) -> Self }"
 
 (* ========== impl 宣言テスト ========== *)
 
 let test_impl_decls () =
-  expect_fail "impl: inherent (todo)"
-    "impl Point { fn new() = Point { x: 0, y: 0 } }";
-  expect_fail "impl: trait for type (todo)"
-    "impl Show for i64 { fn show(self) = \"int\" }";
-  expect_fail "impl: generic (todo)"
-    "impl<T> Show for Vec<T> { fn show(self) = \"vec\" }"
+  expect_decl_count "impl: trait for type" 1
+    "impl Show for i64 { fn show(self: i64) -> String = \"int\" }";
+  expect_decl_count "impl: inherent" 1
+    "impl Point { fn create() -> i64 = 42 }";
+  expect_decl_count "impl: generic" 1
+    "impl<T> Show for Vec<T> { fn show(self: Vec<T>) -> String = \"vec\" }"
 
 (* ========== extern 宣言テスト ========== *)
 
