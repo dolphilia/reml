@@ -509,17 +509,14 @@ let rec infer_expr (env : env) (expr : expr) : (infer_result, type_error) result
       let env' = apply_subst_env s1 env in
       let* te2, ty2, s2, constraints2 = infer_expr env' e2 in
 
-      (* 演算子に応じた型推論 *)
+      (* 演算子に応じた型推論と制約生成（Week 20-21 完全実装） *)
       let s_combined = compose_subst s2 s1 in
-      let* ret_ty, s3 =
+      let* ret_ty, s3, op_constraints =
         infer_binary_op op ty1 ty2 s_combined e1.expr_span e2.expr_span
       in
       let s_final = compose_subst s3 s_combined in
 
-      (* 演算子からトレイト制約を生成（Week 21-22で本格実装） *)
-      let op_constraints = collect_binary_op_constraints op ty1 ty2 expr.expr_span in
-
-      (* 全制約をマージ *)
+      (* 全制約をマージ（左辺・右辺・演算子の制約を統合） *)
       let all_constraints = merge_constraints_many [constraints1; constraints2; op_constraints] in
 
       (* 型付き式を構築 *)
@@ -1087,30 +1084,30 @@ and extract_function_args (ty : ty) : ty list * ty =
  *)
 and infer_binary_op (op : Ast.binary_op) (ty1 : ty) (ty2 : ty)
     (subst : substitution) (span1 : span) (span2 : span) :
-    (ty * substitution, type_error) result =
-  (* ========== Phase 2 Week 19-20: トレイト制約収集の設計文書 ==========
+    (ty * substitution * trait_constraint list, type_error) result =
+  (* ========== Phase 2 Week 20-21: トレイト制約収集の実装 ==========
    *
-   * 【目的】
-   * 本関数は二項演算子の型推論を行うが、Phase 2 完全実装では
-   * 以下のトレイト制約を収集し、Constraint_solver へ渡す必要がある。
+   * 【実装完了】
+   * 本関数は二項演算子の型推論を行い、対応するトレイト制約を収集する。
+   * 制約は型推論結果とともに返され、後続の制約解決器で処理される。
    *
    * 【演算子とトレイト制約のマッピング】
    * | 演算子    | トレイト          | 型制約                 | 例                |
    * |----------|-------------------|----------------------|-------------------|
-   * | +        | Add<T, T, T>      | T: 数値型 (i64, f64)  | 1 + 2 : i64      |
-   * | -, *, /  | Sub/Mul/Div<T,T,T>| 同上                  | 3.0 * 2.0 : f64  |
-   * | %, ^     | Mod/Pow<T, T, T>  | 整数型 (i64)          | 10 % 3 : i64     |
+   * | +        | Add<T>            | T: 数値型 (i64, f64)  | 1 + 2 : i64      |
+   * | -, *, /  | Sub/Mul/Div<T>    | 同上                  | 3.0 * 2.0 : f64  |
+   * | %, ^     | Mod/Pow<T>        | 整数型 (i64)          | 10 % 3 : i64     |
    * | ==, !=   | Eq<T>             | T: 比較可能型         | "a" == "b" : Bool|
    * | <, <=, >, >= | Ord<T>        | T: 順序付け可能型     | 1 < 2 : Bool     |
    * | &&, \|\| | なし              | T = Bool (組み込み)   | true && false    |
    * | \|>      | なし              | f: T -> U (関数適用)  | x \|> f          |
    *
-   * 【Week 21-22 実装手順】
-   * 1. 演算子から対応するトレイト制約を生成（collect_trait_constraint 関数）
-   * 2. 制約リストを infer_result に追加して返す
-   * 3. 関数宣言の generalize 時に制約を含める
-   * 4. Constraint_solver.solve_constraints を呼び出し
-   * 5. 解決された辞書参照を Core IR の DictLookup に変換
+   * 【Week 20-21 実装内容】
+   * 1. ✅ 演算子から対応するトレイト制約を生成（collect_binary_op_constraints）
+   * 2. ✅ 制約リストを返り値に追加（3要素タプル）
+   * 3. 🚧 関数宣言の generalize 時に制約を含める（Week 21-22）
+   * 4. 🚧 Constraint_solver.solve_constraints を呼び出し（Week 21-22）
+   * 5. 🚧 解決された辞書参照を Core IR の DictLookup に変換（Week 21-22）
    *
    * 【参考資料】
    * - constraint_solver.ml の solve_eq, solve_ord
@@ -1120,8 +1117,8 @@ and infer_binary_op (op : Ast.binary_op) (ty1 : ty) (ty2 : ty)
   match op with
   (* 算術演算子: + - * / % ^ *)
   | Add | Sub | Mul | Div | Mod | Pow -> (
-      (* TODO(Week 21-22): Add<ty1, ty2, ret_ty> 制約を収集
-       * 例: 1 + 2 なら Add<i64, i64, i64> 制約を生成
+      (* Week 20-21 実装: Add<ty1> 制約を収集
+       * 例: 1 + 2 なら Add<i64> 制約を生成
        *
        * 仕様書 1-2 §C.5: 数値型（i64, f64）のみサポート
        * Phase 3 Week 17 改善: 型変数を単一化前に i64 へ解決して具体化 *)
@@ -1146,27 +1143,32 @@ and infer_binary_op (op : Ast.binary_op) (ty1 : ty) (ty2 : ty)
       let* s1 = unify s_resolved ty1'' ty2'' span2 in
       let unified_ty = apply_subst s1 ty1'' in
 
-      (* ステップ4: 最終確認 *)
+      (* ステップ4: 最終確認と制約生成 *)
       match unified_ty with
-      | TCon (TCInt _) | TCon (TCFloat _) -> Ok (unified_ty, s1)
+      | TCon (TCInt _) | TCon (TCFloat _) ->
+          let constraints = collect_binary_op_constraints op unified_ty unified_ty span1 in
+          Ok (unified_ty, s1, constraints)
       | TVar tv ->
           (* ここに到達することは通常ないが、安全のため残す *)
           let s2 = compose_subst [ (tv, ty_i64) ] s1 in
-          Ok (ty_i64, s2)
+          let constraints = collect_binary_op_constraints op ty_i64 ty_i64 span1 in
+          Ok (ty_i64, s2, constraints)
       | _ ->
           Error
             (type_error_with_message "算術演算子は数値型 (i64 / f64) にのみ適用できます" span1))
   (* 比較演算子: == != < <= > >= *)
   | Eq | Ne ->
-      (* TODO(Week 21-22): Eq<T> 制約を収集
+      (* Week 20-21 実装: Eq<T> 制約を収集
        * 例: x == y なら Eq<typeof(x)> 制約を生成
        * 左辺と右辺を単一化し、返り値は Bool *)
       let ty1' = apply_subst subst ty1 in
       let ty2' = apply_subst subst ty2 in
       let* s1 = unify subst ty1' ty2' span2 in
-      Ok (ty_bool, s1)
+      let unified_ty = apply_subst s1 ty1' in
+      let constraints = collect_binary_op_constraints op unified_ty unified_ty span1 in
+      Ok (ty_bool, s1, constraints)
   | Lt | Le | Gt | Ge ->
-      (* TODO(Week 21-22): Ord<T> 制約を収集（Eq<T> も自動的に要求される）
+      (* Week 20-21 実装: Ord<T> 制約を収集（Eq<T> も自動的に要求される）
        * 例: x < y なら Ord<typeof(x)> 制約を生成
        * 制約解決器が Ord→Eq のスーパートレイト依存を解決 *)
       (* 左辺と右辺を単一化し、返り値は Bool
@@ -1188,20 +1190,22 @@ and infer_binary_op (op : Ast.binary_op) (ty1 : ty) (ty2 : ty)
       let ty1'' = apply_subst s_resolved ty1' in
       let ty2'' = apply_subst s_resolved ty2' in
 
-      (* ステップ3: 単一化 *)
+      (* ステップ3: 単一化と制約生成 *)
       let* s1 = unify s_resolved ty1'' ty2'' span2 in
-      Ok (ty_bool, s1)
+      let unified_ty = apply_subst s1 ty1'' in
+      let constraints = collect_binary_op_constraints op unified_ty unified_ty span1 in
+      Ok (ty_bool, s1, constraints)
   (* 論理演算子: && || *)
   | And | Or ->
-      (* 左辺と右辺をBool型と単一化 *)
+      (* 左辺と右辺をBool型と単一化（制約なし：組み込み型で解決済み） *)
       let ty1' = apply_subst subst ty1 in
       let ty2' = apply_subst subst ty2 in
       let* s1 = unify_as_bool subst ty1' span1 in
       let* s2 = unify_as_bool s1 ty2' span2 in
-      Ok (ty_bool, s2)
+      Ok (ty_bool, s2, [])  (* 制約なし *)
   (* パイプ演算子: |> *)
   | PipeOp ->
-      (* x |> f は f(x) に等価
+      (* x |> f は f(x) に等価（制約なし：関数適用のみ）
        * ty1 : A, ty2 : A -> B のとき、返り値は B
        *)
       let ty1' = apply_subst subst ty1 in
@@ -1210,7 +1214,7 @@ and infer_binary_op (op : Ast.binary_op) (ty1 : ty) (ty2 : ty)
       let expected_fn_ty = TArrow (ty1', ret_ty) in
       let* s1 = unify_as_function subst ty2 expected_fn_ty span2 in
       let final_ret_ty = apply_subst s1 ret_ty in
-      Ok (final_ret_ty, s1)
+      Ok (final_ret_ty, s1, [])  (* 制約なし *)
 
 (** match アームの型推論
  *

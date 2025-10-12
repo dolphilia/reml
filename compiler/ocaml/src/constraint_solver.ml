@@ -258,23 +258,6 @@ let step_solver state =
 (** 解決が完了したか判定 *)
 let is_solved state = state.pending = []
 
-(** 制約解決のメインエントリポイント *)
-let solve_constraints constraints =
-  let rec loop state =
-    if is_solved state then
-      (* 全て解決完了 *)
-      if state.errors = [] then
-        (* エラーなし: 辞書参照のリストを返す *)
-        Ok (List.map snd state.resolved)
-      else
-        (* エラーあり: エラーリストを返す *)
-        Error state.errors
-    else
-      (* まだ解決待ちがある: 1ステップ進めて再帰 *)
-      loop (step_solver state)
-  in
-  loop (init_solver_state constraints)
-
 (* ========== 制約グラフの構築と解析 ========== *)
 
 (** スーパートレイト依存関係の取得
@@ -523,7 +506,51 @@ let topological_sort graph =
   else
     None  (* 循環依存がある *)
 
+(* ========== 制約解決のエントリポイント ========== *)
+
+(** 制約解決のメインエントリポイント
+ *
+ * Phase 2 Week 20-21 更新: 循環依存検出を統合
+ * 制約グラフを構築し、循環依存がある場合はエラーを返す
+ *)
+let solve_constraints constraints =
+  (* Week 20-21 実装: 循環依存を事前検出 *)
+  let graph = build_constraint_graph constraints in
+  let cycles = find_cycles graph in
+
+  (* 循環依存がある場合はエラーを返す *)
+  if cycles <> [] then
+    let first_cycle = List.hd cycles in
+    let error = {
+      trait_name = (List.hd first_cycle).trait_name;
+      type_args = (List.hd first_cycle).type_args;
+      reason = CyclicConstraint first_cycle;
+      span = (List.hd first_cycle).constraint_span;
+    } in
+    Error [error]
+  else
+    (* 循環依存なし: 通常の解決フローへ *)
+    let rec loop state =
+      if is_solved state then
+        (* 全て解決完了 *)
+        if state.errors = [] then
+          (* エラーなし: 辞書参照のリストを返す *)
+          Ok (List.map snd state.resolved)
+        else
+          (* エラーあり: エラーリストを返す *)
+          Error state.errors
+      else
+        (* まだ解決待ちがある: 1ステップ進めて再帰 *)
+        loop (step_solver state)
+    in
+    loop (init_solver_state constraints)
+
 (* ========== デバッグ用 ========== *)
+
+(** トレイト制約の文字列表現 *)
+let string_of_trait_constraint (c : trait_constraint) : string =
+  Printf.sprintf "%s<%s>" c.trait_name
+    (String.concat ", " (List.map string_of_ty c.type_args))
 
 (** 辞書参照の文字列表現 *)
 let string_of_dict_ref = function
@@ -532,16 +559,25 @@ let string_of_dict_ref = function
   | DictParam idx -> Printf.sprintf "DictParam(%d)" idx
   | DictLocal name -> Printf.sprintf "DictLocal(%s)" name
 
-(** 制約エラー理由の文字列表現 *)
-let string_of_constraint_error_reason = function
+(** 制約エラー理由の文字列表現
+ *
+ * Week 20-21 更新: 循環依存のメッセージに循環パスを表示
+ *)
+let string_of_constraint_error_reason (reason : constraint_error_reason) : string =
+  match reason with
   | NoImpl -> "NoImpl"
   | AmbiguousImpl dicts ->
       Printf.sprintf "AmbiguousImpl([%s])"
         (String.concat ", " (List.map string_of_dict_ref dicts))
-  | CyclicConstraint cs ->
-      Printf.sprintf "CyclicConstraint([%s])"
-        (String.concat ", "
-           (List.map string_of_trait_constraint cs))
+  | CyclicConstraint (cs : trait_constraint list) ->
+      (* 循環パスを矢印で表示: Ord<T> -> Eq<T> -> ... *)
+      let cycle_path = String.concat " -> "
+        (List.map (fun (c : trait_constraint) ->
+          Printf.sprintf "%s<%s>" c.trait_name
+            (String.concat ", " (List.map string_of_ty c.type_args))
+        ) cs)
+      in
+      Printf.sprintf "CyclicConstraint: %s" cycle_path
   | UnresolvedTypeVar tv ->
       Printf.sprintf "UnresolvedTypeVar(%s)" (string_of_type_var tv)
 
