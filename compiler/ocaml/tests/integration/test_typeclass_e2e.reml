@@ -1,0 +1,54 @@
+// Phase 2 Week 22-23: 型クラス制約付き関数のエンドツーエンドテスト
+//
+// このファイルは型クラス辞書渡し機構の統合検証を目的とする。
+// 現在の実装では以下をテスト:
+// - Eq<i64> 制約付き関数
+// - Ord<i64> 制約付き関数
+// - ビルトインメソッド（__Eq_i64_eq, __Ord_i64_compare）の呼び出し
+// - 辞書パラメータの自動挿入と渡し
+//
+// 注意: Phase 2時点では型クラス制約構文（where句）は未実装のため、
+// 本テストではCore IR以降のパイプラインを直接構築して検証する。
+
+// 基本的な等価比較関数（Eq<i64>）
+// 内部的に __Eq_i64_eq を呼び出す辞書メソッド呼び出しに変換される
+fn test_eq_i64(x: i64, y: i64) -> Bool = x == y
+
+// 基本的な順序比較関数（Ord<i64>）
+// 内部的に __Ord_i64_compare を呼び出す
+fn test_ord_i64(x: i64, y: i64) -> Bool = x > y
+
+// 複合テスト: 等価比較と順序比較の組み合わせ
+fn test_combined(a: i64, b: i64, c: i64) -> Bool = {
+  let eq_result = a == b;
+  let ord_result = b < c;
+  eq_result || ord_result
+}
+
+// メイン関数: 各テストケースを実行
+pub fn main() -> i64 = {
+  // テストケース1: Eq<i64> - 等しい値
+  let test1 = test_eq_i64(42, 42);
+
+  // テストケース2: Eq<i64> - 異なる値
+  let test2 = test_eq_i64(10, 20);
+
+  // テストケース3: Ord<i64> - 大小比較（true）
+  let test3 = test_ord_i64(30, 20);
+
+  // テストケース4: Ord<i64> - 大小比較（false）
+  let test4 = test_ord_i64(10, 50);
+
+  // テストケース5: 複合テスト
+  let test5 = test_combined(10, 10, 20);
+
+  // 結果検証: 期待値と一致すれば1を返す
+  // Note: Phase 2時点では論理否定(!)が未実装のため、等価比較で回避
+  let not_test2 = test2 == false;
+  let not_test4 = test4 == false;
+
+  if test1 && not_test2 && test3 && not_test4 && test5 then
+    1
+  else
+    0
+}
