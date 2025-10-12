@@ -22,6 +22,7 @@
   type_env
   constraint
   constraint_solver
+  impl_registry
   type_error
   typed_ast
   type_inference)
