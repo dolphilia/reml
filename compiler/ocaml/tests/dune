@@ -11,6 +11,7 @@
   test_type_errors
   test_let_polymorphism
   test_constraint_solver
+  test_impl_registry
   test_core_ir
   test_desugar
   test_dict_gen
