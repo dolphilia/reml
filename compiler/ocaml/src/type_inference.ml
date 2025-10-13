@@ -699,6 +699,157 @@ let rec infer_expr (env : env) (expr : expr) : (infer_result, type_error) result
         let* tstmts, final_ty, s_final, constraints = infer_stmts env stmts empty_subst in
         let texpr = make_typed_expr (TBlock tstmts) final_ty expr.expr_span in
         Ok (texpr, final_ty, s_final, constraints)
+  | While (cond, body) ->
+      (* while式の型推論
+       *
+       * 1. 条件式を推論してBool型と単一化
+       * 2. ボディを推論
+       * 3. while式全体の型はUnit（ループは値を返さない）
+       * 制約: 条件式とボディの制約をマージ
+       *)
+      (* 条件式を推論 *)
+      let* tcond, cond_ty, s1, cond_constraints = infer_expr env cond in
+
+      (* 条件式をBool型と単一化 *)
+      let* s2 = unify_as_bool s1 cond_ty cond.expr_span in
+
+      (* ボディを推論 *)
+      let env' = apply_subst_env s2 env in
+      let* tbody, _body_ty, s3, body_constraints = infer_expr env' body in
+
+      (* 全制約をマージ *)
+      let all_constraints = merge_constraints cond_constraints body_constraints in
+
+      (* 型付き式を構築 (while式はUnit型を返す) *)
+      let texpr =
+        make_typed_expr (TWhile (tcond, tbody)) ty_unit expr.expr_span
+      in
+      Ok (texpr, ty_unit, s3, all_constraints)
+  | For (pat, source, body) ->
+      (* for式の型推論
+       *
+       * 1. ソース式（イテレート対象）を推論
+       * 2. パターンを推論してソース式の要素型と単一化
+       * 3. パターン変数を型環境に追加してボディを推論
+       * 4. for式全体の型はUnit
+       * 制約: ソース式とボディの制約をマージ
+       *)
+      (* ソース式を推論 *)
+      let* tsource, source_ty, s1, source_constraints = infer_expr env source in
+
+      (* ソース式が配列やイテレータであることを確認
+       * Phase 2では簡易実装: 配列型 [T] を想定し、要素型Tを抽出
+       * 将来: Iterator<T> トレイトで汎化
+       *)
+      let elem_ty = TypeVarGen.fresh None |> (fun v -> Types.TVar v) in
+      let array_con = TCon (TCUser "Array") in
+      let expected_array_ty = TApp (array_con, elem_ty) in
+      let* s2 = unify s1 source_ty expected_array_ty source.expr_span in
+
+      (* パターンを推論 *)
+      let elem_ty_resolved = apply_subst s2 elem_ty in
+      let* tpat, pat_env = infer_pattern env pat elem_ty_resolved in
+
+      (* パターン変数を型環境に追加してボディを推論 *)
+      let env' = apply_subst_env s2 pat_env in
+      let* tbody, _body_ty, s3, body_constraints = infer_expr env' body in
+
+      (* 全制約をマージ *)
+      let all_constraints = merge_constraints source_constraints body_constraints in
+
+      (* 型付き式を構築 (for式はUnit型を返す) *)
+      let texpr =
+        make_typed_expr (TFor (tpat, tsource, tbody)) ty_unit expr.expr_span
+      in
+      Ok (texpr, ty_unit, s3, all_constraints)
+  | Loop body ->
+      (* loop式の型推論
+       *
+       * 1. ボディを推論
+       * 2. loop式全体の型はUnit（無限ループは値を返さない）
+       * 制約: ボディの制約を伝播
+       *)
+      let* tbody, _body_ty, s1, body_constraints = infer_expr env body in
+
+      (* 型付き式を構築 (loop式はUnit型を返す) *)
+      let texpr =
+        make_typed_expr (TLoop tbody) ty_unit expr.expr_span
+      in
+      Ok (texpr, ty_unit, s1, body_constraints)
+  | Unsafe body ->
+      (* unsafe式の型推論
+       *
+       * 1. ボディを推論
+       * 2. unsafe式全体の型はボディの型
+       * 制約: ボディの制約を伝播
+       *)
+      let* tbody, body_ty, s1, body_constraints = infer_expr env body in
+
+      (* 型付き式を構築 *)
+      let texpr =
+        make_typed_expr (TUnsafe tbody) body_ty expr.expr_span
+      in
+      Ok (texpr, body_ty, s1, body_constraints)
+  | Return ret_expr_opt ->
+      (* return式の型推論
+       *
+       * 1. 返り値式があれば推論
+       * 2. return式全体の型はUnit（制御フローを変更するため）
+       * 制約: 返り値式の制約を伝播
+       *)
+      let* tret_expr_opt, s1, ret_constraints =
+        match ret_expr_opt with
+        | Some ret_expr ->
+            let* tret_expr, _ret_ty, s, ret_cs = infer_expr env ret_expr in
+            Ok (Some tret_expr, s, ret_cs)
+        | None ->
+            Ok (None, empty_subst, [])
+      in
+
+      (* 型付き式を構築 (return式はUnit型を返す) *)
+      let texpr =
+        make_typed_expr (TReturn tret_expr_opt) ty_unit expr.expr_span
+      in
+      Ok (texpr, ty_unit, s1, ret_constraints)
+  | Defer deferred_expr ->
+      (* defer式の型推論
+       *
+       * 1. 遅延実行される式を推論
+       * 2. defer式全体の型はUnit
+       * 制約: 遅延実行式の制約を伝播
+       *)
+      let* tdeferred_expr, _deferred_ty, s1, deferred_constraints = infer_expr env deferred_expr in
+
+      (* 型付き式を構築 (defer式はUnit型を返す) *)
+      let texpr =
+        make_typed_expr (TDefer tdeferred_expr) ty_unit expr.expr_span
+      in
+      Ok (texpr, ty_unit, s1, deferred_constraints)
+  | Assign (lhs, rhs) ->
+      (* 代入式の型推論
+       *
+       * 1. 左辺（代入先）を推論
+       * 2. 右辺（代入元）を推論
+       * 3. 左辺と右辺の型を単一化
+       * 4. 代入式全体の型はUnit
+       * 制約: 左辺と右辺の制約をマージ
+       *)
+      let* tlhs, lhs_ty, s1, lhs_constraints = infer_expr env lhs in
+
+      let env' = apply_subst_env s1 env in
+      let* trhs, rhs_ty, s2, rhs_constraints = infer_expr env' rhs in
+
+      (* 左辺と右辺の型を単一化 *)
+      let* s3 = unify s2 lhs_ty rhs_ty rhs.expr_span in
+
+      (* 全制約をマージ *)
+      let all_constraints = merge_constraints lhs_constraints rhs_constraints in
+
+      (* 型付き式を構築 (代入式はUnit型を返す) *)
+      let texpr =
+        make_typed_expr (TAssign (tlhs, trhs)) ty_unit expr.expr_span
+      in
+      Ok (texpr, ty_unit, s3, all_constraints)
   | _ ->
       (* その他の式は Phase 2 で順次実装 *)
       failwith "Expression not yet implemented"

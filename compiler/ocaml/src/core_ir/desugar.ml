@@ -363,6 +363,45 @@ let rec desugar_expr (map : var_scope_map) (texpr : typed_expr) : expr =
       let arr_expr = desugar_expr map arr in
       let idx_expr = desugar_expr map idx in
       make_expr (ArrayAccess (arr_expr, idx_expr)) ty span
+  | TWhile (_cond, _body) ->
+      (* while式はCFG構築時に処理
+       * Phase 2では簡易実装: Unit値を返す
+       * TODO: CFGビルダーでループブロックに展開
+       *)
+      make_expr (Literal Unit) ty span
+  | TFor (_pat, _source, _body) ->
+      (* for式はCFG構築時に処理
+       * Phase 2では簡易実装: Unit値を返す
+       * TODO: CFGビルダーでループブロックに展開
+       *)
+      make_expr (Literal Unit) ty span
+  | TLoop _body ->
+      (* 無限ループはCFG構築時に処理
+       * Phase 2では簡易実装: Unit値を返す
+       * TODO: CFGビルダーでループブロックに展開
+       *)
+      make_expr (Literal Unit) ty span
+  | TUnsafe body ->
+      (* unsafe式は型検査済みなので、そのまま脱糖 *)
+      desugar_expr map body
+  | TReturn ret_opt ->
+      (* return式は簡易実装: 返り値の式をそのまま返す
+       * CFG構築時にTermReturnに変換される
+       *)
+      (match ret_opt with
+      | Some e -> desugar_expr map e
+      | None -> make_expr (Literal Unit) ty_unit span)
+  | TDefer deferred_expr ->
+      (* defer式は後のフェーズで実装 *)
+      (* Phase 2では簡易実装: 式を評価するが遅延はしない *)
+      desugar_expr map deferred_expr
+  | TAssign (lhs_expr, rhs_expr) ->
+      (* 代入式は簡易実装: 右辺の値をそのまま返す
+       * TODO: CFG構築時に Assign ステートメントに変換
+       *)
+      let _lhs = desugar_expr map lhs_expr in
+      let rhs = desugar_expr map rhs_expr in
+      rhs
   | _ ->
       (* その他の式は後のフェーズで実装 *)
       desugar_error "未実装の式種別" span
