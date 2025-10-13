@@ -126,7 +126,10 @@ let rec linearize_expr (builder : cfg_builder) (expr : expr) : var_id =
       (* let束縛 → 束縛式を評価してから本体へ *)
       let bound_var = linearize_expr builder bound in
       let bound_ref = make_expr (Var bound_var) bound.expr_ty bound.expr_span in
-      add_stmt builder (Assign (var, bound_ref));
+      if var.vmutable then (
+        add_stmt builder (Alloca var);
+        add_stmt builder (Store (var, bound_ref)))
+      else add_stmt builder (Assign (var, bound_ref));
       linearize_expr builder body
   | If (cond, then_e, else_e) ->
       linearize_if builder cond then_e else_e expr.expr_ty expr.expr_span
@@ -209,6 +212,18 @@ let rec linearize_expr (builder : cfg_builder) (expr : expr) : var_id =
       let result = VarIdGen.fresh "$adt_field" expr.expr_ty expr.expr_span in
       add_stmt builder (Assign (result, project_expr));
       result
+  | AssignMutable (var, rhs) ->
+      let rhs_var = linearize_expr builder rhs in
+      let rhs_ref =
+        make_expr (Var rhs_var) rhs.expr_ty rhs.expr_span
+      in
+      add_stmt builder (Store (var, rhs_ref));
+      let unit_var = VarIdGen.fresh "$unit" ty_unit expr.expr_span in
+      let unit_expr =
+        make_expr (Literal Unit) ty_unit expr.expr_span
+      in
+      add_stmt builder (Assign (unit_var, unit_expr));
+      unit_var
   | Closure _closure_info ->
       (* クロージャ生成 → 後のフェーズで実装 *)
       let result = VarIdGen.fresh "$closure" expr.expr_ty expr.expr_span in

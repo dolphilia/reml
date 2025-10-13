@@ -1672,6 +1672,130 @@ let test_pattern_match_errors () =
                "Expected ConstructorArityMismatch for None, got: %s" msg)
       | Ok _ -> failwith "Should fail with ConstructorArityMismatch")
 
+let test_mutable_bindings () =
+  Printf.printf "\nMutable Binding Tests:\n";
+
+  let make_literal value =
+    {
+      expr_kind = Literal (Int (value, Base10));
+      expr_span = dummy_span;
+    }
+  in
+
+  let make_pattern_x () =
+    {
+      pat_kind = PatVar { name = "x"; span = dummy_span };
+      pat_span = dummy_span;
+    }
+  in
+
+  run_test "var decl registers mutable binding" (fun () ->
+      let env = initial_env in
+      let decl =
+        {
+          decl_attrs = [];
+          decl_vis = Private;
+          decl_kind = VarDecl (make_pattern_x (), None, make_literal "0");
+          decl_span = dummy_span;
+        }
+      in
+      match infer_decl env decl with
+      | Ok (_tdecl, new_env, _) -> (
+          match lookup_mutability "x" new_env with
+          | Some Mutable -> ()
+          | _ -> failwith "'x' should be mutable after var declaration")
+      | Error e ->
+          let msg = Type_error.string_of_error e in
+          failwith (Printf.sprintf "var declaration should succeed: %s" msg));
+
+  run_test "assignment to mutable var succeeds" (fun () ->
+      let env = initial_env in
+      let decl =
+        {
+          decl_attrs = [];
+          decl_vis = Private;
+          decl_kind = VarDecl (make_pattern_x (), None, make_literal "0");
+          decl_span = dummy_span;
+        }
+      in
+      match infer_decl env decl with
+      | Ok (_tdecl, new_env, _) ->
+          let assign_expr =
+            {
+              expr_kind =
+                Assign
+                  ( {
+                      expr_kind = Var { name = "x"; span = dummy_span };
+                      expr_span = dummy_span;
+                    },
+                    make_literal "1" );
+              expr_span = dummy_span;
+            }
+          in
+          let result = infer_expr new_env assign_expr in
+          assert_ok result "Assignment to mutable var should succeed";
+          (match result with
+          | Ok (_texpr, ty, _, _) ->
+              assert_type_eq ty_unit ty "Assignment should return unit"
+          | Error _ -> ())
+      | Error e ->
+          let msg = Type_error.string_of_error e in
+          failwith (Printf.sprintf "var declaration should succeed: %s" msg));
+
+  run_test "assignment to let binding fails" (fun () ->
+      let env = initial_env in
+      let let_decl =
+        {
+          decl_attrs = [];
+          decl_vis = Private;
+          decl_kind = LetDecl (make_pattern_x (), None, make_literal "0");
+          decl_span = dummy_span;
+        }
+      in
+      match infer_decl env let_decl with
+      | Ok (_tdecl, new_env, _) ->
+          let assign_expr =
+            {
+              expr_kind =
+                Assign
+                  ( {
+                      expr_kind = Var { name = "x"; span = dummy_span };
+                      expr_span = dummy_span;
+                    },
+                    make_literal "1" );
+              expr_span = dummy_span;
+            }
+          in
+          (match infer_expr new_env assign_expr with
+          | Error (ImmutableBinding { name; _ }) ->
+              if String.equal name "x" then ()
+              else failwith "Immutable binding error should reference 'x'"
+          | Error e ->
+              let msg = Type_error.string_of_error e in
+              failwith
+                (Printf.sprintf "Expected immutable binding error, got %s" msg)
+          | Ok _ ->
+              failwith "Assignment to let binding should fail")
+      | Error e ->
+          let msg = Type_error.string_of_error e in
+          failwith (Printf.sprintf "let declaration should succeed: %s" msg));
+
+  run_test "assignment to literal fails" (fun () ->
+      let env = initial_env in
+      let assign_expr =
+        {
+          expr_kind = Assign (make_literal "0", make_literal "1");
+          expr_span = dummy_span;
+        }
+      in
+      match infer_expr env assign_expr with
+      | Error (NotAssignable _) -> ()
+      | Error e ->
+          let msg = Type_error.string_of_error e in
+          failwith
+            (Printf.sprintf "Expected not-assignable error, got %s" msg)
+      | Ok _ -> failwith "Assignment to literal should fail")
+
 (* ========== メイン ========== *)
 
 let () =
@@ -1686,4 +1810,5 @@ let () =
   test_composite_literals ();
   test_composite_literal_errors ();
   test_pattern_match_errors ();
+  test_mutable_bindings ();
   Printf.printf "\nAll type inference tests passed! ✓\n"

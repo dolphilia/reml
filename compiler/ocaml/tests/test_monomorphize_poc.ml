@@ -99,6 +99,7 @@ let rec collect_expr acc expr =
         collect_expr acc idx
     | ADTConstruct (_, fields) ->
         List.fold_left collect_expr acc fields
+    | AssignMutable (_, rhs) -> collect_expr acc rhs
     | Closure _ | Literal _ | Var _ | DictLookup _ | DictConstruct _
     | CapabilityCheck _ ->
         acc
@@ -118,6 +119,8 @@ let string_starts_with ~prefix s =
 let collect_from_stmt acc = function
   | Assign (_, expr) | Return expr | ExprStmt expr ->
       collect_expr acc expr
+  | Store (_, expr) -> collect_expr acc expr
+  | Alloca _ -> acc
   | Branch (cond, _, _) -> collect_expr acc cond
   | Jump _ | Phi _ -> acc
   | EffectMarker { effect_expr; _ } -> (

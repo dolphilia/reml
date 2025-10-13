@@ -196,6 +196,9 @@ let rec string_of_expr ?(depth = 0) expr =
   | ADTProject (e, idx) ->
       let e_str = string_of_expr ~depth:0 e |> String.trim in
       Printf.sprintf "%s(project %s %d : %s)" ind e_str idx ty_str
+  | AssignMutable (var, rhs) ->
+      let rhs_str = string_of_expr ~depth:0 rhs |> String.trim in
+      Printf.sprintf "%s(set %s := %s : Unit)" ind (string_of_var_id var) rhs_str
 
 and string_of_case ?(depth = 0) case =
   let ind = indent depth in
@@ -215,6 +218,13 @@ let string_of_stmt ?(depth = 0) = function
       let ind = indent depth in
       let expr_str = string_of_expr ~depth:0 expr |> String.trim in
       Printf.sprintf "%s%s := %s" ind (string_of_var_id var) expr_str
+  | Store (var, expr) ->
+      let ind = indent depth in
+      let expr_str = string_of_expr ~depth:0 expr |> String.trim in
+      Printf.sprintf "%s*%s <- %s" ind (string_of_var_id var) expr_str
+  | Alloca var ->
+      let ind = indent depth in
+      Printf.sprintf "%salloca %s" ind (string_of_var_id var)
   | Return expr ->
       let ind = indent depth in
       let expr_str = string_of_expr ~depth:0 expr |> String.trim in

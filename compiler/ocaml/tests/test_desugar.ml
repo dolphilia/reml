@@ -185,7 +185,7 @@ let test_desugar_tuple_pattern_simple () =
   let rest_ir = desugar_expr map rest in
   let result =
     desugar_pattern_binding map tuple_pat bound_ir
-      ~cont:(fun () -> rest_ir)
+      ~mutability:BindingImmutable ~cont:(fun () -> rest_ir)
       ty_i64 dummy_span
   in
 
@@ -250,7 +250,7 @@ let test_desugar_tuple_pattern_nested () =
   let rest_ir = desugar_expr map rest in
   let result =
     desugar_pattern_binding map outer_tuple_pat bound_ir
-      ~cont:(fun () -> rest_ir)
+      ~mutability:BindingImmutable ~cont:(fun () -> rest_ir)
       ty_i64 dummy_span
   in
 
@@ -305,7 +305,7 @@ let test_desugar_tuple_pattern_with_wildcard () =
   let rest_ir = desugar_expr map rest in
   let result =
     desugar_pattern_binding map tuple_pat bound_ir
-      ~cont:(fun () -> rest_ir)
+      ~mutability:BindingImmutable ~cont:(fun () -> rest_ir)
       ty_i64 dummy_span
   in
 
@@ -339,7 +339,7 @@ let test_desugar_record_pattern_basic () =
   let rest_ir = desugar_expr map rest in
   let result =
     desugar_pattern_binding map record_pat bound_ir
-      ~cont:(fun () -> rest_ir)
+      ~mutability:BindingImmutable ~cont:(fun () -> rest_ir)
       ty_i64 dummy_span
   in
 
@@ -369,7 +369,7 @@ let test_desugar_record_pattern_with_rest () =
   let rest_ir = desugar_expr map rest in
   let result =
     desugar_pattern_binding map record_pat bound_ir
-      ~cont:(fun () -> rest_ir)
+      ~mutability:BindingImmutable ~cont:(fun () -> rest_ir)
       ty_i64 dummy_span
   in
 
@@ -416,7 +416,7 @@ let test_desugar_record_pattern_nested () =
   let rest_ir = desugar_expr map rest in
   let result =
     desugar_pattern_binding map outer_record_pat bound_ir
-      ~cont:(fun () -> rest_ir)
+      ~mutability:BindingImmutable ~cont:(fun () -> rest_ir)
       ty_i64 dummy_span
   in
 
@@ -461,7 +461,7 @@ let test_desugar_constructor_pattern_some () =
   let rest_ir = desugar_expr map rest in
   let result =
     desugar_pattern_binding map some_pat bound_ir
-      ~cont:(fun () -> rest_ir)
+      ~mutability:BindingImmutable ~cont:(fun () -> rest_ir)
       ty_i64 dummy_span
   in
 
@@ -513,7 +513,7 @@ let test_desugar_constructor_pattern_nested () =
   let rest_ir = desugar_expr map rest in
   let result =
     desugar_pattern_binding map outer_some_pat bound_ir
-      ~cont:(fun () -> rest_ir)
+      ~mutability:BindingImmutable ~cont:(fun () -> rest_ir)
       ty_i64 dummy_span
   in
 

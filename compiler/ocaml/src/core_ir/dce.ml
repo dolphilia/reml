@@ -77,6 +77,7 @@ let rec collect_used_vars (e : expr) : VarSet.t =
         (fun acc arg -> VarSet.union acc (collect_used_vars arg))
         VarSet.empty args
   | ADTProject (e1, _) -> collect_used_vars e1
+  | AssignMutable (_, rhs) -> collect_used_vars rhs
   | DictMethodCall (dict_expr, _, args) ->
       let dict_vars = collect_used_vars dict_expr in
       List.fold_left
@@ -90,6 +91,8 @@ let rec collect_used_vars (e : expr) : VarSet.t =
 let collect_stmt_used_vars (stmt : stmt) : VarSet.t =
   match stmt with
   | Assign (_, e) -> collect_used_vars e
+  | Store (_, e) -> collect_used_vars e
+  | Alloca _ -> VarSet.empty
   | ExprStmt e -> collect_used_vars e
   | Return e -> collect_used_vars e
   | Jump _ | Branch _ | Phi _ | EffectMarker _ -> VarSet.empty
@@ -140,6 +143,7 @@ let rec has_side_effect (e : expr) : bool =
   | ArrayAccess (e1, e2) -> has_side_effect e1 || has_side_effect e2
   | ADTConstruct (_, args) -> List.exists has_side_effect args
   | DictConstruct _ -> false
+  | AssignMutable _ -> true
   | DictMethodCall (dict_expr, _, args) ->
       has_side_effect dict_expr || List.exists has_side_effect args
   | Closure _ | DictLookup _ | CapabilityCheck _ ->
@@ -150,6 +154,7 @@ let rec has_side_effect (e : expr) : bool =
 let _has_stmt_side_effect (stmt : stmt) : bool =
   match stmt with
   | Assign (_, e) -> has_side_effect e
+  | Store _ | Alloca _ -> true
   | ExprStmt e -> has_side_effect e
   | Return e -> has_side_effect e
   | Jump _ | Branch _ | Phi _ | EffectMarker _ ->
@@ -211,6 +216,9 @@ let rec dce_expr (used_vars : VarSet.t) (stats : dce_stats) (e : expr) : expr =
       let args' = List.map (dce_expr used_vars stats) args in
       make_expr (DictMethodCall (dict', method_name, args')) e.expr_ty
         e.expr_span
+  | AssignMutable (var, rhs) ->
+      let rhs' = dce_expr used_vars stats rhs in
+      make_expr (AssignMutable (var, rhs')) e.expr_ty e.expr_span
 
 (* ========== 文・ブロックの最適化 ========== *)
 
@@ -225,6 +233,10 @@ let dce_stmt (used_vars : VarSet.t) (stats : dce_stats) (stmt : stmt) :
         stats.removed_stmts <- stats.removed_stmts + 1;
         None)
       else Some (Assign (var, e'))
+  | Store (var, e) ->
+      let e' = dce_expr used_vars stats e in
+      Some (Store (var, e'))
+  | Alloca _ -> Some stmt
   | ExprStmt e ->
       let e' = dce_expr used_vars stats e in
       (* 副作用がない式文は削除 *)

@@ -185,6 +185,27 @@ fn test_mut() -> i64 {
 }
 ```
 
+**進捗メモ（2025-10-13）**
+
+- [x] 型環境に `mutability` 情報を追加し、`var` 宣言を `Type_env.extend`/`infer_decl` で処理（`compiler/ocaml/src/type_env.ml`, `compiler/ocaml/src/type_inference.ml`）
+- [x] `:=` の型推論で `var` 以外への再代入を拒否し、`ImmutableBinding` / `NotAssignable` 診断を追加（`compiler/ocaml/src/type_error.ml`）
+- [x] Core IR で `var_id.vmutable`、`AssignMutable` 式、`Alloca`/`Store` 文を導入し、脱糖パスと CFG 線形化がミュータブル変数をメモリ経由で扱うよう更新（`compiler/ocaml/src/core_ir/*.ml`）
+- [x] LLVM コード生成で `Alloca` → `Store` → `Load` のシーケンスを生成し、`Var` 参照時に自動的にロードを挿入（`compiler/ocaml/src/llvm_gen/codegen.ml`）
+- [x] 付随パス（定数畳み込み / DCE / モノモルフィゼーション PoC / テストスイート）を新しい IR ノードに対応させ、`desugar` 単体テストを更新
+
+**現状の確認ポイント**
+
+- `let mut` / `:=` の Core IR は `Alloca → Store` に正規化され、再参照は `Load` を経由（SSA への移行準備完了）
+- DCE・ConstFold は `Store` を常に副作用アリとして保持するため、ループカウンタが消去されない
+- `dune build` は CLI 側の既知 Warning（`warning 21`）で停止するが、新規変更部は型チェックを通過済み
+
+**次ステップ**
+
+1. ループ専用の CFG 展開を実装し、`TWhile`/`TFor`/`TLoop` を基本ブロック列へ変換（`core_ir/desugar.ml` のマーカー処理・`cfg.ml` のブロック生成を拡張）
+2. ループカウンタの `phi` ノード導入と `AssignMutable` からの SSA 変換戦略を検討（Step2 の出口条件）
+3. `let mut` / 単純な while のゴールデンテスト・LLVM IR スナップショットを追加して、`alloca`/`load`/`store` パターンを回帰検出に組み込む
+4. ランタイム側で追加メモリアクセスの診断（トレース/メトリクス）にフックするかを検討し、必要なら `docs/notes/llvm-spec-status-survey.md` に TODO を追記
+
 #### ステップ2: CFG構築でのループ展開（Week 26-27）
 
 **目標**: While/Forループを基本ブロックに展開

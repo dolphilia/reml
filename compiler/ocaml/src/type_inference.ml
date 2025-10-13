@@ -433,6 +433,15 @@ let solve_trait_constraints (constraints : trait_constraint list) :
       (* 複数のエラーがある場合は最初のエラーを返す *)
       Error (constraint_error_to_type_error (List.hd errors))
 
+let ensure_assignable env (texpr : typed_expr) span =
+  match texpr.texpr_kind with
+  | TVar (id, _) -> (
+      match lookup_mutability id.name env with
+      | Some Mutable -> Ok ()
+      | Some Immutable -> Error (immutable_binding_error id.name span)
+      | None -> Error (not_assignable_error span))
+  | _ -> Error (not_assignable_error span)
+
 (** 式の型推論: infer_expr(env, expr)
  *
  * Phase 2 Week 2-3: 基本的な式の推論を実装
@@ -835,6 +844,7 @@ let rec infer_expr (env : env) (expr : expr) : (infer_result, type_error) result
        * 制約: 左辺と右辺の制約をマージ
        *)
       let* tlhs, lhs_ty, s1, lhs_constraints = infer_expr env lhs in
+      let* () = ensure_assignable env tlhs lhs.expr_span in
 
       let env' = apply_subst_env s1 env in
       let* trhs, rhs_ty, s2, rhs_constraints = infer_expr env' rhs in
@@ -1609,6 +1619,7 @@ and infer_stmt (env : env) (stmt : stmt) (subst : substitution) :
        *)
       let env' = apply_subst_env subst env in
       let* tlhs, lhs_ty, s1, lhs_constraints = infer_expr env' lhs in
+      let* () = ensure_assignable env' tlhs lhs.expr_span in
       let env'' = apply_subst_env s1 env' in
       let* trhs, rhs_ty, s2, rhs_constraints = infer_expr env'' rhs in
       (* 左辺と右辺の型を単一化 *)
@@ -1681,20 +1692,68 @@ and infer_decl (env : env) (decl : decl) : (typed_decl * env * trait_constraint 
       let* _dict_refs =
         if scheme.constraints = [] then Ok []
         else
-          (* 制約を解決 *)
-          solve_trait_constraints scheme.constraints
+      (* 制約を解決 *)
+      solve_trait_constraints scheme.constraints
+  in
+
+  (* 型付き宣言を構築 *)
+  let tdecl =
+    make_typed_decl decl.decl_attrs decl.decl_vis
+      (TLetDecl (tpat, texpr))
+      scheme decl.decl_span
+  in
+
+  (* 型環境に追加 *)
+  let new_env = extend pat_name scheme env' in
+
+  Ok (tdecl, new_env, expr_constraints)
+  | VarDecl (pat, ty_annot, expr) ->
+      (* var束縛の型推論
+       *
+       * let束縛と同様に型推論を行うが、ミュータブルフラグを記録する
+       * 1. 初期値式を推論
+       * 2. 型注釈があれば単一化
+       * 3. パターンの型推論（現在は変数パターンのみ想定）
+       * 4. 型スキームを一般化
+       * 5. 環境にミュータブルとして追加
+       *)
+      let* texpr, expr_ty, s1, expr_constraints = infer_expr env expr in
+      let* final_ty, s2 =
+        match ty_annot with
+        | Some annot ->
+            let expected_ty = convert_type_annot annot in
+            let* s = unify s1 expr_ty expected_ty expr.expr_span in
+            Ok (apply_subst s expr_ty, s)
+        | None -> Ok (expr_ty, s1)
       in
 
-      (* 型付き宣言を構築 *)
+      let pat_name, pat_id =
+        match pat.pat_kind with
+        | PatVar id -> (id.name, id)
+        | _ -> failwith "Complex var patterns not yet implemented"
+      in
+
+      let tpat =
+        make_typed_pattern (TPatVar pat_id) final_ty
+          [ (pat_name, final_ty) ]
+          pat.pat_span
+      in
+
+      let env' = apply_subst_env s2 env in
+      let scheme = generalize env' final_ty in
+
+      let* _dict_refs =
+        if scheme.constraints = [] then Ok []
+        else solve_trait_constraints scheme.constraints
+      in
+
       let tdecl =
         make_typed_decl decl.decl_attrs decl.decl_vis
-          (TLetDecl (tpat, texpr))
+          (TVarDecl (tpat, texpr))
           scheme decl.decl_span
       in
 
-      (* 型環境に追加 *)
-      let new_env = extend pat_name scheme env' in
-
+      let new_env = extend ~mutability:Mutable pat_name scheme env' in
       Ok (tdecl, new_env, expr_constraints)
   | FnDecl fn ->
       (* 関数宣言の型推論

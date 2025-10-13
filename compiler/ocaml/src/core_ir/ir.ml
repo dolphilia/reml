@@ -25,6 +25,7 @@ type var_id = {
   vid : int;  (** 一意ID *)
   vty : ty;  (** 型 *)
   vspan : span;  (** 定義位置 *)
+  vmutable : bool;  (** 可変変数かどうか *)
 }
 (** 変数ID (SSA形式準備)
  *
@@ -40,10 +41,10 @@ module VarIdGen = struct
   let counter = ref 0
   let reset () = counter := 0
 
-  let fresh name ty span =
+  let fresh ?(mutable_ = false) name ty span =
     let id = !counter in
     counter := id + 1;
-    { vname = name; vid = id; vty = ty; vspan = span }
+    { vname = name; vid = id; vty = ty; vspan = span; vmutable = mutable_ }
 end
 
 (** ラベル生成器 *)
@@ -232,6 +233,7 @@ and expr_kind =
   | ArrayAccess of expr * expr  (** 配列インデックスアクセス *)
   | ADTConstruct of string * expr list  (** ADT コンストラクタ *)
   | ADTProject of expr * int  (** ADT フィールド射影 *)
+  | AssignMutable of var_id * expr  (** ミュータブル変数への代入（Unitを返す） *)
 
 and case = {
   case_pattern : simple_pattern;  (** 簡略化されたパターン *)
@@ -265,6 +267,8 @@ and simple_pattern =
  *)
 type stmt =
   | Assign of var_id * expr  (** 代入 *)
+  | Store of var_id * expr  (** ミュータブル変数への格納 *)
+  | Alloca of var_id  (** ミュータブル変数用の領域確保 *)
   | Return of expr  (** 関数からの復帰 *)
   | Jump of label  (** 無条件ジャンプ *)
   | Branch of expr * label * label  (** 条件分岐 *)

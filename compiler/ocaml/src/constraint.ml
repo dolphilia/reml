@@ -11,6 +11,7 @@
 
 open Types
 open Ast
+open Type_env
 
 (* ========== 制約の定義 ========== *)
 
@@ -103,12 +104,23 @@ let apply_subst_cscheme subst scheme =
   { scheme with body = body'; constraints = constraints' }
 
 (** 型環境への代入適用 *)
-let apply_subst_env subst env =
-  Type_env.extend_many
-    (List.map
-       (fun (name, scheme) -> (name, apply_subst_cscheme subst scheme))
-       (Type_env.bindings env))
-    Type_env.empty
+let rec apply_subst_env subst env =
+  let bindings =
+    List.map
+      (fun (name, binding) ->
+        ( name,
+          {
+            binding with
+            scheme = apply_subst_cscheme subst binding.scheme;
+          } ))
+      (bindings_with_mut env)
+  in
+  let parent =
+    match env.parent with
+    | Some parent_env -> Some (apply_subst_env subst parent_env)
+    | None -> None
+  in
+  { bindings; parent }
 
 (* ========== 自由型変数（Free Type Variables） ========== *)
 

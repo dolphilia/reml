@@ -11,6 +11,13 @@
 
 open Types
 
+type mutability = Immutable | Mutable
+
+type binding = {
+  scheme : constrained_scheme;
+  mutability : mutability;
+}
+
 (* ========== 型環境の定義 ========== *)
 
 (** 初期環境専用の型変数生成
@@ -27,7 +34,7 @@ let fresh_builtin_var =
     { tv_id = id; tv_name = Some name }
 
 type env = {
-  bindings : (string * constrained_scheme) list;
+  bindings : (string * binding) list;
   parent : env option;
 }
 (** 型環境
@@ -45,18 +52,32 @@ let empty = { bindings = []; parent = None }
  *
  * 同名の束縛がある場合は上書き（シャドーイング）
  *)
-let extend name scheme env =
-  { env with bindings = (name, scheme) :: env.bindings }
+let extend ?(mutability = Immutable) name scheme env =
+  let binding = { scheme; mutability } in
+  { env with bindings = (name, binding) :: env.bindings }
 
 (** 識別子の型スキームを検索
  *
  * 現在のスコープで見つからない場合は親スコープを再帰的に探索
  *)
-let rec lookup name env =
+let rec lookup_binding name env =
   match List.assoc_opt name env.bindings with
-  | Some scheme -> Some scheme
+  | Some binding -> Some binding
   | None -> (
-      match env.parent with Some parent -> lookup name parent | None -> None)
+      match env.parent with
+      | Some parent -> lookup_binding name parent
+      | None -> None)
+
+let lookup name env =
+  match lookup_binding name env with Some binding -> Some binding.scheme | None -> None
+
+let lookup_mutability name env =
+  match lookup_binding name env with
+  | Some binding -> Some binding.mutability
+  | None -> None
+
+let is_mutable name env =
+  match lookup_mutability name env with Some Mutable -> true | _ -> false
 
 (** 新しいスコープに入る
  *
@@ -74,7 +95,10 @@ let exit_scope env =
   | None -> failwith "Cannot exit top-level scope"
 
 (** 環境内のすべての束縛を取得（デバッグ用） *)
-let bindings env = env.bindings
+let bindings env =
+  List.map (fun (name, binding) -> (name, binding.scheme)) env.bindings
+
+let bindings_with_mut env = env.bindings
 
 (* ========== 初期環境の構築 ========== *)
 
@@ -161,8 +185,13 @@ let extend_many bindings env =
 let rec string_of_env env =
   let bindings_str =
     List.map
-      (fun (name, scheme) ->
-        Printf.sprintf "  %s : %s" name (string_of_constrained_scheme scheme))
+      (fun (name, binding) ->
+        let mut_label =
+          match binding.mutability with Mutable -> " (mutable)" | Immutable -> ""
+        in
+        Printf.sprintf "  %s : %s%s" name
+          (string_of_constrained_scheme binding.scheme)
+          mut_label)
       env.bindings
   in
   let current = String.concat "\n" bindings_str in

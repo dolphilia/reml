@@ -166,14 +166,17 @@ let rec count_dict_calls_in_expr expr =
       count_dict_calls_in_expr target + count_dict_calls_in_expr index
   | TupleAccess (target, _) | RecordAccess (target, _) | ADTProject (target, _) ->
       count_dict_calls_in_expr target
+  | AssignMutable (_, rhs) -> count_dict_calls_in_expr rhs
   | CapabilityCheck _ | DictConstruct _ | DictLookup _ -> 0
   | Closure _ | Literal _ | Var _ -> 0
 
 let count_dict_calls_in_stmt = function
   | Assign (_, expr)
+  | Store (_, expr)
   | Return expr
   | ExprStmt expr ->
       count_dict_calls_in_expr expr
+  | Alloca _ -> 0
   | Branch (cond, _, _) -> count_dict_calls_in_expr cond
   | EffectMarker { effect_expr = Some expr; _ } ->
       count_dict_calls_in_expr expr
@@ -287,6 +290,9 @@ let rec convert_primitives_expr expr =
   | ADTProject (target, field_index) ->
       let target' = convert_primitives_expr target in
       make_expr (ADTProject (target', field_index)) expr.expr_ty expr.expr_span
+  | AssignMutable (var, rhs) ->
+      let rhs' = convert_primitives_expr rhs in
+      make_expr (AssignMutable (var, rhs')) expr.expr_ty expr.expr_span
   | CapabilityCheck _ | DictConstruct _ | DictLookup _ | Closure _
   | Literal _ | Var _ ->
       expr
@@ -294,6 +300,8 @@ let rec convert_primitives_expr expr =
 let convert_primitives_stmt stmt =
   match stmt with
   | Assign (var, expr) -> Assign (var, convert_primitives_expr expr)
+  | Store (var, expr) -> Store (var, convert_primitives_expr expr)
+  | Alloca var -> Alloca var
   | Return expr -> Return (convert_primitives_expr expr)
   | ExprStmt expr -> ExprStmt (convert_primitives_expr expr)
   | Branch (cond, t_lbl, f_lbl) ->
@@ -445,6 +453,9 @@ let rec rewrite_expr ~entries ~wrappers expr =
   | ADTProject (target, field_index) ->
       let target' = rewrite_expr ~entries ~wrappers target in
       make_expr (ADTProject (target', field_index)) expr.expr_ty expr.expr_span
+  | AssignMutable (var, rhs) ->
+      let rhs' = rewrite_expr ~entries ~wrappers rhs in
+      make_expr (AssignMutable (var, rhs')) expr.expr_ty expr.expr_span
   | Closure _ | Literal _ | Var _ | DictLookup _ | DictConstruct _
   | CapabilityCheck _ ->
       expr
@@ -459,6 +470,8 @@ let rewrite_effect_info ~entries ~wrappers info =
 
 let rewrite_stmt ~entries ~wrappers = function
   | Assign (var, expr) -> Assign (var, rewrite_expr ~entries ~wrappers expr)
+  | Store (var, expr) -> Store (var, rewrite_expr ~entries ~wrappers expr)
+  | Alloca var -> Alloca var
   | Return expr -> Return (rewrite_expr ~entries ~wrappers expr)
   | Jump lbl -> Jump lbl
   | Branch (cond, then_lbl, else_lbl) ->

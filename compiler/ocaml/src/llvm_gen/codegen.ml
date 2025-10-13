@@ -390,6 +390,8 @@ let rec codegen_expr ctx expr =
       codegen_dict_construct ctx dict_ty
   | DictMethodCall (dict_expr, method_name, args) ->
       codegen_dict_method_call ctx dict_expr method_name args
+  | AssignMutable _ ->
+      codegen_errorf "AssignMutable expression should have been lowered before codegen"
 
 (* ========== 辞書ノードのコード生成（Phase 2 Week 21-22） ========== *)
 
@@ -623,7 +625,15 @@ and codegen_literal ctx lit ty =
 
 and codegen_var ctx var_id =
   match Hashtbl.find_opt ctx.var_map var_id with
-  | Some llvalue -> llvalue
+  | Some llvalue ->
+      if var_id.vmutable then
+        let llvm_ty =
+          Type_mapping.reml_type_to_llvm ctx.type_ctx var_id.vty
+        in
+        Llvm.build_load llvm_ty llvalue
+          (Printf.sprintf "%s.load" var_id.vname)
+          ctx.builder
+      else llvalue
   | None -> (
       (* ローカル変数として登録されていない場合はグローバル関数を参照している可能性を考慮 *)
       match Hashtbl.find_opt ctx.fn_map var_id.vname with
@@ -893,6 +903,21 @@ let codegen_terminator ctx terminator =
 
 let codegen_stmt ctx stmt =
   match stmt with
+  | Alloca var_id ->
+      let llvm_ty =
+        Type_mapping.reml_type_to_llvm ctx.type_ctx var_id.vty
+      in
+      let ptr = Llvm.build_alloca llvm_ty var_id.vname ctx.builder in
+      Hashtbl.replace ctx.var_map var_id ptr
+  | Store (var_id, expr) -> (
+      match Hashtbl.find_opt ctx.var_map var_id with
+      | Some ptr ->
+          let value = codegen_expr ctx expr in
+          let _ = Llvm.build_store value ptr ctx.builder in
+          ()
+      | None ->
+          codegen_errorf "Mutable variable %s は未割り当てです"
+            var_id.vname)
   | Assign (var_id, expr) ->
       let value = codegen_expr ctx expr in
       Hashtbl.replace ctx.var_map var_id value

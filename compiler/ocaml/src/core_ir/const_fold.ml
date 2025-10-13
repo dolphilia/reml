@@ -364,6 +364,9 @@ let rec fold_expr (env : const_env) (stats : fold_stats) (e : expr) : expr =
   | ADTProject (e1, idx) ->
       let folded_e1 = fold_expr env stats e1 in
       make_expr (ADTProject (folded_e1, idx)) e.expr_ty e.expr_span
+  | AssignMutable (var, rhs) ->
+      let folded_rhs = fold_expr env stats rhs in
+      make_expr (AssignMutable (var, folded_rhs)) e.expr_ty e.expr_span
   | DictConstruct dict ->
       make_expr (DictConstruct dict) e.expr_ty e.expr_span
   | DictMethodCall (dict_expr, method_name, args) ->
@@ -386,6 +389,10 @@ let fold_stmt (env : const_env) (stats : fold_stats) (stmt : stmt) : stmt =
       | Literal lit -> bind_const env var lit
       | _ -> ());
       Assign (var, folded_e)
+  | Store (var, e) ->
+      let folded_e = fold_expr env stats e in
+      Store (var, folded_e)
+  | Alloca _ as s -> s
   | ExprStmt e -> ExprStmt (fold_expr env stats e)
   | Return e -> Return (fold_expr env stats e)
   | (Jump _ | Branch _ | Phi _ | EffectMarker _) as s -> s

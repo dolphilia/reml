@@ -53,6 +53,8 @@ let bind_var (map : var_scope_map) (name : string) (var : var_id) : unit =
 (** スコープのコピー（分岐処理用） *)
 let copy_scope_map (map : var_scope_map) : var_scope_map = Hashtbl.copy map
 
+type binding_mutability = BindingImmutable | BindingMutable
+
 (* ========== 辞書生成パスの設計（Phase 2 Week 19-20 文書化） ========== *)
 
 (** 【辞書生成パスの概要】
@@ -396,12 +398,7 @@ let rec desugar_expr (map : var_scope_map) (texpr : typed_expr) : expr =
       (* Phase 2では簡易実装: 式を評価するが遅延はしない *)
       desugar_expr map deferred_expr
   | TAssign (lhs_expr, rhs_expr) ->
-      (* 代入式は簡易実装: 右辺の値をそのまま返す
-       * TODO: CFG構築時に Assign ステートメントに変換
-       *)
-      let _lhs = desugar_expr map lhs_expr in
-      let rhs = desugar_expr map rhs_expr in
-      rhs
+      desugar_mutable_assign map lhs_expr rhs_expr span
   | _ ->
       (* その他の式は後のフェーズで実装 *)
       desugar_error "未実装の式種別" span
@@ -432,6 +429,27 @@ and desugar_pipe (map : var_scope_map) (e1 : typed_expr) (e2 : typed_expr)
   (* let 束縛: let temp_var = arg_expr in app_expr *)
   make_expr (Let (temp_var, arg_expr, app_expr)) result_ty span
 
+and desugar_mutable_assign (map : var_scope_map) (lhs : typed_expr)
+    (rhs : typed_expr) (span : span) : expr =
+  match lhs.texpr_kind with
+  | TVar (id, _) -> (
+      match lookup_var map id.name with
+      | Some var ->
+          if not var.vmutable then
+            desugar_error "不変な変数には代入できません" span
+          else
+            let rhs_expr = desugar_expr map rhs in
+            make_expr
+              (AssignMutable (var, rhs_expr))
+              ty_unit span
+      | None ->
+          desugar_error
+            (Printf.sprintf "未宣言の変数 %s への代入です" id.name)
+            span)
+  | _ ->
+      desugar_error
+        "現在は単純な変数への代入（TVar）のみサポートしています" span
+
 (* ========== ブロック式の変換 ========== *)
 
 and desugar_block (map : var_scope_map) (stmts : typed_stmt list)
@@ -458,9 +476,15 @@ and desugar_block (map : var_scope_map) (stmts : typed_stmt list)
             fresh_temp_var "unused" (convert_ty e.texpr_ty) e.texpr_span
           in
           make_expr (Let (dummy_var, e_expr, rest_expr)) result_ty span
-      | TAssignStmt (_lhs, _rhs) ->
-          (* 代入文 → Core IR の Assign に変換（後のフェーズ） *)
-          desugar_error "代入文の変換は未実装" span
+      | TAssignStmt (lhs, rhs) ->
+          let assign_expr =
+            desugar_mutable_assign map lhs rhs lhs.texpr_span
+          in
+          let rest_expr = desugar_block map rest result_ty span in
+          let dummy_var =
+            fresh_temp_var "assign" assign_expr.expr_ty assign_expr.expr_span
+          in
+          make_expr (Let (dummy_var, assign_expr, rest_expr)) result_ty span
       | TDeferStmt _ ->
           (* defer 文 → ランタイムサポートが必要（後のフェーズ） *)
           desugar_error "defer 文の変換は未実装" span)
@@ -472,14 +496,14 @@ and desugar_block_with_decl (map : var_scope_map) (decl : typed_decl)
       let bound_expr = desugar_expr map e in
       let continuation () = desugar_block map rest result_ty span in
       (* パターン束縛を let に変換（スコープを先に拡張） *)
-      desugar_pattern_binding map pat bound_expr ~cont:continuation result_ty
-        span
+      desugar_pattern_binding map pat bound_expr ~mutability:BindingImmutable
+        ~cont:continuation result_ty span
   | TVarDecl (pat, e) ->
       (* var 宣言も同様（可変性は後で処理） *)
       let bound_expr = desugar_expr map e in
       let continuation () = desugar_block map rest result_ty span in
-      desugar_pattern_binding map pat bound_expr ~cont:continuation result_ty
-        span
+      desugar_pattern_binding map pat bound_expr ~mutability:BindingMutable
+        ~cont:continuation result_ty span
   | TFnDecl _ ->
       (* 関数宣言はトップレベル処理（ブロック内関数は後のフェーズ） *)
       desugar_error "ブロック内関数宣言は未実装" span
@@ -488,12 +512,18 @@ and desugar_block_with_decl (map : var_scope_map) (decl : typed_decl)
 (* ========== パターン束縛の変換 ========== *)
 
 and desugar_pattern_binding (map : var_scope_map) (pat : typed_pattern)
-    (bound_expr : expr) ~(cont : unit -> expr) (result_ty : ty) (span : span) :
-    expr =
+    (bound_expr : expr) ~(mutability : binding_mutability)
+    ~(cont : unit -> expr) (result_ty : ty) (span : span) : expr =
+  let is_mutable =
+    match mutability with BindingMutable -> true | BindingImmutable -> false
+  in
   match pat.tpat_kind with
   | TPatVar id ->
       (* 単純な変数束縛 *)
-      let var = VarIdGen.fresh id.name (convert_ty pat.tpat_ty) pat.tpat_span in
+      let var =
+        VarIdGen.fresh ~mutable_:is_mutable id.name (convert_ty pat.tpat_ty)
+          pat.tpat_span
+      in
       bind_var map id.name var;
       let rest_expr = cont () in
       make_expr (Let (var, bound_expr, rest_expr)) result_ty span
@@ -530,7 +560,7 @@ and desugar_pattern_binding (map : var_scope_map) (pat : typed_pattern)
         | [] -> cont_fn ()
         | (sub_pat, access) :: rest ->
             desugar_pattern_binding map sub_pat access
-              ~cont:(fun () -> build_bindings rest cont_fn)
+              ~mutability ~cont:(fun () -> build_bindings rest cont_fn)
               result_ty span
       in
       let rest_expr = build_bindings bindings cont in
@@ -557,12 +587,13 @@ and desugar_pattern_binding (map : var_scope_map) (pat : typed_pattern)
                     field_pat.tpat_span
                 in
                 desugar_pattern_binding map field_pat access_expr
-                  ~cont:(fun () -> bind_fields rest cont_fn)
+                  ~mutability ~cont:(fun () -> bind_fields rest cont_fn)
                   result_ty span
             | None ->
                 (* { field } 短縮形 → { field: field } として扱う *)
                 let field_var =
-                  VarIdGen.fresh field_name.name ty_i64 field_name.span
+                  VarIdGen.fresh ~mutable_:is_mutable field_name.name ty_i64
+                    field_name.span
                 in
                 bind_var map field_name.name field_var;
                 let access_expr =
@@ -600,7 +631,7 @@ and desugar_pattern_binding (map : var_scope_map) (pat : typed_pattern)
                 arg_pat.tpat_span
             in
             desugar_pattern_binding map arg_pat project_expr
-              ~cont:(fun () -> bind_args rest cont_fn)
+              ~mutability ~cont:(fun () -> bind_args rest cont_fn)
               result_ty span
       in
       let rest_expr = bind_args (List.mapi (fun i p -> (i, p)) arg_pats) cont in
@@ -609,7 +640,8 @@ and desugar_pattern_binding (map : var_scope_map) (pat : typed_pattern)
       (* ガード付きパターン → 内側のパターンを先に束縛し、ガードを if 式に変換 *)
       let guard_ir = desugar_expr map guard_expr in
       let then_branch =
-        desugar_pattern_binding map inner_pat bound_expr ~cont result_ty span
+        desugar_pattern_binding map inner_pat bound_expr ~mutability ~cont
+          result_ty span
       in
       let else_branch = desugar_error "パターンマッチ失敗（ガード条件不一致）" span in
       make_expr (If (guard_ir, then_branch, else_branch)) result_ty span

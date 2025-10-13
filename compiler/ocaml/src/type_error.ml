@@ -81,6 +81,11 @@ type type_error =
       cycle : string list;  (* トレイト名のリスト *)
       span : span;
     }
+  | NotAssignable of { span : span }  (** 代入不可能な左辺 *)
+  | ImmutableBinding of {
+      name : string;  (** ミュータブルでない変数名 *)
+      span : span;
+    }
 
 (* ========== エラーメッセージ生成 ========== *)
 
@@ -181,6 +186,16 @@ let string_of_error = function
       Printf.sprintf
         "Cyclic trait constraint detected at %d:%d\n  Cycle: %s -> ..."
         span.start span.end_ cycle_str
+  | NotAssignable { span } ->
+      Printf.sprintf
+        "Left-hand side is not assignable at %d:%d\n\
+        \  Expected a mutable variable or lvalue expression"
+        span.start span.end_
+  | ImmutableBinding { name; span } ->
+      Printf.sprintf
+        "Cannot assign to immutable binding at %d:%d\n\
+        \  Variable '%s' was declared with 'let'"
+        span.start span.end_ name
 
 (* ========== エラー生成ヘルパー ========== *)
 
@@ -197,6 +212,12 @@ let unbound_variable_error name span = UnboundVariable (name, span)
 (** 引数数不一致エラーを生成 *)
 let arity_mismatch_error ~expected ~actual span =
   ArityMismatch { expected; actual; span }
+
+(** 代入不可能エラーを生成 *)
+let not_assignable_error span = NotAssignable { span }
+
+(** ミュータブルでない束縛への代入エラーを生成 *)
+let immutable_binding_error name span = ImmutableBinding { name; span }
 
 (** 関数型でないエラーを生成 *)
 let not_a_function_error ty span = NotAFunction (ty, span)
@@ -619,6 +640,23 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       in
 
       make_type_error ~code:"E7018" ~message ~span:diag_span ~notes ()
+  | NotAssignable { span } ->
+      let message = "この式は代入可能な左辺値ではありません" in
+      let diag_span = span_to_diagnostic_span span in
+      let notes =
+        [ (None, "再代入できるのは var で宣言した変数などの左辺値のみです") ]
+      in
+      make_type_error ~code:"E7019" ~message ~span:diag_span ~notes ()
+  | ImmutableBinding { name; span } ->
+      let message = "不変な束縛に対して再代入はできません" in
+      let diag_span = span_to_diagnostic_span span in
+      let notes =
+        [
+          (None, Printf.sprintf "変数 '%s' は let で宣言されています" name);
+          (None, "値を変更する必要がある場合は `var` を使用してください");
+        ]
+      in
+      make_type_error ~code:"E7020" ~message ~span:diag_span ~notes ()
 
 (** 環境情報を使った診断情報の生成
  *
@@ -919,3 +957,20 @@ let to_diagnostic_with_source ?(available_names : string list = [])
       in
 
       make_type_error ~code:"E7018" ~message ~span:diag_span ~notes ()
+  | NotAssignable { span } ->
+      let message = "この式は代入可能な左辺値ではありません" in
+      let diag_span = make_span span in
+      let notes =
+        [ (None, "再代入できるのは var で宣言した変数などの左辺値のみです") ]
+      in
+      make_type_error ~code:"E7019" ~message ~span:diag_span ~notes ()
+  | ImmutableBinding { name; span } ->
+      let message = "不変な束縛に対して再代入はできません" in
+      let diag_span = make_span span in
+      let notes =
+        [
+          (None, Printf.sprintf "変数 '%s' は let で宣言されています" name);
+          (None, "値を変更するには `var` を使用してください");
+        ]
+      in
+      make_type_error ~code:"E7020" ~message ~span:diag_span ~notes ()
