@@ -7,22 +7,23 @@
  * - 診断メッセージの品質を検証（仕様書 2-5 準拠）
  * - エラーコード E7001-E7015 の正確性を確認
  *
- * テスト対象エラー:
- * E7001: UnificationFailure        - 型不一致
- * E7002: OccursCheck               - 無限型検出
- * E7003: UnboundVariable           - 未定義変数
- * E7004: ArityMismatch             - 引数数不一致
- * E7005: NotAFunction              - 非関数型への適用
- * E7006: ConditionNotBool          - 条件式が非Bool型
- * E7007: BranchTypeMismatch        - if式の分岐型不一致
- * E7008: PatternTypeMismatch       - パターンと式の型不一致
- * E7009: ConstructorArityMismatch  - コンストラクタ引数数不一致
- * E7010: TupleArityMismatch        - タプル要素数不一致
- * E7011: RecordFieldMissing        - レコードフィールド不足
- * E7012: RecordFieldUnknown        - レコードフィールド不明
- * E7013: NotARecord                - 非レコード型へのレコードパターン
- * E7014: NotATuple                 - 非タプル型へのタプルパターン
- * E7015: EmptyMatch                - 空のmatch式
+* テスト対象エラー:
+* E7001: UnificationFailure        - 型不一致
+* E7002: OccursCheck               - 無限型検出
+* E7003: UnboundVariable           - 未定義変数
+* E7004: ArityMismatch             - 引数数不一致
+* E7005: NotAFunction              - 非関数型への適用
+* E7006: ConditionNotBool          - 条件式が非Bool型
+* E7007: BranchTypeMismatch        - if式の分岐型不一致
+* E7008: PatternTypeMismatch       - パターンと式の型不一致
+* E7009: ConstructorArityMismatch  - コンストラクタ引数数不一致
+* E7010: TupleArityMismatch        - タプル要素数不一致
+* E7011: RecordFieldMissing        - レコードフィールド不足
+* E7012: RecordFieldUnknown        - レコードフィールド不明
+* E7013: NotARecord                - 非レコード型へのレコードパターン
+* E7014: NotATuple                 - 非タプル型へのタプルパターン
+* E7015: EmptyMatch                - 空のmatch式
+* E7021: ContinueOutsideLoop       - ループ外での continue 使用
  *
 * 2025-10-07 更新（Phase 2 Week 10）:
 * - 文脈依存ヘルパーを導入し、既知の失敗テスト7件を解消
@@ -80,6 +81,7 @@ let assert_error expected_variant result msg =
         | "NotARecord", NotARecord _ -> true
         | "NotATuple", NotATuple _ -> true
         | "EmptyMatch", EmptyMatch _ -> true
+        | "ContinueOutsideLoop", ContinueOutsideLoop _ -> true
         | _ -> false
       in
       if not matches then
@@ -953,11 +955,25 @@ let test_empty_match () =
       | Error err -> verify_diagnostic_quality err "E7015"
       | _ -> ())
 
+(* ========== G. 制御フローエラー ========== *)
+
+let test_continue_outside_loop () =
+  Printf.printf "\nG. Control Flow Errors:\n";
+  run_test "E7021: continue outside loop" (fun () ->
+      let env = initial_env in
+      let continue_expr = { expr_kind = Continue; expr_span = dummy_span } in
+      let result = infer_expr env continue_expr in
+      assert_error "ContinueOutsideLoop" result
+        "continue should not be allowed outside loops";
+      match result with
+      | Error err -> verify_diagnostic_quality err "E7021"
+      | _ -> ())
+
 (* ========== メイン ========== *)
 
 let () =
   Printf.printf "=== Type Error Test Suite ===\n";
-  Printf.printf "Testing all 15 type error variants (E7001-E7015)\n";
+  Printf.printf "Testing type error variants (E7001-E7021)\n";
 
   (* A. 型不一致系 *)
   test_unification_failure ();
@@ -984,6 +1000,9 @@ let () =
 
   (* F. match式系 *)
   test_empty_match ();
+
+  (* G. 制御フローエラー *)
+  test_continue_outside_loop ();
 
   Printf.printf "\n=== Test Summary ===\n";
   Printf.printf "Total tests: %d\n" !test_count;

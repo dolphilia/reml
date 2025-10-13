@@ -56,6 +56,20 @@ type linear_instr =
   | LSplitPoint of split_point  (** 分岐点マーカー *)
   | LLabel of label  (** ラベル定義 *)
 
+(* ========== ループコンテキスト ========== *)
+
+type loop_context = {
+  continue_label : label option;
+  continue_target : label;
+  latch_label : label;
+  loop_span : span;
+}
+(** ループ降格時に必要なメタデータ
+ *
+ * continue 先のラベルや latch ラベルを保持して、ループ内の
+ * Continue 式から適切なジャンプを生成できるようにする。
+ *)
+
 (* ========== CFG構築コンテキスト ========== *)
 
 type cfg_builder = {
@@ -63,6 +77,7 @@ type cfg_builder = {
   mutable current_stmts : stmt list;  (** 現在のブロックの命令列 *)
   mutable blocks : block list;  (** 完成したブロック *)
   mutable split_points : split_point list;  (** 検出された分岐点 *)
+  mutable loop_stack : loop_context list;  (** ネストしているループのスタック *)
   value_env : (int, var_id) Hashtbl.t;  (** 可変変数の現在値 (var_id.vid → SSA値) *)
 }
 (** CFG構築状態 *)
@@ -74,6 +89,7 @@ let create_cfg_builder () : cfg_builder =
     current_stmts = [];
     blocks = [];
     split_points = [];
+    loop_stack = [];
     value_env = Hashtbl.create 32;
   }
 
@@ -104,6 +120,20 @@ let finish_block (builder : cfg_builder) (term : terminator) (span : span) :
       builder.blocks <- builder.blocks @ [ blk ];
       builder.current_label <- None;
       builder.current_stmts <- []
+
+let push_loop (builder : cfg_builder) (ctx : loop_context) : unit =
+  builder.loop_stack <- ctx :: builder.loop_stack
+
+let pop_loop (builder : cfg_builder) : unit =
+  match builder.loop_stack with
+  | _ :: rest -> builder.loop_stack <- rest
+  | [] ->
+      failwith "pop_loop called but loop_stack is empty"
+
+let current_loop (builder : cfg_builder) : loop_context option =
+  match builder.loop_stack with
+  | ctx :: _ -> Some ctx
+  | [] -> None
 
 (* ========== 式の線形化 ========== *)
 
@@ -240,8 +270,20 @@ let rec linearize_expr (builder : cfg_builder) (expr : expr) : var_id =
       add_stmt builder (Assign (unit_var, unit_expr));
       set_value_env builder var rhs_var;
       unit_var
-  | Continue ->
-      failwith "Continue lowering is not yet implemented in CFG"
+  | Continue -> (
+      match current_loop builder with
+      | None ->
+          failwith "Continue encountered outside of loop during CFG lowering"
+      | Some loop_ctx ->
+          let unit_var = VarIdGen.fresh "$continue" ty_unit expr.expr_span in
+          let unit_expr =
+            make_expr (Literal Unit) ty_unit expr.expr_span
+          in
+          add_stmt builder (Assign (unit_var, unit_expr));
+          finish_block builder (TermJump loop_ctx.continue_target) expr.expr_span;
+          let dead_label = LabelGen.fresh "continue_dead" in
+          start_block builder dead_label;
+          unit_var)
   | Loop loop_info ->
       linearize_loop builder loop_info expr.expr_ty expr.expr_span
   | Closure _closure_info ->
@@ -403,6 +445,18 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
   in
   let continue_entries : (var_id * var_id ref * expr option) list ref = ref [] in
 
+  let loop_ctx =
+    {
+      continue_label = continue_label_opt;
+      continue_target =
+        (match continue_label_opt with
+        | Some lbl -> lbl
+        | None -> latch_label);
+      latch_label;
+      loop_span = span;
+    }
+  in
+
   (* 事前初期化（for等） *)
   let () =
     match info.loop_kind with
@@ -414,7 +468,7 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
             add_stmt builder (Assign (var, init_value));
             if var.vmutable then set_value_env builder var init_var
             else set_value_env builder var var)
-          for_info.for_init
+        for_info.for_init
     | _ -> ()
   in
 
@@ -423,6 +477,7 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
 
   (* header ブロック開始 *)
   start_block builder header_label;
+  push_loop builder loop_ctx;
 
   let phi_records =
     List.map
@@ -651,6 +706,8 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
     (fun (lc_var, phi_var, _entries) ->
       set_value_env builder lc_var phi_var)
     phi_records;
+
+  pop_loop builder;
 
   (* exit ブロック開始（後続処理のため未収束） *)
   start_block builder exit_label;

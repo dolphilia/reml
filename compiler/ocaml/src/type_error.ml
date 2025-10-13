@@ -86,6 +86,7 @@ type type_error =
       name : string;  (** ミュータブルでない変数名 *)
       span : span;
     }
+  | ContinueOutsideLoop of span  (** ループ外での continue 使用 *)
 
 (* ========== エラーメッセージ生成 ========== *)
 
@@ -196,6 +197,10 @@ let string_of_error = function
         "Cannot assign to immutable binding at %d:%d\n\
         \  Variable '%s' was declared with 'let'"
         span.start span.end_ name
+  | ContinueOutsideLoop span ->
+      Printf.sprintf
+        "continue はループ内でのみ使用できます（位置: %d:%d）"
+        span.start span.end_
 
 (* ========== エラー生成ヘルパー ========== *)
 
@@ -218,6 +223,9 @@ let not_assignable_error span = NotAssignable { span }
 
 (** ミュータブルでない束縛への代入エラーを生成 *)
 let immutable_binding_error name span = ImmutableBinding { name; span }
+
+(** continue をループ外で使用した際のエラーを生成 *)
+let continue_outside_loop_error span = ContinueOutsideLoop span
 
 (** 関数型でないエラーを生成 *)
 let not_a_function_error ty span = NotAFunction (ty, span)
@@ -657,6 +665,16 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         ]
       in
       make_type_error ~code:"E7020" ~message ~span:diag_span ~notes ()
+  | ContinueOutsideLoop span ->
+      let message = "continue はループ内でのみ使用できます" in
+      let diag_span = span_to_diagnostic_span span in
+      let notes =
+        [
+          (None, "while / for / loop のボディ以外では使用できません");
+          (None, "制御フローを継続したい場合はループ内に配置してください");
+        ]
+      in
+      make_type_error ~code:"E7021" ~message ~span:diag_span ~notes ()
 
 (** 環境情報を使った診断情報の生成
  *
@@ -974,3 +992,13 @@ let to_diagnostic_with_source ?(available_names : string list = [])
         ]
       in
       make_type_error ~code:"E7020" ~message ~span:diag_span ~notes ()
+  | ContinueOutsideLoop span ->
+      let message = "continue はループ内でのみ使用できます" in
+      let diag_span = make_span span in
+      let notes =
+        [
+          (None, "while / for / loop ブロックの内部でのみ使用可能です");
+          (None, "制御フローを継続したい場合は対象のループへ移動してください");
+        ]
+      in
+      make_type_error ~code:"E7021" ~message ~span:diag_span ~notes ()

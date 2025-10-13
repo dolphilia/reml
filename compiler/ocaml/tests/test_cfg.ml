@@ -329,6 +329,135 @@ let test_while_loop_cfg () =
 
   print_endline "✓ test_while_loop_cfg passed"
 
+let test_loop_with_continue () =
+  print_endline "Test: continue を含むループのCFG生成";
+
+  IR.VarIdGen.reset ();
+  IR.LabelGen.reset ();
+
+  let i_var = IR.VarIdGen.fresh "i" ty_i64 dummy_span in
+  let zero_expr =
+    IR.make_expr (IR.Literal (Ast.Int ("0", Ast.Base10))) ty_i64 dummy_span
+  in
+  let one_expr =
+    IR.make_expr (IR.Literal (Ast.Int ("1", Ast.Base10))) ty_i64 dummy_span
+  in
+  let ten_expr =
+    IR.make_expr (IR.Literal (Ast.Int ("10", Ast.Base10))) ty_i64 dummy_span
+  in
+  let i_ref_cond =
+    IR.make_expr (IR.Var i_var) ty_i64 dummy_span
+  in
+  let cond_expr =
+    IR.make_expr
+      (IR.Primitive (IR.PrimLt, [ i_ref_cond; ten_expr ]))
+      ty_bool dummy_span
+  in
+  let i_ref_body =
+    IR.make_expr (IR.Var i_var) ty_i64 dummy_span
+  in
+  let continue_cond =
+    IR.make_expr
+      (IR.Primitive (IR.PrimEq, [ i_ref_body; zero_expr ]))
+      ty_bool dummy_span
+  in
+  let continue_expr = IR.make_expr IR.Continue ty_unit dummy_span in
+  let add_expr =
+    IR.make_expr
+      (IR.Primitive (IR.PrimAdd, [ i_ref_body; one_expr ]))
+      ty_i64 dummy_span
+  in
+  let assign_expr =
+    IR.make_expr (IR.AssignMutable (i_var, add_expr)) ty_unit dummy_span
+  in
+  let body_expr =
+    IR.make_expr (IR.If (continue_cond, continue_expr, assign_expr)) ty_unit
+      dummy_span
+  in
+  let continue_value =
+    IR.make_expr (IR.Var i_var) ty_i64 dummy_span
+  in
+  let loop_info =
+    {
+      IR.loop_kind = IR.WhileLoop cond_expr;
+      loop_body = body_expr;
+      loop_span = dummy_span;
+      loop_carried =
+        [
+          {
+            IR.lc_var = i_var;
+            lc_sources =
+              [
+                {
+                  IR.ls_kind = IR.LoopSourcePreheader;
+                  ls_span = dummy_span;
+                  ls_expr = i_ref_cond;
+                };
+                {
+                  IR.ls_kind = IR.LoopSourceLatch;
+                  ls_span = dummy_span;
+                  ls_expr = add_expr;
+                };
+                {
+                  IR.ls_kind = IR.LoopSourceContinue;
+                  ls_span = dummy_span;
+                  ls_expr = continue_value;
+                };
+              ];
+          };
+        ];
+      loop_contains_continue = true;
+    }
+  in
+  let loop_expr = IR.make_expr (IR.Loop loop_info) ty_unit dummy_span in
+  let while_expr =
+    IR.make_expr (IR.Let (i_var, zero_expr, loop_expr)) ty_unit dummy_span
+  in
+
+  let blocks = CFG.build_cfg_from_expr while_expr in
+
+  (* continue ブロックが生成されていることを確認 *)
+  let starts_with prefix s =
+    let len_p = String.length prefix in
+    String.length s >= len_p && String.sub s 0 len_p = prefix
+  in
+  let continue_block =
+    List.find_opt
+      (fun blk -> starts_with "loop_continue" blk.IR.label)
+      blocks
+  in
+  (match continue_block with
+  | None -> failwith "loop_continue ブロックが生成されていません"
+  | Some blk -> (
+      match blk.IR.terminator with
+      | IR.TermJump target_label ->
+          if not (starts_with "loop_latch" target_label) then
+            failwith "continue ブロックのジャンプ先が latch ではありません"
+      | _ -> failwith "continue ブロックの終端が TermJump ではありません"));
+
+  (* ヘッダ φ に continue ラベルが含まれていることをチェック *)
+  let header_block =
+    List.find
+      (fun blk -> starts_with "loop_header" blk.IR.label)
+      blocks
+  in
+  let phi_sources =
+    header_block.IR.stmts
+    |> List.filter_map (function IR.Phi (_var, incoming) -> Some incoming | _ -> None)
+  in
+  (match phi_sources with
+  | [ incoming ] ->
+      let labels = List.map fst incoming in
+      if
+        not
+          (List.exists (starts_with "loop_continue") labels)
+      then
+        failwith "φ ノードに loop_continue からの入力がありません"
+  | _ ->
+      failwith "ヘッダブロックに φ ノードが1つのみ存在すると想定しています");
+
+  print_endline "✓ test_loop_with_continue passed"
+
 let test_nested_if () =
   print_endline "Test: ネストしたif式のCFG生成";
 
@@ -389,6 +518,7 @@ let run_all_tests () =
   test_unreachable_detection ();
   test_cfg_validation ();
   test_while_loop_cfg ();
+  test_loop_with_continue ();
   test_nested_if ();
   print_endline "\n=== All CFG Tests Passed ===\n"
 

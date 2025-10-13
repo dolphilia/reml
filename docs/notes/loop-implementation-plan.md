@@ -220,7 +220,9 @@ fn test_mut() -> i64 {
   - 実装済: `compiler/ocaml/src/core_ir/ir.ml`, `compiler/ocaml/src/core_ir/desugar.ml`, `compiler/ocaml/src/core_ir/cfg.ml`, `compiler/ocaml/src/core_ir/ir_printer.ml`
 - [x] `cfg.ml` に `continue` ブロック生成・φ 入力増加ロジックを実装し、`test_cfg_continue`（新規）で検証
   - 実装済: `compiler/ocaml/src/core_ir/cfg.ml`（`linearize_loop` が `lc_sources` を解析して preheader/latch/continue の三経路を φ 入力化し、`loop_continue` ブロックを生成）
-  - TODO: `continue` の実行時値は `lc_sources` の式（`ls_expr`）で補足する設計。現状は `continue` 式が未脱糖のためテストを追加できていないので、サンプル脱糖が揃い次第 `test_cfg_continue` を実装予定。
+  - 検証: `compiler/ocaml/tests/test_cfg.ml` に `test_loop_with_continue` を追加し、`loop_continue` ブロックの遷移と φ ノード入力（preheader/latch/continue）の 3 経路を確認済み。
+- [x] 型推論でループ外の `continue` をエラー化し、診断コード `E7021` を追加
+  - 実装済: `compiler/ocaml/src/type_inference.ml`（ループ深度コンテキストを導入）、`compiler/ocaml/src/type_error.ml`（`ContinueOutsideLoop` 変換）、`compiler/ocaml/tests/test_type_errors.ml`（`test_continue_outside_loop`）
 - [ ] For ループ iterator モードの脱糖 PoC を実装し、配列版と iterator 版で同じ CFG パスを通ることを確認
 - [ ] `let mut`/while の LLVM IR ゴールデンテストを追加し、`alloca`/`load`/`store` パターンをスナップショット化
 - [ ] ランタイム診断・メトリクスへのフック要否を判断し、必要なら `docs/notes/llvm-spec-status-survey.md` に TODO を追記
