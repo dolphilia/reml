@@ -1,0 +1,55 @@
+// シンプルな型クラスベンチマーク
+// Phase 2 Week 20-21: 辞書渡しの基本動作確認
+
+// Eq型クラスの基本テスト
+fn bench_eq_basic() -> i64 = {
+  let x: i64 = 42;
+  let y: i64 = 42;
+  let z: i64 = 10;
+
+  let test1: Bool = x == y;
+  let test2: Bool = x == z;
+
+  if test1 && (test2 == false) then
+    1
+  else
+    0
+}
+
+// Ord型クラスの基本テスト
+fn bench_ord_basic() -> i64 = {
+  let x: i64 = 10;
+  let y: i64 = 20;
+
+  let test1: Bool = x < y;
+  let test2: Bool = y > x;
+
+  if test1 && test2 then
+    1
+  else
+    0
+}
+
+// String比較テスト
+fn bench_string_eq() -> i64 = {
+  let s1: String = "hello";
+  let s2: String = "hello";
+  let s3: String = "world";
+
+  let test1: Bool = s1 == s2;
+  let test2: Bool = s1 == s3;
+
+  if test1 && (test2 == false) then
+    1
+  else
+    0
+}
+
+// メイン関数
+pub fn main() -> i64 = {
+  let r1: i64 = bench_eq_basic;
+  let r2: i64 = bench_ord_basic;
+  let r3: i64 = bench_string_eq;
+
+  r1 + r2 + r3
+}

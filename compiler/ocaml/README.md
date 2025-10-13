@@ -370,6 +370,42 @@ opam exec -- dune exec -- \
 
 CI では両ディレクトリをアーティファクトとして収集し、辞書渡し版と PoC 版の差分をレポートします。
 
+### 型クラスベンチマーク（Phase 2 Week 20-21）
+
+辞書渡し方式とモノモルフィゼーションPoCの性能比較ベンチマークが `benchmarks/` ディレクトリに用意されています。
+
+#### ベンチマークの実行
+
+```bash
+# ベンチマーク自動計測スクリプトの実行
+./compiler/ocaml/scripts/benchmark_typeclass.sh
+```
+
+このスクリプトは以下を実行します：
+1. マイクロベンチマーク（`micro_typeclass.reml`）のコンパイル・実行（辞書渡し・モノモルフィック両方）
+2. マクロベンチマーク（`macro_typeclass.reml`）のコンパイル・実行（辞書渡し・モノモルフィック両方）
+3. 実行時間・コードサイズ・LLVM IRサイズの計測
+4. 比較レポート生成（`benchmark_results/comparison_report.md`）
+
+#### ベンチマーク内容
+
+**マイクロベンチマーク** (`benchmarks/micro_typeclass.reml`):
+- Eq型クラス: i64/String/Boolでの等価比較（10^6回）
+- Ord型クラス: i64/Stringでの順序比較（10^6回）
+- 複合ベンチマーク: Eq + Ordの組み合わせ（10^6回）
+
+**マクロベンチマーク** (`benchmarks/macro_typeclass.reml`):
+- 検索操作: 要素探索・重複カウント（Eq使用）
+- 順序操作: 最小値探索・ソート・フィルタリング（Ord使用）
+
+#### 評価基準
+
+- **実行時間オーバーヘッド**: 辞書渡しが<10%のオーバーヘッド
+- **コードサイズ増加率**: モノモルフィゼーションが<30%の増加
+- **コンパイル時間**: モノモルフィゼーションが辞書渡しの<2倍
+
+詳細な評価レポートは [docs/notes/typeclass-performance-evaluation.md](../../docs/notes/typeclass-performance-evaluation.md) を参照してください。
+
 ### ローカル CI 再現
 
 GitHub Actions と同じ検証手順をローカルで実行できます：

@@ -1,0 +1,120 @@
+// マイクロベンチマーク: 型クラスメソッド呼び出しの性能測定
+// Phase 2 Week 20-21: 辞書渡し vs モノモルフィゼーションPoC の比較
+
+// Eq型クラス: i64での等価比較（10^6回）
+fn bench_eq_i64(iterations: i64) -> i64 = {
+  let x: i64 = 42;
+  let y: i64 = 42;
+  let mut count: i64 = 0;
+  let mut i: i64 = 0;
+
+  while i < iterations {
+    if x == y {
+      count = count + 1
+    };
+    i = i + 1
+  };
+
+  count
+}
+
+// Eq型クラス: Stringでの等価比較（10^6回）
+fn bench_eq_string(iterations: i64) -> i64 = {
+  let s1: String = "hello";
+  let s2: String = "hello";
+  let mut count: i64 = 0;
+  let mut i: i64 = 0;
+
+  while i < iterations {
+    if s1 == s2 {
+      count = count + 1
+    };
+    i = i + 1
+  };
+
+  count
+}
+
+// Eq型クラス: Boolでの等価比較（10^6回）
+fn bench_eq_bool(iterations: i64) -> i64 = {
+  let b1: Bool = true;
+  let b2: Bool = true;
+  let mut count: i64 = 0;
+  let mut i: i64 = 0;
+
+  while i < iterations {
+    if b1 == b2 {
+      count = count + 1
+    };
+    i = i + 1
+  };
+
+  count
+}
+
+// Ord型クラス: i64での順序比較（10^6回）
+fn bench_ord_i64(iterations: i64) -> i64 = {
+  let x: i64 = 10;
+  let y: i64 = 20;
+  let mut count: i64 = 0;
+  let mut i: i64 = 0;
+
+  while i < iterations {
+    if x < y {
+      count = count + 1
+    };
+    i = i + 1
+  };
+
+  count
+}
+
+// Ord型クラス: Stringでの順序比較（10^6回）
+fn bench_ord_string(iterations: i64) -> i64 = {
+  let s1: String = "abc";
+  let s2: String = "xyz";
+  let mut count: i64 = 0;
+  let mut i: i64 = 0;
+
+  while i < iterations {
+    if s1 < s2 {
+      count = count + 1
+    };
+    i = i + 1
+  };
+
+  count
+}
+
+// 複合ベンチマーク: 等価と順序の組み合わせ
+fn bench_combined(iterations: i64) -> i64 = {
+  let x: i64 = 10;
+  let y: i64 = 20;
+  let z: i64 = 10;
+  let mut count: i64 = 0;
+  let mut i: i64 = 0;
+
+  while i < iterations {
+    if (x == z) && (x < y) {
+      count = count + 1
+    };
+    i = i + 1
+  };
+
+  count
+}
+
+// main関数: すべてのベンチマークを実行
+fn main() -> i64 = {
+  let iterations: i64 = 1000000; // 10^6回
+
+  let r1: i64 = bench_eq_i64(iterations);
+  let r2: i64 = bench_eq_string(iterations);
+  let r3: i64 = bench_eq_bool(iterations);
+  let r4: i64 = bench_ord_i64(iterations);
+  let r5: i64 = bench_ord_string(iterations);
+  let r6: i64 = bench_combined(iterations);
+
+  // すべての結果を足して返す（最適化による削除を防ぐため）
+  r1 + r2 + r3 + r4 + r5 + r6
+}
