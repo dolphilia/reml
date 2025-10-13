@@ -35,10 +35,11 @@
 
 ### 進行中/未着手タスク 🚧
 
-- **セクション3: PoC モノモルフィゼーション実装** (Week 19-20): 進捗 **約60%**  
+- **セクション3: PoC モノモルフィゼーション実装** (Week 19-20): 進捗 **約75%**  
   - ✅ Summary 反映・具象ラッパー生成 (`Monomorphize_poc.apply`) 完了  
   - ✅ `--typeclass-mode=both` 向け CLI/出力ディレクトリ分割・verify スクリプトの整備完了  
-  - ⏳ Core IR 内の `DictMethodCall` 差し替え・辞書経路との共存テストが未着手
+  - ✅ Core IR 内の `DictMethodCall` を具象ラッパー呼び出しへ差し替え（辞書パラメータ除去と SSA の再連結完了）  
+  - ⏳ 辞書経路との共存テストと差分レポート生成を Week 21 で実施予定
 - **セクション4: 性能・コードサイズ計測** (Week 20-21): 未着手
 - **セクション5: 診断システム強化** (Week 21-22): 未着手
 - **セクション6: 評価レビューと方針決定** (Week 22-23): 未着手
@@ -272,6 +273,7 @@
 - **シンボルマングリング**: `Codegen.Naming`（既存の命名ユーティリティ）を流用・拡張し、`__Trait_Type_Method_mono` 形式を固定。被り検出用に `Monomorph_registry` で重複判定。
 - **再実行の安全性**: パイプラインが複数回走る場合に同じ関数を二重生成しないよう、`ir.module` のメタデータに `mono.generated` フラグを付与。辞書渡し経路ではこのフラグを見てスキップ。
 - **Summary 反映と具象関数生成**: `Monomorphize_poc.Summary.entries` からトレイトインスタンスを取得し、`trait_method_indices` と Impl レジストリのメソッド情報を突き合わせて Core IR 上に具象関数を生成する。辞書パラメータを除去したラッパー関数を `clone_function` ベースで作成し、生成結果を `Summary` および `fn_metadata.dict_instances` に書き戻して後続パス（最適化・コード生成）がモノモルフィック経路を認識できるようにする。
+- **Callsite リライタ実装**: `core_ir/monomorphize_poc.ml` に `rewrite_dict_calls` ヘルパーを追加し、`DictMethodCall` を `App`（具象ラッパー呼び出し）へ変換。辞書引数を `Call` ノードから除去しつつ、元の関数シグネチャと一致するよう `fn_metadata.dict_instances` を参照して再配列する。辞書経路が保持していた `TermCall` の制御フローを壊さないよう、差し替え対象のブロックを複製してから末端命令を再構築し、SSA 変数の束縛順序を保ったまま置換する。
 
 3.2. **コード生成比較**
 - **二重生成パイプライン**: CLI で `--typeclass-mode=both` を指定した場合、辞書渡し IR とモノモルフィック IR を個別に出力（`out_dir/dictionary/*.ll`, `out_dir/monomorph/*.ll`）。`verify_llvm_ir.sh` を改修して双方を検証。
@@ -434,10 +436,30 @@
 - `compiler/ocaml/scripts/verify_llvm_ir.sh` をディレクトリ入力に対応させ、`--typeclass-mode=both` の出力を一括検証可能にした。`compiler/ocaml/README.md` と計画書に成果物の確認手順を追記。
 
 **残タスク / 次のステップ**:
-1. Core IR 内の `DictMethodCall` 差し替え（辞書パラメータ除去と具象関数呼び出しへの置換）。`Monomorphize_poc` で生成したラッパーと呼び出し元の整合を確認する。
-2. `compiler/ocaml/tests` にモノモルフィック経路専用の IR/実行テストを追加し、辞書渡し経路との結果一致をゴールデンテストで担保する。
+1. Core IR の辞書経路とモノモルフィック経路の共存テストを拡充し、`tests/test_monomorphize_poc.ml` に `DictMethodCall` 非存在の検査と辞書経路との差分レポート生成を追加する。
+2. `compiler/ocaml/tests` にモノモルフィック専用の IR/実行ゴールデンテストを追加し、辞書渡し経路との結果一致を CI で担保する。
 3. `docs/notes/llvm-spec-status-survey.md` と `0-3-audit-and-metrics.md` へ比較結果のログ出力フォーマットを定義し、計測スクリプト（Section 4）に接続する。
 4. CLI 分割実装に伴う CI アーティファクト収集設定を更新し、GitHub Actions 上で `dictionary/`・`monomorph/` 両成果物がアーカイブされることを確認する。
+
+### 2025-10-17 更新（Week 20 / Core IR Callsite 置換）✅
+
+**完了内容**:
+- `compiler/ocaml/src/core_ir/monomorphize_poc.ml` に Callsite 変換フェーズを追加し、`DictMethodCall` を具象ラッパー（`__Trait_Type_Method_mono`）呼び出しへ差し替える処理を実装。
+- 辞書経路とモノモルフィック経路が同一 CFG を共有しても破綻しないよう、差し替え対象ブロックを複製して末端命令を再構成するワークフローを導入し、辞書経路の SSA を壊さずにモノモルフィック経路を生成できるようにした。
+- 変換後の IR を `core_ir/ir_printer.ml` でダンプし、辞書経路では `DictMethodCall` が残り、モノモルフィック経路では `App` ノードに置換されていることを確認。
+
+**実装詳細**:
+- `rewrite_dict_calls` ヘルパーを新設し、`Summary.entries` に含まれるトレイトインスタンスと `fn_metadata.dict_instances` を突き合わせて具象ラッパーを解決。辞書経路では `UseDictionary` モードのまま既存ノードを維持し、`UseMonomorph` / `UseBoth` のときのみ置換する。
+- `DictMethodCall` から辞書引数を除去する際、呼び出し引数を `ResolvedTraitInstance.method_arity` と照合して再構築し、余剰辞書引数がリークしないようにバリデーションを追加。
+- 差し替え後のブロックには `metadata.strategy = Monomorph` を付与し、後続パス（`const_fold.ml`, `dce.ml`）が経路別最適化をトレースできるようにした。
+
+**検証結果**:
+- `compiler/ocaml/tests/test_monomorphize_poc.ml` に Callsite 差し替え検証を追加し、`Monomorphize_poc.run` 後の IR から `DictMethodCall` が消えていること／生成された `App` が想定ラッパーを指していることをアサート。
+- `compiler/ocaml/tests/llvm-ir/golden/basic_arithmetic.ll.golden` を基に辞書経路とモノモルフィック経路の IR を比較し、差分が辞書引数削除とシンボル名置換のみに収まることを確認。
+
+**フォローアップ**:
+- 共存テストの自動化: `--typeclass-mode=both` 実行時の IR 差分を CI アーティファクトに添付するワークフローを追加し、辞書経路が退行していないことを監視する。
+- デバッグ情報拡張: 具象ラッパーに人工シンボルフラグを付与し、セルフホスト時のトレースが識別しやすいよう `llvm_gen/codegen.ml` 側での DI メタデータ更新を検討する。
 
 ### 2025-10-14 更新（Week 19-20 / PoC モノモルフィゼーション設計着手）✨
 

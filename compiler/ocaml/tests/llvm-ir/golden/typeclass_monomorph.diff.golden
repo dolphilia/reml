@@ -1,0 +1,11 @@
+Monomorphize PoC 差分サマリー
+=============================
+辞書経路の DictMethodCall 一覧:
+- eq : 4 call(s)
+- gt : 1 call(s)
+- lt : 1 call(s)
+
+モノモルフィック経路で生成されたラッパー:
+- __Eq_Bool_eq_mono
+- __Eq_i64_eq_mono
+- その他: 0 件
