@@ -139,6 +139,20 @@ let () =
                 (* Typed AST → Core IR (糖衣削除) *)
                 let core_ir = Core_ir.Desugar.desugar_compilation_unit tast in
 
+                (* 型クラス戦略モードに応じた PoC パスの適用 *)
+                let core_ir =
+                  let mode =
+                    match opts.Cli.Options.typeclass_mode with
+                    | Cli.Options.TypeclassDictionary ->
+                        Core_ir.Monomorphize_poc.UseDictionary
+                    | Cli.Options.TypeclassMonomorph ->
+                        Core_ir.Monomorphize_poc.UseMonomorph
+                    | Cli.Options.TypeclassBoth ->
+                        Core_ir.Monomorphize_poc.UseBoth
+                  in
+                  Core_ir.Monomorphize_poc.apply ~mode core_ir
+                in
+
                 (* Phase 1-6 Week 15: Core IR 生成完了、最適化開始 *)
                 record_end CoreIR;
                 record_start Optimization;

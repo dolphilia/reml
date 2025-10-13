@@ -35,7 +35,7 @@
 
 ### 進行中/未着手タスク 🚧
 
-- **セクション3: PoC モノモルフィゼーション実装** (Week 19-20): 未着手
+- **セクション3: PoC モノモルフィゼーション実装** (Week 19-20): 着手済み（PoC設計・対象ロック完了）
 - **セクション4: 性能・コードサイズ計測** (Week 20-21): 未着手
 - **セクション5: 診断システム強化** (Week 21-22): 未着手
 - **セクション6: 評価レビューと方針決定** (Week 22-23): 未着手
@@ -239,25 +239,54 @@
 ### 3. PoC モノモルフィゼーション実装（19-20週目）
 **担当領域**: 代替手法の評価
 
+**開始ステータス（2025-10-14）**:
+- PoC で扱うトレイト/型組合せ（`Eq`, `Ord`, `Collector` × `{i64, bool, String, Option<i64>}`）をロックし、仕様書 §1-2 のサンプルコードと整合確認済み。
+- `type_inference.ml` 側で `ResolvedTraitInstance`（仮称）の収集ポイント調査を完了。辞書渡し実装と並列で利用できる差分ダンプ API の設計素案を作成。
+- `core_ir/pipeline.ml` へパス追加する際のフック位置（Desugar → Monomorphize → 残りの最適化）を確認済み。PoC では `config.opt_level` に依存せず明示フラグで切り替える方針を確定。
+
+**PoC 対象範囲ロック**:
+- 既存辞書渡し経路と比較可能なベンチとして、`tests/integration/test_user_impl_e2e.reml` で登場する impl 群と Phase 1 ゴールデンテスト内の `Eq`/`Ord` 使用箇所に限定。
+- トレイトメソッドは `eq`, `compare`, `collect` の各 1 関数に絞り、デフォルトメソッドや関連型は対象外（Phase 3 の設計検討事項として `docs/notes/llvm-spec-status-survey.md` に TODO 登録予定）。
+- 生成物は `core_ir` 段階で辞書を介さない具象関数を追加する方式とし、LLVM コード生成は既存関数 Lowering を再利用（新 ABI 設計は発生させない）。
+
+**入出力契約（PoC パス）**:
+- **入力**: Desugar 後の `ir.module`, `type_env` から抽出した `ResolvedTraitInstance` リスト、`Impl_registry` からのメソッド実装参照。
+- **出力**: 
+  1. 各インスタンスに対する具象関数 `fn __{trait}_{type}_{method}_mono(...)`.
+  2. 元のメソッド呼び出しを具象関数呼び出しへ差し替えた Core IR。
+  3. 比較用に辞書渡し IR も残し、`--emit-ir --typeclass-mode=both` で両方ダンプできるよう CLI 拡張を想定。
+- **デバッグ情報**: 差し替え前後の IR を `Core_ir.Ir_printer` で出力し、`--trace` 時に diff を添付。`Diagnostic.extensions["typeclass"]` へ `strategy: "monomorph_poc"` を記載して監査ログと紐付ける。
+
+**依存関係と準備タスク**:
+- `compiler/ocaml/src/type_env.ml` に一時的な PoC キャッシュ (`Monomorph_registry`) を追加し、辞書渡し経路に影響しない形でインスタンス情報を提供。
+- `compiler/ocaml/src/core_ir/desugar.ml` で辞書生成前に `MonoProbe` を差し込み、PoC フラグが立っている場合にのみ `ResolvedTraitInstance` を収集。
+- CLI (`options.ml`) に `--typeclass-mode <dictionary|monomorph|both>` を追加し、Phase 2 の評価中は `both` を既定にしない（互換性維持）。
+- `dune` ファイルに `monomorphize_poc.ml`（新規）を追加し、ビルドターゲットを更新。
+
 3.1. **テンプレート展開エンジン**
-- `Eq`, `Ord`, `Collector` に限定したインスタンス化
-- 型パラメータの具体型への置換ルール
-- シンボル名のマングリング規約
-- 展開済みコードの重複排除
+- **Monomorphize パス生成**: `core_ir/monomorphize_poc.ml` を追加し、`Pipeline.run` 内で `Desugar` 後に実行。辞書経由で得た impl 本体 `fn_body` を `clone_function` で複製し、型パラメータを具体型に置換。
+- **置換ルールの定義**: `types.ml` の `substitute_type` を流用し、`trait_constraint` から得た具体型マップを Core IR の型表現へ適用。ADT/Option のみ対応し、その他は辞書渡しへフォールバック。
+- **シンボルマングリング**: `Codegen.Naming`（既存の命名ユーティリティ）を流用・拡張し、`__Trait_Type_Method_mono` 形式を固定。被り検出用に `Monomorph_registry` で重複判定。
+- **再実行の安全性**: パイプラインが複数回走る場合に同じ関数を二重生成しないよう、`ir.module` のメタデータに `mono.generated` フラグを付与。辞書渡し経路ではこのフラグを見てスキップ。
 
 3.2. **コード生成比較**
-- 辞書渡し版と PoC 版の並行生成
-- LLVM IR の差分抽出とサイズ計測
-- 最適化レベル別の比較（`-O0`, `-O2`, `-O3`）
-- インライン展開率の測定
+- **二重生成パイプライン**: CLI で `--typeclass-mode=both` を指定した場合、辞書渡し IR とモノモルフィック IR を個別に出力（`out_dir/dictionary/*.ll`, `out_dir/monomorph/*.ll`）。`verify_llvm_ir.sh` を改修して双方を検証。
+- **計測スクリプト**: `scripts/benchmark_monomorph_poc.sh`（仮称）を作成し、`remlc --emit-ir` を 2 回（dictionary/monomorph）呼び出して IR サイズ、`llc` 生成オブジェクトのサイズ、`time` コマンドの実行時間を収集。結果は `tooling/ci/docker/metrics.json` の schema に合わせて追記。
+- **インライン展開率測定**: `opt -passes='inline'` のレポートを取得し、`docs/notes/llvm-spec-status-survey.md` に inline 成功/失敗のメトリクスを記録。PoC では `Eq`/`Ord` の比較関数のみ対象。
+- **比較レポート**: `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` にリンクする形で、辞書渡しと PoC の差分表を追加予定（Phase 2 Week 21 の成果物）。
 
 3.3. **単体テスト実装**
-- 代表型クラスの全メソッドテスト
-- 制約の複雑な組み合わせケース
-- エラーケース（未実装インスタンス）のテスト
-- ゴールデンテスト（AST/IR スナップショット）
+- **Core レベルテスト**: `compiler/ocaml/tests/test_monomorphize_poc.ml` を新設し、`Monomorphize_poc.run` の入力にモックの `ResolvedTraitInstance` を与えて、生成された Core IR が想定された具象関数を含むか検証。
+- **E2E テスト**: 既存の `tests/integration/test_user_impl_e2e.reml` を拡張し、辞書渡し・PoC 両方で `remlc --link-runtime --typeclass-mode={dictionary,monomorph}` を実行して結果を比較。PoC では実行時辞書引数が消えることを `llvm-dis` 出力で確認。
+- **ゴールデンテスト**: `compiler/ocaml/tests/llvm-ir/golden/` に `*_monomorph.ll.golden` を追加。差分が許容閾値を超えた場合に失敗させる。
+- **エラーケース**: 非対応型（例: `Collector<[i64]>`）を与えた場合に辞書渡しにフォールバックすることを確認し、`Diagnostic.extensions["typeclass"].fallback="dictionary"` を出力するテストを追加。
 
-**成果物**: PoC モノモルフィゼーション、比較テスト
+**成果物**: PoC モノモルフィゼーション（Core IR パス + CLI 切替 + テスト群）、比較レポート、メトリクス更新
+
+**完了条件**:
+- `Monomorphize_poc` パスが `--typeclass-mode=monomorph|both` で有効化され、`Eq`/`Ord`/`Collector` の PoC 対象型に対して辞書無しの具象関数が生成される。
+- CLI/スクリプトで辞書渡し版と PoC 版の IR/バイナリを並列生成し、`docs/notes/llvm-spec-status-survey.md` と `0-3-audit-and-metrics.md` へ差分を記録。
+- 新設テストが CI へ組み込まれ、辞書渡し経路に回帰がない（既存 182 件 + 追加テストすべて成功）。
 
 ### 4. 性能・コードサイズ計測（20-21週目）
 **担当領域**: 定量評価
@@ -372,6 +401,31 @@
 **成果物**: 統合テストスイート、CI 設定、安定版
 
 ## 進捗ログ
+
+### 2025-10-14 更新（Week 19-20 / PoC モノモルフィゼーション設計着手）✨
+
+**作業サマリー** ✅:
+- PoC モノモルフィゼーションの対象範囲（`Eq`・`Ord`・`Collector` × 代表 4 型）と差分取得方式を決定し、辞書渡し実装との比較観測ポイントを洗い出した。
+- Core IR パイプラインへの追加パス方針、CLI 切替フラグ、テスト・計測ストーリーを整理し、Section 3 に反映した。
+
+**決定事項** ✅:
+- `core_ir/pipeline.ml` で Desugar 後に PoC パスを挿入し、`--typeclass-mode` フラグで辞書渡し/モノモルフィック/併用を切り替える。
+- インスタンス情報は `type_inference.ml` → `type_env.ml` で保持し、`core_ir/desugar.ml` から `ResolvedTraitInstance` として取得する。
+- IR 比較・メトリクス収集は `scripts/benchmark_monomorph_poc.sh`（新規）と `verify_llvm_ir.sh` の拡張で自動化し、結果は `0-3-audit-and-metrics.md` / `docs/notes/llvm-spec-status-survey.md` に記録する。
+
+**実施内容**:
+- Section 3 を詳細化し、PoC パスの入出力契約、モジュール追加、テスト/ベンチ計画、完了条件をドキュメント化。
+- 進捗サマリーに「着手済み」を追記し、PoC 設計が開始されたことを共有。
+
+**懸念・フォローアップ** 🚧:
+- CLI フラグ追加に伴う `options.ml` / `main.ml` の影響調査を要ブロッキング事項として記録。
+- `Monomorph_registry` に辞書渡し経路が依存しないことを単体テストで担保する必要がある。
+- LLVM 側での命名規約衝突（`__Trait_Type_Method` 既存シンボルと PoC シンボルの二重生成）を事前に確認するため、ネームマングリング設計のレビューを Phase 2 Week 20 で実施予定。
+
+**次のアクション**:
+1. `core_ir/monomorphize_poc.ml` のスタブ実装を追加し、`dune` に登録する。
+2. `type_inference.ml` でインスタンス収集 API を切り出し、辞書渡し経路と PoC で共用する。
+3. `compiler/ocaml/tests` に PoC 用 Core IR/LLVM ゴールデンテストの枠を作成し、空ファイルを配置して CI 配線を先に通す。
 
 ### 2025-10-13 更新（Week 24 / ユーザー定義impl宣言の統合テスト完了）✨
 

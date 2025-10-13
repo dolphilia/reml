@@ -27,6 +27,7 @@
   test_cli_trace
   test_typeclass_llvm
   test_typeclass_execution
+  test_typeclass_mode
   test_user_impl_llvm
   test_user_impl_execution)
  (libraries

@@ -15,6 +15,12 @@ type color_mode =
   | Always  (** 常にカラー表示（パイプ時も） *)
   | Never  (** カラー表示を無効化 *)
 
+(** 型クラス戦略モード *)
+type typeclass_mode =
+  | TypeclassDictionary  (** 辞書渡し方式 *)
+  | TypeclassMonomorph  (** モノモルフィゼーション PoC *)
+  | TypeclassBoth  (** 両方式の成果物比較 *)
+
 type options = {
   (* 入力 *)
   input_file : string;  (** 入力ファイルパス（必須） *)
@@ -28,6 +34,7 @@ type options = {
   (* 診断 *)
   format : output_format;  (** 診断メッセージの出力形式 *)
   color : color_mode;  (** カラー出力の制御 *)
+  typeclass_mode : typeclass_mode;  (** 型クラス実装戦略モード *)
   (* デバッグ *)
   trace : bool;  (** コンパイルフェーズのトレースを有効化 *)
   stats : bool;  (** コンパイル統計情報を表示 *)

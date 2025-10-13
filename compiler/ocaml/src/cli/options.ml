@@ -16,6 +16,12 @@ type color_mode =
   | Always  (** 常にカラー表示（パイプ時も） *)
   | Never  (** カラー表示を無効化 *)
 
+(** 型クラス戦略モード *)
+type typeclass_mode =
+  | TypeclassDictionary  (** 辞書渡し方式 *)
+  | TypeclassMonomorph  (** モノモルフィゼーション PoC *)
+  | TypeclassBoth  (** 両方の成果物を比較出力（PoC） *)
+
 let print_full_help () =
   let lines =
     [
@@ -38,6 +44,10 @@ let print_full_help () =
       "  --format <text|json>  診断出力形式（既定: text）";
       "  --color <auto|always|never>";
       "                       カラー表示の制御（既定: auto）";
+      "";
+      "型クラス戦略（PoC）:";
+      "  --typeclass-mode <dictionary|monomorph|both>";
+      "                       型クラス実装戦略の切り替え（既定: dictionary）";
       "";
       "トレース・統計:";
       "  --trace             フェーズ別トレースを標準エラーに表示";
@@ -80,6 +90,7 @@ type options = {
   (* 診断 *)
   format : output_format;  (** 診断メッセージの出力形式 *)
   color : color_mode;  (** カラー出力の制御 *)
+  typeclass_mode : typeclass_mode;  (** 型クラス実装戦略モード *)
   (* デバッグ *)
   trace : bool;  (** コンパイルフェーズのトレースを有効化 *)
   stats : bool;  (** コンパイル統計情報を表示 *)
@@ -106,6 +117,7 @@ let default_options =
     out_dir = ".";
     format = Text;
     color = Auto;
+    typeclass_mode = TypeclassDictionary;
     trace = false;
     stats = false;
     verbose = 1;
@@ -168,6 +180,7 @@ let parse_args argv =
   let link_runtime = ref false in
   let runtime_path = ref "runtime/native/build/libreml_runtime.a" in
   let verify_ir = ref false in
+  let typeclass_mode_str = ref "dictionary" in
   let input_file = ref "" in
 
   let usage_msg = "remlc-ocaml [options] <file>" in
@@ -201,6 +214,9 @@ let parse_args argv =
       ( "--metrics-format",
         Arg.Set_string metrics_format_str,
         "<json|csv> Metrics output format (default: json)" );
+      ( "--typeclass-mode",
+        Arg.Set_string typeclass_mode_str,
+        "<dictionary|monomorph|both> Type class strategy (default: dictionary)" );
       (* コンパイルオプション *)
       ( "--target",
         Arg.Set_string target,
@@ -289,6 +305,20 @@ let parse_args argv =
             MetricsJson
       in
 
+      (* typeclass_mode_str を typeclass_mode に変換 *)
+      let typeclass_mode =
+        match String.lowercase_ascii !typeclass_mode_str with
+        | "dictionary" -> TypeclassDictionary
+        | "monomorph" -> TypeclassMonomorph
+        | "both" -> TypeclassBoth
+        | other ->
+            prerr_endline
+              (Printf.sprintf
+                 "Warning: unknown typeclass mode '%s', using 'dictionary'"
+                 other);
+            TypeclassDictionary
+      in
+
       Ok
         {
           input_file = !input_file;
@@ -300,6 +330,7 @@ let parse_args argv =
           out_dir = !out_dir;
           format;
           color;
+          typeclass_mode;
           trace = !trace;
           stats = !stats;
           verbose = verbose_level;

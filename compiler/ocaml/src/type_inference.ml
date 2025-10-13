@@ -31,7 +31,9 @@ let global_impl_registry : Impl_registry.impl_registry ref =
   ref (Impl_registry.empty ())
 
 (** レジストリのリセット（テスト用） *)
-let reset_impl_registry () = global_impl_registry := Impl_registry.empty ()
+let reset_impl_registry () =
+  global_impl_registry := Impl_registry.empty ();
+  Monomorph_registry.reset ()
 
 (** レジストリの取得 *)
 let get_impl_registry () = !global_impl_registry
@@ -39,6 +41,17 @@ let get_impl_registry () = !global_impl_registry
 (** impl 情報をレジストリに登録 *)
 let register_impl (impl_info : Impl_registry.impl_info) : unit =
   global_impl_registry := Impl_registry.register impl_info !global_impl_registry
+
+(** モノモルフィゼーション PoC 用に解決済みインスタンスを記録 *)
+let record_monomorph_instances (dict_refs : dict_ref list) =
+  List.iter
+    (function
+      | DictImplicit (trait_name, ty) ->
+          Type_env.Monomorph_registry.record
+            Type_env.Monomorph_registry.
+              { trait_name; type_args = [ ty ] }
+      | DictParam _ | DictLocal _ -> ())
+    dict_refs
 
 (* ========== 型注釈の変換 ========== *)
 
@@ -399,7 +412,9 @@ let solve_trait_constraints (constraints : trait_constraint list) :
     (dict_ref list, type_error) result =
   let registry = get_impl_registry () in
   match Constraint_solver.solve_constraints registry constraints with
-  | Ok dict_refs -> Ok dict_refs
+  | Ok dict_refs ->
+      record_monomorph_instances dict_refs;
+      Ok dict_refs
   | Error errors ->
       (* 複数のエラーがある場合は最初のエラーを返す *)
       Error (constraint_error_to_type_error (List.hd errors))
@@ -1737,6 +1752,7 @@ and infer_decl (env : env) (decl : decl) : (typed_decl * env * trait_constraint 
 let infer_compilation_unit (cu : compilation_unit) :
     (typed_compilation_unit, type_error) result =
   (* 初期型環境を作成 *)
+  Monomorph_registry.reset ();
   let init_env = initial_env in
 
   (* 各宣言を順次推論し、型環境を更新

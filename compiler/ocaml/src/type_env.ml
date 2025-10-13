@@ -192,3 +192,28 @@ let find name env =
  * - impl の登録と検索
  * - 制約解決のサポート
  *)
+
+(* ========== モノモルフィゼーション PoC 用レジストリ ========== *)
+
+(** 型クラス制約の解決結果を記録する PoC レジストリ *)
+module Monomorph_registry = struct
+  type trait_instance = {
+    trait_name : string;
+    type_args : ty list;
+  }
+
+  let registry : trait_instance list ref = ref []
+
+  let reset () = registry := []
+
+  let equal_instance lhs rhs =
+    lhs.trait_name = rhs.trait_name
+    && List.length lhs.type_args = List.length rhs.type_args
+    && List.for_all2 type_equal lhs.type_args rhs.type_args
+
+  let record (instance : trait_instance) =
+    if not (List.exists (fun existing -> equal_instance existing instance) !registry)
+    then registry := instance :: !registry
+
+  let all () = !registry
+end
