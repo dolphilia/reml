@@ -234,6 +234,7 @@ and expr_kind =
   | ADTConstruct of string * expr list  (** ADT コンストラクタ *)
   | ADTProject of expr * int  (** ADT フィールド射影 *)
   | AssignMutable of var_id * expr  (** ミュータブル変数への代入（Unitを返す） *)
+  | Loop of loop_info  (** ループ構造（CFG 展開用メタデータ） *)
 
 and case = {
   case_pattern : simple_pattern;  (** 簡略化されたパターン *)
@@ -257,6 +258,29 @@ and simple_pattern =
   | PVar of var_id  (** 変数束縛 *)
   | PWildcard  (** ワイルドカード *)
   | PConstructor of string * simple_pattern list  (** コンストラクタパターン *)
+
+and loop_kind =
+  | WhileLoop of expr  (** while 条件式 *)
+  | ForLoop of for_lowering  (** for イテレーション情報 *)
+  | InfiniteLoop  (** 無限ループ *)
+
+and for_lowering = {
+  for_pattern : simple_pattern option;  (** ループ変数への束縛情報（未整備時は None） *)
+  for_source : expr;  (** イテレータソース（配列など） *)
+  for_init : (var_id * expr) list;  (** 事前初期化式（インデックスなど） *)
+  for_step : (var_id * expr) list;  (** 各周回後の更新式 *)
+}
+
+and loop_carried_var = {
+  lc_var : var_id;  (** ループ本体で再代入される変数 *)
+}
+
+and loop_info = {
+  loop_kind : loop_kind;  (** ループの種別と付随情報 *)
+  loop_body : expr;  (** ループ本体（脱糖済み） *)
+  loop_span : span;  (** ループ全体のソース位置 *)
+  loop_carried : loop_carried_var list;  (** PHI 候補となる変数群（暫定） *)
+}
 
 (* ========== Core IR 文 ========== *)
 

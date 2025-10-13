@@ -224,6 +224,8 @@ let rec linearize_expr (builder : cfg_builder) (expr : expr) : var_id =
       in
       add_stmt builder (Assign (unit_var, unit_expr));
       unit_var
+  | Loop loop_info ->
+      linearize_loop builder loop_info expr.expr_ty expr.expr_span
   | Closure _closure_info ->
       (* クロージャ生成 → 後のフェーズで実装 *)
       let result = VarIdGen.fresh "$closure" expr.expr_ty expr.expr_span in
@@ -354,6 +356,95 @@ and linearize_match (builder : cfg_builder) (scrut : expr) (cases : case list)
   let result_var = VarIdGen.fresh "$match_result" result_ty span in
   add_stmt builder (Phi (result_var, case_result_vars));
   result_var
+
+and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
+    (span : span) : var_id =
+  let header_label = LabelGen.fresh "loop_header" in
+  let body_label = LabelGen.fresh "loop_body" in
+  let latch_label = LabelGen.fresh "loop_latch" in
+  let exit_label = LabelGen.fresh "loop_exit" in
+
+  let preheader_label =
+    match builder.current_label with
+    | Some lbl -> lbl
+    | None ->
+        failwith "linearize_loop called without an active preheader block"
+  in
+
+  (* 事前初期化（for等） *)
+  let () =
+    match info.loop_kind with
+    | ForLoop for_info ->
+        List.iter
+          (fun (var, init_expr) ->
+            let init_var = linearize_expr builder init_expr in
+            let init_value = make_expr (Var init_var) init_var.vty init_var.vspan in
+            add_stmt builder (Assign (var, init_value)))
+          for_info.for_init
+    | _ -> ()
+  in
+
+  (* preheader を header へジャンプさせて閉じる *)
+  finish_block builder (TermJump header_label) span;
+
+  (* header ブロック開始 *)
+  start_block builder header_label;
+
+  (* ループ変数の Phi ノード（暫定: 自己参照） *)
+  List.iter
+    (fun { lc_var } ->
+      add_stmt builder
+        (Phi
+           ( lc_var,
+             [ (preheader_label, lc_var); (latch_label, lc_var) ] )))
+    info.loop_carried;
+
+  (* 条件分岐の生成 *)
+  (match info.loop_kind with
+  | WhileLoop cond_expr ->
+      let cond_var = linearize_expr builder cond_expr in
+      finish_block builder
+        (TermBranch
+           ( make_expr (Var cond_var) cond_var.vty cond_var.vspan,
+             body_label,
+             exit_label ))
+        cond_expr.expr_span
+  | ForLoop _for_info ->
+      (* TODO: for ループ条件の線形化（現状は直接ボディへ遷移） *)
+      finish_block builder (TermJump body_label) info.loop_span
+  | InfiniteLoop ->
+      finish_block builder (TermJump body_label) info.loop_span);
+
+  (* 本体ブロック *)
+  start_block builder body_label;
+  let _body_result = linearize_expr builder info.loop_body in
+  finish_block builder (TermJump latch_label) info.loop_span;
+
+  (* latch ブロック *)
+  start_block builder latch_label;
+
+  (match info.loop_kind with
+  | ForLoop for_info ->
+      List.iter
+        (fun (var, step_expr) ->
+          let step_var = linearize_expr builder step_expr in
+          let step_value =
+            make_expr (Var step_var) step_var.vty step_var.vspan
+          in
+          add_stmt builder (Assign (var, step_value)))
+        for_info.for_step
+  | _ -> ());
+
+  finish_block builder (TermJump header_label) info.loop_span;
+
+  (* exit ブロック開始（後続処理のため未収束） *)
+  start_block builder exit_label;
+  let loop_result = VarIdGen.fresh "$loop_result" result_ty span in
+  let loop_value =
+    make_expr (Literal Ast.Unit) result_ty span
+  in
+  add_stmt builder (Assign (loop_result, loop_value));
+  loop_result
 
 (* ========== CFG構築エントリポイント ========== *)
 

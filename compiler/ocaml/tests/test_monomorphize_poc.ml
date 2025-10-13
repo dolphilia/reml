@@ -100,6 +100,26 @@ let rec collect_expr acc expr =
     | ADTConstruct (_, fields) ->
         List.fold_left collect_expr acc fields
     | AssignMutable (_, rhs) -> collect_expr acc rhs
+    | Loop loop_info ->
+        let acc =
+          match loop_info.loop_kind with
+          | WhileLoop cond -> collect_expr acc cond
+          | ForLoop info ->
+              let acc =
+                List.fold_left
+                  (fun acc (_, e) -> collect_expr acc e)
+                  acc info.for_init
+              in
+              let acc =
+                List.fold_left
+                  (fun acc (_, e) -> collect_expr acc e)
+                  acc info.for_step
+              in
+              let acc = collect_expr acc info.for_source in
+              acc
+          | InfiniteLoop -> acc
+        in
+        collect_expr acc loop_info.loop_body
     | Closure _ | Literal _ | Var _ | DictLookup _ | DictConstruct _
     | CapabilityCheck _ ->
         acc

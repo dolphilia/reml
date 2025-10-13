@@ -83,6 +83,26 @@ let rec collect_used_vars (e : expr) : VarSet.t =
       List.fold_left
         (fun acc arg -> VarSet.union acc (collect_used_vars arg))
         dict_vars args
+  | Loop loop_info ->
+      let kind_vars =
+        match loop_info.loop_kind with
+        | WhileLoop cond -> collect_used_vars cond
+        | ForLoop info ->
+            let init_vars =
+              List.fold_left
+                (fun acc (_, e) -> VarSet.union acc (collect_used_vars e))
+                VarSet.empty info.for_init
+            in
+            let step_vars =
+              List.fold_left
+                (fun acc (_, e) -> VarSet.union acc (collect_used_vars e))
+                VarSet.empty info.for_step
+            in
+            let source_vars = collect_used_vars info.for_source in
+            VarSet.union source_vars (VarSet.union init_vars step_vars)
+        | InfiniteLoop -> VarSet.empty
+      in
+      VarSet.union kind_vars (collect_used_vars loop_info.loop_body)
   | Closure _ | DictLookup _ | DictConstruct _ | CapabilityCheck _ ->
       (* Phase 1 では簡易実装 *)
       VarSet.empty
@@ -149,6 +169,21 @@ let rec has_side_effect (e : expr) : bool =
   | Closure _ | DictLookup _ | CapabilityCheck _ ->
       (* 保守的に副作用ありと判定 *)
       true
+  | Loop info ->
+      let kind_effect =
+        match info.loop_kind with
+        | WhileLoop cond -> has_side_effect cond
+        | ForLoop for_info ->
+            let init_effect =
+              List.exists (fun (_, e) -> has_side_effect e) for_info.for_init
+            in
+            let step_effect =
+              List.exists (fun (_, e) -> has_side_effect e) for_info.for_step
+            in
+            has_side_effect for_info.for_source || init_effect || step_effect
+        | InfiniteLoop -> true
+      in
+      kind_effect || has_side_effect info.loop_body
 
 (** 文が副作用を持つかを判定 *)
 let _has_stmt_side_effect (stmt : stmt) : bool =
@@ -195,6 +230,34 @@ let rec dce_expr (used_vars : VarSet.t) (stats : dce_stats) (e : expr) : expr =
           cases
       in
       make_expr (Match (scrut', cases')) e.expr_ty e.expr_span
+  | Loop info ->
+      let kind' =
+        match info.loop_kind with
+        | WhileLoop cond -> WhileLoop (dce_expr used_vars stats cond)
+        | ForLoop for_info ->
+            let init' =
+              List.map
+                (fun (var, e) -> (var, dce_expr used_vars stats e))
+                for_info.for_init
+            in
+            let step' =
+              List.map
+                (fun (var, e) -> (var, dce_expr used_vars stats e))
+                for_info.for_step
+            in
+            ForLoop
+              {
+                for_info with
+                for_source = dce_expr used_vars stats for_info.for_source;
+                for_init = init';
+                for_step = step';
+              }
+        | InfiniteLoop -> InfiniteLoop
+      in
+      let body' = dce_expr used_vars stats info.loop_body in
+      make_expr
+        (Loop { info with loop_kind = kind'; loop_body = body' })
+        e.expr_ty e.expr_span
   | TupleAccess (e1, idx) ->
       let e1' = dce_expr used_vars stats e1 in
       make_expr (TupleAccess (e1', idx)) e.expr_ty e.expr_span

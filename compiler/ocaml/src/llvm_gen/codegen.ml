@@ -392,6 +392,8 @@ let rec codegen_expr ctx expr =
       codegen_dict_method_call ctx dict_expr method_name args
   | AssignMutable _ ->
       codegen_errorf "AssignMutable expression should have been lowered before codegen"
+  | Loop _ ->
+      codegen_errorf "Loop expression should have been lowered before codegen"
 
 (* ========== 辞書ノードのコード生成（Phase 2 Week 21-22） ========== *)
 

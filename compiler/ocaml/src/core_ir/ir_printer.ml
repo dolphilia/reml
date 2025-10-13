@@ -199,6 +199,8 @@ let rec string_of_expr ?(depth = 0) expr =
   | AssignMutable (var, rhs) ->
       let rhs_str = string_of_expr ~depth:0 rhs |> String.trim in
       Printf.sprintf "%s(set %s := %s : Unit)" ind (string_of_var_id var) rhs_str
+  | Loop loop_info ->
+      string_of_loop_info ~depth loop_info ty_str
 
 and string_of_case ?(depth = 0) case =
   let ind = indent depth in
@@ -210,6 +212,32 @@ and string_of_case ?(depth = 0) case =
   in
   let body_str = string_of_expr ~depth:(depth + 1) case.case_body in
   Printf.sprintf "%s| %s%s =>\n%s" ind pat_str guard_str body_str
+
+and string_of_loop_kind ?(depth = 0) = function
+  | WhileLoop cond ->
+      let cond_str = string_of_expr ~depth:(depth + 1) cond in
+      Printf.sprintf "%swhile\n%s" (indent depth) cond_str
+  | ForLoop _ ->
+      Printf.sprintf "%sfor <not-yet-lowered>" (indent depth)
+  | InfiniteLoop -> Printf.sprintf "%sloop" (indent depth)
+
+and string_of_loop_info ?(depth = 0) info ty_str =
+  let ind = indent depth in
+  let kind_str = string_of_loop_kind ~depth:(depth + 1) info.loop_kind in
+  let body_str = string_of_expr ~depth:(depth + 1) info.loop_body in
+  let carried =
+    match info.loop_carried with
+    | [] -> ""
+    | vars ->
+        let vars_str =
+          join_with ", "
+            (fun { lc_var } -> string_of_var_id lc_var)
+            vars
+        in
+        Printf.sprintf "\n%sphi [%s]" (indent (depth + 1)) vars_str
+  in
+  Printf.sprintf "%s(loop : %s\n%s\n%sbody\n%s%s)" ind ty_str kind_str ind
+    body_str carried
 
 (* ========== Core IR 文の表示 ========== *)
 

@@ -19,6 +19,13 @@ open Ast
 open Typed_ast
 open Ir
 
+module VarIdOrd = struct
+  type t = var_id
+  let compare = Stdlib.compare
+end
+
+module VarIdSet = Set.Make (VarIdOrd)
+
 (* ========== ユーティリティ ========== *)
 
 exception DesugarError of string * span
@@ -365,24 +372,25 @@ let rec desugar_expr (map : var_scope_map) (texpr : typed_expr) : expr =
       let arr_expr = desugar_expr map arr in
       let idx_expr = desugar_expr map idx in
       make_expr (ArrayAccess (arr_expr, idx_expr)) ty span
-  | TWhile (_cond, _body) ->
-      (* while式はCFG構築時に処理
-       * Phase 2では簡易実装: Unit値を返す
-       * TODO: CFGビルダーでループブロックに展開
-       *)
-      make_expr (Literal Unit) ty span
-  | TFor (_pat, _source, _body) ->
-      (* for式はCFG構築時に処理
-       * Phase 2では簡易実装: Unit値を返す
-       * TODO: CFGビルダーでループブロックに展開
-       *)
-      make_expr (Literal Unit) ty span
-  | TLoop _body ->
-      (* 無限ループはCFG構築時に処理
-       * Phase 2では簡易実装: Unit値を返す
-       * TODO: CFGビルダーでループブロックに展開
-       *)
-      make_expr (Literal Unit) ty span
+  | TWhile (cond, body) ->
+      let cond_expr = desugar_expr map cond in
+      let body_expr = desugar_expr map body in
+      make_loop_expr (WhileLoop cond_expr) body_expr span ty
+  | TFor (_pat, source, body) ->
+      let source_expr = desugar_expr map source in
+      let body_expr = desugar_expr map body in
+      let for_lowering =
+        {
+          for_pattern = None;
+          for_source = source_expr;
+          for_init = [];
+          for_step = [];
+        }
+      in
+      make_loop_expr (ForLoop for_lowering) body_expr span ty
+  | TLoop body ->
+      let body_expr = desugar_expr map body in
+      make_loop_expr InfiniteLoop body_expr span ty
   | TUnsafe body ->
       (* unsafe式は型検査済みなので、そのまま脱糖 *)
       desugar_expr map body
@@ -449,6 +457,95 @@ and desugar_mutable_assign (map : var_scope_map) (lhs : typed_expr)
   | _ ->
       desugar_error
         "現在は単純な変数への代入（TVar）のみサポートしています" span
+
+and collect_loop_carried_vars (body_expr : expr) : loop_carried_var list =
+  let rec visit_expr seen ordered expr =
+    match expr.expr_kind with
+    | AssignMutable (var, rhs) ->
+        let seen, ordered =
+          if VarIdSet.mem var seen then (seen, ordered)
+          else (VarIdSet.add var seen, { lc_var = var } :: ordered)
+        in
+        visit_expr seen ordered rhs
+    | Let (_, bound, body) ->
+        let seen, ordered = visit_expr seen ordered bound in
+        visit_expr seen ordered body
+    | App (fn, args) ->
+        let seen, ordered = visit_expr seen ordered fn in
+        List.fold_left
+          (fun (s, o) arg -> visit_expr s o arg)
+          (seen, ordered) args
+    | Primitive (_op, args) ->
+        List.fold_left
+          (fun (s, o) arg -> visit_expr s o arg)
+          (seen, ordered) args
+    | If (cond, then_e, else_e) ->
+        let seen, ordered = visit_expr seen ordered cond in
+        let seen, ordered = visit_expr seen ordered then_e in
+        visit_expr seen ordered else_e
+    | Match (scrut, cases) ->
+        let seen, ordered = visit_expr seen ordered scrut in
+        List.fold_left
+          (fun (s, o) case ->
+            let s, o =
+              match case.case_guard with
+              | None -> (s, o)
+              | Some guard -> visit_expr s o guard
+            in
+            visit_expr s o case.case_body)
+          (seen, ordered) cases
+    | TupleAccess (tuple, _) -> visit_expr seen ordered tuple
+    | RecordAccess (record, _) -> visit_expr seen ordered record
+    | ArrayAccess (arr, idx) ->
+        let seen, ordered = visit_expr seen ordered arr in
+        visit_expr seen ordered idx
+    | ADTConstruct (_ctor, fields) ->
+        List.fold_left
+          (fun (s, o) field -> visit_expr s o field)
+          (seen, ordered) fields
+    | ADTProject (adt, _) -> visit_expr seen ordered adt
+    | DictMethodCall (dict_expr, _name, args) ->
+        let seen, ordered = visit_expr seen ordered dict_expr in
+        List.fold_left
+          (fun (s, o) arg -> visit_expr s o arg)
+          (seen, ordered) args
+    | Loop loop_info ->
+        let seen, ordered =
+          match loop_info.loop_kind with
+          | WhileLoop cond -> visit_expr seen ordered cond
+          | ForLoop info ->
+              let seen, ordered =
+                List.fold_left
+                  (fun (s, o) (_, e) -> visit_expr s o e)
+                  (seen, ordered) info.for_init
+              in
+              let seen, ordered =
+                List.fold_left
+                  (fun (s, o) (_, e) -> visit_expr s o e)
+                  (seen, ordered) info.for_step
+              in
+              visit_expr seen ordered info.for_source
+          | InfiniteLoop -> (seen, ordered)
+        in
+        visit_expr seen ordered loop_info.loop_body
+    | Closure _
+    | DictLookup _
+    | DictConstruct _
+    | CapabilityCheck _
+    | Literal _
+    | Var _ ->
+        (seen, ordered)
+  in
+  let _seen, ordered = visit_expr VarIdSet.empty [] body_expr in
+  List.rev ordered
+
+and make_loop_expr (loop_kind : loop_kind) (loop_body : expr) (span : span)
+    (ty : ty) : expr =
+  let loop_carried = collect_loop_carried_vars loop_body in
+  make_expr
+    (Loop
+       { loop_kind; loop_body; loop_span = span; loop_carried })
+    ty span
 
 (* ========== ブロック式の変換 ========== *)
 

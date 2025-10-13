@@ -208,123 +208,93 @@ fn test_mut() -> i64 {
 
 #### ステップ2: CFG構築でのループ展開（Week 26-27）
 
-**目標**: While/Forループを基本ブロックに展開
+**目標**: `TWhile` / `TFor` / `TLoop` を Core IR の基本ブロック列へ展開し、SSA 変換に備えたループヘッダ `Phi` 計画を固める。
 
-**実装内容**:
+**前提整理（2025-10-13 更新）**
+- `desugar_expr` がまだループを `Literal Unit` に潰しているため、`cfg.ml` 側ではループ構造を検出できない。
+- `core_ir/ir.ml` には `Phi` 文が定義済みだが、`linearize_expr` は if/match 以外で未使用。
+- `AssignMutable` は `Alloca`/`Store` ベースで動いており、SSA 化（mem2reg 相当）は未着手。ループカウンタは現在メモリアクセスでのみ表現される。
 
-**2.1 脱糖パスの拡張**
+**実装方針**
 
-`desugar.ml` で特殊なマーカー式を返す：
+**2.1 ループIRマーカーの導入**
+- `compiler/ocaml/src/core_ir/ir.ml` に `Loop` 系の `expr_kind` を追加する。`LoopMarker` は以下の情報を保持する想定：
+  ```ocaml
+  type loop_kind =
+    | WhileLoop of expr  (* cond *)
+    | ForLoop of for_lowering  (* desugar済みの初期化/更新/イテレータ情報 *)
+    | InfiniteLoop
 
-```ocaml
-(* 新しい expr_kind を追加 *)
-type expr_kind =
-  | ...
-  | LoopMarker of loop_info
+  and loop_info = {
+    loop_kind : loop_kind;
+    loop_body : expr;
+    loop_span : span;
+    loop_carried : loop_carried_var list;  (* PHI 候補メタデータ *)
+  }
+  ```
+  - `loop_carried` は `let mut` などループ内で再代入される変数を記録するメタ情報（後述の PHI 挿入で使用）。
+  - `for_lowering` には `init`（初期代入列）、`iter_state`（配列長・インデックス変数）、`advance`（更新式）、`pattern`（パターン束縛）を保持する構造体を定義し、`TFor` を while 相当に展開できる粒度まで情報を詰める。
+- `compiler/ocaml/src/core_ir/desugar.ml` で `TWhile` / `TFor` / `TLoop` を再帰的に脱糖したサブ式を `LoopMarker` に詰めて返す。既存の `Literal Unit` 返却は廃止する。
+  - `loop_carried` の充填は初期段階では空にし、Step2 の後半で静的解析を加える（`collect_loop_carried_mutables` ヘルパを追加）。
+  - `for` の場合は、`typed_pattern` から `VarIdGen` を通じた一時変数（インデックス、配列長、現在要素）をここで生成し、CFG 層が追加の糖衣を考慮しなくて済むようにする。
 
-and loop_info = {
-  loop_kind : loop_kind;
-  loop_cond : expr option;  (* while用 *)
-  loop_init : (var_id * expr) list;  (* for用の初期化 *)
-  loop_update : (var_id * expr) list;  (* for用の更新 *)
-  loop_body : expr;
-}
+**2.2 CFG ビルダーの拡張**
+- `compiler/ocaml/src/core_ir/cfg.ml` に `linearize_loop`（仮名）関数を追加し、`LoopMarker` を検出したら以下のブロック構成を生成する：
+  ```
+  preheader → header → body → latch ┐
+        └─────────────── exit ←─────┘
+  ```
+  - **preheader**: 既存ブロック（`linearize_expr` 呼出元）を閉じ、`TermJump header` で開始させる。`ForLoop` の初期化式はここで `Assign`/`Store` に展開。
+  - **header**: 条件式を評価し、`TermBranch (cond, body_label, exit_label)` を生成。`InfiniteLoop` は `TermJump body_label`。
+  - **body**: `loop_body` を通常の式として線形化。`Unit` 結果は `VarIdGen` でダミー変数に束縛。
+  - **latch**: `for` の更新式や `continue` 相当の後処理をまとめるブロック。終了時に `TermJump header_label`。
+  - **exit**: ループ式の戻り値（現状 Unit）を `TermReturn` か上位ブロックへの `TermJump` に変換。`linearize_expr` から返す結果変数は exit で生成。
+- `LabelGen` の連番管理が崩れないよう、`linearize_loop` 内でラベル生成を完結させ、`linearize_expr` は戻り値変数のみを扱う。
+- `build_cfg_from_expr` / `build_cfg` の戻り値は既存と同じ `block list`。ループ導入後は `validate_cfg` を活用して基本整形性を都度確認する。
 
-and loop_kind =
-  | WhileLoop
-  | ForLoop of typed_pattern * expr  (* パターンとソース *)
-  | InfiniteLoop
+**2.3 ループ用 PHI ノード導入方針**
+- `loop_carried` に記録された変数について、`header` ブロック先頭に `Phi` 文を挿入する。基本形：
+  ```ocaml
+  add_stmt builder
+    (Phi (var_phi, [ (preheader_label, init_var); (latch_label, updated_var) ]));
+  ```
+  - `init_var` はループ外で定義された SSA 変数（`let mut` の初期値など）。
+  - `updated_var` は `latch` ブロック内で生成する新しい SSA 変数。`AssignMutable` をこの時点で一旦 `Assign` ベースに切り替える必要があるため、Loop 内だけでも `Store` を純 SSA 代入へ昇格させる mini mem2reg を実装する。
+- 実装ステップ：
+  1. `desugar` 段階で `let mut` の初期値を `loop_carried` に記録する（`VarIdGen` 情報を保持）。
+  2. `linearize_loop` で `loop_carried` を参照し、`preheader` / `latch` にそれぞれ `Assign` を挿入する。現状の `Alloca`/`Store` は残しつつ `Phi` を併記し、後段の最適化パスで二重管理を解消する。
+  3. `compiler/ocaml/src/core_ir/pipeline.ml` に「ループ内の `Store` を SSA へ昇格させる」軽量パス（仮称 `promote_mutable_in_loops`）を追加し、`Phi` を生成し終えた後に `Store` を削除する計画を明記。
+- `break` / `continue` 未実装の間は、`loop_carried` の後辺は常に `latch` 1 箇所に限定されるため、`Phi` の引数は 2 本で固定できる。将来 `continue` が追加される際は、`continue` 先のブロックラベルを `Phi` のソースに追加する設計とする。
 
-(* TWhile を LoopMarker に変換 *)
-| TWhile (cond, body) ->
-    let cond_expr = desugar_expr map cond in
-    let body_expr = desugar_expr map body in
-    make_expr
-      (LoopMarker {
-        loop_kind = WhileLoop;
-        loop_cond = Some cond_expr;
-        loop_init = [];
-        loop_update = [];
-        loop_body = body_expr;
-      })
-      ty span
-```
+**2.4 検証とフォローアップ**
+- `./remlc samples/loop/reml --emit-cfg` のようなサンプルを用意し、`loop_cond_X` / `loop_body_X` / `loop_exit_X` の生成を確認。
+- `compiler/ocaml/tests/test_cfg_loop.ml`（新規）を追加し、`build_cfg_from_expr` の出力ブロック列をスナップショット化。
+- `llvm_ir` ゴールデンに while ループ 1 種を追加し、`Phi` が IR に降りるまでは `alloca` ベースで比較。`Phi` 有効化時点で golden の更新を伴うことをあらかじめ `docs/notes/llvm-spec-status-survey.md` に記載する。
+- `loop_carried` 収集の精度を検証するため、`let mut i = 0; while ... { i := i + 1 }` で `Phi` が 1 つだけ生成されること、ネストループでも外側・内側の `Phi` が独立することをユニットテスト化する。
 
-**2.2 CFG構築での展開**
+**成果物**
+- `compiler/ocaml/src/core_ir/ir.ml`: `LoopMarker`（正式名称要検討）および補助型追加。
+- `compiler/ocaml/src/core_ir/desugar.ml`: ループマーカー生成＋`loop_carried` メタデータ収集。
+- `compiler/ocaml/src/core_ir/cfg.ml`: `linearize_loop` 実装、`Phi` 挿入処理、`LabelGen` 管理拡張。
+- `compiler/ocaml/src/core_ir/pipeline.ml`: ループ内 `Store` を SSA へ昇格させるフェーズの TODO 追記。
+- `docs/notes/llvm-spec-status-survey.md`: ループ SSA 化に伴う LLVM 側の差分とリスクの記録。
 
-`cfg.ml` の `build_cfg_from_expr` を拡張：
-
-```ocaml
-(* cfg.ml *)
-let rec build_cfg_from_expr (expr : expr) : block list =
-  match expr.expr_kind with
-  | LoopMarker loop_info ->
-      expand_loop_to_blocks loop_info expr.expr_span
-  | ...
-
-and expand_loop_to_blocks (info : loop_info) (span : span) : block list =
-  match info.loop_kind with
-  | WhileLoop ->
-      let cond_label = LabelGen.fresh "loop_cond" in
-      let body_label = LabelGen.fresh "loop_body" in
-      let exit_label = LabelGen.fresh "loop_exit" in
-
-      let cond_block = {
-        label = cond_label;
-        params = [];
-        stmts = [];
-        terminator = TermBranch (
-          Option.get info.loop_cond,
-          body_label,
-          exit_label
-        );
-        block_span = span;
-      } in
-
-      let body_blocks = build_cfg_from_expr info.loop_body in
-      let body_entry = List.hd body_blocks in
-      let body_exit = List.hd (List.rev body_blocks) in
-
-      (* ボディの最後に条件ブロックへのジャンプを追加 *)
-      let patched_body = patch_block_terminator body_exit (TermJump cond_label) in
-
-      let exit_block = {
-        label = exit_label;
-        params = [];
-        stmts = [];
-        terminator = TermReturn (make_expr (Literal Unit) ty_unit span);
-        block_span = span;
-      } in
-
-      [cond_block] @ body_blocks @ [exit_block]
-
-  | ForLoop (pat, source) ->
-      (* for式をwhile相当に展開 *)
-      expand_for_loop pat source info.loop_body span
-
-  | InfiniteLoop ->
-      expand_infinite_loop info.loop_body span
-```
-
-**成果物**:
-- `compiler/ocaml/src/core_ir/ir.ml`: `LoopMarker` 追加
-- `compiler/ocaml/src/core_ir/desugar.ml`: ループマーカー生成
-- `compiler/ocaml/src/core_ir/cfg.ml`: ループ展開ロジック
-
-**検証方法**:
+**検証方法**
 ```bash
-# CFG出力を確認
-./remlc test.reml --emit-cfg
+# 1. CFG スナップショット
+remlc samples/loop/simple_while.reml --emit-cfg > /tmp/simple_while.cfg
 
-# 生成されるCFG:
-# loop_cond_0:
-#   br %cond, loop_body_1, loop_exit_2
-# loop_body_1:
-#   ...
-#   br loop_cond_0
-# loop_exit_2:
-#   ret ()
+# 2. ループヘッダに Phi が入っていることを確認
+grep -n "Phi" /tmp/simple_while.cfg
+
+# 3. 既存テストの回帰確認
+dune runtest compiler/ocaml/tests
 ```
+
+**リスク・検討事項**
+- ループボディ線形化中に `LabelGen` を再帰呼出で共有するため、`linearize_loop` 内でのブロック開始/終了順序を誤ると未閉じブロックが発生する。`builder.current_label` の状態管理をユニットテストでカバーする。
+- `loop_carried` の自動検出は Phase 2 の残期間で全パターンを網羅するのが難しいため、初期実装では「ループ直前で `let mut` 宣言された変数のみ」を扱い、他ケースは Warning として診断へ接続する案を採用する。
+- LLVM 側で `Phi` と `alloca` が混在すると冗長コードになる。`promote_mutable_in_loops` を遅らせる場合でも、ステップ内で「`alloca` は暫定的に残るが Phase 3 で削除する」旨を技術的負債リストへ追加する。
 
 #### ステップ3: For式の配列イテレーション（Week 27-28）
 

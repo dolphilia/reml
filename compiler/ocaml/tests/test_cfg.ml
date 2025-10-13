@@ -220,6 +220,81 @@ let test_cfg_validation () =
 
 (* ========== テストケース 6: ネストしたif式 ========== *)
 
+let test_while_loop_cfg () =
+  print_endline "Test: whileループのCFG生成";
+
+  IR.VarIdGen.reset ();
+  IR.LabelGen.reset ();
+  let i_var = IR.VarIdGen.fresh ~mutable_:true "i" ty_i64 dummy_span in
+
+  let zero_expr =
+    IR.make_expr (IR.Literal (Ast.Int ("0", Ast.Base10))) ty_i64 dummy_span
+  in
+  let one_expr =
+    IR.make_expr (IR.Literal (Ast.Int ("1", Ast.Base10))) ty_i64 dummy_span
+  in
+  let ten_expr =
+    IR.make_expr (IR.Literal (Ast.Int ("10", Ast.Base10))) ty_i64 dummy_span
+  in
+  let i_ref_cond =
+    IR.make_expr (IR.Var i_var) ty_i64 dummy_span
+  in
+  let cond_expr =
+    IR.make_expr
+      (IR.Primitive (IR.PrimLt, [ i_ref_cond; ten_expr ]))
+      ty_bool dummy_span
+  in
+  let i_ref_body =
+    IR.make_expr (IR.Var i_var) ty_i64 dummy_span
+  in
+  let add_expr =
+    IR.make_expr
+      (IR.Primitive (IR.PrimAdd, [ i_ref_body; one_expr ]))
+      ty_i64 dummy_span
+  in
+  let body_expr =
+    IR.make_expr (IR.AssignMutable (i_var, add_expr)) ty_unit dummy_span
+  in
+  let loop_info =
+    {
+      IR.loop_kind = IR.WhileLoop cond_expr;
+      loop_body = body_expr;
+      loop_span = dummy_span;
+      loop_carried = [ { IR.lc_var = i_var } ];
+    }
+  in
+  let loop_expr = IR.make_expr (IR.Loop loop_info) ty_unit dummy_span in
+  let while_expr =
+    IR.make_expr (IR.Let (i_var, zero_expr, loop_expr)) ty_unit dummy_span
+  in
+
+  let blocks = CFG.build_cfg_from_expr while_expr in
+
+  (* entry, header, body, latch, exit *)
+  assert_block_count 5 blocks;
+
+  let starts_with prefix s =
+    let len_p = String.length prefix in
+    String.length s >= len_p && String.sub s 0 len_p = prefix
+  in
+  let header_block =
+    List.find
+      (fun blk -> starts_with "loop_header" blk.IR.label)
+      blocks
+  in
+  let has_phi =
+    List.exists
+      (function
+        | IR.Phi (var, incoming) ->
+            var.vid = i_var.vid && List.length incoming = 2
+        | _ -> false)
+      header_block.IR.stmts
+  in
+  if not has_phi then
+    failwith "ループヘッダに phi ノードが生成されていません";
+
+  print_endline "✓ test_while_loop_cfg passed"
+
 let test_nested_if () =
   print_endline "Test: ネストしたif式のCFG生成";
 
@@ -279,6 +354,7 @@ let run_all_tests () =
   test_match_expr ();
   test_unreachable_detection ();
   test_cfg_validation ();
+  test_while_loop_cfg ();
   test_nested_if ();
   print_endline "\n=== All CFG Tests Passed ===\n"
 

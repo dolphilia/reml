@@ -367,6 +367,39 @@ let rec fold_expr (env : const_env) (stats : fold_stats) (e : expr) : expr =
   | AssignMutable (var, rhs) ->
       let folded_rhs = fold_expr env stats rhs in
       make_expr (AssignMutable (var, folded_rhs)) e.expr_ty e.expr_span
+  | Loop loop_info ->
+      let folded_kind =
+        match loop_info.loop_kind with
+        | WhileLoop cond -> WhileLoop (fold_expr env stats cond)
+        | ForLoop info ->
+            let init' =
+              List.map
+                (fun (var, init_e) -> (var, fold_expr env stats init_e))
+                info.for_init
+            in
+            let step' =
+              List.map
+                (fun (var, step_e) -> (var, fold_expr env stats step_e))
+                info.for_step
+            in
+            ForLoop
+              {
+                info with
+                for_source = fold_expr env stats info.for_source;
+                for_init = init';
+                for_step = step';
+              }
+        | InfiniteLoop -> InfiniteLoop
+      in
+      let folded_body = fold_expr env stats loop_info.loop_body in
+      make_expr
+        (Loop
+           {
+             loop_info with
+             loop_kind = folded_kind;
+             loop_body = folded_body;
+           })
+        e.expr_ty e.expr_span
   | DictConstruct dict ->
       make_expr (DictConstruct dict) e.expr_ty e.expr_span
   | DictMethodCall (dict_expr, method_name, args) ->

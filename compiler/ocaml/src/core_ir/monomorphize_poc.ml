@@ -167,6 +167,25 @@ let rec count_dict_calls_in_expr expr =
   | TupleAccess (target, _) | RecordAccess (target, _) | ADTProject (target, _) ->
       count_dict_calls_in_expr target
   | AssignMutable (_, rhs) -> count_dict_calls_in_expr rhs
+  | Loop loop_info ->
+      let kind_count =
+        match loop_info.loop_kind with
+        | WhileLoop cond -> count_dict_calls_in_expr cond
+        | ForLoop info ->
+            let init_count =
+              List.fold_left
+                (fun acc (_, e) -> acc + count_dict_calls_in_expr e)
+                0 info.for_init
+            in
+            let step_count =
+              List.fold_left
+                (fun acc (_, e) -> acc + count_dict_calls_in_expr e)
+                0 info.for_step
+            in
+            count_dict_calls_in_expr info.for_source + init_count + step_count
+        | InfiniteLoop -> 0
+      in
+      kind_count + count_dict_calls_in_expr loop_info.loop_body
   | CapabilityCheck _ | DictConstruct _ | DictLookup _ -> 0
   | Closure _ | Literal _ | Var _ -> 0
 
@@ -293,6 +312,39 @@ let rec convert_primitives_expr expr =
   | AssignMutable (var, rhs) ->
       let rhs' = convert_primitives_expr rhs in
       make_expr (AssignMutable (var, rhs')) expr.expr_ty expr.expr_span
+  | Loop loop_info ->
+      let loop_kind' =
+        match loop_info.loop_kind with
+        | WhileLoop cond -> WhileLoop (convert_primitives_expr cond)
+        | ForLoop info ->
+            let init' =
+              List.map
+                (fun (var, e) -> (var, convert_primitives_expr e))
+                info.for_init
+            in
+            let step' =
+              List.map
+                (fun (var, e) -> (var, convert_primitives_expr e))
+                info.for_step
+            in
+            ForLoop
+              {
+                info with
+                for_source = convert_primitives_expr info.for_source;
+                for_init = init';
+                for_step = step';
+              }
+        | InfiniteLoop -> InfiniteLoop
+      in
+      let loop_body' = convert_primitives_expr loop_info.loop_body in
+      make_expr
+        (Loop
+           {
+             loop_info with
+             loop_kind = loop_kind';
+             loop_body = loop_body';
+           })
+        expr.expr_ty expr.expr_span
   | CapabilityCheck _ | DictConstruct _ | DictLookup _ | Closure _
   | Literal _ | Var _ ->
       expr
@@ -456,6 +508,43 @@ let rec rewrite_expr ~entries ~wrappers expr =
   | AssignMutable (var, rhs) ->
       let rhs' = rewrite_expr ~entries ~wrappers rhs in
       make_expr (AssignMutable (var, rhs')) expr.expr_ty expr.expr_span
+  | Loop info ->
+      let loop_kind' =
+        match info.loop_kind with
+        | WhileLoop cond ->
+            WhileLoop (rewrite_expr ~entries ~wrappers cond)
+        | ForLoop for_info ->
+            let init' =
+              List.map
+                (fun (var, e) ->
+                  (var, rewrite_expr ~entries ~wrappers e))
+                for_info.for_init
+            in
+            let step' =
+              List.map
+                (fun (var, e) ->
+                  (var, rewrite_expr ~entries ~wrappers e))
+                for_info.for_step
+            in
+            ForLoop
+              {
+                for_info with
+                for_source =
+                  rewrite_expr ~entries ~wrappers for_info.for_source;
+                for_init = init';
+                for_step = step';
+              }
+        | InfiniteLoop -> InfiniteLoop
+      in
+      let loop_body' = rewrite_expr ~entries ~wrappers info.loop_body in
+      make_expr
+        (Loop
+           {
+             info with
+             loop_kind = loop_kind';
+             loop_body = loop_body';
+           })
+        expr.expr_ty expr.expr_span
   | Closure _ | Literal _ | Var _ | DictLookup _ | DictConstruct _
   | CapabilityCheck _ ->
       expr
