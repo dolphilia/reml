@@ -79,7 +79,7 @@ let test_monomorphize_summary () =
   Type_env.Monomorph_registry.reset ();
   Type_env.Monomorph_registry.record
     Type_env.Monomorph_registry.
-      { trait_name = "Eq"; type_args = [ ty_i64 ] };
+      { trait_name = "Eq"; type_args = [ ty_i64 ]; methods = [] };
   ignore
     (Core_ir.Monomorphize_poc.apply
        ~mode:Core_ir.Monomorphize_poc.UseDictionary empty_module);
@@ -90,7 +90,7 @@ let test_monomorphize_summary () =
   Type_env.Monomorph_registry.reset ();
   Type_env.Monomorph_registry.record
     Type_env.Monomorph_registry.
-      { trait_name = "Eq"; type_args = [ ty_i64 ] };
+      { trait_name = "Eq"; type_args = [ ty_i64 ]; methods = [] };
   ignore
     (Core_ir.Monomorphize_poc.apply
        ~mode:Core_ir.Monomorphize_poc.UseMonomorph empty_module);
@@ -106,7 +106,7 @@ let test_monomorphize_summary () =
   Type_env.Monomorph_registry.reset ();
   Type_env.Monomorph_registry.record
     Type_env.Monomorph_registry.
-      { trait_name = "Ord"; type_args = [ ty_string ] };
+      { trait_name = "Ord"; type_args = [ ty_string ]; methods = [] };
   ignore
     (Core_ir.Monomorphize_poc.apply
        ~mode:Core_ir.Monomorphize_poc.UseBoth empty_module);
@@ -120,6 +120,42 @@ let test_monomorphize_summary () =
 
   Printf.printf "✓ test_monomorphize_summary passed\n%!"
 
+let test_wrapper_generation () =
+  let empty_module =
+    {
+      module_name = "test";
+      type_defs = [];
+      global_defs = [];
+      function_defs = [];
+    }
+  in
+  Type_env.Monomorph_registry.reset ();
+  Type_env.Monomorph_registry.record
+    Type_env.Monomorph_registry.
+      {
+        trait_name = "Eq";
+        type_args = [ ty_i64 ];
+        methods = [ ("eq", "__Eq_i64_eq") ];
+      };
+  let result =
+    Core_ir.Monomorphize_poc.apply
+      ~mode:Core_ir.Monomorphize_poc.UseMonomorph empty_module
+  in
+  let wrapper =
+    List.find_opt
+      (fun fn -> String.equal fn.fn_name "__Eq_i64_eq_mono")
+      result.function_defs
+  in
+  (match wrapper with
+  | Some fn ->
+      assert_bool "wrapper has two params"
+        (List.length fn.fn_params = 2);
+      assert_bool "wrapper returns Bool"
+        (type_equal fn.fn_return_ty ty_bool)
+  | None -> failwith "wrapper was not generated");
+  Printf.printf "✓ test_wrapper_generation passed\n%!"
+
 let () =
   test_parse_typeclass_mode ();
-  test_monomorphize_summary ()
+  test_monomorphize_summary ();
+  test_wrapper_generation ()

@@ -348,6 +348,28 @@ opam exec -- dune exec -- remlc --emit-ir samples/basic.reml
 ```
 ランタイム連携後は `--link-runtime` オプションおよび `runtime/Makefile` のビルド結果を CI で検証します。
 
+#### 型クラスモード比較 (`--typeclass-mode=both`)
+Phase 2 の評価では辞書渡し版とモノモルフィック版の生成物を並行して観測できます。
+
+```bash
+opam exec -- dune exec -- \
+  remlc examples/typeclass/eq_sample.reml \
+  --emit-ir \
+  --typeclass-mode=both \
+  --out-dir build/typeclass-eval
+```
+
+このコマンドは `build/typeclass-eval/dictionary/` と `build/typeclass-eval/monomorph/` に `*.ll` / `*.bc` / 実行ファイルを出力します。後続の検証や差分比較は両ディレクトリを対象に行ってください。
+
+`compiler/ocaml/scripts/verify_llvm_ir.sh` はディレクトリパスを指定すると内部のすべての `.ll` ファイルを走査して検証します。`--typeclass-mode=both` の成果物をまとめて検証する場合は次のように実行します。
+
+```bash
+./compiler/ocaml/scripts/verify_llvm_ir.sh build/typeclass-eval/dictionary
+./compiler/ocaml/scripts/verify_llvm_ir.sh build/typeclass-eval/monomorph
+```
+
+CI では両ディレクトリをアーティファクトとして収集し、辞書渡し版と PoC 版の差分をレポートします。
+
 ### ローカル CI 再現
 
 GitHub Actions と同じ検証手順をローカルで実行できます：

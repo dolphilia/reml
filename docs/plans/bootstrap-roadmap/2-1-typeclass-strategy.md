@@ -35,11 +35,14 @@
 
 ### 進行中/未着手タスク 🚧
 
-- **セクション3: PoC モノモルフィゼーション実装** (Week 19-20): 着手済み（PoC設計・対象ロック完了）
+- **セクション3: PoC モノモルフィゼーション実装** (Week 19-20): 進捗 **約60%**  
+  - ✅ Summary 反映・具象ラッパー生成 (`Monomorphize_poc.apply`) 完了  
+  - ✅ `--typeclass-mode=both` 向け CLI/出力ディレクトリ分割・verify スクリプトの整備完了  
+  - ⏳ Core IR 内の `DictMethodCall` 差し替え・辞書経路との共存テストが未着手
 - **セクション4: 性能・コードサイズ計測** (Week 20-21): 未着手
 - **セクション5: 診断システム強化** (Week 21-22): 未着手
 - **セクション6: 評価レビューと方針決定** (Week 22-23): 未着手
-- **セクション7: ドキュメント更新と仕様同期** (Week 23): 一部完了（進捗ログのみ）
+- **セクション7: ドキュメント更新と仕様同期** (Week 23): 一部完了（進捗ログ更新・README 整備済み）
 - **セクション8: 統合テストと安定化** (Week 23-24): **✅ 完了** (**2025-10-13完了**)
 
 ### M1マイルストーン進捗
@@ -268,9 +271,11 @@
 - **置換ルールの定義**: `types.ml` の `substitute_type` を流用し、`trait_constraint` から得た具体型マップを Core IR の型表現へ適用。ADT/Option のみ対応し、その他は辞書渡しへフォールバック。
 - **シンボルマングリング**: `Codegen.Naming`（既存の命名ユーティリティ）を流用・拡張し、`__Trait_Type_Method_mono` 形式を固定。被り検出用に `Monomorph_registry` で重複判定。
 - **再実行の安全性**: パイプラインが複数回走る場合に同じ関数を二重生成しないよう、`ir.module` のメタデータに `mono.generated` フラグを付与。辞書渡し経路ではこのフラグを見てスキップ。
+- **Summary 反映と具象関数生成**: `Monomorphize_poc.Summary.entries` からトレイトインスタンスを取得し、`trait_method_indices` と Impl レジストリのメソッド情報を突き合わせて Core IR 上に具象関数を生成する。辞書パラメータを除去したラッパー関数を `clone_function` ベースで作成し、生成結果を `Summary` および `fn_metadata.dict_instances` に書き戻して後続パス（最適化・コード生成）がモノモルフィック経路を認識できるようにする。
 
 3.2. **コード生成比較**
 - **二重生成パイプライン**: CLI で `--typeclass-mode=both` を指定した場合、辞書渡し IR とモノモルフィック IR を個別に出力（`out_dir/dictionary/*.ll`, `out_dir/monomorph/*.ll`）。`verify_llvm_ir.sh` を改修して双方を検証。
+- **出力ディレクトリ分割実装**: `main.ml` で `TypeclassBoth` を検知した際に `opts.out_dir` 配下へ `dictionary/`・`monomorph/` を生成し、`emit_ir` と `emit_bc` の出力先をモードに応じて振り分ける。補助ヘルパー `Cli.File_util.ensure_directory`（新設）で idempotent にディレクトリを確保し、ログには切り替え先を明示する。
 - **計測スクリプト**: `scripts/benchmark_monomorph_poc.sh`（仮称）を作成し、`remlc --emit-ir` を 2 回（dictionary/monomorph）呼び出して IR サイズ、`llc` 生成オブジェクトのサイズ、`time` コマンドの実行時間を収集。結果は `tooling/ci/docker/metrics.json` の schema に合わせて追記。
 - **インライン展開率測定**: `opt -passes='inline'` のレポートを取得し、`docs/notes/llvm-spec-status-survey.md` に inline 成功/失敗のメトリクスを記録。PoC では `Eq`/`Ord` の比較関数のみ対象。
 - **比較レポート**: `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` にリンクする形で、辞書渡しと PoC の差分表を追加予定（Phase 2 Week 21 の成果物）。
@@ -402,6 +407,38 @@
 
 ## 進捗ログ
 
+### 2025-10-15 更新（Week 20 / PoC 具象関数生成タスクの具体化）✨
+
+**作業サマリー** ✅:
+- `Monomorphize_poc.apply` で `Summary` に集約したインスタンス情報を Core IR の具象関数に変換する手順を整理し、辞書経路と干渉しないラッパー生成・メタデータ更新のフローを確定した。
+- `--typeclass-mode=both` 実行時に `out_dir/dictionary`・`out_dir/monomorph` を使い分ける CLI 拡張の設計をまとめ、必要なヘルパーモジュールと CI 側の影響範囲を列挙した。
+
+**決定事項** ✅:
+- Summary から導出したトレイトインスタンスごとに `__Trait_Type_Method_mono` 形式のラッパー関数を生成し、辞書パラメータを除去した上で `fn_metadata.dict_instances` に記録する。ラッパー生成時は `opt_flags.preserve_for_diagnostics = true` を設定して DCE による誤削除を防ぐ。
+- CLI の成果物分割は `Cli.File_util.ensure_directory`（新設）を通じて出力ディレクトリを確保し、`emit_ir` / `emit_bc` の双方がモードに応じたサブディレクトリへ書き込む。ログでは出力先のディレクトリ種別を併記する。
+
+**懸念・フォローアップ** 🚧:
+- 辞書パラメータ削除後に SSA 変数の並びやスコープが崩れないかを確認する必要がある。`desugar_fn_decl` と `Monomorphize_poc` の双方を対象に差分検証タスクを Phase 2 Week 21 に追加する。
+- 出力ディレクトリ分割に伴い `--link-runtime` モードの一時 `.ll` / `.o` ファイル配置を見直す必要がある。`link_with_runtime` のパス解決処理を追加で検証する。
+
+**次のアクション**:
+1. `Monomorphize_poc.apply` に具象関数ラッパー生成と `Summary` / metadata 反映を実装し、WIP テストで辞書経路と併存できることを確認する。
+2. `Cli.File_util.ensure_directory` のインターフェースを定義し、`main.ml` から呼び出して `TypeclassBoth` での成果物分割を実装する。
+3. `verify_llvm_ir.sh`・CI スクリプト・`docs/spec/README.md` を更新し、分割出力後の検証手順とアーティファクト収集ポリシーを共有する。
+
+### 2025-10-16 更新（Week 20 / PoC 実装フェーズ前半完了）✅
+
+**完了内容**:
+- `type_env.ml` と `type_inference.ml` を拡張し、PoC 用 Summary に辞書実装のメソッド情報を記録。辞書なしラッパー生成のためのビルトインメソッド命名規約も固定化した。
+- `Monomorphize_poc.apply` で具象関数ラッパーを Core IR に追加し、メタデータ経由で辞書インスタンスを共有。CLI 経由で `--typeclass-mode` を切り替えた際に辞書／モノモルフィック両方の成果物を生成できるようにした。
+- `compiler/ocaml/scripts/verify_llvm_ir.sh` をディレクトリ入力に対応させ、`--typeclass-mode=both` の出力を一括検証可能にした。`compiler/ocaml/README.md` と計画書に成果物の確認手順を追記。
+
+**残タスク / 次のステップ**:
+1. Core IR 内の `DictMethodCall` 差し替え（辞書パラメータ除去と具象関数呼び出しへの置換）。`Monomorphize_poc` で生成したラッパーと呼び出し元の整合を確認する。
+2. `compiler/ocaml/tests` にモノモルフィック経路専用の IR/実行テストを追加し、辞書渡し経路との結果一致をゴールデンテストで担保する。
+3. `docs/notes/llvm-spec-status-survey.md` と `0-3-audit-and-metrics.md` へ比較結果のログ出力フォーマットを定義し、計測スクリプト（Section 4）に接続する。
+4. CLI 分割実装に伴う CI アーティファクト収集設定を更新し、GitHub Actions 上で `dictionary/`・`monomorph/` 両成果物がアーカイブされることを確認する。
+
 ### 2025-10-14 更新（Week 19-20 / PoC モノモルフィゼーション設計着手）✨
 
 **作業サマリー** ✅:
@@ -421,11 +458,14 @@
 - CLI フラグ追加に伴う `options.ml` / `main.ml` の影響調査を要ブロッキング事項として記録。
 - `Monomorph_registry` に辞書渡し経路が依存しないことを単体テストで担保する必要がある。
 - LLVM 側での命名規約衝突（`__Trait_Type_Method` 既存シンボルと PoC シンボルの二重生成）を事前に確認するため、ネームマングリング設計のレビューを Phase 2 Week 20 で実施予定。
+- Summary を Core IR メタデータへ反映する際の仕様差分を `docs/plans/bootstrap-roadmap/1-3-core-ir-min-optimization.md` に共有し、辞書経路との互換性レビューを Phase 2 Week 20 で実施する。
+- `--typeclass-mode=both` の出力分割により CI アーティファクト収集（`verify_llvm_ir.sh` / `tooling/ci/docker/metrics.json`）へ影響が出る可能性があるため、Phase 2 Week 20-21 のリスクトラッキングに追加する。
 
 **次のアクション**:
 1. `core_ir/monomorphize_poc.ml` のスタブ実装を追加し、`dune` に登録する。
 2. `type_inference.ml` でインスタンス収集 API を切り出し、辞書渡し経路と PoC で共用する。
 3. `compiler/ocaml/tests` に PoC 用 Core IR/LLVM ゴールデンテストの枠を作成し、空ファイルを配置して CI 配線を先に通す。
+4. `main.ml` の `--typeclass-mode=both` 分岐で `out_dir/dictionary`・`out_dir/monomorph` の生成およびログ出力を整備し、`verify_llvm_ir.sh` への引数インターフェース変更を設計する。
 
 ### 2025-10-13 更新（Week 24 / ユーザー定義impl宣言の統合テスト完了）✨
 

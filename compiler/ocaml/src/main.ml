@@ -131,184 +131,195 @@ let () =
                Printf.printf "%s\n" rendered);
 
             (* Phase 3: LLVM IR 生成パイプライン *)
-            if opts.emit_ir || opts.emit_bc || opts.verify_ir then (
-              try
-                (* Phase 1-6 Week 15: Core IR 生成開始 *)
-                record_start CoreIR;
-
-                (* Typed AST → Core IR (糖衣削除) *)
-                let core_ir = Core_ir.Desugar.desugar_compilation_unit tast in
-
-                (* 型クラス戦略モードに応じた PoC パスの適用 *)
-                let core_ir =
-                  let mode =
-                    match opts.Cli.Options.typeclass_mode with
-                    | Cli.Options.TypeclassDictionary ->
-                        Core_ir.Monomorphize_poc.UseDictionary
-                    | Cli.Options.TypeclassMonomorph ->
-                        Core_ir.Monomorphize_poc.UseMonomorph
-                    | Cli.Options.TypeclassBoth ->
-                        Core_ir.Monomorphize_poc.UseBoth
+            if
+              opts.emit_ir || opts.emit_bc || opts.verify_ir || opts.link_runtime
+            then (
+              let opt_config =
+                Core_ir.Pipeline.
+                  {
+                    opt_level = O1;
+                    enable_const_fold = true;
+                    enable_dce = true;
+                    max_iterations = 10;
+                    verbose = false;
+                    emit_intermediate = false;
+                  }
+              in
+              let run_backend ~mode ~mode_label ~out_dir ~collect_metrics =
+                Cli.File_util.ensure_directory out_dir;
+                let prefix =
+                  if mode_label = "" then ""
+                  else Printf.sprintf "[%s] " mode_label
+                in
+                let record_start_if enabled phase =
+                  if enabled then record_start phase
+                in
+                let record_end_if enabled phase =
+                  if enabled then record_end phase
+                in
+                try
+                  record_start_if collect_metrics CoreIR;
+                  let core_ir =
+                    let desugared =
+                      Core_ir.Desugar.desugar_compilation_unit tast
+                    in
+                    Core_ir.Monomorphize_poc.apply ~mode desugared
                   in
-                  Core_ir.Monomorphize_poc.apply ~mode core_ir
-                in
+                  record_end_if collect_metrics CoreIR;
+                  record_start_if collect_metrics Optimization;
+                  let optimized_ir, _stats =
+                    Core_ir.Pipeline.optimize_module ~config:opt_config core_ir
+                  in
+                  record_end_if collect_metrics Optimization;
+                  record_start_if collect_metrics CodeGen;
+                  let llvm_module =
+                    Codegen.codegen_module ~target_name:opts.target optimized_ir
+                  in
+                  record_end_if collect_metrics CodeGen;
+                  if opts.verify_ir then
+                    match Verify.verify_llvm_ir llvm_module with
+                    | Ok () ->
+                        Printf.printf "%sLLVM IR verification passed.\n" prefix
+                    | Error err ->
+                        let diag = Verify.error_to_diagnostic err None in
+                        print_diagnostic opts None diag;
+                        exit 1;
 
-                (* Phase 1-6 Week 15: Core IR 生成完了、最適化開始 *)
-                record_end CoreIR;
-                record_start Optimization;
-
-                (* Core IR 最適化 (O1レベル) *)
-                let opt_config =
-                  Core_ir.Pipeline.
-                    {
-                      opt_level = O1;
-                      enable_const_fold = true;
-                      enable_dce = true;
-                      max_iterations = 10;
-                      verbose = false;
-                      emit_intermediate = false;
-                    }
-                in
-                let optimized_ir, _stats =
-                  Core_ir.Pipeline.optimize_module ~config:opt_config core_ir
-                in
-
-                (* Phase 1-6 Week 15: 最適化完了、コード生成開始 *)
-                record_end Optimization;
-                record_start CodeGen;
-
-                (* Core IR → LLVM IR *)
-                let llvm_module =
-                  Codegen.codegen_module ~target_name:opts.target optimized_ir
-                in
-
-                (* Phase 1-6 Week 15: コード生成完了 *)
-                record_end CodeGen;
-
-                (* LLVM IR 検証 *)
-                (if opts.verify_ir then
-                   match Verify.verify_llvm_ir llvm_module with
-                   | Ok () -> Printf.printf "LLVM IR verification passed.\n"
-                   | Error err ->
-                       let diag = Verify.error_to_diagnostic err None in
-                       print_diagnostic opts None diag;
-                       exit 1);
-
-                (* LLVM IR テキスト出力 *)
-                let ll_file_opt = ref None in
-                if opts.emit_ir then (
                   let basename = get_basename opts.input_file in
-                  let output_path =
-                    output_filename opts.out_dir basename ".ll"
-                  in
-                  Codegen.emit_llvm_ir llvm_module output_path;
-                  Printf.printf "LLVM IR written to: %s\n" output_path;
-                  ll_file_opt := Some output_path);
+                  let ll_file_opt = ref None in
+                  if opts.emit_ir then (
+                    let output_path =
+                      output_filename out_dir basename ".ll"
+                    in
+                    Codegen.emit_llvm_ir llvm_module output_path;
+                    Printf.printf "%sLLVM IR written to: %s\n" prefix output_path;
+                    ll_file_opt := Some output_path);
 
-                (* LLVM IR ビットコード出力 *)
-                if opts.emit_bc then (
-                  let basename = get_basename opts.input_file in
-                  let output_path =
-                    output_filename opts.out_dir basename ".bc"
-                  in
-                  Codegen.emit_llvm_bc llvm_module output_path;
-                  Printf.printf "LLVM Bitcode written to: %s\n" output_path);
+                  if opts.emit_bc then (
+                    let output_path =
+                      output_filename out_dir basename ".bc"
+                    in
+                    Codegen.emit_llvm_bc llvm_module output_path;
+                    Printf.printf "%sLLVM Bitcode written to: %s\n" prefix
+                      output_path);
 
-                (* ランタイムとリンク *)
-                if opts.link_runtime then (
-                  let basename = get_basename opts.input_file in
-                  (* LLVM IR ファイルが必要なので、まだ生成されていなければ一時ファイルとして生成 *)
-                  let ll_file =
-                    match !ll_file_opt with
-                    | Some path -> path
-                    | None ->
-                        let temp_path =
-                          output_filename opts.out_dir basename ".ll"
-                        in
-                        Codegen.emit_llvm_ir llvm_module temp_path;
-                        temp_path
+                  if opts.link_runtime then (
+                    let ll_file =
+                      match !ll_file_opt with
+                      | Some path -> path
+                      | None ->
+                          let temp_path =
+                            output_filename out_dir basename ".ll"
+                          in
+                          Codegen.emit_llvm_ir llvm_module temp_path;
+                          temp_path
+                    in
+                    if not (Sys.file_exists opts.runtime_path) then (
+                      Printf.eprintf "Error: runtime library not found: %s\n"
+                        opts.runtime_path;
+                      Printf.eprintf
+                        "Please build the runtime first with: make -C \
+                         runtime/native runtime\n";
+                      exit 1);
+                    let output_exe =
+                      output_filename out_dir basename ""
+                    in
+                    Printf.printf "%sLinking artifact into: %s\n" prefix
+                      output_exe;
+                    link_with_runtime ll_file opts.runtime_path output_exe;
+                    if !ll_file_opt = None && not opts.emit_ir then
+                      Sys.remove ll_file)
+                with
+                | Core_ir.Desugar.DesugarError (msg, ast_span) ->
+                    let diag_span =
+                      Diagnostic.
+                        {
+                          start_pos =
+                            {
+                              filename = opts.input_file;
+                              line = 0;
+                              column = 0;
+                              offset = ast_span.Ast.start;
+                            };
+                          end_pos =
+                            {
+                              filename = opts.input_file;
+                              line = 0;
+                              column = 0;
+                              offset = ast_span.Ast.end_;
+                            };
+                        }
+                    in
+                    let diag =
+                      Diagnostic.
+                        {
+                          severity = Error;
+                          severity_hint = None;
+                          domain = None;
+                          code = Some "E8001";
+                          message = Printf.sprintf "Core IR 変換エラー: %s" msg;
+                          span = diag_span;
+                          expected_summary = None;
+                          notes = [];
+                          fixits = [];
+                        }
+                    in
+                    print_diagnostic opts (Some source) diag;
+                    exit 1
+                | Codegen.CodegenError msg ->
+                    let dummy_loc =
+                      Diagnostic.
+                        {
+                          filename = opts.input_file;
+                          line = 0;
+                          column = 0;
+                          offset = 0;
+                        }
+                    in
+                    let diag =
+                      Diagnostic.
+                        {
+                          severity = Error;
+                          severity_hint = None;
+                          domain = None;
+                          code = Some "E8002";
+                          message = Printf.sprintf "LLVM IR 生成エラー: %s" msg;
+                          span = { start_pos = dummy_loc; end_pos = dummy_loc };
+                          expected_summary = None;
+                          notes = [];
+                          fixits = [];
+                        }
+                    in
+                    print_diagnostic opts None diag;
+                    exit 1
+              in
+              Cli.File_util.ensure_directory opts.out_dir;
+              (match opts.Cli.Options.typeclass_mode with
+              | Cli.Options.TypeclassDictionary ->
+                  run_backend
+                    ~mode:Core_ir.Monomorphize_poc.UseDictionary
+                    ~mode_label:"dictionary" ~out_dir:opts.out_dir
+                    ~collect_metrics:true
+              | Cli.Options.TypeclassMonomorph ->
+                  run_backend
+                    ~mode:Core_ir.Monomorphize_poc.UseMonomorph
+                    ~mode_label:"monomorph" ~out_dir:opts.out_dir
+                    ~collect_metrics:true
+              | Cli.Options.TypeclassBoth ->
+                  let dict_dir =
+                    Filename.concat opts.out_dir "dictionary"
                   in
-
-                  (* ランタイムライブラリの存在確認 *)
-                  if not (Sys.file_exists opts.runtime_path) then (
-                    Printf.eprintf "Error: runtime library not found: %s\n"
-                      opts.runtime_path;
-                    Printf.eprintf
-                      "Please build the runtime first with: make -C \
-                       runtime/native runtime\n";
-                    exit 1);
-
-                  (* リンクして実行可能ファイルを生成 *)
-                  let output_exe = output_filename opts.out_dir basename "" in
-                  link_with_runtime ll_file opts.runtime_path output_exe;
-
-                  (* 一時 LLVM IR ファイルを削除（--emit-ir が指定されていない場合） *)
-                  if !ll_file_opt = None && not opts.emit_ir then
-                    Sys.remove ll_file)
-              with
-              | Core_ir.Desugar.DesugarError (msg, ast_span) ->
-                  (* Ast.span を Diagnostic.span に変換 *)
-                  let diag_span =
-                    Diagnostic.
-                      {
-                        start_pos =
-                          {
-                            filename = opts.input_file;
-                            line = 0;
-                            column = 0;
-                            offset = ast_span.Ast.start;
-                          };
-                        end_pos =
-                          {
-                            filename = opts.input_file;
-                            line = 0;
-                            column = 0;
-                            offset = ast_span.Ast.end_;
-                          };
-                      }
+                  let mono_dir =
+                    Filename.concat opts.out_dir "monomorph"
                   in
-                  let diag =
-                    Diagnostic.
-                      {
-                        severity = Error;
-                        severity_hint = None;
-                        domain = None;
-                        code = Some "E8001";
-                        message = Printf.sprintf "Core IR 変換エラー: %s" msg;
-                        span = diag_span;
-                        expected_summary = None;
-                        notes = [];
-                        fixits = [];
-                      }
-                  in
-                  print_diagnostic opts (Some source) diag;
-                  exit 1
-              | Codegen.CodegenError msg ->
-                  let dummy_loc =
-                    Diagnostic.
-                      {
-                        filename = opts.input_file;
-                        line = 0;
-                        column = 0;
-                        offset = 0;
-                      }
-                  in
-                  let diag =
-                    Diagnostic.
-                      {
-                        severity = Error;
-                        severity_hint = None;
-                        domain = None;
-                        code = Some "E8002";
-                        message = Printf.sprintf "LLVM IR 生成エラー: %s" msg;
-                        span = { start_pos = dummy_loc; end_pos = dummy_loc };
-                        expected_summary = None;
-                        notes = [];
-                        fixits = [];
-                      }
-                  in
-                  print_diagnostic opts None diag;
-                  exit 1)
+                  run_backend
+                    ~mode:Core_ir.Monomorphize_poc.UseDictionary
+                    ~mode_label:"dictionary" ~out_dir:dict_dir
+                    ~collect_metrics:true;
+                  run_backend
+                    ~mode:Core_ir.Monomorphize_poc.UseMonomorph
+                    ~mode_label:"monomorph" ~out_dir:mono_dir
+                    ~collect_metrics:false))
         | Error type_err ->
             (* 型推論エラー *)
             let diag =

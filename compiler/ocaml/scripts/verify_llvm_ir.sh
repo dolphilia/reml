@@ -226,10 +226,6 @@ main() {
     exit 1
   fi
 
-  if [[ ! -f "$input_ll" ]]; then
-    error "入力ファイルが存在しません: $input_ll"
-  fi
-
   if (( CROSS_MODE )); then
     if ! CROSS_SYSROOT=$(resolve_sysroot); then
       error "--sysroot が指定されていないか、REML_TOOLCHAIN_HOME/sysroot が見つかりません。"
@@ -240,6 +236,33 @@ main() {
   fi
 
   check_llvm_version
+
+  if [[ -d "$input_ll" ]]; then
+    mapfile -t files < <(find "$input_ll" -type f -name '*.ll' | sort)
+    if [[ ${#files[@]} -eq 0 ]]; then
+      error "ディレクトリ内に .ll ファイルが見つかりませんでした: $input_ll"
+    fi
+    local status=0
+    for file in "${files[@]}"; do
+      echo ""
+      echo ">>> $file の検証を開始"
+      if ! verify_single "$file"; then
+        status=$?
+      fi
+    done
+    exit "$status"
+  fi
+
+  if [[ ! -f "$input_ll" ]]; then
+    error "入力ファイルが存在しません: $input_ll"
+  fi
+
+  verify_single "$input_ll"
+  exit $?
+}
+
+verify_single() {
+  local input_ll="$1"
 
   local temp_bc="${input_ll%.ll}.bc"
   local temp_obj="${input_ll%.ll}.o"
@@ -261,14 +284,16 @@ main() {
   echo "[1/3] llvm-as: アセンブル (.ll → .bc)..."
   if ! "$LLVM_AS" "$input_ll" -o "$temp_bc" 2>&1; then
     echo "llvm-as が失敗しました（終了コード: 2）" >&2
-    exit 2
+    trap - EXIT
+    return 2
   fi
   echo "✓ llvm-as 成功"
 
   echo "[2/3] opt -verify: LLVM 検証パス実行..."
   if ! "$OPT" -passes=verify -disable-output "$temp_bc" 2>&1; then
     echo "opt -verify が失敗しました（終了コード: 3）" >&2
-    exit 3
+    trap - EXIT
+    return 3
   fi
   echo "✓ opt -verify 成功"
 
@@ -286,7 +311,8 @@ main() {
 
   if ! "${llc_cmd[@]}" "$temp_bc" -o "$temp_obj" 2>&1; then
     echo "llc が失敗しました（終了コード: 4）" >&2
-    exit 4
+    trap - EXIT
+    return 4
   fi
   echo "✓ llc 成功"
 
@@ -351,7 +377,8 @@ main() {
     echo
     if ! "${ld_cmd[@]}"; then
       echo "ld.lld が失敗しました（終了コード: 5）" >&2
-      exit 5
+      trap - EXIT
+      return 5
     fi
     echo "✓ ld.lld 成功"
 
@@ -387,7 +414,8 @@ main() {
   fi
   echo ""
 
-  exit 0
+  trap - EXIT
+  return 0
 }
 
 main "$@"

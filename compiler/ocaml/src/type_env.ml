@@ -200,6 +200,7 @@ module Monomorph_registry = struct
   type trait_instance = {
     trait_name : string;
     type_args : ty list;
+    methods : (string * string) list;
   }
 
   let registry : trait_instance list ref = ref []
@@ -211,9 +212,68 @@ module Monomorph_registry = struct
     && List.length lhs.type_args = List.length rhs.type_args
     && List.for_all2 type_equal lhs.type_args rhs.type_args
 
+  let normalize_methods methods =
+    List.fold_left
+      (fun acc (name, impl) ->
+        if List.exists (fun (existing, _) -> String.equal existing name) acc then
+          acc
+        else (name, impl) :: acc)
+      [] methods
+
+  let merge_methods lhs rhs =
+    let merged = List.fold_left (fun acc item -> item :: acc) lhs rhs in
+    normalize_methods merged
+
   let record (instance : trait_instance) =
-    if not (List.exists (fun existing -> equal_instance existing instance) !registry)
-    then registry := instance :: !registry
+    let instance =
+      { instance with methods = normalize_methods instance.methods }
+    in
+    match
+      List.find_opt
+        (fun existing -> equal_instance existing instance)
+        !registry
+    with
+    | Some existing ->
+        let merged =
+          {
+            existing with
+            methods = merge_methods existing.methods instance.methods;
+          }
+        in
+        registry :=
+          merged
+          :: List.filter
+               (fun candidate -> not (equal_instance candidate instance))
+               !registry
+    | None -> registry := instance :: !registry
 
   let all () = !registry
+
+  let sanitize_type_name name =
+    let buffer = Buffer.create (String.length name) in
+    String.iter
+      (fun ch ->
+        match ch with
+        | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' -> Buffer.add_char buffer ch
+        | _ -> Buffer.add_char buffer '_')
+      name;
+    Buffer.contents buffer
+
+  let string_of_type_for_symbol ty =
+    sanitize_type_name (string_of_ty ty)
+
+  let builtin_methods trait ty =
+    let ty_symbol = string_of_type_for_symbol ty in
+    match trait with
+    | "Eq" -> (
+        match ty with
+        | TCon (TCInt _) | TCon TCBool | TCon TCString ->
+            [ ("eq", Printf.sprintf "__Eq_%s_eq" ty_symbol) ]
+        | _ -> [])
+    | "Ord" -> (
+        match ty with
+        | TCon (TCInt _) | TCon TCString ->
+            [ ("cmp", Printf.sprintf "__Ord_%s_compare" ty_symbol) ]
+        | _ -> [])
+    | _ -> []
 end

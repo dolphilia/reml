@@ -1,10 +1,11 @@
 (library
  (name cli)
  (modules
-  options
-  color
-  diagnostic_formatter
-  json_formatter
+ options
+ color
+ file_util
+ diagnostic_formatter
+ json_formatter
   trace
   stats
   version)

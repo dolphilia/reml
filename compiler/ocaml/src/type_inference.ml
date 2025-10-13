@@ -43,13 +43,27 @@ let register_impl (impl_info : Impl_registry.impl_info) : unit =
   global_impl_registry := Impl_registry.register impl_info !global_impl_registry
 
 (** モノモルフィゼーション PoC 用に解決済みインスタンスを記録 *)
-let record_monomorph_instances (dict_refs : dict_ref list) =
+let record_monomorph_instances (registry : Impl_registry.impl_registry)
+    (dict_refs : dict_ref list) =
   List.iter
     (function
       | DictImplicit (trait_name, ty) ->
+          let constraint_ =
+            {
+              trait_name;
+              type_args = [ ty ];
+              constraint_span = Ast.dummy_span;
+            }
+          in
+          let methods =
+            match Impl_registry.find_matching_impls constraint_ registry with
+            | impl :: _ when impl.methods <> [] -> impl.methods
+            | _ ->
+                Type_env.Monomorph_registry.builtin_methods trait_name ty
+          in
           Type_env.Monomorph_registry.record
             Type_env.Monomorph_registry.
-              { trait_name; type_args = [ ty ] }
+              { trait_name; type_args = [ ty ]; methods }
       | DictParam _ | DictLocal _ -> ())
     dict_refs
 
@@ -413,7 +427,7 @@ let solve_trait_constraints (constraints : trait_constraint list) :
   let registry = get_impl_registry () in
   match Constraint_solver.solve_constraints registry constraints with
   | Ok dict_refs ->
-      record_monomorph_instances dict_refs;
+      record_monomorph_instances registry dict_refs;
       Ok dict_refs
   | Error errors ->
       (* 複数のエラーがある場合は最初のエラーを返す *)
