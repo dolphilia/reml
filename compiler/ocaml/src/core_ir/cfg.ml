@@ -387,6 +387,19 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
         failwith "linearize_loop called without an active preheader block"
   in
 
+  let has_continue_source =
+    List.exists
+      (fun { lc_sources; _ } ->
+        List.exists
+          (fun source -> source.ls_kind = LoopSourceContinue)
+          lc_sources)
+      info.loop_carried
+  in
+  let continue_label_opt =
+    if has_continue_source then Some (LabelGen.fresh "loop_continue") else None
+  in
+  let continue_entries : (var_id * var_id ref * expr option) list ref = ref [] in
+
   (* 事前初期化（for等） *)
   let () =
     match info.loop_kind with
@@ -405,24 +418,77 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
   (* preheader を header へジャンプさせて閉じる *)
   finish_block builder (TermJump header_label) span;
 
-  let carried_entries =
-    List.map
-      (fun { lc_var } ->
-        let init_value =
-          match get_value_env builder lc_var with
-          | Some v -> v
-          | None -> lc_var
-        in
-        (lc_var, init_value))
-      info.loop_carried
-  in
-
   (* header ブロック開始 *)
   start_block builder header_label;
 
   let phi_records =
     List.map
-      (fun (lc_var, init_value) ->
+      (fun { lc_var; lc_sources } ->
+        let init_value =
+          match get_value_env builder lc_var with
+          | Some v -> v
+          | None -> lc_var
+        in
+        let entries = ref [] in
+        List.iter
+          (fun source ->
+            let kind = source.ls_kind in
+            let label, expr_opt =
+              match kind with
+              | LoopSourcePreheader ->
+                  (preheader_label, Some source.ls_expr)
+              | LoopSourceLatch -> (latch_label, Some source.ls_expr)
+              | LoopSourceContinue -> (
+                  match continue_label_opt with
+                  | Some lbl -> (lbl, Some source.ls_expr)
+                  | None ->
+                      failwith
+                        "LoopSourceContinue detected without allocated label")
+            in
+            let placeholder =
+              match kind with
+              | LoopSourcePreheader -> init_value
+              | _ -> init_value
+            in
+            let value_ref =
+              match List.find_opt (fun (k, _, _, _) -> k = kind) !entries with
+              | Some (_, _, ref_value, _) ->
+                  entries :=
+                    List.map
+                      (fun (k, lbl, vref, stored_expr) ->
+                        if k = kind then
+                          (k, label, vref, expr_opt)
+                        else
+                          (k, lbl, vref, stored_expr))
+                      !entries;
+                  ref_value
+              | None ->
+                  let vref = ref placeholder in
+                  entries :=
+                    !entries @ [ (kind, label, vref, expr_opt) ];
+                  vref
+            in
+            if kind = LoopSourceContinue then
+              let already_tracked =
+                List.exists
+                  (fun (tracked_var, tracked_ref, _) ->
+                    tracked_var.vid = lc_var.vid && tracked_ref == value_ref)
+                  !continue_entries
+              in
+              if not already_tracked then
+                continue_entries :=
+                  (lc_var, value_ref, expr_opt) :: !continue_entries)
+          lc_sources;
+        if
+          not
+            (List.exists
+               (fun (kind, _, _, _) -> kind = LoopSourcePreheader)
+               !entries)
+        then
+          entries :=
+            (LoopSourcePreheader, preheader_label, ref init_value, None)
+            :: !entries;
+        let entries = !entries in
         let phi_var =
           VarIdGen.fresh
             (Printf.sprintf "%s_phi" lc_var.vname)
@@ -431,7 +497,9 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
         let phi_stmt =
           Phi
             ( phi_var,
-              [ (preheader_label, init_value); (latch_label, init_value) ] )
+              List.map
+                (fun (_, label, value_ref, _) -> (label, !value_ref))
+                entries )
         in
         add_stmt builder phi_stmt;
         if lc_var.vmutable then (
@@ -440,8 +508,8 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
           in
           add_stmt builder (Store (lc_var, phi_expr)));
         set_value_env builder lc_var phi_var;
-        (lc_var, phi_var, init_value))
-      carried_entries
+        (lc_var, phi_var, entries))
+      info.loop_carried
   in
 
   (* 条件分岐の生成 *)
@@ -489,15 +557,67 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
 
   finish_block builder (TermJump header_label) info.loop_span;
 
-  let phi_patch_entries =
-    List.map
-      (fun (lc_var, phi_var, init_value) ->
-        let latch_value =
+  let latch_values =
+    let tbl = Hashtbl.create (List.length phi_records) in
+    List.iter
+      (fun (lc_var, _phi_var, _entries) ->
+        let value =
           match get_value_env builder lc_var with
           | Some v -> v
-          | None -> init_value
+          | None -> lc_var
         in
-        (phi_var, init_value, latch_value))
+        Hashtbl.replace tbl lc_var.vid value)
+      phi_records;
+    tbl
+  in
+
+  (match continue_label_opt with
+  | Some continue_label ->
+      start_block builder continue_label;
+      let continue_items = List.rev !continue_entries in
+      List.iter
+        (fun (lc_var, value_ref, expr_opt) ->
+          let continue_var =
+            match expr_opt with
+            | Some expr -> linearize_expr builder expr
+            | None -> (
+                match Hashtbl.find_opt latch_values lc_var.vid with
+                | Some v -> v
+                | None -> lc_var)
+          in
+          value_ref := continue_var;
+          if lc_var.vmutable then (
+            let store_expr =
+              make_expr (Var continue_var) continue_var.vty continue_var.vspan
+            in
+            add_stmt builder (Store (lc_var, store_expr)));
+          set_value_env builder lc_var continue_var)
+        continue_items;
+      finish_block builder (TermJump latch_label) info.loop_span
+  | None -> ());
+
+  List.iter
+    (fun (lc_var, _phi_var, entries) ->
+      List.iter
+        (fun (kind, _label, value_ref, _) ->
+          match kind with
+          | LoopSourceLatch -> (
+              match Hashtbl.find_opt latch_values lc_var.vid with
+              | Some v -> value_ref := v
+              | None -> ())
+          | LoopSourcePreheader | LoopSourceContinue -> ())
+        entries)
+    phi_records;
+
+  let phi_patch_entries =
+    List.map
+      (fun (_lc_var, phi_var, entries) ->
+        let sources =
+          List.map
+            (fun (_kind, label, value_ref, _) -> (label, !value_ref))
+            entries
+        in
+        (phi_var, sources))
       phi_records
   in
 
@@ -511,13 +631,10 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
             | Phi (var, _) -> (
                 match
                   List.find_opt
-                    (fun (phi_var, _, _) -> phi_var.vid = var.vid)
+                    (fun (phi_var, _) -> phi_var.vid = var.vid)
                     phi_patch_entries
                 with
-                | Some (_phi_var, init_value, latch_value) ->
-                    Phi
-                      ( var,
-                        [ (preheader_label, init_value); (latch_label, latch_value) ] )
+                | Some (_phi_var, sources) -> Phi (var, sources)
                 | None -> stmt)
             | other -> other)
           blk.stmts
@@ -528,7 +645,7 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
   builder.blocks <- List.map update_phi_in_block builder.blocks;
 
   List.iter
-    (fun (lc_var, phi_var, _init_value) ->
+    (fun (lc_var, phi_var, _entries) ->
       set_value_env builder lc_var phi_var)
     phi_records;
 

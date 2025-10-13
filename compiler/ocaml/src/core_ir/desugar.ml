@@ -19,13 +19,6 @@ open Ast
 open Typed_ast
 open Ir
 
-module VarIdOrd = struct
-  type t = var_id
-  let compare = Stdlib.compare
-end
-
-module VarIdSet = Set.Make (VarIdOrd)
-
 (* ========== ユーティリティ ========== *)
 
 exception DesugarError of string * span
@@ -459,85 +452,118 @@ and desugar_mutable_assign (map : var_scope_map) (lhs : typed_expr)
         "現在は単純な変数への代入（TVar）のみサポートしています" span
 
 and collect_loop_carried_vars (body_expr : expr) : loop_carried_var list =
-  let rec visit_expr seen ordered expr =
+  let preheader_source var =
+    let expr = make_expr (Var var) var.vty var.vspan in
+    { ls_kind = LoopSourcePreheader; ls_span = var.vspan; ls_expr = expr }
+  in
+  let ensure_preheader var sources =
+    if List.exists (fun src -> src.ls_kind = LoopSourcePreheader) sources then
+      sources
+    else preheader_source var :: sources
+  in
+  let add_source ordered var source =
+    let rec aux acc = function
+      | [] ->
+          let sources =
+            match source.ls_kind with
+            | LoopSourcePreheader -> [ source ]
+            | _ ->
+                let preheader = preheader_source var in
+                preheader :: [ source ]
+          in
+          List.rev ({ lc_var = var; lc_sources = sources } :: acc)
+      | lc :: rest ->
+          if lc.lc_var.vid = var.vid then
+            let base_sources = ensure_preheader var lc.lc_sources in
+            let sources =
+              match source.ls_kind with
+              | LoopSourcePreheader ->
+                  if List.exists
+                       (fun src -> src.ls_kind = LoopSourcePreheader)
+                       base_sources
+                  then base_sources
+                  else source :: base_sources
+              | _ -> base_sources @ [ source ]
+            in
+            List.rev_append acc ({ lc with lc_sources = sources } :: rest)
+          else aux (lc :: acc) rest
+    in
+    aux [] ordered
+  in
+  let rec visit_expr ordered expr =
     match expr.expr_kind with
     | AssignMutable (var, rhs) ->
-        let seen, ordered =
-          if VarIdSet.mem var seen then (seen, ordered)
-          else (VarIdSet.add var seen, { lc_var = var } :: ordered)
+        let source =
+          {
+            ls_kind = LoopSourceLatch;
+            ls_span = rhs.expr_span;
+            ls_expr = rhs;
+          }
         in
-        visit_expr seen ordered rhs
+        let ordered = add_source ordered var source in
+        visit_expr ordered rhs
     | Let (_, bound, body) ->
-        let seen, ordered = visit_expr seen ordered bound in
-        visit_expr seen ordered body
+        let ordered = visit_expr ordered bound in
+        visit_expr ordered body
     | App (fn, args) ->
-        let seen, ordered = visit_expr seen ordered fn in
-        List.fold_left
-          (fun (s, o) arg -> visit_expr s o arg)
-          (seen, ordered) args
+        let ordered = visit_expr ordered fn in
+        List.fold_left visit_expr ordered args
     | Primitive (_op, args) ->
-        List.fold_left
-          (fun (s, o) arg -> visit_expr s o arg)
-          (seen, ordered) args
+        List.fold_left visit_expr ordered args
     | If (cond, then_e, else_e) ->
-        let seen, ordered = visit_expr seen ordered cond in
-        let seen, ordered = visit_expr seen ordered then_e in
-        visit_expr seen ordered else_e
+        let ordered = visit_expr ordered cond in
+        let ordered = visit_expr ordered then_e in
+        visit_expr ordered else_e
     | Match (scrut, cases) ->
-        let seen, ordered = visit_expr seen ordered scrut in
+        let ordered = visit_expr ordered scrut in
         List.fold_left
-          (fun (s, o) case ->
-            let s, o =
+          (fun ordered case ->
+            let ordered =
               match case.case_guard with
-              | None -> (s, o)
-              | Some guard -> visit_expr s o guard
+              | None -> ordered
+              | Some guard -> visit_expr ordered guard
             in
-            visit_expr s o case.case_body)
-          (seen, ordered) cases
-    | TupleAccess (tuple, _) -> visit_expr seen ordered tuple
-    | RecordAccess (record, _) -> visit_expr seen ordered record
+            visit_expr ordered case.case_body)
+          ordered cases
+    | TupleAccess (tuple, _) -> visit_expr ordered tuple
+    | RecordAccess (record, _) -> visit_expr ordered record
     | ArrayAccess (arr, idx) ->
-        let seen, ordered = visit_expr seen ordered arr in
-        visit_expr seen ordered idx
+        let ordered = visit_expr ordered arr in
+        visit_expr ordered idx
     | ADTConstruct (_ctor, fields) ->
-        List.fold_left
-          (fun (s, o) field -> visit_expr s o field)
-          (seen, ordered) fields
-    | ADTProject (adt, _) -> visit_expr seen ordered adt
+        List.fold_left visit_expr ordered fields
+    | ADTProject (adt, _) -> visit_expr ordered adt
     | DictMethodCall (dict_expr, _name, args) ->
-        let seen, ordered = visit_expr seen ordered dict_expr in
-        List.fold_left
-          (fun (s, o) arg -> visit_expr s o arg)
-          (seen, ordered) args
+        let ordered = visit_expr ordered dict_expr in
+        List.fold_left visit_expr ordered args
     | Loop loop_info ->
-        let seen, ordered =
+        let ordered =
           match loop_info.loop_kind with
-          | WhileLoop cond -> visit_expr seen ordered cond
+          | WhileLoop cond -> visit_expr ordered cond
           | ForLoop info ->
-              let seen, ordered =
+              let ordered =
                 List.fold_left
-                  (fun (s, o) (_, e) -> visit_expr s o e)
-                  (seen, ordered) info.for_init
+                  (fun ordered (_, e) -> visit_expr ordered e)
+                  ordered info.for_init
               in
-              let seen, ordered =
+              let ordered =
                 List.fold_left
-                  (fun (s, o) (_, e) -> visit_expr s o e)
-                  (seen, ordered) info.for_step
+                  (fun ordered (_, e) -> visit_expr ordered e)
+                  ordered info.for_step
               in
-              visit_expr seen ordered info.for_source
-          | InfiniteLoop -> (seen, ordered)
+              visit_expr ordered info.for_source
+          | InfiniteLoop -> ordered
         in
-        visit_expr seen ordered loop_info.loop_body
+        visit_expr ordered loop_info.loop_body
     | Closure _
     | DictLookup _
     | DictConstruct _
     | CapabilityCheck _
     | Literal _
     | Var _ ->
-        (seen, ordered)
+        ordered
   in
-  let _seen, ordered = visit_expr VarIdSet.empty [] body_expr in
-  List.rev ordered
+  visit_expr [] body_expr
 
 and make_loop_expr (loop_kind : loop_kind) (loop_body : expr) (span : span)
     (ty : ty) : expr =

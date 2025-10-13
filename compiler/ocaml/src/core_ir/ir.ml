@@ -271,8 +271,20 @@ and for_lowering = {
   for_step : (var_id * expr) list;  (** 各周回後の更新式 *)
 }
 
+and loop_source_kind =
+  | LoopSourcePreheader  (** ループ突入前（preheader）からの入力 *)
+  | LoopSourceLatch  (** latch ブロックからの入力（通常の更新） *)
+  | LoopSourceContinue  (** continue 経路からの入力（将来拡張） *)
+
+and loop_source = {
+  ls_kind : loop_source_kind;  (** 入力元の種別 *)
+  ls_span : span;  (** 入力が定義されたソース位置 *)
+  ls_expr : expr;  (** 入力値を表す式 *)
+}
+
 and loop_carried_var = {
   lc_var : var_id;  (** ループ本体で再代入される変数 *)
+  lc_sources : loop_source list;  (** ループヘッダ φ に取り込む候補値群 *)
 }
 
 and loop_info = {

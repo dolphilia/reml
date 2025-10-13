@@ -221,6 +221,19 @@ and string_of_loop_kind ?(depth = 0) = function
       Printf.sprintf "%sfor <not-yet-lowered>" (indent depth)
   | InfiniteLoop -> Printf.sprintf "%sloop" (indent depth)
 
+and string_of_loop_source_kind = function
+  | LoopSourcePreheader -> "preheader"
+  | LoopSourceLatch -> "latch"
+  | LoopSourceContinue -> "continue"
+
+and string_of_loop_sources sources =
+  match sources with
+  | [] -> ""
+  | xs ->
+      xs
+      |> List.map (fun src -> string_of_loop_source_kind src.ls_kind)
+      |> String.concat "|"
+
 and string_of_loop_info ?(depth = 0) info ty_str =
   let ind = indent depth in
   let kind_str = string_of_loop_kind ~depth:(depth + 1) info.loop_kind in
@@ -231,7 +244,11 @@ and string_of_loop_info ?(depth = 0) info ty_str =
     | vars ->
         let vars_str =
           join_with ", "
-            (fun { lc_var } -> string_of_var_id lc_var)
+            (fun { lc_var; lc_sources } ->
+              let srcs = string_of_loop_sources lc_sources in
+              if String.equal srcs "" then string_of_var_id lc_var
+              else
+                Printf.sprintf "%s<-%s" (string_of_var_id lc_var) srcs)
             vars
         in
         Printf.sprintf "\n%sphi [%s]" (indent (depth + 1)) vars_str

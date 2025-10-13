@@ -208,10 +208,19 @@ fn test_mut() -> i64 {
 - 🛠 For ループ iterator 化の脱糖戦略を整理（`__iter__`/`__next__` 想定）
 - ⏳ LLVM IR ゴールデン・統合テスト、ランタイム診断フックは未作業
 
+**進捗サマリー（2025-10-14 更新）**
+
+- ✅ `loop_carried_var` に `lc_sources` を導入し、Core IR (`compiler/ocaml/src/core_ir/ir.ml`)・脱糖パス (`desugar.ml`)・CFG 線形化 (`cfg.ml`) を更新。φ 挿入時に preheader/latch 情報を保持できる状態を整備。
+- 📝 IR プリンタ (`ir_printer.ml`) を更新し、`loop_carried` の出力にソース種別を表示してデバッグを容易化。
+- ⚠️ `lc_sources` は現状 preheader/latch のみだが、continue 導入時に `LoopSourceContinue` を追加する余地あり。
+
 **次ステップ候補**
 
-- [ ] `loop_carried_var` に `lc_sources` を導入し、`continue`/複数更新を取り扱えるよう Core IR 型を拡張
-- [ ] `cfg.ml` に `continue` ブロック生成・φ 入力増加ロジックを実装し、`test_cfg_continue`（新規）で検証
+- [x] `loop_carried_var` に `lc_sources` を導入し、`continue`/複数更新を取り扱えるよう Core IR 型を拡張
+  - 実装済: `compiler/ocaml/src/core_ir/ir.ml`, `compiler/ocaml/src/core_ir/desugar.ml`, `compiler/ocaml/src/core_ir/cfg.ml`, `compiler/ocaml/src/core_ir/ir_printer.ml`
+- [x] `cfg.ml` に `continue` ブロック生成・φ 入力増加ロジックを実装し、`test_cfg_continue`（新規）で検証
+  - 実装済: `compiler/ocaml/src/core_ir/cfg.ml`（`linearize_loop` が `lc_sources` を解析して preheader/latch/continue の三経路を φ 入力化し、`loop_continue` ブロックを生成）
+  - TODO: `continue` の実行時値は `lc_sources` の式（`ls_expr`）で補足する設計。現状は `continue` 式が未脱糖のためテストを追加できていないので、サンプル脱糖が揃い次第 `test_cfg_continue` を実装予定。
 - [ ] For ループ iterator モードの脱糖 PoC を実装し、配列版と iterator 版で同じ CFG パスを通ることを確認
 - [ ] `let mut`/while の LLVM IR ゴールデンテストを追加し、`alloca`/`load`/`store` パターンをスナップショット化
 - [ ] ランタイム診断・メトリクスへのフック要否を判断し、必要なら `docs/notes/llvm-spec-status-survey.md` に TODO を追記
