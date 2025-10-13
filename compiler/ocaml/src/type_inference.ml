@@ -17,6 +17,29 @@ open Type_error
 open Ast
 open Typed_ast
 
+(* ========== グローバル状態: impl レジストリ ========== *)
+
+(** impl 宣言のグローバルレジストリ
+ *
+ * Phase 2 Week 23-24: モジュールレベルのrefで保持し、
+ * 関数シグネチャの変更を最小化する。
+ *
+ * 型推論エンジン全体でこのレジストリを共有し、
+ * impl 宣言の登録と制約解決での参照を実現する。
+ *)
+let global_impl_registry : Impl_registry.impl_registry ref =
+  ref (Impl_registry.empty ())
+
+(** レジストリのリセット（テスト用） *)
+let reset_impl_registry () = global_impl_registry := Impl_registry.empty ()
+
+(** レジストリの取得 *)
+let get_impl_registry () = !global_impl_registry
+
+(** impl 情報をレジストリに登録 *)
+let register_impl (impl_info : Impl_registry.impl_info) : unit =
+  global_impl_registry := Impl_registry.register impl_info !global_impl_registry
+
 (* ========== 型注釈の変換 ========== *)
 
 (** AST型注釈をTypes.tyに変換
@@ -367,12 +390,15 @@ let constraint_error_to_type_error (err : Constraint_solver.constraint_error) :
 
 (** 制約リストを解決し、型エラーに変換
  *
+ * Phase 2 Week 23-24 更新: レジストリパラメータを追加
+ *
  * 制約解決器を呼び出し、成功時は辞書参照リストを、
  * 失敗時は型エラーを返す
  *)
 let solve_trait_constraints (constraints : trait_constraint list) :
     (dict_ref list, type_error) result =
-  match Constraint_solver.solve_constraints constraints with
+  let registry = get_impl_registry () in
+  match Constraint_solver.solve_constraints registry constraints with
   | Ok dict_refs -> Ok dict_refs
   | Error errors ->
       (* 複数のエラーがある場合は最初のエラーを返す *)
@@ -1610,12 +1636,14 @@ and infer_decl (env : env) (decl : decl) : (typed_decl * env * trait_constraint 
       (* impl宣言の型推論
        *
        * Phase 2 Week 23: impl宣言の型推論を実装
+       * Phase 2 Week 23-24: レジストリへの登録を追加
        *
        * 1. ジェネリック型パラメータを型変数に変換
        * 2. impl対象型を変換
        * 3. トレイト情報があれば処理
        * 4. 各メソッドの型推論
        * 5. トレイト制約の検証（where句）
+       * 6. impl情報をレジストリに登録 ← 新規追加（Week 23-24）
        *)
 
       (* 1. ジェネリック型パラメータを型変数に変換 *)
@@ -1624,6 +1652,9 @@ and infer_decl (env : env) (decl : decl) : (typed_decl * env * trait_constraint 
           (fun id -> (id, TypeVarGen.fresh (Some id.name)))
           impl.impl_params
       in
+
+      (* 型変数のリストを抽出 *)
+      let generic_type_vars = List.map snd generic_bindings in
 
       (* 2. ジェネリック型を型環境に追加 *)
       let env_with_generics =
@@ -1636,14 +1667,18 @@ and infer_decl (env : env) (decl : decl) : (typed_decl * env * trait_constraint 
       in
 
       (* 3. impl対象型を変換 *)
-      let _impl_target_ty = convert_type_annot impl.impl_type in
+      let impl_target_ty = convert_type_annot impl.impl_type in
 
       (* 4. トレイト情報があれば変換 *)
-      let _trait_info_opt =
-        Option.map
-          (fun (trait_id, trait_args) ->
-            (trait_id, List.map convert_type_annot trait_args))
-          impl.impl_trait
+      let trait_name, where_constraints =
+        match impl.impl_trait with
+        | Some (trait_id, _trait_args) ->
+            (* トレイト実装の場合 *)
+            (* TODO: where句からトレイト制約を抽出（Phase 2 後半で実装） *)
+            (trait_id.name, [])
+        | None ->
+            (* inherent impl の場合 *)
+            ("(inherent)", [])
       in
 
       (* 5. 各impl itemを推論 *)
@@ -1651,12 +1686,38 @@ and infer_decl (env : env) (decl : decl) : (typed_decl * env * trait_constraint 
         infer_impl_items env_with_generics impl.impl_items
       in
 
-      (* 6. impl宣言の型スキームを構築
+      (* 6. メソッド実装情報を抽出 *)
+      let method_list =
+        List.filter_map
+          (fun item ->
+            match item with
+            | Ast.ImplFn fn ->
+                (* メソッド名と実装関数名のペア *)
+                (* Phase 2 Week 23-24: 簡易実装では関数名をそのまま使用 *)
+                Some (fn.fn_name.name, trait_name ^ "_" ^ fn.fn_name.name)
+            | _ -> None)
+          impl.impl_items
+      in
+
+      (* 7. impl情報を構築してレジストリに登録 *)
+      let impl_info : Impl_registry.impl_info =
+        {
+          trait_name;
+          impl_type = impl_target_ty;
+          generic_params = generic_type_vars;
+          where_constraints;
+          methods = method_list;
+          span = decl.decl_span;
+        }
+      in
+      register_impl impl_info;
+
+      (* 8. impl宣言の型スキームを構築
        * impl宣言自体は値を持たないため、Unitスキーム
        *)
       let impl_scheme = mono_scheme ty_unit in
 
-      (* 7. 型付きimpl宣言を構築 *)
+      (* 9. 型付きimpl宣言を構築 *)
       let tdecl =
         make_typed_decl decl.decl_attrs decl.decl_vis
           (TImplDecl impl)

@@ -103,11 +103,18 @@ type solver_state = {
  * - 依存関係の自動解決
  * - 循環依存の検出とエラー報告
  *
+ * Phase 2 Week 23-24:
+ * - レジストリパラメータを追加
+ * - ユーザー定義impl宣言の検索対応
+ *
+ * @param registry impl宣言レジストリ
  * @param constraints 解決対象の制約リスト
  * @return 成功時は辞書参照のリスト、失敗時はエラーのリスト
  *)
 val solve_constraints :
-  trait_constraint list -> (dict_ref list, constraint_error list) result
+  Impl_registry.impl_registry ->
+  trait_constraint list ->
+  (dict_ref list, constraint_error list) result
 
 (** 初期状態の作成
  *
@@ -123,10 +130,13 @@ val init_solver_state : trait_constraint list -> solver_state
  * pending から解決可能な制約を1つ取り出して解決
  * 解決できない場合は errors に追加
  *
+ * Phase 2 Week 23-24: レジストリパラメータを追加
+ *
+ * @param registry impl宣言レジストリ
  * @param state 現在の解決状態
  * @return 更新された解決状態
  *)
-val step_solver : solver_state -> solver_state
+val step_solver : Impl_registry.impl_registry -> solver_state -> solver_state
 
 (** 解決が完了したか判定
  *

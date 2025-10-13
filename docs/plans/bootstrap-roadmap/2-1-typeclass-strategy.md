@@ -467,6 +467,94 @@ Phase 2 Week 23 のタスク「型推論パスへのimpl宣言統合」を完了
 
 ---
 
+### 2025-10-13 更新（Week 23-24 / impl宣言レジストリ統合完了）✨
+
+**作業サマリー** ✅:
+
+Phase 2 Week 23-24 のタスク「impl宣言のレジストリ統合と制約ソルバー連携」を完了しました。型推論エンジンがimpl宣言を解析してImplレジストリに登録し、制約ソルバーがレジストリからユーザー定義のimpl実装を検索できるようになりました。
+
+**実装完了内容** ✅:
+
+1. **Implレジストリ統合** ([type_inference.ml](../../compiler/ocaml/src/type_inference.ml))
+   - グローバルレジストリ参照をモジュールレベルに追加（`global_impl_registry: Impl_registry.impl_registry ref`）
+   - レジストリ操作関数を実装: `reset_impl_registry()`, `get_impl_registry()`, `register_impl()`
+   - `infer_decl`関数の`ImplDecl`ケースでimpl情報を抽出・登録（1632-1726行）:
+     - ジェネリック型パラメータの抽出
+     - トレイト名の抽出（inherent implは`"(inherent)"`）
+     - メソッドリストの抽出（メソッド名と実装関数名のペア）
+     - `Impl_registry.impl_info`レコードの構築・登録
+   - `solve_trait_constraints`関数を更新してレジストリを制約ソルバーに渡す
+
+2. **制約ソルバーのレジストリ対応** ([constraint_solver.ml](../../compiler/ocaml/src/constraint_solver.ml))
+   - `try_solve_constraint`関数にレジストリパラメータを追加（222-253行）
+   - 解決順序の実装:
+     1. 組み込み型の自動実装を優先チェック（Eq/Ord/Collector）
+     2. 組み込み型で見つからない場合、レジストリから検索（`Impl_registry.find_matching_impls`）
+     3. 一意のimplが見つかれば成功、複数見つかればAmbiguousImpl（TODO: 適切なエラーハンドリング）
+   - `step_solver`と`solve_constraints`関数のシグネチャを更新してレジストリを伝播
+   - インターフェース（[constraint_solver.mli](../../compiler/ocaml/src/constraint_solver.mli)）を更新
+
+3. **テストファイルの更新** ([test_constraint_solver.ml](../../compiler/ocaml/tests/test_constraint_solver.ml))
+   - `solve_constraints`の呼び出し3箇所を更新（空のレジストリを渡す）
+   - 147行、160行、168行で`Impl_registry.empty ()`を第一引数に追加
+
+4. **ゴールデンテストの更新**
+   - ビルトインメソッド生成により、LLVM IRゴールデンテストの出力が変更
+   - 3つのゴールデンファイルを更新:
+     - `basic_arithmetic.ll.golden`: ビルトインメソッド定義が追加
+     - `control_flow.ll.golden`: 同上
+     - `function_calls.ll.golden`: 同上
+
+**検証結果** ✅:
+
+- ✅ `dune build` 成功（エラー0件、リンカ警告のみ）
+- ✅ Constraint Solver Tests: 25件全成功
+  - プリミティブ型制約解決: 7件成功
+  - 複合型制約解決: 7件成功
+  - 制約解決統合テスト: 3件成功
+  - 制約グラフテスト: 2件成功
+  - 循環依存検出・トポロジカルソート: 6件成功
+- ✅ Parser Unit Tests: 全件成功（97件以上）
+- ✅ Type System Unit Tests: 全件成功（9カテゴリ）
+- ✅ LLVM IR Golden Tests: 3件全成功（更新後）
+- ✅ 全テストスイート: レグレッションなし
+
+**達成マイルストーン** ✅:
+
+- **タスク「impl宣言レジストリ統合」**: **100%完了**
+- **タスク「制約ソルバーのレジストリ対応」**: **100%完了**
+- **Phase 2 Week 23-24 タスク**: 完了
+- **M1マイルストーン進捗**: 辞書渡し方式の実装完了率 約90%（impl登録・検索機構完成）
+
+**技術的詳細** 📝:
+
+- **型名衝突の回避**: `Impl_registry`モジュールを`open`すると`env`型が衝突するため、完全修飾名（`Impl_registry.impl_registry`、`Impl_registry.impl_info`）を使用
+- **グローバル状態の管理**: 全関数のシグネチャ変更を避けるため、モジュールレベルの`ref`を使用（トレードオフ: 並行性への配慮は将来課題）
+- **優先順位設計**: 組み込み型の実装を優先することで、パフォーマンスの最適化とシンプルなフォールバック機構を実現
+
+**残存課題** 🚧:
+
+- AmbiguousImplの適切なエラーハンドリング（現在はNoneを返すのみ）
+- 複数型引数を持つトレイト制約のサポート拡張（現在はタプル化で暫定対応）
+- where句制約の再帰的な解決（Phase 2後半タスク）
+
+**次回セッションタスク** 🚧:
+
+- タスク5: ユーザー定義impl宣言の統合テスト作成（Week 24）
+- タスク6: ドキュメント更新（仕様書1-2への実装差分反映）
+- タスク7: where句制約の再帰的解決実装（Phase 2後半）
+
+**変更ファイル** 📝:
+
+- `compiler/ocaml/src/type_inference.ml` (+約30行: レジストリ統合、グローバル状態管理、impl情報登録)
+- `compiler/ocaml/src/constraint_solver.ml` (+約10行: レジストリパラメータ追加、検索ロジック実装)
+- `compiler/ocaml/src/constraint_solver.mli` (関数シグネチャ更新)
+- `compiler/ocaml/tests/test_constraint_solver.ml` (3箇所修正: 空レジストリ引数追加)
+- `compiler/ocaml/tests/llvm-ir/golden/*.ll.golden` (3ファイル更新: ビルトインメソッド追加)
+- `docs/plans/bootstrap-roadmap/2-1-typeclass-strategy.md` (本更新)
+
+---
+
 ### 2025-10-12 更新（Week 22-23 / ビルトインメソッド実装自動生成完了）✨
 
 **作業サマリー** ✅:

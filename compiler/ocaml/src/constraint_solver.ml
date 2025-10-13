@@ -8,6 +8,10 @@
  * - Eq, Ord, Collector の制約規則実装
  * - 制約グラフの構築と依存関係追跡
  * - 循環依存・未解決制約の検出
+ *
+ * Phase 2 Week 23-24:
+ * - Impl_registry との統合
+ * - ユーザー定義 impl 宣言の検索対応
  *)
 
 open Types
@@ -206,32 +210,65 @@ let solve_collector = function
 
 (* ========== 制約解決のメインロジック ========== *)
 
-(** 単一制約の解決を試みる *)
-let try_solve_constraint (c : trait_constraint) : dict_ref option =
-  match c.trait_name with
-  | "Eq" -> (
-      match c.type_args with [ ty ] -> solve_eq ty | _ -> None)
-  | "Ord" -> (
-      match c.type_args with [ ty ] -> solve_ord ty | _ -> None)
-  | "Collector" -> (
-      match c.type_args with [ ty ] -> solve_collector ty | _ -> None)
-  | _ ->
-      (* 未知のトレイト *)
-      None
+(** 単一制約の解決を試みる
+ *
+ * Phase 2 Week 23-24 更新: レジストリパラメータを追加
+ *
+ * 解決戦略:
+ * 1. 組み込み型の自動実装をチェック（solve_eq, solve_ord, solve_collector）
+ * 2. レジストリからユーザー定義impl宣言を検索
+ * 3. どちらも見つからない場合はNone
+ *)
+let try_solve_constraint (registry : Impl_registry.impl_registry)
+    (c : trait_constraint) : dict_ref option =
+  (* 組み込み型の自動実装を優先チェック *)
+  let builtin_result =
+    match c.trait_name with
+    | "Eq" -> (
+        match c.type_args with [ ty ] -> solve_eq ty | _ -> None)
+    | "Ord" -> (
+        match c.type_args with [ ty ] -> solve_ord ty | _ -> None)
+    | "Collector" -> (
+        match c.type_args with [ ty ] -> solve_collector ty | _ -> None)
+    | _ -> None
+  in
+
+  match builtin_result with
+  | Some dict_ref -> Some dict_ref
+  | None ->
+      (* 組み込み型で見つからない場合、レジストリから検索 *)
+      let matching_impls = Impl_registry.find_matching_impls c registry in
+      (match matching_impls with
+      | [] ->
+          (* 一致するimplが見つからない *)
+          None
+      | [ impl_info ] ->
+          (* 一意にimplが決定 *)
+          (* Phase 2 Week 23-24: 簡易実装では最初に見つかったimplを使用 *)
+          Some (DictImplicit (impl_info.trait_name, impl_info.impl_type))
+      | _ ->
+          (* 複数のimplが一致（曖昧性エラー）*)
+          (* TODO: AmbiguousImpl エラーを返すべきだが、現在の戻り値型がoption *)
+          (* Phase 2 後半でエラーハンドリングを改善 *)
+          None)
 
 (** 初期状態の作成 *)
 let init_solver_state constraints =
   { constraints; resolved = []; pending = constraints; errors = [] }
 
-(** 解決を1ステップ進める *)
-let step_solver state =
+(** 解決を1ステップ進める
+ *
+ * Phase 2 Week 23-24 更新: レジストリパラメータを追加
+ *)
+let step_solver (registry : Impl_registry.impl_registry) (state : solver_state) :
+    solver_state =
   match state.pending with
   | [] ->
       (* 解決待ちがなければ何もしない *)
       state
   | c :: rest_pending -> (
       (* 先頭の制約を解決試行 *)
-      match try_solve_constraint c with
+      match try_solve_constraint registry c with
       | Some dict_ref ->
           (* 解決成功: resolved に追加 *)
           {
@@ -511,9 +548,14 @@ let topological_sort graph =
 (** 制約解決のメインエントリポイント
  *
  * Phase 2 Week 20-21 更新: 循環依存検出を統合
- * 制約グラフを構築し、循環依存がある場合はエラーを返す
+ * Phase 2 Week 23-24 更新: レジストリパラメータを追加
+ *
+ * 制約グラフを構築し、循環依存がある場合はエラーを返す。
+ * ユーザー定義impl宣言の検索にレジストリを使用する。
  *)
-let solve_constraints constraints =
+let solve_constraints (registry : Impl_registry.impl_registry)
+    (constraints : trait_constraint list) :
+    (dict_ref list, constraint_error list) result =
   (* Week 20-21 実装: 循環依存を事前検出 *)
   let graph = build_constraint_graph constraints in
   let cycles = find_cycles graph in
@@ -541,7 +583,7 @@ let solve_constraints constraints =
           Error state.errors
       else
         (* まだ解決待ちがある: 1ステップ進めて再帰 *)
-        loop (step_solver state)
+        loop (step_solver registry state)
     in
     loop (init_solver_state constraints)
 

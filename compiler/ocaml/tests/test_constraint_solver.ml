@@ -144,7 +144,7 @@ let test_collector_option () =
 (** 単一制約の解決 *)
 let test_solve_single_constraint () =
   let constraint_ = make_constraint "Eq" [ ty_i64 ] in
-  let result = solve_constraints [ constraint_ ] in
+  let result = solve_constraints (Impl_registry.empty ()) [ constraint_ ] in
   assert_ok "solve_constraints should succeed for Eq<i64>" result;
   print_endline "✓ test_solve_single_constraint"
 
@@ -157,7 +157,7 @@ let test_solve_multiple_constraints () =
       make_constraint "Collector" [ ty_array ty_i64 ];
     ]
   in
-  let result = solve_constraints constraints in
+  let result = solve_constraints (Impl_registry.empty ()) constraints in
   assert_ok "solve_constraints should succeed for multiple constraints" result;
   print_endline "✓ test_solve_multiple_constraints"
 
@@ -165,7 +165,7 @@ let test_solve_multiple_constraints () =
 let test_solve_failing_constraint () =
   let custom_ty = TCon (TCUser "CustomType") in
   let constraint_ = make_constraint "Eq" [ custom_ty ] in
-  let result = solve_constraints [ constraint_ ] in
+  let result = solve_constraints (Impl_registry.empty ()) [ constraint_ ] in
   assert_error "solve_constraints should fail for Eq<CustomType>" result;
   print_endline "✓ test_solve_failing_constraint"
 
