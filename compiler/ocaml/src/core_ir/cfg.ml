@@ -63,12 +63,19 @@ type cfg_builder = {
   mutable current_stmts : stmt list;  (** 現在のブロックの命令列 *)
   mutable blocks : block list;  (** 完成したブロック *)
   mutable split_points : split_point list;  (** 検出された分岐点 *)
+  value_env : (int, var_id) Hashtbl.t;  (** 可変変数の現在値 (var_id.vid → SSA値) *)
 }
 (** CFG構築状態 *)
 
 (** CFG構築状態の初期化 *)
 let create_cfg_builder () : cfg_builder =
-  { current_label = None; current_stmts = []; blocks = []; split_points = [] }
+  {
+    current_label = None;
+    current_stmts = [];
+    blocks = [];
+    split_points = [];
+    value_env = Hashtbl.create 32;
+  }
 
 (** 新しいブロックを開始 *)
 let start_block (builder : cfg_builder) (lbl : label) : unit =
@@ -78,6 +85,12 @@ let start_block (builder : cfg_builder) (lbl : label) : unit =
 (** 現在のブロックに命令を追加 *)
 let add_stmt (builder : cfg_builder) (stmt : stmt) : unit =
   builder.current_stmts <- builder.current_stmts @ [ stmt ]
+
+let set_value_env (builder : cfg_builder) (var : var_id) (value : var_id) : unit =
+  Hashtbl.replace builder.value_env var.vid value
+
+let get_value_env (builder : cfg_builder) (var : var_id) : var_id option =
+  Hashtbl.find_opt builder.value_env var.vid
 
 (** 現在のブロックを終端命令で閉じる *)
 let finish_block (builder : cfg_builder) (term : terminator) (span : span) :
@@ -130,6 +143,8 @@ let rec linearize_expr (builder : cfg_builder) (expr : expr) : var_id =
         add_stmt builder (Alloca var);
         add_stmt builder (Store (var, bound_ref)))
       else add_stmt builder (Assign (var, bound_ref));
+      if var.vmutable then set_value_env builder var bound_var
+      else set_value_env builder var var;
       linearize_expr builder body
   | If (cond, then_e, else_e) ->
       linearize_if builder cond then_e else_e expr.expr_ty expr.expr_span
@@ -223,6 +238,7 @@ let rec linearize_expr (builder : cfg_builder) (expr : expr) : var_id =
         make_expr (Literal Unit) ty_unit expr.expr_span
       in
       add_stmt builder (Assign (unit_var, unit_expr));
+      set_value_env builder var rhs_var;
       unit_var
   | Loop loop_info ->
       linearize_loop builder loop_info expr.expr_ty expr.expr_span
@@ -379,7 +395,9 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
           (fun (var, init_expr) ->
             let init_var = linearize_expr builder init_expr in
             let init_value = make_expr (Var init_var) init_var.vty init_var.vspan in
-            add_stmt builder (Assign (var, init_value)))
+            add_stmt builder (Assign (var, init_value));
+            if var.vmutable then set_value_env builder var init_var
+            else set_value_env builder var var)
           for_info.for_init
     | _ -> ()
   in
@@ -387,17 +405,44 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
   (* preheader を header へジャンプさせて閉じる *)
   finish_block builder (TermJump header_label) span;
 
+  let carried_entries =
+    List.map
+      (fun { lc_var } ->
+        let init_value =
+          match get_value_env builder lc_var with
+          | Some v -> v
+          | None -> lc_var
+        in
+        (lc_var, init_value))
+      info.loop_carried
+  in
+
   (* header ブロック開始 *)
   start_block builder header_label;
 
-  (* ループ変数の Phi ノード（暫定: 自己参照） *)
-  List.iter
-    (fun { lc_var } ->
-      add_stmt builder
-        (Phi
-           ( lc_var,
-             [ (preheader_label, lc_var); (latch_label, lc_var) ] )))
-    info.loop_carried;
+  let phi_records =
+    List.map
+      (fun (lc_var, init_value) ->
+        let phi_var =
+          VarIdGen.fresh
+            (Printf.sprintf "%s_phi" lc_var.vname)
+            lc_var.vty lc_var.vspan
+        in
+        let phi_stmt =
+          Phi
+            ( phi_var,
+              [ (preheader_label, init_value); (latch_label, init_value) ] )
+        in
+        add_stmt builder phi_stmt;
+        if lc_var.vmutable then (
+          let phi_expr =
+            make_expr (Var phi_var) phi_var.vty lc_var.vspan
+          in
+          add_stmt builder (Store (lc_var, phi_expr)));
+        set_value_env builder lc_var phi_var;
+        (lc_var, phi_var, init_value))
+      carried_entries
+  in
 
   (* 条件分岐の生成 *)
   (match info.loop_kind with
@@ -409,9 +454,14 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
              body_label,
              exit_label ))
         cond_expr.expr_span
-  | ForLoop _for_info ->
-      (* TODO: for ループ条件の線形化（現状は直接ボディへ遷移） *)
-      finish_block builder (TermJump body_label) info.loop_span
+  | ForLoop for_info ->
+      let cond_var = linearize_expr builder for_info.for_source in
+      finish_block builder
+        (TermBranch
+           ( make_expr (Var cond_var) cond_var.vty cond_var.vspan,
+             body_label,
+             exit_label ))
+        for_info.for_source.expr_span
   | InfiniteLoop ->
       finish_block builder (TermJump body_label) info.loop_span);
 
@@ -431,11 +481,56 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
           let step_value =
             make_expr (Var step_var) step_var.vty step_var.vspan
           in
-          add_stmt builder (Assign (var, step_value)))
+          add_stmt builder (Assign (var, step_value));
+          if var.vmutable then set_value_env builder var step_var
+          else set_value_env builder var var)
         for_info.for_step
   | _ -> ());
 
   finish_block builder (TermJump header_label) info.loop_span;
+
+  let phi_patch_entries =
+    List.map
+      (fun (lc_var, phi_var, init_value) ->
+        let latch_value =
+          match get_value_env builder lc_var with
+          | Some v -> v
+          | None -> init_value
+        in
+        (phi_var, init_value, latch_value))
+      phi_records
+  in
+
+  let update_phi_in_block blk =
+    if not (String.equal blk.label header_label) then blk
+    else
+      let stmts =
+        List.map
+          (fun stmt ->
+            match stmt with
+            | Phi (var, _) -> (
+                match
+                  List.find_opt
+                    (fun (phi_var, _, _) -> phi_var.vid = var.vid)
+                    phi_patch_entries
+                with
+                | Some (_phi_var, init_value, latch_value) ->
+                    Phi
+                      ( var,
+                        [ (preheader_label, init_value); (latch_label, latch_value) ] )
+                | None -> stmt)
+            | other -> other)
+          blk.stmts
+      in
+      { blk with stmts }
+  in
+
+  builder.blocks <- List.map update_phi_in_block builder.blocks;
+
+  List.iter
+    (fun (lc_var, phi_var, _init_value) ->
+      set_value_env builder lc_var phi_var)
+    phi_records;
 
   (* exit ブロック開始（後続処理のため未収束） *)
   start_block builder exit_label;

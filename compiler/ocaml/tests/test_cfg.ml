@@ -282,16 +282,31 @@ let test_while_loop_cfg () =
       (fun blk -> starts_with "loop_header" blk.IR.label)
       blocks
   in
-  let has_phi =
+  let phi_entries =
+    List.filter_map
+      (function
+        | IR.Phi (var, incoming) -> Some (var, incoming)
+        | _ -> None)
+      header_block.IR.stmts
+  in
+  (match phi_entries with
+  | [ (_phi_var, incoming) ] ->
+      if List.length incoming <> 2 then
+        failwith "phi ノードの入力が2本ではありません";
+      let labels = List.map fst incoming in
+      if not (List.exists (starts_with "loop_latch") labels) then
+        failwith "phi ノードに latch からの入力がありません"
+  | _ -> failwith "ヘッダブロックに phi ノードが1つだけ存在することを期待しました");
+
+  let store_exists =
     List.exists
       (function
-        | IR.Phi (var, incoming) ->
-            var.vid = i_var.vid && List.length incoming = 2
+        | IR.Store (var, _) -> var.vid = i_var.vid
         | _ -> false)
       header_block.IR.stmts
   in
-  if not has_phi then
-    failwith "ループヘッダに phi ノードが生成されていません";
+  if not store_exists then
+    failwith "phi の結果をループ変数へ store していません";
 
   print_endline "✓ test_while_loop_cfg passed"
 

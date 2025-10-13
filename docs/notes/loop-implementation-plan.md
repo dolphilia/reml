@@ -199,16 +199,32 @@ fn test_mut() -> i64 {
 - DCE・ConstFold は `Store` を常に副作用アリとして保持するため、ループカウンタが消去されない
 - `dune build` は CLI 側の既知 Warning（`warning 21`）で停止するが、新規変更部は型チェックを通過済み
 
-**次ステップ**
+**進捗サマリー（2025-10-13 現在）**
 
-1. ループ専用の CFG 展開を実装し、`TWhile`/`TFor`/`TLoop` を基本ブロック列へ変換（`core_ir/desugar.ml` のマーカー処理・`cfg.ml` のブロック生成を拡張）
-2. ループカウンタの `phi` ノード導入と `AssignMutable` からの SSA 変換戦略を検討（Step2 の出口条件）
-3. `let mut` / 単純な while のゴールデンテスト・LLVM IR スナップショットを追加して、`alloca`/`load`/`store` パターンを回帰検出に組み込む
-4. ランタイム側で追加メモリアクセスの診断（トレース/メトリクス）にフックするかを検討し、必要なら `docs/notes/llvm-spec-status-survey.md` に TODO を追記
+- ✅ `Loop` ノード導入・`desugar` 更新完了（while/for/loop を Core IR へマップ）
+- ✅ `linearize_loop` の原型実装完了（ヘッダ φ と latch 差し替え、`value_env` を用いた mini mem2reg）
+- ✅ CFG テストに while ケースを追加し、φ 入力と Store を検証
+- 🛠 `loop_carried_var` 拡張案・`continue`/`break` 対応設計をドキュメント化（実装は未着手）
+- 🛠 For ループ iterator 化の脱糖戦略を整理（`__iter__`/`__next__` 想定）
+- ⏳ LLVM IR ゴールデン・統合テスト、ランタイム診断フックは未作業
+
+**次ステップ候補**
+
+- [ ] `loop_carried_var` に `lc_sources` を導入し、`continue`/複数更新を取り扱えるよう Core IR 型を拡張
+- [ ] `cfg.ml` に `continue` ブロック生成・φ 入力増加ロジックを実装し、`test_cfg_continue`（新規）で検証
+- [ ] For ループ iterator モードの脱糖 PoC を実装し、配列版と iterator 版で同じ CFG パスを通ることを確認
+- [ ] `let mut`/while の LLVM IR ゴールデンテストを追加し、`alloca`/`load`/`store` パターンをスナップショット化
+- [ ] ランタイム診断・メトリクスへのフック要否を判断し、必要なら `docs/notes/llvm-spec-status-survey.md` に TODO を追記
 
 #### ステップ2: CFG構築でのループ展開（Week 26-27）
 
 **目標**: `TWhile` / `TFor` / `TLoop` を Core IR の基本ブロック列へ展開し、SSA 変換に備えたループヘッダ `Phi` 計画を固める。
+
+**現状（2025-10-13）**
+- while ループについては `Loop` ノード → CFG → φ ノードまで実装済み。`test_cfg` で φ の入力と Store を検証。
+- For ループは IR まで導入済みだが、iterator モードや本格的な更新式合流は未実装。
+- `continue`/`break` に関する設計メモを追加済みだが、CFG 生成・テストは未着手。
+- LLVM IR ゴールデン・統合テスト、およびランタイム診断の検討はこれから。
 
 **前提整理（2025-10-13 更新）**
 - `desugar_expr` がまだループを `Literal Unit` に潰しているため、`cfg.ml` 側ではループ構造を検出できない。
@@ -251,6 +267,11 @@ fn test_mut() -> i64 {
   - **exit**: ループ式の戻り値（現状 Unit）を `TermReturn` か上位ブロックへの `TermJump` に変換。`linearize_expr` から返す結果変数は exit で生成。
 - `LabelGen` の連番管理が崩れないよう、`linearize_loop` 内でラベル生成を完結させ、`linearize_expr` は戻り値変数のみを扱う。
 - `build_cfg_from_expr` / `build_cfg` の戻り値は既存と同じ `block list`。ループ導入後は `validate_cfg` を活用して基本整形性を都度確認する。
+- **2025-10-13 実装メモ**: `cfg_builder` に可変変数の最新 SSA 値を追跡する `value_env` を追加し、preheader で初期値、latch で更新値を回収。ヘッダでは暫定 `Phi` を挿入して `Store` でメモリへ反映し、ループ構築後に latch 側の実値で φ の入力を差し替えることで簡易 mem2reg を実現。これに伴い `collect_loop_carried_vars` で抽出した変数に対し、`set_value_env`/`get_value_env` で初期値と更新値を `Phi` へ渡す。
+- **今後の拡張検討（2025-10-13）**
+  - **複数更新・`continue` 対応**: 現行の `value_env` は「最後の更新のみ」を latch で拾う実装。`continue` を導入すると latch に合流する経路が増えるため、`loop_carried` を `(var, sources)` 形式へ拡張し、`sources` に `(label, value_expr)` を記録する。`continue` 直前で `value_env` を push し、latch 構築後に `Phi` の入力へ統合する。
+  - **`break` 経路の扱い**: `break` は exit 直行のため φ 引数は不要だが、`break` 経路で評価済みの戻り値（将来の非 Unit ループ）を exit ブロックで合流させる仕組みが必要。`exit` ブロックに二段目の φ を設置し、「通常終了」「break」を統合する案を採用する。
+  - **診断・テスト**: `continue` を実装した際に φ の入力本数が期待通り増えていることを確認するユニットテスト（`loop_header` ブロックでラベル集合を検証）を追加する。さらに `validate_cfg` に「φ 入力に未解決ラベルが無いか」をチェックするガードを設ける。
 
 **2.3 ループ用 PHI ノード導入方針**
 - `loop_carried` に記録された変数について、`header` ブロック先頭に `Phi` 文を挿入する。基本形：
@@ -271,6 +292,83 @@ fn test_mut() -> i64 {
 - `compiler/ocaml/tests/test_cfg_loop.ml`（新規）を追加し、`build_cfg_from_expr` の出力ブロック列をスナップショット化。
 - `llvm_ir` ゴールデンに while ループ 1 種を追加し、`Phi` が IR に降りるまでは `alloca` ベースで比較。`Phi` 有効化時点で golden の更新を伴うことをあらかじめ `docs/notes/llvm-spec-status-survey.md` に記載する。
 - `loop_carried` 収集の精度を検証するため、`let mut i = 0; while ... { i := i + 1 }` で `Phi` が 1 つだけ生成されること、ネストループでも外側・内側の `Phi` が独立することをユニットテスト化する。
+- **2025-10-13 実装メモ**: header で生成する `Phi` は一時的に自身の初期値を2本目にも差し込み、latch の構築後に `loop_latch` からの実値へ差し替える方式に変更。差し替え後は `value_env` を φ の結果に再設定し、ループ脱出後も最新値を共有する。検証として `test_cfg` に φ 入力と Store の有無を確認するケースを追加。
+- **計画アップデート**: `loop_carried_var` を将来的に `lc_sources : loop_source list`（`loop_source = { kind : [Preheader|Latch|Continue label]; expr : expr }`）へ拡張し、`Loop` ノードが CFG 構築前に経路情報を保持する設計とする。これにより `continue` のようにヘッダへ戻る複数経路が発生しても、`linearize_loop` 側でラベル整合を取るだけで済む。
+
+**Loop ノード構造案（2025-10-13 試案）**
+
+- `loop_info` を次のように拡張し、SSA 変換前提のメタデータを充実させる：
+  ```ocaml
+  type loop_source_kind =
+    | FromPreheader
+    | FromLatch
+    | FromContinue of label
+
+  type loop_source = {
+    source_kind : loop_source_kind;
+    source_span : span;
+    source_expr : expr;  (* Preheader の初期値 / Latch の更新式 / continue 前の値 *)
+  }
+
+  type loop_carried_var = {
+    lc_var : var_id;
+    lc_sources : loop_source list;
+  }
+
+  type loop_exit_kind =
+    | LoopExitNormal
+    | LoopExitBreak of label  (* exit へジャンプする break 入口ラベル *)
+
+  type loop_info = {
+    loop_kind : loop_kind;
+    loop_body : expr;
+    loop_span : span;
+    loop_carried : loop_carried_var list;
+    loop_exits : loop_exit_kind list;  (* break 経路の事前計測用 *)
+  }
+  ```
+  - `lc_sources` に `FromContinue` を含めることで、`continue` の発生地点ごとに φ の入力を追加可能。
+  - `loop_exits` は break の発生有無とブロックラベルを保持し、exit ブロック側での φ 合流（通常終了と break 経路の合流）に利用する。
+
+- `desugar` での収集方針：
+  1. `AssignMutable` に遭遇したら現在のラベル（`LabelGen` 利用）と式を `FromLatch` 候補として登録。
+  2. `continue`（将来実装予定）を特殊式として扱い、直前の可変変数値を `FromContinue` として push、同時に `loop_exits` に break/continue 情報を記録。
+  3. `let mut` 初期化は `FromPreheader` として自動生成。
+
+- `linearize_loop` 側での処理：
+  - `lc_sources` を走査して `(label, value_var)` の辞書を構築し、φ 挿入時に `builder.blocks` のラベル解決を行う。
+  - `FromContinue` の場合、`continue` ターゲット用の中間ブロック（`cont_label -> latch`）を生成し、更新値を φ 入力として接続する。
+  - 複数回更新がある場合でも、`lc_sources` の順序に従い deterministic に φ 生成を行える。
+
+**continue を含む CFG サンプル（構想）**
+
+```reml
+let mut acc = 0
+let mut i = 0
+while i < 10 {
+  i := i + 1
+  if i % 2 == 0 {
+    continue
+  }
+  acc := acc + i
+}
+```
+
+期待する Core IR+CFG の要点：
+- `loop_header` φ: `i_phi = phi [ (preheader, i0); (latch, i_next); (cont_body, i_cont) ]`
+- `continue` 用のブロック `loop_continue` を生成し、`acc` など carry 変数の φ 入力にも `loop_continue` 由来の値を追加。
+- `acc` φ: `[ (preheader, acc0); (latch, acc_updated); (loop_continue, acc_phi) ]`（`continue` では更新なしのため `acc_phi` は `acc` のヘッダ時点の値）。
+- テスト観点で検証するポイント：
+  1. ヘッダ φ に `loop_continue` ラベルが入力として追加されている。
+  2. `continue` 経路で `acc` が更新されないことを φ の入力値から確認。
+  3. `validate_cfg` が未定義ラベルや未接続ブロックを報告しない。
+
+**テストケースの先行整備案**
+
+- `compiler/ocaml/tests/test_cfg_continue.ml`（新規）を用意し、`build_cfg_from_expr` を直接呼び出して φノードの入力集合とブロック遷移を検証する。
+  - φノード検証: `loop_header` 内の `Phi` ステートメントを抽出し、`sources` のラベル集合が `{preheader, loop_latch, loop_continue}` になっているかをアサート。
+  - `continue` ブロック検証: `loop_continue` の終端が `TermJump loop_latch` になっていること、および carry 変数の更新が存在しないことをチェック。
+- `docs/notes/loop-implementation-plan.md` にテスト計画を記載したことで、実装フェーズで迷わずに着手できる。
 
 **成果物**
 - `compiler/ocaml/src/core_ir/ir.ml`: `LoopMarker`（正式名称要検討）および補助型追加。
@@ -305,6 +403,12 @@ dune runtest compiler/ocaml/tests
 1. インデックス変数の自動生成
 2. 配列長の取得（プリミティブ演算追加）
 3. パターン変数の束縛
+4. **iterator モードへの拡張案**（2025-10-13 更新）
+   - `TFor (pat, source, body)` が `Core.Iterable` 互換のイテレータを受け取るケースを想定し、`desugar` 段階で以下の構造を生成する：
+     1. `for_init` に `iter_state = source.__iter__()` を追加（必要なら `VarIdGen` で一時変数を作成）。
+     2. `for_source` には `iter_state.__next__()` の結果（`Option` / `Result` で返す想定）を保持し、`CFG` では `next_result.is_some()` を条件として評価。
+     3. `loop_body` へ入る前に `pattern` を `next_result.unwrap()` から束縛し、`for_step` では追加の更新は不要とする。
+   - 配列など固定長コレクションは従来どおりインデックス方式で脱糖し、イテレータを返す型は `for_init`/`for_source` の差し替えだけで共通パスを利用する。これにより Phase 3 で導入予定の `Core.Iterator` と互換性を確保する。
 
 ```ocaml
 (* desugar.ml での for式処理 *)
