@@ -1,0 +1,44 @@
+// Phase 2 Week 24: 型クラス制約の基本テスト
+//
+// このファイルは型クラス辞書渡し機構の基本的な動作確認を目的とする。
+// Phase 2時点では以下の制約がある:
+// - TypeDecl (type宣言) の型推論が未実装
+// - where句制約（ジェネリック制約）は未実装
+// - trait宣言のパース（Self型）が未実装
+//
+// したがって、本テストでは既存のビルトイン型クラス（Eq, Ord）と
+// ビルトイン型（i64, String, Bool）の組み合わせのみを検証する。
+
+// ========== ビルトイン型クラスの基本テスト ==========
+
+// ユーザー定義impl宣言のテスト
+// Phase 2時点ではビルトイン型に対するビルトイントレイトのimpl宣言のみサポート
+impl Eq for i64 {
+  fn eq(self: i64, other: i64) -> Bool = self == other
+}
+
+// i64型の等価比較テスト関数（Eq<i64>）
+fn test_eq_i64(x: i64, y: i64) -> Bool = x == y
+
+// i64型の順序比較テスト関数（Ord<i64>）
+fn test_ord_i64(x: i64, y: i64) -> Bool = x > y
+
+// メイン関数: 各テストケースを実行
+pub fn main() -> i64 = {
+  // テストケース1: Eq<i64> - 等しい値
+  let test1 = test_eq_i64(42, 42);
+
+  // テストケース2: Eq<i64> - 異なる値
+  let test2 = test_eq_i64(10, 20);
+
+  // テストケース3: Ord<i64> - 大小比較
+  let test3 = test_ord_i64(30, 20);
+
+  // 結果検証: 期待値と一致すれば1を返す
+  let not_test2 = test2 == false;
+
+  if test1 && not_test2 && test3 then
+    1  // 全テスト成功
+  else
+    0  // テスト失敗
+}

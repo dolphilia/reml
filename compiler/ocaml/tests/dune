@@ -26,7 +26,9 @@
   test_cli_diagnostics
   test_cli_trace
   test_typeclass_llvm
-  test_typeclass_execution)
+  test_typeclass_execution
+  test_user_impl_llvm
+  test_user_impl_execution)
  (libraries
   reml_parser
   reml_ocaml.core_ir
