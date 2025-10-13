@@ -384,6 +384,8 @@ let rec desugar_expr (map : var_scope_map) (texpr : typed_expr) : expr =
   | TLoop body ->
       let body_expr = desugar_expr map body in
       make_loop_expr InfiniteLoop body_expr span ty
+  | TContinue ->
+      make_expr Continue ty_unit span
   | TUnsafe body ->
       (* unsafe式は型検査済みなので、そのまま脱糖 *)
       desugar_expr map body
@@ -451,7 +453,12 @@ and desugar_mutable_assign (map : var_scope_map) (lhs : typed_expr)
       desugar_error
         "現在は単純な変数への代入（TVar）のみサポートしています" span
 
-and collect_loop_carried_vars (body_expr : expr) : loop_carried_var list =
+and collect_loop_carried_vars (body_expr : expr) :
+    loop_carried_var list * bool =
+  let base = collect_base_loop_carried body_expr in
+  augment_loop_carried_with_continue body_expr base
+
+and collect_base_loop_carried (body_expr : expr) : loop_carried_var list =
   let preheader_source var =
     let expr = make_expr (Var var) var.vty var.vspan in
     { ls_kind = LoopSourcePreheader; ls_span = var.vspan; ls_expr = expr }
@@ -536,6 +543,7 @@ and collect_loop_carried_vars (body_expr : expr) : loop_carried_var list =
     | DictMethodCall (dict_expr, _name, args) ->
         let ordered = visit_expr ordered dict_expr in
         List.fold_left visit_expr ordered args
+    | Continue -> ordered
     | Loop loop_info ->
         let ordered =
           match loop_info.loop_kind with
@@ -565,12 +573,130 @@ and collect_loop_carried_vars (body_expr : expr) : loop_carried_var list =
   in
   visit_expr [] body_expr
 
+and augment_loop_carried_with_continue (body_expr : expr)
+    (initial : loop_carried_var list) :
+    loop_carried_var list * bool =
+  let module IntKey = struct
+    type t = int
+
+    let compare (a : int) (b : int) = Stdlib.compare a b
+  end in
+  let module IntMap = Map.Make (IntKey) in
+
+  let loop_carried_ref = ref initial in
+  let has_continue = ref false in
+
+  let update_loop_carried var expr span =
+    loop_carried_ref :=
+      List.map
+        (fun lc ->
+          if lc.lc_var.vid = var.vid then
+            let source =
+              { ls_kind = LoopSourceContinue; ls_span = span; ls_expr = expr }
+            in
+            { lc with lc_sources = lc.lc_sources @ [ source ] }
+          else lc)
+        !loop_carried_ref
+  in
+
+  let make_current_value var =
+    make_expr (Var var) var.vty var.vspan
+  in
+
+  let rec visit ~collect env expr =
+    let span = expr.expr_span in
+    match expr.expr_kind with
+    | Continue ->
+        if collect then
+          has_continue := true;
+          List.iter
+            (fun lc ->
+              let expr =
+                match IntMap.find_opt lc.lc_var.vid env with
+                | Some value -> value
+                | None -> make_current_value lc.lc_var
+              in
+              update_loop_carried lc.lc_var expr span)
+            !loop_carried_ref;
+        env
+    | AssignMutable (var, rhs) ->
+        let env = visit ~collect env rhs in
+        IntMap.add var.vid rhs env
+    | Let (_var, bound, body) ->
+        let env = visit ~collect env bound in
+        visit ~collect env body
+    | App (fn, args) ->
+        let env = visit ~collect env fn in
+        List.fold_left (visit ~collect) env args
+    | Primitive (_op, args) ->
+        List.fold_left (visit ~collect) env args
+    | If (cond, then_e, else_e) ->
+        let env_after_cond = visit ~collect env cond in
+        ignore (visit ~collect env_after_cond then_e);
+        ignore (visit ~collect env_after_cond else_e);
+        env_after_cond
+    | Match (scrut, cases) ->
+        let env_after_scrut = visit ~collect env scrut in
+        List.iter
+          (fun case ->
+            let env_case =
+              match case.case_guard with
+              | Some guard -> visit ~collect env_after_scrut guard
+              | None -> env_after_scrut
+            in
+            ignore (visit ~collect env_case case.case_body))
+          cases;
+        env_after_scrut
+    | TupleAccess (tuple, _) -> visit ~collect env tuple
+    | RecordAccess (record, _) -> visit ~collect env record
+    | ArrayAccess (arr, idx) ->
+        let env = visit ~collect env arr in
+        visit ~collect env idx
+    | ADTConstruct (_ctor, fields) ->
+        List.fold_left (visit ~collect) env fields
+    | ADTProject (adt, _) -> visit ~collect env adt
+    | DictMethodCall (dict_expr, _name, args) ->
+        let env = visit ~collect env dict_expr in
+        List.fold_left (visit ~collect) env args
+    | Loop loop_info ->
+        let env =
+          match loop_info.loop_kind with
+          | WhileLoop cond -> visit ~collect:false env cond
+          | ForLoop info ->
+              let env =
+                List.fold_left
+                  (fun env (_, e) -> visit ~collect:false env e)
+                  env info.for_init
+              in
+              let env =
+                List.fold_left
+                  (fun env (_, e) -> visit ~collect:false env e)
+                  env info.for_step
+              in
+              visit ~collect:false env info.for_source
+          | InfiniteLoop -> env
+        in
+        visit ~collect:false env loop_info.loop_body
+    | Closure _ | DictLookup _ | DictConstruct _ | CapabilityCheck _
+    | Literal _ | Var _ ->
+        env
+  in
+
+  ignore (visit ~collect:true IntMap.empty body_expr);
+  (!loop_carried_ref, !has_continue)
+
 and make_loop_expr (loop_kind : loop_kind) (loop_body : expr) (span : span)
     (ty : ty) : expr =
-  let loop_carried = collect_loop_carried_vars loop_body in
+  let loop_carried, has_continue = collect_loop_carried_vars loop_body in
   make_expr
     (Loop
-       { loop_kind; loop_body; loop_span = span; loop_carried })
+       {
+         loop_kind;
+         loop_body;
+         loop_span = span;
+         loop_carried;
+         loop_contains_continue = has_continue;
+       })
     ty span
 
 (* ========== ブロック式の変換 ========== *)

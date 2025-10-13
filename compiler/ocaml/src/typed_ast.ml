@@ -43,6 +43,7 @@ and typed_expr_kind =
   | TWhile of typed_expr * typed_expr
   | TFor of typed_pattern * typed_expr * typed_expr
   | TLoop of typed_expr
+  | TContinue
   | TBlock of typed_stmt list
   | TUnsafe of typed_expr
   | TReturn of typed_expr option
@@ -220,6 +221,7 @@ let rec string_of_typed_expr texpr =
         ty_str
   | TLoop body ->
       Printf.sprintf "(loop %s : %s)" (string_of_typed_expr body) ty_str
+  | TContinue -> Printf.sprintf "(continue : %s)" ty_str
   | TBlock stmts ->
       Printf.sprintf "(Block [%d stmts] : %s)" (List.length stmts) ty_str
   | TUnsafe e ->

@@ -240,6 +240,8 @@ let rec linearize_expr (builder : cfg_builder) (expr : expr) : var_id =
       add_stmt builder (Assign (unit_var, unit_expr));
       set_value_env builder var rhs_var;
       unit_var
+  | Continue ->
+      failwith "Continue lowering is not yet implemented in CFG"
   | Loop loop_info ->
       linearize_loop builder loop_info expr.expr_ty expr.expr_span
   | Closure _closure_info ->
@@ -388,12 +390,13 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
   in
 
   let has_continue_source =
-    List.exists
-      (fun { lc_sources; _ } ->
-        List.exists
-          (fun source -> source.ls_kind = LoopSourceContinue)
-          lc_sources)
-      info.loop_carried
+    info.loop_contains_continue
+    || List.exists
+         (fun { lc_sources; _ } ->
+           List.exists
+             (fun source -> source.ls_kind = LoopSourceContinue)
+             lc_sources)
+         info.loop_carried
   in
   let continue_label_opt =
     if has_continue_source then Some (LabelGen.fresh "loop_continue") else None

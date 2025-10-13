@@ -107,6 +107,7 @@ and expr_kind =
   | While of expr * expr
   | For of pattern * expr * expr
   | Loop of expr
+  | Continue
   | Block of stmt list
   | Unsafe of expr
   | Return of expr option

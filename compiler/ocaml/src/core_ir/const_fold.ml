@@ -367,6 +367,7 @@ let rec fold_expr (env : const_env) (stats : fold_stats) (e : expr) : expr =
   | AssignMutable (var, rhs) ->
       let folded_rhs = fold_expr env stats rhs in
       make_expr (AssignMutable (var, folded_rhs)) e.expr_ty e.expr_span
+  | Continue -> e
   | Loop loop_info ->
       let folded_kind =
         match loop_info.loop_kind with

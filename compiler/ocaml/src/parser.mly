@@ -495,6 +495,7 @@ expr_base:
   | e = while_expr { e }
   | e = for_expr { e }
   | e = loop_expr { e }
+  | e = continue_expr { e }
   | e = return_expr { e }
   | e = defer_expr { e }
   | e = unsafe_expr { e }
@@ -734,6 +735,13 @@ loop_expr:
     {
       let span = make_span $startpos $endpos in
       make_expr (Loop body) span
+    }
+
+continue_expr:
+  | CONTINUE
+    {
+      let span = make_span $startpos $endpos in
+      make_expr Continue span
     }
 
 return_expr:

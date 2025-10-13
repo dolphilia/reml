@@ -199,6 +199,8 @@ let rec string_of_expr ?(depth = 0) expr =
   | AssignMutable (var, rhs) ->
       let rhs_str = string_of_expr ~depth:0 rhs |> String.trim in
       Printf.sprintf "%s(set %s := %s : Unit)" ind (string_of_var_id var) rhs_str
+  | Continue ->
+      Printf.sprintf "%s(continue : Unit)" ind
   | Loop loop_info ->
       string_of_loop_info ~depth loop_info ty_str
 
@@ -253,8 +255,13 @@ and string_of_loop_info ?(depth = 0) info ty_str =
         in
         Printf.sprintf "\n%sphi [%s]" (indent (depth + 1)) vars_str
   in
-  Printf.sprintf "%s(loop : %s\n%s\n%sbody\n%s%s)" ind ty_str kind_str ind
-    body_str carried
+  let continue_flag =
+    if info.loop_contains_continue then
+      Printf.sprintf "\n%scontains-continue" (indent (depth + 1))
+    else ""
+  in
+  Printf.sprintf "%s(loop : %s\n%s\n%sbody\n%s%s%s)" ind ty_str kind_str ind
+    body_str carried continue_flag
 
 (* ========== Core IR 文の表示 ========== *)
 

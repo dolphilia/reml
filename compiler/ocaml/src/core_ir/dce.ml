@@ -78,6 +78,7 @@ let rec collect_used_vars (e : expr) : VarSet.t =
         VarSet.empty args
   | ADTProject (e1, _) -> collect_used_vars e1
   | AssignMutable (_, rhs) -> collect_used_vars rhs
+  | Continue -> VarSet.empty
   | DictMethodCall (dict_expr, _, args) ->
       let dict_vars = collect_used_vars dict_expr in
       List.fold_left
@@ -163,6 +164,7 @@ let rec has_side_effect (e : expr) : bool =
   | ArrayAccess (e1, e2) -> has_side_effect e1 || has_side_effect e2
   | ADTConstruct (_, args) -> List.exists has_side_effect args
   | DictConstruct _ -> false
+  | Continue -> true
   | AssignMutable _ -> true
   | DictMethodCall (dict_expr, _, args) ->
       has_side_effect dict_expr || List.exists has_side_effect args
@@ -204,6 +206,7 @@ let rec dce_expr (used_vars : VarSet.t) (stats : dce_stats) (e : expr) : expr =
   | Literal _ | Var _ | Primitive _ | Closure _ | DictLookup _
   | DictConstruct _ | CapabilityCheck _ ->
       e
+  | Continue -> e
   | App (fn, args) ->
       let fn' = dce_expr used_vars stats fn in
       let args' = List.map (dce_expr used_vars stats) args in

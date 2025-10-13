@@ -121,7 +121,7 @@ let rec collect_expr acc expr =
         in
         collect_expr acc loop_info.loop_body
     | Closure _ | Literal _ | Var _ | DictLookup _ | DictConstruct _
-    | CapabilityCheck _ ->
+    | CapabilityCheck _ | Continue ->
         acc
   in
   acc

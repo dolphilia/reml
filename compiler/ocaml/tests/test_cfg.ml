@@ -279,6 +279,7 @@ let test_while_loop_cfg () =
               ];
           };
         ];
+      loop_contains_continue = false;
     }
   in
   let loop_expr = IR.make_expr (IR.Loop loop_info) ty_unit dummy_span in

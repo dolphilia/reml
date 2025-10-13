@@ -785,6 +785,10 @@ let rec infer_expr (env : env) (expr : expr) : (infer_result, type_error) result
         make_typed_expr (TLoop tbody) ty_unit expr.expr_span
       in
       Ok (texpr, ty_unit, s1, body_constraints)
+  | Continue ->
+      (* continue式はUnit型を返し、ループ継続を示す制御フロー操作 *)
+      let texpr = make_typed_expr TContinue ty_unit expr.expr_span in
+      Ok (texpr, ty_unit, empty_subst, [])
   | Unsafe body ->
       (* unsafe式の型推論
        *

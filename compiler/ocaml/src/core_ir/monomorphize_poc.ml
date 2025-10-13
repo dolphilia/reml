@@ -187,7 +187,7 @@ let rec count_dict_calls_in_expr expr =
       in
       kind_count + count_dict_calls_in_expr loop_info.loop_body
   | CapabilityCheck _ | DictConstruct _ | DictLookup _ -> 0
-  | Closure _ | Literal _ | Var _ -> 0
+  | Closure _ | Literal _ | Var _ | Continue -> 0
 
 let count_dict_calls_in_stmt = function
   | Assign (_, expr)
@@ -346,7 +346,7 @@ let rec convert_primitives_expr expr =
            })
         expr.expr_ty expr.expr_span
   | CapabilityCheck _ | DictConstruct _ | DictLookup _ | Closure _
-  | Literal _ | Var _ ->
+  | Literal _ | Var _ | Continue ->
       expr
 
 let convert_primitives_stmt stmt =
@@ -546,7 +546,7 @@ let rec rewrite_expr ~entries ~wrappers expr =
            })
         expr.expr_ty expr.expr_span
   | Closure _ | Literal _ | Var _ | DictLookup _ | DictConstruct _
-  | CapabilityCheck _ ->
+  | CapabilityCheck _ | Continue ->
       expr
 
 let rewrite_effect_info ~entries ~wrappers info =

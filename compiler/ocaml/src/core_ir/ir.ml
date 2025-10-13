@@ -235,6 +235,7 @@ and expr_kind =
   | ADTProject of expr * int  (** ADT フィールド射影 *)
   | AssignMutable of var_id * expr  (** ミュータブル変数への代入（Unitを返す） *)
   | Loop of loop_info  (** ループ構造（CFG 展開用メタデータ） *)
+  | Continue  (** continue 制御フローマーカー（Loop 内で使用） *)
 
 and case = {
   case_pattern : simple_pattern;  (** 簡略化されたパターン *)
@@ -292,6 +293,7 @@ and loop_info = {
   loop_body : expr;  (** ループ本体（脱糖済み） *)
   loop_span : span;  (** ループ全体のソース位置 *)
   loop_carried : loop_carried_var list;  (** PHI 候補となる変数群（暫定） *)
+  loop_contains_continue : bool;  (** continue がボディ内に存在するか *)
 }
 
 (* ========== Core IR 文 ========== *)

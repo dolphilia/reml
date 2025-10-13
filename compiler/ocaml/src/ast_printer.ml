@@ -190,6 +190,7 @@ and string_of_expr expr =
       Printf.sprintf "for(%s in %s) { %s }" (string_of_pattern pat)
         (string_of_expr source) (string_of_expr body)
   | Loop body -> Printf.sprintf "loop { %s }" (string_of_expr body)
+  | Continue -> "continue"
   | Block stmts ->
       let stmt_str = stmts |> List.map string_of_stmt |> String.concat "; " in
       Printf.sprintf "block[%s]" stmt_str

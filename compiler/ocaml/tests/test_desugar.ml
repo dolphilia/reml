@@ -22,6 +22,67 @@ let dummy_span = { start = 0; end_ = 0 }
 let make_typed_expr kind ty =
   { texpr_kind = kind; texpr_ty = ty; texpr_span = dummy_span }
 
+let test_desugar_loop_continue () =
+  Printf.printf "test_desugar_loop_continue ... ";
+  Core_ir.Ir.VarIdGen.reset ();
+  Core_ir.Ir.LabelGen.reset ();
+
+  let i_var =
+    Core_ir.Ir.VarIdGen.fresh ~mutable_:true "i" ty_i64 dummy_span
+  in
+  let i_ref = Core_ir.Ir.make_expr (Var i_var) ty_i64 dummy_span in
+  let one_expr =
+    Core_ir.Ir.make_expr (Literal (Ast.Int ("1", Ast.Base10))) ty_i64 dummy_span
+  in
+  let add_expr =
+    Core_ir.Ir.make_expr
+      (Primitive (PrimAdd, [ i_ref; one_expr ]))
+      ty_i64 dummy_span
+  in
+  let assign_expr =
+    Core_ir.Ir.make_expr (AssignMutable (i_var, add_expr)) ty_unit dummy_span
+  in
+  let continue_expr = Core_ir.Ir.make_expr Continue ty_unit dummy_span in
+  let seq_var =
+    Core_ir.Ir.VarIdGen.fresh "$seq" ty_unit dummy_span
+  in
+  let body_expr =
+    Core_ir.Ir.make_expr
+      (Let (seq_var, assign_expr, continue_expr))
+      ty_unit dummy_span
+  in
+  let cond_expr =
+    Core_ir.Ir.make_expr (Literal (Ast.Bool true)) ty_bool dummy_span
+  in
+  let loop_expr =
+    Core_ir.Desugar.make_loop_expr (WhileLoop cond_expr) body_expr dummy_span
+      ty_unit
+  in
+  (match loop_expr.expr_kind with
+  | Loop info ->
+      if not info.loop_contains_continue then
+        failwith "loop_contains_continue が true ではありません";
+      (match info.loop_carried with
+      | [ lc ] ->
+          let continue_src =
+            List.find_opt
+              (fun src -> src.ls_kind = LoopSourceContinue)
+              lc.lc_sources
+          in
+          (match continue_src with
+          | Some src -> (
+              match src.ls_expr.expr_kind with
+              | Primitive (PrimAdd, [ _; { expr_kind = Literal (Int ("1", Base10)); _ } ]) ->
+                  ()
+              | _ ->
+                  failwith
+                    "continue 経路の ls_expr が想定した加算式ではありません")
+          | None ->
+              failwith "LoopSourceContinue が loop_carried に含まれていません")
+      | _ -> failwith "loop_carried の要素数が期待と異なります")
+  | _ -> failwith "Loop 式の生成に失敗しました");
+  Printf.printf "OK\n"
+
 (* ========== リテラル変換テスト ========== *)
 
 let test_desugar_int_literal () =
@@ -548,6 +609,10 @@ let run_tests () =
   Printf.printf "\n--- ブロック式 ---\n";
   test_desugar_block_single_expr ();
   test_desugar_block_empty ();
+
+  (* ループ補助メタデータ *)
+  Printf.printf "\n--- ループ continue メタデータ ---\n";
+  test_desugar_loop_continue ();
 
   (* タプルパターン *)
   Printf.printf "\n--- タプルパターン変換 ---\n";
