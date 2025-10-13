@@ -260,7 +260,25 @@ let test_while_loop_cfg () =
       IR.loop_kind = IR.WhileLoop cond_expr;
       loop_body = body_expr;
       loop_span = dummy_span;
-      loop_carried = [ { IR.lc_var = i_var } ];
+      loop_carried =
+        [
+          {
+            IR.lc_var = i_var;
+            lc_sources =
+              [
+                {
+                  IR.ls_kind = IR.LoopSourcePreheader;
+                  ls_span = dummy_span;
+                  ls_expr = i_ref_cond;
+                };
+                {
+                  IR.ls_kind = IR.LoopSourceLatch;
+                  ls_span = dummy_span;
+                  ls_expr = add_expr;
+                };
+              ];
+          };
+        ];
     }
   in
   let loop_expr = IR.make_expr (IR.Loop loop_info) ty_unit dummy_span in

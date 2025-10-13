@@ -176,14 +176,15 @@ let () =
                     Codegen.codegen_module ~target_name:opts.target optimized_ir
                   in
                   record_end_if collect_metrics CodeGen;
-                  if opts.verify_ir then
+                  if opts.verify_ir then (
                     match Verify.verify_llvm_ir llvm_module with
                     | Ok () ->
                         Printf.printf "%sLLVM IR verification passed.\n" prefix
                     | Error err ->
                         let diag = Verify.error_to_diagnostic err None in
                         print_diagnostic opts None diag;
-                        exit 1;
+                        ignore (Stdlib.exit 1)
+                  );
 
                   let basename = get_basename opts.input_file in
                   let ll_file_opt = ref None in

@@ -563,6 +563,25 @@
 - 共存テストの自動化: `--typeclass-mode=both` 実行時の IR 差分を CI アーティファクトに添付するワークフローを追加し、辞書経路が退行していないことを監視する。
 - デバッグ情報拡張: 具象ラッパーに人工シンボルフラグを付与し、セルフホスト時のトレースが識別しやすいよう `llvm_gen/codegen.ml` 側での DI メタデータ更新を検討する。
 
+### 2025-10-18 更新（Week 21 / セクション4 ベンチ前提のビルド安定化）✅
+
+**作業サマリー** ✅:
+- `docs/notes/loop-implementation-plan.md` に従い、`loop_carried` 拡張で要求される `LoopSourcePreheader` / `LoopSourceLatch` 情報を `compiler/ocaml/tests/test_cfg.ml` の `test_while_loop_cfg` に反映。ループ実装時の φ ノード生成条件をテストで固定化した。
+- LLVM IR 検証失敗時に `warning 21 [nonreturning-statement]` が発生して `dune build` が停止する既知課題を解消するため、`compiler/ocaml/src/main.ml` の `exit 1` 呼び出しを `ignore (Stdlib.exit 1)` へ置換し、警告を無害化した。
+
+**検証結果** ✅:
+- `dune build` を再実行し、`warning 21` が出力されずビルドが完了することを確認。
+- 更新後の `test_while_loop_cfg` で φ ノードの入力が preheader/latch の2経路として構築されることを確認し、今後 `LoopSourceContinue` を追加する際の意図せぬ退行を防ぐ土台を整えた。
+
+**成果物** ✅:
+- `compiler/ocaml/tests/test_cfg.ml` に `lc_sources` を追加し、ループ変数の preheader / latch 入力を明示。
+- `compiler/ocaml/src/main.ml` の LLVM 検証分岐で `warning 21` を抑止し、セクション4のベンチ実行前準備としてビルドを安定化。
+
+**フォローアップ** 🚧:
+1. `docs/notes/loop-implementation-plan.md` で整理した `LoopSourceContinue` / continue ラベル生成の対応は Phase 3 のループ実装タスクで継続する。
+2. `dune build` 実行時に表示される LLVM リンク時の重複ライブラリ警告について、`compiler/ocaml/docs/technical-debt.md` の H2（Windows ABI 検証）と合わせてツールチェーン設定を再確認するタスクを追加予定。
+3. ループ構文が利用可能になり次第、Section 4 のベンチマークスクリプトを再度実行し、辞書渡し vs モノモルフィゼーションの定量比較を実施する。
+
 ### 2025-10-14 更新（Week 19-20 / PoC モノモルフィゼーション設計着手）✨
 
 **作業サマリー** ✅:
