@@ -14,6 +14,7 @@ open Ast
 open Typed_ast
 open Core_ir.Ir
 open Core_ir.Desugar
+module CFG = Core_ir.Cfg
 
 (* ========== テストユーティリティ ========== *)
 
@@ -205,6 +206,60 @@ let test_desugar_block_empty () =
   match result.expr_kind with
   | Literal Unit -> Printf.printf "OK\n"
   | _ -> failwith "空ブロックの変換に失敗"
+
+let terminator_signature blocks =
+  let kind_of = function
+    | TermReturn _ -> "return"
+    | TermJump _ -> "jump"
+    | TermBranch _ -> "branch"
+    | TermSwitch _ -> "switch"
+    | TermUnreachable -> "unreachable"
+  in
+  List.map (fun block -> kind_of block.terminator) blocks
+
+let build_for_loop_cfg source_kind =
+  Core_ir.Ir.VarIdGen.reset ();
+  Core_ir.Ir.LabelGen.reset ();
+  let map = create_scope_map () in
+  let pat_ident = { name = "item"; span = dummy_span } in
+  let typed_pat =
+    make_typed_pattern (TPatVar pat_ident) ty_i64 [ ("item", ty_i64) ]
+      dummy_span
+  in
+  let body_expr = make_typed_expr (TBlock []) ty_unit in
+  let (source_ident, source_ty) =
+    match source_kind with
+    | `Array ->
+        ({ name = "arr"; span = dummy_span }, TApp (TCon (TCUser "Array"), ty_i64))
+    | `Iterator ->
+        ({ name = "iter"; span = dummy_span }, TApp (TCon (TCUser "Iterator"), ty_i64))
+  in
+  let scheme =
+    scheme_to_constrained { quantified = []; body = source_ty }
+  in
+  let source_expr =
+    make_typed_expr (TVar (source_ident, scheme)) source_ty
+  in
+  let source_var =
+    Core_ir.Ir.VarIdGen.fresh source_ident.name (convert_ty source_ty)
+      dummy_span
+  in
+  bind_var map source_ident.name source_var;
+  let for_expr =
+    make_typed_expr (TFor (typed_pat, source_expr, body_expr)) ty_unit
+  in
+  let core_expr = desugar_expr map for_expr in
+  CFG.build_cfg_from_expr core_expr
+
+let test_desugar_for_loop_cfg_equivalence () =
+  Printf.printf "test_desugar_for_loop_cfg_equivalence ... ";
+  let array_blocks = build_for_loop_cfg `Array in
+  let iterator_blocks = build_for_loop_cfg `Iterator in
+  let sig_array = terminator_signature array_blocks in
+  let sig_iterator = terminator_signature iterator_blocks in
+  if sig_array <> sig_iterator then
+    failwith "配列版とiterator版でCFG終端種別の並びが一致しません";
+  Printf.printf "OK\n"
 
 (* ========== タプルパターン変換テスト ========== *)
 
@@ -613,6 +668,7 @@ let run_tests () =
   (* ループ補助メタデータ *)
   Printf.printf "\n--- ループ continue メタデータ ---\n";
   test_desugar_loop_continue ();
+  test_desugar_for_loop_cfg_equivalence ();
 
   (* タプルパターン *)
   Printf.printf "\n--- タプルパターン変換 ---\n";

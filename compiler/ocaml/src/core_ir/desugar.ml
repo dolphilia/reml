@@ -33,6 +33,37 @@ let fresh_temp_var prefix ty span =
 (** Typed AST の型を Core IR の型へ変換（現在は単純にコピー） *)
 let convert_ty ty = ty
 
+let rec head_type_and_args ty =
+  match ty with
+  | TApp (fn, arg) ->
+      let head, args = head_type_and_args fn in
+      (head, args @ [ arg ])
+  | _ -> (ty, [])
+
+let is_user_type name ty =
+  match head_type_and_args ty with
+  | TCon (TCUser type_name), args when String.equal type_name name ->
+      Some args
+  | _ -> None
+
+type for_source_kind =
+  | ForSourceArray
+  | ForSourceIterator
+
+let classify_for_source (source : typed_expr) : for_source_kind =
+  match is_user_type "Array" source.texpr_ty with
+  | Some _ -> ForSourceArray
+  | None -> (
+      match is_user_type "Iterator" source.texpr_ty with
+      | Some _ -> ForSourceIterator
+      | None -> (
+          match is_user_type "IteratorState" source.texpr_ty with
+          | Some _ -> ForSourceIterator
+          | None -> (
+              match source.texpr_ty with
+              | TArray _ | TSlice _ -> ForSourceArray
+              | _ -> ForSourceArray)))
+
 (* ========== 変数スコープマップ ========== *)
 
 type var_scope_map = (string, var_id) Hashtbl.t
@@ -369,18 +400,7 @@ let rec desugar_expr (map : var_scope_map) (texpr : typed_expr) : expr =
       let cond_expr = desugar_expr map cond in
       let body_expr = desugar_expr map body in
       make_loop_expr (WhileLoop cond_expr) body_expr span ty
-  | TFor (_pat, source, body) ->
-      let source_expr = desugar_expr map source in
-      let body_expr = desugar_expr map body in
-      let for_lowering =
-        {
-          for_pattern = None;
-          for_source = source_expr;
-          for_init = [];
-          for_step = [];
-        }
-      in
-      make_loop_expr (ForLoop for_lowering) body_expr span ty
+  | TFor (pat, source, body) -> desugar_for_loop map pat source body ty span
   | TLoop body ->
       let body_expr = desugar_expr map body in
       make_loop_expr InfiniteLoop body_expr span ty
@@ -410,6 +430,89 @@ and desugar_arg (map : var_scope_map) (arg : typed_arg) : expr =
   match arg with
   | TPosArg e -> desugar_expr map e
   | TNamedArg (_name, e) -> desugar_expr map e
+
+and desugar_for_loop (map : var_scope_map) (pat : typed_pattern)
+    (source : typed_expr) (body : typed_expr) (result_ty : ty) (span : span) :
+    expr =
+  let source_kind = classify_for_source source in
+  let element_ty = convert_ty pat.tpat_ty in
+  let source_expr = desugar_expr map source in
+  let body_scope = copy_scope_map map in
+  let bind_body value_expr =
+    let cont () = desugar_expr body_scope body in
+    desugar_pattern_binding body_scope pat value_expr
+      ~mutability:BindingImmutable ~cont result_ty span
+  in
+  let for_lowering, loop_body =
+    match source_kind with
+    | ForSourceArray ->
+        let array_ty = source_expr.expr_ty in
+        let array_var =
+          VarIdGen.fresh "$for_array" array_ty source.texpr_span
+        in
+        let index_var =
+          VarIdGen.fresh ~mutable_:true "$for_index" ty_i64 span
+        in
+        let length_var = VarIdGen.fresh "$for_length" ty_i64 span in
+        let zero =
+          make_expr (Literal (Int ("0", Base10))) ty_i64 source.texpr_span
+        in
+        let length_expr =
+          (* TODO: Phase 3 で実際の配列長取得を統合する *)
+          make_expr (Literal (Int ("0", Base10))) ty_i64 source.texpr_span
+        in
+        let array_ref = make_expr (Var array_var) array_ty span in
+        let index_ref = make_expr (Var index_var) ty_i64 span in
+        let length_ref = make_expr (Var length_var) ty_i64 span in
+        let cond_expr =
+          make_expr
+            (Primitive (PrimLt, [ index_ref; length_ref ]))
+            ty_bool span
+        in
+        let one =
+          make_expr (Literal (Int ("1", Base10))) ty_i64 source.texpr_span
+        in
+        let step_expr =
+          make_expr (Primitive (PrimAdd, [ index_ref; one ])) ty_i64 span
+        in
+        let element_expr =
+          make_expr (ArrayAccess (array_ref, index_ref)) element_ty span
+        in
+        let loop_body = bind_body element_expr in
+        ( { for_pattern = None;
+            for_source = cond_expr;
+            for_init =
+              [
+                (array_var, source_expr);
+                (length_var, length_expr);
+                (index_var, zero);
+              ];
+            for_step = [ (index_var, step_expr) ];
+          },
+          loop_body )
+    | ForSourceIterator ->
+        let iter_ty = source_expr.expr_ty in
+        let iter_var =
+          VarIdGen.fresh "$for_iter_state" iter_ty source.texpr_span
+        in
+        let iter_ref = make_expr (Var iter_var) iter_ty span in
+        let has_next_expr =
+          make_expr
+            (DictMethodCall (iter_ref, "has_next", []))
+            ty_bool span
+        in
+        let element_expr =
+          make_expr (DictMethodCall (iter_ref, "next", [])) element_ty span
+        in
+        let loop_body = bind_body element_expr in
+        ( { for_pattern = None;
+            for_source = has_next_expr;
+            for_init = [ (iter_var, source_expr) ];
+            for_step = [];
+          },
+          loop_body )
+  in
+  make_loop_expr (ForLoop for_lowering) loop_body span result_ty
 
 (* ========== パイプ演算子の展開 ========== *)
 
@@ -557,6 +660,21 @@ and collect_base_loop_carried (body_expr : expr) : loop_carried_var list =
               let ordered =
                 List.fold_left
                   (fun ordered (_, e) -> visit_expr ordered e)
+                  ordered info.for_step
+              in
+              let ordered =
+                List.fold_left
+                  (fun ordered (var, step_expr) ->
+                    if var.vmutable then
+                      let source =
+                        {
+                          ls_kind = LoopSourceLatch;
+                          ls_span = step_expr.expr_span;
+                          ls_expr = step_expr;
+                        }
+                      in
+                      add_source ordered var source
+                    else ordered)
                   ordered info.for_step
               in
               visit_expr ordered info.for_source
