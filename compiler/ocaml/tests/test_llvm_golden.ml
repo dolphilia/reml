@@ -176,6 +176,5 @@ let () =
   compare_with_golden "basic_arithmetic";
   compare_with_golden "control_flow";
   compare_with_golden "function_calls";
-
   Printf.printf "\n========================\n";
   Printf.printf "全てのLLVM IRゴールデンテストが成功しました!\n"

@@ -20,6 +20,7 @@
   test_dce
   test_pipeline
   test_llvm_type_mapping
+  test_llvm_array_access
   test_abi
   test_llvm_verify
   test_llvm_golden

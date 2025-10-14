@@ -91,6 +91,8 @@ type prim_op =
   | PrimBitNot  (** ビット否定 *)
   | PrimShl  (** 左シフト *)
   | PrimShr  (** 右シフト *)
+  (* 配列操作 *)
+  | PrimArrayLength  (** 配列またはスライスの長さ取得 (i64) *)
 
 (* ========== 効果とCapability ========== *)
 

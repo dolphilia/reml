@@ -227,12 +227,12 @@ fn test_mut() -> i64 {
   - `compiler/ocaml/src/core_ir/desugar.ml` に `desugar_for_loop` を導入し、配列ソース・イテレータソース双方を `Loop` ノードへ正規化する経路を構築した。
   - `loop_carried` 検出で `for_step` の更新式を確実に拾うよう補強し、Φ ノード経路が配列版でも iterator 版でも一致することを担保。
   - `compiler/ocaml/tests/test_desugar.ml` に `test_desugar_for_loop_cfg_equivalence` を追加し、両モードが生成する CFG の終端シグネチャが同一であることを回帰テストとして固定化。
-  - ⚠️ 配列長取得は暫定でリテラル `0` を返すスタブのまま（Phase 3で実データを取得する実装と差し替え予定）。
+  - ✅ 配列長取得は Core IR プリミティブ `PrimArrayLength` と LLVM 抽出処理で実装済み（リテラル `0` スタブを解消）。
 - [ ] `let mut`/while の LLVM IR ゴールデンテストを追加し、`alloca`/`load`/`store` パターンをスナップショット化
 - [ ] ランタイム診断・メトリクスへのフック要否を判断し、必要なら `docs/notes/llvm-spec-status-survey.md` に TODO を追記
 
 **Next Steps**
-- [ ] 配列ソース向けに実際の長さ取得（`ArrayLength` ノードまたはランタイムヘルパ）を実装し、CFG・LLVM の双方でスタブを置き換える。
+- [x] 配列ソース向けに実際の長さ取得（`PrimArrayLength` + LLVM 抽出）を実装し、CFG・LLVM の双方でスタブを置き換える。（2025-10-14 完了）
 - [ ] `Iterator<T>` 判定を型クラス解決に統合し、`classify_for_source` のヒューリスティックを仕様準拠のトレイト/Capability チェックへ移行する。
 - [ ] `DictMethodCall` 経由の `has_next` / `next` 呼び出しで Stage / Capability 監査フックを追加し、診断ログ (`effect.stage.*`) との整合を検証する。
 

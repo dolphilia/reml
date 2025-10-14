@@ -582,6 +582,22 @@
 2. `dune build` 実行時に表示される LLVM リンク時の重複ライブラリ警告について、`compiler/ocaml/docs/technical-debt.md` の H2（Windows ABI 検証）と合わせてツールチェーン設定を再確認するタスクを追加予定。
 3. ループ構文が利用可能になり次第、Section 4 のベンチマークスクリプトを再度実行し、辞書渡し vs モノモルフィゼーションの定量比較を実施する。
 
+### 2025-10-19 更新（Week 21 / ループ配列長スタブ解消）✅
+
+**作業サマリー** ✅:
+- `docs/notes/loop-implementation-plan.md` のフォローアップとして、`for` ループの配列ソース初期化時に `PrimArrayLength` を挿入し、従来の `0` リテラルスタブを排除した。
+- LLVM バックエンドで FAT pointer `{ ptr, len }` から長さを抽出する処理を実装し、`TSlice` の静的長は即値で返すよう分岐。文字列型 (`TCString`) も同じ経路で長さを取得できるようにした。
+
+**成果物** ✅:
+- `compiler/ocaml/src/core_ir/ir.ml`・`ir_printer.ml`・`desugar.ml` に `PrimArrayLength` を追加し、配列長取得を Core IR レベルで定義。
+- `compiler/ocaml/src/llvm_gen/codegen.ml` に配列長取得のコード生成を追加し、FAT pointer 系の第2フィールドを抽出する処理と固定長スライス対応を実装。
+- `docs/notes/loop-implementation-plan.md` の該当チェックリストを更新し、スタブ除去完了を記録。
+
+**フォローアップ** 🚧:
+1. `Iterator<T>` 判定を型クラス解決へ移行するタスクを継続し、`classify_for_source` のヒューリスティック依存を段階的に解消する。
+2. `codegen_array_access` の未実装解消を優先度 High のまま維持し、配列長取得とアクセス双方で一貫したランタイム表現を確立する。
+3. Section 4 の辞書渡しベンチに配列ケースを再投入し、配列長取得が導入された状態での性能測定を再実施する。
+
 ### 2025-10-14 更新（Week 19-20 / PoC モノモルフィゼーション設計着手）✨
 
 **作業サマリー** ✅:

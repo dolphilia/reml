@@ -44,6 +44,7 @@ let string_of_prim_op = function
   | PrimBitNot -> "bit_not"
   | PrimShl -> "shl"
   | PrimShr -> "shr"
+  | PrimArrayLength -> "array_len"
 
 (* ========== 変数とラベルの表示 ========== *)
 

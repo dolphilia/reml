@@ -838,6 +838,23 @@ and codegen_primitive ctx op args =
       let rhs_val = codegen_expr ctx rhs in
       Llvm.build_ashr lhs_val rhs_val "ashr_tmp" ctx.builder
   | PrimPow, _ -> codegen_errorf "PrimPow not yet implemented in Phase 1"
+  | PrimArrayLength, [ array_expr ] -> (
+      let array_val = codegen_expr ctx array_expr in
+      match array_expr.expr_ty with
+      | TArray _ | TCon TCString | TSlice (_, None) ->
+          Llvm.build_extractvalue array_val 1 "array_len" ctx.builder
+      | TSlice (_, Some static_len) ->
+          let i64_ty = Llvm.i64_type ctx.llctx in
+          Llvm.const_int i64_ty static_len
+      | _ ->
+          (* フォールバック: FAT pointer { ptr, len } を想定して第2要素を抽出 *)
+          (match Llvm.classify_type (Llvm.type_of array_val) with
+          | Llvm.TypeKind.Struct ->
+              Llvm.build_extractvalue array_val 1 "array_len" ctx.builder
+          | _ ->
+              codegen_errorf
+                "配列長を取得できない型です (型: %s)"
+                (Llvm.string_of_lltype (Llvm.type_of array_val))))
   | _ -> codegen_errorf "Invalid primitive operation or argument count"
 
 (* ========== タプル・レコード・配列アクセス ========== *)
@@ -850,9 +867,68 @@ and codegen_record_access _ctx _record_expr field =
   (* Phase 1: レコードフィールドアクセスは未実装 *)
   codegen_errorf "Record access not yet implemented in Phase 1: %s" field
 
-and codegen_array_access _ctx _array_expr _index_expr =
-  (* Phase 1: 配列アクセスは未実装 *)
-  codegen_errorf "Array access not yet implemented in Phase 1"
+and codegen_array_access ctx array_expr index_expr =
+  let array_val = codegen_expr ctx array_expr in
+  let index_val = codegen_expr ctx index_expr in
+
+  (* 対象要素の型を特定 *)
+  let element_ty =
+    match array_expr.expr_ty with
+    | TArray ty -> ty
+    | TSlice (ty, _) -> ty
+    | _ ->
+        codegen_errorf
+          "配列アクセスは [T] / [T; N] 型に対してのみ利用できます (実際: %s)"
+          (Types.string_of_ty array_expr.expr_ty)
+  in
+  let element_llty = Type_mapping.reml_type_to_llvm ctx.type_ctx element_ty in
+  let i64_ty = Llvm.i64_type ctx.llctx in
+
+  (* FAT pointer { ptr, len } からデータポインタを抽出 *)
+  let data_ptr =
+    Llvm.build_extractvalue array_val 0 "array.data_ptr" ctx.builder
+  in
+
+  (* インデックスを i64 へ正規化 *)
+  let index_i64 =
+    let idx_ty = Llvm.type_of index_val in
+    match Llvm.classify_type idx_ty with
+    | Llvm.TypeKind.Integer ->
+        let width = Llvm.integer_bitwidth idx_ty in
+        if width < 64 then
+          Llvm.build_sext index_val i64_ty "array.index64" ctx.builder
+        else if width > 64 then
+          Llvm.build_trunc index_val i64_ty "array.index64" ctx.builder
+        else index_val
+    | _ ->
+        codegen_errorf
+          "配列インデックスは整数型である必要があります (LLVM型: %s)"
+          (Llvm.string_of_lltype idx_ty)
+  in
+
+  (* 要素サイズを掛けてバイトオフセットを算出 *)
+  let element_size = Type_mapping.get_type_size ctx.type_ctx element_ty in
+  let offset_bytes =
+    if element_size = 1 then index_i64
+    else
+      let elem_size_val = Llvm.const_int i64_ty element_size in
+      Llvm.build_mul index_i64 elem_size_val "array.offset_bytes" ctx.builder
+  in
+
+  (* ベースアドレス + オフセット *)
+  let base_i64 =
+    Llvm.build_ptrtoint data_ptr i64_ty "array.base_i64" ctx.builder
+  in
+  let addr_i64 =
+    Llvm.build_add base_i64 offset_bytes "array.elem_addr_i64" ctx.builder
+  in
+  let ptr_ty = Llvm.pointer_type ctx.llctx in
+  let elem_ptr =
+    Llvm.build_inttoptr addr_i64 ptr_ty "array.elem_ptr" ctx.builder
+  in
+
+  (* 要素をロード *)
+  Llvm.build_load element_llty elem_ptr "array.elem" ctx.builder
 
 (* ========== 終端命令のコード生成 ========== *)
 

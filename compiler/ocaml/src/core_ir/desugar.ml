@@ -457,11 +457,12 @@ and desugar_for_loop (map : var_scope_map) (pat : typed_pattern)
         let zero =
           make_expr (Literal (Int ("0", Base10))) ty_i64 source.texpr_span
         in
-        let length_expr =
-          (* TODO: Phase 3 で実際の配列長取得を統合する *)
-          make_expr (Literal (Int ("0", Base10))) ty_i64 source.texpr_span
-        in
         let array_ref = make_expr (Var array_var) array_ty span in
+        let length_expr =
+          make_expr
+            (Primitive (PrimArrayLength, [ array_ref ]))
+            ty_i64 source.texpr_span
+        in
         let index_ref = make_expr (Var index_var) ty_i64 span in
         let length_ref = make_expr (Var length_var) ty_i64 span in
         let cond_expr =
