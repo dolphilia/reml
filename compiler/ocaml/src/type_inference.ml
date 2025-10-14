@@ -47,11 +47,16 @@ let record_monomorph_instances (registry : Impl_registry.impl_registry)
     (dict_refs : dict_ref list) =
   List.iter
     (function
-      | DictImplicit (trait_name, ty) ->
+      | DictImplicit (trait_name, ty_args) ->
+          let impl_ty =
+            match ty_args with
+            | head :: _ -> head
+            | [] -> ty_unit
+          in
           let constraint_ =
             {
               trait_name;
-              type_args = [ ty ];
+              type_args = ty_args;
               constraint_span = Ast.dummy_span;
             }
           in
@@ -59,11 +64,11 @@ let record_monomorph_instances (registry : Impl_registry.impl_registry)
             match Impl_registry.find_matching_impls constraint_ registry with
             | impl :: _ when impl.methods <> [] -> impl.methods
             | _ ->
-                Type_env.Monomorph_registry.builtin_methods trait_name ty
+                Type_env.Monomorph_registry.builtin_methods trait_name impl_ty
           in
           Type_env.Monomorph_registry.record
             Type_env.Monomorph_registry.
-              { trait_name; type_args = [ ty ]; methods }
+              { trait_name; type_args = ty_args; methods }
       | DictParam _ | DictLocal _ -> ())
     dict_refs
 
@@ -755,44 +760,87 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
       (* for式の型推論
        *
        * 1. ソース式（イテレート対象）を推論
-       * 2. パターンを推論してソース式の要素型と単一化
+       * 2. Iterator トレイト制約を生成
        * 3. パターン変数を型環境に追加してボディを推論
-       * 4. for式全体の型はUnit
-       * 制約: ソース式とボディの制約をマージ
+       * 4. Iterator 辞書を解決して型を確定
+       * 5. for式全体の型はUnit
+       * 制約: ソース式とボディの制約、Iterator 制約をマージ
        *)
       (* ソース式を推論 *)
       let* tsource, source_ty, s1, source_constraints =
         infer_expr ~ctx env source
       in
-
-      (* ソース式が配列やイテレータであることを確認
-       * Phase 2では簡易実装: 配列型 [T] を想定し、要素型Tを抽出
-       * 将来: Iterator<T> トレイトで汎化
-       *)
-      let elem_ty = TypeVarGen.fresh None |> (fun v -> Types.TVar v) in
-      let array_con = TCon (TCUser "Array") in
-      let expected_array_ty = TApp (array_con, elem_ty) in
-      let* s2 = unify s1 source_ty expected_array_ty source.expr_span in
-
-      (* パターンを推論 *)
-      let elem_ty_resolved = apply_subst s2 elem_ty in
-      let* tpat, pat_env = infer_pattern ~ctx env pat elem_ty_resolved in
-
-      (* パターン変数を型環境に追加してボディを推論 *)
-      let env' = apply_subst_env s2 pat_env in
+      let elem_ty = Types.TVar (TypeVarGen.fresh None) in
+      (* パターンを推論（Iterator の要素型を期待） *)
+      let env_after_source = apply_subst_env s1 env in
+      let* tpat, pat_env = infer_pattern ~ctx env_after_source pat elem_ty in
+      (* ボディを推論 *)
+      let env_for_body = apply_subst_env s1 pat_env in
       let loop_ctx = enter_loop ctx in
       let* tbody, _body_ty, s3, body_constraints =
-        infer_expr ~ctx:loop_ctx env' body
+        infer_expr ~ctx:loop_ctx env_for_body body
       in
-
-      (* 全制約をマージ *)
-      let all_constraints = merge_constraints source_constraints body_constraints in
-
-      (* 型付き式を構築 (for式はUnit型を返す) *)
+      (* 追加の代入を適用 *)
+      let s_acc = compose_subst s3 s1 in
+      let source_ty_resolved = apply_subst s_acc source_ty in
+      let elem_ty_resolved = apply_subst s_acc elem_ty in
+      let iterator_constraint =
+        make_trait_constraint "Iterator"
+          [ source_ty_resolved; elem_ty_resolved ]
+          source.expr_span
+      in
+      (* Iterator 辞書を解決 *)
+      let* iterator_dict =
+        match solve_trait_constraints [ iterator_constraint ] with
+        | Ok (dict :: _) -> Ok dict
+        | Ok [] ->
+            Error
+              (TraitConstraintFailure
+                 {
+                   trait_name = "Iterator";
+                   type_args = [ source_ty_resolved; elem_ty_resolved ];
+                   reason = "Iterator constraint resolved without dictionary";
+                   span = source.expr_span;
+                 })
+        | Error err -> Error err
+      in
+      (* 辞書から要素型を取得し、型変数と単一化する *)
+      let s_final =
+        match iterator_dict with
+        | DictImplicit (_, _ :: item_ty :: _) ->
+            let* s = unify s_acc elem_ty item_ty source.expr_span in
+            Ok s
+        | DictImplicit (_, [_]) ->
+            (* 型引数が1つのみの場合は追加単一化不要 *)
+            Ok s_acc
+        | DictImplicit (_, []) ->
+            Ok s_acc
+        | DictParam _ | DictLocal _ -> Ok s_acc
+      in
+      let* s_final = s_final in
+      let source_ty_final = apply_subst s_final source_ty in
+      let elem_ty_final = apply_subst s_final elem_ty in
+      let iterator_constraint_final =
+        {
+          iterator_constraint with
+          type_args = [ source_ty_final; elem_ty_final ];
+        }
+      in
+      let iterator_dict =
+        match iterator_dict with
+        | DictImplicit (trait, tys) ->
+            DictImplicit (trait, List.map (apply_subst s_final) tys)
+        | dict -> dict
+      in
+      let all_constraints =
+        merge_constraints_many
+          [ source_constraints; body_constraints; [ iterator_constraint_final ] ]
+      in
       let texpr =
-        make_typed_expr (TFor (tpat, tsource, tbody)) ty_unit expr.expr_span
+        make_typed_expr (TFor (tpat, tsource, tbody, iterator_dict)) ty_unit
+          expr.expr_span
       in
-      Ok (texpr, ty_unit, s3, all_constraints)
+      Ok (texpr, ty_unit, s_final, all_constraints)
   | Loop body ->
       (* loop式の型推論
        *

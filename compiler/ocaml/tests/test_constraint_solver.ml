@@ -338,7 +338,7 @@ let test_topological_sort_complex () =
 
 (** 辞書参照の文字列表現 *)
 let test_string_of_dict_ref () =
-  let dict_ref = DictImplicit ("Eq", ty_i64) in
+  let dict_ref = DictImplicit ("Eq", [ ty_i64 ]) in
   let str = string_of_dict_ref dict_ref in
   if String.length str > 0 then
     print_endline "✓ test_string_of_dict_ref"

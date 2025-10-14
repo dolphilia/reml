@@ -21,7 +21,7 @@ open Ast
 
 (** 辞書参照 *)
 type dict_ref =
-  | DictImplicit of string * ty
+  | DictImplicit of string * ty list
   | DictParam of int
   | DictLocal of string
 
@@ -93,6 +93,21 @@ let is_builtin_for_ord = function
   | TCon TCString -> true
   | _ -> false
 
+(** 型適用のヘッドと引数を抽出 *)
+let rec head_type_and_args ty =
+  match ty with
+  | TApp (fn, arg) ->
+      let head, args = head_type_and_args fn in
+      (head, args @ [ arg ])
+  | _ -> (ty, [])
+
+(** ユーザー定義型か判定し、ヘッド名と引数を返す *)
+let as_user_type name ty =
+  let head, args = head_type_and_args ty in
+  match head with
+  | TCon (TCUser type_name) when String.equal type_name name -> Some args
+  | _ -> None
+
 (* ========== 個別トレイトの解決 ========== *)
 
 (** Eq トレイトの解決
@@ -109,27 +124,28 @@ let is_builtin_for_ord = function
 let rec solve_eq = function
   | ty when is_builtin_for_eq ty ->
       (* プリミティブ型は自動実装 *)
-      Some (DictImplicit ("Eq", ty))
+      Some (DictImplicit ("Eq", [ ty ]))
   | TTuple tys ->
       (* タプル型: 全要素がEqを実装していればOK *)
       if List.for_all (fun ty -> Option.is_some (solve_eq ty)) tys then
-        Some (DictImplicit ("Eq", TTuple tys))
+        Some (DictImplicit ("Eq", [ TTuple tys ]))
       else None
   | TRecord fields ->
       (* レコード型: 全フィールドがEqを実装していればOK *)
       let field_tys = List.map snd fields in
       if List.for_all (fun ty -> Option.is_some (solve_eq ty)) field_tys then
-        Some (DictImplicit ("Eq", TRecord fields))
+        Some (DictImplicit ("Eq", [ TRecord fields ]))
       else None
   | TArray ty | TSlice (ty, _) ->
       (* 配列/スライス型: 要素型がEqを実装していればOK *)
       (match solve_eq ty with
-      | Some _ -> Some (DictImplicit ("Eq", TArray ty))
+      | Some _ -> Some (DictImplicit ("Eq", [ TArray ty ]))
       | None -> None)
   | TApp (TCon (TCUser "Option"), ty) ->
       (* Option<T>: TがEqを実装していればOK *)
       (match solve_eq ty with
-      | Some _ -> Some (DictImplicit ("Eq", TApp (TCon (TCUser "Option"), ty)))
+      | Some _ ->
+          Some (DictImplicit ("Eq", [ TApp (TCon (TCUser "Option"), ty) ]))
       | None -> None)
   | TApp (TApp (TCon (TCUser "Result"), t_ty), e_ty) ->
       (* Result<T, E>: T, EがEqを実装していればOK *)
@@ -137,7 +153,8 @@ let rec solve_eq = function
       | Some _, Some _ ->
           Some
             (DictImplicit
-               ("Eq", TApp (TApp (TCon (TCUser "Result"), t_ty), e_ty)))
+               ( "Eq",
+                 [ TApp (TApp (TCon (TCUser "Result"), t_ty), e_ty) ] ))
       | _ -> None)
   | TVar _ ->
       (* 型変数: 後で解決されるため保留 *)
@@ -164,11 +181,11 @@ let rec solve_ord ty =
       match ty with
       | ty when is_builtin_for_ord ty ->
           (* プリミティブ型は自動実装 *)
-          Some (DictImplicit ("Ord", ty))
+          Some (DictImplicit ("Ord", [ ty ]))
       | TTuple tys ->
           (* タプル型: 全要素がOrdを実装していればOK（辞書順比較） *)
           if List.for_all (fun ty -> Option.is_some (solve_ord ty)) tys then
-            Some (DictImplicit ("Ord", TTuple tys))
+            Some (DictImplicit ("Ord", [ TTuple tys ]))
           else None
       | TVar _ ->
           (* 型変数: 後で解決されるため保留 *)
@@ -189,24 +206,57 @@ let rec solve_ord ty =
 let solve_collector = function
   | TArray ty | TSlice (ty, _) ->
       (* 配列/スライス型: 要素型を返すイテレータ *)
-      Some (DictImplicit ("Collector", TArray ty))
+      Some (DictImplicit ("Collector", [ TArray ty ]))
   | TApp (TCon (TCUser "Option"), ty) ->
       (* Option<T>: Some(T) なら1要素、None なら0要素 *)
-      Some (DictImplicit ("Collector", TApp (TCon (TCUser "Option"), ty)))
+      Some
+        (DictImplicit
+           ("Collector", [ TApp (TCon (TCUser "Option"), ty) ]))
   | TApp (TApp (TCon (TCUser "Result"), t_ty), e_ty) ->
       (* Result<T, E>: Ok(T) なら1要素、Err(E) なら0要素（Tのみ返す） *)
       Some
         (DictImplicit
-           ("Collector", TApp (TApp (TCon (TCUser "Result"), t_ty), e_ty)))
+           ( "Collector",
+             [ TApp (TApp (TCon (TCUser "Result"), t_ty), e_ty) ] ))
   | TTuple tys ->
       (* タプル型: 各要素を順に返す *)
-      Some (DictImplicit ("Collector", TTuple tys))
+      Some (DictImplicit ("Collector", [ TTuple tys ]))
   | TVar _ ->
       (* 型変数: 後で解決されるため保留 *)
       None
   | _ ->
       (* その他の型: 未実装 *)
       None
+
+(** Iterator トレイトの解決
+ *
+ * 仕様書 3-1 §3: Core.Iter による反復処理
+ *
+ * 解決規則:
+ * - 配列/スライスは要素型を返すイテレータとして実装
+ * - `Core.Iter.Iter<T>` は T を要素型としてそのまま返す
+ * - それ以外はユーザー定義 impl を探索
+ *)
+let solve_iterator (source_ty : ty) : ty option =
+  match source_ty with
+  | TArray ty -> Some ty
+  | TSlice (ty, _) -> Some ty
+  | _ -> (
+      match as_user_type "Array" source_ty with
+      | Some [ elem_ty ] -> Some elem_ty
+      | _ -> (
+          match as_user_type "Iter" source_ty with
+          | Some [ elem_ty ] -> Some elem_ty
+          | _ -> (
+              match as_user_type "IteratorState" source_ty with
+              | Some [ elem_ty ] -> Some elem_ty
+              | _ -> (
+                  match as_user_type "Option" source_ty with
+                  | Some [ elem_ty ] -> Some elem_ty
+                  | _ -> (
+                      match as_user_type "Result" source_ty with
+                      | Some (ok_ty :: _err_ty :: _) -> Some ok_ty
+                      | _ -> None)))))
 
 (* ========== 制約解決のメインロジック ========== *)
 
@@ -230,6 +280,15 @@ let try_solve_constraint (registry : Impl_registry.impl_registry)
         match c.type_args with [ ty ] -> solve_ord ty | _ -> None)
     | "Collector" -> (
         match c.type_args with [ ty ] -> solve_collector ty | _ -> None)
+    | "Iterator" -> (
+        match c.type_args with
+        | [ source_ty; _item_ty ] -> (
+            match solve_iterator source_ty with
+            | Some elem_ty ->
+                Some
+                  (DictImplicit ("Iterator", [ source_ty; elem_ty ]))
+            | None -> None)
+        | _ -> None)
     | _ -> None
   in
 
@@ -245,7 +304,7 @@ let try_solve_constraint (registry : Impl_registry.impl_registry)
       | [ impl_info ] ->
           (* 一意にimplが決定 *)
           (* Phase 2 Week 23-24: 簡易実装では最初に見つかったimplを使用 *)
-          Some (DictImplicit (impl_info.trait_name, impl_info.impl_type))
+          Some (DictImplicit (impl_info.trait_name, c.type_args))
       | _ ->
           (* 複数のimplが一致（曖昧性エラー）*)
           (* TODO: AmbiguousImpl エラーを返すべきだが、現在の戻り値型がoption *)
@@ -596,8 +655,11 @@ let string_of_trait_constraint (c : trait_constraint) : string =
 
 (** 辞書参照の文字列表現 *)
 let string_of_dict_ref = function
-  | DictImplicit (trait, ty) ->
-      Printf.sprintf "DictImplicit(%s, %s)" trait (string_of_ty ty)
+  | DictImplicit (trait, tys) ->
+      let ty_str =
+        String.concat ", " (List.map string_of_ty tys)
+      in
+      Printf.sprintf "DictImplicit(%s, [%s])" trait ty_str
   | DictParam idx -> Printf.sprintf "DictParam(%d)" idx
   | DictLocal name -> Printf.sprintf "DictLocal(%s)" name
 

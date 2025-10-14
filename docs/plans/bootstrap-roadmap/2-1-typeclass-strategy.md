@@ -563,6 +563,24 @@
 - 共存テストの自動化: `--typeclass-mode=both` 実行時の IR 差分を CI アーティファクトに添付するワークフローを追加し、辞書経路が退行していないことを監視する。
 - デバッグ情報拡張: 具象ラッパーに人工シンボルフラグを付与し、セルフホスト時のトレースが識別しやすいよう `llvm_gen/codegen.ml` 側での DI メタデータ更新を検討する。
 
+### 2025-10-21 更新（Week 21 / Iterator 判定統合準備）🚧
+
+**作業サマリー** 🚧:
+- `docs/spec/3-1-core-prelude-iteration.md` の `Iter<T>` API と `docs/spec/1-2-types-Inference.md` の制約生成規約を照合し、`for` ループで要求する `Iterator` 系型クラス契約を整理した。
+- Core IR 脱糖の `classify_for_source` が型名ヒューリスティックに依存している現状を棚卸しし、型クラス辞書解決で `Iterator` 辞書を取得する導線を整理した。
+- Capability Stage 連携（`docs/spec/3-8-core-runtime-capability.md`）と結びつけるため、辞書解決結果に Stage 情報を付与する際のメタデータ項目を洗い出した。
+
+**設計／決定事項**:
+1. `compiler/ocaml/src/type_inference.ml:774` 付近の `For` 推論で `Iterator` 制約（暫定名称 `Core.Iter.Iterator<T>`）を生成し、要素型を型パラメータ `T` として推論する。配列や `Iter<T>` リテラルは `Constraint_solver` が暗黙辞書 `DictImplicit ("Iterator", [source_ty; item_ty])` を返す。【参照: docs/spec/3-1-core-prelude-iteration.md§3】
+2. `compiler/ocaml/src/constraint_solver.ml` に `solve_iterator` を追加し、配列／スライス／`Iter<T>`／`Option<T>` の既定イテレーション契約を登録する。辞書構築時に `has_next` / `next` / `size_hint` シグネチャを整備し、`DictConstruct` のメタデータへ Stage 情報 (`effects.contract.stage_mismatch`) を転記できるようにする。【参照: docs/spec/1-2-types-Inference.md§4, docs/spec/3-6-core-diagnostics-audit.md§5】
+3. `compiler/ocaml/src/core_ir/desugar.ml` では `classify_for_source` を段階的に廃止し、型推論から渡される辞書パラメータ (`__dict_Iterator_*`) を参照して `DictMethodCall` を生成する。辞書未解決時は `for` ループ自体を型エラーとして報告し、ヒューリスティック経路は Phase 2 内で削除する。
+4. Stage / Capability 検査については、`Iterator` 辞書の生成時に `CapabilityId` を付与し、`RuntimeBridge` へ伝搬する。`docs/notes/loop-implementation-plan.md` で記録した監査連携タスク（`DictMethodCall` に `effect.stage.*` を付与）をこの作業と束ね、Phase 2 Week 22 の診断タスクと整合させる。
+
+**フォローアップ** 🚧:
+- `docs/notes/loop-implementation-plan.md` の該当チェック項目を更新し、辞書導線とテスト計画を反映する。
+- `compiler/ocaml/tests/test_type_errors.ml` に「`Iterator` 未実装の型を `for` に渡すと制約エラーになる」テストを追加するタスクを Section 5 の診断強化へ紐付ける。
+- Stage 監査ログの設計（`effect.stage.iterator_mismatch`）を `docs/spec/3-6-core-diagnostics-audit.md` のキーセットに追記するか確認し、必要なら別タスクとして登録する。
+
 ### 2025-10-18 更新（Week 21 / セクション4 ベンチ前提のビルド安定化）✅
 
 **作業サマリー** ✅:

@@ -11,6 +11,7 @@
 
 open Types
 open Ast
+open Constraint_solver
 
 (* ========== 型付き式 ========== *)
 
@@ -41,7 +42,7 @@ and typed_expr_kind =
   | TIf of typed_expr * typed_expr * typed_expr option
   | TMatch of typed_expr * typed_match_arm list
   | TWhile of typed_expr * typed_expr
-  | TFor of typed_pattern * typed_expr * typed_expr
+  | TFor of typed_pattern * typed_expr * typed_expr * dict_ref
   | TLoop of typed_expr
   | TContinue
   | TBlock of typed_stmt list
@@ -214,7 +215,7 @@ let rec string_of_typed_expr texpr =
         (string_of_typed_expr cond)
         (string_of_typed_expr body)
         ty_str
-  | TFor (pat, _, body) ->
+  | TFor (pat, _, body, _) ->
       Printf.sprintf "(for %s in ... %s : %s)"
         (string_of_typed_pattern pat)
         (string_of_typed_expr body)

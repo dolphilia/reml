@@ -233,7 +233,7 @@ fn test_mut() -> i64 {
 
 **Next Steps**
 - [x] 配列ソース向けに実際の長さ取得（`PrimArrayLength` + LLVM 抽出）を実装し、CFG・LLVM の双方でスタブを置き換える。（2025-10-14 完了）
-- [ ] `Iterator<T>` 判定を型クラス解決に統合し、`classify_for_source` のヒューリスティックを仕様準拠のトレイト/Capability チェックへ移行する。
+- [ ] `Iterator<T>` 判定を型クラス解決に統合し、`classify_for_source` のヒューリスティックを仕様準拠のトレイト/Capability チェックへ移行する（ステップ3「型クラス統合計画」参照）。
 - [ ] `DictMethodCall` 経由の `has_next` / `next` 呼び出しで Stage / Capability 監査フックを追加し、診断ログ (`effect.stage.*`) との整合を検証する。
 
 #### ステップ2: CFG構築でのループ展開（Week 26-27）
@@ -428,11 +428,33 @@ dune runtest compiler/ocaml/tests
      1. `for_init` に `iter_state = source.__iter__()` を追加（必要なら `VarIdGen` で一時変数を作成）。
      2. `for_source` には `iter_state.__next__()` の結果（`Option` / `Result` で返す想定）を保持し、`CFG` では `next_result.is_some()` を条件として評価。
      3. `loop_body` へ入る前に `pattern` を `next_result.unwrap()` から束縛し、`for_step` では追加の更新は不要とする。
-   - 配列など固定長コレクションは従来どおりインデックス方式で脱糖し、イテレータを返す型は `for_init`/`for_source` の差し替えだけで共通パスを利用する。これにより Phase 3 で導入予定の `Core.Iterator` と互換性を確保する。
+  - 配列など固定長コレクションは従来どおりインデックス方式で脱糖し、イテレータを返す型は `for_init`/`for_source` の差し替えだけで共通パスを利用する。これにより Phase 3 で導入予定の `Core.Iterator` と互換性を確保する。
+
+**2025-10-21 追記 — 型クラス統合計画**
+- `docs/plans/bootstrap-roadmap/2-1-typeclass-strategy.md` の更新内容と同期し、`for` ループで `Iterator` トレイト辞書を要求する方針を明文化する。`type_inference.ml` では `TFor` 構築時に `TraitConstraint`（仮称）を発行し、解決済み辞書を `typed_ast` メタデータとして保持する。【参照: docs/spec/3-1-core-prelude-iteration.md】
+- `constraint_solver.ml` に `solve_iterator` を追加し、`Array<T>` / `Slice<T>` / `Core.Iter.Iter<T>` / `Option<T>` など仕様でイテレータ提供が保証されている型を暗黙辞書 `DictImplicit ("Iterator", [source_ty; item_ty])` として返す。辞書レイアウトには `has_next` / `next` / `size_hint` メソッドを登録し、Stage 情報 (`effects.contract.stage_mismatch`) を `DictConstruct.metadata` に書き込む。【参照: docs/spec/1-2-types-Inference.md, docs/spec/3-6-core-diagnostics-audit.md】
+- `typed_ast` の `TFor` に `iterator_dict : dict_ref` を追加し、`desugar_for_loop` では `classify_for_source` を廃止して辞書参照を直接利用する。辞書が得られなかった場合は型クラス診断（仮称 `typeclass.iterator.unsatisfied`）を発生させ、ヒューリスティック経路にフォールバックしない。
+- `DictMethodCall` には Stage / Capability 情報を拡張項目として付与し、`docs/spec/3-8-core-runtime-capability.md` の `StageRequirement::{Exact, AtLeast}` と照合できるようにする。監査ログキーは `effect.stage.iterator` を予定し、`docs/spec/3-6-core-diagnostics-audit.md` への追記を別タスクとして登録する。
+
+**データフローの見直し**
+1. 型推論 (`infer_expr`) が `Iterator` 制約を生成し、`Constraint_solver.solve` から辞書参照を受け取る。
+2. `type_env` / `typed_ast` が辞書参照を保持し、`desugar` へ `iterator_dict` を引き渡す。
+3. `desugar_for_loop` が辞書から `has_next` / `next` / `size_hint` のインデックスを解決し、`DictMethodCall` ノードを生成する。
+4. LLVM 生成では `trait_method_indices "Iterator"` を導入し、辞書の vtable から該当メソッドポインタをロードする。
+
+**検証計画**
+- `compiler/ocaml/tests/test_type_errors.ml` に「`Iterator` 未実装型を `for` に渡すと診断が出る」テストケースを追加。
+- `compiler/ocaml/tests/test_desugar.ml` に辞書経路の for ループ脱糖スナップショットを追加し、`classify_for_source` 撤廃後も CFG が一致することを確認。
+- `compiler/ocaml/tests/llvm-ir/golden` に `for_iterator.ll.golden`（新規）を用意し、間接呼び出しが辞書経由になっていることをゴールデンテストで固定化する。
+
+**リスクとフォローアップ**
+- `Iterator` トレイトの正式名称・関連型が仕様ドラフト段階のため、`constraint_solver` では `Core.Iter.Iterator` プレフィックスを使用し、名称変動時に差分が局所化されるようにする。
+- `typed_ast` へ辞書情報を追加すると CLI の `--emit-typed-ast` 出力形式が変わるため、併せて `typed_ast_printer.ml` の更新と互換性メモを作成する。
+- Stage 情報を辞書へ付与する際に Capability Registry の ID が未確定な場合は TODO コメントで追跡し、`docs/spec/3-6-core-diagnostics-audit.md` の更新タスクとリンクさせる。
 
 ```ocaml
 (* desugar.ml での for式処理 *)
-| TFor (pat, source, body) ->
+| TFor (pat, source, body, iterator_dict) ->
     let source_expr = desugar_expr map source in
     let body_expr = desugar_expr map body in
 

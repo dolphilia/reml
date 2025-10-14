@@ -12,6 +12,7 @@
 open Types
 open Ast
 open Typed_ast
+open Constraint_solver
 open Core_ir.Ir
 open Core_ir.Desugar
 module CFG = Core_ir.Cfg
@@ -245,8 +246,19 @@ let build_for_loop_cfg source_kind =
       dummy_span
   in
   bind_var map source_ident.name source_var;
+  let iterator_dict =
+    match source_kind with
+    | `Array ->
+        DictImplicit
+          ( "Iterator",
+            [ source_ty; ty_i64 ] )
+    | `Iterator ->
+        DictImplicit
+          ( "Iterator",
+            [ source_ty; ty_i64 ] )
+  in
   let for_expr =
-    make_typed_expr (TFor (typed_pat, source_expr, body_expr)) ty_unit
+    make_typed_expr (TFor (typed_pat, source_expr, body_expr, iterator_dict)) ty_unit
   in
   let core_expr = desugar_expr map for_expr in
   CFG.build_cfg_from_expr core_expr

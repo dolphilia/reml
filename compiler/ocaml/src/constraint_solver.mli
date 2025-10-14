@@ -26,9 +26,10 @@ open Ast
  * Phase 2 Week 19-20 で LLVM 生成時に具体的なポインタへ変換される
  *)
 type dict_ref =
-  | DictImplicit of string * ty
+  | DictImplicit of string * ty list
       (** 暗黙の辞書（impl検索による自動解決）
-       * 例: DictImplicit("Eq", TInt I64) → Eq<i64> の標準実装 *)
+       * 例: DictImplicit("Eq", [TInt I64]) → Eq<i64> の標準実装
+       *     DictImplicit("Iterator", [Array<T>, T]) → Iterator<Array<T>, T> の辞書 *)
   | DictParam of int
       (** 関数引数の辞書パラメータ
        * 例: DictParam(0) → 第1引数として渡される辞書 *)
