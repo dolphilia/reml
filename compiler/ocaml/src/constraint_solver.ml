@@ -25,6 +25,26 @@ type dict_ref =
   | DictParam of int
   | DictLocal of string
 
+type iterator_dict_kind =
+  | IteratorArrayLike
+  | IteratorCoreIter
+  | IteratorOptionLike
+  | IteratorResultLike
+  | IteratorCustom of string
+
+type iterator_stage_requirement =
+  | IteratorStageExact of string
+  | IteratorStageAtLeast of string
+
+type iterator_dict_info = {
+  dict_ref : dict_ref;
+  source_ty : ty;
+  element_ty : ty;
+  kind : iterator_dict_kind;
+  stage_requirement : iterator_stage_requirement;
+  capability : string option;
+}
+
 (** 制約エラー理由 *)
 type constraint_error_reason =
   | NoImpl
@@ -237,25 +257,53 @@ let solve_collector = function
  * - `Core.Iter.Iter<T>` は T を要素型としてそのまま返す
  * - それ以外はユーザー定義 impl を探索
  *)
-let solve_iterator (source_ty : ty) : ty option =
+let iterator_default_stage = IteratorStageAtLeast "beta"
+
+let capability_for_kind = function
+  | IteratorArrayLike -> Some "core.iter.array"
+  | IteratorCoreIter -> Some "core.iter.core"
+  | IteratorOptionLike -> Some "core.iter.option"
+  | IteratorResultLike -> Some "core.iter.result"
+  | IteratorCustom _ -> None
+
+let make_iterator_info kind source_ty element_ty =
+  {
+    dict_ref = DictImplicit ("Iterator", [ source_ty; element_ty ]);
+    source_ty;
+    element_ty;
+    kind;
+    stage_requirement = iterator_default_stage;
+    capability = capability_for_kind kind;
+  }
+
+let solve_iterator (source_ty : ty) : iterator_dict_info option =
   match source_ty with
-  | TArray ty -> Some ty
-  | TSlice (ty, _) -> Some ty
+  | TArray ty -> Some (make_iterator_info IteratorArrayLike source_ty ty)
+  | TSlice (ty, _) -> Some (make_iterator_info IteratorArrayLike source_ty ty)
   | _ -> (
       match as_user_type "Array" source_ty with
-      | Some [ elem_ty ] -> Some elem_ty
+      | Some [ elem_ty ] ->
+          Some (make_iterator_info IteratorArrayLike source_ty elem_ty)
       | _ -> (
           match as_user_type "Iter" source_ty with
-          | Some [ elem_ty ] -> Some elem_ty
+          | Some [ elem_ty ] ->
+              Some (make_iterator_info IteratorCoreIter source_ty elem_ty)
           | _ -> (
               match as_user_type "IteratorState" source_ty with
-              | Some [ elem_ty ] -> Some elem_ty
+              | Some [ elem_ty ] ->
+                  Some
+                    (make_iterator_info IteratorCoreIter source_ty elem_ty)
               | _ -> (
                   match as_user_type "Option" source_ty with
-                  | Some [ elem_ty ] -> Some elem_ty
+                  | Some [ elem_ty ] ->
+                      Some
+                        (make_iterator_info IteratorOptionLike source_ty elem_ty)
                   | _ -> (
                       match as_user_type "Result" source_ty with
-                      | Some (ok_ty :: _err_ty :: _) -> Some ok_ty
+                      | Some (ok_ty :: _err_ty :: _) ->
+                          Some
+                            (make_iterator_info
+                               IteratorResultLike source_ty ok_ty)
                       | _ -> None)))))
 
 (* ========== 制約解決のメインロジック ========== *)
@@ -282,11 +330,9 @@ let try_solve_constraint (registry : Impl_registry.impl_registry)
         match c.type_args with [ ty ] -> solve_collector ty | _ -> None)
     | "Iterator" -> (
         match c.type_args with
-        | [ source_ty; _item_ty ] -> (
+        | source_ty :: _ -> (
             match solve_iterator source_ty with
-            | Some elem_ty ->
-                Some
-                  (DictImplicit ("Iterator", [ source_ty; elem_ty ]))
+            | Some info -> Some info.dict_ref
             | None -> None)
         | _ -> None)
     | _ -> None
@@ -645,6 +691,78 @@ let solve_constraints (registry : Impl_registry.impl_registry)
         loop (step_solver registry state)
     in
     loop (init_solver_state constraints)
+
+(** Iterator 制約を辞書メタデータ付きで解決 *)
+let solve_iterator_dict (registry : Impl_registry.impl_registry)
+    (constraint_ : trait_constraint) :
+    (iterator_dict_info, constraint_error) result =
+  if not (String.equal constraint_.trait_name "Iterator") then
+    Error
+      {
+        trait_name = constraint_.trait_name;
+        type_args = constraint_.type_args;
+        reason = NoImpl;
+        span = constraint_.constraint_span;
+      }
+  else
+    match constraint_.type_args with
+    | source_ty :: item_ty :: _ -> (
+        match solve_constraints registry [ constraint_ ] with
+        | Ok [ dict_ref ] ->
+            let base_info =
+              match solve_iterator source_ty with
+              | Some info -> { info with dict_ref }
+              | None ->
+                  {
+                    dict_ref;
+                    source_ty;
+                    element_ty = item_ty;
+                    kind =
+                      IteratorCustom (Types.string_of_ty source_ty);
+                    stage_requirement = iterator_default_stage;
+                    capability = None;
+                  }
+            in
+            let element_ty =
+              if type_equal base_info.element_ty item_ty then
+                base_info.element_ty
+              else item_ty
+            in
+            Ok { base_info with element_ty }
+        | Ok [] ->
+            Error
+              {
+                trait_name = constraint_.trait_name;
+                type_args = constraint_.type_args;
+                reason = NoImpl;
+                span = constraint_.constraint_span;
+              }
+        | Ok (dict_ref :: _) ->
+            (* 複数候補は曖昧性とみなす *)
+            Error
+              {
+                trait_name = constraint_.trait_name;
+                type_args = constraint_.type_args;
+                reason = AmbiguousImpl [ dict_ref ];
+                span = constraint_.constraint_span;
+              }
+        | Error (err :: _) -> Error err
+        | Error [] ->
+            Error
+              {
+                trait_name = constraint_.trait_name;
+                type_args = constraint_.type_args;
+                reason = NoImpl;
+                span = constraint_.constraint_span;
+              })
+    | _ ->
+        Error
+          {
+            trait_name = constraint_.trait_name;
+            type_args = constraint_.type_args;
+            reason = NoImpl;
+            span = constraint_.constraint_span;
+          }
 
 (* ========== デバッグ用 ========== *)
 

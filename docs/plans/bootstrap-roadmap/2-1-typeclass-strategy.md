@@ -581,6 +581,40 @@
 - `compiler/ocaml/tests/test_type_errors.ml` に「`Iterator` 未実装の型を `for` に渡すと制約エラーになる」テストを追加するタスクを Section 5 の診断強化へ紐付ける。
 - Stage 監査ログの設計（`effect.stage.iterator_mismatch`）を `docs/spec/3-6-core-diagnostics-audit.md` のキーセットに追記するか確認し、必要なら別タスクとして登録する。
 
+### 2025-10-24 更新（Week 21 / Iterator 辞書統合と監査フック設計）🚧
+
+**目的**:
+- `Iterator<T>` 判定を完全に型クラス解決へ移行し、`compiler/ocaml/src/core_ir/desugar.ml` のヒューリスティックを撤廃する。
+- `DictMethodCall` 経由の `has_next` / `next` 呼び出しに Stage / Capability 監査フックを追加し、`effect.stage.*` ログと `docs/spec/3-8-core-runtime-capability.md` の要件を一致させる。
+
+**新規タスク**:
+1. **辞書メタデータ拡張**  
+   - `compiler/ocaml/src/constraint_solver.ml` に `IteratorDictInfo`（`kind`, `element_ty`, `stage_requirement`, `capability` を保持）を定義し、`solve_iterator` の戻り値を `DictImplicit ("Iterator", [...])` と併せて返す。  
+   - `constraint_solver.mli` と `typed_ast.ml` を更新し、`TFor` が `iterator_dict` と `iterator_info` の両方を保持できるようにする。  
+   - 仕様書更新タスクとして、`docs/spec/1-2-types-Inference.md` と `docs/spec/3-1-core-prelude-iteration.md` に Iterator 辞書へ Stage 要件を付与する旨の脚注を追加する準備を Section 7 へ連携。
+2. **ヒューリスティック撤廃と Core IR 整備**  
+   - `desugar_for_loop` 内の `determine_for_source_kind` を `IteratorDictInfo.kind` ベースに置き換え、辞書未解決時は `typeclass.iterator.unsatisfied` を再発行して脱糖を中止する。  
+   - 配列最適化は `IteratorDictInfo.kind = ArrayLike` の場合のみ許可し、旧 `classify_for_source` 経路を完全削除する。  
+   - `docs/notes/loop-implementation-plan.md` セクション「型クラス統合計画」に、辞書経路のみを通過する新しいフローチャートと診断シーケンスを追記する。
+3. **Stage / Capability 監査フック**  
+   - `core_ir/ir.ml` の `DictMethodCall` に `audit : iterator_audit option` フィールドを追加し、`effect_tag`, `required_stage`, `capability_id`, `method_name` を保持。  
+   - `desugar_for_loop` で `IteratorDictInfo.stage_requirement` を参照して `has_next` / `next` それぞれに `EffectMarker` を生成し、`effect.stage.iterator.required` / `effect.stage.iterator.actual` を `EffectMarker.effect_expr` として紐付ける。  
+   - `compiler/ocaml/src/diagnostic.ml` に監査用拡張出力ヘルパーを追加し、`typeclass.iterator.stage_mismatch` 診断で `Diagnostic.extensions` に `effect.stage.required`, `effect.stage.actual`, `effect.capability` を転写する。
+4. **検証フローと CI 連携**  
+   - `compiler/ocaml/tests/test_type_errors.ml` に Stage ミスマッチ／辞書未解決ケースを追加し、JSON スナップショットで `effect.stage.*` キーを固定。  
+   - `compiler/ocaml/tests/test_desugar.ml` と `compiler/ocaml/tests/llvm-ir/golden/for_iterator_with_audit.ll.golden` を追加し、監査付き `DictMethodCall` の IR をゴールデン化する。  
+   - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `iterator.stage.audit_pass_rate` を新設し、CI メトリクスへ組み込むフォローアップを Section 4 へ接続する。
+
+**完了条件**:
+- `dune runtest compiler/ocaml/tests` が新規スナップショットを含めて成功し、既存テストに回帰がない。  
+- `--emit-typed-ast` 出力へ `iterator_info` が表示され、CLI ドキュメントにメタデータの説明を追加済み。  
+- `docs/notes/loop-implementation-plan.md` の該当チェックボックスが「レビュー待ち」へ更新され、監査ログの手動確認手順が記述されている。
+
+**リスクと対策**:
+- `DictMethodCall` 型の変更で `core_ir/monomorphize_poc.ml` や `llvm_gen/codegen.ml` が破綻する可能性があるため、`audit` は `option` で追加し既存コードは `None` を前提に段階移行する。  
+- Stage 要件が仕様側で未確定の場合は暫定的に `StageAtLeast "beta"` を採用し、確定後に `docs/spec/3-8-core-runtime-capability.md` と脚注を更新するタスクを Section 7 へ追記する。  
+- 監査フック導入直後は CI メトリクス連携が未整備なため、`docs/notes/loop-implementation-plan.md` に暫定の手動確認手順を明記し、Phase 2 Week 22 の診断タスクで自動化する。
+
 ### 2025-10-18 更新（Week 21 / セクション4 ベンチ前提のビルド安定化）✅
 
 **作業サマリー** ✅:

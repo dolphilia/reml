@@ -56,17 +56,27 @@ let is_array_like_ty ty =
   | TArray _ | TSlice _ -> true
   | _ -> Option.is_some (is_user_type "Array" ty)
 
-let determine_for_source_kind (dict : dict_ref) (source : typed_expr) :
-    for_source_kind =
-  match dict with
-  | DictImplicit ("Iterator", source_ty :: _) ->
-      if is_array_like_ty source_ty then ForSourceArray else ForSourceIterator
-  | DictImplicit _ ->
-      if is_array_like_ty source.texpr_ty then ForSourceArray
-      else ForSourceIterator
-  | DictParam _ | DictLocal _ ->
-      if is_array_like_ty source.texpr_ty then ForSourceArray
-      else ForSourceIterator
+let determine_for_source_kind (info : iterator_dict_info option)
+    (dict : dict_ref) (source : typed_expr) : for_source_kind =
+  match info with
+  | Some metadata -> (
+      match metadata.kind with
+      | IteratorArrayLike -> ForSourceArray
+      | IteratorCoreIter
+      | IteratorOptionLike
+      | IteratorResultLike
+      | IteratorCustom _ -> ForSourceIterator)
+  | None -> (
+      match dict with
+      | DictImplicit ("Iterator", source_ty :: _) ->
+          if is_array_like_ty source_ty then ForSourceArray
+          else ForSourceIterator
+      | DictImplicit _ ->
+          if is_array_like_ty source.texpr_ty then ForSourceArray
+          else ForSourceIterator
+      | DictParam _ | DictLocal _ ->
+          if is_array_like_ty source.texpr_ty then ForSourceArray
+          else ForSourceIterator)
 
 (* ========== 変数スコープマップ ========== *)
 
@@ -404,8 +414,8 @@ let rec desugar_expr (map : var_scope_map) (texpr : typed_expr) : expr =
       let cond_expr = desugar_expr map cond in
       let body_expr = desugar_expr map body in
       make_loop_expr (WhileLoop cond_expr) body_expr span ty
-  | TFor (pat, source, body, iterator_dict) ->
-      desugar_for_loop map pat source body iterator_dict ty span
+  | TFor (pat, source, body, iterator_dict, iterator_info) ->
+      desugar_for_loop map pat source body iterator_dict iterator_info ty span
   | TLoop body ->
       let body_expr = desugar_expr map body in
       make_loop_expr InfiniteLoop body_expr span ty
@@ -438,8 +448,11 @@ and desugar_arg (map : var_scope_map) (arg : typed_arg) : expr =
 
 and desugar_for_loop (map : var_scope_map) (pat : typed_pattern)
     (source : typed_expr) (body : typed_expr) (iterator_dict : dict_ref)
-    (result_ty : ty) (span : span) : expr =
-  let source_kind = determine_for_source_kind iterator_dict source in
+    (iterator_info : iterator_dict_info option) (result_ty : ty) (span : span) :
+    expr =
+  let source_kind =
+    determine_for_source_kind iterator_info iterator_dict source
+  in
   let element_ty = convert_ty pat.tpat_ty in
   let source_expr = desugar_expr map source in
   let body_scope = copy_scope_map map in

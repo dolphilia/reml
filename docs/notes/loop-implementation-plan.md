@@ -234,7 +234,13 @@ fn test_mut() -> i64 {
 **Next Steps**
 - [x] 配列ソース向けに実際の長さ取得（`PrimArrayLength` + LLVM 抽出）を実装し、CFG・LLVM の双方でスタブを置き換える。（2025-10-14 完了）
 - [ ] `Iterator<T>` 判定を型クラス解決に統合し、`classify_for_source` のヒューリスティックを仕様準拠のトレイト/Capability チェックへ移行する（ステップ3「型クラス統合計画」参照）。
+  - ステータス: 設計タスクを `docs/plans/bootstrap-roadmap/2-1-typeclass-strategy.md`（2025-10-24 更新）に追加し、`IteratorDictInfo` メタデータ導入と辞書未解決時の診断シーケンスを定義した。
+  - 次のアクション: `constraint_solver.ml` に `IteratorDictInfo` を実装し、`typed_ast.ml` の `TFor` が辞書情報を保持するよう拡張。並行して `desugar_for_loop` の `determine_for_source_kind` を `IteratorDictInfo.kind` に置き換える。
+  - 検証計画: `compiler/ocaml/tests/test_type_errors.ml` に「Iterator 未満足型」の診断を追加し、JSON 出力の `effect.stage.*` キーをスナップショット化する。
 - [ ] `DictMethodCall` 経由の `has_next` / `next` 呼び出しで Stage / Capability 監査フックを追加し、診断ログ (`effect.stage.*`) との整合を検証する。
+  - ステータス: 監査フック設計と CI 連携手順を `docs/plans/bootstrap-roadmap/2-1-typeclass-strategy.md`（2025-10-24 更新）に整理し、`DictMethodCall` へ `audit` フィールドを追加する方針を決定。
+  - 次のアクション: `core_ir/ir.ml`・`desugar.ml` で `EffectMarker` を生成して Stage 要件 (`StageAtLeast "beta"` 暫定) を記録し、`diagnostic.ml` に `typeclass.iterator.stage_mismatch` 拡張を追加。
+  - 検証計画: `compiler/ocaml/tests/test_desugar.ml` と `tests/llvm-ir/golden/for_iterator_with_audit.ll.golden` を新設し、監査メタデータ付き IR を固定化。CI メトリクスに `iterator.stage.audit_pass_rate` を追加するフォローアップを `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に登録。
 
 #### ステップ2: CFG構築でのループ展開（Week 26-27）
 
@@ -454,7 +460,7 @@ dune runtest compiler/ocaml/tests
 
 ```ocaml
 (* desugar.ml での for式処理 *)
-| TFor (pat, source, body, iterator_dict) ->
+| TFor (pat, source, body, iterator_dict, iterator_info) ->
     let source_expr = desugar_expr map source in
     let body_expr = desugar_expr map body in
 

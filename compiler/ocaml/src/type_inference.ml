@@ -438,6 +438,15 @@ let solve_trait_constraints (constraints : trait_constraint list) :
       (* 複数のエラーがある場合は最初のエラーを返す *)
       Error (constraint_error_to_type_error (List.hd errors))
 
+let solve_iterator_constraint (constraint_ : trait_constraint) :
+    (iterator_dict_info, type_error) result =
+  let registry = get_impl_registry () in
+  match Constraint_solver.solve_iterator_dict registry constraint_ with
+  | Ok info ->
+      record_monomorph_instances registry [ info.dict_ref ];
+      Ok info
+  | Error err -> Error (constraint_error_to_type_error err)
+
 let ensure_assignable env (texpr : typed_expr) span =
   match texpr.texpr_kind with
   | TVar (id, _) -> (
@@ -790,34 +799,13 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
           source.expr_span
       in
       (* Iterator 辞書を解決 *)
-      let* iterator_dict =
-        match solve_trait_constraints [ iterator_constraint ] with
-        | Ok (dict :: _) -> Ok dict
-        | Ok [] ->
-            Error
-              (TraitConstraintFailure
-                 {
-                   trait_name = "Iterator";
-                   type_args = [ source_ty_resolved; elem_ty_resolved ];
-                   reason = "Iterator constraint resolved without dictionary";
-                   span = source.expr_span;
-                 })
-        | Error err -> Error err
+      let* iterator_info =
+        solve_iterator_constraint iterator_constraint
       in
       (* 辞書から要素型を取得し、型変数と単一化する *)
-      let s_final =
-        match iterator_dict with
-        | DictImplicit (_, _ :: item_ty :: _) ->
-            let* s = unify s_acc elem_ty item_ty source.expr_span in
-            Ok s
-        | DictImplicit (_, [_]) ->
-            (* 型引数が1つのみの場合は追加単一化不要 *)
-            Ok s_acc
-        | DictImplicit (_, []) ->
-            Ok s_acc
-        | DictParam _ | DictLocal _ -> Ok s_acc
+      let* s_final =
+        unify s_acc elem_ty iterator_info.element_ty source.expr_span
       in
-      let* s_final = s_final in
       let source_ty_final = apply_subst s_final source_ty in
       let elem_ty_final = apply_subst s_final elem_ty in
       let iterator_constraint_final =
@@ -827,18 +815,32 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
         }
       in
       let iterator_dict =
-        match iterator_dict with
+        match iterator_info.dict_ref with
         | DictImplicit (trait, tys) ->
             DictImplicit (trait, List.map (apply_subst s_final) tys)
         | dict -> dict
+      in
+      let iterator_info_final =
+        {
+          iterator_info with
+          dict_ref = iterator_dict;
+          source_ty = apply_subst s_final iterator_info.source_ty;
+          element_ty = apply_subst s_final iterator_info.element_ty;
+        }
       in
       let all_constraints =
         merge_constraints_many
           [ source_constraints; body_constraints; [ iterator_constraint_final ] ]
       in
       let texpr =
-        make_typed_expr (TFor (tpat, tsource, tbody, iterator_dict)) ty_unit
-          expr.expr_span
+        make_typed_expr
+          (TFor
+             ( tpat,
+               tsource,
+               tbody,
+               iterator_dict,
+               Some iterator_info_final ))
+          ty_unit expr.expr_span
       in
       Ok (texpr, ty_unit, s_final, all_constraints)
   | Loop body ->

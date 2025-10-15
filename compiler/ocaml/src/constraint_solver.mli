@@ -37,6 +37,31 @@ type dict_ref =
       (** ローカル定義の辞書
        * 例: DictLocal("user_eq") → let user_eq = ... で定義された辞書 *)
 
+(** Iterator 辞書の種別 *)
+type iterator_dict_kind =
+  | IteratorArrayLike  (** 配列・スライスなど固定長コレクション *)
+  | IteratorCoreIter  (** `Core.Iter.Iter<T>` など標準イテレータ状態 *)
+  | IteratorOptionLike  (** Option 型由来の 0/1 要素イテレータ *)
+  | IteratorResultLike  (** Result 型由来の 0/1 要素イテレータ（Ok のみ） *)
+  | IteratorCustom of string
+      (** ユーザー定義実装。型名や説明を保持して識別する *)
+
+(** Iterator 辞書の Stage 要件 *)
+type iterator_stage_requirement =
+  | IteratorStageExact of string
+  | IteratorStageAtLeast of string
+
+(** Iterator 辞書に付随するメタデータ *)
+type iterator_dict_info = {
+  dict_ref : dict_ref;  (** 解決された辞書参照 *)
+  source_ty : ty;  (** 反復対象となる型 *)
+  element_ty : ty;  (** 要素型 *)
+  kind : iterator_dict_kind;  (** 辞書の種別 *)
+  stage_requirement : iterator_stage_requirement;  (** Stage 要件 *)
+  capability : string option;
+      (** 必要な Capability ID（不明な場合は None） *)
+}
+
 (** 制約エラー
  *
  * 制約解決失敗時のエラー情報
@@ -116,6 +141,19 @@ val solve_constraints :
   Impl_registry.impl_registry ->
   trait_constraint list ->
   (dict_ref list, constraint_error list) result
+
+(** Iterator 制約専用の解決ヘルパー
+ *
+ * `Iterator` 制約を解決し、辞書本体に加えて Stage / Capability 情報を返す。
+ *
+ * @param registry impl レジストリ
+ * @param constraint_ 対象の Iterator 制約
+ * @return 成功時は辞書メタデータ、失敗時は制約エラー
+ *)
+val solve_iterator_dict :
+  Impl_registry.impl_registry ->
+  trait_constraint ->
+  (iterator_dict_info, constraint_error) result
 
 (** 初期状態の作成
  *
