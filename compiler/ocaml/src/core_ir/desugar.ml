@@ -68,8 +68,9 @@ let determine_for_source_kind (info : iterator_dict_info option) : for_source_ki
   | None -> ForSourceIterator
 
 let stage_requirement_to_ir = function
-  | IteratorStageExact stage -> StageExact stage
-  | IteratorStageAtLeast stage -> StageAtLeast stage
+  | IteratorStageExact stage -> StageExact (Effect.stage_id_of_string stage)
+  | IteratorStageAtLeast stage ->
+      StageAtLeast (Effect.stage_id_of_string stage)
 
 let string_of_iterator_stage_requirement = function
   | IteratorStageExact stage -> Printf.sprintf "exact:%s" stage

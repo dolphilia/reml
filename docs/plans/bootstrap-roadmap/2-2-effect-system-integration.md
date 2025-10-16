@@ -27,24 +27,56 @@
 **担当領域**: 効果システム基盤設計
 
 1.1. **効果タグとStage定義の抽出**
-- [1-3-effects-safety.md](../../spec/1-3-effects-safety.md) から効果タグの全種類をリスト化
-- [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) の Stage 定義をデータ構造化
-- Stage 要件（`Exact`, `AtLeast`）の形式化と順序関係の確認
-- プラットフォーム別 Stage テーブルの整理
+- [1-3-effects-safety.md](../../spec/1-3-effects-safety.md) §A から `Σ_core`（`mut`/`io`/`panic`/`unsafe`/`ffi`）と `Σ_system`（`syscall`/`process`/`thread`/`memory`/`signal`/`hardware`/`realtime`/`audit`/`security`）を抽出し、表形式で共有。
+- 同章 §A.1 の補助タグ（例: `mem`/`debug`/`trace`/`unicode`/`time`/`runtime`）を整理し、標準ライブラリでの利用箇所とプラットフォーム差分を Column に追加。
+- [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) §1.2 の Stage テーブルを再掲し、`StageId = Experimental < Beta < Stable` の全順序と StageRequirement（`Exact`/`AtLeast`）の評価ルールを仕様引用付きで記述。
+- プラットフォーム別 Stage 設定（Linux/Windows/macOS）を Capability Registry 観点で一覧化し、`RuntimeCapability`/`TargetCapability` と `effect_scope` の突合条件を洗い出す。
+- 監査キー（`effect.stage.*`、`effects.contract.stage_mismatch` 等）を列挙し、`docs/spec/3-6-core-diagnostics-audit.md` との整合確認ポイントを明示。
+
+> **ドラフト: 効果タグ/Stage 対応表（レビュー用）**
+>
+> | 区分 | 効果タグ | 典型 API / Capability | 想定 Stage 下限（仕様） | Registry Stage（2025-10-17 実測） | 監査キー・診断 | 参照 |
+> | --- | --- | --- | --- | --- | --- | --- |
+> | `Σ_core` | `mut` | `Vec.push`, `Cell.set` | `AtLeast Stable`（純粋境界で許容） | 管理対象外（組み込み） | `effects.contract.mut_usage` | [1-3-effects-safety.md §A](../../spec/1-3-effects-safety.md#a-効果の分類コア--システム拡張) |
+> |  | `io` | `Core.IO.readFile`, `print` | `AtLeast Stable`（プラットフォーム依存で段階調整） | 管理対象外（組み込み） | `effects.contract.io_policy` | 同上 |
+> |  | `panic` | `panic`, `assert` | `AtLeast Stable`（`@no_panic` で制約可） | 管理対象外（組み込み） | `effects.contract.panic_violation` | 同上 |
+> |  | `unsafe` | `unsafe { … }` 境界 | `Exact Stable`（`unsafe` ブロック必須） | 管理対象外（境界内で完結） | `effects.contract.unsafe_boundary` | 同上 |
+> |  | `ffi` | `extern "C"`, `RuntimeBridge` | `Exact Beta`（RuntimeCapability で昇格管理） | `experimental`（`examples/algebraic-effects/audit-log.json:3`） | `effects.contract.ffi_scope`, `effects.contract.stage_mismatch` | 同上 / [3-8-core-runtime-capability.md §1.2](../../spec/3-8-core-runtime-capability.md#capability-stage-contract) |
+> | `Σ_system` | `syscall` | `Core.System.raw_syscall` | `Exact Experimental`（CI では既定拒否） | 未登録（2025-10-17 時点） | `effects.contract.syscall_policy` | [1-3-effects-safety.md §A](../../spec/1-3-effects-safety.md#a-効果の分類コア--システム拡張) |
+> |  | `process` | `Core.Process.spawn_process` | `AtLeast Beta`（監査ログ必須） | 未登録（2025-10-17 時点） | `effects.contract.process_policy` | 同上 |
+> |  | `thread` | `Core.Process.create_thread` | `AtLeast Beta` | 未登録（2025-10-17 時点） | `effects.contract.thread_policy` | 同上 |
+> |  | `memory` | `Core.Memory.mmap` | `Exact Experimental`（`unsafe` と併用） | 未登録（2025-10-17 時点） | `effects.contract.memory_scope` | 同上 |
+> |  | `signal` | `Core.Signal.register_signal_handler` | `AtLeast Beta` | 未登録（2025-10-17 時点） | `effects.contract.signal_policy` | 同上 |
+> |  | `hardware` | `Core.Hardware.rdtsc` | `Exact Experimental` | 未登録（2025-10-17 時点） | `effects.contract.hardware_scope` | 同上 |
+> |  | `realtime` | `Core.RealTime.set_scheduler_priority` | `AtLeast Beta` | 未登録（2025-10-17 時点） | `effects.contract.realtime_policy` | 同上 |
+> |  | `audit` | `Diagnostics.audit_ctx.log` | `AtLeast Stable` | 未登録（2025-10-17 時点） | `effects.contract.audit_scope`, `audit.event.*` | 同上 / [3-6-core-diagnostics-audit.md §2](../../spec/3-6-core-diagnostics-audit.md#2-監査イベント仕様) |
+> |  | `security` | `Capability.enforce_security_policy` | `Exact Stable` | 未登録（2025-10-17 時点） | `effects.contract.security_policy` | 同上 |
+> | 補助タグ | `mem` | `Core.Alloc.alloc` | `AtLeast Stable`（`@no_alloc` と連携） | 管理対象外（組み込み） | `effects.contract.mem_usage` | [1-3-effects-safety.md §A.1](../../spec/1-3-effects-safety.md#a1-標準ライブラリによる補助タグ) |
+> |  | `debug` | `Core.Diagnostics.expect` | `Exact Experimental`（デバッグビルド限定） | 未登録（2025-10-17 時点） | `effects.contract.debug_scope` | 同上 |
+> |  | `trace` | 実行トレース API | `AtLeast Beta` | 未登録（2025-10-17 時点） | `effects.contract.trace_scope` | 同上 |
+> |  | `unicode` | `Core.Text.normalize` | `AtLeast Stable` | 未登録（2025-10-17 時点） | `effects.contract.unicode_scope` | 同上 |
+> |  | `time` | `Core.Time.now` | `AtLeast Stable` | 未登録（2025-10-17 時点） | `effects.contract.time_policy` | 同上 |
+> |  | `runtime` | Capability Registry 操作 | `AtLeast Beta`（Stage 昇格時は要監査） | `experimental`（`compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden:6`） | `effects.contract.runtime_policy`, `effects.contract.stage_mismatch` | 同上 / [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) |
+>
+> 上表の Stage 下限は実装検証前のドラフト値。StageRequirement 実装後に CI で実測し、`0-3-audit-and-metrics.md` へ確定値を記録する。
+> 実測列は現行 Registry ログから確認できた値のみ反映している。`未登録` のタグは Capability 登録テストを追加し、Stage メタデータを収集後に更新する（Phase 2-2 テスト整備で追跡）。
 
 1.2. **データモデル設計**
-- AST/TAST/IR への `EffectTag` フィールド追加
-- `StageRequirement` 型の定義と検証ルール（`@requires_capability(stage=...)` と `allows_effects` 属性に対応）
-- 効果注釈は既存の属性 (`@pure`, `@requires_capability`, `allows_effects`) を解析し、追加構文を導入しない設計
-- 既存 API との後方互換性確保
+- `EffectTag` 列挙と `EffectSet` ヘルパを `compiler/ocaml/src/core_ir/effect.ml`（新規）または既存ユーティリティに配置し、Parser/IR/Runtime で共有するストラクチャ設計を決定。
+- AST (`parser.mly` → `Ast.fn_decl`)・TAST (`Typedtree.fn_decl`)・Core IR (`core_ir/function.ml`) に `effects: EffectSet`、`residual_effects: EffectSet` を追加し、Span 情報と併せて保持する方式を設計。
+- `StageRequirement` 型を `type_env.ml` に定義し、`Exact`/`AtLeast` の比較関数と `StageId` 順序マップを提供。`allows_effects` 属性から暗黙 Stage を推論する場合のルール（未指定は `AtLeast Stable`、`@experimental` は `Exact Experimental` 等）を策定。
+- 既存属性 (`@pure`/`@requires_capability`/`@handles`/`allows_effects`) の解析フローを洗い出し、追加構文を導入しない前提での AST 拡張手順書を作成。CLI フラグや DSL への後方互換性を検証。
 
 1.3. **型システムとの統合方針**
-- 型クラス制約と効果制約の分離設計
-- 効果多相（effect polymorphism）の検討
-- 関数シグネチャへの効果情報の埋め込み
-- Phase 2 型クラスタスクとの調整
+- `type_inference.ml` で効果制約を `EffectConstraint`（例: `RequiresEffect`, `SubsetOf`, `StageAtLeast`）として表現し、型クラス辞書解決との依存関係を分離。
+- 効果多相性は Phase 2 では rank-1 相当の `allows_effects` 付き関数に限定し、`EffectScheme`（ベース集合 + 許可された拡張タグ）を導入するかを検討。将来の行多相拡張を Section 7 と連携して TODO 記述。
+- 関数シグネチャ（`Type.Function`）に `effects: EffectSet` と `stage_requirement: StageRequirement` を埋め込み、呼び出しチェックで残余効果・Stage 違反を診断へルーティング。
+- Phase 2-1 実装済みの `StageRequirement` 監査（Iterator 辞書等）と共通化する責務境界を整理し、辞書渡し PoC で追加した診断フィールドと重複しないよう調整計画をまとめる。
 
-**成果物**: 効果データモデル、Stage 定義、統合設計書
+**成果物**:
+- 効果タグおよび Stage 定義の集約表（仕様引用付き）。
+- AST/TAST/IR/型環境の拡張設計ノート（責務分担と API 変更点を含む）。
+- 効果制約と型クラス制約の統合ポリシー案、および `0-3-audit-and-metrics.md` へ計測観点を追記するためのドラフト。
 
 ### 2. Parser/AST 拡張（25週目）
 **担当領域**: 構文解析

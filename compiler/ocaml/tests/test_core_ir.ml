@@ -121,7 +121,7 @@ let test_metadata () =
   assert (meta.IR.opt_flags.IR.allow_dce = true);
   assert (meta.IR.opt_flags.IR.allow_inline = true);
   assert (meta.IR.opt_flags.IR.preserve_for_diagnostics = false);
-  assert (List.length meta.IR.effects.IR.declared = 0);
+  assert (List.length meta.IR.effects.declared = 0);
   assert (List.length meta.IR.capabilities.IR.required = 0);
   print_endline "✓ test_metadata passed"
 

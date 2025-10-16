@@ -96,22 +96,11 @@ type prim_op =
 
 (* ========== 効果とCapability ========== *)
 
-type effect_tag = {
-  effect_name : string;  (** 効果名 (例: "diagnostic", "io") *)
-  effect_span : span;  (** 宣言位置 *)
-}
-(** 効果タグ
- *
- * 仕様書 3-6 §1: 診断・監査用の効果情報
- *)
+type effect_tag = Effect.tag
+(** 効果タグ（Core_ir.Effect を参照） *)
 
-type effect_set = { declared : effect_tag list; residual : effect_tag list }
-(** 効果集合
- *
- * 関数が持つ効果の集合。
- * declared: 明示的に宣言された効果
- * residual: 推論された残余効果
- *)
+type effect_set = Effect.set
+(** 効果集合（Core_ir.Effect を参照） *)
 
 type capability_id = {
   cap_name : string;  (** Capability名 *)
@@ -123,13 +112,10 @@ type capability_id = {
  * Phase 3 では基本構造のみ定義、詳細は Phase 2 後半で実装。
  *)
 
-(** Stage 要件
- *
- * Capability の成熟度要件。
- *)
-type stage_requirement =
-  | StageExact of string  (** 正確なステージ一致 *)
-  | StageAtLeast of string  (** 最低限のステージ *)
+(** Stage 要件（Core_ir.Effect を参照） *)
+type stage_requirement = Effect.stage_requirement =
+  | StageExact of Effect.stage_id
+  | StageAtLeast of Effect.stage_id
 
 type capability_set = {
   required : capability_id list;  (** 必要な Capability *)
@@ -450,7 +436,7 @@ let default_opt_flags =
   { allow_dce = true; allow_inline = true; preserve_for_diagnostics = false }
 
 (** 空の効果集合 *)
-let empty_effect_set = { declared = []; residual = [] }
+let empty_effect_set = Effect.empty
 
 (** 空のCapability集合 *)
 let empty_capability_set = { required = []; stage = None }

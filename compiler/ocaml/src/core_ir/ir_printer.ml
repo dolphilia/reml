@@ -181,8 +181,11 @@ let rec string_of_expr ?(depth = 0) expr =
               audit.audit_effect.effect_name
               (match audit.audit_required_stage with
               | None -> "-"
-              | Some (StageExact s) -> Printf.sprintf "exact(%s)" s
-              | Some (StageAtLeast s) -> Printf.sprintf "at_least(%s)" s)
+              | Some (StageExact s) ->
+                  Printf.sprintf "exact(%s)" (Effect.stage_id_to_string s)
+              | Some (StageAtLeast s) ->
+                  Printf.sprintf "at_least(%s)"
+                    (Effect.stage_id_to_string s))
       in
       Printf.sprintf "%s(dict.call %s.%s(%s)%s : %s)" ind dict_str method_name
         args_str audit_str ty_str
