@@ -55,6 +55,8 @@ scripts/docker/smoke-linux.sh --tag ghcr.io/reml/bootstrap-runtime:dev
   --llvm-verify success
 ```
 
+- Iterator 監査メトリクスは `tooling/ci/collect-iterator-audit-metrics.py` で集計し、結果を `tooling/ci/iterator-audit-metrics.json` として保存する。CI ではこの JSON をアーティファクト化し、`iterator.stage.audit_pass_rate` が 1.0 未満の場合に警告を上げる。
+
 ## 完了タスク（Phase 1-7）
 
 - ✅ GitHub Actions ワークフローに対応する補助スクリプトを追加

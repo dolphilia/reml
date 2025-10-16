@@ -1,0 +1,21 @@
+{
+  "metric": "iterator.stage.audit_pass_rate",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "pass_rate": 1.0,
+  "required_audit_keys": [
+    "effect.stage.required",
+    "effect.stage.actual",
+    "effect.capability",
+    "effect.stage.iterator.required",
+    "effect.stage.iterator.actual",
+    "effect.stage.iterator.kind",
+    "effect.stage.iterator.capability",
+    "effect.stage.iterator.source"
+  ],
+  "sources": [
+    "compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden"
+  ],
+  "failures": []
+}

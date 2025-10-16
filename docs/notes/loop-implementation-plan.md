@@ -239,7 +239,7 @@ fn test_mut() -> i64 {
   - 検証計画: `compiler/ocaml/tests/test_type_errors.ml` に `E7016`（Iterator 制約未満足）のテストを追加済み。今後は JSON ダンプで `effect.stage.*` をスナップショット化し、CLI 統合テストに組み込む。
 - [ ] `DictMethodCall` 経由の `has_next` / `next` 呼び出しで Stage / Capability 監査フックを追加し、診断ログ (`effect.stage.*`) との整合を検証する。
   - ステータス: `core_ir/ir.ml` に `iterator_audit` とループ効果リストを追加し、`desugar.ml` / `cfg.ml` で `EffectMarker` を生成する実装を導入。`DictMethodCall` が `audit` を保持し、Stage 要件 (`StageExact「stable」` / `StageAtLeast「beta」`) と Capability ID を記録できる状態になった。
-  - 次のアクション: `diagnostic.ml` に Stage/Capability 拡張を出力するヘルパーを追加し、`typeclass.iterator.stage_mismatch` 診断を設計。監査付き IR ゴールデン（`test_desugar` / LLVM スナップショット）を整備し、CI メトリクス `iterator.stage.audit_pass_rate` を登録する。
+  - 次のアクション: `diagnostic.ml` に Stage/Capability 拡張を出力するヘルパーを追加し、`typeclass.iterator.stage_mismatch` 診断を設計。監査付き IR ゴールデン（`test_desugar` / LLVM スナップショット）を整備し、CI メトリクス `iterator.stage.audit_pass_rate` を `tooling/ci/collect-iterator-audit-metrics.py`（出力: `tooling/ci/iterator-audit-metrics.json`, 2025-10-27 現在の `pass_rate = 1.0`）で継続監視する。
   - 検証計画: `compiler/ocaml/tests/test_type_errors.ml` で辞書未解決パスを検証済み。今後は `test_desugar`・LLVM ゴールデンテスト・JSON ダンプの追加で監査メタデータを固定化する。
 
 #### ステップ2: CFG構築でのループ展開（Week 26-27）

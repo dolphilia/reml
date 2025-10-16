@@ -9,8 +9,11 @@
 | 性能 | `memory_peak_ratio` | ピークメモリ / 入力サイズ | 各フェーズ主要マイルストーン後 | 同上 |
 | 安全性 | `stage_mismatch_count` | Capability Stage ミスマッチ件数 | CI (PR ごと) | [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) |
 | 安全性 | `ffi_ownership_violation` | FFI 所有権警告件数 | CI + 週次レビュー | [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md) |
+| 安全性 | `iterator.stage.audit_pass_rate` | `typeclass.iterator.stage_mismatch` 診断で必須監査キーが揃った割合 (0.0〜1.0) | CI（週次レビュー、PRごと） | [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) §2.4 |
 | DX | `diagnostic_regressions` | 診断差分の件数 | PR ごと | [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) |
 | DX | `error_resolution_latency` | 重大バグの修正までの日数 | 月次 | [0-1-project-purpose.md](../../spec/0-1-project-purpose.md) §2.2 |
+
+- CI 集計スクリプト: `tooling/ci/collect-iterator-audit-metrics.py` を用いて診断 JSON を検査し、結果を `tooling/ci/iterator-audit-metrics.json` に書き出す。`pass_rate` が 1.0 未満の場合は CI 側でブロック条件を設定する。
 
 ### macOS 追加指標（Phase 1-8 以降）
 | カテゴリ | 指標 | 定義 | 収集タイミング | 計画参照 |

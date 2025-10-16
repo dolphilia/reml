@@ -382,6 +382,54 @@ jobs:
             /tmp/llvm-ir-verify-macos/*.o
           retention-days: 7
 
+  iterator-audit:
+    name: Iterator Audit Metrics (macOS ARM64)
+    runs-on: macos-14
+    needs: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Collect iterator.stage audit metrics
+        run: |
+          python3 tooling/ci/collect-iterator-audit-metrics.py --output tooling/ci/iterator-audit-metrics.json
+
+      - name: Verify iterator.stage audit pass rate
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          from pathlib import Path
+
+          metrics_path = Path("tooling/ci/iterator-audit-metrics.json")
+          if not metrics_path.is_file():
+              print("::error::iterator audit metrics file not found")
+              sys.exit(1)
+
+          data = json.loads(metrics_path.read_text(encoding="utf-8"))
+          rate = data.get("pass_rate")
+          total = data.get("total", 0)
+          failed = data.get("failed", 0)
+
+          if rate is None:
+              print("::error::iterator.stage.audit_pass_rate が算出できませんでした")
+              sys.exit(1)
+
+          if rate < 1.0:
+              print(f"::error::iterator.stage.audit_pass_rate={rate:.3f} (total={total}, failed={failed})")
+              sys.exit(1)
+
+          print(f"iterator.stage.audit_pass_rate OK ({rate:.3f})")
+          PY
+
+      - name: Upload iterator audit metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iterator-audit-metrics-macos
+          path: tooling/ci/iterator-audit-metrics.json
+          retention-days: 30
+
   record-metrics:
     name: Record Metrics (macOS ARM64)
     runs-on: macos-14
@@ -389,6 +437,7 @@ jobs:
       - build
       - test
       - llvm-verify
+      - iterator-audit
     if: always()
 
     steps:

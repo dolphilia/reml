@@ -59,7 +59,7 @@
   - 目的: 型クラスエラーの診断品質向上
   - ✅ 完了: `typeclass.iterator.stage_mismatch` の Stage/Capability 拡張出力 (`Diagnostic.with_effect_stage_extension`) を Constraint Solver → Type Inference → Diagnostic まで貫通させ、E7016 系テストで `extensions["effects"]` を検証
   - ✅ 完了: CLI JSON/テキスト出力とゴールデンスナップショットに `effects.iterator.*`・`effect.stage.*` を固定化し、`audit` セクションへ同じキーを転写
-  - 🚧 継続中: `iterator.stage.audit_pass_rate` 計測フローと CI 連携の自動化（監査メトリクス算出ロジックを `tooling` 側へ落とし込む作業が未着手）
+  - 🚧 継続中: `iterator.stage.audit_pass_rate` 計測フローと CI 連携の自動化（2025-10-27時点で集計スクリプト `tooling/ci/collect-iterator-audit-metrics.py` と初期出力 `tooling/ci/iterator-audit-metrics.json` を追加済み。GitHub Actions への組み込みは次週対応）
 
 ### 未着手タスク 🚧
 
@@ -82,7 +82,7 @@
   - 辞書生成・LLVM IR生成: 完了
 
 ### 次のステップ（Week 21-22 フォローアップ）🚀
-- `tooling/ci` で `iterator.stage.audit_pass_rate` を自動集計し、`verify_llvm_ir.sh` から出力される診断ログと突き合わせるスクリプトを整備する。
+- `tooling/ci/collect-iterator-audit-metrics.py` を CI パイプラインへ組み込み、`verify_llvm_ir.sh` などで生成した診断ログと突き合わせて `iterator.stage.audit_pass_rate` を継続計測する。
 - `docs/notes/loop-implementation-plan.md` の監査手順に今回追加した `effects.iterator.*` / `effect.stage.*` キーを追記し、手動検証手順と CI チェックポイントを同期させる。
 - LSP/JSON 双方のスナップショットに `audit` ブロックが含まれることをカバレッジレポートに反映し、将来の仕様変更で欠落しないよう `test_cli_diagnostics` / LSP 側のリグレッションテストを拡張する。
 
