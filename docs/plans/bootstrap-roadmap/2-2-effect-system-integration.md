@@ -17,9 +17,9 @@
 - `docs/spec/1-3-effects-safety.md`, `docs/spec/3-8-core-runtime-capability.md`, `docs/spec/3-6-core-diagnostics-audit.md` : 仕様更新の対象
 
 ## 着手前チェックリスト（Phase 2-1 からの引き継ぎ）
-- [ ] `compiler/ocaml/scripts/benchmark_typeclass.sh --static-only` を実行し、`benchmark_results/static_comparison.json` を生成済み（辞書渡し vs モノモルフィゼーションの静的比較を `0-3-audit-and-metrics.md` に転記）。
-- [ ] `tooling/ci/collect-iterator-audit-metrics.py` → `tooling/ci/sync-iterator-audit.sh` のワークフローで `verify_llvm_ir.sh` ログと監査メトリクスを突合し、`iterator.stage.audit_pass_rate` を `0-3-audit-and-metrics.md` に記録済み。
-- [ ] `docs/spec/1-2-types-Inference.md`, `docs/spec/3-1-core-prelude-iteration.md`, `docs/spec/3-8-core-runtime-capability.md` に型クラス辞書と Stage 監査の連携ノートを追記し、診断キー (`effect.stage.iterator.*`) の定義が参照可能である。
+- [x] `compiler/ocaml/scripts/benchmark_typeclass.sh --static-only` を実行し、`benchmark_results/static_comparison.json` を生成済み（辞書渡し vs モノモルフィゼーションの静的比較を `0-3-audit-and-metrics.md` に転記）。※現フェーズでは IR/BC 未生成のため値は 0、Phase 3 で再計測予定。
+- [x] `tooling/ci/collect-iterator-audit-metrics.py` → `tooling/ci/sync-iterator-audit.sh` のワークフローで `verify_llvm_ir.sh` ログと監査メトリクスを突合し、`iterator.stage.audit_pass_rate` を `0-3-audit-and-metrics.md` に記録済み。
+- [x] `docs/spec/1-2-types-Inference.md`, `docs/spec/3-1-core-prelude-iteration.md`, `docs/spec/3-8-core-runtime-capability.md` に型クラス辞書と Stage 監査の連携ノートを追記し、診断キー (`effect.stage.iterator.*`) の定義が参照可能である。
 
 ## 作業ブレークダウン
 

@@ -84,6 +84,31 @@ let _ = match record with
 - 既存テストが全て成功（`tests/test_parser.exe` / `tests/test_pattern_matching.exe` 実行済み）
 - 仕様に基づく追加シナリオ（モジュール修飾列挙子など）のテストが整備されること
 
+### 2. AmbiguousImpl 診断の情報不足
+
+**分類**: 診断・UX
+**優先度**: 🟠 High
+**ステータス**: 未対応（Phase 2-2 で対応予定）
+**発見日**: 2025-10-16 / Phase 2-1 ハンドオーバー時レビュー
+
+#### 問題の詳細
+- `constraint_solver.ml` で `AmbiguousImpl` が検出されても、現在は `None` を返却して診断を生成しない。CLI 出力・JSON 出力ともに候補 impl の可視化ができず、ユーザが解決策を判断できない。
+- CI で `typeclass` 系の曖昧解決が発生しても `iterator.stage.audit_pass_rate` など既存メトリクスでは検知できない。
+
+#### 影響範囲
+- 型クラス実装が本格運用に入った際、曖昧 impl が発生するとデバッグが困難。
+- LSP/IDE 連携でもエラー種別が分類されず、補完ヒントが提供できない。
+
+#### 対応計画
+- `constraint_solver.ml` で `AmbiguousImpl dicts` を返却し、`Diagnostic` に `effect.stage.*` と同様の `extensions.typeclass.candidates` フィールドを追加する。
+- CLI テキスト・JSON・LSP スナップショットを更新し、CI で `typeclass.ambiguous_impl_count` を監視するスクリプトを追加。
+- UX 観点で「where 句追加」「impl 明示」など解決策を提示するテンプレートを整備。
+
+#### 成功基準
+- 新設する `tests/test_typeclass_ambiguous.ml` が候補 impl を含む診断を検証し、`dune runtest` が成功する。
+- `0-3-audit-and-metrics.md` に曖昧 impl 件数を記録する導線が整い、CI での監視が可能になる。
+- 既存診断に回帰がなく、`iterator.stage.audit_pass_rate` 指標が 1.0 を維持する。
+
 ---
 
 ## ✅ 解決済み項目（Phase 2 で完了）
@@ -231,6 +256,31 @@ Phase 1-6 で診断出力テスト（`test_cli_diagnostics.ml`）は完了した
 - 全 CLI オプションがテストでカバーされる
 - エラーケースの終了コードが正しく検証される
 - CI でのテストカバレッジが 90% 以上
+
+### 13. 静的ベンチマークの IR/BC 生成不足
+
+**分類**: ベンチマーク基盤
+**優先度**: 🟡 Medium
+**ステータス**: 未対応（Phase 2-2 で対応予定）
+**発見日**: 2025-10-16 / Phase 2-1 → 2-2 ハンドオーバー
+
+#### 問題の詳細
+- `benchmark_typeclass.sh --static-only` が辞書渡し／モノモルフィゼーション比較用の JSON を生成するようになったが、while/for 未実装のため `benchmarks/micro_typeclass.reml` が IR・ビットコードを生成せず、静的メトリクスがすべて `0` となっている。
+- 静的比較がゼロ値のままでは、効果システム統合で追加する IR の影響評価ができない。
+
+#### 影響範囲
+- Phase 2-2 の着手前チェックリストでは静的比較レポートの生成が必須だが、有効な差分が得られない。
+- Phase 3 でループ実装が完了するまで辞書構造体のサイズ変化を検証できない。
+
+#### 対応計画
+- ループを使用せずに大量呼び出しを発生させるユーティリティ（例: `repeat_call(impl, n)`）を `benchmarks/micro_typeclass.reml` に追加し、`--static-only` 実行時に IR/BC を出力させる。
+- 静的比較 JSON を GitHub Actions アーティファクトとして保存し、`0-3-audit-and-metrics.md` の週次ログへ転記する運用を整備。
+- Phase 3 で while/for 実装が完了した際に実行ベンチと比較し、静的メトリクスが同傾向で推移することを確認する。
+
+#### 成功基準
+- `benchmark_typeclass.sh --static-only` の実行結果で `ir_lines > 0` / `bitcode_size > 0` が得られる。
+- 静的比較 JSON が CI アーティファクト化され、`0-3-audit-and-metrics.md` に差分が記録される。
+- 実行ベンチ再開後も静的メトリクスとの整合性が確認できる。
 
 ---
 

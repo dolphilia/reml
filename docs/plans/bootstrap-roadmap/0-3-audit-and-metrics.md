@@ -147,6 +147,8 @@
 - 2025-10-09 / compiler/ocaml / Phase 3 Week 15 完了: ABI判定・属性設定のユニットテスト実装。総テストケース: 61件（既存45件 + 新規16件）、成功率: 100%。16バイト境界の正確な判定を検証済み。
 - 2025-10-09 / tooling/ci/docker / `ghcr.io/reml/bootstrap-runtime:dev-local` を linux/amd64 でビルド（所要 ~530 秒、圧縮前 4.09GB）。`scripts/docker/run-runtime-tests.sh` と `scripts/docker/smoke-linux.sh` を実行し、既知の失敗（Let Polymorphism A2、LLVM ゴールデン差分、`basic_interpreter.reml` の構文エラー）を確認。計測値を `tooling/ci/docker/metrics.json` に記録。
 - 2025-10-10 / .github/workflows / ランタイム CI 統合完了: `bootstrap-linux.yml` に Valgrind 検証・アーティファクト収集を追加し、Lint/Build/Test/Artifact の 4 ジョブ構成で Phase 1-5 §8 の CI 自動化を達成。
+- 2025-10-16 / compiler/ocaml / `compiler/ocaml/scripts/benchmark_typeclass.sh --static-only` を実行し、辞書渡し／モノモルフィゼーションの静的比較レポート (`compiler/ocaml/benchmark_results/static_comparison.json`) を生成。現時点では while/for 未実装のため IR/ビットコード生成がスキップされメトリクスは 0 だが、Phase 3 でループ実装後に再計測予定。
+- 2025-10-16 / tooling/ci / `collect-iterator-audit-metrics.py` → `sync-iterator-audit.sh` を手動実行し、`iterator.stage.audit_pass_rate = 1.0` を確認。`/tmp/iterator-summary.md` に生成した Markdown を次回 CI から `reports/` 階層へ保存し、週次で本ドキュメントへ転記する運用を開始。
 
 ## 0.3.10 ランタイムテスト統計（Phase 1-5 Week 16）
 
