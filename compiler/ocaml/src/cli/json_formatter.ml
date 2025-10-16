@@ -193,6 +193,10 @@ let diagnostic_to_lsp_json (diag : Diagnostic.t) : Yojson.Basic.t =
     if Diagnostic.Extensions.is_empty diag.extensions then fields
     else ("extensions", Diagnostic.Extensions.to_json diag.extensions) :: fields
   in
+  let fields =
+    if Diagnostic.Extensions.is_empty diag.audit_metadata then fields
+    else ("audit", Diagnostic.Extensions.to_json diag.audit_metadata) :: fields
+  in
 
   `Assoc fields
 
@@ -278,6 +282,10 @@ let diagnostic_to_reml_json (diag : Diagnostic.t) : Yojson.Basic.t =
   let fields =
     if Diagnostic.Extensions.is_empty diag.extensions then fields
     else ("extensions", Diagnostic.Extensions.to_json diag.extensions) :: fields
+  in
+  let fields =
+    if Diagnostic.Extensions.is_empty diag.audit_metadata then fields
+    else ("audit", Diagnostic.Extensions.to_json diag.audit_metadata) :: fields
   in
 
   `Assoc fields

@@ -227,6 +227,16 @@ let format_diagnostic ~source ~diag ~color_mode =
                Printf.sprintf "\n拡張[%s]: %s" key (Json.to_string value))
         |> String.concat ""
   in
+  let audit_str =
+    match diag.audit_metadata with
+    | [] -> ""
+    | entries ->
+        entries
+        |> List.rev
+        |> List.map (fun (key, value) ->
+               Printf.sprintf "\n監査[%s]: %s" key (Json.to_string value))
+        |> String.concat ""
+  in
 
   (* 重要度ヒント *)
   let hint_str =
@@ -239,6 +249,7 @@ let format_diagnostic ~source ~diag ~color_mode =
   in
 
   header ^ snippet ^ expected_str ^ notes_str ^ fixits_str ^ extensions_str
+  ^ audit_str
   ^ hint_str
 
 (** 複数の診断をバッチ出力

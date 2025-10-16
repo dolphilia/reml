@@ -17,7 +17,7 @@
 - `docs/notes/dsl-plugin-roadmap.md`, `docs/notes/llvm-spec-status-survey.md` : 評価結果・リスクのログ
 - `docs/spec/1-2-types-Inference.md` : 仕様差分が発生した際の更新対象
 
-## 全体進捗状況（2025-10-13時点 / 最終更新）
+## 全体進捗状況（2025-10-27時点 / 最終更新）
 
 ### 完了済みタスク ✅
 
@@ -55,11 +55,13 @@
   - 🚧 延期: 実際の計測実行（Phase 3で実施、while/forループ実装後）
   - 📝 詳細: `docs/notes/typeclass-benchmark-status.md`
 
-### 未着手タスク 🚧
-
-- **セクション5: 診断システム強化** (Week 21-22): **未着手**
+- **セクション5: 診断システム強化** (Week 21-22): **80%完了** (2025-10-27更新)
   - 目的: 型クラスエラーの診断品質向上
-  - 必要な作業: 診断拡張、辞書情報統合、エラー回復戦略
+  - ✅ 完了: `typeclass.iterator.stage_mismatch` の Stage/Capability 拡張出力 (`Diagnostic.with_effect_stage_extension`) を Constraint Solver → Type Inference → Diagnostic まで貫通させ、E7016 系テストで `extensions["effects"]` を検証
+  - ✅ 完了: CLI JSON/テキスト出力とゴールデンスナップショットに `effects.iterator.*`・`effect.stage.*` を固定化し、`audit` セクションへ同じキーを転写
+  - 🚧 継続中: `iterator.stage.audit_pass_rate` 計測フローと CI 連携の自動化（監査メトリクス算出ロジックを `tooling` 側へ落とし込む作業が未着手）
+
+### 未着手タスク 🚧
 
 - **セクション6: 評価レビューと方針決定** (Week 22-23): **未着手**
   - 目的: 実装方式の最終決定と文書化
@@ -78,8 +80,11 @@
   - 統合テストスイート: 完了 (2025-10-13)
   - Implレジストリ統合: 完了
   - 辞書生成・LLVM IR生成: 完了
-  - エンドツーエンドテスト: 完了（組み込み型のみ）
-  - **残課題（5%）**: ユーザー定義型の統合テスト、where句制約の再帰解決
+
+### 次のステップ（Week 21-22 フォローアップ）🚀
+- `tooling/ci` で `iterator.stage.audit_pass_rate` を自動集計し、`verify_llvm_ir.sh` から出力される診断ログと突き合わせるスクリプトを整備する。
+- `docs/notes/loop-implementation-plan.md` の監査手順に今回追加した `effects.iterator.*` / `effect.stage.*` キーを追記し、手動検証手順と CI チェックポイントを同期させる。
+- LSP/JSON 双方のスナップショットに `audit` ブロックが含まれることをカバレッジレポートに反映し、将来の仕様変更で欠落しないよう `test_cli_diagnostics` / LSP 側のリグレッションテストを拡張する。
 
 - **モノモルフィゼーション PoC**: **主要機能完了（2025-10-13）**
   - `Monomorphize_poc` パスで辞書経路を温存したまま具象関数生成・差し替えを実装
@@ -646,8 +651,19 @@
 - CLI テキスト出力でも `拡張[effects]: ...` が表示され、Stage 情報が見落とされないことを目視で確認。
 
 **フォローアップ** 🚧:
-- `constraint_solver` 側の Stage ミスマッチ発生時に `Diagnostic.with_effect_stage_extension` を利用する実装を追加し、実際の `typeclass.iterator.stage_mismatch` 診断が JSON スナップショット通りに生成されることを確認する。  
+- `constraint_solver` → `type_inference` → `type_error` の StageMismatch 変換経路で `Diagnostic.with_effect_stage_extension` を呼び出す実装を取り込み、Iterator 制約失敗ケース（`compiler/ocaml/tests/test_type_errors.ml` の E7016 および CLI スナップショット）で `extensions["effects"]` が出力されることを Section 5 の統合テストで確認する。  
 - `docs/spec/3-6-core-diagnostics-audit.md` の Stage 診断テーブルに、Iterator 専用のメタデータ項目（`iterator.kind`, `iterator.source`) を追加する案を検討し、必要であれば Section 5 へタスクを追記する。
+
+### 2025-10-27 更新（Week 21 / StageMismatch 経路の拡張書き出し実装）✅
+
+**作業サマリー** ✅:
+- `constraint_solver.ml` で Iterator 辞書解決時に Stage 要件を検証し、未達の場合は `StageMismatch` エラーへ `iterator_kind`・`stage_actual`・`capability`・`source` 等のメタデータを同梱するよう拡張。  
+- `type_inference.ml` → `type_error.ml` の変換で StageMismatch 専用の `trait_constraint_stage_extension` を導入し、`TraitConstraintFailure` に Stage/Audit 情報を添付した上で `Diagnostic.with_effect_stage_extension` を呼び出す実装を追加。  
+- `diagnostic.ml` の `Diagnostic.t` に `audit_metadata` フィールドを新設し、`with_effect_stage_extension` が `effect.stage.*` / `effect.stage.iterator.*` を `extensions` と `audit` の両方へ書き出すよう更新。  
+- `test_type_errors.ml` に StageMismatch 専用ケース（E7016）を追加し、`effects.iterator.*` と監査キーが出力されることを検証。`test_cli_diagnostics.ml` / ゴールデン JSON を再生成し、`audit` ブロックのスナップショットを固定。
+
+**フォローアップ** 🚧:
+- CI メトリクスと `AuditEnvelope` の突合せを自動化し、`iterator.stage.audit_pass_rate` を `tooling/ci` に登録する（次セクションのフォローアップと共通）。
 
 ### 2025-10-18 更新（Week 21 / セクション4 ベンチ前提のビルド安定化）✅
 

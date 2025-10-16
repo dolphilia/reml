@@ -341,6 +341,34 @@ let diagnostic = Diag.from_parse_error(
 - `effect.residual.diff`: ハンドラ順序変更による残余効果の差分。空集合であれば情報系ログとして扱い、Severity を Warning に留める。
 - `effect.capability`: Stage チェックと紐づく Capability ID。`CapabilityRegistry::register` の記録と突き合わせて整合性を検証する。
 
+`Iterator` トレイト辞書に起因する `effects.contract.stage_mismatch` では、上記に加えて次のキーを必須とする。これらは `IteratorDictInfo` が提供する Stage 設定と Capability Registry の実測値を突合するためのものだが、一般化された Stage 診断とも矛盾しないよう `effect.stage.iterator.*` 名前空間を用いる。
+
+| 監査キー | 値の型 | 生成規則 |
+| --- | --- | --- |
+| `effect.stage.iterator.required` | `Json.String` | `IteratorDictInfo.stage_requirement` をシリアライズした値（例: `"beta"` または `"at_least:beta"`）。 |
+| `effect.stage.iterator.actual` | `Json.String` / `Json.Null` | Capability Registry が返した Stage。検証レコードが存在しない場合は `null`。 |
+| `effect.stage.iterator.kind` | `Json.String` | `IteratorDictInfo.kind` を `snake_case` で記録（`array_like`, `slice_like`, `custom_runtime`, など）。 |
+| `effect.stage.iterator.capability` | `Json.String` | `IteratorDictInfo.capability_id`。汎用キー `effect.capability` と同一値だが、監査集計時に Iterator 系メトリクスを抽出しやすくするために重複保持する。 |
+| `effect.stage.iterator.source` | `Json.String` / `Json.Null` | DSL マニフェストや FFI ブリッジを指す識別子。`manifest_path` が存在する場合は相対パス、未登録時は `null`。 |
+
+```json
+"extensions": {
+  "effects": {
+    "stage": { "required": "beta", "actual": "experimental" },
+    "capability": "core.iterator.collect",
+    "iterator": {
+      "required": "beta",
+      "actual": "experimental",
+      "kind": "array_like",
+      "capability": "core.iterator.collect",
+      "source": "dsl/core.iter.toml"
+    }
+  }
+}
+```
+
+CLI/LSP の `Diagnostic.extensions["effects"]["iterator"]` へも同じキー集合を転写し、人間向け出力と監査ログが同じ語彙で比較できるようにする。CI メトリクス `iterator.stage.audit_pass_rate` はこれらのキーが揃っていることを前提に算出され、欠落時は `AuditPolicy` が `Warning` を昇格させる。
+
 これらのキーは `AuditPolicy.exclude_patterns` で除外しない限り永続化され、`CapabilityAudit` レポートや LSP の効果ビューで差分分析に利用できる。
 
 #### 2.4.3 Stage 差分プリセット `EffectDiagnostic` {#effect-diagnostic-stage}
@@ -358,6 +386,7 @@ impl EffectDiagnostic {
 - 戻り値の `Diagnostic` は `Diagnostic.domain = Some(DiagnosticDomain::Effect)`、`code = Some("effects.contract.stage_mismatch")` を既定とし、0-1 §2.2 が求める分かりやすいエラー提示を満たす。`message` は Stage 差分を自然言語で説明し、`capability`・`provider`・`last_verified_at` をヒントとして自動付与する。
 - `AuditEnvelope.metadata` には `effect.stage.required` / `effect.stage.actual` / `effect.capability` に加えて `effect.provider`・`effect.manifest_path` を転写する。これにより監査ログから直接 Capability 設定の履歴を追跡でき、0-1 §1.2 の安全性レビューに必要な証跡を確保する。
 - `err.actual_stage` が `None` の場合は `Diagnostic.severity = Error` のまま `expected` 情報のみを提示し、Capability 未登録（`CapabilityErrorKind::NotFound`）との区別を明示する。`StageViolation` では `None` を許容しないため、これが発生した場合はランタイム実装側のバグとして別途報告する。
+- `Iterator` トレイト辞書由来の StageMismatch では、前節で定義した `effect.stage.iterator.*` を `AuditEnvelope.metadata` と `Diagnostic.extensions["effects"]["iterator"]` 双方に転写し、診断と監査レポートが一致した `IteratorDictInfo` のメタデータを共有する。欠落時は `iterator.stage.audit_pass_rate` メトリクスが `0` と見なされる。
 
 ### 2.5 AsyncError と診断統合 {#diagnostic-async}
 

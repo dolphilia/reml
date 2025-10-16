@@ -116,6 +116,7 @@ type t = {
   notes : (span option * string) list; (* 追加メモ（位置付き） *)
   fixits : fixit list; (* 修正提案 *)
   extensions : Extensions.t;
+  audit_metadata : Extensions.t;
 }
 (** 診断情報の完全な表現
  *
@@ -158,7 +159,8 @@ let span_of_positions start_pos end_pos =
 (** 診断情報の構築（Phase 1互換） *)
 let make ?(severity = Error) ?severity_hint ?domain ?code
     ?(expected_summary = None) ?(notes = []) ?(fixits = [])
-    ?(extensions = Extensions.empty) ~message ~start_pos ~end_pos () =
+    ?(extensions = Extensions.empty) ?(audit_metadata = Extensions.empty)
+    ~message ~start_pos ~end_pos () =
   {
     severity;
     severity_hint;
@@ -170,12 +172,13 @@ let make ?(severity = Error) ?severity_hint ?domain ?code
     notes = List.map (fun note -> (None, note)) notes;
     fixits;
     extensions;
+    audit_metadata;
   }
 
 (** 型エラー用の診断情報を構築 *)
 let make_type_error ?(severity = Error) ?severity_hint ?code ?expected_summary
-    ?(notes = []) ?(fixits = []) ?(extensions = Extensions.empty) ~message ~span
-    () =
+    ?(notes = []) ?(fixits = []) ?(extensions = Extensions.empty)
+    ?(audit_metadata = Extensions.empty) ~message ~span () =
   {
     severity;
     severity_hint;
@@ -187,6 +190,7 @@ let make_type_error ?(severity = Error) ?severity_hint ?code ?expected_summary
     notes;
     fixits;
     extensions;
+    audit_metadata;
   }
 
 (** Lexerエラー用（Phase 1互換） *)
@@ -210,8 +214,12 @@ let of_parser_error ~message ~start_pos ~end_pos ~expected =
 let set_extension key value diag =
   { diag with extensions = Extensions.set key value diag.extensions }
 
+let set_audit_metadata key value diag =
+  { diag with audit_metadata = Extensions.set key value diag.audit_metadata }
+
 let with_effect_stage_extension ?actual_stage ?residual ?provider
-    ?manifest_path ?capability_meta ~required_stage ~capability diag =
+    ?manifest_path ?capability_meta ?iterator_fields ~required_stage
+    ~capability diag =
   let stage_fields =
     [
       ("required", `String required_stage);
@@ -241,8 +249,58 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider
     | Some value -> ("metadata", value) :: effect_fields
     | None -> effect_fields
   in
+  let effect_fields =
+    match iterator_fields with
+    | Some fields -> ("iterator", `Assoc fields) :: effect_fields
+    | None -> effect_fields
+  in
   let payload = `Assoc (List.rev effect_fields) in
-  set_extension "effects" payload diag
+  let diag = set_extension "effects" payload diag in
+  let diag =
+    set_audit_metadata "effect.stage.required" (`String required_stage) diag
+  in
+  let diag =
+    set_audit_metadata
+      "effect.stage.actual"
+      (match actual_stage with Some s -> `String s | None -> `Null)
+      diag
+  in
+  let diag =
+    set_audit_metadata "effect.capability" (`String capability) diag
+  in
+  let diag =
+    match residual with
+    | Some value -> set_audit_metadata "effect.residual" value diag
+    | None -> diag
+  in
+  let diag =
+    match provider with
+    | Some value -> set_audit_metadata "effect.provider" (`String value) diag
+    | None -> diag
+  in
+  let diag =
+    match manifest_path with
+    | Some value ->
+        set_audit_metadata "effect.manifest_path" (`String value) diag
+    | None -> diag
+  in
+  let diag =
+    match capability_meta with
+    | Some value -> set_audit_metadata "effect.capability_metadata" value diag
+    | None -> diag
+  in
+  let diag =
+    match iterator_fields with
+    | Some fields ->
+        List.fold_left
+          (fun acc (key, value) ->
+            set_audit_metadata
+              (Printf.sprintf "effect.stage.iterator.%s" key)
+              value acc)
+          diag fields
+    | None -> diag
+  in
+  diag
 
 (* ========== 期待値の文字列表現 ========== *)
 

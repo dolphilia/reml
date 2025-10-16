@@ -385,6 +385,7 @@ let constraint_error_to_type_error (err : Constraint_solver.constraint_error) :
           type_args = err.type_args;
           reason;
           span = err.span;
+          effect_stage = None;
         }
   | Constraint_solver.AmbiguousImpl dict_refs ->
       let candidates =
@@ -408,21 +409,65 @@ let constraint_error_to_type_error (err : Constraint_solver.constraint_error) :
           cycle
       in
       CyclicTraitConstraint { cycle = cycle_names; span = err.span }
-  | Constraint_solver.StageMismatch { required; actual; capability } ->
-      let required_desc =
+  | Constraint_solver.StageMismatch
+      {
+        required;
+        actual;
+        capability;
+        iterator_kind;
+        iterator_source;
+        provider;
+        manifest_path;
+      } ->
+      let required_desc, required_stage_value =
         match required with
         | Constraint_solver.IteratorStageExact stage ->
-            Printf.sprintf "Stage = %s" stage
+            (Printf.sprintf "Stage = %s" stage, stage)
         | Constraint_solver.IteratorStageAtLeast stage ->
-            Printf.sprintf "Stage >= %s" stage
+            (Printf.sprintf "Stage >= %s" stage, stage)
       in
       let capability_label =
         match capability with Some id -> id | None -> "<未指定>"
       in
+      let actual_stage_label =
+        match actual with Some stage -> stage | None -> "<未検証>"
+      in
       let reason =
         Printf.sprintf
           "Capability %s の Stage (%s) が要求条件 %s を満たしていません"
-          capability_label actual required_desc
+          capability_label actual_stage_label required_desc
+      in
+      let iterator_requirement =
+        match required with
+        | Constraint_solver.IteratorStageExact stage ->
+            Printf.sprintf "exact:%s" stage
+        | Constraint_solver.IteratorStageAtLeast stage ->
+            Printf.sprintf "at_least:%s" stage
+      in
+      let iterator_kind_label =
+        match iterator_kind with
+        | Some Constraint_solver.IteratorArrayLike -> Some "array_like"
+        | Some Constraint_solver.IteratorCoreIter -> Some "core_iter"
+        | Some Constraint_solver.IteratorOptionLike -> Some "option_like"
+        | Some Constraint_solver.IteratorResultLike -> Some "result_like"
+        | Some (Constraint_solver.IteratorCustom name) ->
+            Some (Printf.sprintf "custom:%s" name)
+        | None -> None
+      in
+      let stage_extension =
+        Some
+          {
+            required_stage = required_stage_value;
+            iterator_required = iterator_requirement;
+            actual_stage = actual;
+            capability = capability;
+            provider = provider;
+            manifest_path = manifest_path;
+            iterator_kind = iterator_kind_label;
+            iterator_source = iterator_source;
+            capability_metadata = None;
+            residual = None;
+          }
       in
       TraitConstraintFailure
         {
@@ -430,6 +475,7 @@ let constraint_error_to_type_error (err : Constraint_solver.constraint_error) :
           type_args = err.type_args;
           reason;
           span = err.span;
+          effect_stage = stage_extension;
         }
   | Constraint_solver.UnresolvedTypeVar tv ->
       let reason =
@@ -441,6 +487,7 @@ let constraint_error_to_type_error (err : Constraint_solver.constraint_error) :
           type_args = err.type_args;
           reason;
           span = err.span;
+          effect_stage = None;
         }
 
 (** 制約リストを解決し、型エラーに変換

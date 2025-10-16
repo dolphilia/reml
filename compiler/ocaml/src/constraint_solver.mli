@@ -88,8 +88,12 @@ and constraint_error_reason =
        * 例: Eq<A> requires Eq<B>, Eq<B> requires Eq<A> *)
   | StageMismatch of {
       required : iterator_stage_requirement;
-      actual : string;
+      actual : string option;
       capability : string option;
+      iterator_kind : iterator_dict_kind option;
+      iterator_source : string option;
+      provider : string option;
+      manifest_path : string option;
     }
       (** Stage 要件を満たさない Capability が選択された
        * 例: IteratorStageExact "beta" が要求されたが Capability Stage は "experimental" のまま *)

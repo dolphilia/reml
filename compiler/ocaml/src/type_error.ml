@@ -12,6 +12,21 @@
 open Types
 open Ast
 
+module Json = Yojson.Basic
+
+type trait_constraint_stage_extension = {
+  required_stage : string;
+  iterator_required : string;
+  actual_stage : string option;
+  capability : string option;
+  provider : string option;
+  manifest_path : string option;
+  iterator_kind : string option;
+  iterator_source : string option;
+  capability_metadata : Json.t option;
+  residual : Json.t option;
+}
+
 (* ========== 型エラーの定義 ========== *)
 
 (** 型エラー
@@ -68,6 +83,7 @@ type type_error =
       type_args : ty list;
       reason : string;
       span : span;
+      effect_stage : trait_constraint_stage_extension option;
     }
   | AmbiguousTraitImpl of {
       (* トレイト実装の曖昧性 *)
@@ -166,7 +182,7 @@ let string_of_error = function
       Printf.sprintf
         "Empty match expression at %d:%d\n\
         \  Match expression must have at least one arm" span.start span.end_
-  | TraitConstraintFailure { trait_name; type_args; reason; span } ->
+  | TraitConstraintFailure { trait_name; type_args; reason; span; effect_stage = _ } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
       in
@@ -600,7 +616,8 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       let notes = [ (None, "パターンマッチのケースを追加してください") ] in
 
       make_type_error ~code:"E7015" ~message ~span:diag_span ~notes ()
-  | TraitConstraintFailure { trait_name; type_args; reason; span } ->
+  | TraitConstraintFailure
+      { trait_name; type_args; reason; span; effect_stage } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
       in
@@ -609,14 +626,77 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
           trait_name type_args_str
       in
       let diag_span = span_to_diagnostic_span span in
-      let notes =
+      let base_notes =
         [
           (None, Printf.sprintf "理由: %s" reason);
           (None, "この型に対するトレイト実装が見つかりません");
         ]
       in
-
-      make_type_error ~code:"E7016" ~message ~span:diag_span ~notes ()
+      let stage_notes =
+        match effect_stage with
+        | Some info ->
+            let capability_display =
+              Option.value info.capability ~default:"<未指定>"
+            in
+            let actual_display =
+              match info.actual_stage with Some s -> s | None -> "<未検証>"
+            in
+            let kind_display =
+              match info.iterator_kind with Some k -> k | None -> "<未指定>"
+            in
+            let source_display =
+              match info.iterator_source with Some s -> s | None -> "<未指定>"
+            in
+            [
+              ( None,
+                Printf.sprintf
+                  "Iterator 要件: %s / 実際の Stage: %s"
+                  info.iterator_required actual_display );
+              ( None,
+                Printf.sprintf "Capability: %s / 種別: %s / ソース: %s"
+                  capability_display kind_display source_display );
+            ]
+        | None -> []
+      in
+      let notes = base_notes @ stage_notes in
+      let diag =
+        make_type_error ~code:"E7016" ~message ~span:diag_span ~notes ()
+      in
+      let diag =
+        match effect_stage with
+        | Some info ->
+            let iterator_fields =
+              [
+                ("required", `String info.iterator_required);
+                ( "actual",
+                  match info.actual_stage with
+                  | Some s -> `String s
+                  | None -> `Null );
+                ( "kind",
+                  match info.iterator_kind with
+                  | Some k -> `String k
+                  | None -> `Null );
+                ( "capability",
+                  match info.capability with
+                  | Some c -> `String c
+                  | None -> `Null );
+                ( "source",
+                  match info.iterator_source with
+                  | Some s -> `String s
+                  | None -> `Null );
+              ]
+            in
+            with_effect_stage_extension
+              ?actual_stage:info.actual_stage ?residual:info.residual
+              ?provider:info.provider ?manifest_path:info.manifest_path
+              ?capability_meta:info.capability_metadata
+              ~iterator_fields:iterator_fields
+              ~required_stage:info.required_stage
+              ~capability:(Option.value info.capability ~default:"<unknown>")
+              diag
+        | None -> diag
+      in
+      diag
   | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
@@ -927,7 +1007,8 @@ let to_diagnostic_with_source ?(available_names : string list = [])
       let notes = [ (None, "パターンマッチのケースを追加してください") ] in
 
       make_type_error ~code:"E7015" ~message ~span:diag_span ~notes ()
-  | TraitConstraintFailure { trait_name; type_args; reason; span } ->
+  | TraitConstraintFailure
+      { trait_name; type_args; reason; span; effect_stage } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
       in
@@ -936,14 +1017,77 @@ let to_diagnostic_with_source ?(available_names : string list = [])
           trait_name type_args_str
       in
       let diag_span = make_span span in
-      let notes =
+      let base_notes =
         [
           (None, Printf.sprintf "理由: %s" reason);
           (None, "この型に対するトレイト実装が見つかりません");
         ]
       in
-
-      make_type_error ~code:"E7016" ~message ~span:diag_span ~notes ()
+      let stage_notes =
+        match effect_stage with
+        | Some info ->
+            let capability_display =
+              Option.value info.capability ~default:"<未指定>"
+            in
+            let actual_display =
+              match info.actual_stage with Some s -> s | None -> "<未検証>"
+            in
+            let kind_display =
+              match info.iterator_kind with Some k -> k | None -> "<未指定>"
+            in
+            let source_display =
+              match info.iterator_source with Some s -> s | None -> "<未指定>"
+            in
+            [
+              ( None,
+                Printf.sprintf
+                  "Iterator 要件: %s / 実際の Stage: %s"
+                  info.iterator_required actual_display );
+              ( None,
+                Printf.sprintf "Capability: %s / 種別: %s / ソース: %s"
+                  capability_display kind_display source_display );
+            ]
+        | None -> []
+      in
+      let notes = base_notes @ stage_notes in
+      let diag =
+        make_type_error ~code:"E7016" ~message ~span:diag_span ~notes ()
+      in
+      let diag =
+        match effect_stage with
+        | Some info ->
+            let iterator_fields =
+              [
+                ("required", `String info.iterator_required);
+                ( "actual",
+                  match info.actual_stage with
+                  | Some s -> `String s
+                  | None -> `Null );
+                ( "kind",
+                  match info.iterator_kind with
+                  | Some k -> `String k
+                  | None -> `Null );
+                ( "capability",
+                  match info.capability with
+                  | Some c -> `String c
+                  | None -> `Null );
+                ( "source",
+                  match info.iterator_source with
+                  | Some s -> `String s
+                  | None -> `Null );
+              ]
+            in
+            with_effect_stage_extension
+              ?actual_stage:info.actual_stage ?residual:info.residual
+              ?provider:info.provider ?manifest_path:info.manifest_path
+              ?capability_meta:info.capability_metadata
+              ~iterator_fields:iterator_fields
+              ~required_stage:info.required_stage
+              ~capability:(Option.value info.capability ~default:"<unknown>")
+              diag
+        | None -> diag
+      in
+      diag
   | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)

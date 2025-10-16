@@ -42,6 +42,7 @@ let make_test_diagnostic () =
       notes = [ (None, "期待される型: i64"); (None, "実際の型:     String") ];
       fixits = [];
       extensions = Diagnostic.Extensions.empty;
+      audit_metadata = Diagnostic.Extensions.empty;
     }
 
 (** テスト用のソースコード *)
@@ -126,6 +127,15 @@ let test_stage_extension_snapshot () =
         ("last_verified_at", `String "2025-10-21T03:15:00Z");
       ]
   in
+  let iterator_fields =
+    [
+      ("required", `String "at_least:beta");
+      ("actual", `String "experimental");
+      ("kind", `String "custom:iterator.snapshot");
+      ("capability", `String "core.iterator.collect");
+      ("source", `String "dsl/core.iter.toml");
+    ]
+  in
   let diag =
     Diagnostic.make_type_error
       ~code:"typeclass.iterator.stage_mismatch"
@@ -141,7 +151,7 @@ let test_stage_extension_snapshot () =
     |> Diagnostic.with_effect_stage_extension ~required_stage:"beta"
          ~actual_stage:"experimental" ~capability:"core.iterator.collect"
          ~provider:"Core.Iter" ~manifest_path:"dsl/core.iter.toml"
-         ~residual ~capability_meta:metadata
+         ~residual ~capability_meta:metadata ~iterator_fields
   in
   let json_str = Cli.Json_formatter.diagnostic_to_json diag in
   let golden_path =

@@ -36,6 +36,7 @@ open Type_env
 open Type_inference
 open Type_error
 open Ast
+module Json = Yojson.Basic
 
 (* ========== テストヘルパー ========== *)
 
@@ -998,7 +999,96 @@ let test_trait_constraint_failures () =
         "Iterator trait should be required for for-loop sources";
       match result with
       | Error err -> verify_diagnostic_quality err "E7016"
-      | _ -> ())
+      | _ -> ());
+
+  (* H-2. StageMismatch が拡張・監査情報を付与することを検証 *)
+  run_test "E7016: iterator stage mismatch extension" (fun () ->
+      let constraint_error : Constraint_solver.constraint_error =
+        {
+          trait_name = "Iterator";
+          type_args =
+            [
+              Types.TCon (TCUser "CustomIterSource");
+              Types.TCon (TCUser "CustomIterItem");
+            ];
+          reason =
+            Constraint_solver.StageMismatch
+              {
+                required = Constraint_solver.IteratorStageAtLeast "beta";
+                actual = Some "experimental";
+                capability = Some "core.iterator.custom";
+                iterator_kind =
+                  Some (Constraint_solver.IteratorCustom "CustomIter");
+                iterator_source = Some "CustomIter";
+                provider = Some "Core.Iter";
+                manifest_path = Some "dsl/core.iter.toml";
+              };
+          span = Ast.dummy_span;
+        }
+      in
+      let type_err = constraint_error_to_type_error constraint_error in
+      let diag = to_diagnostic type_err in
+      verify_diagnostic_quality type_err "E7016";
+      let effect_fields =
+        match List.assoc_opt "effects" diag.Diagnostic.extensions with
+        | Some (`Assoc fields) -> fields
+        | _ -> failwith "effects extension is required for StageMismatch"
+      in
+      let stage_fields =
+        match List.assoc_opt "stage" effect_fields with
+        | Some (`Assoc fields) -> fields
+        | _ -> failwith "effects.stage must be an object"
+      in
+      let iterator_fields =
+        match List.assoc_opt "iterator" effect_fields with
+        | Some (`Assoc fields) -> fields
+        | _ -> failwith "effects.iterator must be an object"
+      in
+      let expect_string label expected json =
+        match json with
+        | `String value when String.equal value expected -> ()
+        | _ -> failwith (Printf.sprintf "%s mismatch" label)
+      in
+      expect_string "effects.stage.required" "beta"
+        (List.assoc "required" stage_fields);
+      expect_string "effects.stage.actual" "experimental"
+        (List.assoc "actual" stage_fields);
+      expect_string "effects.capability" "core.iterator.custom"
+        (List.assoc "capability" effect_fields);
+      expect_string "effects.iterator.required" "at_least:beta"
+        (List.assoc "required" iterator_fields);
+      expect_string "effects.iterator.actual" "experimental"
+        (List.assoc "actual" iterator_fields);
+      expect_string "effects.iterator.kind" "custom:CustomIter"
+        (List.assoc "kind" iterator_fields);
+      expect_string "effects.iterator.capability" "core.iterator.custom"
+        (List.assoc "capability" iterator_fields);
+      expect_string "effects.iterator.source" "CustomIter"
+        (List.assoc "source" iterator_fields);
+      let lookup_audit key =
+        match List.assoc_opt key diag.Diagnostic.audit_metadata with
+        | Some value -> value
+        | None -> failwith (Printf.sprintf "Missing audit key: %s" key)
+      in
+      (match lookup_audit "effect.stage.required" with
+      | `String "beta" -> ()
+      | _ -> failwith "audit: effect.stage.required should be beta");
+      (match lookup_audit "effect.stage.actual" with
+      | `String "experimental" -> ()
+      | _ -> failwith "audit: effect.stage.actual should be experimental");
+      (match lookup_audit "effect.stage.iterator.required" with
+      | `String "at_least:beta" -> ()
+      | _ -> failwith "audit: iterator.required mismatch");
+      (match lookup_audit "effect.stage.iterator.kind" with
+      | `String "custom:CustomIter" -> ()
+      | _ -> failwith "audit: iterator.kind mismatch");
+      (match lookup_audit "effect.stage.iterator.source" with
+      | `String "CustomIter" -> ()
+      | _ -> failwith "audit: iterator.source mismatch");
+      (match lookup_audit "effect.capability" with
+      | `String "core.iterator.custom" -> ()
+      | _ -> failwith "audit: capability mismatch"));
+  ()
 
 (* ========== メイン ========== *)
 

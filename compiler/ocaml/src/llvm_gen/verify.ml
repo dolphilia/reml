@@ -179,4 +179,5 @@ let error_to_diagnostic error span_opt =
     fixits = [];
     (* LLVM エラーには自動修正提案なし *)
     extensions = Diagnostic.Extensions.empty;
+    audit_metadata = Diagnostic.Extensions.empty;
   }
