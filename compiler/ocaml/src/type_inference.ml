@@ -408,6 +408,29 @@ let constraint_error_to_type_error (err : Constraint_solver.constraint_error) :
           cycle
       in
       CyclicTraitConstraint { cycle = cycle_names; span = err.span }
+  | Constraint_solver.StageMismatch { required; actual; capability } ->
+      let required_desc =
+        match required with
+        | Constraint_solver.IteratorStageExact stage ->
+            Printf.sprintf "Stage = %s" stage
+        | Constraint_solver.IteratorStageAtLeast stage ->
+            Printf.sprintf "Stage >= %s" stage
+      in
+      let capability_label =
+        match capability with Some id -> id | None -> "<未指定>"
+      in
+      let reason =
+        Printf.sprintf
+          "Capability %s の Stage (%s) が要求条件 %s を満たしていません"
+          capability_label actual required_desc
+      in
+      TraitConstraintFailure
+        {
+          trait_name = err.trait_name;
+          type_args = err.type_args;
+          reason;
+          span = err.span;
+        }
   | Constraint_solver.UnresolvedTypeVar tv ->
       let reason =
         Printf.sprintf "型変数 %s が未解決です" (string_of_type_var tv)

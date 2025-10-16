@@ -51,12 +51,12 @@ type constraint_error_reason =
   | NoImpl
   | AmbiguousImpl of dict_ref list
   | CyclicConstraint of trait_constraint list
-  | UnresolvedTypeVar of type_var
   | StageMismatch of {
       required : iterator_stage_requirement;
       actual : string;
       capability : string option;
     }
+  | UnresolvedTypeVar of type_var
 
 (** 制約エラー *)
 type constraint_error = {
@@ -129,7 +129,7 @@ let stage_rank stage =
   | "alpha" -> 1
   | _ -> 0
 
-let stage_requirement_satisfied requirement actual_stage =
+let[@warning "-32"] stage_requirement_satisfied requirement actual_stage =
   let actual_norm = normalize_stage_name actual_stage in
   match requirement with
   | IteratorStageExact stage -> String.equal (normalize_stage_name stage) actual_norm
@@ -138,7 +138,7 @@ let stage_requirement_satisfied requirement actual_stage =
       let actual_rank = stage_rank actual_norm in
       required_rank > 0 && actual_rank >= required_rank
 
-let string_of_stage_requirement = function
+let[@warning "-32"] string_of_stage_requirement = function
   | IteratorStageExact stage -> Printf.sprintf "exact:%s" stage
   | IteratorStageAtLeast stage -> Printf.sprintf "at_least:%s" stage
 
@@ -300,6 +300,13 @@ let stage_requirement_for_kind = function
   | IteratorResultLike -> IteratorStageAtLeast "beta"
   | IteratorCustom _ -> IteratorStageAtLeast "beta"
 
+let stage_actual_for_kind = function
+  | IteratorArrayLike -> "stable"
+  | IteratorCoreIter -> "beta"
+  | IteratorOptionLike -> "beta"
+  | IteratorResultLike -> "beta"
+  | IteratorCustom _ -> "unknown"
+
 let make_iterator_info kind source_ty element_ty =
   {
     dict_ref = DictImplicit ("Iterator", [ source_ty; element_ty ]);
@@ -308,6 +315,7 @@ let make_iterator_info kind source_ty element_ty =
     kind;
     stage_requirement = stage_requirement_for_kind kind;
     capability = capability_for_kind kind;
+    stage_actual = stage_actual_for_kind kind;
   }
 
 let solve_iterator (source_ty : ty) : iterator_dict_info option =
@@ -757,6 +765,8 @@ let solve_iterator_dict (registry : Impl_registry.impl_registry)
                       stage_requirement_for_kind
                         (IteratorCustom custom_name);
                     capability = None;
+                    stage_actual =
+                      stage_actual_for_kind (IteratorCustom custom_name);
                   }
             in
             let element_ty =
@@ -836,6 +846,18 @@ let string_of_constraint_error_reason (reason : constraint_error_reason) : strin
         ) cs)
       in
       Printf.sprintf "CyclicConstraint: %s" cycle_path
+  | StageMismatch { required; actual; capability } ->
+      let required_str =
+        match required with
+        | IteratorStageExact stage -> Printf.sprintf "Exact(%s)" stage
+        | IteratorStageAtLeast stage -> Printf.sprintf "AtLeast(%s)" stage
+      in
+      let capability_str =
+        match capability with Some id -> id | None -> "<unspecified>"
+      in
+      Printf.sprintf
+        "StageMismatch(required=%s, actual=%s, capability=%s)"
+        required_str actual capability_str
   | UnresolvedTypeVar tv ->
       Printf.sprintf "UnresolvedTypeVar(%s)" (string_of_type_var tv)
 

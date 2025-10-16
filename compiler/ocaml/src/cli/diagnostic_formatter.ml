@@ -10,6 +10,8 @@
  * - カラー出力に対応
  *)
 
+module Json = Yojson.Basic
+
 (** ソース文字列を行の配列に分割 *)
 let split_into_lines source = String.split_on_char '\n' source |> Array.of_list
 
@@ -215,6 +217,16 @@ let format_diagnostic ~source ~diag ~color_mode =
         in
         "\n修正候補:\n" ^ String.concat "\n" fixit_lines
   in
+  let extensions_str =
+    match diag.extensions with
+    | [] -> ""
+    | entries ->
+        entries
+        |> List.rev
+        |> List.map (fun (key, value) ->
+               Printf.sprintf "\n拡張[%s]: %s" key (Json.to_string value))
+        |> String.concat ""
+  in
 
   (* 重要度ヒント *)
   let hint_str =
@@ -226,7 +238,8 @@ let format_diagnostic ~source ~diag ~color_mode =
     | Some Escalate -> "\n推奨アクション: エスカレーション"
   in
 
-  header ^ snippet ^ expected_str ^ notes_str ^ fixits_str ^ hint_str
+  header ^ snippet ^ expected_str ^ notes_str ^ fixits_str ^ extensions_str
+  ^ hint_str
 
 (** 複数の診断をバッチ出力
  *

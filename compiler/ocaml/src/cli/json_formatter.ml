@@ -189,6 +189,10 @@ let diagnostic_to_lsp_json (diag : Diagnostic.t) : Yojson.Basic.t =
       ("fixits", `List (List.map fixit_to_json diag.fixits)) :: fields
     else fields
   in
+  let fields =
+    if Diagnostic.Extensions.is_empty diag.extensions then fields
+    else ("extensions", Diagnostic.Extensions.to_json diag.extensions) :: fields
+  in
 
   `Assoc fields
 
@@ -270,6 +274,10 @@ let diagnostic_to_reml_json (diag : Diagnostic.t) : Yojson.Basic.t =
     if diag.fixits <> [] then
       ("fixits", `List (List.map fixit_to_json diag.fixits)) :: fields
     else fields
+  in
+  let fields =
+    if Diagnostic.Extensions.is_empty diag.extensions then fields
+    else ("extensions", Diagnostic.Extensions.to_json diag.extensions) :: fields
   in
 
   `Assoc fields

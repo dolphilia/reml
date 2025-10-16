@@ -23,10 +23,10 @@
   constraint
   constraint_solver
   impl_registry
-  type_error
-  typed_ast
-  type_inference)
- (libraries menhirLib))
+ type_error
+ typed_ast
+ type_inference)
+ (libraries menhirLib yojson))
 
 (executable
  (name main)

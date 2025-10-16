@@ -599,7 +599,7 @@
 3. **Stage / Capability 監査フック**  
    - `core_ir/ir.ml` の `DictMethodCall` に `audit : iterator_audit option` フィールドを追加し、`effect_tag`, `required_stage`, `capability_id`, `method_name` を保持。  
    - `desugar_for_loop` で `IteratorDictInfo.stage_requirement` を参照して `has_next` / `next` それぞれに `EffectMarker` を生成し、`effect.stage.iterator.required` / `effect.stage.iterator.actual` を `EffectMarker.effect_expr` として紐付ける。  
-   - `compiler/ocaml/src/diagnostic.ml` に監査用拡張出力ヘルパーを追加し、`typeclass.iterator.stage_mismatch` 診断で `Diagnostic.extensions` に `effect.stage.required`, `effect.stage.actual`, `effect.capability` を転写する。
+   - `compiler/ocaml/src/diagnostic.ml` に Stage/Capability 拡張出力ヘルパー（`Diagnostic.with_effect_stage_extension`）を実装し、`typeclass.iterator.stage_mismatch` 診断で `Diagnostic.extensions` に `effect.stage.required`・`effect.stage.actual`・`effect.capability` を転写する。✅（Week 21 完了）
 4. **検証フローと CI 連携**  
    - `compiler/ocaml/tests/test_type_errors.ml` に Stage ミスマッチ／辞書未解決ケースを追加し、JSON スナップショットで `effect.stage.*` キーを固定。  
    - `compiler/ocaml/tests/test_desugar.ml` と `compiler/ocaml/tests/llvm-ir/golden/for_iterator_with_audit.ll.golden` を追加し、監査付き `DictMethodCall` の IR をゴールデン化する。  
@@ -630,9 +630,24 @@
 - 既存 CFG/モノモルフィゼーション/LLVM 生成テストが `DictMethodCall` の `audit` 追加後も成功することを確認（警告のみ）。
 
 **フォローアップ** 🚧:
-- `diagnostic.ml` に Stage/Capability 情報を `Diagnostic.extensions` として出力するタスク（`typeclass.iterator.stage_mismatch`）が未着手。Section 5 で予定している診断強化に統合する。  
+- `diagnostic.ml` に Stage/Capability 情報を `Diagnostic.extensions` として出力するタスク（`typeclass.iterator.stage_mismatch`）を完了。Section 5 の診断強化タスクへ JSON スナップショット活用を連携する。  
 - `test_desugar` および LLVM ゴールデンテストで EffectMarker／監査メタデータをスナップショット化するタスクを追加し、CI での回帰検知を可能にする。  
 - CLI の `--emit-typed-ast` / JSON 出力に `iterator_info` を表示するオプション整備と、`effect.stage.*` メトリクスの収集設計を Section 4（検証フロー）へ連携する。
+
+### 2025-10-26 更新（Week 21 / Stage ミスマッチ診断拡張）✅
+
+**作業サマリー** ✅:
+- `compiler/ocaml/src/diagnostic.ml` に `Diagnostic.Extensions` ヘルパーと `Diagnostic.with_effect_stage_extension` を追加し、Stage/Capability 情報を `extensions["effects"]` に構造化して出力できるようにした。  
+- `compiler/ocaml/src/cli/json_formatter.ml` と `compiler/ocaml/src/cli/diagnostic_formatter.ml` を更新し、`Diagnostic.extensions` の内容を JSON / テキスト双方で表示。Stage 差分が CLI でも確認できるようにした。  
+- `compiler/ocaml/tests/test_cli_diagnostics.ml` に `typeclass.iterator.stage_mismatch` の JSON スナップショット比較テストを追加し、`compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden` で `effect.stage.required`・`effect.stage.actual`・`effect.capability` を固定化。
+
+**確認状況** ✅:
+- `diagnostic_to_json`（Reml JSON）に `extensions` が含まれることをユニットテストで検証し、ゴールデンとの差分検知が機能することを確認。  
+- CLI テキスト出力でも `拡張[effects]: ...` が表示され、Stage 情報が見落とされないことを目視で確認。
+
+**フォローアップ** 🚧:
+- `constraint_solver` 側の Stage ミスマッチ発生時に `Diagnostic.with_effect_stage_extension` を利用する実装を追加し、実際の `typeclass.iterator.stage_mismatch` 診断が JSON スナップショット通りに生成されることを確認する。  
+- `docs/spec/3-6-core-diagnostics-audit.md` の Stage 診断テーブルに、Iterator 専用のメタデータ項目（`iterator.kind`, `iterator.source`) を追加する案を検討し、必要であれば Section 5 へタスクを追記する。
 
 ### 2025-10-18 更新（Week 21 / セクション4 ベンチ前提のビルド安定化）✅
 

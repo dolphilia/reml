@@ -3,6 +3,25 @@
  * Phase 1-6 の開発者体験整備タスクにおいて、診断フォーマッタの動作を検証する。
  *)
 
+let project_root =
+  match Sys.getenv_opt "DUNE_SOURCEROOT" with
+  | Some root -> root
+  | None -> Filename.dirname Sys.argv.(0)
+
+let resolve path = Filename.concat project_root path
+
+let golden_dir = resolve "tests/golden"
+
+let write_actual_snapshot name content =
+  let actual_dir = Filename.concat golden_dir "_actual" in
+  if not (Sys.file_exists actual_dir) then Unix.mkdir actual_dir 0o755;
+  let path = Filename.concat actual_dir (name ^ ".actual.json") in
+  Out_channel.with_open_text path (fun oc ->
+      output_string oc content;
+      if content = "" || content.[String.length content - 1] <> '\n' then
+        output_char oc '\n');
+  path
+
 (** テスト用の診断情報を生成 *)
 let make_test_diagnostic () =
   let start_pos =
@@ -22,6 +41,7 @@ let make_test_diagnostic () =
       expected_summary = None;
       notes = [ (None, "期待される型: i64"); (None, "実際の型:     String") ];
       fixits = [];
+      extensions = Diagnostic.Extensions.empty;
     }
 
 (** テスト用のソースコード *)
@@ -84,6 +104,72 @@ let test_json_output () =
   assert (message = "型が一致しません");
   Printf.printf "✓ JSON出力テスト成功\n"
 
+let test_stage_extension_snapshot () =
+  let start_pos =
+    Diagnostic.{ filename = "iter.reml"; line = 4; column = 3; offset = 42 }
+  in
+  let end_pos =
+    Diagnostic.{ filename = "iter.reml"; line = 4; column = 18; offset = 57 }
+  in
+  let span = { Diagnostic.start_pos = start_pos; end_pos = end_pos } in
+  let residual =
+    `Assoc
+      [
+        ( "missing_ops",
+          `List [ `String "Iterator::next"; `String "Iterator::size_hint" ] );
+      ]
+  in
+  let metadata =
+    `Assoc
+      [
+        ("provider", `String "core.iter");
+        ("last_verified_at", `String "2025-10-21T03:15:00Z");
+      ]
+  in
+  let diag =
+    Diagnostic.make_type_error
+      ~code:"typeclass.iterator.stage_mismatch"
+      ~message:"Iterator Capability が要求された Stage を満たしていません"
+      ~span
+      ~notes:
+        [
+          ( None,
+            "要求 Stage: beta / Capability Stage: experimental (core.iterator.collect)"
+          );
+        ]
+      ()
+    |> Diagnostic.with_effect_stage_extension ~required_stage:"beta"
+         ~actual_stage:"experimental" ~capability:"core.iterator.collect"
+         ~provider:"Core.Iter" ~manifest_path:"dsl/core.iter.toml"
+         ~residual ~capability_meta:metadata
+  in
+  let json_str = Cli.Json_formatter.diagnostic_to_json diag in
+  let golden_path =
+    resolve "tests/golden/typeclass_iterator_stage_mismatch.json.golden"
+  in
+  if not (Sys.file_exists golden_path) then (
+    let actual_path =
+      write_actual_snapshot "typeclass_iterator_stage_mismatch" json_str
+    in
+    Printf.eprintf
+      "✗ typeclass.iterator.stage_mismatch: ゴールデン %s が存在しません。\n"
+      golden_path;
+    Printf.eprintf "  現在の出力を %s に書き出しました。\n" actual_path;
+    exit 1);
+  let expected =
+    In_channel.with_open_text golden_path (fun ic -> In_channel.input_all ic)
+  in
+  if String.trim expected <> String.trim json_str then (
+    let actual_path =
+      write_actual_snapshot "typeclass_iterator_stage_mismatch" json_str
+    in
+    Printf.printf
+      "✗ typeclass.iterator.stage_mismatch: JSON スナップショットが一致しません\n";
+    Printf.printf "  ゴールデン: %s\n" golden_path;
+    Printf.printf "  現在の出力を %s に書き出しました。\n" actual_path;
+    exit 1)
+  else Printf.printf "✓ typeclass.iterator.stage_mismatch JSON スナップショット\n"
+
 (** ソースコードスニペットのテスト *)
 let test_snippet_display () =
   let diag = make_test_diagnostic () in
@@ -141,6 +227,7 @@ let () =
   Printf.printf "\n=== CLI 診断出力テスト ===\n";
   test_color_output ();
   test_json_output ();
+  test_stage_extension_snapshot ();
   test_snippet_display ();
   test_multiple_diagnostics ();
   Printf.printf "\n✓ すべてのテストが成功しました\n"

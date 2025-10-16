@@ -8,6 +8,24 @@
  * - LSP連携と多言語対応の基盤
  *)
 
+(* ========== JSON 拡張 ========== *)
+
+module Json = Yojson.Basic
+
+module Extensions = struct
+  type t = (string * Json.t) list
+
+  let empty : t = []
+
+  let is_empty = function [] -> true | _ -> false
+
+  let set key value entries =
+    let filtered = List.filter (fun (k, _) -> not (String.equal k key)) entries in
+    (key, value) :: filtered
+
+  let to_json entries = `Assoc (List.rev entries)
+end
+
 (* ========== 重要度 ========== *)
 
 type severity = Error | Warning | Note
@@ -97,6 +115,7 @@ type t = {
   expected_summary : expectation_summary option;
   notes : (span option * string) list; (* 追加メモ（位置付き） *)
   fixits : fixit list; (* 修正提案 *)
+  extensions : Extensions.t;
 }
 (** 診断情報の完全な表現
  *
@@ -138,8 +157,8 @@ let span_of_positions start_pos end_pos =
 
 (** 診断情報の構築（Phase 1互換） *)
 let make ?(severity = Error) ?severity_hint ?domain ?code
-    ?(expected_summary = None) ?(notes = []) ?(fixits = []) ~message ~start_pos
-    ~end_pos () =
+    ?(expected_summary = None) ?(notes = []) ?(fixits = [])
+    ?(extensions = Extensions.empty) ~message ~start_pos ~end_pos () =
   {
     severity;
     severity_hint;
@@ -150,11 +169,13 @@ let make ?(severity = Error) ?severity_hint ?domain ?code
     expected_summary;
     notes = List.map (fun note -> (None, note)) notes;
     fixits;
+    extensions;
   }
 
 (** 型エラー用の診断情報を構築 *)
 let make_type_error ?(severity = Error) ?severity_hint ?code ?expected_summary
-    ?(notes = []) ?(fixits = []) ~message ~span () =
+    ?(notes = []) ?(fixits = []) ?(extensions = Extensions.empty) ~message ~span
+    () =
   {
     severity;
     severity_hint;
@@ -165,6 +186,7 @@ let make_type_error ?(severity = Error) ?severity_hint ?code ?expected_summary
     expected_summary;
     notes;
     fixits;
+    extensions;
   }
 
 (** Lexerエラー用（Phase 1互換） *)
@@ -184,6 +206,43 @@ let of_parser_error ~message ~start_pos ~end_pos ~expected =
       }
   in
   make ~domain:Parser ~expected_summary ~message ~start_pos ~end_pos ()
+
+let set_extension key value diag =
+  { diag with extensions = Extensions.set key value diag.extensions }
+
+let with_effect_stage_extension ?actual_stage ?residual ?provider
+    ?manifest_path ?capability_meta ~required_stage ~capability diag =
+  let stage_fields =
+    [
+      ("required", `String required_stage);
+      ( "actual",
+        match actual_stage with Some s -> `String s | None -> `Null );
+    ]
+  in
+  let effect_fields =
+    [
+      ("stage", `Assoc stage_fields);
+      ("capability", `String capability);
+    ]
+  in
+  let effect_fields =
+    match residual with Some value -> ("residual", value) :: effect_fields | None -> effect_fields
+  in
+  let effect_fields =
+    match provider with Some value -> ("provider", `String value) :: effect_fields | None -> effect_fields
+  in
+  let effect_fields =
+    match manifest_path with
+    | Some value -> ("manifest_path", `String value) :: effect_fields
+    | None -> effect_fields
+  in
+  let effect_fields =
+    match capability_meta with
+    | Some value -> ("metadata", value) :: effect_fields
+    | None -> effect_fields
+  in
+  let payload = `Assoc (List.rev effect_fields) in
+  set_extension "effects" payload diag
 
 (* ========== 期待値の文字列表現 ========== *)
 
@@ -280,6 +339,15 @@ let to_string diag =
              | Some span, note ->
                  Printf.sprintf "補足 [%s]: %s" (format_span span) note)
   in
+  let extensions_str =
+    match diag.extensions with
+    | [] -> []
+    | entries ->
+        entries
+        |> List.rev
+        |> List.map (fun (key, value) ->
+               Printf.sprintf "拡張[%s]: %s" key (Json.to_string value))
+  in
 
   (* 修正提案 *)
   let fixits_str =
@@ -299,5 +367,8 @@ let to_string diag =
     | Some Escalate -> [ "推奨アクション: エスカレーション" ]
   in
 
-  let parts = [ header ] @ expected_str @ notes_str @ fixits_str @ hint_str in
+  let parts =
+    [ header ] @ expected_str @ notes_str @ fixits_str @ extensions_str
+    @ hint_str
+  in
   String.concat "\n" parts

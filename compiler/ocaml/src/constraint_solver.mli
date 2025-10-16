@@ -60,6 +60,8 @@ type iterator_dict_info = {
   stage_requirement : iterator_stage_requirement;  (** Stage 要件 *)
   capability : string option;
       (** 必要な Capability ID（不明な場合は None） *)
+  stage_actual : string;
+      (** Capability Registry が報告した Stage（既定値は組み込み種別に応じた Stage） *)
 }
 
 (** 制約エラー
@@ -84,6 +86,13 @@ and constraint_error_reason =
   | CyclicConstraint of trait_constraint list
       (** 循環依存が検出された
        * 例: Eq<A> requires Eq<B>, Eq<B> requires Eq<A> *)
+  | StageMismatch of {
+      required : iterator_stage_requirement;
+      actual : string;
+      capability : string option;
+    }
+      (** Stage 要件を満たさない Capability が選択された
+       * 例: IteratorStageExact "beta" が要求されたが Capability Stage は "experimental" のまま *)
   | UnresolvedTypeVar of type_var
       (** 型変数が未解決のまま残っている
        * 例: 関数引数の型が推論できない *)
