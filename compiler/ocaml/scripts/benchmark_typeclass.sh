@@ -18,6 +18,48 @@ BENCH_DIR="${COMPILER_DIR}/benchmarks"
 OUTPUT_DIR="${COMPILER_DIR}/benchmark_results"
 REMLC="${COMPILER_DIR}/_build/default/src/main.exe"
 
+# 実行オプション
+STATIC_ONLY=false
+RUNS=3
+
+# 引数解析
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") [options]
+
+Options:
+  --static-only    実行フェーズをスキップし、静的指標のみを収集する
+  --runs N         ベンチマーク実行回数（デフォルト: 3）
+  -h, --help       このヘルプを表示
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --static-only)
+            STATIC_ONLY=true
+            shift
+            ;;
+        --runs)
+            if [[ $# -lt 2 ]]; then
+                echo "error: --runs requires an argument" >&2
+                exit 1
+            fi
+            RUNS="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "error: unknown option '$1'" >&2
+            usage
+            exit 1
+            ;;
+    esac
+done
+
 # 出力ディレクトリ作成
 mkdir -p "$OUTPUT_DIR/dictionary"
 mkdir -p "$OUTPUT_DIR/monomorph"
@@ -71,11 +113,15 @@ compile_benchmark() {
         log_warning "ビットコード生成に失敗しました (継続します)"
     fi
 
-    # 実行可能バイナリ生成
-    local binary_file="$output_dir/${bench_name}"
-    if ! "$REMLC" "$bench_file" --typeclass-mode="$mode" --out-dir="$output_dir" --link-runtime > /dev/null 2>&1; then
-        log_error "バイナリ生成に失敗しました: $bench_name ($mode)"
-        return 1
+    if [ "$STATIC_ONLY" = true ]; then
+        log_info "static-only: バイナリ生成をスキップします"
+    else
+        # 実行可能バイナリ生成
+        local binary_file="$output_dir/${bench_name}"
+        if ! "$REMLC" "$bench_file" --typeclass-mode="$mode" --out-dir="$output_dir" --link-runtime > /dev/null 2>&1; then
+            log_error "バイナリ生成に失敗しました: $bench_name ($mode)"
+            return 1
+        fi
     fi
 
     log_success "コンパイル成功: $bench_name ($mode)"
@@ -182,6 +228,32 @@ EOF
     echo "$output_file"
 }
 
+# 静的比較レポート生成
+generate_static_report() {
+    local output_file="$OUTPUT_DIR/static_comparison.json"
+    local benchmarks_payload=""
+
+    for entry in "${STATIC_RESULTS[@]}"; do
+        if [ -n "$benchmarks_payload" ]; then
+            benchmarks_payload+=",\n"
+        fi
+        benchmarks_payload+="    ${entry}"
+    done
+
+    cat > "$output_file" << EOF
+{
+  "benchmark_date": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+  "phase": "Phase 2 Week 20-21",
+  "static_only": true,
+  "benchmarks": [
+${benchmarks_payload}
+  ]
+}
+EOF
+
+    log_success "静的比較レポート生成: $output_file"
+}
+
 # ベンチマーク比較レポート生成
 generate_comparison_report() {
     local report_file="$OUTPUT_DIR/comparison_report.md"
@@ -231,6 +303,35 @@ EOF
     log_success "比較レポート生成: $report_file"
 }
 
+# 静的指標収集
+collect_static_metrics() {
+    local bench_name="$1"
+    local mode="$2"
+    local output_dir="$OUTPUT_DIR/$mode"
+    local prefix="$output_dir/${bench_name}"
+
+    local ir_file="${prefix}.ll"
+    local bc_file="${prefix}.bc"
+    local binary_file="${prefix}"
+
+    local ir_lines
+    ir_lines=$(count_ir_lines "$ir_file")
+    local bc_size
+    bc_size=$(measure_code_size "$bc_file")
+    local binary_size
+    binary_size=$(measure_code_size "$binary_file")
+
+    cat <<EOF
+{
+  "ir_lines": ${ir_lines},
+  "bitcode_size": ${bc_size},
+  "binary_size": ${binary_size}
+}
+EOF
+}
+
+declare -a STATIC_RESULTS=()
+
 # メイン処理
 main() {
     log_info "=== 型クラスベンチマーク自動計測開始 ==="
@@ -245,8 +346,6 @@ main() {
     )
 
     # 計測設定
-    local runs=3  # 各ベンチマークを3回実行
-
     # 各ベンチマークについて辞書渡しとモノモルフィックの両方をコンパイル・実行
     for bench_file in "${benchmarks[@]}"; do
         if [ ! -f "$bench_file" ]; then
@@ -260,38 +359,70 @@ main() {
 
         # 辞書渡し版のコンパイル
         if compile_benchmark "$bench_file" "dictionary"; then
-            # 実行時間計測
-            local dict_binary="$OUTPUT_DIR/dictionary/$bench_name"
-            if [ -x "$dict_binary" ]; then
-                local dict_time=$(run_benchmark "$dict_binary" "$runs")
-                log_info "辞書渡し版 平均実行時間: ${dict_time}ms"
+            if [ "$STATIC_ONLY" = true ]; then
+                log_info "static-only: 辞書渡し版 実行をスキップします"
+            else
+                # 実行時間計測
+                local dict_binary="$OUTPUT_DIR/dictionary/$bench_name"
+                if [ -x "$dict_binary" ]; then
+                    local dict_time
+                    dict_time=$(run_benchmark "$dict_binary" "$RUNS")
+                    log_info "辞書渡し版 平均実行時間: ${dict_time}ms"
 
-                # コードサイズ計測
-                local dict_size=$(measure_code_size "$dict_binary")
-                log_info "辞書渡し版 バイナリサイズ: ${dict_size} bytes"
+                    # コードサイズ計測
+                    local dict_size
+                    dict_size=$(measure_code_size "$dict_binary")
+                    log_info "辞書渡し版 バイナリサイズ: ${dict_size} bytes"
 
-                # IR行数
-                local dict_ir_lines=$(count_ir_lines "$OUTPUT_DIR/dictionary/${bench_name}.ll")
-                log_info "辞書渡し版 LLVM IR行数: ${dict_ir_lines}"
+                    # IR行数
+                    local dict_ir_lines
+                    dict_ir_lines=$(count_ir_lines "$OUTPUT_DIR/dictionary/${bench_name}.ll")
+                    log_info "辞書渡し版 LLVM IR行数: ${dict_ir_lines}"
+                fi
             fi
         fi
 
         # モノモルフィック版のコンパイル
         if compile_benchmark "$bench_file" "monomorph"; then
-            # 実行時間計測
-            local mono_binary="$OUTPUT_DIR/monomorph/$bench_name"
-            if [ -x "$mono_binary" ]; then
-                local mono_time=$(run_benchmark "$mono_binary" "$runs")
-                log_info "モノモルフィック版 平均実行時間: ${mono_time}ms"
+            if [ "$STATIC_ONLY" = true ]; then
+                log_info "static-only: モノモルフィック版 実行をスキップします"
+            else
+                # 実行時間計測
+                local mono_binary="$OUTPUT_DIR/monomorph/$bench_name"
+                if [ -x "$mono_binary" ]; then
+                    local mono_time
+                    mono_time=$(run_benchmark "$mono_binary" "$RUNS")
+                    log_info "モノモルフィック版 平均実行時間: ${mono_time}ms"
 
-                # コードサイズ計測
-                local mono_size=$(measure_code_size "$mono_binary")
-                log_info "モノモルフィック版 バイナリサイズ: ${mono_size} bytes"
+                    # コードサイズ計測
+                    local mono_size
+                    mono_size=$(measure_code_size "$mono_binary")
+                    log_info "モノモルフィック版 バイナリサイズ: ${mono_size} bytes"
 
-                # IR行数
-                local mono_ir_lines=$(count_ir_lines "$OUTPUT_DIR/monomorph/${bench_name}.ll")
-                log_info "モノモルフィック版 LLVM IR行数: ${mono_ir_lines}"
+                    # IR行数
+                    local mono_ir_lines
+                    mono_ir_lines=$(count_ir_lines "$OUTPUT_DIR/monomorph/${bench_name}.ll")
+                    log_info "モノモルフィック版 LLVM IR行数: ${mono_ir_lines}"
+                fi
             fi
+        fi
+
+        if [ "$STATIC_ONLY" = true ]; then
+            local dict_metrics
+            dict_metrics=$(collect_static_metrics "$bench_name" "dictionary")
+            local mono_metrics
+            mono_metrics=$(collect_static_metrics "$bench_name" "monomorph")
+
+            local bench_json
+            bench_json=$(cat <<EOF
+{
+  "name": "${bench_name}",
+  "dictionary": ${dict_metrics},
+  "monomorph": ${mono_metrics}
+}
+EOF
+)
+            STATIC_RESULTS+=("$bench_json")
         fi
 
         echo ""
@@ -299,11 +430,19 @@ main() {
 
     # レポート生成
     log_info "=== レポート生成 ==="
-    generate_comparison_report
+    if [ "$STATIC_ONLY" = true ]; then
+        generate_static_report
+    else
+        generate_comparison_report
+    fi
 
     log_success "=== ベンチマーク完了 ==="
     log_info "結果ディレクトリ: $OUTPUT_DIR"
-    log_info "比較レポート: $OUTPUT_DIR/comparison_report.md"
+    if [ "$STATIC_ONLY" = true ]; then
+        log_info "静的比較レポート: $OUTPUT_DIR/static_comparison.json"
+    else
+        log_info "比較レポート: $OUTPUT_DIR/comparison_report.md"
+    fi
 }
 
 # スクリプト実行

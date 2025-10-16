@@ -196,6 +196,12 @@ fn sum_positive(xs: List<Int>) -> Result<Int, Diagnostic> =
 - `ListCollector`/`SetCollector` は構造共有を前提とした参照カウントを維持し、`Iter` パイプライン側からは `@pure` 契約を壊さない。`List.fold` と `Iter.fold` はどちらも左結合で評価し、DSL 作者が `List` ベースと `Iter` ベースを同じ計算モデルとして学習できるようにする。【F:0-1-project-purpose.md†L29-L44】【F:3-2-core-collections.md†L24-L86】
 - `Iter.from_list` → `Iter.try_collect(MapCollector)` のような二段変換では、中間リストが保持していた順序が `Map` でソートされる点を仕様上で明示し、`Table` や `Vec` に収集するパスと挙動を比較しやすくする。必要に応じて `TableCollector` を用いることで挿入順を保持したまま DSL のエラーメッセージを生成できる。
 
+#### 3.6.2 Iterator Stage 監査と辞書メタデータ
+
+- `Iterator` 系のトレイト辞書は `StageRequirement::{Exact | AtLeast}` と `CapabilityId` を保持し、型推論フェーズから Core IR まで `effect.stage.iterator.*` を伝播させる。辞書生成時に `IteratorDictInfo`（実装詳細）が作成され、`required` / `actual` / `kind` / `capability` / `source` を記録する。【F:1-2-types-Inference.md†L90-L130】
+- `DictMethodCall` はループヘッダ／ボディに `EffectMarker` を付与し、監査ログ (`AuditEnvelope.metadata`) および `Diagnostic.extensions.effects.iterator.*` に同一キーで出力する。これにより [`collect-iterator-audit-metrics.py`](../../tooling/ci/collect-iterator-audit-metrics.py) が Stage 不整合を自動検出できる。
+- CI では [`tooling/ci/sync-iterator-audit.sh`](../../tooling/ci/sync-iterator-audit.sh) がメトリクス JSON と `scripts/verify_llvm_ir.sh` の出力ログを突合し、`0-3-audit-and-metrics.md` に貼り付け可能な Markdown レポートを生成する。pass_rate < 1.0 または `verify` ログに失敗が含まれる場合、スクリプトは非ゼロで終了しフェイルファストする。
+
 ### 3.7 効果許容ポリシーと `@pure` 両立サンプル（実験段階）
 
 Prelude/Iter は `@pure` を基本としつつ、効果ハンドラ経由で副作用付き処理を分離できる設計とする。

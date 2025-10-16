@@ -30,6 +30,22 @@
 | LLVM IR生成 | br/phi命令の生成 | High | Phase 3 |
 | ランタイム | break/continue サポート | Low | Phase 4 |
 
+### TODO（Phase 2 暫定対応）
+- [x] while/for 実装が利用可能になるまで、型クラス用ベンチマークは辞書呼び出しを直接繰り返すマイクロケースへ差し替え、`benchmark_typeclass.sh` で静的指標のみ収集する。（`--static-only` フラグを追加済み、実行フェーズをスキップして IR 行数・ビットコードサイズを JSON に出力可能）
+- [x] 上記制限と再開条件を `docs/notes/typeclass-benchmark-status.md` に追記し、Phase 3 でループ実装が完成したタイミングでフルベンチを復旧させる。
+- [ ] Core IR 脱糖リファクタリング（ブロックビルダー導入案）の調査結果を 2025-11-05 までにまとめ、Phase 3 着手前レビューに備える。
+
+## 2025-10-27 進捗メモ
+
+- `compiler/ocaml/scripts/benchmark_typeclass.sh --static-only` で辞書渡し／モノモルフィゼーション双方の静的メトリクス（IR 行数・ビットコード／バイナリサイズ）を収集できるようになり、ループ未実装期間も体制評価を継続可能になった。
+- 静的比較レポートは `compiler/ocaml/benchmark_results/static_comparison.json` に出力され、`0-3-audit-and-metrics.md` へ転記しやすい JSON フォーマットを採用した。
+
+### 次のステップ
+
+1. `benchmarks/micro_typeclass.reml` に静的専用ユーティリティ（辞書メソッド呼び出しを生成する補助関数）を追加し、`--static-only` で測れる IR 増加が実装意図に沿っているか確認する。
+2. Core IR のブロック生成方針（ビルダー API 導入案／CFG 側での展開案）を比較し、2025-11-05 までに Appendix にドラフトを追加する。
+3. while/for 実装完了後に `--static-only` モードの撤廃条件と実行ベンチ復帰手順を策定し、Phase 3 開始時のタスクリストへ反映する。
+
 ## 発見された課題
 
 ### 課題1: Core IRの構造的制約

@@ -55,11 +55,12 @@
   - 🚧 延期: 実際の計測実行（Phase 3で実施、while/forループ実装後）
   - 📝 詳細: `docs/notes/typeclass-benchmark-status.md`
 
-- **セクション5: 診断システム強化** (Week 21-22): **80%完了** (2025-10-27更新)
+- **セクション5: 診断システム強化** (Week 21-22): **90%完了** (2025-10-27更新)
   - 目的: 型クラスエラーの診断品質向上
   - ✅ 完了: `typeclass.iterator.stage_mismatch` の Stage/Capability 拡張出力 (`Diagnostic.with_effect_stage_extension`) を Constraint Solver → Type Inference → Diagnostic まで貫通させ、E7016 系テストで `extensions["effects"]` を検証
   - ✅ 完了: CLI JSON/テキスト出力とゴールデンスナップショットに `effects.iterator.*`・`effect.stage.*` を固定化し、`audit` セクションへ同じキーを転写
-  - 🚧 継続中: `iterator.stage.audit_pass_rate` 計測フローと CI 連携の自動化（2025-10-27時点で集計スクリプト `tooling/ci/collect-iterator-audit-metrics.py` と初期出力 `tooling/ci/iterator-audit-metrics.json` を追加済み。GitHub Actions への組み込みは次週対応）
+  - ✅ 完了: `iterator.stage.audit_pass_rate` の集計スクリプト `tooling/ci/collect-iterator-audit-metrics.py` を GitHub Actions（Linux/macOS 両ワークフロー）へ統合し、`pass_rate < 1.0` をワークフロー失敗条件として設定。集計結果はアーティファクト `iterator-audit-metrics(.json)` で確認可能。
+  - 🚧 残タスク: CI 実行ログと `verify_llvm_ir.sh` 生成ログの突合せ、メトリクス推移の可視化（Section 4 と連携）
 
 ### 未着手タスク 🚧
 
@@ -70,6 +71,18 @@
 - **セクション7: ドキュメント更新と仕様同期** (Week 23): **一部完了**
   - 完了: 進捗ログ更新・README 整備
   - 未完了: 仕様書フィードバック、メトリクス記録、レビュー資料作成
+
+## 直近アクションプラン（2025-10-27 更新）
+
+### 完了した項目
+- ✅ `benchmark_typeclass.sh --static-only` を追加し、辞書渡し／モノモルフィゼーションの静的比較 JSON (`static_comparison.json`) を生成できるようにした。ループ未実装期間もメトリクスを継続追跡可能。
+- ✅ `tooling/ci/sync-iterator-audit.sh` を実装し、`collect-iterator-audit-metrics.py` の結果と `verify_llvm_ir.sh` ログを突合する CI パスを整備。pass_rate と LLVM 検証ログをまとめた Markdown レポートを自動出力できる。
+- ✅ 仕様書 (`docs/spec/1-2-types-Inference.md`, `3-1-core-prelude-iteration.md`, `3-8-core-runtime-capability.md`) に Stage 監査連携の脚注を追加し、`effect.stage.iterator.*` メタデータの出所を明文化した。
+
+### 次に取り組むこと
+1. `benchmarks/micro_typeclass.reml` を静的比較向けに拡張し、`--static-only` で生成される IR/ビットコード差分が評価対象として妥当か確認する。
+2. `AmbiguousImpl` 発生時の診断を拡張し、`Diagnostic.extensions.typeclass.candidates` へ候補辞書を出力できるようにする（CI メトリクスの監視対象へ追加）。
+3. `0-3-audit-and-metrics.md` に静的比較 JSON と iterator 監査サマリーの転記セクションを新設し、`tooling/ci/README.md` に週次更新手順を追記する。
 
 ### M1マイルストーン進捗
 
@@ -82,8 +95,8 @@
   - 辞書生成・LLVM IR生成: 完了
 
 ### 次のステップ（Week 21-22 フォローアップ）🚀
-- `tooling/ci/collect-iterator-audit-metrics.py` を CI パイプラインへ組み込み、`verify_llvm_ir.sh` などで生成した診断ログと突き合わせて `iterator.stage.audit_pass_rate` を継続計測する。
-- `docs/notes/loop-implementation-plan.md` の監査手順に今回追加した `effects.iterator.*` / `effect.stage.*` キーを追記し、手動検証手順と CI チェックポイントを同期させる。
+- GitHub Actions 実行結果から `iterator-audit-metrics.json` を収集し、`pass_rate` 推移を `0-3-audit-and-metrics.md` へ定期反映（週次レポートフォームを整備）。
+- `verify_llvm_ir.sh` で生成する診断ログ／監査ログと CI メトリクスの突合せフローを自動化し、欠落時のリトライ手順を記録する。
 - LSP/JSON 双方のスナップショットに `audit` ブロックが含まれることをカバレッジレポートに反映し、将来の仕様変更で欠落しないよう `test_cli_diagnostics` / LSP 側のリグレッションテストを拡張する。
 
 - **モノモルフィゼーション PoC**: **主要機能完了（2025-10-13）**
