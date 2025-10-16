@@ -79,7 +79,7 @@ let rec collect_used_vars (e : expr) : VarSet.t =
   | ADTProject (e1, _) -> collect_used_vars e1
   | AssignMutable (_, rhs) -> collect_used_vars rhs
   | Continue -> VarSet.empty
-  | DictMethodCall (dict_expr, _, args) ->
+  | DictMethodCall (dict_expr, _, args, _) ->
       let dict_vars = collect_used_vars dict_expr in
       List.fold_left
         (fun acc arg -> VarSet.union acc (collect_used_vars arg))
@@ -103,7 +103,17 @@ let rec collect_used_vars (e : expr) : VarSet.t =
             VarSet.union source_vars (VarSet.union init_vars step_vars)
         | InfiniteLoop -> VarSet.empty
       in
-      VarSet.union kind_vars (collect_used_vars loop_info.loop_body)
+      let effect_vars =
+        List.fold_left
+          (fun acc info ->
+            match info.effect_expr with
+            | Some expr -> VarSet.union acc (collect_used_vars expr)
+            | None -> acc)
+          VarSet.empty
+          (loop_info.loop_header_effects @ loop_info.loop_body_effects)
+      in
+      VarSet.union kind_vars
+        (VarSet.union effect_vars (collect_used_vars loop_info.loop_body))
   | Closure _ | DictLookup _ | DictConstruct _ | CapabilityCheck _ ->
       (* Phase 1 では簡易実装 *)
       VarSet.empty
@@ -166,8 +176,18 @@ let rec has_side_effect (e : expr) : bool =
   | DictConstruct _ -> false
   | Continue -> true
   | AssignMutable _ -> true
-  | DictMethodCall (dict_expr, _, args) ->
-      has_side_effect dict_expr || List.exists has_side_effect args
+  | DictMethodCall (dict_expr, _, args, audit) ->
+      let audit_effect =
+        match audit with
+        | None -> false
+        | Some info -> (
+            match info.audit_capability with
+            | Some _ -> true
+            | None -> false)
+      in
+      has_side_effect dict_expr
+      || List.exists has_side_effect args
+      || audit_effect
   | Closure _ | DictLookup _ | CapabilityCheck _ ->
       (* 保守的に副作用ありと判定 *)
       true
@@ -185,7 +205,15 @@ let rec has_side_effect (e : expr) : bool =
             has_side_effect for_info.for_source || init_effect || step_effect
         | InfiniteLoop -> true
       in
-      kind_effect || has_side_effect info.loop_body
+      let audit_effects =
+        List.exists
+          (fun eff ->
+            match eff.effect_expr with
+            | Some expr -> has_side_effect expr
+            | None -> false)
+          (info.loop_header_effects @ info.loop_body_effects)
+      in
+      kind_effect || audit_effects || has_side_effect info.loop_body
 
 (** 文が副作用を持つかを判定 *)
 let _has_stmt_side_effect (stmt : stmt) : bool =
@@ -258,8 +286,35 @@ let rec dce_expr (used_vars : VarSet.t) (stats : dce_stats) (e : expr) : expr =
         | InfiniteLoop -> InfiniteLoop
       in
       let body' = dce_expr used_vars stats info.loop_body in
+      let header_effects' =
+        List.map
+          (fun eff ->
+            {
+              eff with
+              effect_expr =
+                Option.map (dce_expr used_vars stats) eff.effect_expr;
+            })
+          info.loop_header_effects
+      in
+      let body_effects' =
+        List.map
+          (fun eff ->
+            {
+              eff with
+              effect_expr =
+                Option.map (dce_expr used_vars stats) eff.effect_expr;
+            })
+          info.loop_body_effects
+      in
       make_expr
-        (Loop { info with loop_kind = kind'; loop_body = body' })
+        (Loop
+           {
+             info with
+             loop_kind = kind';
+             loop_body = body';
+             loop_header_effects = header_effects';
+             loop_body_effects = body_effects';
+           })
         e.expr_ty e.expr_span
   | TupleAccess (e1, idx) ->
       let e1' = dce_expr used_vars stats e1 in
@@ -277,11 +332,12 @@ let rec dce_expr (used_vars : VarSet.t) (stats : dce_stats) (e : expr) : expr =
   | ADTProject (e1, idx) ->
       let e1' = dce_expr used_vars stats e1 in
       make_expr (ADTProject (e1', idx)) e.expr_ty e.expr_span
-  | DictMethodCall (dict_expr, method_name, args) ->
+  | DictMethodCall (dict_expr, method_name, args, audit) ->
       let dict' = dce_expr used_vars stats dict_expr in
       let args' = List.map (dce_expr used_vars stats) args in
-      make_expr (DictMethodCall (dict', method_name, args')) e.expr_ty
-        e.expr_span
+      make_expr
+        (DictMethodCall (dict', method_name, args', audit))
+        e.expr_ty e.expr_span
   | AssignMutable (var, rhs) ->
       let rhs' = dce_expr used_vars stats rhs in
       make_expr (AssignMutable (var, rhs')) e.expr_ty e.expr_span

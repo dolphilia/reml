@@ -137,6 +137,14 @@ type capability_set = {
 }
 (** Capability 集合 *)
 
+type iterator_audit = {
+  audit_method : string;  (** 呼び出されるイテレータメソッド名 *)
+  audit_effect : effect_tag;  (** 監査用効果タグ（effect.stage.*） *)
+  audit_required_stage : stage_requirement option;  (** 要求される Stage *)
+  audit_capability : capability_id option;  (** 対応する Capability ID *)
+}
+(** Iterator 呼び出しの監査情報 *)
+
 type dict_ref = {
   trait_name : string;  (** トレイト名 *)
   type_args : ty list;  (** 型引数 *)
@@ -224,7 +232,7 @@ and expr_kind =
   | Closure of closure_info  (** クロージャ生成 *)
   | DictLookup of dict_ref  (** 辞書参照 (型クラス) *)
   | DictConstruct of dict_type  (** 辞書構築（Phase 2: vtable初期化） *)
-  | DictMethodCall of expr * string * expr list
+  | DictMethodCall of expr * string * expr list * iterator_audit option
       (** 辞書メソッド呼び出し
        * expr: 辞書値、string: メソッド名、expr list: 引数
        * vtableインデックスへ変換される
@@ -290,12 +298,25 @@ and loop_carried_var = {
   lc_sources : loop_source list;  (** ループヘッダ φ に取り込む候補値群 *)
 }
 
+and effect_info = {
+  effect_tag : effect_tag;
+  effect_expr : expr option;  (** 効果を引き起こす式 *)
+}
+(** 効果情報
+ *
+ * 診断・監査用の効果追跡情報。
+ *)
+
 and loop_info = {
   loop_kind : loop_kind;  (** ループの種別と付随情報 *)
   loop_body : expr;  (** ループ本体（脱糖済み） *)
   loop_span : span;  (** ループ全体のソース位置 *)
   loop_carried : loop_carried_var list;  (** PHI 候補となる変数群（暫定） *)
   loop_contains_continue : bool;  (** continue がボディ内に存在するか *)
+  loop_header_effects : effect_info list;
+      (** ループヘッダで発火する効果マーカー（例: has_next 監査） *)
+  loop_body_effects : effect_info list;
+      (** ループ本体突入時に発火する効果マーカー（例: next 監査） *)
 }
 
 (* ========== Core IR 文 ========== *)
@@ -315,15 +336,6 @@ type stmt =
   | Phi of var_id * (label * var_id) list  (** φノード (SSA) *)
   | EffectMarker of effect_info  (** 効果マーカー *)
   | ExprStmt of expr  (** 式文 *)
-
-and effect_info = {
-  effect_tag : effect_tag;
-  effect_expr : expr option;  (** 効果を引き起こす式 *)
-}
-(** 効果情報
- *
- * 診断・監査用の効果追跡情報。
- *)
 
 (** 終端命令
  *

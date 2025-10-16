@@ -388,8 +388,8 @@ let rec codegen_expr ctx expr =
   | ADTProject _ -> codegen_errorf "ADTProject not yet implemented in Phase 1"
   | DictConstruct dict_ty ->
       codegen_dict_construct ctx dict_ty
-  | DictMethodCall (dict_expr, method_name, args) ->
-      codegen_dict_method_call ctx dict_expr method_name args
+  | DictMethodCall (dict_expr, method_name, args, audit) ->
+      codegen_dict_method_call ctx dict_expr method_name args audit
   | AssignMutable _ ->
       codegen_errorf "AssignMutable expression should have been lowered before codegen"
   | Loop _ ->
@@ -495,7 +495,7 @@ and codegen_dict_construct ctx dict_ty =
  * @param args 引数リスト
  * @return メソッド呼び出しの結果
  *)
-and codegen_dict_method_call ctx dict_expr method_name args =
+and codegen_dict_method_call ctx dict_expr method_name args _audit =
   let ptr_ty = Llvm.pointer_type ctx.llctx in
   let i32_ty = Llvm.i32_type ctx.llctx in
 

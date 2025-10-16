@@ -82,6 +82,7 @@ let assert_error expected_variant result msg =
         | "NotATuple", NotATuple _ -> true
         | "EmptyMatch", EmptyMatch _ -> true
         | "ContinueOutsideLoop", ContinueOutsideLoop _ -> true
+        | "TraitConstraintFailure", TraitConstraintFailure _ -> true
         | _ -> false
       in
       if not matches then
@@ -969,6 +970,36 @@ let test_continue_outside_loop () =
       | Error err -> verify_diagnostic_quality err "E7021"
       | _ -> ())
 
+(* ========== H. トレイト制約エラー ========== *)
+
+let test_trait_constraint_failures () =
+  Printf.printf "\nH. Trait Constraint Errors:\n";
+
+  (* H-1. Iterator 未満足の for ループ *)
+  run_test "E7016: iterator constraint failure" (fun () ->
+      let env = initial_env in
+      let ident_i = { name = "i"; span = dummy_span } in
+      let pattern = { pat_kind = PatVar ident_i; pat_span = dummy_span } in
+      let source_expr =
+        {
+          expr_kind = Literal (Int ("42", Base10));
+          expr_span = dummy_span;
+        }
+      in
+      let body_expr = { expr_kind = Literal Unit; expr_span = dummy_span } in
+      let for_expr =
+        {
+          expr_kind = For (pattern, source_expr, body_expr);
+          expr_span = dummy_span;
+        }
+      in
+      let result = infer_expr env for_expr in
+      assert_error "TraitConstraintFailure" result
+        "Iterator trait should be required for for-loop sources";
+      match result with
+      | Error err -> verify_diagnostic_quality err "E7016"
+      | _ -> ())
+
 (* ========== メイン ========== *)
 
 let () =
@@ -1003,6 +1034,9 @@ let () =
 
   (* G. 制御フローエラー *)
   test_continue_outside_loop ();
+
+  (* H. トレイト制約エラー *)
+  test_trait_constraint_failures ();
 
   Printf.printf "\n=== Test Summary ===\n";
   Printf.printf "Total tests: %d\n" !test_count;

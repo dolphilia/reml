@@ -43,6 +43,7 @@ type iterator_dict_info = {
   kind : iterator_dict_kind;
   stage_requirement : iterator_stage_requirement;
   capability : string option;
+  stage_actual : string;
 }
 
 (** 制約エラー理由 *)
@@ -51,6 +52,11 @@ type constraint_error_reason =
   | AmbiguousImpl of dict_ref list
   | CyclicConstraint of trait_constraint list
   | UnresolvedTypeVar of type_var
+  | StageMismatch of {
+      required : iterator_stage_requirement;
+      actual : string;
+      capability : string option;
+    }
 
 (** 制約エラー *)
 type constraint_error = {
@@ -112,6 +118,29 @@ let is_builtin_for_ord = function
   | TCon TCChar -> true
   | TCon TCString -> true
   | _ -> false
+
+let normalize_stage_name (stage : string) =
+  String.lowercase_ascii stage
+
+let stage_rank stage =
+  match normalize_stage_name stage with
+  | "stable" | "release" -> 3
+  | "beta" -> 2
+  | "alpha" -> 1
+  | _ -> 0
+
+let stage_requirement_satisfied requirement actual_stage =
+  let actual_norm = normalize_stage_name actual_stage in
+  match requirement with
+  | IteratorStageExact stage -> String.equal (normalize_stage_name stage) actual_norm
+  | IteratorStageAtLeast stage ->
+      let required_rank = stage_rank stage in
+      let actual_rank = stage_rank actual_norm in
+      required_rank > 0 && actual_rank >= required_rank
+
+let string_of_stage_requirement = function
+  | IteratorStageExact stage -> Printf.sprintf "exact:%s" stage
+  | IteratorStageAtLeast stage -> Printf.sprintf "at_least:%s" stage
 
 (** 型適用のヘッドと引数を抽出 *)
 let rec head_type_and_args ty =
@@ -257,8 +286,6 @@ let solve_collector = function
  * - `Core.Iter.Iter<T>` は T を要素型としてそのまま返す
  * - それ以外はユーザー定義 impl を探索
  *)
-let iterator_default_stage = IteratorStageAtLeast "beta"
-
 let capability_for_kind = function
   | IteratorArrayLike -> Some "core.iter.array"
   | IteratorCoreIter -> Some "core.iter.core"
@@ -266,13 +293,20 @@ let capability_for_kind = function
   | IteratorResultLike -> Some "core.iter.result"
   | IteratorCustom _ -> None
 
+let stage_requirement_for_kind = function
+  | IteratorArrayLike -> IteratorStageExact "stable"
+  | IteratorCoreIter -> IteratorStageAtLeast "beta"
+  | IteratorOptionLike -> IteratorStageAtLeast "beta"
+  | IteratorResultLike -> IteratorStageAtLeast "beta"
+  | IteratorCustom _ -> IteratorStageAtLeast "beta"
+
 let make_iterator_info kind source_ty element_ty =
   {
     dict_ref = DictImplicit ("Iterator", [ source_ty; element_ty ]);
     source_ty;
     element_ty;
     kind;
-    stage_requirement = iterator_default_stage;
+    stage_requirement = stage_requirement_for_kind kind;
     capability = capability_for_kind kind;
   }
 
@@ -713,13 +747,15 @@ let solve_iterator_dict (registry : Impl_registry.impl_registry)
               match solve_iterator source_ty with
               | Some info -> { info with dict_ref }
               | None ->
+                  let custom_name = Types.string_of_ty source_ty in
                   {
                     dict_ref;
                     source_ty;
                     element_ty = item_ty;
-                    kind =
-                      IteratorCustom (Types.string_of_ty source_ty);
-                    stage_requirement = iterator_default_stage;
+                    kind = IteratorCustom custom_name;
+                    stage_requirement =
+                      stage_requirement_for_kind
+                        (IteratorCustom custom_name);
                     capability = None;
                   }
             in

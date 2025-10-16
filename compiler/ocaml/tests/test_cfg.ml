@@ -280,6 +280,8 @@ let test_while_loop_cfg () =
           };
         ];
       loop_contains_continue = false;
+      loop_header_effects = [];
+      loop_body_effects = [];
     }
   in
   let loop_expr = IR.make_expr (IR.Loop loop_info) ty_unit dummy_span in
@@ -407,6 +409,8 @@ let test_loop_with_continue () =
           };
         ];
       loop_contains_continue = true;
+      loop_header_effects = [];
+      loop_body_effects = [];
     }
   in
   let loop_expr = IR.make_expr (IR.Loop loop_info) ty_unit dummy_span in

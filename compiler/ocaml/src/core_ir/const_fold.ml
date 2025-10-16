@@ -393,20 +393,44 @@ let rec fold_expr (env : const_env) (stats : fold_stats) (e : expr) : expr =
         | InfiniteLoop -> InfiniteLoop
       in
       let folded_body = fold_expr env stats loop_info.loop_body in
+      let header_effects =
+        List.map
+          (fun eff ->
+            {
+              eff with
+              effect_expr =
+                Option.map (fold_expr env stats) eff.effect_expr;
+            })
+          loop_info.loop_header_effects
+      in
+      let body_effects =
+        List.map
+          (fun eff ->
+            {
+              eff with
+              effect_expr =
+                Option.map (fold_expr env stats) eff.effect_expr;
+            })
+          loop_info.loop_body_effects
+      in
       make_expr
         (Loop
            {
              loop_info with
              loop_kind = folded_kind;
              loop_body = folded_body;
+             loop_header_effects = header_effects;
+             loop_body_effects = body_effects;
            })
         e.expr_ty e.expr_span
   | DictConstruct dict ->
       make_expr (DictConstruct dict) e.expr_ty e.expr_span
-  | DictMethodCall (dict_expr, method_name, args) ->
+  | DictMethodCall (dict_expr, method_name, args, audit) ->
       let dict' = fold_expr env stats dict_expr in
       let args' = List.map (fold_expr env stats) args in
-      make_expr (DictMethodCall (dict', method_name, args')) e.expr_ty
+      make_expr
+        (DictMethodCall (dict', method_name, args', audit))
+        e.expr_ty
         e.expr_span
   (* その他のノードはそのまま（Phase 1 で未実装のケース） *)
   | Closure _ | DictLookup _ | CapabilityCheck _ -> e

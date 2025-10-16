@@ -56,8 +56,7 @@ let is_array_like_ty ty =
   | TArray _ | TSlice _ -> true
   | _ -> Option.is_some (is_user_type "Array" ty)
 
-let determine_for_source_kind (info : iterator_dict_info option)
-    (dict : dict_ref) (source : typed_expr) : for_source_kind =
+let determine_for_source_kind (info : iterator_dict_info option) : for_source_kind =
   match info with
   | Some metadata -> (
       match metadata.kind with
@@ -66,17 +65,22 @@ let determine_for_source_kind (info : iterator_dict_info option)
       | IteratorOptionLike
       | IteratorResultLike
       | IteratorCustom _ -> ForSourceIterator)
-  | None -> (
-      match dict with
-      | DictImplicit ("Iterator", source_ty :: _) ->
-          if is_array_like_ty source_ty then ForSourceArray
-          else ForSourceIterator
-      | DictImplicit _ ->
-          if is_array_like_ty source.texpr_ty then ForSourceArray
-          else ForSourceIterator
-      | DictParam _ | DictLocal _ ->
-          if is_array_like_ty source.texpr_ty then ForSourceArray
-          else ForSourceIterator)
+  | None -> ForSourceIterator
+
+let stage_requirement_to_ir = function
+  | IteratorStageExact stage -> StageExact stage
+  | IteratorStageAtLeast stage -> StageAtLeast stage
+
+let string_of_iterator_stage_requirement = function
+  | IteratorStageExact stage -> Printf.sprintf "exact:%s" stage
+  | IteratorStageAtLeast stage -> Printf.sprintf "at_least:%s" stage
+
+let actual_stage_of_kind = function
+  | IteratorArrayLike -> "stable"
+  | IteratorCoreIter -> "beta"
+  | IteratorOptionLike -> "beta"
+  | IteratorResultLike -> "beta"
+  | IteratorCustom name -> "custom:" ^ name
 
 (* ========== 変数スコープマップ ========== *)
 
@@ -281,7 +285,10 @@ let try_convert_to_dict_method_call (fn_expr : expr) (args : expr list) (ret_ty 
           (match dict_arg.expr_kind with
           | Var dict_var when String.starts_with ~prefix:"__dict_" dict_var.vname ->
               (* DictMethodCall ノードを生成 *)
-              Some (make_expr (DictMethodCall (dict_arg, method_name, method_args)) ret_ty span)
+              Some
+                (make_expr
+                   (DictMethodCall (dict_arg, method_name, method_args, None))
+                   ret_ty span)
           | _ -> None)
       | None -> None)
   | _ -> None
@@ -447,11 +454,63 @@ and desugar_arg (map : var_scope_map) (arg : typed_arg) : expr =
   | TNamedArg (_name, e) -> desugar_expr map e
 
 and desugar_for_loop (map : var_scope_map) (pat : typed_pattern)
-    (source : typed_expr) (body : typed_expr) (iterator_dict : dict_ref)
+    (source : typed_expr) (body : typed_expr) (_iterator_dict : dict_ref)
     (iterator_info : iterator_dict_info option) (result_ty : ty) (span : span) :
     expr =
-  let source_kind =
-    determine_for_source_kind iterator_info iterator_dict source
+  let source_kind = determine_for_source_kind iterator_info in
+  let header_effects, body_effects, has_next_audit, next_audit =
+    match (source_kind, iterator_info) with
+    | ForSourceIterator, Some info ->
+        let required_value method_name =
+          Printf.sprintf "%s:%s" method_name
+            (string_of_iterator_stage_requirement info.stage_requirement)
+        in
+        let actual_value method_name =
+          Printf.sprintf "%s:%s" method_name
+            (actual_stage_of_kind info.kind)
+        in
+        let make_string_literal value span =
+          make_expr (Literal (String (value, Normal))) ty_string span
+        in
+        let make_effect tag span value =
+          {
+            effect_tag = { effect_name = tag; effect_span = span };
+            effect_expr = Some (make_string_literal value span);
+          }
+        in
+        let capability_id =
+          Option.map
+            (fun name -> { cap_name = name; cap_span = span })
+            info.capability
+        in
+        let audit_for method_name audit_span =
+          Some
+            {
+              audit_method = method_name;
+              audit_effect =
+                {
+                  effect_name =
+                    Printf.sprintf "effect.stage.iterator.%s" method_name;
+                  effect_span = audit_span;
+                };
+              audit_required_stage =
+                Some (stage_requirement_to_ir info.stage_requirement);
+              audit_capability = capability_id;
+            }
+        in
+        ( [ make_effect "effect.stage.iterator.required" source.texpr_span
+                (required_value "has_next");
+            make_effect "effect.stage.iterator.actual" source.texpr_span
+                (actual_value "has_next");
+          ],
+          [ make_effect "effect.stage.iterator.required" body.texpr_span
+                (required_value "next");
+            make_effect "effect.stage.iterator.actual" body.texpr_span
+                (actual_value "next");
+          ],
+          audit_for "has_next" source.texpr_span,
+          audit_for "next" body.texpr_span )
+    | _ -> ([], [], None, None)
   in
   let element_ty = convert_ty pat.tpat_ty in
   let source_expr = desugar_expr map source in
@@ -517,11 +576,13 @@ and desugar_for_loop (map : var_scope_map) (pat : typed_pattern)
         let iter_ref = make_expr (Var iter_var) iter_ty span in
         let has_next_expr =
           make_expr
-            (DictMethodCall (iter_ref, "has_next", []))
+            (DictMethodCall (iter_ref, "has_next", [], has_next_audit))
             ty_bool span
         in
         let element_expr =
-          make_expr (DictMethodCall (iter_ref, "next", [])) element_ty span
+          make_expr
+            (DictMethodCall (iter_ref, "next", [], next_audit))
+            element_ty span
         in
         let loop_body = bind_body element_expr in
         ( { for_pattern = None;
@@ -531,7 +592,8 @@ and desugar_for_loop (map : var_scope_map) (pat : typed_pattern)
           },
           loop_body )
   in
-  make_loop_expr (ForLoop for_lowering) loop_body span result_ty
+  make_loop_expr ~header_effects ~body_effects (ForLoop for_lowering) loop_body
+    span result_ty
 
 (* ========== パイプ演算子の展開 ========== *)
 
@@ -662,7 +724,7 @@ and collect_base_loop_carried (body_expr : expr) : loop_carried_var list =
     | ADTConstruct (_ctor, fields) ->
         List.fold_left visit_expr ordered fields
     | ADTProject (adt, _) -> visit_expr ordered adt
-    | DictMethodCall (dict_expr, _name, args) ->
+    | DictMethodCall (dict_expr, _name, args, _) ->
         let ordered = visit_expr ordered dict_expr in
         List.fold_left visit_expr ordered args
     | Continue -> ordered
@@ -792,7 +854,7 @@ and augment_loop_carried_with_continue (body_expr : expr)
     | ADTConstruct (_ctor, fields) ->
         List.fold_left (visit ~collect) env fields
     | ADTProject (adt, _) -> visit ~collect env adt
-    | DictMethodCall (dict_expr, _name, args) ->
+    | DictMethodCall (dict_expr, _name, args, _) ->
         let env = visit ~collect env dict_expr in
         List.fold_left (visit ~collect) env args
     | Loop loop_info ->
@@ -822,8 +884,8 @@ and augment_loop_carried_with_continue (body_expr : expr)
   ignore (visit ~collect:true IntMap.empty body_expr);
   (!loop_carried_ref, !has_continue)
 
-and make_loop_expr (loop_kind : loop_kind) (loop_body : expr) (span : span)
-    (ty : ty) : expr =
+and make_loop_expr ?(header_effects = []) ?(body_effects = [])
+    (loop_kind : loop_kind) (loop_body : expr) (span : span) (ty : ty) : expr =
   let loop_carried, has_continue = collect_loop_carried_vars loop_body in
   make_expr
     (Loop
@@ -833,6 +895,8 @@ and make_loop_expr (loop_kind : loop_kind) (loop_body : expr) (span : span)
          loop_span = span;
          loop_carried;
          loop_contains_continue = has_continue;
+         loop_header_effects = header_effects;
+         loop_body_effects = body_effects;
        })
     ty span
 

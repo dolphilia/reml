@@ -67,7 +67,7 @@ let desugar ~mode tast =
 let rec collect_expr acc expr =
   let acc =
     match expr.expr_kind with
-    | DictMethodCall (dict_expr, method_name, args) ->
+    | DictMethodCall (dict_expr, method_name, args, _) ->
         let acc = method_name :: acc in
         let acc = collect_expr acc dict_expr in
         List.fold_left collect_expr acc args

@@ -166,15 +166,26 @@ let rec string_of_expr ?(depth = 0) expr =
   | DictConstruct dict ->
       Printf.sprintf "%s(dict.construct %s : %s)" ind
         (string_of_dict_type dict) ty_str
-  | DictMethodCall (dict_expr, method_name, args) ->
+  | DictMethodCall (dict_expr, method_name, args, audit_opt) ->
       let dict_str = string_of_expr ~depth:0 dict_expr |> String.trim in
       let args_str =
         join_with ", "
           (fun arg -> string_of_expr ~depth:0 arg |> String.trim)
           args
       in
-      Printf.sprintf "%s(dict.call %s.%s(%s) : %s)" ind dict_str method_name
-        args_str ty_str
+      let audit_str =
+        match audit_opt with
+        | None -> ""
+        | Some audit ->
+            Printf.sprintf " [audit:%s required:%s]"
+              audit.audit_effect.effect_name
+              (match audit.audit_required_stage with
+              | None -> "-"
+              | Some (StageExact s) -> Printf.sprintf "exact(%s)" s
+              | Some (StageAtLeast s) -> Printf.sprintf "at_least(%s)" s)
+      in
+      Printf.sprintf "%s(dict.call %s.%s(%s)%s : %s)" ind dict_str method_name
+        args_str audit_str ty_str
   | CapabilityCheck cap ->
       Printf.sprintf "%s(capability %s : %s)" ind cap.cap_name ty_str
   | TupleAccess (e, idx) ->
@@ -261,8 +272,30 @@ and string_of_loop_info ?(depth = 0) info ty_str =
       Printf.sprintf "\n%scontains-continue" (indent (depth + 1))
     else ""
   in
-  Printf.sprintf "%s(loop : %s\n%s\n%sbody\n%s%s%s)" ind ty_str kind_str ind
-    body_str carried continue_flag
+  let header_effects =
+    match info.loop_header_effects with
+    | [] -> ""
+    | effects ->
+        let items =
+          join_with ", "
+            (fun eff -> eff.effect_tag.effect_name)
+            effects
+        in
+        Printf.sprintf "\n%seffects-header[%s]" (indent (depth + 1)) items
+  in
+  let body_effects =
+    match info.loop_body_effects with
+    | [] -> ""
+    | effects ->
+        let items =
+          join_with ", "
+            (fun eff -> eff.effect_tag.effect_name)
+            effects
+        in
+        Printf.sprintf "\n%seffects-body[%s]" (indent (depth + 1)) items
+  in
+  Printf.sprintf "%s(loop : %s\n%s\n%sbody\n%s%s%s%s%s)" ind ty_str kind_str ind
+    body_str carried continue_flag header_effects body_effects
 
 (* ========== Core IR 文の表示 ========== *)
 

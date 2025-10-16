@@ -132,7 +132,7 @@ let generate_wrappers module_def entries =
 
 let rec count_dict_calls_in_expr expr =
   match expr.expr_kind with
-  | DictMethodCall (dict_expr, _, args) ->
+  | DictMethodCall (dict_expr, _, args, _) ->
       1
       + count_dict_calls_in_expr dict_expr
       + List.fold_left
@@ -237,7 +237,8 @@ let make_dict_method_call trait method_name args ret_ty span =
       register_builtin_instance trait first_arg.expr_ty method_name;
       Desugar.generate_dict_init trait first_arg.expr_ty span
       |> Option.map (fun dict_expr ->
-             make_expr (DictMethodCall (dict_expr, method_name, args)) ret_ty
+             make_expr
+               (DictMethodCall (dict_expr, method_name, args, None)) ret_ty
                span)
 
 let trait_info_of_primitive op =
@@ -260,10 +261,10 @@ let rec convert_primitives_expr expr =
           | Some dict_call -> dict_call
           | None -> make_expr (Primitive (op, args')) expr.expr_ty expr.expr_span)
       | None -> make_expr (Primitive (op, args')) expr.expr_ty expr.expr_span)
-  | DictMethodCall (dict_expr, method_name, method_args) ->
+  | DictMethodCall (dict_expr, method_name, method_args, audit) ->
       let dict_expr' = convert_primitives_expr dict_expr in
       let args' = List.map convert_primitives_expr method_args in
-      make_expr (DictMethodCall (dict_expr', method_name, args'))
+      make_expr (DictMethodCall (dict_expr', method_name, args', audit))
         expr.expr_ty expr.expr_span
   | App (fn_expr, args) ->
       let fn_expr' = convert_primitives_expr fn_expr in
@@ -423,7 +424,7 @@ let make_wrapper_call wrapper_name args ret_ty span =
 
 let rec rewrite_expr ~entries ~wrappers expr =
   match expr.expr_kind with
-  | DictMethodCall (dict_expr, method_name, args) ->
+  | DictMethodCall (dict_expr, method_name, args, audit) ->
       let dict_expr' = rewrite_expr ~entries ~wrappers dict_expr in
       let args' = List.map (rewrite_expr ~entries ~wrappers) args in
       let replacement =
@@ -432,11 +433,11 @@ let rec rewrite_expr ~entries ~wrappers expr =
             let wrapper_fn_name =
               wrapper_name entry.trait_name entry.type_args method_name
             in
-           if wrapper_exists wrappers wrapper_fn_name then
-             Some
-               (make_wrapper_call wrapper_fn_name args' expr.expr_ty
-                  expr.expr_span)
-           else None
+            if wrapper_exists wrappers wrapper_fn_name then
+              Some
+                (make_wrapper_call wrapper_fn_name args' expr.expr_ty
+                   expr.expr_span)
+            else None
         | None -> None
       in
       let fallback =
@@ -452,7 +453,7 @@ let rec rewrite_expr ~entries ~wrappers expr =
       in
       Option.value
         ~default:
-          (make_expr (DictMethodCall (dict_expr', method_name, args'))
+          (make_expr (DictMethodCall (dict_expr', method_name, args', audit))
              expr.expr_ty expr.expr_span)
         fallback
   | App (fn_expr, args) ->

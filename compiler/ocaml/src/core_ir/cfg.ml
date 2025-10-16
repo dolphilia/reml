@@ -305,7 +305,7 @@ let rec linearize_expr (builder : cfg_builder) (expr : expr) : var_id =
       in
       add_stmt builder (Assign (result, dict_expr));
       result
-  | DictMethodCall (dict_expr, method_name, args) ->
+  | DictMethodCall (dict_expr, method_name, args, audit) ->
       let dict_var = linearize_expr builder dict_expr in
       let arg_vars = List.map (linearize_expr builder) args in
       let dict_ref =
@@ -316,7 +316,7 @@ let rec linearize_expr (builder : cfg_builder) (expr : expr) : var_id =
       in
       let call_expr =
         make_expr
-          (DictMethodCall (dict_ref, method_name, arg_exprs))
+          (DictMethodCall (dict_ref, method_name, arg_exprs, audit))
           expr.expr_ty expr.expr_span
       in
       let result =
@@ -479,6 +479,20 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
   start_block builder header_label;
   push_loop builder loop_ctx;
 
+  let emit_effect_markers effects =
+    List.iter
+      (fun eff ->
+        let effect_expr =
+          match eff.effect_expr with
+          | Some expr ->
+              let var = linearize_expr builder expr in
+              Some (make_expr (Var var) var.vty var.vspan)
+          | None -> None
+        in
+        add_stmt builder (EffectMarker { eff with effect_expr }))
+      effects
+  in
+
   let phi_records =
     List.map
       (fun { lc_var; lc_sources } ->
@@ -570,6 +584,9 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
       info.loop_carried
   in
 
+  (* ループヘッダ効果を発火 *)
+  emit_effect_markers info.loop_header_effects;
+
   (* 条件分岐の生成 *)
   (match info.loop_kind with
   | WhileLoop cond_expr ->
@@ -593,6 +610,7 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
 
   (* 本体ブロック *)
   start_block builder body_label;
+  emit_effect_markers info.loop_body_effects;
   let _body_result = linearize_expr builder info.loop_body in
   finish_block builder (TermJump latch_label) info.loop_span;
 

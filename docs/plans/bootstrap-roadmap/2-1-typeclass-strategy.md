@@ -615,6 +615,25 @@
 - Stage 要件が仕様側で未確定の場合は暫定的に `StageAtLeast "beta"` を採用し、確定後に `docs/spec/3-8-core-runtime-capability.md` と脚注を更新するタスクを Section 7 へ追記する。  
 - 監査フック導入直後は CI メトリクス連携が未整備なため、`docs/notes/loop-implementation-plan.md` に暫定の手動確認手順を明記し、Phase 2 Week 22 の診断タスクで自動化する。
 
+### 2025-10-25 更新（Iterator 監査実装進捗）✅
+
+**実装サマリー** ✅:
+- `constraint_solver.ml` に `IteratorDictInfo` を実装し、種別・要素型・Stage 要件・Capability ID を保持するよう拡張。`solve_iterator_dict` が辞書参照と併せてメタデータを返す。  
+- `typed_ast.ml` の `TFor` に `iterator_dict` / `iterator_info` を格納するフィールドを追加し、型推論結果を Core IR へ伝播可能にした。  
+- `core_ir/ir.ml` に `iterator_audit` とループ効果リスト (`loop_header_effects` / `loop_body_effects`) を追加し、`DictMethodCall` が監査情報を保持できるよう型定義を更新。  
+- `core_ir/desugar.ml` で `IteratorDictInfo.kind` を参照して配列最適化と iterator ルートを分岐。`has_next`/`next` それぞれに `EffectMarker` を発行し、`effect.stage.iterator.required` / `.actual` を文字列リテラルで記録。  
+- `core_ir/cfg.ml` に EffectMarker 線形化処理を追加し、ヘッダ・本体それぞれで監査タグを出力。`dce.ml` / `const_fold.ml` / `monomorphize_poc.ml` / `llvm_gen/codegen.ml` も新しい `DictMethodCall` 形へ更新。  
+- `compiler/ocaml/tests/test_type_errors.ml` に `E7016` (Iterator 制約未満足) のテストケースを追加し、辞書未解決時に `TraitConstraintFailure` が発生することを固定化。
+
+**確認状況** ✅:
+- `dune build`（compiler/ocaml）で新しい IR/CFG 変更が型チェックを通過することを確認。  
+- 既存 CFG/モノモルフィゼーション/LLVM 生成テストが `DictMethodCall` の `audit` 追加後も成功することを確認（警告のみ）。
+
+**フォローアップ** 🚧:
+- `diagnostic.ml` に Stage/Capability 情報を `Diagnostic.extensions` として出力するタスク（`typeclass.iterator.stage_mismatch`）が未着手。Section 5 で予定している診断強化に統合する。  
+- `test_desugar` および LLVM ゴールデンテストで EffectMarker／監査メタデータをスナップショット化するタスクを追加し、CI での回帰検知を可能にする。  
+- CLI の `--emit-typed-ast` / JSON 出力に `iterator_info` を表示するオプション整備と、`effect.stage.*` メトリクスの収集設計を Section 4（検証フロー）へ連携する。
+
 ### 2025-10-18 更新（Week 21 / セクション4 ベンチ前提のビルド安定化）✅
 
 **作業サマリー** ✅:
