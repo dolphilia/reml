@@ -94,6 +94,7 @@ and constraint_error_reason =
       iterator_source : string option;
       provider : string option;
       manifest_path : string option;
+      stage_trace : Effect_profile.stage_trace;
     }
       (** Stage 要件を満たさない Capability が選択された
        * 例: IteratorStageExact "beta" が要求されたが Capability Stage は "experimental" のまま *)
@@ -147,6 +148,7 @@ module EffectConstraintTable : sig
     source_name : string option;
     resolved_stage : Effect_profile.stage_id option;
     resolved_capability : string option;
+    stage_trace : Effect_profile.stage_trace;
   }
 
   type t
@@ -162,6 +164,7 @@ module EffectConstraintTable : sig
     ?source_name:string ->
     ?resolved_stage:Effect_profile.stage_id ->
     ?resolved_capability:string ->
+    ?stage_trace:Effect_profile.stage_trace ->
     unit ->
     t
 

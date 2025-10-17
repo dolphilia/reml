@@ -4,10 +4,8 @@
       "code": "effects.syntax.invalid_attribute",
       "severity": "error",
       "domain": "型システム",
-      "message": "効果属性の指定が無効です（雛形）",
-      "notes": [
-        "TODO: 実際の検証結果に合わせて詳細メッセージを更新する"
-      ],
+      "message": "効果属性 @requires_capability(stage = 123) は無効です",
+      "notes": [],
       "location": {
         "file": "effectful_sum.reml",
         "line": 1,
@@ -23,14 +21,39 @@
           "stage": {
             "required": null,
             "actual": null
-          }
+          },
+          "stage_trace": [
+            {
+              "source": "cli_option",
+              "stage": null,
+              "note": "not provided"
+            },
+            {
+              "source": "env_var",
+              "stage": null,
+              "note": "REMLC_EFFECT_STAGE not set"
+            },
+            {
+              "source": "typer",
+              "stage": null,
+              "capability": null,
+              "note": "invalid attribute"
+            }
+          ]
         }
       },
       "audit": {
         "effect.attribute.invalid": "stage",
         "effect.attribute.location": "fn demo",
         "effect.stage.required": null,
-        "effect.stage.actual": null
+        "effect.stage.actual": null,
+        "stage_trace": [
+          {
+            "source": "typer",
+            "stage": null,
+            "note": "attribute parsing failure"
+          }
+        ]
       }
     }
   ]

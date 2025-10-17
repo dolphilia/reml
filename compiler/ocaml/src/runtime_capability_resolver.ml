@@ -136,12 +136,15 @@ let registry_from_path = function
   | _ -> empty_registry
 
 let resolve ~cli_override ~registry_path ~target =
-  let registry =
+  let registry, registry_source_path =
     match registry_path with
-    | Some path -> load_registry_from_file path
-    | None ->
-        registry_from_path (Sys.getenv_opt env_registry_var)
+    | Some path -> (load_registry_from_file path, Some path)
+    | None -> (
+        match Sys.getenv_opt env_registry_var with
+        | Some path -> (load_registry_from_file path, Some path)
+        | None -> (empty_registry, None))
   in
+  let stage_trace = ref stage_trace_empty in
   let env_stage =
     match Sys.getenv_opt env_stage_var with
     | Some stage -> stage_id_of_string_opt stage
@@ -151,6 +154,32 @@ let resolve ~cli_override ~registry_path ~target =
     match Sys.getenv_opt legacy_env_stage_var with
     | Some stage -> stage_id_of_string_opt stage
     | None -> None
+  in
+  let append_step step =
+    stage_trace := !stage_trace @ [ step ]
+  in
+  let () =
+    match cli_override with
+    | Some raw ->
+        let normalized = stage_id_to_string (stage_id_of_string raw) in
+        append_step
+          (make_stage_trace_step ~stage:normalized
+             ~note:(Printf.sprintf "--effect-stage %s" raw) "cli_option")
+    | None ->
+        append_step
+          (make_stage_trace_step ~note:"not provided" "cli_option")
+  in
+  let () =
+    match env_stage with
+    | Some stage ->
+        append_step
+          (stage_trace_step_of_stage_id "env_var" stage
+             ~note:env_stage_var)
+    | None ->
+        append_step
+          (make_stage_trace_step
+             ~note:(Printf.sprintf "%s not set" env_stage_var)
+             "env_var")
   in
   let default_stage =
     match cli_override with
@@ -202,4 +231,39 @@ let resolve ~cli_override ~registry_path ~target =
            in
            (entry.name, stage))
   in
-  create_runtime_stage ~default_stage ~capability_stages ()
+  (match registry_source_path with
+  | Some path ->
+      let step =
+        match registry.stage with
+        | Some stage ->
+            make_stage_trace_step ~stage:(stage_id_to_string stage) ~file:path
+              "capability_json"
+        | None -> make_stage_trace_step ~file:path "capability_json"
+      in
+      append_step step
+  | None -> ());
+  let override_steps =
+    List.map
+      (fun (target_key, (entries : capability_entry list)) ->
+        let stage_candidate =
+          match entries with
+          | entry :: _ -> entry.stage
+          | [] -> registry.stage
+        in
+        let base_step =
+          match stage_candidate with
+          | Some stage ->
+              stage_trace_step_of_stage_id "runtime_candidate" stage
+          | None -> make_stage_trace_step "runtime_candidate"
+        in
+        let base_step =
+          match registry_source_path with
+          | Some path -> { base_step with file = Some path }
+          | None -> base_step
+        in
+        { base_step with target = Some target_key })
+      registry.overrides
+  in
+  stage_trace := !stage_trace @ override_steps;
+  create_runtime_stage ~default_stage ~capability_stages
+    ~stage_trace:!stage_trace ()

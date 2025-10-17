@@ -32,6 +32,7 @@ module EffectConstraintTable = struct
     source_name : string option;
     resolved_stage : Profile.stage_id option;
     resolved_capability : string option;
+    stage_trace : Profile.stage_trace;
   }
 
   type t = entry StringMap.t
@@ -45,7 +46,8 @@ module EffectConstraintTable = struct
     StringMap.add (normalize_symbol entry.symbol) entry table
 
   let add_effects table ~symbol ~effect_set ~stage_requirement ~source_span
-      ?source_name ?resolved_stage ?resolved_capability () =
+      ?source_name ?resolved_stage ?resolved_capability
+      ?(stage_trace = Profile.stage_trace_empty) () =
     let entry =
       {
         symbol;
@@ -55,6 +57,7 @@ module EffectConstraintTable = struct
         source_name;
         resolved_stage;
         resolved_capability;
+        stage_trace;
       }
     in
     add_entry table entry
@@ -64,7 +67,8 @@ module EffectConstraintTable = struct
       ~stage_requirement:profile.stage_requirement
       ~source_span:profile.source_span
       ?source_name:profile.source_name ?resolved_stage:profile.resolved_stage
-      ?resolved_capability:profile.resolved_capability ()
+      ?resolved_capability:profile.resolved_capability
+      ~stage_trace:profile.stage_trace ()
 
   let merge ~into ~from =
     StringMap.union (fun _ _ rhs -> Some rhs) into from
@@ -165,6 +169,7 @@ type constraint_error_reason =
       iterator_source : string option;
       provider : string option;
       manifest_path : string option;
+      stage_trace : Profile.stage_trace;
     }
   | UnresolvedTypeVar of type_var
 
@@ -908,6 +913,7 @@ let solve_iterator_dict (registry : Impl_registry.impl_registry)
                       iterator_source = Some (Types.string_of_ty iterator_info.source_ty);
                       provider = None;
                       manifest_path = None;
+                      stage_trace = Profile.stage_trace_empty;
                     };
                 span = constraint_.constraint_span;
               }

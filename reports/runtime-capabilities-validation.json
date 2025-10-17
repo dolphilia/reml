@@ -1,0 +1,102 @@
+{
+  "timestamp": "2025-10-17T06:49:40.653774+00:00",
+  "checked_files": [
+    "tooling/runtime/capabilities/default.json"
+  ],
+  "stage_summary": {
+    "cli": {
+      "stage": null
+    },
+    "env": {
+      "stage": null,
+      "variable": "REMLC_EFFECT_STAGE"
+    },
+    "json": [
+      {
+        "file": "tooling/runtime/capabilities/default.json",
+        "stage": "stable",
+        "capabilities": [
+          {
+            "name": "core.iter.array",
+            "stage": null
+          },
+          {
+            "name": "core.iter.core",
+            "stage": null
+          },
+          {
+            "name": "core.io",
+            "stage": null
+          },
+          {
+            "name": "core.runtime",
+            "stage": null
+          }
+        ],
+        "overrides": [
+          {
+            "target": "x86_64-pc-windows-msvc",
+            "stage": "beta",
+            "capabilities": [
+              {
+                "name": "ffi.bridge",
+                "stage": null
+              },
+              {
+                "name": "process.spawn",
+                "stage": null
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "runtime_candidates": [
+      {
+        "source": "capability_json#stage",
+        "file": "tooling/runtime/capabilities/default.json",
+        "target": "default",
+        "stage": "stable"
+      },
+      {
+        "source": "capability_json#override",
+        "file": "tooling/runtime/capabilities/default.json",
+        "target": "x86_64-pc-windows-msvc",
+        "stage": "beta"
+      }
+    ]
+  },
+  "stage_trace": [
+    {
+      "source": "cli_option",
+      "stage": null,
+      "note": "not provided"
+    },
+    {
+      "source": "env_var",
+      "stage": null,
+      "note": "REMLC_EFFECT_STAGE not set"
+    },
+    {
+      "source": "capability_json",
+      "stage": "stable",
+      "file": "tooling/runtime/capabilities/default.json"
+    },
+    {
+      "source": "runtime_candidate",
+      "stage": "stable",
+      "file": "tooling/runtime/capabilities/default.json",
+      "target": "default"
+    },
+    {
+      "source": "runtime_candidate",
+      "stage": "beta",
+      "file": "tooling/runtime/capabilities/default.json",
+      "target": "x86_64-pc-windows-msvc"
+    }
+  ],
+  "validation": {
+    "status": "ok",
+    "errors": []
+  }
+}

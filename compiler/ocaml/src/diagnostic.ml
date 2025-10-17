@@ -218,8 +218,8 @@ let set_audit_metadata key value diag =
   { diag with audit_metadata = Extensions.set key value diag.audit_metadata }
 
 let with_effect_stage_extension ?actual_stage ?residual ?provider
-    ?manifest_path ?capability_meta ?iterator_fields ~required_stage
-    ~capability diag =
+    ?manifest_path ?capability_meta ?iterator_fields ?stage_trace
+    ~required_stage ~capability diag =
   let stage_fields =
     [
       ("required", `String required_stage);
@@ -254,8 +254,22 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider
     | Some fields -> ("iterator", `Assoc fields) :: effect_fields
     | None -> effect_fields
   in
+  let effect_fields =
+    match stage_trace with
+    | Some trace when trace <> [] ->
+        ("stage_trace", Effect_profile.stage_trace_to_json trace)
+        :: effect_fields
+    | _ -> effect_fields
+  in
   let payload = `Assoc (List.rev effect_fields) in
   let diag = set_extension "effects" payload diag in
+  let diag =
+    match stage_trace with
+    | Some trace when trace <> [] ->
+        set_extension "effect.stage_trace"
+          (Effect_profile.stage_trace_to_json trace) diag
+    | _ -> diag
+  in
   let diag =
     set_extension "effect.stage.required" (`String required_stage) diag
   in
@@ -310,6 +324,13 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider
               value acc)
           diag fields
     | None -> diag
+  in
+  let diag =
+    match stage_trace with
+    | Some trace when trace <> [] ->
+        set_audit_metadata "stage_trace"
+          (Effect_profile.stage_trace_to_json trace) diag
+    | _ -> diag
   in
   diag
 

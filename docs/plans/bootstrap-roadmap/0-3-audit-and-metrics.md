@@ -123,6 +123,7 @@
   2. `scripts/validate-runtime-capabilities.sh`（Phase 2-2 で整備）を実行し、スキーマ検証と Stage 解釈トレースの再計算を行う。スクリプトは `reports/runtime-capabilities-validation.json` に `stage_summary`（CLI/JSON/環境変数/Runtime 判定の一覧）を出力し、CI で `jq` フォーマットチェックを通過することを確認する。
   3. 差分を `0-3.9 進捗ログ` に追記し、`stage_summary` から抜粋した Stage 変更点（例: `default.json: beta → stable`）を合わせて記録する。レビュアには JSON とサマリの両方を提示する。
 - Stage が変更された場合は、必ず効果診断ゴールデンと `AuditEnvelope` ゴールデンを再生成し、`stage_trace` の差分が Typer/Runtime で一致していることを確認する。
+- CLI/環境変数による Stage 指定を検証する場合は、`--cli-stage <stage>` / `--env-stage <stage>` を併用し、`stage_trace` の冒頭エントリ（`cli_option` / `env_var`）と整合を確認する。
 
 ### CLI オプション優先度と検証
 - Stage 解決は「CLI `--effect-stage` → JSON `--runtime-capabilities` → 環境変数 `REMLC_EFFECT_STAGE`」の優先順を採用し、`RuntimeCapabilityResolver`（Phase 2-2 で導入予定）で一元化する。

@@ -1,1 +1,37 @@
-{"timestamp":"2025-10-17T00:00:00Z","category":"effect.stage","metadata":{"effect.stage.required":"beta","effect.stage.actual":"experimental","effect.stage.source":"runtime","effect.capability":"core.iterator.collect","effect.resolution.step":"typer","effect.audit_note":"TODO: 実測値で更新"}}
+{
+  "timestamp": "2025-10-17T00:00:00Z",
+  "category": "effect.stage",
+  "metadata": {
+    "effect.stage.required": "beta",
+    "effect.stage.actual": "beta",
+    "effect.stage.source": "runtime",
+    "effect.capability": "core.iterator.collect",
+    "effect.stage.iterator.required": "beta",
+    "effect.stage.iterator.actual": "beta",
+    "effect.stage.iterator.source": "cli_option",
+    "audit.note": "効果 Stage 監査（Typer / Runtime 一致）",
+    "stage_trace": [
+      {
+        "source": "cli_option",
+        "stage": "beta",
+        "note": "--effect-stage beta"
+      },
+      {
+        "source": "typer",
+        "stage": "beta",
+        "capability": "core.iterator.collect"
+      },
+      {
+        "source": "runtime",
+        "stage": "beta",
+        "capability": "core.iterator.collect"
+      },
+      {
+        "source": "runtime_candidate",
+        "stage": "beta",
+        "file": "tooling/runtime/capabilities/default.json",
+        "target": "x86_64-pc-windows-msvc"
+      }
+    ]
+  }
+}

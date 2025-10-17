@@ -10,14 +10,20 @@ open Effect_profile
 type runtime_stage = {
   default_stage : stage_id;
   capability_stages : (string * stage_id) list;
+  stage_trace : stage_trace;
 }
 
 let normalize_capability_name name = String.lowercase_ascii name
 
 let runtime_stage_default =
-  { default_stage = Stable; capability_stages = [] }
+  {
+    default_stage = Stable;
+    capability_stages = [];
+    stage_trace = stage_trace_empty;
+  }
 
-let create_runtime_stage ?(capability_stages = []) ?default_stage () =
+let create_runtime_stage ?(capability_stages = []) ?default_stage
+    ?(stage_trace = stage_trace_empty) () =
   {
     default_stage =
       (match default_stage with Some stage -> stage | None -> Stable);
@@ -25,6 +31,7 @@ let create_runtime_stage ?(capability_stages = []) ?default_stage () =
       List.map
         (fun (name, stage) -> (normalize_capability_name name, stage))
         capability_stages;
+    stage_trace;
   }
 
 let stage_for_capability runtime_stage capability_name =
@@ -49,11 +56,36 @@ let resolve_function_profile ~(runtime_context : runtime_stage)
     (* TODO Phase 2-3: effect属性から Capability 名を解析して渡す *)
   in
   let current_stage = stage_for_capability runtime_context capability_name in
+  let typer_step =
+    match capability_name with
+    | Some cap ->
+        stage_trace_step_of_stage_id_opt ~capability:cap "typer"
+          (Some current_stage)
+    | None ->
+        stage_trace_step_of_stage_id_opt "typer" (Some current_stage)
+  in
+  let rec split_primary acc = function
+    | ( { source; _ } as step ) :: rest
+      when String.equal source "cli_option"
+           || String.equal source "env_var" ->
+        split_primary (step :: acc) rest
+    | tail -> (List.rev acc, tail)
+  in
+  let stage_trace_with_typer base_trace =
+    let prefix, suffix = split_primary [] base_trace in
+    prefix @ (typer_step :: suffix)
+  in
   match effect_node with
   | None ->
+      let stage_trace = stage_trace_with_typer runtime_context.stage_trace in
+      let stage_trace =
+        match stage_trace with
+        | [] -> [ typer_step ]
+        | trace -> trace
+      in
       let profile =
         {
-          (default_profile ?source_name ~span:function_ident.span ())
+          (default_profile ?source_name ~stage_trace ~span:function_ident.span ())
           with
           resolved_stage = Some current_stage;
           resolved_capability = capability_name;
@@ -61,14 +93,22 @@ let resolve_function_profile ~(runtime_context : runtime_stage)
       in
       Ok profile
   | Some node ->
-      let profile = profile_of_ast ?source_name node in
+      let base_trace =
+        match stage_trace_with_typer runtime_context.stage_trace with
+        | [] -> [ typer_step ]
+        | trace -> trace
+      in
+      let profile =
+        profile_of_ast ?source_name ~stage_trace:base_trace node
+        |> fun p ->
+        {
+          p with
+          resolved_stage = Some current_stage;
+          resolved_capability = capability_name;
+        }
+      in
       if stage_requirement_satisfied profile.stage_requirement current_stage then
-        Ok
-          {
-            profile with
-            resolved_stage = Some current_stage;
-            resolved_capability = capability_name;
-          }
+        Ok profile
       else
         Error
           (Type_error.effect_stage_mismatch_error
@@ -76,4 +116,5 @@ let resolve_function_profile ~(runtime_context : runtime_stage)
              ~required_stage:
                (stage_requirement_to_string profile.stage_requirement)
              ~actual_stage:(stage_id_to_string current_stage)
-             ~span:profile.source_span ~capability:capability_name)
+             ~span:profile.source_span ~capability:capability_name
+             ~stage_trace:profile.stage_trace)

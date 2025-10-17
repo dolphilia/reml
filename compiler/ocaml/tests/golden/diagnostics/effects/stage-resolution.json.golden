@@ -4,10 +4,8 @@
       "code": "effects.stage_resolution.report",
       "severity": "info",
       "domain": "型システム",
-      "message": "効果 Stage 解決結果のスナップショット（雛形）",
-      "notes": [
-        "TODO: `--emit-effects --format=json` の実出力に合わせて更新する"
-      ],
+      "message": "効果 Stage 解決結果のスナップショット",
+      "notes": [],
       "location": {
         "file": "",
         "line": 0,
@@ -27,7 +25,40 @@
               "required": "at_least:beta",
               "actual": "beta",
               "source": "cli"
-            }
+            },
+            "stage_trace": [
+              {
+                "source": "cli_option",
+                "stage": "beta",
+                "note": "--effect-stage beta"
+              },
+              {
+                "source": "env_var",
+                "stage": null,
+                "note": "REMLC_EFFECT_STAGE not set"
+              },
+              {
+                "source": "typer",
+                "stage": "beta",
+                "capability": null
+              },
+              {
+                "source": "runtime",
+                "stage": "beta",
+                "capability": "core.iterator.collect"
+              },
+              {
+                "source": "capability_json",
+                "stage": "stable",
+                "file": "tooling/runtime/capabilities/default.json"
+              },
+              {
+                "source": "runtime_candidate",
+                "stage": "beta",
+                "file": "tooling/runtime/capabilities/default.json",
+                "target": "x86_64-pc-windows-msvc"
+              }
+            ]
           },
           "inputs": {
             "cli": "beta",

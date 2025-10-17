@@ -11,6 +11,7 @@
 
 open Types
 open Ast
+open Effect_profile
 
 module Json = Yojson.Basic
 
@@ -25,6 +26,7 @@ type trait_constraint_stage_extension = {
   iterator_source : string option;
   capability_metadata : Json.t option;
   residual : Json.t option;
+  stage_trace : stage_trace;
 }
 
 (* ========== 型エラーの定義 ========== *)
@@ -91,6 +93,7 @@ type type_error =
       span : span;
       function_name : string option;
       capability : string option;
+      stage_trace : stage_trace;
     }
   | AmbiguousTraitImpl of {
       (* トレイト実装の曖昧性 *)
@@ -255,7 +258,7 @@ let not_assignable_error span = NotAssignable { span }
 
 (** 効果 Stage ミスマッチのエラーを生成 *)
 let effect_stage_mismatch_error ~function_name ~required_stage ~actual_stage
-    ~span ~capability =
+    ~span ~capability ~stage_trace =
   EffectStageMismatch
     {
       required_stage;
@@ -263,7 +266,34 @@ let effect_stage_mismatch_error ~function_name ~required_stage ~actual_stage
       span;
       function_name = Some function_name;
       capability;
+      stage_trace;
     }
+
+let append_runtime_stage_trace ?capability stage_trace ~actual_stage =
+  let has_runtime =
+    List.exists
+      (fun (step : stage_trace_step) -> String.equal step.source "runtime")
+      stage_trace
+  in
+  if has_runtime then stage_trace
+  else
+    let runtime_step =
+      match capability with
+      | Some cap ->
+          make_stage_trace_step ~stage:actual_stage ~capability:cap "runtime"
+      | None -> make_stage_trace_step ~stage:actual_stage "runtime"
+    in
+    let rec aux acc inserted = function
+      | [] ->
+          let acc = if inserted then acc else runtime_step :: acc in
+          List.rev acc
+      | (({ source; _ } as step) :: rest) ->
+          if (not inserted) && String.equal source "typer" then
+            aux (runtime_step :: step :: acc) true rest
+          else
+            aux (step :: acc) inserted rest
+    in
+    aux [] false stage_trace
 
 (** ミュータブルでない束縛への代入エラーを生成 *)
 let immutable_binding_error name span = ImmutableBinding { name; span }
@@ -719,13 +749,14 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
               ?provider:info.provider ?manifest_path:info.manifest_path
               ?capability_meta:info.capability_metadata
               ~iterator_fields:iterator_fields
+              ~stage_trace:info.stage_trace
               ~required_stage:info.required_stage
               ~capability:(Option.value info.capability ~default:"<unknown>")
               diag
         | None -> diag
       in
       diag
-  | EffectStageMismatch { required_stage; actual_stage; span; function_name; capability } ->
+  | EffectStageMismatch { required_stage; actual_stage; span; function_name; capability; stage_trace } ->
       let message =
         match function_name with
         | Some name ->
@@ -741,9 +772,13 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       in
       let diag = make_type_error ~code:"E7801" ~message ~span:diag_span ~notes () in
       let capability_name = Option.value capability ~default:"runtime" in
+      let enriched_trace =
+        append_runtime_stage_trace stage_trace ~actual_stage
+          ?capability
+      in
       let diag =
         with_effect_stage_extension ~required_stage ~capability:capability_name
-          ~actual_stage diag
+          ~actual_stage ~stage_trace:enriched_trace diag
       in
       let diag = Diagnostic.set_extension "effect.stage.required" (`String required_stage) diag in
       let diag =
@@ -1140,13 +1175,14 @@ let to_diagnostic_with_source ?(available_names : string list = [])
               ?provider:info.provider ?manifest_path:info.manifest_path
               ?capability_meta:info.capability_metadata
               ~iterator_fields:iterator_fields
+              ~stage_trace:info.stage_trace
               ~required_stage:info.required_stage
               ~capability:(Option.value info.capability ~default:"<unknown>")
               diag
         | None -> diag
       in
       diag
-  | EffectStageMismatch { required_stage; actual_stage; span; function_name; capability } ->
+  | EffectStageMismatch { required_stage; actual_stage; span; function_name; capability; stage_trace } ->
       let message =
         match function_name with
         | Some name ->
@@ -1162,9 +1198,13 @@ let to_diagnostic_with_source ?(available_names : string list = [])
       in
       let diag = make_type_error ~code:"E7801" ~message ~span:diag_span ~notes () in
       let capability_name = Option.value capability ~default:"runtime" in
+      let enriched_trace =
+        append_runtime_stage_trace stage_trace ~actual_stage
+          ?capability
+      in
       let diag =
         with_effect_stage_extension ~required_stage ~capability:capability_name
-          ~actual_stage diag
+          ~actual_stage ~stage_trace:enriched_trace diag
       in
       let diag = Diagnostic.set_extension "effect.stage.required" (`String required_stage) diag in
       let diag =

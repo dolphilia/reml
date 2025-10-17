@@ -1022,6 +1022,7 @@ let test_trait_constraint_failures () =
                 iterator_source = Some "CustomIter";
                 provider = Some "Core.Iter";
                 manifest_path = Some "dsl/core.iter.toml";
+                stage_trace = Effect_profile.stage_trace_empty;
               };
           span = Ast.dummy_span;
         }

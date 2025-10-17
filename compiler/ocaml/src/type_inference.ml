@@ -435,6 +435,7 @@ let constraint_error_to_type_error (err : Constraint_solver.constraint_error) :
         iterator_source;
         provider;
         manifest_path;
+        stage_trace = _;
       } ->
       let required_desc, required_stage_value =
         match required with
@@ -484,6 +485,7 @@ let constraint_error_to_type_error (err : Constraint_solver.constraint_error) :
             iterator_source = iterator_source;
             capability_metadata = None;
             residual = None;
+            stage_trace = Effect_profile.stage_trace_empty;
           }
       in
       TraitConstraintFailure
@@ -1848,9 +1850,12 @@ and infer_stmt ?(ctx = initial_ctx) (env : env) (stmt : stmt)
  *
  * Phase 2 Week 3-4 で実装
  *)
-and infer_decl ?(ctx = initial_ctx) ~config (env : env) (decl : decl) :
+and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
     (typed_decl * env * trait_constraint list, type_error) result
     =
+  let config =
+    match config with Some cfg -> cfg | None -> !current_config
+  in
   match decl.decl_kind with
   | LetDecl (pat, ty_annot, expr) ->
       (* let束縛の型推論

@@ -7,6 +7,8 @@
 
 open Ast
 
+module Json = Yojson.Basic
+
 (* ========== Stage 定義 ========== *)
 
 type stage_id =
@@ -66,6 +68,73 @@ let stage_requirement_satisfied requirement actual =
 
 let default_stage_requirement = StageAtLeast Stable
 
+(* ========== Stage トレース ========== *)
+
+type stage_trace_step = {
+  source : string;
+  stage : string option;
+  capability : string option;
+  note : string option;
+  file : string option;
+  target : string option;
+}
+
+type stage_trace = stage_trace_step list
+
+let stage_string_of_id_option = function
+  | Some stage -> Some (stage_id_to_string stage)
+  | None -> None
+
+let make_stage_trace_step ?stage ?capability ?note ?file ?target source =
+  { source; stage; capability; note; file; target }
+
+let stage_trace_step_of_stage_id ?capability ?note ?file ?target source stage =
+  make_stage_trace_step ?capability ?note ?file ?target source
+    ~stage:(stage_id_to_string stage)
+
+let stage_trace_step_of_stage_id_opt ?capability ?note ?file ?target source
+    stage_opt =
+  match stage_opt with
+  | Some stage ->
+      stage_trace_step_of_stage_id ?capability ?note ?file ?target source stage
+  | None -> make_stage_trace_step ?capability ?note ?file ?target source
+
+let append_stage_trace base step = base @ [ step ]
+
+let stage_trace_to_json (trace : stage_trace) =
+  let step_to_json (step : stage_trace_step) =
+    let fields = [ ("source", `String step.source) ] in
+    let fields =
+      match step.stage with
+      | Some value -> ("stage", `String value) :: fields
+      | None -> fields
+    in
+    let fields =
+      match step.capability with
+      | Some value -> ("capability", `String value) :: fields
+      | None -> fields
+    in
+    let fields =
+      match step.note with
+      | Some value -> ("note", `String value) :: fields
+      | None -> fields
+    in
+    let fields =
+      match step.file with
+      | Some value -> ("file", `String value) :: fields
+      | None -> fields
+    in
+    let fields =
+      match step.target with
+      | Some value -> ("target", `String value) :: fields
+      | None -> fields
+    in
+    `Assoc (List.rev fields)
+  in
+  `List (List.map step_to_json trace)
+
+let stage_trace_empty : stage_trace = []
+
 (* ========== 効果タグ・効果集合 ========== *)
 
 type tag = {
@@ -113,10 +182,12 @@ type profile = {
   source_name : string option;
   resolved_stage : stage_id option;
   resolved_capability : string option;
+  stage_trace : stage_trace;
 }
 
 let make_profile ?source_name ?resolved_stage ?resolved_capability
-    ~stage_requirement ~effect_set ~span () =
+    ?(stage_trace = stage_trace_empty) ~stage_requirement ~effect_set ~span ()
+    =
   {
     effect_set;
     stage_requirement;
@@ -124,13 +195,15 @@ let make_profile ?source_name ?resolved_stage ?resolved_capability
     source_name;
     resolved_stage;
     resolved_capability;
+    stage_trace;
   }
 
-let default_profile ?source_name ~span () =
+let default_profile ?source_name ?(stage_trace = stage_trace_empty) ~span () =
   make_profile ?source_name ~stage_requirement:default_stage_requirement
-    ~effect_set:empty_set ~span ()
+    ~effect_set:empty_set ~span ~stage_trace ()
 
-let profile_of_ast ?source_name (node : effect_profile_node) =
+let profile_of_ast ?source_name ?(stage_trace = stage_trace_empty)
+    (node : effect_profile_node) =
   let declared = tags_of_idents node.effect_declared in
   let residual =
     match node.effect_residual with
@@ -144,4 +217,4 @@ let profile_of_ast ?source_name (node : effect_profile_node) =
     | None -> default_stage_requirement
   in
   make_profile ?source_name ~stage_requirement ~effect_set
-    ~span:node.effect_span ()
+    ~span:node.effect_span ~stage_trace ()

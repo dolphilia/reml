@@ -1,27 +1,28 @@
 #!/usr/bin/env bash
-# iterator 監査メトリクスと LLVM IR 検証ログの突合せスクリプト
-# 使い方:
-#   ./tooling/ci/sync-iterator-audit.sh \
-#       --metrics tooling/ci/iterator-audit-metrics.json \
-#       --verify-log artifacts/llvm-verify/verify.log \
-#       --output tooling/ci/iterator-audit-summary.md
+# iterator stage 監査サマリー生成スクリプト
 
 set -euo pipefail
 
 METRICS_PATH=""
 VERIFY_LOG_PATH=""
+AUDIT_PATH=""
 OUTPUT_PATH=""
 
-usage() {
-    cat <<EOF
+print_usage() {
+    cat <<'EOF'
 使い方:
-  $(basename "$0") --metrics <PATH> --verify-log <PATH> [--output <PATH>]
+  tooling/ci/sync-iterator-audit.sh --metrics <PATH> --verify-log <PATH> [--audit <PATH>] [--output <PATH>]
 
 オプション:
-  --metrics <PATH>      collect-iterator-audit-metrics.py が生成した JSON へのパス
-  --verify-log <PATH>   verify_llvm_ir.sh のログ（標準出力を保存したファイル）
-  --output <PATH>       Markdown サマリーを書き出す先（省略時は標準出力へ出力）
+  --metrics <PATH>      collect-iterator-audit-metrics.py が生成した JSON
+  --verify-log <PATH>   verify_llvm_ir.sh のログファイル
+  --audit <PATH>        AuditEnvelope JSON (単一ファイルまたは JSON Lines)
+  --output <PATH>       Markdown サマリー出力先（既定: reports/iterator-stage-summary.md）
   -h, --help            このヘルプを表示
+
+説明:
+  iterator.stage.audit_pass_rate と LLVM 検証ログを突合し、Stage トレースの差分・欠落を確認します。
+  Stage トレースの不整合や pass_rate < 1.0 の場合は非ゼロで終了します。
 EOF
 }
 
@@ -37,18 +38,28 @@ while [[ $# -gt 0 ]]; do
             VERIFY_LOG_PATH="$1"
             shift
             ;;
+        --audit)
+            shift || { echo "error: --audit の直後にパスを指定してください" >&2; exit 1; }
+            AUDIT_PATH="$1"
+            shift
+            ;;
         --output)
             shift || { echo "error: --output の直後にパスを指定してください" >&2; exit 1; }
             OUTPUT_PATH="$1"
             shift
             ;;
         -h|--help)
-            usage
+            print_usage
             exit 0
             ;;
-        *)
+        -*)
             echo "error: 不明なオプション: $1" >&2
-            usage
+            print_usage
+            exit 1
+            ;;
+        *)
+            echo "error: 位置引数はサポートしていません: $1" >&2
+            print_usage
             exit 1
             ;;
     esac
@@ -56,7 +67,7 @@ done
 
 if [[ -z "$METRICS_PATH" || -z "$VERIFY_LOG_PATH" ]]; then
     echo "error: --metrics と --verify-log は必須です" >&2
-    usage
+    print_usage
     exit 1
 fi
 
@@ -70,51 +81,109 @@ if [[ ! -f "$VERIFY_LOG_PATH" ]]; then
     exit 1
 fi
 
-PYTHON_OUTPUT="$(python3 - "$METRICS_PATH" "$VERIFY_LOG_PATH" "$OUTPUT_PATH" <<'PYCODE'
+if [[ -n "$AUDIT_PATH" && ! -f "$AUDIT_PATH" ]]; then
+    echo "error: AuditEnvelope ファイルが見つかりません: $AUDIT_PATH" >&2
+    exit 1
+fi
+
+if [[ -z "$OUTPUT_PATH" ]]; then
+    OUTPUT_PATH="reports/iterator-stage-summary.md"
+fi
+
+if [[ "$OUTPUT_PATH" != "-" ]]; then
+    mkdir -p "$(dirname "$OUTPUT_PATH")"
+fi
+
+PYTHON_OUTPUT="$(python3 - "$METRICS_PATH" "$VERIFY_LOG_PATH" "${AUDIT_PATH:-}" <<'PYCODE'
 import json
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, List
-from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 metrics_path = Path(sys.argv[1])
 verify_log_path = Path(sys.argv[2])
-output_path = sys.argv[3] or ""
+audit_path = Path(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[3] else None
 
-try:
-    metrics_data = json.loads(metrics_path.read_text(encoding="utf-8"))
-except Exception as exc:
-    print(f"ERROR: メトリクスJSONの読み込みに失敗しました: {exc}")
-    sys.exit(1)
+def load_json(path: Path) -> Dict[str, Any]:
+    with path.open("r", encoding="utf-8") as handle:
+        try:
+            return json.load(handle)
+        except json.JSONDecodeError as exc:
+            raise SystemExit(f"ERROR: JSON の解析に失敗しました ({path}): {exc}")
 
-try:
-    verify_log_text = verify_log_path.read_text(encoding="utf-8", errors="replace")
-except Exception as exc:
-    print(f"ERROR: verify_llvm_ir ログの読み込みに失敗しました: {exc}")
-    sys.exit(1)
+
+def load_audit_entries(path: Path) -> List[Dict[str, Any]]:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise SystemExit(f"ERROR: 監査ファイルの読み込みに失敗しました: {exc}") from exc
+
+    text = text.strip()
+    if not text:
+        return []
+
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        entries: List[Dict[str, Any]] = []
+        for line_no, line in enumerate(text.splitlines(), start=1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entries.append(json.loads(line))
+            except json.JSONDecodeError as exc:
+                raise SystemExit(
+                    f"ERROR: JSON Lines の解析に失敗しました ({path}:{line_no}): {exc}"
+                )
+        return entries
+
+    if isinstance(data, list):
+        return [entry for entry in data if isinstance(entry, dict)]
+    if isinstance(data, dict):
+        return [data]
+    return []
+
+
+def load_metrics(path: Path) -> Dict[str, Any]:
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            return json.load(handle)
+    except Exception as exc:
+        raise SystemExit(f"ERROR: メトリクスJSONの読み込みに失敗しました: {exc}")
+
+
+def load_verify_log(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except Exception as exc:
+        raise SystemExit(f"ERROR: verify_llvm_ir ログの読み込みに失敗しました: {exc}")
+
+
+metrics_data = load_metrics(metrics_path)
+verify_log_text = load_verify_log(verify_log_path)
 
 pass_rate_value: Any = metrics_data.get("pass_rate")
 try:
-    pass_rate_float = float(pass_rate_value) if pass_rate_value is not None else None
+    pass_rate_float = (
+        float(pass_rate_value) if pass_rate_value is not None else None
+    )
 except (TypeError, ValueError):
     pass_rate_float = None
 
-if "検証成功" in verify_log_text:
+if "検証成功" in verify_log_text or "Verification succeeded" in verify_log_text:
     log_status = "成功"
-elif re.search(r"(検証失敗|エラー|失敗)", verify_log_text):
+elif re.search(r"(検証失敗|Verification failed|エラー|失敗)", verify_log_text):
     log_status = "失敗"
 else:
     log_status = "不明"
 
-sources: List[str] = metrics_data.get("sources", []) or []
-failures: List[dict] = metrics_data.get("failures", []) or []
-
-current_date = datetime.utcnow().strftime("%Y-%m-%d")
+current_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 lines: List[str] = []
-lines.append(f"### Iterator Stage Audit サマリー ({current_date})")
-lines.append("")
+lines.append(f"### Iterator Stage Audit サマリー ({current_date})\n")
 lines.append(f"- メトリクスファイル: `{metrics_path}`")
 lines.append(f"- verify ログ: `{verify_log_path}` （判定: {log_status}）")
 lines.append(f"- 指標: `{metrics_data.get('metric', 'iterator.stage.audit_pass_rate')}`")
@@ -123,53 +192,170 @@ lines.append(
     f"失敗: {metrics_data.get('failed', 0)}, pass_rate: {pass_rate_value}"
 )
 
+sources: List[str] = metrics_data.get("sources", []) or []
 if sources:
-    lines.append(f"- 解析対象: {len(sources)} 件")
+    lines.append(f"- 解析対象ファイル数: {len(sources)}")
     for src in sources:
         lines.append(f"  - `{src}`")
 
+failures: List[Dict[str, Any]] = metrics_data.get("failures", []) or []
 if failures:
-    lines.append("")
-    lines.append("#### 失敗詳細")
+    lines.append("\n#### 監査必須キーの欠落")
     for failure in failures:
         file = failure.get("file", "<unknown>")
         idx = failure.get("index", "?")
         missing = ", ".join(failure.get("missing", []))
         lines.append(f"- `{file}` (diagnostic #{idx}) → 欠落フィールド: {missing}")
 else:
-    lines.append("")
-    lines.append("- 失敗ケース: なし 🎉")
+    lines.append("\n- 監査必須キー: すべて揃っています 🎉")
 
-markdown = "\n".join(lines) + "\n"
+stage_trace_missing = 0
+stage_trace_source_missing = 0
+stage_trace_mismatch = 0
+stage_trace_entries: List[Dict[str, Any]] = []
 
-if output_path:
-    Path(output_path).write_text(markdown, encoding="utf-8")
-else:
-    print(markdown, end="")
+def normalise_stage_trace(trace: Any) -> List[Dict[str, Any]]:
+    result: List[Dict[str, Any]] = []
+    if not isinstance(trace, list):
+        return result
+    for step in trace:
+        if not isinstance(step, dict):
+            continue
+        result.append(
+            {
+                "source": step.get("source"),
+                "stage": step.get("stage"),
+                "capability": step.get("capability"),
+                "note": step.get("note"),
+            }
+        )
+    return result
+
+
+def find_stage_by_keywords(trace: List[Dict[str, Any]], keywords: List[str]) -> Optional[Dict[str, Any]]:
+    for step in trace:
+        source = (step.get("source") or "").lower()
+        if any(keyword in source for keyword in keywords):
+            return step
+    return None
+
+
+if audit_path is not None:
+    audit_entries = load_audit_entries(audit_path)
+    if audit_entries:
+        lines.append("\n#### Stage トレース検証")
+
+    for index, entry in enumerate(audit_entries):
+        metadata = {}
+        if isinstance(entry, dict):
+            if "metadata" in entry and isinstance(entry["metadata"], dict):
+                metadata = entry["metadata"]
+            else:
+                metadata = entry
+        stage_trace_raw = metadata.get("stage_trace")
+        trace = normalise_stage_trace(stage_trace_raw)
+
+        if not trace:
+            stage_trace_missing += 1
+            stage_trace_entries.append(
+                {
+                    "index": index,
+                    "status": "missing",
+                    "detail": "stage_trace が存在しません",
+                }
+            )
+            continue
+
+        typer_step = find_stage_by_keywords(trace, ["typer"])
+        runtime_step = find_stage_by_keywords(trace, ["runtime"])
+
+        if typer_step is None or runtime_step is None:
+            stage_trace_source_missing += 1
+            stage_trace_entries.append(
+                {
+                    "index": index,
+                    "status": "incomplete",
+                    "detail": "typer/runtime の両方のステップが揃っていません",
+                    "trace": trace,
+                }
+            )
+            continue
+
+        typer_stage = typer_step.get("stage")
+        runtime_stage = runtime_step.get("stage")
+
+        if typer_stage != runtime_stage:
+            stage_trace_mismatch += 1
+            stage_trace_entries.append(
+                {
+                    "index": index,
+                    "status": "mismatch",
+                    "typer_stage": typer_stage,
+                    "runtime_stage": runtime_stage,
+                    "trace": trace,
+                }
+            )
+        else:
+            stage_trace_entries.append(
+                {
+                    "index": index,
+                    "status": "ok",
+                    "stage": typer_stage,
+                    "trace": trace,
+                }
+            )
+
+    if audit_path is not None:
+        lines.append(
+            f"- トレース件数: {len(stage_trace_entries)}, "
+            f"欠落: {stage_trace_missing}, "
+            f"不足: {stage_trace_source_missing}, "
+            f"差分: {stage_trace_mismatch}"
+        )
+
+    if stage_trace_entries:
+        lines.append("")
+        for entry in stage_trace_entries:
+            status = entry["status"]
+            idx = entry["index"]
+            if status == "ok":
+                lines.append(f"- ✅ trace#{idx}: stage={entry.get('stage')}")
+            elif status == "missing":
+                lines.append(f"- ❌ trace#{idx}: {entry['detail']}")
+            elif status == "incomplete":
+                lines.append(f"- ❌ trace#{idx}: {entry['detail']}")
+            elif status == "mismatch":
+                lines.append(
+                    f"- ❌ trace#{idx}: typer={entry.get('typer_stage')} / "
+                    f"runtime={entry.get('runtime_stage')}"
+                )
 
 exit_code = 0
 if pass_rate_float is None or pass_rate_float < 1.0:
     exit_code = 1
 if log_status == "失敗":
     exit_code = 1
+if audit_path is not None and (stage_trace_missing > 0 or stage_trace_source_missing > 0 or stage_trace_mismatch > 0):
+    exit_code = 1
 
+markdown = "\n".join(lines).rstrip() + "\n"
+
+print(markdown, end="")
 print(f"STATUS:{exit_code}")
 PYCODE
 )"
 
-if [[ "$PYTHON_OUTPUT" == STATUS:* ]]; then
-    EXIT_CODE="${PYTHON_OUTPUT#STATUS:}"
-    OUTPUT_TEXT=""
+STATUS_LINE="${PYTHON_OUTPUT##*STATUS:}"
+OUTPUT_MARKDOWN="${PYTHON_OUTPUT%STATUS:*}"
+
+EXIT_CODE="$(printf '%s' "${STATUS_LINE:-1}" | tr -d '[:space:]')"
+OUTPUT_MARKDOWN="$(printf '%s' "$OUTPUT_MARKDOWN")"
+
+if [[ "$OUTPUT_PATH" == "-" ]]; then
+    printf "%s" "$OUTPUT_MARKDOWN"
 else
-    # 出力には Markdown + STATUS 行が含まれる
-    OUTPUT_TEXT="${PYTHON_OUTPUT%STATUS:*}"
-    EXIT_CODE="${PYTHON_OUTPUT##*STATUS:}"
+    printf "%s" "$OUTPUT_MARKDOWN" >"$OUTPUT_PATH"
+    echo "Audit summary written to $OUTPUT_PATH"
 fi
-
-if [[ -z "$OUTPUT_PATH" ]]; then
-    printf "%s" "$OUTPUT_TEXT"
-fi
-
-EXIT_CODE="$(echo "${EXIT_CODE:-1}" | tr -d '[:space:]')"
 
 exit "${EXIT_CODE:-1}"
