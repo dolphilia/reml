@@ -2050,7 +2050,7 @@ and infer_decl ?(ctx = initial_ctx) (env : env) (decl : decl) :
           tfn_params = tparams';
           tfn_ret_type = final_ret_ty;
           tfn_where_clause = fn.fn_where_clause;
-          tfn_effect_annot = fn.fn_effect_annot;
+          tfn_effect_profile = fn.fn_effect_profile;
           tfn_body = tbody;
         }
       in

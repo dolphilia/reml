@@ -131,7 +131,7 @@ and typed_fn_decl = {
   tfn_params : typed_param list;
   tfn_ret_type : ty;  (** 推論された返り値型 *)
   tfn_where_clause : constraint_ list;  (** Phase 2 後半で実装 *)
-  tfn_effect_annot : ident list option;  (** Phase 2 後半で実装 *)
+  tfn_effect_profile : effect_profile_node option;  (** Phase 2 効果統合で利用予定 *)
   tfn_body : typed_fn_body;
 }
 (** 型付き関数宣言 *)

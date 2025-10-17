@@ -968,7 +968,7 @@ let test_recursive_polymorphism () =
                       ty_span = dummy_span;
                     };
                 fn_where_clause = [];
-                fn_effect_annot = None;
+                fn_effect_profile = None;
                 fn_body = FnExpr fact_body;
               };
           decl_span = dummy_span;
@@ -1079,7 +1079,7 @@ let test_recursive_polymorphism () =
                       ty_span = dummy_span;
                     };
                 fn_where_clause = [];
-                fn_effect_annot = None;
+                fn_effect_profile = None;
                 fn_body = FnExpr match_expr;
               };
           decl_span = dummy_span;
@@ -1490,7 +1490,7 @@ let test_higher_order_functions () =
                   ];
                 fn_ret_type = None;
                 fn_where_clause = [];
-                fn_effect_annot = None;
+                fn_effect_profile = None;
                 fn_body = FnExpr apply_body;
               };
           decl_span = dummy_span;
@@ -1600,7 +1600,7 @@ let test_higher_order_functions () =
                   ];
                 fn_ret_type = None;
                 fn_where_clause = [];
-                fn_effect_annot = None;
+                fn_effect_profile = None;
                 fn_body = FnExpr inner_lambda;
               };
           decl_span = dummy_span;
@@ -1659,7 +1659,7 @@ let test_polymorphism_errors () =
         ];
         fn_ret_type = None;
         fn_where_clause = [];
-        fn_effect_annot = None;
+        fn_effect_profile = None;
         fn_body = FnExpr loop_call;
       };
       decl_span = dummy_span;

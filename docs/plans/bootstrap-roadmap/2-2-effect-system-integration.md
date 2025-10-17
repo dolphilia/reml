@@ -86,18 +86,44 @@
 - 関数宣言・式への効果注釈の付与
 - ネストした効果の構文解析
 - エラーハンドリング（不正な効果指定）
+- `parser.mly` で `EffectAnnot ::= "!" "{" EffectTags "}"` を正式対応させ、`1-1-syntax.md` §B.6（属性）および §C.11（ハンドラ構文）の BNF と一致させる。
+- `lexer.mll` へ `!{` / `}` / `stage` 等のトークン扱いを追加し、`@dsl_export(allows_effects=[...])` のような属性引数が式として評価される前提でトークナイズする。
+- `parser_driver.ml` と `ast_builder.ml` に効果タグリストを構築するユーティリティを追加し、`compiler/ocaml/docs/effect-system-design-note.md` で定義した `EffectTag` と合流できるようにする。
+- `@cfg` と併用された場合の無効分岐スキップや、`@handles(effect = "...")` のキー解釈など、属性値→タグ変換の失敗を `effects.syntax.invalid_attribute` として診断へ伝搬する。
+
+> **進捗（2025-10-17 更新）**
+> - `@requires_capability` および `@dsl_export` / `@allows_effects` から Stage 要件を抽出し、`effect_profile` に `Exact` / `AtLeast` を設定する処理を実装済み。
+> - `@allows_effects(...)` / `@handles(...)` から効果タグ集合を抽出し、`!{}` とのマージや重複排除を整備済み。
+> - Parser テストに Stage／タグ解析の期待値を追加し、`Exact:experimental` / `AtLeast:stable` の既定挙動を確認済み。
+> - 未着手: `allows_effects=[...]` や `@handles(effect = "...")` といった NamedArg 形式の解析、属性値バリデーション／診断連携。
 
 2.2. **AST ノード拡張**
 - `Decl::Fn` に `effects: EffectTag[]` を追加
 - `Expr::*` に効果伝播用フィールド追加
 - Span 情報の保持
 - デバッグ用の AST pretty printer 更新
+- `ast.ml` に `EffectProfileNode`（`declared: EffectTag list`, `explicit_stage: StageRequirement option`, `source: Span`）を追加し、`FnDecl`, `HandlerDecl`, `EffectDecl` で共有する。
+- `core_ir/effect.ml`（新規予定）を AST から参照できるよう、`EffectTag.of_ident : Ident -> (EffectTag, Diagnostic)` を準備し、未知タグは TODO として `docs/spec/1-3-effects-safety.md` の更新対象に記録する。
+- `ast_printer.ml` / `parser/print_ast.ml` に `!{ mut, io }` や `@requires_capability(stage = "beta")` のフォーマットを新設し、ゴールデンテストで差分を検出できるようにする。
+- `handler` と `effect` 宣言も `EffectProfileNode` を保持し、操作宣言が暗黙に導入する効果タグをプレビューできる状態にする。
+
+> **進捗メモ**
+> - `effect_profile_node` を AST/Typed AST 両方に導入し、関数宣言・トレイトシグネチャ・extern 項目で共有する構造を実装済み。
+> - `EffectProfileNode` への Stage 埋め込みと、`@allows_effects` / `@handles`（NamedArg 含む）によるタグ取り込みを完了。次は属性値バリデーションと診断連携を実装する。
 
 2.3. **パーサテスト整備**
 - 効果注釈の正常系テスト
 - 構文エラーのテスト
 - ゴールデンテスト（AST 出力）
 - Phase 1 パーサとの統合検証
+- `compiler/ocaml/tests/test_parser.ml` に `fn demo() !{ io, panic } { ... }`、`@dsl_export(allows_effects=[io, audit]) fn ...`、`handler Console { operation print -> ... }` などの AST 期待値テストを追加。
+- `compiler/ocaml/tests/snapshots/` に効果注釈付き AST のゴールデンを生成し、`parse_expect_test` で `EffectProfileNode` への変換が確認できるようにする。
+- 属性値の誤指定（例: `@requires_capability(stage=123)`、`@handles` で未知キー）を `test_type_errors.ml` へ追加し、診断キーが `effects.syntax.invalid_attribute` / `effects.contract.stage_mismatch` になることを固定化。
+- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ新規テスト ID を追記し、効果構文カバレッジのチェック項目を増やす（Phase 2-2 週次レビューで参照）。
+
+> **テスト状況**
+> - Stage 推論を検証するユニットテストを `compiler/ocaml/tests/test_parser.ml` に追加済み。
+> - 今後: 効果タグ抽出や異常系（`@handles` 未対応キーなど）をテストに反映させる。
 
 **成果物**: 拡張 Parser、効果 AST、パーサテスト
 

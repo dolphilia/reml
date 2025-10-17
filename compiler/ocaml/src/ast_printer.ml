@@ -281,11 +281,14 @@ and string_of_decl_kind = function
             " where " ^ clause_str
       in
       let effects =
-        match fn.fn_effect_annot with
+        match fn.fn_effect_profile with
         | None -> ""
-        | Some tags ->
-            tags |> List.map string_of_ident |> String.concat ", "
-            |> Printf.sprintf " !{%s}"
+        | Some info ->
+            let tags =
+              info.effect_declared
+              |> List.map string_of_ident |> String.concat ", "
+            in
+            Printf.sprintf " !{%s}" tags
       in
       let body =
         match fn.fn_body with

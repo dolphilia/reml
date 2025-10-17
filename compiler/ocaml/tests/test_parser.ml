@@ -50,6 +50,65 @@ let expect_use_count desc expected input =
       Printf.printf "%s\n" (Diagnostic.to_string diag);
       exit 1
 
+let expect_fn_effects desc expected input =
+  match parse_string input with
+  | Ok cu -> (
+      match cu.decls with
+      | { decl_kind = FnDecl fn; _ } :: _ ->
+          let actual =
+            match fn.fn_effect_profile with
+            | None -> None
+            | Some info ->
+                Some (List.map (fun id -> id.name) info.effect_declared)
+          in
+          if actual = expected then Printf.printf "✓ %s\n" desc
+          else (
+            let show = function
+              | None -> "None"
+              | Some tags -> "[" ^ String.concat ", " tags ^ "]"
+            in
+            Printf.printf "✗ %s: expected %s, got %s\n" desc
+              (show expected) (show actual);
+            exit 1)
+      | _ ->
+          Printf.printf "✗ %s: first decl is not a function\n" desc;
+          exit 1)
+  | Error diag ->
+      Printf.printf "✗ %s: parse failed\n" desc;
+      Printf.printf "%s\n" (Diagnostic.to_string diag);
+      exit 1
+
+let stage_requirement_to_string = function
+  | StageExact id -> Printf.sprintf "Exact:%s" id.name
+  | StageAtLeast id -> Printf.sprintf "AtLeast:%s" id.name
+
+let expect_fn_stage desc expected input =
+  match parse_string input with
+  | Ok cu -> (
+      match cu.decls with
+      | { decl_kind = FnDecl fn; _ } :: _ ->
+          let actual =
+            match fn.fn_effect_profile with
+            | None -> None
+            | Some info -> Option.map stage_requirement_to_string info.effect_stage
+          in
+          if actual = expected then Printf.printf "✓ %s\n" desc
+          else (
+            let show = function
+              | None -> "None"
+              | Some v -> v
+            in
+            Printf.printf "✗ %s: expected %s, got %s\n" desc
+              (show expected) (show actual);
+            exit 1)
+      | _ ->
+          Printf.printf "✗ %s: first decl is not a function\n" desc;
+          exit 1)
+  | Error diag ->
+      Printf.printf "✗ %s: parse failed\n" desc;
+      Printf.printf "%s\n" (Diagnostic.to_string diag);
+      exit 1
+
 let expect_effect_ops desc expected input =
   match parse_string input with
   | Ok cu -> (
@@ -153,6 +212,41 @@ let test_fn_decls () =
     "fn fact(n) { if n <= 1 then 1 else n * fact(n - 1) }";
   expect_ok "fn: generic params" "fn identity<T>(x: T) -> T = x";
   expect_ok "fn: default arg" "fn greet(name = \"World\") = name"
+
+(* ========== 効果注釈テスト ========== *)
+
+let test_effect_annotations () =
+  expect_fn_effects "fn: effect annotation with tags"
+    (Some [ "io"; "panic" ])
+    "fn write_log() !{ io, panic } = panic(\"log\")";
+  expect_fn_effects "fn: empty effect annotation" (Some [])
+    "fn noop() !{} = 0";
+  expect_fn_effects "fn: missing annotation" None "fn pure() = 1";
+  expect_fail "fn: unterminated effect list" "fn bad() !{ io, panic = 1";
+  expect_fn_stage "fn: requires_capability stage"
+    (Some "Exact:experimental")
+    "@requires_capability(\"experimental\")\nfn experimental_api() = 0";
+  expect_fn_stage "fn: dsl_export default stage"
+    (Some "AtLeast:stable")
+    "@dsl_export\nfn exported_api() = 0";
+  expect_fn_effects "fn: allows_effects attribute"
+    (Some [ "io"; "audit" ])
+    "@allows_effects(io, audit)\nfn attr_effect() = 0";
+  expect_fn_stage "fn: allows_effects stage default"
+    (Some "AtLeast:stable")
+    "@allows_effects(io)\nfn attr_stage() = 0";
+  expect_fn_effects "fn: handles attribute"
+    (Some [ "io"; "panic" ])
+    "@handles(io, panic)\nfn handle_attr() = 0";
+  expect_fn_effects "fn: effect annotation merged with attribute"
+    (Some [ "io"; "panic"; "audit" ])
+    "@allows_effects(audit)\nfn combined() !{ io, panic } = 0";
+  expect_fn_effects "fn: dsl_export named allows_effects"
+    (Some [ "io"; "audit" ])
+    "@dsl_export(allows_effects=[io, audit])\nfn export_named() = 0";
+  expect_fn_effects "fn: handles named argument"
+    (Some [ "panic" ])
+    "@handles(effect = \"panic\")\nfn handle_named() = 0"
 
 (* ========== 型宣言テスト ========== *)
 
@@ -475,6 +569,10 @@ let () =
 
   Printf.printf "Function Declarations:\n";
   test_fn_decls ();
+  Printf.printf "\n";
+
+  Printf.printf "Effect Annotations:\n";
+  test_effect_annotations ();
   Printf.printf "\n";
 
   Printf.printf "Type Declarations:\n";

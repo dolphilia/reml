@@ -26,6 +26,19 @@ let dummy_span = { start = 0; end_ = 0 }
 type ident = { name : string; span : span }
 (** 識別子 *)
 
+(** Stage 要件（AST段階・parser版） *)
+type stage_requirement_annot =
+  | StageExact of ident
+  | StageAtLeast of ident
+
+(** EffectProfileNode — docs/effect-system-design-note.md §2 を参照 *)
+type effect_profile_node = {
+  effect_declared : ident list;  (** 明示された効果タグ集合（順序保持） *)
+  effect_residual : ident list;  (** AST段階では declared と同一で初期化 *)
+  effect_stage : stage_requirement_annot option;  (** StageRequirement (未確定可) *)
+  effect_span : span;  (** 宣言位置 *)
+}
+
 (** モジュールパス *)
 type module_path =
   | Root of ident list  (** ::Core.Parse *)
@@ -185,7 +198,7 @@ and fn_decl = {
   fn_params : param list;
   fn_ret_type : type_annot option;
   fn_where_clause : constraint_ list;
-  fn_effect_annot : ident list option;  (** !{io, mut} *)
+  fn_effect_profile : effect_profile_node option;
   fn_body : fn_body;
 }
 
@@ -308,7 +321,7 @@ and fn_signature = {
   sig_args : param list;
   sig_ret : type_annot option;
   sig_where : constraint_ list;
-  sig_effects : ident list option;
+  sig_effect_profile : effect_profile_node option;
 }
 
 (* ========== use 宣言 ========== *)

@@ -263,6 +263,8 @@ let () =
                           expected_summary = None;
                           notes = [];
                           fixits = [];
+                          extensions = Diagnostic.Extensions.empty;
+                          audit_metadata = Diagnostic.Extensions.empty;
                         }
                     in
                     print_diagnostic opts (Some source) diag;
@@ -289,6 +291,8 @@ let () =
                           expected_summary = None;
                           notes = [];
                           fixits = [];
+                          extensions = Diagnostic.Extensions.empty;
+                          audit_metadata = Diagnostic.Extensions.empty;
                         }
                     in
                     print_diagnostic opts None diag;

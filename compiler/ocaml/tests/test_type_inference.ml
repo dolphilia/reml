@@ -665,7 +665,7 @@ let test_function_declarations () =
                       ty_span = dummy_span;
                     };
                 fn_where_clause = [];
-                fn_effect_annot = None;
+                fn_effect_profile = None;
                 fn_body = FnExpr add_expr;
               };
           decl_span = dummy_span;
@@ -733,7 +733,7 @@ let test_function_declarations () =
                   ];
                 fn_ret_type = None;
                 fn_where_clause = [];
-                fn_effect_annot = None;
+                fn_effect_profile = None;
                 fn_body = FnExpr add_expr;
               };
           decl_span = dummy_span;
@@ -787,7 +787,7 @@ let test_function_declarations () =
                   ];
                 fn_ret_type = None;
                 fn_where_clause = [];
-                fn_effect_annot = None;
+                fn_effect_profile = None;
                 fn_body =
                   FnExpr
                     {
@@ -829,7 +829,7 @@ let test_function_declarations () =
                       ty_span = dummy_span;
                     };
                 fn_where_clause = [];
-                fn_effect_annot = None;
+                fn_effect_profile = None;
                 fn_body =
                   FnBlock
                     [
@@ -966,7 +966,7 @@ let test_function_declarations () =
                       ty_span = dummy_span;
                     };
                 fn_where_clause = [];
-                fn_effect_annot = None;
+                fn_effect_profile = None;
                 fn_body = FnExpr fact_body;
               };
           decl_span = dummy_span;
@@ -1002,7 +1002,7 @@ let test_function_declarations () =
                       ty_span = dummy_span;
                     };
                 fn_where_clause = [];
-                fn_effect_annot = None;
+                fn_effect_profile = None;
                 fn_body =
                   FnBlock
                     [

@@ -24,6 +24,197 @@ let tuple_index_from_literal (value, base) =
 let make_qualified_ident parts span =
   make_ident (String.concat "." parts) span
 
+let make_stage_ident span name =
+  let normalized = String.lowercase_ascii (String.trim name) in
+  make_ident normalized span
+
+let make_effect_ident span name =
+  let trimmed =
+    name |> String.trim |> String.lowercase_ascii
+  in
+  make_ident trimmed span
+
+let stage_ident_from_expr expr =
+  match expr.expr_kind with
+  | Literal (String (value, _)) -> Some (make_stage_ident expr.expr_span value)
+  | Var id -> Some id
+  | ModulePath (_, id) -> Some id
+  | _ -> None
+
+let stage_requirement_from_attrs attrs =
+  let rec find = function
+    | [] -> None
+    | attr :: rest ->
+        let attr_name = String.lowercase_ascii attr.attr_name.name in
+        let take_stage constructor =
+          match List.filter_map stage_ident_from_expr attr.attr_args with
+          | stage_ident :: _ -> Some (constructor stage_ident, stage_ident.span)
+          | [] -> None
+        in
+        let result =
+          match attr_name with
+          | "requires_capability" | "requires_capability_exact" ->
+              take_stage (fun id -> StageExact id)
+          | "requires_capability_at_least" ->
+              take_stage (fun id -> StageAtLeast id)
+          | "experimental" | "beta" | "stable" ->
+              Some (StageExact attr.attr_name, attr.attr_span)
+          | _ -> None
+        in
+        (match result with Some _ -> result | None -> find rest)
+  in
+  match find attrs with
+  | Some _ as stage -> stage
+  | None ->
+      let default_attr =
+        List.find_opt
+          (fun attr ->
+            let name = String.lowercase_ascii attr.attr_name.name in
+            name = "dsl_export" || name = "allows_effects")
+          attrs
+      in
+      (match default_attr with
+      | Some attr ->
+          let stage_ident = make_stage_ident attr.attr_span "stable" in
+          Some (StageAtLeast stage_ident, attr.attr_span)
+      | None -> None)
+
+let default_effect_keys = [ "allows_effects"; "handles"; "effect"; "effects" ]
+
+let key_matches allowed key =
+  match allowed with
+  | None -> List.exists (String.equal key) default_effect_keys
+  | Some keys -> List.exists (String.equal key) keys
+
+let key_from_expr expr =
+  match expr.expr_kind with
+  | Var id -> Some (String.lowercase_ascii id.name)
+  | ModulePath (_, id) -> Some (String.lowercase_ascii id.name)
+  | _ -> None
+
+let rec collect_effect_tags_from_expr ?(allowed_keys : string list option = None) expr =
+  match expr.expr_kind with
+  | Literal (Array elements) ->
+      List.concat_map (collect_effect_tags_from_expr ~allowed_keys:None) elements
+  | Literal (Tuple elements) ->
+      List.concat_map (collect_effect_tags_from_expr ~allowed_keys:None) elements
+  | Literal (Record fields) ->
+      fields
+      |> List.fold_left
+           (fun acc (field_id, field_expr) ->
+             let key = String.lowercase_ascii field_id.name in
+             if key_matches allowed_keys key then
+               acc
+               @ collect_effect_tags_from_expr ~allowed_keys:None field_expr
+             else acc)
+           []
+  | Binary (Eq, lhs, rhs) -> (
+      match key_from_expr lhs with
+      | Some key when key_matches allowed_keys key ->
+          collect_effect_tags_from_expr ~allowed_keys:None rhs
+      | _ -> [] )
+  | Var id -> [make_effect_ident id.span id.name]
+  | ModulePath (_, id) -> [make_effect_ident id.span id.name]
+  | Literal (String (value, _)) ->
+      [make_effect_ident expr.expr_span value]
+  | Call (_, args) ->
+      List.concat_map
+        (function
+          | PosArg arg_expr ->
+              collect_effect_tags_from_expr ~allowed_keys:None arg_expr
+          | NamedArg (id, arg_expr) ->
+              let key = String.lowercase_ascii id.name in
+              if key_matches allowed_keys key then
+                collect_effect_tags_from_expr ~allowed_keys:None arg_expr
+              else [])
+        args
+  | _ -> []
+
+let collect_effect_tags_from_attrs attrs =
+  let collect_args_with (allowed_keys : string list option) args =
+    List.concat_map (collect_effect_tags_from_expr ~allowed_keys) args
+  in
+  let rec gather acc = function
+    | [] -> acc
+    | attr :: rest ->
+        let name = String.lowercase_ascii attr.attr_name.name in
+        let tags =
+          match name with
+          | "dsl_export" ->
+              collect_args_with (Some ["allows_effects"]) attr.attr_args
+          | "allows_effects" ->
+              collect_args_with None attr.attr_args
+          | "handles" ->
+              collect_args_with
+                (Some ["handles"; "effect"; "effects"])
+                attr.attr_args
+          | _ -> []
+        in
+        gather (acc @ tags) rest
+  in
+  gather [] attrs
+
+let merge_effect_tags existing tags =
+  List.fold_left
+    (fun acc tag ->
+      if List.exists (fun current -> String.equal current.name tag.name) acc
+      then acc
+      else acc @ [tag])
+    existing tags
+
+let default_attr_span attrs =
+  match attrs with
+  | attr :: _ -> attr.attr_span
+  | [] -> Ast.dummy_span
+
+let apply_stage_to_profile attrs existing =
+  let stage_info = stage_requirement_from_attrs attrs in
+  let effect_tags = collect_effect_tags_from_attrs attrs in
+  if stage_info = None && effect_tags = [] then existing
+  else
+    let stage_req, stage_span =
+      match stage_info with
+      | Some (req, span) -> (Some req, span)
+      | None -> (None, default_attr_span attrs)
+    in
+    let base =
+      match existing with
+      | Some info -> info
+      | None ->
+          {
+            effect_declared = [];
+            effect_residual = [];
+            effect_stage = None;
+            effect_span = stage_span;
+          }
+    in
+    let base =
+      match stage_req with
+      | Some req ->
+          { base with effect_stage = Some req; effect_span = stage_span }
+      | None -> { base with effect_span = stage_span }
+    in
+    let updated_declared =
+      merge_effect_tags base.effect_declared effect_tags
+    in
+    let updated_residual =
+      if base.effect_residual = [] || base.effect_residual = base.effect_declared
+      then updated_declared
+      else merge_effect_tags base.effect_residual effect_tags
+    in
+    Some
+      {
+        base with
+        effect_declared = updated_declared;
+        effect_residual = updated_residual;
+      }
+
+let apply_stage_to_fn attrs fn =
+  { fn with fn_effect_profile = apply_stage_to_profile attrs fn.fn_effect_profile }
+
+let apply_stage_to_signature attrs sig_ =
+  { sig_ with sig_effect_profile = apply_stage_to_profile attrs sig_.sig_effect_profile }
+
 %}
 
 (* トークン定義 *)
@@ -175,6 +366,11 @@ decl:
   | attrs = attribute_list; vis = visibility; kind = decl_kind
     {
       let span = make_span $startpos $endpos in
+      let kind =
+        match kind with
+        | FnDecl fn -> FnDecl (apply_stage_to_fn attrs fn)
+        | _ -> kind
+      in
       { decl_attrs = attrs; decl_vis = vis; decl_kind = kind; decl_span = span }
     }
 
@@ -213,7 +409,7 @@ decl_kind:
 fn_decl:
   | FN; name = ident; generics = generic_params_opt; params = fn_params;
     ret = return_type_opt; where_clause = where_clause_opt;
-    effects = effect_annot_opt; body = fn_body
+    effects = effect_profile_opt; body = fn_body
     {
       {
         fn_name = name;
@@ -221,7 +417,7 @@ fn_decl:
         fn_params = params;
         fn_ret_type = ret;
         fn_where_clause = where_clause;
-        fn_effect_annot = effects;
+        fn_effect_profile = effects;
         fn_body = body;
       }
     }
@@ -257,9 +453,23 @@ type_arg_list:
   | ty = type_annot { [ty] }
   | tys = type_arg_list; COMMA; ty = type_annot { tys @ [ty] }
 
-effect_annot_opt:
+effect_profile_opt:
   | (* empty *) { None }
-  | NOT; LBRACE; tags = effect_tag_list; RBRACE { Some tags }
+  | NOT; LBRACE; tags = effect_tag_list_opt; RBRACE
+    {
+      let span = make_span $startpos $endpos in
+      Some
+        {
+          effect_declared = tags;
+          effect_residual = tags;
+          effect_stage = None;
+          effect_span = span;
+        }
+    }
+
+effect_tag_list_opt:
+  | (* empty *) { [] }
+  | tags = effect_tag_list { tags }
 
 effect_tag_list:
   | id = ident { [id] }
@@ -333,11 +543,17 @@ trait_item_list:
 
 trait_item:
   | attrs = attribute_list; sig_ = fn_signature_only; default = trait_default_opt
-    { { item_attrs = attrs; item_sig = sig_; item_default = default } }
+    {
+      {
+        item_attrs = attrs;
+        item_sig = apply_stage_to_signature attrs sig_;
+        item_default = default;
+      }
+    }
 
 fn_signature_only:
   | FN; name = ident; generics = generic_params_opt; params = fn_params;
-    ret = return_type_opt; where_clause = where_clause_opt; effects = effect_annot_opt
+    ret = return_type_opt; where_clause = where_clause_opt; effects = effect_profile_opt
     {
       {
         sig_name = name;
@@ -345,7 +561,7 @@ fn_signature_only:
         sig_args = params;
         sig_ret = ret;
         sig_where = where_clause;
-        sig_effects = effects;
+        sig_effect_profile = effects;
       }
     }
 
@@ -383,7 +599,7 @@ impl_item_list:
 
 impl_item:
   | attrs = attribute_list; fn = fn_decl
-    { ignore attrs; ImplFn fn }
+    { ImplFn (apply_stage_to_fn attrs fn) }
   | LET; pat = pattern; ty = type_annot_opt; EQ; e = expr
     { ImplLet (pat, ty, e) }
   | VAR; pat = pattern; ty = type_annot_opt; EQ; e = expr
@@ -409,7 +625,7 @@ extern_item_list:
 
 extern_item:
   | attrs = attribute_list; sig_ = fn_signature_only; SEMICOLON
-    { { extern_attrs = attrs; extern_sig = sig_ } }
+    { { extern_attrs = attrs; extern_sig = apply_stage_to_signature attrs sig_ } }
 
 (* ========== effect / handler 宣言 ========== *)
 

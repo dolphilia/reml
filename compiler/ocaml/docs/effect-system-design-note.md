@@ -95,6 +95,44 @@ type effect_profile = {
 
 > **メモ**: `Source_code.Span.t` は既存モジュールを流用予定。必要に応じて `EffectProfile` を AST/TAST/IR で分割する（AST では `stage_requirement` を `stage_requirement option` にして解析中の未確定状態を表す）。
 
+### 2.1 AST レベルの EffectProfileNode
+
+Parser ではタグ名を `Ast.ident` のまま保持し、解析段階の効果情報を以下の構造体に格納する：
+
+```ocaml
+(* compiler/ocaml/src/ast.ml *)
+type effect_profile_node = {
+  effect_declared : Ast.ident list;      (* !{ io, panic } など明示された集合 *)
+  effect_residual : Ast.ident list;      (* AST では declared と同一で初期化 *)
+  effect_stage : stage_requirement_annot option;  (* @requires_capability 等で解析 *)
+  effect_span : Ast.span;                (* 属性／注釈の位置情報 *)
+}
+```
+
+- `effect_declared` は宣言上のタグ順を保持し、後続フェーズで `EffectSet` へ変換する。
+- `effect_residual` は Typer での解析結果を反映しやすくするために確保しておき、Parser では `effect_declared` のコピーで初期化する。
+- `effect_stage` は `StageExact`/`StageAtLeast` 判定を `@requires_capability(stage=...)` などの属性から設定する。未注釈の場合は `None`。
+- Typer では `effect_profile_node` から `effect_profile` へ正規化し、`declared`/`residual` を `EffectSet` に変換する。
+- 属性からの推論ルール（第1段階）:
+  - `@requires_capability(...)` / `@requires_capability_exact(...)` は第1引数（文字列リテラルまたは識別子）を `StageExact` として解釈。
+  - `@requires_capability_at_least(...)` は `StageAtLeast` として扱う。
+  - `@dsl_export` や `@allows_effects` だけが存在し Stage 未指定の場合は、暗黙に `StageAtLeast("stable")` を設定する（将来的に属性引数で上書き可）。
+
+## 5. 進捗状況（2025-10-17 時点）
+
+### 完了した項目
+- `effect_profile_node` を AST に導入し、関数宣言・トレイトシグネチャ・extern 宣言で保持するように更新。
+- パーサで `@requires_capability`（`Exact`/`AtLeast`）と `@dsl_export` / `@allows_effects` 属性を解析し、`effect_stage` を補完。
+- パーサテストを拡充し、`Exact:experimental` と `AtLeast:stable` の既定挙動をゴールデン化。
+- 設計ノートに属性→Stage 変換ルールと AST レベルのデータ構造を追記。
+- `@allows_effects(...)` / `@handles(...)` 属性から効果タグ集合を抽出し、`!{ ... }` と併用した場合も順序を維持してマージするロジックを実装。
+
+### 残タスク / 次ステップ
+1. 属性値のバリデーション（未知タグ／未宣言キー）と診断出力を追加し、`effects.syntax.invalid_attribute` へ接続する。
+2. Typer 側で `effect_profile_node` を `effect_profile` に正規化し、Stage 検証と診断出力（`effects.contract.stage_mismatch` 等）へ接続。
+3. `EffectSet` 化した情報を Core IR / Runtime Capability 検査へ伝搬し、CI メトリクス（`collect-iterator-audit-metrics.py` 等）と連動させる。
+4. 追加仕様変更が発生した場合は `docs/spec/1-3-effects-safety.md`・`docs/spec/3-8-core-runtime-capability.md` の対応表を更新し、監査ログのキー整合を確認する。
+
 ## 3. モジュール別タスク（Phase 2-2）
 
 - **Parser (`parser.mly` / `ast.ml`)**
