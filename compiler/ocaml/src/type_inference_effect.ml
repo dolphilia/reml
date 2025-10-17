@@ -76,4 +76,4 @@ let resolve_function_profile ~(runtime_context : runtime_stage)
              ~required_stage:
                (stage_requirement_to_string profile.stage_requirement)
              ~actual_stage:(stage_id_to_string current_stage)
-             ~span:profile.source_span)
+             ~span:profile.source_span ~capability:capability_name)

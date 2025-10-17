@@ -31,6 +31,8 @@ let make_config ?effect_context () =
 
 let default_config = make_config ()
 
+let current_config : config ref = ref default_config
+
 (* ========== グローバル状態: impl レジストリ ========== *)
 
 (** impl 宣言のグローバルレジストリ
@@ -47,7 +49,8 @@ let global_impl_registry : Impl_registry.impl_registry ref =
 (** レジストリのリセット（テスト用） *)
 let reset_impl_registry () =
   global_impl_registry := Impl_registry.empty ();
-  Monomorph_registry.reset ()
+  Monomorph_registry.reset ();
+  reset_effect_constraints ()
 
 (** レジストリの取得 *)
 let get_impl_registry () = !global_impl_registry
@@ -1479,7 +1482,7 @@ and extract_function_args (ty : ty) : ty list * ty =
  * @param items impl itemのリスト
  * @return (型付きimpl item, 制約リスト)
  *)
-and infer_impl_items ?(ctx = initial_ctx) ~config (env : env)
+and infer_impl_items ?(ctx = initial_ctx) (env : env)
     (items : impl_item list) :
     (impl_item list * trait_constraint list, type_error) result =
   (* 各アイテムを順次推論し、制約を収集 *)
@@ -1501,7 +1504,7 @@ and infer_impl_items ?(ctx = initial_ctx) ~config (env : env)
                     decl_span = dummy_span;
                   }
                 in
-                infer_decl ~ctx ~config env dummy_decl
+                infer_decl ~ctx ~config:(!current_config) env dummy_decl
               in
               (* impl itemは元のASTを保持（後でLLVMコード生成で使用） *)
               Ok
@@ -1806,7 +1809,9 @@ and infer_stmt ?(ctx = initial_ctx) (env : env) (stmt : stmt)
        * 制約: 宣言の式から生成される制約を伝播
        *)
       let env' = apply_subst_env subst env in
-      let* tdecl, new_env, decl_constraints = infer_decl ~ctx ~config env' decl in
+      let* tdecl, new_env, decl_constraints =
+        infer_decl ~ctx ~config:(!current_config) env' decl
+      in
       Ok (TDeclStmt tdecl, new_env, subst, decl_constraints)
   | ExprStmt expr ->
       (* 式文: 式を推論（型環境は変更なし）
@@ -2062,6 +2067,7 @@ and infer_decl ?(ctx = initial_ctx) ~config (env : env) (decl : decl) :
           ~runtime_context:config.effect_context
           ~function_ident:fn.fn_name fn.fn_effect_profile
       in
+      record_effect_profile ~symbol:fn.fn_name.name effect_profile;
 
       (* 10b. 型付き関数宣言を構築 *)
       let tfn =
@@ -2136,7 +2142,7 @@ and infer_decl ?(ctx = initial_ctx) ~config (env : env) (decl : decl) :
 
       (* 5. 各impl itemを推論 *)
       let* _timpl_items, item_constraints =
-        infer_impl_items ~config env_with_generics impl.impl_items
+        infer_impl_items env_with_generics impl.impl_items
       in
 
       (* 6. メソッド実装情報を抽出 *)
@@ -2190,7 +2196,9 @@ and infer_decl ?(ctx = initial_ctx) ~config (env : env) (decl : decl) :
 let infer_compilation_unit ?(config = default_config) (cu : compilation_unit) :
     (typed_compilation_unit, type_error) result =
   (* 初期型環境を作成 *)
+  reset_effect_constraints ();
   Monomorph_registry.reset ();
+  current_config := config;
   let init_env = initial_env in
 
   (* 各宣言を順次推論し、型環境を更新

@@ -16,19 +16,19 @@
   token
   lexer
   parser
-  diagnostic
-  parser_driver
-  types
-  type_env
-  constraint
-  constraint_solver
-  impl_registry
-  effect_profile
-  type_error
-  typed_ast
-  runtime_capability_loader
-  type_inference_effect
-  type_inference)
+ diagnostic
+ parser_driver
+ types
+ type_env
+ constraint
+ effect_profile
+ constraint_solver
+ impl_registry
+ type_error
+ typed_ast
+ runtime_capability_resolver
+ type_inference_effect
+ type_inference)
  (libraries menhirLib yojson))
 
 (executable

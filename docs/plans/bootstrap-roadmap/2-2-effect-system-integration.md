@@ -25,19 +25,19 @@
 
 | 作業ブレークダウン | ステータス | 完了内容 | 次アクション |
 | --- | --- | --- | --- |
-| 1. 効果システム設計と仕様整理 | 🚧 進行中 | `Σ_core`/`Σ_system` 抽出ドラフトと StageRequirement 方針を整理済み | Capability Registry のプラットフォーム別差分と診断キー照合を確定 |
-| 2. Parser への効果注釈統合 | ✅ 完了 | `effect_profile_node` 導入、属性解析、ゴールデンテスト更新（詳しくは [effect-system-design-note.md](../../../compiler/ocaml/docs/effect-system-design-note.md) §5） | 行多相拡張検討（Phase 3） |
-| 3. Typer 統合と効果解析 | 🚧 進行中 | `effect_profile` 正規化ヘルパ (`type_inference_effect.ml`) を導入し、CLI/環境変数/JSON から Stage を注入。診断 `E7801` で `effect.stage.*` を出力 | `EffectSet` 伝播・残余効果検出の実装、型クラス辞書との統合テスト |
-| 4. RuntimeCapability チェック | ⏳ 未着手 | 要求仕様を整理 | `core_ir/effect.ml` からの StageRequirement 受け渡し実装、モック付きテスト |
-| 5. 診断システム強化 | ⏳ 未着手 | 診断キー定義の把握 | CLI/JSON ゴールデン追加、`Diagnostic.extensions["effect.stage.*"]` 出力実装 |
-| 6. テスト整備 | ⏳ 未着手 | Parser テストのみ更新済み | 効果/Stage/型クラス連携テスト、CI ジョブ追加 |
-| 7. ドキュメント更新と仕様同期 | 🚧 進行中 | 設計ノートと計画書に現状を反映 | `docs/spec/1-3-effects-safety.md` への差分反映、`0-3-audit-and-metrics.md` 追記 |
-| 8. 統合検証と Phase 3 準備 | ⏳ 未着手 | — | Typer 完了後に統合シナリオを設計し、Phase 3 引き継ぎ資料を起案 |
+| 1. 効果システム設計と仕様整理 | 🚧 進行中 | `Σ_core`/`Σ_system` ドラフト・StageRequirement 方針・ Capability Resolver の優先度整理 | プラットフォーム別 Capability 差分と診断キー照合を反映し、仕様差分を更新 |
+| 2. Parser への効果注釈統合 | ✅ 完了 | `effect_profile_node`、属性解析、AST ゴールデンを更新済み | 行多相（Phase 3）と属性バリデーションを Typer 側に接続 |
+| 3. Typer 統合と効果解析 | 🚧 進行中 | `type_inference_effect.ml` による Stage判定、`Constraint_solver.EffectConstraintTable` 実装、`tests/typeclass_effects` で辞書独立性を検証 | 残余効果診断、CLI ゴールデン、型クラス経路との統合テストを追加 |
+| 4. RuntimeCapability チェック | 🚧 進行中 | `RuntimeCapabilityResolver` で CLI/JSON/環境変数のステージ解決を実装 (`tooling/runtime/capabilities/default.json` 雛形含む) | IR メタデータとの突合・監査ログ出力・ランタイム検証を実装 |
+| 5. 診断システム強化 | 🚧 進行中 | `Type_error.effect_stage_mismatch_error` を拡張し Stage/Capability を出力 | 効果診断ゴールデン（JSON）追加、`effects.syntax.invalid_attribute`/`effects.contract.residual_leak` 実装 |
+| 6. テスト整備 | 🚧 進行中 | Parser テスト更新、`tests/typeclass_effects` 追加、`scripts/validate-runtime-capabilities.sh` 作成 | 効果診断ゴールデン、CI 連携（`iterator.stage.audit_pass_rate`）と統合テストを拡充 |
+| 7. ドキュメント更新と仕様同期 | 🚧 進行中 | 設計ノート・本計画書・`0-3-audit-and-metrics.md` §0.3.7 を更新 | 仕様 (`1-3`, `3-6`, `3-8`) とメトリクス表を段階的に同期、残タスクを明文化 |
+| 8. 統合検証と Phase 3 準備 | ⏳ 未着手 | — | Typer/Runtime 完了後の統合シナリオと Phase 3 引き継ぎ資料を設計 |
 
 ### 次のステップ（短期フォーカス）
-- Typer チームは `EffectSet` の伝播・残余検出を実装し、Stage 情報を IR/Runtime へ連携する。
-- `Constraint_solver` に効果制約テーブルを追加し、辞書経路との独立性を tests/typeclass_effects/… で回帰検証する。
-- RuntimeCapability JSON と CLI オプションの運用手順を `0-3-audit-and-metrics.md` に追記し、効果診断ゴールデンを整備する。
+- Typer で残余効果診断（`effects.contract.residual_leak`）と `effects.syntax.invalid_attribute` を実装し、`tests/typeclass_effects/` と CLI ゴールデンで回帰検証する。
+- Core IR と Runtime 間で Stage/Capability メタデータを突合し、監査ログ (`AuditEnvelope`) 出力と CI 指標 (`iterator.stage.audit_pass_rate`) に接続する。
+- RuntimeCapability JSON（`tooling/runtime/capabilities/*.json`）更新手順と検証スクリプトの運用を `0-3-audit-and-metrics.md` に追記し、効果診断ゴールデン（CLI/JSON）を整備する。
 
 ## 作業ブレークダウン
 
@@ -149,22 +149,21 @@
 **担当領域**: 型推論と効果検証
 
 3.1. **効果注釈の解析**
-- `compiler/ocaml/src/ast.ml` の `effect_profile_node` を [effect-system-design-note.md](../../../compiler/ocaml/docs/effect-system-design-note.md) で示した `EffectSet`/`effect_profile` へ正規化するヘルパを `type_inference_effect.ml`（新規）として切り出す。
-- `type_inference.ml` のシグネチャ生成段階で効果情報を読み取り、`Type_env.function_entry` に `effect_profile` を保持するフィールドを追加（技術的負債リスト H1「型マッピング TODO」解消を兼ねる）。
-- 呼び出しグラフに沿った効果伝播を `EffectSet.union` で実装し、`residual` の差分がゼロでない場合は `effects.contract.residual_leak` 診断を発火させる。
-- `compiler/ocaml/tests/test_type_errors.ml` に `effects.syntax.invalid_attribute`、`effects.contract.residual_leak` の期待診断を追加し、`test_parser.ml` と同じ属性ケースを共有する。
+- `compiler/ocaml/src/ast.ml` の `effect_profile_node` を [effect-system-design-note.md](../../../compiler/ocaml/docs/effect-system-design-note.md) に沿って `Effect_profile.profile` へ正規化済み（`type_inference_effect.ml`）。
+- `Constraint_solver.EffectConstraintTable` を介して関数シンボルと効果集合を記録済み。残余効果検出（`effects.contract.residual_leak`）と `effects.syntax.invalid_attribute` 診断を実装する。
+- `core_ir/desugar.ml` へ書き出した効果メタデータを利用し、`runtime/native` まで一貫して参照できるよう差分を検証する。
+- `compiler/ocaml/tests/test_type_errors.ml` と CLI ゴールデンで効果診断を固定化し、属性ケースを共有する。
 
 3.2. **Stage 要件の検証**
-- `compiler/ocaml/src/core_ir/effect.ml`（新規）に `stage_id` / `stage_requirement` / `satisfies_stage` を実装し、Typer では `StageRequirementResolver` モジュールとして `type_inference.ml` から参照する。
-- `EffectProfile.stage_requirement` が未設定の場合は属性規約に従い `AtLeast Stable` をデフォルト採用し、`@requires_capability_exact` 等で上書きされた値は SourceSpan 付きで `Diagnostic.extensions["effect.stage.annotation"]` に埋め込む。
-- `RuntimeCapability.Stage.t`（既存構造体）と `stage_requirement` を比較し、`Exact`/`AtLeast` 判定の両方を `effects.contract.stage_mismatch` と `effects.contract.stage_escalation_required` の 2 種類に分類して報告する。
-- `compiler/ocaml/tests/test_type_errors.ml` と `tooling/ci/collect-iterator-audit-metrics.py` を連携させ、Stage 判定結果が `iterator.stage.audit_pass_rate` に反映されることを CI で確認する。
+- `type_inference_effect.resolve_function_profile` で CLI/JSON/環境変数由来の Stage を解析し、`Type_error.effect_stage_mismatch_error` で `effect.stage.*` 診断を出力済み。
+- `RuntimeCapabilityResolver` の優先度（CLI > JSON > env）を仕様化し、Stage 判定結果を `Constraint_solver` の効果テーブルへ反映する。
+- 今後: IR メタデータと Runtime Capability を突合し、`effects.contract.stage_mismatch` / `effects.contract.stage_escalation_required` を分類する。
+- `tooling/ci/collect-iterator-audit-metrics.py` を拡張し、Stage 判定結果を `iterator.stage.audit_pass_rate` に反映させる。
 
 3.3. **型クラスとの整合**
-- `type_inference/typeclass_pipeline.ml`（Phase 2-1 で導入済み）へ効果引数の情報を渡すインターフェースを追加し、辞書生成フェーズでは効果タグを無視したまま型制約解決に集中できるようにする。
-- 効果集合と型クラス制約を同一ソルバで扱わないよう `Constraint_solver` に `effect_constraints` テーブルを新設し、辞書束縛の再構成時に `EffectSet` の包含チェックのみを行う。
-- `core_ir/desugar.ml` の辞書渡し経路と連携し、効果診断が辞書推論結果に影響しないことを `tests/typeclass_effects/`（新設）で回帰テスト化する。
-- Phase 2-1 ハンドオーバーで示された `--static-only` ベンチと同じ入力に対し、効果解析を有効化したままで辞書サイズ・IR 行数が変化しないことを `0-3-audit-and-metrics.md` に追記し、型クラスチームと共有する。
+- `Constraint_solver.EffectConstraintTable` で型クラス辞書と効果制約を分離済み。`tests/typeclass_effects/` で辞書解決との独立性を確認する。
+- 効果集合の包含チェック・残余効果診断を追加し、型クラス推論への副作用がないことを CLI ゴールデン（辞書モード／モノモルフィゼーション）で検証する。
+- `0-3-audit-and-metrics.md` に辞書サイズ・IR 行数の観測値を追記し、効果解析が辞書経路へ与える影響を可視化する。
 
 **成果物**: 効果解析ロジック、Stage 検証、統合 Typer
 
@@ -172,16 +171,17 @@
 **担当領域**: ランタイム検証
 
 4.1. **Capability テーブル埋め込み**
-- [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) の Stage テーブルを OCaml に写像
-- プラットフォーム別の Capability 定義
-- Stage 判定の共通モジュール実装
-- 動的 Stage 変更の検討（Phase 3 以降）
+- `RuntimeCapabilityResolver` で CLI/JSON/環境変数（`REMLC_EFFECT_STAGE`）を統合するロジックを実装済み。
+- `tooling/runtime/capabilities/default.json` と検証スクリプト (`scripts/validate-runtime-capabilities.sh`) を整備し、`stage` / `capabilities` / `overrides` フォーマットを確立。
+- プラットフォーム差分（Linux/Windows）の Capability 定義と Stage テーブルを `docs/spec/3-8-core-runtime-capability.md` と同期する。
+- 動的 Stage 変更や `Other` Capability 拡張は Phase 3 で検討。
 
 4.2. **Stage チェックロジック**
 - コンパイル時の Stage 検証
 - ランタイム Capability の照合（将来拡張用）
 - Stage ミスマッチの詳細レポート（`Exact` / `AtLeast` の比較）
 - テスト用の Capability モック機構
+- CLI オプション `--effect-stage`（優先度: CLI > JSON > 環境変数）との統合順序を定義し、`RuntimeCapabilityResolver` が複数入力源から Stage を決定するルールを仕様化
 
 4.3. **プラットフォーム対応**
 - Linux/Windows の Capability 差異の吸収
@@ -195,10 +195,9 @@
 **担当領域**: エラー報告
 
 5.1. **効果診断の実装**
-- `Diagnostic.extensions` に `effect.stage.*` を追加
-- Stage ミスマッチの詳細メッセージ
-- 効果タグの不一致エラー
-- 候補 Stage の提示（`Exact`/`AtLeast` の結果を列挙）
+- `Type_error.effect_stage_mismatch_error` を拡張し、`effect.stage.required` / `effect.stage.actual` / `effect.stage.capability` を JSON に出力済み。
+- 残余効果診断・未知タグ検知 (`effects.contract.residual_leak`, `effects.syntax.invalid_attribute`) を追加し、`compiler/ocaml/tests/golden/diagnostics/effects/*.golden` で固定化する。
+- 効果タグの不一致／候補 Stage の提示を `Diagnostic.extensions` に揃え、監査キーと整合させる。
 
 5.2. **CLI 出力統合**
 - 効果情報の CLI 表示
@@ -222,12 +221,14 @@
 - 異常系: Stage ミスマッチ、不正な効果指定
 - 複合系: 型クラス + 効果の組み合わせ
 - `tests/effects/` ディレクトリの新設
+- 型クラス統合向けに `tests/typeclass_effects/` を併設し、辞書モードとモノモルフィゼーション PoC の双方で同一効果診断が得られることを比較するスナップショットを格納
 
 6.2. **Stage 検証テスト**
 - `Exact`, `AtLeast` の各要件テスト
 - プラットフォーム別の Capability テスト
 - ランタイム Stage の境界値テスト
 - ゴールデンテスト（診断出力）
+- CLI `--effect-stage` および `--runtime-capabilities` の組み合わせで Stage 決定フローが変化しないことを `compiler/ocaml/tests/golden/diagnostics/effects/stage-resolution.json.golden`（仮称）で検証
 
 6.3. **CI/CD 統合**
 - GitHub Actions に効果テストジョブ追加
@@ -256,6 +257,7 @@
 - `0-3-audit-and-metrics.md` に効果検証のオーバーヘッド記録
 - Stage チェックのコンパイル時間への影響測定
 - CI レポートの自動生成設定
+- `0-3-audit-and-metrics.md` §0.3.7 の RuntimeCapability 運用手順とゴールデン更新フローに沿って記録を追記し、CLI オプション優先度や JSON 差分が同期されているか確認
 
 **成果物**: 更新仕様書、Capability 文書、メトリクス
 

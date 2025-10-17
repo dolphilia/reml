@@ -254,8 +254,8 @@ let arity_mismatch_error ~expected ~actual span =
 let not_assignable_error span = NotAssignable { span }
 
 (** 効果 Stage ミスマッチのエラーを生成 *)
-let effect_stage_mismatch_error ?capability ~function_name ~required_stage
-    ~actual_stage ~span =
+let effect_stage_mismatch_error ~function_name ~required_stage ~actual_stage
+    ~span ~capability =
   EffectStageMismatch
     {
       required_stage;

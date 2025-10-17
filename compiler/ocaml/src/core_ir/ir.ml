@@ -436,7 +436,7 @@ let default_opt_flags =
   { allow_dce = true; allow_inline = true; preserve_for_diagnostics = false }
 
 (** 空の効果集合 *)
-let empty_effect_set = Effect.empty
+let empty_effect_set = Effect.empty_set
 
 (** 空のCapability集合 *)
 let empty_capability_set = { required = []; stage = None }

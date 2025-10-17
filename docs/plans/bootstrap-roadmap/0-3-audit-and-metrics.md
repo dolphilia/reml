@@ -104,6 +104,42 @@
 | `stage_mismatch_count` | 0件 | 0件 | ✅ 達成 |
 | テストカバレッジ | 100% | 95%以上 | ✅ 達成 |
 
+## 0.3.7 RuntimeCapability 運用と効果診断ゴールデン
+
+### JSON 管理手順
+- Capability Registry は `tooling/runtime/capabilities/` に配置する。デフォルト設定は `default.json`、プラットフォーム差分は `{platform}.json`（例: `linux.json`, `windows.json`）で管理し、コミット時に必ず本節へ変更履歴を追記する。
+- JSON フォーマット（暫定）は以下を必須キーとする。`stage` は `experimental` / `beta` / `stable` のいずれか、`capabilities` は `RuntimeCapability` 列挙子文字列、`overrides` はターゲットトリプル別の上書き設定。
+  ```json
+  {
+    "stage": "stable",
+    "capabilities": ["io", "panic", "runtime"],
+    "overrides": {
+      "x86_64-pc-windows-msvc": ["ffi", "process"]
+    }
+  }
+  ```
+- JSON の編集手順:
+  1. 変更箇所を `tooling/runtime/README.md`（Phase 2-2 で追加予定）に記録し、出典となる仕様 (`docs/spec/3-8-core-runtime-capability.md`) を併記する。
+  2. `scripts/validate-runtime-capabilities.sh`（新設予定）でスキーマ検証を行い、CI で `jq` 形式チェックを通過することを確認する。
+  3. 差分を `0-3.9 進捗ログ` に追記し、レビュアに確認を依頼する。
+
+### CLI オプション優先度と検証
+- Stage 解決は「CLI `--effect-stage` → JSON `--runtime-capabilities` → 環境変数 `REMLC_EFFECT_STAGE`」の優先順を採用し、`RuntimeCapabilityResolver`（Phase 2-2 で導入予定）で一元化する。
+- 動作確認フロー:
+  1. `remlc examples/effects/demo.reml --effect-stage beta --format=json` を実行し、`Diagnostic.extensions["effect.stage.required"]` が `beta` になることを確認。
+  2. 同一コマンドに `--runtime-capabilities tooling/runtime/capabilities/linux.json` を追加し、JSON の `stage` が採用されることを `effect.stage.actual` で確認。
+  3. どちらも指定せず `REMLC_EFFECT_STAGE=stable` を設定し、環境変数が採用されることを確認。
+- 上記 3 ケースの出力を `compiler/ocaml/tests/golden/diagnostics/effects/stage-resolution.json.golden`（新設）でスナップショット化し、`dune runtest compiler/ocaml/tests/test_diagnostics.ml` に統合する。
+
+### 効果診断ゴールデンの整備
+- ゴールデン配置: `compiler/ocaml/tests/golden/diagnostics/effects/`（`*.golden`）に JSON スナップショットを保存し、必須キー `effect.stage.required` / `effect.stage.actual` / `effect.stage.residual` / `effect.stage.source` を全て検証する。
+- 更新手順:
+  1. `remlc` を `--format=json --emit-diagnostics` モードで実行し、一時ファイルを生成。
+  2. `scripts/update-effects-golden.sh`（Phase 2-2 で追加予定）を用いて対象ゴールデンのみを上書きする。自動プロモートは使用しない。
+  3. 更新後に `tooling/ci/collect-iterator-audit-metrics.py` を実行し、`iterator.stage.audit_pass_rate` が 1.0 を維持していることを確認する。
+  4. 差分と検証結果を本節に追記し、Phase 2-2 の週次レビュー議事録と同期する。
+- ゴールデン差分がまだ確認されていない場合や Stage 検証が未完了の場合は、`0-4-risk-handling.md` に TODO を登録して Phase 2-2 の完了条件に含める。
+
 ## 0.3.8 LLVM ABI テスト統計（Phase 3 Week 15）
 
 ### 実装統計

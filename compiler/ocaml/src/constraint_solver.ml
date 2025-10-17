@@ -16,6 +16,112 @@
 
 open Types
 open Ast
+module Profile = Effect_profile
+
+(* ========== 効果制約テーブル ========== *)
+
+module EffectConstraintTable = struct
+  module StringMap = Map.Make (String)
+  module StringSet = Set.Make (String)
+
+  type entry = {
+    symbol : string;
+    effect_set : Profile.set;
+    stage_requirement : Profile.stage_requirement;
+    source_span : span;
+    source_name : string option;
+    resolved_stage : Profile.stage_id option;
+    resolved_capability : string option;
+  }
+
+  type t = entry StringMap.t
+
+  let empty () = StringMap.empty
+
+  let normalize_symbol symbol =
+    symbol |> String.trim |> String.lowercase_ascii
+
+  let add_entry table entry =
+    StringMap.add (normalize_symbol entry.symbol) entry table
+
+  let add_effects table ~symbol ~effect_set ~stage_requirement ~source_span
+      ?source_name ?resolved_stage ?resolved_capability () =
+    let entry =
+      {
+        symbol;
+        effect_set;
+        stage_requirement;
+        source_span;
+        source_name;
+        resolved_stage;
+        resolved_capability;
+      }
+    in
+    add_entry table entry
+
+  let add_profile table ~symbol (profile : Profile.profile) =
+    add_effects table ~symbol ~effect_set:profile.effect_set
+      ~stage_requirement:profile.stage_requirement
+      ~source_span:profile.source_span
+      ?source_name:profile.source_name ?resolved_stage:profile.resolved_stage
+      ?resolved_capability:profile.resolved_capability ()
+
+  let merge ~into ~from =
+    StringMap.union (fun _ _ rhs -> Some rhs) into from
+
+  let resolve table ~symbol =
+    StringMap.find_opt (normalize_symbol symbol) table
+
+  let effect_set table ~symbol =
+    resolve table ~symbol |> Option.map (fun entry -> entry.effect_set)
+
+  let names_of_tags tags =
+    List.fold_left
+      (fun acc tag ->
+        let name = tag.Profile.effect_name |> String.trim |> String.lowercase_ascii in
+        StringSet.add name acc)
+      StringSet.empty tags
+
+  let effect_names (set : Profile.set) =
+    let declared = names_of_tags set.Profile.declared in
+    let residual = names_of_tags set.Profile.residual in
+    StringSet.union declared residual
+
+  let includes ~super ~sub =
+    let super_names = effect_names super in
+    let sub_names = effect_names sub in
+    StringSet.for_all (fun name -> StringSet.mem name super_names) sub_names
+
+  let to_list table =
+    table |> StringMap.bindings |> List.map (fun (_, entry) -> entry)
+end
+
+let effect_constraints =
+  ref (EffectConstraintTable.empty ())
+
+let reset_effect_constraints () =
+  effect_constraints := EffectConstraintTable.empty ()
+
+let record_effect_profile ~symbol (profile : Profile.profile) =
+  effect_constraints :=
+    EffectConstraintTable.add_profile !effect_constraints ~symbol profile
+
+let record_effect_set ~symbol ~effect_set ~stage_requirement ~source_span
+    ?source_name () =
+  effect_constraints :=
+    EffectConstraintTable.add_effects !effect_constraints ~symbol ~effect_set
+      ~stage_requirement ~source_span ?source_name ()
+
+let resolve_effect_profile ~symbol =
+  EffectConstraintTable.resolve !effect_constraints ~symbol
+
+let effect_set_for ~symbol =
+  EffectConstraintTable.effect_set !effect_constraints ~symbol
+
+let current_effect_constraints () = !effect_constraints
+
+let effect_set_includes ~super ~sub =
+  EffectConstraintTable.includes ~super ~sub
 
 (* ========== 基本データ構造 ========== *)
 

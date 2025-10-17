@@ -91,9 +91,10 @@ let () =
   let collect_trace = opts.trace || opts.stats in
   let emit_trace_logs = opts.trace in
   let runtime_stage_context =
-    Runtime_capability_loader.resolve
+    Runtime_capability_resolver.resolve
       ~cli_override:opts.Cli.Options.effect_stage_override
       ~registry_path:opts.Cli.Options.runtime_capabilities_path
+      ~target:(Some opts.target)
   in
   let type_config =
     Type_inference.make_config ~effect_context:runtime_stage_context ()

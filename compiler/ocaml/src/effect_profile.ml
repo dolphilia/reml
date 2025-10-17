@@ -42,8 +42,8 @@ let stage_requirement_to_string = function
   | StageAtLeast stage -> "at_least:" ^ stage_id_to_string stage
 
 let stage_requirement_of_annot = function
-  | StageExact ident -> StageExact (stage_id_of_ident ident)
-  | StageAtLeast ident -> StageAtLeast (stage_id_of_ident ident)
+  | Ast.StageExact ident -> StageExact (stage_id_of_ident ident)
+  | Ast.StageAtLeast ident -> StageAtLeast (stage_id_of_ident ident)
 
 let compare_stage_id lhs rhs =
   let rank = function
@@ -128,7 +128,7 @@ let make_profile ?source_name ?resolved_stage ?resolved_capability
 
 let default_profile ?source_name ~span () =
   make_profile ?source_name ~stage_requirement:default_stage_requirement
-    ~effect_set:empty_set ~span () ~resolved_stage:None ~resolved_capability:None
+    ~effect_set:empty_set ~span ()
 
 let profile_of_ast ?source_name (node : effect_profile_node) =
   let declared = tags_of_idents node.effect_declared in
@@ -144,4 +144,4 @@ let profile_of_ast ?source_name (node : effect_profile_node) =
     | None -> default_stage_requirement
   in
   make_profile ?source_name ~stage_requirement ~effect_set
-    ~span:node.effect_span () ~resolved_stage:None ~resolved_capability:None
+    ~span:node.effect_span ()

@@ -12,84 +12,53 @@
 ## 2. 型定義ドラフト
 
 ```ocaml
-(* compiler/ocaml/src/core_ir/effect.ml （新規予定） *)
+(* compiler/ocaml/src/effect_profile.ml *)
 type stage_id =
   | Experimental
   | Beta
   | Stable
+  | Custom of string
 
 let compare_stage_id lhs rhs =
+  let rank = function
+    | Experimental -> 0
+    | Beta -> 1
+    | Stable -> 2
+    | Custom _ -> 3
+  in
   match (lhs, rhs) with
-  | Experimental, Experimental -> 0
-  | Experimental, _ -> -1
-  | Beta, Experimental -> 1
-  | Beta, Beta -> 0
-  | Beta, Stable -> -1
-  | Stable, Stable -> 0
-  | Stable, _ -> 1
+  | Custom a, Custom b ->
+      String.compare (String.lowercase_ascii a) (String.lowercase_ascii b)
+  | Custom _, _ -> 1
+  | _, Custom _ -> -1
+  | a, b -> compare (rank a) (rank b)
 
 type stage_requirement =
-  | Exact of stage_id
-  | AtLeast of stage_id
+  | StageExact of stage_id
+  | StageAtLeast of stage_id
 
 let satisfies_stage requirement actual =
   match requirement with
-  | Exact expected -> expected = actual
-  | AtLeast lower -> compare_stage_id lower actual <= 0
+  | StageExact expected -> compare_stage_id expected actual = 0
+  | StageAtLeast lower -> compare_stage_id lower actual <= 0
 
-module EffectTag = struct
-  type t =
-    | Mut
-    | Io
-    | Panic
-    | Unsafe
-    | Ffi
-    | Syscall
-    | Process
-    | Thread
-    | Memory
-    | Signal
-    | Hardware
-    | Realtime
-    | Audit
-    | Security
-    | Mem
-    | Debug
-    | Trace
-    | Unicode
-    | Time
-    | Runtime
+type effect_tag = {
+  effect_name : string;
+  effect_span : Ast.span;
+}
 
-  let to_string = function
-    | Mut -> "mut"
-    | Io -> "io"
-    | Panic -> "panic"
-    | Unsafe -> "unsafe"
-    | Ffi -> "ffi"
-    | Syscall -> "syscall"
-    | Process -> "process"
-    | Thread -> "thread"
-    | Memory -> "memory"
-    | Signal -> "signal"
-    | Hardware -> "hardware"
-    | Realtime -> "realtime"
-    | Audit -> "audit"
-    | Security -> "security"
-    | Mem -> "mem"
-    | Debug -> "debug"
-    | Trace -> "trace"
-    | Unicode -> "unicode"
-    | Time -> "time"
-    | Runtime -> "runtime"
-end
-
-module EffectSet = Set.Make (EffectTag)
+type effect_set = {
+  declared : effect_tag list;
+  residual : effect_tag list;
+}
 
 type effect_profile = {
-  declared : EffectSet.t;
-  residual : EffectSet.t;
+  effect_set : effect_set;
   stage_requirement : stage_requirement;
-  source_span : Source_code.Span.t;
+  source_span : Ast.span;
+  source_name : string option;
+  resolved_stage : stage_id option;
+  resolved_capability : string option;
 }
 ```
 
@@ -128,41 +97,40 @@ type effect_profile_node = {
 - `@allows_effects(...)` / `@handles(...)` 属性から効果タグ集合を抽出し、`!{ ... }` と併用した場合も順序を維持してマージするロジックを実装。
 
 ### 残タスク / 次ステップ
-1. 属性値のバリデーション（未知タグ／未宣言キー）と診断出力を追加し、`effects.syntax.invalid_attribute` へ接続する。
-2. Typer で `EffectSet` 伝播と残余効果検出（`effects.contract.residual_leak`）を実装し、`Type_env` への保持／Constraint Solver との整合テストを行う。
-3. Core IR 以降で `EffectSet` を受け取り、RuntimeCapability チェックと監査ログ（JSON）へ反映する。
-4. 追加仕様変更が発生した場合は `docs/spec/1-3-effects-safety.md`・`docs/spec/3-8-core-runtime-capability.md` の対応表を更新し、監査ログのキー整合を確認する。
+1. 属性値のバリデーション（未知タグ／未宣言キー）を実装し、`effects.syntax.invalid_attribute` 診断を追加する。
+2. `Constraint_solver.EffectConstraintTable` を用いた残余効果検出 (`effects.contract.residual_leak`) と型クラス辞書経路との整合テストを整備する。
+3. Core IR/Runtime 間の Stage 照合と監査ログ出力（`AuditEnvelope`）を実装し、Capability JSON との突合フローを確立する。
+4. 効果診断の CLI ゴールデンテストを追加し、`effects.contract.*` キーを JSON で固定する。
+5. `docs/spec/1-3-effects-safety.md` および `3-8-core-runtime-capability.md` の対応表を更新し、`0-3-audit-and-metrics.md` §0.3.7 に運用記録を追記する。
 
 ### 進行状況サマリー（2025-10-17）
 
 | 領域 | 状態 | 完了内容 | 次のステップ |
 | --- | --- | --- | --- |
-| Parser | ✅ 完了 | 効果属性の解析・`effect_profile_node` 導入・ゴールデンテスト更新 | 行多相拡張検討（Phase 3） |
-| Typer | 🚧 進行中 | `type_inference_effect.ml` / `effect_profile.ml` を導入し、CLI 経由で Stage 情報を注入可能にした。診断キー `E7801` で `effect.stage.*` を出力 | `EffectSet` 伝播と残余効果検出の実装、型クラス辞書との統合検証 |
-| Core IR | ⏳ 未着手 | 設計方針を確定（`EffectSet` 伝播、Stage メタデータ埋め込み） | `core_ir/effect.ml` 実装、`desugar`/`function` への反映 |
-| Runtime | ⏳ 未着手 | Capability Registry 連携要件を整理 | `verify_capability_stage` 連携と監査ログ出力を実装 |
-| Tooling / CI | ⏳ 未着手 | メトリクス突合フロー（iterator audit）と統合方針を再確認 | 効果診断ゴールデン、`iterator.stage.audit_pass_rate` への効果判定反映 |
+| Parser | ✅ 完了 | 効果属性解析・`effect_profile_node` 導入・ゴールデン更新済み | 行多相拡張検討（Phase 3） |
+| Typer | 🚧 進行中 | `type_inference_effect.ml` による Stage 判定・効果テーブル登録完了 | 残余効果診断／効果ゴールデン／辞書経路との統合テスト |
+| Core IR | ✅ 第1段階 | `desugar` が効果セットと Stage を IR メタデータへ反映 | 複数 Capability 対応・EffectMarker 連携 |
+| Runtime | ⏳ 未着手 | RuntimeCapabilityResolver で Stage コンテキスト取得 | Stage 検証・監査ログ出力・Capability JSON 突合 |
+| Tooling / CI | 🚧 進行中 | RuntimeCapability JSON 雛形・検証スクリプト、`tests/typeclass_effects` 追加 | 効果診断ゴールデン整備・CI 指標 (`iterator.stage.audit_pass_rate`) 拡張 |
 
 ## 3. モジュール別タスク（Phase 2-2）
 
 - **Parser (`parser.mly` / `ast.ml`)**
   - 効果注釈から `EffectTag.t` を構築し `EffectSet` へ格納。
   - `allows_effects` 属性を検出し `stage_requirement` の初期値を推定（`Exact Experimental` など）。
-- **Typer (`type_inference.ml`, `type_env.ml`, `type_inference_effect.ml`, `type_inference/typeclass_pipeline.ml`)**
-  - `effect_profile_node` を正規化して `Type_env.function_entry` に `effect_profile` を保持するフィールドを追加。
-  - `core_ir/effect.ml` で定義する `stage_requirement` 判定ヘルパを介して Capability Stage と比較し、`effects.contract.stage_mismatch` / `effects.contract.stage_escalation_required` / `effects.contract.residual_leak` を `Diagnostic.extensions["effect.stage.*"]` に出力。
-  - 型クラス辞書生成との独立性を維持しつつ、`typeclass_pipeline` へ効果情報を受け渡さないインターフェースを設計し、回帰テスト（`tests/typeclass_effects/`）で確認。
-- **Core IR (`core_ir/desugar.ml`, `core_ir/function.ml`, `core_ir/effect.ml`)**
-  - `EffectSet` を IR ノードに伝播。
-  - StageRequirement を `RuntimeCapability` チェックのメタデータへ埋め込み。
+- **Typer (`type_inference.ml`, `type_inference_effect.ml`)**
+  - 効果プロファイル正規化と Stage 判定 (`Type_inference_effect.resolve_function_profile`) は完了。
+  - `Constraint_solver.EffectConstraintTable` を利用した残余効果診断・辞書経路独立性テストと CLI ゴールデンの整備が未完。
+- **Core IR (`core_ir/desugar.ml`, `core_ir/ir.ml`)**
+  - 関数メタデータへの効果・Stage 反映を確認済み。複数 Capability や `EffectMarker` への拡張を追加予定。
 - **Runtime (`runtime/native/...`)**
-  - StageRequirement を Capability Registry へ受け渡し、`verify_capability_stage` 結果を診断へ反映。
-- **Tooling/CI (`tooling/ci/collect-iterator-audit-metrics.py`, `tooling/ci/sync-iterator-audit.sh`, 新規効果テスト)**
-  - 監査メトリクスに `effect_profile` の Stage 評価結果を追加し、`iterator.stage.audit_pass_rate` に Typer 側の判定結果を突合。
-  - 効果診断のゴールデンテスト（CLI/JSON）を追加し、`effects.contract.*` のフィールド内容をスナップショットで固定。
+  - RuntimeCapabilityResolver で Stage コンテキストは取得可能。ランタイム側で Stage 検証・監査ログ出力を実装し、IR メタデータと突合する。
+- **Tooling/CI**
+  - RuntimeCapability JSON テンプレート (`tooling/runtime/capabilities/default.json`) と検証スクリプトは整備済み。効果診断ゴールデンと CI 集計 (`iterator.stage.audit_pass_rate`) の拡張を進める。
 
 ## 4. フォローアップ
 
-- Stage と効果タグの見直しは `docs/plans/bootstrap-roadmap/2-2-effect-system-integration.md` §1.1 のドラフト表を確定させた後、`0-3-audit-and-metrics.md` に測定結果を転記する。
-- 行多相（Effect Polymorphism）の拡張は Phase 3 以降に再検討。`EffectTag` の列挙はプラグイン拡張を想定して `Other of string` を追加する案も検証する。
-- CI での Stage フラグ (`--deny experimental` など) を CLI オプションへつなぐため、`compiler/ocaml/src/cli/options.ml` に `stage_policy` パラメータを追加するタスクを別途登録する。
+- Stage / 効果タグの更新は `docs/plans/bootstrap-roadmap/2-2-effect-system-integration.md` §1.1 を同期し、`0-3-audit-and-metrics.md` §0.3.7 に運用記録を残す。
+- 行多相（Effect Polymorphism）拡張は Phase 3 以降に再検討。現在の文字列タグ表現を前提に、プラグイン拡張向けの柔軟な型設計を評価する。
+- CLI ポリシー (`--effect-stage`, `--runtime-capabilities`) を CI の Stage 制御（例: `--deny experimental`）と連携させる設計を `RuntimeCapabilityResolver` の設定として定義する。
+- 効果診断ゴールデン・Capability JSON を更新する際は `scripts/validate-runtime-capabilities.sh` で検証し、`0-3-audit-and-metrics.md` に変更履歴を追記する。

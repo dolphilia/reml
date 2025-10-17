@@ -131,6 +131,98 @@ type solver_state = {
       (** 解決失敗した制約のエラー情報 *)
 }
 
+(* ========== 効果制約テーブル ========== *)
+
+(** 効果制約テーブル
+ *
+ * 型推論段階で解析された効果プロファイルを記録し、Core IR・Runtime へ伝播する。
+ * `EffectConstraintTable` は純粋なマップ構造であり、型クラス辞書解決とは独立して管理される。
+ *)
+module EffectConstraintTable : sig
+  type entry = {
+    symbol : string;
+    effect_set : Effect_profile.set;
+    stage_requirement : Effect_profile.stage_requirement;
+    source_span : Ast.span;
+    source_name : string option;
+    resolved_stage : Effect_profile.stage_id option;
+    resolved_capability : string option;
+  }
+
+  type t
+
+  val empty : unit -> t
+
+  val add_effects :
+    t ->
+    symbol:string ->
+    effect_set:Effect_profile.set ->
+    stage_requirement:Effect_profile.stage_requirement ->
+    source_span:Ast.span ->
+    ?source_name:string ->
+    ?resolved_stage:Effect_profile.stage_id ->
+    ?resolved_capability:string ->
+    unit ->
+    t
+
+  val add_profile :
+    t ->
+    symbol:string ->
+    Effect_profile.profile ->
+    t
+
+  val merge : into:t -> from:t -> t
+
+  val resolve : t -> symbol:string -> entry option
+
+  val effect_set : t -> symbol:string -> Effect_profile.set option
+
+  val includes :
+    super:Effect_profile.set ->
+    sub:Effect_profile.set ->
+    bool
+
+  val to_list : t -> entry list
+end
+
+(** 効果制約テーブルを初期化する（テスト・新規コンパイル単位用） *)
+val reset_effect_constraints : unit -> unit
+
+(** 効果プロファイルを登録する（関数宣言など） *)
+val record_effect_profile :
+  symbol:string ->
+  Effect_profile.profile ->
+  unit
+
+(** 効果集合を直接登録する（診断・監査用のユーティリティ） *)
+val record_effect_set :
+  symbol:string ->
+  effect_set:Effect_profile.set ->
+  stage_requirement:Effect_profile.stage_requirement ->
+  source_span:Ast.span ->
+  ?source_name:string ->
+  unit ->
+  unit
+
+(** 登録済み効果プロファイルを取得する *)
+val resolve_effect_profile :
+  symbol:string ->
+  EffectConstraintTable.entry option
+
+(** 登録済み効果集合のみを取得する *)
+val effect_set_for :
+  symbol:string ->
+  Effect_profile.set option
+
+(** 現在の効果制約テーブルを取得する（読み取り専用） *)
+val current_effect_constraints : unit -> EffectConstraintTable.t
+
+(** 効果集合の包含関係を判定するユーティリティ *)
+val effect_set_includes :
+  super:Effect_profile.set ->
+  sub:Effect_profile.set ->
+  bool
+
 (* ========== 制約解決のメインAPI ========== *)
 
 (** 制約解決のメインエントリポイント

@@ -83,6 +83,10 @@ let actual_stage_of_kind = function
   | IteratorResultLike -> "beta"
   | IteratorCustom name -> "custom:" ^ name
 
+let effect_stage_requirement_to_ir = function
+  | Effect_profile.StageExact stage -> Ir.StageExact stage
+  | Effect_profile.StageAtLeast stage -> Ir.StageAtLeast stage
+
 (* ========== 変数スコープマップ ========== *)
 
 type var_scope_map = (string, var_id) Hashtbl.t
@@ -1511,7 +1515,34 @@ let desugar_fn_decl (decl : typed_decl) (fn_decl : typed_fn_decl) : function_def
   let entry_block =
     make_block "entry" [] [] (TermReturn body_expr) decl.tdecl_span
   in
-  let metadata = default_metadata decl.tdecl_span in
+  let base_metadata = default_metadata decl.tdecl_span in
+  let metadata =
+    match resolve_effect_profile ~symbol:fn_name with
+    | Some entry ->
+        let capability_stage =
+          Some (effect_stage_requirement_to_ir entry.stage_requirement)
+        in
+        let required_caps =
+          match entry.resolved_capability with
+          | Some name ->
+              [
+                {
+                  cap_name = name;
+                  cap_span = entry.source_span;
+                };
+              ]
+          | None -> base_metadata.capabilities.required
+        in
+        let capabilities =
+          { required = required_caps; stage = capability_stage }
+        in
+        {
+          base_metadata with
+          effects = entry.effect_set;
+          capabilities;
+        }
+    | None -> base_metadata
+  in
   make_function fn_name all_params return_ty [ entry_block ] metadata
 
 (** トップレベル宣言の変換 *)
