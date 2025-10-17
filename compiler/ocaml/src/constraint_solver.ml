@@ -33,6 +33,7 @@ module EffectConstraintTable = struct
     resolved_stage : Profile.stage_id option;
     resolved_capability : string option;
     stage_trace : Profile.stage_trace;
+    diagnostic_payload : Profile.effect_diagnostic_payload;
   }
 
   type t = entry StringMap.t
@@ -47,7 +48,8 @@ module EffectConstraintTable = struct
 
   let add_effects table ~symbol ~effect_set ~stage_requirement ~source_span
       ?source_name ?resolved_stage ?resolved_capability
-      ?(stage_trace = Profile.stage_trace_empty) () =
+      ?(stage_trace = Profile.stage_trace_empty)
+      ?(diagnostic_payload = Profile.empty_diagnostic_payload) () =
     let entry =
       {
         symbol;
@@ -58,6 +60,7 @@ module EffectConstraintTable = struct
         resolved_stage;
         resolved_capability;
         stage_trace;
+        diagnostic_payload;
       }
     in
     add_entry table entry
@@ -68,7 +71,8 @@ module EffectConstraintTable = struct
       ~source_span:profile.source_span
       ?source_name:profile.source_name ?resolved_stage:profile.resolved_stage
       ?resolved_capability:profile.resolved_capability
-      ~stage_trace:profile.stage_trace ()
+      ~stage_trace:profile.stage_trace
+      ~diagnostic_payload:profile.diagnostic_payload ()
 
   let merge ~into ~from =
     StringMap.union (fun _ _ rhs -> Some rhs) into from
@@ -111,10 +115,11 @@ let record_effect_profile ~symbol (profile : Profile.profile) =
     EffectConstraintTable.add_profile !effect_constraints ~symbol profile
 
 let record_effect_set ~symbol ~effect_set ~stage_requirement ~source_span
-    ?source_name () =
+    ?source_name ?(diagnostic_payload = Profile.empty_diagnostic_payload) () =
   effect_constraints :=
     EffectConstraintTable.add_effects !effect_constraints ~symbol ~effect_set
-      ~stage_requirement ~source_span ?source_name ()
+      ~stage_requirement ~source_span ?source_name
+      ~diagnostic_payload ()
 
 let resolve_effect_profile ~symbol =
   EffectConstraintTable.resolve !effect_constraints ~symbol

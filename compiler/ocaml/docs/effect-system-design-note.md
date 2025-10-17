@@ -151,21 +151,22 @@ type effect_profile_node = {
 - `scripts/validate-runtime-capabilities.sh` と `tooling/ci/sync-iterator-audit.sh` を再設計し、`reports/runtime-capabilities-validation.json`・`reports/iterator-stage-summary.md` に検証サマリーを出力する運用を確立。
 - 属性値バリデーションを Parser/Typer に組み込み、未知タグ・未宣言キー・不正 Stage 値を `effect_diagnostic_payload.invalid_attributes` に集約。Typer から `effects.syntax.invalid_attribute` を発行し、CLI JSON で `effects.diagnostic_payload` / 監査メタデータを出力するゴールデンを整備。
 - `Type_error.effect_invalid_attribute_error` を追加し、`Diagnostic.extensions.effect.*` / `effect.invalid_attributes` / 監査キーを一貫させた。
+- 残余効果検出 (`effects.contract.residual_leak`) を Typer で実装し、`Constraint_solver.EffectConstraintTable` に診断ペイロードを保持させることで宣言集合と残余集合の差分を追跡。`test_effect_residual.ml` と `tests/typeclass_effects/effectful_sum.reml` を用いた統合テストにより、辞書モード・モノモルフィゼーションモード双方で同一診断が得られることをゴールデン化した。
 
 ### 残タスク / 次ステップ
-1. `Constraint_solver.EffectConstraintTable` を用いた残余効果検出 (`effects.contract.residual_leak`) を生成し、辞書経路・モノモルフィゼーション両方で同一診断が得られるよう統合テストを追加する。
-2. Runtime 側（`runtime/native`）で Stage 照合イベントを `AuditEnvelope` として発火し、Typer が記録した `stage_trace` と照合結果を JSON Lines で永続化する。
-3. Parser で `@dsl_export(allows_effects=...)` / `@handles(effect=...)` といった named 引数を正式に受理できるよう構文規則を拡張し、現在 `expect_fail` として残しているテストを成功ケースへ更新する。
-4. `docs/spec/1-3-effects-safety.md` および `3-8-core-runtime-capability.md` の Stage 表・監査キー記述を、今回の実装内容（stage_trace と CI 連携）に合わせて改訂する。
-5. CI パイプラインへ `scripts/validate-runtime-capabilities.sh` / `tooling/ci/sync-iterator-audit.sh` を組み込み、Stage トレース差分検出でブロックするゲートを構築する。
-6. `effects.syntax.invalid_attribute` のケーススタディを増やし、`unknown_key` / `unknown_effect_tag` / `unsupported_stage_value` それぞれの補助メッセージを `docs/spec/3-6-core-diagnostics-audit.md` に反映する。
+1. Runtime 側（`runtime/native`）で Stage 照合イベントを `AuditEnvelope` として発火し、Typer が記録した `stage_trace` と照合結果を JSON Lines で永続化する。
+2. Parser で `@dsl_export(allows_effects=...)` / `@handles(effect=...)` といった named 引数を正式に受理できるよう構文規則を拡張し、現在 `expect_fail` として残しているテストを成功ケースへ更新する。
+3. `docs/spec/1-3-effects-safety.md` および `3-8-core-runtime-capability.md` の Stage 表・監査キー記述を、今回の実装内容（stage_trace と CI 連携）に合わせて改訂する。
+4. CI パイプラインへ `scripts/validate-runtime-capabilities.sh` / `tooling/ci/sync-iterator-audit.sh` を組み込み、Stage トレース差分検出でブロックするゲートを構築する。
+5. `effects.syntax.invalid_attribute` のケーススタディを増やし、`unknown_key` / `unknown_effect_tag` / `unsupported_stage_value` それぞれの補助メッセージを `docs/spec/3-6-core-diagnostics-audit.md` に反映する。
+6. 残余効果診断で採取したメトリクス（欠落タグ数・追加された `stage_trace` ステップ数）を `0-3-audit-and-metrics.md` §0.3.7 に追記し、辞書モード／モノモルフィゼーション経路ごとの差分を継続監視する。
 
-### 進行状況サマリー（2025-10-18）
+### 進行状況サマリー（2025-10-21）
 
 | 領域 | 状態 | 完了内容 | 次のステップ |
 | --- | --- | --- | --- |
 | Parser | ✅ 完了 | 効果属性解析・`effect_profile_node` 導入・ゴールデン更新済み | 行多相拡張検討（Phase 3）、named 引数対応 |
-| Typer | 🚧 進行中 | Stage トレースを含む `effect_profile` 正規化・`effects.syntax.invalid_attribute` 診断出力を実装し、CLI ゴールデンで固定化 | 残余効果診断 (`effects.contract.residual_leak`) と Stage/Capability 監査連携の拡充 |
+| Typer | ✅ 第2段階 | Stage トレース付き `effect_profile` 正規化、`effects.syntax.invalid_attribute`・`effects.contract.residual_leak` 診断を実装し、辞書/モノモルフィゼーション両経路のゴールデンを固定化 | Runtime 監査連携・Stage トレース差分の永続化、CI メトリクス出力の統合 |
 | Core IR | ✅ 第1段階 | `desugar` が効果セットと Stage を IR メタデータへ反映 | 複数 Capability 対応・EffectMarker 連携 |
 | Runtime | 🚧 進行中 | `RuntimeCapabilityResolver` で Stage トレースを構築 | Runtime 監査イベントと Stage 照合の実装・JSON Lines 化 |
 | Tooling / CI | 🚧 進行中 | Stage トレース検証スクリプト・ゴールデン更新・`reports/` 出力を整備 | CI への組み込みと自動ゲート化 (`iterator.stage.audit_pass_rate`) |
@@ -177,8 +178,8 @@ type effect_profile_node = {
   - `allows_effects` 属性を検出し `stage_requirement` の初期値を推定（`Exact Experimental` など）。
 - **Typer (`type_inference.ml`, `type_inference_effect.ml`)**
   - 効果プロファイル正規化と Stage 判定 (`Type_inference_effect.resolve_function_profile`) は完了。
-  - `Constraint_solver.EffectConstraintTable` を利用した残余効果診断・辞書経路独立性テストと CLI ゴールデンの整備が未完。
-  - `effect_profile.stage_trace` を初期化し、未知属性・残余効果に対応する `effect_diagnostic_payload` を埋めて `Diagnostic.extensions` へ転写する。
+  - `Constraint_solver.EffectConstraintTable` に診断ペイロードを保持し、残余効果診断 (`effects.contract.residual_leak`) を生成。辞書/モノモルフィゼーション両経路の CLI ゴールデンを共有化。
+  - 今後は Runtime / 監査フローへ `stage_trace` と残余効果情報を転記し、`AuditEnvelope` との整合を確認する。
 - **Core IR (`core_ir/desugar.ml`, `core_ir/ir.ml`)**
   - 関数メタデータへの効果・Stage 反映を確認済み。複数 Capability や `EffectMarker` への拡張を追加予定。
 - **Runtime (`runtime/native/...`)**
@@ -186,7 +187,7 @@ type effect_profile_node = {
   - Typer が付与した `stage_trace` に Runtime 判定と Capability JSON 情報を追記し、`AuditEnvelope.metadata.stage_trace` に反映する。
 - **Tooling/CI**
   - RuntimeCapability JSON テンプレート (`tooling/runtime/capabilities/default.json`) と検証スクリプトは整備済み。効果診断ゴールデンと CI 集計 (`iterator.stage.audit_pass_rate`) の拡張を進める。
-  - `scripts/validate-runtime-capabilities.sh` と CLI `--emit-effects --format=json` を組み合わせ、Stage トレースを含むゴールデンファイルを更新する手順を `0-3-audit-and-metrics.md` と同期する。
+  - `scripts/validate-runtime-capabilities.sh` と CLI `--emit-effects --format=json` を組み合わせ、Stage トレースを含むゴールデンファイルを更新する手順を `0-3-audit-and-metrics.md` と同期する。`test_effect_residual.ml` を CI 対象に追加し、辞書モードとモノモルフィゼーションモードの出力差分を監視する。
 
 ## 4. フォローアップ
 
@@ -195,9 +196,12 @@ type effect_profile_node = {
 - CLI ポリシー (`--effect-stage`, `--runtime-capabilities`) を CI の Stage 制御（例: `--deny experimental`）と連携させる設計を `RuntimeCapabilityResolver` の設定として定義する。
 - 効果診断ゴールデン・Capability JSON を更新する際は `scripts/validate-runtime-capabilities.sh` で検証し、`0-3-audit-and-metrics.md` に変更履歴を追記する。
 
-## 5. 検証結果と成果物（2025-10-17 更新）
+## 5. 検証結果と成果物（2025-10-21 更新）
 
-- `dune runtest`（`compiler/ocaml/`）を実行し、Typer・Parser・CLI 診断テストを含む既存スイートの回帰がないことを確認。
+- `Constraint_solver.EffectConstraintTable` に `diagnostic_payload` を保持し、Typer で解析した残余効果差分を確定させた。`Type_error.effect_residual_leak_error` と `EffectResidualLeak` 診断を追加し、`effects.contract.residual_leak` の出力を CLI / 監査経路に整合。
+- 残余効果検出時は宣言集合と残余集合の差分を JSON 拡張・監査メタデータへ出力し、Stage トレースは Typer → Runtime 経路を `append_runtime_stage_trace` で統合。
+- 統合テスト `compiler/ocaml/tests/test_effect_residual.ml` を追加し、`tests/typeclass_effects/effectful_sum.reml` のサンプルを用いて **辞書モード** (`--typeclass-mode=dictionary`) と **モノモルフィゼーションモード** (`--typeclass-mode=monomorph`) 双方で同一診断になることを固定化。ゴールデン `compiler/ocaml/tests/golden/diagnostics/effects/residual-leak.json.golden` を更新。
+- `dune runtest`（`compiler/ocaml/`）を実行し、残余効果テストを含むスイート全体が成功することを確認。
 - `scripts/validate-runtime-capabilities.sh tooling/runtime/capabilities/default.json` を実行し、Stage 集約結果を `reports/runtime-capabilities-validation.json` に保存。
 - `tooling/ci/sync-iterator-audit.sh --metrics tooling/ci/iterator-audit-metrics.json --verify-log /tmp/verify.log --audit compiler/ocaml/tests/golden/audit/effects-stage.json.golden` を実行し、`reports/iterator-stage-summary.md` に Stage トレース検証サマリーを生成。
 - 効果診断ゴールデン（`compiler/ocaml/tests/golden/diagnostics/effects/*.json.golden`）と監査ゴールデン（`compiler/ocaml/tests/golden/audit/effects-stage.json.golden`）を更新し、Stage トレース差分を CI で監視できる状態に整備。

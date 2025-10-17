@@ -1,3 +1,7 @@
-fn effectful_sum(xs: [i64]) !{ io } -> i64 {
+fn panic(msg: String) -> i64 {
   0
+}
+
+fn demo(xs: [i64]) !{ io } -> i64 {
+  panic("unexpected residual")
 }

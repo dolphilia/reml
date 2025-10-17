@@ -149,6 +149,7 @@ module EffectConstraintTable : sig
     resolved_stage : Effect_profile.stage_id option;
     resolved_capability : string option;
     stage_trace : Effect_profile.stage_trace;
+    diagnostic_payload : Effect_profile.effect_diagnostic_payload;
   }
 
   type t
@@ -165,6 +166,7 @@ module EffectConstraintTable : sig
     ?resolved_stage:Effect_profile.stage_id ->
     ?resolved_capability:string ->
     ?stage_trace:Effect_profile.stage_trace ->
+    ?diagnostic_payload:Effect_profile.effect_diagnostic_payload ->
     unit ->
     t
 
@@ -204,6 +206,7 @@ val record_effect_set :
   stage_requirement:Effect_profile.stage_requirement ->
   source_span:Ast.span ->
   ?source_name:string ->
+  ?diagnostic_payload:Effect_profile.effect_diagnostic_payload ->
   unit ->
   unit
 

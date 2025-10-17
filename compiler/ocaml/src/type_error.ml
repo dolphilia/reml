@@ -100,6 +100,11 @@ type type_error =
       profile : Effect_profile.profile;
       invalid_attribute : Effect_profile.invalid_attribute;
     }
+  | EffectResidualLeak of {
+      function_name : string option;
+      profile : Effect_profile.profile;
+      leaks : Effect_profile.residual_effect_leak list;
+    }
   | AmbiguousTraitImpl of {
       (* トレイト実装の曖昧性 *)
       trait_name : string;
@@ -221,6 +226,23 @@ let string_of_error = function
       in
       Printf.sprintf "Invalid effect attribute%s: %s" subject
         invalid_attribute.attribute_display
+  | EffectResidualLeak { profile; leaks; _ } ->
+      let subject =
+        match profile.Effect_profile.source_name with
+        | Some name -> Printf.sprintf " in '%s'" name
+        | None -> ""
+      in
+      let missing =
+        match leaks with
+        | [] -> "<none>"
+        | _ ->
+            leaks
+            |> List.map (fun leak -> leak.Effect_profile.leaked_tag.effect_name)
+            |> String.concat ", "
+      in
+      Printf.sprintf
+        "Residual effects%s are not declared: %s"
+        subject missing
   | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
@@ -289,6 +311,9 @@ let effect_invalid_attribute_error ~function_name ~profile ~invalid =
       profile;
       invalid_attribute = invalid;
     }
+
+let effect_residual_leak_error ~function_name ~profile ~leaks =
+  EffectResidualLeak { function_name; profile; leaks }
 
 let append_runtime_stage_trace ?capability stage_trace ~actual_stage =
   let has_runtime =
@@ -1008,6 +1033,165 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
               (stage_trace_to_json trace) diag
       in
       diag
+  | EffectResidualLeak { function_name; profile; leaks } ->
+      let message = "残余効果が閉じていません" in
+      let diag_span = span_to_diagnostic_span profile.source_span in
+      let leak_names =
+        List.map (fun leak -> leak.Effect_profile.leaked_tag.effect_name) leaks
+      in
+      let notes =
+        if leak_names = [] then
+          [
+            (None, "宣言された効果集合が残余集合を包含していません");
+          ]
+        else
+          List.map
+            (fun name ->
+              ( None,
+                Printf.sprintf
+                  "`%s` のハンドラが宣言されていないためステージ検証に失敗しました"
+                  name ))
+            leak_names
+      in
+      let diag =
+        make_type_error ~code:"effects.contract.residual_leak" ~message
+          ~span:diag_span ~notes ()
+      in
+      let declared_json =
+        `List
+          (List.map
+             (fun tag -> `String tag.Effect_profile.effect_name)
+             profile.effect_set.Effect_profile.declared)
+      in
+      let missing_json =
+        `List (List.map (fun name -> `String name) leak_names)
+      in
+      let leaked_from =
+        match function_name with
+        | Some name -> Printf.sprintf "fn %s" name
+        | None -> "fn <unknown>"
+      in
+      let residual_json =
+        `Assoc
+          [
+            ("missing", missing_json);
+            ("leaked_from", `String leaked_from);
+          ]
+      in
+      let required_stage =
+        stage_requirement_to_string profile.stage_requirement
+      in
+      let actual_stage_opt =
+        profile.resolved_stage |> Option.map stage_id_to_string
+      in
+      let capability_str =
+        match profile.resolved_capability with
+        | Some cap -> cap
+        | None -> ""
+      in
+      let stage_json =
+        `Assoc
+          [
+            ("required", `String required_stage);
+            ( "actual",
+              match actual_stage_opt with
+              | Some stage -> `String stage
+              | None -> `Null );
+          ]
+      in
+      let enriched_trace =
+        match actual_stage_opt with
+        | Some actual ->
+            let cap_opt =
+              if String.equal capability_str "" then None
+              else Some capability_str
+            in
+            append_runtime_stage_trace profile.stage_trace ~actual_stage:actual
+              ?capability:cap_opt
+        | None -> profile.stage_trace
+      in
+      let effects_fields =
+        [
+          ("declared", declared_json);
+          ("residual", residual_json);
+          ("stage", stage_json);
+        ]
+      in
+      let effects_fields =
+        if enriched_trace <> [] then
+          ("stage_trace", stage_trace_to_json enriched_trace)
+          :: effects_fields
+        else effects_fields
+      in
+      let diag =
+        Diagnostic.set_extension "effects"
+          (`Assoc (List.rev effects_fields))
+          diag
+      in
+      let diag =
+        Diagnostic.set_extension "effect.stage.required" (`String required_stage)
+          diag
+      in
+      let diag =
+        Diagnostic.set_extension "effect.stage.actual"
+          (match actual_stage_opt with
+          | Some stage -> `String stage
+          | None -> `Null)
+          diag
+      in
+      let diag =
+        Diagnostic.set_extension "effect.stage.capability"
+          (`String capability_str) diag
+      in
+      let diag =
+        if enriched_trace <> [] then
+          Diagnostic.set_extension "effect.stage_trace"
+            (stage_trace_to_json enriched_trace) diag
+        else diag
+      in
+      let diag =
+        Diagnostic.set_audit_metadata "effect.stage.required"
+          (`String required_stage) diag
+      in
+      let diag =
+        Diagnostic.set_audit_metadata "effect.stage.actual"
+          (match actual_stage_opt with
+          | Some stage -> `String stage
+          | None -> `Null)
+          diag
+      in
+      let diag =
+        Diagnostic.set_audit_metadata "effect.capability"
+          (`String capability_str) diag
+      in
+      let diag =
+        Diagnostic.set_audit_metadata "effect.residual.tags"
+          (`List (List.map (fun name -> `String name) leak_names))
+          diag
+      in
+      let audit_trace =
+        enriched_trace
+        |> List.filter (fun step ->
+               String.equal step.source "typer"
+               || String.equal step.source "runtime")
+        |> List.map (fun step ->
+               let fields =
+                 [
+                   ("source", `String step.source);
+                   ( "stage",
+                     match step.stage with
+                     | Some s -> `String s
+                     | None -> `Null );
+                 ]
+               in
+               `Assoc fields)
+      in
+      let diag =
+        if audit_trace <> [] then
+          Diagnostic.set_audit_metadata "stage_trace" (`List audit_trace) diag
+        else diag
+      in
+      diag
   | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
@@ -1435,6 +1619,7 @@ let to_diagnostic_with_source ?(available_names : string list = [])
       in
       diag
   | EffectInvalidAttribute _ as invalid -> to_diagnostic invalid
+  | EffectResidualLeak _ as leak -> to_diagnostic leak
   | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)

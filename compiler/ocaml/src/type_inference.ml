@@ -33,6 +33,171 @@ let default_config = make_config ()
 
 let current_config : config ref = ref default_config
 
+(* ========== 効果解析ヘルパー ========== *)
+
+module Effect_analysis = struct
+  open Effect_profile
+  module StringSet = Set.Make (String)
+
+  let normalize_effect_name name = String.lowercase_ascii (String.trim name)
+
+  let span_is_dummy (span : Ast.span) = span.start <= 0 && span.end_ <= 0
+
+  let add_tag tags name span =
+    let normalized = normalize_effect_name name in
+    if
+      List.exists
+        (fun (tag : Effect_profile.tag) ->
+          String.equal
+            (normalize_effect_name tag.effect_name)
+            normalized)
+        tags
+    then tags
+    else
+      tags @ [ { effect_name = name; effect_span = span } ]
+
+  let rec collect_expr tags (expr : typed_expr) =
+    match expr.texpr_kind with
+    | TLiteral _ -> tags
+    | TVar _ -> tags
+    | TModulePath _ -> tags
+    | TCall (fn_expr, args) ->
+        let tags = collect_expr tags fn_expr in
+        let tags = List.fold_left collect_arg tags args in
+        let callee_name =
+          match fn_expr.texpr_kind with
+          | TVar (id, _) -> Some id.name
+          | TModulePath (_, id) -> Some id.name
+          | _ -> None
+        in
+        let tags =
+          match callee_name with
+          | Some name when String.equal (normalize_effect_name name) "panic" ->
+              add_tag tags "panic" expr.texpr_span
+          | _ -> tags
+        in
+        tags
+    | TLambda (params, _, body) ->
+        let tags =
+          List.fold_left
+            (fun acc param ->
+              match param.tdefault with
+              | Some default -> collect_expr acc default
+              | None -> acc)
+            tags params
+        in
+        collect_expr tags body
+    | TPipe (lhs, rhs)
+    | TBinary (_, lhs, rhs) ->
+        collect_expr (collect_expr tags lhs) rhs
+    | TUnary (_, operand)
+    | TFieldAccess (operand, _)
+    | TTupleAccess (operand, _)
+    | TPropagate operand
+    | TUnsafe operand ->
+        collect_expr tags operand
+    | TIndex (lhs, rhs)
+    | TAssign (lhs, rhs) ->
+        collect_expr (collect_expr tags lhs) rhs
+    | TIf (cond, then_branch, else_branch) ->
+        let tags = collect_expr tags cond in
+        let tags = collect_expr tags then_branch in
+        (match else_branch with
+        | Some expr -> collect_expr tags expr
+        | None -> tags)
+    | TMatch (scrutinee, arms) ->
+        let tags = collect_expr tags scrutinee in
+        List.fold_left collect_match_arm tags arms
+    | TWhile (cond, body) ->
+        collect_expr (collect_expr tags cond) body
+    | TFor (_, iterable, body, _, _) ->
+        collect_expr (collect_expr tags iterable) body
+    | TLoop body -> collect_expr tags body
+    | TContinue -> tags
+    | TBlock stmts -> collect_block tags stmts
+    | TReturn expr_opt -> (
+        match expr_opt with
+        | None -> tags
+        | Some expr -> collect_expr tags expr)
+    | TDefer expr -> collect_expr tags expr
+  and collect_arg tags = function
+    | TPosArg expr -> collect_expr tags expr
+    | TNamedArg (_, expr) -> collect_expr tags expr
+  and collect_match_arm tags arm =
+    let tags =
+      match arm.tarm_guard with Some guard -> collect_expr tags guard | None -> tags
+    in
+    collect_expr tags arm.tarm_body
+  and collect_block tags stmts =
+    List.fold_left collect_stmt tags stmts
+  and collect_stmt tags = function
+    | TDeclStmt decl -> collect_decl tags decl
+    | TExprStmt expr -> collect_expr tags expr
+    | TAssignStmt (lhs, rhs) ->
+        collect_expr (collect_expr tags lhs) rhs
+    | TDeferStmt expr -> collect_expr tags expr
+  and collect_decl tags decl =
+    match decl.tdecl_kind with
+    | TLetDecl (_, expr)
+    | TVarDecl (_, expr) ->
+        collect_expr tags expr
+    | TFnDecl _ -> tags
+    | _ -> tags
+
+  let collect_from_fn_body (body : typed_fn_body) =
+    match body with
+    | TFnExpr expr -> collect_expr [] expr
+    | TFnBlock stmts -> collect_block [] stmts
+
+  let merge_usage_into_profile ~(fallback_span : Ast.span)
+      (profile : profile) (residual_tags : tag list)
+      =
+    let effect_set =
+      List.fold_left
+        (fun acc tag -> add_residual tag acc)
+        profile.effect_set residual_tags
+    in
+    let declared_names =
+      List.fold_left
+        (fun acc tag ->
+          StringSet.add
+            (normalize_effect_name tag.effect_name)
+            acc)
+        StringSet.empty effect_set.declared
+    in
+    let residual_leaks =
+      effect_set.residual
+      |> List.filter (fun tag ->
+             let name =
+               normalize_effect_name tag.effect_name
+             in
+             not (StringSet.mem name declared_names))
+      |> List.map (fun tag ->
+             let leak_origin =
+               if span_is_dummy tag.effect_span then fallback_span
+               else tag.effect_span
+             in
+             {
+               leaked_tag = { effect_name = tag.effect_name; effect_span = tag.effect_span };
+               leak_origin;
+             })
+    in
+    let diagnostic_payload =
+      {
+        invalid_attributes = profile.diagnostic_payload.invalid_attributes;
+        residual_leaks;
+      }
+    in
+    let profile =
+      {
+        profile with
+        effect_set;
+        diagnostic_payload;
+      }
+    in
+    (profile, residual_leaks)
+end
+
 (* ========== グローバル状態: impl レジストリ ========== *)
 
 (** impl 宣言のグローバルレジストリ
@@ -2067,10 +2232,18 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
       in
 
       (* 10a. 効果プロファイルを解析 *)
-      let* effect_profile =
+      let residual_tags =
+        Effect_analysis.collect_from_fn_body tbody
+      in
+      let* effect_profile_raw =
         Type_inference_effect.resolve_function_profile
           ~runtime_context:config.effect_context
           ~function_ident:fn.fn_name fn.fn_effect_profile
+      in
+      let effect_profile, _residual_leaks =
+        Effect_analysis.merge_usage_into_profile
+          ~fallback_span:effect_profile_raw.source_span
+          effect_profile_raw residual_tags
       in
       record_effect_profile ~symbol:fn.fn_name.name effect_profile;
 
@@ -2200,6 +2373,33 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
 (** コンパイル単位の型推論 *)
 let infer_compilation_unit ?(config = default_config) (cu : compilation_unit) :
     (typed_compilation_unit, type_error) result =
+  let detect_effect_residual_leak () =
+    let table = current_effect_constraints () in
+    let entries = EffectConstraintTable.to_list table in
+    let rec aux = function
+      | [] -> None
+      | entry :: rest ->
+        let leaks =
+          entry.Constraint_solver.EffectConstraintTable.diagnostic_payload
+            .Effect_profile.residual_leaks
+        in
+          if leaks <> [] then
+            let profile =
+              Effect_profile.make_profile
+                ?source_name:entry.source_name
+                ?resolved_stage:entry.resolved_stage
+                ?resolved_capability:entry.resolved_capability
+                ~stage_trace:entry.stage_trace
+                ~diagnostic_payload:
+                  entry.Constraint_solver.EffectConstraintTable.diagnostic_payload
+                ~stage_requirement:entry.stage_requirement
+                ~effect_set:entry.effect_set ~span:entry.source_span ()
+            in
+            Some (entry.symbol, profile, leaks)
+          else aux rest
+    in
+    aux entries
+  in
   (* 初期型環境を作成 *)
   reset_effect_constraints ();
   Monomorph_registry.reset ();
@@ -2221,13 +2421,23 @@ let infer_compilation_unit ?(config = default_config) (cu : compilation_unit) :
   in
 
   match infer_items init_env cu.decls [] with
-  | Ok (typed_items, _final_env) ->
-      Ok
-        {
-          tcu_module_header = cu.header;
-          tcu_use_decls = cu.uses;
-          tcu_items = typed_items;
-        }
+  | Ok (typed_items, _final_env) -> (
+      match detect_effect_residual_leak () with
+      | Some (symbol, profile, leaks) ->
+          let function_name =
+            match profile.Effect_profile.source_name with
+            | Some name -> Some name
+            | None -> Some symbol
+          in
+          Error
+            (Type_error.effect_residual_leak_error ~function_name ~profile ~leaks)
+      | None ->
+          Ok
+            {
+              tcu_module_header = cu.header;
+              tcu_use_decls = cu.uses;
+              tcu_items = typed_items;
+            })
   | Error err -> Error err
 
 (* ========== デバッグ用 ========== *)
