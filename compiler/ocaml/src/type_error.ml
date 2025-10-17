@@ -95,6 +95,11 @@ type type_error =
       capability : string option;
       stage_trace : stage_trace;
     }
+  | EffectInvalidAttribute of {
+      function_name : string option;
+      profile : Effect_profile.profile;
+      invalid_attribute : Effect_profile.invalid_attribute;
+    }
   | AmbiguousTraitImpl of {
       (* トレイト実装の曖昧性 *)
       trait_name : string;
@@ -208,6 +213,14 @@ let string_of_error = function
       Printf.sprintf
         "Effect stage mismatch%s at %d:%d\n  Required: %s\n  Actual:   %s"
         subject span.start span.end_ required_stage actual_stage
+  | EffectInvalidAttribute { function_name; invalid_attribute; _ } ->
+      let subject =
+        match function_name with
+        | Some name -> Printf.sprintf " in '%s'" name
+        | None -> ""
+      in
+      Printf.sprintf "Invalid effect attribute%s: %s" subject
+        invalid_attribute.attribute_display
   | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
@@ -267,6 +280,14 @@ let effect_stage_mismatch_error ~function_name ~required_stage ~actual_stage
       function_name = Some function_name;
       capability;
       stage_trace;
+    }
+
+let effect_invalid_attribute_error ~function_name ~profile ~invalid =
+  EffectInvalidAttribute
+    {
+      function_name = Some function_name;
+      profile;
+      invalid_attribute = invalid;
     }
 
 let append_runtime_stage_trace ?capability stage_trace ~actual_stage =
@@ -790,6 +811,203 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         | None -> diag
       in
       diag
+  | EffectInvalidAttribute { function_name; profile; invalid_attribute = invalid } ->
+      let attribute_display = invalid.attribute_display in
+      let message =
+        Printf.sprintf "効果属性 %s は無効です" attribute_display
+      in
+      let span = invalid.invalid_span in
+      let diag_span = span_to_diagnostic_span span in
+      let required_stage =
+        stage_requirement_to_string profile.stage_requirement
+      in
+      let actual_stage_opt =
+        match profile.resolved_stage with
+        | Some stage -> Some (stage_id_to_string stage)
+        | None -> None
+      in
+      let capability_name =
+        match profile.resolved_capability with
+        | Some cap -> cap
+        | None -> "runtime"
+      in
+      let expected_msg =
+        match invalid.reason with
+        | UnknownAttributeKey _ ->
+            "allows_effects / handles / effect / effects のいずれかのキーを指定してください"
+        | UnsupportedStageValue -> "stage は文字列または StageId"
+        | UnknownEffectTag -> "効果タグは識別子または文字列で指定してください"
+        | MissingStageValue -> "stage を指定してください"
+      in
+      let provided_display =
+        match invalid.provided_display with
+        | Some text -> text
+        | None -> (
+            match invalid.provided_json with
+            | Some json -> Json.to_string json
+            | None -> "<未指定>" )
+      in
+      let notes =
+        let base = [ (None, expected_msg) ] in
+        match invalid.reason with
+        | UnknownAttributeKey key ->
+            base
+            @ [
+                ( None,
+                  Printf.sprintf "未宣言キー '%s' は使用できません" key );
+              ]
+        | UnsupportedStageValue ->
+            base
+            @ [
+                ( None,
+                  Printf.sprintf "指定された値: %s" provided_display );
+              ]
+        | UnknownEffectTag ->
+            base
+            @ [
+                ( None,
+                  Printf.sprintf
+                    "指定された効果タグ: %s"
+                    provided_display );
+              ]
+        | MissingStageValue -> base
+      in
+      let diag =
+        make_type_error ~code:"effects.syntax.invalid_attribute" ~message
+          ~span:diag_span ~notes ()
+      in
+      let stage_json =
+        let base =
+          [
+            ("required", `String required_stage);
+            ( "actual",
+              match actual_stage_opt with
+              | Some stage -> `String stage
+              | None -> `Null );
+          ]
+        in
+        `Assoc base
+      in
+      let provided_field =
+        match (invalid.provided_json, invalid.provided_display) with
+        | Some json, _ -> json
+        | None, Some display -> `String display
+        | None, None -> `Null
+      in
+      let payload_json =
+        effect_diagnostic_payload_to_json profile.diagnostic_payload
+      in
+      let invalids_list_json =
+        `List
+          (List.map invalid_attribute_to_json
+             profile.diagnostic_payload.invalid_attributes)
+      in
+      let effects_fields =
+        [
+          ("attribute", `String attribute_display);
+          ("expected", `String expected_msg);
+          ("provided", provided_field);
+          ("stage", stage_json);
+          ("invalid_attributes", invalids_list_json);
+          ("diagnostic_payload", payload_json);
+        ]
+      in
+      let effects_fields =
+        match profile.stage_trace with
+        | [] -> effects_fields
+        | trace ->
+            ("stage_trace", stage_trace_to_json trace) :: effects_fields
+      in
+      let effects_fields =
+        match invalid.key with
+        | Some key -> ("key", `String key) :: effects_fields
+        | None -> effects_fields
+      in
+      let effects_fields =
+        match invalid.provided_display with
+        | Some display ->
+            ("provided_display", `String display) :: effects_fields
+        | None -> effects_fields
+      in
+      let diag =
+        Diagnostic.set_extension "effects"
+          (`Assoc (List.rev effects_fields))
+          diag
+      in
+      let diag =
+        Diagnostic.set_extension "effect.stage.required" (`String required_stage) diag
+      in
+      let diag =
+        Diagnostic.set_extension "effect.stage.actual"
+          (match actual_stage_opt with
+          | Some stage -> `String stage
+          | None -> `Null)
+          diag
+      in
+      let diag =
+        Diagnostic.set_extension "effect.stage.capability"
+          (`String capability_name) diag
+      in
+      let diag =
+        match function_name with
+        | Some name ->
+            Diagnostic.set_extension "effect.stage.subject" (`String name) diag
+        | None -> diag
+      in
+      let diag =
+        match profile.stage_trace with
+        | [] -> diag
+        | trace ->
+            Diagnostic.set_extension "effect.stage_trace"
+              (stage_trace_to_json trace) diag
+      in
+      let diag =
+        Diagnostic.set_extension "effect.invalid_attributes" invalids_list_json diag
+      in
+      let diag =
+        Diagnostic.set_audit_metadata "effect.stage.required"
+          (`String required_stage) diag
+      in
+      let diag =
+        Diagnostic.set_audit_metadata "effect.stage.actual"
+          (match actual_stage_opt with
+          | Some stage -> `String stage
+          | None -> `Null)
+          diag
+      in
+      let diag =
+        Diagnostic.set_audit_metadata "effect.capability" (`String capability_name) diag
+      in
+      let diag =
+        Diagnostic.set_audit_metadata "effect.attribute.invalid"
+          (match invalid.key with
+          | Some key -> `String key
+          | None -> `String "attribute")
+          diag
+      in
+      let location_label =
+        match function_name, profile.source_name with
+        | Some name, _ -> name
+        | None, Some source -> source
+        | None, None -> "<anonymous>"
+      in
+      let diag =
+        Diagnostic.set_audit_metadata "effect.attribute.location"
+          (`String location_label) diag
+      in
+      let diag =
+        Diagnostic.set_audit_metadata "effect.attribute.reason"
+          (`String (string_of_invalid_reason invalid.reason))
+          diag
+      in
+      let diag =
+        match profile.stage_trace with
+        | [] -> diag
+        | trace ->
+            Diagnostic.set_audit_metadata "stage_trace"
+              (stage_trace_to_json trace) diag
+      in
+      diag
   | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
@@ -1216,6 +1434,7 @@ let to_diagnostic_with_source ?(available_names : string list = [])
         | None -> diag
       in
       diag
+  | EffectInvalidAttribute _ as invalid -> to_diagnostic invalid
   | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)

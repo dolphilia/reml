@@ -1,0 +1,4 @@
+@allows_effects(true)
+fn demo() -> i64 {
+  0
+}

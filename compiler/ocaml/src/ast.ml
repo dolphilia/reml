@@ -31,14 +31,6 @@ type stage_requirement_annot =
   | StageExact of ident
   | StageAtLeast of ident
 
-(** EffectProfileNode — docs/effect-system-design-note.md §2 を参照 *)
-type effect_profile_node = {
-  effect_declared : ident list;  (** 明示された効果タグ集合（順序保持） *)
-  effect_residual : ident list;  (** AST段階では declared と同一で初期化 *)
-  effect_stage : stage_requirement_annot option;  (** StageRequirement (未確定可) *)
-  effect_span : span;  (** 宣言位置 *)
-}
-
 (** モジュールパス *)
 type module_path =
   | Root of ident list  (** ::Core.Parse *)
@@ -190,6 +182,27 @@ and decl_kind =
   | EffectDecl of effect_decl
   | HandlerDecl of handler_decl
   | ConductorDecl of conductor_decl
+
+and effect_invalid_attribute_reason =
+  | EffectAttrUnknownKey of ident
+  | EffectAttrUnsupportedStageValue of expr option
+  | EffectAttrUnknownEffectTag of expr
+  | EffectAttrMissingStageValue
+
+and effect_invalid_attribute = {
+  invalid_attribute : attribute;
+  invalid_reason : effect_invalid_attribute_reason;
+  invalid_span : span;
+}
+
+(** EffectProfileNode — docs/effect-system-design-note.md §2 を参照 *)
+and effect_profile_node = {
+  effect_declared : ident list;  (** 明示された効果タグ集合（順序保持） *)
+  effect_residual : ident list;  (** AST段階では declared と同一で初期化 *)
+  effect_stage : stage_requirement_annot option;  (** StageRequirement (未確定可) *)
+  effect_span : span;  (** 宣言位置 *)
+  effect_invalid_attributes : effect_invalid_attribute list;
+}
 
 (* 関数宣言 *)
 and fn_decl = {

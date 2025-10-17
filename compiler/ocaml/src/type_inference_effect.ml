@@ -107,6 +107,12 @@ let resolve_function_profile ~(runtime_context : runtime_stage)
           resolved_capability = capability_name;
         }
       in
+      (match profile.diagnostic_payload.invalid_attributes with
+      | invalid :: _ ->
+          Error
+            (Type_error.effect_invalid_attribute_error
+               ~function_name:function_ident.name ~profile ~invalid)
+      | [] ->
       if stage_requirement_satisfied profile.stage_requirement current_stage then
         Ok profile
       else
@@ -117,4 +123,4 @@ let resolve_function_profile ~(runtime_context : runtime_stage)
                (stage_requirement_to_string profile.stage_requirement)
              ~actual_stage:(stage_id_to_string current_stage)
              ~span:profile.source_span ~capability:capability_name
-             ~stage_trace:profile.stage_trace)
+             ~stage_trace:profile.stage_trace))

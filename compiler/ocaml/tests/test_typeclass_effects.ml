@@ -25,7 +25,7 @@ let () =
   in
   let profile =
     make_profile ~stage_requirement:(StageAtLeast Stable)
-      ~effect_set ~span () ~source_name:"effectful_sum"
+      ~effect_set ~span ~source_name:"effectful_sum" ()
   in
   record_effect_profile ~symbol:"effectful_sum" profile;
 

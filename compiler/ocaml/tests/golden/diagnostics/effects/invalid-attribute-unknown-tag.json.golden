@@ -5,9 +5,9 @@
         "effect.stage.required": "at_least:stable",
         "effect.stage.actual": "stable",
         "effect.capability": "runtime",
-        "effect.attribute.invalid": "stage",
+        "effect.attribute.invalid": "attribute",
         "effect.attribute.location": "demo",
-        "effect.attribute.reason": "unsupported_stage_value",
+        "effect.attribute.reason": "unknown_effect_tag",
         "stage_trace": [
           { "source": "cli_option", "note": "not provided" },
           { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
@@ -19,10 +19,10 @@
           "diagnostic_payload": {
             "invalid_attributes": [
               {
-                "attribute": "@requires_capability(true)",
-                "attribute_name": "requires_capability",
-                "reason": "unsupported_stage_value",
-                "key": "stage",
+                "attribute": "@allows_effects(true)",
+                "attribute_name": "allows_effects",
+                "reason": "unknown_effect_tag",
+                "key": null,
                 "provided": true,
                 "provided_display": "true"
               }
@@ -31,24 +31,23 @@
           },
           "invalid_attributes": [
             {
-              "attribute": "@requires_capability(true)",
-              "attribute_name": "requires_capability",
-              "reason": "unsupported_stage_value",
-              "key": "stage",
+              "attribute": "@allows_effects(true)",
+              "attribute_name": "allows_effects",
+              "reason": "unknown_effect_tag",
+              "key": null,
               "provided": true,
               "provided_display": "true"
             }
           ],
           "stage": { "required": "at_least:stable", "actual": "stable" },
           "provided": true,
-          "expected": "stage は文字列または StageId",
-          "attribute": "@requires_capability(true)",
+          "expected": "効果タグは識別子または文字列で指定してください",
+          "attribute": "@allows_effects(true)",
           "stage_trace": [
             { "source": "cli_option", "note": "not provided" },
             { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
             { "source": "typer", "stage": "stable" }
           ],
-          "key": "stage",
           "provided_display": "true"
         },
         "effect.stage.required": "at_least:stable",
@@ -62,28 +61,29 @@
         ],
         "effect.invalid_attributes": [
           {
-            "attribute": "@requires_capability(true)",
-            "attribute_name": "requires_capability",
-            "reason": "unsupported_stage_value",
-            "key": "stage",
+            "attribute": "@allows_effects(true)",
+            "attribute_name": "allows_effects",
+            "reason": "unknown_effect_tag",
+            "key": null,
             "provided": true,
             "provided_display": "true"
           }
         ]
       },
       "notes": [
-        "stage は文字列または StageId", "指定された値: true"
+        "効果タグは識別子または文字列で指定してください",
+        "指定された効果タグ: true"
       ],
       "domain": "型システム",
       "code": "effects.syntax.invalid_attribute",
       "severity": "error",
-      "message": "効果属性 @requires_capability(true) は無効です",
+      "message": "効果属性 @allows_effects(true) は無効です",
       "location": {
         "file": "<入力>",
         "line": 1,
-        "column": 22,
+        "column": 17,
         "endLine": 1,
-        "endColumn": 26
+        "endColumn": 21
       }
     }
   ]

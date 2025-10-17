@@ -1,0 +1,4 @@
+@requires_capability(true)
+fn demo() -> i64 {
+  0
+}
