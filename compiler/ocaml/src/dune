@@ -15,7 +15,7 @@
   ast_printer
   token
   lexer
-  parser
+ parser
  diagnostic
  parser_driver
  types
@@ -23,13 +23,14 @@
  constraint
  effect_profile
  constraint_solver
+ audit_envelope
  impl_registry
  type_error
  typed_ast
  runtime_capability_resolver
  type_inference_effect
  type_inference)
- (libraries menhirLib yojson))
+ (libraries menhirLib yojson unix))
 
 (executable
  (name main)

@@ -1,3 +1,170 @@
+module EffectTable = Constraint_solver.EffectConstraintTable
+
+let json_of_span (span : Ast.span) =
+  `Assoc [ ("start", `Int span.start); ("end", `Int span.end_) ]
+
+let json_of_tag tag =
+  `Assoc
+    [
+      ("name", `String tag.Effect_profile.effect_name);
+      ("span", json_of_span tag.effect_span);
+    ]
+
+let json_of_tag_list tags = `List (List.map json_of_tag tags)
+
+let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
+    ~resolved_stage ~resolved_capability ~effect_set ~stage_trace
+    ~diagnostic_payload extra_fields =
+  let symbol =
+    match symbol with Some name -> name | None -> "<anonymous>"
+  in
+  let stage_required =
+    Effect_profile.stage_requirement_to_string stage_requirement
+  in
+  let stage_actual =
+    match resolved_stage with
+    | Some stage -> `String (Effect_profile.stage_id_to_string stage)
+    | None -> `Null
+  in
+  let capability_json =
+    match resolved_capability with
+    | Some value when String.trim value <> "" -> `String value
+    | Some _ -> `Null
+    | None -> `Null
+  in
+  let diagnostic_json =
+    Effect_profile.effect_diagnostic_payload_to_json diagnostic_payload
+  in
+  let residual_leaks =
+    diagnostic_payload.Effect_profile.residual_leaks
+    |> List.map (fun leak ->
+           `String leak.Effect_profile.leaked_tag.effect_name)
+  in
+  let base_fields =
+    [
+      ("symbol", `String symbol);
+      ( "effect.source",
+        match source_name with Some name -> `String name | None -> `Null );
+      ("effect.source.span", json_of_span source_span);
+      ("effect.stage.required", `String stage_required);
+      ("effect.stage.actual", stage_actual);
+      ("effect.stage.capability", capability_json);
+      ( "effects.declared",
+        json_of_tag_list effect_set.Effect_profile.declared );
+      ("effects.residual", json_of_tag_list effect_set.residual);
+      ("effects.diagnostic_payload", diagnostic_json);
+      ( "effect.residual.leak_count",
+        `Int (List.length diagnostic_payload.residual_leaks) );
+    ]
+  in
+  let fields =
+    if residual_leaks = [] then base_fields
+    else ("effect.residual.missing", `List residual_leaks) :: base_fields
+  in
+  let fields =
+    if stage_trace = [] then fields
+    else
+      ("stage_trace", Effect_profile.stage_trace_to_json stage_trace)
+      :: fields
+  in
+  `Assoc (List.rev_append extra_fields fields)
+
+let event_of_effect_entry (entry : EffectTable.entry) =
+  let metadata =
+    metadata_for_effect
+      ~symbol:entry.symbol
+      ?source_name:entry.source_name
+      ~source_span:entry.source_span
+      ~stage_requirement:entry.stage_requirement
+      ~resolved_stage:entry.resolved_stage
+      ~resolved_capability:entry.resolved_capability
+      ~effect_set:entry.effect_set
+      ~stage_trace:entry.stage_trace
+      ~diagnostic_payload:entry.diagnostic_payload []
+  in
+  Audit_envelope.make ~category:"effect.stage" ~metadata ()
+
+let event_of_profile ?symbol (profile : Effect_profile.profile) =
+  let metadata =
+    metadata_for_effect ?symbol ?source_name:profile.source_name
+      ~source_span:profile.source_span
+      ~stage_requirement:profile.stage_requirement
+      ~resolved_stage:profile.resolved_stage
+      ~resolved_capability:profile.resolved_capability
+      ~effect_set:profile.effect_set
+      ~stage_trace:profile.stage_trace
+      ~diagnostic_payload:profile.diagnostic_payload
+      [ ("status", `String "error") ]
+  in
+  Audit_envelope.make ~category:"effect.stage.error" ~metadata ()
+
+let event_of_stage_mismatch ~function_name ~required_stage ~actual_stage
+    ~capability ~stage_trace =
+  let metadata =
+    [
+      ("symbol", `String function_name);
+      ("effect.stage.required", `String required_stage);
+      ("effect.stage.actual", `String actual_stage);
+      ( "effect.stage.capability",
+        match capability with Some cap -> `String cap | None -> `Null );
+      ("status", `String "error");
+    ]
+  in
+  let metadata =
+    if stage_trace = [] then metadata
+    else
+      ("stage_trace", Effect_profile.stage_trace_to_json stage_trace)
+      :: metadata
+  in
+  Audit_envelope.make ~category:"effect.stage.error"
+    ~metadata:(`Assoc (List.rev metadata)) ()
+
+let runtime_stage_event (context : Type_inference_effect.runtime_stage) =
+  let capabilities =
+    context.Type_inference_effect.capability_stages
+    |> List.map (fun (name, stage) ->
+           `Assoc
+             [
+               ("name", `String name);
+               ( "stage",
+                 `String (Effect_profile.stage_id_to_string stage) );
+             ])
+  in
+  let metadata =
+    [
+      ( "effect.stage.default",
+        `String (Effect_profile.stage_id_to_string context.default_stage) );
+      ("effect.stage.capabilities", `List capabilities);
+    ]
+  in
+  let metadata =
+    if context.stage_trace = [] then metadata
+    else
+      ("stage_trace", Effect_profile.stage_trace_to_json context.stage_trace)
+      :: metadata
+  in
+  Audit_envelope.make ~category:"effect.stage.runtime"
+    ~metadata:(`Assoc (List.rev metadata)) ()
+
+let events_from_effect_constraints () =
+  Constraint_solver.current_effect_constraints ()
+  |> EffectTable.to_list
+  |> List.map event_of_effect_entry
+
+let event_of_type_error err =
+  match err with
+  | Type_error.EffectResidualLeak { function_name; profile; _ } ->
+      Some (event_of_profile ?symbol:function_name profile)
+  | Type_error.EffectStageMismatch
+      { required_stage; actual_stage; function_name; capability; stage_trace; _ } ->
+      let symbol =
+        match function_name with Some name -> name | None -> "<anonymous>"
+      in
+      Some
+        (event_of_stage_mismatch ~function_name:symbol ~required_stage
+           ~actual_stage ~capability ~stage_trace)
+  | _ -> None
+
 (* Main — Reml コンパイラエントリーポイント (Phase 1-6)
  *
  * コマンドライン引数を解析し、パーサー、型推論、LLVM IR生成を実行する。
@@ -133,6 +300,15 @@ let () =
         | Ok tast ->
             (* Phase 1-6 Week 15: 型推論完了 *)
             record_end TypeChecking;
+
+            (match opts.Cli.Options.emit_audit_path with
+            | Some audit_path ->
+                let events =
+                  runtime_stage_event runtime_stage_context
+                  :: events_from_effect_constraints ()
+                in
+                Audit_envelope.append_events audit_path events
+            | None -> ());
 
             (* Phase 2: Typed AST 出力 *)
             (if opts.emit_tast then
@@ -336,6 +512,18 @@ let () =
                     ~collect_metrics:false))
         | Error type_err ->
             (* 型推論エラー *)
+            (match opts.Cli.Options.emit_audit_path with
+            | Some audit_path ->
+                let runtime_event = runtime_stage_event runtime_stage_context in
+                let constraint_events = events_from_effect_constraints () in
+                let events_with_error =
+                  match event_of_type_error type_err with
+                  | Some event -> event :: constraint_events
+                  | None -> constraint_events
+                in
+                Audit_envelope.append_events audit_path
+                  (runtime_event :: events_with_error)
+            | None -> ());
             let diag =
               Type_error.to_diagnostic_with_source source opts.input_file
                 type_err
@@ -384,6 +572,12 @@ let () =
       (* Phase 1-6 Week 15: パース失敗時はトレース終了 *)
       if collect_trace then
         Cli.Trace.end_phase ~emit_log:emit_trace_logs Parsing;
+
+      (match opts.Cli.Options.emit_audit_path with
+      | Some audit_path ->
+          Audit_envelope.append_events audit_path
+            [ runtime_stage_event runtime_stage_context ]
+      | None -> ());
 
       print_diagnostic opts (Some source) diag;
       exit 1

@@ -1,51 +1,25 @@
 {
   "diagnostics": [
     {
-      "code": "effects.contract.residual_leak",
-      "severity": "error",
-      "domain": "型システム",
-      "message": "残余効果が閉じていません",
-      "notes": [
-        "`panic` のハンドラが宣言されていないためステージ検証に失敗しました"
-      ],
-      "location": {
-        "file": "effectful_sum.reml",
-        "line": 1,
-        "column": 1,
-        "endLine": 1,
-        "endColumn": 1
+      "audit": {
+        "effect.stage.required": "stable",
+        "effect.stage.actual": "stable",
+        "effect.capability": "",
+        "effect.residual.tags": [ "panic" ],
+        "stage_trace": [
+          { "source": "typer", "stage": "stable" },
+          { "source": "runtime", "stage": "stable" }
+        ]
       },
       "extensions": {
         "effects": {
-          "declared": [
-            "io"
-          ],
-          "residual": {
-            "missing": [
-              "panic"
-            ],
-            "leaked_from": "fn demo"
-          },
-          "stage": {
-            "required": "stable",
-            "actual": "stable"
-          },
+          "stage": { "required": "stable", "actual": "stable" },
+          "residual": { "missing": [ "panic" ], "leaked_from": "fn demo" },
+          "declared": [ "io" ],
           "stage_trace": [
-            {
-              "source": "cli_option",
-              "stage": null,
-              "note": "not provided"
-            },
-            {
-              "source": "env_var",
-              "stage": null,
-              "note": "REMLC_EFFECT_STAGE not set"
-            },
-            {
-              "source": "typer",
-              "stage": "stable",
-              "capability": null
-            },
+            { "source": "cli_option", "note": "not provided" },
+            { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
+            { "source": "typer", "stage": "stable" },
             {
               "source": "runtime",
               "stage": "stable",
@@ -57,25 +31,39 @@
               "file": "tooling/runtime/capabilities/default.json"
             }
           ]
-        }
-      },
-      "audit": {
+        },
         "effect.stage.required": "stable",
         "effect.stage.actual": "stable",
-        "effect.capability": "",
-        "effect.residual.tags": [
-          "panic"
-        ],
-        "stage_trace": [
-          {
-            "source": "typer",
-            "stage": "stable"
-          },
+        "effect.stage.capability": "",
+        "effect.stage_trace": [
+          { "source": "cli_option", "note": "not provided" },
+          { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
+          { "source": "typer", "stage": "stable" },
           {
             "source": "runtime",
-            "stage": "stable"
+            "stage": "stable",
+            "capability": "core.runtime"
+          },
+          {
+            "source": "capability_json",
+            "stage": "stable",
+            "file": "tooling/runtime/capabilities/default.json"
           }
         ]
+      },
+      "notes": [
+        "`panic` のハンドラが宣言されていないためステージ検証に失敗しました"
+      ],
+      "domain": "型システム",
+      "code": "effects.contract.residual_leak",
+      "severity": "error",
+      "message": "残余効果が閉じていません",
+      "location": {
+        "file": "<入力>",
+        "line": 1,
+        "column": 1,
+        "endLine": 1,
+        "endColumn": 1
       }
     }
   ]

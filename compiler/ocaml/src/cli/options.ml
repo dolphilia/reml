@@ -70,6 +70,7 @@ let print_full_help () =
       "                       実行時 Stage を明示的に指定（例: experimental/beta/stable）";
       "  --runtime-capabilities <file>";
       "                       Runtime Capability Registry JSON を読み込み、Stage を解決";
+      "  --emit-audit <path>  効果 Stage 判定と残余効果の監査ログを JSON Lines で出力";
       "";
       "例:";
       "  remlc examples/cli/add.reml --emit-ir --trace";
@@ -108,6 +109,7 @@ type options = {
   link_runtime : bool;  (** ランタイムライブラリとリンクして実行可能ファイルを生成 *)
   runtime_path : string;  (** ランタイムライブラリのパス *)
   verify_ir : bool;  (** 生成された LLVM IR を検証 *)
+  emit_audit_path : string option;  (** 監査ログ（JSON Lines）出力先 *)
   (* 効果システム / Stage 制御 *)
   effect_stage_override : string option;  (** CLI で指定された Stage 名 *)
   runtime_capabilities_path : string option;  (** Capability Registry JSON のパス *)
@@ -136,6 +138,7 @@ let default_options =
     link_runtime = false;
     runtime_path = "runtime/native/build/libreml_runtime.a";
     verify_ir = false;
+    emit_audit_path = None;
     effect_stage_override = None;
     runtime_capabilities_path = None;
   }
@@ -191,6 +194,7 @@ let parse_args argv =
   let link_runtime = ref false in
   let runtime_path = ref "runtime/native/build/libreml_runtime.a" in
   let verify_ir = ref false in
+  let emit_audit = ref None in
   let typeclass_mode_str = ref "dictionary" in
   let input_file = ref "" in
   let effect_stage = ref None in
@@ -247,6 +251,9 @@ let parse_args argv =
       ( "--runtime-capabilities",
         Arg.String (fun value -> runtime_caps_path := Some value),
         "<file> Load Runtime Capability Registry from JSON file" );
+      ( "--emit-audit",
+        Arg.String (fun value -> emit_audit := Some value),
+        "<path> Emit AuditEnvelope JSON Lines to file" );
       ( "--version",
         Arg.Unit
           (fun () ->
@@ -359,6 +366,7 @@ let parse_args argv =
           link_runtime = !link_runtime;
           runtime_path = !runtime_path;
           verify_ir = !verify_ir;
+          emit_audit_path = !emit_audit;
           effect_stage_override = !effect_stage;
           runtime_capabilities_path = !runtime_caps_path;
         }

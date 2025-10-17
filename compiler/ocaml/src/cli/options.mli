@@ -46,6 +46,7 @@ type options = {
   link_runtime : bool;  (** ランタイムライブラリとリンクして実行可能ファイルを生成 *)
   runtime_path : string;  (** ランタイムライブラリのパス *)
   verify_ir : bool;  (** 生成された LLVM IR を検証 *)
+  emit_audit_path : string option;  (** 監査ログ（JSON Lines）出力先 *)
   effect_stage_override : string option;  (** CLI で指定された Stage 名 *)
   runtime_capabilities_path : string option;  (** Runtime Capability Registry JSON のパス *)
 }
