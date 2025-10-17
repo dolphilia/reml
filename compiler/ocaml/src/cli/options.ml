@@ -65,6 +65,12 @@ let print_full_help () =
        runtime/native/build/libreml_runtime.a）";
       "  --verify-ir         生成した LLVM IR を検証";
       "";
+      "効果システム:";
+      "  --effect-stage <stage>";
+      "                       実行時 Stage を明示的に指定（例: experimental/beta/stable）";
+      "  --runtime-capabilities <file>";
+      "                       Runtime Capability Registry JSON を読み込み、Stage を解決";
+      "";
       "例:";
       "  remlc examples/cli/add.reml --emit-ir --trace";
       "  remlc examples/cli/add.reml --link-runtime --out-dir build";
@@ -102,6 +108,9 @@ type options = {
   link_runtime : bool;  (** ランタイムライブラリとリンクして実行可能ファイルを生成 *)
   runtime_path : string;  (** ランタイムライブラリのパス *)
   verify_ir : bool;  (** 生成された LLVM IR を検証 *)
+  (* 効果システム / Stage 制御 *)
+  effect_stage_override : string option;  (** CLI で指定された Stage 名 *)
+  runtime_capabilities_path : string option;  (** Capability Registry JSON のパス *)
 }
 (** コマンドラインオプション設定 *)
 
@@ -127,6 +136,8 @@ let default_options =
     link_runtime = false;
     runtime_path = "runtime/native/build/libreml_runtime.a";
     verify_ir = false;
+    effect_stage_override = None;
+    runtime_capabilities_path = None;
   }
 
 (** 環境変数から color_mode を判定 *)
@@ -182,6 +193,8 @@ let parse_args argv =
   let verify_ir = ref false in
   let typeclass_mode_str = ref "dictionary" in
   let input_file = ref "" in
+  let effect_stage = ref None in
+  let runtime_caps_path = ref None in
 
   let usage_msg = "remlc-ocaml [options] <file>" in
 
@@ -228,6 +241,12 @@ let parse_args argv =
         Arg.Set_string runtime_path,
         "<path> Path to runtime library" );
       ("--verify-ir", Arg.Set verify_ir, "Verify generated LLVM IR");
+      ( "--effect-stage",
+        Arg.String (fun value -> effect_stage := Some value),
+        "<stage> Override runtime Stage (experimental|beta|stable|...)" );
+      ( "--runtime-capabilities",
+        Arg.String (fun value -> runtime_caps_path := Some value),
+        "<file> Load Runtime Capability Registry from JSON file" );
       ( "--version",
         Arg.Unit
           (fun () ->
@@ -340,6 +359,8 @@ let parse_args argv =
           link_runtime = !link_runtime;
           runtime_path = !runtime_path;
           verify_ir = !verify_ir;
+          effect_stage_override = !effect_stage;
+          runtime_capabilities_path = !runtime_caps_path;
         }
   with
   | Arg.Help _ ->

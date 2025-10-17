@@ -17,6 +17,20 @@ open Type_error
 open Ast
 open Typed_ast
 
+type config = {
+  effect_context : Type_inference_effect.runtime_stage;
+}
+
+let make_config ?effect_context () =
+  {
+    effect_context =
+      (match effect_context with
+      | Some ctx -> ctx
+      | None -> Type_inference_effect.runtime_stage_default);
+  }
+
+let default_config = make_config ()
+
 (* ========== グローバル状態: impl レジストリ ========== *)
 
 (** impl 宣言のグローバルレジストリ
@@ -1465,7 +1479,7 @@ and extract_function_args (ty : ty) : ty list * ty =
  * @param items impl itemのリスト
  * @return (型付きimpl item, 制約リスト)
  *)
-and infer_impl_items ?(ctx = initial_ctx) (env : env)
+and infer_impl_items ?(ctx = initial_ctx) ~config (env : env)
     (items : impl_item list) :
     (impl_item list * trait_constraint list, type_error) result =
   (* 各アイテムを順次推論し、制約を収集 *)
@@ -1487,7 +1501,7 @@ and infer_impl_items ?(ctx = initial_ctx) (env : env)
                     decl_span = dummy_span;
                   }
                 in
-                infer_decl ~ctx env dummy_decl
+                infer_decl ~ctx ~config env dummy_decl
               in
               (* impl itemは元のASTを保持（後でLLVMコード生成で使用） *)
               Ok
@@ -1792,7 +1806,7 @@ and infer_stmt ?(ctx = initial_ctx) (env : env) (stmt : stmt)
        * 制約: 宣言の式から生成される制約を伝播
        *)
       let env' = apply_subst_env subst env in
-      let* tdecl, new_env, decl_constraints = infer_decl ~ctx env' decl in
+      let* tdecl, new_env, decl_constraints = infer_decl ~ctx ~config env' decl in
       Ok (TDeclStmt tdecl, new_env, subst, decl_constraints)
   | ExprStmt expr ->
       (* 式文: 式を推論（型環境は変更なし）
@@ -1829,7 +1843,7 @@ and infer_stmt ?(ctx = initial_ctx) (env : env) (stmt : stmt)
  *
  * Phase 2 Week 3-4 で実装
  *)
-and infer_decl ?(ctx = initial_ctx) (env : env) (decl : decl) :
+and infer_decl ?(ctx = initial_ctx) ~config (env : env) (decl : decl) :
     (typed_decl * env * trait_constraint list, type_error) result
     =
   match decl.decl_kind with
@@ -2042,7 +2056,14 @@ and infer_decl ?(ctx = initial_ctx) (env : env) (decl : decl) :
           solve_trait_constraints scheme.constraints
       in
 
-      (* 10. 型付き関数宣言を構築 *)
+      (* 10a. 効果プロファイルを解析 *)
+      let* effect_profile =
+        Type_inference_effect.resolve_function_profile
+          ~runtime_context:config.effect_context
+          ~function_ident:fn.fn_name fn.fn_effect_profile
+      in
+
+      (* 10b. 型付き関数宣言を構築 *)
       let tfn =
         {
           tfn_name = fn.fn_name;
@@ -2050,7 +2071,7 @@ and infer_decl ?(ctx = initial_ctx) (env : env) (decl : decl) :
           tfn_params = tparams';
           tfn_ret_type = final_ret_ty;
           tfn_where_clause = fn.fn_where_clause;
-          tfn_effect_profile = fn.fn_effect_profile;
+          tfn_effect_profile = effect_profile;
           tfn_body = tbody;
         }
       in
@@ -2115,7 +2136,7 @@ and infer_decl ?(ctx = initial_ctx) (env : env) (decl : decl) :
 
       (* 5. 各impl itemを推論 *)
       let* _timpl_items, item_constraints =
-        infer_impl_items env_with_generics impl.impl_items
+        infer_impl_items ~config env_with_generics impl.impl_items
       in
 
       (* 6. メソッド実装情報を抽出 *)
@@ -2166,7 +2187,7 @@ and infer_decl ?(ctx = initial_ctx) (env : env) (decl : decl) :
       failwith "Declaration not yet implemented"
 
 (** コンパイル単位の型推論 *)
-let infer_compilation_unit (cu : compilation_unit) :
+let infer_compilation_unit ?(config = default_config) (cu : compilation_unit) :
     (typed_compilation_unit, type_error) result =
   (* 初期型環境を作成 *)
   Monomorph_registry.reset ();
@@ -2179,7 +2200,7 @@ let infer_compilation_unit (cu : compilation_unit) :
     match items with
     | [] -> Ok (List.rev acc_decls, env)
     | item :: rest -> (
-        match infer_decl env item with
+        match infer_decl ~config env item with
         | Ok (typed_decl, new_env, _constraints) ->
             (* TODO Week 21-22: ここで制約を蓄積して最終的に解決 *)
             infer_items new_env rest (typed_decl :: acc_decls)

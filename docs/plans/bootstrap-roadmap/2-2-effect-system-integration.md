@@ -21,6 +21,24 @@
 - [x] `tooling/ci/collect-iterator-audit-metrics.py` → `tooling/ci/sync-iterator-audit.sh` のワークフローで `verify_llvm_ir.sh` ログと監査メトリクスを突合し、`iterator.stage.audit_pass_rate` を `0-3-audit-and-metrics.md` に記録済み。
 - [x] `docs/spec/1-2-types-Inference.md`, `docs/spec/3-1-core-prelude-iteration.md`, `docs/spec/3-8-core-runtime-capability.md` に型クラス辞書と Stage 監査の連携ノートを追記し、診断キー (`effect.stage.iterator.*`) の定義が参照可能である。
 
+## 進行状況（2025-10-17 時点）
+
+| 作業ブレークダウン | ステータス | 完了内容 | 次アクション |
+| --- | --- | --- | --- |
+| 1. 効果システム設計と仕様整理 | 🚧 進行中 | `Σ_core`/`Σ_system` 抽出ドラフトと StageRequirement 方針を整理済み | Capability Registry のプラットフォーム別差分と診断キー照合を確定 |
+| 2. Parser への効果注釈統合 | ✅ 完了 | `effect_profile_node` 導入、属性解析、ゴールデンテスト更新（詳しくは [effect-system-design-note.md](../../../compiler/ocaml/docs/effect-system-design-note.md) §5） | 行多相拡張検討（Phase 3） |
+| 3. Typer 統合と効果解析 | 🚧 進行中 | `effect_profile` 正規化ヘルパ (`type_inference_effect.ml`) を導入し、CLI/環境変数/JSON から Stage を注入。診断 `E7801` で `effect.stage.*` を出力 | `EffectSet` 伝播・残余効果検出の実装、型クラス辞書との統合テスト |
+| 4. RuntimeCapability チェック | ⏳ 未着手 | 要求仕様を整理 | `core_ir/effect.ml` からの StageRequirement 受け渡し実装、モック付きテスト |
+| 5. 診断システム強化 | ⏳ 未着手 | 診断キー定義の把握 | CLI/JSON ゴールデン追加、`Diagnostic.extensions["effect.stage.*"]` 出力実装 |
+| 6. テスト整備 | ⏳ 未着手 | Parser テストのみ更新済み | 効果/Stage/型クラス連携テスト、CI ジョブ追加 |
+| 7. ドキュメント更新と仕様同期 | 🚧 進行中 | 設計ノートと計画書に現状を反映 | `docs/spec/1-3-effects-safety.md` への差分反映、`0-3-audit-and-metrics.md` 追記 |
+| 8. 統合検証と Phase 3 準備 | ⏳ 未着手 | — | Typer 完了後に統合シナリオを設計し、Phase 3 引き継ぎ資料を起案 |
+
+### 次のステップ（短期フォーカス）
+- Typer チームは `EffectSet` の伝播・残余検出を実装し、Stage 情報を IR/Runtime へ連携する。
+- `Constraint_solver` に効果制約テーブルを追加し、辞書経路との独立性を tests/typeclass_effects/… で回帰検証する。
+- RuntimeCapability JSON と CLI オプションの運用手順を `0-3-audit-and-metrics.md` に追記し、効果診断ゴールデンを整備する。
+
 ## 作業ブレークダウン
 
 ### 1. 効果システム設計と仕様整理（24-25週目）

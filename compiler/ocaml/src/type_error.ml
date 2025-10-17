@@ -85,6 +85,13 @@ type type_error =
       span : span;
       effect_stage : trait_constraint_stage_extension option;
     }
+  | EffectStageMismatch of {
+      required_stage : string;
+      actual_stage : string;
+      span : span;
+      function_name : string option;
+      capability : string option;
+    }
   | AmbiguousTraitImpl of {
       (* トレイト実装の曖昧性 *)
       trait_name : string;
@@ -189,6 +196,15 @@ let string_of_error = function
       Printf.sprintf
         "Trait constraint '%s<%s>' cannot be satisfied at %d:%d\n  Reason: %s"
         trait_name type_args_str span.start span.end_ reason
+  | EffectStageMismatch { required_stage; actual_stage; span; function_name; _ } ->
+      let subject =
+        match function_name with
+        | Some name -> Printf.sprintf " for '%s'" name
+        | None -> ""
+      in
+      Printf.sprintf
+        "Effect stage mismatch%s at %d:%d\n  Required: %s\n  Actual:   %s"
+        subject span.start span.end_ required_stage actual_stage
   | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
@@ -236,6 +252,18 @@ let arity_mismatch_error ~expected ~actual span =
 
 (** 代入不可能エラーを生成 *)
 let not_assignable_error span = NotAssignable { span }
+
+(** 効果 Stage ミスマッチのエラーを生成 *)
+let effect_stage_mismatch_error ?capability ~function_name ~required_stage
+    ~actual_stage ~span =
+  EffectStageMismatch
+    {
+      required_stage;
+      actual_stage;
+      span;
+      function_name = Some function_name;
+      capability;
+    }
 
 (** ミュータブルでない束縛への代入エラーを生成 *)
 let immutable_binding_error name span = ImmutableBinding { name; span }
@@ -697,6 +725,36 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         | None -> diag
       in
       diag
+  | EffectStageMismatch { required_stage; actual_stage; span; function_name; capability } ->
+      let message =
+        match function_name with
+        | Some name ->
+            Printf.sprintf "関数 '%s' の効果 Stage が実行環境の要件を満たしていません" name
+        | None -> "効果 Stage が実行環境の要件を満たしていません"
+      in
+      let diag_span = span_to_diagnostic_span span in
+      let notes =
+        [
+          (None, Printf.sprintf "要求される Stage: %s" required_stage);
+          (None, Printf.sprintf "実際の Stage: %s" actual_stage);
+        ]
+      in
+      let diag = make_type_error ~code:"E7801" ~message ~span:diag_span ~notes () in
+      let capability_name = Option.value capability ~default:"runtime" in
+      let diag =
+        with_effect_stage_extension ~required_stage ~capability:capability_name
+          ~actual_stage diag
+      in
+      let diag = Diagnostic.set_extension "effect.stage.required" (`String required_stage) diag in
+      let diag =
+        Diagnostic.set_extension "effect.stage.actual" (`String actual_stage) diag
+      in
+      let diag =
+        match function_name with
+        | Some name -> Diagnostic.set_extension "effect.stage.subject" (`String name) diag
+        | None -> diag
+      in
+      diag
   | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
@@ -1085,6 +1143,36 @@ let to_diagnostic_with_source ?(available_names : string list = [])
               ~required_stage:info.required_stage
               ~capability:(Option.value info.capability ~default:"<unknown>")
               diag
+        | None -> diag
+      in
+      diag
+  | EffectStageMismatch { required_stage; actual_stage; span; function_name; capability } ->
+      let message =
+        match function_name with
+        | Some name ->
+            Printf.sprintf "関数 '%s' の効果 Stage が実行環境の要件を満たしていません" name
+        | None -> "効果 Stage が実行環境の要件を満たしていません"
+      in
+      let diag_span = make_span span in
+      let notes =
+        [
+          (None, Printf.sprintf "要求される Stage: %s" required_stage);
+          (None, Printf.sprintf "実際の Stage: %s" actual_stage);
+        ]
+      in
+      let diag = make_type_error ~code:"E7801" ~message ~span:diag_span ~notes () in
+      let capability_name = Option.value capability ~default:"runtime" in
+      let diag =
+        with_effect_stage_extension ~required_stage ~capability:capability_name
+          ~actual_stage diag
+      in
+      let diag = Diagnostic.set_extension "effect.stage.required" (`String required_stage) diag in
+      let diag =
+        Diagnostic.set_extension "effect.stage.actual" (`String actual_stage) diag
+      in
+      let diag =
+        match function_name with
+        | Some name -> Diagnostic.set_extension "effect.stage.subject" (`String name) diag
         | None -> diag
       in
       diag

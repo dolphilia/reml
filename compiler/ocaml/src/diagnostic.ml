@@ -257,6 +257,17 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider
   let payload = `Assoc (List.rev effect_fields) in
   let diag = set_extension "effects" payload diag in
   let diag =
+    set_extension "effect.stage.required" (`String required_stage) diag
+  in
+  let diag =
+    set_extension "effect.stage.actual"
+      (match actual_stage with Some s -> `String s | None -> `Null)
+      diag
+  in
+  let diag =
+    set_extension "effect.stage.capability" (`String capability) diag
+  in
+  let diag =
     set_audit_metadata "effect.stage.required" (`String required_stage) diag
   in
   let diag =

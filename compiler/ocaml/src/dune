@@ -23,9 +23,12 @@
   constraint
   constraint_solver
   impl_registry
- type_error
- typed_ast
- type_inference)
+  effect_profile
+  type_error
+  typed_ast
+  runtime_capability_loader
+  type_inference_effect
+  type_inference)
  (libraries menhirLib yojson))
 
 (executable

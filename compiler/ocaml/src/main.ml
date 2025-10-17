@@ -90,6 +90,14 @@ let () =
 
   let collect_trace = opts.trace || opts.stats in
   let emit_trace_logs = opts.trace in
+  let runtime_stage_context =
+    Runtime_capability_loader.resolve
+      ~cli_override:opts.Cli.Options.effect_stage_override
+      ~registry_path:opts.Cli.Options.runtime_capabilities_path
+  in
+  let type_config =
+    Type_inference.make_config ~effect_context:runtime_stage_context ()
+  in
   let record_start phase =
     if collect_trace then Cli.Trace.start_phase ~emit_log:emit_trace_logs phase
   in
@@ -120,7 +128,7 @@ let () =
         (* Phase 1-6 Week 15: 型推論開始 *)
         record_start TypeChecking;
 
-        match Type_inference.infer_compilation_unit ast with
+        match Type_inference.infer_compilation_unit ~config:type_config ast with
         | Ok tast ->
             (* Phase 1-6 Week 15: 型推論完了 *)
             record_end TypeChecking;

@@ -129,9 +129,19 @@ type effect_profile_node = {
 
 ### 残タスク / 次ステップ
 1. 属性値のバリデーション（未知タグ／未宣言キー）と診断出力を追加し、`effects.syntax.invalid_attribute` へ接続する。
-2. Typer 側で `effect_profile_node` を `effect_profile` に正規化し、`type_inference_effect.ml`（新規ヘルパ）経由で Stage 検証と診断出力（`effects.contract.stage_mismatch` / `effects.contract.stage_escalation_required` / `effects.contract.residual_leak`）へ接続する。
-3. `EffectSet` 化した情報を Core IR / Runtime Capability 検査へ伝搬し、CI メトリクス（`collect-iterator-audit-metrics.py` 等）と連動させる。
+2. Typer で `EffectSet` 伝播と残余効果検出（`effects.contract.residual_leak`）を実装し、`Type_env` への保持／Constraint Solver との整合テストを行う。
+3. Core IR 以降で `EffectSet` を受け取り、RuntimeCapability チェックと監査ログ（JSON）へ反映する。
 4. 追加仕様変更が発生した場合は `docs/spec/1-3-effects-safety.md`・`docs/spec/3-8-core-runtime-capability.md` の対応表を更新し、監査ログのキー整合を確認する。
+
+### 進行状況サマリー（2025-10-17）
+
+| 領域 | 状態 | 完了内容 | 次のステップ |
+| --- | --- | --- | --- |
+| Parser | ✅ 完了 | 効果属性の解析・`effect_profile_node` 導入・ゴールデンテスト更新 | 行多相拡張検討（Phase 3） |
+| Typer | 🚧 進行中 | `type_inference_effect.ml` / `effect_profile.ml` を導入し、CLI 経由で Stage 情報を注入可能にした。診断キー `E7801` で `effect.stage.*` を出力 | `EffectSet` 伝播と残余効果検出の実装、型クラス辞書との統合検証 |
+| Core IR | ⏳ 未着手 | 設計方針を確定（`EffectSet` 伝播、Stage メタデータ埋め込み） | `core_ir/effect.ml` 実装、`desugar`/`function` への反映 |
+| Runtime | ⏳ 未着手 | Capability Registry 連携要件を整理 | `verify_capability_stage` 連携と監査ログ出力を実装 |
+| Tooling / CI | ⏳ 未着手 | メトリクス突合フロー（iterator audit）と統合方針を再確認 | 効果診断ゴールデン、`iterator.stage.audit_pass_rate` への効果判定反映 |
 
 ## 3. モジュール別タスク（Phase 2-2）
 
