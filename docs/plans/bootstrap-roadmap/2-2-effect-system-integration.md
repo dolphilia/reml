@@ -154,12 +154,14 @@
 - 残余効果解析で生成する診断を CLI ゴールデン（`compiler/ocaml/tests/golden/diagnostics/effects/residual-leak.json.golden` 仮称）と `tests/typeclass_effects/effectful_sum.reml` のコンパイル結果で固定化し、辞書渡し／モノモルフィゼーション両経路で同一出力になることを確認する。
 - `core_ir/desugar.ml` へ書き出した効果メタデータを利用し、`runtime/native` まで一貫して参照できるよう差分を検証する。
 - `compiler/ocaml/tests/test_type_errors.ml` と CLI ゴールデンで効果診断を固定化し、属性ケースを共有する。未知属性の入力例を追加し、`Diagnostic.extensions.effect.attribute` に解析結果を埋める。
+- CLI/JSON のゴールデンには Stage 解釈結果 (`effect.stage.required` / `effect.stage.actual` / `effect.stage.source`) と `Diagnostic.extensions.effect.stage_trace` を出力し、Typer での Stage 決定が RuntimeCapability 判定と一致することをスナップショットで示す。
 
 3.2. **Stage 要件の検証**
 - `type_inference_effect.resolve_function_profile` で CLI/JSON/環境変数由来の Stage を解析し、`Type_error.effect_stage_mismatch_error` で `effect.stage.*` 診断を出力済み。
 - `RuntimeCapabilityResolver` の優先度（CLI > JSON > env）を仕様化し、Stage 判定結果を `Constraint_solver` の効果テーブルへ反映する。
 - IR メタデータ (`core_ir/function_metadata.effects`) と Runtime Capability (`tooling/runtime/capabilities/*.json`) を突合し、`effects.contract.stage_mismatch` / `effects.contract.stage_escalation_required` を Typer 側で分類した上で Runtime に監査イベントを引き継ぐフローを確立する。
 - `tooling/ci/collect-iterator-audit-metrics.py` を拡張し、Stage 判定結果を `iterator.stage.audit_pass_rate` に反映させる。CLI `--emit-effects --format=json` の出力を CI に取り込み、Typer 判定と Runtime 判定の差分が 0 であることを自動検証する。
+- Typer で生成した Stage トレースを `AuditEnvelope.metadata.stage_trace` へ転記し、CI 集計スクリプトが `RuntimeCapabilityResolver` → `AuditEnvelope` → `iterator.stage.audit_pass_rate` を一連の検証チェーンとして扱えるようにする。
 
 3.3. **型クラスとの整合**
 - `Constraint_solver.EffectConstraintTable` で型クラス辞書と効果制約を分離済み。`tests/typeclass_effects/` で辞書解決との独立性を確認する。
@@ -182,6 +184,7 @@
 - `tooling/runtime/capabilities/*.json` の内容をロードし、Typer が計算した `Effect_profile.profile.resolved_stage` と一致しない場合は `effects.contract.stage_mismatch` / `effects.contract.stage_escalation_required` を区別して `AuditEnvelope.metadata` に出力する。
 - CLI オプション `--effect-stage`（優先度: CLI > JSON > 環境変数）を Runtime 側でも再評価し、Typer 判定と同じ優先度ルールで実行 Stage を決定する。
 - Stage ミスマッチの詳細レポートに `effect.stage.expected`, `effect.stage.actual`, `effect.stage.capability_source` を含め、CI で JSON スナップショット比較ができるようにする。
+- ランタイム側で Stage 判定の決定経路を `stage.interpretation` ノードとして CLI/JSON 出力に埋め込み、Typer の `effect.stage.source` と突き合わせて差分がないことをゴールデンで保証する。
 - テスト用の Capability モック機構を整備し、`runtime/native/tests/effects_stage.ml`（新設予定）で IR メタデータと JSON 設定の差分検証を自動化する。
 
 4.3. **プラットフォーム対応**
@@ -192,7 +195,7 @@
 
 4.4. **監査ログと CI 連動**
 - `runtime/native` で生成する `AuditEnvelope` に Stage 判定結果（`audit.effect.stage.required` 等）を記録し、CLI `--emit-audit` 出力と CI サマリー（`tooling/ci/sync-iterator-audit.sh`）に統合する。
-- `iterator.stage.audit_pass_rate` の算出時に Typer の診断件数と Runtime 監査ログを突合し、Stage ミスマッチ 0 件を CI 成果物として確認できるようにする。
+- `iterator.stage.audit_pass_rate` の算出時に Typer の診断件数と Runtime 監査ログを突合し、`AuditEnvelope.metadata.stage_trace` に記録された Typer/Runtime の Stage 判定差分が 0 件であることをもって合格判定とする。
 - 監査ログの JSON スキーマを `docs/spec/3-6-core-diagnostics-audit.md` に合わせ、スナップショットテスト（`compiler/ocaml/tests/golden/audit/effects-stage.json.golden` 仮称）で回帰を防止する。
 
 **成果物**: Capability モジュール、Stage チェック、プラットフォーム対応
@@ -204,12 +207,14 @@
 - `Type_error.effect_stage_mismatch_error` を拡張し、`effect.stage.required` / `effect.stage.actual` / `effect.stage.capability` を JSON に出力済み。
 - 残余効果診断・未知タグ検知 (`effects.contract.residual_leak`, `effects.syntax.invalid_attribute`) を追加し、`compiler/ocaml/tests/golden/diagnostics/effects/*.golden` で固定化する。
 - 効果タグの不一致／候補 Stage の提示を `Diagnostic.extensions` に揃え、監査キーと整合させる。
+- CLI/JSON の診断には Stage 解釈手順のサマリー（`diagnostic.extensions.effect.stage_trace`）と RuntimeCapability 由来の Stage 情報を含め、Typer / Runtime / CI の 3 者で同一キーを参照できるようにする。
 
 5.2. **CLI 出力統合**
 - 効果情報の CLI 表示
 - `--emit-effects` フラグの実装
 - カラー出力対応（効果タグごとの色分け）
 - [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) との整合
+- `--emit-effects --format=json` の結果に Stage 解釈テーブル（Typer 判定・Runtime 判定・Capability JSON ソース）を埋め込み、ゴールデンファイルで Stage 追跡が行えるようにする。
 
 5.3. **AuditEnvelope 統合**
 - 効果メタデータの `AuditEnvelope` への記録
@@ -229,6 +234,7 @@
 - `tests/effects/` ディレクトリの新設
 - 型クラス統合向けに `tests/typeclass_effects/` を併設し、辞書モードとモノモルフィゼーション PoC の双方で同一効果診断が得られることを比較するスナップショットを格納
 - CLI ゴールデン（`compiler/ocaml/tests/golden/diagnostics/effects/*.json.golden`）を追加し、`effects.contract.residual_leak` / `effects.syntax.invalid_attribute` / `effects.contract.stage_mismatch` の出力を固定化
+- ゴールデンでは Stage 解釈トレースと RuntimeCapability ソースを `diagnostic.extensions.effect.stage_trace` に記録し、Typer→Runtime→CI の検証経路が一目で追えるようにする。
 
 6.2. **Stage 検証テスト**
 - `Exact`, `AtLeast` の各要件テスト
@@ -236,13 +242,14 @@
 - ランタイム Stage の境界値テスト
 - ゴールデンテスト（診断出力）
 - CLI `--effect-stage` および `--runtime-capabilities` の組み合わせで Stage 決定フローが変化しないことを `compiler/ocaml/tests/golden/diagnostics/effects/stage-resolution.json.golden`（仮称）で検証
-- `scripts/validate-runtime-capabilities.sh` を CI で実行し、Capability JSON の更新が Stage 判定ゴールデンと矛盾しないことを確認
+- `scripts/validate-runtime-capabilities.sh` を CI で実行し、Capability JSON の更新が Stage 判定ゴールデンと矛盾しないこと、ならびに `stage_trace` の Typer/Runtime 同期が壊れていないことを確認
 
 6.3. **CI/CD 統合**
 - GitHub Actions に効果テストジョブ追加
 - テストカバレッジの計測（>80%）
 - Phase 1/2 他タスクとの統合テスト
 - ビルド時間の監視
+- CI 成果物として `iterator.stage.audit_pass_rate` を公開し、Stage トレースの差分が 0 件であることをゲート条件に設定
 
 **成果物**: 効果テストスイート、CI 設定
 
@@ -266,6 +273,7 @@
 - Stage チェックのコンパイル時間への影響測定
 - CI レポートの自動生成設定
 - `0-3-audit-and-metrics.md` §0.3.7 の RuntimeCapability 運用手順とゴールデン更新フローに沿って記録を追記し、CLI オプション優先度や JSON 差分が同期されているか確認
+- 効果診断ゴールデンの Stage 解釈結果と `iterator.stage.audit_pass_rate` の最新値を同ページに記録し、RuntimeCapability JSON 更新ごとに差分を明記する。
 
 **成果物**: 更新仕様書、Capability 文書、メトリクス
 

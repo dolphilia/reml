@@ -1,0 +1,37 @@
+{
+  "diagnostics": [
+    {
+      "code": "effects.syntax.invalid_attribute",
+      "severity": "error",
+      "domain": "型システム",
+      "message": "効果属性の指定が無効です（雛形）",
+      "notes": [
+        "TODO: 実際の検証結果に合わせて詳細メッセージを更新する"
+      ],
+      "location": {
+        "file": "effectful_sum.reml",
+        "line": 1,
+        "column": 1,
+        "endLine": 1,
+        "endColumn": 1
+      },
+      "extensions": {
+        "effects": {
+          "attribute": "@requires_capability(stage = 123)",
+          "expected": "stage は文字列または StageId",
+          "provided": 123,
+          "stage": {
+            "required": null,
+            "actual": null
+          }
+        }
+      },
+      "audit": {
+        "effect.attribute.invalid": "stage",
+        "effect.attribute.location": "fn demo",
+        "effect.stage.required": null,
+        "effect.stage.actual": null
+      }
+    }
+  ]
+}

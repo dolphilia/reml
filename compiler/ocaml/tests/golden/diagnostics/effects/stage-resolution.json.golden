@@ -1,0 +1,41 @@
+{
+  "diagnostics": [
+    {
+      "code": "effects.stage_resolution.report",
+      "severity": "info",
+      "domain": "型システム",
+      "message": "効果 Stage 解決結果のスナップショット（雛形）",
+      "notes": [
+        "TODO: `--emit-effects --format=json` の実出力に合わせて更新する"
+      ],
+      "location": {
+        "file": "",
+        "line": 0,
+        "column": 0,
+        "endLine": 0,
+        "endColumn": 0
+      },
+      "extensions": {
+        "effects": {
+          "resolved": {
+            "function": "fn demo",
+            "declared": [
+              "io"
+            ],
+            "residual": [],
+            "stage": {
+              "required": "at_least:beta",
+              "actual": "beta",
+              "source": "cli"
+            }
+          },
+          "inputs": {
+            "cli": "beta",
+            "json": null,
+            "env": null
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "diagnostics": [
+    {
+      "code": "effects.contract.residual_leak",
+      "severity": "error",
+      "domain": "型システム",
+      "message": "残余効果が閉じていません（雛形）",
+      "notes": [
+        "TODO: 実装で判明した残余タグや補足説明を更新する"
+      ],
+      "location": {
+        "file": "effectful_sum.reml",
+        "line": 1,
+        "column": 1,
+        "endLine": 1,
+        "endColumn": 1
+      },
+      "extensions": {
+        "effects": {
+          "declared": [
+            "io"
+          ],
+          "residual": {
+            "missing": [
+              "panic"
+            ],
+            "leaked_from": "fn demo"
+          },
+          "stage": {
+            "required": "stable",
+            "actual": "stable"
+          }
+        }
+      },
+      "audit": {
+        "effect.stage.required": "stable",
+        "effect.stage.actual": "stable",
+        "effect.capability": "",
+        "effect.residual.tags": [
+          "panic"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"timestamp":"2025-10-17T00:00:00Z","category":"effect.stage","metadata":{"effect.stage.required":"beta","effect.stage.actual":"experimental","effect.stage.source":"runtime","effect.capability":"core.iterator.collect","effect.resolution.step":"typer","effect.audit_note":"TODO: 実測値で更新"}}

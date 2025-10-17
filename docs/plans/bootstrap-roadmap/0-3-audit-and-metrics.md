@@ -120,8 +120,9 @@
   ```
 - JSON の編集手順:
   1. 変更箇所を `tooling/runtime/README.md`（Phase 2-2 で追加予定）に記録し、出典となる仕様 (`docs/spec/3-8-core-runtime-capability.md`) を併記する。
-  2. `scripts/validate-runtime-capabilities.sh`（新設予定）でスキーマ検証を行い、CI で `jq` 形式チェックを通過することを確認する。
-  3. 差分を `0-3.9 進捗ログ` に追記し、レビュアに確認を依頼する。
+  2. `scripts/validate-runtime-capabilities.sh`（Phase 2-2 で整備）を実行し、スキーマ検証と Stage 解釈トレースの再計算を行う。スクリプトは `reports/runtime-capabilities-validation.json` に `stage_summary`（CLI/JSON/環境変数/Runtime 判定の一覧）を出力し、CI で `jq` フォーマットチェックを通過することを確認する。
+  3. 差分を `0-3.9 進捗ログ` に追記し、`stage_summary` から抜粋した Stage 変更点（例: `default.json: beta → stable`）を合わせて記録する。レビュアには JSON とサマリの両方を提示する。
+- Stage が変更された場合は、必ず効果診断ゴールデンと `AuditEnvelope` ゴールデンを再生成し、`stage_trace` の差分が Typer/Runtime で一致していることを確認する。
 
 ### CLI オプション優先度と検証
 - Stage 解決は「CLI `--effect-stage` → JSON `--runtime-capabilities` → 環境変数 `REMLC_EFFECT_STAGE`」の優先順を採用し、`RuntimeCapabilityResolver`（Phase 2-2 で導入予定）で一元化する。
@@ -129,13 +130,20 @@
   1. `remlc examples/effects/demo.reml --effect-stage beta --format=json` を実行し、`Diagnostic.extensions["effect.stage.required"]` が `beta` になることを確認。
   2. 同一コマンドに `--runtime-capabilities tooling/runtime/capabilities/linux.json` を追加し、JSON の `stage` が採用されることを `effect.stage.actual` で確認。
   3. どちらも指定せず `REMLC_EFFECT_STAGE=stable` を設定し、環境変数が採用されることを確認。
+  4. 上記 3 ケースで `Diagnostic.extensions["effect.stage_trace"]` に出力される `source` / `stage` / `capability` の配列が CLI 指定 → JSON → 環境変数の順序で記録されていることを確認し、Runtime 側の `AuditEnvelope.metadata.stage_trace` も同一配列であることを `grep` などで突き合わせる。
 - 上記 3 ケースの出力を `compiler/ocaml/tests/golden/diagnostics/effects/stage-resolution.json.golden`（新設）でスナップショット化し、`dune runtest compiler/ocaml/tests/test_diagnostics.ml` に統合する。
 
+### 監査ログと CI 指標
+- Stage 判定は `RuntimeCapabilityResolver` → `AuditEnvelope` → `tooling/ci/collect-iterator-audit-metrics.py` → `iterator.stage.audit_pass_rate` の順で連携する。各段階で `stage_trace` が欠落した場合は CI を失敗させる。
+- `remlc examples/effects/demo.reml --emit-audit --effect-stage beta` を実行し、`AuditEnvelope.metadata.stage_trace` に Typer 判定と Runtime 判定が連続して格納されていることを確認する。監査ゴールデンは `compiler/ocaml/tests/golden/audit/effects-stage.json.golden`（新設）に保存する。
+- CI では `tooling/ci/sync-iterator-audit.sh --metrics /tmp/iterator-audit.json --audit compiler/ocaml/tests/golden/audit/effects-stage.json.golden` を実行し、`iterator.stage.audit_pass_rate` が 1.0 であることをゲート条件とする。Stage 判定差分が発生した場合は `stage_trace` の乖離内容を Markdown サマリに追記してレビューへ共有する。
+- 監査ログの更新後は `reports/runtime-capabilities-validation.json` の `stage_summary` と `iterator-stage-summary.md`（`sync-iterator-audit.sh` が生成）を本節へリンクする。
+
 ### 効果診断ゴールデンの整備
-- ゴールデン配置: `compiler/ocaml/tests/golden/diagnostics/effects/`（`*.golden`）に JSON スナップショットを保存し、必須キー `effect.stage.required` / `effect.stage.actual` / `effect.stage.residual` / `effect.stage.source` を全て検証する。
+- ゴールデン配置: `compiler/ocaml/tests/golden/diagnostics/effects/`（`*.golden`）に JSON スナップショットを保存し、必須キー `effect.stage.required` / `effect.stage.actual` / `effect.stage.residual` / `effect.stage.source` および `diagnostic.extensions.effect.stage_trace` / `diagnostic.extensions.effect.attribute` / `diagnostic.extensions.effect.residual` を全て検証する。
 - 更新手順:
   1. `remlc` を `--format=json --emit-diagnostics` モードで実行し、一時ファイルを生成。
-  2. `scripts/update-effects-golden.sh`（Phase 2-2 で追加予定）を用いて対象ゴールデンのみを上書きする。自動プロモートは使用しない。
+  2. `scripts/update-effects-golden.sh`（Phase 2-2 で追加予定）を用いて対象ゴールデンのみを上書きする。自動プロモートは使用しない。スクリプトでは `stage_trace` の差分を検知し、Typer / Runtime フェーズの順序が正しいかを静的チェックする。
   3. 更新後に `tooling/ci/collect-iterator-audit-metrics.py` を実行し、`iterator.stage.audit_pass_rate` が 1.0 を維持していることを確認する。
   4. 差分と検証結果を本節に追記し、Phase 2-2 の週次レビュー議事録と同期する。
 - ゴールデン差分がまだ確認されていない場合や Stage 検証が未完了の場合は、`0-4-risk-handling.md` に TODO を登録して Phase 2-2 の完了条件に含める。
