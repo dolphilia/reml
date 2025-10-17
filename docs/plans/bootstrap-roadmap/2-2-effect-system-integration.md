@@ -131,22 +131,22 @@
 **担当領域**: 型推論と効果検証
 
 3.1. **効果注釈の解析**
-- AST から効果情報を抽出
-- 関数シグネチャへの効果型の添付
-- 効果の伝播ルール実装（呼び出し先→呼び出し元）
-- 効果の合成（複数効果の統合）
+- `compiler/ocaml/src/ast.ml` の `effect_profile_node` を [effect-system-design-note.md](../../../compiler/ocaml/docs/effect-system-design-note.md) で示した `EffectSet`/`effect_profile` へ正規化するヘルパを `type_inference_effect.ml`（新規）として切り出す。
+- `type_inference.ml` のシグネチャ生成段階で効果情報を読み取り、`Type_env.function_entry` に `effect_profile` を保持するフィールドを追加（技術的負債リスト H1「型マッピング TODO」解消を兼ねる）。
+- 呼び出しグラフに沿った効果伝播を `EffectSet.union` で実装し、`residual` の差分がゼロでない場合は `effects.contract.residual_leak` 診断を発火させる。
+- `compiler/ocaml/tests/test_type_errors.ml` に `effects.syntax.invalid_attribute`、`effects.contract.residual_leak` の期待診断を追加し、`test_parser.ml` と同じ属性ケースを共有する。
 
 3.2. **Stage 要件の検証**
-- 関数の要求 Stage と実行環境の照合
-- Stage 不一致のエラー検出
-- Stage 推論（注釈がない場合のデフォルト）
-- 効果型の単一化ルール
+- `compiler/ocaml/src/core_ir/effect.ml`（新規）に `stage_id` / `stage_requirement` / `satisfies_stage` を実装し、Typer では `StageRequirementResolver` モジュールとして `type_inference.ml` から参照する。
+- `EffectProfile.stage_requirement` が未設定の場合は属性規約に従い `AtLeast Stable` をデフォルト採用し、`@requires_capability_exact` 等で上書きされた値は SourceSpan 付きで `Diagnostic.extensions["effect.stage.annotation"]` に埋め込む。
+- `RuntimeCapability.Stage.t`（既存構造体）と `stage_requirement` を比較し、`Exact`/`AtLeast` 判定の両方を `effects.contract.stage_mismatch` と `effects.contract.stage_escalation_required` の 2 種類に分類して報告する。
+- `compiler/ocaml/tests/test_type_errors.ml` と `tooling/ci/collect-iterator-audit-metrics.py` を連携させ、Stage 判定結果が `iterator.stage.audit_pass_rate` に反映されることを CI で確認する。
 
 3.3. **型クラスとの整合**
-- 型クラス制約と効果制約の同時解決
-- 辞書引数と効果情報の独立性確保
-- Typer パイプラインの責務分離
-- Phase 2 型クラスタスクとの統合テスト
+- `type_inference/typeclass_pipeline.ml`（Phase 2-1 で導入済み）へ効果引数の情報を渡すインターフェースを追加し、辞書生成フェーズでは効果タグを無視したまま型制約解決に集中できるようにする。
+- 効果集合と型クラス制約を同一ソルバで扱わないよう `Constraint_solver` に `effect_constraints` テーブルを新設し、辞書束縛の再構成時に `EffectSet` の包含チェックのみを行う。
+- `core_ir/desugar.ml` の辞書渡し経路と連携し、効果診断が辞書推論結果に影響しないことを `tests/typeclass_effects/`（新設）で回帰テスト化する。
+- Phase 2-1 ハンドオーバーで示された `--static-only` ベンチと同じ入力に対し、効果解析を有効化したままで辞書サイズ・IR 行数が変化しないことを `0-3-audit-and-metrics.md` に追記し、型クラスチームと共有する。
 
 **成果物**: 効果解析ロジック、Stage 検証、統合 Typer
 

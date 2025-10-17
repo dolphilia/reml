@@ -129,7 +129,7 @@ type effect_profile_node = {
 
 ### 残タスク / 次ステップ
 1. 属性値のバリデーション（未知タグ／未宣言キー）と診断出力を追加し、`effects.syntax.invalid_attribute` へ接続する。
-2. Typer 側で `effect_profile_node` を `effect_profile` に正規化し、Stage 検証と診断出力（`effects.contract.stage_mismatch` 等）へ接続。
+2. Typer 側で `effect_profile_node` を `effect_profile` に正規化し、`type_inference_effect.ml`（新規ヘルパ）経由で Stage 検証と診断出力（`effects.contract.stage_mismatch` / `effects.contract.stage_escalation_required` / `effects.contract.residual_leak`）へ接続する。
 3. `EffectSet` 化した情報を Core IR / Runtime Capability 検査へ伝搬し、CI メトリクス（`collect-iterator-audit-metrics.py` 等）と連動させる。
 4. 追加仕様変更が発生した場合は `docs/spec/1-3-effects-safety.md`・`docs/spec/3-8-core-runtime-capability.md` の対応表を更新し、監査ログのキー整合を確認する。
 
@@ -138,16 +138,18 @@ type effect_profile_node = {
 - **Parser (`parser.mly` / `ast.ml`)**
   - 効果注釈から `EffectTag.t` を構築し `EffectSet` へ格納。
   - `allows_effects` 属性を検出し `stage_requirement` の初期値を推定（`Exact Experimental` など）。
-- **Typer (`type_inference.ml`, `type_env.ml`)**
-  - `effect_profile` を関数シグネチャへ添付し、型推論中に `declared`/`residual` の包含チェックを実装。
-  - `satisfies_stage` を用いて Capability Stage と比較し、`Diagnostic.extensions["effect.stage.*"]` を生成。
-- **Core IR (`core_ir/desugar.ml`, `core_ir/function.ml`)**
+- **Typer (`type_inference.ml`, `type_env.ml`, `type_inference_effect.ml`, `type_inference/typeclass_pipeline.ml`)**
+  - `effect_profile_node` を正規化して `Type_env.function_entry` に `effect_profile` を保持するフィールドを追加。
+  - `core_ir/effect.ml` で定義する `stage_requirement` 判定ヘルパを介して Capability Stage と比較し、`effects.contract.stage_mismatch` / `effects.contract.stage_escalation_required` / `effects.contract.residual_leak` を `Diagnostic.extensions["effect.stage.*"]` に出力。
+  - 型クラス辞書生成との独立性を維持しつつ、`typeclass_pipeline` へ効果情報を受け渡さないインターフェースを設計し、回帰テスト（`tests/typeclass_effects/`）で確認。
+- **Core IR (`core_ir/desugar.ml`, `core_ir/function.ml`, `core_ir/effect.ml`)**
   - `EffectSet` を IR ノードに伝播。
   - StageRequirement を `RuntimeCapability` チェックのメタデータへ埋め込み。
 - **Runtime (`runtime/native/...`)**
   - StageRequirement を Capability Registry へ受け渡し、`verify_capability_stage` 結果を診断へ反映。
-- **Tooling/CI (`tooling/ci/collect-iterator-audit-metrics.py`, 新規効果テスト)**
-  - 監査メトリクスに `effect_profile` の Stage 評価結果を追加。
+- **Tooling/CI (`tooling/ci/collect-iterator-audit-metrics.py`, `tooling/ci/sync-iterator-audit.sh`, 新規効果テスト)**
+  - 監査メトリクスに `effect_profile` の Stage 評価結果を追加し、`iterator.stage.audit_pass_rate` に Typer 側の判定結果を突合。
+  - 効果診断のゴールデンテスト（CLI/JSON）を追加し、`effects.contract.*` のフィールド内容をスナップショットで固定。
 
 ## 4. フォローアップ
 
