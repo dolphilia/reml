@@ -185,12 +185,15 @@ type effect_profile_node = {
 - **Runtime (`runtime/native/...`)**
   - RuntimeCapabilityResolver で Stage コンテキストを取得し、`main.ml` から `runtime_stage_event` を発火して監査ログへ記録。
   - 今後は IR メタデータとの突合・Stage 実走チェック・プラットフォーム別 Capability 拡張を実装し、`AuditEnvelope.metadata.stage_trace` に Runtime 由来の情報を追記する。
+  - `core_ir/iterator_audit.ml` で収集した `iterator_audit` メタデータを `main.ml` が `effect.stage` 監査イベントに変換し、`effects-residual.jsonl` 監査ログへ書き出すフローを整備する。
 - **Tooling/CI**
   - RuntimeCapability JSON テンプレート (`tooling/runtime/capabilities/default.json`) と検証スクリプトを整備し、`reports/runtime-capabilities-validation.json`・`reports/iterator-stage-summary.md` を生成。
   - 今後は GitHub Actions へスクリプトを組み込み、`iterator.stage.audit_pass_rate` を CI ゲート化するとともに Windows override テストを追加する。
+  - `effects-residual.jsonl` のスナップショット（`compiler/ocaml/tests/golden/audit/effects-residual.jsonl.golden`）と CI 指標の照合を自動化し、RuntimeCapability JSON の更新が Stage トレースと一致するかを常時検証する。
 
 ## 4. フォローアップ
 
+- Core IR の `iterator_audit` メタデータと Runtime Capability JSON を突合し、`RuntimeCapabilityResolver` → `AuditEnvelope` → CI 指標（`iterator.stage.audit_pass_rate`）までを一連の監査パイプラインとして固定化する。`core_ir/iterator_audit.ml` で収集した Stage 情報を `main.ml` が `effect.stage` 監査イベントへ変換し、`compiler/ocaml/tests/golden/audit/effects-residual.jsonl.golden` を更新対象として扱う。
 - Stage / 効果タグの更新は `docs/plans/bootstrap-roadmap/2-2-effect-system-integration.md` §1.1 を同期し、`0-3-audit-and-metrics.md` §0.3.7 に運用記録を残す。
 - 行多相（Effect Polymorphism）拡張は Phase 3 以降に再検討。現在の文字列タグ表現を前提に、プラグイン拡張向けの柔軟な型設計を評価する。
 - CLI ポリシー (`--effect-stage`, `--runtime-capabilities`) を CI の Stage 制御（例: `--deny experimental`）と連携させる設計を `RuntimeCapabilityResolver` の設定として定義する。
@@ -204,3 +207,4 @@ type effect_profile_node = {
 - `dune runtest`（`compiler/ocaml/`）を実行し、効果診断・監査テストを含むスイート全体が成功することを確認。
 - `scripts/validate-runtime-capabilities.sh tooling/runtime/capabilities/default.json` を実行し、Stage 集約結果を `reports/runtime-capabilities-validation.json` に保存。
 - `tooling/ci/sync-iterator-audit.sh --metrics tooling/ci/iterator-audit-metrics.json --verify-log /tmp/verify.log --audit compiler/ocaml/tests/golden/audit/effects-stage.json.golden` を実行し、`reports/iterator-stage-summary.md` に Stage トレース検証サマリーを生成。
+- 監査ログ `compiler/ocaml/tests/golden/audit/effects-residual.jsonl.golden` と CI 指標 `iterator.stage.audit_pass_rate` の算出結果を突合し、Core IR メタデータと RuntimeCapability JSON が一致する場合のみ合格（100%）となることを確認。

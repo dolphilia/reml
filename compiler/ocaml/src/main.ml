@@ -142,10 +142,31 @@ let runtime_stage_event (context : Type_inference_effect.runtime_stage) =
       ("effect.stage.capabilities", `List capabilities);
     ]
   in
+  let has_source trace source =
+    List.exists
+      (fun (step : Effect_profile.stage_trace_step) ->
+        String.equal step.source source)
+      trace
+  in
+  let append_step trace source =
+    let stage_id = context.Type_inference_effect.default_stage in
+    let step =
+      Effect_profile.stage_trace_step_of_stage_id source stage_id
+    in
+    trace @ [ step ]
+  in
+  let stage_trace =
+    let base = context.Type_inference_effect.stage_trace in
+    let with_typer =
+      if has_source base "typer" then base else append_step base "typer"
+    in
+    if has_source with_typer "runtime" then with_typer
+    else append_step with_typer "runtime"
+  in
   let metadata =
-    if context.stage_trace = [] then metadata
+    if stage_trace = [] then metadata
     else
-      ("stage_trace", Effect_profile.stage_trace_to_json context.stage_trace)
+      ("stage_trace", Effect_profile.stage_trace_to_json stage_trace)
       :: metadata
   in
   Audit_envelope.make ~category:"effect.stage.runtime"
