@@ -120,6 +120,8 @@ Remlソースコード
 e-m:e-p:64:64-f64:64:64-v128:128:128-a:0:64
 ```
 
+> 2025-10-19 追記: `tooling/runtime/capabilities/default.json` に `arm64-apple-darwin` override（Stage `beta`, Capabilities: `ffi.bridge`, `process.spawn`）を追加。計測結果と監査ログは `reports/ffi-macos-summary.md` に集約し、`reports/runtime-capabilities-validation.json` の `stage_summary.runtime_candidates` へターゲットが出力されることを確認する。
+
 #### 2.2.2 呼出規約（guides/llvm-integration-notes.md §5.2）
 
 - **基本**: C互換（`cc ccc`）

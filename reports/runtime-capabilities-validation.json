@@ -47,6 +47,20 @@
                 "stage": null
               }
             ]
+          },
+          {
+            "target": "arm64-apple-darwin",
+            "stage": "beta",
+            "capabilities": [
+              {
+                "name": "ffi.bridge",
+                "stage": null
+              },
+              {
+                "name": "process.spawn",
+                "stage": null
+              }
+            ]
           }
         ]
       }
@@ -62,6 +76,12 @@
         "source": "capability_json#override",
         "file": "tooling/runtime/capabilities/default.json",
         "target": "x86_64-pc-windows-msvc",
+        "stage": "beta"
+      },
+      {
+        "source": "capability_json#override",
+        "file": "tooling/runtime/capabilities/default.json",
+        "target": "arm64-apple-darwin",
         "stage": "beta"
       }
     ]
@@ -93,6 +113,12 @@
       "stage": "beta",
       "file": "tooling/runtime/capabilities/default.json",
       "target": "x86_64-pc-windows-msvc"
+    },
+    {
+      "source": "runtime_candidate",
+      "stage": "beta",
+      "file": "tooling/runtime/capabilities/default.json",
+      "target": "arm64-apple-darwin"
     }
   ],
   "validation": {

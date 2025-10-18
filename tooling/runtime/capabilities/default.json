@@ -13,6 +13,13 @@
         "ffi.bridge",
         "process.spawn"
       ]
+    },
+    "arm64-apple-darwin": {
+      "stage": "beta",
+      "capabilities": [
+        "ffi.bridge",
+        "process.spawn"
+      ]
     }
   }
 }

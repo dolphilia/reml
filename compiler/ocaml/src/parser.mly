@@ -643,6 +643,23 @@ let extern_metadata_from_attrs attrs =
             (make_extern_invalid attr (ExternAttrUnknownKey key)))
     empty_extern_metadata
 
+let derive_extern_target items =
+  match items with
+  | [] -> None
+  | item :: rest ->
+      let target = item.extern_metadata.extern_target in
+      let consistent =
+        List.for_all
+          (fun elem ->
+            match (target, elem.extern_metadata.extern_target) with
+            | None, Some _ -> false
+            | Some _, None -> false
+            | Some lhs, Some rhs -> String.equal lhs rhs
+            | None, None -> true)
+          rest
+      in
+      if consistent then target else None
+
 %}
 
 (* トークン定義 *)
@@ -1039,7 +1056,10 @@ impl_item:
 
 extern_decl:
   | abi = extern_abi; body = extern_body
-    { { extern_abi = abi; extern_target = None; extern_items = body } }
+    {
+      let target = derive_extern_target body in
+      { extern_abi = abi; extern_target = target; extern_items = body }
+    }
 
 extern_abi:
   | s = STRING { fst s }
