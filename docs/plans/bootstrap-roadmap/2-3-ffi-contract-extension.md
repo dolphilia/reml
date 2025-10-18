@@ -1,20 +1,20 @@
 # 2.3 FFI 契約拡張計画
 
 ## 目的
-- Phase 2 で [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md) に定義された ABI/所有権契約を OCaml 実装へ反映し、x86_64 Linux (System V) と Windows x64 (MSVC) の両方でブリッジコードを検証する。
+- Phase 2 で [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md) に定義された ABI/所有権契約を OCaml 実装へ反映し、x86_64 Linux (System V)、Windows x64 (MSVC)、Apple Silicon macOS (arm64-apple-darwin) の 3 ターゲットでブリッジコードを検証する。
 - `AuditEnvelope` に FFI 呼び出しのメタデータを記録し、診断と監査の一貫性を確保する。
 
 ## スコープ
-- **含む**: FFI 宣言構文の Parser 拡張、Typer による ABI/所有権チェック、ブリッジコード生成、プラットフォーム別ビルド、監査ログ拡張。
+- **含む**: FFI 宣言構文の Parser 拡張、Typer による ABI/所有権チェック、ブリッジコード生成、ターゲット別（Linux x86_64 / Windows x64 / macOS arm64）ビルド、監査ログ拡張。
 - **含まない**: 非同期ランタイム実装の刷新、プラグイン経由の FFI 自動生成。これらは Phase 3 以降。
-- **前提**: Phase 1 のランタイム連携が完成し、Phase 2 の効果システム統合と衝突しない設計であること。
+- **前提**: Phase 1 のランタイム連携が完成し、Phase 2 の効果システム統合と衝突しない設計であること。Apple Silicon 対応については [1-8-macos-prebuild-support.md](1-8-macos-prebuild-support.md) および [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md) に整備済みの計測・CI 手順を踏襲する。
 
 ## 作業ディレクトリ
 - `compiler/ocaml/src/parser`, `compiler/ocaml/src/typer` : FFI 宣言解析と型検証
 - `compiler/ocaml/src/codegen` : ブリッジコード生成、ABI 設定
 - `runtime/native` : 所有権ヘルパ・FFI スタブ
-- `tooling/ci` : Linux/Windows 両ターゲットでのブリッジ検証
-- `docs/spec/3-9-core-async-ffi-unsafe.md`, `docs/notes/llvm-spec-status-survey.md` : 契約・測定記録
+- `tooling/ci`, `tooling/ci/macos`, `tooling/runtime/capabilities` : Linux/Windows/macOS 向けブリッジ検証と Capability ステージ管理
+- `docs/spec/3-9-core-async-ffi-unsafe.md`, `docs/notes/llvm-spec-status-survey.md`, `docs/plans/bootstrap-roadmap/1-8-macos-prebuild-support.md` : 契約・測定・macOS 支援資料
 
 ## 作業ブレークダウン
 
@@ -23,9 +23,9 @@
 
 1.1. **ABI 仕様の抽出**
 - [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md) の ABI テーブルを OCaml データ型に写像
-- System V ABI (x86_64 Linux) と MSVC ABI (x86_64 Windows) の差分整理
+- System V ABI (x86_64 Linux)、MSVC ABI (x86_64 Windows)、AAPCS64/Darwin ABI (arm64 macOS) の差分整理
 - 呼出規約（calling convention）の形式化
-- 構造体レイアウト・アライメントルールの定義
+- 構造体レイアウト・アライメントルールの定義（Darwin 固有のレイアウト差分は [1-8-macos-prebuild-support.md](1-8-macos-prebuild-support.md) と突合）
 
 1.2. **所有権契約の設計**
 - `docs/notes/llvm-spec-status-survey.md` §2.4 の RC 契約を OCaml データ構造化（`Ownership::Transferred`/`Borrowed` 等）
@@ -34,9 +34,9 @@
 - `effect {ffi}`/`effect {unsafe}` 境界との連携
 
 1.3. **ターゲット設定システム**
-- ターゲット別の ABI 設定テーブル
+- ターゲット別の ABI 設定テーブル（`x86_64-unknown-linux-gnu` / `x86_64-pc-windows-msvc` / `arm64-apple-darwin`）
 - コンパイル時のターゲット切替ロジック
-- `--target` フラグの処理
+- `--target` フラグと `--arch` の整合処理（`scripts/ci-local.sh` の引数設計を参照）
 - Phase 2 型クラス・効果との統合方針
 
 **成果物**: ABI データモデル、所有権設計、ターゲット設定
@@ -90,14 +90,14 @@
 **担当領域**: コード生成
 
 4.1. **Stub 生成ロジック**
-- ターゲット別の stub テンプレート
+- ターゲット別の stub テンプレート（Linux System V / Windows MSVC / macOS arm64）
 - 引数マーシャリング（Reml 型 → C 型）
 - 戻り値マーシャリング（C 型 → Reml 型）
 - エラーハンドリング（NULL チェック等）
 
 4.2. **LLVM IR への lowering**
 - FFI 関数宣言の LLVM IR 生成
-- 呼出規約の LLVM 属性への変換
+- 呼出規約の LLVM 属性への変換（`cc 10` 等、arm64-apple-darwin 固有の指定も含む）
 - 構造体レイアウトの LLVM 型への写像
 - デバッグ情報の保持
 
@@ -113,9 +113,9 @@
 **担当領域**: 診断と監査
 
 5.1. **FFI メタデータの記録**
-- `AuditEnvelope.metadata` に `bridge.stage.*` を追加
+- `AuditEnvelope.metadata` に `bridge.stage.*`・`bridge.platform`・`bridge.abi` を追加
 - ABI 種別・所有権注釈の記録
-- FFI 呼び出しのトレース情報
+- FFI 呼び出しのトレース情報（ターゲットトリプルとアーキテクチャを含める）
 - Phase 2 診断タスクとの連携
 
 5.2. **診断メッセージの実装**
@@ -147,9 +147,15 @@
 - ABI 差分の動作検証
 - Phase 2 Windows タスクとの連携
 
-6.3. **CI/CD 統合**
+6.3. **macOS arm64 テスト**
+- Apple Silicon (arm64-apple-darwin) 上での FFI 呼び出し検証（`libSystem` / `dispatch` API など）
+- Mach-O 向けスタブ生成と `codesign --verify` の簡易チェック
+- Darwin ABI 固有のシグネチャ（構造体戻り値、可変長引数）の検証
+- Phase 1-8 macOS 計測値と比較し、差分を `reports/ffi-macos-summary.md`（新規）へ記録
+
+6.4. **CI/CD 統合**
 - GitHub Actions に FFI テストジョブ追加
-- Linux/Windows 両方でのテスト実行
+- Linux/Windows/macOS の 3 ターゲットでのテスト実行
 - テストカバレッジの計測（>75%）
 - ビルド時間の監視
 
@@ -202,12 +208,12 @@
 **成果物**: 更新仕様書、ガイド、引き継ぎ文書
 
 ## 成果物と検証
-- 双方のターゲットで FFI サンプルが成功し、所有権違反時に診断が出力される。
+- 3 ターゲットすべてで FFI サンプルが成功し、所有権違反時に診断が出力される。
 - `AuditEnvelope` に FFI 呼び出しのトレースが追加され、`0-3-audit-and-metrics.md` で確認できる。
 - 仕様ドキュメントの更新がレビュー済みで、記録が残る。
 
 ## リスクとフォローアップ
-- Windows (MSVC) の呼出規約差異によりバグが潜む恐れがあるため、`2-6-windows-support.md` と連携してテストケースを共有。
+- Windows (MSVC) / macOS (Darwin) の呼出規約差異によりバグが潜む恐れがあるため、`2-6-windows-support.md` と [1-8-macos-prebuild-support.md](1-8-macos-prebuild-support.md) と連携してテストケースを共有。
 - 所有権注釈の表現力が不足している場合、Phase 3 で DSL 拡張を検討する。
 - FFI ブリッジ生成に外部ツールを使う場合はライセンス・再現性を `0-3-audit-and-metrics.md` に記録。
 

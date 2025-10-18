@@ -199,6 +199,7 @@ type effect_profile_node = {
 - 行多相（Effect Polymorphism）拡張は Phase 3 以降に再検討。現在の文字列タグ表現を前提に、プラグイン拡張向けの柔軟な型設計を評価する。
 - CLI ポリシー (`--effect-stage`, `--runtime-capabilities`) を CI の Stage 制御（例: `--deny experimental`）と連携させる設計を `RuntimeCapabilityResolver` の設定として定義する。
 - 効果診断ゴールデン・Capability JSON を更新する際は `scripts/validate-runtime-capabilities.sh` で検証し、`0-3-audit-and-metrics.md` に変更履歴を追記する。
+- Phase 2-3 FFI 契約拡張（[docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md](../../docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md)）と連携し、`AuditEnvelope.metadata.bridge.*` の導入時に `stage_trace` と `RuntimeCapabilityResolver` の結果を共有する。特に Apple Silicon (arm64-apple-darwin) の Capability 定義は `tooling/runtime/capabilities/default.json` と `reports/runtime-capabilities-validation.json` を参照し、`bridge.platform` / `bridge.abi` / `bridge.stage` を効果診断の残余解析と突合できるようにする。macOS 向け追加メトリクスは `reports/ffi-macos-summary.md`（予定）に記録し、Stage ゲートと同一のレビューサイクルで確認する。
 
 ## 5. 検証結果と成果物（2025-10-24 更新）
 
