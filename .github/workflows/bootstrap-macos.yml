@@ -356,13 +356,26 @@ jobs:
 
       - name: Verify generated LLVM IR
         run: |
+          set -euo pipefail
+          shopt -s nullglob
           chmod +x compiler/ocaml/scripts/verify_llvm_ir.sh
+          mkdir -p tooling/ci
+          LOG_PATH="tooling/ci/llvm-verify.log"
+          : > "$LOG_PATH"
+          status=0
           for ir_file in /tmp/llvm-ir-verify-macos/*.ll; do
-            if [ -f "$ir_file" ]; then
-              echo "Verifying $ir_file..."
-              compiler/ocaml/scripts/verify_llvm_ir.sh "$ir_file" --target arm64-apple-darwin || exit 1
+            echo "Verifying $ir_file..." | tee -a "$LOG_PATH"
+            compiler/ocaml/scripts/verify_llvm_ir.sh "$ir_file" --target arm64-apple-darwin 2>&1 | tee -a "$LOG_PATH"
+            exit_code=${PIPESTATUS[0]}
+            if [ "$exit_code" -ne 0 ]; then
+              status="$exit_code"
+              break
             fi
           done
+          if [ "$status" -eq 0 ]; then
+            echo "検証成功" | tee -a "$LOG_PATH"
+          fi
+          exit "$status"
 
       - name: Upload LLVM IR artifacts
         uses: actions/upload-artifact@v4
@@ -382,45 +395,41 @@ jobs:
             /tmp/llvm-ir-verify-macos/*.o
           retention-days: 7
 
+      - name: Upload LLVM verification log
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: llvm-verify-log
+          path: tooling/ci/llvm-verify.log
+          retention-days: 14
+
   iterator-audit:
     name: Iterator Audit Metrics (macOS ARM64)
     runs-on: macos-14
-    needs: test
+    needs: llvm-verify
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Download LLVM verification log
+        uses: actions/download-artifact@v4
+        with:
+          name: llvm-verify-log
+          path: tooling/ci
+
       - name: Collect iterator.stage audit metrics
         run: |
           python3 tooling/ci/collect-iterator-audit-metrics.py --output tooling/ci/iterator-audit-metrics.json
 
-      - name: Verify iterator.stage audit pass rate
+      - name: Run iterator audit gate
         run: |
-          python3 - <<'PY'
-          import json, sys
-          from pathlib import Path
-
-          metrics_path = Path("tooling/ci/iterator-audit-metrics.json")
-          if not metrics_path.is_file():
-              print("::error::iterator audit metrics file not found")
-              sys.exit(1)
-
-          data = json.loads(metrics_path.read_text(encoding="utf-8"))
-          rate = data.get("pass_rate")
-          total = data.get("total", 0)
-          failed = data.get("failed", 0)
-
-          if rate is None:
-              print("::error::iterator.stage.audit_pass_rate が算出できませんでした")
-              sys.exit(1)
-
-          if rate < 1.0:
-              print(f"::error::iterator.stage.audit_pass_rate={rate:.3f} (total={total}, failed={failed})")
-              sys.exit(1)
-
-          print(f"iterator.stage.audit_pass_rate OK ({rate:.3f})")
-          PY
+          set -euo pipefail
+          chmod +x tooling/ci/sync-iterator-audit.sh
+          tooling/ci/sync-iterator-audit.sh \
+            --metrics tooling/ci/iterator-audit-metrics.json \
+            --verify-log tooling/ci/llvm-verify.log \
+            --output reports/iterator-stage-summary.md
 
       - name: Upload iterator audit metrics
         if: always()
@@ -428,6 +437,14 @@ jobs:
         with:
           name: iterator-audit-metrics-macos
           path: tooling/ci/iterator-audit-metrics.json
+          retention-days: 30
+
+      - name: Upload iterator audit summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iterator-stage-summary-macos
+          path: reports/iterator-stage-summary.md
           retention-days: 30
 
   record-metrics:
