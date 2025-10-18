@@ -20,6 +20,7 @@
       - `bridge.license` など追加キーの必要性を評価  
       - 監査ダッシュボードでの表示方法を Diagnostics チームと調整
 - [ ] ランタイム計測ログ (`reml_ffi_bridge_get_metrics`, `reml_ffi_bridge_pass_rate`) を外部ストレージへ保存する場合のライセンス影響を確認し、必要に応じて `bridge.license` へ追記
+- [ ] 仕様書更新時に SPDX / 著作権表記の差分チェックリストを追加し、`docs/spec/3-9-core-async-ffi-unsafe.md`・`docs/spec/3-6-core-diagnostics-audit.md` へ反映した内容を `reports/ffi-bridge-summary.md` §5 にリンクする
 
 ## 3. 関連ドキュメント
 

@@ -26,7 +26,7 @@
 | 1. ABI モデル設計 | **進行中** | Darwin 計測計画を `docs/notes/llvm-spec-status-survey.md` に追記し、`ffi_contract` モジュール（所有権・ABI 判定スケルトン）を追加。`normalize_contract` でターゲット別 `expected_abi`・所有権正規化を実装。 | Linux/Windows/macOS 向け ABI 差分ノート（`reports/ffi-bridge-summary.md` 仮）作成と、型ホワイトリスト方針の明文化。 |
 | 2. Parser / AST 拡張 | **進行中** | `extern_metadata` PoC を維持しつつ、`extern_block_target` への改名と `test_parser` ゴールデン更新を完了。 | Typer 連携で得たメタデータ要求をフィードバックし、属性バリデーションを Parser レイヤへ逆移譲するか検討。 |
 | 3. Typer 統合と ABI 検証 | **完了** | `check_extern_bridge_contract` を `type_inference.ml` に実装し、`ffi_contract` の所有権/ABI 正規化を参照。`ffi.contract.symbol_missing` / `ownership_mismatch` / `unsupported_abi` 診断を生成し、`AuditEnvelope.metadata.bridge.*` を Typer で構築。 | ランタイム stub 連携時に追加される型ホワイトリストとの整合チェックを継続。 |
-| 4. ブリッジコード生成 | **進行中** | `codegen/ffi_stub_builder.ml` を新設し、ターゲット別 `BridgeStubPlan` の正規化・監査タグ抽出を実装。`llvm_gen/ffi_value_lowering.ml` で `reml.bridge.version` モジュールフラグと `reml.bridge.stubs` メタデータを生成し、`tests/test_ffi_stub_builder.ml` / `tests/test_ffi_lowering.ml` で Linux/Windows/macOS の初期ケースをカバー。 | Stub/Thunk の LLVM lowering 実装と、出力メタデータを CI で検証するパイプライン（`sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` 連携）を整備。 |
+| 4. ブリッジコード生成 | **進行中** | `codegen/ffi_stub_builder.ml` を新設し、ターゲット別 `BridgeStubPlan` の正規化・監査タグ抽出を実装。`llvm_gen/ffi_value_lowering.ml` で `reml.bridge.version` モジュールフラグと `reml.bridge.stubs` メタデータを生成し、`tests/test_ffi_stub_builder.ml` / `tests/test_ffi_lowering.ml` で Linux/Windows/macOS の初期ケースをカバー。さらに `compiler/ocaml/src/main.ml` から `Codegen.codegen_module` へ `stub_plans` を受け渡し、Typer が蓄積した `ffi_bridge_snapshots` が CodeGen 後段まで流れる経路を実装済み。 | Stub/Thunk の LLVM lowering を実装（`llvm_gen/codegen.ml`／`llvm_gen/ffi_value_lowering.ml` で `reml_ffi_bridge_*` 呼び出しと属性付与を完了）し、生成 IR に含まれる `reml.bridge.stubs` をゴールデン化。併せて `sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` を拡張し、`reml.bridge.*` メタデータとランタイム計測 (`reml_ffi_bridge_pass_rate`) を CI で検証するパイプラインを整備。 |
 | 5. 監査ログ統合 | **進行中** | `tooling/runtime/audit-schema.json` に bridge オブジェクトを追加し、`tooling/ci/collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を集計。`reports/ffi-bridge-summary.md` を更新し、メタデータ確認項目とターゲット別進捗を記録。 | Typer 実装後に `AuditEnvelope` ゴールデンを追加し、CI ゲート（`sync-iterator-audit.sh`）へ FFI ブリッジ検証を統合。Linux/Windows 監査ログのゴールデン化と pass rate 自動チェックを実装。 |
 | 6. プラットフォーム別テスト | **進行中** | Apple Silicon で `scripts/ci-local.sh --target macos --arch arm64 --stage beta` をフル実行し、`reports/ffi-macos-summary.md` にログと比較観点を追記。Linux/Windows 版テンプレート（`reports/ffi-linux-summary.md`, `reports/ffi-windows-summary.md`）を追加。 | FFI サンプル（借用/転送/構造体戻り）を各ターゲットで実行し、テンプレートへ結果を反映。Windows CI (`windows-latest`) への `ffi_bridge.audit_pass_rate` 収集を常設。 |
 | 7. ランタイム連携とテスト | **進行中** | `runtime/native/include/reml_ffi_bridge.h` に加え `src/ffi_bridge.c` を実装し、借用/移譲ヘルパと `reml_ffi_bridge_*` 計測 API を提供。`runtime/native/tests/test_ffi_bridge.c` を追加し、`make test` で計測値・Span 変換を検証。 | ランタイム計測値を CI アウトプットへ連携し、失敗ケースが `ffi_bridge.audit_pass_rate` に反映されるよう CLI/監査パイプラインを拡充。 |
@@ -56,17 +56,34 @@
 ### 残タスクと次のステップ
 
 1. **ブリッジコード生成パイプラインの仕上げ**
-   - `BridgeStubPlan` から実際の stub/thunk 関数を生成し、マーシャリング処理 (`FfiValueLowering`) と runtime API (`reml_ffi_bridge_*`) を接続する。
-   - LLVM IR に埋め込んだメタデータを活用し、`call` 命令への属性付与や `!dbg` 連携を実装する。
+   - `Ffi_stub_builder.stub_plan` を入力に stub/thunk 関数本体を生成し、`llvm_gen/ffi_value_lowering.ml` と `llvm_gen/codegen.ml` での引数マーシャリングと `runtime/native/src/ffi_bridge.c` のヘルパ呼び出しを一体化する。既存の `codegen/ffi_stub_builder.ml`・`llvm_gen/ffi_value_lowering.ml` インターフェイス確定が前提。
+      - stub 生成ロジックを専用モジュール（仮称 `llvm_gen/ffi_stub_lowering.ml`）へ切り出し、シンボル名・可視性・`dso_local` をテンプレート化する。
+      - `llvm_gen/codegen.ml` 側で `Ffi_stub_builder.stub_plan` が持つ所有権フックと監査キーを、引数マーシャリングと同一の AST/IR ノードで扱えるよう拡張する。
+      - `runtime/native/src/ffi_bridge.c` では `reml_ffi_bridge_record_status` など取得済み API を利用し、stub から成否が必ず報告されるように `cleanup` ブロックを共有する。
+   - LLVM `call` 命令へ `callconv`・`sret`・`signext` 等の属性を付与し、ターゲット別テンプレート（System V / MSVC / AAPCS64）を `tests/test_ffi_lowering.ml` の追加ケースで検証する。
+      - Linux: `callconv ccc` + 可変長引数 (`varargs`) ケースを追加し、`signext` / `zeroext` 属性が整数型サイズに応じて付与されることを Golden で固定化。
+      - Windows: `callconv win64` + `sret` が必要な構造体戻り値ケースを実装し、`byval` / `inreg` など MSVC 固有属性の付与を検証。
+      - macOS: `callconv aarch64_aapcscc` + `align` 属性の確認に加え、`nonnull` / `dereferenceable` を借用ポインタに付与するテストを追加。
+   - `reml.bridge.stubs` Named Metadata に `stub_index`・`extern_symbol`・`bridge.platform`・`bridge.ownership` をシリアライズし、`compiler/ocaml/tests/golden/llvm/ffi-stub-*.ll` を生成して回帰検証する。
+      - `Llvm_metadata.Builder` に FFI 専用ヘルパを追加し、Named Metadata 生成を `codegen/ffi_stub_builder.ml` から一元化。
+      - Golden 生成用スクリプト（`scripts/gen-ffi-stub-golden.sh` 仮称）を作成し、ターゲット別に `llvm-dis` 出力を取得して `tests/golden/llvm/ffi-stub-*.ll` へ保存。
+      - Metadata と `AuditEnvelope.metadata.bridge.*` のキー整合を `compiler/ocaml/tests/test_ffi_contract.ml` の追補テストで検証する。
+   - 検証指標: `dune build tests/test_ffi_stub_builder.exe tests/test_ffi_lowering.exe`、`opt -verify` / `llc` が成功し、`reports/ffi-bridge-summary.md` の Linux/Windows/macOS 行が `監査タグ確認 = yes` へ更新されること。
 2. **ランタイム計測と CI 連携**
-   - ランタイム計測値 (`reml_ffi_bridge_get_metrics`, `reml_ffi_bridge_pass_rate`) を CLI/CI から取得できるよう `tooling/ci/sync-iterator-audit.sh` を拡張し、`ffi_bridge.audit_pass_rate` をゲート条件に追加する。
-   - Windows / Linux ランナーでの `make test`（runtime）実行と計測ログ収集を自動化する。
+   - `tooling/ci/sync-iterator-audit.sh` に FFI メトリクス取得処理を追加し、`reml_ffi_bridge_pass_rate` と `AuditEnvelope.metadata.bridge.*` の欠落を検知した場合に CI を失敗させる。Windows では PowerShell ラッパを用意し、`ffi_bridge.audit_pass_rate` の収集を共通化する。
+   - `tooling/ci/collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を JSON 集計へ組み込み、`reports/iterator-stage-summary.md` と同様のテンプレートを `reports/ffi-bridge-summary.md` §1 に反映する。
+   - ランタイム単体テスト (`runtime/native/tests/test_ffi_bridge.c`) を Linux/Windows 両ターゲットで実行するワークフローを `.github/workflows/bootstrap-linux.yml` / `bootstrap-windows.yml` へ追加し、メトリクス取得コマンドと合わせてアーティファクト化する。
+   - 検証指標: `make -C runtime/native test` 成功、CI ログで `ffi_bridge.audit_pass_rate = 1.0` が確認でき、`tooling/runtime/audit-schema.json` の `ffi_bridge` セクションがスキーマ検証を通過する。
 3. **プラットフォーム別サンプルとゴールデン**
-   - Linux/macOS/Windows 各ターゲットで FFI サンプル（借用・転送・構造体戻り値）を実行し、`reports/ffi-*-summary.md` に結果とログを反映する。
-   - 監査ログのゴールデン (`compiler/ocaml/tests/golden/audit/ffi-bridge-*.jsonl.golden`) を追加し、ターゲット別の `bridge.*` キーを固定化する。
+   - Linux/macOS/Windows 向けに借用 (`Ownership::Borrowed`)、移譲 (`Transferred`)、構造体戻り値の各サンプル (`examples/ffi/borrowed/*.reml` 等) を整備し、`reports/ffi-linux-summary.md`・`reports/ffi-macos-summary.md`・`reports/ffi-windows-summary.md` に実行ログと検証結果を記録する。
+   - `compiler/ocaml/tests/golden/audit/ffi-bridge-{linux,windows,macos}.jsonl.golden` を作成し、ターゲット別 `bridge.platform`・`bridge.callconv`・`bridge.ownership` が Typer 出力と一致することを固定化する。合わせて `diagnostics/ffi/*.json.golden` に失敗ケース（所有権違反・未解決シンボル）を追加。
+   - CI 用スクリプトに `reports/ffi-*-summary.md` へログを追記するステップを追加し、`reports/ffi-bridge-summary.md` §3 のチェックボックスを実測値で更新する。
+   - 検証指標: `scripts/ci-local.sh --target <linux|windows|macos> --arch <x86_64|arm64> --stage beta` の成功、監査ゴールデン差分が `git status` 上でゼロ、`reports/ffi-*-summary.md` の TODO が消化済みになること。
 4. **仕様・ドキュメントとライセンス整理**
-   - 仕様書（3-9/3-6）とガイド（runtime-bridges.md）に stub メタデータ出力・計測 API の利用方法を追記し、Phase 3 に向けた手順を明文化する。
-   - `docs/notes/licensing-todo.md` の TODO を精査し、生成ヘッダの SPDX/生成情報の取り扱い方針を決定する。
+   - 仕様書 `docs/spec/3-9-core-async-ffi-unsafe.md` に stub メタデータ出力と計測 API (`reml_ffi_bridge_get_metrics`, `reml_ffi_bridge_pass_rate`) の参照フローを追記し、`docs/spec/3-6-core-diagnostics-audit.md` に `ffi_bridge.*` 診断キーと `AuditEnvelope.metadata.bridge.*` の定義を統合する。
+   - ガイド `docs/guides/runtime-bridges.md` を更新し、CI へのログ収集手順・`reports/ffi-*-summary.md` テンプレートの利用方法・プラットフォーム別注意点（Win32 API サンプル、Darwin codesign チェック等）を盛り込む。
+   - `docs/notes/licensing-todo.md` のチェックリストを精査し、生成ヘッダの SPDX 表記・コミットハッシュ埋め込み手順・外部ツール採用時のライセンス対応を Phase 2-3 中に決定。決定事項は `reports/ffi-bridge-summary.md` §5 に転記する。
+   - 検証指標: ドキュメント更新後に `docs/spec/README.md` と `README.md` の該当リンクを追記済みであること、レビューコメントに `reports/ffi-bridge-summary.md` と `docs/notes/licensing-todo.md` の更新差分を添付できる状態になっていること。
 
 ### 2025-10-18 ログ・測定サマリー
 
@@ -94,7 +111,7 @@
 
 ### ブリッジコード生成設計メモ（ドラフト）
 
-- `BridgeStubPlan` は `ffi_contract` 正規化結果（ターゲットトリプル・Calling Convention・Ownership・監査キー）から生成し、`compiler/ocaml/src/codegen/ffi_stub_builder.ml` で `emit_stub_module` / `emit_thunk` の両方に供給する。`reports/ffi-bridge-summary.md` にサンプルプランを追記してレビュー材料とする。
+- `Ffi_stub_builder.stub_plan` は `ffi_contract` 正規化結果（ターゲットトリプル・Calling Convention・Ownership・監査キー）から生成し、`compiler/ocaml/src/codegen/ffi_stub_builder.ml` でテンプレート化した後に LLVM lowering 側（`llvm_gen/ffi_value_lowering.ml` と今後追加する `llvm_gen/ffi_stub_lowering.ml` 仮）へ供給する。`reports/ffi-bridge-summary.md` にサンプルプランを追記してレビュー材料とする。
 - ランタイム側では `runtime/native/include/reml_ffi_bridge.h` を新設し、`reml_ffi_acquire_borrowed(void*)` / `reml_ffi_acquire_transferred(void*)` / `reml_ffi_release_transferred(void*)` / `reml_ffi_box_string(const reml_string_t*)` / `reml_ffi_unbox_span(const reml_span_t*)`（`reml_span_t` も新設予定）などのヘルパ API を提供する。実装は `src/ffi_bridge.c` にまとめ、既存の `mem_alloc`・`inc_ref`・`dec_ref` と連携させる。
 - 生成する LLVM IR には `llvm::Metadata` で `bridge.platform` / `bridge.abi` / `bridge.ownership` / `bridge.stub_id` を埋め込み、`AuditEnvelope` が利用するキーと揃える。IR 生成時に `!llvm.module.flags` へ `reml.bridge.version = 1` を追加し、将来の互換性チェックを容易にする。
 - C ヘッダの生成は Phase 2 ではリポジトリ内スクリプト（`scripts/gen-ffi-headers.reml`）で行い、生成物に `SPDX-License-Identifier`・コミットハッシュ・生成日時を付記する。外部ツール（`cbindgen` 等）を導入する場合はライセンス互換性と再現性を `docs/notes/licensing-todo.md`（新規予定）へ記録し、Phase 3 での自動化移行を前提にレビューする。
@@ -119,7 +136,8 @@
 
 ## 直近アクション（次の 2 週間）
 
-- LLVM lowering で生成した `reml.bridge.stubs` メタデータを検証するゴールデンを追加し、`tests/test_ffi_lowering.ml` をプラットフォーム別ケースへ拡張する。
+- Stub/Thunk lowering を `llvm_gen/codegen.ml` に実装し、`reml_ffi_bridge_record_*` 呼び出しを含む IR ゴールデン（`tests/golden/llvm/ffi-stub-*.ll`）と `tests/test_ffi_lowering.ml` の 3 ターゲットケースで属性を検証する。
+- `main.ml` → `Codegen.codegen_module` までの `stub_plans` 伝播を CLI サンプルで確認し、Linux/Windows の監査タグ結果を `reports/ffi-bridge-summary.md` に反映させる（`監査タグ確認 = yes` へ更新）。
 - ランタイム計測 API を CI に統合する方式を決定し、`tooling/ci/sync-iterator-audit.sh` で `ffi_bridge.audit_pass_rate` を収集・評価できる状態にする。
 - Linux/Windows 向けの FFI サンプル実行とログ収集を行い、`reports/ffi-linux-summary.md`・`reports/ffi-windows-summary.md` を初回更新する。
 - 仕様書・ガイド更新案（3-9, 3-6, runtime-bridges.md）をレビューに回し、メタデータ出力・計測 API の使い方を文書化する。
@@ -196,7 +214,7 @@
 **担当領域**: コード生成
 
 4.1. **Stub 生成ロジック**
-- `BridgeStubPlan`（ターゲットトリプル、Calling Convention、所有権、監査キー）を `ffi_contract` 正規化後に生成し、`compiler/ocaml/src/codegen/ffi_stub_builder.ml` で `emit_stub_module` へ受け渡す（初期版完了）。
+- `Ffi_stub_builder.stub_plan`（ターゲットトリプル、Calling Convention、所有権、監査キー）を `ffi_contract` 正規化後に生成し、`compiler/ocaml/src/codegen/ffi_stub_builder.ml` でテンプレート化したのち LLVM lowering 側（`llvm_gen/ffi_value_lowering.ml` と今後追加する stub 専用モジュール）へ受け渡す初期版が完了。
 - Linux System V / Windows MSVC (`win64`) / macOS arm64 (`aapcs64`) 用のテンプレートをテーブル化し、シンボル名・`dso_local`・可視性・`linkage` を自動決定する（テンプレート確立済み、stub/thunk 実生成が次段階）。
 - Reml ↔ C のマーシャリングは `FfiValueLowering` へ段階的に移行中で、現在はメタデータ埋め込みを提供。今後、引数/戻り値の変換と RC 操作を実装する。
 - 監査ログで利用する `bridge.platform` / `bridge.abi` / `bridge.ownership` は stub 生成段階で `llvm::Metadata` として埋め込む（`reml.bridge.version` フラグと `reml.bridge.stubs` Named Metadata を出力済み）。
