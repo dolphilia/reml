@@ -155,3 +155,30 @@ let make_stub_plan (contract : bridge_contract) : stub_plan =
     audit_tags;
     contract;
   }
+
+let sanitize_symbol_component value =
+  let buffer = Buffer.create (String.length value) in
+  String.iter
+    (fun ch ->
+      let ch = Char.lowercase_ascii ch in
+      if
+        (ch >= 'a' && ch <= 'z')
+        || (ch >= '0' && ch <= '9')
+        || ch = '_'
+      then Buffer.add_char buffer ch
+      else Buffer.add_char buffer '_')
+    value;
+  let sanitized = Buffer.contents buffer in
+  if String.equal sanitized "" then "ffi" else sanitized
+
+let stub_symbol_name ~index (plan : stub_plan) =
+  let base = sanitize_symbol_component plan.contract.extern_name in
+  Printf.sprintf "__reml_stub_%s_%d" base (index + 1)
+
+let thunk_symbol_name ~index (plan : stub_plan) =
+  let source =
+    match plan.contract.metadata.extern_link_name with
+    | Some link -> sanitize_symbol_component link
+    | None -> sanitize_symbol_component plan.contract.extern_name
+  in
+  Printf.sprintf "__reml_thunk_%s_%d" source (index + 1)

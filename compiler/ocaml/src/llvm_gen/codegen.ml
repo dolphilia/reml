@@ -209,6 +209,16 @@ let declare_runtime_functions ctx =
   let print_i64 = Llvm.declare_function "print_i64" print_i64_ty ctx.llmodule in
   Hashtbl.replace ctx.fn_map "print_i64" print_i64;
 
+  (* reml_ffi_bridge_record_status: (i32) -> void *)
+  let ffi_status_ty =
+    Llvm.function_type void_ty [| Llvm.i32_type ctx.llctx |]
+  in
+  let ffi_status =
+    Llvm.declare_function "reml_ffi_bridge_record_status" ffi_status_ty
+      ctx.llmodule
+  in
+  Hashtbl.replace ctx.fn_map "reml_ffi_bridge_record_status" ffi_status;
+
   (* memcpy: llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1) -> void *)
   let memcpy_ty =
     Llvm.function_type void_ty
@@ -317,6 +327,81 @@ let call_dec_ref ctx ptr =
   ignore (Llvm.build_call dec_ref_ty dec_ref [| ptr |] "" ctx.builder)
 [@@warning "-32"]
 (* Phase 2 で使用予定 *)
+
+(* ========== FFI スタブ生成 ========== *)
+
+let lookup_runtime_function ctx name =
+  match Hashtbl.find_opt ctx.fn_map name with
+  | Some fn -> fn
+  | None -> codegen_errorf "Runtime function %s not declared" name
+
+let call_conv_of_stub_plan (plan : Ffi_stub_builder.stub_plan) =
+  match String.lowercase_ascii plan.calling_convention with
+  | "win64" -> Llvm.CallConv.x86_64_win64
+  | "aarch64_aapcscc" | "aapcs64" -> Llvm.CallConv.aarch64_aapcs
+  | "ccc" | "system_v" -> Llvm.CallConv.c
+  | _ -> Llvm.CallConv.c
+
+let emit_placeholder_thunk ctx ~index (plan : Ffi_stub_builder.stub_plan) =
+  let llctx = ctx.llctx in
+  let void_ty = Llvm.void_type llctx in
+  let fn_ty = Llvm.function_type void_ty [||] in
+  let symbol = Ffi_stub_builder.thunk_symbol_name ~index plan in
+  let thunk_fn = Llvm.define_function symbol fn_ty ctx.llmodule in
+  Llvm.set_linkage Llvm.Linkage.Internal thunk_fn;
+  Llvm.set_function_call_conv (call_conv_of_stub_plan plan) thunk_fn;
+  let builder = Llvm.builder llctx in
+  let entry = Llvm.append_block llctx "entry" thunk_fn in
+  Llvm.position_at_end entry builder;
+  let record_status =
+    lookup_runtime_function ctx "reml_ffi_bridge_record_status"
+  in
+  let record_status_ty = Llvm.element_type (Llvm.type_of record_status) in
+  let failure = Llvm.const_int (Llvm.i32_type llctx) 1 in
+  ignore
+    (Llvm.build_call record_status_ty record_status [| failure |] ""
+       builder);
+  ignore (Llvm.build_ret_void builder);
+  Llvm.dispose_builder builder;
+  Hashtbl.replace ctx.fn_map symbol thunk_fn;
+  thunk_fn
+
+let emit_stub_function ctx ~index (plan : Ffi_stub_builder.stub_plan) =
+  let llctx = ctx.llctx in
+  let void_ty = Llvm.void_type llctx in
+  let fn_ty = Llvm.function_type void_ty [||] in
+  let symbol = Ffi_stub_builder.stub_symbol_name ~index plan in
+  let stub_fn = Llvm.define_function symbol fn_ty ctx.llmodule in
+  Llvm.set_linkage Llvm.Linkage.Internal stub_fn;
+  Llvm.set_function_call_conv Llvm.CallConv.c stub_fn;
+  let builder = Llvm.builder llctx in
+  let entry = Llvm.append_block llctx "entry" stub_fn in
+  Llvm.position_at_end entry builder;
+  let record_status =
+    lookup_runtime_function ctx "reml_ffi_bridge_record_status"
+  in
+  let record_status_ty = Llvm.element_type (Llvm.type_of record_status) in
+  let failure = Llvm.const_int (Llvm.i32_type llctx) 1 in
+  ignore
+    (Llvm.build_call record_status_ty record_status [| failure |] ""
+       builder);
+  let thunk_fn = emit_placeholder_thunk ctx ~index plan in
+  let thunk_ty = Llvm.element_type (Llvm.type_of thunk_fn) in
+  let call_inst =
+    Llvm.build_call thunk_ty thunk_fn [||] "ffi_thunk_call" builder
+  in
+  Llvm.set_instruction_call_conv (call_conv_of_stub_plan plan) call_inst;
+  ignore (Llvm.build_ret_void builder);
+  Llvm.dispose_builder builder;
+  Hashtbl.replace ctx.fn_map symbol stub_fn;
+  stub_fn
+
+let emit_stub_thunks ctx (plans : Ffi_stub_builder.stub_plan list) =
+  List.iteri
+    (fun index plan ->
+      let _ = emit_stub_function ctx ~index plan in
+      ())
+    plans
 
 (** panic を呼び出してプログラムを異常終了させる
  *
@@ -1391,8 +1476,9 @@ let codegen_module ?(target_name = "x86_64-linux") ?(stub_plans = []) module_def
       end_function ctx)
     module_def.function_defs;
 
-  if stub_plans <> [] then
-    Ffi_value_lowering.attach_stub_plans ctx.llctx ctx.llmodule stub_plans;
+  if stub_plans <> [] then (
+    emit_stub_thunks ctx stub_plans;
+    Ffi_value_lowering.attach_stub_plans ctx.llctx ctx.llmodule stub_plans);
 
   ctx.llmodule
 

@@ -42,7 +42,8 @@
 
 - [x] Windows スタブで `Ownership::Transferred` メタデータ生成テストを追加 (`tests/test_ffi_lowering.ml`)
 - [x] `runtime/native/include/reml_ffi_bridge.h` に audit hook とメトリクス API を整備 (`runtime/native/src/ffi_bridge.c`)
-- [ ] `codegen/ffi_stub_builder.ml` → `llvm_gen/ffi_value_lowering.ml` → runtime API を連結し、stub/thunk 関数を生成して `reml.bridge.stubs` をターゲット別に検証
+- [x] `llvm_gen/codegen.ml` でプレースホルダの stub/thunk を生成し、`reml_ffi_bridge_record_status` 呼び出しを含む最低限の lowering と IR 検証 (`tests/test_ffi_lowering.ml`)
+- [ ] `codegen/ffi_stub_builder.ml` → `llvm_gen/ffi_value_lowering.ml` → runtime API を本実装で連結し、stub/thunk が引数マーシャリング・所有権操作を伴って `reml.bridge.stubs` をターゲット別に検証
 - [ ] CLI (`remlc --emit-ir`) で生成した Linux/Windows IR に `reml.bridge.stubs` と `bridge.*` メタデータが含まれることを手動サンプルで確認し、表の `監査タグ確認` を更新
 - [ ] `tooling/ci/sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を CI ゲートへ追加（Linux/Windows 共通ロジック）
 - [ ] `reports/ffi-linux-summary.md`・`reports/ffi-windows-summary.md`・`reports/ffi-macos-summary.md` を実測ログで更新し、監査ゴールデン (`compiler/ocaml/tests/golden/audit/ffi-bridge-*.jsonl.golden`) を確定

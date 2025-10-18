@@ -82,6 +82,8 @@ let () =
     [
       "bridge.stub_index=1";
       "bridge.extern_name=ffi_entry";
+      "bridge.stub_symbol=__reml_stub_ffi_entry_1";
+      "bridge.thunk_symbol=__reml_thunk_ffi_entry_symbol_1";
       "bridge.target=x86_64-pc-windows-msvc";
       "bridge.callconv=win64";
       "bridge.abi=msvc";
@@ -89,9 +91,59 @@ let () =
       "bridge.block_target=ffi-block-target";
       "bridge.extern_symbol=ffi_entry_symbol";
       "bridge.platform=windows-msvc-x64";
+      "bridge.arch=x86_64";
     ]
   in
   List.iter (assert_contains "stub-metadata" entries) expect;
+
+  (* スタブ関数を検証 *)
+  let stub_name = Ffi_stub_builder.stub_symbol_name ~index:0 plan in
+  let stub_fn =
+    match Llvm.lookup_function stub_name llvm_module with
+    | Some fn -> fn
+    | None ->
+        Printf.eprintf "Stub function %s is missing\n" stub_name;
+        exit 1
+  in
+  if Llvm.call_conv stub_fn <> Llvm.CallConv.c then (
+    Printf.eprintf "Stub %s uses unexpected call convention\n" stub_name;
+    exit 1);
+  let stub_ir = Llvm.string_of_llvalue stub_fn in
+  if not
+       (Ffi_contract.contains_substring stub_ir
+          "reml_ffi_bridge_record_status")
+  then (
+    Printf.eprintf
+      "Stub %s does not record bridge status as expected\n" stub_name;
+    exit 1);
+  if not
+       (Ffi_contract.contains_substring stub_ir
+          "__reml_thunk_ffi_entry_symbol_1")
+  then (
+    Printf.eprintf
+      "Stub %s does not call the generated thunk function\n" stub_name;
+    exit 1);
+
+  (* サンク（thunk）関数を検証 *)
+  let thunk_name = Ffi_stub_builder.thunk_symbol_name ~index:0 plan in
+  let thunk_fn =
+    match Llvm.lookup_function thunk_name llvm_module with
+    | Some fn -> fn
+    | None ->
+        Printf.eprintf "Thunk function %s is missing\n" thunk_name;
+        exit 1
+  in
+  if Llvm.call_conv thunk_fn <> Llvm.CallConv.x86_64_win64 then (
+    Printf.eprintf "Thunk %s uses unexpected call convention\n" thunk_name;
+    exit 1);
+  let thunk_ir = Llvm.string_of_llvalue thunk_fn in
+  if not
+       (Ffi_contract.contains_substring thunk_ir
+          "reml_ffi_bridge_record_status")
+  then (
+    Printf.eprintf
+      "Thunk %s does not record bridge status as expected\n" thunk_name;
+    exit 1);
 
   Printf.printf "FFI lowering metadata test passed.\n";
   exit 0

@@ -43,6 +43,10 @@ let metadata_fields index (plan : stub_plan) =
     [
       ("bridge.stub_index", string_of_int (index + 1));
       ("bridge.extern_name", plan.contract.extern_name);
+      ( "bridge.stub_symbol",
+        Ffi_stub_builder.stub_symbol_name ~index plan );
+      ( "bridge.thunk_symbol",
+        Ffi_stub_builder.thunk_symbol_name ~index plan );
       ("bridge.target", plan.target_triple);
       ("bridge.callconv", plan.calling_convention);
       ("bridge.abi", abi_label plan.abi);
