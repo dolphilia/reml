@@ -488,6 +488,23 @@ and desugar_for_loop (map : var_scope_map) (pat : typed_pattern)
             (fun name -> { cap_name = name; cap_span = span })
             info.capability
         in
+        let audit_actual_stage =
+          let raw = String.trim info.stage_actual in
+          if String.equal raw "" then None
+          else Some (Effect.stage_id_of_string raw)
+        in
+        let iterator_kind_label =
+          Some
+            (match info.kind with
+            | IteratorArrayLike -> "array_like"
+            | IteratorCoreIter -> "core_iter"
+            | IteratorOptionLike -> "option_like"
+            | IteratorResultLike -> "result_like"
+            | IteratorCustom name -> Printf.sprintf "custom:%s" name)
+        in
+        let iterator_source_label =
+          Some (Types.string_of_ty info.source_ty)
+        in
         let audit_for method_name audit_span =
           Some
             {
@@ -501,6 +518,9 @@ and desugar_for_loop (map : var_scope_map) (pat : typed_pattern)
               audit_required_stage =
                 Some (stage_requirement_to_ir info.stage_requirement);
               audit_capability = capability_id;
+              audit_actual_stage = audit_actual_stage;
+              audit_iterator_kind = iterator_kind_label;
+              audit_iterator_source = iterator_source_label;
             }
         in
         ( [ make_effect "effect.stage.iterator.required" source.texpr_span

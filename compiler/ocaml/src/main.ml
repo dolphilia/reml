@@ -1,5 +1,10 @@
 module EffectTable = Constraint_solver.EffectConstraintTable
 
+module IteratorAudit = Core_ir.Iterator_audit
+
+let iterator_audit_entries : (string, IteratorAudit.entry) Hashtbl.t =
+  Hashtbl.create 32
+
 let json_of_span (span : Ast.span) =
   `Assoc [ ("start", `Int span.start); ("end", `Int span.end_) ]
 
@@ -145,6 +150,118 @@ let runtime_stage_event (context : Type_inference_effect.runtime_stage) =
   in
   Audit_envelope.make ~category:"effect.stage.runtime"
     ~metadata:(`Assoc (List.rev metadata)) ()
+
+let iterator_stage_event runtime_context (entry : IteratorAudit.entry) =
+  let capability_name = entry.IteratorAudit.capability in
+  let actual_stage_id =
+    Type_inference_effect.stage_for_capability runtime_context capability_name
+  in
+  let actual_stage =
+    Effect_profile.stage_id_to_string actual_stage_id
+  in
+  let required_stage =
+    match entry.IteratorAudit.required_stage with
+    | Some requirement ->
+        Effect_profile.stage_requirement_to_string requirement
+    | None -> actual_stage
+  in
+  let stage_source =
+    let rec find = function
+      | [] -> None
+      | (step : Effect_profile.stage_trace_step) :: rest -> (
+          match step.stage with
+          | Some stage when String.equal stage actual_stage -> Some step.source
+          | _ -> find rest)
+    in
+    find runtime_context.Type_inference_effect.stage_trace
+    |> Option.value ~default:"runtime"
+  in
+  let base_trace = runtime_context.Type_inference_effect.stage_trace in
+  let has_source trace source =
+    List.exists
+      (fun (step : Effect_profile.stage_trace_step) ->
+        String.equal step.source source)
+      trace
+  in
+  let typer_step =
+    match capability_name with
+    | Some cap ->
+        Effect_profile.stage_trace_step_of_stage_id ~capability:cap "typer"
+          actual_stage_id
+    | None ->
+        Effect_profile.stage_trace_step_of_stage_id "typer" actual_stage_id
+  in
+  let runtime_step =
+    match capability_name with
+    | Some cap ->
+        Effect_profile.stage_trace_step_of_stage_id ~capability:cap "runtime"
+          actual_stage_id
+    | None ->
+        Effect_profile.stage_trace_step_of_stage_id "runtime" actual_stage_id
+  in
+  let trace_with_typer =
+    if has_source base_trace "typer" then base_trace
+    else
+      match base_trace with
+      | [] -> [ typer_step ]
+      | first :: rest -> first :: typer_step :: rest
+  in
+  let stage_trace =
+    if has_source trace_with_typer "runtime" then trace_with_typer
+    else
+      match trace_with_typer with
+      | [] -> [ runtime_step ]
+      | [ single ] -> single :: runtime_step :: []
+      | first :: second :: rest when String.equal second.source "typer" ->
+          first :: second :: runtime_step :: rest
+      | first :: rest -> first :: runtime_step :: rest
+  in
+  let capability_json =
+    match capability_name with
+    | Some cap when cap <> "" -> `String cap
+    | _ -> `Null
+  in
+  let iterator_kind_json =
+    match entry.IteratorAudit.iterator_kind with
+    | Some kind -> `String kind
+    | None -> `Null
+  in
+  let iterator_source_json =
+    match entry.IteratorAudit.iterator_source with
+    | Some src -> `String src
+    | None -> `Null
+  in
+  let metadata =
+    [
+      ("symbol", `String entry.IteratorAudit.function_name);
+      ("effect.stage.required", `String required_stage);
+      ("effect.stage.actual", `String actual_stage);
+      ("effect.stage.source", `String "runtime");
+      ("effect.capability", capability_json);
+      ("effect.stage.iterator.required", `String required_stage);
+      ("effect.stage.iterator.actual", `String actual_stage);
+      ("effect.stage.iterator.capability", capability_json);
+      ("effect.stage.iterator.kind", iterator_kind_json);
+      ("effect.stage.iterator.source", `String stage_source);
+      ( "effect.stage.iterator.method",
+        `String entry.IteratorAudit.method_name );
+      ( "audit.note",
+        `String
+          (Printf.sprintf "Iterator audit (%s.%s)"
+             entry.IteratorAudit.function_name
+             entry.IteratorAudit.method_name) );
+      ( "stage_trace",
+        Effect_profile.stage_trace_to_json stage_trace );
+    ]
+  in
+  Audit_envelope.make ~category:"effect.stage"
+    ~metadata:(`Assoc (List.rev metadata)) ()
+
+let iterator_audit_events runtime_context =
+  Hashtbl.fold
+    (fun _ entry acc ->
+      iterator_stage_event runtime_context entry :: acc)
+    iterator_audit_entries []
 
 let events_from_effect_constraints () =
   Constraint_solver.current_effect_constraints ()
@@ -303,9 +420,12 @@ let () =
 
             (match opts.Cli.Options.emit_audit_path with
             | Some audit_path ->
+                let iterator_events =
+                  iterator_audit_events runtime_stage_context
+                in
                 let events =
                   runtime_stage_event runtime_stage_context
-                  :: events_from_effect_constraints ()
+                  :: (iterator_events @ events_from_effect_constraints ())
                 in
                 Audit_envelope.append_events audit_path events
             | None -> ());
@@ -345,12 +465,18 @@ let () =
                 try
                   record_start_if collect_metrics CoreIR;
                   let core_ir =
-                    let desugared =
-                      Core_ir.Desugar.desugar_compilation_unit tast
-                    in
-                    Core_ir.Monomorphize_poc.apply ~mode desugared
+                  let desugared =
+                    Core_ir.Desugar.desugar_compilation_unit tast
                   in
-                  record_end_if collect_metrics CoreIR;
+                  Core_ir.Monomorphize_poc.apply ~mode desugared
+              in
+              let () =
+                Core_ir.Iterator_audit.collect core_ir
+                |> List.iter (fun entry ->
+                       let key = Core_ir.Iterator_audit.entry_key entry in
+                       Hashtbl.replace iterator_audit_entries key entry)
+              in
+              record_end_if collect_metrics CoreIR;
                   record_start_if collect_metrics Optimization;
                   let optimized_ir, _stats =
                     Core_ir.Pipeline.optimize_module ~config:opt_config core_ir
@@ -516,13 +642,17 @@ let () =
             | Some audit_path ->
                 let runtime_event = runtime_stage_event runtime_stage_context in
                 let constraint_events = events_from_effect_constraints () in
+                let iterator_events =
+                  iterator_audit_events runtime_stage_context
+                in
                 let events_with_error =
                   match event_of_type_error type_err with
                   | Some event -> event :: constraint_events
                   | None -> constraint_events
                 in
                 Audit_envelope.append_events audit_path
-                  (runtime_event :: events_with_error)
+                  (runtime_event
+                  :: (iterator_events @ events_with_error))
             | None -> ());
             let diag =
               Type_error.to_diagnostic_with_source source opts.input_file
@@ -575,8 +705,11 @@ let () =
 
       (match opts.Cli.Options.emit_audit_path with
       | Some audit_path ->
+          let iterator_events =
+            iterator_audit_events runtime_stage_context
+          in
           Audit_envelope.append_events audit_path
-            [ runtime_stage_event runtime_stage_context ]
+            (runtime_stage_event runtime_stage_context :: iterator_events)
       | None -> ());
 
       print_diagnostic opts (Some source) diag;

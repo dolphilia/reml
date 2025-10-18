@@ -35,7 +35,7 @@
 | 8. 統合検証と Phase 3 準備 | ⏳ 未着手 | — | Typer/Runtime 完了後の統合シナリオと Phase 3 引き継ぎ資料を設計 |
 
 ### 次のステップ（短期フォーカス）
-- Core IR メタデータと RuntimeCapability JSON を突合し、`RuntimeCapabilityResolver` → `AuditEnvelope` → CI 指標（`iterator.stage.audit_pass_rate`）までを一連の検証フローとして接続する
+- Core IR メタデータと RuntimeCapability JSON を突合し、`RuntimeCapabilityResolver` → `AuditEnvelope` → CI 指標（`iterator.stage.audit_pass_rate`）までを一連の検証フローとして接続する。`core_ir/iterator_audit.ml` で Core IR の `DictMethodCall` に付与された `iterator_audit` 情報を収集し、`main.ml` 側でランタイム Stage 判定と結合した `effect.stage` 監査イベントを生成する実装を追加。CI はこのイベントを `effects-residual.jsonl.golden` などと突合し、Stage トレースが Runtime Capability JSON と一致することを確認する。
 - Stage トレースと残余効果情報を JSON Lines で保持する監査ログ運用を設計し、`reports/iterator-stage-summary.md` から逸脱を検知できるようにする
 - `tooling/runtime/capabilities/*.json` 更新手順と `scripts/validate-runtime-capabilities.sh` の運用を `0-3-audit-and-metrics.md` に追記し、Windows override を含む更新プロセスを固定化する
 

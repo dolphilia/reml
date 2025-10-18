@@ -5,45 +5,20 @@
         "effect.stage.required": "stable",
         "effect.stage.actual": "stable",
         "effect.capability": "core.runtime",
-        "effect.residual.tags": [
-          "panic"
-        ],
+        "effect.residual.tags": [ "panic" ],
         "stage_trace": [
-          {
-            "source": "typer",
-            "stage": "stable",
-            "capability": "core.runtime"
-          },
-          {
-            "source": "runtime",
-            "stage": "stable"
-          }
+          { "source": "typer", "stage": "stable" },
+          { "source": "runtime", "stage": "stable" }
         ]
       },
       "extensions": {
         "effects": {
-          "stage": {
-            "required": "stable",
-            "actual": "stable"
-          },
-          "residual": {
-            "missing": [
-              "panic"
-            ],
-            "leaked_from": "fn demo"
-          },
-          "declared": [
-            "io"
-          ],
+          "stage": { "required": "stable", "actual": "stable" },
+          "residual": { "missing": [ "panic" ], "leaked_from": "fn demo" },
+          "declared": [ "io" ],
           "stage_trace": [
-            {
-              "source": "cli_option",
-              "note": "not provided"
-            },
-            {
-              "source": "env_var",
-              "note": "REMLC_EFFECT_STAGE not set"
-            },
+            { "source": "cli_option", "note": "not provided" },
+            { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
             {
               "source": "typer",
               "stage": "stable",
@@ -65,14 +40,8 @@
         "effect.stage.actual": "stable",
         "effect.stage.capability": "core.runtime",
         "effect.stage_trace": [
-          {
-            "source": "cli_option",
-            "note": "not provided"
-          },
-          {
-            "source": "env_var",
-            "note": "REMLC_EFFECT_STAGE not set"
-          },
+          { "source": "cli_option", "note": "not provided" },
+          { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
           {
             "source": "typer",
             "stage": "stable",

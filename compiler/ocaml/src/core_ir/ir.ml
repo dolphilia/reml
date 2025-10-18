@@ -128,6 +128,9 @@ type iterator_audit = {
   audit_effect : effect_tag;  (** 監査用効果タグ（effect.stage.*） *)
   audit_required_stage : stage_requirement option;  (** 要求される Stage *)
   audit_capability : capability_id option;  (** 対応する Capability ID *)
+  audit_actual_stage : Effect.stage_id option;  (** 実際の Stage *)
+  audit_iterator_kind : string option;  (** イテレータ種別の概要 *)
+  audit_iterator_source : string option;  (** 監査対象ソースの表示名 *)
 }
 (** Iterator 呼び出しの監査情報 *)
 
