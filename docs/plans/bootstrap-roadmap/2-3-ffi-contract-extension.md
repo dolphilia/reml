@@ -26,7 +26,7 @@
 | 1. ABI モデル設計 | **進行中** | Darwin 計測計画を `docs/notes/llvm-spec-status-survey.md` に追記し、`ffi_contract` モジュール（所有権・ABI 判定スケルトン）を追加。`normalize_contract` でターゲット別 `expected_abi`・所有権正規化を実装。 | Linux/Windows/macOS 向け ABI 差分ノート（`reports/ffi-bridge-summary.md` 仮）作成と、型ホワイトリスト方針の明文化。 |
 | 2. Parser / AST 拡張 | **進行中** | `extern_metadata` PoC を維持しつつ、`extern_block_target` への改名と `test_parser` ゴールデン更新を完了。 | Typer 連携で得たメタデータ要求をフィードバックし、属性バリデーションを Parser レイヤへ逆移譲するか検討。 |
 | 3. Typer 統合と ABI 検証 | **完了** | `check_extern_bridge_contract` を `type_inference.ml` に実装し、`ffi_contract` の所有権/ABI 正規化を参照。`ffi.contract.symbol_missing` / `ownership_mismatch` / `unsupported_abi` 診断を生成し、`AuditEnvelope.metadata.bridge.*` を Typer で構築。 | ランタイム stub 連携時に追加される型ホワイトリストとの整合チェックを継続。 |
-| 4. ブリッジコード生成 | **未着手** | — | ターゲット別 stub 生成ロジックの責務分担を `codegen` / `runtime/native` チームと摺り合わせ。 |
+| 4. ブリッジコード生成 | **進行中** | `BridgeStubPlan` 設計と LLVM 属性マッピング、`runtime/native` 拡張案、ヘッダ生成ポリシー草案を整理。 | `codegen/ffi_stub_builder.ml` 骨格と `runtime/native/include/reml_ffi_bridge.h` 初稿を実装し、ターゲット別テストへ順次反映。 |
 | 5. 監査ログ統合 | **進行中** | `tooling/runtime/audit-schema.json` に bridge オブジェクトを追加し、`tooling/ci/collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を集計。 | Typer 実装後に `AuditEnvelope` ゴールデンを追加し、CI ゲート（`sync-iterator-audit.sh`）へ FFI ブリッジ検証を統合。 |
 | 6. プラットフォーム別テスト | **進行中** | Apple Silicon で `scripts/ci-local.sh --target macos --arch arm64 --stage beta` をフル実行し、`reports/ffi-macos-summary.md` にログと比較観点を追記。 | FFI サンプル（借用/転送/構造体戻り）を macOS で実行し、Linux/Windows 版テンプレートを用意。 |
 | 7. ランタイム連携とテスト | **未着手** | — | FFI ヘルパ API の拡張方針を `runtime/native` ドキュメントに追記するドラフトを準備。 |
@@ -51,8 +51,9 @@
 ### 残タスクと次のステップ
 
 1. **ブリッジコード生成とランタイム**
-   - 各ターゲット向け stub 生成ロジックと LLVM lowering を設計し、`runtime/native` のヘルパ API を拡張。
-   - C ヘッダ生成方針（自動/手動）とライセンス整理を行い、Phase 3 へ引き継ぐ。
+   - `BridgeStubPlan`（ターゲット・呼出規約・所有権・監査キー）を `ffi_contract` 正規化結果から構築し、`compiler/ocaml/src/codegen/ffi_stub_builder.ml` で stub/thunk を一元生成する設計を固める。
+   - `runtime/native/include/reml_ffi_bridge.h` を新設して借用/移譲ヘルパ、マーシャリング共通処理、`ffi_bridge.audit_pass_rate` と同期するフック API を整理し、既存ランタイムとの責務境界を定義する。
+   - C ヘッダ生成のワークフロー（自動/手動切り替え、`SPDX` 表記、生成スクリプトの監査ログ出力、外部ツール利用時のライセンス互換確認）を決定し、Phase 3 へ引き継ぐドキュメントを `reports/ffi-bridge-summary.md` で管理する。
 2. **プラットフォーム別テスト**
    - macOS arm64 で借用/転送/構造体戻りの FFI サンプルを実行し、`reports/ffi-macos-summary.md` の未実施項目を埋める。
    - Linux x86_64 / Windows x64 版の計測テンプレートとログ収集手順を作成し、`ffi_bridge.audit_pass_rate` をターゲット別に監視。
@@ -86,6 +87,13 @@
    `type_error.ml`・`main.ml` を更新し、Typer で構築した `bridge` メタデータを CLI (`--emit-json`)・監査 (`--emit-audit`) 双方へ転送。`AuditEnvelope.metadata.bridge.*` に `status`・`source_span` を含める。
 4. **ゴールデンテスト更新（完了済み 2025-10-18）**  
    `compiler/ocaml/tests/test_ffi_contract.ml` を追加し、`compiler/ocaml/tests/golden/diagnostics/ffi/unsupported-abi.json.golden` と `compiler/ocaml/tests/golden/audit/ffi-bridge.jsonl.golden` を固定化。`dune runtest` で `ffi_bridge.audit_pass_rate` を自動検証。
+
+### ブリッジコード生成設計メモ（ドラフト）
+
+- `BridgeStubPlan` は `ffi_contract` 正規化結果（ターゲットトリプル・Calling Convention・Ownership・監査キー）から生成し、`compiler/ocaml/src/codegen/ffi_stub_builder.ml` で `emit_stub_module` / `emit_thunk` の両方に供給する。`reports/ffi-bridge-summary.md` にサンプルプランを追記してレビュー材料とする。
+- ランタイム側では `runtime/native/include/reml_ffi_bridge.h` を新設し、`reml_ffi_acquire_borrowed(void*)` / `reml_ffi_acquire_transferred(void*)` / `reml_ffi_release_transferred(void*)` / `reml_ffi_box_string(const reml_string_t*)` / `reml_ffi_unbox_span(const reml_span_t*)`（`reml_span_t` も新設予定）などのヘルパ API を提供する。実装は `src/ffi_bridge.c` にまとめ、既存の `mem_alloc`・`inc_ref`・`dec_ref` と連携させる。
+- 生成する LLVM IR には `llvm::Metadata` で `bridge.platform` / `bridge.abi` / `bridge.ownership` / `bridge.stub_id` を埋め込み、`AuditEnvelope` が利用するキーと揃える。IR 生成時に `!llvm.module.flags` へ `reml.bridge.version = 1` を追加し、将来の互換性チェックを容易にする。
+- C ヘッダの生成は Phase 2 ではリポジトリ内スクリプト（`scripts/gen-ffi-headers.reml`）で行い、生成物に `SPDX-License-Identifier`・コミットハッシュ・生成日時を付記する。外部ツール（`cbindgen` 等）を導入する場合はライセンス互換性と再現性を `docs/notes/licensing-todo.md`（新規予定）へ記録し、Phase 3 での自動化移行を前提にレビューする。
 
 ### JSON 監査スキーマ更新案（FFI Bridge 拡張）
 
@@ -184,22 +192,22 @@
 **担当領域**: コード生成
 
 4.1. **Stub 生成ロジック**
-- ターゲット別の stub テンプレート（Linux System V / Windows MSVC / macOS arm64）
-- 引数マーシャリング（Reml 型 → C 型）
-- 戻り値マーシャリング（C 型 → Reml 型）
-- エラーハンドリング（NULL チェック等）
+- `BridgeStubPlan`（ターゲットトリプル、Calling Convention、所有権、監査キー）を `ffi_contract` 正規化後に生成し、`compiler/ocaml/src/codegen/ffi_stub_builder.ml` で `emit_stub_module` へ受け渡す。
+- Linux System V / Windows MSVC (`win64`) / macOS arm64 (`aapcs64`) 用のテンプレートをテーブル化し、シンボル名・`dso_local`・可視性・`linkage` を自動決定する。
+- Reml ↔ C のマーシャリングを `FfiValueLowering`（新設予定）に委譲し、借用 (`Ownership::Borrowed`) / 移譲 (`Ownership::Transferred`) を切り替えて RC 操作と連携させる。
+- 監査ログで利用する `bridge.platform` / `bridge.abi` / `bridge.ownership` を stub 生成段階で `llvm::Metadata` として埋め込み、Typer・Runtime と同一キーで連携する。
 
 4.2. **LLVM IR への lowering**
-- FFI 関数宣言の LLVM IR 生成
-- 呼出規約の LLVM 属性への変換（`cc 10` 等、arm64-apple-darwin 固有の指定も含む）
-- 構造体レイアウトの LLVM 型への写像
-- デバッグ情報の保持
+- 呼出規約を `ccc` / `win64` / `aarch64_aapcscc` 等の LLVM 属性で明示し、ターゲット固有の `signext`・`zeroext`・`sret` 等補助属性を付与する。
+- `DataLayout` 由来のサイズ・アライメントを用いて構造体・配列・スライスを `llvm::StructType` へ写像し、Reml `Span` と一致するようパディングを調整する。
+- 借用引数に `nonnull` / `dereferenceable` / `align` 属性を付与し、移譲パスでは `llvm.lifetime.end` を挿入して RC 解放シーケンスと同期させる。
+- `!dbg` 情報へ `ffi_contract` のシグネチャ・所有権注釈を転写し、監査ログ `call_site` と突合できるようにする。
 
 4.3. **C ヘッダ生成の検討**
-- `cbindgen` 等のツール調査
-- Reml 型から C ヘッダへの自動生成
-- ライセンス・再現性の確認
-- Phase 3 での本格導入の方針決定
+- `runtime/native/include/reml_ffi_bridge.h` を共通入口とし、ターゲット固有の補助ヘッダは `include/generated/<triple>/` へ自動出力する案を比較する。
+- OCaml 製のヘッダ生成スクリプト（仮称 `scripts/gen-ffi-headers.reml`）と `cbindgen` 等外部ツール利用案の再現性・レビュー容易性・依存ライセンスを整理する。
+- 生成物へ `SPDX-License-Identifier`・生成日時・ソースコミットハッシュを埋め込み、`reports/ffi-bridge-summary.md` で差分監査する手順を確立する。
+- Phase 2 では手動管理 fallback のレビューチェックリストを `docs/notes/` に記録し、Phase 3 の自動化移行に備える。
 
 **成果物**: Stub 生成、LLVM lowering、ヘッダ生成調査
 
@@ -259,10 +267,10 @@
 **担当領域**: ランタイム統合
 
 7.1. **ランタイム C コードの拡張**
-- FFI ヘルパー関数の実装
-- メモリ管理の FFI 対応
-- エラーハンドリングの統一
-- Phase 1 ランタイムとの統合
+- `runtime/native/include/reml_ffi_bridge.h` と `src/ffi_bridge.c` を追加し、`reml_ffi_acquire_borrowed` / `reml_ffi_acquire_transferred` / `reml_ffi_release_transferred` / `reml_ffi_box_string` / `reml_ffi_unbox_span`（`reml_span_t` も併せて新設予定）などのヘルパを定義する。
+- RC と連携するマーシャリング API（`reml_ffi_wrap_result`, `reml_ffi_unwrap_error` 等）を整備し、`mem_alloc`・`inc_ref`・`dec_ref` を内部で利用する。
+- ランタイム内で `ffi_bridge.audit_pass_rate` を更新するフックを設置し、失敗時には `panic` ではなく `ffi_bridge_status` を返してコンパイラ側診断へエスカレートする。
+- 既存 Phase 1 ランタイムとの ABI を維持するため、ヘッダは `#ifdef REML_RUNTIME_ENABLE_FFI` でガードし、既存ビルドに影響を与えないようにする。
 
 7.2. **統合テスト**
 - Reml → FFI → C → Reml のラウンドトリップ
