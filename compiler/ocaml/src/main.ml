@@ -272,9 +272,10 @@ let iterator_audit_events runtime_context =
 
 let ffi_bridge_events () =
   Type_inference.current_ffi_bridge_snapshots ()
-  |> List.map (fun normalized ->
+  |> List.map (fun snapshot ->
          Audit_envelope.make ~category:"ffi.bridge"
-           ~metadata:(Ffi.bridge_audit_metadata ~status:"ok" normalized)
+           ~metadata:
+             (Ffi.bridge_audit_metadata ~status:"ok" snapshot.normalized)
            ())
 
 let events_from_effect_constraints () =
@@ -516,9 +517,11 @@ let () =
                   record_start_if collect_metrics CodeGen;
                   let stub_plans =
                     Type_inference.current_ffi_bridge_snapshots ()
-                    |> List.map (fun normalized ->
-                           let open Ffi_contract in
-                           Ffi_stub.make_stub_plan normalized.contract)
+                    |> List.map (fun snapshot ->
+                           Ffi_stub.make_stub_plan
+                             ~param_types:snapshot.param_types
+                             ~return_type:snapshot.return_type
+                             snapshot.normalized.contract)
                   in
                   let llvm_module =
                     Codegen.codegen_module ~target_name:opts.target

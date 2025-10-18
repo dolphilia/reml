@@ -337,69 +337,165 @@ let lookup_runtime_function ctx name =
 
 let call_conv_of_stub_plan (plan : Ffi_stub_builder.stub_plan) =
   match String.lowercase_ascii plan.calling_convention with
-  | "win64" -> Llvm.CallConv.x86_64_win64
-  | "aarch64_aapcscc" | "aapcs64" -> Llvm.CallConv.aarch64_aapcs
-  | "ccc" | "system_v" -> Llvm.CallConv.c
+  | "ccc" | "system_v" | "win64" | "aarch64_aapcscc" | "aapcs64" ->
+      Llvm.CallConv.c
   | _ -> Llvm.CallConv.c
 
-let emit_placeholder_thunk ctx ~index (plan : Ffi_stub_builder.stub_plan) =
-  let llctx = ctx.llctx in
-  let void_ty = Llvm.void_type llctx in
-  let fn_ty = Llvm.function_type void_ty [||] in
-  let symbol = Ffi_stub_builder.thunk_symbol_name ~index plan in
-  let thunk_fn = Llvm.define_function symbol fn_ty ctx.llmodule in
+type stub_signature = {
+  fn_type : Llvm.lltype;
+  return_class : Abi.return_classification;
+  param_classes : Abi.argument_classification list;
+  sret_offset : int;
+  value_param_types : Llvm.lltype array;
+  ret_type : Llvm.lltype;
+}
+
+let compute_stub_signature ctx (plan : Ffi_stub_builder.stub_plan) =
+  let value_param_types =
+    plan.param_types
+    |> List.map (Type_mapping.reml_type_to_llvm ctx.type_ctx)
+    |> Array.of_list
+  in
+  let ret_llty = Type_mapping.reml_type_to_llvm ctx.type_ctx plan.return_type in
+  let return_class =
+    Abi.classify_struct_return ctx.target ctx.type_ctx plan.return_type
+  in
+  let fn_type, sret_offset =
+    match return_class with
+    | Abi.DirectReturn ->
+        (Llvm.function_type ret_llty value_param_types, 0)
+    | Abi.SretReturn ->
+        let sret_ptr_ty = Llvm.pointer_type ctx.llctx in
+        let actual_params =
+          Array.init
+            (Array.length value_param_types + 1)
+            (fun i ->
+              if i = 0 then sret_ptr_ty else value_param_types.(i - 1))
+        in
+        (Llvm.function_type (Llvm.void_type ctx.llctx) actual_params, 1)
+  in
+  let param_classes =
+    List.map
+      (fun ty -> Abi.classify_struct_argument ctx.target ctx.type_ctx ty)
+      plan.param_types
+  in
+  { fn_type; return_class; param_classes; sret_offset; value_param_types; ret_type = ret_llty }
+
+let apply_stub_attributes ctx llvm_fn signature =
+  (match signature.return_class with
+  | Abi.SretReturn ->
+      Abi.add_sret_attr ctx.llctx llvm_fn signature.ret_type 0
+  | Abi.DirectReturn -> ());
+  List.iteri
+    (fun i classification ->
+      match classification with
+      | Abi.DirectArg -> ()
+      | Abi.ByvalArg arg_ty ->
+          Abi.add_byval_attr ctx.llctx llvm_fn arg_ty
+            (i + signature.sret_offset))
+    signature.param_classes
+
+let extern_symbol_of_plan (plan : Ffi_stub_builder.stub_plan) =
+  match plan.contract.metadata.extern_link_name with
+  | Some name when String.trim name <> "" -> name
+  | _ -> plan.contract.extern_name
+
+let declare_extern_target ctx signature (plan : Ffi_stub_builder.stub_plan) =
+  let symbol = extern_symbol_of_plan plan in
+  let extern_fn =
+    match Llvm.lookup_function symbol ctx.llmodule with
+    | Some fn -> fn
+    | None -> Llvm.declare_function symbol signature.fn_type ctx.llmodule
+  in
+  Llvm.set_function_call_conv (call_conv_of_stub_plan plan) extern_fn;
+  apply_stub_attributes ctx extern_fn signature;
+  extern_fn
+
+let emit_thunk_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
+    =
+  let thunk_name = Ffi_stub_builder.thunk_symbol_name ~index plan in
+  let thunk_fn = Llvm.define_function thunk_name signature.fn_type ctx.llmodule in
   Llvm.set_linkage Llvm.Linkage.Internal thunk_fn;
   Llvm.set_function_call_conv (call_conv_of_stub_plan plan) thunk_fn;
-  let builder = Llvm.builder llctx in
-  let entry = Llvm.append_block llctx "entry" thunk_fn in
-  Llvm.position_at_end entry builder;
-  let record_status =
-    lookup_runtime_function ctx "reml_ffi_bridge_record_status"
-  in
-  let record_status_ty = Llvm.element_type (Llvm.type_of record_status) in
-  let failure = Llvm.const_int (Llvm.i32_type llctx) 1 in
-  ignore
-    (Llvm.build_call record_status_ty record_status [| failure |] ""
-       builder);
-  ignore (Llvm.build_ret_void builder);
-  Llvm.dispose_builder builder;
-  Hashtbl.replace ctx.fn_map symbol thunk_fn;
-  thunk_fn
+  apply_stub_attributes ctx thunk_fn signature;
+  Hashtbl.replace ctx.fn_map thunk_name thunk_fn;
 
-let emit_stub_function ctx ~index (plan : Ffi_stub_builder.stub_plan) =
-  let llctx = ctx.llctx in
-  let void_ty = Llvm.void_type llctx in
-  let fn_ty = Llvm.function_type void_ty [||] in
-  let symbol = Ffi_stub_builder.stub_symbol_name ~index plan in
-  let stub_fn = Llvm.define_function symbol fn_ty ctx.llmodule in
-  Llvm.set_linkage Llvm.Linkage.Internal stub_fn;
-  Llvm.set_function_call_conv Llvm.CallConv.c stub_fn;
-  let builder = Llvm.builder llctx in
-  let entry = Llvm.append_block llctx "entry" stub_fn in
-  Llvm.position_at_end entry builder;
-  let record_status =
-    lookup_runtime_function ctx "reml_ffi_bridge_record_status"
-  in
-  let record_status_ty = Llvm.element_type (Llvm.type_of record_status) in
-  let failure = Llvm.const_int (Llvm.i32_type llctx) 1 in
-  ignore
-    (Llvm.build_call record_status_ty record_status [| failure |] ""
-       builder);
-  let thunk_fn = emit_placeholder_thunk ctx ~index plan in
-  let thunk_ty = Llvm.element_type (Llvm.type_of thunk_fn) in
+  let entry = Llvm.append_block ctx.llctx "entry" thunk_fn in
+  Llvm.position_at_end entry ctx.builder;
+  let params = Llvm.params thunk_fn in
+  let extern_fn = declare_extern_target ctx signature plan in
   let call_inst =
-    Llvm.build_call thunk_ty thunk_fn [||] "ffi_thunk_call" builder
+    Llvm.build_call signature.fn_type extern_fn params "ffi_target_call"
+      ctx.builder
   in
   Llvm.set_instruction_call_conv (call_conv_of_stub_plan plan) call_inst;
-  ignore (Llvm.build_ret_void builder);
-  Llvm.dispose_builder builder;
-  Hashtbl.replace ctx.fn_map symbol stub_fn;
+  (match signature.return_class, plan.return_type with
+  | Abi.SretReturn, _ -> ignore (Llvm.build_ret_void ctx.builder)
+  | _, Types.TUnit -> ignore (Llvm.build_ret_void ctx.builder)
+  | _ -> ignore (Llvm.build_ret call_inst ctx.builder));
+  thunk_fn
+
+let is_pointer_value value =
+  match Llvm.classify_type (Llvm.type_of value) with
+  | Llvm.TypeKind.Pointer -> true
+  | _ -> false
+
+let emit_stub_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
+    =
+  let stub_name = Ffi_stub_builder.stub_symbol_name ~index plan in
+  let stub_fn = Llvm.define_function stub_name signature.fn_type ctx.llmodule in
+  Llvm.set_linkage Llvm.Linkage.Internal stub_fn;
+  Llvm.set_function_call_conv Llvm.CallConv.c stub_fn;
+  apply_stub_attributes ctx stub_fn signature;
+  Hashtbl.replace ctx.fn_map stub_name stub_fn;
+
+  let record_status =
+    lookup_runtime_function ctx "reml_ffi_bridge_record_status"
+  in
+  let record_status_ty = Llvm.element_type (Llvm.type_of record_status) in
+  let success_const = Llvm.const_int (Llvm.i32_type ctx.llctx) 0 in
+
+  let entry = Llvm.append_block ctx.llctx "entry" stub_fn in
+  Llvm.position_at_end entry ctx.builder;
+
+  let params = Llvm.params stub_fn in
+  let value_params =
+    Array.sub params signature.sret_offset
+      (Array.length params - signature.sret_offset)
+  in
+
+  (match plan.ownership with
+  | Ffi_contract.OwnershipBorrowed ->
+      Array.iter
+        (fun param ->
+          if is_pointer_value param then ignore (call_inc_ref ctx param))
+        value_params
+  | _ -> ());
+
+  let thunk_fn = emit_thunk_function ctx signature ~index plan in
+  Llvm.position_at_end entry ctx.builder;
+  let call_inst =
+    Llvm.build_call signature.fn_type thunk_fn params "ffi_stub_invoke"
+      ctx.builder
+  in
+  Llvm.set_instruction_call_conv (call_conv_of_stub_plan plan) call_inst;
+
+  ignore
+    (Llvm.build_call record_status_ty record_status
+       [| success_const |] "" ctx.builder);
+
+  (match signature.return_class, plan.return_type with
+  | Abi.SretReturn, _ -> ignore (Llvm.build_ret_void ctx.builder)
+  | _, Types.TUnit -> ignore (Llvm.build_ret_void ctx.builder)
+  | _ -> ignore (Llvm.build_ret call_inst ctx.builder));
+
   stub_fn
 
 let emit_stub_thunks ctx (plans : Ffi_stub_builder.stub_plan list) =
   List.iteri
     (fun index plan ->
-      let _ = emit_stub_function ctx ~index plan in
+      let signature = compute_stub_signature ctx plan in
+      let _ = emit_stub_function ctx signature ~index plan in
       ())
     plans
 

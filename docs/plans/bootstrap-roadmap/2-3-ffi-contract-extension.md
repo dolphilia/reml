@@ -26,7 +26,7 @@
 | 1. ABI モデル設計 | **進行中** | Darwin 計測計画を `docs/notes/llvm-spec-status-survey.md` に追記し、`ffi_contract` モジュール（所有権・ABI 判定スケルトン）を追加。`normalize_contract` でターゲット別 `expected_abi`・所有権正規化を実装。 | Linux/Windows/macOS 向け ABI 差分ノート（`reports/ffi-bridge-summary.md` 仮）作成と、型ホワイトリスト方針の明文化。 |
 | 2. Parser / AST 拡張 | **進行中** | `extern_metadata` PoC を維持しつつ、`extern_block_target` への改名と `test_parser` ゴールデン更新を完了。 | Typer 連携で得たメタデータ要求をフィードバックし、属性バリデーションを Parser レイヤへ逆移譲するか検討。 |
 | 3. Typer 統合と ABI 検証 | **完了** | `check_extern_bridge_contract` を `type_inference.ml` に実装し、`ffi_contract` の所有権/ABI 正規化を参照。`ffi.contract.symbol_missing` / `ownership_mismatch` / `unsupported_abi` 診断を生成し、`AuditEnvelope.metadata.bridge.*` を Typer で構築。 | ランタイム stub 連携時に追加される型ホワイトリストとの整合チェックを継続。 |
-| 4. ブリッジコード生成 | **進行中** | `codegen/ffi_stub_builder.ml` を新設し、ターゲット別 `BridgeStubPlan` の正規化・監査タグ抽出を実装。`llvm_gen/ffi_value_lowering.ml` で `reml.bridge.version` モジュールフラグと `reml.bridge.stubs` メタデータを生成し、`tests/test_ffi_stub_builder.ml` / `tests/test_ffi_lowering.ml` で Linux/Windows/macOS の初期ケースをカバー。さらに `compiler/ocaml/src/main.ml` から `Codegen.codegen_module` へ `stub_plans` を受け渡し、Typer が蓄積した `ffi_bridge_snapshots` が CodeGen 後段まで流れる経路を実装済み。`llvm_gen/codegen.ml` ではプレースホルダ stub/thunk を生成し、`reml_ffi_bridge_record_status` を呼び出す最低限の lowering と IR 検証テストを追加。 | Stub/Thunk の LLVM lowering を本実装へ拡張（引数マーシャリング、実際のシンボル呼び出し、所有権フックを `llvm_gen/codegen.ml`／`llvm_gen/ffi_value_lowering.ml` で完了）し、生成 IR に含まれる `reml.bridge.stubs` をゴールデン化。併せて `sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` を拡張し、`reml.bridge.*` メタデータとランタイム計測 (`reml_ffi_bridge_pass_rate`) を CI で検証するパイプラインを整備。 |
+| 4. ブリッジコード生成 | **進行中** | `codegen/ffi_stub_builder.ml` を新設し、ターゲット別 `BridgeStubPlan` の正規化・監査タグ抽出を実装。`llvm_gen/ffi_value_lowering.ml` で `reml.bridge.version` モジュールフラグと `reml.bridge.stubs` メタデータを生成し、`tests/test_ffi_stub_builder.ml` / `tests/test_ffi_lowering.ml` で Linux/Windows/macOS の初期ケースをカバー。さらに `compiler/ocaml/src/main.ml` から `Codegen.codegen_module` へ `stub_plans` を受け渡し、Typer が蓄積した `ffi_bridge_snapshots` が CodeGen 後段まで流れる経路を実装済み。`llvm_gen/codegen.ml` では型付きシグネチャを反映した stub/thunk を生成し、Borrowed 所有権の引数を `inc_ref` で保護しつつ `reml_ffi_bridge_record_status` で成功メトリクスを記録。`reml.bridge.stub_symbol` / `bridge.thunk_symbol` をメタデータへ出力し、`dune build tests/test_ffi_lowering.exe` で IR 生成が検証できる状態に更新。 | Stub/Thunk の LLVM lowering を本実装へ拡張（引数マーシャリング、実際のシンボル呼び出し、所有権フックを `llvm_gen/codegen.ml`／`llvm_gen/ffi_value_lowering.ml` で完了）し、生成 IR に含まれる `reml.bridge.stubs` をゴールデン化。併せて `sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` を拡張し、`reml.bridge.*` メタデータとランタイム計測 (`reml_ffi_bridge_pass_rate`) を CI で検証するパイプラインを整備。 |
 | 5. 監査ログ統合 | **進行中** | `tooling/runtime/audit-schema.json` に bridge オブジェクトを追加し、`tooling/ci/collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を集計。`reports/ffi-bridge-summary.md` を更新し、メタデータ確認項目とターゲット別進捗を記録。 | Typer 実装後に `AuditEnvelope` ゴールデンを追加し、CI ゲート（`sync-iterator-audit.sh`）へ FFI ブリッジ検証を統合。Linux/Windows 監査ログのゴールデン化と pass rate 自動チェックを実装。 |
 | 6. プラットフォーム別テスト | **進行中** | Apple Silicon で `scripts/ci-local.sh --target macos --arch arm64 --stage beta` をフル実行し、`reports/ffi-macos-summary.md` にログと比較観点を追記。Linux/Windows 版テンプレート（`reports/ffi-linux-summary.md`, `reports/ffi-windows-summary.md`）を追加。 | FFI サンプル（借用/転送/構造体戻り）を各ターゲットで実行し、テンプレートへ結果を反映。Windows CI (`windows-latest`) への `ffi_bridge.audit_pass_rate` 収集を常設。 |
 | 7. ランタイム連携とテスト | **進行中** | `runtime/native/include/reml_ffi_bridge.h` に加え `src/ffi_bridge.c` を実装し、借用/移譲ヘルパと `reml_ffi_bridge_*` 計測 API を提供。`runtime/native/tests/test_ffi_bridge.c` を追加し、`make test` で計測値・Span 変換を検証。 | ランタイム計測値を CI アウトプットへ連携し、失敗ケースが `ffi_bridge.audit_pass_rate` に反映されるよう CLI/監査パイプラインを拡充。 |
@@ -136,7 +136,7 @@
 
 ## 直近アクション（次の 2 週間）
 
-- Stub/Thunk lowering を `llvm_gen/codegen.ml` で本実装に近づけ、引数マーシャリングと `reml_ffi_bridge_record_status` 以外のフック（成功/失敗判定、所有権操作）まで拡張し、IR ゴールデン（`tests/golden/llvm/ffi-stub-*.ll`）と `tests/test_ffi_lowering.ml` の 3 ターゲットケースで検証する。
+- Stub/Thunk lowering を `llvm_gen/codegen.ml` で本実装に近づけ、引数マーシャリングと `reml_ffi_bridge_record_status` 以外のフック（成功/失敗判定、所有権操作、転送後の解放処理）まで拡張し、IR ゴールデン（`tests/golden/llvm/ffi-stub-*.ll`）と `tests/test_ffi_lowering.ml` の 3 ターゲットケースで検証する。
 - `main.ml` → `Codegen.codegen_module` までの `stub_plans` 伝播を CLI サンプルで確認し、Linux/Windows の監査タグ結果を `reports/ffi-bridge-summary.md` に反映させる（`監査タグ確認 = yes` へ更新）。
 - ランタイム計測 API を CI に統合する方式を決定し、`tooling/ci/sync-iterator-audit.sh` で `ffi_bridge.audit_pass_rate` を収集・評価できる状態にする。
 - Linux/Windows 向けの FFI サンプル実行とログ収集を行い、`reports/ffi-linux-summary.md`・`reports/ffi-windows-summary.md` を初回更新する。
@@ -214,16 +214,15 @@
 **担当領域**: コード生成
 
 4.1. **Stub 生成ロジック**
-- `Ffi_stub_builder.stub_plan`（ターゲットトリプル、Calling Convention、所有権、監査キー）を `ffi_contract` 正規化後に生成し、`compiler/ocaml/src/codegen/ffi_stub_builder.ml` でテンプレート化したのち LLVM lowering 側（`llvm_gen/ffi_value_lowering.ml` と今後追加する stub 専用モジュール）へ受け渡す初期版が完了。
-- Linux System V / Windows MSVC (`win64`) / macOS arm64 (`aapcs64`) 用のテンプレートをテーブル化し、シンボル名・`dso_local`・可視性・`linkage` を自動決定する（テンプレート確立済み、stub/thunk 実生成が次段階）。
-- Reml ↔ C のマーシャリングは `FfiValueLowering` へ段階的に移行中で、現在はメタデータ埋め込みを提供。今後、引数/戻り値の変換と RC 操作を実装する。
-- 監査ログで利用する `bridge.platform` / `bridge.abi` / `bridge.ownership` は stub 生成段階で `llvm::Metadata` として埋め込む（`reml.bridge.version` フラグと `reml.bridge.stubs` Named Metadata を出力済み）。
+- `Ffi_stub_builder.stub_plan` に型シグネチャ（引数型・戻り値型）とサニタイズ済み `stub_symbol` / `thunk_symbol` を保持し、Typer が収集した `ffi_bridge_snapshots` を CodeGen まで伝搬。
+- `llvm_gen/codegen.ml` で ABI 判定 (`Abi.classify_struct_return` / `Abi.classify_struct_argument`) に基づき stub/thunk 関数を定義し、Borrowed 所有権の引数には `inc_ref` を自動挿入。呼び出し後は `reml_ffi_bridge_record_status` で成功メトリクスを記録する。
+- `llvm_gen/ffi_value_lowering.ml` で `reml.bridge.stubs` Named Metadata に `bridge.stub_symbol` / `bridge.thunk_symbol` / `bridge.arch` を追加し、監査ログと IR の突合せを容易化（Windows ケースはテストゴールデンで固定化済み）。
+- 呼出規約は暫定的に `Llvm.CallConv.c` へフォールバックしており、`win64` / `aarch64_aapcscc` 専用の CallConv は LLVM OCaml バインディング調査後に追加予定。
 
 4.2. **LLVM IR への lowering**
-- 呼出規約を `ccc` / `win64` / `aarch64_aapcscc` 等の LLVM 属性で明示し、ターゲット固有の `signext`・`zeroext`・`sret` 等補助属性を付与する。
-- `DataLayout` 由来のサイズ・アライメントを用いて構造体・配列・スライスを `llvm::StructType` へ写像し、Reml `Span` と一致するようパディングを調整する。
-- 借用引数に `nonnull` / `dereferenceable` / `align` 属性を付与し、移譲パスでは `llvm.lifetime.end` を挿入して RC 解放シーケンスと同期させる。
-- `!dbg` 情報へ `ffi_contract` のシグネチャ・所有権注釈を転写し、監査ログ `call_site` と突合できるようにする。
+- `Abi` 判定に基づき sret/byval 属性を stub/thunk/external 宣言へ適用し、構造体戻り値・構造体引数でも ABI が崩れないことを確認。
+- 借用引数への `inc_ref` 挿入は完了。Transferred 所有権向けの `dec_ref`・返り値のラップ処理、`nonnull` / `dereferenceable` 属性、`llvm.lifetime.*` 命令は未実装。
+- `!dbg` 情報の転写は未着手。監査ログ `call_site` と自動突合できるよう、Phase 2-3 中に DWARF/Debug metadata の設計を固める。
 
 4.3. **C ヘッダ生成の検討**
 - `runtime/native/include/reml_ffi_bridge.h` を共通入口とし、ターゲット固有の補助ヘッダは `include/generated/<triple>/` へ自動出力する案を比較する。

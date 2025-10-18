@@ -12,6 +12,7 @@
  *)
 
 open Ffi_contract
+open Types
 open Ast
 
 (* ========== 型定義 ========== *)
@@ -36,6 +37,8 @@ type stub_plan = {
   ownership : ownership_kind;
   abi : abi_kind;
   audit_tags : (string * string) list;
+  param_types : ty list;
+  return_type : ty;
   contract : bridge_contract;
 }
 
@@ -140,7 +143,8 @@ let audit_tags_of_plan template target call_conv ownership abi =
 
 (* ========== 公開 API ========== *)
 
-let make_stub_plan (contract : bridge_contract) : stub_plan =
+let make_stub_plan ~(param_types : ty list) ~(return_type : ty)
+    (contract : bridge_contract) : stub_plan =
   let template, target = resolve_target contract in
   let call_conv = normalize_call_conv template contract.metadata in
   let ownership = normalize_ownership contract.metadata in
@@ -153,6 +157,8 @@ let make_stub_plan (contract : bridge_contract) : stub_plan =
     ownership;
     abi;
     audit_tags;
+    param_types;
+    return_type;
     contract;
   }
 

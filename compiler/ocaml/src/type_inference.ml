@@ -196,12 +196,18 @@ end
 let global_impl_registry : Impl_registry.impl_registry ref =
   ref (Impl_registry.empty ())
 
-let ffi_bridge_snapshots : Ffi.normalized_contract list ref = ref []
+type ffi_bridge_snapshot = {
+  normalized : Ffi.normalized_contract;
+  param_types : Types.ty list;
+  return_type : Types.ty;
+}
+
+let ffi_bridge_snapshots : ffi_bridge_snapshot list ref = ref []
 
 let reset_ffi_bridge_snapshots () = ffi_bridge_snapshots := []
 
-let record_ffi_bridge_snapshot (normalized : Ffi.normalized_contract) =
-  ffi_bridge_snapshots := normalized :: !ffi_bridge_snapshots
+let record_ffi_bridge_snapshot (snapshot : ffi_bridge_snapshot) =
+  ffi_bridge_snapshots := snapshot :: !ffi_bridge_snapshots
 
 let current_ffi_bridge_snapshots () = List.rev !ffi_bridge_snapshots
 
@@ -2307,7 +2313,7 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
       Ok (tdecl, new_env, body_constraints)
   | ExternDecl extern_decl ->
       let block_target = extern_decl.extern_block_target in
-      let convert_signature _env signature =
+      let convert_signature signature =
         let param_tys =
           List.map
             (fun param ->
@@ -2321,8 +2327,11 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
           | Some annot -> convert_type_annot annot
           | None -> ty_unit
         in
-        List.fold_right (fun param_ty acc -> TArrow (param_ty, acc)) param_tys
-          ret_ty
+        let fn_ty =
+          List.fold_right (fun param_ty acc -> TArrow (param_ty, acc)) param_tys
+            ret_ty
+        in
+        (fn_ty, param_tys, ret_ty)
       in
       let rec process_items env = function
         | [] -> Ok env
@@ -2330,8 +2339,11 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
             match check_extern_bridge_contract ~block_target item with
             | Error err -> Error err
             | Ok normalized ->
-                record_ffi_bridge_snapshot normalized;
-                let fn_ty = convert_signature env item.extern_sig in
+                let fn_ty, param_tys, ret_ty =
+                  convert_signature item.extern_sig
+                in
+                record_ffi_bridge_snapshot
+                  { normalized; param_types = param_tys; return_type = ret_ty };
                 let scheme = generalize env fn_ty in
                 let env' = extend item.extern_sig.sig_name.name scheme env in
                 process_items env' rest)

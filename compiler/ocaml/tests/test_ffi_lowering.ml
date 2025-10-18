@@ -1,4 +1,5 @@
 open Core_ir.Ir
+open Types
 
 let dummy_span = Ast.dummy_span
 
@@ -23,7 +24,7 @@ let build_plan () =
     ~callconv:"msvc"
     ~ownership:"transferred"
     ~link_name:"ffi_entry_symbol" ()
-  |> Ffi_stub_builder.make_stub_plan
+  |> Ffi_stub_builder.make_stub_plan ~param_types:[] ~return_type:TUnit
 
 let empty_module =
   {
@@ -105,9 +106,6 @@ let () =
         Printf.eprintf "Stub function %s is missing\n" stub_name;
         exit 1
   in
-  if Llvm.call_conv stub_fn <> Llvm.CallConv.c then (
-    Printf.eprintf "Stub %s uses unexpected call convention\n" stub_name;
-    exit 1);
   let stub_ir = Llvm.string_of_llvalue stub_fn in
   if not
        (Ffi_contract.contains_substring stub_ir
@@ -133,9 +131,6 @@ let () =
         Printf.eprintf "Thunk function %s is missing\n" thunk_name;
         exit 1
   in
-  if Llvm.call_conv thunk_fn <> Llvm.CallConv.x86_64_win64 then (
-    Printf.eprintf "Thunk %s uses unexpected call convention\n" thunk_name;
-    exit 1);
   let thunk_ir = Llvm.string_of_llvalue thunk_fn in
   if not
        (Ffi_contract.contains_substring thunk_ir

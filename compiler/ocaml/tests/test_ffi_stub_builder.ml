@@ -1,6 +1,7 @@
 (* test_ffi_stub_builder.ml — FFI スタブプランの初期検証 *)
 
 open Ast
+open Types
 open Ffi_contract
 open Ffi_stub_builder
 
@@ -76,7 +77,7 @@ let make_contract ?block_target ?target ?callconv ?ownership () =
 
 let test_linux_defaults () =
   let contract = make_contract () in
-  let plan = make_stub_plan contract in
+  let plan = make_stub_plan ~param_types:[] ~return_type:TUnit contract in
   assert_string "Linux デフォルトターゲット"
     "x86_64-unknown-linux-gnu"
     plan.target_triple;
@@ -95,7 +96,7 @@ let test_windows_plan () =
       ~target:"x86_64-pc-windows-msvc"
       ~ownership:"transferred" ()
   in
-  let plan = make_stub_plan contract in
+  let plan = make_stub_plan ~param_types:[] ~return_type:TUnit contract in
   assert_string "Windows ターゲット"
     "x86_64-pc-windows-msvc"
     plan.target_triple;
@@ -113,7 +114,7 @@ let test_macos_plan () =
       ~target:"arm64-apple-darwin"
       ~ownership:"borrowed" ()
   in
-  let plan = make_stub_plan contract in
+  let plan = make_stub_plan ~param_types:[] ~return_type:TUnit contract in
   assert_string "macOS ターゲット" "arm64-apple-darwin" plan.target_triple;
   assert_string "macOS 呼出規約" "aarch64_aapcscc" plan.calling_convention;
   assert_abi "macOS ABI" AbiAAPCS64 plan.abi;

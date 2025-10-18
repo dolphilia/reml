@@ -13,8 +13,8 @@
 
 | ターゲット | 呼出規約 (plan) | 所有権 (plan) | 監査タグ確認 | メモ |
 | --- | --- | --- | --- | --- |
-| x86_64-unknown-linux-gnu | `ccc` | `borrowed` | pending | `compiler/ocaml/src/main.ml` から `Codegen.codegen_module` へ `stub_plans` を渡す経路は確認済み。stub lowering 実装待ち（Linux ゴールデンを `reports/ffi-linux-summary.md` へ反映予定）。 |
-| x86_64-pc-windows-msvc | `win64` | `transferred` | yes | `reml.bridge.version=1` / `reml.bridge.stubs` メタデータ生成を `tests/test_ffi_lowering.ml` で検証済み。CLI 経路でも `stub_plans` が伝播することを確認。 |
+| x86_64-unknown-linux-gnu | `ccc` | `borrowed` | pending | 型付き stub/thunk を生成済み（Borrowed 引数へ `inc_ref` を挿入し、`reml_ffi_bridge_record_status` で成功メトリクスを記録）。Linux 固有の IR ゴールデンと監査ログ収集が未完。 |
+| x86_64-pc-windows-msvc | `win64` | `transferred` | yes | `tests/test_ffi_lowering.ml` で stub/thunk → 外部シンボル呼び出しおよび成功メトリクス記録を検証済み。LLVM CallConv は暫定的に `c` へフォールバック中。 |
 | arm64-apple-darwin | `aarch64_aapcscc` | `borrowed` | pending | macOS テンプレートを `reports/ffi-macos-summary.md` に更新済み。stub lowering と CI ログ収集が未完。 |
 
 > **記入例**: Linux 版のみ実装済みの場合は監査タグを `yes`、他は `pending` とし、差分に必要なタスク (例: `runtime/native/src/ffi_bridge.c` の実装) をメモ欄へ記載。
@@ -44,6 +44,8 @@
 - [x] `runtime/native/include/reml_ffi_bridge.h` に audit hook とメトリクス API を整備 (`runtime/native/src/ffi_bridge.c`)
 - [x] `llvm_gen/codegen.ml` でプレースホルダの stub/thunk を生成し、`reml_ffi_bridge_record_status` 呼び出しを含む最低限の lowering と IR 検証 (`tests/test_ffi_lowering.ml`)
 - [ ] `codegen/ffi_stub_builder.ml` → `llvm_gen/ffi_value_lowering.ml` → runtime API を本実装で連結し、stub/thunk が引数マーシャリング・所有権操作を伴って `reml.bridge.stubs` をターゲット別に検証
+- [ ] LLVM CallConv (`win64` / `aarch64_aapcscc`) を適用し、プラットフォーム固有の呼出規約を IR とメタデータに反映
+- [ ] Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）を実装し、メモリ所有権の監査要件を満たす
 - [ ] CLI (`remlc --emit-ir`) で生成した Linux/Windows IR に `reml.bridge.stubs` と `bridge.*` メタデータが含まれることを手動サンプルで確認し、表の `監査タグ確認` を更新
 - [ ] `tooling/ci/sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を CI ゲートへ追加（Linux/Windows 共通ロジック）
 - [ ] `reports/ffi-linux-summary.md`・`reports/ffi-windows-summary.md`・`reports/ffi-macos-summary.md` を実測ログで更新し、監査ゴールデン (`compiler/ocaml/tests/golden/audit/ffi-bridge-*.jsonl.golden`) を確定
