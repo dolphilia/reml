@@ -553,6 +553,96 @@ let apply_stage_to_fn attrs fn =
 let apply_stage_to_signature attrs sig_ =
   { sig_ with sig_effect_profile = apply_stage_to_profile attrs sig_.sig_effect_profile }
 
+let empty_extern_metadata : Ast.extern_metadata =
+  {
+    extern_target = None;
+    extern_calling_convention = None;
+    extern_link_name = None;
+    extern_ownership = None;
+    extern_invalid_attributes = [];
+  }
+
+let make_extern_invalid (attr : Ast.attribute)
+    (reason : Ast.extern_invalid_attribute_reason) :
+    Ast.extern_invalid_attribute =
+  { extern_attr = attr; extern_reason = reason; extern_attr_span = attr.attr_span }
+
+let add_extern_invalid meta invalid =
+  {
+    meta with
+    extern_invalid_attributes =
+      meta.extern_invalid_attributes @ [invalid];
+  }
+
+let add_extern_invalids meta invalids =
+  List.fold_left add_extern_invalid meta invalids
+
+let string_value_from_expr expr =
+  match expr.expr_kind with
+  | Literal (String (value, _)) -> Some value
+  | Var id -> Some id.name
+  | ModulePath (path, id) ->
+      let base = string_of_module_path path in
+      if String.equal base "" then Some id.name
+      else Some (base ^ "." ^ id.name)
+  | _ -> None
+
+let extern_string_argument attr key =
+  match attr.attr_args with
+  | [] ->
+      ( None,
+        [
+          make_extern_invalid attr
+            (ExternAttrMissingStringValue key);
+        ] )
+  | expr :: _ -> (
+      match string_value_from_expr expr with
+      | Some value -> (Some value, [])
+      | None ->
+          ( None,
+            [
+              make_extern_invalid attr
+                (ExternAttrMissingStringValue key);
+            ] ))
+
+let apply_string_field meta attr key getter setter =
+  let value_opt, invalids = extern_string_argument attr key in
+  let meta = add_extern_invalids meta invalids in
+  match value_opt with
+  | None -> meta
+  | Some value ->
+      if Option.is_some (getter meta) then
+        add_extern_invalid meta
+          (make_extern_invalid attr (ExternAttrDuplicateKey key))
+      else setter meta value
+
+let extern_metadata_from_attrs attrs =
+  List.fold_left
+    (fun acc attr ->
+      let key = normalize_key attr.attr_name.name in
+      match key with
+      | "ffi_target" | "target" ->
+          apply_string_field acc attr key
+            (fun meta -> meta.extern_target)
+            (fun meta value -> { meta with extern_target = Some value })
+      | "ffi_calling_convention" | "callconv" ->
+          apply_string_field acc attr key
+            (fun meta -> meta.extern_calling_convention)
+            (fun meta value ->
+              { meta with extern_calling_convention = Some value })
+      | "ffi_link_name" | "link_name" ->
+          apply_string_field acc attr key
+            (fun meta -> meta.extern_link_name)
+            (fun meta value -> { meta with extern_link_name = Some value })
+      | "ffi_ownership" | "ownership" ->
+          apply_string_field acc attr key
+            (fun meta -> meta.extern_ownership)
+            (fun meta value -> { meta with extern_ownership = Some value })
+      | _ ->
+          add_extern_invalid acc
+            (make_extern_invalid attr (ExternAttrUnknownKey key)))
+    empty_extern_metadata
+
 %}
 
 (* トークン定義 *)
@@ -949,14 +1039,22 @@ impl_item:
 
 extern_decl:
   | abi = extern_abi; body = extern_body
-    { { extern_abi = abi; extern_items = body } }
+    { { extern_abi = abi; extern_target = None; extern_items = body } }
 
 extern_abi:
   | s = STRING { fst s }
 
 extern_body:
   | sig_ = fn_signature_only; SEMICOLON
-    { [ { extern_attrs = []; extern_sig = sig_ } ] }
+    {
+      [
+        {
+          extern_attrs = [];
+          extern_sig = sig_;
+          extern_metadata = empty_extern_metadata;
+        };
+      ]
+    }
   | LBRACE; items = extern_item_list; RBRACE { items }
 
 extern_item_list:
@@ -965,7 +1063,14 @@ extern_item_list:
 
 extern_item:
   | attrs = attribute_list; sig_ = fn_signature_only; SEMICOLON
-    { { extern_attrs = attrs; extern_sig = apply_stage_to_signature attrs sig_ } }
+    {
+      let metadata = extern_metadata_from_attrs attrs in
+      {
+        extern_attrs = attrs;
+        extern_sig = apply_stage_to_signature attrs sig_;
+        extern_metadata = metadata;
+      }
+    }
 
 (* ========== effect / handler 宣言 ========== *)
 

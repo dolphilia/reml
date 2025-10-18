@@ -107,6 +107,7 @@ Remlソースコード
 |------|-----------|------|
 | **主要ターゲット** | System V AMD64 (`x86_64-unknown-linux-gnu`)<br>Windows x64 (`x86_64-pc-windows-msvc`) | LLVMのデフォルトABIから逸脱しない |
 | **将来追加予定** | ARM64、WASM/WASI | 調査中（notes/a-jit.md） |
+| **Phase 2-3 計測計画** | Apple Silicon (arm64-apple-darwin) | `scripts/ci-local.sh --target macos --arch arm64` で DataLayout/ABI の実測を収集し、`reports/ffi-macos-summary.md` に記録する（2025-10 着手予定） |
 | **エンディアン** | リトルエンディアン | LLVM DataLayout文字列で宣言 |
 | **ポインタ幅** | 64bit (`p:64:64`) | Opaque Pointer前提（LLVM 15+） |
 | **整数アラインメント** | `i8:8`, `i16:16`, `i32:32`, `i64:64` | System V互換 |
@@ -125,6 +126,10 @@ e-m:e-p:64:64-f64:64:64-v128:128:128-a:0:64
 - **FFI互換性**: 公開関数は既定でC呼出規約
 - **Windows切替**: `RunConfig.extensions["runtime"].codegen.call_conv = "win64"`（将来提供予定）
 - **関数名マングリング**: `k__mod__fn__i64_i64` 形式
+- **Darwin計測タスク（Phase 2-3）**:
+  - `llc -mtriple=arm64-apple-darwin` で生成した IR/オブジェクトを取得し、AAPCS64 呼出規約との整合性を比較する。
+  - `scripts/verify_llvm_ir.sh --target arm64-apple-darwin` を拡張し、構造体戻り値・可変長引数・システムライブラリとの接続をサンプル化する。
+  - `reports/ffi-macos-summary.md` に検証ログを保存し、差分が発生した場合は `docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md` と本ノート両方を更新する。
 
 ### 2.3 型対応表
 

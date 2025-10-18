@@ -200,6 +200,7 @@ type effect_profile_node = {
 - CLI ポリシー (`--effect-stage`, `--runtime-capabilities`) を CI の Stage 制御（例: `--deny experimental`）と連携させる設計を `RuntimeCapabilityResolver` の設定として定義する。
 - 効果診断ゴールデン・Capability JSON を更新する際は `scripts/validate-runtime-capabilities.sh` で検証し、`0-3-audit-and-metrics.md` に変更履歴を追記する。
 - Phase 2-3 FFI 契約拡張（[docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md](../../docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md)）と連携し、`AuditEnvelope.metadata.bridge.*` の導入時に `stage_trace` と `RuntimeCapabilityResolver` の結果を共有する。特に Apple Silicon (arm64-apple-darwin) の Capability 定義は `tooling/runtime/capabilities/default.json` と `reports/runtime-capabilities-validation.json` を参照し、`bridge.platform` / `bridge.abi` / `bridge.stage` を効果診断の残余解析と突合できるようにする。macOS 向け追加メトリクスは `reports/ffi-macos-summary.md`（予定）に記録し、Stage ゲートと同一のレビューサイクルで確認する。
+- Parser/AST で導入した `extern_metadata`（`@ffi_target`, `@ffi_ownership` 等）を Typer 側で解釈し、診断 (`ffi.contract.missing`) と 監査 (`bridge.*`) の一貫性を確保する。重複・型不整合は `extern_invalid_attributes` に集約されるため、Phase 2-3 で診断コードへ接続する。
 
 ## 5. 検証結果と成果物（2025-10-24 更新）
 

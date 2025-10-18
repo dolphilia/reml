@@ -407,7 +407,13 @@ and string_of_decl_kind = function
         where_clause items
   | ExternDecl ext ->
       let items = List.length ext.extern_items in
-      Printf.sprintf "extern \"%s\" {items=%d}" ext.extern_abi items
+      let target_suffix =
+        match ext.extern_target with
+        | None -> ""
+        | Some target -> Printf.sprintf " target=%s" target
+      in
+      Printf.sprintf "extern \"%s\"%s {items=%d}" ext.extern_abi target_suffix
+        items
   | EffectDecl eff ->
       let ops =
         eff.operations

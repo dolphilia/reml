@@ -338,13 +338,34 @@ and impl_item =
   | ImplFn of fn_decl
   | ImplLet of pattern * type_annot option * expr
 
+and extern_invalid_attribute_reason =
+  | ExternAttrUnknownKey of string
+  | ExternAttrMissingStringValue of string
+  | ExternAttrDuplicateKey of string
+
+and extern_invalid_attribute = {
+  extern_attr: attribute;
+  extern_reason: extern_invalid_attribute_reason;
+  extern_attr_span: span;
+}
+
+and extern_metadata = {
+  extern_target: string option;
+  extern_calling_convention: string option;
+  extern_link_name: string option;
+  extern_ownership: string option;
+  extern_invalid_attributes: extern_invalid_attribute list;
+}
+
 and extern_decl = {
   extern_abi: string;
+  extern_target: string option;
   extern_items: extern_item list;
 }
 and extern_item = {
   extern_attrs: attribute list;
   extern_sig: fn_signature;
+  extern_metadata: extern_metadata;
 }
 
 and effect_decl = {

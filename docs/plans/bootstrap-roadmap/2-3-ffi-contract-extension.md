@@ -18,6 +18,37 @@
 
 ## 作業ブレークダウン
 
+## 進捗トラッキング（2025-10 時点）
+
+| 作業ブロック | ステータス | 完了済み項目 | 次のステップ |
+| --- | --- | --- | --- |
+| 前提確認・計画調整 | **進行中** | `tooling/runtime/capabilities/default.json`・`reports/runtime-capabilities-validation.json` をレビューし、macOS override 未定義であることを確認。Capability 追加案とレビューコメント草案を本計画書に追記。 | override 追加のドラフト PR を作成し、`0-3-audit-and-metrics.md` 更新案と合わせてレビュー依頼。 |
+| 1. ABI モデル設計 | **進行中** | Darwin 計測計画を `docs/notes/llvm-spec-status-survey.md` に追記し、計測ログ用テンプレート `reports/ffi-macos-summary.md` を作成。 | OCaml 側 ABI データ型ドラフトと計測スクリプト実行結果（DataLayout・callconv）をテンプレートへ記録。 |
+| 2. Parser / AST 拡張 | **進行中** | `extern_metadata` PoC を実装し、`@ffi_target` などの属性を抽出するメタデータとユニットテストを追加。 | Typer へのメタデータ伝播と CLI/監査診断への接続方針を整理し、ゴールデン出力の更新計画を立案。 |
+| 3. Typer 統合と ABI 検証 | **未着手** | — | FFI 型ホワイトリストと所有権検証の設計メモを起案。 |
+| 4. ブリッジコード生成 | **未着手** | — | ターゲット別 stub 生成ロジックの責務分担を `codegen` / `runtime/native` チームと摺り合わせ。 |
+| 5. 監査ログ統合 | **準備中** | `AuditEnvelope.metadata.bridge.*` のキー案と effect-system 設計ノートの TODO を同期。 | JSON スキーマ案のドラフト作成と、`iterator_audit` との突合ルール整理。 |
+| 6. プラットフォーム別テスト | **準備中** | Apple Silicon 実行計画を `docs/notes/llvm-spec-status-survey.md` の計測タスク・新規レポートにリンク。 | Apple Silicon 実機／ランナーでの最小 FFI サンプル実行計画を策定し、必要な Homebrew ツールチェーン確認。 |
+| 7. ランタイム連携とテスト | **未着手** | — | FFI ヘルパ API の拡張方針を `runtime/native` ドキュメントに追記するドラフトを準備。 |
+| 8. ドキュメント更新と引き継ぎ | **進行中** | Apple Silicon 対応更新に加え、計測テンプレートと override 提案を関連資料へリンク。 | 実装着手後に更新するべき仕様・ガイドのチェックリストを作成。 |
+
+### Capability override 提案（arm64-apple-darwin）
+
+- ステージ案: `beta`（Phase 2-3 で FFI 契約と診断が安定するまで安定版から分離）
+- 追加 Capability 候補: `ffi.bridge`, `process.spawn`（Windows x64 と同一セットで開始し、macOS 固有 Capability は Phase 2-3 後半で再評価）
+- 検証手順案:
+  - `scripts/validate-runtime-capabilities.sh tooling/runtime/capabilities/default.json` を実行し、`runtime_candidates` に `arm64-apple-darwin` を追加。
+  - Apple Silicon ランナーで `scripts/ci-local.sh --target macos --arch arm64 --stage beta` を実行し、`iterator.stage.audit_pass_rate` が 1.0 であることを確認。
+  - 監査ログ: `reports/ffi-macos-summary.md` に呼出規約検証結果と Capability stage 差分を記録し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に記載するメトリクス更新案と合わせてレビュー依頼を出す。
+- レビューコメント草案（ドラフト）: 「`tooling/runtime/capabilities/default.json` に `arm64-apple-darwin` override を追加し、ステージは `beta` で開始。Capability は既存 Windows beta と同じ `ffi.bridge` / `process.spawn` を割り当て、Phase 2-3 期間中に macOS 固有 Capability を精査する。追加後に `scripts/validate-runtime-capabilities.sh` と `scripts/ci-local.sh --target macos --arch arm64 --stage beta` を実行してレポートを共有する。」
+
+## 直近アクション（次の 2 週間）
+
+- `tooling/runtime/capabilities/default.json` へ `arm64-apple-darwin` override を追加するドラフトを作成し、`0-3-audit-and-metrics.md` 更新案と同時にレビュー提出。
+- `scripts/ci-local.sh --target macos --arch arm64 --stage beta` を実行し、`reports/ffi-macos-summary.md` に初回計測値とログ（IR/ABI 検証・監査サマリー）を記録する。
+- Typer 側で `extern_metadata` を読み取り、所有権・ターゲット情報を `AuditEnvelope.metadata.bridge.*` へ渡す設計メモとタスク分解（issue 下書き）を準備する。
+- JSON 監査スキーマ更新案とゴールデンテスト拡張（`ffi_target` サンプル）をまとめ、効果診断チームとのレビュー体制を確定する。
+
 ### 1. ABI モデル設計と仕様整理（29-30週目）
 **担当領域**: FFI 基盤設計
 

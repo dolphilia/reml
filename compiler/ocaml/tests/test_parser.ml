@@ -50,6 +50,44 @@ let expect_use_count desc expected input =
       Printf.printf "%s\n" (Diagnostic.to_string diag);
       exit 1
 
+let expect_extern_target desc expected input =
+  match parse_string input with
+  | Ok cu -> (
+      match cu.decls with
+      | { decl_kind = ExternDecl ext; _ } :: _ -> (
+          match ext.extern_items with
+          | item :: _ ->
+              let metadata = item.extern_metadata in
+              if
+                metadata.extern_target = expected
+                && metadata.extern_invalid_attributes = []
+              then Printf.printf "✓ %s\n" desc
+              else (
+                let show_opt = function
+                  | None -> "None"
+                  | Some v -> v
+                in
+                let invalid_count =
+                  List.length metadata.extern_invalid_attributes
+                in
+                Printf.printf
+                  "✗ %s: expected target %s (invalid=0), got %s (invalid=%d)\n"
+                  desc
+                  (show_opt expected)
+                  (show_opt metadata.extern_target)
+                  invalid_count;
+                exit 1)
+          | [] ->
+              Printf.printf "✗ %s: extern block is empty\n" desc;
+              exit 1)
+      | _ ->
+          Printf.printf "✗ %s: first decl is not an extern block\n" desc;
+          exit 1)
+  | Error diag ->
+      Printf.printf "✗ %s: parse failed\n" desc;
+      Printf.printf "%s\n" (Diagnostic.to_string diag);
+      exit 1
+
 let expect_fn_effects desc expected input =
   match parse_string input with
   | Ok cu -> (
@@ -280,7 +318,15 @@ let test_impl_decls () =
 let test_extern_decls () =
   expect_decl_count "extern: single fn" 1 "extern \"C\" fn puts(s: Str) -> i32;";
   expect_ok "extern: block"
-    "extern \"C\" { fn malloc(size: usize) -> Ptr<u8>; }"
+    "extern \"C\" { fn malloc(size: usize) -> Ptr<u8>; }";
+  expect_extern_target "extern: metadata target (ffi_target)"
+    (Some "arm64-apple-darwin")
+    {|
+extern "C" {
+  @ffi_target("arm64-apple-darwin")
+  fn dispatch_async_f(work: Ptr<u8>, context: Ptr<u8>) -> ();
+}
+|}
 
 (* ========== 式のテスト ========== *)
 
