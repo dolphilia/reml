@@ -408,7 +408,7 @@ and string_of_decl_kind = function
   | ExternDecl ext ->
       let items = List.length ext.extern_items in
       let target_suffix =
-        match ext.extern_target with
+        match ext.extern_block_target with
         | None -> ""
         | Some target -> Printf.sprintf " target=%s" target
       in

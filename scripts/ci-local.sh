@@ -15,6 +15,7 @@
 #   --skip-test       Test ステップをスキップ
 #   --skip-llvm       LLVM IR 検証ステップをスキップ
 #   --skip-runtime    ランタイムテストをスキップ
+#   --stage <STAGE>   効果ステージ（REMLC_EFFECT_STAGE）を指定
 #   --verbose         詳細なログを出力
 #   -h, --help        このヘルプを表示
 #
@@ -46,6 +47,7 @@ CLI_TARGET_NAME=""
 LLVM_TARGET_TRIPLE=""
 ARCH="auto"
 HOST_ARCH=""
+STAGE="${REMLC_EFFECT_STAGE:-}"
 
 # 色付き出力
 RED='\033[0;31m'
@@ -115,6 +117,11 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-runtime)
       SKIP_RUNTIME=1
+      shift
+      ;;
+    --stage)
+      shift || { log_error "--stage の後に値を指定してください"; exit 1; }
+      STAGE="$1"
       shift
       ;;
     --verbose)
@@ -214,6 +221,19 @@ if [[ -n "$CLI_TARGET_NAME" ]]; then
 fi
 if [[ -n "$LLVM_TARGET_TRIPLE" ]]; then
   log_info "LLVM ターゲットトリプル: $LLVM_TARGET_TRIPLE"
+fi
+
+# ========== Stage 設定 ==========
+
+if [[ -n "$STAGE" ]]; then
+  export REMLC_EFFECT_STAGE="$STAGE"
+  log_info "REMLC_EFFECT_STAGE を ${REMLC_EFFECT_STAGE} に設定しました"
+else
+  if [[ -n "${REMLC_EFFECT_STAGE:-}" ]]; then
+    log_info "REMLC_EFFECT_STAGE 既存値を使用します: ${REMLC_EFFECT_STAGE}"
+  else
+    log_info "REMLC_EFFECT_STAGE は未設定です（Capability JSON の既定値を使用）"
+  fi
 fi
 
 # ========== 環境チェック ==========

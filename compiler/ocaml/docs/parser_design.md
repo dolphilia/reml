@@ -359,7 +359,7 @@ and extern_metadata = {
 
 and extern_decl = {
   extern_abi: string;
-  extern_target: string option;  (* extern_item の metadata が一致している場合に集約 *)
+  extern_block_target: string option;  (* extern_item の metadata が一致している場合に集約 *)
   extern_items: extern_item list;
 }
 and extern_item = {

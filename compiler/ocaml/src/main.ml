@@ -264,6 +264,7 @@ let iterator_stage_event runtime_context (entry : IteratorAudit.entry) =
       ("effect.stage.iterator.capability", capability_json);
       ("effect.stage.iterator.kind", iterator_kind_json);
       ("effect.stage.iterator.source", `String stage_source);
+      ("effect.stage.iterator.source_detail", iterator_source_json);
       ( "effect.stage.iterator.method",
         `String entry.IteratorAudit.method_name );
       ( "audit.note",

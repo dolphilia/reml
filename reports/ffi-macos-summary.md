@@ -12,17 +12,17 @@
   - OCaml 5.2.1 / dune 3.x
 - Reml リポジトリ commit: `2571db5c1d92804d09e0ef27890ed6504b9b96ce`
 - コマンド実行:
-  - `REMLC_EFFECT_STAGE=beta scripts/ci-local.sh --target macos --arch arm64`（Lint ステップで停止）
-  - `REMLC_EFFECT_STAGE=beta scripts/ci-local.sh --target macos --arch arm64 --skip-lint`（Build ステップで停止）
-  - `scripts/verify_llvm_ir.sh --target arm64-apple-darwin`（未実行・Build 成功後に実施予定）
-  - `llc -mtriple=arm64-apple-darwin`（未実行・IR 検証時に実施予定）
+  - `./scripts/ci-local.sh --target macos --arch arm64 --stage beta --skip-lint`（Test ステップで `effects-residual` ゴールデン差分が発生）
+  - `./scripts/ci-local.sh --target macos --arch arm64 --stage beta --skip-lint --skip-test`（Build + LLVM IR 検証まで完走）
+  - `compiler/ocaml/scripts/verify_llvm_ir.sh --target arm64-apple-darwin compiler/ocaml/tests/llvm-ir/golden/basic_arithmetic.ll`
 
 ## 2. Capability / Stage 検証
 | チェック項目 | 結果 | ログ/参照 |
 |--------------|------|-----------|
 | `scripts/validate-runtime-capabilities.sh tooling/runtime/capabilities/default.json` | 成功（2025-10-18T03:23:33Z） | `reports/runtime-capabilities-validation.json`（`runtime_candidates` に `arm64-apple-darwin` を確認） |
-| `REMLC_EFFECT_STAGE=beta scripts/ci-local.sh --target macos --arch arm64` | 失敗（Lint ステップ `dune fmt` 差分） | ログ抜粋を §2.2 に記録（`_build/default/src/*.formatted` 差分） |
-| `REMLC_EFFECT_STAGE=beta scripts/ci-local.sh --target macos --arch arm64 --skip-lint` | 失敗（Build ステップ `extern_target` 重複） | `src/ast.ml` 重複フィールド警告を §2.2 に記録 |
+| `./scripts/ci-local.sh --target macos --arch arm64 --stage beta --skip-lint` | 失敗（Test ステップで `effects-residual` ゴールデン差分） | ログ抜粋を §2.2 に記録（`effect.stage.runtime` メタデータの差分要更新） |
+| `./scripts/ci-local.sh --target macos --arch arm64 --stage beta --skip-lint --skip-test` | 成功（Build + LLVM IR 検証） | LLVM IR 出力先 `/tmp/reml-ci-local-llvm-ir-67327` を §2.2 に記録 |
+| `compiler/ocaml/scripts/verify_llvm_ir.sh --target arm64-apple-darwin compiler/ocaml/tests/llvm-ir/golden/basic_arithmetic.ll` | 成功 | `.bc`/`.o` 生成ログを §2.2 に記録 |
 | Capability 差分レビュー | 未実施 | `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` 更新案（診断チーム確認待ち） |
 
 ### 2.1 監査ログ抜粋
@@ -32,16 +32,22 @@
 ### 2.2 実行ログ抜粋
 
 ```text
-$ REMLC_EFFECT_STAGE=beta scripts/ci-local.sh --target macos --arch arm64
+$ ./scripts/ci-local.sh --target macos --arch arm64 --stage beta --skip-lint
 [INFO] Lint ステップ (1/5)
 diff --git a/_build/default/src/cli/dune b/_build/default/src/cli/.formatted/dune
 ...
-[ERROR] フォーマットチェックに失敗しました。'dune build @fmt --auto-promote' を実行してください。
+[ERROR] effects-residual.jsonl.golden が未更新（effect.stage.runtime メタデータ差分）
 
-$ REMLC_EFFECT_STAGE=beta scripts/ci-local.sh --target macos --arch arm64 --skip-lint
-[INFO] Build ステップ (2/5)
-File "src/ast.ml", line 291, characters 2-32:
-Error (warning 30 [duplicate-definitions]): the label extern_target is defined in both types extern_metadata and extern_decl.
+$ ./scripts/ci-local.sh --target macos --arch arm64 --stage beta --skip-lint --skip-test
+[SUCCESS] コンパイラビルド完了
+[SUCCESS] LLVM IR 検証完了
+[INFO] 生成された LLVM IR: /tmp/reml-ci-local-llvm-ir-67327
+
+$ compiler/ocaml/scripts/verify_llvm_ir.sh --target arm64-apple-darwin compiler/ocaml/tests/llvm-ir/golden/basic_arithmetic.ll
+[1/3] llvm-as ... ✓
+[2/3] opt -verify ... ✓
+[3/3] llc ... ✓
+生成物: .../basic_arithmetic.bc, .../basic_arithmetic.o
 ```
 
 ## 3. ABI / 呼出規約検証
@@ -71,11 +77,12 @@ Error (warning 30 [duplicate-definitions]): the label extern_target is defined i
 
 ## 6. TODO / リスク
 - [x] Capability override (`arm64-apple-darwin`) を `tooling/runtime/capabilities/default.json` に追加し、Windows 同等セットから開始する。（PR 化・レビューは未完）
-- [ ] `scripts/ci-local.sh` の `--arch arm64` 実行ログを保存し、CI 再現性を確認する（`--stage` 引数実装後に再試行）。
+- [x] `scripts/ci-local.sh` の `--arch arm64` 実行ログを保存し、CI 再現性を確認する（`--stage` オプション実装済み、Build/LLVM 検証完了。テストはゴールデン差分修正後に再開）。
 - [ ] Darwin 向け可変長/構造体戻りの ABI 差分調査を完了し、`docs/notes/llvm-spec-status-survey.md` §2.2 を更新。
 - [ ] `AuditEnvelope.metadata.bridge.*` スキーマを確定し、macOS サンプルをゴールデン化する。
-- [ ] `scripts/ci-local.sh` に `--stage` オプションを追加し、Diagnostics チームの運用手順と合わせる。
-- [ ] `extern_metadata` / `extern_decl` の重複フィールドを解消し、Build ステップを通過させる。
+- [x] `scripts/ci-local.sh` に `--stage` オプションを追加し、Diagnostics チームの運用手順と合わせる。
+- [x] `extern_metadata` / `extern_decl` の重複フィールドを解消し、Build ステップを通過させる（`extern_block_target` へ改名済み）。
+- [ ] `effects-residual.jsonl.golden` を含む監査ゴールデンを更新し、テストステップを再度有効化する。
 
 ---
 

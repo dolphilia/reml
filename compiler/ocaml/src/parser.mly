@@ -642,6 +642,7 @@ let extern_metadata_from_attrs attrs =
           add_extern_invalid acc
             (make_extern_invalid attr (ExternAttrUnknownKey key)))
     empty_extern_metadata
+    attrs
 
 let derive_extern_target items =
   match items with
@@ -1056,10 +1057,14 @@ impl_item:
 
 extern_decl:
   | abi = extern_abi; body = extern_body
-    {
-      let target = derive_extern_target body in
-      { extern_abi = abi; extern_target = target; extern_items = body }
-    }
+      {
+        let target = derive_extern_target body in
+        {
+          extern_abi = abi;
+          extern_block_target = target;
+          extern_items = body;
+        }
+      }
 
 extern_abi:
   | s = STRING { fst s }

@@ -24,23 +24,45 @@
 | --- | --- | --- | --- |
 | 前提確認・計画調整 | **進行中** | 2025-10-18 に `scripts/validate-runtime-capabilities.sh tooling/runtime/capabilities/default.json` を再実行し、`reports/runtime-capabilities-validation.json` （timestamp `2025-10-18T03:23:33.958135+00:00`）を更新。override 追加草案メモと `reports/ffi-macos-summary.md` の初回記録を追記済み。 | override 追加のドラフト PR を作成し、再実行ログと `reports/ffi-macos-summary.md` にまとめた CI ログ断片をレビューコメントへ添付。 |
 | 1. ABI モデル設計 | **進行中** | Darwin 計測計画を `docs/notes/llvm-spec-status-survey.md` に追記し、計測ログ用テンプレート `reports/ffi-macos-summary.md` を作成。 | OCaml 側 ABI データ型ドラフトと計測スクリプト実行結果（DataLayout・callconv）をテンプレートへ記録。 |
-| 2. Parser / AST 拡張 | **進行中** | `extern_metadata` PoC を実装し、`@ffi_target` などの属性を抽出するメタデータとユニットテストを追加。 | Typer へのメタデータ伝播と CLI/監査診断への接続方針を整理し、ゴールデン出力の更新計画を立案。 |
+| 2. Parser / AST 拡張 | **進行中** | `extern_metadata` PoC を実装し、`@ffi_target` などの属性を抽出するメタデータとユニットテストを追加。2025-10-18 時点で `extern_decl.extern_target` を `extern_block_target` に改名し、ブロック単位のターゲット整合ロジックを確定。 | Typer へのメタデータ伝播と CLI/監査診断への接続方針を整理し、ゴールデン出力の更新計画を立案。 |
 | 3. Typer 統合と ABI 検証 | **未着手** | — | FFI 型ホワイトリストと所有権検証の設計メモを起案。 |
 | 4. ブリッジコード生成 | **未着手** | — | ターゲット別 stub 生成ロジックの責務分担を `codegen` / `runtime/native` チームと摺り合わせ。 |
-| 5. 監査ログ統合 | **準備中** | `AuditEnvelope.metadata.bridge.*` のキー案と effect-system 設計ノートの TODO を同期。 | JSON スキーマ案のドラフト作成と、`iterator_audit` との突合ルール整理。 |
-| 6. プラットフォーム別テスト | **準備中** | Apple Silicon 実行計画を `docs/notes/llvm-spec-status-survey.md` の計測タスク・新規レポートにリンク。 | Apple Silicon 実機／ランナーでの最小 FFI サンプル実行計画を策定し、必要な Homebrew ツールチェーン確認。 |
+| 5. 監査ログ統合 | **準備中** | `AuditEnvelope.metadata.bridge.*` のキー案と effect-system 設計ノートの TODO を同期。`effect.stage.iterator.source_detail` を追加し、Iterator audit のログにソース詳細を保持。 | JSON スキーマ案のドラフト作成と、`iterator_audit` との突合ルール整理。 |
+| 6. プラットフォーム別テスト | **準備中** | Apple Silicon 実行計画を `docs/notes/llvm-spec-status-survey.md` の計測タスク・新規レポートにリンク。`scripts/ci-local.sh --stage beta` で Build/LLVM IR 検証まで完走し、測定ログ雛形を更新。 | Apple Silicon 実機／ランナーでの最小 FFI サンプル実行計画を策定し、必要な Homebrew ツールチェーン確認。成果をもとに `reports/ffi-macos-summary.md` の未実施テスト項目を消化。 |
 | 7. ランタイム連携とテスト | **未着手** | — | FFI ヘルパ API の拡張方針を `runtime/native` ドキュメントに追記するドラフトを準備。 |
-| 8. ドキュメント更新と引き継ぎ | **進行中** | Apple Silicon 対応更新に加え、計測テンプレートと override 提案を関連資料へリンク。 | 実装着手後に更新するべき仕様・ガイドのチェックリストを作成。 |
+| 8. ドキュメント更新と引き継ぎ | **進行中** | Apple Silicon 対応更新に加え、計測テンプレートと override 提案を関連資料へリンク。`reports/ffi-macos-summary.md` に最新ログ（ステージ指定実行結果、LLVM IR 単体検証）を追記。 | 実装着手後に更新するべき仕様・ガイドのチェックリストを作成。監査ゴールデン更新と合わせて完了レポート案を整理。 |
+
+### 最新進捗サマリー（2025-10-18）
+
+- `scripts/ci-local.sh` に `--stage` オプションを追加し、`REMLC_EFFECT_STAGE` の CLI 指定を可能化。macOS arm64 環境で Build / LLVM IR 検証まで完走するルートを確認。
+- `extern_decl` のターゲット集約フィールドを `extern_block_target` へ改名し、Parser・AST Printer・設計ドキュメントを同期。属性由来のターゲット情報は `extern_metadata` に集約され、ブロックレベルの整合チェックを準備できた。
+- `iterator` 監査メタデータに `effect.stage.iterator.source_detail` を追加し、Typer で算出した `iterator_source` を JSON に保持。将来の FFI 監査キーと同一フォーマットで扱えるよう設計。
+
+### 残タスクと次のステップ
+
+1. **ゴールデン更新とテスト再実行**
+   - `compiler/ocaml/tests/golden/audit/effects-residual.jsonl.golden` を `effect.stage.runtime` の最新出力に合わせて更新。
+   - `dune fmt` 差分を解消し、`scripts/ci-local.sh` の Lint / Test ステップをスキップなしで通過させる。
+2. **Typer 統合タスクの具体化**
+   - `extern_metadata` → `AuditEnvelope.metadata.bridge.*` の写像設計を Issue 下書き（計画内チェックリスト 1〜4）として登録。
+   - 所有権・ABI 検証ロジックに必要な型や診断コード（`ffi.contract.*`）のスケルトンを用意。
+3. **監査スキーマと CI 連携**
+   - JSON スキーマ案（`bridge` オブジェクト）をドラフト化し、`tooling/runtime/audit-schema.json` で検証。
+   - `tooling/ci/collect-iterator-audit-metrics.py` に FFI ブリッジ関連指標を追加し、`ffi_bridge.audit_pass_rate`（仮）の算出フローをレビューに付す。
+4. **プラットフォームテスト推進**
+   - macOS arm64 での FFI サンプル実装／ABI 検証ケース（可変長、構造体戻りなど）を着手し、`reports/ffi-macos-summary.md` の未実施項目を埋める。
+   - 同報告書に Windows / Linux との比較観点を追記し、クロスプラットフォーム整合チェックの計画を整備。
 
 ### 2025-10-18 ログ・測定サマリー
 
 - **`scripts/validate-runtime-capabilities.sh`**: `tooling/runtime/capabilities/default.json` を対象に再実行し、`reports/runtime-capabilities-validation.json` の timestamp を `2025-10-18T03:23:33.958135+00:00` へ更新。`arm64-apple-darwin` override が `runtime_candidates` に出力されること、および `validation.status = ok` を確認済み。
-- **`scripts/ci-local.sh --target macos --arch arm64`**: `--stage` オプションが未実装であるため `REMLC_EFFECT_STAGE=beta` を環境変数で指定して実行。Lint ステップは `dune fmt` 差分検出で停止、`--skip-lint` では Build ステップで `extern_metadata` と `extern_decl` のレコードフィールド（`extern_target`）重複によりコンパイルエラー。実行ログと失敗理由は `reports/ffi-macos-summary.md` §2 に整理。
-- **フォローアップ**: (1) `scripts/ci-local.sh` に `--stage` 引数を追加し、CLI から Stage を切り替えられるようにする。（2）AST 定義の重複フィールド解消タスクを Phase 2-3 Typer backlog に登録。（3）Build 以降（IR/ABI 検証・監査ログ）の採取は上記修正後に再実施。
+- **`scripts/ci-local.sh --target macos --arch arm64 --stage beta`**: `--stage` オプションを実装したうえで再実行。Lint は既存の `dune fmt` 差分を避けるため `--skip-lint`、テストは `effects-residual` ゴールデン差分（`effect.stage.runtime` メタデータ）で停止するため `--skip-test` を併用し、ビルドと LLVM IR 検証まで完走（出力先 `/tmp/reml-ci-local-llvm-ir-67327`）。失敗ログとフォローアップは `reports/ffi-macos-summary.md` §2 に記録。
+- **`compiler/ocaml/scripts/verify_llvm_ir.sh --target arm64-apple-darwin compiler/ocaml/tests/llvm-ir/golden/basic_arithmetic.ll`**: 追加で単体検証を実行し、LLVM 18.1.8 で `.ll → .bc → .o` パイプラインの成功を確認。生成物パスは `reports/ffi-macos-summary.md` §2 に追記。
+- **フォローアップ**: (1) `effects-residual.jsonl.golden` を含む監査ゴールデンを Stage Trace 仕様に合わせて更新。（2）`ci-local` のテストステップ常時実行に備えて、`dune fmt` 差分の解消タスクを Phase 2-3 backlog に登録。
 
 ### Typer `extern_metadata` 設計メモ（ドラフト）
 
-- Parser で抽出済みの `extern_metadata` を Typer へ伝搬し、以下のキーを `AuditEnvelope.metadata.bridge.*` に写像する：`bridge.target`（例: `arm64-apple-darwin`）、`bridge.arch`（`arm64` / `x86_64`）、`bridge.abi`（`system_v` / `msvc` / `darwin_aapcs64`）、`bridge.ownership`（`borrowed` / `transferred` / `reference`）、`bridge.extern_symbol`（リンク先シンボル名）、必要に応じて `bridge.alias`・`bridge.library` を追加。
+- Parser で抽出済みの `extern_metadata` を Typer へ伝搬し、以下のキーを `AuditEnvelope.metadata.bridge.*` に写像する：`bridge.target`（例: `arm64-apple-darwin`）、`bridge.arch`（`arm64` / `x86_64`）、`bridge.abi`（`system_v` / `msvc` / `darwin_aapcs64`）、`bridge.ownership`（`borrowed` / `transferred` / `reference`）、`bridge.extern_symbol`（リンク先シンボル名）、必要に応じて `bridge.alias`・`bridge.library` を追加。`extern_decl` 側の集約フィールドは `extern_block_target` へ改名済みで、Typer ではブロック既定値とアイテム個別値の整合を照合する。
 - Typer では `extern_metadata` の欠落・矛盾を `ffi.contract.*` 診断として報告し、CLI JSON と監査ログで同一内容を表示する。`RuntimeCapabilityResolver` が提供する `stage_trace` に FFI 情報を追記し、効果診断と整合したメタデータを構築する。
 - Runtime 側が追記する `bridge.callsite`（モジュール/関数）と整合させるため、Typer で `bridge.symbol_path` を計算したうえで `AuditEnvelope` へ渡す。
 

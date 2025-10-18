@@ -288,7 +288,7 @@ and extern_metadata = {
 (* extern 宣言 *)
 and extern_decl = {
   extern_abi : string;
-  extern_target : string option;
+  extern_block_target : string option;
   extern_items : extern_item list;
 }
 
