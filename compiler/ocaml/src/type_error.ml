@@ -861,6 +861,8 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         | UnknownAttributeKey _ ->
             "allows_effects / handles / effect / effects のいずれかのキーを指定してください"
         | UnsupportedStageValue -> "stage は文字列または StageId"
+        | UnsupportedCapabilityValue ->
+            "capability は文字列または識別子で指定してください"
         | UnknownEffectTag -> "効果タグは識別子または文字列で指定してください"
         | MissingStageValue -> "stage を指定してください"
       in
@@ -886,6 +888,14 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
             @ [
                 ( None,
                   Printf.sprintf "指定された値: %s" provided_display );
+              ]
+        | UnsupportedCapabilityValue ->
+            base
+            @ [
+                ( None,
+                  Printf.sprintf
+                    "指定された capability: %s"
+                    provided_display );
               ]
         | UnknownEffectTag ->
             base

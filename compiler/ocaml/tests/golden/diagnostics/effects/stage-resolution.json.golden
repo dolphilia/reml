@@ -40,7 +40,7 @@
               {
                 "source": "typer",
                 "stage": "beta",
-                "capability": null
+                "capability": "core.iterator.collect"
               },
               {
                 "source": "runtime",

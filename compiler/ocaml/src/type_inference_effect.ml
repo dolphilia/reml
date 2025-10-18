@@ -52,8 +52,12 @@ let resolve_function_profile ~(runtime_context : runtime_stage)
     (effect_node : effect_profile_node option) =
   let source_name = Some function_ident.name in
   let capability_name =
-    None
-    (* TODO Phase 2-3: effect属性から Capability 名を解析して渡す *)
+    match effect_node with
+    | Some node -> (
+        match node.effect_capabilities with
+        | cap :: _ -> Some (normalize_capability_name cap.name)
+        | [] -> None)
+    | None -> None
   in
   let current_stage = stage_for_capability runtime_context capability_name in
   let typer_step =

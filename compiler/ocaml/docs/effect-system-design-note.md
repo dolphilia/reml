@@ -166,7 +166,7 @@ type effect_profile_node = {
 | 領域 | 状態 | 完了内容 | 次のステップ |
 | --- | --- | --- | --- |
 | Parser | ✅ 完了 | 効果属性解析・`effect_profile_node` 導入・ゴールデン更新済み | 行多相拡張検討（Phase 3）、named 引数対応 |
-| Typer | ✅ 第3段階 | Stage トレース付き `effect_profile` 正規化、`effects.syntax.invalid_attribute`・`effects.contract.residual_leak`・`effects.contract.stage_mismatch` を CLI / 監査両経路で固定化し、辞書/モノモルフィゼーション一致をテストで保証 | 効果属性から Capability 名を復元し `Effect_profile.resolved_capability` を埋める、Stage メトリクス (`iterator.stage.audit_pass_rate`) への自動登録 |
+| Typer | ✅ 第3段階 | Stage トレース付き `effect_profile` 正規化、効果属性から Capability ID を抽出して `Effect_profile.resolved_capability` と Stage トレースへ反映、`effects.syntax.invalid_attribute`・`effects.contract.residual_leak`・`effects.contract.stage_mismatch` を CLI / 監査両経路で固定化し、辞書/モノモルフィゼーション一致をテストで保証 | Stage メトリクス (`iterator.stage.audit_pass_rate`) への自動登録と Core IR / Runtime との突合 |
 | Core IR | ✅ 第1段階 | `desugar` が効果セットと Stage を IR メタデータへ反映 | 複数 Capability 対応・EffectMarker 連携 |
 | Runtime | 🚧 進行中 | `RuntimeCapabilityResolver` で CLI/環境変数/JSON を統合し Stage トレースを構築、`main.ml` から `runtime_stage_event` を監査へ出力 | IR メタデータとの突合と Stage 実走チェック、監査イベントのプラットフォーム別拡張・JSON Lines 永続化 |
 | Tooling / CI | 🚧 進行中 | Stage トレース検証スクリプト整備、`reports/runtime-capabilities-validation.json`・`reports/iterator-stage-summary.md` を生成 | CI への組み込みと自動ゲート化 (`iterator.stage.audit_pass_rate`)、Windows override テストの追加 |
@@ -179,7 +179,7 @@ type effect_profile_node = {
 - **Typer (`type_inference.ml`, `type_inference_effect.ml`)**
   - 効果プロファイル正規化と Stage 判定 (`Type_inference_effect.resolve_function_profile`) は完了し、Typer 起点の `stage_trace` を診断・監査の両経路へ反映済み。
   - `Constraint_solver.EffectConstraintTable` に診断ペイロードを保持し、残余効果診断 (`effects.contract.residual_leak`) と Stage ミスマッチ (`effects.contract.stage_mismatch`) を生成。辞書/モノモルフィゼーション両経路の CLI ゴールデンを共有化。
-  - 今後は効果属性から Capability 名を復元して `Effect_profile.resolved_capability` を埋め、Stage 集計メトリクスへの送出を自動化する。
+  - 今後は Stage 集計メトリクスへの送出を自動化し、抽出した Capability ID を Core IR / Runtime の検証フローへ連携する。
 - **Core IR (`core_ir/desugar.ml`, `core_ir/ir.ml`)**
   - 関数メタデータへの効果・Stage 反映を確認済み。複数 Capability や `EffectMarker` への拡張を追加予定。
 - **Runtime (`runtime/native/...`)**
@@ -200,7 +200,7 @@ type effect_profile_node = {
 
 - `Constraint_solver.EffectConstraintTable` に `diagnostic_payload` を保持し、残余効果 (`effects.contract.residual_leak`) と Stage ミスマッチ (`effects.contract.stage_mismatch`) の診断を CLI / 監査の両経路で同期。Stage トレースは `append_runtime_stage_trace` により Typer → Runtime の経路を一体化。
 - 統合テスト `compiler/ocaml/tests/test_effect_residual.ml` を追加し、**辞書モード** (`--typeclass-mode=dictionary`) と **モノモルフィゼーションモード** (`--typeclass-mode=monomorph`) 双方で同一診断になることを固定化。ゴールデン `compiler/ocaml/tests/golden/diagnostics/effects/residual-leak.json.golden` を更新。
-- Stage 差分のスナップショットとして `compiler/ocaml/tests/golden/diagnostics/effects/stage-resolution.json.golden` と 監査ログ `compiler/ocaml/tests/golden/audit/effects-stage.json.golden` を整備し、`runtime_stage_event` から出力されるトレースと Typer 判定の一致を検証。
+- Stage 差分のスナップショットとして `compiler/ocaml/tests/golden/diagnostics/effects/stage-resolution.json.golden` と 監査ログ `compiler/ocaml/tests/golden/audit/effects-stage.json.golden` を整備し、Typer が抽出した Capability ID と Runtime 判定が同一になることをトレースで検証。
 - `dune runtest`（`compiler/ocaml/`）を実行し、効果診断・監査テストを含むスイート全体が成功することを確認。
 - `scripts/validate-runtime-capabilities.sh tooling/runtime/capabilities/default.json` を実行し、Stage 集約結果を `reports/runtime-capabilities-validation.json` に保存。
 - `tooling/ci/sync-iterator-audit.sh --metrics tooling/ci/iterator-audit-metrics.json --verify-log /tmp/verify.log --audit compiler/ocaml/tests/golden/audit/effects-stage.json.golden` を実行し、`reports/iterator-stage-summary.md` に Stage トレース検証サマリーを生成。

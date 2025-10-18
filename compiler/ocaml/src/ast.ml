@@ -186,6 +186,7 @@ and decl_kind =
 and effect_invalid_attribute_reason =
   | EffectAttrUnknownKey of ident
   | EffectAttrUnsupportedStageValue of expr option
+  | EffectAttrUnsupportedCapabilityValue of expr option
   | EffectAttrUnknownEffectTag of expr
   | EffectAttrMissingStageValue
 
@@ -200,6 +201,7 @@ and effect_profile_node = {
   effect_declared : ident list;  (** 明示された効果タグ集合（順序保持） *)
   effect_residual : ident list;  (** AST段階では declared と同一で初期化 *)
   effect_stage : stage_requirement_annot option;  (** StageRequirement (未確定可) *)
+  effect_capabilities : ident list;  (** Capability 要求（規約化済み文字列） *)
   effect_span : span;  (** 宣言位置 *)
   effect_invalid_attributes : effect_invalid_attribute list;
 }

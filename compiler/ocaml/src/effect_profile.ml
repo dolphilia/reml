@@ -178,6 +178,7 @@ let set_of_ast_nodes ~declared ~residual =
 type invalid_attribute_reason =
   | UnknownAttributeKey of string
   | UnsupportedStageValue
+  | UnsupportedCapabilityValue
   | UnknownEffectTag
   | MissingStageValue
 
@@ -329,6 +330,22 @@ let invalid_attribute_of_ast (issue : effect_invalid_attribute) =
         provided_display;
         reason = UnsupportedStageValue;
       }
+  | EffectAttrUnsupportedCapabilityValue value_opt ->
+      let provided_json, provided_display =
+        match value_opt with
+        | Some expr -> (expr_to_json expr, Some (expr_to_display expr))
+        | None -> (None, None)
+      in
+      {
+        attribute_name = attr.attr_name.name;
+        attribute_display;
+        attribute_span = attr.attr_span;
+        invalid_span = issue.invalid_span;
+        key = Some "capability";
+        provided_json;
+        provided_display;
+        reason = UnsupportedCapabilityValue;
+      }
   | EffectAttrUnknownEffectTag expr ->
       {
         attribute_name = attr.attr_name.name;
@@ -361,6 +378,7 @@ let payload_of_ast (node : effect_profile_node) =
 let string_of_invalid_reason = function
   | UnknownAttributeKey _ -> "unknown_attribute_key"
   | UnsupportedStageValue -> "unsupported_stage_value"
+  | UnsupportedCapabilityValue -> "unsupported_capability_value"
   | UnknownEffectTag -> "unknown_effect_tag"
   | MissingStageValue -> "missing_stage_value"
 
@@ -447,6 +465,11 @@ let profile_of_ast ?source_name ?(stage_trace = stage_trace_empty)
     | [] -> declared
     | entries -> tags_of_idents entries
   in
+  let capability_name =
+    match node.effect_capabilities with
+    | cap :: _ -> Some cap.name
+    | [] -> None
+  in
   let effect_set = set_of_ast_nodes ~declared ~residual in
   let stage_requirement =
     match node.effect_stage with
@@ -454,5 +477,6 @@ let profile_of_ast ?source_name ?(stage_trace = stage_trace_empty)
     | None -> default_stage_requirement
   in
   let diagnostic_payload = payload_of_ast node in
-  make_profile ?source_name ~stage_requirement ~effect_set
-    ~span:node.effect_span ~stage_trace ~diagnostic_payload ()
+  make_profile ?source_name ?resolved_capability:capability_name
+    ~stage_requirement ~effect_set ~span:node.effect_span ~stage_trace
+    ~diagnostic_payload ()

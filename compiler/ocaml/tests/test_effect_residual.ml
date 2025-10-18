@@ -168,7 +168,8 @@ let run_with_mode mode =
       Effect_profile.make_stage_trace_step
         ~note:"REMLC_EFFECT_STAGE not set" "env_var";
       Effect_profile.stage_trace_step_of_stage_id_opt
-        "typer" (Some Effect_profile.Stable);
+        ~capability:"core.runtime" "typer"
+        (Some Effect_profile.Stable);
       Effect_profile.make_stage_trace_step
         ~stage:(Effect_profile.stage_id_to_string Effect_profile.Stable)
         ~capability:"core.runtime" "runtime";
@@ -182,7 +183,8 @@ let run_with_mode mode =
       ~stage_requirement:(Effect_profile.StageExact Effect_profile.Stable)
       ~effect_set ~span ~stage_trace
       ~diagnostic_payload ~source_name:"demo"
-      ~resolved_stage:Effect_profile.Stable ()
+      ~resolved_stage:Effect_profile.Stable
+      ~resolved_capability:"core.runtime" ()
   in
   Constraint_solver.record_effect_profile ~symbol:"demo" profile;
   let error =

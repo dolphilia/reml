@@ -29,21 +29,41 @@ let make_stage_ident span name =
   make_ident normalized span
 
 let make_effect_ident span name =
-  let trimmed =
-    name |> String.trim |> String.lowercase_ascii
-  in
+  let trimmed = name |> String.trim |> String.lowercase_ascii in
   make_ident trimmed span
+
+let make_capability_ident span name =
+  let normalized = name |> String.trim |> String.lowercase_ascii in
+  make_ident normalized span
+
+let string_of_relative_head = function
+  | Self -> "self"
+  | Super n ->
+      if n <= 0 then "self"
+      else String.concat "." (List.init n (fun _ -> "super"))
+  | PlainIdent id -> id.name
+
+let string_of_module_path = function
+  | Root ids -> String.concat "." (List.map (fun id -> id.name) ids)
+  | Relative (head, tail) ->
+      let head_str = string_of_relative_head head in
+      (match tail with
+      | [] -> head_str
+      | _ ->
+          head_str ^ "." ^ String.concat "." (List.map (fun id -> id.name) tail))
 
 type effect_attr_analysis = {
   tags : ident list;
+  capabilities : ident list;
   invalids : effect_invalid_attribute list;
 }
 
-let empty_attr_analysis = { tags = []; invalids = [] }
+let empty_attr_analysis = { tags = []; capabilities = []; invalids = [] }
 
 let append_attr_analysis lhs rhs =
   {
     tags = lhs.tags @ rhs.tags;
+    capabilities = lhs.capabilities @ rhs.capabilities;
     invalids = lhs.invalids @ rhs.invalids;
   }
 
@@ -59,120 +79,260 @@ let stage_ident_from_value expr =
   | ModulePath (_, id) -> Some id
   | _ -> None
 
+let capability_ident_from_value expr =
+  match expr.expr_kind with
+  | Literal (String (value, _)) ->
+      Some (make_capability_ident expr.expr_span value)
+  | Var id -> Some (make_capability_ident id.span id.name)
+  | ModulePath (path, id) ->
+      let base = string_of_module_path path in
+      let name =
+        if String.equal base "" then id.name else base ^ "." ^ id.name
+      in
+      Some (make_capability_ident expr.expr_span name)
+  | _ -> None
+
+let default_effect_keys = [ "allows_effects"; "handles"; "effect"; "effects" ]
+
+let key_matches allowed key =
+  match allowed with
+  | None -> List.exists (String.equal key) default_effect_keys
+  | Some keys -> List.exists (String.equal key) keys
+
 let key_from_expr expr =
   match expr.expr_kind with
   | Var id -> Some id
   | ModulePath (_, id) -> Some id
   | _ -> None
 
-let rec extract_stage_from_expr attr expr =
+let rec collect_capabilities_from_expr ?(allowed_keys : string list option = None)
+    attr expr =
+  match expr.expr_kind with
+  | Literal (Array elements) ->
+      List.fold_left
+        (fun acc element ->
+          append_attr_analysis acc
+            (collect_capabilities_from_expr ~allowed_keys:None attr element))
+        empty_attr_analysis elements
+  | Literal (Tuple elements) ->
+      List.fold_left
+        (fun acc element ->
+          append_attr_analysis acc
+            (collect_capabilities_from_expr ~allowed_keys:None attr element))
+        empty_attr_analysis elements
+  | Literal (Record fields) ->
+      List.fold_left
+        (fun acc (field_id, field_expr) ->
+          let key = normalize_key field_id.name in
+          if key_matches allowed_keys key then
+            append_attr_analysis acc
+              (collect_capabilities_from_expr ~allowed_keys:None attr field_expr)
+          else
+            append_attr_analysis acc
+              {
+                tags = [];
+                capabilities = [];
+                invalids =
+                  [
+                    make_invalid_attribute attr
+                      (EffectAttrUnknownKey field_id)
+                      field_id.span;
+                  ];
+              })
+        empty_attr_analysis fields
+  | Binary (Eq, lhs, rhs) -> (
+      match key_from_expr lhs with
+      | Some key_ident ->
+          let key = normalize_key key_ident.name in
+          if key_matches allowed_keys key then
+            collect_capabilities_from_expr ~allowed_keys:None attr rhs
+          else
+            {
+              tags = [];
+              capabilities = [];
+              invalids =
+                [
+                  make_invalid_attribute attr
+                    (EffectAttrUnknownKey key_ident)
+                    key_ident.span;
+                ];
+            }
+      | None ->
+          {
+            tags = [];
+            capabilities = [];
+            invalids =
+              [
+                make_invalid_attribute attr
+                  (EffectAttrUnsupportedCapabilityValue (Some lhs))
+                  lhs.expr_span;
+              ];
+          })
+  | _ -> (
+      match capability_ident_from_value expr with
+      | Some ident -> { tags = []; capabilities = [ ident ]; invalids = [] }
+      | None ->
+          {
+            tags = [];
+            capabilities = [];
+            invalids =
+              [
+                make_invalid_attribute attr
+                  (EffectAttrUnsupportedCapabilityValue (Some expr))
+                  expr.expr_span;
+              ];
+          })
+
+let stage_value_from_expr attr expr =
+  match stage_ident_from_value expr with
+  | Some ident -> (Some ident, [])
+  | None ->
+      ( None,
+        [
+          make_invalid_attribute attr
+            (EffectAttrUnsupportedStageValue (Some expr))
+            expr.expr_span;
+        ] )
+
+let analyze_stage_expr attr expr =
   match expr.expr_kind with
   | Literal (Record fields) ->
       List.fold_left
-        (fun (stage_opt, invalids) (field_id, field_expr) ->
+        (fun (stage_opt, capabilities, invalids) (field_id, field_expr) ->
           let key_name = normalize_key field_id.name in
           if String.equal key_name "stage" then
-            let value_opt, new_invalids = extract_stage_from_expr attr field_expr in
+            let value_opt, new_invalids = stage_value_from_expr attr field_expr in
             let stage_opt =
               match stage_opt with
               | Some _ -> stage_opt
-              | None -> value_opt
+              | None ->
+                  Option.map (fun ident -> (ident, field_expr.expr_span))
+                    value_opt
             in
-            (stage_opt, invalids @ new_invalids)
+            (stage_opt, capabilities, invalids @ new_invalids)
+          else if key_matches (Some [ "capability"; "capabilities" ]) key_name
+          then
+            let cap_analysis =
+              collect_capabilities_from_expr ~allowed_keys:None attr field_expr
+            in
+            ( stage_opt,
+              capabilities @ cap_analysis.capabilities,
+              invalids @ cap_analysis.invalids )
           else
             ( stage_opt,
+              capabilities,
               invalids
               @ [
                   make_invalid_attribute attr
                     (EffectAttrUnknownKey field_id)
                     field_id.span;
                 ] ))
-        (None, []) fields
+        (None, [], []) fields
   | Binary (Eq, lhs, rhs) -> (
       match key_from_expr lhs with
       | Some key_ident ->
           let key_name = normalize_key key_ident.name in
           if String.equal key_name "stage" then
-            extract_stage_from_expr attr rhs
+            let value_opt, invalids = stage_value_from_expr attr rhs in
+            let stage =
+              Option.map (fun ident -> (ident, rhs.expr_span)) value_opt
+            in
+            (stage, [], invalids)
+          else if key_matches (Some [ "capability"; "capabilities" ]) key_name
+          then
+            let cap_analysis =
+              collect_capabilities_from_expr ~allowed_keys:None attr rhs
+            in
+            ( None,
+              cap_analysis.capabilities,
+              cap_analysis.invalids )
           else
             ( None,
+              [],
               [
                 make_invalid_attribute attr
                   (EffectAttrUnknownKey key_ident)
                   key_ident.span;
               ] )
       | None ->
-          ( None,
-            [
-              make_invalid_attribute attr
-                (EffectAttrUnsupportedStageValue (Some lhs))
-                lhs.expr_span;
-            ] ))
-  | _ -> (
-      match stage_ident_from_value expr with
-      | Some ident -> (Some ident, [])
-      | None ->
-          ( None,
-            [
-              make_invalid_attribute attr
-                (EffectAttrUnsupportedStageValue (Some expr))
-                expr.expr_span;
-            ] ))
+          let invalid =
+            make_invalid_attribute attr
+              (EffectAttrUnsupportedStageValue (Some lhs))
+              lhs.expr_span
+          in
+          (None, [], [ invalid ]))
+  | _ ->
+      let stage_opt, invalids = stage_value_from_expr attr expr in
+      ( Option.map (fun ident -> (ident, expr.expr_span)) stage_opt,
+        [],
+        invalids )
 
 let stage_requirement_from_attr attr constructor =
   match attr.attr_args with
   | [] ->
       ( None,
+        [],
         [
           make_invalid_attribute attr EffectAttrMissingStageValue
             attr.attr_span;
         ] )
   | args ->
-      let rec find_stage acc_invalids = function
-        | [] -> (None, List.rev acc_invalids)
+      let rec gather stage_opt capabilities acc_invalids = function
+        | [] -> (stage_opt, capabilities, List.rev acc_invalids)
         | expr :: rest ->
-            let stage_opt, invalids = extract_stage_from_expr attr expr in
-            let acc_invalids = List.rev_append invalids acc_invalids in
-            match stage_opt with
-            | Some ident -> (Some (constructor ident, expr.expr_span), acc_invalids)
-            | None -> find_stage acc_invalids rest
+            let stage_result, caps, invalids = analyze_stage_expr attr expr in
+            let stage_opt =
+              match (stage_opt, stage_result) with
+              | Some _, _ -> stage_opt
+              | None, Some (ident, span) -> Some (constructor ident, span)
+              | None, None -> None
+            in
+            let capabilities = capabilities @ caps in
+            gather stage_opt capabilities
+              (List.rev_append invalids acc_invalids)
+              rest
       in
-      let stage_opt, invalids = find_stage [] args in
-      (stage_opt, invalids)
+      let stage_opt, capabilities, invalids =
+        gather None [] [] args
+      in
+      (stage_opt, capabilities, invalids)
 
 let stage_requirement_from_attrs attrs =
-  let rec find acc_invalids = function
-    | [] -> (None, List.rev acc_invalids)
+  let rec find capabilities acc_invalids = function
+    | [] -> (None, capabilities, List.rev acc_invalids)
     | attr :: rest ->
         let attr_name = normalize_key attr.attr_name.name in
-        let continue invalids =
-          find (List.rev_append invalids acc_invalids) rest
+        let continue caps invalids =
+          find caps (List.rev_append invalids acc_invalids) rest
         in
         (match attr_name with
         | "requires_capability" | "requires_capability_exact" ->
-            let stage_opt, invalids =
+            let stage_opt, caps, invalids =
               stage_requirement_from_attr attr (fun id -> StageExact id)
             in
             (match stage_opt with
             | Some (req, span) ->
-                (Some (req, span), List.rev_append invalids acc_invalids)
-            | None -> continue invalids)
+                (Some (req, span), capabilities @ caps,
+                 List.rev_append invalids acc_invalids)
+            | None -> continue (capabilities @ caps) invalids)
         | "requires_capability_at_least" ->
-            let stage_opt, invalids =
+            let stage_opt, caps, invalids =
               stage_requirement_from_attr attr (fun id -> StageAtLeast id)
             in
             (match stage_opt with
             | Some (req, span) ->
-                (Some (req, span), List.rev_append invalids acc_invalids)
-            | None -> continue invalids)
+                (Some (req, span), capabilities @ caps,
+                 List.rev_append invalids acc_invalids)
+            | None -> continue (capabilities @ caps) invalids)
         | "experimental" | "beta" | "stable" ->
             ( Some (StageExact attr.attr_name, attr.attr_span),
+              capabilities,
               List.rev acc_invalids )
-        | _ -> find acc_invalids rest)
+        | _ -> find capabilities acc_invalids rest)
   in
-  match find [] attrs with
-  | (Some _ as stage, invalids) -> (stage, invalids)
-  | (None, invalids) ->
+  match find [] [] attrs with
+  | (Some _ as stage, caps, invalids) -> (stage, caps, invalids)
+  | (None, caps, invalids) ->
       let default_attr =
         List.find_opt
           (fun attr ->
@@ -183,15 +343,8 @@ let stage_requirement_from_attrs attrs =
       (match default_attr with
       | Some attr ->
           let stage_ident = make_stage_ident attr.attr_span "stable" in
-          (Some (StageAtLeast stage_ident, attr.attr_span), invalids)
-      | None -> (None, invalids))
-
-let default_effect_keys = [ "allows_effects"; "handles"; "effect"; "effects" ]
-
-let key_matches allowed key =
-  match allowed with
-  | None -> List.exists (String.equal key) default_effect_keys
-  | Some keys -> List.exists (String.equal key) keys
+          (Some (StageAtLeast stage_ident, attr.attr_span), caps, invalids)
+      | None -> (None, caps, invalids))
 
 let rec collect_effect_tags_from_expr ?(allowed_keys : string list option = None)
     attr expr =
@@ -219,6 +372,7 @@ let rec collect_effect_tags_from_expr ?(allowed_keys : string list option = None
             append_attr_analysis acc
               {
                 tags = [];
+                capabilities = [];
                 invalids =
                   [
                     make_invalid_attribute attr
@@ -236,6 +390,7 @@ let rec collect_effect_tags_from_expr ?(allowed_keys : string list option = None
           else
             {
               tags = [];
+              capabilities = [];
               invalids =
                 [
                   make_invalid_attribute attr
@@ -246,6 +401,7 @@ let rec collect_effect_tags_from_expr ?(allowed_keys : string list option = None
       | None ->
           {
             tags = [];
+            capabilities = [];
             invalids =
               [
                 make_invalid_attribute attr
@@ -253,14 +409,28 @@ let rec collect_effect_tags_from_expr ?(allowed_keys : string list option = None
                   lhs.expr_span;
               ];
           })
-  | Var id -> { tags = [make_effect_ident id.span id.name]; invalids = [] }
+  | Var id ->
+      {
+        tags = [ make_effect_ident id.span id.name ];
+        capabilities = [];
+        invalids = [];
+      }
   | ModulePath (_, id) ->
-      { tags = [make_effect_ident id.span id.name]; invalids = [] }
+      {
+        tags = [ make_effect_ident id.span id.name ];
+        capabilities = [];
+        invalids = [];
+      }
   | Literal (String (value, _)) ->
-      { tags = [make_effect_ident expr.expr_span value]; invalids = [] }
+      {
+        tags = [ make_effect_ident expr.expr_span value ];
+        capabilities = [];
+        invalids = [];
+      }
   | _ ->
       {
         tags = [];
+        capabilities = [];
         invalids =
           [
             make_invalid_attribute attr
@@ -299,17 +469,35 @@ let merge_effect_tags existing tags =
       else acc @ [tag])
     existing tags
 
+let merge_capabilities existing caps =
+  List.fold_left
+    (fun acc cap ->
+      if
+        List.exists
+          (fun current -> String.equal current.name cap.name)
+          acc
+      then acc
+      else acc @ [ cap ])
+    existing caps
+
 let default_attr_span attrs =
   match attrs with
   | attr :: _ -> attr.attr_span
   | [] -> Ast.dummy_span
 
 let apply_stage_to_profile attrs existing =
-  let stage_info, stage_invalids = stage_requirement_from_attrs attrs in
+  let stage_info, capabilities, stage_invalids =
+    stage_requirement_from_attrs attrs
+  in
   let tag_analysis = collect_effect_tags_from_attrs attrs in
   let effect_tags = tag_analysis.tags in
   let collected_invalids = stage_invalids @ tag_analysis.invalids in
-  if stage_info = None && effect_tags = [] && collected_invalids = [] then
+  if
+    stage_info = None
+    && effect_tags = []
+    && capabilities = []
+    && collected_invalids = []
+  then
     existing
   else
     let stage_req, stage_span =
@@ -325,6 +513,7 @@ let apply_stage_to_profile attrs existing =
             effect_declared = [];
             effect_residual = [];
             effect_stage = None;
+            effect_capabilities = [];
             effect_span = stage_span;
             effect_invalid_attributes = [];
           }
@@ -346,11 +535,15 @@ let apply_stage_to_profile attrs existing =
     let updated_invalids =
       base.effect_invalid_attributes @ collected_invalids
     in
+    let updated_capabilities =
+      merge_capabilities base.effect_capabilities capabilities
+    in
     Some
       {
         base with
         effect_declared = updated_declared;
         effect_residual = updated_residual;
+        effect_capabilities = updated_capabilities;
         effect_invalid_attributes = updated_invalids;
       }
 
@@ -608,6 +801,7 @@ effect_profile_opt:
           effect_declared = tags;
           effect_residual = tags;
           effect_stage = None;
+          effect_capabilities = [];
           effect_span = span;
           effect_invalid_attributes = [];
         }
