@@ -101,8 +101,7 @@ let assert_contains ir substr =
   try
     let _ = Str.search_forward (Str.regexp_string substr) ir 0 in
     ()
-  with Not_found ->
-    failwith (Printf.sprintf "LLVM IRに '%s' が含まれていません" substr)
+  with Not_found -> failwith (Printf.sprintf "LLVM IRに '%s' が含まれていません" substr)
 
 (* ユーザー定義impl宣言がパースされること *)
 let test_user_impl_parsed () =
@@ -124,9 +123,7 @@ let test_user_impl_parsed () =
       let has_impl_decl =
         List.exists
           (fun decl ->
-            match decl.Ast.decl_kind with
-            | Ast.ImplDecl _ -> true
-            | _ -> false)
+            match decl.Ast.decl_kind with Ast.ImplDecl _ -> true | _ -> false)
           ast.Ast.decls
       in
       if not has_impl_decl then failwith "impl宣言が見つかりません"

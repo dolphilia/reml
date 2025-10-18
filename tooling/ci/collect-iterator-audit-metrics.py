@@ -43,6 +43,21 @@ REQUIRED_EFFECT_ITERATOR_KEYS: List[str] = [
     "source",
 ]
 
+# FFI bridge metrics configuration.
+BRIDGE_DIAG_PREFIX = "ffi.contract."
+REQUIRED_BRIDGE_AUDIT_KEYS: List[str] = [
+    "bridge.target",
+    "bridge.arch",
+    "bridge.abi",
+    "bridge.ownership",
+    "bridge.extern_symbol",
+]
+REQUIRED_BRIDGE_EXTENSION_KEYS: List[str] = [
+    "bridge.target",
+    "bridge.ownership",
+    "bridge.abi",
+]
+
 
 def load_json(path: Path) -> Dict:
     with path.open("r", encoding="utf-8") as handle:
@@ -108,6 +123,35 @@ def check_extension_fields(extensions: Optional[Dict]) -> List[str]:
     return missing
 
 
+def _has_path(data: Optional[Dict], dotted_key: str) -> bool:
+    if data is None:
+        return False
+    current: object = data
+    for part in dotted_key.split("."):
+        if not isinstance(current, dict) or part not in current:
+            return False
+        current = current[part]
+    if current in (None, "", []):
+        return False
+    return True
+
+
+def check_bridge_audit_fields(audit: Optional[Dict]) -> List[str]:
+    missing: List[str] = []
+    for key in REQUIRED_BRIDGE_AUDIT_KEYS:
+        if not _has_path(audit, key):
+            missing.append(key)
+    return missing
+
+
+def check_bridge_extension_fields(extensions: Optional[Dict]) -> List[str]:
+    missing: List[str] = []
+    for key in REQUIRED_BRIDGE_EXTENSION_KEYS:
+        if not _has_path(extensions, key):
+            missing.append(f"extensions.{key}")
+    return missing
+
+
 def collect_metrics(paths: List[Path]) -> Dict:
     total = 0
     passed = 0
@@ -156,6 +200,55 @@ def collect_metrics(paths: List[Path]) -> Dict:
     }
 
 
+def collect_bridge_metrics(paths: List[Path]) -> Dict:
+    total = 0
+    passed = 0
+    failures: List[Dict[str, object]] = []
+
+    for path in paths:
+        data = load_json(path)
+        for index, diag in enumerate(iter_diagnostics(data)):
+            code = diag.get("code")
+            if not isinstance(code, str) or not code.startswith(
+                BRIDGE_DIAG_PREFIX
+            ):
+                continue
+            total += 1
+            audit_missing = check_bridge_audit_fields(
+                _as_dict(diag.get("audit"))
+            )
+            extensions_missing = check_bridge_extension_fields(
+                _as_dict(diag.get("extensions"))
+            )
+            missing = audit_missing + extensions_missing
+            if not missing:
+                passed += 1
+            else:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "code": code,
+                        "missing": sorted(set(missing)),
+                    }
+                )
+
+    pass_rate = None
+    if total > 0:
+        pass_rate = passed / total
+
+    return {
+        "metric": "ffi_bridge.audit_pass_rate",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "required_audit_keys": REQUIRED_BRIDGE_AUDIT_KEYS,
+        "sources": [str(path) for path in paths],
+        "failures": failures,
+    }
+
+
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Collect iterator stage audit metrics."
@@ -194,8 +287,24 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
         return 2
 
-    metrics = collect_metrics(sources)
-    json_output = json.dumps(metrics, indent=2, ensure_ascii=False)
+    iterator_metrics = collect_metrics(sources)
+    bridge_metrics = collect_bridge_metrics(sources)
+
+    combined = {
+        "metrics": [iterator_metrics, bridge_metrics],
+        # 互換性のため従来の iterator メトリクスをトップレベルにも残す。
+        "metric": iterator_metrics.get("metric"),
+        "total": iterator_metrics.get("total"),
+        "passed": iterator_metrics.get("passed"),
+        "failed": iterator_metrics.get("failed"),
+        "pass_rate": iterator_metrics.get("pass_rate"),
+        "required_audit_keys": iterator_metrics.get("required_audit_keys"),
+        "sources": iterator_metrics.get("sources"),
+        "failures": iterator_metrics.get("failures"),
+        "ffi_bridge": bridge_metrics,
+    }
+
+    json_output = json.dumps(combined, indent=2, ensure_ascii=False)
 
     print(json_output)
 

@@ -310,7 +310,8 @@ let test_match_expressions () =
       let result = infer_expr env match_expr in
       assert_ok result "Match expression should succeed";
       match result with
-      | Ok (_, ty, _, _) -> assert_type_eq ty_i64 ty "Match expression result type"
+      | Ok (_, ty, _, _) ->
+          assert_type_eq ty_i64 ty "Match expression result type"
       | Error _ -> failwith "Should not reach here");
 
   (* ネストしたmatch: Option<Option<i64>> *)
@@ -426,7 +427,8 @@ let test_block_expressions () =
       let result = infer_expr env block_expr in
       assert_ok result "Block with single expr should succeed";
       match result with
-      | Ok (_, ty, _, _) -> assert_type_eq ty_i64 ty "Block with single expr type"
+      | Ok (_, ty, _, _) ->
+          assert_type_eq ty_i64 ty "Block with single expr type"
       | Error _ -> failwith "Should not reach here");
 
   (* let束縛を含むブロック（簡易版：二項演算を使わない） *)
@@ -467,7 +469,8 @@ let test_block_expressions () =
       let result = infer_expr env block_expr in
       assert_ok result "Block with let binding should succeed";
       match result with
-      | Ok (_, ty, _, _) -> assert_type_eq ty_i64 ty "Block with let binding type"
+      | Ok (_, ty, _, _) ->
+          assert_type_eq ty_i64 ty "Block with let binding type"
       | Error _ -> failwith "Should not reach here");
 
   (* 複数の文を含むブロック *)
@@ -558,7 +561,8 @@ let test_block_expressions () =
       let result = infer_expr env block_expr in
       assert_ok result "Block ending with decl should succeed";
       match result with
-      | Ok (_, ty, _, _) -> assert_type_eq ty_unit ty "Block ending with decl type"
+      | Ok (_, ty, _, _) ->
+          assert_type_eq ty_unit ty "Block ending with decl type"
       | Error _ -> failwith "Should not reach here");
 
   (* ネストしたブロック *)
@@ -1088,7 +1092,8 @@ let test_binary_operations () =
       let result = infer_expr env expr in
       assert_ok result "Arithmetic multiplication should succeed";
       match result with
-      | Ok (_, ty, _, _) -> assert_type_eq ty_f64 ty "Multiplication result type"
+      | Ok (_, ty, _, _) ->
+          assert_type_eq ty_f64 ty "Multiplication result type"
       | Error _ -> failwith "Should not reach here");
 
   (* 比較演算: 5 == 5 *)
@@ -1182,8 +1187,7 @@ let test_binary_operations () =
       let identity_ty = TArrow (Types.TVar tv_a, Types.TVar tv_a) in
       let env_with_identity =
         extend "identity"
-          (scheme_to_constrained
-             { quantified = [ tv_a ]; body = identity_ty })
+          (scheme_to_constrained { quantified = [ tv_a ]; body = identity_ty })
           env
       in
 
@@ -1676,10 +1680,7 @@ let test_mutable_bindings () =
   Printf.printf "\nMutable Binding Tests:\n";
 
   let make_literal value =
-    {
-      expr_kind = Literal (Int (value, Base10));
-      expr_span = dummy_span;
-    }
+    { expr_kind = Literal (Int (value, Base10)); expr_span = dummy_span }
   in
 
   let make_pattern_x () =
@@ -1719,7 +1720,7 @@ let test_mutable_bindings () =
         }
       in
       match infer_decl env decl with
-      | Ok (_tdecl, new_env, _) ->
+      | Ok (_tdecl, new_env, _) -> (
           let assign_expr =
             {
               expr_kind =
@@ -1734,7 +1735,7 @@ let test_mutable_bindings () =
           in
           let result = infer_expr new_env assign_expr in
           assert_ok result "Assignment to mutable var should succeed";
-          (match result with
+          match result with
           | Ok (_texpr, ty, _, _) ->
               assert_type_eq ty_unit ty "Assignment should return unit"
           | Error _ -> ())
@@ -1753,7 +1754,7 @@ let test_mutable_bindings () =
         }
       in
       match infer_decl env let_decl with
-      | Ok (_tdecl, new_env, _) ->
+      | Ok (_tdecl, new_env, _) -> (
           let assign_expr =
             {
               expr_kind =
@@ -1766,7 +1767,7 @@ let test_mutable_bindings () =
               expr_span = dummy_span;
             }
           in
-          (match infer_expr new_env assign_expr with
+          match infer_expr new_env assign_expr with
           | Error (ImmutableBinding { name; _ }) ->
               if String.equal name "x" then ()
               else failwith "Immutable binding error should reference 'x'"
@@ -1774,8 +1775,7 @@ let test_mutable_bindings () =
               let msg = Type_error.string_of_error e in
               failwith
                 (Printf.sprintf "Expected immutable binding error, got %s" msg)
-          | Ok _ ->
-              failwith "Assignment to let binding should fail")
+          | Ok _ -> failwith "Assignment to let binding should fail")
       | Error e ->
           let msg = Type_error.string_of_error e in
           failwith (Printf.sprintf "let declaration should succeed: %s" msg));
@@ -1792,8 +1792,7 @@ let test_mutable_bindings () =
       | Error (NotAssignable _) -> ()
       | Error e ->
           let msg = Type_error.string_of_error e in
-          failwith
-            (Printf.sprintf "Expected not-assignable error, got %s" msg)
+          failwith (Printf.sprintf "Expected not-assignable error, got %s" msg)
       | Ok _ -> failwith "Assignment to literal should fail")
 
 (* ========== メイン ========== *)

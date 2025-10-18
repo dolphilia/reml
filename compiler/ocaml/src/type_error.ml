@@ -12,7 +12,6 @@
 open Types
 open Ast
 open Effect_profile
-
 module Json = Yojson.Basic
 
 type trait_constraint_stage_extension = {
@@ -114,14 +113,11 @@ type type_error =
     }
   | CyclicTraitConstraint of {
       (* トレイト制約の循環依存 *)
-      cycle : string list;  (* トレイト名のリスト *)
+      cycle : string list; (* トレイト名のリスト *)
       span : span;
     }
   | NotAssignable of { span : span }  (** 代入不可能な左辺 *)
-  | ImmutableBinding of {
-      name : string;  (** ミュータブルでない変数名 *)
-      span : span;
-    }
+  | ImmutableBinding of { name : string;  (** ミュータブルでない変数名 *) span : span }
   | ContinueOutsideLoop of span  (** ループ外での continue 使用 *)
 
 (* ========== エラーメッセージ生成 ========== *)
@@ -202,14 +198,16 @@ let string_of_error = function
       Printf.sprintf
         "Empty match expression at %d:%d\n\
         \  Match expression must have at least one arm" span.start span.end_
-  | TraitConstraintFailure { trait_name; type_args; reason; span; effect_stage = _ } ->
+  | TraitConstraintFailure
+      { trait_name; type_args; reason; span; effect_stage = _ } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
       in
       Printf.sprintf
         "Trait constraint '%s<%s>' cannot be satisfied at %d:%d\n  Reason: %s"
         trait_name type_args_str span.start span.end_ reason
-  | EffectStageMismatch { required_stage; actual_stage; span; function_name; _ } ->
+  | EffectStageMismatch { required_stage; actual_stage; span; function_name; _ }
+    ->
       let subject =
         match function_name with
         | Some name -> Printf.sprintf " for '%s'" name
@@ -240,9 +238,7 @@ let string_of_error = function
             |> List.map (fun leak -> leak.Effect_profile.leaked_tag.effect_name)
             |> String.concat ", "
       in
-      Printf.sprintf
-        "Residual effects%s are not declared: %s"
-        subject missing
+      Printf.sprintf "Residual effects%s are not declared: %s" subject missing
   | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
@@ -250,8 +246,8 @@ let string_of_error = function
       let candidates_str = String.concat "\n  - " candidates in
       Printf.sprintf
         "Ambiguous trait implementation for '%s<%s>' at %d:%d\n\
-        \  Multiple candidates found:\n  - %s"
-        trait_name type_args_str span.start span.end_ candidates_str
+        \  Multiple candidates found:\n\
+        \  - %s" trait_name type_args_str span.start span.end_ candidates_str
   | CyclicTraitConstraint { cycle; span } ->
       let cycle_str = String.concat " -> " cycle in
       Printf.sprintf
@@ -260,17 +256,14 @@ let string_of_error = function
   | NotAssignable { span } ->
       Printf.sprintf
         "Left-hand side is not assignable at %d:%d\n\
-        \  Expected a mutable variable or lvalue expression"
-        span.start span.end_
+        \  Expected a mutable variable or lvalue expression" span.start
+        span.end_
   | ImmutableBinding { name; span } ->
       Printf.sprintf
         "Cannot assign to immutable binding at %d:%d\n\
-        \  Variable '%s' was declared with 'let'"
-        span.start span.end_ name
+        \  Variable '%s' was declared with 'let'" span.start span.end_ name
   | ContinueOutsideLoop span ->
-      Printf.sprintf
-        "continue はループ内でのみ使用できます（位置: %d:%d）"
-        span.start span.end_
+      Printf.sprintf "continue はループ内でのみ使用できます（位置: %d:%d）" span.start span.end_
 
 (* ========== エラー生成ヘルパー ========== *)
 
@@ -306,11 +299,7 @@ let effect_stage_mismatch_error ~function_name ~required_stage ~actual_stage
 
 let effect_invalid_attribute_error ~function_name ~profile ~invalid =
   EffectInvalidAttribute
-    {
-      function_name = Some function_name;
-      profile;
-      invalid_attribute = invalid;
-    }
+    { function_name = Some function_name; profile; invalid_attribute = invalid }
 
 let effect_residual_leak_error ~function_name ~profile ~leaks =
   EffectResidualLeak { function_name; profile; leaks }
@@ -333,11 +322,10 @@ let append_runtime_stage_trace ?capability stage_trace ~actual_stage =
       | [] ->
           let acc = if inserted then acc else runtime_step :: acc in
           List.rev acc
-      | (({ source; _ } as step) :: rest) ->
+      | ({ source; _ } as step) :: rest ->
           if (not inserted) && String.equal source "typer" then
             aux (runtime_step :: step :: acc) true rest
-          else
-            aux (step :: acc) inserted rest
+          else aux (step :: acc) inserted rest
     in
     aux [] false stage_trace
 
@@ -720,20 +708,18 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       let notes = [ (None, "パターンマッチのケースを追加してください") ] in
 
       make_type_error ~code:"E7015" ~message ~span:diag_span ~notes ()
-  | TraitConstraintFailure
-      { trait_name; type_args; reason; span; effect_stage } ->
+  | TraitConstraintFailure { trait_name; type_args; reason; span; effect_stage }
+    ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
       in
       let message =
-        Printf.sprintf "トレイト制約 '%s<%s>' を満たすことができません"
-          trait_name type_args_str
+        Printf.sprintf "トレイト制約 '%s<%s>' を満たすことができません" trait_name type_args_str
       in
       let diag_span = span_to_diagnostic_span span in
       let base_notes =
         [
-          (None, Printf.sprintf "理由: %s" reason);
-          (None, "この型に対するトレイト実装が見つかりません");
+          (None, Printf.sprintf "理由: %s" reason); (None, "この型に対するトレイト実装が見つかりません");
         ]
       in
       let stage_notes =
@@ -753,8 +739,7 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
             in
             [
               ( None,
-                Printf.sprintf
-                  "Iterator 要件: %s / 実際の Stage: %s"
+                Printf.sprintf "Iterator 要件: %s / 実際の Stage: %s"
                   info.iterator_required actual_display );
               ( None,
                 Printf.sprintf "Capability: %s / 種別: %s / ソース: %s"
@@ -790,23 +775,28 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
                   | None -> `Null );
               ]
             in
-            with_effect_stage_extension
-              ?actual_stage:info.actual_stage ?residual:info.residual
-              ?provider:info.provider ?manifest_path:info.manifest_path
-              ?capability_meta:info.capability_metadata
-              ~iterator_fields:iterator_fields
-              ~stage_trace:info.stage_trace
-              ~required_stage:info.required_stage
+            with_effect_stage_extension ?actual_stage:info.actual_stage
+              ?residual:info.residual ?provider:info.provider
+              ?manifest_path:info.manifest_path
+              ?capability_meta:info.capability_metadata ~iterator_fields
+              ~stage_trace:info.stage_trace ~required_stage:info.required_stage
               ~capability:(Option.value info.capability ~default:"<unknown>")
               diag
         | None -> diag
       in
       diag
-  | EffectStageMismatch { required_stage; actual_stage; span; function_name; capability; stage_trace } ->
+  | EffectStageMismatch
+      {
+        required_stage;
+        actual_stage;
+        span;
+        function_name;
+        capability;
+        stage_trace;
+      } ->
       let message =
         match function_name with
-        | Some name ->
-            Printf.sprintf "関数 '%s' の効果 Stage が実行環境の要件を満たしていません" name
+        | Some name -> Printf.sprintf "関数 '%s' の効果 Stage が実行環境の要件を満たしていません" name
         | None -> "効果 Stage が実行環境の要件を満たしていません"
       in
       let diag_span = span_to_diagnostic_span span in
@@ -816,31 +806,36 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
           (None, Printf.sprintf "実際の Stage: %s" actual_stage);
         ]
       in
-      let diag = make_type_error ~code:"E7801" ~message ~span:diag_span ~notes () in
+      let diag =
+        make_type_error ~code:"E7801" ~message ~span:diag_span ~notes ()
+      in
       let capability_name = Option.value capability ~default:"runtime" in
       let enriched_trace =
-        append_runtime_stage_trace stage_trace ~actual_stage
-          ?capability
+        append_runtime_stage_trace stage_trace ~actual_stage ?capability
       in
       let diag =
         with_effect_stage_extension ~required_stage ~capability:capability_name
           ~actual_stage ~stage_trace:enriched_trace diag
       in
-      let diag = Diagnostic.set_extension "effect.stage.required" (`String required_stage) diag in
       let diag =
-        Diagnostic.set_extension "effect.stage.actual" (`String actual_stage) diag
+        Diagnostic.set_extension "effect.stage.required"
+          (`String required_stage) diag
+      in
+      let diag =
+        Diagnostic.set_extension "effect.stage.actual" (`String actual_stage)
+          diag
       in
       let diag =
         match function_name with
-        | Some name -> Diagnostic.set_extension "effect.stage.subject" (`String name) diag
+        | Some name ->
+            Diagnostic.set_extension "effect.stage.subject" (`String name) diag
         | None -> diag
       in
       diag
-  | EffectInvalidAttribute { function_name; profile; invalid_attribute = invalid } ->
+  | EffectInvalidAttribute
+      { function_name; profile; invalid_attribute = invalid } ->
       let attribute_display = invalid.attribute_display in
-      let message =
-        Printf.sprintf "効果属性 %s は無効です" attribute_display
-      in
+      let message = Printf.sprintf "効果属性 %s は無効です" attribute_display in
       let span = invalid.invalid_span in
       let diag_span = span_to_diagnostic_span span in
       let required_stage =
@@ -861,8 +856,7 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         | UnknownAttributeKey _ ->
             "allows_effects / handles / effect / effects のいずれかのキーを指定してください"
         | UnsupportedStageValue -> "stage は文字列または StageId"
-        | UnsupportedCapabilityValue ->
-            "capability は文字列または識別子で指定してください"
+        | UnsupportedCapabilityValue -> "capability は文字列または識別子で指定してください"
         | UnknownEffectTag -> "効果タグは識別子または文字列で指定してください"
         | MissingStageValue -> "stage を指定してください"
       in
@@ -872,39 +866,20 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         | None -> (
             match invalid.provided_json with
             | Some json -> Json.to_string json
-            | None -> "<未指定>" )
+            | None -> "<未指定>")
       in
       let notes =
         let base = [ (None, expected_msg) ] in
         match invalid.reason with
         | UnknownAttributeKey key ->
-            base
-            @ [
-                ( None,
-                  Printf.sprintf "未宣言キー '%s' は使用できません" key );
-              ]
+            base @ [ (None, Printf.sprintf "未宣言キー '%s' は使用できません" key) ]
         | UnsupportedStageValue ->
-            base
-            @ [
-                ( None,
-                  Printf.sprintf "指定された値: %s" provided_display );
-              ]
+            base @ [ (None, Printf.sprintf "指定された値: %s" provided_display) ]
         | UnsupportedCapabilityValue ->
             base
-            @ [
-                ( None,
-                  Printf.sprintf
-                    "指定された capability: %s"
-                    provided_display );
-              ]
+            @ [ (None, Printf.sprintf "指定された capability: %s" provided_display) ]
         | UnknownEffectTag ->
-            base
-            @ [
-                ( None,
-                  Printf.sprintf
-                    "指定された効果タグ: %s"
-                    provided_display );
-              ]
+            base @ [ (None, Printf.sprintf "指定された効果タグ: %s" provided_display) ]
         | MissingStageValue -> base
       in
       let diag =
@@ -950,8 +925,7 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       let effects_fields =
         match profile.stage_trace with
         | [] -> effects_fields
-        | trace ->
-            ("stage_trace", stage_trace_to_json trace) :: effects_fields
+        | trace -> ("stage_trace", stage_trace_to_json trace) :: effects_fields
       in
       let effects_fields =
         match invalid.key with
@@ -970,7 +944,8 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
           diag
       in
       let diag =
-        Diagnostic.set_extension "effect.stage.required" (`String required_stage) diag
+        Diagnostic.set_extension "effect.stage.required"
+          (`String required_stage) diag
       in
       let diag =
         Diagnostic.set_extension "effect.stage.actual"
@@ -994,10 +969,12 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         | [] -> diag
         | trace ->
             Diagnostic.set_extension "effect.stage_trace"
-              (stage_trace_to_json trace) diag
+              (stage_trace_to_json trace)
+              diag
       in
       let diag =
-        Diagnostic.set_extension "effect.invalid_attributes" invalids_list_json diag
+        Diagnostic.set_extension "effect.invalid_attributes" invalids_list_json
+          diag
       in
       let diag =
         Diagnostic.set_audit_metadata "effect.stage.required"
@@ -1011,7 +988,8 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
           diag
       in
       let diag =
-        Diagnostic.set_audit_metadata "effect.capability" (`String capability_name) diag
+        Diagnostic.set_audit_metadata "effect.capability"
+          (`String capability_name) diag
       in
       let diag =
         Diagnostic.set_audit_metadata "effect.attribute.invalid"
@@ -1021,7 +999,7 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
           diag
       in
       let location_label =
-        match function_name, profile.source_name with
+        match (function_name, profile.source_name) with
         | Some name, _ -> name
         | None, Some source -> source
         | None, None -> "<anonymous>"
@@ -1040,7 +1018,8 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         | [] -> diag
         | trace ->
             Diagnostic.set_audit_metadata "stage_trace"
-              (stage_trace_to_json trace) diag
+              (stage_trace_to_json trace)
+              diag
       in
       diag
   | EffectResidualLeak { function_name; profile; leaks } ->
@@ -1050,17 +1029,11 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         List.map (fun leak -> leak.Effect_profile.leaked_tag.effect_name) leaks
       in
       let notes =
-        if leak_names = [] then
-          [
-            (None, "宣言された効果集合が残余集合を包含していません");
-          ]
+        if leak_names = [] then [ (None, "宣言された効果集合が残余集合を包含していません") ]
         else
           List.map
             (fun name ->
-              ( None,
-                Printf.sprintf
-                  "`%s` のハンドラが宣言されていないためステージ検証に失敗しました"
-                  name ))
+              (None, Printf.sprintf "`%s` のハンドラが宣言されていないためステージ検証に失敗しました" name))
             leak_names
       in
       let diag =
@@ -1083,10 +1056,7 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       in
       let residual_json =
         `Assoc
-          [
-            ("missing", missing_json);
-            ("leaked_from", `String leaked_from);
-          ]
+          [ ("missing", missing_json); ("leaked_from", `String leaked_from) ]
       in
       let required_stage =
         stage_requirement_to_string profile.stage_requirement
@@ -1095,9 +1065,7 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         profile.resolved_stage |> Option.map stage_id_to_string
       in
       let capability_str =
-        match profile.resolved_capability with
-        | Some cap -> cap
-        | None -> ""
+        match profile.resolved_capability with Some cap -> cap | None -> ""
       in
       let stage_json =
         `Assoc
@@ -1129,8 +1097,7 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       in
       let effects_fields =
         if enriched_trace <> [] then
-          ("stage_trace", stage_trace_to_json enriched_trace)
-          :: effects_fields
+          ("stage_trace", stage_trace_to_json enriched_trace) :: effects_fields
         else effects_fields
       in
       let diag =
@@ -1139,8 +1106,8 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
           diag
       in
       let diag =
-        Diagnostic.set_extension "effect.stage.required" (`String required_stage)
-          diag
+        Diagnostic.set_extension "effect.stage.required"
+          (`String required_stage) diag
       in
       let diag =
         Diagnostic.set_extension "effect.stage.actual"
@@ -1156,7 +1123,8 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       let diag =
         if enriched_trace <> [] then
           Diagnostic.set_extension "effect.stage_trace"
-            (stage_trace_to_json enriched_trace) diag
+            (stage_trace_to_json enriched_trace)
+            diag
         else diag
       in
       let diag =
@@ -1189,9 +1157,8 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
                  [
                    ("source", `String step.source);
                    ( "stage",
-                     match step.stage with
-                     | Some s -> `String s
-                     | None -> `Null );
+                     match step.stage with Some s -> `String s | None -> `Null
+                   );
                  ]
                in
                `Assoc fields)
@@ -1207,8 +1174,7 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         String.concat ", " (List.map string_of_ty type_args)
       in
       let message =
-        Printf.sprintf "トレイト '%s<%s>' の実装が曖昧です"
-          trait_name type_args_str
+        Printf.sprintf "トレイト '%s<%s>' の実装が曖昧です" trait_name type_args_str
       in
       let diag_span = span_to_diagnostic_span span in
       let candidates_str = String.concat "\n  - " candidates in
@@ -1236,9 +1202,7 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
   | NotAssignable { span } ->
       let message = "この式は代入可能な左辺値ではありません" in
       let diag_span = span_to_diagnostic_span span in
-      let notes =
-        [ (None, "再代入できるのは var で宣言した変数などの左辺値のみです") ]
-      in
+      let notes = [ (None, "再代入できるのは var で宣言した変数などの左辺値のみです") ] in
       make_type_error ~code:"E7019" ~message ~span:diag_span ~notes ()
   | ImmutableBinding { name; span } ->
       let message = "不変な束縛に対して再代入はできません" in
@@ -1512,20 +1476,18 @@ let to_diagnostic_with_source ?(available_names : string list = [])
       let notes = [ (None, "パターンマッチのケースを追加してください") ] in
 
       make_type_error ~code:"E7015" ~message ~span:diag_span ~notes ()
-  | TraitConstraintFailure
-      { trait_name; type_args; reason; span; effect_stage } ->
+  | TraitConstraintFailure { trait_name; type_args; reason; span; effect_stage }
+    ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
       in
       let message =
-        Printf.sprintf "トレイト制約 '%s<%s>' を満たすことができません"
-          trait_name type_args_str
+        Printf.sprintf "トレイト制約 '%s<%s>' を満たすことができません" trait_name type_args_str
       in
       let diag_span = make_span span in
       let base_notes =
         [
-          (None, Printf.sprintf "理由: %s" reason);
-          (None, "この型に対するトレイト実装が見つかりません");
+          (None, Printf.sprintf "理由: %s" reason); (None, "この型に対するトレイト実装が見つかりません");
         ]
       in
       let stage_notes =
@@ -1545,8 +1507,7 @@ let to_diagnostic_with_source ?(available_names : string list = [])
             in
             [
               ( None,
-                Printf.sprintf
-                  "Iterator 要件: %s / 実際の Stage: %s"
+                Printf.sprintf "Iterator 要件: %s / 実際の Stage: %s"
                   info.iterator_required actual_display );
               ( None,
                 Printf.sprintf "Capability: %s / 種別: %s / ソース: %s"
@@ -1582,23 +1543,28 @@ let to_diagnostic_with_source ?(available_names : string list = [])
                   | None -> `Null );
               ]
             in
-            with_effect_stage_extension
-              ?actual_stage:info.actual_stage ?residual:info.residual
-              ?provider:info.provider ?manifest_path:info.manifest_path
-              ?capability_meta:info.capability_metadata
-              ~iterator_fields:iterator_fields
-              ~stage_trace:info.stage_trace
-              ~required_stage:info.required_stage
+            with_effect_stage_extension ?actual_stage:info.actual_stage
+              ?residual:info.residual ?provider:info.provider
+              ?manifest_path:info.manifest_path
+              ?capability_meta:info.capability_metadata ~iterator_fields
+              ~stage_trace:info.stage_trace ~required_stage:info.required_stage
               ~capability:(Option.value info.capability ~default:"<unknown>")
               diag
         | None -> diag
       in
       diag
-  | EffectStageMismatch { required_stage; actual_stage; span; function_name; capability; stage_trace } ->
+  | EffectStageMismatch
+      {
+        required_stage;
+        actual_stage;
+        span;
+        function_name;
+        capability;
+        stage_trace;
+      } ->
       let message =
         match function_name with
-        | Some name ->
-            Printf.sprintf "関数 '%s' の効果 Stage が実行環境の要件を満たしていません" name
+        | Some name -> Printf.sprintf "関数 '%s' の効果 Stage が実行環境の要件を満たしていません" name
         | None -> "効果 Stage が実行環境の要件を満たしていません"
       in
       let diag_span = make_span span in
@@ -1608,23 +1574,29 @@ let to_diagnostic_with_source ?(available_names : string list = [])
           (None, Printf.sprintf "実際の Stage: %s" actual_stage);
         ]
       in
-      let diag = make_type_error ~code:"E7801" ~message ~span:diag_span ~notes () in
+      let diag =
+        make_type_error ~code:"E7801" ~message ~span:diag_span ~notes ()
+      in
       let capability_name = Option.value capability ~default:"runtime" in
       let enriched_trace =
-        append_runtime_stage_trace stage_trace ~actual_stage
-          ?capability
+        append_runtime_stage_trace stage_trace ~actual_stage ?capability
       in
       let diag =
         with_effect_stage_extension ~required_stage ~capability:capability_name
           ~actual_stage ~stage_trace:enriched_trace diag
       in
-      let diag = Diagnostic.set_extension "effect.stage.required" (`String required_stage) diag in
       let diag =
-        Diagnostic.set_extension "effect.stage.actual" (`String actual_stage) diag
+        Diagnostic.set_extension "effect.stage.required"
+          (`String required_stage) diag
+      in
+      let diag =
+        Diagnostic.set_extension "effect.stage.actual" (`String actual_stage)
+          diag
       in
       let diag =
         match function_name with
-        | Some name -> Diagnostic.set_extension "effect.stage.subject" (`String name) diag
+        | Some name ->
+            Diagnostic.set_extension "effect.stage.subject" (`String name) diag
         | None -> diag
       in
       diag
@@ -1635,8 +1607,7 @@ let to_diagnostic_with_source ?(available_names : string list = [])
         String.concat ", " (List.map string_of_ty type_args)
       in
       let message =
-        Printf.sprintf "トレイト '%s<%s>' の実装が曖昧です"
-          trait_name type_args_str
+        Printf.sprintf "トレイト '%s<%s>' の実装が曖昧です" trait_name type_args_str
       in
       let diag_span = make_span span in
       let candidates_str = String.concat "\n  - " candidates in
@@ -1664,9 +1635,7 @@ let to_diagnostic_with_source ?(available_names : string list = [])
   | NotAssignable { span } ->
       let message = "この式は代入可能な左辺値ではありません" in
       let diag_span = make_span span in
-      let notes =
-        [ (None, "再代入できるのは var で宣言した変数などの左辺値のみです") ]
-      in
+      let notes = [ (None, "再代入できるのは var で宣言した変数などの左辺値のみです") ] in
       make_type_error ~code:"E7019" ~message ~span:diag_span ~notes ()
   | ImmutableBinding { name; span } ->
       let message = "不変な束縛に対して再代入はできません" in

@@ -27,12 +27,8 @@ let build_test_function () =
   let assign_stmt = Assign (tmp_var, access_expr) in
   let return_expr = make_expr (Var tmp_var) ty_i64 dummy_span in
   let entry_block =
-    make_block
-      (LabelGen.fresh "entry")
-      []
-      [ assign_stmt ]
-      (TermReturn return_expr)
-      dummy_span
+    make_block (LabelGen.fresh "entry") [] [ assign_stmt ]
+      (TermReturn return_expr) dummy_span
   in
   let metadata = default_metadata dummy_span in
 
@@ -44,8 +40,7 @@ let build_test_function () =
     ty_i64 [ entry_block ] metadata
 
 let assert_contains substring text =
-  try
-    ignore (Str.search_forward (Str.regexp_string substring) text 0)
+  try ignore (Str.search_forward (Str.regexp_string substring) text 0)
   with Not_found ->
     Printf.printf "期待した断片 '%s' が LLVM IR に見つかりません。\n" substring;
     Printf.printf "=== LLVM IR ===\n%s\n===\n" text;

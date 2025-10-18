@@ -43,42 +43,39 @@ type iterator_dict_kind =
   | IteratorCoreIter  (** `Core.Iter.Iter<T>` など標準イテレータ状態 *)
   | IteratorOptionLike  (** Option 型由来の 0/1 要素イテレータ *)
   | IteratorResultLike  (** Result 型由来の 0/1 要素イテレータ（Ok のみ） *)
-  | IteratorCustom of string
-      (** ユーザー定義実装。型名や説明を保持して識別する *)
+  | IteratorCustom of string  (** ユーザー定義実装。型名や説明を保持して識別する *)
 
 (** Iterator 辞書の Stage 要件 *)
 type iterator_stage_requirement =
   | IteratorStageExact of string
   | IteratorStageAtLeast of string
 
-(** Iterator 辞書に付随するメタデータ *)
 type iterator_dict_info = {
   dict_ref : dict_ref;  (** 解決された辞書参照 *)
   source_ty : ty;  (** 反復対象となる型 *)
   element_ty : ty;  (** 要素型 *)
   kind : iterator_dict_kind;  (** 辞書の種別 *)
   stage_requirement : iterator_stage_requirement;  (** Stage 要件 *)
-  capability : string option;
-      (** 必要な Capability ID（不明な場合は None） *)
+  capability : string option;  (** 必要な Capability ID（不明な場合は None） *)
   stage_actual : string;
       (** Capability Registry が報告した Stage（既定値は組み込み種別に応じた Stage） *)
 }
+(** Iterator 辞書に付随するメタデータ *)
 
-(** 制約エラー
- *
- * 制約解決失敗時のエラー情報
- * Type_error.ml の型エラーと統合される
- *)
 type constraint_error = {
   trait_name : string;  (** 解決失敗したトレイト名 *)
   type_args : ty list;  (** トレイトの型引数 *)
   reason : constraint_error_reason;  (** 失敗理由 *)
   span : span;  (** エラー発生位置 *)
 }
+(** 制約エラー
+ *
+ * 制約解決失敗時のエラー情報
+ * Type_error.ml の型エラーと統合される
+ *)
 
 and constraint_error_reason =
-  | NoImpl
-      (** 該当する impl が存在しない
+  | NoImpl  (** 該当する impl が存在しない
        * 例: Eq<CustomType> で impl が未定義 *)
   | AmbiguousImpl of dict_ref list
       (** 複数の impl が候補となり曖昧
@@ -102,35 +99,30 @@ and constraint_error_reason =
       (** 型変数が未解決のまま残っている
        * 例: 関数引数の型が推論できない *)
 
-(** 制約グラフ
- *
- * トレイト制約間の依存関係を表現
- * トポロジカルソートと循環検出に使用
- *)
 type constraint_graph = {
-  nodes : trait_constraint list;
-      (** グラフのノード（制約のリスト） *)
+  nodes : trait_constraint list;  (** グラフのノード（制約のリスト） *)
   edges : (trait_constraint * trait_constraint) list;
       (** グラフのエッジ（依存関係のリスト）
        * (c1, c2) は「c2 が c1 に依存する」を表す
        * 例: (Eq<T>, Ord<T>) → Ord<T> は Eq<T> を必要とする *)
 }
+(** 制約グラフ
+ *
+ * トレイト制約間の依存関係を表現
+ * トポロジカルソートと循環検出に使用
+ *)
 
+type solver_state = {
+  constraints : trait_constraint list;  (** 解決対象の全制約 *)
+  resolved : (trait_constraint * dict_ref) list;  (** 解決済み制約と対応する辞書参照 *)
+  pending : trait_constraint list;  (** 解決待ちの制約（依存関係により順序待ち） *)
+  errors : constraint_error list;  (** 解決失敗した制約のエラー情報 *)
+}
 (** 制約解決状態
  *
  * 制約解決の進行状態を管理
  * 逐次的な解決プロセスをトラッキング
  *)
-type solver_state = {
-  constraints : trait_constraint list;
-      (** 解決対象の全制約 *)
-  resolved : (trait_constraint * dict_ref) list;
-      (** 解決済み制約と対応する辞書参照 *)
-  pending : trait_constraint list;
-      (** 解決待ちの制約（依存関係により順序待ち） *)
-  errors : constraint_error list;
-      (** 解決失敗した制約のエラー情報 *)
-}
 
 (* ========== 効果制約テーブル ========== *)
 
@@ -170,36 +162,20 @@ module EffectConstraintTable : sig
     unit ->
     t
 
-  val add_profile :
-    t ->
-    symbol:string ->
-    Effect_profile.profile ->
-    t
-
+  val add_profile : t -> symbol:string -> Effect_profile.profile -> t
   val merge : into:t -> from:t -> t
-
   val resolve : t -> symbol:string -> entry option
-
   val effect_set : t -> symbol:string -> Effect_profile.set option
-
-  val includes :
-    super:Effect_profile.set ->
-    sub:Effect_profile.set ->
-    bool
-
+  val includes : super:Effect_profile.set -> sub:Effect_profile.set -> bool
   val to_list : t -> entry list
 end
 
-(** 効果制約テーブルを初期化する（テスト・新規コンパイル単位用） *)
 val reset_effect_constraints : unit -> unit
+(** 効果制約テーブルを初期化する（テスト・新規コンパイル単位用） *)
 
+val record_effect_profile : symbol:string -> Effect_profile.profile -> unit
 (** 効果プロファイルを登録する（関数宣言など） *)
-val record_effect_profile :
-  symbol:string ->
-  Effect_profile.profile ->
-  unit
 
-(** 効果集合を直接登録する（診断・監査用のユーティリティ） *)
 val record_effect_set :
   symbol:string ->
   effect_set:Effect_profile.set ->
@@ -209,28 +185,27 @@ val record_effect_set :
   ?diagnostic_payload:Effect_profile.effect_diagnostic_payload ->
   unit ->
   unit
+(** 効果集合を直接登録する（診断・監査用のユーティリティ） *)
 
+val resolve_effect_profile : symbol:string -> EffectConstraintTable.entry option
 (** 登録済み効果プロファイルを取得する *)
-val resolve_effect_profile :
-  symbol:string ->
-  EffectConstraintTable.entry option
 
+val effect_set_for : symbol:string -> Effect_profile.set option
 (** 登録済み効果集合のみを取得する *)
-val effect_set_for :
-  symbol:string ->
-  Effect_profile.set option
 
-(** 現在の効果制約テーブルを取得する（読み取り専用） *)
 val current_effect_constraints : unit -> EffectConstraintTable.t
+(** 現在の効果制約テーブルを取得する（読み取り専用） *)
 
-(** 効果集合の包含関係を判定するユーティリティ *)
 val effect_set_includes :
-  super:Effect_profile.set ->
-  sub:Effect_profile.set ->
-  bool
+  super:Effect_profile.set -> sub:Effect_profile.set -> bool
+(** 効果集合の包含関係を判定するユーティリティ *)
 
 (* ========== 制約解決のメインAPI ========== *)
 
+val solve_constraints :
+  Impl_registry.impl_registry ->
+  trait_constraint list ->
+  (dict_ref list, constraint_error list) result
 (** 制約解決のメインエントリポイント
  *
  * トレイト制約のリストを受け取り、辞書参照のリストまたはエラーを返す
@@ -248,11 +223,11 @@ val effect_set_includes :
  * @param constraints 解決対象の制約リスト
  * @return 成功時は辞書参照のリスト、失敗時はエラーのリスト
  *)
-val solve_constraints :
-  Impl_registry.impl_registry ->
-  trait_constraint list ->
-  (dict_ref list, constraint_error list) result
 
+val solve_iterator_dict :
+  Impl_registry.impl_registry ->
+  trait_constraint ->
+  (iterator_dict_info, constraint_error) result
 (** Iterator 制約専用の解決ヘルパー
  *
  * `Iterator` 制約を解決し、辞書本体に加えて Stage / Capability 情報を返す。
@@ -261,11 +236,8 @@ val solve_constraints :
  * @param constraint_ 対象の Iterator 制約
  * @return 成功時は辞書メタデータ、失敗時は制約エラー
  *)
-val solve_iterator_dict :
-  Impl_registry.impl_registry ->
-  trait_constraint ->
-  (iterator_dict_info, constraint_error) result
 
+val init_solver_state : trait_constraint list -> solver_state
 (** 初期状態の作成
  *
  * 制約リストから解決器の初期状態を構築
@@ -273,8 +245,8 @@ val solve_iterator_dict :
  * @param constraints 解決対象の制約リスト
  * @return 初期化された solver_state
  *)
-val init_solver_state : trait_constraint list -> solver_state
 
+val step_solver : Impl_registry.impl_registry -> solver_state -> solver_state
 (** 解決を1ステップ進める
  *
  * pending から解決可能な制約を1つ取り出して解決
@@ -286,17 +258,17 @@ val init_solver_state : trait_constraint list -> solver_state
  * @param state 現在の解決状態
  * @return 更新された解決状態
  *)
-val step_solver : Impl_registry.impl_registry -> solver_state -> solver_state
 
+val is_solved : solver_state -> bool
 (** 解決が完了したか判定
  *
  * @param state 現在の解決状態
  * @return pending が空なら true
  *)
-val is_solved : solver_state -> bool
 
 (* ========== 個別トレイトの解決 ========== *)
 
+val solve_eq : ty -> dict_ref option
 (** Eq トレイトの解決
  *
  * 仕様書 1-2 §B.1: 等価性比較のトレイト
@@ -311,8 +283,8 @@ val is_solved : solver_state -> bool
  * @param ty 対象の型
  * @return 成功時は辞書参照、失敗時は None
  *)
-val solve_eq : ty -> dict_ref option
 
+val solve_ord : ty -> dict_ref option
 (** Ord トレイトの解決
  *
  * 仕様書 1-2 §B.1: 順序付けのトレイト
@@ -326,8 +298,8 @@ val solve_eq : ty -> dict_ref option
  * @param ty 対象の型
  * @return 成功時は辞書参照、失敗時は None
  *)
-val solve_ord : ty -> dict_ref option
 
+val solve_collector : ty -> dict_ref option
 (** Collector トレイトの解決
  *
  * 仕様書 3-1 §2.2: コレクション型の反復処理サポート
@@ -340,10 +312,10 @@ val solve_ord : ty -> dict_ref option
  * @param ty 対象の型
  * @return 成功時は辞書参照、失敗時は None
  *)
-val solve_collector : ty -> dict_ref option
 
 (* ========== 制約グラフの構築と解析 ========== *)
 
+val build_constraint_graph : trait_constraint list -> constraint_graph
 (** 制約グラフの構築
  *
  * トレイト制約のリストから依存関係グラフを構築
@@ -356,8 +328,8 @@ val solve_collector : ty -> dict_ref option
  * @param constraints 制約リスト
  * @return 構築された制約グラフ
  *)
-val build_constraint_graph : trait_constraint list -> constraint_graph
 
+val find_cycles : constraint_graph -> trait_constraint list list
 (** 循環依存の検出
  *
  * 制約グラフ内の循環を検出し、循環を構成する制約リストを返す
@@ -366,8 +338,8 @@ val build_constraint_graph : trait_constraint list -> constraint_graph
  * @param graph 制約グラフ
  * @return 検出された循環のリスト（各循環は制約のリスト）
  *)
-val find_cycles : constraint_graph -> trait_constraint list list
 
+val topological_sort : constraint_graph -> trait_constraint list option
 (** トポロジカルソート
  *
  * 制約グラフをトポロジカルソートし、解決順序を決定
@@ -376,10 +348,10 @@ val find_cycles : constraint_graph -> trait_constraint list list
  * @param graph 制約グラフ
  * @return 成功時はソート済み制約リスト、循環がある場合は None
  *)
-val topological_sort : constraint_graph -> trait_constraint list option
 
 (* ========== ヘルパー関数 ========== *)
 
+val trait_constraint_equal : trait_constraint -> trait_constraint -> bool
 (** トレイト制約の等価性判定
  *
  * トレイト名と型引数が一致するか判定
@@ -389,11 +361,11 @@ val topological_sort : constraint_graph -> trait_constraint list option
  * @param c2 制約2
  * @return 等価なら true
  *)
-val trait_constraint_equal : trait_constraint -> trait_constraint -> bool
 
-(** constraint_equal is an alias for trait_constraint_equal *)
 val constraint_equal : trait_constraint -> trait_constraint -> bool
+(** constraint_equal is an alias for trait_constraint_equal *)
 
+val is_primitive : ty -> bool
 (** 型がプリミティブ型か判定
  *
  * Eq/Ord が自動実装されるプリミティブ型を判定
@@ -401,18 +373,17 @@ val constraint_equal : trait_constraint -> trait_constraint -> bool
  * @param ty 対象の型
  * @return プリミティブ型なら true
  *)
-val is_primitive : ty -> bool
 
 (* ========== デバッグ用 ========== *)
 
-(** 辞書参照の文字列表現 *)
 val string_of_dict_ref : dict_ref -> string
+(** 辞書参照の文字列表現 *)
 
-(** 制約エラーの文字列表現 *)
 val string_of_constraint_error : constraint_error -> string
+(** 制約エラーの文字列表現 *)
 
-(** 制約グラフの文字列表現 *)
 val string_of_constraint_graph : constraint_graph -> string
+(** 制約グラフの文字列表現 *)
 
-(** 解決状態の文字列表現 *)
 val string_of_solver_state : solver_state -> string
+(** 解決状態の文字列表現 *)

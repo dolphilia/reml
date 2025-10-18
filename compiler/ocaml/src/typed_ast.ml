@@ -28,8 +28,7 @@ type typed_expr = {
 
 and typed_expr_kind =
   | TLiteral of literal
-  | TVar of ident * constrained_scheme
-      (** 変数参照 + インスタンス化された型スキーム *)
+  | TVar of ident * constrained_scheme  (** 変数参照 + インスタンス化された型スキーム *)
   | TModulePath of module_path * ident
   | TCall of typed_expr * typed_arg list
   | TLambda of typed_param list * ty option * typed_expr

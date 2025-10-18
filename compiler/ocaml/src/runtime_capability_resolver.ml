@@ -9,13 +9,9 @@
 
 open Effect_profile
 open Type_inference_effect
-
 module Json = Yojson.Basic
 
-type capability_entry = {
-  name : string;
-  stage : stage_id option;
-}
+type capability_entry = { name : string; stage : stage_id option }
 
 type registry = {
   stage : stage_id option;
@@ -24,19 +20,16 @@ type registry = {
 }
 
 let empty_registry = { stage = None; capabilities = []; overrides = [] }
-
 let env_stage_var = "REMLC_EFFECT_STAGE"
 let legacy_env_stage_var = "REML_RUNTIME_STAGE"
 let env_registry_var = "REML_RUNTIME_CAPABILITIES"
-
 let normalize_key value = value |> String.trim |> String.lowercase_ascii
 
 let stage_id_of_string_opt value =
   let trimmed = String.trim value in
   if String.equal trimmed "" then None else Some (stage_id_of_string trimmed)
 
-let capability_entry name stage =
-  { name = String.trim name; stage }
+let capability_entry name stage = { name = String.trim name; stage }
 
 let parse_capability_entries value ~default_stage : capability_entry list =
   (match value with
@@ -69,8 +62,8 @@ let parse_capability_entries value ~default_stage : capability_entry list =
                    | _ -> None
                  in
                  Some (capability_entry name stage)
-            | `Null -> Some (capability_entry name None)
-            | _ -> None)
+             | `Null -> Some (capability_entry name None)
+             | _ -> None)
   | _ -> [])
   |> List.map (fun (entry : capability_entry) ->
          match entry.stage with
@@ -79,7 +72,7 @@ let parse_capability_entries value ~default_stage : capability_entry list =
 
 let parse_override_section value ~default_stage =
   match value with
-  | `Assoc fields -> (
+  | `Assoc fields ->
       let stage_override =
         match List.assoc_opt "stage" fields with
         | Some (`String stage) -> stage_id_of_string_opt stage
@@ -97,7 +90,7 @@ let parse_override_section value ~default_stage =
       |> List.map (fun (entry : capability_entry) ->
              match entry.stage with
              | Some _ -> entry
-             | None -> { entry with stage = stage_override }))
+             | None -> { entry with stage = stage_override })
   | _ -> parse_capability_entries value ~default_stage
 
 let load_registry_from_file path =
@@ -110,7 +103,9 @@ let load_registry_from_file path =
           | _ -> None
         in
         let default_stage =
-          match stage with Some s -> s | None -> runtime_stage_default.default_stage
+          match stage with
+          | Some s -> s
+          | None -> runtime_stage_default.default_stage
         in
         let capabilities =
           match List.assoc_opt "capabilities" fields with
@@ -128,8 +123,7 @@ let load_registry_from_file path =
         in
         { stage; capabilities; overrides }
     | _ -> empty_registry
-  with
-  | Sys_error _ | Yojson.Json_error _ -> empty_registry
+  with Sys_error _ | Yojson.Json_error _ -> empty_registry
 
 let registry_from_path = function
   | Some path when String.trim path <> "" -> load_registry_from_file path
@@ -155,26 +149,23 @@ let resolve ~cli_override ~registry_path ~target =
     | Some stage -> stage_id_of_string_opt stage
     | None -> None
   in
-  let append_step step =
-    stage_trace := !stage_trace @ [ step ]
-  in
+  let append_step step = stage_trace := !stage_trace @ [ step ] in
   let () =
     match cli_override with
     | Some raw ->
         let normalized = stage_id_to_string (stage_id_of_string raw) in
         append_step
           (make_stage_trace_step ~stage:normalized
-             ~note:(Printf.sprintf "--effect-stage %s" raw) "cli_option")
+             ~note:(Printf.sprintf "--effect-stage %s" raw)
+             "cli_option")
     | None ->
-        append_step
-          (make_stage_trace_step ~note:"not provided" "cli_option")
+        append_step (make_stage_trace_step ~note:"not provided" "cli_option")
   in
   let () =
     match env_stage with
     | Some stage ->
         append_step
-          (stage_trace_step_of_stage_id "env_var" stage
-             ~note:env_stage_var)
+          (stage_trace_step_of_stage_id "env_var" stage ~note:env_stage_var)
     | None ->
         append_step
           (make_stage_trace_step
@@ -214,10 +205,7 @@ let resolve ~cli_override ~registry_path ~target =
         let filtered =
           List.filter
             (fun (existing : capability_entry) ->
-              not
-                (String.equal
-                   (normalize_key existing.name)
-                   normalized))
+              not (String.equal (normalize_key existing.name) normalized))
             acc
         in
         filtered @ [ entry ])
@@ -227,7 +215,9 @@ let resolve ~cli_override ~registry_path ~target =
     dedup combined
     |> List.map (fun (entry : capability_entry) ->
            let stage =
-             match entry.stage with Some stage -> stage | None -> default_stage
+             match entry.stage with
+             | Some stage -> stage
+             | None -> default_stage
            in
            (entry.name, stage))
   in
@@ -246,14 +236,11 @@ let resolve ~cli_override ~registry_path ~target =
     List.map
       (fun (target_key, (entries : capability_entry list)) ->
         let stage_candidate =
-          match entries with
-          | entry :: _ -> entry.stage
-          | [] -> registry.stage
+          match entries with entry :: _ -> entry.stage | [] -> registry.stage
         in
         let base_step =
           match stage_candidate with
-          | Some stage ->
-              stage_trace_step_of_stage_id "runtime_candidate" stage
+          | Some stage -> stage_trace_step_of_stage_id "runtime_candidate" stage
           | None -> make_stage_trace_step "runtime_candidate"
         in
         let base_step =

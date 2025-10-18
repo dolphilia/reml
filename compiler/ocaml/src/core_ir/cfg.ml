@@ -102,7 +102,8 @@ let start_block (builder : cfg_builder) (lbl : label) : unit =
 let add_stmt (builder : cfg_builder) (stmt : stmt) : unit =
   builder.current_stmts <- builder.current_stmts @ [ stmt ]
 
-let set_value_env (builder : cfg_builder) (var : var_id) (value : var_id) : unit =
+let set_value_env (builder : cfg_builder) (var : var_id) (value : var_id) : unit
+    =
   Hashtbl.replace builder.value_env var.vid value
 
 let get_value_env (builder : cfg_builder) (var : var_id) : var_id option =
@@ -127,13 +128,10 @@ let push_loop (builder : cfg_builder) (ctx : loop_context) : unit =
 let pop_loop (builder : cfg_builder) : unit =
   match builder.loop_stack with
   | _ :: rest -> builder.loop_stack <- rest
-  | [] ->
-      failwith "pop_loop called but loop_stack is empty"
+  | [] -> failwith "pop_loop called but loop_stack is empty"
 
 let current_loop (builder : cfg_builder) : loop_context option =
-  match builder.loop_stack with
-  | ctx :: _ -> Some ctx
-  | [] -> None
+  match builder.loop_stack with ctx :: _ -> Some ctx | [] -> None
 
 (* ========== 式の線形化 ========== *)
 
@@ -259,14 +257,10 @@ let rec linearize_expr (builder : cfg_builder) (expr : expr) : var_id =
       result
   | AssignMutable (var, rhs) ->
       let rhs_var = linearize_expr builder rhs in
-      let rhs_ref =
-        make_expr (Var rhs_var) rhs.expr_ty rhs.expr_span
-      in
+      let rhs_ref = make_expr (Var rhs_var) rhs.expr_ty rhs.expr_span in
       add_stmt builder (Store (var, rhs_ref));
       let unit_var = VarIdGen.fresh "$unit" ty_unit expr.expr_span in
-      let unit_expr =
-        make_expr (Literal Unit) ty_unit expr.expr_span
-      in
+      let unit_expr = make_expr (Literal Unit) ty_unit expr.expr_span in
       add_stmt builder (Assign (unit_var, unit_expr));
       set_value_env builder var rhs_var;
       unit_var
@@ -276,11 +270,10 @@ let rec linearize_expr (builder : cfg_builder) (expr : expr) : var_id =
           failwith "Continue encountered outside of loop during CFG lowering"
       | Some loop_ctx ->
           let unit_var = VarIdGen.fresh "$continue" ty_unit expr.expr_span in
-          let unit_expr =
-            make_expr (Literal Unit) ty_unit expr.expr_span
-          in
+          let unit_expr = make_expr (Literal Unit) ty_unit expr.expr_span in
           add_stmt builder (Assign (unit_var, unit_expr));
-          finish_block builder (TermJump loop_ctx.continue_target) expr.expr_span;
+          finish_block builder (TermJump loop_ctx.continue_target)
+            expr.expr_span;
           let dead_label = LabelGen.fresh "continue_dead" in
           start_block builder dead_label;
           unit_var)
@@ -297,9 +290,7 @@ let rec linearize_expr (builder : cfg_builder) (expr : expr) : var_id =
       add_stmt builder (Assign (result, expr));
       result
   | DictConstruct dict ->
-      let result =
-        VarIdGen.fresh "$dict_init" expr.expr_ty expr.expr_span
-      in
+      let result = VarIdGen.fresh "$dict_init" expr.expr_ty expr.expr_span in
       let dict_expr =
         make_expr (DictConstruct dict) expr.expr_ty expr.expr_span
       in
@@ -308,9 +299,7 @@ let rec linearize_expr (builder : cfg_builder) (expr : expr) : var_id =
   | DictMethodCall (dict_expr, method_name, args, audit) ->
       let dict_var = linearize_expr builder dict_expr in
       let arg_vars = List.map (linearize_expr builder) args in
-      let dict_ref =
-        make_expr (Var dict_var) dict_var.vty dict_var.vspan
-      in
+      let dict_ref = make_expr (Var dict_var) dict_var.vty dict_var.vspan in
       let arg_exprs =
         List.map (fun v -> make_expr (Var v) v.vty v.vspan) arg_vars
       in
@@ -319,9 +308,7 @@ let rec linearize_expr (builder : cfg_builder) (expr : expr) : var_id =
           (DictMethodCall (dict_ref, method_name, arg_exprs, audit))
           expr.expr_ty expr.expr_span
       in
-      let result =
-        VarIdGen.fresh "$dict_call" expr.expr_ty expr.expr_span
-      in
+      let result = VarIdGen.fresh "$dict_call" expr.expr_ty expr.expr_span in
       add_stmt builder (Assign (result, call_expr));
       result
   | CapabilityCheck _cap_id ->
@@ -427,8 +414,7 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
   let preheader_label =
     match builder.current_label with
     | Some lbl -> lbl
-    | None ->
-        failwith "linearize_loop called without an active preheader block"
+    | None -> failwith "linearize_loop called without an active preheader block"
   in
 
   let has_continue_source =
@@ -443,15 +429,15 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
   let continue_label_opt =
     if has_continue_source then Some (LabelGen.fresh "loop_continue") else None
   in
-  let continue_entries : (var_id * var_id ref * expr option) list ref = ref [] in
+  let continue_entries : (var_id * var_id ref * expr option) list ref =
+    ref []
+  in
 
   let loop_ctx =
     {
       continue_label = continue_label_opt;
       continue_target =
-        (match continue_label_opt with
-        | Some lbl -> lbl
-        | None -> latch_label);
+        (match continue_label_opt with Some lbl -> lbl | None -> latch_label);
       latch_label;
       loop_span = span;
     }
@@ -464,11 +450,13 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
         List.iter
           (fun (var, init_expr) ->
             let init_var = linearize_expr builder init_expr in
-            let init_value = make_expr (Var init_var) init_var.vty init_var.vspan in
+            let init_value =
+              make_expr (Var init_var) init_var.vty init_var.vspan
+            in
             add_stmt builder (Assign (var, init_value));
             if var.vmutable then set_value_env builder var init_var
             else set_value_env builder var var)
-        for_info.for_init
+          for_info.for_init
     | _ -> ()
   in
 
@@ -497,9 +485,7 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
     List.map
       (fun { lc_var; lc_sources } ->
         let init_value =
-          match get_value_env builder lc_var with
-          | Some v -> v
-          | None -> lc_var
+          match get_value_env builder lc_var with Some v -> v | None -> lc_var
         in
         let entries = ref [] in
         List.iter
@@ -507,8 +493,7 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
             let kind = source.ls_kind in
             let label, expr_opt =
               match kind with
-              | LoopSourcePreheader ->
-                  (preheader_label, Some source.ls_expr)
+              | LoopSourcePreheader -> (preheader_label, Some source.ls_expr)
               | LoopSourceLatch -> (latch_label, Some source.ls_expr)
               | LoopSourceContinue -> (
                   match continue_label_opt with
@@ -528,16 +513,13 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
                   entries :=
                     List.map
                       (fun (k, lbl, vref, stored_expr) ->
-                        if k = kind then
-                          (k, label, vref, expr_opt)
-                        else
-                          (k, lbl, vref, stored_expr))
+                        if k = kind then (k, label, vref, expr_opt)
+                        else (k, lbl, vref, stored_expr))
                       !entries;
                   ref_value
               | None ->
                   let vref = ref placeholder in
-                  entries :=
-                    !entries @ [ (kind, label, vref, expr_opt) ];
+                  entries := !entries @ [ (kind, label, vref, expr_opt) ];
                   vref
             in
             if kind = LoopSourceContinue then
@@ -574,11 +556,9 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
                 entries )
         in
         add_stmt builder phi_stmt;
-        if lc_var.vmutable then (
-          let phi_expr =
-            make_expr (Var phi_var) phi_var.vty lc_var.vspan
-          in
-          add_stmt builder (Store (lc_var, phi_expr)));
+        (if lc_var.vmutable then
+           let phi_expr = make_expr (Var phi_var) phi_var.vty lc_var.vspan in
+           add_stmt builder (Store (lc_var, phi_expr)));
         set_value_env builder lc_var phi_var;
         (lc_var, phi_var, entries))
       info.loop_carried
@@ -605,8 +585,7 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
              body_label,
              exit_label ))
         for_info.for_source.expr_span
-  | InfiniteLoop ->
-      finish_block builder (TermJump body_label) info.loop_span);
+  | InfiniteLoop -> finish_block builder (TermJump body_label) info.loop_span);
 
   (* 本体ブロック *)
   start_block builder body_label;
@@ -638,9 +617,7 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
     List.iter
       (fun (lc_var, _phi_var, _entries) ->
         let value =
-          match get_value_env builder lc_var with
-          | Some v -> v
-          | None -> lc_var
+          match get_value_env builder lc_var with Some v -> v | None -> lc_var
         in
         Hashtbl.replace tbl lc_var.vid value)
       phi_records;
@@ -662,11 +639,11 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
                 | None -> lc_var)
           in
           value_ref := continue_var;
-          if lc_var.vmutable then (
-            let store_expr =
-              make_expr (Var continue_var) continue_var.vty continue_var.vspan
-            in
-            add_stmt builder (Store (lc_var, store_expr)));
+          (if lc_var.vmutable then
+             let store_expr =
+               make_expr (Var continue_var) continue_var.vty continue_var.vspan
+             in
+             add_stmt builder (Store (lc_var, store_expr)));
           set_value_env builder lc_var continue_var)
         continue_items;
       finish_block builder (TermJump latch_label) info.loop_span
@@ -721,8 +698,7 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
   builder.blocks <- List.map update_phi_in_block builder.blocks;
 
   List.iter
-    (fun (lc_var, phi_var, _entries) ->
-      set_value_env builder lc_var phi_var)
+    (fun (lc_var, phi_var, _entries) -> set_value_env builder lc_var phi_var)
     phi_records;
 
   pop_loop builder;
@@ -730,9 +706,7 @@ and linearize_loop (builder : cfg_builder) (info : loop_info) (result_ty : ty)
   (* exit ブロック開始（後続処理のため未収束） *)
   start_block builder exit_label;
   let loop_result = VarIdGen.fresh "$loop_result" result_ty span in
-  let loop_value =
-    make_expr (Literal Ast.Unit) result_ty span
-  in
+  let loop_value = make_expr (Literal Ast.Unit) result_ty span in
   add_stmt builder (Assign (loop_result, loop_value));
   loop_result
 

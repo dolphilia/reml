@@ -233,7 +233,8 @@ let parse_args argv =
         "<json|csv> Metrics output format (default: json)" );
       ( "--typeclass-mode",
         Arg.Set_string typeclass_mode_str,
-        "<dictionary|monomorph|both> Type class strategy (default: dictionary)" );
+        "<dictionary|monomorph|both> Type class strategy (default: dictionary)"
+      );
       (* コンパイルオプション *)
       ( "--target",
         Arg.Set_string target,

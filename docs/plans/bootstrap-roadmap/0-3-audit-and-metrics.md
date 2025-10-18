@@ -10,10 +10,11 @@
 | 安全性 | `stage_mismatch_count` | Capability Stage ミスマッチ件数 | CI (PR ごと) | [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) |
 | 安全性 | `ffi_ownership_violation` | FFI 所有権警告件数 | CI + 週次レビュー | [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md) |
 | 安全性 | `iterator.stage.audit_pass_rate` | `typeclass.iterator.stage_mismatch` 診断で必須監査キーが揃った割合 (0.0〜1.0) | CI（週次レビュー、PRごと） | [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) §2.4 |
+| 安全性 | `ffi_bridge.audit_pass_rate` | `ffi.contract.*` 診断で `AuditEnvelope.metadata.bridge.*` と拡張フィールドが揃った割合 (0.0〜1.0) | CI（週次レビュー、PRごと） | [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md), [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) |
 | DX | `diagnostic_regressions` | 診断差分の件数 | PR ごと | [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) |
 | DX | `error_resolution_latency` | 重大バグの修正までの日数 | 月次 | [0-1-project-purpose.md](../../spec/0-1-project-purpose.md) §2.2 |
 
-- CI 集計スクリプト: `tooling/ci/collect-iterator-audit-metrics.py` を用いて診断 JSON を検査し、結果を `tooling/ci/iterator-audit-metrics.json` に書き出す。`pass_rate` が 1.0 未満の場合は CI 側でブロック条件を設定する。
+- CI 集計スクリプト: `tooling/ci/collect-iterator-audit-metrics.py` を用いて診断 JSON を検査し、結果を `tooling/ci/iterator-audit-metrics.json` に書き出す。`metrics[]` 配列には iterator / FFI ブリッジの両指標が含まれ、`pass_rate` が 1.0 未満の場合は CI 側でブロック条件を設定する。
 
 ### macOS 追加指標（Phase 1-8 以降）
 | カテゴリ | 指標 | 定義 | 収集タイミング | 計画参照 |
@@ -55,11 +56,13 @@
   - 仕様変更一覧（ファイル/節/概要）
 
 ## 0.3.3 診断・監査ログ整合性
-- `Diagnostic` オブジェクトの拡張フィールド (`extensions`) は [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) に定義されたキー (`effect.stage.required`, `bridge.stage.actual` など) を使用する。
+- `Diagnostic` オブジェクトの拡張フィールド (`extensions`) は [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) に定義されたキー (`effect.stage.required`, `bridge.target` など) を使用する。
 - 監査ログ (`AuditEnvelope`) は JSON Lines 形式で保存し、以下を必須フィールドとする。
   - `metadata.effect.stage.required`
-  - `metadata.bridge.reload`
-  - `metadata.ffi.ownership`
+  - `metadata.bridge.target`
+  - `metadata.bridge.abi`
+  - `metadata.bridge.ownership`
+- スキーマ検証: `tooling/runtime/audit-schema.json`（ドラフト）を基準に `bridge.*` フィールドを検証するツールを Phase 2-3 で整備する。仮段階では `tooling/ci/collect-iterator-audit-metrics.py` の `ffi_bridge.audit_pass_rate` を用いて欠落を検知する。
 - ログ検証用に `tools/audit-verify`（将来実装予定）を準備し、CI で `--strict` フラグを用いて検証。
 
 ## 0.3.4 レビュア体制
@@ -131,7 +134,7 @@
   1. `scripts/validate-runtime-capabilities.sh tooling/runtime/capabilities/default.json --output reports/runtime-capabilities-validation.json` を実行し、`stage_summary.runtime_candidates` に `target: x86_64-pc-windows-msvc` が含まれることを確認する。
   2. 同ファイルの `overrides` に `target: arm64-apple-darwin` が追加された場合は同コマンドで再検証し、`runtime_candidates` に `arm64-apple-darwin` が `stage: beta` として出力されること、および `stage_trace` に同ターゲットのエントリが追加されていることを確認する。検証ログと併せて `reports/ffi-macos-summary.md` に記録し、レビューコメントで共有する。
   3. Stage や Capability を更新した場合は、`reports/runtime-capabilities-validation.json` の `stage_summary.json[].overrides` と `stage_trace` を 0.3.9 進捗ログへ抜粋し、レビューで参照できるようにする。
-  4. 追加ターゲット（例: `aarch64-pc-windows-msvc` や `x86_64-unknown-linux-gnu` の派生）を導入した際は、同コマンドに `--cli-stage` / `--env-stage` を付与して優先度を再確認し、`tooling/ci/sync-iterator-audit.sh --metrics tooling/ci/iterator-audit-metrics.json --verify-log tooling/ci/llvm-verify.log --output reports/iterator-stage-summary.md` を再実行して `iterator.stage.audit_pass_rate = 1.0` を維持しているかを確かめる。
+  4. 追加ターゲット（例: `aarch64-pc-windows-msvc` や `x86_64-unknown-linux-gnu` の派生）を導入した際は、同コマンドに `--cli-stage` / `--env-stage` を付与して優先度を再確認し、`tooling/ci/sync-iterator-audit.sh --metrics tooling/ci/iterator-audit-metrics.json --verify-log tooling/ci/llvm-verify.log --output reports/iterator-stage-summary.md` を再実行して `iterator.stage.audit_pass_rate = 1.0` ・`ffi_bridge.audit_pass_rate = 1.0` を維持しているかを確かめる。
 - 検証の結果、`pass_rate < 1.0` となった場合や `stage_trace` に欠落が発生した場合は、影響段階が解消されるまで `0-4-risk-handling.md` に TODO を登録し、ロールバック方針と併せて共有する。
 
 ### CLI オプション優先度と検証
@@ -144,17 +147,17 @@
 - 上記 3 ケースの出力を `compiler/ocaml/tests/golden/diagnostics/effects/stage-resolution.json.golden`（新設）でスナップショット化し、`dune runtest compiler/ocaml/tests/test_diagnostics.ml` に統合する。
 
 ### 監査ログと CI 指標
-- Stage 判定は `RuntimeCapabilityResolver` → `AuditEnvelope` → `tooling/ci/collect-iterator-audit-metrics.py` → `iterator.stage.audit_pass_rate` の順で連携する。各段階で `stage_trace` が欠落した場合は CI を失敗させる。
+- Stage 判定および FFI ブリッジ検証は `RuntimeCapabilityResolver` → `AuditEnvelope` → `tooling/ci/collect-iterator-audit-metrics.py` → `iterator.stage.audit_pass_rate` / `ffi_bridge.audit_pass_rate` の順で連携する。各段階で `stage_trace` または `bridge.*` が欠落した場合は CI を失敗させる。
 - `remlc examples/effects/demo.reml --emit-audit --effect-stage beta` を実行し、`AuditEnvelope.metadata.stage_trace` に Typer 判定と Runtime 判定が連続して格納されていることを確認する。監査ゴールデンは `compiler/ocaml/tests/golden/audit/effects-stage.json.golden`（新設）に保存する。
-- CI では `tooling/ci/sync-iterator-audit.sh --metrics /tmp/iterator-audit.json --audit compiler/ocaml/tests/golden/audit/effects-stage.json.golden` を実行し、`iterator.stage.audit_pass_rate` が 1.0 であることをゲート条件とする。Stage 判定差分が発生した場合は `stage_trace` の乖離内容を Markdown サマリに追記してレビューへ共有する。
-- 監査ログの更新後は `reports/runtime-capabilities-validation.json` の `stage_summary` と `iterator-stage-summary.md`（`sync-iterator-audit.sh` が生成）を本節へリンクする。
+- CI では `tooling/ci/sync-iterator-audit.sh --metrics /tmp/iterator-audit.json --audit compiler/ocaml/tests/golden/audit/effects-stage.json.golden` を実行し、`iterator.stage.audit_pass_rate` と `ffi_bridge.audit_pass_rate` がいずれも 1.0 であることをゲート条件とする。Stage 判定差分が発生した場合は `stage_trace` の乖離内容を Markdown サマリに追記し、FFI 契約差分が発生した場合は `bridge.*` 欠落項目をサマリへ明記してレビューへ共有する。
+- 監査ログの更新後は `reports/runtime-capabilities-validation.json` の `stage_summary`・`iterator-stage-summary.md` および FFI ブリッジ用サマリ（導入後に `reports/ffi-bridge-summary.md` 予定）を本節へリンクする。
 
 ### 効果診断ゴールデンの整備
 - ゴールデン配置: `compiler/ocaml/tests/golden/diagnostics/effects/`（`*.golden`）に JSON スナップショットを保存し、必須キー `effect.stage.required` / `effect.stage.actual` / `effect.stage.residual` / `effect.stage.source` および `diagnostic.extensions.effect.stage_trace` / `diagnostic.extensions.effect.attribute` / `diagnostic.extensions.effect.residual` を全て検証する。
 - 更新手順:
   1. `remlc` を `--format=json --emit-diagnostics` モードで実行し、一時ファイルを生成。
   2. `scripts/update-effects-golden.sh`（Phase 2-2 で追加予定）を用いて対象ゴールデンのみを上書きする。自動プロモートは使用しない。スクリプトでは `stage_trace` の差分を検知し、Typer / Runtime フェーズの順序が正しいかを静的チェックする。
-  3. 更新後に `tooling/ci/collect-iterator-audit-metrics.py` を実行し、`iterator.stage.audit_pass_rate` が 1.0 を維持していることを確認する。
+  3. 更新後に `tooling/ci/collect-iterator-audit-metrics.py` を実行し、`iterator.stage.audit_pass_rate` / `ffi_bridge.audit_pass_rate` が 1.0 を維持していることを確認する。
   4. 差分と検証結果を本節に追記し、Phase 2-2 の週次レビュー議事録と同期する。
 - ゴールデン差分がまだ確認されていない場合や Stage 検証が未完了の場合は、`0-4-risk-handling.md` に TODO を登録して Phase 2-2 の完了条件に含める。
 

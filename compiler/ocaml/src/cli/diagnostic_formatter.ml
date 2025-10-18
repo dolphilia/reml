@@ -221,8 +221,7 @@ let format_diagnostic ~source ~diag ~color_mode =
     match diag.extensions with
     | [] -> ""
     | entries ->
-        entries
-        |> List.rev
+        entries |> List.rev
         |> List.map (fun (key, value) ->
                Printf.sprintf "\n拡張[%s]: %s" key (Json.to_string value))
         |> String.concat ""
@@ -231,8 +230,7 @@ let format_diagnostic ~source ~diag ~color_mode =
     match diag.audit_metadata with
     | [] -> ""
     | entries ->
-        entries
-        |> List.rev
+        entries |> List.rev
         |> List.map (fun (key, value) ->
                Printf.sprintf "\n監査[%s]: %s" key (Json.to_string value))
         |> String.concat ""
@@ -249,8 +247,7 @@ let format_diagnostic ~source ~diag ~color_mode =
   in
 
   header ^ snippet ^ expected_str ^ notes_str ^ fixits_str ^ extensions_str
-  ^ audit_str
-  ^ hint_str
+  ^ audit_str ^ hint_str
 
 (** 複数の診断をバッチ出力
  *

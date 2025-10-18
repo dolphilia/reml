@@ -236,17 +236,13 @@ let test_while_loop_cfg () =
   let ten_expr =
     IR.make_expr (IR.Literal (Ast.Int ("10", Ast.Base10))) ty_i64 dummy_span
   in
-  let i_ref_cond =
-    IR.make_expr (IR.Var i_var) ty_i64 dummy_span
-  in
+  let i_ref_cond = IR.make_expr (IR.Var i_var) ty_i64 dummy_span in
   let cond_expr =
     IR.make_expr
       (IR.Primitive (IR.PrimLt, [ i_ref_cond; ten_expr ]))
       ty_bool dummy_span
   in
-  let i_ref_body =
-    IR.make_expr (IR.Var i_var) ty_i64 dummy_span
-  in
+  let i_ref_body = IR.make_expr (IR.Var i_var) ty_i64 dummy_span in
   let add_expr =
     IR.make_expr
       (IR.Primitive (IR.PrimAdd, [ i_ref_body; one_expr ]))
@@ -299,21 +295,16 @@ let test_while_loop_cfg () =
     String.length s >= len_p && String.sub s 0 len_p = prefix
   in
   let header_block =
-    List.find
-      (fun blk -> starts_with "loop_header" blk.IR.label)
-      blocks
+    List.find (fun blk -> starts_with "loop_header" blk.IR.label) blocks
   in
   let phi_entries =
     List.filter_map
-      (function
-        | IR.Phi (var, incoming) -> Some (var, incoming)
-        | _ -> None)
+      (function IR.Phi (var, incoming) -> Some (var, incoming) | _ -> None)
       header_block.IR.stmts
   in
   (match phi_entries with
   | [ (_phi_var, incoming) ] ->
-      if List.length incoming <> 2 then
-        failwith "phi ノードの入力が2本ではありません";
+      if List.length incoming <> 2 then failwith "phi ノードの入力が2本ではありません";
       let labels = List.map fst incoming in
       if not (List.exists (starts_with "loop_latch") labels) then
         failwith "phi ノードに latch からの入力がありません"
@@ -321,13 +312,10 @@ let test_while_loop_cfg () =
 
   let store_exists =
     List.exists
-      (function
-        | IR.Store (var, _) -> var.vid = i_var.vid
-        | _ -> false)
+      (function IR.Store (var, _) -> var.vid = i_var.vid | _ -> false)
       header_block.IR.stmts
   in
-  if not store_exists then
-    failwith "phi の結果をループ変数へ store していません";
+  if not store_exists then failwith "phi の結果をループ変数へ store していません";
 
   print_endline "✓ test_while_loop_cfg passed"
 
@@ -347,17 +335,13 @@ let test_loop_with_continue () =
   let ten_expr =
     IR.make_expr (IR.Literal (Ast.Int ("10", Ast.Base10))) ty_i64 dummy_span
   in
-  let i_ref_cond =
-    IR.make_expr (IR.Var i_var) ty_i64 dummy_span
-  in
+  let i_ref_cond = IR.make_expr (IR.Var i_var) ty_i64 dummy_span in
   let cond_expr =
     IR.make_expr
       (IR.Primitive (IR.PrimLt, [ i_ref_cond; ten_expr ]))
       ty_bool dummy_span
   in
-  let i_ref_body =
-    IR.make_expr (IR.Var i_var) ty_i64 dummy_span
-  in
+  let i_ref_body = IR.make_expr (IR.Var i_var) ty_i64 dummy_span in
   let continue_cond =
     IR.make_expr
       (IR.Primitive (IR.PrimEq, [ i_ref_body; zero_expr ]))
@@ -373,12 +357,11 @@ let test_loop_with_continue () =
     IR.make_expr (IR.AssignMutable (i_var, add_expr)) ty_unit dummy_span
   in
   let body_expr =
-    IR.make_expr (IR.If (continue_cond, continue_expr, assign_expr)) ty_unit
-      dummy_span
+    IR.make_expr
+      (IR.If (continue_cond, continue_expr, assign_expr))
+      ty_unit dummy_span
   in
-  let continue_value =
-    IR.make_expr (IR.Var i_var) ty_i64 dummy_span
-  in
+  let continue_value = IR.make_expr (IR.Var i_var) ty_i64 dummy_span in
   let loop_info =
     {
       IR.loop_kind = IR.WhileLoop cond_expr;
@@ -426,9 +409,7 @@ let test_loop_with_continue () =
     String.length s >= len_p && String.sub s 0 len_p = prefix
   in
   let continue_block =
-    List.find_opt
-      (fun blk -> starts_with "loop_continue" blk.IR.label)
-      blocks
+    List.find_opt (fun blk -> starts_with "loop_continue" blk.IR.label) blocks
   in
   (match continue_block with
   | None -> failwith "loop_continue ブロックが生成されていません"
@@ -441,24 +422,20 @@ let test_loop_with_continue () =
 
   (* ヘッダ φ に continue ラベルが含まれていることをチェック *)
   let header_block =
-    List.find
-      (fun blk -> starts_with "loop_header" blk.IR.label)
-      blocks
+    List.find (fun blk -> starts_with "loop_header" blk.IR.label) blocks
   in
   let phi_sources =
     header_block.IR.stmts
-    |> List.filter_map (function IR.Phi (_var, incoming) -> Some incoming | _ -> None)
+    |> List.filter_map (function
+         | IR.Phi (_var, incoming) -> Some incoming
+         | _ -> None)
   in
   (match phi_sources with
   | [ incoming ] ->
       let labels = List.map fst incoming in
-      if
-        not
-          (List.exists (starts_with "loop_continue") labels)
-      then
+      if not (List.exists (starts_with "loop_continue") labels) then
         failwith "φ ノードに loop_continue からの入力がありません"
-  | _ ->
-      failwith "ヘッダブロックに φ ノードが1つのみ存在すると想定しています");
+  | _ -> failwith "ヘッダブロックに φ ノードが1つのみ存在すると想定しています");
 
   print_endline "✓ test_loop_with_continue passed"
 

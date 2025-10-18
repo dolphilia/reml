@@ -9,8 +9,7 @@ let names_of_tags tags =
   |> List.map (fun tag -> tag.effect_name |> String.lowercase_ascii)
   |> List.sort_uniq String.compare
 
-let show_names names =
-  "[" ^ String.concat ", " names ^ "]"
+let show_names names = "[" ^ String.concat ", " names ^ "]"
 
 let () =
   (* リセットして環境を初期化 *)
@@ -20,12 +19,10 @@ let () =
   (* モックの効果プロファイルを登録 *)
   let span = Ast.dummy_span in
   let mk_tag name = { effect_name = name; effect_span = span } in
-  let effect_set =
-    { declared = [ mk_tag "io" ]; residual = [ mk_tag "io" ] }
-  in
+  let effect_set = { declared = [ mk_tag "io" ]; residual = [ mk_tag "io" ] } in
   let profile =
-    make_profile ~stage_requirement:(StageAtLeast Stable)
-      ~effect_set ~span ~source_name:"effectful_sum" ()
+    make_profile ~stage_requirement:(StageAtLeast Stable) ~effect_set ~span
+      ~source_name:"effectful_sum" ()
   in
   record_effect_profile ~symbol:"effectful_sum" profile;
 
@@ -38,12 +35,10 @@ let () =
 
   let declared = names_of_tags entry.effect_set.declared in
   if List.mem "io" declared then
-    Printf.printf "✓ effectful_sum declared effects %s\n"
-      (show_names declared)
+    Printf.printf "✓ effectful_sum declared effects %s\n" (show_names declared)
   else
     failwith
-      ("expected declared effects to contain io, got "
-      ^ show_names declared);
+      ("expected declared effects to contain io, got " ^ show_names declared);
 
   (match entry.stage_requirement with
   | StageAtLeast stage when stage = Stable ->
@@ -52,13 +47,11 @@ let () =
       Printf.printf "✓ effectful_sum stage requirement == stable\n"
   | StageExact stage ->
       failwith
-        (Printf.sprintf
-           "unexpected stage requirement (exact %s)"
+        (Printf.sprintf "unexpected stage requirement (exact %s)"
            (stage_id_to_string stage))
   | StageAtLeast stage ->
       failwith
-        (Printf.sprintf
-           "unexpected stage requirement (at least %s)"
+        (Printf.sprintf "unexpected stage requirement (at least %s)"
            (stage_id_to_string stage)));
 
   (* 型クラス制約の解決が効果テーブルと独立であることを確認 *)
@@ -79,7 +72,6 @@ let () =
     | Some entry -> entry
     | None -> failwith "effect profile missing after constraint solve"
   in
-  if effect_set_includes ~super:entry_after.effect_set ~sub:entry.effect_set then
-    Printf.printf "✓ effect profile unchanged after constraint solving\n"
-  else
-    failwith "effect profile was unexpectedly mutated"
+  if effect_set_includes ~super:entry_after.effect_set ~sub:entry.effect_set
+  then Printf.printf "✓ effect profile unchanged after constraint solving\n"
+  else failwith "effect profile was unexpectedly mutated"

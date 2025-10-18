@@ -181,9 +181,7 @@ let rec has_side_effect (e : expr) : bool =
         match audit with
         | None -> false
         | Some info -> (
-            match info.audit_capability with
-            | Some _ -> true
-            | None -> false)
+            match info.audit_capability with Some _ -> true | None -> false)
       in
       has_side_effect dict_expr
       || List.exists has_side_effect args
@@ -231,8 +229,8 @@ let _has_stmt_side_effect (stmt : stmt) : bool =
 (** Let 束縛の DCE *)
 let rec dce_expr (used_vars : VarSet.t) (stats : dce_stats) (e : expr) : expr =
   match e.expr_kind with
-  | Literal _ | Var _ | Primitive _ | Closure _ | DictLookup _
-  | DictConstruct _ | CapabilityCheck _ ->
+  | Literal _ | Var _ | Primitive _ | Closure _ | DictLookup _ | DictConstruct _
+  | CapabilityCheck _ ->
       e
   | Continue -> e
   | App (fn, args) ->

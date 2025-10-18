@@ -10,7 +10,6 @@ open Ast
 
 (* ========== データ構造の定義 ========== *)
 
-(** impl 実装情報 *)
 type impl_info = {
   trait_name : string;
   impl_type : ty;
@@ -19,9 +18,10 @@ type impl_info = {
   methods : (string * string) list;
   span : span;
 }
+(** impl 実装情報 *)
 
-(** impl 宣言レジストリ *)
 type impl_registry = { impls : impl_info list }
+(** impl 宣言レジストリ *)
 
 (* ========== 基本操作 ========== *)
 
@@ -29,16 +29,15 @@ type impl_registry = { impls : impl_info list }
 let empty () = { impls = [] }
 
 (** impl 実装情報をレジストリに登録 *)
-let register impl_info registry =
-  { impls = impl_info :: registry.impls }
+let register impl_info registry = { impls = impl_info :: registry.impls }
 
 (** レジストリに登録されているすべての impl を取得 *)
 let all_impls registry = registry.impls
 
 (* ========== 型照合ユーティリティ ========== *)
 
-(** 型変数の束縛を管理する環境 *)
 type type_subst = (type_var * ty) list
+(** 型変数の束縛を管理する環境 *)
 
 (** 空の型代入 *)
 let empty_subst : type_subst = []
@@ -54,8 +53,7 @@ let rec apply_type_subst (subst : type_subst) (ty : ty) : ty =
   | TRecord fields ->
       TRecord
         (List.map (fun (name, ty) -> (name, apply_type_subst subst ty)) fields)
-  | TApp (t1, t2) ->
-      TApp (apply_type_subst subst t1, apply_type_subst subst t2)
+  | TApp (t1, t2) -> TApp (apply_type_subst subst t1, apply_type_subst subst t2)
   | TArray t -> TArray (apply_type_subst subst t)
   | TSlice (t, n) -> TSlice (apply_type_subst subst t, n)
   | TCon _ | TUnit | TNever -> ty
@@ -68,8 +66,7 @@ let bind_type_var (tv : type_var) (ty : ty) (subst : type_subst) :
     type_subst option =
   match List.assoc_opt tv subst with
   | Some existing_ty ->
-      if type_equal existing_ty ty then Some subst
-      else None (* 矛盾 *)
+      if type_equal existing_ty ty then Some subst else None (* 矛盾 *)
   | None -> Some ((tv, ty) :: subst)
 
 (** 型の統一（unification）
@@ -108,16 +105,15 @@ let rec unify_types (pattern : ty) (concrete : ty) (subst : type_subst) :
         Some
           (List.fold_left2
              (fun subst p c ->
-               match subst with
-               | Some s -> unify_types p c s
-               | None -> None)
+               match subst with Some s -> unify_types p c s | None -> None)
              (Some subst) ps cs
-          |> function
-          | Some s -> s
-          | None -> raise Exit)
+           |> function
+           | Some s -> s
+           | None -> raise Exit)
       with Exit -> None)
   (* レコード型（フィールド名と型を照合） *)
-  | TRecord p_fields, TRecord c_fields when List.length p_fields = List.length c_fields -> (
+  | TRecord p_fields, TRecord c_fields
+    when List.length p_fields = List.length c_fields -> (
       (* フィールド名でソート後に照合 *)
       let sort_fields fields =
         List.sort (fun (n1, _) (n2, _) -> String.compare n1 n2) fields
@@ -132,9 +128,9 @@ let rec unify_types (pattern : ty) (concrete : ty) (subst : type_subst) :
                | Some s when pn = cn -> unify_types pty cty s
                | _ -> None)
              (Some subst) p_sorted c_sorted
-          |> function
-          | Some s -> s
-          | None -> raise Exit)
+           |> function
+           | Some s -> s
+           | None -> raise Exit)
       with Exit -> None)
   (* 型適用（例: Vec<T>） *)
   | TApp (p1, p2), TApp (c1, c2) -> (

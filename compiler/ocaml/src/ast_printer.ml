@@ -285,8 +285,8 @@ and string_of_decl_kind = function
         | None -> ""
         | Some info ->
             let tags =
-              info.effect_declared
-              |> List.map string_of_ident |> String.concat ", "
+              info.effect_declared |> List.map string_of_ident
+              |> String.concat ", "
             in
             Printf.sprintf " !{%s}" tags
       in

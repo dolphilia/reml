@@ -14,6 +14,7 @@ let dummy_span = Ast.{ start = 0; end_ = 0 }
 
 (** テスト成功カウンタ *)
 let test_count = ref 0
+
 let success_count = ref 0
 
 (** テスト実行ヘルパー *)
@@ -23,20 +24,12 @@ let run_test name f =
     f ();
     incr success_count;
     Printf.printf "  ✓ %s\n" name
-  with
-  | e ->
-      Printf.printf "  ✗ %s: %s\n" name (Printexc.to_string e)
+  with e -> Printf.printf "  ✗ %s: %s\n" name (Printexc.to_string e)
 
 (** テストアサーション *)
-let assert_some opt msg =
-  match opt with
-  | Some v -> v
-  | None -> failwith msg
+let assert_some opt msg = match opt with Some v -> v | None -> failwith msg
 
-let assert_none opt msg =
-  match opt with
-  | None -> ()
-  | Some _ -> failwith msg
+let assert_none opt msg = match opt with None -> () | Some _ -> failwith msg
 
 (* ========== 辞書初期化テスト ========== *)
 
@@ -102,12 +95,14 @@ let test_generate_dict_params_empty () =
 let test_generate_dict_params_single () =
   (* 単一の制約から辞書パラメータを生成 *)
   let fn_scope = create_scope_map () in
-  let constraint_info = {
-    Types.trait_name = "Eq";
-    Types.type_args = [ty_i64];
-    Types.constraint_span = dummy_span;
-  } in
-  let params = generate_dict_params fn_scope [constraint_info] dummy_span in
+  let constraint_info =
+    {
+      Types.trait_name = "Eq";
+      Types.type_args = [ ty_i64 ];
+      Types.constraint_span = dummy_span;
+    }
+  in
+  let params = generate_dict_params fn_scope [ constraint_info ] dummy_span in
 
   assert (List.length params = 1);
   let param = List.hd params in
@@ -116,10 +111,20 @@ let test_generate_dict_params_single () =
 let test_generate_dict_params_multiple () =
   (* 複数の制約から辞書パラメータを生成 *)
   let fn_scope = create_scope_map () in
-  let constraints = [
-    { Types.trait_name = "Eq"; Types.type_args = [ty_i64]; Types.constraint_span = dummy_span };
-    { Types.trait_name = "Ord"; Types.type_args = [ty_i64]; Types.constraint_span = dummy_span };
-  ] in
+  let constraints =
+    [
+      {
+        Types.trait_name = "Eq";
+        Types.type_args = [ ty_i64 ];
+        Types.constraint_span = dummy_span;
+      };
+      {
+        Types.trait_name = "Ord";
+        Types.type_args = [ ty_i64 ];
+        Types.constraint_span = dummy_span;
+      };
+    ]
+  in
   let params = generate_dict_params fn_scope constraints dummy_span in
 
   assert (List.length params = 2);
@@ -161,12 +166,14 @@ let () =
   run_test "test_generate_dict_init_eq_i64" test_generate_dict_init_eq_i64;
   run_test "test_generate_dict_init_ord_i64" test_generate_dict_init_ord_i64;
   run_test "test_generate_dict_init_eq_string" test_generate_dict_init_eq_string;
-  run_test "test_generate_dict_init_unsupported" test_generate_dict_init_unsupported;
+  run_test "test_generate_dict_init_unsupported"
+    test_generate_dict_init_unsupported;
 
   Printf.printf "\n--- 辞書パラメータ生成テスト ---\n";
   run_test "test_generate_dict_params_empty" test_generate_dict_params_empty;
   run_test "test_generate_dict_params_single" test_generate_dict_params_single;
-  run_test "test_generate_dict_params_multiple" test_generate_dict_params_multiple;
+  run_test "test_generate_dict_params_multiple"
+    test_generate_dict_params_multiple;
 
   Printf.printf "\n--- vtable インデックステスト ---\n";
   run_test "test_trait_method_indices_eq" test_trait_method_indices_eq;
@@ -177,4 +184,6 @@ let () =
   if !success_count = !test_count then
     Printf.printf "✓ 全 %d 件のテストが成功しました！\n\n" !test_count
   else
-    Printf.printf "✗ %d/%d 件のテストが失敗しました\n\n" (!test_count - !success_count) !test_count
+    Printf.printf "✗ %d/%d 件のテストが失敗しました\n\n"
+      (!test_count - !success_count)
+      !test_count

@@ -109,10 +109,7 @@ let rec apply_subst_env subst env =
     List.map
       (fun (name, binding) ->
         ( name,
-          {
-            binding with
-            scheme = apply_subst_cscheme subst binding.scheme;
-          } ))
+          { binding with scheme = apply_subst_cscheme subst binding.scheme } ))
       (bindings_with_mut env)
   in
   let parent =
@@ -143,7 +140,8 @@ let rec ftv_ty = function
  *)
 let ftv_cscheme scheme =
   let constraint_vars =
-    List.concat_map (fun tc -> List.concat_map ftv_ty tc.type_args)
+    List.concat_map
+      (fun tc -> List.concat_map ftv_ty tc.type_args)
       scheme.constraints
   in
   let all_vars = ftv_ty scheme.body @ constraint_vars in
@@ -154,7 +152,9 @@ let ftv_cscheme scheme =
 
 (** 型環境に含まれる自由型変数を収集 *)
 let ftv_env env =
-  List.concat_map (fun (_, scheme) -> ftv_cscheme scheme) (Type_env.bindings env)
+  List.concat_map
+    (fun (_, scheme) -> ftv_cscheme scheme)
+    (Type_env.bindings env)
 
 (* ========== 制約解決（Phase 2 Week 3-4 で実装） ========== *)
 

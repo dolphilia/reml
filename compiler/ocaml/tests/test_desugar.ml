@@ -29,9 +29,7 @@ let test_desugar_loop_continue () =
   Core_ir.Ir.VarIdGen.reset ();
   Core_ir.Ir.LabelGen.reset ();
 
-  let i_var =
-    Core_ir.Ir.VarIdGen.fresh ~mutable_:true "i" ty_i64 dummy_span
-  in
+  let i_var = Core_ir.Ir.VarIdGen.fresh ~mutable_:true "i" ty_i64 dummy_span in
   let i_ref = Core_ir.Ir.make_expr (Var i_var) ty_i64 dummy_span in
   let one_expr =
     Core_ir.Ir.make_expr (Literal (Ast.Int ("1", Ast.Base10))) ty_i64 dummy_span
@@ -45,9 +43,7 @@ let test_desugar_loop_continue () =
     Core_ir.Ir.make_expr (AssignMutable (i_var, add_expr)) ty_unit dummy_span
   in
   let continue_expr = Core_ir.Ir.make_expr Continue ty_unit dummy_span in
-  let seq_var =
-    Core_ir.Ir.VarIdGen.fresh "$seq" ty_unit dummy_span
-  in
+  let seq_var = Core_ir.Ir.VarIdGen.fresh "$seq" ty_unit dummy_span in
   let body_expr =
     Core_ir.Ir.make_expr
       (Let (seq_var, assign_expr, continue_expr))
@@ -61,26 +57,25 @@ let test_desugar_loop_continue () =
       ty_unit
   in
   (match loop_expr.expr_kind with
-  | Loop info ->
+  | Loop info -> (
       if not info.loop_contains_continue then
         failwith "loop_contains_continue が true ではありません";
-      (match info.loop_carried with
-      | [ lc ] ->
+      match info.loop_carried with
+      | [ lc ] -> (
           let continue_src =
             List.find_opt
               (fun src -> src.ls_kind = LoopSourceContinue)
               lc.lc_sources
           in
-          (match continue_src with
+          match continue_src with
           | Some src -> (
               match src.ls_expr.expr_kind with
-              | Primitive (PrimAdd, [ _; { expr_kind = Literal (Int ("1", Base10)); _ } ]) ->
+              | Primitive
+                  ( PrimAdd,
+                    [ _; { expr_kind = Literal (Int ("1", Base10)); _ } ] ) ->
                   ()
-              | _ ->
-                  failwith
-                    "continue 経路の ls_expr が想定した加算式ではありません")
-          | None ->
-              failwith "LoopSourceContinue が loop_carried に含まれていません")
+              | _ -> failwith "continue 経路の ls_expr が想定した加算式ではありません")
+          | None -> failwith "LoopSourceContinue が loop_carried に含まれていません")
       | _ -> failwith "loop_carried の要素数が期待と異なります")
   | _ -> failwith "Loop 式の生成に失敗しました");
   Printf.printf "OK\n"
@@ -224,23 +219,22 @@ let build_for_loop_cfg source_kind =
   let map = create_scope_map () in
   let pat_ident = { name = "item"; span = dummy_span } in
   let typed_pat =
-    make_typed_pattern (TPatVar pat_ident) ty_i64 [ ("item", ty_i64) ]
+    make_typed_pattern (TPatVar pat_ident) ty_i64
+      [ ("item", ty_i64) ]
       dummy_span
   in
   let body_expr = make_typed_expr (TBlock []) ty_unit in
-  let (source_ident, source_ty) =
+  let source_ident, source_ty =
     match source_kind with
     | `Array ->
-        ({ name = "arr"; span = dummy_span }, TApp (TCon (TCUser "Array"), ty_i64))
+        ( { name = "arr"; span = dummy_span },
+          TApp (TCon (TCUser "Array"), ty_i64) )
     | `Iterator ->
-        ({ name = "iter"; span = dummy_span }, TApp (TCon (TCUser "Iterator"), ty_i64))
+        ( { name = "iter"; span = dummy_span },
+          TApp (TCon (TCUser "Iterator"), ty_i64) )
   in
-  let scheme =
-    scheme_to_constrained { quantified = []; body = source_ty }
-  in
-  let source_expr =
-    make_typed_expr (TVar (source_ident, scheme)) source_ty
-  in
+  let scheme = scheme_to_constrained { quantified = []; body = source_ty } in
+  let source_expr = make_typed_expr (TVar (source_ident, scheme)) source_ty in
   let source_var =
     Core_ir.Ir.VarIdGen.fresh source_ident.name (convert_ty source_ty)
       dummy_span
@@ -248,19 +242,12 @@ let build_for_loop_cfg source_kind =
   bind_var map source_ident.name source_var;
   let iterator_dict =
     match source_kind with
-    | `Array ->
-        DictImplicit
-          ( "Iterator",
-            [ source_ty; ty_i64 ] )
-    | `Iterator ->
-        DictImplicit
-          ( "Iterator",
-            [ source_ty; ty_i64 ] )
+    | `Array -> DictImplicit ("Iterator", [ source_ty; ty_i64 ])
+    | `Iterator -> DictImplicit ("Iterator", [ source_ty; ty_i64 ])
   in
   let for_expr =
     make_typed_expr
-      (TFor
-         (typed_pat, source_expr, body_expr, iterator_dict, None))
+      (TFor (typed_pat, source_expr, body_expr, iterator_dict, None))
       ty_unit
   in
   let core_expr = desugar_expr map for_expr in
@@ -272,8 +259,7 @@ let test_desugar_for_loop_cfg_equivalence () =
   let iterator_blocks = build_for_loop_cfg `Iterator in
   let sig_array = terminator_signature array_blocks in
   let sig_iterator = terminator_signature iterator_blocks in
-  if sig_array <> sig_iterator then
-    failwith "配列版とiterator版でCFG終端種別の並びが一致しません";
+  if sig_array <> sig_iterator then failwith "配列版とiterator版でCFG終端種別の並びが一致しません";
   Printf.printf "OK\n"
 
 (* ========== タプルパターン変換テスト ========== *)
@@ -315,8 +301,8 @@ let test_desugar_tuple_pattern_simple () =
   let bound_ir = desugar_expr map bound in
   let rest_ir = desugar_expr map rest in
   let result =
-    desugar_pattern_binding map tuple_pat bound_ir
-      ~mutability:BindingImmutable ~cont:(fun () -> rest_ir)
+    desugar_pattern_binding map tuple_pat bound_ir ~mutability:BindingImmutable
+      ~cont:(fun () -> rest_ir)
       ty_i64 dummy_span
   in
 
@@ -381,7 +367,8 @@ let test_desugar_tuple_pattern_nested () =
   let rest_ir = desugar_expr map rest in
   let result =
     desugar_pattern_binding map outer_tuple_pat bound_ir
-      ~mutability:BindingImmutable ~cont:(fun () -> rest_ir)
+      ~mutability:BindingImmutable
+      ~cont:(fun () -> rest_ir)
       ty_i64 dummy_span
   in
 
@@ -435,8 +422,8 @@ let test_desugar_tuple_pattern_with_wildcard () =
   let bound_ir = desugar_expr map bound in
   let rest_ir = desugar_expr map rest in
   let result =
-    desugar_pattern_binding map tuple_pat bound_ir
-      ~mutability:BindingImmutable ~cont:(fun () -> rest_ir)
+    desugar_pattern_binding map tuple_pat bound_ir ~mutability:BindingImmutable
+      ~cont:(fun () -> rest_ir)
       ty_i64 dummy_span
   in
 
@@ -469,8 +456,8 @@ let test_desugar_record_pattern_basic () =
   let bound_ir = desugar_expr map bound in
   let rest_ir = desugar_expr map rest in
   let result =
-    desugar_pattern_binding map record_pat bound_ir
-      ~mutability:BindingImmutable ~cont:(fun () -> rest_ir)
+    desugar_pattern_binding map record_pat bound_ir ~mutability:BindingImmutable
+      ~cont:(fun () -> rest_ir)
       ty_i64 dummy_span
   in
 
@@ -499,8 +486,8 @@ let test_desugar_record_pattern_with_rest () =
   let bound_ir = desugar_expr map bound in
   let rest_ir = desugar_expr map rest in
   let result =
-    desugar_pattern_binding map record_pat bound_ir
-      ~mutability:BindingImmutable ~cont:(fun () -> rest_ir)
+    desugar_pattern_binding map record_pat bound_ir ~mutability:BindingImmutable
+      ~cont:(fun () -> rest_ir)
       ty_i64 dummy_span
   in
 
@@ -547,7 +534,8 @@ let test_desugar_record_pattern_nested () =
   let rest_ir = desugar_expr map rest in
   let result =
     desugar_pattern_binding map outer_record_pat bound_ir
-      ~mutability:BindingImmutable ~cont:(fun () -> rest_ir)
+      ~mutability:BindingImmutable
+      ~cont:(fun () -> rest_ir)
       ty_i64 dummy_span
   in
 
@@ -591,8 +579,8 @@ let test_desugar_constructor_pattern_some () =
   let bound_ir = desugar_expr map bound in
   let rest_ir = desugar_expr map rest in
   let result =
-    desugar_pattern_binding map some_pat bound_ir
-      ~mutability:BindingImmutable ~cont:(fun () -> rest_ir)
+    desugar_pattern_binding map some_pat bound_ir ~mutability:BindingImmutable
+      ~cont:(fun () -> rest_ir)
       ty_i64 dummy_span
   in
 
@@ -644,7 +632,8 @@ let test_desugar_constructor_pattern_nested () =
   let rest_ir = desugar_expr map rest in
   let result =
     desugar_pattern_binding map outer_some_pat bound_ir
-      ~mutability:BindingImmutable ~cont:(fun () -> rest_ir)
+      ~mutability:BindingImmutable
+      ~cont:(fun () -> rest_ir)
       ty_i64 dummy_span
   in
 

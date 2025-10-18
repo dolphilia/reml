@@ -51,8 +51,7 @@ let test_parse_typeclass_mode () =
     | Ok opts -> opts.Cli.Options.typeclass_mode
     | Error msg -> failwith msg
   in
-  assert_equal "invalid fallback" "dictionary"
-    (string_of_mode invalid_mode);
+  assert_equal "invalid fallback" "dictionary" (string_of_mode invalid_mode);
   Printf.printf "✓ test_parse_typeclass_mode passed\n%!"
 
 let has_entry trait_name ty entries =
@@ -81,8 +80,8 @@ let test_monomorphize_summary () =
     Type_env.Monomorph_registry.
       { trait_name = "Eq"; type_args = [ ty_i64 ]; methods = [] };
   ignore
-    (Core_ir.Monomorphize_poc.apply
-       ~mode:Core_ir.Monomorphize_poc.UseDictionary empty_module);
+    (Core_ir.Monomorphize_poc.apply ~mode:Core_ir.Monomorphize_poc.UseDictionary
+       empty_module);
   assert_bool "dictionary mode clears summary"
     (Core_ir.Monomorphize_poc.Summary.entries () = []);
 
@@ -92,12 +91,11 @@ let test_monomorphize_summary () =
     Type_env.Monomorph_registry.
       { trait_name = "Eq"; type_args = [ ty_i64 ]; methods = [] };
   ignore
-    (Core_ir.Monomorphize_poc.apply
-       ~mode:Core_ir.Monomorphize_poc.UseMonomorph empty_module);
+    (Core_ir.Monomorphize_poc.apply ~mode:Core_ir.Monomorphize_poc.UseMonomorph
+       empty_module);
   let entries = Core_ir.Monomorphize_poc.Summary.entries () in
   assert_bool "monomorph entries recorded"
-    (List.length entries = 1
-    && has_entry "Eq" ty_i64 entries);
+    (List.length entries = 1 && has_entry "Eq" ty_i64 entries);
   assert_bool "mode stored as monomorph"
     (Core_ir.Monomorphize_poc.Summary.mode ()
     = Core_ir.Monomorphize_poc.UseMonomorph);
@@ -108,15 +106,13 @@ let test_monomorphize_summary () =
     Type_env.Monomorph_registry.
       { trait_name = "Ord"; type_args = [ ty_string ]; methods = [] };
   ignore
-    (Core_ir.Monomorphize_poc.apply
-       ~mode:Core_ir.Monomorphize_poc.UseBoth empty_module);
+    (Core_ir.Monomorphize_poc.apply ~mode:Core_ir.Monomorphize_poc.UseBoth
+       empty_module);
   let both_entries = Core_ir.Monomorphize_poc.Summary.entries () in
   assert_bool "both mode recorded"
-    (List.length both_entries = 1
-    && has_entry "Ord" ty_string both_entries);
+    (List.length both_entries = 1 && has_entry "Ord" ty_string both_entries);
   assert_bool "mode stored as both"
-    (Core_ir.Monomorphize_poc.Summary.mode ()
-    = Core_ir.Monomorphize_poc.UseBoth);
+    (Core_ir.Monomorphize_poc.Summary.mode () = Core_ir.Monomorphize_poc.UseBoth);
 
   Printf.printf "✓ test_monomorphize_summary passed\n%!"
 
@@ -138,8 +134,8 @@ let test_wrapper_generation () =
         methods = [ ("eq", "__Eq_i64_eq") ];
       };
   let result =
-    Core_ir.Monomorphize_poc.apply
-      ~mode:Core_ir.Monomorphize_poc.UseMonomorph empty_module
+    Core_ir.Monomorphize_poc.apply ~mode:Core_ir.Monomorphize_poc.UseMonomorph
+      empty_module
   in
   let wrapper =
     List.find_opt
@@ -148,10 +144,8 @@ let test_wrapper_generation () =
   in
   (match wrapper with
   | Some fn ->
-      assert_bool "wrapper has two params"
-        (List.length fn.fn_params = 2);
-      assert_bool "wrapper returns Bool"
-        (type_equal fn.fn_return_ty ty_bool)
+      assert_bool "wrapper has two params" (List.length fn.fn_params = 2);
+      assert_bool "wrapper returns Bool" (type_equal fn.fn_return_ty ty_bool)
   | None -> failwith "wrapper was not generated");
   Printf.printf "✓ test_wrapper_generation passed\n%!"
 

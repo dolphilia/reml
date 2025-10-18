@@ -386,16 +386,17 @@ let rec codegen_expr ctx expr =
   | ADTConstruct _ ->
       codegen_errorf "ADTConstruct not yet implemented in Phase 1"
   | ADTProject _ -> codegen_errorf "ADTProject not yet implemented in Phase 1"
-  | DictConstruct dict_ty ->
-      codegen_dict_construct ctx dict_ty
+  | DictConstruct dict_ty -> codegen_dict_construct ctx dict_ty
   | DictMethodCall (dict_expr, method_name, args, audit) ->
       codegen_dict_method_call ctx dict_expr method_name args audit
   | AssignMutable _ ->
-      codegen_errorf "AssignMutable expression should have been lowered before codegen"
+      codegen_errorf
+        "AssignMutable expression should have been lowered before codegen"
   | Loop _ ->
       codegen_errorf "Loop expression should have been lowered before codegen"
   | Continue ->
-      codegen_errorf "Continue expression should have been lowered before codegen"
+      codegen_errorf
+        "Continue expression should have been lowered before codegen"
 
 (* ========== 辞書ノードのコード生成（Phase 2 Week 21-22） ========== *)
 
@@ -415,8 +416,7 @@ and codegen_dict_construct ctx dict_ty =
   (* 1. メソッド数を取得 *)
   let num_methods = List.length dict_ty.dict_methods in
 
-  if num_methods = 0 then
-    (* メソッドがない場合はヌルポインタを返す *)
+  if num_methods = 0 then (* メソッドがない場合はヌルポインタを返す *)
     Llvm.const_null ptr_ty
   else
     (* 2. 構造体型を定義: { ptr (type_info), [N x ptr] (vtable) } *)
@@ -430,7 +430,9 @@ and codegen_dict_construct ctx dict_ty =
     let type_info_gep =
       Llvm.build_struct_gep struct_ty dict_alloca 0 "type_info_ptr" ctx.builder
     in
-    let _ = Llvm.build_store (Llvm.const_null ptr_ty) type_info_gep ctx.builder in
+    let _ =
+      Llvm.build_store (Llvm.const_null ptr_ty) type_info_gep ctx.builder
+    in
 
     (* 5. 各メソッドのポインタを vtable に格納 *)
     List.iteri
@@ -507,7 +509,8 @@ and codegen_dict_method_call ctx dict_expr method_name args _audit =
   (* TODO: 型情報から正確なトレイト名を取得する *)
   let trait_name =
     match dict_expr.expr_ty with
-    | Types.TCon (Types.TCUser trait) when String.starts_with ~prefix:"Dict_" trait ->
+    | Types.TCon (Types.TCUser trait)
+      when String.starts_with ~prefix:"Dict_" trait ->
         (* Dict_Eq → Eq のように抽出 *)
         String.sub trait 5 (String.length trait - 5)
     | _ -> "Eq" (* デフォルトでEq *)
@@ -518,8 +521,7 @@ and codegen_dict_method_call ctx dict_expr method_name args _audit =
     let indices =
       match trait_name with
       | "Eq" -> [ ("eq", 0); ("ne", 1) ]
-      | "Ord" ->
-          [ ("cmp", 0); ("lt", 1); ("le", 2); ("gt", 3); ("ge", 4) ]
+      | "Ord" -> [ ("cmp", 0); ("lt", 1); ("le", 2); ("gt", 3); ("ge", 4) ]
       | "Collector" -> [ ("collect", 0) ]
       | _ -> []
     in
@@ -531,7 +533,8 @@ and codegen_dict_method_call ctx dict_expr method_name args _audit =
       (* 辞書構造体の型を再構築 *)
       (* Note: dict_ptr の型から抽出すべきだが、簡略化のため再構築 *)
       (* TODO: dict_expr.expr_type から正確な構造体型を取得する *)
-      let vtable_ty = Llvm.array_type ptr_ty 2 in  (* 暫定: Eq用の2メソッド *)
+      let vtable_ty = Llvm.array_type ptr_ty 2 in
+      (* 暫定: Eq用の2メソッド *)
       let struct_ty = Llvm.struct_type ctx.llctx [| ptr_ty; vtable_ty |] in
 
       (* 3. GEP で vtable エントリにアクセス: dict[1][method_idx] *)
@@ -551,7 +554,8 @@ and codegen_dict_method_call ctx dict_expr method_name args _audit =
 
       (* 5. call indirect でメソッドを呼び出し *)
       let arg_vals = List.map (codegen_expr ctx) args in
-      Llvm.build_call ptr_ty method_ptr (Array.of_list arg_vals) "result" ctx.builder
+      Llvm.build_call ptr_ty method_ptr (Array.of_list arg_vals) "result"
+        ctx.builder
   | None ->
       (* メソッドインデックスが見つからない場合はエラー *)
       codegen_errorf "Unknown method '%s' for trait '%s'" method_name trait_name
@@ -631,9 +635,7 @@ and codegen_var ctx var_id =
   match Hashtbl.find_opt ctx.var_map var_id with
   | Some llvalue ->
       if var_id.vmutable then
-        let llvm_ty =
-          Type_mapping.reml_type_to_llvm ctx.type_ctx var_id.vty
-        in
+        let llvm_ty = Type_mapping.reml_type_to_llvm ctx.type_ctx var_id.vty in
         Llvm.build_load llvm_ty llvalue
           (Printf.sprintf "%s.load" var_id.vname)
           ctx.builder
@@ -846,14 +848,13 @@ and codegen_primitive ctx op args =
       | TSlice (_, Some static_len) ->
           let i64_ty = Llvm.i64_type ctx.llctx in
           Llvm.const_int i64_ty static_len
-      | _ ->
+      | _ -> (
           (* フォールバック: FAT pointer { ptr, len } を想定して第2要素を抽出 *)
-          (match Llvm.classify_type (Llvm.type_of array_val) with
+          match Llvm.classify_type (Llvm.type_of array_val) with
           | Llvm.TypeKind.Struct ->
               Llvm.build_extractvalue array_val 1 "array_len" ctx.builder
           | _ ->
-              codegen_errorf
-                "配列長を取得できない型です (型: %s)"
+              codegen_errorf "配列長を取得できない型です (型: %s)"
                 (Llvm.string_of_lltype (Llvm.type_of array_val))))
   | _ -> codegen_errorf "Invalid primitive operation or argument count"
 
@@ -877,8 +878,7 @@ and codegen_array_access ctx array_expr index_expr =
     | TArray ty -> ty
     | TSlice (ty, _) -> ty
     | _ ->
-        codegen_errorf
-          "配列アクセスは [T] / [T; N] 型に対してのみ利用できます (実際: %s)"
+        codegen_errorf "配列アクセスは [T] / [T; N] 型に対してのみ利用できます (実際: %s)"
           (Types.string_of_ty array_expr.expr_ty)
   in
   let element_llty = Type_mapping.reml_type_to_llvm ctx.type_ctx element_ty in
@@ -901,8 +901,7 @@ and codegen_array_access ctx array_expr index_expr =
           Llvm.build_trunc index_val i64_ty "array.index64" ctx.builder
         else index_val
     | _ ->
-        codegen_errorf
-          "配列インデックスは整数型である必要があります (LLVM型: %s)"
+        codegen_errorf "配列インデックスは整数型である必要があります (LLVM型: %s)"
           (Llvm.string_of_lltype idx_ty)
   in
 
@@ -984,9 +983,7 @@ let codegen_terminator ctx terminator =
 let codegen_stmt ctx stmt =
   match stmt with
   | Alloca var_id ->
-      let llvm_ty =
-        Type_mapping.reml_type_to_llvm ctx.type_ctx var_id.vty
-      in
+      let llvm_ty = Type_mapping.reml_type_to_llvm ctx.type_ctx var_id.vty in
       let ptr = Llvm.build_alloca llvm_ty var_id.vname ctx.builder in
       Hashtbl.replace ctx.var_map var_id ptr
   | Store (var_id, expr) -> (
@@ -995,9 +992,7 @@ let codegen_stmt ctx stmt =
           let value = codegen_expr ctx expr in
           let _ = Llvm.build_store value ptr ctx.builder in
           ()
-      | None ->
-          codegen_errorf "Mutable variable %s は未割り当てです"
-            var_id.vname)
+      | None -> codegen_errorf "Mutable variable %s は未割り当てです" var_id.vname)
   | Assign (var_id, expr) ->
       let value = codegen_expr ctx expr in
       Hashtbl.replace ctx.var_map var_id value
@@ -1226,7 +1221,9 @@ let generate_builtin_trait_methods ctx =
 
   (* 1. __Eq_i64_eq(i64, i64) returns Bool *)
   let eq_i64_fn_ty = Llvm.function_type i1_ty [| i64_ty; i64_ty |] in
-  let eq_i64_fn = Llvm.declare_function "__Eq_i64_eq" eq_i64_fn_ty ctx.llmodule in
+  let eq_i64_fn =
+    Llvm.declare_function "__Eq_i64_eq" eq_i64_fn_ty ctx.llmodule
+  in
   Hashtbl.replace ctx.fn_map "__Eq_i64_eq" eq_i64_fn;
 
   let entry_bb = Llvm.append_block ctx.llctx "entry" eq_i64_fn in
@@ -1265,8 +1262,8 @@ let generate_builtin_trait_methods ctx =
 
   (* string_eq(s1, s2) を呼び出し *)
   let call_result =
-    Llvm.build_call string_eq_fn_ty string_eq_fn [| s1; s2 |]
-      "string_eq_result" ctx.builder
+    Llvm.build_call string_eq_fn_ty string_eq_fn [| s1; s2 |] "string_eq_result"
+      ctx.builder
   in
 
   (* i32 の結果を i1 に変換（0 でなければ true） *)

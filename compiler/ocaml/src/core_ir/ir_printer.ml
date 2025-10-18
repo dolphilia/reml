@@ -164,8 +164,8 @@ let rec string_of_expr ?(depth = 0) expr =
       let ty_args_str = join_with ", " string_of_ty type_args in
       Printf.sprintf "%s(dict %s<%s> : %s)" ind trait_name ty_args_str ty_str
   | DictConstruct dict ->
-      Printf.sprintf "%s(dict.construct %s : %s)" ind
-        (string_of_dict_type dict) ty_str
+      Printf.sprintf "%s(dict.construct %s : %s)" ind (string_of_dict_type dict)
+        ty_str
   | DictMethodCall (dict_expr, method_name, args, audit_opt) ->
       let dict_str = string_of_expr ~depth:0 dict_expr |> String.trim in
       let args_str =
@@ -184,8 +184,7 @@ let rec string_of_expr ?(depth = 0) expr =
               | Some (StageExact s) ->
                   Printf.sprintf "exact(%s)" (Effect.stage_id_to_string s)
               | Some (StageAtLeast s) ->
-                  Printf.sprintf "at_least(%s)"
-                    (Effect.stage_id_to_string s))
+                  Printf.sprintf "at_least(%s)" (Effect.stage_id_to_string s))
       in
       Printf.sprintf "%s(dict.call %s.%s(%s)%s : %s)" ind dict_str method_name
         args_str audit_str ty_str
@@ -213,11 +212,10 @@ let rec string_of_expr ?(depth = 0) expr =
       Printf.sprintf "%s(project %s %d : %s)" ind e_str idx ty_str
   | AssignMutable (var, rhs) ->
       let rhs_str = string_of_expr ~depth:0 rhs |> String.trim in
-      Printf.sprintf "%s(set %s := %s : Unit)" ind (string_of_var_id var) rhs_str
-  | Continue ->
-      Printf.sprintf "%s(continue : Unit)" ind
-  | Loop loop_info ->
-      string_of_loop_info ~depth loop_info ty_str
+      Printf.sprintf "%s(set %s := %s : Unit)" ind (string_of_var_id var)
+        rhs_str
+  | Continue -> Printf.sprintf "%s(continue : Unit)" ind
+  | Loop loop_info -> string_of_loop_info ~depth loop_info ty_str
 
 and string_of_case ?(depth = 0) case =
   let ind = indent depth in
@@ -234,8 +232,7 @@ and string_of_loop_kind ?(depth = 0) = function
   | WhileLoop cond ->
       let cond_str = string_of_expr ~depth:(depth + 1) cond in
       Printf.sprintf "%swhile\n%s" (indent depth) cond_str
-  | ForLoop _ ->
-      Printf.sprintf "%sfor <not-yet-lowered>" (indent depth)
+  | ForLoop _ -> Printf.sprintf "%sfor <not-yet-lowered>" (indent depth)
   | InfiniteLoop -> Printf.sprintf "%sloop" (indent depth)
 
 and string_of_loop_source_kind = function
@@ -264,8 +261,7 @@ and string_of_loop_info ?(depth = 0) info ty_str =
             (fun { lc_var; lc_sources } ->
               let srcs = string_of_loop_sources lc_sources in
               if String.equal srcs "" then string_of_var_id lc_var
-              else
-                Printf.sprintf "%s<-%s" (string_of_var_id lc_var) srcs)
+              else Printf.sprintf "%s<-%s" (string_of_var_id lc_var) srcs)
             vars
         in
         Printf.sprintf "\n%sphi [%s]" (indent (depth + 1)) vars_str
@@ -280,9 +276,7 @@ and string_of_loop_info ?(depth = 0) info ty_str =
     | [] -> ""
     | effects ->
         let items =
-          join_with ", "
-            (fun eff -> eff.effect_tag.effect_name)
-            effects
+          join_with ", " (fun eff -> eff.effect_tag.effect_name) effects
         in
         Printf.sprintf "\n%seffects-header[%s]" (indent (depth + 1)) items
   in
@@ -291,9 +285,7 @@ and string_of_loop_info ?(depth = 0) info ty_str =
     | [] -> ""
     | effects ->
         let items =
-          join_with ", "
-            (fun eff -> eff.effect_tag.effect_name)
-            effects
+          join_with ", " (fun eff -> eff.effect_tag.effect_name) effects
         in
         Printf.sprintf "\n%seffects-body[%s]" (indent (depth + 1)) items
   in

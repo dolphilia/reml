@@ -98,7 +98,8 @@ let generate_ir () =
 let run_command cmd =
   let exit_code = Sys.command cmd in
   if exit_code <> 0 then
-    failwith (Printf.sprintf "Command failed with exit code %d: %s" exit_code cmd)
+    failwith
+      (Printf.sprintf "Command failed with exit code %d: %s" exit_code cmd)
 
 (* 一時ファイル管理 *)
 let with_temp_file suffix f =
@@ -115,8 +116,7 @@ let test_llvm_ir_validation () =
   match Verify.verify_llvm_ir llvm_module with
   | Ok () -> ()
   | Error err ->
-      failwith
-        (Printf.sprintf "LLVM IR検証失敗: %s" (Verify.string_of_error err))
+      failwith (Printf.sprintf "LLVM IR検証失敗: %s" (Verify.string_of_error err))
 
 (* LLVM IRからビットコードへの変換を確認 *)
 let test_ir_to_bitcode () =
@@ -128,8 +128,7 @@ let test_ir_to_bitcode () =
       if not success then failwith "ビットコードの書き出しに失敗";
 
       (* ファイルが生成されたことを確認 *)
-      if not (Sys.file_exists bc_file) then
-        failwith "ビットコードファイルが生成されていない")
+      if not (Sys.file_exists bc_file) then failwith "ビットコードファイルが生成されていない")
 
 (* LLVM IRからオブジェクトファイルへのコンパイルを確認 *)
 let test_ir_to_object () =
@@ -153,8 +152,7 @@ let test_ir_to_object () =
              failwith "llc compilation failed");
 
           (* オブジェクトファイルが生成されたことを確認 *)
-          if not (Sys.file_exists obj_file) then
-            failwith "オブジェクトファイルが生成されていない"))
+          if not (Sys.file_exists obj_file) then failwith "オブジェクトファイルが生成されていない"))
 
 (* ユーザー定義impl関連のシンボル存在確認 *)
 let test_user_impl_symbols_exist () =
@@ -171,8 +169,7 @@ let test_user_impl_symbols_exist () =
         let _ = Str.search_forward (Str.regexp_string pattern) ir_string 0 in
         ()
       with Not_found ->
-        failwith
-          (Printf.sprintf "テスト関数 %s が見つかりません" func_name))
+        failwith (Printf.sprintf "テスト関数 %s が見つかりません" func_name))
     test_functions
 
 (* ========== メインテストランナー ========== *)

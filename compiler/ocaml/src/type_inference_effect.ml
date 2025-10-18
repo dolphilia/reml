@@ -37,7 +37,7 @@ let create_runtime_stage ?(capability_stages = []) ?default_stage
 let stage_for_capability runtime_stage capability_name =
   match capability_name with
   | None -> runtime_stage.default_stage
-  | Some raw_name ->
+  | Some raw_name -> (
       let key = normalize_capability_name raw_name in
       match
         List.find_opt
@@ -45,11 +45,10 @@ let stage_for_capability runtime_stage capability_name =
           runtime_stage.capability_stages
       with
       | Some (_, stage) -> stage
-      | None -> runtime_stage.default_stage
+      | None -> runtime_stage.default_stage)
 
 let resolve_function_profile ~(runtime_context : runtime_stage)
-    ~(function_ident : ident)
-    (effect_node : effect_profile_node option) =
+    ~(function_ident : ident) (effect_node : effect_profile_node option) =
   let source_name = Some function_ident.name in
   let capability_name =
     match effect_node with
@@ -65,13 +64,11 @@ let resolve_function_profile ~(runtime_context : runtime_stage)
     | Some cap ->
         stage_trace_step_of_stage_id_opt ~capability:cap "typer"
           (Some current_stage)
-    | None ->
-        stage_trace_step_of_stage_id_opt "typer" (Some current_stage)
+    | None -> stage_trace_step_of_stage_id_opt "typer" (Some current_stage)
   in
   let rec split_primary acc = function
-    | ( { source; _ } as step ) :: rest
-      when String.equal source "cli_option"
-           || String.equal source "env_var" ->
+    | ({ source; _ } as step) :: rest
+      when String.equal source "cli_option" || String.equal source "env_var" ->
         split_primary (step :: acc) rest
     | tail -> (List.rev acc, tail)
   in
@@ -83,48 +80,46 @@ let resolve_function_profile ~(runtime_context : runtime_stage)
   | None ->
       let stage_trace = stage_trace_with_typer runtime_context.stage_trace in
       let stage_trace =
-        match stage_trace with
-        | [] -> [ typer_step ]
-        | trace -> trace
+        match stage_trace with [] -> [ typer_step ] | trace -> trace
       in
       let profile =
         {
-          (default_profile ?source_name ~stage_trace ~span:function_ident.span ())
+          (default_profile ?source_name ~stage_trace ~span:function_ident.span
+             ())
           with
           resolved_stage = Some current_stage;
           resolved_capability = capability_name;
         }
       in
       Ok profile
-  | Some node ->
+  | Some node -> (
       let base_trace =
         match stage_trace_with_typer runtime_context.stage_trace with
         | [] -> [ typer_step ]
         | trace -> trace
       in
       let profile =
-        profile_of_ast ?source_name ~stage_trace:base_trace node
-        |> fun p ->
+        profile_of_ast ?source_name ~stage_trace:base_trace node |> fun p ->
         {
           p with
           resolved_stage = Some current_stage;
           resolved_capability = capability_name;
         }
       in
-      (match profile.diagnostic_payload.invalid_attributes with
+      match profile.diagnostic_payload.invalid_attributes with
       | invalid :: _ ->
           Error
             (Type_error.effect_invalid_attribute_error
                ~function_name:function_ident.name ~profile ~invalid)
       | [] ->
-      if stage_requirement_satisfied profile.stage_requirement current_stage then
-        Ok profile
-      else
-        Error
-          (Type_error.effect_stage_mismatch_error
-             ~function_name:function_ident.name
-             ~required_stage:
-               (stage_requirement_to_string profile.stage_requirement)
-             ~actual_stage:(stage_id_to_string current_stage)
-             ~span:profile.source_span ~capability:capability_name
-             ~stage_trace:profile.stage_trace))
+          if stage_requirement_satisfied profile.stage_requirement current_stage
+          then Ok profile
+          else
+            Error
+              (Type_error.effect_stage_mismatch_error
+                 ~function_name:function_ident.name
+                 ~required_stage:
+                   (stage_requirement_to_string profile.stage_requirement)
+                 ~actual_stage:(stage_id_to_string current_stage)
+                 ~span:profile.source_span ~capability:capability_name
+                 ~stage_trace:profile.stage_trace))

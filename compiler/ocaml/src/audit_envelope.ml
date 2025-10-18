@@ -33,28 +33,25 @@ let to_json (event : event) =
 
 let ensure_parent_directory path =
   let dir = Filename.dirname path in
-  if dir <> "." && dir <> "" then (
+  if dir <> "." && dir <> "" then
     let rec ensure path =
       if path = "." || path = "" then ()
       else if Sys.file_exists path then (
         if not (Sys.is_directory path) then
-          invalid_arg
-            (Printf.sprintf "\"%s\" はディレクトリではありません" path))
-      else (
+          invalid_arg (Printf.sprintf "\"%s\" はディレクトリではありません" path))
+      else
         let parent = Filename.dirname path in
         if parent <> path then ensure parent;
-        Unix.mkdir path 0o755)
+        Unix.mkdir path 0o755
     in
-    ensure dir)
+    ensure dir
 
 let append_events path events =
   match events with
   | [] -> ()
   | _ ->
       ensure_parent_directory path;
-      let oc =
-        open_out_gen [ Open_creat; Open_text; Open_append ] 0o644 path
-      in
+      let oc = open_out_gen [ Open_creat; Open_text; Open_append ] 0o644 path in
       List.iter
         (fun event ->
           Yojson.Basic.to_channel oc (to_json event);

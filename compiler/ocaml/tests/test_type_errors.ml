@@ -425,9 +425,7 @@ let test_arity_mismatch () =
       let env = initial_env in
       (* add: i64 -> i64 -> i64 を環境に追加 *)
       let add_ty = TArrow (ty_i64, TArrow (ty_i64, ty_i64)) in
-      let env =
-        extend "add" (scheme_to_constrained (mono_scheme add_ty)) env
-      in
+      let env = extend "add" (scheme_to_constrained (mono_scheme add_ty)) env in
 
       (* add(1) - 引数が1つ不足 *)
       let call_expr =
@@ -465,9 +463,7 @@ let test_arity_mismatch () =
       (* identity: i64 -> i64 を環境に追加 *)
       let identity_ty = TArrow (ty_i64, ty_i64) in
       let env =
-        extend "identity"
-          (scheme_to_constrained (mono_scheme identity_ty))
-          env
+        extend "identity" (scheme_to_constrained (mono_scheme identity_ty)) env
       in
 
       (* identity(1, 2) - 引数が多すぎ *)
@@ -581,9 +577,7 @@ let test_not_a_function () =
   run_test "E7005: not a function (apply to i64)" (fun () ->
       let env = initial_env in
       (* let x = 42; x(1) *)
-      let env =
-        extend "x" (scheme_to_constrained (mono_scheme ty_i64)) env
-      in
+      let env = extend "x" (scheme_to_constrained (mono_scheme ty_i64)) env in
       let call_expr =
         {
           expr_kind =
@@ -982,10 +976,7 @@ let test_trait_constraint_failures () =
       let ident_i = { name = "i"; span = dummy_span } in
       let pattern = { pat_kind = PatVar ident_i; pat_span = dummy_span } in
       let source_expr =
-        {
-          expr_kind = Literal (Int ("42", Base10));
-          expr_span = dummy_span;
-        }
+        { expr_kind = Literal (Int ("42", Base10)); expr_span = dummy_span }
       in
       let body_expr = { expr_kind = Literal Unit; expr_span = dummy_span } in
       let for_expr =
@@ -1086,9 +1077,9 @@ let test_trait_constraint_failures () =
       (match lookup_audit "effect.stage.iterator.source" with
       | `String "CustomIter" -> ()
       | _ -> failwith "audit: iterator.source mismatch");
-      (match lookup_audit "effect.capability" with
+      match lookup_audit "effect.capability" with
       | `String "core.iterator.custom" -> ()
-      | _ -> failwith "audit: capability mismatch"));
+      | _ -> failwith "audit: capability mismatch");
   ()
 
 (* ========== メイン ========== *)

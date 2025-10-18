@@ -16,11 +16,12 @@ module Extensions = struct
   type t = (string * Json.t) list
 
   let empty : t = []
-
   let is_empty = function [] -> true | _ -> false
 
   let set key value entries =
-    let filtered = List.filter (fun (k, _) -> not (String.equal k key)) entries in
+    let filtered =
+      List.filter (fun (k, _) -> not (String.equal k key)) entries
+    in
     (key, value) :: filtered
 
   let to_json entries = `Assoc (List.rev entries)
@@ -217,27 +218,27 @@ let set_extension key value diag =
 let set_audit_metadata key value diag =
   { diag with audit_metadata = Extensions.set key value diag.audit_metadata }
 
-let with_effect_stage_extension ?actual_stage ?residual ?provider
-    ?manifest_path ?capability_meta ?iterator_fields ?stage_trace
-    ~required_stage ~capability diag =
+let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
+    ?capability_meta ?iterator_fields ?stage_trace ~required_stage ~capability
+    diag =
   let stage_fields =
     [
       ("required", `String required_stage);
-      ( "actual",
-        match actual_stage with Some s -> `String s | None -> `Null );
+      ("actual", match actual_stage with Some s -> `String s | None -> `Null);
     ]
   in
   let effect_fields =
-    [
-      ("stage", `Assoc stage_fields);
-      ("capability", `String capability);
-    ]
+    [ ("stage", `Assoc stage_fields); ("capability", `String capability) ]
   in
   let effect_fields =
-    match residual with Some value -> ("residual", value) :: effect_fields | None -> effect_fields
+    match residual with
+    | Some value -> ("residual", value) :: effect_fields
+    | None -> effect_fields
   in
   let effect_fields =
-    match provider with Some value -> ("provider", `String value) :: effect_fields | None -> effect_fields
+    match provider with
+    | Some value -> ("provider", `String value) :: effect_fields
+    | None -> effect_fields
   in
   let effect_fields =
     match manifest_path with
@@ -267,7 +268,8 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider
     match stage_trace with
     | Some trace when trace <> [] ->
         set_extension "effect.stage_trace"
-          (Effect_profile.stage_trace_to_json trace) diag
+          (Effect_profile.stage_trace_to_json trace)
+          diag
     | _ -> diag
   in
   let diag =
@@ -285,14 +287,11 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider
     set_audit_metadata "effect.stage.required" (`String required_stage) diag
   in
   let diag =
-    set_audit_metadata
-      "effect.stage.actual"
+    set_audit_metadata "effect.stage.actual"
       (match actual_stage with Some s -> `String s | None -> `Null)
       diag
   in
-  let diag =
-    set_audit_metadata "effect.capability" (`String capability) diag
-  in
+  let diag = set_audit_metadata "effect.capability" (`String capability) diag in
   let diag =
     match residual with
     | Some value -> set_audit_metadata "effect.residual" value diag
@@ -329,7 +328,8 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider
     match stage_trace with
     | Some trace when trace <> [] ->
         set_audit_metadata "stage_trace"
-          (Effect_profile.stage_trace_to_json trace) diag
+          (Effect_profile.stage_trace_to_json trace)
+          diag
     | _ -> diag
   in
   diag
@@ -433,8 +433,7 @@ let to_string diag =
     match diag.extensions with
     | [] -> []
     | entries ->
-        entries
-        |> List.rev
+        entries |> List.rev
         |> List.map (fun (key, value) ->
                Printf.sprintf "拡張[%s]: %s" key (Json.to_string value))
   in

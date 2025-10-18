@@ -12,11 +12,7 @@
 open Types
 
 type mutability = Immutable | Mutable
-
-type binding = {
-  scheme : constrained_scheme;
-  mutability : mutability;
-}
+type binding = { scheme : constrained_scheme; mutability : mutability }
 
 (* ========== 型環境の定義 ========== *)
 
@@ -33,10 +29,7 @@ let fresh_builtin_var =
     decr counter;
     { tv_id = id; tv_name = Some name }
 
-type env = {
-  bindings : (string * binding) list;
-  parent : env option;
-}
+type env = { bindings : (string * binding) list; parent : env option }
 (** 型環境
  *
  * bindings: 現在のスコープの束縛
@@ -69,7 +62,9 @@ let rec lookup_binding name env =
       | None -> None)
 
 let lookup name env =
-  match lookup_binding name env with Some binding -> Some binding.scheme | None -> None
+  match lookup_binding name env with
+  | Some binding -> Some binding.scheme
+  | None -> None
 
 let lookup_mutability name env =
   match lookup_binding name env with
@@ -187,7 +182,9 @@ let rec string_of_env env =
     List.map
       (fun (name, binding) ->
         let mut_label =
-          match binding.mutability with Mutable -> " (mutable)" | Immutable -> ""
+          match binding.mutability with
+          | Mutable -> " (mutable)"
+          | Immutable -> ""
         in
         Printf.sprintf "  %s : %s%s" name
           (string_of_constrained_scheme binding.scheme)
@@ -233,7 +230,6 @@ module Monomorph_registry = struct
   }
 
   let registry : trait_instance list ref = ref []
-
   let reset () = registry := []
 
   let equal_instance lhs rhs =
@@ -244,8 +240,8 @@ module Monomorph_registry = struct
   let normalize_methods methods =
     List.fold_left
       (fun acc (name, impl) ->
-        if List.exists (fun (existing, _) -> String.equal existing name) acc then
-          acc
+        if List.exists (fun (existing, _) -> String.equal existing name) acc
+        then acc
         else (name, impl) :: acc)
       [] methods
 
@@ -258,9 +254,7 @@ module Monomorph_registry = struct
       { instance with methods = normalize_methods instance.methods }
     in
     match
-      List.find_opt
-        (fun existing -> equal_instance existing instance)
-        !registry
+      List.find_opt (fun existing -> equal_instance existing instance) !registry
     with
     | Some existing ->
         let merged =
@@ -288,8 +282,7 @@ module Monomorph_registry = struct
       name;
     Buffer.contents buffer
 
-  let string_of_type_for_symbol ty =
-    sanitize_type_name (string_of_ty ty)
+  let string_of_type_for_symbol ty = sanitize_type_name (string_of_ty ty)
 
   let builtin_methods trait ty =
     let ty_symbol = string_of_type_for_symbol ty in

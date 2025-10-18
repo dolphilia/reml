@@ -6,16 +6,11 @@
  *)
 
 open Ast
-
 module Json = Yojson.Basic
 
 (* ========== Stage 定義 ========== *)
 
-type stage_id =
-  | Experimental
-  | Beta
-  | Stable
-  | Custom of string
+type stage_id = Experimental | Beta | Stable | Custom of string
 
 let normalize_stage_name (value : string) =
   value |> String.trim |> String.lowercase_ascii
@@ -35,9 +30,7 @@ let stage_id_to_string = function
 
 let stage_id_of_ident (id : ident) = stage_id_of_string id.name
 
-type stage_requirement =
-  | StageExact of stage_id
-  | StageAtLeast of stage_id
+type stage_requirement = StageExact of stage_id | StageAtLeast of stage_id
 
 let stage_requirement_to_string = function
   | StageExact stage -> stage_id_to_string stage
@@ -137,40 +130,37 @@ let stage_trace_empty : stage_trace = []
 
 (* ========== 効果タグ・効果集合 ========== *)
 
-type tag = {
-  effect_name : string;
-  effect_span : span;
-}
-
-type set = {
-  declared : tag list;
-  residual : tag list;
-}
+type tag = { effect_name : string; effect_span : span }
+type set = { declared : tag list; residual : tag list }
 
 let empty_set = { declared = []; residual = [] }
-
 let normalize_effect_name name = String.lowercase_ascii name
 
 let contains_tag name tags =
   let name = normalize_effect_name name in
   List.exists
-    (fun tag ->
-      String.equal (normalize_effect_name tag.effect_name) name)
+    (fun tag -> String.equal (normalize_effect_name tag.effect_name) name)
     tags
 
 let append_unique tag tags =
   if contains_tag tag.effect_name tags then tags else tags @ [ tag ]
 
-let add_declared tag set = { set with declared = append_unique tag set.declared }
+let add_declared tag set =
+  { set with declared = append_unique tag set.declared }
 
-let add_residual tag set = { set with residual = append_unique tag set.residual }
+let add_residual tag set =
+  { set with residual = append_unique tag set.residual }
 
 let tags_of_idents idents =
-  List.map (fun ident -> { effect_name = ident.name; effect_span = ident.span }) idents
+  List.map
+    (fun ident -> { effect_name = ident.name; effect_span = ident.span })
+    idents
 
 let set_of_ast_nodes ~declared ~residual =
   let initial = empty_set in
-  let with_declared = List.fold_left (fun acc tag -> add_declared tag acc) initial declared in
+  let with_declared =
+    List.fold_left (fun acc tag -> add_declared tag acc) initial declared
+  in
   List.fold_left (fun acc tag -> add_residual tag acc) with_declared residual
 
 (* ========== 効果属性診断ペイロード ========== *)
@@ -193,19 +183,14 @@ type invalid_attribute = {
   reason : invalid_attribute_reason;
 }
 
-type residual_effect_leak = {
-  leaked_tag : tag;
-  leak_origin : span;
-}
+type residual_effect_leak = { leaked_tag : tag; leak_origin : span }
 
 type effect_diagnostic_payload = {
   invalid_attributes : invalid_attribute list;
   residual_leaks : residual_effect_leak list;
 }
 
-let empty_diagnostic_payload =
-  { invalid_attributes = []; residual_leaks = [] }
-
+let empty_diagnostic_payload = { invalid_attributes = []; residual_leaks = [] }
 let normalize_key_name name = String.lowercase_ascii (String.trim name)
 
 let string_of_relative_head = function
@@ -217,12 +202,13 @@ let string_of_relative_head = function
 
 let string_of_module_path = function
   | Ast.Root ids -> "::" ^ String.concat "." (List.map (fun id -> id.name) ids)
-  | Relative (head, tail) ->
+  | Relative (head, tail) -> (
       let head_str = string_of_relative_head head in
-      (match tail with
+      match tail with
       | [] -> head_str
       | _ ->
-          head_str ^ "." ^ String.concat "." (List.map (fun id -> id.name) tail))
+          head_str ^ "." ^ String.concat "." (List.map (fun id -> id.name) tail)
+      )
 
 let rec expr_to_display expr =
   match expr.expr_kind with
@@ -387,14 +373,10 @@ let invalid_attribute_to_json (item : invalid_attribute) =
     [
       ("attribute", `String item.attribute_display);
       ("attribute_name", `String item.attribute_name);
-      ( "reason",
-        `String (string_of_invalid_reason item.reason) );
-      ( "key",
-        match item.key with Some key -> `String key | None -> `Null );
+      ("reason", `String (string_of_invalid_reason item.reason));
+      ("key", match item.key with Some key -> `String key | None -> `Null);
       ( "provided",
-        match item.provided_json with
-        | Some json -> json
-        | None -> `Null );
+        match item.provided_json with Some json -> json | None -> `Null );
       ( "provided_display",
         match item.provided_display with
         | Some display -> `String display
@@ -422,7 +404,8 @@ let effect_diagnostic_payload_to_json (payload : effect_diagnostic_payload) =
   let residual_json =
     `List (List.map residual_effect_leak_to_json payload.residual_leaks)
   in
-  `Assoc [ ("invalid_attributes", invalid_json); ("residual_leaks", residual_json) ]
+  `Assoc
+    [ ("invalid_attributes", invalid_json); ("residual_leaks", residual_json) ]
 
 (* ========== Effect Profile ========== *)
 
@@ -439,9 +422,8 @@ type profile = {
 
 let make_profile ?source_name ?resolved_stage ?resolved_capability
     ?(stage_trace = stage_trace_empty)
-    ?(diagnostic_payload = empty_diagnostic_payload)
-    ~stage_requirement ~effect_set ~span ()
-    =
+    ?(diagnostic_payload = empty_diagnostic_payload) ~stage_requirement
+    ~effect_set ~span () =
   {
     effect_set;
     stage_requirement;
@@ -466,9 +448,7 @@ let profile_of_ast ?source_name ?(stage_trace = stage_trace_empty)
     | entries -> tags_of_idents entries
   in
   let capability_name =
-    match node.effect_capabilities with
-    | cap :: _ -> Some cap.name
-    | [] -> None
+    match node.effect_capabilities with cap :: _ -> Some cap.name | [] -> None
   in
   let effect_set = set_of_ast_nodes ~declared ~residual in
   let stage_requirement =

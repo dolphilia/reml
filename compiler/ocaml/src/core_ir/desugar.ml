@@ -43,34 +43,30 @@ let rec head_type_and_args ty =
 
 let is_user_type name ty =
   match head_type_and_args ty with
-  | TCon (TCUser type_name), args when String.equal type_name name ->
-      Some args
+  | TCon (TCUser type_name), args when String.equal type_name name -> Some args
   | _ -> None
 
-type for_source_kind =
-  | ForSourceArray
-  | ForSourceIterator
+type for_source_kind = ForSourceArray | ForSourceIterator
 
 let is_array_like_ty ty =
   match ty with
   | TArray _ | TSlice _ -> true
   | _ -> Option.is_some (is_user_type "Array" ty)
 
-let determine_for_source_kind (info : iterator_dict_info option) : for_source_kind =
+let determine_for_source_kind (info : iterator_dict_info option) :
+    for_source_kind =
   match info with
   | Some metadata -> (
       match metadata.kind with
       | IteratorArrayLike -> ForSourceArray
-      | IteratorCoreIter
-      | IteratorOptionLike
-      | IteratorResultLike
-      | IteratorCustom _ -> ForSourceIterator)
+      | IteratorCoreIter | IteratorOptionLike | IteratorResultLike
+      | IteratorCustom _ ->
+          ForSourceIterator)
   | None -> ForSourceIterator
 
 let stage_requirement_to_ir = function
   | IteratorStageExact stage -> StageExact (Effect.stage_id_of_string stage)
-  | IteratorStageAtLeast stage ->
-      StageAtLeast (Effect.stage_id_of_string stage)
+  | IteratorStageAtLeast stage -> StageAtLeast (Effect.stage_id_of_string stage)
 
 let string_of_iterator_stage_requirement = function
   | IteratorStageExact stage -> Printf.sprintf "exact:%s" stage
@@ -142,26 +138,30 @@ type binding_mutability = BindingImmutable | BindingMutable
 let trait_method_indices = function
   | "Eq" ->
       (* 仕様書 1-2 §B.1: 等価性比較 *)
-      [
-        ("eq", 0);   (* a == b *)
-        ("ne", 1);   (* a != b *)
-      ]
+      [ ("eq", 0); (* a == b *) ("ne", 1) (* a != b *) ]
   | "Ord" ->
       (* 仕様書 1-2 §B.1: 順序付け（Eq をスーパートレイトとして要求） *)
       [
-        ("cmp", 0);  (* a.cmp(b) → Ordering *)
-        ("lt", 1);   (* a < b *)
-        ("le", 2);   (* a <= b *)
-        ("gt", 3);   (* a > b *)
-        ("ge", 4);   (* a >= b *)
+        ("cmp", 0);
+        (* a.cmp(b) → Ordering *)
+        ("lt", 1);
+        (* a < b *)
+        ("le", 2);
+        (* a <= b *)
+        ("gt", 3);
+        (* a > b *)
+        ("ge", 4);
+        (* a >= b *)
       ]
   | "Collector" ->
       (* 仕様書 3-1 §2.2: コレクション反復 *)
       [
-        ("iter", 0);    (* for x in collection *)
-        ("collect", 1); (* collection.collect() *)
+        ("iter", 0);
+        (* for x in collection *)
+        ("collect", 1);
+        (* collection.collect() *)
       ]
-  | _ -> []  (* 未知のトレイトはメソッド情報なし *)
+  | _ -> [] (* 未知のトレイトはメソッド情報なし *)
 
 (** トレイトメソッド名からvtableインデックスを取得
  *
@@ -198,25 +198,35 @@ let get_method_index (trait_name : string) (method_name : string) : int option =
  * }
  * ```
  *)
-let generate_dict_init (trait_name : string) (ty : ty) (span : span) : expr option =
+let generate_dict_init (trait_name : string) (ty : ty) (span : span) :
+    expr option =
   (* Phase 2 Week 19-22 実装: 辞書初期化コード生成 *)
 
   (* 組み込み実装の判定ヘルパー *)
   let has_builtin_impl trait ty =
     match (trait, ty) with
-    | ("Eq", TCon (TCInt _)) | ("Eq", TCon (TCFloat _))
-    | ("Eq", TCon TCBool) | ("Eq", TCon TCChar) | ("Eq", TCon TCString)
-    | ("Eq", TUnit) -> true
-    | ("Ord", TCon (TCInt _)) | ("Ord", TCon (TCFloat _))
-    | ("Ord", TCon TCBool) | ("Ord", TCon TCChar) | ("Ord", TCon TCString) -> true
+    | "Eq", TCon (TCInt _)
+    | "Eq", TCon (TCFloat _)
+    | "Eq", TCon TCBool
+    | "Eq", TCon TCChar
+    | "Eq", TCon TCString
+    | "Eq", TUnit ->
+        true
+    | "Ord", TCon (TCInt _)
+    | "Ord", TCon (TCFloat _)
+    | "Ord", TCon TCBool
+    | "Ord", TCon TCChar
+    | "Ord", TCon TCString ->
+        true
     | _ -> false
   in
 
   (* メソッドシグネチャ取得ヘルパー *)
   let get_method_sig trait method_name impl_ty =
     match (trait, method_name) with
-    | ("Eq", "eq") | ("Eq", "ne") -> Some (TArrow (impl_ty, TArrow (impl_ty, ty_bool)))
-    | ("Ord", "lt") | ("Ord", "le") | ("Ord", "gt") | ("Ord", "ge") ->
+    | "Eq", "eq" | "Eq", "ne" ->
+        Some (TArrow (impl_ty, TArrow (impl_ty, ty_bool)))
+    | "Ord", "lt" | "Ord", "le" | "Ord", "gt" | "Ord", "ge" ->
         Some (TArrow (impl_ty, TArrow (impl_ty, ty_bool)))
     | _ -> None
   in
@@ -257,7 +267,8 @@ let generate_dict_init (trait_name : string) (ty : ty) (span : span) : expr opti
  * @param span 診断用位置情報
  * @return DictMethodCall ノード（該当する場合）
  *)
-let try_convert_to_dict_method_call (fn_expr : expr) (args : expr list) (ret_ty : ty) (span : span) : expr option =
+let try_convert_to_dict_method_call (fn_expr : expr) (args : expr list)
+    (ret_ty : ty) (span : span) : expr option =
   (* Phase 2 Week 19-22 実装:
    *
    * 現時点では、関数名ベースの簡易検出のみを実装。
@@ -270,11 +281,13 @@ let try_convert_to_dict_method_call (fn_expr : expr) (args : expr list) (ret_ty 
    * 例: eq(__dict_Eq_0, x, y) → DictMethodCall(__dict_Eq_0, "eq", [x, y])
    *)
   match fn_expr.expr_kind with
-  | Var var when List.length args >= 1 ->
+  | Var var when List.length args >= 1 -> (
       let method_name = var.vname in
       (* 既知のトレイトメソッド名かチェック *)
       let is_trait_method trait_name =
-        List.exists (fun (m, _) -> m = method_name) (trait_method_indices trait_name)
+        List.exists
+          (fun (m, _) -> m = method_name)
+          (trait_method_indices trait_name)
       in
       let trait_opt =
         if is_trait_method "Eq" then Some "Eq"
@@ -282,13 +295,14 @@ let try_convert_to_dict_method_call (fn_expr : expr) (args : expr list) (ret_ty 
         else if is_trait_method "Collector" then Some "Collector"
         else None
       in
-      (match trait_opt with
-      | Some _trait_name ->
+      match trait_opt with
+      | Some _trait_name -> (
           (* 第一引数が辞書かチェック *)
           let dict_arg = List.hd args in
           let method_args = List.tl args in
-          (match dict_arg.expr_kind with
-          | Var dict_var when String.starts_with ~prefix:"__dict_" dict_var.vname ->
+          match dict_arg.expr_kind with
+          | Var dict_var
+            when String.starts_with ~prefix:"__dict_" dict_var.vname ->
               (* DictMethodCall ノードを生成 *)
               Some
                 (make_expr
@@ -346,11 +360,11 @@ let rec desugar_expr (map : var_scope_map) (texpr : typed_expr) : expr =
   match texpr.texpr_kind with
   | TLiteral lit -> desugar_literal lit ty span
   | TVar (id, _scheme) -> desugar_var map id ty span
-  | TCall (fn, args) ->
+  | TCall (fn, args) -> (
       let fn_expr = desugar_expr map fn in
       let arg_exprs = List.map (desugar_arg map) args in
       (* Phase 2 Week 19-22: トレイトメソッド呼び出しの検出 *)
-      (match try_convert_to_dict_method_call fn_expr arg_exprs ty span with
+      match try_convert_to_dict_method_call fn_expr arg_exprs ty span with
       | Some dict_call -> dict_call
       | None -> make_expr (App (fn_expr, arg_exprs)) ty span)
   | TLambda (_params, _ret_ty, _body) ->
@@ -431,16 +445,15 @@ let rec desugar_expr (map : var_scope_map) (texpr : typed_expr) : expr =
   | TLoop body ->
       let body_expr = desugar_expr map body in
       make_loop_expr InfiniteLoop body_expr span ty
-  | TContinue ->
-      make_expr Continue ty_unit span
+  | TContinue -> make_expr Continue ty_unit span
   | TUnsafe body ->
       (* unsafe式は型検査済みなので、そのまま脱糖 *)
       desugar_expr map body
-  | TReturn ret_opt ->
+  | TReturn ret_opt -> (
       (* return式は簡易実装: 返り値の式をそのまま返す
        * CFG構築時にTermReturnに変換される
        *)
-      (match ret_opt with
+      match ret_opt with
       | Some e -> desugar_expr map e
       | None -> make_expr (Literal Unit) ty_unit span)
   | TDefer deferred_expr ->
@@ -471,8 +484,7 @@ and desugar_for_loop (map : var_scope_map) (pat : typed_pattern)
             (string_of_iterator_stage_requirement info.stage_requirement)
         in
         let actual_value method_name =
-          Printf.sprintf "%s:%s" method_name
-            (actual_stage_of_kind info.kind)
+          Printf.sprintf "%s:%s" method_name (actual_stage_of_kind info.kind)
         in
         let make_string_literal value span =
           make_expr (Literal (String (value, Normal))) ty_string span
@@ -502,9 +514,7 @@ and desugar_for_loop (map : var_scope_map) (pat : typed_pattern)
             | IteratorResultLike -> "result_like"
             | IteratorCustom name -> Printf.sprintf "custom:%s" name)
         in
-        let iterator_source_label =
-          Some (Types.string_of_ty info.source_ty)
-        in
+        let iterator_source_label = Some (Types.string_of_ty info.source_ty) in
         let audit_for method_name audit_span =
           Some
             {
@@ -518,20 +528,22 @@ and desugar_for_loop (map : var_scope_map) (pat : typed_pattern)
               audit_required_stage =
                 Some (stage_requirement_to_ir info.stage_requirement);
               audit_capability = capability_id;
-              audit_actual_stage = audit_actual_stage;
+              audit_actual_stage;
               audit_iterator_kind = iterator_kind_label;
               audit_iterator_source = iterator_source_label;
             }
         in
-        ( [ make_effect "effect.stage.iterator.required" source.texpr_span
-                (required_value "has_next");
+        ( [
+            make_effect "effect.stage.iterator.required" source.texpr_span
+              (required_value "has_next");
             make_effect "effect.stage.iterator.actual" source.texpr_span
-                (actual_value "has_next");
+              (actual_value "has_next");
           ],
-          [ make_effect "effect.stage.iterator.required" body.texpr_span
-                (required_value "next");
+          [
+            make_effect "effect.stage.iterator.required" body.texpr_span
+              (required_value "next");
             make_effect "effect.stage.iterator.actual" body.texpr_span
-                (actual_value "next");
+              (actual_value "next");
           ],
           audit_for "has_next" source.texpr_span,
           audit_for "next" body.texpr_span )
@@ -568,9 +580,7 @@ and desugar_for_loop (map : var_scope_map) (pat : typed_pattern)
         let index_ref = make_expr (Var index_var) ty_i64 span in
         let length_ref = make_expr (Var length_var) ty_i64 span in
         let cond_expr =
-          make_expr
-            (Primitive (PrimLt, [ index_ref; length_ref ]))
-            ty_bool span
+          make_expr (Primitive (PrimLt, [ index_ref; length_ref ])) ty_bool span
         in
         let one =
           make_expr (Literal (Int ("1", Base10))) ty_i64 source.texpr_span
@@ -582,7 +592,8 @@ and desugar_for_loop (map : var_scope_map) (pat : typed_pattern)
           make_expr (ArrayAccess (array_ref, index_ref)) element_ty span
         in
         let loop_body = bind_body element_expr in
-        ( { for_pattern = None;
+        ( {
+            for_pattern = None;
             for_source = cond_expr;
             for_init =
               [
@@ -610,7 +621,8 @@ and desugar_for_loop (map : var_scope_map) (pat : typed_pattern)
             element_ty span
         in
         let loop_body = bind_body element_expr in
-        ( { for_pattern = None;
+        ( {
+            for_pattern = None;
             for_source = has_next_expr;
             for_init = [ (iter_var, source_expr) ];
             for_step = [];
@@ -647,23 +659,15 @@ and desugar_mutable_assign (map : var_scope_map) (lhs : typed_expr)
   | TVar (id, _) -> (
       match lookup_var map id.name with
       | Some var ->
-          if not var.vmutable then
-            desugar_error "不変な変数には代入できません" span
+          if not var.vmutable then desugar_error "不変な変数には代入できません" span
           else
             let rhs_expr = desugar_expr map rhs in
-            make_expr
-              (AssignMutable (var, rhs_expr))
-              ty_unit span
-      | None ->
-          desugar_error
-            (Printf.sprintf "未宣言の変数 %s への代入です" id.name)
-            span)
-  | _ ->
-      desugar_error
-        "現在は単純な変数への代入（TVar）のみサポートしています" span
+            make_expr (AssignMutable (var, rhs_expr)) ty_unit span
+      | None -> desugar_error (Printf.sprintf "未宣言の変数 %s への代入です" id.name) span)
+  | _ -> desugar_error "現在は単純な変数への代入（TVar）のみサポートしています" span
 
-and collect_loop_carried_vars (body_expr : expr) :
-    loop_carried_var list * bool =
+and collect_loop_carried_vars (body_expr : expr) : loop_carried_var list * bool
+    =
   let base = collect_base_loop_carried body_expr in
   augment_loop_carried_with_continue body_expr base
 
@@ -694,9 +698,10 @@ and collect_base_loop_carried (body_expr : expr) : loop_carried_var list =
             let sources =
               match source.ls_kind with
               | LoopSourcePreheader ->
-                  if List.exists
-                       (fun src -> src.ls_kind = LoopSourcePreheader)
-                       base_sources
+                  if
+                    List.exists
+                      (fun src -> src.ls_kind = LoopSourcePreheader)
+                      base_sources
                   then base_sources
                   else source :: base_sources
               | _ -> base_sources @ [ source ]
@@ -710,11 +715,7 @@ and collect_base_loop_carried (body_expr : expr) : loop_carried_var list =
     match expr.expr_kind with
     | AssignMutable (var, rhs) ->
         let source =
-          {
-            ls_kind = LoopSourceLatch;
-            ls_span = rhs.expr_span;
-            ls_expr = rhs;
-          }
+          { ls_kind = LoopSourceLatch; ls_span = rhs.expr_span; ls_expr = rhs }
         in
         let ordered = add_source ordered var source in
         visit_expr ordered rhs
@@ -724,8 +725,7 @@ and collect_base_loop_carried (body_expr : expr) : loop_carried_var list =
     | App (fn, args) ->
         let ordered = visit_expr ordered fn in
         List.fold_left visit_expr ordered args
-    | Primitive (_op, args) ->
-        List.fold_left visit_expr ordered args
+    | Primitive (_op, args) -> List.fold_left visit_expr ordered args
     | If (cond, then_e, else_e) ->
         let ordered = visit_expr ordered cond in
         let ordered = visit_expr ordered then_e in
@@ -746,8 +746,7 @@ and collect_base_loop_carried (body_expr : expr) : loop_carried_var list =
     | ArrayAccess (arr, idx) ->
         let ordered = visit_expr ordered arr in
         visit_expr ordered idx
-    | ADTConstruct (_ctor, fields) ->
-        List.fold_left visit_expr ordered fields
+    | ADTConstruct (_ctor, fields) -> List.fold_left visit_expr ordered fields
     | ADTProject (adt, _) -> visit_expr ordered adt
     | DictMethodCall (dict_expr, _name, args, _) ->
         let ordered = visit_expr ordered dict_expr in
@@ -787,26 +786,20 @@ and collect_base_loop_carried (body_expr : expr) : loop_carried_var list =
           | InfiniteLoop -> ordered
         in
         visit_expr ordered loop_info.loop_body
-    | Closure _
-    | DictLookup _
-    | DictConstruct _
-    | CapabilityCheck _
-    | Literal _
+    | Closure _ | DictLookup _ | DictConstruct _ | CapabilityCheck _ | Literal _
     | Var _ ->
         ordered
   in
   visit_expr [] body_expr
 
 and augment_loop_carried_with_continue (body_expr : expr)
-    (initial : loop_carried_var list) :
-    loop_carried_var list * bool =
+    (initial : loop_carried_var list) : loop_carried_var list * bool =
   let module IntKey = struct
     type t = int
 
     let compare (a : int) (b : int) = Stdlib.compare a b
   end in
   let module IntMap = Map.Make (IntKey) in
-
   let loop_carried_ref = ref initial in
   let has_continue = ref false in
 
@@ -823,25 +816,22 @@ and augment_loop_carried_with_continue (body_expr : expr)
         !loop_carried_ref
   in
 
-  let make_current_value var =
-    make_expr (Var var) var.vty var.vspan
-  in
+  let make_current_value var = make_expr (Var var) var.vty var.vspan in
 
   let rec visit ~collect env expr =
     let span = expr.expr_span in
     match expr.expr_kind with
     | Continue ->
-        if collect then
-          has_continue := true;
-          List.iter
-            (fun lc ->
-              let expr =
-                match IntMap.find_opt lc.lc_var.vid env with
-                | Some value -> value
-                | None -> make_current_value lc.lc_var
-              in
-              update_loop_carried lc.lc_var expr span)
-            !loop_carried_ref;
+        if collect then has_continue := true;
+        List.iter
+          (fun lc ->
+            let expr =
+              match IntMap.find_opt lc.lc_var.vid env with
+              | Some value -> value
+              | None -> make_current_value lc.lc_var
+            in
+            update_loop_carried lc.lc_var expr span)
+          !loop_carried_ref;
         env
     | AssignMutable (var, rhs) ->
         let env = visit ~collect env rhs in
@@ -852,8 +842,7 @@ and augment_loop_carried_with_continue (body_expr : expr)
     | App (fn, args) ->
         let env = visit ~collect env fn in
         List.fold_left (visit ~collect) env args
-    | Primitive (_op, args) ->
-        List.fold_left (visit ~collect) env args
+    | Primitive (_op, args) -> List.fold_left (visit ~collect) env args
     | If (cond, then_e, else_e) ->
         let env_after_cond = visit ~collect env cond in
         ignore (visit ~collect env_after_cond then_e);
@@ -876,8 +865,7 @@ and augment_loop_carried_with_continue (body_expr : expr)
     | ArrayAccess (arr, idx) ->
         let env = visit ~collect env arr in
         visit ~collect env idx
-    | ADTConstruct (_ctor, fields) ->
-        List.fold_left (visit ~collect) env fields
+    | ADTConstruct (_ctor, fields) -> List.fold_left (visit ~collect) env fields
     | ADTProject (adt, _) -> visit ~collect env adt
     | DictMethodCall (dict_expr, _name, args, _) ->
         let env = visit ~collect env dict_expr in
@@ -901,8 +889,8 @@ and augment_loop_carried_with_continue (body_expr : expr)
           | InfiniteLoop -> env
         in
         visit ~collect:false env loop_info.loop_body
-    | Closure _ | DictLookup _ | DictConstruct _ | CapabilityCheck _
-    | Literal _ | Var _ ->
+    | Closure _ | DictLookup _ | DictConstruct _ | CapabilityCheck _ | Literal _
+    | Var _ ->
         env
   in
 
@@ -952,9 +940,7 @@ and desugar_block (map : var_scope_map) (stmts : typed_stmt list)
           in
           make_expr (Let (dummy_var, e_expr, rest_expr)) result_ty span
       | TAssignStmt (lhs, rhs) ->
-          let assign_expr =
-            desugar_mutable_assign map lhs rhs lhs.texpr_span
-          in
+          let assign_expr = desugar_mutable_assign map lhs rhs lhs.texpr_span in
           let rest_expr = desugar_block map rest result_ty span in
           let dummy_var =
             fresh_temp_var "assign" assign_expr.expr_ty assign_expr.expr_span
@@ -1034,8 +1020,8 @@ and desugar_pattern_binding (map : var_scope_map) (pat : typed_pattern)
         match pairs with
         | [] -> cont_fn ()
         | (sub_pat, access) :: rest ->
-            desugar_pattern_binding map sub_pat access
-              ~mutability ~cont:(fun () -> build_bindings rest cont_fn)
+            desugar_pattern_binding map sub_pat access ~mutability
+              ~cont:(fun () -> build_bindings rest cont_fn)
               result_ty span
       in
       let rest_expr = build_bindings bindings cont in
@@ -1061,8 +1047,8 @@ and desugar_pattern_binding (map : var_scope_map) (pat : typed_pattern)
                     (convert_ty field_pat.tpat_ty)
                     field_pat.tpat_span
                 in
-                desugar_pattern_binding map field_pat access_expr
-                  ~mutability ~cont:(fun () -> bind_fields rest cont_fn)
+                desugar_pattern_binding map field_pat access_expr ~mutability
+                  ~cont:(fun () -> bind_fields rest cont_fn)
                   result_ty span
             | None ->
                 (* { field } 短縮形 → { field: field } として扱う *)
@@ -1105,8 +1091,8 @@ and desugar_pattern_binding (map : var_scope_map) (pat : typed_pattern)
                 (convert_ty arg_pat.tpat_ty)
                 arg_pat.tpat_span
             in
-            desugar_pattern_binding map arg_pat project_expr
-              ~mutability ~cont:(fun () -> bind_args rest cont_fn)
+            desugar_pattern_binding map arg_pat project_expr ~mutability
+              ~cont:(fun () -> bind_args rest cont_fn)
               result_ty span
       in
       let rest_expr = bind_args (List.mapi (fun i p -> (i, p)) arg_pats) cont in
@@ -1466,7 +1452,8 @@ and compile_test_expr (var : var_id) (test : test_kind) (span : span) : expr =
  * @param span 診断用位置情報
  * @return 生成された辞書パラメータのリスト
  *)
-let generate_dict_params (fn_scope : var_scope_map) (constraints : Types.trait_constraint list) (span : span) : param list =
+let generate_dict_params (fn_scope : var_scope_map)
+    (constraints : Types.trait_constraint list) (span : span) : param list =
   List.mapi
     (fun idx constraint_info ->
       let trait_name = constraint_info.Types.trait_name in
@@ -1515,7 +1502,9 @@ let desugar_fn_decl (decl : typed_decl) (fn_decl : typed_fn_decl) : function_def
   let return_ty = convert_ty fn_decl.tfn_ret_type in
 
   (* Phase 2 Week 19-22: 制約から辞書パラメータを生成 *)
-  let dict_params = generate_dict_params fn_scope decl.tdecl_scheme.constraints decl.tdecl_span in
+  let dict_params =
+    generate_dict_params fn_scope decl.tdecl_scheme.constraints decl.tdecl_span
+  in
 
   (* 通常のパラメータを変換 *)
   let user_params =
@@ -1544,23 +1533,13 @@ let desugar_fn_decl (decl : typed_decl) (fn_decl : typed_fn_decl) : function_def
         in
         let required_caps =
           match entry.resolved_capability with
-          | Some name ->
-              [
-                {
-                  cap_name = name;
-                  cap_span = entry.source_span;
-                };
-              ]
+          | Some name -> [ { cap_name = name; cap_span = entry.source_span } ]
           | None -> base_metadata.capabilities.required
         in
         let capabilities =
           { required = required_caps; stage = capability_stage }
         in
-        {
-          base_metadata with
-          effects = entry.effect_set;
-          capabilities;
-        }
+        { base_metadata with effects = entry.effect_set; capabilities }
     | None -> base_metadata
   in
   make_function fn_name all_params return_ty [ entry_block ] metadata

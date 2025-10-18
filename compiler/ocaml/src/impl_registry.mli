@@ -15,22 +15,6 @@
 open Types
 open Ast
 
-(** impl 実装情報
- *
- * 一つの impl 宣言から抽出される情報を表す。
- *
- * 例:
- *   impl<T> Eq for Vec<T> where T: Eq {
- *     fn eq(self: Vec<T>, other: Vec<T>) -> Bool = ...
- *   }
- *
- * この場合:
- *   trait_name = "Eq"
- *   impl_type = Vec<T>  (型変数 T を含む)
- *   generic_params = [T]
- *   where_constraints = [Eq<T>]
- *   methods = [("eq", <typed_expr>)]
- *)
 type impl_info = {
   trait_name : string;
       (** 実装するトレイト名
@@ -60,24 +44,41 @@ type impl_info = {
        *)
   span : span;  (** impl 宣言の位置情報 *)
 }
+(** impl 実装情報
+ *
+ * 一つの impl 宣言から抽出される情報を表す。
+ *
+ * 例:
+ *   impl<T> Eq for Vec<T> where T: Eq {
+ *     fn eq(self: Vec<T>, other: Vec<T>) -> Bool = ...
+ *   }
+ *
+ * この場合:
+ *   trait_name = "Eq"
+ *   impl_type = Vec<T>  (型変数 T を含む)
+ *   generic_params = [T]
+ *   where_constraints = [Eq<T>]
+ *   methods = [("eq", <typed_expr>)]
+ *)
 
+type impl_registry
 (** impl 宣言レジストリ
  *
  * すべての impl 宣言を管理するレジストリ。
  * 型推論の過程で impl 宣言を登録し、制約解決時に検索する。
  *)
-type impl_registry
 
-(** 空のレジストリを作成 *)
 val empty : unit -> impl_registry
+(** 空のレジストリを作成 *)
 
+val register : impl_info -> impl_registry -> impl_registry
 (** impl 実装情報をレジストリに登録
  *
  * 同一のトレイト・型への重複した impl は許容するが、
  * 制約解決時に曖昧性エラー (AmbiguousImpl) として検出される。
  *)
-val register : impl_info -> impl_registry -> impl_registry
 
+val lookup : string -> ty -> impl_registry -> impl_info option
 (** 指定されたトレイト名と型に一致する impl を検索
  *
  * lookup trait_name impl_type registry
@@ -94,8 +95,8 @@ val register : impl_info -> impl_registry -> impl_registry
  * 注意: 複数の impl が一致する場合は最初に見つかったものを返す。
  *      曖昧性の検出は find_matching_impls を使用すること。
  *)
-val lookup : string -> ty -> impl_registry -> impl_info option
 
+val find_matching_impls : trait_constraint -> impl_registry -> impl_info list
 (** トレイト制約に一致するすべての impl を検索
  *
  * find_matching_impls constraint registry
@@ -113,12 +114,11 @@ val lookup : string -> ty -> impl_registry -> impl_info option
  *   1要素: 一意に impl が決定 → 成功
  *   2要素以上: 曖昧な impl → AmbiguousImpl エラー
  *)
-val find_matching_impls :
-  trait_constraint -> impl_registry -> impl_info list
 
-(** レジストリに登録されているすべての impl を取得（デバッグ用） *)
 val all_impls : impl_registry -> impl_info list
+(** レジストリに登録されているすべての impl を取得（デバッグ用） *)
 
+val string_of_registry : impl_registry -> string
 (** レジストリの文字列表現（デバッグ用）
  *
  * 出力例:
@@ -127,7 +127,6 @@ val all_impls : impl_registry -> impl_info list
  *     impl<T> Eq for Vec<T> where T: Eq
  *     impl Ord for String
  *)
-val string_of_registry : impl_registry -> string
 
-(** impl_info の文字列表現（デバッグ用） *)
 val string_of_impl_info : impl_info -> string
+(** impl_info の文字列表現（デバッグ用） *)

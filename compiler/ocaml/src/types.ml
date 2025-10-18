@@ -266,39 +266,39 @@ let rec type_equal t1 t2 =
 
 (* ========== 型クラス・トレイト（Phase 2） ========== *)
 
-(** トレイト制約
- *
- * 仕様書 1-2 §B: トレイト制約の表記
- * 例: Add<T,T,T>, Eq<T>, Ord<T>
- *)
 type trait_constraint = {
   trait_name : string;  (** トレイト名（例: "Add", "Eq", "Ord"） *)
   type_args : ty list;  (** 型引数のリスト *)
   constraint_span : Ast.span;  (** 制約の出現位置 *)
 }
-
-(** 辞書レイアウト
+(** トレイト制約
  *
- * トレイト実装の実行時表現（vtable構造）
- * Phase 2 前半では基本構造のみ定義、詳細はLLVM生成時に確定
+ * 仕様書 1-2 §B: トレイト制約の表記
+ * 例: Add<T,T,T>, Eq<T>, Ord<T>
  *)
+
 type dict_layout = {
   trait : string;  (** トレイト名 *)
   impl_ty : ty;  (** 実装対象の型 *)
   methods : (string * ty) list;  (** メソッド名と型のリスト（vtable順） *)
   size_bytes : int option;  (** レイアウトサイズ（バイト単位、Phase 2後半で確定） *)
 }
-
-(** 拡張型スキーム（制約付き）
+(** 辞書レイアウト
  *
- * 仕様書 1-2 §B.3: 関数型に制約を付与
- * 例: fn sum<T>(xs: [T]) -> T where Add<T,T,T>, Zero<T>
+ * トレイト実装の実行時表現（vtable構造）
+ * Phase 2 前半では基本構造のみ定義、詳細はLLVM生成時に確定
  *)
+
 type constrained_scheme = {
   quantified : type_var list;  (** 量化変数 *)
   constraints : trait_constraint list;  (** トレイト制約のリスト *)
   body : ty;  (** 型本体 *)
 }
+(** 拡張型スキーム（制約付き）
+ *
+ * 仕様書 1-2 §B.3: 関数型に制約を付与
+ * 例: fn sum<T>(xs: [T]) -> T where Add<T,T,T>, Zero<T>
+ *)
 
 (** 型スキームから制約付きスキームへの変換（制約なし） *)
 let scheme_to_constrained (scheme : type_scheme) : constrained_scheme =
@@ -312,9 +312,7 @@ let constrained_to_scheme (cscheme : constrained_scheme) : type_scheme =
 
 (** トレイト制約の文字列表現 *)
 let string_of_trait_constraint tc =
-  let type_args_str =
-    String.concat ", " (List.map string_of_ty tc.type_args)
-  in
+  let type_args_str = String.concat ", " (List.map string_of_ty tc.type_args) in
   Printf.sprintf "%s<%s>" tc.trait_name type_args_str
 
 (** 制約付きスキームの文字列表現 *)
@@ -322,16 +320,12 @@ let string_of_constrained_scheme cscheme =
   let quantified_str =
     match cscheme.quantified with
     | [] -> ""
-    | vars ->
-        "∀"
-        ^ String.concat " " (List.map string_of_type_var vars)
-        ^ ". "
+    | vars -> "∀" ^ String.concat " " (List.map string_of_type_var vars) ^ ". "
   in
   let constraints_str =
     match cscheme.constraints with
     | [] -> ""
     | cs ->
-        " where "
-        ^ String.concat ", " (List.map string_of_trait_constraint cs)
+        " where " ^ String.concat ", " (List.map string_of_trait_constraint cs)
   in
   quantified_str ^ string_of_ty cscheme.body ^ constraints_str

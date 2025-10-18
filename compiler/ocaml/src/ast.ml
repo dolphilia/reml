@@ -27,9 +27,7 @@ type ident = { name : string; span : span }
 (** 識別子 *)
 
 (** Stage 要件（AST段階・parser版） *)
-type stage_requirement_annot =
-  | StageExact of ident
-  | StageAtLeast of ident
+type stage_requirement_annot = StageExact of ident | StageAtLeast of ident
 
 (** モジュールパス *)
 type module_path =
@@ -196,7 +194,6 @@ and effect_invalid_attribute = {
   invalid_span : span;
 }
 
-(** EffectProfileNode — docs/effect-system-design-note.md §2 を参照 *)
 and effect_profile_node = {
   effect_declared : ident list;  (** 明示された効果タグ集合（順序保持） *)
   effect_residual : ident list;  (** AST段階では declared と同一で初期化 *)
@@ -205,6 +202,7 @@ and effect_profile_node = {
   effect_span : span;  (** 宣言位置 *)
   effect_invalid_attributes : effect_invalid_attribute list;
 }
+(** EffectProfileNode — docs/effect-system-design-note.md §2 を参照 *)
 
 (* 関数宣言 *)
 and fn_decl = {

@@ -9,7 +9,6 @@ let project_root =
   | None -> Filename.dirname Sys.argv.(0)
 
 let resolve path = Filename.concat project_root path
-
 let golden_dir = resolve "tests/golden"
 
 let write_actual_snapshot name content =
@@ -112,7 +111,7 @@ let test_stage_extension_snapshot () =
   let end_pos =
     Diagnostic.{ filename = "iter.reml"; line = 4; column = 18; offset = 57 }
   in
-  let span = { Diagnostic.start_pos = start_pos; end_pos = end_pos } in
+  let span = { Diagnostic.start_pos; end_pos } in
   let residual =
     `Assoc
       [
@@ -137,21 +136,19 @@ let test_stage_extension_snapshot () =
     ]
   in
   let diag =
-    Diagnostic.make_type_error
-      ~code:"typeclass.iterator.stage_mismatch"
-      ~message:"Iterator Capability が要求された Stage を満たしていません"
-      ~span
+    Diagnostic.make_type_error ~code:"typeclass.iterator.stage_mismatch"
+      ~message:"Iterator Capability が要求された Stage を満たしていません" ~span
       ~notes:
         [
           ( None,
-            "要求 Stage: beta / Capability Stage: experimental (core.iterator.collect)"
-          );
+            "要求 Stage: beta / Capability Stage: experimental \
+             (core.iterator.collect)" );
         ]
       ()
     |> Diagnostic.with_effect_stage_extension ~required_stage:"beta"
          ~actual_stage:"experimental" ~capability:"core.iterator.collect"
-         ~provider:"Core.Iter" ~manifest_path:"dsl/core.iter.toml"
-         ~residual ~capability_meta:metadata ~iterator_fields
+         ~provider:"Core.Iter" ~manifest_path:"dsl/core.iter.toml" ~residual
+         ~capability_meta:metadata ~iterator_fields
   in
   let json_str = Cli.Json_formatter.diagnostic_to_json diag in
   let golden_path =
@@ -161,8 +158,7 @@ let test_stage_extension_snapshot () =
     let actual_path =
       write_actual_snapshot "typeclass_iterator_stage_mismatch" json_str
     in
-    Printf.eprintf
-      "✗ typeclass.iterator.stage_mismatch: ゴールデン %s が存在しません。\n"
+    Printf.eprintf "✗ typeclass.iterator.stage_mismatch: ゴールデン %s が存在しません。\n"
       golden_path;
     Printf.eprintf "  現在の出力を %s に書き出しました。\n" actual_path;
     exit 1);
@@ -173,8 +169,7 @@ let test_stage_extension_snapshot () =
     let actual_path =
       write_actual_snapshot "typeclass_iterator_stage_mismatch" json_str
     in
-    Printf.printf
-      "✗ typeclass.iterator.stage_mismatch: JSON スナップショットが一致しません\n";
+    Printf.printf "✗ typeclass.iterator.stage_mismatch: JSON スナップショットが一致しません\n";
     Printf.printf "  ゴールデン: %s\n" golden_path;
     Printf.printf "  現在の出力を %s に書き出しました。\n" actual_path;
     exit 1)

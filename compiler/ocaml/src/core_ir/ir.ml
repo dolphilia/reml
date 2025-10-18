@@ -152,37 +152,37 @@ type dict_instance = {
 }
 (** 辞書インスタンス *)
 
-(** 辞書型（Phase 2: 辞書渡し型システム）
- *
- * トレイト実装の実行時表現。vtable構造として扱われ、
- * LLVM IRでは関数ポインタ配列を含む構造体に変換される。
- *)
 type dict_type = {
   dict_trait : string;  (** トレイト名 *)
   dict_impl_ty : ty;  (** 実装対象の型 *)
   dict_methods : (string * ty) list;  (** メソッド名と型 (vtable順) *)
   dict_layout_info : dict_layout_info option;  (** レイアウト情報（Phase 2後半で確定） *)
 }
-
-(** 辞書レイアウト情報
+(** 辞書型（Phase 2: 辞書渡し型システム）
  *
- * LLVM IR生成時に必要な具体的なメモリレイアウト情報
+ * トレイト実装の実行時表現。vtable構造として扱われ、
+ * LLVM IRでは関数ポインタ配列を含む構造体に変換される。
  *)
+
 and dict_layout_info = {
   vtable_size : int;  (** vtableサイズ（バイト） *)
   method_offsets : (string * int) list;  (** メソッド名 → オフセット(バイト) *)
   alignment : int;  (** アラインメント要件（バイト） *)
 }
-
-(** 辞書パラメータ（暗黙的引数）
+(** 辞書レイアウト情報
  *
- * 関数が型クラス制約を持つ場合に自動挿入される辞書引数
+ * LLVM IR生成時に必要な具体的なメモリレイアウト情報
  *)
+
 type dict_param = {
   param_constraint : Types.trait_constraint;  (** 対応するトレイト制約 *)
   param_name : string;  (** パラメータ名（デバッグ用、例: "__dict_Add_T"） *)
   param_ty : ty;  (** 辞書型 *)
 }
+(** 辞書パラメータ（暗黙的引数）
+ *
+ * 関数が型クラス制約を持つ場合に自動挿入される辞書引数
+ *)
 
 (* ========== クロージャ ========== *)
 
@@ -304,8 +304,7 @@ and loop_info = {
   loop_contains_continue : bool;  (** continue がボディ内に存在するか *)
   loop_header_effects : effect_info list;
       (** ループヘッダで発火する効果マーカー（例: has_next 監査） *)
-  loop_body_effects : effect_info list;
-      (** ループ本体突入時に発火する効果マーカー（例: next 監査） *)
+  loop_body_effects : effect_info list;  (** ループ本体突入時に発火する効果マーカー（例: next 監査） *)
 }
 
 (* ========== Core IR 文 ========== *)
@@ -470,27 +469,26 @@ let default_metadata span =
  * @return 計算されたレイアウト情報
  *)
 let calculate_dict_layout (methods : (string * ty) list) : dict_layout_info =
-  let ptr_size = 8 in  (* x86_64 ポインタサイズ *)
-  let metadata_size = 8 in  (* 型情報メタデータ *)
+  let ptr_size = 8 in
+  (* x86_64 ポインタサイズ *)
+  let metadata_size = 8 in
+
+  (* 型情報メタデータ *)
 
   (* メソッドを名前順にソート（vtable順序の決定） *)
-  let sorted_methods = List.sort (fun (n1, _) (n2, _) -> String.compare n1 n2) methods in
+  let sorted_methods =
+    List.sort (fun (n1, _) (n2, _) -> String.compare n1 n2) methods
+  in
 
   (* 各メソッドのオフセットを計算 *)
   let method_offsets =
-    List.mapi (fun i (name, _ty) ->
-      (name, i * ptr_size)
-    ) sorted_methods
+    List.mapi (fun i (name, _ty) -> (name, i * ptr_size)) sorted_methods
   in
 
   (* vtableサイズ = メソッド数 × ポインタサイズ + メタデータサイズ *)
   let vtable_size = (List.length sorted_methods * ptr_size) + metadata_size in
 
-  {
-    vtable_size;
-    method_offsets;
-    alignment = ptr_size;  (* ポインタサイズに合わせる *)
-  }
+  { vtable_size; method_offsets; alignment = ptr_size (* ポインタサイズに合わせる *) }
 
 (** デフォルトの辞書型を構築する
  *
@@ -503,7 +501,8 @@ let calculate_dict_layout (methods : (string * ty) list) : dict_layout_info =
  * @param methods メソッド名と型のリスト
  * @return 構築された辞書型
  *)
-let make_dict_type (trait_name : string) (impl_ty : ty) (methods : (string * ty) list) : dict_type =
+let make_dict_type (trait_name : string) (impl_ty : ty)
+    (methods : (string * ty) list) : dict_type =
   let layout = calculate_dict_layout methods in
   {
     dict_trait = trait_name;

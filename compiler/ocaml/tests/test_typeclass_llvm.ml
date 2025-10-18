@@ -97,8 +97,7 @@ let assert_contains ir substr =
   try
     let _ = Str.search_forward (Str.regexp_string substr) ir 0 in
     ()
-  with Not_found ->
-    failwith (Printf.sprintf "LLVM IRに '%s' が含まれていません" substr)
+  with Not_found -> failwith (Printf.sprintf "LLVM IRに '%s' が含まれていません" substr)
 
 (* ビルトインメソッド関数が定義されていることを確認 *)
 let test_builtin_methods_defined () =

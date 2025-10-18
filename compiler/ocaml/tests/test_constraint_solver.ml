@@ -174,24 +174,22 @@ let test_solve_failing_constraint () =
 (** 制約グラフの構築（単純なケース） *)
 let test_build_constraint_graph_simple () =
   let constraints =
-    [
-      make_constraint "Eq" [ ty_i64 ];
-      make_constraint "Ord" [ ty_i64 ];
-    ]
+    [ make_constraint "Eq" [ ty_i64 ]; make_constraint "Ord" [ ty_i64 ] ]
   in
   let graph = build_constraint_graph constraints in
   (* Ord<i64> は Eq<i64> に依存する *)
   let has_dependency =
     List.exists
       (fun ((dep : Types.trait_constraint), _) ->
-        dep.trait_name = "Eq" && List.length dep.type_args = 1
-        && match List.hd dep.type_args with
-           | ty when type_equal ty ty_i64 -> true
-           | _ -> false)
+        dep.trait_name = "Eq"
+        && List.length dep.type_args = 1
+        &&
+        match List.hd dep.type_args with
+        | ty when type_equal ty ty_i64 -> true
+        | _ -> false)
       graph.edges
   in
-  if has_dependency then
-    print_endline "✓ test_build_constraint_graph_simple"
+  if has_dependency then print_endline "✓ test_build_constraint_graph_simple"
   else failwith "Expected Ord<i64> to depend on Eq<i64>"
 
 (** 制約グラフの構築（再帰的な依存） *)
@@ -203,19 +201,23 @@ let test_build_constraint_graph_recursive () =
   let has_i64_dep =
     List.exists
       (fun ((dep : Types.trait_constraint), _) ->
-        dep.trait_name = "Eq" && List.length dep.type_args = 1
-        && match List.hd dep.type_args with
-           | ty when type_equal ty ty_i64 -> true
-           | _ -> false)
+        dep.trait_name = "Eq"
+        && List.length dep.type_args = 1
+        &&
+        match List.hd dep.type_args with
+        | ty when type_equal ty ty_i64 -> true
+        | _ -> false)
       graph.edges
   in
   let has_string_dep =
     List.exists
       (fun ((dep : Types.trait_constraint), _) ->
-        dep.trait_name = "Eq" && List.length dep.type_args = 1
-        && match List.hd dep.type_args with
-           | ty when type_equal ty ty_string -> true
-           | _ -> false)
+        dep.trait_name = "Eq"
+        && List.length dep.type_args = 1
+        &&
+        match List.hd dep.type_args with
+        | ty when type_equal ty ty_string -> true
+        | _ -> false)
       graph.edges
   in
   if has_i64_dep && has_string_dep then
@@ -228,15 +230,11 @@ let test_build_constraint_graph_recursive () =
 let test_find_cycles_no_cycle () =
   (* グラフ: Ord<i64> → Eq<i64> （循環なし） *)
   let constraints =
-    [
-      make_constraint "Eq" [ ty_i64 ];
-      make_constraint "Ord" [ ty_i64 ];
-    ]
+    [ make_constraint "Eq" [ ty_i64 ]; make_constraint "Ord" [ ty_i64 ] ]
   in
   let graph = build_constraint_graph constraints in
   let cycles = find_cycles graph in
-  if List.length cycles = 0 then
-    print_endline "✓ test_find_cycles_no_cycle"
+  if List.length cycles = 0 then print_endline "✓ test_find_cycles_no_cycle"
   else failwith "Expected no cycles"
 
 (** 自己参照制約（理論上のケース） *)
@@ -244,12 +242,17 @@ let test_find_cycles_self_reference () =
   (* 実際のRemlでは発生しないが、アルゴリズムのテストとして *)
   let constraint_a = make_constraint "SelfRef" [ ty_i64 ] in
   (* 自己参照エッジを手動で作成 *)
-  let graph = { nodes = [ constraint_a ]; edges = [ (constraint_a, constraint_a) ] } in
+  let graph =
+    { nodes = [ constraint_a ]; edges = [ (constraint_a, constraint_a) ] }
+  in
   let cycles = find_cycles graph in
   (* 自己参照は1ノードのSCCとして検出される（サイズ1なので循環扱いしない） *)
   if List.length cycles = 0 then
     print_endline "✓ test_find_cycles_self_reference"
-  else failwith (Printf.sprintf "Expected no cycles for self-reference, got %d" (List.length cycles))
+  else
+    failwith
+      (Printf.sprintf "Expected no cycles for self-reference, got %d"
+         (List.length cycles))
 
 (** 相互参照制約 A → B → A *)
 let test_find_cycles_mutual_reference () =
@@ -266,7 +269,10 @@ let test_find_cycles_mutual_reference () =
   (* サイズ2のSCCが1つ検出されるはず *)
   if List.length cycles = 1 && List.length (List.hd cycles) = 2 then
     print_endline "✓ test_find_cycles_mutual_reference"
-  else failwith (Printf.sprintf "Expected 1 cycle of size 2, got %d cycles" (List.length cycles))
+  else
+    failwith
+      (Printf.sprintf "Expected 1 cycle of size 2, got %d cycles"
+         (List.length cycles))
 
 (** トポロジカルソート（循環なし） *)
 let test_topological_sort_success () =
@@ -275,11 +281,13 @@ let test_topological_sort_success () =
   let ord_constraint = make_constraint "Ord" [ ty_i64 ] in
   let graph = build_constraint_graph [ eq_constraint; ord_constraint ] in
   match topological_sort graph with
-  | Some sorted ->
+  | Some sorted -> (
       (* Eq が Ord の前に来るはず *)
       let eq_index = List.find_index (constraint_equal eq_constraint) sorted in
-      let ord_index = List.find_index (constraint_equal ord_constraint) sorted in
-      (match (eq_index, ord_index) with
+      let ord_index =
+        List.find_index (constraint_equal ord_constraint) sorted
+      in
+      match (eq_index, ord_index) with
       | Some ei, Some oi when ei < oi ->
           print_endline "✓ test_topological_sort_success"
       | _ -> failwith "Expected Eq to come before Ord in topological order")
@@ -324,11 +332,11 @@ let test_topological_sort_complex () =
     }
   in
   match topological_sort graph with
-  | Some sorted ->
+  | Some sorted -> (
       (* Dが最初、Aが最後に来るはず *)
       let d_index = List.find_index (constraint_equal constraint_d) sorted in
       let a_index = List.find_index (constraint_equal constraint_a) sorted in
-      (match (d_index, a_index) with
+      match (d_index, a_index) with
       | Some di, Some ai when di < ai ->
           print_endline "✓ test_topological_sort_complex"
       | _ -> failwith "Expected D to come before A in topological order")
@@ -340,8 +348,7 @@ let test_topological_sort_complex () =
 let test_string_of_dict_ref () =
   let dict_ref = DictImplicit ("Eq", [ ty_i64 ]) in
   let str = string_of_dict_ref dict_ref in
-  if String.length str > 0 then
-    print_endline "✓ test_string_of_dict_ref"
+  if String.length str > 0 then print_endline "✓ test_string_of_dict_ref"
   else failwith "string_of_dict_ref returned empty string"
 
 (** 制約エラーの文字列表現 *)

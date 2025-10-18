@@ -1,5 +1,4 @@
 module EffectTable = Constraint_solver.EffectConstraintTable
-
 module IteratorAudit = Core_ir.Iterator_audit
 
 let iterator_audit_entries : (string, IteratorAudit.entry) Hashtbl.t =
@@ -20,9 +19,7 @@ let json_of_tag_list tags = `List (List.map json_of_tag tags)
 let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
     ~resolved_stage ~resolved_capability ~effect_set ~stage_trace
     ~diagnostic_payload extra_fields =
-  let symbol =
-    match symbol with Some name -> name | None -> "<anonymous>"
-  in
+  let symbol = match symbol with Some name -> name | None -> "<anonymous>" in
   let stage_required =
     Effect_profile.stage_requirement_to_string stage_requirement
   in
@@ -42,8 +39,7 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
   in
   let residual_leaks =
     diagnostic_payload.Effect_profile.residual_leaks
-    |> List.map (fun leak ->
-           `String leak.Effect_profile.leaked_tag.effect_name)
+    |> List.map (fun leak -> `String leak.Effect_profile.leaked_tag.effect_name)
   in
   let base_fields =
     [
@@ -54,8 +50,7 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
       ("effect.stage.required", `String stage_required);
       ("effect.stage.actual", stage_actual);
       ("effect.stage.capability", capability_json);
-      ( "effects.declared",
-        json_of_tag_list effect_set.Effect_profile.declared );
+      ("effects.declared", json_of_tag_list effect_set.Effect_profile.declared);
       ("effects.residual", json_of_tag_list effect_set.residual);
       ("effects.diagnostic_payload", diagnostic_json);
       ( "effect.residual.leak_count",
@@ -69,22 +64,17 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
   let fields =
     if stage_trace = [] then fields
     else
-      ("stage_trace", Effect_profile.stage_trace_to_json stage_trace)
-      :: fields
+      ("stage_trace", Effect_profile.stage_trace_to_json stage_trace) :: fields
   in
   `Assoc (List.rev_append extra_fields fields)
 
 let event_of_effect_entry (entry : EffectTable.entry) =
   let metadata =
-    metadata_for_effect
-      ~symbol:entry.symbol
-      ?source_name:entry.source_name
-      ~source_span:entry.source_span
-      ~stage_requirement:entry.stage_requirement
+    metadata_for_effect ~symbol:entry.symbol ?source_name:entry.source_name
+      ~source_span:entry.source_span ~stage_requirement:entry.stage_requirement
       ~resolved_stage:entry.resolved_stage
       ~resolved_capability:entry.resolved_capability
-      ~effect_set:entry.effect_set
-      ~stage_trace:entry.stage_trace
+      ~effect_set:entry.effect_set ~stage_trace:entry.stage_trace
       ~diagnostic_payload:entry.diagnostic_payload []
   in
   Audit_envelope.make ~category:"effect.stage" ~metadata ()
@@ -96,8 +86,7 @@ let event_of_profile ?symbol (profile : Effect_profile.profile) =
       ~stage_requirement:profile.stage_requirement
       ~resolved_stage:profile.resolved_stage
       ~resolved_capability:profile.resolved_capability
-      ~effect_set:profile.effect_set
-      ~stage_trace:profile.stage_trace
+      ~effect_set:profile.effect_set ~stage_trace:profile.stage_trace
       ~diagnostic_payload:profile.diagnostic_payload
       [ ("status", `String "error") ]
   in
@@ -122,7 +111,8 @@ let event_of_stage_mismatch ~function_name ~required_stage ~actual_stage
       :: metadata
   in
   Audit_envelope.make ~category:"effect.stage.error"
-    ~metadata:(`Assoc (List.rev metadata)) ()
+    ~metadata:(`Assoc (List.rev metadata))
+    ()
 
 let runtime_stage_event (context : Type_inference_effect.runtime_stage) =
   let capabilities =
@@ -131,8 +121,7 @@ let runtime_stage_event (context : Type_inference_effect.runtime_stage) =
            `Assoc
              [
                ("name", `String name);
-               ( "stage",
-                 `String (Effect_profile.stage_id_to_string stage) );
+               ("stage", `String (Effect_profile.stage_id_to_string stage));
              ])
   in
   let metadata =
@@ -150,9 +139,7 @@ let runtime_stage_event (context : Type_inference_effect.runtime_stage) =
   in
   let append_step trace source =
     let stage_id = context.Type_inference_effect.default_stage in
-    let step =
-      Effect_profile.stage_trace_step_of_stage_id source stage_id
-    in
+    let step = Effect_profile.stage_trace_step_of_stage_id source stage_id in
     trace @ [ step ]
   in
   let stage_trace =
@@ -170,20 +157,18 @@ let runtime_stage_event (context : Type_inference_effect.runtime_stage) =
       :: metadata
   in
   Audit_envelope.make ~category:"effect.stage.runtime"
-    ~metadata:(`Assoc (List.rev metadata)) ()
+    ~metadata:(`Assoc (List.rev metadata))
+    ()
 
 let iterator_stage_event runtime_context (entry : IteratorAudit.entry) =
   let capability_name = entry.IteratorAudit.capability in
   let actual_stage_id =
     Type_inference_effect.stage_for_capability runtime_context capability_name
   in
-  let actual_stage =
-    Effect_profile.stage_id_to_string actual_stage_id
-  in
+  let actual_stage = Effect_profile.stage_id_to_string actual_stage_id in
   let required_stage =
     match entry.IteratorAudit.required_stage with
-    | Some requirement ->
-        Effect_profile.stage_requirement_to_string requirement
+    | Some requirement -> Effect_profile.stage_requirement_to_string requirement
     | None -> actual_stage
   in
   let stage_source =
@@ -232,7 +217,7 @@ let iterator_stage_event runtime_context (entry : IteratorAudit.entry) =
     else
       match trace_with_typer with
       | [] -> [ runtime_step ]
-      | [ single ] -> single :: runtime_step :: []
+      | [ single ] -> [ single; runtime_step ]
       | first :: second :: rest when String.equal second.source "typer" ->
           first :: second :: runtime_step :: rest
       | first :: rest -> first :: runtime_step :: rest
@@ -265,24 +250,22 @@ let iterator_stage_event runtime_context (entry : IteratorAudit.entry) =
       ("effect.stage.iterator.kind", iterator_kind_json);
       ("effect.stage.iterator.source", `String stage_source);
       ("effect.stage.iterator.source_detail", iterator_source_json);
-      ( "effect.stage.iterator.method",
-        `String entry.IteratorAudit.method_name );
+      ("effect.stage.iterator.method", `String entry.IteratorAudit.method_name);
       ( "audit.note",
         `String
           (Printf.sprintf "Iterator audit (%s.%s)"
-             entry.IteratorAudit.function_name
-             entry.IteratorAudit.method_name) );
-      ( "stage_trace",
-        Effect_profile.stage_trace_to_json stage_trace );
+             entry.IteratorAudit.function_name entry.IteratorAudit.method_name)
+      );
+      ("stage_trace", Effect_profile.stage_trace_to_json stage_trace);
     ]
   in
   Audit_envelope.make ~category:"effect.stage"
-    ~metadata:(`Assoc (List.rev metadata)) ()
+    ~metadata:(`Assoc (List.rev metadata))
+    ()
 
 let iterator_audit_events runtime_context =
   Hashtbl.fold
-    (fun _ entry acc ->
-      iterator_stage_event runtime_context entry :: acc)
+    (fun _ entry acc -> iterator_stage_event runtime_context entry :: acc)
     iterator_audit_entries []
 
 let events_from_effect_constraints () =
@@ -295,7 +278,14 @@ let event_of_type_error err =
   | Type_error.EffectResidualLeak { function_name; profile; _ } ->
       Some (event_of_profile ?symbol:function_name profile)
   | Type_error.EffectStageMismatch
-      { required_stage; actual_stage; function_name; capability; stage_trace; _ } ->
+      {
+        required_stage;
+        actual_stage;
+        function_name;
+        capability;
+        stage_trace;
+        _;
+      } ->
       let symbol =
         match function_name with Some name -> name | None -> "<anonymous>"
       in
@@ -459,7 +449,8 @@ let () =
 
             (* Phase 3: LLVM IR 生成パイプライン *)
             if
-              opts.emit_ir || opts.emit_bc || opts.verify_ir || opts.link_runtime
+              opts.emit_ir || opts.emit_bc || opts.verify_ir
+              || opts.link_runtime
             then (
               let opt_config =
                 Core_ir.Pipeline.
@@ -487,18 +478,18 @@ let () =
                 try
                   record_start_if collect_metrics CoreIR;
                   let core_ir =
-                  let desugared =
-                    Core_ir.Desugar.desugar_compilation_unit tast
+                    let desugared =
+                      Core_ir.Desugar.desugar_compilation_unit tast
+                    in
+                    Core_ir.Monomorphize_poc.apply ~mode desugared
                   in
-                  Core_ir.Monomorphize_poc.apply ~mode desugared
-              in
-              let () =
-                Core_ir.Iterator_audit.collect core_ir
-                |> List.iter (fun entry ->
-                       let key = Core_ir.Iterator_audit.entry_key entry in
-                       Hashtbl.replace iterator_audit_entries key entry)
-              in
-              record_end_if collect_metrics CoreIR;
+                  let () =
+                    Core_ir.Iterator_audit.collect core_ir
+                    |> List.iter (fun entry ->
+                           let key = Core_ir.Iterator_audit.entry_key entry in
+                           Hashtbl.replace iterator_audit_entries key entry)
+                  in
+                  record_end_if collect_metrics CoreIR;
                   record_start_if collect_metrics Optimization;
                   let optimized_ir, _stats =
                     Core_ir.Pipeline.optimize_module ~config:opt_config core_ir
@@ -509,30 +500,26 @@ let () =
                     Codegen.codegen_module ~target_name:opts.target optimized_ir
                   in
                   record_end_if collect_metrics CodeGen;
-                  if opts.verify_ir then (
-                    match Verify.verify_llvm_ir llvm_module with
-                    | Ok () ->
-                        Printf.printf "%sLLVM IR verification passed.\n" prefix
-                    | Error err ->
-                        let diag = Verify.error_to_diagnostic err None in
-                        print_diagnostic opts None diag;
-                        ignore (Stdlib.exit 1)
-                  );
+                  (if opts.verify_ir then
+                     match Verify.verify_llvm_ir llvm_module with
+                     | Ok () ->
+                         Printf.printf "%sLLVM IR verification passed.\n" prefix
+                     | Error err ->
+                         let diag = Verify.error_to_diagnostic err None in
+                         print_diagnostic opts None diag;
+                         ignore (Stdlib.exit 1));
 
                   let basename = get_basename opts.input_file in
                   let ll_file_opt = ref None in
                   if opts.emit_ir then (
-                    let output_path =
-                      output_filename out_dir basename ".ll"
-                    in
+                    let output_path = output_filename out_dir basename ".ll" in
                     Codegen.emit_llvm_ir llvm_module output_path;
-                    Printf.printf "%sLLVM IR written to: %s\n" prefix output_path;
+                    Printf.printf "%sLLVM IR written to: %s\n" prefix
+                      output_path;
                     ll_file_opt := Some output_path);
 
                   if opts.emit_bc then (
-                    let output_path =
-                      output_filename out_dir basename ".bc"
-                    in
+                    let output_path = output_filename out_dir basename ".bc" in
                     Codegen.emit_llvm_bc llvm_module output_path;
                     Printf.printf "%sLLVM Bitcode written to: %s\n" prefix
                       output_path);
@@ -555,9 +542,7 @@ let () =
                         "Please build the runtime first with: make -C \
                          runtime/native runtime\n";
                       exit 1);
-                    let output_exe =
-                      output_filename out_dir basename ""
-                    in
+                    let output_exe = output_filename out_dir basename "" in
                     Printf.printf "%sLinking artifact into: %s\n" prefix
                       output_exe;
                     link_with_runtime ll_file opts.runtime_path output_exe;
@@ -632,32 +617,24 @@ let () =
                     exit 1
               in
               Cli.File_util.ensure_directory opts.out_dir;
-              (match opts.Cli.Options.typeclass_mode with
+              match opts.Cli.Options.typeclass_mode with
               | Cli.Options.TypeclassDictionary ->
-                  run_backend
-                    ~mode:Core_ir.Monomorphize_poc.UseDictionary
+                  run_backend ~mode:Core_ir.Monomorphize_poc.UseDictionary
                     ~mode_label:"dictionary" ~out_dir:opts.out_dir
                     ~collect_metrics:true
               | Cli.Options.TypeclassMonomorph ->
-                  run_backend
-                    ~mode:Core_ir.Monomorphize_poc.UseMonomorph
+                  run_backend ~mode:Core_ir.Monomorphize_poc.UseMonomorph
                     ~mode_label:"monomorph" ~out_dir:opts.out_dir
                     ~collect_metrics:true
               | Cli.Options.TypeclassBoth ->
-                  let dict_dir =
-                    Filename.concat opts.out_dir "dictionary"
-                  in
-                  let mono_dir =
-                    Filename.concat opts.out_dir "monomorph"
-                  in
-                  run_backend
-                    ~mode:Core_ir.Monomorphize_poc.UseDictionary
+                  let dict_dir = Filename.concat opts.out_dir "dictionary" in
+                  let mono_dir = Filename.concat opts.out_dir "monomorph" in
+                  run_backend ~mode:Core_ir.Monomorphize_poc.UseDictionary
                     ~mode_label:"dictionary" ~out_dir:dict_dir
                     ~collect_metrics:true;
-                  run_backend
-                    ~mode:Core_ir.Monomorphize_poc.UseMonomorph
+                  run_backend ~mode:Core_ir.Monomorphize_poc.UseMonomorph
                     ~mode_label:"monomorph" ~out_dir:mono_dir
-                    ~collect_metrics:false))
+                    ~collect_metrics:false)
         | Error type_err ->
             (* 型推論エラー *)
             (match opts.Cli.Options.emit_audit_path with
@@ -673,8 +650,7 @@ let () =
                   | None -> constraint_events
                 in
                 Audit_envelope.append_events audit_path
-                  (runtime_event
-                  :: (iterator_events @ events_with_error))
+                  (runtime_event :: (iterator_events @ events_with_error))
             | None -> ());
             let diag =
               Type_error.to_diagnostic_with_source source opts.input_file
@@ -727,9 +703,7 @@ let () =
 
       (match opts.Cli.Options.emit_audit_path with
       | Some audit_path ->
-          let iterator_events =
-            iterator_audit_events runtime_stage_context
-          in
+          let iterator_events = iterator_audit_events runtime_stage_context in
           Audit_envelope.append_events audit_path
             (runtime_stage_event runtime_stage_context :: iterator_events)
       | None -> ());

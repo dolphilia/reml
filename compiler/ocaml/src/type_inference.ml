@@ -17,9 +17,7 @@ open Type_error
 open Ast
 open Typed_ast
 
-type config = {
-  effect_context : Type_inference_effect.runtime_stage;
-}
+type config = { effect_context : Type_inference_effect.runtime_stage }
 
 let make_config ?effect_context () =
   {
@@ -30,7 +28,6 @@ let make_config ?effect_context () =
   }
 
 let default_config = make_config ()
-
 let current_config : config ref = ref default_config
 
 (* ========== 効果解析ヘルパー ========== *)
@@ -40,7 +37,6 @@ module Effect_analysis = struct
   module StringSet = Set.Make (String)
 
   let normalize_effect_name name = String.lowercase_ascii (String.trim name)
-
   let span_is_dummy (span : Ast.span) = span.start <= 0 && span.end_ <= 0
 
   let add_tag tags name span =
@@ -48,13 +44,10 @@ module Effect_analysis = struct
     if
       List.exists
         (fun (tag : Effect_profile.tag) ->
-          String.equal
-            (normalize_effect_name tag.effect_name)
-            normalized)
+          String.equal (normalize_effect_name tag.effect_name) normalized)
         tags
     then tags
-    else
-      tags @ [ { effect_name = name; effect_span = span } ]
+    else tags @ [ { effect_name = name; effect_span = span } ]
 
   let rec collect_expr tags (expr : typed_expr) =
     match expr.texpr_kind with
@@ -87,8 +80,7 @@ module Effect_analysis = struct
             tags params
         in
         collect_expr tags body
-    | TPipe (lhs, rhs)
-    | TBinary (_, lhs, rhs) ->
+    | TPipe (lhs, rhs) | TBinary (_, lhs, rhs) ->
         collect_expr (collect_expr tags lhs) rhs
     | TUnary (_, operand)
     | TFieldAccess (operand, _)
@@ -96,51 +88,50 @@ module Effect_analysis = struct
     | TPropagate operand
     | TUnsafe operand ->
         collect_expr tags operand
-    | TIndex (lhs, rhs)
-    | TAssign (lhs, rhs) ->
+    | TIndex (lhs, rhs) | TAssign (lhs, rhs) ->
         collect_expr (collect_expr tags lhs) rhs
-    | TIf (cond, then_branch, else_branch) ->
+    | TIf (cond, then_branch, else_branch) -> (
         let tags = collect_expr tags cond in
         let tags = collect_expr tags then_branch in
-        (match else_branch with
+        match else_branch with
         | Some expr -> collect_expr tags expr
         | None -> tags)
     | TMatch (scrutinee, arms) ->
         let tags = collect_expr tags scrutinee in
         List.fold_left collect_match_arm tags arms
-    | TWhile (cond, body) ->
-        collect_expr (collect_expr tags cond) body
+    | TWhile (cond, body) -> collect_expr (collect_expr tags cond) body
     | TFor (_, iterable, body, _, _) ->
         collect_expr (collect_expr tags iterable) body
     | TLoop body -> collect_expr tags body
     | TContinue -> tags
     | TBlock stmts -> collect_block tags stmts
     | TReturn expr_opt -> (
-        match expr_opt with
-        | None -> tags
-        | Some expr -> collect_expr tags expr)
+        match expr_opt with None -> tags | Some expr -> collect_expr tags expr)
     | TDefer expr -> collect_expr tags expr
+
   and collect_arg tags = function
     | TPosArg expr -> collect_expr tags expr
     | TNamedArg (_, expr) -> collect_expr tags expr
+
   and collect_match_arm tags arm =
     let tags =
-      match arm.tarm_guard with Some guard -> collect_expr tags guard | None -> tags
+      match arm.tarm_guard with
+      | Some guard -> collect_expr tags guard
+      | None -> tags
     in
     collect_expr tags arm.tarm_body
-  and collect_block tags stmts =
-    List.fold_left collect_stmt tags stmts
+
+  and collect_block tags stmts = List.fold_left collect_stmt tags stmts
+
   and collect_stmt tags = function
     | TDeclStmt decl -> collect_decl tags decl
     | TExprStmt expr -> collect_expr tags expr
-    | TAssignStmt (lhs, rhs) ->
-        collect_expr (collect_expr tags lhs) rhs
+    | TAssignStmt (lhs, rhs) -> collect_expr (collect_expr tags lhs) rhs
     | TDeferStmt expr -> collect_expr tags expr
+
   and collect_decl tags decl =
     match decl.tdecl_kind with
-    | TLetDecl (_, expr)
-    | TVarDecl (_, expr) ->
-        collect_expr tags expr
+    | TLetDecl (_, expr) | TVarDecl (_, expr) -> collect_expr tags expr
     | TFnDecl _ -> tags
     | _ -> tags
 
@@ -149,9 +140,8 @@ module Effect_analysis = struct
     | TFnExpr expr -> collect_expr [] expr
     | TFnBlock stmts -> collect_block [] stmts
 
-  let merge_usage_into_profile ~(fallback_span : Ast.span)
-      (profile : profile) (residual_tags : tag list)
-      =
+  let merge_usage_into_profile ~(fallback_span : Ast.span) (profile : profile)
+      (residual_tags : tag list) =
     let effect_set =
       List.fold_left
         (fun acc tag -> add_residual tag acc)
@@ -160,17 +150,13 @@ module Effect_analysis = struct
     let declared_names =
       List.fold_left
         (fun acc tag ->
-          StringSet.add
-            (normalize_effect_name tag.effect_name)
-            acc)
+          StringSet.add (normalize_effect_name tag.effect_name) acc)
         StringSet.empty effect_set.declared
     in
     let residual_leaks =
       effect_set.residual
       |> List.filter (fun tag ->
-             let name =
-               normalize_effect_name tag.effect_name
-             in
+             let name = normalize_effect_name tag.effect_name in
              not (StringSet.mem name declared_names))
       |> List.map (fun tag ->
              let leak_origin =
@@ -178,7 +164,11 @@ module Effect_analysis = struct
                else tag.effect_span
              in
              {
-               leaked_tag = { effect_name = tag.effect_name; effect_span = tag.effect_span };
+               leaked_tag =
+                 {
+                   effect_name = tag.effect_name;
+                   effect_span = tag.effect_span;
+                 };
                leak_origin;
              })
     in
@@ -188,13 +178,7 @@ module Effect_analysis = struct
         residual_leaks;
       }
     in
-    let profile =
-      {
-        profile with
-        effect_set;
-        diagnostic_payload;
-      }
-    in
+    let profile = { profile with effect_set; diagnostic_payload } in
     (profile, residual_leaks)
 end
 
@@ -231,9 +215,7 @@ let record_monomorph_instances (registry : Impl_registry.impl_registry)
     (function
       | DictImplicit (trait_name, ty_args) ->
           let impl_ty =
-            match ty_args with
-            | head :: _ -> head
-            | [] -> ty_unit
+            match ty_args with head :: _ -> head | [] -> ty_unit
           in
           let constraint_ =
             {
@@ -477,7 +459,8 @@ let unify_as_function (subst : substitution) (fn_ty : ty) (expected_fn_ty : ty)
  * @param cs2 第二の制約リスト
  * @return マージされた制約リスト
  *)
-let merge_constraints (cs1 : trait_constraint list) (cs2 : trait_constraint list) : trait_constraint list =
+let merge_constraints (cs1 : trait_constraint list)
+    (cs2 : trait_constraint list) : trait_constraint list =
   cs1 @ cs2
 
 (** 複数の制約リストをマージ
@@ -487,7 +470,8 @@ let merge_constraints (cs1 : trait_constraint list) (cs2 : trait_constraint list
  * @param css 制約リストのリスト
  * @return 全ての制約を含むリスト
  *)
-let merge_constraints_many (css : trait_constraint list list) : trait_constraint list =
+let merge_constraints_many (css : trait_constraint list list) :
+    trait_constraint list =
   List.concat css
 
 (* ========== 制約収集ヘルパー（Phase 2 Week 19-20 準備） ========== *)
@@ -510,7 +494,7 @@ let trait_name_of_binary_op (op : Ast.binary_op) : string option =
   | Pow -> Some "Pow"
   | Eq | Ne -> Some "Eq"
   | Lt | Le | Gt | Ge -> Some "Ord"
-  | And | Or | PipeOp -> None  (* 組み込み演算 *)
+  | And | Or | PipeOp -> None (* 組み込み演算 *)
 
 (** トレイト制約の生成（Week 21-22 実装予定）
  *
@@ -522,12 +506,9 @@ let trait_name_of_binary_op (op : Ast.binary_op) : string option =
  * @param span 制約が生じた位置
  * @return 生成されたトレイト制約
  *)
-let make_trait_constraint (trait_name : string) (type_args : ty list) (span : span) : trait_constraint =
-  {
-    trait_name;
-    type_args;
-    constraint_span = span;
-  }
+let make_trait_constraint (trait_name : string) (type_args : ty list)
+    (span : span) : trait_constraint =
+  { trait_name; type_args; constraint_span = span }
 
 (** 二項演算子からトレイト制約を生成（Week 21-22 実装予定）
  *
@@ -540,11 +521,12 @@ let make_trait_constraint (trait_name : string) (type_args : ty list) (span : sp
  * @param span 演算子の位置
  * @return 生成されたトレイト制約のリスト
  *)
-let collect_binary_op_constraints (op : Ast.binary_op) (ty1 : ty) (_ty2 : ty) (span : span) : trait_constraint list =
+let collect_binary_op_constraints (op : Ast.binary_op) (ty1 : ty) (_ty2 : ty)
+    (span : span) : trait_constraint list =
   match trait_name_of_binary_op op with
   | Some trait_name ->
       (* 例: Add<i64, i64, i64> の場合、現在は ty1 のみを型引数とする簡易実装 *)
-      [ make_trait_constraint trait_name [ty1] span ]
+      [ make_trait_constraint trait_name [ ty1 ] span ]
   | None ->
       (* 組み込み演算（&&, ||, |>）には制約なし *)
       []
@@ -616,8 +598,7 @@ let constraint_error_to_type_error (err : Constraint_solver.constraint_error) :
         match actual with Some stage -> stage | None -> "<未検証>"
       in
       let reason =
-        Printf.sprintf
-          "Capability %s の Stage (%s) が要求条件 %s を満たしていません"
+        Printf.sprintf "Capability %s の Stage (%s) が要求条件 %s を満たしていません"
           capability_label actual_stage_label required_desc
       in
       let iterator_requirement =
@@ -643,11 +624,11 @@ let constraint_error_to_type_error (err : Constraint_solver.constraint_error) :
             required_stage = required_stage_value;
             iterator_required = iterator_requirement;
             actual_stage = actual;
-            capability = capability;
-            provider = provider;
-            manifest_path = manifest_path;
+            capability;
+            provider;
+            manifest_path;
             iterator_kind = iterator_kind_label;
-            iterator_source = iterator_source;
+            iterator_source;
             capability_metadata = None;
             residual = None;
             stage_trace = Effect_profile.stage_trace_empty;
@@ -662,9 +643,7 @@ let constraint_error_to_type_error (err : Constraint_solver.constraint_error) :
           effect_stage = stage_extension;
         }
   | Constraint_solver.UnresolvedTypeVar tv ->
-      let reason =
-        Printf.sprintf "型変数 %s が未解決です" (string_of_type_var tv)
-      in
+      let reason = Printf.sprintf "型変数 %s が未解決です" (string_of_type_var tv) in
       TraitConstraintFailure
         {
           trait_name = err.trait_name;
@@ -715,7 +694,6 @@ let ensure_assignable env (texpr : typed_expr) span =
 type inference_ctx = { loop_depth : int }
 
 let initial_ctx = { loop_depth = 0 }
-
 let enter_loop ctx = { loop_depth = ctx.loop_depth + 1 }
 
 (** 式の型推論: infer_expr(env, expr)
@@ -797,12 +775,12 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
        *)
       (* パラメータの型推論 *)
       let* tparams, _param_tys, param_env, s1 =
-      infer_params env params empty_subst
-  in
+        infer_params env params empty_subst
+      in
 
-  (* 本体式を推論 *)
-  let env' = apply_subst_env s1 param_env in
-  let* tbody, body_ty, s2, body_constraints = infer_expr ~ctx env' body in
+      (* 本体式を推論 *)
+      let env' = apply_subst_env s1 param_env in
+      let* tbody, body_ty, s2, body_constraints = infer_expr ~ctx env' body in
 
       (* 返り値型注釈があれば単一化 *)
       let* final_body_ty, s3 =
@@ -844,7 +822,7 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
        * 3. 返り値型を決定
        * 制約: 左辺・右辺の制約をマージし、演算子から生成された制約を追加
        *)
-  (* 左辺を推論 *)
+      (* 左辺を推論 *)
       let* te1, ty1, s1, constraints1 = infer_expr ~ctx env e1 in
 
       (* 右辺を推論 *)
@@ -859,7 +837,9 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
       let s_final = compose_subst s3 s_combined in
 
       (* 全制約をマージ（左辺・右辺・演算子の制約を統合） *)
-      let all_constraints = merge_constraints_many [constraints1; constraints2; op_constraints] in
+      let all_constraints =
+        merge_constraints_many [ constraints1; constraints2; op_constraints ]
+      in
 
       (* 型付き式を構築 *)
       let texpr =
@@ -903,7 +883,10 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
       in
 
       (* 全制約をマージ *)
-      let all_constraints = merge_constraints_many [cond_constraints; then_constraints; else_constraints] in
+      let all_constraints =
+        merge_constraints_many
+          [ cond_constraints; then_constraints; else_constraints ]
+      in
 
       (* 型付き式を構築 *)
       let texpr =
@@ -932,7 +915,8 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
         (* 最初のアームを処理 *)
         let first_arm = List.hd arms in
         let* first_tarm, first_body_ty, s2, first_constraints =
-          infer_match_arm ~ctx (apply_subst_env s1 env) first_arm scrutinee_ty s1
+          infer_match_arm ~ctx (apply_subst_env s1 env) first_arm scrutinee_ty
+            s1
         in
 
         (* 残りのアームを処理して型を統一 *)
@@ -961,7 +945,9 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
         in
 
         (* 全制約をマージ *)
-        let all_constraints = merge_constraints scrutinee_constraints arms_constraints in
+        let all_constraints =
+          merge_constraints scrutinee_constraints arms_constraints
+        in
 
         (* 型付き式を構築 *)
         let texpr =
@@ -1012,7 +998,9 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
       in
 
       (* 全制約をマージ *)
-      let all_constraints = merge_constraints cond_constraints body_constraints in
+      let all_constraints =
+        merge_constraints cond_constraints body_constraints
+      in
 
       (* 型付き式を構築 (while式はUnit型を返す) *)
       let texpr =
@@ -1053,9 +1041,7 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
           source.expr_span
       in
       (* Iterator 辞書を解決 *)
-      let* iterator_info =
-        solve_iterator_constraint iterator_constraint
-      in
+      let* iterator_info = solve_iterator_constraint iterator_constraint in
       (* 辞書から要素型を取得し、型変数と単一化する *)
       let* s_final =
         unify s_acc elem_ty iterator_info.element_ty source.expr_span
@@ -1084,16 +1070,13 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
       in
       let all_constraints =
         merge_constraints_many
-          [ source_constraints; body_constraints; [ iterator_constraint_final ] ]
+          [
+            source_constraints; body_constraints; [ iterator_constraint_final ];
+          ]
       in
       let texpr =
         make_typed_expr
-          (TFor
-             ( tpat,
-               tsource,
-               tbody,
-               iterator_dict,
-               Some iterator_info_final ))
+          (TFor (tpat, tsource, tbody, iterator_dict, Some iterator_info_final))
           ty_unit expr.expr_span
       in
       Ok (texpr, ty_unit, s_final, all_constraints)
@@ -1110,9 +1093,7 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
       in
 
       (* 型付き式を構築 (loop式はUnit型を返す) *)
-      let texpr =
-        make_typed_expr (TLoop tbody) ty_unit expr.expr_span
-      in
+      let texpr = make_typed_expr (TLoop tbody) ty_unit expr.expr_span in
       Ok (texpr, ty_unit, s1, body_constraints)
   | Continue ->
       (* continue式はUnit型を返し、ループ継続を示す制御フロー操作 *)
@@ -1131,9 +1112,7 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
       let* tbody, body_ty, s1, body_constraints = infer_expr ~ctx env body in
 
       (* 型付き式を構築 *)
-      let texpr =
-        make_typed_expr (TUnsafe tbody) body_ty expr.expr_span
-      in
+      let texpr = make_typed_expr (TUnsafe tbody) body_ty expr.expr_span in
       Ok (texpr, body_ty, s1, body_constraints)
   | Return ret_expr_opt ->
       (* return式の型推論
@@ -1145,12 +1124,9 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
       let* tret_expr_opt, s1, ret_constraints =
         match ret_expr_opt with
         | Some ret_expr ->
-            let* tret_expr, _ret_ty, s, ret_cs =
-              infer_expr ~ctx env ret_expr
-            in
+            let* tret_expr, _ret_ty, s, ret_cs = infer_expr ~ctx env ret_expr in
             Ok (Some tret_expr, s, ret_cs)
-        | None ->
-            Ok (None, empty_subst, [])
+        | None -> Ok (None, empty_subst, [])
       in
 
       (* 型付き式を構築 (return式はUnit型を返す) *)
@@ -1187,9 +1163,7 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
       let* () = ensure_assignable env tlhs lhs.expr_span in
 
       let env' = apply_subst_env s1 env in
-      let* trhs, rhs_ty, s2, rhs_constraints =
-        infer_expr ~ctx env' rhs
-      in
+      let* trhs, rhs_ty, s2, rhs_constraints = infer_expr ~ctx env' rhs in
 
       (* 左辺と右辺の型を単一化 *)
       let* s3 = unify s2 lhs_ty rhs_ty rhs.expr_span in
@@ -1213,7 +1187,9 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
  *)
 and infer_args ?(ctx = initial_ctx) (env : env) (args : arg list)
     (subst : substitution) :
-    (typed_arg list * ty list * substitution * trait_constraint list, type_error) result =
+    ( typed_arg list * ty list * substitution * trait_constraint list,
+      type_error )
+    result =
   List.fold_left
     (fun acc arg ->
       match acc with
@@ -1225,15 +1201,27 @@ and infer_args ?(ctx = initial_ctx) (env : env) (args : arg list)
               match infer_expr ~ctx env' expr with
               | Ok (texpr, ty, s', expr_constraints) ->
                   let s'' = compose_subst s' s in
-                  let all_constraints = merge_constraints constraints expr_constraints in
-                  Ok (targs @ [ TPosArg texpr ], arg_tys @ [ ty ], s'', all_constraints)
+                  let all_constraints =
+                    merge_constraints constraints expr_constraints
+                  in
+                  Ok
+                    ( targs @ [ TPosArg texpr ],
+                      arg_tys @ [ ty ],
+                      s'',
+                      all_constraints )
               | Error e -> Error e)
           | NamedArg (id, expr) -> (
               match infer_expr ~ctx env' expr with
               | Ok (texpr, ty, s', expr_constraints) ->
                   let s'' = compose_subst s' s in
-                  let all_constraints = merge_constraints constraints expr_constraints in
-                  Ok (targs @ [ TNamedArg (id, texpr) ], arg_tys @ [ ty ], s'', all_constraints)
+                  let all_constraints =
+                    merge_constraints constraints expr_constraints
+                  in
+                  Ok
+                    ( targs @ [ TNamedArg (id, texpr) ],
+                      arg_tys @ [ ty ],
+                      s'',
+                      all_constraints )
               | Error e -> Error e)))
     (Ok ([], [], subst, []))
     args
@@ -1303,7 +1291,9 @@ and infer_params (env : env) (params : param list) (subst : substitution) :
  * @return (型付き式リスト, 型リスト, 代入, 制約リスト)
  *)
 and infer_tuple_elements ?(ctx = initial_ctx) (env : env) (exprs : expr list) :
-    (typed_expr list * ty list * substitution * trait_constraint list, type_error) result =
+    ( typed_expr list * ty list * substitution * trait_constraint list,
+      type_error )
+    result =
   List.fold_left
     (fun acc expr ->
       match acc with
@@ -1312,7 +1302,9 @@ and infer_tuple_elements ?(ctx = initial_ctx) (env : env) (exprs : expr list) :
           let env' = apply_subst_env s env in
           let* texpr, ty, s', expr_constraints = infer_expr ~ctx env' expr in
           let s'' = compose_subst s' s in
-          let all_constraints = merge_constraints constraints expr_constraints in
+          let all_constraints =
+            merge_constraints constraints expr_constraints
+          in
           Ok (typed_exprs @ [ texpr ], tys @ [ ty ], s'', all_constraints))
     (Ok ([], [], empty_subst, []))
     exprs
@@ -1328,7 +1320,10 @@ and infer_tuple_elements ?(ctx = initial_ctx) (env : env) (exprs : expr list) :
  *)
 and infer_record_fields ?(ctx = initial_ctx) (env : env)
     (fields : (ident * expr) list) :
-    ( (ident * typed_expr) list * (string * ty) list * substitution * trait_constraint list,
+    ( (ident * typed_expr) list
+      * (string * ty) list
+      * substitution
+      * trait_constraint list,
       type_error )
     result =
   List.fold_left
@@ -1339,7 +1334,9 @@ and infer_record_fields ?(ctx = initial_ctx) (env : env)
           let env' = apply_subst_env s env in
           let* texpr, ty, s', expr_constraints = infer_expr ~ctx env' expr in
           let s'' = compose_subst s' s in
-          let all_constraints = merge_constraints constraints expr_constraints in
+          let all_constraints =
+            merge_constraints constraints expr_constraints
+          in
           Ok
             ( typed_fields @ [ (field_id, texpr) ],
               field_tys @ [ (field_id.name, ty) ],
@@ -1352,8 +1349,8 @@ and infer_record_fields ?(ctx = initial_ctx) (env : env)
  *
  * Phase 2 Week 8: 複合リテラル（Tuple/Record）の推論を追加
  *)
-and infer_literal ?(ctx = initial_ctx) (env : env) (lit : literal) (span : span) :
-    (ty * literal * substitution, type_error) result =
+and infer_literal ?(ctx = initial_ctx) (env : env) (lit : literal) (span : span)
+    : (ty * literal * substitution, type_error) result =
   match lit with
   | Int (_, _) ->
       (* Phase 2: デフォルト i64 *)
@@ -1408,14 +1405,11 @@ and infer_literal ?(ctx = initial_ctx) (env : env) (lit : literal) (span : span)
  * @return (型付きパターン, 束縛変数を追加した型環境)
  *)
 and infer_pattern ?(ctx = initial_ctx) (env : env) (pat : pattern)
-    (expected_ty : ty) :
-    (typed_pattern * env, type_error) result =
+    (expected_ty : ty) : (typed_pattern * env, type_error) result =
   match pat.pat_kind with
   | PatLiteral lit ->
       (* リテラルパターン: リテラルの型と expected_ty を単一化 *)
-      let* lit_ty, _typed_lit, _ =
-        infer_literal ~ctx env lit pat.pat_span
-      in
+      let* lit_ty, _typed_lit, _ = infer_literal ~ctx env lit pat.pat_span in
       let* _subst = unify empty_subst lit_ty expected_ty pat.pat_span in
       let tpat =
         make_typed_pattern (TPatLiteral lit) expected_ty [] pat.pat_span
@@ -1425,9 +1419,7 @@ and infer_pattern ?(ctx = initial_ctx) (env : env) (pat : pattern)
       (* 変数パターン: 変数を環境に追加 *)
       let bindings = [ (id.name, expected_ty) ] in
       let env' =
-        extend id.name
-          (scheme_to_constrained (mono_scheme expected_ty))
-          env
+        extend id.name (scheme_to_constrained (mono_scheme expected_ty)) env
       in
       let tpat =
         make_typed_pattern (TPatVar id) expected_ty bindings pat.pat_span
@@ -1613,9 +1605,7 @@ and infer_pattern ?(ctx = initial_ctx) (env : env) (pat : pattern)
       (* ガード付きパターン: 内部パターンを推論後、ガード式を Bool 型として推論
        * 注: ガード式の制約は現在破棄される（パターンマッチは制約を生成しない）
        *)
-      let* tinner_pat, env' =
-        infer_pattern ~ctx env inner_pat expected_ty
-      in
+      let* tinner_pat, env' = infer_pattern ~ctx env inner_pat expected_ty in
 
       (* ガード式を Bool 型として推論: 制約は破棄 *)
       let* tguard_expr, guard_ty, _, _guard_constraints =
@@ -1649,8 +1639,7 @@ and extract_function_args (ty : ty) : ty list * ty =
  * @param items impl itemのリスト
  * @return (型付きimpl item, 制約リスト)
  *)
-and infer_impl_items ?(ctx = initial_ctx) (env : env)
-    (items : impl_item list) :
+and infer_impl_items ?(ctx = initial_ctx) (env : env) (items : impl_item list) :
     (impl_item list * trait_constraint list, type_error) result =
   (* 各アイテムを順次推論し、制約を収集 *)
   List.fold_left
@@ -1671,12 +1660,12 @@ and infer_impl_items ?(ctx = initial_ctx) (env : env)
                     decl_span = dummy_span;
                   }
                 in
-                infer_decl ~ctx ~config:(!current_config) env dummy_decl
+                infer_decl ~ctx ~config:!current_config env dummy_decl
               in
               (* impl itemは元のASTを保持（後でLLVMコード生成で使用） *)
               Ok
-                (timpl_items @ [ ImplFn fn ],
-                 merge_constraints constraints fn_constraints)
+                ( timpl_items @ [ ImplFn fn ],
+                  merge_constraints constraints fn_constraints )
           | ImplLet (pat, ty_annot, expr) ->
               (* let束縛の型推論（簡易版） *)
               let* texpr, expr_ty, _s, expr_constraints =
@@ -1685,8 +1674,8 @@ and infer_impl_items ?(ctx = initial_ctx) (env : env)
               (* 型注釈があれば検証（後で実装） *)
               let _ = (pat, ty_annot, texpr, expr_ty) in
               Ok
-                (timpl_items @ [ ImplLet (pat, ty_annot, expr) ],
-                 merge_constraints constraints expr_constraints)))
+                ( timpl_items @ [ ImplLet (pat, ty_annot, expr) ],
+                  merge_constraints constraints expr_constraints )))
     (Ok ([], []))
     items
 
@@ -1766,12 +1755,16 @@ and infer_binary_op (op : Ast.binary_op) (ty1 : ty) (ty2 : ty)
       (* ステップ4: 最終確認と制約生成 *)
       match unified_ty with
       | TCon (TCInt _) | TCon (TCFloat _) ->
-          let constraints = collect_binary_op_constraints op unified_ty unified_ty span1 in
+          let constraints =
+            collect_binary_op_constraints op unified_ty unified_ty span1
+          in
           Ok (unified_ty, s1, constraints)
       | TVar tv ->
           (* ここに到達することは通常ないが、安全のため残す *)
           let s2 = compose_subst [ (tv, ty_i64) ] s1 in
-          let constraints = collect_binary_op_constraints op ty_i64 ty_i64 span1 in
+          let constraints =
+            collect_binary_op_constraints op ty_i64 ty_i64 span1
+          in
           Ok (ty_i64, s2, constraints)
       | _ ->
           Error
@@ -1785,7 +1778,9 @@ and infer_binary_op (op : Ast.binary_op) (ty1 : ty) (ty2 : ty)
       let ty2' = apply_subst subst ty2 in
       let* s1 = unify subst ty1' ty2' span2 in
       let unified_ty = apply_subst s1 ty1' in
-      let constraints = collect_binary_op_constraints op unified_ty unified_ty span1 in
+      let constraints =
+        collect_binary_op_constraints op unified_ty unified_ty span1
+      in
       Ok (ty_bool, s1, constraints)
   | Lt | Le | Gt | Ge ->
       (* Week 20-21 実装: Ord<T> 制約を収集（Eq<T> も自動的に要求される）
@@ -1813,7 +1808,9 @@ and infer_binary_op (op : Ast.binary_op) (ty1 : ty) (ty2 : ty)
       (* ステップ3: 単一化と制約生成 *)
       let* s1 = unify s_resolved ty1'' ty2'' span2 in
       let unified_ty = apply_subst s1 ty1'' in
-      let constraints = collect_binary_op_constraints op unified_ty unified_ty span1 in
+      let constraints =
+        collect_binary_op_constraints op unified_ty unified_ty span1
+      in
       Ok (ty_bool, s1, constraints)
   (* 論理演算子: && || *)
   | And | Or ->
@@ -1822,7 +1819,8 @@ and infer_binary_op (op : Ast.binary_op) (ty1 : ty) (ty2 : ty)
       let ty2' = apply_subst subst ty2 in
       let* s1 = unify_as_bool subst ty1' span1 in
       let* s2 = unify_as_bool s1 ty2' span2 in
-      Ok (ty_bool, s2, [])  (* 制約なし *)
+      Ok (ty_bool, s2, [])
+  (* 制約なし *)
   (* パイプ演算子: |> *)
   | PipeOp ->
       (* x |> f は f(x) に等価（制約なし：関数適用のみ）
@@ -1834,7 +1832,8 @@ and infer_binary_op (op : Ast.binary_op) (ty1 : ty) (ty2 : ty)
       let expected_fn_ty = TArrow (ty1', ret_ty) in
       let* s1 = unify_as_function subst ty2 expected_fn_ty span2 in
       let final_ret_ty = apply_subst s1 ret_ty in
-      Ok (final_ret_ty, s1, [])  (* 制約なし *)
+      Ok (final_ret_ty, s1, [])
+(* 制約なし *)
 
 (** match アームの型推論
  *
@@ -1846,11 +1845,11 @@ and infer_binary_op (op : Ast.binary_op) (ty1 : ty) (ty2 : ty)
  *)
 and infer_match_arm ?(ctx = initial_ctx) (env : env) (arm : match_arm)
     (scrutinee_ty : ty) (subst : substitution) :
-    (typed_match_arm * ty * substitution * trait_constraint list, type_error) result =
+    ( typed_match_arm * ty * substitution * trait_constraint list,
+      type_error )
+    result =
   (* パターンを推論 *)
-  let* tpat, pat_env =
-    infer_pattern ~ctx env arm.arm_pattern scrutinee_ty
-  in
+  let* tpat, pat_env = infer_pattern ~ctx env arm.arm_pattern scrutinee_ty in
 
   (* ガード条件があれば推論
    * 制約: ガードとボディの制約をマージ
@@ -1896,7 +1895,9 @@ and infer_match_arm ?(ctx = initial_ctx) (env : env) (arm : match_arm)
  * @return (型付き関数本体, 本体の型, 代入)
  *)
 and infer_fn_body ?(ctx = initial_ctx) (env : env) (body : fn_body) :
-    (typed_fn_body * ty * substitution * trait_constraint list, type_error) result =
+    ( typed_fn_body * ty * substitution * trait_constraint list,
+      type_error )
+    result =
   match body with
   | FnExpr expr ->
       (* 式の場合: 直接推論 *)
@@ -1920,7 +1921,9 @@ and infer_fn_body ?(ctx = initial_ctx) (env : env) (body : fn_body) :
  *)
 and infer_stmts ?(ctx = initial_ctx) (env : env) (stmts : stmt list)
     (subst : substitution) :
-    (typed_stmt list * ty * substitution * trait_constraint list, type_error) result =
+    ( typed_stmt list * ty * substitution * trait_constraint list,
+      type_error )
+    result =
   (* 最後の文を特別扱い
    * 制約: 全ての文の制約をマージ
    *)
@@ -1939,21 +1942,27 @@ and infer_stmts ?(ctx = initial_ctx) (env : env) (stmts : stmt list)
               infer_expr ~ctx env' expr
             in
             let tstmt = TExprStmt texpr in
-            let all_constraints = merge_constraints acc_constraints expr_constraints in
+            let all_constraints =
+              merge_constraints acc_constraints expr_constraints
+            in
             Ok (List.rev (tstmt :: acc_tstmts), expr_ty, s, all_constraints)
         | _ ->
             (* 最後の文が宣言/代入/defer: Unit型 *)
             let* tstmt, _new_env, s, stmt_constraints =
               infer_stmt ~ctx env last_stmt subst
             in
-            let all_constraints = merge_constraints acc_constraints stmt_constraints in
+            let all_constraints =
+              merge_constraints acc_constraints stmt_constraints
+            in
             Ok (List.rev (tstmt :: acc_tstmts), ty_unit, s, all_constraints))
     | stmt :: rest ->
         (* 中間の文: 処理して環境更新 *)
         let* tstmt, new_env, s, stmt_constraints =
           infer_stmt ~ctx env stmt subst
         in
-        let merged_constraints = merge_constraints acc_constraints stmt_constraints in
+        let merged_constraints =
+          merge_constraints acc_constraints stmt_constraints
+        in
         process_stmts new_env rest (tstmt :: acc_tstmts) s merged_constraints
   in
   process_stmts env stmts [] subst []
@@ -1969,7 +1978,8 @@ and infer_stmts ?(ctx = initial_ctx) (env : env) (stmts : stmt list)
  *)
 and infer_stmt ?(ctx = initial_ctx) (env : env) (stmt : stmt)
     (subst : substitution) :
-    (typed_stmt * env * substitution * trait_constraint list, type_error) result =
+    (typed_stmt * env * substitution * trait_constraint list, type_error) result
+    =
   match stmt with
   | DeclStmt decl ->
       (* 宣言文: 型推論して型環境を更新
@@ -1977,7 +1987,7 @@ and infer_stmt ?(ctx = initial_ctx) (env : env) (stmt : stmt)
        *)
       let env' = apply_subst_env subst env in
       let* tdecl, new_env, decl_constraints =
-        infer_decl ~ctx ~config:(!current_config) env' decl
+        infer_decl ~ctx ~config:!current_config env' decl
       in
       Ok (TDeclStmt tdecl, new_env, subst, decl_constraints)
   | ExprStmt expr ->
@@ -2016,11 +2026,8 @@ and infer_stmt ?(ctx = initial_ctx) (env : env) (stmt : stmt)
  * Phase 2 Week 3-4 で実装
  *)
 and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
-    (typed_decl * env * trait_constraint list, type_error) result
-    =
-  let config =
-    match config with Some cfg -> cfg | None -> !current_config
-  in
+    (typed_decl * env * trait_constraint list, type_error) result =
+  let config = match config with Some cfg -> cfg | None -> !current_config in
   match decl.decl_kind with
   | LetDecl (pat, ty_annot, expr) ->
       (* let束縛の型推論
@@ -2071,22 +2078,21 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
        *)
       let* _dict_refs =
         if scheme.constraints = [] then Ok []
-        else
-      (* 制約を解決 *)
-      solve_trait_constraints scheme.constraints
-  in
+        else (* 制約を解決 *)
+          solve_trait_constraints scheme.constraints
+      in
 
-  (* 型付き宣言を構築 *)
-  let tdecl =
-    make_typed_decl decl.decl_attrs decl.decl_vis
-      (TLetDecl (tpat, texpr))
-      scheme decl.decl_span
-  in
+      (* 型付き宣言を構築 *)
+      let tdecl =
+        make_typed_decl decl.decl_attrs decl.decl_vis
+          (TLetDecl (tpat, texpr))
+          scheme decl.decl_span
+      in
 
-  (* 型環境に追加 *)
-  let new_env = extend pat_name scheme env' in
+      (* 型環境に追加 *)
+      let new_env = extend pat_name scheme env' in
 
-  Ok (tdecl, new_env, expr_constraints)
+      Ok (tdecl, new_env, expr_constraints)
   | VarDecl (pat, ty_annot, expr) ->
       (* var束縛の型推論
        *
@@ -2226,24 +2232,21 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
        *)
       let* _dict_refs =
         if scheme.constraints = [] then Ok []
-        else
-          (* 制約を解決 *)
+        else (* 制約を解決 *)
           solve_trait_constraints scheme.constraints
       in
 
       (* 10a. 効果プロファイルを解析 *)
-      let residual_tags =
-        Effect_analysis.collect_from_fn_body tbody
-      in
+      let residual_tags = Effect_analysis.collect_from_fn_body tbody in
       let* effect_profile_raw =
         Type_inference_effect.resolve_function_profile
-          ~runtime_context:config.effect_context
-          ~function_ident:fn.fn_name fn.fn_effect_profile
+          ~runtime_context:config.effect_context ~function_ident:fn.fn_name
+          fn.fn_effect_profile
       in
       let effect_profile, _residual_leaks =
         Effect_analysis.merge_usage_into_profile
-          ~fallback_span:effect_profile_raw.source_span
-          effect_profile_raw residual_tags
+          ~fallback_span:effect_profile_raw.source_span effect_profile_raw
+          residual_tags
       in
       record_effect_profile ~symbol:fn.fn_name.name effect_profile;
 
@@ -2356,8 +2359,7 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
 
       (* 9. 型付きimpl宣言を構築 *)
       let tdecl =
-        make_typed_decl decl.decl_attrs decl.decl_vis
-          (TImplDecl impl)
+        make_typed_decl decl.decl_attrs decl.decl_vis (TImplDecl impl)
           (scheme_to_constrained impl_scheme)
           decl.decl_span
       in
@@ -2379,19 +2381,19 @@ let infer_compilation_unit ?(config = default_config) (cu : compilation_unit) :
     let rec aux = function
       | [] -> None
       | entry :: rest ->
-        let leaks =
-          entry.Constraint_solver.EffectConstraintTable.diagnostic_payload
-            .Effect_profile.residual_leaks
-        in
+          let leaks =
+            entry.Constraint_solver.EffectConstraintTable.diagnostic_payload
+              .Effect_profile.residual_leaks
+          in
           if leaks <> [] then
             let profile =
-              Effect_profile.make_profile
-                ?source_name:entry.source_name
+              Effect_profile.make_profile ?source_name:entry.source_name
                 ?resolved_stage:entry.resolved_stage
                 ?resolved_capability:entry.resolved_capability
                 ~stage_trace:entry.stage_trace
                 ~diagnostic_payload:
-                  entry.Constraint_solver.EffectConstraintTable.diagnostic_payload
+                  entry
+                    .Constraint_solver.EffectConstraintTable.diagnostic_payload
                 ~stage_requirement:entry.stage_requirement
                 ~effect_set:entry.effect_set ~span:entry.source_span ()
             in
@@ -2430,7 +2432,8 @@ let infer_compilation_unit ?(config = default_config) (cu : compilation_unit) :
             | None -> Some symbol
           in
           Error
-            (Type_error.effect_residual_leak_error ~function_name ~profile ~leaks)
+            (Type_error.effect_residual_leak_error ~function_name ~profile
+               ~leaks)
       | None ->
           Ok
             {
@@ -2448,12 +2451,8 @@ let infer_compilation_unit ?(config = default_config) (cu : compilation_unit) :
 let string_of_infer_result (texpr, ty, subst, constraints) =
   let constraints_str =
     if constraints = [] then "no constraints"
-    else
-      String.concat ", "
-        (List.map string_of_trait_constraint constraints)
+    else String.concat ", " (List.map string_of_trait_constraint constraints)
   in
   Printf.sprintf "%s : %s [%s] {%s}"
     (string_of_typed_expr texpr)
-    (string_of_ty ty)
-    (string_of_subst subst)
-    constraints_str
+    (string_of_ty ty) (string_of_subst subst) constraints_str

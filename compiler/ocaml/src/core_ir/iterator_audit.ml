@@ -16,9 +16,8 @@ type entry = {
 let entry_key (entry : entry) =
   let capability = Option.value entry.capability ~default:"<none>" in
   let kind = Option.value entry.iterator_kind ~default:"<unspecified>" in
-  Printf.sprintf "%s::%s::%s::%s::%s"
-    entry.function_name entry.method_name capability kind
-    entry.effect_tag.effect_name
+  Printf.sprintf "%s::%s::%s::%s::%s" entry.function_name entry.method_name
+    capability kind entry.effect_tag.effect_name
 
 let make_entry fn_name method_name audit =
   {
@@ -38,8 +37,7 @@ let make_entry fn_name method_name audit =
 let rec collect_expr fn_name acc expr =
   match expr.expr_kind with
   | Literal _ | Var _ -> acc
-  | Primitive (_op, args) ->
-      List.fold_left (collect_expr fn_name) acc args
+  | Primitive (_op, args) -> List.fold_left (collect_expr fn_name) acc args
   | App (fn_expr, args) ->
       let acc = collect_expr fn_name acc fn_expr in
       List.fold_left (collect_expr fn_name) acc args
@@ -75,10 +73,10 @@ let rec collect_expr fn_name acc expr =
   | Closure _ -> acc
   | AssignMutable (_var, rhs) -> collect_expr fn_name acc rhs
   | Continue -> acc
-  | DictMethodCall (dict_expr, method_name, args, audit_opt) ->
+  | DictMethodCall (dict_expr, method_name, args, audit_opt) -> (
       let acc = collect_expr fn_name acc dict_expr in
       let acc = List.fold_left (collect_expr fn_name) acc args in
-      (match audit_opt with
+      match audit_opt with
       | Some audit -> make_entry fn_name method_name audit :: acc
       | None -> acc)
   | Loop loop_info ->

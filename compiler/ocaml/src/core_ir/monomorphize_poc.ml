@@ -3,10 +3,7 @@ open Ir
 open Types
 
 (** 実行モード *)
-type mode =
-  | UseDictionary
-  | UseMonomorph
-  | UseBoth
+type mode = UseDictionary | UseMonomorph | UseBoth
 
 (** PoC パスが収集したサマリー情報 *)
 module Summary = struct
@@ -14,12 +11,9 @@ module Summary = struct
 
   let last_mode : mode ref = ref UseDictionary
   let recorded_entries : entry list ref = ref []
-
   let reset () = recorded_entries := []
   let set_mode m = last_mode := m
-
   let record entries = recorded_entries := entries
-
   let mode () = !last_mode
   let entries () = !recorded_entries
 end
@@ -32,7 +26,9 @@ let rec build_arrow_type args ret =
   | arg :: rest -> TArrow (arg, build_arrow_type rest ret)
 
 let find_function_def module_def name =
-  List.find_opt (fun fn -> String.equal fn.fn_name name) module_def.function_defs
+  List.find_opt
+    (fun fn -> String.equal fn.fn_name name)
+    module_def.function_defs
 
 let builtin_signature trait type_args method_name =
   match (trait, type_args, method_name) with
@@ -59,8 +55,7 @@ let make_param index ty =
   let var = VarIdGen.fresh name ty default_span in
   { param_var = var; param_default = None }
 
-let make_var_expr var =
-  make_expr (Var var) var.vty default_span
+let make_var_expr var = make_expr (Var var) var.vty default_span
 
 let create_wrapper ~module_def ~(entry : Monomorph_registry.trait_instance)
     ~(method_name : string) ~(target_fn : string) =
@@ -68,49 +63,46 @@ let create_wrapper ~module_def ~(entry : Monomorph_registry.trait_instance)
   let params, return_ty =
     match base_fn with
     | Some fn_def ->
-        (List.map (fun p -> p.param_var.vty) fn_def.fn_params, fn_def.fn_return_ty)
+        ( List.map (fun p -> p.param_var.vty) fn_def.fn_params,
+          fn_def.fn_return_ty )
     | None -> (
-        match builtin_signature entry.trait_name entry.type_args method_name with
+        match
+          builtin_signature entry.trait_name entry.type_args method_name
+        with
         | Some signature -> signature
         | None -> ([], ty_unit))
   in
   if params = [] then None
   else
-    let wrapper_fn_name = wrapper_name entry.trait_name entry.type_args method_name in
-    if List.exists
-         (fun fn_def -> String.equal fn_def.fn_name wrapper_fn_name)
-         module_def.function_defs
-    then
-      None
+    let wrapper_fn_name =
+      wrapper_name entry.trait_name entry.type_args method_name
+    in
+    if
+      List.exists
+        (fun fn_def -> String.equal fn_def.fn_name wrapper_fn_name)
+        module_def.function_defs
+    then None
     else
-      let fn_params =
-        List.mapi (fun idx ty -> make_param idx ty) params
-      in
+      let fn_params = List.mapi (fun idx ty -> make_param idx ty) params in
       let target_fn_ty = build_arrow_type params return_ty in
       let target_var = VarIdGen.fresh target_fn target_fn_ty default_span in
       let fn_expr = make_expr (Var target_var) target_fn_ty default_span in
       let arg_exprs =
         List.map (fun param -> make_var_expr param.param_var) fn_params
       in
-      let call_expr = make_expr (App (fn_expr, arg_exprs)) return_ty default_span in
+      let call_expr =
+        make_expr (App (fn_expr, arg_exprs)) return_ty default_span
+      in
       let block =
         make_block "entry" [] [] (TermReturn call_expr) default_span
       in
       let dict_instances =
         match entry.type_args with
         | impl_ty :: _ ->
-            [
-              {
-                trait = entry.trait_name;
-                impl_ty;
-                methods = [];
-              };
-            ]
+            [ { trait = entry.trait_name; impl_ty; methods = [] } ]
         | [] -> []
       in
-      let metadata =
-        { (default_metadata default_span) with dict_instances }
-      in
+      let metadata = { (default_metadata default_span) with dict_instances } in
       let fn_def =
         make_function wrapper_fn_name fn_params return_ty [ block ] metadata
       in
@@ -159,12 +151,11 @@ let rec count_dict_calls_in_expr expr =
             | Some guard -> acc + count_dict_calls_in_expr guard)
           0 cases
   | Primitive (_, args) | ADTConstruct (_, args) ->
-      List.fold_left
-        (fun acc arg -> acc + count_dict_calls_in_expr arg)
-        0 args
+      List.fold_left (fun acc arg -> acc + count_dict_calls_in_expr arg) 0 args
   | ArrayAccess (target, index) ->
       count_dict_calls_in_expr target + count_dict_calls_in_expr index
-  | TupleAccess (target, _) | RecordAccess (target, _) | ADTProject (target, _) ->
+  | TupleAccess (target, _) | RecordAccess (target, _) | ADTProject (target, _)
+    ->
       count_dict_calls_in_expr target
   | AssignMutable (_, rhs) -> count_dict_calls_in_expr rhs
   | Loop loop_info ->
@@ -190,15 +181,11 @@ let rec count_dict_calls_in_expr expr =
   | Closure _ | Literal _ | Var _ | Continue -> 0
 
 let count_dict_calls_in_stmt = function
-  | Assign (_, expr)
-  | Store (_, expr)
-  | Return expr
-  | ExprStmt expr ->
+  | Assign (_, expr) | Store (_, expr) | Return expr | ExprStmt expr ->
       count_dict_calls_in_expr expr
   | Alloca _ -> 0
   | Branch (cond, _, _) -> count_dict_calls_in_expr cond
-  | EffectMarker { effect_expr = Some expr; _ } ->
-      count_dict_calls_in_expr expr
+  | EffectMarker { effect_expr = Some expr; _ } -> count_dict_calls_in_expr expr
   | Jump _ | Phi _ | EffectMarker { effect_expr = None; _ } -> 0
 
 let count_dict_calls_in_terminator = function
@@ -227,8 +214,7 @@ let register_builtin_instance trait ty method_name =
   in
   if methods <> [] then
     Monomorph_registry.record
-      Monomorph_registry.
-        { trait_name = trait; type_args = [ ty ]; methods }
+      Monomorph_registry.{ trait_name = trait; type_args = [ ty ]; methods }
 
 let make_dict_method_call trait method_name args ret_ty span =
   match args with
@@ -238,8 +224,8 @@ let make_dict_method_call trait method_name args ret_ty span =
       Desugar.generate_dict_init trait first_arg.expr_ty span
       |> Option.map (fun dict_expr ->
              make_expr
-               (DictMethodCall (dict_expr, method_name, args, None)) ret_ty
-               span)
+               (DictMethodCall (dict_expr, method_name, args, None))
+               ret_ty span)
 
 let trait_info_of_primitive op =
   match op with
@@ -257,14 +243,19 @@ let rec convert_primitives_expr expr =
       let args' = List.map convert_primitives_expr args in
       match trait_info_of_primitive op with
       | Some (trait, method_name) -> (
-          match make_dict_method_call trait method_name args' expr.expr_ty expr.expr_span with
+          match
+            make_dict_method_call trait method_name args' expr.expr_ty
+              expr.expr_span
+          with
           | Some dict_call -> dict_call
-          | None -> make_expr (Primitive (op, args')) expr.expr_ty expr.expr_span)
+          | None ->
+              make_expr (Primitive (op, args')) expr.expr_ty expr.expr_span)
       | None -> make_expr (Primitive (op, args')) expr.expr_ty expr.expr_span)
   | DictMethodCall (dict_expr, method_name, method_args, audit) ->
       let dict_expr' = convert_primitives_expr dict_expr in
       let args' = List.map convert_primitives_expr method_args in
-      make_expr (DictMethodCall (dict_expr', method_name, args', audit))
+      make_expr
+        (DictMethodCall (dict_expr', method_name, args', audit))
         expr.expr_ty expr.expr_span
   | App (fn_expr, args) ->
       let fn_expr' = convert_primitives_expr fn_expr in
@@ -339,15 +330,10 @@ let rec convert_primitives_expr expr =
       in
       let loop_body' = convert_primitives_expr loop_info.loop_body in
       make_expr
-        (Loop
-           {
-             loop_info with
-             loop_kind = loop_kind';
-             loop_body = loop_body';
-           })
+        (Loop { loop_info with loop_kind = loop_kind'; loop_body = loop_body' })
         expr.expr_ty expr.expr_span
-  | CapabilityCheck _ | DictConstruct _ | DictLookup _ | Closure _
-  | Literal _ | Var _ | Continue ->
+  | CapabilityCheck _ | DictConstruct _ | DictLookup _ | Closure _ | Literal _
+  | Var _ | Continue ->
       expr
 
 let convert_primitives_stmt stmt =
@@ -374,8 +360,7 @@ let convert_primitives_terminator terminator =
   | TermBranch (cond, t_lbl, f_lbl) ->
       TermBranch (convert_primitives_expr cond, t_lbl, f_lbl)
   | TermSwitch (scrutinee, cases, default_lbl) ->
-      TermSwitch
-        (convert_primitives_expr scrutinee, cases, default_lbl)
+      TermSwitch (convert_primitives_expr scrutinee, cases, default_lbl)
   | TermJump _ | TermUnreachable -> terminator
 
 let convert_primitives_block block =
@@ -417,7 +402,9 @@ let find_matching_entry entries method_name args =
     entries
 
 let make_wrapper_call wrapper_name args ret_ty span =
-  let fn_ty = build_arrow_type (List.map (fun arg -> arg.expr_ty) args) ret_ty in
+  let fn_ty =
+    build_arrow_type (List.map (fun arg -> arg.expr_ty) args) ret_ty
+  in
   let fn_var = VarIdGen.fresh wrapper_name fn_ty span in
   let fn_expr = make_expr (Var fn_var) fn_ty span in
   make_expr (App (fn_expr, args)) ret_ty span
@@ -445,15 +432,32 @@ let rec rewrite_expr ~entries ~wrappers expr =
         | Some _ as value -> value
         | None -> (
             match method_name with
-            | "lt" -> Some (make_expr (Primitive (PrimLt, args')) expr.expr_ty expr.expr_span)
-            | "gt" -> Some (make_expr (Primitive (PrimGt, args')) expr.expr_ty expr.expr_span)
-            | "le" -> Some (make_expr (Primitive (PrimLe, args')) expr.expr_ty expr.expr_span)
-            | "ge" -> Some (make_expr (Primitive (PrimGe, args')) expr.expr_ty expr.expr_span)
+            | "lt" ->
+                Some
+                  (make_expr
+                     (Primitive (PrimLt, args'))
+                     expr.expr_ty expr.expr_span)
+            | "gt" ->
+                Some
+                  (make_expr
+                     (Primitive (PrimGt, args'))
+                     expr.expr_ty expr.expr_span)
+            | "le" ->
+                Some
+                  (make_expr
+                     (Primitive (PrimLe, args'))
+                     expr.expr_ty expr.expr_span)
+            | "ge" ->
+                Some
+                  (make_expr
+                     (Primitive (PrimGe, args'))
+                     expr.expr_ty expr.expr_span)
             | _ -> None)
       in
       Option.value
         ~default:
-          (make_expr (DictMethodCall (dict_expr', method_name, args', audit))
+          (make_expr
+             (DictMethodCall (dict_expr', method_name, args', audit))
              expr.expr_ty expr.expr_span)
         fallback
   | App (fn_expr, args) ->
@@ -474,9 +478,7 @@ let rec rewrite_expr ~entries ~wrappers expr =
       let cases' =
         List.map
           (fun case ->
-            let case_body =
-              rewrite_expr ~entries ~wrappers case.case_body
-            in
+            let case_body = rewrite_expr ~entries ~wrappers case.case_body in
             let guard =
               match case.case_guard with
               | None -> None
@@ -512,26 +514,22 @@ let rec rewrite_expr ~entries ~wrappers expr =
   | Loop info ->
       let loop_kind' =
         match info.loop_kind with
-        | WhileLoop cond ->
-            WhileLoop (rewrite_expr ~entries ~wrappers cond)
+        | WhileLoop cond -> WhileLoop (rewrite_expr ~entries ~wrappers cond)
         | ForLoop for_info ->
             let init' =
               List.map
-                (fun (var, e) ->
-                  (var, rewrite_expr ~entries ~wrappers e))
+                (fun (var, e) -> (var, rewrite_expr ~entries ~wrappers e))
                 for_info.for_init
             in
             let step' =
               List.map
-                (fun (var, e) ->
-                  (var, rewrite_expr ~entries ~wrappers e))
+                (fun (var, e) -> (var, rewrite_expr ~entries ~wrappers e))
                 for_info.for_step
             in
             ForLoop
               {
                 for_info with
-                for_source =
-                  rewrite_expr ~entries ~wrappers for_info.for_source;
+                for_source = rewrite_expr ~entries ~wrappers for_info.for_source;
                 for_init = init';
                 for_step = step';
               }
@@ -539,12 +537,7 @@ let rec rewrite_expr ~entries ~wrappers expr =
       in
       let loop_body' = rewrite_expr ~entries ~wrappers info.loop_body in
       make_expr
-        (Loop
-           {
-             info with
-             loop_kind = loop_kind';
-             loop_body = loop_body';
-           })
+        (Loop { info with loop_kind = loop_kind'; loop_body = loop_body' })
         expr.expr_ty expr.expr_span
   | Closure _ | Literal _ | Var _ | DictLookup _ | DictConstruct _
   | CapabilityCheck _ | Continue ->
@@ -577,17 +570,12 @@ let rewrite_terminator ~entries ~wrappers = function
   | TermBranch (cond, then_lbl, else_lbl) ->
       TermBranch (rewrite_expr ~entries ~wrappers cond, then_lbl, else_lbl)
   | TermSwitch (scrutinee, cases, default_lbl) ->
-      TermSwitch
-        (rewrite_expr ~entries ~wrappers scrutinee, cases, default_lbl)
+      TermSwitch (rewrite_expr ~entries ~wrappers scrutinee, cases, default_lbl)
   | TermUnreachable -> TermUnreachable
 
 let rewrite_block ~entries ~wrappers block =
-  let stmts =
-    List.map (rewrite_stmt ~entries ~wrappers) block.stmts
-  in
-  let terminator =
-    rewrite_terminator ~entries ~wrappers block.terminator
-  in
+  let stmts = List.map (rewrite_stmt ~entries ~wrappers) block.stmts in
+  let terminator = rewrite_terminator ~entries ~wrappers block.terminator in
   { block with stmts; terminator }
 
 let rewrite_function ~entries ~wrappers fn_def =

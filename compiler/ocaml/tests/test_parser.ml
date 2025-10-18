@@ -62,21 +62,17 @@ let expect_extern_target desc expected input =
                 metadata.extern_target = expected
                 && metadata.extern_invalid_attributes = []
               then Printf.printf "✓ %s\n" desc
-              else (
-                let show_opt = function
-                  | None -> "None"
-                  | Some v -> v
-                in
+              else
+                let show_opt = function None -> "None" | Some v -> v in
                 let invalid_count =
                   List.length metadata.extern_invalid_attributes
                 in
                 Printf.printf
                   "✗ %s: expected target %s (invalid=0), got %s (invalid=%d)\n"
-                  desc
-                  (show_opt expected)
+                  desc (show_opt expected)
                   (show_opt metadata.extern_target)
                   invalid_count;
-                exit 1)
+                exit 1
           | [] ->
               Printf.printf "✗ %s: extern block is empty\n" desc;
               exit 1)
@@ -100,14 +96,14 @@ let expect_fn_effects desc expected input =
                 Some (List.map (fun id -> id.name) info.effect_declared)
           in
           if actual = expected then Printf.printf "✓ %s\n" desc
-          else (
+          else
             let show = function
               | None -> "None"
               | Some tags -> "[" ^ String.concat ", " tags ^ "]"
             in
-            Printf.printf "✗ %s: expected %s, got %s\n" desc
-              (show expected) (show actual);
-            exit 1)
+            Printf.printf "✗ %s: expected %s, got %s\n" desc (show expected)
+              (show actual);
+            exit 1
       | _ ->
           Printf.printf "✗ %s: first decl is not a function\n" desc;
           exit 1)
@@ -128,17 +124,15 @@ let expect_fn_stage desc expected input =
           let actual =
             match fn.fn_effect_profile with
             | None -> None
-            | Some info -> Option.map stage_requirement_to_string info.effect_stage
+            | Some info ->
+                Option.map stage_requirement_to_string info.effect_stage
           in
           if actual = expected then Printf.printf "✓ %s\n" desc
-          else (
-            let show = function
-              | None -> "None"
-              | Some v -> v
-            in
-            Printf.printf "✗ %s: expected %s, got %s\n" desc
-              (show expected) (show actual);
-            exit 1)
+          else
+            let show = function None -> "None" | Some v -> v in
+            Printf.printf "✗ %s: expected %s, got %s\n" desc (show expected)
+              (show actual);
+            exit 1
       | _ ->
           Printf.printf "✗ %s: first decl is not a function\n" desc;
           exit 1)
@@ -257,21 +251,17 @@ let test_effect_annotations () =
   expect_fn_effects "fn: effect annotation with tags"
     (Some [ "io"; "panic" ])
     "fn write_log() !{ io, panic } = panic(\"log\")";
-  expect_fn_effects "fn: empty effect annotation" (Some [])
-    "fn noop() !{} = 0";
+  expect_fn_effects "fn: empty effect annotation" (Some []) "fn noop() !{} = 0";
   expect_fn_effects "fn: missing annotation" None "fn pure() = 1";
   expect_fail "fn: unterminated effect list" "fn bad() !{ io, panic = 1";
-  expect_fn_stage "fn: requires_capability stage"
-    (Some "Exact:experimental")
+  expect_fn_stage "fn: requires_capability stage" (Some "Exact:experimental")
     "@requires_capability(\"experimental\")\nfn experimental_api() = 0";
-  expect_fn_stage "fn: dsl_export default stage"
-    (Some "AtLeast:stable")
+  expect_fn_stage "fn: dsl_export default stage" (Some "AtLeast:stable")
     "@dsl_export\nfn exported_api() = 0";
   expect_fn_effects "fn: allows_effects attribute"
     (Some [ "io"; "audit" ])
     "@allows_effects(io, audit)\nfn attr_effect() = 0";
-  expect_fn_stage "fn: allows_effects stage default"
-    (Some "AtLeast:stable")
+  expect_fn_stage "fn: allows_effects stage default" (Some "AtLeast:stable")
     "@allows_effects(io)\nfn attr_stage() = 0";
   expect_fn_effects "fn: handles attribute"
     (Some [ "io"; "panic" ])
@@ -297,7 +287,8 @@ let test_type_decls () =
 (* ========== trait 宣言テスト ========== *)
 
 let test_trait_decls () =
-  expect_decl_count "trait: simple" 1 "trait Show { fn show(self: Self) -> Str }";
+  expect_decl_count "trait: simple" 1
+    "trait Show { fn show(self: Self) -> Str }";
   expect_decl_count "trait: generic" 1
     "trait Eq<T> { fn eq(self: Self, other: T) -> Bool }";
   expect_fail "trait: where clause (todo)"
@@ -308,8 +299,7 @@ let test_trait_decls () =
 let test_impl_decls () =
   expect_decl_count "impl: trait for type" 1
     "impl Show for i64 { fn show(self: i64) -> String = \"int\" }";
-  expect_decl_count "impl: inherent" 1
-    "impl Point { fn create() -> i64 = 42 }";
+  expect_decl_count "impl: inherent" 1 "impl Point { fn create() -> i64 = 42 }";
   expect_decl_count "impl: generic" 1
     "impl<T> Show for Vec<T> { fn show(self: Vec<T>) -> String = \"vec\" }"
 
@@ -324,7 +314,7 @@ let test_extern_decls () =
     {|
 extern "C" {
   @ffi_target("arm64-apple-darwin")
-  fn dispatch_async_f(work: Ptr<u8>, context: Ptr<u8>) -> ();
+  fn dispatch_async_f(work: Ptr<u8>, context: Ptr<u8>);
 }
 |}
 

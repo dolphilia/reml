@@ -122,9 +122,7 @@ let test_type_env () =
   assert_some "parent scope y" (lookup "y" env2);
 
   (* 子スコープで上書き *)
-  let env2 =
-    extend "y" (scheme_to_constrained (mono_scheme ty_char)) env2
-  in
+  let env2 = extend "y" (scheme_to_constrained (mono_scheme ty_char)) env2 in
   (match lookup "y" env2 with
   | Some scheme -> assert_equal "y in child scope" ty_char scheme.body
   | None -> failwith "lookup y in child scope failed");

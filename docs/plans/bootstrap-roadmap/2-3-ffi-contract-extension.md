@@ -56,7 +56,7 @@
 ### 2025-10-18 ログ・測定サマリー
 
 - **`scripts/validate-runtime-capabilities.sh`**: `tooling/runtime/capabilities/default.json` を対象に再実行し、`reports/runtime-capabilities-validation.json` の timestamp を `2025-10-18T03:23:33.958135+00:00` へ更新。`arm64-apple-darwin` override が `runtime_candidates` に出力されること、および `validation.status = ok` を確認済み。
-- **`scripts/ci-local.sh --target macos --arch arm64 --stage beta`**: `--stage` オプションを実装したうえで再実行。Lint は既存の `dune fmt` 差分を避けるため `--skip-lint`、テストは `effects-residual` ゴールデン差分（`effect.stage.runtime` メタデータ）で停止するため `--skip-test` を併用し、ビルドと LLVM IR 検証まで完走（出力先 `/tmp/reml-ci-local-llvm-ir-67327`）。失敗ログとフォローアップは `reports/ffi-macos-summary.md` §2 に記録。
+- **`scripts/ci-local.sh --target macos --arch arm64 --stage beta`**: Lint → Build → Test → LLVM IR → Runtime（AddressSanitizer 含む）まで完走。生成された LLVM IR は `/tmp/reml-ci-local-llvm-ir-5983`、詳細ログは `reports/ffi-macos-summary.md` §2 に追記。
 - **`compiler/ocaml/scripts/verify_llvm_ir.sh --target arm64-apple-darwin compiler/ocaml/tests/llvm-ir/golden/basic_arithmetic.ll`**: 追加で単体検証を実行し、LLVM 18.1.8 で `.ll → .bc → .o` パイプラインの成功を確認。生成物パスは `reports/ffi-macos-summary.md` §2 に追記。
 - **フォローアップ**: (1) `effects-residual.jsonl.golden` を含む監査ゴールデンを Stage Trace 仕様に合わせて更新。（2）`ci-local` のテストステップ常時実行に備えて、`dune fmt` 差分の解消タスクを Phase 2-3 backlog に登録。
 
@@ -76,17 +76,14 @@
    `audit_envelope.ml` に `bridge` サブレコードを追加し、Typer が JSON 生成に必要なキーを設定。effect 系メタデータと共通のフォーマッタを利用できるよう `AuditEnvelope.Metadata` を整理。
 4. **ゴールデンテスト更新**  
    `compiler/ocaml/tests/golden/audit/ffi_target.json.golden` を新規追加し、`arm64-apple-darwin` と `x86_64-pc-windows-msvc` の 2 ケースを固定。CLI JSON ゴールデンにも FFI 診断を追加し、残存効果診断との併用ケースを検証する。
-5. **CI チェック拡張**  
-   `tooling/ci/collect-iterator-audit-metrics.py` に FFI ブリッジ診断の必須キーを追加し、`iterator-stage-summary.md` 同様に `ffi_bridge.audit_pass_rate`（仮）を導出するゲート案を検討。
-6. **ドキュメント反映**  
-   `docs/spec/3-9-core-async-ffi-unsafe.md` と `docs/spec/3-6-core-diagnostics-audit.md` に新しい監査キーと診断を追記し、Phase 2-3 完了報告から参照できるよう脚注リンクを整備。
 
 ### JSON 監査スキーマ更新案（`ffi_target` 拡張）
 
 - `AuditEnvelope` スキーマに `bridge` オブジェクトを追加し、必須プロパティとして `bridge.target` / `bridge.arch` / `bridge.abi` / `bridge.ownership` / `bridge.extern_symbol` を定義。オプションで `bridge.alias`, `bridge.library`, `bridge.callconv`, `bridge.audit_stage` を許容する。
-- スキーマ改訂は `tooling/runtime/audit-schema.json`（ドラフト）で編集し、検証スクリプトに `./scripts/validate-runtime-capabilities.sh --schema audit` を追加して自動チェックする案を提案。
+- スキーマ改訂は `tooling/runtime/audit-schema.json`（ドラフト）で管理し、検証スクリプトに `./scripts/validate-runtime-capabilities.sh --schema audit` を追加して自動チェックする案を提案。2025-10-18 時点でドラフト v0 を追加し、`diagnostics[]` 配列や `bridge.*` 必須キーを定義済み。
 - ゴールデンテスト: `compiler/ocaml/tests/golden/audit/ffi_target.json.golden` を新設し、`ffi_target = arm64-apple-darwin`／`ffi_target = x86_64-pc-windows-msvc` のサンプルを記録。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `ffi.bridge.audit_pass_rate` 指標を追記する。
 - レビュー体制: 一次レビューは Diagnostics チーム、二次レビューは FFI チーム、最終承認は `tooling/ci` チーム（CI ゲート整合確認）。週次スタンドアップで進捗共有し、採択前に `reports/ffi-macos-summary.md` のサンプルを提示する。
+- スクリプト更新: `tooling/ci/collect-iterator-audit-metrics.py` に FFI ブリッジ指標 `ffi_bridge.audit_pass_rate` を追加済み。出力 JSON は後方互換性のため iterator 指標をトップレベルに残したまま、`metrics[]` 配列と `ffi_bridge` サマリーを併記する。
 
 ### Capability override 提案（arm64-apple-darwin）
 

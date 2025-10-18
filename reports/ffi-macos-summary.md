@@ -12,36 +12,34 @@
   - OCaml 5.2.1 / dune 3.x
 - Reml リポジトリ commit: `2571db5c1d92804d09e0ef27890ed6504b9b96ce`
 - コマンド実行:
-  - `./scripts/ci-local.sh --target macos --arch arm64 --stage beta --skip-lint`（Test ステップで `effects-residual` ゴールデン差分が発生）
-  - `./scripts/ci-local.sh --target macos --arch arm64 --stage beta --skip-lint --skip-test`（Build + LLVM IR 検証まで完走）
+  - `./scripts/ci-local.sh --target macos --arch arm64 --stage beta`（Lint/Build/Test/LLVM/Runtime すべて成功）
   - `compiler/ocaml/scripts/verify_llvm_ir.sh --target arm64-apple-darwin compiler/ocaml/tests/llvm-ir/golden/basic_arithmetic.ll`
 
 ## 2. Capability / Stage 検証
 | チェック項目 | 結果 | ログ/参照 |
 |--------------|------|-----------|
 | `scripts/validate-runtime-capabilities.sh tooling/runtime/capabilities/default.json` | 成功（2025-10-18T03:23:33Z） | `reports/runtime-capabilities-validation.json`（`runtime_candidates` に `arm64-apple-darwin` を確認） |
-| `./scripts/ci-local.sh --target macos --arch arm64 --stage beta --skip-lint` | 失敗（Test ステップで `effects-residual` ゴールデン差分） | ログ抜粋を §2.2 に記録（`effect.stage.runtime` メタデータの差分要更新） |
-| `./scripts/ci-local.sh --target macos --arch arm64 --stage beta --skip-lint --skip-test` | 成功（Build + LLVM IR 検証） | LLVM IR 出力先 `/tmp/reml-ci-local-llvm-ir-67327` を §2.2 に記録 |
+| `./scripts/ci-local.sh --target macos --arch arm64 --stage beta` | 成功（Lint → Build → Test → LLVM IR → Runtime） | LLVM IR 出力先 `/tmp/reml-ci-local-llvm-ir-5983` と AddressSanitizer ログを §2.2 に記録 |
 | `compiler/ocaml/scripts/verify_llvm_ir.sh --target arm64-apple-darwin compiler/ocaml/tests/llvm-ir/golden/basic_arithmetic.ll` | 成功 | `.bc`/`.o` 生成ログを §2.2 に記録 |
-| Capability 差分レビュー | 未実施 | `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` 更新案（診断チーム確認待ち） |
+| Capability 差分レビュー | 進行中 | `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `ffi_bridge.audit_pass_rate` を追記済み（Diagnostics チームレビュー待ち） |
 
 ### 2.1 監査ログ抜粋
-- `AuditEnvelope.metadata.bridge.*`（arm64-apple-darwin）: Build 失敗のため未取得（Typer `extern_metadata` 実装待ち）
-- `Diagnostic.extensions.effect.stage_trace` 差分: 同上
+- `AuditEnvelope.metadata.bridge.*`（arm64-apple-darwin）: Typer `extern_metadata` → `AuditEnvelope` 伝搬待ち（`compiler/ocaml/src/ffi_contract.ml` でスケルトン定義済み、次回計測で `bridge.*` キーを収集予定）
+- `Diagnostic.extensions.effect.stage_trace`: `effects-residual` ゴールデン更新後は Typer/Runtime の `stage_trace` が一致（`compiler/ocaml/tests/golden/audit/effects-residual.jsonl.golden` を 2025-10-18 に更新）
 
 ### 2.2 実行ログ抜粋
 
 ```text
-$ ./scripts/ci-local.sh --target macos --arch arm64 --stage beta --skip-lint
-[INFO] Lint ステップ (1/5)
-diff --git a/_build/default/src/cli/dune b/_build/default/src/cli/.formatted/dune
+$ ./scripts/ci-local.sh --target macos --arch arm64 --stage beta
+[INFO] ホストアーキテクチャ: arm64
+[INFO] ターゲットプラットフォーム: macos
 ...
-[ERROR] effects-residual.jsonl.golden が未更新（effect.stage.runtime メタデータ差分）
-
-$ ./scripts/ci-local.sh --target macos --arch arm64 --stage beta --skip-lint --skip-test
-[SUCCESS] コンパイラビルド完了
-[SUCCESS] LLVM IR 検証完了
-[INFO] 生成された LLVM IR: /tmp/reml-ci-local-llvm-ir-67327
+[SUCCESS] すべての CI ステップが完了しました ✓
+[INFO] 生成された LLVM IR: /tmp/reml-ci-local-llvm-ir-5983
+[INFO] AddressSanitizer チェックを実行中...
+[DEBUG] mem_alloc: size=128, aligned=128, ptr=0x60d000000528
+[DEBUG] dec_ref: ptr=0x60d000000528, refcount=1 -> 0, type_tag=1
+[DEBUG] mem_free: ptr=0x60d000000528, refcount=0, type_tag=1
 
 $ compiler/ocaml/scripts/verify_llvm_ir.sh --target arm64-apple-darwin compiler/ocaml/tests/llvm-ir/golden/basic_arithmetic.ll
 [1/3] llvm-as ... ✓
@@ -79,10 +77,21 @@ $ compiler/ocaml/scripts/verify_llvm_ir.sh --target arm64-apple-darwin compiler/
 - [x] Capability override (`arm64-apple-darwin`) を `tooling/runtime/capabilities/default.json` に追加し、Windows 同等セットから開始する。（PR 化・レビューは未完）
 - [x] `scripts/ci-local.sh` の `--arch arm64` 実行ログを保存し、CI 再現性を確認する（`--stage` オプション実装済み、Build/LLVM 検証完了。テストはゴールデン差分修正後に再開）。
 - [ ] Darwin 向け可変長/構造体戻りの ABI 差分調査を完了し、`docs/notes/llvm-spec-status-survey.md` §2.2 を更新。
-- [ ] `AuditEnvelope.metadata.bridge.*` スキーマを確定し、macOS サンプルをゴールデン化する。
+- [ ] `AuditEnvelope.metadata.bridge.*` スキーマを確定し、macOS サンプルをゴールデン化する（ドラフトは `tooling/runtime/audit-schema.json` に追加済み、Typer 実装後に本番値を取得）。
 - [x] `scripts/ci-local.sh` に `--stage` オプションを追加し、Diagnostics チームの運用手順と合わせる。
 - [x] `extern_metadata` / `extern_decl` の重複フィールドを解消し、Build ステップを通過させる（`extern_block_target` へ改名済み）。
-- [ ] `effects-residual.jsonl.golden` を含む監査ゴールデンを更新し、テストステップを再度有効化する。
+- [x] `effects-residual.jsonl.golden` を含む監査ゴールデンを更新し、テストステップを再度有効化する（2025-10-18、`dune runtest` / `scripts/ci-local.sh` で検証）。
+
+## 7. クロスプラットフォーム比較観点（ドラフト）
+- 対象: Linux x86_64（System V）、Windows x64（MSVC）、macOS arm64（Darwin AAPCS64）。
+- 比較軸:
+  1. ABI 呼出規約 — `compiler/ocaml/src/ffi_contract.ml` の `abi_kind` で正規化し、ターゲットごとの差分を `reports/ffi-bridge-summary.md`（新設予定）に記載。
+  2. 所有権契約 — `bridge.ownership` の既定値と制約（借用/転送/参照）をターゲット別に列挙し、Windows API 呼び出しで禁止される転送ケースを重点レビュー。
+  3. 監査メトリクス — `ffi_bridge.audit_pass_rate` をターゲット別に計測し、1.0 未満となった場合は欠落キーを本サマリーおよび `reports/ffi-windows-summary.md` / `reports/ffi-linux-summary.md` に記録。
+  4. CI 実行時間 — `scripts/ci-local.sh --target <platform>` の Build/Test 所要時間を比較し、15% 以上乖離した場合は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` にリスク登録。
+- 次のアクション:
+  - Linux / Windows 向けテンプレートを本ファイルと同形式で作成し、共通フィールド（Stage, ABI, Ownership, CI 実行結果）を揃える。
+  - `tooling/ci/sync-iterator-audit.sh` に FFI ブリッジサマリ出力オプションを追加し、`iterator-stage-summary.md` と同じレイアウトで `ffi-bridge-summary.md` を生成する。
 
 ---
 

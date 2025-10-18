@@ -29,11 +29,8 @@ let diff_golden_path =
 
 (* ========= ヘルパー ========= *)
 
-let ensure_dir dir =
-  if not (Sys.file_exists dir) then Unix.mkdir dir 0o755
-
-let read_file path =
-  In_channel.with_open_text path In_channel.input_all
+let ensure_dir dir = if not (Sys.file_exists dir) then Unix.mkdir dir 0o755
+let read_file path = In_channel.with_open_text path In_channel.input_all
 
 let parse_tast () =
   let source = read_file source_file in
@@ -90,15 +87,13 @@ let rec collect_expr acc expr =
             | None -> acc
             | Some guard -> collect_expr acc guard)
           acc cases
-    | Primitive (_, args) ->
-        List.fold_left collect_expr acc args
+    | Primitive (_, args) -> List.fold_left collect_expr acc args
     | TupleAccess (e, _) | RecordAccess (e, _) | ADTProject (e, _) ->
         collect_expr acc e
     | ArrayAccess (arr, idx) ->
         let acc = collect_expr acc arr in
         collect_expr acc idx
-    | ADTConstruct (_, fields) ->
-        List.fold_left collect_expr acc fields
+    | ADTConstruct (_, fields) -> List.fold_left collect_expr acc fields
     | AssignMutable (_, rhs) -> collect_expr acc rhs
     | Loop loop_info ->
         let acc =
@@ -128,41 +123,33 @@ let rec collect_expr acc expr =
 
 let string_ends_with ~suffix s =
   let len_s = String.length s and len_suffix = String.length suffix in
-  len_suffix <= len_s
-  && String.sub s (len_s - len_suffix) len_suffix = suffix
+  len_suffix <= len_s && String.sub s (len_s - len_suffix) len_suffix = suffix
 
 let string_starts_with ~prefix s =
   let len_s = String.length s and len_prefix = String.length prefix in
-  len_prefix <= len_s
-  && String.sub s 0 len_prefix = prefix
+  len_prefix <= len_s && String.sub s 0 len_prefix = prefix
 
 let collect_from_stmt acc = function
-  | Assign (_, expr) | Return expr | ExprStmt expr ->
-      collect_expr acc expr
+  | Assign (_, expr) | Return expr | ExprStmt expr -> collect_expr acc expr
   | Store (_, expr) -> collect_expr acc expr
   | Alloca _ -> acc
   | Branch (cond, _, _) -> collect_expr acc cond
   | Jump _ | Phi _ -> acc
   | EffectMarker { effect_expr; _ } -> (
-      match effect_expr with
-      | None -> acc
-      | Some expr -> collect_expr acc expr)
+      match effect_expr with None -> acc | Some expr -> collect_expr acc expr)
 
 let collect_from_terminator acc = function
   | TermReturn expr -> collect_expr acc expr
   | TermBranch (cond, _, _) -> collect_expr acc cond
   | TermJump _ | TermUnreachable -> acc
-  | TermSwitch (scrutinee, _cases, _default) ->
-      collect_expr acc scrutinee
+  | TermSwitch (scrutinee, _cases, _default) -> collect_expr acc scrutinee
 
 let collect_dict_calls module_def =
   List.fold_left
     (fun acc fn ->
       List.fold_left
         (fun acc block ->
-          let acc =
-            List.fold_left collect_from_stmt acc block.stmts
-          in
+          let acc = List.fold_left collect_from_stmt acc block.stmts in
           collect_from_terminator acc block.terminator)
         acc fn.fn_blocks)
     [] module_def.function_defs
@@ -178,7 +165,9 @@ let string_of_dict_calls calls =
   let table = Hashtbl.create 4 in
   List.iter
     (fun method_name ->
-      let count = Hashtbl.find_opt table method_name |> Option.value ~default:0 in
+      let count =
+        Hashtbl.find_opt table method_name |> Option.value ~default:0
+      in
       Hashtbl.replace table method_name (count + 1))
     calls;
   let pairs =
@@ -222,8 +211,7 @@ let write_diff_report ~dictionary_module ~monomorph_module =
   let wrapper_section =
     if wrappers = [] then "モノモルフィック経路: 生成ラッパー無し。"
     else
-      Printf.sprintf "モノモルフィック経路で生成されたラッパー:\n%s"
-        (string_of_wrappers wrappers)
+      Printf.sprintf "モノモルフィック経路で生成されたラッパー:\n%s" (string_of_wrappers wrappers)
   in
   let report =
     Printf.sprintf
@@ -236,8 +224,7 @@ let write_diff_report ~dictionary_module ~monomorph_module =
 
 let verify_diff_against_golden report =
   if not (Sys.file_exists diff_golden_path) then (
-    Printf.eprintf "✗ ゴールデンファイルが存在しません: %s\n"
-      diff_golden_path;
+    Printf.eprintf "✗ ゴールデンファイルが存在しません: %s\n" diff_golden_path;
     exit 1);
   let expected = read_file diff_golden_path |> String.trim in
   let actual = String.trim report in

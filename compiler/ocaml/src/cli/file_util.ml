@@ -5,8 +5,7 @@
  *)
 
 let rec ensure_directory path =
-  if path = "." || path = "" then
-    ()
+  if path = "." || path = "" then ()
   else if Sys.file_exists path then (
     if not (Sys.is_directory path) then
       invalid_arg (Printf.sprintf "\"%s\" はディレクトリではありません" path))

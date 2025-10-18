@@ -39,9 +39,7 @@ module EffectConstraintTable = struct
   type t = entry StringMap.t
 
   let empty () = StringMap.empty
-
-  let normalize_symbol symbol =
-    symbol |> String.trim |> String.lowercase_ascii
+  let normalize_symbol symbol = symbol |> String.trim |> String.lowercase_ascii
 
   let add_entry table entry =
     StringMap.add (normalize_symbol entry.symbol) entry table
@@ -68,17 +66,14 @@ module EffectConstraintTable = struct
   let add_profile table ~symbol (profile : Profile.profile) =
     add_effects table ~symbol ~effect_set:profile.effect_set
       ~stage_requirement:profile.stage_requirement
-      ~source_span:profile.source_span
-      ?source_name:profile.source_name ?resolved_stage:profile.resolved_stage
+      ~source_span:profile.source_span ?source_name:profile.source_name
+      ?resolved_stage:profile.resolved_stage
       ?resolved_capability:profile.resolved_capability
       ~stage_trace:profile.stage_trace
       ~diagnostic_payload:profile.diagnostic_payload ()
 
-  let merge ~into ~from =
-    StringMap.union (fun _ _ rhs -> Some rhs) into from
-
-  let resolve table ~symbol =
-    StringMap.find_opt (normalize_symbol symbol) table
+  let merge ~into ~from = StringMap.union (fun _ _ rhs -> Some rhs) into from
+  let resolve table ~symbol = StringMap.find_opt (normalize_symbol symbol) table
 
   let effect_set table ~symbol =
     resolve table ~symbol |> Option.map (fun entry -> entry.effect_set)
@@ -86,7 +81,9 @@ module EffectConstraintTable = struct
   let names_of_tags tags =
     List.fold_left
       (fun acc tag ->
-        let name = tag.Profile.effect_name |> String.trim |> String.lowercase_ascii in
+        let name =
+          tag.Profile.effect_name |> String.trim |> String.lowercase_ascii
+        in
         StringSet.add name acc)
       StringSet.empty tags
 
@@ -104,8 +101,7 @@ module EffectConstraintTable = struct
     table |> StringMap.bindings |> List.map (fun (_, entry) -> entry)
 end
 
-let effect_constraints =
-  ref (EffectConstraintTable.empty ())
+let effect_constraints = ref (EffectConstraintTable.empty ())
 
 let reset_effect_constraints () =
   effect_constraints := EffectConstraintTable.empty ()
@@ -118,8 +114,7 @@ let record_effect_set ~symbol ~effect_set ~stage_requirement ~source_span
     ?source_name ?(diagnostic_payload = Profile.empty_diagnostic_payload) () =
   effect_constraints :=
     EffectConstraintTable.add_effects !effect_constraints ~symbol ~effect_set
-      ~stage_requirement ~source_span ?source_name
-      ~diagnostic_payload ()
+      ~stage_requirement ~source_span ?source_name ~diagnostic_payload ()
 
 let resolve_effect_profile ~symbol =
   EffectConstraintTable.resolve !effect_constraints ~symbol
@@ -128,9 +123,7 @@ let effect_set_for ~symbol =
   EffectConstraintTable.effect_set !effect_constraints ~symbol
 
 let current_effect_constraints () = !effect_constraints
-
-let effect_set_includes ~super ~sub =
-  EffectConstraintTable.includes ~super ~sub
+let effect_set_includes ~super ~sub = EffectConstraintTable.includes ~super ~sub
 
 (* ========== 基本データ構造 ========== *)
 
@@ -178,32 +171,33 @@ type constraint_error_reason =
     }
   | UnresolvedTypeVar of type_var
 
-(** 制約エラー *)
 type constraint_error = {
   trait_name : string;
   type_args : ty list;
   reason : constraint_error_reason;
   span : span;
 }
+(** 制約エラー *)
 
-(** 制約グラフ *)
 type constraint_graph = {
   nodes : trait_constraint list;
   edges : (trait_constraint * trait_constraint) list;
 }
+(** 制約グラフ *)
 
-(** 制約解決状態 *)
 type solver_state = {
   constraints : trait_constraint list;
   resolved : (trait_constraint * dict_ref) list;
   pending : trait_constraint list;
   errors : constraint_error list;
 }
+(** 制約解決状態 *)
 
 (* ========== ヘルパー関数 ========== *)
 
 (** トレイト制約の等価性判定 *)
-let trait_constraint_equal (c1 : trait_constraint) (c2 : trait_constraint) : bool =
+let trait_constraint_equal (c1 : trait_constraint) (c2 : trait_constraint) :
+    bool =
   c1.trait_name = c2.trait_name
   && List.length c1.type_args = List.length c2.type_args
   && List.for_all2 type_equal c1.type_args c2.type_args
@@ -233,14 +227,13 @@ let is_builtin_for_eq = function
 (** 型がOrd自動実装対象か判定（浮動小数は除外可能にする） *)
 let is_builtin_for_ord = function
   | TCon (TCInt _) -> true
-  | TCon (TCFloat _) -> true  (* IEEE 754全順序比較として実装 *)
+  | TCon (TCFloat _) -> true (* IEEE 754全順序比較として実装 *)
   | TCon TCBool -> true
   | TCon TCChar -> true
   | TCon TCString -> true
   | _ -> false
 
-let normalize_stage_name (stage : string) =
-  String.lowercase_ascii stage
+let normalize_stage_name (stage : string) = String.lowercase_ascii stage
 
 let stage_rank stage =
   match normalize_stage_name stage with
@@ -252,7 +245,8 @@ let stage_rank stage =
 let stage_requirement_satisfied requirement actual_stage =
   let actual_norm = normalize_stage_name actual_stage in
   match requirement with
-  | IteratorStageExact stage -> String.equal (normalize_stage_name stage) actual_norm
+  | IteratorStageExact stage ->
+      String.equal (normalize_stage_name stage) actual_norm
   | IteratorStageAtLeast stage ->
       let required_rank = stage_rank stage in
       let actual_rank = stage_rank actual_norm in
@@ -305,25 +299,24 @@ let rec solve_eq = function
       if List.for_all (fun ty -> Option.is_some (solve_eq ty)) field_tys then
         Some (DictImplicit ("Eq", [ TRecord fields ]))
       else None
-  | TArray ty | TSlice (ty, _) ->
+  | TArray ty | TSlice (ty, _) -> (
       (* 配列/スライス型: 要素型がEqを実装していればOK *)
-      (match solve_eq ty with
+      match solve_eq ty with
       | Some _ -> Some (DictImplicit ("Eq", [ TArray ty ]))
       | None -> None)
-  | TApp (TCon (TCUser "Option"), ty) ->
+  | TApp (TCon (TCUser "Option"), ty) -> (
       (* Option<T>: TがEqを実装していればOK *)
-      (match solve_eq ty with
+      match solve_eq ty with
       | Some _ ->
           Some (DictImplicit ("Eq", [ TApp (TCon (TCUser "Option"), ty) ]))
       | None -> None)
-  | TApp (TApp (TCon (TCUser "Result"), t_ty), e_ty) ->
+  | TApp (TApp (TCon (TCUser "Result"), t_ty), e_ty) -> (
       (* Result<T, E>: T, EがEqを実装していればOK *)
-      (match (solve_eq t_ty, solve_eq e_ty) with
+      match (solve_eq t_ty, solve_eq e_ty) with
       | Some _, Some _ ->
           Some
             (DictImplicit
-               ( "Eq",
-                 [ TApp (TApp (TCon (TCUser "Result"), t_ty), e_ty) ] ))
+               ("Eq", [ TApp (TApp (TCon (TCUser "Result"), t_ty), e_ty) ]))
       | _ -> None)
   | TVar _ ->
       (* 型変数: 後で解決されるため保留 *)
@@ -378,15 +371,12 @@ let solve_collector = function
       Some (DictImplicit ("Collector", [ TArray ty ]))
   | TApp (TCon (TCUser "Option"), ty) ->
       (* Option<T>: Some(T) なら1要素、None なら0要素 *)
-      Some
-        (DictImplicit
-           ("Collector", [ TApp (TCon (TCUser "Option"), ty) ]))
+      Some (DictImplicit ("Collector", [ TApp (TCon (TCUser "Option"), ty) ]))
   | TApp (TApp (TCon (TCUser "Result"), t_ty), e_ty) ->
       (* Result<T, E>: Ok(T) なら1要素、Err(E) なら0要素（Tのみ返す） *)
       Some
         (DictImplicit
-           ( "Collector",
-             [ TApp (TApp (TCon (TCUser "Result"), t_ty), e_ty) ] ))
+           ("Collector", [ TApp (TApp (TCon (TCUser "Result"), t_ty), e_ty) ]))
   | TTuple tys ->
       (* タプル型: 各要素を順に返す *)
       Some (DictImplicit ("Collector", [ TTuple tys ]))
@@ -460,8 +450,7 @@ let solve_iterator (source_ty : ty) : iterator_dict_info option =
           | _ -> (
               match as_user_type "IteratorState" source_ty with
               | Some [ elem_ty ] ->
-                  Some
-                    (make_iterator_info IteratorCoreIter source_ty elem_ty)
+                  Some (make_iterator_info IteratorCoreIter source_ty elem_ty)
               | _ -> (
                   match as_user_type "Option" source_ty with
                   | Some [ elem_ty ] ->
@@ -471,8 +460,8 @@ let solve_iterator (source_ty : ty) : iterator_dict_info option =
                       match as_user_type "Result" source_ty with
                       | Some (ok_ty :: _err_ty :: _) ->
                           Some
-                            (make_iterator_info
-                               IteratorResultLike source_ty ok_ty)
+                            (make_iterator_info IteratorResultLike source_ty
+                               ok_ty)
                       | _ -> None)))))
 
 (* ========== 制約解決のメインロジック ========== *)
@@ -491,10 +480,8 @@ let try_solve_constraint (registry : Impl_registry.impl_registry)
   (* 組み込み型の自動実装を優先チェック *)
   let builtin_result =
     match c.trait_name with
-    | "Eq" -> (
-        match c.type_args with [ ty ] -> solve_eq ty | _ -> None)
-    | "Ord" -> (
-        match c.type_args with [ ty ] -> solve_ord ty | _ -> None)
+    | "Eq" -> ( match c.type_args with [ ty ] -> solve_eq ty | _ -> None)
+    | "Ord" -> ( match c.type_args with [ ty ] -> solve_ord ty | _ -> None)
     | "Collector" -> (
         match c.type_args with [ ty ] -> solve_collector ty | _ -> None)
     | "Iterator" -> (
@@ -509,10 +496,10 @@ let try_solve_constraint (registry : Impl_registry.impl_registry)
 
   match builtin_result with
   | Some dict_ref -> Some dict_ref
-  | None ->
+  | None -> (
       (* 組み込み型で見つからない場合、レジストリから検索 *)
       let matching_impls = Impl_registry.find_matching_impls c registry in
-      (match matching_impls with
+      match matching_impls with
       | [] ->
           (* 一致するimplが見つからない *)
           None
@@ -534,8 +521,8 @@ let init_solver_state constraints =
  *
  * Phase 2 Week 23-24 更新: レジストリパラメータを追加
  *)
-let step_solver (registry : Impl_registry.impl_registry) (state : solver_state) :
-    solver_state =
+let step_solver (registry : Impl_registry.impl_registry) (state : solver_state)
+    : solver_state =
   match state.pending with
   | [] ->
       (* 解決待ちがなければ何もしない *)
@@ -560,11 +547,7 @@ let step_solver (registry : Impl_registry.impl_registry) (state : solver_state) 
               span = c.constraint_span;
             }
           in
-          {
-            state with
-            errors = error :: state.errors;
-            pending = rest_pending;
-          })
+          { state with errors = error :: state.errors; pending = rest_pending })
 
 (** 解決が完了したか判定 *)
 let is_solved state = state.pending = []
@@ -576,8 +559,7 @@ let is_solved state = state.pending = []
  * トレイト c が要求するスーパートレイトのリストを返す
  * 例: Ord<T> は Eq<T> を要求
  *)
-let get_supertrait_dependencies (c : trait_constraint) : trait_constraint list
-    =
+let get_supertrait_dependencies (c : trait_constraint) : trait_constraint list =
   match c.trait_name with
   | "Ord" ->
       (* Ord<T> requires Eq<T> *)
@@ -597,8 +579,7 @@ let get_supertrait_dependencies (c : trait_constraint) : trait_constraint list
  * 複合型の制約が要求する要素型の制約を返す
  * 例: Eq<(A, B)> は Eq<A>, Eq<B> を要求
  *)
-let get_recursive_dependencies (c : trait_constraint) :
-    trait_constraint list =
+let get_recursive_dependencies (c : trait_constraint) : trait_constraint list =
   match (c.trait_name, c.type_args) with
   | "Eq", [ TTuple tys ] | "Ord", [ TTuple tys ] ->
       (* タプル型: 各要素に同じトレイトを要求 *)
@@ -673,7 +654,9 @@ let find_cycles graph =
   in
 
   (* 制約が訪問済みか確認 *)
-  let is_visited (c : trait_constraint) = Hashtbl.mem indices (constraint_hash c) in
+  let is_visited (c : trait_constraint) =
+    Hashtbl.mem indices (constraint_hash c)
+  in
 
   (* 隣接ノード（依存先）を取得 *)
   let get_neighbors (c : trait_constraint) : trait_constraint list =
@@ -716,7 +699,7 @@ let find_cycles graph =
     (* node_v がSCCのルートか確認 *)
     let v_index = Hashtbl.find indices v_hash in
     let v_lowlink = Hashtbl.find lowlinks v_hash in
-    if v_lowlink = v_index then (
+    if v_lowlink = v_index then
       (* SCCを抽出 *)
       let rec pop_scc acc =
         match !stack with
@@ -728,13 +711,12 @@ let find_cycles graph =
             else pop_scc (node_w :: acc)
       in
       let scc = pop_scc [] in
-      sccs := scc :: !sccs)
+      sccs := scc :: !sccs
   in
 
   (* 全ノードを探索 *)
   List.iter
-    (fun node ->
-      if not (is_visited node) then strongconnect node)
+    (fun node -> if not (is_visited node) then strongconnect node)
     graph.nodes;
 
   (* サイズ2以上のSCCを循環依存として返す *)
@@ -764,7 +746,10 @@ let topological_sort graph =
   in
 
   (* 全ノードの入次数を0で初期化 *)
-  List.iter (fun (node : trait_constraint) -> Hashtbl.add in_degrees (constraint_hash node) 0) graph.nodes;
+  List.iter
+    (fun (node : trait_constraint) ->
+      Hashtbl.add in_degrees (constraint_hash node) 0)
+    graph.nodes;
 
   (* エッジから入次数を計算 *)
   List.iter
@@ -779,8 +764,7 @@ let topological_sort graph =
   List.iter
     (fun (node : trait_constraint) ->
       let node_hash = constraint_hash node in
-      if Hashtbl.find in_degrees node_hash = 0 then
-        Queue.add node queue)
+      if Hashtbl.find in_degrees node_hash = 0 then Queue.add node queue)
     graph.nodes;
 
   (* トポロジカルソート *)
@@ -812,10 +796,9 @@ let topological_sort graph =
   done;
 
   (* 全ノードが処理されたか確認 *)
-  if !processed_count = List.length graph.nodes then
-    Some (List.rev !result)
-  else
-    None  (* 循環依存がある *)
+  if !processed_count = List.length graph.nodes then Some (List.rev !result)
+  else None
+(* 循環依存がある *)
 
 (* ========== 制約解決のエントリポイント ========== *)
 
@@ -837,13 +820,15 @@ let solve_constraints (registry : Impl_registry.impl_registry)
   (* 循環依存がある場合はエラーを返す *)
   if cycles <> [] then
     let first_cycle = List.hd cycles in
-    let error = {
-      trait_name = (List.hd first_cycle).trait_name;
-      type_args = (List.hd first_cycle).type_args;
-      reason = CyclicConstraint first_cycle;
-      span = (List.hd first_cycle).constraint_span;
-    } in
-    Error [error]
+    let error =
+      {
+        trait_name = (List.hd first_cycle).trait_name;
+        type_args = (List.hd first_cycle).type_args;
+        reason = CyclicConstraint first_cycle;
+        span = (List.hd first_cycle).constraint_span;
+      }
+    in
+    Error [ error ]
   else
     (* 循環依存なし: 通常の解決フローへ *)
     let rec loop state =
@@ -852,11 +837,9 @@ let solve_constraints (registry : Impl_registry.impl_registry)
         if state.errors = [] then
           (* エラーなし: 辞書参照のリストを返す *)
           Ok (List.map snd state.resolved)
-        else
-          (* エラーあり: エラーリストを返す *)
+        else (* エラーあり: エラーリストを返す *)
           Error state.errors
-      else
-        (* まだ解決待ちがある: 1ステップ進めて再帰 *)
+      else (* まだ解決待ちがある: 1ステップ進めて再帰 *)
         loop (step_solver registry state)
     in
     loop (init_solver_state constraints)
@@ -889,8 +872,7 @@ let solve_iterator_dict (registry : Impl_registry.impl_registry)
                     element_ty = item_ty;
                     kind = IteratorCustom custom_name;
                     stage_requirement =
-                      stage_requirement_for_kind
-                        (IteratorCustom custom_name);
+                      stage_requirement_for_kind (IteratorCustom custom_name);
                     capability = None;
                     stage_actual =
                       stage_actual_for_kind (IteratorCustom custom_name);
@@ -902,26 +884,30 @@ let solve_iterator_dict (registry : Impl_registry.impl_registry)
               else item_ty
             in
             let iterator_info = { base_info with element_ty } in
-            if stage_requirement_satisfied iterator_info.stage_requirement iterator_info.stage_actual then
-              Ok iterator_info
+            if
+              stage_requirement_satisfied iterator_info.stage_requirement
+                iterator_info.stage_actual
+            then Ok iterator_info
             else
-              let error = {
-                trait_name = constraint_.trait_name;
-                type_args = constraint_.type_args;
-                reason =
-                  StageMismatch
-                    {
-                      required = iterator_info.stage_requirement;
-                      actual = Some iterator_info.stage_actual;
-                      capability = iterator_info.capability;
-                      iterator_kind = Some iterator_info.kind;
-                      iterator_source = Some (Types.string_of_ty iterator_info.source_ty);
-                      provider = None;
-                      manifest_path = None;
-                      stage_trace = Profile.stage_trace_empty;
-                    };
-                span = constraint_.constraint_span;
-              }
+              let error =
+                {
+                  trait_name = constraint_.trait_name;
+                  type_args = constraint_.type_args;
+                  reason =
+                    StageMismatch
+                      {
+                        required = iterator_info.stage_requirement;
+                        actual = Some iterator_info.stage_actual;
+                        capability = iterator_info.capability;
+                        iterator_kind = Some iterator_info.kind;
+                        iterator_source =
+                          Some (Types.string_of_ty iterator_info.source_ty);
+                        provider = None;
+                        manifest_path = None;
+                        stage_trace = Profile.stage_trace_empty;
+                      };
+                  span = constraint_.constraint_span;
+                }
               in
               Error error
         | Ok [] ->
@@ -969,9 +955,7 @@ let string_of_trait_constraint (c : trait_constraint) : string =
 (** 辞書参照の文字列表現 *)
 let string_of_dict_ref = function
   | DictImplicit (trait, tys) ->
-      let ty_str =
-        String.concat ", " (List.map string_of_ty tys)
-      in
+      let ty_str = String.concat ", " (List.map string_of_ty tys) in
       Printf.sprintf "DictImplicit(%s, [%s])" trait ty_str
   | DictParam idx -> Printf.sprintf "DictParam(%d)" idx
   | DictLocal name -> Printf.sprintf "DictLocal(%s)" name
@@ -980,7 +964,8 @@ let string_of_dict_ref = function
  *
  * Week 20-21 更新: 循環依存のメッセージに循環パスを表示
  *)
-let string_of_constraint_error_reason (reason : constraint_error_reason) : string =
+let string_of_constraint_error_reason (reason : constraint_error_reason) :
+    string =
   match reason with
   | NoImpl -> "NoImpl"
   | AmbiguousImpl dicts ->
@@ -988,14 +973,17 @@ let string_of_constraint_error_reason (reason : constraint_error_reason) : strin
         (String.concat ", " (List.map string_of_dict_ref dicts))
   | CyclicConstraint (cs : trait_constraint list) ->
       (* 循環パスを矢印で表示: Ord<T> -> Eq<T> -> ... *)
-      let cycle_path = String.concat " -> "
-        (List.map (fun (c : trait_constraint) ->
-          Printf.sprintf "%s<%s>" c.trait_name
-            (String.concat ", " (List.map string_of_ty c.type_args))
-        ) cs)
+      let cycle_path =
+        String.concat " -> "
+          (List.map
+             (fun (c : trait_constraint) ->
+               Printf.sprintf "%s<%s>" c.trait_name
+                 (String.concat ", " (List.map string_of_ty c.type_args)))
+             cs)
       in
       Printf.sprintf "CyclicConstraint: %s" cycle_path
-  | StageMismatch { required; actual; capability; iterator_kind; iterator_source; _ } ->
+  | StageMismatch
+      { required; actual; capability; iterator_kind; iterator_source; _ } ->
       let required_str =
         match required with
         | IteratorStageExact stage -> Printf.sprintf "Exact(%s)" stage
@@ -1004,15 +992,20 @@ let string_of_constraint_error_reason (reason : constraint_error_reason) : strin
       let capability_str =
         match capability with Some id -> id | None -> "<unspecified>"
       in
-      let actual_str = match actual with Some value -> value | None -> "<unknown>" in
+      let actual_str =
+        match actual with Some value -> value | None -> "<unknown>"
+      in
       let kind_str =
         match iterator_kind with
         | Some kind -> string_of_iterator_kind kind
         | None -> "<unspecified>"
       in
-      let source_str = match iterator_source with Some src -> src | None -> "<unspecified>" in
+      let source_str =
+        match iterator_source with Some src -> src | None -> "<unspecified>"
+      in
       Printf.sprintf
-        "StageMismatch(required=%s, actual=%s, capability=%s, kind=%s, source=%s)"
+        "StageMismatch(required=%s, actual=%s, capability=%s, kind=%s, \
+         source=%s)"
         required_str actual_str capability_str kind_str source_str
   | UnresolvedTypeVar tv ->
       Printf.sprintf "UnresolvedTypeVar(%s)" (string_of_type_var tv)
@@ -1034,7 +1027,8 @@ let string_of_constraint_graph graph =
     String.concat ", "
       (List.map
          (fun (c1, c2) ->
-           Printf.sprintf "(%s -> %s)" (string_of_trait_constraint c1)
+           Printf.sprintf "(%s -> %s)"
+             (string_of_trait_constraint c1)
              (string_of_trait_constraint c2))
          graph.edges)
   in
@@ -1047,18 +1041,16 @@ let string_of_solver_state state =
     String.concat ", "
       (List.map
          (fun (c, d) ->
-           Printf.sprintf "(%s => %s)" (string_of_trait_constraint c)
+           Printf.sprintf "(%s => %s)"
+             (string_of_trait_constraint c)
              (string_of_dict_ref d))
          state.resolved)
   in
   let pending_str =
-    String.concat ", "
-      (List.map string_of_trait_constraint state.pending)
+    String.concat ", " (List.map string_of_trait_constraint state.pending)
   in
   let errors_str =
-    String.concat ", "
-      (List.map string_of_constraint_error state.errors)
+    String.concat ", " (List.map string_of_constraint_error state.errors)
   in
-  Printf.sprintf
-    "SolverState { resolved: [%s], pending: [%s], errors: [%s] }" resolved_str
-    pending_str errors_str
+  Printf.sprintf "SolverState { resolved: [%s], pending: [%s], errors: [%s] }"
+    resolved_str pending_str errors_str

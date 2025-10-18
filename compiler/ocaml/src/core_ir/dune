@@ -1,5 +1,15 @@
 (library
  (name core_ir)
  (public_name reml_ocaml.core_ir)
-(modules effect ir ir_printer desugar cfg const_fold dce pipeline monomorphize_poc iterator_audit)
+ (modules
+  effect
+  ir
+  ir_printer
+  desugar
+  cfg
+  const_fold
+  dce
+  pipeline
+  monomorphize_poc
+  iterator_audit)
  (libraries reml_parser unix))

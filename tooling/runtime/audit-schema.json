@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://reml.dev/schemas/audit-envelope.json",
+  "title": "Reml AuditEnvelope Schema (Draft)",
+  "description": "監査ログ `AuditEnvelope.metadata` の暫定スキーマ。Phase 2-3 で FFI ブリッジ情報を追加する前提で定義する。",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "timestamp": {
+      "description": "ISO8601 形式のタイムスタンプ",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T"
+    },
+    "category": {
+      "description": "監査イベントカテゴリ",
+      "type": "string"
+    },
+    "metadata": {
+      "description": "`AuditEnvelope.metadata` に格納される任意のフィールド",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "effect": {
+          "description": "効果システム関連の監査メタデータ",
+          "type": "object",
+          "additionalProperties": true
+        },
+        "bridge": {
+          "description": "FFI ブリッジに関する監査メタデータ（Phase 2-3 で導入）",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "target",
+            "arch",
+            "abi",
+            "ownership",
+            "extern_symbol"
+          ],
+          "properties": {
+            "target": {
+              "description": "ターゲット triple 文字列（例: arm64-apple-darwin）",
+              "type": "string"
+            },
+            "arch": {
+              "description": "アーキテクチャ識別子（arm64, x86_64 など）",
+              "type": "string"
+            },
+            "abi": {
+              "description": "呼出規約を示す識別子（system_v, msvc, aapcs64 など）",
+              "type": "string"
+            },
+            "ownership": {
+              "description": "所有権契約（borrowed, transferred, reference など）",
+              "type": "string"
+            },
+            "extern_symbol": {
+              "description": "リンク対象のシンボル名",
+              "type": "string"
+            },
+            "link_name": {
+              "description": "シンボル名が別名を持つ場合の alias",
+              "type": "string"
+            },
+            "library": {
+              "description": "リンク対象のライブラリ名（必要に応じて）",
+              "type": "string"
+            },
+            "callconv": {
+              "description": "細分化された呼出規約名。`abi` と同一なら省略可能。",
+              "type": "string"
+            },
+            "block_target": {
+              "description": "extern ブロック全体で宣言された target",
+              "type": "string"
+            },
+            "diagnostics": {
+              "description": "Typer で検出した契約違反の補助情報",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true,
+                "required": [
+                  "code",
+                  "message"
+                ],
+                "properties": {
+                  "code": {
+                    "description": "診断コード（例: ffi.contract.ownership_mismatch）",
+                    "type": "string"
+                  },
+                  "message": {
+                    "description": "診断メッセージ",
+                    "type": "string"
+                  },
+                  "span": {
+                    "description": "ソースコード位置情報",
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "start",
+                      "end"
+                    ],
+                    "properties": {
+                      "start": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "end": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
