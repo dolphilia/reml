@@ -22,36 +22,42 @@
 
 | 作業ブロック | ステータス | 完了済み項目 | 次のステップ |
 | --- | --- | --- | --- |
-| 前提確認・計画調整 | **進行中** | 2025-10-18 に `scripts/validate-runtime-capabilities.sh tooling/runtime/capabilities/default.json` を再実行し、`reports/runtime-capabilities-validation.json` （timestamp `2025-10-18T03:23:33.958135+00:00`）を更新。override 追加草案メモと `reports/ffi-macos-summary.md` の初回記録を追記済み。 | override 追加のドラフト PR を作成し、再実行ログと `reports/ffi-macos-summary.md` にまとめた CI ログ断片をレビューコメントへ添付。 |
-| 1. ABI モデル設計 | **進行中** | Darwin 計測計画を `docs/notes/llvm-spec-status-survey.md` に追記し、計測ログ用テンプレート `reports/ffi-macos-summary.md` を作成。 | OCaml 側 ABI データ型ドラフトと計測スクリプト実行結果（DataLayout・callconv）をテンプレートへ記録。 |
-| 2. Parser / AST 拡張 | **進行中** | `extern_metadata` PoC を実装し、`@ffi_target` などの属性を抽出するメタデータとユニットテストを追加。2025-10-18 時点で `extern_decl.extern_target` を `extern_block_target` に改名し、ブロック単位のターゲット整合ロジックを確定。 | Typer へのメタデータ伝播と CLI/監査診断への接続方針を整理し、ゴールデン出力の更新計画を立案。 |
+| 前提確認・計画調整 | **進行中** | `scripts/validate-runtime-capabilities.sh` を再実行し、`reports/runtime-capabilities-validation.json` を更新。macOS override 草案と `reports/ffi-macos-summary.md` のテンプレート整備、CI ローカルフロー（Lint/Build/Test/LLVM/Runtime 完走）を確認済み。 | override 変更の PR 化とレビュー共有。Linux/Windows 向け計測テンプレート整備。 |
+| 1. ABI モデル設計 | **進行中** | Darwin 計測計画を `docs/notes/llvm-spec-status-survey.md` に追記し、`ffi_contract` モジュール（所有権・ABI 判定スケルトン）を追加。 | `ffi_contract` のデータ型を Typer 連携用に固め、ターゲット別 ABI 仕様のノートを `reports/ffi-bridge-summary.md`（仮）へ展開。 |
+| 2. Parser / AST 拡張 | **進行中** | `extern_metadata` PoC を維持しつつ、`extern_block_target` への改名と `test_parser` ゴールデン更新を完了。 | Typer へのメタデータ伝搬と CLI/監査診断への接続方針を整理し、FFI ゴールデン追加を計画。 |
 | 3. Typer 統合と ABI 検証 | **未着手** | — | FFI 型ホワイトリストと所有権検証の設計メモを起案。 |
 | 4. ブリッジコード生成 | **未着手** | — | ターゲット別 stub 生成ロジックの責務分担を `codegen` / `runtime/native` チームと摺り合わせ。 |
-| 5. 監査ログ統合 | **準備中** | `AuditEnvelope.metadata.bridge.*` のキー案と effect-system 設計ノートの TODO を同期。`effect.stage.iterator.source_detail` を追加し、Iterator audit のログにソース詳細を保持。 | JSON スキーマ案のドラフト作成と、`iterator_audit` との突合ルール整理。 |
-| 6. プラットフォーム別テスト | **準備中** | Apple Silicon 実行計画を `docs/notes/llvm-spec-status-survey.md` の計測タスク・新規レポートにリンク。`scripts/ci-local.sh --stage beta` で Build/LLVM IR 検証まで完走し、測定ログ雛形を更新。 | Apple Silicon 実機／ランナーでの最小 FFI サンプル実行計画を策定し、必要な Homebrew ツールチェーン確認。成果をもとに `reports/ffi-macos-summary.md` の未実施テスト項目を消化。 |
+| 5. 監査ログ統合 | **進行中** | `tooling/runtime/audit-schema.json` に bridge オブジェクトを追加し、`tooling/ci/collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を集計。 | Typer 実装後に `AuditEnvelope` ゴールデンを追加し、CI ゲート（`sync-iterator-audit.sh`）へ FFI ブリッジ検証を統合。 |
+| 6. プラットフォーム別テスト | **進行中** | Apple Silicon で `scripts/ci-local.sh --target macos --arch arm64 --stage beta` をフル実行し、`reports/ffi-macos-summary.md` にログと比較観点を追記。 | FFI サンプル（借用/転送/構造体戻り）を macOS で実行し、Linux/Windows 版テンプレートを用意。 |
 | 7. ランタイム連携とテスト | **未着手** | — | FFI ヘルパ API の拡張方針を `runtime/native` ドキュメントに追記するドラフトを準備。 |
-| 8. ドキュメント更新と引き継ぎ | **進行中** | Apple Silicon 対応更新に加え、計測テンプレートと override 提案を関連資料へリンク。`reports/ffi-macos-summary.md` に最新ログ（ステージ指定実行結果、LLVM IR 単体検証）を追記。 | 実装着手後に更新するべき仕様・ガイドのチェックリストを作成。監査ゴールデン更新と合わせて完了レポート案を整理。 |
+| 8. ドキュメント更新と引き継ぎ | **進行中** | `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に FFI ブリッジ指標を追加し、`reports/ffi-macos-summary.md` を再構成（CI ログ・比較観点追記）。本計画書の進捗表を更新。 | 実装着手後に更新する仕様・ガイド、引継ぎ資料の TODO を整理。ターゲット別監査サマリのテンプレートを整備。 |
 
 ### 最新進捗サマリー（2025-10-18）
 
-- `scripts/ci-local.sh` に `--stage` オプションを追加し、`REMLC_EFFECT_STAGE` の CLI 指定を可能化。macOS arm64 環境で Build / LLVM IR 検証まで完走するルートを確認。
-- `extern_decl` のターゲット集約フィールドを `extern_block_target` へ改名し、Parser・AST Printer・設計ドキュメントを同期。属性由来のターゲット情報は `extern_metadata` に集約され、ブロックレベルの整合チェックを準備できた。
-- `iterator` 監査メタデータに `effect.stage.iterator.source_detail` を追加し、Typer で算出した `iterator_source` を JSON に保持。将来の FFI 監査キーと同一フォーマットで扱えるよう設計。
+- `scripts/ci-local.sh --target macos --arch arm64 --stage beta` をフルパスで実行し、Lint/Build/Test/LLVM/Runtime（AddressSanitizer）を通過。ログは `reports/ffi-macos-summary.md` に集約。
+- `extern_decl` のターゲット集約フィールドを `extern_block_target` へ改名し、Parser・AST Printer・設計メモを同期。`ffi_contract` モジュールを追加して ABI/所有権の判定骨格を整備。
+- `tooling/runtime/audit-schema.json` に bridge オブジェクトを定義し、`tooling/ci/collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を出力。監査指標は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に反映済み。
+
+### 完了済みタスク
+
+- `compiler/ocaml/tests/golden/audit/effects-residual.jsonl.golden` を更新し、`scripts/ci-local.sh --target macos --arch arm64 --stage beta` をフルパスで完走。
+- `tooling/runtime/audit-schema.json` に bridge オブジェクトを追加し、`tooling/ci/collect-iterator-audit-metrics.py` へ `ffi_bridge.audit_pass_rate` を実装。
+- `reports/ffi-macos-summary.md` を刷新し、AddressSanitizer ログとクロスプラットフォーム比較観点を追記。
 
 ### 残タスクと次のステップ
 
-1. **ゴールデン更新とテスト再実行**
-   - `compiler/ocaml/tests/golden/audit/effects-residual.jsonl.golden` を `effect.stage.runtime` の最新出力に合わせて更新。
-   - `dune fmt` 差分を解消し、`scripts/ci-local.sh` の Lint / Test ステップをスキップなしで通過させる。
-2. **Typer 統合タスクの具体化**
-   - `extern_metadata` → `AuditEnvelope.metadata.bridge.*` の写像設計を Issue 下書き（計画内チェックリスト 1〜4）として登録。
-   - 所有権・ABI 検証ロジックに必要な型や診断コード（`ffi.contract.*`）のスケルトンを用意。
-3. **監査スキーマと CI 連携**
-   - JSON スキーマ案（`bridge` オブジェクト）をドラフト化し、`tooling/runtime/audit-schema.json` で検証。
-   - `tooling/ci/collect-iterator-audit-metrics.py` に FFI ブリッジ関連指標を追加し、`ffi_bridge.audit_pass_rate`（仮）の算出フローをレビューに付す。
-4. **プラットフォームテスト推進**
-   - macOS arm64 での FFI サンプル実装／ABI 検証ケース（可変長、構造体戻りなど）を着手し、`reports/ffi-macos-summary.md` の未実施項目を埋める。
-   - 同報告書に Windows / Linux との比較観点を追記し、クロスプラットフォーム整合チェックの計画を整備。
+1. **Typer 統合**
+   - `ffi_contract` を用いた所有権・ABI チェック (`check_extern_bridge_contract` 仮) を実装し、`ffi.contract.*` 診断と `AuditEnvelope.metadata.bridge.*` を出力。
+   - CLI/JSON ゴールデンおよび監査ゴールデン（FFI サンプル）を追加。
+2. **ブリッジコード生成とランタイム**
+   - 各ターゲット向け stub 生成ロジックと LLVM lowering を設計し、`runtime/native` のヘルパ API を拡張。
+   - C ヘッダ生成方針（自動/手動）とライセンス整理を行い、Phase 3 へ引き継ぐ。
+3. **プラットフォーム別テスト**
+   - macOS arm64 で借用/転送/構造体戻りの FFI サンプルを実行し、`reports/ffi-macos-summary.md` の未実施項目を埋める。
+   - Linux x86_64 / Windows x64 版の計測テンプレートとログ収集手順を作成し、`ffi_bridge.audit_pass_rate` をターゲット別に監視。
+4. **ドキュメントと CI ゲート**
+   - 仕様書・ガイド（3-9, 3-6 など）に FFI 監査キーと診断コードを反映し、`tooling/ci/sync-iterator-audit.sh` へ FFI ブリッジ検証を統合。
+   - Windows/macOS 向け Capability override の PR を準備し、`reports/ffi-bridge-summary.md`（新設予定）で差分を追跡。
 
 ### 2025-10-18 ログ・測定サマリー
 
