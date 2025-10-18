@@ -22,7 +22,7 @@
 
 | 作業ブロック | ステータス | 完了済み項目 | 次のステップ |
 | --- | --- | --- | --- |
-| 前提確認・計画調整 | **進行中** | `tooling/runtime/capabilities/default.json` に `arm64-apple-darwin` override（Stage `beta`）を追加し、`reports/runtime-capabilities-validation.json` と `0-3-audit-and-metrics.md` に反映。レビューコメント草案は本計画書に追記済み。 | override 追加のドラフト PR を作成し、`scripts/validate-runtime-capabilities.sh` の再実行ログを添付してレビュー依頼。 |
+| 前提確認・計画調整 | **進行中** | 2025-10-18 に `scripts/validate-runtime-capabilities.sh tooling/runtime/capabilities/default.json` を再実行し、`reports/runtime-capabilities-validation.json` （timestamp `2025-10-18T03:23:33.958135+00:00`）を更新。override 追加草案メモと `reports/ffi-macos-summary.md` の初回記録を追記済み。 | override 追加のドラフト PR を作成し、再実行ログと `reports/ffi-macos-summary.md` にまとめた CI ログ断片をレビューコメントへ添付。 |
 | 1. ABI モデル設計 | **進行中** | Darwin 計測計画を `docs/notes/llvm-spec-status-survey.md` に追記し、計測ログ用テンプレート `reports/ffi-macos-summary.md` を作成。 | OCaml 側 ABI データ型ドラフトと計測スクリプト実行結果（DataLayout・callconv）をテンプレートへ記録。 |
 | 2. Parser / AST 拡張 | **進行中** | `extern_metadata` PoC を実装し、`@ffi_target` などの属性を抽出するメタデータとユニットテストを追加。 | Typer へのメタデータ伝播と CLI/監査診断への接続方針を整理し、ゴールデン出力の更新計画を立案。 |
 | 3. Typer 統合と ABI 検証 | **未着手** | — | FFI 型ホワイトリストと所有権検証の設計メモを起案。 |
@@ -31,6 +31,40 @@
 | 6. プラットフォーム別テスト | **準備中** | Apple Silicon 実行計画を `docs/notes/llvm-spec-status-survey.md` の計測タスク・新規レポートにリンク。 | Apple Silicon 実機／ランナーでの最小 FFI サンプル実行計画を策定し、必要な Homebrew ツールチェーン確認。 |
 | 7. ランタイム連携とテスト | **未着手** | — | FFI ヘルパ API の拡張方針を `runtime/native` ドキュメントに追記するドラフトを準備。 |
 | 8. ドキュメント更新と引き継ぎ | **進行中** | Apple Silicon 対応更新に加え、計測テンプレートと override 提案を関連資料へリンク。 | 実装着手後に更新するべき仕様・ガイドのチェックリストを作成。 |
+
+### 2025-10-18 ログ・測定サマリー
+
+- **`scripts/validate-runtime-capabilities.sh`**: `tooling/runtime/capabilities/default.json` を対象に再実行し、`reports/runtime-capabilities-validation.json` の timestamp を `2025-10-18T03:23:33.958135+00:00` へ更新。`arm64-apple-darwin` override が `runtime_candidates` に出力されること、および `validation.status = ok` を確認済み。
+- **`scripts/ci-local.sh --target macos --arch arm64`**: `--stage` オプションが未実装であるため `REMLC_EFFECT_STAGE=beta` を環境変数で指定して実行。Lint ステップは `dune fmt` 差分検出で停止、`--skip-lint` では Build ステップで `extern_metadata` と `extern_decl` のレコードフィールド（`extern_target`）重複によりコンパイルエラー。実行ログと失敗理由は `reports/ffi-macos-summary.md` §2 に整理。
+- **フォローアップ**: (1) `scripts/ci-local.sh` に `--stage` 引数を追加し、CLI から Stage を切り替えられるようにする。（2）AST 定義の重複フィールド解消タスクを Phase 2-3 Typer backlog に登録。（3）Build 以降（IR/ABI 検証・監査ログ）の採取は上記修正後に再実施。
+
+### Typer `extern_metadata` 設計メモ（ドラフト）
+
+- Parser で抽出済みの `extern_metadata` を Typer へ伝搬し、以下のキーを `AuditEnvelope.metadata.bridge.*` に写像する：`bridge.target`（例: `arm64-apple-darwin`）、`bridge.arch`（`arm64` / `x86_64`）、`bridge.abi`（`system_v` / `msvc` / `darwin_aapcs64`）、`bridge.ownership`（`borrowed` / `transferred` / `reference`）、`bridge.extern_symbol`（リンク先シンボル名）、必要に応じて `bridge.alias`・`bridge.library` を追加。
+- Typer では `extern_metadata` の欠落・矛盾を `ffi.contract.*` 診断として報告し、CLI JSON と監査ログで同一内容を表示する。`RuntimeCapabilityResolver` が提供する `stage_trace` に FFI 情報を追記し、効果診断と整合したメタデータを構築する。
+- Runtime 側が追記する `bridge.callsite`（モジュール/関数）と整合させるため、Typer で `bridge.symbol_path` を計算したうえで `AuditEnvelope` へ渡す。
+
+#### Issue 下書き案（Typer: extern_metadata パイプライン）
+
+1. **AST → Typer のデータ受け渡し**  
+   `typed_ast.ml` に extern 解析結果を格納するレコードを追加し、`extern_metadata` を必須フィールドとして保持。`bridge.target` 未指定時は Capability JSON のデフォルトターゲットを補完する。
+2. **所有権と ABI の検証ロジック実装**  
+   `type_inference.ml` に `check_extern_bridge_contract`（仮）を実装し、許可されていない所有権/ABI 組合せを検出。失敗時は `ffi.contract.ownership_mismatch` / `ffi.contract.unsupported_abi` 診断を新設。
+3. **`AuditEnvelope` 拡張**  
+   `audit_envelope.ml` に `bridge` サブレコードを追加し、Typer が JSON 生成に必要なキーを設定。effect 系メタデータと共通のフォーマッタを利用できるよう `AuditEnvelope.Metadata` を整理。
+4. **ゴールデンテスト更新**  
+   `compiler/ocaml/tests/golden/audit/ffi_target.json.golden` を新規追加し、`arm64-apple-darwin` と `x86_64-pc-windows-msvc` の 2 ケースを固定。CLI JSON ゴールデンにも FFI 診断を追加し、残存効果診断との併用ケースを検証する。
+5. **CI チェック拡張**  
+   `tooling/ci/collect-iterator-audit-metrics.py` に FFI ブリッジ診断の必須キーを追加し、`iterator-stage-summary.md` 同様に `ffi_bridge.audit_pass_rate`（仮）を導出するゲート案を検討。
+6. **ドキュメント反映**  
+   `docs/spec/3-9-core-async-ffi-unsafe.md` と `docs/spec/3-6-core-diagnostics-audit.md` に新しい監査キーと診断を追記し、Phase 2-3 完了報告から参照できるよう脚注リンクを整備。
+
+### JSON 監査スキーマ更新案（`ffi_target` 拡張）
+
+- `AuditEnvelope` スキーマに `bridge` オブジェクトを追加し、必須プロパティとして `bridge.target` / `bridge.arch` / `bridge.abi` / `bridge.ownership` / `bridge.extern_symbol` を定義。オプションで `bridge.alias`, `bridge.library`, `bridge.callconv`, `bridge.audit_stage` を許容する。
+- スキーマ改訂は `tooling/runtime/audit-schema.json`（ドラフト）で編集し、検証スクリプトに `./scripts/validate-runtime-capabilities.sh --schema audit` を追加して自動チェックする案を提案。
+- ゴールデンテスト: `compiler/ocaml/tests/golden/audit/ffi_target.json.golden` を新設し、`ffi_target = arm64-apple-darwin`／`ffi_target = x86_64-pc-windows-msvc` のサンプルを記録。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `ffi.bridge.audit_pass_rate` 指標を追記する。
+- レビュー体制: 一次レビューは Diagnostics チーム、二次レビューは FFI チーム、最終承認は `tooling/ci` チーム（CI ゲート整合確認）。週次スタンドアップで進捗共有し、採択前に `reports/ffi-macos-summary.md` のサンプルを提示する。
 
 ### Capability override 提案（arm64-apple-darwin）
 
