@@ -55,18 +55,18 @@
 
 ### 残タスクと次のステップ
 
-1. **ブリッジコード生成パイプライン**
-   - `ffi_stub_builder` のプラン生成を `llvm_gen/codegen.ml` へ統合し、stub/thunk の LLVM lowering・`FfiValueLowering` 実装・監査メタデータ埋め込みを行う。
-   - 生成結果を `tooling/ci/collect-iterator-audit-metrics.py` で検証できるよう、`ffi_bridge.audit_pass_rate` のターゲット別判定を追加。
-2. **ランタイム拡張と CI 連携**
-   - `runtime/native/src/ffi_bridge.c`（仮称）を実装し、`reml_ffi_bridge.h` のヘルパと `mem_alloc`/`inc_ref`/`dec_ref` を連動させる。
-   - ランタイム単体テストを追加し、Windows/MSVC 向けのビルド確認と CI フックを整備する。
-3. **プラットフォーム別テスト**
-   - macOS arm64 の FFI サンプル（借用/転送/構造体戻り）を実行して `reports/ffi-macos-summary.md` の TODO を消化。
-   - Linux x86_64 / Windows x64 用の計測テンプレートを作成し、`reports/ffi-bridge-summary.md` に各ターゲットのログと監査結果を記録。
-4. **ドキュメント・ライセンス整備**
-   - 仕様書・ガイド（3-9, 3-6, runtime-bridges.md）へ FFI 監査キー、`BridgeStubPlan` の利用方法、ヘッダ生成方針を反映。
-   - `docs/notes/licensing-todo.md` のチェック項目を更新し、外部ツール導入時のライセンス確認と SPDX 表記ルールを策定。
+1. **ブリッジコード生成パイプラインの仕上げ**
+   - `BridgeStubPlan` から実際の stub/thunk 関数を生成し、マーシャリング処理 (`FfiValueLowering`) と runtime API (`reml_ffi_bridge_*`) を接続する。
+   - LLVM IR に埋め込んだメタデータを活用し、`call` 命令への属性付与や `!dbg` 連携を実装する。
+2. **ランタイム計測と CI 連携**
+   - ランタイム計測値 (`reml_ffi_bridge_get_metrics`, `reml_ffi_bridge_pass_rate`) を CLI/CI から取得できるよう `tooling/ci/sync-iterator-audit.sh` を拡張し、`ffi_bridge.audit_pass_rate` をゲート条件に追加する。
+   - Windows / Linux ランナーでの `make test`（runtime）実行と計測ログ収集を自動化する。
+3. **プラットフォーム別サンプルとゴールデン**
+   - Linux/macOS/Windows 各ターゲットで FFI サンプル（借用・転送・構造体戻り値）を実行し、`reports/ffi-*-summary.md` に結果とログを反映する。
+   - 監査ログのゴールデン (`compiler/ocaml/tests/golden/audit/ffi-bridge-*.jsonl.golden`) を追加し、ターゲット別の `bridge.*` キーを固定化する。
+4. **仕様・ドキュメントとライセンス整理**
+   - 仕様書（3-9/3-6）とガイド（runtime-bridges.md）に stub メタデータ出力・計測 API の利用方法を追記し、Phase 3 に向けた手順を明文化する。
+   - `docs/notes/licensing-todo.md` の TODO を精査し、生成ヘッダの SPDX/生成情報の取り扱い方針を決定する。
 
 ### 2025-10-18 ログ・測定サマリー
 
@@ -119,10 +119,10 @@
 
 ## 直近アクション（次の 2 週間）
 
-- `tooling/runtime/capabilities/default.json` への `arm64-apple-darwin` override 変更を PR 化し、`scripts/validate-runtime-capabilities.sh` 再実行ログと `reports/runtime-capabilities-validation.json` の差分を添付してレビュー提出。
-- ブリッジ stub/LLVM lowering の設計方針を `runtime/native`・`compiler/ocaml/src/codegen` チームへ共有し、モジュール分担と API 変更点を整理したドラフトを作成する。
-- Linux x86_64 / Windows x64 向け `ffi_bridge.audit_pass_rate` テンプレートとログ収集スクリプトを準備し、CI での多プラットフォーム検証手順を確立する。
-- 仕様書追記内容（3-6/3-9）をベースにガイドラインと `tooling/ci/sync-iterator-audit.sh` への統合案をまとめ、Diagnostics・CI 両チームとのレビューを設定する。
+- LLVM lowering で生成した `reml.bridge.stubs` メタデータを検証するゴールデンを追加し、`tests/test_ffi_lowering.ml` をプラットフォーム別ケースへ拡張する。
+- ランタイム計測 API を CI に統合する方式を決定し、`tooling/ci/sync-iterator-audit.sh` で `ffi_bridge.audit_pass_rate` を収集・評価できる状態にする。
+- Linux/Windows 向けの FFI サンプル実行とログ収集を行い、`reports/ffi-linux-summary.md`・`reports/ffi-windows-summary.md` を初回更新する。
+- 仕様書・ガイド更新案（3-9, 3-6, runtime-bridges.md）をレビューに回し、メタデータ出力・計測 API の使い方を文書化する。
 
 ### 1. ABI モデル設計と仕様整理（29-30週目）
 **担当領域**: FFI 基盤設計
@@ -196,10 +196,10 @@
 **担当領域**: コード生成
 
 4.1. **Stub 生成ロジック**
-- `BridgeStubPlan`（ターゲットトリプル、Calling Convention、所有権、監査キー）を `ffi_contract` 正規化後に生成し、`compiler/ocaml/src/codegen/ffi_stub_builder.ml` で `emit_stub_module` へ受け渡す。
-- Linux System V / Windows MSVC (`win64`) / macOS arm64 (`aapcs64`) 用のテンプレートをテーブル化し、シンボル名・`dso_local`・可視性・`linkage` を自動決定する。
-- Reml ↔ C のマーシャリングを `FfiValueLowering`（新設予定）に委譲し、借用 (`Ownership::Borrowed`) / 移譲 (`Ownership::Transferred`) を切り替えて RC 操作と連携させる。
-- 監査ログで利用する `bridge.platform` / `bridge.abi` / `bridge.ownership` を stub 生成段階で `llvm::Metadata` として埋め込み、Typer・Runtime と同一キーで連携する。
+- `BridgeStubPlan`（ターゲットトリプル、Calling Convention、所有権、監査キー）を `ffi_contract` 正規化後に生成し、`compiler/ocaml/src/codegen/ffi_stub_builder.ml` で `emit_stub_module` へ受け渡す（初期版完了）。
+- Linux System V / Windows MSVC (`win64`) / macOS arm64 (`aapcs64`) 用のテンプレートをテーブル化し、シンボル名・`dso_local`・可視性・`linkage` を自動決定する（テンプレート確立済み、stub/thunk 実生成が次段階）。
+- Reml ↔ C のマーシャリングは `FfiValueLowering` へ段階的に移行中で、現在はメタデータ埋め込みを提供。今後、引数/戻り値の変換と RC 操作を実装する。
+- 監査ログで利用する `bridge.platform` / `bridge.abi` / `bridge.ownership` は stub 生成段階で `llvm::Metadata` として埋め込む（`reml.bridge.version` フラグと `reml.bridge.stubs` Named Metadata を出力済み）。
 
 4.2. **LLVM IR への lowering**
 - 呼出規約を `ccc` / `win64` / `aarch64_aapcscc` 等の LLVM 属性で明示し、ターゲット固有の `signext`・`zeroext`・`sret` 等補助属性を付与する。
