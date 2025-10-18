@@ -1,6 +1,7 @@
 module EffectTable = Constraint_solver.EffectConstraintTable
 module IteratorAudit = Core_ir.Iterator_audit
 module Ffi = Ffi_contract
+module Ffi_stub = Ffi_stub_builder
 
 let iterator_audit_entries : (string, IteratorAudit.entry) Hashtbl.t =
   Hashtbl.create 32
@@ -513,8 +514,15 @@ let () =
                   in
                   record_end_if collect_metrics Optimization;
                   record_start_if collect_metrics CodeGen;
+                  let stub_plans =
+                    Type_inference.current_ffi_bridge_snapshots ()
+                    |> List.map (fun normalized ->
+                           let open Ffi_contract in
+                           Ffi_stub.make_stub_plan normalized.contract)
+                  in
                   let llvm_module =
-                    Codegen.codegen_module ~target_name:opts.target optimized_ir
+                    Codegen.codegen_module ~target_name:opts.target
+                      ~stub_plans optimized_ir
                   in
                   record_end_if collect_metrics CodeGen;
                   (if opts.verify_ir then

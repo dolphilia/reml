@@ -102,6 +102,8 @@ fn emit_metrics(event: Str, metrics: RuntimeMetrics) {
 
 `RuntimeMetrics` は [3-7-core-config-data.md](../spec/3-7-core-config-data.md#43-プロファイル別評価とメトリクス) で定義する品質指標と同じフィールドを共有し、LSP/CLI の `audit_id` と突合できる。
 
+- FFI ブリッジ固有の計測はランタイム API（`reml_ffi_bridge_get_metrics`, `reml_ffi_bridge_pass_rate`）経由で取得し、`ffi_bridge.audit_pass_rate` と同期させる。`runtime/native/src/ffi_bridge.c` の出力を CI ログへ取り込み、`reports/ffi-bridge-summary.md` のチェック項目に反映する。
+
 ## 7. GPU 運用フロー
 
 1. **初期化**

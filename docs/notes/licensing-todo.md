@@ -19,6 +19,7 @@
 - [ ] 監査ログへのライセンス情報連携  
       - `bridge.license` など追加キーの必要性を評価  
       - 監査ダッシュボードでの表示方法を Diagnostics チームと調整
+- [ ] ランタイム計測ログ (`reml_ffi_bridge_get_metrics`, `reml_ffi_bridge_pass_rate`) を外部ストレージへ保存する場合のライセンス影響を確認し、必要に応じて `bridge.license` へ追記
 
 ## 3. 関連ドキュメント
 

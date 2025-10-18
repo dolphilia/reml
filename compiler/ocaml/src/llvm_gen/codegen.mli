@@ -74,7 +74,10 @@ val codegen_blocks :
  *)
 
 val codegen_module :
-  ?target_name:string -> Core_ir.Ir.module_def -> Llvm.llmodule
+  ?target_name:string ->
+  ?stub_plans:Ffi_stub_builder.stub_plan list ->
+  Core_ir.Ir.module_def ->
+  Llvm.llmodule
 (** モジュール全体を生成
  *
  * Core IR の module_def から LLVM モジュールを生成する。

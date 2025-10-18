@@ -1363,7 +1363,7 @@ let generate_builtin_trait_methods ctx =
  * @param target_name ターゲット名（オプション）
  * @return LLVM モジュール
  *)
-let codegen_module ?(target_name = "x86_64-linux") module_def =
+let codegen_module ?(target_name = "x86_64-linux") ?(stub_plans = []) module_def =
   let ctx = create_codegen_context module_def.module_name ~target_name () in
 
   (* ランタイム関数を宣言 *)
@@ -1390,6 +1390,9 @@ let codegen_module ?(target_name = "x86_64-linux") module_def =
       codegen_blocks ctx llvm_fn fn_def.fn_blocks;
       end_function ctx)
     module_def.function_defs;
+
+  if stub_plans <> [] then
+    Ffi_value_lowering.attach_stub_plans ctx.llctx ctx.llmodule stub_plans;
 
   ctx.llmodule
 

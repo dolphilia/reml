@@ -28,6 +28,25 @@ typedef struct {
 } reml_span_t;
 
 /**
+ * FFI ブリッジ呼び出し結果のステータス
+ */
+typedef enum {
+    REML_FFI_BRIDGE_STATUS_SUCCESS = 0,
+    REML_FFI_BRIDGE_STATUS_FAILURE = 1
+} reml_ffi_bridge_status_t;
+
+/**
+ * FFI ブリッジ計測値
+ *
+ * total_calls:  呼び出し総数
+ * success_calls: 成功と判定された呼び出し数
+ */
+typedef struct {
+    uint64_t total_calls;
+    uint64_t success_calls;
+} reml_ffi_bridge_metrics_t;
+
+/**
  * 参照カウントを保持したまま値を借用する。
  *
  * FFI 呼び出しに値を渡す際、Reml 側で借用扱いにする場合は inc_ref で
@@ -72,6 +91,59 @@ static inline reml_span_t reml_ffi_make_span(void* data, size_t length) {
     span.data = data;
     span.length = data == NULL ? 0 : length;
     return span;
+}
+
+/**
+ * Reml 文字列を FFI 向け Span に変換する。
+ *
+ * data が NULL または長さが負の場合は空 Span を返す。
+ */
+reml_span_t reml_ffi_box_string(const reml_string_t* source);
+
+/**
+ * FFI から渡された Span を Reml 文字列表現へ復元する。
+ *
+ * span が NULL または data が NULL の場合は空文字列を返す。
+ */
+reml_string_t reml_ffi_unbox_span(const reml_span_t* span);
+
+/**
+ * FFI 呼び出し結果を記録する。
+ *
+ * メトリクスは CI の `ffi_bridge.audit_pass_rate` 算出に利用される。
+ */
+void reml_ffi_bridge_record_status(reml_ffi_bridge_status_t status);
+
+/**
+ * FFI ブリッジ計測値をリセットする。
+ */
+void reml_ffi_bridge_reset_metrics(void);
+
+/**
+ * 現在の FFI ブリッジ計測値を取得する。
+ *
+ * @return 計測値のスナップショット（値渡し）
+ */
+reml_ffi_bridge_metrics_t reml_ffi_bridge_get_metrics(void);
+
+/**
+ * 成功率（0.0〜1.0）を算出する。
+ * 呼び出しが存在しない場合は 1.0 を返す。
+ */
+double reml_ffi_bridge_pass_rate(void);
+
+/**
+ * 便宜用の成功記録ヘルパ。
+ */
+static inline void reml_ffi_bridge_record_success(void) {
+    reml_ffi_bridge_record_status(REML_FFI_BRIDGE_STATUS_SUCCESS);
+}
+
+/**
+ * 便宜用の失敗記録ヘルパ。
+ */
+static inline void reml_ffi_bridge_record_failure(void) {
+    reml_ffi_bridge_record_status(REML_FFI_BRIDGE_STATUS_FAILURE);
 }
 
 #ifdef __cplusplus
