@@ -16,6 +16,7 @@ open Constraint_solver
 open Type_error
 open Ast
 open Typed_ast
+module Ffi = Ffi_contract
 
 type config = { effect_context : Type_inference_effect.runtime_stage }
 
@@ -195,11 +196,21 @@ end
 let global_impl_registry : Impl_registry.impl_registry ref =
   ref (Impl_registry.empty ())
 
+let ffi_bridge_snapshots : Ffi.normalized_contract list ref = ref []
+
+let reset_ffi_bridge_snapshots () = ffi_bridge_snapshots := []
+
+let record_ffi_bridge_snapshot (normalized : Ffi.normalized_contract) =
+  ffi_bridge_snapshots := normalized :: !ffi_bridge_snapshots
+
+let current_ffi_bridge_snapshots () = List.rev !ffi_bridge_snapshots
+
 (** レジストリのリセット（テスト用） *)
 let reset_impl_registry () =
   global_impl_registry := Impl_registry.empty ();
   Monomorph_registry.reset ();
-  reset_effect_constraints ()
+  reset_effect_constraints ();
+  reset_ffi_bridge_snapshots ()
 
 (** レジストリの取得 *)
 let get_impl_registry () = !global_impl_registry
@@ -291,6 +302,28 @@ let rec convert_type_annot (tannot : type_annot) : ty =
         (fun arg_ty acc -> TArrow (convert_type_annot arg_ty, acc))
         arg_tys
         (convert_type_annot ret_ty)
+
+let check_extern_bridge_contract ~(block_target : string option)
+    (item : extern_item) : (Ffi.normalized_contract, type_error) result =
+  let contract =
+    Ffi.bridge_contract ?block_target
+      ~extern_name:item.extern_sig.sig_name.name
+      ~source_span:item.extern_sig.sig_name.span
+      ~metadata:item.extern_metadata ()
+  in
+  let normalized = Ffi.normalize_contract contract in
+  match normalized.extern_symbol with
+  | None -> Error (ffi_contract_symbol_missing_error normalized)
+  | Some _ ->
+      if not (Ffi.ownership_supported normalized.ownership_kind) then
+        Error (ffi_contract_ownership_mismatch_error normalized)
+      else if not (Ffi.abi_supported normalized.abi_kind) then
+        Error (ffi_contract_unsupported_abi_error normalized)
+      else
+        (match normalized.expected_abi with
+        | Some expected when expected <> normalized.abi_kind ->
+            Error (ffi_contract_unsupported_abi_error normalized)
+        | _ -> Ok normalized)
 
 (* ========== 一般化とインスタンス化 ========== *)
 
@@ -2272,6 +2305,44 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
       let new_env = extend fn.fn_name.name scheme env' in
 
       Ok (tdecl, new_env, body_constraints)
+  | ExternDecl extern_decl ->
+      let block_target = extern_decl.extern_block_target in
+      let convert_signature _env signature =
+        let param_tys =
+          List.map
+            (fun param ->
+              match param.ty with
+              | Some annot -> convert_type_annot annot
+              | None -> Types.TVar (TypeVarGen.fresh None))
+            signature.sig_args
+        in
+        let ret_ty =
+          match signature.sig_ret with
+          | Some annot -> convert_type_annot annot
+          | None -> ty_unit
+        in
+        List.fold_right (fun param_ty acc -> TArrow (param_ty, acc)) param_tys
+          ret_ty
+      in
+      let rec process_items env = function
+        | [] -> Ok env
+        | item :: rest -> (
+            match check_extern_bridge_contract ~block_target item with
+            | Error err -> Error err
+            | Ok normalized ->
+                record_ffi_bridge_snapshot normalized;
+                let fn_ty = convert_signature env item.extern_sig in
+                let scheme = generalize env fn_ty in
+                let env' = extend item.extern_sig.sig_name.name scheme env in
+                process_items env' rest)
+      in
+      let* final_env = process_items env extern_decl.extern_items in
+      let tdecl =
+        make_typed_decl decl.decl_attrs decl.decl_vis
+          (TExternDecl extern_decl)
+          (scheme_to_constrained (mono_scheme ty_unit)) decl.decl_span
+      in
+      Ok (tdecl, final_env, [])
   | ImplDecl impl ->
       (* impl宣言の型推論
        *
@@ -2405,6 +2476,7 @@ let infer_compilation_unit ?(config = default_config) (cu : compilation_unit) :
   (* 初期型環境を作成 *)
   reset_effect_constraints ();
   Monomorph_registry.reset ();
+  reset_ffi_bridge_snapshots ();
   current_config := config;
   let init_env = initial_env in
 

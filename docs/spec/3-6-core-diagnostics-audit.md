@@ -367,6 +367,18 @@ let diagnostic = Diag.from_parse_error(
 }
 ```
 
+#### 2.4.3 FFI 契約診断 (Type Domain) {#diagnostic-ffi-contract}
+
+Phase 2-3 で導入する `Core.Ffi` ブリッジ検証は、`extern` 宣言の所有権・ABI 契約がターゲットの ABI 表と一致しない場合に静的エラーを発生させる。診断は `Diagnostic.domain = Some(Type)` を既定とし、`Diagnostic.extensions["bridge"]` と `AuditEnvelope.metadata["bridge"]` に共通メタデータを出力する。必須キーは `bridge.target`, `bridge.arch`, `bridge.abi`, `bridge.ownership`, `bridge.extern_symbol` の 5 つで、監査ログでは `bridge.source_span` を追加して宣言位置を追跡する。
+
+| `code` | 既定 Severity | 発生条件 | 監査メタデータ | 推奨対応 |
+| --- | --- | --- | --- | --- |
+| `ffi.contract.symbol_missing` | Error | `extern` 項目に `link_name`（または `ffi_link_name`）が指定されておらず、ランタイムが参照すべきシンボルを決定できない。 | `bridge.*` キー（上記5項目）と `bridge.source_span` を必須とし、`extern_name` と `link_name` の両方を記録する。 | `#[link_name("…")]` 属性を追加し、ターゲット側シンボルと一致させる。自動生成ツールは欠落時に CI を失敗させる。 |
+| `ffi.contract.ownership_mismatch` | Error | `#[ownership("…")]` が `borrowed` / `transferred` / `reference` 以外、または未指定。 | 上記に加え `bridge.ownership` を拡張フィールドに複写し、CI では `ffi_bridge.audit_pass_rate` を使用して必須キーの欠落を検知する。 | 対応する所有権ポリシーを指定し、`Core.Ffi` の参照カウント規約と整合させる。未対応の所有権を導入する場合は 3-9 §2.4 に従い仕様を更新する。 |
+| `ffi.contract.unsupported_abi` | Error | ブロックターゲット（`#[target("triple")]` or `extern { target = … }`）に対応する ABI と `#[calling_convention("…")]` が一致せず、`system_v`/`msvc`/`darwin_aapcs64` 以外の呼出規約を要求している。 | `bridge.expected_abi` を追加で出力し、Windows では `msvc`、Apple Silicon では `darwin_aapcs64` が選ばれていることを CI で検証する。 | ターゲットに合わせて `#[calling_convention]` を更新するか、独自 ABI を導入する場合はランタイム拡張と一体で RFC を提出する。 |
+
+これらの診断は 3-9 §2.7 の ABI 表と `tooling/runtime/capabilities/*.json` に定義されたターゲットオーバーライドを参照する。監査ログは `ffi_bridge.audit_pass_rate` メトリクスで検証され、欠落キーがある場合は CI を失敗させることを推奨する。成功時のイベントは `AuditEnvelope.category = "ffi.bridge"` で記録し、`status = "ok"`/`"error"` を `bridge` オブジェクトに含めることでリグレッションを可視化する。
+
 CLI/LSP の `Diagnostic.extensions["effects"]["iterator"]` へも同じキー集合を転写し、人間向け出力と監査ログが同じ語彙で比較できるようにする。CI メトリクス `iterator.stage.audit_pass_rate` はこれらのキーが揃っていることを前提に算出され、欠落時は `AuditPolicy` が `Warning` を昇格させる。
 
 これらのキーは `AuditPolicy.exclude_patterns` で除外しない限り永続化され、`CapabilityAudit` レポートや LSP の効果ビューで差分分析に利用できる。

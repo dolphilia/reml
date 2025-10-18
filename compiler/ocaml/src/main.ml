@@ -1,5 +1,6 @@
 module EffectTable = Constraint_solver.EffectConstraintTable
 module IteratorAudit = Core_ir.Iterator_audit
+module Ffi = Ffi_contract
 
 let iterator_audit_entries : (string, IteratorAudit.entry) Hashtbl.t =
   Hashtbl.create 32
@@ -268,6 +269,13 @@ let iterator_audit_events runtime_context =
     (fun _ entry acc -> iterator_stage_event runtime_context entry :: acc)
     iterator_audit_entries []
 
+let ffi_bridge_events () =
+  Type_inference.current_ffi_bridge_snapshots ()
+  |> List.map (fun normalized ->
+         Audit_envelope.make ~category:"ffi.bridge"
+           ~metadata:(Ffi.bridge_audit_metadata ~status:"ok" normalized)
+           ())
+
 let events_from_effect_constraints () =
   Constraint_solver.current_effect_constraints ()
   |> EffectTable.to_list
@@ -292,6 +300,13 @@ let event_of_type_error err =
       Some
         (event_of_stage_mismatch ~function_name:symbol ~required_stage
            ~actual_stage ~capability ~stage_trace)
+  | Type_error.FfiContractSymbolMissing normalized
+  | Type_error.FfiContractOwnershipMismatch normalized
+  | Type_error.FfiContractUnsupportedAbi normalized ->
+      Some
+        (Audit_envelope.make ~category:"ffi.bridge"
+           ~metadata:(Ffi.bridge_audit_metadata ~status:"error" normalized)
+           ())
   | _ -> None
 
 (* Main — Reml コンパイラエントリーポイント (Phase 1-6)
@@ -435,9 +450,11 @@ let () =
                 let iterator_events =
                   iterator_audit_events runtime_stage_context
                 in
+                let bridge_events = ffi_bridge_events () in
                 let events =
                   runtime_stage_event runtime_stage_context
-                  :: (iterator_events @ events_from_effect_constraints ())
+                  :: (iterator_events @ bridge_events
+                     @ events_from_effect_constraints ())
                 in
                 Audit_envelope.append_events audit_path events
             | None -> ());

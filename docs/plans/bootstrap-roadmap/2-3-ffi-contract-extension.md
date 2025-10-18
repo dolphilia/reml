@@ -23,9 +23,9 @@
 | 作業ブロック | ステータス | 完了済み項目 | 次のステップ |
 | --- | --- | --- | --- |
 | 前提確認・計画調整 | **進行中** | `scripts/validate-runtime-capabilities.sh` を再実行し、`reports/runtime-capabilities-validation.json` を更新。macOS override 草案と `reports/ffi-macos-summary.md` のテンプレート整備、CI ローカルフロー（Lint/Build/Test/LLVM/Runtime 完走）を確認済み。 | override 変更の PR 化とレビュー共有。Linux/Windows 向け計測テンプレート整備。 |
-| 1. ABI モデル設計 | **進行中** | Darwin 計測計画を `docs/notes/llvm-spec-status-survey.md` に追記し、`ffi_contract` モジュール（所有権・ABI 判定スケルトン）を追加。 | `ffi_contract` のデータ型を Typer 連携用に固め、ターゲット別 ABI 仕様のノートを `reports/ffi-bridge-summary.md`（仮）へ展開。 |
-| 2. Parser / AST 拡張 | **進行中** | `extern_metadata` PoC を維持しつつ、`extern_block_target` への改名と `test_parser` ゴールデン更新を完了。 | Typer へのメタデータ伝搬と CLI/監査診断への接続方針を整理し、FFI ゴールデン追加を計画。 |
-| 3. Typer 統合と ABI 検証 | **未着手** | — | FFI 型ホワイトリストと所有権検証の設計メモを起案。 |
+| 1. ABI モデル設計 | **進行中** | Darwin 計測計画を `docs/notes/llvm-spec-status-survey.md` に追記し、`ffi_contract` モジュール（所有権・ABI 判定スケルトン）を追加。`normalize_contract` でターゲット別 `expected_abi`・所有権正規化を実装。 | Linux/Windows/macOS 向け ABI 差分ノート（`reports/ffi-bridge-summary.md` 仮）作成と、型ホワイトリスト方針の明文化。 |
+| 2. Parser / AST 拡張 | **進行中** | `extern_metadata` PoC を維持しつつ、`extern_block_target` への改名と `test_parser` ゴールデン更新を完了。 | Typer 連携で得たメタデータ要求をフィードバックし、属性バリデーションを Parser レイヤへ逆移譲するか検討。 |
+| 3. Typer 統合と ABI 検証 | **完了** | `check_extern_bridge_contract` を `type_inference.ml` に実装し、`ffi_contract` の所有権/ABI 正規化を参照。`ffi.contract.symbol_missing` / `ownership_mismatch` / `unsupported_abi` 診断を生成し、`AuditEnvelope.metadata.bridge.*` を Typer で構築。 | ランタイム stub 連携時に追加される型ホワイトリストとの整合チェックを継続。 |
 | 4. ブリッジコード生成 | **未着手** | — | ターゲット別 stub 生成ロジックの責務分担を `codegen` / `runtime/native` チームと摺り合わせ。 |
 | 5. 監査ログ統合 | **進行中** | `tooling/runtime/audit-schema.json` に bridge オブジェクトを追加し、`tooling/ci/collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を集計。 | Typer 実装後に `AuditEnvelope` ゴールデンを追加し、CI ゲート（`sync-iterator-audit.sh`）へ FFI ブリッジ検証を統合。 |
 | 6. プラットフォーム別テスト | **進行中** | Apple Silicon で `scripts/ci-local.sh --target macos --arch arm64 --stage beta` をフル実行し、`reports/ffi-macos-summary.md` にログと比較観点を追記。 | FFI サンプル（借用/転送/構造体戻り）を macOS で実行し、Linux/Windows 版テンプレートを用意。 |
@@ -37,29 +37,31 @@
 - `scripts/ci-local.sh --target macos --arch arm64 --stage beta` をフルパスで実行し、Lint/Build/Test/LLVM/Runtime（AddressSanitizer）を通過。ログは `reports/ffi-macos-summary.md` に集約。
 - `extern_decl` のターゲット集約フィールドを `extern_block_target` へ改名し、Parser・AST Printer・設計メモを同期。`ffi_contract` モジュールを追加して ABI/所有権の判定骨格を整備。
 - `tooling/runtime/audit-schema.json` に bridge オブジェクトを定義し、`tooling/ci/collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を出力。監査指標は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に反映済み。
+- `compiler/ocaml/src/type_inference.ml` に `check_extern_bridge_contract` を追加し、`ffi_contract` の正規化ロジックと一体で `ffi.contract.*` 診断・`AuditEnvelope.metadata.bridge.*` 出力を確立。`type_error.ml` と `main.ml` を同期して CLI/監査の整合を確認。
+- `compiler/ocaml/tests/test_ffi_contract.ml` とゴールデン (`diagnostics/ffi/unsupported-abi.json.golden`, `audit/ffi-bridge.jsonl.golden`) を新設し、`dune runtest` で `ffi_bridge.audit_pass_rate` を検証。仕様書 `3-6` / `3-9` に診断・ABI テーブルを追記し計画書と整合させた。
 
 ### 完了済みタスク
 
 - `compiler/ocaml/tests/golden/audit/effects-residual.jsonl.golden` を更新し、`scripts/ci-local.sh --target macos --arch arm64 --stage beta` をフルパスで完走。
 - `tooling/runtime/audit-schema.json` に bridge オブジェクトを追加し、`tooling/ci/collect-iterator-audit-metrics.py` へ `ffi_bridge.audit_pass_rate` を実装。
 - `reports/ffi-macos-summary.md` を刷新し、AddressSanitizer ログとクロスプラットフォーム比較観点を追記。
+- `compiler/ocaml/src/type_inference.ml` に `check_extern_bridge_contract` を実装し、`ffi_contract` の正規化ロジックと連携した `ffi.contract.*` 診断・`AuditEnvelope.metadata.bridge.*` 出力を確立。`type_error.ml`・`main.ml` も同期し、CLI/Audit の整合を確認。
+- `compiler/ocaml/tests/test_ffi_contract.ml` とゴールデン（`diagnostics/ffi/unsupported-abi.json.golden`, `audit/ffi-bridge.jsonl.golden`）を追加し、`dune runtest` で `ffi_bridge.audit_pass_rate` を検証。仕様書 `docs/spec/3-6`, `docs/spec/3-9` に診断・ABI テーブルを追記。
 
 ### 残タスクと次のステップ
 
-1. **Typer 統合**
-   - `compiler/ocaml/src/typer/type_inference.ml` に `check_extern_bridge_contract`（仮称）を実装し、`ffi_contract` が保持する所有権（`borrowed`/`transferred`/`reference`）と ABI（`system_v`/`msvc`/`darwin_aapcs64`）の許可マトリクスを検証。違反時は `ffi.contract.ownership_mismatch` / `ffi.contract.unsupported_abi` / `ffi.contract.symbol_missing` を発火させる。
-   - `AuditEnvelope.metadata.bridge.*` へ `target`・`arch`・`abi`・`ownership`・`extern_symbol` を記録し、CLI (`--emit-json`) と JSON 監査 (`--emit-audit`) 双方で同一ペイロードを確認できるよう `compiler/ocaml/src/diagnostics/json_reporter.ml` と `compiler/ocaml/src/audit/audit_envelope.ml` を同期。
-   - `compiler/ocaml/tests/golden/diagnostics/ffi/`（新設）に CLI/JSON ゴールデンを追加し、`compiler/ocaml/tests/golden/audit/ffi-bridge.jsonl.golden` を生成。`tooling/ci/collect-iterator-audit-metrics.py` の必須キーに `bridge.target` 系を加える。
-   - 診断コードと監査キーを `docs/spec/3-6-core-diagnostics-audit.md` §FFI と `docs/spec/3-9-core-async-ffi-unsafe.md` の ABI/所有権節へ反映し、`README.md` のインデックス更新と相互参照チェックを並行する。
-2. **ブリッジコード生成とランタイム**
+1. **ブリッジコード生成とランタイム**
    - 各ターゲット向け stub 生成ロジックと LLVM lowering を設計し、`runtime/native` のヘルパ API を拡張。
    - C ヘッダ生成方針（自動/手動）とライセンス整理を行い、Phase 3 へ引き継ぐ。
-3. **プラットフォーム別テスト**
+2. **プラットフォーム別テスト**
    - macOS arm64 で借用/転送/構造体戻りの FFI サンプルを実行し、`reports/ffi-macos-summary.md` の未実施項目を埋める。
    - Linux x86_64 / Windows x64 版の計測テンプレートとログ収集手順を作成し、`ffi_bridge.audit_pass_rate` をターゲット別に監視。
-4. **ドキュメントと CI ゲート**
+3. **ドキュメントと CI ゲート**
    - 仕様書・ガイド（3-9, 3-6 など）に FFI 監査キーと診断コードを反映し、`tooling/ci/sync-iterator-audit.sh` へ FFI ブリッジ検証を統合。
    - Windows/macOS 向け Capability override の PR を準備し、`reports/ffi-bridge-summary.md`（新設予定）で差分を追跡。
+4. **ABI/所有権モデルの補完**
+   - 型ホワイトリストと禁止型リストのドラフトを作成し、Typer・コード生成・ランタイムの整合を確認。
+   - `ffi_contract` の `OwnershipManaged` / `AbiCustom` ケースへの移行ガイドと fallback ポリシーを明文化。
 
 ### 2025-10-18 ログ・測定サマリー
 
@@ -78,12 +80,12 @@
 
 1. **AST → Typer のデータ受け渡し**  
    `typed_ast.ml` に extern 解析結果を格納するレコードを追加し、`extern_metadata` を必須フィールドとして保持。`bridge.target` 未指定時は Capability JSON のデフォルトターゲットを補完する。
-2. **所有権と ABI の検証ロジック実装**  
-   `type_inference.ml` に `check_extern_bridge_contract`（仮）を実装し、許可されていない所有権/ABI 組合せを検出。失敗時は `ffi.contract.ownership_mismatch` / `ffi.contract.unsupported_abi` / `ffi.contract.symbol_missing` 診断を新設し、違反箇所の `bridge.extern_symbol`・`bridge.target` を添付する。
-3. **`AuditEnvelope` 拡張**  
-   `audit_envelope.ml` に `bridge` サブレコードを追加し、Typer が JSON 生成に必要なキーを設定。effect 系メタデータと共通のフォーマッタを利用できるよう `AuditEnvelope.Metadata` を整理。
-4. **ゴールデンテスト更新**  
-   `compiler/ocaml/tests/golden/audit/ffi-bridge.jsonl.golden` を新規追加し、`bridge.target = arm64-apple-darwin` と `bridge.target = x86_64-pc-windows-msvc` の 2 ケースを固定。CLI JSON ゴールデン（`compiler/ocaml/tests/golden/diagnostics/ffi/`）にも FFI 診断を追加し、効果診断との併用ケースを検証する。
+2. **所有権と ABI の検証ロジック実装（完了済み 2025-10-18）**  
+   `type_inference.ml` に `check_extern_bridge_contract` を実装し、許可されていない所有権/ABI 組合せを検出。失敗時は `ffi.contract.ownership_mismatch` / `ffi.contract.unsupported_abi` / `ffi.contract.symbol_missing` 診断を発火し、違反箇所の `bridge.extern_symbol`・`bridge.target` を添付する。
+3. **`AuditEnvelope` 拡張（完了済み 2025-10-18）**  
+   `type_error.ml`・`main.ml` を更新し、Typer で構築した `bridge` メタデータを CLI (`--emit-json`)・監査 (`--emit-audit`) 双方へ転送。`AuditEnvelope.metadata.bridge.*` に `status`・`source_span` を含める。
+4. **ゴールデンテスト更新（完了済み 2025-10-18）**  
+   `compiler/ocaml/tests/test_ffi_contract.ml` を追加し、`compiler/ocaml/tests/golden/diagnostics/ffi/unsupported-abi.json.golden` と `compiler/ocaml/tests/golden/audit/ffi-bridge.jsonl.golden` を固定化。`dune runtest` で `ffi_bridge.audit_pass_rate` を自動検証。
 
 ### JSON 監査スキーマ更新案（FFI Bridge 拡張）
 
@@ -106,9 +108,9 @@
 ## 直近アクション（次の 2 週間）
 
 - `tooling/runtime/capabilities/default.json` への `arm64-apple-darwin` override 変更を PR 化し、`scripts/validate-runtime-capabilities.sh` 再実行ログと `reports/runtime-capabilities-validation.json` の差分を添付してレビュー提出。
-- `scripts/ci-local.sh --target macos --arch arm64 --stage beta` を実行し、`reports/ffi-macos-summary.md` に初回計測値とログ（IR/ABI 検証・監査サマリー）を記録する。
-- Typer 側で `extern_metadata` を読み取り、所有権・ターゲット情報を `AuditEnvelope.metadata.bridge.*` へ渡す設計メモとタスク分解（issue 下書き）を準備する。
-- JSON 監査スキーマ更新案とゴールデンテスト拡張（`ffi-bridge.jsonl.golden` サンプル）をまとめ、効果診断チームとのレビュー体制を確定する。
+- ブリッジ stub/LLVM lowering の設計方針を `runtime/native`・`compiler/ocaml/src/codegen` チームへ共有し、モジュール分担と API 変更点を整理したドラフトを作成する。
+- Linux x86_64 / Windows x64 向け `ffi_bridge.audit_pass_rate` テンプレートとログ収集スクリプトを準備し、CI での多プラットフォーム検証手順を確立する。
+- 仕様書追記内容（3-6/3-9）をベースにガイドラインと `tooling/ci/sync-iterator-audit.sh` への統合案をまとめ、Diagnostics・CI 両チームとのレビューを設定する。
 
 ### 1. ABI モデル設計と仕様整理（29-30週目）
 **担当領域**: FFI 基盤設計

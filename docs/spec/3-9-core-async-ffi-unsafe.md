@@ -987,6 +987,24 @@ pub type FfiSecurity = {
 }
 ```
 
+#### 5.2.1 契約検証と診断フック
+
+`TypeInference::check_extern_bridge_contract` は `ffi_contract` モジュールを通じて `extern` 宣言の契約を静的に検証する。リンク名・ターゲット・呼出規約・所有権の各要素は次の規約に従う。違反時は 3-6 §2.4.3 の診断 (`ffi.contract.*`) を発火し、`AuditEnvelope.metadata["bridge"]` および `Diagnostic.extensions["bridge"]` に共通メタデータを記録する。
+
+| チェック項目 | 必須条件 | 診断コード |
+| --- | --- | --- |
+| シンボル名 | `#[link_name("foo")]` または `ffi_link_name` 属性で明示する。空文字列や未指定は許容されない。 | `ffi.contract.symbol_missing` |
+| 所有権 | `#[ownership("borrowed"|"transferred"|"reference")]` のいずれか。省略時は `borrowed` と同等だが診断を発火する。 | `ffi.contract.ownership_mismatch` |
+| 呼出規約 | ターゲットトリプルと一致する ABI を選択する。標準サポートは下表のとおり。 | `ffi.contract.unsupported_abi` |
+
+| ターゲット（例） | 期待される ABI | 備考 |
+| --- | --- | --- |
+| `*-unknown-linux-gnu`, `*-pc-linux-gnu` | `system_v` | System V AMD64 ABI。 | 
+| `x86_64-pc-windows-msvc`, `*-windows-msvc` | `msvc` | Windows x64 (MSVC) ABI。 | 
+| `arm64-apple-darwin`, `aarch64-apple-darwin` | `darwin_aapcs64` | Apple Silicon（AAPCS64 with Darwin extensions）。 |
+
+ターゲットを明示しない場合は Capability Registry の既定値に従うが、ABI が未指定 (`AbiUnspecified`) もしくは `AbiCustom(_)` の場合は必ず `ffi.contract.unsupported_abi` を報告する。監査ログには `bridge.status = "ok"|"error"`, `bridge.target`, `bridge.arch`, `bridge.abi`, `bridge.ownership`, `bridge.extern_symbol`, `bridge.source_span` を含め、CI の `ffi_bridge.audit_pass_rate` が 1.0 を下回った場合にブリッジ契約の破綻として扱う。
+
 ### 5.3 Unsafe Capability
 
 ```reml

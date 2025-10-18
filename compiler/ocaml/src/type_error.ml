@@ -13,6 +13,7 @@ open Types
 open Ast
 open Effect_profile
 module Json = Yojson.Basic
+module Ffi = Ffi_contract
 
 type trait_constraint_stage_extension = {
   required_stage : string;
@@ -104,6 +105,9 @@ type type_error =
       profile : Effect_profile.profile;
       leaks : Effect_profile.residual_effect_leak list;
     }
+  | FfiContractSymbolMissing of Ffi.normalized_contract
+  | FfiContractOwnershipMismatch of Ffi.normalized_contract
+  | FfiContractUnsupportedAbi of Ffi.normalized_contract
   | AmbiguousTraitImpl of {
       (* トレイト実装の曖昧性 *)
       trait_name : string;
@@ -239,6 +243,33 @@ let string_of_error = function
             |> String.concat ", "
       in
       Printf.sprintf "Residual effects%s are not declared: %s" subject missing
+  | FfiContractSymbolMissing normalized ->
+      Printf.sprintf
+        "FFI contract missing link symbol for extern '%s'"
+        normalized.contract.extern_name
+  | FfiContractOwnershipMismatch normalized ->
+      let actual =
+        match normalized.ownership_raw with
+        | Some raw when String.trim raw <> "" -> raw
+        | _ -> "(unspecified)"
+      in
+      Printf.sprintf
+        "FFI ownership mismatch for extern '%s' (actual: %s)"
+        normalized.contract.extern_name actual
+  | FfiContractUnsupportedAbi normalized ->
+      let actual =
+        match normalized.abi_raw with
+        | Some raw when String.trim raw <> "" -> raw
+        | _ -> "(unspecified)"
+      in
+      let expected =
+        match normalized.expected_abi with
+        | Some abi -> Ffi_contract.string_of_abi_kind abi
+        | None -> "<unknown>"
+      in
+      Printf.sprintf
+        "FFI ABI unsupported for extern '%s' (actual: %s, expected: %s)"
+        normalized.contract.extern_name actual expected
   | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
@@ -303,6 +334,15 @@ let effect_invalid_attribute_error ~function_name ~profile ~invalid =
 
 let effect_residual_leak_error ~function_name ~profile ~leaks =
   EffectResidualLeak { function_name; profile; leaks }
+
+let ffi_contract_symbol_missing_error normalized =
+  FfiContractSymbolMissing normalized
+
+let ffi_contract_ownership_mismatch_error normalized =
+  FfiContractOwnershipMismatch normalized
+
+let ffi_contract_unsupported_abi_error normalized =
+  FfiContractUnsupportedAbi normalized
 
 let append_runtime_stage_trace ?capability stage_trace ~actual_stage =
   let has_runtime =
@@ -1169,6 +1209,133 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         else diag
       in
       diag
+  | FfiContractSymbolMissing normalized ->
+      let span =
+        span_to_diagnostic_span normalized.Ffi.contract.Ffi.source_span
+      in
+      let message =
+        Printf.sprintf "外部関数 `%s` にリンクシンボルが指定されていません"
+          normalized.contract.extern_name
+      in
+      let notes =
+        [
+          ( None,
+            "extern 宣言に `link_name` 属性を追加し、ブリッジが参照する \
+             シンボル名を明示してください" );
+        ]
+      in
+      let diag =
+        make_type_error ~code:"ffi.contract.symbol_missing" ~message ~span
+          ~notes ()
+      in
+      let diag =
+        Diagnostic.set_extension "bridge"
+          (Ffi.bridge_json_of_normalized normalized)
+          diag
+      in
+      let diag =
+        Diagnostic.set_audit_metadata "bridge"
+          (Ffi.bridge_json_of_normalized ~status:"error" normalized)
+          diag
+      in
+      let diag =
+        Diagnostic.set_audit_metadata "bridge.source_span"
+          (Ffi.span_to_json normalized.contract.source_span)
+          diag
+      in
+      diag
+  | FfiContractOwnershipMismatch normalized ->
+      let span =
+        span_to_diagnostic_span normalized.Ffi.contract.Ffi.source_span
+      in
+      let message =
+        Printf.sprintf "外部関数 `%s` の所有権契約が無効です"
+          normalized.contract.extern_name
+      in
+      let specified =
+        match normalized.ownership_raw with
+        | Some raw when String.trim raw <> "" -> Printf.sprintf "`%s`" raw
+        | _ -> "`(未指定)`"
+      in
+      let notes =
+        [
+          ( None,
+            Printf.sprintf "指定された値: %s" specified );
+          ( None,
+            Printf.sprintf "サポートされる値: %s"
+              (String.concat ", " Ffi.supported_ownership_labels) );
+        ]
+      in
+      let diag =
+        make_type_error ~code:"ffi.contract.ownership_mismatch" ~message ~span
+          ~notes ()
+      in
+      let diag =
+        Diagnostic.set_extension "bridge"
+          (Ffi.bridge_json_of_normalized normalized)
+          diag
+      in
+      let diag =
+        Diagnostic.set_audit_metadata "bridge"
+          (Ffi.bridge_json_of_normalized ~status:"error" normalized)
+          diag
+      in
+      let diag =
+        Diagnostic.set_audit_metadata "bridge.source_span"
+          (Ffi.span_to_json normalized.contract.source_span)
+          diag
+      in
+      diag
+  | FfiContractUnsupportedAbi normalized ->
+      let span =
+        span_to_diagnostic_span normalized.Ffi.contract.Ffi.source_span
+      in
+      let message =
+        Printf.sprintf "外部関数 `%s` の ABI 契約がターゲットと整合していません"
+          normalized.contract.extern_name
+      in
+      let actual =
+        match normalized.abi_raw with
+        | Some raw when String.trim raw <> "" -> Printf.sprintf "`%s`" raw
+        | _ -> "`(未指定)`"
+      in
+      let expected_note =
+        match normalized.expected_abi with
+        | Some expected ->
+            Printf.sprintf "要求される ABI: %s"
+              (Ffi.string_of_abi_kind expected)
+        | None ->
+            "ターゲットが未指定のため適切な ABI を決定できません"
+      in
+      let supplementary =
+        [
+          (None, Printf.sprintf "指定された値: %s" actual);
+          (None, expected_note);
+          ( None,
+            Printf.sprintf "サポートされる値: %s"
+              (String.concat ", " Ffi.supported_abi_labels) );
+        ]
+      in
+      let diag =
+        make_type_error ~code:"ffi.contract.unsupported_abi" ~message ~span
+          ~notes:supplementary ()
+      in
+      let diag =
+        Diagnostic.set_extension "bridge"
+          (Ffi.bridge_json_of_normalized normalized)
+          diag
+      in
+      let diag =
+        Diagnostic.set_audit_metadata "bridge"
+          (Ffi.bridge_json_of_normalized ~status:"error" normalized)
+          diag
+      in
+      let diag =
+        Diagnostic.set_audit_metadata "bridge.source_span"
+          (Ffi.span_to_json normalized.contract.source_span)
+          diag
+      in
+      diag
   | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
@@ -1602,6 +1769,9 @@ let to_diagnostic_with_source ?(available_names : string list = [])
       diag
   | EffectInvalidAttribute _ as invalid -> to_diagnostic invalid
   | EffectResidualLeak _ as leak -> to_diagnostic leak
+  | FfiContractSymbolMissing _
+  | FfiContractOwnershipMismatch _
+  | FfiContractUnsupportedAbi _ -> to_diagnostic err
   | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
