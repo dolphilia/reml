@@ -125,6 +125,14 @@
 - Stage が変更された場合は、必ず効果診断ゴールデンと `AuditEnvelope` ゴールデンを再生成し、`stage_trace` の差分が Typer/Runtime で一致していることを確認する。
 - CLI/環境変数による Stage 指定を検証する場合は、`--cli-stage <stage>` / `--env-stage <stage>` を併用し、`stage_trace` の冒頭エントリ（`cli_option` / `env_var`）と整合を確認する。
 
+#### Windows / 追加ターゲット差分検証
+- `tooling/runtime/capabilities/default.json` では `overrides.x86_64-pc-windows-msvc` に Windows 専用の Stage と Capability を定義している。新しいターゲットを追加する場合も同じ `overrides` セクションか、個別の `{platform}.json` に追記し、本節へ差分を記録する。
+- 検証手順:
+  1. `scripts/validate-runtime-capabilities.sh tooling/runtime/capabilities/default.json --output reports/runtime-capabilities-validation.json` を実行し、`stage_summary.runtime_candidates` に `target: x86_64-pc-windows-msvc` が含まれることを確認する。
+  2. Stage や Capability を更新した場合は、`reports/runtime-capabilities-validation.json` の `stage_summary.json[].overrides` と `stage_trace` を 0.3.9 進捗ログへ抜粋し、レビューで参照できるようにする。
+  3. 追加ターゲット（例: `aarch64-pc-windows-msvc` や `x86_64-unknown-linux-gnu` の派生）を導入した際は、同コマンドに `--cli-stage` / `--env-stage` を付与して優先度を再確認し、`tooling/ci/sync-iterator-audit.sh --metrics tooling/ci/iterator-audit-metrics.json --verify-log tooling/ci/llvm-verify.log --output reports/iterator-stage-summary.md` を再実行して `iterator.stage.audit_pass_rate = 1.0` を維持しているかを確かめる。
+- 検証の結果、`pass_rate < 1.0` となった場合や `stage_trace` に欠落が発生した場合は、影響段階が解消されるまで `0-4-risk-handling.md` に TODO を登録し、ロールバック方針と併せて共有する。
+
 ### CLI オプション優先度と検証
 - Stage 解決は「CLI `--effect-stage` → JSON `--runtime-capabilities` → 環境変数 `REMLC_EFFECT_STAGE`」の優先順を採用し、`RuntimeCapabilityResolver`（Phase 2-2 で導入予定）で一元化する。
 - 動作確認フロー:
@@ -194,6 +202,7 @@
 - 2025-10-10 / .github/workflows / ランタイム CI 統合完了: `bootstrap-linux.yml` に Valgrind 検証・アーティファクト収集を追加し、Lint/Build/Test/Artifact の 4 ジョブ構成で Phase 1-5 §8 の CI 自動化を達成。
 - 2025-10-16 / compiler/ocaml / `compiler/ocaml/scripts/benchmark_typeclass.sh --static-only` を実行し、辞書渡し／モノモルフィゼーションの静的比較レポート (`compiler/ocaml/benchmark_results/static_comparison.json`) を生成。現時点では while/for 未実装のため IR/ビットコード生成がスキップされメトリクスは 0 だが、Phase 3 でループ実装後に再計測予定。
 - 2025-10-16 / tooling/ci / `collect-iterator-audit-metrics.py` → `sync-iterator-audit.sh` を手動実行し、`iterator.stage.audit_pass_rate = 1.0` を確認。`/tmp/iterator-summary.md` に生成した Markdown を次回 CI から `reports/` 階層へ保存し、週次で本ドキュメントへ転記する運用を開始。
+- 2025-10-18 / tooling/runtime / `scripts/validate-runtime-capabilities.sh tooling/runtime/capabilities/default.json` を再実行し、`reports/runtime-capabilities-validation.json` の `runtime_candidates` に Windows (`x86_64-pc-windows-msvc`) の Stage `beta` が存在することを確認。運用手順を §0.3.7 に追記し、Phase 2-2 の Windows override 検証フローを確定。
 
 ## 0.3.10 ランタイムテスト統計（Phase 1-5 Week 16）
 

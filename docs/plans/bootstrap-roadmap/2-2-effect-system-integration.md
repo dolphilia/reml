@@ -37,12 +37,12 @@
 ### 次のステップ（短期フォーカス）
 - ✅ Core IR メタデータと RuntimeCapability JSON の突合を `main.ml` / `AuditEnvelope` / `tooling/ci/sync-iterator-audit.sh` で接続済み。`reports/iterator-stage-summary.md` は 2025-10-18 時点で pass_rate 1.0（欠落 0）を確認。
 - ✅ GitHub Actions（bootstrap-linux / bootstrap-macos）へ `tooling/ci/sync-iterator-audit.sh` を常設化し、`iterator.stage.audit_pass_rate` が 1.0 未満の場合に即失敗させるゲートを有効化。
-- Windows / 追加ターゲット用 Capability JSON の差分を検証し、`tooling/runtime/capabilities/*.json` 更新手順と `scripts/validate-runtime-capabilities.sh` の運用を `0-3-audit-and-metrics.md` に追記する。
+- ✅ Windows / 追加ターゲット用 Capability JSON の差分検証フローを整理し、`tooling/runtime/capabilities/*.json` 更新手順と `scripts/validate-runtime-capabilities.sh` の運用を `0-3-audit-and-metrics.md` §0.3.7 に反映。
 
 > **進捗アップデート（2025-10-24 更新）**  
 > - `main.ml` の `runtime_stage_event` へ `typer` / `runtime` ステップを追加し、RuntimeCapabilityResolver → AuditEnvelope → CI 指標の Stage トレースが常に揃うようにした。`compiler/ocaml/tests/golden/audit/effects-residual.jsonl.golden` を同期済み。  
 > - `tooling/ci/sync-iterator-audit.sh --metrics tooling/ci/iterator-audit-metrics.json --verify-log tooling/ci/llvm-verify.log --audit compiler/ocaml/tests/golden/audit/effects-residual.jsonl.golden` を実行し、`reports/iterator-stage-summary.md` で pass_rate 1.0 / 欠落 0 を確認（exit code 0）。  
-> - 次は Windows / ターゲット別 Capability override の検証と CI ジョブへの常設化を進め、`0-3-audit-and-metrics.md` に運用手順を追記する。
+> - 次は Windows / ターゲット別 Capability override の実行テスト（PowerShell 実機検証と CI シミュレーション）を整備し、`reports/runtime-capabilities-validation.json` と `iterator-stage-summary.md` の差分チェックを自動化するタスクを Phase 2-3 に引き継ぐ。
 
 ## 作業ブレークダウン
 
