@@ -1,0 +1,6 @@
+(library
+ (name ffi_codegen)
+ (public_name reml_ocaml.ffi_codegen)
+ (wrapped false)
+ (modules ffi_stub_builder)
+ (libraries reml_ocaml.parser yojson))

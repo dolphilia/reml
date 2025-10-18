@@ -32,6 +32,7 @@
   test_typeclass_effects
   test_effect_residual
   test_ffi_contract
+  test_ffi_stub_builder
   test_monomorphize_poc
   test_user_impl_llvm
   test_user_impl_execution)
@@ -39,6 +40,7 @@
   reml_parser
   reml_ocaml.core_ir
   reml_ocaml.llvm_gen
+  reml_ocaml.ffi_codegen
   cli
   llvm
   unix

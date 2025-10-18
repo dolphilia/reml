@@ -1,0 +1,49 @@
+# FFI Bridge Summary（ドラフト）
+
+> 本書は Phase 2-3「FFI 契約拡張」タスク向けに、ターゲット別スタブ生成と監査ログ整備の進捗を集約する雛形である。`scripts/validate-runtime-capabilities.sh` や `scripts/ci-local.sh --target <triple>` の結果を貼り付け、`docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md` で定義された指標（`ffi_bridge.audit_pass_rate` など）と同期する。
+
+## 1. 集計メタデータ
+
+- 更新日: <!-- YYYY-MM-DD -->
+- 更新者: <!-- your-name -->
+- 対象コミット: <!-- git rev-parse HEAD -->
+- 参照計画: docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md
+
+## 2. ターゲット別スタブ状況
+
+| ターゲット | 呼出規約 (plan) | 所有権 (plan) | 監査タグ確認 | メモ |
+| --- | --- | --- | --- | --- |
+| x86_64-unknown-linux-gnu | `ccc` | `borrowed` | <!-- yes/no --> | <!-- 補足 --> |
+| x86_64-pc-windows-msvc | `win64` | `transferred` | <!-- yes/no --> | <!-- 補足 --> |
+| arm64-apple-darwin | `aarch64_aapcscc` | `borrowed` | <!-- yes/no --> | <!-- 補足 --> |
+
+> **記入例**: Linux 版のみ実装済みの場合は監査タグを `yes`、他は `pending` とし、差分に必要なタスク (例: `runtime/native/src/ffi_bridge.c` の実装) をメモ欄へ記載。
+
+## 3. 監査ログチェック
+
+- 取得コマンド: `remlc --emit-audit ...`
+- 出力ファイル: <!-- path/to/audit.jsonl -->
+- 確認項目:
+  - [ ] `bridge.platform` が `reports/runtime-capabilities-validation.json` のステージと一致
+  - [ ] `bridge.abi` / `bridge.callconv` が Typer 診断と矛盾していない
+  - [ ] 失敗ケースが `ffi_bridge.audit_pass_rate` に反映されている
+
+## 4. キャプチャログ
+
+```text
+<!-- ここに CLI / CI 実行ログを貼り付ける -->
+```
+
+## 5. フォローアップ TODO
+
+- [ ] <!-- 例: Windows スタブで `Ownership::Transferred` のテストを追加 -->
+- [ ] <!-- 例: `runtime/native/include/reml_ffi_bridge.h` に audit hook を接続 -->
+- [ ] <!-- 例: `tooling/ci/sync-iterator-audit.sh` へ FFI チェックを統合 -->
+
+## 6. 参考リンク
+
+- docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md
+- docs/spec/3-9-core-async-ffi-unsafe.md
+- docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md
+- compiler/ocaml/src/codegen/ffi_stub_builder.ml
+- runtime/native/include/reml_ffi_bridge.h
