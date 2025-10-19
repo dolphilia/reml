@@ -1,0 +1,152 @@
+[
+  {
+    "Name": "Git",
+    "Present": true,
+    "Commands": "git",
+    "Locations": "C:\\Program Files\\Git\\mingw64\\bin\\git.exe",
+    "MinimumVersion": "2.40",
+    "DetectedVersion": "git version 2.51.0.windows.2",
+    "Required": true,
+    "Category": "core"
+  },
+  {
+    "Name": "Python",
+    "Present": true,
+    "Commands": "python",
+    "Locations": "C:\\Python314\\python.exe",
+    "MinimumVersion": "3.10",
+    "DetectedVersion": "Python 3.14.0",
+    "Required": true,
+    "Category": "core"
+  },
+  {
+    "Name": "Pip",
+    "Present": true,
+    "Commands": "pip",
+    "Locations": "C:\\Python314\\Scripts\\pip.exe",
+    "MinimumVersion": "23.0",
+    "DetectedVersion": "pip 25.2 from C:\\Python314\\Lib\\site-packages\\pip (python 3.14)",
+    "Required": false,
+    "Category": "core"
+  },
+  {
+    "Name": "Bash (MSYS2/Git)",
+    "Present": true,
+    "Commands": "bash",
+    "Locations": "C:\\Program Files\\Git\\usr\\bin\\bash.exe",
+    "MinimumVersion": "4.0",
+    "DetectedVersion": "GNU bash, version 5.2.37(1)-release (x86_64-pc-msys)",
+    "Required": true,
+    "Category": "core"
+  },
+  {
+    "Name": "OCaml",
+    "Present": false,
+    "Commands": "ocaml (missing)",
+    "Locations": "",
+    "MinimumVersion": "5.2.1",
+    "DetectedVersion": "",
+    "Required": true,
+    "Category": "compiler"
+  },
+  {
+    "Name": "opam",
+    "Present": false,
+    "Commands": "opam (missing)",
+    "Locations": "",
+    "MinimumVersion": "2.1",
+    "DetectedVersion": "",
+    "Required": true,
+    "Category": "compiler"
+  },
+  {
+    "Name": "dune",
+    "Present": false,
+    "Commands": "dune (missing)",
+    "Locations": "",
+    "MinimumVersion": "3.11",
+    "DetectedVersion": "",
+    "Required": true,
+    "Category": "compiler"
+  },
+  {
+    "Name": "menhir",
+    "Present": false,
+    "Commands": "menhir (missing)",
+    "Locations": "",
+    "MinimumVersion": "20220210",
+    "DetectedVersion": "",
+    "Required": true,
+    "Category": "compiler"
+  },
+  {
+    "Name": "LLVM (clang/llc/opt)",
+    "Present": false,
+    "Commands": "clang (missing), llc (missing), opt (missing)",
+    "Locations": "",
+    "MinimumVersion": "18.0",
+    "DetectedVersion": "",
+    "Required": true,
+    "Category": "llvm"
+  },
+  {
+    "Name": "LLVM toolchain (llvm-ar)",
+    "Present": false,
+    "Commands": "llvm-ar (missing)",
+    "Locations": "",
+    "MinimumVersion": "18.0",
+    "DetectedVersion": "",
+    "Required": true,
+    "Category": "llvm"
+  },
+  {
+    "Name": "MSVC toolchain (cl/link/lib)",
+    "Present": false,
+    "Commands": "cl (missing), link, lib (missing)",
+    "Locations": "C:\\Program Files\\Git\\usr\\bin\\link.exe",
+    "MinimumVersion": "19.38",
+    "DetectedVersion": "",
+    "Required": true,
+    "Category": "msvc"
+  },
+  {
+    "Name": "CMake",
+    "Present": false,
+    "Commands": "cmake (missing)",
+    "Locations": "",
+    "MinimumVersion": "3.27",
+    "DetectedVersion": "",
+    "Required": false,
+    "Category": "build"
+  },
+  {
+    "Name": "Ninja",
+    "Present": true,
+    "Commands": "ninja",
+    "Locations": "C:\\Program Files\\Meson\\ninja.EXE",
+    "MinimumVersion": "1.11",
+    "DetectedVersion": "1.12.1",
+    "Required": false,
+    "Category": "build"
+  },
+  {
+    "Name": "jq",
+    "Present": false,
+    "Commands": "jq (missing)",
+    "Locations": "",
+    "MinimumVersion": "1.6",
+    "DetectedVersion": "",
+    "Required": false,
+    "Category": "tools"
+  },
+  {
+    "Name": "7zip (7z)",
+    "Present": false,
+    "Commands": "7z (missing)",
+    "Locations": "",
+    "MinimumVersion": "22.0",
+    "DetectedVersion": "",
+    "Required": false,
+    "Category": "tools"
+  }
+]
