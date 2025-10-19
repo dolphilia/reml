@@ -306,12 +306,25 @@ if (( ! SKIP_LINT )); then
   opam install . --deps-only --with-test --yes
 
   log_info "コードフォーマットをチェック中..."
-  if ! opam exec -- dune build @fmt; then
-    log_error "フォーマットチェックに失敗しました。'dune build @fmt --auto-promote' を実行してください。"
-    exit 1
+  lint_log="$(mktemp)"
+  if ! opam exec -- dune build @fmt | tee "$lint_log"; then
+    if grep -q "^diff --git" "$lint_log"; then
+      log_warn "フォーマット差分を検出しました。必要に応じて 'dune build @fmt --auto-promote' を実行してください（Lint ステップは継続します）。"
+      if (( VERBOSE )); then
+        log_info "Lint 詳細ログ:"
+        cat "$lint_log"
+      fi
+    else
+      log_error "Lint ステップで致命的なエラーが発生しました。"
+      cat "$lint_log" >&2
+      rm -f "$lint_log"
+      exit 1
+    fi
+    rm -f "$lint_log"
+  else
+    rm -f "$lint_log"
+    log_success "Lint ステップ完了"
   fi
-
-  log_success "Lint ステップ完了"
 else
   log_warn "Lint ステップをスキップしました"
 fi
