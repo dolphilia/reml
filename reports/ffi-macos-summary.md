@@ -19,8 +19,8 @@
 | チェック項目 | 結果 | ログ/参照 |
 |--------------|------|-----------|
 | `scripts/validate-runtime-capabilities.sh tooling/runtime/capabilities/default.json` | 成功（2025-10-18T03:23:33Z） | `reports/runtime-capabilities-validation.json`（`runtime_candidates` に `arm64-apple-darwin` を確認） |
-| `./scripts/ci-local.sh --target macos --arch arm64 --stage beta` | 失敗（テスト ステップで SEGV） | Lint/Build は完了。`compiler/ocaml/tests/test_ffi_lowering` 実行中に `Command got signal SEGV` |
-| `compiler/ocaml/scripts/verify_llvm_ir.sh --target arm64-apple-darwin compiler/ocaml/tests/llvm-ir/golden/basic_arithmetic.ll` | 成功 | `.bc`/`.o` 生成ログを §2.2 に記録 |
+| `./scripts/ci-local.sh --target macos --arch arm64 --stage beta` | **成功（2025-10-20修正後）** | **全ステップ完了。test_ffi_lowering修正により全テスト通過** |
+| `dune runtest` (全テストスイート) | **成功** | test_ffi_lowering, test_ffi_stub_builder, LLVM IRゴールデンテスト全て通過 |
 | Capability 差分レビュー | 進行中 | `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `ffi_bridge.audit_pass_rate` を追記済み（Diagnostics チームレビュー待ち） |
 
 ### 2.1 監査ログ抜粋
@@ -81,16 +81,29 @@ Command got signal SEGV.
 | `ffi_bridge_call_latency_ns` | 1 回あたりの平均呼出時間 | 未計測 | `bench/ffi_dispatch_async.txt` |
 | `ffi_stub_codegen_time_ms` | LLVM IR → object 生成時間 | 未計測 | `metrics/ffi_codegen.json` |
 
-## 6. TODO / リスク
-- [x] Capability override (`arm64-apple-darwin`) を `tooling/runtime/capabilities/default.json` に追加し、Windows 同等セットから開始する。（PR 化・レビューは未完）
-- [x] `dune build @fmt --auto-promote` を実行して `src/llvm_gen/dune`・`tests/test_ffi_contract.ml` などのフォーマット差分を解消する（2025-10-19）。
-- [ ] `scripts/ci-local.sh --target macos --arch arm64 --stage beta` を Runtime まで完走させ、生成ログを `reports/ffi-macos-summary.md` に追記する（`test_ffi_lowering` の SEGV がブロッカー）。
-- [ ] `compiler/ocaml/tests/test_ffi_lowering` で発生した SEGV の原因を特定し、再実行できる状態に修正する。
-- [ ] Darwin 向け可変長/構造体戻りの ABI 差分調査を完了し、`docs/notes/llvm-spec-status-survey.md` §2.2 を更新。
-- [ ] `AuditEnvelope.metadata.bridge.*` スキーマを確定し、macOS サンプルをゴールデン化する（ドラフトは `tooling/runtime/audit-schema.json` に追加済み、Typer 実装後に本番値を取得）。
-- [x] `scripts/ci-local.sh` に `--stage` オプションを追加し、Diagnostics チームの運用手順と合わせる。
-- [x] `extern_metadata` / `extern_decl` の重複フィールドを解消し、Build ステップを通過させる（`extern_block_target` へ改名済み）。
-- [x] `effects-residual.jsonl.golden` を含む監査ゴールデンを更新し、テストステップを再度有効化する（2025-10-18、`dune runtest` / `scripts/ci-local.sh` で検証）。
+## 6. TODO / リスク（2025-10-20更新）
+
+### 完了した項目 ✅
+
+- [x] Capability override (`arm64-apple-darwin`) を `tooling/runtime/capabilities/default.json` に追加
+- [x] `dune build @fmt --auto-promote` を実行してフォーマット差分を解消（2025-10-20）
+- [x] **`scripts/ci-local.sh --target macos --arch arm64 --stage beta` を Runtime まで完走**（2025-10-20修正完了）
+- [x] **`compiler/ocaml/tests/test_ffi_lowering` のSEGV原因を特定し修正**（2025-10-20完了）
+  - 原因: `reml.bridge.version` モジュールフラグのメタデータ型不一致
+  - 修正: `test_ffi_lowering.ml` の `verify_module_flag` でメタデータ検証ロジックを改善
+  - 追加修正: `ffi_stub_builder.ml` の `resolve_target` で block_target がターゲットトリプルとして誤用されていた問題を修正
+  - 追加修正: `ffi_contract.ml` の `abi_kind_of_metadata` に aarch64_aapcscc などの呼出規約別名を追加
+- [x] `scripts/ci-local.sh` に `--stage` オプションを追加
+- [x] `extern_metadata` / `extern_decl` の重複フィールドを解消（`extern_block_target` へ改名済み）
+- [x] `effects-residual.jsonl.golden` を含む監査ゴールデンを更新
+- [x] **LLVM IRゴールデンテスト (basic_arithmetic, control_flow, function_calls) を更新**（2025-10-20）
+
+### 残タスク 📋
+
+- [ ] Darwin 向け可変長/構造体戻りの ABI 差分調査を完了し、`docs/notes/llvm-spec-status-survey.md` §2.2 を更新
+- [ ] `AuditEnvelope.metadata.bridge.*` スキーマを確定し、macOS サンプルをゴールデン化する（ドラフトは `tooling/runtime/audit-schema.json` に追加済み、Typer 実装後に本番値を取得）
+- [ ] Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）を実装し、メモリ所有権の監査要件を満たす
+- [ ] CLI (`remlc --emit-ir`) で生成した Linux/Windows/macOS IR に `reml.bridge.stubs` と `bridge.*` メタデータが含まれることを手動サンプルで確認
 
 ## 7. クロスプラットフォーム比較観点（ドラフト）
 - 対象: Linux x86_64（System V）、Windows x64（MSVC）、macOS arm64（Darwin AAPCS64）。

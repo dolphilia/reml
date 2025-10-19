@@ -13,8 +13,10 @@ let ensure_bridge_flag llctx llmodule =
   match Llvm.get_module_flag llmodule bridge_flag_name with
   | Some _ -> ()
   | None ->
+      (* モジュールフラグは整数定数のメタデータとして設定する *)
       let i32_ty = Llvm.i32_type llctx in
       let const_value = Llvm.const_int i32_ty bridge_flag_value in
+      (* value_as_metadataで整数定数をメタデータに変換 *)
       let metadata = Llvm.value_as_metadata const_value in
       Llvm.add_module_flag llmodule FlagBehavior.Override bridge_flag_name
         metadata

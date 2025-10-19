@@ -86,8 +86,10 @@ let abi_kind_of_metadata (metadata : extern_metadata) : abi_kind =
       match normalize_identifier value with
       | "" -> AbiUnspecified
       | "ccc" | "system_v" -> AbiSystemV
-      | "msvc" -> AbiMsvc
-      | "aapcs64" | "darwin_aapcs64" -> AbiAAPCS64
+      | "msvc" | "win64" | "win64cc" -> AbiMsvc
+      | "aapcs64" | "darwin_aapcs64" | "aarch64_aapcscc" | "arm_aapcs"
+      | "arm_aapcscc" ->
+          AbiAAPCS64
       | other -> AbiCustom other)
 
 let span_to_json (span : span) : Json.t =

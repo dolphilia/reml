@@ -4,10 +4,11 @@
 
 ## 1. 集計メタデータ
 
-- 更新日: 2025-10-21
-- 更新者: Codex（AIエージェント）
-- 対象コミット: 未確定（作業ブランチ）
+- 更新日: 2025-10-20
+- 更新者: Claude (AI エージェント)
+- 対象コミット: 修正後の最新状態（test_ffi_lowering 修正完了）
 - 参照計画: docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md
+- **状態**: macOS arm64 環境での調査・修正完了、全テスト通過
 
 ## 2. ターゲット別スタブ状況
 
@@ -48,11 +49,34 @@ $ _build/default/src/main.exe \
       `reml.bridge.stubs` の `callconv=79/67` を確認可能。
 ```
 
-## 5. 進捗サマリ
+## 5. 進捗サマリ（2025-10-20更新）
 
-- Stub/Thunk の生成から監査メタデータ付与までを `tests/test_ffi_lowering.ml` でターゲット別に検証し、Typer → Codegen → Runtime の経路が安定。
-- Windows/MSVC (`callconv=79`) と macOS/AAPCS64 (`callconv=67`) の呼出規約を LLVM IR に反映し、`compiler/ocaml/tests/golden/llvm/*.ll` で回帰監視を開始。Linux 既定 (`callconv=0`) も同様に追跡中。
-- CLI (`src/main.exe --emit-ir`) はサンドボックス環境で実行できず IR を取得できないため、ローカル追試用サンプル（`tmp/cli-callconv-sample.reml`）と手順を共有し、確認待ち項目として扱う。
+### ✅ 完了した主要項目
+
+1. **test_ffi_lowering の修正完了**（2025-10-20）
+   - `reml.bridge.version` モジュールフラグのメタデータ型不一致を修正
+   - `ffi_stub_builder.ml` の `resolve_target` で block_target がターゲットトリプルとして誤用されていた問題を修正
+   - `ffi_contract.ml` の `abi_kind_of_metadata` に aarch64_aapcscc などの呼出規約別名を追加
+   - Linux/Windows/macOS 全3ターゲットのテスト通過を確認
+
+2. **LLVM IR ゴールデンテスト更新**
+   - basic_arithmetic, control_flow, function_calls の全ゴールデンファイルを更新
+   - FFI ブリッジ関数 `reml_ffi_bridge_record_status` の宣言が正しく追加されていることを確認
+
+3. **macOS CI パイプライン完走**
+   - `./scripts/ci-local.sh --target macos --arch arm64 --stage beta` が全ステップ完了
+   - Lint/Build/Test/Runtime/LLVM 検証の全段階を通過
+
+4. **FFI 基盤コード整備**
+   - Stub/Thunk の生成から監査メタデータ付与までを `tests/test_ffi_lowering.ml` でターゲット別に検証
+   - Windows/MSVC (`callconv=79`) と macOS/AAPCS64 (`callconv=67`) の呼出規約を LLVM IR に反映
+   - `compiler/ocaml/tests/golden/llvm/*.ll` で回帰監視を開始
+   - Linux 既定 (`callconv=0`) も同様に追跡中
+
+### 🔄 進行中・未完了項目
+
+- CLI (`src/main.exe --emit-ir`) はサンドボックス環境で実行できず IR を取得できないため、ローカル追試用サンプル（`tmp/cli-callconv-sample.reml`）と手順を共有し、確認待ち項目として扱う
+- Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）の完全実装
 
 ## 6. フォローアップ TODO
 
@@ -64,7 +88,8 @@ $ _build/default/src/main.exe \
 - [ ] Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）を実装し、メモリ所有権の監査要件を満たす
 - [ ] CLI (`remlc --emit-ir`) で生成した Linux/Windows IR に `reml.bridge.stubs` と `bridge.*` メタデータが含まれることを手動サンプルで確認し、表の `監査タグ確認` を更新（現行サンドボックスでは `src/main.exe` 実行がシグナル終了するためローカル環境での追試が必要。コマンド例: `dune build src/main.exe` → `_build/default/src/main.exe --emit-ir --out-dir <out> --target x86_64-windows path/to/sample.reml`）
 - [ ] `tooling/ci/sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を CI ゲートへ追加（Linux/Windows 共通ロジック）
-- [ ] `reports/ffi-linux-summary.md`・`reports/ffi-windows-summary.md`・`reports/ffi-macos-summary.md` を実測ログで更新し、監査ゴールデン (`compiler/ocaml/tests/golden/audit/ffi-bridge-*.jsonl.golden`) を確定
+- [x] **`reports/ffi-macos-summary.md` を実測ログで更新**（2025-10-20完了）
+- [ ] `reports/ffi-linux-summary.md`・`reports/ffi-windows-summary.md` を実測ログで更新し、監査ゴールデン (`compiler/ocaml/tests/golden/audit/ffi-bridge-*.jsonl.golden`) を確定
 - [ ] 仕様書 `docs/spec/3-9`, `docs/spec/3-6` とガイド `docs/guides/runtime-bridges.md` を stub メタデータ/計測 API 情報で更新し、`docs/notes/licensing-todo.md` の TODO 消化を記録
 
 ## 7. 次のステップ

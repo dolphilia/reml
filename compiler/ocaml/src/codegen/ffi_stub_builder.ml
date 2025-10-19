@@ -97,6 +97,7 @@ let fallback_arch = function
 let resolve_target (contract : bridge_contract) =
   let metadata_target = sanitize_option contract.metadata.extern_target in
   let block_target = sanitize_option contract.block_target in
+  (* テンプレート選択用の候補値: extern_target -> block_target -> デフォルト *)
   let candidate =
     match metadata_target with
     | Some value -> value
@@ -106,19 +107,25 @@ let resolve_target (contract : bridge_contract) =
         | None -> linux_template.default_target)
   in
   let template = template_for_target candidate in
+  (* 実際のターゲットトリプル: extern_target -> テンプレートのデフォルト
+     block_targetはターゲット選択のヒントであり、ターゲットトリプルではない *)
   let effective_target =
     match metadata_target with
     | Some value -> value
-    | None -> (
-        match block_target with
-        | Some value -> value
-        | None -> template.default_target)
+    | None -> template.default_target
   in
   (template, effective_target)
 
 let normalize_call_conv template metadata =
   match sanitize_option metadata.extern_calling_convention with
-  | Some value -> String.lowercase_ascii value
+  | Some value -> (
+      (* 呼出規約の別名を正規化 *)
+      let normalized = String.lowercase_ascii value in
+      match normalized with
+      | "msvc" | "win64cc" -> "win64"
+      | "aapcs64" | "arm_aapcs" | "arm_aapcscc" | "darwin" -> "aarch64_aapcscc"
+      | "c" | "system_v" -> "ccc"
+      | other -> other)
   | None -> template.default_call_conv
 
 let normalize_ownership metadata =

@@ -484,12 +484,11 @@ let emit_stub_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
     lookup_runtime_function ctx "reml_ffi_bridge_record_status"
   in
   let record_status_type =
-    Llvm.function_type (Llvm.void_type ctx.llctx)
-      [| Llvm.i32_type ctx.llctx |]
+    Llvm.function_type (Llvm.void_type ctx.llctx) [| Llvm.i32_type ctx.llctx |]
   in
   let success_const = Llvm.const_int (Llvm.i32_type ctx.llctx) 0 in
-  codegen_debug
-    "emit_stub_function[%d]: runtime lookup done (type=%s)" (index + 1)
+  codegen_debug "emit_stub_function[%d]: runtime lookup done (type=%s)"
+    (index + 1)
     (Llvm.string_of_lltype record_status_type);
 
   let entry = Llvm.append_block ctx.llctx "entry" stub_fn in
@@ -523,8 +522,7 @@ let emit_stub_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
   Llvm.set_instruction_call_conv (call_conv_of_stub_plan plan) call_inst;
   codegen_debug "emit_stub_function[%d]: stub->thunk call conv set" (index + 1);
 
-  codegen_debug
-    "emit_stub_function[%d]: building record_status call" (index + 1);
+  codegen_debug "emit_stub_function[%d]: building record_status call" (index + 1);
   ignore
     (Llvm.build_call record_status_type record_status [| success_const |] ""
        ctx.builder);
