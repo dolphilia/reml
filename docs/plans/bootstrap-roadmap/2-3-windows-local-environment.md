@@ -604,6 +604,43 @@ pwsh -NoLogo -File tooling/toolchains/check-windows-bootstrap-env.ps1 -OutputJso
 
 ---
 
+---
+
+## LLVM 18ソースビルド調査報告 (2025-10-19)
+
+### 調査の結論
+
+LLVM 18.1.8のソースビルドを試行した結果、**Phase 2-3ではMSYS2 LLVM 16.0.4の継続利用を推奨**します。
+
+詳細は [windows-llvm-build-investigation.md](windows-llvm-build-investigation.md) を参照してください。
+
+### 主要な発見
+
+1. **LLVM 16.0.4で十分**: LLVM 16と18のIR互換性は高く、Phase 2-3の要件を満たす
+2. **OCamlバインディング不要**: FFI経由の外部プロセス呼び出しで代替可能（既存実装）
+3. **ソースビルドのコスト**: ビルド時間2-4時間、ディスク50GB、メンテナンス負荷
+4. **MSVC vs MinGW-w64**: Bash環境からのMSVC利用は環境変数設定が困難
+
+### Phase 2-3での推奨構成
+
+```bash
+# MSYS2 LLVM 16.0.4を継続使用
+export PATH="/c/msys64/mingw64/bin:$PATH"
+llc --version  # LLVM 16.0.4
+opt --version  # LLVM 16.0.4
+
+# OCaml LLVMバインディングは使用しない
+# compiler/ocaml/src/llvm_gen/ の外部プロセス呼び出しで対応
+```
+
+### Phase 3以降での対応
+
+- MSYS2でLLVM 18パッケージが提供されたら即座に移行
+- LLVM 18固有機能が必要になった時点で再評価
+- クロスコンパイル実装時に`x86_64-pc-windows-msvc`ターゲットを検討
+
+---
+
 ## LLVM Windows配布物の重大な制限判明 (2025-10-19 追加調査)
 
 ### 問題の詳細

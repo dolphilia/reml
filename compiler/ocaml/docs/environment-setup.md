@@ -159,9 +159,70 @@ wsl --install
 
 WSL内でUbuntuを起動し、上記の「Ubuntu/Debian系」の手順に従ってください。
 
-### ネイティブWindows（非推奨）
+### MSYS2環境 (Phase 2-3推奨)
 
-ネイティブWindowsでのセットアップは複雑です。[OCaml公式サイト](https://ocaml.org/install#windows)を参照してください。
+Phase 2-3のWindows FFI契約拡張では、MSYS2環境を推奨します。
+
+#### 1. MSYS2のインストール
+
+[MSYS2公式サイト](https://www.msys2.org/)からインストーラをダウンロードし、実行してください。
+
+#### 2. LLVM 16.0.4のインストール
+
+```bash
+# MSYS2 MinGW64シェルで実行
+pacman -Syu
+pacman -S mingw-w64-x86_64-llvm
+```
+
+**重要**: LLVM OCamlバインディングは **不要** です。
+
+- Phase 2-3では外部プロセス (`llc`/`opt`) 呼び出しで対応します
+- `opam install llvm` は試行しないでください (ビルド失敗します)
+- 詳細: `compiler/ocaml/docs/technical-debt.md` §21
+
+#### 3. OCamlとduneのインストール
+
+```bash
+# opamのインストール (WinGetを推奨)
+winget install OCaml.opam
+
+# PowerShellで環境変数を設定
+$env:PATH = "$env:LOCALAPPDATA\Microsoft\WinGet\Links;" + $env:PATH
+
+# opam初期化
+opam init --disable-sandboxing
+
+# OCaml 5.2.1スイッチの作成
+opam switch create reml-521 5.2.1
+
+# 必要パッケージのインストール (llvmを除く)
+opam install dune menhir yojson ocamlformat
+```
+
+**注意**: `llvm` パッケージは **インストールしない** でください。
+
+#### 4. PATH設定
+
+PowerShellプロファイルに以下を追加:
+
+```powershell
+# MSYS2 LLVM (完全版) を優先
+$env:PATH = "C:\msys64\mingw64\bin;" + $env:PATH
+
+# OCaml tools
+$env:PATH = "C:\Users\<username>\AppData\Local\opam\reml-521\bin;" + $env:PATH
+
+# WinGet Links
+$env:PATH = "$env:LOCALAPPDATA\Microsoft\WinGet\Links;" + $env:PATH
+```
+
+詳細手順: `docs/plans/bootstrap-roadmap/2-3-windows-local-environment.md`
+
+### ネイティブWindows（WSL以外、非推奨）
+
+WSLを使用しない場合は、上記のMSYS2環境を参照してください。
+従来のネイティブWindowsセットアップは複雑であり、[OCaml公式サイト](https://ocaml.org/install#windows)を参照してください。
 
 ---
 

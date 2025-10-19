@@ -1,0 +1,138 @@
+module examples.ffi.windows.struct_passing
+
+/// Windows ABI 構造体受け渡しサンプル
+///
+/// **検証対象**:
+/// - MSVC ABI の 8バイト閾値による sret/byval 挿入
+/// - `calling_convention("win64")` での構造体レイアウト
+/// - 所有権 `transferred` による所有権移転
+///
+/// **ABI仕様** (docs/spec/3-9-core-async-ffi-unsafe.md より):
+/// - x86_64 Windows (MSVC): 構造体サイズ > 8 bytes → sret/byval
+/// - 小構造体 (≤8 bytes) → レジスタ渡し (rax/rdx)
+/// - 大構造体 (>8 bytes) → スタック渡し + sret 属性
+
+use ::Core.Text.String as Str
+
+/// 小構造体 (8バイト以内) - レジスタ渡しを期待
+type Point2D = {
+  x: i32,  // 4 bytes
+  y: i32,  // 4 bytes
+}  // 合計: 8 bytes
+
+/// 大構造体 (8バイト超) - sret/byval を期待
+type Rectangle = {
+  left: i32,    // 4 bytes
+  top: i32,     // 4 bytes
+  right: i32,   // 4 bytes
+  bottom: i32,  // 4 bytes
+}  // 合計: 16 bytes
+
+/// ダミーC関数: 小構造体を返す (レジスタ渡し)
+///
+/// ```c
+/// Point2D get_origin(void) {
+///   Point2D p = {0, 0};
+///   return p;  // rax にパック
+/// }
+/// ```
+extern "C" {
+  #[target("x86_64-pc-windows-msvc")]
+  #[link_name("ffi_get_origin")]
+  #[calling_convention("win64")]
+  #[ownership("transferred")]  // 戻り値の所有権を移転
+  fn get_origin() -> Point2D
+}
+
+/// ダミーC関数: 大構造体を返す (sret)
+///
+/// ```c
+/// void get_screen_rect(Rectangle* ret) {
+///   ret->left = 0;
+///   ret->top = 0;
+///   ret->right = 1920;
+///   ret->bottom = 1080;
+/// }
+/// ```
+///
+/// LLVM IR では以下のように lowering されることを期待:
+/// ```llvm
+/// define win64cc void @ffi_get_screen_rect(
+///   %Rectangle* sret(%Rectangle) %ret
+/// ) {
+///   ; ...
+/// }
+/// ```
+extern "C" {
+  #[target("x86_64-pc-windows-msvc")]
+  #[link_name("ffi_get_screen_rect")]
+  #[calling_convention("win64")]
+  #[ownership("transferred")]
+  fn get_screen_rect() -> Rectangle
+}
+
+/// ダミーC関数: 大構造体を引数に取る (byval)
+///
+/// ```c
+/// int calculate_area(Rectangle rect) {
+///   return (rect.right - rect.left) * (rect.bottom - rect.top);
+/// }
+/// ```
+///
+/// LLVM IR では以下のように lowering されることを期待:
+/// ```llvm
+/// define win64cc i32 @ffi_calculate_area(
+///   %Rectangle* byval(%Rectangle) align 4 %rect
+/// ) {
+///   ; ...
+/// }
+/// ```
+extern "C" {
+  #[target("x86_64-pc-windows-msvc")]
+  #[link_name("ffi_calculate_area")]
+  #[calling_convention("win64")]
+  #[ownership("borrowed")]  // 引数は借用
+  fn calculate_area(rect: Rectangle) -> i32
+}
+
+/// 小構造体の検証
+pub fn test_small_struct() -> Point2D {
+  effect {unsafe} {
+    get_origin()  // レジスタ渡し (rax)
+  }
+}
+
+/// 大構造体戻り値の検証
+pub fn test_large_struct_return() -> Rectangle {
+  effect {unsafe} {
+    get_screen_rect()  // sret 属性
+  }
+}
+
+/// 大構造体引数の検証
+pub fn test_large_struct_arg() -> i32 {
+  let rect = Rectangle {
+    left: 0,
+    top: 0,
+    right: 100,
+    bottom: 50,
+  }
+
+  effect {unsafe} {
+    calculate_area(rect)  // byval 属性
+  }
+}
+
+/// エントリポイント: 全テスト実行
+pub fn main() -> i32 {
+  let origin = test_small_struct()
+  print("Origin: (" ++ Str.from_i32(origin.x) ++ ", " ++ Str.from_i32(origin.y) ++ ")")
+
+  let screen = test_large_struct_return()
+  print("Screen: " ++ Str.from_i32(screen.right) ++ "x" ++ Str.from_i32(screen.bottom))
+
+  let area = test_large_struct_arg()
+  print("Area: " ++ Str.from_i32(area))
+
+  0
+}

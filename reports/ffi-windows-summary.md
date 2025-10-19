@@ -42,9 +42,40 @@ PS> compiler\ocaml\scripts\verify_llvm_ir.ps1 -Target x86_64-pc-windows-msvc <sa
 ## 3. ABI / 呼出規約検証
 | テストケース | 概要 | 結果 | 備考 |
 |--------------|------|------|------|
-| `ffi_stdcall_bridge.reml` | `@ffi_callconv("win64")` のスタブ生成 | <!-- --> | <!-- --> |
-| `ffi_struct_return.reml` | MSVC struct-return (`sret`) | <!-- --> | <!-- --> |
-| `ffi_widechar.reml` | `MessageBoxW` 呼び出し | <!-- --> | WideChar / UTF-16 マーシャリング |
+| `messagebox.reml` | Win32 MessageBoxW 呼び出し | サンプル作成完了 | `calling_convention("win64")` = CallConv 79、UTF-16文字列 |
+| `struct_passing.reml` | MSVC struct-return/arg (`sret`/`byval`) | サンプル作成完了 | 8バイト閾値、小構造体 (Point2D) vs 大構造体 (Rectangle) |
+| `ownership_transfer.reml` | 所有権契約 (borrowed/transferred) | サンプル作成完了 | inc_ref/dec_ref 挿入、ランタイムヘルパ連携 |
+
+### 3.1 サンプルコード詳細
+
+#### messagebox.reml
+- **目的**: Win32 API (`MessageBoxW`) 呼び出し検証
+- **検証項目**:
+  - `calling_convention("win64")` → LLVM CallConv = 79
+  - `ownership("borrowed")` → ポインタ引数に `inc_ref` 挿入
+  - UTF-16文字列受け渡し (`*const u16`)
+  - LLVM IR メタデータ: `reml.bridge.platform = x86_64-pc-windows-msvc`
+- **場所**: `examples/ffi/windows/messagebox.reml`
+- **依存**: `user32.dll` (Windows標準)
+
+#### struct_passing.reml
+- **目的**: MSVC ABI 8バイト閾値による構造体受け渡し検証
+- **検証項目**:
+  - 小構造体 (`Point2D`, 8 bytes) → レジスタ渡し
+  - 大構造体 (`Rectangle`, 16 bytes) → `sret`/`byval` 属性
+  - 構造体戻り値・引数での lowering 確認
+- **場所**: `examples/ffi/windows/struct_passing.reml`
+- **依存**: ダミーC関数 (未実装、Phase 3で追加予定)
+
+#### ownership_transfer.reml
+- **目的**: FFI所有権契約 (borrowed vs transferred) の検証
+- **検証項目**:
+  - `ownership("borrowed")` → `inc_ref` 自動挿入
+  - `ownership("transferred")` → 所有権移転、`dec_ref` 挿入
+  - ランタイムヘルパ (`reml_ffi_acquire_borrowed` 等) 連携
+  - `AuditEnvelope.metadata.bridge.ownership` 記録
+- **場所**: `examples/ffi/windows/ownership_transfer.reml`
+- **依存**: `runtime/native/src/ffi_bridge.c`
 
 ## 4. 所有権契約 / メトリクス
 | テスト | 内容 | 結果 | 備考 |
