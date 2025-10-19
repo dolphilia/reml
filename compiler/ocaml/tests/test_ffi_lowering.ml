@@ -14,6 +14,16 @@ type test_case = {
   expect_thunk_substrings : string list;
 }
 
+let debug_enabled =
+  match Sys.getenv_opt "REML_TEST_DEBUG" with
+  | Some ("1" | "true" | "TRUE" | "yes" | "YES") -> true
+  | _ -> false
+
+let debug_log fmt =
+  if debug_enabled then
+    Printf.ksprintf prerr_endline fmt
+  else Printf.ksprintf (fun _ -> ()) fmt
+
 let call_conv_win64 = 79
 let call_conv_aapcs = 67
 let normalize_callconv value = value |> String.trim |> String.lowercase_ascii
@@ -224,6 +234,8 @@ let verify_module_flag case_label llvm_module =
       exit 1
   | Some md -> (
       let value = Llvm.metadata_as_value llctx md in
+      debug_log "ケース[%s]: module flag value = %s" case_label
+        (Llvm.string_of_llvalue value);
       match Llvm.int64_of_const value with
       | Some 1L -> ()
       | Some other ->
@@ -236,12 +248,15 @@ let verify_module_flag case_label llvm_module =
           exit 1)
 
 let verify_case case =
+  debug_log "ケース[%s]: コード生成開始" case.label;
   let llvm_module =
     Codegen.codegen_module ~target_name:case.module_target
       ~stub_plans:[ case.plan ] empty_module
   in
+  debug_log "ケース[%s]: モジュール生成完了" case.label;
   verify_module_flag case.label llvm_module;
 
+  debug_log "ケース[%s]: メタデータ検証開始" case.label;
   let metadata_nodes =
     Llvm.get_named_metadata llvm_module "reml.bridge.stubs"
   in
@@ -257,6 +272,7 @@ let verify_case case =
     case.expected_metadata;
 
   let expected_call_conv = expected_call_conv_of_plan case.plan in
+  debug_log "ケース[%s]: スタブ/サンク検証開始" case.label;
   let stub_name = Ffi_stub_builder.stub_symbol_name ~index:0 case.plan in
   let stub_fn =
     match Llvm.lookup_function stub_name llvm_module with
@@ -295,6 +311,7 @@ let verify_case case =
       assert_contains_substring case.label thunk_ir substring "サンクIR")
     case.expect_thunk_substrings;
 
+  debug_log "ケース[%s]: 外部シンボル検証開始" case.label;
   let extern_symbol = extern_symbol_of_plan case.plan in
   let extern_fn =
     match Llvm.lookup_function extern_symbol llvm_module with
@@ -309,6 +326,7 @@ let verify_case case =
       extern_symbol extern_call_conv expected_call_conv;
     exit 1);
 
+  debug_log "ケース[%s]: 呼出規約検証開始" case.label;
   let stub_call_sites = collect_call_conv_uses thunk_fn in
   let thunk_call_sites = collect_call_conv_uses extern_fn in
   if not (List.exists (fun cc -> cc = expected_call_conv) stub_call_sites) then (
@@ -320,6 +338,7 @@ let verify_case case =
       expected_call_conv;
     exit 1);
 
+  debug_log "ケース[%s]: サマリ比較開始" case.label;
   let summary_lines =
     [
       Printf.sprintf "stub_call_conv=%d" stub_call_conv;
@@ -346,6 +365,7 @@ let verify_case case =
     Printf.eprintf "ケース[%s]: 呼出規約サマリがゴールデンと一致しません。\n" case.label;
     Printf.eprintf "期待:\n%s\n実際:\n%s\n" expected_summary summary;
     exit 1)
+  else debug_log "ケース[%s]: 検証完了" case.label
 
 let () =
   let cases = [ linux_case (); windows_case (); macos_case () ] in

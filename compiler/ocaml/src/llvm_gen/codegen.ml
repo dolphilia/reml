@@ -17,6 +17,19 @@
 open Core_ir.Ir
 open Types
 
+let codegen_debug_enabled =
+  match Sys.getenv_opt "REML_CODEGEN_DEBUG" with
+  | Some ("1" | "true" | "TRUE" | "yes" | "YES") -> true
+  | _ -> false
+
+let codegen_debug fmt =
+  if codegen_debug_enabled then Printf.ksprintf prerr_endline fmt
+  else Printf.ksprintf (fun _ -> ()) fmt
+
+let () =
+  if codegen_debug_enabled then
+    codegen_debug "REML_CODEGEN_DEBUG enabled for LLVM codegen diagnostics"
+
 (* ========== エラー型 ========== *)
 
 exception CodegenError of string
@@ -424,6 +437,7 @@ let declare_extern_target ctx signature (plan : Ffi_stub_builder.stub_plan) =
 
 let emit_thunk_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
     =
+  codegen_debug "emit_thunk_function[%d]: begin" (index + 1);
   let thunk_name = Ffi_stub_builder.thunk_symbol_name ~index plan in
   let thunk_fn =
     Llvm.define_function thunk_name signature.fn_type ctx.llmodule
@@ -432,11 +446,13 @@ let emit_thunk_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
   Llvm.set_function_call_conv (call_conv_of_stub_plan plan) thunk_fn;
   apply_stub_attributes ctx thunk_fn signature;
   Hashtbl.replace ctx.fn_map thunk_name thunk_fn;
+  codegen_debug "emit_thunk_function[%d]: thunk function defined" (index + 1);
 
   let entry = Llvm.append_block ctx.llctx "entry" thunk_fn in
   Llvm.position_at_end entry ctx.builder;
   let params = Llvm.params thunk_fn in
   let extern_fn = declare_extern_target ctx signature plan in
+  codegen_debug "emit_thunk_function[%d]: extern declared" (index + 1);
   let call_inst =
     Llvm.build_call signature.fn_type extern_fn params "ffi_target_call"
       ctx.builder
@@ -455,18 +471,26 @@ let is_pointer_value value =
 
 let emit_stub_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
     =
+  codegen_debug "emit_stub_function[%d]: begin" (index + 1);
   let stub_name = Ffi_stub_builder.stub_symbol_name ~index plan in
   let stub_fn = Llvm.define_function stub_name signature.fn_type ctx.llmodule in
   Llvm.set_linkage Llvm.Linkage.Internal stub_fn;
   Llvm.set_function_call_conv (call_conv_of_stub_plan plan) stub_fn;
   apply_stub_attributes ctx stub_fn signature;
   Hashtbl.replace ctx.fn_map stub_name stub_fn;
+  codegen_debug "emit_stub_function[%d]: stub defined" (index + 1);
 
   let record_status =
     lookup_runtime_function ctx "reml_ffi_bridge_record_status"
   in
-  let record_status_ty = Llvm.element_type (Llvm.type_of record_status) in
+  let record_status_type =
+    Llvm.function_type (Llvm.void_type ctx.llctx)
+      [| Llvm.i32_type ctx.llctx |]
+  in
   let success_const = Llvm.const_int (Llvm.i32_type ctx.llctx) 0 in
+  codegen_debug
+    "emit_stub_function[%d]: runtime lookup done (type=%s)" (index + 1)
+    (Llvm.string_of_lltype record_status_type);
 
   let entry = Llvm.append_block ctx.llctx "entry" stub_fn in
   Llvm.position_at_end entry ctx.builder;
@@ -484,31 +508,45 @@ let emit_stub_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
           if is_pointer_value param then ignore (call_inc_ref ctx param))
         value_params
   | _ -> ());
+  codegen_debug "emit_stub_function[%d]: ownership adjustments complete"
+    (index + 1);
 
   let thunk_fn = emit_thunk_function ctx signature ~index plan in
+  codegen_debug "emit_stub_function[%d]: thunk emitted" (index + 1);
   Llvm.position_at_end entry ctx.builder;
+  codegen_debug "emit_stub_function[%d]: building stub->thunk call" (index + 1);
   let call_inst =
     Llvm.build_call signature.fn_type thunk_fn params "ffi_stub_invoke"
       ctx.builder
   in
+  codegen_debug "emit_stub_function[%d]: stub->thunk call built" (index + 1);
   Llvm.set_instruction_call_conv (call_conv_of_stub_plan plan) call_inst;
+  codegen_debug "emit_stub_function[%d]: stub->thunk call conv set" (index + 1);
 
+  codegen_debug
+    "emit_stub_function[%d]: building record_status call" (index + 1);
   ignore
-    (Llvm.build_call record_status_ty record_status [| success_const |] ""
+    (Llvm.build_call record_status_type record_status [| success_const |] ""
        ctx.builder);
+  codegen_debug "emit_stub_function[%d]: status recorded" (index + 1);
 
   (match (signature.return_class, plan.return_type) with
   | Abi.SretReturn, _ -> ignore (Llvm.build_ret_void ctx.builder)
   | _, Types.TUnit -> ignore (Llvm.build_ret_void ctx.builder)
   | _ -> ignore (Llvm.build_ret call_inst ctx.builder));
 
+  codegen_debug "emit_stub_function[%d]: return generated" (index + 1);
   stub_fn
 
 let emit_stub_thunks ctx (plans : Ffi_stub_builder.stub_plan list) =
+  codegen_debug "emit_stub_thunks: %d plan(s)" (List.length plans);
   List.iteri
     (fun index plan ->
+      codegen_debug "emit_stub_thunks: generating plan %d" (index + 1);
       let signature = compute_stub_signature ctx plan in
+      codegen_debug "emit_stub_thunks: signature ready";
       let _ = emit_stub_function ctx signature ~index plan in
+      codegen_debug "emit_stub_thunks: finished plan %d" (index + 1);
       ())
     plans
 
