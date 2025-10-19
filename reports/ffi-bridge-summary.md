@@ -4,7 +4,7 @@
 
 ## 1. 集計メタデータ
 
-- 更新日: 2025-10-20
+- 更新日: 2025-10-21
 - 更新者: Codex（AIエージェント）
 - 対象コミット: 未確定（作業ブランチ）
 - 参照計画: docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md
@@ -33,12 +33,28 @@
 ## 4. キャプチャログ
 
 ```text
-<!-- ここに CLI / CI 実行ログを貼り付ける。Linux/Windows/macOS 用の雛形は
-     reports/ffi-linux-summary.md, reports/ffi-windows-summary.md, reports/ffi-macos-summary.md
-     を参照して記入する。 -->
+$ dune build src/main.exe
+  # => 成功（既存ビルド済みを再確認）
+
+$ _build/default/src/main.exe \
+    --emit-ir \
+    --out-dir tmp/cli-callconv-out \
+    --target x86_64-windows \
+    tmp/cli-callconv-sample.reml
+  # => sandbox error: command was killed by a signal
+
+備考: CLI 実行は現行サンドボックス環境では完了せず、IR ファイルは生成されない。
+      ローカル実行時は同コマンドで `tmp/cli-callconv-sample.reml` を用いると
+      `reml.bridge.stubs` の `callconv=79/67` を確認可能。
 ```
 
-## 5. フォローアップ TODO
+## 5. 進捗サマリ
+
+- Stub/Thunk の生成から監査メタデータ付与までを `tests/test_ffi_lowering.ml` でターゲット別に検証し、Typer → Codegen → Runtime の経路が安定。
+- Windows/MSVC (`callconv=79`) と macOS/AAPCS64 (`callconv=67`) の呼出規約を LLVM IR に反映し、`compiler/ocaml/tests/golden/llvm/*.ll` で回帰監視を開始。Linux 既定 (`callconv=0`) も同様に追跡中。
+- CLI (`src/main.exe --emit-ir`) はサンドボックス環境で実行できず IR を取得できないため、ローカル追試用サンプル（`tmp/cli-callconv-sample.reml`）と手順を共有し、確認待ち項目として扱う。
+
+## 6. フォローアップ TODO
 
 - [x] Windows スタブで `Ownership::Transferred` メタデータ生成テストを追加 (`tests/test_ffi_lowering.ml`)
 - [x] `runtime/native/include/reml_ffi_bridge.h` に audit hook とメトリクス API を整備 (`runtime/native/src/ffi_bridge.c`)
@@ -51,7 +67,13 @@
 - [ ] `reports/ffi-linux-summary.md`・`reports/ffi-windows-summary.md`・`reports/ffi-macos-summary.md` を実測ログで更新し、監査ゴールデン (`compiler/ocaml/tests/golden/audit/ffi-bridge-*.jsonl.golden`) を確定
 - [ ] 仕様書 `docs/spec/3-9`, `docs/spec/3-6` とガイド `docs/guides/runtime-bridges.md` を stub メタデータ/計測 API 情報で更新し、`docs/notes/licensing-todo.md` の TODO 消化を記録
 
-## 6. 参考リンク
+## 7. 次のステップ
+
+- Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）を stub/thunk に組み込み、監査ログへ残余所有権の挙動を記録できるようにする。
+- CLI 環境で `--emit-ir` を実行し、Linux/Windows/macOS それぞれで `reml.bridge.stubs` と `bridge.callconv` の整合性を確認。取得できたログは本サマリと `reports/ffi-*-summary.md` へ反映する。
+- `ffi_bridge.audit_pass_rate` の収集を CI パイプラインに統合し、`reports/runtime-capabilities-validation.json` の値と突合する。
+
+## 8. 参考リンク
 
 - docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md
 - docs/spec/3-9-core-async-ffi-unsafe.md
