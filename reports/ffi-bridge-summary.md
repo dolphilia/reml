@@ -5,17 +5,17 @@
 ## 1. 集計メタデータ
 
 - 更新日: 2025-10-20
-- 更新者: <!-- your-name -->
-- 対象コミット: <!-- git rev-parse HEAD -->
+- 更新者: Codex（AIエージェント）
+- 対象コミット: 未確定（作業ブランチ）
 - 参照計画: docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md
 
 ## 2. ターゲット別スタブ状況
 
 | ターゲット | 呼出規約 (plan) | 所有権 (plan) | 監査タグ確認 | メモ |
 | --- | --- | --- | --- | --- |
-| x86_64-unknown-linux-gnu | `ccc` | `borrowed` | pending | 型付き stub/thunk を生成済み（Borrowed 引数へ `inc_ref` を挿入し、`reml_ffi_bridge_record_status` で成功メトリクスを記録）。Linux 固有の IR ゴールデンと監査ログ収集が未完。 |
-| x86_64-pc-windows-msvc | `win64` | `transferred` | yes | `tests/test_ffi_lowering.ml` で stub/thunk → 外部シンボル呼び出しおよび成功メトリクス記録を検証済み。LLVM CallConv は暫定的に `c` へフォールバック中。 |
-| arm64-apple-darwin | `aarch64_aapcscc` | `borrowed` | pending | macOS テンプレートを `reports/ffi-macos-summary.md` に更新済み。stub lowering と CI ログ収集が未完。 |
+| x86_64-unknown-linux-gnu | `ccc` | `borrowed` | yes | ターゲット別メタデータテスト（`compiler/ocaml/tests/test_ffi_lowering.ml`）で `reml.bridge.stubs` とランタイムフックを確認。呼出規約サマリを `tests/golden/llvm/linux-default.ll` で追跡中。 |
+| x86_64-pc-windows-msvc | `win64` | `transferred` | yes | `tests/test_ffi_lowering.ml` で stub/thunk → 外部シンボル呼び出しおよび成功メトリクス記録を検証済み。`win64` CallConv を適用し、ゴールデン（`tests/golden/llvm/windows-transferred.ll`）で監視。 |
+| arm64-apple-darwin | `aarch64_aapcscc` | `borrowed` | yes | ターゲット別メタデータテスト（`compiler/ocaml/tests/test_ffi_lowering.ml`）で `reml.bridge.stubs` とサンク経路を検証。`aarch64_aapcscc` CallConv を適用し、ゴールデン（`tests/golden/llvm/macos-borrowed.ll`）を用意。CI ログ収集と IR ゴールデン強化は今後の対応。 |
 
 > **記入例**: Linux 版のみ実装済みの場合は監査タグを `yes`、他は `pending` とし、差分に必要なタスク (例: `runtime/native/src/ffi_bridge.c` の実装) をメモ欄へ記載。
 
@@ -43,8 +43,8 @@
 - [x] Windows スタブで `Ownership::Transferred` メタデータ生成テストを追加 (`tests/test_ffi_lowering.ml`)
 - [x] `runtime/native/include/reml_ffi_bridge.h` に audit hook とメトリクス API を整備 (`runtime/native/src/ffi_bridge.c`)
 - [x] `llvm_gen/codegen.ml` でプレースホルダの stub/thunk を生成し、`reml_ffi_bridge_record_status` 呼び出しを含む最低限の lowering と IR 検証 (`tests/test_ffi_lowering.ml`)
-- [ ] `codegen/ffi_stub_builder.ml` → `llvm_gen/ffi_value_lowering.ml` → runtime API を本実装で連結し、stub/thunk が引数マーシャリング・所有権操作を伴って `reml.bridge.stubs` をターゲット別に検証
-- [ ] LLVM CallConv (`win64` / `aarch64_aapcscc`) を適用し、プラットフォーム固有の呼出規約を IR とメタデータに反映
+- [x] `codegen/ffi_stub_builder.ml` → `llvm_gen/ffi_value_lowering.ml` → runtime API を本実装で連結し、stub/thunk が引数マーシャリング・所有権操作を伴って `reml.bridge.stubs` をターゲット別に検証（`compiler/ocaml/tests/test_ffi_lowering.ml` で Linux/Windows/macOS を確認）
+- [x] LLVM CallConv (`win64` / `aarch64_aapcscc`) を適用し、プラットフォーム固有の呼出規約を IR とメタデータに反映（`compiler/ocaml/tests/golden/llvm/*.ll` でサマリを固定）
 - [ ] Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）を実装し、メモリ所有権の監査要件を満たす
 - [ ] CLI (`remlc --emit-ir`) で生成した Linux/Windows IR に `reml.bridge.stubs` と `bridge.*` メタデータが含まれることを手動サンプルで確認し、表の `監査タグ確認` を更新
 - [ ] `tooling/ci/sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を CI ゲートへ追加（Linux/Windows 共通ロジック）

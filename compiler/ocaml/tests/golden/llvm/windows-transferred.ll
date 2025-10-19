@@ -1,0 +1,5 @@
+stub_call_conv=79
+thunk_call_conv=79
+extern_call_conv=79
+stub_to_thunk_call_sites=79
+thunk_to_extern_call_sites=79

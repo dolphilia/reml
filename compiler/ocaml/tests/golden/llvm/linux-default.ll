@@ -1,0 +1,5 @@
+stub_call_conv=0
+thunk_call_conv=0
+extern_call_conv=0
+stub_to_thunk_call_sites=0
+thunk_to_extern_call_sites=0

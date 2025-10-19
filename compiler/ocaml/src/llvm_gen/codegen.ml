@@ -335,10 +335,18 @@ let lookup_runtime_function ctx name =
   | Some fn -> fn
   | None -> codegen_errorf "Runtime function %s not declared" name
 
+let call_conv_win64 = 79
+let call_conv_aapcs = 67
+
 let call_conv_of_stub_plan (plan : Ffi_stub_builder.stub_plan) =
-  match String.lowercase_ascii plan.calling_convention with
-  | "ccc" | "system_v" | "win64" | "aarch64_aapcscc" | "aapcs64" ->
-      Llvm.CallConv.c
+  let normalized =
+    plan.calling_convention |> String.trim |> String.lowercase_ascii
+  in
+  match normalized with
+  | "win64" | "win64cc" | "msvc" -> call_conv_win64
+  | "aarch64_aapcscc" | "aapcs64" | "arm_aapcs" | "arm_aapcscc" ->
+      call_conv_aapcs
+  | "ccc" | "c" | "system_v" | "" -> Llvm.CallConv.c
   | _ -> Llvm.CallConv.c
 
 type stub_signature = {
@@ -445,7 +453,7 @@ let emit_stub_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
   let stub_name = Ffi_stub_builder.stub_symbol_name ~index plan in
   let stub_fn = Llvm.define_function stub_name signature.fn_type ctx.llmodule in
   Llvm.set_linkage Llvm.Linkage.Internal stub_fn;
-  Llvm.set_function_call_conv Llvm.CallConv.c stub_fn;
+  Llvm.set_function_call_conv (call_conv_of_stub_plan plan) stub_fn;
   apply_stub_attributes ctx stub_fn signature;
   Hashtbl.replace ctx.fn_map stub_name stub_fn;
 
