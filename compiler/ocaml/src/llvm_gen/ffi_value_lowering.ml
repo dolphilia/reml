@@ -1,5 +1,4 @@
 open Ffi_stub_builder
-
 module FlagBehavior = Llvm.ModuleFlagBehavior
 
 let bridge_flag_name = "reml.bridge.version"
@@ -7,8 +6,7 @@ let bridge_flag_value = 1
 let named_metadata = "reml.bridge.stubs"
 
 let sanitize_value (value : string) =
-  value
-  |> String.trim
+  value |> String.trim
   |> String.map (fun ch -> if ch = '\n' || ch = '\r' then ' ' else ch)
 
 let ensure_bridge_flag llctx llmodule =
@@ -18,7 +16,8 @@ let ensure_bridge_flag llctx llmodule =
       let i32_ty = Llvm.i32_type llctx in
       let const_value = Llvm.const_int i32_ty bridge_flag_value in
       let metadata = Llvm.value_as_metadata const_value in
-      Llvm.add_module_flag llmodule FlagBehavior.Override bridge_flag_name metadata
+      Llvm.add_module_flag llmodule FlagBehavior.Override bridge_flag_name
+        metadata
 
 let optional_field key = function
   | None -> []
@@ -33,9 +32,7 @@ let span_fields (span : Ast.span) =
     ("bridge.source_span.end", string_of_int span.end_);
   ]
 
-let ownership_label ownership =
-  Ffi_contract.string_of_ownership_kind ownership
-
+let ownership_label ownership = Ffi_contract.string_of_ownership_kind ownership
 let abi_label abi = Ffi_contract.string_of_abi_kind abi
 
 let metadata_fields index (plan : stub_plan) =
@@ -43,10 +40,8 @@ let metadata_fields index (plan : stub_plan) =
     [
       ("bridge.stub_index", string_of_int (index + 1));
       ("bridge.extern_name", plan.contract.extern_name);
-      ( "bridge.stub_symbol",
-        Ffi_stub_builder.stub_symbol_name ~index plan );
-      ( "bridge.thunk_symbol",
-        Ffi_stub_builder.thunk_symbol_name ~index plan );
+      ("bridge.stub_symbol", Ffi_stub_builder.stub_symbol_name ~index plan);
+      ("bridge.thunk_symbol", Ffi_stub_builder.thunk_symbol_name ~index plan);
       ("bridge.target", plan.target_triple);
       ("bridge.callconv", plan.calling_convention);
       ("bridge.abi", abi_label plan.abi);

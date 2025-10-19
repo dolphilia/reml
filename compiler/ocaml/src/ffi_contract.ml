@@ -249,7 +249,9 @@ let normalize_contract (contract : bridge_contract) : normalized_contract =
 
 let bridge_json_of_normalized ?status (normalized : normalized_contract) :
     Json.t =
-  let option_string value = match value with Some v -> `String v | None -> `Null in
+  let option_string value =
+    match value with Some v -> `String v | None -> `Null
+  in
   let fields =
     [
       ("extern_name", `String normalized.contract.extern_name);
@@ -280,7 +282,8 @@ let bridge_json_of_normalized ?status (normalized : normalized_contract) :
   let fields =
     if invalid_attrs = [] then fields
     else
-      ("invalid_attributes", `List (List.map json_of_invalid_attribute invalid_attrs))
+      ( "invalid_attributes",
+        `List (List.map json_of_invalid_attribute invalid_attrs) )
       :: fields
   in
   let fields =
@@ -290,8 +293,8 @@ let bridge_json_of_normalized ?status (normalized : normalized_contract) :
   in
   `Assoc fields
 
-let bridge_audit_metadata ?(status = "ok")
-    (normalized : normalized_contract) : Json.t =
+let bridge_audit_metadata ?(status = "ok") (normalized : normalized_contract) :
+    Json.t =
   `Assoc
     [
       ("bridge", bridge_json_of_normalized ~status normalized);

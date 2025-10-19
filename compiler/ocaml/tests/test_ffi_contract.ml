@@ -30,7 +30,6 @@ let read_all path =
   else ""
 
 let dummy_span = Ast.dummy_span
-
 let ident ?(span = dummy_span) name = { name; span }
 
 let make_type ?(span = dummy_span) name =
@@ -57,11 +56,7 @@ let build_extern_decl span =
     }
   in
   let extern_item =
-    {
-      extern_attrs = [];
-      extern_sig = signature;
-      extern_metadata = metadata;
-    }
+    { extern_attrs = []; extern_sig = signature; extern_metadata = metadata }
   in
   {
     extern_abi = "C";
@@ -95,17 +90,15 @@ let compare_with_golden ~name ~json ~audit =
   let expected_json_trim = String.trim expected_json in
   if json_trim <> expected_json_trim then (
     let actual_path = write_snapshot name ".actual.json" json in
-    Printf.eprintf
-      "✗ %s: JSON ゴールデンとの差分を検出しました (期待: %s, 現在: %s)\n"
-      name diag_golden actual_path;
+    Printf.eprintf "✗ %s: JSON ゴールデンとの差分を検出しました (期待: %s, 現在: %s)\n" name
+      diag_golden actual_path;
     exit 1);
   let audit_trim = String.trim audit in
   let expected_audit_trim = String.trim expected_audit in
   if audit_trim <> expected_audit_trim then (
     let actual_path = write_snapshot name ".audit.actual.jsonl" audit in
-    Printf.eprintf
-      "✗ %s: 監査ゴールデンとの差分を検出しました (期待: %s, 現在: %s)\n"
-      name audit_golden actual_path;
+    Printf.eprintf "✗ %s: 監査ゴールデンとの差分を検出しました (期待: %s, 現在: %s)\n" name
+      audit_golden actual_path;
     exit 1);
   Printf.printf "✓ %s\n" name
 
@@ -122,26 +115,28 @@ let () =
   | Ok _ ->
       Printf.eprintf "✗ unsupported_abi: 型推論が成功しました (エラーを期待)\n";
       exit 1
-  | Error err -> (
-      let diag =
-        Type_error.to_diagnostic_with_source ~available_names:[] sample_source
-          sample_path err
-      in
-      let json = Cli.Json_formatter.diagnostic_to_json diag in
-      let audit =
-        match err with
-        | Type_error.FfiContractSymbolMissing normalized
-        | Type_error.FfiContractOwnershipMismatch normalized
-        | Type_error.FfiContractUnsupportedAbi normalized ->
-            let event =
-              Audit_envelope.make ~timestamp:"1970-01-01T00:00:00Z"
-                ~category:"ffi.bridge"
-                ~metadata:(Ffi_contract.bridge_audit_metadata ~status:"error" normalized)
-                ()
-            in
-            Yojson.Basic.to_string (Audit_envelope.to_json event) ^ "\n"
-        | _ -> ""
-      in
-      compare_with_golden ~name:"unsupported-abi" ~json ~audit );
-  Printf.printf "================================\n";
-  Printf.printf "FFI contract diagnostics golden completed\n"
+  | Error err ->
+      (let diag =
+         Type_error.to_diagnostic_with_source ~available_names:[] sample_source
+           sample_path err
+       in
+       let json = Cli.Json_formatter.diagnostic_to_json diag in
+       let audit =
+         match err with
+         | Type_error.FfiContractSymbolMissing normalized
+         | Type_error.FfiContractOwnershipMismatch normalized
+         | Type_error.FfiContractUnsupportedAbi normalized ->
+             let event =
+               Audit_envelope.make ~timestamp:"1970-01-01T00:00:00Z"
+                 ~category:"ffi.bridge"
+                 ~metadata:
+                   (Ffi_contract.bridge_audit_metadata ~status:"error"
+                      normalized)
+                 ()
+             in
+             Yojson.Basic.to_string (Audit_envelope.to_json event) ^ "\n"
+         | _ -> ""
+       in
+       compare_with_golden ~name:"unsupported-abi" ~json ~audit);
+      Printf.printf "================================\n";
+      Printf.printf "FFI contract diagnostics golden completed\n"

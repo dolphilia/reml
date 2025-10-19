@@ -244,8 +244,7 @@ let string_of_error = function
       in
       Printf.sprintf "Residual effects%s are not declared: %s" subject missing
   | FfiContractSymbolMissing normalized ->
-      Printf.sprintf
-        "FFI contract missing link symbol for extern '%s'"
+      Printf.sprintf "FFI contract missing link symbol for extern '%s'"
         normalized.contract.extern_name
   | FfiContractOwnershipMismatch normalized ->
       let actual =
@@ -253,8 +252,7 @@ let string_of_error = function
         | Some raw when String.trim raw <> "" -> raw
         | _ -> "(unspecified)"
       in
-      Printf.sprintf
-        "FFI ownership mismatch for extern '%s' (actual: %s)"
+      Printf.sprintf "FFI ownership mismatch for extern '%s' (actual: %s)"
         normalized.contract.extern_name actual
   | FfiContractUnsupportedAbi normalized ->
       let actual =
@@ -1218,11 +1216,7 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
           normalized.contract.extern_name
       in
       let notes =
-        [
-          ( None,
-            "extern 宣言に `link_name` 属性を追加し、ブリッジが参照する \
-             シンボル名を明示してください" );
-        ]
+        [ (None, "extern 宣言に `link_name` 属性を追加し、ブリッジが参照する シンボル名を明示してください") ]
       in
       let diag =
         make_type_error ~code:"ffi.contract.symbol_missing" ~message ~span
@@ -1249,8 +1243,7 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         span_to_diagnostic_span normalized.Ffi.contract.Ffi.source_span
       in
       let message =
-        Printf.sprintf "外部関数 `%s` の所有権契約が無効です"
-          normalized.contract.extern_name
+        Printf.sprintf "外部関数 `%s` の所有権契約が無効です" normalized.contract.extern_name
       in
       let specified =
         match normalized.ownership_raw with
@@ -1259,8 +1252,7 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       in
       let notes =
         [
-          ( None,
-            Printf.sprintf "指定された値: %s" specified );
+          (None, Printf.sprintf "指定された値: %s" specified);
           ( None,
             Printf.sprintf "サポートされる値: %s"
               (String.concat ", " Ffi.supported_ownership_labels) );
@@ -1302,10 +1294,8 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       let expected_note =
         match normalized.expected_abi with
         | Some expected ->
-            Printf.sprintf "要求される ABI: %s"
-              (Ffi.string_of_abi_kind expected)
-        | None ->
-            "ターゲットが未指定のため適切な ABI を決定できません"
+            Printf.sprintf "要求される ABI: %s" (Ffi.string_of_abi_kind expected)
+        | None -> "ターゲットが未指定のため適切な ABI を決定できません"
       in
       let supplementary =
         [
@@ -1769,9 +1759,9 @@ let to_diagnostic_with_source ?(available_names : string list = [])
       diag
   | EffectInvalidAttribute _ as invalid -> to_diagnostic invalid
   | EffectResidualLeak _ as leak -> to_diagnostic leak
-  | FfiContractSymbolMissing _
-  | FfiContractOwnershipMismatch _
-  | FfiContractUnsupportedAbi _ -> to_diagnostic err
+  | FfiContractSymbolMissing _ | FfiContractOwnershipMismatch _
+  | FfiContractUnsupportedAbi _ ->
+      to_diagnostic err
   | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)

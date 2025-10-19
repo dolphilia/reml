@@ -528,8 +528,8 @@ let () =
                                .contract)
                   in
                   let llvm_module =
-                    Codegen.codegen_module ~target_name:opts.target
-                      ~stub_plans optimized_ir
+                    Codegen.codegen_module ~target_name:opts.target ~stub_plans
+                      optimized_ir
                   in
                   record_end_if collect_metrics CodeGen;
                   (if opts.verify_ir then

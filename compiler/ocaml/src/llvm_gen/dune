@@ -5,21 +5,21 @@
  (public_name reml_ocaml.llvm_gen)
  (wrapped false)
  (modules
- type_mapping
- target_config
- llvm_attr
- abi
+  type_mapping
+  target_config
+  llvm_attr
+  abi
   ffi_value_lowering
   codegen
   verify
   runtime_link)
-(libraries
- llvm
- llvm.bitwriter
- reml_ocaml.core_ir
- reml_parser
- reml_ocaml.ffi_codegen
- unix)
+ (libraries
+  llvm
+  llvm.bitwriter
+  reml_ocaml.core_ir
+  reml_parser
+  reml_ocaml.ffi_codegen
+  unix)
  (foreign_stubs
   (language c)
   (names llvm_attr_stubs)))

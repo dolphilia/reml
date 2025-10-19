@@ -15,7 +15,7 @@ let record_result name ok detail =
     Printf.printf "✓ %s\n" name)
   else (
     Printf.printf "✗ %s\n" name;
-    (match detail with Some msg -> Printf.printf "    %s\n" msg | None -> ()))
+    match detail with Some msg -> Printf.printf "    %s\n" msg | None -> ())
 
 let assert_string name expected actual =
   let ok = String.equal expected actual in
@@ -53,11 +53,7 @@ let lookup_audit key tags =
 let assert_audit name plan key expected =
   match lookup_audit key plan.audit_tags with
   | Some value -> assert_string (name ^ " — " ^ key) expected value
-  | None ->
-      record_result
-        (name ^ " — " ^ key)
-        false
-        (Some "監査タグが存在しません")
+  | None -> record_result (name ^ " — " ^ key) false (Some "監査タグが存在しません")
 
 let dummy_span = Ast.dummy_span
 
@@ -78,9 +74,7 @@ let make_contract ?block_target ?target ?callconv ?ownership () =
 let test_linux_defaults () =
   let contract = make_contract () in
   let plan = make_stub_plan ~param_types:[] ~return_type:TUnit contract in
-  assert_string "Linux デフォルトターゲット"
-    "x86_64-unknown-linux-gnu"
-    plan.target_triple;
+  assert_string "Linux デフォルトターゲット" "x86_64-unknown-linux-gnu" plan.target_triple;
   assert_string "Linux デフォルト呼出規約" "ccc" plan.calling_convention;
   assert_abi "Linux 既定 ABI" AbiSystemV plan.abi;
   assert_ownership "Linux 所有権既定値" OwnershipBorrowed plan.ownership;
@@ -92,14 +86,10 @@ let test_linux_defaults () =
 
 let test_windows_plan () =
   let contract =
-    make_contract
-      ~target:"x86_64-pc-windows-msvc"
-      ~ownership:"transferred" ()
+    make_contract ~target:"x86_64-pc-windows-msvc" ~ownership:"transferred" ()
   in
   let plan = make_stub_plan ~param_types:[] ~return_type:TUnit contract in
-  assert_string "Windows ターゲット"
-    "x86_64-pc-windows-msvc"
-    plan.target_triple;
+  assert_string "Windows ターゲット" "x86_64-pc-windows-msvc" plan.target_triple;
   assert_string "Windows 呼出規約" "win64" plan.calling_convention;
   assert_abi "Windows ABI" AbiMsvc plan.abi;
   assert_ownership "Windows 所有権" OwnershipTransferred plan.ownership;
@@ -110,9 +100,7 @@ let test_windows_plan () =
 
 let test_macos_plan () =
   let contract =
-    make_contract
-      ~target:"arm64-apple-darwin"
-      ~ownership:"borrowed" ()
+    make_contract ~target:"arm64-apple-darwin" ~ownership:"borrowed" ()
   in
   let plan = make_stub_plan ~param_types:[] ~return_type:TUnit contract in
   assert_string "macOS ターゲット" "arm64-apple-darwin" plan.target_triple;

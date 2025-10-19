@@ -12,19 +12,19 @@
   - OCaml 5.2.1 / dune 3.x
 - Reml リポジトリ commit: `2571db5c1d92804d09e0ef27890ed6504b9b96ce`
 - コマンド実行:
-  - `./scripts/ci-local.sh --target macos --arch arm64 --stage beta`（Lint ステップでフォーマット差分が発生し停止。詳細は §2 を参照）
+  - `./scripts/ci-local.sh --target macos --arch arm64 --stage beta`（Lint/Build 完了後にテスト ステップで SEGV。詳細は §2 を参照）
   - `compiler/ocaml/scripts/verify_llvm_ir.sh --target arm64-apple-darwin compiler/ocaml/tests/llvm-ir/golden/basic_arithmetic.ll`
 
 ## 2. Capability / Stage 検証
 | チェック項目 | 結果 | ログ/参照 |
 |--------------|------|-----------|
 | `scripts/validate-runtime-capabilities.sh tooling/runtime/capabilities/default.json` | 成功（2025-10-18T03:23:33Z） | `reports/runtime-capabilities-validation.json`（`runtime_candidates` に `arm64-apple-darwin` を確認） |
-| `./scripts/ci-local.sh --target macos --arch arm64 --stage beta` | 失敗（Lint フォーマット差分で停止） | `dune build @fmt --auto-promote` を未実行。`src/llvm_gen/dune`・`tests/test_ffi_contract.ml` ほかで差分 |
+| `./scripts/ci-local.sh --target macos --arch arm64 --stage beta` | 失敗（テスト ステップで SEGV） | Lint/Build は完了。`compiler/ocaml/tests/test_ffi_lowering` 実行中に `Command got signal SEGV` |
 | `compiler/ocaml/scripts/verify_llvm_ir.sh --target arm64-apple-darwin compiler/ocaml/tests/llvm-ir/golden/basic_arithmetic.ll` | 成功 | `.bc`/`.o` 生成ログを §2.2 に記録 |
 | Capability 差分レビュー | 進行中 | `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `ffi_bridge.audit_pass_rate` を追記済み（Diagnostics チームレビュー待ち） |
 
 ### 2.1 監査ログ抜粋
-- `AuditEnvelope.metadata.bridge.*`（arm64-apple-darwin）: `ci-local` が Lint で停止したため今回は取得できず。Typer `extern_metadata` → `AuditEnvelope` 伝搬は従来どおり次回計測で確認予定。
+- `AuditEnvelope.metadata.bridge.*`（arm64-apple-darwin）: テスト ステップ手前で停止したため未取得。Typer `extern_metadata` → `AuditEnvelope` 伝搬は次回 `ci-local` 再実行時に確認予定。
 - `Diagnostic.extensions.effect.stage_trace`: `effects-residual` ゴールデン更新後は Typer/Runtime の `stage_trace` が一致（`compiler/ocaml/tests/golden/audit/effects-residual.jsonl.golden` を 2025-10-18 に更新）
 
 ### 2.2 実行ログ抜粋
@@ -34,18 +34,26 @@ $ ./scripts/ci-local.sh --target macos --arch arm64 --stage beta
 [INFO] ホストアーキテクチャ: arm64
 [INFO] ターゲットプラットフォーム: macos
 [INFO] Lint ステップ (1/5)
-[INFO] コードフォーマットをチェック中...
-File "src/llvm_gen/dune", line 1, characters 0-0:
-diff --git a/_build/default/src/llvm_gen/dune b/_build/default/src/llvm_gen/.formatted/dune
+[SUCCESS] Lint ステップ完了
+[INFO] Build ステップ (2/5)
+[INFO] コンパイラをビルド中...
+ld: warning: ignoring duplicate libraries: '-lLLVMBinaryFormat' ...
+[SUCCESS] Build ステップ完了
+[INFO] Test ステップ (3/5)
+===============================
+FFI スタブプラン初期テスト
+===============================
+✓ Linux 監査 — bridge.callconv
 ...
-[ERROR] フォーマットチェックに失敗しました。'dune build @fmt --auto-promote' を実行してください。
+✓ macOS 監査 — bridge.abi
 
-$ compiler/ocaml/scripts/verify_llvm_ir.sh --target arm64-apple-darwin compiler/ocaml/tests/llvm-ir/golden/basic_arithmetic.ll
-/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted
-[1/3] llvm-as ... ✓
-[2/3] opt -verify ... ✓
-[3/3] llc ... ✓
-生成物: compiler/ocaml/tests/llvm-ir/golden/basic_arithmetic.{bc,o}
+===============================
+テスト結果: 25/25 成功
+===============================
+File "tests/dune", line 36, characters 2-19:
+36 |   test_ffi_lowering
+       ^^^^^^^^^^^^^^^^^
+Command got signal SEGV.
 ```
 
 ## 3. ABI / 呼出規約検証
@@ -75,8 +83,9 @@ $ compiler/ocaml/scripts/verify_llvm_ir.sh --target arm64-apple-darwin compiler/
 
 ## 6. TODO / リスク
 - [x] Capability override (`arm64-apple-darwin`) を `tooling/runtime/capabilities/default.json` に追加し、Windows 同等セットから開始する。（PR 化・レビューは未完）
-- [ ] `dune build @fmt --auto-promote` を実行して `src/llvm_gen/dune`・`tests/test_ffi_contract.ml` などのフォーマット差分を解消する。
-- [ ] フォーマット差分解消後に `scripts/ci-local.sh --target macos --arch arm64 --stage beta` を再実行し、Lint → Runtime まで完走したログを保存する。
+- [x] `dune build @fmt --auto-promote` を実行して `src/llvm_gen/dune`・`tests/test_ffi_contract.ml` などのフォーマット差分を解消する（2025-10-19）。
+- [ ] `scripts/ci-local.sh --target macos --arch arm64 --stage beta` を Runtime まで完走させ、生成ログを `reports/ffi-macos-summary.md` に追記する（`test_ffi_lowering` の SEGV がブロッカー）。
+- [ ] `compiler/ocaml/tests/test_ffi_lowering` で発生した SEGV の原因を特定し、再実行できる状態に修正する。
 - [ ] Darwin 向け可変長/構造体戻りの ABI 差分調査を完了し、`docs/notes/llvm-spec-status-survey.md` §2.2 を更新。
 - [ ] `AuditEnvelope.metadata.bridge.*` スキーマを確定し、macOS サンプルをゴールデン化する（ドラフトは `tooling/runtime/audit-schema.json` に追加済み、Typer 実装後に本番値を取得）。
 - [x] `scripts/ci-local.sh` に `--stage` オプションを追加し、Diagnostics チームの運用手順と合わせる。

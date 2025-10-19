@@ -370,15 +370,13 @@ let compute_stub_signature ctx (plan : Ffi_stub_builder.stub_plan) =
   in
   let fn_type, sret_offset =
     match return_class with
-    | Abi.DirectReturn ->
-        (Llvm.function_type ret_llty value_param_types, 0)
+    | Abi.DirectReturn -> (Llvm.function_type ret_llty value_param_types, 0)
     | Abi.SretReturn ->
         let sret_ptr_ty = Llvm.pointer_type ctx.llctx in
         let actual_params =
           Array.init
             (Array.length value_param_types + 1)
-            (fun i ->
-              if i = 0 then sret_ptr_ty else value_param_types.(i - 1))
+            (fun i -> if i = 0 then sret_ptr_ty else value_param_types.(i - 1))
         in
         (Llvm.function_type (Llvm.void_type ctx.llctx) actual_params, 1)
   in
@@ -387,20 +385,25 @@ let compute_stub_signature ctx (plan : Ffi_stub_builder.stub_plan) =
       (fun ty -> Abi.classify_struct_argument ctx.target ctx.type_ctx ty)
       plan.param_types
   in
-  { fn_type; return_class; param_classes; sret_offset; value_param_types; ret_type = ret_llty }
+  {
+    fn_type;
+    return_class;
+    param_classes;
+    sret_offset;
+    value_param_types;
+    ret_type = ret_llty;
+  }
 
 let apply_stub_attributes ctx llvm_fn signature =
   (match signature.return_class with
-  | Abi.SretReturn ->
-      Abi.add_sret_attr ctx.llctx llvm_fn signature.ret_type 0
+  | Abi.SretReturn -> Abi.add_sret_attr ctx.llctx llvm_fn signature.ret_type 0
   | Abi.DirectReturn -> ());
   List.iteri
     (fun i classification ->
       match classification with
       | Abi.DirectArg -> ()
       | Abi.ByvalArg arg_ty ->
-          Abi.add_byval_attr ctx.llctx llvm_fn arg_ty
-            (i + signature.sret_offset))
+          Abi.add_byval_attr ctx.llctx llvm_fn arg_ty (i + signature.sret_offset))
     signature.param_classes
 
 let extern_symbol_of_plan (plan : Ffi_stub_builder.stub_plan) =
@@ -422,7 +425,9 @@ let declare_extern_target ctx signature (plan : Ffi_stub_builder.stub_plan) =
 let emit_thunk_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
     =
   let thunk_name = Ffi_stub_builder.thunk_symbol_name ~index plan in
-  let thunk_fn = Llvm.define_function thunk_name signature.fn_type ctx.llmodule in
+  let thunk_fn =
+    Llvm.define_function thunk_name signature.fn_type ctx.llmodule
+  in
   Llvm.set_linkage Llvm.Linkage.Internal thunk_fn;
   Llvm.set_function_call_conv (call_conv_of_stub_plan plan) thunk_fn;
   apply_stub_attributes ctx thunk_fn signature;
@@ -437,7 +442,7 @@ let emit_thunk_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
       ctx.builder
   in
   Llvm.set_instruction_call_conv (call_conv_of_stub_plan plan) call_inst;
-  (match signature.return_class, plan.return_type with
+  (match (signature.return_class, plan.return_type) with
   | Abi.SretReturn, _ -> ignore (Llvm.build_ret_void ctx.builder)
   | _, Types.TUnit -> ignore (Llvm.build_ret_void ctx.builder)
   | _ -> ignore (Llvm.build_ret call_inst ctx.builder));
@@ -489,10 +494,10 @@ let emit_stub_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
   Llvm.set_instruction_call_conv (call_conv_of_stub_plan plan) call_inst;
 
   ignore
-    (Llvm.build_call record_status_ty record_status
-       [| success_const |] "" ctx.builder);
+    (Llvm.build_call record_status_ty record_status [| success_const |] ""
+       ctx.builder);
 
-  (match signature.return_class, plan.return_type with
+  (match (signature.return_class, plan.return_type) with
   | Abi.SretReturn, _ -> ignore (Llvm.build_ret_void ctx.builder)
   | _, Types.TUnit -> ignore (Llvm.build_ret_void ctx.builder)
   | _ -> ignore (Llvm.build_ret call_inst ctx.builder));
@@ -1552,7 +1557,8 @@ let generate_builtin_trait_methods ctx =
  * @param target_name ターゲット名（オプション）
  * @return LLVM モジュール
  *)
-let codegen_module ?(target_name = "x86_64-linux") ?(stub_plans = []) module_def =
+let codegen_module ?(target_name = "x86_64-linux") ?(stub_plans = []) module_def
+    =
   let ctx = create_codegen_context module_def.module_name ~target_name () in
 
   (* ランタイム関数を宣言 *)

@@ -17,10 +17,7 @@ open Ast
 
 (* ========== 型定義 ========== *)
 
-type platform =
-  | LinuxX86_64
-  | WindowsX64
-  | MacOSArm64
+type platform = LinuxX86_64 | WindowsX64 | MacOSArm64
 
 type stub_template = {
   platform : platform;
@@ -80,7 +77,9 @@ let template_for_target target =
   let target = normalize_target target in
   let contains needle = contains_substring target needle in
   if contains "windows" || contains "msvc" then windows_template
-  else if contains "darwin" || contains "apple" || contains "macos" || contains "aarch64"
+  else if
+    contains "darwin" || contains "apple" || contains "macos"
+    || contains "aarch64"
   then macos_template
   else linux_template
 
@@ -101,13 +100,19 @@ let resolve_target (contract : bridge_contract) =
   let candidate =
     match metadata_target with
     | Some value -> value
-    | None -> (match block_target with Some value -> value | None -> linux_template.default_target)
+    | None -> (
+        match block_target with
+        | Some value -> value
+        | None -> linux_template.default_target)
   in
   let template = template_for_target candidate in
   let effective_target =
     match metadata_target with
     | Some value -> value
-    | None -> (match block_target with Some value -> value | None -> template.default_target)
+    | None -> (
+        match block_target with
+        | Some value -> value
+        | None -> template.default_target)
   in
   (template, effective_target)
 
@@ -130,7 +135,9 @@ let audit_tags_of_plan template target call_conv ownership abi =
   let abi_str = string_of_abi_kind abi in
   let ownership_str = string_of_ownership_kind ownership in
   let arch =
-    match arch_of_target target with Some v -> v | None -> fallback_arch template.platform
+    match arch_of_target target with
+    | Some v -> v
+    | None -> fallback_arch template.platform
   in
   [
     ("bridge.platform", template.audit_platform);
@@ -167,11 +174,8 @@ let sanitize_symbol_component value =
   String.iter
     (fun ch ->
       let ch = Char.lowercase_ascii ch in
-      if
-        (ch >= 'a' && ch <= 'z')
-        || (ch >= '0' && ch <= '9')
-        || ch = '_'
-      then Buffer.add_char buffer ch
+      if (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch = '_' then
+        Buffer.add_char buffer ch
       else Buffer.add_char buffer '_')
     value;
   let sanitized = Buffer.contents buffer in

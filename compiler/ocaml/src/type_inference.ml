@@ -203,7 +203,6 @@ type ffi_bridge_snapshot = {
 }
 
 let ffi_bridge_snapshots : ffi_bridge_snapshot list ref = ref []
-
 let reset_ffi_bridge_snapshots () = ffi_bridge_snapshots := []
 
 let record_ffi_bridge_snapshot (snapshot : ffi_bridge_snapshot) =
@@ -321,21 +320,20 @@ let rec convert_type_annot (tannot : type_annot) : ty =
 let check_extern_bridge_contract ~(block_target : string option)
     (item : extern_item) : (Ffi.normalized_contract, type_error) result =
   let contract =
-    Ffi.bridge_contract ?block_target
-      ~extern_name:item.extern_sig.sig_name.name
-      ~source_span:item.extern_sig.sig_name.span
-      ~metadata:item.extern_metadata ()
+    Ffi.bridge_contract ?block_target ~extern_name:item.extern_sig.sig_name.name
+      ~source_span:item.extern_sig.sig_name.span ~metadata:item.extern_metadata
+      ()
   in
   let normalized = Ffi.normalize_contract contract in
   match normalized.extern_symbol with
   | None -> Error (ffi_contract_symbol_missing_error normalized)
-  | Some _ ->
+  | Some _ -> (
       if not (Ffi.ownership_supported normalized.ownership_kind) then
         Error (ffi_contract_ownership_mismatch_error normalized)
       else if not (Ffi.abi_supported normalized.abi_kind) then
         Error (ffi_contract_unsupported_abi_error normalized)
       else
-        (match normalized.expected_abi with
+        match normalized.expected_abi with
         | Some expected when expected <> normalized.abi_kind ->
             Error (ffi_contract_unsupported_abi_error normalized)
         | _ -> Ok normalized)
@@ -2337,8 +2335,9 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
           | None -> ty_unit
         in
         let fn_ty =
-          List.fold_right (fun param_ty acc -> TArrow (param_ty, acc)) param_tys
-            ret_ty
+          List.fold_right
+            (fun param_ty acc -> TArrow (param_ty, acc))
+            param_tys ret_ty
         in
         (fn_ty, param_tys, ret_ty)
       in
@@ -2359,9 +2358,9 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
       in
       let* final_env = process_items env extern_decl.extern_items in
       let tdecl =
-        make_typed_decl decl.decl_attrs decl.decl_vis
-          (TExternDecl extern_decl)
-          (scheme_to_constrained (mono_scheme ty_unit)) decl.decl_span
+        make_typed_decl decl.decl_attrs decl.decl_vis (TExternDecl extern_decl)
+          (scheme_to_constrained (mono_scheme ty_unit))
+          decl.decl_span
       in
       Ok (tdecl, final_env, [])
   | ImplDecl impl ->
