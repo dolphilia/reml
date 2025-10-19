@@ -211,6 +211,15 @@ let record_ffi_bridge_snapshot (snapshot : ffi_bridge_snapshot) =
 
 let current_ffi_bridge_snapshots () = List.rev !ffi_bridge_snapshots
 
+let ffi_snapshot_normalized (snapshot : ffi_bridge_snapshot) =
+  snapshot.normalized
+
+let ffi_snapshot_param_types (snapshot : ffi_bridge_snapshot) =
+  snapshot.param_types
+
+let ffi_snapshot_return_type (snapshot : ffi_bridge_snapshot) =
+  snapshot.return_type
+
 (** レジストリのリセット（テスト用） *)
 let reset_impl_registry () =
   global_impl_registry := Impl_registry.empty ();

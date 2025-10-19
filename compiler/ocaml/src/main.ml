@@ -275,7 +275,8 @@ let ffi_bridge_events () =
   |> List.map (fun snapshot ->
          Audit_envelope.make ~category:"ffi.bridge"
            ~metadata:
-             (Ffi.bridge_audit_metadata ~status:"ok" snapshot.normalized)
+             (Ffi.bridge_audit_metadata ~status:"ok"
+                (Type_inference.ffi_snapshot_normalized snapshot))
            ())
 
 let events_from_effect_constraints () =
@@ -519,9 +520,12 @@ let () =
                     Type_inference.current_ffi_bridge_snapshots ()
                     |> List.map (fun snapshot ->
                            Ffi_stub.make_stub_plan
-                             ~param_types:snapshot.param_types
-                             ~return_type:snapshot.return_type
-                             snapshot.normalized.contract)
+                             ~param_types:
+                               (Type_inference.ffi_snapshot_param_types snapshot)
+                             ~return_type:
+                               (Type_inference.ffi_snapshot_return_type snapshot)
+                             (Type_inference.ffi_snapshot_normalized snapshot)
+                               .contract)
                   in
                   let llvm_module =
                     Codegen.codegen_module ~target_name:opts.target
