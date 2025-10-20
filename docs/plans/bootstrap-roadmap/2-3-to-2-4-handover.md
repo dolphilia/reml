@@ -24,6 +24,8 @@
 | - | `--verify-ir` 再有効化 | stub 無終端ブロック修正後、CLI 既定で `--verify-ir` を実施できるようにする。 | `docs/plans/bootstrap-roadmap/2-3-completion-report.md` §5 |
 | - | CI ゲート整備 | Linux/Windows/macOS ワークフローに `ffi_bridge.audit_pass_rate` をゲート条件として組み込み。 | 同上 |
 
+> **対応計画**: 具体的な手順と完了条件は `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` 「引き継ぎタスク対応計画」（ID 22/ID 23 セクション）にまとめた。進捗更新時は本節と合わせて参照すること。
+
 ## 4. 2-4 着手前チェックリスト
 1. `tooling/runtime/audit-schema.json` v1.1 と `docs/spec/3-6-core-diagnostics-audit.md` §2.4.3 を確認し、Diagnostic/Audit の必須フィールド（`bridge.*`, `extensions`）を共通化する。
 2. `reports/ffi-bridge-summary.md` の「備考」にある技術的負債 ID 22/23 を参照し、2-4 計画書の前提条件へ取り込む。

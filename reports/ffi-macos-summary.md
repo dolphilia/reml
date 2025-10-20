@@ -130,7 +130,7 @@ Command got signal SEGV. (修正前ログ)
 - [x] `tooling/ci/sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` へ `ffi_bridge.audit_pass_rate` と Darwin プリセット成功条件を追加
 - [x] 仕様書（`docs/spec/3-9`, `docs/spec/3-6`）とガイド（`docs/guides/runtime-bridges.md`）の macOS 章を更新し、Phase 3 へ渡す TODO リストを整備
 
-> **メモ**: `ffi_dispatch_async.reml` / `ffi_malloc_arm64.reml` の自動検証は「技術的負債 ID 23」で管理。Phase 3 で CI 組み込みと監査ログ固定化を実施予定。
+> **メモ**: `ffi_dispatch_async.reml` / `ffi_malloc_arm64.reml` の自動検証は「技術的負債 ID 23」で管理。Phase 2-4 で CI 組み込みと監査ログ固定化を実施し、完了後は本サマリーを更新する。
 
 ## 7. クロスプラットフォーム比較観点（ドラフト）
 - 対象: Linux x86_64（System V）、Windows x64（MSVC）、macOS arm64（Darwin AAPCS64）。
