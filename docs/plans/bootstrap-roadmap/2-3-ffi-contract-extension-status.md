@@ -3,37 +3,40 @@
 > 対象タスク: [2-3 FFI 契約拡張計画](2-3-ffi-contract-extension.md)  
 > 参照期日: Phase 2-3 移行直前
 
-## 1. 調査サマリー
-- 効果システム統合完了時点のハンドオーバーでは、Windows Stage override 自動検証が未整備のため Phase 2-3 序盤の最優先タスクとして設定されている（`docs/plans/bootstrap-roadmap/2-2-to-2-3-handover.md`）。
-- 2-3 計画の進捗表では `--verify-ir` がスタブ無終端ブロックで失敗し、監査ログのゴールデン更新や Linux/Windows レポート整備が未完了のまま停滞している（`docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md`）。
-- 現行の FFI ブリッジサマリーでは監査指標 `ffi_bridge.audit_pass_rate` の CI 反映や `AuditEnvelope` スキーマ v1.1 の公開が TODO として残っており、Linux/Windows の個別レポートも未作成である（`reports/ffi-bridge-summary.md`）。
-- macOS 計測サマリーは `ci-local` 成功まで到達したが、`ffi_dispatch_async` などの検証ケースが未実施であり、Linux/Windows と比較するための共通テンプレート化が指示されている（`reports/ffi-macos-summary.md`）。
-- 技術的負債リストでは Windows Capability Stage の自動検証不足が Phase 2-3 着手前の重点課題として整理されている（`compiler/ocaml/docs/technical-debt.md`）。
-- GitHub Actions 側では Windows の `iterator` メトリクス取得ステップが PowerShell の行継続記法 (`^`) 起因で失敗していたため `pwsh` 向けのバッククォート継続へ修正し（`.github/workflows/bootstrap-windows.yml:32`）、Linux では `typeclass_iterator_stage_mismatch.json.golden` が `.gitignore` の対象外になるよう調整した（`compiler/ocaml/.gitignore:45`）。さらに macOS / Linux の LLVM リンク失敗は `llvm-config` のライブラリ探索パスが拾えていなかったため、`compiler/ocaml/scripts/gen_llvm_link_flags.py` を拡張して `--libdir` 由来の `-L` フラグと `libLLVM-C` の確認を行い、`compiler/ocaml/src/llvm_gen/dune` の `ocamlopt_flags` から取り込むよう更新した。監査メトリクス集計では失敗診断でも `ffi_bridge.audit_pass_rate` が 1.0 を維持できるよう、`bridge.status` の値検証を緩和した（`tooling/ci/collect-iterator-audit-metrics.py`）。
+## 1. 進捗サマリー
 
-## 2. 残タスク一覧
-- **LLVM IR / スタブ整合**
-  - 2025-10-24 に `llvm_gen/codegen.ml` の空エントリブロックを修正し、`--verify-ir` を再度有効化して Linux/Windows/macOS の CLI 追試が通過。次段階として 3 ターゲット分の IR と監査ログをゴールデン化。
-  - `reports/ffi-bridge-summary.md` に Linux/Windows/macOS の ABI・所有権ホワイトリスト差分を集約。`reports/ffi-linux-summary.md`・`reports/ffi-windows-summary.md` を追加し、macOS 版と併せて 3 ターゲット分のサマリーを整備。
-- **監査・CI**
-  - `tooling/ci/collect-iterator-audit-metrics.py` と `tooling/ci/sync-iterator-audit.sh` を拡張し、`ffi_bridge.audit_pass_rate` を CI ゲートへ追加。`tooling/runtime/audit-schema.json` v1.1 に `bridge.*` フィールドを正式反映。
-  - Windows ランナーで `remlc --emit-audit` を実行し `reports/iterator-stage-summary.md` を自動収集するジョブを追加、差分監視を導入。
-- **プラットフォーム検証**
-  - macOS で未実施の FFI サンプル（`ffi_dispatch_async.reml` など）と Linux/Windows 同型テストを実行し、`tmp/cli-callconv-out/<platform>/` の成果物を各サマリーへ反映。
-  - 監査ログの必須キーを更新し、`bridge.return.*` 欠落時に `ffi_bridge.audit_pass_rate` へ反映されるようランタイム計測 API を調整。
-- **文書・報告**
-  - `docs/spec/3-9-core-async-ffi-unsafe.md`、`docs/spec/3-6-core-diagnostics-audit.md`、`docs/guides/runtime-bridges.md` にスタブメタデータと監査指標の実装差分を反映。
-  - Phase 2-3 完了報告用ドラフトを `docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md` に脚注リンクとして追記し、次フェーズへの引き継ぎ項目を整理。
+### 1.1 完了済みの主な作業
+- `llvm_gen/codegen.ml` のスタブ無終端ブロックを修正し、3 ターゲットすべてで `--verify-ir` が再度有効化された（2025-10-24 実装済み）。
+- `tmp/cli-callconv-sample.reml` 系の CLI 追試を Linux / Windows / macOS 各ターゲットで再取得し、IR と監査ログを `tmp/cli-callconv-out/<platform>/` に集約。
+- GitHub Actions の Windows ワークフローで PowerShell の行継続をバッククォートに変更し、メトリクス収集が安定化（`.github/workflows/bootstrap-windows.yml`）。
+- `compiler/ocaml/scripts/gen_llvm_link_flags.py` と `compiler/ocaml/src/llvm_gen/dune` を調整し、macOS/Linux の LLVM リンク失敗を解消。
+- `tooling/ci/collect-iterator-audit-metrics.py` を更新し、失敗診断が混在しても `ffi_bridge.audit_pass_rate` が適切に集計されるよう `bridge.status` 検証を緩和。
+
+### 1.2 未解決の論点
+- Windows Stage override の自動検証が未整備であり、Phase 2-3 序盤の最優先タスクとして残存（`docs/plans/bootstrap-roadmap/2-2-to-2-3-handover.md`）。
+- `reports/ffi-bridge-summary.md` で定義した Linux / Windows / macOS 向けレポート更新が完了しておらず、監査ログのゴールデン更新も保留。
+- macOS 向け計測サマリーでは `ffi_dispatch_async` など未実施ケースが残り、Linux / Windows と比較可能なテンプレート整備が必要。
+- `tooling/runtime/audit-schema.json` の v1.1 公開と `bridge.*` フィールド追加が未完了で、CI 側の JSON 検証にも反映されていない。
+- 技術的負債リストに登録済みの Windows Capability Stage 自動検証不足（`compiler/ocaml/docs/technical-debt.md`）が引き続きフォローアップ対象。
+
+## 2. 残タスクと次ステップ
+
+| カテゴリ | 現状 | 次のステップ |
+| --- | --- | --- |
+| LLVM IR / スタブ整合 | `--verify-ir` は 3 ターゲットで成功。IR・監査ログの最新成果物は `tmp/cli-callconv-out/<platform>/` に収集済みだが、ゴールデン差分とレポート反映が未完。 | `compiler/ocaml/tests/golden/ffi/*.ll` および `compiler/ocaml/tests/golden/audit/cli-ffi-bridge-*.jsonl.golden` を更新し、`reports/ffi-bridge-summary.md` と各プラットフォームサマリーを同期する。 |
+| 監査・CI | `collect-iterator-audit-metrics.py` の緩和対応までは完了。CI ゲートへの `ffi_bridge.audit_pass_rate` 追加と `AuditEnvelope` スキーマ v1.1 の定義は未反映。 | `tooling/ci/sync-iterator-audit.sh` と Windows PowerShell スクリプトに `ffi_bridge.audit_pass_rate` を追加し、`tooling/runtime/audit-schema.json` v1.1 と整合を取る。 |
+| プラットフォーム検証 | macOS の基本サンプルは成功し、Linux / Windows も CLI 再実行済み。追加シナリオ（`ffi_dispatch_async.reml` 等）や Windows ランナーでの自動収集は未実施。 | 各プラットフォームの追加サンプルを実行し、生成ログを `reports/ffi-*-summary.md` へ反映。Windows ランナーで `--emit-audit` を自動化して `reports/iterator-stage-summary.md` と連動させる。 |
+| 文書・報告 | 計画書・サマリーはドラフト段階。仕様書／ガイド（3-9, 3-6, runtime-bridges）への反映と完了報告ドラフト整備が未着手。 | 残タスク消化後に関連ドキュメントへ反映し、Phase 2-3 完了報告ドラフトと Phase 3 引き継ぎ項目を `docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md` から参照可能にする。 |
 
 ## 3. 推奨進行計画（次の 3 スプリント）
 1. **実装集中（週 1-2）**  
-   - スタブ終端バグ修正（2025-10-24 完了）に続き、`--verify-ir` 付きで再取得した 3 ターゲットの IR/監査ゴールデンを更新。  
-   - ABI/所有権ホワイトリストと型チェック表を `reports/ffi-bridge-summary.md` に統合。
+   - 取得済みの Linux / Windows / macOS 成果物をゴールデンへ反映し、`reports/ffi-bridge-summary.md`・`reports/ffi-*-summary.md` を更新。  
+   - ABI / 所有権ホワイトリストを整理し、差分をドキュメント化。
 2. **監査・CI 強化（週 2-3）**  
-   - Windows 検証ジョブ追加と `ffi_bridge.audit_pass_rate` ゲート実装、`AuditEnvelope` スキーマ v1.1 公開。  
-   - `iterator-stage-summary.md` 差分監視スクリプトを導入し、アラートを CI へ統合。
+   - Windows 検証ジョブと `ffi_bridge.audit_pass_rate` ゲートを GitHub Actions に追加し、`AuditEnvelope` スキーマ v1.1 のレビューを開始。  
+   - `iterator-stage-summary.md` の差分監視スクリプトを導入し、アラートを CI へ統合。
 3. **ドキュメント整備（週 3-4）**  
-   - Linux/Windows FFI サマリー作成、仕様・ガイド更新、Phase 2-3 完了報告ドラフト追記。  
+   - Linux / Windows FFI サマリー作成、仕様・ガイド更新、Phase 2-3 完了報告ドラフト追記。  
    - 未消化テストを追加し、計測結果を `0-3-audit-and-metrics.md` と各サマリーへ反映。
 
 ## 4. 関連資料

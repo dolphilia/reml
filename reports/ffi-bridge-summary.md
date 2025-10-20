@@ -32,16 +32,20 @@
   - Windows 診断 JSON: `tooling/ci/ffi-audit/windows/cli-callconv-unsupported.diagnostics.json`
   - macOS 診断 JSON: `tooling/ci/ffi-audit/macos/cli-callconv-unsupported.diagnostics.json`
   - Stage 監査バンドル: `tooling/ci/ffi-audit/stage.audit.jsonl`
-- 確認項目:
-- [x] `bridge.platform` が `reports/runtime-capabilities-validation.json` のステージと一致
-- [x] `bridge.return.ownership` / `bridge.return.status` が Borrowed/Transferred 返り値ごとに出力されている（[docs/spec/3-9-core-async-ffi-unsafe.md](../docs/spec/3-9-core-async-ffi-unsafe.md) §2.6 参照）
-- [x] `bridge.abi` / `bridge.callconv` が Typer 診断と矛盾していない（`tests/test_ffi_lowering.ml` の Windows ケースで確認）
-- [x] `reml.bridge.version` モジュールフラグ (1) が `llvm_gen/ffi_value_lowering.ml` で出力されている（`tests/test_ffi_lowering.ml` で確認）
-- [x] 失敗ケースが `ffi_bridge.audit_pass_rate` に反映されている（`collect-iterator-audit-metrics.py` で `bridge.status` を判定し、`tmp/cli-callconv-out/macos/cli-callconv-unsupported.diagnostics.json` から pass_rate=0.0 を取得）
-- [ ] `AuditEnvelope` スキーマ v1.1 に `bridge.*` プロパティを追加し、CI の JSON 検証を更新する。
-- [x] CLI `--emit-audit` のゴールデンに Borrowed/Transferred 返り値ケースを追加し、`dune runtest` で再固定する。
-- 備考: `--verify-ir` 付きで Linux/Windows/macOS の CLI 再実行を行い、stub エントリブロックの無終端問題を解消済み。監査ログには `bridge.return.{ownership,status,wrap,release_handler,rc_adjustment}` が出力されるようになったため、CI 側の必須キーにも追加済み。
-- FFI スタブメタデータ: `Codegen.codegen_module` が `reml.bridge.stubs` Named Metadata を出力（キー例: `bridge.stub_index`, `bridge.extern_symbol`, `bridge.platform`）。`reml.bridge.version` モジュールフラグ (1) を追加済みで、`main.ml` から受け渡した `stub_plans` でも同一出力を得ている。
+### 3.1 完了した確認事項
+  - `bridge.platform` が `reports/runtime-capabilities-validation.json` のステージと一致。
+  - `bridge.return.ownership` / `bridge.return.status` が Borrowed/Transferred 返り値ごとに出力されている（[docs/spec/3-9-core-async-ffi-unsafe.md](../docs/spec/3-9-core-async-ffi-unsafe.md) §2.6 準拠）。
+  - `bridge.abi` / `bridge.callconv` が Typer 診断と矛盾せず、`tests/test_ffi_lowering.ml` の Windows ケースでも一致を確認。
+  - `reml.bridge.version` モジュールフラグ (1) が `llvm_gen/ffi_value_lowering.ml` から出力され、テストで検証済み。
+  - 失敗ケースが `collect-iterator-audit-metrics.py` の `bridge.status` 判定を経て `ffi_bridge.audit_pass_rate` に反映（`tmp/cli-callconv-out/macos/cli-callconv-unsupported.diagnostics.json` で pass_rate=0.0 を取得）。
+  - CLI `--emit-audit` ゴールデンに Borrowed/Transferred 返り値ケースを追加済みで、`dune runtest` を再固定。
+
+### 3.2 未完了の確認事項
+  - `AuditEnvelope` スキーマ v1.1 へ `bridge.*` プロパティを追加し、CI の JSON 検証を更新する。
+
+### 3.3 備考
+- `--verify-ir` 付きで Linux/Windows/macOS の CLI 再実行を行い、stub エントリブロックの無終端問題を解消済み。監査ログには `bridge.return.{ownership,status,wrap,release_handler,rc_adjustment}` が出力されるようになったため、CI 側の必須キーにも追加済み。
+- `Codegen.codegen_module` が `reml.bridge.stubs` Named Metadata を出力（キー例: `bridge.stub_index`, `bridge.extern_symbol`, `bridge.platform`）。`reml.bridge.version` モジュールフラグ (1) を追加済みで、`main.ml` から受け渡した `stub_plans` でも同一出力を得ている。
 
 ## 4. キャプチャログ
 

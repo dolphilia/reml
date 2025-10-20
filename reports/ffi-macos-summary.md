@@ -119,13 +119,13 @@ Command got signal SEGV. (修正前ログ)
 - [x] `extern_metadata` / `extern_decl` の重複フィールドを解消（`extern_block_target` へ改名済み）
 - [x] `effects-residual.jsonl.golden` を含む監査ゴールデンを更新
 - [x] **LLVM IRゴールデンテスト (basic_arithmetic, control_flow, function_calls) を更新**（2025-10-20）
+- [x] Darwin 向け可変長/構造体戻りの ABI 差分調査を完了し、`docs/notes/llvm-spec-status-survey.md` §2.2 を更新（2025-10-21、`§2.2.2a` 追加）
+- [x] Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）を実装し、`arm64-apple-darwin` 向けに `reml_ffi_acquire_borrowed_result` / `reml_ffi_acquire_transferred_result` の挙動を検証する。`bridge.return.ownership = borrowed/transferred` と新設した `null_results` カウンタが [docs/spec/3-9-core-async-ffi-unsafe.md](../docs/spec/3-9-core-async-ffi-unsafe.md) §2.6、[docs/spec/3-6-core-diagnostics-audit.md](../docs/spec/3-6-core-diagnostics-audit.md) §5.1 に沿って出力されることを `tests/test_ffi_lowering.ml` と `runtime/native/tests/test_ffi_bridge.c` で確認。
+- [x] CLI (`remlc --emit-ir`) を arm64-apple-darwin 向けに再実行し、`tmp/cli-callconv-out/macos/` へ IR/Audit を収集（`--verify-ir` 併用でも成功）
 
 ### 残タスク 📋
 
-- [x] Darwin 向け可変長/構造体戻りの ABI 差分調査を完了し、`docs/notes/llvm-spec-status-survey.md` §2.2 を更新（2025-10-21、`§2.2.2a` 追加）
 - [ ] `AuditEnvelope.metadata.bridge.*` スキーマを確定し、macOS サンプルをゴールデン化する（ドラフトは `tooling/runtime/audit-schema.json` に追加済み、Typer 実装後に本番値を取得）
-- [x] Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）を実装し、`arm64-apple-darwin` 向けに `reml_ffi_acquire_borrowed_result` / `reml_ffi_acquire_transferred_result` の挙動を検証する。`bridge.return.ownership = borrowed/transferred` と新設した `null_results` カウンタが [docs/spec/3-9-core-async-ffi-unsafe.md](../docs/spec/3-9-core-async-ffi-unsafe.md) §2.6、[docs/spec/3-6-core-diagnostics-audit.md](../docs/spec/3-6-core-diagnostics-audit.md) §5.1 に沿って出力されることを `tests/test_ffi_lowering.ml` と `runtime/native/tests/test_ffi_bridge.c` で確認。
-- [x] CLI (`remlc --emit-ir`) を arm64-apple-darwin 向けに再実行し、`tmp/cli-callconv-out/macos/` へ IR/Audit を収集（`--verify-ir` 併用でも成功）
 - [ ] CLI `--emit-audit` のゴールデンに Borrowed/Transferred 返り値ケースを追加し、macOS arm64 の JSONL を固定化
 - [ ] `tooling/ci/sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` へ `ffi_bridge.audit_pass_rate` と Darwin プリセット成功条件を追加
 - [ ] 仕様書（`docs/spec/3-9`, `docs/spec/3-6`）とガイド（`docs/guides/runtime-bridges.md`）の macOS 章を更新し、Phase 3 へ渡す TODO リストを整備
