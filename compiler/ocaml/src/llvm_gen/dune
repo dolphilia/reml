@@ -27,7 +27,7 @@
   reml_parser
   reml_ocaml.ffi_codegen
   unix)
- (link_flags (:include llvm-link-flags.sexp))
+ (ocamlopt_flags (:include llvm-link-flags.sexp))
  (foreign_stubs
   (language c)
   (names llvm_attr_stubs)))

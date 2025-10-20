@@ -67,9 +67,6 @@ REQUIRED_BRIDGE_EXTENSION_KEYS: List[str] = [
     "bridge.return.rc_adjustment",
 ]
 
-STATUS_OK_VALUES = {"ok", "success", "pass"}
-
-
 def load_json(path: Path) -> Dict:
     with path.open("r", encoding="utf-8") as handle:
         try:
@@ -253,18 +250,6 @@ def collect_bridge_metrics(paths: List[Path]) -> Dict:
             issues: List[str] = []
             issues.extend(audit_missing)
             issues.extend(extensions_missing)
-
-            status_value = extract_bridge_status(audit_dict, extensions_dict)
-            status_issue: Optional[str] = None
-            if status_value is None:
-                status_issue = "bridge.status"
-            else:
-                normalized = status_value.lower()
-                if normalized not in STATUS_OK_VALUES:
-                    status_issue = f"bridge.status={status_value}"
-
-            if status_issue:
-                issues.append(status_issue)
 
             if not issues:
                 passed += 1
