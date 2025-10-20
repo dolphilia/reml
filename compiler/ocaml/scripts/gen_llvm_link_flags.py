@@ -48,20 +48,20 @@ def _run_command(args: Iterable[str]) -> List[str]:
     return shlex.split(output)
 
 
-def _add_flag(
-    acc: List[str], seen: set[tuple[str, str]], kind: str, value: str
+def _add_pair(
+    acc: List[str], seen: set[tuple[str, str]], flag: str, value: str
 ) -> None:
-    key = (kind, value)
+    key = (flag, value)
     if key in seen:
         return
     seen.add(key)
-    acc.extend([kind, value])
+    acc.extend([flag, value])
 
 
 def gather_flags() -> List[str]:
     """llvm-config とプラットフォーム情報からリンクフラグを収集する。"""
     output: List[str] = []
-    seen: set[tuple[str, str]] = set()
+    pair_seen: set[tuple[str, str]] = set()
 
     llvm_config = _find_llvm_config()
     libs: List[str] = []
@@ -83,17 +83,15 @@ def gather_flags() -> List[str]:
         libs = ["-lLLVM-18"]
 
     if libdir:
-        _add_flag(output, seen, "-ccopt", f"-L{libdir}")
-        _add_flag(output, seen, "-cclib", f"-L{libdir}")
+        _add_pair(output, pair_seen, "-ccopt", f"-L{libdir}")
 
     def process_flag(flag: str) -> None:
         if flag.startswith("-l"):
-            _add_flag(output, seen, "-cclib", flag)
+            _add_pair(output, pair_seen, "-cclib", flag)
         elif flag.startswith("-L"):
-            _add_flag(output, seen, "-ccopt", flag)
-            _add_flag(output, seen, "-cclib", flag)
+            _add_pair(output, pair_seen, "-ccopt", flag)
         else:
-            _add_flag(output, seen, "-ccopt", flag)
+            _add_pair(output, pair_seen, "-ccopt", flag)
 
     for flag in libs:
         process_flag(flag)
@@ -101,49 +99,44 @@ def gather_flags() -> List[str]:
     for flag in system_libs:
         process_flag(flag)
 
-    # LLVM C API を使用するので libLLVM-C.* が存在する場合は必ずリンクする。
-    need_llvm_c = True
-    for kind, value in seen:
-        if kind == "-cclib" and value == "-lLLVM-C":
-            need_llvm_c = False
-            break
+    has_llvm_c = any(
+        flag == "-cclib" and value == "-lLLVM-C" for flag, value in pair_seen
+    )
 
-    if need_llvm_c:
-        has_llvm_c = False
+    if not has_llvm_c:
         search_dirs: List[str] = []
         if libdir:
             search_dirs.append(libdir)
-        if platform.system() == "Darwin":
+        system = platform.system()
+        if system == "Darwin":
             search_dirs.extend(
                 [
                     "/opt/homebrew/opt/llvm@18/lib",
                     "/usr/local/opt/llvm@18/lib",
                 ]
             )
+        elif system == "Linux":
+            search_dirs.extend(["/usr/lib/llvm-18/lib", "/usr/lib/llvm-17/lib"])
         for directory in search_dirs:
             pattern = os.path.join(directory, "libLLVM-C.*")
             if glob.glob(pattern):
+                _add_pair(output, pair_seen, "-ccopt", f"-L{directory}")
+                _add_pair(output, pair_seen, "-cclib", "-lLLVM-C")
                 has_llvm_c = True
                 break
-        if has_llvm_c:
-            _add_flag(output, seen, "-cclib", "-lLLVM-C")
 
     system = platform.system()
     if system == "Darwin":
-        _add_flag(output, seen, "-cclib", "-lcurses")
+        _add_pair(output, pair_seen, "-cclib", "-lcurses")
     elif system == "Linux":
-        _add_flag(output, seen, "-cclib", "-ltinfo")
+        _add_pair(output, pair_seen, "-cclib", "-ltinfo")
 
     return output
 
 
 def emit_sexp(flags: List[str]) -> str:
     """Dune が読み込めるよう S 式へ変換する。"""
-    parts: List[str] = []
-    for flag in flags:
-        parts.append("-cclib")
-        parts.append(flag)
-    return "(" + " ".join(parts) + ")\n"
+    return "(" + " ".join(flags) + ")\n"
 
 
 def main() -> int:
