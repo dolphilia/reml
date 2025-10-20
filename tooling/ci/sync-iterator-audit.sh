@@ -311,6 +311,13 @@ if audit_path is not None:
                 metadata = entry["metadata"]
             else:
                 metadata = entry
+
+        category = entry.get("category") if isinstance(entry, dict) else None
+        if not isinstance(category, str):
+            category = ""
+        if not category.startswith("effect.stage"):
+            continue
+
         stage_trace_raw = metadata.get("stage_trace")
         trace = normalise_stage_trace(stage_trace_raw)
 
