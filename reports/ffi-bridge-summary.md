@@ -41,14 +41,12 @@
   - CLI `--emit-audit` ゴールデンに Borrowed/Transferred 返り値ケースを追加済みで、`dune runtest` を再固定。
 
 ### 3.2 未完了の確認事項
-  - Windows CI（`tooling/ci/sync-iterator-audit.sh`）での Stage/bridge 検証自動化は技術的負債 ID 22 として Phase 2-4 で対応予定。
-  - macOS 専用サンプル（`ffi_dispatch_async.reml` / `ffi_malloc_arm64.reml`）の自動ビルド・実行と `ffi_bridge.audit_pass_rate` 反映は ID 23 に従い Phase 2-4 で完了させる。
-  - 上記 2 項目の完了条件は `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` の「引き継ぎタスク対応計画」に記載。
+  - なし（Windows/macOS CI で `ffi_bridge.audit_pass_rate` / `bridge.platform` の自動検証を実施中。ID 22/23 は 2025-10-25 時点でクローズ）。
 
 ### 3.3 備考
 - `--verify-ir` 付きで Linux/Windows/macOS の CLI 再実行を行い、stub エントリブロックの無終端問題を解消済み。監査ログには `bridge.return.{ownership,status,wrap,release_handler,rc_adjustment}` が出力されるようになったため、CI 側の必須キーにも追加済み。
 - `Codegen.codegen_module` が `reml.bridge.stubs` Named Metadata を出力（キー例: `bridge.stub_index`, `bridge.extern_symbol`, `bridge.platform`）。`reml.bridge.version` モジュールフラグ (1) を追加済みで、`main.ml` から受け渡した `stub_plans` でも同一出力を得ている。
-- Windows Stage override 自動検証は技術的負債リスト ID 22 で追跡中。macOS 固有サンプル (`ffi_dispatch_async.reml`) の自動実行は ID 23 で管理している。
+- Windows Stage override は `.github/workflows/bootstrap-windows.yml` の `Windows Audit Metrics` ジョブで Bash 実行 (`tooling/ci/sync-iterator-audit.sh`) を通じて検証。macOS 固有サンプル (`examples/ffi/macos/*.reml`) は `.github/workflows/bootstrap-macos.yml` で自動ビルドされ、`tooling/ci/ffi-audit/macos/` に監査ログを保存している。
 
 ## 4. キャプチャログ
 

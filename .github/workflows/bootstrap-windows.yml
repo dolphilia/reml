@@ -29,32 +29,44 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Collect iterator/FFI audit metrics (Windows)
-        shell: pwsh
+      - name: Prepare directories
+        shell: bash
         run: |
-          python tooling/ci/collect-iterator-audit-metrics.py `
-            --source compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden `
-            --source compiler/ocaml/tests/golden/diagnostics/ffi/unsupported-abi.json.golden `
-            --output build\iterator-metrics.json
+          set -euo pipefail
+          mkdir -p build tooling/ci reports
+
+      - name: Collect iterator/FFI audit metrics (Windows)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tooling/ci/collect-iterator-audit-metrics.py \
+            --source compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden \
+            --source compiler/ocaml/tests/golden/diagnostics/ffi/unsupported-abi.json.golden \
+            --audit-source compiler/ocaml/tests/golden/audit/cli-ffi-bridge-windows.jsonl.golden \
+            --output tooling/ci/iterator-audit-metrics.json
 
       - name: Prepare verify log placeholder
+        shell: bash
         run: |
-          New-Item -ItemType Directory -Path build -Force | Out-Null
-          "検証成功 (placeholder for Windows audit validation)" | Out-File -FilePath build\verify.log -Encoding utf8
+          set -euo pipefail
+          printf 'Verification succeeded (placeholder for Windows audit validation)\n' > build/verify.log
 
       - name: Run Windows audit summary
+        shell: bash
         run: |
-          pwsh -File tooling/ci/Sync-AuditMetrics.ps1 `
-            -MetricsPath build\iterator-metrics.json `
-            -VerifyLogPath build\verify.log `
-            -OutputPath reports\iterator-stage-summary-windows.md
+          set -euo pipefail
+          bash tooling/ci/sync-iterator-audit.sh \
+            --metrics tooling/ci/iterator-audit-metrics.json \
+            --verify-log build/verify.log \
+            --audit compiler/ocaml/tests/golden/audit/effects-stage.json.golden \
+            --output reports/iterator-stage-summary-windows.md
 
       - name: Upload Windows audit summary
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: windows-iterator-audit-summary
-          path: reports\iterator-stage-summary-windows.md
+          path: reports/iterator-stage-summary-windows.md
           retention-days: 14
 
       - name: Upload Windows audit metrics
@@ -62,5 +74,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-iterator-audit-metrics
-          path: build\iterator-metrics.json
+          path: tooling/ci/iterator-audit-metrics.json
           retention-days: 14

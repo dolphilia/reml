@@ -18,7 +18,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 
 # Required audit metadata keys.
@@ -77,6 +77,41 @@ def load_json(path: Path) -> Dict:
             return json.load(handle)
         except json.JSONDecodeError as exc:
             raise ValueError(f"Failed to parse JSON: {path}") from exc
+
+
+def load_audit_entries(path: Path) -> List[Dict[str, Any]]:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ValueError(f"Failed to read audit log: {path}") from exc
+
+    text = text.strip()
+    if not text:
+        return []
+
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        entries: List[Dict[str, Any]] = []
+        for line_no, line in enumerate(text.splitlines(), start=1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    f"Failed to parse JSON line ({path}:{line_no}): {exc}"
+                ) from exc
+            if isinstance(obj, dict):
+                entries.append(obj)
+        return entries
+
+    if isinstance(data, list):
+        return [entry for entry in data if isinstance(entry, dict)]
+    if isinstance(data, dict):
+        return [data]
+    return []
 
 
 def iter_diagnostics(data: Dict) -> Iterable[Dict]:
@@ -244,11 +279,14 @@ def collect_metrics(paths: List[Path]) -> Dict:
     }
 
 
-def collect_bridge_metrics(paths: List[Path]) -> Dict:
+def collect_bridge_metrics(
+    paths: List[Path], audit_paths: List[Path]
+) -> Dict:
     total = 0
     passed = 0
     failures: List[Dict[str, object]] = []
     platform_summary: Dict[str, Dict[str, int]] = {}
+    audit_sources: List[str] = []
 
     for path in paths:
         data = load_json(path)
@@ -305,6 +343,106 @@ def collect_bridge_metrics(paths: List[Path]) -> Dict:
     if total > 0:
         pass_rate = passed / total
 
+    for path in audit_paths:
+        audit_sources.append(str(path))
+        entries = load_audit_entries(path)
+        if not entries:
+            total += 1
+            missing_record = platform_summary.setdefault(
+                "<missing>", {"total": 0, "ok": 0, "failed": 0}
+            )
+            missing_record["total"] += 1
+            missing_record["failed"] += 1
+            failures.append(
+                {
+                    "file": str(path),
+                    "index": None,
+                    "code": "ffi.audit.empty",
+                    "missing": ["audit_entries"],
+                    "status": None,
+                    "platform": None,
+                }
+            )
+            continue
+
+        valid_entries = 0
+        for index, entry in enumerate(entries):
+            category = entry.get("category") if isinstance(entry, dict) else None
+            if isinstance(category, str) and not category.startswith("ffi.bridge"):
+                continue
+
+            metadata = {}
+            if isinstance(entry, dict):
+                if isinstance(entry.get("metadata"), dict):
+                    metadata = entry["metadata"]
+                else:
+                    metadata = entry
+            audit_dict = metadata if isinstance(metadata, dict) else None
+            extensions_dict = None
+            if isinstance(entry, dict) and isinstance(entry.get("extensions"), dict):
+                extensions_dict = entry["extensions"]
+
+            audit_missing = check_bridge_audit_fields(audit_dict)
+            extensions_missing = check_bridge_extension_fields(
+                extensions_dict
+            )
+
+            issues: List[str] = []
+            issues.extend(audit_missing)
+            issues.extend(extensions_missing)
+
+            status_value = extract_bridge_status(audit_dict, extensions_dict)
+            platform_value = extract_bridge_field(
+                audit_dict, extensions_dict, "platform"
+            )
+
+            platform_key = (
+                str(platform_value)
+                if isinstance(platform_value, str) and platform_value
+                else "<unknown>"
+            )
+            platform_record = platform_summary.setdefault(
+                platform_key, {"total": 0, "ok": 0, "failed": 0}
+            )
+
+            total += 1
+            platform_record["total"] += 1
+            valid_entries += 1
+
+            if not issues:
+                passed += 1
+                platform_record["ok"] += 1
+            else:
+                platform_record["failed"] += 1
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "code": category if isinstance(category, str) else "ffi.audit",
+                        "missing": sorted(set(issues)),
+                        "status": status_value,
+                        "platform": platform_value,
+                    }
+                )
+
+        if valid_entries == 0:
+            total += 1
+            missing_record = platform_summary.setdefault(
+                "<missing>", {"total": 0, "ok": 0, "failed": 0}
+            )
+            missing_record["total"] += 1
+            missing_record["failed"] += 1
+            failures.append(
+                {
+                    "file": str(path),
+                    "index": None,
+                    "code": "ffi.audit.missing_bridge",
+                    "missing": ["bridge"],
+                    "status": None,
+                    "platform": None,
+                }
+            )
+
     return {
         "metric": "ffi_bridge.audit_pass_rate",
         "total": total,
@@ -313,6 +451,7 @@ def collect_bridge_metrics(paths: List[Path]) -> Dict:
         "pass_rate": pass_rate,
         "required_audit_keys": REQUIRED_BRIDGE_AUDIT_KEYS,
         "sources": [str(path) for path in paths],
+        "audit_sources": audit_sources,
         "failures": failures,
         "platform_summary": platform_summary,
     }
@@ -332,6 +471,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--output",
         type=Path,
         help="Destination for collected metrics (JSON).",
+    )
+    parser.add_argument(
+        "--audit-source",
+        action="append",
+        dest="audit_sources",
+        help="Path to audit JSON (repeatable).",
     )
     return parser.parse_args(argv)
 
@@ -367,8 +512,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
         return 2
 
+    audit_paths: List[Path] = []
+    if args.audit_sources:
+        audit_paths = [Path(src) for src in args.audit_sources]
+        missing_audit = [str(path) for path in audit_paths if not path.is_file()]
+        if missing_audit:
+            sys.stderr.write(
+                "Missing audit files: " + ", ".join(missing_audit) + "\n"
+            )
+            return 2
+
     iterator_metrics = collect_metrics(sources)
-    bridge_metrics = collect_bridge_metrics(sources)
+    bridge_metrics = collect_bridge_metrics(sources, audit_paths)
 
     combined = {
         "metrics": [iterator_metrics, bridge_metrics],
@@ -382,6 +537,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "sources": iterator_metrics.get("sources"),
         "failures": iterator_metrics.get("failures"),
         "ffi_bridge": bridge_metrics,
+        "audit_sources": bridge_metrics.get("audit_sources"),
     }
 
     json_output = json.dumps(combined, indent=2, ensure_ascii=False)

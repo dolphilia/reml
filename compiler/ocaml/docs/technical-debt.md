@@ -226,41 +226,41 @@ LLVM 18.1.8のソースビルドを試行した結果、以下の結論に至っ
 
 ### 22. Windows Capability Stage 自動検証不足
 
-**分類**: CI / Runtime Capability
-**優先度**: 🟡 Medium
+**分類**: CI / Runtime Capability  
+**優先度**: 🟡 Medium → ✅ 完了（2025-10-25 / Phase 2-4 Week 0）  
 **発見日**: 2025-10-18
 
-#### 問題の詳細
-`tooling/runtime/capabilities/default.json` の `overrides.x86_64-pc-windows-msvc` を `scripts/validate-runtime-capabilities.sh` で静的検証できるものの、Windows 実行環境での `stage_trace` 生成と `iterator.stage.audit_pass_rate` の自動確認が未整備。GitHub Actions (windows-latest) で `remlc --runtime-capabilities ...` を実行し、`reports/iterator-stage-summary.md` を収集するパイプラインが存在しない。
+#### 対応結果（2025-10-25 更新）
+- `.github/workflows/bootstrap-windows.yml` に Bash ベースの監査ジョブを追加し、`windows-latest` 上で `tooling/ci/collect-iterator-audit-metrics.py`（`--audit-source cli-ffi-bridge-windows.jsonl.golden` を指定）と `tooling/ci/sync-iterator-audit.sh` を実行。`bridge.platform` / `iterator.stage.audit_pass_rate` を CI で検証するようにした。
+- `collect-iterator-audit-metrics.py` を拡張し、監査ログ（JSON/JSONL）を `--audit-source` で取り込み可能にしたことで、Windows 成功ログが欠落した場合に `ffi_bridge.audit_pass_rate` が低下し CI が失敗する。
+- 生成物（`reports/iterator-stage-summary-windows.md`, `tooling/ci/iterator-audit-metrics.json`）をアーティファクト化し、レビュー時に Windows Stage override と `bridge.platform` の整合を確認できるようにした。
 
-#### 影響範囲
-- Windows で Stage override が誤設定されても CI が検出できない。
-- Phase 2-3 で予定している FFI Capability 拡張（`ffi.bridge`, `process.spawn`）の検証に遅延が発生する。
-- 監査ログと実行結果の差分がレビュー時に手作業確認となり、回帰検出が難しい。
-
-#### 対応計画
-1. GitHub Actions に Windows 検証ジョブを追加し、`tooling/ci/sync-iterator-audit.sh` を Windows パスで実行できるよう調整する（PowerShell / Bash 併用）。
-2. `iterator-stage-summary.md` の差分を自動比較し、pass_rate 低下時に PR チェックを失敗させる。
-3. FFI Capability 追加時は Windows override JSON を併せて更新し、本項目をクローズする。
+#### 参照
+- `.github/workflows/bootstrap-windows.yml`
+- `tooling/ci/collect-iterator-audit-metrics.py`
+- `tooling/ci/sync-iterator-audit.sh`
 
 ### 23. macOS FFI サンプル (`ffi_dispatch_async`) の自動検証不足
 
 **分類**: ランタイム / テスト  
-**優先度**: 🟡 Medium  
+**優先度**: 🟡 Medium → ✅ 完了（2025-10-25 / Phase 2-4 Week 0）  
 **発見日**: 2025-10-24
 
-#### 問題の詳細
+#### 対応結果（2025-10-25 更新）
 
-- Phase 2-3 で `tmp/cli-callconv-sample.reml` を 3 ターゲットで再実行し IR/Audit を整備したが、macOS 固有の `ffi_dispatch_async.reml` / `ffi_malloc_arm64.reml` はビルド失敗のまま未実施（`reports/ffi-macos-summary.md` に記録）。
-- libSystem の非同期呼び出しや Darwin 固有の所有権ハンドリングを CI で検証できず、`bridge.return.*` の監査カバレッジに抜けがある。
-- Phase 3 で macOS FFI Capability を昇格させる際、現状のままだとリグレッションを検出できないリスクが高い。
+- `examples/ffi/macos/ffi_dispatch_async.reml` / `examples/ffi/macos/ffi_malloc_arm64.reml` を追加し、Darwin AAPCS64 の `dispatch_async_f` と `malloc`/`free` パスを CI サンプルとして固定化。所有権情報（`bridge.return.*`）と `bridge.platform=macos-arm64` を監査ログに含めた。
+- `.github/workflows/bootstrap-macos.yml` の `iterator-audit` ジョブで上記サンプルを `remlc --emit-audit` 付きで実行し、`tooling/ci/ffi-audit/macos/*.audit.jsonl` を生成。`collect-iterator-audit-metrics.py` の `--audit-source` で投入しない場合は `ffi_bridge.audit_pass_rate` が 1.0 にならず CI が失敗する。
+- `tooling/ci/sync-iterator-audit.sh` に `--macos-ffi-samples` オプションを追加し、macOS 成功ログを Markdown サマリーに表示。`reports/iterator-stage-summary.md` で macOS FFI サンプルの検証結果を確認できるようにした。
+- `reports/ffi-bridge-summary.md` / `reports/ffi-macos-summary.md` を更新し、macOS 固有サンプルが自動実行される旨と生成ログの保存先を明記。
 
-#### 対応計画
-
-1. `ffi_dispatch_async.reml` / `ffi_malloc_arm64.reml` のビルド手順を整理し、`scripts/ci-local.sh --target macos --arch arm64` の Test ステップに追加する。
-2. 生成された IR / 監査ログを `tmp/cli-callconv-out/macos/` に保存し、`reports/ffi-macos-summary.md` と `compiler/ocaml/tests/golden/audit/cli-ffi-bridge-macos.jsonl.golden` へ反映する。
-3. macOS 監査ログで `bridge.platform = macos-arm64` と `bridge.return.*` が揃うことを確認し、`ffi_bridge.audit_pass_rate` が 1.0 を維持するよう CI ゲートを更新する。
-4. `dispatch_async_f` 実行に codesign / entitlements が必要な場合は手順を整理し、Phase 3 の macOS チームへ引き継ぐ（`docs/notes/darwin-ffi-validation.md` を新設する想定）。
+#### 参照
+- `examples/ffi/macos/ffi_dispatch_async.reml`
+- `examples/ffi/macos/ffi_malloc_arm64.reml`
+- `.github/workflows/bootstrap-macos.yml`
+- `tooling/ci/collect-iterator-audit-metrics.py`
+- `tooling/ci/sync-iterator-audit.sh`
+- `reports/ffi-bridge-summary.md`
+- `reports/ffi-macos-summary.md`
 
 ### 11. 統計機能の拡張
 

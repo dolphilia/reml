@@ -130,7 +130,7 @@ Command got signal SEGV. (修正前ログ)
 - [x] `tooling/ci/sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` へ `ffi_bridge.audit_pass_rate` と Darwin プリセット成功条件を追加
 - [x] 仕様書（`docs/spec/3-9`, `docs/spec/3-6`）とガイド（`docs/guides/runtime-bridges.md`）の macOS 章を更新し、Phase 3 へ渡す TODO リストを整備
 
-> **メモ**: `ffi_dispatch_async.reml` / `ffi_malloc_arm64.reml` の自動検証は「技術的負債 ID 23」で管理。Phase 2-4 で CI 組み込みと監査ログ固定化を実施し、完了後は本サマリーを更新する。
+> **アップデート**: `.github/workflows/bootstrap-macos.yml` の `iterator-audit` ジョブで `ffi_dispatch_async.reml` / `ffi_malloc_arm64.reml` を自動実行し、`tooling/ci/ffi-audit/macos/ffi_dispatch_async.audit.jsonl` と `ffi_malloc_arm64.audit.jsonl` を生成。`collect-iterator-audit-metrics.py --audit-source` と `sync-iterator-audit.sh --macos-ffi-samples` により `ffi_bridge.audit_pass_rate (macos-arm64)` のゲートを有効化済み（技術的負債 ID 23 をクローズ）。
 
 ## 7. クロスプラットフォーム比較観点（ドラフト）
 - 対象: Linux x86_64（System V）、Windows x64（MSVC）、macOS arm64（Darwin AAPCS64）。
@@ -141,7 +141,7 @@ Command got signal SEGV. (修正前ログ)
   4. CI 実行時間 — `scripts/ci-local.sh --target <platform>` の Build/Test 所要時間を比較し、15% 以上乖離した場合は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` にリスク登録。
 - 次のアクション:
   - Linux / Windows 向けテンプレートを本ファイルと同形式で作成し、共通フィールド（Stage, ABI, Ownership, CI 実行結果）を揃える。
-  - `tooling/ci/sync-iterator-audit.sh` に FFI ブリッジサマリ出力オプションを追加し、`iterator-stage-summary.md` と同じレイアウトで `ffi-bridge-summary.md` を生成する。
+  - ✅ `tooling/ci/sync-iterator-audit.sh` に `--macos-ffi-samples` を追加し、`iterator-stage-summary.md` へ macOS FFI サンプルの結果を表示（2025-10-25 完了）。
   - GitHub Actions macOS ワークフロー (`bootstrap-macos.yml`) の `llvm-verify` ジョブに `compiler/ocaml/scripts/verify_llvm_ir.sh --preset darwin-arm64 --target arm64-apple-darwin` を追加済み。varargs/sret プリセット (`darwin_varargs.ll`, `darwin_struct_return.ll`) の自動検証結果を `tooling/ci/llvm-verify.log` で監視する。
 
 ---

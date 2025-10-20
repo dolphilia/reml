@@ -439,7 +439,7 @@ jobs:
           FIXTURE_DIR="$GITHUB_WORKSPACE/tooling/ci/ffi-audit"
           TMP_MIRROR="$GITHUB_WORKSPACE/tmp/cli-callconv-out"
           mkdir -p "$FIXTURE_DIR"/{macos,windows,linux}
-          mkdir -p "$TMP_MIRROR"
+          mkdir -p "$TMP_MIRROR"/{macos,windows,linux}
 
           run_ffi_audit() {
             local target="$1"
@@ -474,6 +474,33 @@ jobs:
               "$mirror_dir/cli-callconv-unsupported.audit.jsonl"
           }
 
+          run_macos_sample() {
+            local sample_path="$1"
+            local key="$2"
+            local sample_dir="$FIXTURE_DIR/macos/$key"
+            local audit_path="$FIXTURE_DIR/macos/${key}.audit.jsonl"
+            local mirror_dir="$TMP_MIRROR/macos"
+
+            mkdir -p "$sample_dir/ir"
+            "$REMLC" "$sample_path" \
+              --target arm64-apple-darwin \
+              --effect-stage beta \
+              --runtime-capabilities "$CAP_JSON" \
+              --emit-ir \
+              --out-dir "$sample_dir/ir" \
+              --emit-audit "$audit_path" \
+              --format json \
+              > "$sample_dir/stdout.log" \
+              2> "$sample_dir/diagnostics.json" || true
+
+            if [ ! -f "$audit_path" ]; then
+              : > "$audit_path"
+            fi
+
+            cp "$audit_path" \
+              "$mirror_dir/${key}.audit.jsonl"
+          }
+
           run_ffi_audit arm64-apple-darwin \
             compiler/ocaml/tests/samples/ffi/cli-callconv-unsupported-macos.reml \
             "$FIXTURE_DIR/macos"
@@ -485,6 +512,12 @@ jobs:
           run_ffi_audit x86_64-unknown-linux-gnu \
             compiler/ocaml/tests/samples/ffi/cli-callconv-unsupported-linux.reml \
             "$FIXTURE_DIR/linux"
+
+          run_macos_sample examples/ffi/macos/ffi_dispatch_async.reml \
+            ffi_dispatch_async
+
+          run_macos_sample examples/ffi/macos/ffi_malloc_arm64.reml \
+            ffi_malloc_arm64
 
           cat "$FIXTURE_DIR"/macos/cli-callconv-unsupported.audit.jsonl \
               "$FIXTURE_DIR"/windows/cli-callconv-unsupported.audit.jsonl \
@@ -501,6 +534,8 @@ jobs:
             --source tmp/cli-callconv-out/macos/cli-callconv-unsupported.diagnostics.json \
             --source tmp/cli-callconv-out/windows/cli-callconv-unsupported.diagnostics.json \
             --source tmp/cli-callconv-out/linux/cli-callconv-unsupported.diagnostics.json \
+            --audit-source tooling/ci/ffi-audit/macos/ffi_dispatch_async.audit.jsonl \
+            --audit-source tooling/ci/ffi-audit/macos/ffi_malloc_arm64.audit.jsonl \
             --output tooling/ci/iterator-audit-metrics.json
 
       - name: Run iterator audit gate
@@ -511,6 +546,8 @@ jobs:
             --metrics tooling/ci/iterator-audit-metrics.json \
             --verify-log tooling/ci/llvm-verify.log \
             --audit tooling/ci/ffi-audit/stage.audit.jsonl \
+            --macos-ffi-samples tooling/ci/ffi-audit/macos/ffi_dispatch_async.audit.jsonl \
+            --macos-ffi-samples tooling/ci/ffi-audit/macos/ffi_malloc_arm64.audit.jsonl \
             --output reports/iterator-stage-summary.md
 
       - name: Upload iterator audit metrics

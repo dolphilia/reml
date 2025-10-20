@@ -7,6 +7,7 @@ METRICS_PATH=""
 VERIFY_LOG_PATH=""
 AUDIT_PATH=""
 OUTPUT_PATH=""
+declare -a MACOS_AUDIT_PATHS=()
 
 print_usage() {
     cat <<'EOF'
@@ -18,6 +19,8 @@ print_usage() {
   --verify-log <PATH>   verify_llvm_ir.sh のログファイル
   --audit <PATH>        AuditEnvelope JSON (単一ファイルまたは JSON Lines)
   --output <PATH>       Markdown サマリー出力先（既定: reports/iterator-stage-summary.md）
+  --macos-ffi-samples <PATH>
+                        macOS arm64 FFI 監査ログ（複数指定可）
   -h, --help            このヘルプを表示
 
 説明:
@@ -46,6 +49,11 @@ while [[ $# -gt 0 ]]; do
         --output)
             shift || { echo "error: --output の直後にパスを指定してください" >&2; exit 1; }
             OUTPUT_PATH="$1"
+            shift
+            ;;
+        --macos-ffi-samples)
+            shift || { echo "error: --macos-ffi-samples の直後にパスを指定してください" >&2; exit 1; }
+            MACOS_AUDIT_PATHS+=("$1")
             shift
             ;;
         -h|--help)
@@ -86,6 +94,15 @@ if [[ -n "$AUDIT_PATH" && ! -f "$AUDIT_PATH" ]]; then
     exit 1
 fi
 
+if [[ ${#MACOS_AUDIT_PATHS[@]} -gt 0 ]]; then
+    for macos_audit in "${MACOS_AUDIT_PATHS[@]}"; do
+        if [[ ! -f "$macos_audit" ]]; then
+            echo "error: macOS FFI 監査ファイルが見つかりません: $macos_audit" >&2
+            exit 1
+        fi
+    done
+fi
+
 if [[ -z "$OUTPUT_PATH" ]]; then
     OUTPUT_PATH="reports/iterator-stage-summary.md"
 fi
@@ -94,7 +111,7 @@ if [[ "$OUTPUT_PATH" != "-" ]]; then
     mkdir -p "$(dirname "$OUTPUT_PATH")"
 fi
 
-PYTHON_OUTPUT="$(python3 - "$METRICS_PATH" "$VERIFY_LOG_PATH" "${AUDIT_PATH:-}" <<'PYCODE'
+PYTHON_OUTPUT="$(python3 - "$METRICS_PATH" "$VERIFY_LOG_PATH" "${AUDIT_PATH:-}" "${MACOS_AUDIT_PATHS[@]}" <<'PYCODE'
 import json
 import re
 import sys
@@ -102,9 +119,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-metrics_path = Path(sys.argv[1])
-verify_log_path = Path(sys.argv[2])
-audit_path = Path(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[3] else None
+argv_iter = sys.argv[1:]
+metrics_path = Path(argv_iter[0])
+verify_log_path = Path(argv_iter[1])
+audit_path = None
+macos_audit_paths: List[Path] = []
+if len(argv_iter) >= 3 and argv_iter[2]:
+    audit_path = Path(argv_iter[2])
+if len(argv_iter) > 3:
+    macos_audit_paths = [Path(arg) for arg in argv_iter[3:] if arg]
 
 def load_json(path: Path) -> Dict[str, Any]:
     with path.open("r", encoding="utf-8") as handle:
@@ -168,6 +191,7 @@ verify_log_text = load_verify_log(verify_log_path)
 iterator_metrics: Dict[str, Any] = metrics_data
 ffi_metrics: Optional[Dict[str, Any]] = None
 ffi_platform_issue = False
+macos_samples_issue = False
 
 if isinstance(metrics_data.get("metrics"), list):
     for entry in metrics_data["metrics"]:
@@ -262,6 +286,52 @@ if ffi_metrics is not None:
     else:
         lines.append("  - プラットフォーム別サマリー: (データなし)")
         ffi_platform_issue = True
+
+if macos_audit_paths:
+    lines.append("\n#### macOS FFI サンプル監査")
+
+    def is_success_status(value: Optional[str]) -> bool:
+        if value is None:
+            return False
+        return str(value) in {"ok", "wrap", "wrap_and_release"}
+
+    for sample_path in macos_audit_paths:
+        try:
+            entries = load_audit_entries(sample_path)
+        except SystemExit as exc:  # re-raise with context
+            macos_samples_issue = True
+            lines.append(f"- ❌ `{sample_path}`: 監査ログの読み込みに失敗しました ({exc})")
+            continue
+
+        if not entries:
+            macos_samples_issue = True
+            lines.append(f"- ❌ `{sample_path}`: 監査エントリが存在しません")
+            continue
+
+        found_success = False
+        for entry in entries:
+            metadata = {}
+            if isinstance(entry, dict):
+                if isinstance(entry.get("metadata"), dict):
+                    metadata = entry["metadata"]
+                else:
+                    metadata = entry
+            bridge = metadata.get("bridge") if isinstance(metadata, dict) else None
+            if not isinstance(bridge, dict):
+                continue
+            platform = bridge.get("platform")
+            status_value = bridge.get("status")
+            if platform == "macos-arm64" and is_success_status(status_value):
+                found_success = True
+                break
+
+        if found_success:
+            lines.append(f"- ✅ `{sample_path}`: macos-arm64 の成功監査を確認")
+        else:
+            macos_samples_issue = True
+            lines.append(
+                f"- ⚠️ `{sample_path}`: macos-arm64 の成功監査が見つかりません"
+            )
 
 failures: List[Dict[str, Any]] = iterator_metrics.get("failures", []) or []
 if failures:
@@ -436,6 +506,8 @@ if ffi_metrics is not None:
         exit_code = 1
     if ffi_platform_issue:
         exit_code = 1
+if macos_samples_issue:
+    exit_code = 1
 
 markdown = "\n".join(lines).rstrip() + "\n"
 
