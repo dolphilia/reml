@@ -46,6 +46,7 @@ _opam/
 tests/golden/*.golden
 !tests/golden/simple.golden
 !tests/golden/qualified_patterns.golden
+!tests/golden/typeclass_iterator_stage_mismatch.json.golden
 tests/**/*.actual
 tests/**/*.diff
 

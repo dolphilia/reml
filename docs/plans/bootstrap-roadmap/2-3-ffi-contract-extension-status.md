@@ -9,6 +9,7 @@
 - 現行の FFI ブリッジサマリーでは監査指標 `ffi_bridge.audit_pass_rate` の CI 反映や `AuditEnvelope` スキーマ v1.1 の公開が TODO として残っており、Linux/Windows の個別レポートも未作成である（`reports/ffi-bridge-summary.md`）。
 - macOS 計測サマリーは `ci-local` 成功まで到達したが、`ffi_dispatch_async` などの検証ケースが未実施であり、Linux/Windows と比較するための共通テンプレート化が指示されている（`reports/ffi-macos-summary.md`）。
 - 技術的負債リストでは Windows Capability Stage の自動検証不足が Phase 2-3 着手前の重点課題として整理されている（`compiler/ocaml/docs/technical-debt.md`）。
+- GitHub Actions 側では Windows の `iterator` メトリクス取得ステップが PowerShell の行継続記法 (`^`) 起因で失敗していたため `pwsh` 向けのバッククォート継続へ修正し（`.github/workflows/bootstrap-windows.yml:32`）、Linux では `typeclass_iterator_stage_mismatch.json.golden` が `.gitignore` の対象外になるよう調整した（`compiler/ocaml/.gitignore:45`）。さらに macOS の LLVM リンク失敗は `llvm-config` 由来のライブラリ差異が原因だったため、Dune で動的にリンクフラグを生成するスクリプトを追加して解消した（`compiler/ocaml/scripts/gen_llvm_link_flags.py`, `compiler/ocaml/src/llvm_gen/dune`）。
 
 ## 2. 残タスク一覧
 - **LLVM IR / スタブ整合**

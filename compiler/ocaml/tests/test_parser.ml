@@ -305,6 +305,9 @@ let test_impl_decls () =
 
 (* ========== extern 宣言テスト ========== *)
 
+(* TODO(bootstrap-ffi-2-3):
+   `effect {unsafe}` ブロック付きの extern 呼び出しは現行パーサで未対応。
+   Phase 2-3 FFI 契約拡張でパーサ対応後にテストケースを追加する。 *)
 let test_extern_decls () =
   expect_decl_count "extern: single fn" 1 "extern \"C\" fn puts(s: Str) -> i32;";
   expect_ok "extern: block"

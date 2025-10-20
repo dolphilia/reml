@@ -437,7 +437,9 @@ jobs:
           chmod +x "$REMLC"
           CAP_JSON="$GITHUB_WORKSPACE/tooling/runtime/capabilities/default.json"
           FIXTURE_DIR="$GITHUB_WORKSPACE/tooling/ci/ffi-audit"
+          TMP_MIRROR="$GITHUB_WORKSPACE/tmp/cli-callconv-out"
           mkdir -p "$FIXTURE_DIR"/{macos,windows,linux}
+          mkdir -p "$TMP_MIRROR"
 
           run_ffi_audit() {
             local target="$1"
@@ -461,6 +463,15 @@ jobs:
             if [ ! -f "$out_dir/cli-callconv-unsupported.audit.jsonl" ]; then
               : > "$out_dir/cli-callconv-unsupported.audit.jsonl"
             fi
+
+            local platform_dir
+            platform_dir="$(basename "$out_dir")"
+            local mirror_dir="$TMP_MIRROR/$platform_dir"
+            mkdir -p "$mirror_dir"
+            cp "$out_dir/cli-callconv-unsupported.diagnostics.json" \
+              "$mirror_dir/cli-callconv-unsupported.diagnostics.json"
+            cp "$out_dir/cli-callconv-unsupported.audit.jsonl" \
+              "$mirror_dir/cli-callconv-unsupported.audit.jsonl"
           }
 
           run_ffi_audit arm64-apple-darwin \
@@ -480,13 +491,16 @@ jobs:
               "$FIXTURE_DIR"/linux/cli-callconv-unsupported.audit.jsonl \
             > "$FIXTURE_DIR/stage.audit.jsonl"
 
+          cp "$FIXTURE_DIR/stage.audit.jsonl" \
+            "$TMP_MIRROR/stage.audit.jsonl"
+
       - name: Collect iterator.stage audit metrics
         run: |
           python3 tooling/ci/collect-iterator-audit-metrics.py \
             --source compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden \
-            --source tooling/ci/ffi-audit/macos/cli-callconv-unsupported.diagnostics.json \
-            --source tooling/ci/ffi-audit/windows/cli-callconv-unsupported.diagnostics.json \
-            --source tooling/ci/ffi-audit/linux/cli-callconv-unsupported.diagnostics.json \
+            --source tmp/cli-callconv-out/macos/cli-callconv-unsupported.diagnostics.json \
+            --source tmp/cli-callconv-out/windows/cli-callconv-unsupported.diagnostics.json \
+            --source tmp/cli-callconv-out/linux/cli-callconv-unsupported.diagnostics.json \
             --output tooling/ci/iterator-audit-metrics.json
 
       - name: Run iterator audit gate

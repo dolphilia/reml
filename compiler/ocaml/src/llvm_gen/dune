@@ -1,5 +1,12 @@
 ; Dune ビルド設定 — LLVM IR 生成 (Phase 3 Week 12-16)
 
+(rule
+ (targets llvm-link-flags.sexp)
+ (deps ../../scripts/gen_llvm_link_flags.py)
+ (action
+  (with-stdout-to %{targets}
+   (run %{bin:python3} %{dep:../../scripts/gen_llvm_link_flags.py}))))
+
 (library
  (name llvm_gen)
  (public_name reml_ocaml.llvm_gen)
@@ -20,6 +27,7 @@
   reml_parser
   reml_ocaml.ffi_codegen
   unix)
+ (link_flags (:include llvm-link-flags.sexp))
  (foreign_stubs
   (language c)
   (names llvm_attr_stubs)))
