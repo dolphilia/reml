@@ -167,6 +167,7 @@ verify_log_text = load_verify_log(verify_log_path)
 
 iterator_metrics: Dict[str, Any] = metrics_data
 ffi_metrics: Optional[Dict[str, Any]] = None
+ffi_platform_issue = False
 
 if isinstance(metrics_data.get("metrics"), list):
     for entry in metrics_data["metrics"]:
@@ -241,6 +242,27 @@ if ffi_metrics is not None:
         for src in ffi_sources:
             lines.append(f"    - `{src}`")
 
+    platform_summary = ffi_metrics.get("platform_summary")
+    if isinstance(platform_summary, dict) and platform_summary:
+        lines.append("  - プラットフォーム別サマリー:")
+        for platform in sorted(platform_summary.keys()):
+            stats = platform_summary.get(platform) or {}
+            total = int(stats.get("total", 0) or 0)
+            ok = int(stats.get("ok", 0) or 0)
+            failed = int(stats.get("failed", 0) or 0)
+            lines.append(
+                f"    - {platform}: total={total}, ok={ok}, failed={failed}"
+            )
+            if platform == "macos-arm64":
+                if ok == 0 or failed > 0:
+                    ffi_platform_issue = True
+                    lines.append(
+                        "      ⚠️ macOS (macos-arm64) で成功した監査ログが確認できません"
+                    )
+    else:
+        lines.append("  - プラットフォーム別サマリー: (データなし)")
+        ffi_platform_issue = True
+
 failures: List[Dict[str, Any]] = iterator_metrics.get("failures", []) or []
 if failures:
     lines.append("\n#### 監査必須キーの欠落")
@@ -262,8 +284,10 @@ if ffi_metrics is not None:
             idx = failure.get("index", "?")
             missing = ", ".join(failure.get("missing", []))
             code = failure.get("code", "ffi.contract.*")
+            status = failure.get("status", "unknown")
+            platform = failure.get("platform", "<unknown>")
             lines.append(
-                f"- `{file}` (diagnostic #{idx}, code={code}) → 欠落フィールド: {missing}"
+                f"- `{file}` (diagnostic #{idx}, code={code}, status={status}, platform={platform}) → 欠落フィールド: {missing}"
             )
     else:
         lines.append("\n- FFI ブリッジ監査: すべて揃っています ✅")
@@ -409,6 +433,8 @@ if ffi_metrics is not None:
     elif ffi_pass_rate_float is not None and ffi_pass_rate_float < 1.0:
         exit_code = 1
     if ffi_failures:
+        exit_code = 1
+    if ffi_platform_issue:
         exit_code = 1
 
 markdown = "\n".join(lines).rstrip() + "\n"

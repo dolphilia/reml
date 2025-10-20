@@ -1003,7 +1003,16 @@ pub type FfiSecurity = {
 | `x86_64-pc-windows-msvc`, `*-windows-msvc` | `msvc` | Windows x64 (MSVC) ABI。 | 
 | `arm64-apple-darwin`, `aarch64-apple-darwin` | `darwin_aapcs64` | Apple Silicon（AAPCS64 with Darwin extensions）。 |
 
-ターゲットを明示しない場合は Capability Registry の既定値に従うが、ABI が未指定 (`AbiUnspecified`) もしくは `AbiCustom(_)` の場合は必ず `ffi.contract.unsupported_abi` を報告する。監査ログには `bridge.status = "ok"|"error"`, `bridge.target`, `bridge.arch`, `bridge.abi`, `bridge.ownership`, `bridge.extern_symbol`, `bridge.source_span` を含め、CI の `ffi_bridge.audit_pass_rate` が 1.0 を下回った場合にブリッジ契約の破綻として扱う。
+ターゲットを明示しない場合は Capability Registry の既定値に従うが、ABI が未指定 (`AbiUnspecified`) もしくは `AbiCustom(_)` の場合は必ず `ffi.contract.unsupported_abi` を報告する。監査ログには `AuditEnvelope.metadata.bridge` オブジェクトを付与し、少なくとも次のキーを出力することを必須要件とする（`tooling/runtime/audit-schema.json` 参照）。
+
+- `status`: ブリッジ処理の結果（`"ok"` / `"error"` / `"leak"` など）
+- `target`, `arch`, `platform`: 解決済みターゲットトリプルと監査用プラットフォーム識別子（例: `macos-arm64`）
+- `abi`, `expected_abi`: 実際に採用された呼出規約と Typer の期待値
+- `ownership`: 引数側の所有権契約
+- `extern_symbol`, `extern_name`, `link_name`: 実際にリンクされたシンボル
+- `return`: 返り値処理の監査情報。`ownership` / `status` / `wrap` / `release_handler` / `rc_adjustment` を必須フィールドとし、Borrowed/Transferred が正しく包まれたかを記録する。
+
+CI の `ffi_bridge.audit_pass_rate` が 1.0 を下回った場合はブリッジ契約の破綻として扱い、`collect-iterator-audit-metrics.py` のレポートに従って不足しているキーを補完すること。
 
 LLVM lowering では `reml.bridge.version = 1` のモジュールフラグと `reml.bridge.stubs` Named Metadata を付与し、スタブごとに `bridge.stub_index`, `bridge.callconv`, `bridge.platform` などのキーを記録する。これにより Core 側の `AuditEnvelope.metadata["bridge"]` と LLVM IR のメタデータが同一キーで突合でき、`tooling/ci/collect-iterator-audit-metrics.py` が `ffi_bridge.audit_pass_rate` を算出する際の整合性を保証する。
 

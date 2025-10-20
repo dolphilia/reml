@@ -41,7 +41,7 @@
   - CLI `--emit-audit` ゴールデンに Borrowed/Transferred 返り値ケースを追加済みで、`dune runtest` を再固定。
 
 ### 3.2 未完了の確認事項
-  - `AuditEnvelope` スキーマ v1.1 へ `bridge.*` プロパティを追加し、CI の JSON 検証を更新する。
+  - なし（`tooling/runtime/audit-schema.json` と CI スクリプトを更新済み）
 
 ### 3.3 備考
 - `--verify-ir` 付きで Linux/Windows/macOS の CLI 再実行を行い、stub エントリブロックの無終端問題を解消済み。監査ログには `bridge.return.{ownership,status,wrap,release_handler,rc_adjustment}` が出力されるようになったため、CI 側の必須キーにも追加済み。
@@ -137,7 +137,7 @@ $ _build/default/src/main.exe ../../tmp/cli-callconv-macos.reml \
 - [x] LLVM CallConv (`win64` / `aarch64_aapcscc`) を適用し、プラットフォーム固有の呼出規約を IR とメタデータに反映（`compiler/ocaml/tests/golden/llvm/*.ll` でサマリを固定）
 - [x] Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）を実装し、メモリ所有権の監査要件を満たす
 - [x] CLI (`remlc --emit-ir`) を Linux/Windows/macOS 向けに再実行し、`tmp/cli-callconv-out/<platform>/` に `reml.bridge.stubs`／`bridge.*` メタデータを含む IR・監査ログを収集（`--verify-ir` 付きでも通過）。
-- [ ] `tooling/ci/sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を CI ゲートへ追加（Linux/Windows 共通ロジック）
+- [x] `tooling/ci/sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を CI ゲートへ追加（Darwin `macos-arm64` pass_rate とプラットフォーム別統計を検証）
 - [x] **`reports/ffi-macos-summary.md` を実測ログで更新**（2025-10-20完了）
 - [ ] `reports/ffi-linux-summary.md`・`reports/ffi-windows-summary.md` を実測ログで更新し、監査ゴールデン (`compiler/ocaml/tests/golden/audit/ffi-bridge-*.jsonl.golden`) を確定
 - [ ] 仕様書 `docs/spec/3-9`, `docs/spec/3-6` とガイド `docs/guides/runtime-bridges.md` を stub メタデータ/計測 API 情報で更新し、`docs/notes/licensing-todo.md` の TODO 消化を記録

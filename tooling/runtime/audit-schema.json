@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://reml.dev/schemas/audit-envelope.json",
-  "title": "Reml AuditEnvelope Schema (Draft)",
-  "description": "監査ログ `AuditEnvelope.metadata` の暫定スキーマ。Phase 2-3 で FFI ブリッジ情報を追加する前提で定義する。",
+  "title": "Reml AuditEnvelope Schema",
+  "description": "監査ログ `AuditEnvelope.metadata` の正式スキーマ。Phase 2-3 で導入された FFI ブリッジ情報を含み、効果ステージおよびブリッジ契約の監査整合性を保証する。",
   "type": "object",
   "additionalProperties": true,
   "properties": {
@@ -35,7 +35,9 @@
             "arch",
             "abi",
             "ownership",
-            "extern_symbol"
+            "extern_symbol",
+            "platform",
+            "return"
           ],
           "properties": {
             "status": {
@@ -94,6 +96,13 @@
               "description": "返り値所有権および包み処理の監査情報",
               "type": "object",
               "additionalProperties": false,
+              "required": [
+                "ownership",
+                "status",
+                "wrap",
+                "release_handler",
+                "rc_adjustment"
+              ],
               "properties": {
                 "ownership": {
                   "description": "返り値の所有権（borrowed, transferred, none など）",

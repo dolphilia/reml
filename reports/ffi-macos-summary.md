@@ -125,10 +125,10 @@ Command got signal SEGV. (修正前ログ)
 
 ### 残タスク 📋
 
-- [ ] `AuditEnvelope.metadata.bridge.*` スキーマを確定し、macOS サンプルをゴールデン化する（ドラフトは `tooling/runtime/audit-schema.json` に追加済み、Typer 実装後に本番値を取得）
-- [ ] CLI `--emit-audit` のゴールデンに Borrowed/Transferred 返り値ケースを追加し、macOS arm64 の JSONL を固定化
-- [ ] `tooling/ci/sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` へ `ffi_bridge.audit_pass_rate` と Darwin プリセット成功条件を追加
-- [ ] 仕様書（`docs/spec/3-9`, `docs/spec/3-6`）とガイド（`docs/guides/runtime-bridges.md`）の macOS 章を更新し、Phase 3 へ渡す TODO リストを整備
+- [x] `AuditEnvelope.metadata.bridge.*` スキーマを確定し、macOS サンプルをゴールデン化する（`tooling/runtime/audit-schema.json` を正式版へ更新済み、`cli-ffi-bridge-macos.jsonl.golden` で検証）
+- [x] CLI `--emit-audit` のゴールデンに Borrowed/Transferred 返り値ケースを追加し、macOS arm64 の JSONL を固定化
+- [x] `tooling/ci/sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` へ `ffi_bridge.audit_pass_rate` と Darwin プリセット成功条件を追加
+- [x] 仕様書（`docs/spec/3-9`, `docs/spec/3-6`）とガイド（`docs/guides/runtime-bridges.md`）の macOS 章を更新し、Phase 3 へ渡す TODO リストを整備
 
 ## 7. クロスプラットフォーム比較観点（ドラフト）
 - 対象: Linux x86_64（System V）、Windows x64（MSVC）、macOS arm64（Darwin AAPCS64）。

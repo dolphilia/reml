@@ -52,7 +52,9 @@ REQUIRED_BRIDGE_AUDIT_KEYS: List[str] = [
     "bridge.abi",
     "bridge.ownership",
     "bridge.extern_symbol",
+    "bridge.platform",
     "bridge.return.ownership",
+    "bridge.return.status",
     "bridge.return.wrap",
     "bridge.return.release_handler",
     "bridge.return.rc_adjustment",
@@ -61,7 +63,9 @@ REQUIRED_BRIDGE_EXTENSION_KEYS: List[str] = [
     "bridge.target",
     "bridge.ownership",
     "bridge.abi",
+    "bridge.platform",
     "bridge.return.ownership",
+    "bridge.return.status",
     "bridge.return.wrap",
     "bridge.return.release_handler",
     "bridge.return.rc_adjustment",
@@ -177,6 +181,21 @@ def extract_bridge_status(
     return None
 
 
+def extract_bridge_field(
+    audit: Optional[Dict], extensions: Optional[Dict], key: str
+) -> Optional[object]:
+    containers: List[Dict] = []
+    if isinstance(audit, dict):
+        containers.append(audit)
+    if isinstance(extensions, dict):
+        containers.append(extensions)
+    for container in containers:
+        bridge = container.get("bridge")
+        if isinstance(bridge, dict) and key in bridge:
+            return bridge.get(key)
+    return None
+
+
 def collect_metrics(paths: List[Path]) -> Dict:
     total = 0
     passed = 0
@@ -229,6 +248,7 @@ def collect_bridge_metrics(paths: List[Path]) -> Dict:
     total = 0
     passed = 0
     failures: List[Dict[str, object]] = []
+    platform_summary: Dict[str, Dict[str, int]] = {}
 
     for path in paths:
         data = load_json(path)
@@ -241,6 +261,20 @@ def collect_bridge_metrics(paths: List[Path]) -> Dict:
             total += 1
             audit_dict = _as_dict(diag.get("audit"))
             extensions_dict = _as_dict(diag.get("extensions"))
+            status_value = extract_bridge_status(audit_dict, extensions_dict)
+            platform_value = extract_bridge_field(
+                audit_dict, extensions_dict, "platform"
+            )
+
+            platform_key = (
+                str(platform_value)
+                if isinstance(platform_value, str) and platform_value
+                else "<unknown>"
+            )
+            platform_record = platform_summary.setdefault(
+                platform_key, {"total": 0, "ok": 0, "failed": 0}
+            )
+            platform_record["total"] += 1
 
             audit_missing = check_bridge_audit_fields(audit_dict)
             extensions_missing = check_bridge_extension_fields(
@@ -253,7 +287,9 @@ def collect_bridge_metrics(paths: List[Path]) -> Dict:
 
             if not issues:
                 passed += 1
+                platform_record["ok"] += 1
             else:
+                platform_record["failed"] += 1
                 failures.append(
                     {
                         "file": str(path),
@@ -261,6 +297,7 @@ def collect_bridge_metrics(paths: List[Path]) -> Dict:
                         "code": code,
                         "missing": sorted(set(issues)),
                         "status": status_value,
+                        "platform": platform_value,
                     }
                 )
 
@@ -277,6 +314,7 @@ def collect_bridge_metrics(paths: List[Path]) -> Dict:
         "required_audit_keys": REQUIRED_BRIDGE_AUDIT_KEYS,
         "sources": [str(path) for path in paths],
         "failures": failures,
+        "platform_summary": platform_summary,
     }
 
 

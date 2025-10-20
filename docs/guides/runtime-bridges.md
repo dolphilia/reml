@@ -32,6 +32,13 @@
 3. **検証ステップ**: CI で `reml toolchain verify <profile>` を実行し、結果を `audit.log("toolchain.verify", report)` として保存すると、ランタイム差異のトレースが容易になります。
 4. **テスト**: `resolve_calling_convention(platform_info(), metadata)` を用いた単体テストを各ターゲットで実行し、期待する `CallingConvention` が返らない場合は `RunConfigTarget` とプロファイルを再確認してください。
 
+### 1.2 監査ログの整備 (`AuditEnvelope`)
+
+- FFI ブリッジを導入する場合は `AuditEnvelope.metadata.bridge` を必ず出力し、`tooling/runtime/audit-schema.json` で定義されたキー（`status`, `target`, `arch`, `platform`, `abi`, `expected_abi`, `ownership`, `extern_symbol`, `return.*`）を揃えます。
+- `bridge.return` には返り値の取り扱いを明示します。Borrowed → `wrap_foreign_ptr`、Transferred → `wrap_foreign_ptr` + `dec_ref` といった処理を `status`・`wrap`・`release_handler`・`rc_adjustment` で追跡し、監査ゲートが参照できるようにします。
+- CLI で `remlc --emit-audit` を実行した結果は `compiler/ocaml/tests/golden/audit/cli-ffi-bridge-*.jsonl.golden` に固定し、プラットフォーム別（`linux`, `windows`, `macos-arm64`）の成功ログを最低 1 件ずつ保持します。
+- CI では `tooling/ci/collect-iterator-audit-metrics.py` → `tooling/ci/sync-iterator-audit.sh` の流れで `ffi_bridge.audit_pass_rate` を収集します。macOS（`macos-arm64`）の pass_rate が 1.0 未満、もしくはログが欠落している場合はジョブを失敗させ、再取得を促してください。
+
 ## 2. ホットリロード
 
 ```reml
