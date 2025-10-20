@@ -453,6 +453,11 @@ let declare_extern_target ctx signature (plan : Ffi_stub_builder.stub_plan) =
   apply_stub_attributes ctx extern_fn signature;
   extern_fn
 
+let ensure_entry_block llctx fn =
+  match Llvm.basic_blocks fn with
+  | [||] -> Llvm.append_block llctx "entry" fn
+  | blocks -> blocks.(0)
+
 let emit_thunk_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
     =
   codegen_debug "emit_thunk_function[%d]: begin" (index + 1);
@@ -466,7 +471,7 @@ let emit_thunk_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
   Hashtbl.replace ctx.fn_map thunk_name thunk_fn;
   codegen_debug "emit_thunk_function[%d]: thunk function defined" (index + 1);
 
-  let entry = Llvm.append_block ctx.llctx "entry" thunk_fn in
+  let entry = ensure_entry_block ctx.llctx thunk_fn in
   Llvm.position_at_end entry ctx.builder;
   let params = Llvm.params thunk_fn in
   let extern_fn = declare_extern_target ctx signature plan in
@@ -510,7 +515,7 @@ let emit_stub_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
     (index + 1)
     (Llvm.string_of_lltype record_status_type);
 
-  let entry = Llvm.append_block ctx.llctx "entry" stub_fn in
+  let entry = ensure_entry_block ctx.llctx stub_fn in
   Llvm.position_at_end entry ctx.builder;
 
   let params = Llvm.params stub_fn in

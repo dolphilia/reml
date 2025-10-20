@@ -194,6 +194,34 @@ let expected_abi_for_target (target : string option) : abi_kind option =
       then Some AbiAAPCS64
       else Some AbiSystemV
 
+let platform_of_target (target : string option) (arch : string option) :
+    string option =
+  match target with
+  | None -> None
+  | Some value ->
+      let lower = String.lowercase_ascii value in
+      let arch_suffix =
+        match arch with
+        | Some arch when arch <> "" -> (
+            match String.lowercase_ascii arch with
+            | "x86_64" when
+                contains_substring lower "windows"
+                || contains_substring lower "msvc" ->
+                "x64"
+            | other -> other)
+        | _ -> "unknown"
+      in
+      if contains_substring lower "windows" || contains_substring lower "msvc"
+      then Some (Printf.sprintf "windows-msvc-%s" arch_suffix)
+      else if
+        contains_substring lower "darwin"
+        || contains_substring lower "apple"
+        || contains_substring lower "macos"
+      then Some (Printf.sprintf "macos-%s" arch_suffix)
+      else if contains_substring lower "linux" then
+        Some (Printf.sprintf "linux-%s" arch_suffix)
+      else None
+
 let ownership_supported = function
   | OwnershipBorrowed | OwnershipTransferred | OwnershipReference -> true
   | OwnershipManaged _ | OwnershipUnspecified -> false
@@ -209,6 +237,7 @@ type normalized_contract = {
   contract : bridge_contract;
   target : string option;
   arch : string option;
+  platform : string option;
   abi_kind : abi_kind;
   abi_label : string;
   abi_raw : string option;
@@ -228,6 +257,7 @@ let normalize_contract (contract : bridge_contract) : normalized_contract =
     | None -> trimmed_option contract.block_target
   in
   let arch = match target with Some t -> arch_of_target t | None -> None in
+  let platform = platform_of_target target arch in
   let abi_kind = abi_kind_of_metadata contract.metadata in
   let abi_label = string_of_abi_kind abi_kind in
   let ownership_kind = ownership_kind_of_metadata contract.metadata in
@@ -238,6 +268,7 @@ let normalize_contract (contract : bridge_contract) : normalized_contract =
     contract;
     target;
     arch;
+    platform;
     abi_kind;
     abi_label;
     abi_raw = trimmed_option contract.metadata.extern_calling_convention;
@@ -254,11 +285,56 @@ let bridge_json_of_normalized ?status (normalized : normalized_contract) :
   let option_string value =
     match value with Some v -> `String v | None -> `Null
   in
+  let return_metadata () =
+    match normalized.ownership_kind with
+    | OwnershipBorrowed ->
+        Some
+          (`Assoc
+             [
+               ("ownership", `String "borrowed");
+               ("status", `String "wrap");
+               ("wrap", `String "wrap_foreign_ptr");
+               ("release_handler", `String "none");
+               ("rc_adjustment", `String "none");
+             ])
+    | OwnershipTransferred ->
+        Some
+          (`Assoc
+             [
+               ("ownership", `String "transferred");
+               ("status", `String "wrap_and_release");
+               ("wrap", `String "wrap_foreign_ptr");
+               ("release_handler", `String "dec_ref");
+               ("rc_adjustment", `String "dec_ref");
+             ])
+    | OwnershipReference ->
+        Some
+          (`Assoc
+             [
+               ("ownership", `String "reference");
+               ("status", `String "pass_through");
+               ("wrap", `String "none");
+               ("release_handler", `String "none");
+               ("rc_adjustment", `String "none");
+             ])
+    | OwnershipManaged label ->
+        Some
+          (`Assoc
+             [
+               ("ownership", `String (Printf.sprintf "custom:%s" label));
+               ("status", `String "custom");
+               ("wrap", `String "custom");
+               ("release_handler", `String "custom");
+               ("rc_adjustment", `String "custom");
+             ])
+    | OwnershipUnspecified -> None
+  in
   let fields =
     [
       ("extern_name", `String normalized.contract.extern_name);
       ("target", option_string normalized.target);
       ("arch", option_string normalized.arch);
+      ("platform", option_string normalized.platform);
       ("abi", `String normalized.abi_label);
       ("ownership", `String normalized.ownership_label);
       ("extern_symbol", option_string normalized.extern_symbol);
@@ -278,6 +354,11 @@ let bridge_json_of_normalized ?status (normalized : normalized_contract) :
   let fields =
     match normalized.contract.block_target with
     | Some block -> ("block_target", `String block) :: fields
+    | None -> fields
+  in
+  let fields =
+    match return_metadata () with
+    | Some meta -> ("return", meta) :: fields
     | None -> fields
   in
   let invalid_attrs = normalized.contract.metadata.extern_invalid_attributes in

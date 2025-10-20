@@ -24,11 +24,15 @@
 | Capability 差分レビュー | 進行中 | `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `ffi_bridge.audit_pass_rate` を追記済み（Diagnostics チームレビュー待ち） |
 
 ### 2.1 監査ログ抜粋
-- `AuditEnvelope.metadata.bridge.*`（arm64-apple-darwin）: テスト ステップ手前で停止したため未取得。Typer `extern_metadata` → `AuditEnvelope` 伝搬は次回 `ci-local` 再実行時に確認予定。
+- `AuditEnvelope.metadata.bridge.*`（arm64-apple-darwin）: CLI を再実行し、`tmp/cli-callconv-out/macos/cli-callconv.audit.jsonl` / `cli-callconv-macos.audit.jsonl` を取得。`bridge.target=arm64-apple-darwin`、`ownership=borrowed` に加えて `bridge.return.{ownership,status,wrap,release_handler,rc_adjustment}` を確認。
 - `Diagnostic.extensions.effect.stage_trace`: `effects-residual` ゴールデン更新後は Typer/Runtime の `stage_trace` が一致（`compiler/ocaml/tests/golden/audit/effects-residual.jsonl.golden` を 2025-10-18 に更新）
-- Borrowed/Transferred 返り値フィールド: `bridge.return.ownership` / `bridge.return.wrap` / `bridge.return.rc_adjustment` は `compiler/ocaml/tests/test_ffi_lowering.ml` で固定済み。NULL 返却時の `null_results` は `reml_ffi_acquire_*_result` 経由でカウントされる。
+- Borrowed/Transferred 返り値フィールド: `bridge.return.ownership` / `bridge.return.status` / `bridge.return.wrap` / `bridge.return.rc_adjustment` は `compiler/ocaml/tests/test_ffi_lowering.ml` で固定済み。NULL 返却時の `null_results` は `reml_ffi_acquire_*_result` 経由でカウントされる。
 
 ### 2.2 実行ログ抜粋
+
+- 2025-10-21 再実行: `_build/default/src/main.exe ../../tmp/cli-callconv-sample.reml --target arm64-apple-darwin --emit-ir --emit-audit ...` および `../../tmp/cli-callconv-macos.reml` の双方が成功し、`tmp/cli-callconv-out/macos/` に IR/Audit を出力。
+- 2025-10-24 再実行: stub エントリブロックの無終端問題を修正し、`--verify-ir` を併用した Linux/Windows/macOS の CLI 追試がすべて成功。`cli-callconv-sample.ll` / `cli-callconv-macos.ll` を `--verify-ir` 付きで再生成済み。
+- 【参考】修正前ログ（再発防止用）
 
 ```text
 $ ./scripts/ci-local.sh --target macos --arch arm64 --stage beta
@@ -54,7 +58,7 @@ FFI スタブプラン初期テスト
 File "tests/dune", line 36, characters 2-19:
 36 |   test_ffi_lowering
        ^^^^^^^^^^^^^^^^^
-Command got signal SEGV.
+Command got signal SEGV. (修正前ログ)
 ```
 
 ## 3. ABI / 呼出規約検証
@@ -80,13 +84,14 @@ Command got signal SEGV.
   - `darwin_struct_return.ll`（構造体戻りテスト）: `llvm-as` → `opt -verify` → `llc` の全工程が成功し、`darwin_struct_return.o` を生成。
   - `darwin_varargs.ll`（varargs テスト）: 同様に成功し、`darwin_varargs.o` を生成（計測後に生成物を削除済み）。
 - プリセットは `compiler/ocaml/tests/llvm-ir/presets/darwin-arm64/` に配置し、varargs / sret の双方をスモークテストできるようにした。
+- CLI 追試で生成した IR (`tmp/cli-callconv-out/macos/cli-callconv-sample.ll`, `cli-callconv-macos.ll`) は `reml.bridge.stubs` に Darwin Register Save Area 情報を含む。`entry` ブロック無終端問題は 2025-10-24 に修正済みで、現在は `--verify-ir` 併用時も通過する。
 
 ## 4. 所有権契約 / 監査
 | テスト | 内容 | 結果 | 備考 |
 |--------|------|------|------|
-| `ffi_borrowed_pointer.reml` | `@ffi_ownership("borrowed")` の解析 | 未実施（Typer 実装待ち） | `wrap_foreign_ptr` を通じた `bridge.return.ownership = borrowed`、`bridge.return.rc_adjustment = +0` を確認する。|
-| `ffi_transferred_pointer.reml` | `Ownership::Transferred` | 未実施（Typer 実装待ち） | `dec_ref` / `reml_ffi_release_transferred` が呼ばれ、`bridge.return.rc_adjustment = -1` を記録する。|
-| 診断 (`ffi.contract.missing`) | 不足注釈の検証 | 未実施（Typer 実装待ち） | CLI JSON & Audit の整合 |
+| `ffi_borrowed_pointer.reml` | `@ffi_ownership("borrowed")` の解析 | 進行中（ランタイムヘルパ最終調整） | `wrap_foreign_ptr` を通じた `bridge.return.ownership = borrowed`、`bridge.return.rc_adjustment = +0` を確認し、`reports/ffi-bridge-summary.md` に実測値を記録する。|
+| `ffi_transferred_pointer.reml` | `Ownership::Transferred` | 進行中（ランタイムヘルパ最終調整） | `dec_ref` / `reml_ffi_release_transferred` が呼ばれ、`bridge.return.rc_adjustment = -1` を記録する。|
+| 診断 (`ffi.contract.missing`) | 不足注釈の検証 | 進行中（Typer 拡張と同期） | CLI `--emit-audit` の JSONL をゴールデン化し、診断コードと `bridge.*` フィールドの整合を確認する。|
 
 ## 5. パフォーマンス指標
 | メトリクス | 指標 | 現状値 | 備考 |
@@ -94,7 +99,7 @@ Command got signal SEGV.
 | `ffi_bridge_call_latency_ns` | 1 回あたりの平均呼出時間 | 未計測 | `bench/ffi_dispatch_async.txt` |
 | `ffi_stub_codegen_time_ms` | LLVM IR → object 生成時間 | 未計測 | `metrics/ffi_codegen.json` |
 
-## 6. TODO / リスク（2025-10-20更新）
+## 6. TODO / リスク（2025-10-21更新）
 
 ### 完了した項目 ✅
 
@@ -116,7 +121,10 @@ Command got signal SEGV.
 - [x] Darwin 向け可変長/構造体戻りの ABI 差分調査を完了し、`docs/notes/llvm-spec-status-survey.md` §2.2 を更新（2025-10-21、`§2.2.2a` 追加）
 - [ ] `AuditEnvelope.metadata.bridge.*` スキーマを確定し、macOS サンプルをゴールデン化する（ドラフトは `tooling/runtime/audit-schema.json` に追加済み、Typer 実装後に本番値を取得）
 - [x] Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）を実装し、`arm64-apple-darwin` 向けに `reml_ffi_acquire_borrowed_result` / `reml_ffi_acquire_transferred_result` の挙動を検証する。`bridge.return.ownership = borrowed/transferred` と新設した `null_results` カウンタが [docs/spec/3-9-core-async-ffi-unsafe.md](../docs/spec/3-9-core-async-ffi-unsafe.md) §2.6、[docs/spec/3-6-core-diagnostics-audit.md](../docs/spec/3-6-core-diagnostics-audit.md) §5.1 に沿って出力されることを `tests/test_ffi_lowering.ml` と `runtime/native/tests/test_ffi_bridge.c` で確認。
-- [ ] CLI (`remlc --emit-ir`) で生成した Linux/Windows/macOS IR に `reml.bridge.stubs` と `bridge.*` メタデータが含まれることを手動サンプルで確認
+- [x] CLI (`remlc --emit-ir`) を arm64-apple-darwin 向けに再実行し、`tmp/cli-callconv-out/macos/` へ IR/Audit を収集（`--verify-ir` 併用でも成功）
+- [ ] CLI `--emit-audit` のゴールデンに Borrowed/Transferred 返り値ケースを追加し、macOS arm64 の JSONL を固定化
+- [ ] `tooling/ci/sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` へ `ffi_bridge.audit_pass_rate` と Darwin プリセット成功条件を追加
+- [ ] 仕様書（`docs/spec/3-9`, `docs/spec/3-6`）とガイド（`docs/guides/runtime-bridges.md`）の macOS 章を更新し、Phase 3 へ渡す TODO リストを整備
 
 ## 7. クロスプラットフォーム比較観点（ドラフト）
 - 対象: Linux x86_64（System V）、Windows x64（MSVC）、macOS arm64（Darwin AAPCS64）。

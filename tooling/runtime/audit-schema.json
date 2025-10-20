@@ -30,6 +30,7 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
+            "status",
             "target",
             "arch",
             "abi",
@@ -37,6 +38,10 @@
             "extern_symbol"
           ],
           "properties": {
+            "status": {
+              "description": "ブリッジ呼び出しの結果（ok, failure, leak など）",
+              "type": "string"
+            },
             "target": {
               "description": "ターゲット triple 文字列（例: arm64-apple-darwin）",
               "type": "string"
@@ -49,12 +54,20 @@
               "description": "呼出規約を示す識別子（system_v, msvc, aapcs64 など）",
               "type": "string"
             },
+            "expected_abi": {
+              "description": "Typer が期待した ABI（比較用）",
+              "type": "string"
+            },
             "ownership": {
               "description": "所有権契約（borrowed, transferred, reference など）",
               "type": "string"
             },
             "extern_symbol": {
               "description": "リンク対象のシンボル名",
+              "type": "string"
+            },
+            "extern_name": {
+              "description": "ソース上で指定されたシンボル名（alias を含む）",
               "type": "string"
             },
             "link_name": {
@@ -69,9 +82,40 @@
               "description": "細分化された呼出規約名。`abi` と同一なら省略可能。",
               "type": "string"
             },
+            "platform": {
+              "description": "監査上で利用するプラットフォーム識別子（例: windows-msvc-x64, macos-arm64）",
+              "type": "string"
+            },
             "block_target": {
               "description": "extern ブロック全体で宣言された target",
               "type": "string"
+            },
+            "return": {
+              "description": "返り値所有権および包み処理の監査情報",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "ownership": {
+                  "description": "返り値の所有権（borrowed, transferred, none など）",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "返り値処理の結果（wrap, release, failure など）",
+                  "type": "string"
+                },
+                "wrap": {
+                  "description": "返り値を包む際に使用したヘルパ（例: wrap_foreign_ptr）",
+                  "type": "string"
+                },
+                "release_handler": {
+                  "description": "移譲時に呼び出した解放ハンドラ（例: dec_ref, reml_ffi_release_transferred）",
+                  "type": "string"
+                },
+                "rc_adjustment": {
+                  "description": "参照カウントの増減（例: +1, -1, none）",
+                  "type": "string"
+                }
+              }
             },
             "diagnostics": {
               "description": "Typer で検出した契約違反の補助情報",
