@@ -46,6 +46,7 @@ REQUIRED_EFFECT_ITERATOR_KEYS: List[str] = [
 # FFI bridge metrics configuration.
 BRIDGE_DIAG_PREFIX = "ffi.contract."
 REQUIRED_BRIDGE_AUDIT_KEYS: List[str] = [
+    "bridge.status",
     "bridge.target",
     "bridge.arch",
     "bridge.abi",
@@ -65,6 +66,8 @@ REQUIRED_BRIDGE_EXTENSION_KEYS: List[str] = [
     "bridge.return.release_handler",
     "bridge.return.rc_adjustment",
 ]
+
+STATUS_OK_VALUES = {"ok", "success", "pass"}
 
 
 def load_json(path: Path) -> Dict:
@@ -160,6 +163,23 @@ def check_bridge_extension_fields(extensions: Optional[Dict]) -> List[str]:
     return missing
 
 
+def extract_bridge_status(
+    audit: Optional[Dict], extensions: Optional[Dict]
+) -> Optional[str]:
+    containers: List[Dict] = []
+    if isinstance(audit, dict):
+        containers.append(audit)
+    if isinstance(extensions, dict):
+        containers.append(extensions)
+    for container in containers:
+        bridge = container.get("bridge")
+        if isinstance(bridge, dict):
+            status = bridge.get("status")
+            if status is not None:
+                return str(status)
+    return None
+
+
 def collect_metrics(paths: List[Path]) -> Dict:
     total = 0
     passed = 0
@@ -222,14 +242,31 @@ def collect_bridge_metrics(paths: List[Path]) -> Dict:
             ):
                 continue
             total += 1
-            audit_missing = check_bridge_audit_fields(
-                _as_dict(diag.get("audit"))
-            )
+            audit_dict = _as_dict(diag.get("audit"))
+            extensions_dict = _as_dict(diag.get("extensions"))
+
+            audit_missing = check_bridge_audit_fields(audit_dict)
             extensions_missing = check_bridge_extension_fields(
-                _as_dict(diag.get("extensions"))
+                extensions_dict
             )
-            missing = audit_missing + extensions_missing
-            if not missing:
+
+            issues: List[str] = []
+            issues.extend(audit_missing)
+            issues.extend(extensions_missing)
+
+            status_value = extract_bridge_status(audit_dict, extensions_dict)
+            status_issue: Optional[str] = None
+            if status_value is None:
+                status_issue = "bridge.status"
+            else:
+                normalized = status_value.lower()
+                if normalized not in STATUS_OK_VALUES:
+                    status_issue = f"bridge.status={status_value}"
+
+            if status_issue:
+                issues.append(status_issue)
+
+            if not issues:
                 passed += 1
             else:
                 failures.append(
@@ -237,7 +274,8 @@ def collect_bridge_metrics(paths: List[Path]) -> Dict:
                         "file": str(path),
                         "index": index,
                         "code": code,
-                        "missing": sorted(set(missing)),
+                        "missing": sorted(set(issues)),
+                        "status": status_value,
                     }
                 )
 

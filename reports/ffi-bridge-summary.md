@@ -8,7 +8,7 @@
 - 更新者: Codex (AI エージェント)
 - 対象コミット: 修正後の最新状態（test_ffi_lowering 修正完了）
 - 参照計画: docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md
-- **状態**: ランタイムヘルパと `llvm_gen/codegen.ml` の最終調整を実施中。Linux/Windows/macOS で `--emit-ir` / `--emit-audit` を再実行し、成果物を `tmp/cli-callconv-out/<platform>/` に集約。2025-10-24 に stub エントリブロックの無終端問題を解消し、`--verify-ir` 付きで 3 ターゲットすべての IR 検証が通過。
+- **状態**: ランタイムヘルパと `llvm_gen/codegen.ml` の最終調整を実施中。Linux/Windows/macOS で `--emit-ir` / `--emit-audit` を再実行し、成果物を `tmp/cli-callconv-out/<platform>/` に集約。2025-10-24 に stub エントリブロックの無終端問題を解消し、`--verify-ir` 付きで 3 ターゲットすべての IR 検証が通過。macOS arm64 では `tmp/cli-callconv-unsupported.reml` を追加実行し、`bridge.status=error` を含む失敗監査ログを取得。
 - 関連サマリー: `reports/ffi-linux-summary.md`, `reports/ffi-windows-summary.md`, `reports/ffi-macos-summary.md`
 
 ## 2. ターゲット別スタブ状況
@@ -29,12 +29,13 @@
   - Windows: `tmp/cli-callconv-out/windows/cli-callconv.audit.jsonl`
   - macOS (共通サンプル): `tmp/cli-callconv-out/macos/cli-callconv.audit.jsonl`
   - macOS (専用サンプル): `tmp/cli-callconv-out/macos/cli-callconv-macos.audit.jsonl`
+  - macOS (失敗ケース診断 JSON): `tmp/cli-callconv-out/macos/cli-callconv-unsupported.diagnostics.json`
 - 確認項目:
-- [ ] `bridge.platform` が `reports/runtime-capabilities-validation.json` のステージと一致
+- [x] `bridge.platform` が `reports/runtime-capabilities-validation.json` のステージと一致
 - [x] `bridge.return.ownership` / `bridge.return.status` が Borrowed/Transferred 返り値ごとに出力されている（[docs/spec/3-9-core-async-ffi-unsafe.md](../docs/spec/3-9-core-async-ffi-unsafe.md) §2.6 参照）
 - [x] `bridge.abi` / `bridge.callconv` が Typer 診断と矛盾していない（`tests/test_ffi_lowering.ml` の Windows ケースで確認）
 - [x] `reml.bridge.version` モジュールフラグ (1) が `llvm_gen/ffi_value_lowering.ml` で出力されている（`tests/test_ffi_lowering.ml` で確認）
-- [ ] 失敗ケースが `ffi_bridge.audit_pass_rate` に反映されている（ランタイム計測 API による自動化を追加予定）
+- [x] 失敗ケースが `ffi_bridge.audit_pass_rate` に反映されている（`collect-iterator-audit-metrics.py` で `bridge.status` を判定し、`tmp/cli-callconv-out/macos/cli-callconv-unsupported.diagnostics.json` から pass_rate=0.0 を取得）
 - [ ] `AuditEnvelope` スキーマ v1.1 に `bridge.*` プロパティを追加し、CI の JSON 検証を更新する。
 - [x] CLI `--emit-audit` のゴールデンに Borrowed/Transferred 返り値ケースを追加し、`dune runtest` で再固定する。
 - 備考: `--verify-ir` 付きで Linux/Windows/macOS の CLI 再実行を行い、stub エントリブロックの無終端問題を解消済み。監査ログには `bridge.return.{ownership,status,wrap,release_handler,rc_adjustment}` が出力されるようになったため、CI 側の必須キーにも追加済み。

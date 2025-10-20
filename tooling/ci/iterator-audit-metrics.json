@@ -1,4 +1,62 @@
 {
+  "metrics": [
+    {
+      "metric": "iterator.stage.audit_pass_rate",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "required_audit_keys": [
+        "effect.stage.required",
+        "effect.stage.actual",
+        "effect.capability",
+        "effect.stage.iterator.required",
+        "effect.stage.iterator.actual",
+        "effect.stage.iterator.kind",
+        "effect.stage.iterator.capability",
+        "effect.stage.iterator.source"
+      ],
+      "sources": [
+        "compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden",
+        "tmp/cli-callconv-out/macos/cli-callconv-unsupported.diagnostics.json"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "ffi_bridge.audit_pass_rate",
+      "total": 1,
+      "passed": 0,
+      "failed": 1,
+      "pass_rate": 0.0,
+      "required_audit_keys": [
+        "bridge.status",
+        "bridge.target",
+        "bridge.arch",
+        "bridge.abi",
+        "bridge.ownership",
+        "bridge.extern_symbol",
+        "bridge.return.ownership",
+        "bridge.return.wrap",
+        "bridge.return.release_handler",
+        "bridge.return.rc_adjustment"
+      ],
+      "sources": [
+        "compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden",
+        "tmp/cli-callconv-out/macos/cli-callconv-unsupported.diagnostics.json"
+      ],
+      "failures": [
+        {
+          "file": "tmp/cli-callconv-out/macos/cli-callconv-unsupported.diagnostics.json",
+          "index": 0,
+          "code": "ffi.contract.unsupported_abi",
+          "missing": [
+            "bridge.status=error"
+          ],
+          "status": "error"
+        }
+      ]
+    }
+  ],
   "metric": "iterator.stage.audit_pass_rate",
   "total": 1,
   "passed": 1,
@@ -15,7 +73,42 @@
     "effect.stage.iterator.source"
   ],
   "sources": [
-    "compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden"
+    "compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden",
+    "tmp/cli-callconv-out/macos/cli-callconv-unsupported.diagnostics.json"
   ],
-  "failures": []
+  "failures": [],
+  "ffi_bridge": {
+    "metric": "ffi_bridge.audit_pass_rate",
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "pass_rate": 0.0,
+    "required_audit_keys": [
+      "bridge.status",
+      "bridge.target",
+      "bridge.arch",
+      "bridge.abi",
+      "bridge.ownership",
+      "bridge.extern_symbol",
+      "bridge.return.ownership",
+      "bridge.return.wrap",
+      "bridge.return.release_handler",
+      "bridge.return.rc_adjustment"
+    ],
+    "sources": [
+      "compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden",
+      "tmp/cli-callconv-out/macos/cli-callconv-unsupported.diagnostics.json"
+    ],
+    "failures": [
+      {
+        "file": "tmp/cli-callconv-out/macos/cli-callconv-unsupported.diagnostics.json",
+        "index": 0,
+        "code": "ffi.contract.unsupported_abi",
+        "missing": [
+          "bridge.status=error"
+        ],
+        "status": "error"
+      }
+    ]
+  }
 }

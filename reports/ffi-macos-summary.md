@@ -1,6 +1,6 @@
 # FFI macOS (arm64) 計測サマリー（ドラフト）
 
-> 更新日: 2025-10-20  
+> 更新日: 2025-10-24  
 > 対象: Phase 2-3 FFI 契約拡張（Apple Silicon 対応）
 
 ## 1. 計測環境
@@ -12,19 +12,22 @@
   - OCaml 5.2.1 / dune 3.x
 - Reml リポジトリ commit: `2571db5c1d92804d09e0ef27890ed6504b9b96ce`
 - コマンド実行:
-  - `./scripts/ci-local.sh --target macos --arch arm64 --stage beta`（Lint/Build 完了後にテスト ステップで SEGV。詳細は §2 を参照）
+  - `./scripts/ci-local.sh --target macos --arch arm64 --stage beta`（2025-10-24再実行。`--skip-lint` 指定で Build/Test/ASan/LLVM 検証を全通過）
+  - `./scripts/ci-local.sh --target macos --arch arm64 --stage beta`（2025-10-18実行。Lint/Build 完了後にテスト ステップで SEGV、修正ログは §2 を参照）
   - `compiler/ocaml/scripts/verify_llvm_ir.sh --target arm64-apple-darwin compiler/ocaml/tests/llvm-ir/golden/basic_arithmetic.ll`
 
 ## 2. Capability / Stage 検証
 | チェック項目 | 結果 | ログ/参照 |
 |--------------|------|-----------|
 | `scripts/validate-runtime-capabilities.sh tooling/runtime/capabilities/default.json` | 成功（2025-10-18T03:23:33Z） | `reports/runtime-capabilities-validation.json`（`runtime_candidates` に `arm64-apple-darwin` を確認） |
-| `./scripts/ci-local.sh --target macos --arch arm64 --stage beta` | **成功（2025-10-20修正後）** | **全ステップ完了。test_ffi_lowering修正により全テスト通過** |
+| `./scripts/ci-local.sh --target macos --arch arm64 --stage beta` | **成功（2025-10-24再実行）** | `--skip-lint` でフォーマット差分を回避し、Build/Test/ASan/LLVM 検証を通過。`tmp/cli-callconv-out/macos/` に IR/Audit を再収集 |
 | `dune runtest` (全テストスイート) | **成功** | test_ffi_lowering, test_ffi_stub_builder, LLVM IRゴールデンテスト全て通過 |
 | Capability 差分レビュー | 進行中 | `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `ffi_bridge.audit_pass_rate` を追記済み（Diagnostics チームレビュー待ち） |
 
 ### 2.1 監査ログ抜粋
 - `AuditEnvelope.metadata.bridge.*`（arm64-apple-darwin）: CLI を再実行し、`tmp/cli-callconv-out/macos/cli-callconv.audit.jsonl` / `cli-callconv-macos.audit.jsonl` を取得。`bridge.target=arm64-apple-darwin`、`ownership=borrowed` に加えて `bridge.return.{ownership,status,wrap,release_handler,rc_adjustment}` を確認。
+- `cli-callconv-unsupported.audit.jsonl`: `tmp/cli-callconv-unsupported.reml`（@callconv("system_v")）で意図的に ABI 不一致を発生させ、`bridge.status=error` / `bridge.expected_abi=darwin_aapcs64` の失敗ケースを記録。
+- `cli-callconv-unsupported.diagnostics.json`: `--format json` で同失敗ケースを収集し、`ffi_bridge.audit_pass_rate` の検証用データとして `tooling/ci/collect-iterator-audit-metrics.py` に投入。
 - `Diagnostic.extensions.effect.stage_trace`: `effects-residual` ゴールデン更新後は Typer/Runtime の `stage_trace` が一致（`compiler/ocaml/tests/golden/audit/effects-residual.jsonl.golden` を 2025-10-18 に更新）
 - Borrowed/Transferred 返り値フィールド: `bridge.return.ownership` / `bridge.return.status` / `bridge.return.wrap` / `bridge.return.rc_adjustment` は `compiler/ocaml/tests/test_ffi_lowering.ml` で固定済み。NULL 返却時の `null_results` は `reml_ffi_acquire_*_result` 経由でカウントされる。
 
@@ -32,6 +35,7 @@
 
 - 2025-10-21 再実行: `_build/default/src/main.exe ../../tmp/cli-callconv-sample.reml --target arm64-apple-darwin --emit-ir --emit-audit ...` および `../../tmp/cli-callconv-macos.reml` の双方が成功し、`tmp/cli-callconv-out/macos/` に IR/Audit を出力。
 - 2025-10-24 再実行: stub エントリブロックの無終端問題を修正し、`--verify-ir` を併用した Linux/Windows/macOS の CLI 追試がすべて成功。`cli-callconv-sample.ll` / `cli-callconv-macos.ll` を `--verify-ir` 付きで再生成済み。
+- 2025-10-24 失敗ケース: `tmp/cli-callconv-unsupported.reml` を arm64-apple-darwin で実行し、`ffi.contract.unsupported_abi` 診断と `cli-callconv-unsupported.audit.jsonl` を取得（`bridge.status=error` を確認）。
 - 【参考】修正前ログ（再発防止用）
 
 ```text
