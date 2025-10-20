@@ -151,3 +151,4 @@ valgrind-*.log
 # その他
 .cache/
 *.orig
+tooling/ci/ffi-audit/

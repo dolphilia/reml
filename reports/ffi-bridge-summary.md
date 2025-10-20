@@ -25,11 +25,13 @@
 
 - 取得コマンド: `_build/default/src/main.exe ../../tmp/cli-callconv-sample.reml --emit-ir --emit-audit <path> --runtime-capabilities ../../tooling/runtime/capabilities/default.json`（Windows/Mac ターゲットは `--target` で切替、macOS 固有検証には `../../tmp/cli-callconv-macos.reml` も使用）
 - 出力ファイル:
-  - Linux: `tmp/cli-callconv-out/linux/cli-callconv.audit.jsonl`
-  - Windows: `tmp/cli-callconv-out/windows/cli-callconv.audit.jsonl`
-  - macOS (共通サンプル): `tmp/cli-callconv-out/macos/cli-callconv.audit.jsonl`
-  - macOS (専用サンプル): `tmp/cli-callconv-out/macos/cli-callconv-macos.audit.jsonl`
-  - macOS (失敗ケース診断 JSON): `tmp/cli-callconv-out/macos/cli-callconv-unsupported.diagnostics.json`
+  - Linux: `tooling/ci/ffi-audit/linux/cli-callconv-unsupported.audit.jsonl`
+  - Windows: `tooling/ci/ffi-audit/windows/cli-callconv-unsupported.audit.jsonl`
+  - macOS: `tooling/ci/ffi-audit/macos/cli-callconv-unsupported.audit.jsonl`
+  - Linux 診断 JSON: `tooling/ci/ffi-audit/linux/cli-callconv-unsupported.diagnostics.json`
+  - Windows 診断 JSON: `tooling/ci/ffi-audit/windows/cli-callconv-unsupported.diagnostics.json`
+  - macOS 診断 JSON: `tooling/ci/ffi-audit/macos/cli-callconv-unsupported.diagnostics.json`
+  - Stage 監査バンドル: `tooling/ci/ffi-audit/stage.audit.jsonl`
 - 確認項目:
 - [x] `bridge.platform` が `reports/runtime-capabilities-validation.json` のステージと一致
 - [x] `bridge.return.ownership` / `bridge.return.status` が Borrowed/Transferred 返り値ごとに出力されている（[docs/spec/3-9-core-async-ffi-unsafe.md](../docs/spec/3-9-core-async-ffi-unsafe.md) §2.6 参照）

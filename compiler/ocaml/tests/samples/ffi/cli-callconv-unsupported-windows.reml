@@ -1,0 +1,9 @@
+extern "C" {
+  @target("x86_64-pc-windows-msvc")
+  @link_name("ffi_windows_probe")
+  @ownership("transferred")
+  @callconv("aapcs64")
+  fn ffi_windows_probe() -> i32;
+}
+
+pub fn main() -> i64 = 0

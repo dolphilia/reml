@@ -424,9 +424,70 @@ jobs:
           name: llvm-verify-log
           path: tooling/ci
 
+      - name: Download macOS compiler artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-build
+          path: artifacts/build
+
+      - name: Generate cross-platform FFI audit fixtures
+        run: |
+          set -euo pipefail
+          REMLC="artifacts/build/remlc-ocaml-macos"
+          chmod +x "$REMLC"
+          CAP_JSON="$GITHUB_WORKSPACE/tooling/runtime/capabilities/default.json"
+          FIXTURE_DIR="$GITHUB_WORKSPACE/tooling/ci/ffi-audit"
+          mkdir -p "$FIXTURE_DIR"/{macos,windows,linux}
+
+          run_ffi_audit() {
+            local target="$1"
+            local sample="$2"
+            local out_dir="$3"
+            mkdir -p "$out_dir/ir"
+            "$REMLC" "$sample" \
+              --target "$target" \
+              --effect-stage beta \
+              --runtime-capabilities "$CAP_JSON" \
+              --emit-ir \
+              --out-dir "$out_dir/ir" \
+              --emit-audit "$out_dir/cli-callconv-unsupported.audit.jsonl" \
+              --format json \
+              > "$out_dir/cli-callconv-unsupported.stdout.log" \
+              2> "$out_dir/cli-callconv-unsupported.diagnostics.json" || true
+
+            if [ ! -s "$out_dir/cli-callconv-unsupported.diagnostics.json" ]; then
+              echo '{"diagnostics":[]}' > "$out_dir/cli-callconv-unsupported.diagnostics.json"
+            fi
+            if [ ! -f "$out_dir/cli-callconv-unsupported.audit.jsonl" ]; then
+              : > "$out_dir/cli-callconv-unsupported.audit.jsonl"
+            fi
+          }
+
+          run_ffi_audit arm64-apple-darwin \
+            compiler/ocaml/tests/samples/ffi/cli-callconv-unsupported-macos.reml \
+            "$FIXTURE_DIR/macos"
+
+          run_ffi_audit x86_64-pc-windows-msvc \
+            compiler/ocaml/tests/samples/ffi/cli-callconv-unsupported-windows.reml \
+            "$FIXTURE_DIR/windows"
+
+          run_ffi_audit x86_64-unknown-linux-gnu \
+            compiler/ocaml/tests/samples/ffi/cli-callconv-unsupported-linux.reml \
+            "$FIXTURE_DIR/linux"
+
+          cat "$FIXTURE_DIR"/macos/cli-callconv-unsupported.audit.jsonl \
+              "$FIXTURE_DIR"/windows/cli-callconv-unsupported.audit.jsonl \
+              "$FIXTURE_DIR"/linux/cli-callconv-unsupported.audit.jsonl \
+            > "$FIXTURE_DIR/stage.audit.jsonl"
+
       - name: Collect iterator.stage audit metrics
         run: |
-          python3 tooling/ci/collect-iterator-audit-metrics.py --output tooling/ci/iterator-audit-metrics.json
+          python3 tooling/ci/collect-iterator-audit-metrics.py \
+            --source compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden \
+            --source tooling/ci/ffi-audit/macos/cli-callconv-unsupported.diagnostics.json \
+            --source tooling/ci/ffi-audit/windows/cli-callconv-unsupported.diagnostics.json \
+            --source tooling/ci/ffi-audit/linux/cli-callconv-unsupported.diagnostics.json \
+            --output tooling/ci/iterator-audit-metrics.json
 
       - name: Run iterator audit gate
         run: |
@@ -435,6 +496,7 @@ jobs:
           tooling/ci/sync-iterator-audit.sh \
             --metrics tooling/ci/iterator-audit-metrics.json \
             --verify-log tooling/ci/llvm-verify.log \
+            --audit tooling/ci/ffi-audit/stage.audit.jsonl \
             --output reports/iterator-stage-summary.md
 
       - name: Upload iterator audit metrics

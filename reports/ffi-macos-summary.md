@@ -26,8 +26,8 @@
 
 ### 2.1 監査ログ抜粋
 - `AuditEnvelope.metadata.bridge.*`（arm64-apple-darwin）: CLI を再実行し、`tmp/cli-callconv-out/macos/cli-callconv.audit.jsonl` / `cli-callconv-macos.audit.jsonl` を取得。`bridge.target=arm64-apple-darwin`、`ownership=borrowed` に加えて `bridge.return.{ownership,status,wrap,release_handler,rc_adjustment}` を確認。
-- `cli-callconv-unsupported.audit.jsonl`: `tmp/cli-callconv-unsupported.reml`（@callconv("system_v")）で意図的に ABI 不一致を発生させ、`bridge.status=error` / `bridge.expected_abi=darwin_aapcs64` の失敗ケースを記録。
-- `cli-callconv-unsupported.diagnostics.json`: `--format json` で同失敗ケースを収集し、`ffi_bridge.audit_pass_rate` の検証用データとして `tooling/ci/collect-iterator-audit-metrics.py` に投入。
+- `cli-callconv-unsupported.audit.jsonl`: `tmp/cli-callconv-unsupported.reml`（@callconv("msvc")）で意図的に ABI 不一致を発生させ、`bridge.status=error` / `bridge.expected_abi=darwin_aapcs64` の失敗ケースを記録。CI では `tooling/ci/ffi-audit/macos/cli-callconv-unsupported.audit.jsonl` を生成。
+- `cli-callconv-unsupported.diagnostics.json`: CI では `tooling/ci/ffi-audit/macos/cli-callconv-unsupported.diagnostics.json` として生成し、`ffi_bridge.audit_pass_rate` の検証用データとして `tooling/ci/collect-iterator-audit-metrics.py` に投入。
 - `Diagnostic.extensions.effect.stage_trace`: `effects-residual` ゴールデン更新後は Typer/Runtime の `stage_trace` が一致（`compiler/ocaml/tests/golden/audit/effects-residual.jsonl.golden` を 2025-10-18 に更新）
 - Borrowed/Transferred 返り値フィールド: `bridge.return.ownership` / `bridge.return.status` / `bridge.return.wrap` / `bridge.return.rc_adjustment` は `compiler/ocaml/tests/test_ffi_lowering.ml` で固定済み。NULL 返却時の `null_results` は `reml_ffi_acquire_*_result` 経由でカウントされる。
 
