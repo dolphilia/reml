@@ -258,7 +258,13 @@ let macos_case () =
         };
         { key = "bridge.darwin.register_save_area.alignment"; value = "16" };
       ];
-    expect_stub_substrings = [ "reml_ffi_bridge_record_status"; thunk_name ];
+    expect_stub_substrings =
+      [
+        "reml_ffi_bridge_record_status";
+        thunk_name;
+        "darwin_gpr_register_save_area";
+        "darwin_vector_register_save_area";
+      ];
     expect_thunk_substrings = [ "call"; "ffi_entry" ];
   }
 

@@ -519,6 +519,88 @@ let emit_stub_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
       (Array.length params - signature.sret_offset)
   in
 
+  let register_save_area_setup =
+    match plan.register_save_area with
+    | None -> None
+    | Some area ->
+        let ptr_ty = Llvm.pointer_type ctx.llctx in
+        let i8_ty = Llvm.i8_type ctx.llctx in
+        let i64_ty = Llvm.i64_type ctx.llctx in
+        let build_area name total_size =
+          if total_size <= 0 then None
+          else
+            let array_ty = Llvm.array_type i8_ty total_size in
+            let alloca =
+              Llvm.build_alloca array_ty name ctx.builder
+            in
+            Llvm.set_alignment area.stack_alignment alloca;
+            let base_ptr =
+              Llvm.build_bitcast alloca ptr_ty (name ^ ".base") ctx.builder
+            in
+            Some base_ptr
+        in
+        let gpr_base =
+          build_area "darwin_gpr_register_save_area" area.gpr_total_size
+        in
+        let vector_base =
+          build_area "darwin_vector_register_save_area" area.vector_total_size
+        in
+        let gpr_offset = ref 0 in
+        let vector_offset = ref 0 in
+        let size_of_type llty =
+          match Llvm.int64_of_const (Llvm.size_of llty) with
+          | Some sz when sz >= 0L -> Some (Int64.to_int sz)
+          | _ -> None
+        in
+        let store_value base offset_ref slot_size total_size label value =
+          match base with
+          | None -> ()
+          | Some base_ptr ->
+              if slot_size <= 0 then ()
+              else if !offset_ref + slot_size > total_size then ()
+              else
+                let llty = Llvm.type_of value in
+                match size_of_type llty with
+                | Some param_size when param_size > slot_size -> ()
+                | _ ->
+                    let offset_bytes = !offset_ref in
+                    let gep =
+                      Llvm.build_in_bounds_gep ptr_ty base_ptr
+                        [| Llvm.const_int i64_ty offset_bytes |]
+                        (Printf.sprintf "%s_slot_%d" label
+                           (offset_bytes / slot_size))
+                        ctx.builder
+                    in
+                    let store_inst = Llvm.build_store value gep ctx.builder in
+                    Llvm.set_alignment slot_size store_inst;
+                    offset_ref := !offset_ref + slot_size
+        in
+        let store_param value =
+          let llty = Llvm.type_of value in
+          let is_vector =
+            match Llvm.classify_type llty with
+            | Llvm.TypeKind.Float
+            | Llvm.TypeKind.Double
+            | Llvm.TypeKind.Half
+            | Llvm.TypeKind.Vector -> true
+            | _ -> false
+          in
+          if is_vector then
+            store_value vector_base vector_offset area.vector_slot_size
+              area.vector_total_size
+              "darwin_vector_register_save_area" value
+          else
+            store_value gpr_base gpr_offset area.gpr_slot_size
+              area.gpr_total_size
+              "darwin_gpr_register_save_area" value
+        in
+        Some store_param
+  in
+
+  (match register_save_area_setup with
+  | None -> ()
+  | Some store_param -> Array.iter store_param value_params);
+
   (match plan.ownership with
   | Ffi_contract.OwnershipBorrowed ->
       Array.iter

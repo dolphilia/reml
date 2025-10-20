@@ -1,6 +1,6 @@
 # FFI macOS (arm64) 計測サマリー（ドラフト）
 
-> 更新日: 2025-10-19  
+> 更新日: 2025-10-20  
 > 対象: Phase 2-3 FFI 契約拡張（Apple Silicon 対応）
 
 ## 1. 計測環境
@@ -69,6 +69,7 @@ Command got signal SEGV.
 - `arm64-apple-darwin` では可変長関数呼び出し時に整数 8 本・SIMD 8 本の Register Save Area を呼出側が確保し、`va_list` が `__gr_offs`／`__vr_offs` を用いてレジスタ退避領域を巡回する。Reml のスタブ生成では Darwin ケースのみ Register Save Area のアドレス計算を取り込む必要がある（`docs/notes/llvm-spec-status-survey.md` §2.2.2a）。
 - 構造体戻り値は 16B 以下または HFA/HVA（要素数≦4）の場合に `x0-x3`／`v0-v3` で直接返却し、それ以外は `x8` に渡したポインタへ書き込む `sret align 16` が必須。LLVM 側では `Abi.classify_struct_return` の Darwin 対応を `tests/test_ffi_lowering.ml` の追加ケースで監視する。
 - 以上の差分に合わせ、`ffi_stub_builder` と `llvm_gen/codegen` の Darwin 分岐を対象に Register Save Area と `sret align 16` の検証ケースを追加する作業を別タスクとして起票予定。本サマリーでは `ffi_bridge.audit_pass_rate` 監査指標への影響を継続観測する。
+- 2025-10-20: `llvm_gen/codegen.ml` の `emit_stub_function` で `register_save_area` を参照し、Darwin macOS arm64 向けに GPR 64B / Vector 128B の RSA をスタックへ割り当て。生成 IR は `tests/test_ffi_lowering.ml` と LLVM ゴールデン (`basic_arithmetic.ll.golden` ほか) に反映し、`darwin_gpr_register_save_area` / `darwin_vector_register_save_area` シンボルの存在を回帰検証。
 
 ### 3.2 LLVM IR スナップショット
 - `build/ir/macos-arm64/<sample>.ll` … TBD
@@ -127,6 +128,7 @@ Command got signal SEGV.
 - 次のアクション:
   - Linux / Windows 向けテンプレートを本ファイルと同形式で作成し、共通フィールド（Stage, ABI, Ownership, CI 実行結果）を揃える。
   - `tooling/ci/sync-iterator-audit.sh` に FFI ブリッジサマリ出力オプションを追加し、`iterator-stage-summary.md` と同じレイアウトで `ffi-bridge-summary.md` を生成する。
+  - GitHub Actions macOS ワークフロー (`bootstrap-macos.yml`) の `llvm-verify` ジョブに `compiler/ocaml/scripts/verify_llvm_ir.sh --preset darwin-arm64 --target arm64-apple-darwin` を追加済み。varargs/sret プリセット (`darwin_varargs.ll`, `darwin_struct_return.ll`) の自動検証結果を `tooling/ci/llvm-verify.log` で監視する。
 
 ---
 

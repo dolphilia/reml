@@ -79,6 +79,11 @@ $ _build/default/src/main.exe \
    - `llvm_gen/codegen.ml` で返り値所有権に応じたヘルパ呼び出しと診断ステータス (`success`/`failure`) を出力
    - `compiler/ocaml/tests/test_ffi_lowering.ml` のメタデータ検証を更新し、`bridge.return.*` キーを固定
 
+6. **Darwin Register Save Area と CI プリセット統合（2025-10-20）**
+   - `llvm_gen/codegen.ml` の `emit_stub_function` で `register_save_area` 情報を参照し、Darwin macOS arm64 向けに GPR/Vector の RSA をスタック上へ確保。GPR/Vector それぞれのスロットへ引数をストアし、`tests/test_ffi_lowering.ml` で `darwin_*_register_save_area` の IR 断片を検証。
+   - macOS 向け LLVM IR ゴールデン（`basic_arithmetic.ll.golden` ほか）を更新し、FFI ランタイムヘルパ宣言（`reml_ffi_acquire_borrowed_result` / `reml_ffi_acquire_transferred_result`）の出力を固定。
+   - `.github/workflows/bootstrap-macos.yml` の `llvm-verify` ジョブへ `compiler/ocaml/scripts/verify_llvm_ir.sh --preset darwin-arm64 --target arm64-apple-darwin` を追加し、`darwin_varargs.ll` / `darwin_struct_return.ll` プリセットを CI で常時検証。
+
 ### 🔄 進行中・未完了項目
 
 - CLI (`src/main.exe --emit-ir`) はサンドボックス環境で実行できず IR を取得できないため、ローカル追試用サンプル（`tmp/cli-callconv-sample.reml`）と手順を共有し、確認待ち項目として扱う
