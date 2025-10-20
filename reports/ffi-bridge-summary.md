@@ -26,6 +26,7 @@
 - 出力ファイル: <!-- path/to/audit.jsonl -->
 - 確認項目:
 - [ ] `bridge.platform` が `reports/runtime-capabilities-validation.json` のステージと一致
+- [ ] `bridge.return.ownership` / `bridge.return.status` が Borrowed/Transferred 返り値ごとに出力されている（[docs/spec/3-9-core-async-ffi-unsafe.md](../docs/spec/3-9-core-async-ffi-unsafe.md) §2.6 参照）
 - [x] `bridge.abi` / `bridge.callconv` が Typer 診断と矛盾していない（`tests/test_ffi_lowering.ml` の Windows ケースで確認）
 - [x] `reml.bridge.version` モジュールフラグ (1) が `llvm_gen/ffi_value_lowering.ml` で出力されている（`tests/test_ffi_lowering.ml` で確認）
 - [ ] 失敗ケースが `ffi_bridge.audit_pass_rate` に反映されている（ランタイム計測 API による自動化を追加予定）
@@ -76,7 +77,7 @@ $ _build/default/src/main.exe \
 ### 🔄 進行中・未完了項目
 
 - CLI (`src/main.exe --emit-ir`) はサンドボックス環境で実行できず IR を取得できないため、ローカル追試用サンプル（`tmp/cli-callconv-sample.reml`）と手順を共有し、確認待ち項目として扱う
-- Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）の完全実装
+- Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）の完全実装。`llvm_gen/codegen.ml` / `llvm_gen/ffi_value_lowering.ml` と `runtime/native/src/ffi_bridge.c` を連携させ、`bridge.return.*` メタデータが [docs/spec/3-9-core-async-ffi-unsafe.md](../docs/spec/3-9-core-async-ffi-unsafe.md) §2.6 および [docs/spec/3-6-core-diagnostics-audit.md](../docs/spec/3-6-core-diagnostics-audit.md) §5.1 と一致することを確認する。
 
 ## 6. フォローアップ TODO
 
@@ -97,6 +98,13 @@ $ _build/default/src/main.exe \
 - Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）を stub/thunk に組み込み、監査ログへ残余所有権の挙動を記録できるようにする。
 - CLI 環境で `--emit-ir` を実行し、Linux/Windows/macOS それぞれで `reml.bridge.stubs` と `bridge.callconv` の整合性を確認。取得できたログは本サマリと `reports/ffi-*-summary.md` へ反映する。
 - `ffi_bridge.audit_pass_rate` の収集を CI パイプラインに統合し、`reports/runtime-capabilities-validation.json` の値と突合する。
+
+### Borrowed/Transferred 返り値処理詳細（2025-10-20 更新）
+
+- **仕様整合**: `docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md` の更新方針に従い、[docs/spec/3-9-core-async-ffi-unsafe.md](../docs/spec/3-9-core-async-ffi-unsafe.md) §2.6 の `wrap_foreign_ptr` / `transfer_buffer` 契約と [docs/spec/3-6-core-diagnostics-audit.md](../docs/spec/3-6-core-diagnostics-audit.md) §5.1 の監査テンプレートを突き合わせる。`bridge.return.ownership`、`bridge.return.status`、`bridge.return.rc_adjustment` の語彙を合わせ、`ffi_bridge.audit_pass_rate` で欠落を検知する。
+- **実装タスク**: `llvm_gen/codegen.ml` で `Ownership::Borrowed` に対して `wrap_foreign_ptr` を挿入し、`Ownership::Transferred` は `dec_ref` と `reml_ffi_release_transferred` を呼ぶ。ランタイム側では `runtime/native/src/ffi_bridge.c` に `reml_ffi_acquire_borrowed_result` / `reml_ffi_acquire_transferred_result` を追加し、監査レコードに `return_release` フィールドを記録する。
+- **検証手順**: `compiler/ocaml/tests/test_ffi_lowering.ml` に Borrowed/Transferred 返り値ケースを追加し、`compiler/ocaml/tests/golden/audit/ffi-bridge-{linux,windows,macos}.jsonl.golden` へ `bridge.return.*` を固定。ランタイム単体テスト（`runtime/native/tests/test_ffi_bridge.c`）で RC カウンタ増減をアサートし、結果を `reports/ffi-*-summary.md` に転記する。
+- **CI/メトリクス**: `tooling/ci/collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate`・`bridge.return.leak_detected` を集約し、`.github/workflows/bootstrap-*.yml` に Linux/Windows/macOS 別の結果をアーティファクトとして保存する。差分は `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に記録し、週次レビューで監査する。
 
 ## 8. 参考リンク
 
