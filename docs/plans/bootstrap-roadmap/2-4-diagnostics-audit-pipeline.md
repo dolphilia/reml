@@ -7,7 +7,11 @@
 ## スコープ
 - **含む**: 診断データ構造拡張、`extensions` フィールド設計、JSON/テキスト両方の出力整備、監査ログの永続化、レビューツール。
 - **含まない**: 外部監査システム連携、GUI ビューワ。必要に応じて Phase 4 で検討。
-- **前提**: Phase 1 の CLI 整備が完了し、診断結果を CLI から閲覧できる状態であること。
+- **前提**:
+  - Phase 1 の CLI 整備が完了し、診断結果を CLI から閲覧できる状態であること。
+  - Phase 2-3 完了報告およびハンドオーバー（`docs/plans/bootstrap-roadmap/2-3-completion-report.md`, `docs/plans/bootstrap-roadmap/2-3-to-2-4-handover.md`）を確認し、`ffi_bridge.audit_pass_rate`・`bridge.*` フィールドが有効であること。
+  - 技術的負債 ID 22（Windows Stage 自動検証不足）と ID 23（macOS FFI サンプル自動検証不足）を解消する計画を本フェーズのタスクに組み込むこと。
+  - `tooling/runtime/audit-schema.json` v1.1 を基準スキーマとして採用し、差分変更が必要な場合は Phase 2-3 チームと調整する。
 
 ## 作業ディレクトリ
 - `compiler/ocaml/src` : Diagnostic/AuditEnvelope 生成プログラム
@@ -106,7 +110,7 @@
 - `extensions.bridge.*` キーの定義
 - ABI 種別・所有権注釈の記録
 - FFI 呼び出しのトレース
-- Phase 2 FFI タスクとの連携
+- Phase 2 FFI タスクとの連携（技術的負債 ID 22/23 の解消を含む）
 
 **成果物**: 統合メタデータ、キー命名規約、連携実装
 
@@ -141,6 +145,7 @@
 - 監査ログのアーティファクト保存
 - PR ごとの監査ログ差分レポート
 - コメント自動投稿（新規エラー/警告）
+- Linux / Windows / macOS 各ワークフローで `iterator.stage.audit_pass_rate` と `ffi_bridge.audit_pass_rate` をゲート条件として導入（技術的負債 ID 22 の解消）
 
 6.2. **スキーマ検証**
 - JSON スキーマでの検証自動化
@@ -198,7 +203,7 @@
 - テスト失敗の原因調査と修正
 - エッジケースの追加テスト
 - 既知の制限事項の文書化
-- Phase 3 への引き継ぎ準備
+- Phase 3 への引き継ぎ準備（macOS FFI サンプル自動検証の進捗を技術的負債 ID 23 と照合）
 
 **成果物**: スナップショットテスト、統合テスト、安定版
 
@@ -217,3 +222,5 @@
 - [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md)
 - [guides/ai-integration.md](../../guides/ai-integration.md)
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
+- [2-3-to-2-4-handover.md](2-3-to-2-4-handover.md)
+- [compiler/ocaml/docs/technical-debt.md](../../../compiler/ocaml/docs/technical-debt.md)

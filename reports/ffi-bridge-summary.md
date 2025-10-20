@@ -46,6 +46,7 @@
 ### 3.3 備考
 - `--verify-ir` 付きで Linux/Windows/macOS の CLI 再実行を行い、stub エントリブロックの無終端問題を解消済み。監査ログには `bridge.return.{ownership,status,wrap,release_handler,rc_adjustment}` が出力されるようになったため、CI 側の必須キーにも追加済み。
 - `Codegen.codegen_module` が `reml.bridge.stubs` Named Metadata を出力（キー例: `bridge.stub_index`, `bridge.extern_symbol`, `bridge.platform`）。`reml.bridge.version` モジュールフラグ (1) を追加済みで、`main.ml` から受け渡した `stub_plans` でも同一出力を得ている。
+- Windows Stage override 自動検証は技術的負債リスト ID 22 で追跡中。macOS 固有サンプル (`ffi_dispatch_async.reml`) の自動実行は ID 23 で管理している。
 
 ## 4. キャプチャログ
 

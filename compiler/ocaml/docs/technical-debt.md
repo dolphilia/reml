@@ -243,6 +243,25 @@ LLVM 18.1.8のソースビルドを試行した結果、以下の結論に至っ
 2. `iterator-stage-summary.md` の差分を自動比較し、pass_rate 低下時に PR チェックを失敗させる。
 3. FFI Capability 追加時は Windows override JSON を併せて更新し、本項目をクローズする。
 
+### 23. macOS FFI サンプル (`ffi_dispatch_async`) の自動検証不足
+
+**分類**: ランタイム / テスト  
+**優先度**: 🟡 Medium  
+**発見日**: 2025-10-24
+
+#### 問題の詳細
+
+- Phase 2-3 で `tmp/cli-callconv-sample.reml` を 3 ターゲットで再実行し IR/Audit を整備したが、macOS 固有の `ffi_dispatch_async.reml` / `ffi_malloc_arm64.reml` はビルド失敗のまま未実施（`reports/ffi-macos-summary.md` に記録）。
+- libSystem の非同期呼び出しや Darwin 固有の所有権ハンドリングを CI で検証できず、`bridge.return.*` の監査カバレッジに抜けがある。
+- Phase 3 で macOS FFI Capability を昇格させる際、現状のままだとリグレッションを検出できないリスクが高い。
+
+#### 対応計画
+
+1. `ffi_dispatch_async.reml` / `ffi_malloc_arm64.reml` のビルド手順を整理し、`scripts/ci-local.sh --target macos --arch arm64` の Test ステップに追加する。
+2. 生成された IR / 監査ログを `tmp/cli-callconv-out/macos/` に保存し、`reports/ffi-macos-summary.md` と `compiler/ocaml/tests/golden/audit/cli-ffi-bridge-macos.jsonl.golden` へ反映する。
+3. macOS 監査ログで `bridge.platform = macos-arm64` と `bridge.return.*` が揃うことを確認し、`ffi_bridge.audit_pass_rate` が 1.0 を維持するよう CI ゲートを更新する。
+4. `dispatch_async_f` 実行に codesign / entitlements が必要な場合は手順を整理し、Phase 3 の macOS チームへ引き継ぐ（`docs/notes/darwin-ffi-validation.md` を新設する想定）。
+
 ### 11. 統計機能の拡張
 
 **分類**: CLI / メトリクス

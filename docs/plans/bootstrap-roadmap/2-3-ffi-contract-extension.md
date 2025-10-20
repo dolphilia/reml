@@ -20,9 +20,18 @@
 
 ## 進捗サマリー（2025-10-24 時点）
 
-- **完了した領域**: Typer 統合（`check_extern_bridge_contract`）と Borrowed/Transferred 返り値処理、`--verify-ir` の 3 ターゲット通過、`tmp/cli-callconv-sample.reml` 系の CLI 追試で得た IR/監査ログ再収集。
-- **進行中の領域**: ゴールデン差分の更新、`ffi_bridge.audit_pass_rate` の CI ゲート化、Windows Stage override 自動検証、macOS 追加シナリオ（`ffi_dispatch_async` など）の計測。
-- **未着手の領域**: `AuditEnvelope` スキーマ v1.1 の公開、仕様/ガイドの改訂、Phase 2-3 完了報告ドラフト作成。
+- **完了**: Typer 統合、ブリッジ生成、監査スキーマとドキュメント更新、3 ターゲットでの CLI 追試とゴールデン整備。
+- **引き継ぎ対象**: Windows Stage override 自動検証（技術的負債 ID 22）、macOS 固有サンプル (`ffi_dispatch_async`) の自動テスト化（ID 23）、`--verify-ir` の再有効化、GitHub Actions への `ffi_bridge.audit_pass_rate` ゲート導入。
+- Phase 2-3 の主タスクは完了したため、残作業は Phase 3 へ移管する。
+
+### 引き継ぎメモ（2025-10-24）
+
+- 完了報告書: `docs/plans/bootstrap-roadmap/2-3-completion-report.md`
+- 技術的負債: Windows Stage 自動検証（ID 22）、macOS FFI サンプル自動化（ID 23）
+- 参照レポート: `reports/ffi-bridge-summary.md`, `reports/ffi-macos-summary.md`
+- 次フェーズ計画: `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md`
+
+> **備考**: 以下の表や「最新進捗サマリー」節は実行中の履歴記録を保持しています。最新の完了状況は上記引き継ぎメモおよび完了報告書を参照してください。
 
 ## 進捗トラッキング（2025-10 時点）
 
