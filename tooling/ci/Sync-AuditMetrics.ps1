@@ -137,6 +137,12 @@ if ($verifyLogText -match "検証成功|Verification succeeded") {
 
 # FFI Bridge メトリクス読み込み (オプション)
 $ffiBridgeMetrics = $null
+if ($metrics.metrics) {
+    $candidate = $metrics.metrics | Where-Object { $_.metric -eq "ffi_bridge.audit_pass_rate" } | Select-Object -First 1
+    if ($candidate) {
+        $ffiBridgeMetrics = $candidate
+    }
+}
 if (Test-Path $FfiBridgeMetricsPath) {
     Write-Host "FFI Bridge メトリクスを読み込み中: $FfiBridgeMetricsPath" -ForegroundColor Gray
     $ffiBridgeMetrics = Load-JsonFile -Path $FfiBridgeMetricsPath
@@ -265,11 +271,30 @@ if ($AuditPath -and (Test-Path $AuditPath)) {
 # FFI Bridge メトリクス追加
 if ($ffiBridgeMetrics) {
     $outputLines += "`n### FFI Bridge Audit サマリー`n"
-    $outputLines += "- メトリクスファイル: ``$FfiBridgeMetricsPath``"
+    if (Test-Path $FfiBridgeMetricsPath) {
+        $outputLines += "- メトリクスファイル: ``$FfiBridgeMetricsPath``"
+    } else {
+        $outputLines += "- メトリクスファイル: ``$MetricsPath`` (embedded)"
+    }
 
-    $ffiPassRate = $ffiBridgeMetrics.ffi_bridge_pass_rate
-    $ffiTotal = $ffiBridgeMetrics.total_ffi_declarations
-    $ffiPassed = $ffiBridgeMetrics.passed_ffi_declarations
+    $ffiPassRate =
+        if ($ffiBridgeMetrics.ffi_bridge_pass_rate -ne $null) {
+            $ffiBridgeMetrics.ffi_bridge_pass_rate
+        } else {
+            $ffiBridgeMetrics.pass_rate
+        }
+    $ffiTotal =
+        if ($ffiBridgeMetrics.total_ffi_declarations -ne $null) {
+            $ffiBridgeMetrics.total_ffi_declarations
+        } else {
+            $ffiBridgeMetrics.total
+        }
+    $ffiPassed =
+        if ($ffiBridgeMetrics.passed_ffi_declarations -ne $null) {
+            $ffiBridgeMetrics.passed_ffi_declarations
+        } else {
+            $ffiBridgeMetrics.passed
+        }
 
     $outputLines += "- 指標: ``ffi_bridge.audit_pass_rate``"
     $outputLines += "- FFI 宣言数: $ffiTotal, 検証成功: $ffiPassed, pass_rate: $ffiPassRate"
@@ -329,7 +354,13 @@ if ($stageTraceMissing -gt 0 -or $stageTraceSourceMissing -gt 0 -or $stageTraceM
 }
 
 if ($ffiBridgeMetrics) {
-    $ffiPassRateValue = [double]$ffiBridgeMetrics.ffi_bridge_pass_rate
+    $ffiRawPassRate =
+        if ($ffiBridgeMetrics.ffi_bridge_pass_rate -ne $null) {
+            $ffiBridgeMetrics.ffi_bridge_pass_rate
+        } else {
+            $ffiBridgeMetrics.pass_rate
+        }
+    $ffiPassRateValue = [double]$ffiRawPassRate
     if ($ffiPassRateValue -lt 1.0) {
         Write-Warning "FFI Bridge pass_rate が 1.0 未満です: $ffiPassRateValue"
         $exitCode = 1

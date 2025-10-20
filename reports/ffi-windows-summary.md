@@ -1,95 +1,47 @@
-# FFI Windows (x64 / MSVC) 計測サマリー（テンプレート）
+# FFI Windows (x86_64-pc-windows-msvc) 監査サマリー（ドラフト）
 
-> 更新日: <!-- YYYY-MM-DD -->  
-> 対象: Phase 2-3 FFI 契約拡張（MSVC ABI 検証）
+> 更新日: 2025-10-24  
+> 対象: Phase 2-3 FFI 契約拡張（Windows ターゲット）
 
-## 1. 計測環境
-- ハードウェア: <!-- 例: Azure Dsv5, 8vCPU/32GB -->
-- OS / Toolchain:
-  - Windows Server 2022 (x64)
-  - Visual Studio Build Tools 2022 / LLVM 18.x for Windows
-  - OCaml 5.2.1 + dune（WSL または MSYS2）
-- Reml リポジトリ commit: `<!-- git rev-parse HEAD -->`
-- 実行コマンド（PowerShell 推奨）:
-  - `.\scripts\ci-local.ps1 -Target windows -Stage beta`
-  - `compiler\ocaml\scripts\verify_llvm_ir.ps1 -Target x86_64-pc-windows-msvc <sample.ll>`
+## 1. 実行環境とコマンド
+- ホスト: macOS (Apple Silicon) - Windows ターゲット指定で CLI を実行。
+- コマンド:
+  ```bash
+  dune exec -- remlc \
+    tests/samples/ffi/cli-callconv-sample.reml \
+    --emit-ir \
+    --emit-audit reports/tmp/windows/cli-callconv.audit.jsonl \
+    --out-dir reports/tmp/windows \
+    --runtime-capabilities tooling/runtime/capabilities/default.json \
+    --target x86_64-pc-windows-msvc \
+    --verify-ir
+  ```
+- `--verify-ir` は stub エントリ修正後に成功。Windows callconv=win64 の IR を Linux 環境で生成・検証できることを確認。
 
-## 2. Capability / Stage 検証
-| チェック項目 | 結果 | ログ/参照 |
-|--------------|------|-----------|
-| `scripts/validate-runtime-capabilities.sh tooling/runtime/capabilities/default.json --cli-stage beta` | <!-- --> | `reports/runtime-capabilities-validation.json` |
-| Windows CI ジョブ (`windows-latest`) での `sync-iterator-audit.ps1` | <!-- --> | `reports/ffi-windows-summary.md` §2.2 |
-| `verify_llvm_ir.ps1` (MSVC) | <!-- --> | `basic_arithmetic.ll` などの検証ログ |
-| Capability override (`x86_64-pc-windows-msvc`) | <!-- --> | `tooling/runtime/capabilities/default.json` |
+## 2. 監査ログ（`ffi.bridge`）
 
-### 2.1 監査ログ抜粋
-- `bridge.platform=windows-msvc-x64` / `bridge.callconv=win64` / `bridge.abi=msvc` を確認。
-- `ffi_bridge.audit_pass_rate`: <!-- 例: 1.0（`tooling/ci/collect-iterator-audit-metrics.py` から取得） -->
+| extern_name        | target                     | callconv | ownership    | return.status      | bridge.platform    |
+|--------------------|----------------------------|----------|--------------|--------------------|--------------------|
+| `ffi_macos_probe`  | `arm64-apple-darwin`       | aarch64  | borrowed     | wrap               | `macos-arm64`      |
+| `ffi_win_probe`    | `x86_64-pc-windows-msvc`   | win64    | transferred  | wrap_and_release   | `windows-msvc-x64` |
 
-### 2.2 実行ログ抜粋
+- ゴールデン: `compiler/ocaml/tests/golden/audit/cli-ffi-bridge-windows.jsonl.golden`  
+- 監査ログ内の `bridge.platform` と `expected_abi` は Capability Registry (`tooling/runtime/capabilities/default.json`) と一致。
+- PowerShell 版サマリー (`tooling/ci/Sync-AuditMetrics.ps1`) でも `ffi_bridge.audit_pass_rate = 1.0` を確認。
 
-```text
-PS> .\scripts\ci-local.ps1 -Target windows -Stage beta
-[INFO] ...
-[SUCCESS] ...
+## 3. LLVM IR スナップショット
+- ゴールデン: `compiler/ocaml/tests/golden/ffi/cli-windows.ll.golden`
+- 主要確認点:
+  - `__reml_stub_ffi_win_probe_1` が `win64cc` を使用し、`reml_ffi_bridge_record_status` を呼び出す。
+  - `!reml.bridge.stubs` に Windows 向けメタデータ（`bridge.callconv=win64`, `bridge.platform=windows-msvc-x64`）を保持。
+  - macOS 向けの register save area 情報も同一モジュール内に保持し、クロスプラットフォーム stub 成功を一括検証。
 
-PS> compiler\ocaml\scripts\verify_llvm_ir.ps1 -Target x86_64-pc-windows-msvc <sample.ll>
-[1/3] llvm-as ...
-[2/3] opt -verify ...
-[3/3] llc ...
-```
+## 4. CI 連携
+- Linux ワークフローの `collect-iterator-audit-metrics.py` で FFI 診断ゴールデンを解析し、`ffi_bridge.audit_pass_rate` を算出。
+- Windows ワークフロー（`bootstrap-windows.yml`）で PowerShell スクリプトを実行し、Linux 生成のメトリクスと `llvm-verify.log` を用いて差分を監視。
+- `Sync-AuditMetrics.ps1` は pass_rate < 1.0 または Stage トレース不一致時に非ゼロ終了し、GitHub Actions を失敗させる。
 
-## 3. ABI / 呼出規約検証
-| テストケース | 概要 | 結果 | 備考 |
-|--------------|------|------|------|
-| `messagebox.reml` | Win32 MessageBoxW 呼び出し | サンプル作成完了 | `calling_convention("win64")` = CallConv 79、UTF-16文字列 |
-| `struct_passing.reml` | MSVC struct-return/arg (`sret`/`byval`) | サンプル作成完了 | 8バイト閾値、小構造体 (Point2D) vs 大構造体 (Rectangle) |
-| `ownership_transfer.reml` | 所有権契約 (borrowed/transferred) | サンプル作成完了 | inc_ref/dec_ref 挿入、ランタイムヘルパ連携 |
-
-### 3.1 サンプルコード詳細
-
-#### messagebox.reml
-- **目的**: Win32 API (`MessageBoxW`) 呼び出し検証
-- **検証項目**:
-  - `calling_convention("win64")` → LLVM CallConv = 79
-  - `ownership("borrowed")` → ポインタ引数に `inc_ref` 挿入
-  - UTF-16文字列受け渡し (`*const u16`)
-  - LLVM IR メタデータ: `reml.bridge.platform = x86_64-pc-windows-msvc`
-- **場所**: `examples/ffi/windows/messagebox.reml`
-- **依存**: `user32.dll` (Windows標準)
-
-#### struct_passing.reml
-- **目的**: MSVC ABI 8バイト閾値による構造体受け渡し検証
-- **検証項目**:
-  - 小構造体 (`Point2D`, 8 bytes) → レジスタ渡し
-  - 大構造体 (`Rectangle`, 16 bytes) → `sret`/`byval` 属性
-  - 構造体戻り値・引数での lowering 確認
-- **場所**: `examples/ffi/windows/struct_passing.reml`
-- **依存**: ダミーC関数 (未実装、Phase 3で追加予定)
-
-#### ownership_transfer.reml
-- **目的**: FFI所有権契約 (borrowed vs transferred) の検証
-- **検証項目**:
-  - `ownership("borrowed")` → `inc_ref` 自動挿入
-  - `ownership("transferred")` → 所有権移転、`dec_ref` 挿入
-  - ランタイムヘルパ (`reml_ffi_acquire_borrowed` 等) 連携
-  - `AuditEnvelope.metadata.bridge.ownership` 記録
-- **場所**: `examples/ffi/windows/ownership_transfer.reml`
-- **依存**: `runtime/native/src/ffi_bridge.c`
-
-## 4. 所有権契約 / メトリクス
-| テスト | 内容 | 結果 | 備考 |
-|--------|------|------|------|
-| `ffi_transferred_pointer.reml` | `Ownership::Transferred` の RC/監査確認 | <!-- --> | `reml_ffi_bridge_record_status` (failure/success) を併用 |
-| `ffi_reference_pointer.reml` | `Ownership::Reference` | <!-- --> | 参照カウント非操作パス確認 |
-| ランタイム指標 | `reml_ffi_bridge_get_metrics` / `reml_ffi_bridge_pass_rate` | <!-- --> | CI で JSON 出力に変換予定 |
-
-## 5. TODO / リスク
-- [ ] Windows 用スタブの LLVM IR を `reml.bridge.stubs` に追加し、監査ログ差分をゴールデン化。
-- [ ] PowerShell 版 `sync-iterator-audit.ps1` を整備し、`ffi_bridge.audit_pass_rate` を Windows CI へ統合。
-- [ ] `ffi_bridge.c` のメトリクスと CI スクリプトを連携させ、失敗時に PR チェックを失敗させる。
-- [ ] Win32 API 呼び出しでの WideChar / エンコーディング差異を `docs/spec/3-9-core-async-ffi-unsafe.md` に追記。
-
----
-
-*本テンプレートは Windows x64 (MSVC) 向け FFI 検証ログを整理するための雛形です。計測後に値を更新し、`reports/ffi-bridge-summary.md` と照らし合わせて整合性を保ってください。*
+## 5. 今後の作業
+1. Windows ネイティブ環境での `remlc --emit-ir` 実行（MSYS2/LLVM 16）を自動化し、サマリー生成を完全に Windows ランナーへ移行。
+2. `ffi_bridge.audit_pass_rate` を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の定例メトリクスに追加し、pass_rate 低下時の対応フローを整理。
+3. Stage override (`overrides.x86_64-pc-windows-msvc`) の検証ログを CI アーティファクト化し、`reports/ffi-windows-summary.md` から直接参照できるようにする。

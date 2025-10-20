@@ -13,7 +13,7 @@
 ## 2. 残タスク一覧
 - **LLVM IR / スタブ整合**
   - 2025-10-24 に `llvm_gen/codegen.ml` の空エントリブロックを修正し、`--verify-ir` を再度有効化して Linux/Windows/macOS の CLI 追試が通過。次段階として 3 ターゲット分の IR と監査ログをゴールデン化。
-  - `reports/ffi-bridge-summary.md` に Linux/Windows/macOS の ABI・所有権ホワイトリスト差分を集約し、`reports/ffi-linux-summary.md`・`reports/ffi-windows-summary.md` を新規作成。
+  - `reports/ffi-bridge-summary.md` に Linux/Windows/macOS の ABI・所有権ホワイトリスト差分を集約。`reports/ffi-linux-summary.md`・`reports/ffi-windows-summary.md` を追加し、macOS 版と併せて 3 ターゲット分のサマリーを整備。
 - **監査・CI**
   - `tooling/ci/collect-iterator-audit-metrics.py` と `tooling/ci/sync-iterator-audit.sh` を拡張し、`ffi_bridge.audit_pass_rate` を CI ゲートへ追加。`tooling/runtime/audit-schema.json` v1.1 に `bridge.*` フィールドを正式反映。
   - Windows ランナーで `remlc --emit-audit` を実行し `reports/iterator-stage-summary.md` を自動収集するジョブを追加、差分監視を導入。

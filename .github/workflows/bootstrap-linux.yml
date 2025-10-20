@@ -427,7 +427,10 @@ jobs:
 
       - name: Collect iterator.stage audit metrics
         run: |
-          python3 tooling/ci/collect-iterator-audit-metrics.py --output tooling/ci/iterator-audit-metrics.json
+          python3 tooling/ci/collect-iterator-audit-metrics.py \
+            --source compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden \
+            --source compiler/ocaml/tests/golden/diagnostics/ffi/unsupported-abi.json.golden \
+            --output tooling/ci/iterator-audit-metrics.json
 
       - name: Run iterator audit gate
         run: |

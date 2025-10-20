@@ -4,19 +4,20 @@
 
 ## 1. 集計メタデータ
 
-- 更新日: 2025-10-21
-- 更新者: Claude (AI エージェント)
+- 更新日: 2025-10-24
+- 更新者: Codex (AI エージェント)
 - 対象コミット: 修正後の最新状態（test_ffi_lowering 修正完了）
 - 参照計画: docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md
 - **状態**: ランタイムヘルパと `llvm_gen/codegen.ml` の最終調整を実施中。Linux/Windows/macOS で `--emit-ir` / `--emit-audit` を再実行し、成果物を `tmp/cli-callconv-out/<platform>/` に集約。2025-10-24 に stub エントリブロックの無終端問題を解消し、`--verify-ir` 付きで 3 ターゲットすべての IR 検証が通過。
+- 関連サマリー: `reports/ffi-linux-summary.md`, `reports/ffi-windows-summary.md`, `reports/ffi-macos-summary.md`
 
 ## 2. ターゲット別スタブ状況
 
 | ターゲット | 呼出規約 (plan) | 所有権 (plan) | 監査タグ確認 | メモ |
 | --- | --- | --- | --- | --- |
-| x86_64-unknown-linux-gnu | `ccc` | `borrowed` | yes | CLI 再実行 (`tmp/cli-callconv-sample.reml`) で `tmp/cli-callconv-out/linux/cli-callconv-sample.ll` と `cli-callconv.audit.jsonl` を生成。IR は `win64cc`/`arm_aapcscc` stub を含むが、`entry` ブロックに終端命令が無く `llvm-as` 検証に失敗（対策中）。監査ログには `bridge.return.*` と `bridge.platform=windows-msvc-x64` / `macos-arm64` が出力される。 |
-| x86_64-pc-windows-msvc | `win64` | `transferred` | yes | CLI 再実行済み。`tmp/cli-callconv-out/windows/cli-callconv-sample.ll` / `cli-callconv.audit.jsonl` を取得し、監査ログで `bridge.target=x86_64-pc-windows-msvc`・`ownership=transferred`・`bridge.return.status=wrap_and_release` を確認。 |
-| arm64-apple-darwin | `aarch64_aapcscc` | `borrowed` | yes | CLI 再実行済み（`tmp/cli-callconv-sample.reml` および `tmp/cli-callconv-macos.reml`）。`tmp/cli-callconv-out/macos/cli-callconv-{sample,macos}.ll` と各監査ログを取得し、RSA メタデータと `bridge.return.status=wrap`、`ffi.bridge` Stage=beta を確認。 |
+| x86_64-unknown-linux-gnu | `ccc` | `borrowed` | yes | CLI 再実行 (`tests/samples/ffi/cli-callconv-sample.reml`) で golden (`tests/golden/ffi/cli-linux.ll.golden`, `tests/golden/audit/cli-ffi-bridge-linux.jsonl.golden`) を更新。`--verify-ir` 付きで `reml_ffi_bridge_record_status` 呼び出しを確認。 |
+| x86_64-pc-windows-msvc | `win64` | `transferred` | yes | CLI 再実行済み。新ゴールデン (`tests/golden/ffi/cli-windows.ll.golden`, `tests/golden/audit/cli-ffi-bridge-windows.jsonl.golden`) を追加し、`bridge.return.status=wrap_and_release` を検証。 |
+| arm64-apple-darwin | `aarch64_aapcscc` | `borrowed` | yes | CLI 再実行済み（共通サンプル＋macOS専用サンプル）。`tests/golden/ffi/cli-macos.ll.golden` と `tests/golden/audit/cli-ffi-bridge-macos.jsonl.golden` を固定し、RSA メタデータと `bridge.return.status=wrap` を確認。 |
 
 > **記入例**: Linux 版のみ実装済みの場合は監査タグを `yes`、他は `pending` とし、差分に必要なタスク (例: `runtime/native/src/ffi_bridge.c` の実装) をメモ欄へ記載。
 
@@ -35,7 +36,7 @@
 - [x] `reml.bridge.version` モジュールフラグ (1) が `llvm_gen/ffi_value_lowering.ml` で出力されている（`tests/test_ffi_lowering.ml` で確認）
 - [ ] 失敗ケースが `ffi_bridge.audit_pass_rate` に反映されている（ランタイム計測 API による自動化を追加予定）
 - [ ] `AuditEnvelope` スキーマ v1.1 に `bridge.*` プロパティを追加し、CI の JSON 検証を更新する。
-- [ ] CLI `--emit-audit` のゴールデンに Borrowed/Transferred 返り値ケースを追加し、`dune runtest` で再固定する。
+- [x] CLI `--emit-audit` のゴールデンに Borrowed/Transferred 返り値ケースを追加し、`dune runtest` で再固定する。
 - 備考: `--verify-ir` 付きで Linux/Windows/macOS の CLI 再実行を行い、stub エントリブロックの無終端問題を解消済み。監査ログには `bridge.return.{ownership,status,wrap,release_handler,rc_adjustment}` が出力されるようになったため、CI 側の必須キーにも追加済み。
 - FFI スタブメタデータ: `Codegen.codegen_module` が `reml.bridge.stubs` Named Metadata を出力（キー例: `bridge.stub_index`, `bridge.extern_symbol`, `bridge.platform`）。`reml.bridge.version` モジュールフラグ (1) を追加済みで、`main.ml` から受け渡した `stub_plans` でも同一出力を得ている。
 

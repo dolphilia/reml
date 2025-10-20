@@ -1,0 +1,9 @@
+extern "C" {
+  @target("arm64-apple-darwin")
+  @link_name("ffi_macos_probe")
+  @ownership("borrowed")
+  @callconv("aapcs64")
+  fn ffi_macos_probe() -> i32;
+}
+
+pub fn main() -> i64 = 0

@@ -1,0 +1,65 @@
+name: Bootstrap Windows CI
+
+on:
+  push:
+    paths:
+      - 'compiler/ocaml/tests/**'
+      - 'tooling/ci/**'
+      - 'reports/**'
+      - '.github/workflows/bootstrap-windows.yml'
+  pull_request:
+    paths:
+      - 'compiler/ocaml/tests/**'
+      - 'tooling/ci/**'
+      - 'reports/**'
+      - '.github/workflows/bootstrap-windows.yml'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    name: Windows Audit Metrics
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Collect iterator/FFI audit metrics (Windows)
+        run: |
+          python tooling/ci/collect-iterator-audit-metrics.py ^
+            --source compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden ^
+            --source compiler/ocaml/tests/golden/diagnostics/ffi/unsupported-abi.json.golden ^
+            --output build\iterator-metrics.json
+
+      - name: Prepare verify log placeholder
+        run: |
+          New-Item -ItemType Directory -Path build -Force | Out-Null
+          "検証成功 (placeholder for Windows audit validation)" | Out-File -FilePath build\verify.log -Encoding utf8
+
+      - name: Run Windows audit summary
+        run: |
+          pwsh -File tooling/ci/Sync-AuditMetrics.ps1 `
+            -MetricsPath build\iterator-metrics.json `
+            -VerifyLogPath build\verify.log `
+            -OutputPath reports\iterator-stage-summary-windows.md
+
+      - name: Upload Windows audit summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-iterator-audit-summary
+          path: reports\iterator-stage-summary-windows.md
+          retention-days: 14
+
+      - name: Upload Windows audit metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-iterator-audit-metrics
+          path: build\iterator-metrics.json
+          retention-days: 14

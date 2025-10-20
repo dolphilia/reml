@@ -1,0 +1,108 @@
+; ModuleID = 'main'
+target datalayout = "e-m:e-p:64:64-f64:64:64-v128:128:128-a:0:64"
+target triple = "arm64-apple-darwin"
+
+declare ptr @mem_alloc(i64)
+
+declare void @inc_ref(ptr)
+
+declare void @dec_ref(ptr)
+
+; Function Attrs: noreturn
+declare void @panic(ptr, i64) #0
+
+declare void @print_i64(i64)
+
+declare void @reml_ffi_bridge_record_status(i32)
+
+declare ptr @reml_ffi_acquire_borrowed_result(ptr)
+
+declare ptr @reml_ffi_acquire_transferred_result(ptr)
+
+; Function Attrs: nocallback nofree nounwind willreturn memory(argmem: readwrite)
+declare void @llvm.memcpy.p0.p0.i64(ptr noalias nocapture writeonly, ptr noalias nocapture readonly, i64, i1 immarg) #1
+
+define i1 @__Eq_i64_eq(i64 %x, i64 %y) {
+entry:
+  %eq_result = icmp eq i64 %x, %y
+  ret i1 %eq_result
+}
+
+define i1 @__Eq_String_eq(ptr %s1, ptr %s2) {
+entry:
+  %string_eq_result = call i32 @string_eq(ptr %s1, ptr %s2)
+  %to_bool = icmp ne i32 %string_eq_result, 0
+  ret i1 %to_bool
+}
+
+declare i32 @string_eq(ptr, ptr)
+
+define i1 @__Eq_Bool_eq(i1 %b1, i1 %b2) {
+entry:
+  %eq_result = icmp eq i1 %b1, %b2
+  ret i1 %eq_result
+}
+
+define i32 @__Ord_i64_compare(i64 %x, i64 %y) {
+entry:
+  %lt = icmp slt i64 %x, %y
+  %gt = icmp sgt i64 %x, %y
+  %sel1 = select i1 %lt, i32 -1, i32 0
+  %sel2 = select i1 %gt, i32 1, i32 %sel1
+  ret i32 %sel2
+}
+
+define i32 @__Ord_String_compare(ptr %s1, ptr %s2) {
+entry:
+  %string_compare_result = call i32 @string_compare(ptr %s1, ptr %s2)
+  ret i32 %string_compare_result
+}
+
+declare i32 @string_compare(ptr, ptr)
+
+define i64 @main() {
+entry:
+  ret i64 0
+}
+
+define internal win64cc i32 @__reml_stub_ffi_win_probe_1() {
+entry:
+  %ffi_stub_invoke = call win64cc i32 @__reml_thunk_ffi_win_probe_1()
+  call void @reml_ffi_bridge_record_status(i32 0)
+  ret i32 %ffi_stub_invoke
+}
+
+define internal win64cc i32 @__reml_thunk_ffi_win_probe_1() {
+entry:
+  %ffi_target_call = call win64cc i32 @ffi_win_probe()
+  ret i32 %ffi_target_call
+}
+
+declare win64cc i32 @ffi_win_probe()
+
+define internal arm_aapcscc i32 @__reml_stub_ffi_macos_probe_2() {
+entry:
+  %darwin_gpr_register_save_area = alloca [64 x i8], align 16
+  %darwin_vector_register_save_area = alloca [128 x i8], align 16
+  %ffi_stub_invoke = call arm_aapcscc i32 @__reml_thunk_ffi_macos_probe_2()
+  call void @reml_ffi_bridge_record_status(i32 0)
+  ret i32 %ffi_stub_invoke
+}
+
+define internal arm_aapcscc i32 @__reml_thunk_ffi_macos_probe_2() {
+entry:
+  %ffi_target_call = call arm_aapcscc i32 @ffi_macos_probe()
+  ret i32 %ffi_target_call
+}
+
+declare arm_aapcscc i32 @ffi_macos_probe()
+
+attributes #0 = { noreturn }
+attributes #1 = { nocallback nofree nounwind willreturn memory(argmem: readwrite) }
+
+!llvm.module.flags = !{!0}
+!reml.bridge.stubs = !{!1, !2}
+
+!0 = !{i32 4, !"reml.bridge.version", i32 1}
+!1 = !{!"bridge.stub_index=1", !"bridge.extern_name=ffi_win_probe", !"bridge.stub_symbol=__reml_stub_ffi_win_probe_1", !"bridge.thunk_symbol=__reml_thunk_ffi_win_probe_1", !"bridge.target=x86_64-pc-windows-msvc", !"bridge.callconv=win64", !"bridge.abi=msvc", !"bridge.ownership=transferred", !"bridge.source_span.start=252", !"bridge.source_span.end=265", !"bridge.return.ownership=transferred", !"bridge.return.wrap=wrap_foreign_ptr", !"bridge.return.release_handler=dec_ref", !"bridge.return.rc_adjustment=dec_ref", !"bridge.extern_symbol=ffi_win_probe", !"bridge.metadata.target=x86_64-pc-windows-msvc", !"bridge.platform=windows-msvc-x64", !"bridge.arch=x86_64"}
+!2 = !{!"bridge.stub_index=2", !"bridge.extern_name=ffi_macos_probe", !"bridge.stub_symbol=__reml_stub_ffi_macos_probe_2", !"bridge.thunk_symbol=__reml_thunk_ffi_macos_probe_2", !"bridge.target=arm64-apple-darwin", !"bridge.callconv=aarch64_aapcscc", !"bridge.abi=darwin_aapcs64", !"bridge.ownership=borrowed", !"bridge.source_span.start=394", !"bridge.source_span.end=409", !"bridge.return.ownership=borrowed", !"bridge.return.wrap=wrap_foreign_ptr", !"bridge.return.release_handler=none", !"bridge.return.rc_adjustment=none", !"bridge.extern_symbol=ffi_macos_probe", !"bridge.metadata.target=arm64-apple-darwin", !"bridge.platform=macos-arm64", !"bridge.arch=arm64", !"bridge.darwin.register_save_area.general.count=8", !"bridge.darwin.register_save_area.general.slot_size=8", !"bridge.darwin.register_save_area.general.total_size=64", !"bridge.darwin.register_save_area.vector.count=8", !"bridge.darwin.register_save_area.vector.slot_size=16", !"bridge.darwin.register_save_area.vector.total_size=128", !"bridge.darwin.register_save_area.alignment=16"}

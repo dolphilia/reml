@@ -281,17 +281,28 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.sources:
         sources = [Path(src) for src in args.sources]
     else:
-        sources = [
+        default_paths = [
             Path(
                 "compiler/ocaml/tests/golden/"
                 "typeclass_iterator_stage_mismatch.json.golden"
-            )
+            ),
+            Path(
+                "compiler/ocaml/tests/golden/diagnostics/ffi/"
+                "unsupported-abi.json.golden"
+            ),
         ]
+        sources = [path for path in default_paths if path.is_file()]
 
     missing_paths = [str(path) for path in sources if not path.is_file()]
     if missing_paths:
         sys.stderr.write(
             "Missing input files: " + ", ".join(missing_paths) + "\n"
+        )
+        return 2
+    if not sources:
+        sys.stderr.write(
+            "No default diagnostic sources found. "
+            "Specify --source explicitly.\n"
         )
         return 2
 
