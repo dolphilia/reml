@@ -51,11 +51,19 @@ REQUIRED_BRIDGE_AUDIT_KEYS: List[str] = [
     "bridge.abi",
     "bridge.ownership",
     "bridge.extern_symbol",
+    "bridge.return.ownership",
+    "bridge.return.wrap",
+    "bridge.return.release_handler",
+    "bridge.return.rc_adjustment",
 ]
 REQUIRED_BRIDGE_EXTENSION_KEYS: List[str] = [
     "bridge.target",
     "bridge.ownership",
     "bridge.abi",
+    "bridge.return.ownership",
+    "bridge.return.wrap",
+    "bridge.return.release_handler",
+    "bridge.return.rc_adjustment",
 ]
 
 

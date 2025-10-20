@@ -26,7 +26,7 @@
 ### 2.1 監査ログ抜粋
 - `AuditEnvelope.metadata.bridge.*`（arm64-apple-darwin）: テスト ステップ手前で停止したため未取得。Typer `extern_metadata` → `AuditEnvelope` 伝搬は次回 `ci-local` 再実行時に確認予定。
 - `Diagnostic.extensions.effect.stage_trace`: `effects-residual` ゴールデン更新後は Typer/Runtime の `stage_trace` が一致（`compiler/ocaml/tests/golden/audit/effects-residual.jsonl.golden` を 2025-10-18 に更新）
-- Borrowed/Transferred 返り値フィールド: `bridge.return.ownership` / `bridge.return.status` / `bridge.return.rc_adjustment` は未取得。`runtime/native/src/ffi_bridge.c` の `reml_ffi_acquire_*_result` 実装後に再収集し、`reports/ffi-bridge-summary.md` のチェックリストを更新予定。
+- Borrowed/Transferred 返り値フィールド: `bridge.return.ownership` / `bridge.return.wrap` / `bridge.return.rc_adjustment` は `compiler/ocaml/tests/test_ffi_lowering.ml` で固定済み。NULL 返却時の `null_results` は `reml_ffi_acquire_*_result` 経由でカウントされる。
 
 ### 2.2 実行ログ抜粋
 
@@ -103,7 +103,7 @@ Command got signal SEGV.
 
 - [ ] Darwin 向け可変長/構造体戻りの ABI 差分調査を完了し、`docs/notes/llvm-spec-status-survey.md` §2.2 を更新
 - [ ] `AuditEnvelope.metadata.bridge.*` スキーマを確定し、macOS サンプルをゴールデン化する（ドラフトは `tooling/runtime/audit-schema.json` に追加済み、Typer 実装後に本番値を取得）
-- [ ] Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）を実装し、`arm64-apple-darwin` 向けに `reml_ffi_acquire_borrowed_result` / `reml_ffi_acquire_transferred_result` の挙動を検証する。`bridge.return.ownership = borrowed/transferred` と `bridge.return.status` が [docs/spec/3-9-core-async-ffi-unsafe.md](../docs/spec/3-9-core-async-ffi-unsafe.md) §2.6、[docs/spec/3-6-core-diagnostics-audit.md](../docs/spec/3-6-core-diagnostics-audit.md) §5.1 に沿って出力されることを `tests/test_ffi_lowering.ml` と `reports/ffi-bridge-summary.md` で確認する。
+- [x] Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）を実装し、`arm64-apple-darwin` 向けに `reml_ffi_acquire_borrowed_result` / `reml_ffi_acquire_transferred_result` の挙動を検証する。`bridge.return.ownership = borrowed/transferred` と新設した `null_results` カウンタが [docs/spec/3-9-core-async-ffi-unsafe.md](../docs/spec/3-9-core-async-ffi-unsafe.md) §2.6、[docs/spec/3-6-core-diagnostics-audit.md](../docs/spec/3-6-core-diagnostics-audit.md) §5.1 に沿って出力されることを `tests/test_ffi_lowering.ml` と `runtime/native/tests/test_ffi_bridge.c` で確認。
 - [ ] CLI (`remlc --emit-ir`) で生成した Linux/Windows/macOS IR に `reml.bridge.stubs` と `bridge.*` メタデータが含まれることを手動サンプルで確認
 
 ## 7. クロスプラットフォーム比較観点（ドラフト）

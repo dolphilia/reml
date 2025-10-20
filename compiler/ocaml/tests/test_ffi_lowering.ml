@@ -153,6 +153,10 @@ let linux_case () =
         { key = "bridge.callconv"; value = "ccc" };
         { key = "bridge.abi"; value = "system_v" };
         { key = "bridge.ownership"; value = "borrowed" };
+        { key = "bridge.return.ownership"; value = "borrowed" };
+        { key = "bridge.return.wrap"; value = "wrap_foreign_ptr" };
+        { key = "bridge.return.release_handler"; value = "none" };
+        { key = "bridge.return.rc_adjustment"; value = "none" };
         { key = "bridge.platform"; value = "linux-x86_64" };
         { key = "bridge.arch"; value = "x86_64" };
         { key = "bridge.block_target"; value = "ffi-linux-block" };
@@ -184,6 +188,10 @@ let windows_case () =
         { key = "bridge.callconv"; value = "win64" };
         { key = "bridge.abi"; value = "msvc" };
         { key = "bridge.ownership"; value = "transferred" };
+        { key = "bridge.return.ownership"; value = "transferred" };
+        { key = "bridge.return.wrap"; value = "wrap_foreign_ptr" };
+        { key = "bridge.return.release_handler"; value = "dec_ref" };
+        { key = "bridge.return.rc_adjustment"; value = "dec_ref" };
         { key = "bridge.platform"; value = "windows-msvc-x64" };
         { key = "bridge.arch"; value = "x86_64" };
         { key = "bridge.block_target"; value = "ffi-win-block" };
@@ -217,6 +225,10 @@ let macos_case () =
         { key = "bridge.callconv"; value = "aarch64_aapcscc" };
         { key = "bridge.abi"; value = "darwin_aapcs64" };
         { key = "bridge.ownership"; value = "borrowed" };
+        { key = "bridge.return.ownership"; value = "borrowed" };
+        { key = "bridge.return.wrap"; value = "wrap_foreign_ptr" };
+        { key = "bridge.return.release_handler"; value = "none" };
+        { key = "bridge.return.rc_adjustment"; value = "none" };
         { key = "bridge.platform"; value = "macos-arm64" };
         { key = "bridge.arch"; value = "arm64" };
         { key = "bridge.block_target"; value = "ffi-macos-block" };

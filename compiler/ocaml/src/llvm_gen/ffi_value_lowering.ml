@@ -51,6 +51,46 @@ let metadata_fields index (plan : stub_plan) =
     ]
     @ span_fields plan.contract.source_span
   in
+  let return_fields =
+    let ownership = ownership_label plan.ownership in
+    let common =
+      [
+        ("bridge.return.ownership", ownership);
+        ("bridge.return.wrap", "wrap_foreign_ptr");
+      ]
+    in
+    let extras =
+      match plan.ownership with
+      | Ffi_contract.OwnershipBorrowed ->
+          [
+            ("bridge.return.release_handler", "none");
+            ("bridge.return.rc_adjustment", "none");
+          ]
+      | Ffi_contract.OwnershipTransferred ->
+          [
+            ("bridge.return.release_handler", "dec_ref");
+            ("bridge.return.rc_adjustment", "dec_ref");
+          ]
+      | Ffi_contract.OwnershipReference ->
+          [
+            ("bridge.return.release_handler", "none");
+            ("bridge.return.rc_adjustment", "reference");
+          ]
+      | Ffi_contract.OwnershipManaged label ->
+          let trimmed = String.trim label in
+          [
+            ("bridge.return.release_handler", Printf.sprintf "managed:%s" trimmed);
+            ("bridge.return.rc_adjustment", "managed");
+          ]
+      | Ffi_contract.OwnershipUnspecified ->
+          [
+            ("bridge.return.release_handler", "unknown");
+            ("bridge.return.rc_adjustment", "unknown");
+          ]
+    in
+    common @ extras
+  in
+  let base_fields = base_fields @ return_fields in
   let optional_fields =
     optional_field "bridge.block_target" plan.contract.block_target
     @ optional_field "bridge.extern_symbol"

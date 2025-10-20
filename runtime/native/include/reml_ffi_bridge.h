@@ -44,6 +44,9 @@ typedef enum {
 typedef struct {
     uint64_t total_calls;
     uint64_t success_calls;
+    uint64_t borrowed_results;
+    uint64_t transferred_results;
+    uint64_t null_results;
 } reml_ffi_bridge_metrics_t;
 
 /**
@@ -106,6 +109,22 @@ reml_span_t reml_ffi_box_string(const reml_string_t* source);
  * span が NULL または data が NULL の場合は空文字列を返す。
  */
 reml_string_t reml_ffi_unbox_span(const reml_span_t* span);
+
+/**
+ * Borrowed な返り値を記録するヘルパ。
+ *
+ * 返り値が NULL の場合は null_results カウンタを更新する。
+ * それ以外は borrowed_results を更新し、値をそのまま返す。
+ */
+void* reml_ffi_acquire_borrowed_result(void* value);
+
+/**
+ * Transferred な返り値を記録するヘルパ。
+ *
+ * 返り値が NULL の場合は null_results カウンタを更新する。
+ * それ以外は transferred_results を更新し、値をそのまま返す。
+ */
+void* reml_ffi_acquire_transferred_result(void* value);
 
 /**
  * FFI 呼び出し結果を記録する。

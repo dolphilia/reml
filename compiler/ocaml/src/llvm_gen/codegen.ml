@@ -232,6 +232,24 @@ let declare_runtime_functions ctx =
   in
   Hashtbl.replace ctx.fn_map "reml_ffi_bridge_record_status" ffi_status;
 
+  (* reml_ffi_acquire_borrowed_result: (ptr) -> ptr *)
+  let ffi_borrowed_result_ty = Llvm.function_type ptr_ty [| ptr_ty |] in
+  let ffi_borrowed_result =
+    Llvm.declare_function "reml_ffi_acquire_borrowed_result"
+      ffi_borrowed_result_ty ctx.llmodule
+  in
+  Hashtbl.replace ctx.fn_map "reml_ffi_acquire_borrowed_result"
+    ffi_borrowed_result;
+
+  (* reml_ffi_acquire_transferred_result: (ptr) -> ptr *)
+  let ffi_transferred_result_ty = Llvm.function_type ptr_ty [| ptr_ty |] in
+  let ffi_transferred_result =
+    Llvm.declare_function "reml_ffi_acquire_transferred_result"
+      ffi_transferred_result_ty ctx.llmodule
+  in
+  Hashtbl.replace ctx.fn_map "reml_ffi_acquire_transferred_result"
+    ffi_transferred_result;
+
   (* memcpy: llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1) -> void *)
   let memcpy_ty =
     Llvm.function_type void_ty
@@ -487,6 +505,7 @@ let emit_stub_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
     Llvm.function_type (Llvm.void_type ctx.llctx) [| Llvm.i32_type ctx.llctx |]
   in
   let success_const = Llvm.const_int (Llvm.i32_type ctx.llctx) 0 in
+  let failure_const = Llvm.const_int (Llvm.i32_type ctx.llctx) 1 in
   codegen_debug "emit_stub_function[%d]: runtime lookup done (type=%s)"
     (index + 1)
     (Llvm.string_of_lltype record_status_type);
@@ -522,16 +541,78 @@ let emit_stub_function ctx signature ~index (plan : Ffi_stub_builder.stub_plan)
   Llvm.set_instruction_call_conv (call_conv_of_stub_plan plan) call_inst;
   codegen_debug "emit_stub_function[%d]: stub->thunk call conv set" (index + 1);
 
+  let ptr_ty = Llvm.pointer_type ctx.llctx in
+  let call_runtime name value label =
+    let helper = lookup_runtime_function ctx name in
+    let helper_ty = Llvm.function_type ptr_ty [| ptr_ty |] in
+    Llvm.build_call helper_ty helper [| value |] label ctx.builder
+  in
+
+  let processed_return, status_value =
+    match (signature.return_class, plan.ownership) with
+    | Abi.DirectReturn, Ffi_contract.OwnershipBorrowed
+      when is_pointer_value call_inst ->
+        let processed =
+          call_runtime "reml_ffi_acquire_borrowed_result" call_inst
+            "ffi_borrowed_return"
+        in
+        let is_null =
+          Llvm.build_is_null processed "ffi_borrowed_return_is_null" ctx.builder
+        in
+        let status =
+          Llvm.build_select is_null failure_const success_const
+            "ffi_borrowed_return_status" ctx.builder
+        in
+        (processed, status)
+    | Abi.DirectReturn, Ffi_contract.OwnershipTransferred
+      when is_pointer_value call_inst ->
+        let processed =
+          call_runtime "reml_ffi_acquire_transferred_result" call_inst
+            "ffi_transferred_return"
+        in
+        let is_null =
+          Llvm.build_is_null processed "ffi_transferred_return_is_null"
+            ctx.builder
+        in
+        let status =
+          Llvm.build_select is_null failure_const success_const
+            "ffi_transferred_return_status" ctx.builder
+        in
+        (processed, status)
+    | Abi.DirectReturn, _ -> (call_inst, success_const)
+    | Abi.SretReturn, Ffi_contract.OwnershipBorrowed ->
+        let sret_ptr = params.(0) in
+        ignore
+          (call_runtime "reml_ffi_acquire_borrowed_result" sret_ptr
+             "ffi_sret_borrowed_return");
+        (call_inst, success_const)
+    | Abi.SretReturn, Ffi_contract.OwnershipTransferred ->
+        let sret_ptr = params.(0) in
+        ignore
+          (call_runtime "reml_ffi_acquire_transferred_result" sret_ptr
+             "ffi_sret_transferred_return");
+        (call_inst, success_const)
+    | Abi.SretReturn, _ -> (call_inst, success_const)
+  in
+
   codegen_debug "emit_stub_function[%d]: building record_status call" (index + 1);
   ignore
-    (Llvm.build_call record_status_type record_status [| success_const |] ""
+    (Llvm.build_call record_status_type record_status [| status_value |] ""
        ctx.builder);
   codegen_debug "emit_stub_function[%d]: status recorded" (index + 1);
+
+  (match plan.ownership with
+  | Ffi_contract.OwnershipTransferred ->
+      Array.iter
+        (fun param ->
+          if is_pointer_value param then ignore (call_dec_ref ctx param))
+        value_params
+  | _ -> ());
 
   (match (signature.return_class, plan.return_type) with
   | Abi.SretReturn, _ -> ignore (Llvm.build_ret_void ctx.builder)
   | _, Types.TUnit -> ignore (Llvm.build_ret_void ctx.builder)
-  | _ -> ignore (Llvm.build_ret call_inst ctx.builder));
+  | _ -> ignore (Llvm.build_ret processed_return ctx.builder));
 
   codegen_debug "emit_stub_function[%d]: return generated" (index + 1);
   stub_fn

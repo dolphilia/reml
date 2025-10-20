@@ -165,13 +165,42 @@ def load_verify_log(path: Path) -> str:
 metrics_data = load_metrics(metrics_path)
 verify_log_text = load_verify_log(verify_log_path)
 
-pass_rate_value: Any = metrics_data.get("pass_rate")
+iterator_metrics: Dict[str, Any] = metrics_data
+ffi_metrics: Optional[Dict[str, Any]] = None
+
+if isinstance(metrics_data.get("metrics"), list):
+    for entry in metrics_data["metrics"]:
+        if not isinstance(entry, dict):
+            continue
+        metric_name = entry.get("metric")
+        if metric_name == "iterator.stage.audit_pass_rate":
+            iterator_metrics = entry
+        elif metric_name == "ffi_bridge.audit_pass_rate":
+            ffi_metrics = entry
+
+if ffi_metrics is None and isinstance(metrics_data.get("ffi_bridge"), dict):
+    ffi_metrics = metrics_data["ffi_bridge"]
+
+pass_rate_value: Any = iterator_metrics.get("pass_rate")
 try:
     pass_rate_float = (
         float(pass_rate_value) if pass_rate_value is not None else None
     )
 except (TypeError, ValueError):
     pass_rate_float = None
+
+ffi_pass_rate_raw: Any = None
+ffi_pass_rate_float: Optional[float] = None
+if ffi_metrics is not None:
+    ffi_pass_rate_raw = ffi_metrics.get("pass_rate")
+    try:
+        ffi_pass_rate_float = (
+            float(ffi_pass_rate_raw)
+            if ffi_pass_rate_raw is not None
+            else None
+        )
+    except (TypeError, ValueError):
+        ffi_pass_rate_float = None
 
 if "検証成功" in verify_log_text or "Verification succeeded" in verify_log_text:
     log_status = "成功"
@@ -186,19 +215,33 @@ lines: List[str] = []
 lines.append(f"### Iterator Stage Audit サマリー ({current_date})\n")
 lines.append(f"- メトリクスファイル: `{metrics_path}`")
 lines.append(f"- verify ログ: `{verify_log_path}` （判定: {log_status}）")
-lines.append(f"- 指標: `{metrics_data.get('metric', 'iterator.stage.audit_pass_rate')}`")
+lines.append(f"- 指標: `{iterator_metrics.get('metric', 'iterator.stage.audit_pass_rate')}`")
 lines.append(
-    f"- 合計: {metrics_data.get('total', 0)}, 成功: {metrics_data.get('passed', 0)}, "
-    f"失敗: {metrics_data.get('failed', 0)}, pass_rate: {pass_rate_value}"
+    f"- 合計: {iterator_metrics.get('total', 0)}, 成功: {iterator_metrics.get('passed', 0)}, "
+    f"失敗: {iterator_metrics.get('failed', 0)}, pass_rate: {pass_rate_value}"
 )
 
-sources: List[str] = metrics_data.get("sources", []) or []
+sources: List[str] = iterator_metrics.get("sources", []) or []
 if sources:
     lines.append(f"- 解析対象ファイル数: {len(sources)}")
     for src in sources:
         lines.append(f"  - `{src}`")
 
-failures: List[Dict[str, Any]] = metrics_data.get("failures", []) or []
+if ffi_metrics is not None:
+    lines.append(
+        f"- FFI ブリッジ指標: `{ffi_metrics.get('metric', 'ffi_bridge.audit_pass_rate')}`"
+    )
+    lines.append(
+        f"  - 合計: {ffi_metrics.get('total', 0)}, 成功: {ffi_metrics.get('passed', 0)}, "
+        f"失敗: {ffi_metrics.get('failed', 0)}, pass_rate: {ffi_pass_rate_raw}"
+    )
+    ffi_sources: List[str] = ffi_metrics.get("sources", []) or []
+    if ffi_sources:
+        lines.append(f"  - FFI 解析対象ファイル数: {len(ffi_sources)}")
+        for src in ffi_sources:
+            lines.append(f"    - `{src}`")
+
+failures: List[Dict[str, Any]] = iterator_metrics.get("failures", []) or []
 if failures:
     lines.append("\n#### 監査必須キーの欠落")
     for failure in failures:
@@ -208,6 +251,22 @@ if failures:
         lines.append(f"- `{file}` (diagnostic #{idx}) → 欠落フィールド: {missing}")
 else:
     lines.append("\n- 監査必須キー: すべて揃っています 🎉")
+
+ffi_failures: List[Dict[str, Any]] = []
+if ffi_metrics is not None:
+    ffi_failures = ffi_metrics.get("failures", []) or []
+    if ffi_failures:
+        lines.append("\n#### FFI ブリッジ監査の欠落")
+        for failure in ffi_failures:
+            file = failure.get("file", "<unknown>")
+            idx = failure.get("index", "?")
+            missing = ", ".join(failure.get("missing", []))
+            code = failure.get("code", "ffi.contract.*")
+            lines.append(
+                f"- `{file}` (diagnostic #{idx}, code={code}) → 欠落フィールド: {missing}"
+            )
+    else:
+        lines.append("\n- FFI ブリッジ監査: すべて揃っています ✅")
 
 stage_trace_missing = 0
 stage_trace_source_missing = 0
@@ -337,6 +396,13 @@ if log_status == "失敗":
     exit_code = 1
 if audit_path is not None and (stage_trace_missing > 0 or stage_trace_source_missing > 0 or stage_trace_mismatch > 0):
     exit_code = 1
+if ffi_metrics is not None:
+    if ffi_pass_rate_float is None and ffi_metrics.get("total", 0) > 0:
+        exit_code = 1
+    elif ffi_pass_rate_float is not None and ffi_pass_rate_float < 1.0:
+        exit_code = 1
+    if ffi_failures:
+        exit_code = 1
 
 markdown = "\n".join(lines).rstrip() + "\n"
 

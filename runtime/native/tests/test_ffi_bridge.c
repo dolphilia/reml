@@ -37,9 +37,44 @@ static void test_metrics_tracking(void) {
     reml_ffi_bridge_metrics_t snapshot = reml_ffi_bridge_get_metrics();
     assert(snapshot.total_calls == 2);
     assert(snapshot.success_calls == 1);
+    assert(snapshot.borrowed_results == 0);
+    assert(snapshot.transferred_results == 0);
+    assert(snapshot.null_results == 0);
 
     double pass_rate = reml_ffi_bridge_pass_rate();
     assert(fabs(pass_rate - 0.5) < 1e-9);
+
+    TEST_END();
+}
+
+static void test_return_metrics(void) {
+    TEST_BEGIN("FFI bridge return metrics");
+
+    reml_ffi_bridge_reset_metrics();
+    void* payload = mem_alloc(32);
+    assert(payload != NULL);
+    reml_set_type_tag(payload, REML_TAG_RECORD);
+
+    void* borrowed = reml_ffi_acquire_borrowed_result(payload);
+    assert(borrowed == payload);
+
+    void* transferred = reml_ffi_acquire_transferred_result(payload);
+    assert(transferred == payload);
+
+    void* null_ret = reml_ffi_acquire_borrowed_result(NULL);
+    assert(null_ret == NULL);
+
+    reml_ffi_bridge_record_success();
+    reml_ffi_bridge_record_failure();
+
+    reml_ffi_bridge_metrics_t snapshot = reml_ffi_bridge_get_metrics();
+    assert(snapshot.total_calls == 2);
+    assert(snapshot.success_calls == 1);
+    assert(snapshot.borrowed_results == 1);
+    assert(snapshot.transferred_results == 1);
+    assert(snapshot.null_results == 1);
+
+    dec_ref(payload);
 
     TEST_END();
 }
@@ -98,6 +133,7 @@ int main(void) {
     printf("==================================================\n\n");
 
     test_metrics_tracking();
+    test_return_metrics();
     test_string_span_conversion();
     test_borrow_helpers();
 

@@ -15,6 +15,9 @@
 
 static atomic_uint_fast64_t bridge_total_calls = 0;
 static atomic_uint_fast64_t bridge_success_calls = 0;
+static atomic_uint_fast64_t bridge_borrowed_results = 0;
+static atomic_uint_fast64_t bridge_transferred_results = 0;
+static atomic_uint_fast64_t bridge_null_results = 0;
 
 /* ========== マーシャリングヘルパー ========== */
 
@@ -50,6 +53,26 @@ reml_string_t reml_ffi_unbox_span(const reml_span_t* span) {
     return result;
 }
 
+void* reml_ffi_acquire_borrowed_result(void* value) {
+    if (value == NULL) {
+        atomic_fetch_add_explicit(&bridge_null_results, 1, memory_order_relaxed);
+        return NULL;
+    }
+
+    atomic_fetch_add_explicit(&bridge_borrowed_results, 1, memory_order_relaxed);
+    return value;
+}
+
+void* reml_ffi_acquire_transferred_result(void* value) {
+    if (value == NULL) {
+        atomic_fetch_add_explicit(&bridge_null_results, 1, memory_order_relaxed);
+        return NULL;
+    }
+
+    atomic_fetch_add_explicit(&bridge_transferred_results, 1, memory_order_relaxed);
+    return value;
+}
+
 /* ========== 計測 API ========== */
 
 void reml_ffi_bridge_record_status(reml_ffi_bridge_status_t status) {
@@ -62,6 +85,9 @@ void reml_ffi_bridge_record_status(reml_ffi_bridge_status_t status) {
 void reml_ffi_bridge_reset_metrics(void) {
     atomic_store_explicit(&bridge_total_calls, 0, memory_order_relaxed);
     atomic_store_explicit(&bridge_success_calls, 0, memory_order_relaxed);
+    atomic_store_explicit(&bridge_borrowed_results, 0, memory_order_relaxed);
+    atomic_store_explicit(&bridge_transferred_results, 0, memory_order_relaxed);
+    atomic_store_explicit(&bridge_null_results, 0, memory_order_relaxed);
 }
 
 reml_ffi_bridge_metrics_t reml_ffi_bridge_get_metrics(void) {
@@ -70,6 +96,12 @@ reml_ffi_bridge_metrics_t reml_ffi_bridge_get_metrics(void) {
         atomic_load_explicit(&bridge_total_calls, memory_order_relaxed);
     snapshot.success_calls =
         atomic_load_explicit(&bridge_success_calls, memory_order_relaxed);
+    snapshot.borrowed_results =
+        atomic_load_explicit(&bridge_borrowed_results, memory_order_relaxed);
+    snapshot.transferred_results =
+        atomic_load_explicit(&bridge_transferred_results, memory_order_relaxed);
+    snapshot.null_results =
+        atomic_load_explicit(&bridge_null_results, memory_order_relaxed);
     return snapshot;
 }
 
