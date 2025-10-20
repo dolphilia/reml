@@ -62,12 +62,23 @@ Command got signal SEGV.
 |--------------|------|------|------|
 | `ffi_malloc_arm64.reml` | System V → Darwin 引数マーシャリング比較 | 未実施（Build 失敗） | struct-by-value / pointer 戻り値 |
 | `ffi_dispatch_async.reml` | `dispatch_async_f` 呼び出し（libSystem） | 未実施（Build 失敗） | `ffi.bridge` Capability Required |
-| 可変長引数 (`printf`) | `ffi.callconv("ccc")` → varargs 挙動 | 未実施（Build 失敗） | Darwin target 固有 |
-| 構造体戻り値 | `extern` returning `{f64, f64}` | 未実施（Build 失敗） | SRet 要否確認 |
+| 可変長引数 (`printf`) | `ffi.callconv("ccc")` → varargs 挙動 | 成功（IR プリセット） | `verify_llvm_ir.sh --preset darwin-arm64` で `darwin_varargs.ll` を検証 |
+| 構造体戻り値 | `extern` returning `{f64, f64}` | 成功（IR プリセット） | 同上、`darwin_struct_return.ll` |
 
-### 3.1 LLVM IR スナップショット
+### 3.1 Darwin 固有差分（可変長／構造体戻り）調査メモ
+- `arm64-apple-darwin` では可変長関数呼び出し時に整数 8 本・SIMD 8 本の Register Save Area を呼出側が確保し、`va_list` が `__gr_offs`／`__vr_offs` を用いてレジスタ退避領域を巡回する。Reml のスタブ生成では Darwin ケースのみ Register Save Area のアドレス計算を取り込む必要がある（`docs/notes/llvm-spec-status-survey.md` §2.2.2a）。
+- 構造体戻り値は 16B 以下または HFA/HVA（要素数≦4）の場合に `x0-x3`／`v0-v3` で直接返却し、それ以外は `x8` に渡したポインタへ書き込む `sret align 16` が必須。LLVM 側では `Abi.classify_struct_return` の Darwin 対応を `tests/test_ffi_lowering.ml` の追加ケースで監視する。
+- 以上の差分に合わせ、`ffi_stub_builder` と `llvm_gen/codegen` の Darwin 分岐を対象に Register Save Area と `sret align 16` の検証ケースを追加する作業を別タスクとして起票予定。本サマリーでは `ffi_bridge.audit_pass_rate` 監査指標への影響を継続観測する。
+
+### 3.2 LLVM IR スナップショット
 - `build/ir/macos-arm64/<sample>.ll` … TBD
 - `llc` 出力オブジェクト: TBD（`codesign --verify` 実行ログ）
+
+### 3.3 verify_llvm_ir.sh プリセット
+- 2025-10-21: `./compiler/ocaml/scripts/verify_llvm_ir.sh --target arm64-apple-darwin --preset darwin-arm64` を実行し、プリセットサンプルを検証。
+  - `darwin_struct_return.ll`（構造体戻りテスト）: `llvm-as` → `opt -verify` → `llc` の全工程が成功し、`darwin_struct_return.o` を生成。
+  - `darwin_varargs.ll`（varargs テスト）: 同様に成功し、`darwin_varargs.o` を生成（計測後に生成物を削除済み）。
+- プリセットは `compiler/ocaml/tests/llvm-ir/presets/darwin-arm64/` に配置し、varargs / sret の双方をスモークテストできるようにした。
 
 ## 4. 所有権契約 / 監査
 | テスト | 内容 | 結果 | 備考 |
@@ -101,7 +112,7 @@ Command got signal SEGV.
 
 ### 残タスク 📋
 
-- [ ] Darwin 向け可変長/構造体戻りの ABI 差分調査を完了し、`docs/notes/llvm-spec-status-survey.md` §2.2 を更新
+- [x] Darwin 向け可変長/構造体戻りの ABI 差分調査を完了し、`docs/notes/llvm-spec-status-survey.md` §2.2 を更新（2025-10-21、`§2.2.2a` 追加）
 - [ ] `AuditEnvelope.metadata.bridge.*` スキーマを確定し、macOS サンプルをゴールデン化する（ドラフトは `tooling/runtime/audit-schema.json` に追加済み、Typer 実装後に本番値を取得）
 - [x] Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）を実装し、`arm64-apple-darwin` 向けに `reml_ffi_acquire_borrowed_result` / `reml_ffi_acquire_transferred_result` の挙動を検証する。`bridge.return.ownership = borrowed/transferred` と新設した `null_results` カウンタが [docs/spec/3-9-core-async-ffi-unsafe.md](../docs/spec/3-9-core-async-ffi-unsafe.md) §2.6、[docs/spec/3-6-core-diagnostics-audit.md](../docs/spec/3-6-core-diagnostics-audit.md) §5.1 に沿って出力されることを `tests/test_ffi_lowering.ml` と `runtime/native/tests/test_ffi_bridge.c` で確認。
 - [ ] CLI (`remlc --emit-ir`) で生成した Linux/Windows/macOS IR に `reml.bridge.stubs` と `bridge.*` メタデータが含まれることを手動サンプルで確認

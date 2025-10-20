@@ -27,6 +27,16 @@ type stub_template = {
   audit_platform : string;
 }
 
+type register_save_area = {
+  gpr_count : int;
+  gpr_slot_size : int;
+  gpr_total_size : int;
+  vector_count : int;
+  vector_slot_size : int;
+  vector_total_size : int;
+  stack_alignment : int;
+}
+
 type stub_plan = {
   template : stub_template;
   target_triple : string;
@@ -37,6 +47,7 @@ type stub_plan = {
   param_types : ty list;
   return_type : ty;
   contract : bridge_contract;
+  register_save_area : register_save_area option;
 }
 
 (* ========== 内部ユーティリティ ========== *)
@@ -138,7 +149,44 @@ let normalize_abi template metadata =
   | AbiUnspecified -> template.default_abi
   | abi -> abi
 
-let audit_tags_of_plan template target call_conv ownership abi =
+let register_save_area_for_template template =
+  match template.platform with
+  | MacOSArm64 ->
+      Some
+        {
+          gpr_count = 8;
+          gpr_slot_size = 8;
+          gpr_total_size = 64;
+          vector_count = 8;
+          vector_slot_size = 16;
+          vector_total_size = 128;
+          stack_alignment = 16;
+        }
+  | LinuxX86_64 | WindowsX64 -> None
+
+let register_save_area_tags register_save_area =
+  match register_save_area with
+  | None -> []
+  | Some area ->
+      [
+        ( "bridge.darwin.register_save_area.general.count",
+          string_of_int area.gpr_count );
+        ( "bridge.darwin.register_save_area.general.slot_size",
+          string_of_int area.gpr_slot_size );
+        ( "bridge.darwin.register_save_area.general.total_size",
+          string_of_int area.gpr_total_size );
+        ( "bridge.darwin.register_save_area.vector.count",
+          string_of_int area.vector_count );
+        ( "bridge.darwin.register_save_area.vector.slot_size",
+          string_of_int area.vector_slot_size );
+        ( "bridge.darwin.register_save_area.vector.total_size",
+          string_of_int area.vector_total_size );
+        ( "bridge.darwin.register_save_area.alignment",
+          string_of_int area.stack_alignment );
+      ]
+
+let audit_tags_of_plan template target call_conv ownership abi
+    register_save_area =
   let abi_str = string_of_abi_kind abi in
   let ownership_str = string_of_ownership_kind ownership in
   let arch =
@@ -154,6 +202,7 @@ let audit_tags_of_plan template target call_conv ownership abi =
     ("bridge.abi", abi_str);
     ("bridge.ownership", ownership_str);
   ]
+  @ register_save_area_tags register_save_area
 
 (* ========== 公開 API ========== *)
 
@@ -163,7 +212,10 @@ let make_stub_plan ~(param_types : ty list) ~(return_type : ty)
   let call_conv = normalize_call_conv template contract.metadata in
   let ownership = normalize_ownership contract.metadata in
   let abi = normalize_abi template contract.metadata in
-  let audit_tags = audit_tags_of_plan template target call_conv ownership abi in
+  let register_save_area = register_save_area_for_template template in
+  let audit_tags =
+    audit_tags_of_plan template target call_conv ownership abi register_save_area
+  in
   {
     template;
     target_triple = target;
@@ -174,6 +226,7 @@ let make_stub_plan ~(param_types : ty list) ~(return_type : ty)
     param_types;
     return_type;
     contract;
+    register_save_area;
   }
 
 let sanitize_symbol_component value =

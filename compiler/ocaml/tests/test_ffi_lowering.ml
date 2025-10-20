@@ -232,6 +232,31 @@ let macos_case () =
         { key = "bridge.platform"; value = "macos-arm64" };
         { key = "bridge.arch"; value = "arm64" };
         { key = "bridge.block_target"; value = "ffi-macos-block" };
+        {
+          key = "bridge.darwin.register_save_area.general.count";
+          value = "8";
+        };
+        {
+          key = "bridge.darwin.register_save_area.general.slot_size";
+          value = "8";
+        };
+        {
+          key = "bridge.darwin.register_save_area.general.total_size";
+          value = "64";
+        };
+        {
+          key = "bridge.darwin.register_save_area.vector.count";
+          value = "8";
+        };
+        {
+          key = "bridge.darwin.register_save_area.vector.slot_size";
+          value = "16";
+        };
+        {
+          key = "bridge.darwin.register_save_area.vector.total_size";
+          value = "128";
+        };
+        { key = "bridge.darwin.register_save_area.alignment"; value = "16" };
       ];
     expect_stub_substrings = [ "reml_ffi_bridge_record_status"; thunk_name ];
     expect_thunk_substrings = [ "call"; "ffi_entry" ];

@@ -12,6 +12,7 @@
 #
 # 主なオプション:
 #   --target <TRIPLE>        ターゲットトリプル（x86_64-unknown-linux-gnu / x86_64-apple-darwin / arm64-apple-darwin）
+#   --preset <NAME>          事前定義のサンプルセットを検証（例: darwin-arm64）
 #   --cross                  x86_64-unknown-linux-gnu 向けクロスリンクを実行
 #   --cross-prefix <TRIPLE>  ターゲットトリプル（既定: x86_64-unknown-linux-gnu）
 #   --sysroot <PATH>         クロスリンクに使用する sysroot（既定: REML_TOOLCHAIN_HOME/sysroot）
@@ -34,6 +35,14 @@
 
 set -euo pipefail
 
+# スクリプトとプリセットのルート
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -d "$SCRIPT_DIR/../tests/llvm-ir/presets" ]]; then
+  PRESET_ROOT="$(cd "$SCRIPT_DIR/../tests/llvm-ir/presets" && pwd)"
+else
+  PRESET_ROOT=""
+fi
+
 # ========== 設定 ==========
 
 LLVM_MIN_VERSION="18.0"
@@ -45,6 +54,7 @@ LLC="${LLC:-llc}"
 
 # ターゲット関連
 TARGET_TRIPLE=""
+PRESET_NAME=""
 
 # クロス関連デフォルト
 CROSS_MODE=0
@@ -140,6 +150,23 @@ resolve_objcopy() {
   return 1
 }
 
+resolve_preset() {
+  local name="$1"
+  if [[ -z "$PRESET_ROOT" ]]; then
+    return 1
+  fi
+  case "$name" in
+    darwin-arm64)
+      local path="$PRESET_ROOT/darwin-arm64"
+      if [[ -d "$path" ]]; then
+        echo "$path"
+        return 0
+      fi
+      ;;
+  esac
+  return 1
+}
+
 resolve_sysroot() {
   if [[ -n "$CROSS_SYSROOT" ]]; then
     echo "$CROSS_SYSROOT"
@@ -164,6 +191,11 @@ main() {
       --target)
         shift || error "--target の直後にターゲットトリプルを指定してください"
         TARGET_TRIPLE="$1"
+        shift
+        ;;
+      --preset)
+        shift || error "--preset の直後にプリセット名を指定してください"
+        PRESET_NAME="$1"
         shift
         ;;
       --cross)
@@ -221,6 +253,14 @@ main() {
     esac
   done
 
+  if [[ -z "$input_ll" && -n "$PRESET_NAME" ]]; then
+    local preset_path
+    if ! preset_path=$(resolve_preset "$PRESET_NAME"); then
+      error "不明なプリセットです: $PRESET_NAME"
+    fi
+    input_ll="$preset_path"
+  fi
+
   if [[ -z "$input_ll" ]]; then
     usage >&2
     exit 1
@@ -238,7 +278,10 @@ main() {
   check_llvm_version
 
   if [[ -d "$input_ll" ]]; then
-    mapfile -t files < <(find "$input_ll" -type f -name '*.ll' | sort)
+    local files=()
+    while IFS= read -r file; do
+      files+=("$file")
+    done < <(find "$input_ll" -type f -name '*.ll' | sort)
     if [[ ${#files[@]} -eq 0 ]]; then
       error "ディレクトリ内に .ll ファイルが見つかりませんでした: $input_ll"
     fi
