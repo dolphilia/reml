@@ -45,8 +45,11 @@
           {
             "kind": "insert",
             "range": {
-              "start": { "line": 9, "character": 13 },
-              "end": { "line": 9, "character": 13 }
+              "file": "file:///workspace/examples/config.reml",
+              "start_line": 9,
+              "start_col": 13,
+              "end_line": 9,
+              "end_col": 13
             },
             "text": ";"
           }
@@ -75,8 +78,11 @@
           {
             "kind": "insert",
             "range": {
-              "start": { "line": 9, "character": 13 },
-              "end": { "line": 9, "character": 13 }
+              "file": "file:///workspace/examples/config.reml",
+              "start_line": 9,
+              "start_col": 13,
+              "end_line": 9,
+              "end_col": 13
             },
             "text": ";"
           }

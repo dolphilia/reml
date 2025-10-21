@@ -45,8 +45,11 @@
           {
             "kind": "insert",
             "range": {
-              "start": { "line": 9, "character": 13 },
-              "end": { "line": 9, "character": 13 }
+              "file": "file:///workspace/examples/config.reml",
+              "start_line": 9,
+              "start_col": 13,
+              "end_line": 9,
+              "end_col": 13
             },
             "text": ";"
           }
@@ -75,8 +78,11 @@
           {
             "kind": "insert",
             "range": {
-              "start": { "line": 9, "character": 13 },
-              "end": { "line": 9, "character": 13 }
+              "file": "file:///workspace/examples/config.reml",
+              "start_line": 9,
+              "start_col": 13,
+              "end_line": 9,
+              "end_col": 13
             },
             "text": ";"
           }
@@ -163,8 +169,11 @@
           {
             "kind": "replace",
             "range": {
-              "start": { "line": 4, "character": 20 },
-              "end": { "line": 4, "character": 27 }
+              "file": "file:///workspace/examples/ffi/windows_bridge.reml",
+              "start_line": 4,
+              "start_col": 20,
+              "end_line": 4,
+              "end_col": 27
             },
             "text": "win64"
           }
