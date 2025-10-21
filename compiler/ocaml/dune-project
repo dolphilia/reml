@@ -18,6 +18,7 @@
  (dune (>= 3.0))
  (menhir (>= 20201216))
  yojson
+ camlzip
  uuidm
  (llvm (and (>= 15.0) (< 20)))
  (ocamlformat (= 0.26.2))))

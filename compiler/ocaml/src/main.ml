@@ -725,6 +725,7 @@ let () =
               | None -> constraint_events
             in
             Cli.Audit_persistence.append_events audit_context
+              ~outcome:Cli.Audit_persistence.Failure
               (runtime_event :: (iterator_events @ events_with_error));
             let diag =
               Type_error.to_diagnostic_with_source source opts.input_file
@@ -781,6 +782,7 @@ let () =
       runtime_stage_context
   in
   Cli.Audit_persistence.append_events audit_context
+    ~outcome:Cli.Audit_persistence.Failure
     (runtime_stage_event ~audit_id ~change_set:change_set_json
        runtime_stage_context
     :: iterator_events);

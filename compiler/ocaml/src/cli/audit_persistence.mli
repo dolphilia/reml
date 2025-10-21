@@ -1,2 +1,9 @@
+type outcome =
+  | Success
+  | Failure
+
 val append_events :
-  Audit_path_resolver.t -> Audit_envelope.event list -> unit
+  Audit_path_resolver.t ->
+  ?outcome:outcome ->
+  Audit_envelope.event list ->
+  unit

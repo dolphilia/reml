@@ -116,14 +116,11 @@ let ensure_parent_directory path =
     ensure dir
 
 let append_events path events =
-  match events with
-  | [] -> ()
-  | _ ->
-      ensure_parent_directory path;
-      let oc = open_out_gen [ Open_creat; Open_text; Open_append ] 0o644 path in
-      List.iter
-        (fun event ->
-          Json.to_channel oc (to_json event);
-          output_char oc '\n')
-        events;
-      close_out oc
+  ensure_parent_directory path;
+  let oc = open_out_gen [ Open_creat; Open_text; Open_append ] 0o644 path in
+  List.iter
+    (fun event ->
+      Json.to_channel oc (to_json event);
+      output_char oc '\n')
+    events;
+  close_out oc
