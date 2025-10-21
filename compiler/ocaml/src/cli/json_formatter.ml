@@ -1,358 +1,220 @@
-(* Json_formatter — LSP 互換 JSON 診断出力
- *
- * Phase 1-6 の開発者体験整備タスクにおいて、診断メッセージを
- * LSP（Language Server Protocol）互換の JSON 形式で出力する機能を提供する。
- *
- * 設計原則:
- * - LSP の Diagnostic 型に準拠
- * - 機械判読可能な構造化データ
- * - CI/CD ツールとの統合を容易にする
- *)
+open Diagnostic_serialization
 
-(** 重要度を LSP 互換の整数値に変換
- *
- * LSP DiagnosticSeverity:
- * - 1: Error
- * - 2: Warning
- * - 3: Information
- * - 4: Hint
- *)
-let severity_to_lsp_int severity = Diagnostic.V2.severity_to_lsp_int severity
+module Json = Yojson.Basic
 
-(** 重要度を文字列に変換 *)
-let severity_to_string severity = Diagnostic.V2.severity_to_string severity
+let schema_version = "2.0.0-draft"
+let lsp_source = "reml"
 
-(** 位置情報を JSON に変換
- *
- * LSP Position:
- * ```json
- * {
- *   "line": 0,     // 0始まり
- *   "character": 0 // 0始まり
- * }
- * ```
- *)
-let location_to_json (loc : Diagnostic.location) : Yojson.Basic.t =
+let lsp_uri_of_filename filename =
+  if filename = "" || filename = "<入力>" then "reml://embedded"
+  else if String.length filename >= 7 && String.sub filename 0 7 = "file://" then
+    filename
+  else
+    "file://" ^ filename
+
+let lsp_position line column =
+  `Assoc [ ("line", `Int line); ("character", `Int column) ]
+
+let lsp_range (span : normalized_span) =
   `Assoc
     [
-      ("line", `Int (loc.line - 1));
-      (* LSP は 0 始まり *)
-      ("character", `Int (loc.column - 1)) (* LSP は 0 始まり *);
+      ("start", lsp_position span.start_line span.start_col);
+      ("end", lsp_position span.end_line span.end_col);
     ]
 
-(** スパンを LSP Range に変換
- *
- * LSP Range:
- * ```json
- * {
- *   "start": { "line": 0, "character": 0 },
- *   "end": { "line": 0, "character": 5 }
- * }
- * ```
- *)
-let span_to_lsp_range (span : Diagnostic.span) : Yojson.Basic.t =
+let reml_location (span : normalized_span) =
   `Assoc
     [
-      ("start", location_to_json span.start_pos);
-      ("end", location_to_json span.end_pos);
+      ("file", `String span.file);
+      ("line", `Int (span.start_line + 1));
+      ("column", `Int (span.start_col + 1));
+      ("endLine", `Int (span.end_line + 1));
+      ("endColumn", `Int (span.end_col + 1));
     ]
 
-(** 期待値を JSON に変換 *)
-let expectation_to_json (exp : Diagnostic.expectation) : Yojson.Basic.t =
-  match exp with
-  | Token s -> `Assoc [ ("type", `String "token"); ("value", `String s) ]
-  | Keyword s -> `Assoc [ ("type", `String "keyword"); ("value", `String s) ]
-  | Rule s -> `Assoc [ ("type", `String "rule"); ("value", `String s) ]
-  | Eof -> `Assoc [ ("type", `String "eof") ]
-  | Not s -> `Assoc [ ("type", `String "not"); ("value", `String s) ]
-  | Class s -> `Assoc [ ("type", `String "class"); ("value", `String s) ]
-  | Custom s -> `Assoc [ ("type", `String "custom"); ("value", `String s) ]
-  | TypeExpected t -> `Assoc [ ("type", `String "type"); ("value", `String t) ]
-  | TraitBound t -> `Assoc [ ("type", `String "trait"); ("value", `String t) ]
+let structured_hints_from_extensions (extensions : Diagnostic.Extensions.t) =
+  match List.assoc_opt "diagnostic.v2" extensions with
+  | Some (`Assoc fields) -> (
+      match List.assoc_opt "structured_hints" fields with
+      | Some (`List _ as value) -> value
+      | _ -> `List [] )
+  | _ -> `List []
 
-(** 期待値サマリを JSON に変換 *)
-let expectation_summary_to_json (summary : Diagnostic.expectation_summary) :
-    Yojson.Basic.t =
-  let fields =
-    [
-      ("alternatives", `List (List.map expectation_to_json summary.alternatives));
-    ]
-  in
-  let fields =
-    match summary.message_key with
-    | Some key -> ("message_key", `String key) :: fields
-    | None -> fields
-  in
-  let fields =
-    match summary.humanized with
-    | Some h -> ("humanized", `String h) :: fields
-    | None -> fields
-  in
-  let fields =
-    match summary.context_note with
-    | Some c -> ("context_note", `String c) :: fields
-    | None -> fields
-  in
-  `Assoc fields
-
-(** 修正提案（FixIt）を JSON に変換 *)
-let fixit_to_json (fixit : Diagnostic.fixit) : Yojson.Basic.t =
-  match fixit with
-  | Insert { at; text } ->
-      `Assoc
+let audit_to_json = function
+  | None -> `Null
+  | Some envelope ->
+      let base =
         [
-          ("kind", `String "insert");
-          ("range", span_to_lsp_range at);
-          ("text", `String text);
+          ("metadata", Audit_envelope.metadata_to_json (Audit_envelope.metadata envelope));
         ]
-  | Replace { at; text } ->
-      `Assoc
-        [
-          ("kind", `String "replace");
-          ("range", span_to_lsp_range at);
-          ("text", `String text);
-        ]
-  | Delete { at } ->
-      `Assoc [ ("kind", `String "delete"); ("range", span_to_lsp_range at) ]
-
-(** 診断情報を LSP 互換の JSON に変換
- *
- * LSP Diagnostic:
- * ```json
- * {
- *   "range": { "start": {...}, "end": {...} },
- *   "severity": 1,
- *   "code": "E7001",
- *   "source": "remlc",
- *   "message": "型が一致しません",
- *   "relatedInformation": [...]
- * }
- * ```
- *)
-let diagnostic_to_lsp_json (diag : Diagnostic.t) : Yojson.Basic.t =
-  let severity_v2 = Diagnostic.V2.severity_of_diagnostic diag in
-  let fields =
-    [
-      ("range", span_to_lsp_range diag.Diagnostic.primary);
-      ("severity", `Int (severity_to_lsp_int severity_v2));
-      ("message", `String diag.Diagnostic.message);
-      ("source", `String "remlc");
-    ]
-  in
-
-  (* コードを追加 *)
-  let fields =
-    match diag.Diagnostic.codes with
-    | code :: _ -> ("code", `String code) :: fields
-    | [] -> fields
-  in
-  let fields =
-    match diag.Diagnostic.codes with
-    | [] -> fields
-    | codes ->
-        ("codes", `List (List.map (fun code -> `String code) codes)) :: fields
-  in
-
-  (* ドメインを追加 *)
-  let fields =
-    match diag.Diagnostic.domain with
-    | Some domain ->
-        let domain_label = Diagnostic.domain_label domain in
-        ("domain", `String domain_label) :: fields
-    | None -> fields
-  in
-
-  (* 関連情報（ノート）を追加 *)
-  let fields =
-    if diag.Diagnostic.secondary <> [] then
-      ( "relatedInformation",
-        `List
-          (List.map Diagnostic.V2.span_label_to_json diag.Diagnostic.secondary) )
-      :: fields
-    else fields
-  in
-
-  (* 期待値サマリを追加 *)
-  let fields =
-    match diag.Diagnostic.expected with
-    | Some summary ->
-        ("expected", expectation_summary_to_json summary) :: fields
-    | None -> fields
-  in
-
-  (* ヒントを追加 *)
-  let fields =
-    if diag.Diagnostic.hints <> [] then
-      ("hints", `List (List.map Diagnostic.V2.hint_to_json diag.Diagnostic.hints))
-      :: fields
-    else fields
-  in
-
-  (* 修正提案を追加 *)
-  let fields =
-    if diag.Diagnostic.fixits <> [] then
-      ("fixits", `List (List.map fixit_to_json diag.Diagnostic.fixits)) :: fields
-    else fields
-  in
-  let fields =
-    if Diagnostic.Extensions.is_empty diag.Diagnostic.extensions then fields
-    else
-      ( "extensions",
-        Diagnostic.Extensions.to_json diag.Diagnostic.extensions )
-      :: fields
-  in
-  let fields =
-    match Diagnostic.V2.audit_to_json diag.Diagnostic.audit with
-    | `Null -> fields
-    | audit_json -> ("audit", audit_json) :: fields
-  in
-  let fields =
-    match diag.Diagnostic.timestamp with
-    | Some ts -> ("timestamp", `String ts) :: fields
-    | None -> fields
-  in
-
-  `Assoc fields
-
-(** 診断情報を Reml 独自の JSON 形式に変換
- *
- * Reml Diagnostic JSON:
- * ```json
- * {
- *   "severity": "error",
- *   "code": "E7001",
- *   "message": "型が一致しません",
- *   "location": {
- *     "file": "/path/to/file.reml",
- *     "line": 1,
- *     "column": 18,
- *     "endLine": 1,
- *     "endColumn": 24
- *   },
- *   "notes": ["期待される型: i64", "実際の型: String"]
- * }
- * ```
- *)
-let diagnostic_to_reml_json (diag : Diagnostic.t) : Yojson.Basic.t =
-  let severity_v2 = Diagnostic.V2.severity_of_diagnostic diag in
-  let fields =
-    [
-      ("severity", `String (severity_to_string severity_v2));
-      ("message", `String diag.Diagnostic.message);
-      ( "location",
-        `Assoc
-          [
-            ("file", `String diag.Diagnostic.primary.start_pos.filename);
-            ("line", `Int diag.Diagnostic.primary.start_pos.line);
-            ("column", `Int diag.Diagnostic.primary.start_pos.column);
-            ("endLine", `Int diag.Diagnostic.primary.end_pos.line);
-            ("endColumn", `Int diag.Diagnostic.primary.end_pos.column);
-          ] );
-    ]
-  in
-
-  (* コードを追加 *)
-  let fields =
-    match diag.Diagnostic.codes with
-    | code :: _ -> ("code", `String code) :: fields
-    | [] -> fields
-  in
-  let fields =
-    match diag.Diagnostic.codes with
-    | [] -> fields
-    | codes ->
-        ("codes", `List (List.map (fun code -> `String code) codes)) :: fields
-  in
-
-  (* ドメインを追加 *)
-  let fields =
-    match diag.Diagnostic.domain with
-    | Some domain ->
-        let domain_label = Diagnostic.domain_label domain in
-        ("domain", `String domain_label) :: fields
-    | None -> fields
-  in
-
-  (* ノートを追加（簡略版） *)
-  let fields =
-    if diag.Diagnostic.secondary <> [] then
-      let note_messages =
-        diag.Diagnostic.secondary
-        |> List.filter_map (fun (label : Diagnostic.span_label) ->
-               Option.map (fun msg -> `String msg) label.message)
       in
-      if note_messages = [] then fields
-      else ("notes", `List note_messages) :: fields
-    else fields
-  in
+      let base =
+        match Audit_envelope.audit_id envelope with
+        | Some id when String.trim id <> "" -> ("audit_id", `String id) :: base
+        | _ -> base
+      in
+      let base =
+        match Audit_envelope.change_set envelope with
+        | Some change -> ("change_set", change) :: base
+        | None -> base
+      in
+      let base =
+        match Audit_envelope.capability envelope with
+        | Some cap when String.trim cap <> "" -> ("capability", `String cap) :: base
+        | _ -> base
+      in
+      `Assoc (List.rev base)
 
-  (* 期待値を追加 *)
-  let fields =
-    match diag.Diagnostic.expected with
-    | Some summary when summary.alternatives <> [] ->
-        let expectations =
-          List.map
-            (fun exp -> `String (Diagnostic.string_of_expectation exp))
-            summary.alternatives
-        in
-        ("expected", `List expectations) :: fields
-    | _ -> fields
-  in
+let codes_to_json codes =
+  match codes with
+  | [] -> `Null
+  | xs -> `List (List.map (fun code -> `String code) xs)
 
-  (* 修正提案を追加 *)
-  let fields =
-    if diag.Diagnostic.fixits <> [] then
-      ("fixits", `List (List.map fixit_to_json diag.Diagnostic.fixits)) :: fields
-    else fields
-  in
-  let fields =
-    if Diagnostic.Extensions.is_empty diag.Diagnostic.extensions then fields
-    else
-      ( "extensions",
-        Diagnostic.Extensions.to_json diag.Diagnostic.extensions )
-      :: fields
-  in
-  let fields =
-    match Diagnostic.V2.audit_to_json diag.Diagnostic.audit with
-    | `Null -> fields
-    | audit_json -> ("audit", audit_json) :: fields
-  in
-  let fields =
-    match diag.Diagnostic.timestamp with
-    | Some ts -> ("timestamp", `String ts) :: fields
-    | None -> fields
-  in
+let reml_notes (secondary : normalized_secondary list) =
+  secondary
+  |> List.filter_map (fun entry -> entry.message)
+  |> List.map (fun msg -> `String msg)
 
-  let fields =
-    if diag.Diagnostic.hints <> [] then
-      ("hints", `List (List.map Diagnostic.V2.hint_to_json diag.Diagnostic.hints))
-      :: fields
-    else fields
+let reml_expected (expected : expectation_summary option) =
+  expectation_summary_to_json expected
+
+let diagnostic_data_block (diag : normalized_diagnostic) =
+  let base =
+    [
+      ("schema_version", `String schema_version);
+      ("message", `String diag.message);
+      ("severity", `Int (severity_level_of_severity diag.severity));
+      ("severity_label", `String (severity_to_string diag.severity));
+      ("primary", span_to_json diag.primary);
+      ("codes", codes_to_json diag.codes);
+      ("secondary", `List (List.map secondary_to_json diag.secondary));
+      ("hints", `List (List.map hint_to_json diag.hints));
+      ("fixits", `List (List.map fixit_to_json diag.fixits));
+      ("extensions", Diagnostic.Extensions.to_json diag.extensions);
+      ("structured_hints", structured_hints_from_extensions diag.extensions);
+      ("audit_metadata", Diagnostic.Extensions.to_json diag.audit_metadata);
+      ("audit", audit_to_json diag.audit);
+      ("expected", expectation_summary_to_json diag.expected);
+    ]
   in
+  let base =
+    match diag.id with Some id -> ("id", `String id) :: base | None -> base
+  in
+  let base =
+    match domain_to_string diag.domain with
+    | Some domain -> ("domain", `String domain) :: base
+    | None -> base
+  in
+  let base =
+    match diag.severity_hint with
+    | Some hint -> ("severity_hint", `String (severity_hint_to_string hint)) :: base
+    | None -> base
+  in
+  let base =
+    match diag.timestamp with
+    | Some ts -> ("timestamp", `String ts) :: base
+    | None -> base
+  in
+  `Assoc (List.rev base)
 
-  `Assoc fields
+let diagnostic_to_lsp_json (diagnostic : Diagnostic.t) =
+  let normalized = of_diagnostic diagnostic in
+  let primary = normalized.primary in
+  let range = lsp_range primary in
+  let severity = severity_level_of_severity normalized.severity in
+  let data = diagnostic_data_block normalized in
+  let base =
+    [
+      ("range", range);
+      ("severity", `Int severity);
+      ("message", `String normalized.message);
+      ("source", `String lsp_source);
+      ("data", data);
+    ]
+  in
+  let base =
+    match normalized.codes with
+    | code :: _ -> ("code", `String code) :: base
+    | [] -> base
+  in
+  let related =
+    normalized.secondary
+    |> List.filter_map (fun entry ->
+           match (entry.span, entry.message) with
+           | Some span, Some message ->
+               Some
+                 (`Assoc
+                    [
+                      ( "location",
+                        `Assoc
+                          [
+                            ("uri", `String (lsp_uri_of_filename span.file));
+                            ("range", lsp_range span);
+                          ] );
+                      ("message", `String message);
+                    ])
+           | _ -> None)
+  in
+  let base =
+    match related with
+    | [] -> base
+    | infos -> ("relatedInformation", `List infos) :: base
+  in
+  `Assoc (List.rev base)
 
-(** 複数の診断を JSON 配列に変換
- *
- * @param diags 診断情報のリスト
- * @param lsp_compatible LSP 互換形式を使用するか（デフォルト: false）
- * @return JSON 文字列
- *)
-let diagnostics_to_json ?(lsp_compatible = false) (diags : Diagnostic.t list) :
+let diagnostic_to_reml_json (diagnostic : Diagnostic.t) =
+  let normalized = of_diagnostic diagnostic in
+  let base =
+    [
+      ("severity", `String (severity_to_string normalized.severity));
+      ("message", `String normalized.message);
+      ("location", reml_location normalized.primary);
+      ("codes", `List (List.map (fun code -> `String code) normalized.codes));
+      ("notes", `List (reml_notes normalized.secondary));
+      ("hints", `List (List.map hint_to_json normalized.hints));
+      ("fixits", `List (List.map fixit_to_json normalized.fixits));
+      ("extensions", Diagnostic.Extensions.to_json normalized.extensions);
+      ("structured_hints", structured_hints_from_extensions normalized.extensions);
+      ("audit_metadata", Diagnostic.Extensions.to_json normalized.audit_metadata);
+      ("audit", audit_to_json normalized.audit);
+      ("expected", reml_expected normalized.expected);
+    ]
+  in
+  let base =
+    match normalized.codes with
+    | code :: _ -> ("code", `String code) :: base
+    | [] -> base
+  in
+  let base =
+    match domain_to_string normalized.domain with
+    | Some domain -> ("domain", `String domain) :: base
+    | None -> base
+  in
+  let base =
+    match normalized.timestamp with
+    | Some ts -> ("timestamp", `String ts) :: base
+    | None -> base
+  in
+  let base =
+    match normalized.id with Some id -> ("id", `String id) :: base | None -> base
+  in
+  let base =
+    match normalized.severity_hint with
+    | Some hint -> ("severity_hint", `String (severity_hint_to_string hint)) :: base
+    | None -> base
+  in
+  `Assoc (List.rev base)
+
+let diagnostics_to_json ?(lsp_compatible = false) (diagnostics : Diagnostic.t list) :
     string =
-  let json_converter =
-    if lsp_compatible then diagnostic_to_lsp_json else diagnostic_to_reml_json
+  let json_list =
+    if lsp_compatible then
+      List.map diagnostic_to_lsp_json diagnostics
+    else
+      List.map diagnostic_to_reml_json diagnostics
   in
-  let diagnostics_json = `List (List.map json_converter diags) in
-  let root = `Assoc [ ("diagnostics", diagnostics_json) ] in
-  Yojson.Basic.pretty_to_string root
+  let root = `Assoc [ ("diagnostics", `List json_list) ] in
+  Json.pretty_to_string root
 
-(** 単一の診断を JSON 文字列に変換
- *
- * @param diag 診断情報
- * @param lsp_compatible LSP 互換形式を使用するか（デフォルト: false）
- * @return JSON 文字列
- *)
-let diagnostic_to_json ?(lsp_compatible = false) (diag : Diagnostic.t) : string
-    =
-  diagnostics_to_json ~lsp_compatible [ diag ]
+let diagnostic_to_json ?(lsp_compatible = false) (diagnostic : Diagnostic.t) =
+  diagnostics_to_json ~lsp_compatible [ diagnostic ]

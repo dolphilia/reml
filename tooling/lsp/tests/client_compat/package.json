@@ -5,7 +5,9 @@
   "description": "Reml 診断 V1/V2 互換性テスト",
   "type": "module",
   "scripts": {
-    "test": "vitest run --reporter=default --run"
+    "test": "vitest run --reporter=default --run",
+    "validate:schema": "npm run test",
+    "ci": "npm run test"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",

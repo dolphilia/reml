@@ -39,4 +39,20 @@ describe("client compatibility scaffolding", () => {
     const audits = collectAuditSnapshots(diagnostics);
     expect(audits.filter((value) => value && typeof value === "object").length).toBeGreaterThan(0);
   });
+
+  it("parses FFI stage mismatch fixture with structured hints", () => {
+    const diagnostics = readDiagnostics(fixturesDir, "diagnostic-v2-ffi-sample.json");
+    expect(diagnostics).toHaveLength(1);
+
+    const [diagnostic] = diagnostics;
+    const codes = Array.from(collectCodes(diagnostics));
+    expect(codes).toContain("ffi.bridge.stage_mismatch");
+
+    const hints = collectStructuredHints(diagnostics);
+    expect(Array.isArray(hints)).toBe(true);
+    expect(hints.flat().length).toBeGreaterThan(0);
+
+    const audits = collectAuditSnapshots(diagnostics);
+    expect(audits.some((value) => value && value.metadata?.["bridge.return.status"] === "unsafe")).toBe(true);
+  });
 });

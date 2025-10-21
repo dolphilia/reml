@@ -16,9 +16,36 @@ on:
   workflow_dispatch:
 
 jobs:
+  diagnostic-json:
+    name: Diagnostic JSON Validation (Windows)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install client compatibility dependencies
+        shell: bash
+        run: npm ci --prefix tooling/lsp/tests/client_compat
+
+      - name: Run client compatibility tests
+        shell: bash
+        run: npm run ci --prefix tooling/lsp/tests/client_compat
+
+      - name: Validate diagnostic JSON (Windows)
+        shell: bash
+        run: bash scripts/validate-diagnostic-json.sh
+
   audit:
     name: Windows Audit Metrics
     runs-on: windows-latest
+    needs:
+      - diagnostic-json
 
     steps:
       - name: Checkout repository

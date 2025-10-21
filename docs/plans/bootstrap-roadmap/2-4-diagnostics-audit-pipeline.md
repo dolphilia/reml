@@ -283,32 +283,34 @@ end
 ### 2. シリアライズ統合（27週目）
 **担当領域**: 出力フォーマット
 
+Reml の診断/監査情報を CLI・LSP・CI の各チャネルで同一仕様として扱うため、Phase 2 ではシリアライズ層の再設計を 27 週目のマイルストーンとして統合的に進める。`docs/spec/3-6-core-diagnostics-audit.md` で定義された必須フィールドと Phase 2-3 で拡張した `AuditEnvelope.metadata` のキーセットを前提に、以下の作業を完了させる。
+
 2.1. **共通シリアライズレイヤ設計**
-- JSON/テキスト/構造化ログの共通抽象化
-- フォーマット切替の設計（`--format` フラグ）
-- カスタムフォーマッタの拡張ポイント
-- エンコーディング処理（UTF-8 保証）
+- `compiler/ocaml/src/diagnostic_serialization.ml(.mli)`（新規）で `Diagnostic.t` / `AuditEnvelope.t` から中間表現 `SerializedDiagnostic` を生成するユーティリティを定義し、CLI・LSP・CI で共有する。中間表現は JSON 向けフィールド名を正規化し、`extensions`/`metadata` のキー衝突を検出するバリデータを同梱する。
+- フォーマット切替を `compiler/ocaml/src/cli/options.ml` の `--format` フラグに集約し、`cli/json_formatter.ml`・`cli/diagnostic_formatter.ml`・`tooling/lsp/diagnostic_transport.ml` から共通レイヤを呼び出す構成へリファクタリングする。既存利用箇所（`main.ml`, `tooling/ci/collect-iterator-audit-metrics.py`）の影響範囲を棚卸し、移行スケジュールを週次ログ（[`2-4-status.md`](2-4-status.md)）に記録する。
+- 拡張ポイントは `Diagnostic_serializer.register`（仮称）として公開し、プラグインが独自トランスポートを追加できるようにする。`docs/spec/3-6` の `extensions.*` 命名規約と `docs/guides/runtime-bridges.md` の監査拡張ポリシーを参照し、追加フィールドが UTF-8 エンコーディングを維持することを lint で確認する。
+- **完了条件**: すべてのフォーマッタが共通レイヤ経由で動作し、`dune runtest` の既存スナップショットが `SerializedDiagnostic` 由来の JSON/Text 表現へ更新される。移行後の API 仕様を `compiler/ocaml/docs/technical-debt.md` に追記し、旧 API の削除予定を明記する。
 
 2.2. **JSON 出力の実装**
-- `Diagnostic` → JSON のシリアライザ
-- `AuditEnvelope` → JSON のシリアライザ
-- JSON スキーマの定義（JSON Schema 形式）
-- Pretty print/Compact のモード切替
+- `cli/json_formatter.ml` を共通レイヤ対応に刷新し、`tooling/json-schema/diagnostic-v2.schema.json`（スキーマ v2）と `tooling/runtime/audit-schema.json` v1.1 を同時検証するシリアライザを実装。`AuditEnvelope.metadata` の `bridge.*` / `effect.*` / `typeclass.*` を JSON Schema に従って整形し、欠落キーは `Result.Error` で検出する。
+- `scripts/validate-diagnostic-json.sh`（新規）を追加し、`dune runtest` 後に生成される JSON を JSON Schema で検証する。CI では Linux/Windows/macOS 全てでスキーマ検証ジョブを追加し、`ffi_bridge.audit_pass_rate` と同じ閾値ファイルに JSON 検証結果を記録する。
+- `--format json` は `--json-mode={pretty,compact,lines}` の派生フラグを受け付け、Phase 1 互換（pretty）、CI 向け（compact）、ストリームログ（lines）の 3 モードを提供。モード切替仕様を `docs/guides/ai-integration.md` の診断取得セクションへ追記し、CLI ヘルプと README（`docs/spec/0-0-overview.md`）にも反映する。
+- **完了条件**: `compiler/ocaml/tests/golden/diagnostics/*.json.golden`・`compiler/ocaml/tests/golden/audit/*.jsonl.golden` が新シリアライザで更新され、`npm run test`（`tooling/lsp/tests`）および `tooling/ci` ディレクトリで追加する JSON バリデーションスクリプトがスキーマ検証を通過する。
 
 2.3. **テキスト出力の実装**
-- カラー出力対応（ANSI エスケープ）
-- ソースコードスニペットの抽出
-- Unicode 対応（Grapheme 単位の表示）
-- Phase 1 の診断フォーマットとの統合
+- `cli/diagnostic_formatter.ml` を `SerializedDiagnostic` ベースに改修し、`cli/color.mli` の ANSI 強調表示と `docs/spec/1-1-syntax.md` の Unicode 表記規約を満たすカラーハイライトを再構成する。Grapheme クラスタ単位でスライスできるよう `Core.Text` 由来のユーティリティ（`unicode_segment.ml` を新設）を導入する。
+- ソースコードスニペット抽出は `parser_driver.ml` の既存ロジックを `compiler/ocaml/src/cli/snippet_provider.ml`（新規）に切り出し、`Result` で失敗時のフォールバックを明示。CLI では `--format text --no-snippet` オプションを追加し、CI ログの簡略化ニーズに応える。
+- Phase 1 の診断フォーマットとの互換性検証として、`reports/diagnostic-format-regression.md`（新設）に差分サマリを保存し、重大なメッセージ変更は Phase 2-0 指針の「分かりやすいエラーメッセージ」基準に照らして承認プロセスを記録する。
+- **完了条件**: `dune runtest` のテキストスナップショットが更新され、`docs/spec/3-6` に記載された例示出力が新フォーマットへ差し替えられる。CLI で `--format text` を指定した場合も `ffi_bridge.audit_pass_rate` 集計が従来通り行えることを `tooling/ci/collect-iterator-audit-metrics.py` のテストで確認する。
 
 2.4. **LSP トランスポート V2 フィールド公開と互換性検証**
-- 出力チャネル整理: `cli` 以外の JSON トランスポートを `tooling/lsp/diagnostic_transport.ml`（新設予定）に統合し、`--format lsp-v2` フラグで V2 フィールド（`codes[]`, `structured_hints[]`, `extensions`）を有効化。既存 V1 クライアント向けには `--format lsp-v1` を残し、フィールドマッピング表を `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` 付録に追加。
-- プロトコル整合性: `docs/spec/3-6-core-diagnostics-audit.md` と LSP 仕様（`diagnostic.relatedInformation`, `codeDescription` 等）を突き合わせ、V2 で新設するキーの LSP 対応を整理。`tooling/lsp/jsonrpc_server.ml` に V2 変換パスを追加し、`structured_hints` は `command`/`data` へ写像する。
-- 互換性テスト: `tooling/lsp/tests/client_compat/` に Node.js サンプルクライアント（`client-v1.ts`, `client-v2.ts`）を用意し、`npm test` で CLI 生成 JSON と LSP レスポンスの差異を検出。GitHub Actions に `lsp-contract` ジョブを追加し、`codes` が複数件存在するケースを最小再現として収録する。
-- クラッシュセーフティ: V2 で追加したフィールドが欠落／不正型の場合のフォールバックを `tooling/lsp/compat_fallback.ml` で管理し、`Result` によるエラー伝搬をユニットテスト化。既存の CLI JSON 出力にも同じ整形を適用し、`tooling/json-schema/diagnostic-v2.schema.json` を追加して双方向検証を実施。
-- ドキュメント更新: `docs/spec/2-0-parser-api-overview.md`（LSP 連携節）と `docs/guides/ai-integration.md` に V2 フィールド導入とテスト矩形（matrix）を追記し、クライアント実装者向けの移行手順をまとめる。
+- 既存の `tooling/lsp/diagnostic_transport.ml` を V2 対応へ拡張し、`SerializedDiagnostic` から LSP エンコード用構造体へ写像する関数を `tooling/lsp/lsp_transport.mli`（新設）に定義。同時に V1 互換レイヤを `tooling/lsp/compat/diagnostic_v1.ml`（新設）へ分離し、`--format lsp-v1` / `--format lsp-v2` の明示的制御を LSP サーバー起動スクリプト（`tooling/lsp/README.md` 掲載の `npm start` シナリオ）に反映する。
+- LSP 仕様（3.17 以降）と `docs/spec/3-6` の新規フィールド（`codes[]`, `structured_hints[]`, `extensions`）を照合し、`codeDescription`・`relatedInformation` へのマッピング表を本計画書付録へ掲載。`structured_hints` の `command`/`data` 変換は `tooling/lsp/jsonrpc_server.ml`（新設）で `Result` を返すようにし、エラーは監査ログ `extensions.lsp.compat_error` に落とす。
+- 互換性テストは既存の `tooling/lsp/tests/client_compat/` に追加ケースを投入し（`client-v1.ts`, `client-v2.ts` が FFI/効果診断を取り込む想定）、`tooling/lsp/tests/fixtures/*.json` を更新して CLI 生成 JSON との差異を検知する。GitHub Actions には `lsp-contract` ジョブを追加し、V1/V2 双方の JSON を `tooling/json-schema/diagnostic-v2.schema.json` と照合する。
+- ドキュメントは `docs/spec/2-0-parser-api-overview.md` の LSP 節、および `docs/guides/ai-integration.md` の API 連携節に V2 フィールド導入と移行手順を追記。LSP クライアントによる受信確認手順は `docs/guides/plugin-authoring.md` へ簡易チュートリアルとして掲載する。
+- **完了条件**: LSP サーバーを経由した CLI 実行で V1/V2 が切り替わり、`tooling/lsp/tests`・`npm test`・GitHub Actions `lsp-contract` がすべて成功する。`compiler/ocaml/docs/technical-debt.md` では「LSP V2 対応」を完了扱いとして更新し、関連 TODO をクローズする。
 
-**成果物**: シリアライズレイヤ、JSON/テキスト出力、スキーマ
+**成果物**: シリアライズレイヤ、JSON/テキスト出力、LSP 互換性検証、スキーマ検証パイプライン
 
 ### 3. 監査ログ永続化（27-28週目）
 **担当領域**: ログ管理

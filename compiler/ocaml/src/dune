@@ -18,6 +18,7 @@
   parser
   diagnostic
   diagnostic_builder
+  diagnostic_serialization
   parser_driver
   types
   type_env

@@ -63,10 +63,35 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
         working-directory: compiler/ocaml
 
+  diagnostic-json:
+    name: Diagnostic JSON Validation
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install client compatibility dependencies
+        run: npm ci --prefix tooling/lsp/tests/client_compat
+
+      - name: Run client compatibility tests
+        run: npm run ci --prefix tooling/lsp/tests/client_compat
+
+      - name: Validate diagnostic JSON (Linux)
+        run: bash scripts/validate-diagnostic-json.sh
+
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: lint
+    needs:
+      - lint
+      - diagnostic-json
 
     steps:
       - name: Checkout repository
