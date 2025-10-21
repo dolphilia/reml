@@ -150,7 +150,7 @@ module Legacy = struct
   }
 end
 
-let legacy_of_diagnostic (diag : t) : Legacy.t =
+let legacy_of_diagnostic_internal (diag : t) : Legacy.t =
   let primary_code =
     match diag.codes with code :: _ -> Some code | [] -> None
   in
@@ -173,7 +173,10 @@ let legacy_of_diagnostic (diag : t) : Legacy.t =
       audit_metadata = diag.audit_metadata;
     }
 
-let diagnostic_of_legacy (legacy : Legacy.t) : t =
+let legacy_of_diagnostic[@deprecated "Diagnostic.Legacy を直接生成せず Diagnostic.t を利用してください。"] =
+  legacy_of_diagnostic_internal
+
+let diagnostic_of_legacy_internal (legacy : Legacy.t) : t =
   {
     id = None;
     message = legacy.Legacy.message;
@@ -196,6 +199,9 @@ let diagnostic_of_legacy (legacy : Legacy.t) : t =
     extensions = legacy.Legacy.extensions;
     audit_metadata = legacy.Legacy.audit_metadata;
   }
+
+let diagnostic_of_legacy[@deprecated "Diagnostic.Legacy.t からの変換は段階的に廃止予定です。"] =
+  diagnostic_of_legacy_internal
 
 let primary_code (diag : t) =
   match diag.codes with code :: _ -> Some code | [] -> None
@@ -483,7 +489,7 @@ end
 (* ========== Diagnostic Builder ========== *)
 
 module Builder = struct
-  type secondary_entry = { span : span option; message : string }
+  type secondary_entry = { span : span option; message : string option }
 
   type structured_hint_kind =
     | Quick_fix
@@ -520,6 +526,7 @@ module Builder = struct
   }
 
   type t = {
+    id : string option;
     severity : severity;
     severity_hint : severity_hint option;
     domain : error_domain option;
@@ -536,7 +543,7 @@ module Builder = struct
     timestamp : string option;
   }
 
-  let create ?(severity = Error) ?severity_hint ?domain ?code ?(codes = [])
+  let create ?id ?(severity = Error) ?severity_hint ?domain ?code ?(codes = [])
       ?timestamp ~message ~primary () =
     let codes =
       match (code, codes) with
@@ -545,6 +552,7 @@ module Builder = struct
       | None, _ -> codes
     in
     {
+      id;
       severity;
       severity_hint;
       domain;
@@ -599,6 +607,9 @@ module Builder = struct
             ("range", json_of_span at);
           ]
 
+  let set_id id builder = { builder with id = Some id }
+  let clear_id builder = { builder with id = None }
+
   let set_severity severity builder = { builder with severity }
   let set_severity_hint severity_hint builder = { builder with severity_hint }
 
@@ -618,9 +629,20 @@ module Builder = struct
     let rest = List.filter (fun existing -> not (String.equal existing code)) builder.codes in
     { builder with codes = code :: rest }
 
-  let add_note ?span message builder =
+  let add_secondary ?span ?message builder =
     let entry = { span; message } in
     { builder with secondary = builder.secondary @ [ entry ] }
+
+  let merge_secondary entries builder =
+    List.fold_left
+      (fun acc (label : span_label) ->
+        add_secondary ?span:label.span ?message:label.message acc)
+      builder entries
+
+  let clear_secondary builder = { builder with secondary = [] }
+
+  let add_note ?span message builder =
+    add_secondary ?span ?message:(Some message) builder
 
   let add_notes notes builder =
     List.fold_left
@@ -756,7 +778,7 @@ module Builder = struct
     let secondary =
       builder.secondary
       |> List.map (fun (entry : secondary_entry) ->
-             ( { span = entry.span; message = Some entry.message } : span_label ))
+             ( { span = entry.span; message = entry.message } : span_label ))
     in
     let v2_extension_fields =
       let fields = ref [] in
@@ -804,7 +826,7 @@ module Builder = struct
       else Some { Audit_envelope.empty_envelope with metadata = builder.audit_metadata }
     in
     {
-      id = None;
+      id = builder.id;
       message = builder.message;
       severity = builder.severity;
       severity_hint = builder.severity_hint;

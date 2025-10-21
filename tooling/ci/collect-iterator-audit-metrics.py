@@ -18,7 +18,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Set
 
 
 # Required audit metadata keys.
@@ -125,11 +125,18 @@ def iter_diagnostics(data: Dict) -> Iterable[Dict]:
 
 
 def check_audit_fields(audit: Optional[Dict]) -> List[str]:
-    if audit is None:
-        return REQUIRED_AUDIT_KEYS.copy()
+    if audit is None or not isinstance(audit, dict):
+        return ["audit"] + REQUIRED_AUDIT_KEYS.copy()
+    metadata = audit.get("metadata") if isinstance(audit.get("metadata"), dict) else None
     missing: List[str] = []
     for key in REQUIRED_AUDIT_KEYS:
-        if key not in audit or audit[key] in (None, "", []):
+        has_key = False
+        for container in filter(None, (audit, metadata)):
+            value = container.get(key)
+            if value not in (None, "", []):
+                has_key = True
+                break
+        if not has_key:
             missing.append(key)
     return missing
 
@@ -137,6 +144,32 @@ def check_audit_fields(audit: Optional[Dict]) -> List[str]:
 def _as_dict(value: Optional[object]) -> Optional[Dict]:
     if isinstance(value, dict):
         return value
+    return None
+
+
+def primary_code_of(diag: Dict[str, Any]) -> Optional[str]:
+    code = diag.get("code")
+    if isinstance(code, str) and code:
+        return code
+    codes = diag.get("codes")
+    if isinstance(codes, list):
+        for item in codes:
+            if isinstance(item, str) and item:
+                return item
+    return None
+
+
+def extract_schema_version(diag: Dict[str, Any]) -> Optional[str]:
+    schema = diag.get("schema_version")
+    if isinstance(schema, str) and schema:
+        return schema
+    extensions = diag.get("extensions")
+    if isinstance(extensions, dict):
+        nested = extensions.get("diagnostic.v2")
+        if isinstance(nested, dict):
+            schema = nested.get("schema_version")
+            if isinstance(schema, str) and schema:
+                return schema
     return None
 
 
@@ -183,10 +216,19 @@ def _has_path(data: Optional[Dict], dotted_key: str) -> bool:
     return True
 
 
+def _has_any_path(data: Optional[Dict], *paths: str) -> bool:
+    for path in paths:
+        if _has_path(data, path):
+            return True
+    return False
+
+
 def check_bridge_audit_fields(audit: Optional[Dict]) -> List[str]:
+    if audit is None:
+        return ["audit"] + REQUIRED_BRIDGE_AUDIT_KEYS.copy()
     missing: List[str] = []
     for key in REQUIRED_BRIDGE_AUDIT_KEYS:
-        if not _has_path(audit, key):
+        if not _has_any_path(audit, key, f"metadata.{key}"):
             missing.append(key)
     return missing
 
@@ -205,6 +247,9 @@ def extract_bridge_status(
     containers: List[Dict] = []
     if isinstance(audit, dict):
         containers.append(audit)
+        metadata = audit.get("metadata")
+        if isinstance(metadata, dict):
+            containers.append(metadata)
     if isinstance(extensions, dict):
         containers.append(extensions)
     for container in containers:
@@ -222,6 +267,9 @@ def extract_bridge_field(
     containers: List[Dict] = []
     if isinstance(audit, dict):
         containers.append(audit)
+        metadata = audit.get("metadata")
+        if isinstance(metadata, dict):
+            containers.append(metadata)
     if isinstance(extensions, dict):
         containers.append(extensions)
     for container in containers:
@@ -235,22 +283,32 @@ def collect_metrics(paths: List[Path]) -> Dict:
     total = 0
     passed = 0
     failures: List[Dict[str, object]] = []
+    schema_versions: Set[str] = set()
 
     for path in paths:
         data = load_json(path)
         for index, diag in enumerate(iter_diagnostics(data)):
-            code = diag.get("code")
-            if code != "typeclass.iterator.stage_mismatch":
+            code = primary_code_of(diag) or ""
+            codes_field = diag.get("codes") if isinstance(diag.get("codes"), list) else []
+            target_present = (
+                code == "typeclass.iterator.stage_mismatch"
+                or (isinstance(codes_field, list) and "typeclass.iterator.stage_mismatch" in codes_field)
+            )
+            if not target_present:
                 continue
             total += 1
-            audit_missing = check_audit_fields(
-                _as_dict(diag.get("audit"))
-            )
-            extensions_missing = check_extension_fields(
-                _as_dict(diag.get("extensions"))
-            )
+            schema = extract_schema_version(diag)
+            if schema:
+                schema_versions.add(schema)
 
-            missing = audit_missing + extensions_missing
+            audit_missing = check_audit_fields(_as_dict(diag.get("audit")))
+            extensions_missing = check_extension_fields(_as_dict(diag.get("extensions")))
+            timestamp_value = diag.get("timestamp")
+            timestamp_missing: List[str] = []
+            if not isinstance(timestamp_value, str) or not timestamp_value.strip():
+                timestamp_missing.append("timestamp")
+
+            missing = audit_missing + extensions_missing + timestamp_missing
             if not missing:
                 passed += 1
             else:
@@ -258,7 +316,7 @@ def collect_metrics(paths: List[Path]) -> Dict:
                     {
                         "file": str(path),
                         "index": index,
-                        "code": code,
+                        "code": code or "unknown",
                         "missing": sorted(set(missing)),
                     }
                 )
@@ -276,6 +334,7 @@ def collect_metrics(paths: List[Path]) -> Dict:
         "required_audit_keys": REQUIRED_AUDIT_KEYS,
         "sources": [str(path) for path in paths],
         "failures": failures,
+        "schema_versions": sorted(schema_versions),
     }
 
 
@@ -287,16 +346,27 @@ def collect_bridge_metrics(
     failures: List[Dict[str, object]] = []
     platform_summary: Dict[str, Dict[str, int]] = {}
     audit_sources: List[str] = []
+    schema_versions: Set[str] = set()
 
     for path in paths:
         data = load_json(path)
         for index, diag in enumerate(iter_diagnostics(data)):
-            code = diag.get("code")
-            if not isinstance(code, str) or not code.startswith(
-                BRIDGE_DIAG_PREFIX
-            ):
+            code = primary_code_of(diag)
+            codes_field = diag.get("codes")
+            has_bridge_code = False
+            if isinstance(code, str) and code.startswith(BRIDGE_DIAG_PREFIX):
+                has_bridge_code = True
+            elif isinstance(codes_field, list):
+                has_bridge_code = any(
+                    isinstance(item, str) and item.startswith(BRIDGE_DIAG_PREFIX)
+                    for item in codes_field
+                )
+            if not has_bridge_code:
                 continue
             total += 1
+            schema = extract_schema_version(diag)
+            if schema:
+                schema_versions.add(schema)
             audit_dict = _as_dict(diag.get("audit"))
             extensions_dict = _as_dict(diag.get("extensions"))
             status_value = extract_bridge_status(audit_dict, extensions_dict)
@@ -322,6 +392,9 @@ def collect_bridge_metrics(
             issues: List[str] = []
             issues.extend(audit_missing)
             issues.extend(extensions_missing)
+            timestamp_value = diag.get("timestamp")
+            if not isinstance(timestamp_value, str) or not timestamp_value.strip():
+                issues.append("timestamp")
 
             if not issues:
                 passed += 1
@@ -332,7 +405,7 @@ def collect_bridge_metrics(
                     {
                         "file": str(path),
                         "index": index,
-                        "code": code,
+                        "code": code or "unknown",
                         "missing": sorted(set(issues)),
                         "status": status_value,
                         "platform": platform_value,
@@ -454,6 +527,7 @@ def collect_bridge_metrics(
         "audit_sources": audit_sources,
         "failures": failures,
         "platform_summary": platform_summary,
+        "schema_versions": sorted(schema_versions),
     }
 
 
@@ -538,6 +612,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         "failures": iterator_metrics.get("failures"),
         "ffi_bridge": bridge_metrics,
         "audit_sources": bridge_metrics.get("audit_sources"),
+        "schema_versions": sorted(
+            {
+                *(iterator_metrics.get("schema_versions") or []),
+                *(bridge_metrics.get("schema_versions") or []),
+            }
+        ),
     }
 
     json_output = json.dumps(combined, indent=2, ensure_ascii=False)

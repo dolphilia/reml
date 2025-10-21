@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { collectCodes, collectStructuredHints, readDiagnostics } from "../client-v2.js";
+import {
+  collectAuditSnapshots,
+  collectCodes,
+  collectStructuredHints,
+  collectTimestamps,
+  readDiagnostics,
+} from "../client-v2.js";
 import { convertToV1 } from "../client-v1.js";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -11,6 +17,7 @@ describe("client compatibility scaffolding", () => {
   it("loads V1 diagnostics without throwing", () => {
     const diagnostics = convertToV1(fixturesDir, "diagnostic-sample.json");
     expect(diagnostics).toBeInstanceOf(Array);
+    expect(diagnostics[0]?.timestamp).toBeTypeOf("string");
   });
 
   it("loads V2 diagnostics and extracts codes", () => {
@@ -23,5 +30,13 @@ describe("client compatibility scaffolding", () => {
     const diagnostics = readDiagnostics(fixturesDir, "diagnostic-v2-sample.json");
     const hints = collectStructuredHints(diagnostics);
     expect(hints).toBeInstanceOf(Array);
+  });
+
+  it("retains timestamp and audit metadata in V2 payload", () => {
+    const diagnostics = readDiagnostics(fixturesDir, "diagnostic-v2-sample.json");
+    const timestamps = collectTimestamps(diagnostics);
+    expect(timestamps.filter((value) => typeof value === "string").length).toBeGreaterThan(0);
+    const audits = collectAuditSnapshots(diagnostics);
+    expect(audits.filter((value) => value && typeof value === "object").length).toBeGreaterThan(0);
   });
 });

@@ -4,6 +4,8 @@
 - verify ログ: `tmp/verify.log` （判定: 成功）
 - 指標: `iterator.stage.audit_pass_rate`
 - 合計: 1, 成功: 1, 失敗: 0, pass_rate: 1.0
+- スキーマバージョン: 2.0.0-draft
+- V2 検証 (audit/timestamp): ✅ audit/timestamp
 - 解析対象ファイル数: 1
   - `compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden`
 

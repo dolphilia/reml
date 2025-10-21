@@ -206,6 +206,58 @@ if isinstance(metrics_data.get("metrics"), list):
 if ffi_metrics is None and isinstance(metrics_data.get("ffi_bridge"), dict):
     ffi_metrics = metrics_data["ffi_bridge"]
 
+iterator_schema_versions = iterator_metrics.get("schema_versions") or []
+ffi_schema_versions = []
+if isinstance(ffi_metrics, dict):
+    ffi_schema_versions = ffi_metrics.get("schema_versions") or []
+
+def format_schema_summary(values: List[Any]) -> str:
+    if not values:
+        return "未検出"
+    unique = sorted({str(value) for value in values if value})
+    return ", ".join(unique) if unique else "未検出"
+
+iterator_failures = iterator_metrics.get("failures") or []
+iterator_missing_timestamp = any(
+    "timestamp" in (failure.get("missing") or []) for failure in iterator_failures
+)
+iterator_missing_audit = any(
+    any(
+        key == "audit"
+        or key.startswith("effect.")
+        or key.startswith("extensions.effects")
+        for key in (failure.get("missing") or [])
+    )
+    for failure in iterator_failures
+)
+iterator_v2_status = "✅ audit/timestamp"
+if iterator_missing_timestamp or iterator_missing_audit:
+    iterator_v2_status = "❌ audit/timestamp"
+
+ffi_failures: List[Dict[str, Any]] = []
+ffi_missing_timestamp = False
+ffi_missing_audit = False
+if isinstance(ffi_metrics, dict):
+    ffi_failures = ffi_metrics.get("failures") or []
+    ffi_missing_timestamp = any(
+        "timestamp" in (failure.get("missing") or [])
+        for failure in ffi_failures
+    )
+    ffi_missing_audit = any(
+        any(
+            key == "audit"
+            or key.startswith("bridge")
+            or key.startswith("extensions.bridge")
+            for key in (failure.get("missing") or [])
+        )
+        for failure in ffi_failures
+    )
+ffi_v2_status = None
+if isinstance(ffi_metrics, dict):
+    ffi_v2_status = "✅ audit/timestamp"
+    if ffi_missing_timestamp or ffi_missing_audit:
+        ffi_v2_status = "❌ audit/timestamp"
+
 pass_rate_value: Any = iterator_metrics.get("pass_rate")
 try:
     pass_rate_float = (
@@ -245,6 +297,8 @@ lines.append(
     f"- 合計: {iterator_metrics.get('total', 0)}, 成功: {iterator_metrics.get('passed', 0)}, "
     f"失敗: {iterator_metrics.get('failed', 0)}, pass_rate: {pass_rate_value}"
 )
+lines.append(f"- スキーマバージョン: {format_schema_summary(iterator_schema_versions)}")
+lines.append(f"- V2 検証 (audit/timestamp): {iterator_v2_status}")
 
 sources: List[str] = iterator_metrics.get("sources", []) or []
 if sources:
@@ -260,6 +314,9 @@ if ffi_metrics is not None:
         f"  - 合計: {ffi_metrics.get('total', 0)}, 成功: {ffi_metrics.get('passed', 0)}, "
         f"失敗: {ffi_metrics.get('failed', 0)}, pass_rate: {ffi_pass_rate_raw}"
     )
+    lines.append(f"  - スキーマバージョン: {format_schema_summary(ffi_schema_versions)}")
+    if ffi_v2_status is not None:
+        lines.append(f"  - V2 検証 (audit/timestamp): {ffi_v2_status}")
     ffi_sources: List[str] = ffi_metrics.get("sources", []) or []
     if ffi_sources:
         lines.append(f"  - FFI 解析対象ファイル数: {len(ffi_sources)}")

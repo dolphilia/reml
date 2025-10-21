@@ -10,6 +10,8 @@
 - 参照計画: docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md
 - **状態**: ランタイムヘルパと `llvm_gen/codegen.ml` の最終調整を実施中。Linux/Windows/macOS で `--emit-ir` / `--emit-audit` を再実行し、成果物を `tmp/cli-callconv-out/<platform>/` に集約。2025-10-24 に stub エントリブロックの無終端問題を解消し、`--verify-ir` 付きで 3 ターゲットすべての IR 検証が通過。macOS arm64 では `tmp/cli-callconv-unsupported.reml` を追加実行し、`bridge.status=error` を含む失敗監査ログを取得。
 - 関連サマリー: `reports/ffi-linux-summary.md`, `reports/ffi-windows-summary.md`, `reports/ffi-macos-summary.md`
+- スキーマバージョン: 2.0.0-draft
+- V2 検証 (audit/timestamp): ✅ audit/timestamp
 
 ## 2. ターゲット別スタブ状況
 

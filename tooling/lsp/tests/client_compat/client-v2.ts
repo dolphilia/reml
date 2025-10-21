@@ -16,14 +16,38 @@ type StructuredHint = {
   title?: string;
   kind: string;
   span?: {
-    file: string;
-    start_line: number;
-    start_col: number;
-    end_line: number;
-    end_col: number;
+    file?: string;
+    start_line?: number;
+    start_col?: number;
+    end_line?: number;
+    end_col?: number;
   };
   payload: Record<string, unknown>;
   actions?: unknown[];
+};
+
+type Span = {
+  file: string;
+  start_line: number;
+  start_col: number;
+  end_line: number;
+  end_col: number;
+};
+
+type SecondaryEntry = {
+  span?: Span | null;
+  message?: string | null;
+};
+
+type HintAction = {
+  kind: string;
+  range: Span;
+  text?: string | null;
+};
+
+type Hint = {
+  message?: string | null;
+  actions?: HintAction[];
 };
 
 type DiagnosticV2 = {
@@ -37,8 +61,15 @@ type DiagnosticV2 = {
     end_line: number;
     end_col: number;
   };
+  id?: string | null;
+  domain?: string | null;
+  secondary?: SecondaryEntry[];
+  hints?: Hint[];
   structured_hints?: StructuredHint[];
   extensions?: Record<string, unknown>;
+  audit_metadata?: Record<string, unknown>;
+  audit?: Record<string, unknown> | null;
+  timestamp?: string | null;
 };
 
 const ajv = new Ajv({ allErrors: true, strict: false });
@@ -87,10 +118,24 @@ export function collectStructuredHints(diagnostics: DiagnosticV2[]): StructuredH
   return diagnostics.flatMap((diag) => diag.structured_hints ?? []);
 }
 
+export function collectTimestamps(diagnostics: DiagnosticV2[]): (string | null | undefined)[] {
+  return diagnostics.map((diag) => diag.timestamp);
+}
+
+export function collectAuditSnapshots(diagnostics: DiagnosticV2[]): (Record<string, unknown> | null | undefined)[] {
+  return diagnostics.map((diag) => diag.audit);
+}
+
 if (import.meta.url === (process.argv[1] ? new URL(process.argv[1], "file://").href : "")) {
   const samplesDir = currentDir;
   const diagnostics = readDiagnostics(samplesDir, "fixtures/diagnostic-v2-sample.json");
   const codes = Array.from(collectCodes(diagnostics));
   console.log("[client-v2] codes", codes);
   console.log("[client-v2] structured_hints", collectStructuredHints(diagnostics).length);
+  console.log(
+    "[client-v2] timestamps",
+    collectTimestamps(diagnostics)
+      .filter((value): value is string => typeof value === "string")
+      .length,
+  );
 }

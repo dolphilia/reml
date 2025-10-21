@@ -230,6 +230,7 @@ end
 - `reports/diagnostic-migration.md` を新設し、各バッチ（型エラー → 効果/型クラス → CLI 補助診断）の差分記録・チェックリスト・検証ログ欄を用意する。  
 - `scripts/update-diagnostics-golden.sh` を V2 JSON 出力に対応させ、`tooling/ci/collect-diagnostic-diff.py` と連携して差分要約を PR コメントへ投稿するワークフローを GitHub Actions に追加。  
 - ゴールデン変更を含む PR は `reports/diagnostic-migration.md` の該当バッチ節を更新し、`dune runtest`・CI 成果物 URL・レビューポイント（`codes[]` 並び、`secondary` 追加、`audit` 埋め込みなど）を記録する運用を定める。
+  - **現在の実装状況**: `scripts/update-diagnostics-golden.sh`（V2 対応版）・`tooling/ci/collect-diagnostic-diff.py` を追加済み。`--diff` オプションで Markdown サマリを生成し、`schema_version` と `timestamp` 欠落を検出する。
 
 #### B-3 Legacy / Builder API 拡張と段階的削除
 - `Diagnostic.Builder` に `set_id` / `add_secondary` / `merge_secondary` / `set_timestamp` など補助関数を追加し、structured hints へ `id` / `title` / `payload` を直接設定できる API を整備する。  

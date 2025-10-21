@@ -27,6 +27,7 @@
         }
       },
       "extensions": {
+        "diagnostic.v2": { "codes": [ "ffi.contract.unsupported_abi" ] },
         "bridge": {
           "return": {
             "ownership": "borrowed",

@@ -23,6 +23,7 @@
         }
       },
       "extensions": {
+        "diagnostic.v2": { "codes": [ "typeclass.iterator.stage_mismatch" ] },
         "effects": {
           "capability": "core.iterator.collect",
           "stage": { "required": "beta", "actual": "experimental" },

@@ -14,6 +14,7 @@
         }
       },
       "extensions": {
+        "diagnostic.v2": { "codes": [ "effects.contract.residual_leak" ] },
         "effects": {
           "stage": { "required": "stable", "actual": "stable" },
           "residual": { "missing": [ "panic" ], "leaked_from": "fn demo" },

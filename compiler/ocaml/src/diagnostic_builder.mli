@@ -45,6 +45,7 @@ type structured_hint = {
 }
 
 val create :
+  ?id:string ->
   ?severity:severity ->
   ?severity_hint:severity_hint ->
   ?domain:error_domain ->
@@ -65,6 +66,18 @@ val set_codes : string list -> t -> t
 val push_code : string -> t -> t
 val add_codes : string list -> t -> t
 val set_primary_code : string -> t -> t
+
+val set_id : string -> t -> t
+val clear_id : t -> t
+
+val add_secondary :
+  ?span:span ->
+  ?message:string ->
+  t ->
+  t
+
+val merge_secondary : span_label list -> t -> t
+val clear_secondary : t -> t
 
 val add_note : ?span:span -> string -> t -> t
 val add_notes : (span option * string) list -> t -> t
