@@ -154,6 +154,15 @@
 - CI では `tooling/ci/sync-iterator-audit.sh --metrics /tmp/iterator-audit.json --audit compiler/ocaml/tests/golden/audit/effects-stage.json.golden` を実行し、`iterator.stage.audit_pass_rate` と `ffi_bridge.audit_pass_rate` がいずれも 1.0 であることをゲート条件とする。Stage 判定差分が発生した場合は `stage_trace` の乖離内容を Markdown サマリに追記し、FFI 契約差分が発生した場合は `bridge.*` 欠落項目をサマリへ明記してレビューへ共有する。
 - 監査ログの更新後は `reports/runtime-capabilities-validation.json` の `stage_summary`・`iterator-stage-summary.md` および FFI ブリッジ用サマリ（導入後に `reports/ffi-bridge-summary.md` 予定）を本節へリンクする。
 
+### 監査スキーマのバージョン管理ポリシー
+- 管理対象: `tooling/runtime/audit-schema.json`（監査 JSON Lines スキーマ）を単一の真実源とし、更新時は `schema.version` フィールドを必ずインクリメントする。命名規約は `v<major>.<minor>`。  
+- 変更手順:
+  1. スキーマに差分が生じる場合は `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` および関連仕様 (`docs/spec/3-6-core-diagnostics-audit.md`) に反映内容を追記し、レビュー依頼の際に `schema.version` の変更理由を記録する。
+  2. スキーマ更新と同じブランチで `scripts/ci/verify-audit-schema.sh`（Phase 2-4 で導入予定）を実行し、`python3 -m jsonschema --instance <audit.jsonl> --schema tooling/runtime/audit-schema.json` で生成ログを検証する。CI へ導入後は Linux / Windows / macOS ジョブで同スクリプトを実行し、`schema-report.json` をアーティファクト化する。
+  3. スキーマ変更が行われた場合は `docs/migrations/audit-schema-history.md`（新設予定）または既存レポートに差分サマリを追記し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の本節にリンクを追加する。
+- リリース前チェック: `tooling/ci/collect-iterator-audit-metrics.py` は `schema_version` の不整合を検出した場合に失敗するよう設定する。CI での失敗は Phase 2-4 のゴール条件に含め、`compiler/ocaml/docs/technical-debt.md` で追跡する。
+- 互換性ウィンドウ: `schema.version` がメジャー更新 (`v2.x` → `v3.0` 等) の場合は、旧バージョンログを 2 フェーズ分保持し、`scripts/audit/upgrade-schema.py`（導入予定）で自動移行できることを確認してから旧バージョンの受理を停止する。
+
 ### 効果診断ゴールデンの整備
 - ゴールデン配置: `compiler/ocaml/tests/golden/diagnostics/effects/`（`*.golden`）に JSON スナップショットを保存し、必須キー `effect.stage.required` / `effect.stage.actual` / `effect.stage.residual` / `effect.stage.source` および `diagnostic.extensions.effect.stage_trace` / `diagnostic.extensions.effect.attribute` / `diagnostic.extensions.effect.residual` を全て検証する。
 - 更新手順:

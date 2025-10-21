@@ -103,6 +103,26 @@
 2. `Diagnostic.Builder` の補助関数を拡充し、`type_error.ml` 以外の診断生成サイト（効果・型クラス・CLI サブコマンド等）で複数コード／structured hints を活用できるよう段階移行する。
 3. V2 導入に伴うゴールデンファイルの刷新と差分レビュー手順を策定し、`compiler/ocaml/tests/golden/diagnostics/*.json.golden` の更新計画をまとめる。
 
+#### V2 昇格差分計画（2025-10-27 草案）
+
+- **段階 A — 型定義と互換レイヤ整備**  
+  - `Diagnostic.t` を V2 準拠フィールド（`id` / `primary` / `secondary` / `hints` / `timestamp` / `audit` 等）へ置換し、既存フィールドは `Legacy` レコードとして退避。  
+  - `Diagnostic.V2` を `type t = Diagnostic_core.t` へ単純化し、`of_legacy` は段階的廃止。  
+  - `Diagnostic.Builder` / `diagnostic_builder.mli` を新フィールド前提に再生成し、`build` が V2 レコードを直接返すよう調整。  
+  - 影響ファイル: `compiler/ocaml/src/diagnostic.ml`, `compiler/ocaml/src/diagnostic_builder.{ml,mli}`, `compiler/ocaml/src/cli/diagnostic_formatter.ml`, `compiler/ocaml/src/cli/json_formatter.ml`
+
+- **段階 B — 主要生成サイトの移行**  
+  - `type_error.ml`, `parser_driver.ml`, `effects/type_inference_effect.ml`, `core_ir/iterator_audit.ml`, `tooling/cli/commands/*` で Builder API 生成へ統一。  
+  - 既存ヘルパー (`make_type_error` 等) は Builder 呼び出しへ委譲し、戻り値を新 `Diagnostic.t` に更新。  
+  - `@@deprecated` 属性を付与したラッパー（`Diagnostic_compat`）を 2 リリース分維持し、CI で使用箇所を警告化。  
+  - 移行完了の判定条件: `rg "Diagnostic\.make"` が 0 件、`rg "V2.of_legacy"` が `cli` 層以外で 0 件になること。
+
+- **段階 C — 出力とテストの更新**  
+  - JSON/テキストフォーマッタの追加フィールド表示を確定し、`--format lsp-v2` / `--format json` のスナップショットを再取得。  
+  - `compiler/ocaml/tests/golden/diagnostics` を 3 バッチ（型エラー → 効果/型クラス → CLI）で更新し、差分は `reports/diagnostic-migration.md` へ記録。  
+  - LSP 互換テスト（`tooling/lsp/tests/client_compat`）に V2 フィールド検証ケースを追加し、`npm test` を CI に統合。  
+  - フィールド追加後、`docs/spec/3-6-core-diagnostics-audit.md` の表を再生成し、`codes[]`・`hints[]`・`extensions` の例を更新。
+
 #### 実装タスク (diagnostic.ml / CLI) {#diagnostic-migration-plan}
 
 1. **下準備**
@@ -176,6 +196,28 @@ end
 - 新しい `Audit_envelope.t` を `compiler/ocaml/src/audit_envelope.ml` に導入し、`audit_id` / `change_set` / `capability` を保持可能な構造へ再定義済み。`metadata_pairs` API でリスト渡しに対応。
 - `main.ml`／`test_effect_residual.ml`／FFI 関連テストで `~metadata_pairs` を使用するよう更新し、`Ffi_contract.bridge_audit_metadata_pairs` を追加済み。
 - `dune build`／`dune runtest` で回帰なし。
+
+#### AuditEnvelope 再定義とスキーマ検証計画（2025-10-27 草案）
+
+1. **型レベル整備**  
+   - `Audit_envelope.t` を仕様記述に合わせて `Uuidm.t option` / `Change_set.t option` / `Capability_id.t option` / `Metadata.t` で構成し、`type event` を §1.1.1 の列挙で網羅。  
+   - `Audit_envelope.Event.to_json` を追加し、カテゴリごとの必須キー検証（`bridge.platform`, `effect.stage.required` など）をパターンマッチで行う。  
+   - 影響ファイル: `compiler/ocaml/src/audit_envelope.{ml,mli}`, `compiler/ocaml/src/core_ir/iterator_audit.ml`, `compiler/ocaml/src/cli/diagnostic_envelope.ml`
+
+2. **書き込みパイプライン移行**  
+   - `tooling/runtime/audit-schema.json` v1.1 をソースオブトゥルースとし、`schema.version` を `Audit_envelope` 生成時に必ずメタデータへ注入。  
+   - `main.ml`, `tooling/cli/commands/diagnostics_emit.ml`, `tooling/ci/sync-iterator-audit.sh` などの書き込み点を `Audit_envelope.Event` API 経由に統一。  
+   - JSON Lines 生成箇所で `Audit_envelope.Event.to_json` を呼び出すよう変更し、旧 `category` 文字列ベースのコードパスを削除。
+
+3. **CI スキーマ検証**  
+   - `scripts/ci/verify-audit-schema.sh`（新規）を追加し、`ajv` 互換チェッカまたは `python -m jsonschema` で `tooling/runtime/audit-schema.json` を検証。  
+   - GitHub Actions（Linux/Windows/macOS）の `audit-*` ジョブで、生成された `.audit.jsonl` をスキーマ検証し、違反時に失敗させる。  
+   - `tooling/ci/collect-iterator-audit-metrics.py` に `schema_version` フィールドチェックを組み込み、`ffi_bridge.audit_pass_rate` / `iterator.stage.audit_pass_rate` のレポートにバージョンを併記。
+
+4. **移行完了条件**  
+   - `rg "Audit_envelope.make" compiler/ocaml/src | grep metadata_pairs` が 0 件になり、全て新 API を利用。  
+   - 3 ターゲット（Linux, Windows, macOS）の CI でスキーマ検証が緑クリア、`tooling/ci/artifacts/` に `schema-report.json` が保存される。  
+   - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `schema.version` 更新履歴と CI 実行ログの参照が追記され、`compiler/ocaml/docs/technical-debt.md` の ID 22/23 が「監査パイプライン移行完了」に更新される。
 
 **残タスク**
 1. Type エラー生成箇所（`type_error.ml`）で `Audit_envelope.merge_metadata` を使い、効果・型クラス診断の追加キーを新構造へ統一。
