@@ -17,6 +17,7 @@
   lexer
   parser
   diagnostic
+  diagnostic_builder
   parser_driver
   types
   type_env

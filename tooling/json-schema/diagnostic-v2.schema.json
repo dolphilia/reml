@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://reml.dev/schemas/diagnostic-v2.schema.json",
+  "title": "Reml Diagnostic V2",
+  "description": "Reml CLI / LSP が共有する診断 V2 JSON エンベロープのドラフト定義。",
+  "type": "object",
+  "required": ["message", "severity", "primary"],
+  "additionalProperties": true,
+  "properties": {
+    "id": {
+      "type": ["string", "null"],
+      "description": "診断のトレーサビリティ ID。UUID v4 を推奨。"
+    },
+    "message": {
+      "type": "string"
+    },
+    "severity": {
+      "type": "integer",
+      "enum": [1, 2, 3, 4],
+      "description": "LSP Diagnostics に合わせた数値表現。1=Error, 2=Warning, 3=Info, 4=Hint。"
+    },
+    "domain": {
+      "type": ["string", "null"]
+    },
+    "codes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "診断コード。先頭要素が primary code。"
+    },
+    "primary": {
+      "type": "object",
+      "required": ["file", "start_line", "start_col", "end_line", "end_col"],
+      "properties": {
+        "file": { "type": "string" },
+        "start_line": { "type": "integer", "minimum": 0 },
+        "start_col": { "type": "integer", "minimum": 0 },
+        "end_line": { "type": "integer", "minimum": 0 },
+        "end_col": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "secondary": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [],
+        "properties": {
+          "span": { "$ref": "#/properties/primary" },
+          "message": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "expected": {
+      "type": ["object", "null"],
+      "description": "ExpectationSummary のドラフト表現。詳細は 3-6 §2.3 を参照。"
+    },
+    "hints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "message": { "type": ["string", "null"] },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["kind", "range"],
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": ["insert", "replace", "delete"]
+                },
+                "range": { "$ref": "#/properties/primary" },
+                "text": { "type": ["string", "null"] }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "structured_hints": {
+      "type": "array",
+      "description": "V2 で追加された構造化ヒント。",
+      "items": {
+        "type": "object",
+        "required": ["kind", "payload"],
+        "properties": {
+          "id": { "type": ["string", "null"] },
+          "title": { "type": ["string", "null"] },
+          "span": { "$ref": "#/properties/primary" },
+          "kind": {
+            "type": "string",
+            "description": "quick_fix / follow_up / context / documentation / command / link など。"
+          },
+          "payload": {
+            "type": ["object", "array", "string"],
+            "description": "CLI 側で定義する構造化データ。"
+          },
+          "actions": {
+            "type": "array",
+            "items": { "$ref": "#/properties/hints/items/properties/actions/items" }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "自由拡張領域。`diagnostic.v2` キーに派生フィールドを格納する想定。"
+    },
+    "audit": {
+      "type": ["object", "null"],
+      "description": "AuditEnvelope の JSON 表現。"
+    },
+    "timestamp": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    }
+  }
+}

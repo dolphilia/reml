@@ -515,6 +515,40 @@ end
 module Builder = struct
   type secondary_entry = { span : span option; message : string }
 
+  type structured_hint_kind =
+    | Quick_fix
+    | Follow_up
+    | Context
+    | Documentation
+    | Command
+    | Link
+    | Custom of string
+
+  type structured_hint_payload =
+    | Command_payload of {
+        command : string;
+        arguments : Json.t option;
+      }
+    | Link_payload of {
+        href : string;
+        title : string option;
+      }
+    | Replacement_payload of {
+        range : span option;
+        template : string;
+      }
+    | Message_payload of string
+    | Data_payload of Json.t
+
+  type structured_hint = {
+    id : string option;
+    title : string option;
+    span : span option;
+    kind : structured_hint_kind;
+    payload : structured_hint_payload;
+    actions : fixit list;
+  }
+
   type t = {
     severity : severity;
     severity_hint : severity_hint option;
@@ -527,6 +561,7 @@ module Builder = struct
     hints : V2.hint list;
     fixits : fixit list;
     extensions : Extensions.t;
+    structured_hints : structured_hint list;
     audit_metadata : Extensions.t;
     timestamp : string option;
   }
@@ -551,6 +586,7 @@ module Builder = struct
       hints = [];
       fixits = [];
       extensions = Extensions.empty;
+      structured_hints = [];
       audit_metadata = Extensions.empty;
       timestamp;
     }
@@ -565,6 +601,14 @@ module Builder = struct
     else { builder with codes = builder.codes @ [ code ] }
 
   let set_codes codes builder = { builder with codes }
+
+  let push_code code builder = add_code code builder
+
+  let add_codes codes builder = List.fold_left (fun acc c -> push_code c acc) builder codes
+
+  let set_primary_code code builder =
+    let rest = List.filter (fun existing -> not (String.equal existing code)) builder.codes in
+    { builder with codes = code :: rest }
 
   let add_note ?span message builder =
     let entry = { span; message } in
@@ -588,6 +632,98 @@ module Builder = struct
       if actions = [] then builder else add_fixits actions builder
     in
     { builder with hints = builder.hints @ [ hint ] }
+
+  let structured_hint_kind_to_string = function
+    | Quick_fix -> "quick_fix"
+    | Follow_up -> "follow_up"
+    | Context -> "context"
+    | Documentation -> "documentation"
+    | Command -> "command"
+    | Link -> "link"
+    | Custom tag -> tag
+
+  let structured_hint_payload_to_json = function
+    | Command_payload { command; arguments } ->
+        let base = [ ("kind", `String "command"); ("command", `String command) ] in
+        let fields =
+          match arguments with
+          | Some args -> ("arguments", args) :: base
+          | None -> base
+        in
+        `Assoc fields
+    | Link_payload { href; title } ->
+        let base = [ ("kind", `String "link"); ("href", `String href) ] in
+        let fields =
+          match title with
+          | Some txt -> ("title", `String txt) :: base
+          | None -> base
+        in
+        `Assoc fields
+    | Replacement_payload { range; template } ->
+        let range_json =
+          match range with
+          | Some span -> json_of_span span
+          | None -> `Null
+        in
+        `Assoc
+          [
+            ("kind", `String "replacement");
+            ("range", range_json);
+            ("template", `String template);
+          ]
+    | Message_payload message ->
+        `Assoc [ ("kind", `String "message"); ("text", `String message) ]
+    | Data_payload json -> `Assoc [ ("kind", `String "data"); ("payload", json) ]
+
+  let structured_hint_to_json hint =
+    let base =
+      [
+        ("kind", `String (structured_hint_kind_to_string hint.kind));
+        ("payload", structured_hint_payload_to_json hint.payload);
+      ]
+    in
+    let fields =
+      match hint.span with
+      | Some span -> ("span", json_of_span span) :: base
+      | None -> base
+    in
+    let fields =
+      match hint.id with
+      | Some id -> ("id", `String id) :: fields
+      | None -> fields
+    in
+    let fields =
+      match hint.title with
+      | Some title -> ("title", `String title) :: fields
+      | None -> fields
+    in
+    let fields =
+      if hint.actions = [] then fields
+      else
+        ("actions", `List (List.map json_of_fixit hint.actions)) :: fields
+    in
+    `Assoc fields
+
+  let add_structured_hint ?id ?title ?span ?(actions = []) ~kind ~payload builder =
+    let hint = { id; title; span; kind; payload; actions } in
+    let builder =
+      if actions = [] then builder else add_fixits actions builder
+    in
+    { builder with structured_hints = builder.structured_hints @ [ hint ] }
+
+  let merge_structured_hints hints builder =
+    let builder =
+      List.fold_left
+        (fun acc hint ->
+          let builder =
+            if hint.actions = [] then acc else add_fixits hint.actions acc
+          in
+          { builder with structured_hints = builder.structured_hints @ [ hint ] })
+        builder hints
+    in
+    builder
+
+  let clear_structured_hints builder = { builder with structured_hints = [] }
 
   let with_extensions extensions builder =
     { builder with extensions }
@@ -675,6 +811,12 @@ module Builder = struct
                   `Assoc fields)
          in
          fields := ("hints", `List hints_json) :: !fields);
+      (if builder.structured_hints <> [] then
+         let structured_json =
+           List.map structured_hint_to_json builder.structured_hints
+         in
+         fields :=
+           ("structured_hints", `List structured_json) :: !fields);
       (match builder.timestamp with
       | Some ts -> fields := ("timestamp", `String ts) :: !fields
       | None -> ());

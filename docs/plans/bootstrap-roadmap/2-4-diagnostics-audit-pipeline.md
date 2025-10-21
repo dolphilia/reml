@@ -205,6 +205,18 @@ end
 - テスト更新: `compiler/ocaml/tests/golden/diagnostics/*.json.golden`、`tooling/ci/ffi-audit/*.jsonl`、`_build/default/src/main.exe` のスナップショット出力を新構造に合わせて更新。差分確認用に比較スクリプトを追加し、`dune runtest` の失敗理由がフィールド差分である場合に明示されるよう改善。
 - ドキュメント同期: `docs/spec/3-6`・`docs/guides/ai-integration.md`・`docs/plans/bootstrap-roadmap/2-3-to-2-4-handover.md` の関連節を更新し、再設計後のフィールド仕様と運用手順（CI ゲート条件・監査ログ参照方法）を反映する。
 
+1.4. **`Diagnostic.Builder` 補助関数拡充ロードマップ**
+- API 設計: `builder` に対し複数コード（`push_code`, `set_primary_code`）と構造化ヒント（`add_structured_hint ~kind ~payload`）を扱う補助関数群を追加し、`docs/spec/3-6-core-diagnostics-audit.md` §2.3 の命名規約と整合させる。補助関数の導入案を `compiler/ocaml/src/diagnostic_builder.mli` のドラフトとして 27 週目までに共有。
+- 適用優先順位: `type_error.ml` を出発点に、効果系（`effects/effect_error.ml`）、型クラス（`typeclass/diagnostic.ml`）、CLI サブコマンド（`tooling/cli/commands/*`）の順で `builder` API に移行。各モジュールに TODO コメントを残し、移行完了条件（複数コードと structured hints の両対応）を明示。
+- テスト戦略: 既存の `dune runtest --force` 実行で拾えるスナップショットに加え、`compiler/ocaml/tests/unit/diagnostic_builder_tests.ml`（新規）で補助関数の組み合わせを検証。`--promote` を禁止した CI でも差分検出できるよう、補助関数単体の JSON シリアライズ期待値を用意。
+- 互換運用: 旧来の `Diagnostic.make_*` は Phase 2 中は非推奨扱いとして残置し、`Deprecated` 名前空間で `builder` 呼び出しへ委譲。移行状況を `docs/plans/bootstrap-roadmap/2-4-status.md`（週次ログに追加予定）で追跡し、削除タイムラインを記録。
+
+1.5. **ゴールデンファイル刷新と差分レビュー手順**
+- ベースライン取得: `scripts/update-diagnostics-golden.sh`（既存スクリプトを拡張）で V1→V2 変換後の JSON を一括生成し、`tmp/diagnostics-v2-baseline/` に保存。生成タイムスタンプと `git describe` を `reports/diagnostic-migration.md`（新規レポート）へ記載する。
+- レビュー手順: `compiler/ocaml/tests/golden/diagnostics/*.json.golden` の更新時は、`tools/diagnostics-diff.py --before <old> --after <new>`（差分抽出ツールを本フェーズで整備）を用いてフィールド追加/削除を分類。レビューでは `codes[]`・`structured_hints[]` の並び替えが意図通りかチェックリスト化し、PR テンプレートに貼り付ける。
+- 段階導入: ① `type_error` 系 ② 効果/型クラス ③ CLI 系補助診断 の 3 バッチに分割してゴールデン置換を実施。各バッチ完了後に `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` 本文へ進捗記録を追記し、対応コミットを `docs/migrations/diagnostic-golden.log`（新設）で追跡。
+- CI 連携: `tooling/ci/collect-diagnostic-diff.py` を追加し、GitHub Actions で `--compare-golden` を実行して差分サマリ（追加/削除フィールド件数）をアーティファクト化。差分が許容範囲内かを自動判定し、閾値超過時はレビュー前に失敗させる。
+
 **成果物**: 拡張 Diagnostic 型ドラフト、AuditEnvelope 仕様整合法、移行ステップ表・テスト更新計画
 
 ### 2. シリアライズ統合（27週目）
@@ -227,6 +239,13 @@ end
 - ソースコードスニペットの抽出
 - Unicode 対応（Grapheme 単位の表示）
 - Phase 1 の診断フォーマットとの統合
+
+2.4. **LSP トランスポート V2 フィールド公開と互換性検証**
+- 出力チャネル整理: `cli` 以外の JSON トランスポートを `tooling/lsp/diagnostic_transport.ml`（新設予定）に統合し、`--format lsp-v2` フラグで V2 フィールド（`codes[]`, `structured_hints[]`, `extensions`）を有効化。既存 V1 クライアント向けには `--format lsp-v1` を残し、フィールドマッピング表を `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` 付録に追加。
+- プロトコル整合性: `docs/spec/3-6-core-diagnostics-audit.md` と LSP 仕様（`diagnostic.relatedInformation`, `codeDescription` 等）を突き合わせ、V2 で新設するキーの LSP 対応を整理。`tooling/lsp/jsonrpc_server.ml` に V2 変換パスを追加し、`structured_hints` は `command`/`data` へ写像する。
+- 互換性テスト: `tooling/lsp/tests/client_compat/` に Node.js サンプルクライアント（`client-v1.ts`, `client-v2.ts`）を用意し、`npm test` で CLI 生成 JSON と LSP レスポンスの差異を検出。GitHub Actions に `lsp-contract` ジョブを追加し、`codes` が複数件存在するケースを最小再現として収録する。
+- クラッシュセーフティ: V2 で追加したフィールドが欠落／不正型の場合のフォールバックを `tooling/lsp/compat_fallback.ml` で管理し、`Result` によるエラー伝搬をユニットテスト化。既存の CLI JSON 出力にも同じ整形を適用し、`tooling/json-schema/diagnostic-v2.schema.json` を追加して双方向検証を実施。
+- ドキュメント更新: `docs/spec/2-0-parser-api-overview.md`（LSP 連携節）と `docs/guides/ai-integration.md` に V2 フィールド導入とテスト矩形（matrix）を追記し、クライアント実装者向けの移行手順をまとめる。
 
 **成果物**: シリアライズレイヤ、JSON/テキスト出力、スキーマ
 
