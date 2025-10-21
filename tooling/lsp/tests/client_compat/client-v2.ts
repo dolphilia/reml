@@ -6,7 +6,8 @@
  */
 
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
 
@@ -46,14 +47,8 @@ addFormats(ajv);
 /**
  * JSON スキーマ検証用の初期化。Phase 2-4 完了時に schema を確定させる。
  */
-const schemaPath = join(
-  __dirname,
-  "..",
-  "..",
-  "..",
-  "json-schema",
-  "diagnostic-v2.schema.json"
-);
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const schemaPath = join(currentDir, "..", "..", "..", "json-schema", "diagnostic-v2.schema.json");
 
 let validateSchema:
   | ((value: unknown) => value is DiagnosticV2)
@@ -92,9 +87,9 @@ export function collectStructuredHints(diagnostics: DiagnosticV2[]): StructuredH
   return diagnostics.flatMap((diag) => diag.structured_hints ?? []);
 }
 
-if (require.main === module) {
-  // TODO: Phase 2-4 で CLI 生成物を読み込み、AJV 経由で互換性を検証する。
-  const diagnostics = readDiagnostics(process.cwd(), "fixtures/diagnostic-v2-sample.json");
+if (import.meta.url === (process.argv[1] ? new URL(process.argv[1], "file://").href : "")) {
+  const samplesDir = currentDir;
+  const diagnostics = readDiagnostics(samplesDir, "fixtures/diagnostic-v2-sample.json");
   const codes = Array.from(collectCodes(diagnostics));
   console.log("[client-v2] codes", codes);
   console.log("[client-v2] structured_hints", collectStructuredHints(diagnostics).length);

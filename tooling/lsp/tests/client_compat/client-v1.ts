@@ -6,7 +6,8 @@
  */
 
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 type Position = {
   line: number;
@@ -103,8 +104,8 @@ function extractRelated(entry: Record<string, unknown>): DiagnosticV1["relatedIn
     .filter((value): value is NonNullable<typeof value> => value !== null);
 }
 
-if (require.main === module) {
-  // TODO: Phase 2-4 で CLI 生成物を読み込み、V1 互換性を検証する。
-  const diagnostics = convertToV1(process.cwd(), "fixtures/diagnostic-sample.json");
+if (import.meta.url === (process.argv[1] ? new URL(process.argv[1], "file://").href : "")) {
+  const currentDir = dirname(fileURLToPath(import.meta.url));
+  const diagnostics = convertToV1(currentDir, "fixtures/diagnostic-sample.json");
   console.log("[client-v1] diagnostics", diagnostics.length);
 }

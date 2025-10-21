@@ -8,8 +8,17 @@ Phase 2-4 で導入する診断 V2 フィールドを CLI/LSP 双方で検証す
 - `client-v2.ts` — 新フィールドを積極的に利用するクライアントの検証。`diagnostic-v2.schema.json` によるスキーマバリデーションを行う。
 - `fixtures/` — CLI から出力した診断 JSON のサンプルを配置する予定。
 
+## 実行方法
+
+```bash
+cd tooling/lsp/tests/client_compat
+npm install
+npm test
+```
+
+Vitest が `tests/` 以下のシナリオを実行し、V1/V2 両方のフィクスチャ読み込みと JSON Schema 検証を行う。
+
 ## 今後のタスク
 
-1. `package.json` とテストランナー（`vitest` / `tsx` など）を追加し、CI から `npm test` で互換性チェックを実施。
-2. `client-v2.ts` が参照する AJV スキーマを確定させ、生成ステップを CLI パイプラインへ統合。
-3. Windows/macOS 向けの CLI 出力を fixtures に追加し、プラットフォーム差異をレビューできるようにする。
+1. `client-v2.ts` が参照する AJV スキーマを確定させ、生成ステップを CLI パイプラインへ統合。
+2. Windows/macOS 向けの CLI 出力を fixtures に追加し、プラットフォーム差異をレビューできるようにする。
