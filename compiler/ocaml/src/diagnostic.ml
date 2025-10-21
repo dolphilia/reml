@@ -18,13 +18,18 @@ module Extensions = struct
   let empty : t = []
   let is_empty = function [] -> true | _ -> false
 
-  let set key value entries =
-    let filtered =
-      List.filter (fun (k, _) -> not (String.equal k key)) entries
-    in
-    (key, value) :: filtered
+let set key value entries =
+  let filtered =
+    List.filter (fun (k, _) -> not (String.equal k key)) entries
+  in
+  (key, value) :: filtered
 
-  let to_json entries = `Assoc (List.rev entries)
+let to_json entries = `Assoc (List.rev entries)
+
+let get key entries =
+  match List.find_opt (fun (k, _) -> String.equal k key) entries with
+  | Some (_, value) -> Some value
+  | None -> None
 end
 
 (* ========== 重要度 ========== *)
@@ -154,63 +159,6 @@ let location_of_pos (pos : Lexing.position) : location =
 (** Lexing.position ペアから span への変換 *)
 let span_of_positions start_pos end_pos =
   { start_pos = location_of_pos start_pos; end_pos = location_of_pos end_pos }
-
-(* ========== 診断情報の構築 ========== *)
-
-(** 診断情報の構築（Phase 1互換） *)
-let make ?(severity = Error) ?severity_hint ?domain ?code
-    ?(expected_summary = None) ?(notes = []) ?(fixits = [])
-    ?(extensions = Extensions.empty) ?(audit_metadata = Extensions.empty)
-    ~message ~start_pos ~end_pos () =
-  {
-    severity;
-    severity_hint;
-    domain;
-    code;
-    message;
-    span = span_of_positions start_pos end_pos;
-    expected_summary;
-    notes = List.map (fun note -> (None, note)) notes;
-    fixits;
-    extensions;
-    audit_metadata;
-  }
-
-(** 型エラー用の診断情報を構築 *)
-let make_type_error ?(severity = Error) ?severity_hint ?code ?expected_summary
-    ?(notes = []) ?(fixits = []) ?(extensions = Extensions.empty)
-    ?(audit_metadata = Extensions.empty) ~message ~span () =
-  {
-    severity;
-    severity_hint;
-    domain = Some Type;
-    code;
-    message;
-    span;
-    expected_summary;
-    notes;
-    fixits;
-    extensions;
-    audit_metadata;
-  }
-
-(** Lexerエラー用（Phase 1互換） *)
-let of_lexer_error ~message ~start_pos ~end_pos =
-  make ~domain:Parser ~message ~start_pos ~end_pos ()
-
-(** Parserエラー用（Phase 1互換） *)
-let of_parser_error ~message ~start_pos ~end_pos ~expected =
-  let expected_summary =
-    Some
-      {
-        message_key = None;
-        locale_args = [];
-        humanized = None;
-        context_note = None;
-        alternatives = expected;
-      }
-  in
-  make ~domain:Parser ~expected_summary ~message ~start_pos ~end_pos ()
 
 let set_extension key value diag =
   { diag with extensions = Extensions.set key value diag.extensions }
@@ -404,6 +352,22 @@ module V2 = struct
       | None -> (
           match diag.code with Some code -> [ code ] | None -> [] )
     in
+    let v2_fields =
+      match Extensions.get "diagnostic.v2" diag.extensions with
+      | Some (`Assoc fields) -> fields
+      | _ -> []
+    in
+    let codes =
+      match List.assoc_opt "codes" v2_fields with
+      | Some (`List lst) ->
+          let ext_codes =
+            List.filter_map
+              (function `String s -> Some s | _ -> None)
+              lst
+          in
+          if ext_codes = [] then codes else ext_codes
+      | _ -> codes
+    in
     let audit =
       match audit with Some v -> Some v | None -> audit_of_extensions diag.audit_metadata
     in
@@ -417,6 +381,29 @@ module V2 = struct
       diag.fixits
       |> List.map (fun fixit -> { message = None; actions = [ fixit ] })
     in
+    let hints_from_extension =
+      match List.assoc_opt "hints" v2_fields with
+      | Some (`List lst) ->
+          lst
+          |> List.filter_map (function
+                 | `Assoc hint_fields ->
+                     let message =
+                       match List.assoc_opt "message" hint_fields with
+                       | Some (`String s) -> Some s
+                       | _ -> None
+                     in
+                     Some { message; actions = [] }
+                 | _ -> None)
+      | _ -> []
+    in
+    let timestamp =
+      match timestamp with
+      | Some _ -> timestamp
+      | None -> (
+          match List.assoc_opt "timestamp" v2_fields with
+          | Some (`String ts) -> Some ts
+          | _ -> None )
+    in
     {
       id;
       message = diag.message;
@@ -425,7 +412,7 @@ module V2 = struct
       codes;
       primary = diag.span;
       secondary;
-      hints = hint_from_severity @ hints_from_fixits;
+      hints = hint_from_severity @ hints_from_extension @ hints_from_fixits;
       expected = diag.expected_summary;
       audit;
       timestamp;
@@ -522,6 +509,260 @@ module V2 = struct
         in
         `Assoc (List.rev fields)
 end
+
+(* ========== Diagnostic Builder ========== *)
+
+module Builder = struct
+  type secondary_entry = { span : span option; message : string }
+
+  type t = {
+    severity : severity;
+    severity_hint : severity_hint option;
+    domain : error_domain option;
+    message : string;
+    primary : span;
+    codes : string list;
+    secondary : secondary_entry list;
+    expected : expectation_summary option;
+    hints : V2.hint list;
+    fixits : fixit list;
+    extensions : Extensions.t;
+    audit_metadata : Extensions.t;
+    timestamp : string option;
+  }
+
+  let create ?(severity = Error) ?severity_hint ?domain ?code ?(codes = [])
+      ?timestamp ~message ~primary () =
+    let codes =
+      match (code, codes) with
+      | Some c, _ when List.mem c codes -> codes
+      | Some c, _ -> c :: codes
+      | None, _ -> codes
+    in
+    {
+      severity;
+      severity_hint;
+      domain;
+      message;
+      primary;
+      codes;
+      secondary = [];
+      expected = None;
+      hints = [];
+      fixits = [];
+      extensions = Extensions.empty;
+      audit_metadata = Extensions.empty;
+      timestamp;
+    }
+
+  let set_severity severity builder = { builder with severity }
+  let set_severity_hint severity_hint builder = { builder with severity_hint }
+
+  let set_domain domain builder = { builder with domain = Some domain }
+
+  let add_code code builder =
+    if List.mem code builder.codes then builder
+    else { builder with codes = builder.codes @ [ code ] }
+
+  let set_codes codes builder = { builder with codes }
+
+  let add_note ?span message builder =
+    let entry = { span; message } in
+    { builder with secondary = builder.secondary @ [ entry ] }
+
+  let add_notes notes builder =
+    List.fold_left
+      (fun acc (span_opt, message) -> add_note ?span:span_opt message acc)
+      builder notes
+
+  let set_expected expected builder = { builder with expected = Some expected }
+
+  let clear_expected builder = { builder with expected = None }
+
+  let add_fixits fixits builder =
+    { builder with fixits = builder.fixits @ fixits }
+
+  let add_hint ?(actions = []) ?message builder =
+    let hint = V2.{ message; actions } in
+    let builder =
+      if actions = [] then builder else add_fixits actions builder
+    in
+    { builder with hints = builder.hints @ [ hint ] }
+
+  let with_extensions extensions builder =
+    { builder with extensions }
+
+  let add_extension key value builder =
+    { builder with extensions = Extensions.set key value builder.extensions }
+
+  let with_audit_metadata metadata builder =
+    { builder with audit_metadata = metadata }
+
+  let add_audit_metadata key value builder =
+    {
+      builder with
+      audit_metadata =
+        Extensions.set key value builder.audit_metadata;
+    }
+
+  let set_timestamp timestamp builder = { builder with timestamp = Some timestamp }
+
+  let json_of_location loc =
+    `Assoc
+      [
+        ("file", `String loc.filename);
+        ("line", `Int loc.line);
+        ("column", `Int loc.column);
+        ("offset", `Int loc.offset);
+      ]
+
+  let json_of_span span =
+    `Assoc
+      [
+        ("start", json_of_location span.start_pos);
+        ("end", json_of_location span.end_pos);
+      ]
+
+  let json_of_fixit = function
+    | Insert { at; text } ->
+        `Assoc
+          [
+            ("kind", `String "insert");
+            ("range", json_of_span at);
+            ("text", `String text);
+          ]
+    | Replace { at; text } ->
+        `Assoc
+          [
+            ("kind", `String "replace");
+            ("range", json_of_span at);
+            ("text", `String text);
+          ]
+    | Delete { at } ->
+        `Assoc
+          [
+            ("kind", `String "delete");
+            ("range", json_of_span at);
+          ]
+
+  let build builder =
+    let codes = builder.codes in
+    let code = match codes with [] -> None | hd :: _ -> Some hd in
+    let notes =
+      builder.secondary
+      |> List.map (fun entry -> (entry.span, entry.message))
+    in
+    let v2_extension_fields =
+      let fields = ref [] in
+      (if codes <> [] then
+         fields :=
+           ("codes", `List (List.map (fun c -> `String c) codes)) :: !fields);
+      (if builder.hints <> [] then
+         let hints_json =
+           builder.hints
+           |> List.map (fun V2.{ message; actions = hint_actions } ->
+                  let base =
+                    match message with
+                    | Some msg -> [ ("message", `String msg) ]
+                    | None -> []
+                  in
+                  let fields =
+                    match hint_actions with
+                    | [] -> base
+                    | xs ->
+                        ("actions", `List (List.map json_of_fixit xs)) :: base
+                  in
+                  `Assoc fields)
+         in
+         fields := ("hints", `List hints_json) :: !fields);
+      (match builder.timestamp with
+      | Some ts -> fields := ("timestamp", `String ts) :: !fields
+      | None -> ());
+      !fields
+    in
+    let extensions =
+      if v2_extension_fields = [] then builder.extensions
+      else
+        Extensions.set "diagnostic.v2"
+          (`Assoc v2_extension_fields)
+          builder.extensions
+    in
+    {
+      severity = builder.severity;
+      severity_hint = builder.severity_hint;
+      domain = builder.domain;
+      code;
+      message = builder.message;
+      span = builder.primary;
+      expected_summary = builder.expected;
+      notes;
+      fixits = builder.fixits;
+      extensions;
+      audit_metadata = builder.audit_metadata;
+    }
+end
+
+(* ========== 診断情報の構築 ========== *)
+
+(** 診断情報の構築（Phase 1互換） *)
+let make ?(severity = Error) ?severity_hint ?domain ?code
+    ?(expected_summary = None) ?(notes = []) ?(fixits = [])
+    ?(extensions = Extensions.empty) ?(audit_metadata = Extensions.empty)
+    ~message ~start_pos ~end_pos () =
+  let primary = span_of_positions start_pos end_pos in
+  let builder =
+    Builder.create ~severity ?severity_hint ?domain ?code ~message ~primary ()
+    |> Builder.add_notes (List.map (fun note -> (None, note)) notes)
+    |> Builder.add_fixits fixits
+    |> Builder.with_extensions extensions
+    |> Builder.with_audit_metadata audit_metadata
+  in
+  let builder =
+    match expected_summary with
+    | Some summary -> Builder.set_expected summary builder
+    | None -> builder
+  in
+  Builder.build builder
+
+(** 型エラー用の診断情報を構築 *)
+let make_type_error ?(severity = Error) ?severity_hint ?code ?expected_summary
+    ?(notes = []) ?(fixits = []) ?(extensions = Extensions.empty)
+    ?(audit_metadata = Extensions.empty) ~message ~span () =
+  let builder =
+    Builder.create ~severity ?severity_hint ?code ~message ~primary:span ()
+    |> Builder.set_domain Type
+    |> Builder.add_notes notes
+    |> Builder.add_fixits fixits
+    |> Builder.with_extensions extensions
+    |> Builder.with_audit_metadata audit_metadata
+  in
+  let builder =
+    match expected_summary with
+    | Some summary -> Builder.set_expected summary builder
+    | None -> builder
+  in
+  Builder.build builder
+
+(** Lexerエラー用（Phase 1互換） *)
+let of_lexer_error ~message ~start_pos ~end_pos =
+  let primary = span_of_positions start_pos end_pos in
+  Builder.create ~message ~primary ~domain:Parser () |> Builder.build
+
+(** Parserエラー用（Phase 1互換） *)
+let of_parser_error ~message ~start_pos ~end_pos ~expected =
+  let expected_summary =
+    {
+      message_key = None;
+      locale_args = [];
+      humanized = None;
+      context_note = None;
+      alternatives = expected;
+    }
+  in
+  Builder.create ~message ~primary:(span_of_positions start_pos end_pos)
+    ~domain:Parser ()
+  |> Builder.set_expected expected_summary
+  |> Builder.build
 
 (* ========== 期待値の文字列表現 ========== *)
 

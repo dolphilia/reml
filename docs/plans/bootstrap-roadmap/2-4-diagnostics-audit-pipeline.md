@@ -92,6 +92,17 @@
 - 追加フィールドの扱い: `severity_hint`（Rollback/Retry 等）は CLI ガイダンスとして残置し、仕様側 `Hint` との位置付けを整理する。`notes` は LSP の `related_information` 用に `secondary` へ移譲し、名称衝突を解消する。
 - フィールド比較表は移行ステップ策定時に随時更新し、最終版は Phase 2 終了レビューで確定する。
 
+**進捗状況 (2025-10-21 更新)**
+- Diagnostic.V2 型のドラフトを `compiler/ocaml/src/diagnostic.ml` に追加し、既存 `Diagnostic.t` からの変換ユーティリティ（`V2.of_legacy` など）を実装済み。
+- `Cli.Json_formatter`／`Cli.Diagnostic_formatter` を V2 フィールドへ切り替え、JSON/テキスト両方で `codes`・`secondary`・`hints`・`timestamp`・`audit` を表示できるよう調整済み。
+- `Diagnostic.Builder` を実装し、`Diagnostic.make`／`make_type_error`／Parser エラーパスを新 API 経由で構築するよう更新。既存テストは `dune runtest` で回帰なし。
+- `dune runtest`（compiler/ocaml）で回帰がないことを確認済み。
+
+**残タスク**
+1. LSP トランスポート（`cli` 以外の JSON 出力、将来の LSP 実装）で V2 フィールドを公開する仕組みを整備し、クライアント側の互換性テストを追加する。
+2. `Diagnostic.Builder` の補助関数を拡充し、`type_error.ml` 以外の診断生成サイト（効果・型クラス・CLI サブコマンド等）で複数コード／structured hints を活用できるよう段階移行する。
+3. V2 導入に伴うゴールデンファイルの刷新と差分レビュー手順を策定し、`compiler/ocaml/tests/golden/diagnostics/*.json.golden` の更新計画をまとめる。
+
 #### 実装タスク (diagnostic.ml / CLI) {#diagnostic-migration-plan}
 
 1. **下準備**
@@ -160,6 +171,16 @@ end
 2. **コンストラクタ移行**: `main.ml`, `type_error.ml`, `core_ir/iterator_audit.ml` で `Audit_envelope.make` の引数を新型に合わせて更新し、`metadata` に `Assoc` ではなく `metadata` リストを渡すよう統一。
 3. **JSON エンコード統合**: `Audit_envelope.to_json` を利用する書き込みパス（`append_events` 等）を更新し、`metadata` の必須キー検証を `tooling/runtime/audit-schema.json` と同期。CI でスキーマ v1.1 を読み込み、`schema.version` との差分を検出するテストを追加。
 4. **バージョン通知**: CLI 生成時に `audit_schema_version` を `Cli.Diagnostic_envelope` に埋め込み、`tooling/runtime/audit-schema.json` 更新時は `CHANGELOG` と `0-3-audit-and-metrics.md` にリンクを残す。
+
+**進捗状況 (2025-10-21 更新)**
+- 新しい `Audit_envelope.t` を `compiler/ocaml/src/audit_envelope.ml` に導入し、`audit_id` / `change_set` / `capability` を保持可能な構造へ再定義済み。`metadata_pairs` API でリスト渡しに対応。
+- `main.ml`／`test_effect_residual.ml`／FFI 関連テストで `~metadata_pairs` を使用するよう更新し、`Ffi_contract.bridge_audit_metadata_pairs` を追加済み。
+- `dune build`／`dune runtest` で回帰なし。
+
+**残タスク**
+1. Type エラー生成箇所（`type_error.ml`）で `Audit_envelope.merge_metadata` を使い、効果・型クラス診断の追加キーを新構造へ統一。
+2. CLI 出力で `AuditEnvelope` の `audit_id`／`change_set` を埋める設計を詰め、`tooling/runtime/audit-schema.json` の `schema.version` を明示的に付与する運用を確立。
+3. 監査ログ生成スクリプト（`tooling/ci/sync-iterator-audit.sh` 等）を新 JSON フィールドに対応させ、ゴールデン更新と差分ツール調整を実施。
 
 #### メタデータ拡張要件まとめ
 
