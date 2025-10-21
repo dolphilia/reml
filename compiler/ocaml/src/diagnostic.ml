@@ -240,18 +240,43 @@ let span_of_positions start_pos end_pos =
 let set_extension key value diag =
   { diag with extensions = Extensions.set key value diag.extensions }
 
+let merge_audit_metadata entries diag =
+  match entries with
+  | [] -> diag
+  | _ ->
+      let metadata =
+        List.fold_left
+          (fun acc (key, value) -> Extensions.set key value acc)
+          diag.audit_metadata entries
+      in
+      let base =
+        match diag.audit with
+        | Some env -> env
+        | None -> Audit_envelope.empty_envelope
+      in
+      let envelope = Audit_envelope.merge_metadata base entries in
+      { diag with audit_metadata = metadata; audit = Some envelope }
+
 let set_audit_metadata key value diag =
-  let metadata = Extensions.set key value diag.audit_metadata in
-  let audit =
-    let base =
-      match diag.audit with
-      | Some env -> Audit_envelope.add_metadata env ~key value
-      | None ->
-          Audit_envelope.add_metadata Audit_envelope.empty_envelope ~key value
-    in
-    Some base
+  merge_audit_metadata [ (key, value) ] diag
+
+let set_audit_id id diag =
+  let base =
+    match diag.audit with
+    | Some env -> env
+    | None -> Audit_envelope.empty_envelope
   in
-  { diag with audit_metadata = metadata; audit }
+  let envelope = { base with audit_id = Some id } in
+  { diag with audit = Some envelope }
+
+let set_change_set change diag =
+  let base =
+    match diag.audit with
+    | Some env -> env
+    | None -> Audit_envelope.empty_envelope
+  in
+  let envelope = { base with change_set = Some change } in
+  { diag with audit = Some envelope }
 
 let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
     ?capability_meta ?iterator_fields ?stage_trace ~required_stage ~capability

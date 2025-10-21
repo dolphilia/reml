@@ -119,6 +119,15 @@ let () =
       (let diag =
          Type_error.to_diagnostic_with_source ~available_names:[] sample_source
            sample_path err
+        |> Diagnostic.set_audit_id "00000000-0000-0000-0000-000000000000"
+        |> Diagnostic.set_change_set
+              (`Assoc
+                [
+                  ("command", `String "remlc-tests");
+                  ( "input",
+                    `String
+                      "tests/golden/diagnostics/ffi/unsupported-abi.reml" );
+                ])
        in
        let json = Cli.Json_formatter.diagnostic_to_json diag in
        let audit =
@@ -129,6 +138,15 @@ let () =
              let event =
                Audit_envelope.make ~timestamp:"1970-01-01T00:00:00Z"
                  ~category:"ffi.bridge"
+                 ~audit_id:"00000000-0000-0000-0000-000000000000"
+                 ~change_set:
+                   (`Assoc
+                     [
+                       ("command", `String "remlc-tests");
+                       ( "input",
+                         `String
+                           "tests/golden/diagnostics/ffi/unsupported-abi.reml" );
+                     ])
                  ~metadata_pairs:
                    (Ffi_contract.bridge_audit_metadata_pairs ~status:"error"
                       normalized)

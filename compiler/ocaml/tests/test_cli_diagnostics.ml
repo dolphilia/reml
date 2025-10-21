@@ -142,6 +142,13 @@ let test_stage_extension_snapshot () =
          ~actual_stage:"experimental" ~capability:"core.iterator.collect"
          ~provider:"Core.Iter" ~manifest_path:"dsl/core.iter.toml" ~residual
          ~capability_meta:metadata ~iterator_fields
+    |> Diagnostic.set_audit_id "11111111-1111-1111-1111-111111111111"
+    |> Diagnostic.set_change_set
+         (`Assoc
+           [
+             ("command", `String "stage-diagnostic-test");
+             ("input", `String "iter.reml");
+           ])
   in
   let json_str = Cli.Json_formatter.diagnostic_to_json diag in
   let golden_path =

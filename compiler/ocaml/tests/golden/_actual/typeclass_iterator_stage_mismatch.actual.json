@@ -20,6 +20,11 @@
           "effect.capability": "core.iterator.collect",
           "effect.stage.actual": "experimental",
           "effect.stage.required": "beta"
+        },
+        "audit_id": "11111111-1111-1111-1111-111111111111",
+        "change_set": {
+          "command": "stage-diagnostic-test",
+          "input": "iter.reml"
         }
       },
       "extensions": {

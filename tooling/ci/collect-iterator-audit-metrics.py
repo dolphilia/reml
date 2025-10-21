@@ -23,6 +23,8 @@ from typing import Any, Dict, Iterable, List, Optional, Set
 
 # Required audit metadata keys.
 REQUIRED_AUDIT_KEYS: List[str] = [
+    "audit_id",
+    "change_set",
     "effect.stage.required",
     "effect.stage.actual",
     "effect.capability",
@@ -46,6 +48,8 @@ REQUIRED_EFFECT_ITERATOR_KEYS: List[str] = [
 # FFI bridge metrics configuration.
 BRIDGE_DIAG_PREFIX = "ffi.contract."
 REQUIRED_BRIDGE_AUDIT_KEYS: List[str] = [
+    "audit_id",
+    "change_set",
     "bridge.status",
     "bridge.target",
     "bridge.arch",

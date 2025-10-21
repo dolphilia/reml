@@ -869,7 +869,37 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
             Diagnostic.set_extension "effect.stage.subject" (`String name) diag
         | None -> diag
       in
-      diag
+      let audit_trace =
+        enriched_trace
+        |> List.filter (fun step ->
+               String.equal step.source "typer"
+               || String.equal step.source "runtime")
+        |> List.map (fun step ->
+               let fields =
+                 [
+                   ("source", `String step.source);
+                   ( "stage",
+                     match step.stage with Some s -> `String s | None -> `Null
+                   );
+                 ]
+               in
+               `Assoc fields)
+      in
+      let audit_entries =
+        let base =
+          [
+            ("effect.stage.required", `String required_stage);
+            ("effect.stage.actual", `String actual_stage);
+            ("effect.capability", `String capability_name);
+          ]
+        in
+        let base =
+          if audit_trace <> [] then ("stage_trace", `List audit_trace) :: base
+          else base
+        in
+        List.rev base
+      in
+      Diagnostic.merge_audit_metadata audit_entries diag
   | EffectInvalidAttribute
       { function_name; profile; invalid_attribute = invalid } ->
       let attribute_display = invalid.attribute_display in
@@ -1014,52 +1044,43 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         Diagnostic.set_extension "effect.invalid_attributes" invalids_list_json
           diag
       in
-      let diag =
-        Diagnostic.set_audit_metadata "effect.stage.required"
-          (`String required_stage) diag
-      in
-      let diag =
-        Diagnostic.set_audit_metadata "effect.stage.actual"
-          (match actual_stage_opt with
-          | Some stage -> `String stage
-          | None -> `Null)
-          diag
-      in
-      let diag =
-        Diagnostic.set_audit_metadata "effect.capability"
-          (`String capability_name) diag
-      in
-      let diag =
-        Diagnostic.set_audit_metadata "effect.attribute.invalid"
-          (match invalid.key with
-          | Some key -> `String key
-          | None -> `String "attribute")
-          diag
-      in
       let location_label =
         match (function_name, profile.source_name) with
         | Some name, _ -> name
         | None, Some source -> source
         | None, None -> "<anonymous>"
       in
-      let diag =
-        Diagnostic.set_audit_metadata "effect.attribute.location"
-          (`String location_label) diag
-      in
-      let diag =
-        Diagnostic.set_audit_metadata "effect.attribute.reason"
-          (`String (string_of_invalid_reason invalid.reason))
-          diag
-      in
-      let diag =
+      let stage_trace_json =
         match profile.stage_trace with
-        | [] -> diag
-        | trace ->
-            Diagnostic.set_audit_metadata "stage_trace"
-              (stage_trace_to_json trace)
-              diag
+        | [] -> None
+        | trace -> Some (stage_trace_to_json trace)
       in
-      diag
+      let audit_entries =
+        let base =
+          [
+            ("effect.stage.required", `String required_stage);
+            ( "effect.stage.actual",
+              match actual_stage_opt with
+              | Some stage -> `String stage
+              | None -> `Null );
+            ("effect.capability", `String capability_name);
+            ( "effect.attribute.invalid",
+              match invalid.key with
+              | Some key -> `String key
+              | None -> `String "attribute" );
+            ("effect.attribute.location", `String location_label);
+            ( "effect.attribute.reason",
+              `String (string_of_invalid_reason invalid.reason) );
+          ]
+        in
+        let base =
+          match stage_trace_json with
+          | Some json -> ("stage_trace", json) :: base
+          | None -> base
+        in
+        List.rev base
+      in
+      Diagnostic.merge_audit_metadata audit_entries diag
   | EffectResidualLeak { function_name; profile; leaks } ->
       let message = "残余効果が閉じていません" in
       let diag_span = span_to_diagnostic_span profile.source_span in
@@ -1165,26 +1186,6 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
             diag
         else diag
       in
-      let diag =
-        Diagnostic.set_audit_metadata "effect.stage.required"
-          (`String required_stage) diag
-      in
-      let diag =
-        Diagnostic.set_audit_metadata "effect.stage.actual"
-          (match actual_stage_opt with
-          | Some stage -> `String stage
-          | None -> `Null)
-          diag
-      in
-      let diag =
-        Diagnostic.set_audit_metadata "effect.capability"
-          (`String capability_str) diag
-      in
-      let diag =
-        Diagnostic.set_audit_metadata "effect.residual.tags"
-          (`List (List.map (fun name -> `String name) leak_names))
-          diag
-      in
       let audit_trace =
         enriched_trace
         |> List.filter (fun step ->
@@ -1201,12 +1202,26 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
                in
                `Assoc fields)
       in
-      let diag =
-        if audit_trace <> [] then
-          Diagnostic.set_audit_metadata "stage_trace" (`List audit_trace) diag
-        else diag
+      let audit_entries =
+        let base =
+          [
+            ("effect.stage.required", `String required_stage);
+            ( "effect.stage.actual",
+              match actual_stage_opt with
+              | Some stage -> `String stage
+              | None -> `Null );
+            ("effect.capability", `String capability_str);
+            ( "effect.residual.tags",
+              `List (List.map (fun name -> `String name) leak_names) );
+          ]
+        in
+        let base =
+          if audit_trace <> [] then ("stage_trace", `List audit_trace) :: base
+          else base
+        in
+        List.rev base
       in
-      diag
+      Diagnostic.merge_audit_metadata audit_entries diag
   | FfiContractSymbolMissing normalized ->
       let span =
         span_to_diagnostic_span normalized.Ffi.contract.Ffi.source_span
@@ -1227,17 +1242,15 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
           (Ffi.bridge_json_of_normalized normalized)
           diag
       in
-      let diag =
-        Diagnostic.set_audit_metadata "bridge"
-          (Ffi.bridge_json_of_normalized ~status:"error" normalized)
-          diag
+      let audit_entries =
+        [
+          ( "bridge",
+            Ffi.bridge_json_of_normalized ~status:"error" normalized );
+          ( "bridge.source_span",
+            Ffi.span_to_json normalized.contract.source_span );
+        ]
       in
-      let diag =
-        Diagnostic.set_audit_metadata "bridge.source_span"
-          (Ffi.span_to_json normalized.contract.source_span)
-          diag
-      in
-      diag
+      Diagnostic.merge_audit_metadata audit_entries diag
   | FfiContractOwnershipMismatch normalized ->
       let span =
         span_to_diagnostic_span normalized.Ffi.contract.Ffi.source_span
@@ -1267,17 +1280,15 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
           (Ffi.bridge_json_of_normalized normalized)
           diag
       in
-      let diag =
-        Diagnostic.set_audit_metadata "bridge"
-          (Ffi.bridge_json_of_normalized ~status:"error" normalized)
-          diag
+      let audit_entries =
+        [
+          ( "bridge",
+            Ffi.bridge_json_of_normalized ~status:"error" normalized );
+          ( "bridge.source_span",
+            Ffi.span_to_json normalized.contract.source_span );
+        ]
       in
-      let diag =
-        Diagnostic.set_audit_metadata "bridge.source_span"
-          (Ffi.span_to_json normalized.contract.source_span)
-          diag
-      in
-      diag
+      Diagnostic.merge_audit_metadata audit_entries diag
   | FfiContractUnsupportedAbi normalized ->
       let span =
         span_to_diagnostic_span normalized.Ffi.contract.Ffi.source_span
@@ -1315,17 +1326,15 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
           (Ffi.bridge_json_of_normalized normalized)
           diag
       in
-      let diag =
-        Diagnostic.set_audit_metadata "bridge"
-          (Ffi.bridge_json_of_normalized ~status:"error" normalized)
-          diag
+      let audit_entries =
+        [
+          ( "bridge",
+            Ffi.bridge_json_of_normalized ~status:"error" normalized );
+          ( "bridge.source_span",
+            Ffi.span_to_json normalized.contract.source_span );
+        ]
       in
-      let diag =
-        Diagnostic.set_audit_metadata "bridge.source_span"
-          (Ffi.span_to_json normalized.contract.source_span)
-          diag
-      in
-      diag
+      Diagnostic.merge_audit_metadata audit_entries diag
   | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)

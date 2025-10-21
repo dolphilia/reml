@@ -7,10 +7,10 @@
             { "source": "typer", "stage": "stable" },
             { "source": "runtime", "stage": "stable" }
           ],
-          "effect.residual.tags": [ "panic" ],
-          "effect.capability": "core.runtime",
+          "effect.stage.required": "stable",
           "effect.stage.actual": "stable",
-          "effect.stage.required": "stable"
+          "effect.capability": "core.runtime",
+          "effect.residual.tags": [ "panic" ]
         }
       },
       "extensions": {

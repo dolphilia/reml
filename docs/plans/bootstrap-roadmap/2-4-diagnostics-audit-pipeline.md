@@ -205,14 +205,14 @@ end
    - 影響ファイル: `compiler/ocaml/src/audit_envelope.{ml,mli}`, `compiler/ocaml/src/core_ir/iterator_audit.ml`, `compiler/ocaml/src/cli/diagnostic_envelope.ml`
 
 2. **書き込みパイプライン移行**  
-   - `tooling/runtime/audit-schema.json` v1.1 をソースオブトゥルースとし、`schema.version` を `Audit_envelope` 生成時に必ずメタデータへ注入。  
-   - `main.ml`, `tooling/cli/commands/diagnostics_emit.ml`, `tooling/ci/sync-iterator-audit.sh` などの書き込み点を `Audit_envelope.Event` API 経由に統一。  
-   - JSON Lines 生成箇所で `Audit_envelope.Event.to_json` を呼び出すよう変更し、旧 `category` 文字列ベースのコードパスを削除。
+  - `tooling/runtime/audit-schema.json` v1.1 をソースオブトゥルースとし、`schema.version` を `Audit_envelope` 生成時に必ずメタデータへ注入。  
+  - `main.ml`, `tooling/cli/commands/diagnostics_emit.ml`, `tooling/ci/sync-iterator-audit.sh` などの書き込み点を `Audit_envelope.Event` API 経由に統一。  
+  - JSON Lines 生成箇所で `Audit_envelope.Event.to_json` を呼び出すよう変更し、旧 `category` 文字列ベースのコードパスを削除。
 
 3. **CI スキーマ検証**  
    - `scripts/ci/verify-audit-schema.sh`（新規）を追加し、`ajv` 互換チェッカまたは `python -m jsonschema` で `tooling/runtime/audit-schema.json` を検証。  
    - GitHub Actions（Linux/Windows/macOS）の `audit-*` ジョブで、生成された `.audit.jsonl` をスキーマ検証し、違反時に失敗させる。  
-   - `tooling/ci/collect-iterator-audit-metrics.py` に `schema_version` フィールドチェックを組み込み、`ffi_bridge.audit_pass_rate` / `iterator.stage.audit_pass_rate` のレポートにバージョンを併記。
+  - `tooling/ci/collect-iterator-audit-metrics.py` に `schema_version` フィールドチェックを組み込み、`ffi_bridge.audit_pass_rate` / `iterator.stage.audit_pass_rate` のレポートにバージョンを併記。
 
 4. **移行完了条件**  
    - `rg "Audit_envelope.make" compiler/ocaml/src | grep metadata_pairs` が 0 件になり、全て新 API を利用。  
@@ -230,7 +230,8 @@ end
 - `reports/diagnostic-migration.md` を新設し、各バッチ（型エラー → 効果/型クラス → CLI 補助診断）の差分記録・チェックリスト・検証ログ欄を用意する。  
 - `scripts/update-diagnostics-golden.sh` を V2 JSON 出力に対応させ、`tooling/ci/collect-diagnostic-diff.py` と連携して差分要約を PR コメントへ投稿するワークフローを GitHub Actions に追加。  
 - ゴールデン変更を含む PR は `reports/diagnostic-migration.md` の該当バッチ節を更新し、`dune runtest`・CI 成果物 URL・レビューポイント（`codes[]` 並び、`secondary` 追加、`audit` 埋め込みなど）を記録する運用を定める。
-  - **現在の実装状況**: `scripts/update-diagnostics-golden.sh`（V2 対応版）・`tooling/ci/collect-diagnostic-diff.py` を追加済み。`--diff` オプションで Markdown サマリを生成し、`schema_version` と `timestamp` 欠落を検出する。
+ - **現在の実装状況**: `scripts/update-diagnostics-golden.sh`（V2 対応版）・`tooling/ci/collect-diagnostic-diff.py` を追加済み。`--diff` オプションで Markdown サマリを生成し、`schema_version` と `timestamp` 欠落を検出する。
+  - **2025-10-27 追記**: `type_error.ml` の監査メタデータ組み立てを `Diagnostic.merge_audit_metadata` 経由に刷新し、効果診断・FFI 診断の `Audit_envelope` を一括で登録。CLI `remlc` では実行単位の `audit_id` / `change_set` を生成して診断出力と監査イベントに伝播させ、CI スクリプト（`collect-iterator-audit-metrics.py`、`sync-iterator-audit.sh`）を新フィールド検証に対応させた。
 
 #### B-3 Legacy / Builder API 拡張と段階的削除
 - `Diagnostic.Builder` に `set_id` / `add_secondary` / `merge_secondary` / `set_timestamp` など補助関数を追加し、structured hints へ `id` / `title` / `payload` を直接設定できる API を整備する。  
@@ -238,9 +239,9 @@ end
 - `type_error.ml` / `parser_driver.ml` / `core_ir/iterator_audit.ml` などレガシ API が残る箇所を段階的に Builder ベースへ移行し、LSP / CLI 以外の JSON レポート生成スクリプトでも `Diagnostic.t` を直接利用するよう统合を進める。
 
 **残タスク**
-1. Type エラー生成箇所（`type_error.ml`）で `Audit_envelope.merge_metadata` を使い、効果・型クラス診断の追加キーを新構造へ統一。
-2. CLI 出力で `AuditEnvelope` の `audit_id`／`change_set` を埋める設計を詰め、`tooling/runtime/audit-schema.json` の `schema.version` を明示的に付与する運用を確立。
-3. 監査ログ生成スクリプト（`tooling/ci/sync-iterator-audit.sh` 等）を新 JSON フィールドに対応させ、ゴールデン更新と差分ツール調整を実施。
+1. **完了(2025-10-27)** Type エラー生成箇所（`type_error.ml`）で `Audit_envelope.merge_metadata` を使い、効果・型クラス診断の追加キーを新構造へ統一。
+2. **完了(2025-10-27)** CLI 出力で `AuditEnvelope` の `audit_id`／`change_set` を埋める設計を詰め、`tooling/runtime/audit-schema.json` の `schema.version` を明示的に付与する運用を確立。
+3. **完了(2025-10-27)** 監査ログ生成スクリプト（`tooling/ci/sync-iterator-audit.sh` 等）を新 JSON フィールドに対応させ、ゴールデン更新と差分ツール調整を実施。
 
 #### メタデータ拡張要件まとめ
 

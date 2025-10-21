@@ -70,7 +70,7 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
   in
   List.rev_append extra_fields fields
 
-let event_of_effect_entry (entry : EffectTable.entry) =
+let event_of_effect_entry ?audit_id ?change_set (entry : EffectTable.entry) =
   let metadata =
     metadata_for_effect ~symbol:entry.symbol ?source_name:entry.source_name
       ~source_span:entry.source_span ~stage_requirement:entry.stage_requirement
@@ -79,9 +79,11 @@ let event_of_effect_entry (entry : EffectTable.entry) =
       ~effect_set:entry.effect_set ~stage_trace:entry.stage_trace
       ~diagnostic_payload:entry.diagnostic_payload []
   in
-  Audit_envelope.make ~category:"effect.stage" ~metadata_pairs:metadata ()
+  Audit_envelope.make ?audit_id ?change_set ~category:"effect.stage"
+    ~metadata_pairs:metadata ()
 
-let event_of_profile ?symbol (profile : Effect_profile.profile) =
+let event_of_profile ?audit_id ?change_set ?symbol
+    (profile : Effect_profile.profile) =
   let metadata =
     metadata_for_effect ?symbol ?source_name:profile.source_name
       ~source_span:profile.source_span
@@ -92,11 +94,11 @@ let event_of_profile ?symbol (profile : Effect_profile.profile) =
       ~diagnostic_payload:profile.diagnostic_payload
       [ ("status", `String "error") ]
   in
-  Audit_envelope.make ~category:"effect.stage.error"
+  Audit_envelope.make ?audit_id ?change_set ~category:"effect.stage.error"
     ~metadata_pairs:metadata ()
 
-let event_of_stage_mismatch ~function_name ~required_stage ~actual_stage
-    ~capability ~stage_trace =
+let event_of_stage_mismatch ?audit_id ?change_set ~function_name ~required_stage
+    ~actual_stage ~capability ~stage_trace =
   let metadata =
     [
       ("symbol", `String function_name);
@@ -113,7 +115,7 @@ let event_of_stage_mismatch ~function_name ~required_stage ~actual_stage
       ("stage_trace", Effect_profile.stage_trace_to_json stage_trace)
       :: metadata
   in
-  Audit_envelope.make ~category:"effect.stage.error"
+  Audit_envelope.make ?audit_id ?change_set ~category:"effect.stage.error"
     ~metadata_pairs:metadata ()
 
 let runtime_stage_event (context : Type_inference_effect.runtime_stage) =
@@ -161,7 +163,8 @@ let runtime_stage_event (context : Type_inference_effect.runtime_stage) =
   Audit_envelope.make ~category:"effect.stage.runtime"
     ~metadata_pairs:metadata ()
 
-let iterator_stage_event runtime_context (entry : IteratorAudit.entry) =
+let iterator_stage_event ?audit_id ?change_set runtime_context
+    (entry : IteratorAudit.entry) =
   let capability_name = entry.IteratorAudit.capability in
   let actual_stage_id =
     Type_inference_effect.stage_for_capability runtime_context capability_name
@@ -260,31 +263,34 @@ let iterator_stage_event runtime_context (entry : IteratorAudit.entry) =
       ("stage_trace", Effect_profile.stage_trace_to_json stage_trace);
     ]
   in
-  Audit_envelope.make ~category:"effect.stage" ~metadata_pairs:metadata ()
+  Audit_envelope.make ?audit_id ?change_set ~category:"effect.stage"
+    ~metadata_pairs:metadata ()
 
-let iterator_audit_events runtime_context =
+let iterator_audit_events ?audit_id ?change_set runtime_context =
   Hashtbl.fold
-    (fun _ entry acc -> iterator_stage_event runtime_context entry :: acc)
+    (fun _ entry acc ->
+      iterator_stage_event ?audit_id ?change_set runtime_context entry :: acc)
     iterator_audit_entries []
 
-let ffi_bridge_events () =
+let ffi_bridge_events ?audit_id ?change_set () =
   Type_inference.current_ffi_bridge_snapshots ()
   |> List.map (fun snapshot ->
-         Audit_envelope.make ~category:"ffi.bridge"
+         Audit_envelope.make ?audit_id ?change_set ~category:"ffi.bridge"
            ~metadata_pairs:
              (Ffi.bridge_audit_metadata_pairs ~status:"ok"
                 (Type_inference.ffi_snapshot_normalized snapshot))
            ())
 
-let events_from_effect_constraints () =
+let events_from_effect_constraints ?audit_id ?change_set () =
   Constraint_solver.current_effect_constraints ()
   |> EffectTable.to_list
-  |> List.map event_of_effect_entry
+  |> List.map (event_of_effect_entry ?audit_id ?change_set)
 
-let event_of_type_error err =
+let event_of_type_error ?audit_id ?change_set err =
   match err with
   | Type_error.EffectResidualLeak { function_name; profile; _ } ->
-      Some (event_of_profile ?symbol:function_name profile)
+      Some
+        (event_of_profile ?audit_id ?change_set ?symbol:function_name profile)
   | Type_error.EffectStageMismatch
       {
         required_stage;
@@ -298,13 +304,14 @@ let event_of_type_error err =
         match function_name with Some name -> name | None -> "<anonymous>"
       in
       Some
-        (event_of_stage_mismatch ~function_name:symbol ~required_stage
-           ~actual_stage ~capability ~stage_trace)
+        (event_of_stage_mismatch ?audit_id ?change_set
+           ~function_name:symbol ~required_stage ~actual_stage ~capability
+           ~stage_trace)
   | Type_error.FfiContractSymbolMissing normalized
   | Type_error.FfiContractOwnershipMismatch normalized
   | Type_error.FfiContractUnsupportedAbi normalized ->
       Some
-        (Audit_envelope.make ~category:"ffi.bridge"
+        (Audit_envelope.make ?audit_id ?change_set ~category:"ffi.bridge"
            ~metadata_pairs:
              (Ffi.bridge_audit_metadata_pairs ~status:"error" normalized)
            ())
@@ -393,6 +400,47 @@ let () =
         exit 1
   in
 
+  let audit_seed =
+    let input_label =
+      if opts.use_stdin then "<stdin>" else opts.input_file
+    in
+    String.concat "|"
+      [
+        input_label;
+        opts.target;
+        String.concat " " (Array.to_list Sys.argv);
+      ]
+  in
+  let audit_id = Uuidm.(v5 nil audit_seed |> to_string) in
+  let requested_outputs =
+    [
+      ("emit_ast", opts.emit_ast);
+      ("emit_tast", opts.emit_tast);
+      ("emit_ir", opts.emit_ir);
+      ("emit_bc", opts.emit_bc);
+    ]
+    |> List.filter_map (fun (name, enabled) ->
+           if enabled then Some (`String name) else None)
+  in
+  let change_set_json =
+    `Assoc
+      [
+        ("command", `String "remlc");
+        ( "args",
+          `List
+            (Array.to_list Sys.argv |> List.map (fun arg -> `String arg)) );
+        ( "input",
+          `String (if opts.use_stdin then "<stdin>" else opts.input_file) );
+        ("target", `String opts.target);
+        ("outputs", `List requested_outputs);
+      ]
+  in
+  let attach_audit diag =
+    diag
+    |> Diagnostic.set_audit_id audit_id
+    |> Diagnostic.set_change_set change_set_json
+  in
+
   (* ファイルを開いてソース文字列を読み込む *)
   let ic = open_in opts.input_file in
   let source = really_input_string ic (in_channel_length ic) in
@@ -449,13 +497,18 @@ let () =
             (match opts.Cli.Options.emit_audit_path with
             | Some audit_path ->
                 let iterator_events =
-                  iterator_audit_events runtime_stage_context
+                  iterator_audit_events ~audit_id ~change_set:change_set_json
+                    runtime_stage_context
                 in
-                let bridge_events = ffi_bridge_events () in
+                let bridge_events =
+                  ffi_bridge_events ~audit_id ~change_set:change_set_json ()
+                in
                 let events =
-                  runtime_stage_event runtime_stage_context
+                  runtime_stage_event ~audit_id ~change_set:change_set_json
+                    runtime_stage_context
                   :: (iterator_events @ bridge_events
-                     @ events_from_effect_constraints ())
+                     @ events_from_effect_constraints ~audit_id
+                          ~change_set:change_set_json ())
                 in
                 Audit_envelope.append_events audit_path events
             | None -> ());
@@ -606,6 +659,7 @@ let () =
                           ~primary:diag_span ()
                         |> Builder.set_primary_code "E8001"
                         |> Builder.build)
+                      |> attach_audit
                     in
                     print_diagnostic opts (Some source) diag;
                     exit 1
@@ -627,6 +681,7 @@ let () =
                           ()
                         |> Builder.set_primary_code "E8002"
                         |> Builder.build)
+                      |> attach_audit
                     in
                     print_diagnostic opts None diag;
                     exit 1
@@ -654,13 +709,23 @@ let () =
             (* 型推論エラー *)
             (match opts.Cli.Options.emit_audit_path with
             | Some audit_path ->
-                let runtime_event = runtime_stage_event runtime_stage_context in
-                let constraint_events = events_from_effect_constraints () in
+                let runtime_event =
+                  runtime_stage_event ~audit_id ~change_set:change_set_json
+                    runtime_stage_context
+                in
+                let constraint_events =
+                  events_from_effect_constraints ~audit_id
+                    ~change_set:change_set_json ()
+                in
                 let iterator_events =
-                  iterator_audit_events runtime_stage_context
+                  iterator_audit_events ~audit_id ~change_set:change_set_json
+                    runtime_stage_context
                 in
                 let events_with_error =
-                  match event_of_type_error type_err with
+                  match
+                    event_of_type_error ~audit_id ~change_set:change_set_json
+                      type_err
+                  with
                   | Some event -> event :: constraint_events
                   | None -> constraint_events
                 in
@@ -670,6 +735,7 @@ let () =
             let diag =
               Type_error.to_diagnostic_with_source source opts.input_file
                 type_err
+              |> attach_audit
             in
             print_diagnostic opts (Some source) diag;
             exit 1);
@@ -716,12 +782,18 @@ let () =
       if collect_trace then
         Cli.Trace.end_phase ~emit_log:emit_trace_logs Parsing;
 
-      (match opts.Cli.Options.emit_audit_path with
-      | Some audit_path ->
-          let iterator_events = iterator_audit_events runtime_stage_context in
-          Audit_envelope.append_events audit_path
-            (runtime_stage_event runtime_stage_context :: iterator_events)
-      | None -> ());
+  (match opts.Cli.Options.emit_audit_path with
+  | Some audit_path ->
+      let iterator_events =
+        iterator_audit_events ~audit_id ~change_set:change_set_json
+          runtime_stage_context
+      in
+      Audit_envelope.append_events audit_path
+        (runtime_stage_event ~audit_id ~change_set:change_set_json
+           runtime_stage_context
+        :: iterator_events)
+  | None -> ());
 
-      print_diagnostic opts (Some source) diag;
-      exit 1
+  let diag = attach_audit diag in
+  print_diagnostic opts (Some source) diag;
+  exit 1

@@ -2,16 +2,19 @@
   "diagnostics": [
     {
       "audit": {
-        "effect.stage.required": "stable",
-        "effect.stage.actual": "stable",
-        "effect.capability": "core.runtime",
-        "effect.residual.tags": [ "panic" ],
-        "stage_trace": [
-          { "source": "typer", "stage": "stable" },
-          { "source": "runtime", "stage": "stable" }
-        ]
+        "metadata": {
+          "stage_trace": [
+            { "source": "typer", "stage": "stable" },
+            { "source": "runtime", "stage": "stable" }
+          ],
+          "effect.stage.required": "stable",
+          "effect.stage.actual": "stable",
+          "effect.capability": "core.runtime",
+          "effect.residual.tags": [ "panic" ]
+        }
       },
       "extensions": {
+        "diagnostic.v2": { "codes": [ "effects.contract.residual_leak" ] },
         "effects": {
           "stage": { "required": "stable", "actual": "stable" },
           "residual": { "missing": [ "panic" ], "leaked_from": "fn demo" },
@@ -63,6 +66,7 @@
         "`panic` のハンドラが宣言されていないためステージ検証に失敗しました"
       ],
       "domain": "型システム",
+      "codes": [ "effects.contract.residual_leak" ],
       "code": "effects.contract.residual_leak",
       "severity": "error",
       "message": "残余効果が閉じていません",

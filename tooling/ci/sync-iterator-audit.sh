@@ -224,6 +224,8 @@ iterator_missing_timestamp = any(
 iterator_missing_audit = any(
     any(
         key == "audit"
+        or key == "audit_id"
+        or key == "change_set"
         or key.startswith("effect.")
         or key.startswith("extensions.effects")
         for key in (failure.get("missing") or [])
@@ -246,6 +248,8 @@ if isinstance(ffi_metrics, dict):
     ffi_missing_audit = any(
         any(
             key == "audit"
+            or key == "audit_id"
+            or key == "change_set"
             or key.startswith("bridge")
             or key.startswith("extensions.bridge")
             for key in (failure.get("missing") or [])
