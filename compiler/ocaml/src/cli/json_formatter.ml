@@ -1,4 +1,5 @@
 open Diagnostic_serialization
+module D = Diagnostic
 
 module Json = Yojson.Basic
 
@@ -71,11 +72,16 @@ let codes_to_json codes =
   | xs -> `List (List.map (fun code -> `String code) xs)
 
 let reml_notes (secondary : normalized_secondary list) =
-  secondary
-  |> List.filter_map (fun entry -> entry.message)
-  |> List.map (fun msg -> `String msg)
+  let rec collect acc = function
+    | [] -> List.rev acc
+    | (entry : normalized_secondary) :: rest -> (
+        match entry.message with
+        | Some msg -> collect (`String msg :: acc) rest
+        | None -> collect acc rest)
+  in
+  collect [] secondary
 
-let reml_expected (expected : expectation_summary option) =
+let reml_expected (expected : D.expectation_summary option) =
   expectation_summary_to_json expected
 
 let diagnostic_data_block (diag : normalized_diagnostic) =

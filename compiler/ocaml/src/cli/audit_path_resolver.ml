@@ -107,7 +107,7 @@ let resolve opts =
         store_root = None;
         audit_dir_override = opts.audit_dir_override;
       }
-  | true -> (
+  | true ->
       let timestamp_iso = Audit_envelope.iso8601_timestamp () in
       let timestamp_compact = compact_timestamp timestamp_iso in
       let commit_id = git_commit_sha () in
@@ -135,7 +135,7 @@ let resolve opts =
             store_root = None;
             audit_dir_override = opts.audit_dir_override;
           }
-      | None -> (
+      | None ->
           let year =
             if String.length timestamp_iso >= 4 then
               String.sub timestamp_iso 0 4
@@ -151,111 +151,109 @@ let resolve opts =
               String.sub timestamp_iso 8 2
             else "00"
           in
-          let resolved =
-            match profile with
-            | AuditStoreTmp ->
-                let root =
-                  match opts.audit_dir_override with
-                  | Some dir when not (is_explicit_file dir) -> dir
-                  | _ -> Filename.concat "tmp" "cli-callconv-out"
-                in
-                let run_dir = Filename.concat root target_slug in
-                let audit_path = Filename.concat run_dir "audit.jsonl" in
-                {
-                  enabled = true;
-                  profile;
-                  profile_string;
-                  audit_level;
-                  audit_level_string;
-                  target = opts.target;
-                  target_slug;
-                  timestamp_iso;
-                  timestamp_compact;
-                  build_id;
-                  commit_id;
-                  audit_path = Some audit_path;
-                  index_path = None;
-                  summary_path = None;
-                  history_path = None;
-                  failed_dir = None;
-                  run_dir = Some run_dir;
-                  store_root = Some root;
-                  audit_dir_override = opts.audit_dir_override;
-                }
-            | AuditStoreLocal ->
-                let root =
-                  match opts.audit_dir_override with
-                  | Some dir when not (is_explicit_file dir) -> dir
-                  | _ ->
-                      Filename.concat
-                        (Filename.concat "tooling" "audit-store")
-                        "local"
-                in
-                let run_dir = Filename.concat root timestamp_compact in
-                let audit_path = Filename.concat run_dir "audit.jsonl" in
-                let index_path = Filename.concat root "index.json" in
-                let summary_path = Filename.concat root "summary.md" in
-                {
-                  enabled = true;
-                  profile;
-                  profile_string;
-                  audit_level;
-                  audit_level_string;
-                  target = opts.target;
-                  target_slug;
-                  timestamp_iso;
-                  timestamp_compact;
-                  build_id;
-                  commit_id;
-                  audit_path = Some audit_path;
-                  index_path = Some index_path;
-                  summary_path = Some summary_path;
-                  history_path = None;
-                  failed_dir = None;
-                  run_dir = Some run_dir;
-                  store_root = Some root;
-                  audit_dir_override = opts.audit_dir_override;
-                }
-            | AuditStoreCi ->
-                let root =
-                  match opts.audit_dir_override with
-                  | Some dir when not (is_explicit_file dir) -> dir
-                  | _ -> Filename.concat "reports" "audit"
-                in
-                let target_dir = Filename.concat root target_slug in
-                let year_dir = Filename.concat target_dir year in
-                let month_dir = Filename.concat year_dir month in
-                let day_dir = Filename.concat month_dir day in
-                let filename = build_id ^ ".jsonl" in
-                let audit_path = Filename.concat day_dir filename in
-                let index_path = Filename.concat root "index.json" in
-                let summary_path = Filename.concat root "summary.md" in
-                let history_dir = Filename.concat root "history" in
-                let history_path =
-                  Filename.concat history_dir (target_slug ^ ".jsonl.gz")
-                in
-                let failed_dir = Filename.concat (Filename.concat root "failed") build_id in
-                {
-                  enabled = true;
-                  profile;
-                  profile_string;
-                  audit_level;
-                  audit_level_string;
-                  target = opts.target;
-                  target_slug;
-                  timestamp_iso;
-                  timestamp_compact;
-                  build_id;
-                  commit_id;
-                  audit_path = Some audit_path;
-                  index_path = Some index_path;
-                  summary_path = Some summary_path;
-                  history_path = Some history_path;
-                  failed_dir = Some failed_dir;
-                  run_dir = Some day_dir;
-                  store_root = Some root;
-                  audit_dir_override = opts.audit_dir_override;
-                }
-          in
-          resolved)))
-
+          match profile with
+          | AuditStoreTmp ->
+              let root =
+                match opts.audit_dir_override with
+                | Some dir when not (is_explicit_file dir) -> dir
+                | _ -> Filename.concat "tmp" "cli-callconv-out"
+              in
+              let run_dir = Filename.concat root target_slug in
+              let audit_path = Filename.concat run_dir "audit.jsonl" in
+              {
+                enabled = true;
+                profile;
+                profile_string;
+                audit_level;
+                audit_level_string;
+                target = opts.target;
+                target_slug;
+                timestamp_iso;
+                timestamp_compact;
+                build_id;
+                commit_id;
+                audit_path = Some audit_path;
+                index_path = None;
+                summary_path = None;
+                history_path = None;
+                failed_dir = None;
+                run_dir = Some run_dir;
+                store_root = Some root;
+                audit_dir_override = opts.audit_dir_override;
+              }
+          | AuditStoreLocal ->
+              let root =
+                match opts.audit_dir_override with
+                | Some dir when not (is_explicit_file dir) -> dir
+                | _ ->
+                    Filename.concat
+                      (Filename.concat "tooling" "audit-store")
+                      "local"
+              in
+              let run_dir = Filename.concat root timestamp_compact in
+              let audit_path = Filename.concat run_dir "audit.jsonl" in
+              let index_path = Filename.concat root "index.json" in
+              let summary_path = Filename.concat root "summary.md" in
+              {
+                enabled = true;
+                profile;
+                profile_string;
+                audit_level;
+                audit_level_string;
+                target = opts.target;
+                target_slug;
+                timestamp_iso;
+                timestamp_compact;
+                build_id;
+                commit_id;
+                audit_path = Some audit_path;
+                index_path = Some index_path;
+                summary_path = Some summary_path;
+                history_path = None;
+                failed_dir = None;
+                run_dir = Some run_dir;
+                store_root = Some root;
+                audit_dir_override = opts.audit_dir_override;
+              }
+          | AuditStoreCi ->
+              let root =
+                match opts.audit_dir_override with
+                | Some dir when not (is_explicit_file dir) -> dir
+                | _ -> Filename.concat "reports" "audit"
+              in
+              let target_dir = Filename.concat root target_slug in
+              let year_dir = Filename.concat target_dir year in
+              let month_dir = Filename.concat year_dir month in
+              let day_dir = Filename.concat month_dir day in
+              let filename = build_id ^ ".jsonl" in
+              let audit_path = Filename.concat day_dir filename in
+              let index_path = Filename.concat root "index.json" in
+              let summary_path = Filename.concat root "summary.md" in
+              let history_dir = Filename.concat root "history" in
+              let history_path =
+                Filename.concat history_dir (target_slug ^ ".jsonl.gz")
+              in
+              let failed_dir =
+                Filename.concat (Filename.concat root "failed") build_id
+              in
+              {
+                enabled = true;
+                profile;
+                profile_string;
+                audit_level;
+                audit_level_string;
+                target = opts.target;
+                target_slug;
+                timestamp_iso;
+                timestamp_compact;
+                build_id;
+                commit_id;
+                audit_path = Some audit_path;
+                index_path = Some index_path;
+                summary_path = Some summary_path;
+                history_path = Some history_path;
+                failed_dir = Some failed_dir;
+                run_dir = Some day_dir;
+                store_root = Some root;
+                audit_dir_override = opts.audit_dir_override;
+              }

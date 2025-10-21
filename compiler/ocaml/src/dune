@@ -40,4 +40,4 @@
  (public_name remlc)
  (package reml_ocaml)
  (modules main)
- (libraries cli reml_parser reml_ocaml.core_ir reml_ocaml.llvm_gen uuidm))
+ (libraries cli reml_parser reml_ocaml.core_ir reml_ocaml.llvm_gen))

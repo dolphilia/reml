@@ -59,9 +59,11 @@ let normalize_secondary ({ span; message } : span_label) =
   { span; message }
 
 let normalize_fixit = function
-  | Insert { at; text } -> Insert { range = normalize_span at; text }
-  | Replace { at; text } -> Replace { range = normalize_span at; text }
-  | Delete { at } -> Delete { range = normalize_span at }
+  | Diagnostic.Insert { at; text } ->
+      Insert { range = normalize_span at; text }
+  | Diagnostic.Replace { at; text } ->
+      Replace { range = normalize_span at; text }
+  | Diagnostic.Delete { at } -> Delete { range = normalize_span at }
 
 let normalize_hint ({ message; actions } : hint) =
   { message; actions = List.map normalize_fixit actions }

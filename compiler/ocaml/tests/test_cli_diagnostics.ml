@@ -47,14 +47,14 @@ let test_color_output () =
   (* カラーなしでの出力 *)
   let no_color_output =
     Cli.Diagnostic_formatter.format_diagnostic ~source:(Some test_source) ~diag
-      ~color_mode:Cli.Options.Never
+      ~color_mode:Cli.Options.Never ~include_snippet:true
   in
   assert (not (String.contains no_color_output '\027'));
 
   (* カラーありでの出力 *)
   let color_output =
     Cli.Diagnostic_formatter.format_diagnostic ~source:(Some test_source) ~diag
-      ~color_mode:Cli.Options.Always
+      ~color_mode:Cli.Options.Always ~include_snippet:true
   in
   assert (String.contains color_output '\027');
 
@@ -186,7 +186,7 @@ let test_snippet_display () =
   (* ソースコード付き出力を生成 *)
   let output =
     Cli.Diagnostic_formatter.format_diagnostic ~source:(Some test_source) ~diag
-      ~color_mode:Cli.Options.Never
+      ~color_mode:Cli.Options.Never ~include_snippet:true
   in
 
   (* スニペットに行番号区切り文字 " | " が含まれている *)

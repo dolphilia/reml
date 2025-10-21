@@ -98,7 +98,7 @@ let event_of_profile ?audit_id ?change_set ?symbol
     ~metadata_pairs:metadata ()
 
 let event_of_stage_mismatch ?audit_id ?change_set ~function_name ~required_stage
-    ~actual_stage ~capability ~stage_trace =
+    ~actual_stage ~capability ~stage_trace () =
   let metadata =
     [
       ("symbol", `String function_name);
@@ -118,7 +118,8 @@ let event_of_stage_mismatch ?audit_id ?change_set ~function_name ~required_stage
   Audit_envelope.make ?audit_id ?change_set ~category:"effect.stage.error"
     ~metadata_pairs:metadata ()
 
-let runtime_stage_event (context : Type_inference_effect.runtime_stage) =
+let runtime_stage_event ?audit_id ?change_set
+    (context : Type_inference_effect.runtime_stage) =
   let capabilities =
     context.Type_inference_effect.capability_stages
     |> List.map (fun (name, stage) ->
@@ -160,7 +161,7 @@ let runtime_stage_event (context : Type_inference_effect.runtime_stage) =
       ("stage_trace", Effect_profile.stage_trace_to_json stage_trace)
       :: metadata
   in
-  Audit_envelope.make ~category:"effect.stage.runtime"
+  Audit_envelope.make ?audit_id ?change_set ~category:"effect.stage.runtime"
     ~metadata_pairs:metadata ()
 
 let iterator_stage_event ?audit_id ?change_set runtime_context
@@ -306,7 +307,7 @@ let event_of_type_error ?audit_id ?change_set err =
       Some
         (event_of_stage_mismatch ?audit_id ?change_set
            ~function_name:symbol ~required_stage ~actual_stage ~capability
-           ~stage_trace)
+           ~stage_trace ())
   | Type_error.FfiContractSymbolMissing normalized
   | Type_error.FfiContractOwnershipMismatch normalized
   | Type_error.FfiContractUnsupportedAbi normalized ->
@@ -415,7 +416,7 @@ let () =
         String.concat " " (Array.to_list Sys.argv);
       ]
   in
-  let audit_id = Uuidm.(v5 nil audit_seed |> to_string) in
+  let audit_id = Digest.(string audit_seed |> to_hex) in
   let requested_outputs =
     [
       ("emit_ast", opts.emit_ast);

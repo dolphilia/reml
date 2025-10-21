@@ -41,7 +41,7 @@ let remove_entries_with_build_id build_id entries =
 let stats_size_bytes path =
   try
     let stat = Unix.stat path in
-    Some (Int64.to_string stat.Unix.st_size)
+    Some (string_of_int stat.Unix.st_size)
   with Unix.Unix_error _ -> None
 
 let update_index context audit_path =
@@ -71,7 +71,10 @@ let update_index context audit_path =
             (json_list entries_json, json_list pruned_json, rest)
         | _ -> ([], [], [])
       in
-      let filtered = remove_entries_with_build_id context.build_id existing_entries in
+      let filtered =
+        remove_entries_with_build_id context.build_id existing_entries
+      in
+      let entry_fields =
         let base_fields =
           [
             ("build_id", `String context.build_id);
