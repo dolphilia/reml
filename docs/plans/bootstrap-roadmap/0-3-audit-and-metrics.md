@@ -57,6 +57,8 @@
 
 ## 0.3.3 診断・監査ログ整合性
 - `Diagnostic` オブジェクトの拡張フィールド (`extensions`) は [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) に定義されたキー (`effect.stage.required`, `bridge.target` など) を使用する。
+- `Diagnostic` と `AuditEnvelope` のフィールド差分と移行計画は [2-4-diagnostics-audit-pipeline.md](2-4-diagnostics-audit-pipeline.md#diagnostic-field-table-draft) の比較表ドラフトを参照する。
+- `tooling/runtime/audit-schema.json` のバージョン管理は [2-4-diagnostics-audit-pipeline.md](2-4-diagnostics-audit-pipeline.md#audit-envelope-draft) の移行ステップ案に従い、`schema.version` フィールドを更新した際は本節と `docs/notes/audit-migrations.md`（新規予定）に履歴を残す。
 - 監査ログ (`AuditEnvelope`) は JSON Lines 形式で保存し、以下を必須フィールドとする。
   - `metadata.effect.stage.required`
   - `metadata.bridge.target`

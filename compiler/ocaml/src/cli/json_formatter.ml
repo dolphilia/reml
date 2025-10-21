@@ -17,16 +17,10 @@
  * - 3: Information
  * - 4: Hint
  *)
-let severity_to_lsp_int = function
-  | Diagnostic.Error -> 1
-  | Diagnostic.Warning -> 2
-  | Diagnostic.Note -> 3
+let severity_to_lsp_int severity = Diagnostic.V2.severity_to_lsp_int severity
 
 (** 重要度を文字列に変換 *)
-let severity_to_string = function
-  | Diagnostic.Error -> "error"
-  | Diagnostic.Warning -> "warning"
-  | Diagnostic.Note -> "note"
+let severity_to_string severity = Diagnostic.V2.severity_to_string severity
 
 (** 位置情報を JSON に変換
  *
@@ -101,13 +95,6 @@ let expectation_summary_to_json (summary : Diagnostic.expectation_summary) :
   in
   `Assoc fields
 
-(** ノートを JSON に変換 *)
-let note_to_json (span_opt, note) : Yojson.Basic.t =
-  match span_opt with
-  | Some span ->
-      `Assoc [ ("message", `String note); ("location", span_to_lsp_range span) ]
-  | None -> `Assoc [ ("message", `String note) ]
-
 (** 修正提案（FixIt）を JSON に変換 *)
 let fixit_to_json (fixit : Diagnostic.fixit) : Yojson.Basic.t =
   match fixit with
@@ -143,25 +130,32 @@ let fixit_to_json (fixit : Diagnostic.fixit) : Yojson.Basic.t =
  * ```
  *)
 let diagnostic_to_lsp_json (diag : Diagnostic.t) : Yojson.Basic.t =
+  let diag_v2 = Diagnostic.V2.of_legacy diag in
   let fields =
     [
-      ("range", span_to_lsp_range diag.span);
-      ("severity", `Int (severity_to_lsp_int diag.severity));
-      ("message", `String diag.message);
+      ("range", span_to_lsp_range diag_v2.primary);
+      ("severity", `Int (severity_to_lsp_int diag_v2.severity));
+      ("message", `String diag_v2.message);
       ("source", `String "remlc");
     ]
   in
 
   (* コードを追加 *)
   let fields =
-    match diag.code with
-    | Some code -> ("code", `String code) :: fields
-    | None -> fields
+    match diag_v2.codes with
+    | code :: _ -> ("code", `String code) :: fields
+    | [] -> fields
+  in
+  let fields =
+    match diag_v2.codes with
+    | [] -> fields
+    | codes ->
+        ("codes", `List (List.map (fun code -> `String code) codes)) :: fields
   in
 
   (* ドメインを追加 *)
   let fields =
-    match diag.domain with
+    match diag_v2.domain with
     | Some domain ->
         let domain_label = Diagnostic.domain_label domain in
         ("domain", `String domain_label) :: fields
@@ -170,17 +164,28 @@ let diagnostic_to_lsp_json (diag : Diagnostic.t) : Yojson.Basic.t =
 
   (* 関連情報（ノート）を追加 *)
   let fields =
-    if diag.notes <> [] then
-      ("relatedInformation", `List (List.map note_to_json diag.notes)) :: fields
+    if diag_v2.secondary <> [] then
+      ( "relatedInformation",
+        `List
+          (List.map Diagnostic.V2.span_label_to_json diag_v2.secondary) )
+      :: fields
     else fields
   in
 
   (* 期待値サマリを追加 *)
   let fields =
-    match diag.expected_summary with
+    match diag_v2.expected with
     | Some summary ->
         ("expected", expectation_summary_to_json summary) :: fields
     | None -> fields
+  in
+
+  (* ヒントを追加 *)
+  let fields =
+    if diag_v2.hints <> [] then
+      ("hints", `List (List.map Diagnostic.V2.hint_to_json diag_v2.hints))
+      :: fields
+    else fields
   in
 
   (* 修正提案を追加 *)
@@ -190,12 +195,19 @@ let diagnostic_to_lsp_json (diag : Diagnostic.t) : Yojson.Basic.t =
     else fields
   in
   let fields =
-    if Diagnostic.Extensions.is_empty diag.extensions then fields
-    else ("extensions", Diagnostic.Extensions.to_json diag.extensions) :: fields
+    if Diagnostic.Extensions.is_empty diag_v2.extensions then fields
+    else
+      ("extensions", Diagnostic.Extensions.to_json diag_v2.extensions) :: fields
   in
   let fields =
-    if Diagnostic.Extensions.is_empty diag.audit_metadata then fields
-    else ("audit", Diagnostic.Extensions.to_json diag.audit_metadata) :: fields
+    match Diagnostic.V2.audit_to_json diag_v2.audit with
+    | `Null -> fields
+    | audit_json -> ("audit", audit_json) :: fields
+  in
+  let fields =
+    match diag_v2.timestamp with
+    | Some ts -> ("timestamp", `String ts) :: fields
+    | None -> fields
   in
 
   `Assoc fields
@@ -220,32 +232,39 @@ let diagnostic_to_lsp_json (diag : Diagnostic.t) : Yojson.Basic.t =
  * ```
  *)
 let diagnostic_to_reml_json (diag : Diagnostic.t) : Yojson.Basic.t =
+  let diag_v2 = Diagnostic.V2.of_legacy diag in
   let fields =
     [
-      ("severity", `String (severity_to_string diag.severity));
-      ("message", `String diag.message);
+      ("severity", `String (severity_to_string diag_v2.severity));
+      ("message", `String diag_v2.message);
       ( "location",
         `Assoc
           [
-            ("file", `String diag.span.start_pos.filename);
-            ("line", `Int diag.span.start_pos.line);
-            ("column", `Int diag.span.start_pos.column);
-            ("endLine", `Int diag.span.end_pos.line);
-            ("endColumn", `Int diag.span.end_pos.column);
+            ("file", `String diag_v2.primary.start_pos.filename);
+            ("line", `Int diag_v2.primary.start_pos.line);
+            ("column", `Int diag_v2.primary.start_pos.column);
+            ("endLine", `Int diag_v2.primary.end_pos.line);
+            ("endColumn", `Int diag_v2.primary.end_pos.column);
           ] );
     ]
   in
 
   (* コードを追加 *)
   let fields =
-    match diag.code with
-    | Some code -> ("code", `String code) :: fields
-    | None -> fields
+    match diag_v2.codes with
+    | code :: _ -> ("code", `String code) :: fields
+    | [] -> fields
+  in
+  let fields =
+    match diag_v2.codes with
+    | [] -> fields
+    | codes ->
+        ("codes", `List (List.map (fun code -> `String code) codes)) :: fields
   in
 
   (* ドメインを追加 *)
   let fields =
-    match diag.domain with
+    match diag_v2.domain with
     | Some domain ->
         let domain_label = Diagnostic.domain_label domain in
         ("domain", `String domain_label) :: fields
@@ -262,7 +281,7 @@ let diagnostic_to_reml_json (diag : Diagnostic.t) : Yojson.Basic.t =
 
   (* 期待値を追加 *)
   let fields =
-    match diag.expected_summary with
+    match diag_v2.expected with
     | Some summary when summary.alternatives <> [] ->
         let expectations =
           List.map
@@ -280,12 +299,26 @@ let diagnostic_to_reml_json (diag : Diagnostic.t) : Yojson.Basic.t =
     else fields
   in
   let fields =
-    if Diagnostic.Extensions.is_empty diag.extensions then fields
-    else ("extensions", Diagnostic.Extensions.to_json diag.extensions) :: fields
+    if Diagnostic.Extensions.is_empty diag_v2.extensions then fields
+    else
+      ("extensions", Diagnostic.Extensions.to_json diag_v2.extensions) :: fields
   in
   let fields =
-    if Diagnostic.Extensions.is_empty diag.audit_metadata then fields
-    else ("audit", Diagnostic.Extensions.to_json diag.audit_metadata) :: fields
+    match Diagnostic.V2.audit_to_json diag_v2.audit with
+    | `Null -> fields
+    | audit_json -> ("audit", audit_json) :: fields
+  in
+  let fields =
+    match diag_v2.timestamp with
+    | Some ts -> ("timestamp", `String ts) :: fields
+    | None -> fields
+  in
+
+  let fields =
+    if diag_v2.hints <> [] then
+      ("hints", `List (List.map Diagnostic.V2.hint_to_json diag_v2.hints))
+      :: fields
+    else fields
   in
 
   `Assoc fields

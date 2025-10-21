@@ -1,0 +1,67 @@
+{
+  "diagnostics": [
+    {
+      "audit": {
+        "metadata": {
+          "effect.stage.iterator.source": "dsl/core.iter.toml",
+          "effect.stage.iterator.capability": "core.iterator.collect",
+          "effect.stage.iterator.kind": "custom:iterator.snapshot",
+          "effect.stage.iterator.actual": "experimental",
+          "effect.stage.iterator.required": "at_least:beta",
+          "effect.capability_metadata": {
+            "provider": "core.iter",
+            "last_verified_at": "2025-10-21T03:15:00Z"
+          },
+          "effect.manifest_path": "dsl/core.iter.toml",
+          "effect.provider": "Core.Iter",
+          "effect.residual": {
+            "missing_ops": [ "Iterator::next", "Iterator::size_hint" ]
+          },
+          "effect.capability": "core.iterator.collect",
+          "effect.stage.actual": "experimental",
+          "effect.stage.required": "beta"
+        }
+      },
+      "extensions": {
+        "effects": {
+          "capability": "core.iterator.collect",
+          "stage": { "required": "beta", "actual": "experimental" },
+          "residual": {
+            "missing_ops": [ "Iterator::next", "Iterator::size_hint" ]
+          },
+          "provider": "Core.Iter",
+          "manifest_path": "dsl/core.iter.toml",
+          "metadata": {
+            "provider": "core.iter",
+            "last_verified_at": "2025-10-21T03:15:00Z"
+          },
+          "iterator": {
+            "required": "at_least:beta",
+            "actual": "experimental",
+            "kind": "custom:iterator.snapshot",
+            "capability": "core.iterator.collect",
+            "source": "dsl/core.iter.toml"
+          }
+        },
+        "effect.stage.required": "beta",
+        "effect.stage.actual": "experimental",
+        "effect.stage.capability": "core.iterator.collect"
+      },
+      "notes": [
+        "要求 Stage: beta / Capability Stage: experimental (core.iterator.collect)"
+      ],
+      "domain": "型システム",
+      "codes": [ "typeclass.iterator.stage_mismatch" ],
+      "code": "typeclass.iterator.stage_mismatch",
+      "severity": "error",
+      "message": "Iterator Capability が要求された Stage を満たしていません",
+      "location": {
+        "file": "iter.reml",
+        "line": 4,
+        "column": 3,
+        "endLine": 4,
+        "endColumn": 18
+      }
+    }
+  ]
+}

@@ -376,10 +376,13 @@ let bridge_json_of_normalized ?status (normalized : normalized_contract) :
   in
   `Assoc fields
 
+let bridge_audit_metadata_pairs ?(status = "ok")
+    (normalized : normalized_contract) : (string * Json.t) list =
+  [
+    ("bridge", bridge_json_of_normalized ~status normalized);
+    ("source_span", span_to_json normalized.contract.source_span);
+  ]
+
 let bridge_audit_metadata ?(status = "ok") (normalized : normalized_contract) :
     Json.t =
-  `Assoc
-    [
-      ("bridge", bridge_json_of_normalized ~status normalized);
-      ("source_span", span_to_json normalized.contract.source_span);
-    ]
+  `Assoc (bridge_audit_metadata_pairs ~status normalized)

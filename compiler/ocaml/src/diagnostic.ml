@@ -334,6 +334,195 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
   in
   diag
 
+(* ========== Diagnostic v2（仕様同期用ドラフト） ========== *)
+
+type legacy_diagnostic = t
+type legacy_severity = severity
+
+module V2 = struct
+  type legacy = legacy_diagnostic
+  type severity = Error | Warning | Info | Hint
+
+  type span_label = { span : span option; message : string option }
+
+  type hint = { message : string option; actions : fixit list }
+
+  type t = {
+    id : string option;
+    message : string;
+    severity : severity;
+    domain : error_domain option;
+    codes : string list;
+    primary : span;
+    secondary : span_label list;
+    hints : hint list;
+    expected : expectation_summary option;
+    audit : Audit_envelope.t option;
+    timestamp : string option;
+    extensions : Extensions.t;
+  }
+
+  let severity_of_legacy (severity : legacy_severity) =
+    match severity with
+    | Error -> Error
+    | Warning -> Warning
+    | Note -> Info
+
+  let severity_to_lsp_int = function
+    | Error -> 1
+    | Warning -> 2
+    | Info -> 3
+    | Hint -> 4
+
+  let severity_to_string = function
+    | Error -> "error"
+    | Warning -> "warning"
+    | Info -> "info"
+    | Hint -> "hint"
+
+  let span_label_of_note (span_opt, note) =
+    { span = span_opt; message = Some note }
+
+  let severity_hint_to_message = function
+    | Some Rollback -> Some "rollback"
+    | Some Retry -> Some "retry"
+    | Some Ignore -> Some "ignore"
+    | Some Escalate -> Some "escalate"
+    | None -> None
+
+  let audit_of_extensions extensions =
+    if Extensions.is_empty extensions then None
+    else
+      Some
+        { Audit_envelope.empty_envelope with metadata = extensions }
+
+  let of_legacy ?timestamp ?id ?codes ?audit (diag : legacy) =
+    let severity = severity_of_legacy diag.severity in
+    let codes =
+      match codes with
+      | Some codes -> codes
+      | None -> (
+          match diag.code with Some code -> [ code ] | None -> [] )
+    in
+    let audit =
+      match audit with Some v -> Some v | None -> audit_of_extensions diag.audit_metadata
+    in
+    let secondary = List.map span_label_of_note diag.notes in
+    let hint_from_severity =
+      match severity_hint_to_message diag.severity_hint with
+      | Some message -> [ { message = Some message; actions = [] } ]
+      | None -> []
+    in
+    let hints_from_fixits =
+      diag.fixits
+      |> List.map (fun fixit -> { message = None; actions = [ fixit ] })
+    in
+    {
+      id;
+      message = diag.message;
+      severity;
+      domain = diag.domain;
+      codes;
+      primary = diag.span;
+      secondary;
+      hints = hint_from_severity @ hints_from_fixits;
+      expected = diag.expected_summary;
+      audit;
+      timestamp;
+      extensions = diag.extensions;
+    }
+
+  let span_to_range_json (span : span) =
+    `Assoc
+      [
+        ( "start",
+          `Assoc
+            [
+              ("line", `Int (span.start_pos.line - 1));
+              ("character", `Int (span.start_pos.column - 1));
+            ] );
+        ( "end",
+          `Assoc
+            [
+              ("line", `Int (span.end_pos.line - 1));
+              ("character", `Int (span.end_pos.column - 1));
+            ] );
+      ]
+
+  let span_label_to_json { span; message } =
+    let base =
+      match span with
+      | Some span -> [ ("range", span_to_range_json span) ]
+      | None -> []
+    in
+    let base =
+      match message with
+      | Some msg -> ("message", `String msg) :: base
+      | None -> base
+    in
+    `Assoc base
+
+  let fixit_action_to_json = function
+    | Insert { at; text } ->
+        `Assoc
+          [
+            ("kind", `String "insert");
+            ("range", span_to_range_json at);
+            ("text", `String text);
+          ]
+    | Replace { at; text } ->
+        `Assoc
+          [
+            ("kind", `String "replace");
+            ("range", span_to_range_json at);
+            ("text", `String text);
+          ]
+    | Delete { at } ->
+        `Assoc
+          [
+            ("kind", `String "delete");
+            ("range", span_to_range_json at);
+          ]
+
+  let hint_to_json { message; actions } =
+    let base =
+      match message with
+      | Some msg -> [ ("message", `String msg) ]
+      | None -> []
+    in
+    let actions_json =
+      match actions with
+      | [] -> []
+      | xs ->
+          [ ("actions", `List (List.map fixit_action_to_json xs)) ]
+    in
+    `Assoc (base @ actions_json)
+
+  let audit_to_json = function
+    | None -> `Null
+    | Some envelope ->
+        let metadata_json =
+          Audit_envelope.metadata_to_json (Audit_envelope.metadata envelope)
+        in
+        let fields = [ ("metadata", metadata_json) ] in
+        let fields =
+          match Audit_envelope.audit_id envelope with
+          | Some id -> ("audit_id", `String id) :: fields
+          | None -> fields
+        in
+        let fields =
+          match Audit_envelope.change_set envelope with
+          | Some change -> ("change_set", change) :: fields
+          | None -> fields
+        in
+        let fields =
+          match Audit_envelope.capability envelope with
+          | Some cap when String.trim cap <> "" -> ("capability", `String cap) :: fields
+          | _ -> fields
+        in
+        `Assoc (List.rev fields)
+end
+
 (* ========== 期待値の文字列表現 ========== *)
 
 let string_of_expectation = function

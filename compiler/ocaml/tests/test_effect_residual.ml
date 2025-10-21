@@ -51,7 +51,7 @@ let json_of_tag_list tags = `List (List.map json_of_tag tags)
 
 let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
     ~resolved_stage ~resolved_capability ~effect_set ~stage_trace
-    ~diagnostic_payload extra_fields =
+    ~diagnostic_payload extra_fields : Audit_envelope.metadata =
   let symbol = match symbol with Some s -> s | None -> "<anonymous>" in
   let required = Effect_profile.stage_requirement_to_string stage_requirement in
   let actual =
@@ -97,7 +97,7 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
     else
       ("stage_trace", Effect_profile.stage_trace_to_json stage_trace) :: fields
   in
-  `Assoc (List.rev_append extra_fields fields)
+  List.rev_append extra_fields fields
 
 let event_of_entry (entry : Constraint_solver.EffectConstraintTable.entry) =
   let metadata =
@@ -108,7 +108,7 @@ let event_of_entry (entry : Constraint_solver.EffectConstraintTable.entry) =
       ~effect_set:entry.effect_set ~stage_trace:entry.stage_trace
       ~diagnostic_payload:entry.diagnostic_payload []
   in
-  Audit_envelope.make ~category:"effect.stage" ~metadata ()
+  Audit_envelope.make ~category:"effect.stage" ~metadata_pairs:metadata ()
 
 let runtime_stage_event (context : Type_inference_effect.runtime_stage) =
   let capabilities =
@@ -134,8 +134,7 @@ let runtime_stage_event (context : Type_inference_effect.runtime_stage) =
       :: metadata
   in
   Audit_envelope.make ~category:"effect.stage.runtime"
-    ~metadata:(`Assoc (List.rev metadata))
-    ()
+    ~metadata_pairs:metadata ()
 
 let run_with_mode mode =
   Constraint_solver.reset_effect_constraints ();

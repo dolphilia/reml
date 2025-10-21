@@ -58,25 +58,133 @@
 ### 1. 診断データ構造の再設計（26-27週目）
 **担当領域**: 診断基盤設計
 
+**現状整理**
+- `compiler/ocaml/src/diagnostic.ml` の `type t` は Phase 1 の最小構成（`span`/`notes`/`fixits` 等）を維持しており、[3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) §1 に定義された `id` / `primary` / `secondary` / `hints` / `expected` / `timestamp` / `audit` を保持できていない。
+- `compiler/ocaml/src/audit_envelope.ml` は JSON Lines 用の軽量 `event` レコードのみを提供し、仕様上の `AuditEnvelope`（`audit_id`・`change_set`・`metadata`）および監査イベント列挙と乖離している。
+- `tooling/runtime/audit-schema.json` v1.1 は `bridge.*` メタデータを必須化済みだが、`Diagnostic` 側で `audit.metadata` を直列化する導線が未整備である。
+- CLI 出力（`Cli.Diagnostic_formatter`、`Cli.Json_formatter`）とゴールデンテストは現行 `Diagnostic.t` のフィールド構成を前提としているため、再設計時は後方互換の時間帯を確保しつつ段階的切り替えが必要。
+
 1.1. **Diagnostic 構造の拡張**
-- [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) の仕様を OCaml データ型に写像
-- `extensions: (string * json) list` フィールドの追加
-- `related: Diagnostic list` フィールドの追加（関連診断のリンク）
-- `codes: string list` フィールドの追加（診断コード）
+- 仕様差分整理: 既存 `Diagnostic.t` と仕様 `Diagnostic` レコードのフィールド比較表を作成し、欠落要素（`id`, `primary`, `secondary`, `hints`, `expected`, `audit`, `timestamp`, `domain` の Optional 化等）を列挙。結果は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の「診断メトリクス」節へ参照を残す。
+- OCaml 型ドラフト: `type span_label`, `type hint`, `type diagnostic_id = Uuidm.t option` など仕様準拠のサブ型を `compiler/ocaml/src/diagnostic.ml` に追加し、`primary: span`, `secondary: span_label list`, `hints: hint list`, `audit: Audit_envelope.t`, `timestamp: Core_time.timestamp` など最終構成をドラフト化。
+- 拡張領域の再定義: `extensions` は `module Extensions : sig type t = (string * Yojson.Basic.t) list end` を存続させつつ `Diagnostic.extensions` を仕様上の `metadata` との対応表に整理。`related: Diagnostic_reference list`（ID リンク + フォールバック本文）と `codes: string list`（`primary` と別に複数コードを扱う）を新設し、LSP 連携に向けたキー体系案を提示。
+- CLI/LSP 中間層影響: `Cli.Diagnostic_envelope` が新フィールドを受け取れるようインタフェースを起票し、LSP 変換（`diagnostic_to_lsp`）で `secondary` → `related_information`、`hints` → `CodeAction` 下準備ができるか検証する。
+
+#### Diagnostic フィールド比較表（ドラフト） {#diagnostic-field-table-draft}
+
+| 仕様フィールド ([3-6] §1) | 現行 `compiler/ocaml/src/diagnostic.ml` | 状態 | メモ |
+|---------------------------|-----------------------------------------|------|------|
+| `id: Option<Uuid>` | 未実装 | 不足 | CLI/LSP/監査のトレースキーとして導入予定。 |
+| `message: Str` | `message: string` | 同等 | 命名と型は一致、国際化キー導線は別途。 |
+| `severity: Severity` | `severity: severity` | 要素名差異 | 列挙子集合を仕様準拠（Error/Warning/Info/Hint）へ調整。 |
+| `domain: Option<DiagnosticDomain>` | `domain: error_domain option` | 要素名差異 | 現行列挙値が仕様の `DiagnosticDomain` と不一致（`Runtime`/`Data` など）。統合が必要。 |
+| `code: Option<Str>` | `code: string option` | 同等 | 命名統一のみ。 |
+| `primary: Span` | `span: span` | 命名差異 | `span` を `primary` に改名し、構造体定義を仕様準拠に再掲。 |
+| `secondary: List<SpanLabel>` | `notes: (span option * string) list` | 再設計 | メッセージ付き副位置を `SpanLabel` 型で再定義し、NULL 許容を廃止。 |
+| `hints: List<Hint>` | `fixits: fixit list` | 再設計 | `Hint` と `FixIt` を区別し、仕様の `hints`（人間向け提案）と `fixits`（自動修正）を併存させる。 |
+| `expected: Option<ExpectationSummary>` | `expected_summary: expectation_summary option` | 同等 | 命名・フィールド構成を仕様に合わせて再公開。 |
+| `audit: AuditEnvelope` | `audit_metadata: Extensions.t` | 不足 | 仕様準拠の `AuditEnvelope` 型を保持し、`metadata` との整合を取る。 |
+| `timestamp: Timestamp` | 未実装 | 不足 | `Core.Numeric.now()` で生成し、ソートとメトリクスに利用。 |
+| `extensions: Map<Str, Json>` | `extensions: Extensions.t` | 同等 | `list` → `Map` 変換ルールを定義。 |
+| `related: Diagnostic list` | 未実装 | 不足 | 親子診断、複合エラー向けのリンク機構を追加。 |
+| `codes: List<Str>` | 未実装 | 不足 | 単一コード `code` から多重コード併記へ移行。 |
+
+- 追加フィールドの扱い: `severity_hint`（Rollback/Retry 等）は CLI ガイダンスとして残置し、仕様側 `Hint` との位置付けを整理する。`notes` は LSP の `related_information` 用に `secondary` へ移譲し、名称衝突を解消する。
+- フィールド比較表は移行ステップ策定時に随時更新し、最終版は Phase 2 終了レビューで確定する。
+
+#### 実装タスク (diagnostic.ml / CLI) {#diagnostic-migration-plan}
+
+1. **下準備**
+   - `compiler/ocaml/src/diagnostic.ml` に `Span_label`, `Hint`, `Audit_envelope` 参照を追加し、新型 `t` のドラフト実装をサンドボックスモジュール（例: `Diagnostic_v2`) として導入。
+   - 既存 API (`make`, `of_lexer_error` 等) を `Diagnostic_compat` モジュールに退避し、段階的に新 `builder` API へ委譲するテストベッドを確保。
+2. **CLI 出力層の対応順序**
+   - `Cli.Json_formatter` → `Cli.Diagnostic_formatter` → `Cli.Diagnostic_envelope` の順で新フィールド対応を実施。最初に JSON 出力を更新し、スナップショットテストで欠落フィールドを検知しやすくする。
+   - フォーマッタ更新後に `_build/default/src/main.exe` の出力を比較し、`diagnostic_regressions` 指標を監視。二段階目でテキスト出力の整形（secondary/hints 表示）を調整。
+3. **コア処理系の置換**
+   - `parser_driver.ml`、`type_error.ml`、`type_inference_effect.ml` の診断生成サイトを新 `builder` に差し替え、`related` / `codes` / `timestamp` を埋める。
+   - `tooling/ci` と `compiler/ocaml/tests/golden/diagnostics` を更新し、旧フォーマットとの比較が容易な差分ログを `reports/diagnostic-migration.md`（新規）に記録。
+4. **互換期間と削除**
+   - CI で旧 API 利用箇所を警告化（`[@alert deprecated]` 等）し、Phase 2 終盤で `Diagnostic_compat` を削除する。削除前に `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` で後方互換注意点を共有。
 
 1.2. **AuditEnvelope との整合**
-- `Diagnostic` と `AuditEnvelope` のフィールド共通化
-- メタデータキーの命名規約策定
-- Phase 2 他タスク（型クラス・効果・FFI）との調整
-- バージョン管理（スキーマバージョン）の導入
+- 仕様準拠モデル: `compiler/ocaml/src/audit_envelope.ml` を `type t = { audit_id: Uuidm.t option; change_set: Yojson.Basic.t option; capability: Capability_id.t option; metadata: (string * Yojson.Basic.t) list }` に再定義し、`AuditEvent` 列挙（仕様 §1.1.1）および `metadata` の必須キーセットを OCaml のパターンで表現する。
+- 共通ユーティリティ: `Diagnostic` から `AuditEnvelope` を直接参照できるよう `Audit_envelope.make` / `Audit_envelope.add_metadata` を整理し、`extensions` と `audit.metadata` の境界を明文化。`tooling/runtime/audit-schema.json` とのキー命名規約（`bridge.*`, `effects.*`, `cli.*` 等）を一覧化し、Phase 2-1/2-2 タスクへフィードバックする。
+- スキーマバージョン管理: `audit_schema_version: string` を `Diagnostic` または `CliDiagnosticEnvelope` 側に保持し、`AuditEnvelope.metadata["schema.version"]` と同期させる運用を定義。更新履歴は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ追記する。
+- Phase 2 他タスク連携: 型クラス（`extensions.typeclass.*`）、効果（`extensions.effect.*`）、FFI（`extensions.bridge.*`）で必要なメタデータをヒアリングし、フィールド拡張案を共有。必要に応じて `docs/spec/3-6` の付録へ追記するタスクリストを生成。
+
+#### AuditEnvelope 再定義草案（OCaml） {#audit-envelope-draft}
+
+```ocaml
+module Audit_envelope = struct
+  type metadata = (string * Yojson.Basic.t) list
+
+  type t = {
+    audit_id : Uuidm.t option;
+    change_set : Yojson.Basic.t option;
+    capability : Capability_id.t option;
+    metadata : metadata;
+  }
+
+  type event =
+    | Pipeline_started of pipeline_context
+    | Pipeline_completed of pipeline_context
+    | Pipeline_failed of pipeline_failure
+    | Capability_mismatch of capability_mismatch
+    | Async_supervisor_restarted of async_supervisor
+    | Async_supervisor_exhausted of async_supervisor
+    | Config_compat_changed of config_change
+    | Env_mutation of env_mutation
+    | Custom of string * Yojson.Basic.t
+
+  val make :
+    ?audit_id:Uuidm.t ->
+    ?change_set:Yojson.Basic.t ->
+    ?capability:Capability_id.t ->
+    ?metadata:metadata ->
+    unit ->
+    t
+
+  val add_metadata : t -> key:string -> Yojson.Basic.t -> t
+  val merge_metadata : t -> metadata -> t
+  val to_json : t -> Yojson.Basic.t
+end
+```
+
+- `pipeline_context` / `capability_mismatch` 等のサブ型は仕様 3-6 §1.1.1 の必須キーをカバーするフィールド（`pipeline.id`, `capability.expected_stage` 等）を保持する。
+- `Custom` にはイベント種別（`snake_case`）と任意 JSON を受け取り、プラグイン拡張が `AuditPolicy.include_patterns` で制御できるようにする。
+- 実装時は JSON Lines への書き出しで `metadata["event.kind"]` / `metadata["event.id"]` を自動生成し、診断側 `audit.metadata` とキー体系を共通化する。
+
+#### AuditEnvelope 移行ステップ案
+
+1. **型定義の導入**: `audit_envelope.ml` に上記 `t` / `event` / サブ型を追加し、既存 `event` レコード利用箇所を段階的に `Audit_envelope.Event` API へ置換。
+2. **コンストラクタ移行**: `main.ml`, `type_error.ml`, `core_ir/iterator_audit.ml` で `Audit_envelope.make` の引数を新型に合わせて更新し、`metadata` に `Assoc` ではなく `metadata` リストを渡すよう統一。
+3. **JSON エンコード統合**: `Audit_envelope.to_json` を利用する書き込みパス（`append_events` 等）を更新し、`metadata` の必須キー検証を `tooling/runtime/audit-schema.json` と同期。CI でスキーマ v1.1 を読み込み、`schema.version` との差分を検出するテストを追加。
+4. **バージョン通知**: CLI 生成時に `audit_schema_version` を `Cli.Diagnostic_envelope` に埋め込み、`tooling/runtime/audit-schema.json` 更新時は `CHANGELOG` と `0-3-audit-and-metrics.md` にリンクを残す。
+
+#### メタデータ拡張要件まとめ
+
+- **型クラス (`extensions.typeclass.*`)**
+  - 必須キー: `typeclass.constraint`, `typeclass.resolution_state`, `typeclass.candidates[]`, `typeclass.dictionary`, `typeclass.pending[]`, `typeclass.generalized_typevars[]`, `typeclass.graph.export_dot`。
+  - 監査連携: `AuditEnvelope.metadata["typeclass"]` に `TypeclassExtension` を JSON 化して格納し、辞書導出ログ（2-1-typeclass-strategy.md §5）と同期。
+  - CI 影響: 将来的な `typeclass.audit_pass_rate` 指標追加を想定し、欠落キー検出ルールを `tooling/ci/collect-iterator-audit-metrics.py` に準備。
+
+- **効果システム (`extensions.effect.*`)**
+  - 必須キー: `effect.stage.required`, `effect.stage.actual`, `effect.stage.source`, `effect.stage.residual`, `effect.stage_trace[]`, `effect.attribute[]`, `effect.capability`。
+  - 監査連携: `AuditEnvelope.metadata.stage_trace` と配列を共有し、`iterator.stage.audit_pass_rate` の閾値判定に利用。`effects.contract.*` 診断と `RuntimeCapabilityResolver` の結果が一致しているか CI で検証。
+  - 追加検討: Stage 残余 (`effect.residual.*`) の経路情報を `extensions.effect.residual.trace` に記録し、メモリリーク調査や Phase 3 の async audit と連携させる。
+
+- **FFI (`extensions.bridge.*`)**
+  - 必須キー: `bridge.status`, `bridge.target`, `bridge.arch`, `bridge.platform`, `bridge.abi`, `bridge.expected_abi`, `bridge.ownership`, `bridge.extern_symbol`, `bridge.return.ownership`, `bridge.return.status`, `bridge.return.wrap`, `bridge.return.release_handler`, `bridge.return.rc_adjustment`, `bridge.source_span`。
+  - 監査連携: `AuditEnvelope.metadata["bridge"]` を同一キーで保持し、`ffi_bridge.audit_pass_rate` のゲート条件と一致させる。Windows/macOS CI で欠落時にフェイルさせるジョブを Phase 2 中盤までに整備。
+  - ドキュメント: 更新内容を `reports/ffi-bridge-summary.md` と `docs/spec/3-9-core-async-ffi-unsafe.md` §2.6 に反映し、監査ログスキーマ v1.1 の必須項目表と同期する。
 
 1.3. **既存コードのマイグレーション**
-- Phase 1 の診断生成箇所の洗い出し
-- 新構造への段階的移行計画
-- 後方互換性の確保（古い診断形式のサポート）
-- テストコードの更新
+- 影響範囲棚卸し: `compiler/ocaml/src/parser_driver.ml` / `type_checker` / `cli` / `tooling/ci` など診断生成サイトを列挙し、旧 API (`Diagnostic.make`, `Diagnostic.of_*`) を新 `builder` API に差し替える順序計画を作成。棚卸し表は `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` 付録として公開。
+- 段階的移行: 第一段階で新レコードを導入し旧フィールドから移行用変換関数を提供、第二段階で CLI フォーマッタを新フィールドに切替、第三段階で旧型を廃止するタイムラインを策定。互換期間中は変換ロジックを `Deprecated` モジュールに隔離し、Phase 2 内で削除できるよう TODO を付与。
+- テスト更新: `compiler/ocaml/tests/golden/diagnostics/*.json.golden`、`tooling/ci/ffi-audit/*.jsonl`、`_build/default/src/main.exe` のスナップショット出力を新構造に合わせて更新。差分確認用に比較スクリプトを追加し、`dune runtest` の失敗理由がフィールド差分である場合に明示されるよう改善。
+- ドキュメント同期: `docs/spec/3-6`・`docs/guides/ai-integration.md`・`docs/plans/bootstrap-roadmap/2-3-to-2-4-handover.md` の関連節を更新し、再設計後のフィールド仕様と運用手順（CI ゲート条件・監査ログ参照方法）を反映する。
 
-**成果物**: 拡張 Diagnostic 型、AuditEnvelope 整合、マイグレーション計画
+**成果物**: 拡張 Diagnostic 型ドラフト、AuditEnvelope 仕様整合法、移行ステップ表・テスト更新計画
 
 ### 2. シリアライズ統合（27週目）
 **担当領域**: 出力フォーマット

@@ -20,7 +20,7 @@ let json_of_tag_list tags = `List (List.map json_of_tag tags)
 
 let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
     ~resolved_stage ~resolved_capability ~effect_set ~stage_trace
-    ~diagnostic_payload extra_fields =
+    ~diagnostic_payload extra_fields : Audit_envelope.metadata =
   let symbol = match symbol with Some name -> name | None -> "<anonymous>" in
   let stage_required =
     Effect_profile.stage_requirement_to_string stage_requirement
@@ -68,7 +68,7 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
     else
       ("stage_trace", Effect_profile.stage_trace_to_json stage_trace) :: fields
   in
-  `Assoc (List.rev_append extra_fields fields)
+  List.rev_append extra_fields fields
 
 let event_of_effect_entry (entry : EffectTable.entry) =
   let metadata =
@@ -79,7 +79,7 @@ let event_of_effect_entry (entry : EffectTable.entry) =
       ~effect_set:entry.effect_set ~stage_trace:entry.stage_trace
       ~diagnostic_payload:entry.diagnostic_payload []
   in
-  Audit_envelope.make ~category:"effect.stage" ~metadata ()
+  Audit_envelope.make ~category:"effect.stage" ~metadata_pairs:metadata ()
 
 let event_of_profile ?symbol (profile : Effect_profile.profile) =
   let metadata =
@@ -92,7 +92,8 @@ let event_of_profile ?symbol (profile : Effect_profile.profile) =
       ~diagnostic_payload:profile.diagnostic_payload
       [ ("status", `String "error") ]
   in
-  Audit_envelope.make ~category:"effect.stage.error" ~metadata ()
+  Audit_envelope.make ~category:"effect.stage.error"
+    ~metadata_pairs:metadata ()
 
 let event_of_stage_mismatch ~function_name ~required_stage ~actual_stage
     ~capability ~stage_trace =
@@ -113,8 +114,7 @@ let event_of_stage_mismatch ~function_name ~required_stage ~actual_stage
       :: metadata
   in
   Audit_envelope.make ~category:"effect.stage.error"
-    ~metadata:(`Assoc (List.rev metadata))
-    ()
+    ~metadata_pairs:metadata ()
 
 let runtime_stage_event (context : Type_inference_effect.runtime_stage) =
   let capabilities =
@@ -159,8 +159,7 @@ let runtime_stage_event (context : Type_inference_effect.runtime_stage) =
       :: metadata
   in
   Audit_envelope.make ~category:"effect.stage.runtime"
-    ~metadata:(`Assoc (List.rev metadata))
-    ()
+    ~metadata_pairs:metadata ()
 
 let iterator_stage_event runtime_context (entry : IteratorAudit.entry) =
   let capability_name = entry.IteratorAudit.capability in
@@ -261,9 +260,7 @@ let iterator_stage_event runtime_context (entry : IteratorAudit.entry) =
       ("stage_trace", Effect_profile.stage_trace_to_json stage_trace);
     ]
   in
-  Audit_envelope.make ~category:"effect.stage"
-    ~metadata:(`Assoc (List.rev metadata))
-    ()
+  Audit_envelope.make ~category:"effect.stage" ~metadata_pairs:metadata ()
 
 let iterator_audit_events runtime_context =
   Hashtbl.fold
@@ -274,8 +271,8 @@ let ffi_bridge_events () =
   Type_inference.current_ffi_bridge_snapshots ()
   |> List.map (fun snapshot ->
          Audit_envelope.make ~category:"ffi.bridge"
-           ~metadata:
-             (Ffi.bridge_audit_metadata ~status:"ok"
+           ~metadata_pairs:
+             (Ffi.bridge_audit_metadata_pairs ~status:"ok"
                 (Type_inference.ffi_snapshot_normalized snapshot))
            ())
 
@@ -308,7 +305,8 @@ let event_of_type_error err =
   | Type_error.FfiContractUnsupportedAbi normalized ->
       Some
         (Audit_envelope.make ~category:"ffi.bridge"
-           ~metadata:(Ffi.bridge_audit_metadata ~status:"error" normalized)
+           ~metadata_pairs:
+             (Ffi.bridge_audit_metadata_pairs ~status:"error" normalized)
            ())
   | _ -> None
 

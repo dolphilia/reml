@@ -112,11 +112,11 @@ let audit_lines_of_snapshots snapshots =
              | None -> ""
            in
            let metadata =
-             Ffi_contract.bridge_audit_metadata ~status:"ok" normalized
+             Ffi_contract.bridge_audit_metadata_pairs ~status:"ok" normalized
            in
            let event =
              Audit.make ~timestamp:"1970-01-01T00:00:00Z"
-               ~category:"ffi.bridge" ~metadata ()
+               ~category:"ffi.bridge" ~metadata_pairs:metadata ()
            in
            (target, Audit.to_json event))
     |> List.sort (fun (a, _) (b, _) -> compare a b)

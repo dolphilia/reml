@@ -129,8 +129,8 @@ let () =
              let event =
                Audit_envelope.make ~timestamp:"1970-01-01T00:00:00Z"
                  ~category:"ffi.bridge"
-                 ~metadata:
-                   (Ffi_contract.bridge_audit_metadata ~status:"error"
+                 ~metadata_pairs:
+                   (Ffi_contract.bridge_audit_metadata_pairs ~status:"error"
                       normalized)
                  ()
              in
