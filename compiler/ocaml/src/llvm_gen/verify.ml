@@ -167,17 +167,9 @@ let error_to_diagnostic error span_opt =
     | _ -> []
   in
 
-  {
-    Diagnostic.severity;
-    severity_hint = None;
-    domain = Some Diagnostic.CLI;
-    code = Some code;
-    message;
-    span;
-    expected_summary = None;
-    notes;
-    fixits = [];
-    (* LLVM エラーには自動修正提案なし *)
-    extensions = Diagnostic.Extensions.empty;
-    audit_metadata = Diagnostic.Extensions.empty;
-  }
+  Diagnostic.(
+    Builder.create ~severity ?severity_hint:None ~domain:CLI ~message
+      ~primary:span ()
+    |> Builder.set_primary_code code
+    |> Builder.add_notes notes
+    |> Builder.build)

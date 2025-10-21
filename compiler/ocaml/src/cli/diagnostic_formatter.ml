@@ -124,37 +124,37 @@ let format_snippet ~source ~span ~color_mode ~severity =
  * @param color_mode カラーモード
  * @return ヘッダー行文字列
  *)
-let format_header ~diag ~diag_v2 ~color_mode =
-  let loc = Diagnostic.format_location diag.Diagnostic.span.start_pos in
+let format_header ~diag ~color_mode =
+  let open Diagnostic in
+  let loc = format_location diag.primary.start_pos in
 
   (* 重要度ラベルを色付け *)
-  let severity_label = Diagnostic.severity_label diag.severity in
+  let severity_label = severity_label diag.severity in
   let colored_severity =
     Color.colorize_by_severity color_mode diag.severity severity_label
   in
 
   let code_fragment =
-    match diag_v2.Diagnostic.V2.codes with
+    match diag.codes with
     | [] -> None
     | codes -> Some (String.concat "," codes)
   in
 
   (* ヘッダー行を構築 *)
-  match (code_fragment, diag_v2.Diagnostic.V2.domain) with
+  match (code_fragment, diag.domain) with
   | Some codes, Some domain ->
-      let domain_label = Diagnostic.domain_label domain in
+      let domain_label = domain_label domain in
       Printf.sprintf "%s: %s[%s] (%s): %s" loc colored_severity codes
-        domain_label diag_v2.Diagnostic.V2.message
+        domain_label diag.message
   | Some codes, None ->
       Printf.sprintf "%s: %s[%s]: %s" loc colored_severity codes
-        diag_v2.Diagnostic.V2.message
+        diag.message
   | None, Some domain ->
-      let domain_label = Diagnostic.domain_label domain in
+      let domain_label = domain_label domain in
       Printf.sprintf "%s: %s (%s): %s" loc colored_severity domain_label
-        diag_v2.Diagnostic.V2.message
+        diag.message
   | None, None ->
-      Printf.sprintf "%s: %s: %s" loc colored_severity
-        diag_v2.Diagnostic.V2.message
+      Printf.sprintf "%s: %s: %s" loc colored_severity diag.message
 
 (** 診断全体をテキスト形式で出力
  *
@@ -164,22 +164,20 @@ let format_header ~diag ~diag_v2 ~color_mode =
  * @return フォーマットされた診断文字列
  *)
 let format_diagnostic ~source ~diag ~color_mode =
-  let diag_v2 = Diagnostic.V2.of_legacy diag in
-  let header = format_header ~diag ~diag_v2 ~color_mode in
+  let open Diagnostic in
+  let header = format_header ~diag ~color_mode in
 
-  (* ソースコードスニペット *)
   let snippet =
     match source with
     | Some src ->
         "\n"
-        ^ format_snippet ~source:src ~span:diag.span ~color_mode
-        ~severity:diag.severity
+        ^ format_snippet ~source:src ~span:diag.primary ~color_mode
+            ~severity:diag.severity
     | None -> ""
   in
 
-  (* 期待値サマリ *)
   let expected_str =
-    match diag_v2.expected with
+    match diag.expected with
     | None -> ""
     | Some summary ->
         let alternatives_str =
@@ -202,19 +200,17 @@ let format_diagnostic ~source ~diag ~color_mode =
         alternatives_str ^ humanized_str ^ context_str
   in
 
-  (* 関連情報 *)
   let related_str =
     let lines =
-      diag_v2.secondary
-      |> List.filter_map (fun (entry : Diagnostic.V2.span_label) ->
-             let open Diagnostic.V2 in
-             let msg = Option.value ~default:"" entry.message in
+      diag.secondary
+      |> List.filter_map (fun (entry : span_label) ->
+             let message = Option.value ~default:"" entry.message in
              let loc =
                match entry.span with
-               | Some span -> Diagnostic.format_span span
+               | Some span -> format_span span
                | None -> ""
              in
-             match (msg, loc) with
+             match (message, loc) with
              | "", "" -> None
              | "", loc -> Some (Printf.sprintf "  - (%s)" loc)
              | msg, "" -> Some ("  - " ^ msg)
@@ -225,23 +221,20 @@ let format_diagnostic ~source ~diag ~color_mode =
     | _ -> "\n関連情報:\n" ^ String.concat "\n" lines
   in
 
-  (* 修正提案 *)
   let fixits_str =
     match diag.fixits with
     | [] -> ""
     | fixits ->
-        let fixit_lines =
-          fixits |> List.map (fun f -> "  - " ^ Diagnostic.format_fixit f)
-        in
-        "\n修正候補:\n" ^ String.concat "\n" fixit_lines
+        fixits
+        |> List.map (fun f -> "  - " ^ format_fixit f)
+        |> String.concat "\n"
+        |> Printf.sprintf "\n修正候補:\n%s"
   in
 
-  (* ヒント *)
   let hints_str =
     let lines =
-      diag_v2.hints
-      |> List.map (fun (hint : Diagnostic.V2.hint) ->
-             let open Diagnostic.V2 in
+      diag.hints
+      |> List.map (fun (hint : Diagnostic.hint) ->
              let head =
                match hint.message with
                | Some msg -> "  - " ^ msg
@@ -249,8 +242,7 @@ let format_diagnostic ~source ~diag ~color_mode =
              in
              let action_lines =
                hint.actions
-               |> List.map (fun fixit ->
-                      "    * " ^ Diagnostic.format_fixit fixit)
+               |> List.map (fun fixit -> "    * " ^ format_fixit fixit)
              in
              head :: action_lines)
       |> List.concat
@@ -274,20 +266,22 @@ let format_diagnostic ~source ~diag ~color_mode =
                Printf.sprintf "\n拡張[%s]: %s" key (Json.to_string value))
         |> String.concat ""
   in
+
   let audit_str =
-    match Diagnostic.V2.audit_to_json diag_v2.audit with
-    | `Null -> (
-        match diag.audit_metadata with
-        | [] -> ""
-        | entries ->
-            entries |> List.rev
-            |> List.map (fun (key, value) ->
-                   Printf.sprintf "\n監査[%s]: %s" key (Json.to_string value))
-            |> String.concat "" )
-    | json -> "\n監査: " ^ Json.pretty_to_string json
+    match diag.audit with
+    | Some envelope ->
+        "\n監査: "
+        ^ Json.pretty_to_string (Diagnostic.V2.audit_to_json (Some envelope))
+    | None ->
+        if diag.audit_metadata = [] then ""
+        else
+          diag.audit_metadata
+          |> List.rev
+          |> List.map (fun (key, value) ->
+                 Printf.sprintf "\n監査[%s]: %s" key (Json.to_string value))
+          |> String.concat ""
   in
 
-  (* 重要度ヒント *)
   let hint_str =
     match diag.severity_hint with
     | None -> ""
@@ -298,26 +292,25 @@ let format_diagnostic ~source ~diag ~color_mode =
   in
 
   let timestamp_str =
-    match diag_v2.timestamp with
+    match diag.timestamp with
     | Some ts -> "\nタイムスタンプ: " ^ ts
     | None -> ""
   in
 
-  let sections =
-    [
-      header;
-      snippet;
-      expected_str;
-      related_str;
-      hints_str;
-      fixits_str;
-      extensions_str;
-      audit_str;
-      hint_str;
-      timestamp_str;
-    ]
-  in
-  sections |> List.filter (fun s -> not (String.equal s "")) |> String.concat ""
+  [
+    header;
+    snippet;
+    expected_str;
+    related_str;
+    hints_str;
+    fixits_str;
+    extensions_str;
+    audit_str;
+    hint_str;
+    timestamp_str;
+  ]
+  |> List.filter (fun s -> not (String.equal s ""))
+  |> String.concat ""
 
 (** 複数の診断をバッチ出力
  *

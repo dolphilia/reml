@@ -29,20 +29,13 @@ let make_test_diagnostic () =
   let end_pos =
     Diagnostic.{ filename = "test.reml"; line = 2; column = 11; offset = 21 }
   in
-  Diagnostic.
-    {
-      severity = Error;
-      severity_hint = None;
-      domain = Some Type;
-      code = Some "E7001";
-      message = "型が一致しません";
-      span = { start_pos; end_pos };
-      expected_summary = None;
-      notes = [ (None, "期待される型: i64"); (None, "実際の型:     String") ];
-      fixits = [];
-      extensions = Diagnostic.Extensions.empty;
-      audit_metadata = Diagnostic.Extensions.empty;
-    }
+  Diagnostic.(
+    Builder.create ~severity:Error ~domain:Type ~message:"型が一致しません"
+      ~primary:{ start_pos; end_pos } ()
+    |> Builder.set_primary_code "E7001"
+    |> Builder.add_notes
+         [ (None, "期待される型: i64"); (None, "実際の型:     String") ]
+    |> Builder.build)
 
 (** テスト用のソースコード *)
 let test_source = "fn main() -> i64 =\n  let x: String = \"hello\" in\n  x + 42"
@@ -111,7 +104,7 @@ let test_stage_extension_snapshot () =
   let end_pos =
     Diagnostic.{ filename = "iter.reml"; line = 4; column = 18; offset = 57 }
   in
-  let span = { Diagnostic.start_pos; end_pos } in
+  let span = Diagnostic.{ start_pos; end_pos } in
   let residual =
     `Assoc
       [
@@ -215,7 +208,11 @@ let test_snippet_display () =
 let test_multiple_diagnostics () =
   let diag1 = make_test_diagnostic () in
   let diag2 =
-    { diag1 with Diagnostic.message = "別のエラー"; code = Some "E7002" }
+    {
+      diag1 with
+      Diagnostic.message = "別のエラー";
+      codes = [ "E7002" ];
+    }
   in
 
   (* 複数診断の JSON 出力 *)

@@ -554,11 +554,11 @@ let test_error_cases () =
 let test_diagnostic_metadata () =
   match Parser_driver.parse_string "let x =" with
   | Result.Error diag ->
-      if diag.Diagnostic.span.start_pos.line = 1 then
+      if diag.Diagnostic.primary.start_pos.line = 1 then
         Printf.printf "✓ diagnostic: start position captured\n"
       else (
         Printf.printf "✗ diagnostic metadata: unexpected line %d\n"
-          diag.Diagnostic.span.start_pos.line;
+          diag.Diagnostic.primary.start_pos.line;
         exit 1)
   | Result.Ok _ ->
       Printf.printf "✗ diagnostic metadata: expected parse failure\n";

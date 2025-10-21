@@ -95,7 +95,7 @@ let assert_error expected_variant result msg =
 let verify_diagnostic_quality (err : type_error) (expected_code : string) =
   let diag = to_diagnostic err in
   (* エラーコードの検証 *)
-  (match diag.Diagnostic.code with
+  (match Diagnostic.primary_code diag with
   | Some code when code = expected_code -> ()
   | Some code ->
       failwith
@@ -106,7 +106,7 @@ let verify_diagnostic_quality (err : type_error) (expected_code : string) =
   (* メッセージが空でないことを確認 *)
   if diag.Diagnostic.message = "" then failwith "Diagnostic message is empty";
   (* notesが存在することを確認（より良い診断のため） *)
-  if List.length diag.Diagnostic.notes = 0 then
+  if List.length diag.Diagnostic.secondary = 0 then
     failwith "Diagnostic should have notes for better explanation"
 
 (* ========== A. 型不一致系エラー ========== *)

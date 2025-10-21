@@ -600,20 +600,12 @@ let () =
                         }
                     in
                     let diag =
-                      Diagnostic.
-                        {
-                          severity = Error;
-                          severity_hint = None;
-                          domain = None;
-                          code = Some "E8001";
-                          message = Printf.sprintf "Core IR 変換エラー: %s" msg;
-                          span = diag_span;
-                          expected_summary = None;
-                          notes = [];
-                          fixits = [];
-                          extensions = Diagnostic.Extensions.empty;
-                          audit_metadata = Diagnostic.Extensions.empty;
-                        }
+                      Diagnostic.(
+                        Builder.create ~severity:Error
+                          ~message:(Printf.sprintf "Core IR 変換エラー: %s" msg)
+                          ~primary:diag_span ()
+                        |> Builder.set_primary_code "E8001"
+                        |> Builder.build)
                     in
                     print_diagnostic opts (Some source) diag;
                     exit 1
@@ -628,20 +620,13 @@ let () =
                         }
                     in
                     let diag =
-                      Diagnostic.
-                        {
-                          severity = Error;
-                          severity_hint = None;
-                          domain = None;
-                          code = Some "E8002";
-                          message = Printf.sprintf "LLVM IR 生成エラー: %s" msg;
-                          span = { start_pos = dummy_loc; end_pos = dummy_loc };
-                          expected_summary = None;
-                          notes = [];
-                          fixits = [];
-                          extensions = Diagnostic.Extensions.empty;
-                          audit_metadata = Diagnostic.Extensions.empty;
-                        }
+                      Diagnostic.(
+                        Builder.create ~severity:Error
+                          ~message:(Printf.sprintf "LLVM IR 生成エラー: %s" msg)
+                          ~primary:{ start_pos = dummy_loc; end_pos = dummy_loc }
+                          ()
+                        |> Builder.set_primary_code "E8002"
+                        |> Builder.build)
                     in
                     print_diagnostic opts None diag;
                     exit 1

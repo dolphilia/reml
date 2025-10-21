@@ -109,25 +109,96 @@ type expectation_summary = {
  * 仕様書 2-5 §B-7 の ExpectationSummary
  *)
 
-(* ========== 診断情報 ========== *)
+(* ========== 診断情報 (V2 フィールド) ========== *)
+
+type span_label = { span : span option; message : string option }
+
+type hint = { message : string option; actions : fixit list }
 
 type t = {
+  id : string option;
+  message : string;
   severity : severity;
   severity_hint : severity_hint option;
   domain : error_domain option;
-  code : string option; (* 安定ID: "E0001", "E7101" *)
-  message : string; (* 1行要約 *)
-  span : span; (* 主位置 *)
-  expected_summary : expectation_summary option;
-  notes : (span option * string) list; (* 追加メモ（位置付き） *)
-  fixits : fixit list; (* 修正提案 *)
+  codes : string list;
+  primary : span;
+  secondary : span_label list;
+  hints : hint list;
+  fixits : fixit list;
+  expected : expectation_summary option;
+  audit : Audit_envelope.t option;
+  timestamp : string option;
   extensions : Extensions.t;
   audit_metadata : Extensions.t;
 }
-(** 診断情報の完全な表現
- *
- * 仕様書 2-5 §A の Diagnostic
- *)
+(** 診断情報の完全な表現（仕様 3-6 §1 準拠フィールド） *)
+
+module Legacy = struct
+  type t = {
+    severity : severity;
+    severity_hint : severity_hint option;
+    domain : error_domain option;
+    code : string option;
+    message : string;
+    span : span;
+    expected_summary : expectation_summary option;
+    notes : (span option * string) list;
+    fixits : fixit list;
+    extensions : Extensions.t;
+    audit_metadata : Extensions.t;
+  }
+end
+
+let legacy_of_diagnostic (diag : t) : Legacy.t =
+  let primary_code =
+    match diag.codes with code :: _ -> Some code | [] -> None
+  in
+  Legacy.
+    {
+      severity = diag.severity;
+      severity_hint = diag.severity_hint;
+      domain = diag.domain;
+      code = primary_code;
+      message = diag.message;
+      span = diag.primary;
+      expected_summary = diag.expected;
+      notes =
+        List.map
+          (fun (label : span_label) ->
+            (label.span, Option.value ~default:"" label.message))
+          diag.secondary;
+      fixits = diag.fixits;
+      extensions = diag.extensions;
+      audit_metadata = diag.audit_metadata;
+    }
+
+let diagnostic_of_legacy (legacy : Legacy.t) : t =
+  {
+    id = None;
+    message = legacy.Legacy.message;
+    severity = legacy.Legacy.severity;
+    severity_hint = legacy.Legacy.severity_hint;
+    domain = legacy.Legacy.domain;
+    codes =
+      (match legacy.Legacy.code with Some code -> [ code ] | None -> []);
+    primary = legacy.Legacy.span;
+    secondary =
+      List.map
+        (fun (span_opt, message) ->
+          { span = span_opt; message = Some message })
+        legacy.Legacy.notes;
+    hints = [];
+    fixits = legacy.Legacy.fixits;
+    expected = legacy.Legacy.expected_summary;
+    audit = None;
+    timestamp = None;
+    extensions = legacy.Legacy.extensions;
+    audit_metadata = legacy.Legacy.audit_metadata;
+  }
+
+let primary_code (diag : t) =
+  match diag.codes with code :: _ -> Some code | [] -> None
 
 (* ========== ヘルパー関数 ========== *)
 
@@ -164,7 +235,17 @@ let set_extension key value diag =
   { diag with extensions = Extensions.set key value diag.extensions }
 
 let set_audit_metadata key value diag =
-  { diag with audit_metadata = Extensions.set key value diag.audit_metadata }
+  let metadata = Extensions.set key value diag.audit_metadata in
+  let audit =
+    let base =
+      match diag.audit with
+      | Some env -> Audit_envelope.add_metadata env ~key value
+      | None ->
+          Audit_envelope.add_metadata Audit_envelope.empty_envelope ~key value
+    in
+    Some base
+  in
+  { diag with audit_metadata = metadata; audit }
 
 let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
     ?capability_meta ?iterator_fields ?stage_trace ~required_stage ~capability
@@ -288,30 +369,10 @@ type legacy_diagnostic = t
 type legacy_severity = severity
 
 module V2 = struct
-  type legacy = legacy_diagnostic
   type severity = Error | Warning | Info | Hint
 
-  type span_label = { span : span option; message : string option }
-
-  type hint = { message : string option; actions : fixit list }
-
-  type t = {
-    id : string option;
-    message : string;
-    severity : severity;
-    domain : error_domain option;
-    codes : string list;
-    primary : span;
-    secondary : span_label list;
-    hints : hint list;
-    expected : expectation_summary option;
-    audit : Audit_envelope.t option;
-    timestamp : string option;
-    extensions : Extensions.t;
-  }
-
-  let severity_of_legacy (severity : legacy_severity) =
-    match severity with
+  let severity_of_diagnostic (diag : t) =
+    match diag.severity with
     | Error -> Error
     | Warning -> Warning
     | Note -> Info
@@ -327,97 +388,6 @@ module V2 = struct
     | Warning -> "warning"
     | Info -> "info"
     | Hint -> "hint"
-
-  let span_label_of_note (span_opt, note) =
-    { span = span_opt; message = Some note }
-
-  let severity_hint_to_message = function
-    | Some Rollback -> Some "rollback"
-    | Some Retry -> Some "retry"
-    | Some Ignore -> Some "ignore"
-    | Some Escalate -> Some "escalate"
-    | None -> None
-
-  let audit_of_extensions extensions =
-    if Extensions.is_empty extensions then None
-    else
-      Some
-        { Audit_envelope.empty_envelope with metadata = extensions }
-
-  let of_legacy ?timestamp ?id ?codes ?audit (diag : legacy) =
-    let severity = severity_of_legacy diag.severity in
-    let codes =
-      match codes with
-      | Some codes -> codes
-      | None -> (
-          match diag.code with Some code -> [ code ] | None -> [] )
-    in
-    let v2_fields =
-      match Extensions.get "diagnostic.v2" diag.extensions with
-      | Some (`Assoc fields) -> fields
-      | _ -> []
-    in
-    let codes =
-      match List.assoc_opt "codes" v2_fields with
-      | Some (`List lst) ->
-          let ext_codes =
-            List.filter_map
-              (function `String s -> Some s | _ -> None)
-              lst
-          in
-          if ext_codes = [] then codes else ext_codes
-      | _ -> codes
-    in
-    let audit =
-      match audit with Some v -> Some v | None -> audit_of_extensions diag.audit_metadata
-    in
-    let secondary = List.map span_label_of_note diag.notes in
-    let hint_from_severity =
-      match severity_hint_to_message diag.severity_hint with
-      | Some message -> [ { message = Some message; actions = [] } ]
-      | None -> []
-    in
-    let hints_from_fixits =
-      diag.fixits
-      |> List.map (fun fixit -> { message = None; actions = [ fixit ] })
-    in
-    let hints_from_extension =
-      match List.assoc_opt "hints" v2_fields with
-      | Some (`List lst) ->
-          lst
-          |> List.filter_map (function
-                 | `Assoc hint_fields ->
-                     let message =
-                       match List.assoc_opt "message" hint_fields with
-                       | Some (`String s) -> Some s
-                       | _ -> None
-                     in
-                     Some { message; actions = [] }
-                 | _ -> None)
-      | _ -> []
-    in
-    let timestamp =
-      match timestamp with
-      | Some _ -> timestamp
-      | None -> (
-          match List.assoc_opt "timestamp" v2_fields with
-          | Some (`String ts) -> Some ts
-          | _ -> None )
-    in
-    {
-      id;
-      message = diag.message;
-      severity;
-      domain = diag.domain;
-      codes;
-      primary = diag.span;
-      secondary;
-      hints = hint_from_severity @ hints_from_extension @ hints_from_fixits;
-      expected = diag.expected_summary;
-      audit;
-      timestamp;
-      extensions = diag.extensions;
-    }
 
   let span_to_range_json (span : span) =
     `Assoc
@@ -558,7 +528,7 @@ module Builder = struct
     codes : string list;
     secondary : secondary_entry list;
     expected : expectation_summary option;
-    hints : V2.hint list;
+    hints : hint list;
     fixits : fixit list;
     extensions : Extensions.t;
     structured_hints : structured_hint list;
@@ -665,7 +635,7 @@ module Builder = struct
     { builder with fixits = builder.fixits @ fixits }
 
   let add_hint ?(actions = []) ?message builder =
-    let hint = V2.{ message; actions } in
+    let hint = { message; actions } in
     let builder =
       if actions = [] then builder else add_fixits actions builder
     in
@@ -783,10 +753,10 @@ module Builder = struct
 
   let build builder =
     let codes = builder.codes in
-    let code = match codes with [] -> None | hd :: _ -> Some hd in
-    let notes =
+    let secondary =
       builder.secondary
-      |> List.map (fun (entry : secondary_entry) -> (entry.span, entry.message))
+      |> List.map (fun (entry : secondary_entry) ->
+             ( { span = entry.span; message = Some entry.message } : span_label ))
     in
     let v2_extension_fields =
       let fields = ref [] in
@@ -796,14 +766,14 @@ module Builder = struct
       (if builder.hints <> [] then
          let hints_json =
            builder.hints
-           |> List.map (fun V2.{ message; actions = hint_actions } ->
+           |> List.map (fun (hint : hint) ->
                   let base =
-                    match message with
+                    match hint.message with
                     | Some msg -> [ ("message", `String msg) ]
                     | None -> []
                   in
                   let fields =
-                    match hint_actions with
+                    match hint.actions with
                     | [] -> base
                     | xs ->
                         ("actions", `List (List.map json_of_fixit xs)) :: base
@@ -829,16 +799,24 @@ module Builder = struct
           (`Assoc v2_extension_fields)
           builder.extensions
     in
+    let audit =
+      if Extensions.is_empty builder.audit_metadata then None
+      else Some { Audit_envelope.empty_envelope with metadata = builder.audit_metadata }
+    in
     {
+      id = None;
+      message = builder.message;
       severity = builder.severity;
       severity_hint = builder.severity_hint;
       domain = builder.domain;
-      code;
-      message = builder.message;
-      span = builder.primary;
-      expected_summary = builder.expected;
-      notes;
+      codes;
+      primary = builder.primary;
+      secondary;
+      hints = builder.hints;
       fixits = builder.fixits;
+      expected = builder.expected;
+      audit;
+      timestamp = builder.timestamp;
       extensions;
       audit_metadata = builder.audit_metadata;
     }
@@ -941,11 +919,11 @@ let format_fixit = function
 
 (** 診断情報の文字列表現 *)
 let to_string diag =
-  let loc = format_location diag.span.start_pos in
+  let loc = format_location diag.primary.start_pos in
 
   (* ヘッダー行 *)
   let header =
-    match (diag.code, diag.domain) with
+    match (primary_code diag, diag.domain) with
     | Some code, Some domain ->
         Printf.sprintf "%s: %s[%s] (%s): %s" loc
           (severity_label diag.severity)
@@ -966,7 +944,7 @@ let to_string diag =
 
   (* 期待値サマリ *)
   let expected_str =
-    match diag.expected_summary with
+    match diag.expected with
     | None -> []
     | Some summary ->
         let alternatives_str =
@@ -992,14 +970,21 @@ let to_string diag =
 
   (* 追加ノート *)
   let notes_str =
-    match diag.notes with
+    match diag.secondary with
     | [] -> []
     | notes ->
         notes
-        |> List.map (function
-             | None, note -> "補足: " ^ note
-             | Some span, note ->
-                 Printf.sprintf "補足 [%s]: %s" (format_span span) note)
+        |> List.filter_map (fun (label : span_label) ->
+               match label.message with
+               | None -> None
+               | Some note ->
+                   let text =
+                     match label.span with
+                     | None -> "補足: " ^ note
+                     | Some span ->
+                         Printf.sprintf "補足 [%s]: %s" (format_span span) note
+                   in
+                   Some text)
   in
   let extensions_str =
     match diag.extensions with

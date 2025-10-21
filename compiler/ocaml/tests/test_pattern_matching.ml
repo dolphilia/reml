@@ -29,7 +29,7 @@ let _expect_fail name src =
       exit 1
   | Result.Error diag ->
       let open Diagnostic in
-      let loc = diag.span.start_pos in
+      let loc = diag.primary.start_pos in
       Printf.printf "✓ %s (期待通り失敗: %s @ %d:%d)\n" name diag.message loc.line
         loc.column
 
