@@ -591,6 +591,44 @@ module Builder = struct
       timestamp;
     }
 
+  let json_of_location loc =
+    `Assoc
+      [
+        ("file", `String loc.filename);
+        ("line", `Int loc.line);
+        ("column", `Int loc.column);
+        ("offset", `Int loc.offset);
+      ]
+
+  let json_of_span span =
+    `Assoc
+      [
+        ("start", json_of_location span.start_pos);
+        ("end", json_of_location span.end_pos);
+      ]
+
+  let json_of_fixit = function
+    | Insert { at; text } ->
+        `Assoc
+          [
+            ("kind", `String "insert");
+            ("range", json_of_span at);
+            ("text", `String text);
+          ]
+    | Replace { at; text } ->
+        `Assoc
+          [
+            ("kind", `String "replace");
+            ("range", json_of_span at);
+            ("text", `String text);
+          ]
+    | Delete { at } ->
+        `Assoc
+          [
+            ("kind", `String "delete");
+            ("range", json_of_span at);
+          ]
+
   let set_severity severity builder = { builder with severity }
   let set_severity_hint severity_hint builder = { builder with severity_hint }
 
@@ -743,50 +781,12 @@ module Builder = struct
 
   let set_timestamp timestamp builder = { builder with timestamp = Some timestamp }
 
-  let json_of_location loc =
-    `Assoc
-      [
-        ("file", `String loc.filename);
-        ("line", `Int loc.line);
-        ("column", `Int loc.column);
-        ("offset", `Int loc.offset);
-      ]
-
-  let json_of_span span =
-    `Assoc
-      [
-        ("start", json_of_location span.start_pos);
-        ("end", json_of_location span.end_pos);
-      ]
-
-  let json_of_fixit = function
-    | Insert { at; text } ->
-        `Assoc
-          [
-            ("kind", `String "insert");
-            ("range", json_of_span at);
-            ("text", `String text);
-          ]
-    | Replace { at; text } ->
-        `Assoc
-          [
-            ("kind", `String "replace");
-            ("range", json_of_span at);
-            ("text", `String text);
-          ]
-    | Delete { at } ->
-        `Assoc
-          [
-            ("kind", `String "delete");
-            ("range", json_of_span at);
-          ]
-
   let build builder =
     let codes = builder.codes in
     let code = match codes with [] -> None | hd :: _ -> Some hd in
     let notes =
       builder.secondary
-      |> List.map (fun entry -> (entry.span, entry.message))
+      |> List.map (fun (entry : secondary_entry) -> (entry.span, entry.message))
     in
     let v2_extension_fields =
       let fields = ref [] in
