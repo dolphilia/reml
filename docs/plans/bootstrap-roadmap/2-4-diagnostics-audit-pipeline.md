@@ -219,6 +219,23 @@ end
    - 3 ターゲット（Linux, Windows, macOS）の CI でスキーマ検証が緑クリア、`tooling/ci/artifacts/` に `schema-report.json` が保存される。  
    - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `schema.version` 更新履歴と CI 実行ログの参照が追記され、`compiler/ocaml/docs/technical-debt.md` の ID 22/23 が「監査パイプライン移行完了」に更新される。
 
+### Stage B タスクボード（2025-10-27 着手）
+
+#### B-1 LSP / CI 向け V2 トランスポート整備
+- `tooling/lsp/diagnostic_transport.ml`（新規）で `Diagnostic.t` → LSP `PublishDiagnostics` 変換を実装し、`secondary` / `hints` / `audit` / `timestamp` を直接マッピングする。  
+- V1 互換レイヤーは `tooling/lsp/tests/client_compat/` に集約し、`client-v1.ts` の `notes` 依存を `secondary` ベースへ改修。fixtures（`diagnostic-sample.json`, `diagnostic-v2-sample.json`）を V2 構造で再生成し、`npm test` に V2 エクスポート検証を追加。  
+- CI では `tooling/ci/collect-iterator-audit-metrics.py` / `tooling/ci/sync-iterator-audit.sh` を更新し、`Diagnostic.audit` と `Diagnostic.timestamp` の必須チェックを導入。`iterator-stage-summary.md` / `ffi-bridge-summary.md` の生成スクリプトへ `schema.version` と V2 サマリを併記する。
+
+#### B-2 ゴールデン更新ワークフローとレビュー手順
+- `reports/diagnostic-migration.md` を新設し、各バッチ（型エラー → 効果/型クラス → CLI 補助診断）の差分記録・チェックリスト・検証ログ欄を用意する。  
+- `scripts/update-diagnostics-golden.sh` を V2 JSON 出力に対応させ、`tooling/ci/collect-diagnostic-diff.py` と連携して差分要約を PR コメントへ投稿するワークフローを GitHub Actions に追加。  
+- ゴールデン変更を含む PR は `reports/diagnostic-migration.md` の該当バッチ節を更新し、`dune runtest`・CI 成果物 URL・レビューポイント（`codes[]` 並び、`secondary` 追加、`audit` 埋め込みなど）を記録する運用を定める。
+
+#### B-3 Legacy / Builder API 拡張と段階的削除
+- `Diagnostic.Builder` に `set_id` / `add_secondary` / `merge_secondary` / `set_timestamp` など補助関数を追加し、structured hints へ `id` / `title` / `payload` を直接設定できる API を整備する。  
+- `Diagnostic.Legacy` の `diagnostic_of_legacy` / `legacy_of_diagnostic` に `[@alert deprecated]` を付与し、新規利用を CI で検出可能にする（削除目標: Phase 2-5 開始時）。  
+- `type_error.ml` / `parser_driver.ml` / `core_ir/iterator_audit.ml` などレガシ API が残る箇所を段階的に Builder ベースへ移行し、LSP / CLI 以外の JSON レポート生成スクリプトでも `Diagnostic.t` を直接利用するよう统合を進める。
+
 **残タスク**
 1. Type エラー生成箇所（`type_error.ml`）で `Audit_envelope.merge_metadata` を使い、効果・型クラス診断の追加キーを新構造へ統一。
 2. CLI 出力で `AuditEnvelope` の `audit_id`／`change_set` を埋める設計を詰め、`tooling/runtime/audit-schema.json` の `schema.version` を明示的に付与する運用を確立。
