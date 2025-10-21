@@ -67,6 +67,24 @@
 - スキーマ検証: `tooling/runtime/audit-schema.json`（ドラフト）を基準に `bridge.*` フィールドを検証するツールを Phase 2-3 で整備する。仮段階では `tooling/ci/collect-iterator-audit-metrics.py` の `ffi_bridge.audit_pass_rate` を用いて欠落を検知する。
 - ログ検証用に `tools/audit-verify`（将来実装予定）を準備し、CI で `--strict` フラグを用いて検証。
 
+### 監査ログ収集・永続化フロー
+1. **実行コマンド**  
+   - ローカル検証: `remlc <target>.reml --emit-audit --audit-store=local --audit-level=full [追加オプション]`  
+     実行後に `tooling/audit-store/local/<timestamp>/` 下へ `*.jsonl` と `index.json` が生成される。`index.json.latest` は最後のビルド ID を指すシンボリックリンクとして維持する。  
+   - CI 実行: `remlc ... --emit-audit --audit-store=ci --audit-level=summary` を推奨し、`reports/audit/<target>/<YYYY>/<MM>/<DD>/<commit>_<target>_<build-id>.jsonl` を生成する。効果・FFI 検証ジョブでは `--audit-level=full` を併用する。
+2. **インデックス更新**  
+   - すべてのプロファイルで `AuditEnvelope.build_id` を `<utc timestamp>-<commit sha>` 形式で発行し、`reports/audit/index.json`（CI）または `tooling/audit-store/local/index.json`（ローカル）へ追記する。  
+   - CI ではビルドごとのメタデータ（`target`, `pass_rate`, `audit_level`, `artifact_path`）を必須フィールドとし、`reports/audit/index.json` の `pruned` 配列で削除済みビルド ID を管理する。
+3. **履歴・失敗ログ**  
+   - `tooling/ci/collect-iterator-audit-metrics.py --prune` を週次で実行し、`tooling/ci/audit-retention.toml` に定義した `retain = {ci = 100, local = 30}` を超える履歴を削除する。削除対象は `reports/audit/history/<target>.jsonl.gz` へ圧縮退避し、失敗ビルドは `reports/audit/failed/<commit>/` に完全保存する。  
+   - 圧縮履歴を更新した際は `reports/audit/usage.csv` に容量を追記し、500MB を超えた場合は `0-4-risk-handling.md` に対応策を登録する。
+4. **メトリクス集計**  
+   - `tooling/ci/collect-iterator-audit-metrics.py --summary reports/audit/index.json --output reports/audit/summary.md` を実行し、`ffi_bridge.audit_pass_rate` と `iterator.stage.audit_pass_rate` の推移を Markdown サマリとして生成する。  
+   - サマリ生成後は CI アーティファクトとして保存し、レビュー時に `reports/ffi-bridge-summary.md` からリンクする。
+5. **レビューチェックリスト**  
+   - PR で `reports/audit/index.json` または `tooling/audit-store/local/index.json` が更新された場合は、レビュアが `audit-retention.toml` の閾値・`usage.csv` の容量推移・`summary.md` のメトリクス変化を確認する。  
+   - 必須フィールド欠落や pass_rate < 1.0 を検出した場合はブロッカーとして `0-4-risk-handling.md` に登録し、修正完了後に削除する。
+
 ## 0.3.4 レビュア体制
 | 領域 | 主担当 | 副担当 | レビュー頻度 |
 |------|--------|--------|--------------|
@@ -150,7 +168,7 @@
 
 ### 監査ログと CI 指標
 - Stage 判定および FFI ブリッジ検証は `RuntimeCapabilityResolver` → `AuditEnvelope` → `tooling/ci/collect-iterator-audit-metrics.py` → `iterator.stage.audit_pass_rate` / `ffi_bridge.audit_pass_rate` の順で連携する。各段階で `stage_trace` または `bridge.*` が欠落した場合は CI を失敗させる。
-- `remlc examples/effects/demo.reml --emit-audit --effect-stage beta` を実行し、`AuditEnvelope.metadata.stage_trace` に Typer 判定と Runtime 判定が連続して格納されていることを確認する。監査ゴールデンは `compiler/ocaml/tests/golden/audit/effects-stage.json.golden`（新設）に保存する。
+- `remlc examples/effects/demo.reml --emit-audit --audit-store=local --audit-level=full --effect-stage beta` を実行し、`AuditEnvelope.metadata.stage_trace` に Typer 判定と Runtime 判定が連続して格納されていることを確認する。監査ゴールデンは `compiler/ocaml/tests/golden/audit/effects-stage.json.golden`（新設）に保存し、`tooling/audit-store/local/` に生成された `index.json` がビルド ID を記録しているか確認する。
 - CI では `tooling/ci/sync-iterator-audit.sh --metrics /tmp/iterator-audit.json --audit compiler/ocaml/tests/golden/audit/effects-stage.json.golden` を実行し、`iterator.stage.audit_pass_rate` と `ffi_bridge.audit_pass_rate` がいずれも 1.0 であることをゲート条件とする。Stage 判定差分が発生した場合は `stage_trace` の乖離内容を Markdown サマリに追記し、FFI 契約差分が発生した場合は `bridge.*` 欠落項目をサマリへ明記してレビューへ共有する。
 - 監査ログの更新後は `reports/runtime-capabilities-validation.json` の `stage_summary`・`iterator-stage-summary.md` および FFI ブリッジ用サマリ（導入後に `reports/ffi-bridge-summary.md` 予定）を本節へリンクする。
 

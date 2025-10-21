@@ -17,8 +17,14 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+
+try:
+    import tomllib  # Python 3.11+
+except ModuleNotFoundError:  # pragma: no cover
+    tomllib = None
 
 
 # Required audit metadata keys.
@@ -74,6 +80,13 @@ REQUIRED_BRIDGE_EXTENSION_KEYS: List[str] = [
     "bridge.return.release_handler",
     "bridge.return.rc_adjustment",
 ]
+
+DEFAULT_RETENTION_POLICY: Dict[str, int] = {
+    "ci": 100,
+    "local": 30,
+    "tmp": 20,
+    "default": 50,
+}
 
 def load_json(path: Path) -> Dict:
     with path.open("r", encoding="utf-8") as handle:
@@ -281,6 +294,128 @@ def extract_bridge_field(
         if isinstance(bridge, dict) and key in bridge:
             return bridge.get(key)
     return None
+
+
+def load_index(path: Path) -> Dict[str, Any]:
+    return load_json(path)
+
+
+def write_index(path: Path, data: Dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2, ensure_ascii=False)
+        handle.write("\n")
+
+
+def load_retention_policy(config_path: Path) -> Dict[str, int]:
+    policy = DEFAULT_RETENTION_POLICY.copy()
+    if not config_path.is_file() or tomllib is None:
+        return policy
+    try:
+        with config_path.open("rb") as handle:
+            data = tomllib.load(handle)
+    except Exception as exc:  # pragma: no cover - defensive
+        sys.stderr.write(
+            f"Failed to parse retention config ({config_path}): {exc}\n"
+        )
+        return policy
+
+    retain = data.get("retain")
+    if isinstance(retain, dict):
+        for key, value in retain.items():
+            if isinstance(value, int) and value >= 0:
+                policy[str(key)] = value
+    return policy
+
+
+def _entry_profile(entry: Dict[str, Any]) -> str:
+    for key in ("profile", "store", "audit_store"):
+        value = entry.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return "ci"
+
+
+def _entry_target(entry: Dict[str, Any]) -> str:
+    for key in ("target", "platform", "triple"):
+        value = entry.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return "<unknown>"
+
+
+def prune_index_entries(
+    entries: List[Dict[str, Any]], retention: Dict[str, int]
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    retain_default = retention.get("default", DEFAULT_RETENTION_POLICY["default"])
+    kept_reversed: List[Dict[str, Any]] = []
+    pruned: List[Dict[str, Any]] = []
+    counts: Dict[Tuple[str, str], int] = defaultdict(int)
+
+    for entry in reversed(entries):
+        profile = _entry_profile(entry)
+        target = _entry_target(entry)
+        limit = retention.get(profile, retain_default)
+        key = (profile, target)
+        if limit <= 0:
+            pruned.append(entry)
+            continue
+        if counts[key] < limit:
+            counts[key] += 1
+            kept_reversed.append(entry)
+        else:
+            pruned.append(entry)
+
+    kept_reversed.reverse()
+    pruned.reverse()
+    return kept_reversed, pruned
+
+
+def format_pass_rate(value: Optional[object]) -> str:
+    if isinstance(value, (int, float)):
+        return f"{float(value):.3f}"
+    return "-"
+
+
+def generate_summary_markdown(index_data: Dict[str, Any]) -> str:
+    entries: List[Dict[str, Any]] = []
+    raw_entries = index_data.get("entries")
+    if isinstance(raw_entries, list):
+        entries = [entry for entry in raw_entries if isinstance(entry, dict)]
+
+    if not entries:
+        return "# 監査ログサマリー\n\nエントリが存在しません。\n"
+
+    groups: Dict[Tuple[str, str], List[Dict[str, Any]]] = defaultdict(list)
+    for entry in entries:
+        groups[_entry_profile(entry), _entry_target(entry)].append(entry)
+
+    lines: List[str] = []
+    lines.append("# 監査ログサマリー")
+    lines.append("")
+    lines.append(f"- 総エントリ数: {len(entries)}")
+    pruned = index_data.get("pruned")
+    if isinstance(pruned, list):
+        lines.append(f"- 既存の削除済みビルド: {len(pruned)} 件")
+    lines.append("")
+    lines.append(
+        "| プロファイル | ターゲット | 保持件数 | 最新ビルドID | 最新 pass_rate | 詳細度 | 出力パス |"
+    )
+    lines.append(
+        "| --- | --- | ---: | --- | --- | --- | --- |"
+    )
+
+    for (profile, target), items in sorted(groups.items()):
+        latest = items[-1]
+        build_id = latest.get("build_id") or latest.get("id") or "-"
+        audit_level = latest.get("audit_level") or latest.get("level") or "-"
+        pass_rate = format_pass_rate(latest.get("pass_rate"))
+        path = latest.get("path") or latest.get("artifact_path") or "-"
+        lines.append(
+            f"| {profile} | {target} | {len(items)} | {build_id} | {pass_rate} | {audit_level} | `{path}` |"
+        )
+
+    return "\n".join(lines) + "\n"
 
 
 def collect_metrics(paths: List[Path]) -> Dict:
@@ -556,11 +691,92 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         dest="audit_sources",
         help="Path to audit JSON (repeatable).",
     )
+    parser.add_argument(
+        "--summary",
+        type=Path,
+        help="Generate Markdown summary from the specified audit index JSON.",
+    )
+    parser.add_argument(
+        "--prune",
+        action="store_true",
+        help="Prune the index passed via --summary according to retention policy.",
+    )
+    parser.add_argument(
+        "--retention-config",
+        type=Path,
+        default=Path("tooling/ci/audit-retention.toml"),
+        help="Retention policy TOML (default: tooling/ci/audit-retention.toml).",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show prune result without writing changes.",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = parse_args(argv)
+    if args.prune and not args.summary:
+        sys.stderr.write("--prune を使用する場合は --summary でインデックスを指定してください。\n")
+        return 2
+
+    if args.summary:
+        index_path = Path(args.summary)
+        if not index_path.is_file():
+            sys.stderr.write(f"Index file not found: {index_path}\n")
+            return 2
+        index_data = load_index(index_path)
+
+        if args.prune:
+            raw_entries = index_data.get("entries")
+            if isinstance(raw_entries, list):
+                normalized_entries = [
+                    entry for entry in raw_entries if isinstance(entry, dict)
+                ]
+            else:
+                normalized_entries = []
+            retention_policy = load_retention_policy(args.retention_config)
+            kept_entries, pruned_entries = prune_index_entries(
+                normalized_entries, retention_policy
+            )
+            if pruned_entries:
+                index_data["entries"] = kept_entries
+                existing_pruned = index_data.get("pruned")
+                pruned_log: List[str] = (
+                    [item for item in existing_pruned if isinstance(item, str)]
+                    if isinstance(existing_pruned, list)
+                    else []
+                )
+                seen_ids = set(pruned_log)
+                for entry in pruned_entries:
+                    identifier = entry.get("build_id") or entry.get("id")
+                    if isinstance(identifier, str) and identifier and identifier not in seen_ids:
+                        pruned_log.append(identifier)
+                        seen_ids.add(identifier)
+                index_data["pruned"] = pruned_log
+                if args.dry_run:
+                    sys.stderr.write(
+                        f"[dry-run] Would prune {len(pruned_entries)} entries from {index_path}\n"
+                    )
+                else:
+                    write_index(index_path, index_data)
+                    sys.stderr.write(
+                        f"Pruned {len(pruned_entries)} entries from {index_path}\n"
+                    )
+            else:
+                sys.stderr.write(
+                    f"No entries pruned for {index_path}\n"
+                )
+
+        summary_text = generate_summary_markdown(index_data)
+        if args.output:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(summary_text, encoding="utf-8")
+        else:
+            print(summary_text, end="")
+        return 0
+
     sources: List[Path]
     if args.sources:
         sources = [Path(src) for src in args.sources]

@@ -28,6 +28,18 @@ type typeclass_mode =
   | TypeclassMonomorph  (** モノモルフィゼーション PoC *)
   | TypeclassBoth  (** 両方の成果物を比較出力（PoC） *)
 
+(** 監査ログ出力ストアプロファイル *)
+type audit_store =
+  | AuditStoreTmp  (** 互換モード: tmp/cli-callconv-out 配下へ出力 *)
+  | AuditStoreLocal  (** ローカル永続ストア（tooling/audit-store/local） *)
+  | AuditStoreCi  (** CI 永続ストア（reports/audit） *)
+
+(** 監査ログ詳細度 *)
+type audit_level =
+  | AuditLevelSummary  (** 必須キーのみ *)
+  | AuditLevelFull  (** Phase 2-3 合意済みフィールド一式 *)
+  | AuditLevelDebug  (** 拡張フィールド含む完全ログ *)
+
 let print_full_help () =
   let lines =
     [
@@ -74,12 +86,19 @@ let print_full_help () =
        runtime/native/build/libreml_runtime.a）";
       "  --verify-ir         生成した LLVM IR を検証";
       "";
-      "効果システム:";
+      "効果システム・監査:";
       "  --effect-stage <stage>";
       "                       実行時 Stage を明示的に指定（例: experimental/beta/stable）";
       "  --runtime-capabilities <file>";
       "                       Runtime Capability Registry JSON を読み込み、Stage を解決";
-      "  --emit-audit <path>  効果 Stage 判定と残余効果の監査ログを JSON Lines で出力";
+      "  --emit-audit <off|on|tmp|local|ci|path>";
+      "                       監査ログ出力を制御（既定: on = tmp プロファイル）";
+      "  --audit-store <tmp|local|ci>";
+      "                       監査ログの出力プロファイルを選択";
+      "  --audit-dir <path>   監査ログの出力ディレクトリを上書き";
+      "  --audit-level <summary|full|debug>";
+      "                       監査ログの詳細度（既定: full）";
+      "  --no-emit-audit      監査ログ出力を無効化";
       "";
       "例:";
       "  remlc examples/cli/add.reml --emit-ir --trace";
@@ -120,6 +139,10 @@ type options = {
   link_runtime : bool;  (** ランタイムライブラリとリンクして実行可能ファイルを生成 *)
   runtime_path : string;  (** ランタイムライブラリのパス *)
   verify_ir : bool;  (** 生成された LLVM IR を検証 *)
+  audit_enabled : bool;  (** 監査ログ出力を有効にするか *)
+  audit_store : audit_store;  (** 監査ログの出力先プロファイル *)
+  audit_dir_override : string option;  (** 出力ディレクトリの上書き（任意） *)
+  audit_level : audit_level;  (** 監査ログの詳細度 *)
   emit_audit_path : string option;  (** 監査ログ（JSON Lines）出力先 *)
   (* 効果システム / Stage 制御 *)
   effect_stage_override : string option;  (** CLI で指定された Stage 名 *)
@@ -151,6 +174,10 @@ let default_options =
     link_runtime = false;
     runtime_path = "runtime/native/build/libreml_runtime.a";
     verify_ir = false;
+    audit_enabled = true;
+    audit_store = AuditStoreTmp;
+    audit_dir_override = None;
+    audit_level = AuditLevelFull;
     emit_audit_path = None;
     effect_stage_override = None;
     runtime_capabilities_path = None;
@@ -207,7 +234,11 @@ let parse_args argv =
   let link_runtime = ref false in
   let runtime_path = ref "runtime/native/build/libreml_runtime.a" in
   let verify_ir = ref false in
-  let emit_audit = ref None in
+  let audit_enabled = ref true in
+  let audit_store_str = ref "tmp" in
+  let audit_dir_override = ref None in
+  let audit_level_str = ref "full" in
+  let legacy_audit_path = ref None in
   let typeclass_mode_str = ref "dictionary" in
   let input_file = ref "" in
   let effect_stage = ref None in
@@ -278,8 +309,41 @@ let parse_args argv =
         Arg.String (fun value -> runtime_caps_path := Some value),
         "<file> Load Runtime Capability Registry from JSON file" );
       ( "--emit-audit",
-        Arg.String (fun value -> emit_audit := Some value),
-        "<path> Emit AuditEnvelope JSON Lines to file" );
+        Arg.String
+          (fun value ->
+            let lowered = String.lowercase_ascii value in
+            match lowered with
+            | "off" ->
+                audit_enabled := false;
+                legacy_audit_path := None
+            | "on" ->
+                audit_enabled := true;
+                legacy_audit_path := None
+            | "tmp" | "local" | "ci" as profile ->
+                audit_enabled := true;
+                audit_store_str := profile;
+                legacy_audit_path := None
+            | _ ->
+                audit_enabled := true;
+                legacy_audit_path := Some value),
+        "<off|on|tmp|local|ci|path> Control audit logging (default: on)" );
+      ( "--no-emit-audit",
+        Arg.Unit
+          (fun () ->
+            audit_enabled := false;
+            legacy_audit_path := None),
+        "Disable audit logging" );
+      ( "--audit-store",
+        Arg.String
+          (fun value -> audit_store_str := String.lowercase_ascii value),
+        "<tmp|local|ci> Select audit log store profile (default: tmp)" );
+      ( "--audit-dir",
+        Arg.String (fun value -> audit_dir_override := Some value),
+        "<path> Override audit output directory" );
+      ( "--audit-level",
+        Arg.String
+          (fun value -> audit_level_str := String.lowercase_ascii value),
+        "<summary|full|debug> Control audit log detail level (default: full)" );
       ( "--version",
         Arg.Unit
           (fun () ->
@@ -378,8 +442,64 @@ let parse_args argv =
         | other ->
             prerr_endline
               (Printf.sprintf
-                 "Warning: unknown json mode '%s', using 'pretty'" other);
+                "Warning: unknown json mode '%s', using 'pretty'" other);
             JsonPretty
+      in
+      let audit_store =
+        match String.lowercase_ascii !audit_store_str with
+        | "tmp" -> AuditStoreTmp
+        | "local" -> AuditStoreLocal
+        | "ci" -> AuditStoreCi
+        | other ->
+            prerr_endline
+              (Printf.sprintf
+                 "Warning: unknown audit store '%s', using 'tmp'" other);
+            AuditStoreTmp
+      in
+      let audit_level =
+        match !audit_level_str with
+        | "summary" -> AuditLevelSummary
+        | "full" -> AuditLevelFull
+        | "debug" -> AuditLevelDebug
+        | other ->
+            prerr_endline
+              (Printf.sprintf
+                 "Warning: unknown audit level '%s', using 'full'" other);
+            AuditLevelFull
+      in
+
+      let default_audit_path store target =
+        match store with
+        | AuditStoreTmp ->
+            let base = Filename.concat "tmp" "cli-callconv-out" in
+            let target_dir = Filename.concat base target in
+            Filename.concat target_dir "audit.jsonl"
+        | AuditStoreLocal ->
+            let base = Filename.concat "tooling" "audit-store" in
+            let local_dir = Filename.concat base "local" in
+            Filename.concat local_dir "audit.jsonl"
+        | AuditStoreCi ->
+            let base = Filename.concat "reports" "audit" in
+            let target_dir = Filename.concat base target in
+            Filename.concat target_dir "audit.jsonl"
+      in
+
+      let audit_dir_override_value = !audit_dir_override in
+
+      let emit_audit_path =
+        if not !audit_enabled then None
+        else
+          match !legacy_audit_path with
+          | Some path -> Some path
+          | None ->
+              let default_path = default_audit_path audit_store !target in
+              (match audit_dir_override_value with
+              | Some dir
+                when Filename.check_suffix dir ".json"
+                     || Filename.check_suffix dir ".jsonl" ->
+                  Some dir
+              | Some dir -> Some (Filename.concat dir "audit.jsonl")
+              | None -> Some default_path)
       in
 
       Ok
@@ -405,7 +525,11 @@ let parse_args argv =
           link_runtime = !link_runtime;
           runtime_path = !runtime_path;
           verify_ir = !verify_ir;
-          emit_audit_path = !emit_audit;
+          audit_enabled = !audit_enabled;
+          audit_store;
+          audit_dir_override = audit_dir_override_value;
+          audit_level;
+          emit_audit_path;
           effect_stage_override = !effect_stage;
           runtime_capabilities_path = !runtime_caps_path;
         }

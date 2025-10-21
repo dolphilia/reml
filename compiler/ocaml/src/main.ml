@@ -497,24 +497,25 @@ let () =
             (* Phase 1-6 Week 15: 型推論完了 *)
             record_end TypeChecking;
 
-            (match opts.Cli.Options.emit_audit_path with
-            | Some audit_path ->
-                let iterator_events =
-                  iterator_audit_events ~audit_id ~change_set:change_set_json
-                    runtime_stage_context
-                in
-                let bridge_events =
-                  ffi_bridge_events ~audit_id ~change_set:change_set_json ()
-                in
-                let events =
-                  runtime_stage_event ~audit_id ~change_set:change_set_json
-                    runtime_stage_context
-                  :: (iterator_events @ bridge_events
-                     @ events_from_effect_constraints ~audit_id
-                          ~change_set:change_set_json ())
-                in
-                Audit_envelope.append_events audit_path events
-            | None -> ());
+            (if opts.Cli.Options.audit_enabled then
+               match opts.Cli.Options.emit_audit_path with
+               | Some audit_path ->
+                   let iterator_events =
+                     iterator_audit_events ~audit_id ~change_set:change_set_json
+                       runtime_stage_context
+                   in
+                   let bridge_events =
+                     ffi_bridge_events ~audit_id ~change_set:change_set_json ()
+                   in
+                   let events =
+                     runtime_stage_event ~audit_id ~change_set:change_set_json
+                       runtime_stage_context
+                     :: (iterator_events @ bridge_events
+                        @ events_from_effect_constraints ~audit_id
+                             ~change_set:change_set_json ())
+                   in
+                   Audit_envelope.append_events audit_path events
+               | None -> ());
 
             (* Phase 2: Typed AST 出力 *)
             (if opts.emit_tast then
@@ -710,31 +711,32 @@ let () =
                     ~collect_metrics:false)
         | Error type_err ->
             (* 型推論エラー *)
-            (match opts.Cli.Options.emit_audit_path with
-            | Some audit_path ->
-                let runtime_event =
-                  runtime_stage_event ~audit_id ~change_set:change_set_json
-                    runtime_stage_context
-                in
-                let constraint_events =
-                  events_from_effect_constraints ~audit_id
-                    ~change_set:change_set_json ()
-                in
-                let iterator_events =
-                  iterator_audit_events ~audit_id ~change_set:change_set_json
-                    runtime_stage_context
-                in
-                let events_with_error =
-                  match
-                    event_of_type_error ~audit_id ~change_set:change_set_json
-                      type_err
-                  with
-                  | Some event -> event :: constraint_events
-                  | None -> constraint_events
-                in
-                Audit_envelope.append_events audit_path
-                  (runtime_event :: (iterator_events @ events_with_error))
-            | None -> ());
+            (if opts.Cli.Options.audit_enabled then
+               match opts.Cli.Options.emit_audit_path with
+               | Some audit_path ->
+                   let runtime_event =
+                     runtime_stage_event ~audit_id ~change_set:change_set_json
+                       runtime_stage_context
+                   in
+                   let constraint_events =
+                     events_from_effect_constraints ~audit_id
+                       ~change_set:change_set_json ()
+                   in
+                   let iterator_events =
+                     iterator_audit_events ~audit_id ~change_set:change_set_json
+                       runtime_stage_context
+                   in
+                   let events_with_error =
+                     match
+                       event_of_type_error ~audit_id ~change_set:change_set_json
+                         type_err
+                     with
+                     | Some event -> event :: constraint_events
+                     | None -> constraint_events
+                   in
+                   Audit_envelope.append_events audit_path
+                     (runtime_event :: (iterator_events @ events_with_error))
+               | None -> ());
             let diag =
               Type_error.to_diagnostic_with_source source opts.input_file
                 type_err
@@ -785,17 +787,18 @@ let () =
       if collect_trace then
         Cli.Trace.end_phase ~emit_log:emit_trace_logs Parsing;
 
-  (match opts.Cli.Options.emit_audit_path with
-  | Some audit_path ->
-      let iterator_events =
-        iterator_audit_events ~audit_id ~change_set:change_set_json
-          runtime_stage_context
-      in
-      Audit_envelope.append_events audit_path
-        (runtime_stage_event ~audit_id ~change_set:change_set_json
-           runtime_stage_context
-        :: iterator_events)
-  | None -> ());
+  (if opts.Cli.Options.audit_enabled then
+     match opts.Cli.Options.emit_audit_path with
+     | Some audit_path ->
+         let iterator_events =
+           iterator_audit_events ~audit_id ~change_set:change_set_json
+             runtime_stage_context
+         in
+         Audit_envelope.append_events audit_path
+           (runtime_stage_event ~audit_id ~change_set:change_set_json
+              runtime_stage_context
+           :: iterator_events)
+     | None -> ());
 
   let diag = attach_audit diag in
   print_diagnostic opts (Some source) diag;

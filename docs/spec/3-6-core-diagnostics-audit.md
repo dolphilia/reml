@@ -1163,3 +1163,14 @@ CLI は出力モードに応じて次のフォーマットで `CliDiagnosticEnve
 `AuditEnvelope` の `metadata` には CLI 固有の `command`, `phase`, `run_id` を必ず含めること。`run_id` は `Uuid` で、`reml` サブコマンドの 1 実行あたり 1 つ発行される。これにより CLI/IDE/監査ログ間でトレースを結び付けられる。
 
 CLI は `CliDiagnosticEnvelope` を生成した後、`emit(envelope.diagnostics[i], sink)` を順次呼び出し、構造化ログと人間向け表示の両方を実現する。`summary` の最終書き出し後に `exit_code` をプロセスの終了コードとして使用する。
+
+### 11.1 監査ログ出力フラグと永続ストア {#cli-audit-flags}
+
+- `--emit-audit`: 監査ログ（`AuditEnvelope` の JSON Lines）を生成する恒久フラグ。Phase 2-3 では暫定扱いだったが、Phase 2-4 以降は既定で有効とし、無効化する場合のみ `--emit-audit=off` を指定する。
+- `--audit-store=<profile>`: 出力先と保持ポリシーを切り替える。`ci` は `reports/audit/<target>/<YYYY>/<MM>/<DD>/` へ永続化し、`local` は `tooling/audit-store/local/<timestamp>/`、`tmp` は互換目的で `tmp/cli-callconv-out/<target>/` を用いる。各プロファイルは `AuditEnvelope.build_id = "<utc timestamp>-<commit sha>"` の命名規約を共有する。
+- `--audit-dir=<path>`: プロファイル既定のルートを上書きしつつ命名規約を維持する。相対パスは CLI 実行ディレクトリを基準に解決する。
+- `--audit-level={summary,full,debug}`: 書き出すメタデータ量を制御する。`summary` は必須キー（`command`, `phase`, `run_id`, `bridge.*`, `effect.stage.*` 等）のみに制限し、`full` は Phase 2-3 で合意された監査フィールドをすべて含み、`debug` は `extensions.*` を含む完全ログを生成する。
+- `--audit-store=ci` 時は CI 成功で最新 20 件を `reports/audit/history/<target>.jsonl.gz` として圧縮保存し、失敗時は `reports/audit/failed/<commit>/` へ退避する。削除したビルド ID は `reports/audit/index.json` の `pruned` 配列へ追記する。
+- 永続ストアは `reports/audit/index.json` および `reports/audit/usage.csv` を更新し、総容量が 500 MB を超えた場合は `0-4-risk-handling.md` に記録する。`tooling/ci/collect-iterator-audit-metrics.py` はこれらのメタデータを前提に `ffi_bridge.audit_pass_rate` と `iterator.stage.audit_pass_rate` を集計する。
+
+本節の CLI フラグ仕様は `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に記載された運用手順と同期させ、計画書と仕様の齟齬を防止する。

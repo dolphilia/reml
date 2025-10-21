@@ -27,6 +27,18 @@ type typeclass_mode =
   | TypeclassMonomorph  (** モノモルフィゼーション PoC *)
   | TypeclassBoth  (** 両方式の成果物比較 *)
 
+(** 監査ログ出力ストアプロファイル *)
+type audit_store =
+  | AuditStoreTmp  (** 互換モード: tmp/cli-callconv-out 配下へ出力 *)
+  | AuditStoreLocal  (** ローカル永続ストア（tooling/audit-store/local） *)
+  | AuditStoreCi  (** CI 永続ストア（reports/audit） *)
+
+(** 監査ログ詳細度 *)
+type audit_level =
+  | AuditLevelSummary  (** 必須キーのみを含むサマリーログ *)
+  | AuditLevelFull  (** Phase 2-3 で合意済みのフィールド一式 *)
+  | AuditLevelDebug  (** `extensions.*` を含む完全ログ *)
+
 type options = {
   (* 入力 *)
   input_file : string;  (** 入力ファイルパス（必須） *)
@@ -54,6 +66,10 @@ type options = {
   link_runtime : bool;  (** ランタイムライブラリとリンクして実行可能ファイルを生成 *)
   runtime_path : string;  (** ランタイムライブラリのパス *)
   verify_ir : bool;  (** 生成された LLVM IR を検証 *)
+  audit_enabled : bool;  (** 監査ログ出力を有効化するか *)
+  audit_store : audit_store;  (** 監査ログ出力先プロファイル *)
+  audit_dir_override : string option;  (** 出力ディレクトリの上書き（任意） *)
+  audit_level : audit_level;  (** 監査ログ詳細度 *)
   emit_audit_path : string option;  (** 監査ログ（JSON Lines）出力先 *)
   effect_stage_override : string option;  (** CLI で指定された Stage 名 *)
   runtime_capabilities_path : string option;
