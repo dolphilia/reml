@@ -86,15 +86,18 @@
     "timestamp": "2025-10-24T09:30:00Z",
     "structured_hints": [
       {
-        "command": "reml.applyFix",
-        "data": {
-          "replacement": "\"Production\"",
-          "range": {
-            "file": "examples/ffi/check_stage.reml",
-            "start_line": 11,
-            "start_col": 15,
-            "end_line": 11,
-            "end_col": 23
+        "kind": "command",
+        "payload": {
+          "command": "reml.applyFix",
+          "data": {
+            "replacement": "\"Production\"",
+            "range": {
+              "file": "examples/ffi/check_stage.reml",
+              "start_line": 11,
+              "start_col": 15,
+              "end_line": 11,
+              "end_col": 23
+            }
           }
         }
       }

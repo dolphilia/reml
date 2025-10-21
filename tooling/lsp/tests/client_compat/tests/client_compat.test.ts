@@ -55,4 +55,40 @@ describe("client compatibility scaffolding", () => {
     const audits = collectAuditSnapshots(diagnostics);
     expect(audits.some((value) => value && value.metadata?.["bridge.return.status"] === "unsafe")).toBe(true);
   });
+
+  it("parses effect stage mismatch fixture", () => {
+    const diagnostics = readDiagnostics(fixturesDir, "diagnostic-v2-effects-sample.json");
+    expect(diagnostics).toHaveLength(1);
+
+    const codes = Array.from(collectCodes(diagnostics));
+    expect(codes).toContain("effects.contract.stage_mismatch");
+
+    const hints = collectStructuredHints(diagnostics);
+    expect(hints.length).toBeGreaterThan(0);
+
+    const audits = collectAuditSnapshots(diagnostics);
+    expect(
+      audits.some((value) => {
+        if (!value || typeof value !== "object") return false;
+        const audit = value as { metadata?: Record<string, unknown> };
+        return audit.metadata?.["effect.stage.actual"] === "preview";
+      }),
+    ).toBe(true);
+  });
+
+  it("parses macOS-specific bridge fixture", () => {
+    const diagnostics = readDiagnostics(fixturesDir, "diagnostic-v2-ffi-macos-sample.json");
+    expect(diagnostics).toHaveLength(1);
+
+    const [diag] = diagnostics;
+    expect(diag.extensions?.["bridge.platform"]).toBe("macos-arm64");
+    const audits = collectAuditSnapshots(diagnostics);
+    expect(
+      audits.some((value) => {
+        if (!value || typeof value !== "object") return false;
+        const audit = value as { metadata?: Record<string, unknown> };
+        return audit.metadata?.["bridge.platform"] === "macos-arm64";
+      }),
+    ).toBe(true);
+  });
 });

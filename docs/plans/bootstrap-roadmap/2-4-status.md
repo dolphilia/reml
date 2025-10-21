@@ -9,8 +9,10 @@
 - シリアライズ統合セクションの詳細化を文書側で完了（2025-10-24）。共通レイヤ導入、JSON/テキスト/LSP の三系統を同時に扱うタスク分解と完了条件を明文化。
 - Phase 2-3 で引き継いだ `ffi_bridge.audit_pass_rate` / `iterator.stage.audit_pass_rate` のゲート条件は未導入。監査ログ運用は計画立案段階。
 - LSP 互換テスト（`tooling/lsp/tests/client_compat`）は雛形のみ存在し、フィクスチャと JSON Schema 検証の手動実行パスが準備されている。
+- FFI/効果/プラットフォーム差分フィクスチャ（`diagnostic-v2-ffi-*.json`, `diagnostic-v2-effects-sample.json`）を追加し、`npm run ci` でカバレッジを確認可能。
 - `compiler/ocaml/src/diagnostic_serialization.ml(.mli)` を新設し、CLI/LSP/CI 共有を想定した中間表現と JSON 変換ユーティリティの骨格を実装。
 - `scripts/validate-diagnostic-json.sh` と `tooling/lsp/tests/client_compat/validate-diagnostic-json.mjs` を追加し、AJV によるスキーマ検証フローを整備（`npm install` 前提）。Linux/Windows/macOS の CI ワークフローに `npm run ci` とスキーマ検証ステップを組み込んだ。
+- `reports/diagnostic-format-regression.md` を作成し、JSON 出力変更時の差分レビュー手順を整理。
 - `compiler/ocaml/src/cli/json_formatter.ml` と `tooling/lsp/diagnostic_transport.ml` を `diagnostic_serialization` ベースへリファクタリングし、`tooling/lsp/lsp_transport.ml`・`tooling/lsp/jsonrpc_server.ml` で V1/V2 変換パイプラインを整備。
 
 ### 1.2 リスク・ブロッカー

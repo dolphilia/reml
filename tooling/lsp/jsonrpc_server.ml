@@ -10,7 +10,7 @@ let publish_diagnostics_notification
   let normalized = List.map of_diagnostic diagnostics in
   let params =
     Lsp_transport.encode_publish_diagnostics ~version:transport
-      { uri; version; diagnostics = normalized }
+      Lsp_transport.{ uri; version; diagnostics = normalized }
   in
   `Assoc
     [

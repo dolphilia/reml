@@ -164,57 +164,68 @@ let diagnostic_to_lsp_json (diagnostic : Diagnostic.t) =
 
 let diagnostic_to_reml_json (diagnostic : Diagnostic.t) =
   let normalized = of_diagnostic diagnostic in
-  let base =
-    [
-      ("severity", `String (severity_to_string normalized.severity));
-      ("message", `String normalized.message);
-      ("location", reml_location normalized.primary);
-      ("codes", `List (List.map (fun code -> `String code) normalized.codes));
-      ("notes", `List (reml_notes normalized.secondary));
-      ("hints", `List (List.map hint_to_json normalized.hints));
-      ("fixits", `List (List.map fixit_to_json normalized.fixits));
-      ("extensions", Diagnostic.Extensions.to_json normalized.extensions);
-      ("structured_hints", structured_hints_from_extensions normalized.extensions);
-      ("audit_metadata", Diagnostic.Extensions.to_json normalized.audit_metadata);
-      ("audit", audit_to_json normalized.audit);
-      ("expected", reml_expected normalized.expected);
-    ]
-  in
-  let base =
-    match normalized.codes with
-    | code :: _ -> ("code", `String code) :: base
-    | [] -> base
-  in
-  let base =
-    match domain_to_string normalized.domain with
-    | Some domain -> ("domain", `String domain) :: base
-    | None -> base
-  in
-  let base =
-    match normalized.timestamp with
-    | Some ts -> ("timestamp", `String ts) :: base
-    | None -> base
-  in
-  let base =
-    match normalized.id with Some id -> ("id", `String id) :: base | None -> base
-  in
-  let base =
-    match normalized.severity_hint with
-    | Some hint -> ("severity_hint", `String (severity_hint_to_string hint)) :: base
-    | None -> base
-  in
-  `Assoc (List.rev base)
+  let fields = ref [] in
+  let push key value = fields := (key, value) :: !fields in
+  push "severity" (`String (severity_to_string normalized.severity));
+  push "message" (`String normalized.message);
+  push "location" (reml_location normalized.primary);
+  (match normalized.codes with
+  | code :: _ -> push "code" (`String code) | [] -> ());
+  if normalized.codes <> [] then
+    push "codes" (`List (List.map (fun code -> `String code) normalized.codes));
+  (match domain_to_string normalized.domain with
+  | Some domain -> push "domain" (`String domain)
+  | None -> ());
+  (match normalized.id with Some id -> push "id" (`String id) | None -> ());
+  (match normalized.timestamp with Some ts -> push "timestamp" (`String ts) | None -> ());
+  (match normalized.severity_hint with
+  | Some hint -> push "severity_hint" (`String (severity_hint_to_string hint))
+  | None -> ());
+  let notes = reml_notes normalized.secondary in
+  if notes <> [] then push "notes" (`List notes);
+  (match normalized.hints with
+  | [] -> ()
+  | hints -> push "hints" (`List (List.map hint_to_json hints)));
+  (match normalized.fixits with
+  | [] -> ()
+  | fixits -> push "fixits" (`List (List.map fixit_to_json fixits)));
+  (match structured_hints_from_extensions normalized.extensions with
+  | `List [] -> ()
+  | payload -> push "structured_hints" payload);
+  if not (Diagnostic.Extensions.is_empty normalized.extensions) then
+    push "extensions" (Diagnostic.Extensions.to_json normalized.extensions);
+  if not (Diagnostic.Extensions.is_empty normalized.audit_metadata) then
+    push "audit_metadata"
+      (Diagnostic.Extensions.to_json normalized.audit_metadata);
+  (match audit_to_json normalized.audit with
+  | `Null -> ()
+  | audit_json -> push "audit" audit_json);
+  (match reml_expected normalized.expected with
+  | `Null -> ()
+  | expected -> push "expected" expected);
+  `Assoc (List.rev !fields)
 
-let diagnostics_to_json ?(lsp_compatible = false) (diagnostics : Diagnostic.t list) :
-    string =
-  let json_list =
-    if lsp_compatible then
-      List.map diagnostic_to_lsp_json diagnostics
-    else
-      List.map diagnostic_to_reml_json diagnostics
-  in
-  let root = `Assoc [ ("diagnostics", `List json_list) ] in
-  Json.pretty_to_string root
+let encode_diagnostics ~lsp_compatible diagnostics =
+  if lsp_compatible then
+    List.map diagnostic_to_lsp_json diagnostics
+  else
+    List.map diagnostic_to_reml_json diagnostics
 
-let diagnostic_to_json ?(lsp_compatible = false) (diagnostic : Diagnostic.t) =
-  diagnostics_to_json ~lsp_compatible [ diagnostic ]
+let diagnostics_to_json ~mode ?(lsp_compatible = false)
+    (diagnostics : Diagnostic.t list) : string =
+  let json_list = encode_diagnostics ~lsp_compatible diagnostics in
+  match mode with
+  | Options.JsonPretty ->
+      Json.pretty_to_string (`Assoc [ ("diagnostics", `List json_list) ])
+  | Options.JsonCompact ->
+      Json.to_string (`Assoc [ ("diagnostics", `List json_list) ])
+  | Options.JsonLines ->
+      json_list |> List.map Json.to_string |> String.concat "\n"
+
+let diagnostic_to_json ~mode ?(lsp_compatible = false)
+    (diagnostic : Diagnostic.t) : string =
+  match mode with
+  | Options.JsonLines ->
+      encode_diagnostics ~lsp_compatible [ diagnostic ]
+      |> List.map Json.to_string |> String.concat "\n"
+  | _ -> diagnostics_to_json ~mode ~lsp_compatible [ diagnostic ]

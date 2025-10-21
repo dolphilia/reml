@@ -129,7 +129,9 @@ let () =
                       "tests/golden/diagnostics/ffi/unsupported-abi.reml" );
                 ])
        in
-       let json = Cli.Json_formatter.diagnostic_to_json diag in
+      let json =
+        Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
+      in
        let audit =
          match err with
          | Type_error.FfiContractSymbolMissing normalized

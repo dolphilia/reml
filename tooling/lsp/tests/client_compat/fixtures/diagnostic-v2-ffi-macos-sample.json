@@ -1,0 +1,46 @@
+[
+  {
+    "id": "55555555-5555-5555-5555-555555555555",
+    "message": "Bridge call completed (macOS sample)",
+    "severity": 2,
+    "domain": "runtime",
+    "codes": ["ffi.bridge.audit"],
+    "primary": {
+      "file": "examples/ffi/ffi_dispatch_async.reml",
+      "start_line": 12,
+      "start_col": 4,
+      "end_line": 12,
+      "end_col": 28
+    },
+    "secondary": [],
+    "expected": null,
+    "hints": [],
+    "fixits": [],
+    "extensions": {
+      "bridge.status": "success",
+      "bridge.platform": "macos-arm64",
+      "bridge.target": "ffi.dispatch.async",
+      "bridge.arch": "arm64",
+      "bridge.ownership": "caller",
+      "bridge.return.status": "success",
+      "bridge.return.wrap": "dispatch_async",
+      "bridge.return.release_handler": "dispatch_release",
+      "bridge.return.rc_adjustment": 0
+    },
+    "audit_metadata": {
+      "bridge.platform": "macos-arm64",
+      "bridge.status": "success"
+    },
+    "audit": {
+      "audit_id": "66666666-6666-6666-6666-666666666666",
+      "change_set": null,
+      "capability": "core.ffi.dispatch_async",
+      "metadata": {
+        "bridge.platform": "macos-arm64",
+        "bridge.return.status": "success"
+      }
+    },
+    "timestamp": "2025-10-24T10:45:00Z",
+    "structured_hints": []
+  }
+]

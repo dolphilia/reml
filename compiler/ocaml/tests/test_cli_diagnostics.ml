@@ -68,7 +68,9 @@ let test_json_output () =
   let diag = make_test_diagnostic () in
 
   (* JSON 出力を生成 *)
-  let json_str = Cli.Json_formatter.diagnostic_to_json diag in
+  let json_str =
+    Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
+  in
 
   (* JSON としてパース可能か確認 *)
   let json = Yojson.Basic.from_string json_str in
@@ -150,7 +152,9 @@ let test_stage_extension_snapshot () =
              ("input", `String "iter.reml");
            ])
   in
-  let json_str = Cli.Json_formatter.diagnostic_to_json diag in
+  let json_str =
+    Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
+  in
   let golden_path =
     resolve "tests/golden/typeclass_iterator_stage_mismatch.json.golden"
   in
@@ -223,7 +227,10 @@ let test_multiple_diagnostics () =
   in
 
   (* 複数診断の JSON 出力 *)
-  let json_str = Cli.Json_formatter.diagnostics_to_json [ diag1; diag2 ] in
+  let json_str =
+    Cli.Json_formatter.diagnostics_to_json ~mode:Cli.Options.JsonPretty
+      [ diag1; diag2 ]
+  in
   let json = Yojson.Basic.from_string json_str in
   let diagnostics = json |> Yojson.Basic.Util.member "diagnostics" in
   let diag_list = diagnostics |> Yojson.Basic.Util.to_list in

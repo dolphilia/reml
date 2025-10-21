@@ -7,6 +7,12 @@
 (** 出力フォーマット *)
 type output_format = Text  (** テキスト形式（デフォルト） *) | Json  (** JSON 形式（LSP 互換） *)
 
+(** JSON 出力モード *)
+type json_mode =
+  | JsonPretty  (** 整形済み JSON *)
+  | JsonCompact  (** 1 行 JSON *)
+  | JsonLines  (** JSON Lines 形式（1 行1診断） *)
+
 (** メトリクス出力フォーマット *)
 type metrics_format = MetricsJson  (** JSON 形式 *) | MetricsCsv  (** CSV 形式 *)
 
@@ -41,9 +47,12 @@ let print_full_help () =
       "  --out-dir <dir>     中間成果物の出力先ディレクトリ（既定: .）";
       "";
       "診断・フォーマット:";
-      "  --format <text|json>  診断出力形式（既定: text）";
+      "  --format <text|json>    診断出力形式（既定: text）";
+      "  --json-mode <pretty|compact|lines>";
+      "                           JSON 出力モード（既定: pretty）";
+      "  --no-snippet           テキスト診断からソーススニペットを除外";
       "  --color <auto|always|never>";
-      "                       カラー表示の制御（既定: auto）";
+      "                           カラー表示の制御（既定: auto）";
       "";
       "型クラス戦略（PoC）:";
       "  --typeclass-mode <dictionary|monomorph|both>";
@@ -96,6 +105,8 @@ type options = {
   out_dir : string;  (** 出力ディレクトリ *)
   (* 診断 *)
   format : output_format;  (** 診断メッセージの出力形式 *)
+  json_mode : json_mode;  (** JSON 出力モード *)
+  include_snippet : bool;  (** テキスト診断へスニペットを含めるか *)
   color : color_mode;  (** カラー出力の制御 *)
   typeclass_mode : typeclass_mode;  (** 型クラス実装戦略モード *)
   (* デバッグ *)
@@ -127,6 +138,8 @@ let default_options =
     emit_bc = false;
     out_dir = ".";
     format = Text;
+    json_mode = JsonPretty;
+    include_snippet = true;
     color = Auto;
     typeclass_mode = TypeclassDictionary;
     trace = false;
@@ -198,6 +211,8 @@ let parse_args argv =
   let typeclass_mode_str = ref "dictionary" in
   let input_file = ref "" in
   let effect_stage = ref None in
+  let json_mode_str = ref "pretty" in
+  let include_snippet = ref true in
   let runtime_caps_path = ref None in
 
   let usage_msg = "remlc-ocaml [options] <file>" in
@@ -216,10 +231,18 @@ let parse_args argv =
         "<dir> Output directory (default: .)" );
       (* 診断オプション *)
       ( "--format",
-        Arg.Set_string format_str,
+        Arg.String
+          (fun value -> format_str := String.lowercase_ascii value),
         "<text|json> Output format (default: text)" );
+      ( "--json-mode",
+        Arg.String
+          (fun value -> json_mode_str := String.lowercase_ascii value),
+        "<pretty|compact|lines> JSON output mode (default: pretty)" );
+      ( "--no-snippet",
+        Arg.Unit (fun () -> include_snippet := false),
+        "Disable source snippets in text diagnostics" );
       ( "--color",
-        Arg.Set_string color_str,
+        Arg.String (fun value -> color_str := String.lowercase_ascii value),
         "<auto|always|never> Color mode (default: auto)" );
       (* デバッグオプション *)
       ("--trace", Arg.Set trace, "Enable phase tracing");
@@ -229,12 +252,14 @@ let parse_args argv =
         Arg.String (fun path -> metrics_path := Some path),
         "<path> Output metrics to file" );
       ( "--metrics-format",
-        Arg.Set_string metrics_format_str,
+        Arg.String
+          (fun value -> metrics_format_str := String.lowercase_ascii value),
         "<json|csv> Metrics output format (default: json)" );
       ( "--typeclass-mode",
-        Arg.Set_string typeclass_mode_str,
-        "<dictionary|monomorph|both> Type class strategy (default: dictionary)"
-      );
+        Arg.String
+          (fun value ->
+            typeclass_mode_str := String.lowercase_ascii value),
+        "<dictionary|monomorph|both> Type class strategy (default: dictionary)" );
       (* コンパイルオプション *)
       ( "--target",
         Arg.Set_string target,
@@ -342,8 +367,19 @@ let parse_args argv =
             prerr_endline
               (Printf.sprintf
                  "Warning: unknown typeclass mode '%s', using 'dictionary'"
-                 other);
+                other);
             TypeclassDictionary
+      in
+      let json_mode =
+        match !json_mode_str with
+        | "pretty" -> JsonPretty
+        | "compact" -> JsonCompact
+        | "lines" -> JsonLines
+        | other ->
+            prerr_endline
+              (Printf.sprintf
+                 "Warning: unknown json mode '%s', using 'pretty'" other);
+            JsonPretty
       in
 
       Ok
@@ -356,6 +392,8 @@ let parse_args argv =
           emit_bc = !emit_bc;
           out_dir = !out_dir;
           format;
+          json_mode;
+          include_snippet = !include_snippet;
           color;
           typeclass_mode;
           trace = !trace;

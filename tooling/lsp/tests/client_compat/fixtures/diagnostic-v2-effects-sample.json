@@ -1,0 +1,109 @@
+[
+  {
+    "id": "22222222-2222-2222-2222-222222222222",
+    "message": "Stage 要求と Capability Stage が一致しません",
+    "severity": 1,
+    "domain": "type",
+    "codes": ["effects.contract.stage_mismatch"],
+    "primary": {
+      "file": "examples/effects/stage_policy.reml",
+      "start_line": 7,
+      "start_col": 2,
+      "end_line": 7,
+      "end_col": 36
+    },
+    "secondary": [
+      {
+        "span": {
+          "file": "examples/effects/stage_policy.reml",
+          "start_line": 3,
+          "start_col": 6,
+          "end_line": 3,
+          "end_col": 28
+        },
+        "message": "Declared effect stage: at_least beta"
+      }
+    ],
+    "expected": {
+      "message_key": "effects.contract.stage_mismatch",
+      "alternatives": [
+        { "kind": "custom", "value": "Capability stage must satisfy at least beta" }
+      ],
+      "locale_args": ["beta", "core.iterator.collect"]
+    },
+    "hints": [
+      {
+        "message": "Capability Registry で Stage を昇格させるか、宣言を beta に合わせてください",
+        "actions": [
+          {
+            "kind": "replace",
+            "range": {
+              "file": "examples/effects/stage_policy.reml",
+              "start_line": 3,
+              "start_col": 23,
+              "end_line": 3,
+              "end_col": 29
+            },
+            "text": "\"beta\""
+          }
+        ]
+      }
+    ],
+    "fixits": [
+      {
+        "kind": "replace",
+        "range": {
+          "file": "examples/effects/stage_policy.reml",
+          "start_line": 7,
+          "start_col": 20,
+          "end_line": 7,
+          "end_col": 35
+        },
+        "text": "@requires_capability(stage = \"beta\")"
+      }
+    ],
+    "extensions": {
+      "effects.contract.stage.required": "beta",
+      "effects.contract.stage.actual": "preview",
+      "effects.contract.capability": "core.iterator.collect",
+      "effects.contract.stage_trace": [
+        { "source": "cli_option", "stage": "beta" },
+        { "source": "runtime", "stage": "preview", "capability": "core.iterator.collect" }
+      ]
+    },
+    "audit_metadata": {
+      "effect.stage.required": "beta",
+      "effect.stage.actual": "preview",
+      "effect.capability": "core.iterator.collect"
+    },
+    "audit": {
+      "audit_id": "33333333-3333-3333-3333-333333333333",
+      "change_set": null,
+      "capability": "core.iterator.collect",
+      "metadata": {
+        "effect.stage.required": "beta",
+        "effect.stage.actual": "preview",
+        "effect.stage.source": "runtime"
+      }
+    },
+    "timestamp": "2025-10-24T10:15:00Z",
+    "structured_hints": [
+      {
+        "kind": "command",
+        "payload": {
+          "command": "reml.applyFix",
+          "data": {
+            "replacement": "\"beta\"",
+            "range": {
+              "file": "examples/effects/stage_policy.reml",
+              "start_line": 3,
+              "start_col": 23,
+              "end_line": 3,
+              "end_col": 29
+            }
+          }
+        }
+      }
+    ]
+  }
+]

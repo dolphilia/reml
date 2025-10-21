@@ -163,17 +163,17 @@ let format_header ~diag ~color_mode =
  * @param color_mode カラーモード
  * @return フォーマットされた診断文字列
  *)
-let format_diagnostic ~source ~diag ~color_mode =
+let format_diagnostic ~source ~diag ~color_mode ~include_snippet =
   let open Diagnostic in
   let header = format_header ~diag ~color_mode in
 
   let snippet =
-    match source with
-    | Some src ->
+    match (include_snippet, source) with
+    | true, Some src ->
         "\n"
         ^ format_snippet ~source:src ~span:diag.primary ~color_mode
             ~severity:diag.severity
-    | None -> ""
+    | _ -> ""
   in
 
   let expected_str =
@@ -319,7 +319,9 @@ let format_diagnostic ~source ~diag ~color_mode =
  * @param color_mode カラーモード
  * @return フォーマットされた診断文字列（改行区切り）
  *)
-let format_diagnostics ~source ~diags ~color_mode =
+let format_diagnostics ~source ~diags ~color_mode ~include_snippet =
   diags
-  |> List.map (fun diag -> format_diagnostic ~source ~diag ~color_mode)
+  |> List.map
+       (fun diag ->
+         format_diagnostic ~source ~diag ~color_mode ~include_snippet)
   |> String.concat "\n\n"

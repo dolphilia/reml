@@ -32,6 +32,7 @@ val format_diagnostic :
   source:string option ->
   diag:Diagnostic.t ->
   color_mode:Options.color_mode ->
+  include_snippet:bool ->
   string
 (** 診断全体をテキスト形式で出力
  *
@@ -48,6 +49,7 @@ val format_diagnostics :
   source:string option ->
   diags:Diagnostic.t list ->
   color_mode:Options.color_mode ->
+  include_snippet:bool ->
   string
 (** 複数の診断をバッチ出力
  *

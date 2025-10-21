@@ -182,7 +182,9 @@ let run_with_mode mode =
   let diag =
     Type_error.to_diagnostic_with_source "" "effectful_sum.reml" error
   in
-  let diag_json = Cli.Json_formatter.diagnostic_to_json diag in
+  let diag_json =
+    Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
+  in
   let constraint_events =
     Constraint_solver.current_effect_constraints ()
     |> Constraint_solver.EffectConstraintTable.to_list

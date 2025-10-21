@@ -5,9 +5,6 @@
 
 open Diagnostic
 
-(** JSON 出力モード。`Lines` は 1 診断ごとに 1 行を返す。 *)
-type json_mode = [ `Pretty | `Compact | `Lines ]
-
 (** 正規化済みスパン（0 起算）。 *)
 type normalized_span = {
   file : string;

@@ -344,7 +344,10 @@ let print_diagnostic opts source diag =
     match opts.Cli.Options.format with
     | Cli.Options.Text ->
         Cli.Diagnostic_formatter.format_diagnostic ~source ~diag ~color_mode
-    | Cli.Options.Json -> Cli.Json_formatter.diagnostic_to_json diag
+          ~include_snippet:opts.Cli.Options.include_snippet
+    | Cli.Options.Json ->
+        Cli.Json_formatter.diagnostic_to_json ~mode:opts.Cli.Options.json_mode
+          diag
   in
   Printf.eprintf "%s\n" output
 

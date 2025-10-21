@@ -139,7 +139,7 @@ let encode_v2_diagnostic (diag : normalized_diagnostic) =
   `Assoc (List.rev base)
 
 let encode_v1_diagnostic (diag : normalized_diagnostic) =
-  Diagnostic_v1.to_v1_json diag
+  Compat.Diagnostic_v1.to_v1_json diag
 
 let diagnostics_payload ~version diagnostics =
   match version with

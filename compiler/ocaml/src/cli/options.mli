@@ -6,6 +6,12 @@
 (** 出力フォーマット *)
 type output_format = Text  (** テキスト形式（デフォルト） *) | Json  (** JSON 形式（LSP 互換） *)
 
+(** JSON 出力モード *)
+type json_mode =
+  | JsonPretty  (** 整形済み JSON *)
+  | JsonCompact  (** 1 行のコンパクト JSON *)
+  | JsonLines  (** JSON Lines 形式 *)
+
 (** メトリクス出力フォーマット *)
 type metrics_format = MetricsJson  (** JSON 形式 *) | MetricsCsv  (** CSV 形式 *)
 
@@ -33,6 +39,8 @@ type options = {
   out_dir : string;  (** 出力ディレクトリ *)
   (* 診断 *)
   format : output_format;  (** 診断メッセージの出力形式 *)
+  json_mode : json_mode;  (** JSON 出力モード *)
+  include_snippet : bool;  (** テキスト診断にソーススニペットを含めるか *)
   color : color_mode;  (** カラー出力の制御 *)
   typeclass_mode : typeclass_mode;  (** 型クラス実装戦略モード *)
   (* デバッグ *)

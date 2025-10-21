@@ -2,8 +2,6 @@ open Diagnostic
 
 module Json = Yojson.Basic
 
-type json_mode = [ `Pretty | `Compact | `Lines ]
-
 type normalized_span = {
   file : string;
   start_line : int;
