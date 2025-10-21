@@ -1,0 +1,8 @@
+# Retention policy for audit log indices.
+# Values represent the maximum number of entries to keep per profile/target.
+
+[retain]
+ci = 100
+local = 30
+tmp = 20
+default = 50

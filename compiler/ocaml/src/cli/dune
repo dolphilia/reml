@@ -8,5 +8,7 @@
   json_formatter
   trace
   stats
-  version)
- (libraries unix yojson reml_parser))
+  version
+  audit_path_resolver
+  audit_persistence)
+(libraries unix yojson reml_parser))

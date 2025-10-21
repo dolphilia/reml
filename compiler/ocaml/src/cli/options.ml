@@ -468,38 +468,22 @@ let parse_args argv =
             AuditLevelFull
       in
 
-      let default_audit_path store target =
-        match store with
-        | AuditStoreTmp ->
-            let base = Filename.concat "tmp" "cli-callconv-out" in
-            let target_dir = Filename.concat base target in
-            Filename.concat target_dir "audit.jsonl"
-        | AuditStoreLocal ->
-            let base = Filename.concat "tooling" "audit-store" in
-            let local_dir = Filename.concat base "local" in
-            Filename.concat local_dir "audit.jsonl"
-        | AuditStoreCi ->
-            let base = Filename.concat "reports" "audit" in
-            let target_dir = Filename.concat base target in
-            Filename.concat target_dir "audit.jsonl"
-      in
-
       let audit_dir_override_value = !audit_dir_override in
+
+      let is_explicit_path path =
+        Filename.check_suffix path ".json"
+        || Filename.check_suffix path ".jsonl"
+      in
 
       let emit_audit_path =
         if not !audit_enabled then None
         else
           match !legacy_audit_path with
           | Some path -> Some path
-          | None ->
-              let default_path = default_audit_path audit_store !target in
-              (match audit_dir_override_value with
-              | Some dir
-                when Filename.check_suffix dir ".json"
-                     || Filename.check_suffix dir ".jsonl" ->
-                  Some dir
-              | Some dir -> Some (Filename.concat dir "audit.jsonl")
-              | None -> Some default_path)
+          | None -> (
+              match audit_dir_override_value with
+              | Some dir when is_explicit_path dir -> Some dir
+              | _ -> None)
       in
 
       Ok
