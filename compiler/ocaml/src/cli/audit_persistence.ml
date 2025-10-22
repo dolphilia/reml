@@ -131,7 +131,11 @@ let update_index context outcome audit_path =
             in
             let rest =
               List.filter
-                (fun (k, _) -> not (String.equal k "entries" || String.equal k "pruned"))
+                (fun (k, _) ->
+                  not
+                    (String.equal k "entries"
+                    || String.equal k "pruned"
+                    || String.equal k "retained_entries"))
                 entries
             in
             (json_list entries_json, json_list pruned_json, rest)
@@ -176,9 +180,57 @@ let update_index context outcome audit_path =
       let pruned_now, kept_entries =
         trim_entries max_index_entries combined_entries
       in
+      let retained_summary =
+        let stats = Hashtbl.create 16 in
+        let add_entry = function
+          | `Assoc fields ->
+              let profile =
+                match find_assoc "profile" fields with
+                | Some (`String value) when value <> "" -> value
+                | _ -> context.profile_string
+              in
+              let target =
+                match find_assoc "target" fields with
+                | Some (`String value) when value <> "" -> value
+                | _ -> context.target
+              in
+              let size =
+                match find_assoc "size_bytes" fields with
+                | Some (`String value) -> (
+                    match int_of_string_opt value with
+                    | Some v when v >= 0 -> v
+                    | _ -> 0)
+                | Some (`Int v) when v >= 0 -> v
+                | Some (`Float v) when v >= 0.0 -> int_of_float v
+                | _ -> 0
+              in
+              let key = (profile, target) in
+              let (count, total_size) =
+                match Hashtbl.find_opt stats key with
+                | Some data -> data
+                | None -> (0, 0)
+              in
+              Hashtbl.replace stats key (count + 1, total_size + size)
+          | _ -> ()
+        in
+        List.iter add_entry kept_entries;
+        let sequence =
+          Hashtbl.to_seq stats
+          |> Seq.map (fun ((profile, target), (count, size)) ->
+                 `Assoc
+                   [
+                     ("profile", `String profile);
+                     ("target", `String target);
+                     ("count", `Int count);
+                     ("size_bytes", `Int size);
+                   ])
+        in
+        `List (List.of_seq sequence)
+      in
       let combined =
         `Assoc
           (("entries", `List kept_entries)
+          :: ("retained_entries", retained_summary)
           :: ("pruned", `List (existing_pruned @ pruned_now))
           :: other_fields)
       in
