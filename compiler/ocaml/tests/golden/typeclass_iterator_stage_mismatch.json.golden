@@ -1,32 +1,21 @@
 {
   "diagnostics": [
     {
-      "audit": {
-        "metadata": {
-          "effect.stage.iterator.source": "dsl/core.iter.toml",
-          "effect.stage.iterator.capability": "core.iterator.collect",
-          "effect.stage.iterator.kind": "custom:iterator.snapshot",
-          "effect.stage.iterator.actual": "experimental",
-          "effect.stage.iterator.required": "at_least:beta",
-          "effect.capability_metadata": {
-            "provider": "core.iter",
-            "last_verified_at": "2025-10-21T03:15:00Z"
-          },
-          "effect.manifest_path": "dsl/core.iter.toml",
-          "effect.provider": "Core.Iter",
-          "effect.residual": {
-            "missing_ops": [ "Iterator::next", "Iterator::size_hint" ]
-          },
-          "effect.capability": "core.iterator.collect",
-          "effect.stage.actual": "experimental",
-          "effect.stage.required": "beta"
-        },
-        "audit_id": "11111111-1111-1111-1111-111111111111",
-        "change_set": {
-          "command": "stage-diagnostic-test",
-          "input": "iter.reml"
-        }
+      "severity": "error",
+      "message": "Iterator Capability が要求された Stage を満たしていません",
+      "location": {
+        "file": "iter.reml",
+        "line": 4,
+        "column": 3,
+        "endLine": 4,
+        "endColumn": 18
       },
+      "code": "typeclass.iterator.stage_mismatch",
+      "codes": [ "typeclass.iterator.stage_mismatch" ],
+      "domain": "type",
+      "notes": [
+        "要求 Stage: beta / Capability Stage: experimental (core.iterator.collect)"
+      ],
       "extensions": {
         "diagnostic.v2": { "codes": [ "typeclass.iterator.stage_mismatch" ] },
         "effects": {
@@ -53,20 +42,50 @@
         "effect.stage.actual": "experimental",
         "effect.stage.capability": "core.iterator.collect"
       },
-      "notes": [
-        "要求 Stage: beta / Capability Stage: experimental (core.iterator.collect)"
-      ],
-      "domain": "型システム",
-      "codes": [ "typeclass.iterator.stage_mismatch" ],
-      "code": "typeclass.iterator.stage_mismatch",
-      "severity": "error",
-      "message": "Iterator Capability が要求された Stage を満たしていません",
-      "location": {
-        "file": "iter.reml",
-        "line": 4,
-        "column": 3,
-        "endLine": 4,
-        "endColumn": 18
+      "audit_metadata": {
+        "effect.stage.required": "beta",
+        "effect.stage.actual": "experimental",
+        "effect.capability": "core.iterator.collect",
+        "effect.residual": {
+          "missing_ops": [ "Iterator::next", "Iterator::size_hint" ]
+        },
+        "effect.provider": "Core.Iter",
+        "effect.manifest_path": "dsl/core.iter.toml",
+        "effect.capability_metadata": {
+          "provider": "core.iter",
+          "last_verified_at": "2025-10-21T03:15:00Z"
+        },
+        "effect.stage.iterator.required": "at_least:beta",
+        "effect.stage.iterator.actual": "experimental",
+        "effect.stage.iterator.kind": "custom:iterator.snapshot",
+        "effect.stage.iterator.capability": "core.iterator.collect",
+        "effect.stage.iterator.source": "dsl/core.iter.toml"
+      },
+      "audit": {
+        "metadata": {
+          "effect.stage.iterator.source": "dsl/core.iter.toml",
+          "effect.stage.iterator.capability": "core.iterator.collect",
+          "effect.stage.iterator.kind": "custom:iterator.snapshot",
+          "effect.stage.iterator.actual": "experimental",
+          "effect.stage.iterator.required": "at_least:beta",
+          "effect.capability_metadata": {
+            "provider": "core.iter",
+            "last_verified_at": "2025-10-21T03:15:00Z"
+          },
+          "effect.manifest_path": "dsl/core.iter.toml",
+          "effect.provider": "Core.Iter",
+          "effect.residual": {
+            "missing_ops": [ "Iterator::next", "Iterator::size_hint" ]
+          },
+          "effect.capability": "core.iterator.collect",
+          "effect.stage.actual": "experimental",
+          "effect.stage.required": "beta"
+        },
+        "audit_id": "11111111-1111-1111-1111-111111111111",
+        "change_set": {
+          "command": "stage-diagnostic-test",
+          "input": "iter.reml"
+        }
       }
     }
   ]

@@ -86,6 +86,10 @@ let ensure_audit_file path =
     let oc = open_out_gen [ Open_creat; Open_text ] 0o644 path in
     close_out oc)
 
+let gzip_output_string gz str =
+  let bytes = Bytes.unsafe_of_string str in
+  Gzip.output gz bytes 0 (Bytes.length bytes)
+
 let copy_file ~src ~dst =
   if Sys.file_exists src then (
     ensure_parent_directory dst;
@@ -259,7 +263,7 @@ let write_history context entries =
                 (try
                    while true do
                      let line = input_line ic in
-                     Gzip.output_string gz line;
+                     gzip_output_string gz line;
                      Gzip.output_char gz '\n'
                    done
                  with End_of_file -> ()))

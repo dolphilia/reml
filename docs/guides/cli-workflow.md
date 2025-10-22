@@ -154,6 +154,12 @@ JSON出力はスキーマ定義 [`docs/schemas/remlc-metrics.schema.json`](../sc
 - **スモークテスト**: `--emit-ir --verify-ir` を主要サンプルに対して実行し、リンク工程は必要に応じて nightly ジョブに移す。
 - **性能回帰検出**: `--metrics` で出力したJSONをCI上で過去の実行結果と比較し、parse_throughputやmemory_peak_ratioの異常値を検出する。
 
+### 5.4 監査ログの永続化と圧縮履歴
+
+- `--emit-audit --audit-store=<profile>` を指定すると CLI が `reports/audit/<target>/<YYYY>/<MM>/<DD>/<build-id>.jsonl` を生成し、`reports/audit/index.json`・`summary.md` を更新する。`profile=local` は `tooling/audit-store/local/<timestamp>/audit.jsonl` に書き出す。
+- CI プロファイルでは最新 20 件の監査ログを `reports/audit/history/<target>.jsonl.gz` として圧縮し、失敗時は `reports/audit/failed/<build-id>/` に `audit.jsonl` と `entry.json` を退避する。`history/` 生成や復元には `camlzip` が必要なため、`opam install . --deps-only --with-test` を実行して依存を揃えてから CLI をビルドする。
+- 監査成果物は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の手順に従ってレビュー時に確認する。`reports/audit/index.json` が更新された PR では `history/*.jsonl.gz` の更新と `failed/` ディレクトリの有無も併せて確認する。
+
 ---
 
 ## 6. トラブルシューティング

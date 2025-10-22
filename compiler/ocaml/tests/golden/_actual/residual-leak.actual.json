@@ -1,18 +1,21 @@
 {
   "diagnostics": [
     {
-      "audit": {
-        "metadata": {
-          "stage_trace": [
-            { "source": "typer", "stage": "stable" },
-            { "source": "runtime", "stage": "stable" }
-          ],
-          "effect.stage.required": "stable",
-          "effect.stage.actual": "stable",
-          "effect.capability": "core.runtime",
-          "effect.residual.tags": [ "panic" ]
-        }
+      "severity": "error",
+      "message": "残余効果が閉じていません",
+      "location": {
+        "file": "<入力>",
+        "line": 1,
+        "column": 1,
+        "endLine": 1,
+        "endColumn": 1
       },
+      "code": "effects.contract.residual_leak",
+      "codes": [ "effects.contract.residual_leak" ],
+      "domain": "type",
+      "notes": [
+        "`panic` のハンドラが宣言されていないためステージ検証に失敗しました"
+      ],
       "extensions": {
         "diagnostic.v2": { "codes": [ "effects.contract.residual_leak" ] },
         "effects": {
@@ -62,20 +65,27 @@
           }
         ]
       },
-      "notes": [
-        "`panic` のハンドラが宣言されていないためステージ検証に失敗しました"
-      ],
-      "domain": "型システム",
-      "codes": [ "effects.contract.residual_leak" ],
-      "code": "effects.contract.residual_leak",
-      "severity": "error",
-      "message": "残余効果が閉じていません",
-      "location": {
-        "file": "<入力>",
-        "line": 1,
-        "column": 1,
-        "endLine": 1,
-        "endColumn": 1
+      "audit_metadata": {
+        "effect.residual.tags": [ "panic" ],
+        "effect.capability": "core.runtime",
+        "effect.stage.actual": "stable",
+        "effect.stage.required": "stable",
+        "stage_trace": [
+          { "source": "typer", "stage": "stable" },
+          { "source": "runtime", "stage": "stable" }
+        ]
+      },
+      "audit": {
+        "metadata": {
+          "stage_trace": [
+            { "source": "typer", "stage": "stable" },
+            { "source": "runtime", "stage": "stable" }
+          ],
+          "effect.stage.required": "stable",
+          "effect.stage.actual": "stable",
+          "effect.capability": "core.runtime",
+          "effect.residual.tags": [ "panic" ]
+        }
       }
     }
   ]

@@ -366,7 +366,7 @@ let get_basename filepath =
  * @param runtime_lib ランタイムライブラリパス
  * @param output_exe 出力実行可能ファイルパス
  *)
-let link_with_runtime ll_file runtime_lib output_exe =
+let link_with_runtime ?on_failure ll_file runtime_lib output_exe =
   (* LLVM IR → オブジェクトファイル *)
   let obj_file = Filename.remove_extension ll_file ^ ".o" in
   let llc_cmd = Printf.sprintf "llc -filetype=obj %s -o %s" ll_file obj_file in
@@ -375,6 +375,7 @@ let link_with_runtime ll_file runtime_lib output_exe =
   let llc_result = Sys.command llc_cmd in
   if llc_result <> 0 then (
     Printf.eprintf "Error: llc failed with exit code %d\n" llc_result;
+    Option.iter (fun f -> f ()) on_failure;
     exit 1);
 
   (* オブジェクトファイル + ランタイム → 実行可能ファイル *)
@@ -387,6 +388,7 @@ let link_with_runtime ll_file runtime_lib output_exe =
   let link_result = Sys.command link_cmd in
   if link_result <> 0 then (
     Printf.eprintf "Error: linking failed with exit code %d\n" link_result;
+    Option.iter (fun f -> f ()) on_failure;
     exit 1);
 
   (* 一時オブジェクトファイルを削除 *)
@@ -404,6 +406,10 @@ let () =
         exit 1
   in
   let audit_context = Cli.Audit_path_resolver.resolve opts in
+  let mark_audit_failure () =
+    Cli.Audit_persistence.append_events audit_context
+      ~outcome:Cli.Audit_persistence.Failure []
+  in
 
   let audit_seed =
     let input_label =
@@ -585,9 +591,10 @@ let () =
                      | Ok () ->
                          Printf.printf "%sLLVM IR verification passed.\n" prefix
                      | Error err ->
+                         mark_audit_failure ();
                          let diag = Verify.error_to_diagnostic err None in
                          print_diagnostic opts None diag;
-                         ignore (Stdlib.exit 1));
+                         exit 1);
 
                   let basename = get_basename opts.input_file in
                   let ll_file_opt = ref None in
@@ -621,15 +628,18 @@ let () =
                       Printf.eprintf
                         "Please build the runtime first with: make -C \
                          runtime/native runtime\n";
+                      mark_audit_failure ();
                       exit 1);
                     let output_exe = output_filename out_dir basename "" in
                     Printf.printf "%sLinking artifact into: %s\n" prefix
                       output_exe;
-                    link_with_runtime ll_file opts.runtime_path output_exe;
+                    link_with_runtime ~on_failure:mark_audit_failure ll_file
+                      opts.runtime_path output_exe;
                     if !ll_file_opt = None && not opts.emit_ir then
                       Sys.remove ll_file)
                 with
                 | Core_ir.Desugar.DesugarError (msg, ast_span) ->
+                    mark_audit_failure ();
                     let diag_span =
                       Diagnostic.
                         {
@@ -661,6 +671,7 @@ let () =
                     print_diagnostic opts (Some source) diag;
                     exit 1
                 | Codegen.CodegenError msg ->
+                    mark_audit_failure ();
                     let dummy_loc =
                       Diagnostic.
                         {
