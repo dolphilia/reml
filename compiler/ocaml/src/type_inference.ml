@@ -235,7 +235,7 @@ let record_typeclass_success (constraint_ : trait_constraint)
     (dict_ref : Constraint_solver.dict_ref) =
   let summary =
     Typeclass_metadata.make_summary ~constraint_
-      ~resolution_state:Typeclass_metadata.Resolved ~dict_ref:(Some dict_ref)
+      ~resolution_state:Typeclass_metadata.Resolved ~dict_ref:dict_ref
       ()
   in
   record_typeclass_snapshot summary
@@ -269,7 +269,7 @@ let record_typeclass_error (err : Constraint_solver.constraint_error) =
   in
   let summary =
     Typeclass_metadata.make_summary ~constraint_
-      ~resolution_state:state ~dict_ref:None ~candidates ~pending
+      ~resolution_state:state ~candidates ~pending
       ~generalized_typevars:generalized ()
   in
   record_typeclass_snapshot summary;

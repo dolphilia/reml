@@ -207,7 +207,16 @@ let string_of_error = function
         "Empty match expression at %d:%d\n\
         \  Match expression must have at least one arm" span.start span.end_
   | TraitConstraintFailure
-      { trait_name; type_args; reason; span; effect_stage = _ } ->
+      {
+        trait_name;
+        type_args;
+        reason;
+        span;
+        effect_stage = _;
+        typeclass_state = _;
+        typeclass_pending = _;
+        typeclass_generalized = _;
+      } ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
       in
@@ -1731,7 +1740,17 @@ let to_diagnostic_with_source ?(available_names : string list = [])
       let notes = [ (None, "パターンマッチのケースを追加してください") ] in
 
       make_type_error ~code:"E7015" ~message ~span:diag_span ~notes ()
-  | TraitConstraintFailure { trait_name; type_args; reason; span; effect_stage }
+  | TraitConstraintFailure
+      {
+        trait_name;
+        type_args;
+        reason;
+        span;
+        effect_stage;
+        typeclass_state = _;
+        typeclass_pending = _;
+        typeclass_generalized = _;
+      }
     ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
