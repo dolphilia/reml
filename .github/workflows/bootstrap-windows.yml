@@ -88,6 +88,16 @@ jobs:
             --audit compiler/ocaml/tests/golden/audit/effects-stage.json.golden \
             --output reports/iterator-stage-summary-windows.md
 
+      - name: Verify audit metadata inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tooling/ci/verify-audit-metadata.py \
+            --index reports/audit/index.json \
+            --root . \
+            --history-dir reports/audit/history \
+            --strict
+
       - name: Upload Windows audit summary
         if: always()
         uses: actions/upload-artifact@v4

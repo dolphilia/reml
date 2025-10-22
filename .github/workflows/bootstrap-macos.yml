@@ -575,6 +575,14 @@ jobs:
             --macos-ffi-samples tooling/ci/ffi-audit/macos/ffi_malloc_arm64.audit.jsonl \
             --output reports/iterator-stage-summary.md
 
+      - name: Verify audit metadata inventory
+        run: |
+          python3 tooling/ci/verify-audit-metadata.py \
+            --index reports/audit/index.json \
+            --root . \
+            --history-dir reports/audit/history \
+            --strict
+
       - name: Upload iterator audit metrics
         if: always()
         uses: actions/upload-artifact@v4

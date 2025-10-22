@@ -143,7 +143,7 @@ $ _build/default/src/main.exe ../../tmp/cli-callconv-macos.reml \
 - [x] Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）を実装し、メモリ所有権の監査要件を満たす
 - [x] CLI (`remlc --emit-ir`) を Linux/Windows/macOS 向けに再実行し、`tmp/cli-callconv-out/<platform>/` に `reml.bridge.stubs`／`bridge.*` メタデータを含む IR・監査ログを収集（`--verify-ir` 付きでも通過）。
 - [x] `tooling/ci/sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を CI ゲートへ追加（Darwin `macos-arm64` pass_rate とプラットフォーム別統計を検証）
-- [ ] Linux/Windows/macOS の監査成果物で `cli.audit_id` / `cli.change_set` / `schema.version` / `bridge.audit_pass_rate` / `extensions.bridge.*` が欠落していないことを確認し、`collect-iterator-audit-metrics.py` の `failures[].missing` が空であるログを添付
+- [ ] Linux/Windows/macOS の監査成果物で `cli.audit_id` / `cli.change_set` / `schema.version` / `bridge.audit_pass_rate` / `extensions.bridge.*` が欠落していないことを確認し、`collect-iterator-audit-metrics.py` の `failures[].missing` および `verify-audit-metadata.py --index reports/audit/index.json` のログが空であることを添付
 - [x] **`reports/ffi-macos-summary.md` を実測ログで更新**（2025-10-20完了）
 - [ ] `reports/ffi-linux-summary.md`・`reports/ffi-windows-summary.md` を実測ログで更新し、監査ゴールデン (`compiler/ocaml/tests/golden/audit/ffi-bridge-*.jsonl.golden`) を確定
 - [ ] 仕様書 `docs/spec/3-9`, `docs/spec/3-6` とガイド `docs/guides/runtime-bridges.md` を stub メタデータ/計測 API 情報で更新し、`docs/notes/licensing-todo.md` の TODO 消化を記録

@@ -37,6 +37,7 @@
 | 解析 | `parser.stage_trace[]` | `extensions.parse.stage_trace[]` | `metadata["parse.stage_trace"]` | Phase 2-4 | レキサー→パーサ→補助解析の順序。 |
 
 - キー追加時は本表を更新し、`docs/spec/3-6-core-diagnostics-audit.md` の付録と差異が無いか確認する。新規キーは `schema.version` をインクリメントした上で CI の `jsonschema` 検証対象に追加する。
+- 監査永続化ストアの健全性チェックは `tooling/ci/verify-audit-metadata.py --index reports/audit/index.json --root . --history-dir reports/audit/history` を用いる。CI では `--strict` オプションの有効化を検討し、`retained_entries` の再計算結果と拡張キー欠落の双方を検証に含める。
 
 ### `schema.version` 更新履歴
 | バージョン | 反映日 | 主な変更点 | 参照ドキュメント | CI 導入 |
