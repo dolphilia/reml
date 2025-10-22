@@ -14,6 +14,7 @@ open Ast
 open Effect_profile
 module Json = Yojson.Basic
 module Ffi = Ffi_contract
+module Typeclass_metadata = Typeclass_metadata
 
 type trait_constraint_stage_extension = {
   required_stage : string;
@@ -86,6 +87,9 @@ type type_error =
       reason : string;
       span : span;
       effect_stage : trait_constraint_stage_extension option;
+      typeclass_state : Typeclass_metadata.resolution_state;
+      typeclass_pending : string list;
+      typeclass_generalized : string list;
     }
   | EffectStageMismatch of {
       required_stage : string;
@@ -112,7 +116,7 @@ type type_error =
       (* トレイト実装の曖昧性 *)
       trait_name : string;
       type_args : ty list;
-      candidates : string list;
+      candidates : Constraint_solver.dict_ref list;
       span : span;
     }
   | CyclicTraitConstraint of {
@@ -272,7 +276,11 @@ let string_of_error = function
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
       in
-      let candidates_str = String.concat "\n  - " candidates in
+      let candidates_str =
+        candidates
+        |> List.map Constraint_solver.string_of_dict_ref
+        |> String.concat "\n  - "
+      in
       Printf.sprintf
         "Ambiguous trait implementation for '%s<%s>' at %d:%d\n\
         \  Multiple candidates found:\n\
@@ -746,7 +754,17 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       let notes = [ (None, "パターンマッチのケースを追加してください") ] in
 
       make_type_error ~code:"E7015" ~message ~span:diag_span ~notes ()
-  | TraitConstraintFailure { trait_name; type_args; reason; span; effect_stage }
+  | TraitConstraintFailure
+      {
+        trait_name;
+        type_args;
+        reason;
+        span;
+        effect_stage;
+        typeclass_state;
+        typeclass_pending;
+        typeclass_generalized;
+      }
     ->
       let type_args_str =
         String.concat ", " (List.map string_of_ty type_args)
@@ -821,6 +839,27 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
               ~capability:(Option.value info.capability ~default:"<unknown>")
               diag
         | None -> diag
+      in
+      let constraint_record =
+        { trait_name; type_args; constraint_span = span }
+      in
+      let summary =
+        Typeclass_metadata.make_summary ~constraint_:constraint_record
+          ~resolution_state:typeclass_state ~pending:typeclass_pending
+          ~generalized_typevars:typeclass_generalized ()
+      in
+      let diag =
+        Diagnostic.set_extension "typeclass"
+          (Typeclass_metadata.extension_json summary) diag
+      in
+      let diag =
+        List.fold_left
+          (fun acc (key, value) -> Diagnostic.set_extension key value acc)
+          diag (Typeclass_metadata.extension_pairs summary)
+      in
+      let diag =
+        Diagnostic.merge_audit_metadata
+          (Typeclass_metadata.metadata_pairs summary) diag
       in
       diag
   | EffectStageMismatch
@@ -1343,7 +1382,11 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         Printf.sprintf "トレイト '%s<%s>' の実装が曖昧です" trait_name type_args_str
       in
       let diag_span = span_to_diagnostic_span span in
-      let candidates_str = String.concat "\n  - " candidates in
+      let candidates_str =
+        candidates
+        |> List.map Constraint_solver.string_of_dict_ref
+        |> String.concat "\n  - "
+      in
       let notes =
         [
           (None, "複数の候補実装が見つかりました:");
@@ -1352,7 +1395,30 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         ]
       in
 
-      make_type_error ~code:"E7017" ~message ~span:diag_span ~notes ()
+      let diag =
+        make_type_error ~code:"E7017" ~message ~span:diag_span ~notes ()
+      in
+      let constraint_record =
+        { trait_name; type_args; constraint_span = span }
+      in
+      let summary =
+        Typeclass_metadata.make_summary ~constraint_:constraint_record
+          ~resolution_state:Typeclass_metadata.Ambiguous ~candidates ()
+      in
+      let diag =
+        Diagnostic.set_extension "typeclass"
+          (Typeclass_metadata.extension_json summary) diag
+      in
+      let diag =
+        List.fold_left
+          (fun acc (key, value) -> Diagnostic.set_extension key value acc)
+          diag (Typeclass_metadata.extension_pairs summary)
+      in
+      let diag =
+        Diagnostic.merge_audit_metadata
+          (Typeclass_metadata.metadata_pairs summary) diag
+      in
+      diag
   | CyclicTraitConstraint { cycle; span } ->
       let cycle_str = String.concat " -> " cycle in
       let message = "トレイト制約に循環依存が検出されました" in
@@ -1364,7 +1430,30 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         ]
       in
 
-      make_type_error ~code:"E7018" ~message ~span:diag_span ~notes ()
+      let diag =
+        make_type_error ~code:"E7018" ~message ~span:diag_span ~notes ()
+      in
+      let constraint_record =
+        { trait_name = "<cyclic>"; type_args = []; constraint_span = span }
+      in
+      let summary =
+        Typeclass_metadata.make_summary ~constraint_:constraint_record
+          ~resolution_state:Typeclass_metadata.Cyclic ~pending:cycle ()
+      in
+      let diag =
+        Diagnostic.set_extension "typeclass"
+          (Typeclass_metadata.extension_json summary) diag
+      in
+      let diag =
+        List.fold_left
+          (fun acc (key, value) -> Diagnostic.set_extension key value acc)
+          diag (Typeclass_metadata.extension_pairs summary)
+      in
+      let diag =
+        Diagnostic.merge_audit_metadata
+          (Typeclass_metadata.metadata_pairs summary) diag
+      in
+      diag
   | NotAssignable { span } ->
       let message = "この式は代入可能な左辺値ではありません" in
       let diag_span = span_to_diagnostic_span span in
@@ -1779,7 +1868,11 @@ let to_diagnostic_with_source ?(available_names : string list = [])
         Printf.sprintf "トレイト '%s<%s>' の実装が曖昧です" trait_name type_args_str
       in
       let diag_span = make_span span in
-      let candidates_str = String.concat "\n  - " candidates in
+      let candidates_str =
+        candidates
+        |> List.map Constraint_solver.string_of_dict_ref
+        |> String.concat "\n  - "
+      in
       let notes =
         [
           (None, "複数の候補実装が見つかりました:");
@@ -1788,7 +1881,30 @@ let to_diagnostic_with_source ?(available_names : string list = [])
         ]
       in
 
-      make_type_error ~code:"E7017" ~message ~span:diag_span ~notes ()
+      let diag =
+        make_type_error ~code:"E7017" ~message ~span:diag_span ~notes ()
+      in
+      let constraint_record =
+        { trait_name; type_args; constraint_span = span }
+      in
+      let summary =
+        Typeclass_metadata.make_summary ~constraint_:constraint_record
+          ~resolution_state:Typeclass_metadata.Ambiguous ~candidates ()
+      in
+      let diag =
+        Diagnostic.set_extension "typeclass"
+          (Typeclass_metadata.extension_json summary) diag
+      in
+      let diag =
+        List.fold_left
+          (fun acc (key, value) -> Diagnostic.set_extension key value acc)
+          diag (Typeclass_metadata.extension_pairs summary)
+      in
+      let diag =
+        Diagnostic.merge_audit_metadata
+          (Typeclass_metadata.metadata_pairs summary) diag
+      in
+      diag
   | CyclicTraitConstraint { cycle; span } ->
       let cycle_str = String.concat " -> " cycle in
       let message = "トレイト制約に循環依存が検出されました" in
@@ -1800,7 +1916,30 @@ let to_diagnostic_with_source ?(available_names : string list = [])
         ]
       in
 
-      make_type_error ~code:"E7018" ~message ~span:diag_span ~notes ()
+      let diag =
+        make_type_error ~code:"E7018" ~message ~span:diag_span ~notes ()
+      in
+      let constraint_record =
+        { trait_name = "<cyclic>"; type_args = []; constraint_span = span }
+      in
+      let summary =
+        Typeclass_metadata.make_summary ~constraint_:constraint_record
+          ~resolution_state:Typeclass_metadata.Cyclic ~pending:cycle ()
+      in
+      let diag =
+        Diagnostic.set_extension "typeclass"
+          (Typeclass_metadata.extension_json summary) diag
+      in
+      let diag =
+        List.fold_left
+          (fun acc (key, value) -> Diagnostic.set_extension key value acc)
+          diag (Typeclass_metadata.extension_pairs summary)
+      in
+      let diag =
+        Diagnostic.merge_audit_metadata
+          (Typeclass_metadata.metadata_pairs summary) diag
+      in
+      diag
   | NotAssignable { span } ->
       let message = "この式は代入可能な左辺値ではありません" in
       let diag_span = make_span span in

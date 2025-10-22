@@ -10,6 +10,7 @@
 | 安全性 | `stage_mismatch_count` | Capability Stage ミスマッチ件数 | CI (PR ごと) | [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) |
 | 安全性 | `ffi_ownership_violation` | FFI 所有権警告件数 | CI + 週次レビュー | [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md) |
 | 安全性 | `iterator.stage.audit_pass_rate` | `typeclass.iterator.stage_mismatch` 診断で必須監査キーが揃った割合 (0.0〜1.0) | CI（週次レビュー、PRごと） | [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) §2.4 |
+| 型クラス | `typeclass.metadata_pass_rate` | `extensions.typeclass` / `audit_metadata.typeclass.*` が完全に埋まっている割合 (0.0〜1.0) | CI（週次レビュー、PRごと） | 同 §1.4 |
 | 安全性 | `ffi_bridge.audit_pass_rate` | `ffi.contract.*` 診断で `AuditEnvelope.metadata.bridge.*` と拡張フィールドが揃った割合 (0.0〜1.0) | CI（週次レビュー、PRごと） | [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md), [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) |
 | DX | `diagnostic_regressions` | 診断差分の件数 | PR ごと | [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) |
 | DX | `error_resolution_latency` | 重大バグの修正までの日数 | 月次 | [0-1-project-purpose.md](../../spec/0-1-project-purpose.md) §2.2 |
@@ -21,10 +22,16 @@
 |----------|------|-------------------------|---------------------------|--------------|------|
 | CLI 実行 | `cli.audit_id` | `diagnostic.extensions.cli.audit_id` | `metadata["cli.audit_id"]` | Phase 2-3 以降 | `audit_id` を CLI 実行単位で共有し、診断・監査の突合に利用する。 |
 | CLI 実行 | `cli.change_set` | `diagnostic.extensions.cli.change_set` | `metadata["cli.change_set"]` | Phase 2-3 以降 | 差分適用対象の識別子。スキーマ v1.1 で追加。 |
-| 型クラス | `typeclass.constraint` | `extensions.typeclass.constraint` | `metadata["typeclass.constraint"]` | Phase 2-4 | 制約の人間可読名。 |
-| 型クラス | `typeclass.resolution_state` | `extensions.typeclass.resolution_state` | `metadata["typeclass.resolution_state"]` | Phase 2-4 | `Resolved` / `Ambiguous` / `Unresolved` など。 |
-| 型クラス | `typeclass.dictionary` | `extensions.typeclass.dictionary` | `metadata["typeclass.dictionary"]` | Phase 2-4 | 辞書渡し結果（JSON）。モノモルフィゼーション経路では `null`。 |
-| 型クラス | `typeclass.candidates[]` | `extensions.typeclass.candidates[]` | `metadata["typeclass.candidates"]` | Phase 2-4 | 候補辞書の優先度付き一覧。 |
+| 型クラス | `typeclass.trait` | `extensions.typeclass.trait` | `metadata["typeclass.trait"]` | Phase 2-4 | 制約に対応するトレイト名。 |
+| 型クラス | `typeclass.type_args[]` | `extensions.typeclass.type_args[]` | `metadata["typeclass.type_args"]` | Phase 2-4 | 文字列表現された型引数。 |
+| 型クラス | `typeclass.constraint` | `extensions.typeclass.constraint` | `metadata["typeclass.constraint"]` | Phase 2-4 | `trait<args...>` 形式の制約表示。 |
+| 型クラス | `typeclass.resolution_state` | `extensions.typeclass.resolution_state` | `metadata["typeclass.resolution_state"]` | Phase 2-4 | `resolved` / `stage_mismatch` / `unresolved` / `ambiguous` / `unresolved_typevar` / `cyclic` / `pending`。 |
+| 型クラス | `typeclass.dictionary` | `extensions.typeclass.dictionary` | `metadata["typeclass.dictionary"]` | Phase 2-4 | 採用辞書の JSON 表現。`kind = "none"` で辞書欠落を明示。 |
+| 型クラス | `typeclass.candidates[]` | `extensions.typeclass.candidates[]` | `metadata["typeclass.candidates"]` | Phase 2-4 | 候補辞書の配列。要素は `typeclass.dictionary` と同構造。 |
+| 型クラス | `typeclass.pending[]` | `extensions.typeclass.pending[]` | `metadata["typeclass.pending"]` | Phase 2-4 | 後続処理へ委ねた制約の一覧。 |
+| 型クラス | `typeclass.generalized_typevars[]` | `extensions.typeclass.generalized_typevars[]` | `metadata["typeclass.generalized_typevars"]` | Phase 2-4 | 一般化・未解決の型変数。 |
+| 型クラス | `typeclass.graph.export_dot` | `extensions.typeclass.graph.export_dot` | `metadata["typeclass.graph.export_dot"]` | Phase 2-4 | 制約グラフ DOT ファイルのパスまたは `null`。 |
+| 型クラス | `typeclass.span.start` / `.end` | `extensions.typeclass.span.start` 等 | `metadata["typeclass.span.start"]` 等 | Phase 2-4 | 制約導入位置のオフセット。 |
 | 効果 | `effect.stage.required` | `extensions.effect.stage.required` | `metadata["effect.stage.required"]` | Phase 2-2 | Stage 宣言の期待値。 |
 | 効果 | `effect.stage.actual` | `extensions.effect.stage.actual` | `metadata["effect.stage.actual"]` | Phase 2-2 | 実測 Stage。 |
 | 効果 | `effect.stage.residual` | `extensions.effect.stage.residual` | `metadata["effect.stage.residual"]` | Phase 2-4 | 残余効果の JSON。 |

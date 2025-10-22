@@ -38,6 +38,45 @@
             "source": "dsl/core.iter.toml"
           }
         },
+        "typeclass": {
+          "trait": "Iterator",
+          "type_args": [ "SampleStream", "SampleItem" ],
+          "constraint": "Iterator<SampleStream, SampleItem>",
+          "resolution_state": "stage_mismatch",
+          "dictionary": {
+            "kind": "none",
+            "identifier": null,
+            "trait": null,
+            "type_args": [],
+            "repr": null
+          },
+          "candidates": [],
+          "pending": [],
+          "generalized_typevars": [],
+          "graph": { "export_dot": null }
+        },
+        "typeclass.trait": "Iterator",
+        "typeclass.type_args": [ "SampleStream", "SampleItem" ],
+        "typeclass.constraint": "Iterator<SampleStream, SampleItem>",
+        "typeclass.resolution_state": "stage_mismatch",
+        "typeclass.dictionary": {
+          "kind": "none",
+          "identifier": null,
+          "trait": null,
+          "type_args": [],
+          "repr": null
+        },
+        "typeclass.dictionary.kind": "none",
+        "typeclass.dictionary.identifier": null,
+        "typeclass.dictionary.trait": null,
+        "typeclass.dictionary.type_args": [],
+        "typeclass.dictionary.repr": null,
+        "typeclass.candidates": [],
+        "typeclass.pending": [],
+        "typeclass.generalized_typevars": [],
+        "typeclass.graph.export_dot": null,
+        "typeclass.span.start": 42,
+        "typeclass.span.end": 57,
         "effect.stage.required": "beta",
         "effect.stage.actual": "experimental",
         "effect.stage.capability": "core.iterator.collect"
@@ -59,7 +98,29 @@
         "effect.stage.iterator.actual": "experimental",
         "effect.stage.iterator.kind": "custom:iterator.snapshot",
         "effect.stage.iterator.capability": "core.iterator.collect",
-        "effect.stage.iterator.source": "dsl/core.iter.toml"
+        "effect.stage.iterator.source": "dsl/core.iter.toml",
+        "typeclass.trait": "Iterator",
+        "typeclass.type_args": [ "SampleStream", "SampleItem" ],
+        "typeclass.constraint": "Iterator<SampleStream, SampleItem>",
+        "typeclass.resolution_state": "stage_mismatch",
+        "typeclass.dictionary": {
+          "kind": "none",
+          "identifier": null,
+          "trait": null,
+          "type_args": [],
+          "repr": null
+        },
+        "typeclass.dictionary.kind": "none",
+        "typeclass.dictionary.identifier": null,
+        "typeclass.dictionary.trait": null,
+        "typeclass.dictionary.type_args": [],
+        "typeclass.dictionary.repr": null,
+        "typeclass.candidates": [],
+        "typeclass.pending": [],
+        "typeclass.generalized_typevars": [],
+        "typeclass.graph.export_dot": null,
+        "typeclass.span.start": 42,
+        "typeclass.span.end": 57
       },
       "audit": {
         "metadata": {
@@ -79,7 +140,29 @@
           },
           "effect.capability": "core.iterator.collect",
           "effect.stage.actual": "experimental",
-          "effect.stage.required": "beta"
+          "effect.stage.required": "beta",
+          "typeclass.trait": "Iterator",
+          "typeclass.type_args": [ "SampleStream", "SampleItem" ],
+          "typeclass.constraint": "Iterator<SampleStream, SampleItem>",
+          "typeclass.resolution_state": "stage_mismatch",
+          "typeclass.dictionary": {
+            "kind": "none",
+            "identifier": null,
+            "trait": null,
+            "type_args": [],
+            "repr": null
+          },
+          "typeclass.dictionary.kind": "none",
+          "typeclass.dictionary.identifier": null,
+          "typeclass.dictionary.trait": null,
+          "typeclass.dictionary.type_args": [],
+          "typeclass.dictionary.repr": null,
+          "typeclass.candidates": [],
+          "typeclass.pending": [],
+          "typeclass.generalized_typevars": [],
+          "typeclass.graph.export_dot": null,
+          "typeclass.span.start": 42,
+          "typeclass.span.end": 57
         },
         "audit_id": "11111111-1111-1111-1111-111111111111",
         "change_set": {

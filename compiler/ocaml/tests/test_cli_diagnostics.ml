@@ -152,6 +152,33 @@ let test_stage_extension_snapshot () =
              ("input", `String "iter.reml");
            ])
   in
+  let typeclass_constraint : Types.trait_constraint =
+    {
+      trait_name = "Iterator";
+      type_args =
+        [ Types.TCon (Types.TCUser "SampleStream"); Types.TCon (Types.TCUser "SampleItem") ];
+      constraint_span = Ast.{ start = start_pos.offset; end_ = end_pos.offset };
+    }
+  in
+  let typeclass_summary =
+    Typeclass_metadata.make_summary ~constraint_:typeclass_constraint
+      ~resolution_state:Typeclass_metadata.StageMismatch ()
+  in
+  let diag =
+    let diag_with_base =
+      Diagnostic.set_extension "typeclass"
+        (Typeclass_metadata.extension_json typeclass_summary) diag
+    in
+    let diag_with_pairs =
+      List.fold_left
+        (fun acc (key, value) -> Diagnostic.set_extension key value acc)
+        diag_with_base
+        (Typeclass_metadata.extension_pairs typeclass_summary)
+    in
+    Diagnostic.merge_audit_metadata
+      (Typeclass_metadata.metadata_pairs typeclass_summary)
+      diag_with_pairs
+  in
   let json_str =
     Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
   in

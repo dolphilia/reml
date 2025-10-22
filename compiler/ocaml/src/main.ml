@@ -510,6 +510,8 @@ let () =
                 runtime_stage_context
               :: (iterator_audit_events ~audit_id ~change_set:change_set_json
                     runtime_stage_context
+                 @ Type_inference.typeclass_audit_events ~audit_id
+                     ~change_set:change_set_json ()
                  @ ffi_bridge_events ~audit_id ~change_set:change_set_json ()
                  @ events_from_effect_constraints ~audit_id
                      ~change_set:change_set_json ())

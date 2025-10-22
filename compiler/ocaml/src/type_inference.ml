@@ -17,6 +17,7 @@ open Type_error
 open Ast
 open Typed_ast
 module Ffi = Ffi_contract
+module Typeclass_metadata = Typeclass_metadata
 
 type config = { effect_context : Type_inference_effect.runtime_stage }
 
@@ -219,12 +220,76 @@ let ffi_snapshot_param_types (snapshot : ffi_bridge_snapshot) =
 let ffi_snapshot_return_type (snapshot : ffi_bridge_snapshot) =
   snapshot.return_type
 
+type typeclass_snapshot = Typeclass_metadata.summary
+
+let typeclass_snapshots : typeclass_snapshot list ref = ref []
+
+let reset_typeclass_snapshots () = typeclass_snapshots := []
+
+let record_typeclass_snapshot (snapshot : typeclass_snapshot) =
+  typeclass_snapshots := snapshot :: !typeclass_snapshots
+
+let current_typeclass_snapshots () = List.rev !typeclass_snapshots
+
+let record_typeclass_success (constraint_ : trait_constraint)
+    (dict_ref : Constraint_solver.dict_ref) =
+  let summary =
+    Typeclass_metadata.make_summary ~constraint_
+      ~resolution_state:Typeclass_metadata.Resolved ~dict_ref:(Some dict_ref)
+      ()
+  in
+  record_typeclass_snapshot summary
+
+let record_typeclass_error (err : Constraint_solver.constraint_error) =
+  let constraint_ =
+    {
+      trait_name = err.trait_name;
+      type_args = err.type_args;
+      constraint_span = err.span;
+    }
+  in
+  let state, candidates, pending, generalized =
+    match err.reason with
+    | Constraint_solver.NoImpl ->
+        (Typeclass_metadata.Unresolved, [], [], [])
+    | Constraint_solver.AmbiguousImpl dicts ->
+        (Typeclass_metadata.Ambiguous, dicts, [], [])
+    | Constraint_solver.CyclicConstraint cycle ->
+        ( Typeclass_metadata.Cyclic,
+          [],
+          List.map Types.string_of_trait_constraint cycle,
+          [] )
+    | Constraint_solver.StageMismatch _ ->
+        (Typeclass_metadata.StageMismatch, [], [], [])
+    | Constraint_solver.UnresolvedTypeVar tv ->
+        ( Typeclass_metadata.UnresolvedTypeVar,
+          [],
+          [],
+          [ Types.string_of_type_var tv ] )
+  in
+  let summary =
+    Typeclass_metadata.make_summary ~constraint_
+      ~resolution_state:state ~dict_ref:None ~candidates ~pending
+      ~generalized_typevars:generalized ()
+  in
+  record_typeclass_snapshot summary;
+  summary
+
+let typeclass_audit_events ?audit_id ?change_set () =
+  current_typeclass_snapshots ()
+  |> List.map (fun summary ->
+         Audit_envelope.make ?audit_id ?change_set
+           ~category:(Typeclass_metadata.audit_category summary)
+           ~metadata_pairs:(Typeclass_metadata.metadata_pairs summary)
+           ())
+
 (** レジストリのリセット（テスト用） *)
 let reset_impl_registry () =
   global_impl_registry := Impl_registry.empty ();
   Monomorph_registry.reset ();
   reset_effect_constraints ();
-  reset_ffi_bridge_snapshots ()
+  reset_ffi_bridge_snapshots ();
+  reset_typeclass_snapshots ()
 
 (** レジストリの取得 *)
 let get_impl_registry () = !global_impl_registry
@@ -596,16 +661,16 @@ let constraint_error_to_type_error (err : Constraint_solver.constraint_error) :
           reason;
           span = err.span;
           effect_stage = None;
+          typeclass_state = Typeclass_metadata.Unresolved;
+          typeclass_pending = [];
+          typeclass_generalized = [];
         }
   | Constraint_solver.AmbiguousImpl dict_refs ->
-      let candidates =
-        List.map Constraint_solver.string_of_dict_ref dict_refs
-      in
       AmbiguousTraitImpl
         {
           trait_name = err.trait_name;
           type_args = err.type_args;
-          candidates;
+          candidates = dict_refs;
           span = err.span;
         }
   | Constraint_solver.CyclicConstraint cycle ->
@@ -687,6 +752,9 @@ let constraint_error_to_type_error (err : Constraint_solver.constraint_error) :
           reason;
           span = err.span;
           effect_stage = stage_extension;
+          typeclass_state = Typeclass_metadata.StageMismatch;
+          typeclass_pending = [];
+          typeclass_generalized = [];
         }
   | Constraint_solver.UnresolvedTypeVar tv ->
       let reason = Printf.sprintf "型変数 %s が未解決です" (string_of_type_var tv) in
@@ -697,6 +765,9 @@ let constraint_error_to_type_error (err : Constraint_solver.constraint_error) :
           reason;
           span = err.span;
           effect_stage = None;
+          typeclass_state = Typeclass_metadata.UnresolvedTypeVar;
+          typeclass_pending = [];
+          typeclass_generalized = [ string_of_type_var tv ];
         }
 
 (** 制約リストを解決し、型エラーに変換
@@ -711,20 +782,43 @@ let solve_trait_constraints (constraints : trait_constraint list) :
   let registry = get_impl_registry () in
   match Constraint_solver.solve_constraints registry constraints with
   | Ok dict_refs ->
+      (try
+         List.iter2
+           (fun constraint_ dict_ref ->
+             record_typeclass_success constraint_ dict_ref)
+           constraints dict_refs
+       with Invalid_argument _ -> ());
       record_monomorph_instances registry dict_refs;
       Ok dict_refs
-  | Error errors ->
+  | Error errors -> (
       (* 複数のエラーがある場合は最初のエラーを返す *)
-      Error (constraint_error_to_type_error (List.hd errors))
+      match errors with
+      | error :: _ ->
+          let _ = record_typeclass_error error in
+          Error (constraint_error_to_type_error error)
+      | [] ->
+          let fallback_error =
+            {
+              Constraint_solver.trait_name = "<unknown>";
+              type_args = [];
+              reason = Constraint_solver.NoImpl;
+              span = Ast.dummy_span;
+            }
+          in
+          let _ = record_typeclass_error fallback_error in
+          Error (constraint_error_to_type_error fallback_error))
 
 let solve_iterator_constraint (constraint_ : trait_constraint) :
     (iterator_dict_info, type_error) result =
   let registry = get_impl_registry () in
   match Constraint_solver.solve_iterator_dict registry constraint_ with
   | Ok info ->
+      record_typeclass_success constraint_ info.dict_ref;
       record_monomorph_instances registry [ info.dict_ref ];
       Ok info
-  | Error err -> Error (constraint_error_to_type_error err)
+  | Error err ->
+      let _ = record_typeclass_error err in
+      Error (constraint_error_to_type_error err)
 
 let ensure_assignable env (texpr : typed_expr) span =
   match texpr.texpr_kind with
@@ -2497,6 +2591,7 @@ let infer_compilation_unit ?(config = default_config) (cu : compilation_unit) :
   reset_effect_constraints ();
   Monomorph_registry.reset ();
   reset_ffi_bridge_snapshots ();
+  reset_typeclass_snapshots ();
   current_config := config;
   let init_env = initial_env in
 

@@ -110,14 +110,31 @@ EFFECT_ADDITIONAL_KEY_ALIASES: Dict[str, Tuple[str, ...]] = {
     "capability_descriptor": ("capability_descriptor", "metadata"),
 }
 EFFECT_ALLOW_EMPTY_KEYS: Set[str] = {"unhandled_operations"}
-REQUIRED_TYPECLASS_SCALAR_KEYS: List[str] = ["constraint", "resolution_state"]
-REQUIRED_TYPECLASS_OPTIONAL_KEYS: List[str] = [
-    "dictionary",
-    "candidates",
+REQUIRED_TYPECLASS_SCALAR_KEYS: Sequence[str] = (
+    "trait",
+    "constraint",
+    "resolution_state",
+)
+REQUIRED_TYPECLASS_LIST_KEYS: Sequence[str] = (
+    "type_args",
     "pending",
     "generalized_typevars",
-    "graph.export_dot",
-]
+    "candidates",
+)
+REQUIRED_TYPECLASS_OPTIONAL_KEYS: Sequence[str] = (
+    "dictionary",
+    "graph",
+)
+TYPECLASS_REQUIRED_AUDIT_KEYS: Sequence[str] = (
+    "typeclass.trait",
+    "typeclass.type_args",
+    "typeclass.constraint",
+    "typeclass.resolution_state",
+    "typeclass.dictionary.kind",
+    "typeclass.pending",
+    "typeclass.generalized_typevars",
+    "typeclass.candidates",
+)
 REQUIRED_PARSE_KEYS: List[str] = ["input_name", "stage_trace"]
 
 # FFI bridge metrics configuration.
@@ -337,13 +354,7 @@ def check_extension_fields(extensions: Optional[Dict]) -> List[str]:
     if typeclass is None:
         missing.append("extensions.typeclass")
     else:
-        for key in REQUIRED_TYPECLASS_SCALAR_KEYS:
-            value = typeclass.get(key)
-            if value in (None, ""):
-                missing.append(f"extensions.typeclass.{key}")
-        for key in REQUIRED_TYPECLASS_OPTIONAL_KEYS:
-            if key not in typeclass:
-                missing.append(f"extensions.typeclass.{key}")
+        missing.extend(_validate_typeclass_extension(typeclass, "extensions.typeclass"))
 
     parse_ext = _as_dict(extensions.get("parse") if extensions else None)
     if parse_ext is None:
@@ -380,6 +391,37 @@ def _has_any_path(data: Optional[Dict], *paths: str) -> bool:
     return False
 
 
+def _validate_typeclass_extension(
+    typeclass: Dict[str, Any], prefix: str
+) -> List[str]:
+    missing: List[str] = []
+    for key in REQUIRED_TYPECLASS_SCALAR_KEYS:
+        value = typeclass.get(key)
+        if value is None or (isinstance(value, str) and value.strip() == ""):
+            missing.append(f"{prefix}.{key}")
+
+    for key in REQUIRED_TYPECLASS_LIST_KEYS:
+        value = typeclass.get(key)
+        if not isinstance(value, list):
+            missing.append(f"{prefix}.{key}")
+
+    dictionary = typeclass.get("dictionary")
+    if not isinstance(dictionary, dict):
+        missing.append(f"{prefix}.dictionary")
+    else:
+        for field in ("kind", "identifier", "repr"):
+            if field not in dictionary:
+                missing.append(f"{prefix}.dictionary.{field}")
+
+    graph = typeclass.get("graph")
+    if not isinstance(graph, dict):
+        missing.append(f"{prefix}.graph")
+    elif "export_dot" not in graph:
+        missing.append(f"{prefix}.graph.export_dot")
+
+    return missing
+
+
 def check_bridge_audit_fields(audit: Optional[Dict]) -> List[str]:
     if audit is None:
         return ["audit"] + REQUIRED_BRIDGE_AUDIT_KEYS.copy()
@@ -396,6 +438,25 @@ def check_bridge_extension_fields(extensions: Optional[Dict]) -> List[str]:
         if not _has_path(extensions, key):
             missing.append(f"extensions.{key}")
     return missing
+
+
+def check_typeclass_audit_fields(metadata: Optional[Dict]) -> List[str]:
+    if not isinstance(metadata, dict):
+        return list(TYPECLASS_REQUIRED_AUDIT_KEYS)
+    missing: List[str] = []
+    for key in TYPECLASS_REQUIRED_AUDIT_KEYS:
+        if not _has_path(metadata, key):
+            missing.append(key)
+    return missing
+
+
+def check_typeclass_extension_fields(extensions: Optional[Dict]) -> List[str]:
+    if not isinstance(extensions, dict):
+        return ["extensions.typeclass"]
+    typeclass = extensions.get("typeclass")
+    if not isinstance(typeclass, dict):
+        return ["extensions.typeclass"]
+    return _validate_typeclass_extension(typeclass, "extensions.typeclass")
 
 
 def extract_bridge_status(
@@ -810,6 +871,103 @@ def collect_bridge_metrics(
     }
 
 
+def collect_typeclass_metrics(paths: List[Path], audit_paths: List[Path]) -> Dict:
+    total = 0
+    passed = 0
+    failures: List[Dict[str, Any]] = []
+    schema_versions: Set[str] = set()
+    audit_sources: List[str] = []
+
+    for path in paths:
+        data = load_json(path)
+        for index, diag in enumerate(iter_diagnostics(data)):
+            code = primary_code_of(diag)
+            codes_field = diag.get("codes")
+            has_typeclass_code = False
+            if isinstance(code, str) and code.startswith("typeclass."):
+                has_typeclass_code = True
+            elif isinstance(codes_field, list):
+                has_typeclass_code = any(
+                    isinstance(item, str) and item.startswith("typeclass.")
+                    for item in codes_field
+                )
+            if not has_typeclass_code:
+                continue
+
+            total += 1
+            schema = extract_schema_version(diag)
+            if schema:
+                schema_versions.add(schema)
+
+            audit_dict = _as_dict(diag.get("audit"))
+            extensions_dict = _as_dict(diag.get("extensions"))
+
+            issues: List[str] = []
+            issues.extend(check_typeclass_audit_fields(audit_dict))
+            issues.extend(check_typeclass_extension_fields(extensions_dict))
+
+            timestamp_value = diag.get("timestamp")
+            if not isinstance(timestamp_value, str) or not timestamp_value.strip():
+                issues.append("timestamp")
+
+            if issues:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "code": code or "unknown",
+                        "missing": sorted(set(issues)),
+                    }
+                )
+            else:
+                passed += 1
+
+    for path in audit_paths:
+        audit_sources.append(str(path))
+        entries = load_audit_entries(path)
+        if not entries:
+            continue
+
+        for index, entry in enumerate(entries):
+            category = entry.get("category")
+            if not (isinstance(category, str) and category.startswith("typeclass.")):
+                continue
+
+            total += 1
+            metadata = entry.get("metadata")
+            metadata_dict = metadata if isinstance(metadata, dict) else None
+
+            issues = check_typeclass_audit_fields(metadata_dict)
+            if issues:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "code": category,
+                        "missing": sorted(set(issues)),
+                    }
+                )
+            else:
+                passed += 1
+
+    pass_rate = None
+    if total > 0:
+        pass_rate = passed / total
+
+    return {
+        "metric": "typeclass.metadata_pass_rate",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "required_audit_keys": list(TYPECLASS_REQUIRED_AUDIT_KEYS),
+        "sources": [str(path) for path in paths],
+        "audit_sources": audit_sources,
+        "failures": failures,
+        "schema_versions": sorted(schema_versions),
+    }
+
+
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Collect iterator stage audit metrics."
@@ -830,6 +988,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         action="append",
         dest="audit_sources",
         help="Path to audit JSON (repeatable).",
+    )
+    parser.add_argument(
+        "--section",
+        choices=["all", "iterator", "ffi", "typeclass"],
+        default="all",
+        help="Collect metrics for a specific section (default: all).",
     )
     parser.add_argument(
         "--summary",
@@ -956,29 +1120,69 @@ def main(argv: Optional[List[str]] = None) -> int:
             )
             return 2
 
-    iterator_metrics = collect_metrics(sources)
-    bridge_metrics = collect_bridge_metrics(sources, audit_paths)
+    section_order = ["iterator", "typeclass", "ffi"]
+    if args.section == "all":
+        sections = section_order
+    else:
+        sections = [args.section]
 
-    combined = {
-        "metrics": [iterator_metrics, bridge_metrics],
-        # 互換性のため従来の iterator メトリクスをトップレベルにも残す。
-        "metric": iterator_metrics.get("metric"),
-        "total": iterator_metrics.get("total"),
-        "passed": iterator_metrics.get("passed"),
-        "failed": iterator_metrics.get("failed"),
-        "pass_rate": iterator_metrics.get("pass_rate"),
-        "required_audit_keys": iterator_metrics.get("required_audit_keys"),
-        "sources": iterator_metrics.get("sources"),
-        "failures": iterator_metrics.get("failures"),
-        "ffi_bridge": bridge_metrics,
-        "audit_sources": bridge_metrics.get("audit_sources"),
-        "schema_versions": sorted(
+    iterator_metrics: Optional[Dict[str, Any]] = None
+    typeclass_metrics: Optional[Dict[str, Any]] = None
+    bridge_metrics: Optional[Dict[str, Any]] = None
+
+    if "iterator" in sections:
+        iterator_metrics = collect_metrics(sources)
+    if "typeclass" in sections:
+        typeclass_metrics = collect_typeclass_metrics(sources, audit_paths)
+    if "ffi" in sections:
+        bridge_metrics = collect_bridge_metrics(sources, audit_paths)
+
+    metrics_list: List[Dict[str, Any]] = []
+    if iterator_metrics:
+        metrics_list.append(iterator_metrics)
+    if typeclass_metrics:
+        metrics_list.append(typeclass_metrics)
+    if bridge_metrics:
+        metrics_list.append(bridge_metrics)
+
+    combined: Dict[str, Any] = {"metrics": metrics_list}
+
+    primary_metrics: Optional[Dict[str, Any]] = iterator_metrics
+    if primary_metrics is None and metrics_list:
+        primary_metrics = metrics_list[0]
+
+    if primary_metrics:
+        combined.update(
             {
-                *(iterator_metrics.get("schema_versions") or []),
-                *(bridge_metrics.get("schema_versions") or []),
+                "metric": primary_metrics.get("metric"),
+                "total": primary_metrics.get("total"),
+                "passed": primary_metrics.get("passed"),
+                "failed": primary_metrics.get("failed"),
+                "pass_rate": primary_metrics.get("pass_rate"),
+                "required_audit_keys": primary_metrics.get("required_audit_keys"),
+                "sources": primary_metrics.get("sources"),
+                "failures": primary_metrics.get("failures"),
             }
-        ),
-    }
+        )
+
+    if iterator_metrics:
+        combined["iterator"] = iterator_metrics
+    if typeclass_metrics:
+        combined["typeclass"] = typeclass_metrics
+    if bridge_metrics:
+        combined["ffi_bridge"] = bridge_metrics
+
+    combined_audit_sources: List[str] = []
+    for metrics in (iterator_metrics, typeclass_metrics, bridge_metrics):
+        if metrics:
+            combined_audit_sources.extend(metrics.get("audit_sources") or [])
+    if combined_audit_sources:
+        combined["audit_sources"] = sorted({*combined_audit_sources})
+
+    schema_versions: Set[str] = set()
+    for metrics in metrics_list:
+        schema_versions.update(metrics.get("schema_versions") or [])
+    combined["schema_versions"] = sorted(schema_versions)
 
     json_output = json.dumps(combined, indent=2, ensure_ascii=False)
 

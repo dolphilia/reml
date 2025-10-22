@@ -121,67 +121,53 @@ enum Stage = Experimental | Beta | Stable
 
 ### 1.4 型クラス診断拡張 `typeclass`
 
-型クラス制約の解決に関する診断では `Diagnostic.extensions["typeclass"]` を利用し、辞書渡し方式およびモノモルフィゼーション評価で必要となるメタデータを共有する。最低限、次の構造体を格納する。
+型クラス制約の解決に関する診断では `Diagnostic.extensions["typeclass"]` に次の JSON オブジェクトを格納し、辞書渡し・モノモルフィゼーション双方の挙動を監査できるようにする。V2 形式では同じ内容をフラット化したキー（`typeclass.*`）として `extensions` / `audit_metadata` / `AuditEnvelope.metadata` にも転写する。
 
-```reml
-type TypeclassExtension = {
-  constraint: TraitConstraintSummary,                 // 診断対象の制約
-  resolution_state: ResolutionState,                  // 成功/失敗/保留などの状態
-  candidates: List<TraitCandidateSummary>,            // 解決候補の一覧
-  selected: Option<TraitCandidateSummary>,            // 採用された候補（存在する場合）
-  pending: List<TraitConstraintSummary>,              // 連鎖して発生した未解決制約
-  generalized_typevars: List<TypeVarSummary>,         // 一般化された型変数情報
-  dictionary: Option<DictLayoutSummary>,              // 生成・利用した辞書の概要
-  graph: Option<ConstraintGraphSummary>,              // 制約グラフのサマリ（Graphviz 等）
+```json
+"typeclass": {
+  "trait": "Iterator",
+  "type_args": ["SampleStream", "SampleItem"],
+  "constraint": "Iterator<SampleStream, SampleItem>",
+  "resolution_state": "stage_mismatch",
+  "dictionary": {
+    "kind": "none",
+    "identifier": null,
+    "trait": null,
+    "type_args": [],
+    "repr": null
+  },
+  "candidates": [],
+  "pending": [],
+  "generalized_typevars": [],
+  "graph": { "export_dot": null }
 }
-
-type TraitConstraintSummary = {
-  trait: Str,                     // 例: "Eq"
-  parameters: List<TypeRepr>,     // 1-2 §A/B の表示規約で整形した型
-  span: Span,                     // 制約が導入された位置
-  origin: ConstraintOrigin,       // 推論器が付与する導入理由
-}
-
-enum ResolutionState = Pending | Satisfied | Failed
-
-type TraitCandidateSummary = {
-  impl_id: Str,                   // 実装 ID（モジュール修飾名）
-  score: Option<Float>,           // 評価関数による採点（辞書渡し計測用）
-  requires_where: Bool,           // 追加 where 制約を持つか
-  source: CandidateSource,        // 派生/ユーザ定義などの由来
-}
-
-enum CandidateSource = Builtin | User | Derived | Auto
-
-type DictLayoutSummary = {
-  dict_type: TypeRepr,            // Core IR 上の `DictType`
-  slots: List<DictSlotSummary>,   // vtable/フィールド構成
-  metadata: Map<Str, Json>,       // 追加情報（任意）
-}
-
-type DictSlotSummary = {
-  name: Str,                      // メソッドまたはフィールド名
-  ty: TypeRepr,                   // スロットの型
-  index: u32,                     // vtable 上のインデックス
-  inlined: Bool,                  // インライン化されたか
-}
-
-type ConstraintGraphSummary = {
-  nodes: List<TraitConstraintSummary>,
-  edges: List<(usize, usize)>,    // `nodes` のインデックスで表現
-  export_dot: Option<Str>,        // `Graphviz DOT` 文字列（任意）
-}
-
-type TypeVarSummary = {
-  name: Str,                      // 例: "a"
-  kind: Str,                      // 例: "*" / "* -> *"
-  rigidity: Str,                  // "flex" | "rigid"
-}
-
-enum ConstraintOrigin = Parameter | WhereClause | AssociatedType | Implicit | Plugin
 ```
 
-`TypeRepr` は 1-2 §A/B の表示規約に従う文字列表現とし、CLI/LSP はこの構造体を用いて候補比較ビューや辞書可視化を実装する。`candidates` は優先度順（解決アルゴリズムが算出したスコア降順）で並べる。`graph.export_dot` が存在する場合、開発者向けに `--emit-dict-graph` などのデバッグフラグで Graphviz を出力できるようにする。`AuditEnvelope.metadata["typeclass"]` には `TypeclassExtension` を JSON 化したものを格納し、Phase 2 診断タスクで要求される辞書メタデータ監査（2-1 §5.2）と整合させる。辞書が存在しない（モノモルフィゼーション経路）場合は `dictionary = None` を設定し、`candidates` と `resolution_state` のみで差分を説明する。
+| キー | 説明 |
+| --- | --- |
+| `trait` | 診断対象となったトレイト名（例: `Iterator`, `Eq`） |
+| `type_args` | 1-2 §A/B の表記で整形した型引数のリスト |
+| `constraint` | `trait<type_args...>` 形式で直列化した制約表示 |
+| `resolution_state` | 解決状態を表す文字列。`resolved` / `stage_mismatch` / `unresolved` / `ambiguous` / `unresolved_typevar` / `cyclic` / `pending` を想定 |
+| `dictionary` | 採用された辞書（存在しない場合は `kind = "none"` を含むプレースホルダ）。`kind`（implicit/parameter/local など）、`identifier`、`trait`、`type_args`、`repr`、`parameter_index`（必要な場合）を保持する |
+| `candidates` | 曖昧性調査や統計計測に用いる候補辞書の配列。要素は `dictionary` と同じ構造 |
+| `pending` | 循環検出や未解決制約の一覧（`TraitConstraintFailure` の補助情報） |
+| `generalized_typevars` | 一般化・未解決の型変数を文字列表現で列挙 |
+| `graph.export_dot` | 制約グラフを Graphviz DOT として出力したパスまたは `null` |
+
+補助キーとして `typeclass.span.start` / `typeclass.span.end` をフラット化し、制約が導入されたソース位置（`Ast.span` のオフセット値）を記録する。モノモルフィゼーション経路など辞書が存在しない場合でも、`dictionary.kind = "none"` を必ず出力し、`candidates` や `resolution_state` で差分を説明する。
+
+`resolution_state` は診断コードと 1 対 1 に対応させる想定である。例として:
+
+- `resolved`: 辞書参照が確定し、監査ログとして事後分析に利用したい場合。
+- `stage_mismatch`: `typeclass.iterator.stage_mismatch` のように Capability Stage が不足している場合。
+- `unresolved`: `TraitConstraintFailure` で実装が見つからなかった場合。
+- `ambiguous`: `AmbiguousTraitImpl` により候補が複数あった場合。
+- `unresolved_typevar`: 型変数の未解決に起因する失敗。
+- `cyclic`: 制約グラフに循環が検出された場合。
+- `pending`: 将来の再試行や遅延解決に回された制約（現状はプレースホルダ）。
+
+監査ログ（`AuditEnvelope.metadata`）には上記フィールドがそのまま出力され、CI では `typeclass.metadata_pass_rate` を用いて欠落キーや状態遷移の異常を検出する。`dictionary.kind = "parameter"` の場合は `parameter_index` が含まれ、`kind = "implicit"` では `trait` と `type_args` に実際の辞書化対象が記録される。
 
 ```reml
 pub enum DiagnosticDomain = {

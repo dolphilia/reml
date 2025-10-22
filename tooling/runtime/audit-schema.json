@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://reml.dev/schemas/audit-envelope.json",
   "title": "Reml AuditEnvelope Schema",
-  "description": "監査ログ `AuditEnvelope.metadata` の正式スキーマ。Phase 2-3 で導入された FFI ブリッジ情報を含み、効果ステージおよびブリッジ契約の監査整合性を保証する。",
+  "description": "監査ログ `AuditEnvelope.metadata` の正式スキーマ。Phase 2-3 で導入された FFI ブリッジ情報および Phase 2-4 の型クラス辞書メタデータを含み、効果ステージ・辞書解決・ブリッジ契約の整合性を保証する。",
   "type": "object",
   "additionalProperties": true,
   "properties": {
@@ -24,6 +24,72 @@
           "description": "効果システム関連の監査メタデータ",
           "type": "object",
           "additionalProperties": true
+        },
+        "typeclass": {
+          "description": "型クラス辞書解決に関する監査メタデータ",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "trait",
+            "type_args",
+            "constraint",
+            "resolution_state",
+            "dictionary",
+            "candidates",
+            "pending",
+            "generalized_typevars",
+            "graph"
+          ],
+          "properties": {
+            "trait": {
+              "description": "対象となるトレイト名",
+              "type": "string"
+            },
+            "type_args": {
+              "description": "制約に渡された型引数のリスト",
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "constraint": {
+              "description": "文字列表現された制約（例: Iterator<T, U>）",
+              "type": "string"
+            },
+            "resolution_state": {
+              "description": "解決状態（resolved, stage_mismatch, ambiguous など）",
+              "type": "string"
+            },
+            "dictionary": {
+              "description": "解決された辞書、または欠落時のプレースホルダ",
+              "$ref": "#/definitions/typeclassDictionary"
+            },
+            "candidates": {
+              "description": "候補辞書の一覧（曖昧性調査用）",
+              "type": "array",
+              "items": { "$ref": "#/definitions/typeclassDictionary" }
+            },
+            "pending": {
+              "description": "未解決・保留中の制約（循環検出など）",
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "generalized_typevars": {
+              "description": "一般化された型変数や未解決の型変数",
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "graph": {
+              "description": "制約グラフに関する追加情報",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [ "export_dot" ],
+              "properties": {
+                "export_dot": {
+                  "description": "制約グラフを DOT 形式で出力したパス（存在しない場合は null）",
+                  "type": [ "string", "null" ]
+                }
+              }
+            }
+          }
         },
         "bridge": {
           "description": "FFI ブリッジに関する監査メタデータ（Phase 2-3 で導入）",
@@ -168,6 +234,40 @@
               }
             }
           }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "typeclassDictionary": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "kind",
+        "identifier",
+        "trait",
+        "type_args",
+        "repr"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "identifier": {
+          "type": [ "string", "null" ]
+        },
+        "trait": {
+          "type": [ "string", "null" ]
+        },
+        "type_args": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "repr": {
+          "type": [ "string", "null" ]
+        },
+        "parameter_index": {
+          "type": "integer"
         }
       }
     }

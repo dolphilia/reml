@@ -26,6 +26,7 @@
   effect_profile
   constraint_solver
   audit_envelope
+  typeclass_metadata
   ffi_contract
   impl_registry
   type_error
