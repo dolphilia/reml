@@ -163,6 +163,7 @@ jobs:
       AUDIT_TARGET: x86_64-unknown-linux-gnu
       AUDIT_PLATFORM: linux
       AUDIT_SAMPLE: compiler/ocaml/tests/samples/ffi/cli-callconv-unsupported-linux.reml
+      PYTHONUTF8: "1"
 
     steps:
       - name: Checkout repository

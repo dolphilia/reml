@@ -170,6 +170,7 @@ jobs:
       AUDIT_TARGET: arm64-apple-darwin
       AUDIT_PLATFORM: macos
       AUDIT_SAMPLE: compiler/ocaml/tests/samples/ffi/cli-callconv-unsupported-macos.reml
+      PYTHONUTF8: "1"
 
     steps:
       - name: Checkout repository

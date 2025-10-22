@@ -46,6 +46,8 @@ jobs:
     runs-on: windows-latest
     needs:
       - diagnostic-json
+    env:
+      PYTHONUTF8: "1"
 
     steps:
       - name: Checkout repository
@@ -133,6 +135,7 @@ jobs:
       AUDIT_TARGET: x86_64-pc-windows-msvc
       AUDIT_PLATFORM: windows
       AUDIT_SAMPLE: compiler/ocaml/tests/samples/ffi/cli-callconv-unsupported-windows.reml
+      PYTHONUTF8: "1"
 
     steps:
       - name: Checkout repository
