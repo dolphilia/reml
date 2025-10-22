@@ -88,6 +88,16 @@ jobs:
             --audit compiler/ocaml/tests/golden/audit/effects-stage.json.golden \
             --output reports/iterator-stage-summary-windows.md
 
+      - name: Build audit metadata index
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tooling/ci/create-audit-index.py \
+            --output reports/audit/index.json \
+            --audit ci:windows-msvc:compiler/ocaml/tests/golden/audit/cli-ffi-bridge-windows.jsonl.golden:success:full:1.0 \
+            --audit ci:stage:compiler/ocaml/tests/golden/audit/effects-stage.json.golden:success:full:1.0 \
+            --skip-missing
+
       - name: Verify audit metadata inventory
         shell: bash
         run: |

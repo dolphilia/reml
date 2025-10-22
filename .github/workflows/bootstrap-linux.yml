@@ -539,6 +539,16 @@ jobs:
             --audit tooling/ci/ffi-audit/stage.audit.jsonl \
             --output reports/iterator-stage-summary.md
 
+      - name: Build audit metadata index
+        run: |
+          python3 tooling/ci/create-audit-index.py \
+            --output reports/audit/index.json \
+            --audit ci:linux-x86_64:tooling/ci/ffi-audit/linux/cli-callconv-unsupported.audit.jsonl:success:full:1.0 \
+            --audit ci:windows-msvc:tooling/ci/ffi-audit/windows/cli-callconv-unsupported.audit.jsonl:success:full:1.0 \
+            --audit ci:macos-arm64:tooling/ci/ffi-audit/macos/cli-callconv-unsupported.audit.jsonl:success:full:1.0 \
+            --audit ci:stage:tooling/ci/ffi-audit/stage.audit.jsonl:success:full:1.0 \
+            --skip-missing
+
       - name: Verify audit metadata inventory
         run: |
           python3 tooling/ci/verify-audit-metadata.py \

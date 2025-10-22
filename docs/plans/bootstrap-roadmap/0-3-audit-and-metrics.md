@@ -38,6 +38,7 @@
 
 - キー追加時は本表を更新し、`docs/spec/3-6-core-diagnostics-audit.md` の付録と差異が無いか確認する。新規キーは `schema.version` をインクリメントした上で CI の `jsonschema` 検証対象に追加する。
 - 監査永続化ストアの健全性チェックは `tooling/ci/verify-audit-metadata.py --index reports/audit/index.json --root . --history-dir reports/audit/history` を用いる。CI では `--strict` オプションの有効化を検討し、`retained_entries` の再計算結果と拡張キー欠落の双方を検証に含める。
+- CI で監査ログを収集した後は `tooling/ci/create-audit-index.py --output reports/audit/index.json --audit <profile:target:path[:status[:level[:pass_rate]]]>` を実行して index を生成する。生成済み index を `verify-audit-metadata.py` に渡すことで一貫したゲートフローを構築する。
 
 ### `schema.version` 更新履歴
 | バージョン | 反映日 | 主な変更点 | 参照ドキュメント | CI 導入 |
