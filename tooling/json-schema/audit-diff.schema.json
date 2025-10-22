@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Audit Diff Summary",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "base",
+    "target",
+    "diagnostic",
+    "metadata",
+    "pass_rate"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^audit-diff\\.v[0-9]+$"
+    },
+    "base": {
+      "type": "object",
+      "required": ["path", "entry_count"],
+      "properties": {
+        "path": {"type": "string"},
+        "entry_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": true
+    },
+    "target": {
+      "type": "object",
+      "required": ["path", "entry_count"],
+      "properties": {
+        "path": {"type": "string"},
+        "entry_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": true
+    },
+    "diagnostic": {
+      "type": "object",
+      "required": ["regressions", "new", "details"],
+      "properties": {
+        "regressions": {"type": "integer", "minimum": 0},
+        "new": {"type": "integer", "minimum": 0},
+        "improved": {"type": "integer", "minimum": 0},
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "category": {"type": "string"},
+              "code": {"type": ["string", "null"]},
+              "kind": {"type": ["string", "null"]}
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["changed", "details"],
+      "properties": {
+        "changed": {"type": "integer", "minimum": 0},
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "category": {"type": "string"},
+              "code": {"type": ["string", "null"]}
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "pass_rate": {
+      "type": "object",
+      "properties": {
+        "previous": {"type": ["number", "null"]},
+        "current": {"type": ["number", "null"]},
+        "delta": {"type": ["number", "null"]}
+      },
+      "additionalProperties": true
+    },
+    "threshold": {"type": ["number", "null"]},
+    "preset": {"type": "string"}
+  },
+  "additionalProperties": true
+}

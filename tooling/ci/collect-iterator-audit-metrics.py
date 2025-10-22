@@ -179,6 +179,17 @@ DEFAULT_RETENTION_POLICY: Dict[str, int] = {
     "default": 50,
 }
 
+
+def _ensure_path_list(raw_paths: Optional[Sequence[str]]) -> List[Path]:
+    if not raw_paths:
+        return []
+    result: List[Path] = []
+    for item in raw_paths:
+        if item is None:
+            continue
+        result.append(Path(item))
+    return result
+
 def load_json(path: Path) -> Dict:
     with path.open("r", encoding="utf-8") as handle:
         try:
@@ -527,6 +538,247 @@ def load_retention_policy(config_path: Path) -> Dict[str, int]:
             if isinstance(value, int) and value >= 0:
                 policy[str(key)] = value
     return policy
+
+
+def _safe_get(data: Optional[Dict[str, Any]], *keys: str) -> Optional[object]:
+    current: object = data
+    for key in keys:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    return current
+
+
+def _safe_int(
+    data: Optional[Dict[str, Any]], *keys: str, default: int = 0
+) -> int:
+    value = _safe_get(data, *keys)
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str) and value.strip():
+        try:
+            return int(float(value))
+        except ValueError:
+            return default
+    return default
+
+
+def _safe_float(
+    data: Optional[Dict[str, Any]], *keys: str, default: Optional[float] = None
+) -> Optional[float]:
+    value = _safe_get(data, *keys)
+    if isinstance(value, bool):
+        return float(value)
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str) and value.strip():
+        try:
+            return float(value)
+        except ValueError:
+            return default
+    return default
+
+
+def _load_json_with_failure(
+    path: Path, failures: List[Dict[str, object]]
+) -> Optional[Dict[str, Any]]:
+    if not path.is_file():
+        failures.append({"file": str(path), "reason": "not_found"})
+        return None
+    try:
+        return load_json(path)
+    except ValueError as exc:
+        failures.append({"file": str(path), "reason": f"parse_error: {exc}"})
+        return None
+
+
+def _validate_audit_diff(data: Dict[str, Any]) -> List[str]:
+    required_keys = ("schema_version", "base", "target", "diagnostic", "metadata", "pass_rate")
+    errors: List[str] = []
+    for key in required_keys:
+        if key not in data:
+            errors.append(f"missing_{key}")
+    if not isinstance(data.get("diagnostic"), dict):
+        errors.append("diagnostic_not_object")
+    else:
+        diagnostic = data["diagnostic"]
+        for key in ("regressions", "new", "details"):
+            if key not in diagnostic:
+                errors.append(f"diagnostic_missing_{key}")
+    if not isinstance(data.get("metadata"), dict):
+        errors.append("metadata_not_object")
+    else:
+        metadata = data["metadata"]
+        for key in ("changed", "details"):
+            if key not in metadata:
+                errors.append(f"metadata_missing_{key}")
+    schema_version = data.get("schema_version")
+    if not isinstance(schema_version, str) or not schema_version.startswith("audit-diff.v"):
+        errors.append("invalid_schema_version")
+    return errors
+
+
+def _load_review_diff(
+    path: Path, failures: List[Dict[str, object]]
+) -> Optional[Dict[str, Any]]:
+    data = _load_json_with_failure(path, failures)
+    if data is None:
+        return None
+    errors = _validate_audit_diff(data)
+    if errors:
+        failures.append({"file": str(path), "reason": "audit_diff_schema", "details": errors})
+    return data
+
+
+def _load_review_coverage(
+    path: Path, failures: List[Dict[str, object]]
+) -> Optional[List[Dict[str, Any]]]:
+    data = _load_json_with_failure(path, failures)
+    if data is None:
+        return None
+    if isinstance(data, list):
+        entries = [entry for entry in data if isinstance(entry, dict)]
+        if entries:
+            return entries
+        return None
+    if isinstance(data, dict):
+        coverage = data.get("coverage")
+        if isinstance(coverage, list):
+            entries = [entry for entry in coverage if isinstance(entry, dict)]
+            if entries:
+                return entries
+        return [data]
+    failures.append({"file": str(path), "reason": "unsupported_format"})
+    return None
+
+
+def collect_review_metrics(
+    diff_paths: List[Path], coverage_paths: List[Path], dashboard_paths: List[Path]
+) -> Dict[str, Any]:
+    failures: List[Dict[str, object]] = []
+
+    diff_entries: List[Dict[str, Any]] = []
+    total_regressions = 0
+    total_metadata_changed = 0
+    total_new = 0
+    pass_rate_deltas: List[float] = []
+    diff_sources: List[str] = []
+
+    for path in diff_paths:
+        data = _load_review_diff(path, failures)
+        if data is None:
+            continue
+        diff_sources.append(str(path))
+        diagnostic = data.get("diagnostic")
+        metadata = data.get("metadata")
+        pass_rate = data.get("pass_rate")
+        regressions = _safe_int(diagnostic, "regressions", default=0)
+        new = _safe_int(diagnostic, "new", default=0)
+        metadata_changed = _safe_int(metadata, "changed", default=0)
+        delta = _safe_float(pass_rate, "delta")
+        if delta is not None:
+            pass_rate_deltas.append(delta)
+        total_regressions += regressions
+        total_new += new
+        total_metadata_changed += metadata_changed
+        diff_entries.append(
+            {
+                "path": str(path),
+                "regressions": regressions,
+                "new": new,
+                "metadata_changed": metadata_changed,
+                "pass_rate": {
+                    "previous": _safe_float(pass_rate, "previous"),
+                    "current": _safe_float(pass_rate, "current"),
+                    "delta": delta,
+                },
+                "base": _safe_get(data, "base", "path"),
+                "target": _safe_get(data, "target", "path"),
+            }
+        )
+
+    coverage_entries: List[Dict[str, Any]] = []
+    coverage_matched = 0
+    coverage_total = 0
+    coverage_sources: List[str] = []
+
+    for path in coverage_paths:
+        raw_entries = _load_review_coverage(path, failures)
+        if raw_entries is None:
+            continue
+        coverage_sources.append(str(path))
+        for entry in raw_entries:
+            preset = (
+                entry.get("preset")
+                or entry.get("name")
+                or entry.get("id")
+                or entry.get("query")
+                or "<unknown>"
+            )
+            matched = _safe_int(entry, "matched", default=entry.get("hits", 0) or 0)
+            total = _safe_int(entry, "total", default=entry.get("count", 0) or 0)
+            ratio: Optional[float] = None
+            if total > 0:
+                ratio = matched / total
+            coverage_matched += matched
+            coverage_total += total
+            coverage_entries.append(
+                {
+                    "preset": preset,
+                    "matched": matched,
+                    "total": total,
+                    "ratio": ratio,
+                }
+            )
+
+    dashboard_sources: List[str] = []
+    missing_dashboards: List[str] = []
+    dashboard_generated = 0
+    for path in dashboard_paths:
+        dashboard_sources.append(str(path))
+        if path.is_file():
+            dashboard_generated += 1
+        else:
+            missing_dashboards.append(str(path))
+
+    audit_diff_regressions = total_regressions + total_metadata_changed
+    coverage_ratio: Optional[float] = None
+    if coverage_total > 0:
+        coverage_ratio = coverage_matched / coverage_total
+
+    review_metrics: Dict[str, Any] = {
+        "metric": "audit_review.summary",
+        "audit_diff": {
+            "regressions": total_regressions,
+            "metadata_changed": total_metadata_changed,
+            "new": total_new,
+            "pass_rate": {
+                "delta": pass_rate_deltas[-1] if pass_rate_deltas else None,
+                "min_delta": min(pass_rate_deltas) if pass_rate_deltas else None,
+                "max_delta": max(pass_rate_deltas) if pass_rate_deltas else None,
+            },
+            "sources": diff_sources,
+            "entries": diff_entries,
+            "total_regressions": audit_diff_regressions,
+        },
+        "audit_query": {
+            "coverage": coverage_ratio,
+            "matched": coverage_matched,
+            "total": coverage_total,
+            "entries": coverage_entries,
+            "sources": coverage_sources,
+        },
+        "audit_dashboard": {
+            "generated": dashboard_generated,
+            "sources": dashboard_sources,
+            "missing": missing_dashboards,
+        },
+        "failures": failures,
+    }
+
+    return review_metrics
 
 
 def _entry_profile(entry: Dict[str, Any]) -> str:
@@ -991,7 +1243,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--section",
-        choices=["all", "iterator", "ffi", "typeclass"],
+        choices=["all", "iterator", "ffi", "typeclass", "review"],
         default="all",
         help="Collect metrics for a specific section (default: all).",
     )
@@ -1015,6 +1267,24 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--dry-run",
         action="store_true",
         help="Show prune result without writing changes.",
+    )
+    parser.add_argument(
+        "--review-diff",
+        action="append",
+        dest="review_diff",
+        help="Path to review diff summary JSON (diff.json).",
+    )
+    parser.add_argument(
+        "--review-coverage",
+        action="append",
+        dest="review_coverage",
+        help="Path to review coverage report JSON.",
+    )
+    parser.add_argument(
+        "--review-dashboard",
+        action="append",
+        dest="review_dashboard",
+        help="Path to generated dashboard artifact (HTML/Markdown).",
     )
     return parser.parse_args(argv)
 
@@ -1120,7 +1390,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             )
             return 2
 
-    section_order = ["iterator", "typeclass", "ffi"]
+    review_diff_paths = _ensure_path_list(getattr(args, "review_diff", None))
+    review_coverage_paths = _ensure_path_list(getattr(args, "review_coverage", None))
+    review_dashboard_paths = _ensure_path_list(getattr(args, "review_dashboard", None))
+
+    section_order = ["iterator", "typeclass", "ffi", "review"]
     if args.section == "all":
         sections = section_order
     else:
@@ -1129,6 +1403,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     iterator_metrics: Optional[Dict[str, Any]] = None
     typeclass_metrics: Optional[Dict[str, Any]] = None
     bridge_metrics: Optional[Dict[str, Any]] = None
+    review_metrics: Optional[Dict[str, Any]] = None
 
     if "iterator" in sections:
         iterator_metrics = collect_metrics(sources)
@@ -1136,6 +1411,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         typeclass_metrics = collect_typeclass_metrics(sources, audit_paths)
     if "ffi" in sections:
         bridge_metrics = collect_bridge_metrics(sources, audit_paths)
+    if "review" in sections:
+        review_metrics = collect_review_metrics(
+            review_diff_paths, review_coverage_paths, review_dashboard_paths
+        )
 
     metrics_list: List[Dict[str, Any]] = []
     if iterator_metrics:
@@ -1144,6 +1423,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         metrics_list.append(typeclass_metrics)
     if bridge_metrics:
         metrics_list.append(bridge_metrics)
+    if review_metrics:
+        metrics_list.append(review_metrics)
 
     combined: Dict[str, Any] = {"metrics": metrics_list}
 
@@ -1171,6 +1452,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         combined["typeclass"] = typeclass_metrics
     if bridge_metrics:
         combined["ffi_bridge"] = bridge_metrics
+    if review_metrics:
+        combined["audit_review"] = review_metrics
 
     combined_audit_sources: List[str] = []
     for metrics in (iterator_metrics, typeclass_metrics, bridge_metrics):

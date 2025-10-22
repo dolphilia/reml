@@ -1,0 +1,22 @@
+(rule
+ (alias runtest)
+ (deps
+  (:audit_diff ../audit-diff.py)
+  (:audit_query ../audit-query.py)
+  (:audit_dashboard ../audit_dashboard.py)
+  (:collect_script ../../ci/collect-iterator-audit-metrics.py)
+  (:ffi_preset ../presets/ffi-regressions.dsl)
+  (:audit_template ../templates/audit-diff.html)
+  (:schema ../../json-schema/audit-diff.schema.json))
+ (action
+  (progn
+   (run sh -c "rm -rf tmp && mkdir tmp")
+   (run sh -c "cat <<'EOF' > tmp/base.json\n{\"diagnostics\":[{\"code\":\"ffi.bridge\",\"audit\":{\"metadata\":{\"schema.version\":\"1.1\",\"cli.audit_id\":\"0000\"}},\"extensions\":{},\"timestamp\":\"2025-10-01T00:00:00Z\"}]}\nEOF")
+   (run sh -c "cat <<'EOF' > tmp/target.json\n{\"diagnostics\":[{\"code\":\"ffi.bridge\",\"audit\":{\"metadata\":{\"schema.version\":\"1.1\",\"cli.audit_id\":\"0000\"}},\"extensions\":{},\"timestamp\":\"2025-10-01T00:00:00Z\"}]}\nEOF")
+   (run sh -c "cat <<'EOF' > tmp/audit-log.jsonl\n{\"category\":\"ffi.bridge\",\"timestamp\":\"2025-10-01T00:00:00Z\",\"metadata\":{\"schema.version\":\"1.1\",\"bridge\":{\"status\":\"error\"}},\"extensions\":{\"bridge\":{\"status\":\"error\"}}}\nEOF")
+   (run sh -c "touch tmp/dashboard.html")
+   (run python3 %{audit_diff} --base tmp/base.json --target tmp/target.json --format json --output tmp/out)
+   (run python3 %{audit_query} --from tmp/audit-log.jsonl --query-file %{ffi_preset} --output tmp/query.json)
+   (run python3 %{collect_script} --section review --source tmp/base.json --review-diff tmp/out/diff.json --review-coverage tmp/query.json --review-dashboard tmp/dashboard.html --output tmp/metrics.json)
+   (run python3 %{audit_dashboard} --metrics tmp/metrics.json --output tmp/dashboard --render)
+   (run sh -c "test -f tmp/dashboard/index.html"))))

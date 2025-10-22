@@ -13,9 +13,19 @@
 | 型クラス | `typeclass.metadata_pass_rate` | `extensions.typeclass` / `audit_metadata.typeclass.*` が完全に埋まっている割合 (0.0〜1.0) | CI（週次レビュー、PRごと） | 同 §1.4 |
 | 安全性 | `ffi_bridge.audit_pass_rate` | `ffi.contract.*` 診断で `AuditEnvelope.metadata.bridge.*` と拡張フィールドが揃った割合 (0.0〜1.0) | CI（週次レビュー、PRごと） | [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md), [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) |
 | DX | `diagnostic_regressions` | 診断差分の件数 | PR ごと | [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) |
+| DX | `audit_diff.regressions` | `tooling/review/audit-diff.py` が算出した `diagnostic.regressions + metadata.changed` 件数 | PR ごと | 同上／`reports/diagnostic-format-regression.md` |
+| DX | `audit_dashboard.generated` | 直近の `audit_dashboard` ジョブが成功し `reports/audit/dashboard/index.html` を出力した回数 | 週次レビュー | `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` §5.2 |
+| DX | `audit_query.coverage` | DSL プリセット（Stage/FFI/型クラス）でヒットした監査ログ数 / 全監査ログ数 | PR ごと | `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` §5.3 |
 | DX | `error_resolution_latency` | 重大バグの修正までの日数 | 月次 | [0-1-project-purpose.md](../../spec/0-1-project-purpose.md) §2.2 |
 
-- CI 集計スクリプト: `tooling/ci/collect-iterator-audit-metrics.py` を用いて診断 JSON を検査し、結果を `tooling/ci/iterator-audit-metrics.json` に書き出す。`metrics[]` 配列には iterator / FFI ブリッジの両指標が含まれ、`pass_rate` が 1.0 未満の場合は CI 側でブロック条件を設定する。
+- CI 集計スクリプト: `tooling/ci/collect-iterator-audit-metrics.py` を用いて診断 JSON を検査し、結果を `tooling/ci/iterator-audit-metrics.json` に書き出す。`metrics[]` 配列には iterator / FFI ブリッジ指標に加えて `review` セクション（`audit_diff.regressions`, `audit_query.coverage`）が含まれ、`pass_rate` が 1.0 未満または DX 指標が閾値を超えた場合は CI 側でブロック条件を設定する。
+
+### 0.3.1a レビュー支援ツール連携
+- 差分検知: `tooling/review/audit-diff.py --base reports/audit/baseline.jsonl --target reports/audit/current.jsonl --output reports/audit/review/<commit>/diff` を CI/ローカル双方で実行し、`diff.json` に記録された `diagnostic.regressions`, `metadata.changed`, `pass_rate.delta` を `audit_diff.regressions` の計測値として採用する。PR テンプレートでは差分サマリを貼り付け、`reports/diagnostic-format-regression.md` のチェックリストに沿ってレビューする。CI 側では `collect-iterator-audit-metrics.py --section review --review-diff reports/audit/review/<commit>/diff.json` を呼び出し、差分指標を取得する。
+- コメント投稿: `tooling/ci/publish-audit-diff.py --diff reports/audit/review/<commit>/diff.json` で Markdown コメントを生成し、`actions/github-script` などから PR へ投稿する。`--max-details` で差分テーブルの件数を調整可能。
+- 可視化: `tooling/review/audit_dashboard.py --metrics <metrics.json> --render --output reports/audit/dashboard/` により `index.{html,md}` / `metrics.timeseries.csv` / `metrics.snapshot.json` を生成し、`audit_dashboard` CI ジョブでアーティファクト化する。マイルストーン固定値は `reports/audit/dashboard/releases/<milestone>/` に保存し、週次レビュー後に `audit_dashboard.generated` のカウントを更新する。CI 計測は `collect-iterator-audit-metrics.py --section review --review-dashboard reports/audit/dashboard/index.html` を介して行い、生成ファイルが存在しない場合は `failures[]` に記録される。
+- クエリ: `tooling/review/audit-query --query-file tooling/review/presets/stage-regressions.dsl --from reports/audit/review/<commit>/target.jsonl --output reports/audit/review/<commit>/query/stage.json` のように DSL プリセットを用いて重点領域を抽出し、ヒット件数を `audit_query.coverage` の計算に利用する。プリセット一覧は `tooling/review/presets/README.md` で管理し、更新時は `docs/spec/3-6-core-diagnostics-audit.md` 付録へ同期する。CI では `collect-iterator-audit-metrics.py --section review --review-coverage reports/audit/review/<commit>/query/stage.json` を通じて集計する。
+- いずれのツールも共通の正規化ライブラリ `tooling/review/audit_shared.py` を使用し、スキーマ更新時は当該モジュールと `tooling/json-schema/audit-diff.schema.json` を併せて更新する。更新差分は `reports/audit/review/<commit>/diff.md` に記録し、計測値を `0-3-audit-and-metrics.md` へ転記する。
 
 ### メタデータキー定義表（Diagnostic.extensions / AuditEnvelope.metadata）
 | ドメイン | キー | `Diagnostic.extensions` | `AuditEnvelope.metadata` | 必須フェーズ | 備考 |
