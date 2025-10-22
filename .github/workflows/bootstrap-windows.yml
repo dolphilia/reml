@@ -219,28 +219,23 @@ jobs:
             printf '{"diagnostics":[]}\n' > "$OUT_DIR/diagnostics.json"
           fi
 
-          python3 - <<'PY'
-import os
-import pathlib
-import sys
+          AUDIT_DIR="$GITHUB_WORKSPACE/reports/audit/${AUDIT_TARGET}"
+          if [ ! -d "$AUDIT_DIR" ]; then
+            echo "SCHEMA_ERROR: audit directory not found: $AUDIT_DIR" >&2
+            exit 1
+          fi
 
-target = os.environ.get("AUDIT_TARGET", "").strip()
-platform = os.environ.get("AUDIT_PLATFORM", "").strip() or "windows"
-root = pathlib.Path("reports") / "audit" / (target or "<unknown>")
-root.mkdir(parents=True, exist_ok=True)
-matches = sorted(root.rglob("*.jsonl"))
+          AUDIT_JSON=$(find "$AUDIT_DIR" -type f -name '*.jsonl' | sort | head -n 1)
+          if [ -z "$AUDIT_JSON" ]; then
+            echo "SCHEMA_ERROR: audit jsonl not generated under $AUDIT_DIR" >&2
+            exit 1
+          fi
 
-if not matches:
-    print(f"SCHEMA_ERROR: audit jsonl not generated under {root}", file=sys.stderr)
-    sys.exit(1)
-
-paths_file = pathlib.Path("tmp") / "audit-matrix" / platform / "audit-paths.txt"
-paths_file.parent.mkdir(parents=True, exist_ok=True)
-with paths_file.open("w", encoding="utf-8") as handle:
-    for path in matches:
-        handle.write(str(path) + "\n")
-        print(f"[audit] {path}")
-PY
+          AUDIT_JSON_REL="${AUDIT_JSON#$GITHUB_WORKSPACE/}"
+          AUDIT_PATHS_FILE="tmp/audit-matrix/${AUDIT_PLATFORM}/audit-paths.txt"
+          mkdir -p "$(dirname "$AUDIT_PATHS_FILE")"
+          printf '%s\n' "$AUDIT_JSON_REL" > "$AUDIT_PATHS_FILE"
+          echo "[audit] $AUDIT_JSON_REL"
 
       - name: Compute audit job duration
         id: audit_duration
