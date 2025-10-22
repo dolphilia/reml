@@ -871,6 +871,44 @@ def generate_summary_markdown(index_data: Dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def summarize_diagnostics(paths: Sequence[Path]) -> Dict[str, Any]:
+    summary = {
+        "total": 0,
+        "error": 0,
+        "warning": 0,
+        "info": 0,
+        "hint": 0,
+        "other": 0,
+        "sources": [str(path) for path in paths],
+    }
+
+    severity_aliases = {
+        "error": "error",
+        "err": "error",
+        "warning": "warning",
+        "warn": "warning",
+        "info": "info",
+        "information": "info",
+        "note": "info",
+        "hint": "hint",
+    }
+
+    for path in paths:
+        data = load_json(path)
+        for diag in iter_diagnostics(data):
+            summary["total"] += 1
+            severity = diag.get("severity")
+            normalized = None
+            if isinstance(severity, str):
+                normalized = severity_aliases.get(severity.lower())
+            if normalized and normalized in summary:
+                summary[normalized] += 1
+            else:
+                summary["other"] += 1
+
+    return summary
+
+
 def collect_metrics(paths: List[Path]) -> Dict:
     total = 0
     passed = 0
@@ -939,6 +977,17 @@ def collect_bridge_metrics(
     platform_summary: Dict[str, Dict[str, int]] = {}
     audit_sources: List[str] = []
     schema_versions: Set[str] = set()
+    status_success = 0
+    status_failure = 0
+
+    def _tally_status(value: Optional[object]) -> None:
+        nonlocal status_success, status_failure
+        if isinstance(value, str):
+            lowered = value.lower()
+            if lowered in {"ok", "success", "passed", "pass"}:
+                status_success += 1
+            elif lowered:
+                status_failure += 1
 
     for path in paths:
         data = load_json(path)
@@ -965,6 +1014,7 @@ def collect_bridge_metrics(
             platform_value = extract_bridge_field(
                 audit_dict, extensions_dict, "platform"
             )
+            _tally_status(status_value)
 
             platform_key = (
                 str(platform_value)
@@ -1060,6 +1110,7 @@ def collect_bridge_metrics(
             platform_value = extract_bridge_field(
                 audit_dict, extensions_dict, "platform"
             )
+            _tally_status(status_value)
 
             platform_key = (
                 str(platform_value)
@@ -1120,6 +1171,11 @@ def collect_bridge_metrics(
         "failures": failures,
         "platform_summary": platform_summary,
         "schema_versions": sorted(schema_versions),
+        "status_summary": {
+            "success": status_success,
+            "failure": status_failure,
+            "platforms": platform_summary,
+        },
     }
 
 
@@ -1286,6 +1342,18 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         dest="review_dashboard",
         help="Path to generated dashboard artifact (HTML/Markdown).",
     )
+    parser.add_argument(
+        "--ci-duration-seconds",
+        type=float,
+        default=None,
+        help="Overall CI job duration in seconds (optional).",
+    )
+    parser.add_argument(
+        "--stage-duration-seconds",
+        type=float,
+        default=None,
+        help="Iterator audit stage duration in seconds (optional).",
+    )
     return parser.parse_args(argv)
 
 
@@ -1416,6 +1484,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             review_diff_paths, review_coverage_paths, review_dashboard_paths
         )
 
+    diagnostics_summary = summarize_diagnostics(sources)
+
     metrics_list: List[Dict[str, Any]] = []
     if iterator_metrics:
         metrics_list.append(iterator_metrics)
@@ -1466,6 +1536,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     for metrics in metrics_list:
         schema_versions.update(metrics.get("schema_versions") or [])
     combined["schema_versions"] = sorted(schema_versions)
+    if diagnostics_summary:
+        combined["diagnostics"] = diagnostics_summary
+
+    ci_info: Dict[str, Any] = {}
+    duration_bucket: Dict[str, Any] = {}
+    if getattr(args, "ci_duration_seconds", None) is not None:
+        ci_info["duration_seconds"] = args.ci_duration_seconds
+        duration_bucket["total_seconds"] = args.ci_duration_seconds
+    if getattr(args, "stage_duration_seconds", None) is not None:
+        ci_info["stage_duration_seconds"] = args.stage_duration_seconds
+        duration_bucket["stage_seconds"] = args.stage_duration_seconds
+    if duration_bucket:
+        ci_info["duration"] = duration_bucket
+    if ci_info:
+        combined["ci"] = ci_info
 
     json_output = json.dumps(combined, indent=2, ensure_ascii=False)
 

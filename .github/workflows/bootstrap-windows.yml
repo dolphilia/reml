@@ -123,3 +123,174 @@ jobs:
           name: windows-iterator-audit-metrics
           path: tooling/ci/iterator-audit-metrics.json
           retention-days: 14
+
+  audit-matrix:
+    name: Audit Matrix (Windows target)
+    runs-on: ubuntu-latest
+    needs:
+      - diagnostic-json
+    env:
+      AUDIT_TARGET: x86_64-pc-windows-msvc
+      AUDIT_PLATFORM: windows
+      AUDIT_SAMPLE: compiler/ocaml/tests/samples/ffi/cli-callconv-unsupported-windows.reml
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Record job start time
+        run: echo "AUDIT_JOB_STARTED=$(date +%s)" >> "$GITHUB_ENV"
+
+      - name: Cache LLVM
+        uses: actions/cache@v4
+        with:
+          path: /usr/lib/llvm-18
+          key: llvm-18-${{ runner.os }}
+          restore-keys: |
+            llvm-18-
+
+      - name: Install LLVM toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y llvm-18 llvm-18-dev llvm-18-tools
+          sudo ln -sf /usr/bin/llvm-as-18 /usr/bin/llvm-as
+          sudo ln -sf /usr/bin/opt-18 /usr/bin/opt
+          sudo ln -sf /usr/bin/llc-18 /usr/bin/llc
+          llvm-as --version
+          opt --version
+          llc --version
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.2.1
+          dune-cache: true
+          opam-local-packages: |
+            compiler/ocaml/reml_ocaml.opam
+
+      - name: Install dependencies
+        run: |
+          opam install . --deps-only --with-test --yes
+        working-directory: compiler/ocaml
+
+      - name: Build compiler
+        run: |
+          opam exec -- dune build
+        working-directory: compiler/ocaml
+
+      - name: Build runtime library
+        run: |
+          make runtime
+        working-directory: runtime/native
+
+      - name: Prepare audit workspace
+        run: |
+          set -euo pipefail
+          mkdir -p reports/audit
+          mkdir -p tmp/audit-matrix/${AUDIT_PLATFORM}/ir
+
+      - name: Generate audit logs (--audit-store=ci)
+        run: |
+          set -euo pipefail
+          REMLC="$(find "$GITHUB_WORKSPACE/compiler/ocaml/_build/default" -type f -name 'main.exe' | head -n 1)"
+          if [ -z "$REMLC" ]; then
+            echo "Unable to locate main.exe under compiler/ocaml/_build/default" >&2
+            exit 1
+          fi
+          CAP_JSON="$GITHUB_WORKSPACE/tooling/runtime/capabilities/default.json"
+          SAMPLE="$GITHUB_WORKSPACE/${AUDIT_SAMPLE}"
+          OUT_DIR="$GITHUB_WORKSPACE/tmp/audit-matrix/${AUDIT_PLATFORM}"
+          chmod +x "$REMLC"
+
+          "$REMLC" "$SAMPLE" \
+            --target "${AUDIT_TARGET}" \
+            --effect-stage beta \
+            --runtime-capabilities "$CAP_JSON" \
+            --emit-ir \
+            --out-dir "$OUT_DIR/ir" \
+            --emit-audit ci \
+            --audit-store ci \
+            --audit-level full \
+            --format json \
+            > "$OUT_DIR/cli-callconv.stdout.json" \
+            2> "$OUT_DIR/diagnostics.json" || true
+
+          if [ ! -s "$OUT_DIR/diagnostics.json" ]; then
+            printf '{"diagnostics":[]}\n' > "$OUT_DIR/diagnostics.json"
+          fi
+
+          python3 - <<'PY'
+import os
+import pathlib
+import sys
+
+target = os.environ.get("AUDIT_TARGET", "").strip()
+platform = os.environ.get("AUDIT_PLATFORM", "").strip() or "windows"
+root = pathlib.Path("reports") / "audit" / (target or "<unknown>")
+root.mkdir(parents=True, exist_ok=True)
+matches = sorted(root.rglob("*.jsonl"))
+
+if not matches:
+    print(f"SCHEMA_ERROR: audit jsonl not generated under {root}", file=sys.stderr)
+    sys.exit(1)
+
+paths_file = pathlib.Path("tmp") / "audit-matrix" / platform / "audit-paths.txt"
+paths_file.parent.mkdir(parents=True, exist_ok=True)
+with paths_file.open("w", encoding="utf-8") as handle:
+    for path in matches:
+        handle.write(str(path) + "\n")
+        print(f"[audit] {path}")
+PY
+
+      - name: Compute audit job duration
+        id: audit_duration
+        run: |
+          NOW=$(date +%s)
+          DURATION=$(( NOW - AUDIT_JOB_STARTED ))
+          echo "seconds=$DURATION" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install schema validator dependencies
+        run: npm install --prefix tooling/json-schema --no-save
+
+      - name: Validate audit schema
+        run: |
+          set -euo pipefail
+          AUDIT_JSON=$(head -n 1 tmp/audit-matrix/${AUDIT_PLATFORM}/audit-paths.txt)
+          scripts/ci-validate-audit.sh \
+            --schema tooling/runtime/audit-schema.json \
+            --input "$AUDIT_JSON" \
+            --summary reports/audit/schema-validation.md
+
+      - name: Collect audit metrics
+        id: audit_metrics
+        run: |
+          set -euo pipefail
+          AUDIT_JSON=$(head -n 1 tmp/audit-matrix/${AUDIT_PLATFORM}/audit-paths.txt)
+          CI_DURATION="${{ steps.audit_duration.outputs.seconds }}"
+          python3 tooling/ci/collect-iterator-audit-metrics.py \
+            --source tmp/audit-matrix/${AUDIT_PLATFORM}/diagnostics.json \
+            --audit-source "$AUDIT_JSON" \
+            --output reports/audit/summary.json \
+            --ci-duration-seconds "${CI_DURATION:-0}"
+
+      - name: Detect audit regressions (prototype)
+        run: |
+          set -euo pipefail
+          scripts/ci-detect-regression.sh \
+            --current reports/audit/summary.json \
+            --report reports/audit/regression.md
+
+      - name: Upload audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-ci-windows
+          path: |
+            reports/audit
+            tmp/audit-matrix/windows
+          retention-days: 14
