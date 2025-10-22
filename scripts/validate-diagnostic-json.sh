@@ -12,7 +12,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SCHEMA_PATH="$ROOT_DIR/tooling/json-schema/diagnostic-v2.schema.json"
+DIAG_SCHEMA_PATH="$ROOT_DIR/tooling/json-schema/diagnostic-v2.schema.json"
+AUDIT_SCHEMA_PATH="$ROOT_DIR/tooling/runtime/audit-schema.json"
 NODE_PROJECT="$ROOT_DIR/tooling/lsp/tests/client_compat"
 
 print_usage() {
@@ -74,4 +75,34 @@ if [[ "${#FILES[@]}" -eq 0 ]]; then
   exit 0
 fi
 
-node "$NODE_PROJECT/validate-diagnostic-json.mjs" "$SCHEMA_PATH" "${FILES[@]}"
+declare -a DIAG_FILES=()
+declare -a AUDIT_FILES=()
+
+for path in "${FILES[@]}"; do
+  normalized="${path//\\//}"
+  if [[ "$normalized" == *"/audit/"* ]]; then
+    AUDIT_FILES+=("$path")
+  else
+    DIAG_FILES+=("$path")
+  fi
+done
+
+EXIT_CODE=0
+
+if [[ "${#DIAG_FILES[@]}" -gt 0 ]]; then
+  if ! node "$NODE_PROJECT/validate-diagnostic-json.mjs" "$DIAG_SCHEMA_PATH" "${DIAG_FILES[@]}"; then
+    EXIT_CODE=1
+  fi
+fi
+
+if [[ "${#AUDIT_FILES[@]}" -gt 0 ]]; then
+  if [[ ! -f "$AUDIT_SCHEMA_PATH" ]]; then
+    echo "[validate-diagnostic-json] warning: audit schema not found ($AUDIT_SCHEMA_PATH)。検証をスキップします。" >&2
+  else
+    if ! node "$NODE_PROJECT/validate-diagnostic-json.mjs" "$AUDIT_SCHEMA_PATH" "${AUDIT_FILES[@]}"; then
+      EXIT_CODE=1
+    fi
+  fi
+fi
+
+exit $EXIT_CODE
