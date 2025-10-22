@@ -16,6 +16,38 @@
 
 - CI 集計スクリプト: `tooling/ci/collect-iterator-audit-metrics.py` を用いて診断 JSON を検査し、結果を `tooling/ci/iterator-audit-metrics.json` に書き出す。`metrics[]` 配列には iterator / FFI ブリッジの両指標が含まれ、`pass_rate` が 1.0 未満の場合は CI 側でブロック条件を設定する。
 
+### メタデータキー定義表（Diagnostic.extensions / AuditEnvelope.metadata）
+| ドメイン | キー | `Diagnostic.extensions` | `AuditEnvelope.metadata` | 必須フェーズ | 備考 |
+|----------|------|-------------------------|---------------------------|--------------|------|
+| CLI 実行 | `cli.audit_id` | `diagnostic.extensions.cli.audit_id` | `metadata["cli.audit_id"]` | Phase 2-3 以降 | `audit_id` を CLI 実行単位で共有し、診断・監査の突合に利用する。 |
+| CLI 実行 | `cli.change_set` | `diagnostic.extensions.cli.change_set` | `metadata["cli.change_set"]` | Phase 2-3 以降 | 差分適用対象の識別子。スキーマ v1.1 で追加。 |
+| 型クラス | `typeclass.constraint` | `extensions.typeclass.constraint` | `metadata["typeclass.constraint"]` | Phase 2-4 | 制約の人間可読名。 |
+| 型クラス | `typeclass.resolution_state` | `extensions.typeclass.resolution_state` | `metadata["typeclass.resolution_state"]` | Phase 2-4 | `Resolved` / `Ambiguous` / `Unresolved` など。 |
+| 型クラス | `typeclass.dictionary` | `extensions.typeclass.dictionary` | `metadata["typeclass.dictionary"]` | Phase 2-4 | 辞書渡し結果（JSON）。モノモルフィゼーション経路では `null`。 |
+| 型クラス | `typeclass.candidates[]` | `extensions.typeclass.candidates[]` | `metadata["typeclass.candidates"]` | Phase 2-4 | 候補辞書の優先度付き一覧。 |
+| 効果 | `effect.stage.required` | `extensions.effect.stage.required` | `metadata["effect.stage.required"]` | Phase 2-2 | Stage 宣言の期待値。 |
+| 効果 | `effect.stage.actual` | `extensions.effect.stage.actual` | `metadata["effect.stage.actual"]` | Phase 2-2 | 実測 Stage。 |
+| 効果 | `effect.stage.residual` | `extensions.effect.stage.residual` | `metadata["effect.stage.residual"]` | Phase 2-4 | 残余効果の JSON。 |
+| 効果 | `effect.handler_stack` | `extensions.effect.handler_stack[]` | `metadata["effect.handler_stack"]` | Phase 2-4 | ハンドラ適用順。 |
+| FFI | `bridge.platform` | `extensions.bridge.platform` | `metadata["bridge.platform"]` | Phase 2-3 | `linux-gnu` / `windows-msvc` / `macos-arm64` 等。 |
+| FFI | `bridge.abi` | `extensions.bridge.abi` | `metadata["bridge.abi"]` | Phase 2-3 | 呼出規約の識別子。 |
+| FFI | `bridge.ownership` | `extensions.bridge.ownership` | `metadata["bridge.ownership"]` | Phase 2-3 | 引数の所有権。 |
+| FFI | `bridge.audit_pass_rate` | `extensions.bridge.audit_pass_rate` | `metadata["bridge.audit_pass_rate"]` | Phase 2-4 | CI での合格率。 |
+| 解析 | `parser.input_name` | `extensions.parse.input_name` | `metadata["parse.input_name"]` | Phase 1-4 | ソース名。 |
+| 解析 | `parser.stage_trace[]` | `extensions.parse.stage_trace[]` | `metadata["parse.stage_trace"]` | Phase 2-4 | レキサー→パーサ→補助解析の順序。 |
+
+- キー追加時は本表を更新し、`docs/spec/3-6-core-diagnostics-audit.md` の付録と差異が無いか確認する。新規キーは `schema.version` をインクリメントした上で CI の `jsonschema` 検証対象に追加する。
+
+### `schema.version` 更新履歴
+| バージョン | 反映日 | 主な変更点 | 参照ドキュメント | CI 導入 |
+|-----------|--------|------------|-------------------|---------|
+| v1.0 | 2025-09-30 | CLI `audit_id` / `change_set` の導入、`bridge.platform` キー確定 | `docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md` §3 | Linux のみ (`bootstrap-linux.yml`) |
+| v1.1 | 2025-10-24 | `extensions.bridge.*` 拡張、`schema_version` フィールドの必須化、macOS 監査サンプル追加 | `docs/plans/bootstrap-roadmap/2-3-completion-report.md` §5, `docs/plans/bootstrap-roadmap/2-3-to-2-4-handover.md` | Linux / macOS CI (`bootstrap-linux.yml`, `bootstrap-macos.yml`) |
+| v1.1+phase2-4 | 2025-10-29（予定） | 型クラス・効果メタデータの必須化、Windows 監査ジョブ (ID 22) 対応、`bridge.audit_pass_rate` 追加 | `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` §4 | Linux / Windows / macOS CI へ順次反映予定 |
+
+- 履歴の更新と同時に `reports/audit/index.json` の `schema_version` フィールドを確認し、`tooling/ci/collect-iterator-audit-metrics.py` が最新値を指していることを確認する。
+- メジャー更新（`v2.0` 等）時は `docs/migrations/audit-schema-history.md` に詳細な移行手順を残し、互換ウィンドウと移行スクリプトの有無を記載する。
+
 ### macOS 追加指標（Phase 1-8 以降）
 | カテゴリ | 指標 | 定義 | 収集タイミング | 計画参照 |
 |----------|------|------|----------------|----------|

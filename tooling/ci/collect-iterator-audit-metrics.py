@@ -19,7 +19,7 @@ import json
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 try:
     import tomllib  # Python 3.11+
@@ -27,21 +27,68 @@ except ModuleNotFoundError:  # pragma: no cover
     tomllib = None
 
 
-# Required audit metadata keys.
-REQUIRED_AUDIT_KEYS: List[str] = [
-    "audit_id",
-    "change_set",
-    "effect.stage.required",
-    "effect.stage.actual",
-    "effect.capability",
-    "effect.stage.iterator.required",
-    "effect.stage.iterator.actual",
-    "effect.stage.iterator.kind",
-    "effect.stage.iterator.capability",
-    "effect.stage.iterator.source",
+# Required audit metadata keys (logical name, candidate paths, allow_empty, allow_null).
+class RequiredField(Tuple[str, Tuple[str, ...], bool, bool]):
+    __slots__ = ()
+
+    @property
+    def logical(self) -> str:
+        return self[0]
+
+    @property
+    def candidates(self) -> Tuple[str, ...]:
+        return self[1]
+
+    @property
+    def allow_empty(self) -> bool:
+        return self[2]
+
+    @property
+    def allow_null(self) -> bool:
+        return self[3]
+
+
+def Field(
+    logical: str,
+    candidates: Sequence[str],
+    *,
+    allow_empty: bool = False,
+    allow_null: bool = False,
+) -> RequiredField:
+    return RequiredField((logical, tuple(candidates), allow_empty, allow_null))
+
+
+REQUIRED_AUDIT_FIELDS: List[RequiredField] = [
+    Field("cli.audit_id", ("cli.audit_id", "audit_id")),
+    Field("cli.change_set", ("cli.change_set", "change_set")),
+    Field("schema.version", ("schema.version",)),
+    Field("effect.stage.required", ("effect.stage.required",)),
+    Field("effect.stage.actual", ("effect.stage.actual",)),
+    Field("effect.capability", ("effect.capability",)),
+    Field(
+        "effect.capability_descriptor",
+        ("effect.capability_descriptor", "effect.capability_metadata"),
+        allow_empty=True,
+    ),
+    Field("effect.handler_stack", ("effect.handler_stack",)),
+    Field(
+        "effect.unhandled_operations",
+        ("effect.unhandled_operations",),
+        allow_empty=True,
+        allow_null=True,
+    ),
+    Field("effect.stage.iterator.required", ("effect.stage.iterator.required",)),
+    Field("effect.stage.iterator.actual", ("effect.stage.iterator.actual",)),
+    Field("effect.stage.iterator.kind", ("effect.stage.iterator.kind",)),
+    Field(
+        "effect.stage.iterator.capability",
+        ("effect.stage.iterator.capability",),
+    ),
+    Field("effect.stage.iterator.source", ("effect.stage.iterator.source",)),
+    Field("bridge.audit_pass_rate", ("bridge.audit_pass_rate",)),
 ]
 
-# Required fields under extensions.effects.
+# Required fields under extensions.effects / extensions.typeclass / extensions.parse.
 REQUIRED_EFFECT_STAGE_KEYS: List[str] = ["required", "actual"]
 REQUIRED_EFFECT_ITERATOR_KEYS: List[str] = [
     "required",
@@ -50,12 +97,38 @@ REQUIRED_EFFECT_ITERATOR_KEYS: List[str] = [
     "capability",
     "source",
 ]
+REQUIRED_EFFECT_ADDITIONAL_KEYS: List[str] = [
+    "residual",
+    "handler_stack",
+    "unhandled_operations",
+    "capability_descriptor",
+]
+EFFECT_ADDITIONAL_KEY_ALIASES: Dict[str, Tuple[str, ...]] = {
+    "residual": ("residual",),
+    "handler_stack": ("handler_stack",),
+    "unhandled_operations": ("unhandled_operations",),
+    "capability_descriptor": ("capability_descriptor", "metadata"),
+}
+EFFECT_ALLOW_EMPTY_KEYS: Set[str] = {"unhandled_operations"}
+REQUIRED_TYPECLASS_SCALAR_KEYS: List[str] = ["constraint", "resolution_state"]
+REQUIRED_TYPECLASS_OPTIONAL_KEYS: List[str] = [
+    "dictionary",
+    "candidates",
+    "pending",
+    "generalized_typevars",
+    "graph.export_dot",
+]
+REQUIRED_PARSE_KEYS: List[str] = ["input_name", "stage_trace"]
 
 # FFI bridge metrics configuration.
 BRIDGE_DIAG_PREFIX = "ffi.contract."
 REQUIRED_BRIDGE_AUDIT_KEYS: List[str] = [
     "audit_id",
     "change_set",
+    "cli.audit_id",
+    "cli.change_set",
+    "schema.version",
+    "bridge.audit_pass_rate",
     "bridge.status",
     "bridge.target",
     "bridge.arch",
@@ -74,6 +147,7 @@ REQUIRED_BRIDGE_EXTENSION_KEYS: List[str] = [
     "bridge.ownership",
     "bridge.abi",
     "bridge.platform",
+    "bridge.audit_pass_rate",
     "bridge.return.ownership",
     "bridge.return.status",
     "bridge.return.wrap",
@@ -143,18 +217,44 @@ def iter_diagnostics(data: Dict) -> Iterable[Dict]:
 
 def check_audit_fields(audit: Optional[Dict]) -> List[str]:
     if audit is None or not isinstance(audit, dict):
-        return ["audit"] + REQUIRED_AUDIT_KEYS.copy()
-    metadata = audit.get("metadata") if isinstance(audit.get("metadata"), dict) else None
+        return ["audit"] + [field.logical for field in REQUIRED_AUDIT_FIELDS]
+
+    metadata = audit.get("metadata")
+    containers: List[Dict[str, Any]] = [audit]
+    if isinstance(metadata, dict):
+        containers.append(metadata)
+
+    def lookup(container: Dict[str, Any], path: str) -> Tuple[bool, Optional[object]]:
+        if path in container:
+            return True, container[path]
+        current: object = container
+        for part in path.split("."):
+            if isinstance(current, dict) and part in current:
+                current = current[part]
+            else:
+                return False, None
+        return True, current
+
     missing: List[str] = []
-    for key in REQUIRED_AUDIT_KEYS:
-        has_key = False
-        for container in filter(None, (audit, metadata)):
-            value = container.get(key)
-            if value not in (None, "", []):
-                has_key = True
+    for field in REQUIRED_AUDIT_FIELDS:
+        found = False
+        for container in containers:
+            if not isinstance(container, dict):
+                continue
+            for candidate in field.candidates:
+                exists, value = lookup(container, candidate)
+                if not exists:
+                    continue
+                if value is None and not field.allow_null:
+                    continue
+                if value in ("", []) and not field.allow_empty:
+                    continue
+                found = True
                 break
-        if not has_key:
-            missing.append(key)
+            if found:
+                break
+        if not found:
+            missing.append(field.logical)
     return missing
 
 
@@ -217,12 +317,52 @@ def check_extension_fields(extensions: Optional[Dict]) -> List[str]:
     if capability in (None, ""):
         missing.append("extensions.effects.capability")
 
+    for key in REQUIRED_EFFECT_ADDITIONAL_KEYS:
+        aliases = EFFECT_ADDITIONAL_KEY_ALIASES.get(key, (key,))
+        present = False
+        for alias in aliases:
+            if alias not in effects:
+                continue
+            value = effects.get(alias)
+            if value in (None,) and key not in EFFECT_ALLOW_EMPTY_KEYS:
+                continue
+            if value in ("", []) and key not in EFFECT_ALLOW_EMPTY_KEYS:
+                continue
+            present = True
+            break
+        if not present:
+            missing.append(f"extensions.effects.{key}")
+
+    typeclass = _as_dict(extensions.get("typeclass") if extensions else None)
+    if typeclass is None:
+        missing.append("extensions.typeclass")
+    else:
+        for key in REQUIRED_TYPECLASS_SCALAR_KEYS:
+            value = typeclass.get(key)
+            if value in (None, ""):
+                missing.append(f"extensions.typeclass.{key}")
+        for key in REQUIRED_TYPECLASS_OPTIONAL_KEYS:
+            if key not in typeclass:
+                missing.append(f"extensions.typeclass.{key}")
+
+    parse_ext = _as_dict(extensions.get("parse") if extensions else None)
+    if parse_ext is None:
+        missing.append("extensions.parse")
+    else:
+        for key in REQUIRED_PARSE_KEYS:
+            value = parse_ext.get(key)
+            if value in (None, ""):
+                missing.append(f"extensions.parse.{key}")
+
     return missing
 
 
 def _has_path(data: Optional[Dict], dotted_key: str) -> bool:
     if data is None:
         return False
+    if dotted_key in data:
+        value = data.get(dotted_key)
+        return value not in (None, "", [])
     current: object = data
     for part in dotted_key.split("."):
         if not isinstance(current, dict) or part not in current:
@@ -470,7 +610,7 @@ def collect_metrics(paths: List[Path]) -> Dict:
         "passed": passed,
         "failed": total - passed,
         "pass_rate": pass_rate,
-        "required_audit_keys": REQUIRED_AUDIT_KEYS,
+        "required_audit_keys": [field.logical for field in REQUIRED_AUDIT_FIELDS],
         "sources": [str(path) for path in paths],
         "failures": failures,
         "schema_versions": sorted(schema_versions),

@@ -19,8 +19,9 @@ Stage B で実施する診断ゴールデン更新の記録簿です。各バッ
 - レビューポイント:
   1. `codes[]` の並び・重複チェック
   2. `secondary` に span なしメッセージが無いか
-  3. `audit` / `extensions` の必須キー（effects/bridge）有無
+  3. `audit` / `extensions` の必須キー（`cli.audit_id`, `cli.change_set`, `schema.version`, `extensions.effects.*`, `extensions.typeclass.*`, `extensions.parse.*`, `extensions.bridge.*`）が揃っているか
   4. `timestamp` フィールドのフォーマット (ISO8601Z)
+  5. `tooling/ci/collect-iterator-audit-metrics.py --source … --audit-source …` と `tooling/ci/sync-iterator-audit.sh` の結果で `failures[].missing` が空か
 - 備考 / リスク:
   - 例: V1 クライアント互換の再検証が必要
 ```

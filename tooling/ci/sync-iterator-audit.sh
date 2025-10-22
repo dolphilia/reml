@@ -226,8 +226,13 @@ iterator_missing_audit = any(
         key == "audit"
         or key == "audit_id"
         or key == "change_set"
+        or key == "cli.audit_id"
+        or key == "cli.change_set"
+        or key == "schema.version"
         or key.startswith("effect.")
         or key.startswith("extensions.effects")
+        or key.startswith("extensions.typeclass")
+        or key.startswith("extensions.parse")
         for key in (failure.get("missing") or [])
     )
     for failure in iterator_failures
@@ -250,10 +255,13 @@ if isinstance(ffi_metrics, dict):
             key == "audit"
             or key == "audit_id"
             or key == "change_set"
+            or key == "cli.audit_id"
+            or key == "cli.change_set"
+            or key == "schema.version"
             or key.startswith("bridge")
             or key.startswith("extensions.bridge")
-            for key in (failure.get("missing") or [])
-        )
+        for key in (failure.get("missing") or [])
+    )
         for failure in ffi_failures
     )
 ffi_v2_status = None

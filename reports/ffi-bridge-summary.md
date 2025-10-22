@@ -40,6 +40,8 @@
   - `bridge.abi` / `bridge.callconv` が Typer 診断と矛盾せず、`tests/test_ffi_lowering.ml` の Windows ケースでも一致を確認。
   - `reml.bridge.version` モジュールフラグ (1) が `llvm_gen/ffi_value_lowering.ml` から出力され、テストで検証済み。
   - 失敗ケースが `collect-iterator-audit-metrics.py` の `bridge.status` 判定を経て `ffi_bridge.audit_pass_rate` に反映（`tmp/cli-callconv-out/macos/cli-callconv-unsupported.diagnostics.json` で pass_rate=0.0 を取得）。
+  - `cli.audit_id` / `cli.change_set` / `schema.version` / `bridge.audit_pass_rate` が監査ログ（`audit.metadata`）と診断 JSON 双方に含まれることを `tooling/ci/collect-iterator-audit-metrics.py --source … --audit-source …` で確認。
+  - `extensions.bridge.*`（`platform`, `abi`, `ownership`, `return.*`, `audit_pass_rate`）の欠落が無いことを `tooling/ci/sync-iterator-audit.sh` サマリと `failures[].missing` でチェック。
   - CLI `--emit-audit` ゴールデンに Borrowed/Transferred 返り値ケースを追加済みで、`dune runtest` を再固定。
 
 ### 3.2 未完了の確認事項
@@ -141,6 +143,7 @@ $ _build/default/src/main.exe ../../tmp/cli-callconv-macos.reml \
 - [x] Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）を実装し、メモリ所有権の監査要件を満たす
 - [x] CLI (`remlc --emit-ir`) を Linux/Windows/macOS 向けに再実行し、`tmp/cli-callconv-out/<platform>/` に `reml.bridge.stubs`／`bridge.*` メタデータを含む IR・監査ログを収集（`--verify-ir` 付きでも通過）。
 - [x] `tooling/ci/sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を CI ゲートへ追加（Darwin `macos-arm64` pass_rate とプラットフォーム別統計を検証）
+- [ ] Linux/Windows/macOS の監査成果物で `cli.audit_id` / `cli.change_set` / `schema.version` / `bridge.audit_pass_rate` / `extensions.bridge.*` が欠落していないことを確認し、`collect-iterator-audit-metrics.py` の `failures[].missing` が空であるログを添付
 - [x] **`reports/ffi-macos-summary.md` を実測ログで更新**（2025-10-20完了）
 - [ ] `reports/ffi-linux-summary.md`・`reports/ffi-windows-summary.md` を実測ログで更新し、監査ゴールデン (`compiler/ocaml/tests/golden/audit/ffi-bridge-*.jsonl.golden`) を確定
 - [ ] 仕様書 `docs/spec/3-9`, `docs/spec/3-6` とガイド `docs/guides/runtime-bridges.md` を stub メタデータ/計測 API 情報で更新し、`docs/notes/licensing-todo.md` の TODO 消化を記録
