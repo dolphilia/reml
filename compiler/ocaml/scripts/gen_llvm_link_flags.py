@@ -99,6 +99,25 @@ def gather_flags() -> List[str]:
     for flag in system_libs:
         process_flag(flag)
 
+    def ensure_component(name: str, extra_search: Optional[str] = None) -> None:
+        token = f"-l{name}"
+        if any(flag == "-cclib" and value == token for flag, value in pair_seen):
+            return
+        if libdir:
+            candidate = os.path.join(libdir, f"lib{name}.a")
+            shared = os.path.join(libdir, f"lib{name}.so")
+            if os.path.exists(candidate) or os.path.exists(shared):
+                _add_pair(output, pair_seen, "-cclib", token)
+                return
+        if extra_search:
+            for directory in extra_search.split(os.pathsep):
+                candidate = os.path.join(directory, f"lib{name}.a")
+                shared = os.path.join(directory, f"lib{name}.so")
+                if os.path.exists(candidate) or os.path.exists(shared):
+                    _add_pair(output, pair_seen, "-ccopt", f"-L{directory}")
+                    _add_pair(output, pair_seen, "-cclib", token)
+                    return
+
     has_llvm_c = any(
         flag == "-cclib" and value == "-lLLVM-C" for flag, value in pair_seen
     )
@@ -125,11 +144,31 @@ def gather_flags() -> List[str]:
                 has_llvm_c = True
                 break
 
+    component_search = []
+    if libdir:
+        component_search.append(libdir)
+    system = platform.system()
+    if system == "Linux":
+        component_search.extend(["/usr/lib/llvm-18/lib", "/usr/lib/llvm-17/lib"])
+    elif system == "Darwin":
+        component_search.extend(
+            [
+                "/opt/homebrew/opt/llvm@18/lib",
+                "/usr/local/opt/llvm@18/lib",
+            ]
+        )
+    search_path = os.pathsep.join(component_search) if component_search else None
+
+    ensure_component("LLVMCore", search_path)
+    ensure_component("LLVMBitWriter", search_path)
+    ensure_component("LLVMSupport", search_path)
+
     system = platform.system()
     if system == "Darwin":
         _add_pair(output, pair_seen, "-cclib", "-lcurses")
     elif system == "Linux":
         _add_pair(output, pair_seen, "-cclib", "-ltinfo")
+        _add_pair(output, pair_seen, "-cclib", "-lncursesw")
 
     return output
 
