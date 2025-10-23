@@ -56,6 +56,7 @@
 1. `gen_llvm_link_flags.py` の改善版（`-Wl,-rpath` と opam libdir 優先）を作成してコミット
 2. CI 上で `dune clean` → `opam exec -- dune build` を実行して再検証
 3. 依然として未解決の場合は、`llvm-config --version` の出力と `ld -lLLVM` の探索結果をログに記録して追加調査
+4. スイッチ内に `llvm-config` がない場合は `opam install conf-llvm-18`（または `llvm.18`）の導入を検討し、CI 前処理でインストールする
 
 ### 2025-02-XX 対応ログ
 - `bootstrap-linux.yml` に以下の変更を適用:
@@ -73,6 +74,16 @@
   - 見つからない場合は system にインストール済みの `llvm-config-18` → `llvm-config` の順でフォールバック
   - いずれも無い場合は早期に `exit 127` して原因を明示
   - ログに `[info]` / `[error]` メッセージを出力し、使用された `llvm-config` のパスを記録
+
+### 2025-02-XX 再発ログ
+- フォールバックで `/usr/bin/llvm-config-18` を検出したものの、後続で `opam exec -- llvm-config` を呼び出していたため `Command not found 'llvm-config'` が再発
+- 原因: `opam exec` のシェルはスイッチ環境の `PATH` に限定されるため、system `llvm-config-18` が見つからない
+- 対応:
+  - `opam exec` を経由せず、検出した絶対パス `${LLVM_CFG}` を直接実行して `--version`/`--libdir` を取得
+  - `LLVM_CONFIG` の値を `GITHUB_ENV` に書き出しつつ、同ステップで `LLVM_CFG` 変数を利用するよう修正
+- 課題（未解決）:
+  - `llvm-config` がどこにも存在しない場合は 127 で停止するため、必要に応じて `sudo apt-get install llvm-18-dev` を再確認する
+  - さらに堅牢化するには `opam install conf-llvm-18` 等でスイッチ内に `llvm-config` を配置する選択肢も検討
 
 ## 知見まとめ
 - OCaml LLVM バインディングはソース互換性よりもビルド時のバイナリ互換性がシビアであり、CI 環境では `llvm-config` のバージョン差異が顕著な失敗要因になる

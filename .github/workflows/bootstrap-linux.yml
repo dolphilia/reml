@@ -139,27 +139,27 @@ jobs:
           eval "$(opam env)"
           OPAM_PREFIX="$(opam var prefix)"
           echo "OPAM_PREFIX=${OPAM_PREFIX}" >> "$GITHUB_ENV"
+          LLVM_CFG=""
           if [ -x "${OPAM_PREFIX}/bin/llvm-config" ]; then
             echo "[info] Using opam-provided llvm-config at ${OPAM_PREFIX}/bin/llvm-config"
-            echo "LLVM_CONFIG=${OPAM_PREFIX}/bin/llvm-config" >> "$GITHUB_ENV"
+            LLVM_CFG="${OPAM_PREFIX}/bin/llvm-config"
           elif command -v llvm-config-18 >/dev/null 2>&1; then
             LLVM_CFG="$(command -v llvm-config-18)"
             echo "[info] Falling back to system llvm-config at ${LLVM_CFG}"
-            echo "LLVM_CONFIG=${LLVM_CFG}" >> "$GITHUB_ENV"
           elif command -v llvm-config >/dev/null 2>&1; then
             LLVM_CFG="$(command -v llvm-config)"
             echo "[info] Falling back to generic llvm-config at ${LLVM_CFG}"
-            echo "LLVM_CONFIG=${LLVM_CFG}" >> "$GITHUB_ENV"
           else
             echo "[error] llvm-config not found in opam switch nor system PATH" >&2
             exit 127
           fi
+          echo "LLVM_CONFIG=${LLVM_CFG}" >> "$GITHUB_ENV"
           if [ -d "${OPAM_PREFIX}/lib/llvm" ]; then
             echo "LD_LIBRARY_PATH=${OPAM_PREFIX}/lib/llvm:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
             echo "PKG_CONFIG_PATH=${OPAM_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH:-}" >> "$GITHUB_ENV"
           fi
-          opam exec -- llvm-config --version
-          opam exec -- llvm-config --libdir
+          "${LLVM_CFG}" --version
+          "${LLVM_CFG}" --libdir
         shell: bash
 
       - name: Build compiler
