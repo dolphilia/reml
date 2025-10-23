@@ -136,6 +136,47 @@ jobs:
           opam install . --deps-only --with-test --yes
         working-directory: compiler/ocaml
 
+      - name: Inspect LLVM toolchain state
+        run: |
+          set -euo pipefail
+
+          echo "## llvm-config (opam)"
+          opam exec -- llvm-config --version --libdir --system-libs --components
+
+          echo ""
+          echo "## Installed opam LLVM packages"
+          opam list --installed | grep -E 'llvm|conf-llvm' || true
+
+          echo ""
+          echo "## LLVM symbols in opam libLLVMCore"
+          OPAM_LLVM_LIB="$(opam var lib)/llvm"
+          if [ -f "${OPAM_LLVM_LIB}/libLLVMCore.dylib" ]; then
+            opam exec -- nm -gU "${OPAM_LLVM_LIB}/libLLVMCore.dylib" | grep LLVMConstStringInContext2 || echo "symbol LLVMConstStringInContext2 not found"
+            opam exec -- nm -gU "${OPAM_LLVM_LIB}/libLLVMCore.dylib" | grep LLVMPositionBuilderBeforeInstrAndDbgRecords || echo "symbol LLVMPositionBuilderBeforeInstrAndDbgRecords not found"
+            opam exec -- nm -gU "${OPAM_LLVM_LIB}/libLLVMCore.dylib" | grep LLVMPrintDbgRecordToString || echo "symbol LLVMPrintDbgRecordToString not found"
+          elif [ -f "${OPAM_LLVM_LIB}/libLLVMCore.a" ]; then
+            opam exec -- nm -gU "${OPAM_LLVM_LIB}/libLLVMCore.a" | grep LLVMConstStringInContext2 || echo "symbol LLVMConstStringInContext2 not found"
+            opam exec -- nm -gU "${OPAM_LLVM_LIB}/libLLVMCore.a" | grep LLVMPositionBuilderBeforeInstrAndDbgRecords || echo "symbol LLVMPositionBuilderBeforeInstrAndDbgRecords not found"
+            opam exec -- nm -gU "${OPAM_LLVM_LIB}/libLLVMCore.a" | grep LLVMPrintDbgRecordToString || echo "symbol LLVMPrintDbgRecordToString not found"
+          else
+            echo "opam LLVM library not found at ${OPAM_LLVM_LIB}"
+          fi
+
+          echo ""
+          echo "## Homebrew llvm@18 details"
+          brew info llvm@18 || true
+          if [ -f "/opt/homebrew/opt/llvm@18/lib/libLLVMCore.dylib" ]; then
+            strings /opt/homebrew/opt/llvm@18/lib/libLLVMCore.dylib | grep LLVMConstStringInContext2 || echo "Homebrew LLVMCore missing LLVMConstStringInContext2"
+          fi
+
+          echo ""
+          echo "## Generated llvm-link-flags.sexp"
+          if [ -f "compiler/ocaml/src/llvm_gen/llvm-link-flags.sexp" ]; then
+            cat compiler/ocaml/src/llvm_gen/llvm-link-flags.sexp
+          else
+            echo "llvm-link-flags.sexp not generated yet"
+          fi
+
       - name: Build compiler
         run: |
           opam exec -- dune build
