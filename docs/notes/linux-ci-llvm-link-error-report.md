@@ -65,6 +65,15 @@
   - ビルド後に `compiler/ocaml/src/llvm_gen/llvm-link-flags.sexp` を表示
 - 目的: opam 側の LLVM バイナリが優先されることを保証し、CI ログでリンクフラグの実体を即座に確認できるようにする
 
+### 2025-02-XX 追加調査ログ
+- 上記対応直後の CI で `LLVM_CONFIG=${OPAM_PREFIX}/bin/llvm-config` を強制した結果、スイッチ内に実行ファイルが存在せず `Command not found 'llvm-config'` で失敗
+- 原因: `opam switch` に `llvm-config` バイナリを含むパッケージがインストールされていない（OCaml 用 `llvm` ライブラリは C API のみ提供）
+- 改善策:
+  - `bootstrap-linux.yml` の環境設定ステップで `if [ -x ... ]` により存在確認を行う
+  - 見つからない場合は system にインストール済みの `llvm-config-18` → `llvm-config` の順でフォールバック
+  - いずれも無い場合は早期に `exit 127` して原因を明示
+  - ログに `[info]` / `[error]` メッセージを出力し、使用された `llvm-config` のパスを記録
+
 ## 知見まとめ
 - OCaml LLVM バインディングはソース互換性よりもビルド時のバイナリ互換性がシビアであり、CI 環境では `llvm-config` のバージョン差異が顕著な失敗要因になる
 - Linux では LLVM ライブラリが `terminfo` に依存するため、`-ltinfo` だけでなく `-lncursesw` や `-lcurses` を追加する保険が必要
