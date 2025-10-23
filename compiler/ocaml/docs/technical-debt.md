@@ -261,6 +261,10 @@ LLVM 18.1.8のソースビルドを試行した結果、以下の結論に至っ
 - `tooling/ci/sync-iterator-audit.sh`
 - `reports/ffi-bridge-summary.md`
 - `reports/ffi-macos-summary.md`
+- **フォローアップ（2025-02-XX 追加）**:
+  - `scripts/ci-verify-llvm-link.sh` の実行結果（`ci-verify-llvm-link.md`）を macOS `audit-matrix` ジョブのアーティファクトとして保存し、`llvm.link.status = success` を完了条件に追加。
+  - `docs/notes/macos-ci-llvm-link-error-report.md` に最新 run ID と検証ログ（`opam exec -- llvm-config ...`, `otool -L` など）を記録する。
+  - `collect-iterator-audit-metrics.py` 拡張で `llvm.link.status` を `ffi_bridge.audit_pass_rate` のゲートに含め、リンク不整合を検出した場合は CI を失敗させる。
 
 ### 11. 統計機能の拡張
 

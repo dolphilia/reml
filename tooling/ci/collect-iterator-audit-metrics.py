@@ -1354,6 +1354,17 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=None,
         help="Iterator audit stage duration in seconds (optional).",
     )
+    parser.add_argument(
+        "--append-from",
+        action="append",
+        dest="append_from",
+        help="追加のメトリクス JSON を結合して出力（繰り返し指定可）。",
+    )
+    parser.add_argument(
+        "--require-success",
+        action="store_true",
+        help="主要メトリクスが失敗した場合に非ゼロ終了コードを返す。",
+    )
     return parser.parse_args(argv)
 
 
@@ -1461,6 +1472,25 @@ def main(argv: Optional[List[str]] = None) -> int:
     review_diff_paths = _ensure_path_list(getattr(args, "review_diff", None))
     review_coverage_paths = _ensure_path_list(getattr(args, "review_coverage", None))
     review_dashboard_paths = _ensure_path_list(getattr(args, "review_dashboard", None))
+    append_metrics: List[Dict[str, Any]] = []
+    append_sources: List[str] = []
+    if getattr(args, "append_from", None):
+        for raw_path in args.append_from:
+            path = Path(raw_path)
+            if not path.is_file():
+                sys.stderr.write(f"append-from ファイルが見つかりません: {path}\n")
+                return 2
+            try:
+                data = load_json(path)
+            except ValueError as exc:
+                sys.stderr.write(f"append-from の読み込みに失敗しました: {exc}\n")
+                return 2
+            if isinstance(data, dict):
+                append_metrics.append(data)
+                append_sources.append(str(path))
+            else:
+                sys.stderr.write(f"append-from ファイルが dict ではありません: {path}\n")
+                return 2
 
     section_order = ["iterator", "typeclass", "ffi", "review"]
     if args.section == "all":
@@ -1496,7 +1526,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     if review_metrics:
         metrics_list.append(review_metrics)
 
-    combined: Dict[str, Any] = {"metrics": metrics_list}
+    all_metrics: List[Dict[str, Any]] = metrics_list + append_metrics
+
+    combined: Dict[str, Any] = {"metrics": all_metrics}
+    if append_metrics:
+        combined["extra_metrics"] = append_metrics
+    if append_sources:
+        combined["extra_metrics_sources"] = append_sources
 
     primary_metrics: Optional[Dict[str, Any]] = iterator_metrics
     if primary_metrics is None and metrics_list:
@@ -1529,11 +1565,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     for metrics in (iterator_metrics, typeclass_metrics, bridge_metrics):
         if metrics:
             combined_audit_sources.extend(metrics.get("audit_sources") or [])
+    if append_sources:
+        combined_audit_sources.extend(append_sources)
     if combined_audit_sources:
         combined["audit_sources"] = sorted({*combined_audit_sources})
 
     schema_versions: Set[str] = set()
-    for metrics in metrics_list:
+    for metrics in all_metrics:
         schema_versions.update(metrics.get("schema_versions") or [])
     combined["schema_versions"] = sorted(schema_versions)
     if diagnostics_summary:
@@ -1552,6 +1590,33 @@ def main(argv: Optional[List[str]] = None) -> int:
     if ci_info:
         combined["ci"] = ci_info
 
+    failure_reasons: List[str] = []
+    if getattr(args, "require_success", False):
+        if bridge_metrics:
+            total = bridge_metrics.get("total")
+            pass_rate = bridge_metrics.get("pass_rate")
+            if isinstance(total, (int, float)) and total > 0:
+                if not isinstance(pass_rate, (int, float)) or pass_rate < 1.0:
+                    failure_reasons.append("ffi_bridge.audit_pass_rate < 1.0")
+        for metric in append_metrics:
+            if not isinstance(metric, dict):
+                continue
+            status = metric.get("status")
+            metric_name = str(metric.get("metric", "extra_metric"))
+            if isinstance(status, str):
+                status_norm = status.strip().lower()
+                if status_norm not in ("success", "ok", "passed"):
+                    failure_reasons.append(f"{metric_name}: status={status}")
+            else:
+                failure_reasons.append(f"{metric_name}: status=<missing>")
+        if failure_reasons:
+            combined.setdefault("enforcement", {})
+            combined["enforcement"]["failures"] = failure_reasons
+            combined["enforcement"]["require_success"] = True
+        else:
+            combined.setdefault("enforcement", {})
+            combined["enforcement"]["require_success"] = True
+
     json_output = json.dumps(combined, indent=2, ensure_ascii=False)
 
     print(json_output)
@@ -1562,7 +1627,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             handle.write(json_output)
             handle.write("\n")
 
-    # Even if pass_rate < 1 we keep exit code 0 so CI can decide how to react.
+    # When --require-success is specified, fail if critical metrics did not pass.
+    if getattr(args, "require_success", False) and failure_reasons:
+        for reason in failure_reasons:
+            sys.stderr.write(f"[collect-iterator-audit-metrics] {reason}\n")
+        return 1
     return 0
 
 

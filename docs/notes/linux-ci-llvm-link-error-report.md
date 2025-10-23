@@ -137,6 +137,19 @@
 - `nm -D` / `strings` で `LLVMConstStringInContext2` 等のシンボル有無を確認
 - `ldd _build/default/src/main.exe`（リンク成功後）で実際に参照しているライブラリパスを確認
 
+## macOS CI 追補準備（TODO）
+- **目的**: macOS ARM64 の `Build compiler` ステップで再現している `LLVMConstStringInContext2` 未解決問題を定量的に記録し、Linux 対応策との差分を明確化する。
+- **収集ログの候補**:
+  - `opam exec -- llvm-config --version --libdir --system-libs` の出力（`audit-matrix` 実行時に `ci-verify-llvm-link.md` へ保存）
+  - `nm -gU $(opam var lib)/llvm/libLLVMCore.dylib | grep LLVMConstStringInContext2` と `LLVMPositionBuilderBeforeInstrAndDbgRecords` の結果
+  - `otool -L src/main.exe` および `otool -L tests/test_llvm_array_access.exe`（`libLLVM*.dylib` / `libunwind*.dylib` の実パスと `@rpath` 設定）
+  - `install_name_tool -print_rpath` で確認した RPATH 一覧
+  - `ld: warning: reexported library ... libunwind.1.dylib` が発生した際の完全ログ
+- **作業メモ**:
+  - `scripts/ci-verify-llvm-link.sh --report tmp/ci-verify-llvm-link.md` をローカル macOS で実行し、レポートを `docs/notes/macos-ci-llvm-link-error-report.md`（新規予定）へ転記する。
+  - GitHub Actions `bootstrap-macos.yml` の `audit-matrix` ジョブで当該レポートをアーティファクト化し、run ID を本ノートに追記する。
+  - 再現ログが揃い次第、技術的負債 ID 23（macOS FFI サンプル自動検証）へリンクし、完了条件に「LLVM シンボル検証レポートの提出」を追加する。
+
 ## Linux ローカル環境での再現手順
 ### 1. ベース環境
 - Ubuntu 22.04（GitHub Actions と同一）を利用
