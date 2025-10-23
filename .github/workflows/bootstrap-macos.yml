@@ -106,16 +106,20 @@ jobs:
       - name: Cache LLVM
         uses: actions/cache@v4
         with:
-          path: /opt/homebrew/opt/llvm@18
-          key: llvm-18-macos-arm64-${{ runner.os }}
+          path: /opt/homebrew/opt/llvm@19
+          key: llvm-19-macos-arm64-${{ runner.os }}
           restore-keys: |
-            llvm-18-macos-arm64-
+            llvm-19-macos-arm64-
 
       - name: Install LLVM toolchain via Homebrew
         run: |
-          brew install llvm@18
-          brew link --force llvm@18
-          echo "/opt/homebrew/opt/llvm@18/bin" >> $GITHUB_PATH
+          brew install llvm@19
+          brew link --force llvm@19
+          LLVM_PREFIX="$(brew --prefix llvm@19)"
+          echo "${LLVM_PREFIX}/bin" >> $GITHUB_PATH
+          echo "LDFLAGS=-L${LLVM_PREFIX}/lib $LDFLAGS" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I${LLVM_PREFIX}/include $CPPFLAGS" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=${LLVM_PREFIX}:${CMAKE_PREFIX_PATH}" >> $GITHUB_ENV
 
       - name: Verify LLVM installation
         run: |
@@ -163,19 +167,16 @@ jobs:
           fi
 
           echo ""
-          echo "## Homebrew llvm@18 details"
-          brew info llvm@18 || true
-          if [ -f "/opt/homebrew/opt/llvm@18/lib/libLLVMCore.dylib" ]; then
-            strings /opt/homebrew/opt/llvm@18/lib/libLLVMCore.dylib | grep LLVMConstStringInContext2 || echo "Homebrew LLVMCore missing LLVMConstStringInContext2"
+          echo "## Homebrew llvm@19 details"
+          LLVM_PREFIX="$(brew --prefix llvm@19 || echo /opt/homebrew/opt/llvm@19)"
+          brew info llvm@19 || true
+          if [ -f "${LLVM_PREFIX}/lib/libLLVMCore.dylib" ]; then
+            strings "${LLVM_PREFIX}/lib/libLLVMCore.dylib" | grep LLVMConstStringInContext2 || echo "Homebrew LLVMCore missing LLVMConstStringInContext2"
           fi
 
           echo ""
           echo "## Generated llvm-link-flags.sexp"
-          if [ -f "compiler/ocaml/src/llvm_gen/llvm-link-flags.sexp" ]; then
-            cat compiler/ocaml/src/llvm_gen/llvm-link-flags.sexp
-          else
-            echo "llvm-link-flags.sexp not generated yet"
-          fi
+          find compiler/ocaml -maxdepth 5 -name "llvm-link-flags.sexp" -print -exec cat {} \; || echo "llvm-link-flags.sexp not generated yet"
 
       - name: Build compiler
         run: |
@@ -228,16 +229,20 @@ jobs:
       - name: Cache LLVM
         uses: actions/cache@v4
         with:
-          path: /opt/homebrew/opt/llvm@18
-          key: llvm-18-macos-arm64-${{ runner.os }}
+          path: /opt/homebrew/opt/llvm@19
+          key: llvm-19-macos-arm64-${{ runner.os }}
           restore-keys: |
-            llvm-18-macos-arm64-
+            llvm-19-macos-arm64-
 
       - name: Install LLVM toolchain via Homebrew
         run: |
-          brew install llvm@18
-          brew link --force llvm@18
-          echo "/opt/homebrew/opt/llvm@18/bin" >> $GITHUB_PATH
+          brew install llvm@19
+          brew link --force llvm@19
+          LLVM_PREFIX="$(brew --prefix llvm@19)"
+          echo "${LLVM_PREFIX}/bin" >> $GITHUB_PATH
+          echo "LDFLAGS=-L${LLVM_PREFIX}/lib $LDFLAGS" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I${LLVM_PREFIX}/include $CPPFLAGS" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=${LLVM_PREFIX}:${CMAKE_PREFIX_PATH}" >> $GITHUB_ENV
 
       - name: Verify LLVM installation
         run: |
@@ -395,16 +400,20 @@ jobs:
       - name: Cache LLVM
         uses: actions/cache@v4
         with:
-          path: /opt/homebrew/opt/llvm@18
-          key: llvm-18-macos-arm64-${{ runner.os }}
+          path: /opt/homebrew/opt/llvm@19
+          key: llvm-19-macos-arm64-${{ runner.os }}
           restore-keys: |
-            llvm-18-macos-arm64-
+            llvm-19-macos-arm64-
 
       - name: Install LLVM toolchain via Homebrew
         run: |
-          brew install llvm@18
-          brew link --force llvm@18
-          echo "/opt/homebrew/opt/llvm@18/bin" >> $GITHUB_PATH
+          brew install llvm@19
+          brew link --force llvm@19
+          LLVM_PREFIX="$(brew --prefix llvm@19)"
+          echo "${LLVM_PREFIX}/bin" >> $GITHUB_PATH
+          echo "LDFLAGS=-L${LLVM_PREFIX}/lib $LDFLAGS" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I${LLVM_PREFIX}/include $CPPFLAGS" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=${LLVM_PREFIX}:${CMAKE_PREFIX_PATH}" >> $GITHUB_ENV
 
       - name: Verify LLVM installation
         run: |
@@ -556,16 +565,20 @@ jobs:
       - name: Cache LLVM
         uses: actions/cache@v4
         with:
-          path: /opt/homebrew/opt/llvm@18
-          key: llvm-18-macos-arm64-${{ runner.os }}
+          path: /opt/homebrew/opt/llvm@19
+          key: llvm-19-macos-arm64-${{ runner.os }}
           restore-keys: |
-            llvm-18-macos-arm64-
+            llvm-19-macos-arm64-
 
       - name: Install LLVM toolchain via Homebrew
         run: |
-          brew install llvm@18
-          brew link --force llvm@18
-          echo "/opt/homebrew/opt/llvm@18/bin" >> $GITHUB_PATH
+          brew install llvm@19
+          brew link --force llvm@19
+          LLVM_PREFIX="$(brew --prefix llvm@19)"
+          echo "${LLVM_PREFIX}/bin" >> $GITHUB_PATH
+          echo "LDFLAGS=-L${LLVM_PREFIX}/lib $LDFLAGS" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I${LLVM_PREFIX}/include $CPPFLAGS" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=${LLVM_PREFIX}:${CMAKE_PREFIX_PATH}" >> $GITHUB_ENV
 
       - name: Verify LLVM installation
         run: |

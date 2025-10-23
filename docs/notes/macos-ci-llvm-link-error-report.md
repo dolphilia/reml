@@ -24,6 +24,21 @@ clang: error: linker command failed with exit code 1 (use -v to see invocation)
 2. Homebrew `llvm@18` と opam LLVM バインディングのバージョン整合を取り、`$OPAM_SWITCH_PREFIX/lib/llvm` をリンク優先に設定
 3. `otool -L` でリンク先ライブラリを確認し、`/opt/homebrew/Cellar` 経由の `libunwind` が再輸出されている場合は `install_name_tool -change` で修正
 
+## 2025-02-XX ローカル検証メモ
+- Homebrew `llvm@19` を導入 (`brew install llvm@19` → `brew unlink llvm@18`) し、`~/.zprofile` に以下を追記して環境変数を固定:
+  ```
+  export PATH="/opt/homebrew/opt/llvm@19/bin:$PATH"
+  export LDFLAGS="-L/opt/homebrew/opt/llvm@19/lib $LDFLAGS"
+  export CPPFLAGS="-I/opt/homebrew/opt/llvm@19/include $CPPFLAGS"
+  export CMAKE_PREFIX_PATH="/opt/homebrew/opt/llvm@19:$CMAKE_PREFIX_PATH"
+  ```
+  `llvm-config --version` が `19.1.7` を指すことを確認。
+- `opam update` → `opam upgrade` で `conf-llvm-static.19` / `llvm.19-static` を導入。念のため `opam pin add llvm 19-static` を実施し、将来の `opam upgrade` でダウングレードしないように固定。
+- `python3 compiler/ocaml/scripts/gen_llvm_link_flags.py --macos-arm64` 実行後、`_build/default/src/llvm_gen/llvm-link-flags.sexp` が `-L ~/.opam/.../lib/llvm` と `/opt/homebrew/Cellar/llvm@19/19.1.7/lib` を先頭に含むことを確認。
+- `opam exec -- nm -gU $(opam var lib)/llvm/libLLVM-19.a | grep LLVMConstStringInContext2`（統合ライブラリ）などでシンボルが存在することを確認。OCaml パッケージは分割アーカイブ (`libllvm_XCore.a` 等) を提供するため、`libLLVMCore.a` 単体は存在しない点に注意。
+- `opam exec -- dune clean && opam exec -- dune build && opam exec -- dune runtest --display=short` を実行し、リンクエラー無しで全テストが通過することを確認。
+- この作業で得た出力（S 式、`llvm-config` 結果、テストログ）は CI への反映検討時に参照する。
+
 ## 収集すべき検証ログ
 | 項目 | 取得方法 | 目的 |
 |------|----------|------|
