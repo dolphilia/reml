@@ -108,6 +108,28 @@
   3. **最終手段として opam の LLVM バインディングをダウングレード**  
      - `opam pin add llvm 18.1.0` など、現在インストールしている system LLVM と同じバージョンに固定し、API 差異を回避する
 
+### 2025-10-23 CI リンク安定化ログ
+- `bootstrap-linux.yml` の Build ジョブに `env: { LLVM_CONFIG: /usr/bin/llvm-config-19 }` を追加し、環境設定ステップで優先利用されるように変更
+- ビルド後に以下の診断ステップを追加し、GitHub Actions のログでリンク状況を確認
+  1. `cat compiler/ocaml/_build/default/src/llvm_gen/llvm-link-flags.sexp`
+     ```
+     (-ccopt -L/home/runner/work/reml/reml/_opam/lib/llvm -cclib -Wl,-rpath,/home/runner/work/reml/reml/_opam/lib/llvm \
+      -ccopt -L/usr/lib/llvm-19/lib -cclib -Wl,-rpath,/usr/lib/llvm-19/lib \
+      -cclib -lLLVM-19 -cclib -lLLVMCore -cclib -lLLVMBitWriter -cclib -lLLVMSupport -cclib -ltinfo -cclib -lncursesw)
+     ```
+  2. `ldd compiler/ocaml/_build/default/src/main.exe`
+     ```
+     linux-vdso.so.1 (0x00007f306af8f000)
+     libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f3069d17000)
+     libz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007f306af63000)
+     libzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007f3069c5d000)
+     libstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f3069800000)
+     libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f306af35000)
+     libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f3069400000)
+     /lib64/ld-linux-x86-64.so.2 (0x00007f306af91000)
+     ```
+- ローカル Ubuntu 24.04 環境（`logs/2025-ubuntu2404-ldd-main.log`）と依存関係が一致し、LLVM ライブラリは静的リンクされていることを確認
+
 ## 追加で確認するべき箇所
 - `compiler/ocaml/src/llvm_gen/llvm-link-flags.sexp` の内容（`-L` の順序、参照している `-lLLVM*`）
 - `llvm-config --version --libdir --system-libs --components` の出力ログ
