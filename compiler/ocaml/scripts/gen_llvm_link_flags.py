@@ -25,6 +25,14 @@ def _find_llvm_config() -> str | None:
     env_value = os.environ.get("LLVM_CONFIG")
     if env_value:
         candidates.append(env_value)
+
+    opam_prefix = os.environ.get("OPAM_SWITCH_PREFIX")
+    if opam_prefix:
+        for name in ("llvm-config", "llvm-config-18", "llvm-config-17"):
+            candidate_path = os.path.join(opam_prefix, "bin", name)
+            if os.path.exists(candidate_path):
+                candidates.append(candidate_path)
+
     candidates.extend(
         [
             "llvm-config",
