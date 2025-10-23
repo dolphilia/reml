@@ -92,6 +92,8 @@ jobs:
     needs:
       - lint
       - diagnostic-json
+    env:
+      LLVM_CONFIG: /usr/bin/llvm-config-19
 
     steps:
       - name: Checkout repository
@@ -139,10 +141,17 @@ jobs:
           eval "$(opam env)"
           OPAM_PREFIX="$(opam var prefix)"
           echo "OPAM_PREFIX=${OPAM_PREFIX}" >> "$GITHUB_ENV"
+          preferred="${LLVM_CONFIG:-}"
           LLVM_CFG=""
-          if [ -x "${OPAM_PREFIX}/bin/llvm-config" ]; then
+          if [ -n "${preferred}" ] && command -v "${preferred}" >/dev/null 2>&1; then
+            LLVM_CFG="${preferred}"
+            echo "[info] Using preferred llvm-config at ${LLVM_CFG}"
+          elif [ -x "${OPAM_PREFIX}/bin/llvm-config" ]; then
             echo "[info] Using opam-provided llvm-config at ${OPAM_PREFIX}/bin/llvm-config"
             LLVM_CFG="${OPAM_PREFIX}/bin/llvm-config"
+          elif command -v llvm-config-19 >/dev/null 2>&1; then
+            LLVM_CFG="$(command -v llvm-config-19)"
+            echo "[info] Falling back to system llvm-config-19 at ${LLVM_CFG}"
           elif command -v llvm-config-18 >/dev/null 2>&1; then
             LLVM_CFG="$(command -v llvm-config-18)"
             echo "[info] Falling back to system llvm-config at ${LLVM_CFG}"
@@ -169,7 +178,11 @@ jobs:
 
       - name: Inspect LLVM link flags
         run: |
-          cat compiler/ocaml/src/llvm_gen/llvm-link-flags.sexp
+          cat compiler/ocaml/_build/default/src/llvm_gen/llvm-link-flags.sexp
+
+      - name: Inspect main binary dependencies
+        run: |
+          ldd compiler/ocaml/_build/default/src/main.exe
 
       - name: Build runtime library
         run: |
