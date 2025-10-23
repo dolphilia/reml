@@ -191,7 +191,7 @@ jobs:
       - name: Prepare build artifacts
         run: |
           mkdir -p artifacts/build
-          cp compiler/ocaml/_build/default/compiler/ocaml/src/main.exe artifacts/build/remlc-ocaml-macos
+          cp compiler/ocaml/_build/default/src/main.exe artifacts/build/remlc-ocaml-macos
           cp runtime/native/build/libreml_runtime.a artifacts/build/
           if ls runtime/native/build/*.o >/dev/null 2>&1; then
             cp runtime/native/build/*.o artifacts/build/
