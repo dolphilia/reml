@@ -129,10 +129,33 @@ jobs:
           opam install . --deps-only --with-test --yes
         working-directory: compiler/ocaml
 
+      - name: Reset Dune artifacts
+        run: |
+          opam exec -- dune clean
+        working-directory: compiler/ocaml
+
+      - name: Configure LLVM environment
+        run: |
+          eval "$(opam env)"
+          OPAM_PREFIX="$(opam var prefix)"
+          echo "OPAM_PREFIX=${OPAM_PREFIX}" >> "$GITHUB_ENV"
+          echo "LLVM_CONFIG=${OPAM_PREFIX}/bin/llvm-config" >> "$GITHUB_ENV"
+          if [ -d "${OPAM_PREFIX}/lib/llvm" ]; then
+            echo "LD_LIBRARY_PATH=${OPAM_PREFIX}/lib/llvm:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+            echo "PKG_CONFIG_PATH=${OPAM_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH:-}" >> "$GITHUB_ENV"
+          fi
+          opam exec -- llvm-config --version
+          opam exec -- llvm-config --libdir
+        shell: bash
+
       - name: Build compiler
         run: |
           opam exec -- dune build
         working-directory: compiler/ocaml
+
+      - name: Inspect LLVM link flags
+        run: |
+          cat compiler/ocaml/src/llvm_gen/llvm-link-flags.sexp
 
       - name: Build runtime library
         run: |
