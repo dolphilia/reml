@@ -85,6 +85,73 @@
   - `llvm-config` がどこにも存在しない場合は 127 で停止するため、必要に応じて `sudo apt-get install llvm-18-dev` を再確認する
   - さらに堅牢化するには `opam install conf-llvm-18` 等でスイッチ内に `llvm-config` を配置する選択肢も検討
 
+### 2025-02-XX リンクエラー継続
+- `llvm-config` 実行は成功したが、`dune build` では依然として `LLVMConstStringInContext2` / `LLVMPositionBuilderBeforeInstrAndDbgRecords` / `setupterm` などのシンボルが未解決
+- `compiler/ocaml/src/llvm_gen/llvm-link-flags.sexp`（CI ログ参照）には `/usr/lib/llvm-18/lib` が含まれており、system LLVM が優先されている可能性が高い
+- `opam` スイッチ配下 (`$OPAM_PREFIX/lib/llvm`) に該当シンボルを含むライブラリが存在するか未確認。空ディレクトリであれば `-L` を追加しても効果がない
+- これまでのアプローチ:
+  1. system LLVM 18 を apt で導入 → **未解決**（シンボル不足）
+  2. `gen_llvm_link_flags.py` で `-ltinfo` のみ追加 → **未解決**（`LLVM*` シンボル不足）
+  3. `-lncursesw` 追加 & `-Wl,-rpath` 付与 → **未解決**（依然として古い LLVM が解決される）
+  4. `llvm-config` をフォールバックで検出 → **未解決**（`llvm-link-flags.sexp` に `/usr/lib/llvm-18` が残り、新 API を含むライブラリがリンクされない）
+- 新たに確認すべき点:
+  - `ls -R $OPAM_PREFIX/lib/llvm` を CI で出力し、opam スイッチに LLVM コアライブラリが存在するかをチェック
+  - `compiler/ocaml/src/llvm_gen/llvm-link-flags.sexp` の内容を保存し、`-L` の順序が opam ライブラリを先に列挙しているかを確認
+  - `ldd src/main.exe`（リンク失敗後の `.o` を除く場合は再現用に `dune build` --fallback など）で実際に参照されているライブラリパスを取得
+- 新しい解決策の提案:
+  1. **opam スイッチに LLVM 18.1.x を明示的にインストール**  
+     - `opam install conf-llvm-18` または `opam install llvm.18.1.8` を `build` ジョブの前段で実行し、`$OPAM_PREFIX/lib/llvm` に最新ライブラリを供給する  
+     - 併せて `opam exec -- llvm-config --version` で opam 側のバージョンに一致するかを検証
+  2. **system LLVM との整合性チェック**  
+     - `apt-cache policy llvm-18` で配布バージョンを確認し、OCaml バインディングが要求する API を満たしているかを照合
+     - 必要であれば LLVM 18.1.8 以降の prebuilt をダウンロードし、CI 内で手動インストールして `LLVM_CFG` にパスを設定
+  3. **最終手段として opam の LLVM バインディングをダウングレード**  
+     - `opam pin add llvm 18.1.0` など、現在インストールしている system LLVM と同じバージョンに固定し、API 差異を回避する
+
+## 追加で確認するべき箇所
+- `compiler/ocaml/src/llvm_gen/llvm-link-flags.sexp` の内容（`-L` の順序、参照している `-lLLVM*`）
+- `llvm-config --version --libdir --system-libs --components` の出力ログ
+- `ls -R $OPAM_PREFIX/lib/llvm` と `ls -R /usr/lib/llvm-18/lib` の比較
+- `nm -D` / `strings` で `LLVMConstStringInContext2` 等のシンボル有無を確認
+- `ldd _build/default/src/main.exe`（リンク成功後）で実際に参照しているライブラリパスを確認
+
+## Linux ローカル環境での再現手順
+### 1. ベース環境
+- Ubuntu 22.04（GitHub Actions と同一）を利用
+- 依存パッケージ:
+  ```bash
+  sudo apt-get update
+  sudo apt-get install -y build-essential curl git m4 pkg-config \
+       llvm-18 llvm-18-dev llvm-18-tools libncurses5-dev libncursesw5-dev
+  ```
+- `which llvm-config-18`, `llvm-config-18 --version` でインストール状況を確認
+
+### 2. リポジトリと opam スイッチ構築
+```bash
+git clone https://github.com/<org>/reml.git
+cd reml
+opam switch create reml-ci 5.2.1
+eval "$(opam env)"
+opam install . --deps-only --with-test --yes
+```
+- LLVM のバージョン差異を吸収するため、必要であれば `opam install conf-llvm-18` や `opam install llvm.18.1.8` を追加
+
+### 3. ビルド再現＆診断
+1. `opam exec -- dune clean`
+2. `python3 compiler/ocaml/scripts/gen_llvm_link_flags.py`
+3. `cat compiler/ocaml/src/llvm_gen/llvm-link-flags.sexp`
+4. `opam exec -- dune build -j1 --verbose`
+5. `llvm-config --version --libdir --system-libs --components`
+6. `ls -R $OPAM_PREFIX/lib/llvm`
+7. `nm -D /usr/lib/llvm-18/lib/libLLVMCore.so | grep LLVMConstString`
+8. `ldd _build/default/src/main.exe`（リンク成功後に確認）
+
+### 4. 注意事項
+- `opam exec` 下では system PATH が縮むため、system の `llvm-config` を使う場合は `LLVM_CONFIG=/usr/bin/llvm-config-18` を明示
+- `LD_LIBRARY_PATH` や `PKG_CONFIG_PATH` は `VAR=${NEW}:${VAR:-}` 形式で既存値を保持したまま追記
+- キャッシュ影響を避けるため、変更ごとに `rm -rf _build` や `dune clean` を実行
+- 実行ログを `tee` や `script` で保存し、CI のログと差分比較できるようにする
+
 ## 知見まとめ
 - OCaml LLVM バインディングはソース互換性よりもビルド時のバイナリ互換性がシビアであり、CI 環境では `llvm-config` のバージョン差異が顕著な失敗要因になる
 - Linux では LLVM ライブラリが `terminfo` に依存するため、`-ltinfo` だけでなく `-lncursesw` や `-lcurses` を追加する保険が必要
