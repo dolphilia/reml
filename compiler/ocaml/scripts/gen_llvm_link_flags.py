@@ -71,6 +71,20 @@ def gather_flags() -> List[str]:
     output: List[str] = []
     pair_seen: set[tuple[str, str]] = set()
 
+    opam_prefix = os.environ.get("OPAM_SWITCH_PREFIX")
+    opam_libdirs: List[str] = []
+    if opam_prefix:
+        candidate = os.path.join(opam_prefix, "lib", "llvm")
+        if os.path.isdir(candidate):
+            opam_libdirs.append(candidate)
+
+    def add_libdir(path: str) -> None:
+        _add_pair(output, pair_seen, "-ccopt", f"-L{path}")
+        _add_pair(output, pair_seen, "-cclib", f"-Wl,-rpath,{path}")
+
+    for directory in opam_libdirs:
+        add_libdir(directory)
+
     llvm_config = _find_llvm_config()
     libs: List[str] = []
     system_libs: List[str] = []
@@ -91,7 +105,7 @@ def gather_flags() -> List[str]:
         libs = ["-lLLVM-18"]
 
     if libdir:
-        _add_pair(output, pair_seen, "-ccopt", f"-L{libdir}")
+        add_libdir(libdir)
 
     def process_flag(flag: str) -> None:
         if flag.startswith("-l"):
@@ -166,6 +180,11 @@ def gather_flags() -> List[str]:
             ]
         )
     search_path = os.pathsep.join(component_search) if component_search else None
+
+    for directory in opam_libdirs:
+        ensure_component("LLVMCore", directory)
+        ensure_component("LLVMBitWriter", directory)
+        ensure_component("LLVMSupport", directory)
 
     ensure_component("LLVMCore", search_path)
     ensure_component("LLVMBitWriter", search_path)
