@@ -62,8 +62,10 @@
 4. **[2-4-diagnostics-audit-pipeline.md](2-4-diagnostics-audit-pipeline.md)**: 診断・監査パイプライン
 5. **[2-5-spec-drift-remediation.md](2-5-spec-drift-remediation.md)**: 仕様差分の解消
 6. **[2-6-windows-support.md](2-6-windows-support.md)**: Windows x64 MSVC対応
-7. **[2-2-completion-report.md](2-2-completion-report.md)**: Phase 2-2 効果システム統合 完了報告書
-8. **[2-2-to-2-3-handover.md](2-2-to-2-3-handover.md)**: Phase 2-3 FFI 契約拡張への引き継ぎ資料
+7. **[2-7-deferred-remediation.md](2-7-deferred-remediation.md)**: 診断残課題と技術的負債整理
+8. **[2-8-spec-integrity-audit.md](2-8-spec-integrity-audit.md)**: 仕様完全性監査と最終調整
+9. **[2-2-completion-report.md](2-2-completion-report.md)**: Phase 2-2 効果システム統合 完了報告書
+10. **[2-2-to-2-3-handover.md](2-2-to-2-3-handover.md)**: Phase 2-3 FFI 契約拡張への引き継ぎ資料
 
 ### 技術的ハイライト
 - 型クラス実装方式の定量的評価（性能・コードサイズ・保守性）
