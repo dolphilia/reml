@@ -264,22 +264,50 @@
 
 **成果物**: 承認済み修正案、レビュー記録
 
-### 6. ドキュメント更新の実施（33-34週目）
+### 6. 修正計画の実施（33-34週目）
+**担当領域**: 修正計画実行
+
+6.1. **計画準備の同期**
+- `docs/plans/bootstrap-roadmap/2-5-proposals/README.md` の着手順序ガイドを元に Phase 2-5 内で実行する計画を確定し、週次計画に反映する。
+- 各計画の担当者・依存関係・完了条件を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に記載し、レビュー時に参照できるようにする。
+- `0-3-audit-and-metrics.md` に計画 ID ごとのメトリクスキー（例: `diagnostic.info_hint_ratio`, `parser.runconfig_coverage`）を追記し、進捗を定量把握できる状態を整える。
+
+6.2. **Critical/High 計画の実施**
+- **PARSER-001 / TYPE-003 / DIAG-002**: Phase 2-5 開始直後に実装を進め、`ParseResult` シム導入・型クラス辞書復元・監査必須化を完了する。完了後は各仕様章へ脚注・脚注解除の予定を反映する。
+- **EFFECT-001 / DIAG-001 / SYNTAX-002 / ERR-001**: Phase 2-5 前半で実施し、効果タグ拡張・Severity 拡張・`use` ネスト対応・期待集合出力を確立する。関連する JSON スキーマや CLI/LSP ゴールデンを更新し、`scripts/validate-diagnostic-json.sh` で回帰確認する。
+- 実装完了時は `docs/plans/bootstrap-roadmap/2-5-proposals/<ID>-proposal.md` 内のメトリクス更新項目を実行し、`0-3-audit-and-metrics.md` の対象欄を更新する。
+
+6.3. **High 計画の連続実行**
+- **PARSER-002 / LEXER-002 / DIAG-003 / EFFECT-003 / TYPE-001**: Phase 2-5 中盤で着手し、RunConfig 導入・Lex API 抽出・診断ドメイン拡張・複数 Capability 対応・値制限復元を進める。
+- 各計画で追加した単体テスト（`runconfig_tests.ml`, `core_parse_lex_tests.ml`, `capability_profile_tests.ml`, `type_inference_effect_tests.ml` 等）を CI に組み込み、`0-3-audit-and-metrics.md` の新メトリクスが反映されることを確認する。
+- 計画進行中に検出したリスク・課題は `0-4-risk-handling.md` へ即時登録し、必要に応じて Phase 2-7 へエスカレーションする。
+
+6.4. **後半フェーズの仕上げ**
+- **PARSER-003 / EXEC-001 / ERR-002**: Phase 2-5 後半でコアコンビネーター抽出とストリーミング PoC、`recover` FixIt 拡張を実装し、ランナ―整合性を最終確認する。
+- 完了後は `docs/guides/core-parse-streaming.md` や `docs/spec/2-2-core-combinator.md` に脚注・更新を反映させ、関連サンプルが動作することを確認する。
+
+6.5. **Phase 2-7 以降に向けた準備**
+- **LEXER-001 / SYNTAX-001 / SYNTAX-003 / EFFECT-002 / TYPE-002** など Phase 2-7 移行案件は、Phase 2-5 期間中に脚注整備・ロードマップ作成・必要なノート作成（`docs/notes/effect-system-tracking.md` 等）を完了する。
+- Phase 2-7 の着手条件（XID テーブル生成、効果 PoC、効果行統合など）を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ追記し、次フェーズでのエントリポイントを明確にする。
+
+**成果物**: 更新済み修正計画、実施記録、更新されたメトリクス
+
+### 7. ドキュメント更新の実施（33-34週目）
 **担当領域**: 仕様書更新
 
-6.1. **主文書の更新**
+7.1. **主文書の更新**
 - 承認された修正案の反映
 - サンプルコードの更新
 - 図表の更新（必要に応じて）
 - 脚注・TODO の追加
 
-6.2. **用語集・索引の更新**
+7.2. **用語集・索引の更新**
 - [0-2-glossary.md](../../spec/0-2-glossary.md) の用語追加・更新
 - 新規概念の定義追加
 - 廃止された用語の非推奨マーク
 - 用語の統一チェック
 
-6.3. **サンプルコードの検証**
+7.3. **サンプルコードの検証**
 - 更新されたサンプルのパース検証
 - 型推論結果の確認
 - エラーケースの検証
@@ -287,22 +315,22 @@
 
 **成果物**: 更新された仕様書、用語集
 
-### 7. クロス参照とリンク整備（34週目）
+### 8. クロス参照とリンク整備（34週目）
 **担当領域**: ドキュメント整合
 
-7.1. **索引系ドキュメントの更新**
+8.1. **索引系ドキュメントの更新**
 - `README.md` の目次更新
 - [0-0-overview.md](../../spec/0-0-overview.md) の概要更新
 - [0-1-project-purpose.md](../../spec/0-1-project-purpose.md) の目的・方針の見直し
 - [0-3-code-style-guide.md](../../spec/0-3-code-style-guide.md) のコード例更新
 
-7.2. **相互参照リンクの検証**
+8.2. **相互参照リンクの検証**
 - 全 Markdown ファイルのリンク抽出
 - リンク切れの検出と修正
 - セクション参照の正確性確認
 - 相対パスの統一
 
-7.3. **ガイド・ノートの整合**
+8.3. **ガイド・ノートの整合**
 - `docs/guides/` 以下のガイド更新
 - `docs/notes/` 以下の調査ノート整理
 - Phase 2 実装との整合確認
@@ -310,10 +338,10 @@
 
 **成果物**: 整合された索引、検証済みリンク
 
-### 8. 記録と Phase 3 準備（34週目）
+### 9. 記録と Phase 3 準備（34週目）
 **担当領域**: 記録と引き継ぎ
 
-8.1. **差分処理結果の記録**
+9.1. **差分処理結果の記録**
 - `0-3-audit-and-metrics.md` への記録
 - 処理した差分の統計（件数、分類別）
 - レビュー工数の記録
