@@ -1,4 +1,4 @@
-# EFFECT-003 複数 Capability 解析提案
+# EFFECT-003 複数 Capability 解析計画
 
 ## 1. 背景と症状
 - 効果プロファイルは複数の Capability を要求できるが、実装では `effect_capabilities` の先頭 1 件しか解析せず、`Type_inference_effect.resolve_function_profile` が最初の項目のみ `resolved_capability` に反映している（compiler/ocaml/src/type_inference_effect.ml:50-107）。  
@@ -28,6 +28,6 @@
 - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に複数 Capability 表示の UI 要件を共有し、監査チームと共通チェックリストを作成する。
 - **タイミング**: EFFECT-001 のタグ拡張完了直後（Phase 2-5 中盤）に着手し、Phase 2-5 の終了までに監査出力を複数値対応へ切り替える。
 
-## 確認事項
+## 残課題
 - Capability 名の正規化（小文字化・ハイフン/アンダースコア統一）をどのレイヤで行うか、Runtime チームと調整が必要。  
 - Stage 照合の失敗時にどの Capability を優先的に報告するか（最初/すべて）について運用ポリシーを決めたい。

@@ -1,4 +1,4 @@
-# ERR-001 期待集合出力整備提案
+# ERR-001 期待集合出力整備計画
 
 ## 1. 背景と症状
 - 仕様は `ParseError.expected` と `ExpectationSummary` を用いて期待集合を返すと定義しており（docs/spec/2-5-error.md:1-160）、CLI/LSP/監査が期待値を提示できることを前提にしている。  
@@ -28,6 +28,6 @@
 - `docs/guides/plugin-authoring.md` に期待集合 API の利用例を追加し、外部 DSL が CLI/LSP と同じ情報を取得できるようにする。
 - **タイミング**: PARSER-001 のシム構築と並行して Phase 2-5 前半に対応し、Phase 2-5 中盤の CLI/LSP ゴールデン更新までに完了させる。
 
-## 確認事項
+## 残課題
 - Menhir の期待集合から `Expectation` 列挙へ写像する際の粒度（記号／規則／否定等）を Parser チームと調整する必要がある。  
 - 期待集合が大量になる場合の扱い（上限件数や優先順位）を CLI/LSP チームと合意したい。

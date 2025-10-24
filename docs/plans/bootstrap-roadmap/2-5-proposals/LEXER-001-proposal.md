@@ -1,4 +1,4 @@
-# LEXER-001 Unicode プロファイル調整提案
+# LEXER-001 Unicode プロファイル調整計画
 
 ## 1. 背景と症状
 - Chapter 2 の字句仕様では `identifier(profile=DefaultId)` を含む Unicode プロファイルを前提としているが（docs/spec/2-3-lexer.md:92-170）、実装は ASCII ベースの識別子のみをサポートし、`identifier(profile=...)` が利用できない（compiler/ocaml/src/lexer.mll:46-52）。  
@@ -27,6 +27,6 @@
 - CLI/LSP のハイライト・補完機能が Unicode プロファイルと整合するようチーム間で調整する。
 - **タイミング**: Phase 2-5 では早期に脚注とロードマップを整備し、Unicode 対応そのものは Phase 2-7 の `lexer-unicode` タスク開始時に実装を進める。
 
-## 確認事項
+## 残課題
 - 字句プロファイルを Phase 2-7 でどの順序で実装するか（`identifier` → `lexeme` → `ConfigTriviaProfile`）を Parser/Lexer チームで合意する必要がある。  
 - Unicode 対応へ切り替える際の互換モード（ASCII 限定の維持フラグ）を提供するか検討したい。

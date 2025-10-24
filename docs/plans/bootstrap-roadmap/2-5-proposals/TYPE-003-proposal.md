@@ -1,4 +1,4 @@
-# TYPE-003 型クラス辞書渡し復元提案
+# TYPE-003 型クラス辞書渡し復元計画
 
 ## 1. 背景と症状
 - 仕様では制約解決で得た辞書を Core IR へ渡し、Stage や Capability 情報を監査ログに残すと定義されている（docs/spec/1-2-types-Inference.md:115-119）。  
@@ -38,6 +38,6 @@ let texpr_with_dicts = Typed_ast.attach_dict_args texpr dict_refs
 - `docs/plans/bootstrap-roadmap/2-1-typeclass-strategy.md` の進捗欄へ辞書復元タスクを追記し、Phase 2 全体の型クラスロードマップと整合させる。
 - **タイミング**: Phase 2-5 の前半から中盤にかけて辞書渡し実装を最優先で進め、Phase 2-6 開始前までに Core IR・監査ログと合わせて復元を完了する。
 
-## 確認事項
+## 残課題
 - 算術演算のデフォルト型選択を辞書渡しと共存させる際の互換ポリシー（既存 CLI ゴールデンとの差分許容範囲）を確認。  
 - Stage 情報をどのレイヤで取得するか（Constraint solver で付与 vs. Typer 側で補完）を Phase 2-7 チームと調整したい。

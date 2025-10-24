@@ -1,4 +1,4 @@
-# EXEC-001 ストリーミング実行 PoC 提案
+# EXEC-001 ストリーミング実行 PoC 計画
 
 ## 1. 背景と症状
 - 仕様は `run`/`run_partial` に加え、入力チャンクを扱う `run_stream` / `resume` / `DemandHint` を定義している（docs/spec/2-6-execution-strategy.md:10-24, docs/spec/2-7-core-parse-streaming.md:22-84）。  
@@ -43,6 +43,6 @@ val run_stream :
 - `docs/notes/runtime-bridges.md` にストリーミング API と Runtime Bridge の連携要件を追記し、バックプレッシャ信号の橋渡し方法を明文化する。
 - **タイミング**: PARSER-001/002/LEXER-002 が揃った Phase 2-5 後半に PoC 実装へ着手し、Phase 2-6 開始前までに最小機能のストリーミングランナーを完成させる。
 
-## 確認事項
+## 残課題
 - Feeder API とバックプレッシャの初期値（`DemandHint::Continue` / `::Pause`) をどの程度細分化するか決定が必要。  
 - PoC をどのリリースチャネルに公開するか（`-Zstreaming` フラグの導入有無）を Phase 2-7 チームと合意したい。

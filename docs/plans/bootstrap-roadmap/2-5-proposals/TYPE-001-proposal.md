@@ -1,4 +1,4 @@
-# TYPE-001 値制限の再導入提案
+# TYPE-001 値制限の再導入計画
 
 ## 1. 背景と症状
 - 仕様では「一般化は確定的な値のみ」と定義されており、副作用を持つ束縛は単相に制限する（docs/spec/1-2-types-Inference.md:136）。  
@@ -33,10 +33,10 @@ let is_generalizable ~effects expr_ty =
 ## 4. フォローアップ
 - EFFECT-001 で追加する効果タグ検出ロジックと同時レビューとし、タグ不足による誤判定を避ける。  
 - Phase 2-7 `execution-config` タスクへ「値制限メトリクス収集」の連携を追加し、`RunConfig` 差分や CLI 表示と同期する。  
-- Phase 3 で予定されている Reml 実装移植時に、同じ値制限ロジックを導入するため `docs/notes/core-parser-migration.md`（予定）にも提案を共有する。
+- Phase 3 で予定されている Reml 実装移植時に、同じ値制限ロジックを導入するため `docs/notes/core-parser-migration.md`（予定）にも計画の要点を共有する。
 - `docs/notes/type-inference-roadmap.md` に値制限再導入の段階計画と既知の互換性リスクを記録し、PoC から正式導入までのレビュー履歴を残す。
 - **タイミング**: EFFECT-001 のタグ拡張完了直後に Phase 2-5 中盤で実装へ着手し、Phase 2-5 終盤までに値制限違反ゼロを確認する。
 
-## 確認事項
+## 残課題
 - 値制限判定に利用する「純粋式」判定の粒度（例: `const fn` 呼び出しを許容するか）について、Phase 2-1 型クラス戦略チームと調整が必要。  
 - 効果タグ解析の段階的適用（`-Zalgebraic-effects` 未使用時でも強制するか）を決定したい。

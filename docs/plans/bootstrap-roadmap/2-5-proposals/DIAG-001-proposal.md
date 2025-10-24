@@ -1,4 +1,4 @@
-# DIAG-001 Severity 列挙拡張提案
+# DIAG-001 Severity 列挙拡張計画
 
 ## 1. 背景と症状
 - Chapter 3 は `Severity = Error | Warning | Info | Hint` を必須フィールドとして定義し（docs/spec/3-6-core-diagnostics-audit.md:21-40）、CLI/LSP が情報診断やヒントを区別できることを前提にしている。  
@@ -27,6 +27,6 @@
 - `tooling/lsp` の V2 トランスポートで `Info`/`Hint` を適切な LSP Severity 値へマッピングする。
 - **タイミング**: Phase 2-5 の前半で準備が整い次第着手し、Phase 2-7 の診断刷新タスクに入るまでに本番導入を完了させる。
 
-## 確認事項
+## 残課題
 - 既存 `Note` 表現を `Info` へ移行する際の互換ポリシー（JSON / CLI / LSP 出力）をチーム間で調整する必要がある。  
 - `Hint` レベルの診断をどの機能で発行するか（例: 自動修正候補）を Phase 2-7 と相談したい。

@@ -1,4 +1,4 @@
-# DIAG-003 診断ドメイン語彙拡張提案
+# DIAG-003 診断ドメイン語彙拡張計画
 
 ## 1. 背景と症状
 - Chapter 3 は `DiagnosticDomain` として `Effect` / `Target` / `Plugin` / `Lsp` / `Other(Str)` 等を定義している（docs/spec/3-6-core-diagnostics-audit.md:40,173-188）。  
@@ -28,6 +28,6 @@
 - `docs/plans/bootstrap-roadmap/2-5-review-log.md` にレビュー結果と残課題（`Other(Str)` の表現方針など）を記載し、Phase 2-8 以降での追跡と承認判断に備える。
 - **タイミング**: Phase 2-5 の中盤でスキーマ・実装調整に着手し、Phase 2-7 の診断ダッシュボード更新が始まる前までに適用する。
 
-## 確認事項
+## 残課題
 - 既存診断との互換性（`Note` → `Info` 等のマッピング）と併せ、ドメイン拡張で既存 JSON 出力に影響がないかを CLI/LSP チームと確認する必要がある。  
 - `Other(Str)` を OCaml 実装でどのように表現するか（自由文字列 vs. enum 拡張）を決める必要がある。

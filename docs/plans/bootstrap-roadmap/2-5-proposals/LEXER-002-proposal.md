@@ -1,4 +1,4 @@
-# LEXER-002 Core.Parse.Lex API 抽出提案
+# LEXER-002 Core.Parse.Lex API 抽出計画
 
 ## 1. 背景と症状
 - 仕様は `Core.Parse.Lex` が空白・コメント・lexeme 等の共有ユーティリティを提供すると定義している（docs/spec/2-3-lexer.md 全体、特に §C〜G）。  
@@ -28,6 +28,6 @@
 - `docs/notes/core-parse-streaming-todo.md` に Lex API 抽出の進捗を追記し、Streaming PoC（EXEC-001）との依存関係を明確化する。
 - **タイミング**: Phase 2-5 の中盤で RunConfig シムと並行して着手し、EXEC-001 ストリーミング PoC を開始するまでに Lex API 抽出を完了させる。
 
-## 確認事項
+## 残課題
 - `Core.Parse.Lex` と `Lexer.token` の責務分離（どこまでをシムで巻き取るか）について Parser チームと合意が必要。  
 - コメント・空白処理を共有する際の性能影響（特に大型入力でのオーバーヘッド）を事前に評価したい。

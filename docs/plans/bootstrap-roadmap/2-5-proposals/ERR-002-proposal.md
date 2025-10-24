@@ -1,4 +1,4 @@
-# ERR-002 `recover` / FixIt 情報拡張提案
+# ERR-002 `recover` / FixIt 情報拡張計画
 
 ## 1. 背景と症状
 - 仕様は `Parse.recover` が同期トークン・FixIt・notes を生成し、`ParseResult.diagnostics` に回復情報を残すと定義している（docs/spec/2-5-error.md:161-318）。  
@@ -28,6 +28,6 @@
 - `docs/notes/core-parse-streaming-todo.md` にストリーミング解析での `recover` 活用状況と残課題を追記し、Phase 3 へ引き継ぐ。
 - **タイミング**: PARSER-001/002 の反映後、Phase 2-5 中盤〜後半にかけて実装し、Phase 2-7 の CLI/LSP 刷新に先行して FixIt 支援を提供する。
 
-## 確認事項
+## 残課題
 - Menhir ベースの回復戦略（同期トークン）と仕様上の `recover` API をどこまで合わせるかを Parser チームで調整する必要がある。  
 - FixIt 生成の優先順位（複数候補がある場合）や CLI/LSP 表示形式を UI チームと合意したい。

@@ -1,4 +1,4 @@
-# EFFECT-001 効果タグ検出の拡張提案
+# EFFECT-001 効果タグ検出の拡張計画
 
 ## 1. 背景と症状
 - コア仕様は `mut` / `io` / `ffi` / `panic` / `unsafe` などの効果タグを常時解析し、契約違反を診断すると定義する（docs/spec/1-3-effects-safety.md:11-20）。  
@@ -36,6 +36,6 @@
 - `docs/spec/0-2-glossary.md` と `docs/notes/core-library-outline.md` にタグ語彙の定義と履歴を追記し、Phase 3 でのセルフホスト検証に備えた参照ポイントを整備する。
 - **タイミング**: TYPE-001 など後続タスクの前提となるため、Phase 2-5 の前半で実装を完了し、再帰的な効果解析を 2-5 後半のレビューに間に合わせる。
 
-## 確認事項
+## 残課題
 - `io` 判定の対象 API（`Core.IO`, `Core.Time` など）をどの階層で列挙するかをライブラリチームと合意する必要がある。  
 - FFI 呼び出しのタグ付けで `extern "C"` 以外のブリッジ（Plugin, Capability Bridge）をどのように扱うか、Phase 2-7 で検討したい。

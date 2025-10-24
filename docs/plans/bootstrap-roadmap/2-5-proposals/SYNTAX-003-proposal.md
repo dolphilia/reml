@@ -1,4 +1,4 @@
-# SYNTAX-003 効果構文の実装ステージ明確化提案
+# SYNTAX-003 効果構文の実装ステージ明確化計画
 
 ## 1. 背景と症状
 - Chapter 1 では `effect` 宣言、`perform` / `do` 呼び出し、`handle ... with handler` 構文を定義し、Formal BNF でも同様の規則を記載している（docs/spec/1-1-syntax.md:180-226, docs/spec/1-5-formal-grammar-bnf.md）。  
@@ -28,6 +28,6 @@
 - `docs/notes/effect-system-tracking.md` に構文受理状況と `-Zalgebraic-effects` フラグの運用メモを残し、PoC と正式導入の境界条件を共有する。
 - **タイミング**: Phase 2-5 では早期に脚注・PoC 設計を整備し、効果構文の実装と公開は EFFECT-002 と同期して Phase 2-7 の効果チーム着手時に実行する。
 
-## 確認事項
+## 残課題
 - 効果構文を有効化するフラグ名（`-Zalgebraic-effects` など）と公開ポリシーを Phase 2-7 と調整する必要がある。  
 - `perform` などの構文追加が既存優先順位に与える影響（Menhir の衝突、`parser.conflicts` 更新）を事前にレビューしたい。

@@ -1,4 +1,4 @@
-# PARSER-001 `ParseResult` シム構築提案
+# PARSER-001 `ParseResult` シム構築計画
 
 ## 1. 背景と症状
 - 仕様は `Parser<T>` が `Reply{consumed, committed}` を返し、ランナーが `ParseResult` に診断・回復情報を集約すると定義する（docs/spec/2-1-parser-type.md:11-37）。  
@@ -42,6 +42,6 @@ Menhir の `checkpoint` から `reply` を構築し、`ParseResult` へ畳み込
 - CLI/LSP の JSON 出力で `ParseResult.recovered` を利用できるよう、`tooling/lsp/diagnostic_transport.ml` を更新する。
 - **タイミング**: Phase 2-5 の開幕直後に最優先で導入し、同フェーズ中盤の RunConfig／期待集合整備が始まる前にシム化を完了する。
 
-## 確認事項
+## 残課題
 - Menhir 生成コードに手を入れずに `consumed` / `committed` 情報を取得する手段（`Parser.MenhirInterpreter` の API 露出）が十分か要確認。  
 - `ParseResult.span` を構築するためのスパン情報をどのレイヤで取得するか（AST ノード vs. トークン）を決める必要がある。

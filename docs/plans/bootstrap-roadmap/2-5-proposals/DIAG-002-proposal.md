@@ -1,4 +1,4 @@
-# DIAG-002 `Diagnostic.audit` / `timestamp` 必須化提案
+# DIAG-002 `Diagnostic.audit` / `timestamp` 必須化計画
 
 ## 1. 背景と症状
 - Chapter 3 では `Diagnostic` 構造体の `audit` / `timestamp` を必須フィールドとして定義し、監査ログとの整合を保証する（docs/spec/3-6-core-diagnostics-audit.md:21-40）。  
@@ -37,6 +37,6 @@ let ensure_audit audit_opt =
 - `docs/notes/diagnostic-audit-gap.md`（未作成の場合は新設）へ必須化の背景と移行チェックリストを記録し、Phase 3 のセルフホスト側でも監査欠落が再発しないようトレーサビリティを確保する。
 - **タイミング**: Phase 2-5 の立ち上がり直後に優先対応し、Phase 2-6 へ移行する前までに必須化とメトリクス回復を完了する。
 
-## 確認事項
+## 残課題
 - `AuditEnvelope.empty()` に含める既定値（`audit_id` / `change_set` の扱い）について監査チームの合意が必要。  
 - `timestamp` の生成を `Core.Numeric.now()` へ委譲するか、OCaml 側で `Ptime` / `Unix.gmtime` を利用するかを選定したい。
