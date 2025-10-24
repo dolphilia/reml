@@ -129,3 +129,37 @@ opam install conf-llvm-18 llvm.18.1.8 conf-pkg-config conf-zlib conf-libffi --ye
 - `llvm-config` 切り替えの出力（`logs/2025-ubuntu2404-llvm-config19.log`, `logs/2025-ubuntu2404-llvm-config18.log`）を取得済み。
 - `LLVM_CONFIG=/usr/bin/llvm-config-19` / `llvm-config-18` を指定した `dune build -j1 --verbose` の成功ログを `logs/2025-ubuntu2404-dune-build-llvm19.log`, `logs/2025-ubuntu2404-dune-build-llvm18.log` に保存。
 - 動的リンク検証 (`logs/2025-ubuntu2404-ldd-main.log`) と `llvm-link-flags.sexp` 内容 (`logs/2025-ubuntu2404-llvm-link-flags.sexp.log`) を保存。
+
+## 4. 2025-10-24 調査メモ（CI/CD 統合準備）
+
+### 4.1 調査サマリー
+- `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` の CI/CD 統合項目を踏まえ、Linux CI とローカル再現フローの差分を精査した。
+- `bootstrap-linux.yml` 現行定義と `scripts/ci-local.sh` を比較し、`--emit-audit`/`--audit-store` の統一入口が未導入である点を確認した。
+- `logs/2025-ubuntu2404-llvm-link-flags.sexp.log` から、`llvm-config` の優先順が混在しており、opam 由来の LLVM ライブラリを必ずしも先に解決できていない状況を把握した。
+
+### 4.2 判明した課題と仮説
+- ローカル/CI 双方で `LLVM_CONFIG` が system インストール（/usr/bin/llvm-config-19 等）へフォールバックするケースがあり、`libLLVM` のバージョンがずれると `LLVMConstStringInContext2` 未解決が再発し得る。
+- `gen_llvm_link_flags.py` は opam ディレクトリを優先追加しているが、`dune clean` を挟まない場合や `LLVM_CONFIG` を外部で上書きした場合に旧フラグが残存する恐れがある。
+- CI 側 `audit-matrix` ジョブがアーティファクト収集・メトリクス計測を自動化しているのに対し、ローカルフローでは `collect-iterator-audit-metrics.py` を明示的に実行しないと pass_rate ゲートを再現できない。
+
+### 4.3 直近アクションプラン
+- `scripts/ci-local.sh` に `--emit-audit` と `--audit-store` 引数を追加し、`REMLC` 実行後に `scripts/ci-validate-audit.sh` と `tooling/ci/collect-iterator-audit-metrics.py` をチェーンさせる。成果物は CI と同じく `reports/audit/<platform>/<run_id>/` へ配置する。
+- ローカル再現時は `LLVM_CONFIG="$(opam var prefix)/bin/llvm-config"` を明示し、`dune clean` → `python3 compiler/ocaml/scripts/gen_llvm_link_flags.py` → `cat compiler/ocaml/src/llvm_gen/llvm-link-flags.sexp` → `ldd _build/default/src/main.exe` をワンセットで実行して差分を記録する。
+- テストフェーズを `dune runtest` / `make runtime` / Valgrind / ASan に段階分割し、失敗ログを `logs/2025-ubuntu2404-test-*.log` として収集。特に Valgrind で `libasan` を利用するステップは `clang-18`/`lld-18` インストール有無を再確認する。
+
+### 4.4 参照ファイルとログ
+- 仕様・計画: `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md`, `docs/plans/bootstrap-roadmap/2-4-status.md`
+- CI 定義: `.github/workflows/bootstrap-linux.yml`, `scripts/ci-local.sh`
+- ログ: `logs/2025-ubuntu2404-llvm-link-flags.sexp.log`, `logs/2025-ubuntu2404-dune-build-llvm19.log`, `logs/2025-ubuntu2404-toolchain-status.md`
+
+### 4.5 テスト実行結果（2025-10-24 夕方）
+- `compiler/ocaml` で `dune runtest` を実行したところ、`llc` と `llvm-as` が PATH 上に存在せず LLVM パイプライン系テストが失敗。
+  - `tests/test_user_impl_execution.ml` 内 `test_llvm_ir_validation` / `test_ir_to_object` が `llc` 未検出 (`exit code 127`) により失敗。
+  - `tests/test_typeclass_execution.ml` でも同様に `llc` 未検出で `test_ir_to_object` が失敗。
+  - `tests/test_llvm_verify.ml` は `llvm-as` を呼び出せず、メッセージとして「LLVM 15+ を想定」と出力。
+- 原因: `sudo apt install llvm-18 llvm-18-tools` はインストール済みだが、`/usr/bin/llc` などのエイリアスを作成する `sudo ln -sf /usr/bin/llc-19 /usr/bin/llc`（または `-18`）等の手順を未実施。
+- 対応予定アクション:
+  1. `.github/workflows/bootstrap-linux.yml` と同じく `llvm-as`, `opt`, `llc` へのシンボリックリンクを作成し、`llc --version` 等で確認。
+  2. 再度 `dune runtest` を実行し、LLVM 関連テストの通過を確認。成功ログは `logs/2025-ubuntu2404-dune-runtest-after-llvm-tools.log` に保存する。
+  3. テスト成功後に Valgrind / ASan ステップも順次検証し、必要な依存パッケージが揃っているかを確認する。
+- 対策: `compiler/ocaml/tests/support/llvm_toolchain_helpers.ml` を追加し、`llc`/`llvm-as`/`opt` を `llc-19`（なければ `-18`）などのバージョン付きバイナリから自動検出するよう更新した。`verify_llvm_ir.sh` も同様にフォールバック探索を実装し、ローカル環境でバージョン番号付きコマンドしか存在しない場合でもテスト実行が継続できる。

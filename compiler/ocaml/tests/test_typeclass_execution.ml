@@ -107,6 +107,8 @@ let with_temp_file suffix f =
   let filename = Filename.temp_file "reml_test_" suffix in
   Fun.protect ~finally:(fun () -> Sys.remove filename) (fun () -> f filename)
 
+let llc_path = Llvm_toolchain_helpers.llc ()
+
 (* ========== 検証関数 ========== *)
 
 (* LLVM IRが検証を通過することを確認 *)
@@ -144,7 +146,9 @@ let test_ir_to_object () =
 
           (* llc でオブジェクトファイルにコンパイル *)
           let llc_cmd =
-            Printf.sprintf "llc -filetype=obj -o %s %s 2>&1" obj_file ll_file
+            Printf.sprintf "%s -filetype=obj -o %s %s 2>&1"
+              (Filename.quote llc_path) (Filename.quote obj_file)
+              (Filename.quote ll_file)
           in
 
           (try run_command llc_cmd

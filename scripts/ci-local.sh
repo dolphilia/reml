@@ -48,6 +48,7 @@ LLVM_TARGET_TRIPLE=""
 ARCH="auto"
 HOST_ARCH=""
 STAGE="${REMLC_EFFECT_STAGE:-}"
+LLVM_SHIM_DIR=""
 
 # 色付き出力
 RED='\033[0;31m'
@@ -83,6 +84,54 @@ check_command() {
     log_error "$1 が見つかりません。インストールしてください。"
     exit 1
   fi
+}
+
+setup_llvm_shim_dir() {
+  if [[ -n "$LLVM_SHIM_DIR" ]]; then
+    return
+  fi
+  LLVM_SHIM_DIR="${REPO_ROOT}/tmp/local-llvm/bin"
+  mkdir -p "$LLVM_SHIM_DIR"
+  case ":$PATH:" in
+    *":${LLVM_SHIM_DIR}:"*) ;;
+    *)
+      export PATH="${LLVM_SHIM_DIR}:${PATH}"
+      ;;
+  esac
+}
+
+ensure_llvm_tool() {
+  local tool="$1"
+  if command -v "$tool" >/dev/null 2>&1; then
+    return
+  fi
+
+  local candidates=()
+  case "$tool" in
+    llvm-as|opt|llc)
+      candidates=("19" "18" "17")
+      ;;
+    *)
+      candidates=()
+      ;;
+  esac
+
+  for suffix in "${candidates[@]}"; do
+    if command -v "${tool}-${suffix}" >/dev/null 2>&1; then
+      setup_llvm_shim_dir
+      local target
+      target="$(command -v "${tool}-${suffix}")"
+      ln -sfn "$target" "${LLVM_SHIM_DIR}/${tool}"
+      hash -r
+      log_info "${tool} を ${target} にリンクしました"
+      if command -v "$tool" >/dev/null 2>&1; then
+        return
+      fi
+    fi
+  done
+
+  log_error "${tool} が見つかりません。LLVM ツールチェーンをインストールしてください。"
+  exit 1
 }
 
 # ========== 引数解析 ==========
@@ -266,9 +315,9 @@ if [[ "$TARGET" == "macos" ]]; then
   fi
 fi
 
-check_command llvm-as
-check_command opt
-check_command llc
+ensure_llvm_tool llvm-as
+ensure_llvm_tool opt
+ensure_llvm_tool llc
 
 # OCaml バージョンチェック
 OCAML_VERSION=$(opam exec -- ocaml -version 2>&1 | grep -oE "[0-9]+\.[0-9]+\.[0-9]+" | head -1)

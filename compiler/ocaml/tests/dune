@@ -44,6 +44,7 @@
   reml_ocaml.llvm_gen
   reml_ocaml.ffi_codegen
   cli
+  reml_test_support
   llvm
   unix
   str
