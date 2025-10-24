@@ -280,6 +280,17 @@ let normalize_contract (contract : bridge_contract) : normalized_contract =
     link_name;
   }
 
+let audit_pass_rate_of_status = function
+  | None -> 1.0
+  | Some status ->
+      let normalized = String.lowercase_ascii (String.trim status) in
+      if normalized = "" then 1.0
+      else if
+        List.mem normalized
+          [ "ok"; "success"; "passed"; "pass"; "complete"; "completed" ]
+      then 1.0
+      else 0.0
+
 let bridge_json_of_normalized ?status (normalized : normalized_contract) :
     Json.t =
   let option_string value =
@@ -341,6 +352,9 @@ let bridge_json_of_normalized ?status (normalized : normalized_contract) :
     ]
   in
   let fields =
+    ("audit_pass_rate", `Float (audit_pass_rate_of_status status)) :: fields
+  in
+  let fields =
     match normalized.expected_abi with
     | Some expected ->
         ("expected_abi", `String (string_of_abi_kind expected)) :: fields
@@ -378,9 +392,10 @@ let bridge_json_of_normalized ?status (normalized : normalized_contract) :
 
 let bridge_audit_metadata_pairs ?(status = "ok")
     (normalized : normalized_contract) : (string * Json.t) list =
+  let source_span = span_to_json normalized.contract.source_span in
   [
     ("bridge", bridge_json_of_normalized ~status normalized);
-    ("source_span", span_to_json normalized.contract.source_span);
+    ("bridge.source_span", source_span);
   ]
 
 let bridge_audit_metadata ?(status = "ok") (normalized : normalized_contract) :

@@ -3,7 +3,7 @@ module D = Diagnostic
 
 module Json = Yojson.Basic
 
-let schema_version = "2.0.0-draft"
+let schema_version = Diagnostic.schema_version
 let lsp_source = "reml"
 
 let lsp_uri_of_filename filename =
@@ -174,6 +174,7 @@ let diagnostic_to_reml_json (diagnostic : Diagnostic.t) =
   let push key value = fields := (key, value) :: !fields in
   push "severity" (`String (severity_to_string normalized.severity));
   push "message" (`String normalized.message);
+  push "schema_version" (`String schema_version);
   push "location" (reml_location normalized.primary);
   (match normalized.codes with
   | code :: _ -> push "code" (`String code) | [] -> ());

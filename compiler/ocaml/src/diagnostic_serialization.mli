@@ -45,6 +45,7 @@ type normalized_diagnostic = {
   hints : normalized_hint list;
   fixits : normalized_fixit list;
   expected : expectation_summary option;
+  schema_version : string;
   extensions : Extensions.t;
   audit_metadata : Extensions.t;
   audit : Audit_envelope.t option;

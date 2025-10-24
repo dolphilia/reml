@@ -37,6 +37,7 @@ type normalized_diagnostic = {
   hints : normalized_hint list;
   fixits : normalized_fixit list;
   expected : expectation_summary option;
+  schema_version : string;
   extensions : Extensions.t;
   audit_metadata : Extensions.t;
   audit : Audit_envelope.t option;
@@ -81,6 +82,7 @@ let of_diagnostic (diag : Diagnostic.t) : normalized_diagnostic =
     hints = List.map normalize_hint diag.hints;
     fixits = List.map normalize_fixit diag.fixits;
     expected = diag.expected;
+    schema_version = Diagnostic.schema_version;
     extensions = diag.extensions;
     audit_metadata = diag.audit_metadata;
     audit = diag.audit;
@@ -247,6 +249,7 @@ let to_json (diag : normalized_diagnostic) : Json.t =
       ("secondary", `List (List.map secondary_to_json diag.secondary));
       ("hints", `List (List.map hint_to_json diag.hints));
       ("fixits", `List (List.map fixit_to_json diag.fixits));
+      ("schema_version", `String diag.schema_version);
       ("extensions", encode_extensions diag.extensions);
       ("audit_metadata", encode_audit_metadata diag.audit_metadata);
       ("audit", encode_audit diag.audit);

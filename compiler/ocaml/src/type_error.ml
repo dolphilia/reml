@@ -1287,16 +1287,11 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       in
       let diag =
         Diagnostic.set_extension "bridge"
-          (Ffi.bridge_json_of_normalized normalized)
+          (Ffi.bridge_json_of_normalized ~status:"error" normalized)
           diag
       in
       let audit_entries =
-        [
-          ( "bridge",
-            Ffi.bridge_json_of_normalized ~status:"error" normalized );
-          ( "bridge.source_span",
-            Ffi.span_to_json normalized.contract.source_span );
-        ]
+        Ffi.bridge_audit_metadata_pairs ~status:"error" normalized
       in
       Diagnostic.merge_audit_metadata audit_entries diag
   | FfiContractOwnershipMismatch normalized ->
@@ -1325,16 +1320,11 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       in
       let diag =
         Diagnostic.set_extension "bridge"
-          (Ffi.bridge_json_of_normalized normalized)
+          (Ffi.bridge_json_of_normalized ~status:"error" normalized)
           diag
       in
       let audit_entries =
-        [
-          ( "bridge",
-            Ffi.bridge_json_of_normalized ~status:"error" normalized );
-          ( "bridge.source_span",
-            Ffi.span_to_json normalized.contract.source_span );
-        ]
+        Ffi.bridge_audit_metadata_pairs ~status:"error" normalized
       in
       Diagnostic.merge_audit_metadata audit_entries diag
   | FfiContractUnsupportedAbi normalized ->
@@ -1371,16 +1361,11 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       in
       let diag =
         Diagnostic.set_extension "bridge"
-          (Ffi.bridge_json_of_normalized normalized)
+          (Ffi.bridge_json_of_normalized ~status:"error" normalized)
           diag
       in
       let audit_entries =
-        [
-          ( "bridge",
-            Ffi.bridge_json_of_normalized ~status:"error" normalized );
-          ( "bridge.source_span",
-            Ffi.span_to_json normalized.contract.source_span );
-        ]
+        Ffi.bridge_audit_metadata_pairs ~status:"error" normalized
       in
       Diagnostic.merge_audit_metadata audit_entries diag
   | AmbiguousTraitImpl { trait_name; type_args; candidates; span } ->

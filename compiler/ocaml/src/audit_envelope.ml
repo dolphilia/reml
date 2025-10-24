@@ -24,8 +24,29 @@ type event = {
   envelope : envelope;
 }
 
+let schema_version_key = "schema.version"
+let schema_version_value = "1.1"
+let schema_version = schema_version_value
+
+let audit_timestamp_key = "audit.timestamp"
+
+let ensure_metadata_key key value metadata =
+  let filtered =
+    List.filter (fun (existing, _) -> not (String.equal existing key)) metadata
+  in
+  filtered @ [ (key, value) ]
+
+let ensure_core_metadata metadata =
+  metadata
+  |> ensure_metadata_key schema_version_key (`String schema_version_value)
+
 let empty_envelope =
-  { audit_id = None; change_set = None; capability = None; metadata = [] }
+  {
+    audit_id = None;
+    change_set = None;
+    capability = None;
+    metadata = ensure_core_metadata [];
+  }
 
 let iso8601_timestamp () =
   let tm = Unix.gmtime (Unix.time ()) in
@@ -60,15 +81,37 @@ let make ?timestamp ?audit_id ?change_set ?capability ?metadata
     timestamp;
     category;
     envelope =
-      { audit_id; change_set; capability; metadata = metadata_list };
+      {
+        audit_id;
+        change_set;
+        capability;
+        metadata =
+          metadata_list
+          |> ensure_core_metadata
+          |> ensure_metadata_key audit_timestamp_key (`String timestamp);
+      };
   }
 
 let add_metadata (env : envelope) ~key value =
-  let filtered = List.filter (fun (k, _) -> not (String.equal k key)) env.metadata in
-  { env with metadata = (key, value) :: filtered }
+  let metadata =
+    env.metadata |> ensure_metadata_key key value |> ensure_core_metadata
+  in
+  { env with metadata }
 
 let merge_metadata (env : envelope) entries =
-  List.fold_left (fun acc (key, value) -> add_metadata acc ~key value) env entries
+  let merged =
+    List.fold_left (fun acc (key, value) -> add_metadata acc ~key value) env
+      entries
+  in
+  let timestamp =
+    match List.assoc_opt audit_timestamp_key merged.metadata with
+    | Some (`String value) -> value
+    | _ -> iso8601_timestamp ()
+  in
+  let merged =
+    add_metadata merged ~key:audit_timestamp_key (`String timestamp)
+  in
+  add_metadata merged ~key:schema_version_key (`String schema_version_value)
 
 let metadata (env : t) = env.metadata
 let audit_id (env : t) = env.audit_id

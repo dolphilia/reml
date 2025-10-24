@@ -13,6 +13,25 @@
   - 技術的負債 ID 22（Windows Stage 自動検証不足）と ID 23（macOS FFI サンプル自動検証不足）を解消する計画を本フェーズのタスクに組み込むこと。
   - `tooling/runtime/audit-schema.json` v1.1 を基準スキーマとして採用し、差分変更が必要な場合は Phase 2-3 チームと調整する。
 
+## 最新CI状況（2025-10-24 実行分）
+
+### Linux CI（20251024T023213Z-b803c57）
+- ✅ Lint / ✅ Diagnostic JSON Validation / ✅ Build
+- ❌ Audit Matrix: `tmp/artifacts/linux-ci/audit-ci-linux/reports/audit/summary.md` で `status=failure`。`tmp/artifacts/linux-ci/audit-ci-linux/tmp/audit-matrix/linux/diagnostics.json` には `schema.version` と `timestamp` が含まれず、`bridge.audit_pass_rate` も出力されていないため pass_rate が算出できていない。
+- ❌ Test: `tmp/artifacts/linux-ci/junit.xml` が空で、Audit Matrix 失敗後にテストが途中終了している。
+- ⏸️ LLVM IR Verification / ⏸️ Iterator Audit Metrics: 監査ステップの失敗により後続ジョブがスキップ。
+- ✅ Record Metrics / ✅ Artifact Bundle
+
+### macOS CI（arm64、20251024T024948Z-b803c57）
+- ✅ Lint / ✅ Diagnostic JSON Validation / ✅ Build / ✅ Test / ✅ LLVM IR Verification / ✅ Artifact Bundle
+- ❌ Audit Matrix: `tmp/artifacts/macos-ci/audit-ci-macos/reports/audit/summary.md` が failure。`tmp/artifacts/macos-ci/iterator-audit-metrics.json` で `ffi_bridge.audit_pass_rate=0.0`、`missing=["bridge.status=error"]` と記録され、`tmp/artifacts/macos-ci/audit-ci-macos/tmp/audit-matrix/macos/diagnostics.json` の診断にも `schema.version`・`audit.timestamp`・`bridge.audit_pass_rate` が欠落している。
+- ❌ Iterator Audit Metrics: `ffi_bridge.audit_pass_rate` が 0.0 のため同メトリクスが失敗。
+- ❌ Record Metrics: 上記欠落フィールドの影響で CI メトリクス保存ジョブが失敗。
+
+### Windows CI（最新 run のローカル再取得成果物）
+- ✅ Diagnostic JSON Validation
+- ❌ Windows Audit Metrics / ❌ Audit Matrix: `tmp/artifacts/windows-ci/iterator-stage-summary-windows.md` と `tmp/artifacts/windows-ci/iterator-audit-metrics.json` がいずれも pass_rate 0.0 を示す。欠落フィールドは `cli.audit_id`, `cli.change_set`, `schema.version`, `audit.timestamp`, `bridge.audit_pass_rate`, `extensions.bridge.*` など多数で、`compiler\ocaml\tests\golden\audit\cli-ffi-bridge-windows.jsonl.golden` を含む既存ゴールデンがスキーマ v1.1 の要求を満たしていない。
+
 ## 引き継ぎタスク対応計画
 
 ### ID 22: Windows Stage 自動検証不足の解消
@@ -27,6 +46,16 @@
   - 監査ログ成果物のパスと命名規約を `docs/spec/3-6-core-diagnostics-audit.md` 付録、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に反映。
   - `compiler/ocaml/docs/technical-debt.md` の ID 22 を「完了」に更新し、対応コミット・ワークフロー名を記録。
 
+- **現状 (2025-10-24)**:
+  - `tmp/artifacts/windows-ci/iterator-stage-summary-windows.md` は `iterator.stage.audit_pass_rate=0.0`、`ffi_bridge.audit_pass_rate=0.0` を報告し、`schema.version` や `cli.audit_id` など必須フィールドが欠落している。
+  - `tmp/artifacts/windows-ci/iterator-audit-metrics.json` では `compiler\ocaml\tests\golden\typeclass_iterator_stage_mismatch.json.golden` と `compiler\ocaml\tests\golden\audit\cli-ffi-bridge-windows.jsonl.golden` の両方に `bridge.audit_pass_rate` と `extensions.bridge.*` の欠落が列挙され、CI ジョブが failure となっている。
+  - Bash スクリプト自体は実行済みだが、`compiler/ocaml/src/diagnostic.ml`・`compiler/ocaml/tests/golden/**/*.golden` が監査スキーマ v1.1 に追従していないため、最終的な pass_rate が 0.0 に落ちている。
+
+- **追加対処**:
+  - `Audit_envelope` 生成時に `schema.version`（v1.1）、`audit.timestamp`、`cli.audit_id`、`cli.change_set` を必須フィールドとして埋める。
+  - `extensions.bridge` に `status`・`platform`・`return.*` を転写し、`bridge.audit_pass_rate` を `audit_metadata` に明示する。
+  - 上記変更後に `compiler/ocaml/tests/golden/` 配下の Windows 関連ゴールデンを再生成し、CI で pass_rate=1.0 を確認する。
+
 ### ID 23: macOS FFI サンプル自動検証不足の解消
 - **目的**: `ffi_dispatch_async.reml` と `ffi_malloc_arm64.reml` のビルド・実行を CI に組み込み、`bridge.platform = macos-arm64` の監査ログを `ffi_bridge.audit_pass_rate` に反映させる。
 - **作業ステップ**:
@@ -40,6 +69,27 @@
   - CI macOS ジョブで `ffi_dispatch_async.reml`／`ffi_malloc_arm64.reml` のビルド・実行が安定し、`ffi_bridge.audit_pass_rate (macos-arm64)` が 1.0 になる。
   - ゴールデンテストが `bridge.return.*` / `bridge.platform` を検証し、macOS 監査ログが欠落した場合に CI が失敗する。
   - 技術的負債 ID 23 が「完了」として更新され、監査ログ保存場所が `docs/plans/bootstrap-roadmap/2-3-to-2-4-handover.md` の参照リストに追加される。
+
+- **現状 (2025-10-24)**:
+  - `tmp/artifacts/macos-ci/iterator-audit-metrics.json` が `ffi_bridge.audit_pass_rate=0.0` を報告し、`tmp/artifacts/macos-ci/audit-ci-macos/tmp/audit-matrix/macos/diagnostics.json` の診断に `schema.version`・`audit.timestamp`・`bridge.audit_pass_rate` が存在しない。
+  - `tmp/artifacts/macos-ci/iterator-stage-summary.md` は Stage 指標自体は 1.0 だが、FFI 指標が 0.0 のため CI ステップ「Iterator Audit Metrics」「Record Metrics」が失敗扱いとなっている。
+  - macOS 専用サンプルの実行自体は成功しているものの、`compiler/ocaml/src/diagnostic.ml` が v1.1 で追加されたメタデータを吐き出していないため pass_rate が回復しない。
+
+- **追加対処**:
+  - `Diagnostic` → JSON 変換時に `schema.version`（v1.1）と `timestamp` を埋め、`extensions.bridge` に `status` を含める。
+  - `collect-iterator-audit-metrics.py` の macOS 判定を `bridge.status` と `bridge.platform` の組み合わせで確認するよう更新し、欠落時は具体的なキー名をレポートへ出力する。
+  - 変更反映後に `tmp/cli-callconv-out/macos/` の成果物を再生成し、`reports/ffi-macos-summary.md` と `docs/plans/bootstrap-roadmap/2-3-to-2-4-handover.md` の TODO 解消欄へ更新ログを追記する。
+
+### Linux Audit Matrix: V2 フィールド欠落への対応
+- **観測 (2025-10-24)**:
+  - `tmp/artifacts/linux-ci/audit-ci-linux/reports/audit/summary.md` は `status=failure`。`tmp/artifacts/linux-ci/audit-ci-linux/tmp/audit-matrix/linux/diagnostics.json` に `schema.version`・`timestamp` が存在せず、`extensions.bridge` も `status`／`platform` を持たない。
+  - `tmp/artifacts/linux-ci/audit-ci-linux/tmp/audit-matrix/linux/cli-callconv.stdout.json` が空で、`ffi_bridge.audit_pass_rate` を算出するための CLI stdout 情報が保存されていない。
+  - 上記の欠落により `Audit Matrix` ステップで pass_rate を算出できず、Linux CI のテストジョブも途中終了している。
+
+- **対応方針**:
+  1. `compiler/ocaml/src/diagnostic.ml` と `tooling/runtime/audit_envelope.ml` を更新し、Linux でも `schema.version`・`audit.timestamp`・`bridge.audit_pass_rate` をエンベロープへ含める。
+  2. `scripts/ci-local.sh --emit-audit` の Linux 経路で stdout/stderr を `cli-callconv.stdout.json` として永続化し、`collect-iterator-audit-metrics.py` が値を参照できるよう修正する。
+  3. 修正後に `tmp/cli-callconv-out/linux/` を再生成し、`reports/runtime-capabilities-validation.md` と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ Linux 向け差分と検証ログを追加する。
 
 ### その他引き継ぎ事項の整理
 - **`--verify-ir` 再有効化**: Phase 2-3 で stub 無終端問題が解消されているため、Phase 2-4 では `scripts/ci-local.sh` のデフォルトパスと CLI ドキュメントを更新し、すべてのプラットフォームワークフローで `--verify-ir` を再び必須化する。失敗時には監査ログとともに IR 検証レポートを収集し、`reports/ffi-bridge-summary.md` に参照を追加する。
