@@ -18,6 +18,8 @@ fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult
 * `ParseResultWithRest` は未消費入力を併せて返し、REPL やインクリメンタル更新に備える。
 * ストリーミング処理や継続再開は [2.7](2-7-core-parse-streaming.md) で定義する `Core.Parse.Streaming` ランナーに委ねる。
 
+> **実装移行メモ (Phase 2-5)**: `parser_driver.run` / `run_partial` / `run_string`（`compiler/ocaml/src/parser_driver.ml`）は `ParseResult` シムを利用し、`RunConfig.legacy_result=true` を経由しても `ParseResult.recovered`・`consumed`・`committed` を保持する。CLI/LSP が出力する JSON では `parse_result.recovered` の欠落を `scripts/validate-diagnostic-json.sh` で自動検知できるようになっている。
+
 ### A-2. 実行モードと拡張の棲み分け
 
 コア仕様の `RunConfig` はバッチ解析を前提とし、Packrat や左再帰の切替、追跡の有無など最小限の選択肢のみを持ちます。ストリーミング処理やハイブリッド実行、差分再利用といった高度な戦略は拡張モジュールで定義され、コアからは opt-in で利用します。

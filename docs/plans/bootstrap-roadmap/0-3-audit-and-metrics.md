@@ -12,6 +12,8 @@
 | 安全性 | `iterator.stage.audit_pass_rate` | `typeclass.iterator.stage_mismatch` 診断で必須監査キーが揃った割合 (0.0〜1.0) | CI（週次レビュー、PRごと） | [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) §2.4 |
 | 型クラス | `typeclass.metadata_pass_rate` | `extensions.typeclass` / `audit_metadata.typeclass.*` が完全に埋まっている割合 (0.0〜1.0) | CI（週次レビュー、PRごと） | 同 §1.4 |
 | 安全性 | `ffi_bridge.audit_pass_rate` | `ffi.contract.*` 診断で `AuditEnvelope.metadata.bridge.*` と拡張フィールドが揃った割合 (0.0〜1.0) | CI（週次レビュー、PRごと） | [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md), [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) |
+| Parser | `parser.parse_result_consistency` | `Parser_driver.run` と `run_partial` が生成する `ParseResult`（`value`/`span`/`diagnostics`/`consumed`/`committed`）の一致率。1.0 未満の場合は `parser_driver_tests.ml` の差分レポートを添付。 | CI（`dune runtest tests`、parser_driver シナリオ） | [2-1-parser-type.md](../../spec/2-1-parser-type.md) §A, [2-6-execution-strategy.md](../../spec/2-6-execution-strategy.md) §G |
+| Parser | `parser.farthest_error_offset` | `DiagState.farthest_error_offset` が報告する最遠エラー位置（バイトオフセット）。`None` または 0 の場合は回復ロジックが無効化されているとみなしブロッカー登録。 | CI（`test_parse_result_state.ml` / CLI 失敗シナリオ） | 同上 |
 | DX | `diagnostic_regressions` | 診断差分の件数 | PR ごと | [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) |
 | DX | `audit_diff.regressions` | `tooling/review/audit-diff.py` が算出した `diagnostic.regressions + metadata.changed` 件数 | PR ごと | 同上／`reports/diagnostic-format-regression.md` |
 | DX | `audit_dashboard.generated` | 直近の `audit_dashboard` ジョブが成功し `reports/audit/dashboard/index.html` を出力した回数 | 週次レビュー | `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` §5.2 |

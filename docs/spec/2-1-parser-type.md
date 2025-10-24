@@ -44,6 +44,8 @@ type State = {
 * `span` は **そのパーサが消費した範囲**（`Ok` のみ）。ノード単位の位置取りに使う。
 * `ParseResult<T>` は **常に AST と Diagnostic の組**を返し、「値がないが診断が得られる」ケース（recover 後など）も扱う。旧来の `Result<(T, Span), ParseError>` は `RunConfig.legacy_result=true` で再利用できるが非推奨。
 
+> **実装移行メモ (Phase 2-5)**: OCaml 実装は `compiler/ocaml/src/parser_driver.ml` で Menhir 生成パーサを `State`/`Reply` シムに包み、`Parser_diag_state` を通じて `ParseResult.diagnostics` / `farthest_error_offset` を集約した後に CLI/LSP へ返却する。`ParseResult.recovered` は常に JSON 出力へ含められ、`scripts/validate-diagnostic-json.sh` が欠落を検知する（`docs/plans/bootstrap-roadmap/2-5-proposals/PARSER-001-proposal.md` を参照）。
+
 ---
 
 ## B. 入力モデル `Input`

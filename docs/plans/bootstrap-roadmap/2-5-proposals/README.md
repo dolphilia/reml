@@ -30,7 +30,7 @@
 - [LEXER-002 修正計画](./LEXER-002-proposal.md): `Core.Parse.Lex` ユーティリティを抽出し、字句設定 (`RunConfig.extensions["lex"]`) を仕様準拠に整備。
 
 ### 構文解析（PARSER）
-- [PARSER-001 修正計画](./PARSER-001-proposal.md): `ParseResult` シムを導入し、`Reply{consumed, committed}` と診断集約を再現。
+- [PARSER-001 修正計画](./PARSER-001-proposal.md): `ParseResult` シムを導入し、`Reply{consumed, committed}` と診断集約を再現。Week31 Day1-5 で `parser_driver` を段階的に差し替え、`parser.parse_result_consistency` / `parser.farthest_error_offset` を `0-3-audit-and-metrics.md` に登録して CI 監視する（実装済: `parser_driver.ml` シム化・`parser_diag_state.ml` 追加・`dune runtest tests` 成功・メトリクス/脚注/`scripts/validate-diagnostic-json.sh` の自動検証まで反映完了）。
 - [PARSER-002 修正計画](./PARSER-002-proposal.md): `RunConfig` をランナーへ統合し、Packrat／recover／stream 設定を反映できるようにする。
 - [PARSER-003 修正計画](./PARSER-003-proposal.md): 15 個のコアコンビネーターを OCaml 実装へ抽出し、`Core.Parse` API と DSL の互換性を確保。
 

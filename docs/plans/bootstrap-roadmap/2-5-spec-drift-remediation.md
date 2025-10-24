@@ -273,9 +273,17 @@
 - `0-3-audit-and-metrics.md` に計画 ID ごとのメトリクスキー（例: `diagnostic.info_hint_ratio`, `parser.runconfig_coverage`）を追記し、進捗を定量把握できる状態を整える。
 
 6.2. **Critical/High 計画の実施**
-- **PARSER-001 / TYPE-003 / DIAG-002**: Phase 2-5 開始直後に実装を進め、`ParseResult` シム導入・型クラス辞書復元・監査必須化を完了する。完了後は各仕様章へ脚注・脚注解除の予定を反映する。
+- **PARSER-001**: `compiler/ocaml/src/parser_driver.ml` を `State`/`Reply`/`ParseResult` シムで包み、`DiagState` と `consumed`/`committed` を Phase 2-5 Week31 内に復元する。
+  - Week31 Day1-2: `docs/plans/bootstrap-roadmap/2-5-proposals/PARSER-001-proposal.md` を実装仕様レベルへ拡張し、`State`/`Reply` の OCaml 型定義、`DiagState` のフィールド、`reports/diagnostic-format-regression.md` で検証する JSON 例を追記する。
+  - Week31 Day3-4: Menhir ドライバ呼び出しを `Core.Parse` 互換シムに差し替え、`ParseResult.diagnostics` へ複数診断を束ねる PoC を `parser_driver_tests.ml`（新規）で検証する。`parser.parse_result_consistency` と `parser.farthest_error_offset` を `0-3-audit-and-metrics.md` に登録し、CI で `run`/`run_partial` 一致率を測定する。
+  - Week31 Day5: `docs/spec/2-1-parser-type.md` と `docs/spec/2-6-execution-strategy.md` に移行脚注を追加し、CLI/LSP で `ParseResult.recovered` を JSON 出力へ載せるための更新作業を Phase 2-5 Week32 のドキュメント反映ステップへ連携する。完了条件は `scripts/validate-diagnostic-json.sh` で `ParseResult` 拡張フィールドが検証されること。
+- **TYPE-003 / DIAG-002**: Phase 2-5 開始直後に実装を進め、`ParseResult` シム導入後でも型クラス辞書復元・監査必須化が阻害されないよう依存関係を整理する。完了後は各仕様章へ脚注・脚注解除の予定を反映する。
 - **EFFECT-001 / DIAG-001 / SYNTAX-002 / ERR-001**: Phase 2-5 前半で実施し、効果タグ拡張・Severity 拡張・`use` ネスト対応・期待集合出力を確立する。関連する JSON スキーマや CLI/LSP ゴールデンを更新し、`scripts/validate-diagnostic-json.sh` で回帰確認する。
 - 実装完了時は `docs/plans/bootstrap-roadmap/2-5-proposals/<ID>-proposal.md` 内のメトリクス更新項目を実行し、`0-3-audit-and-metrics.md` の対象欄を更新する。
+
+**進捗ログ（2025-10-25 時点）**
+- `PARSER-001` は `compiler/ocaml/src/parser_driver.ml` を `State`/`Reply` シムに置き換え、`parser_diag_state.ml` と `run_string`/`run_partial` を実装。`test_parser_driver.ml` / `test_parse_result_state.ml` を追加して `dune runtest tests` で回帰確認済み。
+- `parser.parse_result_consistency` / `parser.farthest_error_offset` を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に登録し、`docs/spec/2-1-parser-type.md` / `docs/spec/2-6-execution-strategy.md` へ Phase 2-5 の移行脚注を追記済み。`scripts/validate-diagnostic-json.sh` でも `parse_result.recovered` の欠落を検知する自動化を追加した。
 
 6.3. **High 計画の連続実行**
 - **PARSER-002 / LEXER-002 / DIAG-003 / EFFECT-003 / TYPE-001**: Phase 2-5 中盤で着手し、RunConfig 導入・Lex API 抽出・診断ドメイン拡張・複数 Capability 対応・値制限復元を進める。

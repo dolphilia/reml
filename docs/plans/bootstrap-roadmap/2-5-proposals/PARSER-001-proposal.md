@@ -33,7 +33,7 @@ Menhir の `checkpoint` から `reply` を構築し、`ParseResult` へ畳み込
 ## 3. 影響範囲と検証
 - **ユニットテスト**: `parser_driver_tests.ml` を追加し、`or` 分岐・`cut`・`recover` の消費/コミット挙動を検証。  
 - **診断比較**: `reports/diagnostic-format-regression.md` に `ParseResult.diagnostics` の多件数パターンを追加し、`scripts/validate-diagnostic-json.sh` で仕様通りのフィールドが出力されることを確認。  
-- **メトリクス**: `0-3-audit-and-metrics.md` に `parser.parse_result_consistency` を新設し、`run` と `run_partial` の結果一致を CI で保証。
+- **メトリクス**: `0-3-audit-and-metrics.md` に `parser.parse_result_consistency` と `parser.farthest_error_offset` を新設し、`run` と `run_partial` の結果一致・最遠エラー更新回数を CI で監視する。Phase 2-4→2-5 ハンドオーバーで指示された `diagnostic_schema.validation_pass` と連動させ、`reports/diagnostic-format-regression.md` の自動比較結果も記録する。
 - **実装整合**: `compiler/ocaml/tests/parse_result_state_tests.ml` を追加し、`DiagState` が最遠エラーとコミット情報を保持するか、シナリオ型のスナップショットテストで検証する。
 
 ## 4. フォローアップ
@@ -42,6 +42,31 @@ Menhir の `checkpoint` から `reply` を構築し、`ParseResult` へ畳み込
 - CLI/LSP の JSON 出力で `ParseResult.recovered` を利用できるよう、`tooling/lsp/diagnostic_transport.ml` を更新する。
 - **タイミング**: Phase 2-5 の開幕直後に最優先で導入し、同フェーズ中盤の RunConfig／期待集合整備が始まる前にシム化を完了する。
 
-## 残課題
+## 5. 実施ステップ（Week31）
+1. **設計・ドキュメント更新**  
+   - Week31 Day1-2 で `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` §6.2、および本計画書の型定義・メトリクス記述を最新化し、`DiagState` のフィールド一覧（`farthest_offset`, `expected_tokens`, `committed`, `recovered_spans` 等）を明文化する。  
+   - `docs/spec/2-1-parser-type.md` / `docs/spec/2-6-execution-strategy.md` に移行脚注を追加し、Phase 2-4→2-5 ハンドオーバー（`docs/plans/bootstrap-roadmap/2-4-to-2-5-handover.md`）で指定された診断レビュー手順をリンクする。
+2. **Menhir シム実装**  
+   - Week31 Day3 までに `compiler/ocaml/src/parser_driver.ml` へ `State`/`Reply` 抽象を導入し、`Parser.MenhirInterpreter.accept`/`offer` を監視して `consumed`/`committed` を更新する。  
+   - `DiagState` を `compiler/ocaml/src/parser_diag_state.ml`（新規）へ切り出し、最遠エラー／期待集合の更新を `ERR-001` が再利用できる API として提供する。
+3. **ランナー統合とメトリクス計測**  
+   - Week31 Day4 に `parser_driver.run` / `run_partial` を `ParseResult` ベースへ置換し、`reports/diagnostic-format-regression.md` で比較するサンプルを更新する。  
+   - `0-3-audit-and-metrics.md` の `parser.parse_result_consistency` / `parser.farthest_error_offset` エントリへしきい値（>=0.99、一致失敗時は CI fail）を記入し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` へ実施記録を残す。
+4. **検証と共有**  
+   - Week31 Day5 に `scripts/validate-diagnostic-json.sh`、`tooling/lsp/tests/client_compat/validate-diagnostic-json.mjs` を実行し、複数診断と `ParseResult.recovered` が JSON に出力されることを証明する。  
+   - 成果を Phase 2-5 週次レビューへ提出し、`PARSER-002`・`ERR-001` チームへ API 変更点をフィードバックする。
+
+## 6. 依存関係と連携
+- **TYPE-003**: `ParseResult` で `effect_capabilities` を集計できるよう、辞書復元フロー（`docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-003-proposal.md`）とメトリクス記録を同期させる。シム導入時に IR への影響範囲を共有し、型クラス辞書の `committed` 境界を壊さない。
+- **DIAG-002**: `Diagnostic.audit` / `timestamp` 必須化に合わせ、`ParseResult.diagnostics` へ格納するすべての診断で `AuditEnvelope` を補完する処理を `parser_driver` レイヤに追加する。
+- **ERR-001 / EXEC-001**: 期待集合とストリーミングランナーの PoC が `DiagState` を共有できるよう API を公開し、`docs/guides/core-parse-streaming.md` へサンプルを追記する。
+- **技術的負債 ID 22/23**: Windows/macOS 監査ゲート（`compiler/ocaml/docs/technical-debt.md`）に影響するため、`ParseResult` の追加フィールドを LSP/CLI 双方で検証し、各プラットフォームの CI ログに `parser.parse_result_consistency` を表示する。
+
+## 7. 残課題
 - Menhir 生成コードに手を入れずに `consumed` / `committed` 情報を取得する手段（`Parser.MenhirInterpreter` の API 露出）が十分か要確認。  
 - `ParseResult.span` を構築するためのスパン情報をどのレイヤで取得するか（AST ノード vs. トークン）を決める必要がある。
+
+## 8. 進捗状況（2025-10-25）
+- `Step 1`〜`Step 4` を完了し、`parser_driver.ml` のシム化・`parser_diag_state.ml` の分離・`run_string`/`run_partial` の公開を実装。`test_parser_driver.ml` と `test_parse_result_state.ml` を追加し、`dune runtest tests` で成功を確認。
+- `ParseResult.diagnostics` へ複数診断を蓄積できる状態となり、`farthest_error_offset` を `DiagState` から参照可能。`legacy_result` ブリッジ経由で従来の `parse` API も維持。
+- 追加対応（2025-10-25 後半）: `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に parser 系メトリクスを追加し、`docs/spec/2-1-parser-type.md` / `docs/spec/2-6-execution-strategy.md` に Phase 2-5 の移行脚注を追記。`scripts/validate-diagnostic-json.sh` でも `parse_result.recovered` 欠落を検知する検証を自動化済み。

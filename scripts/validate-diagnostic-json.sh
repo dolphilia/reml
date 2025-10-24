@@ -105,4 +105,87 @@ if [[ "${#AUDIT_FILES[@]}" -gt 0 ]]; then
   fi
 fi
 
+if [[ "${#DIAG_FILES[@]}" -gt 0 ]]; then
+  if ! python3 - "${DIAG_FILES[@]}" <<'PY'; then
+import json
+import pathlib
+import sys
+
+files = sys.argv[1:]
+error = False
+
+
+def parse_entries(content: str, file_name: str):
+    text = content.strip()
+    if not text:
+        return []
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        entries = []
+        for line_no, line in enumerate(content.splitlines(), start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                entries.append(json.loads(stripped))
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(f"JSONL parse error {file_name}:{line_no}: {exc}") from exc
+        return entries
+    else:
+        return data if isinstance(data, list) else [data]
+
+
+class MissingRecovered(Exception):
+    pass
+
+
+def walk(node, location="root"):
+    if isinstance(node, dict):
+        if "parse_result" in node:
+            pr = node["parse_result"]
+            if not isinstance(pr, dict):
+                raise MissingRecovered(f"{location}.parse_result はオブジェクトである必要があります")
+            if "recovered" not in pr:
+                raise MissingRecovered(f"{location}.parse_result.recovered が欠落しています")
+            if not isinstance(pr["recovered"], bool):
+                raise MissingRecovered(f"{location}.parse_result.recovered は boolean である必要があります")
+        for key, value in node.items():
+            walk(value, f"{location}.{key}")
+    elif isinstance(node, list):
+        for index, value in enumerate(node):
+            walk(value, f"{location}[{index}]")
+
+
+for path_str in files:
+    path = pathlib.Path(path_str)
+    if not path.exists():
+        continue
+    try:
+        content = path.read_text(encoding="utf-8")
+        entries = parse_entries(content, str(path))
+    except Exception as exc:  # noqa: BLE001
+        print(f"[validate-diagnostic-json] {exc}", file=sys.stderr)
+        error = True
+        continue
+
+    for entry_index, entry in enumerate(entries):
+        try:
+            walk(entry, f"entry[{entry_index}]")
+        except MissingRecovered as exc:
+            print(
+                f"[validate-diagnostic-json] parse_result.recovered check failed: {path}: {exc}",
+                file=sys.stderr,
+            )
+            error = True
+            break
+
+if error:
+    sys.exit(1)
+PY
+  then
+    EXIT_CODE=1
+  fi
+fi
+
 exit $EXIT_CODE
