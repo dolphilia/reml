@@ -151,6 +151,8 @@
   - `YYYY-MM-DD / ファイル:節 / 変更概要 / 参照コミット`
 - 記録は Phase ごとにセクションを分け、フェーズ終了時にレビューアが確認する。
 - 差分が複数フェーズに跨る場合は、各フェーズで影響範囲を明記し、必要に応じて追加タスクを `0-4-risk-handling.md` に登録する。
+- 2025-10-24 / docs/spec/3-6-core-diagnostics-audit.md:§2.4 / CLI・監査ゴールデン出力で `schema.version`, `audit.timestamp`, `AuditEnvelope.metadata.bridge.*` が欠落していることを確認。`scripts/validate-diagnostic-json.sh` ではスキーマ違反なしだが `ffi_bridge.audit_pass_rate = 0.0` のまま。 / pending (Phase 2-7)
+- 2025-10-24 / docs/spec/3-8-core-runtime-capability.md:§10 / Stage 監査ログで `extensions.bridge.stage.*` と `effect.stage.*` が未出力のため `iterator.stage.audit_pass_rate = 0.0` を維持。Phase 2-7 技術的負債 ID22/23 と連携して解消予定。 / pending (Phase 2-7)
 
 ## 0.3.6 最適化パス統計（Phase 3 Week 10-11）
 
@@ -279,6 +281,17 @@
 - **関数型**: 現在の実装では関数ポインタ（8バイト）として扱われ、将来的にクロージャ（16バイト）への拡張が必要
 
 ## 0.3.9 進捗ログ
+
+### phase2.week31
+| マイルストーン | 期限 | 担当（ロール） | 成果物 | 状態 | 備考 |
+|----------------|------|----------------|--------|------|------|
+| Kick-off レビュー会議 | 31週目 Day1 午前 | 仕様差分補正チームリード、Phase 2-7 代表 | レビュースコープ承認メモ、連絡窓口一覧 | 予定 | `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` §1.1、技術的負債 ID22/23 最新状況共有 |
+| Chapter/領域別レビュー | 31週目 Day3 終了 | Chapter 1/2/3 担当、診断ログ担当 | 差分リスト初版（章別）、チェックリスト記入結果 | 予定 | `docs/plans/bootstrap-roadmap/checklists/spec-drift-review-checklist.md` を使用し、`scripts/validate-diagnostic-json.sh` 実行ログを添付 |
+| スケジュール確定報告 | 31週目 Day5 終了 | 仕様差分補正チーム PM、Phase 2-7 調整役 | 週次レビュー計画（Week32-34）、`0-3-audit-and-metrics.md` 更新 | 予定 | Kick-off/領域レビュー結果を反映し、遅延時は `0-4-risk-handling.md` 登録 |
+
+- 関連チェックリスト: `docs/plans/bootstrap-roadmap/checklists/spec-drift-review-checklist.md`（Phase 2-5 仕様差分レビュー）
+- ログ記録手順: 各マイルストーン完了後に本表の状態欄を更新し、差分リスト ID とリンクを追記する。未達の場合は理由とリカバリ計画を備考欄へ記載し、必要に応じて `0-4-risk-handling.md` へエスカレーションする。
+
 - 2025-10-06 / compiler/ocaml / パーサードライバーを `Result<Ast, Diagnostic>` へ移行し、`tests/test_parser.ml` に診断メタデータ検証を追加。`diagnostic_regressions` 指標は `dune test` による差分チェックで監視。
 - 2025-10-07 / compiler/ocaml / Phase 3 Week 10-11 完了: Core IR 最適化パス（定数畳み込み、死コード削除、パイプライン統合）を実装。総コード行数: 約5,642行、テスト: 42件全て成功。
 - 2025-10-09 / compiler/ocaml / Phase 3 Week 15 完了: ABI判定・属性設定のユニットテスト実装。総テストケース: 61件（既存45件 + 新規16件）、成功率: 100%。16バイト境界の正確な判定を検証済み。
@@ -288,6 +301,7 @@
 - 2025-10-16 / tooling/ci / `collect-iterator-audit-metrics.py` → `sync-iterator-audit.sh` を手動実行し、`iterator.stage.audit_pass_rate = 1.0` を確認。`/tmp/iterator-summary.md` に生成した Markdown を次回 CI から `reports/` 階層へ保存し、週次で本ドキュメントへ転記する運用を開始。
 - 2025-10-18 / tooling/runtime / `scripts/validate-runtime-capabilities.sh tooling/runtime/capabilities/default.json` を再実行し、`reports/runtime-capabilities-validation.json` の `runtime_candidates` に Windows (`x86_64-pc-windows-msvc`) の Stage `beta` が存在することを確認。運用手順を §0.3.7 に追記し、Phase 2-2 の Windows override 検証フローを確定。
 - 2025-10-19 / tooling/runtime / `tooling/runtime/capabilities/default.json` に `arm64-apple-darwin` override（Stage `beta`, Capabilities: `ffi.bridge`, `process.spawn`）を追加。`reports/runtime-capabilities-validation.json`・`stage_trace` を手動更新し、`reports/ffi-macos-summary.md` を計測ログテンプレートとして新設。スクリプト再実行と CI ログ収集は Phase 2-3 macOS 計測タスクで実施予定。
+- 2025-10-24 / docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md / `reports/diagnostic-format-regression.md` の手順に従い `npm ci --prefix tooling/lsp/tests/client_compat` と `scripts/validate-diagnostic-json.sh` を実行。ゴールデンは schema v2 に適合したが `ffi_bridge.audit_pass_rate`・`iterator.stage.audit_pass_rate` は 0.0 のままで、差分リスト初期エントリとして Phase 2-7 タスク (ID22/23) を参照する運用を開始。
 
 ## 0.3.10 ランタイムテスト統計（Phase 1-5 Week 16）
 

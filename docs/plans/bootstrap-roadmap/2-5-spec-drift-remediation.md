@@ -17,29 +17,51 @@
 - `docs/README.md`, `README.md` : 目次・導線の同期
 - `docs/plans/repository-restructure-plan.md`, `docs/notes/llvm-spec-status-survey.md` : 作業ログとリスク管理
 
+## 着手前の準備と初期調査
+- **ハンドオーバー確認**: `docs/plans/bootstrap-roadmap/2-4-to-2-5-handover.md` を起点に、差分レビューで参照すべき成果物（`reports/diagnostic-format-regression.md`, `scripts/validate-diagnostic-json.sh` 等）を再確認し、Phase 2-7 と共有する差分リストの初期エントリを整備する。
+- **完了報告の整理**: `docs/plans/bootstrap-roadmap/2-4-completion-report.md` のメトリクス欄を確認し、`ffi_bridge.audit_pass_rate`・`iterator.stage.audit_pass_rate` が 0.0 のままである理由と影響範囲を記録しておく。差分補正中に欠落フィールドを発見した場合は Phase 2-7 と即時連携する。
+- **技術的負債の把握**: `compiler/ocaml/docs/technical-debt.md` の ID 22/23（Windows Stage / macOS FFI）を優先監視項目とし、差分レビューで関連フィールドが不足していないかチェックリストへ加える。
+- **プロジェクト方針との整合**: `docs/spec/0-1-project-purpose.md` に定義された価値観（性能・安全性・段階的拡張）をレビュー観点に反映し、差分の優先順位付けに利用する。
+- **実装ガイド更新**: `docs/plans/bootstrap-roadmap/IMPLEMENTATION-GUIDE.md` の Phase 2 重点事項を参照し、Type Class/効果/診断の整備状況を差分調査の前提条件として整理する。
+- **作業ログ方針**: 差分補正で生じた判断は `0-3-audit-and-metrics.md`・`0-4-risk-handling.md` に記録し、`docs/plans/repository-restructure-plan.md` のフェーズ定義と矛盾しないようタイムラインを合わせる。
+
 ## 作業ブレークダウン
 
 ### 1. レビュー計画と体制整備（31週目）
 **担当領域**: 計画策定
 
 1.1. **レビュースコープの決定**
-- Chapter 1（言語コア）: [1-1-syntax.md](../../spec/1-1-syntax.md), [1-2-types-Inference.md](../../spec/1-2-types-Inference.md), [1-3-effects-safety.md](../../spec/1-3-effects-safety.md)
-- Chapter 2（パーサーAPI）: [2-0-parser-api-overview.md](../../spec/2-0-parser-api-overview.md)〜[2-6-execution-strategy.md](../../spec/2-6-execution-strategy.md)
-- Chapter 3（標準ライブラリ）: [3-0-core-library-overview.md](../../spec/3-0-core-library-overview.md)〜[3-10-core-env.md](../../spec/3-10-core-env.md)
-- 優先順位付け（セルフホストに影響する順）
+- 以下の範囲を対象に、セルフホスト移行へ直結する章から優先レビューする。優先順位は `High`→`Medium`→`Low` の順で実施し、各章の完了条件を `0-3-audit-and-metrics.md` に記録する。
+
+| 領域 | 対象ドキュメント | 主な観点 | 優先度 | 完了条件 |
+|------|------------------|----------|--------|----------|
+| 言語コア | [1-1-syntax.md](../../spec/1-1-syntax.md), [1-2-types-Inference.md](../../spec/1-2-types-Inference.md), [1-3-effects-safety.md](../../spec/1-3-effects-safety.md) | 型クラス実装の写像、効果注釈と Stage 整合 | High | サンプルコードが OCaml 実装で再現でき、差分リストに原因・影響が記録されている |
+| パーサー API | [2-0-parser-api-overview.md](../../spec/2-0-parser-api-overview.md)〜[2-6-execution-strategy.md](../../spec/2-6-execution-strategy.md) | API 呼出シグネチャ、エラー復元戦略、実行ポリシー | High | `Parser<T>` API の現行シグネチャと差異が無いことを確認し、差分があれば追補案を添付 |
+| 標準ライブラリ | [3-0-core-library-overview.md](../../spec/3-0-core-library-overview.md)〜[3-10-core-env.md](../../spec/3-10-core-env.md) | Capability Stage、診断メタデータ、FFI 契約 | Medium | `AuditEnvelope`/`Diagnostic` のフィールド一覧と突合し、欠落フィールドが無いことを証明 |
+| 補助資料 | `reports/diagnostic-format-regression.md`, `compiler/ocaml/src/diagnostic_serialization.ml`, `scripts/validate-diagnostic-json.sh` | JSON スキーマ、フォーマット差分レビュー手順 | Medium | Phase 2-4 の成果物と仕様の整合が `validate-diagnostic-json.sh` の出力で確認されている |
+| 用語・索引用補 | [0-2-glossary.md](../../spec/0-2-glossary.md), `docs/README.md`, `docs/plans/repository-restructure-plan.md` | 用語統一、導線更新 | Low | Glossary の更新差分がリンク整合チェック（手動）で確認済み |
+
+- Phase 2-4 で整備した診断ログ資産をレビュー対象に組み込み、仕様に未記載のフィールドや命名ゆれを差分リストへ記録する。`compiler/ocaml/docs/technical-debt.md` の ID 22/23 はレビュースコープに含め、Windows/macOS 監査ゲートの整備状況を確認する。
 
 1.2. **レビュー観点チェックリスト作成**
-- 用語統一（[0-2-glossary.md](../../spec/0-2-glossary.md) との整合）
-- サンプルコードの構文妥当性
-- データ構造の実装との一致
-- 相互参照リンクの正確性
-- Phase 2 実装との差分
+- レビュー時に必ず確認する観点をカテゴリ別に整理し、チェックリスト形式で `docs/plans/bootstrap-roadmap/checklists/` 配下へ保存する。初版では以下の項目を Must チェックとする。
+  - **用語整合**: [0-2-glossary.md](../../spec/0-2-glossary.md) に定義済みの表記を参照し、差異がある場合は Glossary 更新案と一緒に記録。
+  - **コードサンプル検証**: `reml` タグ付きコードブロックを収集し、`compiler/ocaml` のサンプルランナーで構文・型検証を実施。失敗時は差分リストに再現手順を記載。
+  - **データ構造対照**: 仕様に記載されたレコード/enum と OCaml 実装（例: `diagnostic_serialization.ml`, `runtime/native/capability_stage.ml`）のフィールドを比較し、差異を表形式で整理。
+  - **リンク・参照**: 相互参照や脚注が `README.md`・`docs/README.md` と一致しているか確認。リンク切れは URL と原因を記録。
+  - **診断・監査フィールド**: `schema.version`, `audit.timestamp`, `bridge.stage.*`, `effect.stage.*`, `ffi_bridge.audit_pass_rate` 等が仕様・実装双方で一致しているか検証し、`scripts/validate-diagnostic-json.sh` の結果ログを差分リストに添付。
+  - **技術的負債トラッキング**: `compiler/ocaml/docs/technical-debt.md` の該当 ID（特に 22/23）に紐づく観点がレビュー時に抜けていないか確認。
 
 1.3. **スケジュールと担当割当**
-- Chapter ごとの担当者決定
-- レビュー期限の設定（週次マイルストーン）
-- `0-3-audit-and-metrics.md` へのスケジュール記録
-- Phase 2 他タスクとの調整
+- 31週目を 3 つのチェックポイントに分割し、各領域の担当とアウトプットを固定する。マイルストーンは `0-3-audit-and-metrics.md` の `phase2.week31` エントリとして記録し、遅延時は `0-4-risk-handling.md` に登録する。
+
+| マイルストーン | 期限 | 担当（ロール） | 成果物 | 依存関係 |
+|----------------|------|----------------|--------|----------|
+| Kick-off レビュー会議 | 31週目 Day1 午前 | 仕様差分補正チームリード、Phase 2-7 代表 | レビュースコープ承認メモ、連絡窓口一覧 | `2-4-to-2-5-handover.md`、技術的負債 ID 22/23 の最新状況 |
+| Chapter/領域別レビュー | 31週目 Day3 終了 | Chapter 1/2/3 担当、診断ログ担当 | 差分リスト初版（章別）、チェックリスト記入結果 | Kick-off のスコープ承認、`scripts/validate-diagnostic-json.sh` 実行ログ |
+| スケジュール確定報告 | 31週目 Day5 終了 | 仕様差分補正チーム PM、Phase 2-7 調整役 | 週次レビュー計画（Week32-34）、`0-3-audit-and-metrics.md` 更新 | Chapter レビュー成果、Phase 2-7 タスク進行状況 |
+
+- Phase 2-7 の未完了タスク（Windows/macOS 監査ゲート等）と相談する窓口を Kick-off で明示し、レビュー中に診断ログの欠落を発見した場合は即時フィードバックできる体制を整える。
 
 **成果物**: レビュー計画書、チェックリスト、スケジュール
 
