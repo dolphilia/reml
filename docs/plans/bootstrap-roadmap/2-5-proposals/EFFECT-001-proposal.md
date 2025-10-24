@@ -34,6 +34,7 @@
 - Phase 2-7 `execution-config` 側で `RunConfig.extensions["effects"]` に `max_handler_depth` 等を設定した場合、タグ検出結果を連携するハンドシェイクを設計する。  
 - `docs/spec/1-3-effects-safety.md` にタグ検出アルゴリズムの抜粋を掲載し、Reml 実装移植時の参照資料とする。
 - `docs/spec/0-2-glossary.md` と `docs/notes/core-library-outline.md` にタグ語彙の定義と履歴を追記し、Phase 3 でのセルフホスト検証に備えた参照ポイントを整備する。
+- **タイミング**: TYPE-001 など後続タスクの前提となるため、Phase 2-5 の前半で実装を完了し、再帰的な効果解析を 2-5 後半のレビューに間に合わせる。
 
 ## 確認事項
 - `io` 判定の対象 API（`Core.IO`, `Core.Time` など）をどの階層で列挙するかをライブラリチームと合意する必要がある。  

@@ -26,6 +26,7 @@
 - 仕様書の脚注で「OCaml 実装は期待集合導入中」と明記し、実装完了時に脚注を削除する。  
 - `docs/guides/core-parse-streaming.md` に期待集合がストリーミングモードでも利用可能である旨を追記する。
 - `docs/guides/plugin-authoring.md` に期待集合 API の利用例を追加し、外部 DSL が CLI/LSP と同じ情報を取得できるようにする。
+- **タイミング**: PARSER-001 のシム構築と並行して Phase 2-5 前半に対応し、Phase 2-5 中盤の CLI/LSP ゴールデン更新までに完了させる。
 
 ## 確認事項
 - Menhir の期待集合から `Expectation` 列挙へ写像する際の粒度（記号／規則／否定等）を Parser チームと調整する必要がある。  

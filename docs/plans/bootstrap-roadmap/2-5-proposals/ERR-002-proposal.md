@@ -26,6 +26,7 @@
 - 仕様書の脚注に「OCaml 実装は `recover`/FixIt の整備中」と明記し、実装完了時に脚注を削除。  
 - `docs/guides/ai-integration.md` に FixIt 情報を活用する運用例を追記する。
 - `docs/notes/core-parse-streaming-todo.md` にストリーミング解析での `recover` 活用状況と残課題を追記し、Phase 3 へ引き継ぐ。
+- **タイミング**: PARSER-001/002 の反映後、Phase 2-5 中盤〜後半にかけて実装し、Phase 2-7 の CLI/LSP 刷新に先行して FixIt 支援を提供する。
 
 ## 確認事項
 - Menhir ベースの回復戦略（同期トークン）と仕様上の `recover` API をどこまで合わせるかを Parser チームで調整する必要がある。  

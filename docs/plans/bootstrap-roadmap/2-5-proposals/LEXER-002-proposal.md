@@ -26,6 +26,7 @@
 - `docs/guides/core-parse-streaming.md` のサンプルを OCaml 実装で動かせるよう、Lex API を呼び出す例を追加する。  
 - Unicode プロファイル（LEXER-001）の対応と並行して、字句 API のテストを整備する。
 - `docs/notes/core-parse-streaming-todo.md` に Lex API 抽出の進捗を追記し、Streaming PoC（EXEC-001）との依存関係を明確化する。
+- **タイミング**: Phase 2-5 の中盤で RunConfig シムと並行して着手し、EXEC-001 ストリーミング PoC を開始するまでに Lex API 抽出を完了させる。
 
 ## 確認事項
 - `Core.Parse.Lex` と `Lexer.token` の責務分離（どこまでをシムで巻き取るか）について Parser チームと合意が必要。  

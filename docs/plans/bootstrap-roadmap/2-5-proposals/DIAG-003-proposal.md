@@ -26,6 +26,7 @@
 - ドメインを拡張した後、`docs/spec/3-6-core-diagnostics-audit.md` に脚注を追記し、OCaml 実装が追従したタイミングで脚注を削除。  
 - `docs/notes/dsl-plugin-roadmap.md` にプラグイン診断のドメイン整理項目を追加しておく。
 - `docs/plans/bootstrap-roadmap/2-5-review-log.md` にレビュー結果と残課題（`Other(Str)` の表現方針など）を記載し、Phase 2-8 以降での追跡と承認判断に備える。
+- **タイミング**: Phase 2-5 の中盤でスキーマ・実装調整に着手し、Phase 2-7 の診断ダッシュボード更新が始まる前までに適用する。
 
 ## 確認事項
 - 既存診断との互換性（`Note` → `Info` 等のマッピング）と併せ、ドメイン拡張で既存 JSON 出力に影響がないかを CLI/LSP チームと確認する必要がある。  

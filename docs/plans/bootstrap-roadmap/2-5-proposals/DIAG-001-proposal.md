@@ -25,6 +25,7 @@
 - CLI テキスト出力刷新（Phase 2-7）で Severity 表示を再調整し、`--ack-experimental` 等の挙動と整合させる。  
 - `docs/spec/3-6-core-diagnostics-audit.md` の脚注に OCaml 実装の更新時期を記録し、導入完了後に脚注を削除。  
 - `tooling/lsp` の V2 トランスポートで `Info`/`Hint` を適切な LSP Severity 値へマッピングする。
+- **タイミング**: Phase 2-5 の前半で準備が整い次第着手し、Phase 2-7 の診断刷新タスクに入るまでに本番導入を完了させる。
 
 ## 確認事項
 - 既存 `Note` 表現を `Info` へ移行する際の互換ポリシー（JSON / CLI / LSP 出力）をチーム間で調整する必要がある。  

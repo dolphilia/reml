@@ -40,6 +40,7 @@ Menhir の `checkpoint` から `reply` を構築し、`ParseResult` へ畳み込
 - `docs/spec/2-1-parser-type.md` に OCaml 実装の移行段階（シム→純粋実装）を明記し、Phase 3 の self-host パーサ設計ノートへリンクを追加。  
 - `Parser<T>` シム導入後、`PARSER-002`（RunConfig）・`ERR-001`（期待集合）と連動したリファクタリングを続行する。  
 - CLI/LSP の JSON 出力で `ParseResult.recovered` を利用できるよう、`tooling/lsp/diagnostic_transport.ml` を更新する。
+- **タイミング**: Phase 2-5 の開幕直後に最優先で導入し、同フェーズ中盤の RunConfig／期待集合整備が始まる前にシム化を完了する。
 
 ## 確認事項
 - Menhir 生成コードに手を入れずに `consumed` / `committed` 情報を取得する手段（`Parser.MenhirInterpreter` の API 露出）が十分か要確認。  

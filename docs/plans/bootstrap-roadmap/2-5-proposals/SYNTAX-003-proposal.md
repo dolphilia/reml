@@ -26,6 +26,7 @@
 - PoC 実装が完成した段階で脚注を解除し、Phase 3 の self-host 計画書へ対応状況を反映する。  
 - CLI / LSP の効果診断（`effects.contract.*`）が効果構文出力と整合するよう、`reports/diagnostic-format-regression.md` のテスト更新を予定する。
 - `docs/notes/effect-system-tracking.md` に構文受理状況と `-Zalgebraic-effects` フラグの運用メモを残し、PoC と正式導入の境界条件を共有する。
+- **タイミング**: Phase 2-5 では早期に脚注・PoC 設計を整備し、効果構文の実装と公開は EFFECT-002 と同期して Phase 2-7 の効果チーム着手時に実行する。
 
 ## 確認事項
 - 効果構文を有効化するフラグ名（`-Zalgebraic-effects` など）と公開ポリシーを Phase 2-7 と調整する必要がある。  

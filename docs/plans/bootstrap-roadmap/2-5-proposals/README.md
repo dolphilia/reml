@@ -44,6 +44,15 @@
 - [TYPE-002-proposal.md](./TYPE-002-proposal.md): 効果行を型表現へ統合するロードマップを策定し、型と効果の一体管理を再構築。
 - [TYPE-003-proposal.md](./TYPE-003-proposal.md): 型クラス辞書渡しを Core IR へ復元し、監査ログへの Capability 情報出力を再開。
 
+## 着手順序ガイド
+| 時期と順序 | 対象提案 | 目的と前提関係 |
+|------------|----------|----------------|
+| Phase 2-5 開始直後（Week31 前半） | PARSER-001, TYPE-003, DIAG-002 | パーサ基盤・型クラス監査・監査ログ必須化を最初に整備し、以降の差分検証を可能にする |
+| Phase 2-5 前半（Week31 後半〜Week32） | EFFECT-001, DIAG-001, SYNTAX-002, ERR-001 | 効果タグと Severity を拡張し、`use` ネスト・期待集合のギャップを早期に解消する |
+| Phase 2-5 中盤（Week32〜Week33） | PARSER-002, LEXER-002, DIAG-003, EFFECT-003, TYPE-001 | RunConfig/lex シムと複数 Capability を整備し、値制限復元を可能にする |
+| Phase 2-5 後半（Week33〜Week34） | PARSER-003, EXEC-001, ERR-002 | コアコンビネーター抽出後にストリーミング PoC と FixIt 拡張を実装し、ランナー整合を仕上げる |
+| Phase 2-5 クロージング〜Phase 2-7 準備 | LEXER-001, SYNTAX-001, SYNTAX-003, EFFECT-002, TYPE-002 | Unicode・効果構文・効果行は脚注整備とロードマップ策定を Phase 2-5 で行い、Phase 2-7 以降で本実装する |
+
 ## 運用メモ
 - 新しい提案を追加する際は、ドメイン別セクションに箇条書きを追加し、関連仕様とメトリクスを併記する。
 - 提案のステータス更新（完了・棚上げ等）は本文と併せてここにも反映し、Phase 2-5 全体の進捗を一目で把握できるようにする。

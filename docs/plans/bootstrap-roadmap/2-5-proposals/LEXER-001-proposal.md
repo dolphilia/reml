@@ -25,6 +25,7 @@
 - Phase 2-7 で XID テーブル生成や正規化検査を導入する際、`ConfigTriviaProfile` と `identifier` の API を統合して公開する。  
 - Unicode 対応後に脚注を削除し、`docs/spec/1-1-syntax.md` / `docs/spec/2-3-lexer.md` のサンプルを再検証する。  
 - CLI/LSP のハイライト・補完機能が Unicode プロファイルと整合するようチーム間で調整する。
+- **タイミング**: Phase 2-5 では早期に脚注とロードマップを整備し、Unicode 対応そのものは Phase 2-7 の `lexer-unicode` タスク開始時に実装を進める。
 
 ## 確認事項
 - 字句プロファイルを Phase 2-7 でどの順序で実装するか（`identifier` → `lexeme` → `ConfigTriviaProfile`）を Parser/Lexer チームで合意する必要がある。  

@@ -36,6 +36,7 @@ let texpr_with_dicts = Typed_ast.attach_dict_args texpr dict_refs
 - `docs/spec/1-2-types-Inference.md` に Dickens-style の辞書例を追加し、仕様に沿った実装を確認。  
 - `typeclass.metadata` の監査連携を Phase 2-7 の `collect-iterator-audit-metrics.py` 更新と同時に実施。
 - `docs/plans/bootstrap-roadmap/2-1-typeclass-strategy.md` の進捗欄へ辞書復元タスクを追記し、Phase 2 全体の型クラスロードマップと整合させる。
+- **タイミング**: Phase 2-5 の前半から中盤にかけて辞書渡し実装を最優先で進め、Phase 2-6 開始前までに Core IR・監査ログと合わせて復元を完了する。
 
 ## 確認事項
 - 算術演算のデフォルト型選択を辞書渡しと共存させる際の互換ポリシー（既存 CLI ゴールデンとの差分許容範囲）を確認。  

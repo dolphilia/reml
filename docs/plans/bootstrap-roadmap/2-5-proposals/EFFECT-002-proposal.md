@@ -27,6 +27,7 @@
 - Phase 3 の self-host 移植前に、効果 PoC（ハンドラ 1st クラス）を完成させるマイルストーンを設定し、`0-3-audit-and-metrics.md` へ記録する。  
 - `docs/plans/bootstrap-roadmap/2-2-effect-system-integration.md` に PoC ステージの成果物と検証項目を追記する。
 - `docs/notes/effect-system-tracking.md`（未作成なら新規）へ PoC の進捗ログと試験ケース一覧を記録し、Phase 2-7・Phase 3 でのフォローアップを容易にする。
+- **タイミング**: 設計と PoC 条件の整理は Phase 2-5 の後半までに完了し、実装着手は Phase 2-7 の効果チームキックオフに合わせて開始する。
 
 ## 確認事項
 - PoC が対象とする効果構文の範囲（`perform` のみか、`resume`/`rethrow` まで含むか）を効果チームと確認したい。  

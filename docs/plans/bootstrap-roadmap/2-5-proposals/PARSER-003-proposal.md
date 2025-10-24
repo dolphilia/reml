@@ -38,6 +38,7 @@ end
 - Phase 2-7 `execution-config` タスクで `RunConfig.extensions["lex"]`・`["recover"]` をコンビネーターから参照できるよう、設定伝播の設計を加える。  
 - `docs/guides/plugin-authoring.md` に、OCaml 実装から提供されるコンビネーター API の利用例を追記する。
 - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` にコンビネーター抽出後の残課題（テレメトリ、エラーメッセージ統合）を記録し、実装移行を段階化する。
+- **タイミング**: PARSER-001/002 と Lex API 抽出が揃った Phase 2-5 後半に着手し、Phase 2-6 へ入る前までにコアコンビネーター層の PoC を完成させる。
 
 ## 確認事項
 - Menhir 生成コードを全面置換するのか、移行期間中はシム層で段階導入するのかの方針決定が必要。  

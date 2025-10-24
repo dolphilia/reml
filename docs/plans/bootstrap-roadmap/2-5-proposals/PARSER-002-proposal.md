@@ -26,6 +26,7 @@
 - RunConfig シムが整った段階で CLI フラグ・LSP 設定ファイルを更新し、ユーザーが仕様通りに設定できるようドキュメントを調整する。  
 - `docs/guides/core-parse-streaming.md` と `docs/spec/2-6-execution-strategy.md` に OCaml 実装の進行状況を脚注で追加する。
 - `docs/notes/core-parser-migration.md`（未作成なら新規）へ RunConfig 移行ステップと既知の制限を記録し、Phase 3 での Reml 実装への写像に備える。
+- **タイミング**: PARSER-001 完了直後の Phase 2-5 中盤で実装に着手し、EXEC-001・ERR-002 など RunConfig 依存機能の開発が始まる前（Phase 2-5 後半）までに基盤を整える。
 
 ## 確認事項
 - Packrat/左再帰の段階導入順序（`require_eof` → `packrat` → `extensions`）を Parser チームと調整したい。  

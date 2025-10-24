@@ -41,6 +41,7 @@ val run_stream :
 - `docs/guides/core-parse-streaming.md` のサンプルを PoC API で動作させ、差分を脚注として追加。  
 - Phase 3 の self-host 計画書で `run_stream` をクリティカルパスに含めるため、進捗を `0-3-audit-and-metrics.md` に定期記録する。
 - `docs/notes/runtime-bridges.md` にストリーミング API と Runtime Bridge の連携要件を追記し、バックプレッシャ信号の橋渡し方法を明文化する。
+- **タイミング**: PARSER-001/002/LEXER-002 が揃った Phase 2-5 後半に PoC 実装へ着手し、Phase 2-6 開始前までに最小機能のストリーミングランナーを完成させる。
 
 ## 確認事項
 - Feeder API とバックプレッシャの初期値（`DemandHint::Continue` / `::Pause`) をどの程度細分化するか決定が必要。  

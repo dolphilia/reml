@@ -26,6 +26,7 @@
 - Phase 2-7 の監査ダッシュボード更新タスクへ「複数 Capability に対応した可視化」を依頼。  
 - Self-host 移行時に Reml 実装でも同様の配列出力が可能か確認する。
 - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に複数 Capability 表示の UI 要件を共有し、監査チームと共通チェックリストを作成する。
+- **タイミング**: EFFECT-001 のタグ拡張完了直後（Phase 2-5 中盤）に着手し、Phase 2-5 の終了までに監査出力を複数値対応へ切り替える。
 
 ## 確認事項
 - Capability 名の正規化（小文字化・ハイフン/アンダースコア統一）をどのレイヤで行うか、Runtime チームと調整が必要。  
