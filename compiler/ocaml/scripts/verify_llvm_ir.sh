@@ -47,10 +47,10 @@ fi
 
 LLVM_MIN_VERSION="18.0"
 
-# llvm-as, opt, llc のパス（環境変数で上書き可能）
-LLVM_AS="${LLVM_AS:-llvm-as}"
-OPT="${OPT:-opt}"
-LLC="${LLC:-llc}"
+# llvm-as, opt, llc の候補（環境変数で上書き可能）
+LLVM_AS_CANDIDATE="${LLVM_AS:-}"
+OPT_CANDIDATE="${OPT:-}"
+LLC_CANDIDATE="${LLC:-}"
 
 # ターゲット関連
 TARGET_TRIPLE=""
@@ -77,6 +77,41 @@ error() {
 
 warn() {
   echo "警告: $*" >&2
+}
+
+resolve_tool() {
+  local env_value="$1"
+  local base_name="$2"
+  shift 2
+  local suffixes=("$@")
+
+  if [[ -n "$env_value" ]]; then
+    if command -v "$env_value" >/dev/null 2>&1; then
+      command -v "$env_value"
+      return 0
+    elif [[ -x "$env_value" ]]; then
+      echo "$env_value"
+      return 0
+    else
+      error "'$env_value' (環境変数指定) が実行可能ではありません。"
+    fi
+  fi
+
+  local candidate_path
+  if candidate_path=$(command -v "$base_name" 2>/dev/null); then
+    echo "$candidate_path"
+    return 0
+  fi
+
+  for suffix in "${suffixes[@]}"; do
+    local candidate="${base_name}-${suffix}"
+    if candidate_path=$(command -v "$candidate" 2>/dev/null); then
+      echo "$candidate_path"
+      return 0
+    fi
+  done
+
+  return 1
 }
 
 find_first_existing() {
@@ -184,6 +219,16 @@ resolve_sysroot() {
 # ========== メイン ==========
 
 main() {
+  if ! LLVM_AS=$(resolve_tool "$LLVM_AS_CANDIDATE" "llvm-as" 19 18 17); then
+    error "llvm-as が見つかりません。LLVM 18+ をインストールしてください。"
+  fi
+  if ! OPT=$(resolve_tool "$OPT_CANDIDATE" "opt" 19 18 17); then
+    error "opt が見つかりません。LLVM 18+ をインストールしてください。"
+  fi
+  if ! LLC=$(resolve_tool "$LLC_CANDIDATE" "llc" 19 18 17); then
+    error "llc が見つかりません。LLVM 18+ をインストールしてください。"
+  fi
+
   local input_ll=""
 
   while [[ $# -gt 0 ]]; do
