@@ -74,17 +74,47 @@
 - FFI 宣言構文の追加反映（Phase 2）
 - サンプルコードの検証（実際にパース可能か）
 
+**差分リスト（2025-10-28 初版）**
+- `SYNTAX-001` Unicode 識別子: 仕様（docs/spec/1-1-syntax.md:27-43）では `XID_Start + XID_Continue*` を前提としているが、実装（compiler/ocaml/src/lexer.mll:46-52）では ASCII + `_` の暫定実装が残存している。非 ASCII 識別子を含むサンプルが Phase 2 OCaml 実装で拒否され、Chapter 3 の多言語サンプル検証が行えない。修正案ドラフト: 仕様側に Phase 2 制約の脚注を追加しつつ、Phase 2-7 技術的負債（Unicode Lexer 拡張）と統合した実装計画を立てる。完了後に `docs/spec/1-1-syntax.md` と `docs/spec/1-5-formal-grammar-bnf.md` を Unicode 仕様へ再同期。
+- `SYNTAX-002` `use` の多段ネスト: 仕様（docs/spec/1-1-syntax.md:65-84）では `use Core.Parse.{Lex, Op.{Infix, Prefix}}` のような再帰的ネストを許容するが、実装（compiler/ocaml/src/parser.mly:780-788）では `item_nested = None` 固定で 1 段のみ受理する。ネストした再エクスポート手順がドキュメントと乖離し、Phase 3 セルフホスト案のサンプルが OCaml 実装で失敗する。修正案ドラフト: Parser にネスト対応を実装する案と、仕様側で「Phase 2 時点は 1 段まで」に制限を追記する案を比較。実装する場合は `use_item` の再帰展開を追加し、`parser.conflicts` 影響をレビュー。
+- `SYNTAX-003` 効果構文: 仕様（docs/spec/1-1-syntax.md:200-259）と Formal BNF で `effect`/`perform`/`handle` 構文が定義されているが、実装では `PERFORM`/`HANDLE` 以降の構文規則が未実装（compiler/ocaml/src/parser.mly 内に該当生成規則なし）。Phase 2 OCaml 実装では効果構文が受理されず、Chapter 1 のサンプルコードが再現できない。修正案ドラフト: Phase 2-5 では仕様に「効果構文は `-Zalgebraic-effects` + PoC のみ」と明示し、構文実装タスクを Phase 2-2/Phase 2-7 に再割当。効果構文を実装する場合は `parser.mly` に `PerformExpr` と `HandleExpr` 規則を追加し、型推論・効果解析と同時に導入する必要あり。
+
+**修正案ドラフト対応方針**
+- `SYNTAX-001` → 仕様脚注追加 + Phase 2-7 への実装依頼（Unicode Lexer タスク ID を再利用）。CI では ASCII 限定テストを維持し、Unicode 対応時にゴールデンテストを拡張。
+- `SYNTAX-002` → 週次レビューで Parser 拡張の工数を確認。追加実装が難しい場合は仕様側を一時的に制限し `docs/notes/` に TODO を記録。
+- `SYNTAX-003` → 効果構文の扱いを Chapter 1/3 両方で「実験段階（未実装）」と明記し、実装ロードマップは `docs/plans/bootstrap-roadmap/2-2-effect-system-integration.md` と整合させる。
+
 2.2. **型システムのレビュー（[1-2-types-Inference.md](../../spec/1-2-types-Inference.md)）**
 - Phase 2 型クラス実装との差分抽出
 - 辞書渡しの仕様追記
 - 制約解決アルゴリズムの擬似コード検証
 - サンプルコードの型推論結果検証
 
+**差分リスト（2025-10-28 初版）**
+- `TYPE-001` 値制限の未実装: 仕様（docs/spec/1-2-types-Inference.md:136-141）は「一般化は確定値のみ」と定義するが、実装（compiler/ocaml/src/type_inference.ml:2172-2283）は `let`/`var` 共に常に `generalize` を適用し、可変参照や I/O を含む式でも多相化される。効果システムとの整合が崩れ、Phase 3 のセルフホスト計画で想定する `mut`/`io` 制約が働かない。修正案ドラフト: Phase 2-5 で一般化条件のチェックリストを作成し、`infer_decl` 内に値制限判定（純粋式判定と効果共存）を実装するオプションと、仕様側に暫定注釈を追加するオプションの両方を提示。
+- `TYPE-002` 効果行が型表現に含まれていない: 仕様（docs/spec/1-2-types-Inference.md:155-169）は `A -> B ! {io, panic}` の効果行を型スキームへ含めると記述するが、実装の型表現（compiler/ocaml/src/types.ml:48-63）は `TArrow` のみで効果集合を保持していない。効果プロファイルは `typed_fn_decl.tfn_effect_profile` に別管理され、型比較時に効果を考慮できない。修正案ドラフト: Phase 2-5 では仕様に「効果行は診断用メタデータとして暫定運用」と補足し、Phase 2-7 で `ty` 表現へ効果情報を統合する計画を評価。
+- `TYPE-003` 型クラス辞書渡し記録不足: 仕様（docs/spec/1-2-types-Inference.md 全体）のサンプルは `Add`, `Eq`, `Ord` などの辞書引数が Core IR へ落ちる前提だが、実装（compiler/ocaml/src/type_inference.ml:1880-1955, 2352-2356）は型変数を `i64` に強制解決し辞書制約をドロップしている。制約解決器も `solve_trait_constraints` が未実装（常に空）。修正案ドラフト: Phase 2-5 で辞書生成の仕様差分を `0-3-audit-and-metrics.md` に記録し、Phase 2-1 タスクと連携して辞書渡しの PoC 成果を仕様に反映する。
+
+**修正案ドラフト対応方針**
+- `TYPE-001` → 値制限導入を優先。`collect_expr` の効果タグと連携させて「純粋式」判定を実装。実装が間に合わない場合は仕様側で制限をマークし `0-4-risk-handling.md` へリスク登録。
+- `TYPE-002` → 効果行を型へ組み込む設計案を `compiler/ocaml/docs/effect-system-design-note.md` に追記し、次週レビューで採用案を決定。仕様には暫定脚注を追加して差分を明示。
+- `TYPE-003` → 型クラス差分を `docs/plans/bootstrap-roadmap/2-1-typeclass-strategy.md` へフィードバックし、辞書引数の出力仕様を Chapter 1/2 の双方で補強。
+
 2.3. **効果システムのレビュー（[1-3-effects-safety.md](../../spec/1-3-effects-safety.md)）**
 - Phase 2 効果実装との差分抽出
 - Stage 要件の記述精緻化
 - 効果推論ルールの擬似コード追加
 - [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) との整合
+
+**差分リスト（2025-10-28 初版）**
+- `EFFECT-001` 効果タグ検出不足: 仕様（docs/spec/1-3-effects-safety.md:11-38）では `mut`/`io`/`ffi` などのコア効果を常時解析すると定義しているが、実装の効果解析（compiler/ocaml/src/type_inference.ml:40-138）で追加されるタグは `panic` のみ。`var` 再代入や `unsafe` ブロック、`ffi` 呼び出しの効果が残余集合へ反映されず、`@no_panic` 以外の契約が機能しない。修正案ドラフト: 効果解析に `mut`／`ffi`／`unsafe` 検出を追加し、`Effect_analysis` のタグ付けルールを仕様付録として Chapter 1 に反映。
+- `EFFECT-002` 効果操作未実装: 仕様（docs/spec/1-3-effects-safety.md:201-259）では `effect` 宣言と `handle` 構文を前提に `Σ_before/Σ_after` を計算するが、実装は `effect`/`handler` を AST に保持するのみで解析・型付けを未実装（parser/type_inference に対応処理なし）。効果操作が存在しないため `Σ` の差分計算が検証できず、Chapter 1 のハンドラ例が実行不能。修正案ドラフト: Phase 2-5 で仕様に PoC ステータスを注記し、Phase 2-2/Phase 2-7 のハンドラ実装計画を精査。実装を進める場合は `perform` の型付け規則と `handler` の残余効果計算を `Effect_analysis` に追加。
+- `EFFECT-003` Capability 参照の限定処理: `effect` 属性は複数 Capability を要求できる想定だが、実装の `resolve_function_profile`（compiler/ocaml/src/type_inference_effect.ml:38-86）では先頭 1 件のみ `resolved_capability` に反映。複数 Capability を列挙する仕様（docs/spec/1-1-syntax.md:255-259 および Chapter 3 の DSL 例）と不一致で、診断ログに十分なエビデンスが残らない。修正案ドラフト: Stage/Capability の突合を複数エントリ対応へ拡張し、`AuditEnvelope.metadata` へ全 Capability を記録する方針を追加。
+
+**修正案ドラフト対応方針**
+- `EFFECT-001` → 効果タグ検出ルールを `Type_inference.Effect_analysis` に追加し、`mut`/`io`/`ffi` を最小セットとして導入。仕様には検出アルゴリズムの擬似コードを追加。
+- `EFFECT-002` → 効果操作の未実装を明示する脚注を Chapter 1 に追加し、ハンドラ PoC の範囲を `docs/plans/bootstrap-roadmap/2-2-effect-system-integration.md` と同期。実装優先度は Phase 2-2 で再評価。
+- `EFFECT-003` → Capability 配列処理を Phase 2-5 の修正案に盛り込み、`runtime_capability_resolver` と連携して複数 Capability を監査ログへ出力するテストケースを追加予定。
 
 **成果物**: Chapter 1 差分リスト、修正案ドラフト
 
@@ -97,17 +127,47 @@
 - コンビネーター API の網羅性確認
 - サンプルコードの検証
 
+**差分リスト（2025-10-28 初版）**
+- `PARSER-001` Parser<T>/Reply/ParseResult 未整備: 仕様（docs/spec/2-1-parser-type.md:11-109）は純粋関数型パーサーと `Reply{consumed, committed}`、`ParseResult` による診断集約を前提とするが、実装は Menhir ドライバ（compiler/ocaml/src/parser_driver.ml:15-44）が `Result.t` を直接返し、`consumed`/`committed`/`DiagState` を持たない。これにより 2.2/2.5 の切断・回復規則を検証できず、最遠エラー統計も取得不可。修正案ドラフト: Phase 2-5 で Menhir 出力を `Core.Parse` インターフェイスへ包むシム設計（`State`/`Reply`/`ParseResult` 再構築）を作成し、暫定運用として仕様に「OCaml 実装は移行中」の脚注を追加、`0-3-audit-and-metrics.md` に適用範囲を記録する。
+- `PARSER-002` RunConfig/MemoTable 欠落: 仕様（docs/spec/2-1-parser-type.md:90-142）は `RunConfig`・Packrat メモ・左再帰制御を必須とするが、実装は構成情報を受け取らず固定設定で解析を行う。Packrat/左再帰/locale 切替・監査拡張が無効化され、Phase 2-6 実行戦略（docs/spec/2-6-execution-strategy.md）とも整合しない。修正案ドラフト: `parser_driver` に `RunConfig` パラメータを導入するロードマップを策定し、設定項目ごとに既存 CI への影響と計測計画を `0-3-audit-and-metrics.md` へ追記、実装タスクは Phase 2-7 `execution-config` サブタスクへ連携。
+- `PARSER-003` Core コンビネーター未提供: 仕様（docs/spec/2-2-core-combinator.md:1-160）は `rule`/`label`/`cut`/`recover` など 15 個の公理的コンビネーターを定義するが、実装は `parser.mly` の LR 規則（compiler/ocaml/src/parser.mly:1-24）へ直接エンコードされており、標準 API として再利用できるコンビネーター層が存在しない。Phase 3 で予定している Reml 実装（self-host）に写像できず、DSL/プラグインから `Parser<T>` を利用する前提が成り立たない。修正案ドラフト: Phase 2-5 で OCaml 実装から抽出可能な最小関数群を洗い出し、`Core.Parse`（OCaml 版）モジュール再構成案 + 代替として仕様に「Menhir ブリッジ層で提供」の注記を追加、Phase 3-1（Parser 移植）へ引き継ぐ。
+
+**修正案ドラフト対応方針**
+- `PARSER-001` を優先度 High（セルフホスト前提）で管理し、Menhir 由来の返却値を `ParseResult` に変換する設計資料を 33 週目レビューへ提示する。
+- `PARSER-002` は Phase 2-7 の `execution-config` タスクと合同で `RunConfig` API を段階導入（`require_eof`→`packrat`→`extensions` の順）し、導入ごとにメトリクス更新を行う。
+- `PARSER-003` は 2-1 型クラス戦略・2-2 効果統合と足並みを揃え、`Core.Parse` 再構成で必要なサポートコード（`rule` ラベル/診断統合）を洗い出し、仕様脚注と TODO を `docs/notes/core-parser-migration.md`（新設予定）へ蓄積する。
+
 3.2. **字句・演算子のレビュー（`2-3`〜`2-4`）**
 - 字句解析実装との差分抽出
 - 演算子優先度テーブルの整合
 - Phase 2 で追加された構文への対応
 - 用語統一（トークン名等）
 
+**差分リスト（2025-10-28 初版）**
+- `LEXER-001` Unicode/プロファイル未対応: 仕様（docs/spec/2-3-lexer.md:1-124）は UAX #31/XID ベースの識別子と Unicode ホワイトスペース処理、`lexeme`/`symbol` 等のトリビア共有を前提とするが、実装は ASCII 限定（compiler/ocaml/src/lexer.mll:41-71）の簡易版で、`string_normal` も ASCII エスケープのみ対応。結果として Chapter 2 のサンプル（`identifier(profile=DefaultId)` 等）が実行できず、`Stage`/`Capability` 名の Unicode 別名も受理されない。修正案ドラフト: Unicode 対応は Phase 2-7 `lexer-unicode` サブタスクへ移管し、仕様には `Phase 2-5` の暫定制限を明記。差分チェックリストに ASCII 制約で問題となる箇所（DSL プラグイン、FFI）を追加する。
+- `LEXER-002` Core.Parse.Lex API 欠落: 仕様が提供する `whitespace`/`commentBlock`/`leading`/`trim`（docs/spec/2-3-lexer.md:126-156）に相当する API が実装側に存在せず、`parser_driver` から直接 `Lexer.token` を呼び出す構成で `RunConfig.extensions["lex"]` も未使用。ガイド（docs/guides/core-parse-streaming.md）で想定する共有トリビア設定が適用できない。修正案ドラフト: Phase 2-5 で `Lexer` から `Core.Parse.Lex` 互換のヘルパーを切り出す案と、仕様脚注で「OCaml 実装は直接トークン化」を併記する案を比較し、採用案を 33 週レビューで決定。
+- `OP-001` 演算子ビルダー未提供: `precedence`/`level` API（docs/spec/2-4-op-builder.md:1-139）を用いた宣言的優先度設定が実装に存在せず、Menhir の文法規則（compiler/ocaml/src/parser.mly:520-812 付近）で手動管理している。期待集合や `cut_here()` の自動挿入、FixIt 生成ができず、複数演算子の曖昧性処理（`choice_longest` 等）が仕様通りに動作しない。修正案ドラフト: Phase 2-5 で演算子宣言の再現手段（Menhir 規則→Op DSL 化）の調査タスクを起票し、仕様脚注で「2.4 は Phase 3 でのセルフホスト向け基準」と明示する。
+
+**修正案ドラフト対応方針**
+- `LEXER-001` は Phase 2-7 の Unicode 対応ロードマップを参照し、`Core.Parse` で必要となる最小要件（XID Start/Continue、Bidi 制御禁止、NFC 検証）を優先度 High として差分リストに記録する。
+- `LEXER-002` は `RunConfig.extensions["lex"]` を導入する設計書を 33 週レビューで共有し、ガイド類（docs/guides/plugin-authoring.md 等）を更新するフラグを立てる。
+- `OP-001` は 2-4 計画の PoC を Phase 2-7/Phase 3-1 と連携し、宣言 DSL の最小核（`infixl`/`prefix`）から順に導入する工程案を作成、`reports/diagnostic-format-regression.md` へ演算子診断のテストケースを追記する。
+
 3.3. **エラー・実行戦略のレビュー（`2-5`〜`2-6`）**
 - Phase 1 診断実装との差分抽出
 - Phase 2 診断拡張の反映
 - 実行戦略の記述精緻化
 - `docs/guides/core-parse-streaming.md` との整合
+
+**差分リスト（2025-10-28 初版）**
+- `ERR-001` 期待集合/summary 未出力: 仕様（docs/spec/2-5-error.md:1-160）は `Expectation` 集合と `ExpectationSummary` の生成を必須とするが、実装は `Diagnostic.of_parser_error` 呼び出し時に `expected = []` を固定（compiler/ocaml/src/parser_driver.ml:10-38）。CLI/LSP での候補提示や `effects.contract` 連携が機能せず、Phase 2-4 の診断共通化成果を活かせない。修正案ドラフト: `Core.Parse` シム整備と同時に Menhir からの `expected` を収集する仕組み（`Parser.MenhirInterpreter.expected`）を設計し、仕様へ暫定脚注（「OCaml 実装は期待集合を返さない」）を追加、`reports/diagnostic-format-regression.md` で差分テストを拡充する。
+- `ERR-002` recover/notes/fixit 欠如: `recover`/`severity_hint`/`fixits` の仕様（docs/spec/2-5-error.md:161-318）に対し、実装は `Result.Error` で単一診断を返すのみで回復・FixIt を生成しない。`scripts/validate-diagnostic-json.sh` で期待されるフィールドが欠落し、Phase 2-7 で予定している CLI テキスト刷新にも影響する。修正案ドラフト: 差分補正で `recover` ポイント候補と FixIt 生成ルールを整理し、`0-4-risk-handling.md` に「回復なし」のリスクを登録、Phase 2-7 と連携して JSON スキーマ拡張を前倒しする。
+- `EXEC-001` 実行戦略/ストリーミング未実装: 仕様（docs/spec/2-6-execution-strategy.md, docs/guides/core-parse-streaming.md）で定義されるトランポリン・Packrat・`run_stream` API が実装に存在せず、`parser_driver` は同期一括解析のみを提供する。`RunConfig.stream` 拡張やバックプレッシャ制御（DemandHint）が未接続で、Phase 3 のセルフホスト `run_stream` 互換性検証ができない。修正案ドラフト: Phase 2-5 でストリーミング API の PoC 領域を定義し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ「stream-runner PoC」の依頼を追加、仕様には暫定脚注で対応状況を記載する。
+
+**修正案ドラフト対応方針**
+- `ERR-001` は `Parser.MenhirInterpreter` の `invocation.expected` を使う取り出し手順を調査し、期待集合を `Diagnostic` へ渡すための設計書を 33 週レビューで提示、成果は `0-3-audit-and-metrics.md` の診断メトリクスへ記録する。
+- `ERR-002` は Phase 2-7 診断タスクと統合し、`recover`/FixIt の優先度付け（構文エラー vs FFI 設定）を整理、CLI/LSP テストフィクスチャへの反映計画を作成する。
+- `EXEC-001` は Phase 2-7 `execution-strategy` と共同で `run_stream` の要件定義（`resume`/`DemandHint`/`SpanTrace` 連携）をまとめ、Phase 3-1 に PoC を渡せるよう差分リストへ TODO を追記する。
 
 **成果物**: Chapter 2 差分リスト、修正案ドラフト
 
@@ -126,6 +186,16 @@
 - Capability Stage テーブルの最新化
 - メタデータキー命名規約の追記
 
+**差分リスト（2025-10-29 初版）**
+- `DIAG-001` Severity 列挙の欠落: 仕様では `Severity = Error | Warning | Info | Hint` を必須としている（`docs/spec/3-6-core-diagnostics-audit.md:20`）が、OCaml 実装は `type severity = Error | Warning | Note` のままで `Info`/`Hint` を出力できない（`compiler/ocaml/src/diagnostic.ml:39`）。CLI/LSP のインフォメーション診断が `Warning` へ丸められ、フェーズ 3 の段階的リリース条件（情報レベルの警告分離）が満たせない。→ Phase 2-5 で列挙型の拡張案をまとめ、`diagnostic_serialization` と JSON スキーマ（`tooling/json-schema/diagnostic-v2.schema.json:14`）の整合を確保する。
+- `DIAG-002` `Diagnostic.audit`/`timestamp` の必須化未対応: 仕様では `audit: AuditEnvelope` と `timestamp: Timestamp` を必須値として定義（`docs/spec/3-6-core-diagnostics-audit.md:20`）しているが、実装は `audit : Audit_envelope.t option` と `timestamp : string option` を許容している（`compiler/ocaml/src/diagnostic.ml:120`）。監査なし診断が生成されると `collect-iterator-audit-metrics.py` で検出できず、Phase 2-8 の完全監査要件に不整合が残る。→ `merge_audit_metadata` を呼び出す経路を洗い出し、最低限空の `AuditEnvelope` を埋める暫定案を 33 週レビューに提示する。
+- `DIAG-003` Domain/Metadata の語彙不足: 仕様の `DiagnosticDomain` には `Effect`/`Target`/`Plugin`/`Lsp`/`Other(Str)` が含まれる（`docs/spec/3-6-core-diagnostics-audit.md:172`）が、実装は `Parser/Type/Config/Runtime/Network/Data/Audit/Security/CLI` のみ対応（`compiler/ocaml/src/diagnostic.ml:54`）。`effect.stage.*` 拡張キーも CLI JSON では `extensions["effects"]` のみに出力され、監査ログ側の `metadata["event.kind"]` 等が空のまま（`compiler/ocaml/src/diagnostic.ml:342`）。→ Domain 列挙と `AuditEnvelope.metadata` のキー体系を仕様と揃え、`docs/spec/3-8-core-runtime-capability.md` の Stage テーブル更新とあわせて 2-7 へフィードバックする。
+
+**修正案ドラフト対応方針**
+- `DIAG-001` `Severity` 拡張と JSON スキーマ改版案を Phase 2-5 差分リストにまとめ、CLI/LSP 双方のゴールデンを更新するタイムラインを 2-7 チームへ共有。
+- `DIAG-002` 最低限の `AuditEnvelope` 自動補完を PoC し、`audit_metadata` 欠落時は `0-4-risk-handling.md` に即時登録する運用を草案化する。
+- `DIAG-003` Domain/Metadata の語彙差分を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の Capability/Stage 再検証タスクへリンクさせ、仕様脚注に現状の出力制限を仮明記する。
+
 4.3. **非同期・FFI・環境のレビュー（`3-9`〜`3-10`）**
 - Phase 2 FFI 実装との差分抽出
 - ABI 仕様テーブルの精緻化
@@ -138,22 +208,59 @@
 **担当領域**: 修正案策定
 
 5.1. **差分の分類と優先順位付け**
-- Critical: セルフホストに影響する差分
-- High: Phase 3 で必要な差分
-- Medium: 将来的に必要な差分
-- Low: 記述改善・誤字脱字
+- Critical（セルフホスト阻害または監査継続不能）:
+
+  | ID | 章/領域 | 差分概要 | 推奨初動 |
+  |----|---------|----------|----------|
+  | `TYPE-001` | Chapter 1／型推論 | 値制限が未実装で効果安全性が崩壊 | `infer_decl` の一般化条件ドラフトを 33 週レビューへ提出し、`0-3-audit-and-metrics.md` に想定エラー率を記録 |
+  | `TYPE-003` | Chapter 1／型クラス | 辞書渡しがドロップされ Core IR と不整合 | 型クラス PoC 結果を反映した辞書生成フロー案を `docs/plans/bootstrap-roadmap/2-1-typeclass-strategy.md` と同期 |
+  | `EFFECT-001` | Chapter 1／効果タグ | `mut`/`io` が検出されず契約が機能しない | `Type_inference.Effect_analysis` のタグ拡張案を起案し、CI で測定するメトリクスを定義 |
+  | `PARSER-001` | Chapter 2／Parser 型 | `ParseResult` が欠落し診断統計が取れない | Menhir 包装シムの設計メモをまとめ、`Core.Parse` インターフェイス試案を添付 |
+  | `PARSER-003` | Chapter 2／コンビネーター | 標準コンビネーター層が存在しない | Reml self-host で利用する最小 API 抽出案と脚注追加方針をセットで提示 |
+  | `EXEC-001` | Chapter 2／実行戦略 | `run_stream` 等が未実装でストリーミング検証不可 | `stream-runner PoC` の責任分担とタイムラインを Phase 2-7 と合意 |
+  | `DIAG-002` | Chapter 3／診断監査 | `AuditEnvelope`/`timestamp` が任意扱いで監査欠落 | 最低限の自動補完案とリスク登録フローを決定し、監査メトリクスの閾値を再設定 |
+
+- High（Phase 3 着手前に解消したい差分）:
+
+  | ID | 章/領域 | 差分概要 | 推奨初動 |
+  |----|---------|----------|----------|
+  | `SYNTAX-002` | Chapter 1／モジュール | `use` の多段ネストが未対応 | Parser 拡張と暫定脚注の二案を比較し、工数見積りを記録 |
+  | `SYNTAX-003` | Chapter 1／効果構文 | `perform`/`handle` が未実装 | 効果 PoC の扱いを仕様脚注へ反映し、実装ロードマップとリンク |
+  | `TYPE-002` | Chapter 1／効果行 | 効果集合が型へ反映されない | 効果行組込み案と暫定メタデータ運用案を比較検討 |
+  | `EFFECT-002` | Chapter 1／効果操作 | `effect`/`handle` の残余計算が欠落 | ハンドラ PoC の受け入れ条件を整理し、Phase 2-2 へ戻し条件を通知 |
+  | `EFFECT-003` | Chapter 1／Capability | `effect` 属性が複数 Capability を扱えない | `AuditEnvelope.metadata` への多値出力方針とテスト計画を作成 |
+  | `PARSER-002` | Chapter 2／RunConfig | Packrat/左再帰制御が欠落 | `RunConfig` 段階導入表と CI 影響を `0-3-audit-and-metrics.md` に追記 |
+  | `LEXER-002` | Chapter 2／Lex API | トリビア共有 API が未実装 | `Core.Parse.Lex` ラッパー抽出案を提示し、仕様脚注の案文を用意 |
+  | `ERR-001` | Chapter 2／期待集合 | エラー期待候補が空集合 | Menhir 期待集合取り出し手順の PoC を作成し、`reports/diagnostic-format-regression.md` で検証ケースを追加 |
+  | `ERR-002` | Chapter 2／Recover | `recover`/`fixit` 情報が欠落 | CLI/LSP ゴールデン更新計画と優先度付けを策定 |
+  | `DIAG-001` | Chapter 3／Severity | `Info`/`Hint` が出力不可 | 列挙型拡張案と JSON スキーマ改版スケジュールを整理 |
+
+- Medium（Phase 3 並走で対応可だが追跡継続）:
+
+  | ID | 章/領域 | 差分概要 | 推奨初動 |
+  |----|---------|----------|----------|
+  | `SYNTAX-001` | Chapter 1／識別子 | Unicode 識別子未対応 | ASCII 制約を明記しつつ Unicode 対応タスク ID 22/23 と連携 |
+  | `LEXER-001` | Chapter 2／Unicode | `identifier(profile)` が使えない | プロファイル差分を `docs/notes/dsl-plugin-roadmap.md` に記録 |
+  | `DIAG-003` | Chapter 3／Domain | Domain/metadata が不足 | 語彙拡張案と Capability Stage テーブル更新予定を紐付け |
+
+- Low（記述改善・冗長性の整理）:
+  - 小見出しの文言統一、脚注整備、誤字脱字。差分リストに専用 ID を設け、ドキュメント更新時にまとめて反映する。
 
 5.2. **修正案の作成**
-- 各差分について Markdown で修正案作成
-- Before/After の明示
-- 根拠の明記（実装コード、仕様意図）
-- レビュアへの質問事項の整理
+- アウトプット形式: `docs/plans/bootstrap-roadmap/2-5-proposals/<ID>-proposal.md` に Markdown で整備し、以下の節を必須とする。
+  1. **背景と症状**（関連仕様・実装ファイル・メトリクスへの参照を脚注で付与）
+  2. **Before / After**（必要に応じて `reml` や `json` タグ付きコードブロックで提示）
+  3. **影響範囲と検証**（テスト・CI・`0-3-audit-and-metrics.md` 更新項目）
+  4. **フォローアップ**（Phase 2-7/2-8 への連携、未解決リスクの記録先）
+- 差分を仕様側で折り返す場合は、該当章へ脚注か TODO を追加し、根拠 URL を明示する。
+- 提案内で引用した実装断片は行番号付きで記し、Patch 適用時に確認できるよう `compiler/ocaml/...:line` 形式を徹底する。
+- レビュアへの問いや留意点は末尾に「確認事項」節を設け、決定を待つ項目が埋もれないようにする。
 
 5.3. **レビュープロセス**
-- 修正案のレビュー依頼
-- フィードバックの収集
-- 修正案の調整・合意形成
-- 却下された修正案の記録
+- 提案受付: 週次レビュー (33 週 Day2) までに `Critical` と `High` の提案ドラフトを提出し、Phase 2-7 代表と合同レビュー枠を確保する。
+- レビュー記録: フィードバックは `docs/plans/bootstrap-roadmap/2-5-review-log.md` に記入し、承認/保留/却下を明示。却下の理由は Phase 3 への引き継ぎ資料として保管する。
+- 再調整フロー: 修正案が差し戻された場合、更新差分を明示して再提出し、`0-3-audit-and-metrics.md` の進捗欄を更新する。
+- 承認後: 実装チームへタスク化する際は Issue/チケット ID を記載し、仕様更新スケジュール（セクション 6）と連携。監査項目は `0-4-risk-handling.md` の該当エントリをクローズまたは更新する。
 
 **成果物**: 承認済み修正案、レビュー記録
 
