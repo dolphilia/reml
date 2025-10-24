@@ -19,11 +19,13 @@
 - **テスト**: `parser_driver_tests.ml`（PARSER-001 で追加予定）に期待集合検証ケースを追加し、代表的な構文エラーで `expected` が埋まるか確認。  
 - **監査**: `0-3-audit-and-metrics.md` に `parser.expected_summary_presence` を追加し、CI で期待集合が欠落していないかを監視。  
 - **CLI/LSP**: `reports/diagnostic-format-regression.md` の JSON フィクスチャを更新し、`scripts/validate-diagnostic-json.sh` が期待集合を検証するよう拡張。
+- **実装**: `compiler/ocaml/src/parser_driver.ml` と `compiler/ocaml/src/parser_expectation.ml`（新設）へユニットテストを追加し、Menhir が生成する期待集合が `ExpectationSummary` へ正しく写像されるかをスナップショットで検証する。
 
 ## 4. フォローアップ
 - `ParseResult` シム（PARSER-001）と連携し、`DiagState` に保持した最遠エラー位置から期待集合を取得する実装計画をまとめる。  
 - 仕様書の脚注で「OCaml 実装は期待集合導入中」と明記し、実装完了時に脚注を削除する。  
 - `docs/guides/core-parse-streaming.md` に期待集合がストリーミングモードでも利用可能である旨を追記する。
+- `docs/guides/plugin-authoring.md` に期待集合 API の利用例を追加し、外部 DSL が CLI/LSP と同じ情報を取得できるようにする。
 
 ## 確認事項
 - Menhir の期待集合から `Expectation` 列挙へ写像する際の粒度（記号／規則／否定等）を Parser チームと調整する必要がある。  

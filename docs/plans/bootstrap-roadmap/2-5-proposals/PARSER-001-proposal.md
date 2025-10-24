@@ -34,6 +34,7 @@ Menhir の `checkpoint` から `reply` を構築し、`ParseResult` へ畳み込
 - **ユニットテスト**: `parser_driver_tests.ml` を追加し、`or` 分岐・`cut`・`recover` の消費/コミット挙動を検証。  
 - **診断比較**: `reports/diagnostic-format-regression.md` に `ParseResult.diagnostics` の多件数パターンを追加し、`scripts/validate-diagnostic-json.sh` で仕様通りのフィールドが出力されることを確認。  
 - **メトリクス**: `0-3-audit-and-metrics.md` に `parser.parse_result_consistency` を新設し、`run` と `run_partial` の結果一致を CI で保証。
+- **実装整合**: `compiler/ocaml/tests/parse_result_state_tests.ml` を追加し、`DiagState` が最遠エラーとコミット情報を保持するか、シナリオ型のスナップショットテストで検証する。
 
 ## 4. フォローアップ
 - `docs/spec/2-1-parser-type.md` に OCaml 実装の移行段階（シム→純粋実装）を明記し、Phase 3 の self-host パーサ設計ノートへリンクを追加。  

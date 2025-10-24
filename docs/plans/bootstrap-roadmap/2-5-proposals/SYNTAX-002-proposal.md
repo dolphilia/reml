@@ -18,11 +18,13 @@
 - **パーサテスト**: `compiler/ocaml/tests/module_use_tests.ml`（新設）で多段ネストケースを追加し、AST が期待通りであることをスナップショット比較。  
 - **既存サンプル**: Chapter 1 のコードサンプルと `examples/` 内モジュール参照を実際にパースし、差分が生じないか確認。  
 - **メトリクス**: `0-3-audit-and-metrics.md` に `parser.use_nested_support` を追加し、ネスト再エクスポートが 100% 成功することを記録。
+- **ドキュメント整合**: `docs/spec/1-5-formal-grammar-bnf.md` と `docs/spec/3-0-core-library-overview.md` の再エクスポート例を同期し、差分レビューで参照できるよう脚注を追加する。
 
 ## 4. フォローアップ
 - `Form al BNF`（docs/spec/1-5-formal-grammar-bnf.md）にもネスト規則を反映済みか確認し、必要ならハイライトを更新。  
 - `docs/notes/core-parser-migration.md`（予定）へ OCaml 実装の AST 形状を記録し、Reml 実装移行時の参照資料とする。  
 - コンパイラ IR で再エクスポートをどの段階で解決するか、Phase 2-7 Parser チームと合意を取る。
+- `docs/guides/runtime-bridges.md` にネスト再エクスポートの使用例を追記し、ホストアプリケーションが適切にモジュールを束ねられるよう調整する。
 
 ## 確認事項
 - `pub use` と通常の `use` で共有する AST 形状（特にモジュール可視性）をどう扱うか要確認。  

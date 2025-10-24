@@ -19,11 +19,13 @@
 - **構文テスト**: `compiler/ocaml/tests/effect_syntax_tests.ml`（新設）で `perform` / `handle` のサンプルを追加し、PoC 実装が解析できるか確認。  
 - **効果解析**: EFFECT-002 / EFFECT-003 と連携し、ハンドラ適用後の残余効果計算が可能になるか検証。  
 - **ドキュメント**: Chapter 1 と 3 の関係箇所、および `docs/spec/1-5-formal-grammar-bnf.md` に PoC 脚注を追記し、整合性を維持。
+- **メトリクス**: `0-3-audit-and-metrics.md` に `syntax.effect_construct_acceptance` を追加し、PoC 期間中は Experimental として計測、正式導入時に PASS 判定へ更新する。
 
 ## 4. フォローアップ
 - 効果構文を実装する際は `Type_inference_effect` との統合が必須であり、Phase 2-2 の効果整合計画と同じレビュー体制を取る。  
 - PoC 実装が完成した段階で脚注を解除し、Phase 3 の self-host 計画書へ対応状況を反映する。  
 - CLI / LSP の効果診断（`effects.contract.*`）が効果構文出力と整合するよう、`reports/diagnostic-format-regression.md` のテスト更新を予定する。
+- `docs/notes/effect-system-tracking.md` に構文受理状況と `-Zalgebraic-effects` フラグの運用メモを残し、PoC と正式導入の境界条件を共有する。
 
 ## 確認事項
 - 効果構文を有効化するフラグ名（`-Zalgebraic-effects` など）と公開ポリシーを Phase 2-7 と調整する必要がある。  

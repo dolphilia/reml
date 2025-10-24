@@ -1,0 +1,50 @@
+# Phase 2-5 提案集カタログ
+
+このディレクトリは Phase 2-5「仕様差分是正」（`../2-5-spec-drift-remediation.md`）で扱う修正案のドラフト置き場です。提案を参照・更新する際は以下の方針を守ってください。
+
+- **前提資料の確認**: `../../spec/0-1-project-purpose.md` と `../2-0-phase2-stabilization.md` を参照し、優先度と成果物の期待値を再確認する。
+- **差分管理**: 各提案の実装状況や脚注追加・更新時には関連仕様（`docs/spec/`）と `README.md`（リポジトリ索引）を同時に更新する。
+- **記録保持**: 重要な判断・保留事項は提案内の「確認事項」または `docs/notes/` 配下の関連ノートへ記録し、追跡可能な状態を維持する。
+
+## 目次とハイライト
+
+### 診断ドメイン（DIAG）
+- [DIAG-001-proposal.md](./DIAG-001-proposal.md): `Severity = {Error, Warning, Info, Hint}` を導入して Chapter 3（`docs/spec/3-6-core-diagnostics-audit.md`）との整合を回復。
+- [DIAG-002-proposal.md](./DIAG-002-proposal.md): `Diagnostic.audit` と `timestamp` を必須化し、監査メトリクス (`ffi_bridge.audit_pass_rate`) を有効化。
+- [DIAG-003-proposal.md](./DIAG-003-proposal.md): `DiagnosticDomain` を効果・プラグイン・LSP など仕様準拠の語彙へ拡張し、監査ログ分析を改善。
+
+### 効果システム（EFFECT）
+- [EFFECT-001-proposal.md](./EFFECT-001-proposal.md): `mut`/`io`/`ffi`/`unsafe` などのタグ検出を強化し、残余効果診断を Chapter 1-3 と一致させる。
+- [EFFECT-002-proposal.md](./EFFECT-002-proposal.md): `perform`/`handle` を含む効果操作 PoC の方針を明確化し、`Σ_before`/`Σ_after` の検証を可能にする。
+- [EFFECT-003-proposal.md](./EFFECT-003-proposal.md): 複数 Capability を解析・監査へ出力する仕組みを整備し、Stage 契約（`docs/spec/3-8-core-runtime-capability.md`）との齟齬を是正。
+
+### エラー回復（ERR）
+- [ERR-001-proposal.md](./ERR-001-proposal.md): Menhir の期待集合を `ExpectationSummary` に反映させ、`docs/spec/2-5-error.md` で定義された期待値提示を実現。
+- [ERR-002-proposal.md](./ERR-002-proposal.md): `Parse.recover` の同期トークンと FixIt を導入し、CLI/LSP での自動修正と診断補助を整備。
+
+### 実行戦略（EXEC）
+- [EXEC-001-proposal.md](./EXEC-001-proposal.md): `run_stream`/`resume` を備えたストリーミング実行 PoC を構築し、`docs/spec/2-6-execution-strategy.md` の契約を検証。
+
+### 字句解析（LEXER）
+- [LEXER-001-proposal.md](./LEXER-001-proposal.md): Unicode 識別子プロファイル導入までの暫定対応を明文化し、DSL/プラグイン計画と共有。
+- [LEXER-002-proposal.md](./LEXER-002-proposal.md): `Core.Parse.Lex` ユーティリティを抽出し、字句設定 (`RunConfig.extensions["lex"]`) を仕様準拠に整備。
+
+### 構文解析（PARSER）
+- [PARSER-001-proposal.md](./PARSER-001-proposal.md): `ParseResult` シムを導入し、`Reply{consumed, committed}` と診断集約を再現。
+- [PARSER-002-proposal.md](./PARSER-002-proposal.md): `RunConfig` をランナーへ統合し、Packrat／recover／stream 設定を反映できるようにする。
+- [PARSER-003-proposal.md](./PARSER-003-proposal.md): 15 個のコアコンビネーターを OCaml 実装へ抽出し、`Core.Parse` API と DSL の互換性を確保。
+
+### 構文仕様（SYNTAX）
+- [SYNTAX-001-proposal.md](./SYNTAX-001-proposal.md): Unicode 識別子制約の暫定状態を仕様脚注で明示し、Phase 2-7 の対応計画を共有。
+- [SYNTAX-002-proposal.md](./SYNTAX-002-proposal.md): `use` 文の多段ネストを AST に反映し、Chapter 1 のサンプル通過を保証。
+- [SYNTAX-003-proposal.md](./SYNTAX-003-proposal.md): 効果構文（`perform`/`handle`）の実装ステージを明確化し、Formal BNF との乖離を是正。
+
+### 型システム（TYPE）
+- [TYPE-001-proposal.md](./TYPE-001-proposal.md): 値制限と効果タグ連携を復元し、副作用を持つ束縛の多相化を防止。
+- [TYPE-002-proposal.md](./TYPE-002-proposal.md): 効果行を型表現へ統合するロードマップを策定し、型と効果の一体管理を再構築。
+- [TYPE-003-proposal.md](./TYPE-003-proposal.md): 型クラス辞書渡しを Core IR へ復元し、監査ログへの Capability 情報出力を再開。
+
+## 運用メモ
+- 新しい提案を追加する際は、ドメイン別セクションに箇条書きを追加し、関連仕様とメトリクスを併記する。
+- 提案のステータス更新（完了・棚上げ等）は本文と併せてここにも反映し、Phase 2-5 全体の進捗を一目で把握できるようにする。
+- 大幅な構造更新やファイル移動を行った場合は `docs-migrations.log` と `README.md`（リポジトリ索引）を忘れずに追記する。

@@ -20,11 +20,13 @@
 - **型推論**: `Type_inference_effect` へ `perform` / `handle` の型規則を追加し、`Σ_after` 計算が仕様通りかテストする。  
 - **診断**: `effects.contract.mismatch` の PoC ケースを `reports/diagnostic-format-regression.md` に追加し、PoC でも差分を把握できるようにする。  
 - **ドキュメント**: `docs/spec/1-3-effects-safety.md` と `docs/spec/3-8-core-runtime-capability.md` に PoC ステージの注記と進捗リンクを付与。
+- **実装テスト**: `compiler/ocaml/tests/effect_handler_poc_tests.ml` を新設し、`perform`/`handle` の組み合わせと残余効果履歴が `Σ_before`・`Σ_after` に反映されるか CI で検証する。
 
 ## 4. フォローアップ
 - 効果操作の本格実装は `EFFECT-003`（Capability 多重処理）と密接に関係するため、タスクを一体管理する。  
 - Phase 3 の self-host 移植前に、効果 PoC（ハンドラ 1st クラス）を完成させるマイルストーンを設定し、`0-3-audit-and-metrics.md` へ記録する。  
 - `docs/plans/bootstrap-roadmap/2-2-effect-system-integration.md` に PoC ステージの成果物と検証項目を追記する。
+- `docs/notes/effect-system-tracking.md`（未作成なら新規）へ PoC の進捗ログと試験ケース一覧を記録し、Phase 2-7・Phase 3 でのフォローアップを容易にする。
 
 ## 確認事項
 - PoC が対象とする効果構文の範囲（`perform` のみか、`resume`/`rethrow` まで含むか）を効果チームと確認したい。  

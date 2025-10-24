@@ -28,11 +28,13 @@ let is_generalizable ~effects expr_ty =
 - **テスト**: 既存の型推論テストへ値制限ケースを追加し、`mut` / `ffi` / `unsafe` を含む束縛が単相に推論されることを確認。  
 - **メトリクス**: `0-3-audit-and-metrics.md` に `type_inference.value_restriction_violation` を新設し、CI で 0 件を保証。  
 - **互換性**: 多相化に依存していたサンプル（存在する場合）は `let` への変更や効果抑制で復元する。
+- **監査ログ**: `collect-iterator-audit-metrics.py` に値制限違反検知イベントの集計を追加し、診断とメトリクスが同時に更新されるようにする。
 
 ## 4. フォローアップ
 - EFFECT-001 で追加する効果タグ検出ロジックと同時レビューとし、タグ不足による誤判定を避ける。  
 - Phase 2-7 `execution-config` タスクへ「値制限メトリクス収集」の連携を追加し、`RunConfig` 差分や CLI 表示と同期する。  
 - Phase 3 で予定されている Reml 実装移植時に、同じ値制限ロジックを導入するため `docs/notes/core-parser-migration.md`（予定）にも提案を共有する。
+- `docs/notes/type-inference-roadmap.md` に値制限再導入の段階計画と既知の互換性リスクを記録し、PoC から正式導入までのレビュー履歴を残す。
 
 ## 確認事項
 - 値制限判定に利用する「純粋式」判定の粒度（例: `const fn` 呼び出しを許容するか）について、Phase 2-1 型クラス戦略チームと調整が必要。  

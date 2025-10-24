@@ -19,11 +19,13 @@
 - **メトリクス**: `0-3-audit-and-metrics.md` に `effect.capability_array_pass_rate`（仮）を追加し、複数 Capability が監査ログに記録されているか CI で確認。  
 - **診断**: `reports/diagnostic-format-regression.md` に複数 Capability を要求するケースを追加し、`scripts/validate-diagnostic-json.sh` で配列出力を検証。  
 - **効果解析**: EFFECT-001 / EFFECT-002 のタグ検出と連携し、Capability 情報が残余効果計算に反映されるかテスト。
+- **OCaml テスト**: `compiler/ocaml/tests/capability_profile_tests.ml`（新設）で `resolve_function_profile` が `StageRequirement::{Exact, AtLeast}` の複数値判定を保持するか確認し、失敗時の診断内容をスナップショット化する。
 
 ## 4. フォローアップ
 - `docs/spec/3-8-core-runtime-capability.md` の Stage テーブルに複数 Capability の例を追加し、仕様変更時はここを基準に更新する。  
 - Phase 2-7 の監査ダッシュボード更新タスクへ「複数 Capability に対応した可視化」を依頼。  
 - Self-host 移行時に Reml 実装でも同様の配列出力が可能か確認する。
+- `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に複数 Capability 表示の UI 要件を共有し、監査チームと共通チェックリストを作成する。
 
 ## 確認事項
 - Capability 名の正規化（小文字化・ハイフン/アンダースコア統一）をどのレイヤで行うか、Runtime チームと調整が必要。  

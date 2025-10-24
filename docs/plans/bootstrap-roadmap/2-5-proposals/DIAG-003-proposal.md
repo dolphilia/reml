@@ -19,11 +19,13 @@
 - **スキーマ**: `tooling/json-schema/diagnostic-v2.schema.json` でドメイン列挙を更新し、`scripts/validate-diagnostic-json.sh` に新ドメインのサンプルを追加。  
 - **監査**: `collect-iterator-audit-metrics.py` など監査スクリプトを更新し、新しいドメインが集計対象になるか確認。  
 - **CLI/LSP**: ドメイン別ハイライトやフィルタリングが仕様通りに動作するか手動テストを追加。
+- **用語集**: `docs/spec/0-2-glossary.md` に `DiagnosticDomain::Effect` / `Plugin` などの定義を追加し、監査レポートでも同一語彙で記録できるようにする。
 
 ## 4. フォローアップ
 - Phase 2-7 `diagnostic-domain` タスクと連携して、`DiagnosticDomain` 拡張の実装スケジュールを決定。  
 - ドメインを拡張した後、`docs/spec/3-6-core-diagnostics-audit.md` に脚注を追記し、OCaml 実装が追従したタイミングで脚注を削除。  
 - `docs/notes/dsl-plugin-roadmap.md` にプラグイン診断のドメイン整理項目を追加しておく。
+- `docs/plans/bootstrap-roadmap/2-5-review-log.md` にレビュー結果と残課題（`Other(Str)` の表現方針など）を記載し、Phase 2-8 以降での追跡と承認判断に備える。
 
 ## 確認事項
 - 既存診断との互換性（`Note` → `Info` 等のマッピング）と併せ、ドメイン拡張で既存 JSON 出力に影響がないかを CLI/LSP チームと確認する必要がある。  

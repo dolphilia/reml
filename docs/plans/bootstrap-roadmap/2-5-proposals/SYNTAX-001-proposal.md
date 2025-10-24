@@ -24,6 +24,7 @@
 - Phase 2-7 `lexer-unicode` サブタスクで XID テーブル生成（UnicodeData ベース）および Bidi/Normalization 検査の導入を確約する。  
 - Unicode 対応後、仕様脚注を削除し `docs/spec/1-5-formal-grammar-bnf.md` / サンプルコードを更新。  
 - CLI/LSP 側の識別子ハイライトや補完機能が Unicode 対応と整合するか確認する。
+- `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に Unicode 対応の残課題（CI 支援ツール、互換モード切替）を記録しておき、Phase 3 移行時のチェックリストに含める。
 
 ## 確認事項
 - XID テーブル生成のビルドフロー（外部ツール利用可否）を Phase 2-7 チームと調整する必要がある。  

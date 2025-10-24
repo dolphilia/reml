@@ -19,6 +19,7 @@
 - **テスト**: Unicode 識別子の字句解析テストを追加し、Phase 2-7 完了時に有効化。ASCII 限定の間はスキップして回帰指標を維持する。  
 - **メトリクス**: `0-3-audit-and-metrics.md` に `lexer.identifier_profile_unicode` を追加し、導入時に PASS へ更新。  
 - **ドキュメント**: `docs/notes/dsl-plugin-roadmap.md` に「Unicode プロファイル導入準備」セクションと依存タスクを追記。
+- **用語集**: `docs/spec/0-2-glossary.md` に `Unicode identifier profile` の暫定定義を追加し、仕様読者が ASCII 制限期間中の扱いを把握できるようにする。
 
 ## 4. フォローアップ
 - Phase 2-7 で XID テーブル生成や正規化検査を導入する際、`ConfigTriviaProfile` と `identifier` の API を統合して公開する。  

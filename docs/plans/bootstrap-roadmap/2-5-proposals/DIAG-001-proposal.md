@@ -18,6 +18,7 @@
 ## 3. 影響範囲と検証
 - **スキーマ検証**: `scripts/validate-diagnostic-json.sh` に `Info`/`Hint` を含むフィクスチャを追加し、CI で検証。  
 - **CLI/LSP**: 既存ゴールデンを更新し、新しい Severity が正しくレンダリングされるか確認。  
+- **LSP マッピング**: `tooling/lsp/src/diagnostic_adapter.ml`（行番号要確認）で LSP の `DiagnosticSeverity::{Error = 1, Warning = 2, Information = 3, Hint = 4}` へ確実に写像するユニットテストを追加し、VS Code 拡張のサンプルログを `reports/diagnostic-format-regression.md` に追記する。  
 - **メトリクス**: `0-3-audit-and-metrics.md` に `diagnostic.info_hint_ratio` を追加し、情報レベル診断の発生状況を監視。
 
 ## 4. フォローアップ

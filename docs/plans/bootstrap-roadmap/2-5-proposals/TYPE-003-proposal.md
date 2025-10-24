@@ -29,11 +29,13 @@ let texpr_with_dicts = Typed_ast.attach_dict_args texpr dict_refs
 - **IR 検証**: Core IR 生成テストで `DictCall` ノードが生成されることを確認し、LLVMI R 差分を `scripts/compare-ir.sh` でレビュー。  
 - **診断**: `reports/diagnostic-format-regression.md` に辞書関連診断のゴールデンを追加し、`scripts/validate-diagnostic-json.sh` で新フィールドが出力されることを CI で保証。  
 - **性能**: Phase 2-1 の `benchmark_typeclass.sh` で辞書渡しモードを既定とし、モノモルフィゼーションとの比較を継続。
+- **単体テスト**: `compiler/ocaml/tests/typeclass_dictionary_tests.ml` を追加し、辞書引数が Core IR と監査ログの両方に出力されるかスナップショットで確認する。
 
 ## 4. フォローアップ
 - Core IR / CodeGen で辞書引数を受け取るパスが未実装のため、`compiler/ocaml/src/core_ir_builder.ml` への追記と LLVM 側のレビュー（Phase 2-3）を依頼。  
 - `docs/spec/1-2-types-Inference.md` に Dickens-style の辞書例を追加し、仕様に沿った実装を確認。  
 - `typeclass.metadata` の監査連携を Phase 2-7 の `collect-iterator-audit-metrics.py` 更新と同時に実施。
+- `docs/plans/bootstrap-roadmap/2-1-typeclass-strategy.md` の進捗欄へ辞書復元タスクを追記し、Phase 2 全体の型クラスロードマップと整合させる。
 
 ## 確認事項
 - 算術演算のデフォルト型選択を辞書渡しと共存させる際の互換ポリシー（既存 CLI ゴールデンとの差分許容範囲）を確認。  

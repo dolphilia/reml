@@ -19,11 +19,13 @@
 - **メトリクス**: `0-3-audit-and-metrics.md` に `parser.runconfig_coverage` を追加し、`require_eof` `packrat` `left_recursion` など主要スイッチがテスト経由で確認されるかを記録。  
 - **CLI/LSP**: `tooling` 側で `RunConfig` を生成している箇所を更新し、空白・recover・stream 等の設定が OCaml 実装へ届くことを確認。  
 - **ストリーミング**: EXEC-001（run_stream PoC）と並行して、`extensions["stream"]` を受け取る経路を確立する。
+- **単体テスト**: `compiler/ocaml/tests/runconfig_tests.ml` を追加し、設定値ごとの挙動（Packrat/左再帰/require_eof）が `ParseResult` に反映されるかパラメトリックテストで保証する。
 
 ## 4. フォローアップ
 - Packrat/左再帰実装は `PARSER-003`（コンビネーター抽出）と密接に関係するため、同じロードマップで管理する。  
 - RunConfig シムが整った段階で CLI フラグ・LSP 設定ファイルを更新し、ユーザーが仕様通りに設定できるようドキュメントを調整する。  
 - `docs/guides/core-parse-streaming.md` と `docs/spec/2-6-execution-strategy.md` に OCaml 実装の進行状況を脚注で追加する。
+- `docs/notes/core-parser-migration.md`（未作成なら新規）へ RunConfig 移行ステップと既知の制限を記録し、Phase 3 での Reml 実装への写像に備える。
 
 ## 確認事項
 - Packrat/左再帰の段階導入順序（`require_eof` → `packrat` → `extensions`）を Parser チームと調整したい。  

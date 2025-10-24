@@ -19,11 +19,13 @@
 - **共有設定**: CLI/LSP/テストで `config_trivia` を利用し、同じ空白・コメントプロファイルが適用されるか検証。  
 - **Packrat/ParserId**: `lexeme` が `rule` と連携し、`ParserId` を安定化させるかテスト（2-3 §B〜C）。  
 - **メトリクス**: `0-3-audit-and-metrics.md` に `lexer.shared_profile_pass_rate` を追加し、`RunConfig.extensions["lex"]` の反映状況を監視。
+- **単体テスト**: `compiler/ocaml/tests/core_parse_lex_tests.ml` を追加し、空白・コメント・カスタムトークンプロファイルを切り替えた際の `lexeme` / `symbol` 出力をゴールデン比較で検証する。
 
 ## 4. フォローアップ
 - `PARSER-002`（RunConfig 導入）と連動し、字句設定を `RunConfig` から読み込む順序を調整する。  
 - `docs/guides/core-parse-streaming.md` のサンプルを OCaml 実装で動かせるよう、Lex API を呼び出す例を追加する。  
 - Unicode プロファイル（LEXER-001）の対応と並行して、字句 API のテストを整備する。
+- `docs/notes/core-parse-streaming-todo.md` に Lex API 抽出の進捗を追記し、Streaming PoC（EXEC-001）との依存関係を明確化する。
 
 ## 確認事項
 - `Core.Parse.Lex` と `Lexer.token` の責務分離（どこまでをシムで巻き取るか）について Parser チームと合意が必要。  

@@ -26,13 +26,15 @@ let ensure_audit audit_opt =
 
 ## 3. 影響範囲と検証
 - **スキーマ**: `tooling/json-schema/diagnostic-v2.schema.json` を更新し、`audit` / `timestamp` を必須化。`scripts/validate-diagnostic-json.sh` で全フィクスチャが通過することを確認。  
+- **OCaml 実装**: `compiler/ocaml/src/diagnostic.ml` および `compiler/ocaml/src/diagnostic_builder.ml` で `audit` / `timestamp` を生成時に強制するリグレッションテストを追加し、`diagnostic_tests.ml` に「欠落フィールドが存在すると例外を投げる」ケースを新設。  
 - **CI メトリクス**: `ffi_bridge.audit_pass_rate` / `iterator.stage.audit_pass_rate` が 1.0 になることを GitHub Actions（Windows/macOS 含む）で検証。  
 - **互換性**: 旧 `Legacy` 変換で `timestamp` / `audit` を補完する処理を追加し、CLI テキスト出力刷新（Phase 2-7）と整合を取る。
 
 ## 4. フォローアップ
 - `reports/diagnostic-format-regression.md` に監査フィールド付きサンプルを追加し、レビューチェックリストに「必須フィールド欠落禁止」を明記。  
 - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の監査ダッシュボード更新タスクへ「新必須フィールドの統計」を追記。  
-- `docs/spec/3-6-core-diagnostics-audit.md` に OCaml 実装状況を脚注で追加し、必須化時期を明確化する。
+- `docs/spec/3-6-core-diagnostics-audit.md` に OCaml 実装状況を脚注で追加し、必須化時期を明確化する。  
+- `docs/notes/diagnostic-audit-gap.md`（未作成の場合は新設）へ必須化の背景と移行チェックリストを記録し、Phase 3 のセルフホスト側でも監査欠落が再発しないようトレーサビリティを確保する。
 
 ## 確認事項
 - `AuditEnvelope.empty()` に含める既定値（`audit_id` / `change_set` の扱い）について監査チームの合意が必要。  

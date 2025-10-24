@@ -31,11 +31,13 @@ end
 - **回帰テスト**: 既存の `parser` 単体テストに加えて、コンビネーター経由で同等の構文木が生成されるかを検証するゴールデンを追加。  
 - **Packrat/左再帰**: 2-6 の契約に基づき、`rule` と `ParserId` を利用したメモ化が機能するかを `compiler/ocaml/tests/packrat_tests.ml`（新設）で確認。  
 - **ドキュメント**: `docs/spec/2-2-core-combinator.md` へ OCaml 実装の進捗脚注を追加し、フェーズ移行時に差分を追跡する。
+- **API レビュー**: `docs/notes/core-parse-api-evolution.md`（新設予定）にコンビネーター抽出時の公開 API をモジュール署名付きで記録し、Phase 3 の self-host 設計レビューに備える。
 
 ## 4. フォローアップ
 - `PARSER-001` シム実装と連動し、`Reply` / `ParseResult` がコンビネーター層を経由するよう統合。  
 - Phase 2-7 `execution-config` タスクで `RunConfig.extensions["lex"]`・`["recover"]` をコンビネーターから参照できるよう、設定伝播の設計を加える。  
 - `docs/guides/plugin-authoring.md` に、OCaml 実装から提供されるコンビネーター API の利用例を追記する。
+- `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` にコンビネーター抽出後の残課題（テレメトリ、エラーメッセージ統合）を記録し、実装移行を段階化する。
 
 ## 確認事項
 - Menhir 生成コードを全面置換するのか、移行期間中はシム層で段階導入するのかの方針決定が必要。  

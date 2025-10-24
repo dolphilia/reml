@@ -19,11 +19,13 @@
 - **テスト**: 新規 `recover` テストケースを追加し、典型的な欠落記号（例: `;`）で FixIt が生成されるか確認。  
 - **メトリクス**: `0-3-audit-and-metrics.md` に `parser.recover_fixit_coverage` を追加し、CI で FixIt 生成率を監視。  
 - **監査**: `reports/diagnostic-format-regression.md` に回復付き診断の JSON を追加し、`scripts/validate-diagnostic-json.sh` で必須フィールドを検証。
+- **実装**: `compiler/ocaml/tests/parser_recover_tests.ml` を新設し、同期トークンと FixIt のペアが `ParseResult.diagnostics` に出力されるか Golden テストで確認する。
 
 ## 4. フォローアップ
 - Phase 2-7 診断タスクと協力して、CLI/LSP のテキスト出力・自動修正インターフェイスを更新する。  
 - 仕様書の脚注に「OCaml 実装は `recover`/FixIt の整備中」と明記し、実装完了時に脚注を削除。  
 - `docs/guides/ai-integration.md` に FixIt 情報を活用する運用例を追記する。
+- `docs/notes/core-parse-streaming-todo.md` にストリーミング解析での `recover` 活用状況と残課題を追記し、Phase 3 へ引き継ぐ。
 
 ## 確認事項
 - Menhir ベースの回復戦略（同期トークン）と仕様上の `recover` API をどこまで合わせるかを Parser チームで調整する必要がある。  

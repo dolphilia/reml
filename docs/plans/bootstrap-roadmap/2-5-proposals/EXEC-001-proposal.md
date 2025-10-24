@@ -34,11 +34,13 @@ val run_stream :
 - **一致性テスト**: `docs/spec/2-7-core-parse-streaming.md:254-267` に定義されたテスト計画を PoC へ反映し、`run` と `run_stream` の結果一致をゴールデン比較で確認。  
 - **CI**: `tooling/ci` にストリーミング用テストシナリオを追加し、`RunConfig.extensions["stream"]` が埋まっているかをメトリクスで監視。  
 - **CLI/LSP**: インクリメンタル解析を利用する CLI モードを追加し、`DemandHint` が動作するか手動検証。
+- **OCaml テスト**: `compiler/ocaml/tests/streaming_runner_tests.ml` を新設し、`resume` や `Pending DemandHint::Pause` のフローが期待通りに推移するかステップ単位で検証する。
 
 ## 4. フォローアップ
 - PoC の仕様制限（例: チャンクサイズ固定、`Pending` の暗黙タイムアウト未実装）を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に記録し、本実装フェーズへ引き継ぐ。  
 - `docs/guides/core-parse-streaming.md` のサンプルを PoC API で動作させ、差分を脚注として追加。  
 - Phase 3 の self-host 計画書で `run_stream` をクリティカルパスに含めるため、進捗を `0-3-audit-and-metrics.md` に定期記録する。
+- `docs/notes/runtime-bridges.md` にストリーミング API と Runtime Bridge の連携要件を追記し、バックプレッシャ信号の橋渡し方法を明文化する。
 
 ## 確認事項
 - Feeder API とバックプレッシャの初期値（`DemandHint::Continue` / `::Pause`) をどの程度細分化するか決定が必要。  
