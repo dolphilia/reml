@@ -3,6 +3,7 @@
     {
       "severity": "error",
       "message": "外部関数 `ffi_demo` の ABI 契約がターゲットと整合していません",
+      "schema_version": "2.0.0-draft",
       "location": {
         "file": "<入力>",
         "line": 1,
@@ -13,13 +14,18 @@
       "code": "ffi.contract.unsupported_abi",
       "codes": [ "ffi.contract.unsupported_abi" ],
       "domain": "type",
+      "timestamp": "2025-10-24T06:52:11Z",
       "notes": [
         "指定された値: `system_v`", "要求される ABI: msvc",
         "サポートされる値: system_v, msvc, darwin_aapcs64"
       ],
       "extensions": {
-        "diagnostic.v2": { "codes": [ "ffi.contract.unsupported_abi" ] },
+        "diagnostic.v2": {
+          "timestamp": "2025-10-24T06:52:11Z",
+          "codes": [ "ffi.contract.unsupported_abi" ]
+        },
         "bridge": {
+          "status": "error",
           "return": {
             "ownership": "borrowed",
             "status": "wrap",
@@ -30,6 +36,7 @@
           "block_target": "x86_64-pc-windows-msvc",
           "link_name": "ffi_demo_c",
           "expected_abi": "msvc",
+          "audit_pass_rate": 0.0,
           "extern_name": "ffi_demo",
           "target": "x86_64-pc-windows-msvc",
           "arch": "x86_64",
@@ -52,6 +59,7 @@
           "block_target": "x86_64-pc-windows-msvc",
           "link_name": "ffi_demo_c",
           "expected_abi": "msvc",
+          "audit_pass_rate": 0.0,
           "extern_name": "ffi_demo",
           "target": "x86_64-pc-windows-msvc",
           "arch": "x86_64",
@@ -60,11 +68,17 @@
           "ownership": "borrowed",
           "extern_symbol": "ffi_demo_c"
         },
-        "bridge.source_span": { "start": 0, "end": 168 }
+        "bridge.source_span": { "start": 0, "end": 168 },
+        "cli.audit_id": "00000000-0000-0000-0000-000000000000",
+        "schema.version": "1.1",
+        "audit.timestamp": "2025-10-24T06:52:11Z",
+        "cli.change_set": {
+          "command": "remlc-tests",
+          "input": "tests/golden/diagnostics/ffi/unsupported-abi.reml"
+        }
       },
       "audit": {
         "metadata": {
-          "bridge.source_span": { "start": 0, "end": 168 },
           "bridge": {
             "status": "error",
             "return": {
@@ -77,6 +91,7 @@
             "block_target": "x86_64-pc-windows-msvc",
             "link_name": "ffi_demo_c",
             "expected_abi": "msvc",
+            "audit_pass_rate": 0.0,
             "extern_name": "ffi_demo",
             "target": "x86_64-pc-windows-msvc",
             "arch": "x86_64",
@@ -84,7 +99,15 @@
             "abi": "system_v",
             "ownership": "borrowed",
             "extern_symbol": "ffi_demo_c"
-          }
+          },
+          "bridge.source_span": { "start": 0, "end": 168 },
+          "cli.audit_id": "00000000-0000-0000-0000-000000000000",
+          "cli.change_set": {
+            "command": "remlc-tests",
+            "input": "tests/golden/diagnostics/ffi/unsupported-abi.reml"
+          },
+          "audit.timestamp": "2025-10-24T06:52:11Z",
+          "schema.version": "1.1"
         },
         "audit_id": "00000000-0000-0000-0000-000000000000",
         "change_set": {
