@@ -50,8 +50,8 @@ let run_test name f =
 
 let assert_ok result msg =
   match result with
-  | Ok _ -> ()
-  | Error e ->
+  | Result.Ok _ -> ()
+  | Result.Error e ->
       let error_msg = Type_error.string_of_error e in
       failwith (Printf.sprintf "%s\nError: %s" msg error_msg)
 

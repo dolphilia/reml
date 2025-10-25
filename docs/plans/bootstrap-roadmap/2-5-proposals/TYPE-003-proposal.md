@@ -2,7 +2,7 @@
 
 ## 1. 背景と症状
 - 仕様では制約解決で得た辞書を Core IR へ渡し、Stage や Capability 情報を監査ログに残すと定義されている（docs/spec/1-2-types-Inference.md:115-119）。  
-- 現行実装は算術制約解決前に型変数を強制的に `i64` へ単一化し（compiler/ocaml/src/type_inference.ml:1877-1937）、`solve_trait_constraints` の戻り値を `_dict_refs` として握り潰している（compiler/ocaml/src/type_inference.ml:2219-2376）。結果として Core IR に辞書ノードが生成されず、監査ログ（`AuditEnvelope.metadata`）へも `effect.stage.*` が記録されない。  
+- 現行実装は算術制約解決前に型変数を強制的に `i64` へ単一化し（compiler/ocaml/src/type_inference.ml:2186-2212）、`solve_trait_constraints` の戻り値を `_dict_refs` として握り潰している（compiler/ocaml/src/type_inference.ml:2213-2376）。結果として Core IR に辞書ノードが生成されず、監査ログ（`AuditEnvelope.metadata`）へも `effect.stage.*` が記録されない。  
 - 型クラス PoC の比較基盤（docs/plans/bootstrap-roadmap/2-1-typeclass-strategy.md）と `collector` 系 API の差分検証が行えず、Phase 3 のセルフホスト移行に必要な辞書情報が欠落する。
 
 ## 2. Before / After
@@ -32,12 +32,28 @@ let texpr_with_dicts = Typed_ast.attach_dict_args texpr dict_refs
 - **単体テスト**: `compiler/ocaml/tests/typeclass_dictionary_tests.ml` を追加し、辞書引数が Core IR と監査ログの両方に出力されるかスナップショットで確認する。
 
 ## 4. フォローアップ
-- Core IR / CodeGen で辞書引数を受け取るパスが未実装のため、`compiler/ocaml/src/core_ir_builder.ml` への追記と LLVM 側のレビュー（Phase 2-3）を依頼。  
+- Core IR / CodeGen で辞書引数を受け取るパスが未実装のため、`compiler/ocaml/src/core_ir/desugar.ml` と `compiler/ocaml/src/llvm_gen/codegen.ml` への追記と LLVM 側のレビュー（Phase 2-3）を依頼。  
 - `docs/spec/1-2-types-Inference.md` に Dickens-style の辞書例を追加し、仕様に沿った実装を確認。  
 - `typeclass.metadata` の監査連携を Phase 2-7 の `collect-iterator-audit-metrics.py` 更新と同時に実施。
 - `docs/plans/bootstrap-roadmap/2-1-typeclass-strategy.md` の進捗欄へ辞書復元タスクを追記し、Phase 2 全体の型クラスロードマップと整合させる。
 - **タイミング**: Phase 2-5 の前半から中盤にかけて辞書渡し実装を最優先で進め、Phase 2-6 開始前までに Core IR・監査ログと合わせて復元を完了する。
 
-## 残課題
+## 5. 実施ステップ（Week31）
+- **Day1 — Typer で辞書を保持**: `compiler/ocaml/src/type_inference.ml:2213-2376` の `let* _dict_refs = …` ブロックを `Typed_ast.attach_dict_args`（新設）へ置き換え、`typed_decl`/`typed_expr` が `dict_ref list` を保持できるよう `typed_ast.ml` に追加フィールドを定義する。`generalize` 後も制約が失われないことを `compiler/ocaml/tests/type_inference_tests.ml`、`compiler/ocaml/tests/test_typeclass_solver.ml` のゴールデンで確認する。
+- **Day2-3 — Core IR / CodeGen 連携**: `core_ir/desugar.ml:110-320` と `core_ir/monomorphize_poc.ml` を更新し、Typer が付与した `dict_ref` を `DictConstruct` / `DictMethodCall` / `DictLookup` ノードへ落とし込む。`core_ir/ir.ml`・`llvm_gen/codegen.ml` で辞書レイアウトと ABI（`docs/spec/3-8-core-runtime-capability.md` §10）を再計算し、`scripts/compare-ir.sh` と `core_ir/tests/test_dict_gen.ml` で差分を承認する。
+- **Day3-4 — 診断・監査整合 (DIAG-002 連携)**: `typeclass_metadata.ml` の `dictionary_json_of_ref` を `None` 禁止にし、`type_error.ml` / `diagnostic.ml` で `Diagnostic.audit` への転写を必須化する。`tooling/ci/verify-audit-metadata.py` と `reports/diagnostic-format-regression.md` へ辞書フィールドを追加し、`scripts/validate-diagnostic-json.sh` が `extensions.typeclass.dictionary.kind != "none"` を検証できるようにする。
+- **Day4 — Capability / Stage 逆引き**: `core_ir/iterator_audit.ml` と `core_ir/desugar.ml` に辞書由来の Capability ID / Stage 情報を差し込むヘルパーを追加し、`Type_inference.record_typeclass_success` が `effect.stage.*` を `AuditEnvelope.metadata` に設定できるよう `typeclass_audit_events` を拡張する。`docs/spec/3-6-core-diagnostics-audit.md` のキー一覧と照合し、`effect.stage.mismatch` 診断の再発を防ぐ。
+- **Day5 — テスト・文書・メトリクス**: `compiler/ocaml/tests/typeclass_dictionary_tests.ml`（新規）や `compiler/ocaml/tests/test_core_ir_codegen.ml` を追加して辞書の生成・伝搬・監査をスナップショット化する。`docs/spec/1-2-types-Inference.md` §B.1 と `docs/spec/2-1-parser-type.md` に辞書復元の脚注を記し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ `typeclass.dictionary_pass_rate` を追加、CI では `record-metrics.sh` で値を集計する。
+
+### 5.1 成果物／検証一覧
+| 種別 | 内容 | エビデンス |
+|------|------|------------|
+| Typer | `typed_decl` / `typed_expr` が `dict_ref list` を保持 | `compiler/ocaml/tests/typeclass_dictionary_tests.ml` の `let eq_i64 = ...` ゴールデン |
+| Core IR | `DictConstruct` / `DictMethodCall` が生成され LLVM まで到達 | `scripts/compare-ir.sh` / `llvm_gen/tests/test_codegen_dict.ml` |
+| 診断 | `extensions.typeclass.dictionary.*` と `metadata["typeclass.*"]` が一致 | `reports/diagnostic-format-regression.md` と `tooling/ci/verify-audit-metadata.py` |
+| メトリクス | `typeclass.dictionary_pass_rate` 追加・既定 1.0 | `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と CI `record-metrics.sh` |
+| ドキュメント | 仕様脚注とロードマップ更新 | `docs/spec/1-2-types-Inference.md` / `docs/plans/bootstrap-roadmap/2-1-typeclass-strategy.md` |
+
+## 6. 残課題
 - 算術演算のデフォルト型選択を辞書渡しと共存させる際の互換ポリシー（既存 CLI ゴールデンとの差分許容範囲）を確認。  
 - Stage 情報をどのレイヤで取得するか（Constraint solver で付与 vs. Typer 側で補完）を Phase 2-7 チームと調整したい。

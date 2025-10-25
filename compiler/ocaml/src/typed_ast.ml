@@ -20,6 +20,7 @@ type typed_expr = {
   texpr_kind : typed_expr_kind;
   texpr_ty : ty;  (** 推論された型 *)
   texpr_span : span;  (** 位置情報 *)
+  texpr_dict_refs : dict_ref list;  (** 型クラス辞書引数（解決済み） *)
 }
 (** 型付き式ノード
  *
@@ -110,6 +111,7 @@ and typed_decl = {
   tdecl_kind : typed_decl_kind;
   tdecl_scheme : constrained_scheme;  (** 宣言の型スキーム *)
   tdecl_span : span;
+  tdecl_dict_refs : dict_ref list;  (** 宣言単位で解決された辞書引数 *)
 }
 (** 型付き宣言ノード *)
 
@@ -138,7 +140,18 @@ and typed_fn_decl = {
 
 and typed_fn_body = TFnExpr of typed_expr | TFnBlock of typed_stmt list
 
-(* ========== 型付きコンパイル単位 ========== *)
+let make_typed_expr ?(dict_refs = []) kind ty span =
+  {
+    texpr_kind = kind;
+    texpr_ty = ty;
+    texpr_span = span;
+    texpr_dict_refs = dict_refs;
+  }
+
+let attach_expr_dict_args expr dict_refs =
+  if dict_refs = [] then expr else { expr with texpr_dict_refs = dict_refs }
+
+let attach_dict_args = attach_expr_dict_args
 
 type typed_compilation_unit = {
   tcu_module_header : module_header option;
@@ -152,23 +165,23 @@ type typed_compilation_unit = {
 (** ダミーのSpan *)
 let dummy_span = Ast.dummy_span
 
-(** 型付き式の構築 *)
-let make_typed_expr kind ty span =
-  { texpr_kind = kind; texpr_ty = ty; texpr_span = span }
-
 (** 型付きパターンの構築 *)
 let make_typed_pattern kind ty bindings span =
   { tpat_kind = kind; tpat_ty = ty; tpat_bindings = bindings; tpat_span = span }
 
 (** 型付き宣言の構築 *)
-let make_typed_decl attrs vis kind scheme span =
+let make_typed_decl ?(dict_refs = []) attrs vis kind scheme span =
   {
     tdecl_attrs = attrs;
     tdecl_vis = vis;
     tdecl_kind = kind;
     tdecl_scheme = scheme;
     tdecl_span = span;
+    tdecl_dict_refs = dict_refs;
   }
+
+let attach_decl_dict_args decl dict_refs =
+  if dict_refs = [] then decl else { decl with tdecl_dict_refs = dict_refs }
 
 (* ========== デバッグ用: Typed ASTの文字列表現 ========== *)
 

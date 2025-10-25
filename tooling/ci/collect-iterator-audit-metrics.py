@@ -433,6 +433,99 @@ def _validate_typeclass_extension(
     return missing
 
 
+def _normalize_nonempty_string(value: Optional[object]) -> Optional[str]:
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped:
+            return stripped
+    return None
+
+
+def _validate_dictionary_payload_dict(
+    dictionary: Optional[Dict[str, Any]], prefix: str
+) -> List[str]:
+    if not isinstance(dictionary, dict):
+        return [f"{prefix}.dictionary"]
+    missing: List[str] = []
+    kind = _normalize_nonempty_string(dictionary.get("kind"))
+    if kind is None:
+        missing.append(f"{prefix}.dictionary.kind")
+    elif kind.lower() == "none":
+        missing.append(f"{prefix}.dictionary.kind")
+    identifier = _normalize_nonempty_string(dictionary.get("identifier"))
+    if identifier is None:
+        missing.append(f"{prefix}.dictionary.identifier")
+    repr_value = dictionary.get("repr")
+    if isinstance(repr_value, str):
+        repr_value = repr_value.strip()
+    if repr_value in (None, "", []):
+        missing.append(f"{prefix}.dictionary.repr")
+    return missing
+
+
+def _lookup_metadata_value(container: Optional[Dict[str, Any]], dotted_key: str):
+    if not isinstance(container, dict):
+        return None
+    if dotted_key in container:
+        return container.get(dotted_key)
+    current: object = container
+    for part in dotted_key.split("."):
+        if isinstance(current, dict) and part in current:
+            current = current[part]
+        else:
+            return None
+    return current
+
+
+def _validate_dictionary_metadata(
+    metadata: Optional[Dict[str, Any]], prefix: str
+) -> List[str]:
+    if not isinstance(metadata, dict):
+        return [f"{prefix}.typeclass.dictionary"]
+    missing: List[str] = []
+    kind = _lookup_metadata_value(metadata, "typeclass.dictionary.kind")
+    kind_str = _normalize_nonempty_string(kind)
+    if kind_str is None or kind_str.lower() == "none":
+        missing.append(f"{prefix}.typeclass.dictionary.kind")
+    identifier = _lookup_metadata_value(metadata, "typeclass.dictionary.identifier")
+    if _normalize_nonempty_string(identifier) is None:
+        missing.append(f"{prefix}.typeclass.dictionary.identifier")
+    repr_value = _lookup_metadata_value(metadata, "typeclass.dictionary.repr")
+    if isinstance(repr_value, str):
+        repr_value = repr_value.strip()
+    if repr_value in (None, "", []):
+        missing.append(f"{prefix}.typeclass.dictionary.repr")
+    return missing
+
+
+def check_dictionary_extension_payload(extensions: Optional[Dict]) -> List[str]:
+    if not isinstance(extensions, dict):
+        return ["extensions.typeclass"]
+    typeclass = extensions.get("typeclass")
+    if not isinstance(typeclass, dict):
+        return ["extensions.typeclass"]
+    return _validate_dictionary_payload_dict(
+        typeclass.get("dictionary"), "extensions.typeclass"
+    )
+
+
+def check_dictionary_audit_payload(audit: Optional[Dict]) -> List[str]:
+    if not isinstance(audit, dict):
+        return ["audit.metadata"]
+    metadata = audit.get("metadata")
+    containers: List[Tuple[str, Optional[Dict[str, Any]]]] = []
+    if isinstance(metadata, dict):
+        containers.append(("audit.metadata", metadata))
+    containers.append(("audit", audit))
+    aggregated: List[str] = []
+    for prefix, container in containers:
+        issues = _validate_dictionary_metadata(container, prefix)
+        if not issues:
+            return []
+        aggregated.extend(issues)
+    return sorted(set(aggregated))
+
+
 def check_bridge_audit_fields(audit: Optional[Dict]) -> List[str]:
     if audit is None:
         return ["audit"] + REQUIRED_BRIDGE_AUDIT_KEYS.copy()
@@ -1179,7 +1272,9 @@ def collect_bridge_metrics(
     }
 
 
-def collect_typeclass_metrics(paths: List[Path], audit_paths: List[Path]) -> Dict:
+def _collect_typeclass_metadata_metric(
+    paths: List[Path], audit_paths: List[Path]
+) -> Dict:
     total = 0
     passed = 0
     failures: List[Dict[str, Any]] = []
@@ -1274,6 +1369,143 @@ def collect_typeclass_metrics(paths: List[Path], audit_paths: List[Path]) -> Dic
         "failures": failures,
         "schema_versions": sorted(schema_versions),
     }
+
+
+def collect_typeclass_dictionary_metric(
+    paths: List[Path], audit_paths: List[Path]
+) -> Dict:
+    total = 0
+    passed = 0
+    failures: List[Dict[str, Any]] = []
+    audit_sources: List[str] = []
+    schema_versions: Set[str] = set()
+
+    for path in paths:
+        data = load_json(path)
+        for index, diag in enumerate(iter_diagnostics(data)):
+            code = primary_code_of(diag) or ""
+            codes_field = diag.get("codes")
+            has_typeclass_code = False
+            if isinstance(code, str) and code.startswith("typeclass."):
+                has_typeclass_code = True
+            elif isinstance(codes_field, list):
+                has_typeclass_code = any(
+                    isinstance(item, str) and item.startswith("typeclass.")
+                    for item in codes_field
+                )
+            if not has_typeclass_code:
+                continue
+
+            total += 1
+            schema = extract_schema_version(diag)
+            if schema:
+                schema_versions.add(schema)
+
+            extensions_dict = _as_dict(diag.get("extensions"))
+            audit_dict = _as_dict(diag.get("audit"))
+
+            issues: List[str] = []
+            issues.extend(check_dictionary_extension_payload(extensions_dict))
+            issues.extend(check_dictionary_audit_payload(audit_dict))
+
+            timestamp_value = diag.get("timestamp")
+            if not isinstance(timestamp_value, str) or not timestamp_value.strip():
+                issues.append("timestamp")
+
+            if issues:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "code": code or "unknown",
+                        "missing": sorted(set(issues)),
+                    }
+                )
+            else:
+                passed += 1
+
+    for path in audit_paths:
+        audit_sources.append(str(path))
+        entries = load_audit_entries(path)
+        if not entries:
+            continue
+        for index, entry in enumerate(entries):
+            category = entry.get("category") if isinstance(entry, dict) else None
+            if not (isinstance(category, str) and category.startswith("typeclass.")):
+                continue
+            metadata = entry.get("metadata") if isinstance(entry, dict) else None
+            metadata_dict = metadata if isinstance(metadata, dict) else None
+
+            issues = _validate_dictionary_metadata(metadata_dict, "metadata")
+            if not issues:
+                schema_value = _lookup_metadata_value(metadata_dict, "schema.version")
+                schema_str = _normalize_nonempty_string(schema_value)
+                if schema_str:
+                    schema_versions.add(schema_str)
+
+            total += 1
+            if issues:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "code": category,
+                        "missing": sorted(set(issues)),
+                    }
+                )
+            else:
+                passed += 1
+
+    pass_rate = None
+    if total > 0:
+        pass_rate = passed / total
+
+    required_keys = [
+        "extensions.typeclass.dictionary.kind",
+        "extensions.typeclass.dictionary.identifier",
+        "extensions.typeclass.dictionary.repr",
+        "typeclass.dictionary.kind",
+        "typeclass.dictionary.identifier",
+        "typeclass.dictionary.repr",
+    ]
+
+    return {
+        "metric": "typeclass.dictionary_pass_rate",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "required_audit_keys": required_keys,
+        "sources": [str(path) for path in paths],
+        "audit_sources": audit_sources,
+        "failures": failures,
+        "schema_versions": sorted(schema_versions),
+    }
+
+
+def collect_typeclass_metrics(paths: List[Path], audit_paths: List[Path]) -> Dict:
+    metadata_metric = _collect_typeclass_metadata_metric(paths, audit_paths)
+    dictionary_metric = collect_typeclass_dictionary_metric(paths, audit_paths)
+
+    combined = dict(metadata_metric)
+    related_metrics: List[Dict[str, Any]] = []
+    if dictionary_metric:
+        related_metrics.append(dictionary_metric)
+        combined["dictionary_metric"] = dictionary_metric
+        combined["dictionary_pass_rate"] = dictionary_metric.get("pass_rate")
+        combined_audit_sources = set(metadata_metric.get("audit_sources") or [])
+        combined_audit_sources.update(dictionary_metric.get("audit_sources") or [])
+        combined["audit_sources"] = sorted(combined_audit_sources)
+        combined_schema_versions = set(metadata_metric.get("schema_versions") or [])
+        combined_schema_versions.update(dictionary_metric.get("schema_versions") or [])
+        combined["schema_versions"] = sorted(combined_schema_versions)
+    else:
+        combined["dictionary_metric"] = None
+
+    if related_metrics:
+        combined["related_metrics"] = related_metrics
+
+    return combined
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -1526,7 +1758,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     if review_metrics:
         metrics_list.append(review_metrics)
 
-    all_metrics: List[Dict[str, Any]] = metrics_list + append_metrics
+    all_metrics: List[Dict[str, Any]] = []
+    for metric in metrics_list:
+        all_metrics.append(metric)
+        related = metric.get("related_metrics") if isinstance(metric, dict) else None
+        if isinstance(related, list):
+            all_metrics.extend(
+                related_metric
+                for related_metric in related
+                if isinstance(related_metric, dict)
+            )
+    all_metrics.extend(append_metrics)
 
     combined: Dict[str, Any] = {"metrics": all_metrics}
     if append_metrics:

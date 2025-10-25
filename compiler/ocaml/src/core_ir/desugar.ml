@@ -107,6 +107,8 @@ type binding_mutability = BindingImmutable | BindingMutable
 
 (* ========== 辞書生成パスの設計（Phase 2 Week 19-20 文書化） ========== *)
 
+let dict_ty = TCon (TCUser "Dict")
+
 (** 【辞書生成パスの概要】
  *
  * Typed AST で収集されたトレイト制約を Core IR の辞書ノードへ変換する。
@@ -307,10 +309,137 @@ let try_convert_to_dict_method_call (fn_expr : expr) (args : expr list)
               Some
                 (make_expr
                    (DictMethodCall (dict_arg, method_name, method_args, None))
-                   ret_ty span)
+                  ret_ty span)
           | _ -> None)
       | None -> None)
   | _ -> None
+
+type dict_binding = {
+  binding_var : var_id;
+  binding_expr : expr;
+}
+
+type dict_environment = {
+  dict_params : param list;
+  dict_bindings : dict_binding list;
+  dict_instances : dict_instance list;
+}
+
+let fold_lefti f acc lst =
+  let rec aux i acc = function
+    | [] -> acc
+    | x :: xs ->
+        let acc = f i acc x in
+        aux (i + 1) acc xs
+  in
+  aux 0 acc lst
+
+let rec combine_constraints_with_refs
+    (constraints : trait_constraint list) (dict_refs : dict_ref list) span :
+    (trait_constraint * dict_ref) list =
+  match (constraints, dict_refs) with
+  | [], [] -> []
+  | constraint_ :: rest_constraints, dict_ref :: rest_refs ->
+      (constraint_, dict_ref)
+      :: combine_constraints_with_refs rest_constraints rest_refs span
+  | [], _ | _, [] ->
+      desugar_error
+        "型クラス制約の件数と辞書参照の件数が一致しません（TYPE-003）"
+        span
+
+let make_dict_lookup trait_name type_args span =
+  let dict_ref = { trait_name; type_args; dict_span = span } in
+  make_expr (DictLookup dict_ref) dict_ty span
+
+let materialize_dict_expr (scope : var_scope_map)
+      (constraint_ : trait_constraint) (dict_ref : dict_ref) (span : span) :
+    expr * ty option =
+  match dict_ref with
+  | DictImplicit (trait, ty_args) ->
+      let impl_ty = match ty_args with hd :: _ -> hd | [] -> ty_unit in
+      let expr =
+        match generate_dict_init trait impl_ty span with
+        | Some expr -> expr
+        | None -> make_dict_lookup trait ty_args span
+      in
+      (expr, Some impl_ty)
+  | DictParam param_idx ->
+      let param_name =
+        Printf.sprintf "__dict_%s_%d" constraint_.trait_name param_idx
+      in
+      let var =
+        match lookup_var scope param_name with
+        | Some var -> var
+        | None ->
+            desugar_error
+              (Printf.sprintf
+                 "辞書パラメータ %s がスコープに存在しません（TYPE-003）"
+                 param_name)
+              span
+      in
+      (make_expr (Var var) dict_ty span, None)
+  | DictLocal name ->
+      let var =
+        match lookup_var scope name with
+        | Some var -> var
+        | None ->
+            desugar_error
+              (Printf.sprintf
+                 "辞書ローカル %s がスコープに存在しません（TYPE-003）" name)
+              span
+      in
+      (make_expr (Var var) dict_ty span, None)
+
+let prepare_dict_environment (fn_scope : var_scope_map) (decl : typed_decl) :
+    dict_environment =
+  let (constraints : trait_constraint list) = decl.tdecl_scheme.constraints in
+  let (dict_refs : dict_ref list) = decl.tdecl_dict_refs in
+  let (pairs : (trait_constraint * dict_ref) list) =
+    combine_constraints_with_refs constraints dict_refs decl.tdecl_span
+  in
+  let folder idx (params, bindings, instances) (constraint_, dict_ref) =
+    let (constraint_ : trait_constraint) = constraint_ in
+    let binding_name =
+      match dict_ref with
+      | DictParam param_idx ->
+          Printf.sprintf "__dict_%s_%d" constraint_.trait_name param_idx
+      | _ -> Printf.sprintf "__dict_%s_%d" constraint_.trait_name idx
+    in
+    match dict_ref with
+    | DictParam _ ->
+        let dict_var = VarIdGen.fresh binding_name dict_ty decl.tdecl_span in
+        bind_var fn_scope binding_name dict_var;
+        let param = { param_var = dict_var; param_default = None } in
+        (param :: params, bindings, instances)
+    | _ ->
+        let dict_expr, impl_ty =
+          materialize_dict_expr fn_scope constraint_ dict_ref
+            constraint_.constraint_span
+        in
+        let dict_var = VarIdGen.fresh binding_name dict_ty decl.tdecl_span in
+        bind_var fn_scope binding_name dict_var;
+        let binding = { binding_var = dict_var; binding_expr = dict_expr } in
+        let instances =
+          match impl_ty with
+          | Some ty ->
+              {
+                trait = constraint_.trait_name;
+                impl_ty = ty;
+                methods = [];
+              }
+              :: instances
+          | None -> instances
+        in
+        (params, binding :: bindings, instances)
+  in
+  let dict_params_rev, dict_bindings, dict_instances_rev =
+    fold_lefti folder ([], [], []) pairs
+  in
+  {
+    dict_params = List.rev dict_params_rev;
+    dict_bindings = List.rev dict_bindings;
+    dict_instances = List.rev dict_instances_rev;
+  }
 
 (* ========== パターンマッチ決定木 ========== *)
 
@@ -1501,10 +1630,8 @@ let desugar_fn_decl (decl : typed_decl) (fn_decl : typed_fn_decl) : function_def
   let fn_name = fn_decl.tfn_name.name in
   let return_ty = convert_ty fn_decl.tfn_ret_type in
 
-  (* Phase 2 Week 19-22: 制約から辞書パラメータを生成 *)
-  let dict_params =
-    generate_dict_params fn_scope decl.tdecl_scheme.constraints decl.tdecl_span
-  in
+  let dict_environment = prepare_dict_environment fn_scope decl in
+  let dict_params = dict_environment.dict_params in
 
   (* 通常のパラメータを変換 *)
   let user_params =
@@ -1520,6 +1647,14 @@ let desugar_fn_decl (decl : typed_decl) (fn_decl : typed_fn_decl) : function_def
     match fn_decl.tfn_body with
     | TFnExpr expr -> desugar_expr fn_scope expr
     | TFnBlock stmts -> desugar_block fn_scope stmts return_ty decl.tdecl_span
+  in
+  let body_expr =
+    List.fold_left
+      (fun acc binding ->
+        make_expr
+          (Let (binding.binding_var, binding.binding_expr, acc))
+          return_ty decl.tdecl_span)
+      body_expr dict_environment.dict_bindings
   in
   let entry_block =
     make_block "entry" [] [] (TermReturn body_expr) decl.tdecl_span
@@ -1541,6 +1676,13 @@ let desugar_fn_decl (decl : typed_decl) (fn_decl : typed_fn_decl) : function_def
         in
         { base_metadata with effects = entry.effect_set; capabilities }
     | None -> base_metadata
+  in
+  let metadata =
+    {
+      metadata with
+      dict_instances =
+        metadata.dict_instances @ dict_environment.dict_instances;
+    }
   in
   make_function fn_name all_params return_ty [ entry_block ] metadata
 

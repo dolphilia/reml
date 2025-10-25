@@ -175,9 +175,12 @@ let test_stage_extension_snapshot () =
         diag_with_base
         (Typeclass_metadata.extension_pairs typeclass_summary)
     in
+    let diag_with_timestamp =
+      { diag_with_pairs with timestamp = Some "1970-01-01T00:00:00Z" }
+    in
     Diagnostic.merge_audit_metadata
       (Typeclass_metadata.metadata_pairs typeclass_summary)
-      diag_with_pairs
+      diag_with_timestamp
   in
   let json_str =
     Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag

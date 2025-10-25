@@ -22,7 +22,12 @@ module CFG = Core_ir.Cfg
 let dummy_span = { start = 0; end_ = 0 }
 
 let make_typed_expr kind ty =
-  { texpr_kind = kind; texpr_ty = ty; texpr_span = dummy_span }
+  {
+    texpr_kind = kind;
+    texpr_ty = ty;
+    texpr_span = dummy_span;
+    texpr_dict_refs = [];
+  }
 
 let test_desugar_loop_continue () =
   Printf.printf "test_desugar_loop_continue ... ";

@@ -20,6 +20,25 @@ end
 
 let default_span = Ast.dummy_span
 
+let record_metadata_dict_instances (module_def : module_def) =
+  List.iter
+    (fun fn_def ->
+      List.iter
+        (fun instance ->
+          let (instance : dict_instance) = instance in
+          let methods =
+            List.map (fun (name, var) -> (name, var.vname)) instance.methods
+          in
+          Monomorph_registry.record
+            Monomorph_registry.
+              {
+                trait_name = instance.trait;
+                type_args = [ instance.impl_ty ];
+                methods;
+              })
+        fn_def.fn_metadata.dict_instances)
+    module_def.function_defs
+
 let rec build_arrow_type args ret =
   match args with
   | [] -> ret
@@ -592,6 +611,7 @@ let rewrite_module ~entries ~wrappers module_def =
 
 let apply ~(mode : mode) (m : module_def) : module_def =
   Summary.set_mode mode;
+  record_metadata_dict_instances m;
   match mode with
   | UseDictionary ->
       Summary.reset ();

@@ -14,13 +14,13 @@
       "code": "typeclass.iterator.stage_mismatch",
       "codes": [ "typeclass.iterator.stage_mismatch" ],
       "domain": "type",
-      "timestamp": "2025-10-24T22:04:26Z",
+      "timestamp": "1970-01-01T00:00:00Z",
       "notes": [
         "要求 Stage: beta / Capability Stage: experimental (core.iterator.collect)"
       ],
       "extensions": {
         "diagnostic.v2": {
-          "timestamp": "2025-10-24T22:04:26Z",
+          "timestamp": "2025-10-25T03:27:53Z",
           "codes": [ "typeclass.iterator.stage_mismatch" ]
         },
         "effects": {
@@ -110,7 +110,7 @@
           "input": "iter.reml"
         },
         "schema.version": "1.1",
-        "audit.timestamp": "2025-10-24T22:04:26Z",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
         "typeclass.trait": "Iterator",
         "typeclass.type_args": [ "SampleStream", "SampleItem" ],
         "typeclass.constraint": "Iterator<SampleStream, SampleItem>",
@@ -180,7 +180,7 @@
           "typeclass.dictionary.trait": null,
           "typeclass.dictionary.type_args": [],
           "typeclass.dictionary.repr": null,
-          "audit.timestamp": "2025-10-24T22:04:26Z",
+          "audit.timestamp": "1970-01-01T00:00:00Z",
           "schema.version": "1.1"
         },
         "audit_id": "11111111-1111-1111-1111-111111111111",

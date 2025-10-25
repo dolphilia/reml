@@ -30,6 +30,10 @@ let () =
   if codegen_debug_enabled then
     codegen_debug "REML_CODEGEN_DEBUG enabled for LLVM codegen diagnostics"
 
+let debug_dict_event event trait_name impl_ty =
+  if codegen_debug_enabled then
+    codegen_debug "[dict:%s] %s<%s>" event trait_name (string_of_ty impl_ty)
+
 (* ========== エラー型 ========== *)
 
 exception CodegenError of string
@@ -823,6 +827,7 @@ and codegen_dict_construct ctx dict_ty =
 
     (* 3. alloca で構造体領域を確保 *)
     let dict_alloca = Llvm.build_alloca struct_ty "dict" ctx.builder in
+    debug_dict_event "construct" dict_ty.dict_trait dict_ty.dict_impl_ty;
 
     (* 4. type_info フィールドを初期化（現時点ではヌル） *)
     let type_info_gep =

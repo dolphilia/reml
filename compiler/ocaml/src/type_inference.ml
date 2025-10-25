@@ -2216,11 +2216,11 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
        * 現時点では制約収集は未実装のため、常に空リストだが、
        * 将来的に制約収集が実装されたときに自動的に解決される。
        *)
-      let* _dict_refs =
+      let* dict_refs =
         if scheme.constraints = [] then Ok []
-        else (* 制約を解決 *)
-          solve_trait_constraints scheme.constraints
+        else solve_trait_constraints scheme.constraints
       in
+      let texpr = attach_expr_dict_args texpr dict_refs in
 
       (* 型付き宣言を構築 *)
       let tdecl =
@@ -2228,6 +2228,7 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
           (TLetDecl (tpat, texpr))
           scheme decl.decl_span
       in
+      let tdecl = attach_decl_dict_args tdecl dict_refs in
 
       (* 型環境に追加 *)
       let new_env = extend pat_name scheme env' in
@@ -2268,16 +2269,18 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
       let env' = apply_subst_env s2 env in
       let scheme = generalize env' final_ty in
 
-      let* _dict_refs =
+      let* dict_refs =
         if scheme.constraints = [] then Ok []
         else solve_trait_constraints scheme.constraints
       in
+      let texpr = attach_expr_dict_args texpr dict_refs in
 
       let tdecl =
         make_typed_decl decl.decl_attrs decl.decl_vis
           (TVarDecl (tpat, texpr))
           scheme decl.decl_span
       in
+      let tdecl = attach_decl_dict_args tdecl dict_refs in
 
       let new_env = extend ~mutability:Mutable pat_name scheme env' in
       Ok (tdecl, new_env, expr_constraints)
@@ -2370,10 +2373,9 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
        *
        * 関数宣言でも制約を解決する。
        *)
-      let* _dict_refs =
+      let* dict_refs =
         if scheme.constraints = [] then Ok []
-        else (* 制約を解決 *)
-          solve_trait_constraints scheme.constraints
+        else solve_trait_constraints scheme.constraints
       in
 
       (* 10a. 効果プロファイルを解析 *)
@@ -2407,6 +2409,7 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
         make_typed_decl decl.decl_attrs decl.decl_vis (TFnDecl tfn) scheme
           decl.decl_span
       in
+      let tdecl = attach_decl_dict_args tdecl dict_refs in
 
       (* 11. 型環境に追加 *)
       let new_env = extend fn.fn_name.name scheme env' in

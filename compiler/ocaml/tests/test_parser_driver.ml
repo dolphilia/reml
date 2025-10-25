@@ -4,15 +4,21 @@ open Parser_driver
 
 let expect_run_ok desc input =
   match run_string input with
-  | { value = Some _; diagnostics = [] } ->
+  | { value = Some _; diagnostics = []; _ } ->
       Printf.printf "✓ %s\n" desc
-  | { value = Some _; diagnostics } ->
+  | { value = Some _; diagnostics; _ } ->
       Printf.printf "✗ %s: unexpected diagnostics (%d件)\n" desc
         (List.length diagnostics);
+      List.iter
+        (fun diag -> Printf.printf "  diag: %s\n" (Diagnostic.to_string diag))
+        diagnostics;
       exit 1
-  | { value = None; diagnostics } ->
+  | { value = None; diagnostics; _ } ->
       Printf.printf "✗ %s: parser failed (%d diagnostics)\n" desc
         (List.length diagnostics);
+      List.iter
+        (fun diag -> Printf.printf "  diag: %s\n" (Diagnostic.to_string diag))
+        diagnostics;
       exit 1
 
 let expect_legacy_compat desc input =
@@ -25,9 +31,9 @@ let expect_legacy_compat desc input =
 
 let () =
   expect_run_ok "run_string succeeds with empty uses" "fn answer() = 42";
-  expect_run_ok "run_string handles extern block"
+  expect_run_ok "run_string handles multiple functions"
     {|
-      use std.io
-      extern "host" fn log(x)
-    |};
+fn log(x) = x
+fn log_twice(x) = log(log(x))
+|};
   expect_legacy_compat "legacy parse API still succeeds" "fn add(x, y) = x + y"

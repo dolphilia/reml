@@ -14,14 +14,14 @@
       "code": "ffi.contract.unsupported_abi",
       "codes": [ "ffi.contract.unsupported_abi" ],
       "domain": "type",
-      "timestamp": "2025-10-24T22:04:27Z",
+      "timestamp": "1970-01-01T00:00:00Z",
       "notes": [
         "指定された値: `system_v`", "要求される ABI: msvc",
         "サポートされる値: system_v, msvc, darwin_aapcs64"
       ],
       "extensions": {
         "diagnostic.v2": {
-          "timestamp": "2025-10-24T22:04:27Z",
+          "timestamp": "2025-10-25T03:27:53Z",
           "codes": [ "ffi.contract.unsupported_abi" ]
         },
         "bridge": {
@@ -71,7 +71,7 @@
         "bridge.source_span": { "start": 0, "end": 168 },
         "cli.audit_id": "00000000-0000-0000-0000-000000000000",
         "schema.version": "1.1",
-        "audit.timestamp": "2025-10-24T22:04:27Z",
+        "audit.timestamp": "2025-10-25T03:27:53Z",
         "cli.change_set": {
           "command": "remlc-tests",
           "input": "tests/golden/diagnostics/ffi/unsupported-abi.reml"
@@ -106,7 +106,7 @@
             "command": "remlc-tests",
             "input": "tests/golden/diagnostics/ffi/unsupported-abi.reml"
           },
-          "audit.timestamp": "2025-10-24T22:04:27Z",
+          "audit.timestamp": "2025-10-25T03:27:53Z",
           "schema.version": "1.1"
         },
         "audit_id": "00000000-0000-0000-0000-000000000000",

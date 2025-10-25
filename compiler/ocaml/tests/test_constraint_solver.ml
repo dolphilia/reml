@@ -35,13 +35,13 @@ let assert_none msg opt =
 
 let assert_ok msg result =
   match result with
-  | Ok _ -> ()
-  | Error _ -> failwith ("Expected Ok, got Error: " ^ msg)
+  | Result.Ok _ -> ()
+  | Result.Error _ -> failwith ("Expected Ok, got Error: " ^ msg)
 
 let assert_error msg result =
   match result with
-  | Ok _ -> failwith ("Expected Error, got Ok: " ^ msg)
-  | Error _ -> ()
+  | Result.Ok _ -> failwith ("Expected Error, got Ok: " ^ msg)
+  | Result.Error _ -> ()
 
 (* ========== 1. プリミティブ型の制約解決テスト ========== *)
 
