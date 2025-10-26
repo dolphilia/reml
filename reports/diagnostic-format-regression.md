@@ -13,6 +13,7 @@
 ## 2. 差分レポートのまとめ方
 - 変更前後の JSON を `jq --sort-keys` で整形し、`diff -u` で比較する。
 - `effects.*` や `bridge.*` など拡張キーの追加は、対応する仕様書 (`docs/spec/3-6-core-diagnostics-audit.md` 等) を参照して説明を添える。
+- `extensions.typeclass.dictionary.*` / `typeclass.dictionary.*` に変更が生じた場合は、辞書監査ゴールデン `compiler/ocaml/tests/golden/typeclass_dictionary_resolved.json.golden` を更新し、`typeclass.dictionary_pass_rate` のトラッキングに差分内容を反映する。
 - 期待値の変更がある場合は、CLI テキスト出力も取得し、利用者視点で破壊的でないかを確認する。
 - Phase 2-4 以降は `tooling/review/audit-diff.py --base <path> --target <path>` を併用し、Markdown/HTML レポート (`reports/audit/review/<commit>/diff.{md,html}`) を生成する。CI では `tooling/ci/publish-audit-diff.py` が同レポートを PR コメントへ要約投稿するため、レビュー担当者はコメントリンクを起点に確認する。
 - `tooling/review/audit-diff.py --query-file tooling/review/presets/stage-regressions.dsl` のようにクエリファイルを指定して重要メタデータのみ抽出し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の指標（`diagnostic_regressions`, `audit_diff.regressions` など）に基づいて影響範囲を判断する。
@@ -27,6 +28,7 @@
 ## 4. レビュー用チェックリスト
 - [ ] JSON スキーマ (`tooling/json-schema/diagnostic-v2.schema.json`) とサンプル出力が一致している。
 - [ ] `scripts/validate-diagnostic-json.sh` の既定対象（`compiler/ocaml/tests/golden/diagnostics`, `compiler/ocaml/tests/golden/audit`）でエラーがない。
+- [ ] `compiler/ocaml/tests/golden/typeclass_dictionary_resolved.json.golden` の辞書フィールド（`kind`, `identifier`, `repr`）が `extensions.*`／`audit_metadata` の双方で欠落していない。
 - [ ] `npm run ci --prefix tooling/lsp/tests/client_compat` が成功する。
 - [ ] `docs/plans/bootstrap-roadmap/2-4-status.md` に進捗や既知リスクが反映されている。
 - [ ] `tooling/review/audit-diff.py` で生成した `diff.md` / `diff.html` の差分サマリが付属し、`diagnostic.regressions`・`metadata.changed` の値がレビュー対象に共有されている。

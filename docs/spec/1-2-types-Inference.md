@@ -117,6 +117,7 @@ impl Add<i64, i64, i64> for i64 { fn add(a,b) = a + b }
 - `Iterator` などのイテレーション系トレイトは、辞書生成時に **Stage 要件**と **Capability ID** をメタデータとして保持する。`solve_iterator` は `effect.stage.iterator.required` / `effect.stage.iterator.actual` / `effect.stage.iterator.capability` / `effect.stage.iterator.source` を含む辞書情報を返し、Core IR の `DictMethodCall` に `effect.stage.*` 拡張を付与する。【F:3-1-core-prelude-iteration.md†L160-L200】【F:3-8-core-runtime-capability.md†L210-L260】
 - 型推論フェーズは `Diagnostic.extensions.effects.stage` に `required` / `actual` を転記し、監査ログ（`AuditEnvelope.metadata`）へ同一キーで集約する。`tooling/ci/collect-iterator-audit-metrics.py` はこれらキーの有無を検証し、`tooling/ci/sync-iterator-audit.sh` が `verify_llvm_ir.sh` のログと突合することで `0-3-audit-and-metrics.md` へ記録するワークフローを提供する。
 - 辞書渡しと PoC モノモルフィゼーションの比較は `compiler/ocaml/scripts/benchmark_typeclass.sh` の `--typeclass-mode={dictionary,monomorph}` を用いる。Phase 2 では `--static-only` を指定して LLVM IR 行数・ビットコードサイズなど静的指標を JSON (`benchmark_results/static_comparison.json`) に出力し、実測ベンチマークは Phase 3 のループ実装後に再開する。
+- Phase 2-5 TYPE-003 計画では辞書監査フィールドを含む診断ゴールデン（`compiler/ocaml/tests/golden/typeclass_dictionary_resolved.json.golden`）を整備し、`typeclass.dictionary_pass_rate` 指標と `AuditEnvelope.metadata["typeclass.dictionary.*"]` の整合を継続検証する。【P:docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-003-proposal.md†L61-L66】【T:compiler/ocaml/tests/golden/typeclass_dictionary_resolved.json.golden†L1-L107】
 
 ---
 

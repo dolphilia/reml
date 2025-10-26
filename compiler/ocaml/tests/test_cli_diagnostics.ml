@@ -211,6 +211,86 @@ let test_stage_extension_snapshot () =
     exit 1)
   else Printf.printf "✓ typeclass.iterator.stage_mismatch JSON スナップショット\n"
 
+let test_typeclass_dictionary_snapshot () =
+  let start_pos =
+    Diagnostic.{ filename = "dict.reml"; line = 5; column = 7; offset = 58 }
+  in
+  let end_pos =
+    Diagnostic.{ filename = "dict.reml"; line = 5; column = 18; offset = 69 }
+  in
+  let span = Diagnostic.{ start_pos; end_pos } in
+  let diag =
+    Diagnostic.make_type_error
+      ~code:"typeclass.dictionary.resolved"
+      ~message:"Eq 辞書を Core IR へ渡して監査ログへ記録しました"
+      ~span ()
+    |> Diagnostic.set_audit_id "22222222-2222-2222-2222-222222222222"
+    |> Diagnostic.set_change_set
+         (`Assoc
+           [
+             ("command", `String "typeclass-diagnostic-test");
+             ("input", `String "dict.reml");
+           ])
+  in
+  let ty_i64 = Types.TCon (Types.TCInt Types.I64) in
+  let typeclass_constraint : Types.trait_constraint =
+    {
+      trait_name = "Eq";
+      type_args = [ ty_i64 ];
+      constraint_span = Ast.{ start = start_pos.offset; end_ = end_pos.offset };
+    }
+  in
+  let dict_ref = Constraint_solver.DictImplicit ("Eq", [ ty_i64 ]) in
+  let typeclass_summary =
+    Typeclass_metadata.make_summary ~constraint_:typeclass_constraint
+      ~resolution_state:Typeclass_metadata.Resolved ~dict_ref:dict_ref ()
+  in
+  let diag =
+    let diag_with_base =
+      Diagnostic.set_extension "typeclass"
+        (Typeclass_metadata.extension_json typeclass_summary) diag
+    in
+    let diag_with_pairs =
+      List.fold_left
+        (fun acc (key, value) -> Diagnostic.set_extension key value acc)
+        diag_with_base
+        (Typeclass_metadata.extension_pairs typeclass_summary)
+    in
+    let diag_with_timestamp =
+      { diag_with_pairs with timestamp = Some "1970-01-01T00:00:00Z" }
+    in
+    Diagnostic.merge_audit_metadata
+      (Typeclass_metadata.metadata_pairs typeclass_summary)
+      diag_with_timestamp
+  in
+  let json_str =
+    Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
+  in
+  let golden_path =
+    resolve "tests/golden/typeclass_dictionary_resolved.json.golden"
+  in
+  if not (Sys.file_exists golden_path) then (
+    let actual_path =
+      write_actual_snapshot "typeclass_dictionary_resolved" json_str
+    in
+    Printf.eprintf
+      "✗ typeclass.dictionary.resolved: ゴールデン %s が存在しません。\n"
+      golden_path;
+    Printf.eprintf "  現在の出力を %s に書き出しました。\n" actual_path;
+    exit 1);
+  let expected =
+    In_channel.with_open_text golden_path (fun ic -> In_channel.input_all ic)
+  in
+  if String.trim expected <> String.trim json_str then (
+    let actual_path =
+      write_actual_snapshot "typeclass_dictionary_resolved" json_str
+    in
+    Printf.printf "✗ typeclass.dictionary.resolved: JSON スナップショットが一致しません\n";
+    Printf.printf "  ゴールデン: %s\n" golden_path;
+    Printf.printf "  現在の出力を %s に書き出しました。\n" actual_path;
+    exit 1)
+  else Printf.printf "✓ typeclass.dictionary.resolved JSON スナップショット\n"
+
 (** ソースコードスニペットのテスト *)
 let test_snippet_display () =
   let diag = make_test_diagnostic () in
@@ -276,6 +356,7 @@ let () =
   test_color_output ();
   test_json_output ();
   test_stage_extension_snapshot ();
+  test_typeclass_dictionary_snapshot ();
   test_snippet_display ();
   test_multiple_diagnostics ();
   Printf.printf "\n✓ すべてのテストが成功しました\n"
