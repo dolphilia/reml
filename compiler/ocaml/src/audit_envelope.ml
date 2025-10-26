@@ -49,10 +49,13 @@ let empty_envelope =
   }
 
 let iso8601_timestamp () =
-  let tm = Unix.gmtime (Unix.time ()) in
-  Printf.sprintf "%04d-%02d-%02dT%02d:%02d:%02dZ" (tm.Unix.tm_year + 1900)
-    (tm.Unix.tm_mon + 1) tm.Unix.tm_mday tm.Unix.tm_hour tm.Unix.tm_min
-    tm.Unix.tm_sec
+  match Sys.getenv_opt "REMLC_FIXED_TIMESTAMP" with
+  | Some value when String.trim value <> "" -> value
+  | _ ->
+      let tm = Unix.gmtime (Unix.time ()) in
+      Printf.sprintf "%04d-%02d-%02dT%02d:%02d:%02dZ" (tm.Unix.tm_year + 1900)
+        (tm.Unix.tm_mon + 1) tm.Unix.tm_mday tm.Unix.tm_hour tm.Unix.tm_min
+        tm.Unix.tm_sec
 
 let metadata_of_json = function
   | `Assoc pairs -> pairs

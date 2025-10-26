@@ -220,23 +220,89 @@ let ffi_snapshot_param_types (snapshot : ffi_bridge_snapshot) =
 let ffi_snapshot_return_type (snapshot : ffi_bridge_snapshot) =
   snapshot.return_type
 
+type typeclass_stage_metadata = Typeclass_metadata.stage_metadata
+
+let typeclass_stage_registry :
+    (string, typeclass_stage_metadata) Hashtbl.t ref =
+  ref (Hashtbl.create 16)
+
+let typeclass_stage_bindings :
+    (string, typeclass_stage_metadata) Hashtbl.t ref =
+  ref (Hashtbl.create 32)
+
+let reset_typeclass_stage_metadata () =
+  typeclass_stage_registry := Hashtbl.create 16;
+  typeclass_stage_bindings := Hashtbl.create 32
+
+let reset_typeclass_stage_bindings () =
+  typeclass_stage_bindings := Hashtbl.create 32
+
+let register_typeclass_stage_binding name metadata =
+  Hashtbl.replace !typeclass_stage_bindings name metadata
+
+let lookup_typeclass_stage_binding name =
+  Hashtbl.find_opt !typeclass_stage_bindings name
+
+let record_typeclass_stage_metadata (dict_ref : Constraint_solver.dict_ref)
+    (metadata : typeclass_stage_metadata) =
+  let key = Constraint_solver.string_of_dict_ref dict_ref in
+  Hashtbl.replace !typeclass_stage_registry key metadata
+
+let lookup_typeclass_stage_metadata (dict_ref : Constraint_solver.dict_ref) =
+  let key = Constraint_solver.string_of_dict_ref dict_ref in
+  Hashtbl.find_opt !typeclass_stage_registry key
+
+let lookup_typeclass_stage_metadata_by_key (key : string) =
+  Hashtbl.find_opt !typeclass_stage_registry key
+
+let iterator_stage_metadata_of (info : Constraint_solver.iterator_dict_info) :
+    typeclass_stage_metadata =
+  let actual_stage =
+    let value = String.trim info.stage_actual in
+    if String.equal value "" then None else Some value
+  in
+  let capability =
+    match info.capability with
+    | Some cap when String.equal (String.trim cap) "" -> None
+    | other -> other
+  in
+  let iterator_source =
+    let source = Types.string_of_ty info.source_ty |> String.trim in
+    if String.equal source "" then None else Some source
+  in
+  {
+    stage_required = Some info.stage_requirement;
+    stage_actual = actual_stage;
+    stage_capability = capability;
+    stage_provider = None;
+    stage_manifest_path = None;
+    stage_iterator_kind = Some info.kind;
+    stage_iterator_source = iterator_source;
+    stage_trace = Some Effect_profile.stage_trace_empty;
+  }
+
 type typeclass_snapshot = Typeclass_metadata.summary
 
 let typeclass_snapshots : typeclass_snapshot list ref = ref []
 
-let reset_typeclass_snapshots () = typeclass_snapshots := []
+let reset_typeclass_snapshots () =
+  typeclass_snapshots := [];
+  reset_typeclass_stage_metadata ()
 
 let record_typeclass_snapshot (snapshot : typeclass_snapshot) =
   typeclass_snapshots := snapshot :: !typeclass_snapshots
 
 let current_typeclass_snapshots () = List.rev !typeclass_snapshots
 
-let record_typeclass_success (constraint_ : trait_constraint)
+let record_typeclass_success ?stage_info (constraint_ : trait_constraint)
     (dict_ref : Constraint_solver.dict_ref) =
+  (match stage_info with
+  | Some metadata -> record_typeclass_stage_metadata dict_ref metadata
+  | None -> ());
   let summary =
     Typeclass_metadata.make_summary ~constraint_
-      ~resolution_state:Typeclass_metadata.Resolved ~dict_ref:dict_ref
-      ()
+      ~resolution_state:Typeclass_metadata.Resolved
+      ~dict_ref:dict_ref ?stage_info ()
   in
   record_typeclass_snapshot summary
 
@@ -248,29 +314,50 @@ let record_typeclass_error (err : Constraint_solver.constraint_error) =
       constraint_span = err.span;
     }
   in
-  let state, candidates, pending, generalized =
+  let trim_option opt =
+    match opt with
+    | Some value ->
+        let trimmed = String.trim value in
+        if String.equal trimmed "" then None else Some trimmed
+    | None -> None
+  in
+  let state, candidates, pending, generalized, stage_info =
     match err.reason with
     | Constraint_solver.NoImpl ->
-        (Typeclass_metadata.Unresolved, [], [], [])
+        (Typeclass_metadata.Unresolved, [], [], [], None)
     | Constraint_solver.AmbiguousImpl dicts ->
-        (Typeclass_metadata.Ambiguous, dicts, [], [])
+        (Typeclass_metadata.Ambiguous, dicts, [], [], None)
     | Constraint_solver.CyclicConstraint cycle ->
         ( Typeclass_metadata.Cyclic,
           [],
           List.map Types.string_of_trait_constraint cycle,
-          [] )
-    | Constraint_solver.StageMismatch _ ->
-        (Typeclass_metadata.StageMismatch, [], [], [])
+          [],
+          None )
+    | Constraint_solver.StageMismatch info ->
+        let stage_info : typeclass_stage_metadata =
+          {
+            stage_required = Some info.required;
+            stage_actual = trim_option info.actual;
+            stage_capability = trim_option info.capability;
+            stage_provider = trim_option info.provider;
+            stage_manifest_path = trim_option info.manifest_path;
+            stage_iterator_kind = info.iterator_kind;
+            stage_iterator_source = trim_option info.iterator_source;
+            stage_trace = Some info.stage_trace;
+          }
+        in
+        (Typeclass_metadata.StageMismatch, [], [], [], Some stage_info)
     | Constraint_solver.UnresolvedTypeVar tv ->
         ( Typeclass_metadata.UnresolvedTypeVar,
           [],
           [],
-          [ Types.string_of_type_var tv ] )
+          [ Types.string_of_type_var tv ],
+          None )
   in
   let summary =
     Typeclass_metadata.make_summary ~constraint_
       ~resolution_state:state ~candidates ~pending
-      ~generalized_typevars:generalized ()
+      ~generalized_typevars:generalized ?stage_info ()
   in
   record_typeclass_snapshot summary;
   summary
@@ -278,7 +365,15 @@ let record_typeclass_error (err : Constraint_solver.constraint_error) =
 let typeclass_audit_events ?audit_id ?change_set () =
   current_typeclass_snapshots ()
   |> List.map (fun summary ->
-         Audit_envelope.make ?audit_id ?change_set
+         let capability =
+           match summary.Typeclass_metadata.stage_info with
+           | Some stage ->
+               (match stage.stage_capability with
+               | Some cap when String.trim cap <> "" -> Some cap
+               | _ -> None)
+           | None -> None
+         in
+         Audit_envelope.make ?audit_id ?change_set ?capability
            ~category:(Typeclass_metadata.audit_category summary)
            ~metadata_pairs:(Typeclass_metadata.metadata_pairs summary)
            ())
@@ -813,7 +908,8 @@ let solve_iterator_constraint (constraint_ : trait_constraint) :
   let registry = get_impl_registry () in
   match Constraint_solver.solve_iterator_dict registry constraint_ with
   | Ok info ->
-      record_typeclass_success constraint_ info.dict_ref;
+      let stage_info = iterator_stage_metadata_of info in
+      record_typeclass_success ~stage_info constraint_ info.dict_ref;
       record_monomorph_instances registry [ info.dict_ref ];
       Ok info
   | Error err ->

@@ -20,7 +20,7 @@
       ],
       "extensions": {
         "diagnostic.v2": {
-          "timestamp": "2025-10-25T03:27:53Z",
+          "timestamp": "1970-01-01T00:00:00Z",
           "codes": [ "typeclass.iterator.stage_mismatch" ]
         },
         "effects": {
@@ -61,7 +61,8 @@
           "candidates": [],
           "pending": [],
           "generalized_typevars": [],
-          "graph": { "export_dot": null }
+          "graph": { "export_dot": null },
+          "stage": null
         },
         "typeclass.trait": "Iterator",
         "typeclass.type_args": [ "SampleStream", "SampleItem" ],

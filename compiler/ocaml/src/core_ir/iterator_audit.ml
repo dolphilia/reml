@@ -13,6 +13,71 @@ type entry = {
   effect_tag : effect_tag;
 }
 
+let entry_from_stage_metadata fn_name method_name span
+    (stage : Type_inference.typeclass_stage_metadata) : entry option =
+  let open Typeclass_metadata in
+  let required_stage =
+    match stage.stage_required with
+    | Some (Constraint_solver.IteratorStageExact stage_name) ->
+        Some (StageExact (Effect.stage_id_of_string stage_name))
+    | Some (Constraint_solver.IteratorStageAtLeast stage_name) ->
+        Some (StageAtLeast (Effect.stage_id_of_string stage_name))
+    | None -> None
+  in
+  match required_stage with
+  | None -> None
+  | Some required_stage ->
+      let actual_stage =
+        match stage.stage_actual with
+        | Some actual ->
+            let trimmed = String.trim actual in
+            if String.equal trimmed "" then None
+            else Some (Effect.stage_id_of_string trimmed)
+        | None -> None
+      in
+      let capability =
+        match stage.stage_capability with
+        | Some cap ->
+            let normalized = String.lowercase_ascii (String.trim cap) in
+            if String.equal normalized "" then None else Some normalized
+        | None -> None
+      in
+      let iterator_kind =
+        match stage.stage_iterator_kind with
+        | Some Constraint_solver.IteratorArrayLike -> Some "array_like"
+        | Some Constraint_solver.IteratorCoreIter -> Some "core_iter"
+        | Some Constraint_solver.IteratorOptionLike -> Some "option_like"
+        | Some Constraint_solver.IteratorResultLike -> Some "result_like"
+        | Some (Constraint_solver.IteratorCustom name) ->
+            Some (Printf.sprintf "custom:%s" name)
+        | None -> None
+      in
+      let iterator_source =
+        match stage.stage_iterator_source with
+        | Some src ->
+            let trimmed = String.trim src in
+            if String.equal trimmed "" then None else Some trimmed
+        | None -> None
+      in
+      let effect_tag : effect_tag =
+        {
+          effect_name =
+            Printf.sprintf "effect.stage.iterator.%s" method_name;
+          effect_span = span;
+        }
+      in
+      Some
+        {
+          function_name = fn_name;
+          method_name;
+          required_stage = Some required_stage;
+          actual_stage;
+          capability;
+          iterator_kind;
+          iterator_source;
+          effect_tag;
+        }
+
 let entry_key (entry : entry) =
   let capability = Option.value entry.capability ~default:"<none>" in
   let kind = Option.value entry.iterator_kind ~default:"<unspecified>" in
@@ -78,7 +143,18 @@ let rec collect_expr fn_name acc expr =
       let acc = List.fold_left (collect_expr fn_name) acc args in
       match audit_opt with
       | Some audit -> make_entry fn_name method_name audit :: acc
-      | None -> acc)
+      | None -> (
+          let fallback_entry =
+            match dict_expr.expr_kind with
+            | Var var ->
+                Option.bind
+                  (Type_inference.lookup_typeclass_stage_binding var.vname)
+                  (fun stage ->
+                    entry_from_stage_metadata fn_name method_name
+                      dict_expr.expr_span stage)
+            | _ -> None
+          in
+          match fallback_entry with Some entry -> entry :: acc | None -> acc))
   | Loop loop_info ->
       let acc =
         match loop_info.loop_kind with

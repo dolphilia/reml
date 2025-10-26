@@ -20,7 +20,7 @@
       ],
       "extensions": {
         "diagnostic.v2": {
-          "timestamp": "2025-10-25T03:27:53Z",
+          "timestamp": "1970-01-01T00:00:00Z",
           "codes": [ "effects.contract.residual_leak" ]
         },
         "effects": {
@@ -72,7 +72,7 @@
       },
       "audit_metadata": {
         "schema.version": "1.1",
-        "audit.timestamp": "2025-10-25T03:27:53Z",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
         "effect.residual.tags": [ "panic" ],
         "effect.capability": "core.runtime",
         "effect.stage.actual": "stable",
@@ -92,7 +92,7 @@
             { "source": "typer", "stage": "stable" },
             { "source": "runtime", "stage": "stable" }
           ],
-          "audit.timestamp": "2025-10-25T03:27:53Z",
+          "audit.timestamp": "1970-01-01T00:00:00Z",
           "schema.version": "1.1"
         }
       }

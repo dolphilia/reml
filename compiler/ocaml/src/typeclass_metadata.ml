@@ -12,6 +12,26 @@ type resolution_state =
   | Pending
   | Error of string
 
+type stage_metadata = {
+  stage_required :
+    Constraint_solver.iterator_stage_requirement option;
+      (** 要求される Stage （Iterator 系のみ） *)
+  stage_actual : string option;
+      (** Capability Registry が報告した Stage *)
+  stage_capability : string option;
+      (** 関連する Capability ID *)
+  stage_provider : string option;
+      (** Stage 情報を提供した主体（未実装の場合は None） *)
+  stage_manifest_path : string option;
+      (** Capability マニフェストのパス（未実装の場合は None） *)
+  stage_iterator_kind : Constraint_solver.iterator_dict_kind option;
+      (** Iterator 辞書の種別 *)
+  stage_iterator_source : string option;
+      (** Iterator のソース（型名など） *)
+  stage_trace : Effect_profile.stage_trace option;
+      (** Stage 判定のトレース情報 *)
+}
+
 type summary = {
   constraint_ : trait_constraint;
   span : Ast.span;
@@ -21,10 +41,11 @@ type summary = {
   pending : string list;
   generalized_typevars : string list;
   graph_export : string option;
+  stage_info : stage_metadata option;
 }
 
 let make_summary ?dict_ref ?(candidates = []) ?(pending = [])
-    ?(generalized_typevars = []) ?graph_export ~constraint_
+    ?(generalized_typevars = []) ?graph_export ?stage_info ~constraint_
     ~resolution_state () : summary =
   {
     constraint_;
@@ -35,6 +56,7 @@ let make_summary ?dict_ref ?(candidates = []) ?(pending = [])
     pending;
     generalized_typevars;
     graph_export;
+    stage_info;
   }
 
 let resolution_state_to_string = function
@@ -54,6 +76,106 @@ let json_list_of_strings lst =
 
 let json_list_of_types tys =
   `List (List.map (fun ty -> `String (string_of_ty ty)) tys)
+
+let string_of_stage_requirement
+    (req : Constraint_solver.iterator_stage_requirement) =
+  match req with
+  | Constraint_solver.IteratorStageExact stage -> stage
+  | Constraint_solver.IteratorStageAtLeast stage ->
+      Printf.sprintf "at_least:%s" stage
+
+let string_of_iterator_kind (kind : Constraint_solver.iterator_dict_kind) =
+  match kind with
+  | Constraint_solver.IteratorArrayLike -> "array_like"
+  | Constraint_solver.IteratorCoreIter -> "core_iter"
+  | Constraint_solver.IteratorOptionLike -> "option_like"
+  | Constraint_solver.IteratorResultLike -> "result_like"
+  | Constraint_solver.IteratorCustom name -> Printf.sprintf "custom:%s" name
+
+let stage_json_of (stage : stage_metadata) =
+  let as_json opt =
+    match opt with
+    | Some value when String.trim value <> "" -> `String value
+    | _ -> `Null
+  in
+  let required_json =
+    match stage.stage_required with
+    | Some req -> `String (string_of_stage_requirement req)
+    | None -> `Null
+  in
+  let iterator_kind_json =
+    match stage.stage_iterator_kind with
+    | Some kind -> `String (string_of_iterator_kind kind)
+    | None -> `Null
+  in
+  let trace_json =
+    match stage.stage_trace with
+    | Some trace -> Effect_profile.stage_trace_to_json trace
+    | None -> `Null
+  in
+  `Assoc
+    [
+      ("required", required_json);
+      ("actual", as_json stage.stage_actual);
+      ("capability", as_json stage.stage_capability);
+      ("provider", as_json stage.stage_provider);
+      ("manifest_path", as_json stage.stage_manifest_path);
+      ("iterator_kind", iterator_kind_json);
+      ("iterator_source", as_json stage.stage_iterator_source);
+      ("trace", trace_json);
+    ]
+
+let stage_metadata_pairs (stage : stage_metadata) =
+  let add_if_some acc key opt =
+    match opt with
+    | Some value ->
+        let trimmed = String.trim value in
+        if String.equal trimmed "" then acc
+        else (key, `String trimmed) :: acc
+    | None -> acc
+  in
+  let acc =
+    match stage.stage_required with
+    | Some req ->
+        let value = string_of_stage_requirement req in
+        [
+          ("effect.stage.iterator.required", `String value);
+          ("effect.stage.required", `String value);
+        ]
+    | None -> []
+  in
+  let acc =
+    match stage.stage_iterator_kind with
+    | Some kind ->
+        ("effect.stage.iterator.kind", `String (string_of_iterator_kind kind))
+        :: acc
+    | None -> acc
+  in
+  let acc =
+    match stage.stage_trace with
+    | Some trace ->
+        ("effect.stage_trace", Effect_profile.stage_trace_to_json trace) :: acc
+    | None -> acc
+  in
+  let acc = add_if_some acc "effect.stage.iterator.actual" stage.stage_actual in
+  let acc = add_if_some acc "effect.stage.actual" stage.stage_actual in
+  let acc =
+    add_if_some acc "effect.stage.iterator.capability" stage.stage_capability
+  in
+  let acc = add_if_some acc "effect.capability" stage.stage_capability in
+  let acc = add_if_some acc "effect.provider" stage.stage_provider in
+  let acc = add_if_some acc "effect.manifest_path" stage.stage_manifest_path in
+  let acc =
+    match stage.stage_iterator_source with
+    | Some src ->
+        let trimmed = String.trim src in
+        if String.equal trimmed "" then acc
+        else
+          ("effect.stage.iterator.source_detail", `String trimmed)
+          :: ("effect.stage.iterator.source", `String trimmed) :: acc
+    | None -> acc
+  in
+  List.rev acc
 
 let dictionary_json_of_ref (dict_ref : Constraint_solver.dict_ref) =
   let repr = Constraint_solver.string_of_dict_ref dict_ref in
@@ -166,6 +288,11 @@ let candidates_json candidates =
 
 let extension_json summary =
   let dictionary_json, _ = dictionary_summary summary.dict_ref in
+  let stage_json =
+    match summary.stage_info with
+    | Some stage -> stage_json_of stage
+    | None -> `Null
+  in
   let graph_json =
     `Assoc
       [
@@ -189,6 +316,7 @@ let extension_json summary =
       ( "generalized_typevars",
         json_list_of_strings summary.generalized_typevars );
       ("graph", graph_json);
+      ("stage", stage_json);
     ]
 
 let extension_pairs summary =
@@ -215,12 +343,17 @@ let extension_pairs summary =
       ("typeclass.span.end", `Int summary.span.end_);
     ]
   in
+  let stage_pairs =
+    match summary.stage_info with
+    | Some stage -> stage_metadata_pairs stage
+    | None -> []
+  in
   let detail =
     match resolution_state_detail summary.resolution_state with
     | Some text -> [ ("typeclass.resolution_state_detail", `String text) ]
     | None -> []
   in
-  base @ dictionary_flat @ detail
+  base @ dictionary_flat @ stage_pairs @ detail
 
 let metadata_pairs summary =
   extension_pairs summary

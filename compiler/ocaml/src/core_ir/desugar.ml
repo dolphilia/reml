@@ -83,6 +83,54 @@ let effect_stage_requirement_to_ir = function
   | Effect_profile.StageExact stage -> Ir.StageExact stage
   | Effect_profile.StageAtLeast stage -> Ir.StageAtLeast stage
 
+let iterator_audit_from_stage
+    (stage : Type_inference.typeclass_stage_metadata) method_name span =
+  let open Typeclass_metadata in
+  match stage.stage_required with
+  | None -> None
+  | Some requirement ->
+      let required_stage = stage_requirement_to_ir requirement in
+      let audit_actual_stage =
+        match stage.stage_actual with
+        | Some actual ->
+            let trimmed = String.trim actual in
+            if String.equal trimmed "" then None
+            else Some (Effect.stage_id_of_string trimmed)
+        | None -> None
+      in
+      let audit_capability =
+        match stage.stage_capability with
+        | Some cap when not (String.equal (String.trim cap) "") ->
+            Some { cap_name = cap; cap_span = span }
+        | _ -> None
+      in
+      let audit_iterator_kind =
+        match stage.stage_iterator_kind with
+        | Some Constraint_solver.IteratorArrayLike -> Some "array_like"
+        | Some Constraint_solver.IteratorCoreIter -> Some "core_iter"
+        | Some Constraint_solver.IteratorOptionLike -> Some "option_like"
+        | Some Constraint_solver.IteratorResultLike -> Some "result_like"
+        | Some (Constraint_solver.IteratorCustom name) ->
+            Some (Printf.sprintf "custom:%s" name)
+        | None -> None
+      in
+      let audit_iterator_source = stage.stage_iterator_source in
+      Some
+        {
+          audit_method = method_name;
+          audit_effect =
+            {
+              effect_name =
+                Printf.sprintf "effect.stage.iterator.%s" method_name;
+              effect_span = span;
+            };
+          audit_required_stage = Some required_stage;
+          audit_capability;
+          audit_actual_stage;
+          audit_iterator_kind;
+          audit_iterator_source;
+        }
+
 (* ========== 変数スコープマップ ========== *)
 
 type var_scope_map = (string, var_id) Hashtbl.t
@@ -305,10 +353,15 @@ let try_convert_to_dict_method_call (fn_expr : expr) (args : expr list)
           match dict_arg.expr_kind with
           | Var dict_var
             when String.starts_with ~prefix:"__dict_" dict_var.vname ->
-              (* DictMethodCall ノードを生成 *)
+              let audit =
+                Option.bind
+                  (Type_inference.lookup_typeclass_stage_binding dict_var.vname)
+                  (fun stage ->
+                    iterator_audit_from_stage stage method_name span)
+              in
               Some
                 (make_expr
-                   (DictMethodCall (dict_arg, method_name, method_args, None))
+                   (DictMethodCall (dict_arg, method_name, method_args, audit))
                   ret_ty span)
           | _ -> None)
       | None -> None)
@@ -405,10 +458,17 @@ let prepare_dict_environment (fn_scope : var_scope_map) (decl : typed_decl) :
           Printf.sprintf "__dict_%s_%d" constraint_.trait_name param_idx
       | _ -> Printf.sprintf "__dict_%s_%d" constraint_.trait_name idx
     in
+    let stage_metadata =
+      Type_inference.lookup_typeclass_stage_metadata dict_ref
+    in
     match dict_ref with
     | DictParam _ ->
         let dict_var = VarIdGen.fresh binding_name dict_ty decl.tdecl_span in
         bind_var fn_scope binding_name dict_var;
+        Option.iter
+          (fun metadata ->
+            Type_inference.register_typeclass_stage_binding binding_name metadata)
+          stage_metadata;
         let param = { param_var = dict_var; param_default = None } in
         (param :: params, bindings, instances)
     | _ ->
@@ -418,6 +478,10 @@ let prepare_dict_environment (fn_scope : var_scope_map) (decl : typed_decl) :
         in
         let dict_var = VarIdGen.fresh binding_name dict_ty decl.tdecl_span in
         bind_var fn_scope binding_name dict_var;
+        Option.iter
+          (fun metadata ->
+            Type_inference.register_typeclass_stage_binding binding_name metadata)
+          stage_metadata;
         let binding = { binding_var = dict_var; binding_expr = dict_expr } in
         let instances =
           match impl_ty with
@@ -1627,6 +1691,7 @@ let desugar_param (fn_scope : var_scope_map) (index : int) (param : typed_param)
 let desugar_fn_decl (decl : typed_decl) (fn_decl : typed_fn_decl) : function_def
     =
   let fn_scope = create_scope_map () in
+  Type_inference.reset_typeclass_stage_bindings ();
   let fn_name = fn_decl.tfn_name.name in
   let return_ty = convert_ty fn_decl.tfn_ret_type in
 

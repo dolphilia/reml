@@ -3,6 +3,8 @@
  * Phase 1-6 の開発者体験整備タスクにおいて、診断フォーマッタの動作を検証する。
  *)
 
+let () = Unix.putenv "REMLC_FIXED_TIMESTAMP" "1970-01-01T00:00:00Z"
+
 let project_root =
   match Sys.getenv_opt "DUNE_SOURCEROOT" with
   | Some root -> root
