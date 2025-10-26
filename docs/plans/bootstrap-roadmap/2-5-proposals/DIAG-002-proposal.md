@@ -63,6 +63,19 @@ let ensure_audit audit_opt =
    - 実装  
      - `diagnostic_of_legacy_internal` に `Audit_envelope.has_required_keys` のログ出力／例外を追加し、Legacy 変換経路で必須メタデータが欠けた場合は即座に検出できるようにする。必要なら `Audit_envelope.ensure_missing_metadata` の必須キー集合を `cli.audit_id` / `cli.change_set` 以外にも拡張する。  
      - `Diagnostic_serialization.of_diagnostic` 内で `Audit_envelope.has_required_keys diag.audit` と `String.length diag.timestamp > 0` を検査し、違反時に `Invalid_argument` を発生させたうえで CLI/LSP 側でエラーメッセージを出力するフローを定義する。  
+     - **監査 ID / change_set ポリシー策定（2025-11-05 合意）**  
+       - `auto-*` / `legacy-*` のハッシュプレースホルダを廃止し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` §0.3.1 で管理する `AuditEnvelope.build_id` を基点とした公式フォーマットへ移行する。  
+       - CLI/CI から発行される診断は `audit_id = "cli/" ^ build_id ^ "#" ^ sequence` を既定とし、`sequence` は同一ビルド内での発生順を 0 始まりでインクリメントする。LSP セッションは `audit_id = "lsp/" ^ session_uuid ^ "#" ^ sequence`、Legacy 変換は `audit_id = "legacy-import/" ^ build_id` を用いる。  
+       - `change_set` 自動補完は以下の JSON テンプレートを基準とし、`origin` に `cli` / `lsp` / `legacy` を記録、`source.commit` に Git SHA、`source.workspace` にリポジトリ内の相対パスを格納する。  
+         ```json
+         {
+           "policy": "phase2.5.audit.v1",
+           "origin": "<channel>",
+           "source": {"commit": "<git sha>", "workspace": "<relative path>"},
+           "items": []
+         }
+         ```  
+       - OCaml 実装では `ensure_audit_id` / `ensure_change_set` を上記フォーマットへ差し替え、`Audit_envelope.metadata["audit.policy.version"] = "phase2.5.audit.v1"` を自動付与する。CLI 側で `cli.audit_id` / `cli.change_set` が渡された場合はそれらを優先し、不足時のみテンプレートを適用する。  
      - **実施状況メモ**  
        - `Audit_envelope.has_required_keys` の検査対象を `cli.audit_id` / `cli.change_set` まで広げ、Builder と Legacy 変換の双方で自動補完後に必須キーを強制するよう調整済み。  
        - `Diagnostic_serialization.of_diagnostic` の防御的チェックを実装済みで、欠落発生時には `stderr` へ通知して `Invalid_argument` を送出する。  
@@ -88,5 +101,5 @@ let ensure_audit audit_opt =
 
 ## 残課題
 - `Audit_envelope.empty_envelope` に含める既定値（`audit_id` / `change_set` の扱い）について監査チームの合意が必要。  
-- Legacy / 自動補完用のプレースホルダ (`auto-*` / `legacy-*`) を公式な監査 ID・change-set の割り当てポリシーに置き換える（監査チームと命名・粒度を調整）。  
+- `ensure_audit_id` / `ensure_change_set` のプレースホルダ置換を実装へ反映し、CLI/LSP/Legacy すべての出力が `phase2.5.audit.v1` テンプレートで統一されることを `tooling/ci/collect-iterator-audit-metrics.py --require-success` で確認する。  
 - `timestamp` の生成を `Core.Numeric.now()` へ委譲するか、OCaml 側で `Ptime` / `Unix.gmtime` を利用するかを選定したい。

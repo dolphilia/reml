@@ -10,7 +10,7 @@
 
 ### 診断ドメイン（DIAG）
 - [DIAG-001 修正計画](./DIAG-001-proposal.md): `Severity = {Error, Warning, Info, Hint}` を導入して Chapter 3（`docs/spec/3-6-core-diagnostics-audit.md`）との整合を回復。
-- [DIAG-002 修正計画](./DIAG-002-proposal.md): `Diagnostic.audit` と `timestamp` を必須化し、Builder/Legacy で `cli.audit_id` / `cli.change_set` を自動補完、シリアライズで欠落検知を行いつつ `collect-iterator-audit-metrics.py` のログを強化した（詳細は [`../2-5-review-log.md`](../2-5-review-log.md) を参照）。
+- [DIAG-002 修正計画](./DIAG-002-proposal.md): `Diagnostic.audit` と `timestamp` を必須化し、Builder/Legacy で `cli.audit_id` / `cli.change_set` を `phase2.5.audit.v1` テンプレート（`audit_id = "cli/" ^ build_id ^ "#" ^ sequence` など）として自動補完、シリアライズで欠落検知を行いつつ `collect-iterator-audit-metrics.py` のログを強化した（詳細は [`../2-5-review-log.md`](../2-5-review-log.md) を参照）。
 - [DIAG-003 修正計画](./DIAG-003-proposal.md): `DiagnosticDomain` を効果・プラグイン・LSP など仕様準拠の語彙へ拡張し、監査ログ分析を改善。
 
 ### 効果システム（EFFECT）
