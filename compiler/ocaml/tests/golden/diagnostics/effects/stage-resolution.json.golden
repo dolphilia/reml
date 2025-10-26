@@ -66,6 +66,107 @@
             "env": null
           }
         }
+      },
+      "timestamp": "1970-01-01T00:00:00Z",
+      "audit_metadata": {
+        "effect.stage.required": "at_least:beta",
+        "effect.stage.actual": "beta",
+        "effect.stage.source": "cli",
+        "effect.stage_trace": [
+          {
+            "source": "cli_option",
+            "stage": "beta",
+            "note": "--effect-stage beta"
+          },
+          {
+            "source": "env_var",
+            "stage": null,
+            "note": "REMLC_EFFECT_STAGE not set"
+          },
+          {
+            "source": "typer",
+            "stage": "beta",
+            "capability": "core.iterator.collect"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta",
+            "capability": "core.iterator.collect"
+          },
+          {
+            "source": "capability_json",
+            "stage": "stable",
+            "file": "tooling/runtime/capabilities/default.json"
+          },
+          {
+            "source": "runtime_candidate",
+            "stage": "beta",
+            "file": "tooling/runtime/capabilities/default.json",
+            "target": "x86_64-pc-windows-msvc"
+          }
+        ],
+        "effect.stage.inputs": {
+          "cli": "beta",
+          "json": null,
+          "env": null
+        },
+        "schema.version": "1.1",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
+        "missing": [
+          "cli.audit_id",
+          "cli.change_set"
+        ]
+      },
+      "audit": {
+        "metadata": {
+          "effect.stage.required": "at_least:beta",
+          "effect.stage.actual": "beta",
+          "effect.stage.source": "cli",
+          "effect.stage_trace": [
+            {
+              "source": "cli_option",
+              "stage": "beta",
+              "note": "--effect-stage beta"
+            },
+            {
+              "source": "env_var",
+              "stage": null,
+              "note": "REMLC_EFFECT_STAGE not set"
+            },
+            {
+              "source": "typer",
+              "stage": "beta",
+              "capability": "core.iterator.collect"
+            },
+            {
+              "source": "runtime",
+              "stage": "beta",
+              "capability": "core.iterator.collect"
+            },
+            {
+              "source": "capability_json",
+              "stage": "stable",
+              "file": "tooling/runtime/capabilities/default.json"
+            },
+            {
+              "source": "runtime_candidate",
+              "stage": "beta",
+              "file": "tooling/runtime/capabilities/default.json",
+              "target": "x86_64-pc-windows-msvc"
+            }
+          ],
+          "effect.stage.inputs": {
+            "cli": "beta",
+            "json": null,
+            "env": null
+          },
+          "schema.version": "1.1",
+          "audit.timestamp": "1970-01-01T00:00:00Z",
+          "missing": [
+            "cli.audit_id",
+            "cli.change_set"
+          ]
+        }
       }
     }
   ]

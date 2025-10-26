@@ -100,6 +100,7 @@
             "target",
             "arch",
             "abi",
+            "audit_pass_rate",
             "ownership",
             "extern_symbol",
             "platform",
@@ -149,6 +150,12 @@
             "callconv": {
               "description": "細分化された呼出規約名。`abi` と同一なら省略可能。",
               "type": "string"
+            },
+            "audit_pass_rate": {
+              "description": "ブリッジ監査で収集した成功率メトリクス（0.0〜1.0）。",
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
             },
             "platform": {
               "description": "監査上で利用するプラットフォーム識別子（例: windows-msvc-x64, macos-arm64）",

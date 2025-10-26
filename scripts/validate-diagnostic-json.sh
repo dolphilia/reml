@@ -106,7 +106,7 @@ if [[ "${#AUDIT_FILES[@]}" -gt 0 ]]; then
 fi
 
 if [[ "${#DIAG_FILES[@]}" -gt 0 ]]; then
-  if ! python3 - "${DIAG_FILES[@]}" <<'PY'; then
+  python3 - "${DIAG_FILES[@]}" <<'PY' || {
 import json
 import pathlib
 import sys
@@ -183,9 +183,8 @@ for path_str in files:
 if error:
     sys.exit(1)
 PY
-  then
     EXIT_CODE=1
-  fi
+  }
 fi
 
 exit $EXIT_CODE

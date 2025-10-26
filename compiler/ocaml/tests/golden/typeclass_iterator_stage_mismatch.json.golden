@@ -106,6 +106,7 @@
         "effect.stage.iterator.capability": "core.iterator.collect",
         "effect.stage.iterator.source": "dsl/core.iter.toml",
         "cli.audit_id": "11111111-1111-1111-1111-111111111111",
+        "missing": [ "cli.change_set", "cli.audit_id" ],
         "cli.change_set": {
           "command": "stage-diagnostic-test",
           "input": "iter.reml"
@@ -137,32 +138,17 @@
       },
       "audit": {
         "metadata": {
-          "effect.stage.required": "beta",
-          "effect.stage.actual": "experimental",
-          "effect.capability": "core.iterator.collect",
-          "effect.residual": {
-            "missing_ops": [ "Iterator::next", "Iterator::size_hint" ]
-          },
-          "effect.provider": "Core.Iter",
-          "effect.manifest_path": "dsl/core.iter.toml",
-          "effect.capability_metadata": {
-            "provider": "core.iter",
-            "last_verified_at": "2025-10-21T03:15:00Z"
-          },
-          "effect.stage.iterator.required": "at_least:beta",
-          "effect.stage.iterator.actual": "experimental",
-          "effect.stage.iterator.kind": "custom:iterator.snapshot",
-          "effect.stage.iterator.capability": "core.iterator.collect",
-          "effect.stage.iterator.source": "dsl/core.iter.toml",
-          "cli.audit_id": "11111111-1111-1111-1111-111111111111",
-          "cli.change_set": {
-            "command": "stage-diagnostic-test",
-            "input": "iter.reml"
-          },
-          "typeclass.trait": "Iterator",
-          "typeclass.type_args": [ "SampleStream", "SampleItem" ],
-          "typeclass.constraint": "Iterator<SampleStream, SampleItem>",
-          "typeclass.resolution_state": "stage_mismatch",
+          "typeclass.dictionary.repr": null,
+          "typeclass.dictionary.type_args": [],
+          "typeclass.dictionary.trait": null,
+          "typeclass.dictionary.identifier": null,
+          "typeclass.dictionary.kind": "none",
+          "typeclass.span.end": 57,
+          "typeclass.span.start": 42,
+          "typeclass.graph.export_dot": null,
+          "typeclass.generalized_typevars": [],
+          "typeclass.pending": [],
+          "typeclass.candidates": [],
           "typeclass.dictionary": {
             "kind": "none",
             "identifier": null,
@@ -170,17 +156,33 @@
             "type_args": [],
             "repr": null
           },
-          "typeclass.candidates": [],
-          "typeclass.pending": [],
-          "typeclass.generalized_typevars": [],
-          "typeclass.graph.export_dot": null,
-          "typeclass.span.start": 42,
-          "typeclass.span.end": 57,
-          "typeclass.dictionary.kind": "none",
-          "typeclass.dictionary.identifier": null,
-          "typeclass.dictionary.trait": null,
-          "typeclass.dictionary.type_args": [],
-          "typeclass.dictionary.repr": null,
+          "typeclass.resolution_state": "stage_mismatch",
+          "typeclass.constraint": "Iterator<SampleStream, SampleItem>",
+          "typeclass.type_args": [ "SampleStream", "SampleItem" ],
+          "typeclass.trait": "Iterator",
+          "cli.change_set": {
+            "command": "stage-diagnostic-test",
+            "input": "iter.reml"
+          },
+          "missing": [ "cli.change_set", "cli.audit_id" ],
+          "cli.audit_id": "11111111-1111-1111-1111-111111111111",
+          "effect.stage.iterator.source": "dsl/core.iter.toml",
+          "effect.stage.iterator.capability": "core.iterator.collect",
+          "effect.stage.iterator.kind": "custom:iterator.snapshot",
+          "effect.stage.iterator.actual": "experimental",
+          "effect.stage.iterator.required": "at_least:beta",
+          "effect.capability_metadata": {
+            "provider": "core.iter",
+            "last_verified_at": "2025-10-21T03:15:00Z"
+          },
+          "effect.manifest_path": "dsl/core.iter.toml",
+          "effect.provider": "Core.Iter",
+          "effect.residual": {
+            "missing_ops": [ "Iterator::next", "Iterator::size_hint" ]
+          },
+          "effect.capability": "core.iterator.collect",
+          "effect.stage.actual": "experimental",
+          "effect.stage.required": "beta",
           "audit.timestamp": "1970-01-01T00:00:00Z",
           "schema.version": "1.1"
         },

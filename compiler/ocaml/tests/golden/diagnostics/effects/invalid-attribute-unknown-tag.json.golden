@@ -2,17 +2,34 @@
   "diagnostics": [
     {
       "audit": {
-        "effect.stage.required": "at_least:stable",
-        "effect.stage.actual": "stable",
-        "effect.capability": "runtime",
-        "effect.attribute.invalid": "attribute",
-        "effect.attribute.location": "demo",
-        "effect.attribute.reason": "unknown_effect_tag",
-        "stage_trace": [
-          { "source": "cli_option", "note": "not provided" },
-          { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
-          { "source": "typer", "stage": "stable" }
-        ]
+        "metadata": {
+          "effect.stage.required": "at_least:stable",
+          "effect.stage.actual": "stable",
+          "effect.capability": "runtime",
+          "effect.attribute.invalid": "attribute",
+          "effect.attribute.location": "demo",
+          "effect.attribute.reason": "unknown_effect_tag",
+          "stage_trace": [
+            {
+              "source": "cli_option",
+              "note": "not provided"
+            },
+            {
+              "source": "env_var",
+              "note": "REMLC_EFFECT_STAGE not set"
+            },
+            {
+              "source": "typer",
+              "stage": "stable"
+            }
+          ],
+          "schema.version": "1.1",
+          "audit.timestamp": "1970-01-01T00:00:00Z",
+          "missing": [
+            "cli.audit_id",
+            "cli.change_set"
+          ]
+        }
       },
       "extensions": {
         "effects": {
@@ -39,14 +56,26 @@
               "provided_display": "true"
             }
           ],
-          "stage": { "required": "at_least:stable", "actual": "stable" },
+          "stage": {
+            "required": "at_least:stable",
+            "actual": "stable"
+          },
           "provided": true,
           "expected": "効果タグは識別子または文字列で指定してください",
           "attribute": "@allows_effects(true)",
           "stage_trace": [
-            { "source": "cli_option", "note": "not provided" },
-            { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
-            { "source": "typer", "stage": "stable" }
+            {
+              "source": "cli_option",
+              "note": "not provided"
+            },
+            {
+              "source": "env_var",
+              "note": "REMLC_EFFECT_STAGE not set"
+            },
+            {
+              "source": "typer",
+              "stage": "stable"
+            }
           ],
           "provided_display": "true"
         },
@@ -55,9 +84,18 @@
         "effect.stage.capability": "runtime",
         "effect.stage.subject": "demo",
         "effect.stage_trace": [
-          { "source": "cli_option", "note": "not provided" },
-          { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
-          { "source": "typer", "stage": "stable" }
+          {
+            "source": "cli_option",
+            "note": "not provided"
+          },
+          {
+            "source": "env_var",
+            "note": "REMLC_EFFECT_STAGE not set"
+          },
+          {
+            "source": "typer",
+            "stage": "stable"
+          }
         ],
         "effect.invalid_attributes": [
           {
@@ -84,6 +122,35 @@
         "column": 17,
         "endLine": 1,
         "endColumn": 21
+      },
+      "timestamp": "1970-01-01T00:00:00Z",
+      "audit_metadata": {
+        "effect.stage.required": "at_least:stable",
+        "effect.stage.actual": "stable",
+        "effect.capability": "runtime",
+        "effect.attribute.invalid": "attribute",
+        "effect.attribute.location": "demo",
+        "effect.attribute.reason": "unknown_effect_tag",
+        "stage_trace": [
+          {
+            "source": "cli_option",
+            "note": "not provided"
+          },
+          {
+            "source": "env_var",
+            "note": "REMLC_EFFECT_STAGE not set"
+          },
+          {
+            "source": "typer",
+            "stage": "stable"
+          }
+        ],
+        "schema.version": "1.1",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
+        "missing": [
+          "cli.audit_id",
+          "cli.change_set"
+        ]
       }
     }
   ]

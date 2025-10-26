@@ -4,7 +4,7 @@
   "title": "Reml Diagnostic V2",
   "description": "Reml CLI / LSP が共有する診断 V2 JSON エンベロープのドラフト定義。",
   "type": "object",
-  "required": ["message", "severity", "primary"],
+  "required": ["message", "severity", "primary", "audit", "audit_metadata", "timestamp"],
   "additionalProperties": true,
   "properties": {
     "id": {
@@ -113,12 +113,39 @@
       "description": "自由拡張領域。`diagnostic.v2` キーに派生フィールドを格納する想定。"
     },
     "audit": {
-      "type": ["object", "null"],
-      "description": "AuditEnvelope の JSON 表現。"
+      "type": "object",
+      "description": "AuditEnvelope の JSON 表現。",
+      "required": ["metadata"],
+      "additionalProperties": false,
+      "properties": {
+        "metadata": {
+          "type": "object",
+          "description": "監査メタデータの辞書。",
+          "additionalProperties": true
+        },
+        "audit_id": {
+          "type": ["string", "null"],
+          "description": "監査イベントの識別子。UUID v4 を推奨。"
+        },
+        "change_set": {
+          "description": "監査対象の変更セット。コマンドや入力ファイルなどのコンテキストを含む。",
+          "type": ["object", "array", "string", "number", "boolean", "null"]
+        },
+        "capability": {
+          "type": ["string", "null"],
+          "description": "関連する Capability 名（存在する場合）。"
+        }
+      }
+    },
+    "audit_metadata": {
+      "type": "object",
+      "description": "AuditEnvelope への書き込み前に持つメタデータのフラット辞書。",
+      "additionalProperties": true
     },
     "timestamp": {
-      "type": ["string", "null"],
-      "format": "date-time"
+      "type": "string",
+      "description": "ISO8601 (UTC) タイムスタンプ。",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
     }
   }
 }

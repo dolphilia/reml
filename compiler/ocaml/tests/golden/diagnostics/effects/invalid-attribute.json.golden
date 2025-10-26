@@ -2,17 +2,34 @@
   "diagnostics": [
     {
       "audit": {
-        "effect.stage.required": "at_least:stable",
-        "effect.stage.actual": "stable",
-        "effect.capability": "runtime",
-        "effect.attribute.invalid": "stage",
-        "effect.attribute.location": "demo",
-        "effect.attribute.reason": "unsupported_stage_value",
-        "stage_trace": [
-          { "source": "cli_option", "note": "not provided" },
-          { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
-          { "source": "typer", "stage": "stable" }
-        ]
+        "metadata": {
+          "effect.stage.required": "at_least:stable",
+          "effect.stage.actual": "stable",
+          "effect.capability": "runtime",
+          "effect.attribute.invalid": "stage",
+          "effect.attribute.location": "demo",
+          "effect.attribute.reason": "unsupported_stage_value",
+          "stage_trace": [
+            {
+              "source": "cli_option",
+              "note": "not provided"
+            },
+            {
+              "source": "env_var",
+              "note": "REMLC_EFFECT_STAGE not set"
+            },
+            {
+              "source": "typer",
+              "stage": "stable"
+            }
+          ],
+          "schema.version": "1.1",
+          "audit.timestamp": "1970-01-01T00:00:00Z",
+          "missing": [
+            "cli.audit_id",
+            "cli.change_set"
+          ]
+        }
       },
       "extensions": {
         "effects": {
@@ -39,14 +56,26 @@
               "provided_display": "true"
             }
           ],
-          "stage": { "required": "at_least:stable", "actual": "stable" },
+          "stage": {
+            "required": "at_least:stable",
+            "actual": "stable"
+          },
           "provided": true,
           "expected": "stage は文字列または StageId",
           "attribute": "@requires_capability(true)",
           "stage_trace": [
-            { "source": "cli_option", "note": "not provided" },
-            { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
-            { "source": "typer", "stage": "stable" }
+            {
+              "source": "cli_option",
+              "note": "not provided"
+            },
+            {
+              "source": "env_var",
+              "note": "REMLC_EFFECT_STAGE not set"
+            },
+            {
+              "source": "typer",
+              "stage": "stable"
+            }
           ],
           "key": "stage",
           "provided_display": "true"
@@ -56,9 +85,18 @@
         "effect.stage.capability": "runtime",
         "effect.stage.subject": "demo",
         "effect.stage_trace": [
-          { "source": "cli_option", "note": "not provided" },
-          { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
-          { "source": "typer", "stage": "stable" }
+          {
+            "source": "cli_option",
+            "note": "not provided"
+          },
+          {
+            "source": "env_var",
+            "note": "REMLC_EFFECT_STAGE not set"
+          },
+          {
+            "source": "typer",
+            "stage": "stable"
+          }
         ],
         "effect.invalid_attributes": [
           {
@@ -72,7 +110,8 @@
         ]
       },
       "notes": [
-        "stage は文字列または StageId", "指定された値: true"
+        "stage は文字列または StageId",
+        "指定された値: true"
       ],
       "domain": "型システム",
       "code": "effects.syntax.invalid_attribute",
@@ -84,6 +123,35 @@
         "column": 22,
         "endLine": 1,
         "endColumn": 26
+      },
+      "timestamp": "1970-01-01T00:00:00Z",
+      "audit_metadata": {
+        "effect.stage.required": "at_least:stable",
+        "effect.stage.actual": "stable",
+        "effect.capability": "runtime",
+        "effect.attribute.invalid": "stage",
+        "effect.attribute.location": "demo",
+        "effect.attribute.reason": "unsupported_stage_value",
+        "stage_trace": [
+          {
+            "source": "cli_option",
+            "note": "not provided"
+          },
+          {
+            "source": "env_var",
+            "note": "REMLC_EFFECT_STAGE not set"
+          },
+          {
+            "source": "typer",
+            "stage": "stable"
+          }
+        ],
+        "schema.version": "1.1",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
+        "missing": [
+          "cli.audit_id",
+          "cli.change_set"
+        ]
       }
     }
   ]
