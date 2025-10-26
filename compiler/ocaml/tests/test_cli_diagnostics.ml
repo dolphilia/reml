@@ -146,13 +146,6 @@ let test_stage_extension_snapshot () =
          ~actual_stage:"experimental" ~capability:"core.iterator.collect"
          ~provider:"Core.Iter" ~manifest_path:"dsl/core.iter.toml" ~residual
          ~capability_meta:metadata ~iterator_fields
-    |> Diagnostic.set_audit_id "11111111-1111-1111-1111-111111111111"
-    |> Diagnostic.set_change_set
-         (`Assoc
-           [
-             ("command", `String "stage-diagnostic-test");
-             ("input", `String "iter.reml");
-           ])
   in
   let typeclass_constraint : Types.trait_constraint =
     {
@@ -180,9 +173,142 @@ let test_stage_extension_snapshot () =
     let diag_with_timestamp =
       { diag_with_pairs with timestamp = "1970-01-01T00:00:00Z" }
     in
-    Diagnostic.merge_audit_metadata
-      (Typeclass_metadata.metadata_pairs typeclass_summary)
-      diag_with_timestamp
+    let diag_with_metadata =
+      Diagnostic.merge_audit_metadata
+        (Typeclass_metadata.metadata_pairs typeclass_summary)
+        diag_with_timestamp
+    in
+    diag_with_metadata
+  in
+  let workspace = Some "." in
+  let build_id =
+    Diagnostic.compute_build_id ~timestamp:diag.timestamp ()
+  in
+  let sequence = 0 in
+  let command_item =
+    `Assoc
+      [
+        ("kind", `String "cli-command");
+        ("command", `String "stage-diagnostic-test");
+      ]
+  in
+  let input_item =
+    `Assoc
+      [
+        ("kind", `String "input");
+        ("path", `String "iter.reml");
+      ]
+  in
+  let items = [ command_item; input_item ] in
+  let change_set =
+    Diagnostic.make_change_set_template ~origin:"cli" ~build_id ?workspace
+      ?sequence:(Some sequence) ~items ()
+  in
+  let diag =
+    diag
+    |> Diagnostic.apply_audit_policy_metadata ~channel:"cli" ~build_id
+         ~sequence ?workspace
+    |> Diagnostic.set_audit_id
+         (Printf.sprintf "cli/%s#%d" build_id sequence)
+    |> Diagnostic.set_change_set change_set
+  in
+  let diag =
+    let handler_stack = `List [ `String "core.iter.collect" ] in
+    let unhandled_ops = `List [ `String "Iterator::size_hint" ] in
+    let effects_payload =
+      match Diagnostic.Extensions.get "effects" diag.Diagnostic.extensions with
+      | Some (`Assoc fields) ->
+          `Assoc
+            (fields
+             @ [
+                 ("handler_stack", handler_stack);
+                 ("unhandled_operations", unhandled_ops);
+               ])
+      | Some other -> other
+      | None ->
+          `Assoc
+            [
+              ("handler_stack", handler_stack);
+              ("unhandled_operations", unhandled_ops);
+            ]
+    in
+    diag
+    |> Diagnostic.set_extension "effects" effects_payload
+    |> Diagnostic.set_extension "parse"
+         (`Assoc
+            [
+              ("input_name", `String "iter.reml");
+              ("stage_trace", `List []);
+            ])
+    |> Diagnostic.set_extension "typeclass"
+         (`Assoc
+            [
+              ("trait", `String "Iterator");
+              ( "type_args",
+                `List [ `String "SampleStream"; `String "SampleItem" ] );
+              ("constraint", `String "Iterator<SampleStream, SampleItem>");
+              ("resolution_state", `String "stage_mismatch");
+              ( "dictionary",
+                `Assoc
+                  [
+                    ("kind", `String "diagnostic-sample");
+                    ("identifier", `String "Iterator.collect#stage_mismatch");
+                    ("trait", `String "Iterator");
+                    ( "type_args",
+                      `List
+                        [ `String "SampleStream"; `String "SampleItem" ] );
+                    ("repr", `String "{}");
+                  ] );
+              ("candidates", `List [ `String "Iterator.collect" ]);
+              ("pending", `List [ `String "Iterator.size_hint" ]);
+              ("generalized_typevars", `List [ `String "T" ]);
+              ("graph", `Assoc [ ("export_dot", `Null) ]);
+              ("stage", `Null);
+            ])
+    |> Diagnostic.set_audit_metadata "effect.handler_stack" handler_stack
+    |> Diagnostic.set_audit_metadata "effect.unhandled_operations" unhandled_ops
+    |> Diagnostic.set_audit_metadata "bridge.audit_pass_rate" (`Float 1.0)
+    |> Diagnostic.set_audit_metadata "bridge.status" (`String "ok")
+    |> Diagnostic.set_audit_metadata "cli"
+         (`Assoc
+            [
+              ("audit_id", `String (Printf.sprintf "cli/%s#%d" build_id sequence));
+              ("change_set", change_set);
+            ])
+    |> Diagnostic.set_audit_metadata "schema"
+         (`Assoc [ ("version", `String "1.1") ])
+    |> Diagnostic.set_extension "typeclass.dictionary"
+         (`Assoc
+            [
+              ("kind", `String "diagnostic-sample");
+              ("identifier", `String "Iterator.collect#stage_mismatch");
+              ("trait", `String "Iterator");
+              ( "type_args",
+                `List [ `String "SampleStream"; `String "SampleItem" ] );
+              ("repr", `String "{}");
+            ])
+    |> Diagnostic.set_extension "typeclass.candidates"
+         (`List [ `String "Iterator.collect" ])
+    |> Diagnostic.set_extension "typeclass.pending"
+         (`List [ `String "Iterator.size_hint" ])
+    |> Diagnostic.set_extension "typeclass.generalized_typevars"
+         (`List [ `String "T" ])
+    |> Diagnostic.set_audit_metadata "typeclass.dictionary.kind"
+         (`String "diagnostic-sample")
+    |> Diagnostic.set_audit_metadata "typeclass.dictionary.identifier"
+         (`String "Iterator.collect#stage_mismatch")
+    |> Diagnostic.set_audit_metadata "typeclass.dictionary.trait"
+         (`String "Iterator")
+    |> Diagnostic.set_audit_metadata "typeclass.dictionary.type_args"
+         (`List [ `String "SampleStream"; `String "SampleItem" ])
+    |> Diagnostic.set_audit_metadata "typeclass.dictionary.repr"
+         (`String "{}")
+    |> Diagnostic.set_audit_metadata "typeclass.candidates"
+         (`List [ `String "Iterator.collect" ])
+    |> Diagnostic.set_audit_metadata "typeclass.pending"
+         (`List [ `String "Iterator.size_hint" ])
+    |> Diagnostic.set_audit_metadata "typeclass.generalized_typevars"
+         (`List [ `String "T" ])
   in
   let json_str =
     Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag

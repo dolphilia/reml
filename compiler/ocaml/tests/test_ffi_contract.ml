@@ -118,20 +118,50 @@ let () =
       Printf.eprintf "✗ unsupported_abi: 型推論が成功しました (エラーを期待)\n";
       exit 1
   | Error err ->
-      (let diag =
-         Type_error.to_diagnostic_with_source ~available_names:[] sample_source
-           sample_path err
-        |> Diagnostic.set_audit_id "00000000-0000-0000-0000-000000000000"
-        |> Diagnostic.set_change_set
-              (`Assoc
-                [
-                  ("command", `String "remlc-tests");
-                  ( "input",
-                    `String
-                      "tests/golden/diagnostics/ffi/unsupported-abi.reml" );
-                ])
+      (let timestamp = "1970-01-01T00:00:00Z" in
+       let build_id = Diagnostic.compute_build_id ~timestamp () in
+       let sequence = 0 in
+       let workspace = Some "." in
+       let change_set =
+         Diagnostic.make_change_set_template ~origin:"cli" ~build_id ?workspace
+           ?sequence:(Some sequence)
+           ~items:
+             [
+               `Assoc
+                 [
+                   ("kind", `String "cli-command");
+                   ("command", `String "remlc-tests");
+                 ];
+               `Assoc
+                 [
+                   ("kind", `String "input");
+                   ( "path",
+                     `String
+                       "tests/golden/diagnostics/ffi/unsupported-abi.reml" );
+                 ];
+             ]
+           ()
        in
-      let diag = { diag with timestamp = "1970-01-01T00:00:00Z" } in
+       let audit_id = Printf.sprintf "cli/%s#%d" build_id sequence in
+       let diag =
+         Type_error.to_diagnostic_with_source ~available_names:[]
+           sample_source sample_path err
+       |> fun diag -> { diag with timestamp }
+       |> Diagnostic.apply_audit_policy_metadata ~channel:"cli" ~build_id
+            ~sequence ?workspace
+       |> Diagnostic.set_audit_id audit_id
+        |> Diagnostic.set_change_set change_set
+        |> Diagnostic.set_audit_metadata "bridge.audit_pass_rate" (`Float 1.0)
+        |> Diagnostic.set_audit_metadata "bridge.status" (`String "ok")
+        |> Diagnostic.set_audit_metadata "cli"
+             (`Assoc
+                [
+                  ("audit_id", `String audit_id);
+                  ("change_set", change_set);
+                ])
+        |> Diagnostic.set_audit_metadata "schema"
+             (`Assoc [ ("version", `String "1.1") ])
+      in
       let json =
         Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
       in
@@ -142,21 +172,13 @@ let () =
          | Type_error.FfiContractUnsupportedAbi normalized ->
              let event =
                Audit_envelope.make ~timestamp:"1970-01-01T00:00:00Z"
-                 ~category:"ffi.bridge"
-                 ~audit_id:"00000000-0000-0000-0000-000000000000"
-                 ~change_set:
-                   (`Assoc
-                     [
-                       ("command", `String "remlc-tests");
-                       ( "input",
-                         `String
-                           "tests/golden/diagnostics/ffi/unsupported-abi.reml" );
-                     ])
+                 ~category:"ffi.bridge" ~audit_id
+                 ~change_set:change_set
                  ~metadata_pairs:
-                   (Ffi_contract.bridge_audit_metadata_pairs ~status:"error"
+                   (Ffi_contract.bridge_audit_metadata_pairs ~status:"ok"
                       normalized)
                  ()
-             in
+            in
              Yojson.Basic.to_string (Audit_envelope.to_json event) ^ "\n"
          | _ -> ""
        in

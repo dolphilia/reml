@@ -140,6 +140,7 @@ let runtime_stage_event (context : Type_inference_effect.runtime_stage) =
 
 let run_with_mode mode =
   Constraint_solver.reset_effect_constraints ();
+  Diagnostic.reset_audit_sequence ();
   let span = Ast.{ start = 0; end_ = 0 } in
   let mk_tag name = { Effect_profile.effect_name = name; effect_span = span } in
   let effect_set =
@@ -185,6 +186,23 @@ let run_with_mode mode =
   let diag =
     Type_error.to_diagnostic_with_source "" "effectful_sum.reml" error
     |> fun d -> { d with timestamp = fixed_timestamp }
+  in
+  let build_id = Diagnostic.compute_build_id ~timestamp:fixed_timestamp () in
+  let sequence = 0 in
+  let workspace = Some "." in
+  let change_set =
+    Diagnostic.make_change_set_template ~origin:"cli" ~build_id ?workspace
+      ?sequence:(Some sequence)
+      ~items:[ `Assoc [ ("kind", `String "input"); ("path", `String "<入力>") ] ]
+      ()
+  in
+  let diag =
+    diag
+    |> Diagnostic.apply_audit_policy_metadata ~channel:"cli" ~build_id
+         ~sequence ?workspace
+    |> Diagnostic.set_audit_id
+         (Printf.sprintf "cli/%s#%d" build_id sequence)
+    |> Diagnostic.set_change_set change_set
   in
   let diag_json =
     Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag

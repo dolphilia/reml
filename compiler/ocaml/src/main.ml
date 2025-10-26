@@ -411,18 +411,6 @@ let () =
       ~outcome:Cli.Audit_persistence.Failure []
   in
 
-  let audit_seed =
-    let input_label =
-      if opts.use_stdin then "<stdin>" else opts.input_file
-    in
-    String.concat "|"
-      [
-        input_label;
-        opts.target;
-        String.concat " " (Array.to_list Sys.argv);
-      ]
-  in
-  let audit_id = Digest.(string audit_seed |> to_hex) in
   let requested_outputs =
     [
       ("emit_ast", opts.emit_ast);
@@ -433,20 +421,90 @@ let () =
     |> List.filter_map (fun (name, enabled) ->
            if enabled then Some (`String name) else None)
   in
-  let change_set_json =
-    `Assoc
-      [
-        ("command", `String "remlc");
-        ( "args",
-          `List
-            (Array.to_list Sys.argv |> List.map (fun arg -> `String arg)) );
-        ( "input",
-          `String (if opts.use_stdin then "<stdin>" else opts.input_file) );
-        ("target", `String opts.target);
-        ("outputs", `List requested_outputs);
-      ]
+  let audit_channel = "cli" in
+  let commit_opt =
+    match audit_context.commit_id with
+    | Some value when String.trim value <> "" -> Some (String.trim value)
+    | _ -> None
   in
+  let timestamp_for_build =
+    if String.trim audit_context.timestamp_iso <> "" then
+      audit_context.timestamp_iso
+    else
+      Audit_envelope.iso8601_timestamp ()
+  in
+  let existing_build_id =
+    let trimmed = String.trim audit_context.build_id in
+    if trimmed <> "" then Some trimmed else None
+  in
+  let build_id =
+    Diagnostic.compute_build_id ~timestamp:timestamp_for_build
+      ?existing:existing_build_id ?commit:commit_opt ()
+  in
+  let workspace_root =
+    match Sys.getenv_opt "REMLC_WORKSPACE_ROOT" with
+    | Some value when String.trim value <> "" -> String.trim value
+    | _ -> "."
+  in
+  let audit_sequence = ref 0 in
+  let make_change_set sequence =
+    let command_item =
+      `Assoc
+        [
+          ("kind", `String "cli-command");
+          ("command", `String "remlc");
+          ( "args",
+            `List
+              (Array.to_list Sys.argv
+              |> List.map (fun arg -> `String arg)) );
+        ]
+    in
+    let input_label =
+      if opts.use_stdin then "<stdin>"
+      else if Filename.is_relative opts.input_file then opts.input_file
+      else Filename.basename opts.input_file
+    in
+    let input_item =
+      `Assoc
+        [
+          ("kind", `String "input");
+          ("path", `String input_label);
+          ("target", `String opts.target);
+        ]
+    in
+    let outputs_item =
+      match requested_outputs with
+      | [] -> None
+      | values ->
+          Some
+            (`Assoc
+               [
+                 ("kind", `String "outputs");
+                 ("values", `List values);
+               ])
+    in
+    let items =
+      let base = [ command_item; input_item ] in
+      match outputs_item with
+      | Some value -> base @ [ value ]
+      | None -> base
+    in
+    Diagnostic.make_change_set_template ~origin:audit_channel ~build_id
+      ?commit:commit_opt ?workspace:(Some workspace_root)
+      ?sequence:(Some sequence) ~items ()
+  in
+  let change_set_json = make_change_set 0 in
+  let audit_id = Printf.sprintf "%s/%s#0" audit_channel build_id in
   let attach_audit diag =
+    let sequence = !audit_sequence in
+    audit_sequence := sequence + 1;
+    let audit_id = Printf.sprintf "%s/%s#%d" audit_channel build_id sequence in
+    let change_set_json = make_change_set sequence in
+    let diag =
+      Diagnostic.apply_audit_policy_metadata ~channel:audit_channel
+        ~build_id ~sequence ?commit:commit_opt
+        ?workspace:(Some workspace_root) diag
+    in
     diag
     |> Diagnostic.set_audit_id audit_id
     |> Diagnostic.set_change_set change_set_json

@@ -71,14 +71,6 @@
         ]
       },
       "audit_metadata": {
-        "cli.audit_id": "auto-c20e6a29db7846cef1a193ced638c05f",
-        "cli.change_set": {
-          "origin": "auto",
-          "timestamp": "1970-01-01T00:00:00Z",
-          "note": "auto-generated change_set"
-        },
-        "schema.version": "1.1",
-        "audit.timestamp": "1970-01-01T00:00:00Z",
         "effect.residual.tags": [ "panic" ],
         "effect.capability": "core.runtime",
         "effect.stage.actual": "stable",
@@ -86,10 +78,44 @@
         "stage_trace": [
           { "source": "typer", "stage": "stable" },
           { "source": "runtime", "stage": "stable" }
-        ]
+        ],
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "19700101T000000Z",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "cli.audit_id": "cli/19700101T000000Z#0",
+        "schema.version": "1.1",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "<入力>" } ]
+        }
       },
       "audit": {
         "metadata": {
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "19700101T000000Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [ { "kind": "input", "path": "<入力>" } ]
+          },
+          "cli.audit_id": "cli/19700101T000000Z#0",
+          "audit.source.workspace": ".",
+          "audit.sequence": 0,
+          "audit.build_id": "19700101T000000Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
           "stage_trace": [
             { "source": "typer", "stage": "stable" },
             { "source": "runtime", "stage": "stable" }
@@ -98,20 +124,19 @@
           "effect.stage.actual": "stable",
           "effect.capability": "core.runtime",
           "effect.residual.tags": [ "panic" ],
-          "cli.change_set": {
-            "origin": "auto",
-            "timestamp": "1970-01-01T00:00:00Z",
-            "note": "auto-generated change_set"
-          },
-          "cli.audit_id": "auto-c20e6a29db7846cef1a193ced638c05f",
           "audit.timestamp": "1970-01-01T00:00:00Z",
           "schema.version": "1.1"
         },
-        "audit_id": "auto-c20e6a29db7846cef1a193ced638c05f",
+        "audit_id": "cli/19700101T000000Z#0",
         "change_set": {
-          "origin": "auto",
-          "timestamp": "1970-01-01T00:00:00Z",
-          "note": "auto-generated change_set"
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "<入力>" } ]
         }
       }
     }

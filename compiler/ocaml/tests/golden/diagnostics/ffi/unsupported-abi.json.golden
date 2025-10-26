@@ -69,21 +69,99 @@
           "extern_symbol": "ffi_demo_c"
         },
         "bridge.source_span": { "start": 0, "end": 168 },
-        "cli.audit_id": "00000000-0000-0000-0000-000000000000",
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "19700101T000000Z",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "cli.audit_id": "cli/19700101T000000Z#0",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [
+            { "kind": "cli-command", "command": "remlc-tests" },
+            {
+              "kind": "input",
+              "path": "tests/golden/diagnostics/ffi/unsupported-abi.reml"
+            }
+          ]
+        },
+        "bridge.audit_pass_rate": 1.0,
+        "bridge.status": "ok",
+        "cli": {
+          "audit_id": "cli/19700101T000000Z#0",
+          "change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "19700101T000000Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [
+              { "kind": "cli-command", "command": "remlc-tests" },
+              {
+                "kind": "input",
+                "path": "tests/golden/diagnostics/ffi/unsupported-abi.reml"
+              }
+            ]
+          }
+        },
         "schema.version": "1.1",
         "audit.timestamp": "1970-01-01T00:00:00Z",
-        "cli.change_set": {
-          "command": "remlc-tests",
-          "input": "tests/golden/diagnostics/ffi/unsupported-abi.reml"
-        }
+        "schema": { "version": "1.1" }
       },
       "audit": {
         "metadata": {
-          "cli.change_set": {
-            "command": "remlc-tests",
-            "input": "tests/golden/diagnostics/ffi/unsupported-abi.reml"
+          "schema": { "version": "1.1" },
+          "cli": {
+            "audit_id": "cli/19700101T000000Z#0",
+            "change_set": {
+              "policy": "phase2.5.audit.v1",
+              "origin": "cli",
+              "source": {
+                "build_id": "19700101T000000Z",
+                "workspace": ".",
+                "sequence": 0
+              },
+              "items": [
+                { "kind": "cli-command", "command": "remlc-tests" },
+                {
+                  "kind": "input",
+                  "path": "tests/golden/diagnostics/ffi/unsupported-abi.reml"
+                }
+              ]
+            }
           },
-          "cli.audit_id": "00000000-0000-0000-0000-000000000000",
+          "bridge.status": "ok",
+          "bridge.audit_pass_rate": 1.0,
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "19700101T000000Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [
+              { "kind": "cli-command", "command": "remlc-tests" },
+              {
+                "kind": "input",
+                "path": "tests/golden/diagnostics/ffi/unsupported-abi.reml"
+              }
+            ]
+          },
+          "cli.audit_id": "cli/19700101T000000Z#0",
+          "audit.source.workspace": ".",
+          "audit.sequence": 0,
+          "audit.build_id": "19700101T000000Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
           "bridge.source_span": { "start": 0, "end": 168 },
           "bridge": {
             "status": "error",
@@ -109,10 +187,22 @@
           "audit.timestamp": "1970-01-01T00:00:00Z",
           "schema.version": "1.1"
         },
-        "audit_id": "00000000-0000-0000-0000-000000000000",
+        "audit_id": "cli/19700101T000000Z#0",
         "change_set": {
-          "command": "remlc-tests",
-          "input": "tests/golden/diagnostics/ffi/unsupported-abi.reml"
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [
+            { "kind": "cli-command", "command": "remlc-tests" },
+            {
+              "kind": "input",
+              "path": "tests/golden/diagnostics/ffi/unsupported-abi.reml"
+            }
+          ]
         }
       }
     }

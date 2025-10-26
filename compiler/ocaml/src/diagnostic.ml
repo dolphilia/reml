@@ -292,6 +292,13 @@ let apply_change_set change diag =
   let envelope = { diag.audit with change_set = Some change } in
   { diag with audit = envelope }
 
+let set_audit_metadata key value diag =
+  merge_audit_metadata [ (key, value) ] diag
+
+let set_audit_id id diag = apply_audit_id id diag
+
+let set_change_set change diag = apply_change_set change diag
+
 let prune_missing diag =
   let filter_missing entries =
     List.filter (fun (key, _) -> not (String.equal key "missing")) entries
@@ -303,49 +310,255 @@ let prune_missing diag =
   in
   { diag with audit_metadata; audit }
 
+let audit_policy_version = "phase2.5.audit.v1"
+
+let compact_timestamp timestamp =
+  let buffer = Buffer.create (String.length timestamp) in
+  String.iter
+    (fun ch ->
+      match ch with
+      | '-' | ':' -> ()
+      | c -> Buffer.add_char buffer c)
+    timestamp;
+  let sanitized = Buffer.contents buffer in
+  if String.trim sanitized <> "" then sanitized else "00000000000000"
+
+let default_workspace_root () =
+  match Sys.getenv_opt "REMLC_WORKSPACE_ROOT" with
+  | Some value when not (string_is_blank value) -> String.trim value
+  | _ -> "."
+
+let commit_hint =
+  lazy
+    (match Sys.getenv_opt "REMLC_GIT_COMMIT" with
+    | Some value when not (string_is_blank value) -> Some (String.trim value)
+    | _ -> (
+        match Sys.getenv_opt "GITHUB_SHA" with
+        | Some value when not (string_is_blank value) ->
+            let trimmed = String.trim value in
+            let length = min (String.length trimmed) 7 in
+            Some (String.sub trimmed 0 length)
+        | _ -> None))
+
+let metadata_string key metadata =
+  match metadata_json_present key metadata with
+  | Some (`String value) when not (string_is_blank value) -> Some value
+  | _ -> None
+
+let metadata_int key metadata =
+  match metadata_json_present key metadata with
+  | Some (`Int value) -> Some value
+  | Some (`String text) -> (
+      try
+        let trimmed = String.trim text in
+        if trimmed = "" then None else Some (int_of_string trimmed)
+      with _ -> None)
+  | _ -> None
+
+let parse_sequence_from_audit_id id =
+  try
+    let index = String.rindex id '#' in
+    let suffix =
+      String.sub id (index + 1) (String.length id - index - 1) |> String.trim
+    in
+    if suffix = "" then None else Some (int_of_string suffix)
+  with
+  | Not_found -> None
+  | Failure _ -> None
+
+let compute_build_id ~timestamp ?existing ?commit () =
+  match existing with
+  | Some value when not (string_is_blank value) -> value
+  | _ ->
+      let base = compact_timestamp timestamp in
+      (match commit with
+      | Some c when not (string_is_blank c) -> Printf.sprintf "%s-%s" base c
+      | _ -> base)
+
+let audit_sequence_counter = ref 0
+
+let next_audit_sequence () =
+  let current = !audit_sequence_counter in
+  audit_sequence_counter := current + 1;
+  current
+
+let reset_audit_sequence () =
+  audit_sequence_counter := 0
+
+let channel_from_prefix prefix metadata =
+  let trimmed = String.trim prefix in
+  let normalized =
+    match trimmed with
+    | "" -> None
+    | "auto" -> None
+    | "legacy" -> Some "legacy-import"
+    | value -> Some value
+  in
+  match normalized with
+  | Some channel -> channel
+  | None ->
+      metadata_string "audit.channel" metadata |> Option.value ~default:"cli"
+
+let normalize_input_path path =
+  let trimmed = String.trim path in
+  if trimmed = "" then "<unknown>"
+  else if Filename.is_relative trimmed then trimmed
+  else
+    let cwd =
+      try Filename.concat (Sys.getcwd ()) "" with Sys_error _ -> ""
+    in
+    if cwd <> "" && String.starts_with ~prefix:cwd trimmed then
+      let start = String.length cwd in
+      String.sub trimmed start (String.length trimmed - start)
+    else Filename.basename trimmed
+
+let apply_audit_policy_metadata ?commit ?workspace ~channel ~build_id ~sequence
+    diag =
+  let diag =
+    diag
+    |> set_audit_metadata "audit.policy.version"
+         (`String audit_policy_version)
+    |> set_audit_metadata "audit.channel" (`String channel)
+    |> set_audit_metadata "audit.build_id" (`String build_id)
+    |> set_audit_metadata "audit.sequence" (`Int sequence)
+  in
+  let diag =
+    match workspace with
+    | Some path when not (string_is_blank path) ->
+        set_audit_metadata "audit.source.workspace" (`String path) diag
+    | _ -> diag
+  in
+  let diag =
+    match commit with
+    | Some value when not (string_is_blank value) ->
+        set_audit_metadata "audit.source.commit" (`String value) diag
+    | _ -> diag
+  in
+  diag
+
+let make_change_set_template ~origin ~build_id ?commit ?workspace ?sequence
+    ?(items = []) () =
+  let source_fields =
+    []
+    |> fun acc ->
+    let acc = ("build_id", `String build_id) :: acc in
+    let acc =
+      match workspace with
+      | Some path when not (string_is_blank path) ->
+          ("workspace", `String path) :: acc
+      | _ -> acc
+    in
+    let acc =
+      match sequence with
+      | Some value when value >= 0 -> ("sequence", `Int value) :: acc
+      | _ -> acc
+    in
+    let acc =
+      match commit with
+      | Some value when not (string_is_blank value) ->
+          ("commit", `String value) :: acc
+      | _ -> acc
+    in
+    List.rev acc
+  in
+  `Assoc
+    [
+      ("policy", `String audit_policy_version);
+      ("origin", `String origin);
+      ("source", `Assoc source_fields);
+      ("items", `List items);
+    ]
+
 let ensure_audit_id ?(prefix = "auto") diag =
   if option_string_present (Audit_envelope.audit_id diag.audit) then diag
   else
-    let audit_id =
-      match metadata_json_present "cli.audit_id" diag.audit_metadata with
-      | Some (`String value) when not (string_is_blank value) -> value
-      | _ ->
-          let seed =
-            Printf.sprintf "%s:%s:%s" prefix diag.message diag.timestamp
-          in
-          let digest = Digest.string seed |> Digest.to_hex in
-          Printf.sprintf "%s-%s" prefix digest
+    let timestamp = normalize_timestamp diag.timestamp in
+    let diag = { diag with timestamp } in
+    let channel = channel_from_prefix prefix diag.audit_metadata in
+    let existing_commit = metadata_string "audit.source.commit" diag.audit_metadata in
+    let commit =
+      match existing_commit with
+      | Some value -> Some value
+      | None -> Lazy.force commit_hint
     in
-    apply_audit_id audit_id diag
+    let workspace =
+      match metadata_string "audit.source.workspace" diag.audit_metadata with
+      | Some value -> value
+      | None -> default_workspace_root ()
+    in
+    let existing_build_id = metadata_string "audit.build_id" diag.audit_metadata in
+    let build_id =
+      compute_build_id ~timestamp ?existing:existing_build_id ?commit ()
+    in
+    let sequence = next_audit_sequence () in
+    let workspace_opt = Some workspace in
+    let diag =
+      apply_audit_policy_metadata ~channel ~build_id ~sequence ?commit
+        ?workspace:workspace_opt diag
+    in
+    let audit_id = Printf.sprintf "%s/%s#%d" channel build_id sequence in
+    apply_audit_id audit_id diag |> prune_missing
 
 let ensure_change_set ?(origin = "auto") diag =
   if json_option_present (Audit_envelope.change_set diag.audit) then
     prune_missing diag
   else
-    let updated =
-      match metadata_json_present "cli.change_set" diag.audit_metadata with
-      | Some payload -> apply_change_set payload diag
-      | None ->
-          let fallback =
-            `Assoc
-              [
-                ("origin", `String origin);
-                ("timestamp", `String diag.timestamp);
-                ("note", `String "auto-generated change_set");
-              ]
-          in
-          apply_change_set fallback diag
+    let diag =
+      if option_string_present (Audit_envelope.audit_id diag.audit) then diag
+      else ensure_audit_id ~prefix:origin diag
     in
-    prune_missing updated
-
-let set_audit_metadata key value diag =
-  merge_audit_metadata [ (key, value) ] diag
-
-let set_audit_id id diag =
-  apply_audit_id id diag
-
-let set_change_set change diag =
-  apply_change_set change diag
+    let timestamp = normalize_timestamp diag.timestamp in
+    let diag = { diag with timestamp } in
+    let metadata = diag.audit_metadata in
+    let channel = channel_from_prefix origin metadata in
+    let workspace =
+      match metadata_string "audit.source.workspace" metadata with
+      | Some value -> value
+      | None -> default_workspace_root ()
+    in
+    let workspace_opt = Some workspace in
+    let commit =
+      match metadata_string "audit.source.commit" metadata with
+      | Some value -> Some value
+      | None -> Lazy.force commit_hint
+    in
+    let existing_build_id = metadata_string "audit.build_id" metadata in
+    let build_id =
+      compute_build_id ~timestamp ?existing:existing_build_id ?commit ()
+    in
+    let sequence =
+      match metadata_int "audit.sequence" metadata with
+      | Some value -> value
+      | None -> (
+          match Audit_envelope.audit_id diag.audit with
+          | Some id -> (
+              match parse_sequence_from_audit_id id with
+              | Some seq -> seq
+              | None -> next_audit_sequence ())
+          | None -> next_audit_sequence ())
+    in
+    let diag =
+      apply_audit_policy_metadata ~channel ~build_id ~sequence ?commit
+        ?workspace:workspace_opt diag
+    in
+    let input_path = normalize_input_path diag.primary.start_pos.filename in
+    let items =
+      if String.equal input_path "<unknown>" then []
+      else
+        [
+          `Assoc
+            [
+              ("kind", `String "input");
+              ("path", `String input_path);
+            ];
+        ]
+    in
+    let change_set =
+      make_change_set_template ~origin:channel ~build_id ?commit
+        ?workspace:workspace_opt ?sequence:(Some sequence) ~items ()
+    in
+    let diag = apply_change_set change_set diag in
+    prune_missing diag
 
 let diagnostic_of_legacy_internal (legacy : Legacy.t) : t =
   let timestamp = Audit_envelope.iso8601_timestamp () in
