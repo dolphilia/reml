@@ -188,12 +188,12 @@
 
 **差分リスト（2025-10-29 初版）**
 - `DIAG-001` Severity 列挙の欠落: 仕様では `Severity = Error | Warning | Info | Hint` を必須としている（`docs/spec/3-6-core-diagnostics-audit.md:20`）が、OCaml 実装は `type severity = Error | Warning | Note` のままで `Info`/`Hint` を出力できない（`compiler/ocaml/src/diagnostic.ml:39`）。CLI/LSP のインフォメーション診断が `Warning` へ丸められ、フェーズ 3 の段階的リリース条件（情報レベルの警告分離）が満たせない。→ Phase 2-5 で列挙型の拡張案をまとめ、`diagnostic_serialization` と JSON スキーマ（`tooling/json-schema/diagnostic-v2.schema.json:14`）の整合を確保する。
-- `DIAG-002` `Diagnostic.audit`/`timestamp` の必須化未対応: 仕様では `audit: AuditEnvelope` と `timestamp: Timestamp` を必須値として定義（`docs/spec/3-6-core-diagnostics-audit.md:20`）しているが、実装は `audit : Audit_envelope.t option` と `timestamp : string option` を許容している（`compiler/ocaml/src/diagnostic.ml:120`）。監査なし診断が生成されると `collect-iterator-audit-metrics.py` で検出できず、Phase 2-8 の完全監査要件に不整合が残る。→ `merge_audit_metadata` を呼び出す経路を洗い出し、最低限空の `AuditEnvelope` を埋める暫定案を 33 週レビューに提示する。2025 Week31 Day1 調査では Legacy 変換と LLVM verify 経路を問題児として特定しており、詳細は [`docs/plans/bootstrap-roadmap/2-5-review-log.md`](./2-5-review-log.md) に記録済み。
+- `DIAG-002` `Diagnostic.audit`/`timestamp` 必須化の進捗: Builder/Legacy 経路で `cli.audit_id` / `cli.change_set` を自動補完し、`Audit_envelope.has_required_keys` が CLI 監査キーまで検証するようになった（compiler/ocaml/src/audit_envelope.ml:120-189, compiler/ocaml/src/diagnostic.ml:304-370）。`Diagnostic_serialization.of_diagnostic` も必須フィールド欠落時にログ出力＋例外を発生させる（compiler/ocaml/src/diagnostic_serialization.ml:75-88）。今後は `auto-*` / `legacy-*` プレースホルダの正式運用と監査ダッシュボードへの統合方針を詰める必要がある（詳細は [`docs/plans/bootstrap-roadmap/2-5-review-log.md`](./2-5-review-log.md) を参照）。
 - `DIAG-003` Domain/Metadata の語彙不足: 仕様の `DiagnosticDomain` には `Effect`/`Target`/`Plugin`/`Lsp`/`Other(Str)` が含まれる（`docs/spec/3-6-core-diagnostics-audit.md:172`）が、実装は `Parser/Type/Config/Runtime/Network/Data/Audit/Security/CLI` のみ対応（`compiler/ocaml/src/diagnostic.ml:54`）。`effect.stage.*` 拡張キーも CLI JSON では `extensions["effects"]` のみに出力され、監査ログ側の `metadata["event.kind"]` 等が空のまま（`compiler/ocaml/src/diagnostic.ml:342`）。→ Domain 列挙と `AuditEnvelope.metadata` のキー体系を仕様と揃え、`docs/spec/3-8-core-runtime-capability.md` の Stage テーブル更新とあわせて 2-7 へフィードバックする。
 
 **修正案ドラフト対応方針**
 - `DIAG-001` `Severity` 拡張と JSON スキーマ改版案を Phase 2-5 差分リストにまとめ、CLI/LSP 双方のゴールデンを更新するタイムラインを 2-7 チームへ共有。
-- `DIAG-002` 最低限の `AuditEnvelope` 自動補完を PoC し、`audit_metadata` 欠落時は `0-4-risk-handling.md` に即時登録する運用を草案化する。
+- `DIAG-002` 自動補完で投入している `auto-*` / `legacy-*` プレースホルダの正式化（監査チーム合意、change-set 記録粒度）と、ダッシュボード/KPI への導線設計を 2-7 へ引き継ぐ。
 - `DIAG-003` Domain/Metadata の語彙差分を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の Capability/Stage 再検証タスクへリンクさせ、仕様脚注に現状の出力制限を仮明記する。
 
 4.3. **非同期・FFI・環境のレビュー（`3-9`〜`3-10`）**

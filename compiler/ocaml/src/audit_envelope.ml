@@ -116,12 +116,64 @@ let merge_metadata (env : envelope) entries =
   in
   add_metadata merged ~key:schema_version_key (`String schema_version_value)
 
-let has_required_keys (env : envelope) =
-  let metadata = env.metadata in
-  let has_key key =
-    List.exists (fun (existing, _) -> String.equal existing key) metadata
+let json_is_present = function
+  | `Null -> false
+  | `String text -> String.trim text <> ""
+  | `List [] -> false
+  | `Assoc [] -> false
+  | _ -> true
+
+let metadata_value key metadata =
+  match List.assoc_opt key metadata with
+  | Some value when json_is_present value -> Some value
+  | _ -> None
+
+let missing_metadata_keys keys metadata =
+  let rec dedup acc = function
+    | [] -> List.rev acc
+    | key :: rest ->
+        if List.mem key acc then dedup acc rest else dedup (key :: acc) rest
   in
-  has_key schema_version_key && has_key audit_timestamp_key
+  let missing =
+    List.filter
+      (fun key -> Option.is_none (metadata_value key metadata))
+      keys
+  in
+  dedup [] missing
+
+let required_core_metadata_keys = [ schema_version_key; audit_timestamp_key ]
+let required_cli_metadata_keys = [ "cli.audit_id"; "cli.change_set" ]
+
+let missing_core_keys (env : envelope) =
+  missing_metadata_keys required_core_metadata_keys env.metadata
+
+let has_core_keys env = missing_core_keys env = []
+
+let missing_required_keys (env : envelope) =
+  let metadata_missing =
+    missing_metadata_keys
+      (required_core_metadata_keys @ required_cli_metadata_keys)
+      env.metadata
+  in
+  let audit_id_missing =
+    match env.audit_id with
+    | Some id when String.trim id <> "" -> []
+    | _ -> [ "audit_id" ]
+  in
+  let change_set_missing =
+    match env.change_set with
+    | Some value when json_is_present value -> []
+    | _ -> [ "change_set" ]
+  in
+  let missing = metadata_missing @ audit_id_missing @ change_set_missing in
+  let rec dedup acc = function
+    | [] -> List.rev acc
+    | key :: rest ->
+        if List.mem key acc then dedup acc rest else dedup (key :: acc) rest
+  in
+  dedup [] missing
+
+let has_required_keys env = missing_required_keys env = []
 
 let metadata (env : t) = env.metadata
 let audit_id (env : t) = env.audit_id

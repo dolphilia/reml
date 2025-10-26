@@ -71,6 +71,12 @@
         ]
       },
       "audit_metadata": {
+        "cli.audit_id": "auto-c20e6a29db7846cef1a193ced638c05f",
+        "cli.change_set": {
+          "origin": "auto",
+          "timestamp": "1970-01-01T00:00:00Z",
+          "note": "auto-generated change_set"
+        },
         "schema.version": "1.1",
         "audit.timestamp": "1970-01-01T00:00:00Z",
         "effect.residual.tags": [ "panic" ],
@@ -80,12 +86,10 @@
         "stage_trace": [
           { "source": "typer", "stage": "stable" },
           { "source": "runtime", "stage": "stable" }
-        ],
-        "missing": [ "cli.change_set", "cli.audit_id" ]
+        ]
       },
       "audit": {
         "metadata": {
-          "missing": [ "cli.change_set", "cli.audit_id" ],
           "stage_trace": [
             { "source": "typer", "stage": "stable" },
             { "source": "runtime", "stage": "stable" }
@@ -94,8 +98,20 @@
           "effect.stage.actual": "stable",
           "effect.capability": "core.runtime",
           "effect.residual.tags": [ "panic" ],
+          "cli.change_set": {
+            "origin": "auto",
+            "timestamp": "1970-01-01T00:00:00Z",
+            "note": "auto-generated change_set"
+          },
+          "cli.audit_id": "auto-c20e6a29db7846cef1a193ced638c05f",
           "audit.timestamp": "1970-01-01T00:00:00Z",
           "schema.version": "1.1"
+        },
+        "audit_id": "auto-c20e6a29db7846cef1a193ced638c05f",
+        "change_set": {
+          "origin": "auto",
+          "timestamp": "1970-01-01T00:00:00Z",
+          "note": "auto-generated change_set"
         }
       }
     }

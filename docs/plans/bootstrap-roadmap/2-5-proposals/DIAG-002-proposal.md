@@ -54,25 +54,39 @@ let ensure_audit audit_opt =
    - **2.4 完了条件**: `rg "audit :.*option"` でヒットが 0 件になること、`rg "timestamp :.*option"` が 0 件になること、`dune build compiler/ocaml` を実行して型エラーが残っていないこと、`scripts/validate-diagnostic-json.sh`（必須フィールドを参照するゴールデンテスト）が通過することを Day2 終了時に確認し、結果を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に追記する。
 3. **Legacy / シリアライズ整備（Week31 Day2-3）**  
    - 調査  
-     - `diagnostic_of_legacy_internal`（compiler/ocaml/src/diagnostic.ml:213）で既に `Audit_envelope.merge_metadata` が呼ばれていることを確認し、`Legacy.audit_metadata` が空のケースが残っていないか `find compiler -name '*.ml*' | xargs grep -n \"Diagnostic.Legacy\"` を実行して棚卸しする。新規利用を防ぐため、`[@deprecated]` 警告を CI でエラー扱いにする運用案を Day2 冒頭に決定する。  
+     - `diagnostic_of_legacy_internal`（compiler/ocaml/src/diagnostic.ml:213）で既に `Audit_envelope.merge_metadata` が呼ばれていることを確認し、`Legacy.audit_metadata` が空のケースが残っていないか `find compiler -name '*.ml*' | xargs grep -n "Diagnostic.Legacy"` を実行して棚卸しする。新規利用を防ぐため、`[@deprecated]` 警告を CI でエラー扱いにする運用案を決定する。  
      - シリアライズ層（compiler/ocaml/src/diagnostic_serialization.ml:1-120, json_formatter.ml:1-160）で `audit` / `timestamp` がどこで欠落し得るかを洗い出し、`attach_audit`（compiler/ocaml/src/main.ml:640-760 付近）と `collect-iterator-audit-metrics.py` の要求キー一覧を突き合わせてギャップが無いか確認する。  
+     - **進捗メモ（本タスク時点）**  
+       - `Diagnostic.Legacy` の直接構築箇所は `diagnostic_of_legacy_internal` の 1 箇所のみで、`[@deprecated]` 属性による抑止を維持しつつ Legacy 経路でも `cli.audit_id` / `cli.change_set` を自動補完するよう改修した（compiler/ocaml/src/diagnostic.ml:333-370）。  
+       - `Audit_envelope.has_required_keys` を `cli.audit_id` / `cli.change_set` まで拡張し、Builder/Legacy 双方で空値にプレースホルダを付与したうえで必須キーを強制する仕組みを導入した（compiler/ocaml/src/audit_envelope.ml:120-189, compiler/ocaml/src/diagnostic.ml:304-331）。  
+       - `Diagnostic_serialization.of_diagnostic` は必須キーと `timestamp` を検証し、欠落時に `[diagnostic_serialization]` でログを出力して `Invalid_argument` を送出するようになった（compiler/ocaml/src/diagnostic_serialization.ml:75-88）。  
    - 実装  
      - `diagnostic_of_legacy_internal` に `Audit_envelope.has_required_keys` のログ出力／例外を追加し、Legacy 変換経路で必須メタデータが欠けた場合は即座に検出できるようにする。必要なら `Audit_envelope.ensure_missing_metadata` の必須キー集合を `cli.audit_id` / `cli.change_set` 以外にも拡張する。  
      - `Diagnostic_serialization.of_diagnostic` 内で `Audit_envelope.has_required_keys diag.audit` と `String.length diag.timestamp > 0` を検査し、違反時に `Invalid_argument` を発生させたうえで CLI/LSP 側でエラーメッセージを出力するフローを定義する。  
+     - **実施状況メモ**  
+       - `Audit_envelope.has_required_keys` の検査対象を `cli.audit_id` / `cli.change_set` まで広げ、Builder と Legacy 変換の双方で自動補完後に必須キーを強制するよう調整済み。  
+       - `Diagnostic_serialization.of_diagnostic` の防御的チェックを実装済みで、欠落発生時には `stderr` へ通知して `Invalid_argument` を送出する。  
    - 検証  
      - `compiler/ocaml/tests/test_cli_diagnostics.ml` と `tooling/ci/collect-iterator-audit-metrics.py` のテスト入力を用意し、`dune runtest compiler/ocaml/tests/test_cli_diagnostics.ml` → `scripts/validate-diagnostic-json.sh` → `python3 tooling/ci/collect-iterator-audit-metrics.py --source ...` の順で実行して欠落フィールドが検出されることを確認する。  
      - JSON スキーマは既に `audit` / `timestamp` を必須化済み（tooling/json-schema/diagnostic-v2.schema.json:6-15）であるため、AJV テスト（tooling/lsp/tests/client_compat/validate-diagnostic-json.mjs）に欠落ケースのフィクスチャを追加し、Day3 に差分レビューを実施する。  
+     - **検証状況メモ**  
+       - `dune runtest`（compiler/ocaml）と CLI 診断ゴールデンの再生成で新しい必須キーを反映し、`collect-iterator-audit-metrics.py --require-success` 実行時に欠落フィールドが stderr へ明示されることを確認した。  
    - ドキュメント・フォロー  
-     - `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Legacy 経路の監査結果を追記し、`ffi_bridge.audit_pass_rate` のゴールデン再生成手順を整理する。`docs/spec/3-6-core-diagnostics-audit.md` へ Legacy 経路の対応状況を脚注で共有し、Phase 2-7 の監査ダッシュボード更新タスクと連携する。
+     - `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Legacy 経路の監査結果を追記し、`ffi_bridge.audit_pass_rate` のゴールデン再生成手順を整理する。`docs/spec/3-6-core-diagnostics-audit.md` へ Legacy 経路の対応状況を脚注で共有し、Phase 2-7 の監査ダッシュボード更新タスクと連携する。  
+     - **ドキュメント更新メモ**  
+       - Legacy 経路の現状と TODO を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に追記済み。仕様脚注とメトリクス更新は Week31 Day3 以降のフォローアップとする。
 4. **監査メトリクス連携（Week31 Day3-4）**  
    - `tooling/ci/collect-iterator-audit-metrics.py` のエラー報告を強化し、必須フィールド欠落時に `pass_rate` を 0.0 へ落とすだけでなく、欠落行を明示するログを出力する。  
    - `0-3-audit-and-metrics.md` に `diagnostic.audit_presence_rate` を追加入力し、CI でトラッキングする。  
-   - GitHub Actions の Linux/Windows/macOS すべてで当該スクリプトを実行し、欠落時はジョブが失敗するゲートを組み込む。
+   - GitHub Actions の Linux/Windows/macOS すべてで当該スクリプトを実行し、欠落時はジョブが失敗するゲートを組み込む。  
+   - **進捗メモ（2025-11-02）**: スクリプトに `stderr` ログを追加済み。`--require-success` 実行時に不足フィールドがファイル・インデックスと共に出力される。  
 5. **テストとドキュメント反映（Week31 Day4-5）**  
    - `compiler/ocaml/tests/golden/` 配下の診断 JSON を再生成し、`scripts/validate-diagnostic-json.sh` と `reports/diagnostic-format-regression.md` の手順でレビューする。  
    - `docs/spec/3-6-core-diagnostics-audit.md` に OCaml 実装の必須化完了を脚注として追記し、監査キー一覧の最新版を反映する。  
-   - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に、Phase 2-7 で監査ダッシュボードへ新フィールドを反映するタスクを追加する。
+   - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に、Phase 2-7 で監査ダッシュボードへ新フィールドを反映するタスクを追加する。  
+   - **進捗メモ（2025-11-02）**: Typeclass / FFI / Effects 系ゴールデンを更新し、`dune runtest` が通過することを確認済み。仕様ドキュメントの脚注更新は後続タスクへ引き継ぐ。  
 
 ## 残課題
 - `Audit_envelope.empty_envelope` に含める既定値（`audit_id` / `change_set` の扱い）について監査チームの合意が必要。  
+- Legacy / 自動補完用のプレースホルダ (`auto-*` / `legacy-*`) を公式な監査 ID・change-set の割り当てポリシーに置き換える（監査チームと命名・粒度を調整）。  
 - `timestamp` の生成を `Core.Numeric.now()` へ委譲するか、OCaml 側で `Ptime` / `Unix.gmtime` を利用するかを選定したい。

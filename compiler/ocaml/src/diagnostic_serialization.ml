@@ -70,6 +70,18 @@ let normalize_hint ({ message; actions } : hint) =
   { message; actions = List.map normalize_fixit actions }
 
 let of_diagnostic (diag : Diagnostic.t) : normalized_diagnostic =
+  let missing_audit = Audit_envelope.missing_required_keys diag.audit in
+  if missing_audit <> [] then (
+    let message =
+      Printf.sprintf "Diagnostic.audit に必須メタデータが不足しています: %s"
+        (String.concat ", " missing_audit)
+    in
+    prerr_endline ("[diagnostic_serialization] " ^ message);
+    invalid_arg message);
+  if String.trim diag.timestamp = "" then (
+    let message = "Diagnostic.timestamp が空です" in
+    prerr_endline ("[diagnostic_serialization] " ^ message);
+    invalid_arg message);
   {
     id = diag.id;
     message = diag.message;

@@ -1035,6 +1035,10 @@ def collect_metrics(paths: List[Path]) -> Dict:
             if not missing:
                 passed += 1
             else:
+                sys.stderr.write(
+                    "[collect-iterator-audit-metrics] "
+                    f"{path}:{index} missing {', '.join(sorted(set(missing)))}\n"
+                )
                 failures.append(
                     {
                         "file": str(path),

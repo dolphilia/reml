@@ -190,7 +190,10 @@ let ensure_missing_metadata entries =
           entries)
       required_cli_keys
   in
-  if missing = [] then entries
+  if missing = [] then
+    List.filter
+      (fun (key, _) -> not (String.equal key "missing"))
+      entries
   else
     let merged_missing =
       match Extensions.get "missing" entries with
@@ -209,43 +212,6 @@ let ensure_missing_metadata entries =
       | _ -> `List (List.map (fun key -> `String key) missing)
     in
     Extensions.set "missing" merged_missing entries
-
-let diagnostic_of_legacy_internal (legacy : Legacy.t) : t =
-  let timestamp = Audit_envelope.iso8601_timestamp () in
-  let audit_metadata =
-    legacy.Legacy.audit_metadata
-    |> Extensions.set "schema.version" (`String Audit_envelope.schema_version)
-    |> Extensions.set "audit.timestamp" (`String timestamp)
-    |> ensure_missing_metadata
-  in
-  let audit =
-    Audit_envelope.merge_metadata Audit_envelope.empty_envelope audit_metadata
-  in
-  assert (Audit_envelope.has_required_keys audit);
-  {
-    id = None;
-    message = legacy.Legacy.message;
-    severity = legacy.Legacy.severity;
-    severity_hint = legacy.Legacy.severity_hint;
-    domain = legacy.Legacy.domain;
-    codes =
-      (match legacy.Legacy.code with Some code -> [ code ] | None -> []);
-    primary = legacy.Legacy.span;
-    secondary =
-      List.map
-        (fun (span_opt, message) -> { span = span_opt; message = Some message })
-        legacy.Legacy.notes;
-    hints = [];
-    fixits = legacy.Legacy.fixits;
-    expected = legacy.Legacy.expected_summary;
-    audit;
-    timestamp;
-    extensions = legacy.Legacy.extensions;
-    audit_metadata;
-  }
-
-let diagnostic_of_legacy[@deprecated "Diagnostic.Legacy.t からの変換は段階的に廃止予定です。"] =
-  diagnostic_of_legacy_internal
 
 let primary_code (diag : t) =
   match diag.codes with code :: _ -> Some code | [] -> None
@@ -298,21 +264,131 @@ let merge_audit_metadata entries diag =
     |> ensure_missing_metadata
   in
   let audit = Audit_envelope.merge_metadata diag.audit enriched_entries in
-  assert (Audit_envelope.has_required_keys audit);
+  assert (Audit_envelope.has_core_keys audit);
   { diag with audit_metadata = enriched_entries; audit; timestamp }
+
+let string_is_blank value = String.trim value = ""
+
+let option_string_present = function
+  | Some value -> not (string_is_blank value)
+  | None -> false
+
+let json_option_present = function
+  | Some value -> Audit_envelope.json_is_present value
+  | None -> false
+
+let metadata_json_present key metadata =
+  match Extensions.get key metadata with
+  | Some value when Audit_envelope.json_is_present value -> Some value
+  | _ -> None
+
+let apply_audit_id id diag =
+  let diag = merge_audit_metadata [ ("cli.audit_id", `String id) ] diag in
+  let envelope = { diag.audit with audit_id = Some id } in
+  { diag with audit = envelope }
+
+let apply_change_set change diag =
+  let diag = merge_audit_metadata [ ("cli.change_set", change) ] diag in
+  let envelope = { diag.audit with change_set = Some change } in
+  { diag with audit = envelope }
+
+let prune_missing diag =
+  let filter_missing entries =
+    List.filter (fun (key, _) -> not (String.equal key "missing")) entries
+  in
+  let audit_metadata = filter_missing diag.audit_metadata in
+  let audit =
+    let metadata = filter_missing (Audit_envelope.metadata diag.audit) in
+    { diag.audit with metadata }
+  in
+  { diag with audit_metadata; audit }
+
+let ensure_audit_id ?(prefix = "auto") diag =
+  if option_string_present (Audit_envelope.audit_id diag.audit) then diag
+  else
+    let audit_id =
+      match metadata_json_present "cli.audit_id" diag.audit_metadata with
+      | Some (`String value) when not (string_is_blank value) -> value
+      | _ ->
+          let seed =
+            Printf.sprintf "%s:%s:%s" prefix diag.message diag.timestamp
+          in
+          let digest = Digest.string seed |> Digest.to_hex in
+          Printf.sprintf "%s-%s" prefix digest
+    in
+    apply_audit_id audit_id diag
+
+let ensure_change_set ?(origin = "auto") diag =
+  if json_option_present (Audit_envelope.change_set diag.audit) then
+    prune_missing diag
+  else
+    let updated =
+      match metadata_json_present "cli.change_set" diag.audit_metadata with
+      | Some payload -> apply_change_set payload diag
+      | None ->
+          let fallback =
+            `Assoc
+              [
+                ("origin", `String origin);
+                ("timestamp", `String diag.timestamp);
+                ("note", `String "auto-generated change_set");
+              ]
+          in
+          apply_change_set fallback diag
+    in
+    prune_missing updated
 
 let set_audit_metadata key value diag =
   merge_audit_metadata [ (key, value) ] diag
 
 let set_audit_id id diag =
-  let diag = merge_audit_metadata [ ("cli.audit_id", `String id) ] diag in
-  let envelope = { diag.audit with audit_id = Some id } in
-  { diag with audit = envelope }
+  apply_audit_id id diag
 
 let set_change_set change diag =
-  let diag = merge_audit_metadata [ ("cli.change_set", change) ] diag in
-  let envelope = { diag.audit with change_set = Some change } in
-  { diag with audit = envelope }
+  apply_change_set change diag
+
+let diagnostic_of_legacy_internal (legacy : Legacy.t) : t =
+  let timestamp = Audit_envelope.iso8601_timestamp () in
+  let audit_metadata =
+    legacy.Legacy.audit_metadata
+    |> Extensions.set "schema.version" (`String Audit_envelope.schema_version)
+    |> Extensions.set "audit.timestamp" (`String timestamp)
+    |> ensure_missing_metadata
+  in
+  let audit =
+    Audit_envelope.merge_metadata Audit_envelope.empty_envelope audit_metadata
+  in
+  assert (Audit_envelope.has_core_keys audit);
+  let diag =
+    {
+      id = None;
+      message = legacy.Legacy.message;
+      severity = legacy.Legacy.severity;
+      severity_hint = legacy.Legacy.severity_hint;
+      domain = legacy.Legacy.domain;
+      codes =
+        (match legacy.Legacy.code with Some code -> [ code ] | None -> []);
+      primary = legacy.Legacy.span;
+      secondary =
+        List.map
+          (fun (span_opt, message) -> { span = span_opt; message = Some message })
+          legacy.Legacy.notes;
+      hints = [];
+      fixits = legacy.Legacy.fixits;
+      expected = legacy.Legacy.expected_summary;
+      audit;
+      timestamp;
+      extensions = legacy.Legacy.extensions;
+      audit_metadata;
+    }
+  in
+  let diag = ensure_audit_id ~prefix:"legacy" diag in
+  let diag = ensure_change_set ~origin:"legacy" diag in
+  assert (Audit_envelope.has_required_keys diag.audit);
+  diag
+
+let diagnostic_of_legacy[@deprecated "Diagnostic.Legacy.t からの変換は段階的に廃止予定です。"] =
+  diagnostic_of_legacy_internal
 
 let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
     ?capability_meta ?iterator_fields ?stage_trace ~required_stage ~capability
@@ -902,24 +978,30 @@ module Builder = struct
       | None -> Audit_envelope.empty_envelope
     in
     let audit = Audit_envelope.merge_metadata audit_seed audit_metadata in
-    assert (Audit_envelope.has_required_keys audit);
-    {
-      id = builder.id;
-      message = builder.message;
-      severity = builder.severity;
-      severity_hint = builder.severity_hint;
-      domain = builder.domain;
-      codes;
-      primary = builder.primary;
-      secondary;
-      hints = builder.hints;
-      fixits = builder.fixits;
-      expected = builder.expected;
-      audit;
-      timestamp = timestamp_value;
-      extensions;
-      audit_metadata;
-    }
+    assert (Audit_envelope.has_core_keys audit);
+    let diag =
+      {
+        id = builder.id;
+        message = builder.message;
+        severity = builder.severity;
+        severity_hint = builder.severity_hint;
+        domain = builder.domain;
+        codes;
+        primary = builder.primary;
+        secondary;
+        hints = builder.hints;
+        fixits = builder.fixits;
+        expected = builder.expected;
+        audit;
+        timestamp = timestamp_value;
+        extensions;
+        audit_metadata;
+      }
+    in
+    let diag = ensure_audit_id diag in
+    let diag = ensure_change_set diag in
+    assert (Audit_envelope.has_required_keys diag.audit);
+    diag
 end
 
 (* ========== 診断情報の構築 ========== *)
