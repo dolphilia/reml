@@ -42,10 +42,15 @@ let ensure_audit audit_opt =
 ## 5. 実施ステップ
 1. **現状洗い出し（Week31 Day1）**  
    - `Diagnostic` を直接構築している箇所を棚卸しし、`Diagnostic.Builder` を経由していない呼び出し（例: `diagnostic_of_legacy`、テスト用ユーティリティ）を一覧化する。  
-   - `audit_metadata` を空のまま返すコンビネータ（`Diagnostic.Builder.create` 直後に `Builder.build` しているケースなど）を調査し、監査キーが付与されない経路を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に記録する。
+   - `audit_metadata` を空のまま返すコンビネータ（`Diagnostic.Builder.create` 直後に `Builder.build` しているケースなど）を調査し、監査キーが付与されない経路を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に記録する。  
+   - **調査結果（Week31 Day1 更新）**:  
+     - 直接構築経路は `compiler/ocaml/src/diagnostic.ml:181`（Legacy 変換）のみ。Builder 経路へ差し替えない限り `audit = None` が残り続けるため、Day2 の必須化作業に組み込む。  
+     - `Diagnostic.Builder.create` → `Builder.build` の直列利用経路は Lexer/Parser エラー、LLVM verify 失敗、CLI ゴールデン（計 4 件）。特に `compiler/ocaml/src/llvm_gen/verify.ml:131` は `main.ml:597` から `attach_audit` を通さず出力しており、`tooling/ci/collect-iterator-audit-metrics.py` が期待する `cli.audit_id` / `cli.change_set` 等が欠落している。  
+     - 詳細は [`docs/plans/bootstrap-roadmap/2-5-review-log.md`](../2-5-review-log.md) に記録済み。High 優先経路は Week31 Day2 の修正対象とし、Medium/Low は Day3 以降の改善案に回す。
 2. **型定義とビルダー更新（Week31 Day2）**  
    - `Diagnostic.t` の `audit` / `timestamp` を必須型へ変更し、`Diagnostic.Builder.build` で必ず `Audit_envelope.empty_envelope` と `iso8601_timestamp` を設定する。  
    - `merge_audit_metadata` の事前条件を更新し、監査メタデータによって `audit` が上書きされても必須項目が残るようアサーションを追加する（compiler/ocaml/src/diagnostic.ml:245-273）。
+   - `compiler/ocaml/src/llvm_gen/verify.ml:131`（`--verify-ir` 失敗）で生成した診断に対し、`Diagnostic.set_audit_id` / `set_change_set` など `attach_audit` 等価の処理を追加し、`tooling/ci/collect-iterator-audit-metrics.py` が要求するキー（`cli.audit_id`, `cli.change_set`, `schema.version` 等）の欠落を解消する。
 3. **Legacy / シリアライズ整備（Week31 Day2-3）**  
    - `diagnostic_of_legacy` に `audit` 自動補完を追加し、`Legacy` からの移行で必須値が失われないようにする。  
    - `Diagnostic_serialization.of_diagnostic` と JSON 出力（CLI/LSP）に対して、`audit` / `timestamp` が欠落した場合は例外または警告を発生させるチェックを挿入する（compiler/ocaml/src/diagnostic_serialization.ml:59-84）。  
