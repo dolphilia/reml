@@ -116,6 +116,13 @@ let merge_metadata (env : envelope) entries =
   in
   add_metadata merged ~key:schema_version_key (`String schema_version_value)
 
+let has_required_keys (env : envelope) =
+  let metadata = env.metadata in
+  let has_key key =
+    List.exists (fun (existing, _) -> String.equal existing key) metadata
+  in
+  has_key schema_version_key && has_key audit_timestamp_key
+
 let metadata (env : t) = env.metadata
 let audit_id (env : t) = env.audit_id
 let change_set (env : t) = env.change_set

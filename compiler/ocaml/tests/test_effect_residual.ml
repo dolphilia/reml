@@ -184,7 +184,7 @@ let run_with_mode mode =
   let fixed_timestamp = "1970-01-01T00:00:00Z" in
   let diag =
     Type_error.to_diagnostic_with_source "" "effectful_sum.reml" error
-    |> fun d -> { d with timestamp = Some fixed_timestamp }
+    |> fun d -> { d with timestamp = fixed_timestamp }
   in
   let diag_json =
     Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag

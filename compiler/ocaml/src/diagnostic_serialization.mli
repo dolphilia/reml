@@ -48,8 +48,8 @@ type normalized_diagnostic = {
   schema_version : string;
   extensions : Extensions.t;
   audit_metadata : Extensions.t;
-  audit : Audit_envelope.t option;
-  timestamp : string option;
+  audit : Audit_envelope.t;
+  timestamp : string;
 }
 
 (** 共通中間表現へ変換。 *)

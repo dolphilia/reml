@@ -80,18 +80,20 @@
         "stage_trace": [
           { "source": "typer", "stage": "stable" },
           { "source": "runtime", "stage": "stable" }
-        ]
+        ],
+        "missing": [ "cli.change_set", "cli.audit_id" ]
       },
       "audit": {
         "metadata": {
-          "effect.residual.tags": [ "panic" ],
-          "effect.capability": "core.runtime",
-          "effect.stage.actual": "stable",
-          "effect.stage.required": "stable",
+          "missing": [ "cli.change_set", "cli.audit_id" ],
           "stage_trace": [
             { "source": "typer", "stage": "stable" },
             { "source": "runtime", "stage": "stable" }
           ],
+          "effect.stage.required": "stable",
+          "effect.stage.actual": "stable",
+          "effect.capability": "core.runtime",
+          "effect.residual.tags": [ "panic" ],
           "audit.timestamp": "1970-01-01T00:00:00Z",
           "schema.version": "1.1"
         }

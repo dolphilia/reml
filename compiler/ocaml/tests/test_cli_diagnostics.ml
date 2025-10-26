@@ -178,7 +178,7 @@ let test_stage_extension_snapshot () =
         (Typeclass_metadata.extension_pairs typeclass_summary)
     in
     let diag_with_timestamp =
-      { diag_with_pairs with timestamp = Some "1970-01-01T00:00:00Z" }
+      { diag_with_pairs with timestamp = "1970-01-01T00:00:00Z" }
     in
     Diagnostic.merge_audit_metadata
       (Typeclass_metadata.metadata_pairs typeclass_summary)
@@ -257,7 +257,7 @@ let test_typeclass_dictionary_snapshot () =
         (Typeclass_metadata.extension_pairs typeclass_summary)
     in
     let diag_with_timestamp =
-      { diag_with_pairs with timestamp = Some "1970-01-01T00:00:00Z" }
+      { diag_with_pairs with timestamp = "1970-01-01T00:00:00Z" }
     in
     Diagnostic.merge_audit_metadata
       (Typeclass_metadata.metadata_pairs typeclass_summary)

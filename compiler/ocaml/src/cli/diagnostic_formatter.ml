@@ -268,18 +268,8 @@ let format_diagnostic ~source ~diag ~color_mode ~include_snippet =
   in
 
   let audit_str =
-    match diag.audit with
-    | Some envelope ->
-        "\n監査: "
-        ^ Json.pretty_to_string (Diagnostic.V2.audit_to_json (Some envelope))
-    | None ->
-        if diag.audit_metadata = [] then ""
-        else
-          diag.audit_metadata
-          |> List.rev
-          |> List.map (fun (key, value) ->
-                 Printf.sprintf "\n監査[%s]: %s" key (Json.to_string value))
-          |> String.concat ""
+    "\n監査: "
+    ^ Json.pretty_to_string (Diagnostic.V2.audit_to_json diag.audit)
   in
 
   let hint_str =
@@ -291,11 +281,7 @@ let format_diagnostic ~source ~diag ~color_mode ~include_snippet =
     | Some Escalate -> "\n推奨アクション: エスカレーション"
   in
 
-  let timestamp_str =
-    match diag.timestamp with
-    | Some ts -> "\nタイムスタンプ: " ^ ts
-    | None -> ""
-  in
+  let timestamp_str = "\nタイムスタンプ: " ^ diag.timestamp in
 
   [
     header;

@@ -40,8 +40,8 @@ type normalized_diagnostic = {
   schema_version : string;
   extensions : Extensions.t;
   audit_metadata : Extensions.t;
-  audit : Audit_envelope.t option;
-  timestamp : string option;
+  audit : Audit_envelope.t;
+  timestamp : string;
 }
 
 let normalize_span (span : span) =
@@ -212,26 +212,29 @@ let encode_extensions entries = Extensions.to_json entries
 
 let encode_audit_metadata entries = Extensions.to_json entries
 
-let encode_audit = function
-  | None -> `Null
-  | Some env ->
-      let fields = [ ("metadata", Audit_envelope.metadata_to_json (Audit_envelope.metadata env)) ] in
-      let fields =
-        match Audit_envelope.audit_id env with
-        | Some id when String.trim id <> "" -> ("audit_id", `String id) :: fields
-        | _ -> fields
-      in
-      let fields =
-        match Audit_envelope.change_set env with
-        | Some change -> ("change_set", change) :: fields
-        | None -> fields
-      in
-      let fields =
-        match Audit_envelope.capability env with
-        | Some cap when String.trim cap <> "" -> ("capability", `String cap) :: fields
-        | _ -> fields
-      in
-      `Assoc (List.rev fields)
+let encode_audit env =
+  let fields =
+    [
+      ( "metadata",
+        Audit_envelope.metadata_to_json (Audit_envelope.metadata env) );
+    ]
+  in
+  let fields =
+    match Audit_envelope.audit_id env with
+    | Some id when String.trim id <> "" -> ("audit_id", `String id) :: fields
+    | _ -> fields
+  in
+  let fields =
+    match Audit_envelope.change_set env with
+    | Some change -> ("change_set", change) :: fields
+    | None -> fields
+  in
+  let fields =
+    match Audit_envelope.capability env with
+    | Some cap when String.trim cap <> "" -> ("capability", `String cap) :: fields
+    | _ -> fields
+  in
+  `Assoc (List.rev fields)
 
 let severity_level_of_severity = function
   | Error -> 1
@@ -269,11 +272,7 @@ let to_json (diag : normalized_diagnostic) : Json.t =
     | Some hint -> ("severity_hint", `String (severity_hint_to_string hint)) :: fields
     | None -> fields
   in
-  let fields =
-    match diag.timestamp with
-    | Some ts -> ("timestamp", `String ts) :: fields
-    | None -> fields
-  in
+  let fields = ("timestamp", `String diag.timestamp) :: fields in
   `Assoc (List.rev fields)
 
 let diagnostic_to_json diag = to_json (of_diagnostic diag)

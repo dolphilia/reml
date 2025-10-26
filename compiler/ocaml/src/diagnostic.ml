@@ -129,8 +129,8 @@ type t = {
   hints : hint list;
   fixits : fixit list;
   expected : expectation_summary option;
-  audit : Audit_envelope.t option;
-  timestamp : string option;
+  audit : Audit_envelope.t;
+  timestamp : string;
   extensions : Extensions.t;
   audit_metadata : Extensions.t;
 }
@@ -178,7 +178,50 @@ let legacy_of_diagnostic_internal (diag : t) : Legacy.t =
 let legacy_of_diagnostic[@deprecated "Diagnostic.Legacy を直接生成せず Diagnostic.t を利用してください。"] =
   legacy_of_diagnostic_internal
 
+let normalize_timestamp ts =
+  if String.trim ts <> "" then ts else Audit_envelope.iso8601_timestamp ()
+
+let ensure_missing_metadata entries =
+  let required_cli_keys = [ "cli.audit_id"; "cli.change_set" ] in
+  let missing =
+    List.filter
+      (fun key ->
+        List.for_all (fun (existing, _) -> not (String.equal existing key))
+          entries)
+      required_cli_keys
+  in
+  if missing = [] then entries
+  else
+    let merged_missing =
+      match Extensions.get "missing" entries with
+      | Some (`List existing) ->
+          let existing_keys =
+            List.filter_map
+              (function `String value -> Some value | _ -> None)
+              existing
+          in
+          let combined =
+            List.fold_left
+              (fun acc key -> if List.mem key acc then acc else key :: acc)
+              existing_keys missing
+          in
+          `List (List.map (fun key -> `String key) (List.rev combined))
+      | _ -> `List (List.map (fun key -> `String key) missing)
+    in
+    Extensions.set "missing" merged_missing entries
+
 let diagnostic_of_legacy_internal (legacy : Legacy.t) : t =
+  let timestamp = Audit_envelope.iso8601_timestamp () in
+  let audit_metadata =
+    legacy.Legacy.audit_metadata
+    |> Extensions.set "schema.version" (`String Audit_envelope.schema_version)
+    |> Extensions.set "audit.timestamp" (`String timestamp)
+    |> ensure_missing_metadata
+  in
+  let audit =
+    Audit_envelope.merge_metadata Audit_envelope.empty_envelope audit_metadata
+  in
+  assert (Audit_envelope.has_required_keys audit);
   {
     id = None;
     message = legacy.Legacy.message;
@@ -190,16 +233,15 @@ let diagnostic_of_legacy_internal (legacy : Legacy.t) : t =
     primary = legacy.Legacy.span;
     secondary =
       List.map
-        (fun (span_opt, message) ->
-          { span = span_opt; message = Some message })
+        (fun (span_opt, message) -> { span = span_opt; message = Some message })
         legacy.Legacy.notes;
     hints = [];
     fixits = legacy.Legacy.fixits;
     expected = legacy.Legacy.expected_summary;
-    audit = None;
-    timestamp = Some (Audit_envelope.iso8601_timestamp ());
+    audit;
+    timestamp;
     extensions = legacy.Legacy.extensions;
-    audit_metadata = legacy.Legacy.audit_metadata;
+    audit_metadata;
   }
 
 let diagnostic_of_legacy[@deprecated "Diagnostic.Legacy.t からの変換は段階的に廃止予定です。"] =
@@ -243,57 +285,34 @@ let set_extension key value diag =
   { diag with extensions = Extensions.set key value diag.extensions }
 
 let merge_audit_metadata entries diag =
-  let diag_with_timestamp, timestamp =
-    match diag.timestamp with
-    | Some ts when String.trim ts <> "" -> (diag, ts)
-    | _ ->
-        let ts = Audit_envelope.iso8601_timestamp () in
-        ({ diag with timestamp = Some ts }, ts)
+  let timestamp = normalize_timestamp diag.timestamp in
+  let base_metadata =
+    diag.audit_metadata
+    |> Extensions.set "schema.version" (`String Audit_envelope.schema_version)
+    |> Extensions.set "audit.timestamp" (`String timestamp)
   in
   let enriched_entries =
-    ("schema.version", `String Audit_envelope.schema_version)
-    :: ("audit.timestamp", `String timestamp)
-    :: entries
-  in
-  let metadata =
     List.fold_left
       (fun acc (key, value) -> Extensions.set key value acc)
-      diag_with_timestamp.audit_metadata enriched_entries
+      base_metadata entries
+    |> ensure_missing_metadata
   in
-  let base =
-    match diag_with_timestamp.audit with
-    | Some env -> env
-    | None -> Audit_envelope.empty_envelope
-  in
-  let envelope = Audit_envelope.merge_metadata base enriched_entries in
-  {
-    diag_with_timestamp with
-    audit_metadata = metadata;
-    audit = Some envelope;
-  }
+  let audit = Audit_envelope.merge_metadata diag.audit enriched_entries in
+  assert (Audit_envelope.has_required_keys audit);
+  { diag with audit_metadata = enriched_entries; audit; timestamp }
 
 let set_audit_metadata key value diag =
   merge_audit_metadata [ (key, value) ] diag
 
 let set_audit_id id diag =
   let diag = merge_audit_metadata [ ("cli.audit_id", `String id) ] diag in
-  let base =
-    match diag.audit with
-    | Some env -> env
-    | None -> Audit_envelope.empty_envelope
-  in
-  let envelope = { base with audit_id = Some id } in
-  { diag with audit = Some envelope }
+  let envelope = { diag.audit with audit_id = Some id } in
+  { diag with audit = envelope }
 
 let set_change_set change diag =
   let diag = merge_audit_metadata [ ("cli.change_set", change) ] diag in
-  let base =
-    match diag.audit with
-    | Some env -> env
-    | None -> Audit_envelope.empty_envelope
-  in
-  let envelope = { base with change_set = Some change } in
-  { diag with audit = Some envelope }
+  let envelope = { diag.audit with change_set = Some change } in
+  { diag with audit = envelope }
 
 let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
     ?capability_meta ?iterator_fields ?stage_trace ~required_stage ~capability
@@ -503,29 +522,28 @@ module V2 = struct
     in
     `Assoc (base @ actions_json)
 
-  let audit_to_json = function
-    | None -> `Null
-    | Some envelope ->
-        let metadata_json =
-          Audit_envelope.metadata_to_json (Audit_envelope.metadata envelope)
-        in
-        let fields = [ ("metadata", metadata_json) ] in
-        let fields =
-          match Audit_envelope.audit_id envelope with
-          | Some id -> ("audit_id", `String id) :: fields
-          | None -> fields
-        in
-        let fields =
-          match Audit_envelope.change_set envelope with
-          | Some change -> ("change_set", change) :: fields
-          | None -> fields
-        in
-        let fields =
-          match Audit_envelope.capability envelope with
-          | Some cap when String.trim cap <> "" -> ("capability", `String cap) :: fields
-          | _ -> fields
-        in
-        `Assoc (List.rev fields)
+  let audit_to_json envelope =
+    let metadata_json =
+      Audit_envelope.metadata_to_json (Audit_envelope.metadata envelope)
+    in
+    let fields = [ ("metadata", metadata_json) ] in
+    let fields =
+      match Audit_envelope.audit_id envelope with
+      | Some id when String.trim id <> "" -> ("audit_id", `String id) :: fields
+      | _ -> fields
+    in
+    let fields =
+      match Audit_envelope.change_set envelope with
+      | Some change -> ("change_set", change) :: fields
+      | None -> fields
+    in
+    let fields =
+      match Audit_envelope.capability envelope with
+      | Some cap when String.trim cap <> "" ->
+          ("capability", `String cap) :: fields
+      | _ -> fields
+    in
+    `Assoc (List.rev fields)
 end
 
 (* ========== Diagnostic Builder ========== *)
@@ -582,7 +600,8 @@ module Builder = struct
     extensions : Extensions.t;
     structured_hints : structured_hint list;
     audit_metadata : Extensions.t;
-    timestamp : string option;
+    audit_seed : Audit_envelope.t option;
+    timestamp_seed : string option;
   }
 
   let create ?id ?(severity = Error) ?severity_hint ?domain ?code ?(codes = [])
@@ -608,7 +627,8 @@ module Builder = struct
       extensions = Extensions.empty;
       structured_hints = [];
       audit_metadata = Extensions.empty;
-      timestamp;
+      audit_seed = None;
+      timestamp_seed = timestamp;
     }
 
   let json_of_location loc =
@@ -806,6 +826,8 @@ module Builder = struct
   let with_audit_metadata metadata builder =
     { builder with audit_metadata = metadata }
 
+  let with_audit audit builder = { builder with audit_seed = Some audit }
+
   let add_audit_metadata key value builder =
     {
       builder with
@@ -813,7 +835,8 @@ module Builder = struct
         Extensions.set key value builder.audit_metadata;
     }
 
-  let set_timestamp timestamp builder = { builder with timestamp = Some timestamp }
+  let set_timestamp timestamp builder =
+    { builder with timestamp_seed = Some timestamp }
 
   let build builder =
     let codes = builder.codes in
@@ -823,9 +846,9 @@ module Builder = struct
              ( { span = entry.span; message = entry.message } : span_label ))
     in
     let timestamp_value =
-      match builder.timestamp with
-      | Some ts when String.trim ts <> "" -> ts
-      | _ -> Audit_envelope.iso8601_timestamp ()
+      match builder.timestamp_seed with
+      | Some ts -> normalize_timestamp ts
+      | None -> Audit_envelope.iso8601_timestamp ()
     in
     let v2_extension_fields =
       let fields = ref [] in
@@ -866,21 +889,20 @@ module Builder = struct
           (`Assoc v2_extension_fields)
           builder.extensions
     in
-    let audit_metadata =
+    let audit_metadata_base =
       builder.audit_metadata
       |> Extensions.set "schema.version"
            (`String Audit_envelope.schema_version)
       |> Extensions.set "audit.timestamp" (`String timestamp_value)
     in
-    let audit =
-      if Extensions.is_empty audit_metadata then None
-      else
-        Some
-          (List.fold_left
-             (fun env (key, value) ->
-               Audit_envelope.add_metadata env ~key value)
-             Audit_envelope.empty_envelope audit_metadata)
+    let audit_metadata = ensure_missing_metadata audit_metadata_base in
+    let audit_seed =
+      match builder.audit_seed with
+      | Some env -> env
+      | None -> Audit_envelope.empty_envelope
     in
+    let audit = Audit_envelope.merge_metadata audit_seed audit_metadata in
+    assert (Audit_envelope.has_required_keys audit);
     {
       id = builder.id;
       message = builder.message;
@@ -894,7 +916,7 @@ module Builder = struct
       fixits = builder.fixits;
       expected = builder.expected;
       audit;
-      timestamp = Some timestamp_value;
+      timestamp = timestamp_value;
       extensions;
       audit_metadata;
     }

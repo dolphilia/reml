@@ -131,7 +131,7 @@ let () =
                       "tests/golden/diagnostics/ffi/unsupported-abi.reml" );
                 ])
        in
-      let diag = { diag with timestamp = Some "1970-01-01T00:00:00Z" } in
+      let diag = { diag with timestamp = "1970-01-01T00:00:00Z" } in
       let json =
         Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
       in

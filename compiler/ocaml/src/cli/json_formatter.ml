@@ -41,30 +41,28 @@ let structured_hints_from_extensions (extensions : Diagnostic.Extensions.t) =
       | _ -> `List [] )
   | _ -> `List []
 
-let audit_to_json = function
-  | None -> `Null
-  | Some envelope ->
-      let base =
-        [
-          ("metadata", Audit_envelope.metadata_to_json (Audit_envelope.metadata envelope));
-        ]
-      in
-      let base =
-        match Audit_envelope.audit_id envelope with
-        | Some id when String.trim id <> "" -> ("audit_id", `String id) :: base
-        | _ -> base
-      in
-      let base =
-        match Audit_envelope.change_set envelope with
-        | Some change -> ("change_set", change) :: base
-        | None -> base
-      in
-      let base =
-        match Audit_envelope.capability envelope with
-        | Some cap when String.trim cap <> "" -> ("capability", `String cap) :: base
-        | _ -> base
-      in
-      `Assoc (List.rev base)
+let audit_to_json envelope =
+  let base =
+    [
+      ("metadata", Audit_envelope.metadata_to_json (Audit_envelope.metadata envelope));
+    ]
+  in
+  let base =
+    match Audit_envelope.audit_id envelope with
+    | Some id when String.trim id <> "" -> ("audit_id", `String id) :: base
+    | _ -> base
+  in
+  let base =
+    match Audit_envelope.change_set envelope with
+    | Some change -> ("change_set", change) :: base
+    | None -> base
+  in
+  let base =
+    match Audit_envelope.capability envelope with
+    | Some cap when String.trim cap <> "" -> ("capability", `String cap) :: base
+    | _ -> base
+  in
+  `Assoc (List.rev base)
 
 let codes_to_json codes =
   match codes with
@@ -116,11 +114,7 @@ let diagnostic_data_block (diag : normalized_diagnostic) =
     | Some hint -> ("severity_hint", `String (severity_hint_to_string hint)) :: base
     | None -> base
   in
-  let base =
-    match diag.timestamp with
-    | Some ts -> ("timestamp", `String ts) :: base
-    | None -> base
-  in
+  let base = ("timestamp", `String diag.timestamp) :: base in
   `Assoc (List.rev base)
 
 let diagnostic_to_lsp_json (diagnostic : Diagnostic.t) =
@@ -184,7 +178,7 @@ let diagnostic_to_reml_json (diagnostic : Diagnostic.t) =
   | Some domain -> push "domain" (`String domain)
   | None -> ());
   (match normalized.id with Some id -> push "id" (`String id) | None -> ());
-  (match normalized.timestamp with Some ts -> push "timestamp" (`String ts) | None -> ());
+  push "timestamp" (`String normalized.timestamp);
   (match normalized.severity_hint with
   | Some hint -> push "severity_hint" (`String (severity_hint_to_string hint))
   | None -> ());
@@ -204,9 +198,8 @@ let diagnostic_to_reml_json (diagnostic : Diagnostic.t) =
   if not (Diagnostic.Extensions.is_empty normalized.audit_metadata) then
     push "audit_metadata"
       (Diagnostic.Extensions.to_json normalized.audit_metadata);
-  (match audit_to_json normalized.audit with
-  | `Null -> ()
-  | audit_json -> push "audit" audit_json);
+  let audit_json = audit_to_json normalized.audit in
+  push "audit" audit_json;
   (match reml_expected normalized.expected with
   | `Null -> ()
   | expected -> push "expected" expected);
