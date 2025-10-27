@@ -795,7 +795,8 @@ jobs:
             --source tmp/cli-callconv-out/linux/cli-callconv-unsupported.diagnostics.json \
             --audit-source tooling/ci/ffi-audit/macos/ffi_dispatch_async.audit.jsonl \
             --audit-source tooling/ci/ffi-audit/macos/ffi_malloc_arm64.audit.jsonl \
-            --output tooling/ci/iterator-audit-metrics.json
+            --output tooling/ci/iterator-audit-metrics.json \
+            --require-success
 
       - name: Run iterator audit gate
         run: |

@@ -312,7 +312,8 @@ jobs:
             --source tmp/audit-matrix/${AUDIT_PLATFORM}/diagnostics.json \
             --audit-source "$AUDIT_JSON" \
             --output reports/audit/summary.json \
-            --ci-duration-seconds "${CI_DURATION:-0}"
+            --ci-duration-seconds "${CI_DURATION:-0}" \
+            --require-success
 
       - name: Detect audit regressions (prototype)
         run: |
@@ -703,7 +704,8 @@ jobs:
             --source tmp/cli-callconv-out/macos/cli-callconv-unsupported.diagnostics.json \
             --source tmp/cli-callconv-out/windows/cli-callconv-unsupported.diagnostics.json \
             --source tmp/cli-callconv-out/linux/cli-callconv-unsupported.diagnostics.json \
-            --output tooling/ci/iterator-audit-metrics.json
+            --output tooling/ci/iterator-audit-metrics.json \
+            --require-success
 
       - name: Run iterator audit gate
         run: |

@@ -72,7 +72,8 @@ jobs:
             --source compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden \
             --source compiler/ocaml/tests/golden/diagnostics/ffi/unsupported-abi.json.golden \
             --audit-source compiler/ocaml/tests/golden/audit/cli-ffi-bridge-windows.jsonl.golden \
-            --output tooling/ci/iterator-audit-metrics.json
+            --output tooling/ci/iterator-audit-metrics.json \
+            --require-success
 
       - name: Prepare verify log placeholder
         shell: bash
@@ -274,7 +275,8 @@ jobs:
             --source tmp/audit-matrix/${AUDIT_PLATFORM}/diagnostics.json \
             --audit-source "$AUDIT_JSON" \
             --output reports/audit/summary.json \
-            --ci-duration-seconds "${CI_DURATION:-0}"
+            --ci-duration-seconds "${CI_DURATION:-0}" \
+            --require-success
 
       - name: Detect audit regressions (prototype)
         run: |

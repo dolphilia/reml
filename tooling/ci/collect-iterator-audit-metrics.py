@@ -172,12 +172,26 @@ REQUIRED_BRIDGE_EXTENSION_KEYS: List[str] = [
     "bridge.return.rc_adjustment",
 ]
 
+BASIC_AUDIT_FIELDS: List[RequiredField] = [
+    Field("cli.audit_id", ("cli.audit_id", "audit_id")),
+    Field("cli.change_set", ("cli.change_set", "change_set")),
+    Field("schema.version", ("schema.version",)),
+]
+
 DEFAULT_RETENTION_POLICY: Dict[str, int] = {
     "ci": 100,
     "local": 30,
     "tmp": 20,
     "default": 50,
 }
+
+
+def calculate_pass_rates(passed: int, total: int) -> Tuple[Optional[float], Optional[float]]:
+    if total <= 0:
+        return None, None
+    fraction = passed / total
+    effective = 1.0 if passed == total else 0.0
+    return effective, fraction
 
 
 def _ensure_path_list(raw_paths: Optional[Sequence[str]]) -> List[Path]:
@@ -243,34 +257,38 @@ def iter_diagnostics(data: Dict) -> Iterable[Dict]:
         yield diag
 
 
-def check_audit_fields(audit: Optional[Dict]) -> List[str]:
+def _lookup_in_container(container: Dict[str, Any], path: str) -> Tuple[bool, Optional[object]]:
+    if path in container:
+        return True, container[path]
+    current: object = container
+    for part in path.split("."):
+        if isinstance(current, dict) and part in current:
+            current = current[part]
+        else:
+            return False, None
+    return True, current
+
+
+def _check_required_field_set(
+    audit: Optional[Dict],
+    fields: Sequence[RequiredField],
+) -> List[str]:
     if audit is None or not isinstance(audit, dict):
-        return ["audit"] + [field.logical for field in REQUIRED_AUDIT_FIELDS]
+        return ["audit"] + [field.logical for field in fields]
 
     metadata = audit.get("metadata")
     containers: List[Dict[str, Any]] = [audit]
     if isinstance(metadata, dict):
         containers.append(metadata)
 
-    def lookup(container: Dict[str, Any], path: str) -> Tuple[bool, Optional[object]]:
-        if path in container:
-            return True, container[path]
-        current: object = container
-        for part in path.split("."):
-            if isinstance(current, dict) and part in current:
-                current = current[part]
-            else:
-                return False, None
-        return True, current
-
     missing: List[str] = []
-    for field in REQUIRED_AUDIT_FIELDS:
+    for field in fields:
         found = False
         for container in containers:
             if not isinstance(container, dict):
                 continue
             for candidate in field.candidates:
-                exists, value = lookup(container, candidate)
+                exists, value = _lookup_in_container(container, candidate)
                 if not exists:
                     continue
                 if value is None and not field.allow_null:
@@ -284,6 +302,14 @@ def check_audit_fields(audit: Optional[Dict]) -> List[str]:
         if not found:
             missing.append(field.logical)
     return missing
+
+
+def check_audit_fields(audit: Optional[Dict]) -> List[str]:
+    return _check_required_field_set(audit, REQUIRED_AUDIT_FIELDS)
+
+
+def check_basic_audit_fields(audit: Optional[Dict]) -> List[str]:
+    return _check_required_field_set(audit, BASIC_AUDIT_FIELDS)
 
 
 def _as_dict(value: Optional[object]) -> Optional[Dict]:
@@ -1002,6 +1028,51 @@ def summarize_diagnostics(paths: Sequence[Path]) -> Dict[str, Any]:
     return summary
 
 
+def collect_diagnostic_audit_presence_metric(paths: List[Path]) -> Dict[str, Any]:
+    total = 0
+    passed = 0
+    failures: List[Dict[str, object]] = []
+    required_keys = [field.logical for field in BASIC_AUDIT_FIELDS]
+
+    for path in paths:
+        data = load_json(path)
+        for index, diag in enumerate(iter_diagnostics(data)):
+            total += 1
+            audit_dict = _as_dict(diag.get("audit"))
+            timestamp_value = diag.get("timestamp")
+
+            missing_fields: List[str] = []
+            missing_fields.extend(check_basic_audit_fields(audit_dict))
+            if not isinstance(timestamp_value, str) or not timestamp_value.strip():
+                missing_fields.append("timestamp")
+
+            if missing_fields:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "missing": sorted(set(missing_fields)),
+                        "code": primary_code_of(diag) or "unknown",
+                    }
+                )
+            else:
+                passed += 1
+
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+
+    return {
+        "metric": "diagnostic.audit_presence_rate",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "required_audit_keys": required_keys + ["timestamp"],
+        "sources": [str(path) for path in paths],
+        "failures": failures,
+    }
+
+
 def collect_metrics(paths: List[Path]) -> Dict:
     total = 0
     passed = 0
@@ -1048,9 +1119,7 @@ def collect_metrics(paths: List[Path]) -> Dict:
                     }
                 )
 
-    pass_rate = None
-    if total > 0:
-        pass_rate = passed / total
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
 
     return {
         "metric": "iterator.stage.audit_pass_rate",
@@ -1058,6 +1127,7 @@ def collect_metrics(paths: List[Path]) -> Dict:
         "passed": passed,
         "failed": total - passed,
         "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
         "required_audit_keys": [field.logical for field in REQUIRED_AUDIT_FIELDS],
         "sources": [str(path) for path in paths],
         "failures": failures,
@@ -1151,9 +1221,7 @@ def collect_bridge_metrics(
                     }
                 )
 
-    pass_rate = None
-    if total > 0:
-        pass_rate = passed / total
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
 
     for path in audit_paths:
         audit_sources.append(str(path))
@@ -1262,6 +1330,7 @@ def collect_bridge_metrics(
         "passed": passed,
         "failed": total - passed,
         "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
         "required_audit_keys": REQUIRED_BRIDGE_AUDIT_KEYS,
         "sources": [str(path) for path in paths],
         "audit_sources": audit_sources,
@@ -1357,9 +1426,7 @@ def _collect_typeclass_metadata_metric(
             else:
                 passed += 1
 
-    pass_rate = None
-    if total > 0:
-        pass_rate = passed / total
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
 
     return {
         "metric": "typeclass.metadata_pass_rate",
@@ -1367,6 +1434,7 @@ def _collect_typeclass_metadata_metric(
         "passed": passed,
         "failed": total - passed,
         "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
         "required_audit_keys": list(TYPECLASS_REQUIRED_AUDIT_KEYS),
         "sources": [str(path) for path in paths],
         "audit_sources": audit_sources,
@@ -1460,9 +1528,7 @@ def collect_typeclass_dictionary_metric(
             else:
                 passed += 1
 
-    pass_rate = None
-    if total > 0:
-        pass_rate = passed / total
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
 
     required_keys = [
         "extensions.typeclass.dictionary.kind",
@@ -1479,6 +1545,7 @@ def collect_typeclass_dictionary_metric(
         "passed": passed,
         "failed": total - passed,
         "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
         "required_audit_keys": required_keys,
         "sources": [str(path) for path in paths],
         "audit_sources": audit_sources,
@@ -1497,6 +1564,7 @@ def collect_typeclass_metrics(paths: List[Path], audit_paths: List[Path]) -> Dic
         related_metrics.append(dictionary_metric)
         combined["dictionary_metric"] = dictionary_metric
         combined["dictionary_pass_rate"] = dictionary_metric.get("pass_rate")
+        combined["dictionary_pass_fraction"] = dictionary_metric.get("pass_fraction")
         combined_audit_sources = set(metadata_metric.get("audit_sources") or [])
         combined_audit_sources.update(dictionary_metric.get("audit_sources") or [])
         combined["audit_sources"] = sorted(combined_audit_sources)
@@ -1738,6 +1806,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     typeclass_metrics: Optional[Dict[str, Any]] = None
     bridge_metrics: Optional[Dict[str, Any]] = None
     review_metrics: Optional[Dict[str, Any]] = None
+    diagnostic_presence_metric: Optional[Dict[str, Any]] = None
 
     if "iterator" in sections:
         iterator_metrics = collect_metrics(sources)
@@ -1749,10 +1818,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         review_metrics = collect_review_metrics(
             review_diff_paths, review_coverage_paths, review_dashboard_paths
         )
+    diagnostic_presence_metric = collect_diagnostic_audit_presence_metric(sources)
 
     diagnostics_summary = summarize_diagnostics(sources)
 
     metrics_list: List[Dict[str, Any]] = []
+    if diagnostic_presence_metric:
+        metrics_list.append(diagnostic_presence_metric)
     if iterator_metrics:
         metrics_list.append(iterator_metrics)
     if typeclass_metrics:
@@ -1792,12 +1864,15 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "passed": primary_metrics.get("passed"),
                 "failed": primary_metrics.get("failed"),
                 "pass_rate": primary_metrics.get("pass_rate"),
+                "pass_fraction": primary_metrics.get("pass_fraction"),
                 "required_audit_keys": primary_metrics.get("required_audit_keys"),
                 "sources": primary_metrics.get("sources"),
                 "failures": primary_metrics.get("failures"),
             }
         )
 
+    if diagnostic_presence_metric:
+        combined["diagnostic_audit"] = diagnostic_presence_metric
     if iterator_metrics:
         combined["iterator"] = iterator_metrics
     if typeclass_metrics:
@@ -1838,12 +1913,21 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     failure_reasons: List[str] = []
     if getattr(args, "require_success", False):
-        if bridge_metrics:
-            total = bridge_metrics.get("total")
-            pass_rate = bridge_metrics.get("pass_rate")
+        def _enforce(metric: Optional[Dict[str, Any]], label: str) -> None:
+            if not isinstance(metric, dict):
+                return
+            total = metric.get("total")
+            pass_rate = metric.get("pass_rate")
             if isinstance(total, (int, float)) and total > 0:
                 if not isinstance(pass_rate, (int, float)) or pass_rate < 1.0:
-                    failure_reasons.append("ffi_bridge.audit_pass_rate < 1.0")
+                    failure_reasons.append(f"{label} < 1.0")
+
+        _enforce(diagnostic_presence_metric, "diagnostic.audit_presence_rate")
+        _enforce(iterator_metrics, "iterator.stage.audit_pass_rate")
+        _enforce(typeclass_metrics, "typeclass.metadata_pass_rate")
+        if isinstance(typeclass_metrics, dict):
+            _enforce(typeclass_metrics.get("dictionary_metric"), "typeclass.dictionary_pass_rate")
+        _enforce(bridge_metrics, "ffi_bridge.audit_pass_rate")
         for metric in append_metrics:
             if not isinstance(metric, dict):
                 continue

@@ -10,6 +10,7 @@
 | 安全性 | `stage_mismatch_count` | Capability Stage ミスマッチ件数 | CI (PR ごと) | [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) |
 | 安全性 | `ffi_ownership_violation` | FFI 所有権警告件数 | CI + 週次レビュー | [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md) |
 | 安全性 | `iterator.stage.audit_pass_rate` | `typeclass.iterator.stage_mismatch` 診断で必須監査キーが揃った割合 (0.0〜1.0) | CI（週次レビュー、PRごと） | [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) §2.4 |
+| 安全性 | `diagnostic.audit_presence_rate` | 診断 JSON で `audit` / `cli.audit_id` / `cli.change_set` / `schema.version` / `timestamp` が欠落なく出力された割合（0.0〜1.0、欠落時は 0.0） | CI（週次レビュー、PRごと） | [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) §1 |
 | 型クラス | `typeclass.metadata_pass_rate` | `extensions.typeclass` / `audit_metadata.typeclass.*` が完全に埋まっている割合 (0.0〜1.0) | CI（週次レビュー、PRごと） | 同 §1.4 |
 | 型クラス | `typeclass.dictionary_pass_rate` | `extensions.typeclass.dictionary.*` と `AuditEnvelope.metadata["typeclass.dictionary.*"]` が `kind != "none"` で揃っている割合 (0.0〜1.0) | CI（週次レビュー、PRごと） | [1-2-types-Inference.md](../../spec/1-2-types-Inference.md) §B, [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) §1 |
 | 安全性 | `ffi_bridge.audit_pass_rate` | `ffi.contract.*` 診断で `AuditEnvelope.metadata.bridge.*` と拡張フィールドが揃った割合 (0.0〜1.0) | CI（週次レビュー、PRごと） | [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md), [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) |
@@ -21,7 +22,7 @@
 | DX | `audit_query.coverage` | DSL プリセット（Stage/FFI/型クラス）でヒットした監査ログ数 / 全監査ログ数 | PR ごと | `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` §5.3 |
 | DX | `error_resolution_latency` | 重大バグの修正までの日数 | 月次 | [0-1-project-purpose.md](../../spec/0-1-project-purpose.md) §2.2 |
 
-- CI 集計スクリプト: `tooling/ci/collect-iterator-audit-metrics.py` を用いて診断 JSON を検査し、結果を `tooling/ci/iterator-audit-metrics.json` に書き出す。`metrics[]` 配列には iterator / FFI ブリッジ指標に加えて `review` セクション（`audit_diff.regressions`, `audit_query.coverage`）が含まれ、`pass_rate` が 1.0 未満または DX 指標が閾値を超えた場合は CI 側でブロック条件を設定する。
+- CI 集計スクリプト: `tooling/ci/collect-iterator-audit-metrics.py` を用いて診断 JSON を検査し、結果を `tooling/ci/iterator-audit-metrics.json` に書き出す。`metrics[]` 配列には `diagnostic.audit_presence_rate`・iterator・FFI ブリッジ指標に加えて `review` セクション（`audit_diff.regressions`, `audit_query.coverage`）が含まれ、必須フィールド欠落時は `pass_rate = 0.0` に丸める。Linux / macOS / Windows いずれの CI ワークフローでも `--require-success` オプションを有効化し、`pass_rate` が 1.0 未満または DX 指標が閾値を超えた場合にジョブ全体を失敗させる。
 
 ### 0.3.1a レビュー支援ツール連携
 - 差分検知: `tooling/review/audit-diff.py --base reports/audit/baseline.jsonl --target reports/audit/current.jsonl --output reports/audit/review/<commit>/diff` を CI/ローカル双方で実行し、`diff.json` に記録された `diagnostic.regressions`, `metadata.changed`, `pass_rate.delta` を `audit_diff.regressions` の計測値として採用する。PR テンプレートでは差分サマリを貼り付け、`reports/diagnostic-format-regression.md` のチェックリストに沿ってレビューする。CI 側では `collect-iterator-audit-metrics.py --section review --review-diff reports/audit/review/<commit>/diff.json` を呼び出し、差分指標を取得する。

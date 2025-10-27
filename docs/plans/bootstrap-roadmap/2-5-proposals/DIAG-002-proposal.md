@@ -95,6 +95,7 @@ let ensure_audit audit_opt =
    - `0-3-audit-and-metrics.md` に `diagnostic.audit_presence_rate` を追加入力し、CI でトラッキングする。  
    - GitHub Actions の Linux/Windows/macOS すべてで当該スクリプトを実行し、欠落時はジョブが失敗するゲートを組み込む。  
    - **進捗メモ（2025-11-02）**: スクリプトに `stderr` ログを追加済み。`--require-success` 実行時に不足フィールドがファイル・インデックスと共に出力される。  
+   - **進捗メモ（2025-11-07 更新）**: `diagnostic.audit_presence_rate` をスクリプト出力へ追加し、欠落検知時は `pass_rate = 0.0` へ丸める仕様を実装。Linux / macOS / Windows 各ワークフローで `--require-success` を有効化し、`0-3-audit-and-metrics.md` の指標表へ新メトリクスを追記した。  
 5. **テストとドキュメント反映（Week31 Day4-5）**  
    - `compiler/ocaml/tests/golden/` 配下の診断 JSON を再生成し、`scripts/validate-diagnostic-json.sh` と `reports/diagnostic-format-regression.md` の手順でレビューする。  
    - `docs/spec/3-6-core-diagnostics-audit.md` に OCaml 実装の必須化完了を脚注として追記し、監査キー一覧の最新版を反映する。  
