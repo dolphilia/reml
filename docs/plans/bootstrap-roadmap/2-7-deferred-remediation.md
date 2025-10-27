@@ -31,6 +31,7 @@
 - `tooling/ci/collect-iterator-audit-metrics.py` に Windows プラットフォーム専用プリセット (`--platform windows-msvc`) を追加し、`ffi_bridge.audit_pass_rate` / `iterator.stage.audit_pass_rate` を算出。
 - `bootstrap-windows.yml` に `audit-matrix` ジョブを追加し、pass_rate < 1.0 の場合は PR を失敗させる。
 - `reports/ffi-bridge-summary.md` と `docs/plans/bootstrap-roadmap/2-3-to-2-4-handover.md` の TODO 欄を更新。
+- DIAG-002 で追加した `diagnostic.audit_presence_rate` をダッシュボードへ組み込み、`python3 tooling/ci/collect-iterator-audit-metrics.py --require-success` の結果を Windows 行にも掲載する（ソース: `compiler/ocaml/tests/golden/diagnostics/**/*.json.golden` / `compiler/ocaml/tests/golden/audit/**/*.json[l].golden`）。
 
 1.2. **macOS FFI サンプル自動検証 (ID 23)**
 - `ffi_dispatch_async.reml` / `ffi_malloc_arm64.reml` をビルド可能なよう修正し、`scripts/ci-local.sh --target macos-arm64 --emit-audit` に組み込む。

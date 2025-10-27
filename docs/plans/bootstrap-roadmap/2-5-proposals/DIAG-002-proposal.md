@@ -97,10 +97,24 @@ let ensure_audit audit_opt =
    - **進捗メモ（2025-11-02）**: スクリプトに `stderr` ログを追加済み。`--require-success` 実行時に不足フィールドがファイル・インデックスと共に出力される。  
    - **進捗メモ（2025-11-07 更新）**: `diagnostic.audit_presence_rate` をスクリプト出力へ追加し、欠落検知時は `pass_rate = 0.0` へ丸める仕様を実装。Linux / macOS / Windows 各ワークフローで `--require-success` を有効化し、`0-3-audit-and-metrics.md` の指標表へ新メトリクスを追記した。  
 5. **テストとドキュメント反映（Week31 Day4-5）**  
-   - `compiler/ocaml/tests/golden/` 配下の診断 JSON を再生成し、`scripts/validate-diagnostic-json.sh` と `reports/diagnostic-format-regression.md` の手順でレビューする。  
-   - `docs/spec/3-6-core-diagnostics-audit.md` に OCaml 実装の必須化完了を脚注として追記し、監査キー一覧の最新版を反映する。  
-   - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に、Phase 2-7 で監査ダッシュボードへ新フィールドを反映するタスクを追加する。  
-   - **進捗メモ（2025-11-02）**: Typeclass / FFI / Effects 系ゴールデンを更新し、`dune runtest` が通過することを確認済み。仕様ドキュメントの脚注更新は後続タスクへ引き継ぐ。  
+   - **事前準備**  
+     - `REMLC_FIXED_TIMESTAMP=1970-01-01T00:00:00Z` を環境変数に設定し、テスト出力の決定性を確保する。  
+     - `tooling/lsp/tests/client_compat/node_modules` が存在しない場合は `npm ci --prefix tooling/lsp/tests/client_compat` を実行して JSON スキーマ検証の依存関係を復旧する。  
+   - **ゴールデン再生成**  
+     - `dune runtest compiler/ocaml/tests/test_cli_diagnostics.ml`, `dune runtest compiler/ocaml/tests/test_effect_residual.ml`, `dune runtest compiler/ocaml/tests/test_ffi_contract.ml` を順に実行し、`compiler/ocaml/tests/golden/diagnostics` と `compiler/ocaml/tests/golden/audit` の最新版を `_actual` ディレクトリに生成する。  
+     - `_actual` に出力された差分を確認し、監査メタデータ（`cli.audit_id`, `cli.change_set`, `schema.version`, `audit.timestamp`）が揃っていることを確認してからゴールデンへ反映する。  
+   - **バリデーション**  
+     - `bash scripts/validate-diagnostic-json.sh compiler/ocaml/tests/golden/diagnostics compiler/ocaml/tests/golden/audit` を実行し、診断 JSON / 監査 JSONL が `diagnostic-v2.schema.json` および `audit-schema.json` を満たすか検証する。  
+     - `python3 tooling/ci/collect-iterator-audit-metrics.py --require-success --source compiler/ocaml/tests/golden/diagnostics --source compiler/ocaml/tests/golden/audit` を実行し、`diagnostic.audit_presence_rate`・`iterator.stage.audit_pass_rate`・`ffi_bridge.audit_pass_rate` がすべて `1.0` であることを確認する。  
+   - **ドキュメント反映**  
+     - `docs/spec/3-6-core-diagnostics-audit.md` §1 (`Diagnostic` 構造体) に DIAG-002 による必須化完了を脚注として追記し、`audit` / `timestamp` が `Option` ではないことを明文化する。  
+     - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §1 に、監査ダッシュボードへ新 KPI (`diagnostic.audit_presence_rate`) を取り込むサブタスクと `phase2.5.audit.v1` テンプレートの維持ルールを追加する。  
+     - `reports/diagnostic-format-regression.md` のチェックリストへ「各診断で `audit` / `timestamp` が欠落していないか」の確認項目を追加する。  
+     - 監査結果とコマンドログを `docs/plans/bootstrap-roadmap/2-5-review-log.md` に記録し、再発調査用の参照先を残す。  
+   - **完了条件**  
+     - 上記バリデーションが成功し、`git diff compiler/ocaml/tests/golden/` に監査必須フィールドの補完以外の差分が含まれていないこと。  
+     - ドキュメント更新に対応する PR レビューノートを残し、Phase 2-7 以降が参照できる状態であること。  
+   - **進捗メモ（2025-10-27 更新）**: `scripts/validate-diagnostic-json.sh` を既定対象で完走し、`python3 tooling/ci/collect-iterator-audit-metrics.py --require-success` で `diagnostic.audit_presence_rate` / `typeclass.metadata_pass_rate` / `ffi_bridge.audit_pass_rate` の各指標が 1.0 になることを確認。CLI ゴールデン（effects/invalid-attribute*, stage-resolution, typeclass_*）を `phase2.5.audit.v1` テンプレートへ揃え、Spec 3.6・2-7 計画・レビュー手順へ必須化完了の反映を実施済み。
 
 ## 残課題
 - `Audit_envelope.empty_envelope` に含める既定値（`audit_id` / `change_set` の扱い）について監査チームの合意が必要。  

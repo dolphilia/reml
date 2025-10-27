@@ -41,8 +41,8 @@ pub enum Severity = Error | Warning | Info | Hint
 ```
 
 - `domain` は診断が属する責務領域（構文、型、ターゲット等）を表す。`None` の場合はコンポーネント既定値を利用する。
-- `timestamp` は [3.4](3-4-core-numeric-time.md) の `Timestamp` を利用し、診断生成時に `Core.Numeric.now()` を呼び出す。
-- `AuditEnvelope` は監査情報を同梱する構造（後述）。
+- `timestamp` は [3.4](3-4-core-numeric-time.md) の `Timestamp` を利用し、診断生成時に `Core.Numeric.now()` を呼び出す。Phase 2-5 の DIAG-002 で CLI / テスト双方に必須化され、`phase2.5.audit.v1` テンプレートで固定化された[^diag002-phase25]。
+- `AuditEnvelope` は監査情報を同梱する構造（後述）。`audit` フィールドそのものも DIAG-002 により省略不可となり、監査ログとの 1 対 1 対応を保証する[^diag002-phase25]。
 - `ExpectedSummary` は LSP/CLI でメッセージを国際化するための鍵と引数を保持する。
 
 ### 1.1 `AuditEnvelope`
@@ -158,6 +158,8 @@ enum Stage = Experimental | Beta | Stable
 補助キーとして `typeclass.span.start` / `typeclass.span.end` をフラット化し、制約が導入されたソース位置（`Ast.span` のオフセット値）を記録する。モノモルフィゼーション経路など辞書が存在しない場合でも、`dictionary.kind = "none"` を必ず出力し、`candidates` や `resolution_state` で差分を説明する。
 
 `resolution_state` は診断コードと 1 対 1 に対応させる想定である。例として:
+
+[^diag002-phase25]: Phase 2-5 DIAG-002 監査必須化計画 (`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-002-proposal.md`) Week31 Day4-5 の完了記録。`scripts/validate-diagnostic-json.sh` と `python3 tooling/ci/collect-iterator-audit-metrics.py --require-success --source compiler/ocaml/tests/golden/diagnostics --audit-source compiler/ocaml/tests/golden/audit` により `diagnostic.audit_presence_rate = 1.0` を確認済み。
 
 - `resolved`: 辞書参照が確定し、監査ログとして事後分析に利用したい場合。
 - `stage_mismatch`: `typeclass.iterator.stage_mismatch` のように Capability Stage が不足している場合。

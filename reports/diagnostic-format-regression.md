@@ -27,6 +27,7 @@
 
 ## 4. レビュー用チェックリスト
 - [ ] JSON スキーマ (`tooling/json-schema/diagnostic-v2.schema.json`) とサンプル出力が一致している。
+- [ ] 全診断で `audit` / `timestamp` フィールドが欠落していない（`scripts/validate-diagnostic-json.sh` および `collect-iterator-audit-metrics.py --require-success` の結果を確認）。
 - [ ] `scripts/validate-diagnostic-json.sh` の既定対象（`compiler/ocaml/tests/golden/diagnostics`, `compiler/ocaml/tests/golden/audit`）でエラーがない。
 - [ ] `compiler/ocaml/tests/golden/typeclass_dictionary_resolved.json.golden` の辞書フィールド（`kind`, `identifier`, `repr`）が `extensions.*`／`audit_metadata` の双方で欠落していない。
 - [ ] `npm run ci --prefix tooling/lsp/tests/client_compat` が成功する。
