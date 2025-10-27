@@ -23,6 +23,7 @@
   parser_driver
   types
   type_env
+  module_env
   constraint
   effect_profile
   constraint_solver

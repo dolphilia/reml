@@ -156,6 +156,7 @@ let attach_dict_args = attach_expr_dict_args
 type typed_compilation_unit = {
   tcu_module_header : module_header option;
   tcu_use_decls : use_decl list;
+  tcu_use_bindings : Module_env.use_binding list;
   tcu_items : typed_decl list;
 }
 (** 型付きコンパイル単位 *)

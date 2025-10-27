@@ -5,6 +5,7 @@
  test_lexer
  test_parser
  test_parser_driver
+ test_module_env
  test_parse_result_state
  test_golden
   test_pattern_matching

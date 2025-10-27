@@ -492,7 +492,9 @@ type compilation_unit = {
 > **2025-10-27 追記 (SYNTAX-002 S2)**  
 > `use_decl` は型付き AST (`typed_ast.ml:158-164`) でも追加の変換を伴わず `tcu_use_decls : use_decl list` として保持される。  
 > `type_inference.ml:2810-2832` のコンパイル単位構築処理でも `cu.uses` をそのまま伝搬しており、`item_nested` に多段ネストを格納できる構造が既に整っていることを確認した。  
-> このため S3 以降の修正では Menhir 側で `item_nested` を設定すれば、型付き AST や Typer の連携に追加改修は不要となる。
+> **2025-10-29 追記 (SYNTAX-002 S4)**  
+> `Module_env.flatten_use_decls` を導入し、Typer で `tcu_use_bindings : Module_env.use_binding list` を併せて計算するよう拡張した（`module_env.ml`, `type_inference.ml:2817-2820`, `typed_ast.ml:156-164`）。  
+> これにより `use` ネストを `binding_local`／`binding_path` へ射影した束縛リストを共有でき、今後のモジュール解決・診断処理から再利用可能になった。
 
 ## 3. 設計判断と留意事項
 

@@ -2815,6 +2815,7 @@ let infer_compilation_unit ?(config = default_config) (cu : compilation_unit) :
             {
               tcu_module_header = cu.header;
               tcu_use_decls = cu.uses;
+              tcu_use_bindings = Module_env.flatten_use_decls cu.uses;
               tcu_items = typed_items;
             })
   | Error err -> Error err

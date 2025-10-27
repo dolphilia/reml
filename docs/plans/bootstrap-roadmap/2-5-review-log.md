@@ -197,3 +197,21 @@ S3（Menhir ルール実装）の結果共有。
 ### 3. フォローアップ
 - S4 で予定している Typer／診断連携へ向けて、`tcu_use_decls` の利用箇所（`type_inference.ml`）にネスト構造を踏まえた再帰探索が必要か評価する。
 - S5 でのテスト追加（`test_parser.ml`）および CLI ゴールデン更新を行う際は、今回の Menhir 修正に基づいた AST 期待値をベースラインとする。
+
+## SYNTAX-002 Day3-4 束縛診断連携（2025-10-29）
+
+S4（束縛・診断連携）の結果共有。  
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-002-proposal.md`](./2-5-proposals/SYNTAX-002-proposal.md)
+
+### 1. 実装内容
+- `compiler/ocaml/src/module_env.ml` を新設し、`flatten_use_decls` で `use` ネストを `binding_local`／`binding_path`／`binding_is_pub` に展開する `use_binding` レコードを導入。
+- 型付き AST (`typed_ast.ml:156-164`) に `tcu_use_bindings` を追加し、`type_inference.ml:2796-2833` で Typer 完了時に束縛リストを生成。今後のモジュール解決や診断で再利用できる共有データを確保。
+- `compiler/ocaml/tests/test_module_env.ml` を追加し、単純な `use`／`alias`／多段ネスト／`pub use` の 4 ケースを検証。展開結果（ローカル名・解決パス・pub フラグ）が仕様と一致することを確認した。
+
+### 2. 診断影響の確認
+- `parser_diag_state.ml` の最遠エラー集約と期待集合のソートは `use` 展開に依存していないため追加変更は不要。`menhir --list-errors parser.mly` 実行結果にも S3 からの差分がないことを再確認。
+- `ERR-001` 計画へ「S4 完了時点で期待集合の変化が無い」旨を共有し、FixIt 拡張の追従は不要であることを合意済み。
+
+### 3. フォローアップ
+- `Module_env.use_binding` を Phase 2-7 再エクスポート解決タスクへ引き渡し、`binding_local` 名で型環境へ取り込む処理を設計する。
+- S5 で予定している `parser.use_nested_support` メトリクス算出は `flatten_use_decls` の結果を基に成功率を評価する。
