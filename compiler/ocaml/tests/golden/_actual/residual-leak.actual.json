@@ -71,24 +71,62 @@
         ]
       },
       "audit_metadata": {
-        "schema.version": "1.1",
-        "audit.timestamp": "1970-01-01T00:00:00Z",
         "effect.residual.tags": [ "panic" ],
         "effect.capability": "core.runtime",
         "effect.stage.actual": "stable",
         "effect.stage.required": "stable",
+        "effect.stage.capabilities": [
+          { "capability": "core.runtime", "stage": "stable" }
+        ],
+        "effect.capabilities": [ "core.runtime" ],
         "stage_trace": [
           { "source": "typer", "stage": "stable" },
           { "source": "runtime", "stage": "stable" }
         ],
-        "missing": [ "cli.change_set", "cli.audit_id" ]
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "19700101T000000Z",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "cli.audit_id": "cli/19700101T000000Z#0",
+        "schema.version": "1.1",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "<入力>" } ]
+        }
       },
       "audit": {
         "metadata": {
-          "missing": [ "cli.change_set", "cli.audit_id" ],
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "19700101T000000Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [ { "kind": "input", "path": "<入力>" } ]
+          },
+          "cli.audit_id": "cli/19700101T000000Z#0",
+          "audit.source.workspace": ".",
+          "audit.sequence": 0,
+          "audit.build_id": "19700101T000000Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
           "stage_trace": [
             { "source": "typer", "stage": "stable" },
             { "source": "runtime", "stage": "stable" }
+          ],
+          "effect.capabilities": [ "core.runtime" ],
+          "effect.stage.capabilities": [
+            { "capability": "core.runtime", "stage": "stable" }
           ],
           "effect.stage.required": "stable",
           "effect.stage.actual": "stable",
@@ -96,6 +134,17 @@
           "effect.residual.tags": [ "panic" ],
           "audit.timestamp": "1970-01-01T00:00:00Z",
           "schema.version": "1.1"
+        },
+        "audit_id": "cli/19700101T000000Z#0",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "<入力>" } ]
         }
       }
     }

@@ -97,6 +97,7 @@ type type_error =
       span : span;
       function_name : string option;
       capability : string option;
+      capability_stages : (string * string option) list;
       stage_trace : stage_trace;
     }
   | EffectInvalidAttribute of {
@@ -223,8 +224,16 @@ let string_of_error = function
       Printf.sprintf
         "Trait constraint '%s<%s>' cannot be satisfied at %d:%d\n  Reason: %s"
         trait_name type_args_str span.start span.end_ reason
-  | EffectStageMismatch { required_stage; actual_stage; span; function_name; _ }
-    ->
+  | EffectStageMismatch
+      {
+        required_stage;
+        actual_stage;
+        span;
+        function_name;
+        capability = _;
+        capability_stages = _;
+        stage_trace = _;
+      } ->
       let subject =
         match function_name with
         | Some name -> Printf.sprintf " for '%s'" name
@@ -332,7 +341,7 @@ let not_assignable_error span = NotAssignable { span }
 
 (** 効果 Stage ミスマッチのエラーを生成 *)
 let effect_stage_mismatch_error ~function_name ~required_stage ~actual_stage
-    ~span ~capability ~stage_trace =
+    ~span ~capability ~capability_stages ~stage_trace =
   EffectStageMismatch
     {
       required_stage;
@@ -340,6 +349,7 @@ let effect_stage_mismatch_error ~function_name ~required_stage ~actual_stage
       span;
       function_name = Some function_name;
       capability;
+      capability_stages;
       stage_trace;
     }
 
@@ -878,6 +888,7 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         span;
         function_name;
         capability;
+        capability_stages;
         stage_trace;
       } ->
       let message =
@@ -901,7 +912,8 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       in
       let diag =
         with_effect_stage_extension ~required_stage ~capability:capability_name
-          ~actual_stage ~stage_trace:enriched_trace diag
+          ~actual_stage ~stage_trace:enriched_trace
+          ~capability_stages diag
       in
       let diag =
         Diagnostic.set_extension "effect.stage.required"
@@ -940,6 +952,30 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
             ("effect.stage.actual", `String actual_stage);
             ("effect.capability", `String capability_name);
           ]
+        in
+        let base =
+          if capability_stages <> [] then
+            let names_json =
+              `List
+                (List.map (fun (name, _) -> `String name) capability_stages)
+            in
+            let detail_json =
+              `List
+                (List.map
+                   (fun (name, stage_opt) ->
+                     let fields = [ ("capability", `String name) ] in
+                     let fields =
+                       match stage_opt with
+                       | Some stage -> ("stage", `String stage) :: fields
+                       | None -> fields
+                     in
+                     `Assoc (List.rev fields))
+                   capability_stages)
+            in
+            ("effect.capabilities", names_json)
+            :: ("effect.stage.capabilities", detail_json)
+            :: base
+          else base
         in
         let base =
           if audit_trace <> [] then ("stage_trace", `List audit_trace) :: base
@@ -1060,6 +1096,42 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
           diag
       in
       let diag =
+        if profile.resolved_capabilities <> [] then
+          let detail_json =
+            Effect_profile.capability_resolutions_to_json
+              profile.resolved_capabilities
+          in
+          let names_json =
+            `List
+              (List.map
+                 (fun (entry : Effect_profile.capability_resolution) ->
+                   `String entry.capability_name)
+                 profile.resolved_capabilities)
+          in
+          diag
+          |> Diagnostic.set_extension "effect.stage.capabilities" detail_json
+          |> Diagnostic.set_extension "effect.capabilities" names_json
+        else diag
+      in
+      let diag =
+        if profile.resolved_capabilities <> [] then
+          let detail_json =
+            Effect_profile.capability_resolutions_to_json
+              profile.resolved_capabilities
+          in
+          let names_json =
+            `List
+              (List.map
+                 (fun (entry : Effect_profile.capability_resolution) ->
+                   `String entry.capability_name)
+                 profile.resolved_capabilities)
+          in
+          diag
+          |> Diagnostic.set_extension "effect.stage.capabilities" detail_json
+          |> Diagnostic.set_extension "effect.capabilities" names_json
+        else diag
+      in
+      let diag =
         Diagnostic.set_extension "effect.stage.required"
           (`String required_stage) diag
       in
@@ -1073,6 +1145,25 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       let diag =
         Diagnostic.set_extension "effect.stage.capability"
           (`String capability_name) diag
+      in
+      let diag =
+        if profile.resolved_capabilities <> [] then
+          let detail_json =
+            Effect_profile.capability_resolutions_to_json
+              profile.resolved_capabilities
+          in
+          let names_json =
+            `List
+              (List.map
+                 (fun (entry : Effect_profile.capability_resolution) ->
+                   `String entry.capability_name)
+                 profile.resolved_capabilities)
+          in
+          diag
+          |> Diagnostic.set_audit_metadata "effect.stage.capabilities"
+               detail_json
+          |> Diagnostic.set_audit_metadata "effect.capabilities" names_json
+        else diag
       in
       let diag =
         match function_name with
@@ -1120,6 +1211,24 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
             ( "effect.attribute.reason",
               `String (string_of_invalid_reason invalid.reason) );
           ]
+        in
+        let base =
+          if profile.resolved_capabilities <> [] then
+            let detail_json =
+              Effect_profile.capability_resolutions_to_json
+                profile.resolved_capabilities
+            in
+            let names_json =
+              `List
+                (List.map
+                   (fun (entry : Effect_profile.capability_resolution) ->
+                     `String entry.capability_name)
+                   profile.resolved_capabilities)
+            in
+            ("effect.capabilities", names_json)
+            :: ("effect.stage.capabilities", detail_json)
+            :: base
+          else base
         in
         let base =
           match stage_trace_json with
@@ -1262,6 +1371,24 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
             ( "effect.residual.tags",
               `List (List.map (fun name -> `String name) leak_names) );
           ]
+        in
+        let base =
+          if profile.resolved_capabilities <> [] then
+            let detail_json =
+              Effect_profile.capability_resolutions_to_json
+                profile.resolved_capabilities
+            in
+            let names_json =
+              `List
+                (List.map
+                   (fun (entry : Effect_profile.capability_resolution) ->
+                     `String entry.capability_name)
+                   profile.resolved_capabilities)
+            in
+            ("effect.capabilities", names_json)
+            :: ("effect.stage.capabilities", detail_json)
+            :: base
+          else base
         in
         let base =
           if audit_trace <> [] then ("stage_trace", `List audit_trace) :: base
@@ -1819,6 +1946,7 @@ let to_diagnostic_with_source ?(available_names : string list = [])
         span;
         function_name;
         capability;
+        capability_stages;
         stage_trace;
       } ->
       let message =
@@ -1842,7 +1970,8 @@ let to_diagnostic_with_source ?(available_names : string list = [])
       in
       let diag =
         with_effect_stage_extension ~required_stage ~capability:capability_name
-          ~actual_stage ~stage_trace:enriched_trace diag
+          ~actual_stage ~stage_trace:enriched_trace
+          ~capability_stages diag
       in
       let diag =
         Diagnostic.set_extension "effect.stage.required"

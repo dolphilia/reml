@@ -140,6 +140,7 @@ module EffectConstraintTable : sig
     source_name : string option;
     resolved_stage : Effect_profile.stage_id option;
     resolved_capability : string option;
+    resolved_capabilities : Effect_profile.capability_resolution list;
     stage_trace : Effect_profile.stage_trace;
     diagnostic_payload : Effect_profile.effect_diagnostic_payload;
   }
@@ -157,6 +158,7 @@ module EffectConstraintTable : sig
     ?source_name:string ->
     ?resolved_stage:Effect_profile.stage_id ->
     ?resolved_capability:string ->
+    ?resolved_capabilities:Effect_profile.capability_resolution list ->
     ?stage_trace:Effect_profile.stage_trace ->
     ?diagnostic_payload:Effect_profile.effect_diagnostic_payload ->
     unit ->

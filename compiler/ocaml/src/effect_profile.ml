@@ -407,6 +407,28 @@ let effect_diagnostic_payload_to_json (payload : effect_diagnostic_payload) =
   `Assoc
     [ ("invalid_attributes", invalid_json); ("residual_leaks", residual_json) ]
 
+(* ========== Capability 解決結果 ========== *)
+
+type capability_resolution = {
+  capability_name : string;
+  capability_stage : stage_id option;
+}
+
+let capability_resolution_to_json (entry : capability_resolution) =
+  let stage_json =
+    match entry.capability_stage with
+    | Some stage -> `String (stage_id_to_string stage)
+    | None -> `Null
+  in
+  `Assoc
+    [
+      ("capability", `String entry.capability_name);
+      ("stage", stage_json);
+    ]
+
+let capability_resolutions_to_json entries =
+  `List (List.map capability_resolution_to_json entries)
+
 (* ========== Effect Profile ========== *)
 
 type profile = {
@@ -416,12 +438,13 @@ type profile = {
   source_name : string option;
   resolved_stage : stage_id option;
   resolved_capability : string option;
+  resolved_capabilities : capability_resolution list;
   stage_trace : stage_trace;
   diagnostic_payload : effect_diagnostic_payload;
 }
 
 let make_profile ?source_name ?resolved_stage ?resolved_capability
-    ?(stage_trace = stage_trace_empty)
+    ?(resolved_capabilities = []) ?(stage_trace = stage_trace_empty)
     ?(diagnostic_payload = empty_diagnostic_payload) ~stage_requirement
     ~effect_set ~span () =
   {
@@ -432,6 +455,7 @@ let make_profile ?source_name ?resolved_stage ?resolved_capability
     resolved_stage;
     resolved_capability;
     stage_trace;
+    resolved_capabilities;
     diagnostic_payload;
   }
 
@@ -457,6 +481,15 @@ let profile_of_ast ?source_name ?(stage_trace = stage_trace_empty)
     | None -> default_stage_requirement
   in
   let diagnostic_payload = payload_of_ast node in
+  let resolved_capabilities =
+    List.map
+      (fun ident ->
+        {
+          capability_name = normalize_effect_name ident.name;
+          capability_stage = None;
+        })
+      node.effect_capabilities
+  in
   make_profile ?source_name ?resolved_capability:capability_name
-    ~stage_requirement ~effect_set ~span:node.effect_span ~stage_trace
-    ~diagnostic_payload ()
+    ~resolved_capabilities ~stage_requirement ~effect_set
+    ~span:node.effect_span ~stage_trace ~diagnostic_payload ()

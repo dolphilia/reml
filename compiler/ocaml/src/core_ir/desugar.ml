@@ -1732,9 +1732,20 @@ let desugar_fn_decl (decl : typed_decl) (fn_decl : typed_fn_decl) : function_def
           Some (effect_stage_requirement_to_ir entry.stage_requirement)
         in
         let required_caps =
-          match entry.resolved_capability with
-          | Some name -> [ { cap_name = name; cap_span = entry.source_span } ]
-          | None -> base_metadata.capabilities.required
+          match entry.resolved_capabilities with
+          | [] -> (
+              match entry.resolved_capability with
+              | Some name ->
+                  [ { cap_name = name; cap_span = entry.source_span } ]
+              | None -> base_metadata.capabilities.required)
+          | capabilities ->
+              List.map
+                (fun (resolution : Effect_profile.capability_resolution) ->
+                  {
+                    cap_name = resolution.capability_name;
+                    cap_span = entry.source_span;
+                  })
+                capabilities
         in
         let capabilities =
           { required = required_caps; stage = capability_stage }

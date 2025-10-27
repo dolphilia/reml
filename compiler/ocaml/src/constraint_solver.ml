@@ -32,6 +32,7 @@ module EffectConstraintTable = struct
     source_name : string option;
     resolved_stage : Profile.stage_id option;
     resolved_capability : string option;
+    resolved_capabilities : Profile.capability_resolution list;
     stage_trace : Profile.stage_trace;
     diagnostic_payload : Profile.effect_diagnostic_payload;
   }
@@ -46,6 +47,7 @@ module EffectConstraintTable = struct
 
   let add_effects table ~symbol ~effect_set ~stage_requirement ~source_span
       ?source_name ?resolved_stage ?resolved_capability
+      ?(resolved_capabilities = [])
       ?(stage_trace = Profile.stage_trace_empty)
       ?(diagnostic_payload = Profile.empty_diagnostic_payload) () =
     let entry =
@@ -57,6 +59,7 @@ module EffectConstraintTable = struct
         source_name;
         resolved_stage;
         resolved_capability;
+        resolved_capabilities;
         stage_trace;
         diagnostic_payload;
       }
@@ -69,6 +72,7 @@ module EffectConstraintTable = struct
       ~source_span:profile.source_span ?source_name:profile.source_name
       ?resolved_stage:profile.resolved_stage
       ?resolved_capability:profile.resolved_capability
+      ~resolved_capabilities:profile.resolved_capabilities
       ~stage_trace:profile.stage_trace
       ~diagnostic_payload:profile.diagnostic_payload ()
 

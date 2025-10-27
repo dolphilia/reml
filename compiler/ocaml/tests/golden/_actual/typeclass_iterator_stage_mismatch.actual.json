@@ -23,6 +23,21 @@
           "timestamp": "1970-01-01T00:00:00Z",
           "codes": [ "typeclass.iterator.stage_mismatch" ]
         },
+        "effect.stage.required": "beta",
+        "effect.stage.actual": "experimental",
+        "effect.stage.capability": "core.iterator.collect",
+        "typeclass.trait": "Iterator",
+        "typeclass.type_args": [ "SampleStream", "SampleItem" ],
+        "typeclass.constraint": "Iterator<SampleStream, SampleItem>",
+        "typeclass.resolution_state": "stage_mismatch",
+        "typeclass.graph.export_dot": null,
+        "typeclass.span.start": 42,
+        "typeclass.span.end": 57,
+        "typeclass.dictionary.kind": "none",
+        "typeclass.dictionary.identifier": null,
+        "typeclass.dictionary.trait": null,
+        "typeclass.dictionary.type_args": [],
+        "typeclass.dictionary.repr": null,
         "effects": {
           "capability": "core.iterator.collect",
           "stage": { "required": "beta", "actual": "experimental" },
@@ -41,51 +56,39 @@
             "kind": "custom:iterator.snapshot",
             "capability": "core.iterator.collect",
             "source": "dsl/core.iter.toml"
-          }
+          },
+          "handler_stack": [ "core.iter.collect" ],
+          "unhandled_operations": [ "Iterator::size_hint" ]
         },
-        "effect.stage.required": "beta",
-        "effect.stage.actual": "experimental",
-        "effect.stage.capability": "core.iterator.collect",
+        "parse": { "input_name": "iter.reml", "stage_trace": [] },
         "typeclass": {
           "trait": "Iterator",
           "type_args": [ "SampleStream", "SampleItem" ],
           "constraint": "Iterator<SampleStream, SampleItem>",
           "resolution_state": "stage_mismatch",
           "dictionary": {
-            "kind": "none",
-            "identifier": null,
-            "trait": null,
-            "type_args": [],
-            "repr": null
+            "kind": "diagnostic-sample",
+            "identifier": "Iterator.collect#stage_mismatch",
+            "trait": "Iterator",
+            "type_args": [ "SampleStream", "SampleItem" ],
+            "repr": "{}"
           },
-          "candidates": [],
-          "pending": [],
-          "generalized_typevars": [],
+          "candidates": [ "Iterator.collect" ],
+          "pending": [ "Iterator.size_hint" ],
+          "generalized_typevars": [ "T" ],
           "graph": { "export_dot": null },
           "stage": null
         },
-        "typeclass.trait": "Iterator",
-        "typeclass.type_args": [ "SampleStream", "SampleItem" ],
-        "typeclass.constraint": "Iterator<SampleStream, SampleItem>",
-        "typeclass.resolution_state": "stage_mismatch",
         "typeclass.dictionary": {
-          "kind": "none",
-          "identifier": null,
-          "trait": null,
-          "type_args": [],
-          "repr": null
+          "kind": "diagnostic-sample",
+          "identifier": "Iterator.collect#stage_mismatch",
+          "trait": "Iterator",
+          "type_args": [ "SampleStream", "SampleItem" ],
+          "repr": "{}"
         },
-        "typeclass.candidates": [],
-        "typeclass.pending": [],
-        "typeclass.generalized_typevars": [],
-        "typeclass.graph.export_dot": null,
-        "typeclass.span.start": 42,
-        "typeclass.span.end": 57,
-        "typeclass.dictionary.kind": "none",
-        "typeclass.dictionary.identifier": null,
-        "typeclass.dictionary.trait": null,
-        "typeclass.dictionary.type_args": [],
-        "typeclass.dictionary.repr": null
+        "typeclass.candidates": [ "Iterator.collect" ],
+        "typeclass.pending": [ "Iterator.size_hint" ],
+        "typeclass.generalized_typevars": [ "T" ]
       },
       "audit_metadata": {
         "effect.stage.required": "beta",
@@ -105,14 +108,6 @@
         "effect.stage.iterator.kind": "custom:iterator.snapshot",
         "effect.stage.iterator.capability": "core.iterator.collect",
         "effect.stage.iterator.source": "dsl/core.iter.toml",
-        "cli.audit_id": "11111111-1111-1111-1111-111111111111",
-        "missing": [ "cli.change_set", "cli.audit_id" ],
-        "cli.change_set": {
-          "command": "stage-diagnostic-test",
-          "input": "iter.reml"
-        },
-        "schema.version": "1.1",
-        "audit.timestamp": "1970-01-01T00:00:00Z",
         "typeclass.trait": "Iterator",
         "typeclass.type_args": [ "SampleStream", "SampleItem" ],
         "typeclass.constraint": "Iterator<SampleStream, SampleItem>",
@@ -124,31 +119,113 @@
           "type_args": [],
           "repr": null
         },
-        "typeclass.candidates": [],
-        "typeclass.pending": [],
-        "typeclass.generalized_typevars": [],
         "typeclass.graph.export_dot": null,
         "typeclass.span.start": 42,
         "typeclass.span.end": 57,
-        "typeclass.dictionary.kind": "none",
-        "typeclass.dictionary.identifier": null,
-        "typeclass.dictionary.trait": null,
-        "typeclass.dictionary.type_args": [],
-        "typeclass.dictionary.repr": null
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "19700101T000000Z",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "cli.audit_id": "cli/19700101T000000Z#0",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [
+            { "kind": "cli-command", "command": "stage-diagnostic-test" },
+            { "kind": "input", "path": "iter.reml" }
+          ]
+        },
+        "effect.handler_stack": [ "core.iter.collect" ],
+        "effect.unhandled_operations": [ "Iterator::size_hint" ],
+        "bridge.audit_pass_rate": 1.0,
+        "bridge.status": "ok",
+        "cli": {
+          "audit_id": "cli/19700101T000000Z#0",
+          "change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "19700101T000000Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [
+              { "kind": "cli-command", "command": "stage-diagnostic-test" },
+              { "kind": "input", "path": "iter.reml" }
+            ]
+          }
+        },
+        "schema": { "version": "1.1" },
+        "typeclass.dictionary.kind": "diagnostic-sample",
+        "typeclass.dictionary.identifier": "Iterator.collect#stage_mismatch",
+        "typeclass.dictionary.trait": "Iterator",
+        "typeclass.dictionary.type_args": [ "SampleStream", "SampleItem" ],
+        "typeclass.dictionary.repr": "{}",
+        "typeclass.candidates": [ "Iterator.collect" ],
+        "typeclass.pending": [ "Iterator.size_hint" ],
+        "schema.version": "1.1",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
+        "typeclass.generalized_typevars": [ "T" ]
       },
       "audit": {
         "metadata": {
-          "typeclass.dictionary.repr": null,
-          "typeclass.dictionary.type_args": [],
-          "typeclass.dictionary.trait": null,
-          "typeclass.dictionary.identifier": null,
-          "typeclass.dictionary.kind": "none",
+          "typeclass.generalized_typevars": [ "T" ],
+          "typeclass.pending": [ "Iterator.size_hint" ],
+          "typeclass.candidates": [ "Iterator.collect" ],
+          "typeclass.dictionary.repr": "{}",
+          "typeclass.dictionary.type_args": [ "SampleStream", "SampleItem" ],
+          "typeclass.dictionary.trait": "Iterator",
+          "typeclass.dictionary.identifier": "Iterator.collect#stage_mismatch",
+          "typeclass.dictionary.kind": "diagnostic-sample",
+          "schema": { "version": "1.1" },
+          "cli": {
+            "audit_id": "cli/19700101T000000Z#0",
+            "change_set": {
+              "policy": "phase2.5.audit.v1",
+              "origin": "cli",
+              "source": {
+                "build_id": "19700101T000000Z",
+                "workspace": ".",
+                "sequence": 0
+              },
+              "items": [
+                { "kind": "cli-command", "command": "stage-diagnostic-test" },
+                { "kind": "input", "path": "iter.reml" }
+              ]
+            }
+          },
+          "bridge.status": "ok",
+          "bridge.audit_pass_rate": 1.0,
+          "effect.unhandled_operations": [ "Iterator::size_hint" ],
+          "effect.handler_stack": [ "core.iter.collect" ],
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "19700101T000000Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [
+              { "kind": "cli-command", "command": "stage-diagnostic-test" },
+              { "kind": "input", "path": "iter.reml" }
+            ]
+          },
+          "cli.audit_id": "cli/19700101T000000Z#0",
+          "audit.source.workspace": ".",
+          "audit.sequence": 0,
+          "audit.build_id": "19700101T000000Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
           "typeclass.span.end": 57,
           "typeclass.span.start": 42,
           "typeclass.graph.export_dot": null,
-          "typeclass.generalized_typevars": [],
-          "typeclass.pending": [],
-          "typeclass.candidates": [],
           "typeclass.dictionary": {
             "kind": "none",
             "identifier": null,
@@ -160,12 +237,6 @@
           "typeclass.constraint": "Iterator<SampleStream, SampleItem>",
           "typeclass.type_args": [ "SampleStream", "SampleItem" ],
           "typeclass.trait": "Iterator",
-          "cli.change_set": {
-            "command": "stage-diagnostic-test",
-            "input": "iter.reml"
-          },
-          "missing": [ "cli.change_set", "cli.audit_id" ],
-          "cli.audit_id": "11111111-1111-1111-1111-111111111111",
           "effect.stage.iterator.source": "dsl/core.iter.toml",
           "effect.stage.iterator.capability": "core.iterator.collect",
           "effect.stage.iterator.kind": "custom:iterator.snapshot",
@@ -186,10 +257,19 @@
           "audit.timestamp": "1970-01-01T00:00:00Z",
           "schema.version": "1.1"
         },
-        "audit_id": "11111111-1111-1111-1111-111111111111",
+        "audit_id": "cli/19700101T000000Z#0",
         "change_set": {
-          "command": "stage-diagnostic-test",
-          "input": "iter.reml"
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [
+            { "kind": "cli-command", "command": "stage-diagnostic-test" },
+            { "kind": "input", "path": "iter.reml" }
+          ]
         }
       }
     }

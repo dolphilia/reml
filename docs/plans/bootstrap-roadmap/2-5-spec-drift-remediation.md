@@ -107,7 +107,8 @@
 - [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) との整合
 
 **差分リスト（2025-10-28 初版）**
-- `EFFECT-001` 効果タグ検出不足: 仕様（docs/spec/1-3-effects-safety.md:11-38）では `mut`/`io`/`ffi` などのコア効果を常時解析すると定義しているが、実装の効果解析（compiler/ocaml/src/type_inference.ml:40-138）で追加されるタグは `panic` のみ。`var` 再代入や `unsafe` ブロック、`ffi` 呼び出しの効果が残余集合へ反映されず、`@no_panic` 以外の契約が機能しない。修正案ドラフト: 効果解析に `mut`／`ffi`／`unsafe` 検出を追加し、`Effect_analysis` のタグ付けルールを仕様付録として Chapter 1 に反映。
+- `EFFECT-001` 効果タグ検出不足: 仕様（docs/spec/1-3-effects-safety.md:11-38）では `mut`/`io`/`ffi` などのコア効果を常時解析すると定義しているが、実装の効果解析（compiler/ocaml/src/type_inference.ml:40-138）で追加されるタグは `panic` のみ。`var` 再代入や `unsafe` ブロック、`ffi` 呼び出しの効果が残余集合へ反映されず、`@no_panic` 以外の契約が機能しない。修正案ドラフト: 効果解析に `mut`／`ffi`／`unsafe` 検出を追加し、`Effect_analysis` のタグ付けルールを仕様付録として Chapter 1 に反映。  
+  - ✅ 2025-11-05: `Type_inference.Effect_analysis` にタグ付与ロジックを実装し、`Type_inference_effect.resolve_function_profile`・`effect_profile`・診断/監査経路が複数 Capability を扱えるよう更新済み（詳細は `docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-001-proposal.md` 参照）。
 - `EFFECT-002` 効果操作未実装: 仕様（docs/spec/1-3-effects-safety.md:201-259）では `effect` 宣言と `handle` 構文を前提に `Σ_before/Σ_after` を計算するが、実装は `effect`/`handler` を AST に保持するのみで解析・型付けを未実装（parser/type_inference に対応処理なし）。効果操作が存在しないため `Σ` の差分計算が検証できず、Chapter 1 のハンドラ例が実行不能。修正案ドラフト: Phase 2-5 で仕様に PoC ステータスを注記し、Phase 2-2/Phase 2-7 のハンドラ実装計画を精査。実装を進める場合は `perform` の型付け規則と `handler` の残余効果計算を `Effect_analysis` に追加。
 - `EFFECT-003` Capability 参照の限定処理: `effect` 属性は複数 Capability を要求できる想定だが、実装の `resolve_function_profile`（compiler/ocaml/src/type_inference_effect.ml:38-86）では先頭 1 件のみ `resolved_capability` に反映。複数 Capability を列挙する仕様（docs/spec/1-1-syntax.md:255-259 および Chapter 3 の DSL 例）と不一致で、診断ログに十分なエビデンスが残らない。修正案ドラフト: Stage/Capability の突合を複数エントリ対応へ拡張し、`AuditEnvelope.metadata` へ全 Capability を記録する方針を追加。
 

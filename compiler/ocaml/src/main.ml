@@ -19,8 +19,9 @@ let json_of_tag tag =
 let json_of_tag_list tags = `List (List.map json_of_tag tags)
 
 let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
-    ~resolved_stage ~resolved_capability ~effect_set ~stage_trace
-    ~diagnostic_payload extra_fields : Audit_envelope.metadata =
+    ~resolved_stage ~resolved_capability ~resolved_capabilities ~effect_set
+    ~stage_trace ~diagnostic_payload extra_fields :
+    Audit_envelope.metadata =
   let symbol = match symbol with Some name -> name | None -> "<anonymous>" in
   let stage_required =
     Effect_profile.stage_requirement_to_string stage_requirement
@@ -35,6 +36,36 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
     | Some value when String.trim value <> "" -> `String value
     | Some _ -> `Null
     | None -> `Null
+  in
+  let capability_list_json =
+    match resolved_capabilities with
+    | [] -> `List []
+    | entries ->
+        `List
+          (List.map
+             (fun (entry : Effect_profile.capability_resolution) ->
+               `String entry.capability_name)
+             entries)
+  in
+  let capability_detail_json =
+    match resolved_capabilities with
+    | [] -> `List []
+    | entries ->
+        `List
+          (List.map
+             (fun (entry : Effect_profile.capability_resolution) ->
+               let fields =
+                 [ ("capability", `String entry.capability_name) ]
+               in
+               let fields =
+                 match entry.capability_stage with
+                 | Some stage ->
+                     ("stage", `String (Effect_profile.stage_id_to_string stage))
+                     :: fields
+                 | None -> fields
+               in
+               `Assoc (List.rev fields))
+             entries)
   in
   let diagnostic_json =
     Effect_profile.effect_diagnostic_payload_to_json diagnostic_payload
@@ -59,6 +90,13 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
         `Int (List.length diagnostic_payload.residual_leaks) );
     ]
   in
+  let base_fields =
+    if resolved_capabilities = [] then base_fields
+    else
+      ("effect.stage.capabilities", capability_detail_json)
+      :: ("effect.capabilities", capability_list_json)
+      :: base_fields
+  in
   let fields =
     if residual_leaks = [] then base_fields
     else ("effect.residual.missing", `List residual_leaks) :: base_fields
@@ -76,6 +114,7 @@ let event_of_effect_entry ?audit_id ?change_set (entry : EffectTable.entry) =
       ~source_span:entry.source_span ~stage_requirement:entry.stage_requirement
       ~resolved_stage:entry.resolved_stage
       ~resolved_capability:entry.resolved_capability
+      ~resolved_capabilities:entry.resolved_capabilities
       ~effect_set:entry.effect_set ~stage_trace:entry.stage_trace
       ~diagnostic_payload:entry.diagnostic_payload []
   in
@@ -90,6 +129,7 @@ let event_of_profile ?audit_id ?change_set ?symbol
       ~stage_requirement:profile.stage_requirement
       ~resolved_stage:profile.resolved_stage
       ~resolved_capability:profile.resolved_capability
+      ~resolved_capabilities:profile.resolved_capabilities
       ~effect_set:profile.effect_set ~stage_trace:profile.stage_trace
       ~diagnostic_payload:profile.diagnostic_payload
       [ ("status", `String "error") ]
@@ -98,16 +138,41 @@ let event_of_profile ?audit_id ?change_set ?symbol
     ~metadata_pairs:metadata ()
 
 let event_of_stage_mismatch ?audit_id ?change_set ~function_name ~required_stage
-    ~actual_stage ~capability ~stage_trace () =
+    ~actual_stage ~capability ?(capability_stages = []) ~stage_trace () =
+  let capability_fields =
+    if capability_stages = [] then []
+    else
+      let detail_json =
+        `List
+          (List.map
+             (fun (name, stage_opt) ->
+               let fields = [ ("capability", `String name) ] in
+               let fields =
+                 match stage_opt with
+                 | Some stage -> ("stage", `String stage) :: fields
+                 | None -> fields
+               in
+               `Assoc (List.rev fields))
+             capability_stages)
+      in
+      let names_json =
+        `List (List.map (fun (name, _) -> `String name) capability_stages)
+      in
+      [
+        ("effect.stage.capabilities", detail_json);
+        ("effect.capabilities", names_json);
+      ]
+  in
   let metadata =
-    [
-      ("symbol", `String function_name);
-      ("effect.stage.required", `String required_stage);
-      ("effect.stage.actual", `String actual_stage);
-      ( "effect.stage.capability",
-        match capability with Some cap -> `String cap | None -> `Null );
-      ("status", `String "error");
-    ]
+    capability_fields
+    @ [
+        ("symbol", `String function_name);
+        ("effect.stage.required", `String required_stage);
+        ("effect.stage.actual", `String actual_stage);
+        ( "effect.stage.capability",
+          match capability with Some cap -> `String cap | None -> `Null );
+        ("status", `String "error");
+      ]
   in
   let metadata =
     if stage_trace = [] then metadata
@@ -298,6 +363,7 @@ let event_of_type_error ?audit_id ?change_set err =
         actual_stage;
         function_name;
         capability;
+        capability_stages;
         stage_trace;
         _;
       } ->
@@ -307,7 +373,7 @@ let event_of_type_error ?audit_id ?change_set err =
       Some
         (event_of_stage_mismatch ?audit_id ?change_set
            ~function_name:symbol ~required_stage ~actual_stage ~capability
-           ~stage_trace ())
+           ~capability_stages ~stage_trace ())
   | Type_error.FfiContractSymbolMissing normalized
   | Type_error.FfiContractOwnershipMismatch normalized
   | Type_error.FfiContractUnsupportedAbi normalized ->

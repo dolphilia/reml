@@ -604,8 +604,11 @@ let diagnostic_of_legacy[@deprecated "Diagnostic.Legacy.t からの変換は段�
   diagnostic_of_legacy_internal
 
 let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
-    ?capability_meta ?iterator_fields ?stage_trace ~required_stage ~capability
-    diag =
+    ?capability_meta ?capability_stages ?iterator_fields ?stage_trace
+    ~required_stage ~capability diag =
+  let capability_list =
+    match capability_stages with Some entries -> entries | None -> []
+  in
   let stage_fields =
     [
       ("required", `String required_stage);
@@ -613,7 +616,31 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
     ]
   in
   let effect_fields =
-    [ ("stage", `Assoc stage_fields); ("capability", `String capability) ]
+    let base =
+      [ ("stage", `Assoc stage_fields); ("capability", `String capability) ]
+    in
+    match capability_list with
+    | [] -> base
+    | entries ->
+        let detail_json =
+          `List
+            (List.map
+               (fun (name, stage_opt) ->
+                 let fields = [ ("capability", `String name) ] in
+                 let fields =
+                   match stage_opt with
+                   | Some stage -> ("stage", `String stage) :: fields
+                   | None -> fields
+                 in
+                 `Assoc (List.rev fields))
+               entries)
+        in
+        let names_json =
+          `List (List.map (fun (name, _) -> `String name) entries)
+        in
+        ("capabilities_detail", detail_json)
+        :: ("capabilities", names_json)
+        :: base
   in
   let effect_fields =
     match residual with
@@ -650,6 +677,30 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
   let payload = `Assoc (List.rev effect_fields) in
   let diag = set_extension "effects" payload diag in
   let diag =
+    match capability_list with
+    | [] -> diag
+    | entries ->
+        let detail_json =
+          `List
+            (List.map
+               (fun (name, stage_opt) ->
+                 let fields = [ ("capability", `String name) ] in
+                 let fields =
+                   match stage_opt with
+                   | Some stage -> ("stage", `String stage) :: fields
+                   | None -> fields
+                 in
+                 `Assoc (List.rev fields))
+               entries)
+        in
+        let names_json =
+          `List (List.map (fun (name, _) -> `String name) entries)
+        in
+        diag
+        |> set_extension "effect.stage.capabilities" detail_json
+        |> set_extension "effect.capabilities" names_json
+  in
+  let diag =
     match stage_trace with
     | Some trace when trace <> [] ->
         set_extension "effect.stage_trace"
@@ -677,6 +728,30 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
       diag
   in
   let diag = set_audit_metadata "effect.capability" (`String capability) diag in
+  let diag =
+    match capability_list with
+    | [] -> diag
+    | entries ->
+        let detail_json =
+          `List
+            (List.map
+               (fun (name, stage_opt) ->
+                 let fields = [ ("capability", `String name) ] in
+                 let fields =
+                   match stage_opt with
+                   | Some stage -> ("stage", `String stage) :: fields
+                   | None -> fields
+                 in
+                 `Assoc (List.rev fields))
+               entries)
+        in
+        let names_json =
+          `List (List.map (fun (name, _) -> `String name) entries)
+        in
+        diag
+        |> set_audit_metadata "effect.stage.capabilities" detail_json
+        |> set_audit_metadata "effect.capabilities" names_json
+  in
   let diag =
     match residual with
     | Some value -> set_audit_metadata "effect.residual" value diag

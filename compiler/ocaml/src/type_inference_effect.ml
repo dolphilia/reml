@@ -50,15 +50,39 @@ let stage_for_capability runtime_stage capability_name =
 let resolve_function_profile ~(runtime_context : runtime_stage)
     ~(function_ident : ident) (effect_node : effect_profile_node option) =
   let source_name = Some function_ident.name in
-  let capability_name =
+  let capability_specs =
     match effect_node with
-    | Some node -> (
-        match node.effect_capabilities with
-        | cap :: _ -> Some (normalize_capability_name cap.name)
-        | [] -> None)
+    | Some node ->
+        List.map
+          (fun ident ->
+            let normalized = normalize_capability_name ident.name in
+            (normalized, ident.name))
+          node.effect_capabilities
+    | None -> []
+  in
+  let capability_resolutions =
+    List.map
+      (fun (normalized, _) ->
+        {
+          capability_name = normalized;
+          capability_stage =
+            Some (stage_for_capability runtime_context (Some normalized));
+        })
+      capability_specs
+  in
+  let primary_resolution =
+    match capability_resolutions with res :: _ -> Some res | [] -> None
+  in
+  let capability_name =
+    match primary_resolution with
+    | Some resolution -> Some resolution.capability_name
     | None -> None
   in
-  let current_stage = stage_for_capability runtime_context capability_name in
+  let current_stage =
+    match primary_resolution with
+    | Some { capability_stage = Some stage; _ } -> stage
+    | _ -> stage_for_capability runtime_context None
+  in
   let typer_step =
     match capability_name with
     | Some cap ->
@@ -104,6 +128,9 @@ let resolve_function_profile ~(runtime_context : runtime_stage)
           p with
           resolved_stage = Some current_stage;
           resolved_capability = capability_name;
+          resolved_capabilities =
+            if capability_resolutions = [] then p.resolved_capabilities
+            else capability_resolutions;
         }
       in
       match profile.diagnostic_payload.invalid_attributes with
@@ -112,14 +139,39 @@ let resolve_function_profile ~(runtime_context : runtime_stage)
             (Type_error.effect_invalid_attribute_error
                ~function_name:function_ident.name ~profile ~invalid)
       | [] ->
-          if stage_requirement_satisfied profile.stage_requirement current_stage
-          then Ok profile
-          else
-            Error
-              (Type_error.effect_stage_mismatch_error
-                 ~function_name:function_ident.name
-                 ~required_stage:
-                   (stage_requirement_to_string profile.stage_requirement)
-                 ~actual_stage:(stage_id_to_string current_stage)
-                 ~span:profile.source_span ~capability:capability_name
-                 ~stage_trace:profile.stage_trace))
+          let capability_stage_pairs =
+            List.map
+              (fun resolution ->
+                let stage_opt =
+                  match resolution.capability_stage with
+                  | Some stage -> Some (stage_id_to_string stage)
+                  | None -> None
+                in
+                (resolution.capability_name, stage_opt))
+              profile.resolved_capabilities
+          in
+          let mismatch =
+            List.find_map
+              (fun resolution ->
+                match resolution.capability_stage with
+                | Some stage ->
+                    if
+                      stage_requirement_satisfied profile.stage_requirement stage
+                    then None
+                    else Some (resolution.capability_name, stage)
+                | None -> None)
+              profile.resolved_capabilities
+          in
+          (match mismatch with
+          | None -> Ok profile
+          | Some (cap_name, stage) ->
+              Error
+                (Type_error.effect_stage_mismatch_error
+                   ~function_name:function_ident.name
+                   ~required_stage:
+                     (stage_requirement_to_string profile.stage_requirement)
+                   ~actual_stage:(stage_id_to_string stage)
+                   ~span:profile.source_span
+                   ~capability:(Some cap_name)
+                   ~capability_stages:capability_stage_pairs
+                   ~stage_trace:profile.stage_trace)))

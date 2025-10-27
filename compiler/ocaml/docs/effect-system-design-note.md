@@ -96,6 +96,7 @@ type effect_profile = {
   source_name : string option;
   resolved_stage : stage_id option;
   resolved_capability : string option;
+  resolved_capabilities : (string * stage_id option) list;
   stage_trace : stage_trace;
   diagnostic_payload : effect_diagnostic_payload;
 }
@@ -167,7 +168,7 @@ type effect_profile_node = {
 | 領域 | 状態 | 完了内容 | 次のステップ |
 | --- | --- | --- | --- |
 | Parser | ✅ 完了 | 効果属性解析・`effect_profile_node` 導入・ゴールデン更新済み | 行多相拡張検討（Phase 3）、named 引数対応 |
-| Typer | ✅ 第3段階 | Stage トレース付き `effect_profile` 正規化、効果属性から Capability ID を抽出して `Effect_profile.resolved_capability` と Stage トレースへ反映、`effects.syntax.invalid_attribute`・`effects.contract.residual_leak`・`effects.contract.stage_mismatch` を CLI / 監査両経路で固定化し、辞書/モノモルフィゼーション一致をテストで保証 | Stage メトリクス (`iterator.stage.audit_pass_rate`) への自動登録と Core IR / Runtime との突合 |
+| Typer | ✅ 第3段階 | Stage トレース付き `effect_profile` 正規化、効果属性から Capability ID を抽出して `Effect_profile.resolved_capability` / `resolved_capabilities` と Stage トレースへ反映、`effects.syntax.invalid_attribute`・`effects.contract.residual_leak`・`effects.contract.stage_mismatch` を CLI / 監査両経路で固定化し、辞書/モノモルフィゼーション一致をテストで保証 | Stage メトリクス (`iterator.stage.audit_pass_rate`) への自動登録と Core IR / Runtime との突合 |
 | Core IR | ✅ 第1段階 | `desugar` が効果セットと Stage を IR メタデータへ反映 | 複数 Capability 対応・EffectMarker 連携 |
 | Runtime | 🚧 進行中 | `RuntimeCapabilityResolver` で CLI/環境変数/JSON を統合し Stage トレースを構築、`main.ml` から `runtime_stage_event` を監査へ出力。Core IR 側では `core_ir/iterator_audit.ml` で `DictMethodCall` の `iterator_audit` メタデータを集計し、ランタイム Stage 判定と結合した `effect.stage` 監査イベントを `main.ml` から永続化する経路を追加済み | IR メタデータとの突合結果を Windows/他プラットフォームの Capability に展開し、Stage 実走チェックや JSON Lines 監査ログの拡張を進める |
 | Tooling / CI | 🚧 進行中 | Stage トレース検証スクリプト整備、`reports/runtime-capabilities-validation.json`・`reports/iterator-stage-summary.md` を生成 | CI への組み込みと自動ゲート化 (`iterator.stage.audit_pass_rate`)、Windows override テストの追加 |

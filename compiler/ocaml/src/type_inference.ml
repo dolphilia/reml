@@ -32,7 +32,41 @@ let make_config ?effect_context () =
 let default_config = make_config ()
 let current_config : config ref = ref default_config
 
-(* ========== 効果解析ヘルパー ========== *)
+(* ========== グローバル状態: impl レジストリ ========== *)
+
+(** impl 宣言のグローバルレジストリ
+ *
+ * Phase 2 Week 23-24: モジュールレベルのrefで保持し、
+ * 関数シグネチャの変更を最小化する。
+ *
+ * 型推論エンジン全体でこのレジストリを共有し、
+ * impl 宣言の登録と制約解決での参照を実現する。
+ *)
+let global_impl_registry : Impl_registry.impl_registry ref =
+  ref (Impl_registry.empty ())
+
+type ffi_bridge_snapshot = {
+  normalized : Ffi.normalized_contract;
+  param_types : Types.ty list;
+  return_type : Types.ty;
+}
+
+let ffi_bridge_snapshots : ffi_bridge_snapshot list ref = ref []
+let reset_ffi_bridge_snapshots () = ffi_bridge_snapshots := []
+
+let record_ffi_bridge_snapshot (snapshot : ffi_bridge_snapshot) =
+  ffi_bridge_snapshots := snapshot :: !ffi_bridge_snapshots
+
+let current_ffi_bridge_snapshots () = List.rev !ffi_bridge_snapshots
+
+let ffi_snapshot_normalized (snapshot : ffi_bridge_snapshot) =
+  snapshot.normalized
+
+let ffi_snapshot_param_types (snapshot : ffi_bridge_snapshot) =
+  snapshot.param_types
+
+let ffi_snapshot_return_type (snapshot : ffi_bridge_snapshot) =
+  snapshot.return_type
 
 module Effect_analysis = struct
   open Effect_profile
@@ -40,6 +74,78 @@ module Effect_analysis = struct
 
   let normalize_effect_name name = String.lowercase_ascii (String.trim name)
   let span_is_dummy (span : Ast.span) = span.start <= 0 && span.end_ <= 0
+
+  let canonicalize_module_path path =
+    let raw = Effect_profile.string_of_module_path path in
+    let trimmed =
+      if String.length raw >= 2 && String.sub raw 0 2 = "::" then
+        String.sub raw 2 (String.length raw - 2)
+      else raw
+    in
+    trimmed
+
+  let canonical_call_target (expr : typed_expr) =
+    match expr.texpr_kind with
+    | TVar (id, _) -> Some (normalize_effect_name id.name)
+    | TModulePath (path, id) ->
+        let base = canonicalize_module_path path in
+        let combined =
+          if String.trim base = "" then id.name else base ^ "." ^ id.name
+        in
+        Some (normalize_effect_name combined)
+    | _ -> None
+
+  let has_prefix prefix value =
+    let prefix = normalize_effect_name prefix in
+    let value = normalize_effect_name value in
+    let plen = String.length prefix in
+    String.length value >= plen
+    && String.equal (String.sub value 0 plen) prefix
+
+  let has_suffix suffix value =
+    let suffix = normalize_effect_name suffix in
+    let value = normalize_effect_name value in
+    let slen = String.length suffix in
+    let vlen = String.length value in
+    vlen >= slen
+    && String.equal (String.sub value (vlen - slen) slen) suffix
+
+  let call_tag_prefixes =
+    [
+      ("core.io.", "io");
+      ("core.file.", "io");
+      ("core.fs.", "io");
+      ("core.time.", "time");
+      ("core.text.", "unicode");
+      ("core.process.", "process");
+      ("core.thread.", "thread");
+      ("core.system.", "syscall");
+      ("core.memory.", "memory");
+      ("core.signal.", "signal");
+      ("core.hardware.", "hardware");
+      ("core.realtime.", "realtime");
+      ("core.diagnostics.audit_ctx.", "audit");
+      ("core.security.", "security");
+      ("core.trace.", "trace");
+      ("core.debug.", "debug");
+      ("core.collection.", "mem");
+    ]
+
+  let is_known_ffi_call name =
+    let target = normalize_effect_name name in
+    current_ffi_bridge_snapshots ()
+    |> List.exists (fun snapshot ->
+           let contract = ffi_snapshot_normalized snapshot in
+           let extern_name =
+             normalize_effect_name contract.contract.extern_name
+           in
+           let link_name =
+             match contract.extern_symbol with
+             | Some sym -> normalize_effect_name sym
+             | None -> ""
+           in
+           String.equal target extern_name
+           || (link_name <> "" && String.equal target link_name))
 
   let add_tag tags name span =
     let normalized = normalize_effect_name name in
@@ -51,6 +157,15 @@ module Effect_analysis = struct
     then tags
     else tags @ [ { effect_name = name; effect_span = span } ]
 
+  let add_call_effect_tags tags name span =
+    let tags =
+      if is_known_ffi_call name then add_tag tags "ffi" span else tags
+    in
+    List.fold_left
+      (fun acc (prefix, tag) ->
+        if has_prefix prefix name then add_tag acc tag span else acc)
+      tags call_tag_prefixes
+
   let rec collect_expr tags (expr : typed_expr) =
     match expr.texpr_kind with
     | TLiteral _ -> tags
@@ -59,17 +174,18 @@ module Effect_analysis = struct
     | TCall (fn_expr, args) ->
         let tags = collect_expr tags fn_expr in
         let tags = List.fold_left collect_arg tags args in
-        let callee_name =
-          match fn_expr.texpr_kind with
-          | TVar (id, _) -> Some id.name
-          | TModulePath (_, id) -> Some id.name
-          | _ -> None
-        in
+        let call_target = canonical_call_target fn_expr in
         let tags =
-          match callee_name with
-          | Some name when String.equal (normalize_effect_name name) "panic" ->
+          match call_target with
+          | Some name
+            when String.equal name "panic" || has_suffix ".panic" name ->
               add_tag tags "panic" expr.texpr_span
           | _ -> tags
+        in
+        let tags =
+          match call_target with
+          | Some name -> add_call_effect_tags tags name expr.texpr_span
+          | None -> tags
         in
         tags
     | TLambda (params, _, body) ->
@@ -87,10 +203,14 @@ module Effect_analysis = struct
     | TUnary (_, operand)
     | TFieldAccess (operand, _)
     | TTupleAccess (operand, _)
-    | TPropagate operand
-    | TUnsafe operand ->
+    | TPropagate operand ->
         collect_expr tags operand
-    | TIndex (lhs, rhs) | TAssign (lhs, rhs) ->
+    | TUnsafe operand ->
+        let tags = add_tag tags "unsafe" expr.texpr_span in
+        collect_expr tags operand
+    | TIndex (lhs, rhs) -> collect_expr (collect_expr tags lhs) rhs
+    | TAssign (lhs, rhs) ->
+        let tags = add_tag tags "mut" expr.texpr_span in
         collect_expr (collect_expr tags lhs) rhs
     | TIf (cond, then_branch, else_branch) -> (
         let tags = collect_expr tags cond in
@@ -128,12 +248,17 @@ module Effect_analysis = struct
   and collect_stmt tags = function
     | TDeclStmt decl -> collect_decl tags decl
     | TExprStmt expr -> collect_expr tags expr
-    | TAssignStmt (lhs, rhs) -> collect_expr (collect_expr tags lhs) rhs
+    | TAssignStmt (lhs, rhs) ->
+        let tags = add_tag tags "mut" lhs.texpr_span in
+        collect_expr (collect_expr tags lhs) rhs
     | TDeferStmt expr -> collect_expr tags expr
 
   and collect_decl tags decl =
     match decl.tdecl_kind with
-    | TLetDecl (_, expr) | TVarDecl (_, expr) -> collect_expr tags expr
+    | TLetDecl (_, expr) -> collect_expr tags expr
+    | TVarDecl (_, expr) ->
+        let tags = add_tag tags "mut" decl.tdecl_span in
+        collect_expr tags expr
     | TFnDecl _ -> tags
     | _ -> tags
 
@@ -183,42 +308,6 @@ module Effect_analysis = struct
     let profile = { profile with effect_set; diagnostic_payload } in
     (profile, residual_leaks)
 end
-
-(* ========== グローバル状態: impl レジストリ ========== *)
-
-(** impl 宣言のグローバルレジストリ
- *
- * Phase 2 Week 23-24: モジュールレベルのrefで保持し、
- * 関数シグネチャの変更を最小化する。
- *
- * 型推論エンジン全体でこのレジストリを共有し、
- * impl 宣言の登録と制約解決での参照を実現する。
- *)
-let global_impl_registry : Impl_registry.impl_registry ref =
-  ref (Impl_registry.empty ())
-
-type ffi_bridge_snapshot = {
-  normalized : Ffi.normalized_contract;
-  param_types : Types.ty list;
-  return_type : Types.ty;
-}
-
-let ffi_bridge_snapshots : ffi_bridge_snapshot list ref = ref []
-let reset_ffi_bridge_snapshots () = ffi_bridge_snapshots := []
-
-let record_ffi_bridge_snapshot (snapshot : ffi_bridge_snapshot) =
-  ffi_bridge_snapshots := snapshot :: !ffi_bridge_snapshots
-
-let current_ffi_bridge_snapshots () = List.rev !ffi_bridge_snapshots
-
-let ffi_snapshot_normalized (snapshot : ffi_bridge_snapshot) =
-  snapshot.normalized
-
-let ffi_snapshot_param_types (snapshot : ffi_bridge_snapshot) =
-  snapshot.param_types
-
-let ffi_snapshot_return_type (snapshot : ffi_bridge_snapshot) =
-  snapshot.return_type
 
 type typeclass_stage_metadata = Typeclass_metadata.stage_metadata
 
@@ -2674,6 +2763,7 @@ let infer_compilation_unit ?(config = default_config) (cu : compilation_unit) :
               Effect_profile.make_profile ?source_name:entry.source_name
                 ?resolved_stage:entry.resolved_stage
                 ?resolved_capability:entry.resolved_capability
+                ~resolved_capabilities:entry.resolved_capabilities
                 ~stage_trace:entry.stage_trace
                 ~diagnostic_payload:
                   entry

@@ -52,7 +52,8 @@ let json_of_tag tag =
 let json_of_tag_list tags = `List (List.map json_of_tag tags)
 
 let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
-    ~resolved_stage ~resolved_capability ~effect_set ~stage_trace
+    ~resolved_stage ~resolved_capability ~resolved_capabilities ~effect_set
+    ~stage_trace
     ~diagnostic_payload extra_fields : Audit_envelope.metadata =
   let symbol = match symbol with Some s -> s | None -> "<anonymous>" in
   let required = Effect_profile.stage_requirement_to_string stage_requirement in
@@ -66,6 +67,36 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
     | Some value when String.trim value <> "" -> `String value
     | Some _ -> `Null
     | None -> `Null
+  in
+  let capability_list_json =
+    match resolved_capabilities with
+    | [] -> `List []
+    | entries ->
+        `List
+          (List.map
+             (fun (entry : Effect_profile.capability_resolution) ->
+               `String entry.capability_name)
+             entries)
+  in
+  let capability_detail_json =
+    match resolved_capabilities with
+    | [] -> `List []
+    | entries ->
+        `List
+          (List.map
+             (fun (entry : Effect_profile.capability_resolution) ->
+               let fields =
+                 [ ("capability", `String entry.capability_name) ]
+               in
+               let fields =
+                 match entry.capability_stage with
+                 | Some stage ->
+                     ("stage", `String (Effect_profile.stage_id_to_string stage))
+                     :: fields
+                 | None -> fields
+               in
+               `Assoc (List.rev fields))
+             entries)
   in
   let diagnostic_json =
     Effect_profile.effect_diagnostic_payload_to_json diagnostic_payload
@@ -90,6 +121,13 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
         `Int (List.length diagnostic_payload.residual_leaks) );
     ]
   in
+  let base_fields =
+    if resolved_capabilities = [] then base_fields
+    else
+      ("effect.stage.capabilities", capability_detail_json)
+      :: ("effect.capabilities", capability_list_json)
+      :: base_fields
+  in
   let fields =
     if residual_leaks = [] then base_fields
     else ("effect.residual.missing", `List residual_leaks) :: base_fields
@@ -107,6 +145,7 @@ let event_of_entry (entry : Constraint_solver.EffectConstraintTable.entry) =
       ~source_span:entry.source_span ~stage_requirement:entry.stage_requirement
       ~resolved_stage:entry.resolved_stage
       ~resolved_capability:entry.resolved_capability
+      ~resolved_capabilities:entry.resolved_capabilities
       ~effect_set:entry.effect_set ~stage_trace:entry.stage_trace
       ~diagnostic_payload:entry.diagnostic_payload []
   in
@@ -175,6 +214,13 @@ let run_with_mode mode =
       ~stage_requirement:(Effect_profile.StageExact Effect_profile.Stable)
       ~effect_set ~span ~stage_trace ~diagnostic_payload ~source_name:"demo"
       ~resolved_stage:Effect_profile.Stable ~resolved_capability:"core.runtime"
+      ~resolved_capabilities:
+        [
+          {
+            Effect_profile.capability_name = "core.runtime";
+            capability_stage = Some Effect_profile.Stable;
+          };
+        ]
       ()
   in
   Constraint_solver.record_effect_profile ~symbol:"demo" profile;
