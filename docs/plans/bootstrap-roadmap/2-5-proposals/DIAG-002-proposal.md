@@ -76,14 +76,16 @@ let ensure_audit audit_opt =
          }
          ```  
        - OCaml 実装では `ensure_audit_id` / `ensure_change_set` を上記フォーマットへ差し替え、`Audit_envelope.metadata["audit.policy.version"] = "phase2.5.audit.v1"` を自動付与する。CLI 側で `cli.audit_id` / `cli.change_set` が渡された場合はそれらを優先し、不足時のみテンプレートを適用する。  
-     - **実施状況メモ**  
+     - **実施状況メモ（2025-11-06 更新）**  
        - `Audit_envelope.has_required_keys` の検査対象を `cli.audit_id` / `cli.change_set` まで広げ、Builder と Legacy 変換の双方で自動補完後に必須キーを強制するよう調整済み。  
        - `Diagnostic_serialization.of_diagnostic` の防御的チェックを実装済みで、欠落発生時には `stderr` へ通知して `Invalid_argument` を送出する。  
+       - CLI 経路（`compiler/ocaml/src/main.ml`）とテスト用ビルダー（`test_cli_diagnostics.ml`、`test_ffi_contract.ml`、`test_effect_residual.ml`）を `phase2.5.audit.v1` テンプレートへ移行し、`cli/<build_id>#<sequence>` 形式の監査 ID と `policy/origin/source/items` を備えた change-set を一貫して出力する。  
    - 検証  
      - `compiler/ocaml/tests/test_cli_diagnostics.ml` と `tooling/ci/collect-iterator-audit-metrics.py` のテスト入力を用意し、`dune runtest compiler/ocaml/tests/test_cli_diagnostics.ml` → `scripts/validate-diagnostic-json.sh` → `python3 tooling/ci/collect-iterator-audit-metrics.py --source ...` の順で実行して欠落フィールドが検出されることを確認する。  
      - JSON スキーマは既に `audit` / `timestamp` を必須化済み（tooling/json-schema/diagnostic-v2.schema.json:6-15）であるため、AJV テスト（tooling/lsp/tests/client_compat/validate-diagnostic-json.mjs）に欠落ケースのフィクスチャを追加し、Day3 に差分レビューを実施する。  
-     - **検証状況メモ**  
-       - `dune runtest`（compiler/ocaml）と CLI 診断ゴールデンの再生成で新しい必須キーを反映し、`collect-iterator-audit-metrics.py --require-success` 実行時に欠落フィールドが stderr へ明示されることを確認した。  
+     - **検証状況メモ（2025-11-06 更新）**  
+       - `dune runtest`（compiler/ocaml）で CLI / FFI / 効果系ゴールデンを再生成し、新しい監査テンプレートへの移行後もテストが通過することを確認。  
+       - `python3 tooling/ci/collect-iterator-audit-metrics.py --require-success` をローカル実行し、`iterator.stage.audit_pass_rate`・`typeclass.dictionary_pass_rate`・`ffi_bridge.audit_pass_rate` の各指標が 1.0 を達成することを確認（従来の `auto-*` / `legacy-*` プレースホルダで発生していた欠落は解消済み）。  
    - ドキュメント・フォロー  
      - `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Legacy 経路の監査結果を追記し、`ffi_bridge.audit_pass_rate` のゴールデン再生成手順を整理する。`docs/spec/3-6-core-diagnostics-audit.md` へ Legacy 経路の対応状況を脚注で共有し、Phase 2-7 の監査ダッシュボード更新タスクと連携する。  
      - **ドキュメント更新メモ**  
@@ -101,5 +103,5 @@ let ensure_audit audit_opt =
 
 ## 残課題
 - `Audit_envelope.empty_envelope` に含める既定値（`audit_id` / `change_set` の扱い）について監査チームの合意が必要。  
-- `ensure_audit_id` / `ensure_change_set` のプレースホルダ置換を実装へ反映し、CLI/LSP/Legacy すべての出力が `phase2.5.audit.v1` テンプレートで統一されることを `tooling/ci/collect-iterator-audit-metrics.py --require-success` で確認する。  
+- LSP セッションおよび Legacy 経路向けの `phase2.5.audit.v1` テンプレート適用タイミングを整理し、CLI と同じビルド ID／シーケンス規約を維持できるようガイドラインを追記する。  
 - `timestamp` の生成を `Core.Numeric.now()` へ委譲するか、OCaml 側で `Ptime` / `Unix.gmtime` を利用するかを選定したい。
