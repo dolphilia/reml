@@ -28,11 +28,17 @@
 - **タイミング**: Phase 2-5 の前半で準備が整い次第着手し、Phase 2-7 の診断刷新タスクに入るまでに本番導入を完了させる。
 
 ## 5. 実施ステップ
-1. **現状棚卸しと仕様突合（Week31 Day1-2）**  
-   - `compiler/ocaml/src/diagnostic.ml`, `diagnostic_builder.ml`, `diagnostic_serialization.ml` を中心に、`type severity` の定義とパターンマッチ箇所を洗い出す。`note` 表記が残っている分岐を一覧化し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に調査結果を記録する。  
-   - `tooling/json-schema/diagnostic-v2.schema.json` と `scripts/validate-diagnostic-json.sh` が期待する列挙値を確認し、`Severity = Error | Warning | Info | Hint` に揃えるための差分を把握する。  
-   - `tooling/lsp/src/diagnostic_adapter.ml` と VS Code 拡張のログ（`reports/diagnostic-format-regression.md`）から、LSP `DiagnosticSeverity` への写像がどこで行われているか調査する。  
+1. **現状棚卸しと仕様突合（Week31 Day1-2）**
+   - `compiler/ocaml/src/diagnostic.ml`, `diagnostic_builder.ml`, `diagnostic_serialization.ml` を中心に、`type severity` の定義とパターンマッチ箇所を洗い出す。`note` 表記が残っている分岐を一覧化し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に調査結果を記録する。
+   - `tooling/json-schema/diagnostic-v2.schema.json` と `scripts/validate-diagnostic-json.sh` が期待する列挙値を確認し、`Severity = Error | Warning | Info | Hint` に揃えるための差分を把握する。
+   - `tooling/lsp/src/diagnostic_adapter.ml` と VS Code 拡張のログ（`reports/diagnostic-format-regression.md`）から、LSP `DiagnosticSeverity` への写像がどこで行われているか調査する。
    - 調査補助: `grep -R \"severity\" compiler/ocaml tooling -n` を実行し、直接 `Warning`/`Note` をベタ打ちしている箇所の洗い漏れを防ぐ。
+   - ✅ Week31 Day1-2 棚卸し完了（2025-11-07 更新）。主な確認事項:
+     - `compiler/ocaml/src/diagnostic.ml:39` は `Error | Warning | Note` のままで、`Diagnostic.V2` でのみ `Info`/`Hint` を仮想化（`compiler/ocaml/src/diagnostic.ml:803-821`）。`Hint` 相当のバリアントは実装経路が未整備。
+     - `compiler/ocaml/src/diagnostic_serialization.ml:249-269` が 3 値前提のシリアライズ (`note` / 1-3) を維持し、CLI/LSP の JSON も同ロジックを利用。`Hint` 出力経路は未定義。
+     - `tooling/json-schema/diagnostic-v2.schema.json:14-37` と `tooling/ci/collect-iterator-audit-metrics.py:1004-1025` は `severity` 4 値対応を期待するが、既存フィクスチャに `hint` ケースがなく `note -> info` へ丸めている。
+     - 仕様間の差分として Chapter 2 が `Note` を保持（`docs/spec/2-5-error.md:12-55`）、Chapter 3 が `Info`/`Hint` を正式定義（`docs/spec/3-6-core-diagnostics-audit.md:24-43`）。整合化方針の整理が必要。
+   - 詳細ログ: [`docs/plans/bootstrap-roadmap/2-5-review-log.md`](../2-5-review-log.md#2-5-レビュー記録--diag-001-week31-day1-2-現状棚卸し2025-11-07-更新) を参照。
 
 2. **列挙型と OCaml 実装の更新（Week31 Day3-4）**  
    - `compiler/ocaml/src/diagnostic.ml` の `type severity` を `Error | Warning | Info | Hint` へ改修し、`Note` を `Info` へ移し替える。`Diagnostic.make` / `Diagnostic.Builder` / `Diagnostic.of_json` / `Diagnostic.to_json` 等の API に対するパターンマッチを全て更新する。  
