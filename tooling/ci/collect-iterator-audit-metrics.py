@@ -999,6 +999,9 @@ def summarize_diagnostics(paths: Sequence[Path]) -> Dict[str, Any]:
         "hint": 0,
         "other": 0,
         "sources": [str(path) for path in paths],
+        "info_fraction": 0.0,
+        "hint_fraction": 0.0,
+        "info_hint_ratio": 0.0,
     }
 
     severity_aliases = {
@@ -1011,6 +1014,12 @@ def summarize_diagnostics(paths: Sequence[Path]) -> Dict[str, Any]:
         "note": "info",
         "hint": "hint",
     }
+    severity_numeric_aliases = {
+        1: "error",
+        2: "warning",
+        3: "info",
+        4: "hint",
+    }
 
     for path in paths:
         data = load_json(path)
@@ -1020,10 +1029,20 @@ def summarize_diagnostics(paths: Sequence[Path]) -> Dict[str, Any]:
             normalized = None
             if isinstance(severity, str):
                 normalized = severity_aliases.get(severity.lower())
+            elif isinstance(severity, (int, float)):
+                normalized = severity_numeric_aliases.get(int(severity))
             if normalized and normalized in summary:
                 summary[normalized] += 1
             else:
                 summary["other"] += 1
+
+    total = summary["total"]
+    if total > 0:
+        info = summary["info"]
+        hint = summary["hint"]
+        summary["info_fraction"] = info / total
+        summary["hint_fraction"] = hint / total
+        summary["info_hint_ratio"] = (info + hint) / total
 
     return summary
 

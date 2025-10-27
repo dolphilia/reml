@@ -82,7 +82,8 @@ let colorize_by_severity mode severity text =
   match severity with
   | Diagnostic.Error -> apply_color mode Ansi.bright_red text
   | Diagnostic.Warning -> apply_color mode Ansi.bright_yellow text
-  | Diagnostic.Note -> apply_color mode Ansi.bright_blue text
+  | Diagnostic.Info -> apply_color mode Ansi.bright_blue text
+  | Diagnostic.Hint -> apply_color mode Ansi.cyan text
 
 (** 個別の色付けヘルパー関数 *)
 

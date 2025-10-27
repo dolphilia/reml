@@ -1,0 +1,167 @@
+{
+  "diagnostics": [
+    {
+      "severity": "info",
+      "message": "情報レベルの診断メッセージです",
+      "schema_version": "2.0.0-draft",
+      "location": {
+        "file": "demo.reml",
+        "line": 1,
+        "column": 1,
+        "endLine": 1,
+        "endColumn": 4
+      },
+      "code": "demo.info.sample",
+      "codes": [ "demo.info.sample" ],
+      "domain": "cli",
+      "timestamp": "1970-01-01T00:00:00Z",
+      "extensions": {
+        "diagnostic.v2": {
+          "timestamp": "1970-01-01T00:00:00Z",
+          "codes": [ "demo.info.sample" ]
+        }
+      },
+      "audit_metadata": {
+        "demo.kind": "info",
+        "cli.audit_id": "cli/19700101T000000Z#2",
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "19700101T000000Z",
+        "audit.sequence": 2,
+        "audit.source.workspace": ".",
+        "schema.version": "1.1",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 2
+          },
+          "items": [ { "kind": "input", "path": "demo.reml" } ]
+        }
+      },
+      "audit": {
+        "metadata": {
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "19700101T000000Z",
+              "workspace": ".",
+              "sequence": 2
+            },
+            "items": [ { "kind": "input", "path": "demo.reml" } ]
+          },
+          "audit.source.workspace": ".",
+          "audit.sequence": 2,
+          "audit.build_id": "19700101T000000Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "cli.audit_id": "cli/19700101T000000Z#2",
+          "demo.kind": "info",
+          "audit.timestamp": "1970-01-01T00:00:00Z",
+          "schema.version": "1.1"
+        },
+        "audit_id": "cli/19700101T000000Z#2",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 2
+          },
+          "items": [ { "kind": "input", "path": "demo.reml" } ]
+        }
+      }
+    },
+    {
+      "severity": "hint",
+      "message": "ヒントレベルの診断メッセージです",
+      "schema_version": "2.0.0-draft",
+      "location": {
+        "file": "demo.reml",
+        "line": 2,
+        "column": 1,
+        "endLine": 2,
+        "endColumn": 5
+      },
+      "code": "demo.hint.sample",
+      "codes": [ "demo.hint.sample" ],
+      "domain": "cli",
+      "timestamp": "1970-01-01T00:00:00Z",
+      "severity_hint": "ignore",
+      "hints": [
+        { "message": "構文ヒント: use 文を展開してください" }
+      ],
+      "extensions": {
+        "diagnostic.v2": {
+          "timestamp": "1970-01-01T00:00:00Z",
+          "hints": [
+            {
+              "message": "構文ヒント: use 文を展開してください"
+            }
+          ],
+          "codes": [ "demo.hint.sample" ]
+        }
+      },
+      "audit_metadata": {
+        "demo.kind": "hint",
+        "cli.audit_id": "cli/19700101T000000Z#3",
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "19700101T000000Z",
+        "audit.sequence": 3,
+        "audit.source.workspace": ".",
+        "schema.version": "1.1",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 3
+          },
+          "items": [ { "kind": "input", "path": "demo.reml" } ]
+        }
+      },
+      "audit": {
+        "metadata": {
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "19700101T000000Z",
+              "workspace": ".",
+              "sequence": 3
+            },
+            "items": [ { "kind": "input", "path": "demo.reml" } ]
+          },
+          "audit.source.workspace": ".",
+          "audit.sequence": 3,
+          "audit.build_id": "19700101T000000Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "cli.audit_id": "cli/19700101T000000Z#3",
+          "demo.kind": "hint",
+          "audit.timestamp": "1970-01-01T00:00:00Z",
+          "schema.version": "1.1"
+        },
+        "audit_id": "cli/19700101T000000Z#3",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 3
+          },
+          "items": [ { "kind": "input", "path": "demo.reml" } ]
+        }
+      }
+    }
+  ]
+}

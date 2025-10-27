@@ -114,7 +114,8 @@ let span_to_json (span : normalized_span) =
 let severity_to_string = function
   | Error -> "error"
   | Warning -> "warning"
-  | Note -> "note"
+  | Info -> "info"
+  | Hint -> "hint"
 
 let severity_hint_to_string = function
   | Rollback -> "rollback"
@@ -251,7 +252,8 @@ let encode_audit env =
 let severity_level_of_severity = function
   | Error -> 1
   | Warning -> 2
-  | Note -> 3
+  | Info -> 3
+  | Hint -> 4
 
 let to_json (diag : normalized_diagnostic) : Json.t =
   let fields =

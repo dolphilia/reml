@@ -188,12 +188,12 @@
 - メタデータキー命名規約の追記
 
 **差分リスト（2025-10-29 初版）**
-- `DIAG-001` Severity 列挙の欠落: 仕様では `Severity = Error | Warning | Info | Hint` を必須としている（`docs/spec/3-6-core-diagnostics-audit.md:20`）が、OCaml 実装は `type severity = Error | Warning | Note` のままで `Info`/`Hint` を出力できない（`compiler/ocaml/src/diagnostic.ml:39`）。CLI/LSP のインフォメーション診断が `Warning` へ丸められ、フェーズ 3 の段階的リリース条件（情報レベルの警告分離）が満たせない。→ Phase 2-5 で列挙型の拡張案をまとめ、`diagnostic_serialization` と JSON スキーマ（`tooling/json-schema/diagnostic-v2.schema.json:14`）の整合を確保する。
+- `DIAG-001` Severity 列挙の欠落: 仕様では `Severity = Error | Warning | Info | Hint` を必須としている（`docs/spec/3-6-core-diagnostics-audit.md:20`）が、OCaml 実装は `type severity = Error | Warning | Note` のままで `Info`/`Hint` を出力できない（`compiler/ocaml/src/diagnostic.ml:39`）。CLI/LSP のインフォメーション診断が `Warning` へ丸められ、フェーズ 3 の段階的リリース条件（情報レベルの警告分離）が満たせない。→ **2025-10-27 更新**: `compiler/ocaml/src/diagnostic.ml` と `diagnostic_serialization.ml` を更新し、ネイティブに `Info`/`Hint` をハンドリングできるよう修正済み。CLI カラーリングも `Info=青` / `Hint=シアン` で整合。残差分: JSON スキーマ／ゴールデン／メトリクスの `Info`/`Hint` 追加を Step3 以降で対応。→ **2025-11-09 追記**: `diagnostic-v2-info-hint.json` フィクスチャと LSP テストを追加し、`collect-iterator-audit-metrics.py` に `diagnostics.info_hint_ratio` を実装。CLI/LSP/監査の整合確認（Step4）まで完了。→ **2025-11-10 追記**: `docs/spec/3-6-core-diagnostics-audit.md` に DIAG-001 脚注を追加し、Severity 4 値化の履歴を明文化。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ `diagnostic.info_hint_ratio` / `diagnostic.hint_surface_area` を登録し、レビュー記録へ完了メモを追記して差分補正を完了。
 - `DIAG-002` `Diagnostic.audit`/`timestamp` 必須化: Builder/Legacy/CLI テスト経路すべてを `phase2.5.audit.v1` テンプレートへ移行し、`audit_id = "cli/<build_id>#<sequence>"`・`change_set.policy = "phase2.5.audit.v1"` を強制する実装を完了（compiler/ocaml/src/diagnostic.ml:292-561, compiler/ocaml/src/main.ml:416-515, compiler/ocaml/tests/test_*）。`python3 tooling/ci/collect-iterator-audit-metrics.py --require-success` で `iterator.stage` / `typeclass.dictionary` / `ffi_bridge` の pass rate が 1.0 に回復した。詳細と検証ログは [`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-002-proposal.md`](./2-5-proposals/DIAG-002-proposal.md) §3 を参照。
 - `DIAG-003` Domain/Metadata の語彙不足: 仕様の `DiagnosticDomain` には `Effect`/`Target`/`Plugin`/`Lsp`/`Other(Str)` が含まれる（`docs/spec/3-6-core-diagnostics-audit.md:172`）が、実装は `Parser/Type/Config/Runtime/Network/Data/Audit/Security/CLI` のみ対応（`compiler/ocaml/src/diagnostic.ml:54`）。`effect.stage.*` 拡張キーも CLI JSON では `extensions["effects"]` のみに出力され、監査ログ側の `metadata["event.kind"]` 等が空のまま（`compiler/ocaml/src/diagnostic.ml:342`）。→ Domain 列挙と `AuditEnvelope.metadata` のキー体系を仕様と揃え、`docs/spec/3-8-core-runtime-capability.md` の Stage テーブル更新とあわせて 2-7 へフィードバックする。
 
 **修正案ドラフト対応方針**
-- `DIAG-001` `Severity` 拡張と JSON スキーマ改版案を Phase 2-5 差分リストにまとめ、CLI/LSP 双方のゴールデンを更新するタイムラインを 2-7 チームへ共有。
+- `DIAG-001` `Severity` 拡張と JSON スキーマ改版案を Phase 2-5 差分リストにまとめ、CLI/LSP 双方のゴールデンを更新するタイムラインを 2-7 チームへ共有。Step5 で仕様・指標ドキュメントの更新とレビュー記録追記まで完了しているため、Phase 2-7 では CLI テキスト出力刷新と `diagnostic.hint_surface_area` 集計実装を引き受ける。
 - `DIAG-002` `phase2.5.audit.v1` テンプレートを前提に、監査ダッシュボードで `diagnostic.audit_presence_rate` / `cli.change_set.origin` / `cli.audit_id.sequence` を KPI として可視化する実装、および `reports/audit/` のインデックス更新フローを Phase 2-7 (`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`) へ引き継ぐ。
 - `DIAG-003` Domain/Metadata の語彙差分を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の Capability/Stage 再検証タスクへリンクさせ、仕様脚注に現状の出力制限を仮明記する。
 
@@ -234,7 +234,7 @@
   | `LEXER-002` | Chapter 2／Lex API | トリビア共有 API が未実装 | `Core.Parse.Lex` ラッパー抽出案を提示し、仕様脚注の案文を用意 |
   | `ERR-001` | Chapter 2／期待集合 | エラー期待候補が空集合 | Menhir 期待集合取り出し手順の PoC を作成し、`reports/diagnostic-format-regression.md` で検証ケースを追加 |
   | `ERR-002` | Chapter 2／Recover | `recover`/`fixit` 情報が欠落 | CLI/LSP ゴールデン更新計画と優先度付けを策定 |
-  | `DIAG-001` | Chapter 3／Severity | `Info`/`Hint` が出力不可 | 列挙型拡張案と JSON スキーマ改版スケジュールを整理 |
+  | `DIAG-001` | Chapter 3／Severity | OCaml 実装は `Info`/`Hint` 出力へ更新済み（2025-10-27 対応）。JSON スキーマとゴールデンが未追随 | 列挙型拡張を反映したスキーマ改版スケジュールを整理 |
 
 - Medium（Phase 3 並走で対応可だが追跡継続）:
 

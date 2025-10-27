@@ -417,6 +417,74 @@ let test_typeclass_dictionary_snapshot () =
     exit 1)
   else Printf.printf "✓ typeclass.dictionary.resolved JSON スナップショット\n"
 
+let test_info_hint_snapshot () =
+  let mk_loc line col offset =
+    Diagnostic.{ filename = "demo.reml"; line; column = col; offset }
+  in
+  let info_span =
+    Diagnostic.
+      {
+        start_pos = mk_loc 1 0 0;
+        end_pos = mk_loc 1 4 4;
+      }
+  in
+  let hint_span =
+    Diagnostic.
+      {
+        start_pos = mk_loc 2 0 5;
+        end_pos = mk_loc 2 5 10;
+      }
+  in
+  let info_diag =
+    Diagnostic.Builder.create ~severity:Diagnostic.Info ~domain:Diagnostic.CLI
+      ~timestamp:"1970-01-01T00:00:00Z"
+      ~message:"情報レベルの診断メッセージです" ~primary:info_span ()
+    |> Diagnostic.Builder.set_primary_code "demo.info.sample"
+    |> Diagnostic.Builder.add_audit_metadata "demo.kind" (`String "info")
+    |> Diagnostic.Builder.build
+  in
+  let hint_diag =
+    Diagnostic.Builder.create ~severity:Diagnostic.Hint
+      ~severity_hint:Diagnostic.Ignore ~domain:Diagnostic.CLI
+      ~timestamp:"1970-01-01T00:00:00Z"
+      ~message:"ヒントレベルの診断メッセージです" ~primary:hint_span ()
+    |> Diagnostic.Builder.set_primary_code "demo.hint.sample"
+    |> Diagnostic.Builder.add_hint
+         ~message:"構文ヒント: use 文を展開してください"
+         ~actions:[]
+    |> Diagnostic.Builder.add_audit_metadata "demo.kind" (`String "hint")
+    |> Diagnostic.Builder.build
+  in
+  let json_str =
+    Cli.Json_formatter.diagnostics_to_json ~mode:Cli.Options.JsonPretty
+      [ info_diag; hint_diag ]
+  in
+  let golden_path =
+    resolve "tests/golden/diagnostics/severity/info-hint.json.golden"
+  in
+  if not (Sys.file_exists golden_path) then (
+    let actual_path =
+      write_actual_snapshot "diagnostics_severity_info_hint" json_str
+    in
+    Printf.eprintf
+      "✗ diagnostics.severity.info_hint: ゴールデン %s が存在しません。\n"
+      golden_path;
+    Printf.eprintf "  現在の出力を %s に書き出しました。\n" actual_path;
+    exit 1);
+  let expected =
+    In_channel.with_open_text golden_path (fun ic -> In_channel.input_all ic)
+  in
+  if String.trim expected <> String.trim json_str then (
+    let actual_path =
+      write_actual_snapshot "diagnostics_severity_info_hint" json_str
+    in
+    Printf.printf
+      "✗ diagnostics.severity.info_hint: JSON スナップショットが一致しません\n";
+    Printf.printf "  ゴールデン: %s\n" golden_path;
+    Printf.printf "  現在の出力を %s に書き出しました。\n" actual_path;
+    exit 1)
+  else Printf.printf "✓ diagnostics.severity.info_hint JSON スナップショット\n"
+
 (** ソースコードスニペットのテスト *)
 let test_snippet_display () =
   let diag = make_test_diagnostic () in
@@ -481,6 +549,7 @@ let () =
   Printf.printf "\n=== CLI 診断出力テスト ===\n";
   test_color_output ();
   test_json_output ();
+  test_info_hint_snapshot ();
   test_stage_extension_snapshot ();
   test_typeclass_dictionary_snapshot ();
   test_snippet_display ();

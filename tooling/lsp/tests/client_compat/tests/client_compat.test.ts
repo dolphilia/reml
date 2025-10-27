@@ -91,4 +91,13 @@ describe("client compatibility scaffolding", () => {
       }),
     ).toBe(true);
   });
+
+  it("emits LSP severity values for info/hint diagnostics", () => {
+    const diagnostics = readDiagnostics(fixturesDir, "diagnostic-v2-info-hint.json");
+    expect(diagnostics).toHaveLength(2);
+    const severities = diagnostics.map((diag) => diag.severity);
+    expect(severities).toStrictEqual([3, 4]);
+    const labels = diagnostics.map((diag) => diag.codes?.[0]);
+    expect(labels).toStrictEqual(["demo.info.sample", "demo.hint.sample"]);
+  });
 });

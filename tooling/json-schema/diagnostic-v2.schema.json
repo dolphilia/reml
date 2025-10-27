@@ -15,6 +15,19 @@
       "type": "string"
     },
     "severity": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": ["error", "warning", "info", "hint"]
+        },
+        {
+          "type": "integer",
+          "enum": [1, 2, 3, 4]
+        }
+      ],
+      "description": "Severity 列挙の文字列表現、または LSP 数値（1=Error, 2=Warning, 3=Info, 4=Hint）。"
+    },
+    "severity_level": {
       "type": "integer",
       "enum": [1, 2, 3, 4],
       "description": "LSP Diagnostics に合わせた数値表現。1=Error, 2=Warning, 3=Info, 4=Hint。"

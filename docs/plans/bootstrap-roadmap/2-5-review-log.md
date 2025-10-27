@@ -69,6 +69,18 @@ DIAG-001 ステップ 1「現状棚卸しと仕様突合」の調査メモ。Sev
 - `tooling/json-schema/diagnostic-v2.schema.json` と `scripts/validate-diagnostic-json.sh` は `severity=4` を許容しているが、既存フィクスチャに Hint ケースが存在しない。改修後に AJV フィクスチャを追加する。
 - メトリクス集計（`diagnostic.info_hint_ratio` 予定値）を Phase 2-5 で追加する際は、`collect-iterator-audit-metrics.py` の出力拡張と連動させ、旧 `note` データの移行を計画する。
 
+## 4. CLI/LSP/監査パイプライン整合確認（2025-11-09 更新）
+- LSP: `tooling/lsp/tests/client_compat/tests/client_compat.test.ts:95` に Info/Hint 専用ケースを追加し、`diagnostic-v2-info-hint.json` で `severity = [3, 4]` を確認。`npm run ci --prefix tooling/lsp/tests/client_compat` を実行し、新フィクスチャが AJV 検証を通過することを確認した。  
+- CLI: `compiler/ocaml/tests/golden/diagnostics/severity/info-hint.json.golden` を `scripts/validate-diagnostic-json.sh` で検証し、文字列 Severity が維持されていることと `audit` / `timestamp` が欠落しないことを再確認。  
+- 監査メトリクス: `tooling/ci/collect-iterator-audit-metrics.py:993-1036` に `info_fraction` / `hint_fraction` / `info_hint_ratio` を導入し、`python3 tooling/ci/collect-iterator-audit-metrics.py --require-success --source compiler/ocaml/tests/golden/diagnostics/severity/info-hint.json.golden` で Info/Hint の出現比率が `diagnostics.info_hint_ratio` として JSON 出力へ含まれることを確認。  
+- ドキュメント: `reports/diagnostic-format-regression.md` へ Info/Hint 用チェックを追加し、Severity 拡張の確認手順をレビュー運用に組み込んだ。
+
+## 5. ドキュメントとメトリクス更新（Week32 Day3, 2025-11-10 更新）
+- 仕様反映: `docs/spec/3-6-core-diagnostics-audit.md` に DIAG-001 脚注を追加し、`severity` フィールドが 4 値へ統一された経緯と `Note` 廃止方針を明文化。`Severity` 説明に CLI/LSP/監査での区別運用を追記した。  
+- 指標定義: `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の指標表へ `diagnostic.info_hint_ratio` を追加し、CI 集計で情報診断とヒント診断の比率を監視できるようにした。`diagnostic.hint_surface_area` は Phase 2-7 で集計実装予定として暫定登録。  
+- 集計スクリプト連携: `collect-iterator-audit-metrics.py` のサマリ出力に追従した説明を同文書へ追記し、`info_fraction` / `hint_fraction` / `info_hint_ratio` が `diagnostics.summary` へ記録されることを明示。  
+- 残課題: `diagnostic.hint_surface_area` の算出はスパン計測ロジックを追加した後に `tooling/ci/collect-iterator-audit-metrics.py` へ組み込む。Phase 2-7 で CLI テキスト出力刷新と合わせて優先度を再評価する。
+
 # 2-5 レビュー記録 — EFFECT-001 Day1 タグ棚卸し
 
 Phase 2-5 Week31 Day1。`EFFECT-001` のステップ 1（タグ語彙と既存実装の棚卸し）を実施し、仕様と実装のギャップを整理した。

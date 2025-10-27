@@ -45,24 +45,34 @@
    - `Diagnostic.V2` 相当の変換ロジック（`diagnostic_serialization.ml` および `compiler/ocaml/src/diagnostic_builder.ml`）で `Info`/`Hint` を保持するように改修し、`Note` フォールバックを削除する。  
    - CLI テキスト出力（`compiler/ocaml/src/diagnostic_printer.ml` など）で Severity ごとの整形・色分けが `Hint` を処理できることを確認し、必要に応じて新しいラベルを追加する。  
    - 調査補助: `compiler/ocaml/tests/test_cli_diagnostics.ml` と `test_type_inference.ml` における Severity 期待値を確認し、追加テストが必要なケースをメモ化する。
+   - ✅ Week31 Day3-4 列挙型と OCaml 実装の更新完了（2025-10-27 更新）。主な変更点:
+     - `compiler/ocaml/src/diagnostic.ml` の `type severity` を 4 値化し、日本語ラベルを `エラー/警告/情報/ヒント` へ更新。
+     - `Diagnostic.V2` と `diagnostic_serialization.ml` のシリアライズで `info`/`hint` をネイティブ出力し、数値レベルを LSP と同じ `1-4` に整理。
+     - CLI カラー判定（`compiler/ocaml/src/cli/color.ml`）で `Info` を従来の青、`Hint` をシアンに割り当て、`colorize_pointer` を含む出力経路を手動確認。
 
 3. **スキーマ・フィクスチャ・テストの拡張（Week31 Day4-5）**  
    - `tooling/json-schema/diagnostic-v2.schema.json` の列挙定義を更新し、`Info`/`Hint` の必須化を反映したバージョンを用意する。  
    - `scripts/validate-diagnostic-json.sh` に `Info`/`Hint` を含むゴールデン JSON（`tooling/fixtures/diagnostics/`）を追加し、CI で検証できるようにする。  
    - `compiler/ocaml/tests/test_cli_diagnostics.ml` および `tooling/lsp/tests/diagnostic_adapter_tests.ml`（存在しない場合は新設）に `Info`/`Hint` を含むケースを追加し、`scripts/validate-diagnostic-json.sh` を実行して差分を確認する。  
    - 調査補助: `reports/diagnostic-format-regression.md` と `docs/plans/bootstrap-roadmap/2-4-completion-report.md` のメトリクス欄を読み、既存の監査比率計測がどの Severity を前提にしているか整理する。
+   - ✅ Week31 Day4-5 Info/Hint JSON 拡張完了（2025-11-08 更新）  
+     - `tooling/json-schema/diagnostic-v2.schema.json` で `severity = {error, warning, info, hint}` と LSP 数値（1-4）の両方を許容する `oneOf` を定義し、オプション `severity_level (1-4)` を追加。  
+     - `compiler/ocaml/tests/golden/diagnostics/severity/info-hint.json.golden` を新設し、`cli.audit_id`/`cli.change_set` まで含む Info/Hint の完全スナップショットを登録。  
+     - `compiler/ocaml/tests/test_cli_diagnostics.ml` に `test_info_hint_snapshot` を追加し、CI で JSON スナップショット検証が走るようにした。  
+     - `scripts/validate-diagnostic-json.sh compiler/ocaml/tests/golden/diagnostics/severity/info-hint.json.golden` を実行して新スキーマで検証済み（要 `tooling/lsp/tests/client_compat` の npm 依存関係）。
 
 4. **CLI/LSP/監査パイプラインの整合確認（Week32 Day1-2）**  
-   - `tooling/lsp/src/diagnostic_adapter.ml` で `Info -> DiagnosticSeverity.Information`, `Hint -> DiagnosticSeverity.Hint` に正しく写像されるテーブルを実装し、ユニットテストと VS Code の手動検証ログを `reports/diagnostic-format-regression.md` に追記する。  
-   - CLI の JSON/テキスト出力が `Info`/`Hint` を保持することを `scripts/validate-diagnostic-json.sh` と CLI ゴールデン（`tooling/fixtures/cli/diagnostics/`）で検証し、`--fail-on-warning` オプションとの整合を記録する。  
-   - `tooling/ci/collect-iterator-audit-metrics.py` に `diagnostic.info_hint_ratio` 集計を追加し、`0-3-audit-and-metrics.md` に新メトリクスの定義とサンプリング頻度を追記する準備を行う。  
-   - 調査補助: `docs/spec/3-6-core-diagnostics-audit.md` の Severity 表（§3.2 以降）を参照し、既定 Severity が `Warning` → `Info` へ変更されるコードがないか確認する。
+   - ✅ 2025-11-09: `lsp_transport.ml` の `severity_level_of_severity`（compiler/ocaml/src/diagnostic_serialization.ml:252-256）に合わせ、`tooling/lsp/tests/client_compat/tests/client_compat.test.ts:95` で `diagnostic-v2-info-hint.json`（fixtures）を読み込み `severity = [3, 4]` を検証。VS Code 互換フィクスチャを `tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-info-hint.json` として追加し、`npm run ci` で Info/Hint が数値マッピングされることを確認。  
+   - ✅ 2025-11-09: `scripts/validate-diagnostic-json.sh` の既定ターゲットと連携する CLI ゴールデン `compiler/ocaml/tests/golden/diagnostics/severity/info-hint.json.golden` をレビュー手順に組み込み、`reports/diagnostic-format-regression.md` に Info/Hint チェックリストを追記。`docs/spec/3-6-core-diagnostics-audit.md` §3.2 と突き合わせ、既定 Severity の降格が発生しないことを確認。  
+   - ✅ 2025-11-09: `tooling/ci/collect-iterator-audit-metrics.py:1000-1036` へ `info_fraction` / `hint_fraction` / `info_hint_ratio` を追加し、CI ダッシュボードで Info/Hint の発生率をトラッキング可能にした（`diagnostics.info_hint_ratio`）。Phase 2-6 以降で `0-3-audit-and-metrics.md` をアップデートする下準備済み。  
+   - メモ: CLI テキスト出力刷新（Phase 2-7 移管タスク）で Severity 表示の配色・`--fail-on-warning` の挙動を最終調整する。
 
 5. **ドキュメントとメトリクス更新（Week32 Day3）**  
    - `docs/spec/3-6-core-diagnostics-audit.md` へ脚注を追加し、OCaml 実装での適用完了と `Note` 廃止方針を明記する。  
    - `0-3-audit-and-metrics.md` に `diagnostic.info_hint_ratio` と `diagnostic.hint_surface_area`（必要なら）を追加し、収集方法と期待値レンジを定義する。  
    - `docs/plans/bootstrap-roadmap/2-5-review-log.md` に実装完了メモと残課題を記録し、`README.md`（Phase 2-5 カタログ）でステータスを更新する。  
    - 調査補助: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` を確認し、Phase 2-7 へエスカレーションする項目（例: CLI 表示刷新）が重複しないよう整理する。
+   - ✅ Week32 Day3 ドキュメント反映完了（2025-11-10 更新）。`docs/spec/3-6-core-diagnostics-audit.md` へ DIAG-001 脚注を追加し、Severity 4 値化の経緯を記録。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `diagnostic.info_hint_ratio` を定義し、`collect-iterator-audit-metrics.py` のサマリ出力項目を文書化。`diagnostic.hint_surface_area` は Phase 2-7 実装予定として暫定登録し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に更新内容と残課題を追記済み。README の DIAG-001 ハイライトを最新ステータスへ更新。
 
 ## 6. 残課題
 - 既存 `Note` 表現を `Info` へ移行する際の互換ポリシー（JSON / CLI / LSP 出力）をチーム間で調整する必要がある。  

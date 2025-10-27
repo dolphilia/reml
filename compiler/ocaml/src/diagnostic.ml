@@ -36,7 +36,7 @@ end
 
 (* ========== 重要度 ========== *)
 
-type severity = Error | Warning | Note
+type severity = Error | Warning | Info | Hint
 
 type severity_hint =
   | Rollback (* ロールバック推奨 *)
@@ -219,7 +219,11 @@ let primary_code (diag : t) =
 (* ========== ヘルパー関数 ========== *)
 
 (** 重要度ラベル（日本語） *)
-let severity_label = function Error -> "エラー" | Warning -> "警告" | Note -> "注記"
+let severity_label = function
+  | Error -> "エラー"
+  | Warning -> "警告"
+  | Info -> "情報"
+  | Hint -> "ヒント"
 
 (** エラードメインラベル（日本語） *)
 let domain_label = function
@@ -806,7 +810,8 @@ module V2 = struct
     match diag.severity with
     | Error -> Error
     | Warning -> Warning
-    | Note -> Info
+    | Info -> Info
+    | Hint -> Hint
 
   let severity_to_lsp_int = function
     | Error -> 1
