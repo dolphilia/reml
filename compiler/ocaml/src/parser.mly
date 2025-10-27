@@ -782,10 +782,14 @@ use_item_list:
   | items = use_item_list; COMMA; item = use_item { items @ [item] }
 
 use_item:
-  | name = ident; alias = use_alias_opt
+  | name = ident; alias = use_alias_opt; nested = use_item_nested_opt
     {
-      { item_name = name; item_alias = alias; item_nested = None }
+      { item_name = name; item_alias = alias; item_nested = nested }
     }
+
+use_item_nested_opt:
+  | (* empty *) { None }
+  | DOT; LBRACE; items = use_item_list; RBRACE { Some items }
 
 (* ========== モジュールパス ========== *)
 
