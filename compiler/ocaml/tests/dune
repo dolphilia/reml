@@ -32,6 +32,7 @@
   test_typeclass_execution
   test_typeclass_mode
   test_typeclass_effects
+  effect_analysis_tests
   test_effect_residual
   test_cli_callconv_snapshot
   test_ffi_contract

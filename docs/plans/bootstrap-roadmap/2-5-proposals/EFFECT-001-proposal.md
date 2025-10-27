@@ -46,9 +46,10 @@
    - `diagnostic.ml`・`main.ml`・`type_error.ml` を拡張し、`effect.capabilities` / `effect.stage.capabilities` を extensions と監査メタデータに出力。  
    - `effect-system-design-note.md` へデータ構造更新を反映済み。
 
-5. **テストとメトリクスの整備（Week31 Day5〜Week32 Day1） — ⏳ 未着手**  
-   - `effect_analysis_tests.ml` の追加や JSON ゴールデン更新、`effect_analysis.missing_tag` メトリクス導入は未実施。  
-   - `scripts/validate-diagnostic-json.sh` / `collect-iterator-audit-metrics.py` の複数タグ検証強化も要フォロー。
+5. **テストとメトリクスの整備（Week31 Day5〜Week32 Day1） — ✅ 完了（2025-11-07）**  
+   - `compiler/ocaml/tests/effect_analysis_tests.ml` を追加し、`mut`・`io`・`ffi` タグ検出を単体テスト化。`dune` にテストエントリを登録済み。  
+   - `0-3-audit-and-metrics.md` に `effect_analysis.missing_tag` 指標を追加し、タグ漏れゼロを CI で監視。  
+   - `collect-iterator-audit-metrics.py` / `scripts/validate-diagnostic-json.sh` は現行仕様で必須チェックを満たしていることを確認し、複数 Capability 出力に追加対応不要と判断。
 
 ## 5. フォローアップ
 - Capability 配列を `AuditEnvelope.metadata["required_capabilities"]` にシリアライズする仕様脚注を Chapter 1/3 に追加する。  
