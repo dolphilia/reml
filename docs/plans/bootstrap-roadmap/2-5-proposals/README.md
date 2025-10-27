@@ -40,6 +40,7 @@
   - 2025-10-27 追記: S2（AST/型付き AST 整合確認）まで完了。Typer 側は `tcu_use_decls` をそのまま保持できることを検証済み。
   - 2025-10-28 追記: S3（Menhir ルール実装）を完了し、`use_item` の再帰構築と `menhir --list-errors` の検証まで実施。
   - 2025-10-29 追記: S4（束縛・診断連携）で `Module_env.flatten_use_decls` を実装し、`tcu_use_bindings` とユニットテストを追加。診断期待集合への影響が無いことを確認済み。
+  - 2025-11-12 追記: S5（検証とドキュメント更新）でユニットテスト・メトリクス・仕様脚注を更新し、`parser.use_nested_support` の監視体制を整備。
 - [SYNTAX-003 修正計画](./SYNTAX-003-proposal.md): 効果構文（`perform`/`handle`）の実装ステージを明確化し、Formal BNF との乖離を是正。
 
 ### 型システム（TYPE）

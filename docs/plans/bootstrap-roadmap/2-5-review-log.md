@@ -215,3 +215,20 @@ S4（束縛・診断連携）の結果共有。
 ### 3. フォローアップ
 - `Module_env.use_binding` を Phase 2-7 再エクスポート解決タスクへ引き渡し、`binding_local` 名で型環境へ取り込む処理を設計する。
 - S5 で予定している `parser.use_nested_support` メトリクス算出は `flatten_use_decls` の結果を基に成功率を評価する。
+
+## SYNTAX-002 Day4-5 検証・ドキュメント更新（2025-11-12）
+
+S5（検証とドキュメント更新）の結果共有。  
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-002-proposal.md`](./2-5-proposals/SYNTAX-002-proposal.md)
+
+### 1. テストと検証
+- `compiler/ocaml/tests/test_parser.ml` に多段ネスト `use` を検証するユニットテストを追加。`UseBrace` 配下で `item_nested` が `Some [...]` となり、`Op.{Infix, Prefix}` が再帰的に構築されることを直接確認するヘルパー（`expect_use_nested`）を実装。
+- `compiler/ocaml/tests/test_module_env.ml` と併せて `dune runtest compiler/ocaml/tests/test_parser.exe` および `dune runtest compiler/ocaml/tests/test_module_env.exe` を実行し、`flatten_use_decls` まで含めた再エクスポート展開が成功することを確認。（CI 連携時は `dune runtest` 全体で取得したログを `reports/diagnostic-format-regression.md` に添付予定。）
+
+### 2. メトリクスとドキュメント
+- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `parser.use_nested_support` を追加し、`dune runtest` 完了後に `tooling/ci/collect-iterator-audit-metrics.py --summary` で収集する運用を明記。成功率が 1.0 未満の場合は Phase 2-7 Parser チームへ即時エスカレーションする。
+- 仕様側では `docs/spec/1-5-formal-grammar-bnf.md` に脚注を追加し、`UseItem` の再帰規則と実装・監視体制を記録。`docs/spec/3-0-core-library-overview.md` には Core.* の再エクスポートが同機能に依存する旨を追記し、標準ライブラリ観点からのギャップが解消されたことを明示した。
+
+### 3. フォローアップ
+- `parser.use_nested_support` を CI ダッシュボードへ表示する際の閾値設定と、失敗時に収集する追加ログ（Menhir `--list-errors` 出力など）のテンプレートを Phase 2-7 で整備する。
+- `pub use` の可視性ルール検証は Phase 2-7 `SYNTAX-002` 後続タスクへ引き継ぐ。`binding_is_pub` を利用した公開面積の測定は `Module_env` で準備済み。

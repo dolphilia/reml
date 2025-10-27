@@ -14,3 +14,5 @@
 - [3.8 ランタイムと Capability レジストリ](3-8-core-runtime-capability.md): Capability Registry の構造、セキュリティモデル、各 Capability の概要と DSL プロファイル生成フローに加え、Runtime Bridge 契約と Stage/監査ポリシー、外部マニフェストを Reml 形式へ正規化する `transform_capability_manifest_to_reml` ユーティリティを解説します。
 - [3.9 非同期・FFI・アンセーフ](3-9-core-async-ffi-unsafe.md): 非同期実行モデル、FFI サンドボックス、`Core.Unsafe` 指針と Capability 連携、`ExecutionPlan` 静的検証とセキュリティ/性能最適化を扱います。`SupervisorSpec` / `RestartStrategy` による標準 Supervisor パターンと診断・監査の連携手順もここで定義します。
 - [3.10 環境機能とプラットフォーム連携](3-10-core-env.md): 環境変数アクセス、プラットフォーム情報取得、`REML_CONFIG_*` による互換フラグ供給、`@cfg` 連携ガイドラインと将来拡張メモを提供します。
+
+標準ライブラリの再エクスポートは `use Core.Parse.{Lex, Op.{Infix, Prefix}}` のような多段ネスト `use` を前提に整理されており、Phase 2-5 `SYNTAX-002` 計画 S5（2025-11-12 更新）で OCaml 実装・テスト・測定指標が揃った。詳細は [`../plans/bootstrap-roadmap/2-5-proposals/SYNTAX-002-proposal.md`](../plans/bootstrap-roadmap/2-5-proposals/SYNTAX-002-proposal.md) と [0-3-audit-and-metrics.md](../plans/bootstrap-roadmap/0-3-audit-and-metrics.md) の `parser.use_nested_support` を参照して最新状態を確認すること。

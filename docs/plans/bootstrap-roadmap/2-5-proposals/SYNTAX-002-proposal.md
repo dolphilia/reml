@@ -44,6 +44,7 @@
 - **S4 束縛・診断連携**: `compiler/ocaml/src/module_env.ml` を追加し、`flatten_use_decls` で `use` ツリーを `binding_local`／`binding_path` へ展開。`typed_ast.ml` に `tcu_use_bindings` を追加して Typer 側で集約結果を保持し、`compiler/ocaml/tests/test_module_env.ml` でシナリオ別の展開結果を検証した。`parser_diag_state.ml` の最遠期待集合ロジックに変化が無いことも合わせて確認済み。詳細は [`../2-5-review-log.md`](../2-5-review-log.md#syntax-002-day3-4-束縛診断連携2025-10-29) に記録。
 - **再現確認**: `dune exec remlc -- --emit-ast tmp/use_nested.reml`（`compiler/ocaml` カレント）で `use Core.Parse.{Lex, Op.{Infix, Prefix}}` が構文エラーになることを再現し、診断ログと監査情報を取得。
 - **次ステップ準備**: S2 で `typed_ast` 伝搬と `Module_env` 連携を調査できるよう、関連ファイル（`typed_ast.ml`, `parser_design.md`）の参照位置を整理済み。
+- **S5 検証とドキュメント更新**: `compiler/ocaml/tests/test_parser.ml` に多段ネスト `use` のユニットテストを追加し、`test_module_env.ml` と併せて `dune runtest` で成功を確認。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ `parser.use_nested_support` 指標を追加し、`docs/spec/1-5-formal-grammar-bnf.md` と `docs/spec/3-0-core-library-overview.md` に脚注/概要を追記して実装完了と監視体制を明記した（[`../2-5-review-log.md`](../2-5-review-log.md#syntax-002-day4-5-検証ドキュメント更新2025-11-12) を参照）。
 
 ## 残課題
 - `pub use` と通常の `use` で共有する AST 形状（特にモジュール可視性）をどう扱うか要確認。  

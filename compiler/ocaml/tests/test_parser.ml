@@ -50,6 +50,61 @@ let expect_use_count desc expected input =
       Printf.printf "%s\n" (Diagnostic.to_string diag);
       exit 1
 
+let expect_use_nested desc input expected =
+  match parse_string input with
+  | Ok cu -> (
+      match cu.uses with
+      | [ { use_tree = UseBrace (_, items); _ } ] ->
+          let actual =
+            List.map
+              (fun item ->
+                let alias = Option.map (fun id -> id.name) item.item_alias in
+                let nested =
+                  match item.item_nested with
+                  | None -> []
+                  | Some nested_items ->
+                      List.map
+                        (fun nested_item ->
+                          ( nested_item.item_name.name,
+                            Option.map (fun id -> id.name) nested_item.item_alias ))
+                        nested_items
+                in
+                (item.item_name.name, alias, nested))
+              items
+          in
+          if actual = expected then Printf.printf "✓ %s\n" desc
+          else (
+            let show_tuple (name, alias, nested) =
+              let show_alias = function None -> "None" | Some v -> v in
+              let show_nested (n, a) =
+                match a with
+                | None -> n
+                | Some alias_name -> Printf.sprintf "%s as %s" n alias_name
+              in
+              let nested_repr =
+                match nested with
+                | [] -> "[]"
+                | elems ->
+                    "["
+                    ^ String.concat ", "
+                        (List.map show_nested elems)
+                    ^ "]"
+              in
+              Printf.sprintf "(%s, %s, %s)" name (show_alias alias) nested_repr
+            in
+            Printf.printf "✗ %s: nested use mismatch\n  expected: %s\n  actual:   %s\n"
+              desc
+              (String.concat "; " (List.map show_tuple expected))
+              (String.concat "; " (List.map show_tuple actual));
+            exit 1)
+      | _ ->
+          Printf.printf "✗ %s: unexpected use tree shape\n" desc;
+          exit 1)
+  | Error diag ->
+      Printf.printf "✗ %s: parse failed\n" desc;
+      Printf.printf "%s\n" (Diagnostic.to_string diag);
+      exit 1
+
 let expect_extern_target desc expected input =
   match parse_string input with
   | Ok cu -> (
@@ -224,6 +279,12 @@ let test_use_decls () =
   expect_use_count "use: alias" 1 "use ::Core.Parse as P";
   expect_use_count "use: brace" 1 "use Core.{Lex, Op}";
   expect_use_count "use: multiple" 2 "use ::Core.Parse\nuse ::Core.Lex";
+  expect_use_nested "use: nested braces"
+    "use Core.Parse.{Lex, Op.{Infix, Prefix}}"
+    [
+      ("Lex", None, []);
+      ("Op", None, [ ("Infix", None); ("Prefix", None) ]);
+    ];
   expect_ok "use: pub" "pub use ::Core.Parse"
 
 (* ========== let/var 宣言テスト ========== *)

@@ -55,6 +55,8 @@ AttrArgs        ::= "(" AttrArg { "," AttrArg } [","] ")"
 AttrArg         ::= Expr
 ```
 
+`UseItem` の `.` 拡張は `use Core.Parse.{Lex, Op.{Infix, Prefix}}` のように再帰的に展開される。Phase 2-5 `SYNTAX-002` 計画 S5（2025-11-12 更新）でこの挙動が OCaml 実装へ反映され、`parser.use_nested_support` 指標で監視されている。[^syntax-002-s5]
+
 ### 1.1 共通構成要素
 
 ```
@@ -231,6 +233,8 @@ DoExpr          ::= "do" EffectPath "(" Args? ")"
 HandleExpr      ::= "handle" Expr "with" HandlerLiteral
 HandlerLiteral  ::= "handler" Ident HandlerBody
 ```
+
+[^syntax-002-s5]: Phase 2-5 `SYNTAX-002` 計画の S5 で多段ネスト `use` が `parser.mly`／`module_env.ml` に実装され、`parser.use_nested_support` 指標（[0-3-audit-and-metrics.md](../plans/bootstrap-roadmap/0-3-audit-and-metrics.md) §0.3.1）で継続監視している。検証用テストは `compiler/ocaml/tests/test_parser.ml` と `compiler/ocaml/tests/test_module_env.ml` に追加されている。計画の詳細は [`../plans/bootstrap-roadmap/2-5-proposals/SYNTAX-002-proposal.md`](../plans/bootstrap-roadmap/2-5-proposals/SYNTAX-002-proposal.md) を参照。
 
 [^pipe-desugar]: `PipeExpr` は左結合で畳み込まれ、各段が `value |> f(args)` → `f(value, args)` のようにデシュガリングされる。評価順序と短絡は [1.1 構文 C.9](1-1-syntax.md#c9-評価順序と短絡規則) に従い、左から右へ段階的に適用する。
 
