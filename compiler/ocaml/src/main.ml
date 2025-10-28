@@ -609,7 +609,9 @@ let () =
   (* Phase 1-6 Week 15: トレース開始 *)
   record_start Parsing;
 
-  match Parser_driver.parse lexbuf with
+  let parser_run_config = Cli.Options.to_run_config opts in
+  let parse_output = Parser_driver.run ~config:parser_run_config lexbuf in
+  match Parser_driver.parse_result_to_legacy parse_output with
   | Ok ast ->
       (* Phase 1-6 Week 15: パース完了 *)
       record_end Parsing;

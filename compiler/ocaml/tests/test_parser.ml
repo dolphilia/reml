@@ -7,7 +7,7 @@ open Ast
 
 (* テストヘルパー関数 *)
 
-let parse_string s = Parser_driver.parse_string s
+let parse_string = Test_support.parse_string
 
 let expect_ok desc input =
   match parse_string input with

@@ -25,3 +25,9 @@ val diagnostics_payload :
   Diagnostic_serialization.normalized_diagnostic list ->
   Yojson.Basic.t
 (** CLI からも利用できる汎用 JSON ペイロード。 *)
+
+val run_config_from_file : string -> Parser_run_config.t
+(** LSP 設定ファイルから RunConfig を復元する。 *)
+
+val default_run_config : unit -> Parser_run_config.t
+(** `tooling/lsp/config/default.json` に基づく既定 RunConfig。 *)

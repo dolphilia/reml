@@ -74,6 +74,13 @@ type options = {
   effect_stage_override : string option;  (** CLI で指定された Stage 名 *)
   runtime_capabilities_path : string option;
       (** Runtime Capability Registry JSON のパス *)
+  (* Parser RunConfig フラグ *)
+  parser_require_eof : bool;  (** RunConfig.require_eof を CLI から制御 *)
+  parser_packrat : bool;  (** RunConfig.packrat 切替（Packrat シム導入待ち） *)
+  parser_left_recursion : Parser_run_config.left_recursion;
+      (** RunConfig.left_recursion モード *)
+  parser_merge_warnings : bool;
+      (** RunConfig.merge_warnings（診断集約の有無） *)
 }
 (** コマンドラインオプション設定 *)
 
@@ -86,3 +93,7 @@ val parse_args : string array -> (options, string) result
  * @param argv コマンドライン引数配列
  * @return 解析されたオプション、またはエラーメッセージ
  *)
+
+val to_run_config : options -> Parser_run_config.t
+(** CLI オプションから RunConfig を構築し、`extensions["config"]` に
+    CLI トグルのスナップショットを記録する。 *)

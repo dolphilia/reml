@@ -9,6 +9,7 @@
 2. `npm run ci --prefix tooling/lsp/tests/client_compat`
 3. `bash scripts/validate-diagnostic-json.sh tmp/diagnostics-output/`
 4. 差分が発生した場合、`tooling/lsp/tests/client_compat/fixtures/` および `compiler/ocaml/tests/golden/diagnostics/` を比較し、意図した変更か確認する。
+5. RunConfig 切替シナリオを記録する場合は `tmp/diagnostics-output/runconfig/` を作成し、`remlc --require-eof examples/cli/add.reml --format json --emit-ast --packrat --left-recursion=auto` など CLI フラグを組み合わせて出力を保存する。`scripts/validate-diagnostic-json.sh tmp/diagnostics-output/runconfig` を実行し、`extensions.config.*` に CLI の設定値が反映されていることを確認する。
 
 ## 2. 差分レポートのまとめ方
 - 変更前後の JSON を `jq --sort-keys` で整形し、`diff -u` で比較する。

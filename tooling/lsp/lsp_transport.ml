@@ -153,3 +153,7 @@ let encode_publish_diagnostics ~version (params : publish_params) =
     match params.version with Some v -> ("version", `Int v) :: fields | None -> fields
   in
   `Assoc fields
+
+let run_config_from_file path = Run_config_loader.from_file path
+
+let default_run_config () = Run_config_loader.default ()

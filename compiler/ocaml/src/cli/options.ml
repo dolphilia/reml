@@ -4,6 +4,9 @@
  * オプション処理をレコード型に集約し、型安全なオプション管理を提供する。
  *)
 
+module Run_config = Parser_run_config
+module Extensions = Parser_run_config.Extensions
+
 (** 出力フォーマット *)
 type output_format = Text  (** テキスト形式（デフォルト） *) | Json  (** JSON 形式（LSP 互換） *)
 
@@ -147,6 +150,13 @@ type options = {
   (* 効果システム / Stage 制御 *)
   effect_stage_override : string option;  (** CLI で指定された Stage 名 *)
   runtime_capabilities_path : string option;  (** Capability Registry JSON のパス *)
+  (* Parser RunConfig フラグ *)
+  parser_require_eof : bool;  (** RunConfig.require_eof を CLI から制御 *)
+  parser_packrat : bool;  (** RunConfig.packrat フラグ（Packrat シム導入待ち） *)
+  parser_left_recursion : Run_config.left_recursion;
+      (** RunConfig.left_recursion モード *)
+  parser_merge_warnings : bool;
+      (** RunConfig.merge_warnings（診断集約の有無） *)
 }
 (** コマンドラインオプション設定 *)
 
@@ -181,6 +191,10 @@ let default_options =
     emit_audit_path = None;
     effect_stage_override = None;
     runtime_capabilities_path = None;
+    parser_require_eof = Run_config.default.require_eof;
+    parser_packrat = Run_config.default.packrat;
+    parser_left_recursion = Run_config.default.left_recursion;
+    parser_merge_warnings = Run_config.default.merge_warnings;
   }
 
 (** 環境変数から color_mode を判定 *)
@@ -245,6 +259,10 @@ let parse_args argv =
   let json_mode_str = ref "pretty" in
   let include_snippet = ref true in
   let runtime_caps_path = ref None in
+  let parser_require_eof = ref Run_config.default.require_eof in
+  let parser_packrat = ref Run_config.default.packrat in
+  let parser_left_recursion = ref Run_config.default.left_recursion in
+  let parser_merge_warnings = ref Run_config.default.merge_warnings in
 
   let usage_msg = "remlc-ocaml [options] <file>" in
 
@@ -286,6 +304,31 @@ let parse_args argv =
         Arg.String
           (fun value -> metrics_format_str := String.lowercase_ascii value),
         "<json|csv> Metrics output format (default: json)" );
+      (* Parser RunConfig オプション *)
+      ( "--require-eof",
+        Arg.Unit (fun () -> parser_require_eof := true),
+        "Require parser to consume entire input (RunConfig.require_eof=true)" );
+      ( "--packrat",
+        Arg.Unit (fun () -> parser_packrat := true),
+        "Enable Packrat memoization shim (RunConfig.packrat=true; experimental)" );
+      ( "--left-recursion",
+        Arg.String
+          (fun value ->
+            let lowered = String.lowercase_ascii value in
+            match lowered with
+            | "auto" -> parser_left_recursion := Run_config.Auto
+            | "on" -> parser_left_recursion := Run_config.On
+            | "off" -> parser_left_recursion := Run_config.Off
+            | other ->
+                prerr_endline
+                  (Printf.sprintf
+                     "Warning: unknown left recursion mode '%s', using 'auto'"
+                     other);
+                parser_left_recursion := Run_config.Auto),
+        "<off|on|auto> Left recursion handling mode (default: auto)" );
+      ( "--no-merge-warnings",
+        Arg.Unit (fun () -> parser_merge_warnings := false),
+        "Emit all parser warnings without merging (RunConfig.merge_warnings=false)" );
       ( "--typeclass-mode",
         Arg.String
           (fun value ->
@@ -516,9 +559,45 @@ let parse_args argv =
           emit_audit_path;
           effect_stage_override = !effect_stage;
           runtime_capabilities_path = !runtime_caps_path;
+          parser_require_eof = !parser_require_eof;
+          parser_packrat = !parser_packrat;
+          parser_left_recursion = !parser_left_recursion;
+          parser_merge_warnings = !parser_merge_warnings;
         }
   with
   | Arg.Help _ ->
       print_full_help ();
       exit 0
   | Arg.Bad msg -> Error msg
+
+let string_of_left_recursion = function
+  | Run_config.Off -> "off"
+  | Run_config.On -> "on"
+  | Run_config.Auto -> "auto"
+
+let to_run_config (opts : options) =
+  let base =
+    {
+      Run_config.default with
+      require_eof = opts.parser_require_eof;
+      packrat = opts.parser_packrat;
+      left_recursion = opts.parser_left_recursion;
+      trace = opts.trace;
+      merge_warnings = opts.parser_merge_warnings;
+      legacy_result = true;
+    }
+  in
+  let module Namespace = Extensions.Namespace in
+  let config_namespace =
+    Namespace.empty
+    |> Namespace.add "source" (Extensions.String "cli")
+    |> Namespace.add "require_eof" (Extensions.Bool opts.parser_require_eof)
+    |> Namespace.add "packrat" (Extensions.Bool opts.parser_packrat)
+    |> Namespace.add "left_recursion"
+         (Extensions.String (string_of_left_recursion opts.parser_left_recursion))
+    |> Namespace.add "trace" (Extensions.Bool base.trace)
+    |> Namespace.add "merge_warnings"
+         (Extensions.Bool opts.parser_merge_warnings)
+    |> Namespace.add "legacy_result" (Extensions.Bool base.legacy_result)
+  in
+  Run_config.with_extension "config" (fun _ -> config_namespace) base

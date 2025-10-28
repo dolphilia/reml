@@ -114,6 +114,8 @@
 - `compiler/ocaml/tests/` のテストヘルパを更新し、RunConfig を明示的に渡す API（`Test_support.with_run_config` 等）を用意する。  
 - `reports/diagnostic-format-regression.md` に RunConfig 切替シナリオを追加し、CLI/LSP の JSON が設定値に追従することを比較できるようにする。
 
+> 2025-11-21 更新: Step 4 完了。`compiler/ocaml/src/cli/options.ml` に `Cli.Options.to_run_config` を追加し、`--require-eof` / `--packrat` / `--left-recursion` / `--no-merge-warnings` を経由して RunConfig を構築できるようにした。CLI 既定値は仕様に合わせて `require_eof=false` へ更新し、従来挙動は `--require-eof` で復元できる。LSP 向けには `tooling/lsp/run_config_loader.ml` と `tooling/lsp/config/default.json` を作成し、`extensions["lex"|"recover"|"stream"]` を設定ファイルから再現するロードパスを定義した。テスト支援ライブラリに `compiler/ocaml/tests/support/test_support.ml` を追加し、`Test_support.parse_string` / `Test_support.with_run_config` を `test_parser.ml`・`test_type_inference.ml` へ展開。RunConfig 移行時の未完タスクは `docs/notes/core-parser-migration.md` に TODO として記録した。
+
 ### Step 5: テスト・検証・メトリクス定着（Week32 Day4-5）
 - `compiler/ocaml/tests/run_config_tests.ml` を作成し、`require_eof`・`merge_warnings` の挙動、`trace` ON/OFF の `SpanTrace` 収集、`extensions["lex"]` による空白共有、`legacy_result=true` での互換性をパラメトリックテストで確認する。  
 - `0-3-audit-and-metrics.md` に `parser.runconfig_switch_coverage`（packrat/left_recursion/trace/merge_warnings のテスト網羅率）と `parser.runconfig_extension_pass_rate`（lex/recover/stream の設定伝搬率）を追加し、`collect-iterator-audit-metrics.py` が新メトリクスを収集できるように改修する。  

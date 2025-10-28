@@ -15,13 +15,14 @@
 open Types
 open Type_env
 open Type_inference
-open Parser_driver
 open Ast
 open Typed_ast
 
 (* ========== テストヘルパー ========== *)
 
 let reset_types () = TypeVarGen.reset ()
+
+let parse_string = Test_support.parse_string
 
 let _parse_expr_string src =
   match parse_string src with

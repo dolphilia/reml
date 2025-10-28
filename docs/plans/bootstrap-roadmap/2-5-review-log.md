@@ -362,3 +362,20 @@ S5（検証とドキュメント更新）の結果共有。
 ### 3. フォローアップ
 - `parser.use_nested_support` を CI ダッシュボードへ表示する際の閾値設定と、失敗時に収集する追加ログ（Menhir `--list-errors` 出力など）のテンプレートを Phase 2-7 で整備する。
 - `pub use` の可視性ルール検証は Phase 2-7 `SYNTAX-002` 後続タスクへ引き継ぐ。`binding_is_pub` を利用した公開面積の測定は `Module_env` で準備済み。
+
+## PARSER-002 Day4 RunConfig クライアント統合（2025-11-21）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/PARSER-002-proposal.md`](./2-5-proposals/PARSER-002-proposal.md)
+
+### 1. 実装サマリ
+- `compiler/ocaml/src/cli/options.ml` に `Cli.Options.to_run_config` を追加し、`--require-eof` / `--packrat` / `--left-recursion` / `--no-merge-warnings` を経由して RunConfig を構築。従来 CLI が暗黙に設定していた `require_eof=true` は仕様の既定値（false）へ合わせ、互換モードはフラグ指定で明示する方針に変更した。
+- `compiler/ocaml/src/main.ml` で `Parser_driver.run ~config` を採用し、RunConfig を経由したパース結果を既存パイプラインへ接続。`Test_support` を新設してユニットテストから同一の RunConfig を再利用できるようにし、`test_parser.ml` / `test_type_inference.ml` をヘルパ経由へ移行した。
+- LSP 側に `tooling/lsp/run_config_loader.ml` を追加し、`tooling/lsp/config/default.json` に定義した設定から `extensions["lex"|"recover"|"stream"]` を復元するロードパスを定義。CLI と同様に `extensions["config"].source = "lsp"` を記録してトレースの出所を区別できるようにした。
+
+### 2. 測定・ドキュメント更新
+- `reports/diagnostic-format-regression.md` のローカル検証手順に RunConfig 切替シナリオを追加し、`extensions.config.*` の差分を比較できるチェックリストを整備。
+- RunConfig 移行時に残っている Packrat/左再帰シムの未実装事項を `docs/notes/core-parser-migration.md` に TODO として記録し、今後の追跡先（`PARSER-003`・`LEXER-002`）を明文化。
+
+### 3. フォローアップ
+- `--packrat` / `--left-recursion=on|auto` は現状警告のみを発する暫定実装のため、`PARSER-003` でメモ化シムが揃い次第 CLI/LSP ランタイムを再検証する。
+- LSP 設定を利用した自動テストは未整備。`tooling/lsp/tests/client_compat` に RunConfig フィクスチャを追加し、`run_config_loader` 経由で CLI と同じ JSON 出力になることを確認するタスクを Phase 2-7 へ引き継ぐ。

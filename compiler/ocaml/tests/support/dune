@@ -1,5 +1,5 @@
 (library
  (name reml_test_support)
- (modules llvm_toolchain_helpers)
+ (modules llvm_toolchain_helpers test_support)
  (wrapped false)
- (libraries unix))
+ (libraries unix reml_parser))
