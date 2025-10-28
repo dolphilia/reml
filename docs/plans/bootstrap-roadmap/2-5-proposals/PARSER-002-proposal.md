@@ -98,6 +98,8 @@
 - `merge_warnings=false` の場合は回復診断をすべて出力するよう `Parser_diag_state` を調整する。  
 - `locale` を `Diagnostic.Builder` 初期化と `PrettyOptions` の既定値へ伝播させる下準備を `DIAG-003` と共有する。
 
+> 2025-11-19 更新: Step 2 完了。`parser_driver` が `Run_config.t` を直接受け取り、`trace`/`merge_warnings`/`locale` を `Parser_diag_state.create` に伝播できるよう更新した。`packrat` と `left_recursion` は未実装フラグを `Warning` 診断として記録し、`extensions["config"].require_eof` を優先して未消費入力をエラー化するガードを追加。`SpanTrace` は `trace=true` のときのみルートスパンを収集し、既定モードでは追加コストゼロであることを確認した（ユニットテストは Step 5 で拡充予定）。
+
 ### Step 3: extensions/lex/recover/stream シム構築（Week32 Day3-4）
 - `RunConfig.extensions["lex"]` を取得して `LEXER-002` が導入する `Core.Parse.Lex` シムへ渡す手続きを設計し、設定が無い場合は `ConfigTriviaProfile::strict_json` を既定にする。  
 - `extensions["recover"]` の `sync_tokens` / `notes` を `Parser_diag_state` が利用できるようにし、`ERR-002` の FixIt 実装と連携するための API を整備する。  

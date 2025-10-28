@@ -1,15 +1,19 @@
-(* parser_driver.ml — Parser ランナーと `ParseResult` シム *)
+(* parser_driver.ml — Parser ランナーと `ParseResult` シム
+ *
+ * Phase 2-5: RunConfig を正式導入し、診断状態へのスイッチ伝播を整備する。
+ *)
 
 module I = Parser.MenhirInterpreter
 module Builder = Diagnostic.Builder
+module Run_config = Parser_run_config
+module Extensions = Parser_run_config.Extensions
+module Extension_namespace = Extensions.Namespace
 
-type run_config = {
-  require_eof : bool;
-  legacy_result : bool;
-}
+let default_run_config = Run_config.default
 
-let default_run_config = { require_eof = true; legacy_result = false }
-let legacy_run_config = { require_eof = true; legacy_result = true }
+let legacy_run_config =
+  let open Run_config.Legacy in
+  bridge { require_eof = true; legacy_result = true }
 
 type parse_error = {
   span : Diagnostic.span;
@@ -39,6 +43,7 @@ type parse_result = {
   consumed : bool;
   committed : bool;
   farthest_error_offset : int option;
+  span_trace : (string option * Diagnostic.span) list option;
 }
 
 type parse_result_with_rest = {
@@ -109,6 +114,7 @@ let finalize_result diag_state ~value ~span ~legacy_error ~consumed ~committed =
     consumed;
     committed;
     farthest_error_offset = Parser_diag_state.farthest_offset diag_state;
+    span_trace = Parser_diag_state.span_trace_pairs diag_state;
   }
 
 let register_diagnostic diag_state diag ~consumed ~committed =
@@ -121,14 +127,67 @@ let build_failure diag_state diag ~consumed ~committed =
   finalize_result diag_state ~value:None ~span:None
     ~legacy_error:(Some legacy_error) ~consumed ~committed
 
+let effective_require_eof config =
+  match Run_config.find_extension "config" config with
+  | None -> config.require_eof
+  | Some namespace -> (
+      match Extension_namespace.find "require_eof" namespace with
+      | Some (Extensions.Bool value) -> value
+      | _ -> config.require_eof)
+
+let warn_unimplemented_feature diag_state lexbuf ~code ~message =
+  let pos = lexbuf.Lexing.lex_curr_p in
+  let span = Diagnostic.span_of_positions pos pos in
+  Builder.create ~message ~primary:span ()
+  |> Builder.set_severity Diagnostic.Warning
+  |> Builder.set_domain Diagnostic.Config
+  |> Builder.set_primary_code code
+  |> Builder.build
+  |> Parser_diag_state.record_warning diag_state
+
+let warn_packrat diag_state lexbuf =
+  warn_unimplemented_feature diag_state lexbuf
+    ~code:"parser.runconfig.packrat_unimplemented"
+    ~message:
+      "RunConfig.packrat=true が指定されましたが、Packrat メモ化はまだ \
+       実装されていません（Phase 2-5 計画）。"
+
+let warn_left_recursion diag_state lexbuf mode =
+  let mode_text =
+    match mode with
+    | Run_config.On -> "on"
+    | Run_config.Auto -> "auto"
+    | Run_config.Off -> "off"
+  in
+  warn_unimplemented_feature diag_state lexbuf
+    ~code:"parser.runconfig.left_recursion_unimplemented"
+    ~message:
+      (Printf.sprintf
+         "RunConfig.left_recursion=\"%s\" を利用できません。左再帰シムは \
+          PARSER-003 で導入予定です。"
+         mode_text)
+
 let run ?(config = default_run_config) lexbuf =
-  let diag_state = Parser_diag_state.create () in
+  let diag_state =
+    Parser_diag_state.create ~trace:config.trace
+      ~merge_warnings:config.merge_warnings ~locale:config.locale ()
+  in
+  let require_eof = effective_require_eof config in
   let consumed = ref false in
   let committed = ref false in
+  let eof_seen = ref false in
   let start_pos = lexbuf.Lexing.lex_curr_p in
+  if config.packrat then warn_packrat diag_state lexbuf;
+  (match config.left_recursion with
+  | Run_config.On -> warn_left_recursion diag_state lexbuf Run_config.On
+  | Run_config.Auto when config.packrat ->
+      warn_left_recursion diag_state lexbuf Run_config.Auto
+  | _ -> ());
   let read_token () =
     let token = Lexer.token lexbuf in
-    (match token with Token.EOF -> () | _ -> consumed := true);
+    (match token with
+    | Token.EOF -> eof_seen := true
+    | _ -> consumed := true);
     let start_pos = Lexing.lexeme_start_p lexbuf in
     let end_pos = Lexing.lexeme_end_p lexbuf in
     (token, start_pos, end_pos)
@@ -147,6 +206,8 @@ let run ?(config = default_run_config) lexbuf =
         let span =
           Diagnostic.span_of_positions start_pos lexbuf.Lexing.lex_curr_p
         in
+        Parser_diag_state.record_span_trace diag_state
+          ~label:(Some "compilation_unit") ~span;
         finalize_result diag_state ~value:(Some ast) ~span:(Some span)
           ~legacy_error:None ~consumed:!consumed ~committed:!committed
     | I.HandlingError _ ->
@@ -167,7 +228,26 @@ let run ?(config = default_run_config) lexbuf =
   in
   let checkpoint = Parser.Incremental.compilation_unit lexbuf.Lexing.lex_curr_p in
   let result = loop checkpoint in
-  if config.require_eof then result else result
+  if require_eof && not !eof_seen then (
+    let pos = lexbuf.Lexing.lex_curr_p in
+    let span = Diagnostic.span_of_positions pos pos in
+    let diag =
+      Builder.create
+        ~message:"RunConfig.require_eof=true のため未消費入力を許可できません"
+        ~primary:span ()
+      |> Builder.set_severity Diagnostic.Error
+      |> Builder.set_domain Diagnostic.Parser
+      |> Builder.set_primary_code "parser.require_eof.unconsumed_input"
+      |> Builder.build
+    in
+    register_diagnostic diag_state diag ~consumed:!consumed ~committed:!committed;
+    let legacy_error =
+      diagnostic_to_parse_error diag ~consumed:!consumed ~committed:!committed
+    in
+    finalize_result diag_state ~value:None ~span:result.span
+      ~legacy_error:(Some legacy_error) ~consumed:!consumed
+      ~committed:!committed)
+  else result
 
 let run_partial ?(config = default_run_config) lexbuf =
   let cfg = { config with require_eof = false } in
