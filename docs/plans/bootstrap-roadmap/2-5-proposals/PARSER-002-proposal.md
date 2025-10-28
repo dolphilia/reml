@@ -88,6 +88,8 @@
 - `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` §6.2 に参照脚注を追加し、RunConfig 移行のステップとメトリクス登録予定を明記する準備を行う。  
 - `docs/spec/2-1-parser-type.md` と `docs/spec/2-6-execution-strategy.md` に「OCaml 実装の移行ステータス」脚注を追加/更新し、今回の開発範囲（RunConfig 型と CLI/LSP 連携）が Phase 2-5 中盤であることを記載する。
 
+> 2025-11-18 更新: Step 1 完了。`compiler/ocaml/src/parser_run_config.{ml,mli}` を追加し、`with_extension` / `find_extension` / `Legacy.bridge` など仕様準拠の API を整備した。`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` §6.3 へ進捗脚注を追記し、`docs/spec/2-1-parser-type.md` / `docs/spec/2-6-execution-strategy.md` に OCaml 実装状況を明記。後続ステップ（Step 2 以降）でドライバ適用・メトリクス登録を行う前提条件が揃った。
+
 ### Step 2: parser_driver への RunConfig 導入（Week32 Day2-3）
 - `parser_driver.run` のシグネチャを `?config:Run_config.t -> Lexing.lexbuf -> parse_result` へ変更し、`DiagState` に `trace`・`merge_warnings`・`locale` の設定を渡す。  
 - `packrat` と `left_recursion` は当面シム層として `PARSER-003` が実装するメモ化/seed-growing フックへ委譲する準備を行い、未実装の場合は診断または `Parser_diag_state.record_warning` で追跡できるようガードを入れる。  

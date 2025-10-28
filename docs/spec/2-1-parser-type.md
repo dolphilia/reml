@@ -123,6 +123,8 @@ type MemoTable = Map<MemoKey, Any>  // 実装上は型消去（内部用）
     環境変数も欠落していれば **初回のみ「ロケール未指定」警告を出して英語 UI へフォールバック**する。
   - `extensions` は LSP 連携・シンタックスハイライト・監査ログ・GC など、各拡張モジュールが提供する設定をネームスペース付きで保持する。例：`extensions["lsp"]`（LSP ガイド参照）、`extensions["runtime"]`（Core.Runtime 草案参照）。
 
+> **実装メモ（Phase 2-5）**: OCaml 実装では `compiler/ocaml/src/parser_run_config.ml` に `RunConfig` レコードを実装し、`with_extension` / `find_extension` / `Legacy.bridge` など仕様準拠の API を提供する準備が整っている[^runconfig-ocaml-phase25]。
+
 `extensions` の既定ネームスペース（推奨）
 
 | key | 用途 | 参照 |
@@ -178,6 +180,9 @@ impl RunConfig {
 ---
 
 ## E. コミットと消費の意味論
+
+[^runconfig-ocaml-phase25]:
+    2025-11-18 更新。`PARSER-002` Step 1（RunConfig 型設計）で `Parser_run_config` モジュールを追加し、仕様に定義されたフィールドと拡張マップ操作を不変レコードとして提供。後続ステップで `parser_driver` へ適用する前提条件を満たした。
 
 * `consumed`：**入力を1バイト以上前進**したか。
 * `committed`：`cut` 境界を**越えた**とマーク（消費の有無に関わらず）。

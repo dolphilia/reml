@@ -35,6 +35,8 @@ fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult
 
 ### B-2. RunConfig のコアスイッチ
 
+> **実装メモ（Phase 2-5）**: OCaml 実装では `compiler/ocaml/src/parser_run_config.ml` に `RunConfig` レコードと `with_extension` / `find_extension` / `Legacy.bridge` を追加し、Packrat/左再帰・診断スイッチを段階的に解放する準備を整えた[^runconfig-exec-phase25].
+
 `RunConfig` はバッチ解析に必要な最小限のスイッチだけを提供し、燃料制御や追加の安全弁は拡張モジュール側で定義する。
 
 ```reml
@@ -378,3 +380,6 @@ fn container_profile(profile: &str) -> RunConfig = match profile {
 - `ExecutionPlan.backpressure` は `run` 実行時にチャネル深度監視を有効化し、メトリクス名 `dsl.in_flight`（[3-6 Core Diagnostics](3-6-core-diagnostics-audit.md)）へ数値を転送する。
 - `RunConfig.extensions["async"].execution_plan` は Core.Async の `with_plan`（3-9 §1.4）から参照され、ストリーム処理パイプラインに実行計画を適用する。適用後の診断には `extensions["async.plan"]` が付与され、0-1 §1.1 の性能指標を検証できる。
 - DSLごとの成功/失敗は `RunConfig` の `extensions` を通じて `record_dsl_success` / `record_dsl_failure` に引き渡し、監査ログと性能指標を同期させる。
+
+[^runconfig-exec-phase25]:
+    2025-11-18 更新。`PARSER-002` Step 1 で OCaml 実装に `Parser_run_config` モジュールを導入し、`RunConfig` の各フィールドと拡張マップ操作を仕様通りに表現。今後の Step 2 で `parser_driver` / `run_stream` へ伝播する基盤が整った。
