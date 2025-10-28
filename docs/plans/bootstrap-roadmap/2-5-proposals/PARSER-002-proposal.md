@@ -106,6 +106,8 @@
 - `extensions["stream"]` / `["config"]` を `EXEC-001`（run_stream PoC）へ受け渡すための placeholder を用意し、現時点では `None` の場合に警告を発しないようガードする。  
 - 拡張キーが未登録の場合は `Run_config.lookup_extension` が `None` を返すだけに留め、将来の Stage 監査と衝突しないよう `EFFECT-003` とログの粒度を調整する。
 
+> 2025-11-20 更新: Step 3 完了。`parser_run_config` に `Config`/`Lex`/`Recover`/`Stream` サブモジュールを追加し、`extensions["lex"]` は `profile` 未指定時に `ConfigTriviaProfile::strict_json` を返すシムを提供、`ParserId` は将来の Packrat 向けに `int option` として保持するよう整備した。`extensions["recover"]` の `sync_tokens`/`notes` は `Parser_diag_state.create` へ伝播するようになり、`recover.notes=false` でも診断警告を抑制できる。`extensions["stream"]` は checkpoint/resume ヒントを `Run_config.Stream.t` で保持し、未設定時は空のプレースホルダで扱う。`compiler/ocaml/src/dune` に `parser_run_config` を追加し `dune build` を通過することを確認。
+
 ### Step 4: クライアント・測定基盤の対応（Week32 Day4）
 - CLI オプション (`Cli.Options`) から RunConfig を構築するヘルパを追加し、`--require-eof` / `--packrat` / `--left-recursion` / `--trace` / `--no-merge-warnings` など Phase 2 で予定していたフラグを再確認して実装する。未実装のフラグは TODO として `docs/notes/core-parser-migration.md` に記録する。  
 - LSP トランスポート層で RunConfig を生成する処理を追加し、既存の設定ファイル（`tooling/lsp/config/*.json`）を `extensions["lex"]` 等に反映させる。  

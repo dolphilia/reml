@@ -50,6 +50,8 @@ type t = {
   extensions : Extensions.t;
 }
 
+type run_config = t
+
 val default : t
 (** 仕様既定値（require_eof=false ほか） *)
 
@@ -67,4 +69,70 @@ module Legacy : sig
   }
 
   val bridge : config -> t
+end
+
+module Config : sig
+  val find : t -> Extensions.Namespace.t option
+  val require_eof_override : Extensions.Namespace.t -> bool option
+end
+
+module Lex : sig
+  module Trivia_profile : sig
+    type comment_pair = {
+      start : string;
+      stop : string;
+      nested : bool;
+    }
+
+    type t = {
+      line : string list;
+      block : comment_pair list;
+      shebang : bool;
+      hash_inline : bool;
+      doc_comment : string option;
+    }
+
+    val strict_json : t
+    val json_relaxed : t
+    val toml_relaxed : t
+  end
+
+  type profile =
+    | Strict_json
+    | Json_relaxed
+    | Toml_relaxed
+    | Custom of string
+
+  type t = {
+    space_id : int option;
+    profile : profile;
+    namespace : Extensions.Namespace.t option;
+  }
+
+  val default : t
+  val of_run_config : run_config -> t
+  val profile_symbol : profile -> string
+  val effective_trivia : t -> Trivia_profile.t
+end
+
+module Recover : sig
+  type t = {
+    sync_tokens : string list;
+    emit_notes : bool;
+    namespace : Extensions.Namespace.t option;
+  }
+
+  val default : t
+  val of_run_config : run_config -> t
+end
+
+module Stream : sig
+  type t = {
+    checkpoint : string option;
+    resume_hint : string option;
+    namespace : Extensions.Namespace.t option;
+  }
+
+  val default : t
+  val of_run_config : run_config -> t
 end

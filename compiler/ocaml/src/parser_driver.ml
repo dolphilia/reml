@@ -6,8 +6,6 @@
 module I = Parser.MenhirInterpreter
 module Builder = Diagnostic.Builder
 module Run_config = Parser_run_config
-module Extensions = Parser_run_config.Extensions
-module Extension_namespace = Extensions.Namespace
 
 let default_run_config = Run_config.default
 
@@ -128,22 +126,24 @@ let build_failure diag_state diag ~consumed ~committed =
     ~legacy_error:(Some legacy_error) ~consumed ~committed
 
 let effective_require_eof config =
-  match Run_config.find_extension "config" config with
+  match Run_config.Config.find config with
   | None -> config.require_eof
   | Some namespace -> (
-      match Extension_namespace.find "require_eof" namespace with
-      | Some (Extensions.Bool value) -> value
-      | _ -> config.require_eof)
+      match Run_config.Config.require_eof_override namespace with
+      | Some value -> value
+      | None -> config.require_eof)
 
 let warn_unimplemented_feature diag_state lexbuf ~code ~message =
   let pos = lexbuf.Lexing.lex_curr_p in
   let span = Diagnostic.span_of_positions pos pos in
-  Builder.create ~message ~primary:span ()
-  |> Builder.set_severity Diagnostic.Warning
-  |> Builder.set_domain Diagnostic.Config
-  |> Builder.set_primary_code code
-  |> Builder.build
-  |> Parser_diag_state.record_warning diag_state
+  let diagnostic =
+    Builder.create ~message ~primary:span ()
+    |> Builder.set_severity Diagnostic.Warning
+    |> Builder.set_domain Diagnostic.Config
+    |> Builder.set_primary_code code
+    |> Builder.build
+  in
+  Parser_diag_state.record_warning diag_state ~diagnostic
 
 let warn_packrat diag_state lexbuf =
   warn_unimplemented_feature diag_state lexbuf
@@ -168,9 +168,11 @@ let warn_left_recursion diag_state lexbuf mode =
          mode_text)
 
 let run ?(config = default_run_config) lexbuf =
+  let recover_config = Run_config.Recover.of_run_config config in
   let diag_state =
     Parser_diag_state.create ~trace:config.trace
-      ~merge_warnings:config.merge_warnings ~locale:config.locale ()
+      ~merge_warnings:config.merge_warnings ?locale:config.locale
+      ~recover:recover_config ()
   in
   let require_eof = effective_require_eof config in
   let consumed = ref false in

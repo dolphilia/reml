@@ -4,6 +4,8 @@
  * 追加スイッチ（trace / merge_warnings / locale）を保持する。
  *)
 
+module Recover_config = Parser_run_config.Recover
+
 type farthest_snapshot = {
   offset : int;
   expected : Diagnostic.expectation list;
@@ -28,9 +30,11 @@ type t = {
   merge_warnings : bool;
   mutable warning_signatures : warning_signature list;
   locale : string option;
+  recover_config : Recover_config.t;
 }
 
-let create ?(trace = false) ?(merge_warnings = true) ?locale () =
+let create ?(trace = false) ?(merge_warnings = true) ?locale
+    ?(recover = Recover_config.default) () =
   {
     farthest = None;
     diagnostics_rev = [];
@@ -40,10 +44,14 @@ let create ?(trace = false) ?(merge_warnings = true) ?locale () =
     merge_warnings;
     warning_signatures = [];
     locale;
+    recover_config = recover;
   }
 
 let trace_enabled t = t.trace_enabled
 let locale t = t.locale
+let recover_config t = t.recover_config
+let recover_sync_tokens t = t.recover_config.sync_tokens
+let recover_notes_enabled t = t.recover_config.emit_notes
 
 let record_span_trace t ~label ~span =
   if t.trace_enabled then

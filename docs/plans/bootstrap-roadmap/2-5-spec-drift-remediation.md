@@ -304,11 +304,15 @@
 
 6.3. **High 計画の連続実行**
 - **PARSER-002 / LEXER-002 / DIAG-003 / EFFECT-003 / TYPE-001**: Phase 2-5 中盤で着手し、RunConfig 導入・Lex API 抽出・診断ドメイン拡張・複数 Capability 対応・値制限復元を進める。`PARSER-002` は Week32 Day1-2 で RunConfig 基本型と拡張 API を `compiler/ocaml/src/parser_run_config.ml` に実装済みであり、`parser.runconfig_switch_coverage` / `parser.runconfig_extension_pass_rate` を `0-3-audit-and-metrics.md` へ登録する準備を開始した[^runconfig-step1-phase25].
+  2025-11-20 時点で Step 3 を完了し、`extensions["lex"]`/`["recover"]`/`["stream"]` のデコードシムと `Parser_diag_state` の回復設定連携を実装済み。`RunConfig` に未指定の `lex.profile` は `strict_json` へフォールバックし、`recover.notes` は `Parser_diag_state.recover_notes_enabled` で確認できるようになった[^runconfig-step3-phase25].
 - 各計画で追加した単体テスト（`runconfig_tests.ml`, `core_parse_lex_tests.ml`, `capability_profile_tests.ml`, `type_inference_effect_tests.ml` 等）を CI に組み込み、`0-3-audit-and-metrics.md` の新メトリクスが反映されることを確認する。
 - 計画進行中に検出したリスク・課題は `0-4-risk-handling.md` へ即時登録し、必要に応じて Phase 2-7 へエスカレーションする。
 
 [^runconfig-step1-phase25]:
     2025-11-18 時点。PARSER-002 Step 1（RunConfig 型設計とドキュメント同期）で `Parser_run_config` モジュールを追加し、`with_extension` / `find_extension` / `Legacy.bridge` など仕様準拠の API を整備。後続ステップでメトリクス登録・ドライバ連携を行う前提条件を満たした。
+
+[^runconfig-step3-phase25]:
+    2025-11-20 時点。`parser_run_config` に `Config`/`Lex`/`Recover`/`Stream` サブモジュールを追加し、`extensions` ネームスペースを型安全に読み取るシムを実装。`lex.profile` 非指定時の `ConfigTriviaProfile::strict_json` フォールバック、`recover.sync_tokens`/`notes` の `Parser_diag_state` 連携、`stream` プレースホルダの導入、および `dune build` による検証を完了。
 6.4. **後半フェーズの仕上げ**
 - **PARSER-003 / EXEC-001 / ERR-002**: Phase 2-5 後半でコアコンビネーター抽出とストリーミング PoC、`recover` FixIt 拡張を実装し、ランナ―整合性を最終確認する。
 - 完了後は `docs/guides/core-parse-streaming.md` や `docs/spec/2-2-core-combinator.md` に脚注・更新を反映させ、関連サンプルが動作することを確認する。
