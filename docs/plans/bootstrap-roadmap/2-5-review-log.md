@@ -3,6 +3,34 @@
 Phase 2-5 で実施した差分レビューと現状棚卸しを記録し、後続フェーズでの追跡に利用する。  
 エントリごとに関連計画へのリンクと再現手順を整理する。
 
+## PARSER-002 Day1 RunConfig 現状調査（2025-11-18）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/PARSER-002-proposal.md`](./2-5-proposals/PARSER-002-proposal.md)
+
+### 1. 調査サマリ
+- `docs/spec/2-1-parser-type.md:92-175` と `docs/spec/2-6-execution-strategy.md:60-107` を精査し、RunConfig の公式フィールドと既定値、`extensions` ネームスペースの契約を整理。結果は計画書 Step0 の表1・表2へ反映。  
+- 現行 OCaml 実装では `type run_config = { require_eof; legacy_result }` のみ存在し、仕様で定義される Packrat/左再帰/trace/merge_warnings/locale/extensions が全て欠落していることを確認（compiler/ocaml/src/parser_driver.ml:6-13）。  
+- CLI（compiler/ocaml/src/main.ml:612）およびユニットテスト（例: compiler/ocaml/tests/test_parser.ml:10, compiler/ocaml/tests/test_type_inference.ml:18）は `Parser_driver.parse` / `parse_string` を直接使用し、RunConfig 構築ヘルパが存在しない。  
+- `run_partial` は `require_eof=false` を強制するだけで `rest` を返さないスタブ状態であり、ストリーミング拡張と整合しない（compiler/ocaml/src/parser_driver.ml:172-175）。
+
+### 2. 仕様との差分要約
+- 既定値の差異: 仕様は `require_eof=false` が既定だが OCaml 実装は `default_run_config.require_eof = true` のまま（compiler/ocaml/src/parser_driver.ml:11）。  
+- `trace`・`merge_warnings`・`locale` の制御は `Parser_diag_state` / `Diagnostic.Builder` にスイッチが無く、RunConfig 経由での切替ができない。  
+- `extensions["lex"]`・`["config"]`・`["recover"]`・`["stream"]`・`["lsp"]`・`["target"]`・`["effects"]` の標準キーはすべて未実装であり、LEXER-002 / EFFECT-003 / EXEC-001 計画とのインターフェイスが欠落。  
+- RunConfig 系メトリクス（`parser.runconfig_switch_coverage` など）は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` にまだ登録されていないため、監視ができない。
+
+### 3. Packrat/左再帰・trace 実装に向けた検討
+- Menhir 境界では `Parser.MenhirInterpreter` の `checkpoint` ループに全ての分岐が集中しており（compiler/ocaml/src/parser_driver.ml:133-166）、Packrat 実装時にはここで `(ParserId, byte_off)` をキーとしたメモテーブルを参照する必要がある。  
+- Packrat 導入時は `left_recursion` フラグを確認して種成長ループを挿入し、評価中フラグ・`commit_watermark` に基づく掃除を RunConfig 側で初期化する必要がある（docs/spec/2-6-execution-strategy.md:62-74,171-188）。  
+- `trace` ON 時にのみ `SpanTrace` や解析イベントを収集する挿し込みポイントは `Lexer.token` 呼び出し前後および `I.Shifting` → `I.resume` の箇所。現状では収集ロジックが無いため無条件でコストゼロ。  
+- `merge_warnings=false` を扱うには `Parser_diag_state.record_diagnostic` で回復診断を蓄積する際のフィルタを分岐させ、`extensions["recover"].notes` や監査ログに個別記録できるようにする必要がある。
+
+### 4. TODO / 引き継ぎ
+1. `parser_run_config.{ml,mli}` を作成し、仕様準拠の `Run_config.t` と `extensions` ラッパーを実装する（PARSER-002 Step1）。  
+2. CLI/LSP/テストに共通の RunConfig ビルダーを用意し、既存の `Parser_driver.parse` から新 API へ移行する準備を行う。  
+3. Packrat/左再帰シムのメモテーブル要求事項を `PARSER-003` チームへ共有し、`RunConfig.packrat` と `left_recursion` のセマンティクスを整合させる。  
+4. RunConfig 測定指標（`parser.runconfig_switch_coverage`、`parser.runconfig_extension_pass_rate`）の追加作業を 0-3 メトリクス管理表へ登録する。
+
 ## ERR-001 Day1 Menhir 期待集合 API 棚卸し（2025-11-13）
 
 ### 1. Menhir 出力サマリ

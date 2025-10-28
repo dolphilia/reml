@@ -41,6 +41,47 @@
 - Menhir の `Parser.MenhirInterpreter` が提供するチェックポイント API で Packrat/左再帰シムを挿入する際の制約を調査し、必要なフック（memo table・seed-growing）を `PARSER-003` と共有できるようメモする。  
 - 調査結果と課題を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に `PARSER-002` エントリとして追記し、Phase 2-7・Phase 3 へ渡す TODO をマークする。
 
+#### 調査サマリ（2025-11-18）
+- RunConfig の仕様項目・既定値と OCaml 実装の差分を整理し、表1に記載した。仕様は `docs/spec/2-1-parser-type.md:92-175`・`docs/spec/2-6-execution-strategy.md:60-107` を一次資料とした。  
+- 標準拡張ネームスペース（`lex`/`config`/`recover`/`stream`/`lsp` 等）の期待値を表2にまとめ、CLI/LSP/テストで未反映であることを確認した。  
+- `Parser_driver` 経由の呼び出し経路（CLI・各種テスト・補助 API）を列挙し、RunConfig 非導入によるギャップを特定した（詳細は「API/呼び出し経路棚卸し」節）。  
+- Menhir チェックポイント API を再確認し、Packrat/左再帰シム投入時に追加で必要となるメモ化フックと診断伝播ポイントを整理した。
+
+##### 表1: RunConfig 項目マッピング
+| 項目 | 仕様の既定値・参照 | 現行 OCaml 実装 | 差分/課題 |
+| --- | --- | --- | --- |
+| `require_eof` | `false`（docs/spec/2-1-parser-type.md:96） | `default_run_config.require_eof = true`、`parse` 系は常に `true` を使用（compiler/ocaml/src/parser_driver.ml:11,205） | 仕様と既定値が逆転。`RunConfig` 導入時に互換モードを明示切替する必要あり。 |
+| `packrat` | `false`（docs/spec/2-1-parser-type.md:97） | フィールド未実装、Packrat メモ化なし | `Run_config` 型新設とメモテーブル管理が未着手。`PARSER-003` へのインターフェイスを準備する必要。 |
+| `left_recursion` | `"auto"`（docs/spec/2-1-parser-type.md:98、docs/spec/2-6-execution-strategy.md:62-66） | 未実装 | Packrat 有効時のみ動作させる仕様。設定値と警告の取り扱いを決める必要。 |
+| `trace` | `false`（docs/spec/2-1-parser-type.md:99） | 設定項目なし。CLI 側の `opts.trace` は CLI ログ用途で、パーサーへ伝播していない（compiler/ocaml/src/main.ml:586-617） | `SpanTrace` 収集やメトリクス連携のスイッチを RunConfig 化する必要。 |
+| `merge_warnings` | `true`（docs/spec/2-1-parser-type.md:100） | 常に期待まとめを行う挙動のみ実装（parser_diag_state.ml 全体） | OFF 切替時の警告個別出力が未対応。状態保持ロジックにフラグ追加が必要。 |
+| `legacy_result` | `false`（docs/spec/2-1-parser-type.md:101） | `parse` と `parse_string` は互換モード専用（legacy_result=true）で公開（compiler/ocaml/src/parser_driver.ml:12,205-214） | 新 RunConfig 導入時に legacy API を包むラッパーを別扱いにする必要。 |
+| `locale` | `None`（環境変数フォールバック、docs/spec/2-1-parser-type.md:102-124） | `Diagnostic.Builder` 既定値のみ。RunConfig からの伝播経路なし | CLI/LSP でのロケール指定と診断整合の配線が未着手。 |
+| `extensions` | `Map<Str, Any>`、推奨キーは表2（docs/spec/2-1-parser-type.md:164-175） | 未実装。RunConfig 型自体が存在せず共有コンテナも不在 | `lex`/`config`/`recover`/`stream` 等のネームスペースを扱う抽象化が必要。 |
+
+##### 表2: 標準 extensions ネームスペース整理
+| キー | 仕様での目的・参照 | 現行実装 | フォローアップ |
+| --- | --- | --- | --- |
+| `\"lex\"` | 字句シム共有（docs/spec/2-1-parser-type.md:170、docs/spec/2-3-lexer.md:255-267） | フィールドなし。`Lexer` 側も共有プロファイル未連携 | `LEXER-002` が `Run_config` から取得できるようイミュータブル構造を準備。 |
+| `\"config\"` | コンフィグ互換モード共有（docs/spec/2-1-parser-type.md:171、docs/spec/2-3-lexer.md:255-267） | 未実装。CLI/LSP 設定も RunConfig へ反映されない | `ConfigTriviaProfile` 等を格納する API 設計が必要。 |
+| `\"recover\"` | 回復シンクトークン/notes 共有（docs/spec/2-1-parser-type.md:172、docs/spec/2-6-execution-strategy.md:62-66） | 未実装。`Parser_diag_state` は固定挙動 | `ERR-002` で利用できる構造体を RunConfig へ格納。 |
+| `\"stream\"` | ストリーミング継続共有（docs/spec/2-1-parser-type.md:173、docs/spec/2-6-execution-strategy.md:68-74） | 未実装。`run_partial` もスタブのまま | `EXEC-001` 向けに checkpoint/resume 情報を出し入れできるプレースホルダを要整備。 |
+| `\"lsp\"` | IDE 設定共有（docs/spec/2-1-parser-type.md:174、docs/guides/ai-integration.md 等） | LSP 実装が `RunConfig` を持たないため未使用 | LSP 側設定ローダと RunConfig 構築ヘルパの設計が必要。 |
+| `\"runtime\"` / `\"effects\"` / `\"target\"` | Capability/Stage・ターゲット情報（docs/spec/2-1-parser-type.md:124、docs/spec/2-6-execution-strategy.md:76-105、docs/spec/3-8-core-runtime-capability.md:264） | `Diagnostic.extensions` に断片的な情報があるが RunConfig 未連携 | `EFFECT-003`・`TYPE-001` と合意したキー構造を RunConfig に集約する。 |
+
+##### API/呼び出し経路棚卸し
+- `parser_driver` は `type run_config = { require_eof; legacy_result }` のみ保有し、RunConfig 相当の構造が存在しない（compiler/ocaml/src/parser_driver.ml:6-13）。  
+- CLI は `Parser_driver.parse` を直接呼び出し、RunConfig を組み立てるヘルパが存在しない（compiler/ocaml/src/main.ml:612）。  
+- テストは `Parser_driver.parse` / `parse_string` を広範に利用しており（例: compiler/ocaml/tests/test_parser.ml:10、test_type_inference.ml:18）、RunConfig 切替時に共通ビルダーが必要。  
+- `run_partial` は `require_eof=false` を上書きするだけのスタブで、`rest` も常に `None`（compiler/ocaml/src/parser_driver.ml:172-175）。ストリーミング拡張と連携していない。  
+- `scripts/validate-diagnostic-json.sh` や `tooling/ci/collect-iterator-audit-metrics.py` は RunConfig 値を追跡しておらず、メトリクス登録未実施（前者は CLI 出力 JSON を検証するのみ）。
+
+##### Menhir チェックポイントと Packrat/左再帰シム観点
+- `Parser.MenhirInterpreter` は `INCREMENTAL_ENGINE` を公開しており、`I.InputNeeded`・`I.Shifting`・`I.HandlingError` 分岐を `parser_driver` の `loop` で直接処理している（compiler/ocaml/src/parser_driver.ml:133-166）。ここにメモ化フックを挿入する必要がある。  
+- Packrat を実装するためには `(ParserId, byte_off)` キーで `Reply` をキャッシュする仕様（docs/spec/2-1-parser-type.md:108-111）に沿ったメモテーブルを `Run_config` 側で初期化し、`I.offer` 前後でヒット判定するフックを追加する必要がある。  
+- 左再帰シムは Packrat 有効時のみ許可され、`left_recursion="auto"` の解釈とメモテーブルの「評価中」フラグをループへ組み込む必要がある（docs/spec/2-6-execution-strategy.md:62-66,171-188）。  
+- `trace` と `merge_warnings` の切替は `Parser_diag_state` の `record_diagnostic` 処理と `SpanTrace` 収集位置で分岐する想定。RunConfig フィールドが無い現状では常にトレース非収集・警告集約となっており、スイッチ追加で副作用を制御する必要がある。
+
 ### Step 1: RunConfig 型設計とドキュメント同期（Week32 Day1-2）
 - `compiler/ocaml/src/parser_run_config.{ml,mli}`（仮称）を新設し、仕様準拠の `type t`・`type extensions`・`with_extension`・`find_extension` 等の API を設計する。`Map.Make(String)` を利用した不変マップで実装し、`RunConfigExtensions` の値は `Run_config.value`（`Bool` / `Int` / `String` / `Parser_id` 等）として表現する。  
 - `RunConfig.default` および `RunConfig.Legacy.bridge` を定義し、旧 API (`parse`/`parse_string`) へ互換を提供する。  
