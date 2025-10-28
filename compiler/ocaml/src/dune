@@ -19,6 +19,7 @@
   diagnostic
   diagnostic_builder
   diagnostic_serialization
+  parser_expectation
   parser_diag_state
   parser_driver
   types

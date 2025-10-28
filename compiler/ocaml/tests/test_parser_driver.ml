@@ -29,6 +29,35 @@ let expect_legacy_compat desc input =
       Printf.printf "%s\n" (Diagnostic.to_string diag);
       exit 1
 
+let expect_failure_with_expectations desc input =
+  match run_string input with
+  | {
+      value = None;
+      diagnostics = diag :: _;
+      legacy_error = Some legacy;
+      _;
+    } -> (
+      match diag.Diagnostic.expected with
+      | Some summary when summary.Diagnostic.alternatives <> [] ->
+          if Stdlib.compare legacy.expected summary.Diagnostic.alternatives = 0
+          then Printf.printf "✓ %s\n" desc
+          else (
+            Printf.printf
+              "✗ %s: legacy 期待集合とサマリの候補が一致しません\n" desc;
+            exit 1)
+      | Some _ ->
+          Printf.printf "✗ %s: サマリの候補が空です\n" desc;
+          exit 1
+      | None ->
+          Printf.printf "✗ %s: diagnostic expected is None\n" desc;
+          exit 1)
+  | { value = None; diagnostics = []; _ } ->
+      Printf.printf "✗ %s: diagnostics were not produced\n" desc;
+      exit 1
+  | _ ->
+      Printf.printf "✗ %s: parser succeeded unexpectedly\n" desc;
+      exit 1
+
 let () =
   expect_run_ok "run_string succeeds with empty uses" "fn answer() = 42";
   expect_run_ok "run_string handles multiple functions"
@@ -36,4 +65,6 @@ let () =
 fn log(x) = x
 fn log_twice(x) = log(log(x))
 |};
-  expect_legacy_compat "legacy parse API still succeeds" "fn add(x, y) = x + y"
+  expect_legacy_compat "legacy parse API still succeeds" "fn add(x, y) = x + y";
+  expect_failure_with_expectations "構文エラーで期待集合サマリが得られる"
+    "fn missing(x = x"

@@ -19,7 +19,7 @@
 - [EFFECT-003 修正計画](./EFFECT-003-proposal.md): 複数 Capability を解析・監査へ出力する仕組みを整備し、Stage 契約（`docs/spec/3-8-core-runtime-capability.md`）との齟齬を是正。
 
 ### エラー回復（ERR）
-- [ERR-001 修正計画](./ERR-001-proposal.md): Menhir の期待集合を `ExpectationSummary` に反映させ、`docs/spec/2-5-error.md` で定義された期待値提示を実現。
+- [ERR-001 修正計画](./ERR-001-proposal.md): Menhir の期待集合を `ExpectationSummary` に反映させ、`docs/spec/2-5-error.md` で定義された期待値提示を実現。（2025-11-15 追記: `collect` の導入と `parser_driver`/`parser_diag_state` の組込みにより、期待集合が `Diagnostic.expected` と legacy API 双方へ伝播することを確認。）
 - [ERR-002 修正計画](./ERR-002-proposal.md): `Parse.recover` の同期トークンと FixIt を導入し、CLI/LSP での自動修正と診断補助を整備。
 
 ### 実行戦略（EXEC）

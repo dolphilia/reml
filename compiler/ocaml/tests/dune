@@ -4,6 +4,7 @@
  (names
  test_lexer
  test_parser
+ test_parser_expectation
  test_parser_driver
  test_module_env
  test_parse_result_state

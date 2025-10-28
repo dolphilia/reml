@@ -3,6 +3,46 @@
 Phase 2-5 で実施した差分レビューと現状棚卸しを記録し、後続フェーズでの追跡に利用する。  
 エントリごとに関連計画へのリンクと再現手順を整理する。
 
+## ERR-001 Day1 Menhir 期待集合 API 棚卸し（2025-11-13）
+
+### 1. Menhir 出力サマリ
+- `menhir --list-errors compiler/ocaml/src/parser.mly` を実行し、`compiler/ocaml/src/parser.automaton` を再確認したところ状態数は 467 件、shift/reduce 27・reduce/reduce 10 の既存コンフリクト構成に変化なし。
+- 期待集合に現れた終端は 74 種類（予約語 33・記号 32・リテラル 5・EOF 1）で、`IDENT`/`STRING`/`INT` が 200 件超の頻出項目、`#` は Menhir の入力終端番兵として扱われる。
+- `BREAK`/`CHANNELS`/`CHANNEL_PIPE`/`CONDUCTOR`/`CONTINUE`/`DARROW`/`DO`/`EXECUTION`/`HANDLE`/`MONITORING`/`PERFORM`/`UPPER_IDENT` は期待集合に登場せず、`compiler/ocaml/src/token.ml:49` 以降の予約語定義でも未使用警告の対象となっている。
+- 期待集合候補は `compiler/ocaml/src/parser.automaton` から抽出でき、縮約時は記号優先 → 文字クラス → 規則の順で整序する仕様（`docs/spec/2-5-error.md:129`）に従うことで CLI/LSP 表示との整合を保てる。
+
+### 2. API 仕様確認
+- `compiler/ocaml/_build/default/src/parser.mli:14` で `Parser.MenhirInterpreter` が `MenhirLib.IncrementalEngine.INCREMENTAL_ENGINE` を公開していることを確認。
+- `MenhirLib.IncrementalEngine` は `acceptable` と `MenhirLib.EngineTypes.TABLE.foreach_terminal` を備えており、全終端を走査して checkpoint ごとの期待集合を導出できる。
+- トークン定義は `compiler/ocaml/src/token.ml:7` 以降で 85 種類が列挙されており、期待集合生成時はキーワード → 記号 → リテラル → `EOF` のカテゴリごとにサンプル値を用意すれば `acceptable` の判定に利用できる。
+
+### 3. Expectation 写像ルール草案
+| Menhir 終端カテゴリ | 対応案 | 備考 |
+| --- | --- | --- |
+| 予約語 (`FN`/`MATCH` 等) | `Expectation.Keyword (Token.to_string tok)` | `compiler/ocaml/src/token.ml:100` 以降の `to_string` で小文字化 |
+| 記号・区切り (`LPAREN`/`PLUS` 等) | `Expectation.Token (Token.to_string tok)` | `PIPE` や `DOTDOT` など複合演算子も記号扱い |
+| リテラル (`INT`/`STRING`/`CHAR`/`FLOAT`) | `Expectation.Class "<literal-kind>"` | サンプル値は空文字列・既定基数で構築し `Class` へ収容 |
+| 識別子 (`IDENT`/`UPPER_IDENT`) | `Expectation.Class "identifier"` / `"upper-identifier"` | 後者は現状未登場だが仕様整合のため先行定義 |
+| 終端番兵 (`EOF`/`#`) | `Expectation.Eof` | Menhir の `#` は `EOF` 相当として扱う |
+| 補助 (`Rule`/`Not`/`Custom`) | 上位規則や否定条件を後段で合成 | `docs/spec/2-5-error.md:129` の優先順位へ合わせる |
+
+### 4. Parser_diag_state 制約メモ
+- `compiler/ocaml/src/parser_diag_state.ml:24` の `normalize_expectations` は `Stdlib.compare` で並べ替えるため、期待集合の優先順位を保持するにはカテゴリ単位の整列器を別途用意する必要がある。
+- `record_diagnostic`（`compiler/ocaml/src/parser_diag_state.ml:27`）は `Diagnostic.expected` が `None` の場合に空リストを採用するため、`ERR-001/S2` 以降で必ず `ExpectationSummary` を生成しないと最遠スナップショットが空集合のままになる。
+- `farthest_snapshot`（`compiler/ocaml/src/parser_diag_state.ml:7`）は同一オフセット時に集合和を取る実装なので、Menhir から得た候補をカテゴリ別に縮約してから保存すればノイズを抑制できる。
+
+## ERR-001 Day2 期待集合マッピング実装（2025-11-14）
+
+- `compiler/ocaml/src/parser_expectation.{ml,mli}` を追加し、終端トークン → `Diagnostic.expectation` の写像、`dedup_and_sort` による優先順位整列、`summarize_with_defaults` のフォールバック（`parse.expected` / `parse.expected.empty`）を実装。`humanize` は `Keyword`/`Token` をバッククォートで包む日本語メッセージを生成する。
+- `expectation_of_nonterminal` / `expectation_not` / `expectation_custom` を公開し、S3 以降で `Rule`・否定条件・任意候補を `ExpectationSummary` へ集約できるようにした。
+- 単体テスト `compiler/ocaml/tests/test_parser_expectation.ml` でキーワード・演算子・リテラル・識別子・EOF・Rule・Not・Custom の 8 ケースとサマリ生成を検証済み。`dune exec tests/test_parser_expectation.exe` の結果を添付し、humanize の自然文と空集合フォールバックを確認。
+
+## ERR-001 Day3 パーサドライバ組込み（2025-11-15）
+
+- `compiler/ocaml/src/parser_expectation.ml` に `collect` を実装し、Menhir チェックポイントから受理可能トークンを走査して `ExpectationSummary` を生成。期待集合が空の際は `Parser_diag_state.farthest_snapshot` 経由でサマリを補完するフォールバックを整理。
+- `compiler/ocaml/src/parser_driver.ml` で `HandlingError` / `Rejected` 分岐が `collect` を呼び出し、`Diagnostic.Builder` で期待集合サマリを直接設定するように変更。legacy 互換用 `parse_result.legacy_error.expected` へも同じ候補が伝播することを確認した。
+- `compiler/ocaml/src/parser_diag_state.ml` の `farthest_snapshot` に `expected_summary` フィールドを追加し、同一オフセットで診断が蓄積された場合も候補を集合和で縮約するよう更新。
+- テスト: `compiler/ocaml/tests/test_parser_driver.ml` / `compiler/ocaml/tests/test_parse_result_state.ml` に期待集合の非空検証を追加し、`run_string` / legacy API の両方で `Diagnostic.expected` と `legacy_error.expected` が一致することをケース化した。
 ## DIAG-002 Day1 調査
 
 DIAG-002 の初期洗い出し結果を記録し、後続フェーズでの追跡に利用する。  

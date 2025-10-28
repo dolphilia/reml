@@ -1,6 +1,7 @@
 (* parser_driver.ml — Parser ランナーと `ParseResult` シム *)
 
 module I = Parser.MenhirInterpreter
+module Builder = Diagnostic.Builder
 
 type run_config = {
   require_eof : bool;
@@ -50,16 +51,40 @@ let process_lexer_error lexbuf msg =
   let end_pos = Lexing.lexeme_end_p lexbuf in
   Diagnostic.of_lexer_error ~message:msg ~start_pos ~end_pos
 
-let process_parser_error lexbuf message =
+let build_parser_diagnostic ~message ~start_pos ~end_pos ~summary =
+  Builder.create
+    ~message
+    ~primary:(Diagnostic.span_of_positions start_pos end_pos)
+    ~domain:Diagnostic.Parser
+    ()
+  |> Builder.set_expected summary
+  |> Builder.build
+
+let process_parser_error lexbuf message summary =
   let start_pos = Lexing.lexeme_start_p lexbuf in
   let end_pos = Lexing.lexeme_end_p lexbuf in
-  Diagnostic.of_parser_error ~message ~start_pos ~end_pos ~expected:[]
+  build_parser_diagnostic ~message ~start_pos ~end_pos ~summary
 
-let process_rejected_error lexbuf =
+let process_rejected_error lexbuf summary =
   let pos = lexbuf.Lexing.lex_curr_p in
-  Diagnostic.of_parser_error
-    ~message:"構文エラー: 解析を続行できません" ~start_pos:pos ~end_pos:pos
-    ~expected:[]
+  build_parser_diagnostic
+    ~message:"構文エラー: 解析を続行できません"
+    ~start_pos:pos ~end_pos:pos ~summary
+
+let summarize_snapshot snapshot =
+  match snapshot.Parser_diag_state.expected_summary with
+  | Some summary -> summary
+  | None -> Parser_expectation.summarize_with_defaults snapshot.expected
+
+let expectation_summary_for_checkpoint diag_state checkpoint =
+  let { Parser_expectation.summary; expectations; _ } =
+    Parser_expectation.collect ~checkpoint
+  in
+  if expectations <> [] then summary
+  else
+    match Parser_diag_state.farthest_snapshot diag_state with
+    | Some snapshot -> summarize_snapshot snapshot
+    | None -> Parser_expectation.empty_summary
 
 let diagnostic_to_parse_error diag ~consumed ~committed =
   let expected =
@@ -125,12 +150,19 @@ let run ?(config = default_run_config) lexbuf =
         finalize_result diag_state ~value:(Some ast) ~span:(Some span)
           ~legacy_error:None ~consumed:!consumed ~committed:!committed
     | I.HandlingError _ ->
+        let summary =
+          expectation_summary_for_checkpoint diag_state checkpoint
+        in
         let diag =
           process_parser_error lexbuf "構文エラー: 入力を解釈できません"
+            summary
         in
         build_failure diag_state diag ~consumed:!consumed ~committed:!committed
     | I.Rejected ->
-        let diag = process_rejected_error lexbuf in
+        let summary =
+          expectation_summary_for_checkpoint diag_state checkpoint
+        in
+        let diag = process_rejected_error lexbuf summary in
         build_failure diag_state diag ~consumed:!consumed ~committed:!committed
   in
   let checkpoint = Parser.Incremental.compilation_unit lexbuf.Lexing.lex_curr_p in

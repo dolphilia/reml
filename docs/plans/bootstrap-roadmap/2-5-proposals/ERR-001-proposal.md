@@ -40,6 +40,7 @@
   - 期待集合のカテゴリ（記号・キーワード・規則・否定・クラス）ごとに写像ルール案を整理し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に初期草案として記録する。
   - `Parser_diag_state` の最遠スナップショット仕様（`compiler/ocaml/src/parser_diag_state.ml:9-48`）と突合し、保存形式への制約を明文化する。
 - **成果物/完了条件**: `review-log` に「ERR-001/S1 調査メモ」を追加し、写像ルール表と `menhir --list-errors` サマリが共有されていること。
+- **S1 棚卸し完了**: `menhir --list-errors` の集計結果と写像ルール案を [`../2-5-review-log.md`](../2-5-review-log.md#err-001-day1-menhir-%E6%9C%9F%E5%BE%85%E9%9B%86%E5%90%88-api-%E6%A3%9A%E5%8D%B8%E3%81%972025-11-13) に記録済み。
 
 ### S2. 期待集合マッピング層の実装（Week31 Day2-3）
 - **目的**: Menhir の期待集合を `Diagnostic.expectation` / `ExpectationSummary` へ変換する専用モジュールを新設し、変換ロジックを単体テスト可能にする。
@@ -51,6 +52,7 @@
   - 同モジュール用のユニットテスト `compiler/ocaml/tests/test_parser_expectation.ml` を追加し、代表 6 ケース（キーワード、演算子、EOF、規則、否定、文字クラス）をスナップショット化する。
   - 期待集合が 0 件の場合のフォールバック（`message_key = Some "parse.expected.empty"` など）を定義し、仕様との矛盾を避ける。
 - **成果物/完了条件**: 新モジュールとテストが `dune runtest` に組み込まれ、`ExpectationSummary` の JSON 表現がスナップショットで確認できる状態。
+- **S2 実装完了**: `compiler/ocaml/src/parser_expectation.{ml,mli}` で終端→`Expectation` 写像とサマリ生成の基盤を実装し、`compiler/ocaml/tests/test_parser_expectation.ml` にキーワード/演算子/リテラル/識別子/EOF/Rule/Not/Custom の写像とサマリ生成を検証する単体テストを追加（2025-11-14）。
 
 ### S3. パーサドライバと診断状態への組込み（Week31 Day3-4）
 - **目的**: `parser_driver` のエラーハンドリング経路で期待集合を計算し、`Diagnostic` へ確実に伝播させる。
@@ -61,6 +63,7 @@
   - `process_parser_error` / `process_rejected_error` に `Parser_expectation.collect ~checkpoint` の結果を渡し、`Diagnostic.of_parser_error` が `expected` を受け取れるよう `~expected` 引数の生成を差し替える。
   - `Parser_diag_state.record_diagnostic` に `ExpectationSummary` を保存するフィールドを追加し、`Diagnostic.expected` が `None` のままになる経路を排除する。
   - `parser_driver_tests.ml` に「最遠エラーで期待集合が縮約される」「複数回復後も最遠位置の `expected` が保持される」ケースを追加し、`PARSER-001` の `ParseResult` シムと協調動作を確認する。
+- **S3 組込み完了**: `compiler/ocaml/src/parser_expectation.ml` に `collect` を実装し、`parser_driver.ml` / `parser_diag_state.ml` が期待集合サマリを保持・伝播するよう更新。`test_parser_driver.ml` / `test_parse_result_state.ml` で legacy 経路を含む期待集合の検証を追加（2025-11-15）。
 - **成果物/完了条件**: `Parser.run` で発生した構文エラーが `Diagnostic.expected` に期待集合を含み、`parse_result.legacy_error.expected` に反映されることをテストで証明。
 
 ### S4. ゴールデンと CI 監視の整備（Week31 Day4-5）
