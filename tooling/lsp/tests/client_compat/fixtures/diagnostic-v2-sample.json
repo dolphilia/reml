@@ -29,14 +29,13 @@
       }
     ],
     "expected": {
-      "message_key": null,
-      "humanized": "ここにセミコロンが必要です",
-      "context_note": null,
+      "message_key": "parse.expected",
+      "humanized": "ここで`;` または `}`のいずれかが必要です",
       "alternatives": [
         { "kind": "token", "value": ";" },
         { "kind": "token", "value": "}" }
       ],
-      "locale_args": []
+      "locale_args": [";", "}"]
     },
     "hints": [
       {

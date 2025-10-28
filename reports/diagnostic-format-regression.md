@@ -21,6 +21,7 @@
 
 ## 3. CI 連携時の確認ポイント
 - GitHub Actions `diagnostic-json` ジョブが失敗した場合、`tooling/lsp/tests/client_compat` のテストログと `scripts/validate-diagnostic-json.sh` の結果を参照する。
+- `scripts/validate-diagnostic-json.sh` は Parser 診断の `expected.alternatives` 欠落を即時に報告するため、`tests/golden/_actual/*.actual.json` に出力されたスナップショットで期待集合が出力されているか確認する。
 - スキーマ違反が発生した場合は `tooling/json-schema/diagnostic-v2.schema.json` を更新し、併せてフィクスチャを追加する。
 - Windows/macOS 固有のフィクスチャ（`diagnostic-v2-ffi-macos-sample.json` など）が最新の監査ログと整合しているか確認する。
 - `audit-review` 系ジョブ（`audit-diff`, `audit-dashboard`）が失敗した場合は、生成された `reports/audit/review/<commit>/diff.json` とダッシュボードアーティファクト (`reports/audit/dashboard/index.html`) を確認し、`collect-iterator-audit-metrics.py --section review` の出力に警告がないかチェックする。

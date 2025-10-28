@@ -76,6 +76,7 @@
   - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に新指標を追記し、CI で 0 件検出時に失敗させるロジックを `collect-iterator-audit-metrics.py` へ追加する。
   - `reports/audit/dashboard/` のテンプレートを更新し、期待集合関連の KPI（例: `expected_tokens_per_error`）を可視化する。
 - **成果物/完了条件**: GitHub Actions（`diagnostic-json` / `audit-dashboard`）が期待集合欠落を自動検知し、ローカルでも `scripts/validate-diagnostic-json.sh` が新フィールドを検証できることが確認できる。
+- **S4 完了（2025-11-16）**: `compiler/ocaml/tests/golden/diagnostics/parser/expected-summary.json.golden` を追加し、CLI/LSP 両方のフィクスチャに `expected.message_key`・`locale_args` を反映。`scripts/validate-diagnostic-json.sh` では Parser 診断の `expected.alternatives` を必須化し、`tooling/ci/collect-iterator-audit-metrics.py` に `parser.expected_summary_presence` / `parser.expected_tokens_per_error` を実装して `--require-success` で 0 件時に失敗するよう更新。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の指標表も同期済み。
 
 ### S5. ドキュメントと共有タスク（Week31 End）
 - **目的**: 実装完了後の仕様・ガイド・ログ更新を一括で整理し、他チームとの連携事項を明確化する。

@@ -20,6 +20,7 @@
 
 ### エラー回復（ERR）
 - [ERR-001 修正計画](./ERR-001-proposal.md): Menhir の期待集合を `ExpectationSummary` に反映させ、`docs/spec/2-5-error.md` で定義された期待値提示を実現。（2025-11-15 追記: `collect` の導入と `parser_driver`/`parser_diag_state` の組込みにより、期待集合が `Diagnostic.expected` と legacy API 双方へ伝播することを確認。）
+- 2025-11-16 追記: CLI ゴールデンと LSP フィクスチャを期待集合付きで更新し、`scripts/validate-diagnostic-json.sh`／`tooling/ci/collect-iterator-audit-metrics.py` に `parser.expected_*` 指標を追加して CI 監視を有効化。
 - [ERR-002 修正計画](./ERR-002-proposal.md): `Parse.recover` の同期トークンと FixIt を導入し、CLI/LSP での自動修正と診断補助を整備。
 
 ### 実行戦略（EXEC）

@@ -148,6 +148,9 @@ def _render_markdown(path: Path, entries: List[Dict[str, Any]]) -> None:
             ("review_regressions", "review.regressions"),
             ("review_coverage", "review.coverage"),
             ("timestamp", "timestamp"),
+            ("average_expected_tokens", "parser.avg_tokens"),
+            ("min_expected_tokens", "parser.min_tokens"),
+            ("max_expected_tokens", "parser.max_tokens"),
         ):
             if key in latest and latest[key] is not None:
                 lines.append(f"| {label} | {latest[key]} |")
@@ -175,6 +178,22 @@ def _render_html(path: Path, entries: List[Dict[str, Any]]) -> None:
         + "</tr>"
         for entry in entries
     )
+    extra_html = ""
+    if entries:
+        latest = entries[-1]
+        extra_items = []
+        for key, label in (
+            ("average_expected_tokens", "parser.avg_tokens"),
+            ("min_expected_tokens", "parser.min_tokens"),
+            ("max_expected_tokens", "parser.max_tokens"),
+        ):
+            value = latest.get(key)
+            if value is not None:
+                extra_items.append(f"<li>{label}: {value}</li>")
+        if extra_items:
+            extra_html = "<h2>Parser Metrics</h2><ul>{items}</ul>".format(
+                items="".join(extra_items)
+            )
     html = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -198,6 +217,7 @@ def _render_html(path: Path, entries: List[Dict[str, Any]]) -> None:
       {rows_html}
     </tbody>
   </table>
+  {extra_html}
 </body>
 </html>
 """

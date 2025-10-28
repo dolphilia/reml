@@ -330,6 +330,21 @@ def primary_code_of(diag: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+def is_parser_diagnostic(diag: Dict[str, Any]) -> bool:
+    domain = diag.get("domain")
+    if isinstance(domain, str) and domain.strip().lower() == "parser":
+        return True
+    code = primary_code_of(diag)
+    if isinstance(code, str) and code.startswith("parser."):
+        return True
+    codes = diag.get("codes")
+    if isinstance(codes, list):
+        for item in codes:
+            if isinstance(item, str) and item.startswith("parser."):
+                return True
+    return False
+
+
 def extract_schema_version(diag: Dict[str, Any]) -> Optional[str]:
     schema = diag.get("schema_version")
     if isinstance(schema, str) and schema:
@@ -1002,6 +1017,10 @@ def summarize_diagnostics(paths: Sequence[Path]) -> Dict[str, Any]:
         "info_fraction": 0.0,
         "hint_fraction": 0.0,
         "info_hint_ratio": 0.0,
+        "parser_total": 0,
+        "parser_expected": 0,
+        "parser_expected_ratio": 0.0,
+        "parser_expected_tokens_avg": 0.0,
     }
 
     severity_aliases = {
@@ -1021,6 +1040,8 @@ def summarize_diagnostics(paths: Sequence[Path]) -> Dict[str, Any]:
         4: "hint",
     }
 
+    parser_expected_tokens_sum = 0
+
     for path in paths:
         data = load_json(path)
         for diag in iter_diagnostics(data):
@@ -1035,6 +1056,15 @@ def summarize_diagnostics(paths: Sequence[Path]) -> Dict[str, Any]:
                 summary[normalized] += 1
             else:
                 summary["other"] += 1
+            if is_parser_diagnostic(diag):
+                summary["parser_total"] += 1
+                expected = diag.get("expected")
+                if isinstance(expected, dict):
+                    alternatives = expected.get("alternatives")
+                    if isinstance(alternatives, list) and alternatives:
+                        summary["parser_expected"] += 1
+                        parser_expected_tokens_sum += len(alternatives)
+                # treat missing expected as zero; handled in metrics collector
 
     total = summary["total"]
     if total > 0:
@@ -1043,6 +1073,13 @@ def summarize_diagnostics(paths: Sequence[Path]) -> Dict[str, Any]:
         summary["info_fraction"] = info / total
         summary["hint_fraction"] = hint / total
         summary["info_hint_ratio"] = (info + hint) / total
+    parser_total = summary["parser_total"]
+    if parser_total > 0:
+        summary["parser_expected_ratio"] = summary["parser_expected"] / parser_total
+        if summary["parser_expected"] > 0 and parser_expected_tokens_sum > 0:
+            summary["parser_expected_tokens_avg"] = (
+                parser_expected_tokens_sum / summary["parser_expected"]
+            )
 
     return summary
 
@@ -1090,6 +1127,92 @@ def collect_diagnostic_audit_presence_metric(paths: List[Path]) -> Dict[str, Any
         "sources": [str(path) for path in paths],
         "failures": failures,
     }
+
+
+def collect_parser_metrics(paths: List[Path]) -> Dict[str, Any]:
+    total = 0
+    passed = 0
+    failures: List[Dict[str, object]] = []
+    schema_versions: Set[str] = set()
+    token_counts: List[int] = []
+
+    for path in paths:
+        data = load_json(path)
+        for index, diag in enumerate(iter_diagnostics(data)):
+            if not is_parser_diagnostic(diag):
+                continue
+            total += 1
+            schema = extract_schema_version(diag)
+            if schema:
+                schema_versions.add(schema)
+            expected = diag.get("expected")
+            missing_fields: List[str] = []
+            has_expected = False
+            if isinstance(expected, dict):
+                alternatives = expected.get("alternatives")
+                if isinstance(alternatives, list) and alternatives:
+                    has_expected = True
+                    token_counts.append(len(alternatives))
+                else:
+                    missing_fields.append("expected.alternatives")
+            else:
+                missing_fields.append("expected")
+            if has_expected:
+                passed += 1
+            else:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "code": primary_code_of(diag) or "unknown",
+                        "missing": sorted(set(missing_fields)) or ["expected"],
+                    }
+                )
+
+    pass_fraction = (passed / total) if total > 0 else 0.0
+    pass_rate = 1.0 if total > 0 and passed == total else 0.0
+    average_tokens = (sum(token_counts) / len(token_counts)) if token_counts else 0.0
+    min_tokens = min(token_counts) if token_counts else 0
+    max_tokens = max(token_counts) if token_counts else 0
+
+    metric: Dict[str, Any] = {
+        "metric": "parser.expected_summary_presence",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "average_expected_tokens": average_tokens,
+        "min_expected_tokens": min_tokens,
+        "max_expected_tokens": max_tokens,
+        "sources": [str(path) for path in paths],
+        "failures": failures,
+        "schema_versions": sorted(schema_versions),
+        "required_expected_keys": ["expected", "expected.alternatives"],
+        "status": "success" if total > 0 and pass_rate == 1.0 else "error",
+    }
+
+    related_status: str
+    if passed == 0:
+        related_status = "error"
+    elif average_tokens <= 0.0:
+        related_status = "warning"
+    else:
+        related_status = "success"
+
+    metric["related_metrics"] = [
+        {
+            "metric": "parser.expected_tokens_per_error",
+            "total": total,
+            "with_expected": passed,
+            "average_tokens": average_tokens,
+            "min_tokens": min_tokens,
+            "max_tokens": max_tokens,
+            "status": related_status,
+        }
+    ]
+
+    return metric
 
 
 def collect_metrics(paths: List[Path]) -> Dict:
@@ -1622,7 +1745,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--section",
-        choices=["all", "iterator", "ffi", "typeclass", "review"],
+        choices=["all", "parser", "iterator", "ffi", "typeclass", "review"],
         default="all",
         help="Collect metrics for a specific section (default: all).",
     )
@@ -1815,18 +1938,21 @@ def main(argv: Optional[List[str]] = None) -> int:
                 sys.stderr.write(f"append-from ファイルが dict ではありません: {path}\n")
                 return 2
 
-    section_order = ["iterator", "typeclass", "ffi", "review"]
+    section_order = ["parser", "iterator", "typeclass", "ffi", "review"]
     if args.section == "all":
         sections = section_order
     else:
         sections = [args.section]
 
+    parser_metrics: Optional[Dict[str, Any]] = None
     iterator_metrics: Optional[Dict[str, Any]] = None
     typeclass_metrics: Optional[Dict[str, Any]] = None
     bridge_metrics: Optional[Dict[str, Any]] = None
     review_metrics: Optional[Dict[str, Any]] = None
     diagnostic_presence_metric: Optional[Dict[str, Any]] = None
 
+    if "parser" in sections:
+        parser_metrics = collect_parser_metrics(sources)
     if "iterator" in sections:
         iterator_metrics = collect_metrics(sources)
     if "typeclass" in sections:
@@ -1844,6 +1970,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     metrics_list: List[Dict[str, Any]] = []
     if diagnostic_presence_metric:
         metrics_list.append(diagnostic_presence_metric)
+    if parser_metrics:
+        metrics_list.append(parser_metrics)
     if iterator_metrics:
         metrics_list.append(iterator_metrics)
     if typeclass_metrics:
@@ -1892,6 +2020,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if diagnostic_presence_metric:
         combined["diagnostic_audit"] = diagnostic_presence_metric
+    if parser_metrics:
+        combined["parser"] = parser_metrics
     if iterator_metrics:
         combined["iterator"] = iterator_metrics
     if typeclass_metrics:
@@ -1942,11 +2072,16 @@ def main(argv: Optional[List[str]] = None) -> int:
                     failure_reasons.append(f"{label} < 1.0")
 
         _enforce(diagnostic_presence_metric, "diagnostic.audit_presence_rate")
+        _enforce(parser_metrics, "parser.expected_summary_presence")
         _enforce(iterator_metrics, "iterator.stage.audit_pass_rate")
         _enforce(typeclass_metrics, "typeclass.metadata_pass_rate")
         if isinstance(typeclass_metrics, dict):
             _enforce(typeclass_metrics.get("dictionary_metric"), "typeclass.dictionary_pass_rate")
         _enforce(bridge_metrics, "ffi_bridge.audit_pass_rate")
+        if isinstance(parser_metrics, dict):
+            total = parser_metrics.get("total")
+            if isinstance(total, (int, float)) and total == 0:
+                failure_reasons.append("parser.expected_summary_presence: total=0")
         for metric in append_metrics:
             if not isinstance(metric, dict):
                 continue

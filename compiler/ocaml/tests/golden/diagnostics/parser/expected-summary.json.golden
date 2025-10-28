@@ -1,0 +1,94 @@
+{
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "構文エラー: 入力を解釈できません",
+      "schema_version": "2.0.0-draft",
+      "location": {
+        "file": "parser-example.reml",
+        "line": 3,
+        "column": 12,
+        "endLine": 3,
+        "endColumn": 12
+      },
+      "code": "parser.expected_token",
+      "codes": [ "parser.expected_token", "parser.recovery.pending" ],
+      "domain": "parser",
+      "timestamp": "1970-01-01T00:00:00Z",
+      "extensions": {
+        "parse": { "input_name": "parser-example.reml", "stage_trace": [] },
+        "diagnostic.v2": {
+          "timestamp": "1970-01-01T00:00:00Z",
+          "codes": [ "parser.expected_token", "parser.recovery.pending" ]
+        }
+      },
+      "audit_metadata": {
+        "parse.input_name": "parser-example.reml",
+        "parser.expected.alternatives": 3,
+        "cli.audit_id": "cli/19700101T000000Z#0",
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "19700101T000000Z",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "schema.version": "1.1",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "parser-example.reml" } ]
+        }
+      },
+      "audit": {
+        "metadata": {
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "19700101T000000Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [ { "kind": "input", "path": "parser-example.reml" } ]
+          },
+          "audit.source.workspace": ".",
+          "audit.sequence": 0,
+          "audit.build_id": "19700101T000000Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "cli.audit_id": "cli/19700101T000000Z#0",
+          "parser.expected.alternatives": 3,
+          "parse.input_name": "parser-example.reml",
+          "audit.timestamp": "1970-01-01T00:00:00Z",
+          "schema.version": "1.1"
+        },
+        "audit_id": "cli/19700101T000000Z#0",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "parser-example.reml" } ]
+        }
+      },
+      "expected": {
+        "locale_args": [ "else", ")", "," ],
+        "humanized": "ここで`else`、`)` または `,`のいずれかが必要です",
+        "message_key": "parse.expected",
+        "alternatives": [
+          { "kind": "keyword", "value": "else" },
+          { "kind": "token", "value": ")" },
+          { "kind": "token", "value": "," }
+        ]
+      }
+    }
+  ]
+}

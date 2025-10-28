@@ -157,6 +157,21 @@ def walk(node, location="root"):
             walk(value, f"{location}[{index}]")
 
 
+def is_parser_diagnostic(diag: dict) -> bool:
+    domain = diag.get("domain")
+    if isinstance(domain, str) and domain.strip().lower() == "parser":
+        return True
+    code = diag.get("code")
+    if isinstance(code, str) and code.startswith("parser."):
+        return True
+    codes = diag.get("codes")
+    if isinstance(codes, list):
+        for item in codes:
+            if isinstance(item, str) and item.startswith("parser."):
+                return True
+    return False
+
+
 for path_str in files:
     path = pathlib.Path(path_str)
     if not path.exists():
@@ -179,6 +194,31 @@ for path_str in files:
             )
             error = True
             break
+        if isinstance(entry, dict):
+            diagnostics = entry.get("diagnostics")
+            if isinstance(diagnostics, list):
+                for diag_index, diag in enumerate(diagnostics):
+                    if not isinstance(diag, dict):
+                        continue
+                    if not is_parser_diagnostic(diag):
+                        continue
+                    expected = diag.get("expected")
+                    if not isinstance(expected, dict):
+                        print(
+                            "[validate-diagnostic-json] parser expected summary missing: "
+                            f"{path}: diagnostics[{diag_index}].expected",
+                            file=sys.stderr,
+                        )
+                        error = True
+                        continue
+                    alternatives = expected.get("alternatives")
+                    if not isinstance(alternatives, list) or len(alternatives) == 0:
+                        print(
+                            "[validate-diagnostic-json] parser expected summary empty alternatives: "
+                            f"{path}: diagnostics[{diag_index}].expected.alternatives",
+                            file=sys.stderr,
+                        )
+                        error = True
 
 if error:
     sys.exit(1)

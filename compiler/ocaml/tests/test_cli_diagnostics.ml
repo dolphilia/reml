@@ -101,7 +101,72 @@ let test_json_output () =
   assert (message = "型が一致しません");
   Printf.printf "✓ JSON出力テスト成功\n"
 
+let test_parser_expectation_snapshot () =
+  Diagnostic.reset_audit_sequence ();
+  let start_pos =
+    Diagnostic.{ filename = "parser-example.reml"; line = 3; column = 12; offset = 34 }
+  in
+  let end_pos =
+    Diagnostic.{ filename = "parser-example.reml"; line = 3; column = 12; offset = 34 }
+  in
+  let span = Diagnostic.{ start_pos; end_pos } in
+  let expectation_tokens =
+    [
+      Token.RPAREN;
+      Token.COMMA;
+      Token.ELSE;
+    ]
+  in
+  let expectations =
+    expectation_tokens |> List.map Parser_expectation.expectation_of_token
+  in
+  let summary = Parser_expectation.summarize_with_defaults expectations in
+  let builder =
+    Diagnostic.Builder.create
+      ~message:"構文エラー: 入力を解釈できません"
+      ~primary:span ~domain:Diagnostic.Parser ()
+    |> Diagnostic.Builder.set_primary_code "parser.expected_token"
+    |> Diagnostic.Builder.add_code "parser.recovery.pending"
+    |> Diagnostic.Builder.set_expected summary
+    |> Diagnostic.Builder.add_extension "parse"
+         (`Assoc
+            [
+              ("input_name", `String "parser-example.reml");
+              ("stage_trace", `List []);
+            ])
+    |> Diagnostic.Builder.add_audit_metadata "parse.input_name"
+         (`String "parser-example.reml")
+    |> Diagnostic.Builder.add_audit_metadata
+         "parser.expected.alternatives"
+         (`Int (List.length summary.Diagnostic.alternatives))
+  in
+  let diag = Diagnostic.Builder.build builder in
+  let json_str =
+    Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
+  in
+  let golden_path =
+    resolve "tests/golden/diagnostics/parser/expected-summary.json.golden"
+  in
+  if not (Sys.file_exists golden_path) then (
+    let actual_path = write_actual_snapshot "parser-expected-summary" json_str in
+    Printf.eprintf
+      "✗ parser.expected_token: ゴールデン %s が存在しません。\n" golden_path;
+    Printf.eprintf "  現在の出力を %s に書き出しました。\n" actual_path;
+    exit 1);
+  let expected =
+    In_channel.with_open_text golden_path (fun ic -> In_channel.input_all ic)
+  in
+  if String.trim expected <> String.trim json_str then (
+    let actual_path = write_actual_snapshot "parser-expected-summary" json_str in
+    Printf.printf
+      "✗ parser.expected_token: JSON スナップショットが一致しません\n";
+    Printf.printf "  ゴールデン: %s\n" golden_path;
+    Printf.printf "  現在の出力を %s に書き出しました。\n" actual_path;
+    exit 1)
+  else Printf.printf "✓ parser.expected_token JSON スナップショット\n"
+
 let test_stage_extension_snapshot () =
+  Diagnostic.reset_audit_sequence ();
   let start_pos =
     Diagnostic.{ filename = "iter.reml"; line = 4; column = 3; offset = 42 }
   in
@@ -338,6 +403,7 @@ let test_stage_extension_snapshot () =
   else Printf.printf "✓ typeclass.iterator.stage_mismatch JSON スナップショット\n"
 
 let test_typeclass_dictionary_snapshot () =
+  Diagnostic.reset_audit_sequence ();
   let start_pos =
     Diagnostic.{ filename = "dict.reml"; line = 5; column = 7; offset = 58 }
   in
@@ -550,6 +616,7 @@ let () =
   test_color_output ();
   test_json_output ();
   test_info_hint_snapshot ();
+  test_parser_expectation_snapshot ();
   test_stage_extension_snapshot ();
   test_typeclass_dictionary_snapshot ();
   test_snippet_display ();
