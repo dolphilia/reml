@@ -398,3 +398,24 @@ S5（検証とドキュメント更新）の結果共有。
 - RunConfig メトリクスは CLI ゴールデンの存在に依存するため、LSP 側から生成した JSON を追加し `extensions["stream"]` などのバリエーションを拡張する。Phase 2-7 `EXEC-001` と連携し、ストリーミング PoC の JSON も `parser.runconfig_extension_pass_rate` で評価できるようにする。
 - Packrat / 左再帰シム実装後には `parser.runconfig_switch_coverage` のサンプルを更新し、警告コードの代わりにメモ化が有効化された証跡（監査ログの `parser.runconfig.packrat.enabled` 等）を測定できるよう指標定義を再検討する。
 - 既存 TODO（`PARSER-002 Day1` の項目 3,4）と合わせ、RunConfig 指標の推移を `reports/audit/index.json` に export するスクリプト整備を Phase 2-7 で計画する。
+
+## PARSER-002 Day6 RunConfig 共有・レビュー記録（2025-11-24）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/PARSER-002-proposal.md`](./2-5-proposals/PARSER-002-proposal.md)
+
+### 1. 共有サマリ
+- `docs/spec/2-1-parser-type.md` §D `RunConfig` に CLI/LSP 共通設定の利用例を追記し、`with_extension` を用いて `extensions["lex"|"recover"|"stream"]` を同一値で供給する手順を明文化。実装脚注[^runconfig-ocaml-phase25-log] を更新し、Phase 2-5 Step6 で CLI/LSP が `parser_run_config` を共有する構成へ移行したことを記録した。
+- `docs/spec/2-6-execution-strategy.md` §B-2 に RunConfig スイッチの運用メモ（CLI/LSP/ストリーミングでの共有ポリシー）を追加し、`parser_driver`・`run_stream` が同一 RunConfig を参照することを脚注で明記した。
+- `docs/guides/core-parse-streaming.md` §9 を更新し、RunConfig 共有時に CLI 側の JSON 設定をストリーミング経路へ引き渡すワークフローと `parser-runconfig-packrat.json.golden` を用いた検証手順を紹介した。
+
+### 2. レビュー記録とリンク
+- `docs/notes/core-parser-migration.md` に Phase 2-5 RunConfig 移行ステップを追記し、完了タスク（Step1〜6）と残課題（Packrat 実装、LSP 自動テスト、監査指標拡張）を一覧化した。今後の検証先として `PARSER-003`・`LEXER-002`・`EXEC-001` を明示。
+- 仕様変更箇所を `docs/plans/bootstrap-roadmap/2-5-proposals/PARSER-002-proposal.md` Step6 更新メモへリンクし、2-5 ステアリングレビューで確認できるよう脚注番号を同期した。
+- 共有結果を 2-5 レビュー会議へ提出し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` の該当エントリから各資料へ遷移できるよう相互リンクを確認した。
+
+### 3. 残課題
+- LSP 側で RunConfig フィクスチャを用いた自動テストが未整備のため、Phase 2-7 `EXEC-001` タスクで `tooling/lsp/tests/client_compat` にストリーミング設定を追加する。
+- Packrat/左再帰シムが完成した際には、仕様脚注を更新して暫定警告コードの撤廃タイムラインを追記し、`parser.runconfig_switch_coverage` 指標を再評価する。
+- `RunConfig.locale` と `Diagnostic` のロケール同期は `DIAG-003` の判断待ち。仕様脚注に暫定運用（CLI/LSP は未指定時に英語へフォールバック）を記載しているため、決定次第ガイドと脚注を更新する。
+
+[^runconfig-ocaml-phase25-log]: `docs/spec/2-1-parser-type.md` と `docs/spec/2-6-execution-strategy.md` の脚注参照。`compiler/ocaml/src/main.ml` および `tooling/lsp/run_config_loader.ml` で `parser_run_config` の共有初期化を実施した記録を反映している。

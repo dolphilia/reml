@@ -123,7 +123,7 @@ type MemoTable = Map<MemoKey, Any>  // 実装上は型消去（内部用）
     環境変数も欠落していれば **初回のみ「ロケール未指定」警告を出して英語 UI へフォールバック**する。
   - `extensions` は LSP 連携・シンタックスハイライト・監査ログ・GC など、各拡張モジュールが提供する設定をネームスペース付きで保持する。例：`extensions["lsp"]`（LSP ガイド参照）、`extensions["runtime"]`（Core.Runtime 草案参照）。
 
-> **実装メモ（Phase 2-5）**: OCaml 実装では `compiler/ocaml/src/parser_run_config.ml` に `RunConfig` レコードを実装し、`with_extension` / `find_extension` / `Legacy.bridge` など仕様準拠の API を提供する準備が整っている[^runconfig-ocaml-phase25]。
+> **実装メモ（Phase 2-5）**: OCaml 実装では `compiler/ocaml/src/parser_run_config.ml` に `RunConfig` レコードを実装し、`with_extension` / `find_extension` / `Legacy.bridge` など仕様準拠の API を提供している。Step 6 では CLI (`compiler/ocaml/src/main.ml`) と LSP (`tooling/lsp/run_config_loader.ml`) が同じ `RunConfig` を共有し、`extensions["lex"|"recover"|"stream"]` などの設定を同期する運用へ移行した[^runconfig-ocaml-phase25]。
 
 `extensions` の既定ネームスペース（推奨）
 
@@ -148,6 +148,34 @@ impl RunConfig {
 * 典型例：字句設定を共有するため `cfg.with_extension("lex", |map| map.insert("space", Any::from(space.space_id())))` のように呼び出し、CLI/LSP が同じ空白パーサ（`ParserId`）を再構成できるようにする。【参照: 2-3-lexer.md §L-4】
 * `update` 内で `Any` に `ParserId` や `ConfigTriviaProfile` など具体型を格納し、取り出し側で型チェックを行う。これにより 0-1 §1.2 の安全性（型崩壊の防止）を担保する。
 * ミュータブル更新が必要な場合は `RunConfig` を `mut` で受け取り、`cfg = cfg.with_extension(...)` の形で差し替える。`RunConfig` 自体は `Copy` ではないため、所有権移動と再代入が発生する点に留意する。
+
+#### 利用例（CLI/LSP 共通設定） {#runconfig-cli-lsp-example}
+
+```reml
+let base = RunConfig{};
+let shared =
+  base
+    .with_extension("lex", fn(map) {
+      map.insert("profile", Any::from(ConfigTriviaProfile::strict_json))
+    })
+    .with_extension("recover", fn(map) {
+      map.insert("sync_tokens", Any::from(Set::from([";", "\n"])));
+      map.insert("notes", Any::from(true))
+    })
+    .with_extension("stream", fn(map) {
+      map.insert("resume_hint", Any::from(DemandHint{
+        min_bytes: 256,
+        preferred_bytes: Some(1024),
+        frame_boundary: None
+      }))
+    });
+
+Core.CLI.parse_file(parser, file, shared);
+Core.LSP.Parser.attach(project_id, parser, shared);
+```
+
+* CLI/LSP が同じ `RunConfig` を受け取ることで、字句設定・回復戦略・ストリーミングヒントが一致する。`collect-iterator-audit-metrics.py` はこの設定を JSON・監査ログから読み取り、`parser.runconfig_extension_pass_rate` を算出する。
+* `RunConfig` を再利用しつつ、必要な経路だけ追加の `with_extension` をチェーンさせることで、DSL プラグインなど拡張モジュールが独自設定を注入できる（Phase 2-7 `EXEC-001` 参照）。
 
 ### D-2. 公式スイッチと既定値 {#runconfig-official-switches}
 
@@ -182,7 +210,7 @@ impl RunConfig {
 ## E. コミットと消費の意味論
 
 [^runconfig-ocaml-phase25]:
-    2025-11-18 更新。`PARSER-002` Step 1（RunConfig 型設計）で `Parser_run_config` モジュールを追加し、仕様に定義されたフィールドと拡張マップ操作を不変レコードとして提供。後続ステップで `parser_driver` へ適用する前提条件を満たした。
+    2025-11-18 更新。`PARSER-002` Step 1（RunConfig 型設計）で `Parser_run_config` モジュールを追加し、仕様に定義されたフィールドと拡張マップ操作を不変レコードとして提供。後続ステップで `parser_driver` へ適用する前提条件を満たした。2025-11-24 追記。Step 6 で CLI (`compiler/ocaml/src/main.ml`) と LSP (`tooling/lsp/run_config_loader.ml`) が `RunConfig` を共有し、`docs/guides/core-parse-streaming.md` に連携ワークフローを記録。監査ログは `parser-runconfig-packrat.json.golden` を用いて `parser.runconfig_switch_coverage` / `parser.runconfig_extension_pass_rate` を検証できる。
 
 * `consumed`：**入力を1バイト以上前進**したか。
 * `committed`：`cut` 境界を**越えた**とマーク（消費の有無に関わらず）。

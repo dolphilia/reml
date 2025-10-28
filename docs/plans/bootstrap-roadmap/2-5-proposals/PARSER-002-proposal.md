@@ -129,6 +129,8 @@
 - `docs/spec/2-1-parser-type.md`・`docs/spec/2-6-execution-strategy.md`・`docs/guides/core-parse-streaming.md` に移行脚注と利用例を追記し、仕様との整合を示す。  
 - `docs/notes/core-parser-migration.md`（新設予定）に RunConfig 移行ステップと今後の課題（Packrat 実装、ストリーミング連携）を整理し、Phase 3 の self-host 作業へ渡す。
 
+> 2025-11-24 更新: Step 6 完了。`docs/plans/bootstrap-roadmap/2-5-review-log.md` に Day6 エントリを追加し、RunConfig 共有手順と残課題を整理した。`docs/spec/2-1-parser-type.md` と `docs/spec/2-6-execution-strategy.md` に CLI/LSP 共有脚注と利用例を追記し、`docs/guides/core-parse-streaming.md` §9 へ RunConfig 連携ワークフローを掲載。`docs/notes/core-parser-migration.md` で Step1〜6 の完了状況とフォローアップ先（`PARSER-003`/`LEXER-002`/`EXEC-001`）を一覧化した。
+
 ## 6. 依存関係と連携
 - **PARSER-001**: `ParseResult` シムを導入済み。RunConfig を渡すために `parser_driver` API 変更が前提。  
 - **LEXER-002**: `extensions["lex"]` で共有する字句設定を利用するため、RunConfig へのアクセス関数と互換メトリクスを調整する。  

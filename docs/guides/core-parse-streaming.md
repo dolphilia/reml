@@ -175,3 +175,12 @@ type StreamMeta = {
 - **診断ロケール**: `RunConfig.locale` を尊重し、`StreamOutcome::Completed` の `ParseResult` がバッチ時と同じ翻訳済みメッセージを生成する。
 
 `RunConfig` を共有する方針により、サンプル群が `RunConfig` を省略していた際のコメントスキップや復旧戦略の重複実装を排除し、0-1 §2.2 の診断整合性と §1.1 の性能要件を同時に満たせる。
+
+### 9.1 CLI/LSP 設定との連携手順（Phase 2-5 Step6）
+
+1. CLI では `compiler/ocaml/src/main.ml` の `Run_config.Builder`（仮称）を利用し、`RunConfig` を構築して監査ログに `parser.runconfig.*` メタデータを残す。`parser-runconfig-packrat.json.golden` はこの経路で出力した JSON を保存したものであり、`scripts/validate-diagnostic-json.sh` を通じて仕様スキーマと突合できる。
+2. LSP は `tooling/lsp/run_config_loader.ml` で同じ構成を読み込み、`extensions["lex"|"recover"|"stream"]` をそのまま `Core.Parse.Streaming.run_stream` に渡す。`docs/spec/2-1-parser-type.md` §D の脚注 `[^runconfig-ocaml-phase25]` では `with_extension` を用いた共有例を提示している。
+3. ストリーミング実装は `RunConfig` から `extensions["stream"].resume_hint` と `RunConfig.locale` を取り出し、`StreamOutcome::Pending` / `Completed` 双方で同じ診断ロケールとデマンドヒントを提供する。`collect-iterator-audit-metrics.py --require-success --source compiler/ocaml/tests/golden/diagnostics/parser/parser-runconfig-packrat.json.golden` を実行すると、RunConfig 拡張が CI 監視に反映されているかを確認できる。
+4. 共有設定を追加する場合は `docs/notes/core-parser-migration.md` の TODO リストに追記し、`PARSER-003`（Packrat/左再帰）・`LEXER-002`（Lex シム）・`EXEC-001`（ストリーミング PoC）で再利用できるかをレビューする。
+
+これらの手順により、CLI/LSP/ストリーミングが同一 RunConfig を基点に動作し、Phase 2-5 で導入した指標（`parser.runconfig_switch_coverage` / `parser.runconfig_extension_pass_rate`）を通じて設定の逸脱を検知できる。

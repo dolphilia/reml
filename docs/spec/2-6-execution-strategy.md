@@ -35,7 +35,7 @@ fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult
 
 ### B-2. RunConfig のコアスイッチ
 
-> **実装メモ（Phase 2-5）**: OCaml 実装では `compiler/ocaml/src/parser_run_config.ml` に `RunConfig` レコードと `with_extension` / `find_extension` / `Legacy.bridge` を追加し、Packrat/左再帰・診断スイッチを段階的に解放する準備を整えた[^runconfig-exec-phase25].
+> **実装メモ（Phase 2-5）**: OCaml 実装では `compiler/ocaml/src/parser_run_config.ml` に `RunConfig` レコードと `with_extension` / `find_extension` / `Legacy.bridge` を追加し、Packrat/左再帰・診断スイッチを段階的に解放する準備を整えた。Step 6 では CLI (`compiler/ocaml/src/main.ml`)・テスト・LSP (`tooling/lsp/run_config_loader.ml`) が同じ `RunConfig` を注入し、`parser_driver.run` と `Core.Parse.Streaming.run_stream` の設定が一貫する体制へ移行した[^runconfig-exec-phase25].
 
 `RunConfig` はバッチ解析に必要な最小限のスイッチだけを提供し、燃料制御や追加の安全弁は拡張モジュール側で定義する。
 
@@ -60,6 +60,7 @@ type RunConfigExtensions = Map<Str, Any>
 * `legacy_result` は旧来の戻り値形式を要求するツールチェーンとの互換用スイッチ。
 * `locale` は 2-1 §D と同様に診断表示の言語を固定し、バッチ・ストリーミングの両ランナーで共有される。
 * 追加の燃料制御や GC 連携、ストリーミング用バッファ、LSP 設定などは `extensions` に格納されるモジュール固有設定として扱い、必要なときだけ読み込む（推奨ネームスペースは [2-1](2-1-parser-type.md) を参照）。
+* CLI・LSP・CI ツールは `parser_run_config` の初期化ヘルパを共有し、`parser-runconfig-packrat.json.golden` を `scripts/validate-diagnostic-json.sh` および `collect-iterator-audit-metrics.py --require-success` へ渡すことで RunConfig スイッチと拡張値が JSON／監査ログへ記録されているかをレビューできる。
 
 #### B-2-2. Packrat/左再帰/コメント設定の運用指針
 
@@ -382,4 +383,4 @@ fn container_profile(profile: &str) -> RunConfig = match profile {
 - DSLごとの成功/失敗は `RunConfig` の `extensions` を通じて `record_dsl_success` / `record_dsl_failure` に引き渡し、監査ログと性能指標を同期させる。
 
 [^runconfig-exec-phase25]:
-    2025-11-18 更新。`PARSER-002` Step 1 で OCaml 実装に `Parser_run_config` モジュールを導入し、`RunConfig` の各フィールドと拡張マップ操作を仕様通りに表現。今後の Step 2 で `parser_driver` / `run_stream` へ伝播する基盤が整った。
+    2025-11-18 更新。`PARSER-002` Step 1 で OCaml 実装に `Parser_run_config` モジュールを導入し、`RunConfig` の各フィールドと拡張マップ操作を仕様通りに表現。今後の Step 2 で `parser_driver` / `run_stream` へ伝播する基盤が整った。2025-11-24 追記。Step 6 で CLI (`compiler/ocaml/src/main.ml`)・テスト (`compiler/ocaml/tests/run_config_tests.ml`)・LSP (`tooling/lsp/run_config_loader.ml`) が同じ `RunConfig` を再利用し、`parser-runconfig-packrat.json.golden` を通じて `parser.runconfig_switch_coverage` と `parser.runconfig_extension_pass_rate` を監視できるようにした。
