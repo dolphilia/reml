@@ -1215,6 +1215,151 @@ def collect_parser_metrics(paths: List[Path]) -> Dict[str, Any]:
     return metric
 
 
+def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
+    switches_state: Dict[str, bool] = {
+        "packrat": False,
+        "left_recursion": False,
+        "trace": False,
+        "merge_warnings": False,
+    }
+    switch_samples: Dict[str, Any] = {key: None for key in switches_state}
+
+    extensions_state: Dict[str, bool] = {
+        "lex": False,
+        "recover": False,
+        "stream": False,
+    }
+    extension_samples: Dict[str, Any] = {key: None for key in extensions_state}
+
+    def _mark_switch_from_dict(container: Optional[Dict]) -> None:
+        if not isinstance(container, dict):
+            return
+        for key in switches_state:
+            if switches_state[key]:
+                continue
+            if key in container:
+                switches_state[key] = True
+                if switch_samples[key] is None:
+                    switch_samples[key] = container.get(key)
+
+    def _mark_extension_from_dict(container: Optional[Dict]) -> None:
+        if not isinstance(container, dict):
+            return
+        for key in extensions_state:
+            if extensions_state[key]:
+                continue
+            if key in container:
+                value = container.get(key)
+                if value is not None:
+                    extensions_state[key] = True
+                    if extension_samples[key] is None:
+                        extension_samples[key] = value
+
+    for path in paths:
+        data = load_json(path)
+
+        run_config = _as_dict(data.get("run_config"))
+        if run_config:
+            _mark_switch_from_dict(_as_dict(run_config.get("switches")))
+            extensions_container = run_config.get("extensions")
+            if isinstance(extensions_container, dict):
+                _mark_extension_from_dict(extensions_container)
+
+        diagnostics = data.get("diagnostics")
+        if isinstance(diagnostics, list):
+            for diag in diagnostics:
+                if not isinstance(diag, dict):
+                    continue
+                metadata = _as_dict(diag.get("audit_metadata"))
+                if isinstance(metadata, dict):
+                    for key in switches_state:
+                        if switches_state[key]:
+                            continue
+                        exists, value = _lookup_in_container(
+                            metadata, f"parser.runconfig.{key}"
+                        )
+                        if exists:
+                            switches_state[key] = True
+                            if switch_samples[key] is None:
+                                switch_samples[key] = value
+                    for key in extensions_state:
+                        if extensions_state[key]:
+                            continue
+                        exists, value = _lookup_in_container(
+                            metadata, f"parser.runconfig.extensions.{key}"
+                        )
+                        if exists and value is not None:
+                            extensions_state[key] = True
+                            if extension_samples[key] is None:
+                                extension_samples[key] = value
+                extensions = _as_dict(diag.get("extensions"))
+                if isinstance(extensions, dict):
+                    runconfig_extension = _as_dict(extensions.get("runconfig"))
+                    if runconfig_extension:
+                        _mark_switch_from_dict(runconfig_extension)
+                        sub_extensions = runconfig_extension.get("extensions")
+                        if isinstance(sub_extensions, dict):
+                            _mark_extension_from_dict(sub_extensions)
+
+    metrics: List[Dict[str, Any]] = []
+
+    total_switches = len(switches_state)
+    covered_switches = sum(1 for value in switches_state.values() if value)
+    missing_switches = sorted(
+        key for key, present in switches_state.items() if not present
+    )
+    if total_switches > 0:
+        switch_pass_fraction = covered_switches / total_switches
+        switch_pass_rate = 1.0 if covered_switches == total_switches else 0.0
+        metrics.append(
+            {
+                "metric": "parser.runconfig_switch_coverage",
+                "total": total_switches,
+                "passed": covered_switches,
+                "failed": total_switches - covered_switches,
+                "missing": missing_switches,
+                "pass_rate": switch_pass_rate,
+                "pass_fraction": switch_pass_fraction,
+                "status": "success" if switch_pass_rate == 1.0 else "error",
+                "sources": [str(path) for path in paths],
+                "samples": {
+                    key: value
+                    for key, value in switch_samples.items()
+                    if value is not None
+                },
+            }
+        )
+
+    total_extensions = len(extensions_state)
+    covered_extensions = sum(1 for value in extensions_state.values() if value)
+    missing_extensions = sorted(
+        key for key, present in extensions_state.items() if not present
+    )
+    if total_extensions > 0:
+        ext_pass_fraction = covered_extensions / total_extensions
+        ext_pass_rate = 1.0 if covered_extensions == total_extensions else 0.0
+        metrics.append(
+            {
+                "metric": "parser.runconfig_extension_pass_rate",
+                "total": total_extensions,
+                "passed": covered_extensions,
+                "failed": total_extensions - covered_extensions,
+                "missing": missing_extensions,
+                "pass_rate": ext_pass_rate,
+                "pass_fraction": ext_pass_fraction,
+                "status": "success" if ext_pass_rate == 1.0 else "error",
+                "sources": [str(path) for path in paths],
+                "samples": {
+                    key: value
+                    for key, value in extension_samples.items()
+                    if value is not None
+                },
+            }
+        )
+
+    return metrics
+
+
 def collect_metrics(paths: List[Path]) -> Dict:
     total = 0
     passed = 0
@@ -1945,6 +2090,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         sections = [args.section]
 
     parser_metrics: Optional[Dict[str, Any]] = None
+    runconfig_metrics: List[Dict[str, Any]] = []
+    orphan_runconfig_metrics: List[Dict[str, Any]] = []
     iterator_metrics: Optional[Dict[str, Any]] = None
     typeclass_metrics: Optional[Dict[str, Any]] = None
     bridge_metrics: Optional[Dict[str, Any]] = None
@@ -1953,6 +2100,12 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if "parser" in sections:
         parser_metrics = collect_parser_metrics(sources)
+        runconfig_metrics = collect_runconfig_metrics(sources)
+        if parser_metrics and runconfig_metrics:
+            related = parser_metrics.setdefault("related_metrics", [])
+            related.extend(runconfig_metrics)
+        elif runconfig_metrics:
+            orphan_runconfig_metrics = runconfig_metrics.copy()
     if "iterator" in sections:
         iterator_metrics = collect_metrics(sources)
     if "typeclass" in sections:
@@ -1972,6 +2125,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         metrics_list.append(diagnostic_presence_metric)
     if parser_metrics:
         metrics_list.append(parser_metrics)
+    elif orphan_runconfig_metrics:
+        metrics_list.extend(orphan_runconfig_metrics)
     if iterator_metrics:
         metrics_list.append(iterator_metrics)
     if typeclass_metrics:
@@ -2073,6 +2228,13 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         _enforce(diagnostic_presence_metric, "diagnostic.audit_presence_rate")
         _enforce(parser_metrics, "parser.expected_summary_presence")
+        runconfig_targets = (
+            runconfig_metrics if runconfig_metrics else orphan_runconfig_metrics
+        )
+        for metric in runconfig_targets:
+            if isinstance(metric, dict):
+                label = metric.get("metric") or "parser.runconfig"
+                _enforce(metric, label)
         _enforce(iterator_metrics, "iterator.stage.audit_pass_rate")
         _enforce(typeclass_metrics, "typeclass.metadata_pass_rate")
         if isinstance(typeclass_metrics, dict):

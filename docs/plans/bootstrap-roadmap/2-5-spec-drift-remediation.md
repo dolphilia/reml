@@ -303,7 +303,7 @@
 - 2025-11-12 追記: S5（検証とドキュメント更新）を完了。`compiler/ocaml/tests/test_parser.ml` に多段ネスト `use` のユニットテストを追加し、`test_module_env.ml` と併せて `dune runtest` で成功を確認。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `parser.use_nested_support` 指標を登録し、`docs/spec/1-5-formal-grammar-bnf.md`／`docs/spec/3-0-core-library-overview.md` へ脚注と概要を追記して仕様側の記述を最新化した（[`docs/plans/bootstrap-roadmap/2-5-review-log.md`](docs/plans/bootstrap-roadmap/2-5-review-log.md#syntax-002-day4-5-検証ドキュメント更新2025-11-12) を参照）。
 
 6.3. **High 計画の連続実行**
-- **PARSER-002 / LEXER-002 / DIAG-003 / EFFECT-003 / TYPE-001**: Phase 2-5 中盤で着手し、RunConfig 導入・Lex API 抽出・診断ドメイン拡張・複数 Capability 対応・値制限復元を進める。`PARSER-002` は Week32 Day1-2 で RunConfig 基本型と拡張 API を `compiler/ocaml/src/parser_run_config.ml` に実装済みであり、`parser.runconfig_switch_coverage` / `parser.runconfig_extension_pass_rate` を `0-3-audit-and-metrics.md` へ登録する準備を開始した[^runconfig-step1-phase25].
+- **PARSER-002 / LEXER-002 / DIAG-003 / EFFECT-003 / TYPE-001**: Phase 2-5 中盤で着手し、RunConfig 導入・Lex API 抽出・診断ドメイン拡張・複数 Capability 対応・値制限復元を進める。`PARSER-002` は Week32 Day1-2 で RunConfig 基本型と拡張 API を `compiler/ocaml/src/parser_run_config.ml` に実装済みであり、Week32 Day4-5 のテスト整備で `parser.runconfig_switch_coverage` / `parser.runconfig_extension_pass_rate` を `0-3-audit-and-metrics.md` に登録し、`collect-iterator-audit-metrics.py --require-success` による監視を有効化した[^runconfig-step1-phase25][^runconfig-step5-phase25].
   2025-11-20 時点で Step 3 を完了し、`extensions["lex"]`/`["recover"]`/`["stream"]` のデコードシムと `Parser_diag_state` の回復設定連携を実装済み。`RunConfig` に未指定の `lex.profile` は `strict_json` へフォールバックし、`recover.notes` は `Parser_diag_state.recover_notes_enabled` で確認できるようになった[^runconfig-step3-phase25].
 - 各計画で追加した単体テスト（`runconfig_tests.ml`, `core_parse_lex_tests.ml`, `capability_profile_tests.ml`, `type_inference_effect_tests.ml` 等）を CI に組み込み、`0-3-audit-and-metrics.md` の新メトリクスが反映されることを確認する。
 - 計画進行中に検出したリスク・課題は `0-4-risk-handling.md` へ即時登録し、必要に応じて Phase 2-7 へエスカレーションする。
@@ -313,6 +313,9 @@
 
 [^runconfig-step3-phase25]:
     2025-11-20 時点。`parser_run_config` に `Config`/`Lex`/`Recover`/`Stream` サブモジュールを追加し、`extensions` ネームスペースを型安全に読み取るシムを実装。`lex.profile` 非指定時の `ConfigTriviaProfile::strict_json` フォールバック、`recover.sync_tokens`/`notes` の `Parser_diag_state` 連携、`stream` プレースホルダの導入、および `dune build` による検証を完了。
+
+[^runconfig-step5-phase25]:
+    2025-11-22 時点。PARSER-002 Step 5 で `compiler/ocaml/tests/run_config_tests.ml` を追加、RunConfig ゴールデン JSON（`parser-runconfig-packrat.json.golden`）を整備し、`tooling/ci/collect-iterator-audit-metrics.py` に RunConfig 用指標を実装。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ `parser.runconfig_switch_coverage` / `parser.runconfig_extension_pass_rate` を登録し、CI ゲートで値を監視できる状態に移行した。
 6.4. **後半フェーズの仕上げ**
 - **PARSER-003 / EXEC-001 / ERR-002**: Phase 2-5 後半でコアコンビネーター抽出とストリーミング PoC、`recover` FixIt 拡張を実装し、ランナ―整合性を最終確認する。
 - 完了後は `docs/guides/core-parse-streaming.md` や `docs/spec/2-2-core-combinator.md` に脚注・更新を反映させ、関連サンプルが動作することを確認する。

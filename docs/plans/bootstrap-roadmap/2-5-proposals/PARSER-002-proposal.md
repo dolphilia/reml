@@ -122,6 +122,8 @@
 - `scripts/validate-diagnostic-json.sh` に RunConfig 設定を含むサンプル（`parser-runconfig-packrat.json` 等）を追加し、AJV 検証で設定値が JSON に記録されることを確かめる。  
 - CLI・LSP 双方で RunConfig を通したパースを実行し、`diagnostic_schema.validation_pass` が 1.0 を維持することを確認する。
 
+> 2025-11-22 更新: Step 5 完了。`compiler/ocaml/tests/run_config_tests.ml` を追加して `require_eof` ガード・`merge_warnings` 重複処理・`trace` SpanTrace・`extensions["lex"]` デコード・Legacy ブリッジを検証した。RunConfig 専用ゴールデン（`compiler/ocaml/tests/golden/diagnostics/parser/parser-runconfig-packrat.json.golden`）を整備し、`tooling/ci/collect-iterator-audit-metrics.py` に `parser.runconfig_switch_coverage` / `parser.runconfig_extension_pass_rate` を集計する処理を追加。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ新指標を登録し、`--require-success` で RunConfig 監視が必須化された。
+
 ### Step 6: 共有とレビュー記録（Week32 Day5）
 - 実装結果を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に記録し、完了条件（RunConfig フィールド実装、メトリクス更新、CLI/LSP 連携）を明確にする。  
 - `docs/spec/2-1-parser-type.md`・`docs/spec/2-6-execution-strategy.md`・`docs/guides/core-parse-streaming.md` に移行脚注と利用例を追記し、仕様との整合を示す。  

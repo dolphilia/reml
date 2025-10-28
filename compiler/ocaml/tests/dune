@@ -6,6 +6,7 @@
  test_parser
  test_parser_expectation
  test_parser_driver
+ run_config_tests
  test_module_env
  test_parse_result_state
  test_golden
