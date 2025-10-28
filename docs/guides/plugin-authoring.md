@@ -47,6 +47,7 @@ use ::Core.Platform.Posix.Notify
 
 - `Diagnostic.extensions["cfg"]` を利用してターゲット差異を報告し、CI で `target_config_errors` を集計できるようにする。
 - `AuditEnvelope.metadata` にプラグイン固有の設定（通知エンドポイント等）を記録し、`Core.Diagnostics` の保持方針に従う。
+- Phase 2-5 ERR-001 で `Diagnostic.expected` に `ExpectationSummary` が常時含まれるようになったため、プラグイン側でも CLI/LSP と同じ期待集合を利用できる。`Core.Diagnostics.humanize_expected` を呼び出して候補一覧を提示し、DSL 独自の補完や自動修復に活用する。
 
 ## 3. 配布と署名
 

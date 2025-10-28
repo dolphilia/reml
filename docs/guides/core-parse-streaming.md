@@ -68,7 +68,7 @@ type ContinuationMeta = {
 ```
 
 - `commit_watermark` より前の Packrat キャッシュは安全に破棄できる。
-- `expected_tokens` と `last_checkpoint` は IDE 補完や自動復旧に利用され、`trace_label` は SpanTrace (2.5) と連動する。
+- `expected_tokens` と `last_checkpoint` は IDE 補完や自動復旧に利用され、`trace_label` は SpanTrace (2.5) と連動する。Phase 2-5 ERR-001（期待集合出力整備計画）でストリーミング経路も `ExpectationSummary` を共有するよう更新されたため、`StreamEvent::Error` から `Diagnostic.expected` を取り出すだけで CLI/LSP と同じ候補一覧を提示できる。
 
 ## 4. FlowController とバックプレッシャ
 
@@ -154,6 +154,7 @@ type StreamMeta = {
 
 - `StreamMeta` を監査ログ (`parser.stream`) に添付することで、バックプレッシャやラグを可視化できる。
 - CLI/LSP 統合時には `StreamMeta` と `Diagnostic.extensions` を組み合わせ、ユーザーに補完候補や復旧策を提示する。
+- Phase 2-5 ERR-001 の導入以降、`tooling/ci/collect-iterator-audit-metrics.py` は `parser.expected_summary_presence` / `parser.expected_tokens_per_error` を監視し、ストリーミング経路で期待集合が欠落した場合に CI を失敗させる。ストリーミング実装でも `Diagnostic.expected` を欠かさず転送すること。
 
 ## 8. 参考実装
 

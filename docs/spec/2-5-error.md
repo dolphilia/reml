@@ -77,7 +77,7 @@ type ParseError = {
 
 * **`ParseError` は集約用の“素の事実”**、**`Diagnostic` は表示用**（`Err.pretty` が `ParseError` から `Diagnostic` を起こす）。
 * `Expectation` は**種類別**に持ち、message 生成時に**まとまりで整形**（例：「期待：`)`・`number`・識別子のいずれか」）。
-* `expected_summary` はテンプレート ID と文脈を保持し、IDE/LSP がローカライズ済みメッセージを生成できるようにする。
+* `expected_summary` はテンプレート ID と文脈を保持し、IDE/LSP がローカライズ済みメッセージを生成できるようにする。Phase 2-5 ERR-001 で OCaml 実装が Menhir 期待集合を収集する経路を整備し、CLI/LSP/監査すべてで `ExpectationSummary` が出力される状態へ移行した[^err001-phase25].
 * `domain` は必要に応じて責務領域を付与する分類タグであり、省略した場合は純粋にパーサからの診断として扱われます。`severity_hint` は運用側への推奨アクション（ロールバック・再試行・即時エスカレーションなど）を表します。
 * `audit_id` / `change_set` / `stream_meta` / `quality_report_id` は、それぞれ Config ツール・差分レビュー・ストリーミング実行・データ品質検証から渡される共通メタデータであり、存在しない場合は `None`。`change_set` は [3-7](3-7-core-config-data.md) で定義される `Change` の配列（JSON 化）を保持する。
 * `extensions` はプラグインやツールが任意の追加メタデータ（上記以外の設定差分、監査情報、テレメトリなど）を格納する自由領域で、コア仕様はその内容に関与しません。
@@ -549,6 +549,8 @@ help: add an arm such as `| Green -> ...`
 * **Unicode/安全性**診断も標準化し、**IDE/LSP** へそのまま渡せる **FixIt** を同梱。
 
 ---
+
+[^err001-phase25]: Phase 2-5 ERR-001 期待集合出力整備計画（`docs/plans/bootstrap-roadmap/2-5-proposals/ERR-001-proposal.md`）S5「ドキュメントと共有タスク」（2025-11-17 完了）で脚注を更新し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に Menhir 期待集合の CI 検証と共有事項を記録済み。
 
 ## 関連仕様
 
