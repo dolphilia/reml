@@ -41,10 +41,11 @@
 - `lexer.mll` は ASCII ベースの空白・コメント・識別子判定に留まっており、仕様で必須とされる `shebang` 読み飛ばし・`hash_inline` コメント・`doc_comment` 収集・Unicode XID 対応が欠落している。
 - 仕様との差分一覧と `RunConfig.extensions["lex"]` の現状利用調査を [`docs/plans/bootstrap-roadmap/2-5-review-log.md`](../2-5-review-log.md) の「LEXER-002 Day1」へ記録し、Streaming/RunConfig 計画との依存関係メモを `docs/notes/core-parse-streaming-todo.md` に追加した。
 
-### Step 1: Core.Parse.Lex ベースモジュール設計（Week33 Day1-2）
-- `compiler/ocaml/src/core_parse_lex.mli`（新規）に公開シグネチャ案を記述し、`lexeme`/`symbol`/`config_trivia`/`token` を最小構成として定義する。同時に `core_parse_lex.ml` へ未実装例外を置き、後続ステップで段階的に埋める。
-- `docs/spec/2-2-core-combinator.md` と `PARSER-003` の計画を参照し、`type 'a parser` の実装方式（現状の Menhir シム vs 将来のコンビネーター層）を調査したうえで、`ParserId` 付与と互換になる API 設計メモを `docs/notes/core-parse-api-evolution.md`（必要なら新規）へ追記する。
-- `token.ml` で定義済みのトークン集合と照合し、Lex API が生成する予定の値型（識別子・数値・コメントスキップなど）が現行 AST と齟齬を起こさないか確認する。
+### Step 1: Core.Parse.Lex ベースモジュール設計（2025-11-26 完了）
+- **公開シグネチャ草案**: `core_parse_lex.mli` の骨子を整理し、`module Trivia_profile`（`Parser_run_config.Lex.Trivia_profile` との alias）、`module Pack`、`module Api` の 3 層で `ConfigTriviaProfile`／`lexeme`／`symbol` 等を公開する構成を決定した[^lex-profile-struct][^lex-pack-design][^lex-api-alignment]。`Pack.t` は `space`（`Lexing.lexbuf -> unit`）、`lexeme`/`symbol` クロージャ、`profile`、`space_id` を保持する record とし、構文からの利用を最小 API で賄えるようにする。
+- **RunConfig round-trip 方針**: `Bridge.effective_profile : Parser_run_config.t -> Trivia_profile.t` と `Bridge.attach_space : Parser_run_config.t -> space_id:int -> Parser_run_config.t` を導入し、`RunConfig.extensions["lex"]` に `profile` と `space_id` を安定的に読み書きするフローを設計した。未指定時は `strict_json` を採用し、`space_id` は `Extensions.Parser_id` 経由で格納する[^runconfig-roundtrip]。
+- **ParserId / 診断設計**: `Parser_diag_state` の ID 生成器を流用し `Pack.space_id` を払い出す方針と、`doc_comment` を `Diagnostic.notes["comment.doc"]` に流し込むための拡張ポイント（`Pack.doc_channel` 追加余地）を定義。Streaming PoC から `space_id` を検証できるよう、`docs/notes/core-parse-streaming-todo.md` に依存関係メモを追記した。
+- **テストとメトリクス準備**: `core_parse_lex_tests.ml` でプロフィールごとの挙動をゴールデン化し、`lexer.shared_profile_pass_rate` を `0-3-audit-and-metrics.md` に登録する試験計画を確定。測定は `RunConfig.Lex.effective_trivia` との round-trip を確認しつつ行う想定とした。
 
 ### Step 2: ConfigTriviaProfile と RunConfig 橋渡し（Week33 Day2）
 - `parser_run_config.Lex.Trivia_profile` を `Core.Parse.Lex.Trivia`（仮名）にラップし、仕様の `ConfigTriviaProfile` 定数（`strict_json` ほか）へマッピングするユーティリティを実装する[^config-trivia]。
@@ -85,3 +86,11 @@
     `compiler/ocaml/src/lexer.mll` の空白・コメント規則と `parser_driver.ml` の token 読み出しを調査し、`Core.Parse.Lex` へ責務移譲する際の影響範囲（位置情報・診断）を把握する。
 [^metrics-lex]:
     `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の Parser 指標群と `tooling/ci/collect-iterator-audit-metrics.py` を更新し、Lex プロファイル共有率を CI 監視できるようにする。
+[^lex-profile-struct]:
+    `docs/spec/2-3-lexer.md` §G-1（ConfigTriviaProfile 定義）と `parser_run_config.Lex.Trivia_profile` のフィールドが一致していることを踏まえ、再定義を避けて alias 化する。
+[^lex-pack-design]:
+    `docs/spec/2-3-lexer.md` §L-4 の `lex_pack` 例に従い、空白・字句ユーティリティを束ねて共有する設計を採用する。
+[^lex-api-alignment]:
+    `docs/spec/2-3-lexer.md` §C〜§L が規定する `lexeme`/`symbol`/`config_trivia` 等の API 群を OCaml 側で公開する。
+[^runconfig-roundtrip]:
+    `docs/spec/2-1-parser-type.md` §D および `docs/spec/2-3-lexer.md` §L-4。`RunConfig.extensions["lex"]` に `profile` と `space`（ParserId）を格納し、CLI/LSP/Streaming が同じ設定を再構築できるようにする契約。

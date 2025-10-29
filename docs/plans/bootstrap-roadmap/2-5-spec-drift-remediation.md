@@ -305,6 +305,7 @@
 6.3. **High 計画の連続実行**
 - **PARSER-002 / LEXER-002 / DIAG-003 / EFFECT-003 / TYPE-001**: Phase 2-5 中盤で着手し、RunConfig 導入・Lex API 抽出・診断ドメイン拡張・複数 Capability 対応・値制限復元を進める。`PARSER-002` は Week32 Day1-2 で RunConfig 基本型と拡張 API を `compiler/ocaml/src/parser_run_config.ml` に実装済みであり、Week32 Day4-5 のテスト整備で `parser.runconfig_switch_coverage` / `parser.runconfig_extension_pass_rate` を `0-3-audit-and-metrics.md` に登録し、`collect-iterator-audit-metrics.py --require-success` による監視を有効化した[^runconfig-step1-phase25][^runconfig-step5-phase25].
   2025-11-20 時点で Step 3 を完了し、`extensions["lex"]`/`["recover"]`/`["stream"]` のデコードシムと `Parser_diag_state` の回復設定連携を実装済み。`RunConfig` に未指定の `lex.profile` は `strict_json` へフォールバックし、`recover.notes` は `Parser_diag_state.recover_notes_enabled` で確認できるようになった[^runconfig-step3-phase25].
+  2025-11-26 追記: LEXER-002 Step1 で `core_parse_lex` の公開境界（`Trivia_profile` alias／`Pack` record／`Api`／`Bridge`）と `RunConfig` round-trip 方針（`effective_profile`・`attach_space`）を合意し、`Pack.space_id` を `Extensions.Parser_id` へ格納する設計を計画書・レビュー記録に反映した。`core_parse_lex_tests.ml` と `lexer.shared_profile_pass_rate` 指標による検証計画も整理済み。
 - 各計画で追加した単体テスト（`runconfig_tests.ml`, `core_parse_lex_tests.ml`, `capability_profile_tests.ml`, `type_inference_effect_tests.ml` 等）を CI に組み込み、`0-3-audit-and-metrics.md` の新メトリクスが反映されることを確認する。
 - 計画進行中に検出したリスク・課題は `0-4-risk-handling.md` へ即時登録し、必要に応じて Phase 2-7 へエスカレーションする。
 

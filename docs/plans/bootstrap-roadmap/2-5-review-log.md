@@ -463,3 +463,21 @@ S5（検証とドキュメント更新）の結果共有。
 [^lexer-comment]: `compiler/ocaml/src/lexer.mll` の `token` ルールは `//`/`/* */` のみ対応し、`shebang`/`#` コメントを扱わない。
 [^run-config-tests]: `compiler/ocaml/tests/run_config_tests.ml` `test_lex_extension_profile`。
 [^config-trivia-spec]: `docs/spec/2-3-lexer.md` §G-1（`ConfigTriviaProfile` と `config_trivia` 系ユーティリティ）。
+
+## LEXER-002 Day2 Core.Parse.Lex ベースモジュール設計（2025-11-26）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/LEXER-002-proposal.md`](./2-5-proposals/LEXER-002-proposal.md#step-1-coreparselex-ベースモジュール設計2025-11-26-完了)
+
+### 1. 作業サマリ
+- `core_parse_lex` の公開境界を 3 層（`Trivia_profile` alias、`Pack` record、`Api`/`Bridge` ヘルパ）で構成する設計メモを作成し、`ConfigTriviaProfile` と `lexeme`/`symbol`/`config_trivia` を仕様どおり提供する草案を固めた。
+- `RunConfig` との round-trip に必要な `effective_profile` / `attach_space` を定義し、`extensions["lex"].space_id` を `Parser_run_config.Extensions.Parser_id` で保持する方針を確認。未設定時のフォールバックは `strict_json` とする。
+- `Parser_diag_state` の ID 生成器を流用して `space_id` を払い出す設計と、`doc_comment` を `Diagnostic.notes["comment.doc"]` へ伝播させる拡張ポイント（`Pack.doc_channel` 追加余地）を明示した。試験計画（`core_parse_lex_tests.ml` と `lexer.shared_profile_pass_rate` 指標）も整理。
+- 設計結果を計画書 Step1 へ反映し、Streaming TODO ノートに依存関係の更新を書き込んだ。
+
+### 2. 成果物
+- `LEXER-002` 計画書 Step1 を完了状態へ更新。
+- `docs/notes/core-parse-streaming-todo.md` へ `space_id` round-trip の決定事項を追記。
+
+### 3. 残課題
+- Step2 で `lexer.mll` にプロフィールを適用し、Unicode コメント・`doc_comment` 吸い上げを実装する。
+- CLI/LSP から `space_id` を必須化する警告コードと監査メトリクスは未決定のため、Step3 以降で案を提示する。
