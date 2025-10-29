@@ -419,3 +419,47 @@ S5（検証とドキュメント更新）の結果共有。
 - `RunConfig.locale` と `Diagnostic` のロケール同期は `DIAG-003` の判断待ち。仕様脚注に暫定運用（CLI/LSP は未指定時に英語へフォールバック）を記載しているため、決定次第ガイドと脚注を更新する。
 
 [^runconfig-ocaml-phase25-log]: `docs/spec/2-1-parser-type.md` と `docs/spec/2-6-execution-strategy.md` の脚注参照。`compiler/ocaml/src/main.ml` および `tooling/lsp/run_config_loader.ml` で `parser_run_config` の共有初期化を実施した記録を反映している。
+
+## LEXER-002 Day1 Core.Parse.Lex ギャップ調査（2025-11-25）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/LEXER-002-proposal.md`](./2-5-proposals/LEXER-002-proposal.md)
+
+### 1. 調査サマリ
+- `docs/spec/2-3-lexer.md` が要求する `Core.Parse.Lex` 公開 API（`lexeme` / `symbol` / `config_trivia` / `config_symbol` ほか）を提供するモジュールが現行実装に存在せず、`parser_driver` は `Lexer.token` を直接呼び出しているため `RunConfig.extensions["lex"]` や `ParserId` による共有が機能していない[^lex-spec-api][^parser-driver-token]。
+- `parser_run_config.Lex.Trivia_profile` は仕様と同形のフィールドを持つが、`lexer.mll` では `space_id` / `profile` / `doc_comment` 等を参照せず、`shebang` や `hash_inline` の挙動も未実装である[^parser-run-config][^lexer-comment]。
+- 現在 `RunConfig.extensions["lex"]` を読むコードはユニットテストのみであり、CLI/LSP/ランナーは `lex` ネームスペースを設定・検証していない。`config_trivia` 相当のユーティリティも欠如しているため設定値が死蔵している[^run-config-tests][^config-trivia-spec]。
+- Streaming 系タスクとの依存関係（`ParserId` の安定化、`RunConfig` の伝播、Streaming PoC での lex 再利用）を整理し、`docs/notes/core-parse-streaming-todo.md` に共有メモを追加した。
+
+### 2. 仕様との差分要約
+
+#### 表1: `ConfigTriviaProfile` と `Run_config.Lex.Trivia_profile` の比較
+| フィールド / 契約 | 仕様 `ConfigTriviaProfile` | 現行実装 `Run_config.Lex.Trivia_profile` | 差分・課題 |
+| --- | --- | --- | --- |
+| `line: List<Str>` | コメント接頭辞を列挙し、`config_trivia` で空白スキップに合成する。既定は `["//"]`。 | `line` フィールドあり。`strict_json`/`json_relaxed`/`toml_relaxed` を定義。 | 値は保持するものの、`lexer.mll` で `#` など追加接頭辞を処理せず未使用。 |
+| `block: List<CommentPair>` | `start`/`end`/`nested` を保持し、ネスト可否既定は `true`。 | `comment_pair` 型は `start`/`stop`/`nested`。既定プロファイルは `nested=false` を手動設定。 | フィールド名が `stop` となっており `ConfigTriviaProfile` とのマッピング関数が未実装。ネスト再帰処理は `lexer.mll` に固定値。 |
+| `shebang: Bool` | 先頭行のみ `#!` を読み飛ばす。 | `shebang` フィールド保持。 | `lexer.mll` は shebang を認識せず、値が常に未使用。 |
+| `hash_inline: Bool` | `#` 以降を行コメント扱いにする。 | フィールド保持。 | `lexer.mll` は `//` と `/* */` のみ対応。`#` コメントはエラー扱い。 |
+| `doc_comment: Option<Str>` | ドキュメントコメントを診断ノートへ反映。 | フィールド保持。 | `lexer.mll` で `doc_comment` を判別・通知する経路が存在しない。 |
+| `config_trivia` / `config_lexeme` / `config_symbol` | `ConfigTriviaProfile` を受け取り、空白・コメント・トークン処理を共通化。 | 未実装。`Run_config.Lex` は値のデコードのみ。 | Lex API 抽出時に新規モジュールを設けてユーティリティを再構築する必要。 |
+
+#### 表2: `RunConfig.extensions["lex"]` 利用状況
+| 利用箇所 | 種別 | 現状 | 課題 |
+| --- | --- | --- | --- |
+| `compiler/ocaml/src/parser_driver.ml` | ランナー | 未使用。`Run_config.Lex.of_run_config` も呼ばれない。 | Lex 設定をランナー初期化へ渡し、`space_id` や `profile` を共有する配線が必要。 |
+| `compiler/ocaml/tests/run_config_tests.ml` | ユニットテスト | `Run_config.Lex.of_run_config` で `profile`/`space_id` を復元するテストのみ。 | 実運用経路（CLI/LSP/テストランナー）での検証が欠如。 |
+| `parser_run_config` 以外のモジュール | 共通処理 | 存在せず。値の読込・検証は未実装。 | `Core.Parse.Lex` 抽出後に共有ヘルパを追加し、`RunConfig` からの読み出しを一本化する必要。 |
+
+### 3. TODO / 引き継ぎ
+1. Step1 で `core_parse_lex.{mli,ml}` を新設し、`ConfigTriviaProfile` マッピングと `lexeme`/`symbol` 等のユーティリティを導入する。
+2. `lexer.mll` に `shebang`・`hash_inline`・`doc_comment` の分岐を追加し、`Run_config.Lex.Trivia_profile` からの設定を反映できるよう改修する（Unicode XID 対応も同時に検討）。
+3. `parser_driver` と CLI/LSP 初期化コードを更新し、`RunConfig.extensions["lex"]` の値を `Core.Parse.Lex` モジュールへ伝播しつつ、監査メトリクス（例: `lexer.shared_profile_pass_rate`）を 0-3 メトリクス表へ登録する。
+
+### 4. 実施記録
+- 2025-11-25: Step0 調査を完了し、本ログと `LEXER-002` 計画書にサマリを反映。Streaming TODO ノートへ依存関係を追記し、次工程（Step1 設計）で参照できる状態にした。
+
+[^lex-spec-api]: `docs/spec/2-3-lexer.md` §C〜§L。
+[^parser-driver-token]: `compiler/ocaml/src/parser_driver.ml` の `run` 実装で `Lexer.token` を直接呼び出している。
+[^parser-run-config]: `compiler/ocaml/src/parser_run_config.ml` モジュール `Lex`。
+[^lexer-comment]: `compiler/ocaml/src/lexer.mll` の `token` ルールは `//`/`/* */` のみ対応し、`shebang`/`#` コメントを扱わない。
+[^run-config-tests]: `compiler/ocaml/tests/run_config_tests.ml` `test_lex_extension_profile`。
+[^config-trivia-spec]: `docs/spec/2-3-lexer.md` §G-1（`ConfigTriviaProfile` と `config_trivia` 系ユーティリティ）。

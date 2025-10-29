@@ -35,6 +35,12 @@
 - `parser_run_config.Lex.Trivia_profile` と `ConfigTriviaProfile` の差分、`RunConfig.extensions["lex"]` の現状利用ポイントを表にまとめ、`docs/plans/bootstrap-roadmap/2-5-review-log.md` へ LEXER-002 の Day1 エントリとして記録する[^runconfig-lex]。
 - `docs/notes/core-parse-streaming-todo.md` に調査メモを残し、`PARSER-002`/`PARSER-003`/`EXEC-001` との依存関係（共有 `ParserId`・`RunConfig` 伝播・Streaming API）を整理する。
 
+#### 調査サマリ（2025-11-25）
+- `docs/spec/2-3-lexer.md` が定義する `Core.Parse.Lex` API（`lexeme` / `symbol` / `config_trivia` 等）に対応する公開モジュールは現行実装に存在せず、`parser_driver` は `Lexer.token` を直接呼び出している（`compiler/ocaml/src/parser_driver.ml`）。これにより `RunConfig.extensions["lex"]` や `ParserId` 連携が遮断されている。
+- `parser_run_config.Lex.Trivia_profile` は `ConfigTriviaProfile` と同等のフィールドを保持するものの、実際の字句処理へ渡されておらず、`space_id` や `profile` が `lexer.mll` で参照されない。`config_trivia` / `config_lexeme` / `config_symbol` に相当するユーティリティも未実装である。
+- `lexer.mll` は ASCII ベースの空白・コメント・識別子判定に留まっており、仕様で必須とされる `shebang` 読み飛ばし・`hash_inline` コメント・`doc_comment` 収集・Unicode XID 対応が欠落している。
+- 仕様との差分一覧と `RunConfig.extensions["lex"]` の現状利用調査を [`docs/plans/bootstrap-roadmap/2-5-review-log.md`](../2-5-review-log.md) の「LEXER-002 Day1」へ記録し、Streaming/RunConfig 計画との依存関係メモを `docs/notes/core-parse-streaming-todo.md` に追加した。
+
 ### Step 1: Core.Parse.Lex ベースモジュール設計（Week33 Day1-2）
 - `compiler/ocaml/src/core_parse_lex.mli`（新規）に公開シグネチャ案を記述し、`lexeme`/`symbol`/`config_trivia`/`token` を最小構成として定義する。同時に `core_parse_lex.ml` へ未実装例外を置き、後続ステップで段階的に埋める。
 - `docs/spec/2-2-core-combinator.md` と `PARSER-003` の計画を参照し、`type 'a parser` の実装方式（現状の Menhir シム vs 将来のコンビネーター層）を調査したうえで、`ParserId` 付与と互換になる API 設計メモを `docs/notes/core-parse-api-evolution.md`（必要なら新規）へ追記する。
