@@ -19,6 +19,7 @@
   diagnostic
   diagnostic_builder
   diagnostic_serialization
+  core_parse_lex
   parser_run_config
   parser_expectation
   parser_diag_state

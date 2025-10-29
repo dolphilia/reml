@@ -119,15 +119,6 @@ module Legacy = struct
     { default with require_eof; legacy_result }
 end
 
-module Config = struct
-  let find config = find_extension "config" config
-
-  let require_eof_override namespace =
-    match Namespace.find "require_eof" namespace with
-    | Some value -> bool_of_value value
-    | None -> None
-end
-
 module Lex = struct
   module Trivia_profile = struct
     type comment_pair = {
@@ -229,6 +220,45 @@ module Lex = struct
     | Json_relaxed -> Trivia_profile.json_relaxed
     | Toml_relaxed -> Trivia_profile.toml_relaxed
     | Custom _ -> Trivia_profile.strict_json
+
+  let encode_profile namespace profile =
+    Namespace.add "profile" (Extensions.String (profile_symbol profile)) namespace
+
+  let encode_space_id namespace = function
+    | Some id -> Namespace.add "space_id" (Extensions.Parser_id id) namespace
+    | None -> Namespace.remove "space_id" namespace
+
+  let set_profile config profile =
+    with_extension "lex" (fun namespace -> encode_profile namespace profile) config
+
+  let set_space_id config space_id =
+    with_extension "lex" (fun namespace -> encode_space_id namespace space_id) config
+end
+
+module Config = struct
+  let find config = find_extension "config" config
+
+  let require_eof_override namespace =
+    match Namespace.find "require_eof" namespace with
+    | Some value -> bool_of_value value
+    | None -> None
+
+  let trivia_profile namespace =
+    match Namespace.find "trivia" namespace with
+    | Some value -> (
+        match string_of_value value with
+        | Some symbol -> Some (Lex.profile_of_symbol symbol)
+        | None -> None)
+    | None -> None
+
+  let with_trivia_profile config profile =
+    with_extension "config"
+      (fun namespace ->
+        Namespace.add
+          "trivia"
+          (Extensions.String (Lex.profile_symbol profile))
+          namespace)
+      config
 end
 
 module Recover = struct

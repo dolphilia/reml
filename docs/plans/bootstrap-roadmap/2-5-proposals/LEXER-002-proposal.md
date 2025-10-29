@@ -51,6 +51,7 @@
 - `parser_run_config.Lex.Trivia_profile` を `Core.Parse.Lex.Trivia`（仮名）にラップし、仕様の `ConfigTriviaProfile` 定数（`strict_json` ほか）へマッピングするユーティリティを実装する[^config-trivia]。
 - `Core.Parse.Lex.config_trivia` / `config_lexeme` / `config_symbol` を `Run_config.Lex.of_run_config` と `Run_config.Config` から生成できるようにし、結果の `ParserId` を `Extensions["lex"].space_id` に格納する経路を設計する。
 - 互換モード（shebang・hash_inline 等）を評価するため、`examples/` 以下の JSON/TOML サンプルを用いてトリビア設定の期待挙動を表形式でまとめ、`2-5-review-log.md` に添付する。
+- 2025-11-27 実施: `compiler/ocaml/src/core_parse_lex.{ml,mli}` に `Trivia_profile` alias と `Bridge.derive` / `Bridge.with_space_id` を追加し、`RunConfig.extensions["config"].trivia` と `extensions["lex"]` の同期を実装。`parser_run_config` に `Lex.set_profile` / `set_space_id` と `Config.trivia_profile` / `with_trivia_profile` を追加して、`space_id` を `Parser_id` 型で往復可能にした[^lex-bridge-impl]。
 
 ### Step 3: lexeme/symbol 系ユーティリティ実装（Week33 Day3）
 - `Core.Parse.Lex.lexeme`/`symbol`/`leading`/`trim`/`token` を `Parser` コンビネータの構成要素として実装し、`ParserId` 生成・`Span` 付与・`RunConfig` からのスペース共有を行う。
@@ -94,3 +95,5 @@
     `docs/spec/2-3-lexer.md` §C〜§L が規定する `lexeme`/`symbol`/`config_trivia` 等の API 群を OCaml 側で公開する。
 [^runconfig-roundtrip]:
     `docs/spec/2-1-parser-type.md` §D および `docs/spec/2-3-lexer.md` §L-4。`RunConfig.extensions["lex"]` に `profile` と `space`（ParserId）を格納し、CLI/LSP/Streaming が同じ設定を再構築できるようにする契約。
+[^lex-bridge-impl]:
+    `compiler/ocaml/src/core_parse_lex.ml` と `compiler/ocaml/src/parser_run_config.{ml,mli}`。`Bridge.derive` で `ConfigTriviaProfile` を復元し、`Lex.set_profile` / `Config.with_trivia_profile` が `extensions["lex"]` と `extensions["config"]` のプロファイルを同期する。`Bridge.with_space_id` で `space_id` を `Extensions.Parser_id` として記録できることを確認した。

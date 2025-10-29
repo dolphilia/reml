@@ -481,3 +481,22 @@ S5（検証とドキュメント更新）の結果共有。
 ### 3. 残課題
 - Step2 で `lexer.mll` にプロフィールを適用し、Unicode コメント・`doc_comment` 吸い上げを実装する。
 - CLI/LSP から `space_id` を必須化する警告コードと監査メトリクスは未決定のため、Step3 以降で案を提示する。
+
+## LEXER-002 Day2 ConfigTriviaProfile ↔ RunConfig 橋渡し（2025-11-27）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/LEXER-002-proposal.md`](./2-5-proposals/LEXER-002-proposal.md)
+
+### 1. 作業サマリ
+- `compiler/ocaml/src/core_parse_lex.ml:59-175` に `Trivia_profile.of_profile` と `Bridge.{derive,with_space_id}` を実装し、`RunConfig.extensions["config"].trivia` と `extensions["lex"]` を読み取って `ConfigTriviaProfile` を再構成する経路を整備。`core_parse_lex.mli:1-40` で公開シグネチャを追加した。
+- `parser_run_config` に `Lex.set_profile` / `set_space_id` と `Config.trivia_profile` / `with_trivia_profile` を追加し、プロファイルシンボルと `space_id` を `Extensions.Parser_id` で往復できるようにした（`compiler/ocaml/src/parser_run_config.ml:224-260`、`compiler/ocaml/src/parser_run_config.mli:74-87`）。
+- `compiler/ocaml/src/dune:18` へ `core_parse_lex` を登録し、`dune build` で新モジュールをビルド。Phase 1-2 の既存構成に影響がないことを確認した。
+
+### 2. RunConfig 同期フローの確認
+- `Bridge.derive` は `extensions["config"].trivia` を優先し、未設定時に `extensions["lex"]`、双方とも未設定なら `Lex.default` を利用する。同期時に `Lex.set_profile` と `Config.with_trivia_profile` を介して RunConfig 内のプロファイルをそろえる（`compiler/ocaml/src/core_parse_lex.ml:134-166`）。
+- `Bridge.with_space_id` が `space_id` を `Extensions.Parser_id` で再格納するため、後続ステップで生成した `ParserId` を CLI/LSP/Streaming に共有できる（`compiler/ocaml/src/core_parse_lex.ml:168-174`）。
+- `Trivia_profile.of_profile` は namespace の `line` / `block` / `shebang` / `hash_inline` / `doc_comment` を読み取り、仕様どおり `ConfigTriviaProfile` を上書きできる。互換設定を namespace で配列・ブール値として受ける想定をコード化した（`compiler/ocaml/src/core_parse_lex.ml:59-116`）。
+
+### 3. 残課題
+- `Custom` プロファイルで namespace が空の場合は `strict_json` を基底に復元している。CLI/LSP からカスタム設定を投入する際の表現形式（`line`/`block` のシリアライズ）を決め、Step3 で namespace への転写ロジックを拡張する。
+- `config_trivia` / `config_lexeme` / `config_symbol` の Parser 実装は未着手。`Pack.t` を用いて `lexer.mll` の空白・コメント処理を委譲するステップを次工程で実装する。
+- `ParserId` の払い出しは `parser_diag_state`（`compiler/ocaml/src/parser_diag_state.ml`）との統合が必要。`Bridge.with_space_id` を呼ぶタイミングを Step3 で設計し、Packrat との整合を確認する。

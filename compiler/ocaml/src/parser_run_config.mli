@@ -71,11 +71,6 @@ module Legacy : sig
   val bridge : config -> t
 end
 
-module Config : sig
-  val find : t -> Extensions.Namespace.t option
-  val require_eof_override : Extensions.Namespace.t -> bool option
-end
-
 module Lex : sig
   module Trivia_profile : sig
     type comment_pair = {
@@ -112,7 +107,17 @@ module Lex : sig
   val default : t
   val of_run_config : run_config -> t
   val profile_symbol : profile -> string
+  val profile_of_symbol : string -> profile
   val effective_trivia : t -> Trivia_profile.t
+  val set_profile : run_config -> profile -> run_config
+  val set_space_id : run_config -> int option -> run_config
+end
+
+module Config : sig
+  val find : t -> Extensions.Namespace.t option
+  val require_eof_override : Extensions.Namespace.t -> bool option
+  val trivia_profile : Extensions.Namespace.t -> Lex.profile option
+  val with_trivia_profile : t -> Lex.profile -> t
 end
 
 module Recover : sig
