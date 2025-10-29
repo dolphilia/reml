@@ -7,6 +7,36 @@
 
 open Token
 
+module Trivia_profile = Parser_run_config.Lex.Trivia_profile
+
+let current_trivia_profile_ref = ref Trivia_profile.strict_json
+
+let set_trivia_profile profile = current_trivia_profile_ref := profile
+let current_trivia_profile () = !current_trivia_profile_ref
+
+let has_hash_inline () =
+  let profile = !current_trivia_profile_ref in
+  profile.Trivia_profile.hash_inline
+
+let shebang_enabled () =
+  let profile = !current_trivia_profile_ref in
+  profile.Trivia_profile.shebang
+
+let shebang_applicable lexbuf =
+  shebang_enabled () && Lexing.lexeme_start lexbuf = 0
+
+let block_nested_enabled () =
+  let profile = !current_trivia_profile_ref in
+  let rec find = function
+    | [] -> false
+    | pair :: rest ->
+        if pair.Trivia_profile.start = "/*"
+           && pair.Trivia_profile.stop = "*/"
+        then pair.Trivia_profile.nested
+        else find rest
+  in
+  find profile.Trivia_profile.block
+
 exception Lexer_error of string * Ast.span
 
 (* 位置情報の追跡 *)
@@ -69,8 +99,20 @@ rule token = parse
   | newline                 { Lexing.new_line lexbuf; token lexbuf }
 
   (* コメント *)
+  | "#!" [^ '\r' '\n']* {
+      if shebang_applicable lexbuf then token lexbuf
+      else
+        let span = make_span lexbuf in
+        raise (Lexer_error ("Unexpected character: " ^ String.make 1 '#', span))
+    }
+  | "#" [^ '\r' '\n']* {
+      if has_hash_inline () then token lexbuf
+      else
+        let span = make_span lexbuf in
+        raise (Lexer_error ("Unexpected character: " ^ String.make 1 '#', span))
+    }
   | "//" [^ '\r' '\n']*     { token lexbuf }
-  | "/*"                    { block_comment 1 lexbuf }
+  | "/*"                    { block_comment (block_nested_enabled ()) 1 lexbuf }
 
   (* 演算子・区切り (長いものから優先) *)
   | "|>"        { PIPE }
@@ -161,15 +203,21 @@ rule token = parse
     }
 
 (* ブロックコメント (入れ子対応) *)
-and block_comment depth = parse
-  | "/*"   { block_comment (depth + 1) lexbuf }
-  | "*/"   { if depth = 1 then token lexbuf else block_comment (depth - 1) lexbuf }
-  | newline { Lexing.new_line lexbuf; block_comment depth lexbuf }
+and block_comment nested depth = parse
+  | "/*"   {
+      if nested then block_comment nested (depth + 1) lexbuf
+      else block_comment nested depth lexbuf
+    }
+  | "*/"   {
+      if depth = 1 then token lexbuf
+      else block_comment nested (depth - 1) lexbuf
+    }
+  | newline { Lexing.new_line lexbuf; block_comment nested depth lexbuf }
   | eof    {
       let span = make_span lexbuf in
       raise (Lexer_error ("Unterminated block comment", span))
     }
-  | _      { block_comment depth lexbuf }
+  | _      { block_comment nested depth lexbuf }
 
 (* 通常文字列 (エスケープ処理あり) *)
 and string_normal = parse
@@ -218,3 +266,11 @@ and string_multiline = parse
       raise (Lexer_error ("Unterminated multiline string", span))
     }
   | _ as c { Buffer.add_char string_buffer c; string_multiline lexbuf }
+
+{
+let read_token lexbuf =
+  let token = token lexbuf in
+  let start_pos = Lexing.lexeme_start_p lexbuf in
+  let end_pos = Lexing.lexeme_end_p lexbuf in
+  (token, start_pos, end_pos)
+}

@@ -1,8 +1,8 @@
-(** Core.Parse.Lex 橋渡しユーティリティ (LEXER-002 Step2)
+(** Core.Parse.Lex 橋渡しユーティリティ (LEXER-002 Step3)
 
     `RunConfig.extensions["config"].trivia` と `extensions["lex"]` を読み取り、
-    仕様で定義される `ConfigTriviaProfile` を再構成する。後続ステップ（LEXER-002
-    Step3 以降）で字句ユーティリティを実装する土台となる。
+    仕様で定義される `ConfigTriviaProfile` を再構成しつつ、`lexeme` /
+    `symbol` などのユーティリティを OCaml 実装で提供する。
 *)
 
 module Extensions = Parser_run_config.Extensions
@@ -172,4 +172,60 @@ module Bridge = struct
       Some (Namespace.add "space_id" (Extensions.Parser_id space_id) base)
     in
     ( { pack with space_id = Some space_id; namespace }, updated_config )
+end
+
+module Api = struct
+  type 'a reader = Lexing.lexbuf -> 'a
+
+  let ensure_profile pack = Lexer.set_trivia_profile pack.Pack.trivia
+
+  let config_trivia pack lexbuf =
+    ensure_profile pack;
+    ignore lexbuf
+
+  let leading pack reader lexbuf =
+    let () = config_trivia pack lexbuf in
+    reader lexbuf
+
+  let lexeme pack reader lexbuf =
+    let result = reader lexbuf in
+    let () = config_trivia pack lexbuf in
+    result
+
+  let trim pack reader lexbuf =
+    let () = config_trivia pack lexbuf in
+    let result = reader lexbuf in
+    let () = config_trivia pack lexbuf in
+    result
+
+  let unexpected_symbol span ~expected ~actual =
+    let message =
+      Printf.sprintf "`%s` が必要ですが `%s` が見つかりました" expected actual
+    in
+    raise (Lexer.Lexer_error (message, span))
+
+  let span_of_positions (start_pos : Lexing.position) (end_pos : Lexing.position) =
+    {
+      Ast.start = start_pos.Lexing.pos_cnum;
+      end_ = end_pos.Lexing.pos_cnum;
+    }
+
+  let symbol pack expected lexbuf =
+    let reader lexbuf =
+      let token, start_pos, end_pos = Lexer.read_token lexbuf in
+      let actual = Token.to_string token in
+      if String.equal actual expected then ()
+      else
+        let span = span_of_positions start_pos end_pos in
+        unexpected_symbol span ~expected ~actual
+    in
+    lexeme pack reader lexbuf
+
+  let token pack reader lexbuf =
+    let value = reader lexbuf in
+    let start_pos = Lexing.lexeme_start_p lexbuf in
+    let end_pos = Lexing.lexeme_end_p lexbuf in
+    let span = span_of_positions start_pos end_pos in
+    let () = config_trivia pack lexbuf in
+    (value, span)
 end

@@ -500,3 +500,19 @@ S5（検証とドキュメント更新）の結果共有。
 - `Custom` プロファイルで namespace が空の場合は `strict_json` を基底に復元している。CLI/LSP からカスタム設定を投入する際の表現形式（`line`/`block` のシリアライズ）を決め、Step3 で namespace への転写ロジックを拡張する。
 - `config_trivia` / `config_lexeme` / `config_symbol` の Parser 実装は未着手。`Pack.t` を用いて `lexer.mll` の空白・コメント処理を委譲するステップを次工程で実装する。
 - `ParserId` の払い出しは `parser_diag_state`（`compiler/ocaml/src/parser_diag_state.ml`）との統合が必要。`Bridge.with_space_id` を呼ぶタイミングを Step3 で設計し、Packrat との整合を確認する。
+
+## LEXER-002 Day3 lexeme/symbol ユーティリティ実装（2025-11-28）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/LEXER-002-proposal.md`](./2-5-proposals/LEXER-002-proposal.md#step-3-lexemesymbol-系ユーティリティ実装week33-day3)
+
+### 1. 作業サマリ
+- `Core.Parse.Lex.Api` に `config_trivia`/`leading`/`lexeme`/`trim`/`symbol`/`token` を追加し、`Lexer.read_token` を利用して期待記号の検証と `Ast.span` 付与を実装（compiler/ocaml/src/core_parse_lex.ml:177）。
+- `lexer.mll` に `set_trivia_profile`／`current_trivia_profile`／`read_token` を導入し、`hash_inline`・`shebang`・`block.nested` をプロファイルで切り替え可能にした（compiler/ocaml/src/lexer.mll:10,98,110,266）。
+
+### 2. 検証と確認事項
+- `Lexer.token` が後続トリビアを既に消費するため、`lexeme` 後段の処理は RunConfig 同期のフックに留めた。挙動は従来どおりで、`Lexer_error` の文言も変更なし（compiler/ocaml/src/lexer.mll:196）。
+- `Parser_expectation`／`parser_diag_state` の既存フローに変更なし。`span` 付与は単一トークン単位で行い、複合トークンの扱いは Step4 の統合時に再確認する。
+
+### 3. 残課題
+- `ParserId` を `Bridge.with_space_id` と結線し、`RunConfig.extensions["lex"]` へ戻すタイミングを Step4 で決定する。
+- `doc_comment` 抽出および診断拡張の配線が未着手。プロファイルでコメントを収集できるよう `lexer.mll` のフックを整理する必要がある。

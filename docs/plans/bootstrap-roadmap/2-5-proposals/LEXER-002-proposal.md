@@ -58,6 +58,9 @@
 - `lexer.mll` 内で担っている空白・コメント処理を `Core.Parse.Lex` に委譲するため、`skip_trivia` 相当の内部関数を抽出し、Menhir ランナーでもコメント処理が二重にならないように責務境界を定義する[^lexer-impl]。
 - 仕様が求める診断情報（期待集合と farthest offset）に影響しないかを確認するため、`parser_diag_state` と `Parser_expectation` の更新ポイントを点検し、必要に応じて TODO を `docs/notes/core-parse-diagnostics-gap.md` へ登録する。
 
+- 2025-11-28 実施: `Core.Parse.Lex.Api` を追加し、`config_trivia`/`leading`/`lexeme`/`trim`/`symbol`/`token` を公開して `Lexer` との橋渡しを実装（compiler/ocaml/src/core_parse_lex.ml:177）。`symbol` に `Lexer.read_token` を用いた期待記号検証を組み込み、齟齬時は `Lexer_error` で位置付き診断を返すようにした（同:213）。  
+  `lexer.mll` では `set_trivia_profile`／`current_trivia_profile`／`read_token` を導入し、`hash_inline`・`shebang`・`block.nested` プロファイルを反映する分岐を実装（compiler/ocaml/src/lexer.mll:10,98,110,266）。`lexeme` 後段のトリビア消費は既存 `Lexer.token` が担うため軽量なフックに留め、`ParserId` と `doc_comment` の共有は次ステップに送った。
+
 ### Step 4: parser_driver / CLI 統合（Week33 Day3-4）
 - `parser_driver.run` で `Run_config.Lex.of_run_config` を取得し、`Core.Parse.Lex` に橋渡しするコードパスを追加する。`extensions["lex"]` が未設定の場合は `ConfigTriviaProfile::strict_json` を既定とし、`space_id` が得られた際は `Extensions.with_namespace` で再格納する。
 - `lexer.mll` が返す `Token` と `Core.Parse.Lex` が維持する `Span` / `ParserId` を同期させるため、`lexer.mll` に軽量なフック（例: `Core_parse_lex.Record.consume`）を挿入し、コメントスキップを統一的に計測可能にする。
