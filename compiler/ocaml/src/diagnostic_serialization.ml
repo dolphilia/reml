@@ -2,6 +2,8 @@ open Diagnostic
 
 module Json = Yojson.Basic
 
+let other_domain_extension_key = "domain.other"
+
 type normalized_span = {
   file : string;
   start_line : int;
@@ -24,6 +26,19 @@ type normalized_hint = {
   message : string option;
   actions : normalized_fixit list;
 }
+
+let normalize_domain_and_extensions domain extensions =
+  match domain with
+  | None -> (None, Extensions.remove other_domain_extension_key extensions)
+  | Some (Other raw) ->
+      let sanitized = Domain.sanitize_other raw in
+      let normalized_domain = Some (Other sanitized) in
+      let updated_extensions =
+        Extensions.set other_domain_extension_key (`String sanitized) extensions
+      in
+      (normalized_domain, updated_extensions)
+  | Some value ->
+      (Some value, Extensions.remove other_domain_extension_key extensions)
 
 type normalized_diagnostic = {
   id : string option;
@@ -71,6 +86,9 @@ let normalize_hint ({ message; actions } : hint) =
 
 let of_diagnostic (diag : Diagnostic.t) : normalized_diagnostic =
   let missing_audit = Audit_envelope.missing_required_keys diag.audit in
+  let domain, extensions =
+    normalize_domain_and_extensions diag.domain diag.extensions
+  in
   if missing_audit <> [] then (
     let message =
       Printf.sprintf "Diagnostic.audit に必須メタデータが不足しています: %s"
@@ -87,7 +105,7 @@ let of_diagnostic (diag : Diagnostic.t) : normalized_diagnostic =
     message = diag.message;
     severity = diag.severity;
     severity_hint = diag.severity_hint;
-    domain = diag.domain;
+    domain;
     codes = diag.codes;
     primary = normalize_span diag.primary;
     secondary = List.map normalize_secondary diag.secondary;
@@ -95,7 +113,7 @@ let of_diagnostic (diag : Diagnostic.t) : normalized_diagnostic =
     fixits = List.map normalize_fixit diag.fixits;
     expected = diag.expected;
     schema_version = Diagnostic.schema_version;
-    extensions = diag.extensions;
+    extensions;
     audit_metadata = diag.audit_metadata;
     audit = diag.audit;
     timestamp = diag.timestamp;
@@ -140,11 +158,46 @@ let domain_to_string = function
         | Audit -> "audit"
         | Security -> "security"
         | Cli -> "cli"
-        | Other value ->
-            let trimmed = String.trim value in
-            if trimmed = "" then "other" else trimmed
+        | Other _ -> "other"
       in
       Some label
+
+let domain_of_json ?extensions json =
+  match json with
+  | `Null -> None
+  | `String value ->
+      let trimmed = String.trim value in
+      if String.equal trimmed "" then None
+      else
+        let normalized = String.lowercase_ascii trimmed in
+        let to_other label =
+          let sanitized = Domain.sanitize_other label in
+          Some (Other sanitized)
+        in
+        (match normalized with
+        | "effect" -> Some Effect
+        | "target" -> Some Target
+        | "plugin" -> Some Plugin
+        | "lsp" -> Some Lsp
+        | "parser" -> Some Parser
+        | "type" -> Some Type
+        | "config" -> Some Config
+        | "runtime" -> Some Runtime
+        | "network" -> Some Network
+        | "data" -> Some Data
+        | "audit" -> Some Audit
+        | "security" -> Some Security
+        | "cli" -> Some Cli
+        | "other" -> (
+            match extensions with
+            | Some ext -> (
+                match Extensions.get other_domain_extension_key ext with
+                | Some (`String label) when String.trim label <> "" ->
+                    to_other label
+                | _ -> to_other trimmed)
+            | None -> to_other trimmed)
+        | _ -> to_other trimmed)
+  | _ -> None
 
 let expectation_to_json : expectation -> Json.t = function
   | Token s -> `Assoc [ ("kind", `String "token"); ("value", `String s) ]

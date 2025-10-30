@@ -20,11 +20,11 @@ module Extensions = struct
   let empty : t = []
   let is_empty = function [] -> true | _ -> false
 
-let set key value entries =
-  let filtered =
+  let remove key entries =
     List.filter (fun (k, _) -> not (String.equal k key)) entries
-  in
-  (key, value) :: filtered
+
+let set key value entries =
+  (key, value) :: remove key entries
 
 let to_json entries = `Assoc (List.rev entries)
 

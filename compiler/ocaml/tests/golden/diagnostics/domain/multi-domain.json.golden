@@ -1,0 +1,99 @@
+{
+  "diagnostics": [
+    {
+      "message": "プラグインの署名が検証できません",
+      "severity": "error",
+      "schema_version": "2.0.0-draft",
+      "domain": "plugin",
+      "codes": ["plugin.bundle.signature_invalid"],
+      "primary": {
+        "file": "plugin-demo.reml",
+        "start_line": 0,
+        "start_col": 0,
+        "end_line": 0,
+        "end_col": 0
+      },
+      "extensions": {
+        "plugin": {
+          "bundle_id": "demo.bundle",
+          "signature": {
+            "provided": "sha256:deadbeef",
+            "status": "invalid"
+          }
+        }
+      },
+      "audit": {
+        "metadata": {
+          "plugin.bundle_id": "demo.bundle",
+          "plugin.signature.status": "invalid"
+        },
+        "audit_id": "cli/19700101T000000Z#0",
+        "change_set": null
+      },
+      "audit_metadata": {
+        "plugin.bundle_id": "demo.bundle",
+        "plugin.signature.status": "invalid"
+      },
+      "timestamp": "1970-01-01T00:00:00Z"
+    },
+    {
+      "message": "LSP チャネルで内部エラーが発生しました",
+      "severity": "warning",
+      "schema_version": "2.0.0-draft",
+      "domain": "lsp",
+      "codes": ["lsp.transport.internal_error"],
+      "primary": {
+        "file": "",
+        "start_line": 0,
+        "start_col": 0,
+        "end_line": 0,
+        "end_col": 0
+      },
+      "extensions": {
+        "lsp": {
+          "method": "textDocument/hover",
+          "trace_id": "rpc-001"
+        }
+      },
+      "audit": {
+        "metadata": {
+          "lsp.request": "textDocument/hover",
+          "lsp.trace_id": "rpc-001"
+        },
+        "audit_id": "cli/19700101T000000Z#1",
+        "change_set": null
+      },
+      "audit_metadata": {
+        "lsp.session": "local-demo"
+      },
+      "timestamp": "1970-01-01T00:00:00Z"
+    },
+    {
+      "message": "カスタム診断カテゴリ",
+      "severity": "info",
+      "schema_version": "2.0.0-draft",
+      "domain": "other",
+      "codes": ["demo.custom.category"],
+      "primary": {
+        "file": "custom.json",
+        "start_line": 10,
+        "start_col": 2,
+        "end_line": 10,
+        "end_col": 8
+      },
+      "extensions": {
+        "domain.other": "custom_pipeline",
+        "diagnostic.v2": {
+          "category": "custom_pipeline"
+        }
+      },
+      "audit": {
+        "metadata": {},
+        "audit_id": "cli/19700101T000000Z#2",
+        "change_set": null
+      },
+      "audit_metadata": {},
+      "timestamp": "1970-01-01T00:00:00Z"
+    }
+  ]
+}

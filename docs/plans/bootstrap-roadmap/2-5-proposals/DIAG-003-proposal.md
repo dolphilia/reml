@@ -80,6 +80,12 @@
    - CLI/LSP 出力：`cli/json_formatter.ml` と `tooling/lsp/lsp_transport.ml` でドメインごとのカラーリング・フィルタリングを調整し、`Effect` は `effects` メッセージ群、`Plugin` は `plugin.bundle` 監査へのリンクが辿れるようにする。  
    - 調査: `tooling/ci/collect-iterator-audit-metrics.py` における `domain_counts` の集計列挙を特定し、新 enum へ対応する差分を洗い出す。
 
+   #### Step3 実施結果（2025-11-27 更新）
+   - ✅ `compiler/ocaml/src/diagnostic_serialization.ml` で `Other` ドメインを `"other"` 固定文字列として出力しつつ、`extensions["domain.other"]` に元の識別子を保持する正規化ロジックを追加。`domain_of_json` を拡張し、未知ドメインは `Other` 扱いで丸める互換経路を整備。  
+   - ✅ CLI/LSP 経路は新しい正規化済み拡張を透過的に利用できるようになり、`compiler/ocaml/tests/test_cli_diagnostics.ml` に `domain = "type"` のアサーションと `Other` ドメイン用のシリアライズ検証（`domain.other = "plugin_bundle"`）を追加。  
+   - ✅ `tooling/json-schema/diagnostic-v2.schema.json` の `domain` を仕様語彙（`syntax`〜`other` + 既存互換）へ更新し、新しいゴールデン `compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden` を追加して Plugin/Lsp/Other ケースが `scripts/validate-diagnostic-json.sh` の既定ターゲットで検証されるようにした。  
+   - ⚠ `tooling/ci/collect-iterator-audit-metrics.py` の `domain` 集計は現状読み取り専用のまま。Phase 2-7 で `diagnostics.domain_coverage` 指標を実装する TODO を Step4 以降へ引き継ぐ必要がある。
+
 4. **監査メタデータとメトリクス整合（Week31 Day4-5）**  
    - `Diagnostic.extensions["effects"]` に加えて `extensions["capability"]`, `extensions["plugin"]`, `extensions["lsp"]` を追加し、`RunConfig.extensions["lex"]`（LEXER-002）や `Capability` 監査（EFFECT-003）から受け取った Stage/Capability 情報を格納できるようにする。  
    - `AuditEnvelope.metadata` に `event.domain`, `event.kind`, `capability.ids[*]`, `plugin.bundle_id` を追加し、`docs/spec/3-6-core-diagnostics-audit.md` のキーセットと突合するユニットテストを `compiler/ocaml/tests/test_cli_diagnostics.ml` / `test_type_inference.ml` へ実装。  

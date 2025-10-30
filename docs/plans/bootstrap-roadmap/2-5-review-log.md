@@ -575,3 +575,21 @@ S5（検証とドキュメント更新）の結果共有。
 2. JSON/LSP 変換で未知ドメインを `"other"` + `extensions["domain.other"]` に転写するフォーマットを設計し、スキーマとゴールデンを更新する。  
 3. `collect-iterator-audit-metrics.py` などのメトリクスで、ドメイン列挙をテーブル駆動に置き換える。`diagnostics.domain_coverage`（新規）を導入し、RunConfig/lex シムと同期して監査網羅率を測定する。  
 4. `docs/spec/0-2-glossary.md` へ OCaml 実装の反映予定と用語整備方針を追記し、Phase 2-7 `diagnostic-domain` タスクに残課題（`Other(Str)` の許容範囲など）を共有する。
+
+## DIAG-003 Step3 シリアライズ整備（2025-11-27）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md`](./2-5-proposals/DIAG-003-proposal.md#step3-%E3%82%B7%E3%83%AA%E3%82%A2%E3%83%A9%E3%82%A4%E3%82%BAcli-lsp-%E5%87%BA%E5%8A%9B%E3%81%A8%E3%82%B9%E3%82%AD%E3%83%BC%E3%83%9E%E6%9B%B4%E6%96%B0week31-day3-4)
+
+### 1. 作業サマリ
+- `compiler/ocaml/src/diagnostic_serialization.ml` にドメイン正規化ヘルパを追加し、`Other` ドメインは `"other"` を出力しつつ `extensions["domain.other"]` に元の識別子を保持するように変更。未知ドメインは自動で `Other` へ退避できるよう `domain_of_json` を拡張。  
+- CLI 経路では `compiler/ocaml/tests/test_cli_diagnostics.ml` に `domain = "type"` のアサーションと `Other` ドメインのシリアライズ検証を追加し、`Diagnostic.Extensions` に `remove` API を導入して余分な `domain.other` を除去。  
+- `tooling/json-schema/diagnostic-v2.schema.json` にドメイン列挙を定義し、新規ゴールデン `compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden` を追加して Plugin/Lsp/Other ケースを `scripts/validate-diagnostic-json.sh` の既定ターゲットへ組み込み。既存 Effect 系ゴールデンは `domain = "type"` に更新。
+
+### 2. 検証
+- `test_cli_diagnostics.ml` のローカルテストを追加したため、`dune runtest compiler/ocaml/tests/test_cli_diagnostics.ml` の実行を推奨（本作業では未実行）。  
+- ゴールデン更新後に `scripts/validate-diagnostic-json.sh compiler/ocaml/tests/golden/diagnostics` を再走させ、Plugin/Lsp/Other サンプルがスキーマを通過することを確認予定。
+
+### 3. TODO / 引き継ぎ
+- `tooling/ci/collect-iterator-audit-metrics.py` へ `diagnostics.domain_coverage` 指標を導入し、Plugin/Lsp/Other を含む語彙が CI で監視されるようにする（Phase 2-7 へ移管）。  
+- `Domain` 列挙の `Syntax` / `Manifest` / `Regex` / `Template` 追加と用語集更新は Step4 以降で実施。  
+- `docs/spec/0-2-glossary.md` と `docs/spec/3-6-core-diagnostics-audit.md` に `domain.other` 正規化の脚注を追加するフォローアップを 2-7 `diagnostic-domain` タスクへ登録。

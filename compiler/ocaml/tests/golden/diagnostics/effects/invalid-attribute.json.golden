@@ -154,7 +154,7 @@
         "stage は文字列または StageId",
         "指定された値: true"
       ],
-      "domain": "型システム",
+      "domain": "type",
       "code": "effects.syntax.invalid_attribute",
       "severity": "error",
       "message": "効果属性 @requires_capability(true) は無効です",

@@ -33,7 +33,30 @@
       "description": "LSP Diagnostics に合わせた数値表現。1=Error, 2=Warning, 3=Info, 4=Hint。"
     },
     "domain": {
-      "type": ["string", "null"]
+      "type": ["string", "null"],
+      "enum": [
+        "syntax",
+        "parser",
+        "type",
+        "effect",
+        "runtime",
+        "config",
+        "manifest",
+        "target",
+        "security",
+        "plugin",
+        "cli",
+        "lsp",
+        "regex",
+        "template",
+        "text",
+        "network",
+        "data",
+        "audit",
+        "other",
+        null
+      ],
+      "description": "診断ドメインの語彙。`other` を使用する場合は `extensions[\"domain.other\"]` に元の識別子（snake_case 推奨）を格納する。"
     },
     "codes": {
       "type": "array",

@@ -3,7 +3,7 @@
     {
       "code": "effects.stage_resolution.report",
       "severity": "info",
-      "domain": "型システム",
+      "domain": "type",
       "message": "効果 Stage 解決結果のスナップショット",
       "notes": [],
       "location": {

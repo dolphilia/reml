@@ -153,7 +153,7 @@
         "効果タグは識別子または文字列で指定してください",
         "指定された効果タグ: true"
       ],
-      "domain": "型システム",
+      "domain": "type",
       "code": "effects.syntax.invalid_attribute",
       "severity": "error",
       "message": "効果属性 @allows_effects(true) は無効です",

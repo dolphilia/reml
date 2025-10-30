@@ -95,11 +95,59 @@ let test_json_output () =
     |> Yojson.Basic.Util.member "message"
     |> Yojson.Basic.Util.to_string
   in
+  let domain =
+    first_diag
+    |> Yojson.Basic.Util.member "domain"
+    |> Yojson.Basic.Util.to_string
+  in
 
   assert (severity = "error");
   assert (code = "E7001");
   assert (message = "型が一致しません");
+  assert (domain = "type");
   Printf.printf "✓ JSON出力テスト成功\n"
+
+let test_other_domain_serialization () =
+  let start_pos =
+    Diagnostic.{ filename = "other-domain.reml"; line = 1; column = 1; offset = 0 }
+  in
+  let end_pos =
+    Diagnostic.{ filename = "other-domain.reml"; line = 1; column = 5; offset = 4 }
+  in
+  let span = Diagnostic.{ start_pos; end_pos } in
+  let diag =
+    Diagnostic.Builder.create ~severity:Diagnostic.Warning
+      ~domain:(Diagnostic.Domain.other "plugin_bundle")
+      ~timestamp:"1970-01-01T00:00:00Z"
+      ~message:"プラグイン診断のテスト" ~primary:span ()
+    |> Diagnostic.Builder.set_primary_code "demo.domain.plugin"
+    |> Diagnostic.Builder.add_note (None, "domain other シリアライズ確認")
+    |> Diagnostic.Builder.build
+  in
+  let json_str =
+    Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
+  in
+  let json = Yojson.Basic.from_string json_str in
+  let diag_json =
+    json |> Yojson.Basic.Util.member "diagnostics"
+    |> Yojson.Basic.Util.to_list |> List.hd
+  in
+  let domain =
+    Yojson.Basic.Util.(diag_json |> member "domain" |> to_string)
+  in
+  assert (domain = "other");
+  let extensions =
+    Yojson.Basic.Util.(diag_json |> member "extensions" |> to_assoc)
+  in
+  let other_value =
+    match List.assoc_opt "domain.other" extensions with
+    | Some value -> Yojson.Basic.Util.to_string value
+    | None ->
+        Printf.printf "%s\n" json_str;
+        failwith "domain.other extension was not found"
+  in
+  assert (other_value = "plugin_bundle");
+  Printf.printf "✓ Other ドメインのシリアライズテスト成功\n"
 
 let test_parser_expectation_snapshot () =
   Diagnostic.reset_audit_sequence ();
@@ -615,6 +663,7 @@ let () =
   Printf.printf "\n=== CLI 診断出力テスト ===\n";
   test_color_output ();
   test_json_output ();
+  test_other_domain_serialization ();
   test_info_hint_snapshot ();
   test_parser_expectation_snapshot ();
   test_stage_extension_snapshot ();
