@@ -555,3 +555,23 @@ S5（検証とドキュメント更新）の結果共有。
 ### 3. 残課題
 - `Core_parse_lex.Record.consume` の集計と `space_id` 警告は引き続き未実装。`Core_parse_lex` チームと連携し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ転記予定。
 - `docs/spec/2-3-lexer.md` へ doc_comment 収集の制限事項を追記する判断が残っている。`lexer.mll` の TODO 解消時に脚注更新が必要。
+
+## DIAG-003 Step1 診断ドメイン棚卸し（2025-12-03）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md`](./2-5-proposals/DIAG-003-proposal.md)
+
+### 1. 調査サマリ
+- OCaml 側の `error_domain` 列挙は 9 値（`Parser` / `Type` / `Config` / `Runtime` / `Network` / `Data` / `Audit` / `Security` / `CLI`）のみで、仕様が要求する `Effect` / `Target` / `Plugin` / `Lsp` / `Manifest` / `Syntax` / `Regex` / `Template` / `Text` / `Other(Str)` が未定義（`compiler/ocaml/src/diagnostic.ml:54-63`）。  
+- `domain_to_string` および CLI/LSP 変換は上記 9 値を前提にしており、未知ドメインはフィールド欠落として出力される。`Effect` 系診断に必要なメタデータを転送できない状態を確認（`compiler/ocaml/src/diagnostic_serialization.ml:125-139`、`compiler/ocaml/src/cli/json_formatter.ml:108-198`、`tooling/lsp/lsp_transport.ml:68-126`）。  
+- 生成側では `parser_driver` が `Diagnostic.Parser` / `Diagnostic.Config` を強制し、他領域は未分類のまま。CI の集計ロジックも `domain == "parser"` など限定的な比較に留まっている（`compiler/ocaml/src/parser_driver.ml:58-145`、`tooling/ci/collect-iterator-audit-metrics.py:334-352`）。
+
+### 2. 仕様差分と語彙整理
+- Chapter 3 の `DiagnosticDomain` は 12 項目 + `Other(Str)` を定義し、`Effect` / `Target` / `Plugin` などに対応する `extensions`・監査キーを必須としている（`docs/spec/3-6-core-diagnostics-audit.md:178-191,324-343,905-999`）。  
+- `Effect` ドメインは Stage/Capability 監査と直結し、`extensions["effects"].stage.*` と `AuditEnvelope.metadata["effect.stage.required"]` 等を出力する契約がある（`docs/spec/3-8-core-runtime-capability.md:132-285`）。  
+- `Plugin` / `Target` / `Regex` / `Template` などは各章で専用メタデータを定義しており、RunConfig/lex シム計画（PARSER-002 / LEXER-002 / EFFECT-003）で共有するキーを統一する必要がある（`docs/spec/4-7-core-parse-plugin.md:120-188`、`docs/spec/2-2-core-combinator.md:274`、`docs/spec/2-6-execution-strategy.md:259`、`docs/spec/3-3-core-text-unicode.md:93,428`）。
+
+### 3. TODO / 引き継ぎ
+1. `Diagnostic.error_domain` を仕様語彙へ拡張し、`Other of string` を含む OCaml 列挙を定義する（DIAG-003 Step2）。  
+2. JSON/LSP 変換で未知ドメインを `"other"` + `extensions["domain.other"]` に転写するフォーマットを設計し、スキーマとゴールデンを更新する。  
+3. `collect-iterator-audit-metrics.py` などのメトリクスで、ドメイン列挙をテーブル駆動に置き換える。`diagnostics.domain_coverage`（新規）を導入し、RunConfig/lex シムと同期して監査網羅率を測定する。  
+4. `docs/spec/0-2-glossary.md` へ OCaml 実装の反映予定と用語整備方針を追記し、Phase 2-7 `diagnostic-domain` タスクに残課題（`Other(Str)` の許容範囲など）を共有する。

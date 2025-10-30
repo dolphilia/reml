@@ -34,6 +34,34 @@
    - `docs/spec/3-6-core-diagnostics-audit.md:160-215` と `docs/spec/3-8-core-runtime-capability.md:210-260`、`docs/spec/4-7-core-parse-plugin.md:120-188` を再確認し、`Effect` / `Target` / `Plugin` / `Lsp` / `Other` の定義根拠と関連メタデータ（例: `effect.stage.required`, `bridge.stage.reload`, `plugin.bundle.signature`）を表形式で整理する。  
    - `rg "error_domain"`、`rg "DiagnosticDomain"`、`rg "extensions\[\"effects\"\]"` を用いて利用箇所を列挙し、Phase 2-7 の RunConfig/lex シム計画（PARSER-002 / LEXER-002 / EFFECT-003）とのインターフェイスを棚卸しする。
 
+   #### Step1 棚卸し結果（2025-11-26 更新）
+   - ✅ OCaml 実装の診断ドメインは `Parser` / `Type` / `Config` / `Runtime` / `Network` / `Data` / `Audit` / `Security` / `CLI` の 9 件に固定されており、仕様が要求する `Effect` / `Target` / `Plugin` / `Lsp` / `Manifest` / `Syntax` / `Regex` / `Template` / `Text` / `Other(Str)` が未定義のままである（`compiler/ocaml/src/diagnostic.ml:54-63`、`compiler/ocaml/src/diagnostic_serialization.ml:125-139`）。  
+   - ✅ JSON/LSP 出力も同じ列挙を前提にしており、未知ドメインを安全に扱うフォールバックが存在しない。CLI と LSP は `domain_to_string` が `None` を返した場合にフィールドを欠落させるため、仕様で必須とされる `Effect` や `Target` 系メタデータを伝播できない（`compiler/ocaml/src/cli/json_formatter.ml:108-198`、`tooling/lsp/lsp_transport.ml:68-126`）。  
+   - ✅ `parser_driver` 系の生成経路では `Diagnostic.Parser` / `Diagnostic.Config` のみ利用実績があり、型・効果・プラグイン由来の診断は未分類のまま出力されている。CI でも `diag.get("domain") == "parser"` といった特定値判定に留まっており、新語彙導入時に集計指標の見直しが必要（`compiler/ocaml/src/parser_driver.ml:58-145`、`tooling/ci/collect-iterator-audit-metrics.py:334-352`）。
+
+   **現行実装の棚卸し表**
+
+   | 観点 | 現状 | 主な参照 | 備考 |
+   |------|------|----------|------|
+   | OCaml 列挙 | `Parser` / `Type` / `Config` / `Runtime` / `Network` / `Data` / `Audit` / `Security` / `CLI` | `compiler/ocaml/src/diagnostic.ml:54-63` | 仕様 3-6 の語彙と最大 8 件乖離。 |
+   | JSON/LSP 変換 | 9 件のみを `domain_to_string` で文字列化 | `compiler/ocaml/src/diagnostic_serialization.ml:125-139`<br>`compiler/ocaml/src/cli/json_formatter.ml:108-198`<br>`tooling/lsp/lsp_transport.ml:68-126` | 未知ドメインは `None` 扱いでフィールド欠落。監査メタデータ追跡不可。 |
+   | 生成経路 | `parser_driver` が `Parser` / `Config` を固定設定、その他経路は `None` | `compiler/ocaml/src/parser_driver.ml:58-145` | 型/効果/プラグイン診断で適切なドメインが設定されず、CLI/LSP フィルタリングが困難。 |
+   | テスト・メトリクス | ゴールデンは `parser` / `config` / `type` / `cli` のみ | `compiler/ocaml/tests/golden/diagnostics/*`<br>`tooling/ci/collect-iterator-audit-metrics.py:334-352` | スキーマ更新時に追加サンプルが必須。 |
+
+   **仕様上の語彙整理**
+
+   | ドメイン / 語彙 | 定義箇所 | 関連メタデータ・備考 |
+   |-----------------|----------|-----------------------|
+   | 基本 12 項目（`Syntax` / `Parser` / `Type` / `Effect` / `Runtime` / `Config` / `Manifest` / `Target` / `Security` / `Plugin` / `Cli` / `Lsp` / `Other(Str)`） | `docs/spec/3-6-core-diagnostics-audit.md:178-191` | `Other(Str)` は snake_case 推奨。実装は `Manifest` / `Effect` / `Plugin` / `Lsp` を未提供。 |
+   | `Effect` ドメイン | `docs/spec/3-6-core-diagnostics-audit.md:324-343`<br>`docs/spec/3-8-core-runtime-capability.md:132-285` | `extensions["effects"]` に `stage.*` / `iterator.*` を必須出力、`AuditEnvelope.metadata["effect.stage.required"]` 等と同期。 |
+   | `Target` / `Manifest` | `docs/spec/3-6-core-diagnostics-audit.md:963-999`<br>`docs/spec/3-8-core-runtime-capability.md:254-285` | `extensions["target"]` に `profile_id` / `triple` / `capabilities` を記録し、監査ログ `event.domain = "target"` と整合。 |
+   | `Plugin` | `docs/spec/4-7-core-parse-plugin.md:120-188` | `AuditEnvelope.metadata["plugin.signature.*"]` と `extensions["plugin"].bundle_id` が必須。 |
+   | `Regex` | `docs/spec/2-2-core-combinator.md:274`<br>`docs/spec/2-6-execution-strategy.md:259`<br>`docs/spec/3-3-core-text-unicode.md:428` | `extensions["regex"].unicode_profile` や RunConfig `extensions["regex"]` と連携。 |
+   | `Text` | `docs/spec/3-3-core-text-unicode.md:93` | Unicode 正規化フェーズで `DiagnosticDomain::Text` を利用。 |
+   | `Template` | `docs/spec/3-6-core-diagnostics-audit.md:905-939` | テンプレート DSL 用の `extensions["template"]` を定義済み。 |
+
+   - Phase 2-7 以降の RunConfig / lex シム（PARSER-002 / LEXER-002 / EFFECT-003）で共有する `extensions["lex"]` / `extensions["effects"]` / `extensions["plugin"]` / `extensions["target"]` の命名規則はすべて上記仕様に依存する。棚卸し結果を関連計画へ展開し、列挙追加とメタデータ整備を同時に進める必要がある。
+
 2. **OCaml モデル層の列挙拡張と移行補助実装（Week31 Day2-3）**  
    - `type error_domain` を `Effect | Target | Plugin | Lsp | Runtime | Parser | Type | Config | Network | Data | Audit | Security | Cli | Other of string` に改修し、既存の 9 ドメインは旧値を維持したまま `Other _` へ落とし込まない方針を明記する。  
    - `Diagnostic.Builder.set_domain` と `Diagnostic.make` 系 API に `Other of string` を渡すためのヘルパ（`Diagnostic.Domain.other : string -> t`）を追加し、コンパイル エラー箇所を `Week31 Day2` 中に解消する。  
