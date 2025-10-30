@@ -35,7 +35,7 @@ fn run_partial<T>(p: Parser<T>, src: String, cfg: RunConfig = {}) -> ParseResult
 
 ### B-2. RunConfig のコアスイッチ
 
-> **実装メモ（Phase 2-5）**: OCaml 実装では `compiler/ocaml/src/parser_run_config.ml` に `RunConfig` レコードと `with_extension` / `find_extension` / `Legacy.bridge` を追加し、Packrat/左再帰・診断スイッチを段階的に解放する準備を整えた。Step 6 では CLI (`compiler/ocaml/src/main.ml`)・テスト・LSP (`tooling/lsp/run_config_loader.ml`) が同じ `RunConfig` を注入し、`parser_driver.run` と `Core.Parse.Streaming.run_stream` の設定が一貫する体制へ移行した[^runconfig-exec-phase25].
+> **実装メモ（Phase 2-5）**: OCaml 実装では `compiler/ocaml/src/parser_run_config.ml` に `RunConfig` レコードと `with_extension` / `find_extension` / `Legacy.bridge` を追加し、Packrat/左再帰・診断スイッチを段階的に解放する準備を整えた。Step 6 では CLI (`compiler/ocaml/src/main.ml`)・テスト・LSP (`tooling/lsp/run_config_loader.ml`) が同じ `RunConfig` を注入し、`parser_driver.run` と `Core.Parse.Streaming.run_stream` の設定が一貫する体制へ移行した[^runconfig-exec-phase25]。同ステップで `RunConfig.extensions["lex"]` を `Core.Parse.Lex.Bridge` に渡し、字句プロファイルと `ParserId` を共有できるようにしている[^runconfig-lex-phase25-step6].
 
 `RunConfig` はバッチ解析に必要な最小限のスイッチだけを提供し、燃料制御や追加の安全弁は拡張モジュール側で定義する。
 
@@ -384,3 +384,6 @@ fn container_profile(profile: &str) -> RunConfig = match profile {
 
 [^runconfig-exec-phase25]:
     2025-11-18 更新。`PARSER-002` Step 1 で OCaml 実装に `Parser_run_config` モジュールを導入し、`RunConfig` の各フィールドと拡張マップ操作を仕様通りに表現。今後の Step 2 で `parser_driver` / `run_stream` へ伝播する基盤が整った。2025-11-24 追記。Step 6 で CLI (`compiler/ocaml/src/main.ml`)・テスト (`compiler/ocaml/tests/run_config_tests.ml`)・LSP (`tooling/lsp/run_config_loader.ml`) が同じ `RunConfig` を再利用し、`parser-runconfig-packrat.json.golden` を通じて `parser.runconfig_switch_coverage` と `parser.runconfig_extension_pass_rate` を監視できるようにした。
+
+[^runconfig-lex-phase25-step6]:
+    2025-11-30 追記。`Core.Parse.Lex.Bridge.derive` が `RunConfig.extensions["lex"]` と `extensions["config"]` を同期させ、`ConfigTriviaProfile` と `space_id` を `lexer.mll` の `set_trivia_profile`／`read_token` に供給する（`compiler/ocaml/src/core_parse_lex.ml:119`, `:170`）。`parser_driver.run` はこのブリッジを介して `Core.Parse.Lex.Api.lexeme` を利用し、CLI/LSP も `lex.profile` を同じ経路で注入する（`compiler/ocaml/src/parser_driver.ml:170`, `compiler/ocaml/src/main.ml:608`, `tooling/lsp/run_config_loader.ml:130`）。CI では `lexer.shared_profile_pass_rate` メトリクスで共有設定の適用率を測定している（`tooling/ci/collect-iterator-audit-metrics.py:732`）。

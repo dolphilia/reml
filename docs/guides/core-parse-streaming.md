@@ -184,3 +184,34 @@ type StreamMeta = {
 4. 共有設定を追加する場合は `docs/notes/core-parser-migration.md` の TODO リストに追記し、`PARSER-003`（Packrat/左再帰）・`LEXER-002`（Lex シム）・`EXEC-001`（ストリーミング PoC）で再利用できるかをレビューする。
 
 これらの手順により、CLI/LSP/ストリーミングが同一 RunConfig を基点に動作し、Phase 2-5 で導入した指標（`parser.runconfig_switch_coverage` / `parser.runconfig_extension_pass_rate`）を通じて設定の逸脱を検知できる。
+
+### 9.2 Core.Parse.Lex プロファイル共有サンプル（Phase 2-5 Step6）
+
+Phase 2-5 Step6 で OCaml 実装が導入した `Core.Parse.Lex.Bridge` と `Core.Parse.Lex.Api` を利用すると、ストリーミング経路もバッチと同じ `lexeme` / `symbol` / `leading` 処理を共有できる。以下のように `RunConfig` を構築し、`Bridge.derive` で `ConfigTriviaProfile` を復元したうえで `Lexer.read_token` を `Core.Parse.Lex.Api` で包む。
+
+```reml
+let builder =
+  RunConfig::builder()
+    .with_extension("lex", {
+      profile: "strict_json",
+      line: ["//"],
+      block: { start: "/*", end: "*/", nested: true },
+      shebang: true,
+      space_id: ParserId::JsonStrict,
+    })
+    .with_extension("stream", {
+      resume_hint: { min_bytes: 4096 },
+    });
+
+let run_config = builder.build();
+let (lex_pack, cfg) = Core.Parse.Lex.Bridge.derive(run_config);
+
+// lexer 呼び出しは Core.Parse.Lex.Api で包む
+let read_token = fn lexbuf ->
+  Core.Parse.Lex.Api.lexeme(lex_pack, Lexer.read_token, lexbuf);
+```
+
+`lex_pack` は `ConfigTriviaProfile` や `space_id` を保持し、`cfg` は `extensions["config"].trivia` を同期済みの `RunConfig`。`StreamDriver`／`run_stream` に渡す前に `cfg` を採用し、`read_token` で字句を取得することで、バッチ経路と同じトリビア設定・監査キー（`lexer.shared_profile_pass_rate` 等）をストリーミング側でも確保できる[^stream-lex-bridge-phase25].
+
+[^stream-lex-bridge-phase25]:
+    2025-11-30 更新。`Core.Parse.Lex.Bridge` が `RunConfig.extensions["lex"]` と `extensions["config"]` を同期し、`lexeme`/`symbol` が `RunConfig` 由来のプロファイルを利用できるようになった（`compiler/ocaml/src/core_parse_lex.ml:119`, `:170`）。`parser_driver.run` は `lex_pack` と更新済み `RunConfig` を組み合わせて Menhir ドライバを初期化し（`compiler/ocaml/src/parser_driver.ml:170`）、CLI/LSP も同じ `lex.profile` を注入する（`compiler/ocaml/src/main.ml:608`, `tooling/lsp/run_config_loader.ml:130`）。適用率は `lexer.shared_profile_pass_rate` として `tooling/ci/collect-iterator-audit-metrics.py:732` と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md:215` に記録。

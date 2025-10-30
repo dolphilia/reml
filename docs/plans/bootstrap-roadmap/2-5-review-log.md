@@ -536,3 +536,22 @@ S5（検証とドキュメント更新）の結果共有。
 - `scripts/benchmark-parse-throughput.sh` を実行できる `remlc` 環境を整備し、3 プロファイルで解析時間を取得してノートへ追記する。
 - `Core_parse_lex.Record.consume` の集計結果を `lexer.shared_profile_pass_rate` の補助統計としてエクスポートする処理（Step6 以降へ繰り越し）。
 - CLI/LSP 経路で `RunConfig.extensions["lex"].space_id` が欠落した場合の警告出力と、計測結果における逸脱検知の自動化。
+
+## LEXER-002 Day5 ドキュメント反映とレビュー記録（2025-12-02）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/LEXER-002-proposal.md`](./2-5-proposals/LEXER-002-proposal.md#step-6-%E3%83%89%E3%82%AD%E3%83%A5%E3%83%A1%E3%83%B3%E3%83%88%E5%8F%8D%E6%98%A0%E3%81%A8%E3%83%AC%E3%83%93%E3%83%A5%E3%83%BC%E8%A8%98%E9%8C%B2week33-day5)
+
+### 1. 作業サマリ
+- 仕様章 `docs/spec/2-3-lexer.md` に `Core.Parse.Lex.Api` と `RunConfig.extensions["lex"]` の連動状況を記した脚注 `[^lex-ocaml-phase25-step6]` を追加し、Step6 で構築した Lex シムが CLI/LSP と共有されることを明文化。
+- `docs/spec/2-6-execution-strategy.md` の実装メモを更新し、`RunConfig` と Lex プロファイルの橋渡しを説明する脚注 `[^runconfig-lex-phase25-step6]` を追記。`parser_driver.run`・`Core.Parse.Streaming.run_stream` が同じ設定を受け取る流れを整理した。
+- ガイド `docs/guides/core-parse-streaming.md` に `9.2 Core.Parse.Lex プロファイル共有サンプル` を追加し、ストリーミング経路で `Core.Parse.Lex.Bridge.derive` と `Core.Parse.Lex.Api.lexeme` を利用する手順を記載。RunConfig ビルダーと `lexer.shared_profile_pass_rate` の活用方法を共有した。
+- レビュー記録本体（本エントリ）へ Step6 の成果を記録し、残課題を 2-7 以降へ引き継ぐ準備を整えた。
+
+### 2. 検証と確認事項
+- `docs/spec/2-3-lexer.md` / `docs/spec/2-6-execution-strategy.md` の脚注リンクを手動確認し、`compiler/ocaml/src/core_parse_lex.ml`・`parser_driver.ml`・`parser_run_config.ml`・`tooling/lsp/run_config_loader.ml` の該当行へ遷移できることを確認。
+- `docs/guides/core-parse-streaming.md` の新セクションが `RunConfig` 共有手順（9.1）と矛盾しないことをレビュー。`Core.Parse.Lex.Api` 利用例が既存の `StreamDriver` 設計と整合することを確認した。
+- メトリクス記録 (`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`) とのリンクを再確認し、`lexer.shared_profile_pass_rate` が引用元として一貫していることをチェック。
+
+### 3. 残課題
+- `Core_parse_lex.Record.consume` の集計と `space_id` 警告は引き続き未実装。`Core_parse_lex` チームと連携し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ転記予定。
+- `docs/spec/2-3-lexer.md` へ doc_comment 収集の制限事項を追記する判断が残っている。`lexer.mll` の TODO 解消時に脚注更新が必要。

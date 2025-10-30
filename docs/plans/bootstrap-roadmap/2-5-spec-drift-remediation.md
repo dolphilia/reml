@@ -310,6 +310,7 @@
  2025-11-28 追記: LEXER-002 Step3 で `Core.Parse.Lex.Api` の `lexeme`/`symbol` 等を公開し、`lexer.mll` に `set_trivia_profile`・`read_token` を追加して `hash_inline`・shebang・ネストコメントのプロフィール切替を有効化。`doc_comment` と `ParserId` の戻し込みは Step4 へ残課題として送付。
  2025-11-29 追記: LEXER-002 Step4 で `parser_driver` が `Core.Parse.Lex` ブリッジ経由で `RunConfig.extensions["lex"]` を適用し、CLI/LSP の RunConfig も `lex.profile=strict_json` を既定反映するよう更新。`lexer.mll` へ `Core_parse_lex.Record.consume` フックを追加し、空白・コメント削除を統一的に記録できる足場を整備した。`space_id` 警告と実測集計は Step5 での TODO として残す。
  2025-11-30 追記: LEXER-002 Step5 で `compiler/ocaml/tests/core_parse_lex_tests.ml` を追加し、プロフィール切替と `Api.symbol` の挙動を検証。`tooling/ci/collect-iterator-audit-metrics.py` に `lexer.shared_profile_pass_rate` を実装し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ指標を追記。`docs/notes/lexer-performance-study.md` を新設してベンチマーク手順と `remlc` 未構築による計測保留を記録した。実測と `Record.consume` 集計は Step6 へ継続。
+ 2025-12-02 追記: LEXER-002 Step6 で 2.3/2.6 仕様書と `core-parse-streaming` ガイドに RunConfig ↔ Lex API の進捗脚注を追加し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` にドキュメント反映ログを記録。残課題（`Record.consume` 集計と `space_id` 警告、doc_comment 仕様反映）は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ移送予定。
 - 各計画で追加した単体テスト（`runconfig_tests.ml`, `core_parse_lex_tests.ml`, `capability_profile_tests.ml`, `type_inference_effect_tests.ml` 等）を CI に組み込み、`0-3-audit-and-metrics.md` の新メトリクスが反映されることを確認する。
 - 計画進行中に検出したリスク・課題は `0-4-risk-handling.md` へ即時登録し、必要に応じて Phase 2-7 へエスカレーションする。
 

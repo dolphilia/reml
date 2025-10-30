@@ -99,6 +99,8 @@ fn token<A>(p: Parser<A>, space: Parser<()>) -> Parser<(A, Span)>
 * `trim(sc, expr)` は `leading` と `lexeme` を組み合わせた糖衣。JSON や PL/0 サンプルのように両端の空白を許容する際に有効。【F:../examples/language-impl-comparison/reml/pl0_combinator.reml†L95-L107】
 * `token` は AST へ**位置**を付与したいときの定番（`spanned` の字句版）。
 
+> **実装状況メモ（Phase 2-5 Step6）**: OCaml 実装では `Core.Parse.Lex.Api` を公開し、`lexeme` / `symbol` / `leading` / `trim` / `token` が `RunConfig.extensions["lex"]` による共有プロファイルと連動するよう整備した。CLI/LSP/テストは `Run_config.Builder` を通じて `lex.profile` と `space_id` を注入し、`Core.Parse.Lex.Bridge` が `ConfigTriviaProfile` を再構成して `lexer.mll` の `set_trivia_profile`・`read_token` へ伝搬する。トリビア共有率は `lexer.shared_profile_pass_rate` メトリクスで CI 監視している[^lex-ocaml-phase25-step6]。
+
 ---
 
 ## D. 識別子・キーワード（UAX #31 準拠）
@@ -455,3 +457,6 @@ Core.Parse.Lex は **最小の核**（6 プリミティブ）に、
 * Unicode 正しい **空白/コメント/識別子/数値/文字列**の**実務ユーティリティ**を重ね、
 * `lexeme`/`symbol`/`keyword` と **`cut/label` の流儀**で、
   **書きやすさ・読みやすさ・エラー品質**を最大化する。
+
+[^lex-ocaml-phase25-step6]:
+    2025-11-30 更新。`Core.Parse.Lex.Api` と `Core.Parse.Lex.Bridge` を `compiler/ocaml/src/core_parse_lex.ml:119` と `:170` 周辺に実装し、`Run_config.Lex.with_profile` が `RunConfig.extensions["lex"]` へ `ConfigTriviaProfile` を往復させる（`compiler/ocaml/src/parser_run_config.ml:231`）。`parser_driver.run` は `Core.Parse.Lex.Api.lexeme` を経由するよう更新され（`compiler/ocaml/src/parser_driver.ml:170`）、CLI/LSP も同じ `lex.profile` を注入する（`compiler/ocaml/src/main.ml:608`, `tooling/lsp/run_config_loader.ml:130`）。共有設定の適用率は `lexer.shared_profile_pass_rate` として `tooling/ci/collect-iterator-audit-metrics.py:732` および `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md:215` に登録済み。
