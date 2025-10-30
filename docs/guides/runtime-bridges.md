@@ -9,7 +9,7 @@
 ## 0. ターゲット同期と `@cfg`
 
 * `Core.Env.infer_target_from_env()`（[3-10](../spec/3-10-core-env.md)）で得たターゲット情報を `RunConfig.extensions["target"]` へマージし、コンパイル時と実行時のプラットフォーム差異を監視する。
-* ランタイム起動時は `platform_info()`（[3-8](../spec/3-8-core-runtime-capability.md)）を取得し、`extensions["target"].diagnostics=true` を設定すると `@cfg` 評価のログを `Diagnostic.extensions["cfg"]` に反映できる。`Diagnostic.domain = Target` の詳細から `requested` / `detected` を比較し、クロスリンカ設定の齟齬を特定できる。
+* ランタイム起動時は `platform_info()`（[3-8](../spec/3-8-core-runtime-capability.md)）を取得し、`extensions["target"].diagnostics=true` を設定すると `@cfg` 評価のログを `Diagnostic.extensions["cfg"]` に反映できる。`Diagnostic.domain = Target` の詳細から `requested` / `detected` を比較し、クロスリンカ設定の齟齬を特定できる。Phase 2-5 DIAG-003 Step5 で `Target` / `Plugin` / `Lsp` ドメインの監査メタデータと CLI/LSP 出力を再整理し、本ガイドの参照先を仕様と揃えた[^diag003-phase25-runtime-guide]。
 * クロスコンパイル時は `reml toolchain verify` と `reml target validate` を実行し、`ffi.callconv.*` を含む `TargetCapability` が満たされているか確認する。手順は `docs/guides/cross-compilation.md` を参照。
 * CI では `REML_TARGET_PROFILE`, `REML_TARGET_CAPABILITIES` 等の環境変数をセットし、`Core.Env` が期待通りに解決したか `target.config.*` 診断を確認する。誤ったプロファイルで起動した場合は即座に `Error` を発生させて差異を明らかにする。
 
@@ -346,3 +346,5 @@ fn with_foreign_stub(req: Request) -> Result<Response, FfiError> ! {} =
 4. IDE/LSP 連携では `ActorContext.span` を `AsyncTracing` から受け取り、`async.trace.latency` メトリクスをダッシュボードに流す。メトリクス未対応ならトレースを無効化し、警告を一度だけ表示する。
 
 > 参考: Reml Actor DSL の追加コード生成フローは `3-9-core-async-ffi-unsafe.md §1.9` を参照。Transport 設定の CLI ワークフローは今後 `docs/guides/runtime-bridges.md` に拡充予定。
+
+[^diag003-phase25-runtime-guide]: Phase 2-5 DIAG-003 診断ドメイン語彙拡張計画（`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md`）Step5（2025-11-30 完了）で本ガイドと関連仕様を更新し、`Target` / `Plugin` / `Lsp` ドメインの監査メタデータを `Diagnostic.extensions["target"]`, `["plugin"]`, `["lsp"]` に統一した。CI 監査ダッシュボード改修 TODO は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` で追跡中。

@@ -94,6 +94,7 @@
 5.2. **メトリクス更新**
 - `0-3-audit-and-metrics.md` に CI pass_rate の推移と LSP テスト完了状況を記録。
 - `tooling/ci/collect-iterator-audit-metrics.py` の集計結果を `reports/audit/dashboard/` に反映し、Phase 2-8 のベースラインとする。
+- DIAG-003 Step5 で追加された `diagnostics.domain_coverage` / `diagnostics.plugin_bundle_ratio` / `diagnostics.effect_stage_consistency` をダッシュボードへ掲載し、`Plugin` / `Lsp` / `Capability` ドメインの Stage 連携が視覚化されるようグラフとしきい値を設計する（`docs/spec/3-6-core-diagnostics-audit.md` 脚注参照）。
 
 **成果物**: 更新済み前提資料、メトリクス記録、Phase 2-8 用脚注
 

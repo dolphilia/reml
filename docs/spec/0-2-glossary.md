@@ -65,7 +65,7 @@ Reml 仕様書で繰り返し登場する専門用語と概念をまとめた。
 - **PlatformInfo**: 実行中プラットフォームの OS・アーキテクチャ・利用可能能力を報告する構造体。`platform_info()` が返し、Capability Registry と整合させて最適化や制限判断を行う。[3-8 Core Runtime & Capability](3-8-core-runtime-capability.md#13-プラットフォーム情報と能力) 参照。
 
 ## 診断と監査
-- **`DiagnosticDomain`**: 診断メッセージを構文/型/ターゲットなどの領域別に分類する列挙型。[3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md#12-診断ドメイン-diagnosticdomain) で正式定義され、CLI や LSP のフィルタリングに利用される。
+- **`DiagnosticDomain`**: 診断メッセージを構文/型/ターゲットなどの領域別に分類する列挙型。語彙は `Syntax` / `Parser` / `Type` / `Effect` / `Runtime` / `Config` / `Manifest` / `Target` / `Security` / `Plugin` / `Cli` / `Lsp` / `Other(Str)` を基本とし、`Other` には `snake_case` の補助識別子を併記する。[3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md#12-診断ドメイン-diagnosticdomain) で正式定義され、CLI や LSP のフィルタリングに利用される。Phase 2-5 DIAG-003 Step5 で仕様・ガイド・監査ログの語彙整合が完了し、詳細は脚注参照[^diag003-phase25-glossary]。
 - **`AuditEnvelope`**: 診断に付随する監査情報（`audit_id`、`change_set`、Capability との紐付けなど）を保持する構造体。[3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md#11-auditenvelope) を参照。
 - **`AuditSink`**: 監査ログの出力先を抽象化した関数型で、CLI/LSP/リモート送信など複数のシンクを統一インターフェースで扱う。[3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md#3-監査ログ出力) が API を示す。
 - **`Stage` (Experimental/Beta/Stable)**: 診断・Capability・効果拡張がどの安定段階にあるかを記録する列挙。未成熟機能の扱いをツール側が調整するため、[3-6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md#13-効果診断拡張-effects) と [3-8 Core Runtime & Capability](3-8-core-runtime-capability.md) で共有される。
@@ -156,3 +156,5 @@ Reml 仕様書で繰り返し登場する専門用語と概念をまとめた。
 - **パターン網羅性 (Pattern Exhaustiveness)**: `match` 式でのバリアント網羅チェック。欠落パターンは警告やエラーとして報告され、FixIt で補完案を提示する。[2-5 エラーハンドリング](2-5-error.md) J-3 節を参照。
 - **構造的型システム (Structural Type System)**: 名前ではなく構造で型の互換性を判定する方式。レコード型やトレイト実装で部分的に採用される。[1-2 型システムと推論](1-2-types-Inference.md) を参照。
 - **型エイリアス (Type Alias)**: `type alias Bytes = [u8]` のような既存型への別名定義。型安全性は維持せず、純粋に記述の簡略化を目的とする。[1-2 型システムと推論](1-2-types-Inference.md) を参照。
+
+[^diag003-phase25-glossary]: Phase 2-5 DIAG-003 診断ドメイン語彙拡張計画（`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md`）Step5（2025-11-30 完了）で本項と関連仕様・ガイド・ノートを更新し、`Plugin` / `Lsp` / `Effect` など新語彙に合わせた監査メタデータ（`extensions["plugin"]`, `extensions["lsp"]`, `extensions["capability"]` 等）を OCaml 実装へ反映した。フォローアップタスクは `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の CI 監査ダッシュボード改修項目で追跡する。

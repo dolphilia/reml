@@ -251,7 +251,7 @@ fn capability_name(cap: TargetCapability) -> &'static Str // `@pure`
 fn family_tag(info: PlatformInfo) -> Str                  // `@pure`
 ```
 
-* `PlatformInfo` は `Core.Env`（[3-10](3-10-core-env.md)）や `RunConfig.extensions["target"]` と同期させる。CLI が指定したターゲットと実行時情報が乖離した場合は `DiagnosticDomain::Target` で `target.config.mismatch` を発行し、`Diagnostic.extensions["target"]` に `profile_id` / `triple` / 差異一覧を記録する。
+* `PlatformInfo` は `Core.Env`（[3-10](3-10-core-env.md)）や `RunConfig.extensions["target"]` と同期させる。CLI が指定したターゲットと実行時情報が乖離した場合は `DiagnosticDomain::Target` で `target.config.mismatch` を発行し、`Diagnostic.extensions["target"]` に `profile_id` / `triple` / 差異一覧を記録する。Phase 2-5 DIAG-003 Step5 で `Target` / `Plugin` / `Lsp` ドメイン向けの監査メタデータと脚注を整備し、仕様上の語彙と OCaml 実装が一致するよう更新した[^diag003-phase25-capability]。
 * `features` は `@cfg(feature = "...")` と連携し、ビルドプロファイルや CLI オプションで有効にした拡張機能の集合を表す。`runtime_capabilities` にはハードウェア検出結果を格納し、`RunConfig` の最適化スイッチ（Packrat/左再帰/トレース等）の既定値に利用できる。`target_capabilities` はターゲット固有挙動（Unicode/ファイルシステム/ABI 等）を表し、`@cfg(capability = "...")` や `RunConfigTarget.capabilities` と同期する。
 * `profile_id` / `triple` / `stdlib_version` / `runtime_revision` は `TargetProfile` 由来のメタデータを保持し、コンパイラが生成した `RunArtifactMetadata`（2-6 §B-2-1-a）と一致することを保証する。
 * `family_tag` は `"unix"` や `"windows"` といったスカラー文字列を返し、`RunConfig.extensions["target"]` の `family` フィールドを埋める際に使用する。
@@ -994,3 +994,5 @@ fn reload<T>(parser: Parser<T>, state: ReloadState<T>, diff: SchemaDiff<Old, New
 - `RunConfig.extensions["runtime"].profile` と `RuntimeBridgeDescriptor.target_profiles` が一致しない場合は `bridge.target.mismatch` 診断を即座に発行し、ホットリロードや Streaming API の起動を防止する。
 - ブリッジを通じて追加 Capability を有効化する場合は、`PlatformInfo.runtime_capabilities` に `RuntimeCapability::ExternalBridge(id)` を追加し、`describe_bridge` で返すメタデータを IDE/LSP へ共有する。
 - ガイド（`../guides/runtime-bridges.md`）は本節で定義した契約を前提とし、CLI サンプルやケーススタディを維持する。仕様とガイドで情報が乖離した場合は本節を優先し、ガイドに脚注を追加して読者を本節へ誘導すること。
+
+[^diag003-phase25-capability]: Phase 2-5 DIAG-003 診断ドメイン語彙拡張計画（`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md`）Step5（2025-11-30 完了）で `Target` / `Plugin` / `Lsp` ドメインの監査メタデータと脚注を更新し、`Diagnostic.extensions["target"]`, `["plugin"]`, `["lsp"]`, `["capability"]` を OCaml 実装と仕様で統一した。関連ドキュメント（`docs/spec/3-6-core-diagnostics-audit.md`, `docs/guides/runtime-bridges.md`, `docs/notes/dsl-plugin-roadmap.md`）も同日に同期済み。

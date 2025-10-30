@@ -41,7 +41,7 @@ pub enum Severity = Error | Warning | Info | Hint
 ```
 
 - `severity` は CLI・LSP・監査ログで共通の 4 値（`Error` / `Warning` / `Info` / `Hint`）を採用し、情報診断とヒント診断を区別したフィルタリングを可能にする。Phase 2-5 の DIAG-001 で OCaml 実装側の列挙型と JSON/LSP 変換を全面的に更新し、旧来の `Note` バリアントは `Info` へ統合された[^diag001-phase25]。
-- `domain` は診断が属する責務領域（構文、型、ターゲット等）を表す。`None` の場合はコンポーネント既定値を利用する。
+- `domain` は診断が属する責務領域（構文、型、ターゲット等）を表す。`None` の場合はコンポーネント既定値を利用する。Phase 2-5 の DIAG-003 で CLI/LSP/監査ログの語彙拡張が実装反映され、脚注に進捗を記録している[^diag003-phase25-domain]。
 - `timestamp` は [3.4](3-4-core-numeric-time.md) の `Timestamp` を利用し、診断生成時に `Core.Numeric.now()` を呼び出す。Phase 2-5 の DIAG-002 で CLI / テスト双方に必須化され、`phase2.5.audit.v1` テンプレートで固定化された[^diag002-phase25]。
 - `AuditEnvelope` は監査情報を同梱する構造（後述）。`audit` フィールドそのものも DIAG-002 により省略不可となり、監査ログとの 1 対 1 対応を保証する[^diag002-phase25]。
 - `ExpectedSummary` は LSP/CLI でメッセージを国際化するための鍵と引数を保持する。Phase 2-5 ERR-001 で Menhir 期待集合を集約する `ExpectationSummary` 出力が OCaml 実装へ導入され、CLI/LSP/監査ログで同じ候補一覧を提示できるようになった[^err001-phase25-core].
@@ -163,6 +163,7 @@ enum Stage = Experimental | Beta | Stable
 [^diag002-phase25]: Phase 2-5 DIAG-002 監査必須化計画 (`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-002-proposal.md`) Week31 Day4-5 の完了記録。`scripts/validate-diagnostic-json.sh` と `python3 tooling/ci/collect-iterator-audit-metrics.py --require-success --source compiler/ocaml/tests/golden/diagnostics --audit-source compiler/ocaml/tests/golden/audit` により `diagnostic.audit_presence_rate = 1.0` を確認済み。
 [^diag001-phase25]: Phase 2-5 DIAG-001 Severity 列挙拡張計画 (`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-001-proposal.md`) Week32 Day3 のドキュメント反映完了記録。`compiler/ocaml/src/diagnostic.ml` / `diagnostic_serialization.ml` / `tooling/json-schema/diagnostic-v2.schema.json` を 4 値 Severity に統一し、`scripts/validate-diagnostic-json.sh` と `tooling/ci/collect-iterator-audit-metrics.py` で `Info` / `Hint` の集計が実施可能になった。
 [^err001-phase25-core]: Phase 2-5 ERR-001 期待集合出力整備計画（`docs/plans/bootstrap-roadmap/2-5-proposals/ERR-001-proposal.md`）S5「ドキュメントと共有タスク」（2025-11-17 完了）で `ExpectationSummary` 出力とガイド整備が完了し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に導入ログを保存。
+[^diag003-phase25-domain]: Phase 2-5 DIAG-003 診断ドメイン語彙拡張計画（`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md`）Step5（2025-11-30 完了）で本節と `docs/spec/0-2-glossary.md`、`docs/spec/3-8-core-runtime-capability.md`、`docs/guides/runtime-bridges.md`、`docs/notes/dsl-plugin-roadmap.md` を更新し、OCaml 実装の新語彙（`extensions["plugin"]` / `extensions["lsp"]` / `extensions["capability"]`）と監査メタデータ整合を反映した。レビュー結果と追跡事項は `docs/plans/bootstrap-roadmap/2-5-review-log.md` および `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に記録済み。
 
 - `resolved`: 辞書参照が確定し、監査ログとして事後分析に利用したい場合。
 - `stage_mismatch`: `typeclass.iterator.stage_mismatch` のように Capability Stage が不足している場合。
@@ -195,6 +196,8 @@ pub enum DiagnosticDomain = {
 - ドメインは診断を機能領域ごとに分類し、CLI/LSP/監査ログでのフィルタリングや集計に利用する。
 - `Target` はクロスコンパイルやターゲットプロファイル整合性に関する診断を表し、本節 §7 でメッセージ定義を示す。
 - `Other(Str)` は将来の拡張やユーザープロジェクト固有の分類に使用し、名前は `snake_case` 推奨とする。
+
+> **運用メモ**: Phase 2-5 DIAG-003 Step5 で仕様書・脚注・ガイド類を横断更新し、`Effect` / `Target` / `Plugin` / `Lsp` / `Other(Str)` などの新語彙に対応した監査メタデータ（`extensions["plugin"]`, `extensions["lsp"]`, `extensions["capability"]` 等）を OCaml 実装へ反映した[^diag003-phase25-domain]。
 
 ## 2. 診断生成ヘルパ
 
