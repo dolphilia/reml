@@ -168,6 +168,14 @@ let warn_left_recursion diag_state lexbuf mode =
          mode_text)
 
 let run ?(config = default_run_config) lexbuf =
+  let pack, config =
+    let pack, config = Core_parse_lex.Bridge.derive config in
+    match pack with
+    | Core_parse_lex.Pack.{ space_id = Some space_id; _ } ->
+        Core_parse_lex.Bridge.with_space_id pack config space_id
+    | _ -> (pack, config)
+  in
+  Core_parse_lex.Api.config_trivia pack lexbuf;
   let recover_config = Run_config.Recover.of_run_config config in
   let diag_state =
     Parser_diag_state.create ~trace:config.trace
@@ -186,12 +194,12 @@ let run ?(config = default_run_config) lexbuf =
       warn_left_recursion diag_state lexbuf Run_config.Auto
   | _ -> ());
   let read_token () =
-    let token = Lexer.token lexbuf in
+    let token, start_pos, end_pos =
+      Core_parse_lex.Api.lexeme pack Lexer.read_token lexbuf
+    in
     (match token with
     | Token.EOF -> eof_seen := true
     | _ -> consumed := true);
-    let start_pos = Lexing.lexeme_start_p lexbuf in
-    let end_pos = Lexing.lexeme_end_p lexbuf in
     (token, start_pos, end_pos)
   in
   let rec loop checkpoint =

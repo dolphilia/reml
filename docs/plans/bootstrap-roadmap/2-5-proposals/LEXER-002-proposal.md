@@ -62,6 +62,7 @@
   `lexer.mll` では `set_trivia_profile`／`current_trivia_profile`／`read_token` を導入し、`hash_inline`・`shebang`・`block.nested` プロファイルを反映する分岐を実装（compiler/ocaml/src/lexer.mll:10,98,110,266）。`lexeme` 後段のトリビア消費は既存 `Lexer.token` が担うため軽量なフックに留め、`ParserId` と `doc_comment` の共有は次ステップに送った。
 
 ### Step 4: parser_driver / CLI 統合（Week33 Day3-4）
+- 2025-11-29 実施: `parser_driver.run` が `Core.Parse.Lex.Bridge` を経由して `RunConfig.extensions["lex"]` を適用し、`Core.Parse.Lex.Api.lexeme` で `Lexer.read_token` をラップするよう更新（compiler/ocaml/src/parser_driver.ml:118-149）。CLI/LSP 経路に `lex.profile=strict_json` を既定注入する初期化を追加し、`lexer.mll` へ `Core_parse_lex.Record.consume` フックを組み込んで空白・コメント消費イベントを記録できる足場を確保した（compiler/ocaml/src/cli/options.ml:604-615、tooling/lsp/run_config_loader.ml:130-145、compiler/ocaml/src/lexer.mll:52-142）。`space_id` の警告出力と集計ロジックは Step5 で実装予定として TODO を残置。
 - `parser_driver.run` で `Run_config.Lex.of_run_config` を取得し、`Core.Parse.Lex` に橋渡しするコードパスを追加する。`extensions["lex"]` が未設定の場合は `ConfigTriviaProfile::strict_json` を既定とし、`space_id` が得られた際は `Extensions.with_namespace` で再格納する。
 - `lexer.mll` が返す `Token` と `Core.Parse.Lex` が維持する `Span` / `ParserId` を同期させるため、`lexer.mll` に軽量なフック（例: `Core_parse_lex.Record.consume`）を挿入し、コメントスキップを統一的に計測可能にする。
 - CLI / LSP 経路（`compiler/ocaml/src/main.ml`, `tooling/lsp/run_config_loader.ml`）が `extensions["lex"]` の `profile`・`space_id` を正しく設定することを再確認し、欠落時は Warning を出す実装 TODO を登録する。

@@ -6,6 +6,7 @@
 
 module Run_config = Parser_run_config
 module Extensions = Parser_run_config.Extensions
+module Lex = Parser_run_config.Lex
 
 (** 出力フォーマット *)
 type output_format = Text  (** テキスト形式（デフォルト） *) | Json  (** JSON 形式（LSP 互換） *)
@@ -600,4 +601,11 @@ let to_run_config (opts : options) =
          (Extensions.Bool opts.parser_merge_warnings)
     |> Namespace.add "legacy_result" (Extensions.Bool base.legacy_result)
   in
+  let lex_namespace =
+    Namespace.empty
+    |> Namespace.add "profile"
+         (Extensions.String (Lex.profile_symbol Lex.Strict_json))
+  in
   Run_config.with_extension "config" (fun _ -> config_namespace) base
+  |> Run_config.with_extension "lex" (fun _ -> lex_namespace)
+  (* TODO(LEXER-002 Step5): ParserId を取得したら space_id を設定し、CLI で警告を出す。 *)

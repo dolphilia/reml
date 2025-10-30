@@ -8,6 +8,7 @@
 open Token
 
 module Trivia_profile = Parser_run_config.Lex.Trivia_profile
+module Lex_record = Core_parse_lex.Record
 
 let current_trivia_profile_ref = ref Trivia_profile.strict_json
 
@@ -95,24 +96,55 @@ let float_lit = dec_int '.' frac_part? exponent?
 
 (* メイントークナイザ *)
 rule token = parse
-  | whitespace              { token lexbuf }
-  | newline                 { Lexing.new_line lexbuf; token lexbuf }
+  | whitespace              {
+      let start_pos = Lexing.lexeme_start_p lexbuf in
+      let end_pos = Lexing.lexeme_end_p lexbuf in
+      Lex_record.consume ~kind:Lex_record.Space ~start_pos ~end_pos;
+      token lexbuf
+    }
+  | newline                 {
+      let start_pos = Lexing.lexeme_start_p lexbuf in
+      let end_pos = Lexing.lexeme_end_p lexbuf in
+      Lex_record.consume ~kind:Lex_record.Newline ~start_pos ~end_pos;
+      Lexing.new_line lexbuf;
+      token lexbuf
+    }
 
   (* コメント *)
   | "#!" [^ '\r' '\n']* {
-      if shebang_applicable lexbuf then token lexbuf
+      if shebang_applicable lexbuf then (
+        let start_pos = Lexing.lexeme_start_p lexbuf in
+        let end_pos = Lexing.lexeme_end_p lexbuf in
+        Lex_record.consume ~kind:Lex_record.Shebang ~start_pos ~end_pos;
+        token lexbuf
+      )
       else
         let span = make_span lexbuf in
         raise (Lexer_error ("Unexpected character: " ^ String.make 1 '#', span))
     }
   | "#" [^ '\r' '\n']* {
-      if has_hash_inline () then token lexbuf
+      if has_hash_inline () then (
+        let start_pos = Lexing.lexeme_start_p lexbuf in
+        let end_pos = Lexing.lexeme_end_p lexbuf in
+        Lex_record.consume ~kind:Lex_record.Hash_inline ~start_pos ~end_pos;
+        token lexbuf
+      )
       else
         let span = make_span lexbuf in
         raise (Lexer_error ("Unexpected character: " ^ String.make 1 '#', span))
     }
-  | "//" [^ '\r' '\n']*     { token lexbuf }
-  | "/*"                    { block_comment (block_nested_enabled ()) 1 lexbuf }
+  | "//" [^ '\r' '\n']*     {
+      let start_pos = Lexing.lexeme_start_p lexbuf in
+      let end_pos = Lexing.lexeme_end_p lexbuf in
+      Lex_record.consume ~kind:Lex_record.Line_comment ~start_pos ~end_pos;
+      token lexbuf
+    }
+  | "/*"                    {
+      let start_pos = Lexing.lexeme_start_p lexbuf in
+      let end_pos = Lexing.lexeme_end_p lexbuf in
+      Lex_record.consume ~kind:Lex_record.Block_comment ~start_pos ~end_pos;
+      block_comment (block_nested_enabled ()) 1 lexbuf
+    }
 
   (* 演算子・区切り (長いものから優先) *)
   | "|>"        { PIPE }

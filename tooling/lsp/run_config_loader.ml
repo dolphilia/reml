@@ -8,6 +8,7 @@ open Yojson.Basic
 
 module Run_config = Parser_run_config
 module Extensions = Parser_run_config.Extensions
+module Lex = Run_config.Lex
 
 let member name = function
   | `Assoc fields -> (match List.assoc_opt name fields with Some v -> v | None -> `Null)
@@ -123,7 +124,15 @@ let apply_extensions base json =
   in
   let config = Run_config.with_extension "config" (fun _ -> config_namespace) base in
   let extensions_json = member "extensions" json in
-  let lex_namespace = decode_lex_namespace (member "lex" extensions_json) in
+  let lex_namespace =
+    let namespace = decode_lex_namespace (member "lex" extensions_json) in
+    if Extensions.Namespace.is_empty namespace then
+      Extensions.Namespace.empty
+      |> Extensions.Namespace.add "profile"
+           (Extensions.String (Lex.profile_symbol Lex.Strict_json))
+      (* TODO(LEXER-002 Step5): spaceId を config から復元して namespace へ書き戻す。 *)
+    else namespace
+  in
   let recover_namespace = decode_recover_namespace (member "recover" extensions_json) in
   let stream_namespace = decode_stream_namespace (member "stream" extensions_json) in
   config
