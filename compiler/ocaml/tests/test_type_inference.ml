@@ -1832,7 +1832,7 @@ let test_trait_constraint_stage_metadata () =
             reason = "Stage mismatch";
             span = dummy_span;
             effect_stage = Some effect_stage;
-            typeclass_state = Typeclass_metadata.StageMismatch ();
+            typeclass_state = Typeclass_metadata.StageMismatch;
             typeclass_pending = [ "Iterator.size_hint" ];
             typeclass_generalized = [ "T" ];
           }

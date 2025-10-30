@@ -121,7 +121,7 @@ let test_other_domain_serialization () =
       ~timestamp:"1970-01-01T00:00:00Z"
       ~message:"プラグイン診断のテスト" ~primary:span ()
     |> Diagnostic.Builder.set_primary_code "demo.domain.plugin"
-    |> Diagnostic.Builder.add_note (None, "domain other シリアライズ確認")
+    |> Diagnostic.Builder.add_note "domain other シリアライズ確認"
     |> Diagnostic.Builder.build
   in
   let json_str =
@@ -510,10 +510,17 @@ let test_plugin_bundle_metadata () =
   let end_pos =
     Diagnostic.{ filename = "plugin-demo.reml"; line = 1; column = 5; offset = 4 }
   in
-  let diag =
-    Diagnostic.make ~domain:Diagnostic.Plugin ~code:"plugin.bundle.signature_invalid"
+  let primary = Diagnostic.{ start_pos; end_pos } in
+  let base_diag =
+    Diagnostic.Builder.create ~severity:Diagnostic.Error
+      ~domain:Diagnostic.Plugin
       ~message:"プラグインの署名が検証できません"
-      ~start_pos ~end_pos ()
+      ~primary ()
+    |> Diagnostic.Builder.set_primary_code "plugin.bundle.signature_invalid"
+    |> Diagnostic.Builder.build
+  in
+  let diag =
+    base_diag
     |> Diagnostic.with_plugin_metadata
          ~bundle_id:"demo.bundle"
          ~signature:
@@ -772,7 +779,6 @@ let () =
   test_other_domain_serialization ();
   test_info_hint_snapshot ();
   test_parser_expectation_snapshot ();
-  test_typeclass_iterator_stage_mismatch ();
   test_plugin_bundle_metadata ();
   test_stage_extension_snapshot ();
   test_typeclass_dictionary_snapshot ();

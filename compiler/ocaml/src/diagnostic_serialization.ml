@@ -162,7 +162,7 @@ let domain_to_string = function
       in
       Some label
 
-let domain_of_json ?extensions json =
+let[@warning "-32"] domain_of_json ?extensions json =
   match json with
   | `Null -> None
   | `String value ->
