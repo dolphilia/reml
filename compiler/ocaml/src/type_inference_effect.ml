@@ -70,25 +70,23 @@ let resolve_function_profile ~(runtime_context : runtime_stage)
         })
       capability_specs
   in
-  let primary_resolution =
-    match capability_resolutions with res :: _ -> Some res | [] -> None
+  let default_runtime_stage = stage_for_capability runtime_context None in
+  let resolved_stage =
+    match capability_resolutions with
+    | { capability_stage = Some stage; _ } :: _ -> Some stage
+    | _ -> Some default_runtime_stage
   in
-  let capability_name =
-    match primary_resolution with
-    | Some resolution -> Some resolution.capability_name
-    | None -> None
-  in
-  let current_stage =
-    match primary_resolution with
-    | Some { capability_stage = Some stage; _ } -> stage
-    | _ -> stage_for_capability runtime_context None
-  in
-  let typer_step =
-    match capability_name with
-    | Some cap ->
-        stage_trace_step_of_stage_id_opt ~capability:cap "typer"
-          (Some current_stage)
-    | None -> stage_trace_step_of_stage_id_opt "typer" (Some current_stage)
+  let typer_steps =
+    match capability_resolutions with
+    | [] ->
+        [ stage_trace_step_of_stage_id_opt "typer" (Some default_runtime_stage) ]
+    | resolutions ->
+        List.map
+          (fun resolution ->
+            stage_trace_step_of_stage_id_opt
+              ~capability:resolution.capability_name "typer"
+              resolution.capability_stage)
+          resolutions
   in
   let rec split_primary acc = function
     | ({ source; _ } as step) :: rest
@@ -98,36 +96,28 @@ let resolve_function_profile ~(runtime_context : runtime_stage)
   in
   let stage_trace_with_typer base_trace =
     let prefix, suffix = split_primary [] base_trace in
-    prefix @ (typer_step :: suffix)
+    prefix @ typer_steps @ suffix
   in
   match effect_node with
   | None ->
       let stage_trace = stage_trace_with_typer runtime_context.stage_trace in
-      let stage_trace =
-        match stage_trace with [] -> [ typer_step ] | trace -> trace
-      in
       let profile =
         {
           (default_profile ?source_name ~stage_trace ~span:function_ident.span
              ())
           with
-          resolved_stage = Some current_stage;
-          resolved_capability = capability_name;
+          resolved_stage;
+          resolved_capabilities = capability_resolutions;
         }
       in
       Ok profile
   | Some node -> (
-      let base_trace =
-        match stage_trace_with_typer runtime_context.stage_trace with
-        | [] -> [ typer_step ]
-        | trace -> trace
-      in
+      let base_trace = stage_trace_with_typer runtime_context.stage_trace in
       let profile =
         profile_of_ast ?source_name ~stage_trace:base_trace node |> fun p ->
         {
           p with
-          resolved_stage = Some current_stage;
-          resolved_capability = capability_name;
+          resolved_stage;
           resolved_capabilities =
             if capability_resolutions = [] then p.resolved_capabilities
             else capability_resolutions;

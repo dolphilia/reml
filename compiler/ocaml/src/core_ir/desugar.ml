@@ -1734,7 +1734,11 @@ let desugar_fn_decl (decl : typed_decl) (fn_decl : typed_fn_decl) : function_def
         let required_caps =
           match entry.resolved_capabilities with
           | [] -> (
-              match entry.resolved_capability with
+              match
+                Effect_profile.primary_capability_name
+                  ?fallback:entry.resolved_capability
+                  entry.resolved_capabilities
+              with
               | Some name ->
                   [ { cap_name = name; cap_span = entry.source_span } ]
               | None -> base_metadata.capabilities.required)

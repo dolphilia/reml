@@ -31,41 +31,31 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
     | Some stage -> `String (Effect_profile.stage_id_to_string stage)
     | None -> `Null
   in
-  let capability_json =
+  let fallback_capability =
     match resolved_capability with
-    | Some value when String.trim value <> "" -> `String value
-    | Some _ -> `Null
-    | None -> `Null
+    | Some value when String.trim value <> "" -> Some value
+    | _ -> None
+  in
+  let primary_capability =
+    Effect_profile.primary_capability_name ?fallback:fallback_capability
+      resolved_capabilities
+  in
+  let capability_json =
+    match primary_capability with Some value -> `String value | None -> `Null
   in
   let capability_list_json =
     match resolved_capabilities with
     | [] -> `List []
     | entries ->
         `List
-          (List.map
-             (fun (entry : Effect_profile.capability_resolution) ->
-               `String entry.capability_name)
-             entries)
+          (Effect_profile.capability_names entries
+          |> List.map (fun name -> `String name))
   in
   let capability_detail_json =
     match resolved_capabilities with
     | [] -> `List []
     | entries ->
-        `List
-          (List.map
-             (fun (entry : Effect_profile.capability_resolution) ->
-               let fields =
-                 [ ("capability", `String entry.capability_name) ]
-               in
-               let fields =
-                 match entry.capability_stage with
-                 | Some stage ->
-                     ("stage", `String (Effect_profile.stage_id_to_string stage))
-                     :: fields
-                 | None -> fields
-               in
-               `Assoc (List.rev fields))
-             entries)
+        Effect_profile.capability_resolutions_to_json entries
   in
   let diagnostic_json =
     Effect_profile.effect_diagnostic_payload_to_json diagnostic_payload

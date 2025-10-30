@@ -350,6 +350,25 @@ S3（Menhir ルール実装）の結果共有。
 2. 診断／監査出力を配列主体に改修し、`effect.stage.capability` を互換目的の補助フィールドへ後退させながら `collect-iterator-audit-metrics.py` と `reports/diagnostic-format-regression.md` の検証項目を更新する。
 3. `stage_trace` を Capability ごとのステップを保持できる構造へ拡張し、`Type_inference_effect.stage_for_capability` の結果を全件転写できるようにする。
 
+## EFFECT-003 Week32 Day2-3 Typer 多重 Capability 適用（2025-11-23）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-003-proposal.md`](./2-5-proposals/EFFECT-003-proposal.md)
+
+### 1. 作業サマリ
+- `compiler/ocaml/src/effect_profile.ml:421` と `compiler/ocaml/src/effect_profile.ml:466` に `primary_capability_*` ヘルパと派生処理を追加し、`resolved_capabilities` を一次データとして扱う `make_profile` へ更新。単一フィールド `resolved_capability` は配列から導出する互換用フィールドへ切り替えた。  
+- `compiler/ocaml/src/type_inference_effect.ml:50` 以降で Capability 配列全件を Stage 解決し、`stage_trace` に Capability ごとの `typer` ステップを注入。`capability_stage_pairs` も配列起点で生成し、`Type_error.effect_stage_mismatch_error` へ渡すデータを拡充。  
+- `compiler/ocaml/src/constraint_solver.ml:48`／`compiler/ocaml/src/core_ir/desugar.ml:1734`／`compiler/ocaml/src/main.ml:21`／`compiler/ocaml/src/type_error.ml:1002` で主 Capability を配列から導出するよう統一し、監査メタデータ・IR メタデータ・診断の各経路で複数 Capability を保持できるようにした。`metadata_for_effect` は `Effect_profile.capability_names` と `capability_resolutions_to_json` を利用して配列ベースの出力に備える。  
+- `compiler/ocaml/src/type_inference.ml:2765` の残余効果検出経路は新しい `make_profile` API で再構築し直し、既存の `EffectConstraintTable` へ配列情報をそのまま記録。既存テスト（`compiler/ocaml/tests/test_type_inference.ml`、`compiler/ocaml/tests/test_cli_diagnostics.ml`）の前提条件を再確認し、後方互換性が保たれることを手動確認した（自動実行は未実施）。
+
+### 2. 仕様整合の確認
+- Stage 判定は `docs/spec/1-3-effects-safety.md` §I の要件に従い、各 Capability へ個別に `StageRequirement` を適用する動きが Typer 内で再現できた。`stage_trace` にも各 Capability を明示するステップが挿入され、`docs/spec/3-8-core-runtime-capability.md` §8 の監査要求に沿う形で実装トレースが取得できる。  
+- Core IR メタデータに複数 Capability が保持されることで、Phase 3 のランタイム検証で必要な `capabilities.required` 配列（`docs/spec/3-8-core-runtime-capability.md` 表 3.8-2）と突き合わせ可能になった。
+
+### 3. 残課題 / 次ステップ
+1. 診断・監査側の配列化は未着手のため、Step 2 で `Diagnostic.extensions["effects"]`／`AuditEnvelope.metadata` を更新し、ゴールデンと CI 指標を再整備する。  
+2. `stage_trace` の多重化に伴う表示フォーマット（CLI/LSP）の最終調整とカラーリング見直しは Step 2 で扱う。  
+3. 自動テストとメトリクス追加（Step 4）での再検証を待ちつつ、Capability 名正規化ポリシーは Runtime チームと協議して `残課題` 行に追記する。
+
 ## SYNTAX-002 Day3-4 束縛診断連携（2025-10-29）
 
 S4（束縛・診断連携）の結果共有。  

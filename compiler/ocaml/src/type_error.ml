@@ -999,7 +999,7 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         | None -> None
       in
       let capability_name =
-        match profile.resolved_capability with
+        match Effect_profile.profile_primary_capability_name profile with
         | Some cap -> cap
         | None -> "runtime"
       in
@@ -1281,7 +1281,9 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         profile.resolved_stage |> Option.map stage_id_to_string
       in
       let capability_str =
-        match profile.resolved_capability with Some cap -> cap | None -> ""
+        match Effect_profile.profile_primary_capability_name profile with
+        | Some cap -> cap
+        | None -> ""
       in
       let stage_json =
         `Assoc

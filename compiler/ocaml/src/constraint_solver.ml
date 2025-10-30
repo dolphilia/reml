@@ -50,6 +50,10 @@ module EffectConstraintTable = struct
       ?(resolved_capabilities = [])
       ?(stage_trace = Profile.stage_trace_empty)
       ?(diagnostic_payload = Profile.empty_diagnostic_payload) () =
+    let resolved_capability =
+      Profile.primary_capability_name ?fallback:resolved_capability
+        resolved_capabilities
+    in
     let entry =
       {
         symbol;

@@ -27,10 +27,11 @@
    - `compiler/ocaml/src/diagnostic.ml`・`compiler/ocaml/src/diagnostic_serialization.ml`・`tooling/ci/collect-iterator-audit-metrics.py` の単一値前提を列挙し、監査メタデータと CI 指標が配列化されていない現状を記録。  
    - 調査結果を `docs/plans/bootstrap-roadmap/2-5-review-log.md` の「EFFECT-003 Week32 Day1 効果プロファイル棚卸し（2025-11-21）」として追記し、後続ステップの TODO（`resolved_capability` 廃止、配列主体への移行、`stage_trace` 拡張）を共有した。
 
-2. **Step 1: Typer／効果プロファイルを多重 Capability 対応へ移行（Week32 Day2-3 予定） — 未着手**  
-   - `Effect_profile.profile` と `Type_inference_effect.resolve_function_profile` の `resolved_capabilities` を正式な一次データとして扱い、`resolved_capability` 単数フィールドを参照する箇所（`compiler/ocaml/src/type_inference.ml`、`compiler/ocaml/src/constraint_solver.ml`、`compiler/ocaml/src/core_ir/desugar.ml` など）を洗い替える。  
-   - Stage 要件チェックは Capability ごとに評価し、`Type_error.effect_stage_mismatch_error` が `capability_stage_pairs` 全体を報告できるようにする。`stage_trace` への記録も複数 Capability で不整合がないか確認する。  
-   - **調査**: `compiler/ocaml/tests/test_type_inference.ml`、`compiler/ocaml/tests/test_cli_diagnostics.ml` の既存ケースを読み解き、副作用のない API 変更範囲を特定する。
+2. **Step 1: Typer／効果プロファイルを多重 Capability 対応へ移行（Week32 Day2-3 予定） — 完了（2025-11-23）**  
+   - `Effect_profile.make_profile` が `resolved_capabilities` を一次情報として扱い、必要に応じて主 Capability を派生させるよう再設計。`profile_primary_capability_*` ヘルパを追加して後続モジュールから配列経由で参照できるようにした。  
+   - `Type_inference_effect.resolve_function_profile` は Capability 配列をそのまま解決し、Stage 判定と `stage_trace` へ Capability ごとのステップを記録。ミスマッチ検出では違反した Capability 名と Stage を `capability_stage_pairs` に集約し、`Type_error.effect_stage_mismatch_error` へ伝搬するよう改修。  
+   - `constraint_solver`／`type_inference`／`core_ir/desugar`／`main`／`type_error` の各モジュールで単一値の `resolved_capability` 依存を整理し、配列ベースの API に合わせてメタデータ生成処理を更新。監査メタデータの主 Capability も配列から導出するよう統一。  
+   - **確認**: `compiler/ocaml/tests/test_type_inference.ml` と `compiler/ocaml/tests/test_cli_diagnostics.ml` の前提条件を再読し、型推論と診断経路に後方互換性があることを手動確認（自動テストは未実行、Step 4 で網羅予定）。残課題として診断／監査フォーマットの配列化は Step 2 へ委譲。
 
 3. **Step 2: 診断／監査出力の多重化（Week32 Day3-4 予定） — 未着手**  
    - `Diagnostic.extensions["effects"]` と `AuditEnvelope.metadata` に `required_capabilities`・`granted_capabilities`（案）などの配列を追加し、CLI/LSP/監査経路が同じシリアライズ結果を共有するよう `compiler/ocaml/src/main.ml`・`tooling/lsp/lsp_transport.ml` を更新。  

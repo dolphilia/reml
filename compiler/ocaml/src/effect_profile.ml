@@ -414,6 +414,26 @@ type capability_resolution = {
   capability_stage : stage_id option;
 }
 
+let capability_names resolutions =
+  List.map (fun (entry : capability_resolution) -> entry.capability_name)
+    resolutions
+
+let primary_capability_resolution = function
+  | entry :: _ -> Some entry
+  | [] -> None
+
+let primary_capability_name ?fallback resolutions =
+  match primary_capability_resolution resolutions with
+  | Some entry -> Some entry.capability_name
+  | None -> fallback
+
+let profile_primary_capability_name (profile : profile) =
+  primary_capability_name ?fallback:profile.resolved_capability
+    profile.resolved_capabilities
+
+let profile_primary_capability_resolution (profile : profile) =
+  primary_capability_resolution profile.resolved_capabilities
+
 let capability_resolution_to_json (entry : capability_resolution) =
   let stage_json =
     match entry.capability_stage with
@@ -447,6 +467,9 @@ let make_profile ?source_name ?resolved_stage ?resolved_capability
     ?(resolved_capabilities = []) ?(stage_trace = stage_trace_empty)
     ?(diagnostic_payload = empty_diagnostic_payload) ~stage_requirement
     ~effect_set ~span () =
+  let resolved_capability =
+    primary_capability_name ?fallback:resolved_capability resolved_capabilities
+  in
   {
     effect_set;
     stage_requirement;
@@ -471,16 +494,12 @@ let profile_of_ast ?source_name ?(stage_trace = stage_trace_empty)
     | [] -> declared
     | entries -> tags_of_idents entries
   in
-  let capability_name =
-    match node.effect_capabilities with cap :: _ -> Some cap.name | [] -> None
-  in
   let effect_set = set_of_ast_nodes ~declared ~residual in
   let stage_requirement =
     match node.effect_stage with
     | Some annot -> stage_requirement_of_annot annot
     | None -> default_stage_requirement
   in
-  let diagnostic_payload = payload_of_ast node in
   let resolved_capabilities =
     List.map
       (fun ident ->
@@ -490,6 +509,6 @@ let profile_of_ast ?source_name ?(stage_trace = stage_trace_empty)
         })
       node.effect_capabilities
   in
-  make_profile ?source_name ?resolved_capability:capability_name
-    ~resolved_capabilities ~stage_requirement ~effect_set
-    ~span:node.effect_span ~stage_trace ~diagnostic_payload ()
+  let diagnostic_payload = payload_of_ast node in
+  make_profile ?source_name ~resolved_capabilities ~stage_requirement
+    ~effect_set ~span:node.effect_span ~stage_trace ~diagnostic_payload ()
