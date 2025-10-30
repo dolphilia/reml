@@ -52,15 +52,44 @@ type severity_hint =
  * 仕様書 2-5 §A で定義されたドメイン分類
  *)
 type error_domain =
+  | Effect (* 効果システム *)
+  | Target (* ターゲット・デプロイ *)
+  | Plugin (* プラグイン *)
+  | Lsp (* LSP レイヤー *)
+  | Runtime (* 実行時 *)
   | Parser (* 構文解析 *)
   | Type (* 型システム *)
   | Config (* 設定 *)
-  | Runtime (* 実行時 *)
   | Network (* ネットワーク *)
   | Data (* データ *)
   | Audit (* 監査 *)
   | Security (* セキュリティ *)
-  | CLI (* コマンドライン *)
+  | Cli (* コマンドライン *)
+  | Other of string (* その他：未知ドメイン *)
+
+module Domain = struct
+  type t = error_domain
+
+  let effect = Effect
+  let target = Target
+  let plugin = Plugin
+  let lsp = Lsp
+  let runtime = Runtime
+  let parser = Parser
+  let typing = Type
+  let config = Config
+  let network = Network
+  let data = Data
+  let audit = Audit
+  let security = Security
+  let cli = Cli
+
+  let sanitize_other value =
+    let trimmed = String.trim value in
+    if trimmed = "" then "other" else trimmed
+
+  let other value = Other (sanitize_other value)
+end
 
 (* ========== 位置情報 ========== *)
 
@@ -227,15 +256,22 @@ let severity_label = function
 
 (** エラードメインラベル（日本語） *)
 let domain_label = function
+  | Effect -> "効果"
+  | Target -> "ターゲット"
+  | Plugin -> "プラグイン"
+  | Lsp -> "LSP"
+  | Runtime -> "実行時"
   | Parser -> "構文解析"
   | Type -> "型システム"
   | Config -> "設定"
-  | Runtime -> "実行時"
   | Network -> "ネットワーク"
   | Data -> "データ"
   | Audit -> "監査"
   | Security -> "セキュリティ"
-  | CLI -> "CLI"
+  | Cli -> "CLI"
+  | Other label ->
+      let sanitized = String.trim label in
+      if sanitized = "" then "その他" else Printf.sprintf "その他(%s)" sanitized
 
 (** Lexing.position から location への変換 *)
 let location_of_pos (pos : Lexing.position) : location =

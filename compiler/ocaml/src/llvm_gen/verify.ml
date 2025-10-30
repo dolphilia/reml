@@ -168,7 +168,7 @@ let error_to_diagnostic error span_opt =
   in
 
   Diagnostic.(
-    Builder.create ~severity ?severity_hint:None ~domain:CLI ~message
+    Builder.create ~severity ?severity_hint:None ~domain:Cli ~message
       ~primary:span ()
     |> Builder.set_primary_code code
     |> Builder.add_notes notes

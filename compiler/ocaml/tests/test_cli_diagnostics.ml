@@ -502,7 +502,7 @@ let test_info_hint_snapshot () =
       }
   in
   let info_diag =
-    Diagnostic.Builder.create ~severity:Diagnostic.Info ~domain:Diagnostic.CLI
+    Diagnostic.Builder.create ~severity:Diagnostic.Info ~domain:Diagnostic.Cli
       ~timestamp:"1970-01-01T00:00:00Z"
       ~message:"情報レベルの診断メッセージです" ~primary:info_span ()
     |> Diagnostic.Builder.set_primary_code "demo.info.sample"
@@ -511,7 +511,7 @@ let test_info_hint_snapshot () =
   in
   let hint_diag =
     Diagnostic.Builder.create ~severity:Diagnostic.Hint
-      ~severity_hint:Diagnostic.Ignore ~domain:Diagnostic.CLI
+      ~severity_hint:Diagnostic.Ignore ~domain:Diagnostic.Cli
       ~timestamp:"1970-01-01T00:00:00Z"
       ~message:"ヒントレベルの診断メッセージです" ~primary:hint_span ()
     |> Diagnostic.Builder.set_primary_code "demo.hint.sample"

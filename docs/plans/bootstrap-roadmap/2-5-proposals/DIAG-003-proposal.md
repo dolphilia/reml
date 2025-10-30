@@ -68,6 +68,12 @@
    - `Legacy` 経路（`diagnostic_of_legacy`）で未知ドメインを受け取った際は `Other legacy_domain` として保持し、`AuditEnvelope.metadata["legacy.domain"]` に原文字列を記録する。  
    - 調査: `compiler/ocaml/tests` で `Diagnostic.create_*` を直接呼ぶテストを列挙し、新列挙への置換とゴールデン再生成の要否を洗い出す。
 
+   #### Step2 実装結果（2025-11-26 更新）
+   - ✅ `compiler/ocaml/src/diagnostic.ml` の `error_domain` を仕様語彙（`Effect` / `Target` / `Plugin` / `Lsp` など）へ拡張し、既存 9 項目は専用コンストラクタとして維持。未知値は `Other of string` へマップする。
+   - ✅ `Diagnostic.Domain` モジュールを新設し、`other` ヘルパで未知ドメイン文字列を安全に登録できるようにした（空文字は `"other"` に正規化）。
+   - ✅ `domain_label` / `domain_to_string` / CLI テスト類を新 enum に追従させ、`Cli` へリネームしたコントラクタの参照を更新。
+   - ℹ️ `Legacy` 由来の生ドメイン記録は Step4 以降で扱う想定のため、現時点では `Other` 経路のみ整備。
+
 3. **シリアライズ・CLI/LSP 出力とスキーマ更新（Week31 Day3-4）**  
    - `compiler/ocaml/src/diagnostic_serialization.ml` の `domain_to_json`、`domain_of_json` を新列挙へ対応させ、`Other` は `"other"` + `extensions["domain.other"]` に分離してシリアライズする。  
    - `tooling/json-schema/diagnostic-v2.schema.json` の `domain.enum` を仕様語彙へ更新し、`scripts/validate-diagnostic-json.sh` ゴールデンに `Effect` / `Plugin` / `Lsp` / `Other` ケースを追加。  

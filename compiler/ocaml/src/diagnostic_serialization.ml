@@ -127,6 +127,10 @@ let domain_to_string = function
   | Some domain ->
       let label =
         match domain with
+        | Effect -> "effect"
+        | Target -> "target"
+        | Plugin -> "plugin"
+        | Lsp -> "lsp"
         | Parser -> "parser"
         | Type -> "type"
         | Config -> "config"
@@ -135,7 +139,10 @@ let domain_to_string = function
         | Data -> "data"
         | Audit -> "audit"
         | Security -> "security"
-        | CLI -> "cli"
+        | Cli -> "cli"
+        | Other value ->
+            let trimmed = String.trim value in
+            if trimmed = "" then "other" else trimmed
       in
       Some label
 
