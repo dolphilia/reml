@@ -328,6 +328,28 @@ S3（Menhir ルール実装）の結果共有。
 - S4 で予定している Typer／診断連携へ向けて、`tcu_use_decls` の利用箇所（`type_inference.ml`）にネスト構造を踏まえた再帰探索が必要か評価する。
 - S5 でのテスト追加（`test_parser.ml`）および CLI ゴールデン更新を行う際は、今回の Menhir 修正に基づいた AST 期待値をベースラインとする。
 
+## EFFECT-003 Week32 Day1 効果プロファイル棚卸し（2025-11-21）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-003-proposal.md`](./2-5-proposals/EFFECT-003-proposal.md)
+
+### 1. 調査サマリ
+- Parser 段階の `Effect_profile.profile` は依然として `resolved_capability` に先頭要素のみを格納し、配列本体は `resolved_capabilities` に保持する構造で Stage 情報が未設定（`compiler/ocaml/src/effect_profile.ml:474`, `compiler/ocaml/src/effect_profile.ml:484`）。
+- Typer の `resolve_function_profile` は全 Capability に Stage を割り当てる一方、`resolved_stage` と `stage_trace` を代表値（先頭 Capability）で決定しており、残りの Capability が Stage 判定に影響できない（`compiler/ocaml/src/type_inference_effect.ml:73`, `compiler/ocaml/src/type_inference_effect.ml:86`）。
+- Core IR への転写も配列が空の場合に単一フィールドへフォールバックするため、複数 Capability を要求する関数が IR メタデータ上で区別されない（`compiler/ocaml/src/core_ir/desugar.ml:1729`）。
+- 診断／監査は `effect.stage.capability` を必須スカラーとして扱い、配列は補助情報扱いに留まっている。`metadata_for_effect` と `with_effect_stage_extension` の双方で一次 Capability を前提にメタデータを組み立てている（`compiler/ocaml/src/main.ml:21`, `compiler/ocaml/src/diagnostic.ml:680`）。
+- CI 集計スクリプトは `extensions.effects.capability` が空文字でないことを必須条件にしており、配列の検証経路が存在しない（`tooling/ci/collect-iterator-audit-metrics.py:419`）。
+- 仕様側は複数 Capability を契約として列挙し、Stage 検証と監査出力に同じ集合を要求しているため、現状の単一値処理が仕様の想定に一致していない（`docs/spec/1-3-effects-safety.md:236`, `docs/spec/3-8-core-runtime-capability.md:115`）。
+
+### 2. 観測されたギャップ
+- `resolved_stage` と `stage_trace` が常に先頭 Capability を参照するため、複数 Capability の Stage 判定結果を保存・報告できない。監査側でも `effect.stage.capability` が単一値のまま出力され、規約上必須の配列整合が欠落している（`compiler/ocaml/src/type_inference_effect.ml:82`）。
+- 診断生成は `profile.resolved_capability` をメッセージと監査メタデータの基点にしており、複数 Capability を含む関数で部分的な Stage 逸脱が発生してもエラー表示が先頭 Capability に固定される（`compiler/ocaml/src/type_error.ml:1001`）。
+- `collect-iterator-audit-metrics.py` が単一 Capability を前提とした必須項目と pass rate を定義しているため、配列化すると現行 CI 指標が未定義になる。指標とゴールデンの改訂を同時に計画する必要がある（`tooling/ci/collect-iterator-audit-metrics.py:401`）。
+
+### 3. TODO / 引き継ぎ
+1. Step 1 で `resolved_capability` を段階的に廃止し、全利用箇所を `resolved_capabilities` ベースへ置換する（Typer → ConstraintSolver → Core IR → Diagnostics の順で洗い替え）。
+2. 診断／監査出力を配列主体に改修し、`effect.stage.capability` を互換目的の補助フィールドへ後退させながら `collect-iterator-audit-metrics.py` と `reports/diagnostic-format-regression.md` の検証項目を更新する。
+3. `stage_trace` を Capability ごとのステップを保持できる構造へ拡張し、`Type_inference_effect.stage_for_capability` の結果を全件転写できるようにする。
+
 ## SYNTAX-002 Day3-4 束縛診断連携（2025-10-29）
 
 S4（束縛・診断連携）の結果共有。  

@@ -22,10 +22,10 @@
 - **OCaml テスト**: `compiler/ocaml/tests/capability_profile_tests.ml`（新設）で `resolve_function_profile` が `StageRequirement::{Exact, AtLeast}` の複数値判定を保持するか確認し、失敗時の診断内容をスナップショット化する。
 
 ## 4. 実施ステップ
-1. **Step 0: 効果プロファイル資産の棚卸し（Week32 Day1 予定） — 未着手**  
-   - `compiler/ocaml/src/type_inference_effect.ml`、`compiler/ocaml/src/effect_profile.ml`、`compiler/ocaml/docs/effect-system-design-note.md` を精査し、Capability 配列をどこまで保持できているかと `StageRequirement` 評価の呼び出し箇所を洗い出す。  
-   - `compiler/ocaml/src/diagnostic.ml`、`compiler/ocaml/src/diagnostic_serialization.ml`、`tooling/ci/collect-iterator-audit-metrics.py` に残る単一値前提のロジックを列挙し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` へ現状メモを追記する。  
-   - **調査**: `docs/spec/1-3-effects-safety.md` §4、`docs/spec/3-8-core-runtime-capability.md` §5、`docs/plans/bootstrap-roadmap/2-4-to-2-5-handover.md` の指摘を参照して既知のギャップを反映。
+1. **Step 0: 効果プロファイル資産の棚卸し（Week32 Day1 実施） — 完了（2025-11-21）**  
+   - `compiler/ocaml/src/type_inference_effect.ml`・`compiler/ocaml/src/effect_profile.ml`・`compiler/ocaml/docs/effect-system-design-note.md` を精査し、Capability 配列が保持される経路と `resolved_stage` / `stage_trace` が先頭要素に固定される箇所を整理。仕様参照（`docs/spec/1-3-effects-safety.md` §I, `docs/spec/3-8-core-runtime-capability.md` §1.2）と突き合わせてギャップを明確化した。  
+   - `compiler/ocaml/src/diagnostic.ml`・`compiler/ocaml/src/diagnostic_serialization.ml`・`tooling/ci/collect-iterator-audit-metrics.py` の単一値前提を列挙し、監査メタデータと CI 指標が配列化されていない現状を記録。  
+   - 調査結果を `docs/plans/bootstrap-roadmap/2-5-review-log.md` の「EFFECT-003 Week32 Day1 効果プロファイル棚卸し（2025-11-21）」として追記し、後続ステップの TODO（`resolved_capability` 廃止、配列主体への移行、`stage_trace` 拡張）を共有した。
 
 2. **Step 1: Typer／効果プロファイルを多重 Capability 対応へ移行（Week32 Day2-3 予定） — 未着手**  
    - `Effect_profile.profile` と `Type_inference_effect.resolve_function_profile` の `resolved_capabilities` を正式な一次データとして扱い、`resolved_capability` 単数フィールドを参照する箇所（`compiler/ocaml/src/type_inference.ml`、`compiler/ocaml/src/constraint_solver.ml`、`compiler/ocaml/src/core_ir/desugar.ml` など）を洗い替える。  
