@@ -593,3 +593,20 @@ S5（検証とドキュメント更新）の結果共有。
 - `tooling/ci/collect-iterator-audit-metrics.py` へ `diagnostics.domain_coverage` 指標を導入し、Plugin/Lsp/Other を含む語彙が CI で監視されるようにする（Phase 2-7 へ移管）。  
 - `Domain` 列挙の `Syntax` / `Manifest` / `Regex` / `Template` 追加と用語集更新は Step4 以降で実施。  
 - `docs/spec/0-2-glossary.md` と `docs/spec/3-6-core-diagnostics-audit.md` に `domain.other` 正規化の脚注を追加するフォローアップを 2-7 `diagnostic-domain` タスクへ登録。
+
+## DIAG-003 Step4 監査メタデータ整合（2025-11-28）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md`](./2-5-proposals/DIAG-003-proposal.md#4-%E7%9B%A3%E6%9F%BB%E3%83%A1%E3%82%BF%E3%83%87%E3%83%BC%E3%82%BF%E3%81%A8%E3%83%A1%E3%83%88%E3%83%AA%E3%82%AF%E3%82%B9%E6%95%B4%E5%90%88week31-day4-5)
+
+### 1. 作業サマリ
+- `compiler/ocaml/src/diagnostic.ml` に `extensions["capability"]` / `extensions["plugin"]` / `extensions["lsp"]` を追加し、`event.domain`・`event.kind`・`capability.ids`・`plugin.bundle_id` を `audit_metadata` と `AuditEnvelope.metadata` の両方へ自動転写。`with_effect_stage_extension` は `capability.primary` と ID 一覧を一貫して生成するよう改修。  
+- `Diagnostic.Builder.build` で `event.*` を必須化し、`test_cli_diagnostics.ml` に Stage 診断・Plugin 診断の検証テストを追加。`test_type_inference.ml` では `TraitConstraintFailure` の診断オブジェクトから Capability 情報が伝播することを確認するユニットテストを新設。  
+- `tooling/ci/collect-iterator-audit-metrics.py` に `diagnostics.domain_coverage` / `diagnostics.effect_stage_consistency` / `diagnostics.plugin_bundle_ratio` を実装し、`iterator.stage.audit_pass_rate` の `related_metrics` として出力。監査 CI で `--require-success` を指定すると新指標が失敗要因として扱われる。
+
+### 2. 検証
+- 追加したテストで `Yojson.Basic` による JSON 検証を実施（`dune runtest` は未実行、CI での追跡を前提）。  
+- `compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden` / `compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden` を手動更新し、`event.*`・`capability.ids`・`plugin.bundle_id` フィールドが出力されることをレビュー。
+
+### 3. TODO / 引き継ぎ
+- EFFECT-003 完了後に複数 Capability を含むスナップショットを追加し、`diagnostics.effect_stage_consistency` の配列比較ロジックを実データで再確認する。  
+- Step5 で `docs/spec/3-6-core-diagnostics-audit.md` / `docs/guides/runtime-bridges.md` 等の脚注更新を実施し、OCaml 実装への反映日と依存関係を明記する。

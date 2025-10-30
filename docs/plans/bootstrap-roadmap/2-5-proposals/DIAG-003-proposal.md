@@ -92,6 +92,11 @@
    - `tooling/ci/collect-iterator-audit-metrics.py` に `diagnostics.domain_coverage`, `diagnostics.effect_stage_consistency`, `diagnostics.plugin_bundle_ratio` を追加し、`--require-success` で新指標が 1.0 を維持することを確認する。  
    - 調査: `docs/plans/bootstrap-roadmap/2-5-review-log.md` の DIAG-003 エントリを更新し、`Phase 2-7` の Capability/Stage 監査計画と整合性をチェック。
 
+   #### Step4 実施結果（2025-11-28 更新）
+   - ✅ `compiler/ocaml/src/diagnostic.ml` で `extensions["capability"]` / `extensions["plugin"]` / `extensions["lsp"]` を実装し、`event.domain`・`event.kind`・`capability.ids`・`plugin.bundle_id` を `audit_metadata` と `AuditEnvelope.metadata` に自動付与するよう統合。  
+   - ✅ `compiler/ocaml/tests/test_cli_diagnostics.ml` と `compiler/ocaml/tests/test_type_inference.ml` に新メタデータ検証テストを追加し、`tooling/ci/collect-iterator-audit-metrics.py` へ `diagnostics.domain_coverage` / `diagnostics.effect_stage_consistency` / `diagnostics.plugin_bundle_ratio` を組み込み。  
+   - ⚠ フォローアップ: EFFECT-003 で予定している複数 Capability 対応に合わせ、`capability.ids` の配列比較ロジックを Phase 2-7 で再確認する（複数 Stage を返すケースのサンプル拡充が必要）。
+
 5. **ドキュメント・脚注・ハンドオフ更新（Week32 Day1）**  
    - `docs/spec/3-6-core-diagnostics-audit.md` と `docs/spec/0-2-glossary.md` に新ドメインの定義脚注を追加し、OCaml 実装の反映日時を `Phase 2-5` フッタに記録。  
    - `docs/plans/bootstrap-roadmap/2-5-review-log.md` へ Step1〜4 の作業ログと検証結果を追記し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に Stage/Plugin ドメイン連携 TODO（CI 監査ダッシュボード改修）を登録。  

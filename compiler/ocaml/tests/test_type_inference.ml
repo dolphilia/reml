@@ -1796,6 +1796,119 @@ let test_mutable_bindings () =
           failwith (Printf.sprintf "Expected not-assignable error, got %s" msg)
       | Ok _ -> failwith "Assignment to literal should fail")
 
+let test_trait_constraint_stage_metadata () =
+  run_test "trait constraint stage metadata" (fun () ->
+      let effect_stage : Type_error.trait_constraint_stage_extension =
+        {
+          required_stage = "beta";
+          iterator_required = "at_least:beta";
+          actual_stage = Some "experimental";
+          capability = Some "core.iterator.collect";
+          provider = Some "Core.Iter";
+          manifest_path = Some "dsl/core.iter.toml";
+          iterator_kind = Some "array_like";
+          iterator_source = Some "typer";
+          capability_metadata =
+            Some (`Assoc [ ("verified_at", `String "2025-10-21T03:15:00Z") ]);
+          residual =
+            Some
+              (`Assoc
+                 [
+                   ( "missing_ops",
+                     `List [ `String "Iterator::next"; `String "Iterator::size_hint" ] );
+                 ]);
+          stage_trace = [];
+        }
+      in
+      let error =
+        Type_error.TraitConstraintFailure
+          {
+            trait_name = "Iterator";
+            type_args =
+              [
+                Types.TCon (Types.TCUser "SampleStream");
+                Types.TCon (Types.TCUser "SampleItem");
+              ];
+            reason = "Stage mismatch";
+            span = dummy_span;
+            effect_stage = Some effect_stage;
+            typeclass_state = Typeclass_metadata.StageMismatch ();
+            typeclass_pending = [ "Iterator.size_hint" ];
+            typeclass_generalized = [ "T" ];
+          }
+      in
+      let diag = Type_error.to_diagnostic error in
+      let expect_string key source =
+        match source key with
+        | Some (`String value) -> value
+        | Some other ->
+            failwith
+              (Printf.sprintf "%s expected string, got %s" key
+                 (Yojson.Basic.to_string other))
+        | None -> failwith (Printf.sprintf "%s metadata missing" key)
+      in
+      let expect_string_list key source =
+        match source key with
+        | Some (`List items) ->
+            List.map
+              (function
+                | `String value -> value
+                | other ->
+                    failwith
+                      (Printf.sprintf "%s expected string list, got %s" key
+                         (Yojson.Basic.to_string other)))
+              items
+        | Some other ->
+            failwith
+              (Printf.sprintf "%s expected list, got %s" key
+                 (Yojson.Basic.to_string other))
+        | None -> failwith (Printf.sprintf "%s metadata missing" key)
+      in
+      let audit_lookup key =
+        Diagnostic.Extensions.get key diag.Diagnostic.audit_metadata
+      in
+      let event_domain = expect_string "event.domain" audit_lookup in
+      let event_kind = expect_string "event.kind" audit_lookup in
+      assert (String.equal event_domain "type");
+      assert (String.equal event_kind "E7016");
+      let capability_ids = expect_string_list "capability.ids" audit_lookup in
+      assert (capability_ids = [ "core.iterator.collect" ]);
+      let envelope_metadata = Audit_envelope.metadata diag.Diagnostic.audit in
+      let envelope_lookup key =
+        match List.assoc_opt key envelope_metadata with
+        | Some value -> Some value
+        | None -> None
+      in
+      let envelope_ids =
+        expect_string_list "capability.ids" envelope_lookup
+      in
+      assert (envelope_ids = capability_ids);
+      let capability_extension =
+        match
+          Diagnostic.Extensions.get "capability" diag.Diagnostic.extensions
+        with
+        | Some (`Assoc fields) -> fields
+        | Some other ->
+            failwith
+              (Printf.sprintf "capability extension malformed: %s"
+                 (Yojson.Basic.to_string other))
+        | None -> failwith "capability extension missing"
+      in
+      let extension_ids =
+        match List.assoc_opt "ids" capability_extension with
+        | Some (`List items) ->
+            List.map
+              (function
+                | `String value -> value
+                | other ->
+                    failwith
+                      (Printf.sprintf "capability.ids extension invalid: %s"
+                         (Yojson.Basic.to_string other)))
+              items
+        | _ -> failwith "capability.ids extension missing"
+      in
+      assert (extension_ids = capability_ids))
+
 (* ========== メイン ========== *)
 
 let () =
@@ -1811,4 +1924,5 @@ let () =
   test_composite_literal_errors ();
   test_pattern_match_errors ();
   test_mutable_bindings ();
+  test_trait_constraint_stage_metadata ();
   Printf.printf "\nAll type inference tests passed! ✓\n"

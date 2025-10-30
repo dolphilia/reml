@@ -62,9 +62,12 @@ REQUIRED_AUDIT_FIELDS: List[RequiredField] = [
     Field("cli.audit_id", ("cli.audit_id", "audit_id")),
     Field("cli.change_set", ("cli.change_set", "change_set")),
     Field("schema.version", ("schema.version",)),
+    Field("event.domain", ("event.domain",)),
+    Field("event.kind", ("event.kind",)),
     Field("effect.stage.required", ("effect.stage.required",)),
     Field("effect.stage.actual", ("effect.stage.actual",)),
     Field("effect.capability", ("effect.capability",)),
+    Field("capability.ids", ("capability.ids",)),
     Field(
         "effect.capability_descriptor",
         ("effect.capability_descriptor", "effect.capability_metadata"),
@@ -315,6 +318,37 @@ def check_basic_audit_fields(audit: Optional[Dict]) -> List[str]:
 def _as_dict(value: Optional[object]) -> Optional[Dict]:
     if isinstance(value, dict):
         return value
+    return None
+
+
+def _as_string_list(value: Optional[object]) -> Optional[List[str]]:
+    if isinstance(value, list):
+        result: List[str] = []
+        for item in value:
+            if isinstance(item, str):
+                result.append(item)
+            elif item is not None:
+                result.append(str(item))
+        return result
+    return None
+
+
+def _diagnostic_metadata_lookup(diag: Dict[str, Any], key: str) -> Optional[object]:
+    metadata = _as_dict(diag.get("audit_metadata"))
+    if metadata and key in metadata:
+        return metadata.get(key)
+    audit = _as_dict(diag.get("audit"))
+    if audit:
+        meta = _as_dict(audit.get("metadata"))
+        if meta and key in meta:
+            return meta.get(key)
+    return None
+
+
+def _normalize_domain(value: Optional[object]) -> Optional[str]:
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        return lowered if lowered else None
     return None
 
 
@@ -1578,6 +1612,233 @@ def collect_metrics(paths: List[Path]) -> Dict:
     }
 
 
+def collect_domain_metrics(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
+    total = 0
+    passed = 0
+    failures: List[Dict[str, Any]] = []
+    schema_versions: Set[str] = set()
+
+    for path in paths:
+        data = load_json(path)
+        diag_list = list(iter_diagnostics(data))
+        for index, diag in enumerate(diag_list):
+            domain_value = _normalize_domain(diag.get("domain"))
+            expected_kind = primary_code_of(diag)
+            if domain_value is None and not expected_kind:
+                continue
+            total += 1
+            schema = extract_schema_version(diag)
+            if schema:
+                schema_versions.add(schema)
+            event_domain_value = _diagnostic_metadata_lookup(diag, "event.domain")
+            event_kind_value = _diagnostic_metadata_lookup(diag, "event.kind")
+            reasons: List[str] = []
+            if domain_value:
+                normalized_event = _normalize_domain(event_domain_value)
+                if normalized_event != domain_value:
+                    reasons.append("event.domain")
+            if expected_kind:
+                if not isinstance(event_kind_value, str) or not event_kind_value.strip():
+                    reasons.append("event.kind.missing")
+                elif event_kind_value != expected_kind:
+                    reasons.append("event.kind.mismatch")
+            if not reasons:
+                passed += 1
+            else:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "reasons": reasons,
+                        "domain": domain_value,
+                        "expected_kind": expected_kind,
+                        "event_domain": event_domain_value,
+                        "event_kind": event_kind_value,
+                    }
+                )
+
+    if total == 0:
+        return None
+
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+    status = "success" if pass_rate == 1.0 else "error"
+    return {
+        "metric": "diagnostics.domain_coverage",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "status": status,
+        "sources": [str(path) for path in paths],
+        "failures": failures,
+        "schema_versions": sorted(schema_versions),
+    }
+
+
+def collect_effect_stage_consistency(
+    paths: Sequence[Path],
+) -> Optional[Dict[str, Any]]:
+    total = 0
+    passed = 0
+    failures: List[Dict[str, Any]] = []
+
+    for path in paths:
+        data = load_json(path)
+        for index, diag in enumerate(iter_diagnostics(data)):
+            extensions = _as_dict(diag.get("extensions"))
+            capability_ext = None
+            if extensions:
+                capability_ext = _as_dict(extensions.get("capability"))
+            metadata = _as_dict(diag.get("audit_metadata"))
+            audit_entry = _as_dict(diag.get("audit"))
+            envelope_meta = _as_dict(audit_entry.get("metadata")) if audit_entry else None
+
+            capability_present = capability_ext is not None
+            metadata_present = metadata and "capability.ids" in metadata
+            envelope_present = envelope_meta and "capability.ids" in envelope_meta
+
+            if not (capability_present or metadata_present or envelope_present):
+                continue
+
+            total += 1
+
+            ids_extension = (
+                _as_string_list(capability_ext.get("ids")) if capability_ext else None
+            )
+            metadata_ids = (
+                _as_string_list(metadata.get("capability.ids"))
+                if metadata and "capability.ids" in metadata
+                else None
+            )
+            envelope_ids = (
+                _as_string_list(envelope_meta.get("capability.ids"))
+                if envelope_meta and "capability.ids" in envelope_meta
+                else None
+            )
+
+            expected_ids = None
+            for candidate in (ids_extension, metadata_ids, envelope_ids):
+                if candidate:
+                    expected_ids = sorted(set(candidate))
+                    break
+
+            reasons: List[str] = []
+            if not expected_ids:
+                reasons.append("capability.ids.empty")
+            if ids_extension and sorted(set(ids_extension)) != expected_ids:
+                reasons.append("capability.extension.mismatch")
+            if metadata_present:
+                if not metadata_ids:
+                    reasons.append("capability.audit_metadata.missing")
+                elif sorted(set(metadata_ids)) != expected_ids:
+                    reasons.append("capability.audit_metadata.mismatch")
+            if envelope_present:
+                if not envelope_ids:
+                    reasons.append("capability.audit_envelope.missing")
+                elif sorted(set(envelope_ids)) != expected_ids:
+                    reasons.append("capability.audit_envelope.mismatch")
+
+            if reasons:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "reasons": reasons,
+                        "extension_ids": ids_extension,
+                        "audit_ids": metadata_ids,
+                        "envelope_ids": envelope_ids,
+                    }
+                )
+            else:
+                passed += 1
+
+    if total == 0:
+        return None
+
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+    status = "success" if pass_rate == 1.0 else "error"
+    return {
+        "metric": "diagnostics.effect_stage_consistency",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "status": status,
+        "sources": [str(path) for path in paths],
+        "failures": failures,
+    }
+
+
+def collect_plugin_bundle_metrics(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
+    total = 0
+    passed = 0
+    failures: List[Dict[str, Any]] = []
+
+    for path in paths:
+        data = load_json(path)
+        for index, diag in enumerate(iter_diagnostics(data)):
+            domain = _normalize_domain(diag.get("domain"))
+            extensions = _as_dict(diag.get("extensions"))
+            plugin_ext = None
+            if extensions:
+                plugin_ext = _as_dict(extensions.get("plugin"))
+            if domain != "plugin" and plugin_ext is None:
+                continue
+            total += 1
+            bundle_extension = (
+                plugin_ext.get("bundle_id") if plugin_ext and "bundle_id" in plugin_ext else None
+            )
+            metadata_bundle = _diagnostic_metadata_lookup(diag, "plugin.bundle_id")
+            reasons: List[str] = []
+            if not isinstance(bundle_extension, str) or not bundle_extension:
+                reasons.append("extension.bundle_id.missing")
+            if not isinstance(metadata_bundle, str) or not metadata_bundle:
+                reasons.append("audit.bundle_id.missing")
+            elif isinstance(bundle_extension, str) and bundle_extension != metadata_bundle:
+                reasons.append("bundle_id.mismatch")
+
+            signature_status = _diagnostic_metadata_lookup(diag, "plugin.signature.status")
+            if plugin_ext and "signature" in plugin_ext:
+                signature = plugin_ext["signature"]
+                if isinstance(signature, dict) and "status" in signature:
+                    status_value = signature["status"]
+                    if status_value != signature_status:
+                        reasons.append("signature.status.mismatch")
+
+            if reasons:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "reasons": reasons,
+                        "bundle_extension": bundle_extension,
+                        "bundle_audit": metadata_bundle,
+                        "signature_status": signature_status,
+                    }
+                )
+            else:
+                passed += 1
+
+    if total == 0:
+        return None
+
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+    status = "success" if pass_rate == 1.0 else "warning"
+    return {
+        "metric": "diagnostics.plugin_bundle_ratio",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "status": status,
+        "sources": [str(path) for path in paths],
+        "failures": failures,
+    }
+
+
 def collect_bridge_metrics(
     paths: List[Path], audit_paths: List[Path]
 ) -> Dict:
@@ -2249,6 +2510,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     runconfig_metrics: List[Dict[str, Any]] = []
     orphan_runconfig_metrics: List[Dict[str, Any]] = []
     iterator_metrics: Optional[Dict[str, Any]] = None
+    domain_metrics: Optional[Dict[str, Any]] = None
+    effect_consistency_metric: Optional[Dict[str, Any]] = None
+    plugin_bundle_metric: Optional[Dict[str, Any]] = None
     typeclass_metrics: Optional[Dict[str, Any]] = None
     bridge_metrics: Optional[Dict[str, Any]] = None
     review_metrics: Optional[Dict[str, Any]] = None
@@ -2264,6 +2528,18 @@ def main(argv: Optional[List[str]] = None) -> int:
             orphan_runconfig_metrics = runconfig_metrics.copy()
     if "iterator" in sections:
         iterator_metrics = collect_metrics(sources)
+        domain_metrics = collect_domain_metrics(sources)
+        effect_consistency_metric = collect_effect_stage_consistency(sources)
+        plugin_bundle_metric = collect_plugin_bundle_metrics(sources)
+        if iterator_metrics:
+            related = iterator_metrics.setdefault("related_metrics", [])
+            for metric in (
+                domain_metrics,
+                effect_consistency_metric,
+                plugin_bundle_metric,
+            ):
+                if metric:
+                    related.append(metric)
     if "typeclass" in sections:
         typeclass_metrics = collect_typeclass_metrics(sources, audit_paths)
     if "ffi" in sections:

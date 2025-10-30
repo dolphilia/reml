@@ -273,6 +273,24 @@ let domain_label = function
       let sanitized = String.trim label in
       if sanitized = "" then "その他" else Printf.sprintf "その他(%s)" sanitized
 
+let domain_slug = function
+  | Effect -> "effect"
+  | Target -> "target"
+  | Plugin -> "plugin"
+  | Lsp -> "lsp"
+  | Runtime -> "runtime"
+  | Parser -> "parser"
+  | Type -> "type"
+  | Config -> "config"
+  | Network -> "network"
+  | Data -> "data"
+  | Audit -> "audit"
+  | Security -> "security"
+  | Cli -> "cli"
+  | Other label ->
+      let sanitized = String.trim label in
+      if sanitized = "" then "other" else sanitized
+
 (** Lexing.position から location への変換 *)
 let location_of_pos (pos : Lexing.position) : location =
   let column = pos.pos_cnum - pos.pos_bol + 1 in
@@ -306,6 +324,22 @@ let merge_audit_metadata entries diag =
   let audit = Audit_envelope.merge_metadata diag.audit enriched_entries in
   assert (Audit_envelope.has_core_keys audit);
   { diag with audit_metadata = enriched_entries; audit; timestamp }
+
+let ensure_event_metadata diag =
+  let entries =
+    let base = [] in
+    let base =
+      match diag.domain with
+      | Some domain ->
+          ("event.domain", `String (domain_slug domain)) :: base
+      | None -> base
+    in
+    match primary_code diag with
+    | Some code when String.trim code <> "" ->
+        ("event.kind", `String code) :: base
+    | _ -> base
+  in
+  match entries with [] -> diag | _ -> merge_audit_metadata entries diag
 
 let string_is_blank value = String.trim value = ""
 
@@ -646,8 +680,12 @@ let diagnostic_of_legacy[@deprecated "Diagnostic.Legacy.t からの変換は段�
 let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
     ?capability_meta ?capability_stages ?iterator_fields ?stage_trace
     ~required_stage ~capability diag =
-  let capability_list =
+  let capability_entries =
     match capability_stages with Some entries -> entries | None -> []
+  in
+  let primary_capability =
+    let trimmed = String.trim capability in
+    if trimmed = "" then "<unknown>" else trimmed
   in
   let stage_fields =
     [
@@ -655,32 +693,53 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
       ("actual", match actual_stage with Some s -> `String s | None -> `Null);
     ]
   in
+  let stage_json = `Assoc stage_fields in
+  let capability_detail_json =
+    match capability_entries with
+    | [] -> None
+    | entries ->
+        Some
+          (`List
+             (List.map
+                (fun (name, stage_opt) ->
+                  let fields = [ ("capability", `String name) ] in
+                  let fields =
+                    match stage_opt with
+                    | Some stage -> ("stage", `String stage) :: fields
+                    | None -> fields
+                  in
+                  `Assoc (List.rev fields))
+                entries))
+  in
+  let capability_names =
+    let extras =
+      capability_entries
+      |> List.filter_map (fun (name, _) ->
+             let trimmed = String.trim name in
+             if trimmed = "" then None else Some trimmed)
+    in
+    let combined = primary_capability :: extras in
+    let rec dedup acc = function
+      | [] -> List.rev acc
+      | item :: rest ->
+          if List.exists (String.equal item) acc then dedup acc rest
+          else dedup (item :: acc) rest
+    in
+    dedup [] combined
+  in
+  let capability_ids_json =
+    `List (List.map (fun name -> `String name) capability_names)
+  in
   let effect_fields =
     let base =
-      [ ("stage", `Assoc stage_fields); ("capability", `String capability) ]
+      [ ("stage", stage_json); ("capability", `String primary_capability) ]
     in
-    match capability_list with
-    | [] -> base
-    | entries ->
-        let detail_json =
-          `List
-            (List.map
-               (fun (name, stage_opt) ->
-                 let fields = [ ("capability", `String name) ] in
-                 let fields =
-                   match stage_opt with
-                   | Some stage -> ("stage", `String stage) :: fields
-                   | None -> fields
-                 in
-                 `Assoc (List.rev fields))
-               entries)
-        in
-        let names_json =
-          `List (List.map (fun (name, _) -> `String name) entries)
-        in
-        ("capabilities_detail", detail_json)
-        :: ("capabilities", names_json)
-        :: base
+    let base =
+      match capability_detail_json with
+      | Some detail -> ("capabilities_detail", detail) :: base
+      | None -> base
+    in
+    ("capabilities", capability_ids_json) :: base
   in
   let effect_fields =
     match residual with
@@ -717,28 +776,30 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
   let payload = `Assoc (List.rev effect_fields) in
   let diag = set_extension "effects" payload diag in
   let diag =
-    match capability_list with
-    | [] -> diag
-    | entries ->
-        let detail_json =
-          `List
-            (List.map
-               (fun (name, stage_opt) ->
-                 let fields = [ ("capability", `String name) ] in
-                 let fields =
-                   match stage_opt with
-                   | Some stage -> ("stage", `String stage) :: fields
-                   | None -> fields
-                 in
-                 `Assoc (List.rev fields))
-               entries)
-        in
-        let names_json =
-          `List (List.map (fun (name, _) -> `String name) entries)
-        in
+    let capability_fields =
+      let base =
+        [
+          ("ids", capability_ids_json);
+          ("stage", stage_json);
+          ("primary", `String primary_capability);
+        ]
+      in
+      let base =
+        match capability_detail_json with
+        | Some detail -> ("detail", detail) :: base
+        | None -> base
+      in
+      `Assoc base
+    in
+    set_extension "capability" capability_fields diag
+  in
+  let diag =
+    match capability_detail_json with
+    | Some detail ->
         diag
-        |> set_extension "effect.stage.capabilities" detail_json
-        |> set_extension "effect.capabilities" names_json
+        |> set_extension "effect.stage.capabilities" detail
+        |> set_extension "effect.capabilities" capability_ids_json
+    | None -> set_extension "effect.capabilities" capability_ids_json diag
   in
   let diag =
     match stage_trace with
@@ -757,7 +818,7 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
       diag
   in
   let diag =
-    set_extension "effect.stage.capability" (`String capability) diag
+    set_extension "effect.stage.capability" (`String primary_capability) diag
   in
   let diag =
     set_audit_metadata "effect.stage.required" (`String required_stage) diag
@@ -767,30 +828,22 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
       (match actual_stage with Some s -> `String s | None -> `Null)
       diag
   in
-  let diag = set_audit_metadata "effect.capability" (`String capability) diag in
   let diag =
-    match capability_list with
-    | [] -> diag
-    | entries ->
-        let detail_json =
-          `List
-            (List.map
-               (fun (name, stage_opt) ->
-                 let fields = [ ("capability", `String name) ] in
-                 let fields =
-                   match stage_opt with
-                   | Some stage -> ("stage", `String stage) :: fields
-                   | None -> fields
-                 in
-                 `Assoc (List.rev fields))
-               entries)
-        in
-        let names_json =
-          `List (List.map (fun (name, _) -> `String name) entries)
-        in
+    set_audit_metadata "effect.capability" (`String primary_capability) diag
+  in
+  let diag =
+    set_audit_metadata "capability.primary" (`String primary_capability) diag
+  in
+  let diag =
+    set_audit_metadata "capability.ids" capability_ids_json diag
+  in
+  let diag =
+    match capability_detail_json with
+    | Some detail ->
         diag
-        |> set_audit_metadata "effect.stage.capabilities" detail_json
-        |> set_audit_metadata "effect.capabilities" names_json
+        |> set_audit_metadata "effect.stage.capabilities" detail
+        |> set_audit_metadata "effect.capabilities" capability_ids_json
+    | None -> set_audit_metadata "effect.capabilities" capability_ids_json diag
   in
   let diag =
     match residual with
@@ -830,6 +883,82 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
         set_audit_metadata "stage_trace"
           (Effect_profile.stage_trace_to_json trace)
           diag
+    | _ -> diag
+  in
+  diag
+
+let with_plugin_metadata ?signature ?(extra_metadata = []) ~bundle_id diag =
+  let payload_fields =
+    let base = [ ("bundle_id", `String bundle_id) ] in
+    match signature with
+    | Some json -> ("signature", json) :: base
+    | None -> base
+  in
+  let diag = set_extension "plugin" (`Assoc (List.rev payload_fields)) diag in
+  let diag =
+    List.fold_left
+      (fun acc (key, value) -> set_audit_metadata key value acc)
+      diag
+      (("plugin.bundle_id", `String bundle_id) :: extra_metadata)
+  in
+  let diag =
+    match signature with
+    | Some (`Assoc fields) ->
+        let diag =
+          match List.assoc_opt "status" fields with
+          | Some status ->
+              set_audit_metadata "plugin.signature.status" status diag
+          | None -> diag
+        in
+        (match List.assoc_opt "provided" fields with
+        | Some provided ->
+            set_audit_metadata "plugin.signature.provided" provided diag
+        | None -> diag)
+    | _ -> diag
+  in
+  diag
+
+let with_lsp_context ?trace_id ?session ?client ?extra_fields ~request diag =
+  let payload_fields =
+    let base = [ ("method", `String request) ] in
+    let base =
+      match trace_id with
+      | Some id when String.trim id <> "" ->
+          ("trace_id", `String id) :: base
+      | _ -> base
+    in
+    let base =
+      match extra_fields with
+      | Some (`Assoc fields) -> ("extra", `Assoc fields) :: base
+      | Some other -> ("extra", other) :: base
+      | None -> base
+    in
+    let base =
+      match client with
+      | Some value when String.trim value <> "" ->
+          ("client", `String value) :: base
+      | _ -> base
+    in
+    List.rev base
+  in
+  let diag = set_extension "lsp" (`Assoc payload_fields) diag in
+  let diag = set_audit_metadata "lsp.request" (`String request) diag in
+  let diag =
+    match trace_id with
+    | Some id when String.trim id <> "" ->
+        set_audit_metadata "lsp.trace_id" (`String id) diag
+    | _ -> diag
+  in
+  let diag =
+    match session with
+    | Some value when String.trim value <> "" ->
+        set_audit_metadata "lsp.session" (`String value) diag
+    | _ -> diag
+  in
+  let diag =
+    match client with
+    | Some value when String.trim value <> "" ->
+        set_audit_metadata "lsp.client" (`String value) diag
     | _ -> diag
   in
   diag
@@ -1327,6 +1456,7 @@ module Builder = struct
         audit_metadata;
       }
     in
+    let diag = ensure_event_metadata diag in
     let diag = ensure_audit_id diag in
     let diag = ensure_change_set diag in
     assert (Audit_envelope.has_required_keys diag.audit);

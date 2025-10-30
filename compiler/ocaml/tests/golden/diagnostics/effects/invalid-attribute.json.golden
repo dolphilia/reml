@@ -49,7 +49,9 @@
                 "path": "<入力>"
               }
             ]
-          }
+          },
+          "event.domain": "type",
+          "event.kind": "effects.syntax.invalid_attribute"
         },
         "audit_id": "cli/19700101T000000Z#0",
         "change_set": {
@@ -213,7 +215,9 @@
               "path": "<入力>"
             }
           ]
-        }
+        },
+        "event.domain": "type",
+        "event.kind": "effects.syntax.invalid_attribute"
       }
     }
   ]

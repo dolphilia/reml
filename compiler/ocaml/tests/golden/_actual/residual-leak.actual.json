@@ -12,7 +12,9 @@
         "endColumn": 1
       },
       "code": "effects.contract.residual_leak",
-      "codes": [ "effects.contract.residual_leak" ],
+      "codes": [
+        "effects.contract.residual_leak"
+      ],
       "domain": "type",
       "timestamp": "1970-01-01T00:00:00Z",
       "notes": [
@@ -21,15 +23,33 @@
       "extensions": {
         "diagnostic.v2": {
           "timestamp": "1970-01-01T00:00:00Z",
-          "codes": [ "effects.contract.residual_leak" ]
+          "codes": [
+            "effects.contract.residual_leak"
+          ]
         },
         "effects": {
-          "stage": { "required": "stable", "actual": "stable" },
-          "residual": { "missing": [ "panic" ], "leaked_from": "fn demo" },
-          "declared": [ "io" ],
+          "stage": {
+            "required": "stable",
+            "actual": "stable"
+          },
+          "residual": {
+            "missing": [
+              "panic"
+            ],
+            "leaked_from": "fn demo"
+          },
+          "declared": [
+            "io"
+          ],
           "stage_trace": [
-            { "source": "cli_option", "note": "not provided" },
-            { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
+            {
+              "source": "cli_option",
+              "note": "not provided"
+            },
+            {
+              "source": "env_var",
+              "note": "REMLC_EFFECT_STAGE not set"
+            },
             {
               "source": "typer",
               "stage": "stable",
@@ -51,8 +71,14 @@
         "effect.stage.actual": "stable",
         "effect.stage.capability": "core.runtime",
         "effect.stage_trace": [
-          { "source": "cli_option", "note": "not provided" },
-          { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
+          {
+            "source": "cli_option",
+            "note": "not provided"
+          },
+          {
+            "source": "env_var",
+            "note": "REMLC_EFFECT_STAGE not set"
+          },
           {
             "source": "typer",
             "stage": "stable",
@@ -71,17 +97,30 @@
         ]
       },
       "audit_metadata": {
-        "effect.residual.tags": [ "panic" ],
+        "effect.residual.tags": [
+          "panic"
+        ],
         "effect.capability": "core.runtime",
         "effect.stage.actual": "stable",
         "effect.stage.required": "stable",
         "effect.stage.capabilities": [
-          { "capability": "core.runtime", "stage": "stable" }
+          {
+            "capability": "core.runtime",
+            "stage": "stable"
+          }
         ],
-        "effect.capabilities": [ "core.runtime" ],
+        "effect.capabilities": [
+          "core.runtime"
+        ],
         "stage_trace": [
-          { "source": "typer", "stage": "stable" },
-          { "source": "runtime", "stage": "stable" }
+          {
+            "source": "typer",
+            "stage": "stable"
+          },
+          {
+            "source": "runtime",
+            "stage": "stable"
+          }
         ],
         "audit.policy.version": "phase2.5.audit.v1",
         "audit.channel": "cli",
@@ -99,8 +138,15 @@
             "workspace": ".",
             "sequence": 0
           },
-          "items": [ { "kind": "input", "path": "<入力>" } ]
-        }
+          "items": [
+            {
+              "kind": "input",
+              "path": "<入力>"
+            }
+          ]
+        },
+        "event.domain": "type",
+        "event.kind": "effects.contract.residual_leak"
       },
       "audit": {
         "metadata": {
@@ -112,7 +158,12 @@
               "workspace": ".",
               "sequence": 0
             },
-            "items": [ { "kind": "input", "path": "<入力>" } ]
+            "items": [
+              {
+                "kind": "input",
+                "path": "<入力>"
+              }
+            ]
           },
           "cli.audit_id": "cli/19700101T000000Z#0",
           "audit.source.workspace": ".",
@@ -121,19 +172,34 @@
           "audit.channel": "cli",
           "audit.policy.version": "phase2.5.audit.v1",
           "stage_trace": [
-            { "source": "typer", "stage": "stable" },
-            { "source": "runtime", "stage": "stable" }
+            {
+              "source": "typer",
+              "stage": "stable"
+            },
+            {
+              "source": "runtime",
+              "stage": "stable"
+            }
           ],
-          "effect.capabilities": [ "core.runtime" ],
+          "effect.capabilities": [
+            "core.runtime"
+          ],
           "effect.stage.capabilities": [
-            { "capability": "core.runtime", "stage": "stable" }
+            {
+              "capability": "core.runtime",
+              "stage": "stable"
+            }
           ],
           "effect.stage.required": "stable",
           "effect.stage.actual": "stable",
           "effect.capability": "core.runtime",
-          "effect.residual.tags": [ "panic" ],
+          "effect.residual.tags": [
+            "panic"
+          ],
           "audit.timestamp": "1970-01-01T00:00:00Z",
-          "schema.version": "1.1"
+          "schema.version": "1.1",
+          "event.domain": "type",
+          "event.kind": "effects.contract.residual_leak"
         },
         "audit_id": "cli/19700101T000000Z#0",
         "change_set": {
@@ -144,7 +210,12 @@
             "workspace": ".",
             "sequence": 0
           },
-          "items": [ { "kind": "input", "path": "<入力>" } ]
+          "items": [
+            {
+              "kind": "input",
+              "path": "<入力>"
+            }
+          ]
         }
       }
     }

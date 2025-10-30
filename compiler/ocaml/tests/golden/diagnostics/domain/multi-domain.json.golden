@@ -5,7 +5,9 @@
       "severity": "error",
       "schema_version": "2.0.0-draft",
       "domain": "plugin",
-      "codes": ["plugin.bundle.signature_invalid"],
+      "codes": [
+        "plugin.bundle.signature_invalid"
+      ],
       "primary": {
         "file": "plugin-demo.reml",
         "start_line": 0,
@@ -25,14 +27,18 @@
       "audit": {
         "metadata": {
           "plugin.bundle_id": "demo.bundle",
-          "plugin.signature.status": "invalid"
+          "plugin.signature.status": "invalid",
+          "event.domain": "plugin",
+          "event.kind": "plugin.bundle.signature_invalid"
         },
         "audit_id": "cli/19700101T000000Z#0",
         "change_set": null
       },
       "audit_metadata": {
         "plugin.bundle_id": "demo.bundle",
-        "plugin.signature.status": "invalid"
+        "plugin.signature.status": "invalid",
+        "event.domain": "plugin",
+        "event.kind": "plugin.bundle.signature_invalid"
       },
       "timestamp": "1970-01-01T00:00:00Z"
     },
@@ -41,7 +47,9 @@
       "severity": "warning",
       "schema_version": "2.0.0-draft",
       "domain": "lsp",
-      "codes": ["lsp.transport.internal_error"],
+      "codes": [
+        "lsp.transport.internal_error"
+      ],
       "primary": {
         "file": "",
         "start_line": 0,
@@ -58,13 +66,17 @@
       "audit": {
         "metadata": {
           "lsp.request": "textDocument/hover",
-          "lsp.trace_id": "rpc-001"
+          "lsp.trace_id": "rpc-001",
+          "event.domain": "lsp",
+          "event.kind": "lsp.transport.internal_error"
         },
         "audit_id": "cli/19700101T000000Z#1",
         "change_set": null
       },
       "audit_metadata": {
-        "lsp.session": "local-demo"
+        "lsp.session": "local-demo",
+        "event.domain": "lsp",
+        "event.kind": "lsp.transport.internal_error"
       },
       "timestamp": "1970-01-01T00:00:00Z"
     },
@@ -73,7 +85,9 @@
       "severity": "info",
       "schema_version": "2.0.0-draft",
       "domain": "other",
-      "codes": ["demo.custom.category"],
+      "codes": [
+        "demo.custom.category"
+      ],
       "primary": {
         "file": "custom.json",
         "start_line": 10,
@@ -88,11 +102,17 @@
         }
       },
       "audit": {
-        "metadata": {},
+        "metadata": {
+          "event.domain": "other",
+          "event.kind": "demo.custom.category"
+        },
         "audit_id": "cli/19700101T000000Z#2",
         "change_set": null
       },
-      "audit_metadata": {},
+      "audit_metadata": {
+        "event.domain": "other",
+        "event.kind": "demo.custom.category"
+      },
       "timestamp": "1970-01-01T00:00:00Z"
     }
   ]

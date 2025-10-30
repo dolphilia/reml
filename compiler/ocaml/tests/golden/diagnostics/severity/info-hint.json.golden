@@ -12,13 +12,17 @@
         "endColumn": 4
       },
       "code": "demo.info.sample",
-      "codes": [ "demo.info.sample" ],
+      "codes": [
+        "demo.info.sample"
+      ],
       "domain": "cli",
       "timestamp": "1970-01-01T00:00:00Z",
       "extensions": {
         "diagnostic.v2": {
           "timestamp": "1970-01-01T00:00:00Z",
-          "codes": [ "demo.info.sample" ]
+          "codes": [
+            "demo.info.sample"
+          ]
         }
       },
       "audit_metadata": {
@@ -39,8 +43,15 @@
             "workspace": ".",
             "sequence": 2
           },
-          "items": [ { "kind": "input", "path": "demo.reml" } ]
-        }
+          "items": [
+            {
+              "kind": "input",
+              "path": "demo.reml"
+            }
+          ]
+        },
+        "event.domain": "cli",
+        "event.kind": "demo.info.sample"
       },
       "audit": {
         "metadata": {
@@ -52,7 +63,12 @@
               "workspace": ".",
               "sequence": 2
             },
-            "items": [ { "kind": "input", "path": "demo.reml" } ]
+            "items": [
+              {
+                "kind": "input",
+                "path": "demo.reml"
+              }
+            ]
           },
           "audit.source.workspace": ".",
           "audit.sequence": 2,
@@ -62,7 +78,9 @@
           "cli.audit_id": "cli/19700101T000000Z#2",
           "demo.kind": "info",
           "audit.timestamp": "1970-01-01T00:00:00Z",
-          "schema.version": "1.1"
+          "schema.version": "1.1",
+          "event.domain": "cli",
+          "event.kind": "demo.info.sample"
         },
         "audit_id": "cli/19700101T000000Z#2",
         "change_set": {
@@ -73,7 +91,12 @@
             "workspace": ".",
             "sequence": 2
           },
-          "items": [ { "kind": "input", "path": "demo.reml" } ]
+          "items": [
+            {
+              "kind": "input",
+              "path": "demo.reml"
+            }
+          ]
         }
       }
     },
@@ -89,12 +112,16 @@
         "endColumn": 5
       },
       "code": "demo.hint.sample",
-      "codes": [ "demo.hint.sample" ],
+      "codes": [
+        "demo.hint.sample"
+      ],
       "domain": "cli",
       "timestamp": "1970-01-01T00:00:00Z",
       "severity_hint": "ignore",
       "hints": [
-        { "message": "構文ヒント: use 文を展開してください" }
+        {
+          "message": "構文ヒント: use 文を展開してください"
+        }
       ],
       "extensions": {
         "diagnostic.v2": {
@@ -104,7 +131,9 @@
               "message": "構文ヒント: use 文を展開してください"
             }
           ],
-          "codes": [ "demo.hint.sample" ]
+          "codes": [
+            "demo.hint.sample"
+          ]
         }
       },
       "audit_metadata": {
@@ -125,8 +154,15 @@
             "workspace": ".",
             "sequence": 3
           },
-          "items": [ { "kind": "input", "path": "demo.reml" } ]
-        }
+          "items": [
+            {
+              "kind": "input",
+              "path": "demo.reml"
+            }
+          ]
+        },
+        "event.domain": "cli",
+        "event.kind": "demo.hint.sample"
       },
       "audit": {
         "metadata": {
@@ -138,7 +174,12 @@
               "workspace": ".",
               "sequence": 3
             },
-            "items": [ { "kind": "input", "path": "demo.reml" } ]
+            "items": [
+              {
+                "kind": "input",
+                "path": "demo.reml"
+              }
+            ]
           },
           "audit.source.workspace": ".",
           "audit.sequence": 3,
@@ -148,7 +189,9 @@
           "cli.audit_id": "cli/19700101T000000Z#3",
           "demo.kind": "hint",
           "audit.timestamp": "1970-01-01T00:00:00Z",
-          "schema.version": "1.1"
+          "schema.version": "1.1",
+          "event.domain": "cli",
+          "event.kind": "demo.hint.sample"
         },
         "audit_id": "cli/19700101T000000Z#3",
         "change_set": {
@@ -159,7 +202,12 @@
             "workspace": ".",
             "sequence": 3
           },
-          "items": [ { "kind": "input", "path": "demo.reml" } ]
+          "items": [
+            {
+              "kind": "input",
+              "path": "demo.reml"
+            }
+          ]
         }
       }
     }

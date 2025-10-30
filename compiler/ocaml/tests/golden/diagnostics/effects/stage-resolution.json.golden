@@ -136,7 +136,9 @@
               "path": "<入力>"
             }
           ]
-        }
+        },
+        "event.domain": "type",
+        "event.kind": "effects.stage_resolution.report"
       },
       "audit": {
         "metadata": {
@@ -207,7 +209,9 @@
                 "path": "<入力>"
               }
             ]
-          }
+          },
+          "event.domain": "type",
+          "event.kind": "effects.stage_resolution.report"
         },
         "audit_id": "cli/19700101T000000Z#0",
         "change_set": {

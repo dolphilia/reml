@@ -448,7 +448,113 @@ let test_stage_extension_snapshot () =
     Printf.printf "  ゴールデン: %s\n" golden_path;
     Printf.printf "  現在の出力を %s に書き出しました。\n" actual_path;
     exit 1)
-  else Printf.printf "✓ typeclass.iterator.stage_mismatch JSON スナップショット\n"
+  else (
+    let parsed = Yojson.Basic.from_string json_str in
+    let diag_json =
+      parsed
+      |> Yojson.Basic.Util.member "diagnostics"
+      |> Yojson.Basic.Util.to_list
+      |> List.hd
+    in
+    let audit_metadata =
+      Yojson.Basic.Util.member "audit_metadata" diag_json
+    in
+    let event_domain =
+      Yojson.Basic.Util.member "event.domain" audit_metadata
+      |> Yojson.Basic.Util.to_string
+    in
+    let event_kind =
+      Yojson.Basic.Util.member "event.kind" audit_metadata
+      |> Yojson.Basic.Util.to_string
+    in
+    assert (String.equal event_domain "type");
+    assert (String.equal event_kind "typeclass.iterator.stage_mismatch");
+    let capability_ids =
+      Yojson.Basic.Util.member "capability.ids" audit_metadata
+      |> Yojson.Basic.Util.to_list
+      |> List.map Yojson.Basic.Util.to_string
+    in
+    assert (capability_ids = [ "core.iterator.collect" ]);
+    let audit_metadata_from_envelope =
+      Yojson.Basic.Util.member "audit" diag_json
+      |> Yojson.Basic.Util.member "metadata"
+    in
+    let envelope_cap_ids =
+      Yojson.Basic.Util.member "capability.ids" audit_metadata_from_envelope
+      |> Yojson.Basic.Util.to_list
+      |> List.map Yojson.Basic.Util.to_string
+    in
+    assert (envelope_cap_ids = capability_ids);
+    let capability_extension =
+      Yojson.Basic.Util.member "extensions" diag_json
+      |> Yojson.Basic.Util.member "capability"
+    in
+    let extension_cap_ids =
+      Yojson.Basic.Util.member "ids" capability_extension
+      |> Yojson.Basic.Util.to_list
+      |> List.map Yojson.Basic.Util.to_string
+    in
+    assert (extension_cap_ids = capability_ids);
+    let capability_primary =
+      Yojson.Basic.Util.member "primary" capability_extension
+      |> Yojson.Basic.Util.to_string
+    in
+    assert (String.equal capability_primary "core.iterator.collect")
+  );
+  Printf.printf "✓ typeclass.iterator.stage_mismatch JSON スナップショット\n"
+
+let test_plugin_bundle_metadata () =
+  let start_pos =
+    Diagnostic.{ filename = "plugin-demo.reml"; line = 1; column = 1; offset = 0 }
+  in
+  let end_pos =
+    Diagnostic.{ filename = "plugin-demo.reml"; line = 1; column = 5; offset = 4 }
+  in
+  let diag =
+    Diagnostic.make ~domain:Diagnostic.Plugin ~code:"plugin.bundle.signature_invalid"
+      ~message:"プラグインの署名が検証できません"
+      ~start_pos ~end_pos ()
+    |> Diagnostic.with_plugin_metadata
+         ~bundle_id:"demo.bundle"
+         ~signature:
+           (`Assoc
+              [
+                ("provided", `String "sha256:deadbeef");
+                ("status", `String "invalid");
+              ])
+  in
+  let json =
+    Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
+    |> Yojson.Basic.from_string
+  in
+  let first_diag =
+    json |> Yojson.Basic.Util.member "diagnostics"
+    |> Yojson.Basic.Util.to_list |> List.hd
+  in
+  let audit_metadata =
+    Yojson.Basic.Util.member "audit_metadata" first_diag
+  in
+  let bundle_id =
+    Yojson.Basic.Util.member "plugin.bundle_id" audit_metadata
+    |> Yojson.Basic.Util.to_string
+  in
+  assert (String.equal bundle_id "demo.bundle");
+  let signature_status =
+    Yojson.Basic.Util.member "plugin.signature.status" audit_metadata
+    |> Yojson.Basic.Util.to_string
+  in
+  assert (String.equal signature_status "invalid");
+  let extensions =
+    Yojson.Basic.Util.member "extensions" first_diag
+    |> Yojson.Basic.Util.to_assoc
+  in
+  let plugin_extension =
+    List.assoc "plugin" extensions |> Yojson.Basic.Util.to_assoc
+  in
+  let plugin_bundle =
+    List.assoc "bundle_id" plugin_extension |> Yojson.Basic.Util.to_string
+  in
+  assert (String.equal plugin_bundle "demo.bundle")
 
 let test_typeclass_dictionary_snapshot () =
   Diagnostic.reset_audit_sequence ();
@@ -666,6 +772,8 @@ let () =
   test_other_domain_serialization ();
   test_info_hint_snapshot ();
   test_parser_expectation_snapshot ();
+  test_typeclass_iterator_stage_mismatch ();
+  test_plugin_bundle_metadata ();
   test_stage_extension_snapshot ();
   test_typeclass_dictionary_snapshot ();
   test_snippet_display ();
