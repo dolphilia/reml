@@ -516,3 +516,23 @@ S5（検証とドキュメント更新）の結果共有。
 ### 3. 残課題
 - `ParserId` を `Bridge.with_space_id` と結線し、`RunConfig.extensions["lex"]` へ戻すタイミングを Step4 で決定する。
 - `doc_comment` 抽出および診断拡張の配線が未着手。プロファイルでコメントを収集できるよう `lexer.mll` のフックを整理する必要がある。
+
+## LEXER-002 Day4 テスト・メトリクス整備（2025-11-30）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/LEXER-002-proposal.md`](./2-5-proposals/LEXER-002-proposal.md#step-5-%E3%83%86%E3%82%B9%E3%83%88%E3%83%BB%E3%83%A1%E3%83%88%E3%83%AA%E3%82%AF%E3%82%B9%E3%83%BB%E6%80%A7%E8%83%BD%E7%A2%BA%E8%AA%8Dweek33-day4-5-%E2%86%92-2025-11-30-%E5%AE%8C%E4%BA%86)
+
+### 1. 作業サマリ
+- `core_parse_lex` のプロフィール切替を検証するユニットテストを追加し、`strict_json` が shebang を拒否する挙動、`json_relaxed` が shebang を許容する挙動、`toml_relaxed` が `#` コメントを読み飛ばす挙動、`Api.symbol` がトリビアを吸収しミスマッチ時に例外を送出する挙動を確認した（compiler/ocaml/tests/core_parse_lex_tests.ml:54-140）。
+- `tooling/ci/collect-iterator-audit-metrics.py` に `lexer.shared_profile_pass_rate` を実装し、`run_config` と診断 (`audit_metadata` / `extensions.runconfig.extensions.lex`) で同一プロファイルが共有されているかを判定できるようにした。メトリクス一覧（docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md:23-35）を更新し、CI 監視指標へ追加。
+- 字句性能計測ノート（docs/notes/lexer-performance-study.md:1-32）を作成し、`scripts/benchmark-parse-throughput.sh` による測定手順と `remlc` 未構築により計測を後続へ持ち越した事情、再計測 TODO を整理した。
+
+### 2. 成果物
+- `compiler/ocaml/tests/core_parse_lex_tests.ml:1-140`
+- `tooling/ci/collect-iterator-audit-metrics.py:1218-1516`
+- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md:20-35`
+- `docs/notes/lexer-performance-study.md:1-32`
+
+### 3. 残課題
+- `scripts/benchmark-parse-throughput.sh` を実行できる `remlc` 環境を整備し、3 プロファイルで解析時間を取得してノートへ追記する。
+- `Core_parse_lex.Record.consume` の集計結果を `lexer.shared_profile_pass_rate` の補助統計としてエクスポートする処理（Step6 以降へ繰り越し）。
+- CLI/LSP 経路で `RunConfig.extensions["lex"].space_id` が欠落した場合の警告出力と、計測結果における逸脱検知の自動化。

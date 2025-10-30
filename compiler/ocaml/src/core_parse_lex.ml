@@ -174,18 +174,7 @@ module Bridge = struct
     ( { pack with space_id = Some space_id; namespace }, updated_config )
 end
 
-module Record = struct
-  type trivia_kind =
-    | Space
-    | Newline
-    | Line_comment
-    | Block_comment
-    | Shebang
-    | Hash_inline
-
-  let consume ?space_id:_ ~kind:_ ~start_pos:_ ~end_pos:_ = ()
-  (* TODO(LEXER-002 Step5): 実計測を収集し、lexer.shared_profile_pass_rate へ連携する。 *)
-end
+module Record = Core_parse_lex_record
 
 module Api = struct
   type 'a reader = Lexing.lexbuf -> 'a

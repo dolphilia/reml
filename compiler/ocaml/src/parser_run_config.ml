@@ -138,7 +138,7 @@ module Lex = struct
     let strict_json =
       {
         line = [ "//" ];
-        block = [ { start = "/*"; stop = "*/"; nested = false } ];
+        block = [ { start = "/*"; stop = "*/"; nested = true } ];
         shebang = false;
         hash_inline = false;
         doc_comment = None;
@@ -147,7 +147,7 @@ module Lex = struct
     let json_relaxed =
       {
         line = [ "//" ];
-        block = [ { start = "/*"; stop = "*/"; nested = false } ];
+        block = [ { start = "/*"; stop = "*/"; nested = true } ];
         shebang = true;
         hash_inline = false;
         doc_comment = None;

@@ -67,10 +67,13 @@
 - `lexer.mll` が返す `Token` と `Core.Parse.Lex` が維持する `Span` / `ParserId` を同期させるため、`lexer.mll` に軽量なフック（例: `Core_parse_lex.Record.consume`）を挿入し、コメントスキップを統一的に計測可能にする。
 - CLI / LSP 経路（`compiler/ocaml/src/main.ml`, `tooling/lsp/run_config_loader.ml`）が `extensions["lex"]` の `profile`・`space_id` を正しく設定することを再確認し、欠落時は Warning を出す実装 TODO を登録する。
 
-### Step 5: テスト・メトリクス・性能確認（Week33 Day4-5）
+### Step 5: テスト・メトリクス・性能確認（Week33 Day4-5 → 2025-11-30 完了）
 - `compiler/ocaml/tests/core_parse_lex_tests.ml` を新設し、`strict_json` / `json_relaxed` / `toml_relaxed` 各プロフィールでの `lexeme` / `symbol` / `config_trivia` 動作をゴールデンで検証する。Packrat 向けの `ParserId` 安定性は `parser.runconfig_extension_pass_rate` と組み合わせて監視する。
 - `tooling/ci/collect-iterator-audit-metrics.py` に `lexer.shared_profile_pass_rate` 指標を追加し、`0-3-audit-and-metrics.md`・`2-5-review-log.md` へ測定方法を明記する[^metrics-lex]。
-- 大規模入力（10MB クラス）の字句性能を `scripts/benchmark.sh` または既存マイクロベンチで測定し、`docs/notes/lexer-performance-study.md`（必要なら新規）に比較データを残す。
+- 大規模入力（10MB クラス）の字句性能を `scripts/benchmark-parse-throughput.sh` または既存マイクロベンチで測定し、`docs/notes/lexer-performance-study.md`（必要なら新規）に比較データを残す。
+- 2025-11-30 実施: `compiler/ocaml/tests/core_parse_lex_tests.ml` にシナリオテストを追加し、`config_trivia` が `Lexer.current_trivia_profile` を更新すること、`json_relaxed` で shebang を許容できること、`toml_relaxed` で `#` コメントを共有できること、`Api.symbol` がトリビアを消費しミスマッチ時に例外を送出することを確認した。
+- 2025-11-30 実施: `tooling/ci/collect-iterator-audit-metrics.py` へ `lexer.shared_profile_pass_rate` を実装し、`run_config` と診断 (`audit_metadata` / `extensions.runconfig.extensions.lex`) でプロフィール一致を検証できるようにした。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に指標を追記し、CI 集計手順を更新。
+- 2025-11-30 実施: `docs/notes/lexer-performance-study.md` を作成し、`scripts/benchmark-parse-throughput.sh` を用いた測定手順と `remlc` 未構築により計測を後続へ持ち越した旨を記録。`remlc` 準備完了後に 3 プロファイルで再計測する TODO を登録した。
 
 ### Step 6: ドキュメント反映とレビュー記録（Week33 Day5）
 - `docs/spec/2-3-lexer.md` と `docs/spec/2-6-execution-strategy.md` に OCaml 実装の進捗脚注を追加し、`RunConfig` 経由で Lex API を共有できる状態になったことを明記する。`docs/guides/core-parse-streaming.md` のサンプルコードも新 API に合わせて更新する。

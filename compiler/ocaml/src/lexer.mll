@@ -8,7 +8,7 @@
 open Token
 
 module Trivia_profile = Parser_run_config.Lex.Trivia_profile
-module Lex_record = Core_parse_lex.Record
+module Lex_record = Core_parse_lex_record
 
 let current_trivia_profile_ref = ref Trivia_profile.strict_json
 
@@ -99,13 +99,13 @@ rule token = parse
   | whitespace              {
       let start_pos = Lexing.lexeme_start_p lexbuf in
       let end_pos = Lexing.lexeme_end_p lexbuf in
-      Lex_record.consume ~kind:Lex_record.Space ~start_pos ~end_pos;
+      Lex_record.consume ~kind:Lex_record.Space ~start_pos ~end_pos ();
       token lexbuf
     }
   | newline                 {
       let start_pos = Lexing.lexeme_start_p lexbuf in
       let end_pos = Lexing.lexeme_end_p lexbuf in
-      Lex_record.consume ~kind:Lex_record.Newline ~start_pos ~end_pos;
+      Lex_record.consume ~kind:Lex_record.Newline ~start_pos ~end_pos ();
       Lexing.new_line lexbuf;
       token lexbuf
     }
@@ -115,7 +115,7 @@ rule token = parse
       if shebang_applicable lexbuf then (
         let start_pos = Lexing.lexeme_start_p lexbuf in
         let end_pos = Lexing.lexeme_end_p lexbuf in
-        Lex_record.consume ~kind:Lex_record.Shebang ~start_pos ~end_pos;
+        Lex_record.consume ~kind:Lex_record.Shebang ~start_pos ~end_pos ();
         token lexbuf
       )
       else
@@ -126,7 +126,7 @@ rule token = parse
       if has_hash_inline () then (
         let start_pos = Lexing.lexeme_start_p lexbuf in
         let end_pos = Lexing.lexeme_end_p lexbuf in
-        Lex_record.consume ~kind:Lex_record.Hash_inline ~start_pos ~end_pos;
+        Lex_record.consume ~kind:Lex_record.Hash_inline ~start_pos ~end_pos ();
         token lexbuf
       )
       else
@@ -136,13 +136,13 @@ rule token = parse
   | "//" [^ '\r' '\n']*     {
       let start_pos = Lexing.lexeme_start_p lexbuf in
       let end_pos = Lexing.lexeme_end_p lexbuf in
-      Lex_record.consume ~kind:Lex_record.Line_comment ~start_pos ~end_pos;
+      Lex_record.consume ~kind:Lex_record.Line_comment ~start_pos ~end_pos ();
       token lexbuf
     }
   | "/*"                    {
       let start_pos = Lexing.lexeme_start_p lexbuf in
       let end_pos = Lexing.lexeme_end_p lexbuf in
-      Lex_record.consume ~kind:Lex_record.Block_comment ~start_pos ~end_pos;
+      Lex_record.consume ~kind:Lex_record.Block_comment ~start_pos ~end_pos ();
       block_comment (block_nested_enabled ()) 1 lexbuf
     }
 

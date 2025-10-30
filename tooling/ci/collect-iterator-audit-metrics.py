@@ -1231,6 +1231,13 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
     }
     extension_samples: Dict[str, Any] = {key: None for key in extensions_state}
 
+    lex_total = 0
+    lex_shared = 0
+    lex_sources: Set[str] = set()
+    lex_failures: List[Dict[str, Any]] = []
+    lex_profile_sample: Optional[str] = None
+    lex_space_sample: Optional[int] = None
+
     def _mark_switch_from_dict(container: Optional[Dict]) -> None:
         if not isinstance(container, dict):
             return
@@ -1264,6 +1271,132 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
             extensions_container = run_config.get("extensions")
             if isinstance(extensions_container, dict):
                 _mark_extension_from_dict(extensions_container)
+
+            lex_total += 1
+            lex_sources.add(str(path))
+            if not isinstance(extensions_container, dict):
+                lex_failures.append(
+                    {
+                        "file": str(path),
+                        "reasons": ["extensions_missing"],
+                        "profile": None,
+                        "profile_raw": None,
+                        "space_id": None,
+                    }
+                )
+            else:
+                lex_entry = extensions_container.get("lex")
+                if lex_entry is None:
+                    lex_failures.append(
+                        {
+                            "file": str(path),
+                            "reasons": ["lex_extension_missing"],
+                            "profile": None,
+                            "profile_raw": None,
+                            "space_id": None,
+                        }
+                    )
+                elif not isinstance(lex_entry, dict):
+                    lex_failures.append(
+                        {
+                            "file": str(path),
+                            "reasons": ["lex_extension_not_object"],
+                            "profile": None,
+                            "profile_raw": lex_entry,
+                            "space_id": None,
+                        }
+                    )
+                else:
+                    profile_raw = lex_entry.get("profile")
+                    normalized_profile = _normalize_nonempty_string(profile_raw)
+                    space_id_value = lex_entry.get("space_id")
+                    reasons: List[str] = []
+                    shared = False
+
+                    if normalized_profile is None:
+                        reasons.append("profile_missing")
+                    else:
+                        diagnostics = data.get("diagnostics")
+                        diag_seen = False
+                        diag_shared = False
+                        matched_space_id: Optional[int] = None
+                        if isinstance(diagnostics, list):
+                            for diag in diagnostics:
+                                if not isinstance(diag, dict):
+                                    continue
+                                diag_seen = True
+                                audit_meta = _as_dict(diag.get("audit_metadata"))
+                                metadata_profile: Optional[str] = None
+                                if audit_meta:
+                                    exists, value = _lookup_in_container(
+                                        audit_meta, "parser.runconfig.extensions.lex"
+                                    )
+                                    if exists:
+                                        metadata_profile = _normalize_nonempty_string(value)
+
+                                extensions = _as_dict(diag.get("extensions"))
+                                diag_profile: Optional[str] = None
+                                diag_space_id: Optional[int] = None
+                                if extensions:
+                                    runconfig_ext = _as_dict(extensions.get("runconfig"))
+                                    if runconfig_ext:
+                                        diag_extensions = _as_dict(runconfig_ext.get("extensions"))
+                                        if diag_extensions:
+                                            lex_diag = _as_dict(diag_extensions.get("lex"))
+                                            if lex_diag:
+                                                diag_profile = _normalize_nonempty_string(
+                                                    lex_diag.get("profile")
+                                                )
+                                                space_value = lex_diag.get("space_id")
+                                                if isinstance(space_value, (int, float)) and not isinstance(
+                                                    space_value, bool
+                                                ):
+                                                    diag_space_id = int(space_value)
+                                                elif isinstance(space_value, str):
+                                                    try:
+                                                        diag_space_id = int(float(space_value))
+                                                    except ValueError:
+                                                        diag_space_id = None
+
+                                if (
+                                    metadata_profile is not None
+                                    and diag_profile is not None
+                                    and metadata_profile == normalized_profile
+                                    and diag_profile == normalized_profile
+                                ):
+                                    diag_shared = True
+                                    matched_space_id = diag_space_id
+                                    break
+
+                        if not diag_seen:
+                            reasons.append("diagnostics_absent")
+                        elif not diag_shared:
+                            reasons.append("diagnostic_profile_mismatch")
+                        else:
+                            shared = True
+                            if lex_profile_sample is None:
+                                lex_profile_sample = normalized_profile
+                            if (
+                                lex_space_sample is None
+                                and matched_space_id is not None
+                                and not isinstance(matched_space_id, bool)
+                            ):
+                                lex_space_sample = matched_space_id
+
+                    if shared:
+                        lex_shared += 1
+                    else:
+                        if not reasons:
+                            reasons.append("unknown")
+                        lex_failures.append(
+                            {
+                                "file": str(path),
+                                "reasons": reasons,
+                                "profile": normalized_profile,
+                                "profile_raw": profile_raw,
+                                "space_id": space_id_value,
+                            }
+                        )
 
         diagnostics = data.get("diagnostics")
         if isinstance(diagnostics, list):
@@ -1354,6 +1487,29 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
                     for key, value in extension_samples.items()
                     if value is not None
                 },
+            }
+        )
+
+    if lex_total > 0:
+        lex_pass_fraction = lex_shared / lex_total
+        lex_pass_rate = 1.0 if lex_shared == lex_total else 0.0
+        samples: Dict[str, Any] = {}
+        if lex_profile_sample is not None:
+            samples["profile"] = lex_profile_sample
+        if lex_space_sample is not None:
+            samples["space_id"] = lex_space_sample
+        metrics.append(
+            {
+                "metric": "lexer.shared_profile_pass_rate",
+                "total": lex_total,
+                "passed": lex_shared,
+                "failed": lex_total - lex_shared,
+                "pass_rate": lex_pass_rate,
+                "pass_fraction": lex_pass_fraction,
+                "status": "success" if lex_pass_rate == 1.0 else "error",
+                "sources": sorted(lex_sources),
+                "failures": lex_failures,
+                "samples": samples,
             }
         )
 

@@ -75,6 +75,10 @@
         "effect.capability": "core.runtime",
         "effect.stage.actual": "stable",
         "effect.stage.required": "stable",
+        "effect.stage.capabilities": [
+          { "capability": "core.runtime", "stage": "stable" }
+        ],
+        "effect.capabilities": [ "core.runtime" ],
         "stage_trace": [
           { "source": "typer", "stage": "stable" },
           { "source": "runtime", "stage": "stable" }
@@ -119,6 +123,10 @@
           "stage_trace": [
             { "source": "typer", "stage": "stable" },
             { "source": "runtime", "stage": "stable" }
+          ],
+          "effect.capabilities": [ "core.runtime" ],
+          "effect.stage.capabilities": [
+            { "capability": "core.runtime", "stage": "stable" }
           ],
           "effect.stage.required": "stable",
           "effect.stage.actual": "stable",
