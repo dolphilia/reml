@@ -56,6 +56,36 @@ end
    - **設計**: `compiler/ocaml/src/core_parse_combinator.mli`（新設）に公開する最小シグネチャ案を作成し、`rule`・`label`・`cut` など committed/consumed フラグの扱いを `Reply` 型に写像する。`PARSER-002` で導入した `Run_config` と `extensions` のフック点を洗い直し、コンビネーター側から `RunConfig.extensions["lex"]`/`["recover"]` を参照するフックを定義する。  
    - **承認**: モジュール署名案を `docs/notes/core-parse-api-evolution.md`（新設予定）に掲載し、Phase 2-5 レビューで承認を得る。
 
+### Step2 実施記録（2025-12-04）
+- `docs/notes/core-parse-api-evolution.md` を新設し、`Core_parse` の公開シグネチャ案と補助モジュール構成（`Id`/`State`/`Reply`/`Registry`）を整理した。`Parser<T> = State.t -> Reply.'a t * State.t` の形に揃え、`rule`・`label`・`cut`・`recover` が `Reply` の `consumed`/`committed` ビットへ反映されることを明示した[^core-parse-api-note]。  
+- シグネチャ抜粋:
+  ```ocaml
+  module Core_parse : sig
+    module Id : sig
+      type t
+      val namespace : t -> string
+      val ordinal : t -> int
+      val fingerprint : t -> int64
+      val origin : t -> [ `Static | `Dynamic ]
+    end
+
+    type 'a parser = State.t -> Reply.'a t * State.t
+    val rule :
+      namespace:string ->
+      name:string ->
+      'a parser -> 'a parser
+    val recover :
+      id:Id.t ->
+      until:(unit parser) ->
+      with_:(State.t -> Reply.'a t * State.t) ->
+      'a parser ->
+      'a parser
+  end
+  ```  
+- `ParserId` 割当は静的領域（`ordinal = 0-4095`）を `core_parse_id_registry.ml` に保持し、`Digestif.xxhash64(namespace ^ ":" ^ name)` を `fingerprint` として記録する。未登録の組は `ordinal >= 0x1000` を動的に割り当て `origin = \`Dynamic` とし、監査ログや Packrat キーから判別できるようにする設計を決定した。  
+- `State` ラッパーで `RunConfig`・`Parser_diag_state`・Menhir チェックポイントを取得できるアクセサ（`config`/`diag`/`menhir_checkpoint`）を公開し、`PARSER-002` で導入した `RunConfig.extensions["lex"|"recover"|"stream"]` と `Parser_diag_state.record_recovery` を Step3 以降のシムから呼び出せるようにした。  
+- 次ステップ（Step3）では `parser_driver` 側に `Core_parse` ラッパーを適用し、Step1 でまとめた Menhir 対応表と静的 ID 表を突合して `rule` を差し込む実装へ移行する。
+
 3. **Menhir ブリッジ層 PoC の実装（Week32 Day1-4）**  
     - **調査**: `parser_driver.ml`・`parser_diag_state.ml`・`parser_expectation.ml` における AST 生成と診断の流れを確認し、`Core_parse` の各コンビネーターへ委譲する際の移行ポイントを特定する。  
     - **実装**: `Core_parse` モジュールを作成し、Menhir 生成関数を `rule`/`label`/`cut` などでラップするシムを追加。`Run_config`（`parser_run_config.ml`）から Packrat/左再帰/trace フラグを受け取り、ブリッジ層で `Parser_context` に注入する。  
@@ -84,3 +114,4 @@ end
 [^review-log]: `docs/plans/bootstrap-roadmap/2-5-review-log.md`。Day エントリに作業ログ・検証結果を追記する運用。
 [^spec-exec]: `docs/spec/2-6-execution-strategy.md`。Packrat メモ化、ストリーミング実行時の契約、`reply.committed` の規則を規定。
 [^guide-stream]: `docs/guides/core-parse-streaming.md`。RunConfig 連携とストリーミング利用時の `Core.Parse` API 期待値を整理。
+[^core-parse-api-note]: `docs/notes/core-parse-api-evolution.md` Phase 2-5 Step2 Core_parse シグネチャ草案。

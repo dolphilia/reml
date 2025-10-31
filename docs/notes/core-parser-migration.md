@@ -11,6 +11,11 @@
 ## Phase 2-5 Core コンビネーター棚卸し（2025-11-01）
 - Step1: Menhir 規則と仕様コアコンビネーターの対応を整理し、欠落メタデータを洗い出した。
 
+## Phase 2-5 Core コンビネーター Step2（2025-12-04）
+- `Core_parse` 公開シグネチャ案と `ParserId` 割当戦略を `docs/notes/core-parse-api-evolution.md` にまとめ、仕様 2.1/2.2 の契約を満たすラッパーモジュール構成を定義した[^core-parse-api-note]。  
+- 静的 ID は `core_parse_id_registry.ml`（自動生成予定）で `ordinal = 0-4095` を採番し、`Digestif.xxhash64` で算出した `fingerprint` を保存する。動的 ID は `ordinal >= 0x1000` を割り当て `origin = \`Dynamic` として監査ログに残す。  
+- `State` ラッパーで `RunConfig`・`Parser_diag_state`・Menhir チェックポイントを共有し、`cut`/`recover` が `committed` フラグ更新と同期トークン参照を行えるようにした。Step3 で `parser_driver` ブリッジを差し替える際の依存関係と TODO を整理。
+
 ### コアコンビネーター現況
 - **`ok`**  
   - 仕様: 非消費で成功し値を返す（`docs/spec/2-2-core-combinator.md:15`）。  
@@ -78,6 +83,8 @@
 - `committed` フラグが常に `false` のため、`cut` や `attempt` の契約を検証できない。  
 - `recover` シナリオを記録する仕組みが未着手で、`parser.recover` Capability を名乗れない。  
 - `label` や `choice` に紐付く期待名が静的文字列のみで、仕様要求の人間可読メッセージを提供できていない。
+
+[^core-parse-api-note]: `docs/notes/core-parse-api-evolution.md` Phase 2-5 Step2 Core_parse シグネチャ草案。`Id`/`State`/`Reply` 構成と採番戦略を記載。
 
 
 ## TODO: RunConfig フラグの未実装点
