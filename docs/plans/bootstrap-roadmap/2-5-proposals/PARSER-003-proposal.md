@@ -46,6 +46,11 @@ end
    - **記録**: マッピング結果と既存の LR 規則で欠落しているメタデータ（`rule` 名称、`ParserId`、`recover` 同期点）を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Day エントリとして追記し、後続ステップの前提情報を共有する[^review-log].  
    - **成果物**: `docs/notes/core-parser-migration.md` に「Menhir → Core_parse 対応表」を追加し、Phase 3 の self-host 作業でも参照できる状態にする。
 
+### Step1 実施記録（2025-11-01）
+- `docs/notes/core-parser-migration.md` に Menhir 規則と 15 コアコンビネーターの対応表を追加し、`ok`/`choice`/`map` など既存構文で近似できる箇所と `rule`/`label`/`cut`/`recover` のギャップを整理した。  
+- `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Step1 ログを追加し、`committed` 未更新・`ParserId` 未割当・`recover` フック未使用を Phase 2-5 のリスクとして記録した。  
+- 次ステップでは `Core_parse` シグネチャ案に `ParserId` 生成・`committed` 操作・`recover` 同期トークン挿入用 API を盛り込み、`parser_driver` のフック増設方針を具体化する。
+
 2. **`Core_parse` シグネチャと ID 付与戦略の設計（Week31 Day3-4）**  
    - **調査**: `docs/spec/2-2-core-combinator.md` §A〜§C と `docs/spec/2-6-execution-strategy.md` の Packrat/ストリーミング契約、`docs/guides/core-parse-streaming.md` の API 期待値を確認し、`ParserId`・`Reply`・`recover` のメタデータ要件を整理する[^spec-exec][^guide-stream].  
    - **設計**: `compiler/ocaml/src/core_parse_combinator.mli`（新設）に公開する最小シグネチャ案を作成し、`rule`・`label`・`cut` など committed/consumed フラグの扱いを `Reply` 型に写像する。`PARSER-002` で導入した `Run_config` と `extensions` のフック点を洗い直し、コンビネーター側から `RunConfig.extensions["lex"]`/`["recover"]` を参照するフックを定義する。  

@@ -34,7 +34,7 @@
 ### 構文解析（PARSER）
 - [PARSER-001 修正計画](./PARSER-001-proposal.md): `ParseResult` シムを導入し、`Reply{consumed, committed}` と診断集約を再現。Week31 Day1-5 で `parser_driver` を段階的に差し替え、`parser.parse_result_consistency` / `parser.farthest_error_offset` を `0-3-audit-and-metrics.md` に登録して CI 監視する（実装済: `parser_driver.ml` シム化・`parser_diag_state.ml` 追加・`dune runtest tests` 成功・メトリクス/脚注/`scripts/validate-diagnostic-json.sh` の自動検証まで反映完了）。
 - [PARSER-002 修正計画](./PARSER-002-proposal.md): `RunConfig` をランナーへ統合し、Packrat／recover／stream 設定を反映できるようにする。（2025-11-18 追記: Step 1 で `parser_run_config` モジュールを実装し、仕様書と修正計画への移行脚注を整備。2025-11-19 追記: Step 2 で `parser_driver` が `Run_config.t` を受け取り、`trace`/`merge_warnings`/`locale` を診断状態へ伝播させる更新を完了。2025-11-20 追記: Step 3 で `RunConfig` 拡張シム（`lex`/`recover`/`stream`）と `Parser_diag_state` 連携を実装し、`dune build` で検証済み。2025-11-21 追記: Step 4 で CLI/LSP/テスト支援を RunConfig 経由へ統合し、`Cli.Options.to_run_config`・`tooling/lsp/run_config_loader.ml`・`Test_support` を追加してクライアントと測定基盤の導線を揃えた。2025-11-22 追記: Step 5 で RunConfig ユニットテスト・監査メトリクス（`parser.runconfig_switch_coverage` / `parser.runconfig_extension_pass_rate`）・RunConfig ゴールデン JSON を整備し、`collect-iterator-audit-metrics.py` が CI で新指標を強制するよう更新済み。）
-- [PARSER-003 修正計画](./PARSER-003-proposal.md): 15 個のコアコンビネーターを OCaml 実装へ抽出し、`Core.Parse` API と DSL の互換性を確保。
+- [PARSER-003 修正計画](./PARSER-003-proposal.md): 15 個のコアコンビネーターを OCaml 実装へ抽出し、`Core.Parse` API と DSL の互換性を確保。（2025-11-01 Step1 コアコンビネーター棚卸し完了: Menhir 対応表を `docs/notes/core-parser-migration.md` に追加し、`committed` 未更新・`ParserId` 未割当・`recover` フック未使用をレビュー記録へ登録。）
 
 ### 構文仕様（SYNTAX）
 - [SYNTAX-001 修正計画](./SYNTAX-001-proposal.md): Unicode 識別子制約の暫定状態を仕様脚注で明示し、Phase 2-7 の対応計画を共有。

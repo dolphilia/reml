@@ -3,6 +3,25 @@
 Phase 2-5 で実施した差分レビューと現状棚卸しを記録し、後続フェーズでの追跡に利用する。  
 エントリごとに関連計画へのリンクと再現手順を整理する。
 
+## PARSER-003 Step1 コアコンビネーター棚卸し（2025-11-01）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/PARSER-003-proposal.md`](./2-5-proposals/PARSER-003-proposal.md#5-実施ステップ)
+
+### 1. 対応表の作成
+- `docs/notes/core-parser-migration.md` に Menhir 規則と 15 個のコアコンビネーターの対応を追加し、代表的な規則と不足メタデータを整理した（`Phase 2-5 Core コンビネーター棚卸し` セクション参照）。  
+- `parser.mly` の空産出・多分岐・アクションを抽出し、`ok`/`choice`/`map` 等の近似点を記録。  
+- `parser_expectation.ml` の期待集合生成経路を確認し、`label` が未導入であることを確認。
+
+### 2. 欠落メタデータの確認
+- `committed` フラグがどこでも `true` に更新されず、`cut`/`attempt` の契約を満たせない（`compiler/ocaml/src/parser_driver.ml:185-223`）。  
+- `ParserId` を生成・維持する仕組みが無く、`rule` の要求（Packrat キー／トレース／監査）を満たせない（`compiler/ocaml/src/parser.mly:1174`、`compiler/ocaml/src/parser_driver.ml:219-223`）。  
+- `recover` 用の設定とハンドラ `Parser_diag_state.record_recovery` が未使用で、RunConfig `recover` 拡張から同期トークンを渡す経路が欠落（`compiler/ocaml/src/parser_diag_state.ml:24-63`、`compiler/ocaml/src/parser_driver.ml:187-205`）。
+
+### 3. フォローアップ
+1. Step2 で `Core_parse` シグネチャ草案を作成し、`rule`/`label`/`cut` のメタデータ付与方針を決定する。  
+2. `parser_driver` に `committed`/`consumed` を操作するフックを追加する設計を検討し、`cut`/`attempt` 実装時に差分が追跡できるようログを残す。  
+3. `RunConfig.extensions["recover"]` の同期トークン定義を `PARSER-002` チームと共有し、Packrat/回復シムを同一タイムラインで導入する。
+
 ## TYPE-001 Day4 値制限テスト・診断整備（2025-11-05）
 
 関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-001-proposal.md`](./2-5-proposals/TYPE-001-proposal.md)
