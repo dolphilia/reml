@@ -6,6 +6,8 @@
 module I = Parser.MenhirInterpreter
 module Builder = Diagnostic.Builder
 module Run_config = Parser_run_config
+module Core_state = Core_parse.State
+module Core_reply = Core_parse.Reply
 
 let default_run_config = Run_config.default
 
@@ -19,18 +21,6 @@ type parse_error = {
   committed : bool;
   far_consumed : bool;
 }
-
-type reply =
-  | Ok of {
-      value : Ast.compilation_unit;
-      span : Diagnostic.span option;
-      consumed : bool;
-    }
-  | Err of {
-      diagnostic : Diagnostic.t;
-      consumed : bool;
-      committed : bool;
-    }
 
 type parse_result = {
   value : Ast.compilation_unit option;
@@ -119,12 +109,6 @@ let register_diagnostic diag_state diag ~consumed ~committed =
   Parser_diag_state.record_diagnostic diag_state ~diagnostic:diag ~committed
     ~consumed
 
-let build_failure diag_state diag ~consumed ~committed =
-  register_diagnostic diag_state diag ~consumed ~committed;
-  let legacy_error = diagnostic_to_parse_error diag ~consumed ~committed in
-  finalize_result diag_state ~value:None ~span:None
-    ~legacy_error:(Some legacy_error) ~consumed ~committed
-
 let effective_require_eof config =
   match Run_config.Config.find config with
   | None -> config.require_eof
@@ -182,9 +166,8 @@ let run ?(config = default_run_config) lexbuf =
       ~merge_warnings:config.merge_warnings ?locale:config.locale
       ~recover:recover_config ()
   in
+  let core_state = Core_state.create ~config ~diag:diag_state in
   let require_eof = effective_require_eof config in
-  let consumed = ref false in
-  let committed = ref false in
   let eof_seen = ref false in
   let start_pos = lexbuf.Lexing.lex_curr_p in
   if config.packrat then warn_packrat diag_state lexbuf;
@@ -199,27 +182,28 @@ let run ?(config = default_run_config) lexbuf =
     in
     (match token with
     | Token.EOF -> eof_seen := true
-    | _ -> consumed := true);
+    | _ -> Core_state.mark_consumed core_state);
     (token, start_pos, end_pos)
   in
-  let rec loop checkpoint =
+  let rec loop state checkpoint =
     match checkpoint with
     | I.InputNeeded _ -> (
         try
           let triple = read_token () in
-          loop (I.offer checkpoint triple)
+          loop state (I.offer checkpoint triple)
         with Lexer.Lexer_error (msg, _) ->
           let diag = process_lexer_error lexbuf msg in
-          build_failure diag_state diag ~consumed:!consumed ~committed:!committed)
-    | I.Shifting _ | I.AboutToReduce _ -> loop (I.resume checkpoint)
+          Core_reply.err ~diagnostic:diag
+            ~consumed:(Core_state.consumed state)
+            ~committed:(Core_state.committed state))
+    | I.Shifting _ | I.AboutToReduce _ -> loop state (I.resume checkpoint)
     | I.Accepted ast ->
         let span =
           Diagnostic.span_of_positions start_pos lexbuf.Lexing.lex_curr_p
         in
-        Parser_diag_state.record_span_trace diag_state
-          ~label:(Some "compilation_unit") ~span;
-        finalize_result diag_state ~value:(Some ast) ~span:(Some span)
-          ~legacy_error:None ~consumed:!consumed ~committed:!committed
+        Core_reply.ok ~value:ast ~span:(Some span)
+          ~consumed:(Core_state.consumed state)
+          ~committed:(Core_state.committed state)
     | I.HandlingError _ ->
         let summary =
           expectation_summary_for_checkpoint diag_state checkpoint
@@ -228,16 +212,51 @@ let run ?(config = default_run_config) lexbuf =
           process_parser_error lexbuf "構文エラー: 入力を解釈できません"
             summary
         in
-        build_failure diag_state diag ~consumed:!consumed ~committed:!committed
+        Core_reply.err ~diagnostic:diag
+          ~consumed:(Core_state.consumed state)
+          ~committed:(Core_state.committed state)
     | I.Rejected ->
         let summary =
           expectation_summary_for_checkpoint diag_state checkpoint
         in
         let diag = process_rejected_error lexbuf summary in
-        build_failure diag_state diag ~consumed:!consumed ~committed:!committed
+        Core_reply.err ~diagnostic:diag
+          ~consumed:(Core_state.consumed state)
+          ~committed:(Core_state.committed state)
   in
   let checkpoint = Parser.Incremental.compilation_unit lexbuf.Lexing.lex_curr_p in
-  let result = loop checkpoint in
+  let parser state =
+    let reply = loop state checkpoint in
+    (reply, state)
+  in
+  let reply, _state =
+    Core_parse.rule ~namespace:"menhir" ~name:"compilation_unit" parser
+      core_state
+  in
+  let result =
+    match reply with
+    | Core_reply.Ok ok ->
+        let span =
+          match ok.span with
+          | Some span -> span
+          | None ->
+              Diagnostic.span_of_positions start_pos lexbuf.Lexing.lex_curr_p
+        in
+        Parser_diag_state.record_span_trace diag_state
+          ~label:(Some "compilation_unit") ~span;
+        finalize_result diag_state ~value:(Some ok.value) ~span:(Some span)
+          ~legacy_error:None ~consumed:ok.consumed ~committed:ok.committed
+    | Core_reply.Err err ->
+        register_diagnostic diag_state err.diagnostic ~consumed:err.consumed
+          ~committed:err.committed;
+        let legacy_error =
+          diagnostic_to_parse_error err.diagnostic ~consumed:err.consumed
+            ~committed:err.committed
+        in
+        finalize_result diag_state ~value:None ~span:None
+          ~legacy_error:(Some legacy_error) ~consumed:err.consumed
+          ~committed:err.committed
+  in
   if require_eof && not !eof_seen then (
     let pos = lexbuf.Lexing.lex_curr_p in
     let span = Diagnostic.span_of_positions pos pos in
@@ -250,13 +269,15 @@ let run ?(config = default_run_config) lexbuf =
       |> Builder.set_primary_code "parser.require_eof.unconsumed_input"
       |> Builder.build
     in
-    register_diagnostic diag_state diag ~consumed:!consumed ~committed:!committed;
+    register_diagnostic diag_state diag ~consumed:result.consumed
+      ~committed:result.committed;
     let legacy_error =
-      diagnostic_to_parse_error diag ~consumed:!consumed ~committed:!committed
+      diagnostic_to_parse_error diag ~consumed:result.consumed
+        ~committed:result.committed
     in
     finalize_result diag_state ~value:None ~span:result.span
-      ~legacy_error:(Some legacy_error) ~consumed:!consumed
-      ~committed:!committed)
+      ~legacy_error:(Some legacy_error) ~consumed:result.consumed
+      ~committed:result.committed)
   else result
 
 let run_partial ?(config = default_run_config) lexbuf =

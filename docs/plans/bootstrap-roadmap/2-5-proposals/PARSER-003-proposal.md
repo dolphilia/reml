@@ -96,6 +96,12 @@ end
     - **実装**: `Core_parse` 内に Packrat キャッシュ管理フックを追加し、`parser.capability.packrat`（RunConfig extensions）有効時に `ParserId` ごとのメモ化を行う。`recover` は `parser_expectation` の期待集合と診断拡張を統合し、`RunConfig.extensions["recover"]` を通じて同期トークンの設定を受け取る。複数 Capability 監査のため、`effect-stage` 情報を `Parser_context` へ引き渡す。  
     - **検証**: Packrat/回復を有効化したテストケースを追加し、`tooling/ci/collect-iterator-audit-metrics.py` の `parser.packrat_cache_hit_ratio`（追加予定）や `parser.recover_sync_success_rate` が想定値になるか確認する。
 
+### Step3 実施記録（2025-12-05）
+- `compiler/ocaml/src/core_parse.{ml,mli}` を新設し、`Id`/`State`/`Reply` と最小限のコンビネーター（`rule`/`label`/`cut`/`attempt`）を定義。Menhir 依存の実装に対して `menhir:compilation_unit` を静的 `ParserId` として登録し、動的採番は `ordinal >= 0x1000` から割り振る PoC を整備した。  
+- `parser_driver.run` を `Core_parse.rule` 経由で実行するブリッジ層に差し替え、トークン消費やコミット状態を `Core_parse.State` へ集約。`Core_parse.Reply` から既存の `ParseResult` へ変換するフローを実装し、既存の診断収集（`Parser_diag_state`）と整合することを手動確認した。  
+- `RunConfig.extensions["lex"]` の適用や診断トレース記録（`Parser_diag_state.record_span_trace`）は従来どおり `parser_driver` 内で維持しつつ、`Core_parse` の PoC が `rule` ID を付与するのみで他機能へ影響しないことを確認。  
+- 既知の制限として、`label`/`cut`/`attempt` は現在プレースホルダ実装（状態フラグのみ更新）であり、Packrat メモ化や `recover` 拡張は未導入。これらは Step4 以降で `Parser_diag_state`・`RunConfig` 拡張と統合する必要がある。
+
 5. **テスト・メトリクス・ゴールデン整備（Week33 Day3-5）**  
     - **実装**: `compiler/ocaml/tests/packrat_tests.ml`（新設）と既存の CLI/LSP ゴールデンを更新し、コンビネーター経由のパース結果・診断が Menhir 直呼びと一致することを検証する。`scripts/validate-diagnostic-json.sh` に `Core_parse` 由来の `rule`/`ParserId` 付与チェックを追加。  
     - **計測**: `0-3-audit-and-metrics.md` に `parser.core_comb_rule_coverage` や `parser.packrat_cache_hit_ratio` などの指標を登録し、CI で追跡する。必要に応じて `tooling/ci/collect-iterator-audit-metrics.py --require-success` の閾値を更新する。  
