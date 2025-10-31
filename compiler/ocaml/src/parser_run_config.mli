@@ -141,3 +141,18 @@ module Stream : sig
   val default : t
   val of_run_config : run_config -> t
 end
+
+module Effects : sig
+  type t = {
+    stage_override : string option;
+    registry_path : string option;
+    required_capabilities : string list;
+    namespace : Extensions.Namespace.t option;
+  }
+
+  val default : t
+  val of_run_config : run_config -> t
+  val set_stage_override : string option -> run_config -> run_config
+  val set_registry_path : string option -> run_config -> run_config
+  val set_required_capabilities : string list -> run_config -> run_config
+end

@@ -129,7 +129,7 @@ let registry_from_path = function
   | Some path when String.trim path <> "" -> load_registry_from_file path
   | _ -> empty_registry
 
-let resolve ~cli_override ~registry_path ~target =
+let resolve ~required_capabilities ~cli_override ~registry_path ~target =
   let registry, registry_source_path =
     match registry_path with
     | Some path -> (load_registry_from_file path, Some path)
@@ -197,7 +197,18 @@ let resolve ~cli_override ~registry_path ~target =
         |> List.concat
     | None -> []
   in
-  let combined = base_capabilities @ override_capabilities in
+  let normalized_required_caps =
+    required_capabilities
+    |> List.map normalize_key
+    |> List.sort_uniq String.compare
+  in
+  let run_config_capabilities =
+    normalized_required_caps
+    |> List.map (fun name -> capability_entry name None)
+  in
+  let combined =
+    base_capabilities @ override_capabilities @ run_config_capabilities
+  in
   let dedup entries =
     List.fold_left
       (fun acc (entry : capability_entry) ->
@@ -221,6 +232,21 @@ let resolve ~cli_override ~registry_path ~target =
            in
            (entry.name, stage))
   in
+  (match normalized_required_caps with
+  | [] -> ()
+  | required_list ->
+      let steps =
+        capability_stages
+        |> List.filter_map (fun (name, stage) ->
+               let normalized = normalize_key name in
+               if List.exists (fun required -> String.equal required normalized) required_list then
+                 Some
+                   (stage_trace_step_of_stage_id ~capability:name
+                      ~note:"run_config.effects.required_capabilities"
+                      "run_config" stage)
+               else None)
+      in
+      stage_trace := !stage_trace @ steps);
   (match registry_source_path with
   | Some path ->
       let step =

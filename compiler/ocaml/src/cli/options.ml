@@ -608,4 +608,6 @@ let to_run_config (opts : options) =
   in
   Run_config.with_extension "config" (fun _ -> config_namespace) base
   |> Run_config.with_extension "lex" (fun _ -> lex_namespace)
+  |> Run_config.Effects.set_stage_override opts.effect_stage_override
+  |> Run_config.Effects.set_registry_path opts.runtime_capabilities_path
   (* TODO(LEXER-002 Step5): ParserId を取得したら space_id を設定し、CLI で警告を出す。 *)

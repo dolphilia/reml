@@ -471,6 +471,10 @@ let () =
         prerr_endline msg;
         exit 1
   in
+  let run_config_base = Cli.Options.to_run_config opts in
+  let effects_run_config =
+    Parser_run_config.Effects.of_run_config run_config_base
+  in
   let audit_context = Cli.Audit_path_resolver.resolve opts in
   let mark_audit_failure () =
     Cli.Audit_persistence.append_events audit_context
@@ -587,9 +591,19 @@ let () =
   let emit_trace_logs = opts.trace in
   let runtime_stage_context =
     Runtime_capability_resolver.resolve
-      ~cli_override:opts.Cli.Options.effect_stage_override
-      ~registry_path:opts.Cli.Options.runtime_capabilities_path
+      ~cli_override:effects_run_config.Parser_run_config.Effects.stage_override
+      ~registry_path:effects_run_config.Parser_run_config.Effects.registry_path
+      ~required_capabilities:
+        effects_run_config.Parser_run_config.Effects.required_capabilities
       ~target:(Some opts.target)
+  in
+  let capability_names =
+    runtime_stage_context.Type_inference_effect.capability_stages
+    |> List.map fst |> List.sort_uniq String.compare
+  in
+  let parser_run_config =
+    Parser_run_config.Effects.set_required_capabilities capability_names
+      run_config_base
   in
   let type_config =
     Type_inference.make_config ~effect_context:runtime_stage_context ()
@@ -609,7 +623,6 @@ let () =
   (* Phase 1-6 Week 15: トレース開始 *)
   record_start Parsing;
 
-  let parser_run_config = Cli.Options.to_run_config opts in
   let parse_output = Parser_driver.run ~config:parser_run_config lexbuf in
   match Parser_driver.parse_result_to_legacy parse_output with
   | Ok ast ->

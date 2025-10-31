@@ -427,13 +427,6 @@ let primary_capability_name ?fallback resolutions =
   | Some entry -> Some entry.capability_name
   | None -> fallback
 
-let profile_primary_capability_name (profile : profile) =
-  primary_capability_name ?fallback:profile.resolved_capability
-    profile.resolved_capabilities
-
-let profile_primary_capability_resolution (profile : profile) =
-  primary_capability_resolution profile.resolved_capabilities
-
 let capability_resolution_to_json (entry : capability_resolution) =
   let stage_json =
     match entry.capability_stage with
@@ -481,6 +474,13 @@ let make_profile ?source_name ?resolved_stage ?resolved_capability
     resolved_capabilities;
     diagnostic_payload;
   }
+
+let profile_primary_capability_name profile =
+  primary_capability_name ?fallback:profile.resolved_capability
+    profile.resolved_capabilities
+
+let profile_primary_capability_resolution profile =
+  primary_capability_resolution profile.resolved_capabilities
 
 let default_profile ?source_name ?(stage_trace = stage_trace_empty) ~span () =
   make_profile ?source_name ~stage_trace

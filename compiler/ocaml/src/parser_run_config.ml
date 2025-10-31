@@ -315,3 +315,103 @@ module Stream = struct
           resume_hint = decode_string namespace "resume_hint";
         }
 end
+
+module Effects = struct
+  type t = {
+    stage_override : string option;
+    registry_path : string option;
+    required_capabilities : string list;
+    namespace : Namespace.t option;
+  }
+
+  let default =
+    {
+      stage_override = None;
+      registry_path = None;
+      required_capabilities = [];
+      namespace = None;
+    }
+
+  let normalize_capability_name name =
+    name |> String.trim |> String.lowercase_ascii
+
+  let decode_string namespace key =
+    match Namespace.find key namespace with
+    | Some value -> string_of_value value
+    | None -> None
+
+  let decode_required namespace key =
+    match Namespace.find key namespace with
+    | Some value -> string_list_of_value value |> List.map normalize_capability_name
+    | None -> []
+
+  let of_run_config config =
+    match find_extension "effects" config with
+    | None -> default
+    | Some namespace ->
+        {
+          namespace = Some namespace;
+          stage_override = decode_string namespace "stage";
+          registry_path = decode_string namespace "registry_path";
+          required_capabilities = decode_required namespace "required_capabilities";
+        }
+
+  let encode_required namespace capabilities =
+    let normalized =
+      capabilities
+      |> List.map normalize_capability_name
+      |> List.filter (fun value -> String.trim value <> "")
+      |> List.sort_uniq String.compare
+    in
+    match normalized with
+    | [] -> Namespace.remove "required_capabilities" namespace
+    | _ ->
+        let encoded =
+          normalized
+          |> List.map (fun value -> Extensions.String value)
+        in
+        Namespace.add "required_capabilities" (Extensions.List encoded) namespace
+
+  let set_stage_override stage_opt config =
+    match stage_opt with
+    | Some stage ->
+        let trimmed = String.trim stage in
+        if String.equal trimmed "" then
+          with_extension "effects"
+            (fun namespace -> Namespace.remove "stage" namespace)
+            config
+        else
+          let normalized = String.lowercase_ascii trimmed in
+          with_extension "effects"
+            (fun namespace ->
+              Namespace.add "stage" (Extensions.String normalized) namespace)
+            config
+    | None ->
+        with_extension "effects"
+          (fun namespace -> Namespace.remove "stage" namespace)
+          config
+
+  let set_registry_path path_opt config =
+    match path_opt with
+    | Some path ->
+        let trimmed = String.trim path in
+        if String.equal trimmed "" then
+          with_extension "effects"
+            (fun namespace -> Namespace.remove "registry_path" namespace)
+            config
+        else
+          with_extension "effects"
+            (fun namespace ->
+              Namespace.add "registry_path"
+                (Extensions.String trimmed) namespace)
+            config
+    | None ->
+        with_extension "effects"
+          (fun namespace -> Namespace.remove "registry_path" namespace)
+          config
+
+  let set_required_capabilities capabilities config =
+    with_extension "effects"
+      (fun namespace -> encode_required namespace capabilities)
+      config
+end

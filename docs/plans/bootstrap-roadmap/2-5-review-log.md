@@ -383,9 +383,28 @@ S3（Menhir ルール実装）の結果共有。
 - `scripts/validate-diagnostic-json.sh` の新検証で効果診断ゴールデンを手動検証（自動実行は未実施）。CI 集計は `tooling/ci/collect-iterator-audit-metrics.py --require-success` で想定キーが揃っていることをローカル確認（メトリクス導出のみ、CI 実行は次フェーズ）。
 
 ### 3. 残課題 / 次ステップ
-1. Capability 名の正規化ポリシー（小文字化・ハイフン統一）は Runtime 連携タスクに引き継ぎ。Phase 2-7 の RunConfig/lex シム統合で再検討する。  
+1. Capability 名の正規化ポリシー（小文字化・ハイフン統一）は Runtime 連携タスクに引き継ぎ、`Effect_profile.normalize_capability_name` と RunConfig 側の小文字化処理を Phase 2-7 で最終確定する。  
 2. LSP まわりのカラーリング・整形は Step 4 のテスト整備と併せて実施予定。`tooling/lsp/tests/client_compat` のフィクスチャ更新は Step 4 での自動テスト追加と同時に進める。  
 3. 監査ダッシュボードへ複数 Capability 指標を追加するタスクを Phase 2-7 `diagnostics.dashboard-update` に連携し、可視化要件（配列比較／Stage 集計）を整理する。
+
+## EFFECT-003 Week33 Day1 RunConfig／lex シム統合（2025-12-03）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-003-proposal.md`](./2-5-proposals/EFFECT-003-proposal.md)
+
+### 1. 作業サマリ
+- `compiler/ocaml/src/parser_run_config.{ml,mli}` に `Effects` サブモジュールを追加し、`stage` / `registry_path` / `required_capabilities` を設定・除去できるユーティリティを実装。`Cli.Options.to_run_config` で CLI オプションを同ネームスペースへ反映するよう更新した。  
+- `compiler/ocaml/src/runtime_capability_resolver.ml` を更新し、RunConfig 由来の Stage override と Capability ヒントを `resolve` が取り込むよう変更。RunConfig で指定した Capability は default stage で補完され、`stage_trace` に `source="run_config"` のステップを追加するようにした。  
+- `compiler/ocaml/src/main.ml` の RunConfig 構築を解析前に行い、Runtime resolver の結果を `Effects.set_required_capabilities` で RunConfig へ書き戻す経路を追加。`Core_parse_lex.Bridge.derive` と併用しても `extensions["effects"]` が保持されることを手動確認した。
+
+### 2. 検証
+- CLI 実行時に `Runtime_capability_resolver.resolve` が返す `stage_trace` へ `run_config` ステップが追加され、`effect.stage.required_capabilities` が CLI 指定の Capability を維持することをログで確認。  
+- RunConfig を経由しない既存経路（LSP・テスト）の動作に変化が無いことを差分実行で確認。Stage override 未指定時には `extensions["effects"].stage` が生成されず互換性が保たれる。  
+- `tooling/ci/collect-iterator-audit-metrics.py --require-success` を再実行し、`extensions.effects.required_capabilities` が欠落しないことを確認。
+
+### 3. 残課題 / 次ステップ
+1. LSP 側の RunConfig ビルダーにも `Effects` ネームスペース設定を導入し、CLI と同じ Capability 配列を共有できるよう Phase 2-7 へ連携する。  
+2. Runtime resolver が返す Capability 名の正規化ポリシーを Runtime チームと調整し、RunConfig 側の正規化処理と統一する。  
+3. `docs/spec/2-6-execution-strategy.md` で予定されている `max_handler_depth` など追加ポリシーを `RunConfig.extensions["effects"]` へ拡張するタイムラインを TYPE-001 / EFFECT-001 フォローアップに記録する。
 
 ## SYNTAX-002 Day3-4 束縛診断連携（2025-10-29）
 

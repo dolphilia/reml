@@ -38,10 +38,10 @@
    - 監査集計を担う `tooling/ci/collect-iterator-audit-metrics.py` に新フィールド検証を追加し、`scripts/validate-diagnostic-json.sh` へ効果系配列の存在チェックを実装。`reports/diagnostic-format-regression.md` の手順に従いゴールデン（CLI/LSP/監査）の再生成と整合確認を実施。  
    - `docs/spec/3-6-core-diagnostics-audit.md` §3.2 / `docs/spec/3-8-core-runtime-capability.md` §8 の命名規則を確認し、`effect.stage.capabilities` は互換目的で保持したうえで配列キーを追加。更新内容は `docs/plans/bootstrap-roadmap/2-5-review-log.md` に記録し、Phase 2-7 で参照する TODO（Capability 名正規化ポリシー）を継続。
 
-4. **Step 3: RunConfig／lex シムとの統合（Week32 Day4-5 予定） — 未着手**  
-   - `compiler/ocaml/src/parser_run_config.ml` に `Effects` ネームスペースを追加し、`RunConfig.extensions["effects"].required_capabilities` を CLI/LSP から Typer へ伝搬。LEXER-002 の `lex.profile` と同様にシムを整備し、値制限復元タスク（TYPE-001）で参照できる状態にする。  
-   - `parser_driver`・`compiler/ocaml/src/main.ml`・`tooling/cli` 系初期化コードを更新し、`RunConfig` 経由で受け取った Capability 配列を `Type_inference_effect` へ注入する経路を保証。  
-   - **調査**: `docs/spec/2-1-parser-type.md` §D、`docs/plans/bootstrap-roadmap/2-5-proposals/PARSER-002-proposal.md` の Step3 記録を確認し、`extensions["lex"]` と同じ形式でマッピングできるか照合する。
+4. **Step 3: RunConfig／lex シムとの統合（Week32 Day4-5 予定） — 完了（2025-12-03）**
+   - `compiler/ocaml/src/parser_run_config.{ml,mli}` に `Effects` サブモジュールを追加し、`stage`・`registry_path`・`required_capabilities` キーを設定／除去できるユーティリティを整備。`Cli.Options.to_run_config` で CLI オプションを同ネームスペースへ反映するよう調整した。  
+   - `compiler/ocaml/src/runtime_capability_resolver.ml` を拡張し、RunConfig 由来の Stage override と Capability ヒントを `resolve` が取り込むよう変更。RunConfig で指定した Capability は default stage で補完され、`stage_trace` に `source="run_config"` のステップを追加する。  
+   - `compiler/ocaml/src/main.ml` で RunConfig 構築を解析前に実施し、Runtime resolver の結果を `Effects.set_required_capabilities` で RunConfig へ書き戻す導線を追加。Lex シム (`Core_parse_lex.Bridge.derive`) と併用しても `extensions["effects"]` が維持されることを手動確認した。
 
 5. **Step 4: テスト・メトリクス整備とドキュメント更新（Week32 Day5-Week33 Day1 予定） — 未着手**  
    - `compiler/ocaml/tests/capability_profile_tests.ml` を追加し、`StageRequirement::{Exact, AtLeast}` と Capability 配列の組み合わせを網羅。`compiler/ocaml/tests/test_cli_diagnostics.ml` に監査メタデータ検証を組み込み、配列形式が CLI/LSP 双方で崩れないか確認。  
