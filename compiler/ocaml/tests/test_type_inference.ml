@@ -1909,6 +1909,14 @@ let test_trait_constraint_stage_metadata () =
       in
       assert (extension_ids = capability_ids))
 
+(* TODO(TYPE-001/Step3): 値制限テストの実装
+   strict / legacy 両モードで以下を検証する予定:
+   - let + 純粋ラムダは Value_form.is_immediate + value_restriction_mode=Strict のとき量化変数を保持する
+   - var + 純粋ラムダは常に単相化され、Value_restriction.evaluate から Monomorphic が返る
+   - let + unsafe / mut / ffi タグを含む式は Strict で単相固定、Legacy では従来挙動をゴールデン比較する
+   `value_restriction_mode` の切替と `Value_form` ヘルパ参照のサンプルは
+   docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-001-proposal.md Step3 を参照。 *)
+
 (* ========== メイン ========== *)
 
 let () =

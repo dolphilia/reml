@@ -110,6 +110,7 @@ if [[ "${#DIAG_FILES[@]}" -gt 0 ]]; then
 import json
 import pathlib
 import sys
+from typing import List
 
 files = sys.argv[1:]
 error = False
@@ -172,6 +173,85 @@ def is_parser_diagnostic(diag: dict) -> bool:
     return False
 
 
+
+
+def is_value_restriction_diagnostic(diag: dict) -> bool:
+    code = diag.get("code")
+    if isinstance(code, str) and code.startswith("type_inference.value_restriction_"):
+        return True
+    codes = diag.get("codes")
+    if isinstance(codes, list):
+        for item in codes:
+            if isinstance(item, str) and item.startswith("type_inference.value_restriction_"):
+                return True
+    return False
+
+
+def validate_value_restriction_fields(diag: dict) -> List[str]:
+    errors: List[str] = []
+    extensions = diag.get("extensions")
+    if not isinstance(extensions, dict):
+        errors.append("extensions(value_restriction missing)")
+        return errors
+    vr = extensions.get("value_restriction")
+    if not isinstance(vr, dict):
+        errors.append("extensions.value_restriction(not object)")
+        return errors
+    mode = vr.get("mode")
+    status = vr.get("status")
+    evidence = vr.get("evidence")
+    if not isinstance(mode, str) or not mode.strip():
+        errors.append("extensions.value_restriction.mode")
+    if not isinstance(status, str) or not status.strip():
+        errors.append("extensions.value_restriction.status")
+    if not isinstance(evidence, list):
+        errors.append("extensions.value_restriction.evidence")
+    else:
+        for idx, item in enumerate(evidence):
+            if not isinstance(item, dict):
+                errors.append(f"extensions.value_restriction.evidence[{idx}]")
+                continue
+            tag = item.get("tag")
+            capability = item.get("capability")
+            stage = item.get("stage")
+            if not isinstance(tag, str) or not tag.strip():
+                errors.append(f"extensions.value_restriction.evidence[{idx}].tag")
+            if not isinstance(capability, str) or not capability.strip():
+                errors.append(f"extensions.value_restriction.evidence[{idx}].capability")
+            if not isinstance(stage, dict):
+                errors.append(f"extensions.value_restriction.evidence[{idx}].stage")
+            else:
+                required = stage.get("required")
+                actual = stage.get("actual")
+                if not isinstance(required, str) or not required.strip():
+                    errors.append(f"extensions.value_restriction.evidence[{idx}].stage.required")
+                if not isinstance(actual, str) or not actual.strip():
+                    errors.append(f"extensions.value_restriction.evidence[{idx}].stage.actual")
+    audit_metadata = diag.get("audit_metadata")
+    if not isinstance(audit_metadata, dict):
+        errors.append("audit_metadata.value_restriction(mode/status missing)")
+    else:
+        meta_mode = audit_metadata.get("value_restriction.mode")
+        meta_status = audit_metadata.get("value_restriction.status")
+        if not isinstance(meta_mode, str) or not meta_mode.strip():
+            errors.append("audit_metadata.value_restriction.mode")
+        if not isinstance(meta_status, str) or not meta_status.strip():
+            errors.append("audit_metadata.value_restriction.status")
+    audit_block = diag.get("audit")
+    metadata = None
+    if isinstance(audit_block, dict):
+        metadata = audit_block.get("metadata")
+    if not isinstance(metadata, dict):
+        errors.append("audit.metadata.value_restriction(mode/status missing)")
+    else:
+        env_mode = metadata.get("value_restriction.mode")
+        env_status = metadata.get("value_restriction.status")
+        if not isinstance(env_mode, str) or not env_mode.strip():
+            errors.append("audit.metadata.value_restriction.mode")
+        if not isinstance(env_status, str) or not env_status.strip():
+            errors.append("audit.metadata.value_restriction.status")
+    return errors
+
 for path_str in files:
     path = pathlib.Path(path_str)
     if not path.exists():
@@ -217,6 +297,16 @@ for path_str in files:
                                 f"{path}: diagnostics[{diag_index}].expected.alternatives",
                                 file=sys.stderr,
                             )
+                            error = True
+                    if is_value_restriction_diagnostic(diag):
+                        vr_missing = validate_value_restriction_fields(diag)
+                        if vr_missing:
+                            for field in vr_missing:
+                                print(
+                                    "[validate-diagnostic-json] value_restriction field missing: "
+                                    f"{path}: diagnostics[{diag_index}].{field}",
+                                    file=sys.stderr,
+                                )
                             error = True
                     extensions = diag.get("extensions")
                     if isinstance(extensions, dict):

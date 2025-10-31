@@ -353,6 +353,18 @@ def _as_string_list(value: Optional[object]) -> Optional[List[str]]:
     return None
 
 
+def _diagnostic_has_code(diag: Dict[str, Any], target: str) -> bool:
+    primary = primary_code_of(diag)
+    if primary == target:
+        return True
+    codes_field = diag.get("codes")
+    if isinstance(codes_field, list):
+        for item in codes_field:
+            if isinstance(item, str) and item == target:
+                return True
+    return False
+
+
 def _diagnostic_metadata_lookup(diag: Dict[str, Any], key: str) -> Optional[object]:
     metadata = _as_dict(diag.get("audit_metadata"))
     if metadata and key in metadata:
@@ -1889,6 +1901,103 @@ def collect_capability_array_metric(
     }
 
 
+def collect_value_restriction_violation_metric(
+    paths: Sequence[Path],
+) -> Dict[str, Any]:
+    occurrences: List[Dict[str, Any]] = []
+    schema_versions: Set[str] = set()
+
+    for path in paths:
+        data = load_json(path)
+        diag_list = list(iter_diagnostics(data))
+        for index, diag in enumerate(diag_list):
+            if not _diagnostic_has_code(
+                diag, "type_inference.value_restriction_violation"
+            ):
+                continue
+            schema = extract_schema_version(diag)
+            if schema:
+                schema_versions.add(schema)
+            occurrences.append(
+                {
+                    "file": str(path),
+                    "index": index,
+                    "code": primary_code_of(diag) or "unknown",
+                    "message": diag.get("message"),
+                }
+            )
+
+    violation_count = len(occurrences)
+    total_checks = 1
+    passed_checks = 1 if violation_count == 0 else 0
+    pass_rate, pass_fraction = calculate_pass_rates(passed_checks, total_checks)
+    status = "success" if passed_checks == total_checks else "error"
+
+    return {
+        "metric": "type_inference.value_restriction_violation",
+        "total": total_checks,
+        "passed": passed_checks,
+        "failed": total_checks - passed_checks,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "status": status,
+        "violation_count": violation_count,
+        "violations": occurrences,
+        "sources": [str(path) for path in paths],
+        "schema_versions": sorted(schema_versions),
+    }
+
+
+def collect_value_restriction_legacy_metric(
+    paths: Sequence[Path],
+) -> Dict[str, Any]:
+    occurrences: List[Dict[str, Any]] = []
+    schema_versions: Set[str] = set()
+    source_paths: Set[str] = set()
+
+    for path in paths:
+        data = load_json(path)
+        diag_list = list(iter_diagnostics(data))
+        for index, diag in enumerate(diag_list):
+            if not _diagnostic_has_code(
+                diag, "type_inference.value_restriction_legacy_usage"
+            ):
+                continue
+            schema = extract_schema_version(diag)
+            if schema:
+                schema_versions.add(schema)
+            source_paths.add(str(path))
+            occurrences.append(
+                {
+                    "file": str(path),
+                    "index": index,
+                    "code": primary_code_of(diag) or "unknown",
+                    "message": diag.get("message"),
+                    "mode": "legacy",
+                }
+            )
+
+    usage_count = len(occurrences)
+    if usage_count > 0:
+        pass_rate, pass_fraction = calculate_pass_rates(usage_count, usage_count)
+    else:
+        pass_rate, pass_fraction = (None, None)
+
+    return {
+        "metric": "type_inference.value_restriction_legacy_usage",
+        "total": usage_count,
+        "passed": usage_count,
+        "failed": 0,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "status": "info",
+        "usage_count": usage_count,
+        "occurrences": occurrences,
+        "sources": sorted(source_paths),
+        "schema_versions": sorted(schema_versions),
+    }
+
+
 def collect_domain_metrics(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
     total = 0
     passed = 0
@@ -2584,7 +2693,15 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--section",
-        choices=["all", "parser", "iterator", "ffi", "typeclass", "review"],
+        choices=[
+            "all",
+            "parser",
+            "iterator",
+            "type_inference",
+            "ffi",
+            "typeclass",
+            "review",
+        ],
         default="all",
         help="Collect metrics for a specific section (default: all).",
     )
@@ -2777,7 +2894,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 sys.stderr.write(f"append-from ファイルが dict ではありません: {path}\n")
                 return 2
 
-    section_order = ["parser", "iterator", "typeclass", "ffi", "review"]
+    section_order = ["parser", "iterator", "type_inference", "typeclass", "ffi", "review"]
     if args.section == "all":
         sections = section_order
     else:
@@ -2791,6 +2908,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     effect_consistency_metric: Optional[Dict[str, Any]] = None
     capability_array_metric: Optional[Dict[str, Any]] = None
     plugin_bundle_metric: Optional[Dict[str, Any]] = None
+    type_inference_metric: Optional[Dict[str, Any]] = None
+    value_restriction_legacy_metric: Optional[Dict[str, Any]] = None
     typeclass_metrics: Optional[Dict[str, Any]] = None
     bridge_metrics: Optional[Dict[str, Any]] = None
     review_metrics: Optional[Dict[str, Any]] = None
@@ -2820,6 +2939,14 @@ def main(argv: Optional[List[str]] = None) -> int:
             ):
                 if metric:
                     related.append(metric)
+    if "type_inference" in sections:
+        type_inference_metric = collect_value_restriction_violation_metric(sources)
+        value_restriction_legacy_metric = collect_value_restriction_legacy_metric(
+            sources
+        )
+        if type_inference_metric and value_restriction_legacy_metric:
+            related = type_inference_metric.setdefault("related_metrics", [])
+            related.append(value_restriction_legacy_metric)
     if "typeclass" in sections:
         typeclass_metrics = collect_typeclass_metrics(sources, audit_paths)
     if "ffi" in sections:
@@ -2843,6 +2970,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         metrics_list.append(capability_array_metric)
     if iterator_metrics:
         metrics_list.append(iterator_metrics)
+    if type_inference_metric:
+        metrics_list.append(type_inference_metric)
+    elif value_restriction_legacy_metric:
+        metrics_list.append(value_restriction_legacy_metric)
     if typeclass_metrics:
         metrics_list.append(typeclass_metrics)
     if bridge_metrics:
@@ -2893,6 +3024,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         combined["parser"] = parser_metrics
     if iterator_metrics:
         combined["iterator"] = iterator_metrics
+    if type_inference_metric:
+        combined["type_inference"] = type_inference_metric
+    if value_restriction_legacy_metric:
+        combined["type_inference_legacy"] = value_restriction_legacy_metric
     if typeclass_metrics:
         combined["typeclass"] = typeclass_metrics
     if bridge_metrics:
@@ -2951,6 +3086,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 _enforce(metric, label)
         _enforce(iterator_metrics, "iterator.stage.audit_pass_rate")
         _enforce(capability_array_metric, "effect.capability_array_pass_rate")
+        _enforce(type_inference_metric, "type_inference.value_restriction_violation")
         _enforce(typeclass_metrics, "typeclass.metadata_pass_rate")
         if isinstance(typeclass_metrics, dict):
             _enforce(typeclass_metrics.get("dictionary_metric"), "typeclass.dictionary_pass_rate")

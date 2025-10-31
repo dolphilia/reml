@@ -15,6 +15,7 @@
 - 変更前後の JSON を `jq --sort-keys` で整形し、`diff -u` で比較する。
 - `effects.*` や `bridge.*` など拡張キーの追加は、対応する仕様書 (`docs/spec/3-6-core-diagnostics-audit.md` 等) を参照して説明を添える。とくに `effect.required_capabilities` / `effect.actual_capabilities` / `effect.stage.required_capabilities` / `effect.stage.actual_capabilities` の配列化は Phase 2-5 EFFECT-003 の成果物として扱い、レビュー時に配列内容と `capabilities_detail` の同期を確認する。
 - `extensions.typeclass.dictionary.*` / `typeclass.dictionary.*` に変更が生じた場合は、辞書監査ゴールデン `compiler/ocaml/tests/golden/typeclass_dictionary_resolved.json.golden` を更新し、`typeclass.dictionary_pass_rate` のトラッキングに差分内容を反映する。
+- 値制限診断（`type_inference.value_restriction_violation` / `type_inference.value_restriction_legacy_usage`）が追加された場合は、テンプレートゴールデン `compiler/ocaml/tests/golden/type_inference_value_restriction.{strict,legacy}.json.golden` をベースに Strict/Legacy 両モードの出力を更新し、`evidence[]` に `tag` / `capability` / `stage.required` / `stage.actual` が揃っているか確認する。
 - 期待値の変更がある場合は、CLI テキスト出力も取得し、利用者視点で破壊的でないかを確認する。
 - Info/Hint など Severity 拡張を確認する場合は、`compiler/ocaml/tests/golden/diagnostics/severity/info-hint.json.golden` と `tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-info-hint.json` を併用し、`scripts/validate-diagnostic-json.sh` と `npm run ci --prefix tooling/lsp/tests/client_compat` の双方で Info/Hint が欠落していないか検証する。
 - Phase 2-4 以降は `tooling/review/audit-diff.py --base <path> --target <path>` を併用し、Markdown/HTML レポート (`reports/audit/review/<commit>/diff.{md,html}`) を生成する。CI では `tooling/ci/publish-audit-diff.py` が同レポートを PR コメントへ要約投稿するため、レビュー担当者はコメントリンクを起点に確認する。
@@ -25,6 +26,7 @@
 - `scripts/validate-diagnostic-json.sh` は Parser 診断の `expected.alternatives` 欠落を即時に報告するため、`tests/golden/_actual/*.actual.json` に出力されたスナップショットで期待集合が出力されているか確認する。
 - スキーマ違反が発生した場合は `tooling/json-schema/diagnostic-v2.schema.json` を更新し、併せてフィクスチャを追加する。
 - Windows/macOS 固有のフィクスチャ（`diagnostic-v2-ffi-macos-sample.json` など）が最新の監査ログと整合しているか確認する。
+- 値制限違反診断を扱う際は `scripts/validate-diagnostic-json.sh` の `value_restriction` チェックで必須キー欠落が無いか確認し、`tooling/ci/collect-iterator-audit-metrics.py --require-success` を実行して `type_inference.value_restriction_violation` が 0 件であることを検証する。
 - `audit-review` 系ジョブ（`audit-diff`, `audit-dashboard`）が失敗した場合は、生成された `reports/audit/review/<commit>/diff.json` とダッシュボードアーティファクト (`reports/audit/dashboard/index.html`) を確認し、`collect-iterator-audit-metrics.py --section review` の出力に警告がないかチェックする。
 - `tooling/review/audit-query --query '<dsl>' --from <path>` または `--query-file tooling/review/presets/<preset>.dsl` をローカルで実行し、CI の DSL クエリ結果と一致しているか検証する。差異がある場合は `tooling/review/audit_shared.py` の正規化ロジックまたは DSL プリセット (`tooling/review/presets/*.dsl`) を更新する。
 

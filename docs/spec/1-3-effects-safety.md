@@ -72,6 +72,8 @@ Chapter 3 の標準ライブラリは `Σ_core` / `Σ_system` を細分化する
   let line = readLine()          // io 効果 → 単相
   ```
 
+> **実装メモ（Phase 2-5）**: `Value_restriction.evaluate` は `Effect_analysis.collect_expr` が返すタグと Capability/Stage 解決（`Type_inference_effect.resolve_function_profile`）を統合し、`RunConfig.extensions["effects"].value_restriction_mode` を参照して一般化可否を決定する。Strict モードで効果が検出された場合、診断 `effects.contract.value_restriction` は `effect.stage.required` / `effect.stage.actual` / `value_restriction.mode` / `value_restriction.evidence[]` を `Diagnostic.extensions` と `AuditEnvelope.metadata` に同時出力する。【P:docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-001-proposal.md†L52-L154】【R:docs/plans/bootstrap-roadmap/2-5-review-log.md†L22-L38】
+
 ---
 
 ## C. 効果の宣言と抑制（属性）

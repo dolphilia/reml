@@ -61,6 +61,7 @@ type RunConfigExtensions = Map<Str, Any>
 * `locale` は 2-1 §D と同様に診断表示の言語を固定し、バッチ・ストリーミングの両ランナーで共有される。
 * 追加の燃料制御や GC 連携、ストリーミング用バッファ、LSP 設定などは `extensions` に格納されるモジュール固有設定として扱い、必要なときだけ読み込む（推奨ネームスペースは [2-1](2-1-parser-type.md) を参照）。
 * CLI・LSP・CI ツールは `parser_run_config` の初期化ヘルパを共有し、`parser-runconfig-packrat.json.golden` を `scripts/validate-diagnostic-json.sh` および `collect-iterator-audit-metrics.py --require-success` へ渡すことで RunConfig スイッチと拡張値が JSON／監査ログへ記録されているかをレビューできる。
+* `extensions["effects"].value_restriction_mode` は Typer の `Value_restriction.evaluate` と同期し、Strict/Legacy モードを CLI（`--value-restriction={strict|legacy}`／`--legacy-value-restriction`）から切り替える。`extensions["effects"].max_handler_depth` は効果ハンドラのネスト上限を共有し、ランナー側でスタック保護を行う。【P:docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-001-proposal.md†L52-L154】【R:docs/plans/bootstrap-roadmap/2-5-review-log.md†L22-L38】
 
 #### B-2-2. Packrat/左再帰/コメント設定の運用指針
 

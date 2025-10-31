@@ -46,7 +46,7 @@
 - [SYNTAX-003 修正計画](./SYNTAX-003-proposal.md): 効果構文（`perform`/`handle`）の実装ステージを明確化し、Formal BNF との乖離を是正。
 
 ### 型システム（TYPE）
-- [TYPE-001 修正計画](./TYPE-001-proposal.md): 値制限と効果タグ連携を復元し、副作用を持つ束縛の多相化を防止。（2025-10-31 Step0 棚卸し完了: 再現ログ記録とチェックリスト共有済み。2025-11-01 Step1 判定ユーティリティ設計完了: `Typed_ast` 値形状分類と `Value_restriction.evaluate` API 案を確定。2025-11-03 Step2 Typer/RunConfig 連携方針確定: `value_restriction_mode` と効果証跡共有モデルを整理。）
+- [TYPE-001 修正計画](./TYPE-001-proposal.md): 値制限と効果タグ連携を復元し、副作用を持つ束縛の多相化を防止。（2025-10-31 Step0 棚卸し完了: 再現ログ記録とチェックリスト共有済み。2025-11-01 Step1 判定ユーティリティ設計完了: `Typed_ast` 値形状分類と `Value_restriction.evaluate` API 案を確定。2025-11-03 Step2 Typer/RunConfig 連携方針確定: `value_restriction_mode` と効果証跡共有モデルを整理。2025-11-05 Step3 テスト雛形・診断テンプレート・CI メトリクス設計を追加し、Strict/Legacy の監視ケースを定義。2025-11-08 Step4 仕様・RunConfig ドキュメント整備完了: 1-2/1-3/2-1/2-6 へ脚注を追加し、Phase 2-7 へのフォローアップを登録。）
 - [TYPE-002 修正計画](./TYPE-002-proposal.md): 効果行を型表現へ統合するロードマップを策定し、型と効果の一体管理を再構築。
 - [TYPE-003 修正計画](./TYPE-003-proposal.md): 型クラス辞書渡しを Core IR へ復元し、監査ログへの Capability 情報出力を再開。（2025-10-30 更新: Typer／Core IR／CI メトリクス整備まで完了。2025-10-31 追記: Stage 逆引き・辞書付き診断ゴールデン・ドキュメント整備まで完了。）
 

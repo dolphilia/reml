@@ -3,6 +3,41 @@
 Phase 2-5 で実施した差分レビューと現状棚卸しを記録し、後続フェーズでの追跡に利用する。  
 エントリごとに関連計画へのリンクと再現手順を整理する。
 
+## TYPE-001 Day4 値制限テスト・診断整備（2025-11-05）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-001-proposal.md`](./2-5-proposals/TYPE-001-proposal.md)
+
+### 1. テストとフィクスチャの雛形
+- `compiler/ocaml/tests/test_type_inference.ml` 末尾に Step3 TODO コメントを挿入し、Strict/Legacy 切替と `Value_form` 判定ヘルパを前提とした 3 ケース（let+純粋ラムダ / var+純粋ラムダ / let+unsafe）の実装メモを追加。  
+- `compiler/ocaml/tests/golden/type_inference_value_restriction.strict.json.golden` と `...legacy.json.golden` をテンプレートとして作成し、`mode` / `status` / `evidence[]` / `diagnostic.code` のフィールド構成を固定。
+
+### 2. メトリクスと CI 検証
+- `tooling/ci/collect-iterator-audit-metrics.py` へ `type_inference.value_restriction_violation`（Strict モード違反の有無をブロッカーとして監視）と `type_inference.value_restriction_legacy_usage`（Legacy 経路の使用回数を記録）の追加方針を確定し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に指標を登録。  
+- `scripts/validate-diagnostic-json.sh` へ値制限違反診断の必須キー検証（`extensions.value_restriction.*` / `audit_metadata.value_restriction.*` / `audit.metadata.value_restriction.*`）を追加する変更案をレビューし、欠落時のエラー出力方針を決定。
+
+### 3. 共有事項とフォローアップ
+- `reports/diagnostic-format-regression.md` のチェックリストへ「値制限ダンプ確認」と `collect-iterator-audit-metrics.py --require-success` の確認項目を追加。  
+- Step4 で仕様脚注の追補と Legacy モード縮退ロードマップを整備し、詳細は「TYPE-001 Step4 値制限ドキュメント整備（2025-11-08）」を参照。
+
+## TYPE-001 Step4 値制限ドキュメント整備（2025-11-08）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-001-proposal.md`](./2-5-proposals/TYPE-001-proposal.md#step4-実施記録2025-11-08)
+
+### 1. 仕様・計画ドキュメントの更新
+- `docs/spec/1-2-types-Inference.md` §C.3 に `Value_restriction.evaluate` と `RunConfig.extensions["effects"].value_restriction_mode` の連携を解説する実装メモを追加し、Strict/Legacy モードの既定値と利用条件を明示した。【S:docs/spec/1-2-types-Inference.md†L142-L166】
+- `docs/spec/1-3-effects-safety.md` §B へ値制限判定と効果タグ（`mut`/`io`/`ffi`/`unsafe`/`panic`）・Capability/Stage 監査を結び付ける記述を追加し、`effects.contract.value_restriction` 診断と監査ログのキー整合を定義した。【S:docs/spec/1-3-effects-safety.md†L70-L104】
+- `docs/spec/2-1-parser-type.md` §D と `docs/spec/2-6-execution-strategy.md` §B-2 に `extensions["effects"]` ネームスペースの正式化と CLI トグル（`--value-restriction={strict|legacy}`／`--legacy-value-restriction`）の運用方針を追記し、Parser→Typer 間で値制限モードを同期する要件を明文化した。【S:docs/spec/2-1-parser-type.md†L118-L170】【S:docs/spec/2-6-execution-strategy.md†L38-L134】
+- `docs/plans/bootstrap-roadmap/2-5-proposals/README.md` と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` を更新し、TYPE-001 の Step4 完了と仕様脚注の反映状況・残課題の移管先を記録した。【C:docs/plans/bootstrap-roadmap/2-5-proposals/README.md†L34-L54】【D:docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md†L94-L123】
+
+### 2. ノート・フォローアップ整理
+- `docs/notes/type-inference-roadmap.md` に Step4 メモを追加し、Stage/Capability 要件・RunConfig CLI スイッチ・Phase 2-7 への引き継ぎ内容（execution-config / effect-metrics）を明示した。【N:docs/notes/type-inference-roadmap.md†L33-L74】
+- Phase 2-7 `execution-config` チームへ RunConfig CLI 統合テスト（Strict/Legacy 切替と Legacy 廃止アラート）を依頼し、`effect-metrics` チームへ `type_inference.value_restriction_violation` / `type_inference.value_restriction_legacy_usage` 監視の恒常運用を引き渡す TODO を登録した。
+
+### 3. TODO / 移管
+1. `execution-config`: `--value-restriction` 系スイッチの CLI ゴールデンを追加し、Strict/Legacy の互換モード通知を Phase 2-7 スプリントで実装する。  
+2. `effect-metrics`: CI 指標に Legacy 経路検出の警告を追加し、逸脱時に `collect-iterator-audit-metrics.py --require-success` が即時失敗するようルールを更新する。  
+3. Phase 3 で Reml 実装へ移植する際、`RunConfig` の `effects.value_restriction_mode` と診断拡張を同梱できるよう移植手順を `docs/notes/core-parser-migration.md`（予定）に追記する。
+
 ## PARSER-002 Day1 RunConfig 現状調査（2025-11-18）
 
 関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/PARSER-002-proposal.md`](./2-5-proposals/PARSER-002-proposal.md)

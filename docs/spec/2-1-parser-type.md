@@ -121,7 +121,7 @@ type MemoTable = Map<MemoKey, Any>  // 実装上は型消去（内部用）
     解決したロケールは `PrettyOptions.locale` と `PrettyOptions.expectation_locale` の既定値に同期され、`PrettyOptions` 側で
     個別指定がある場合はそちらを尊重する。CLI・LSP などフロントエンドは `RunConfig.locale` に値を渡す際、明示指定が無く
     環境変数も欠落していれば **初回のみ「ロケール未指定」警告を出して英語 UI へフォールバック**する。
-  - `extensions` は LSP 連携・シンタックスハイライト・監査ログ・GC など、各拡張モジュールが提供する設定をネームスペース付きで保持する。例：`extensions["lsp"]`（LSP ガイド参照）、`extensions["runtime"]`（Core.Runtime 草案参照）。
+  - `extensions` は LSP 連携・シンタックスハイライト・監査ログ・GC など、各拡張モジュールが提供する設定をネームスペース付きで保持する。例：`extensions["lsp"]`（LSP ガイド参照）、`extensions["runtime"]`（Core.Runtime 草案参照）。Phase 2-5 では `extensions["effects"].value_restriction_mode`（`"strict"` / `"legacy"`）と `extensions["effects"].max_handler_depth` を定義し、CLI の `--value-restriction={strict|legacy}`／`--legacy-value-restriction` スイッチや Typer の値制限判定と同期させる。【P:docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-001-proposal.md†L52-L154】【R:docs/plans/bootstrap-roadmap/2-5-review-log.md†L22-L38】
 
 > **実装メモ（Phase 2-5）**: OCaml 実装では `compiler/ocaml/src/parser_run_config.ml` に `RunConfig` レコードを実装し、`with_extension` / `find_extension` / `Legacy.bridge` など仕様準拠の API を提供している。Step 6 では CLI (`compiler/ocaml/src/main.ml`) と LSP (`tooling/lsp/run_config_loader.ml`) が同じ `RunConfig` を共有し、`extensions["lex"|"recover"|"stream"]` などの設定を同期する運用へ移行した[^runconfig-ocaml-phase25]。
 
@@ -129,6 +129,7 @@ type MemoTable = Map<MemoKey, Any>  // 実装上は型消去（内部用）
 
 | key | 用途 | 参照 |
 | --- | --- | --- |
+| `"effects"` | `value_restriction_mode: "strict"|"legacy"`, `max_handler_depth: Int` | 1-2 §C.3, 1-3 §B, 2-6 §B-2, 3-6 §10 |
 | `"lsp"` | LSP/IDE 連携の挙動・シンタックスハイライト設定 | guides/lsp-integration.md |
 | `"runtime"` | GC・監査・メトリクスなど実行時基盤の設定 | 3-8-core-runtime-capability.md, guides/runtime-bridges.md |
 | `"logging"` | 構造化ログ・フォーマット設定（例：`format = "json"`） | guides/lsp-integration.md, guides/config-cli.md |

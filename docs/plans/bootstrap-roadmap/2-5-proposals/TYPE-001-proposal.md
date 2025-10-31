@@ -49,7 +49,7 @@ let is_generalizable ~effects expr_ty =
   - `compiler/ocaml/tests/test_type_inference.ml` に `let` 多相／`var` 単相／`ffi` 呼び出しを組み合わせたケースを追加し、`compiler/ocaml/tests/golden/type_inference_*` 系フィクスチャを更新。  
   - `tooling/ci/collect-iterator-audit-metrics.py` に `type_inference.value_restriction_violation` を追加し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ新指標と CI ゲート条件（常に 0.0）を追記。  
   - `scripts/validate-diagnostic-json.sh` に値制限違反診断の検証を組み込み、`reports/diagnostic-format-regression.md` と `docs/plans/bootstrap-roadmap/2-5-review-log.md`（Day4 エントリ）へ結果を記録する。
-- **Step4 — ドキュメント整備とフォローアップ連携（Week33 Day1）**  
+- **Step4 — ドキュメント整備とフォローアップ連携（Week33 Day1／2025-11-08 完了）**  
   - `docs/spec/1-2-types-Inference.md` §C.3 と `docs/spec/1-3-effects-safety.md` に OCaml 実装の判定手順と RunConfig 連携を脚注で補足し、`docs/plans/bootstrap-roadmap/2-5-proposals/README.md` の TYPE-001 項を更新する。  
   - `docs/notes/type-inference-roadmap.md` に Stage・Capability 依存の値制限方針と Phase 2-7 への残課題を追記。  
   - `docs/plans/bootstrap-roadmap/2-5-review-log.md` に最終レビュー記録を追加し、Phase 2-7 `execution-config` / `effect-metrics` サブチームへ移管する TODO を登録する。
@@ -108,6 +108,51 @@ let is_generalizable ~effects expr_ty =
 - `Value_restriction.effect_evidence` を JSON シリアライザへ接続し、`type_inference.value_restriction_violation`（0 固定）と `type_inference.value_restriction_legacy_usage`（Legacy 経路発生数）を `collect-iterator-audit-metrics.py` の新セクションとして登録する。  
 - RunConfig CLI オプションを文書化し、`docs/spec/2-1-parser-type.md` / `docs/spec/2-6-execution-strategy.md` に値制限切替の脚注を追加する作業を Step4 文書整備と合わせて実施する。
 
+### Step3 実施記録（2025-11-05）
+
+#### 1. テスト設計とフィクスチャ整備
+
+- `compiler/ocaml/tests/test_type_inference.ml` の末尾へ `(* TODO(TYPE-001/Step3) ... *)` 形式のテスト雛形コメントを追加し、以下 3 ケースを洗い出して実装方針と期待値を明文化した:  
+  1. `let` + 純粋ラムダ（`strict` モードで量化変数 ≥1）  
+  2. `var` + 純粋ラムダ（常に単相）  
+  3. `let` + `unsafe`（`mut`/`ffi` タグを含む式、単相固定）  
+  コメント内で `Value_form` 判定ヘルパと `value_restriction_mode` 切替の利用方法を整理し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の差分リストへ再現スニペットを脚注として登録した[^type001-step3-cases]。  
+- テンプレートゴールデン `compiler/ocaml/tests/golden/type_inference_value_restriction.strict.json.golden` / `...legacy.json.golden` を追加し、`mode`, `status`, `evidence[]`（`tag` / `capability` / `stage.required` / `stage.actual`）を保持する JSON 雛形を用意。生成・更新手順は `reports/diagnostic-format-regression.md` §1 に追記した[^type001-step3-golden]。
+
+#### 2. CI メトリクスと RunConfig 連携
+
+- `tooling/ci/collect-iterator-audit-metrics.py` に `type_inference.value_restriction_violation` 指標を追加し、`--require-success` 時に「Strict 経路で違反 0」をゲートに設定。Legacy 経路の利用回数は `type_inference.value_restriction_legacy_usage` として関連メトリクスへ集約し、`0-3-audit-and-metrics.md` §0.3.1 に登録した[^type001-step3-metrics]。  
+- `RunConfig.effects.value_restriction_mode` の CLI 取り回しを `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の差分表へ反映し、`strict/legacy` の期待挙動と監査ログ整合をチェックリスト化した。
+
+#### 3. 診断検証とレビュー手順
+
+- `scripts/validate-diagnostic-json.sh` に `type_inference.value_restriction_violation` 診断の必須フィールド検証（`extensions.value_restriction.mode/status/evidence`, `audit_metadata.value_restriction.*`, `audit.metadata.value_restriction.*`）を追加。欠落時は CI ログで具体的なキーを出力するようにした[^type001-step3-validator]。  
+- `reports/diagnostic-format-regression.md` のレビュー手順に「値制限違反ダンプの確認」「`collect-iterator-audit-metrics.py --require-success` で 0 件を確認」を加え、Step4 の仕様更新作業と連動させる TODO を登録した。
+
+#### 4. 次工程への共有事項
+
+- `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Day4 エントリを追記し、テスト雛形・メトリクス実装・診断バリデータ更新の確認手順を記録した。  
+- `docs/spec/1-2-types-Inference.md` / `docs/spec/1-3-effects-safety.md` へ追加する脚注案（値制限と効果タグの橋渡し）を Step4 文書整備項に紐付け、`docs/notes/type-inference-roadmap.md` へ残課題（Legacy モード削減計画、Stage 差分監査）を転記した。
+
+### Step4 実施記録（2025-11-08）
+
+#### 1. 仕様更新と脚注整理
+- `docs/spec/1-2-types-Inference.md` §C.3 に値制限の判定根拠・`Value_restriction.evaluate`・`RunConfig.extensions["effects"].value_restriction_mode` の関係をまとめた実装メモを追加し、Strict/Legacy トグルの暫定運用を明記した。【S:docs/spec/1-2-types-Inference.md†L142-L161】
+- `docs/spec/1-3-effects-safety.md` §B に値制限と効果タグ・Capability/Stage 判定の連携手順を追記し、`effects.contract.value_restriction` 診断で監査キーを共有することを明文化した。【S:docs/spec/1-3-effects-safety.md†L70-L99】
+- `docs/spec/2-1-parser-type.md` の RunConfig セクションへ `extensions["effects"]` の予約キーと CLI スイッチ（`--value-restriction={strict|legacy}`／`--legacy-value-restriction` の互換経路）を掲載し、`docs/spec/2-6-execution-strategy.md` ではパーサーと Typer の橋渡し要件を脚注として整理した。【S:docs/spec/2-1-parser-type.md†L118-L166】【S:docs/spec/2-6-execution-strategy.md†L38-L116】
+
+#### 2. ノートとレビュー記録
+- `docs/notes/type-inference-roadmap.md` に Stage/Capability 依存ルールと Phase 2-7 で縮退予定の Legacy モード整理を追記し、TODO リストを更新した。【N:docs/notes/type-inference-roadmap.md†L33-L74】
+- `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Step4 エントリを追加し、仕様反映・CLI スイッチ・Phase 2-7 への移管タスクを記録。`execution-config`（RunConfig CLI）と `effect-metrics`（CI 指標）へそれぞれフォローアップを割り当てた。【R:docs/plans/bootstrap-roadmap/2-5-review-log.md†L22-L38】
+
+#### 3. カタログ・差分計画の更新
+- `docs/plans/bootstrap-roadmap/2-5-proposals/README.md` の TYPE-001 節を更新し、値制限の脚注追加と RunConfig CLI 整備が完了したことを明示した。【C:docs/plans/bootstrap-roadmap/2-5-proposals/README.md†L34-L54】
+- `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の差分リストに Step4 実施結果（仕様脚注反映と CLI スイッチ連携）を追記し、残課題を Phase 2-7 へ移送した。【D:docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md†L94-L123】
+
+#### 4. フォローアップと引き継ぎ
+- Phase 2-7 `execution-config` へ RunConfig CLI 周辺の統合テスト（`--value-restriction` トグルと Legacy モード縮退の告知）を依頼。
+- Phase 2-7 `effect-metrics` へ `type_inference.value_restriction_violation` 指標の運用監視と Legacy モード検出アラート（0 件を逸脱した場合の通知）を引き継ぎ、Phase 3 で Reml 実装へ適用するロードマップを共有。
+
 ## 5. フォローアップ
 - EFFECT-001 で追加する効果タグ検出ロジックと同時レビューとし、タグ不足による誤判定を避ける。  
 - Phase 2-7 `execution-config` タスクへ「値制限メトリクス収集」の連携を追加し、`RunConfig` 差分や CLI 表示と同期する。  
@@ -128,3 +173,7 @@ let is_generalizable ~effects expr_ty =
 [^type001-runconfig-effects]: `compiler/ocaml/src/parser_run_config.ml:319-428`。Effects 拡張に値制限モードを保持するアクセサを追加する。
 [^type001-main-bridge]: `compiler/ocaml/src/main.ml:600-642`。Parser RunConfig を Typer 設定へ橋渡しする経路を確認。
 [^type001-metrics-script]: `tooling/ci/collect-iterator-audit-metrics.py:1-154`。効果 Stage 監査メトリクスの必須フィールド一覧と整合させる。
+[^type001-step3-cases]: `compiler/ocaml/tests/test_type_inference.ml` 末尾。Step3 用 TODO コメントに試験ケースの想定と `value_restriction_mode` 切替の注意点を追記。
+[^type001-step3-golden]: `compiler/ocaml/tests/golden/type_inference_value_restriction.strict.json.golden` / `compiler/ocaml/tests/golden/type_inference_value_restriction.legacy.json.golden`。Strict/Legacy それぞれの診断出力テンプレート。
+[^type001-step3-metrics]: `tooling/ci/collect-iterator-audit-metrics.py`と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` §0.3.1。値制限制約の監視指標と CI ゲート条件を登録。
+[^type001-step3-validator]: `scripts/validate-diagnostic-json.sh`。値制限違反診断向け必須フィールド検証ロジックを追加。
