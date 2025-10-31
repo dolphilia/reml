@@ -16,6 +16,13 @@
 - 静的 ID は `core_parse_id_registry.ml`（自動生成予定）で `ordinal = 0-4095` を採番し、`Digestif.xxhash64` で算出した `fingerprint` を保存する。動的 ID は `ordinal >= 0x1000` を割り当て `origin = \`Dynamic` として監査ログに残す。  
 - `State` ラッパーで `RunConfig`・`Parser_diag_state`・Menhir チェックポイントを共有し、`cut`/`recover` が `committed` フラグ更新と同期トークン参照を行えるようにした。Step3 で `parser_driver` ブリッジを差し替える際の依存関係と TODO を整理。
 
+## Phase 2-5 Core コンビネーター Step4（2025-12-12）
+- Packrat キャッシュ導入に向けて `Cache_key = (Id.fingerprint, byte_offset)` の設計を確定し、`Core_parse.State` へ `Packrat_cache` を保持する案を `docs/notes/core-parse-api-evolution.md` に追記。PoC 時点でキャッシュが存在しないことを `compiler/ocaml/src/core_parse.ml:5` で確認し、Step5 で `find`/`store`/`invalidate` を実装する TODO を設定した。  
+- `RunConfig.packrat` と `Extensions` 名称空間の連携を整理し、`parser_run_config.ml:25` のブール値でキャッシュを切り替えるフローを決定。左再帰や trace と同じレイヤーで扱うことで CLI/LSP 関連フラグとの衝突が無いことを確認した。  
+- `Recover` 設定の同期トークンを `Core_parse.recover` へ渡す経路を明文化し、`parser_diag_state.ml:8` の `record_recovery` 呼び出しと `parser_expectation.collect` の再利用条件を検証。`recover.notes` の CLI/LSP 表示は Phase 2-7 で実装する旨を TODO として残した。  
+- 複数 Capability を保持するために `RunConfig.Effects`（compiler/ocaml/src/parser_run_config.ml:320）と `Diagnostic` 拡張（compiler/ocaml/src/diagnostic.ml:846-896）を突合し、Packrat キャッシュヒット時でも Stage/Capability 情報を欠落させないよう `Reply` へメタデータを埋め込む案を整理した。  
+- フォローアップ: `tooling/ci/collect-iterator-audit-metrics.py` へ Packrat/回復の KPI を追加し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `parser.packrat_cache_hit_ratio` / `parser.recover_sync_success_rate` を仮登録。Step5 で実装と検証を行う。
+
 ### コアコンビネーター現況
 - **`ok`**  
   - 仕様: 非消費で成功し値を返す（`docs/spec/2-2-core-combinator.md:15`）。  

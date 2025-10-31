@@ -122,6 +122,47 @@ end
 - Packrat PoC で `(Id.fingerprint, byte_off)` テーブルのプロトタイプを実装し、`RunConfig.packrat=true` 時の性能測定を `0-3-audit-and-metrics.md` に追加する。  
 - `core_parse_id_registry.ml` の自動生成スクリプトと CI チェックを整備し、静的 ID と Step1 マトリクスの乖離を検知できるようにする。
 
+## Phase 2-5 Step4 Packrat・回復・Capability 統合設計（2025-12-12）
+
+### Packrat キャッシュ方針
+- キャッシュキーは `Cache_key = { id : Id.t; offset : int }` とし、`offset` は入力バイト位置で管理する。`Id.fingerprint` を 64bit 値として保持し、キー比較を高速化する。  
+- `State` に `packrat : Packrat_cache.t option ref` を追加し、`RunConfig.packrat` が有効な場合のみ `Some cache` を挿入する。PoC では `None` を維持し、Step5 で `Packrat_cache` の実装（`find` / `store` / `invalidate`）を導入する。  
+- `module Packrat_cache` は以下の最小構成で導入する想定:
+  ```ocaml
+  module Packrat_cache : sig
+    type 'a entry = {
+      reply : 'a Reply.t;
+      state_snapshot : State.snapshot;
+    }
+
+    type t
+
+    val create : unit -> t
+    val find :
+      t -> key:Cache_key.t -> 'a entry option
+    val store :
+      t -> key:Cache_key.t -> entry:'a entry -> unit
+    val invalidate_namespace :
+      t -> namespace:string -> unit
+  end
+  ```
+  `State.snapshot` は入力カーソルと診断スナップショット（`Parser_diag_state.farthest_snapshot`）を含む予定。  
+- Packrat 有効時は `Core_parse.rule` で `Cache_key` を組み立て、`Reply.Ok` の場合は消費バイト数を次回ヒット時に検証する。`RunConfig.packrat=false` の場合は既存ロジックをそのまま利用する。
+
+### 回復・同期トークンの取り扱い
+- `RunConfig.Recover.of_run_config`（compiler/ocaml/src/parser_run_config.ml:240）で取得した `sync_tokens` を `State.recover_config` へ保持する。  
+- `Core_parse.recover` は `sync_tokens` を `parser_expectation.collect` にも提供し、同期トークンが適用された場合は `Parser_diag_state.record_recovery` を呼び出して監査ログに `recover.sync_token` を記録する。  
+- `RunConfig.Recover.emit_notes` が有効なときは `Diagnostic.extensions["recover.notes"] = true` を出力するフローを追加し、CLI/LSP 表示で同期トークンを提示できるようにする（実装は Phase 2-7 へ TODO）。
+
+### 複数 Capability の維持
+- `RunConfig.Effects.required_capabilities`（compiler/ocaml/src/parser_run_config.ml:320）と `Diagnostic` の監査メタデータ（compiler/ocaml/src/diagnostic.ml:846-896）を突合し、Packrat 経路でも `effect.capabilities[*]` と `effect.stage.*` を失わないよう `Reply.Err` に `effect_metadata` フィールドを追加する案を整理。  
+- キャッシュヒット時は `Reply` に含めた `effect_metadata` をそのまま返却し、再評価を避ける。ただし Stage が外部要因で変化した場合を検知するため、`Cache_key` に `effects_digest` を含める検討を TODO として残した。
+
+### フォローアップ
+- `Packrat_cache` 実装とメトリクス（`parser.packrat_cache_hit_ratio` / `parser.packrat_entry_count`）追加を Step5 で扱う。  
+- `recover` 同期トークンのテストケースを LSP フィクスチャへ追加し、CLI ゴールデンにも `recover.notes` 出力を反映させる。  
+- Stage/Capability 情報が欠落した診断を検出する CI ルールを Phase 2-7 で導入する（`collect-iterator-audit-metrics.py --require-success` に新規チェックを追加）。
+
 ---
 
 [^parser003-step1]: `docs/plans/bootstrap-roadmap/2-5-proposals/PARSER-003-proposal.md` Step1 実施記録。Menhir 規則と 15 コアコンビネーターの対応表・欠落メタデータを整理。

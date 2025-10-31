@@ -108,6 +108,8 @@
 - CI 監査ゲート導入によるジョブ時間増大: 実行時間を監視し、10% 超過時はサンプル数の調整や並列化を検討。
 - CLI フォーマット変更による開発者体験への影響: `reports/diagnostic-format-regression.md` で差分レビューを必須化し、顧客影響を評価。
 - LSP V2 導入に伴うクライアント側調整: `tooling/lsp/compat/diagnostic_v1.ml` を一定期間維持し、互換性レイヤ廃止時のスケジュールを Phase 3 で検討。
+- PARSER-003 Step5 連携: Packrat キャッシュ実装後に `effect.stage.*`／`effect.capabilities[*]` が欠落しないことを CI で確認するため、`tooling/ci/collect-iterator-audit-metrics.py --require-success` に Packrat 専用チェックを追加する（Stage 監査テストケースを新設）。  
+- Recover 拡張: `RunConfig.extensions["recover"].notes` を CLI/LSP 表示へ反映し、同期トークン適用時の補助メッセージを `Diagnostic.extensions["recover.notes"]` で提示する。Phase 2-7 の CLI テキスト刷新タスクと同時に実装する。
 
 ## 参考資料
 - [2-4-diagnostics-audit-pipeline.md](2-4-diagnostics-audit-pipeline.md)

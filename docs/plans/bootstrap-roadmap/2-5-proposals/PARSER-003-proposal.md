@@ -102,6 +102,12 @@ end
 - `RunConfig.extensions["lex"]` の適用や診断トレース記録（`Parser_diag_state.record_span_trace`）は従来どおり `parser_driver` 内で維持しつつ、`Core_parse` の PoC が `rule` ID を付与するのみで他機能へ影響しないことを確認。  
 - 既知の制限として、`label`/`cut`/`attempt` は現在プレースホルダ実装（状態フラグのみ更新）であり、Packrat メモ化や `recover` 拡張は未導入。これらは Step4 以降で `Parser_diag_state`・`RunConfig` 拡張と統合する必要がある。
 
+### Step4 実施記録（2025-12-12）
+- Packrat キャッシュの抽象化案を `docs/notes/core-parse-api-evolution.md` に追記し、`Cache_key = (Id.fingerprint, byte_offset)` と `Core_parse.State` にキャッシュコンテキストを保持する API 骨子を整理した。PoC が `attempt` で消費フラグを巻き戻すのみで Packrat を持たない現状（compiler/ocaml/src/core_parse.ml:5）を確認し、`RunConfig.packrat` と `Extensions` 名称空間を利用した切替ロジックを Step5 実装対象として明示した。  
+- `parser_expectation.collect` と `Parser_diag_state.record_recovery` を再確認し、`Recover_config.sync_tokens` を `Core_parse.recover` に渡すデータフローを `docs/notes/core-parser-migration.md` へ整理。診断側の同期トークン差分が `recover` 成功時に記録されることを保証するため、`RunConfig.extensions["recover"]` の優先順位と CLI/LSP 表示影響を確認した（compiler/ocaml/src/parser_diag_state.ml:8, compiler/ocaml/src/parser_expectation.ml:1）。  
+- `RunConfig.Effects` モジュールの Capability 情報（compiler/ocaml/src/parser_run_config.ml:320）と `Diagnostic` 監査拡張を突合し、Packrat ヒット時でも `effect.capabilities[*]` と Stage 情報を保持する方針をノートへ追加。`effect-stage` メタデータを Parser 側で欠落させないための TODO を `docs/plans/bootstrap-roadmap/2-5-review-log.md` の Step4 エントリへ連携した。  
+- CI 計測では Packrat/回復系の指標が未整備であるため、`tooling/ci/collect-iterator-audit-metrics.py` に `parser.packrat_cache_hit_ratio` / `parser.recover_sync_success_rate` を追加するタスクと、`0-3-audit-and-metrics.md` への新規 KPI 追記をフォローアップとして設定。実装完了までは PoC 状態であることを Step5 のゴール条件に明記した。
+
 5. **テスト・メトリクス・ゴールデン整備（Week33 Day3-5）**  
     - **実装**: `compiler/ocaml/tests/packrat_tests.ml`（新設）と既存の CLI/LSP ゴールデンを更新し、コンビネーター経由のパース結果・診断が Menhir 直呼びと一致することを検証する。`scripts/validate-diagnostic-json.sh` に `Core_parse` 由来の `rule`/`ParserId` 付与チェックを追加。  
     - **計測**: `0-3-audit-and-metrics.md` に `parser.core_comb_rule_coverage` や `parser.packrat_cache_hit_ratio` などの指標を登録し、CI で追跡する。必要に応じて `tooling/ci/collect-iterator-audit-metrics.py --require-success` の閾値を更新する。  
