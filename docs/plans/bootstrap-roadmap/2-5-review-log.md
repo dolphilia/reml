@@ -765,4 +765,49 @@ fn main() -> i64 !{ mut } = {
 - `dune exec remlc -- tmp/value_restriction_var.reml --emit-tast`（`fn main() -> i64 !{ mut } = { ... }`）。CLI 監査ログは `cli.audit_id = "cli/20251031T065614Z-45f5ada#0"` を記録し、Stage 検証は `mut` 残余効果の漏れのみを報告。値制限由来のエラーは発生しなかった。  
 - `nl -ba compiler/ocaml/src/type_inference.ml | sed -n '596,664p'` と `sed -n '2360,2472p'` を取得し、レビュー時の参照用として行番号付きの一般化経路を確認した。
 
+## TYPE-001 Step1 値制限判定ユーティリティ設計（2025-11-01）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-001-proposal.md`](./2-5-proposals/TYPE-001-proposal.md#step1-値制限判定ユーティリティ設計week32-day2)
+
+### 1. 調査サマリ
+- `Typed_ast` の `typed_expr_kind` を列挙し、即値（`TLiteral`/`TLambda`/識別子参照）、構造値（`TUnary`/`TBinary`/`TTupleAccess` 等）、制御式（`TIf`/`TMatch`/`TBlock`）、副作用確定構文（`TCall`/`TAssign`/ループ・`TReturn`/`TUnsafe`）の4分類へ整理。`docs/spec/1-2-types-Inference.md` §C.3 と `docs/spec/1-5-formal-grammar-bnf.md` §4 を突き合わせ、仕様が定義する「確定的な値」を網羅していることを確認した。  
+- `Effect_analysis.collect_expr` が返すタグは `Effect_profile.tag = {effect_name; effect_span}` のみで、Capability や Stage 情報は保持していない。RunConfig 連携のためにはタグと Capability/Stage を結合するデータ構造が別途必要であることを確認。  
+- `Type_inference_effect.resolve_function_profile` の `resolved_capabilities` を利用することで、複数 Capability を同時に解析しても Stage 判定を失わないことを確認。`stage_trace` への `typer` 追記も Value Restriction 判定の根拠として再利用できる。
+
+### 2. 設計方針
+- `Typed_ast` に `module Value_form`（`is_immediate` / `is_aggregate` / `is_control_flow`）を追加し、値形状判定を一元化する。`infer_decl` 側では新ヘルパを呼び出すことで構文分岐の重複を排除する。  
+- `type effect_evidence = { tag : string; span : Ast.span; capability : string option; stage : Effect_profile.stage_id option }` を導入し、`Effect_analysis.collect_expr` の結果に Capability/Stage 情報を付与する `Value_restriction.collect_effects` を実装予定とした。  
+- `Value_restriction.evaluate : Type_inference_effect.runtime_stage -> typed_expr -> decision` を新設し、`decision` には `status`（`Generalizable` or `Monomorphic`）・`value_kind`（`Immediate`/`Aggregate`/`Alias`）・`effects`・`syntax_reasons`（`NonValueNode` や `StageMismatch`）をまとめる。判定結果は診断生成・メトリクス収集・テストで共通利用する。
+
+### 3. TODO / 引き継ぎ
+1. Step2 で `infer_decl` から `Value_restriction.evaluate` を呼び出し、`LetDecl`/`VarDecl` の一般化条件を統一する。その際 `Type_inference.make_config` に `value_restriction_mode`（`Strict`/`Legacy`）を追加する。  
+2. `Effect_analysis.add_call_effect_tags` に Capability 名を解決するテーブルを導入し、`core.io.*` → `io` Capability などのマッピングを `effect_evidence.capability` へ格納する。  
+3. Step3 で `collect-iterator-audit-metrics.py` が `effect_evidence` を JSON へ直列化できるよう、`Value_restriction` から共有するヘルパを実装する。
+
+## TYPE-001 Step2 Typer 連携と RunConfig 導入（2025-11-03）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-001-proposal.md`](./2-5-proposals/TYPE-001-proposal.md#step2-実施記録2025-11-03)
+
+### 1. 作業サマリ
+- `Value_restriction.evaluate` の判定結果（`Generalizable` / `Monomorphic`）を `infer_decl` の `LetDecl` / `VarDecl` 分岐へ組み込む設計を固め、`let` はモード依存、`var` は常に単相化させるフローを確定。  
+- Typer 設定に `value_restriction_mode`（`Strict` / `Legacy`）を追加し、RunConfig の Effects 拡張から CLI → Typer へモードを伝播させる API モデルを整理。  
+- 効果タグ・Capability・Stage を束ねた `effect_evidence` を判定結果と一緒に返し、診断とメトリクスの共通入力にする方針を決定。
+
+### 2. 設計決定
+- `compiler/ocaml/src/type_inference.ml:2353` 付近の `generalize` 呼び出しを `Value_restriction.should_generalize`（仮称）でラップし、`scheme_to_constrained (mono_scheme ty)` を通じて単相スキームへ切り替えるロジックを追加する。  
+- `compiler/ocaml/src/type_inference.ml:20-40` に `value_restriction_mode` を保持する `config` レコードを拡張し、`Type_inference.make_config` が `RunConfig` から受け取ったモードを保持できるようにする。  
+- `compiler/ocaml/src/parser_run_config.ml:319-428` の Effects モジュールへ `value_restriction` キーを追加し、`strict|legacy` を正規化／設定するアクセサ（`set_value_restriction` / `value_restriction_mode`）を新設。  
+- `compiler/ocaml/src/main.ml:600-642` で RunConfig を構築した後に値制限モードを抽出し、Typer 設定へ渡す処理を追加。  
+- `tooling/ci/collect-iterator-audit-metrics.py:1-154` と同じフィールド名で `effect_evidence` を JSON 化する計画をまとめ、Stage 監査指標と値制限メトリクスの整合を担保。
+
+### 3. TODO / 引き継ぎ
+1. Step3 で `compiler/ocaml/tests/test_type_inference.ml` に `strict` / `legacy` 両モードのゴールデンを追加し、`Value_form` 判定と効果タグ伝搬を検証する。  
+2. `Value_restriction.effect_evidence` をシリアライザへ接続し、`type_inference.value_restriction_violation` / `type_inference.value_restriction_legacy_usage` 指標を `collect-iterator-audit-metrics.py` へ追加する。  
+3. ドキュメント更新（`docs/spec/1-2-types-Inference.md`・`docs/spec/2-1-parser-type.md` 等）で `value_restriction_mode` の切替手順と Legacy モードの利用条件を明文化する。
+
+### 4. 参照ログ
+- `nl -ba compiler/ocaml/src/type_inference.ml | sed -n '20,48p'` で `config` レコードの拡張箇所を確認。  
+- `nl -ba compiler/ocaml/src/main.ml | sed -n '600,642p'` を取得し、RunConfig から Typer への伝播経路をレビュー記録へ添付。  
+- `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-001-proposal.md` の Step2 セクションへ設計詳細と今後のテスト計画を反映済み。
+
 [^type001-step0-repro-log]: CLI 出力は `=== Typed AST ===` のみで終了し、`effects.contract.residual_leak` 以外の診断が発生しない。仕様上は `poly(true)` で型が `Bool` に固定されるため、`var poly` の一般化が抑制されていれば `let int_value: i64 = poly(42);` と矛盾しコンパイルが失敗する。

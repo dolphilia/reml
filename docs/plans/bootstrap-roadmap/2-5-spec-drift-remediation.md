@@ -91,12 +91,12 @@
 - サンプルコードの型推論結果検証
 
 **差分リスト（2025-10-28 初版）**
-- `TYPE-001` 値制限の未実装: 仕様（docs/spec/1-2-types-Inference.md:136-141）は「一般化は確定値のみ」と定義するが、実装（compiler/ocaml/src/type_inference.ml:2172-2283）は `let`/`var` 共に常に `generalize` を適用し、可変参照や I/O を含む式でも多相化される。効果システムとの整合が崩れ、Phase 3 のセルフホスト計画で想定する `mut`/`io` 制約が働かない。修正案ドラフト: Phase 2-5 で一般化条件のチェックリストを作成し、`infer_decl` 内に値制限判定（純粋式判定と効果共存）を実装するオプションと、仕様側に暫定注釈を追加するオプションの両方を提示。再現ログは Step0 棚卸しで取得した CLI 実行結果を参照（`dune exec remlc -- tmp/value_restriction_var.reml --emit-tast`）。[^type001-step0-review]
+- `TYPE-001` 値制限の未実装: 仕様（docs/spec/1-2-types-Inference.md:136-141）は「一般化は確定値のみ」と定義するが、実装（compiler/ocaml/src/type_inference.ml:2172-2283）は `let`/`var` 共に常に `generalize` を適用し、可変参照や I/O を含む式でも多相化される。効果システムとの整合が崩れ、Phase 3 のセルフホスト計画で想定する `mut`/`io` 制約が働かない。修正案ドラフト: Phase 2-5 で一般化条件のチェックリストを作成し、`infer_decl` 内に値制限判定（純粋式判定と効果共存）を実装するオプションと、仕様側に暫定注釈を追加するオプションの両方を提示。再現ログは Step0 棚卸しで取得した CLI 実行結果を参照（`dune exec remlc -- tmp/value_restriction_var.reml --emit-tast`）。2025-11-03 更新: Step2 で Typer 設定へ `value_restriction_mode` を導入し、RunConfig の Effects 拡張からモードを伝播させる設計を確定[^type001-step2-review]。
 - `TYPE-002` 効果行が型表現に含まれていない: 仕様（docs/spec/1-2-types-Inference.md:155-169）は `A -> B ! {io, panic}` の効果行を型スキームへ含めると記述するが、実装の型表現（compiler/ocaml/src/types.ml:48-63）は `TArrow` のみで効果集合を保持していない。効果プロファイルは `typed_fn_decl.tfn_effect_profile` に別管理され、型比較時に効果を考慮できない。修正案ドラフト: Phase 2-5 では仕様に「効果行は診断用メタデータとして暫定運用」と補足し、Phase 2-7 で `ty` 表現へ効果情報を統合する計画を評価。
 - `TYPE-003` 型クラス辞書渡し記録不足: 仕様（docs/spec/1-2-types-Inference.md 全体）のサンプルは `Add`, `Eq`, `Ord` などの辞書引数が Core IR へ落ちる前提だが、実装（compiler/ocaml/src/type_inference.ml:1880-1955, 2352-2356）は型変数を `i64` に強制解決し辞書制約をドロップしている。制約解決器も `solve_trait_constraints` が未実装（常に空）。修正案ドラフト: Phase 2-5 で辞書生成の仕様差分を `0-3-audit-and-metrics.md` に記録し、Phase 2-1 タスクと連携して辞書渡しの PoC 成果を仕様に反映する。
 
 **修正案ドラフト対応方針**
-- `TYPE-001` → 値制限導入を優先。`collect_expr` の効果タグと連携させて「純粋式」判定を実装。実装が間に合わない場合は仕様側で制限をマークし `0-4-risk-handling.md` へリスク登録。
+- `TYPE-001` → 値制限導入を優先。`collect_expr` の効果タグと連携させて「純粋式」判定を実装。Step1 で `Typed_ast` 値形状の分類表と `Value_restriction.evaluate` API 案を確定済みであり、実装が間に合わない場合は仕様側で制限をマークし `0-4-risk-handling.md` へリスク登録。
 - `TYPE-002` → 効果行を型へ組み込む設計案を `compiler/ocaml/docs/effect-system-design-note.md` に追記し、次週レビューで採用案を決定。仕様には暫定脚注を追加して差分を明示。
 - `TYPE-003` → 型クラス差分を `docs/plans/bootstrap-roadmap/2-1-typeclass-strategy.md` へフィードバックし、辞書引数の出力仕様を Chapter 1/2 の双方で補強。
 
@@ -317,6 +317,9 @@
 
 [^type001-step0-review]:
     2025-10-31 に `TYPE-001` Step0 で実行した CLI 再現ログ。`fn main() -> i64 !{ mut } = { var poly = |x| x; ... }` を含むサンプルを `dune exec remlc -- tmp/value_restriction_var.reml --emit-tast` で型チェックすると、値制限違反は報告されず `=== Typed AST ===` のみが出力される。詳細は `docs/plans/bootstrap-roadmap/2-5-review-log.md` の「TYPE-001 Day1 値制限棚卸し」を参照。
+
+[^type001-step2-review]:
+    2025-11-03 に `TYPE-001` Step2 で確定した Typer 設定・RunConfig 連携の設計整理。`docs/plans/bootstrap-roadmap/2-5-review-log.md` の「TYPE-001 Step2 Typer 連携と RunConfig 導入」を参照。
 
 [^runconfig-step1-phase25]:
     2025-11-18 時点。PARSER-002 Step 1（RunConfig 型設計とドキュメント同期）で `Parser_run_config` モジュールを追加し、`with_extension` / `find_extension` / `Legacy.bridge` など仕様準拠の API を整備。後続ステップでメトリクス登録・ドライバ連携を行う前提条件を満たした。

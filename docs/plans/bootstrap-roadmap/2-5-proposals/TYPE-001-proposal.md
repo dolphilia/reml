@@ -54,6 +54,60 @@ let is_generalizable ~effects expr_ty =
   - `docs/notes/type-inference-roadmap.md` に Stage・Capability 依存の値制限方針と Phase 2-7 への残課題を追記。  
   - `docs/plans/bootstrap-roadmap/2-5-review-log.md` に最終レビュー記録を追加し、Phase 2-7 `execution-config` / `effect-metrics` サブチームへ移管する TODO を登録する。
 
+### Step1 実施記録（2025-11-01）
+
+#### 1. Typed_ast ノード分類と値判定カバレッジ
+
+| 判定カテゴリ | 対象 `typed_expr_kind` | 判定方針 | 備考 |
+| --- | --- | --- | --- |
+| 即値 (`ImmediateValue`) | `TLiteral`, `TLambda`, `TVar`, `TModulePath` | `Typed_ast.Value_form.is_immediate`（新設予定）で即値判定。識別子参照は束縛済みスキームを照会しつつ一般化候補として扱う。 | 仕様で列挙される「確定的な値」（リテラル／ラムダ／構造リテラル）が該当[^type001-spec-value]。`docs/spec/1-5-formal-grammar-bnf.md` で示される Primary 群のうち演算・制御を含まない要素に一致[^type001-bnf]. |
+| 構造値 (`AggregateValue`) | `TUnary`, `TBinary`, `TTupleAccess`, `TFieldAccess`, `TIndex`, `TPropagate`, `TPipe` | `Value_form.is_aggregate` で子ノードを再帰判定。全子が `ImmediateValue` または `AggregateValue` の場合のみ値として扱う。 | 算術／添字／パイプは純粋演算であれば即値に畳み込めるが、効果タグが付与された場合は下位分類で除外。 |
+| 制御式 (`ControlFlowValue`) | `TIf`, `TMatch`, `TBlock` | ガード・分岐・末尾式を再帰的にチェックし、いずれかで `Effectful` が発生した場合は単相固定。`TBlock` は宣言文が全て `let` か単発式であることを確認。 | `if`/`match` はいずれの分岐でも値に収束することが条件。`Block` は OCaml `let... in` の糖衣に対応するため最終式のみ値判定を参照。 |
+| 副作用が確定する式 (`EffectfulSyntax`) | `TCall`, `TAssign`, `TWhile`, `TFor`, `TLoop`, `TReturn`, `TDefer`, `TUnsafe`, `TContinue` | 構文レベルで値とはみなさない。`Effect_analysis.collect_expr` の結果を `effect_summary` に取り込み、その場で一般化を拒否。 | 仕様上 `mut` / `io` / `ffi` / `panic` / `unsafe` を含む場合は一般化不可[^type001-effects]. `TCall` は関数呼び出し固有のタグ付け（`ffi`/`io` 等）で判定。 |
+| 未確定（再帰判定依存） | 上記以外 | 親ノードへ分類を委譲。`Effect_analysis` が検出したタグを優先し、タグが空かつ子ノードが値の場合に限り一般化候補とする。 | `Effect_analysis.collect_expr` と連携して「副作用なし」かつ「値形状」の両立を確認。 |
+
+表に合わせて `Typed_ast` 内へ値形状判定を集約するヘルパ（`Value_form.is_immediate` / `Value_form.is_aggregate` / `Value_form.is_control_flow`）を追加する。これにより `infer_decl` 側では式ごとの網羅的なパターンマッチを避け、テストで値分類を直接検証できる。
+
+#### 2. 判定ユーティリティの API 案
+
+- `type effect_evidence = { tag : string; span : Ast.span; capability : string option; stage : Effect_profile.stage_id option }` を導入し、`mut` などのタグと Capability/Stage 付加情報を一体で扱う。  
+- `type decision = { status : value_status; value_kind : value_kind option; effects : effect_evidence list; syntax_reasons : syntax_reason list }` を定義。`value_status = Generalizable | Monomorphic`、`value_kind = Immediate | Aggregate | Alias`、`syntax_reason` は `NonValueNode of typed_expr_kind` などで構成する。  
+- `Value_restriction.evaluate : Type_inference_effect.runtime_stage -> typed_expr -> decision` を追加し、Step2 で `infer_decl` から呼び出す。判定結果は後続の診断生成 (`effects.contract.value_restriction`) とメトリクス更新に共用する。  
+- `decision.effects` を `Effect_analysis.collect_expr` の結果と統合し、`Type_inference_effect.resolve_function_profile` が返す Capability/Stage 情報で補強して RunConfig との整合を確認する。
+
+#### 3. Stage / Capability 連携の整理
+
+- `Effect_analysis.add_call_effect_tags` で識別している `core.io.*` などの接頭辞に対応する Capability 名をマップ化し、`effect_evidence.capability` として格納する。  
+- `Type_inference_effect.resolve_function_profile` の `resolved_capabilities : capability_resolution list` を `evaluate` に渡し、タグに紐づく Capability が RunConfig で禁止されている場合は常に `Monomorphic` を返す。  
+- Stage 情報は `capability_resolution.capability_stage` と `profile.resolved_stage` の双方を反映し、`stage_requirement_satisfied` を満たさない場合に `syntax_reasons` へ `StageMismatch` を記録。  
+- 以上の整理を踏まえ、同日に更新したレビュー記録[^type001-step1-log] と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の差分項目へリンクを追加し、Phase 2-5 の RunConfig/lex シム計画全体で矛盾が無いことを確認済み。
+
+### Step2 実施記録（2025-11-03）
+
+#### 1. Typer への導入方針
+
+- `Value_restriction.evaluate` が `typed_expr` と `Type_inference_effect.runtime_stage` を受け取り、`Generalizable` / `Monomorphic` と判定根拠（値形状・効果タグ・Stage 差異）を返す API を確定した。判定結果は `effects.contract.value_restriction` 診断・メトリクスの両方で共有する。  
+- `Type_inference.config` に `value_restriction_mode : (\`Strict\` / \`Legacy\`)` を追加し、`let` 束縛は `evaluate` の結果に従い、`var` 束縛は常に `Monomorphic` を優先する流れを定義した。`scheme_to_constrained (mono_scheme ty)` を利用して単相スキームへ即時変換する設計も整理済み[^type001-infer-decl]。  
+- `Typed_ast.Value_form` で値形状（即値・集約値・制御式）を一元化し、`evaluate` が `infer_decl` から受け取る `typed_expr` を再帰解析する際にコード重複が生じないようヘルパ構成を決めた。`is_immediate` / `is_aggregate` / `is_control_flow` を公開 API とし、Step3 のテスト追加時にも再利用できる。
+
+#### 2. RunConfig 伝播と CLI ブリッジ
+
+- `parser_run_config.ml` の `Effects.t` に `value_restriction_mode : string option` を追加し、`set_value_restriction` / `decode_value_restriction` で `strict` / `legacy` を正規化して保持する。未指定時は `strict` を既定とし、Legacy モードは CLI の `--legacy-value-restriction`（仮称）経由で限定的に利用する前提を明示[^type001-runconfig-effects]。  
+- `Type_inference.make_config` は RunConfig 拡張の値を受け取り、`value_restriction_mode` を `config` レコードへ統合する。`compiler/ocaml/src/main.ml` では Parser RunConfig の組み立て後に Effects 拡張を読み取り、Typer 設定へ橋渡しする手順を整理した[^type001-main-bridge]。  
+- 既存テストは Legacy 振る舞いに依存している箇所があるため、Step3 でフィクスチャを全面更新するまでの暫定措置として `legacy` モードを保持し、CI メトリクスでは `Strict` 経路のみを対象にカウントする方針とした。
+
+#### 3. 効果証跡と Stage 整合の統合
+
+- `Value_restriction` から `effect_evidence = { tag; capability; stage; span } list` を返し、`Effect_analysis.collect_expr` で抽出したタグに Capability 名（`collect_from_fn_body` で得られる解決情報）と Stage 判定結果を付与する。  
+- 判定過程で `Type_inference_effect.resolve_function_profile` が返す `resolved_capabilities` を参照し、RunConfig で未許可の Capability が含まれていた場合は自動的に `Monomorphic` へフォールバックする仕様を固めた。  
+- `collect-iterator-audit-metrics.py` と同じフィールドレイアウト（`effect.stage.required` / `effect.stage.actual` / `effect.capability` 等）に揃えた JSON 断片を生成する案をまとめ、Step3 のメトリクス整備で二重実装を避ける方針を共有した[^type001-metrics-script]。
+
+#### 4. Step3 以降への引き継ぎ
+
+- `compiler/ocaml/tests/test_type_inference.ml` に Step2 で定義した `Value_form` 判定テーブルを用いたゴールデンを追加し、`strict` / `legacy` の両モードで期待値を収集する。  
+- `Value_restriction.effect_evidence` を JSON シリアライザへ接続し、`type_inference.value_restriction_violation`（0 固定）と `type_inference.value_restriction_legacy_usage`（Legacy 経路発生数）を `collect-iterator-audit-metrics.py` の新セクションとして登録する。  
+- RunConfig CLI オプションを文書化し、`docs/spec/2-1-parser-type.md` / `docs/spec/2-6-execution-strategy.md` に値制限切替の脚注を追加する作業を Step4 文書整備と合わせて実施する。
+
 ## 5. フォローアップ
 - EFFECT-001 で追加する効果タグ検出ロジックと同時レビューとし、タグ不足による誤判定を避ける。  
 - Phase 2-7 `execution-config` タスクへ「値制限メトリクス収集」の連携を追加し、`RunConfig` 差分や CLI 表示と同期する。  
@@ -64,3 +118,13 @@ let is_generalizable ~effects expr_ty =
 ## 6. 残課題
 - 値制限判定に利用する「純粋式」判定の粒度（例: `const fn` 呼び出しを許容するか）について、Phase 2-1 型クラス戦略チームと調整が必要。  
 - 効果タグ解析の段階的適用（`-Zalgebraic-effects` 未使用時でも強制するか）を決定したい。
+
+[^type001-step0-review]: `docs/plans/bootstrap-roadmap/2-5-review-log.md` の「TYPE-001 Day1 値制限棚卸し（2025-10-31）」を参照。
+[^type001-spec-value]: `docs/spec/1-2-types-Inference.md` §C.3 および `docs/spec/1-3-effects-safety.md` §B で定義される「確定的な値」と純粋性の条件。
+[^type001-bnf]: `docs/spec/1-5-formal-grammar-bnf.md` §4 Primary の構成要素（Literal / Lambda / RecordLiteral / TupleLiteral 等）。
+[^type001-effects]: `docs/spec/1-3-effects-safety.md` §A 表（`mut` / `io` / `ffi` / `panic` / `unsafe`）と §A.1 補助タグ定義。
+[^type001-step1-log]: `docs/plans/bootstrap-roadmap/2-5-review-log.md` の「TYPE-001 Step1 値制限判定ユーティリティ設計（2025-11-01）」を参照。
+[^type001-infer-decl]: `compiler/ocaml/src/type_inference.ml:2353` 付近。`LetDecl` / `VarDecl` で `scheme_to_constrained (mono_scheme ty)` を用いた単相化処理を挿入する計画を明記。
+[^type001-runconfig-effects]: `compiler/ocaml/src/parser_run_config.ml:319-428`。Effects 拡張に値制限モードを保持するアクセサを追加する。
+[^type001-main-bridge]: `compiler/ocaml/src/main.ml:600-642`。Parser RunConfig を Typer 設定へ橋渡しする経路を確認。
+[^type001-metrics-script]: `tooling/ci/collect-iterator-audit-metrics.py:1-154`。効果 Stage 監査メトリクスの必須フィールド一覧と整合させる。
