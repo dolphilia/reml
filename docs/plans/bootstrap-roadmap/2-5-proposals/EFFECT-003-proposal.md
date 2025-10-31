@@ -43,10 +43,10 @@
    - `compiler/ocaml/src/runtime_capability_resolver.ml` を拡張し、RunConfig 由来の Stage override と Capability ヒントを `resolve` が取り込むよう変更。RunConfig で指定した Capability は default stage で補完され、`stage_trace` に `source="run_config"` のステップを追加する。  
    - `compiler/ocaml/src/main.ml` で RunConfig 構築を解析前に実施し、Runtime resolver の結果を `Effects.set_required_capabilities` で RunConfig へ書き戻す導線を追加。Lex シム (`Core_parse_lex.Bridge.derive`) と併用しても `extensions["effects"]` が維持されることを手動確認した。
 
-5. **Step 4: テスト・メトリクス整備とドキュメント更新（Week32 Day5-Week33 Day1 予定） — 未着手**  
-   - `compiler/ocaml/tests/capability_profile_tests.ml` を追加し、`StageRequirement::{Exact, AtLeast}` と Capability 配列の組み合わせを網羅。`compiler/ocaml/tests/test_cli_diagnostics.ml` に監査メタデータ検証を組み込み、配列形式が CLI/LSP 双方で崩れないか確認。  
-   - `0-3-audit-and-metrics.md` に `effect.capability_array_pass_rate` を登録し、`diagnostics.effect_stage_consistency`（DIAG-003）の既存指標と重複しない運用ルールを明記。仕様書（`docs/spec/1-3-effects-safety.md`、`docs/spec/3-8-core-runtime-capability.md`）へ脚注を追加し、複数 Capability が Phase 2-5 時点で実装前提になったことを示す。  
-   - **調査**: `docs/plans/bootstrap-roadmap/2-5-review-log.md` と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の差分一覧に追記し、Phase 2-7 へ引き継ぐ周知事項を整理。
+5. **Step 4: テスト・メトリクス整備とドキュメント更新（Week32 Day5-Week33 Day1 予定） — 完了（2025-12-06）**  
+   - `compiler/ocaml/tests/capability_profile_tests.ml` を追加し、`StageRequirement::{Exact, AtLeast}` の両ケースで複数 Capability の解析結果と Stage トレースが保持されることを検証。`compiler/ocaml/tests/test_cli_diagnostics.ml` では CLI/LSP/Audit 出力の `required_capabilities` / `actual_capabilities` 配列を比較し、ゴールデンを再生成して複数値サンプルを追加。  
+   - `tooling/ci/collect-iterator-audit-metrics.py` に `effect.capability_array_pass_rate` を実装し、`--require-success` の強制判定へ組み込み。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ同指標を登録し、DIAG-003 の `diagnostics.effect_stage_consistency` と役割分担（Stage ミスマッチ検出 vs. 配列欠落検証）を明示。  
+   - `docs/spec/1-3-effects-safety.md` / `docs/spec/3-8-core-runtime-capability.md` に脚注を追加し、Phase 2-5 時点で複数 Capability 配列が実装前提になったことを記録。`docs/plans/bootstrap-roadmap/2-5-review-log.md` および `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の差分一覧へ反映し、Phase 2-7 への引き継ぎ事項を更新。
 
 ## 5. フォローアップ
 - `docs/spec/3-8-core-runtime-capability.md` の Stage テーブルに複数 Capability の例を追加し、仕様変更時はここを基準に更新する。  

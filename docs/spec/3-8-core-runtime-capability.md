@@ -130,6 +130,7 @@ fn verify_capability_security(handle: CapabilityHandle, security: CapabilitySecu
 この検査結果は §4 で定義する `AuditCapability` のシンクへ送信され、`Core.Diagnostics`（3.6 節）の `audit` 効果経由で共有される。IDE/LSP から参照する場合は、[notes/dsl-plugin-roadmap.md §5](../notes/dsl-plugin-roadmap.md#effect-handling-matrix) の比較表を利用してガイダンスを提示する。
 
 - 型クラス辞書（とくに `Iterator`）は `CapabilityId::IteratorRuntime` を `StageRequirement` と共に格納し、`effect.stage.iterator.required`／`effect.stage.iterator.actual`／`effect.stage.iterator.capability`／`effect.stage.iterator.source` を `AuditEnvelope.metadata` に出力する。[`tooling/ci/collect-iterator-audit-metrics.py`](../../tooling/ci/collect-iterator-audit-metrics.py) と [`tooling/ci/sync-iterator-audit.sh`](../../tooling/ci/sync-iterator-audit.sh) がこれらメタデータを検証し、`iterator.stage.audit_pass_rate` を `0-3-audit-and-metrics.md` の記録フォーマットに整形する。【F:1-2-types-Inference.md†L90-L140】【F:3-1-core-prelude-iteration.md†L160-L220】
+- CLI/LSP 診断と AuditEnvelope は `required_capabilities` / `actual_capabilities` を配列で保持し、複数 Capability の Stage 判定を欠落なく照合する。[^effect003-phase25-capability-array]
 
 ```reml
 pub enum StageId = Experimental | Beta | Stable
@@ -996,3 +997,6 @@ fn reload<T>(parser: Parser<T>, state: ReloadState<T>, diff: SchemaDiff<Old, New
 - ガイド（`../guides/runtime-bridges.md`）は本節で定義した契約を前提とし、CLI サンプルやケーススタディを維持する。仕様とガイドで情報が乖離した場合は本節を優先し、ガイドに脚注を追加して読者を本節へ誘導すること。
 
 [^diag003-phase25-capability]: Phase 2-5 DIAG-003 診断ドメイン語彙拡張計画（`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md`）Step5（2025-11-30 完了）で `Target` / `Plugin` / `Lsp` ドメインの監査メタデータと脚注を更新し、`Diagnostic.extensions["target"]`, `["plugin"]`, `["lsp"]`, `["capability"]` を OCaml 実装と仕様で統一した。関連ドキュメント（`docs/spec/3-6-core-diagnostics-audit.md`, `docs/guides/runtime-bridges.md`, `docs/notes/dsl-plugin-roadmap.md`）も同日に同期済み。
+
+[^effect003-phase25-capability-array]:
+    Phase 2-5 EFFECT-003 複数 Capability 解析計画 Step4（2025-12-06 完了）で `Diagnostic.extensions["effects"]` と `AuditEnvelope.metadata["effect.*"]` が配列対応へ拡張され、CLI/LSP/監査ログの `required_capabilities` / `actual_capabilities` が一致するようになった。計画書 `docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-003-proposal.md` とレビュー記録 `docs/plans/bootstrap-roadmap/2-5-review-log.md`（EFFECT-003 Week33 Day2）を参照。

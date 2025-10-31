@@ -406,6 +406,25 @@ S3（Menhir ルール実装）の結果共有。
 2. Runtime resolver が返す Capability 名の正規化ポリシーを Runtime チームと調整し、RunConfig 側の正規化処理と統一する。  
 3. `docs/spec/2-6-execution-strategy.md` で予定されている `max_handler_depth` など追加ポリシーを `RunConfig.extensions["effects"]` へ拡張するタイムラインを TYPE-001 / EFFECT-001 フォローアップに記録する。
 
+## EFFECT-003 Week33 Day2 テスト・メトリクス整備（2025-12-06）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-003-proposal.md`](./2-5-proposals/EFFECT-003-proposal.md)
+
+### 1. 作業サマリ
+- `compiler/ocaml/tests/capability_profile_tests.ml` を新設し、`StageRequirement::{AtLeast, Exact}` と複数 Capability の組み合わせで `resolve_function_profile` が配列を保持し、`stage_trace` に全 Capability が記録されることを確認。  
+- `compiler/ocaml/tests/test_cli_diagnostics.ml` に配列検証ロジックを追加し、`typeclass_iterator_stage_mismatch.json.golden` を複数 Capability 例で更新。CLI/LSP/Audit の各出力が同一配列を返すかを JSON レベルで比較。  
+- `tooling/ci/collect-iterator-audit-metrics.py` に `effect.capability_array_pass_rate` 指標を追加し、`--require-success` の強制判定へ組み込み。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` を更新し、`diagnostics.effect_stage_consistency` が Stage ミスマッチ検知、`effect.capability_array_pass_rate` が配列欠落検証を担うことを明示。  
+- 仕様書（`docs/spec/1-3-effects-safety.md`、`docs/spec/3-8-core-runtime-capability.md`）へ脚注を追加し、Phase 2-5 完了条件として配列出力が必須になったことを記録。関連差分は本ログおよび `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` に追記。
+
+### 2. 検証
+- `dune runtest compiler/ocaml/tests/capability_profile_tests.exe` と `dune runtest compiler/ocaml/tests/test_cli_diagnostics.exe` をローカル実行し、配列検証がグリーンであることを確認。  
+- `tooling/ci/collect-iterator-audit-metrics.py --source compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden --require-success` を実行し、新指標が `pass_rate = 1.0` となることを確認。
+
+### 3. TODO / 引き継ぎ
+- Phase 2-7 では監査ダッシュボードに `effect.capability_array_pass_rate` を表示し、複数 Capability 可視化の UI 要件を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に反映する。  
+- Capability 名の正規化（大文字・ハイフン変換）と Stage 表示スタイルは残課題として Step6 で追跡。  
+- Self-host 実装移行時に Reml 側の診断出力でも同配列フォーマットを維持するか、EFFECT-003 フォローアップで確認。
+
 ## SYNTAX-002 Day3-4 束縛診断連携（2025-10-29）
 
 S4（束縛・診断連携）の結果共有。  

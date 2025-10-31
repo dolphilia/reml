@@ -516,6 +516,47 @@ def _has_any_path(data: Optional[Dict], *paths: str) -> bool:
     return False
 
 
+def _normalize_string_list(value: Any) -> Optional[List[str]]:
+    if not isinstance(value, list) or len(value) == 0:
+        return None
+    result: List[str] = []
+    for entry in value:
+        if not isinstance(entry, str):
+            return None
+        normalized = entry.strip()
+        if normalized == "":
+            return None
+        result.append(normalized)
+    return result
+
+
+def _normalize_capability_stage_entries(
+    value: Any,
+) -> Optional[List[Tuple[str, Optional[str]]]]:
+    if not isinstance(value, list) or len(value) == 0:
+        return None
+    result: List[Tuple[str, Optional[str]]] = []
+    for entry in value:
+        if not isinstance(entry, dict):
+            return None
+        capability = entry.get("capability")
+        if not isinstance(capability, str):
+            return None
+        capability_normalized = capability.strip()
+        if capability_normalized == "":
+            return None
+        stage_value = entry.get("stage")
+        if stage_value is None:
+            stage_normalized: Optional[str] = None
+        elif isinstance(stage_value, str):
+            stripped = stage_value.strip()
+            stage_normalized = stripped if stripped != "" else None
+        else:
+            stage_normalized = str(stage_value)
+        result.append((capability_normalized, stage_normalized))
+    return result
+
+
 def _validate_typeclass_extension(
     typeclass: Dict[str, Any], prefix: str
 ) -> List[str]:
@@ -1651,6 +1692,203 @@ def collect_metrics(paths: List[Path]) -> Dict:
     }
 
 
+def collect_capability_array_metric(
+    paths: Sequence[Path],
+) -> Optional[Dict[str, Any]]:
+    total = 0
+    passed = 0
+    failures: List[Dict[str, Any]] = []
+    schema_versions: Set[str] = set()
+    source_paths: Set[str] = set()
+
+    for path in paths:
+        data = load_json(path)
+        for index, diag in enumerate(iter_diagnostics(data)):
+            code = primary_code_of(diag) or ""
+            codes_field = (
+                diag.get("codes") if isinstance(diag.get("codes"), list) else []
+            )
+            target_present = (
+                code == "typeclass.iterator.stage_mismatch"
+                or (
+                    isinstance(codes_field, list)
+                    and "typeclass.iterator.stage_mismatch" in codes_field
+                )
+            )
+            if not target_present:
+                continue
+            total += 1
+            source_paths.add(str(path))
+            schema = extract_schema_version(diag)
+            if schema:
+                schema_versions.add(schema)
+
+            extensions = _as_dict(diag.get("extensions"))
+            effects = _as_dict(extensions.get("effects") if extensions else None)
+            capability_ext = (
+                _as_dict(extensions.get("capability")) if extensions else None
+            )
+            audit_metadata = _as_dict(diag.get("audit_metadata"))
+            audit_envelope = _as_dict(
+                _as_dict(diag.get("audit")).get("metadata")
+                if isinstance(diag.get("audit"), dict)
+                else None
+            )
+
+            expected_required = (
+                _normalize_string_list(effects.get("required_capabilities"))
+                if effects
+                else None
+            )
+            expected_actual = (
+                _normalize_capability_stage_entries(
+                    effects.get("actual_capabilities")
+                )
+                if effects
+                else None
+            )
+
+            mismatches: List[str] = []
+            if not expected_required:
+                mismatches.append("extensions.effects.required_capabilities")
+            if expected_actual is None or len(expected_actual) == 0:
+                mismatches.append("extensions.effects.actual_capabilities")
+
+            if not mismatches:
+                required_checks = [
+                    (
+                        "extensions.capability.ids",
+                        capability_ext.get("ids") if capability_ext else None,
+                    ),
+                    (
+                        "extensions.capability.required",
+                        capability_ext.get("required") if capability_ext else None,
+                    ),
+                    (
+                        "audit_metadata.effect.required_capabilities",
+                        audit_metadata.get("effect.required_capabilities")
+                        if audit_metadata
+                        else None,
+                    ),
+                    (
+                        "audit_metadata.effect.stage.required_capabilities",
+                        audit_metadata.get("effect.stage.required_capabilities")
+                        if audit_metadata
+                        else None,
+                    ),
+                    (
+                        "audit_metadata.capability.ids",
+                        audit_metadata.get("capability.ids")
+                        if audit_metadata
+                        else None,
+                    ),
+                    (
+                        "audit.metadata.effect.required_capabilities",
+                        audit_envelope.get("effect.required_capabilities")
+                        if audit_envelope
+                        else None,
+                    ),
+                    (
+                        "audit.metadata.effect.stage.required_capabilities",
+                        audit_envelope.get("effect.stage.required_capabilities")
+                        if audit_envelope
+                        else None,
+                    ),
+                    (
+                        "audit.metadata.capability.ids",
+                        audit_envelope.get("capability.ids")
+                        if audit_envelope
+                        else None,
+                    ),
+                ]
+                for label, value in required_checks:
+                    candidate = _normalize_string_list(value)
+                    if candidate is None or candidate != expected_required:
+                        mismatches.append(label)
+
+                actual_checks = [
+                    (
+                        "extensions.capability.actual",
+                        capability_ext.get("actual") if capability_ext else None,
+                    ),
+                    (
+                        "extensions.capability.detail",
+                        capability_ext.get("detail") if capability_ext else None,
+                    ),
+                    (
+                        "audit_metadata.effect.actual_capabilities",
+                        audit_metadata.get("effect.actual_capabilities")
+                        if audit_metadata
+                        else None,
+                    ),
+                    (
+                        "audit_metadata.effect.stage.actual_capabilities",
+                        audit_metadata.get("effect.stage.actual_capabilities")
+                        if audit_metadata
+                        else None,
+                    ),
+                    (
+                        "audit_metadata.effect.stage.capabilities",
+                        audit_metadata.get("effect.stage.capabilities")
+                        if audit_metadata
+                        else None,
+                    ),
+                    (
+                        "audit.metadata.effect.actual_capabilities",
+                        audit_envelope.get("effect.actual_capabilities")
+                        if audit_envelope
+                        else None,
+                    ),
+                    (
+                        "audit.metadata.effect.stage.actual_capabilities",
+                        audit_envelope.get("effect.stage.actual_capabilities")
+                        if audit_envelope
+                        else None,
+                    ),
+                    (
+                        "audit.metadata.effect.stage.capabilities",
+                        audit_envelope.get("effect.stage.capabilities")
+                        if audit_envelope
+                        else None,
+                    ),
+                ]
+                for label, value in actual_checks:
+                    candidate = _normalize_capability_stage_entries(value)
+                    if candidate is None or candidate != expected_actual:
+                        mismatches.append(label)
+
+            if mismatches:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "code": code or "unknown",
+                        "mismatch": sorted(set(mismatches)),
+                    }
+                )
+            else:
+                passed += 1
+
+    if total == 0:
+        return None
+
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+    status = "success" if pass_rate == 1.0 else "error"
+
+    return {
+        "metric": "effect.capability_array_pass_rate",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "status": status,
+        "failures": failures,
+        "sources": sorted(source_paths),
+        "schema_versions": sorted(schema_versions),
+    }
+
+
 def collect_domain_metrics(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
     total = 0
     passed = 0
@@ -2551,6 +2789,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     iterator_metrics: Optional[Dict[str, Any]] = None
     domain_metrics: Optional[Dict[str, Any]] = None
     effect_consistency_metric: Optional[Dict[str, Any]] = None
+    capability_array_metric: Optional[Dict[str, Any]] = None
     plugin_bundle_metric: Optional[Dict[str, Any]] = None
     typeclass_metrics: Optional[Dict[str, Any]] = None
     bridge_metrics: Optional[Dict[str, Any]] = None
@@ -2569,12 +2808,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         iterator_metrics = collect_metrics(sources)
         domain_metrics = collect_domain_metrics(sources)
         effect_consistency_metric = collect_effect_stage_consistency(sources)
+        capability_array_metric = collect_capability_array_metric(sources)
         plugin_bundle_metric = collect_plugin_bundle_metrics(sources)
         if iterator_metrics:
             related = iterator_metrics.setdefault("related_metrics", [])
             for metric in (
                 domain_metrics,
                 effect_consistency_metric,
+                capability_array_metric,
                 plugin_bundle_metric,
             ):
                 if metric:
@@ -2598,6 +2839,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         metrics_list.append(parser_metrics)
     elif orphan_runconfig_metrics:
         metrics_list.extend(orphan_runconfig_metrics)
+    if capability_array_metric and iterator_metrics is None:
+        metrics_list.append(capability_array_metric)
     if iterator_metrics:
         metrics_list.append(iterator_metrics)
     if typeclass_metrics:
@@ -2707,6 +2950,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 label = metric.get("metric") or "parser.runconfig"
                 _enforce(metric, label)
         _enforce(iterator_metrics, "iterator.stage.audit_pass_rate")
+        _enforce(capability_array_metric, "effect.capability_array_pass_rate")
         _enforce(typeclass_metrics, "typeclass.metadata_pass_rate")
         if isinstance(typeclass_metrics, dict):
             _enforce(typeclass_metrics.get("dictionary_metric"), "typeclass.dictionary_pass_rate")

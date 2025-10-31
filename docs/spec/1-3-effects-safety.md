@@ -244,6 +244,10 @@ Chapter 3 の標準ライブラリは `Σ_core` / `Σ_system` を細分化する
 * `effect <Name> : <tag>` は 1.3 節 A のタグ集合 `Σ` に属する `tag` を基底効果として宣言し、`EffectDecl { tag, operations, stage }` を生成する。
 * 宣言時に `stage ∈ {Experimental, Beta, Stable}` を付与し、Capability Registry の `register` と整合させる（3.8 §1）。`stage = Experimental` の効果は `@requires_capability(stage="experimental")` を持つ API のみが利用可。
 * 各 `operation` にはシグネチャ `Args -> Ret` を付与し、暗黙に `effect` 本体のタグを潜在効果として報告する。
+* Stage 検査は要求 Capability の全件を対象とし、診断および監査ログに `required_capabilities` / `actual_capabilities` の配列を出力して証跡を残す。[^effect003-phase25-capability-array]
+
+[^effect003-phase25-capability-array]:
+    Phase 2-5 EFFECT-003 複数 Capability 解析計画 Step4（2025-12-06 完了）で OCaml 実装が `Diagnostic.extensions["effects"]` と `AuditEnvelope.metadata` を配列対応へ拡張した。計画書: `docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-003-proposal.md`、レビュー記録: `docs/plans/bootstrap-roadmap/2-5-review-log.md`「EFFECT-003 Week33 Day2」参照。
 
 ### I.2 効果発生と潜在効果集合
 

@@ -245,6 +245,12 @@ let test_stage_extension_snapshot () =
       ("source", `String "dsl/core.iter.toml");
     ]
   in
+  let capability_entries =
+    [
+      ("core.iterator.collect", Some "experimental");
+      ("core.iterator.reduce", Some "stable");
+    ]
+  in
   let diag =
     Diagnostic.make_type_error ~code:"typeclass.iterator.stage_mismatch"
       ~message:"Iterator Capability が要求された Stage を満たしていません" ~span
@@ -257,7 +263,8 @@ let test_stage_extension_snapshot () =
       ()
     |> Diagnostic.with_effect_stage_extension ~required_stage:"beta"
          ~actual_stage:"experimental" ~capability:"core.iterator.collect"
-         ~provider:"Core.Iter" ~manifest_path:"dsl/core.iter.toml" ~residual
+         ~capability_stages:capability_entries ~provider:"Core.Iter"
+         ~manifest_path:"dsl/core.iter.toml" ~residual
          ~capability_meta:metadata ~iterator_fields
   in
   let typeclass_constraint : Types.trait_constraint =
@@ -469,12 +476,15 @@ let test_stage_extension_snapshot () =
     in
     assert (String.equal event_domain "type");
     assert (String.equal event_kind "typeclass.iterator.stage_mismatch");
+    let expected_capabilities =
+      [ "core.iterator.collect"; "core.iterator.reduce" ]
+    in
     let capability_ids =
       Yojson.Basic.Util.member "capability.ids" audit_metadata
       |> Yojson.Basic.Util.to_list
       |> List.map Yojson.Basic.Util.to_string
     in
-    assert (capability_ids = [ "core.iterator.collect" ]);
+    assert (capability_ids = expected_capabilities);
     let audit_metadata_from_envelope =
       Yojson.Basic.Util.member "audit" diag_json
       |> Yojson.Basic.Util.member "metadata"
@@ -499,7 +509,63 @@ let test_stage_extension_snapshot () =
       Yojson.Basic.Util.member "primary" capability_extension
       |> Yojson.Basic.Util.to_string
     in
-    assert (String.equal capability_primary "core.iterator.collect")
+    assert (String.equal capability_primary "core.iterator.collect");
+    let effects_extension =
+      Yojson.Basic.Util.member "extensions" diag_json
+      |> Yojson.Basic.Util.member "effects"
+    in
+    let to_string_list json field =
+      Yojson.Basic.Util.member field json
+      |> Yojson.Basic.Util.to_list
+      |> List.map Yojson.Basic.Util.to_string
+    in
+    let to_capability_stage_list json field =
+      Yojson.Basic.Util.member field json
+      |> Yojson.Basic.Util.to_list
+      |> List.map (fun entry ->
+             let cap =
+               Yojson.Basic.Util.member "capability" entry
+               |> Yojson.Basic.Util.to_string
+             in
+             let stage =
+               Yojson.Basic.Util.member "stage" entry
+               |> Yojson.Basic.Util.to_string
+             in
+             (cap, stage))
+    in
+    let required_caps =
+      to_string_list effects_extension "required_capabilities"
+    in
+    let actual_caps =
+      to_capability_stage_list effects_extension "actual_capabilities"
+    in
+    assert (
+      required_caps
+      = [ "core.iterator.collect"; "core.iterator.reduce" ]);
+    assert (
+      actual_caps
+      = [
+          ("core.iterator.collect", "experimental");
+          ("core.iterator.reduce", "stable");
+        ]);
+    let audit_required_caps =
+      to_string_list audit_metadata "effect.stage.required_capabilities"
+    in
+    let audit_actual_caps =
+      to_capability_stage_list audit_metadata "effect.stage.actual_capabilities"
+    in
+    assert (audit_required_caps = required_caps);
+    assert (audit_actual_caps = actual_caps);
+    let envelope_required_caps =
+      to_string_list audit_metadata_from_envelope
+        "effect.stage.required_capabilities"
+    in
+    let envelope_actual_caps =
+      to_capability_stage_list audit_metadata_from_envelope
+        "effect.stage.actual_capabilities"
+    in
+    assert (envelope_required_caps = required_caps);
+    assert (envelope_actual_caps = actual_caps)
   );
   Printf.printf "✓ typeclass.iterator.stage_mismatch JSON スナップショット\n"
 

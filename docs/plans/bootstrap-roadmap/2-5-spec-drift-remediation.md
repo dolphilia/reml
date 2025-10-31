@@ -111,6 +111,7 @@
   - ✅ 2025-11-05: `Type_inference.Effect_analysis` にタグ付与ロジックを実装し、`Type_inference_effect.resolve_function_profile`・`effect_profile`・診断/監査経路が複数 Capability を扱えるよう更新済み（詳細は `docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-001-proposal.md` 参照）。
 - `EFFECT-002` 効果操作未実装: 仕様（docs/spec/1-3-effects-safety.md:201-259）では `effect` 宣言と `handle` 構文を前提に `Σ_before/Σ_after` を計算するが、実装は `effect`/`handler` を AST に保持するのみで解析・型付けを未実装（parser/type_inference に対応処理なし）。効果操作が存在しないため `Σ` の差分計算が検証できず、Chapter 1 のハンドラ例が実行不能。修正案ドラフト: Phase 2-5 で仕様に PoC ステータスを注記し、Phase 2-2/Phase 2-7 のハンドラ実装計画を精査。実装を進める場合は `perform` の型付け規則と `handler` の残余効果計算を `Effect_analysis` に追加。
 - `EFFECT-003` Capability 参照の限定処理: `effect` 属性は複数 Capability を要求できる想定だが、実装の `resolve_function_profile`（compiler/ocaml/src/type_inference_effect.ml:38-86）では先頭 1 件のみ `resolved_capability` に反映。複数 Capability を列挙する仕様（docs/spec/1-1-syntax.md:255-259 および Chapter 3 の DSL 例）と不一致で、診断ログに十分なエビデンスが残らない。修正案ドラフト: Stage/Capability の突合を複数エントリ対応へ拡張し、`AuditEnvelope.metadata` へ全 Capability を記録する方針を追加。
+  - ✅ 2025-12-06: Step4 で CLI/LSP/監査の `required_capabilities` / `actual_capabilities` 配列整合をテスト化し、`effect.capability_array_pass_rate` 指標と仕様脚注を更新済み（`EFFECT-003` 進捗と連携）。
 
 **修正案ドラフト対応方針**
 - `EFFECT-001` → 効果タグ検出ルールを `Type_inference.Effect_analysis` に追加し、`mut`/`io`/`ffi` を最小セットとして導入。仕様には検出アルゴリズムの擬似コードを追加。
