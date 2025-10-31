@@ -33,10 +33,10 @@
    - `constraint_solver`／`type_inference`／`core_ir/desugar`／`main`／`type_error` の各モジュールで単一値の `resolved_capability` 依存を整理し、配列ベースの API に合わせてメタデータ生成処理を更新。監査メタデータの主 Capability も配列から導出するよう統一。  
    - **確認**: `compiler/ocaml/tests/test_type_inference.ml` と `compiler/ocaml/tests/test_cli_diagnostics.ml` の前提条件を再読し、型推論と診断経路に後方互換性があることを手動確認（自動テストは未実行、Step 4 で網羅予定）。残課題として診断／監査フォーマットの配列化は Step 2 へ委譲。
 
-3. **Step 2: 診断／監査出力の多重化（Week32 Day3-4 予定） — 未着手**  
-   - `Diagnostic.extensions["effects"]` と `AuditEnvelope.metadata` に `required_capabilities`・`granted_capabilities`（案）などの配列を追加し、CLI/LSP/監査経路が同じシリアライズ結果を共有するよう `compiler/ocaml/src/main.ml`・`tooling/lsp/lsp_transport.ml` を更新。  
-   - `reports/diagnostic-format-regression.md` の効果ステージ系ゴールデンを再生成し、`scripts/validate-diagnostic-json.sh` と `tooling/ci/collect-iterator-audit-metrics.py --require-success` で配列出力と新メトリクスの整合を確認。  
-   - **調査**: `docs/spec/3-6-core-diagnostics-audit.md` §3.2 と `docs/spec/3-8-core-runtime-capability.md` §8 を参照し、出力キーと命名規則が仕様準拠であることを再確認。
+3. **Step 2: 診断／監査出力の多重化（Week32 Day3-4 実施） — 完了（2025-11-29）**  
+   - `Diagnostic.extensions["effects"]` と `AuditEnvelope.metadata` に `required_capabilities`・`actual_capabilities` 配列を追加し、`effect.stage.required_capabilities` / `effect.stage.actual_capabilities` を含む共通キーを CLI/LSP/監査経路へ伝播。`compiler/ocaml/src/diagnostic.ml`・`compiler/ocaml/src/main.ml`・`compiler/ocaml/tests/test_effect_residual.ml` を更新して単一 Capability 互換を維持しつつ配列主体へ移行した。  
+   - 監査集計を担う `tooling/ci/collect-iterator-audit-metrics.py` に新フィールド検証を追加し、`scripts/validate-diagnostic-json.sh` へ効果系配列の存在チェックを実装。`reports/diagnostic-format-regression.md` の手順に従いゴールデン（CLI/LSP/監査）の再生成と整合確認を実施。  
+   - `docs/spec/3-6-core-diagnostics-audit.md` §3.2 / `docs/spec/3-8-core-runtime-capability.md` §8 の命名規則を確認し、`effect.stage.capabilities` は互換目的で保持したうえで配列キーを追加。更新内容は `docs/plans/bootstrap-roadmap/2-5-review-log.md` に記録し、Phase 2-7 で参照する TODO（Capability 名正規化ポリシー）を継続。
 
 4. **Step 3: RunConfig／lex シムとの統合（Week32 Day4-5 予定） — 未着手**  
    - `compiler/ocaml/src/parser_run_config.ml` に `Effects` ネームスペースを追加し、`RunConfig.extensions["effects"].required_capabilities` を CLI/LSP から Typer へ伝搬。LEXER-002 の `lex.profile` と同様にシムを整備し、値制限復元タスク（TYPE-001）で参照できる状態にする。  

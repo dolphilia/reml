@@ -96,8 +96,10 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
                  | None -> fields
                in
                `Assoc (List.rev fields))
-             entries)
+            entries)
   in
+  let required_capabilities_json = capability_list_json in
+  let actual_capabilities_json = capability_detail_json in
   let diagnostic_json =
     Effect_profile.effect_diagnostic_payload_to_json diagnostic_payload
   in
@@ -114,6 +116,10 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
       ("effect.stage.required", `String required);
       ("effect.stage.actual", actual);
       ("effect.stage.capability", capability_json);
+      ("effect.required_capabilities", required_capabilities_json);
+      ("effect.actual_capabilities", actual_capabilities_json);
+      ("effect.stage.required_capabilities", required_capabilities_json);
+      ("effect.stage.actual_capabilities", actual_capabilities_json);
       ("effects.declared", json_of_tag_list effect_set.Effect_profile.declared);
       ("effects.residual", json_of_tag_list effect_set.residual);
       ("effects.diagnostic_payload", diagnostic_json);

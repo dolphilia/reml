@@ -57,6 +57,8 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
     | entries ->
         Effect_profile.capability_resolutions_to_json entries
   in
+  let required_capabilities_json = capability_list_json in
+  let actual_capabilities_json = capability_detail_json in
   let diagnostic_json =
     Effect_profile.effect_diagnostic_payload_to_json diagnostic_payload
   in
@@ -73,6 +75,10 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
       ("effect.stage.required", `String stage_required);
       ("effect.stage.actual", stage_actual);
       ("effect.stage.capability", capability_json);
+      ("effect.required_capabilities", required_capabilities_json);
+      ("effect.actual_capabilities", actual_capabilities_json);
+      ("effect.stage.required_capabilities", required_capabilities_json);
+      ("effect.stage.actual_capabilities", actual_capabilities_json);
       ("effects.declared", json_of_tag_list effect_set.Effect_profile.declared);
       ("effects.residual", json_of_tag_list effect_set.residual);
       ("effects.diagnostic_payload", diagnostic_json);
@@ -142,7 +148,7 @@ let event_of_stage_mismatch ?audit_id ?change_set ~function_name ~required_stage
                  | Some stage -> ("stage", `String stage) :: fields
                  | None -> fields
                in
-               `Assoc (List.rev fields))
+             `Assoc (List.rev fields))
              capability_stages)
       in
       let names_json =
@@ -151,6 +157,10 @@ let event_of_stage_mismatch ?audit_id ?change_set ~function_name ~required_stage
       [
         ("effect.stage.capabilities", detail_json);
         ("effect.capabilities", names_json);
+        ("effect.required_capabilities", names_json);
+        ("effect.stage.required_capabilities", names_json);
+        ("effect.actual_capabilities", detail_json);
+        ("effect.stage.actual_capabilities", detail_json);
       ]
   in
   let metadata =

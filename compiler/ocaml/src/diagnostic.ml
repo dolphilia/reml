@@ -694,23 +694,19 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
     ]
   in
   let stage_json = `Assoc stage_fields in
-  let capability_detail_json =
-    match capability_entries with
-    | [] -> None
-    | entries ->
-        Some
-          (`List
-             (List.map
-                (fun (name, stage_opt) ->
-                  let fields = [ ("capability", `String name) ] in
-                  let fields =
-                    match stage_opt with
-                    | Some stage -> ("stage", `String stage) :: fields
-                    | None -> fields
-                  in
-                  `Assoc (List.rev fields))
-                entries))
+  let capability_detail_entries =
+    List.map
+      (fun (name, stage_opt) ->
+        let fields = [ ("capability", `String name) ] in
+        let fields =
+          match stage_opt with
+          | Some stage -> ("stage", `String stage) :: fields
+          | None -> fields
+        in
+        `Assoc (List.rev fields))
+      capability_entries
   in
+  let capability_detail_json = `List capability_detail_entries in
   let capability_names =
     let extras =
       capability_entries
@@ -730,16 +726,24 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
   let capability_ids_json =
     `List (List.map (fun name -> `String name) capability_names)
   in
+  let required_capabilities_json = capability_ids_json in
+  let actual_capabilities_json = capability_detail_json in
   let effect_fields =
     let base =
-      [ ("stage", stage_json); ("capability", `String primary_capability) ]
+      [
+        ("stage", stage_json);
+        ("capability", `String primary_capability);
+        ("capabilities", capability_ids_json);
+        ("required_capabilities", required_capabilities_json);
+        ("actual_capabilities", actual_capabilities_json);
+      ]
     in
     let base =
-      match capability_detail_json with
-      | Some detail -> ("capabilities_detail", detail) :: base
-      | None -> base
+      match capability_detail_entries with
+      | [] -> base
+      | _ -> ("capabilities_detail", capability_detail_json) :: base
     in
-    ("capabilities", capability_ids_json) :: base
+    base
   in
   let effect_fields =
     match residual with
@@ -782,24 +786,34 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
           ("ids", capability_ids_json);
           ("stage", stage_json);
           ("primary", `String primary_capability);
+          ("required", required_capabilities_json);
+          ("actual", actual_capabilities_json);
         ]
       in
       let base =
-        match capability_detail_json with
-        | Some detail -> ("detail", detail) :: base
-        | None -> base
+        match capability_detail_entries with
+        | [] -> base
+        | _ -> ("detail", capability_detail_json) :: base
       in
       `Assoc base
     in
     set_extension "capability" capability_fields diag
   in
   let diag =
-    match capability_detail_json with
-    | Some detail ->
-        diag
-        |> set_extension "effect.stage.capabilities" detail
-        |> set_extension "effect.capabilities" capability_ids_json
-    | None -> set_extension "effect.capabilities" capability_ids_json diag
+    let diag =
+      diag
+      |> set_extension "effect.capabilities" capability_ids_json
+      |> set_extension "effect.required_capabilities"
+           required_capabilities_json
+      |> set_extension "effect.actual_capabilities" actual_capabilities_json
+      |> set_extension "effect.stage.required_capabilities"
+           required_capabilities_json
+      |> set_extension "effect.stage.actual_capabilities"
+           actual_capabilities_json
+    in
+    match capability_detail_entries with
+    | [] -> diag
+    | _ -> set_extension "effect.stage.capabilities" capability_detail_json diag
   in
   let diag =
     match stage_trace with
@@ -832,18 +846,34 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
     set_audit_metadata "effect.capability" (`String primary_capability) diag
   in
   let diag =
+    set_audit_metadata "effect.required_capabilities"
+      required_capabilities_json diag
+  in
+  let diag =
+    set_audit_metadata "effect.stage.required_capabilities"
+      required_capabilities_json diag
+  in
+  let diag =
+    set_audit_metadata "effect.actual_capabilities" actual_capabilities_json diag
+  in
+  let diag =
+    set_audit_metadata "effect.stage.actual_capabilities"
+      actual_capabilities_json diag
+  in
+  let diag =
     set_audit_metadata "capability.primary" (`String primary_capability) diag
   in
   let diag =
     set_audit_metadata "capability.ids" capability_ids_json diag
   in
   let diag =
-    match capability_detail_json with
-    | Some detail ->
-        diag
-        |> set_audit_metadata "effect.stage.capabilities" detail
-        |> set_audit_metadata "effect.capabilities" capability_ids_json
-    | None -> set_audit_metadata "effect.capabilities" capability_ids_json diag
+    let diag =
+      set_audit_metadata "effect.capabilities" capability_ids_json diag
+    in
+    match capability_detail_entries with
+    | [] -> diag
+    | _ ->
+        set_audit_metadata "effect.stage.capabilities" capability_detail_json diag
   in
   let diag =
     match residual with

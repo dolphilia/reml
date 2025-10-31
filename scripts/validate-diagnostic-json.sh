@@ -200,25 +200,82 @@ for path_str in files:
                 for diag_index, diag in enumerate(diagnostics):
                     if not isinstance(diag, dict):
                         continue
-                    if not is_parser_diagnostic(diag):
-                        continue
-                    expected = diag.get("expected")
-                    if not isinstance(expected, dict):
-                        print(
-                            "[validate-diagnostic-json] parser expected summary missing: "
-                            f"{path}: diagnostics[{diag_index}].expected",
-                            file=sys.stderr,
-                        )
-                        error = True
-                        continue
-                    alternatives = expected.get("alternatives")
-                    if not isinstance(alternatives, list) or len(alternatives) == 0:
-                        print(
-                            "[validate-diagnostic-json] parser expected summary empty alternatives: "
-                            f"{path}: diagnostics[{diag_index}].expected.alternatives",
-                            file=sys.stderr,
-                        )
-                        error = True
+                    if is_parser_diagnostic(diag):
+                        expected = diag.get("expected")
+                        if not isinstance(expected, dict):
+                            print(
+                                "[validate-diagnostic-json] parser expected summary missing: "
+                                f"{path}: diagnostics[{diag_index}].expected",
+                                file=sys.stderr,
+                            )
+                            error = True
+                            continue
+                        alternatives = expected.get("alternatives")
+                        if not isinstance(alternatives, list) or len(alternatives) == 0:
+                            print(
+                                "[validate-diagnostic-json] parser expected summary empty alternatives: "
+                                f"{path}: diagnostics[{diag_index}].expected.alternatives",
+                                file=sys.stderr,
+                            )
+                            error = True
+                    extensions = diag.get("extensions")
+                    if isinstance(extensions, dict):
+                        effects = extensions.get("effects")
+                        if isinstance(effects, dict):
+                            required = effects.get("required_capabilities")
+                            if not isinstance(required, list):
+                                print(
+                                    "[validate-diagnostic-json] effects.required_capabilities missing or invalid: "
+                                    f"{path}: diagnostics[{diag_index}].extensions.effects.required_capabilities",
+                                    file=sys.stderr,
+                                )
+                                error = True
+                            actual = effects.get("actual_capabilities")
+                            if not isinstance(actual, list):
+                                print(
+                                    "[validate-diagnostic-json] effects.actual_capabilities missing or invalid: "
+                                    f"{path}: diagnostics[{diag_index}].extensions.effects.actual_capabilities",
+                                    file=sys.stderr,
+                                )
+                                error = True
+                    audit_metadata = diag.get("audit_metadata")
+                    if isinstance(audit_metadata, dict):
+                        required = audit_metadata.get("effect.required_capabilities")
+                        actual = audit_metadata.get("effect.actual_capabilities")
+                        if not isinstance(required, list):
+                            print(
+                                "[validate-diagnostic-json] audit_metadata effect.required_capabilities missing or invalid: "
+                                f"{path}: diagnostics[{diag_index}].audit_metadata",
+                                file=sys.stderr,
+                            )
+                            error = True
+                        if not isinstance(actual, list):
+                            print(
+                                "[validate-diagnostic-json] audit_metadata effect.actual_capabilities missing or invalid: "
+                                f"{path}: diagnostics[{diag_index}].audit_metadata",
+                                file=sys.stderr,
+                            )
+                            error = True
+                    audit_block = diag.get("audit")
+                    if isinstance(audit_block, dict):
+                        metadata = audit_block.get("metadata")
+                        if isinstance(metadata, dict):
+                            required = metadata.get("effect.required_capabilities")
+                            actual = metadata.get("effect.actual_capabilities")
+                            if not isinstance(required, list):
+                                print(
+                                    "[validate-diagnostic-json] audit.metadata effect.required_capabilities missing or invalid: "
+                                    f"{path}: diagnostics[{diag_index}].audit.metadata",
+                                    file=sys.stderr,
+                                )
+                                error = True
+                            if not isinstance(actual, list):
+                                print(
+                                    "[validate-diagnostic-json] audit.metadata effect.actual_capabilities missing or invalid: "
+                                    f"{path}: diagnostics[{diag_index}].audit.metadata",
+                                    file=sys.stderr,
+                                )
+                                error = True
 
 if error:
     sys.exit(1)

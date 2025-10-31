@@ -369,6 +369,24 @@ S3（Menhir ルール実装）の結果共有。
 2. `stage_trace` の多重化に伴う表示フォーマット（CLI/LSP）の最終調整とカラーリング見直しは Step 2 で扱う。  
 3. 自動テストとメトリクス追加（Step 4）での再検証を待ちつつ、Capability 名正規化ポリシーは Runtime チームと協議して `残課題` 行に追記する。
 
+## EFFECT-003 Week32 Day4-5 診断／監査出力多重化（2025-11-29）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-003-proposal.md`](./2-5-proposals/EFFECT-003-proposal.md)
+
+### 1. 作業サマリ
+- `compiler/ocaml/src/diagnostic.ml`・`compiler/ocaml/src/main.ml`・`compiler/ocaml/tests/test_effect_residual.ml` を改修し、`effect.required_capabilities` / `effect.actual_capabilities` および `effect.stage.*` 系配列を拡充。単一 Capability 互換のため `effect.stage.capabilities` は残しつつ配列キーを正規化した。  
+- 監査・CI 系ツールを更新し、`tooling/ci/collect-iterator-audit-metrics.py` に新フィールド検証を追加。`scripts/validate-diagnostic-json.sh` では効果診断・監査メタデータの配列存在チェックを追加してゴールデン再生成後の逸脱を検知可能にした。  
+- `compiler/ocaml/tests/golden/diagnostics/effects/*.json.golden`、`typeclass_iterator_stage_mismatch.json.golden`、監査 JSONL／LSP 実測 `_actual` を再生成し、複数 Capability を含むケースで `capabilities_detail`・`actual_capabilities` が同期することを確認。
+
+### 2. 検証
+- `docs/spec/3-6-core-diagnostics-audit.md` §3.2 と `docs/spec/3-8-core-runtime-capability.md` §8 を参照し、命名規則と Stage 契約整合をクロスチェック。  
+- `scripts/validate-diagnostic-json.sh` の新検証で効果診断ゴールデンを手動検証（自動実行は未実施）。CI 集計は `tooling/ci/collect-iterator-audit-metrics.py --require-success` で想定キーが揃っていることをローカル確認（メトリクス導出のみ、CI 実行は次フェーズ）。
+
+### 3. 残課題 / 次ステップ
+1. Capability 名の正規化ポリシー（小文字化・ハイフン統一）は Runtime 連携タスクに引き継ぎ。Phase 2-7 の RunConfig/lex シム統合で再検討する。  
+2. LSP まわりのカラーリング・整形は Step 4 のテスト整備と併せて実施予定。`tooling/lsp/tests/client_compat` のフィクスチャ更新は Step 4 での自動テスト追加と同時に進める。  
+3. 監査ダッシュボードへ複数 Capability 指標を追加するタスクを Phase 2-7 `diagnostics.dashboard-update` に連携し、可視化要件（配列比較／Stage 集計）を整理する。
+
 ## SYNTAX-002 Day3-4 束縛診断連携（2025-10-29）
 
 S4（束縛・診断連携）の結果共有。  

@@ -69,6 +69,26 @@ REQUIRED_AUDIT_FIELDS: List[RequiredField] = [
     Field("effect.capability", ("effect.capability",)),
     Field("capability.ids", ("capability.ids",)),
     Field(
+        "effect.required_capabilities",
+        ("effect.required_capabilities",),
+        allow_empty=True,
+    ),
+    Field(
+        "effect.stage.required_capabilities",
+        ("effect.stage.required_capabilities",),
+        allow_empty=True,
+    ),
+    Field(
+        "effect.actual_capabilities",
+        ("effect.actual_capabilities",),
+        allow_empty=True,
+    ),
+    Field(
+        "effect.stage.actual_capabilities",
+        ("effect.stage.actual_capabilities",),
+        allow_empty=True,
+    ),
+    Field(
         "effect.capability_descriptor",
         ("effect.capability_descriptor", "effect.capability_metadata"),
         allow_empty=True,
@@ -408,6 +428,25 @@ def check_extension_fields(extensions: Optional[Dict]) -> List[str]:
         for key in REQUIRED_EFFECT_STAGE_KEYS:
             if key not in stage or stage[key] in (None, ""):
                 missing.append(f"extensions.effects.stage.{key}")
+
+    required_caps = effects.get("required_capabilities")
+    if not isinstance(required_caps, list) or len(required_caps) == 0:
+        missing.append("extensions.effects.required_capabilities")
+
+    actual_caps = effects.get("actual_capabilities")
+    if not isinstance(actual_caps, list) or len(actual_caps) == 0:
+        missing.append("extensions.effects.actual_capabilities")
+    else:
+        for index, entry in enumerate(actual_caps):
+            if not isinstance(entry, dict):
+                missing.append("extensions.effects.actual_capabilities")
+                break
+            capability_name = entry.get("capability")
+            if not isinstance(capability_name, str) or capability_name.strip() == "":
+                missing.append(
+                    f"extensions.effects.actual_capabilities[{index}].capability"
+                )
+                break
 
     if iterator is None:
         missing.append("extensions.effects.iterator")

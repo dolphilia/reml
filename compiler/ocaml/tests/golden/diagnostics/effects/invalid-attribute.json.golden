@@ -51,7 +51,34 @@
             ]
           },
           "event.domain": "type",
-          "event.kind": "effects.syntax.invalid_attribute"
+          "event.kind": "effects.syntax.invalid_attribute",
+          "effect.required_capabilities": [
+            "runtime"
+          ],
+          "effect.stage.required_capabilities": [
+            "runtime"
+          ],
+          "effect.actual_capabilities": [
+            {
+              "capability": "runtime",
+              "stage": "stable"
+            }
+          ],
+          "effect.stage.actual_capabilities": [
+            {
+              "capability": "runtime",
+              "stage": "stable"
+            }
+          ],
+          "effect.stage.capabilities": [
+            {
+              "capability": "runtime",
+              "stage": "stable"
+            }
+          ],
+          "effect.capabilities": [
+            "runtime"
+          ]
         },
         "audit_id": "cli/19700101T000000Z#0",
         "change_set": {
@@ -121,7 +148,25 @@
             }
           ],
           "key": "stage",
-          "provided_display": "true"
+          "provided_display": "true",
+          "capabilities": [
+            "runtime"
+          ],
+          "required_capabilities": [
+            "runtime"
+          ],
+          "actual_capabilities": [
+            {
+              "capability": "runtime",
+              "stage": "stable"
+            }
+          ],
+          "capabilities_detail": [
+            {
+              "capability": "runtime",
+              "stage": "stable"
+            }
+          ]
         },
         "effect.stage.required": "at_least:stable",
         "effect.stage.actual": "stable",
@@ -149,6 +194,24 @@
             "key": "stage",
             "provided": true,
             "provided_display": "true"
+          }
+        ],
+        "effect.required_capabilities": [
+          "runtime"
+        ],
+        "effect.actual_capabilities": [
+          {
+            "capability": "runtime",
+            "stage": "stable"
+          }
+        ],
+        "effect.stage.required_capabilities": [
+          "runtime"
+        ],
+        "effect.stage.actual_capabilities": [
+          {
+            "capability": "runtime",
+            "stage": "stable"
           }
         ]
       },
@@ -217,7 +280,34 @@
           ]
         },
         "event.domain": "type",
-        "event.kind": "effects.syntax.invalid_attribute"
+        "event.kind": "effects.syntax.invalid_attribute",
+        "effect.required_capabilities": [
+          "runtime"
+        ],
+        "effect.stage.required_capabilities": [
+          "runtime"
+        ],
+        "effect.actual_capabilities": [
+          {
+            "capability": "runtime",
+            "stage": "stable"
+          }
+        ],
+        "effect.stage.actual_capabilities": [
+          {
+            "capability": "runtime",
+            "stage": "stable"
+          }
+        ],
+        "effect.stage.capabilities": [
+          {
+            "capability": "runtime",
+            "stage": "stable"
+          }
+        ],
+        "effect.capabilities": [
+          "runtime"
+        ]
       }
     }
   ]
