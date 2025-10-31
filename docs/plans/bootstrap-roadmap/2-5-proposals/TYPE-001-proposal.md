@@ -36,6 +36,7 @@ let is_generalizable ~effects expr_ty =
   - `compiler/ocaml/src/type_inference.ml:596-663` の `generalize` 実装と `infer_decl`（compiler/ocaml/src/type_inference.ml:2236, compiler/ocaml/src/type_inference.ml:2284）で `let`／`var` が常時一般化されている経路を洗い出し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に再現ログを追加する。  
   - `compiler/ocaml/tests/test_type_inference.ml`・`compiler/ocaml/tests/test_cli_diagnostics.ml` の多相化依存ケースを抽出し、現行出力と仕様差分を比較。再現用スニペットを `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の差分リストへ脚注として共有する。  
   - `docs/spec/1-2-types-Inference.md:120-188` と `docs/spec/1-3-effects-safety.md` の「確定的な値」定義をチェックリストに落とし込み、`docs/notes/type-inference-roadmap.md` で値制限復元の前提を整理する。
+  - **2025-10-31 更新**: 上記棚卸しを完了し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に「TYPE-001 Day1 値制限棚卸し」を追加。`dune exec remlc -- tmp/value_restriction_var.reml --emit-tast` で `var` 束縛が多相化される再現ログを取得し、差分リストに脚注 `[^type001-step0-review]` を登録。`docs/notes/type-inference-roadmap.md` を新設して確定値・効果タグのチェックリストを共有済み。
 - **Step1 — 値制限判定ユーティリティ設計（Week32 Day2）**  
   - `Effect_analysis.collect_expr`（compiler/ocaml/src/type_inference.ml:240-308）と `Typed_ast` ノードの構成を調査し、純粋式・値式に分類できるパターンを列挙。`Typed_ast` に補助関数が無ければ値判定用ヘルパを追加する設計案をまとめる。  
   - `docs/spec/1-5-formal-grammar-bnf.md` を参照し、λ式・構造体/列挙リテラル・定数畳み込みなど一般化対象となる式の網羅表を作成。  

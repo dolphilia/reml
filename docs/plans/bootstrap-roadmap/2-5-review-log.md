@@ -725,3 +725,44 @@ S5（検証とドキュメント更新）の結果共有。
 ### 3. フォローアップ
 - CI 監査ダッシュボードで `diagnostics.domain_coverage` など新指標を表示する改修を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ登録済み。  
 - EFFECT-003 で複数 Capability を扱うサンプルが揃った段階で脚注の追記・削除判断を行い、`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md` 残課題欄を更新する。
+
+## TYPE-001 Day1 値制限棚卸し（2025-10-31）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-001-proposal.md`](./2-5-proposals/TYPE-001-proposal.md)
+
+### 1. 調査サマリ
+- `generalize` が環境自由変数との差分を量化するだけで（`compiler/ocaml/src/type_inference.ml:596-606`）、効果情報や束縛種別を参照しないことを確認。`infer_decl` では `LetDecl` と `VarDecl` の双方が同じ `generalize` を呼び出し、`var` 束縛でも常に多相スキームを生成していた（`compiler/ocaml/src/type_inference.ml:2394-2471`）。  
+- 効果解析は `Type_inference_effect.collect_expr` の結果を束縛評価へ伝搬しておらず、`Type_inference.make_config` からも値制限スイッチが供給されていないため、RunConfig 経由で挙動を切り替える術が現状存在しない。  
+- `Type_error` 側の診断にも値制限違反に対応するケースがなく、違反時に期待する `effects.contract.value_restriction` 系のキーが未定義であることを確認した。
+
+### 2. 仕様との差分要約
+- 仕様では `docs/spec/1-2-types-Inference.md:129` で「一般化は確定的な値のみ」と明記し、効果タグとの連携は `docs/spec/1-3-effects-safety.md:25-79` の `mut` / `io` / `ffi` / `unsafe` / `panic` を起点に Stage 要件を評価する設計。現行実装は値種別・効果集合を無視しており、仕様上の値制限と Capability 監査の双方に乖離がある。  
+- `RunConfig.extensions["effects"]` や CLI オプションで値制限モードを制御する計画は未反映であり、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の差分リストに記載された「移行期間中の旧挙動スイッチ」も実装待ちである。
+
+### 3. 再現ログ
+- 以下のソースは `mut` 効果を持つ `var` 束縛を多相に利用しており、値制限が無効化されていることを再現できる。
+
+```reml
+fn main() -> i64 !{ mut } = {
+  var poly = |x| x;
+  let int_value: i64 = poly(42);
+  if poly(true) then 1 else int_value
+}
+```
+
+- `dune exec remlc -- tmp/value_restriction_var.reml --emit-tast` を実行すると型エラーは発生せず、`=== Typed AST ===` の出力のみで終了する（期待挙動は `poly(true)` 時点で多相化拒否による型エラー）。再現コマンドと診断ログは CLI 監査に `event.kind = "effects.contract.residual_leak"` 以外の値制限エラーが出ていないことを示す[^type001-step0-repro-log]。
+
+### 4. テスト棚卸し
+- `compiler/ocaml/tests/test_type_inference.ml:792-832` では `fn identity` の多相化を確認しているが、`var` 束縛や効果付き束縛の単相性を検証するテストは存在しない。  
+- `compiler/ocaml/tests/test_cli_diagnostics.ml` は CLI フォーマッタの整形検証のみで、値制限違反や効果タグ漏れを再現するフィクスチャが不足している。ゴールデンにも値制限のエラーログが含まれていない。
+
+### 5. TODO / 引き継ぎ
+1. `Effect_analysis.collect_expr` の結果から `mut` / `io` / `ffi` / `unsafe` / `panic` を束縛推論へ伝搬するフックを設計し、`is_generalizable` 判定の素材を揃える（Step1）。  
+2. `Type_inference.make_config` と `parser_run_config.ml` に値制限モードを追加し、RunConfig 経由で旧挙動を切り替えられる API モデルを `TYPE-001` 計画へ追記する。  
+3. 値制限違反用の診断コード（仮称 `effects.contract.value_restriction`）を `type_error.ml` に定義し、CLI/LSP/監査で検証できるゴールデンとメトリクスを整備する。
+
+### 6. 実施記録
+- `dune exec remlc -- tmp/value_restriction_var.reml --emit-tast`（`fn main() -> i64 !{ mut } = { ... }`）。CLI 監査ログは `cli.audit_id = "cli/20251031T065614Z-45f5ada#0"` を記録し、Stage 検証は `mut` 残余効果の漏れのみを報告。値制限由来のエラーは発生しなかった。  
+- `nl -ba compiler/ocaml/src/type_inference.ml | sed -n '596,664p'` と `sed -n '2360,2472p'` を取得し、レビュー時の参照用として行番号付きの一般化経路を確認した。
+
+[^type001-step0-repro-log]: CLI 出力は `=== Typed AST ===` のみで終了し、`effects.contract.residual_leak` 以外の診断が発生しない。仕様上は `poly(true)` で型が `Bool` に固定されるため、`var poly` の一般化が抑制されていれば `let int_value: i64 = poly(42);` と矛盾しコンパイルが失敗する。
