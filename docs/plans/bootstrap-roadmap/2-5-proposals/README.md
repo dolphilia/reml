@@ -41,7 +41,7 @@
 - [PARSER-003 修正計画](./PARSER-003-proposal.md): 15 個のコアコンビネーターを OCaml 実装へ抽出し、`Core.Parse` API と DSL の互換性を確保。（2025-11-01 Step1 コアコンビネーター棚卸し完了: Menhir 対応表を `docs/notes/core-parser-migration.md` に追加し、`committed` 未更新・`ParserId` 未割当・`recover` フック未使用をレビュー記録へ登録。2025-12-04 Step2 Core_parse シグネチャ案を確定し、`docs/notes/core-parse-api-evolution.md` に `Id`/`State`/`Reply`/`Registry` 構成と静的/動的 `ParserId` 割当方針を記録。2025-12-05 Step3 で `core_parse.{ml,mli}` を追加し、`parser_driver` をコアコンビネーター層経由に切り替える PoC を実装。2025-12-12 Step4 では Packrat キャッシュ・`recover` 同期トークン・複数 Capability 監査の統合設計を整理し、キャッシュキー・RunConfig 連携・CI 指標追加まで準備済み（実装は Step5 へ引き継ぎ）。2025-12-18 Step5 で Packrat 指標と `parser.core.rule.*` メタデータを CI へ導入し、2025-12-24 Step6 では仕様・ガイド・索引を更新して `Core_parse` PoC の進捗と引き継ぎ先 TODO（テレメトリ統合・Menhir 置換判断）を共有。）
 
 ### 構文仕様（SYNTAX）
-- [SYNTAX-001 修正計画](./SYNTAX-001-proposal.md): Unicode 識別子制約の暫定状態を仕様脚注で明示し、Phase 2-7 の対応計画を共有。
+- [SYNTAX-001 修正計画](./SYNTAX-001-proposal.md): Unicode 識別子制約の暫定状態を仕様脚注で明示し、Phase 2-7 の対応計画を共有。（2025-11-02 追記: Step1 で Chapter 1/1-5 の差分棚卸・レビュー記録・ASCII 拒否テスト固定化を完了）
 - [SYNTAX-002 修正計画](./SYNTAX-002-proposal.md): `use` 文の多段ネストを AST に反映し、Chapter 1 のサンプル通過を保証。
   - 2025-10-27 追記: S2（AST/型付き AST 整合確認）まで完了。Typer 側は `tcu_use_decls` をそのまま保持できることを検証済み。
   - 2025-10-28 追記: S3（Menhir ルール実装）を完了し、`use_item` の再帰構築と `menhir --list-errors` の検証まで実施。

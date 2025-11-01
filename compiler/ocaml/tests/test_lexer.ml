@@ -52,18 +52,26 @@ let expect_token desc expected actual =
     Printf.printf "  Actual:   %s\n" (Token.to_string actual);
     exit 1)
 
-let expect_lexer_error desc input expected_prefix =
+let capture_lexer_error input =
   let lexbuf = Lexing.from_string input in
   try
     lex_all lexbuf;
-    Printf.printf "✗ %s: expected lexer error but none occurred\n" desc;
-    exit 1
-  with Lexer.Lexer_error (msg, span) ->
-    if expected_prefix = "" || String.starts_with ~prefix:expected_prefix msg
-    then Printf.printf "✓ %s (span %d-%d)\n" desc span.start span.end_
-    else (
-      Printf.printf "✗ %s: unexpected message '%s'\n" desc msg;
-      exit 1)
+    None
+  with Lexer.Lexer_error (msg, span) -> Some (msg, span)
+
+let expect_lexer_error desc input expected_prefix =
+  match capture_lexer_error input with
+  | None ->
+      Printf.printf "✗ %s: expected lexer error but none occurred\n" desc;
+      exit 1
+  | Some (msg, span) ->
+      if expected_prefix = "" || String.starts_with ~prefix:expected_prefix msg
+      then
+        Printf.printf "✓ %s (span %d-%d, message \"%s\")\n" desc span.start
+          span.end_ msg
+      else (
+        Printf.printf "✗ %s: unexpected message '%s'\n" desc msg;
+        exit 1)
 
 (* ========== キーワードテスト ========== *)
 
@@ -195,7 +203,30 @@ let test_lexer_errors () =
   let unicode_source = read_fixture "lexer_unicode_identifier.reml" in
   expect_lexer_error
     "lexer error: unicode identifier rejected"
-    unicode_source "Unexpected character:"
+    unicode_source "Unexpected character:";
+  (* ASCII 限定挙動の証拠として、現在の拒否メッセージと位置を固定化する。 *)
+  match capture_lexer_error unicode_source with
+  | None -> ()
+  | Some (msg, span) ->
+      let expected_char = Char.chr 0xE8 in
+      let expected_msg =
+        Printf.sprintf "Unexpected character: %c" expected_char
+      in
+      if String.compare msg expected_msg <> 0 then (
+        Printf.printf
+          "✗ lexer error: unicode identifier rejected message mismatch\n";
+        Printf.printf "  Expected exact message: \"%s\"\n" expected_msg;
+        Printf.printf "  Actual message:   \"%s\"\n" msg;
+        exit 1);
+      if span.start <> 4 || span.end_ <> 5 then (
+        Printf.printf
+          "✗ lexer error: unicode identifier rejected span mismatch\n";
+        Printf.printf "  Expected span start/end: 4-5\n";
+        Printf.printf "  Actual span start/end: %d-%d\n" span.start span.end_;
+        exit 1);
+      Printf.printf
+        "  ↳ recorded ASCII-only rejection: message \"%s\" at span %d-%d\n"
+        msg span.start span.end_
 
 (* ========== メイン ========== *)
 

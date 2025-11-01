@@ -30,6 +30,17 @@
 - **調査**: `docs/spec/1-4-test-unicode-model.md` の参照条件と `core_parse` 経路の挙動を確認し、Normalization/Bidi 要件が Phase 2-5 で未検証である点を整理する。  
 - **成果物**: 差分記録、レビューエントリ、`2-5-spec-drift-remediation.md` の表更新。
 
+##### Step1 実施記録（2025-11-02）
+1. 仕様差分の棚卸  
+   - Chapter 1 は XID ベースの識別子を前提としながら脚注 `[^lexer-ascii-phase25]` が §A.3 のみで Chapter 1.5 には未適用であることを確認（`docs/spec/1-1-syntax.md:27-43`、`docs/spec/1-5-formal-grammar-bnf.md:279-295`）。Step2 で BNF 側にも脚注を波及させる必要がある。  
+2. 実装現状の記録  
+   - Lexer が ASCII のみを `xid_start/xid_continue` で受理し、想定外文字を単一バイトとして `Lexer_error` に落とす挙動を整理（`compiler/ocaml/src/lexer.mll:77-84`、`compiler/ocaml/src/lexer.mll:231-234`）。`Core_parse.Lex` は Trivia プロファイル同期のみで Unicode プロファイルを迂回している点も確認（`compiler/ocaml/src/core_parse_lex.ml:1-160`）。  
+3. 再現テストとログ整備  
+   - `compiler/ocaml/tests/test_lexer.ml:55-229` に Unicode 変数名を含む入力で `Unexpected character: <0xE8>` が発生すること、Span が `4-5` で固定されることをゴールデン化。  
+   - `docs/plans/bootstrap-roadmap/2-5-review-log.md` に SYNTAX-001 Step1 エントリを追加し、差分・未検証事項・フォローアップを記録。  
+4. フォローアップ  
+   - `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の差分表へ現状を反映し、`0-3-audit-and-metrics.md` の `lexer.identifier_profile_unicode` 指標更新と `0-4-risk-handling.md` への登録を Step4 で実施する。  
+
 #### Step 2: 仕様脚注・索引・用語集の整備（週31-32・Docsチーム）
 - **目的**: 仕様読者が ASCII 制限と今後の計画を把握できる状態にする。  
 - **作業**: `docs/spec/1-5-formal-grammar-bnf.md` に Phase 2-5 時点の脚注を追加し、`docs/spec/0-2-glossary.md` へ「Unicode identifier profile (暫定)」の定義を追記。`docs/spec/README.md`・`README.md` の索引更新、`docs/plans/repository-restructure-plan.md` に沿ったリンク確認を実施する。  
