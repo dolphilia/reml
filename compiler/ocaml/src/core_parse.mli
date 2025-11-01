@@ -65,6 +65,9 @@ module State : sig
   val mark_committed : t -> unit
   val with_consumed : t -> bool -> unit
   val with_committed : t -> bool -> unit
+  val record_packrat_access : t -> hit:bool -> unit
+  val packrat_queries : t -> int
+  val packrat_hits : t -> int
 end
 
 type 'a parser = State.t -> 'a Reply.t * State.t

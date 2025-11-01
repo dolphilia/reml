@@ -384,6 +384,10 @@ def _normalize_domain(value: Optional[object]) -> Optional[str]:
     return None
 
 
+def _is_nonempty_string(value: Optional[object]) -> bool:
+    return isinstance(value, str) and value.strip() != ""
+
+
 def primary_code_of(diag: Dict[str, Any]) -> Optional[str]:
     code = diag.get("code")
     if isinstance(code, str) and code:
@@ -398,8 +402,12 @@ def primary_code_of(diag: Dict[str, Any]) -> Optional[str]:
 
 def is_parser_diagnostic(diag: Dict[str, Any]) -> bool:
     domain = diag.get("domain")
-    if isinstance(domain, str) and domain.strip().lower() == "parser":
-        return True
+    if isinstance(domain, str):
+        lowered = domain.strip().lower()
+        if lowered == "parser":
+            return True
+        if lowered != "":
+            return False
     code = primary_code_of(diag)
     if isinstance(code, str) and code.startswith("parser."):
         return True
@@ -1636,6 +1644,143 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
                 "sources": sorted(lex_sources),
                 "failures": lex_failures,
                 "samples": samples,
+            }
+        )
+
+    return metrics
+
+
+def _core_rule_metadata_missing(diag: Dict[str, Any]) -> List[str]:
+    missing: List[str] = []
+    extensions = _as_dict(diag.get("extensions"))
+    parse_ext = _as_dict(extensions.get("parse")) if extensions else None
+    if parse_ext is None:
+        missing.append("extensions.parse")
+    else:
+        parser_id = _as_dict(parse_ext.get("parser_id"))
+        if parser_id is None:
+            missing.append("extensions.parse.parser_id")
+        else:
+            for key in ("namespace", "name", "origin", "fingerprint"):
+                if not _is_nonempty_string(parser_id.get(key)):
+                    missing.append(f"extensions.parse.parser_id.{key}")
+            ordinal = parser_id.get("ordinal")
+            if not isinstance(ordinal, (int, float)):
+                missing.append("extensions.parse.parser_id.ordinal")
+
+    audit_metadata = _as_dict(diag.get("audit_metadata"))
+    if audit_metadata is None:
+        missing.append("audit_metadata")
+    else:
+        for key in ("namespace", "name", "origin", "fingerprint"):
+            value = audit_metadata.get(f"parser.core.rule.{key}")
+            if not _is_nonempty_string(value):
+                missing.append(f"audit_metadata.parser.core.rule.{key}")
+        ordinal_meta = audit_metadata.get("parser.core.rule.ordinal")
+        if not isinstance(ordinal_meta, (int, float)):
+            missing.append("audit_metadata.parser.core.rule.ordinal")
+
+    audit_block = _as_dict(diag.get("audit"))
+    audit_meta = _as_dict(audit_block.get("metadata")) if audit_block else None
+    if audit_meta is None:
+        missing.append("audit.metadata")
+    else:
+        for key in ("namespace", "name", "origin", "fingerprint"):
+            value = audit_meta.get(f"parser.core.rule.{key}")
+            if not _is_nonempty_string(value):
+                missing.append(f"audit.metadata.parser.core.rule.{key}")
+        ordinal_meta = audit_meta.get("parser.core.rule.ordinal")
+        if not isinstance(ordinal_meta, (int, float)):
+            missing.append("audit.metadata.parser.core.rule.ordinal")
+
+    return missing
+
+
+def collect_core_parser_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
+    total = 0
+    covered = 0
+    failures: List[Dict[str, Any]] = []
+    sources: Set[str] = set()
+
+    packrat_queries = 0
+    packrat_hits = 0
+    packrat_sources: Set[str] = set()
+    packrat_anomalies: List[Dict[str, Any]] = []
+
+    for path in paths:
+        data = load_json(path)
+        diagnostics = data.get("diagnostics")
+        if isinstance(diagnostics, list):
+            for index, diag in enumerate(diagnostics):
+                if not isinstance(diag, dict):
+                    continue
+                if not is_parser_diagnostic(diag):
+                    continue
+                sources.add(str(path))
+                total += 1
+                missing = _core_rule_metadata_missing(diag)
+                if missing:
+                    failures.append(
+                        {
+                            "file": str(path),
+                            "index": index,
+                            "missing": sorted(set(missing)),
+                            "code": primary_code_of(diag) or "unknown",
+                        }
+                    )
+                else:
+                    covered += 1
+
+        parse_result = _as_dict(data.get("parse_result"))
+        if parse_result is not None:
+            stats = _as_dict(parse_result.get("packrat_stats"))
+            if stats is not None:
+                queries = _safe_int(stats, "queries")
+                hits = _safe_int(stats, "hits")
+                if queries > 0 or hits > 0:
+                    packrat_sources.add(str(path))
+                packrat_queries += max(0, queries)
+                packrat_hits += max(0, hits)
+                if hits > queries:
+                    packrat_anomalies.append(
+                        {
+                            "file": str(path),
+                            "hits": hits,
+                            "queries": queries,
+                        }
+                    )
+
+    metrics: List[Dict[str, Any]] = []
+    if total > 0:
+        pass_fraction = covered / total
+        pass_rate = 1.0 if covered == total else 0.0
+        metrics.append(
+            {
+                "metric": "parser.core_comb_rule_coverage",
+                "total": total,
+                "covered": covered,
+                "missed": total - covered,
+                "pass_rate": pass_rate,
+                "pass_fraction": pass_fraction,
+                "status": "success" if pass_rate == 1.0 else "error",
+                "sources": sorted(sources),
+                "failures": failures,
+            }
+        )
+
+    if packrat_sources:
+        hit_ratio = (packrat_hits / packrat_queries) if packrat_queries > 0 else None
+        status = "success" if hit_ratio is not None else "warning"
+        metrics.append(
+            {
+                "metric": "parser.packrat_cache_hit_ratio",
+                "queries": packrat_queries,
+                "hits": packrat_hits,
+                "misses": max(0, packrat_queries - packrat_hits),
+                "hit_ratio": hit_ratio,
+                "status": status,
+                "sources": sorted(packrat_sources),
+                "anomalies": packrat_anomalies,
             }
         )
 
@@ -2902,7 +3047,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     parser_metrics: Optional[Dict[str, Any]] = None
     runconfig_metrics: List[Dict[str, Any]] = []
-    orphan_runconfig_metrics: List[Dict[str, Any]] = []
+    core_parser_metrics: List[Dict[str, Any]] = []
+    orphan_parser_related_metrics: List[Dict[str, Any]] = []
     iterator_metrics: Optional[Dict[str, Any]] = None
     domain_metrics: Optional[Dict[str, Any]] = None
     effect_consistency_metric: Optional[Dict[str, Any]] = None
@@ -2918,11 +3064,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     if "parser" in sections:
         parser_metrics = collect_parser_metrics(sources)
         runconfig_metrics = collect_runconfig_metrics(sources)
-        if parser_metrics and runconfig_metrics:
+        core_parser_metrics = collect_core_parser_metrics(sources)
+        if parser_metrics:
             related = parser_metrics.setdefault("related_metrics", [])
             related.extend(runconfig_metrics)
-        elif runconfig_metrics:
-            orphan_runconfig_metrics = runconfig_metrics.copy()
+            related.extend(core_parser_metrics)
+        else:
+            orphan_parser_related_metrics.extend(runconfig_metrics)
+            orphan_parser_related_metrics.extend(core_parser_metrics)
     if "iterator" in sections:
         iterator_metrics = collect_metrics(sources)
         domain_metrics = collect_domain_metrics(sources)
@@ -2964,8 +3113,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         metrics_list.append(diagnostic_presence_metric)
     if parser_metrics:
         metrics_list.append(parser_metrics)
-    elif orphan_runconfig_metrics:
-        metrics_list.extend(orphan_runconfig_metrics)
+    elif orphan_parser_related_metrics:
+        metrics_list.extend(orphan_parser_related_metrics)
     if capability_array_metric and iterator_metrics is None:
         metrics_list.append(capability_array_metric)
     if iterator_metrics:

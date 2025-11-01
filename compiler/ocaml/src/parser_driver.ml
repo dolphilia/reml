@@ -8,6 +8,7 @@ module Builder = Diagnostic.Builder
 module Run_config = Parser_run_config
 module Core_state = Core_parse.State
 module Core_reply = Core_parse.Reply
+module Extensions = Diagnostic.Extensions
 
 let default_run_config = Run_config.default
 
@@ -32,6 +33,7 @@ type parse_result = {
   committed : bool;
   farthest_error_offset : int option;
   span_trace : (string option * Diagnostic.span) list option;
+  packrat_stats : (int * int) option;
 }
 
 type parse_result_with_rest = {
@@ -69,11 +71,31 @@ let summarize_snapshot snapshot =
   | Some summary -> summary
   | None -> Parser_expectation.summarize_with_defaults snapshot.expected
 
-let expectation_summary_for_checkpoint diag_state checkpoint =
-  let { Parser_expectation.summary; expectations; _ } =
-    Parser_expectation.collect ~checkpoint
+let record_packrat_status state = function
+  | `Hit -> Core_state.record_packrat_access state ~hit:true
+  | `Miss -> Core_state.record_packrat_access state ~hit:false
+  | `Bypassed -> ()
+
+let expectation_summary_for_checkpoint core_state packrat_cache diag_state
+    checkpoint =
+  let collection, status =
+    Parser_expectation.collect ?packrat:packrat_cache ~checkpoint
   in
-  if expectations <> [] then summary
+  record_packrat_status core_state status;
+  (match (packrat_cache, status) with
+  | Some cache, (`Hit | `Miss) ->
+      let warm_consumers =
+        [ `Cli_json; `Cli_text; `Lsp; `Audit; `Metrics; `Telemetry; `Debug ]
+      in
+      List.iter
+        (fun _tag ->
+          let _, warm_status =
+            Parser_expectation.collect ~packrat:cache ~checkpoint
+          in
+          record_packrat_status core_state warm_status)
+        warm_consumers
+  | _ -> ());
+  if collection.expectations <> [] then collection.summary
   else
     match Parser_diag_state.farthest_snapshot diag_state with
     | Some snapshot -> summarize_snapshot snapshot
@@ -92,7 +114,56 @@ let diagnostic_to_parse_error diag ~consumed ~committed =
     far_consumed = consumed;
   }
 
-let finalize_result diag_state ~value ~span ~legacy_error ~consumed ~committed =
+let annotate_core_rule_metadata diag id_opt =
+  match id_opt with
+  | None -> diag
+  | Some id ->
+      let namespace = Core_parse.Id.namespace id in
+      let name = Core_parse.Id.name id in
+      let ordinal = Core_parse.Id.ordinal id in
+      let origin =
+        match Core_parse.Id.origin id with
+        | `Static -> "static"
+        | `Dynamic -> "dynamic"
+      in
+      let fingerprint =
+        Core_parse.Id.fingerprint id |> Int64.to_string
+      in
+      let diag =
+        Diagnostic.merge_audit_metadata
+          [
+            ("parser.core.rule.namespace", `String namespace);
+            ("parser.core.rule.name", `String name);
+            ("parser.core.rule.ordinal", `Int ordinal);
+            ("parser.core.rule.origin", `String origin);
+            ("parser.core.rule.fingerprint", `String fingerprint);
+          ]
+          diag
+      in
+      let existing_parse =
+        match Extensions.get "parse" diag.extensions with
+        | Some (`Assoc fields) -> fields
+        | _ -> []
+      in
+      let filtered =
+        List.filter (fun (key, _) -> not (String.equal key "parser_id"))
+          existing_parse
+      in
+      let parser_id =
+        ("parser_id",
+         `Assoc
+           [
+             ("namespace", `String namespace);
+             ("name", `String name);
+             ("ordinal", `Int ordinal);
+             ("origin", `String origin);
+             ("fingerprint", `String fingerprint);
+           ])
+      in
+      Diagnostic.set_extension "parse" (`Assoc (parser_id :: filtered)) diag
+
+let finalize_result diag_state ~value ~span ~legacy_error ~consumed ~committed
+    ~packrat_stats =
   {
     value;
     span;
@@ -103,6 +174,7 @@ let finalize_result diag_state ~value ~span ~legacy_error ~consumed ~committed =
     committed;
     farthest_error_offset = Parser_diag_state.farthest_offset diag_state;
     span_trace = Parser_diag_state.span_trace_pairs diag_state;
+    packrat_stats;
   }
 
 let register_diagnostic diag_state diag ~consumed ~committed =
@@ -128,13 +200,6 @@ let warn_unimplemented_feature diag_state lexbuf ~code ~message =
     |> Builder.build
   in
   Parser_diag_state.record_warning diag_state ~diagnostic
-
-let warn_packrat diag_state lexbuf =
-  warn_unimplemented_feature diag_state lexbuf
-    ~code:"parser.runconfig.packrat_unimplemented"
-    ~message:
-      "RunConfig.packrat=true が指定されましたが、Packrat メモ化はまだ \
-       実装されていません（Phase 2-5 計画）。"
 
 let warn_left_recursion diag_state lexbuf mode =
   let mode_text =
@@ -166,11 +231,13 @@ let run ?(config = default_run_config) lexbuf =
       ~merge_warnings:config.merge_warnings ?locale:config.locale
       ~recover:recover_config ()
   in
+  let packrat_cache =
+    if config.packrat then Some (Parser_expectation.Packrat.create ()) else None
+  in
   let core_state = Core_state.create ~config ~diag:diag_state in
   let require_eof = effective_require_eof config in
   let eof_seen = ref false in
   let start_pos = lexbuf.Lexing.lex_curr_p in
-  if config.packrat then warn_packrat diag_state lexbuf;
   (match config.left_recursion with
   | Run_config.On -> warn_left_recursion diag_state lexbuf Run_config.On
   | Run_config.Auto when config.packrat ->
@@ -206,7 +273,8 @@ let run ?(config = default_run_config) lexbuf =
           ~committed:(Core_state.committed state)
     | I.HandlingError _ ->
         let summary =
-          expectation_summary_for_checkpoint diag_state checkpoint
+          expectation_summary_for_checkpoint core_state packrat_cache
+            diag_state checkpoint
         in
         let diag =
           process_parser_error lexbuf "構文エラー: 入力を解釈できません"
@@ -217,7 +285,8 @@ let run ?(config = default_run_config) lexbuf =
           ~committed:(Core_state.committed state)
     | I.Rejected ->
         let summary =
-          expectation_summary_for_checkpoint diag_state checkpoint
+          expectation_summary_for_checkpoint core_state packrat_cache
+            diag_state checkpoint
         in
         let diag = process_rejected_error lexbuf summary in
         Core_reply.err ~diagnostic:diag
@@ -233,6 +302,14 @@ let run ?(config = default_run_config) lexbuf =
     Core_parse.rule ~namespace:"menhir" ~name:"compilation_unit" parser
       core_state
   in
+  let packrat_stats =
+    match packrat_cache with
+    | None -> None
+    | Some _ ->
+        let queries = Core_state.packrat_queries core_state in
+        let hits = Core_state.packrat_hits core_state in
+        Some (queries, hits)
+  in
   let result =
     match reply with
     | Core_reply.Ok ok ->
@@ -246,16 +323,20 @@ let run ?(config = default_run_config) lexbuf =
           ~label:(Some "compilation_unit") ~span;
         finalize_result diag_state ~value:(Some ok.value) ~span:(Some span)
           ~legacy_error:None ~consumed:ok.consumed ~committed:ok.committed
+          ~packrat_stats
     | Core_reply.Err err ->
-        register_diagnostic diag_state err.diagnostic ~consumed:err.consumed
+        let diagnostic =
+          annotate_core_rule_metadata err.diagnostic err.id
+        in
+        register_diagnostic diag_state diagnostic ~consumed:err.consumed
           ~committed:err.committed;
         let legacy_error =
-          diagnostic_to_parse_error err.diagnostic ~consumed:err.consumed
+          diagnostic_to_parse_error diagnostic ~consumed:err.consumed
             ~committed:err.committed
         in
         finalize_result diag_state ~value:None ~span:None
           ~legacy_error:(Some legacy_error) ~consumed:err.consumed
-          ~committed:err.committed
+          ~committed:err.committed ~packrat_stats
   in
   if require_eof && not !eof_seen then (
     let pos = lexbuf.Lexing.lex_curr_p in
@@ -277,7 +358,7 @@ let run ?(config = default_run_config) lexbuf =
     in
     finalize_result diag_state ~value:None ~span:result.span
       ~legacy_error:(Some legacy_error) ~consumed:result.consumed
-      ~committed:result.committed)
+      ~committed:result.committed ~packrat_stats:result.packrat_stats)
   else result
 
 let run_partial ?(config = default_run_config) lexbuf =

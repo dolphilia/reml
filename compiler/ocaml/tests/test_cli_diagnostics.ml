@@ -181,12 +181,31 @@ let test_parser_expectation_snapshot () =
             [
               ("input_name", `String "parser-example.reml");
               ("stage_trace", `List []);
+              ( "parser_id",
+                `Assoc
+                  [
+                    ("namespace", `String "menhir");
+                    ("name", `String "compilation_unit");
+                    ("ordinal", `Int 0);
+                    ("origin", `String "static");
+                    ("fingerprint", `String "859967339");
+                  ] );
             ])
     |> Diagnostic.Builder.add_audit_metadata "parse.input_name"
          (`String "parser-example.reml")
     |> Diagnostic.Builder.add_audit_metadata
          "parser.expected.alternatives"
          (`Int (List.length summary.Diagnostic.alternatives))
+    |> Diagnostic.Builder.add_audit_metadata "parser.core.rule.namespace"
+         (`String "menhir")
+    |> Diagnostic.Builder.add_audit_metadata "parser.core.rule.name"
+         (`String "compilation_unit")
+    |> Diagnostic.Builder.add_audit_metadata "parser.core.rule.ordinal"
+         (`Int 0)
+    |> Diagnostic.Builder.add_audit_metadata "parser.core.rule.origin"
+         (`String "static")
+    |> Diagnostic.Builder.add_audit_metadata "parser.core.rule.fingerprint"
+         (`String "859967339")
   in
   let diag = Diagnostic.Builder.build builder in
   let json_str =

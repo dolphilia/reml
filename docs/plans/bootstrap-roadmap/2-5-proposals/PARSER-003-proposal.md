@@ -108,6 +108,12 @@ end
 - `RunConfig.Effects` モジュールの Capability 情報（compiler/ocaml/src/parser_run_config.ml:320）と `Diagnostic` 監査拡張を突合し、Packrat ヒット時でも `effect.capabilities[*]` と Stage 情報を保持する方針をノートへ追加。`effect-stage` メタデータを Parser 側で欠落させないための TODO を `docs/plans/bootstrap-roadmap/2-5-review-log.md` の Step4 エントリへ連携した。  
 - CI 計測では Packrat/回復系の指標が未整備であるため、`tooling/ci/collect-iterator-audit-metrics.py` に `parser.packrat_cache_hit_ratio` / `parser.recover_sync_success_rate` を追加するタスクと、`0-3-audit-and-metrics.md` への新規 KPI 追記をフォローアップとして設定。実装完了までは PoC 状態であることを Step5 のゴール条件に明記した。
 
+### Step5 実施記録（2025-12-18）
+- `compiler/ocaml/src/parser_driver.ml` に `annotate_core_rule_metadata` を実装し、`Core_parse.rule` が付与する `ParserId` を診断拡張（`extensions.parse.parser_id`）と監査メタデータ（`parser.core.rule.*`）へ反映。`Core_parse.State` へ `record_packrat_access` を導入し、Packrat キャッシュの問い合わせ／ヒットを集計して `ParseResult.packrat_stats` に反映できるようにした。  
+- `compiler/ocaml/tests/packrat_tests.ml` を拡張し、Packrat 無効時に統計が出力されないこと・有効時にヒット率が閾値 0.85 を上回ることを検証。`compiler/ocaml/tests/golden/diagnostics/parser/expected-summary.json.golden`、`compiler/ocaml/tests/test_cli_diagnostics.ml`、`scripts/validate-diagnostic-json.sh` も `parser.core.rule.*` メタデータとバリデーションの追加に合わせて更新した。  
+- `tooling/ci/collect-iterator-audit-metrics.py` に `collect_core_parser_metrics` を実装し、`parser.core_comb_rule_coverage` と `parser.packrat_cache_hit_ratio` を CI で集計。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ指標を登録し、現在は `queries=8 / hits=7 (0.875)` を確認して警告状態を解消した。  
+- 今後の課題として、Packrat キー（現状は `state_number + offset`）を静的 ID レジストリと統合し、左再帰シナリオでのキャッシュ精度を評価する。
+
 5. **テスト・メトリクス・ゴールデン整備（Week33 Day3-5）**  
     - **実装**: `compiler/ocaml/tests/packrat_tests.ml`（新設）と既存の CLI/LSP ゴールデンを更新し、コンビネーター経由のパース結果・診断が Menhir 直呼びと一致することを検証する。`scripts/validate-diagnostic-json.sh` に `Core_parse` 由来の `rule`/`ParserId` 付与チェックを追加。  
     - **計測**: `0-3-audit-and-metrics.md` に `parser.core_comb_rule_coverage` や `parser.packrat_cache_hit_ratio` などの指標を登録し、CI で追跡する。必要に応じて `tooling/ci/collect-iterator-audit-metrics.py --require-success` の閾値を更新する。  

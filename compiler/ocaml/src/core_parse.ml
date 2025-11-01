@@ -97,10 +97,19 @@ module State = struct
     diag : Parser_diag_state.t;
     mutable consumed : bool;
     mutable committed : bool;
+    mutable packrat_queries : int;
+    mutable packrat_hits : int;
   }
 
   let create ~config ~diag =
-    { config; diag; consumed = false; committed = false }
+    {
+      config;
+      diag;
+      consumed = false;
+      committed = false;
+      packrat_queries = 0;
+      packrat_hits = 0;
+    }
 
   let config t = t.config
   let diag t = t.diag
@@ -112,6 +121,13 @@ module State = struct
 
   let with_consumed t value = t.consumed <- value
   let with_committed t value = t.committed <- value
+
+  let record_packrat_access t ~hit =
+    t.packrat_queries <- t.packrat_queries + 1;
+    if hit then t.packrat_hits <- t.packrat_hits + 1
+
+  let packrat_queries t = t.packrat_queries
+  let packrat_hits t = t.packrat_hits
 end
 
 type 'a parser = State.t -> 'a Reply.t * State.t

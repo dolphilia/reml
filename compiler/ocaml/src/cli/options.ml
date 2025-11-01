@@ -153,7 +153,7 @@ type options = {
   runtime_capabilities_path : string option;  (** Capability Registry JSON のパス *)
   (* Parser RunConfig フラグ *)
   parser_require_eof : bool;  (** RunConfig.require_eof を CLI から制御 *)
-  parser_packrat : bool;  (** RunConfig.packrat フラグ（Packrat シム導入待ち） *)
+  parser_packrat : bool;  (** RunConfig.packrat フラグ（Packrat メモ化を有効化、実験的） *)
   parser_left_recursion : Run_config.left_recursion;
       (** RunConfig.left_recursion モード *)
   parser_merge_warnings : bool;

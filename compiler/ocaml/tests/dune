@@ -8,6 +8,7 @@
  test_parser_driver
  core_parse_lex_tests
  run_config_tests
+ packrat_tests
  test_module_env
  test_parse_result_state
  test_golden

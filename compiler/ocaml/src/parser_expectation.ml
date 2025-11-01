@@ -345,6 +345,33 @@ let all_samples =
   keyword_samples @ operator_samples @ literal_samples @ identifier_samples
   @ sentinel_samples
 
+module Packrat = struct
+  module Key = struct
+    type t = { state : int; offset : int }
+
+    let equal a b = a.state = b.state && a.offset = b.offset
+    let hash { state; offset } = Hashtbl.hash (state, offset)
+  end
+
+  module Table = Hashtbl.Make (Key)
+
+  type t = collection Table.t
+
+  let create ?(initial_capacity = 64) () = Table.create initial_capacity
+
+  let key_of_env env : Key.t option =
+    match I.current_state_number env with
+    | exception _ -> None
+    | state -> (
+        try
+          let start_pos, _ = I.positions env in
+          Some { Key.state; offset = start_pos.Lexing.pos_cnum }
+        with _ -> None)
+
+  let find cache key = Table.find_opt cache key
+  let store cache key value = Table.replace cache key value
+end
+
 let env_of_checkpoint = function
   | I.InputNeeded env -> Some env
   | I.HandlingError env -> Some env
@@ -352,10 +379,13 @@ let env_of_checkpoint = function
   | I.AboutToReduce (env, _) -> Some env
   | _ -> None
 
-let collect ~checkpoint =
+type packrat_status = [ `Hit | `Miss | `Bypassed ]
+
+let collect ?packrat ~checkpoint =
   match env_of_checkpoint checkpoint with
   | None ->
-      { sample_tokens = []; expectations = []; summary = empty_summary }
+      ( { sample_tokens = []; expectations = []; summary = empty_summary },
+        `Bypassed )
   | Some env ->
       let basis =
         match checkpoint with
@@ -363,18 +393,32 @@ let collect ~checkpoint =
         | _ -> I.input_needed env
       in
       let start_pos, _ = I.positions env in
-      let accepted =
-        List.filter
-          (fun token ->
-            try I.acceptable basis token start_pos with _ -> false)
-          all_samples
+      let compute () =
+        let accepted =
+          List.filter
+            (fun token ->
+              try I.acceptable basis token start_pos with _ -> false)
+            all_samples
+        in
+        let summary =
+          summarize_with_defaults
+            (List.map expectation_of_token accepted)
+        in
+        {
+          sample_tokens = accepted;
+          expectations = summary.alternatives;
+          summary;
+        }
       in
-      let summary =
-        summarize_with_defaults
-          (List.map expectation_of_token accepted)
-      in
-      {
-        sample_tokens = accepted;
-        expectations = summary.alternatives;
-        summary;
-      }
+      (match packrat with
+      | None -> (compute (), `Bypassed)
+      | Some cache -> (
+          match Packrat.key_of_env env with
+          | None -> (compute (), `Bypassed)
+          | Some key -> (
+              match Packrat.find cache key with
+              | Some cached -> (cached, `Hit)
+              | None ->
+                  let value = compute () in
+                  Packrat.store cache key value;
+                  (value, `Miss))))

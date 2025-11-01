@@ -110,7 +110,7 @@ if [[ "${#DIAG_FILES[@]}" -gt 0 ]]; then
 import json
 import pathlib
 import sys
-from typing import List
+from typing import List, Optional, Sequence
 
 files = sys.argv[1:]
 error = False
@@ -248,8 +248,86 @@ def validate_value_restriction_fields(diag: dict) -> List[str]:
         env_status = metadata.get("value_restriction.status")
         if not isinstance(env_mode, str) or not env_mode.strip():
             errors.append("audit.metadata.value_restriction.mode")
-        if not isinstance(env_status, str) or not env_status.strip():
-            errors.append("audit.metadata.value_restriction.status")
+    if not isinstance(env_status, str) or not env_status.strip():
+        errors.append("audit.metadata.value_restriction.status")
+    return errors
+
+
+def _is_nonempty_string(value: object) -> bool:
+    return isinstance(value, str) and value.strip() != ""
+
+
+def _ensure_metadata_strings(container: Optional[dict], prefix: str, keys: Sequence[str]) -> List[str]:
+    if not isinstance(container, dict):
+        return [f"{prefix} (not object)"]
+    missing: List[str] = []
+    for key in keys:
+        value = container.get(key)
+        if not _is_nonempty_string(value):
+            missing.append(f"{prefix}.{key}")
+    return missing
+
+
+def validate_core_parser_fields(diag: dict) -> List[str]:
+    if not is_parser_diagnostic(diag):
+        return []
+
+    errors: List[str] = []
+    extensions = diag.get("extensions")
+    if not isinstance(extensions, dict):
+        errors.append("extensions (not object)")
+        return errors
+
+    parse_ext = extensions.get("parse")
+    if not isinstance(parse_ext, dict):
+        errors.append("extensions.parse (not object)")
+    else:
+        parser_id = parse_ext.get("parser_id")
+        if not isinstance(parser_id, dict):
+            errors.append("extensions.parse.parser_id (not object)")
+        else:
+            for key in ("namespace", "name", "origin", "fingerprint"):
+                value = parser_id.get(key)
+                if not _is_nonempty_string(value):
+                    errors.append(f"extensions.parse.parser_id.{key}")
+            ordinal = parser_id.get("ordinal")
+            if not isinstance(ordinal, int):
+                errors.append("extensions.parse.parser_id.ordinal")
+
+    audit_metadata = diag.get("audit_metadata")
+    if not isinstance(audit_metadata, dict):
+        errors.append("audit_metadata (not object)")
+    else:
+        errors.extend(
+            _ensure_metadata_strings(
+                audit_metadata,
+                "audit_metadata.parser.core.rule",
+                ("namespace", "name", "origin", "fingerprint"),
+            )
+        )
+        ordinal_meta = audit_metadata.get("parser.core.rule.ordinal")
+        if not isinstance(ordinal_meta, int):
+            errors.append("audit_metadata.parser.core.rule.ordinal")
+
+    audit_block = diag.get("audit")
+    if not isinstance(audit_block, dict):
+        errors.append("audit (not object)")
+    else:
+        metadata = audit_block.get("metadata")
+        if not isinstance(metadata, dict):
+            errors.append("audit.metadata (not object)")
+        else:
+            errors.extend(
+                _ensure_metadata_strings(
+                    metadata,
+                    "audit.metadata.parser.core.rule",
+                    ("namespace", "name", "origin", "fingerprint"),
+                )
+            )
+            ordinal_meta = metadata.get("parser.core.rule.ordinal")
+            if not isinstance(ordinal_meta, int):
+                errors.append("audit.metadata.parser.core.rule.ordinal")
+
     return errors
 
 for path_str in files:
@@ -297,6 +375,16 @@ for path_str in files:
                                 f"{path}: diagnostics[{diag_index}].expected.alternatives",
                                 file=sys.stderr,
                             )
+                            error = True
+                            continue
+                        core_missing = validate_core_parser_fields(diag)
+                        if core_missing:
+                            for field in core_missing:
+                                print(
+                                    "[validate-diagnostic-json] parser core metadata missing: "
+                                    f"{path}: diagnostics[{diag_index}].{field}",
+                                    file=sys.stderr,
+                                )
                             error = True
                     if is_value_restriction_diagnostic(diag):
                         vr_missing = validate_value_restriction_fields(diag)

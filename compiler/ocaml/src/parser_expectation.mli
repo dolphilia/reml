@@ -48,7 +48,18 @@ val empty_summary : Diagnostic.expectation_summary
 val humanize : Diagnostic.expectation list -> string option
 (** 期待集合を日本語ヒューマンリーダブル文字列に整形する *)
 
+module Packrat : sig
+  type t
+
+  val create : ?initial_capacity:int -> unit -> t
+  (** Packrat キャッシュを生成する。 *)
+end
+
+type packrat_status = [ `Hit | `Miss | `Bypassed ]
+(** キャッシュ参照結果の状態 *)
+
 val collect :
+  ?packrat:Packrat.t ->
   checkpoint:'a Parser.MenhirInterpreter.checkpoint ->
-  collection
+  collection * packrat_status
 (** Menhir のチェックポイントから受理可能トークンを走査し、期待集合を集計する *)
