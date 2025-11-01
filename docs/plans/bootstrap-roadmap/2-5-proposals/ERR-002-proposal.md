@@ -75,6 +75,12 @@
 - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に新指標を登録し、CI（Linux/macOS/Windows）で回復指標が 1.0 に到達するか確認する。
 - 調査: `compiler/ocaml/tests/test_cli_diagnostics.ml`, `tooling/ci/collect-iterator-audit-metrics.py` の既存集計処理、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` §6（診断整合ライン）。
 
+#### Step3 実施記録（Week 33 Day3 完了）
+- **CLI/LSP ゴールデン更新と新規テスト**: `compiler/ocaml/tests/parser_recover_tests.ml` を追加し、欠落セミコロンと未閉括弧の 2 ケースで `extensions["recover"].sync_tokens`・`hits`・`has_fixits` を検証するゴールデン（`compiler/ocaml/tests/golden/diagnostics/parser/recover-missing-semicolon.json.golden` / `compiler/ocaml/tests/golden/diagnostics/parser/recover-unclosed-block.json.golden`）を作成。`streaming_runner_tests.ml` / `test_cli_diagnostics.ml` 側でも同じ入力を共有して CLI/LSP 出力が FixIt と notes を表示することを確認した。  
+- **スクリプトとメトリクスの配線**: `scripts/validate-diagnostic-json.sh` に `recover` 拡張のスキーマ検査（`sync_tokens` / `hits` / `strategy` / `has_fixits` / `notes`）を追加し、`tooling/ci/collect-iterator-audit-metrics.py` へ `parser.recover_fixit_coverage` を組み込んで CI 成功条件へ設定。Linux/macOS/Windows の nightly ビルドで 1.0 を記録し、欠落時は `--require-success` で失敗することを確認。  
+- **監査サンプルとドキュメント整備**: `reports/diagnostic-format-regression.md` に回復付き診断の JSON 例を追記し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の指標表へ `parser.recover_fixit_coverage` を追加。さらに `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` §6.2 に CLI/LSP 経路の整合確認結果を反映し、Phase 2-7 の監査タスクに参照先を共有した。  
+- **フォローアップ整理**: `docs/plans/bootstrap-roadmap/2-5-review-log.md` へ Step3 の調査ログと CI チェックリストを追記し、Phase 2-7 へ引き継ぐ残課題として Packrat 経路の FixIt カバレッジと `recover` notes の翻訳整備を登録。`docs/plans/bootstrap-roadmap/2-5-proposals/README.md` でも Step3 完了を報告し、関連タスクの依存関係を更新した。
+
 ### Step4 ドキュメント更新とレビュー共有（Week 33 Day3-4）
 - `docs/spec/2-5-error.md` / `docs/spec/3-6-core-diagnostics-audit.md` に OCaml 実装の整備状況を脚注で追記し、完了後に脚注を更新して Phase 2-7 へ周知する。  
 - `docs/plans/bootstrap-roadmap/2-5-review-log.md` に実施記録を追加し、`docs/notes/core-parse-streaming-todo.md` へストリーミング経路の残課題と回復カバレッジを登録する。  

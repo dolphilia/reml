@@ -118,7 +118,7 @@
 - CLI フォーマット変更による開発者体験への影響: `reports/diagnostic-format-regression.md` で差分レビューを必須化し、顧客影響を評価。
 - LSP V2 導入に伴うクライアント側調整: `tooling/lsp/compat/diagnostic_v1.ml` を一定期間維持し、互換性レイヤ廃止時のスケジュールを Phase 3 で検討。
 - PARSER-003 Step5 連携: Packrat キャッシュ実装後に `effect.stage.*`／`effect.capabilities[*]` が欠落しないことを CI で確認するため、`tooling/ci/collect-iterator-audit-metrics.py --require-success` に Packrat 専用チェックを追加する（Stage 監査テストケースを新設）。  
-- Recover 拡張: `RunConfig.extensions["recover"].notes` を CLI/LSP 表示へ反映し、同期トークン適用時の補助メッセージを `Diagnostic.extensions["recover.notes"]` で提示する。Phase 2-7 の CLI テキスト刷新タスクと同時に実装する。
+- Recover 拡張: `RunConfig.extensions["recover"].notes` を CLI/LSP 表示へ反映し、同期トークン適用時の補助メッセージを `Diagnostic.extensions["recover.notes"]` で提示する。Phase 2-7 の CLI テキスト刷新タスクと同時に実装する。併せて Packrat 経路で `recover` スナップショットが保持されるよう `Parser_expectation.Packrat` を拡張し、`parser.recover_fixit_coverage` を 1.0 のまま維持する。notes テンプレートは locale 切替に対応した多言語化ガイドラインを策定し、`docs/spec/2-5-error.md` 脚注と連動させる。
 - PARSER-003 Step6 連携: `Core_parse` モジュールのテレメトリ統合と Menhir 完全置換の是非を評価し、`parser.core_comb_rule_coverage` / `parser.packrat_cache_hit_ratio` を利用した監査ダッシュボード拡張を決定する。仕様更新時は `docs/spec/2-2-core-combinator.md` 脚注と `docs/guides/plugin-authoring.md` / `core-parse-streaming.md` の共有手順を再検証する。
 
 ## 参考資料

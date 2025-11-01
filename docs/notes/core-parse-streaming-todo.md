@@ -13,3 +13,10 @@
 - **2025-11-26 追記**: Step1 で `Pack` レコード（`space`/`lexeme`/`symbol`/`space_id`）と `Bridge.effective_profile`/`attach_space` を設計済み。`space_id` は `Parser_diag_state` の ID 発行器を流用し `RunConfig.extensions["lex"].space_id` へ round-trip させる方針。Streaming 実装では Checkpoint 作成前に `Pack.space_id` と `RunConfig` の値が一致するか検証する。
 
 [^lexer-step0]: `docs/plans/bootstrap-roadmap/2-5-proposals/LEXER-002-proposal.md` Step0 調査サマリ、および `docs/plans/bootstrap-roadmap/2-5-review-log.md` 「LEXER-002 Day1」参照。
+
+## 2025-12-12 Recover FixIt フォローアップ
+- **背景**: ERR-002 Step3 で CLI/LSP/ストリーミング各経路の `recover` 拡張と FixIt を整備し、`parser.recover_fixit_coverage = 1.0` を達成。Packrat キャッシュ経路と notes 翻訳ルールは未確定のため、Phase 2-7 へ継続課題として登録する。関連ログは [`docs/plans/bootstrap-roadmap/2-5-review-log.md`](../plans/bootstrap-roadmap/2-5-review-log.md#err-002-step3-clilsp-出力とメトリクス整備2025-12-12) を参照。
+- **TODO**:
+  1. `Parser_expectation.Packrat` に `recover` スナップショットを保持するハンドルを追加し、Packrat 経路で FixIt を生成しても `parser.recover_fixit_coverage` が低下しないようにする（ERR-002 Step4 で検証予定）。  
+  2. `Diagnostic.Builder.add_note` で利用する `recover` notes の文章をローカライズ可能なテンプレートに抽象化し、CLI/LSP で locale に応じたメッセージ切替を提供する。翻訳ルールは `docs/spec/2-5-error.md` の脚注と連動させる。  
+  3. ストリーミング Pending → resume の往復で FixIt が重複適用されないかを監査ログ (`StreamOutcome.Pending.extensions.recover`) で確認するチェックリストを作成し、Phase 2-7 の CI に組み込む。
