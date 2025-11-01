@@ -91,6 +91,29 @@ let decode_stream_namespace json =
   let module Namespace = Extensions.Namespace in
   let namespace = Namespace.empty in
   let namespace =
+    match bool_field ~default:false "enabled" json with
+    | true -> Namespace.add "enabled" (Extensions.Bool true) namespace
+    | false -> namespace
+  in
+  let namespace =
+    match int_field "chunkSize" json with
+    | Some value when value >= 0 ->
+        Namespace.add "chunk_size" (Extensions.Int value) namespace
+    | _ -> namespace
+  in
+  let namespace =
+    match int_field "demandMinBytes" json with
+    | Some value when value >= 0 ->
+        Namespace.add "demand_min_bytes" (Extensions.Int value) namespace
+    | _ -> namespace
+  in
+  let namespace =
+    match int_field "demandPreferredBytes" json with
+    | Some value when value >= 0 ->
+        Namespace.add "demand_preferred_bytes" (Extensions.Int value) namespace
+    | _ -> namespace
+  in
+  let namespace =
     match string_field "checkpoint" json with
     | Some value -> Namespace.add "checkpoint" (Extensions.String value) namespace
     | None -> namespace

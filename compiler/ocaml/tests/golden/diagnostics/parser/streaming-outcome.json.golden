@@ -1,0 +1,39 @@
+{
+  "run_config": {
+    "switches": {
+      "require_eof": false,
+      "packrat": false,
+      "left_recursion": "auto",
+      "trace": false,
+      "merge_warnings": true,
+      "legacy_result": false
+    },
+    "extensions": {
+      "stream": {
+        "enabled": true,
+        "checkpoint": "unit-test",
+        "resume_hint": "resume-token",
+        "demand_min_bytes": 4,
+        "demand_preferred_bytes": 8,
+        "chunk_size": 1024
+      }
+    }
+  },
+  "parse_result": {
+    "recovered": false,
+    "consumed": true,
+    "committed": false,
+    "packrat_stats": {
+      "queries": 0,
+      "hits": 0
+    }
+  },
+  "stream_meta": {
+    "bytes_consumed": 42,
+    "chunks_consumed": 2,
+    "await_count": 1,
+    "resume_count": 1,
+    "last_reason": "feeder.await"
+  },
+  "diagnostics": []
+}

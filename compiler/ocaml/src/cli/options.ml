@@ -82,6 +82,24 @@ let print_full_help () =
       "  --metrics-format <json|csv>";
       "                       メトリクス出力形式（既定: json）";
       "";
+      "Parser 実行設定 (PoC):";
+      "  --require-eof       RunConfig.require_eof=true を指定";
+      "  --packrat           RunConfig.packrat を有効化（実験的）";
+      "  --left-recursion <off|on|auto>";
+      "                       左再帰処理モード（既定: auto）";
+      "  --no-merge-warnings 診断警告を統合せず個別に出力";
+      "  --streaming         ストリーミングランナー PoC を有効化";
+      "  --stream-chunk-size <bytes>";
+      "                       ファイルをチャンク化する際のバイト数";
+      "  --stream-checkpoint <token>";
+      "                       extensions[\"stream\"].checkpoint を設定";
+      "  --stream-resume-hint <hint>";
+      "                       extensions[\"stream\"].resume_hint を設定";
+      "  --stream-demand-min <bytes>";
+      "                       DemandHint.min_bytes の既定値を設定";
+      "  --stream-demand-preferred <bytes>";
+      "                       DemandHint.preferred_bytes の既定値を設定";
+      "";
       "コンパイル設定:";
       "  --target <triple>   ターゲットトリプル（既定: x86_64-linux）";
       "  --link-runtime      ランタイムライブラリとリンクして実行可能ファイルを生成";
@@ -158,6 +176,13 @@ type options = {
       (** RunConfig.left_recursion モード *)
   parser_merge_warnings : bool;
       (** RunConfig.merge_warnings（診断集約の有無） *)
+  parser_streaming : bool;  (** ストリーミングランナー PoC を有効化 *)
+  stream_checkpoint : string option;  (** ストリーム継続チェックポイント名 *)
+  stream_resume_hint : string option;  (** 継続再開ヒントの識別子 *)
+  stream_demand_min_bytes : int option;  (** DemandHint.min_bytes 既定値 *)
+  stream_demand_preferred_bytes : int option;
+      (** DemandHint.preferred_bytes 既定値 *)
+  stream_chunk_size : int option;  (** CLI が読み込むチャンクサイズ（バイト単位） *)
 }
 (** コマンドラインオプション設定 *)
 
@@ -196,6 +221,12 @@ let default_options =
     parser_packrat = Run_config.default.packrat;
     parser_left_recursion = Run_config.default.left_recursion;
     parser_merge_warnings = Run_config.default.merge_warnings;
+    parser_streaming = false;
+    stream_checkpoint = None;
+    stream_resume_hint = None;
+    stream_demand_min_bytes = None;
+    stream_demand_preferred_bytes = None;
+    stream_chunk_size = None;
   }
 
 (** 環境変数から color_mode を判定 *)
@@ -264,8 +295,35 @@ let parse_args argv =
   let parser_packrat = ref Run_config.default.packrat in
   let parser_left_recursion = ref Run_config.default.left_recursion in
   let parser_merge_warnings = ref Run_config.default.merge_warnings in
+  let parser_streaming = ref false in
+  let stream_checkpoint = ref None in
+  let stream_resume_hint = ref None in
+  let stream_demand_min_bytes = ref None in
+  let stream_demand_preferred_bytes = ref None in
+  let stream_chunk_size = ref None in
 
   let usage_msg = "remlc-ocaml [options] <file>" in
+
+  let store_trimmed target value =
+    let trimmed = String.trim value in
+    if String.length trimmed = 0 then target := None
+    else target := Some trimmed
+  in
+  let set_int_option target option_name text =
+    let parsed =
+      try
+        let value = int_of_string (String.trim text) in
+        if value < 0 then None else Some value
+      with Failure _ -> None
+    in
+    match parsed with
+    | Some value -> target := Some value
+    | None ->
+        prerr_endline
+          (Printf.sprintf
+             "Warning: %s には 0 以上の整数を指定してください（入力値: %s）。"
+             option_name text)
+  in
 
   let speclist =
     [
@@ -330,6 +388,31 @@ let parse_args argv =
       ( "--no-merge-warnings",
         Arg.Unit (fun () -> parser_merge_warnings := false),
         "Emit all parser warnings without merging (RunConfig.merge_warnings=false)" );
+      ( "--streaming",
+        Arg.Unit (fun () -> parser_streaming := true),
+        "Enable streaming runner PoC (RunConfig.extensions[\"stream\"].enabled)" );
+      ( "--stream-checkpoint",
+        Arg.String (fun value -> store_trimmed stream_checkpoint value),
+        "<token> Set stream checkpoint token" );
+      ( "--stream-resume-hint",
+        Arg.String (fun value -> store_trimmed stream_resume_hint value),
+        "<hint> Set stream resume_hint token" );
+      ( "--stream-demand-min",
+        Arg.String
+          (fun value ->
+            set_int_option stream_demand_min_bytes "--stream-demand-min" value),
+        "<bytes> Set DemandHint.min_bytes default (>=0)" );
+      ( "--stream-demand-preferred",
+        Arg.String
+          (fun value ->
+            set_int_option stream_demand_preferred_bytes
+              "--stream-demand-preferred" value),
+        "<bytes> Set DemandHint.preferred_bytes default (>=0)" );
+      ( "--stream-chunk-size",
+        Arg.String
+          (fun value ->
+            set_int_option stream_chunk_size "--stream-chunk-size" value),
+        "<bytes> Configure CLI chunk size for streaming (>=0)" );
       ( "--typeclass-mode",
         Arg.String
           (fun value ->
@@ -564,6 +647,12 @@ let parse_args argv =
           parser_packrat = !parser_packrat;
           parser_left_recursion = !parser_left_recursion;
           parser_merge_warnings = !parser_merge_warnings;
+          parser_streaming = !parser_streaming;
+          stream_checkpoint = !stream_checkpoint;
+          stream_resume_hint = !stream_resume_hint;
+          stream_demand_min_bytes = !stream_demand_min_bytes;
+          stream_demand_preferred_bytes = !stream_demand_preferred_bytes;
+          stream_chunk_size = !stream_chunk_size;
         }
   with
   | Arg.Help _ ->
@@ -610,4 +699,11 @@ let to_run_config (opts : options) =
   |> Run_config.with_extension "lex" (fun _ -> lex_namespace)
   |> Run_config.Effects.set_stage_override opts.effect_stage_override
   |> Run_config.Effects.set_registry_path opts.runtime_capabilities_path
+  |> Run_config.Stream.set_enabled opts.parser_streaming
+  |> Run_config.Stream.set_checkpoint opts.stream_checkpoint
+  |> Run_config.Stream.set_resume_hint opts.stream_resume_hint
+  |> Run_config.Stream.set_demand_min_bytes opts.stream_demand_min_bytes
+  |> Run_config.Stream.set_demand_preferred_bytes
+       opts.stream_demand_preferred_bytes
+  |> Run_config.Stream.set_chunk_size opts.stream_chunk_size
   (* TODO(LEXER-002 Step5): ParserId を取得したら space_id を設定し、CLI で警告を出す。 *)

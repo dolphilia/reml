@@ -437,23 +437,48 @@ for path_str in files:
                     audit_block = diag.get("audit")
                     if isinstance(audit_block, dict):
                         metadata = audit_block.get("metadata")
-                        if isinstance(metadata, dict):
-                            required = metadata.get("effect.required_capabilities")
-                            actual = metadata.get("effect.actual_capabilities")
-                            if not isinstance(required, list):
-                                print(
-                                    "[validate-diagnostic-json] audit.metadata effect.required_capabilities missing or invalid: "
-                                    f"{path}: diagnostics[{diag_index}].audit.metadata",
-                                    file=sys.stderr,
-                                )
-                                error = True
-                            if not isinstance(actual, list):
-                                print(
-                                    "[validate-diagnostic-json] audit.metadata effect.actual_capabilities missing or invalid: "
-                                    f"{path}: diagnostics[{diag_index}].audit.metadata",
-                                    file=sys.stderr,
-                                )
-                                error = True
+                    if isinstance(metadata, dict):
+                        required = metadata.get("effect.required_capabilities")
+                        actual = metadata.get("effect.actual_capabilities")
+                        if not isinstance(required, list):
+                            print(
+                                "[validate-diagnostic-json] audit.metadata effect.required_capabilities missing or invalid: "
+                                f"{path}: diagnostics[{diag_index}].audit.metadata",
+                                file=sys.stderr,
+                            )
+                            error = True
+                        if not isinstance(actual, list):
+                            print(
+                                "[validate-diagnostic-json] audit.metadata effect.actual_capabilities missing or invalid: "
+                                f"{path}: diagnostics[{diag_index}].audit.metadata",
+                                file=sys.stderr,
+                            )
+                            error = True
+        stream_meta = entry.get("stream_meta")
+        if stream_meta is not None:
+            if not isinstance(stream_meta, dict):
+                print(
+                    f"[validate-diagnostic-json] stream_meta must be an object: {path}",
+                    file=sys.stderr,
+                )
+                error = True
+            else:
+                for key in ("bytes_consumed", "chunks_consumed", "await_count", "resume_count"):
+                    value = stream_meta.get(key)
+                    if not isinstance(value, int):
+                        print(
+                            "[validate-diagnostic-json] stream_meta field missing or invalid: "
+                            f"{path}: stream_meta.{key}",
+                            file=sys.stderr,
+                        )
+                        error = True
+                last_reason = stream_meta.get("last_reason")
+                if last_reason is not None and not isinstance(last_reason, str):
+                    print(
+                        f"[validate-diagnostic-json] stream_meta.last_reason must be string when present: {path}",
+                        file=sys.stderr,
+                    )
+                    error = True
 
 if error:
     sys.exit(1)

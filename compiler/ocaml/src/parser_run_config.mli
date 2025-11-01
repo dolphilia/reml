@@ -133,13 +133,23 @@ end
 
 module Stream : sig
   type t = {
+    enabled : bool;
     checkpoint : string option;
     resume_hint : string option;
+    demand_min_bytes : int option;
+    demand_preferred_bytes : int option;
+    chunk_size : int option;
     namespace : Extensions.Namespace.t option;
   }
 
   val default : t
   val of_run_config : run_config -> t
+  val set_enabled : bool -> run_config -> run_config
+  val set_checkpoint : string option -> run_config -> run_config
+  val set_resume_hint : string option -> run_config -> run_config
+  val set_demand_min_bytes : int option -> run_config -> run_config
+  val set_demand_preferred_bytes : int option -> run_config -> run_config
+  val set_chunk_size : int option -> run_config -> run_config
 end
 
 module Effects : sig

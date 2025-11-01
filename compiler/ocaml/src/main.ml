@@ -615,15 +615,56 @@ let () =
     if collect_trace then Cli.Trace.end_phase ~emit_log:emit_trace_logs phase
   in
 
-  (* パース用にソース文字列から lexbuf を作成 *)
-  let lexbuf = Lexing.from_string source in
-  lexbuf.Lexing.lex_curr_p <-
-    { lexbuf.Lexing.lex_curr_p with Lexing.pos_fname = opts.input_file };
-
   (* Phase 1-6 Week 15: トレース開始 *)
   record_start Parsing;
 
-  let parse_output = Parser_driver.run ~config:parser_run_config lexbuf in
+  let stream_defaults = Parser_run_config.Stream.of_run_config parser_run_config in
+  let use_streaming = opts.parser_streaming || stream_defaults.enabled in
+  let parse_output =
+    if use_streaming then (
+      let source_length = String.length source in
+      let chunk_size =
+        match opts.stream_chunk_size with
+        | Some value when value > 0 -> value
+        | _ -> (
+            match stream_defaults.stream_chunk_size with
+            | Some value when value > 0 -> value
+            | _ -> 4096)
+      in
+      let position = ref 0 in
+      let finished = ref false in
+      let feeder () =
+        if !finished then Parser_driver.Streaming.Closed
+        else if !position >= source_length then (
+          finished := true;
+          Parser_driver.Streaming.Closed)
+        else
+          let remaining = source_length - !position in
+          let take = if remaining < chunk_size then remaining else chunk_size in
+          let chunk = String.sub source !position take in
+          position := !position + take;
+          Parser_driver.Streaming.Chunk chunk
+      in
+      let rec drain outcome =
+        match outcome with
+        | Parser_driver.Streaming.Completed completed -> completed
+        | Parser_driver.Streaming.Pending pending ->
+            let next_chunk = feeder () in
+            drain
+              (Parser_driver.Streaming.resume pending.continuation next_chunk)
+      in
+      let completed =
+        drain
+          (Parser_driver.Streaming.run_stream ~filename:opts.input_file
+             ~config:parser_run_config ~feeder ())
+      in
+      completed.Parser_driver.Streaming.result)
+    else (
+      let lexbuf = Lexing.from_string source in
+      lexbuf.Lexing.lex_curr_p <-
+        { lexbuf.Lexing.lex_curr_p with Lexing.pos_fname = opts.input_file };
+      Parser_driver.run ~config:parser_run_config lexbuf)
+  in
   match Parser_driver.parse_result_to_legacy parse_output with
   | Ok ast ->
       (* Phase 1-6 Week 15: パース完了 *)

@@ -296,3 +296,269 @@ let parse_string ?(filename = "<入力>") text =
   lexbuf.Lexing.lex_curr_p <-
     { lexbuf.Lexing.lex_curr_p with Lexing.pos_fname = filename };
   parse lexbuf
+
+module Streaming = struct
+  module Stream_cfg = Run_config.Stream
+
+  type demand_action = [ `Pause | `Continue ]
+
+  type demand_hint = {
+    action : demand_action;
+    min_bytes : int option;
+    preferred_bytes : int option;
+    resume_hint : string option;
+    reason : string option;
+  }
+
+  type chunk =
+    | Chunk of string
+    | Await of demand_hint option
+    | Closed
+    | Error of string
+
+  type feeder = unit -> chunk
+
+  type stream_meta = {
+    bytes_consumed : int;
+    chunks_consumed : int;
+    await_count : int;
+    resume_count : int;
+    last_reason : string option;
+  }
+
+  type continuation = {
+    config : Run_config.t;
+    source_name : string;
+    buffer : string;
+    bytes_consumed : int;
+    chunks_consumed : int;
+    await_count : int;
+    resume_count : int;
+    resume_hint : string option;
+    demand_min_bytes : int option;
+    demand_preferred_bytes : int option;
+  }
+
+  type completed = { result : parse_result; meta : stream_meta }
+
+  type pending = {
+    continuation : continuation;
+    demand : demand_hint;
+    meta : stream_meta;
+  }
+
+  type outcome = Completed of completed | Pending of pending
+
+  let demand_pause ?min_bytes ?preferred_bytes ?resume_hint ?reason () =
+    { action = `Pause; min_bytes; preferred_bytes; resume_hint; reason }
+
+  let demand_continue ?min_bytes ?preferred_bytes ?resume_hint ?reason () =
+    { action = `Continue; min_bytes; preferred_bytes; resume_hint; reason }
+
+  let make_meta ~bytes ~chunks ~await ~resume ?reason () =
+    {
+      bytes_consumed = bytes;
+      chunks_consumed = chunks;
+      await_count = await;
+      resume_count = resume;
+      last_reason = reason;
+    }
+
+  let fallback first second = match first with Some _ -> first | None -> second
+
+  let merge_hint defaults ?fallback_reason hint =
+    let default_min = defaults.demand_min_bytes in
+    let default_pref = defaults.demand_preferred_bytes in
+    let default_resume = defaults.resume_hint in
+    let select opt default =
+      match opt with Some _ as value -> value | None -> default
+    in
+    {
+      action = hint.action;
+      min_bytes = select hint.min_bytes default_min;
+      preferred_bytes = select hint.preferred_bytes default_pref;
+      resume_hint = select hint.resume_hint default_resume;
+      reason = fallback hint.reason fallback_reason;
+    }
+
+  let default_pause defaults ?reason () =
+    let default_min = defaults.demand_min_bytes in
+    let default_pref = defaults.demand_preferred_bytes in
+    let default_resume = defaults.resume_hint in
+    {
+      action = `Pause;
+      min_bytes = default_min;
+      preferred_bytes = default_pref;
+      resume_hint = default_resume;
+      reason;
+    }
+
+  let run_stream ?(filename = "<stream>") ?(config = default_run_config)
+      ~(feeder : feeder) () : outcome =
+    let defaults = Stream_cfg.of_run_config config in
+    let buffer = Buffer.create 4096 in
+    let rec pump bytes_consumed chunks_consumed await_count =
+      match feeder () with
+      | Chunk data ->
+          Buffer.add_string buffer data;
+          let len = String.length data in
+          pump (bytes_consumed + len) (chunks_consumed + 1) await_count
+      | Await hint_opt ->
+          let demand =
+            match hint_opt with
+            | Some hint ->
+                merge_hint defaults ~fallback_reason:(Some "feeder.await") hint
+            | None -> default_pause defaults ~reason:(Some "feeder.await") ()
+          in
+          let continuation =
+            {
+              config;
+              source_name = filename;
+              buffer = Buffer.contents buffer;
+              bytes_consumed;
+              chunks_consumed;
+              await_count = await_count + 1;
+              resume_count = 0;
+              resume_hint = demand.resume_hint;
+              demand_min_bytes = demand.min_bytes;
+              demand_preferred_bytes = demand.preferred_bytes;
+            }
+          in
+          let meta =
+            make_meta ~bytes:bytes_consumed ~chunks:chunks_consumed
+              ~await:(await_count + 1) ~resume:0 ~reason:demand.reason ()
+          in
+          Pending { continuation; demand; meta }
+      | Closed ->
+          let text = Buffer.contents buffer in
+          let result = run_string ~filename ~config text in
+          let meta =
+            make_meta ~bytes:bytes_consumed ~chunks:chunks_consumed
+              ~await:await_count ~resume:0 ~reason:None ()
+          in
+          Completed { result; meta }
+      | Error message ->
+          let demand =
+            default_pause defaults ~reason:(Some ("stream.error:" ^ message)) ()
+          in
+          let continuation =
+            {
+              config;
+              source_name = filename;
+              buffer = Buffer.contents buffer;
+              bytes_consumed;
+              chunks_consumed;
+              await_count;
+              resume_count = 0;
+              resume_hint = demand.resume_hint;
+              demand_min_bytes = demand.min_bytes;
+              demand_preferred_bytes = demand.preferred_bytes;
+            }
+          in
+          let meta =
+            make_meta ~bytes:bytes_consumed ~chunks:chunks_consumed ~await:await_count
+              ~resume:0 ~reason:demand.reason ()
+          in
+          Pending { continuation; demand; meta }
+    in
+    pump 0 0 0
+
+  let resume (continuation : continuation) (input : chunk) : outcome =
+    let defaults = Stream_cfg.of_run_config continuation.config in
+    let default_min = defaults.demand_min_bytes in
+    let default_pref = defaults.demand_preferred_bytes in
+    let default_resume = defaults.resume_hint in
+    let existing = continuation.buffer in
+    let additional_len =
+      match input with Chunk s -> String.length s | Await _ | Closed | Error _ -> 0
+    in
+    let buffer = Buffer.create (String.length existing + additional_len) in
+    Buffer.add_string buffer existing;
+    let bytes = continuation.bytes_consumed in
+    let chunks = continuation.chunks_consumed in
+    let await = continuation.await_count in
+    let resume_count = continuation.resume_count + 1 in
+    match input with
+    | Chunk data ->
+        Buffer.add_string buffer data;
+        let text = Buffer.contents buffer in
+        let result =
+          run_string ~filename:continuation.source_name
+            ~config:continuation.config text
+        in
+        let meta =
+          make_meta ~bytes:(bytes + String.length data) ~chunks:(chunks + 1)
+            ~await ~resume:resume_count ~reason:None ()
+        in
+        Completed { result; meta }
+    | Closed ->
+        let text = Buffer.contents buffer in
+        let result =
+          run_string ~filename:continuation.source_name
+            ~config:continuation.config text
+        in
+        let meta =
+          make_meta ~bytes ~chunks ~await ~resume:resume_count
+            ~reason:(Some "feeder.closed") ()
+        in
+        Completed { result; meta }
+    | Await hint_opt ->
+        let fallback_reason = Some "feeder.await" in
+        let demand =
+          match hint_opt with
+          | Some hint -> merge_hint defaults ~fallback_reason hint
+          | None ->
+              {
+                action = `Pause;
+                min_bytes = fallback continuation.demand_min_bytes default_min;
+                preferred_bytes =
+                  fallback continuation.demand_preferred_bytes default_pref;
+                resume_hint = fallback continuation.resume_hint default_resume;
+                reason = fallback_reason;
+              }
+        in
+        let new_buffer = Buffer.contents buffer in
+        let continuation =
+          {
+            continuation with
+            buffer = new_buffer;
+            bytes_consumed = bytes;
+            chunks_consumed = chunks;
+            await_count = await + 1;
+            resume_count;
+            resume_hint = demand.resume_hint;
+            demand_min_bytes = demand.min_bytes;
+            demand_preferred_bytes = demand.preferred_bytes;
+          }
+        in
+        let meta =
+          make_meta ~bytes ~chunks ~await:(await + 1) ~resume:resume_count
+            ~reason:demand.reason ()
+        in
+        Pending { continuation; demand; meta }
+    | Error message ->
+        let reason = Some ("stream.error:" ^ message) in
+        let demand =
+          {
+            action = `Pause;
+            min_bytes = fallback continuation.demand_min_bytes default_min;
+            preferred_bytes =
+              fallback continuation.demand_preferred_bytes default_pref;
+            resume_hint = fallback continuation.resume_hint default_resume;
+            reason;
+          }
+        in
+        let new_buffer = Buffer.contents buffer in
+        let continuation =
+          {
+            continuation with
+            buffer = new_buffer;
+            resume_count;
+            resume_hint = demand.resume_hint;
+          }
+        in
+        let meta =
+          make_meta ~bytes ~chunks ~await ~resume:resume_count ~reason ()
+        in
+        Pending { continuation; demand; meta }
+end

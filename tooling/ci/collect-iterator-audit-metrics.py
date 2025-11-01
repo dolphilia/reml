@@ -1364,6 +1364,17 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
         "stream": False,
     }
     extension_samples: Dict[str, Any] = {key: None for key in extensions_state}
+    stream_field_state: Dict[str, bool] = {
+        "enabled": False,
+        "checkpoint": False,
+        "resume_hint": False,
+        "demand_min_bytes": False,
+        "demand_preferred_bytes": False,
+        "chunk_size": False,
+    }
+    stream_field_samples: Dict[str, Any] = {
+        key: None for key in stream_field_state
+    }
 
     lex_total = 0
     lex_shared = 0
@@ -1396,6 +1407,20 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
                     if extension_samples[key] is None:
                         extension_samples[key] = value
 
+    def _mark_stream_fields(entry: Optional[Dict]) -> None:
+        if not isinstance(entry, dict):
+            return
+        for key in stream_field_state:
+            if stream_field_state[key]:
+                continue
+            if key in entry:
+                value = entry.get(key)
+                if value in (None, "", [], {}):
+                    continue
+                stream_field_state[key] = True
+                if stream_field_samples[key] is None:
+                    stream_field_samples[key] = value
+
     for path in paths:
         data = load_json(path)
 
@@ -1405,6 +1430,7 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
             extensions_container = run_config.get("extensions")
             if isinstance(extensions_container, dict):
                 _mark_extension_from_dict(extensions_container)
+                _mark_stream_fields(extensions_container.get("stream"))
 
             lex_total += 1
             lex_sources.add(str(path))
@@ -1567,6 +1593,7 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
                         sub_extensions = runconfig_extension.get("extensions")
                         if isinstance(sub_extensions, dict):
                             _mark_extension_from_dict(sub_extensions)
+                            _mark_stream_fields(sub_extensions.get("stream"))
 
     metrics: List[Dict[str, Any]] = []
 
@@ -1619,6 +1646,39 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
                 "samples": {
                     key: value
                     for key, value in extension_samples.items()
+                    if value is not None
+                },
+            }
+        )
+
+    total_stream_fields = len(stream_field_state)
+    covered_stream_fields = sum(
+        1 for value in stream_field_state.values() if value
+    )
+    missing_stream_fields = sorted(
+        key for key, present in stream_field_state.items() if not present
+    )
+    if total_stream_fields > 0:
+        stream_pass_fraction = (
+            covered_stream_fields / total_stream_fields
+        )
+        stream_pass_rate = (
+            1.0 if covered_stream_fields == total_stream_fields else 0.0
+        )
+        metrics.append(
+            {
+                "metric": "parser.stream_extension_field_coverage",
+                "total": total_stream_fields,
+                "passed": covered_stream_fields,
+                "failed": total_stream_fields - covered_stream_fields,
+                "missing": missing_stream_fields,
+                "pass_rate": stream_pass_rate,
+                "pass_fraction": stream_pass_fraction,
+                "status": "success" if stream_pass_rate == 1.0 else "warning",
+                "sources": [str(path) for path in paths],
+                "samples": {
+                    key: value
+                    for key, value in stream_field_samples.items()
                     if value is not None
                 },
             }

@@ -81,6 +81,15 @@ type options = {
       (** RunConfig.left_recursion モード *)
   parser_merge_warnings : bool;
       (** RunConfig.merge_warnings（診断集約の有無） *)
+  parser_streaming : bool;  (** ストリーミングランナー PoC を有効化 *)
+  stream_checkpoint : string option;  (** RunConfig.extensions.stream.checkpoint *)
+  stream_resume_hint : string option;
+      (** RunConfig.extensions.stream.resume_hint のトークン *)
+  stream_demand_min_bytes : int option;
+      (** DemandHint.min_bytes の既定値（省略時は内部既定） *)
+  stream_demand_preferred_bytes : int option;
+      (** DemandHint.preferred_bytes の既定値（省略時は内部既定） *)
+  stream_chunk_size : int option;  (** CLI が読み込むチャンクサイズのヒント（バイト数） *)
 }
 (** コマンドラインオプション設定 *)
 

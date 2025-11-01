@@ -247,6 +247,15 @@ val run_stream :
   - 既存ゴールデン（`parser-runconfig-packrat.json.golden`）を基にストリーミング版フィクスチャを作成し、差分測定方法を決める。
   - LSP 側で既に実装済みのインクリメンタル診断フローを確認し、PoC との整合課題を洗い出す。
 
+> 2026-01-24 更新: Step4 を実施し、ストリーミング PoC を CLI/LSP/CI へ統合した。
+>
+> - CLI: `compiler/ocaml/src/cli/options.ml` に `--streaming` / `--stream-chunk-size` / `--stream-checkpoint` などのフラグを追加し、`Parser_run_config.Stream` へ `enabled`・`demand_min_bytes`・`chunk_size` を書き戻す。`compiler/ocaml/src/main.ml` は `opts.parser_streaming` または RunConfig 側の `stream.enabled` が真の場合に `Parser_driver.Streaming.run_stream` を使用する。
+> - LSP: `tooling/lsp/run_config_loader.ml` が `enabled` / `chunkSize` / `demandMinBytes` / `demandPreferredBytes` を復号し、CLI と同じネームスペースを共有する。
+> - ランナー実装: `compiler/ocaml/src/parser_driver.ml` に `Parser_driver.Streaming` モジュールを追加。`run_stream` と `resume` が `DemandHint`（`action="pause"`, `reason="feeder.await"` など）と `stream_meta`（`bytes_consumed` / `await_count` / `resume_count`）を算出し、`RunConfig.Stream` の既定値を不足フィールドへ補完する。
+> - テスト&ゴールデン: `compiler/ocaml/tests/streaming_runner_tests.ml` を追加し、`run_string` との一致と `Pending`→`resume` パスを検証。`compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` を新設し、ストリーミング指標を含む RunConfig/stream_meta のサンプルを共有。
+> - CI/検証: `tooling/ci/collect-iterator-audit-metrics.py` に `parser.stream_extension_field_coverage` を追加し、`enabled`・`demand_*`・`chunk_size` の出現率を監視。`scripts/validate-diagnostic-json.sh` は `stream_meta` の整数フィールドと `last_reason` を検証する。
+> - 既知の制限: PoC はチャンクを蓄積してから既存の `Parser_driver.run` を呼び出す方式であり、バックプレッシャ制御や Packrat キャッシュ共有は未着手。`Stream.resume` の `Error` 経路も監査イベントへ転送していないため、Step5 で Packrat/追跡強化タスクへ引き継ぐ。
+
 ### Step 5. ドキュメント・フォローアップ登録（1.5日）
 - 目的: PoC の制限・今後の課題を記録し、Phase 2-7 以降のフル実装に繋げる。
 - 主な作業:

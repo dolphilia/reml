@@ -1002,3 +1002,18 @@ fn main() -> i64 !{ mut } = {
 - `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-001-proposal.md` の Step2 セクションへ設計詳細と今後のテスト計画を反映済み。
 
 [^type001-step0-repro-log]: CLI 出力は `=== Typed AST ===` のみで終了し、`effects.contract.residual_leak` 以外の診断が発生しない。仕様上は `poly(true)` で型が `Bool` に固定されるため、`var poly` の一般化が抑制されていれば `let int_value: i64 = poly(42);` と矛盾しコンパイルが失敗する。
+
+## EXEC-001 Step4 CLI/LSP/CI 連携（2026-01-24）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/EXEC-001-proposal.md`](./2-5-proposals/EXEC-001-proposal.md#step-4-clilspci-連携と検証ケースの整備25日)
+
+### 1. 実装サマリ
+- CLI フラグ拡張: `compiler/ocaml/src/cli/options.ml` に `--streaming` / `--stream-chunk-size` / `--stream-checkpoint` / `--stream-demand-min` / `--stream-demand-preferred` を追加し、`Parser_run_config.Stream` (enabled / demand_min_bytes / demand_preferred_bytes / chunk_size) へ書き戻す。`compiler/ocaml/src/main.ml` は `opts.parser_streaming` または RunConfig 拡張の `stream.enabled` が真のとき `Parser_driver.Streaming.run_stream` を呼び出す。
+- LSP ローダ更新: `tooling/lsp/run_config_loader.ml` が `enabled` / `chunkSize` / `demandMinBytes` / `demandPreferredBytes` を復号し、CLI と同じ stream 拡張を提供。
+- ランナー PoC: `compiler/ocaml/src/parser_driver.ml` に `Parser_driver.Streaming` モジュールを新設し、`run_stream` / `resume` が `DemandHint`（`action="pause"`, `reason="feeder.await"` 等）と `stream_meta`（`bytes_consumed` / `chunks_consumed` / `await_count` / `resume_count`）を算出。RunConfig の既定値を欠落フィールドへ補完し、Pending→resume→Completed の往復を成立させた。
+- テストとゴールデン: `compiler/ocaml/tests/streaming_runner_tests.ml` を追加し、バッチ実行との一致および `Await`→`Pending`→`resume` の遷移を検証。`compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` を新設し、`stream_meta` と stream 拡張のサンプルを共有。
+- CI/検証: `tooling/ci/collect-iterator-audit-metrics.py` に `parser.stream_extension_field_coverage` を追加し、`enabled`・`demand_min_bytes`・`demand_preferred_bytes`・`chunk_size` の露出を監視。`scripts/validate-diagnostic-json.sh` は `stream_meta` の整数フィールドと `last_reason` をバリデーションする。
+
+### 2. 未解決課題
+- 現行 PoC はチャンクを蓄積した上で既存の `Parser_driver.run` を呼び出す方式のため、Packrat キャッシュ共有やバックプレッシャ通知は未着手。Step5 で `Core.Parse` ブリッジとの連携と `parser.stream.await_ratio` などの指標輸送を整備する。
+- `stream_meta` はまだ `Cli.Stats` 出力へ接続されていない。Phase 2-7 で CLI メトリクスへ転送し、CI のトレンド把握に活用するフォローアップを登録する。

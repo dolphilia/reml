@@ -336,6 +336,7 @@
 6.4. **後半フェーズの仕上げ**
 - **PARSER-003 / EXEC-001 / ERR-002**: Phase 2-5 後半でコアコンビネーター抽出とストリーミング PoC、`recover` FixIt 拡張を実装し、ランナ―整合性を最終確認する。
 - 2026-01-16 更新: EXEC-001 Step3 でストリーミング制御ループ PoC（`StreamDriver` ステートマシン、`DemandHint` 再計算、`StreamMeta` 指標集計）の設計を完了し、`Pending`/`Completed` 遷移表と計測方針を `EXEC-001` 計画書に記録した。Step4 では CLI/LSP/CI への配線とレイテンシ測定を実装する。
+- 2026-01-24 更新: Step4 で CLI/LSP/CI へストリーミング PoC を接続。`--streaming` 系フラグ、`Parser_driver.Streaming`、`streaming_runner_tests.ml`、`streaming-outcome.json.golden`、`parser.stream_extension_field_coverage` を実装し、Pending→`resume`→Completed の往復を確認済み。残課題（Packrat 共有・バックプレッシャ通知・CLI メトリクス転送）は Phase 2-7 へ引き継ぎ。
 - 完了後は `docs/guides/core-parse-streaming.md` や `docs/spec/2-2-core-combinator.md` に脚注・更新を反映させ、関連サンプルが動作することを確認する。
 
 6.5. **Phase 2-7 以降に向けた準備**

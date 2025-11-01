@@ -293,16 +293,51 @@ end
 
 module Stream = struct
   type t = {
+    enabled : bool;
     checkpoint : string option;
     resume_hint : string option;
+    demand_min_bytes : int option;
+    demand_preferred_bytes : int option;
+    chunk_size : int option;
     namespace : Namespace.t option;
   }
 
-  let default = { checkpoint = None; resume_hint = None; namespace = None }
+  let default =
+    {
+      enabled = false;
+      checkpoint = None;
+      resume_hint = None;
+      demand_min_bytes = None;
+      demand_preferred_bytes = None;
+      chunk_size = None;
+      namespace = None;
+    }
+
+  let normalize_bool text =
+    match String.lowercase_ascii (String.trim text) with
+    | "1" | "true" | "yes" | "on" -> Some true
+    | "0" | "false" | "no" | "off" -> Some false
+    | _ -> None
+
+  let decode_bool namespace key default =
+    match Namespace.find key namespace with
+    | Some value -> (
+        match bool_of_value value with
+        | Some flag -> flag
+        | None -> (
+            match string_of_value value with
+            | Some text -> Option.value ~default (normalize_bool text)
+            | None -> default))
+    | None -> default
 
   let decode_string namespace key =
     match Namespace.find key namespace with
     | Some value -> string_of_value value
+    | None -> None
+
+  let decode_int namespace key =
+    match Namespace.find key namespace with
+    | Some value -> int_of_value value
     | None -> None
 
   let of_run_config config =
@@ -310,10 +345,59 @@ module Stream = struct
     | None -> default
     | Some namespace ->
         {
+          enabled = decode_bool namespace "enabled" false;
           namespace = Some namespace;
           checkpoint = decode_string namespace "checkpoint";
           resume_hint = decode_string namespace "resume_hint";
+          demand_min_bytes = decode_int namespace "demand_min_bytes";
+          demand_preferred_bytes =
+            decode_int namespace "demand_preferred_bytes";
+          chunk_size = decode_int namespace "chunk_size";
         }
+
+  let update_namespace key encode value namespace =
+    match value with
+    | None -> Namespace.remove key namespace
+    | Some payload -> Namespace.add key (encode payload) namespace
+
+  let set_enabled enabled config =
+    let update namespace =
+      if enabled then Namespace.add "enabled" (Extensions.Bool true) namespace
+      else Namespace.remove "enabled" namespace
+    in
+    with_extension "stream" update config
+
+  let set_checkpoint value config =
+    with_extension "stream"
+      (fun namespace -> update_namespace "checkpoint" (fun v -> Extensions.String v) value namespace)
+      config
+
+  let set_resume_hint value config =
+    with_extension "stream"
+      (fun namespace -> update_namespace "resume_hint" (fun v -> Extensions.String v) value namespace)
+      config
+
+  let set_demand_min_bytes value config =
+    with_extension "stream"
+      (fun namespace ->
+        update_namespace "demand_min_bytes"
+          (fun v -> Extensions.Int v)
+          value namespace)
+      config
+
+  let set_demand_preferred_bytes value config =
+    with_extension "stream"
+      (fun namespace ->
+        update_namespace "demand_preferred_bytes"
+          (fun v -> Extensions.Int v)
+          value namespace)
+      config
+
+  let set_chunk_size value config =
+    with_extension "stream"
+      (fun namespace ->
+        update_namespace "chunk_size" (fun v -> Extensions.Int v) value namespace)
+      config
 end
 
 module Effects = struct
