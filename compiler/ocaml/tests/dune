@@ -4,6 +4,7 @@
  (names
  test_lexer
  test_parser
+ unicode_ident_tests
  test_parser_expectation
  test_parser_driver
  core_parse_lex_tests

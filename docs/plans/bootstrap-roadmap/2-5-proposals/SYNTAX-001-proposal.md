@@ -60,9 +60,20 @@
 
 #### Step 3: 検証用サンプルとテストシナリオ整備（週32・Compiler/Testing）
 - **目的**: Unicode 実装後に即座に回帰検証できるテスト土台を整える。  
-- **作業**: `compiler/ocaml/tests/unicode_ident_tests.ml` を新設し、`dune` テスト設定に `[@tags unicode_pending]`（仮）を付与して Phase 2-5 ではスキップする。`docs/spec/1-1-syntax.md` の例や Chapter 3 多言語サンプルをベースに、文字種別（日本語・ハングル・合成文字）を網羅する入力を準備する。  
+- **作業**: `compiler/ocaml/tests/unicode_ident_tests.ml` を新設し、`REML_ENABLE_UNICODE_TESTS` 環境変数で実行可否を切り替えるスキップ機構を組み込む。`docs/spec/1-1-syntax.md` の例や Chapter 3 多言語サンプルをベースに、文字種別（日本語・ハングル・合成文字）を網羅する入力を準備する。  
 - **調査**: `UnicodeData.txt` / `DerivedCoreProperties.txt` を参照し、`XID_Start`/`XID_Continue` の境界ケース（結合文字・サロゲート・ZWNJ/ZWJ）を抽出する。`technical-debt.md`（ID 2b/22/23）の想定ケースと突合して不足がないか確認。  
 - **成果物**: スキップ可視化されたテスト群、サンプル入力、レビュー記録の追記。
+
+##### Step3 実施記録（2026-02-24）
+1. テストシナリオの整備  
+   - `compiler/ocaml/tests/unicode_ident_tests.ml` を作成し、`REML_ENABLE_UNICODE_TESTS` 環境変数が有効な場合のみ Unicode 受理テストを実行するガードを追加。デフォルトでは `[unicode_pending]` メッセージを出力してスキップし、Phase 2-7 `lexer-unicode` 実装後に即座に有効化できるようにした。  
+   - 日本語・ギリシャ語・キリル・ハングル・アラビア語（ZWJ）・合成文字（`cafe\u{0301}`）など、docs/spec/1-1-syntax.md §A.3 および docs/spec/1-4-test-unicode-model.md §K の要件をカバーするケースを `acceptance_cases` として列挙。正規化期待値は `normalized` フィールドで NFC 形を指定し、将来の正規化検証に備えた。
+2. フィクスチャの準備  
+   - `compiler/ocaml/tests/samples/unicode_identifiers.reml` を追加し、サンプルモジュール `module 国際化.識別子` 内で複数スクリプトの識別子を宣言。テスト本体で存在確認を行い、Phase 2-7 以降に parser 連携テストへ転用できるようにした。  
+   - `dune` に `unicode_ident_tests` を登録し、既存テスト群と同じライブラリ構成でビルド可能な状態を確認。
+3. フォローアップ  
+   - Step4 で `0-3-audit-and-metrics.md` の `lexer.identifier_profile_unicode` 指標へ測定値（Phase 2-5 = 0.0）とレビュー日を記録し、CI/Risk 登録 (`0-4-risk-handling.md`) を更新する。  
+   - Phase 2-7 では `REML_ENABLE_UNICODE_TESTS=1` を CI で有効化し、lexer 正常動作・正規化挙動・ZWJ/Bidi 防止診断を検証する予定。
 
 #### Step 4: 記録とメトリクス連携（週32末・Docs/QA）
 - **目的**: 差分補正の結果をメトリクスとリスク管理に反映し、Phase 2-7 への引き継ぎ資料を整備する。  
