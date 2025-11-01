@@ -31,6 +31,11 @@
 - **調査**: `docs/spec/2-3-lexer.md` D-1/D-2 と `docs/spec/1-1-syntax.md` の識別子定義を照合し、差分がどこで発生しているかを特定する。
 - **成果物**: レビュー記録の更新、`2-5-spec-drift-remediation.md` への差分リンク、`Phase 2-5` 差分リストでの `LEXER-001` エントリ確定。
 
+##### Step1 実施記録（2025-12-12）
+- `compiler/ocaml/src/lexer.mll:41-78` の ASCII 固定パターンと `Core.Parse.Lex.Bridge` の Trivia 同期のみで識別子プロファイルを扱っていない点を棚卸し、レビュー記録へ反映。  
+- フィクスチャ `compiler/ocaml/tests/samples/lexer_unicode_identifier.reml` とユニットテスト `compiler/ocaml/tests/test_lexer.ml:88` を追加し、`Unexpected character: �`（`span 4-5`）という現状の失敗メッセージを保存。  
+- `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の `LEXER-001` 差分リストへ進捗脚注を追記し、Phase 2-7 へのフォローアップ（脚注整備・ロードマップ更新）を継続する。
+
 #### Step 2: 仕様脚注と索引の整備（週31-32, Docs チーム）
 - **目的**: 仕様読者へ ASCII 制限を通知し、差分補正の判断材料を共有する。  
 - **作業**: `docs/spec/2-3-lexer.md` D-1 に ASCII 制約脚注を追加し、`docs/spec/1-1-syntax.md` の Identifier セクションと `README.md`（索引用）を更新する。同時に `docs/spec/0-2-glossary.md` へ暫定用語定義を追加し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の脚注に参照を追記する。  

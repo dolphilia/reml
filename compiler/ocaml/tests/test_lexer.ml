@@ -23,6 +23,17 @@ let lex_one s =
 let rec lex_all lexbuf =
   match Lexer.token lexbuf with EOF -> () | _ -> lex_all lexbuf
 
+let fixture_path name =
+  Filename.concat (Filename.dirname __FILE__) ("samples/" ^ name)
+
+let read_fixture name =
+  let path = fixture_path name in
+  let ic = open_in_bin path in
+  let len = in_channel_length ic in
+  let contents = really_input_string ic len in
+  close_in ic;
+  contents
+
 let expect_tokens desc expected actual =
   if expected = actual then Printf.printf "✓ %s\n" desc
   else (
@@ -180,7 +191,11 @@ let test_lexer_errors () =
   expect_lexer_error "lexer error: unterminated string" "\"hello"
     "Unterminated string";
   expect_lexer_error "lexer error: unterminated comment" "/* not closed"
-    "Unterminated block comment"
+    "Unterminated block comment";
+  let unicode_source = read_fixture "lexer_unicode_identifier.reml" in
+  expect_lexer_error
+    "lexer error: unicode identifier rejected"
+    unicode_source "Unexpected character:"
 
 (* ========== メイン ========== *)
 
