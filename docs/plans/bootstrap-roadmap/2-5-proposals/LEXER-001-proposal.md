@@ -65,6 +65,13 @@
 - **調査**: `scripts/validate-diagnostic-json.sh` の既存スキップ機構、`compiler/ocaml/tests/test_cli_diagnostics.ml` の CLI 実行方法を確認し、Unicode 導入後の差分検知に使えるか評価する。
 - **成果物**: メトリクス項目の追加、CI プレースホルダ実装、差分検知向けテストスキップ戦略の文書化。
 
+##### Step4 実施記録（2026-03-21）
+- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `lexer.identifier_profile_unicode` 行を更新し、`parser.runconfig.lex.profile` と `AuditEnvelope.metadata["parser.runconfig.lex.profile"]` の一致を指標条件として明文化。Phase 2-7 で `--lex-profile=unicode` を必須化する際の PASS 判定を記載した。  
+- `tooling/ci/collect-iterator-audit-metrics.py` に `lexer.identifier_profile_unicode` メトリクスを追加し、ASCII/Unicode/その他の件数内訳と `--lex-profile` スイッチ仕様（`ascii|unicode`）を JSON 出力へ記録するプレースホルダ実装を導入。`pass_rate` は `null` に設定し、Phase 2-5 では監視のみ／Phase 2-7 で 1.0 へ昇格させる運用を想定。  
+- レビュー記録（`docs/plans/bootstrap-roadmap/2-5-review-log.md`）に Step4 メモを追記し、CI で Unicode テストをスキップする際は `--lex-profile=ascii` を指定し、Unicode 切替リハーサル時は `--lex-profile=unicode` を明示する手順を整理。  
+- `docs/notes/dsl-plugin-roadmap.md` §7 に `--lex-profile=ascii|unicode` スイッチ運用とメトリクス確認手順を追記し、プラグインチームへ ASCII → Unicode 切替ロードマップを共有。  
+- 差分計画書（`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`）へ Step4 更新脚注を追加し、Phase 2-7 `lexer-unicode` タスクで `expected_pass_fraction=1.0` を満たすことをフォローアップとして登録。
+
 ### Phase 2-7（Unicode 実装と移行）
 
 #### Step 5: Lex API 設計の固定化（Phase 2-7 開始週, Lexer/Parser チーム）

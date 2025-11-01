@@ -1382,6 +1382,7 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
     lex_failures: List[Dict[str, Any]] = []
     lex_profile_sample: Optional[str] = None
     lex_space_sample: Optional[int] = None
+    lex_profile_counts: Dict[str, int] = defaultdict(int)
 
     def _mark_switch_from_dict(container: Optional[Dict]) -> None:
         if not isinstance(container, dict):
@@ -1469,6 +1470,10 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
                 else:
                     profile_raw = lex_entry.get("profile")
                     normalized_profile = _normalize_nonempty_string(profile_raw)
+                    canonical_profile: Optional[str] = None
+                    if normalized_profile is not None:
+                        canonical_profile = normalized_profile.lower()
+                        lex_profile_counts[canonical_profile] += 1
                     space_id_value = lex_entry.get("space_id")
                     reasons: List[str] = []
                     shared = False
@@ -1706,6 +1711,41 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
                 "samples": samples,
             }
         )
+
+    unicode_count = lex_profile_counts.get("unicode", 0)
+    ascii_count = lex_profile_counts.get("ascii", 0)
+    other_count = max(0, lex_total - unicode_count - ascii_count)
+    profile_breakdown = {
+        key: value
+        for key, value in sorted(lex_profile_counts.items())
+        if value > 0
+    }
+    unicode_fraction: Optional[float] = None
+    pass_fraction: Optional[float] = None
+    status = "pending"
+    if lex_total > 0:
+        unicode_fraction = unicode_count / lex_total
+        pass_fraction = unicode_fraction
+        status = "success" if unicode_fraction == 1.0 else "monitoring"
+
+    metrics.append(
+        {
+            "metric": "lexer.identifier_profile_unicode",
+            "total": lex_total,
+            "unicode": unicode_count,
+            "ascii": ascii_count,
+            "other": other_count,
+            "pass_rate": None,
+            "pass_fraction": pass_fraction,
+            "unicode_fraction": unicode_fraction,
+            "status": status,
+            "sources": sorted(lex_sources),
+            "profile_counts": profile_breakdown,
+            "cli_switch": "--lex-profile",
+            "cli_values": ["ascii", "unicode"],
+            "expected_pass_fraction": 1.0,
+        }
+    )
 
     return metrics
 
