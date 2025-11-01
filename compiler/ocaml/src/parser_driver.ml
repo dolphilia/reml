@@ -79,7 +79,7 @@ let record_packrat_status state = function
 let expectation_summary_for_checkpoint core_state packrat_cache diag_state
     checkpoint =
   let collection, status =
-    Parser_expectation.collect ?packrat:packrat_cache ~checkpoint
+    Parser_expectation.collect ~checkpoint ~packrat:packrat_cache
   in
   record_packrat_status core_state status;
   (match (packrat_cache, status) with
@@ -90,7 +90,7 @@ let expectation_summary_for_checkpoint core_state packrat_cache diag_state
       List.iter
         (fun _tag ->
           let _, warm_status =
-            Parser_expectation.collect ~packrat:cache ~checkpoint
+            Parser_expectation.collect ~checkpoint ~packrat:(Some cache)
           in
           record_packrat_status core_state warm_status)
         warm_consumers
@@ -260,7 +260,7 @@ let run ?(config = default_run_config) lexbuf =
           loop state (I.offer checkpoint triple)
         with Lexer.Lexer_error (msg, _) ->
           let diag = process_lexer_error lexbuf msg in
-          Core_reply.err ~diagnostic:diag
+          Core_reply.err ~id:None ~diagnostic:diag
             ~consumed:(Core_state.consumed state)
             ~committed:(Core_state.committed state))
     | I.Shifting _ | I.AboutToReduce _ -> loop state (I.resume checkpoint)
@@ -268,7 +268,7 @@ let run ?(config = default_run_config) lexbuf =
         let span =
           Diagnostic.span_of_positions start_pos lexbuf.Lexing.lex_curr_p
         in
-        Core_reply.ok ~value:ast ~span:(Some span)
+        Core_reply.ok ~id:None ~value:ast ~span:(Some span)
           ~consumed:(Core_state.consumed state)
           ~committed:(Core_state.committed state)
     | I.HandlingError _ ->
@@ -280,7 +280,7 @@ let run ?(config = default_run_config) lexbuf =
           process_parser_error lexbuf "構文エラー: 入力を解釈できません"
             summary
         in
-        Core_reply.err ~diagnostic:diag
+        Core_reply.err ~id:None ~diagnostic:diag
           ~consumed:(Core_state.consumed state)
           ~committed:(Core_state.committed state)
     | I.Rejected ->
@@ -289,7 +289,7 @@ let run ?(config = default_run_config) lexbuf =
             diag_state checkpoint
         in
         let diag = process_rejected_error lexbuf summary in
-        Core_reply.err ~diagnostic:diag
+        Core_reply.err ~id:None ~diagnostic:diag
           ~consumed:(Core_state.consumed state)
           ~committed:(Core_state.committed state)
   in

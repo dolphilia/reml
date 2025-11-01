@@ -381,7 +381,7 @@ let env_of_checkpoint = function
 
 type packrat_status = [ `Hit | `Miss | `Bypassed ]
 
-let collect ?packrat ~checkpoint =
+let collect ~checkpoint ~packrat =
   match env_of_checkpoint checkpoint with
   | None ->
       ( { sample_tokens = []; expectations = []; summary = empty_summary },

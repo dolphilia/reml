@@ -59,7 +59,7 @@ type packrat_status = [ `Hit | `Miss | `Bypassed ]
 (** キャッシュ参照結果の状態 *)
 
 val collect :
-  ?packrat:Packrat.t ->
   checkpoint:'a Parser.MenhirInterpreter.checkpoint ->
+  packrat:Packrat.t option ->
   collection * packrat_status
 (** Menhir のチェックポイントから受理可能トークンを走査し、期待集合を集計する *)

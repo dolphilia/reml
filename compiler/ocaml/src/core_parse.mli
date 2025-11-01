@@ -34,7 +34,7 @@ module Reply : sig
       }
 
   val ok :
-    ?id:Id.t ->
+    id:Id.t option ->
     value:'a ->
     span:Diagnostic.span option ->
     consumed:bool ->
@@ -42,7 +42,7 @@ module Reply : sig
     'a t
 
   val err :
-    ?id:Id.t ->
+    id:Id.t option ->
     diagnostic:Diagnostic.t ->
     consumed:bool ->
     committed:bool ->

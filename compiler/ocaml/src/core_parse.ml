@@ -84,10 +84,10 @@ module Reply = struct
         committed : bool;
       }
 
-  let ok ?id ~value ~span ~consumed ~committed =
+  let ok ~id ~value ~span ~consumed ~committed =
     Ok { id; value; span; consumed; committed }
 
-  let err ?id ~diagnostic ~consumed ~committed =
+  let err ~id ~diagnostic ~consumed ~committed =
     Err { id; diagnostic; consumed; committed }
 end
 
@@ -158,8 +158,9 @@ let cut parser state =
 
 let cut_here state =
   State.mark_committed state;
-  (Reply.ok ~value:() ~span:None ~consumed:(State.consumed state)
-     ~committed:true, state)
+  ( Reply.ok ~id:None ~value:() ~span:None
+      ~consumed:(State.consumed state) ~committed:true,
+    state )
 
 let attempt parser state =
   let consumed_before = State.consumed state in

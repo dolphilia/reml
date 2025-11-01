@@ -16,7 +16,17 @@
       "domain": "parser",
       "timestamp": "1970-01-01T00:00:00Z",
       "extensions": {
-        "parse": { "input_name": "parser-example.reml", "stage_trace": [] },
+        "parse": {
+          "input_name": "parser-example.reml",
+          "stage_trace": [],
+          "parser_id": {
+            "namespace": "menhir",
+            "name": "compilation_unit",
+            "ordinal": 0,
+            "origin": "static",
+            "fingerprint": "859967339"
+          }
+        },
         "diagnostic.v2": {
           "timestamp": "1970-01-01T00:00:00Z",
           "codes": [ "parser.expected_token", "parser.recovery.pending" ]
@@ -25,6 +35,11 @@
       "audit_metadata": {
         "parse.input_name": "parser-example.reml",
         "parser.expected.alternatives": 3,
+        "parser.core.rule.namespace": "menhir",
+        "parser.core.rule.name": "compilation_unit",
+        "parser.core.rule.ordinal": 0,
+        "parser.core.rule.origin": "static",
+        "parser.core.rule.fingerprint": "859967339",
         "event.kind": "parser.expected_token",
         "event.domain": "parser",
         "cli.audit_id": "cli/19700101T000000Z#0",
@@ -66,6 +81,11 @@
           "cli.audit_id": "cli/19700101T000000Z#0",
           "event.domain": "parser",
           "event.kind": "parser.expected_token",
+          "parser.core.rule.fingerprint": "859967339",
+          "parser.core.rule.origin": "static",
+          "parser.core.rule.ordinal": 0,
+          "parser.core.rule.name": "compilation_unit",
+          "parser.core.rule.namespace": "menhir",
           "parser.expected.alternatives": 3,
           "parse.input_name": "parser-example.reml",
           "audit.timestamp": "1970-01-01T00:00:00Z",
