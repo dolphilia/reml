@@ -114,6 +114,72 @@ val run_stream :
   - `docs/spec/2-7-core-parse-streaming.md` §B-§C の契約を再読し、最低限 PoC で必要なフィールド（`min_bytes`, `commit_watermark`, `last_checkpoint` 等）を確定。
   - `parser_diag_state.ml` の `farthest_snapshot`・`span_trace_pairs` を参照し、継続に載せるデータ量の制約を調査する。
 
+> 2026-01-12 更新: Step 2 を完了。Feeder/DemandHint/Continuation 型の PoC 仕様と RunConfig 変換スキームを確定し、`ContinuationMeta.expected_tokens` に `ExpectationSummary` を取り込む導線を実装範囲に落とし込んだ。バックプレッシャ関連フィールドと監査メタデータの収容方針も整理したため、Step 3 では制御ループ実装に専念できる。
+
+#### Step 2 実施記録
+
+- **型定義（`core_parse_streaming_types.{ml,mli}`）**
+  - `Demand_hint.t` を以下の構造で定義し、仕様の `min_bytes`／`preferred_bytes`／`frame_boundary` を OCaml へ写像。`reason` は診断ログ用の自由記述フィールドとして `string option` を追加し、PoC の監査結果をそのまま `StreamMeta` に転送できるようにした。
+
+    ```ocaml
+    module Demand_hint = struct
+      type frame_boundary =
+        | Token_class of Parser_token.classification
+        | Span_boundary of Diagnostic.span
+
+      type t = {
+        min_bytes : int;
+        preferred_bytes : int option;
+        frame_boundary : frame_boundary option;
+        reason : string option;
+      }
+    end
+    ```
+
+  - Feeder 関連は関手ではなくファーストクラス関数で扱い、PoC では同期 pull だけを前提とする。将来の `Core.Async` 連携を妨げないよう、`pull` の返り値をバリアント `Feeder.yield` として分離し、`Pending`/`Await` を用意した。
+
+    ```ocaml
+    module Feeder = struct
+      type chunk = Bytes.t
+
+      type yield =
+        | Chunk of chunk
+        | Await
+        | Closed
+        | Error of Stream_error.t
+
+      type t = Demand_hint.t -> yield
+    end
+    ```
+
+  - `Stream_outcome.t` / `Continuation.t` は Step1 で定義した `session` 抽象を再利用。`Continuation.t` には `Core_parse_streaming.Session.t` を `state` として保持し、`meta` を `Continuation_meta.t` でラップする構造とした。
+
+- **RunConfig 拡張との橋渡し**
+  - `RunConfig.extensions["stream"]` は 3 つのネームスペースを利用する方針に整理。
+
+    | Namespace | 主キー | 説明 |
+    |-----------|--------|------|
+    | `"stream"` | `checkpoint`, `flow_mode`, `resume_reason` | チェックポイントとフローモード既定値、直前の `DemandHint` 理由メモを格納 |
+    | `"stream.demand"` | `min_bytes`, `preferred_bytes`, `frame_boundary` | `Demand_hint.t` をそのまま保存する |
+    | `"stream.flow"` | `high_watermark`, `low_watermark`, `policy` | Backpressure 設定（Step3 で利用）をシリアライズ |
+
+  - `Demand_hint.of_namespace` / `to_namespace` を実装し、未知のキーは警告ログに集約。`preferred_bytes` は 0 以下を拒否し、仕様同様に `min_bytes <= preferred_bytes` を強制する。
+  - `Continuation_meta.t` への復元では、`checkpoint` を `commit_watermark` へ、`stream.demand` を `resume_hint` へマッピング。`Continuation_meta.buffered` には `Parser_buffer.Snapshot`（Step1 で導入）を採用し、バイナリコピーを避ける。
+
+- **診断・期待集合との接合**
+  - `parser_diag_state.farthest_snapshot` から `Diagnostic.expectation_summary` を抜き出し、`Continuation_meta.expected` に格納。現状の診断状態は `alternatives` を最大 12 件に正規化しているため、継続に保持してもメモリ増大は限定的であることを確認（`normalize_expectations` の結果を再利用）。
+  - `Continuation_meta.last_checkpoint` は `parser_diag_state.span_trace_pairs` の最後の要素から推定し、`trace` 無効時は `None` を保持。`trace_label` は最後に取得したラベル文字列をそのまま登録し、LSP で補完候補を提示する際のラベルとして利用する。
+  - `Stream_meta.diagnostics_pending`（Step3 で導入予定）の下準備として、`Continuation_meta.resume_hint` と `expected_tokens` を `Diagnostic.Builder` へ渡す関数 `Continuation_meta.to_resume_note` を定義した。
+
+- **調査結果と制約整理**
+  - `parser_diag_state` の `farthest_snapshot.expected` はリスト長が可変だが、`ExpectationSummary` が存在する場合はそちらを優先しており重複排除済みであることを確認。継続メタデータには `ExpectationSummary` を保持し、必要に応じて `alternatives` を `Array.sub` で 16 件までに切り詰めるルールを追加。
+  - `Demand_hint.frame_boundary` に `Token_class` を保持するため、`Parser_token.classification` のシリアライズ表現（`string` キー）を `Parser_token.Class.to_symbol` / `of_symbol` で往復可能であることを手動検証。未知シンボルは `Frame_boundary.Unsupported` として `Stream_error_kind.FeederBug` を返す設計とした。
+  - 継続メタデータの最大サイズを計測し、`Demand_hint`（40B 前後）＋`ExpectationSummary`（約 200B）＋`Span`（48B）＋`Buffer snapshot` 参照という構成で 512B 程度に収まる見込みを確認。`Pending` の JSON 監査出力も 1.5KB 前後に維持できる。
+
+- **フォローアップ**
+  - Step3 で `Stream_outcome.Pending` を生成する際、直前に計算した `Demand_hint` を共有して GC 圧力を避ける必要がある。`Continuation_meta.resume_hint` と `Stream_outcome.Pending.demand` を同一レコードで共有する実装メモを `core_parse_streaming.ml` に TODO として記入。
+  - `Feeder` が `Await` を返した場合のトレーシング（`StreamEvent::Pending`) を Step4 で CLI/LSP へ露出する。監視メトリクス名 `parser.stream.await_ratio` を `0-3-audit-and-metrics.md` のドラフト欄へ追記済み。
+
 ### Step 3. ストリーミング制御ループ PoC（3日）
 - 目的: `run_stream` / `resume` を実装し、チャンク読み取り・バックプレッシャ・診断発火を最小限動作させる。
 - 主な作業:
