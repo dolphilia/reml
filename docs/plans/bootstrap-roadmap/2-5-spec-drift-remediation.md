@@ -241,7 +241,7 @@
 
   | ID | 章/領域 | 差分概要 | 推奨初動 |
   |----|---------|----------|----------|
-| `SYNTAX-001` | Chapter 1／識別子 | Unicode 識別子未対応 | Step1 で脚注範囲と拒否メッセージを棚卸済み。ASCII 制約を明記したまま Unicode 対応タスク ID 22/23 と連携し、Step2 で BNF/索引用脚注を追補 |
+| `SYNTAX-001` | Chapter 1／識別子 | Unicode 識別子未対応 | Step1 で脚注範囲と拒否メッセージを棚卸済み。Step2（2026-02-24）で BNF・索引・用語集へ ASCII 暫定脚注を追補し、技術的負債 ID 22/23 と Phase 2-7 `lexer-unicode` タスクへ橋渡し済み |
   | `LEXER-001` | Chapter 2／Unicode | `identifier(profile)` が使えない | プロファイル差分と運用ルールを `docs/notes/dsl-plugin-roadmap.md` §7 に記録 |
   | `DIAG-003` | Chapter 3／Domain | Domain/metadata が不足 | 語彙拡張案と Capability Stage テーブル更新予定を紐付け |
 

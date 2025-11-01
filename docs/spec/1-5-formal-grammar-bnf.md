@@ -286,7 +286,7 @@ Literal        ::= IntLiteral
                  | "true"
                  | "false"
 
-Ident          ::= *Unicode XID スタート + 続行を満たす識別子*
+Ident          ::= *Unicode XID スタート + 続行を満たす識別子*[^lexer-ascii-phase25]
 StringLiteral  ::= *UTF-8 文字列 (通常/生/複数行)*
 IntLiteral     ::= *10/16/8/2 進または桁区切り付き整数*
 FloatLiteral   ::= *指数/小数表記を含む浮動小数*
@@ -313,3 +313,6 @@ NL             ::= *行末 (改行または `;`)*
 * [2.4 演算子優先度ビルダー](2-4-op-builder.md) - 演算子の実装
 * [2.5 エラー設計](2-5-error.md) - エラー処理の詳細
 * [2.6 実行戦略](2-6-execution-strategy.md) - 実行時の戦略
+
+[^lexer-ascii-phase25]:
+    2026-02-24 更新。Phase 2-5 `SYNTAX-001 Step2` で BNF 上の識別子仕様と実装状況を同期し、Phase 2-7 `lexer-unicode` タスクまで ASCII (`[A-Za-z0-9_]+`) を暫定プロファイルとする旨を脚注化した。`docs/spec/1-1-syntax.md` の脚注と同一方針で、索引用（`docs/spec/README.md`・`README.md`）と用語集（`docs/spec/0-2-glossary.md`）にも同じ注意書きを反映し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `lexer.identifier_profile_unicode` 指標および `docs/plans/repository-restructure-plan.md` のリンク整合ガイドに従って監視・導線を維持する。

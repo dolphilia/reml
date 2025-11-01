@@ -14,7 +14,7 @@
 - [1-2-types-Inference.md](1-2-types-Inference.md)
 - [1-3-effects-safety.md](1-3-effects-safety.md)
 - [1-4-test-unicode-model.md](1-4-test-unicode-model.md)
-- [1-5-formal-grammar-bnf.md](1-5-formal-grammar-bnf.md)
+- [1-5-formal-grammar-bnf.md](1-5-formal-grammar-bnf.md) — 形式文法（`Ident` に Phase 2-5 時点の ASCII 暫定脚注あり）
 
 ## 2.x 標準パーサー API
 - [2-0-parser-api-overview.md](2-0-parser-api-overview.md)

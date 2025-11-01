@@ -47,6 +47,17 @@
 - **調査**: リンク切れ検証、脚注記号の重複確認、既存の `LEXER-001` 記録との整合性を確認する。  
 - **成果物**: 更新済み仕様・索引・用語集、脚注採番表。
 
+##### Step2 実施記録（2026-02-24）
+1. 仕様脚注の同期  
+   - `docs/spec/1-5-formal-grammar-bnf.md` の `Ident` 産出規則へ `[^lexer-ascii-phase25]` を付与し、Phase 2-5 時点で ASCII (`[A-Za-z0-9_]+`) を暫定プロファイルとする旨を明示した。  
+   - 脚注本文を `SYNTAX-001 Step2` として更新し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `lexer.identifier_profile_unicode` 指標および `docs/plans/repository-restructure-plan.md` のリンク整合ガイドを参照する形で整理した。
+2. 用語集と索引の更新  
+   - `docs/spec/0-2-glossary.md` に「Unicode 識別子プロファイル（暫定）」エントリを追加し、`LEXER-001` / `SYNTAX-001` 両計画の脚注整備を記録。  
+   - `docs/spec/README.md`・ルート `README.md` に Unicode 識別子の暫定運用導線を追記し、仕様索引とトップレベル導線が同じ注意書きを共有する状態を確認した。
+3. 整合性チェック  
+   - リンク切れ検証を `markdown-link-check` 想定リストに沿って手動確認し、脚注重複が無いことを確認。  
+   - `docs/plans/repository-restructure-plan.md` の Phase 2-5 フェーズ条件に照らし、リンクプレフィックスや章構成に変更が生じていないことを確認（追加作業は不要）。
+
 #### Step 3: 検証用サンプルとテストシナリオ整備（週32・Compiler/Testing）
 - **目的**: Unicode 実装後に即座に回帰検証できるテスト土台を整える。  
 - **作業**: `compiler/ocaml/tests/unicode_ident_tests.ml` を新設し、`dune` テスト設定に `[@tags unicode_pending]`（仮）を付与して Phase 2-5 ではスキップする。`docs/spec/1-1-syntax.md` の例や Chapter 3 多言語サンプルをベースに、文字種別（日本語・ハングル・合成文字）を網羅する入力を準備する。  
