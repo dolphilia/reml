@@ -29,6 +29,7 @@
   - 2026-01-12 追記: Step2 で Feeder／Continuation／DemandHint の型体系と RunConfig 変換を整理し、`core_parse_streaming_types` の骨格を確定。
   - 2026-01-16 追記: Step3 で ストリーミング制御ループ PoC（`StreamDriver` ステートマシン、`DemandHint` 再計算、`StreamMeta` 指標集計）を設計し、`Pending`/`Completed` の遷移表と計測方針を文書化。
   - 2026-01-24 追記: Step4 で CLI/LSP/CI を接続。`--streaming` 系フラグと `Parser_driver.Streaming` を実装し、`streaming_runner_tests.ml`・`streaming-outcome.json.golden` を追加。CI メトリクス（`parser.stream_extension_field_coverage`）と `stream_meta` 検証を有効化。
+  - 2026-01-26 追記: Step5 で仕様・ガイド・計画書へ PoC 状態と既知制限を脚注化し、`parser.stream.outcome_consistency` / `parser.stream.demandhint_coverage` を `0-3-audit-and-metrics.md` に登録。Phase 2-7 へ引き継ぐ Packrat 共有・バックプレッシャ自動化・監査ログ拡張の TODO を `2-7-deferred-remediation.md` / `runtime-bridges.md` に反映。
 
 ### 字句解析（LEXER）
 - [LEXER-001 修正計画](./LEXER-001-proposal.md): Unicode 識別子プロファイル導入までの暫定対応を明文化し、DSL/プラグイン計画と共有。

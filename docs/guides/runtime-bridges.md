@@ -227,6 +227,16 @@ task.join().await?;
 - `AsyncConfig.backpressure` と監査ログを一元化し、CLI と同じ指標をダッシュボードに送信。
 - `shutdown_token` を用いてデプロイ時に安全にタスクを停止する。
 
+### 10.4 Phase 2-5 PoC 監査連携とブリッジ統合
+
+- `RunConfig.extensions["stream"]` から `enabled` / `demand_min_bytes` / `demand_preferred_bytes` / `chunk_size` を Runtime Bridge 初期化時に受け取り、ストリーミング経路と CLI/LSP の設定差分を監視する。`parser.stream.outcome_consistency`・`parser.stream.demandhint_coverage` の集計結果を `audit.log("parser.stream.metrics", ...)` に転送してダッシュボードへ反映する。[^exec001-bridge]
+- `DemandHint` と `StreamMeta` を Runtime Bridge のバックプレッシャ制御へ伝播し、`FlowController.policy=Auto` を利用する場合は `BackpressureSpec` をランタイム側へ同期する。`PendingReason::Backpressure` を検出したら `audit.log("parser.stream.pending", { reason, resume_hint })` を出力し、Phase 2-7 で予定している Pending/Error 監査フローと互換にする。
+- `StreamEvent::Error` を受信した際は `bridge.stage` 監査と同じフォーマットで `effect.stage.*`／`bridge.reload` を記録し、`Stream.resume` エラーパスが Runtime Bridge 側で検出可能になるよう `AuditEnvelope.metadata["stream.last_reason"]` を必須化する。
+- Core.Async 経由で `Await` をハンドリングする構成では、`RuntimeBridgeDescriptor.capabilities` に `{"async.stream"}` を追加し、`effects.contract.stage_mismatch` の監査キーと照合する。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` で要求される Stage 一致率のレポートにこの Capability を含める。
+
+[^exec001-bridge]:
+    `docs/plans/bootstrap-roadmap/2-5-proposals/EXEC-001-proposal.md` Step5 実施記録および `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`「ストリーミング PoC フォローアップ」参照。PoC で導入したストリーミング指標と Runtime Bridge 連携の TODO を列挙。
+
 ---
 
 ## 10. GC プロファイルと監査統合（ドラフト）

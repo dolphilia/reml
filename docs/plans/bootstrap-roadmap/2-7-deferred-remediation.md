@@ -98,6 +98,15 @@
 
 **成果物**: 更新済み前提資料、メトリクス記録、Phase 2-8 用脚注
 
+### 6. ストリーミング PoC フォローアップ（Phase 2-7 序盤）
+**担当領域**: Core.Parse.Streaming / Runtime Bridge
+
+- **Packrat キャッシュ共有**: `Parser_driver.Streaming` がチャンク処理時に `Parser_driver.run` へ委譲する PoC 構造を見直し、`Core_parse.State` のメモ化領域を継続に含める。`parser.stream.outcome_consistency` が 1.0 未満の場合は差分レポートを `reports/audit/dashboard/streaming.md` へ記録する。
+- **バックプレッシャ自動化**: `FlowController.policy=Auto` を CLI/LSP から選択できるよう `RunConfig.extensions["stream"].flow` を拡張し、`demand_min_bytes` / `demand_preferred_bytes` と `PendingReason::Backpressure` を同期させる。完了時に `docs/guides/core-parse-streaming.md` §10 の制限項目をクローズする。
+- **Pending/Error 監査**: `StreamEvent::Pending` / `StreamEvent::Error` を `AuditEnvelope` 経由で `parser.stream.pending` / `parser.stream.error` へ転送し、`resume_hint` / `last_reason` / `continuation.meta.last_checkpoint` を必須フィールドとして検証する。`parser.stream.demandhint_coverage` を 1.0 で維持。
+- **CLI メトリクス連携**: `Cli.Stats` と JSON 出力に `stream_meta`（`bytes_consumed` / `resume_count` / `await_count`）を出力し、`collect-iterator-audit-metrics.py --require-success` が値を集計できるようにする。
+- **Runtime Bridge 連携**: `docs/guides/runtime-bridges.md` にストリーミング信号（`DemandHint`, backpressure hooks）を Runtime Bridge へ渡す手順と、`effects.contract.stage_mismatch` 拡張キーの同期方法を追記する。
+
 ## 成果物と検証
 - Windows/macOS CI で `ffi_bridge.audit_pass_rate` / `iterator.stage.audit_pass_rate` が 1.0 を維持し、監査欠落時にジョブが失敗すること。
 - CLI `--format` / `--json-mode` の整合が取れており、テキスト・JSON 双方のゴールデンが更新済みであること。

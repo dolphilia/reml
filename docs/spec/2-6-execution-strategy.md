@@ -75,7 +75,8 @@ type RunConfigExtensions = Map<Str, Any>
 
 1. `extensions["stream"].checkpoint` に最後の確定スパンを格納し、バッチランナーが `commit_watermark` と同期を取れるようにする（A-1）。
 2. `extensions["stream"].resume_hint` に `DemandHint` を保持し、ハイブリッド実行時の再開条件を統一する。`../guides/core-parse-streaming.md` では同じ構造体を `ContinuationMeta.resume_hint` に格納するため、ランナー間の相互運用が容易になる。
-3. インクリメンタル再パースで `recover` を利用する際は、`extensions["recover"].notes=true` を設定して `Diagnostic.notes` を必須化し、部分的な診断が IDE 側で欠落しないようにする。
+3. Phase 2-5 PoC では `extensions["stream"].enabled` / `demand_min_bytes` / `demand_preferred_bytes` / `chunk_size` を CLI・LSP・CI で共有し、`parser.stream.outcome_consistency` と `parser.stream.demandhint_coverage` を監視メトリクスとして登録した。Packrat キャッシュ共有や Pending/Error の監査転送は Phase 2-7 のフォローアップとして残っている。[^runconfig-stream-phase25]
+4. インクリメンタル再パースで `recover` を利用する際は、`extensions["recover"].notes=true` を設定して `Diagnostic.notes` を必須化し、部分的な診断が IDE 側で欠落しないようにする。
 
 #### B-2-1. ターゲット情報拡張 `extensions["target"]`
 
@@ -388,3 +389,6 @@ fn container_profile(profile: &str) -> RunConfig = match profile {
 
 [^runconfig-lex-phase25-step6]:
     2025-11-30 追記。`Core.Parse.Lex.Bridge.derive` が `RunConfig.extensions["lex"]` と `extensions["config"]` を同期させ、`ConfigTriviaProfile` と `space_id` を `lexer.mll` の `set_trivia_profile`／`read_token` に供給する（`compiler/ocaml/src/core_parse_lex.ml:119`, `:170`）。`parser_driver.run` はこのブリッジを介して `Core.Parse.Lex.Api.lexeme` を利用し、CLI/LSP も `lex.profile` を同じ経路で注入する（`compiler/ocaml/src/parser_driver.ml:170`, `compiler/ocaml/src/main.ml:608`, `tooling/lsp/run_config_loader.ml:130`）。CI では `lexer.shared_profile_pass_rate` メトリクスで共有設定の適用率を測定している（`tooling/ci/collect-iterator-audit-metrics.py:732`）。
+
+[^runconfig-stream-phase25]:
+    2026-01-26 追記。`EXEC-001` Step4/Step5 で `RunConfig.extensions["stream"]` の `enabled` / `demand_min_bytes` / `demand_preferred_bytes` / `chunk_size` を CLI・LSP・CI へ配線し、`parser.stream.outcome_consistency` と `parser.stream.demandhint_coverage` を `tooling/ci/collect-iterator-audit-metrics.py` で監視する体制を整備した。現行 PoC は既存のバッチランナーへ入力を委譲しており、Packrat キャッシュ共有・バックプレッシャ自動化・`Stream.resume` エラー監査は Phase 2-7 `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へフォローアップとして登録済み。

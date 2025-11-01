@@ -627,7 +627,7 @@ let () =
         match opts.stream_chunk_size with
         | Some value when value > 0 -> value
         | _ -> (
-            match stream_defaults.stream_chunk_size with
+            match stream_defaults.chunk_size with
             | Some value when value > 0 -> value
             | _ -> 4096)
       in

@@ -20,8 +20,8 @@ val effective_require_eof : Run_config.t -> bool
 
 val expectation_summary_for_checkpoint :
   session ->
-  Parser.MenhirInterpreter.checkpoint ->
-  Parser_expectation.summary
+  'a Parser.MenhirInterpreter.checkpoint ->
+  Diagnostic.expectation_summary
 
 val register_diagnostic :
   session ->

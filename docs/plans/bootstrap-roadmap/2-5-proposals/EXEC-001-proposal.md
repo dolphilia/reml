@@ -260,17 +260,23 @@ val run_stream :
 - 目的: PoC の制限・今後の課題を記録し、Phase 2-7 以降のフル実装に繋げる。
 - 主な作業:
   - `docs/guides/core-parse-streaming.md`、`docs/spec/2-6-execution-strategy.md`、`docs/spec/2-7-core-parse-streaming.md` に PoC 状態と既知制限を脚注追加。
-  - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` と `docs/notes/runtime-bridges.md` へ制限/連携要件を追記。
+  - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` と `docs/guides/runtime-bridges.md` へ制限/連携要件を追記。
   - `0-3-audit-and-metrics.md` に新規指標（例: `parser.stream.outcome_consistency`, `parser.stream.demandhint_coverage`）を登録し、計測結果を記録する。
 - 調査・検証:
   - Phase 3 計画書におけるストリーミング要件を確認し、PoC で満たせていない項目を列挙。
   - CLI/LSP チームとレビューを実施し、PoC 公開チャネル（`-Zstreaming` フラグ等）の合意形成状況をまとめる。
 
+> 2026-01-26 更新: Step5 を実施し、PoC 状態の公開と Phase 2-7 フォローアップ登録を完了。
+> - 仕様・ガイド更新: `docs/spec/2-6-execution-strategy.md` / `docs/spec/2-7-core-parse-streaming.md` に Phase 2-5 PoC の脚注を追加し、`RunConfig.extensions["stream"]` の監視指標と未解決の制限（Packrat 共有・バックプレッシャ自動化・Pending/Error 監査）を明文化。`docs/guides/core-parse-streaming.md` §10 へ PoC 状況サマリを追加し、利用者向けに既知制限を提示。
+> - フォローアップ登録: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に「ストリーミング PoC フォローアップ」セクションを新設し、Phase 2-7 で解消するタスク（Packrat キャッシュ共有、バックプレッシャ自動化、監査連携、CLI メトリクス統合、Runtime Bridge 連携）を列挙。`docs/guides/runtime-bridges.md` へストリーミング信号の橋渡し手順と監査要件を追加。
+> - メトリクス登録: `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `parser.stream.outcome_consistency` / `parser.stream.demandhint_coverage` を追加し、`tooling/ci/collect-iterator-audit-metrics.py --require-success` と `scripts/validate-diagnostic-json.sh` を通じて CI 監視する運用を確定。
+> - レビュー記録: `docs/plans/bootstrap-roadmap/2-5-review-log.md` へ Step5 実施ログを追記し、CLI/LSP 連携チームとの合意内容（`-Zstreaming` の公開チャネル方針は Phase 2-7 で決定、自動化タスクは上記フォローアップへ移送）をまとめた。
+
 ## 5. フォローアップ
 - PoC の仕様制限（例: チャンクサイズ固定、`Pending` の暗黙タイムアウト未実装）を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に記録し、本実装フェーズへ引き継ぐ。  
 - `docs/guides/core-parse-streaming.md` のサンプルを PoC API で動作させ、差分を脚注として追加。  
 - Phase 3 の self-host 計画書で `run_stream` をクリティカルパスに含めるため、進捗を `0-3-audit-and-metrics.md` に定期記録する。
-- `docs/notes/runtime-bridges.md` にストリーミング API と Runtime Bridge の連携要件を追記し、バックプレッシャ信号の橋渡し方法を明文化する。
+- `docs/guides/runtime-bridges.md` にストリーミング API と Runtime Bridge の連携要件を追記し、バックプレッシャ信号の橋渡し方法を明文化する。
 - **タイミング**: PARSER-001/002/LEXER-002 が揃った Phase 2-5 後半に PoC 実装へ着手し、Phase 2-6 開始前までに最小機能のストリーミングランナーを完成させる。
 
 ## 6. 残課題

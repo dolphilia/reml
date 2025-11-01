@@ -1017,3 +1017,27 @@ fn main() -> i64 !{ mut } = {
 ### 2. 未解決課題
 - 現行 PoC はチャンクを蓄積した上で既存の `Parser_driver.run` を呼び出す方式のため、Packrat キャッシュ共有やバックプレッシャ通知は未着手。Step5 で `Core.Parse` ブリッジとの連携と `parser.stream.await_ratio` などの指標輸送を整備する。
 - `stream_meta` はまだ `Cli.Stats` 出力へ接続されていない。Phase 2-7 で CLI メトリクスへ転送し、CI のトレンド把握に活用するフォローアップを登録する。
+
+## EXEC-001 Step5 ドキュメント・フォローアップ登録（2026-01-26）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/EXEC-001-proposal.md`](./2-5-proposals/EXEC-001-proposal.md#step-5-ドキュメントフォローアップ登録15日)
+
+### 1. 更新内容
+- 仕様・ガイド脚注: `docs/spec/2-6-execution-strategy.md`・`docs/spec/2-7-core-parse-streaming.md` に Phase 2-5 PoC の制限と監視指標を追加し、`RunConfig.extensions["stream"]` の既定キーと残課題（Packrat 共有、バックプレッシャ自動化、Pending/Error 監査）の状態を明示。`docs/guides/core-parse-streaming.md` §10 を新設し、PoC 状態と既知制限をまとめた。
+- ランタイム連携: `docs/guides/runtime-bridges.md` にストリーミング信号（`DemandHint` / `StreamMeta`）を Runtime Bridge へ伝達する手順と監査ログ (`parser.stream.*`) の拡張方針を追加。Phase 2-7 で Stage 監査と連携するための Capability 設定を記載した。
+- フォローアップ登録: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に「ストリーミング PoC フォローアップ」を追加し、Packrat キャッシュ共有・バックプレッシャ自動化・Pending/Error 監査・CLI メトリクス連携・Runtime Bridge 連携を Phase 2-7 序盤のタスクとして列挙。
+- メトリクス整備: `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `parser.stream.outcome_consistency` / `parser.stream.demandhint_coverage` を登録し、`tooling/ci/collect-iterator-audit-metrics.py --require-success` と `scripts/validate-diagnostic-json.sh` で監視する運用を確定。
+
+### 2. レビュー所見
+- CLI/LSP チームレビューで `-Zstreaming` フラグの公開チャネルは Phase 2-7 開始時に決定する方針を継続。Step5 では PoC ドキュメント化を優先し、露出範囲は現状通り開発者向けプレリリースに限定する。
+- Runtime Bridge チームとの合意により、`parser.stream.pending` / `parser.stream.error` イベントを Phase 2-7 で `AuditEnvelope` に昇格させる。`stream_meta` の CLI 表示と Stage 監査キー拡張は同タスクに統合した。
+
+### 3. TODO / 引き継ぎ
+1. Packrat キャッシュ共有とバックプレッシャ自動化は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §6 に引き継ぎ済み。実装後は `docs/guides/core-parse-streaming.md` §10 の脚注を更新し、既知制限一覧から該当項目を削除する。
+2. `collect-iterator-audit-metrics.py` にストリーミング専用セクションを追加し、`parser.stream.metrics` を `reports/audit/dashboard/streaming.md` へ出力する（Phase 2-7 の CI ダッシュボードタスクにて対応）。
+3. CLI JSON / `Cli.Stats` に `stream_meta` を組み込み、`scripts/validate-diagnostic-json.sh` の検証項目を拡張する。実装時は `docs/spec/2-6-execution-strategy.md` と `docs/guides/runtime-bridges.md` の監査要件を同期。
+
+### 4. 参照ログ
+- `nl -ba docs/spec/2-7-core-parse-streaming.md | sed -n '1,120p'` で PoC 脚注の挿入箇所を参照。`docs/spec/2-6-execution-strategy.md` の `RunConfig.extensions["stream"]` 項目も併せて更新した。
+- `nl -ba docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md | sed -n '15,40p'` で新規指標の登録を確認。CI 監視の扱い（require-success）と参照資料を追記。
+- `nl -ba docs/guides/runtime-bridges.md | sed -n '200,240p'` で Runtime Bridge との連携手順と監査拡張を確認。Phase 2-7 フォローアップとリンクしてあることをチェック。

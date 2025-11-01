@@ -12,6 +12,8 @@
 | 依存モジュール | `Core.Parse`（2.1〜2.6）、`Core.Diagnostics`（2.5, 3-6）、`Core.Async`（3-9、オプション） |
 | 相互参照 | [2.1](2-1-parser-type.md) `RunConfig.extensions`, [2.5](2-5-error.md) 診断・recover, [3-6](3-6-core-diagnostics-audit.md) 監査ログ, [3-8](3-8-core-runtime-capability.md) Capability Registry |
 
+> **実装状況メモ（Phase 2-5）**: OCaml 実装は `EXEC-001` Step4 にて `Parser_driver.Streaming.run_stream` / `resume` を CLI・LSP・CI へ統合し、`streaming_runner_tests.ml` と `streaming-outcome.json.golden` でバッチ結果との一致を検証している。Step5 で `parser.stream.outcome_consistency` / `parser.stream.demandhint_coverage` の監視を開始したが、Packrat キャッシュ共有・バックプレッシャ自動化・`Stream.resume` エラー監査は Phase 2-7 のフォローアップとして残課題に登録している。[^streaming-poc-phase25]
+
 ---
 
 ## A. ランナー API
@@ -269,3 +271,6 @@ struct StreamMeta {
 ---
 
 > 補足: 非同期ランナー (`run_stream_async`) は `Core.Async` 章（3-9）で規定する。ここでは同期 API の仕様を定義し、非同期版は上記契約に `Future` ベースの戻り値を適用した拡張として扱う。
+
+[^streaming-poc-phase25]:
+    2026-01-26 追記。`docs/plans/bootstrap-roadmap/2-5-review-log.md`「EXEC-001 Step4」、`docs/plans/bootstrap-roadmap/2-5-proposals/EXEC-001-proposal.md` Step5 実施記録、および `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の `EXEC-001` 引き継ぎ項目を参照。現行 PoC は `parser.stream.outcome_consistency` / `parser.stream.demandhint_coverage` を CI 指標として登録したが、Packrat キャッシュ共有・バックプレッシャ自動化・`Stream.resume` エラー監査は Phase 2-7 でのフォローアップが必要。

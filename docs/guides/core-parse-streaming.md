@@ -252,3 +252,18 @@ let outcome =
 ```
 
 この構成により、ストリーミング実行とバッチ実行が同じ `parser.core.rule.*` メタデータと Packrat 指標を共有し、Phase 2-7 で予定されているテレメトリ統合や Menhir 置換判断に必要な計測値を維持できる。
+
+## 10. Phase 2-5 PoC 状態と既知制限
+
+- 2026-01-24 時点で OCaml 実装は `Parser_driver.Streaming.run_stream` / `resume` を実装し、CLI (`--streaming` フラグ)・LSP・CI へ統合済み。`streaming_runner_tests.ml` と `streaming-outcome.json.golden` によりバッチ結果との一致を継続的に検証している。[^exec001-step4]
+- Step5 では PoC 状態を公表するため、本ガイドを含む関連文書へ脚注を追加し、`parser.stream.outcome_consistency`・`parser.stream.demandhint_coverage` を `collect-iterator-audit-metrics.py` で収集する運用を開始した。[^exec001-step5]
+- 既知の制限として、チャンク処理は依然として内部でバッチランナーを再利用しており Packrat キャッシュ共有やバックプレッシャの自動制御は未実装。`Stream.resume` のエラーパスは監査ログへ転送されず、CLI メトリクス (`Cli.Stats`) との連携も Phase 2-7 のフォローアップとして残っている。[^exec001-limit]
+
+[^exec001-step4]:
+    `docs/plans/bootstrap-roadmap/2-5-review-log.md`「EXEC-001 Step4 CLI/LSP/CI 連携（2026-01-24）」を参照。CLI/LSP/CI への統合とゴールデン整備を記録。
+
+[^exec001-step5]:
+    `docs/plans/bootstrap-roadmap/2-5-proposals/EXEC-001-proposal.md` Step5 実施記録。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` にストリーミング指標を登録し、CI で `parser.stream.outcome_consistency` / `parser.stream.demandhint_coverage` を監視する手順を追記した。
+
+[^exec001-limit]:
+    `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の `EXEC-001` 引き継ぎ項目を参照。Packrat キャッシュ共有、バックプレッシャ自動化、監査ログの Pending/Error 伝送は Phase 2-7 での改善対象。

@@ -366,7 +366,8 @@ module Streaming = struct
 
   let fallback first second = match first with Some _ -> first | None -> second
 
-  let merge_hint defaults ?fallback_reason hint =
+  let merge_hint (defaults : Stream_cfg.t) ?fallback_reason
+      (hint : demand_hint) : demand_hint =
     let default_min = defaults.demand_min_bytes in
     let default_pref = defaults.demand_preferred_bytes in
     let default_resume = defaults.resume_hint in
@@ -381,7 +382,8 @@ module Streaming = struct
       reason = fallback hint.reason fallback_reason;
     }
 
-  let default_pause defaults ?reason () =
+  let default_pause (defaults : Stream_cfg.t) ?(reason : string option = None) ()
+      : demand_hint =
     let default_min = defaults.demand_min_bytes in
     let default_pref = defaults.demand_preferred_bytes in
     let default_resume = defaults.resume_hint in
@@ -407,7 +409,7 @@ module Streaming = struct
           let demand =
             match hint_opt with
             | Some hint ->
-                merge_hint defaults ~fallback_reason:(Some "feeder.await") hint
+                merge_hint defaults ~fallback_reason:"feeder.await" hint
             | None -> default_pause defaults ~reason:(Some "feeder.await") ()
           in
           let continuation =
@@ -426,7 +428,7 @@ module Streaming = struct
           in
           let meta =
             make_meta ~bytes:bytes_consumed ~chunks:chunks_consumed
-              ~await:(await_count + 1) ~resume:0 ~reason:demand.reason ()
+              ~await:(await_count + 1) ~resume:0 ?reason:demand.reason ()
           in
           Pending { continuation; demand; meta }
       | Closed ->
@@ -434,7 +436,7 @@ module Streaming = struct
           let result = run_string ~filename ~config text in
           let meta =
             make_meta ~bytes:bytes_consumed ~chunks:chunks_consumed
-              ~await:await_count ~resume:0 ~reason:None ()
+              ~await:await_count ~resume:0 ?reason:None ()
           in
           Completed { result; meta }
       | Error message ->
@@ -457,7 +459,7 @@ module Streaming = struct
           in
           let meta =
             make_meta ~bytes:bytes_consumed ~chunks:chunks_consumed ~await:await_count
-              ~resume:0 ~reason:demand.reason ()
+              ~resume:0 ?reason:demand.reason ()
           in
           Pending { continuation; demand; meta }
     in
@@ -488,7 +490,7 @@ module Streaming = struct
         in
         let meta =
           make_meta ~bytes:(bytes + String.length data) ~chunks:(chunks + 1)
-            ~await ~resume:resume_count ~reason:None ()
+            ~await ~resume:resume_count ?reason:None ()
         in
         Completed { result; meta }
     | Closed ->
@@ -499,14 +501,16 @@ module Streaming = struct
         in
         let meta =
           make_meta ~bytes ~chunks ~await ~resume:resume_count
-            ~reason:(Some "feeder.closed") ()
+            ?reason:(Some "feeder.closed") ()
         in
         Completed { result; meta }
     | Await hint_opt ->
         let fallback_reason = Some "feeder.await" in
         let demand =
           match hint_opt with
-          | Some hint -> merge_hint defaults ~fallback_reason hint
+          | Some hint ->
+              merge_hint defaults
+                ~fallback_reason:"feeder.await" hint
           | None ->
               {
                 action = `Pause;
@@ -533,7 +537,7 @@ module Streaming = struct
         in
         let meta =
           make_meta ~bytes ~chunks ~await:(await + 1) ~resume:resume_count
-            ~reason:demand.reason ()
+            ?reason:demand.reason ()
         in
         Pending { continuation; demand; meta }
     | Error message ->
@@ -558,7 +562,7 @@ module Streaming = struct
           }
         in
         let meta =
-          make_meta ~bytes ~chunks ~await ~resume:resume_count ~reason ()
+          make_meta ~bytes ~chunks ~await ~resume:resume_count ?reason ()
         in
         Pending { continuation; demand; meta }
 end

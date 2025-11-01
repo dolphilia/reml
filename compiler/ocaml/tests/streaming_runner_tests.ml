@@ -104,8 +104,11 @@ let test_pending_resume_flow () =
         match after_chunk with
         | Stream.Completed completed -> completed
         | Stream.Pending pending2 ->
-            Stream.resume pending2.continuation Stream.Closed
-        (* 追加入力待ちのままの場合は Closed で締める *)
+            (* 追加入力待ちのままの場合は Closed で締める *)
+            (match Stream.resume pending2.continuation Stream.Closed with
+            | Stream.Completed completed -> completed
+            | Stream.Pending _ ->
+                fail desc "Closed 投入後も Pending のままです")
       in
       let legacy = Parser_driver.parse_result_to_legacy completed.result in
       ensure
