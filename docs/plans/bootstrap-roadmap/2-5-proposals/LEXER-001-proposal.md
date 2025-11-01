@@ -54,6 +54,11 @@
 - **調査**: `docs/spec/3-8-core-runtime-capability.md` の Stage 契約と `docs/guides/runtime-bridges.md` のブリッジ要件を参照し、Capability ID が ASCII に固定されている箇所を洗い出す。
 - **成果物**: DSL ノートの更新、Stage/Capability 関連 TODO の登録、`compiler/ocaml/docs/technical-debt.md`（ID22/23）との整合メモ。
 
+##### Step3 実施記録（2026-03-04）
+- `docs/notes/dsl-plugin-roadmap.md` §7 に ASCII 限定ポリシー・Stage 連携・Phase 2-7 フォローアップを整理し、`lexer.identifier_profile_unicode` 指標更新と CLI/LSP 周知タスクの TODO を登録。[^lexer001-phase25]
+- `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の `LEXER-001` 行へ Step3 完了脚注を追記し、Phase 2-7 での Unicode 実装着手条件を共有。  
+- `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Step3 完了メモを追加し、DSL/プラグインチーム向け ASCII 運用ルールと Capability Stage 影響範囲を記録。
+
 #### Step 4: 測定指標と CI スイッチの定義（週32, Metrics チーム）
 - **目的**: Phase 2-7 で Unicode プロファイルを導入した際に CI で差分を検知できる状態を作る。  
 - **作業**: `0-3-audit-and-metrics.md` に `lexer.identifier_profile_unicode` 指標の計測項目と PASS 判定条件を記述し、`tooling/ci/collect-iterator-audit-metrics.py` にプレースホルダ集計を実装する。Unicode テストをスキップする CI タグを CLI オプション（`--lex-profile=ascii|unicode`）として設計し、Phase 2-7 で切り替え可能にする。  
