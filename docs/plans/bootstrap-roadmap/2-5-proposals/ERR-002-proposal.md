@@ -34,6 +34,13 @@
 - `parser_expectation.ml` と既存ゴールデン（`compiler/ocaml/tests/golden/diagnostics/parser/*.json.golden`）で同期トークン集合がどこまで露出しているか確認し、欠落メタデータを洗い出す。  
 - 調査: `docs/spec/2-5-error.md` §B-11 〜 §E（`recover` の API と FixIt 仕様）、`docs/plans/bootstrap-roadmap/2-5-review-log.md` 「PARSER-003 Step1/Step3」の指摘箇所、`compiler/ocaml/src/parser_run_config.ml` `Recover` モジュールの既存フィールド。
 
+#### Step0 実施記録（Week 32 Day2 完了）
+- `Parser_diag_state.record_recovery` は定義のみで呼び出しがなく、Menhir の `HandlingError` 分岐でも回復フラグを更新しないため `ParseResult.recovered` は常に既定値の `false` のままとなる（compiler/ocaml/src/parser_diag_state.ml:68, compiler/ocaml/src/parser_driver.ml:82-233）。  
+- `Run_config.Recover.of_run_config` で同期トークンと `emit_notes` を取り出しているが、`Core_parse_streaming.create_session` 以降でこれらを診断へ反映する処理が存在せず、`recover_sync_tokens` / `recover_notes_enabled` も未使用である（compiler/ocaml/src/core_parse_streaming.ml:24-86, compiler/ocaml/src/parser_run_config.ml:264-291）。  
+- 既存ゴールデンは RunConfig 側の `extensions.recover` を記録しているものの、診断出力には `extensions["recover"]` や FixIt が含まれず、`recovered` フラグも立っていないことを確認（compiler/ocaml/tests/golden/diagnostics/parser/parser-runconfig-packrat.json.golden:1-82）。  
+- 期待集合シムは Menhir の受理可能トークンを列挙するのみで、同期トークンや `recover` メタデータを収集する仕組みが無いため、仕様で求められる `Diagnostic.hints`・FixIt・notes の前提が欠落している（compiler/ocaml/src/parser_expectation.ml:384-420, docs/spec/2-5-error.md:170-335）。  
+- 既存レビューでも `recover` 経路が未配線であることが指摘されており、今回の棚卸しで該当箇所が最新の実装でも解消されていないことを再確認した（docs/plans/bootstrap-roadmap/2-5-review-log.md:6-39）。
+
 ### Step1 recover フックと同期トークン収集の設計（Week 32 Day3-4）
 - `Core_parse.rule`／`Core_parse_stream.register_diagnostic` にフックを追加し、Menhir の `HandlingError` 到達時に `Parser_diag_state.record_recovery` を呼び出して回復状態を一元管理する。  
 - `RunConfig.Recover.sync_tokens` の内容を `Parser_diag_state.recover_config` から引き出し、`Diagnostic.set_extension "recover"` で `{ "sync_tokens": [...], "strategy": Str }` を埋める変換ヘルパを設計する。  
