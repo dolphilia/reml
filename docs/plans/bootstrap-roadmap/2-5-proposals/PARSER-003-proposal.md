@@ -124,6 +124,11 @@ end
     - **索引整備**: `README.md`・`docs/plans/bootstrap-roadmap/2-5-proposals/README.md` を更新して新モジュール導線を掲載し、`docs/notes/core-parse-api-evolution.md` に API 変更履歴を記録する。  
     - **引き継ぎ**: Phase 2-7 以降へ渡す TODO（テレメトリ統合、Menhir 置換判断）を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に整理し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` の最終日にまとめる。
 
+### Step6 実施記録（2025-12-24）
+- `docs/spec/2-2-core-combinator.md` に `Core_parse` 進捗脚注を追加し、`rule`/`label`/`cut` と Packrat 指標が仕様で参照できるよう更新。`docs/guides/plugin-authoring.md` と `docs/guides/core-parse-streaming.md` には RunConfig 共有手順とコンビネーター利用例を追記した。  
+- リポジトリ索引 `README.md` と `docs/plans/bootstrap-roadmap/2-5-proposals/README.md` を更新し、PARSER-003 の Step6 完了状況を追記。`docs/notes/core-parse-api-evolution.md` へ Step6 セクションを追加し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に 2025-12-24 ログを登録した。  
+- テレメトリ統合と Menhir 置換判断は保留のため、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ TODO を転記し、Phase 2-7 で Packrat 指標の監査強化・ダッシュボード統合を検討する。
+
 ## 残課題
 - Menhir 生成コードを全面置換するのか、移行期間中はシム層で段階導入するのかの方針決定が必要。  
 - `rule` / `ParserId` 割り当てを静的に行うか、実行時にハッシュで生成するかについてパフォーマンス評価が求められる。

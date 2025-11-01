@@ -215,3 +215,40 @@ let read_token = fn lexbuf ->
 
 [^stream-lex-bridge-phase25]:
     2025-11-30 更新。`Core.Parse.Lex.Bridge` が `RunConfig.extensions["lex"]` と `extensions["config"]` を同期し、`lexeme`/`symbol` が `RunConfig` 由来のプロファイルを利用できるようになった（`compiler/ocaml/src/core_parse_lex.ml:119`, `:170`）。`parser_driver.run` は `lex_pack` と更新済み `RunConfig` を組み合わせて Menhir ドライバを初期化し（`compiler/ocaml/src/parser_driver.ml:170`）、CLI/LSP も同じ `lex.profile` を注入する（`compiler/ocaml/src/main.ml:608`, `tooling/lsp/run_config_loader.ml:130`）。適用率は `lexer.shared_profile_pass_rate` として `tooling/ci/collect-iterator-audit-metrics.py:732` と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md:215` に記録。
+
+### 9.3 Core.Parse コンビネーター共有（Phase 2-5 Step6）
+
+- `PARSER-003` Step6 で整備された `Core_parse` モジュール経由で、ストリーミング経路にも `rule`/`label`/`cut`/`recover` のメタデータが付与されるようになった。`RunConfig` と Capability を併せて渡すことで、Packrat メモ化や回復同期トークンが CLI/LSP と同じ監査指標（`parser.core_comb_rule_coverage`、`parser.recover_sync_success_rate` 等）に反映される。詳細は `docs/notes/core-parse-api-evolution.md` Phase 2-5 Step6 と `docs/plans/bootstrap-roadmap/2-5-review-log.md` 2025-12-24 エントリを参照。
+- `Core.Parse.Plugin.with_capabilities` と `RunConfig.extensions["stream"]` を併用し、Packrat/Recover の有効化状態をドライバ間で同期させる。これにより `collect-iterator-audit-metrics.py --require-success` の Packrat 指標や `parser.core.rule.*` メタデータが欠落した際も再現性のあるフィードバックが得られる。
+
+```reml
+use Core.Parse
+use Core.Parse.Streaming
+use Core.Parse.Plugin
+
+let parser =
+  Core.Parse.rule("stream.entry",
+    syntax_tree()
+      |> Core.Parse.recover(
+        until = Core.Parse.symbol(space(), ";"),
+        with = |_| default_stmt()
+      )
+  )
+    |> Core.Parse.Plugin.with_capabilities({"parser.recover", "parser.trace"})
+
+let run_config =
+  RunConfig::builder()
+    .with_extension("lex", shared_profile())
+    .with_extension("recover", { sync_tokens: [";"], notes: true })
+    .with_extension("stream", { resume_hint: { min_bytes: 64 } })
+    .finish()
+
+let outcome =
+  run_stream(parser, feeder, {
+    run_config = run_config,
+    flow = default_flow(),
+    on_diagnostic = handle_event,
+  })
+```
+
+この構成により、ストリーミング実行とバッチ実行が同じ `parser.core.rule.*` メタデータと Packrat 指標を共有し、Phase 2-7 で予定されているテレメトリ統合や Menhir 置換判断に必要な計測値を維持できる。

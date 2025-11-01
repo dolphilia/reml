@@ -3,6 +3,7 @@
 > 目的：**小さく強い核**で、書きやすさ・読みやすさ・高品質エラー・実用性能（ゼロコピー／Packrat／左再帰）を同時に満たす。
 > 前提：2.1 の型と実行意味（`Reply{consumed, committed}`）に準拠。**Unicode 前提**。
 > 方針：\*\*最小公理系（12-15個）**を厳選し、残りは**派生（derived）\*\*として提供。
+> 実装状況：Phase 2-5 Step6 で OCaml 実装の `Core_parse` モジュールが `rule`/`label`/`cut` と Packrat 指標を公開し、仕様上のコアコンビネーターと診断メタデータが同期された。[^core-parse-progress-ocaml]
 
 ---
 
@@ -353,3 +354,5 @@ register_plugin(ParserPlugin {
 `Core.Parse.Plugin` 拡張は上記 capability をすべて実装しており、コアのみを読み込んだ場合は `with_capabilities` を呼んでも効果がない（no-op）。プラグインは必要な最小 capability のみ要求し、過剰な要求を避けることが推奨される。
 
 > `Core.Parse.Plugin.Recoverable` トレイトは、回復可能なパーサが `recover` や `atomic` を使用する際の補助契約を提供する。コア API だけを利用する場合は意識する必要はない。
+
+[^core-parse-progress-ocaml]: `docs/plans/bootstrap-roadmap/2-5-proposals/PARSER-003-proposal.md` Step6 実施記録および `docs/plans/bootstrap-roadmap/2-5-review-log.md` 2025-12-24 エントリを参照。API 変更履歴は `docs/notes/core-parse-api-evolution.md` Phase 2-5 Step6 セクションに整理されている。

@@ -163,6 +163,12 @@ end
 - `recover` 同期トークンのテストケースを LSP フィクスチャへ追加し、CLI ゴールデンにも `recover.notes` 出力を反映させる。  
 - Stage/Capability 情報が欠落した診断を検出する CI ルールを Phase 2-7 で導入する（`collect-iterator-audit-metrics.py --require-success` に新規チェックを追加）。
 
+## Phase 2-5 Step6 ドキュメント同期と引き継ぎ（2025-12-24）
+
+- `docs/spec/2-2-core-combinator.md` に `Core_parse` 進捗脚注を追加し、OCaml 実装が公開した `rule`/`label`/`cut`/Packrat 指標が仕様に反映されたことを明文化した。`docs/guides/plugin-authoring.md` と `docs/guides/core-parse-streaming.md` にはコンビネーター利用例と RunConfig 共有手順を追記し、CLI/LSP/ストリーミングで同じ設定を再現できるガイドを整備。  
+- リポジトリ索引として `README.md` と `docs/plans/bootstrap-roadmap/2-5-proposals/README.md` を更新し、PARSER-003 の進捗が一目で把握できるようリンクとタイムスタンプを追加。`docs/plans/bootstrap-roadmap/2-5-review-log.md` 2025-12-24 エントリに作業ログを記録。  
+- テレメトリ統合と Menhir 置換方針は未決定のため、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に TODO を移送。Packrat 指標と `parser.core.rule.*` メタデータを活用した監査強化を Phase 2-7 で評価する。
+
 ---
 
 [^parser003-step1]: `docs/plans/bootstrap-roadmap/2-5-proposals/PARSER-003-proposal.md` Step1 実施記録。Menhir 規則と 15 コアコンビネーターの対応表・欠落メタデータを整理。
