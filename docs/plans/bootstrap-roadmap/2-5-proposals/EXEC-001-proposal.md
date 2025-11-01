@@ -190,6 +190,53 @@ val run_stream :
   - `Core_parse.State.record_packrat_access` の呼び出しタイミングをバッチと比較し、Packrat 指標の整合を確認。
   - `docs/guides/core-parse-streaming.md` §5-§7 のドライバ例を PoC に当てはめ、欠落 API を洗い出す。
 
+> 2026-01-16 更新: Step 3 の PoC 制御ループ設計を完了。Feeder からの入力を `StreamDriver` が状態遷移形式で受け取り、`Pending`/`Completed` の分岐と `DemandHint` 再計算を含む骨格を確定した。RunConfig 連携と診断橋渡しの整合も合わせて確認済み。
+
+#### Step3 実施記録（2026-01-16）
+
+- **制御ステートマシン**  
+  `StreamDriver` を `Parsing` / `Awaiting` / `Draining` の 3 状態に整理し、`Core_parse.Streaming.step` が Menhir チェックポイントを推進するたびに現在の状態と `StreamOutcome` を同時に更新する設計にした。核心ループは次のように整理している。
+
+  ```reml
+  fn pump(state, checkpoint, input) -> StreamOutcome {
+    match CoreParse.step(checkpoint, input.buffer) {
+      | NeedMore(hint) ->
+          StreamOutcome::Pending {
+            continuation = Continuation::snapshot(state, input),
+            demand = hint,
+            meta = StreamMeta::await(input)
+          }
+      | Produced(reply) ->
+          StreamOutcome::Completed {
+            result = finalize(reply, state.session),
+            meta = StreamMeta::from_session(state.session, input)
+          }
+    }
+  }
+  ```
+
+- **Feeder イベントと遷移**  
+  Feeder の戻り値とドライバ状態を以下の対応表に整理し、`docs/spec/2-7-core-parse-streaming.md` §A-B の契約に沿って遷移を定義した。
+
+  | Feeder.yield | 受信時の状態 | 次状態 | `StreamOutcome` への反映 |
+  |--------------|--------------|--------|--------------------------|
+  | `Chunk bytes` | `Parsing` または `Awaiting` | `Parsing` | バッファへ追記し、そのまま `Core_parse` へ供給。`StreamMeta.chunks_consumed` を増分。 |
+  | `Await` | `Parsing` | `Awaiting` | `DemandHint.reason = "feeder.await"` を設定し `Pending` を返却。 |
+  | `Closed` | `Parsing` または `Draining` | `Draining` | バッファが空なら即座に `Token.EOF` を挿入し完了へ遷移。残バイトがある場合は消化後に `Completed`。 |
+  | `Error err` | 任意 | `Draining` | `StreamOutcome::Completed` を返しつつ、診断ビルダーに `Stream_error_kind` を橋渡し。 |
+
+- **DemandHint とバックプレッシャ**  
+  `Demand_hint.min_bytes` は現在の `packrat.commit_watermark` と `input.buffered_bytes` から `max(64, watermark - buffered)` で算出するルールを暫定採用。`preferred_bytes` は `flow.high_watermark` が指定されていれば `min(high_watermark, demand_cap)`、未指定の場合は `preferred = min_bytes * 4` とし、`frame_boundary` は `Parser_token.Class` を `extensions["stream.demand"]` から復元する。`Await` を挟んだ場合は `reason = Some "feeder.await"` とし、`resume` 呼び出し時に手元のチャンク計画を再評価できるようにした。
+
+- **診断・Packrat 連携**  
+  `Parser_diag_state` から抽出した `ExpectationSummary` を `Continuation_meta.expected_tokens` に格納し、`docs/spec/2-7-core-parse-streaming.md` §C に記載された `resume_notes` オプションに備えた。Packrat 指標は `Core_parse.State.packrat_queries/hits` を `StreamMeta.packrat = Some (queries, hits)` で転記、`Pending` 時には未消化の問い合わせがあっても再度要求できることを確認した。`Stream_meta.diagnostics_pending` は `Parser_diag_state.diagnostics` の長さで算出し、`Pending` を返す際に通知する。
+
+- **RunConfig / Continuation 同期**  
+  `RunConfig.extensions["stream"]` から取得した `checkpoint` / `flow_mode` / `demand` 情報を `Continuation_meta` の `commit_watermark`・`resume_hint` に反映し、`resume` 実行後は `with_stream_extension` で次回呼び出しへ戻す手順を定義。継続には `Trace_label` と `span_trace` の末尾を保存し、IDE 補助が `docs/guides/core-parse-streaming.md` §6 で示す補完 UI と整合することを確認した。
+
+- **測定とフォローアップ**  
+  `StreamMeta` へ `bytes_consumed` / `chunks_consumed` / `await_count` を追加し、`0-3-audit-and-metrics.md` で新設する `parser.stream.await_ratio`・`parser.stream.demandhint_coverage` の計測式を定義。Step 4 では CLI/LSP 図面へイベントを配線し、`Pending` から `resume` までのレイテンシを取得する TODO を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に追記する。
+
 ### Step 4. CLI/LSP/CI 連携と検証ケースの整備（2.5日）
 - 目的: 新ランナーを CLI/LSP/テストに統合し、PoC の振る舞いを自動検証できる状態にする。
 - 主な作業:

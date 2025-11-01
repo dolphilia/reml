@@ -335,6 +335,7 @@
     2025-11-22 時点。PARSER-002 Step 5 で `compiler/ocaml/tests/run_config_tests.ml` を追加、RunConfig ゴールデン JSON（`parser-runconfig-packrat.json.golden`）を整備し、`tooling/ci/collect-iterator-audit-metrics.py` に RunConfig 用指標を実装。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ `parser.runconfig_switch_coverage` / `parser.runconfig_extension_pass_rate` を登録し、CI ゲートで値を監視できる状態に移行した。
 6.4. **後半フェーズの仕上げ**
 - **PARSER-003 / EXEC-001 / ERR-002**: Phase 2-5 後半でコアコンビネーター抽出とストリーミング PoC、`recover` FixIt 拡張を実装し、ランナ―整合性を最終確認する。
+- 2026-01-16 更新: EXEC-001 Step3 でストリーミング制御ループ PoC（`StreamDriver` ステートマシン、`DemandHint` 再計算、`StreamMeta` 指標集計）の設計を完了し、`Pending`/`Completed` 遷移表と計測方針を `EXEC-001` 計画書に記録した。Step4 では CLI/LSP/CI への配線とレイテンシ測定を実装する。
 - 完了後は `docs/guides/core-parse-streaming.md` や `docs/spec/2-2-core-combinator.md` に脚注・更新を反映させ、関連サンプルが動作することを確認する。
 
 6.5. **Phase 2-7 以降に向けた準備**
