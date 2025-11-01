@@ -181,7 +181,7 @@ fn Err.custom(at: Span, msg: Str) -> ParseError
 6. **エラーコードと Severity**：デフォルトでは `Severity::Error`, `DiagnosticDomain::Parser`, `code = None` とする。個別コードを割り当てる場合は 3.6 §2 で登録済みのカタログを参照し、未登録コードを直接埋め込まない。
 7. **品質検証**：`Err.pretty` の結果が 0-1 §2.2 の指標（行列表示・期待値提示・修正候補）を満たすかをテストや CLI で継続的に検証する。`RunConfig.merge_warnings=false` のモードで回復診断を確認し、曖昧な `Parse.fail` が混入した場合に検知する。
 
-`Parse.recover` の実装は上記の `Parse.fail` と同じ経路で `Diagnostic` を生成し、復旧地点に `FixIt::Insert` や `FixIt::Replace` を自動付与する。これにより `Parse.recover` の戻り値として AST 内に挿入される `ErrorNode` と診断情報が一致し、IDE 上での可視化と監査出力が同期する。
+`Parse.recover` の実装は上記の `Parse.fail` と同じ経路で `Diagnostic` を生成し、復旧地点に `FixIt::Insert` や `FixIt::Replace` を自動付与する。これにより `Parse.recover` の戻り値として AST 内に挿入される `ErrorNode` と診断情報が一致し、IDE 上での可視化と監査出力が同期する。OCaml 実装は Phase 2-5 ERR-002 Step3/Step4 で FixIt・notes・`extensions["recover"]` を仕様どおり配線し、CLI/LSP/ストリーミング経路の出力を検証済みである[^err002-phase25]。
 
 ### B-12. `Async.timeout` 由来の診断を統一する
 
@@ -551,6 +551,7 @@ help: add an arm such as `| Green -> ...`
 ---
 
 [^err001-phase25]: Phase 2-5 ERR-001 期待集合出力整備計画（`docs/plans/bootstrap-roadmap/2-5-proposals/ERR-001-proposal.md`）S5「ドキュメントと共有タスク」（2025-11-17 完了）で脚注を更新し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に Menhir 期待集合の CI 検証と共有事項を記録済み。
+[^err002-phase25]: Phase 2-5 ERR-002 `recover`/FixIt 情報拡張計画 Step3/Step4（`docs/plans/bootstrap-roadmap/2-5-proposals/ERR-002-proposal.md#step4-ドキュメント更新とレビュー共有week-33-day3-4`）で OCaml 実装の `recover` 拡張を導線化し、`docs/plans/bootstrap-roadmap/2-5-review-log.md#err-002-step4-ドキュメント更新とレビュー共有2025-12-15` に検証結果と共有事項を記録。
 
 ## 関連仕様
 

@@ -87,6 +87,11 @@
 - Phase 2-7 チームへ CLI/LSP 出力差分と自動修正インターフェイスの追随点を共有し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に必要な後続タスクを記録する。  
 - 調査: `docs/spec/0-1-project-purpose.md` §2.2（エラーメッセージ改善指標）、`docs/guides/ai-integration.md` FixIt 活用章、`docs/plans/bootstrap-roadmap/2-4-completion-report.md` の診断 KPI。
 
+#### Step4 実施記録（Week 33 Day4 完了）
+- **仕様脚注の更新**: `docs/spec/2-5-error.md` と `docs/spec/3-6-core-diagnostics-audit.md` に ERR-002 Step3/Step4 の整備状況を示す脚注を追加し、`parser.recover_fixit_coverage = 1.0` を維持していることを明記した。  
+- **レビュー記録と TODO 整理**: `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Step4 の共有ログを追加し、`docs/notes/core-parse-streaming-todo.md` を更新して Packrat 経路・notes ローカライズ・ストリーミング重複検証の継続タスクを Phase 2-7 へ引き継いだ。  
+- **後続フェーズへの登録**: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §3.4 に Recover FixIt 継続整備を追記し、Packrat スナップショット整備と CLI/LSP ローカライズ対応を Phase 2-7 の作業ブレークダウンへ正式登録した。
+
 ## 残課題
 - Menhir ベースの回復戦略（同期トークン）と仕様上の `recover` API をどこまで合わせるかを Parser チームで調整する必要がある。  
 - FixIt 生成の優先順位（複数候補がある場合）や CLI/LSP 表示形式を UI チームと合意したい。

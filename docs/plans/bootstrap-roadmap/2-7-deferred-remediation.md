@@ -69,6 +69,11 @@
 - `tooling/lsp/compat/diagnostic_v1.ml` を安定化させ、`[@deprecated]` 属性を付与。
 - `tooling/lsp/jsonrpc_server.ml` で `structured_hints` の `command`/`data` 変換エラーを `extensions.lsp.compat_error` に記録。
 
+3.4. **Recover FixIt 継続整備**
+- `Parser_expectation.Packrat` に `recover` スナップショットを保持するハンドルを追加し、Packrat 経路でも `parser.recover_fixit_coverage = 1.0` を維持する。検証手順と残課題は `docs/notes/core-parse-streaming-todo.md` に追記済み。
+- `Diagnostic.Builder.add_note` が生成する `recover` notes をローカライズ可能なテンプレートへ移行し、CLI/LSP のテキスト刷新と連動して多言語化を完了させる。`docs/spec/2-5-error.md`・`docs/spec/3-6-core-diagnostics-audit.md` の脚注と整合させる。
+- ストリーミング Pending → resume 循環で FixIt が重複発火しないことを監査ログ (`StreamOutcome.Pending.extensions.recover`) と `collect-iterator-audit-metrics.py` の新指標で確認する。必要に応じて CI に検証ステップを追加する。
+
 **成果物**: 拡充済み LSP テスト群、CI ジョブ、更新ドキュメント
 
 ### 4. 技術的負債の棚卸しとクローズ（36週目前半）
@@ -118,7 +123,7 @@
 - CLI フォーマット変更による開発者体験への影響: `reports/diagnostic-format-regression.md` で差分レビューを必須化し、顧客影響を評価。
 - LSP V2 導入に伴うクライアント側調整: `tooling/lsp/compat/diagnostic_v1.ml` を一定期間維持し、互換性レイヤ廃止時のスケジュールを Phase 3 で検討。
 - PARSER-003 Step5 連携: Packrat キャッシュ実装後に `effect.stage.*`／`effect.capabilities[*]` が欠落しないことを CI で確認するため、`tooling/ci/collect-iterator-audit-metrics.py --require-success` に Packrat 専用チェックを追加する（Stage 監査テストケースを新設）。  
-- Recover 拡張: `RunConfig.extensions["recover"].notes` を CLI/LSP 表示へ反映し、同期トークン適用時の補助メッセージを `Diagnostic.extensions["recover.notes"]` で提示する。Phase 2-7 の CLI テキスト刷新タスクと同時に実装する。併せて Packrat 経路で `recover` スナップショットが保持されるよう `Parser_expectation.Packrat` を拡張し、`parser.recover_fixit_coverage` を 1.0 のまま維持する。notes テンプレートは locale 切替に対応した多言語化ガイドラインを策定し、`docs/spec/2-5-error.md` 脚注と連動させる。
+- Recover 拡張: §3.4 で定義した Packrat カバレッジ・notes ローカライズ・ストリーミング重複検証を遅延させず実施する。`RunConfig.extensions["recover"].notes` を CLI/LSP 表示へ反映し、`Diagnostic.extensions["recover"]` の多言語テンプレートを `docs/spec/2-5-error.md` 脚注と同期させる。
 - PARSER-003 Step6 連携: `Core_parse` モジュールのテレメトリ統合と Menhir 完全置換の是非を評価し、`parser.core_comb_rule_coverage` / `parser.packrat_cache_hit_ratio` を利用した監査ダッシュボード拡張を決定する。仕様更新時は `docs/spec/2-2-core-combinator.md` 脚注と `docs/guides/plugin-authoring.md` / `core-parse-streaming.md` の共有手順を再検証する。
 
 ## 参考資料

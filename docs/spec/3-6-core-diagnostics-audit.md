@@ -164,6 +164,7 @@ enum Stage = Experimental | Beta | Stable
 [^diag001-phase25]: Phase 2-5 DIAG-001 Severity 列挙拡張計画 (`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-001-proposal.md`) Week32 Day3 のドキュメント反映完了記録。`compiler/ocaml/src/diagnostic.ml` / `diagnostic_serialization.ml` / `tooling/json-schema/diagnostic-v2.schema.json` を 4 値 Severity に統一し、`scripts/validate-diagnostic-json.sh` と `tooling/ci/collect-iterator-audit-metrics.py` で `Info` / `Hint` の集計が実施可能になった。
 [^err001-phase25-core]: Phase 2-5 ERR-001 期待集合出力整備計画（`docs/plans/bootstrap-roadmap/2-5-proposals/ERR-001-proposal.md`）S5「ドキュメントと共有タスク」（2025-11-17 完了）で `ExpectationSummary` 出力とガイド整備が完了し、`docs/plans/bootstrap-roadmap/2-5-review-log.md` に導入ログを保存。
 [^diag003-phase25-domain]: Phase 2-5 DIAG-003 診断ドメイン語彙拡張計画（`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md`）Step5（2025-11-30 完了）で本節と `docs/spec/0-2-glossary.md`、`docs/spec/3-8-core-runtime-capability.md`、`docs/guides/runtime-bridges.md`、`docs/notes/dsl-plugin-roadmap.md` を更新し、OCaml 実装の新語彙（`extensions["plugin"]` / `extensions["lsp"]` / `extensions["capability"]`）と監査メタデータ整合を反映した。レビュー結果と追跡事項は `docs/plans/bootstrap-roadmap/2-5-review-log.md` および `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に記録済み。
+[^err002-phase25]: Phase 2-5 ERR-002 `recover`/FixIt 情報拡張計画 Step3/Step4（`docs/plans/bootstrap-roadmap/2-5-proposals/ERR-002-proposal.md#step4-ドキュメント更新とレビュー共有week-33-day3-4`）で CLI/LSP/ストリーミング/CI の各経路を検証し、`docs/plans/bootstrap-roadmap/2-5-review-log.md#err-002-step4-ドキュメント更新とレビュー共有2025-12-15` に共有結果と Phase 2-7 への引き継ぎ事項を登録。
 
 - `resolved`: 辞書参照が確定し、監査ログとして事後分析に利用したい場合。
 - `stage_mismatch`: `typeclass.iterator.stage_mismatch` のように Capability Stage が不足している場合。
@@ -263,6 +264,7 @@ fn from_parse_errors(src: Str, errs: List<ParseError>, opts: ParseDiagnosticOpti
 - `parse_error_defaults(input_name)` は 0-1 §2.2 の「分かりやすいエラーメッセージ」を満たす初期値を組み立てるヘルパであり、`severity = Error`・`domain = Parser`・`input_name = Some(input_name)`・`attach_span_trace = true` を固定し、`audit = Some(AuditEnvelope { audit_id: None, change_set: None, capability: None, metadata: Map::empty() })` として `parse.input_name` を事前登録する。戻り値は通常のレコード更新で `code` や `locale` を補強して利用する。
 - `attach_span_trace=false` とすると、`ParseError.span_trace` があっても `Diagnostic.span_trace` へコピーしない。ストリーミング実行などで診断サイズを抑えたい場合に使用する。
 - `Parse.recover` は `from_parse_error` で得られた `Diagnostic` を `secondary` として保持しつつ、復旧位置に FixIt を追加する。復旧成功後でも診断の `severity` は原則変更しない（CLI 側で `merge_warnings` を有効化すると Warning へ落とす運用が可能）。
+- Phase 2-5 ERR-002 Step3/Step4 で OCaml 実装が `extensions["recover"]`・FixIt・notes の出力を仕様どおり整備し、CI 指標 `parser.recover_fixit_coverage` が 1.0 を維持している[^err002-phase25]。
 
 `Err.toDiagnostics`（2.5 §F）と CLI/LSP 実装は上記 API を共有し、1 回の失敗につき 1 件以上の `Diagnostic` を生成する。`ParseError.secondaries` に複数の補助診断がある場合、`from_parse_errors` は順序を保持したまま結合し、`Diagnostic.secondary` へ変換する。
 
