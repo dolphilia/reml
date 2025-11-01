@@ -20,6 +20,7 @@
   diagnostic_builder
   diagnostic_serialization
   core_parse
+  core_parse_streaming
   core_parse_lex_record
   core_parse_lex
   parser_run_config

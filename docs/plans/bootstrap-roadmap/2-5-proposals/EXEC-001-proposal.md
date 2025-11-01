@@ -103,6 +103,8 @@ val run_stream :
   - `parser_driver.ml:120-320` 辺りの初期化順序を確認し、必要な引数（`lex_pack`, `config`, `diag_state`）を抜け漏れなくモジュールへ伝達する。
   - `docs/spec/2-6-execution-strategy.md` §B のトランポリン要件と整合するかチェックする。
 
+> 2026-??-?? 更新: Step 1 完了。`compiler/ocaml/src/core_parse_streaming.{ml,mli}` を新設し、`Parser_diag_state`/`Core_parse.State` の初期化・Packrat 指標記録・診断登録・`require_eof` 判定・コアルール監査メタデータ付与を共通化するセッション API を定義。`parser_driver.ml` は新セッション (`Core_parse_streaming.create_session`) を用いるようリファクタし、既存の Packrat 集計・期待集合サマリ生成・診断最終化処理をモジュール経由に統合。`compiler/ocaml/src/dune` へ `core_parse_streaming` を追加してビルド対象を登録済み。
+
 ### Step 2. Feeder / Continuation / DemandHint モデル設計（2日）
 - 目的: ストリーミング固有の型 (`Feeder`, `StreamOutcome`, `DemandHint`, `ContinuationMeta`) を PoC で表現し、診断との接点を定義する。
 - 主な作業:
