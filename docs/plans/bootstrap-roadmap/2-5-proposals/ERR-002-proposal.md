@@ -61,6 +61,14 @@
 - `type_error.ml` の FixIt 実装例を参照し、共通ヘルパ（例: `Diagnostic.Builder.insert_token`）を整備するか既存ヘルパを流用する方針を決定する。  
 - 調査: `docs/spec/2-5-error.md` §D（代表エラーの FixIt パターン）、`docs/spec/3-6-core-diagnostics-audit.md` §1-§2（FixIt/Hints の必須フィールド）、`compiler/ocaml/src/diagnostic.ml` `Builder` 実装。
 
+#### Step2 実施記録（Week 33 Day1 完了）
+- **FixIt テンプレートの整理**: `Diagnostic.fixit` 列挙（`compiler/ocaml/src/diagnostic.ml:122-146`）と `Builder.add_fixits`（`compiler/ocaml/src/diagnostic.ml:1236-1241`）を確認し、`recover` 向けには `Insert` を基本、欠落トークンが既存文字に重なっている場合のみ `Replace` を生成する方針を採用した。`Builder` に軽量ヘルパ `insert_token` / `replace_token` を追加する設計を固め、`publish_recover_fixits`（仮称）で `pending_recovery.start_pos`〜`end_pos` をスパンとして利用する計画を明文化。括弧・セミコロン・`end` など代表同期トークンは `Run_config.Recover.sync_tokens`（`compiler/ocaml/src/parser_run_config.ml:264-291`）から優先順を取得し、`summary.alternatives` のうち一致したものを `hits` として扱う。
+- **回復スナップショットの活用**: Step1 で整理した `Parser_diag_state.pending_recovery` に `start_pos` / `end_pos` / `summary` / `sample_tokens` を保持する前提を再確認し、FixIt 生成フェーズでは `Parser_diag_state.recover_config.emit_notes` と組み合わせて `Diagnostic.Builder.add_fixits`・`add_hint` を呼び出す流れを定義。`pending_recovery` 消費後は `Core_parse_streaming.register_diagnostic` 内で `None` に戻し、多重適用を防ぐ。
+- **notes / hints の文面**: 仕様の補足文例（`docs/spec/2-5-error.md:190-238`）を下敷きに、`emit_notes=true` の場合は「同期トークン `<token>` を挿入すると構文を継続できます」といったテンプレートを `Diagnostic.Builder.add_hint`（`compiler/ocaml/src/diagnostic.ml:1243-1251`）で追加する方針を決定。notes は `Diagnostic.Builder.add_note` で一次テキストを残し、CLI テキスト出力と LSP データに同じ文章が現れるよう JSON ゴールデンの更新計画を立てた。
+- **`extensions["recover"]` の更新形**: Step1 で定義した `{ sync_tokens, hits, strategy, notes }` に加え、FixIt 生成有無を示す `has_fixits: Bool` を追加し、監査ログやメトリクスから回復が成功したかを判別できるようにする。`Diagnostic.set_extension "recover"` を適用する箇所で `Yojson.Basic` の `List.map` を使い JSON 配列へ変換するコードスケッチを用意し、`scripts/validate-diagnostic-json.sh` で `has_fixits=true` のサンプルを検証する準備を完了。
+- **テストとメトリクスへの布石**: Step3 以降で追加する `parser_recover_tests.ml` と CLI/LSP ゴールデンでは、欠落セミコロンと未閉背括弧の 2 ケースを最低ラインとし、FixIt/notes/`extensions["recover"]` 全てが出力されるかを確認する。メトリクスは `parser.recover_fixit_coverage` を `collect-iterator-audit-metrics.py`（`tooling/ci/collect-iterator-audit-metrics.py:1654-1684`）へ追加し、JSON ゴールデン（`compiler/ocaml/tests/golden/diagnostics/parser/`）に `has_fixits` を含む新ファイルを配置する段取りを設定した。
+- **フォローアップ**: Step3 では CLI/LSP/GH Actions で FixIt 出力を確認し、`docs/spec/3-6-core-diagnostics-audit.md` 更新と `docs/notes/core-parse-streaming-todo.md` への残タスク登録を行う。`recover` 拡張の JSON スキーマ更新は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の監視指標登録と同時に進め、Phase 2-7 の CLI テキスト刷新へ連結する。
+
 ### Step3 CLI/LSP 出力とメトリクス整備（Week 33 Day1-3）
 - `compiler/ocaml/tests/parser_recover_tests.ml`（新設）と `streaming_runner_tests.ml` を拡張し、同期トークン回復と FixIt が `ParseResult.diagnostics` に含まれることをゴールデンで検証する。  
 - `scripts/validate-diagnostic-json.sh` と `tooling/ci/collect-iterator-audit-metrics.py` に `parser.recover_fixit_coverage` 指標を追加し、`reports/diagnostic-format-regression.md` へサンプル JSON を追記する。  

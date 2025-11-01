@@ -22,7 +22,7 @@
 - [ERR-001 修正計画](./ERR-001-proposal.md): Menhir の期待集合を `ExpectationSummary` に反映させ、`docs/spec/2-5-error.md` で定義された期待値提示を実現。（2025-11-15 追記: `collect` の導入と `parser_driver`/`parser_diag_state` の組込みにより、期待集合が `Diagnostic.expected` と legacy API 双方へ伝播することを確認。）
 - 2025-11-16 追記: CLI ゴールデンと LSP フィクスチャを期待集合付きで更新し、`scripts/validate-diagnostic-json.sh`／`tooling/ci/collect-iterator-audit-metrics.py` に `parser.expected_*` 指標を追加して CI 監視を有効化。
 - 2025-11-17 追記: `docs/spec/2-5-error.md`・`docs/spec/3-6-core-diagnostics-audit.md`・ガイド類へ Phase 2-5 完了脚注と運用ガイドを反映し、`docs/notes/spec-integrity-audit-checklist.md` で監査 TODO を共有する S5（ドキュメントと共有タスク）を完了。
-- [ERR-002 修正計画](./ERR-002-proposal.md): `Parse.recover` の同期トークンと FixIt を導入し、CLI/LSP での自動修正と診断補助を整備。
+- [ERR-002 修正計画](./ERR-002-proposal.md): `Parse.recover` の同期トークンと FixIt を導入し、CLI/LSP での自動修正と診断補助を整備。（2025-12-06 追記: Step1 で `pending_recovery` スナップショットと `extensions["recover"]` の設計を確定し、同期トークン抽出フックを `parser_driver` に配置。2025-12-09 追記: Step2 で FixIt 生成・notes 拡張のテンプレートを定義し、`has_fixits` を含む `recover` 拡張 JSON 形を確定。テストケースとメトリクスの更新計画を Step3 へ引き継ぎ。）
 
 ### 実行戦略（EXEC）
 - [EXEC-001 修正計画](./EXEC-001-proposal.md): `run_stream`/`resume` を備えたストリーミング実行 PoC を構築し、`docs/spec/2-6-execution-strategy.md` の契約を検証。
