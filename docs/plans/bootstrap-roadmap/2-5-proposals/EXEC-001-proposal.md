@@ -39,13 +39,60 @@ val run_stream :
 ## 4. 実装ステップ
 
 ### Step 0. 仕様・実装差分の棚卸し（1.5日）
-- 目的: 既存ランナーと仕様 (docs/spec/2-6-execution-strategy.md, docs/spec/2-7-core-parse-streaming.md) の差異を列挙し、PoC 範囲を明確化する。
+- 目的: 既存ランナーと仕様 (`docs/spec/2-6-execution-strategy.md`, `docs/spec/2-7-core-parse-streaming.md`) の差異を列挙し、PoC 範囲を明確化する。
 - 主な作業:
   - `parser_driver.ml` と `parser_run_config.ml` の現状 API/拡張マップを確認し、`extensions["stream"]` の流入経路を洗い出す。
   - Phase 2-5 の進捗（`PARSER-002`, `ERR-001`, `ERR-002`）とクロスリファレンスし、ストリーミングが再利用すべき診断・RunConfig・Recover 設定を一覧化する。
 - 調査・検証:
   - `docs/guides/core-parse-streaming.md` と `docs/plans/bootstrap-roadmap/2-5-review-log.md` の該当エントリを読み、仕様上の必須メタデータ（`DemandHint`, `ContinuationMeta`, 指標名）を再確認。
   - `tooling/ci/collect-iterator-audit-metrics.py` の Packrat/Recover 指標を調査し、ストリーミング PoC で観測すべきメトリクスを決める。
+
+> 2025-12-?? 更新: Step 0 の棚卸しと記録を完了。以下のサマリをもとに Step 1 へ移行する。
+
+#### Step 0 棚卸し結果
+
+**仕様と実装の差分**
+
+| 項目 | 仕様で要求される内容 | 現状 OCaml 実装 |
+| --- | --- | --- |
+| ランナー API | `run_stream`/`resume` と `StreamOutcome` を提供し、`Completed`/`Pending` を返す（`docs/spec/2-7-core-parse-streaming.md:21`, `docs/spec/2-7-core-parse-streaming.md:30`） | `parser_driver` にはバッチ用の `run`/`run_partial`/`run_string` のみが存在し、ストリーミング API が未定義（`compiler/ocaml/src/parser_driver.ml:219`）。 |
+| StreamingConfig・Flow | `StreamingConfig` と `FlowController` を介してバックプレッシャを管理（`docs/spec/2-7-core-parse-streaming.md:41`, `docs/spec/2-7-core-parse-streaming.md:144`） | RunConfig 側に対応する構造体がなく、ストリーミング用のフロー制御値を取得できない。 |
+| RunConfig `extensions["stream"]` | `checkpoint`/`resume_hint`（`DemandHint`）/`flow` を共有する（`docs/spec/2-6-execution-strategy.md:74`, `docs/spec/2-7-core-parse-streaming.md:236`） | `Run_config.Stream` は文字列ベースの `checkpoint`/`resume_hint` のみを保持し、`DemandHint` や `flow` 情報を表現できない（`compiler/ocaml/src/parser_run_config.ml:309`）。 |
+| 継続・メタデータ | `ContinuationMeta` と `StreamMeta` に `commit_watermark` や `resume_count` を保持（`docs/spec/2-7-core-parse-streaming.md:55`, `docs/spec/2-7-core-parse-streaming.md:218`） | 継続用の型が未実装で、`Parser_diag_state` から抽出した期待集合や Packrat 情報を保持する経路がない（`compiler/ocaml/src/parser_diag_state.ml:36`）。 |
+
+**再利用する既存設定・資産**
+
+- RunConfig まわりの橋渡しは `PARSER-002` で導入済みの `Run_config` サブモジュールを再利用する（`docs/plans/bootstrap-roadmap/2-5-review-log.md:211`）。バッチ経路では `Run_config.Recover.of_run_config` が診断へ流れているため（`compiler/ocaml/src/parser_driver.ml:228`）、ストリーミングでも同じ設定を利用できる。
+- 期待集合は `ERR-001` で整備された `Parser_expectation.summarize_with_defaults` をそのまま使用できる（`compiler/ocaml/src/parser_expectation.mli:30`, `docs/plans/bootstrap-roadmap/2-5-proposals/ERR-001-proposal.md:13`）。継続メタデータに `ExpectationSummary` を格納し、`docs/guides/core-parse-streaming.md:70` で示されている運用方針と整合させる。
+- 回復情報と FixIt の生成は `ERR-002` の成果物を共有し、`RunConfig.extensions["recover"]` を継続へ引き渡す（`docs/plans/bootstrap-roadmap/2-5-proposals/ERR-002-proposal.md:15`）。`Parser_diag_state.recover_config` から `sync_tokens`/`notes` を取得可能（`compiler/ocaml/src/parser_diag_state.ml:52`）。
+
+**メトリクス整理**
+
+- CI では既に `collect-iterator-audit-metrics.py` が RunConfig と Packrat の指標を収集しているため（`tooling/ci/collect-iterator-audit-metrics.py:1352`, `tooling/ci/collect-iterator-audit-metrics.py:1610`, `tooling/ci/collect-iterator-audit-metrics.py:1776`）、ストリーミング指標を追加する余地がある。`docs/guides/core-parse-streaming.md:170` が要求する `resume_hint` / `StreamMeta` を JSON に出力し、`parser.stream.outcome_consistency` / `parser.stream.demandhint_coverage` を 0-3 メトリクスへ登録する案を次ステップで検討する。
+
+##### RunConfig `extensions["stream"]` の型案（Step1 着手前メモ）
+
+- **新規型定義（`Core_parse_streaming.Types` 仮称）**
+  - `Demand_hint.t`：`{ min_bytes:int; preferred_bytes:int option; frame_boundary: Token.Class.t option }`（仕様 `docs/spec/2-7-core-parse-streaming.md:63-77` に対応）。`frame_boundary` は `Token.class_of_symbol` と `Token.symbol_of_class` で文字列表現と相互変換する。
+  - `Flow_mode.t = Push | Pull | Hybrid`（仕様 `docs/spec/2-7-core-parse-streaming.md:151`）。
+  - `Backpressure_spec.t = { max_lag:Duration.t option; debounce:Duration.t option; throttle:Duration.t option }`（`docs/spec/2-7-core-parse-streaming.md:157-163`）。
+  - `Flow_policy.t = Manual of demand option | Auto of Backpressure_spec.t`、`Demand.t = { bytes:int; frames:int }`。
+  - `Flow_controller.t = { mode:Flow_mode.t; high_watermark:int; low_watermark:int; policy:Flow_policy.t }`。
+  - `Continuation_meta.t` と `Stream_meta.t` は Step1 で導入する `Core_parse_streaming` モジュールへ移し、`docs/spec/2-7-core-parse-streaming.md:55-133`, `docs/spec/2-7-core-parse-streaming.md:218-223` を網羅する。
+
+- **RunConfig 側のデコード/エンコード**
+  - `Parser_run_config.Stream.of_run_config` を拡張し、`extensions["stream"]` の Namespace から以下のキーを読み取る。
+    - `checkpoint`（文字列／Span シリアライズ ID）、`resume_hint.min_bytes`,`resume_hint.preferred_bytes`,`resume_hint.frame_boundary`。
+    - `flow.mode`（`"push"|"pull"|"hybrid"`）、`flow.high_watermark`,`flow.low_watermark`。
+    - `flow.policy.kind`（`"manual"` or `"auto"`）、`flow.policy.demand.bytes`,`flow.policy.demand.frames`、`flow.policy.backpressure.{max_lag,debounce,throttle}`（ナノ秒単位の整数）。
+  - 取得結果は `type t = { checkpoint: string option; resume_hint: Demand_hint.t option; flow: Flow_controller.t option; namespace: Namespace.t option }` にまとめ、既存の `namespace` を残して round-trip を保証する。
+  - 逆方向の `with_stream_extension : t -> Run_config.t -> Run_config.t` を追加し、`Core_parse_streaming` で算出したヒントを RunConfig へ再投影できるようにする。
+
+- **モジュール分割方針**
+  - `compiler/ocaml/src/core_parse_streaming_types.{ml,mli}` を新設し、上記型と RunConfig 依存度の低い変換ヘルパ（`of_namespace`/`to_namespace`）を定義。
+  - `core_parse_streaming.ml`（Step1 で新設）では実行ループと `Core_parse` ブリッジを担当し、`Types` モジュールを参照して `Run_config.Stream` との境界を管理する。
+  - 既存の `Parser_run_config.Stream` からは `Types` を `open` せず、`Extensions` マップに特化した変換関数だけを置いて依存方向を `Parser_run_config` → `Types` に限定する（循環防止）。
+  - CLI/LSP 側の RunConfig ビルダーでは、`Demand_hint` / `Flow_controller` の JSON 表現を `parser-runconfig-*.json` に追記し、CI の `parser.runconfig_*` 指標で欠落を検知できるようにする。
 
 ### Step 1. Core.Parse.Streaming モジュール骨格の抽出（2日）
 - 目的: バッチランナーから共通処理を切り出し、新規モジュール `core_parse_streaming.{ml,mli}`（仮）に PoC 用の最小骨格を定義する。
