@@ -42,6 +42,12 @@
 - **調査**: `docs/spec/0-3-code-style-guide.md` の命名規則、`docs/plans/repository-restructure-plan.md` のリンクポリシーを確認し、移行中のパス変更へ備える。
 - **成果物**: 脚注反映済みの仕様書、索引更新、`0-3-audit-and-metrics.md` へ記録したレビュー結果。
 
+##### Step2 実施記録（2026-02-18）
+- `docs/spec/2-3-lexer.md` D-1 に ASCII 制約脚注 `[^lexer-ascii-phase25]` を追加し、Unicode プロファイルが未実装であることと Phase 2-7 `lexer-unicode` へ移行する計画を明文化。  
+- `docs/spec/1-1-syntax.md`・`docs/spec/0-2-glossary.md`・`docs/spec/README.md` を更新し、識別子項目と索引から同脚注を辿れるよう統一。  
+- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `lexer.identifier_profile_unicode` 指標を登録し、Phase 2-5 のレビューで 0.0（ASCII 限定）を記録する運用を定義。  
+- `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` と `docs/plans/bootstrap-roadmap/2-5-review-log.md` へ Step2 完了メモと参照リンクを追記し、Phase 2-7 への引き継ぎ条件を更新。
+
 #### Step 3: DSL/プラグインチーム連携（週32, DSL チーム）
 - **目的**: DSL プラグインの別名ポリシーに Unicode プロファイル差分を反映し、Phase 2-7 までの運用ルールを確立する。  
 - **作業**: `docs/notes/dsl-plugin-roadmap.md` に「Unicode プロファイル導入準備」節を追加し、Capability 名の別名運用と互換モード利用時の制約を整理する。`docs/guides/plugin-authoring.md` へ脚注リンクを付与し、プラグイン作者への周知経路を確保する。  

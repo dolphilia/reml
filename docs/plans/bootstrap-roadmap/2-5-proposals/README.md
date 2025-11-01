@@ -32,7 +32,7 @@
   - 2026-01-26 追記: Step5 で仕様・ガイド・計画書へ PoC 状態と既知制限を脚注化し、`parser.stream.outcome_consistency` / `parser.stream.demandhint_coverage` を `0-3-audit-and-metrics.md` に登録。Phase 2-7 へ引き継ぐ Packrat 共有・バックプレッシャ自動化・監査ログ拡張の TODO を `2-7-deferred-remediation.md` / `runtime-bridges.md` に反映。
 
 ### 字句解析（LEXER）
-- [LEXER-001 修正計画](./LEXER-001-proposal.md): Unicode 識別子プロファイル導入までの暫定対応を明文化し、DSL/プラグイン計画と共有。（2025-12-12 追記: Step1 ASCII 実装棚卸しで再現フィクスチャとテストを追加し、現状のエラーメッセージをレビュー記録へ保存。Phase 2-7 での脚注整備に向けた先行調査を完了。）
+- [LEXER-001 修正計画](./LEXER-001-proposal.md): Unicode 識別子プロファイル導入までの暫定対応を明文化し、DSL/プラグイン計画と共有。（2025-12-12 追記: Step1 ASCII 実装棚卸しで再現フィクスチャとテストを追加し、現状のエラーメッセージをレビュー記録へ保存。Phase 2-7 での脚注整備に向けた先行調査を完了。2026-02-18 追記: Step2 で仕様脚注・索引・用語集・メトリクスを更新し、`lexer.identifier_profile_unicode` 指標とレビュー記録を整備。）
 - [LEXER-002 修正計画](./LEXER-002-proposal.md): `Core.Parse.Lex` ユーティリティを抽出し、字句設定 (`RunConfig.extensions["lex"]`) を仕様準拠に整備。
 
 ### 構文解析（PARSER）

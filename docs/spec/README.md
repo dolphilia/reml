@@ -10,7 +10,7 @@
 
 ## 1.x 言語コア仕様
 - [1-0-language-core-overview.md](1-0-language-core-overview.md)
-- [1-1-syntax.md](1-1-syntax.md)
+- [1-1-syntax.md](1-1-syntax.md) — 構文仕様（識別子セクションに ASCII 限定の暫定脚注あり）
 - [1-2-types-Inference.md](1-2-types-Inference.md)
 - [1-3-effects-safety.md](1-3-effects-safety.md)
 - [1-4-test-unicode-model.md](1-4-test-unicode-model.md)
@@ -20,7 +20,7 @@
 - [2-0-parser-api-overview.md](2-0-parser-api-overview.md)
 - [2-1-parser-type.md](2-1-parser-type.md)
 - [2-2-core-combinator.md](2-2-core-combinator.md)
-- [2-3-lexer.md](2-3-lexer.md)
+- [2-3-lexer.md](2-3-lexer.md) — 字句仕様（Phase 2-5 は ASCII 限定で運用し、脚注で Unicode プロファイル移行計画を参照可能）
 - [2-4-op-builder.md](2-4-op-builder.md)
 - [2-5-error.md](2-5-error.md)
 - [2-6-execution-strategy.md](2-6-execution-strategy.md)

@@ -39,7 +39,7 @@
 * 演算子トークン（固定）：`|>`, `~>`, `.` , `,`, `;`, `:`, `=`, `:=`, `->`, `=>`, `(` `)` `[` `]` `{` `}`,
   `+ - * / % ^`, `== != < <= > >=`, `&& ||`, `!`, `?`, `..`.
 
-> 備考: Lexer 実装（Phase 1 時点）は ASCII ベースだが、Phase 2 で Unicode XID へ拡張予定。Token 型および仕様上の識別子区分は先行して定義済み。
+> 備考: Lexer 実装（Phase 2-5 時点）は ASCII ベースの制約が残っており、Unicode XID プロファイルは Phase 2-7 `lexer-unicode` タスクで導入予定。仕様との差分と脚注更新は Phase 2-5 `LEXER-001 Step2` で整理済み。[^lexer-ascii-phase25]
 
 ### A.4 リテラル
 
@@ -361,6 +361,9 @@ ConductorMonitoring ::= "monitoring" (Ident | ConductorQualifiedName) Block
 
 [^purpose-perf]: [0-1-project-purpose.md](0-1-project-purpose.md) §1.1「実用に耐える性能」を参照。テンプレートレンダリングでも線形時間処理とメモリ制約を満たすことを目標とする。
 [^purpose-safe]: [0-1-project-purpose.md](0-1-project-purpose.md) §1.2「安全性の確保」を参照。`Result` ベースのエラー処理と Capability 検証により、未ハンドル例外や権限逸脱を防止する。
+
+[^lexer-ascii-phase25]:
+    2026-02-18 更新。Phase 2-5 `LEXER-001 Step2` の成果として、`docs/spec/2-3-lexer.md`・`docs/spec/0-2-glossary.md`・索引 (`docs/spec/README.md`) に ASCII 制約脚注を追加し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ `lexer.identifier_profile_unicode` 指標を登録した。Unicode プロファイル実装は Phase 2-7 `lexer-unicode` タスクで追跡し、レビュー詳細は `docs/plans/bootstrap-roadmap/2-5-review-log.md`（LEXER-001 Step2）を参照。
 
 ### B.8.5 Capability 検証契約と `with_capabilities`
 
