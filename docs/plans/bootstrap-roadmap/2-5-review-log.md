@@ -1058,3 +1058,22 @@ fn main() -> i64 !{ mut } = {
 - `nl -ba docs/spec/2-7-core-parse-streaming.md | sed -n '1,120p'` で PoC 脚注の挿入箇所を参照。`docs/spec/2-6-execution-strategy.md` の `RunConfig.extensions["stream"]` 項目も併せて更新した。
 - `nl -ba docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md | sed -n '15,40p'` で新規指標の登録を確認。CI 監視の扱い（require-success）と参照資料を追記。
 - `nl -ba docs/guides/runtime-bridges.md | sed -n '200,240p'` で Runtime Bridge との連携手順と監査拡張を確認。Phase 2-7 フォローアップとリンクしてあることをチェック。
+
+## ERR-002 Step1 recover フック設計（2026-02-04）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/ERR-002-proposal.md`](./2-5-proposals/ERR-002-proposal.md#step1-recover-フックと同期トークン収集の設計week-32-day3-4)
+
+### 1. 設計サマリ
+- Menhir の `I.HandlingError` で `Core_parse_streaming.begin_recovery`（新設）を呼び出し、`Parser_diag_state.record_recovery` と同時に `checkpoint`／`lexeme_start_p`／`lex_curr_p` を取り込むことで回復スナップショットを確定する設計とした（compiler/ocaml/src/parser_driver.ml:156-233）。  
+- `Parser_diag_state.t` に `pending_recovery` を追加して `RunConfig.Recover.sync_tokens`・`Parser_expectation.collect` の結果・スパン情報を保持し、`Core_parse_streaming.register_diagnostic` で `Diagnostic.extensions["recover"]`（`sync_tokens` / `hits` / `strategy` / `notes`）を整形して適用するフローを定義した（compiler/ocaml/src/core_parse_streaming.ml:24-128, compiler/ocaml/src/parser_expectation.ml:360-420, compiler/ocaml/src/parser_run_config.ml:264-291）。  
+- ストリーミング経路でも同じセッションを共有できるよう `begin_recovery` を公開 API とし、`parser.stream_extension_field_coverage` に `recover` 拡張の有無を含める準備を行う。Pending → resume の往復テストと CI メトリクスでの監視に連携させる（compiler/ocaml/tests/streaming_runner_tests.ml:1-124, tooling/ci/collect-iterator-audit-metrics.py:1654-1684）。
+
+### 2. TODO / 引き継ぎ
+1. Step2 で `pending_recovery` から `FixIt::Insert` / `Replace` を生成し、括弧補完・ステートメント終端・同期トークン欠落の代表ケースを追加テストで検証する。  
+2. `parser.recover_sync_success_rate` を `collect-iterator-audit-metrics.py` へ追加し、`RunConfig.extensions["recover"]` を設定したシナリオで 1.0 を維持できるか CI 監視を組み込む。  
+3. CLI/LSP ゴールデンの `extensions["recover"]` 断面を更新し、`scripts/validate-diagnostic-json.sh` で `sync_tokens` / `hits` / `notes` のバリデーションを実装する。
+
+### 3. 参照ログ
+- `nl -ba compiler/ocaml/src/parser_driver.ml | sed -n '156,210p'` で `I.HandlingError` 分岐と回復フックの挿入位置を確認。  
+- `nl -ba compiler/ocaml/src/core_parse_streaming.ml | sed -n '1,140p'` で `session` 作成〜診断登録フローの追跡箇所を確認。  
+- `python3 tooling/ci/collect-iterator-audit-metrics.py --help`（準備コマンド）と `nl -ba tooling/ci/collect-iterator-audit-metrics.py | sed -n '1648,1690p'` でストリーミング項目への統合点を参照。
