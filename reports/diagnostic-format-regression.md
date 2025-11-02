@@ -14,6 +14,7 @@
 ## 2. 差分レポートのまとめ方
 - 変更前後の JSON を `jq --sort-keys` で整形し、`diff -u` で比較する。
 - `effects.*` や `bridge.*` など拡張キーの追加は、対応する仕様書 (`docs/spec/3-6-core-diagnostics-audit.md` 等) を参照して説明を添える。とくに `effect.required_capabilities` / `effect.actual_capabilities` / `effect.stage.required_capabilities` / `effect.stage.actual_capabilities` の配列化は Phase 2-5 EFFECT-003 の成果物として扱い、レビュー時に配列内容と `capabilities_detail` の同期を確認する。
+- 効果構文 PoC (`effect_syntax.*`) の出力を更新する場合は、`metrics.syntax.effect_construct_acceptance` / `metrics.effects.syntax_poison_rate` の値を確認する。Phase 2-5 では 0.0 / 1.0 を基準値として記録し、値が変化した場合は理由をレビューで説明する。サンプルは `compiler/ocaml/tests/golden/diagnostics/effects/effect-syntax-poc.json.golden`（新設予定）と `tooling/lsp/tests/client_compat/fixtures/effect-syntax-poc.json` に保存し、`tooling/ci/collect-iterator-audit-metrics.py --section effects` の出力と照合する。
 - `extensions.typeclass.dictionary.*` / `typeclass.dictionary.*` に変更が生じた場合は、辞書監査ゴールデン `compiler/ocaml/tests/golden/typeclass_dictionary_resolved.json.golden` を更新し、`typeclass.dictionary_pass_rate` のトラッキングに差分内容を反映する。
 - `extensions["recover"]` を含む診断の差分を扱う場合は、`compiler/ocaml/tests/golden/diagnostics/parser/recover-missing-semicolon.json.golden`・`.../recover-unclosed-block.json.golden`・`tooling/lsp/tests/client_compat/fixtures/diagnostic-recover.json` を合わせて確認し、`sync_tokens`/`hits`/`strategy`/`has_fixits`/`notes` が揃っているかチェックする。`parser_recover_tests.ml` と `scripts/validate-diagnostic-json.sh` の `recover` バリデータで再現できるかも確認する。
 - 値制限診断（`type_inference.value_restriction_violation` / `type_inference.value_restriction_legacy_usage`）が追加された場合は、テンプレートゴールデン `compiler/ocaml/tests/golden/type_inference_value_restriction.{strict,legacy}.json.golden` をベースに Strict/Legacy 両モードの出力を更新し、`evidence[]` に `tag` / `capability` / `stage.required` / `stage.actual` が揃っているか確認する。
@@ -28,6 +29,7 @@
 - スキーマ違反が発生した場合は `tooling/json-schema/diagnostic-v2.schema.json` を更新し、併せてフィクスチャを追加する。
 - Windows/macOS 固有のフィクスチャ（`diagnostic-v2-ffi-macos-sample.json` など）が最新の監査ログと整合しているか確認する。
 - 値制限違反診断を扱う際は `scripts/validate-diagnostic-json.sh` の `value_restriction` チェックで必須キー欠落が無いか確認し、`tooling/ci/collect-iterator-audit-metrics.py --require-success` を実行して `type_inference.value_restriction_violation` が 0 件であることを検証する。
+- 効果構文 PoC を更新した場合は `tooling/ci/collect-iterator-audit-metrics.py --section effects --summary` を実行し、`syntax.effect_construct_acceptance` / `effects.syntax_poison_rate` が期待値（PoC 期間は 0.0 / 1.0）で出力されるか確認する。`--require-success` を適用する場合は Phase 2-7 以降に導入されるゲート条件を参照する。
 - `audit-review` 系ジョブ（`audit-diff`, `audit-dashboard`）が失敗した場合は、生成された `reports/audit/review/<commit>/diff.json` とダッシュボードアーティファクト (`reports/audit/dashboard/index.html`) を確認し、`collect-iterator-audit-metrics.py --section review` の出力に警告がないかチェックする。
 - `tooling/review/audit-query --query '<dsl>' --from <path>` または `--query-file tooling/review/presets/<preset>.dsl` をローカルで実行し、CI の DSL クエリ結果と一致しているか検証する。差異がある場合は `tooling/review/audit_shared.py` の正規化ロジックまたは DSL プリセット (`tooling/review/presets/*.dsl`) を更新する。
 

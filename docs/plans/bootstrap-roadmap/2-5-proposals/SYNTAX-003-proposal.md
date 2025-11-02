@@ -69,9 +69,58 @@
 2. `Typed_ast` に `TEffectPerform` / `TEffectHandle` ノードを追加する設計草案を `effect-system-design-note.md` に追記し、PoC 実装着手前にレビューを受ける。
 3. `tooling/ci/collect-iterator-audit-metrics.py` へ PoC 指標 `syntax.effect_construct_acceptance` を渡す際の JSON 例を `docs/notes/effect-system-tracking.md` に追記する。
 
+### S3 診断・CI 計測整備（2026-03-27）
+
+#### 1. 調査と結論
+- `compiler/ocaml/src/diagnostic.ml` と `parser_diag_state.ml` を確認し、効果構文の PoC では `extensions.effects` の既存フィールドへ `construct` / `handler_stack` 情報を追加する余地があること、`Diagnostic.Builder.add_extension` による構造化 JSON を再利用すれば追加フィールドを既存テストで検証できることを整理した。`diagnostic.info_hint_ratio` の算出ロジックは Warning 以外を除外していないため、新規 Info/Hint 診断が増えても算出式が変化しない点を確認した。
+- CI 指標収集スクリプト `tooling/ci/collect-iterator-audit-metrics.py` を調査し、効果関連の RequiredField 一覧へ `effect_syntax.constructs[*]` を解析する関数を追加するだけで新指標を計算できる構造であることを確認した。既存メトリクス出力の `summary["effects"]` セクションに新しい比率を併記する案を採用し、`--require-success` 時は `syntax.effect_construct_acceptance = 1.0` を期待値とするガードを追加する設計をまとめた。
+- 計測基盤文書 `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` を確認し、Phase 2-5 時点で効果構文に関する KPI が未登録であることを特定。S3 で `syntax.effect_construct_acceptance`（構文の受理率）と `effects.syntax_poison_rate`（未捕捉タグがゼロである割合）を追加し、PoC 中はそれぞれ `0.0` / `1.0` を許容値とする運用メモを追記する方針とした。
+- `reports/diagnostic-format-regression.md` の差分チェックリストに効果構文の CLI/LSP ゴールデン更新手順が無い点を確認し、PoC サンプルを追加する際に `syntax.effect_construct_acceptance` の JSON 例と CLI テキスト出力の確認項目を新設する計画を立てた。
+
+#### 2. 成果物
+- `tooling/ci/` で利用する新規メトリクス用サンプル JSON を策定。PoC では `constructs` 配列に `perform` / `handle` の受理状況を記録し、`metrics` セクションで `syntax.effect_construct_acceptance` と `effects.syntax_poison_rate` を算出するフォーマットとした。
+
+  ```json
+  {
+    "effect_syntax": {
+      "constructs": [
+        {
+          "kind": "perform",
+          "tag": "Console.log",
+          "sigma_before": ["Console"],
+          "sigma_after": ["Console"],
+          "diagnostics": []
+        },
+        {
+          "kind": "handle",
+          "tag": "Console.log",
+          "sigma_before": ["Console"],
+          "sigma_handler": ["Console"],
+          "sigma_after": [],
+          "diagnostics": ["effects.contract.residual"]
+        }
+      ],
+      "metrics": {
+        "syntax.effect_construct_acceptance": 0.0,
+        "effects.syntax_poison_rate": 1.0
+      }
+    }
+  }
+  ```
+
+- `reports/diagnostic-format-regression.md` に効果構文サンプルを CLI/LSP へ取り込む手順を追記し、ゴールデン更新時に `tools/collect-iterator-audit-metrics.py` の `--section effects` 出力を保存するチェックリストを追加した。
+- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表に新指標を登録し、CI で `--require-success` を実行した際の想定値・逸脱時のフォローアップ手順（`0-4-risk-handling.md` への記録、Phase 2-7 へのエスカレーション）を整理した。
+- `docs/notes/effect-system-tracking.md` に診断・CI 計測ステージの更新と S3 サマリを追加し、Phase 2-7 へ提供する計測 TODO（監査ログのゴールデン化、LSP フィクスチャ更新）を明文化した。
+
+#### 3. TODO / フォローアップ
+1. Phase 2-7 で `collect-iterator-audit-metrics.py` の `effects` セクションへ新指標を実装し、`--require-success` で 1.0 が必須となるゲート処理を追加する。実装後は CLI/LSP/監査ログすべてで `effect_syntax.metrics` が出力されることを `scripts/validate-diagnostic-json.sh` で確認する。
+2. `cli` / `lsp` の診断フィクスチャに効果構文サンプルを追加し、`diagnostic.info_hint_ratio` の値変化を記録するチェックリストを Phase 2-7 に引き継ぐ。PoC 終了時点では Info/Hint の増加が KPI に影響しないかをレビューで確認する必要がある。
+3. `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ、効果構文メトリクスを正式運用へ切り替える条件（`syntax.effect_construct_acceptance` ≥ 0.8 を要件とする案）と監査ダッシュボード更新タスクを追加する。
+
 ## 6. 進捗記録（Phase 2-5）
 - 2026-03-12: **S1 パーサ PoC 設計完了**。`compiler/ocaml/docs/parser_design.md` §3.3.1 に挿入位置・優先順位・PoC 制限を反映し、`parser_run_config` への実験フラグ導入方針を確定。`compiler/ocaml/docs/effect-system-design-note.md` にモジュール間連携を追記し、`docs/notes/effect-system-tracking.md` を新設して PoC ステージ・引き継ぎ TODO を整理した。レビュー記録は `docs/plans/bootstrap-roadmap/2-5-review-log.md` 2026-03-12 項目を参照。
 - 2026-03-19: **S2 型・効果解析 PoC 接続設計完了**。`type_inference_effect` の拡張ポイントと `Σ_before/Σ_after` の記録方針を整理し、PoC で許容する型規則表・テスト草案・CI 連携メモを本計画書および `docs/notes/effect-system-tracking.md` に反映。レビュー記録は `docs/plans/bootstrap-roadmap/2-5-review-log.md` 2026-03-19 項目を参照。
+- 2026-03-27: **S3 診断・CI 計測整備完了**。新指標の計測フォーマット・サンプル JSON・ゴールデン更新手順を策定し、`0-3-audit-and-metrics.md`・`reports/diagnostic-format-regression.md`・`docs/notes/effect-system-tracking.md` に同期。レビュー記録は `docs/plans/bootstrap-roadmap/2-5-review-log.md` 2026-03-27 項目を参照。
 
 ## 残課題
 - 効果構文を有効化するフラグ名（`-Zalgebraic-effects` など）と公開ポリシーを Phase 2-7 と調整する必要がある。  

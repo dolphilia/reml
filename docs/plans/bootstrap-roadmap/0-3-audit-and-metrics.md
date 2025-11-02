@@ -17,6 +17,8 @@
 | 型推論 | `type_inference.value_restriction_legacy_usage` | Legacy モードを用いた回数（Strict モード移行中の監視指標。値は報告のみでゲート対象外） | CI（`collect-iterator-audit-metrics.py --summary` 出力） | 同上 |
 | 安全性 | `effect_analysis.missing_tag` | 効果解析で検出漏れとなったタグ数（0件が合格、1件以上でブロッカー） | CI（`dune runtest` 実行後にメトリクス集計） | [1-3-effects-safety.md](../../spec/1-3-effects-safety.md) §3 |
 | 安全性 | `effect.capability_array_pass_rate` | 複数 Capability を要求する `effects` 診断で `required_capabilities` / `actual_capabilities` 配列が CLI/LSP/監査ログすべてに揃って出力された割合（0.0〜1.0）。`diagnostics.effect_stage_consistency` は Stage ミスマッチの存在検知を担い、本指標は配列欠落の有無を確認する。 | `tooling/ci/collect-iterator-audit-metrics.py --require-success` 実行後に `iterator` セクションへ併記 | [1-3-effects-safety.md](../../spec/1-3-effects-safety.md) §I, [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) §1.2 |
+| 効果 | `syntax.effect_construct_acceptance` | 効果構文（`perform`/`handle`）が PoC 仕様どおりに受理された割合。`effect_syntax.constructs` のうち `diagnostics` にエラーが含まれないケースを分子とし、Phase 2-5 では 0.0（PoC 未実装）を許容値、Phase 2-7 以降は 1.0 を合格条件とする。 | `tooling/ci/collect-iterator-audit-metrics.py --section effects --require-success`（Phase 2-7 で実装予定） | [1-3-effects-safety.md](../../spec/1-3-effects-safety.md) §G–I, [docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-003-proposal.md](./2-5-proposals/SYNTAX-003-proposal.md) §S3 |
+| 効果 | `effects.syntax_poison_rate` | 効果構文の検証で未捕捉タグ（`diagnostics` に `effects.contract.residual` などが含まれるケース）が発生していない割合。PoC 期間は 1.0 を維持することを確認し、正式実装で回帰した場合はブロッカー扱いとする。 | `tooling/ci/collect-iterator-audit-metrics.py --section effects --require-success`（Phase 2-7 で実装予定） | [1-3-effects-safety.md](../../spec/1-3-effects-safety.md) §I, [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) §2 |
 | 安全性 | `ffi_bridge.audit_pass_rate` | `ffi.contract.*` 診断で `AuditEnvelope.metadata.bridge.*` と拡張フィールドが揃った割合 (0.0〜1.0) | CI（週次レビュー、PRごと） | [3-9-core-async-ffi-unsafe.md](../../spec/3-9-core-async-ffi-unsafe.md), [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) |
 | Parser | `parser.parse_result_consistency` | `Parser_driver.run` と `run_partial` が生成する `ParseResult`（`value`/`span`/`diagnostics`/`consumed`/`committed`）の一致率。1.0 未満の場合は `parser_driver_tests.ml` の差分レポートを添付。 | CI（`dune runtest tests`、parser_driver シナリオ） | [2-1-parser-type.md](../../spec/2-1-parser-type.md) §A, [2-6-execution-strategy.md](../../spec/2-6-execution-strategy.md) §G |
 | Parser | `parser.core_comb_rule_coverage` | Core Parse 経由で発行された構文診断が `extensions.parse.parser_id` と `parser.core.rule.*` 監査メタデータを揃えている割合 (0.0〜1.0)。欠落時はブロッカー。 | CI（`tooling/ci/collect-iterator-audit-metrics.py --require-success`） | [2-2-core-combinator.md](../../spec/2-2-core-combinator.md) §A, [2-6-execution-strategy.md](../../spec/2-6-execution-strategy.md) §B |
@@ -271,6 +273,40 @@
   3. 更新後に `tooling/ci/collect-iterator-audit-metrics.py` を実行し、`iterator.stage.audit_pass_rate` / `ffi_bridge.audit_pass_rate` が 1.0 を維持していることを確認する。
   4. 差分と検証結果を本節に追記し、Phase 2-2 の週次レビュー議事録と同期する。
 - ゴールデン差分がまだ確認されていない場合や Stage 検証が未完了の場合は、`0-4-risk-handling.md` に TODO を登録して Phase 2-2 の完了条件に含める。
+
+### 0.3.7a 効果構文メトリクス運用（Phase 2-5 追加）
+- Phase 2-5 では効果構文が PoC ステージに留まるため、指標 `syntax.effect_construct_acceptance` / `effects.syntax_poison_rate` は **基準値記録のみ** を目的とする。Phase 2-7 で実装が入るまでは `collect-iterator-audit-metrics.py` が値を算出しないため、PoC テストでは人工ログを用いてフォーマットを固定化する。
+- サンプル JSON（`SYNTAX-003` 計画書と `docs/notes/effect-system-tracking.md` にも掲載）:
+
+  ```json
+  {
+    "effect_syntax": {
+      "constructs": [
+        {
+          "kind": "perform",
+          "tag": "Console.log",
+          "sigma_before": ["Console"],
+          "sigma_after": ["Console"],
+          "diagnostics": []
+        },
+        {
+          "kind": "handle",
+          "tag": "Console.log",
+          "sigma_before": ["Console"],
+          "sigma_handler": ["Console"],
+          "sigma_after": [],
+          "diagnostics": ["effects.contract.residual"]
+        }
+      ],
+      "metrics": {
+        "syntax.effect_construct_acceptance": 0.0,
+        "effects.syntax_poison_rate": 1.0
+      }
+    }
+  }
+  ```
+- Phase 2-7 で `collect-iterator-audit-metrics.py --section effects --require-success` を実装し、`syntax.effect_construct_acceptance = 1.0` 未満または `effects.syntax_poison_rate < 1.0` の場合は CI を失敗させる。失敗時は `0-4-risk-handling.md` に記録し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の効果構文タスクへリンクする。
+- CLI/LSP ゴールデン更新時は `reports/diagnostic-format-regression.md` §2 のチェックリストに従い、効果構文サンプルを `tooling/lsp/tests/client_compat/fixtures/` と `compiler/ocaml/tests/golden/diagnostics/` に追加する。PoC 期間は `syntax.effect_construct_acceptance = 0.0` / `effects.syntax_poison_rate = 1.0` を維持し、正式実装で値が変化した場合はレビューで意図を説明する。
 
 ## 0.3.8 LLVM ABI テスト統計（Phase 3 Week 15）
 
