@@ -3,6 +3,26 @@
 Phase 2-5 で実施した差分レビューと現状棚卸しを記録し、後続フェーズでの追跡に利用する。  
 エントリごとに関連計画へのリンクと再現手順を整理する。
 
+## EFFECT-002 Step1 効果操作棚卸（2026-04-08）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-002-proposal.md`](./2-5-proposals/EFFECT-002-proposal.md#5-実施ステップ)
+
+### 1. 調査とスコープ整理
+- Chapter 1.3 §I の残余効果計算と `@handles` 契約、`Σ_after = (Σ_before - Σ_handler) ∪ Σ_residual` の基準を再確認し、PoC の対象タグ・捕捉条件を棚卸しした（docs/spec/1-3-effects-safety.md:240, docs/spec/1-3-effects-safety.md:244）。
+- Capability Registry の段階的導入ポリシーを参照し、`-Zalgebraic-effects` 無効時に効果構文を拒否する前提を整理（docs/spec/3-8-core-runtime-capability.md:1）。
+- 既存の設計メモに記載された AST/Parser 拡張案と CI 指標の導入計画を整理し、PoC スコープと基準値を `docs/notes/effect-system-tracking.md` に反映した（docs/notes/effect-system-tracking.md:1）。
+
+### 2. 実装差分の棚卸し
+- AST/Typed AST が `Perform` / `Handle` ノードを持たず、式バリアントが Phase 1 時点の構成で停止していることを確認（compiler/ocaml/src/ast.ml:95, compiler/ocaml/src/typed_ast.ml:118）。
+- パーサは `PERFORM` / `HANDLE` トークンを列挙しているが、`primary_expr`/`postfix_expr` に対応規則がなく構文を受理できない（compiler/ocaml/src/parser.mly:668, compiler/ocaml/src/parser.mly:1200）。
+- `parser_run_config` に `experimental_effects` フラグが存在せず、CLI から `-Zalgebraic-effects` を連動できない（compiler/ocaml/src/parser_run_config.ml:76）。
+- 効果解析は関数呼び出しタグの収集に限定され、`perform`/`handle` の残余効果計算が実装されていない（compiler/ocaml/src/type_inference.ml:180）。`Type_inference_effect` も Stage 判定のみで式レベルの `Σ_before` / `Σ_after` を扱わない（compiler/ocaml/src/type_inference_effect.ml:1）。
+
+### 3. フォローアップ
+1. `docs/notes/effect-system-tracking.md` に PoC スコープ表・メトリクス基準値・実装差分を記録し、Step2 以降のタスクと Phase 2-7 への引き継ぎ条件を更新済み（docs/notes/effect-system-tracking.md:9）。
+2. Step2 では AST/Parser を PoC 実装し、Menhir コンフリクト差分と CLI ガード（`effects.syntax.experimental_disabled`）の検証結果を本ログへ追記する。
+3. Step4 で `syntax.effect_construct_acceptance` / `effects.syntax_poison_rate` を CI 指標として導入する際、基準値 0.0 / 1.0 を起点に `collect-iterator-audit-metrics.py --require-success` の閾値を再設定する。
+
 ## PARSER-003 Step1 コアコンビネーター棚卸し（2025-11-01）
 
 関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/PARSER-003-proposal.md`](./2-5-proposals/PARSER-003-proposal.md#5-実施ステップ)

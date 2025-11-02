@@ -13,6 +13,38 @@
 | 型・効果解析 | PoC 設計完了 | `Type_inference_effect` の式対応を SYNTAX-003 S2 で設計。`Σ_before`/`Σ_after` の記録手順を整理済み。 |
 | 診断／CI 指標 | 計測計画確定 | `syntax.effect_construct_acceptance` / `effects.syntax_poison_rate` の基準値と PoC サンプル JSON を策定。Phase 2-7 でスクリプト実装・ゴールデン更新を実施予定。 |
 
+## Phase 2-5 Step1 スコープ確定メモ（2026-04-08）
+
+### 調査サマリ
+- 仕様側では `perform` / `handle` を Experimental ステージと定め、残余効果計算 `Σ_after = (Σ_before - Σ_handler) ∪ Σ_residual` と `@handles` 契約を必須としている（docs/spec/1-3-effects-safety.md:240, docs/spec/1-3-effects-safety.md:244）。`Σ_after = ∅` を満たすハンドラは純粋値として扱えるため、PoC ではこのパターンを再現できるテストを優先する。
+- 効果構文は Capability Registry と Stage 契約が結び付いており、`-Zalgebraic-effects` が無効な環境では公開しないことが要求される（docs/spec/3-8-core-runtime-capability.md:1）。
+- 設計メモには式バリアント名と `parser_run_config.experimental_effects` 拡張案が記録されているが、現状の実装は反映前である（compiler/ocaml/docs/effect-system-design-note.md:200）。
+
+### PoC スコープ表
+| 区分 | 仕様で許容される構文・契約 | Phase 2-5 PoC での取り扱い | 備考 |
+| --- | --- | --- | --- |
+| 効果発火 | `perform Effect.op(args)` / `do Effect.op(args)`（Stage=Experimental、`Σ_before` にタグ追加） | 構文・AST・型付けすべて未実装。Step2 で AST/Parser を PoC 追加する。 | Parser トークンは定義済みだが規則が未導入。 |
+| ハンドラ | `handle expr with handler` / `handler name { case .. }`（`Σ_handler` 捕捉と `Σ_residual` 合成） | 未実装。PoC では単一タグ捕捉と `resume` 1 回までをサポート対象に想定。 | Stage と Capability の検証は既存 API を流用。 |
+| 契約属性 | `@handles`, `@requires_capability(stage=...)`, `allows_effects` | 属性解析は既存機構を再利用。`Σ_after ⊆ allows_effects` の検証ロジックが欠落。 | 脚注 `[^effects-syntax-poc-phase25]` を維持。 |
+| 診断 | `effects.contract.mismatch`, `effects.syntax.experimental_disabled` | 現状は実験機能無効のモック診断のみ。Step4 で JSON 拡張とメトリクス送出を整備。 | `Diagnostic.extensions["effects"]` は配列対応済み。 |
+| CI 指標 | `syntax.effect_construct_acceptance`, `effects.syntax_poison_rate` | 基準値 0.0 / 1.0 を棚卸しで確定。実値集計は Phase 2-7 が担当。 | `tooling/ci/collect-iterator-audit-metrics.py` へ追加予定。 |
+
+### 実装差分棚卸
+- AST/Typed AST に `Perform` / `Handle` ノードが存在せず、式バリアントは Phase 1 時点の構成に留まっている（compiler/ocaml/src/ast.ml:95, compiler/ocaml/src/typed_ast.ml:118）。
+- パーサは `PERFORM` / `HANDLE` トークンを列挙しているものの、`primary_expr`/`postfix_expr` に対応規則が無く効果構文を受理できない（compiler/ocaml/src/parser.mly:668, compiler/ocaml/src/parser.mly:1200）。
+- `parser_run_config` には `experimental_effects` フラグが存在せず、CLI の `-Zalgebraic-effects` を無効化した際にエラーへ反映できない（compiler/ocaml/src/parser_run_config.ml:76）。
+- 効果解析は関数呼び出しベースのタグ収集に限定され、`perform`/`handle` の残余効果計算が未定義（compiler/ocaml/src/type_inference.ml:180）。
+- `Type_inference_effect` は Stage 判定と Capability 解決に特化しており、式レベルの `Σ_before` / `Σ_after` を受け取る API が無い（compiler/ocaml/src/type_inference_effect.ml:1）。
+
+### メトリクス基準値
+- `syntax.effect_construct_acceptance`: Phase 2-5 では 0.0 を維持し、実装未着手であることを数値で明示する。
+- `effects.syntax_poison_rate`: 1.0 を基準とし、捕捉に失敗する構文しか存在しない現状を示す。
+- 追加指標 `effects.contract.residual_snapshot`（仮称）を Step4 で仕様化し、`Σ_before` / `Σ_after` の差分を監査ログへ反映する。
+
+### 引き継ぎメモ
+- Step2 は AST/Parser の PoC 実装と Menhir コンフリクト差分の記録を最優先とする。
+- Step3 以降は本棚卸しで確定したスコープとメトリクスを前提に進め、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の H-O1/H-O4 と連動して監査整合を維持する。
+
 ## Phase 2-5 S1 パーサ PoC 設計サマリ（2026-03-12）
 - `expr_base` に `perform_expr`・`do_expr`・`handle_expr` を追加し、Menhir 優先度は既存の制御構文（`if`／`match` 等）と同列に配置する。これにより `perform Eff.op() + x` が従来の二項演算と同じ優先順位で解釈される。（`parser_design.md` 追加節参照）
 - `perform` / `do` は共通の AST バリアント `PerformCall`（仮称）で管理し、`do` は `sugar = DoAlias` として区別する。引数リストは既存の `arg_list_opt` を再利用し、`EffectPath ::= Ident { "." Ident }` を `module_path option * ident` に射影するヘルパを導入する計画。

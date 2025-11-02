@@ -30,10 +30,10 @@
 - **タイミング**: 設計と PoC 条件の整理は Phase 2-5 の後半までに完了し、実装着手は Phase 2-7 の効果チームキックオフに合わせて開始する。
 
 ## 5. 実施ステップ
-1. **Step1 スコープ確定と差分棚卸（Week32 Day1-2） — ⏳ 着手前**  
-   - **調査**: `docs/spec/1-1-syntax.md` §J、`docs/spec/1-3-effects-safety.md` §I、`docs/spec/3-8-core-runtime-capability.md`、`docs/notes/effect-system-tracking.md` を読み、PoC で許容する構文・Stage を整理する。`compiler/ocaml/src/parser.mly`・`compiler/ocaml/src/ast.ml`・`compiler/ocaml/src/typed_ast.ml`・`compiler/ocaml/src/type_inference.ml` を確認し、`perform` / `handle` ノードが未実装であることを棚卸する。  
-   - **実施項目**: `docs/plans/bootstrap-roadmap/2-5-review-log.md` に棚卸結果と既存設計メモ（`compiler/ocaml/docs/effect-system-design-note.md` / `docs/notes/effect-system-tracking.md`）の参照を追記し、`-Zalgebraic-effects` ガードと PoC 限定事項を Phase 2-7 へ引き継ぐ前提条件として整理する。  
-   - **成果物**: 棚卸メモ、`docs/notes/effect-system-tracking.md` の更新（PoC スコープ表とメトリクス基準値の確定）。
+1. **Step1 スコープ確定と差分棚卸（Week32 Day1-2） — ✅ 完了（2026-04-08）**  
+   - **実施内容**: 仕様側の残余効果計算・`@handles` 契約・Stage 条件を整理し、PoC がカバーすべき構文と Capability ガードを確定。`compiler/ocaml/src/parser.mly`・`compiler/ocaml/src/ast.ml`・`compiler/ocaml/src/typed_ast.ml`・`compiler/ocaml/src/type_inference.ml` を確認して `perform` / `handle` 系が未実装であることを棚卸し、差分を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に記録した。  
+   - **成果物**: `docs/notes/effect-system-tracking.md` に PoC スコープ表・メトリクス基準値・実装差分を追記し、Phase 2-7 への引き継ぎ条件を整理。`docs/plans/bootstrap-roadmap/2-5-review-log.md` に Step1 棚卸エントリを追加。  
+   - **フォローアップ**: Step2 以降は棚卸結果を前提に AST/Parser PoC を実装し、Menhir 差分・CI ガード導入の検証結果を追記する。
 
 2. **Step2 AST / Parser PoC 対応（Week32 Day2-4） — ⏳ 着手前**  
    - **調査**: `parser_design.md` の効果構文セクション、`compiler/ocaml/src/parser_run_config.ml`、`tooling/cli` 配下のフラグ定義を再確認し、Menhir 生成物 (`parser.automaton` / `parser.conflicts`) の現状を把握する。  
