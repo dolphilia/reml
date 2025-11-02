@@ -19,7 +19,7 @@
 | コア | Bash (MSYS2 / Git) | ✅ | `C:\Program Files\Git\bin\bash.exe` を使用。 |
 | LLVM | clang / llc / opt | ✅ | MSYS2 LLVM 16.0.4（`x86_64-w64-windows-gnu`）。 |
 | LLVM | llvm-ar | ✅ | 同上。 |
-| MSVC | cl / link / lib | ❌ | Visual Studio Build Tools 2022 の導入が未完了。 |
+| MSVC | cl / link / lib | ✅ | Visual Studio Build Tools 2022 (MSVC 14.44.35219) を `C:\Program Files\Microsoft Visual Studio\2022\Community` に導入済み。`vcvarsall.bat` 経由で PATH を設定し、`cl.exe`/`link.exe`/`lib.exe`/`ml64.exe` の 64bit 版を利用する。
 | ビルド支援 | CMake / Ninja | ✅ | MSYS2 配布版 3.29 系 / 1.11 系を確認。 |
 | 補助ツール | jq / 7zip / pip | ✅ | ログ整形と成果物圧縮に使用。 |
 
