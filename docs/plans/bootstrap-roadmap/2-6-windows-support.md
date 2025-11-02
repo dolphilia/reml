@@ -5,14 +5,31 @@
 - System V ABI との差分を整理し、Phase 3 のクロスコンパイル機能拡張に備える。
 
 ## スコープ
-- **含む**: LLVM TargetMachine 設定、MSVC 呼出規約対応、名前マングリング、PE 生成、GitHub Actions (windows-latest) テスト、ランタイムビルド。
-- **含まない**: ARM64 Windows、MinGW、UWP 対応。必要に応じて別計画とする。
-- **前提**: Phase 1 の x86_64 Linux ターゲットが安定、Phase 2 の型クラス/効果/FFI 実装が Windows でビルドできるよう調整済み。
+- **含む**: LLVM TargetMachine 設定、MSVC 呼出規約対応、名前マングリング、PE 生成、GitHub Actions (windows-latest) テスト、ランタイムビルド、MinGW (x86_64-w64-windows-gnu) 向けビルドラインの維持。
+- **含まない**: ARM64 Windows、UWP 対応。必要に応じて別計画とする。
+- **前提**: Phase 1 の x86_64 Linux ターゲットが安定、Phase 2 の型クラス/効果/FFI 実装が Windows でビルドできるよう調整済み。`docs/plans/bootstrap-roadmap/2-3-windows-local-environment.md` で整理した環境を最新診断結果と突き合わせながら更新する。
+## 現状診断（2025-10-20）
+
+- `tooling/toolchains/check-windows-bootstrap-env.ps1` を 2025-10-20 に再実行し、`reports/windows-env-check.json` を最新化済み。以降の作業は診断ログを常に添付する。
+- OCaml・LLVM・ビルド支援ツールは整備済みで、未導入なのは MSVC ツールチェーンのみ。
+
+| 分類 | 項目 | 状態 | 備考 |
+| --- | --- | --- | --- |
+| コア | OCaml / opam / dune / menhir | ✅ | `opam switch 5.2.1` で整備済み。 |
+| コア | Bash (MSYS2 / Git) | ✅ | `C:\Program Files\Git\bin\bash.exe` を使用。 |
+| LLVM | clang / llc / opt | ✅ | MSYS2 LLVM 16.0.4（`x86_64-w64-windows-gnu`）。 |
+| LLVM | llvm-ar | ✅ | 同上。 |
+| MSVC | cl / link / lib | ❌ | Visual Studio Build Tools 2022 の導入が未完了。 |
+| ビルド支援 | CMake / Ninja | ✅ | MSYS2 配布版 3.29 系 / 1.11 系を確認。 |
+| 補助ツール | jq / 7zip / pip | ✅ | ログ整形と成果物圧縮に使用。 |
+
 
 ## 作業ディレクトリ
 - `compiler/ocaml/` : Windows 対応ビルド設定・ターゲット切替
 - `runtime/native/windows`（想定）: MSVC ABI 向けランタイム実装
+- `runtime/native/mingw/`（想定）: MinGW 向け差分実装と抽象化ヘッダー
 - `tooling/ci`, `.github/workflows/` : Windows ランナーの CI 定義と補助スクリプト
+- `tooling/toolchains/` : Windows 診断スクリプトとログ（`check-windows-bootstrap-env.ps1`, `reports/windows-env-check.json`）
 - `docs/guides/llvm-integration-notes.md`, `docs/spec/3-9-core-async-ffi-unsafe.md` : Windows 章の更新
 - `docs/notes/llvm-spec-status-survey.md` : プラットフォーム差分・リスクの記録
 
@@ -22,14 +39,15 @@
 **担当領域**: Windows ビルド環境構築
 
 1.1. **LLVM/MSVC バージョン選定**
-- LLVM バージョンの決定（Phase 1 と統一 or 最新版）
-- MSVC ツールチェーンのバージョン選定（Visual Studio 2022 推奨）
-- Windows SDK バージョンの決定
-- `0-3-audit-and-metrics.md` へのバージョン記録
+- LLVM は 2025-10-20 時点で MSYS2 LLVM 16.0.4 をベースラインとしつつ、他プラットフォームで採用している LLVM 19.x への移行可否を評価する。調査内容: MSYS2/公式バイナリの入手性、`opam` の `conf-llvm-static.19` ビルド成否、ビルド時間・ディスクコスト、ABI 差異。結果は `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` と `docs/notes/llvm-spec-status-survey.md` に追記する。
+- MSVC ツールチェーンは Visual Studio Build Tools 2022（MSVC 19.40 以上）と Windows 11/10 SDK (10.0.22621 以上) を標準とし、`vcvarsall.bat`・`reml-msvc-env` からの呼び出しフローを設計する。
+- MinGW (x86_64-w64-windows-gnu) は MSYS2 LLVM 16.0.4 / GCC 13 系の組み合わせを維持し、LLVM 19.x 採用時の置換手順と互換性確認をまとめる。
+- バージョン決定後は `0-3-audit-and-metrics.md` の Toolchain セクションと `reports/windows-env-check.json` のバージョン欄を更新する。
 
 1.2. **開発環境セットアップ**
 - Windows 10/11 でのビルド環境構築手順書作成
 - LLVM のインストール手順（公式ビルド or 自前ビルド）
+- OCaml / opam / dune / menhir の既存セットアップ状況を確認し、差分があれば `docs/plans/bootstrap-roadmap/2-3-windows-local-environment.md` を更新する。
 - MSVC コンパイラ（`cl.exe`）とリンカ（`link.exe`）の設定
 - 環境変数の設定（PATH, INCLUDE, LIB）
 
@@ -37,9 +55,16 @@
 - GitHub Actions `windows-latest` ランナーの調査
 - キャッシュ戦略（LLVM/MSVC のキャッシュ）
 - セットアップスクリプトの作成（PowerShell/Batch）
+- 環境診断スクリプト（`tooling/toolchains/check-windows-bootstrap-env.ps1`）をジョブ冒頭で実行し、JSON 出力をアーティファクト化する。
 - ビルド時間の初期計測
 
-**成果物**: Toolchain 選定書、セットアップ手順、CI スクリプト
+1.4. **LLVM 19 利用性の再評価**
+- Linux/macOS で LLVM 19.x を採用している構成と依存バージョンを洗い出し、Windows で再現するための入手経路（MSYS2、LLVM 公式インストーラ、ソースビルド）を比較する。
+- `opam install llvm` が要求する `conf-llvm-static.19` のビルドログを取得し、MSVC と MinGW の両ターゲットで利用可能か検証する。
+- 調査の成否・阻害要因（欠落ライブラリ、ビルド時間、ABI 差分）と代替策を `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` と `docs/notes/llvm-spec-status-survey.md` に記録する。
+- LLVM 16 → 19 への移行判定チェックリストを `0-3-audit-and-metrics.md` に追加し、フェーズ移行時の意思決定材料を整備する。
+
+**成果物**: Toolchain 選定書（MSVC/MinGW/LLVM 16→19 評価）、セットアップ手順、CI スクリプト、診断ログ
 
 ### 2. ABI 差分の調査と整理（18-19週目）
 **担当領域**: ABI 互換性調査
@@ -68,8 +93,9 @@
 **担当領域**: コード生成
 
 3.1. **ターゲット切替ロジックの実装**
+- `--target x86_64-w64-windows-gnu`（MinGW）での既存コード生成経路を維持し、smoke テストを追加する。
 - `--target x86_64-pc-windows-msvc` フラグの処理
-- LLVM `TargetMachine` の初期化（Windows ターゲット）
+- LLVM `TargetMachine` の初期化（Windows ターゲット／MinGW と MSVC の両対応）
 - データレイアウトの設定
 - トリプルの設定と検証
 
@@ -105,8 +131,9 @@
 4.3. **MSVC ビルドの実装**
 - `cl.exe` でのコンパイル設定（`/O2`, `/W4` 等）
 - `link.exe` での静的ライブラリ生成（`.lib` ファイル）
-- ビルドスクリプトの作成（CMake or 手動）
-- Phase 1 ランタイムとの統合
+- ビルドスクリプトの作成（CMake or 既存）
+- Phase 1 のランタイムとの整合
+- MinGW 版とのインターフェース差分（例: エラーコード、`errno` の扱い）を比較し共通化ポイントを洗い出す。
 
 **成果物**: Windows 対応ランタイム、MSVC ビルド設定
 
@@ -137,9 +164,10 @@
 **担当領域**: CI/CD
 
 6.1. **Windows ジョブの追加**
-- `.github/workflows/` に Windows ジョブ追加
+- `.github/workflows/` へ Windows ジョブ追加
 - セットアップステップ（LLVM/MSVC インストール）
 - ビルドステップ（OCaml コンパイラ、Reml ツールチェーン）
+- MinGW 向けの追加ジョブ（MSYS2 環境でのビルド）をマトリクスに組み込み、GNU ABI の回帰テストを維持する。
 - テストステップ（全テストの実行）
 
 6.2. **並行実行とキャッシュ**
@@ -204,8 +232,9 @@
 
 ## 成果物と検証
 - Windows ジョブが安定稼働し、`llc -mtriple=x86_64-pc-windows-msvc` で生成したバイナリが実行可能であること。
+- `llc -mtriple=x86_64-w64-windows-gnu` で生成したバイナリが従来どおり動作すること。
 - ABI 差分がドキュメント化され、レビュー記録が残る。
-- CLI で `--target x86_64-pc-windows-msvc` を指定可能になり、テストケースが通過。
+- CLI で `--target x86_64-pc-windows-msvc` / `--target x86_64-w64-windows-gnu` を指定可能になり、テストケースが通過。
 
 ## リスクとフォローアップ
 - CI の時間が延びる場合は nightly ジョブと PR ジョブを分離する。
@@ -218,3 +247,5 @@
 - [notes/llvm-spec-status-survey.md](../../notes/llvm-spec-status-survey.md)
 - [0-3-audit-and-metrics.md](0-3-audit-and-metrics.md)
 - [0-4-risk-handling.md](0-4-risk-handling.md)
+- [2-3-windows-local-environment.md](2-3-windows-local-environment.md)
+- [windows-llvm-build-investigation.md](windows-llvm-build-investigation.md)
