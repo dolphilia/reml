@@ -10,8 +10,8 @@
 | --- | --- | --- |
 | 構文仕様 (Chapter 1/1.5) | Experimental | `-Zalgebraic-effects` 有効時のみ使用可能。脚注 `[^effects-syntax-poc-phase25]` で明示済み。 |
 | OCaml パーサ | PoC 設計完了 | `parser.mly` へ挿入する規則を設計。実装は SYNTAX-003 S1 → S2 の計画に従って導入予定。 |
-| 型・効果解析 | 未着手 | `Type_inference_effect` への接続は SYNTAX-003 S2 で設計予定。 |
-| 診断／CI 指標 | 未着手 | `syntax.effect_construct_acceptance` 指標は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に追加予定。 |
+| 型・効果解析 | PoC 設計完了 | `Type_inference_effect` の式対応を SYNTAX-003 S2 で設計。`Σ_before`/`Σ_after` の記録手順を整理済み。 |
+| 診断／CI 指標 | 設計中 | `syntax.effect_construct_acceptance` 指標は PoC ログ形式を定義済み。Phase 2-7 で実装予定。 |
 
 ## Phase 2-5 S1 パーサ PoC 設計サマリ（2026-03-12）
 - `expr_base` に `perform_expr`・`do_expr`・`handle_expr` を追加し、Menhir 優先度は既存の制御構文（`if`／`match` 等）と同列に配置する。これにより `perform Eff.op() + x` が従来の二項演算と同じ優先順位で解釈される。（`parser_design.md` 追加節参照）
@@ -20,6 +20,42 @@
 - `parser.conflicts` は既存 31 件を維持する見込み。`HANDLE`/`PERFORM`/`DO` は他規則と先頭トークンが衝突しないため、新たな shift/reduce は発生しない想定。実装時に `menhir --explain` を実行し、差分が出た場合は `docs/plans/bootstrap-roadmap/2-5-review-log.md` に追記する手順を定めた。
 - フラグ連携: `parser_run_config.ml` の拡張 (`experimental_effects: bool`) を想定し、`-Zalgebraic-effects` が無効な場合はパーサ段階で `effects.syntax.experimental_disabled` 診断を返すガードを追加する。Typer 側の Stage 判定と同じキーを再利用する計画。
 - PoC 実装で未対応とする項目: `resume` を複数回呼び出すハンドラ、`handler` リテラルへの属性付与、`do`/`perform` のミックス構文（`do` は完全なエイリアス扱い）。これらは Phase 2-7 で再評価する。
+
+## Phase 2-5 S2 型・効果解析 PoC サマリ（2026-03-19）
+- `Type_inference_effect` の既存 API を確認し、関数単位で Stage を解決する処理のみ実装されていることを把握。PoC では式ノード `TEffectPerform` / `TEffectHandle`（仮称）を Typed AST に追加し、`resolve_expr_profile` が `Σ_before`・`Σ_after`・捕捉タグ一覧を返す設計を採用した。
+- PoC の許容範囲は「単一タグ捕捉」「`resume` 1 回」「未宣言タグ禁止」とし、`docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-003-proposal.md` に型規則表（perform / handle / handler / @handles）を添付した。`Σ_after = (Σ_before - Σ_handler) ∪ Σ_residual` を Typed AST に保持し、診断拡張へ同値を出力する。
+- `compiler/ocaml/tests/test_type_inference.ml` へ効果構文テスト草案コメントを追加。`perform` 成功・`handle` 成功・捕捉漏れ失敗の 3 ケースで診断比較を行う予定を記載し、Phase 2-7 でゴールデン化できるよう準備した。
+- CI 指標 `syntax.effect_construct_acceptance` は PoC 期間中 0.0 を許容値、`effects.syntax_poison_rate` は 1.0 を期待値とする。従来の Stage 監査 (`effects.contract.*`) と組み合わせ、PoC では残余効果がゼロになったケースが存在しないことをもって差分を可視化する。
+
+### PoC 記録フォーマット草案
+```json
+{
+  "effect_syntax": {
+    "constructs": [
+      {
+        "kind": "perform",
+        "tag": "Console",
+        "sigma_before": ["Console"],
+        "sigma_after": ["Console"],
+        "stage": "Preview",
+        "diagnostics": []
+      },
+      {
+        "kind": "handle",
+        "tag": "Console",
+        "sigma_before": ["Console"],
+        "sigma_handler": ["Console"],
+        "sigma_after": [],
+        "diagnostics": []
+      }
+    ],
+    "metrics": {
+      "syntax.effect_construct_acceptance": 0.0,
+      "effects.syntax_poison_rate": 1.0
+    }
+  }
+}
+```
 
 ## Phase 2-7 への引き継ぎ TODO
 1. `Type_inference_effect` への新 AST バリアント取り込みと `Σ_before` / `Σ_after` 更新規則を追加する（SYNTAX-003 S2 の成果物を参照）。

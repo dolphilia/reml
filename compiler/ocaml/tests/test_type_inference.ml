@@ -1917,6 +1917,15 @@ let test_trait_constraint_stage_metadata () =
    `value_restriction_mode` の切替と `Value_form` ヘルパ参照のサンプルは
    docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-001-proposal.md Step3 を参照。 *)
 
+(* ========== 効果構文 PoC テスト草案 (SYNTAX-003 S2) ==========
+ *
+ * - `perform Console.log("msg")` が型 `Unit` を返しつつ `Σ_after = {Console}` を保持するケースを追加予定。
+ * - `handle perform Console.log("msg") with handler { effect Console.log(msg) -> resume (); return 0 }` が `Σ_after = ∅` となる成功ケースを追加予定。
+ * - `handle perform Console.log("msg") with handler { return 0 }` のように捕捉が無い場合に `effects.contract.residual` 診断を比較する失敗ケースを追加予定。
+ *
+ * Phase 2-7 で効果構文ノードが Typed AST に追加された際、上記ケースを `run_test` ベースで具体化し、`Type_inference_effect` の `Σ_before/Σ_after` 記録と連携する。
+ *)
+
 (* ========== メイン ========== *)
 
 let () =

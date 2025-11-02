@@ -42,8 +42,36 @@
 
 > Phase 2-5 Week31 更新: S0 を完了し、`docs/spec/1-1-syntax.md`・`docs/spec/1-5-formal-grammar-bnf.md`・`docs/spec/3-8-core-runtime-capability.md` に脚注 `[^effects-syntax-poc-phase25]` を追加。`docs/spec/README.md` と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` へも同脚注 ID を登録し、PoC ステージと `-Zalgebraic-effects` 依存を明示した。レビュー記録は `docs/plans/bootstrap-roadmap/2-5-review-log.md` SYNTAX-003 セクションに追記。
 
+### S2 型・効果解析の PoC 接続（2026-03-19）
+
+#### 1. 調査と結論
+- `compiler/ocaml/src/type_inference_effect.ml` は Stage 判定と Capability 正規化のみ実装されており、式レベルの `perform` / `handle` ノードを受理する経路が存在しないことを確認した。`Type_inference` 本体も `Ast.expr_kind` に効果系ノードが無い前提で構築されているため、PoC では Typed AST に効果構文ノードを追加しつつ `Type_inference_effect` で `Σ_before` → `Σ_after` の追跡を行う必要がある。
+- `docs/spec/1-3-effects-safety.md` §I と Phase 1 の `effect-system-design-note.md` を突き合わせ、PoC では「単一タグ捕捉」「`resume` 1 回まで」「`perform` は宣言済みタグのみ許可」の 3 点に制限すれば `effects.contract.*` 診断と Stage 突合が成立することを整理した。
+- `reports/diagnostic-format-regression.md` に登録済みの `effects.contract.mismatch` 例は Stage 判定起因であり、PoC では型推論段階で `Σ_after` を明示的に記録すれば同じ診断インフラを再利用できることを確認した。
+
+#### 2. PoC で通過させる型規則
+
+| 式カテゴリー | 型制約（Typer 側） | 潜在効果集合の処理 | Stage / 診断の扱い |
+|---------------|--------------------|--------------------|-------------------|
+| `perform E.op(args)` / `do E.op args` | `op : τ_args -> τ_ret` を `effect E` 宣言から解決し、引数型を一括照合する。戻り値は `τ_ret` をそのまま返す。 | `Σ_before ∪ {E}` を `Σ_expr` として保持し、ハンドラ探索が無い場合は `Σ_after = Σ_expr` を Typed AST に保持する。 | `Type_inference_effect.resolve_function_profile` で `E` の Stage を取得し、未定義タグは `effects.contract.unknown_effect` を送出。 |
+| `handle expr with handler { effect E.op(x) -> body; return r }` | `expr : τ_in` を推論し、`body : τ_out`、`return r : τ_out` を統一。PoC では単一タグ `E` のみ捕捉し、`resume` は 0〜1 回に制限。 | `Σ_handler = {E}` とし、`Σ_residual = effects(body) ∪ effects(r)` を合成。`Σ_after = (Σ_before - Σ_handler) ∪ Σ_residual` を計算して Typed AST に格納。 | `Σ_after ⊆ allows_effects` を満たさない場合は `effects.contract.residual` を報告。`@handles` 属性があれば Stage 判定と同一フックで検証。 |
+| `handler { effect E.op(x, resume k) -> body; return r }`（宣言） | ハンドラ本体に仮引数 `x : τ_arg` と `resume : τ_ret -> τ_out` を供給し、`body` と `return` の戻り値 `τ_out` を統一。PoC では `resume` を 1 回のみ評価、継続型は `τ_ret -> τ_out` 固定。 | `Σ_before` は宣言時点では空集合、`Σ_residual = effects(body) ∪ effects(r)` を記録し、呼び出し側へ伝播する。 | `effect` 宣言に含まれないタグを捕捉した場合は `effects.contract.unhandled_effect`。Stage 要件は `handler` 自身の `@handles` で検証。 |
+| `@handles(E)` 属性付き関数 | 関数本体の潜在効果 `Σ_body` と属性列挙 `Σ_handles` を比較。 | `Σ_after = Σ_body - Σ_handles` を計算し、PoC では `Σ_after = ∅` を成立条件とする。 | Stage 監査は既存の `effect_profile` を利用し、`Σ_after ≠ ∅` の場合は `effects.contract.mismatch` を発報。 |
+
+上表は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の効果タスクへ転記予定の PoC スコープ定義として添付した。
+
+#### 3. テスト設計と共有
+- `compiler/ocaml/tests/test_type_inference.ml` に「効果構文 PoC テスト草案」セクションを追加し、`perform` が単一タグを追加するケース、`handle` が `Σ_before` からタグを除去できるケース、タグ未捕捉による `effects.contract.residual` の再現ケースの 3 種を列挙した。テストは `Test_support.parse_string` を利用し、失敗時は診断メッセージを文字列比較する方針で記録。
+- `streaming_runner_tests.ml` と `reports/diagnostic-format-regression.md` で共有する PoC サンプルは、TypeChecker 側で `Σ_after` を JSON 診断へ書き出す形式とし、`effects.contract.*` の差分を Phase 2-7 でゴールデン化するまでの暫定運用とした。
+
+#### 4. フォローアップ
+1. `type_inference_effect.ml` に `resolve_expr_profile`（仮称）を追加し、式単位で `Σ_before` と `Σ_after` を返却する補助関数を Phase 2-7 で実装する。
+2. `Typed_ast` に `TEffectPerform` / `TEffectHandle` ノードを追加する設計草案を `effect-system-design-note.md` に追記し、PoC 実装着手前にレビューを受ける。
+3. `tooling/ci/collect-iterator-audit-metrics.py` へ PoC 指標 `syntax.effect_construct_acceptance` を渡す際の JSON 例を `docs/notes/effect-system-tracking.md` に追記する。
+
 ## 6. 進捗記録（Phase 2-5）
 - 2026-03-12: **S1 パーサ PoC 設計完了**。`compiler/ocaml/docs/parser_design.md` §3.3.1 に挿入位置・優先順位・PoC 制限を反映し、`parser_run_config` への実験フラグ導入方針を確定。`compiler/ocaml/docs/effect-system-design-note.md` にモジュール間連携を追記し、`docs/notes/effect-system-tracking.md` を新設して PoC ステージ・引き継ぎ TODO を整理した。レビュー記録は `docs/plans/bootstrap-roadmap/2-5-review-log.md` 2026-03-12 項目を参照。
+- 2026-03-19: **S2 型・効果解析 PoC 接続設計完了**。`type_inference_effect` の拡張ポイントと `Σ_before/Σ_after` の記録方針を整理し、PoC で許容する型規則表・テスト草案・CI 連携メモを本計画書および `docs/notes/effect-system-tracking.md` に反映。レビュー記録は `docs/plans/bootstrap-roadmap/2-5-review-log.md` 2026-03-19 項目を参照。
 
 ## 残課題
 - 効果構文を有効化するフラグ名（`-Zalgebraic-effects` など）と公開ポリシーを Phase 2-7 と調整する必要がある。  
