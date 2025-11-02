@@ -173,7 +173,77 @@ type effect_profile_node = {
 | Runtime | 🚧 進行中 | `RuntimeCapabilityResolver` で CLI/環境変数/JSON を統合し Stage トレースを構築、`main.ml` から `runtime_stage_event` を監査へ出力。Core IR 側では `core_ir/iterator_audit.ml` で `DictMethodCall` の `iterator_audit` メタデータを集計し、ランタイム Stage 判定と結合した `effect.stage` 監査イベントを `main.ml` から永続化する経路を追加済み | IR メタデータとの突合結果を Windows/他プラットフォームの Capability に展開し、Stage 実走チェックや JSON Lines 監査ログの拡張を進める |
 | Tooling / CI | 🚧 進行中 | Stage トレース検証スクリプト整備、`reports/runtime-capabilities-validation.json`・`reports/iterator-stage-summary.md` を生成 | CI への組み込みと自動ゲート化 (`iterator.stage.audit_pass_rate`)、Windows override テストの追加 |
 
-## 3. モジュール別タスク（Phase 2-2）
+## 3. 型表現統合ドラフト（TYPE-002 Step2, 2026-04-18）
+
+### 3.1 目的と前提
+- `TYPE-002 Step1` で洗い出した「関数型が効果行を保持しない」乖離を解消するため、`ty` 表現へ `effect_row` を統合した場合の影響を整理する。  
+- `Effect_analysis.collect_from_fn_body`（compiler/ocaml/src/type_inference.ml:292-328）で収集したタグ列を既存 `effect_profile.effect_set` と同じ語彙で扱い、`typed_fn_decl.tfn_effect_profile` に分離している診断メタデータと型スキームを一体化する道筋を示す。
+- Phase 2-5 では実装を行わず、Phase 2-7 以降に向けた設計合意と脚注整備をゴールとする。
+
+### 3.2 effect_row 候補データ構造比較
+
+| 候補 | 互換性 | 長所 | 懸念点 | Phase 2-7 での試験方針 |
+| --- | --- | --- | --- | --- |
+| `string list`（既存タグ列を直搬送） | `Effect_analysis` の戻り値（`tag list`）を `List.map (fun tag -> tag.effect_name)` で直結 | 実装着手が最も容易。`generalize`/`instantiate` での写像が単純。 | 量子化後の重複排除や順序依存が解決されず、`Σ_after` 比較で線形検索が多発。 | Phase 2-7 前半に PoC。重複・順序の正規化コストを測定し、Stage ミスマッチ診断でのオーバーヘッドを計測する。 |
+| `StringSet.t`（`Set.Make(String)`） | `Effect_analysis` 既存ユーティリティ（`StringSet`）を再利用可 | 集合演算が高速で、`Σ_after = (Σ_before - Σ_handler) ∪ Σ_residual` を OCaml Set 演算に写せる。 | ソート順が定義順と異なり、エラー表示でタグ順を保持したい場合は別途配列を持つ必要。 | `effect_row` を `declared : string list; residual : string list; canonical : StringSet.t` の三層構成にし、診断表示と等価判定を分離する案を評価。 |
+| `row_var`（行多相サポート、`effect_row = Explicit of set | Open of row_var`） | 仕様の行多相 `∀ε. τ ! ε` に直接対応 | 将来の行多相導入が容易。`RowVar` による残余効果推論を `Constraint_solver` と連携可能。 | Phase 2-5 時点では型制約モジュールに RowVar の取り扱いが無く、PoC でも導入コストが高い。 | Phase 2-7 後半〜Phase 3 で `Constraint_solver` 側の拡張を計画。現段階では型表現では `Open` を予約値として保持し、操作は未実装に留める。 |
+
+> 補足: `Effect_profile.tag`（effect_name + span）を保持したい診断用途と、型同値判定で高速化したい用途を分離するため、`effect_row` では **表示用配列 + 正規化集合** の二段構成を推奨する。これにより CLI 診断における表示順（宣言順）の維持と、`Type_unification` での集合演算の双方を満たせる。
+
+### 3.3 `TArrow` 拡張と API 差分
+
+```ocaml
+(* types.ml (案) *)
+type effect_row = {
+  declared : string list;      (* 宣言順を保持、診断表示用 *)
+  residual : string list;      (* Σ_residual を explicit に記録 *)
+  canonical : StringSet.t;     (* 等価判定・差集合演算用 *)
+  row_var : row_var option;    (* 行多相対応。Phase 2-5 時点では None 固定 *)
+}
+
+type ty =
+  | ...
+  | TArrow of ty * effect_row * ty
+  | ...
+```
+
+- `generalize` / `instantiate`（compiler/ocaml/src/type_inference.ml:1213-1427）: 量化時に `effect_row` をコピーするだけでなく、`row_var` を `fresh_row_var` で再割り当て（Phase 2-7 で導入予定）。`canonical` セットを共有参照にするとミュータブル化の恐れがあるため、都度複製する方針。
+- `Type_unification.unify`（compiler/ocaml/src/type_constraint.ml）: `TArrow` 同士の単一化で `effect_row` 同士の合流（`intersection` / `difference`）を実装し、行多相が未有効なPhaseでも `declared` の辞書順比較と `canonical` の集合比較で差分を検出。
+- `solve_trait_constraints`（compiler/ocaml/src/constraint_solver.ml:102-438）: 型クラス制約生成時に `TArrow` から効果集合を引き継ぎ、`Typeclass_dictionary_builder` の Stage 判定と結合する。`Σ_after` を辞書メソッドへ伝播させることで、`effects.contract.stage_mismatch` を型クラス経由で検証。
+- Core IR 変換（compiler/ocaml/src/core_ir/desugar.ml）: `TArrow` 内の `effect_row` を IR メタデータへ写し、ランタイムへ流れる Stage 判定と整合性を取る。
+
+### 3.4 影響調査（Phase 2-5 時点の TODO リスト）
+
+| コンポーネント | 必要な改修 | 既存課題との関係 |
+| --- | --- | --- |
+| `Type_inference.build_function_type`（compiler/ocaml/src/type_inference.ml:2691-2734） | `effect_profile.effect_set` から `effect_row` を構築し `TArrow` へ埋め込む。`typed_fn_decl.tfn_effect_profile` は診断用に残すが、型比較は `TArrow` を優先。 | `TYPE-002` / `EFFECT-003` の Stage 共有に直結。 |
+| `typed_ast` / `type_printer` | AST/TAST の表示で `fn A -> B ! {io, panic}` を再現。`string_of_type` に効果行整形を追加し、CLI 型ダンプの乖離を解消。 | `docs/spec/1-2-types-Inference.md` サンプルと一致させる。 |
+| `generalize` / `instantiate` / `Type_scheme` | 効果行を量化・代入する際に `residual` を Stage 判定へ渡す。 | `TYPE-003`（型クラス）で予定している行多相 PoC と衝突しないよう段階的導入。 |
+| `Effect_analysis.merge_usage_into_profile` | `effect_row` へ反映した残余効果を `diagnostic_payload.residual_leaks` と二重管理しない方針を整理。 | `EFFECT-002` の PoC で新設した `effects.sigma.*` 診断と競合しないよう調整が必要。 |
+| テスト (`compiler/ocaml/tests/test_type_inference.ml`, `streaming_runner_tests.ml`) | `type_effect_row_*` 系ケースを追加し、`Σ_before`/`Σ_after` の比較・`@handles` との整合を検証するゴールデンを設計。 | Phase 2-7 で `syntax.effect_construct_acceptance` 指標と連動予定。 |
+
+### 3.5 データフローの整理
+
+```
+Effect_analysis.collect_from_fn_body
+           │ (tag list)
+           ▼
+   effect_row.normalized  ──▶ Type_unification / Constraint_solver
+           │                      │
+           │                      └─▶ Stage / Capability 判定と合流
+           ▼
+  typed_fn_decl.tfn_effect_profile （診断・監査用に並行保持）
+```
+
+- `effect_row` を型レベルの一次情報とし、診断・監査は派生物として扱うことで、Phase 2-5 時点の二重管理（型とメタデータの乖離）を解消する。
+- `TYPE-002 Step3` では、このデータフローを仕様脚注へ反映し、「型スキームへ統合する準備が完了した」という注記を追加予定。
+
+### 3.6 残課題
+1. `row_var` を導入する場合の `Constraint_solver` 拡張（`RowVar` の単一化・代入アルゴリズム）を Phase 2-7 の型クラス拡張タスクと調整する。
+2. `effect_row` のシリアライズ形式（診断 JSON / 監査ログ）を決定し、`diagnostics.effect_row_stage_consistency` 指標で利用するキー名（案: `extensions.effects.row.declared`, `...residual`）を確定する。
+3. `docs/spec/1-2-types-Inference.md` と `docs/spec/1-3-effects-safety.md` に追加する脚注案（Step3 作業）と連動し、仕様本文が `TArrow` 拡張後の表記を参照しても矛盾しないよう、サンプルコードの書き換えタイミングを Phase 2-7 へ共有する。
+
+## 4. モジュール別タスク（Phase 2-2）
 
 - **Parser (`parser.mly` / `ast.ml`)**
   - 効果注釈から `EffectTag.t` を構築し `EffectSet` へ格納。
@@ -194,7 +264,7 @@ type effect_profile_node = {
   - 今後は GitHub Actions へスクリプトを組み込み、`iterator.stage.audit_pass_rate` を CI ゲート化するとともに Windows override テストを追加する。
   - `effects-residual.jsonl` のスナップショット（`compiler/ocaml/tests/golden/audit/effects-residual.jsonl.golden`）と CI 指標の照合を自動化し、RuntimeCapability JSON の更新が Stage トレースと一致するかを常時検証する。
 
-## 4. フォローアップ
+## 5. フォローアップ
 
 - Core IR の `iterator_audit` メタデータと Runtime Capability JSON を突合し、`RuntimeCapabilityResolver` → `AuditEnvelope` → CI 指標（`iterator.stage.audit_pass_rate`）までを一連の監査パイプラインとして固定化する。`core_ir/iterator_audit.ml` で収集した Stage 情報を `main.ml` が `effect.stage` 監査イベントへ変換し、`compiler/ocaml/tests/golden/audit/effects-residual.jsonl.golden` を更新対象として扱う。
 - Stage / 効果タグの更新は `docs/plans/bootstrap-roadmap/2-2-effect-system-integration.md` §1.1 を同期し、`0-3-audit-and-metrics.md` §0.3.7 に運用記録を残す。
@@ -204,7 +274,7 @@ type effect_profile_node = {
 - Phase 2-3 FFI 契約拡張（[docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md](../../docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md)）と連携し、`AuditEnvelope.metadata.bridge.*` の導入時に `stage_trace` と `RuntimeCapabilityResolver` の結果を共有する。特に Apple Silicon (arm64-apple-darwin) の Capability 定義は `tooling/runtime/capabilities/default.json` と `reports/runtime-capabilities-validation.json` を参照し、`bridge.platform` / `bridge.abi` / `bridge.stage` を効果診断の残余解析と突合できるようにする。macOS 向け追加メトリクスは `reports/ffi-macos-summary.md`（予定）に記録し、Stage ゲートと同一のレビューサイクルで確認する。
 - Parser/AST で導入した `extern_metadata`（`@ffi_target`, `@ffi_ownership` 等）を Typer 側で解釈し、診断 (`ffi.contract.missing`) と 監査 (`bridge.*`) の一貫性を確保する。重複・型不整合は `extern_invalid_attributes` に集約されるため、Phase 2-3 で診断コードへ接続する。
 
-## 5. 検証結果と成果物（2025-10-24 更新）
+## 6. 検証結果と成果物（2025-10-24 更新）
 
 - `Constraint_solver.EffectConstraintTable` に `diagnostic_payload` を保持し、残余効果 (`effects.contract.residual_leak`) と Stage ミスマッチ (`effects.contract.stage_mismatch`) の診断を CLI / 監査の両経路で同期。Stage トレースは `append_runtime_stage_trace` により Typer → Runtime の経路を一体化。
 - 統合テスト `compiler/ocaml/tests/test_effect_residual.ml` を追加し、**辞書モード** (`--typeclass-mode=dictionary`) と **モノモルフィゼーションモード** (`--typeclass-mode=monomorph`) 双方で同一診断になることを固定化。ゴールデン `compiler/ocaml/tests/golden/diagnostics/effects/residual-leak.json.golden` を更新。

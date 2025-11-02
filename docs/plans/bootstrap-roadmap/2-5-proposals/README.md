@@ -18,6 +18,9 @@
 - [EFFECT-002 修正計画](./EFFECT-002-proposal.md): `perform`/`handle` を含む効果操作 PoC の方針を明確化し、`Σ_before`/`Σ_after` の検証を可能にする。2026-04-18 追記: Step4 で `extensions.effects.sigma.*` / `audit.metadata["effect.sigma.*"]` の出力設計と `syntax.effect_construct_acceptance`・`effects.syntax_poison_rate` の算出手順を確定し、CI／ゴールデン／監査ログへ共通 KPI を引き継ぐ準備を整えた。2026-04-20 追記: Step5 で Chapter 1/索引へ PoC 脚注と KPI 参照を反映し、`docs/notes/effect-system-tracking.md`・`0-4-risk-handling.md`・`2-5-spec-drift-remediation.md` を更新して Phase 2-7 への移行条件を明示した。
 - [EFFECT-003 修正計画](./EFFECT-003-proposal.md): 複数 Capability を解析・監査へ出力する仕組みを整備し、Stage 契約（`docs/spec/3-8-core-runtime-capability.md`）との齟齬を是正。
 
+### 型システム（TYPE）
+- [TYPE-002 効果行統合ポリシー計画](./TYPE-002-proposal.md): Step2 で `effect_row` 統合ドラフトを策定し、`TArrow of ty * effect_row * ty` を前提とした型・診断・IR の影響調査を設計ノートに集約[^type-002-row-design]（2026-04-18 更新: 暫定採用案と Phase 2-7 への宿題を登録）。
+
 ### エラー回復（ERR）
 - [ERR-001 修正計画](./ERR-001-proposal.md): Menhir の期待集合を `ExpectationSummary` に反映させ、`docs/spec/2-5-error.md` で定義された期待値提示を実現。（2025-11-15 追記: `collect` の導入と `parser_driver`/`parser_diag_state` の組込みにより、期待集合が `Diagnostic.expected` と legacy API 双方へ伝播することを確認。）
 - 2025-11-16 追記: CLI ゴールデンと LSP フィクスチャを期待集合付きで更新し、`scripts/validate-diagnostic-json.sh`／`tooling/ci/collect-iterator-audit-metrics.py` に `parser.expected_*` 指標を追加して CI 監視を有効化。
@@ -67,3 +70,5 @@
 - 新しい計画を追加する際は、ドメイン別セクションに箇条書きを追加し、関連仕様とメトリクスを併記する。
 - 計画のステータス更新（完了・棚上げ等）は本文と併せてここにも反映し、Phase 2-5 全体の進捗を一目で把握できるようにする。
 - 大幅な構造更新やファイル移動を行った場合は `docs-migrations.log` と `README.md`（リポジトリ索引）を忘れずに追記する。
+
+[^type-002-row-design]: `compiler/ocaml/docs/effect-system-design-note.md`「## 3. 型表現統合ドラフト（TYPE-002 Step2, 2026-04-18）」参照。

@@ -180,3 +180,21 @@
 更新時は本メモと `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md` を同期し、脚注追加・実装スケジュールの差分が発生した場合は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に TODO を登録する。
 
 作業履歴: 2026-03-12 SYNTAX-003 S1（Parser PoC 設計）で初版作成。2026-03-27 S3（診断・CI 計測整備）で指標計画を追記。2026-04-03 S4（Phase 2-7 引き継ぎ準備）でハンドオーバー チェックリストとフラグ運用メモを整備。2026-04-12 S2（AST/Parser PoC 実装）で構文ノード・RunConfig フラグ・診断ガードを実装済みとして追記。更新時は本メモと `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` を同期する。 
+
+
+## Phase 2-5 TYPE-002 Step2 型表現統合ドラフト（2026-04-18）
+
+### サマリ
+- `Effect_analysis.collect_from_fn_body` のタグ列と `typed_fn_decl.tfn_effect_profile` の転記フローを再点検し、効果タグ正規化（`normalize_effect_name`）を型統合後も共有できることを確認。
+- `effect_row` 候補（`string list` / `StringSet.t` / `row_var`）を比較し、集合演算と表示順序を両立させるため「表示用配列 + 正規化集合」の二層構造を暫定採用。`row_var` は Phase 2-7 で `Constraint_solver` 拡張と同時導入する前提で `None` 固定とした。
+- 設計ノート `compiler/ocaml/docs/effect-system-design-note.md` に `TArrow of ty * effect_row * ty` 案・影響モジュール一覧・`Effect_analysis → effect_row → 型スキーム → 診断／監査` のデータフロー図を追記し、`TYPE-002-S2` 差分タグをレビュー記録へ登録。
+
+### フォローアップ TODO
+1. `Constraint_solver` への RowVar 対応を Phase 2-7 `TYPE-002` 実装タスクへ連携するため、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に「effect_row 行多相 PoC」を追加（Step4 設計で反映予定）。
+2. `diagnostics.effect_row_stage_consistency` KPI の JSON キー案（`extensions.effects.row.declared`, `...residual`, `audit.metadata.effect.row.canonical`）を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ草案登録し、Step4 で正式指標として追加する。
+3. Chapter 1-2 / 1-3 へ追加する脚注案を整備し、「Phase 2-5 は診断メタデータ運用」「Phase 2-7 で型統合予定」「解除条件＝RowVar 対応と KPI 達成」を明記するテンプレートを Step3 作業のインプットとして準備する。
+
+### 参考リンク
+- 設計ノート: `compiler/ocaml/docs/effect-system-design-note.md`「## 3. 型表現統合ドラフト（TYPE-002 Step2, 2026-04-18）」
+- レビュー記録: `docs/plans/bootstrap-roadmap/2-5-review-log.md#type-002-step2-型表現統合ドラフト2026-04-18`
+- 計画書: `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md` Step2、`docs/plans/bootstrap-roadmap/2-5-proposals/README.md`（脚注 `[^type-002-row-design]`）

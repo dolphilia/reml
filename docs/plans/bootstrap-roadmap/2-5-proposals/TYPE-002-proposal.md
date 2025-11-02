@@ -34,10 +34,10 @@
    - **成果物**: `docs/plans/bootstrap-roadmap/2-5-review-log.md#type-002-step1-効果行統合棚卸2026-04-10` に差分ログを追加し、タグ `TYPE-002-S1` を発行。`docs/notes/effect-system-tracking.md` に「Phase 2-5 TYPE-002 Step1 効果行統合棚卸（2026-04-10）」節を追記し、Step2/Step3 への入力（`effect_row` データ構造比較、脚注追加候補）をまとめた。  
    - **フォローアップ**: Step2 で `compiler/ocaml/docs/effect-system-design-note.md` の型表現ドラフトを更新し、Step3 で Chapter 1-2 / 1-3 へ脚注を追加する。
 
-2. **Step2 型表現拡張案の起草と評価（Week32 Day4-5 / 担当: Type + Effect）**  
-   - **調査**: `compiler/ocaml/docs/effect-system-design-note.md` §2 を下敷きに、`effect_row` の候補データ構造（`string list`・`IntSet`・`RowVar`）を比較。`Effect_analysis.collect_from_fn_body` の返却型と互換になるかを検証。  
-   - **作業**: `TArrow` を `TArrow of ty * effect_row * ty` に拡張した場合の `Type_unification`／`Type_constraint` インタフェース差分を洗い出し、`generalize`・`instantiate`・`solve_trait_constraints` で必要な改修一覧を作成。  
-   - **成果物**: `compiler/ocaml/docs/effect-system-design-note.md` に「型表現統合ドラフト」章を追記し、可視化図とメリット/懸念を整理。`docs/plans/bootstrap-roadmap/2-5-proposals/README.md` から参照できる脚注を追加。
+2. **Step2 型表現拡張案の起草と評価（Week32 Day4-5 / 担当: Type + Effect） — ✅ 完了（2026-04-18）**  
+   - **調査**: `Effect_analysis.collect_from_fn_body`（compiler/ocaml/src/type_inference.ml:292）で返却されるタグ列と `typed_fn_decl.tfn_effect_profile` の保持形式を突合し、`effect_row` へ移行する際の互換性を検証。`string list`・`StringSet.t`・`row_var` の 3 案について、集合演算コスト・診断表示順序・行多相拡張の観点で評価した。  
+   - **成果物**: `compiler/ocaml/docs/effect-system-design-note.md` に新設した「## 3. 型表現統合ドラフト（TYPE-002 Step2, 2026-04-18）」で、候補データ構造比較表・`TArrow of ty * effect_row * ty` 案の API 差分・影響モジュール一覧・データフロー図を整理。`effect_row` を表示用配列と正規化集合を組み合わせた二層構造で扱う方針を暫定採用とした。  
+   - **フォローアップ**: Phase 2-7 で `generalize` / `instantiate` / `solve_trait_constraints` の RowVar 対応を実装できるよう、`docs/plans/bootstrap-roadmap/2-5-review-log.md#type-002-step2-型表現統合ドラフト2026-04-18` に検証観点とテスト案を記録。Step3 では仕様脚注と移行ガードの設計に着手する。
 
 3. **Step3 仕様脚注と移行ガード設計（Week33 Day1-2 / 担当: Docs）**  
    - **調査**: `docs/spec/1-2-types-Inference.md`・`docs/spec/1-3-effects-safety.md`・`docs/spec/3-6-core-diagnostics-audit.md` の効果行説明を横断し、現在の OCaml 実装との差異を脚注化するセクション位置を決定。  
