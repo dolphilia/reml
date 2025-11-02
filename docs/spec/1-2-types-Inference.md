@@ -22,7 +22,7 @@
 * 配列（固定長）：`[T; N]`
 * スライス／動的配列：`[T]`（標準ライブラリ型として提供、実体は `{ptr,len}`）
 * レコード：`{ x: T1, y: T2, ... }`（構造的等値）
-* 関数：`(A1, A2, …, An) -> R`（右結合、`A -> B -> C` ≡ `A -> (B -> C)`）
+* 関数：`(A1, A2, …, An) -> R`（右結合、`A -> B -> C` ≡ `A -> (B -> C)`）。効果集合は §C.6 の `! Σ` 表記で関数型と一体で扱う[^type-row-metadata-phase25]
 * 代数的データ型（ADT）：
 
   ```reml
@@ -175,6 +175,7 @@ impl Add<i64, i64, i64> for i64 { fn add(a,b) = a + b }
   `Σ_handler` は `handler` ブロックまたは `@handles` 属性で宣言された集合。`Σ_residual` はハンドラ本体で発生する効果集合。
 * **契約検査**: `@handles` は解析時に `Σ_handler` を確定させ、残余効果 `Σ_after` が `@pure` や `@dsl_export(allows_effects=...)` の条件を満たすか検証する。違反時は `effects.contract.mismatch` または `dsl.export.effect_violation` を報告。
 * **Stage と Capability**: `stage = Experimental` の効果を扱う場合、シグネチャに `@requires_capability(stage="experimental")` を含め、Capability Registry が許可した環境でのみビルドできるようにする。
+> **移行ガード（Phase 2-5）**: `RunConfig.extensions["effects"].type_row_mode` の既定値を `"metadata-only"` とし、`typed_fn_decl.tfn_effect_profile` を通じて効果集合を診断メタデータとして扱う。`type_row_mode = "ty-integrated"` は Phase 2-7 `TYPE-002` 実装まで予約状態とし、起動時に `effects.type_row.integration_blocked` を報告して既定状態へロールバックする。CI では `diagnostics.effect_row_stage_consistency` KPI をゼロ件維持のまま監視し、`ty-integrated` へ昇格する際は `TArrow of ty * effect_row * ty` と行多相 (`∀ε`) の取り扱いが実装済みであることを確認する。
 
 ### C.7 失敗時の方針（エラー）
 
@@ -429,3 +430,6 @@ Reml のコア型システムは代数的データ型とトレイト制約を中
 * [1.4 文字モデル](1-4-test-unicode-model.md) - Unicode型システム
 * [2.5 エラー設計](2-5-error.md) - 型エラーの報告
 * [LLVM連携ノート](../guides/llvm-integration-notes.md) - LLVM連携での型情報利用
+
+[^type-row-metadata-phase25]:
+    2026-04-22 更新。Phase 2-5 `TYPE-002 Step3` で OCaml 実装が関数型の効果行を型スキームへ統合していない現状を脚注化し、`typed_fn_decl.tfn_effect_profile` による診断メタデータ運用を暫定措置として明示した。`RunConfig.extensions["effects"].type_row_mode = "metadata-only"` を既定ガードとし、Phase 2-7 `TYPE-002` で `TArrow of ty * effect_row * ty` 実装・`diagnostics.effect_row_stage_consistency` KPI・`type_row_mode = "ty-integrated"` への切替が揃った時点で脚注を撤去する。詳細は `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md#5-実施ステップ`、`docs/plans/bootstrap-roadmap/2-5-review-log.md#type-002-step3-効果行脚注と移行ガード2026-04-22`、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-effect-row-integration` を参照。

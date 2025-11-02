@@ -39,10 +39,10 @@
    - **成果物**: `compiler/ocaml/docs/effect-system-design-note.md` に新設した「## 3. 型表現統合ドラフト（TYPE-002 Step2, 2026-04-18）」で、候補データ構造比較表・`TArrow of ty * effect_row * ty` 案の API 差分・影響モジュール一覧・データフロー図を整理。`effect_row` を表示用配列と正規化集合を組み合わせた二層構造で扱う方針を暫定採用とした。  
    - **フォローアップ**: Phase 2-7 で `generalize` / `instantiate` / `solve_trait_constraints` の RowVar 対応を実装できるよう、`docs/plans/bootstrap-roadmap/2-5-review-log.md#type-002-step2-型表現統合ドラフト2026-04-18` に検証観点とテスト案を記録。Step3 では仕様脚注と移行ガードの設計に着手する。
 
-3. **Step3 仕様脚注と移行ガード設計（Week33 Day1-2 / 担当: Docs）**  
-   - **調査**: `docs/spec/1-2-types-Inference.md`・`docs/spec/1-3-effects-safety.md`・`docs/spec/3-6-core-diagnostics-audit.md` の効果行説明を横断し、現在の OCaml 実装との差異を脚注化するセクション位置を決定。  
-   - **作業**: Phase 2-5 時点での暫定措置（診断メタデータへの退避・`@handles` での手動検証）を脚注・補遺として追加し、解除条件を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に引き継ぎ。  
-   - **成果物**: 仕様書脚注・索引用リンク・`README.md` 追記草案をまとめ、レビュー依頼テンプレート（`TYPE-002-S3`）を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に登録。
+3. **Step3 仕様脚注と移行ガード設計（Week33 Day1-2 / 担当: Docs） — ✅ 完了（2026-04-22）**  
+   - **調査**: `docs/spec/1-2-types-Inference.md` §A.2 / §C.6、`docs/spec/1-3-effects-safety.md` §A・§I、`docs/spec/3-6-core-diagnostics-audit.md` §2.4.2 を突合し、効果行を型スキームへ統合していない現行実装との差異とガード要件（`type_row_mode`）を洗い出した。  
+   - **作業**: 各仕様書に脚注 `[^type-row-metadata-phase25]` を追加し、Phase 2-5 の暫定運用（診断メタデータ保持と `RunConfig.extensions["effects"].type_row_mode = "metadata-only"` ガード）を明文化。`effects.type_row.integration_blocked` 診断と `effect.type_row.*` 監査キーを定義し、索引用 `docs/spec/README.md`・`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` と連動させた。  
+   - **成果物**: `docs/plans/bootstrap-roadmap/2-5-review-log.md#type-002-step3-効果行脚注と移行ガード2026-04-22` にレビュー記録を追加し、`TYPE-002-S3` タグを発行。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-effect-row-integration` へ解除条件（`TArrow` 拡張・`diagnostics.effect_row_stage_consistency` KPI・レビュー承認）を引き継いだ。
 
 4. **Step4 実装ロードマップとテスト観点の確定（Week33 Day3-5 / 担当: Type + QA）**  
    - **調査**: `compiler/ocaml/tests/test_type_inference.ml`、`compiler/ocaml/tests/streaming_runner_tests.ml`、`tooling/ci/collect-iterator-audit-metrics.py` の既存ケースを確認し、効果行統合後に追加すべきテスト・指標（例: `type_effect_row_equivalence`, `diagnostics.effect_row_stage_consistency`）を列挙。  

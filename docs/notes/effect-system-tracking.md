@@ -198,3 +198,28 @@
 - 設計ノート: `compiler/ocaml/docs/effect-system-design-note.md`「## 3. 型表現統合ドラフト（TYPE-002 Step2, 2026-04-18）」
 - レビュー記録: `docs/plans/bootstrap-roadmap/2-5-review-log.md#type-002-step2-型表現統合ドラフト2026-04-18`
 - 計画書: `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md` Step2、`docs/plans/bootstrap-roadmap/2-5-proposals/README.md`（脚注 `[^type-002-row-design]`）
+
+## Phase 2-5 TYPE-002 Step3 仕様脚注と移行ガード（2026-04-22）
+
+### サマリ
+- `docs/spec/1-2-types-Inference.md` §A.2 / §C.6、`docs/spec/1-3-effects-safety.md` §A / §I、`docs/spec/3-6-core-diagnostics-audit.md` §2.4.2 に脚注 `[^type-row-metadata-phase25]` を追加し、Phase 2-5 の暫定運用（効果行は診断メタデータとして保持、`type_row_mode = "metadata-only"` 固定）を明文化。
+- `RunConfig.extensions["effects"].type_row_mode` のモード定義を整理し、`ty-integrated` 要求時に `effects.type_row.integration_blocked` を発行するポリシーと `effect.type_row.*` 監査キー（`requested_mode` / `available_mode` / `guard_stage`）を仕様へ登録。
+- `docs/spec/README.md`・`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`・`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に TYPE-002 脚注と解除条件を導線として追加し、索引と後続フェーズ計画の同期を完了。
+
+### 主要アウトプット
+1. 脚注 `[^type-row-metadata-phase25]` の本文（Phase 2-5 暫定・解除条件・参照先）を 1-2 / 1-3 / 3-6 / spec README / 2-5 Spec Drift 計画に展開。
+2. `effects.type_row.integration_blocked` 診断テンプレートと監査キー `effect.type_row.requested_mode` / `available_mode` / `guard_stage` を `docs/spec/3-6-core-diagnostics-audit.md` に追加。
+3. `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-effect-row-integration` に Phase 2-7 での実装タスク（`TArrow` 拡張、KPI、脚注撤去）と検証条件を登録。
+
+### フォローアップ
+1. Phase 2-7 で `ty` 拡張と KPI 実装が完了したら、`type_row_mode` の既定を `"ty-integrated"` へ更新し、`metadata-only` はレガシーモードとして CLI オプションに残す。
+2. `diagnostics.effect_row_stage_consistency` の算出実装（`collect-iterator-audit-metrics.py`）と `type_effect_row_*` テストを Step4 設計へ取り込み、Phase 2-7 Sprint 開始時の受け入れ条件へ登録。
+3. 脚注撤去時に備えて、`docs/spec/1-2-types-Inference.md` / `1-3-effects-safety.md` / `3-6-core-diagnostics-audit.md` の該当節にチェックリスト（手動確認項目）を付与する案を Step4 で検討。
+
+### 参考リンク
+- 仕様差分計画: `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`（`TYPE-002` 項の 2026-04-22 更新）
+- 設計ノート: `compiler/ocaml/docs/effect-system-design-note.md`「## 3. 型表現統合ドラフト」
+- レビュー記録: `docs/plans/bootstrap-roadmap/2-5-review-log.md#type-002-step3-効果行脚注と移行ガード2026-04-22`
+- フォローアップ計画: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-effect-row-integration`
+
+[^type-row-metadata-phase25]: Phase 2-5 `TYPE-002 Step3`（2026-04-22 完了）で追加。効果行を `ty` へ統合する前段として `RunConfig.extensions["effects"].type_row_mode = "metadata-only"` とし、`effects.type_row.integration_blocked` 診断・`effect.type_row.*` 監査キーで移行試行を記録する。解除条件は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-effect-row-integration` を参照。
