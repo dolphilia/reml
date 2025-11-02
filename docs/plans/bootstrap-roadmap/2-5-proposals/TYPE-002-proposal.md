@@ -16,10 +16,10 @@
 - 実装ロードマップを Phase 2-7 効果チームと共有し、効果行統合の段階的導入（診断 → 型表現 → 行多相）を調整する。
 
 ## 3. 影響範囲と検証
-- **型比較**: 効果を考慮した型等価・部分順序の仕様を整理し、`Type_unification` テストを追加。  
-- **残余効果**: EFFECT-002 / EFFECT-003 の実装と連動し、効果集合を型内で扱えるか PoC を実施。  
-- **ドキュメント**: Chapter 1/3 の効果行説明に実装ステージを明記し、読者が差分状態を把握できるよう脚注を追加。
-- **設計ノート**: `compiler/ocaml/docs/effect-system-design-note.md` に `effect_row` のデータ構造比較（リスト/ビットセット/マップ）の評価結果を追記し、仕様更新時の根拠を残す。
+- **型比較**: 効果を考慮した型等価・部分順序の仕様を整理し、`Type_unification` テストを追加（`compiler/ocaml/tests/test_type_inference.ml` に `type_effect_row_*` 系ケースを新設し、`types.ml:48` で導入する `TArrow` 拡張を厳密に検証）。  
+- **残余効果**: EFFECT-002 / EFFECT-003 の実装と連動し、効果集合を型内で扱えるか PoC を実施（`Effect_analysis` → `Type_inference_effect` → `generalize`/`instantiate` の各経路で残余効果・Stage 情報が消失しないことを `compiler/ocaml/tests/streaming_runner_tests.ml` と監査ゴールデンで追跡）。  
+- **ドキュメント**: Chapter 1/3 の効果行説明に実装ステージを明記し、読者が差分状態を把握できるよう脚注を追加（`docs/spec/1-2-types-Inference.md` §A.2、`docs/spec/1-3-effects-safety.md` §4.2、`docs/spec/3-6-core-diagnostics-audit.md` §5 に脚注と参照を配置）。  
+- **設計ノート**: `compiler/ocaml/docs/effect-system-design-note.md` に `effect_row` のデータ構造比較（リスト/ビットセット/マップ）の評価結果を追記し、仕様更新時の根拠を残す。`docs/notes/effect-system-tracking.md` に調査ログと PoC 実験条件を記録。
 
 ## 4. フォローアップ
 - 効果行を型へ組み込む際、`generalize` / `instantiate` を更新する必要があるため、Phase 2-7 の型クラスチームへ事前連絡する。  
@@ -28,6 +28,33 @@
 - `docs/notes/effect-system-tracking.md` に行多相導入ロードマップを追記し、型チームと効果チームで共有するチェックポイントを明記する。
 - **タイミング**: Phase 2-5 では設計検討と脚注整備を完了し、実装は Phase 2-7 の効果システム統合スプリント開始時に着手、必要に応じて Phase 3 序盤まで延長する。
 
-## 残課題
+## 5. 実施ステップ
+1. **Step1 現状棚卸と差分タグ付け（Week32 Day1-3 / 担当: Type チーム）**  
+   - **調査**: `docs/spec/1-2-types-Inference.md:155-210`、`docs/spec/1-3-effects-safety.md:236-303` を再読し、効果行が型スキームへ入る前提と `Σ_after` の残余計算を整理。  
+   - **調査**: `compiler/ocaml/src/types.ml:48-72`、`compiler/ocaml/src/type_inference.ml:2700-2750`、`compiler/ocaml/src/typed_ast.ml` をレビューし、`TArrow` が効果情報を欠いたまま `typed_fn_decl.tfn_effect_profile` に分離されている事実を棚卸。  
+   - **作業**: 乖離点と仕様脚注候補を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に登録し、Phase 2-5 内で追跡できるタグ（`TYPE-002-S1`）を発行。  
+   - **成果物**: `docs/notes/effect-system-tracking.md` へ現状分析サマリーを追加し、以降のステップで参照する調査計画をリンク化。
+
+2. **Step2 型表現拡張案の起草と評価（Week32 Day4-5 / 担当: Type + Effect）**  
+   - **調査**: `compiler/ocaml/docs/effect-system-design-note.md` §2 を下敷きに、`effect_row` の候補データ構造（`string list`・`IntSet`・`RowVar`）を比較。`Effect_analysis.collect_from_fn_body` の返却型と互換になるかを検証。  
+   - **作業**: `TArrow` を `TArrow of ty * effect_row * ty` に拡張した場合の `Type_unification`／`Type_constraint` インタフェース差分を洗い出し、`generalize`・`instantiate`・`solve_trait_constraints` で必要な改修一覧を作成。  
+   - **成果物**: `compiler/ocaml/docs/effect-system-design-note.md` に「型表現統合ドラフト」章を追記し、可視化図とメリット/懸念を整理。`docs/plans/bootstrap-roadmap/2-5-proposals/README.md` から参照できる脚注を追加。
+
+3. **Step3 仕様脚注と移行ガード設計（Week33 Day1-2 / 担当: Docs）**  
+   - **調査**: `docs/spec/1-2-types-Inference.md`・`docs/spec/1-3-effects-safety.md`・`docs/spec/3-6-core-diagnostics-audit.md` の効果行説明を横断し、現在の OCaml 実装との差異を脚注化するセクション位置を決定。  
+   - **作業**: Phase 2-5 時点での暫定措置（診断メタデータへの退避・`@handles` での手動検証）を脚注・補遺として追加し、解除条件を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に引き継ぎ。  
+   - **成果物**: 仕様書脚注・索引用リンク・`README.md` 追記草案をまとめ、レビュー依頼テンプレート（`TYPE-002-S3`）を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に登録。
+
+4. **Step4 実装ロードマップとテスト観点の確定（Week33 Day3-5 / 担当: Type + QA）**  
+   - **調査**: `compiler/ocaml/tests/test_type_inference.ml`、`compiler/ocaml/tests/streaming_runner_tests.ml`、`tooling/ci/collect-iterator-audit-metrics.py` の既存ケースを確認し、効果行統合後に追加すべきテスト・指標（例: `type_effect_row_equivalence`, `diagnostics.effect_row_stage_consistency`）を列挙。  
+   - **作業**: `Type_unification`・`Constraint_solver`・`Effect_analysis` の改修順序を決定し、Phase 2-7 実装スプリントでの着手順（型表現 → 汎化/インスタンス化 → 診断/監査 → Core IR 伝播）をガント化。  
+   - **成果物**: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に TYPE-002 の着手条件と検証リストを追記し、`0-3-audit-and-metrics.md` に新規 KPI 下書きを記録。
+
+5. **Step5 ハンドオーバー準備とリスク登録（Week34 Day1 / 担当: PM）**  
+   - **調査**: `compiler/ocaml/docs/technical-debt.md` の関連項目（効果行・型表現）と突合し、残存リスクを `0-4-risk-handling.md` に再整理。  
+   - **作業**: Phase 2-7 効果チームへのハンドオーバーノートを作成し、`docs/plans/bootstrap-roadmap/2-4-to-2-5-handover.md` 追記欄にリンク。`TYPE-002` 実装開始前の Gate 条件（設計ノートレビュー完了、脚注公開、テスト観点合意）を明文化。  
+   - **成果物**: `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Step5 完了エントリ (`TYPE-002-S5`) を追加し、進行状況を Phase 2-6 週次レビューへ報告できる状態にする。
+
+## 6. 残課題
 - 効果行を `ty` に含める際の表現形式（リスト / 集合 / 位置付きタグ）をどこまで詳細化するか、型推論チームの合意が必要。  
 - 行多相の完全導入をどのフェーズで行うか（Phase 3 へ繰越すか）を PM と相談したい。
