@@ -224,6 +224,19 @@
 - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`（新規 KPI）
 - `tooling/ci/collect-iterator-audit-metrics.py`（指標集計ポイント）
 
+## Phase 2-5 TYPE-002 Step5 ハンドオーバー準備とリスク登録（2026-04-24）
+
+### サマリ
+- `docs/plans/bootstrap-roadmap/2-5-to-2-7-type-002-handover.md` を新設し、Phase 2-7 Sprint A/B/C の到達条件、Gate 条件（設計レビュー、脚注整合、テスト基盤、リスクレビュー）、およびロールバック手順を整理。  
+- `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` にリスク ID `TYPE-002-ROW-INTEGRATION`（期限 2026-10-31, 状態 Open）を登録し、EFFECT 系リスク（`EFFECT-POC-Stage`）との依存関係をコメントで明示。  
+- KPI `diagnostics.effect_row_stage_consistency` / `type_effect_row_equivalence` / `effect_row_guard_regressions` を Phase 2-7 開始時から追跡できるよう、`tooling/ci/collect-iterator-audit-metrics.py` の拡張点（`--section effects`）と CI ランナー（Linux/Windows/macOS）の導線を点検。
+
+### フォローアップ
+1. Phase 2-7 キックオフ前に `effect_system_design` レビュー（タグ `TYPE-002-G1`）を開催し、`TArrow` 拡張ドラフトと RowVar 先送り方針を承認する。  
+2. `type_row_mode` を `dual-write` へ切り替える前に、CI で `collect-iterator-audit-metrics.py --section effects` が動作し、`effect_row_guard_regressions = 0` を維持できることを検証する。  
+3. KPI が基準値（1.0 / 1.0 / 0.0）を満たした時点で脚注 `[^type-row-metadata-phase25]` 撤去案とリスククローズ条件をまとめ、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` とリスク台帳を更新する。  
+4. RowVar 実装は Phase 3 で判断するため、Phase 2-7 では `Open row_var` を予約値として維持し、API から外部露出しないようレビュー時に確認する。
+
 ## Phase 2-5 TYPE-002 Step3 仕様脚注と移行ガード（2026-04-22）
 
 ### サマリ

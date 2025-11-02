@@ -50,10 +50,10 @@
    - **成果物**: `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に新規 KPI `diagnostics.effect_row_stage_consistency` / `type_effect_row_equivalence` / `effect_row_guard_regressions` を追加し、指標の収集タイミングと `collect-iterator-audit-metrics.py` での検証方法を記録。`docs/notes/effect-system-tracking.md` へ Step4 ログを追記し、効果行統合ロードマップとテスト観点を Phase 2-7 へ引き継ぐチェックポイントを整理。`docs/plans/bootstrap-roadmap/2-5-review-log.md#type-002-step4-実装ロードマップとテスト観点2026-04-24` にレビュー記録を追加し、タグ `TYPE-002-S4` を発行した。  
    - **フォローアップ**: Sprint A 着手前に `effect_row` 実装ブランチへ `types.ml` / `typed_ast.ml` の dual-write 実験を用意し、`TYPE-002 Step5` ハンドオーバーで Windows CI 監査プロファイルの追加確認を行う。`effect_row` 行多相（`RowVar`) の保留事項は Phase 3 での評価対象として `docs/notes/effect-system-tracking.md#phase-3-以降の検討` に移管。
 
-5. **Step5 ハンドオーバー準備とリスク登録（Week34 Day1 / 担当: PM）**  
-   - **調査**: `compiler/ocaml/docs/technical-debt.md` の関連項目（効果行・型表現）と突合し、残存リスクを `0-4-risk-handling.md` に再整理。  
-   - **作業**: Phase 2-7 効果チームへのハンドオーバーノートを作成し、`docs/plans/bootstrap-roadmap/2-4-to-2-5-handover.md` 追記欄にリンク。`TYPE-002` 実装開始前の Gate 条件（設計ノートレビュー完了、脚注公開、テスト観点合意）を明文化。  
-   - **成果物**: `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Step5 完了エントリ (`TYPE-002-S5`) を追加し、進行状況を Phase 2-6 週次レビューへ報告できる状態にする。
+5. **Step5 ハンドオーバー準備とリスク登録（Week34 Day1 / 担当: PM） — ✅ 完了（2026-04-24）**  
+   - **調査**: `compiler/ocaml/docs/technical-debt.md` の H1（type_mapping TODO）と効果プロファイル項目を再確認し、行統合の遅延が Phase 3 Self-host 判定へ与える影響を整理。  
+   - **作業**: Phase 2-7 効果チーム向けハンドオーバーノート [`2-5-to-2-7-type-002-handover.md`](../2-5-to-2-7-type-002-handover.md) を作成し、Gate 条件（設計レビュー完了、脚注・ガード整合、テスト基盤準備、リスクレビュー）を定義。`docs/plans/bootstrap-roadmap/2-4-to-2-5-handover.md` に追記して導線を確保。  
+   - **成果物**: `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` にリスク ID `TYPE-002-ROW-INTEGRATION` を登録し、期限 2026-10-31・状態 Open で追跡開始。`docs/plans/bootstrap-roadmap/2-5-review-log.md#type-002-step5-ハンドオーバー準備とリスク登録2026-04-24` にレビュー記録（タグ `TYPE-002-S5`）を追加し、Phase 2-6 週次レビューで報告可能な状態にした。
 
 ## 6. 残課題
 - 効果行を `ty` に含める際の表現形式（リスト / 集合 / 位置付きタグ）をどこまで詳細化するか、型推論チームの合意が必要。  

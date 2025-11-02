@@ -63,6 +63,15 @@
 - 状態: Open
 - 関連フェーズ: Phase 2 (2-7)
 - 参照: `docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-002-proposal.md`, `docs/plans/bootstrap-roadmap/2-5-review-log.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`, `docs/notes/effect-system-tracking.md`
+- 登録日: 2026-04-24
+- タイトル: 効果行統合遅延による型・監査不整合（TYPE-002-ROW-INTEGRATION）
+- カテゴリ: 技術的負債
+- 詳細: `TYPE-002` Step4 までに `effect_row` 統合ドラフトと移行ガード (`type_row_mode = "metadata-only"`) を整備したが、`ty` へ効果行を統合する実装は Phase 2-7 へ移管している。行統合が Phase 3 までに完了しない場合、`@handles`/Stage 契約の検証が実行時メタデータ依存のままとなり、Self-host CI の合格判定や監査 KPI（`diagnostics.effect_row_stage_consistency`）が 1.0 を維持できないリスクがある。
+- 対応案: Phase 2-7 Sprint A/B/C で `effect_row` dual-write → `generalize`/`instantiate`/`Type_unification` 対応 → Core IR/監査伝播を実装し、`type_row_mode` を `dual-write` → `ty-integrated` へ段階的に移行する。`collect-iterator-audit-metrics.py` の `diagnostics.effect_row_stage_consistency` / `type_effect_row_equivalence` / `effect_row_guard_regressions` が各 1.0 / 1.0 / 0.0 を満たした時点で脚注 `[^type-row-metadata-phase25]` の撤去を審査する。
+- 期限: 2026-10-31
+- 状態: Open
+- 関連フェーズ: Phase 2 (2-7)
+- 参照: `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md`, `docs/plans/bootstrap-roadmap/2-5-to-2-7-type-002-handover.md`, `docs/plans/bootstrap-roadmap/2-5-review-log.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`, `docs/notes/effect-system-tracking.md`, `compiler/ocaml/docs/effect-system-design-note.md`
 - 登録日: 2025-10-10
 - タイトル: Debian sysroot アーカイブのハッシュ未確定
 - カテゴリ: 互換性

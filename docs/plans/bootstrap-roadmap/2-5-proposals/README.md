@@ -19,7 +19,7 @@
 - [EFFECT-003 修正計画](./EFFECT-003-proposal.md): 複数 Capability を解析・監査へ出力する仕組みを整備し、Stage 契約（`docs/spec/3-8-core-runtime-capability.md`）との齟齬を是正。
 
 ### 型システム（TYPE）
-- [TYPE-002 効果行統合ポリシー計画](./TYPE-002-proposal.md): Step2 で `effect_row` 統合ドラフトを策定し、`TArrow of ty * effect_row * ty` を前提とした型・診断・IR の影響調査を設計ノートに集約[^type-002-row-design]（2026-04-18 更新: 暫定採用案と Phase 2-7 への宿題を登録。2026-04-22 追記: Step3 で仕様脚注と `type_row_mode` ガードを整備し、`effects.type_row.integration_blocked` 診断と監査キー `effect.type_row.*` を定義）。
+- [TYPE-002 効果行統合ポリシー計画](./TYPE-002-proposal.md): Step2 で `effect_row` 統合ドラフトを策定し、`TArrow of ty * effect_row * ty` を前提とした型・診断・IR の影響調査を設計ノートに集約[^type-002-row-design]（2026-04-18 更新: 暫定採用案と Phase 2-7 への宿題を登録。2026-04-22 追記: Step3 で仕様脚注と `type_row_mode` ガードを整備し、`effects.type_row.integration_blocked` 診断と監査キー `effect.type_row.*` を定義。2026-04-24 追記: Step5 で Phase 2-7 向けハンドオーバーノートとリスク `TYPE-002-ROW-INTEGRATION` を登録し、Gate 条件と KPI 追跡導線を整備）。
 
 ### エラー回復（ERR）
 - [ERR-001 修正計画](./ERR-001-proposal.md): Menhir の期待集合を `ExpectationSummary` に反映させ、`docs/spec/2-5-error.md` で定義された期待値提示を実現。（2025-11-15 追記: `collect` の導入と `parser_driver`/`parser_diag_state` の組込みにより、期待集合が `Diagnostic.expected` と legacy API 双方へ伝播することを確認。）
