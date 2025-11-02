@@ -29,11 +29,10 @@
 - **タイミング**: Phase 2-5 では設計検討と脚注整備を完了し、実装は Phase 2-7 の効果システム統合スプリント開始時に着手、必要に応じて Phase 3 序盤まで延長する。
 
 ## 5. 実施ステップ
-1. **Step1 現状棚卸と差分タグ付け（Week32 Day1-3 / 担当: Type チーム）**  
-   - **調査**: `docs/spec/1-2-types-Inference.md:155-210`、`docs/spec/1-3-effects-safety.md:236-303` を再読し、効果行が型スキームへ入る前提と `Σ_after` の残余計算を整理。  
-   - **調査**: `compiler/ocaml/src/types.ml:48-72`、`compiler/ocaml/src/type_inference.ml:2700-2750`、`compiler/ocaml/src/typed_ast.ml` をレビューし、`TArrow` が効果情報を欠いたまま `typed_fn_decl.tfn_effect_profile` に分離されている事実を棚卸。  
-   - **作業**: 乖離点と仕様脚注候補を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に登録し、Phase 2-5 内で追跡できるタグ（`TYPE-002-S1`）を発行。  
-   - **成果物**: `docs/notes/effect-system-tracking.md` へ現状分析サマリーを追加し、以降のステップで参照する調査計画をリンク化。
+1. **Step1 現状棚卸と差分タグ付け（Week32 Day1-3 / 担当: Type チーム） — ✅ 完了（2026-04-10）**  
+   - **実施内容**: `docs/spec/1-2-types-Inference.md:155-210` と `docs/spec/1-3-effects-safety.md:236-303` を再読し、`A -> B ! Σ` 前提と `Σ_after = (Σ_before - Σ_handler) ∪ Σ_residual` の整合を確認。`compiler/ocaml/src/types.ml:48-72`、`compiler/ocaml/src/type_inference.ml:2691-2734`、`compiler/ocaml/src/typed_ast.ml:167-175` を棚卸し、効果集合が `typed_fn_decl.tfn_effect_profile` に分離管理されている現状を整理した。  
+   - **成果物**: `docs/plans/bootstrap-roadmap/2-5-review-log.md#type-002-step1-効果行統合棚卸2026-04-10` に差分ログを追加し、タグ `TYPE-002-S1` を発行。`docs/notes/effect-system-tracking.md` に「Phase 2-5 TYPE-002 Step1 効果行統合棚卸（2026-04-10）」節を追記し、Step2/Step3 への入力（`effect_row` データ構造比較、脚注追加候補）をまとめた。  
+   - **フォローアップ**: Step2 で `compiler/ocaml/docs/effect-system-design-note.md` の型表現ドラフトを更新し、Step3 で Chapter 1-2 / 1-3 へ脚注を追加する。
 
 2. **Step2 型表現拡張案の起草と評価（Week32 Day4-5 / 担当: Type + Effect）**  
    - **調査**: `compiler/ocaml/docs/effect-system-design-note.md` §2 を下敷きに、`effect_row` の候補データ構造（`string list`・`IntSet`・`RowVar`）を比較。`Effect_analysis.collect_from_fn_body` の返却型と互換になるかを検証。  

@@ -160,4 +160,23 @@
 
 ---
 
+## Phase 2-5 TYPE-002 Step1 効果行統合棚卸（2026-04-10）
+
+### 調査サマリ
+- 仕様は関数シグネチャに効果行を組み込み、`fn A -> B ! {io, panic}` の形式で型と効果を一体管理することを前提としている（docs/spec/1-2-types-Inference.md:158, docs/spec/1-3-effects-safety.md:244）。残余効果 `Σ_after` の検査と `@handles` 契約はこの前提に基づく。
+- OCaml 実装の型表現 `ty` は `TArrow of ty * ty` のままで効果情報を保持せず（compiler/ocaml/src/types.ml:48）、効果集合は `typed_fn_decl.tfn_effect_profile` に分離管理されている（compiler/ocaml/src/typed_ast.ml:167）。`Type_inference` でも `fn_ty` 組み立て時に効果を落としており（compiler/ocaml/src/type_inference.ml:2691）、プロファイルは補助メタデータとして別フィールドに記録される（compiler/ocaml/src/type_inference.ml:2712）。
+- `Effect_analysis.collect_from_fn_body` で収集したタグは診断・監査向けの `profile` へ統合されるが、型スキーム `scheme.body` へは伝播せず、`generalize` / `instantiate` の経路では効果差分を比較できない（compiler/ocaml/src/type_inference.ml:2698）。
+
+### 乖離ポイントと影響
+- **型等価・ジェネリクス**: `TArrow` に効果行が無いため、`∀ε. τ ! ε` のような行多相スキームを表現できず、`@handles` や `@pure` が期待する「型と効果の同時比較」が不可能。`TYPE-002` の目的は `ty` へ効果行（候補: `effect_row`) を追加し、`generalize` / `instantiate` / `Type_unification` で効果集合を処理できる状態へ移行すること。
+- **契約検査の一貫性**: 現状は `typed_fn_decl.tfn_effect_profile` を参照して `effects.contract.*` 診断を出しているが、型アノテーション (`fn foo() -> Result<_, _> ! {panic}`) との比較が `type_inference` 内で行えない。`TYPE-002-S1` では `docs/spec/1-2-types-Inference.md` と `docs/spec/1-3-effects-safety.md` に脚注（予定）を追加し、「Phase 2-5 時点では効果行が型スキームへ統合されていない」ことを明示する必要がある。
+- **Stage/Capability 連携**: `record_effect_profile` が Capability Stage の整合に利用されるが（compiler/ocaml/src/type_inference.ml:2723）、型情報として残らないため、`StageRequirement` の推論や `RuntimeBridge` との突き合わせを型段階で実行できない。行統合後は `Stage` と効果タグを型システムの比較対象に含める計画。
+
+### フォローアップ（Step2 以降への入力）
+1. `compiler/ocaml/docs/effect-system-design-note.md` に効果行統合案（`TArrow of ty * effect_row * ty`）をドラフト化し、`effect_row` のデータ構造比較（リスト/ビットセット/RowVar）を記録する。
+2. `docs/plans/bootstrap-roadmap/2-5-review-log.md` に `TYPE-002-S1` エントリを追加し、脚注追加候補と検証観点（`generalize` / `instantiate` / `Type_unification` / `Effect_analysis`) をタグ付きで追跡する。
+3. Phase 2-7 着手条件として、`generalize` / `instantiate` / `solve_trait_constraints` への改修順序とテスト観点（`type_effect_row_*` シリーズ、`diagnostics.effect_row_stage_consistency` 新設案）を Step4 で確定させる。
+
+更新時は本メモと `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md` を同期し、脚注追加・実装スケジュールの差分が発生した場合は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に TODO を登録する。
+
 作業履歴: 2026-03-12 SYNTAX-003 S1（Parser PoC 設計）で初版作成。2026-03-27 S3（診断・CI 計測整備）で指標計画を追記。2026-04-03 S4（Phase 2-7 引き継ぎ準備）でハンドオーバー チェックリストとフラグ運用メモを整備。2026-04-12 S2（AST/Parser PoC 実装）で構文ノード・RunConfig フラグ・診断ガードを実装済みとして追記。更新時は本メモと `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` を同期する。 
