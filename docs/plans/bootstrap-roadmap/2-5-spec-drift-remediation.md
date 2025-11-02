@@ -356,17 +356,32 @@
 - 図表の更新（必要に応じて）
 - 脚注・TODO の追加
 
+**更新チェックリスト（優先度順）**
+- [x] `docs/spec/3-6-core-diagnostics-audit.md`・`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`・`docs/guides/runtime-bridges.md` 間で Severity 4 値化と `DiagnosticDomain` 拡張（DIAG-001〜003）の脚注・メトリクス・ガイド記述が一致しているか再確認し、不整合がある場合は `docs/spec/3-0-core-library-overview.md` と `docs/notes/dsl-plugin-roadmap.md` も同時に更新する。
+- [x] `docs/spec/1-1-syntax.md`・`docs/spec/1-3-effects-safety.md`・`docs/spec/1-5-formal-grammar-bnf.md`・`docs/notes/effect-system-tracking.md` に掲載された `Σ_before`/`Σ_after` PoC 脚注（EFFECT-002 Step4/5）と KPI (`syntax.effect_construct_acceptance`, `effects.syntax_poison_rate`) の説明が揃っているか確認し、差分があれば Phase 2-7 向けの撤去条件を明示する。
+- [x] `docs/spec/2-1-parser-type.md`・`docs/spec/2-6-execution-strategy.md`・`docs/guides/core-parse-streaming.md`・`docs/notes/core-parse-api-evolution.md` で RunConfig（PARSER-002/003 Step6）に関する表記と参照リンクが一致しているか確認し、`parser-runconfig-packrat.json.golden` の更新履歴を脚注に追記する。
+- [x] `docs/spec/1-2-types-Inference.md`・`docs/spec/3-6-core-diagnostics-audit.md` の `type_row_mode = "metadata-only"` 脚注（TYPE-002 Step3）と `effects.type_row.integration_blocked` KPI の説明を同一語彙に統一し、解除条件を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` と同期させる。
+
 7.2. **用語集・索引の更新**
 - [0-2-glossary.md](../../spec/0-2-glossary.md) の用語追加・更新
 - 新規概念の定義追加
 - 廃止された用語の非推奨マーク
 - 用語の統一チェック
 
+**用語棚卸しタスクリスト**
+- [x] `DiagnosticDomain::{Target, Plugin, Lsp, Other}` の語彙説明を用語集へ追記し、`docs/spec/3-6-core-diagnostics-audit.md` の表と参照ラベルを揃える。
+- [x] `RunConfig.extensions[...]` の名称と略語（`packrat`, `recover`, `stream` 等）を索引用語へ登録し、`docs/spec/2-7-core-parse-streaming.md` から逆参照できるようにする。
+- [x] 効果構文 PoC に関連する用語（`Σ_before`, `Σ_after`, `syntax.effect_construct_acceptance` など）を `docs/spec/0-2-glossary.md` と `docs/spec/0-0-overview.md` の索引用語に追加し、Phase 2-7 での昇格条件を脚注に明示する。
+
 7.3. **サンプルコードの検証**
 - 更新されたサンプルのパース検証
 - 型推論結果の確認
 - エラーケースの検証
 - `examples/` ディレクトリとの整合
+
+**検証観点メモ**
+- RunConfig・効果 PoC・診断 JSON など Phase 2-5 で追加したサンプルは `compiler/ocaml/tests/` および `compiler/ocaml/tests/golden/diagnostics/` のゴールデンと照合し、`scripts/validate-diagnostic-json.sh`・`tooling/ci/collect-iterator-audit-metrics.py --require-success` の出力が仕様記述と一致しているか確認する。
+- `examples/algebraic-effects/` など PoC サンプルが仕様の脚注と同じ条件で動作するかをチェックし、差異があれば `docs/plans/bootstrap-roadmap/2-5-review-log.md` に記録して Phase 2-7 のフォローアップへ渡す。
 
 **成果物**: 更新された仕様書、用語集
 
@@ -379,17 +394,32 @@
 - [0-1-project-purpose.md](../../spec/0-1-project-purpose.md) の目的・方針の見直し
 - [0-3-code-style-guide.md](../../spec/0-3-code-style-guide.md) のコード例更新
 
+**整合確認ポイント**
+- [x] ルート `README.md` と `docs/README.md` に Phase 2-5 で追加した KPI・脚注（DIAG-001〜003, EFFECT-002, PARSER-002/003, TYPE-002）がリンク付きで掲載されているか確認し、欠落している場合は追補する。
+- [x] `docs/spec/README.md` と Chapter 0 系目次（`0-0`〜`0-3`）の脚注が最新の提案 ID・レビュー記録と一致しているか点検する。
+- [x] `docs/plans/bootstrap-roadmap/README.md` の Phase 2-5 セクションに Step7-9 の進捗と参照リンクが反映されているかを確認し、更新が必要な場合は同期する。
+
 8.2. **相互参照リンクの検証**
 - 全 Markdown ファイルのリンク抽出
 - リンク切れの検出と修正
 - セクション参照の正確性確認
 - 相対パスの統一
 
+**リンク検証ノート**
+- `scripts/validate-diagnostic-json.sh` や `tooling/ci/collect-iterator-audit-metrics.py --summary` の出力で参照する Markdown が 404 にならないか手動確認し、必要に応じてパスを更新する。
+- Phase 2-5 で新設した脚注（例: `[^effects-syntax-poc-phase25]`, `[^type-row-metadata-phase25]`）が全ファイルで存在するか検索し、リンク切れ・二重定義がないかチェックする。
+- `docs/notes/`・`docs/guides/` に追加した参照（`docs/notes/effect-system-tracking.md`, `docs/guides/core-parse-streaming.md` 等）から仕様書への逆リンクが成立しているか確認する。
+
 8.3. **ガイド・ノートの整合**
 - `docs/guides/` 以下のガイド更新
 - `docs/notes/` 以下の調査ノート整理
 - Phase 2 実装との整合確認
 - 廃止されたドキュメントの削除/非推奨化
+
+**整合アクション**
+- [x] `docs/guides/runtime-bridges.md`・`docs/guides/core-parse-streaming.md`・`docs/guides/plugin-authoring.md` で DIAG／RunConfig／効果 PoC に関する脚注と仕様参照が最新化されているか確認し、未反映の場合は脚注を更新する。
+- [x] `docs/notes/effect-system-tracking.md`・`docs/notes/core-parse-api-evolution.md`・`docs/notes/dsl-plugin-roadmap.md` に記録した Phase 2-5 の進捗と `docs/plans/bootstrap-roadmap/2-5-review-log.md` のエントリが相互参照できるかを確認し、欠落していればメモを追加する。
+- [x] 廃止・移設予定のノートが残っている場合は `docs/plans/repository-restructure-plan.md` と `docs-migrations.log` に補足を追記し、読者が移行経路を把握できるようにする。
 
 **成果物**: 整合された索引、検証済みリンク
 
@@ -402,17 +432,32 @@
 - レビュー工数の記録
 - 残存課題の明示
 
-8.2. **リスク管理への登録**
+**記録作業の詳細**
+- `diagnostic.info_hint_ratio`, `diagnostic.hint_surface_area`, `parser.runconfig_switch_coverage`, `parser.runconfig_extension_pass_rate`, `syntax.effect_construct_acceptance`, `effects.syntax_poison_rate`, `effects.type_row.integration_blocked` など Phase 2-5 で導入した KPI が `0-3-audit-and-metrics.md` に登録され、最新値・レビュー日・根拠ファイルが更新されているかを確認する。
+- 差分統計とレビュー工数は `docs/plans/bootstrap-roadmap/2-5-review-log.md` に追記し、レビュアの確認印跡（担当者・日付・確認済みフラグ）が残っているか点検する。
+- 集計に用いたスクリプトやゴールデン（`tooling/ci/collect-iterator-audit-metrics.py`, `scripts/validate-diagnostic-json.sh`, `compiler/ocaml/tests/golden/diagnostics/parser-runconfig-packrat.json.golden` 等）のバージョンとコマンド例を併記し、再実行時に差分比較できる状態を保つ。
+
+9.2. **リスク管理への登録**
 - 未解決の差分を `0-4-risk-handling.md` に登録
 - Phase 3 で対応すべき事項の明示
 - 仕様変更提案の記録
 - 将来の仕様拡張検討事項
 
-8.3. **Phase 3 引き継ぎ**
+**リスク・課題メモ**
+- [x] `0-4-risk-handling.md` に登録済みの `EFFECT-POC-Stage`, `TYPE-002-ROW-INTEGRATION`, `LEXER-Unicode-Stage`, `STREAMING-Capability-Sync` などの ID が最新状態（Open/Blocked/Resolved）になっているか確認し、更新が必要な場合は Phase 2-7 / Phase 3 の着手条件を追記する。
+- [x] 新たに発生した差分（RunConfig 拡張、診断メタデータ語彙追加など）がリスク台帳へ登録されているか確認し、未登録の場合は根拠ファイルと暫定対応策を添えて記録する。
+- [x] リスク項目と `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` のハンドオーバーチェックリスト（H-O1〜H-O5）が相互参照しているか点検し、重複管理を避ける。
+
+9.3. **Phase 3 引き継ぎ**
 - セルフホスト時の仕様参照ポイント整理
 - OCaml 実装から Reml 実装への写像ガイド
 - 仕様の曖昧な箇所のリスト
 - レビュープロセスの改善提案
+
+**引き継ぎ準備メモ**
+- Phase 3 で参照する資料（`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`, `docs/plans/bootstrap-roadmap/3-0-phase3-transition.md`, `docs/notes/effect-system-tracking.md`, `docs/notes/core-parse-api-evolution.md` 等）への導線を `README.md` と `docs/spec/0-0-overview.md` に明示する。
+- `docs/plans/bootstrap-roadmap/2-5-review-log.md` の各エントリに Phase 3 でのフォローアップタグ（例: `Phase3:effects`, `Phase3:parser-streaming`, `Phase3:diagnostics`) を付与し、セルフホスト移行時に抽出しやすくする。
+- Phase 2-5 で整備した CLI/CI ゴールデンや測定スクリプトの保管先を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と `reports/audit/index.json` の双方に記載し、再計測手順を追記しておく。
 
 **成果物**: 差分処理記録、リスク登録、引き継ぎ文書
 
