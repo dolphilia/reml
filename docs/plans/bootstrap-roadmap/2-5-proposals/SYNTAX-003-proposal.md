@@ -40,7 +40,12 @@
 
 > 各ステップ終了時には `docs/plans/bootstrap-roadmap/2-5-review-log.md` へ検証ログを追加し、脚注 ID と CI 指標値（達成した場合でも 0.0 → 1.0 の推移を記録）を残す。未完了タスクは `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に転記する。
 
+> Phase 2-5 Week31 更新: S0 を完了し、`docs/spec/1-1-syntax.md`・`docs/spec/1-5-formal-grammar-bnf.md`・`docs/spec/3-8-core-runtime-capability.md` に脚注 `[^effects-syntax-poc-phase25]` を追加。`docs/spec/README.md` と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` へも同脚注 ID を登録し、PoC ステージと `-Zalgebraic-effects` 依存を明示した。レビュー記録は `docs/plans/bootstrap-roadmap/2-5-review-log.md` SYNTAX-003 セクションに追記。
+
 ## 残課題
 - 効果構文を有効化するフラグ名（`-Zalgebraic-effects` など）と公開ポリシーを Phase 2-7 と調整する必要がある。  
 - `perform` などの構文追加が既存優先順位に与える影響（Menhir の衝突、`parser.conflicts` 更新）を事前にレビューしたい。  
 - Phase 2-7 へ渡す引き継ぎ資料（PoC 到達条件・CI 設定・脚注削除手順）を `S4` 完了時までに確定させる。
+
+[^effects-syntax-poc-phase25]:
+    Phase 2-5 Week31 時点の方針。効果構文は `-Zalgebraic-effects` フラグを必須とする Experimental Stage に留め、正式実装は Phase 2-7 で `parser.mly`・型推論・効果解析を統合した後に進める。紐付く脚注は `docs/spec/1-1-syntax.md`・`docs/spec/1-5-formal-grammar-bnf.md`・`docs/spec/3-8-core-runtime-capability.md` に同期済みで、差分ログは `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` と `docs/plans/bootstrap-roadmap/2-5-review-log.md` を参照。

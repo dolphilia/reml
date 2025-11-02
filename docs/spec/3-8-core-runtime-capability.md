@@ -12,6 +12,7 @@
 | 相互参照 | [3.4 Core Numeric & Time](3-4-core-numeric-time.md), [3.5 Core IO & Path](3-5-core-io-path.md), [3.6 Core Diagnostics & Audit](3-6-core-diagnostics-audit.md), [3.9 Core Async / FFI / Unsafe](3-9-core-async-ffi-unsafe.md), [3-10 Core Env & Platform Bridge](3-10-core-env.md) |
 
 > **段階的導入ポリシー**: Capability の追加や効果カテゴリの拡張は `-Z` 実験フラグ経由で opt-in し、`CapabilityRegistry::register` に渡すメタデータで `stage = Experimental | Beta | Stable` を明示する。`stage` が `Experimental` の Capability は `@requires_capability(stage="experimental")` を伴う API からのみ呼び出せる。ベータ／安定化の手順は `../notes/algebraic-effects-implementation-roadmap-revised.md` を参照し、`@pure`/`@dsl_export` 契約との整合チェックを完了してから `stage = Stable` へ更新すること。
+> 効果構文（`perform` / `handle`）を公開する Capability は Phase 2-5 では `StageId::Experimental` として登録し、`-Zalgebraic-effects` フラグを必須とする。[^effects-syntax-poc-phase25]
 
 ## 1. Capability Registry の基本構造
 
@@ -997,6 +998,9 @@ fn reload<T>(parser: Parser<T>, state: ReloadState<T>, diff: SchemaDiff<Old, New
 - ガイド（`../guides/runtime-bridges.md`）は本節で定義した契約を前提とし、CLI サンプルやケーススタディを維持する。仕様とガイドで情報が乖離した場合は本節を優先し、ガイドに脚注を追加して読者を本節へ誘導すること。
 
 [^diag003-phase25-capability]: Phase 2-5 DIAG-003 診断ドメイン語彙拡張計画（`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md`）Step5（2025-11-30 完了）で `Target` / `Plugin` / `Lsp` ドメインの監査メタデータと脚注を更新し、`Diagnostic.extensions["target"]`, `["plugin"]`, `["lsp"]`, `["capability"]` を OCaml 実装と仕様で統一した。関連ドキュメント（`docs/spec/3-6-core-diagnostics-audit.md`, `docs/guides/runtime-bridges.md`, `docs/notes/dsl-plugin-roadmap.md`）も同日に同期済み。
+
+[^effects-syntax-poc-phase25]:
+    Phase 2-5 `SYNTAX-003 S0` の整理に基づき、効果構文を提供する Capability は `StageId::Experimental` として登録し、`-Zalgebraic-effects` フラグを要求する PoC 扱いに留める。正式ステージへの昇格や `StageRequirement` 更新は Phase 2-7 で `parser.mly` と効果解析を統合した後に判断する。ロードマップの詳細は `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-003-proposal.md` と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の `SYNTAX-003` 項を参照。
 
 [^effect003-phase25-capability-array]:
     Phase 2-5 EFFECT-003 複数 Capability 解析計画 Step4（2025-12-06 完了）で `Diagnostic.extensions["effects"]` と `AuditEnvelope.metadata["effect.*"]` が配列対応へ拡張され、CLI/LSP/監査ログの `required_capabilities` / `actual_capabilities` が一致するようになった。計画書 `docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-003-proposal.md` とレビュー記録 `docs/plans/bootstrap-roadmap/2-5-review-log.md`（EFFECT-003 Week33 Day2）を参照。

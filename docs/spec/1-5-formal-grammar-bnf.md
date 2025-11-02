@@ -234,6 +234,8 @@ HandleExpr      ::= "handle" Expr "with" HandlerLiteral
 HandlerLiteral  ::= "handler" Ident HandlerBody
 ```
 
+効果構文の産出規則は Phase 2-5 時点では `-Zalgebraic-effects` フラグ有効時の PoC 提供に限定される。[^effects-syntax-poc-phase25]
+
 [^syntax-002-s5]: Phase 2-5 `SYNTAX-002` 計画の S5 で多段ネスト `use` が `parser.mly`／`module_env.ml` に実装され、`parser.use_nested_support` 指標（[0-3-audit-and-metrics.md](../plans/bootstrap-roadmap/0-3-audit-and-metrics.md) §0.3.1）で継続監視している。検証用テストは `compiler/ocaml/tests/test_parser.ml` と `compiler/ocaml/tests/test_module_env.ml` に追加されている。計画の詳細は [`../plans/bootstrap-roadmap/2-5-proposals/SYNTAX-002-proposal.md`](../plans/bootstrap-roadmap/2-5-proposals/SYNTAX-002-proposal.md) を参照。
 
 [^pipe-desugar]: `PipeExpr` は左結合で畳み込まれ、各段が `value |> f(args)` → `f(value, args)` のようにデシュガリングされる。評価順序と短絡は [1.1 構文 C.9](1-1-syntax.md#c9-評価順序と短絡規則) に従い、左から右へ段階的に適用する。
@@ -316,3 +318,6 @@ NL             ::= *行末 (改行または `;`)*
 
 [^lexer-ascii-phase25]:
     2026-02-24 更新。Phase 2-5 `SYNTAX-001 Step2` で BNF 上の識別子仕様と実装状況を同期し、Phase 2-7 `lexer-unicode` タスクまで ASCII (`[A-Za-z0-9_]+`) を暫定プロファイルとする旨を脚注化した。`docs/spec/1-1-syntax.md` の脚注と同一方針で、索引用（`docs/spec/README.md`・`README.md`）と用語集（`docs/spec/0-2-glossary.md`）にも同じ注意書きを反映し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `lexer.identifier_profile_unicode` 指標および `docs/plans/repository-restructure-plan.md` のリンク整合ガイドに従って監視・導線を維持する。
+
+[^effects-syntax-poc-phase25]:
+    Phase 2-5 `SYNTAX-003 S0` の決定により、Formal BNF 上の効果構文は `-Zalgebraic-effects` フラグを通じた PoC 導入に限定される。正式な構文受理は Phase 2-7 で `parser.mly` と型・効果解析を統合した後に提供される予定。計画と差分登録の詳細は `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-003-proposal.md` および `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の `SYNTAX-003` 項を参照。

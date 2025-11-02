@@ -10,11 +10,11 @@
 
 ## 1.x 言語コア仕様
 - [1-0-language-core-overview.md](1-0-language-core-overview.md)
-- [1-1-syntax.md](1-1-syntax.md) — 構文仕様（識別子セクションに ASCII 限定の暫定脚注あり）
+- [1-1-syntax.md](1-1-syntax.md) — 構文仕様（識別子セクションに ASCII 限定の暫定脚注、効果構文は `-Zalgebraic-effects` 前提の PoC 脚注で Stage を明示）
 - [1-2-types-Inference.md](1-2-types-Inference.md)
 - [1-3-effects-safety.md](1-3-effects-safety.md)
 - [1-4-test-unicode-model.md](1-4-test-unicode-model.md)
-- [1-5-formal-grammar-bnf.md](1-5-formal-grammar-bnf.md) — 形式文法（`Ident` に Phase 2-5 時点の ASCII 暫定脚注あり）
+- [1-5-formal-grammar-bnf.md](1-5-formal-grammar-bnf.md) — 形式文法（`Ident` に Phase 2-5 時点の ASCII 暫定脚注、効果構文 PoC の注記あり）
 
 ## 2.x 標準パーサー API
 - [2-0-parser-api-overview.md](2-0-parser-api-overview.md)
@@ -35,7 +35,7 @@
 - [3-5-core-io-path.md](3-5-core-io-path.md)
 - [3-6-core-diagnostics-audit.md](3-6-core-diagnostics-audit.md)
 - [3-7-core-config-data.md](3-7-core-config-data.md)
-- [3-8-core-runtime-capability.md](3-8-core-runtime-capability.md)
+- [3-8-core-runtime-capability.md](3-8-core-runtime-capability.md) — Stage 管理と `-Z` フラグ運用（効果構文 Capability は Phase 2-5 時点で Experimental と明記）
 - [3-9-core-async-ffi-unsafe.md](3-9-core-async-ffi-unsafe.md)
 - [3-10-core-env.md](3-10-core-env.md)
 

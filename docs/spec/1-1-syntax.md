@@ -200,7 +200,7 @@ conductor config_orchestrator {
 
 ### B.5 効果宣言とハンドラ構文（実験段階）
 
-> `-Zalgebraic-effects` フラグが有効な場合に限り使用可能。安定化後に文言を更新予定。
+> `-Zalgebraic-effects` フラグが有効な場合に限り使用可能。安定化後に文言を更新予定。[^effects-syntax-poc-phase25]
 > ステージ管理と Capability の整合性は [1.3 §I.4](1-3-effects-safety.md#i4-stage-と-capability-の整合) を参照し、仕様上の基準を一元化する。
 
 * **効果宣言**
@@ -364,6 +364,9 @@ ConductorMonitoring ::= "monitoring" (Ident | ConductorQualifiedName) Block
 
 [^lexer-ascii-phase25]:
     2026-02-18 更新。Phase 2-5 `LEXER-001 Step2` の成果として、`docs/spec/2-3-lexer.md`・`docs/spec/0-2-glossary.md`・索引 (`docs/spec/README.md`) に ASCII 制約脚注を追加し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ `lexer.identifier_profile_unicode` 指標を登録した。Unicode プロファイル実装は Phase 2-7 `lexer-unicode` タスクで追跡し、レビュー詳細は `docs/plans/bootstrap-roadmap/2-5-review-log.md`（LEXER-001 Step2）を参照。
+
+[^effects-syntax-poc-phase25]:
+    Phase 2-5 `SYNTAX-003 S0` の整理として、効果構文は `-Zalgebraic-effects` フラグを有効化した PoC 提供に限定される。正式実装は Phase 2-7 以降で `parser.mly`・型推論・効果解析を統合予定。Stage 契約やロードマップの詳細は `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-003-proposal.md` と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の `SYNTAX-003` 項を参照。
 
 ### B.8.5 Capability 検証契約と `with_capabilities`
 
