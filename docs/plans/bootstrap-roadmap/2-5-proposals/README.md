@@ -15,7 +15,7 @@
 
 ### 効果システム（EFFECT）
 - [EFFECT-001 修正計画](./EFFECT-001-proposal.md): `mut`/`io`/`ffi`/`unsafe` などのタグ検出を強化し、残余効果診断を Chapter 1-3 と一致させる。
-- [EFFECT-002 修正計画](./EFFECT-002-proposal.md): `perform`/`handle` を含む効果操作 PoC の方針を明確化し、`Σ_before`/`Σ_after` の検証を可能にする。
+- [EFFECT-002 修正計画](./EFFECT-002-proposal.md): `perform`/`handle` を含む効果操作 PoC の方針を明確化し、`Σ_before`/`Σ_after` の検証を可能にする。2026-04-18 追記: Step4 で `extensions.effects.sigma.*` / `audit.metadata["effect.sigma.*"]` の出力設計と `syntax.effect_construct_acceptance`・`effects.syntax_poison_rate` の算出手順を確定し、CI／ゴールデン／監査ログへ共通 KPI を引き継ぐ準備を整えた。
 - [EFFECT-003 修正計画](./EFFECT-003-proposal.md): 複数 Capability を解析・監査へ出力する仕組みを整備し、Stage 契約（`docs/spec/3-8-core-runtime-capability.md`）との齟齬を是正。
 
 ### エラー回復（ERR）

@@ -62,38 +62,81 @@
 ### PoC 記録フォーマット草案
 ```json
 {
-  "effect_syntax": {
-    "constructs": [
-      {
-        "kind": "perform",
-        "tag": "Console",
-        "sigma_before": ["Console"],
-        "sigma_after": ["Console"],
-        "stage": "Preview",
-        "diagnostics": []
+  "diagnostics": [
+    {
+      "extensions": {
+        "effects": {
+          "sigma": {
+            "before": ["console"],
+            "handler": ["console"],
+            "residual": ["console"],
+            "after": ["console"]
+          },
+          "constructs": [
+            {
+              "kind": "perform",
+              "tag": "Console",
+              "span": { "start": { "line": 4, "column": 3 }, "end": { "line": 4, "column": 25 } },
+              "handled_by": null,
+              "diagnostics": []
+            },
+            {
+              "kind": "handle",
+              "tag": "Console",
+              "span": { "start": { "line": 6, "column": 1 }, "end": { "line": 10, "column": 4 } },
+              "handled_by": "app.handler.console",
+              "diagnostics": []
+            }
+          ]
+        }
       },
-      {
-        "kind": "handle",
-        "tag": "Console",
-        "sigma_before": ["Console"],
-        "sigma_handler": ["Console"],
-        "sigma_after": [],
-        "diagnostics": []
+      "audit": {
+        "metadata": {
+          "effect": {
+            "sigma": {
+              "before": ["console"],
+              "handler": ["console"],
+              "residual": ["console"],
+              "after": ["console"]
+            },
+            "syntax": {
+              "constructs": {
+                "total": 2,
+                "accepted": 0,
+                "poisoned": 2,
+                "residual_tags": ["console"]
+              }
+            }
+          }
+        }
       }
-    ],
-    "metrics": {
-      "syntax.effect_construct_acceptance": 0.0,
-      "effects.syntax_poison_rate": 1.0
     }
-  }
+  ]
 }
 ```
 
 ## Phase 2-5 S3 診断・CI 計測整備（2026-03-27）
-- `compiler/ocaml/src/diagnostic.ml`・`parser_diag_state.ml` を調査し、`extensions.effects`／`audit_metadata` に効果構文の構成情報を追加できる構造であることを確認。Info/Hint 指標への影響が無いこと、`Diagnostic.Builder` API で拡張を行えることを検証した。
-- CI 集計スクリプト `tooling/ci/collect-iterator-audit-metrics.py` に新指標を追加する設計を整理し、`effect_syntax.constructs` から比率 (`syntax.effect_construct_acceptance` / `effects.syntax_poison_rate`) を計算する案を `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-003-proposal.md` §S3 に記録した。`--require-success` 実行時は 1.0 を必須値とし、逸脱時には CI を失敗させる。
-- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表へ新指標を登録し、PoC 期間の基準値（0.0 / 1.0）と Phase 2-7 でのゲート条件を追記した。`reports/diagnostic-format-regression.md` には CLI/LSP ゴールデン更新時の効果構文チェックリストを追加。
+- `compiler/ocaml/src/diagnostic.ml`・`parser_diag_state.ml` を調査し、`extensions.effects`／`audit_metadata` に効果構文の構成情報を追加できる構造であることを確認。Info/Hint 指標への影響が無いこと、`Diagnostic.Builder` API で拡張を行えることを検証した。2026-04-18 追記: `sigma.before` / `sigma.handler` / `sigma.residual` / `sigma.after` および `constructs` 配列を追加し、`set_extension` と `set_audit_metadata` のキーをドット区切りで揃える設計を確定。
+- CI 集計スクリプト `tooling/ci/collect-iterator-audit-metrics.py` に新指標を追加する設計を整理し、`effect_syntax.constructs` から比率 (`syntax.effect_construct_acceptance` / `effects.syntax_poison_rate`) を計算する案を `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-003-proposal.md` §S3 に記録した。2026-04-18 追記: `iter_effect_constructs`（仮称）で `constructs` を巡回し、`Σ_after = ∅` 判定と `effects.contract.*` 診断を突き合わせる実装メモを追加。`--require-success` 実行時の閾値は PoC 期間 (0.0 / 1.0)、本実装 (1.0 / 0.0) の二段階運用とする。
+- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表へ新指標を登録し、PoC 期間の基準値（0.0 / 1.0）と Phase 2-7 でのゲート条件を追記した。`reports/diagnostic-format-regression.md` には CLI/LSP ゴールデン更新時の効果構文チェックリストを追加し、効果専用フィクスチャを参照する手順を整備。
 - PoC サンプル JSON を本メモと計画書に添付し、`collect-iterator-audit-metrics.py --section effects` 実装前でもフォーマットを固定できるようにした。サンプルは Phase 2-7 でゴールデン化する際の基準として利用する。
+
+### 2026-04-18: σ 記録と KPI 詳細
+| 出力先 | キー | 内容 | 備考 |
+| --- | --- | --- | --- |
+| `extensions.effects.sigma.before` | 配列 | `perform` / `do` 解析前に観測した潜在効果集合 `Σ_before` | タグ名は小文字へ正規化 |
+| `extensions.effects.sigma.handler` | 配列 | ハンドラ宣言が捕捉する集合 `Σ_handler` | `@handles` 属性と同期 |
+| `extensions.effects.sigma.residual` | 配列 | ハンドラ本体で追加されたタグ `Σ_residual` | `effect.contract.residual_snapshot` と連携 |
+| `extensions.effects.sigma.after` | 配列 | ハンドラ適用後の残余集合 `Σ_after` | 空集合か否かで accept/poison を判定 |
+| `extensions.effects.constructs` | 配列 | 各 `perform` / `handle` の詳細 (`kind`・`tag`・`span`・`handled_by`・`diagnostics`) | CI 集計とデバッグに利用 |
+| `audit.metadata.effect.sigma.*` | 配列 | `sigma` 各集合のミラー | 監査ダッシュボードで差分確認 |
+| `audit.metadata.effect.syntax.constructs.total` | 整数 | 効果構文の総数 | `total > 0` で指標算出 |
+| `audit.metadata.effect.syntax.constructs.accepted` | 整数 | `Σ_after = ∅` の件数 | PoC 期間は 0 を想定 |
+| `audit.metadata.effect.syntax.constructs.poisoned` | 整数 | `Σ_after ≠ ∅` の件数 | PoC 期間は total と同値 |
+| `audit.metadata.effect.syntax.constructs.residual_tags` | 配列 | 捕捉できなかったタグ一覧 | 監査ダッシュボード表示用 |
+
+- KPI は `syntax.effect_construct_acceptance = accepted / total`、`effects.syntax_poison_rate = poisoned / total`。PoC（Phase 2-5）は (0.0 / 1.0) を許容値、本実装（Phase 2-7 以降）は (1.0 / 0.0) を要求値とし、`collect-iterator-audit-metrics.py --require-success` が閾値逸脱時に CI を失敗させる。
+- `scripts/validate-diagnostic-json.sh` へ効果構文用バリデータを追加し、`extensions.effects.sigma` の配列構造、`constructs[*].kind` の列挙（`perform`/`handle`）、`Σ_after` と `effect.syntax.constructs.accepted` の一致を検証する。検証対象ゴールデンは `compiler/ocaml/tests/golden/diagnostics/effect-handler-poc.json.golden`（仮称）で管理する。
 
 ## Phase 2-5 S4 引き継ぎパッケージ（2026-04-03）
 - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に効果構文 PoC 移行タスクを追加し、監査ゲート（`syntax.effect_construct_acceptance` / `effects.syntax_poison_rate`）を 1.0 へ引き上げる条件とエスカレーション経路（`0-4-risk-handling.md`）を同期した。
