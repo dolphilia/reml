@@ -16,7 +16,8 @@ type ident_case = {
   normalized : string option;
 }
 
-let ident_case ?normalized ~label ~source expected_token =
+let ident_case ?normalized:(normalized : string option = None) ~label ~source
+    expected_token =
   { label; source; expected_token; normalized }
 
 let acceptance_cases =

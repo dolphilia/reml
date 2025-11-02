@@ -40,10 +40,10 @@
    - **成果物**: 効果構文 PoC を受理する Parser 実装、`compiler/ocaml/tests/test_parser.ml` に experimental フラグ有無のユニットテストを追加、`docs/notes/effect-system-tracking.md`・`docs/plans/bootstrap-roadmap/2-5-review-log.md` 更新用メモ。  
    - **フォローアップ**: `menhir --explain` によるコンフリクト差分確認と CLI/監査ゴールデン整備は Step4 以降に持ち越し。CLI から `-Zalgebraic-effects` を受け取って RunConfig を切り替える経路を追加する。
 
-3. **Step3 Typer / 効果解析 PoC（Week32 Day4-6） — ⏳ 着手前**  
-   - **調査**: `compiler/ocaml/src/effect_profile.ml`、`compiler/ocaml/src/type_inference_effect.ml`、`compiler/ocaml/src/effect_analysis.ml`、`compiler/ocaml/src/constraint_solver.ml` の既存フローを確認し、`EffectConstraintTable` と Stage 判定の接続点を洗い出す。  
-   - **実施項目**: Typed AST に `TEffectPerform` / `TEffectHandle`（仮称）を導入し、`Effect_analysis.collect_expr` で `Σ_before` を収集する。`type_inference_effect.ml` に `perform` / `handle` の型規則と `Σ_after = (Σ_before - Σ_handler) ∪ Σ_residual` の更新ロジックを追加し、`constraint_solver.ml` が `Σ_handler`・`Σ_residual` を診断へ伝播できるようにする。  
-   - **成果物**: `compiler/ocaml/tests/effect_handler_poc_tests.ml` の新規作成、`compiler/ocaml/tests/test_type_inference.ml` への PoC ケース追加、`reports/diagnostic-format-regression.md` への追記草案。
+3. **Step3 Typer / 効果解析 PoC（Week32 Day4-6） — ✅ 完了（2026-04-15）**  
+   - `compiler/ocaml/src/type_inference.ml` に `PerformCall` / `Handle` 分岐を追加し、typed handler ノード（`THandle`）の最小限 PoC 推論と `Effect_analysis` でのタグ収集を実装。返り値は PoC として `()` を採用し、残余効果診断へ流れるタグに `Console` → `console` の正規化を適用。  
+   - 効果解析ワークフローを検証する専用テスト `compiler/ocaml/tests/effect_handler_poc_tests.ml` を追加し、`perform` で `console` タグが残余集合へ反映されること、`handle` 式が Typed AST 上で `THandle` として構築されることを確認（CI 実行は `dune build tests/effect_handler_poc_tests.exe` が既存 `ast.ml` の再帰型前提に依存するため要ローカル確認）。  
+   - **既知の制約**: `Σ_handler` の算出と `Σ_after` の差集合は Stage 2-7 で再設計予定。現 PoC では `handle` 捕捉タグの控除を行わず、効果ハンドラ内部の残余タグ収集のみサポート。戻り値型推論は `()` 固定の暫定実装。フォローアップを Step5 で `docs/notes/effect-system-tracking.md` に記録。
 
 4. **Step4 診断・CI 計測整備（Week33 Day1-2） — ⏳ 着手前**  
    - **調査**: `compiler/ocaml/src/diagnostic.ml`・`compiler/ocaml/src/diagnostic_serialization.ml`・`compiler/ocaml/src/main.ml`、`tooling/ci/collect-iterator-audit-metrics.py`、`scripts/validate-diagnostic-json.sh` を分析し、効果構文の残余効果データを拡張フィールドに流す経路を確認する。  

@@ -225,6 +225,16 @@ module Effect_analysis = struct
     | TFor (_, iterable, body, _, _) ->
         collect_expr (collect_expr tags iterable) body
     | TLoop body -> collect_expr tags body
+    | TEffectPerform info ->
+        let tags = List.fold_left collect_arg tags info.tperform_args in
+        let effect_name =
+          normalize_effect_name info.tperform_ref.effect_name.name
+        in
+        let tags = add_tag tags effect_name expr.texpr_span in
+        tags
+    | THandle handle_expr ->
+        let tags = collect_expr tags handle_expr.thandle_target in
+        collect_handler tags handle_expr.thandle_handler
     | TContinue -> tags
     | TBlock stmts -> collect_block tags stmts
     | TReturn expr_opt -> (
@@ -242,6 +252,23 @@ module Effect_analysis = struct
       | None -> tags
     in
     collect_expr tags arm.tarm_body
+
+  and collect_handler tags handler =
+    List.fold_left collect_handler_entry tags handler.thandler_entries
+
+  and collect_handler_entry tags = function
+    | THandlerOperation op ->
+        let tags = collect_params tags op.thandler_op_params in
+        collect_block tags op.thandler_op_body
+    | THandlerReturn ret -> collect_block tags ret.thandler_return_body
+
+  and collect_params tags params =
+    List.fold_left
+      (fun acc param ->
+        match param.tdefault with
+        | Some default -> collect_expr acc default
+        | None -> acc)
+      tags params
 
   and collect_block tags stmts = List.fold_left collect_stmt tags stmts
 
@@ -1088,6 +1115,53 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
         make_typed_expr (TCall (tfn, targs)) final_ret_ty expr.expr_span
       in
       Ok (texpr, final_ret_ty, s_final, all_constraints)
+  | PerformCall effect_call ->
+      (* 効果発火式 (perform/do) の型推論（PoC）
+       *
+       * 現段階では操作シグネチャを静的に解釈しないため、
+       * 引数の型検査のみを行い返り値は Unit とする。
+       *)
+      let* targs, _arg_tys, s_args, arg_constraints =
+        infer_args ~ctx env effect_call.effect_args empty_subst
+      in
+      let ret_ty = ty_unit in
+      let typed_call =
+        {
+          tperform_ref = effect_call.effect_ref;
+          tperform_args = targs;
+          tperform_sugar = effect_call.effect_sugar;
+          tperform_result_ty = Some ret_ty;
+        }
+      in
+      let texpr =
+        make_typed_expr (TEffectPerform typed_call) ret_ty expr.expr_span
+      in
+      Ok (texpr, ret_ty, s_args, arg_constraints)
+  | Handle handle_node ->
+      (* handle 式の型推論（PoC）
+       *
+       * 対象式の型をそのまま返り値型とし、ハンドラ本体を局所的に型検査する。
+       *)
+      let* thandle_target, target_ty, s_target, target_constraints =
+        infer_expr ~ctx env handle_node.handle_target
+      in
+      let env_for_handler = apply_subst_env s_target env in
+      let* thandler, handler_constraints =
+        infer_handler_literal ~ctx env_for_handler handle_node.handle_handler
+      in
+      let all_constraints =
+        merge_constraints target_constraints handler_constraints
+      in
+      let texpr =
+        make_typed_expr
+          (THandle
+             {
+               thandle_target;
+               thandle_handler = thandler;
+             })
+          target_ty expr.expr_span
+      in
+      Ok (texpr, target_ty, s_target, all_constraints)
   | Lambda (params, ret_ty_annot, body) ->
       (* ラムダ式の型推論
        *
@@ -2210,6 +2284,77 @@ and infer_match_arm ?(ctx = initial_ctx) (env : env) (arm : match_arm)
   in
 
   Ok (tarm, body_ty, s2, all_constraints)
+
+and infer_handler_literal ?(ctx = initial_ctx) (env : env)
+    (handler : handler_decl) :
+    (typed_handler_decl * trait_constraint list, type_error) result =
+  let rec process entries =
+    match entries with
+    | [] -> Ok ([], [])
+    | entry :: rest ->
+        let* typed_entry, entry_constraints =
+          infer_handler_entry ~ctx env entry
+        in
+        let* typed_rest, rest_constraints = process rest in
+        Ok
+          ( typed_entry :: typed_rest,
+            merge_constraints entry_constraints rest_constraints )
+  in
+  let* typed_entries, constraints = process handler.handler_entries in
+  Ok
+    ( {
+        thandler_name = handler.handler_name;
+        thandler_entries = typed_entries;
+        thandler_span = handler.handler_span;
+      },
+      constraints )
+
+and infer_handler_entry ?(ctx = initial_ctx) (env : env)
+    (entry : handler_entry) :
+    (typed_handler_entry * trait_constraint list, type_error) result =
+  match entry with
+  | HandlerOperation op ->
+      let* typed_op, constraints =
+        infer_handler_operation ~ctx env op
+      in
+      Ok (THandlerOperation typed_op, constraints)
+  | HandlerReturn ret ->
+      let* typed_ret, constraints = infer_handler_return ~ctx env ret in
+      Ok (THandlerReturn typed_ret, constraints)
+
+and infer_handler_operation ?(ctx = initial_ctx) (env : env)
+    (op : handler_operation) :
+    (typed_handler_operation * trait_constraint list, type_error) result =
+  let* tparams, _param_tys, param_env, _ =
+    infer_params env op.handler_op_params empty_subst
+  in
+  let* tbody, _body_ty, _s, body_constraints =
+    infer_stmts ~ctx param_env op.handler_op_body empty_subst
+  in
+  let typed_op =
+    {
+      thandler_op_name = op.handler_op_name;
+      thandler_op_params = tparams;
+      thandler_op_body = tbody;
+      thandler_op_span = op.handler_op_span;
+    }
+  in
+  Ok (typed_op, body_constraints)
+
+and infer_handler_return ?(ctx = initial_ctx) (env : env)
+    (ret : handler_return) :
+    (typed_handler_return * trait_constraint list, type_error) result =
+  let* tbody, _body_ty, _s, body_constraints =
+    infer_stmts ~ctx env ret.handler_return_body empty_subst
+  in
+  let typed_ret =
+    {
+      thandler_return_name = ret.handler_return_name;
+      thandler_return_body = tbody;
+      thandler_return_span = ret.handler_return_span;
+    }
+  in
+  Ok (typed_ret, body_constraints)
 
 (** 関数本体の型推論: infer_fn_body(env, body)
  *

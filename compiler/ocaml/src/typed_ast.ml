@@ -313,7 +313,7 @@ let rec string_of_typed_expr texpr =
   | THandle h ->
       Printf.sprintf "(handle %s with %s : %s)"
         (string_of_typed_expr h.thandle_target)
-        h.thandler_name.name ty_str
+        h.thandle_handler.thandler_name.name ty_str
   | TContinue -> Printf.sprintf "(continue : %s)" ty_str
   | TBlock stmts ->
       Printf.sprintf "(Block [%d stmts] : %s)" (List.length stmts) ty_str

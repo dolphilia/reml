@@ -643,9 +643,9 @@ let () =
     effect_perform_source
 
 let () =
+  let base_config = Test_support.Run_config.default in
   let config =
-    Test_support.Run_config.default
-    |> Test_support.Run_config.set_experimental_effects true
+    Test_support.Run_config.set_experimental_effects base_config true
   in
   expect_ok_with_config
     "perform 構文は experimental_effects=true で受理される"
@@ -668,9 +668,9 @@ let handle_with_handler_source =
     ]
 
 let () =
+  let base_config = Test_support.Run_config.default in
   let config =
-    Test_support.Run_config.default
-    |> Test_support.Run_config.set_experimental_effects true
+    Test_support.Run_config.set_experimental_effects base_config true
   in
   expect_ok_with_config
     "handle 構文と handler リテラルは experimental_effects=true で受理される"

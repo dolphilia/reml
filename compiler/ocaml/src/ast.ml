@@ -54,18 +54,6 @@ type string_kind =
   | Raw  (** r"..." バックスラッシュ非解釈 *)
   | Multiline  (** """...""" 複数行 *)
 
-(** リテラル値 *)
-type literal =
-  | Int of string * int_base
-  | Float of string
-  | Char of string
-  | String of string * string_kind
-  | Bool of bool
-  | Unit
-  | Tuple of expr list
-  | Array of expr list
-  | Record of (ident * expr) list
-
 (* ========== 効果構文補助型 (PoC) ========== *)
 
 type effect_call_sugar =
@@ -80,15 +68,10 @@ type effect_reference = {
   effect_span : span;  (** `Effect.operation` 全体のSpan *)
 }
 
-type effect_call = {
-  effect_ref : effect_reference;
-  effect_args : arg list;
-  effect_sugar : effect_call_sugar;
-}
 (* ========== 演算子 ========== *)
 
 (** 二項演算子 *)
-and binary_op =
+type binary_op =
   | Add
   | Sub
   | Mul
@@ -106,8 +89,19 @@ and binary_op =
   | PipeOp
 
 (** 単項演算子 *)
-and unary_op = Not  (** ! *) | Neg  (** - *)
+type unary_op = Not  (** ! *) | Neg  (** - *)
 (* ========== 式 ========== *)
+
+type literal =
+  | Int of string * int_base
+  | Float of string
+  | Char of string
+  | String of string * string_kind
+  | Bool of bool
+  | Unit
+  | Tuple of expr list
+  | Array of expr list
+  | Record of (ident * expr) list
 
 and expr = { expr_kind : expr_kind; expr_span : span }
 (** 式ノード *)
@@ -138,6 +132,12 @@ and expr_kind =
   | Return of expr option
   | Defer of expr
   | Assign of expr * expr  (** lvalue := rvalue (lvalue は postfix_expr) *)
+
+and effect_call = {
+  effect_ref : effect_reference;
+  effect_args : arg list;
+  effect_sugar : effect_call_sugar;
+}
 
 (** 関数引数 *)
 and arg = PosArg of expr | NamedArg of ident * expr

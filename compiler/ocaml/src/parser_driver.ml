@@ -126,9 +126,9 @@ let warn_left_recursion diag_state lexbuf mode =
 
 let run ?(config = default_run_config) lexbuf =
   Fun.protect
-    ~finally:(fun () -> Parser.set_experimental_effects_enabled false)
+    ~finally:(fun () -> Parser_flags.set_experimental_effects_enabled false)
     (fun () ->
-      Parser.set_experimental_effects_enabled config.experimental_effects;
+      Parser_flags.set_experimental_effects_enabled config.experimental_effects;
       let pack, config =
         let pack, config = Core_parse_lex.Bridge.derive config in
         match pack with
@@ -210,7 +210,7 @@ let run ?(config = default_run_config) lexbuf =
               parser core_state
           in
           Ok reply
-        with Parser.Experimental_effects_disabled (effect_start, effect_end) ->
+      with Parser_flags.Experimental_effects_disabled (effect_start, effect_end) ->
           Error (effect_start, effect_end)
       in
       let packrat_stats = Core_stream.packrat_counters session in

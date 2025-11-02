@@ -19,6 +19,7 @@
   diagnostic
   diagnostic_builder
   diagnostic_serialization
+  parser_flags
   core_parse
   core_parse_streaming
   core_parse_lex_record

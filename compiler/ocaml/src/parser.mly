@@ -6,13 +6,9 @@
  *)
 
 open Ast
+open Parser_flags
 
 exception Experimental_effects_disabled of Lexing.position * Lexing.position
-
-let experimental_effects_enabled = ref false
-
-let set_experimental_effects_enabled flag =
-  experimental_effects_enabled := flag
 
 (* ヘルパー関数 *)
 
@@ -226,12 +222,51 @@ let split_effect_module_path path =
           in
           (effect_path, effect_ident))
 
-let make_effect_reference_from_path path operation span =
-  let effect_path, effect_name = split_effect_module_path path in
+let make_effect_reference_from_call_path path span =
+  let fail () =
+    failwith "effect target must be written as Effect.operation"
+  in
+  let effect_path, effect_name, effect_operation =
+    match path with
+    | Root ids -> (
+        match List.rev ids with
+        | operation :: effect_name :: prefix_rev ->
+            let effect_path =
+              match List.rev prefix_rev with
+              | [] -> None
+              | prefix -> Some (Root prefix)
+            in
+            (effect_path, effect_name, operation)
+        | _ -> fail ())
+    | Relative (head, tail) -> (
+        match List.rev tail with
+        | [] -> fail ()
+        | operation :: tail_rev ->
+            let tail_without_operation = List.rev tail_rev in
+            let effect_segments =
+              match head with
+              | PlainIdent id -> id :: tail_without_operation
+              | _ -> tail_without_operation
+            in
+            (match List.rev effect_segments with
+            | [] -> fail ()
+            | effect_name :: prefix_rev ->
+                let effect_path =
+                  match head with
+                  | PlainIdent _ -> (
+                      match List.rev prefix_rev with
+                      | [] -> None
+                      | first :: rest ->
+                          Some (Relative (PlainIdent first, rest)))
+                  | _ ->
+                      Some (Relative (head, List.rev prefix_rev))
+                in
+                (effect_path, effect_name, operation)))
+  in
   {
     effect_path;
     effect_name;
-    effect_operation = operation;
+    effect_operation;
     effect_span = span;
   }
 
@@ -1305,7 +1340,7 @@ perform_expr:
   | PERFORM; target = effect_target; LPAREN; args = arg_list_opt; RPAREN
     {
       let span = make_span $startpos $endpos in
-      if not !experimental_effects_enabled then
+      if not (experimental_effects_enabled ()) then
         raise (Experimental_effects_disabled ($startpos, $endpos));
       let call = make_effect_call PerformKeyword target args in
       make_expr (PerformCall call) span
@@ -1315,7 +1350,7 @@ do_expr:
   | DO; target = effect_target; LPAREN; args = arg_list_opt; RPAREN
     {
       let span = make_span $startpos $endpos in
-      if not !experimental_effects_enabled then
+      if not (experimental_effects_enabled ()) then
         raise (Experimental_effects_disabled ($startpos, $endpos));
       let call = make_effect_call DoKeyword target args in
       make_expr (PerformCall call) span
@@ -1325,7 +1360,7 @@ handle_expr:
   | HANDLE; target = expr; WITH; handler = handler_literal_expr
     {
       let span = make_span $startpos $endpos in
-      if not !experimental_effects_enabled then
+      if not (experimental_effects_enabled ()) then
         raise (Experimental_effects_disabled ($startpos, $endpos));
       let node = { handle_target = target; handle_handler = handler } in
       make_expr (Handle node) span
