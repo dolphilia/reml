@@ -54,7 +54,7 @@
 
 ### 型システム（TYPE）
 - [TYPE-001 修正計画](./TYPE-001-proposal.md): 値制限と効果タグ連携を復元し、副作用を持つ束縛の多相化を防止。（2025-10-31 Step0 棚卸し完了: 再現ログ記録とチェックリスト共有済み。2025-11-01 Step1 判定ユーティリティ設計完了: `Typed_ast` 値形状分類と `Value_restriction.evaluate` API 案を確定。2025-11-03 Step2 Typer/RunConfig 連携方針確定: `value_restriction_mode` と効果証跡共有モデルを整理。2025-11-05 Step3 テスト雛形・診断テンプレート・CI メトリクス設計を追加し、Strict/Legacy の監視ケースを定義。2025-11-08 Step4 仕様・RunConfig ドキュメント整備完了: 1-2/1-3/2-1/2-6 へ脚注を追加し、Phase 2-7 へのフォローアップを登録。）
-- [TYPE-002 修正計画](./TYPE-002-proposal.md): 効果行を型表現へ統合するロードマップを策定し、型と効果の一体管理を再構築。
+- [TYPE-002 修正計画](./TYPE-002-proposal.md): 効果行を型表現へ統合するロードマップを策定し、型と効果の一体管理を再構築。（2026-04-18 更新: Step2 で `effect_row` 統合ドラフトとデータ構造比較を確定。2026-04-22 追記: Step3 で脚注 `[^type-row-metadata-phase25]` と `RunConfig.extensions["effects"].type_row_mode` ガードを整備。2026-04-24 追記: Step4 で Phase 2-7 の 3 スプリント実装計画・`metadata-only → dual-write → ty-integrated` 移行手順・新規 KPI (`diagnostics.effect_row_stage_consistency` / `type_effect_row_equivalence` / `effect_row_guard_regressions`) とテスト観点を確定し、`2-7-deferred-remediation.md`・`0-3-audit-and-metrics.md`・`effect-system-tracking.md`・`2-5-review-log.md` を同期。)
 - [TYPE-003 修正計画](./TYPE-003-proposal.md): 型クラス辞書渡しを Core IR へ復元し、監査ログへの Capability 情報出力を再開。（2025-10-30 更新: Typer／Core IR／CI メトリクス整備まで完了。2025-10-31 追記: Stage 逆引き・辞書付き診断ゴールデン・ドキュメント整備まで完了。）
 
 ## 着手順序ガイド
@@ -71,4 +71,4 @@
 - 計画のステータス更新（完了・棚上げ等）は本文と併せてここにも反映し、Phase 2-5 全体の進捗を一目で把握できるようにする。
 - 大幅な構造更新やファイル移動を行った場合は `docs-migrations.log` と `README.md`（リポジトリ索引）を忘れずに追記する。
 
-[^type-002-row-design]: `compiler/ocaml/docs/effect-system-design-note.md`「## 3. 型表現統合ドラフト（TYPE-002 Step2, 2026-04-18）」および `docs/spec/1-2-types-Inference.md` / `1-3-effects-safety.md` / `3-6-core-diagnostics-audit.md` に追加した脚注 `[^type-row-metadata-phase25]`（TYPE-002 Step3, 2026-04-22）を参照。
+[^type-002-row-design]: `compiler/ocaml/docs/effect-system-design-note.md`「## 3. 型表現統合ドラフト（TYPE-002 Step2, 2026-04-18）」、`docs/spec/1-2-types-Inference.md` / `1-3-effects-safety.md` / `3-6-core-diagnostics-audit.md` に追加した脚注 `[^type-row-metadata-phase25]`（TYPE-002 Step3, 2026-04-22）、および `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-effect-row-integration`・`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`（TYPE-002 Step4, 2026-04-24）を参照。

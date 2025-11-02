@@ -199,6 +199,31 @@
 - レビュー記録: `docs/plans/bootstrap-roadmap/2-5-review-log.md#type-002-step2-型表現統合ドラフト2026-04-18`
 - 計画書: `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md` Step2、`docs/plans/bootstrap-roadmap/2-5-proposals/README.md`（脚注 `[^type-002-row-design]`）
 
+## Phase 2-5 TYPE-002 Step4 実装ロードマップ確定（2026-04-24）
+
+### サマリ
+- Phase 2-7 を 3 スプリント（Sprint A: `types.ml` / `typed_ast.ml` での `effect_row` 統合と dual-write 実験、Sprint B: `generalize` / `instantiate` / `Type_unification` / `constraint_solver.ml` の拡張と診断同時出力、Sprint C: `core_ir/desugar_fn.ml`・`runtime/effect_registry.ml`・Windows/macOS 監査ラインの検証）に分割し、各スプリントの完了条件と依存関係を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-effect-row-integration` に記録した。  
+- `RunConfig.extensions["effects"].type_row_mode` の移行シナリオを「`metadata-only` → `dual-write` → `ty-integrated`」と定義し、ガード診断・監査メタデータ・ロールバック条件を整理。dual-write 期間は `typed_fn_decl.tfn_effect_profile` と新 `effect_row` の両出力を CI で比較する手順を確立した。  
+- 新規 KPI `diagnostics.effect_row_stage_consistency` / `type_effect_row_equivalence` / `effect_row_guard_regressions` を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に登録し、`tooling/ci/collect-iterator-audit-metrics.py` の実装差分（`--section effects` 拡張、`require_success` での 1.0 強制）を計画した。
+
+### テスト & KPI 計画
+- `compiler/ocaml/tests/test_type_inference.ml` に `type_effect_row_equivalence_*` シナリオ（宣言順差異・残余効果差分・`@handles` 照合）を追加し、`StringSet` 正規化と CLI 表示順保持を両立させるゴールデンテンプレートを準備する。  
+- `compiler/ocaml/tests/streaming_runner_tests.ml` へ `streaming_effect_row_stage_consistency` を新設し、`effect_row` 統合後も監査ログが `effect.type_row.canonical` を保持するか検証。  
+- `reports/diagnostic-format-regression.md` に効果行差分セクションを追加し、dual-write 期間中は CLI/LSP/監査出力が完全一致するかレビューする。  
+- CI では `python3 tooling/ci/collect-iterator-audit-metrics.py --require-success --section effects` を追加し、`diagnostics.effect_row_stage_consistency = 1.0`・`type_effect_row_equivalence = 1.0`・`effect_row_guard_regressions = 0` をゲート条件とする。
+
+### TODO / フォローアップ
+1. Sprint A 着手前に `effect_row` dual-write ブランチを作成し、`metadata-only` モードと比較できる診断スナップショットを収集する。  
+2. Windows/macOS CI の監査ゴールデンへ効果行フィールドを追加し、`collect-iterator-audit-metrics.py` の `platform` 列が `effect_row_guard_regressions` を監視できるよう更新する（Phase 2-7 Sprint C）。  
+3. RowVar（行多相）対応は Phase 3 へ移管し、Step5 ハンドオーバーで評価メモと API 予約値の扱いを確認する。  
+4. `docs/plans/bootstrap-roadmap/2-4-to-2-5-handover.md` の後継欄へ TYPE-002 Step5 用チェックリストを追加し、効果チームへの引き継ぎ内容（dual-write 成果物、CI 指標、監査テンプレート）を整理する。
+
+### 参考リンク
+- `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md` Step4
+- `docs/plans/bootstrap-roadmap/2-5-review-log.md#type-002-step4-実装ロードマップとテスト観点2026-04-24`
+- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`（新規 KPI）
+- `tooling/ci/collect-iterator-audit-metrics.py`（指標集計ポイント）
+
 ## Phase 2-5 TYPE-002 Step3 仕様脚注と移行ガード（2026-04-22）
 
 ### サマリ

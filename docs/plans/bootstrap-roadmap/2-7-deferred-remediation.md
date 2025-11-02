@@ -149,17 +149,40 @@
 
 **成果物**: 効果構文 PoC 実装、CI メトリクス 100% 化、フラグ運用指針、脚注撤去条件の整理
 
-### TYPE-002 効果行統合ガード {#type-002-effect-row-integration}
-- **着手条件**: Phase 2-5 TYPE-002 Step1〜Step3 が完了し、`compiler/ocaml/docs/effect-system-design-note.md` §3 の設計ドラフトと `docs/spec/1-2-types-Inference.md` / `1-3-effects-safety.md` / `3-6-core-diagnostics-audit.md` に脚注 `[^type-row-metadata-phase25]` が反映されていること。
-- **実装タスク**:
-  1. `ty` 表現を `TArrow of ty * effect_row * ty` へ拡張し、`effect_row` レコード（`declared` 表示配列・`residual` 表示配列・`canonical` 集合・`row_var` 予約値）を導入。`generalize` / `instantiate` / `Type_unification` / `Constraint_solver` / `Effect_analysis` / `typed_ast` / `core_ir` / `diagnostic` の関係モジュールを更新する。
-  2. `RunConfig.extensions["effects"].type_row_mode` に `"ty-integrated"` を実装し、既定モードを `"metadata-only"` から切り替える。移行時に `effects.type_row.integration_blocked` が出力されないこと、旧モードを `--type-row-mode=metadata-only` で明示切替できることを CLI/LSP/CI で確認する。
-  3. `diagnostics.effect_row_stage_consistency` KPI と `type_effect_row_*` テスト（`compiler/ocaml/tests/test_type_inference.ml`、`streaming_runner_tests.ml`、`tooling/ci/collect-iterator-audit-metrics.py`）を整備し、監査ログ `effect.type_row.*` の値と診断出力が常に一致することを検証する。
-  4. 実装完了後に脚注 `[^type-row-metadata-phase25]` を撤去し、`docs/spec/README.md`・`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`・`docs/notes/effect-system-tracking.md` へ完了メモ（解除日・KPI・テスト結果）を追記する。
-- **検証**:
-  - `dune exec remlc -- tests/type_effect_row_*` 系スイートが成功し、`collect-iterator-audit-metrics.py --require-success` で `diagnostics.effect_row_stage_consistency = 1.0` を確認できる。
-  - `effects.type_row.integration_blocked` が `metadata-only` → `ty-integrated` 切替後に出力されない一方、旧モードに戻すと再度発火し、監査ログへ `effect.type_row.requested_mode` / `available_mode` / `guard_stage` が記録される。
-  - 仕様書と設計ノートの差分レビューで `TArrow` 拡張と効果行表記が同期していることを Docs/Type チーム双方が承認する。
+### TYPE-002 効果行統合ロードマップ {#type-002-effect-row-integration}
+**担当領域**: Type + Effects + QA  
+**着手条件**: Phase 2-5 TYPE-002 Step1〜Step4 が完了しており、`compiler/ocaml/docs/effect-system-design-note.md` §3、`docs/spec/1-2-types-Inference.md` / `1-3-effects-safety.md` / `3-6-core-diagnostics-audit.md` の脚注 `[^type-row-metadata-phase25]`、および `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の新規 KPI が整合していること。
+
+**スプリント構成（想定: Week35〜Week37）**
+
+1. **Sprint A — 型表現と dual-write 基盤**  
+   - `types.ml` に `effect_row` レコード（`declared` / `residual` / `canonical` / `row_var`）を導入し、`TArrow of ty * effect_row * ty` を追加。  
+   - `typed_ast.ml` と `Type_inference` で `effect_row` を構築しつつ、既存の `typed_fn_decl.tfn_effect_profile` を並行保持する dual-write モードを実装。  
+   - `RunConfig.extensions["effects"].type_row_mode` に `dual-write` を追加し、CLI/LSP/CI オプションで `metadata-only` ↔ `dual-write` を切り替えられるようにする。  
+   - 監査ログへ `effect.type_row.{declared,residual,canonical}` を出力し、`collect-iterator-audit-metrics.py --section effects` のベースラインを記録。
+
+2. **Sprint B — 推論・テスト・KPI 実装**  
+   - `generalize` / `instantiate` / `Type_unification` / `constraint_solver.ml` で `effect_row` を扱うユーティリティを実装し、RowVar は予約値 (`Open`) として保持。  
+   - `Effect_analysis.merge_usage_into_profile` と `Type_inference_effect` を更新し、残余効果が `effect_row.residual` へ反映されるようにする。  
+   - テストスイート: `compiler/ocaml/tests/test_type_inference.ml` に `type_effect_row_equivalence_*` ケース、`compiler/ocaml/tests/streaming_runner_tests.ml` に `streaming_effect_row_stage_consistency` を追加。  
+   - KPI: `collect-iterator-audit-metrics.py --require-success --section effects` で `diagnostics.effect_row_stage_consistency = 1.0`, `type_effect_row_equivalence = 1.0`, `effect_row_guard_regressions = 0` をゲート条件に設定。逸脱時は自動ロールバック（`type_row_mode=metadata-only`）を実行し、`0-4-risk-handling.md` に登録。
+
+3. **Sprint C — Core IR 伝播とプラットフォーム検証**  
+   - `core_ir/desugar_fn.ml`, `core_ir/iterator_audit.ml`, `runtime/effect_registry.ml` を更新し、IR/Runtime の効果情報が `effect_row` を参照できる状態にする。  
+   - Windows/macOS CI ワークフローを更新し、`collect-iterator-audit-metrics.py --section effects --platform <target>` で `effect_row_guard_regressions` が 0 件であることを確認。  
+   - CLI/LSP ゴールデンを更新し、dual-write 期間中の差分レビューを `reports/diagnostic-format-regression.md` §2 に追記。  
+   - 仕様脚注 `[^type-row-metadata-phase25]` を撤去するためのチェックリスト（KPI 1.0 維持・監査ログ整合・Docs/Type レビュー承認）を満たした時点で Phase 2-8 へ報告。
+
+**検証・完了条件**
+- `dune runtest compiler/ocaml/tests/test_type_inference.ml --force` で `type_effect_row_equivalence_*` シリーズが全て成功し、CI 集計で 1.0 を報告する。  
+- `collect-iterator-audit-metrics.py --require-success --section effects` が Linux/macOS/Windows すべてで成功し、`effect_row_guard_regressions = 0` のまま `ty-integrated` へ切り替えが完了する。  
+- dual-write → `ty-integrated` への移行後、`effects.type_row.integration_blocked` 診断が発生しないことを CLI/LSP/監査のゴールデンで確認し、必要に応じて `--type-row-mode=metadata-only` で旧挙動へ戻せる。  
+- `docs/spec/1-2-types-Inference.md` / `1-3-effects-safety.md` / `3-6-core-diagnostics-audit.md` の効果行脚注を削除し、`docs/notes/effect-system-tracking.md` と本書に完了メモ（解除日・KPI 値・レビュー承認者）を記録する。
+
+**ハンドオーバー**
+- Step5（Phase 2-5 TYPE-002）で作成するハンドオーバーノートを参照し、dual-write 期間の監査ログとテストログを保管。  
+- RowVar（行多相）については Phase 3 へ移管し、`constraint_solver` 拡張案・API 予約値の扱い・性能評価計画を `effect-system-tracking.md#phase-3-以降の検討` に沿って追跡する。
+
 
 ## 成果物と検証
 - Windows/macOS CI で `ffi_bridge.audit_pass_rate` / `iterator.stage.audit_pass_rate` が 1.0 を維持し、監査欠落時にジョブが失敗すること。
