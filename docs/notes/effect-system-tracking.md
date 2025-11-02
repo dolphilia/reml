@@ -63,12 +63,21 @@
 - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表へ新指標を登録し、PoC 期間の基準値（0.0 / 1.0）と Phase 2-7 でのゲート条件を追記した。`reports/diagnostic-format-regression.md` には CLI/LSP ゴールデン更新時の効果構文チェックリストを追加。
 - PoC サンプル JSON を本メモと計画書に添付し、`collect-iterator-audit-metrics.py --section effects` 実装前でもフォーマットを固定できるようにした。サンプルは Phase 2-7 でゴールデン化する際の基準として利用する。
 
+## Phase 2-5 S4 引き継ぎパッケージ（2026-04-03）
+- `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に効果構文 PoC 移行タスクを追加し、監査ゲート（`syntax.effect_construct_acceptance` / `effects.syntax_poison_rate`）を 1.0 へ引き上げる条件とエスカレーション経路（`0-4-risk-handling.md`）を同期した。
+- `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の差分リストへ S4 完了メモを追記し、脚注 `[^effects-syntax-poc-phase25]` の撤去条件と Stage 遷移シナリオ（PoC → Preview → Stable）を明文化した。
+- CLI/LSP/ビルドの実験フラグ運用を棚卸しし、`-Zalgebraic-effects` 仮称の扱いを Phase 2-7 で統一するための TODO を整理。CLI は `compiler/ocaml/src/cli/options.ml`、LSP は `tooling/lsp/tests/client_compat/fixtures/`, ビルドは `scripts/` 配下の CI スクリプトを管理対象と定義した。
+- プラグイン連携の監査ポイントを `docs/notes/dsl-plugin-roadmap.md` に転記し、Capability Stage とハンドラ捕捉条件を Phase 2-7 の Stage レビューに統合する手順を記した。
+
 ## Phase 2-7 への引き継ぎ TODO
-1. `Type_inference_effect` への新 AST バリアント取り込みと `Σ_before` / `Σ_after` 更新規則を追加する（SYNTAX-003 S2 の成果物を参照）。
-2. `compiler/ocaml/tests/effect_syntax_tests.ml`（新設予定）で `perform` / `handle` の受理ケースと失敗ケースをゴールデン化し、CI で `syntax.effect_construct_acceptance` を算出する。
-3. `reports/diagnostic-format-regression.md` へ効果構文関連の CLI/LSP ゴールデンを追加し、`scripts/validate-diagnostic-json.sh` に `effects.syntax.*` の検証を組み込む。
-4. `docs/spec/3-8-core-runtime-capability.md` の Stage テーブルに、効果構文の PoC → 安定化の遷移条件を追記する（脚注 `[^effects-syntax-poc-phase25]` の更新と同期）。
+| ID | タスク | 成功条件 | 参照 |
+| --- | --- | --- | --- |
+| H-O1 | `Type_inference_effect` に `TEffectPerform` / `TEffectHandle`（仮称）を実装し、`Σ_before` / `Σ_after` の計算を導入する。 | PoC サンプルで残余効果が正しく除去され、`effects.contract.residual` が期待通り発火する。 | SYNTAX-003 S2 セクション／Phase 2-7 計画 §3 |
+| H-O2 | `compiler/ocaml/tests/effect_syntax_tests.ml` を新設し、`perform` / `handle` の成功・失敗パターンをゴールデン化する。 | CI で `syntax.effect_construct_acceptance = 1.0`、`effects.syntax_poison_rate = 0.0` を達成し、`--require-success` が通過する。 | SYNTAX-003 S3／`collect-iterator-audit-metrics.py` 実装メモ |
+| H-O3 | `-Zalgebraic-effects` フラグを CLI・LSP・CI で一貫制御し、公開名称とドキュメント更新手順を確定する。 | CLI/LSP/CI すべてでフラグの既定値・警告文が一致し、仕様書（0-0/1-1/1-5/3-8）から脚注撤去が可能。 | SYNTAX-003 S4 チェックリスト／Phase 2-7 計画 §2 |
+| H-O4 | `docs/notes/dsl-plugin-roadmap.md` と Stage テーブルを更新し、効果ハンドラ登録と Capability Stage の整合を監査できるようにする。 | `effects.contract.stage_mismatch` / `bridge.stage.*` 診断が効果構文を通じて再現でき、監査ログに Stage 情報が揃う。 | SYNTAX-003 S4／`docs/spec/3-8-core-runtime-capability.md` |
+| H-O5 | 脚注 `[^effects-syntax-poc-phase25]` の撤去条件を満たした時点で仕様・索引を更新し、Phase 2-8 へ報告する。 | Stage = Stable に昇格した週のレビューで脚注撤去を承認し、`2-5-spec-drift-remediation.md` へ完了記録を残す。 | SYNTAX-003 S4／`2-5-spec-drift-remediation.md` 差分リスト |
 
 ---
 
-作業履歴: 2026-03-12 SYNTAX-003 S1（Parser PoC 設計）で初版作成。2026-03-27 S3（診断・CI 計測整備）で指標計画を追記。更新時は本メモと `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` を同期する。 
+作業履歴: 2026-03-12 SYNTAX-003 S1（Parser PoC 設計）で初版作成。2026-03-27 S3（診断・CI 計測整備）で指標計画を追記。2026-04-03 S4（Phase 2-7 引き継ぎ準備）でハンドオーバー チェックリストとフラグ運用メモを整備。更新時は本メモと `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` を同期する。 

@@ -47,7 +47,7 @@
   - 2025-10-28 追記: S3（Menhir ルール実装）を完了し、`use_item` の再帰構築と `menhir --list-errors` の検証まで実施。
   - 2025-10-29 追記: S4（束縛・診断連携）で `Module_env.flatten_use_decls` を実装し、`tcu_use_bindings` とユニットテストを追加。診断期待集合への影響が無いことを確認済み。
   - 2025-11-12 追記: S5（検証とドキュメント更新）でユニットテスト・メトリクス・仕様脚注を更新し、`parser.use_nested_support` の監視体制を整備。
-- [SYNTAX-003 修正計画](./SYNTAX-003-proposal.md): 効果構文（`perform`/`handle`）の実装ステージを明確化し、Formal BNF との乖離を是正。（2026-03-27 追記: S3 で診断・CI 計測の計画を策定し、`syntax.effect_construct_acceptance` / `effects.syntax_poison_rate` 指標の準備とゴールデン更新手順を整備。`0-3-audit-and-metrics.md`・`reports/diagnostic-format-regression.md`・`docs/notes/effect-system-tracking.md` に同期済み。）
+- [SYNTAX-003 修正計画](./SYNTAX-003-proposal.md): 効果構文（`perform`/`handle`）の実装ステージを明確化し、Formal BNF との乖離を是正。（2026-03-27 追記: S3 で診断・CI 計測の計画を策定し、`syntax.effect_construct_acceptance` / `effects.syntax_poison_rate` 指標の準備とゴールデン更新手順を整備。`0-3-audit-and-metrics.md`・`reports/diagnostic-format-regression.md`・`docs/notes/effect-system-tracking.md` に同期済み。2026-04-03 追記: S4 で Phase 2-7 向け引き継ぎチェックリストとフラグ運用メモを整備し、`2-7-deferred-remediation.md`・`effect-system-tracking.md` に移行タスクを同期。）
 
 ### 型システム（TYPE）
 - [TYPE-001 修正計画](./TYPE-001-proposal.md): 値制限と効果タグ連携を復元し、副作用を持つ束縛の多相化を防止。（2025-10-31 Step0 棚卸し完了: 再現ログ記録とチェックリスト共有済み。2025-11-01 Step1 判定ユーティリティ設計完了: `Typed_ast` 値形状分類と `Value_restriction.evaluate` API 案を確定。2025-11-03 Step2 Typer/RunConfig 連携方針確定: `value_restriction_mode` と効果証跡共有モデルを整理。2025-11-05 Step3 テスト雛形・診断テンプレート・CI メトリクス設計を追加し、Strict/Legacy の監視ケースを定義。2025-11-08 Step4 仕様・RunConfig ドキュメント整備完了: 1-2/1-3/2-1/2-6 へ脚注を追加し、Phase 2-7 へのフォローアップを登録。）
