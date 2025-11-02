@@ -54,6 +54,15 @@
 - 状態: Open
 - 関連フェーズ: Phase 2 (2-7)
 - 参照: `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-001-proposal.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`
+- 登録日: 2026-04-20
+- タイトル: 効果構文 Stage 昇格遅延（EFFECT-POC-Stage）
+- カテゴリ: 技術的負債
+- 詳細: 効果構文 PoC は `Σ_before`/`Σ_after` 記録と KPI (`syntax.effect_construct_acceptance`, `effects.syntax_poison_rate`) を Step4/Step5 で仕様化したが、OCaml 実装は `effect.syntax.constructs` の算出と残余効果の控除を未実装のまま Phase 2-7 へ移管している。Stage 昇格が遅延すると Chapter 1 の脚注撤去と Phase 3 self-host 移行の前提条件に影響する。
+- 対応案: Phase 2-7 `EFFECT-003` / `Type_inference_effect` タスクで `TEffectPerform`/`THandle` の残余効果計算と `collect-iterator-audit-metrics.py` 指標を実装し、CI で `syntax.effect_construct_acceptance = 1.0` / `effects.syntax_poison_rate = 0.0` を達成した上で脚注を撤去する。進捗は `docs/notes/effect-system-tracking.md` と `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` (H-O1〜H-O5) で追跡する。
+- 期限: 2026-09-30
+- 状態: Open
+- 関連フェーズ: Phase 2 (2-7)
+- 参照: `docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-002-proposal.md`, `docs/plans/bootstrap-roadmap/2-5-review-log.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`, `docs/notes/effect-system-tracking.md`
 - 登録日: 2025-10-10
 - タイトル: Debian sysroot アーカイブのハッシュ未確定
 - カテゴリ: 互換性

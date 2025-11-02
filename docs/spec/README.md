@@ -12,7 +12,7 @@
 - [1-0-language-core-overview.md](1-0-language-core-overview.md)
 - [1-1-syntax.md](1-1-syntax.md) — 構文仕様（識別子セクションに ASCII 限定の暫定脚注、効果構文は `-Zalgebraic-effects` 前提の PoC 脚注で Stage を明示）
 - [1-2-types-Inference.md](1-2-types-Inference.md)
-- [1-3-effects-safety.md](1-3-effects-safety.md)
+- [1-3-effects-safety.md](1-3-effects-safety.md) — 残余効果 (`Σ_before`/`Σ_after`) の PoC 計測と CI 指標は Phase 2-5 `EFFECT-002` Step4 に準拠
 - [1-4-test-unicode-model.md](1-4-test-unicode-model.md)
 - [1-5-formal-grammar-bnf.md](1-5-formal-grammar-bnf.md) — 形式文法（`Ident` に Phase 2-5 時点の ASCII 暫定脚注、効果構文 PoC の注記あり）
 

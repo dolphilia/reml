@@ -53,10 +53,10 @@
    - **成果物**: `docs/plans/bootstrap-roadmap/2-5-review-log.md` に Step4 調査記録を追加し、CI/診断の観測ポイントとキー対応表を掲載。`docs/notes/effect-system-tracking.md` へ `effect.syntax.constructs` の JSON 仕様・メトリクス算出式・PoC フィクスチャ案を追記。`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の差分リストに `Σ` 記録と KPI 移管条件を追記し、Phase 2-7 での実装タスクとリンクさせた。  
    - **フォローアップ**: `EFFECT-003` および Phase 2-7 へ `diagnostic.ml` 拡張・CI ゴールデン更新・ダッシュボード実装を移譲（`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に登録済み）。CLI/LSP ゴールデン生成スクリプトへ `effect.syntax.constructs` を含める改修、`reports/diagnostic-format-regression.md` のチェックリスト更新、`effect.contract.residual_snapshot` のテストケース整備を Step5 以降で実施する。
 
-5. **Step5 ドキュメント整合とハンドオーバー（Week33 Day2-3） — ⏳ 着手前**  
-   - **調査**: `docs/spec/1-1-syntax.md`・`docs/spec/1-5-formal-grammar-bnf.md`・`docs/spec/1-3-effects-safety.md`・`docs/spec/3-8-core-runtime-capability.md` の脚注・表を確認し、PoC 注記の挿入先と撤去条件を整理する。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`、`docs/notes/effect-system-tracking.md`、`0-4-risk-handling.md` を参照し、引き継ぎ TODO とリスク登録フォームを揃える。  
-   - **実施項目**: 仕様書へ PoC 脚注と参照リンクを追記し、`README.md`・`docs/spec/0-0-overview.md` の導線を更新する。Phase 2-7 へ残課題を転記し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の差分リストを同期する。  
-   - **成果物**: 更新済み仕様・索引・計画書、`docs/notes/effect-system-tracking.md` の最終ログ、`0-4-risk-handling.md` への残課題登録。
+5. **Step5 ドキュメント整合とハンドオーバー（Week33 Day2-3） — ✅ 完了（2026-04-20）**  
+   - **実施内容**: Chapter 1（`docs/spec/1-1-syntax.md`・`docs/spec/1-3-effects-safety.md`・`docs/spec/1-5-formal-grammar-bnf.md`）に `Σ_before`/`Σ_after` 記録と PoC KPI (`syntax.effect_construct_acceptance`, `effects.syntax_poison_rate`) の参照脚注を追加し、PoC 運用が Phase 2-5 `EFFECT-002 Step4` 仕様と `docs/notes/effect-system-tracking.md` のハンドオーバー条件へ準拠することを明記した。索引（`docs/spec/0-0-overview.md`, `docs/spec/README.md`）を更新し、効果構文が Experimental ステージである旨と指標連携を読者が追跡できるようにした。  
+   - **連携更新**: `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の `EFFECT-002` 差分項へ Step5 完了メモを追記し、`docs/notes/effect-system-tracking.md` に Step5 ログと KPI 参照表を追加。`docs/plans/bootstrap-roadmap/2-5-review-log.md` にドキュメント整合完了エントリを記録し、残課題を Phase 2-7 計画と `0-4-risk-handling.md` へ転記した。  
+   - **成果物**: 更新済み仕様・索引・計画書・ノート、PoC KPI の参照ルート、`0-4-risk-handling.md` に登録した「効果構文 Stage 遷移遅延」リスク（ID: EFFECT-POC-Stage）。
 
 ## 6. 残課題
 - PoC が対象とする効果構文の範囲（`perform` のみか、`resume`/`rethrow` まで含むか）を効果チームと確認したい。  

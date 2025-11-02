@@ -235,10 +235,14 @@ HandlerLiteral  ::= "handler" Ident HandlerBody
 ```
 
 効果構文の産出規則は Phase 2-5 時点では `-Zalgebraic-effects` フラグ有効時の PoC 提供に限定される。[^effects-syntax-poc-phase25]
+PoC 期間中の残余効果記録 (`Σ_before`/`Σ_after`) と監査メトリクスは `EFFECT-002` Step4 の設計に従い、`extensions.effects.sigma.*` と CI 指標 (`syntax.effect_construct_acceptance`, `effects.syntax_poison_rate`) を Phase 2-7 手順と同期させる。[^effects-sigma-poc-phase25]
 
 [^syntax-002-s5]: Phase 2-5 `SYNTAX-002` 計画の S5 で多段ネスト `use` が `parser.mly`／`module_env.ml` に実装され、`parser.use_nested_support` 指標（[0-3-audit-and-metrics.md](../plans/bootstrap-roadmap/0-3-audit-and-metrics.md) §0.3.1）で継続監視している。検証用テストは `compiler/ocaml/tests/test_parser.ml` と `compiler/ocaml/tests/test_module_env.ml` に追加されている。計画の詳細は [`../plans/bootstrap-roadmap/2-5-proposals/SYNTAX-002-proposal.md`](../plans/bootstrap-roadmap/2-5-proposals/SYNTAX-002-proposal.md) を参照。
 
 [^pipe-desugar]: `PipeExpr` は左結合で畳み込まれ、各段が `value |> f(args)` → `f(value, args)` のようにデシュガリングされる。評価順序と短絡は [1.1 構文 C.9](1-1-syntax.md#c9-評価順序と短絡規則) に従い、左から右へ段階的に適用する。
+
+[^effects-sigma-poc-phase25]:
+    Phase 2-5 `EFFECT-002 Step4`（2026-04-18 完了）で `extensions.effects.sigma.*`／`audit.metadata["effect.syntax.constructs.*"]` のフォーマットと PoC 指標 (`syntax.effect_construct_acceptance`, `effects.syntax_poison_rate`) を確定し、`docs/notes/effect-system-tracking.md` と `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に移行条件を整理した。
 
 ---
 

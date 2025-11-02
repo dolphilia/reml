@@ -144,6 +144,11 @@
 - CLI/LSP/ビルドの実験フラグ運用を棚卸しし、`-Zalgebraic-effects` 仮称の扱いを Phase 2-7 で統一するための TODO を整理。CLI は `compiler/ocaml/src/cli/options.ml`、LSP は `tooling/lsp/tests/client_compat/fixtures/`, ビルドは `scripts/` 配下の CI スクリプトを管理対象と定義した。
 - プラグイン連携の監査ポイントを `docs/notes/dsl-plugin-roadmap.md` に転記し、Capability Stage とハンドラ捕捉条件を Phase 2-7 の Stage レビューに統合する手順を記した。
 
+## Phase 2-5 Step5 ドキュメント整合（2026-04-20）
+- Chapter 1（`docs/spec/1-1-syntax.md`・`docs/spec/1-3-effects-safety.md`・`docs/spec/1-5-formal-grammar-bnf.md`）へ `Σ_before`/`Σ_after` 記録と PoC 指標 (`syntax.effect_construct_acceptance`, `effects.syntax_poison_rate`) の参照脚注を追加し、Step4 で合意した JSON/監査設計と整合させた。
+- 概要 (`docs/spec/0-0-overview.md`) と索引 (`docs/spec/README.md`) を更新し、効果構文が Experimental Stage であることと KPI 参照ルート（`docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-002-proposal.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`）を明示した。
+- `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`・`docs/plans/bootstrap-roadmap/2-5-review-log.md` に Step5 完了メモを記録し、残課題を Phase 2-7 ハンドラ実装へ転送。`0-4-risk-handling.md` には Stage 昇格遅延リスク（ID: EFFECT-POC-Stage）を登録済み。
+
 ## Phase 2-7 への引き継ぎ TODO
 | ID | タスク | 成功条件 | 参照 |
 | --- | --- | --- | --- |
