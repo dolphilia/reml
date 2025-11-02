@@ -15,13 +15,13 @@
 
 | 分類 | 項目 | 状態 | 備考 |
 | --- | --- | --- | --- |
-| コア | OCaml / opam / dune / menhir | ⚠️ | `opam` 2.4.1 は検出できたが `ocaml`/`dune`/`menhir` は未導入（`check-windows-bootstrap-env.ps1` 2025-11-03 出力）。 |
-| コア | Bash (MSYS2 / Git) | ⚠️ | WindowsApps 配下の WSL `bash.exe` が優先されており、Git Bash を PATH 先頭に再配置する調整が必要。 |
-| LLVM | clang / llc / opt | ⚠️ | `clang` 19.1.1（`C:\Program Files\LLVM\bin`）は検出されたが `llc`/`opt` が PATH 外。MSYS2 LLVM 16.0.4 の CLI を併用中。 |
-| LLVM | llvm-ar | ✅ | 同上。 |
-| MSVC | cl / link / lib | ⚠️ | Visual Studio Build Tools 2022 は導入済みだが PATH 未適用で `cl`/`link`/`lib` が未検出。`reml-msvc-env`／`vcvars64.bat` の呼び出し手順を標準化する。 |
-| ビルド支援 | CMake / Ninja | ⚠️ | CMake 3.26.4 / Ninja 1.12.1 を確認。CMake を 3.27+ に更新するタスクを追加。 |
-| 補助ツール | jq / 7zip / pip | ⚠️ | `jq` 1.8.1 は利用可だが `7z` が未導入。成果物圧縮手順の整備が必要。 |
+| コア | OCaml / opam / dune / menhir | ✅ | `ocaml` 5.2.1 / `dune` 3.20.2 / `menhir` 20250912 を確認。`opam` 2.4.1 で `reml-521` スイッチが利用可能。 |
+| コア | Bash (MSYS2 / Git) | ⚠️ | `check-windows-bootstrap-env.ps1` を別セッションで実行すると WindowsApps の WSL `bash.exe` が優先される。Git Bash を確実に選択できるよう PATH 調整が必要。 |
+| LLVM | clang / llc / opt | ✅ | `clang`/`llc`/`opt` は LLVM 19.1.1 (MSVC 配布 ZIP) を参照。`llc --version` で `x86_64-pc-windows-msvc` を確認。 |
+| LLVM | llvm-ar | ✅ | 同じく LLVM 19.1.1 のバイナリを利用。 |
+| MSVC | cl / link / lib | ⚠️ | `reml-msvc-env` 実行後は 19.44.35219 を検出。ただし未実行のままスクリプトを回すと Missing 扱いになるため、自動化が必要。 |
+| ビルド支援 | CMake / Ninja | ✅ | `cmake` 3.29.5 / `ninja` 1.12.1 を確認。CMake の最小要件を満たした。 |
+| 補助ツール | jq / 7zip / pip | ✅ | `jq` 1.8.1 / `7z` 25.01 / `pip` 25.2 を確認。成果物圧縮とログ整形が可能。 |
 
 - LLVM 19.1.1 Windows X64 配布物（`C:\llvm\LLVM-19.1.1-Windows-X64`）には `clang.exe`・`llc.exe`・`opt.exe`・`lld-link.exe`・`llvm-ar.exe` が揃っている一方、現在 PATH で優先される `C:\Program Files\LLVM\bin` には `llc`/`opt` が含まれていない。
 - `lib` 直下には 721 本の `.lib` が配置され、`LLVMAArch64CodeGen.lib` や `clang*.lib`、`lib\cmake\llvm\LLVMConfig.cmake` 等を確認済み。`.lib` 前提は満たせるため、コード生成 CLI は MSYS2 LLVM 16.0.4 を併用する暫定構成とする。
@@ -55,6 +55,9 @@
   - PowerShell 7 プロファイル（`Documents\PowerShell\Microsoft.PowerShell_profile.ps1`）を更新し、`Add-RemlPathFront` 関数で `C:\llvm\LLVM-19.1.1-Windows-X64\bin` を最優先に追加。
   - ユーザー環境変数 `Path` にも同ディレクトリを追加済み。新規セッションで `llc`/`opt`/`clang` が MSVC 配布物を指すことを `Get-Command` で確認した。
   - MSYS2 CLI（16.0.4）はバックアップ用途として PATH 後段に配置。混在時の運用ルールを `windows-llvm-build-investigation.md` に反映予定。
+- 2025-11-07 追記:
+  - PowerShell プロファイルを読み込んだ状態で `check-windows-bootstrap-env.ps1` を実行し、`llc`/`opt`/`clang` が LLVM 19.1.1 (MSVC 配布 ZIP) を指すことを確認。
+  - プロファイルを読み込まないサブプロセスでも同じ PATH になるよう、診断スクリプト側に `Add-RemlPathFront` 相当の初期化を追加するタスクを登録。
 
 1.2. **開発環境セットアップ**
 - Windows 10/11 でのビルド環境構築手順書作成
@@ -63,12 +66,16 @@
 - MSVC コンパイラ（`cl.exe`）とリンカ（`link.exe`）の設定
 - 環境変数の設定（PATH, INCLUDE, LIB）
 - 2025-11-03 再診断結果:
-  - `opam` 2.4.1 は検出されたが `ocaml`/`dune`/`menhir`/`yojson`/`camlzip` が未導入。`opam switch create reml-5.2.1 5.2.1` → `opam install --deps-only ./compiler/ocaml/reml_ocaml.opam` を次回実行する。
+  - `opam` 2.4.1 は検出されたが `ocaml`/`dune`/`menhir`/`yojson`/`camlzip` が未導入。`opam switch create reml-5.2.1 5.2.1` → `opam install --deps-only ./compiler/ocaml/reml_ocaml.opam` を次回実行する（履歴）。
   - PowerShell の既定 `bash` が WindowsApps の WSL エイリアスを指すため、`C:\Program Files\Git\bin` を PATH 先頭へ追加する手順を `2-3-windows-local-environment.md` に追記予定。
   - `7z` が未導入で成果物圧縮ができない。`winget install 7zip.7zip` を導入後、環境診断スクリプトの期待値を更新する。
 - 2025-11-03 PATH 再構成:
   - PowerShell プロファイル関数で PATH 追加順序を一元管理。`C:\Program Files\7-Zip`、`%LOCALAPPDATA%\opam\reml-521\bin`、`%LOCALAPPDATA%\Microsoft\WinGet\Links` を同一関数経由で先頭に追加するよう調整。
   - `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` を適用済み。プロファイル読込エラー（PSSecurityException）を解消し、定義済み関数 `reml-msvc-env` の動作を確認。
+- 2025-11-07 フォローアップ:
+  - `ocaml` 5.2.1 / `dune` 3.20.2 / `menhir` 20250912 の導入を確認。`reml-env-check` で各コマンドが Present = True となることを記録。
+  - `winget install 7zip.7zip` と Kitware オフィシャルインストーラで `cmake` 3.29.5 を導入し、診断スクリプトでのバージョン要件を満たした。
+  - 現行スクリプトは新しい PowerShell プロセスを起動する際にプロファイルを読み込まないため、Bash が WindowsApps（WSL）を指す。Git Bash を強制するか、プロファイルロードを明示する必要あり。
 
 1.3. **CI 環境セットアップ**
 - GitHub Actions `windows-latest` ランナーの調査
@@ -83,6 +90,9 @@
 - 2025-11-03 フォローアップ:
   - ローカルで PowerShell プロファイル経由の PATH 調整が有効化されたため、Actions 側でも同等の PATH 付与スクリプトを `setup-windows-toolchain.ps1` として共通化する案をタスク化。
   - `check-windows-bootstrap-env.ps1` の PATH 検証結果と CLI 優先順位を CI ログへ明示するチェックポイントを追加。
+- 2025-11-07 更新:
+  - `reml-msvc-env` 実行後に `check-windows-bootstrap-env.ps1` を呼び出すと `cl`/`link`/`lib` (19.44.35219) が検出されることを確認。CI 側でも診断前に `vcvars64.bat` を呼び出す共通ステップが必要。
+  - プロファイルを読み込むまで `cl.exe` が Missing になるため、セットアップスクリプトに `reml-msvc-env` 呼び出しを組み込むタスクを継続。
 
 1.4. **LLVM 19 利用性の再評価**
 - Linux/macOS で LLVM 19.x を採用している構成と依存バージョンを洗い出し、Windows で再現するための入手経路（MSYS2、LLVM 公式インストーラ、ソースビルド）を比較する。
@@ -97,20 +107,24 @@
 - 2025-11-03 進捗:
   - ZIP 版配布物を PATH 先頭で利用できる状態に整理し、`Get-Command llc/opt/clang` で MSVC 配布物を参照していることを確認済み。
   - 次ステップでは `opam install conf-llvm-static.19` で `.lib` 検出の可否を確認し、結果を `windows-llvm-build-investigation.md` に追記する。
+- 2025-11-07 メモ:
+  - LLVM 19.1.1 の CLI を用いた `llc --version` / `opt --version` の確認を実施。`.lib` 群は引き続き揃っているが、`conf-llvm-static.19` インストールテストは未着手のためフォローアップが必要。
 
 ### 進捗サマリ（2025-11-03）
 - ✅ PATH 再構成完了：PowerShell プロファイルとユーザー環境変数を更新し、LLVM 19.1.1（MSVC 配布）の `clang/llc/opt` を優先利用できる状態へ移行。
 - ✅ プロファイル実行ポリシー調整：`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` を適用し、カスタム関数（`reml-env-check` / `reml-opam-env` / `reml-msvc-env`）が復旧。
+- ✅ `check-windows-bootstrap-env.ps1` を `reml-msvc-env` と併用し、LLVM 19.1.1 / MSVC 19.44.35219 / Ninja 1.12.1 / CMake 3.29.5 の検出を完了。
+- ✅ OCaml ツールチェーン（`ocaml`/`dune`/`menhir`）と 7-Zip を導入済み。`reml-env-check` で Present = True となることを確認。
 - ⚠️ `check-windows-bootstrap-env.ps1` の JSON 出力は読み取り専用制約のため未更新（次回書き込み可能時に再実行）。
-- ⚠️ OCaml ツールチェーン（`ocaml`/`dune`/`menhir`）と 7-Zip、CMake 3.29 の導入は未着手。
-- ⚠️ CI への PATH 反映・診断ログ保存フローはドラフト段階（スクリプト化が未完了）。
+- ⚠️ プロファイル非ロード時に WSL `bash.exe` が優先される問題と、CI 自動化における `reml-msvc-env` 呼び出し組み込みが未完。
+- ⚠️ `conf-llvm-static.19` の `.lib` 検出テストとドキュメント（`windows-llvm-build-investigation.md` / `docs/notes/llvm-spec-status-survey.md`）の追記が残件。
 
 ### 残タスク / 次ステップ
-1. `opam switch create reml-5.2.1 5.2.1` → `opam install --deps-only ./compiler/ocaml/reml_ocaml.opam` を実行し、`check-windows-bootstrap-env.ps1 -OutputJson reports/windows-env-check.json` を再度実行（書き込み可能な環境で JSON を更新）。
-2. `winget install 7zip.7zip`、`choco upgrade cmake --version 3.29.2` などで補助ツールとビルド支援ツールのバージョン要件を満たす。
-3. `tooling/toolchains/setup-windows-toolchain.ps1`（仮）を作成し、本番/CI 共通の PATH 追加と診断実行を自動化。CI ドキュメントへ手順を反映。
-4. `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md`・`docs/notes/llvm-spec-status-survey.md` に今回の PATH 再構成・ZIP 版採用方針を追記。
-5. `conf-llvm-static.19` の検出テストを行い、`.lib` 利用可否と `LLVMConfig.cmake` の設定差異を確認後、結果を 0-3/2-6 計画へフィードバック。
+1. `check-windows-bootstrap-env.ps1` に PowerShell プロファイル相当の PATH 初期化と `reml-msvc-env` 呼び出しを組み込み、Git Bash / MSVC ツールチェーン検出を自動化する。
+2. `tooling/toolchains/setup-windows-toolchain.ps1`（仮称）を作成し、ローカル・CI 共通の PATH 設定と診断実行フローを整備。`.github/workflows/` から呼び出せる形にまとめる。
+3. 書き込み可能な環境で `reml-env-check -OutputJson reports/windows-env-check.json` を再実行し、更新内容を `docs/plans/bootstrap-roadmap/2-3-windows-local-environment.md` と `windows-llvm-build-investigation.md` に反映する。
+4. `opam install conf-llvm-static.19` の検出テストを実施し、`.lib` 読み込み可否と `LLVMConfig.cmake` の差異を確認。結果を `windows-llvm-build-investigation.md` / `docs/notes/llvm-spec-status-survey.md` / `0-3-audit-and-metrics.md` に記録する。
+5. CI ドキュメントへ PATH 再構成と `vcvars64.bat` 呼び出し順序を追記し、`check-windows-bootstrap-env.ps1` のログをアーティファクト化する運用を確立する。
 
 **成果物**: Toolchain 選定書（MSVC/MinGW/LLVM 16→19 評価）、セットアップ手順、CI スクリプト、診断ログ
 
