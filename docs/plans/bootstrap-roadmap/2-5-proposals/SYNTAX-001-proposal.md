@@ -81,6 +81,16 @@
 - **調査**: `tooling/ci/collect-iterator-audit-metrics.py` の出力ログを確認し、ASCII プロファイルでの既知制限が監視指標に反映されているか検証する。  
 - **成果物**: 更新済みメトリクス、リスク登録、引き継ぎメモ。
 
+##### Step4 実施記録（2026-03-31）
+1. メトリクス更新  
+   - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に「Phase 2-5 Step4 記録」を追加し、`lexer.identifier_profile_unicode = 0.0`（Phase 2-5 時点）と週次レビュー日（2026-03-31）を記録。`tooling/ci/collect-iterator-audit-metrics.py --summary` の `parser.runconfig.lex.profile` が全件 `ascii` であることを確認したログを添付根拠とした。  
+2. リスク登録  
+   - `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` へ「Unicode XID 識別子実装未完了（SYNTAX-001 / LEXER-001）」エントリを追加し、期限を Phase 2-7 完了時点（2026-08-31）に設定。`lexer.identifier_profile_unicode` が 1.0 に到達するまで監視する運用を明記した。  
+3. Phase 2-7 連携  
+   - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に「Unicode 識別子プロファイル移行（SYNTAX-001 / LEXER-001）」セクションを追加し、XID テーブル整備・CI ゲート化・脚注撤去を Phase 2-7 の正式タスクとして登録。  
+4. フォローアップ  
+   - CLI/LSP ゴールデンの ASCII 制限文言撤去、`REML_ENABLE_UNICODE_TESTS=1` 常時実行、`docs/notes/dsl-plugin-roadmap.md` チェックリスト更新を Phase 2-7 の成果物として紐付けた。
+
 ### Phase 2-7（Unicode 実装準備）
 
 #### Step 5: XID テーブル生成とビルドパイプライン設計（着手週 TBD・Compiler/Tooling）

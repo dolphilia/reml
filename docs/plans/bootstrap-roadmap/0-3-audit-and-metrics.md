@@ -120,6 +120,11 @@
 - 検証パイプライン: `llvm-as` → `opt -verify` → `llc -mtriple=arm64-apple-darwin`
 - 全テストサンプル検証成功（examples/cli/*.reml）
 
+### Phase 2-5 Step4 記録（2026-03-31）
+- `lexer.identifier_profile_unicode`: 0.0（ASCII プロファイルのみ稼働）。`tooling/ci/collect-iterator-audit-metrics.py --summary` の `parser.runconfig.lex.profile` 集計結果と `reports/audit/summary.md` のログを確認し、Phase 2-5 時点で Unicode プロファイルを有効化したジョブが存在しないことを再確認した。
+  - レビュー: 2026-03-31 仕様差分補正週次（Phase 2-5 Week32）。
+  - フォローアップ: Phase 2-7 `lexer-unicode` タスク着手時に `REML_ENABLE_UNICODE_TESTS=1` を有効化し、同指標が 1.0 へ遷移することを確認する（`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` 参照）。
+
 ## 0.3.2 レポートテンプレート
 - **週次レポート**: `reports/week-YYYYMMDD.md`（将来追加予定）に以下の項目を記録する。
   - 主要マイルストーン進捗

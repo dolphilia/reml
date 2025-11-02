@@ -241,7 +241,7 @@
 
   | ID | 章/領域 | 差分概要 | 推奨初動 |
   |----|---------|----------|----------|
-| `SYNTAX-001` | Chapter 1／識別子 | Unicode 識別子未対応 | Step1 で脚注範囲と拒否メッセージを棚卸済み。Step2（2026-02-24）で BNF・索引・用語集へ ASCII 暫定脚注を追補し、技術的負債 ID 22/23 と Phase 2-7 `lexer-unicode` タスクへ橋渡し済み。Step3 で Unicode 受理テスト雛形とサンプル (`unicode_ident_tests.ml` / `samples/unicode_identifiers.reml`) を作成し、実装後に即時検証できる土台を整備 |
+| `SYNTAX-001` | Chapter 1／識別子 | Unicode 識別子未対応 | Step1 で脚注範囲と拒否メッセージを棚卸済み。Step2（2026-02-24）で BNF・索引・用語集へ ASCII 暫定脚注を追補し、技術的負債 ID 22/23 と Phase 2-7 `lexer-unicode` タスクへ橋渡し済み。Step3 で Unicode 受理テスト雛形とサンプル (`unicode_ident_tests.ml` / `samples/unicode_identifiers.reml`) を作成し、実装後に即時検証できる土台を整備。Step4（2026-03-31）で `lexer.identifier_profile_unicode = 0.0` の測定値を記録し、リスク台帳と Phase 2-7 ロードマップを更新 |
   | `LEXER-001` | Chapter 2／Unicode | `identifier(profile)` が使えない | プロファイル差分と運用ルールを `docs/notes/dsl-plugin-roadmap.md` §7 に記録 |
   | `DIAG-003` | Chapter 3／Domain | Domain/metadata が不足 | 語彙拡張案と Capability Stage テーブル更新予定を紐付け |
 

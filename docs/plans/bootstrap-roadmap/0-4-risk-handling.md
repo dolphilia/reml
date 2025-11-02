@@ -45,6 +45,15 @@
 本章は計画期間中に常に更新される生きたリスク台帳として扱う。未解決のリスクが存在する限り、次フェーズへ進む前に状態をレビューし、必要なタスクを各フェーズ文書（`1-x`〜`4-x` 系列）へ反映させる。
 
 ## 0.4.6 現在のリスク登録
+- 登録日: 2026-03-31
+- タイトル: Unicode XID 識別子実装未完了（SYNTAX-001 / LEXER-001）
+- カテゴリ: 技術的負債
+- 詳細: 仕様は `XID_Start`/`XID_Continue` に基づく Unicode 識別子を要求しているが、Phase 2-5 時点の実装は ASCII プロファイルのみを許可している。`lexer.identifier_profile_unicode` 指標が 0.0 のままであり、多言語 DSL サンプルや CLI/LSP の補完機能に制約が残っている。
+- 対応案: Phase 2-7 `lexer-unicode` タスクで XID テーブル生成・正規化チェック・`--lex-profile=unicode` 既定化を完了し、CI で `REML_ENABLE_UNICODE_TESTS=1` を有効化する。進捗は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の Unicode セクションと `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-001-proposal.md` Step5/6 を参照する。
+- 期限: 2026-08-31
+- 状態: Open
+- 関連フェーズ: Phase 2 (2-7)
+- 参照: `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-001-proposal.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`
 - 登録日: 2025-10-10
 - タイトル: Debian sysroot アーカイブのハッシュ未確定
 - カテゴリ: 互換性
