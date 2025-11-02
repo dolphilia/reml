@@ -42,6 +42,9 @@
 
 > Phase 2-5 Week31 更新: S0 を完了し、`docs/spec/1-1-syntax.md`・`docs/spec/1-5-formal-grammar-bnf.md`・`docs/spec/3-8-core-runtime-capability.md` に脚注 `[^effects-syntax-poc-phase25]` を追加。`docs/spec/README.md` と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` へも同脚注 ID を登録し、PoC ステージと `-Zalgebraic-effects` 依存を明示した。レビュー記録は `docs/plans/bootstrap-roadmap/2-5-review-log.md` SYNTAX-003 セクションに追記。
 
+## 6. 進捗記録（Phase 2-5）
+- 2026-03-12: **S1 パーサ PoC 設計完了**。`compiler/ocaml/docs/parser_design.md` §3.3.1 に挿入位置・優先順位・PoC 制限を反映し、`parser_run_config` への実験フラグ導入方針を確定。`compiler/ocaml/docs/effect-system-design-note.md` にモジュール間連携を追記し、`docs/notes/effect-system-tracking.md` を新設して PoC ステージ・引き継ぎ TODO を整理した。レビュー記録は `docs/plans/bootstrap-roadmap/2-5-review-log.md` 2026-03-12 項目を参照。
+
 ## 残課題
 - 効果構文を有効化するフラグ名（`-Zalgebraic-effects` など）と公開ポリシーを Phase 2-7 と調整する必要がある。  
 - `perform` などの構文追加が既存優先順位に与える影響（Menhir の衝突、`parser.conflicts` 更新）を事前にレビューしたい。  

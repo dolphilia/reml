@@ -512,6 +512,15 @@ type compilation_unit = {
 - `effect`, `handler`, `conductor` は `-Zalgebraic-effects` フラグ下でのみ有効
 - Phase 1 では構文のみ対応、意味解析は Phase 2+
 
+#### 3.3.1 効果構文 PoC 設計（Phase 2-5 SYNTAX-003 S1）
+- `perform` / `do` / `handle ... with handler` を式カテゴリに追加する設計を確定。`expr_base` へ `perform_expr`・`do_expr`・`handle_expr` を追加し、制御構文（`if`・`match` 等）と同列の優先順位で解釈する。`do` は `perform` の構文糖衣として同一 AST ノードに射影し、発生源を `DoAlias` 等で区別する。
+- 効果操作の対象は `EffectPath ::= Ident { "." Ident }` と定義し、`parser.mly` に `effect_path` ヘルパ（`module_path option * ident`）を導入する。これにより `Console.log` / `My.Module.Console.log` を既存の名前解決フローと整合させる。
+- `handle` 式は `HANDLE expr WITH handler_literal` を採用し、トップレベル宣言と同じ `handler_decl` 構造を再利用する。ただし式位置では属性・可視性を持たない点を PoC 制限として明記し、Phase 2-7 で拡張可否を再検討する。
+- `parser.conflicts` は現状 31 件から増加しない想定。`HANDLE`・`PERFORM`・`DO` は既存の先頭トークンと衝突しないため、実装時は `menhir --explain` の差分確認のみで済む。衝突が増加した場合は `docs/plans/bootstrap-roadmap/2-5-review-log.md` に記録する運用を設定した。
+- フラグ連携: `parser_run_config` へ `experimental_effects: bool` を追加し、`-Zalgebraic-effects` 無効時は構文レベルで拒否して `effects.syntax.experimental_disabled` 診断を返す。Typer／Runtime の Stage 判定と同じキーで監査を突合する。
+- 未対応扱いとした項目: `resume` の複数呼び出し検査、ハンドラリテラルへの属性付与、`perform`/`do` の混在制約。Phase 2-7 で `Type_inference_effect`・診断と一括評価する。
+- 詳細なトラッキングと引き継ぎ TODO は `docs/notes/effect-system-tracking.md` に集約し、PoC ステージと `-Zalgebraic-effects` フラグ運用を同期する。
+
 ### 3.4 Unicode 対応
 - 識別子は Unicode XID 準拠で解析
 - 文字列リテラルは UTF-8 として扱う
@@ -564,5 +573,6 @@ type compilation_unit = {
 ---
 
 **更新履歴**:
+- 2026-03-12: SYNTAX-003 S1 で効果構文 PoC 設計を追加（§3.3.1）
 - 2025-10-06: 初版作成 (Phase 1 M1 マイルストーン向け構文要素棚卸し)
 - 2025-10-06: Parser ドライバーと診断モデルの概要を追記
