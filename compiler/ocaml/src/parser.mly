@@ -8,7 +8,7 @@
 open Ast
 open Parser_flags
 
-exception Experimental_effects_disabled of Lexing.position * Lexing.position
+exception Experimental_effects_disabled = Parser_flags.Experimental_effects_disabled
 
 (* ヘルパー関数 *)
 
@@ -196,31 +196,6 @@ let stage_value_from_expr attr expr =
             (EffectAttrUnsupportedStageValue (Some expr))
             expr.expr_span;
         ] )
-
-let split_effect_module_path path =
-  match path with
-  | Root ids -> (
-      match List.rev ids with
-      | [] -> failwith "effect path requires at least one identifier"
-      | effect_ident :: prefix_rev -> (
-          match List.rev prefix_rev with
-          | [] -> (None, effect_ident)
-          | prefix -> (Some (Root prefix), effect_ident)))
-  | Relative (PlainIdent id, []) -> (None, id)
-  | Relative (head, tail) -> (
-      match List.rev tail with
-      | [] -> (
-          match head with
-          | PlainIdent id -> (None, id)
-          | _ -> failwith "effect path requires a concrete identifier")
-      | effect_ident :: prefix_rev ->
-          let prefix_tail = List.rev prefix_rev in
-          let effect_path =
-            match prefix_tail with
-            | [] -> Some (Relative (head, []))
-            | _ -> Some (Relative (head, prefix_tail))
-          in
-          (effect_path, effect_ident))
 
 let make_effect_reference_from_call_path path span =
   let fail () =
@@ -1374,10 +1349,10 @@ handler_literal_expr:
     }
 
 effect_target:
-  | path = module_path; DOT; op = ident
+  | path = module_path
     {
       let span = make_span $startpos $endpos in
-      make_effect_reference_from_path path op span
+      make_effect_reference_from_call_path path span
     }
 
 arg_list_opt:

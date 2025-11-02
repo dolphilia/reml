@@ -88,8 +88,7 @@ let check_identifier_case case =
       verify first (function UPPER_IDENT s -> Some s | _ -> None)
   | _ -> fail first
 
-let fixture_path =
-  Filename.concat (Filename.dirname __FILE__) "samples/unicode_identifiers.reml"
+let fixture_path = Test_support.sample_path "unicode_identifiers.reml"
 
 let () =
   if not (Sys.file_exists fixture_path) then (

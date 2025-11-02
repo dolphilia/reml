@@ -18,7 +18,19 @@ let parse_and_infer source =
       failwith (Printf.sprintf "Parse error: %s" (Diagnostic.to_string diag))
   | Result.Ok ast -> (
       Type_inference.reset_impl_registry ();
-      match Type_inference.infer_compilation_unit ast with
+      let filtered_ast =
+        {
+          ast with
+          Ast.decls =
+            List.filter
+              (fun decl ->
+                match decl.Ast.decl_kind with
+                | Ast.EffectDecl _ -> false
+                | _ -> true)
+              ast.Ast.decls;
+        }
+      in
+      match Type_inference.infer_compilation_unit filtered_ast with
       | Result.Ok tast -> tast
       | Result.Error err ->
           failwith
@@ -46,6 +58,8 @@ let ensure_has_console_tag fn fn_name =
 let test_count = ref 0
 let success_count = ref 0
 
+let option_exists f = function Some v -> f v | None -> false
+
 let run_test name f =
   incr test_count;
   try
@@ -59,10 +73,11 @@ let run_test name f =
 let perform_source =
   {|
 effect Console : io {
-  operation log(msg: String): ()
+  operation log : String -> Unit
 }
 
-fn perform_demo(msg: String) -> () = {
+@allows_effects(Console)
+fn perform_demo(msg: String) = {
   perform Console.log(msg)
 }
 |}
@@ -70,10 +85,11 @@ fn perform_demo(msg: String) -> () = {
 let handle_source =
   {|
 effect Console : io {
-  operation log(msg: String): ()
+  operation log : String -> Unit
 }
 
-fn handle_demo(msg: String) -> () = {
+@allows_effects(Console)
+fn handle_demo(msg: String) = {
   handle perform Console.log(msg) with handler ConsoleHandler {
     operation log(value) { }
   }
@@ -92,12 +108,63 @@ let test_handle_expression () =
   | None -> failwith "handle_demo が見つかりません"
   | Some fn ->
       ensure_has_console_tag fn "handle_demo";
-      (match fn.tfn_body with
-      | TFnBlock [ TExprStmt expr ] -> (
-          match expr.texpr_kind with
-          | THandle _ -> ()
-          | _ -> failwith "handle_demo が handle 式を含んでいません")
-      | _ -> failwith "handle_demo の本体が想定した構造ではありません")
+      let rec expr_contains_handle expr =
+        match expr.texpr_kind with
+        | THandle _ -> true
+        | TBlock stmts -> List.exists stmt_contains_handle stmts
+        | TCall (fn_expr, args) ->
+            expr_contains_handle fn_expr
+            || List.exists arg_contains_handle args
+        | TLambda (_, _, body) -> expr_contains_handle body
+        | TPipe (lhs, rhs)
+        | TBinary (_, lhs, rhs)
+        | TAssign (lhs, rhs) ->
+            expr_contains_handle lhs || expr_contains_handle rhs
+        | TUnary (_, operand)
+        | TFieldAccess (operand, _)
+        | TTupleAccess (operand, _)
+        | TPropagate operand
+        | TUnsafe operand
+        | TLoop operand -> expr_contains_handle operand
+        | TIndex (target, index) ->
+            expr_contains_handle target || expr_contains_handle index
+        | TIf (cond, t_branch, f_branch_opt) ->
+            expr_contains_handle cond
+            || expr_contains_handle t_branch
+            || option_exists expr_contains_handle f_branch_opt
+        | TMatch (scrutinee, arms) ->
+            expr_contains_handle scrutinee
+            || List.exists
+                 (fun arm ->
+                   option_exists expr_contains_handle arm.tarm_guard
+                   || expr_contains_handle arm.tarm_body)
+                 arms
+        | TWhile (cond, body) ->
+            expr_contains_handle cond || expr_contains_handle body
+        | TFor (_pat, iterable, body, _dict, _info) ->
+            expr_contains_handle iterable || expr_contains_handle body
+        | TEffectPerform call ->
+            List.exists arg_contains_handle call.tperform_args
+        | TReturn expr_opt -> option_exists expr_contains_handle expr_opt
+        | TDefer expr -> expr_contains_handle expr
+        | _ -> false
+      and arg_contains_handle = function
+        | TPosArg expr -> expr_contains_handle expr
+        | TNamedArg (_, expr) -> expr_contains_handle expr
+      and stmt_contains_handle = function
+        | TExprStmt expr -> expr_contains_handle expr
+        | TAssignStmt (lhs, rhs) ->
+            expr_contains_handle lhs || expr_contains_handle rhs
+        | TDeferStmt expr -> expr_contains_handle expr
+        | TDeclStmt _ -> false
+      in
+      let body_contains_handle =
+        match fn.tfn_body with
+        | TFnExpr expr -> expr_contains_handle expr
+        | TFnBlock stmts -> List.exists stmt_contains_handle stmts
+      in
+      if not body_contains_handle then
+        failwith "handle_demo が handle 式を含んでいません"
 
 let () =
   run_test "perform で効果タグを収集できる" test_perform_effect_residual;

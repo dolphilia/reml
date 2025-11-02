@@ -23,11 +23,8 @@ let lex_one s =
 let rec lex_all lexbuf =
   match Lexer.token lexbuf with EOF -> () | _ -> lex_all lexbuf
 
-let fixture_path name =
-  Filename.concat (Filename.dirname __FILE__) ("samples/" ^ name)
-
 let read_fixture name =
-  let path = fixture_path name in
+  let path = Test_support.sample_path name in
   let ic = open_in_bin path in
   let len = in_channel_length ic in
   let contents = really_input_string ic len in

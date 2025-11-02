@@ -10,6 +10,19 @@ let legacy_run_config =
   Run_config.Legacy.
     bridge { require_eof = true; legacy_result = true }
 
+let rec ascend n path =
+  if n <= 0 then path else ascend (n - 1) (Filename.dirname path)
+
+let tests_source_root =
+  match Sys.getenv_opt "DUNE_SOURCEROOT" with
+  | Some root -> Filename.concat root "tests"
+  | None ->
+      let build_dir = Filename.dirname __FILE__ in
+      Filename.concat (ascend 4 build_dir) "tests"
+
+let sample_path name =
+  Filename.concat tests_source_root ("samples/" ^ name)
+
 let parse_result ?(filename = "<test>") ?(config = legacy_run_config) source =
   Parser_driver.run_string ~filename ~config source
 
