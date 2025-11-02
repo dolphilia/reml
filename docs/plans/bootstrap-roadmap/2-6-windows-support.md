@@ -10,21 +10,21 @@
 - **前提**: Phase 1 の x86_64 Linux ターゲットが安定、Phase 2 の型クラス/効果/FFI 実装が Windows でビルドできるよう調整済み。`docs/plans/bootstrap-roadmap/2-3-windows-local-environment.md` で整理した環境を最新診断結果と突き合わせながら更新する。
 ## 現状診断（2025-10-20）
 
-- `tooling/toolchains/check-windows-bootstrap-env.ps1` を 2025-10-20 に再実行し、`reports/windows-env-check.json` を最新化済み。以降の作業は診断ログを常に添付する。
-- OCaml・LLVM・ビルド支援ツールは整備済みで、未導入なのは MSVC ツールチェーンのみ。
+- 2025-11-03 に `tooling/toolchains/check-windows-bootstrap-env.ps1` を再実行し、コンソール出力を確認（リポジトリが読み取り専用のため JSON は未更新）。以下の表へ結果を反映した。
+- OCaml 本体／dune／menhir、MSVC ツールチェーンのアクティベーション、7-Zip など複数項目が未整備であり、LLVM CLI は clang 19.1.1（MSVC 配布）と MSYS2 16.0.4 の混在状態にある。
 
 | 分類 | 項目 | 状態 | 備考 |
 | --- | --- | --- | --- |
-| コア | OCaml / opam / dune / menhir | ✅ | `opam switch 5.2.1` で整備済み。 |
-| コア | Bash (MSYS2 / Git) | ✅ | `C:\Program Files\Git\bin\bash.exe` を使用。 |
-| LLVM | clang / llc / opt | ✅ | MSYS2 LLVM 16.0.4（`x86_64-w64-windows-gnu`）。 |
+| コア | OCaml / opam / dune / menhir | ⚠️ | `opam` 2.4.1 は検出できたが `ocaml`/`dune`/`menhir` は未導入（`check-windows-bootstrap-env.ps1` 2025-11-03 出力）。 |
+| コア | Bash (MSYS2 / Git) | ⚠️ | WindowsApps 配下の WSL `bash.exe` が優先されており、Git Bash を PATH 先頭に再配置する調整が必要。 |
+| LLVM | clang / llc / opt | ⚠️ | `clang` 19.1.1（`C:\Program Files\LLVM\bin`）は検出されたが `llc`/`opt` が PATH 外。MSYS2 LLVM 16.0.4 の CLI を併用中。 |
 | LLVM | llvm-ar | ✅ | 同上。 |
-| MSVC | cl / link / lib | ✅ | Visual Studio Build Tools 2022 (MSVC 14.44.35219) を `C:\Program Files\Microsoft Visual Studio\2022\Community` に導入済み。`vcvarsall.bat` 経由で PATH を設定し、`cl.exe`/`link.exe`/`lib.exe`/`ml64.exe` の 64bit 版を利用する。
-| ビルド支援 | CMake / Ninja | ✅ | MSYS2 配布版 3.29 系 / 1.11 系を確認。 |
-| 補助ツール | jq / 7zip / pip | ✅ | ログ整形と成果物圧縮に使用。 |
+| MSVC | cl / link / lib | ⚠️ | Visual Studio Build Tools 2022 は導入済みだが PATH 未適用で `cl`/`link`/`lib` が未検出。`reml-msvc-env`／`vcvars64.bat` の呼び出し手順を標準化する。 |
+| ビルド支援 | CMake / Ninja | ⚠️ | CMake 3.26.4 / Ninja 1.12.1 を確認。CMake を 3.27+ に更新するタスクを追加。 |
+| 補助ツール | jq / 7zip / pip | ⚠️ | `jq` 1.8.1 は利用可だが `7z` が未導入。成果物圧縮手順の整備が必要。 |
 
-- LLVM 19.1.1 Windows X64 配布物 (`C:\llvm\LLVM-19.1.1-Windows-X64`) を取得済み。`bin`/`include`/`lib`/`libexec`/`share` が揃い、`clang.exe`・`llc.exe`・`lld-link.exe`・`llvm-ar.exe` などの主要 CLI と 148 本の実行ファイルが含まれる。
-- `lib` 直下には 721 本の `.lib` が配置され、`LLVMAArch64CodeGen.lib` などのコアライブラリに加えて `clang*.lib` や `c++.lib` を確認済み。`lib\cmake\llvm\LLVMConfig.cmake` 等も存在し、CMake での検出に利用できる。
+- LLVM 19.1.1 Windows X64 配布物（`C:\llvm\LLVM-19.1.1-Windows-X64`）には `clang.exe`・`llc.exe`・`opt.exe`・`lld-link.exe`・`llvm-ar.exe` が揃っている一方、現在 PATH で優先される `C:\Program Files\LLVM\bin` には `llc`/`opt` が含まれていない。
+- `lib` 直下には 721 本の `.lib` が配置され、`LLVMAArch64CodeGen.lib` や `clang*.lib`、`lib\cmake\llvm\LLVMConfig.cmake` 等を確認済み。`.lib` 前提は満たせるため、コード生成 CLI は MSYS2 LLVM 16.0.4 を併用する暫定構成とする。
 
 
 ## 作業ディレクトリ
@@ -47,6 +47,10 @@
 - MinGW (x86_64-w64-windows-gnu) は MSYS2 LLVM 16.0.4 / GCC 13 系の組み合わせを維持し、LLVM 19.x 採用時の置換手順と互換性確認をまとめる。
 - バージョン決定後は `0-3-audit-and-metrics.md` の Toolchain セクションと `reports/windows-env-check.json` のバージョン欄を更新する。
 - 取得済みの LLVM 19.1.1 Windows X64 配布物（`C:\llvm\LLVM-19.1.1-Windows-X64`）の PATH 連携、`lib`/`include` 参照方法、`lib\cmake\llvm` の利用手順を整備する。
+- 2025-11-03 再診断結果:
+  - `check-windows-bootstrap-env.ps1` は `clang` 19.1.1（`C:\Program Files\LLVM\bin`）を認識したが `llc`/`opt` は PATH 外のため未検出。
+  - `C:\llvm\LLVM-19.1.1-Windows-X64\bin` に `llc.exe` と `opt.exe` が揃っているため、PATH 切替または Symlink 化で MSVC 向け CLI を補完する。
+  - CLI が揃わない場合は `windows-llvm-build-investigation.md` の結論どおり MSYS2 LLVM 16.0.4（`C:\msys64\mingw64\bin`）を継続利用する。
 
 1.2. **開発環境セットアップ**
 - Windows 10/11 でのビルド環境構築手順書作成
@@ -54,6 +58,10 @@
 - OCaml / opam / dune / menhir の既存セットアップ状況を確認し、差分があれば `docs/plans/bootstrap-roadmap/2-3-windows-local-environment.md` を更新する。
 - MSVC コンパイラ（`cl.exe`）とリンカ（`link.exe`）の設定
 - 環境変数の設定（PATH, INCLUDE, LIB）
+- 2025-11-03 再診断結果:
+  - `opam` 2.4.1 は検出されたが `ocaml`/`dune`/`menhir`/`yojson`/`camlzip` が未導入。`opam switch create reml-5.2.1 5.2.1` → `opam install --deps-only ./compiler/ocaml/reml_ocaml.opam` を次回実行する。
+  - PowerShell の既定 `bash` が WindowsApps の WSL エイリアスを指すため、`C:\Program Files\Git\bin` を PATH 先頭へ追加する手順を `2-3-windows-local-environment.md` に追記予定。
+  - `7z` が未導入で成果物圧縮ができない。`winget install 7zip.7zip` を導入後、環境診断スクリプトの期待値を更新する。
 
 1.3. **CI 環境セットアップ**
 - GitHub Actions `windows-latest` ランナーの調査
@@ -61,6 +69,10 @@
 - セットアップスクリプトの作成（PowerShell/Batch）
 - 環境診断スクリプト（`tooling/toolchains/check-windows-bootstrap-env.ps1`）をジョブ冒頭で実行し、JSON 出力をアーティファクト化する。
 - ビルド時間の初期計測
+- 2025-11-03 検討メモ:
+  - Actions `windows-latest` で `C:\llvm\LLVM-19.1.1-Windows-X64\bin` を `Add-Content $env:GITHUB_PATH` するセットアップ案を作成。
+  - CI 冒頭で `tooling/toolchains/check-windows-bootstrap-env.ps1 -OutputJson ${{ runner.temp }}/windows-env-check.json` を実行し、アーティファクトとして保存する運用を追加する。
+  - CMake 3.26.4 → 3.29 への更新が必要なため、CI では `choco install cmake --version 3.29.2` を使った整合化を検討する。
 
 1.4. **LLVM 19 利用性の再評価**
 - Linux/macOS で LLVM 19.x を採用している構成と依存バージョンを洗い出し、Windows で再現するための入手経路（MSYS2、LLVM 公式インストーラ、ソースビルド）を比較する。
@@ -68,6 +80,10 @@
 - 調査の成否・阻害要因（欠落ライブラリ、ビルド時間、ABI 差分）と代替策を `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` と `docs/notes/llvm-spec-status-survey.md` に記録する。
 - LLVM 16 → 19 への移行判定チェックリストを `0-3-audit-and-metrics.md` に追加し、フェーズ移行時の意思決定材料を整備する。
 - ダウンロード済み配布物に同梱されている `libclang.lib`、`c++.lib`、`clang` 系 `.lib` のリンク可否と `LLVMConfig.cmake` 経由の検出結果を記録する。
+- 2025-11-03 再評価:
+  - 19.1.1 配布物の `.lib` 群は `conf-llvm-static.19` の要件を満たすため、`LLVMConfig.cmake` の検出テストを後続タスクに設定する。
+  - CLI の併用ポリシー（MSVC 19 vs MinGW 16）を `0-3-audit-and-metrics.md` の Toolchain セクションで管理し、PATH 切替前提を共有する。
+  - `docs/notes/llvm-spec-status-survey.md` に Program Files 版と ZIP 版でバンドル内容が異なる旨を追記し、配布差異を記録する。
 
 **成果物**: Toolchain 選定書（MSVC/MinGW/LLVM 16→19 評価）、セットアップ手順、CI スクリプト、診断ログ
 
