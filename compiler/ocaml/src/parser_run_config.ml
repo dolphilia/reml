@@ -80,6 +80,7 @@ type t = {
   trace : bool;
   merge_warnings : bool;
   legacy_result : bool;
+  experimental_effects : bool;
   locale : string option;
   extensions : Extensions.t;
 }
@@ -94,6 +95,7 @@ let default =
     trace = false;
     merge_warnings = true;
     legacy_result = false;
+    experimental_effects = false;
     locale = None;
     extensions = Extensions.empty;
   }
@@ -108,6 +110,9 @@ let find_extension key config =
   Extensions.find_namespace key config.extensions
 
 let set_locale config locale = { config with locale }
+
+let set_experimental_effects config enabled =
+  { config with experimental_effects = enabled }
 
 module Legacy = struct
   type config = {

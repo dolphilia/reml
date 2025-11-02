@@ -7,6 +7,13 @@
 
 open Ast
 
+exception Experimental_effects_disabled of Lexing.position * Lexing.position
+
+let experimental_effects_enabled = ref false
+
+let set_experimental_effects_enabled flag =
+  experimental_effects_enabled := flag
+
 (* ヘルパー関数 *)
 
 let make_span start_pos end_pos = {
@@ -193,6 +200,43 @@ let stage_value_from_expr attr expr =
             (EffectAttrUnsupportedStageValue (Some expr))
             expr.expr_span;
         ] )
+
+let split_effect_module_path path =
+  match path with
+  | Root ids -> (
+      match List.rev ids with
+      | [] -> failwith "effect path requires at least one identifier"
+      | effect_ident :: prefix_rev -> (
+          match List.rev prefix_rev with
+          | [] -> (None, effect_ident)
+          | prefix -> (Some (Root prefix), effect_ident)))
+  | Relative (PlainIdent id, []) -> (None, id)
+  | Relative (head, tail) -> (
+      match List.rev tail with
+      | [] -> (
+          match head with
+          | PlainIdent id -> (None, id)
+          | _ -> failwith "effect path requires a concrete identifier")
+      | effect_ident :: prefix_rev ->
+          let prefix_tail = List.rev prefix_rev in
+          let effect_path =
+            match prefix_tail with
+            | [] -> Some (Relative (head, []))
+            | _ -> Some (Relative (head, prefix_tail))
+          in
+          (effect_path, effect_ident))
+
+let make_effect_reference_from_path path operation span =
+  let effect_path, effect_name = split_effect_module_path path in
+  {
+    effect_path;
+    effect_name;
+    effect_operation = operation;
+    effect_span = span;
+  }
+
+let make_effect_call sugar effect_ref args =
+  { effect_ref; effect_args = args; effect_sugar = sugar }
 
 let analyze_stage_expr attr expr =
   match expr.expr_kind with
@@ -1124,7 +1168,10 @@ operation_decl:
 
 handler_decl:
   | name = ident; body = handler_body
-    { { handler_name = name; handler_entries = body } }
+    {
+      let span = make_span $startpos $endpos in
+      { handler_name = name; handler_entries = body; handler_span = span }
+    }
 
 handler_body:
   | LBRACE; entries = handler_entry_list; RBRACE { entries }
@@ -1177,6 +1224,9 @@ expr:
 
 expr_base:
   | e = postfix_expr { e }
+  | e = perform_expr { e }
+  | e = do_expr { e }
+  | e = handle_expr { e }
   | e = binary_expr { e }
   | e = unary_expr { e }
   | e = if_expr { e }
@@ -1249,6 +1299,50 @@ postfix_expr:
     {
       let span = make_span $startpos $endpos in
       make_expr (Propagate target) span
+    }
+
+perform_expr:
+  | PERFORM; target = effect_target; LPAREN; args = arg_list_opt; RPAREN
+    {
+      let span = make_span $startpos $endpos in
+      if not !experimental_effects_enabled then
+        raise (Experimental_effects_disabled ($startpos, $endpos));
+      let call = make_effect_call PerformKeyword target args in
+      make_expr (PerformCall call) span
+    }
+
+do_expr:
+  | DO; target = effect_target; LPAREN; args = arg_list_opt; RPAREN
+    {
+      let span = make_span $startpos $endpos in
+      if not !experimental_effects_enabled then
+        raise (Experimental_effects_disabled ($startpos, $endpos));
+      let call = make_effect_call DoKeyword target args in
+      make_expr (PerformCall call) span
+    }
+
+handle_expr:
+  | HANDLE; target = expr; WITH; handler = handler_literal_expr
+    {
+      let span = make_span $startpos $endpos in
+      if not !experimental_effects_enabled then
+        raise (Experimental_effects_disabled ($startpos, $endpos));
+      let node = { handle_target = target; handle_handler = handler } in
+      make_expr (Handle node) span
+    }
+
+handler_literal_expr:
+  | HANDLER; decl = handler_decl
+    {
+      let span = make_span $startpos $endpos in
+      { decl with handler_span = span }
+    }
+
+effect_target:
+  | path = module_path; DOT; op = ident
+    {
+      let span = make_span $startpos $endpos in
+      make_effect_reference_from_path path op span
     }
 
 arg_list_opt:

@@ -68,6 +68,27 @@ let rec string_of_literal = function
       |> String.concat ", "
       |> Printf.sprintf "record{%s}"
 
+and string_of_effect_reference ref_ =
+  let path =
+    match ref_.effect_path with
+    | None -> ""
+    | Some mp -> string_of_module_path mp ^ "."
+  in
+  Printf.sprintf "%s%s.%s" path ref_.effect_name.name
+    ref_.effect_operation.name
+
+and string_of_effect_call call =
+  let args =
+    call.effect_args |> List.map string_of_arg |> String.concat ", "
+  in
+  let sugar =
+    match call.effect_sugar with
+    | PerformKeyword -> "perform"
+    | DoKeyword -> "do"
+  in
+  Printf.sprintf "%s %s(%s)" sugar (string_of_effect_reference call.effect_ref)
+    args
+
 and string_of_pattern pat =
   match pat.pat_kind with
   | PatLiteral lit -> string_of_literal lit
@@ -137,6 +158,7 @@ and string_of_expr expr =
   | Call (fn, args) ->
       let args_str = args |> List.map string_of_arg |> String.concat ", " in
       Printf.sprintf "call(%s)[%s]" (string_of_expr fn) args_str
+  | PerformCall call -> Printf.sprintf "%s" (string_of_effect_call call)
   | Lambda (params, ret, body) ->
       let params_str =
         params |> List.map string_of_param |> String.concat ", "
@@ -190,6 +212,10 @@ and string_of_expr expr =
       Printf.sprintf "for(%s in %s) { %s }" (string_of_pattern pat)
         (string_of_expr source) (string_of_expr body)
   | Loop body -> Printf.sprintf "loop { %s }" (string_of_expr body)
+  | Handle handle ->
+      Printf.sprintf "handle %s with handler %s"
+        (string_of_expr handle.handle_target)
+        (string_of_ident handle.handle_handler.handler_name)
   | Continue -> "continue"
   | Block stmts ->
       let stmt_str = stmts |> List.map string_of_stmt |> String.concat "; " in

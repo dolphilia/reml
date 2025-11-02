@@ -65,6 +65,26 @@ type literal =
   | Tuple of expr list
   | Array of expr list
   | Record of (ident * expr) list
+
+(* ========== 効果構文補助型 (PoC) ========== *)
+
+type effect_call_sugar =
+  | PerformKeyword  (** `perform` キーワード *)
+  | DoKeyword  (** `do` シュガー。AST 上は `perform` と同一扱い *)
+
+type effect_reference = {
+  effect_path : module_path option;
+      (** 効果宣言までの修飾パス (`Console`, `::Core.Console` 等) *)
+  effect_name : ident;  (** 効果名 (`Console`) *)
+  effect_operation : ident;  (** 操作名 (`log`) *)
+  effect_span : span;  (** `Effect.operation` 全体のSpan *)
+}
+
+type effect_call = {
+  effect_ref : effect_reference;
+  effect_args : arg list;
+  effect_sugar : effect_call_sugar;
+}
 (* ========== 演算子 ========== *)
 
 (** 二項演算子 *)
@@ -97,6 +117,7 @@ and expr_kind =
   | Var of ident
   | ModulePath of module_path * ident  (** Core.Parse.rule *)
   | Call of expr * arg list
+  | PerformCall of effect_call
   | Lambda of param list * type_annot option * expr
   | Pipe of expr * expr  (** x |> f *)
   | Binary of binary_op * expr * expr
@@ -110,6 +131,7 @@ and expr_kind =
   | While of expr * expr
   | For of pattern * expr * expr
   | Loop of expr
+  | Handle of handle_expr
   | Continue
   | Block of stmt list
   | Unsafe of expr
@@ -127,6 +149,11 @@ and match_arm = {
   arm_span : span;
 }
 (** match アーム *)
+
+and handle_expr = {
+  handle_target : expr;
+  handle_handler : handler_decl;
+}
 
 (* ========== パターン ========== *)
 and pattern = { pat_kind : pattern_kind; pat_span : span }
@@ -309,6 +336,7 @@ and operation_decl = { op_name : ident; op_type : type_annot; op_span : span }
 and handler_decl = {
   handler_name : ident;
   handler_entries : handler_entry list;
+  handler_span : span;
 }
 
 and handler_entry =

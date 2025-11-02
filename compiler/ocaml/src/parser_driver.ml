@@ -125,133 +125,171 @@ let warn_left_recursion diag_state lexbuf mode =
          mode_text)
 
 let run ?(config = default_run_config) lexbuf =
-  let pack, config =
-    let pack, config = Core_parse_lex.Bridge.derive config in
-    match pack with
-    | Core_parse_lex.Pack.{ space_id = Some space_id; _ } ->
-        Core_parse_lex.Bridge.with_space_id pack config space_id
-    | _ -> (pack, config)
-  in
-  Core_parse_lex.Api.config_trivia pack lexbuf;
-  let session = Core_stream.create_session config in
-  let diag_state = Core_stream.diag_state session in
-  let core_state = Core_stream.core_state session in
-  let require_eof = Core_stream.effective_require_eof config in
-  let eof_seen = ref false in
-  let start_pos = lexbuf.Lexing.lex_curr_p in
-  (match config.left_recursion with
-  | Run_config.On -> warn_left_recursion diag_state lexbuf Run_config.On
-  | Run_config.Auto when config.packrat ->
-      warn_left_recursion diag_state lexbuf Run_config.Auto
-  | _ -> ());
-  let read_token () =
-    let token, start_pos, end_pos =
-      Core_parse_lex.Api.lexeme pack Lexer.read_token lexbuf
-    in
-    (match token with
-    | Token.EOF -> eof_seen := true
-    | _ -> Core_state.mark_consumed core_state);
-    (token, start_pos, end_pos)
-  in
-  let rec loop state checkpoint =
-    match checkpoint with
-    | I.InputNeeded _ -> (
-        try
-          let triple = read_token () in
-          loop state (I.offer checkpoint triple)
-        with Lexer.Lexer_error (msg, _) ->
-          let diag = process_lexer_error lexbuf msg in
-          Core_reply.err ~id:None ~diagnostic:diag
-            ~consumed:(Core_state.consumed state)
-            ~committed:(Core_state.committed state))
-    | I.Shifting _ | I.AboutToReduce _ -> loop state (I.resume checkpoint)
-    | I.Accepted ast ->
-        let span =
-          Diagnostic.span_of_positions start_pos lexbuf.Lexing.lex_curr_p
+  Fun.protect
+    ~finally:(fun () -> Parser.set_experimental_effects_enabled false)
+    (fun () ->
+      Parser.set_experimental_effects_enabled config.experimental_effects;
+      let pack, config =
+        let pack, config = Core_parse_lex.Bridge.derive config in
+        match pack with
+        | Core_parse_lex.Pack.{ space_id = Some space_id; _ } ->
+            Core_parse_lex.Bridge.with_space_id pack config space_id
+        | _ -> (pack, config)
+      in
+      Core_parse_lex.Api.config_trivia pack lexbuf;
+      let session = Core_stream.create_session config in
+      let diag_state = Core_stream.diag_state session in
+      let core_state = Core_stream.core_state session in
+      let require_eof = Core_stream.effective_require_eof config in
+      let eof_seen = ref false in
+      let start_pos = lexbuf.Lexing.lex_curr_p in
+      (match config.left_recursion with
+      | Run_config.On -> warn_left_recursion diag_state lexbuf Run_config.On
+      | Run_config.Auto when config.packrat ->
+          warn_left_recursion diag_state lexbuf Run_config.Auto
+      | _ -> ());
+      let read_token () =
+        let token, start_pos, end_pos =
+          Core_parse_lex.Api.lexeme pack Lexer.read_token lexbuf
         in
-        Core_reply.ok ~id:None ~value:ast ~span:(Some span)
-          ~consumed:(Core_state.consumed state)
-          ~committed:(Core_state.committed state)
-    | I.HandlingError _ ->
-        let summary =
-          Core_stream.expectation_summary_for_checkpoint session checkpoint
-        in
-        let diag =
-          process_parser_error lexbuf "構文エラー: 入力を解釈できません"
-            summary
-        in
-        Core_reply.err ~id:None ~diagnostic:diag
-          ~consumed:(Core_state.consumed state)
-          ~committed:(Core_state.committed state)
-    | I.Rejected ->
-        let summary =
-          Core_stream.expectation_summary_for_checkpoint session checkpoint
-        in
-        let diag = process_rejected_error lexbuf summary in
-        Core_reply.err ~id:None ~diagnostic:diag
-          ~consumed:(Core_state.consumed state)
-          ~committed:(Core_state.committed state)
-  in
-  let checkpoint = Parser.Incremental.compilation_unit lexbuf.Lexing.lex_curr_p in
-  let parser state =
-    let reply = loop state checkpoint in
-    (reply, state)
-  in
-  let reply, _state =
-    Core_parse.rule ~namespace:"menhir" ~name:"compilation_unit" parser
-      core_state
-  in
-  let packrat_stats = Core_stream.packrat_counters session in
-  let result =
-    match reply with
-    | Core_reply.Ok ok ->
-        let span =
-          match ok.span with
-          | Some span -> span
-          | None ->
+        (match token with
+        | Token.EOF -> eof_seen := true
+        | _ -> Core_state.mark_consumed core_state);
+        (token, start_pos, end_pos)
+      in
+      let rec loop state checkpoint =
+        match checkpoint with
+        | I.InputNeeded _ -> (
+            try
+              let triple = read_token () in
+              loop state (I.offer checkpoint triple)
+            with Lexer.Lexer_error (msg, _) ->
+              let diag = process_lexer_error lexbuf msg in
+              Core_reply.err ~id:None ~diagnostic:diag
+                ~consumed:(Core_state.consumed state)
+                ~committed:(Core_state.committed state))
+        | I.Shifting _ | I.AboutToReduce _ -> loop state (I.resume checkpoint)
+        | I.Accepted ast ->
+            let span =
               Diagnostic.span_of_positions start_pos lexbuf.Lexing.lex_curr_p
+            in
+            Core_reply.ok ~id:None ~value:ast ~span:(Some span)
+              ~consumed:(Core_state.consumed state)
+              ~committed:(Core_state.committed state)
+        | I.HandlingError _ ->
+            let summary =
+              Core_stream.expectation_summary_for_checkpoint session checkpoint
+            in
+            let diag =
+              process_parser_error lexbuf "構文エラー: 入力を解釈できません"
+                summary
+            in
+            Core_reply.err ~id:None ~diagnostic:diag
+              ~consumed:(Core_state.consumed state)
+              ~committed:(Core_state.committed state)
+        | I.Rejected ->
+            let summary =
+              Core_stream.expectation_summary_for_checkpoint session checkpoint
+            in
+            let diag = process_rejected_error lexbuf summary in
+            Core_reply.err ~id:None ~diagnostic:diag
+              ~consumed:(Core_state.consumed state)
+              ~committed:(Core_state.committed state)
+      in
+      let checkpoint =
+        Parser.Incremental.compilation_unit lexbuf.Lexing.lex_curr_p
+      in
+      let parser state =
+        let reply = loop state checkpoint in
+        (reply, state)
+      in
+      let parse_reply =
+        try
+          let reply, _state =
+            Core_parse.rule ~namespace:"menhir" ~name:"compilation_unit"
+              parser core_state
+          in
+          Ok reply
+        with Parser.Experimental_effects_disabled (effect_start, effect_end) ->
+          Error (effect_start, effect_end)
+      in
+      let packrat_stats = Core_stream.packrat_counters session in
+      let result =
+        match parse_reply with
+        | Ok reply -> (
+            match reply with
+            | Core_reply.Ok ok ->
+                let span =
+                  match ok.span with
+                  | Some span -> span
+                  | None ->
+                      Diagnostic.span_of_positions start_pos
+                        lexbuf.Lexing.lex_curr_p
+                in
+                Parser_diag_state.record_span_trace diag_state
+                  ~label:(Some "compilation_unit") ~span;
+                finalize_result session ~value:(Some ok.value)
+                  ~span:(Some span) ~legacy_error:None ~consumed:ok.consumed
+                  ~committed:ok.committed ~packrat_stats
+            | Core_reply.Err err ->
+                let diagnostic =
+                  Core_stream.annotate_core_rule_metadata err.diagnostic err.id
+                in
+                register_diagnostic session diagnostic ~consumed:err.consumed
+                  ~committed:err.committed;
+                let legacy_error =
+                  diagnostic_to_parse_error diagnostic ~consumed:err.consumed
+                    ~committed:err.committed
+                in
+                finalize_result session ~value:None ~span:None
+                  ~legacy_error:(Some legacy_error) ~consumed:err.consumed
+                  ~committed:err.committed ~packrat_stats)
+        | Error (effect_start, effect_end) ->
+            let primary = Diagnostic.span_of_positions effect_start effect_end in
+            let diag =
+              Builder.create
+                ~message:
+                  "効果構文は実験フラグ `-Zalgebraic-effects` が無効なため使用できません"
+                ~primary ()
+              |> Builder.set_severity Diagnostic.Error
+              |> Builder.set_domain Diagnostic.Effect
+              |> Builder.set_primary_code "effects.syntax.experimental_disabled"
+              |> Builder.add_note
+                   "`-Zalgebraic-effects` を有効にして再実行してください"
+              |> Builder.build
+            in
+            let consumed = Core_state.consumed core_state in
+            let committed = Core_state.committed core_state in
+            register_diagnostic session diag ~consumed ~committed;
+            let legacy_error =
+              diagnostic_to_parse_error diag ~consumed ~committed
+            in
+            finalize_result session ~value:None ~span:None
+              ~legacy_error:(Some legacy_error) ~consumed ~committed
+              ~packrat_stats
+      in
+      if require_eof && not !eof_seen then (
+        let pos = lexbuf.Lexing.lex_curr_p in
+        let span = Diagnostic.span_of_positions pos pos in
+        let diag =
+          Builder.create
+            ~message:"RunConfig.require_eof=true のため未消費入力を許可できません"
+            ~primary:span ()
+          |> Builder.set_severity Diagnostic.Error
+          |> Builder.set_domain Diagnostic.Parser
+          |> Builder.set_primary_code "parser.require_eof.unconsumed_input"
+          |> Builder.build
         in
-        Parser_diag_state.record_span_trace diag_state
-          ~label:(Some "compilation_unit") ~span;
-        finalize_result session ~value:(Some ok.value) ~span:(Some span)
-          ~legacy_error:None ~consumed:ok.consumed ~committed:ok.committed
-          ~packrat_stats
-    | Core_reply.Err err ->
-        let diagnostic =
-          Core_stream.annotate_core_rule_metadata err.diagnostic err.id
-        in
-        register_diagnostic session diagnostic ~consumed:err.consumed
-          ~committed:err.committed;
+        register_diagnostic session diag ~consumed:result.consumed
+          ~committed:result.committed;
         let legacy_error =
-          diagnostic_to_parse_error diagnostic ~consumed:err.consumed
-            ~committed:err.committed
+          diagnostic_to_parse_error diag ~consumed:result.consumed
+            ~committed:result.committed
         in
-        finalize_result session ~value:None ~span:None
-          ~legacy_error:(Some legacy_error) ~consumed:err.consumed
-          ~committed:err.committed ~packrat_stats
-  in
-  if require_eof && not !eof_seen then (
-    let pos = lexbuf.Lexing.lex_curr_p in
-    let span = Diagnostic.span_of_positions pos pos in
-    let diag =
-      Builder.create
-        ~message:"RunConfig.require_eof=true のため未消費入力を許可できません"
-        ~primary:span ()
-      |> Builder.set_severity Diagnostic.Error
-      |> Builder.set_domain Diagnostic.Parser
-      |> Builder.set_primary_code "parser.require_eof.unconsumed_input"
-      |> Builder.build
-    in
-    register_diagnostic session diag ~consumed:result.consumed
-      ~committed:result.committed;
-    let legacy_error =
-      diagnostic_to_parse_error diag ~consumed:result.consumed
-        ~committed:result.committed
-    in
-    finalize_result session ~value:None ~span:result.span
-      ~legacy_error:(Some legacy_error) ~consumed:result.consumed
-      ~committed:result.committed ~packrat_stats:result.packrat_stats)
-  else result
+        finalize_result session ~value:None ~span:result.span
+          ~legacy_error:(Some legacy_error) ~consumed:result.consumed
+          ~committed:result.committed ~packrat_stats:result.packrat_stats)
+      else result)
 
 let run_partial ?(config = default_run_config) lexbuf =
   let cfg = { config with require_eof = false } in

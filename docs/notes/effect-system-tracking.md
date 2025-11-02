@@ -112,4 +112,4 @@
 
 ---
 
-作業履歴: 2026-03-12 SYNTAX-003 S1（Parser PoC 設計）で初版作成。2026-03-27 S3（診断・CI 計測整備）で指標計画を追記。2026-04-03 S4（Phase 2-7 引き継ぎ準備）でハンドオーバー チェックリストとフラグ運用メモを整備。更新時は本メモと `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` を同期する。 
+作業履歴: 2026-03-12 SYNTAX-003 S1（Parser PoC 設計）で初版作成。2026-03-27 S3（診断・CI 計測整備）で指標計画を追記。2026-04-03 S4（Phase 2-7 引き継ぎ準備）でハンドオーバー チェックリストとフラグ運用メモを整備。2026-04-12 S2（AST/Parser PoC 実装）で構文ノード・RunConfig フラグ・診断ガードを実装済みとして追記。更新時は本メモと `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` を同期する。 

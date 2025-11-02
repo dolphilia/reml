@@ -32,6 +32,7 @@ and typed_expr_kind =
   | TVar of ident * constrained_scheme  (** 変数参照 + インスタンス化された型スキーム *)
   | TModulePath of module_path * ident
   | TCall of typed_expr * typed_arg list
+  | TEffectPerform of typed_effect_call
   | TLambda of typed_param list * ty option * typed_expr
   | TPipe of typed_expr * typed_expr
   | TBinary of binary_op * typed_expr * typed_expr
@@ -50,6 +51,7 @@ and typed_expr_kind =
       * dict_ref
       * iterator_dict_info option
   | TLoop of typed_expr
+  | THandle of typed_handle_expr
   | TContinue
   | TBlock of typed_stmt list
   | TUnsafe of typed_expr
@@ -103,6 +105,41 @@ and typed_stmt =
   | TExprStmt of typed_expr
   | TAssignStmt of typed_expr * typed_expr
   | TDeferStmt of typed_expr
+
+and typed_effect_call = {
+  tperform_ref : effect_reference;
+  tperform_args : typed_arg list;
+  tperform_sugar : effect_call_sugar;
+  tperform_result_ty : ty option;  (** PoC: 効果呼び出しが戻す型。Step3で確定 *)
+}
+
+and typed_handle_expr = {
+  thandle_target : typed_expr;
+  thandle_handler : typed_handler_decl;
+}
+
+and typed_handler_decl = {
+  thandler_name : ident;
+  thandler_entries : typed_handler_entry list;
+  thandler_span : span;
+}
+
+and typed_handler_entry =
+  | THandlerOperation of typed_handler_operation
+  | THandlerReturn of typed_handler_return
+
+and typed_handler_operation = {
+  thandler_op_name : ident;
+  thandler_op_params : typed_param list;
+  thandler_op_body : typed_stmt list;
+  thandler_op_span : span;
+}
+
+and typed_handler_return = {
+  thandler_return_name : ident;
+  thandler_return_body : typed_stmt list;
+  thandler_return_span : span;
+}
 (* ========== 型付き宣言 ========== *)
 
 and typed_decl = {
@@ -187,6 +224,34 @@ let attach_decl_dict_args decl dict_refs =
 (* ========== デバッグ用: Typed ASTの文字列表現 ========== *)
 
 (** 型付き式の文字列表現（簡易版） *)
+let string_of_relative_head = function
+  | Self -> "self"
+  | Super n ->
+      if n <= 0 then "self"
+      else String.concat "." (List.init n (fun _ -> "super"))
+  | PlainIdent id -> id.name
+
+let string_of_module_path = function
+  | Root ids -> "::" ^ String.concat "." (List.map (fun id -> id.name) ids)
+  | Relative (head, tail) -> (
+      let head_str = string_of_relative_head head in
+      match tail with
+      | [] -> head_str
+      | _ ->
+          head_str ^ "."
+          ^ String.concat "." (List.map (fun id -> id.name) tail))
+
+let string_of_effect_reference ref_ =
+  let prefix =
+    match ref_.effect_path with
+    | None -> ref_.effect_name.name
+    | Some path ->
+        let path_str = string_of_module_path path in
+        if String.equal path_str "" then ref_.effect_name.name
+        else path_str ^ "." ^ ref_.effect_name.name
+  in
+  prefix ^ "." ^ ref_.effect_operation.name
+
 let rec string_of_typed_expr texpr =
   let ty_str = string_of_ty texpr.texpr_ty in
   match texpr.texpr_kind with
@@ -196,6 +261,10 @@ let rec string_of_typed_expr texpr =
   | TCall (fn, args) ->
       Printf.sprintf "(Call %s [%d args] : %s)" (string_of_typed_expr fn)
         (List.length args) ty_str
+  | TEffectPerform info ->
+      Printf.sprintf "(Perform %s [%d args] : %s)"
+        (string_of_effect_reference info.tperform_ref)
+        (List.length info.tperform_args) ty_str
   | TLambda (params, _, body) ->
       Printf.sprintf "(Lambda [%d params] %s : %s)" (List.length params)
         (string_of_typed_expr body)
@@ -241,6 +310,10 @@ let rec string_of_typed_expr texpr =
         ty_str
   | TLoop body ->
       Printf.sprintf "(loop %s : %s)" (string_of_typed_expr body) ty_str
+  | THandle h ->
+      Printf.sprintf "(handle %s with %s : %s)"
+        (string_of_typed_expr h.thandle_target)
+        h.thandler_name.name ty_str
   | TContinue -> Printf.sprintf "(continue : %s)" ty_str
   | TBlock stmts ->
       Printf.sprintf "(Block [%d stmts] : %s)" (List.length stmts) ty_str

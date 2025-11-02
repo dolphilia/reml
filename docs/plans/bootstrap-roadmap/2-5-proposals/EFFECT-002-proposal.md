@@ -35,10 +35,10 @@
    - **成果物**: `docs/notes/effect-system-tracking.md` に PoC スコープ表・メトリクス基準値・実装差分を追記し、Phase 2-7 への引き継ぎ条件を整理。`docs/plans/bootstrap-roadmap/2-5-review-log.md` に Step1 棚卸エントリを追加。  
    - **フォローアップ**: Step2 以降は棚卸結果を前提に AST/Parser PoC を実装し、Menhir 差分・CI ガード導入の検証結果を追記する。
 
-2. **Step2 AST / Parser PoC 対応（Week32 Day2-4） — ⏳ 着手前**  
-   - **調査**: `parser_design.md` の効果構文セクション、`compiler/ocaml/src/parser_run_config.ml`、`tooling/cli` 配下のフラグ定義を再確認し、Menhir 生成物 (`parser.automaton` / `parser.conflicts`) の現状を把握する。  
-   - **実施項目**: `compiler/ocaml/src/ast.ml`・`compiler/ocaml/src/typed_ast.ml` に `PerformCall` / `HandleExpr`（仮称）を追加し、`compiler/ocaml/src/parser.mly`・`parser_actions.ml`・`parser_expectation.ml` を更新する。`parser_run_config.ml` に `experimental_effects: bool` を追加して `-Zalgebraic-effects` 無効時は即時エラーを返す。`menhir --explain compiler/ocaml/src/parser.mly` を実行し、コンフリクト差分を `docs/plans/bootstrap-roadmap/2-5-review-log.md` に記録する。  
-   - **成果物**: Parser PoC 実装、`compiler/ocaml/tests/golden/parser/effects/*.golden`（新設）と CLI エラーメッセージのゴールデン、`parser_expectation.mli` の拡張案。
+2. **Step2 AST / Parser PoC 対応（Week32 Day2-4） — ✅ 完了（2026-04-12）**  
+   - **実施内容**: `compiler/ocaml/src/ast.ml` と `compiler/ocaml/src/typed_ast.ml` に効果構文ノード（`PerformCall` / `Handle`、`TEffectPerform` / `TEffectHandle` ほか補助型）を追加し、`ast_printer.ml` のデバッグ出力を更新。`compiler/ocaml/src/parser.mly` へ `perform` / `do` / `handle ... with` 規則と `effect_target` ヘルパを導入し、`-Zalgebraic-effects` 無効時は `Experimental_effects_disabled` 例外で拒否するガードを実装した。RunConfig に `experimental_effects: bool` フィールドと `set_experimental_effects` API を追加し、`parser_driver.ml` でフラグを伝搬させ `effects.syntax.experimental_disabled` 診断を発火させる。  
+   - **成果物**: 効果構文 PoC を受理する Parser 実装、`compiler/ocaml/tests/test_parser.ml` に experimental フラグ有無のユニットテストを追加、`docs/notes/effect-system-tracking.md`・`docs/plans/bootstrap-roadmap/2-5-review-log.md` 更新用メモ。  
+   - **フォローアップ**: `menhir --explain` によるコンフリクト差分確認と CLI/監査ゴールデン整備は Step4 以降に持ち越し。CLI から `-Zalgebraic-effects` を受け取って RunConfig を切り替える経路を追加する。
 
 3. **Step3 Typer / 効果解析 PoC（Week32 Day4-6） — ⏳ 着手前**  
    - **調査**: `compiler/ocaml/src/effect_profile.ml`、`compiler/ocaml/src/type_inference_effect.ml`、`compiler/ocaml/src/effect_analysis.ml`、`compiler/ocaml/src/constraint_solver.ml` の既存フローを確認し、`EffectConstraintTable` と Stage 判定の接続点を洗い出す。  

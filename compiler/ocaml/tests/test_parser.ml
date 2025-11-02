@@ -24,6 +24,14 @@ let expect_fail desc input =
       Printf.printf "✗ %s: expected parse failure but succeeded\n" desc;
       exit 1
 
+let expect_ok_with_config desc config input =
+  match Test_support.parse_string ~config input with
+  | Ok _ -> Printf.printf "✓ %s\n" desc
+  | Error diag ->
+      Printf.printf "✗ %s: parse failed\n" desc;
+      Printf.printf "%s\n" (Diagnostic.to_string diag);
+      exit 1
+
 let expect_decl_count desc expected input =
   match parse_string input with
   | Ok cu ->
@@ -624,6 +632,49 @@ let test_diagnostic_metadata () =
   | Result.Ok _ ->
       Printf.printf "✗ diagnostic metadata: expected parse failure\n";
       exit 1
+
+(* ========== 効果構文テスト ========== *)
+
+let effect_perform_source = "fn effect_demo() = perform Console.log(())\n"
+
+let () =
+  expect_fail
+    "perform 構文は experimental_effects=false で拒否される"
+    effect_perform_source
+
+let () =
+  let config =
+    Test_support.Run_config.default
+    |> Test_support.Run_config.set_experimental_effects true
+  in
+  expect_ok_with_config
+    "perform 構文は experimental_effects=true で受理される"
+    config effect_perform_source
+
+let handle_with_handler_source =
+  String.concat "\n"
+    [
+      "fn handle_demo() =";
+      "  handle perform Console.ask((\"name\")) with";
+      "    handler Console {";
+      "      operation ask(prompt, resume) {";
+      "        resume(\"Reml\")";
+      "      }";
+      "      return value {";
+      "        value";
+      "      }";
+      "    }";
+      "";
+    ]
+
+let () =
+  let config =
+    Test_support.Run_config.default
+    |> Test_support.Run_config.set_experimental_effects true
+  in
+  expect_ok_with_config
+    "handle 構文と handler リテラルは experimental_effects=true で受理される"
+    config handle_with_handler_source
 
 (* ========== 統合テスト ========== *)
 

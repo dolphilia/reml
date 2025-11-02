@@ -46,6 +46,7 @@ type t = {
   trace : bool;
   merge_warnings : bool;
   legacy_result : bool;
+  experimental_effects : bool;
   locale : string option;
   extensions : Extensions.t;
 }
@@ -61,6 +62,7 @@ val with_extension :
 val find_extension : string -> t -> Extensions.Namespace.t option
 
 val set_locale : t -> string option -> t
+val set_experimental_effects : t -> bool -> t
 
 module Legacy : sig
   type config = {
