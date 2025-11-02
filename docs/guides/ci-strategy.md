@@ -26,6 +26,26 @@
     REML_TARGET_CAPABILITIES: ${{ matrix.capabilities }}
 ```
 
+Windows ジョブでは MSVC 用の環境変数を確実に設定し、診断ログをアーティファクト化するために以下のセットアップステップを追加します。
+
+```yaml
+- name: Setup Windows Toolchain
+  shell: pwsh
+  run: |
+    pwsh -NoLogo -File tooling/toolchains/setup-windows-toolchain.ps1 -Quiet -NoCheck
+    pwsh -NoLogo -File tooling/toolchains/check-windows-bootstrap-env.ps1 -OutputJson $env:CI_WINDOWS_ENV_JSON
+  env:
+    CI_WINDOWS_ENV_JSON: ${{ runner.temp }}\windows-env-check.json
+
+- name: Upload Windows Toolchain Diagnostics
+  uses: actions/upload-artifact@v4
+  with:
+    name: windows-env-check
+    path: ${{ runner.temp }}\windows-env-check.json
+```
+
+`setup-windows-toolchain.ps1` は PowerShell プロファイル相当の PATH 初期化と `reml-msvc-env` 実行 (`vcvars64.bat` 呼び出し) を行い、続く診断スクリプトで `clang/llc/opt`・`cl/link/lib` のバージョンを安定して検出します。生成した JSON は `reports/windows-env-check.json` と同形式であり、CI 可観測性ダッシュボードや追跡ドキュメントに再利用できます。
+
 各ジョブでは以下の共通ステップを推奨します。
 
 1. `reml target validate` と `reml toolchain verify` を実行し、`target.profile.missing` / `target.abi.mismatch` が出ないことを確認。

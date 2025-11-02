@@ -19,10 +19,18 @@ jobs:
   diagnostic-json:
     name: Diagnostic JSON Validation (Windows)
     runs-on: windows-latest
+    env:
+      CI_WINDOWS_ENV_JSON: ${{ runner.temp }}\windows-env-check.json
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Setup Windows toolchain diagnostics
+        shell: pwsh
+        run: |
+          pwsh -NoLogo -File tooling/toolchains/setup-windows-toolchain.ps1 -Quiet -NoCheck
+          pwsh -NoLogo -File tooling/toolchains/check-windows-bootstrap-env.ps1 -OutputJson $env:CI_WINDOWS_ENV_JSON
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -41,6 +49,14 @@ jobs:
         shell: bash
         run: bash scripts/validate-diagnostic-json.sh
 
+      - name: Upload Windows toolchain diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-env-check-diagnostic
+          path: ${{ env.CI_WINDOWS_ENV_JSON }}
+          retention-days: 14
+
   audit:
     name: Windows Audit Metrics
     runs-on: windows-latest
@@ -48,10 +64,17 @@ jobs:
       - diagnostic-json
     env:
       PYTHONUTF8: "1"
+      CI_WINDOWS_ENV_JSON: ${{ runner.temp }}\windows-env-check.json
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Setup Windows toolchain diagnostics
+        shell: pwsh
+        run: |
+          pwsh -NoLogo -File tooling/toolchains/setup-windows-toolchain.ps1 -Quiet -NoCheck
+          pwsh -NoLogo -File tooling/toolchains/check-windows-bootstrap-env.ps1 -OutputJson $env:CI_WINDOWS_ENV_JSON
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -110,6 +133,14 @@ jobs:
             --root . \
             --history-dir reports/audit/history \
             --strict
+
+      - name: Upload Windows toolchain diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-env-check-audit
+          path: ${{ env.CI_WINDOWS_ENV_JSON }}
+          retention-days: 14
 
       - name: Upload Windows audit summary
         if: always()
