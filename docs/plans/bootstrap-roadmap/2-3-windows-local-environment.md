@@ -15,7 +15,9 @@
     pwsh -NoLogo -File tooling/toolchains/check-windows-bootstrap-env.ps1 -OutputJson reports/windows-env-check.json
     ```
   - `-OutputJson` オプションを指定すると結果を JSON で保存でき、CI や将来の比較にも利用可能。
-- 最新実行ログ: `reports/windows-env-check.json`（生成日時: 2025-10-19）
+- 補助スクリプト: `tooling/toolchains/setup-windows-toolchain.ps1`（PowerShell プロファイル相当の PATH 初期化と `reml-msvc-env` 呼び出しを共通化）。`-NoCheck` で環境設定のみ、既定では診断スクリプトを連続実行。
+- 関数エイリアス: `reml-env-check`（`setup-windows-toolchain.ps1`→`check-windows-bootstrap-env.ps1` を連鎖実行し、`-OutputJson` でログ書き出し）。ローカル/CI ともに同一コマンドで診断できる。
+- 最新実行ログ: `reports/windows-env-check.json`（生成日時: 2025-11-07、`clang/llc/opt` 19.1.1・`cl` 19.44.35219・`cmake` 3.29.5 を検出）
 
 ## 現状診断サマリ（2025-10-19）
 
@@ -30,6 +32,19 @@
 | ビルド支援 | Ninja | ✅ | 1.12.1 を確認。 |
 | ビルド支援 | CMake | ❌ | FFI テストや将来のクロスビルドで利用するため追加する。 |
 | 補助ツール | jq / 7zip (7z) | ❌ | 監査ログ整形・成果物圧縮で利用するため導入する。 |
+
+## 現状診断サマリ（2025-11-07）
+
+| 分類 | 項目 | 状態 | 備考 |
+| --- | --- | --- | --- |
+| コア | OCaml / opam / dune / menhir | ✅ | `ocaml` 5.2.1 / `dune` 3.20.2 / `menhir` 20250912 を確認。`opam` 2.4.1 で `reml-521` スイッチを利用。 |
+| コア | Bash (MSYS2 / Git) | ⚠️ | `setup-windows-toolchain.ps1` で Git Bash を優先化できるが、プロファイルを読み込まないセッションでは WindowsApps の `bash.exe` が前景化する。 |
+| LLVM | clang / llc / opt | ✅ | 公式 ZIP 版 LLVM 19.1.1 の CLI を前面に配置 (`C:\llvm\LLVM-19.1.1-Windows-X64\bin`)。`llc --version` → `x86_64-pc-windows-msvc`。 |
+| LLVM | llvm-ar | ✅ | 同 ZIP 版の `llvm-ar.exe` を利用。 |
+| MSVC | cl / link / lib | ⚠️ | `setup-windows-toolchain.ps1` → `reml-msvc-env` 実行後に 19.44.35219 を検出。自動診断前に MSVC 環境を有効化するステップが必須。 |
+| ビルド支援 | CMake / Ninja | ✅ | `cmake` 3.29.5（Kitware版）と `ninja` 1.11.1 を確認。 |
+| 補助ツール | jq / 7zip / pip | ✅ | `jq` 1.8.1 / `7z` 25.01 / `pip` 25.2 を検出。 |
+| ログ | reports/windows-env-check.json | ✅ | `reml-env-check` で再生成済み。LLVM 19.1.1 / MSVC 19.44.35219 / 7-Zip 25.01 / CMake 3.29.5 を記録。 |
 
 ## 優先対応 TODO
 

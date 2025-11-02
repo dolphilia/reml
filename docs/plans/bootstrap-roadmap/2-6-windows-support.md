@@ -91,6 +91,7 @@
   - ローカルで PowerShell プロファイル経由の PATH 調整が有効化されたため、Actions 側でも同等の PATH 付与スクリプトを `setup-windows-toolchain.ps1` として共通化する案をタスク化。
   - `check-windows-bootstrap-env.ps1` の PATH 検証結果と CLI 優先順位を CI ログへ明示するチェックポイントを追加。
 - 2025-11-07 更新:
+  - `tooling/toolchains/setup-windows-toolchain.ps1` を追加し、PATH 初期化と `reml-msvc-env` 呼び出しを共通化。`check-windows-bootstrap-env.ps1` は同スクリプトをドットソースしてから診断を実行する構成へ更新。
   - `reml-msvc-env` 実行後に `check-windows-bootstrap-env.ps1` を呼び出すと `cl`/`link`/`lib` (19.44.35219) が検出されることを確認。CI 側でも診断前に `vcvars64.bat` を呼び出す共通ステップが必要。
   - プロファイルを読み込むまで `cl.exe` が Missing になるため、セットアップスクリプトに `reml-msvc-env` 呼び出しを組み込むタスクを継続。
 
@@ -108,23 +109,18 @@
   - ZIP 版配布物を PATH 先頭で利用できる状態に整理し、`Get-Command llc/opt/clang` で MSVC 配布物を参照していることを確認済み。
   - 次ステップでは `opam install conf-llvm-static.19` で `.lib` 検出の可否を確認し、結果を `windows-llvm-build-investigation.md` に追記する。
 - 2025-11-07 メモ:
-  - LLVM 19.1.1 の CLI を用いた `llc --version` / `opt --version` の確認を実施。`.lib` 群は引き続き揃っているが、`conf-llvm-static.19` インストールテストは未着手のためフォローアップが必要。
+  - LLVM 19.1.1 の CLI を用いた `llc --version` / `opt --version` の確認を実施。`.lib` 群は引き続き揃っているが、`conf-llvm-static.19` インストールテストは未着手のためフォローアップが必要（→ 2025-11-07 再検証で完了）。
+  - `opam reinstall conf-llvm-static.19 -y` を実行し、ZIP 版配布物同梱の `llvm-config.exe` (19.1.1) を検出できることを確認。`llvm-config --version` の出力と `conf-llvm-static` 成功ログを `windows-llvm-build-investigation.md` に反映予定。
 
-### 進捗サマリ（2025-11-03）
-- ✅ PATH 再構成完了：PowerShell プロファイルとユーザー環境変数を更新し、LLVM 19.1.1（MSVC 配布）の `clang/llc/opt` を優先利用できる状態へ移行。
-- ✅ プロファイル実行ポリシー調整：`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` を適用し、カスタム関数（`reml-env-check` / `reml-opam-env` / `reml-msvc-env`）が復旧。
-- ✅ `check-windows-bootstrap-env.ps1` を `reml-msvc-env` と併用し、LLVM 19.1.1 / MSVC 19.44.35219 / Ninja 1.12.1 / CMake 3.29.5 の検出を完了。
-- ✅ OCaml ツールチェーン（`ocaml`/`dune`/`menhir`）と 7-Zip を導入済み。`reml-env-check` で Present = True となることを確認。
-- ⚠️ `check-windows-bootstrap-env.ps1` の JSON 出力は読み取り専用制約のため未更新（次回書き込み可能時に再実行）。
-- ⚠️ プロファイル非ロード時に WSL `bash.exe` が優先される問題と、CI 自動化における `reml-msvc-env` 呼び出し組み込みが未完。
-- ⚠️ `conf-llvm-static.19` の `.lib` 検出テストとドキュメント（`windows-llvm-build-investigation.md` / `docs/notes/llvm-spec-status-survey.md`）の追記が残件。
+### 進捗サマリ（2025-11-07）
+- ✅ PATH 初期化と MSVC アクティベーションを `setup-windows-toolchain.ps1` に集約し、`check-windows-bootstrap-env.ps1` が自動で呼び出す構成へ統一。
+- ✅ `reml-env-check -OutputJson reports/windows-env-check.json` を再実行し、LLVM 19.1.1 / MSVC 19.44.35219 / CMake 3.29.5 / 7-Zip 25.01 を検出できる最新診断ログを更新。
+- ✅ `opam reinstall conf-llvm-static.19 -y` で LLVM 19.1.1 ZIP 配布物の `.lib` を認識できることを確認し、`llvm-config --version` で 19.1.1 を取得。
+- ⚠️ CI ドキュメントへの PATH / `vcvars64.bat` 呼び出し手順の反映と、診断ログのアーティファクト化ルールが未整備。
+- ⚠️ `windows-llvm-build-investigation.md` および `docs/notes/llvm-spec-status-survey.md` へ最新の `conf-llvm-static` 検証結果と ZIP 配布利用ポリシーを追記する作業が残存。
 
 ### 残タスク / 次ステップ
-1. `check-windows-bootstrap-env.ps1` に PowerShell プロファイル相当の PATH 初期化と `reml-msvc-env` 呼び出しを組み込み、Git Bash / MSVC ツールチェーン検出を自動化する。
-2. `tooling/toolchains/setup-windows-toolchain.ps1`（仮称）を作成し、ローカル・CI 共通の PATH 設定と診断実行フローを整備。`.github/workflows/` から呼び出せる形にまとめる。
-3. 書き込み可能な環境で `reml-env-check -OutputJson reports/windows-env-check.json` を再実行し、更新内容を `docs/plans/bootstrap-roadmap/2-3-windows-local-environment.md` と `windows-llvm-build-investigation.md` に反映する。
-4. `opam install conf-llvm-static.19` の検出テストを実施し、`.lib` 読み込み可否と `LLVMConfig.cmake` の差異を確認。結果を `windows-llvm-build-investigation.md` / `docs/notes/llvm-spec-status-survey.md` / `0-3-audit-and-metrics.md` に記録する。
-5. CI ドキュメントへ PATH 再構成と `vcvars64.bat` 呼び出し順序を追記し、`check-windows-bootstrap-env.ps1` のログをアーティファクト化する運用を確立する。
+1. CI ドキュメントへ PATH 再構成と `vcvars64.bat` 呼び出し順序を追記し、`check-windows-bootstrap-env.ps1` のログをアーティファクト化する運用を確立する。
 
 **成果物**: Toolchain 選定書（MSVC/MinGW/LLVM 16→19 評価）、セットアップ手順、CI スクリプト、診断ログ
 

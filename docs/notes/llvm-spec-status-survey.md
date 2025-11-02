@@ -408,6 +408,12 @@ cl /Fe:foo.exe foo.c foo.ll libreml_runtime.lib
 - `Span<T>`は長さ保持→境界チェック付き`read_exact`/`write_exact`を提供
 - `StructView`は`byte_offset`でフィールドアクセス、ABI互換性はLLVM連携ノートに従う
 
+### 4.5 Windows LLVM 19.1.1 検証ログ（2025-11-07）
+
+- `tooling/toolchains/setup-windows-toolchain.ps1` で PowerShell プロファイル相当の PATH 初期化と `reml-msvc-env` 呼び出しを自動化。`check-windows-bootstrap-env.ps1` は同スクリプトをドットソースしてから診断を実行する構成へ更新済み。
+- `reml-env-check -OutputJson reports/windows-env-check.json` を実行し、Windows 11 環境で以下のツール検出を確認：`clang/llc/opt` 19.1.1（`C:\llvm\LLVM-19.1.1-Windows-X64\bin`）、`cl/link/lib` 19.44.35219、`cmake` 3.29.5、`7z` 25.01。JSON ログは CI との共有指標として利用可能。
+- `opam reinstall conf-llvm-static.19 -y` により ZIP 版 LLVM 19.1.1 同梱の静的ライブラリ/`llvm-config.exe` が認識されることを確認（`llvm-config --version` → 19.1.1）。MSVC 向け `.lib` の存在を `conf-llvm-static` が検証できたため、Phase 2-3 の Windows ビルドラインでも LLVM 19.x 静的リンク要件を満たせる見込み。
+
 ---
 
 ## 5. JIT/バックエンド拡張

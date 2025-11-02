@@ -21,6 +21,13 @@ param(
 
 Set-StrictMode -Version Latest
 
+$setupScript = Join-Path $PSScriptRoot 'setup-windows-toolchain.ps1'
+if (Test-Path -LiteralPath $setupScript) {
+    . $setupScript -NoCheck -Quiet | Out-Null
+} else {
+    Write-Warning "setup-windows-toolchain.ps1 が見つからないため、PATH と MSVC の自動初期化をスキップします。"
+}
+
 function Invoke-VersionCommand {
     param(
         [scriptblock]$Command
@@ -159,7 +166,7 @@ $checks = @(
         Category = "tools"
         Required = $false
         MinimumVersion = "22.0"
-        VersionCommand = { 7z i | Select-Object -First 1 }
+        VersionCommand = { 7z i | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1 }
     }
 )
 

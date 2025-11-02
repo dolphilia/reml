@@ -373,6 +373,8 @@ pacman -Ss mingw-w64-x86_64-llvm
 pacman -S mingw-w64-x86_64-llvm
 ```
 
+- 2025-11-07 追記: Windows 11 + LLVM 19.1.1 (公式 ZIP) + MSVC 19.44.35219 構成で `opam reinstall conf-llvm-static.19 -y` を実施し、`llvm-config --version` が 19.1.1 を返すことを確認。ZIP 配布物同梱の `.lib` 群で `conf-llvm-static` の静的リンク判定が通過したため、Phase 2-3 の LLVM 静的ライブラリ要件を満たせる見込み。診断ログは `reports/windows-env-check.json` に記録済み。
+
 ### 8.3 CI/CD環境への適用
 
 **GitHub Actions (windows-latest)**:
