@@ -23,6 +23,9 @@
 | ビルド支援 | CMake / Ninja | ✅ | MSYS2 配布版 3.29 系 / 1.11 系を確認。 |
 | 補助ツール | jq / 7zip / pip | ✅ | ログ整形と成果物圧縮に使用。 |
 
+- LLVM 19.1.1 Windows X64 配布物 (`C:\llvm\LLVM-19.1.1-Windows-X64`) を取得済み。`bin`/`include`/`lib`/`libexec`/`share` が揃い、`clang.exe`・`llc.exe`・`lld-link.exe`・`llvm-ar.exe` などの主要 CLI と 148 本の実行ファイルが含まれる。
+- `lib` 直下には 721 本の `.lib` が配置され、`LLVMAArch64CodeGen.lib` などのコアライブラリに加えて `clang*.lib` や `c++.lib` を確認済み。`lib\cmake\llvm\LLVMConfig.cmake` 等も存在し、CMake での検出に利用できる。
+
 
 ## 作業ディレクトリ
 - `compiler/ocaml/` : Windows 対応ビルド設定・ターゲット切替
@@ -43,6 +46,7 @@
 - MSVC ツールチェーンは Visual Studio Build Tools 2022（MSVC 19.40 以上）と Windows 11/10 SDK (10.0.22621 以上) を標準とし、`vcvarsall.bat`・`reml-msvc-env` からの呼び出しフローを設計する。
 - MinGW (x86_64-w64-windows-gnu) は MSYS2 LLVM 16.0.4 / GCC 13 系の組み合わせを維持し、LLVM 19.x 採用時の置換手順と互換性確認をまとめる。
 - バージョン決定後は `0-3-audit-and-metrics.md` の Toolchain セクションと `reports/windows-env-check.json` のバージョン欄を更新する。
+- 取得済みの LLVM 19.1.1 Windows X64 配布物（`C:\llvm\LLVM-19.1.1-Windows-X64`）の PATH 連携、`lib`/`include` 参照方法、`lib\cmake\llvm` の利用手順を整備する。
 
 1.2. **開発環境セットアップ**
 - Windows 10/11 でのビルド環境構築手順書作成
@@ -63,6 +67,7 @@
 - `opam install llvm` が要求する `conf-llvm-static.19` のビルドログを取得し、MSVC と MinGW の両ターゲットで利用可能か検証する。
 - 調査の成否・阻害要因（欠落ライブラリ、ビルド時間、ABI 差分）と代替策を `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` と `docs/notes/llvm-spec-status-survey.md` に記録する。
 - LLVM 16 → 19 への移行判定チェックリストを `0-3-audit-and-metrics.md` に追加し、フェーズ移行時の意思決定材料を整備する。
+- ダウンロード済み配布物に同梱されている `libclang.lib`、`c++.lib`、`clang` 系 `.lib` のリンク可否と `LLVMConfig.cmake` 経由の検出結果を記録する。
 
 **成果物**: Toolchain 選定書（MSVC/MinGW/LLVM 16→19 評価）、セットアップ手順、CI スクリプト、診断ログ
 
