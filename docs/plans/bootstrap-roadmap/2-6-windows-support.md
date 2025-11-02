@@ -51,6 +51,10 @@
   - `check-windows-bootstrap-env.ps1` は `clang` 19.1.1（`C:\Program Files\LLVM\bin`）を認識したが `llc`/`opt` は PATH 外のため未検出。
   - `C:\llvm\LLVM-19.1.1-Windows-X64\bin` に `llc.exe` と `opt.exe` が揃っているため、PATH 切替または Symlink 化で MSVC 向け CLI を補完する。
   - CLI が揃わない場合は `windows-llvm-build-investigation.md` の結論どおり MSYS2 LLVM 16.0.4（`C:\msys64\mingw64\bin`）を継続利用する。
+- 2025-11-03 PATH 再構成:
+  - PowerShell 7 プロファイル（`Documents\PowerShell\Microsoft.PowerShell_profile.ps1`）を更新し、`Add-RemlPathFront` 関数で `C:\llvm\LLVM-19.1.1-Windows-X64\bin` を最優先に追加。
+  - ユーザー環境変数 `Path` にも同ディレクトリを追加済み。新規セッションで `llc`/`opt`/`clang` が MSVC 配布物を指すことを `Get-Command` で確認した。
+  - MSYS2 CLI（16.0.4）はバックアップ用途として PATH 後段に配置。混在時の運用ルールを `windows-llvm-build-investigation.md` に反映予定。
 
 1.2. **開発環境セットアップ**
 - Windows 10/11 でのビルド環境構築手順書作成
@@ -62,6 +66,9 @@
   - `opam` 2.4.1 は検出されたが `ocaml`/`dune`/`menhir`/`yojson`/`camlzip` が未導入。`opam switch create reml-5.2.1 5.2.1` → `opam install --deps-only ./compiler/ocaml/reml_ocaml.opam` を次回実行する。
   - PowerShell の既定 `bash` が WindowsApps の WSL エイリアスを指すため、`C:\Program Files\Git\bin` を PATH 先頭へ追加する手順を `2-3-windows-local-environment.md` に追記予定。
   - `7z` が未導入で成果物圧縮ができない。`winget install 7zip.7zip` を導入後、環境診断スクリプトの期待値を更新する。
+- 2025-11-03 PATH 再構成:
+  - PowerShell プロファイル関数で PATH 追加順序を一元管理。`C:\Program Files\7-Zip`、`%LOCALAPPDATA%\opam\reml-521\bin`、`%LOCALAPPDATA%\Microsoft\WinGet\Links` を同一関数経由で先頭に追加するよう調整。
+  - `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` を適用済み。プロファイル読込エラー（PSSecurityException）を解消し、定義済み関数 `reml-msvc-env` の動作を確認。
 
 1.3. **CI 環境セットアップ**
 - GitHub Actions `windows-latest` ランナーの調査
@@ -73,6 +80,9 @@
   - Actions `windows-latest` で `C:\llvm\LLVM-19.1.1-Windows-X64\bin` を `Add-Content $env:GITHUB_PATH` するセットアップ案を作成。
   - CI 冒頭で `tooling/toolchains/check-windows-bootstrap-env.ps1 -OutputJson ${{ runner.temp }}/windows-env-check.json` を実行し、アーティファクトとして保存する運用を追加する。
   - CMake 3.26.4 → 3.29 への更新が必要なため、CI では `choco install cmake --version 3.29.2` を使った整合化を検討する。
+- 2025-11-03 フォローアップ:
+  - ローカルで PowerShell プロファイル経由の PATH 調整が有効化されたため、Actions 側でも同等の PATH 付与スクリプトを `setup-windows-toolchain.ps1` として共通化する案をタスク化。
+  - `check-windows-bootstrap-env.ps1` の PATH 検証結果と CLI 優先順位を CI ログへ明示するチェックポイントを追加。
 
 1.4. **LLVM 19 利用性の再評価**
 - Linux/macOS で LLVM 19.x を採用している構成と依存バージョンを洗い出し、Windows で再現するための入手経路（MSYS2、LLVM 公式インストーラ、ソースビルド）を比較する。
@@ -84,6 +94,23 @@
   - 19.1.1 配布物の `.lib` 群は `conf-llvm-static.19` の要件を満たすため、`LLVMConfig.cmake` の検出テストを後続タスクに設定する。
   - CLI の併用ポリシー（MSVC 19 vs MinGW 16）を `0-3-audit-and-metrics.md` の Toolchain セクションで管理し、PATH 切替前提を共有する。
   - `docs/notes/llvm-spec-status-survey.md` に Program Files 版と ZIP 版でバンドル内容が異なる旨を追記し、配布差異を記録する。
+- 2025-11-03 進捗:
+  - ZIP 版配布物を PATH 先頭で利用できる状態に整理し、`Get-Command llc/opt/clang` で MSVC 配布物を参照していることを確認済み。
+  - 次ステップでは `opam install conf-llvm-static.19` で `.lib` 検出の可否を確認し、結果を `windows-llvm-build-investigation.md` に追記する。
+
+### 進捗サマリ（2025-11-03）
+- ✅ PATH 再構成完了：PowerShell プロファイルとユーザー環境変数を更新し、LLVM 19.1.1（MSVC 配布）の `clang/llc/opt` を優先利用できる状態へ移行。
+- ✅ プロファイル実行ポリシー調整：`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` を適用し、カスタム関数（`reml-env-check` / `reml-opam-env` / `reml-msvc-env`）が復旧。
+- ⚠️ `check-windows-bootstrap-env.ps1` の JSON 出力は読み取り専用制約のため未更新（次回書き込み可能時に再実行）。
+- ⚠️ OCaml ツールチェーン（`ocaml`/`dune`/`menhir`）と 7-Zip、CMake 3.29 の導入は未着手。
+- ⚠️ CI への PATH 反映・診断ログ保存フローはドラフト段階（スクリプト化が未完了）。
+
+### 残タスク / 次ステップ
+1. `opam switch create reml-5.2.1 5.2.1` → `opam install --deps-only ./compiler/ocaml/reml_ocaml.opam` を実行し、`check-windows-bootstrap-env.ps1 -OutputJson reports/windows-env-check.json` を再度実行（書き込み可能な環境で JSON を更新）。
+2. `winget install 7zip.7zip`、`choco upgrade cmake --version 3.29.2` などで補助ツールとビルド支援ツールのバージョン要件を満たす。
+3. `tooling/toolchains/setup-windows-toolchain.ps1`（仮）を作成し、本番/CI 共通の PATH 追加と診断実行を自動化。CI ドキュメントへ手順を反映。
+4. `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md`・`docs/notes/llvm-spec-status-survey.md` に今回の PATH 再構成・ZIP 版採用方針を追記。
+5. `conf-llvm-static.19` の検出テストを行い、`.lib` 利用可否と `LLVMConfig.cmake` の設定差異を確認後、結果を 0-3/2-6 計画へフィードバック。
 
 **成果物**: Toolchain 選定書（MSVC/MinGW/LLVM 16→19 評価）、セットアップ手順、CI スクリプト、診断ログ
 
