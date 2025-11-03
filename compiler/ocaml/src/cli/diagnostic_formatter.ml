@@ -11,6 +11,7 @@
  *)
 
 module Json = Yojson.Basic
+module Serialization = Diagnostic_serialization
 
 (** ソース文字列を行の配列に分割 *)
 let split_into_lines source = String.split_on_char '\n' source |> Array.of_list
@@ -23,24 +24,26 @@ let split_into_lines source = String.split_on_char '\n' source |> Array.of_list
  * @param severity 診断の重要度
  * @return フォーマットされたスニペット文字列
  *)
-let format_snippet ~source ~span ~color_mode ~severity =
+let format_snippet ~source ~(span : Serialization.normalized_span) ~color_mode
+    ~severity =
   let lines = split_into_lines source in
-  let start_line = span.Diagnostic.start_pos.line in
-  let end_line = span.Diagnostic.end_pos.line in
-  let start_col = span.Diagnostic.start_pos.column in
-  let end_col = span.Diagnostic.end_pos.column in
+  let total_lines = Array.length lines in
+  let start_line = span.start_line + 1 in
+  let end_line = span.end_line + 1 in
+  let start_col = span.start_col in
+  let end_col = span.end_col in
 
   (* 表示する行の範囲を決定（エラー行の前後1行ずつ） *)
   let context_before = 1 in
   let context_after = 1 in
   let first_line = max 1 (start_line - context_before) in
-  let last_line = min (Array.length lines) (end_line + context_after) in
+  let last_line = min total_lines (end_line + context_after) in
 
   (* スニペット行を構築 *)
   let snippet_lines = ref [] in
 
   for line_num = first_line to last_line do
-    if line_num >= 1 && line_num <= Array.length lines then
+    if line_num >= 1 && line_num <= total_lines then
       let line_content = lines.(line_num - 1) in
       let line_num_str = Color.colorize_line_number color_mode line_num in
 
@@ -58,8 +61,17 @@ let format_snippet ~source ~span ~color_mode ~severity =
           let pointer_offset =
             String.length (Printf.sprintf "%4d | " line_num)
           in
-          let pointer_start = start_col - 1 in
-          let pointer_length = max 1 (end_col - start_col) in
+          let pointer_start =
+            max 0 (min start_col (String.length line_content))
+          in
+          let raw_length = end_col - start_col in
+          let pointer_length =
+            let candidate =
+              if raw_length <= 0 then 1 else raw_length
+            in
+            let available = String.length line_content - pointer_start in
+            if available <= 0 then 1 else min candidate available
+          in
           let pointer_padding =
             String.make (pointer_offset + pointer_start) ' '
           in
@@ -73,9 +85,12 @@ let format_snippet ~source ~span ~color_mode ~severity =
           let pointer_offset =
             String.length (Printf.sprintf "%4d | " line_num)
           in
-          let pointer_start = start_col - 1 in
+          let pointer_start =
+            max 0 (min start_col (String.length line_content))
+          in
           let pointer_length =
-            max 1 (String.length line_content - pointer_start)
+            let available = String.length line_content - pointer_start in
+            if available <= 0 then 1 else available
           in
           let pointer_padding =
             String.make (pointer_offset + pointer_start) ' '
@@ -90,7 +105,12 @@ let format_snippet ~source ~span ~color_mode ~severity =
           let pointer_offset =
             String.length (Printf.sprintf "%4d | " line_num)
           in
-          let pointer_length = max 1 end_col in
+          let pointer_length =
+            let normalized = end_col + 1 in
+            let available = String.length line_content in
+            let capped = min normalized available in
+            if capped <= 0 then 1 else capped
+          in
           let pointer_padding = String.make pointer_offset ' ' in
           let pointer = String.make pointer_length '^' in
           let colored_pointer =
@@ -118,6 +138,27 @@ let format_snippet ~source ~span ~color_mode ~severity =
   (* 逆順に追加していたので反転 *)
   String.concat "\n" (List.rev !snippet_lines)
 
+let location_string filename line column =
+  Printf.sprintf "%s:%d:%d" filename (line + 1) (column + 1)
+
+let format_span (span : Serialization.normalized_span) =
+  if span.start_line = span.end_line then
+    Printf.sprintf "%s (列 %d-%d)"
+      (location_string span.file span.start_line span.start_col)
+      (span.start_col + 1) (span.end_col + 1)
+  else
+    Printf.sprintf "%s - %s"
+      (location_string span.file span.start_line span.start_col)
+      (location_string span.file span.end_line span.end_col)
+
+let format_fixit = function
+  | Serialization.Insert { range; text } ->
+      Printf.sprintf "挿入 [%s]: '%s'" (format_span range) text
+  | Serialization.Replace { range; text } ->
+      Printf.sprintf "置換 [%s]: '%s'" (format_span range) text
+  | Serialization.Delete { range } ->
+      Printf.sprintf "削除 [%s]" (format_span range)
+
 (** 診断メッセージのヘッダー行を生成
  *
  * @param diag 診断情報
@@ -125,32 +166,28 @@ let format_snippet ~source ~span ~color_mode ~severity =
  * @return ヘッダー行文字列
  *)
 let format_header ~diag ~color_mode =
-  let open Diagnostic in
-  let loc = format_location diag.primary.start_pos in
-
-  (* 重要度ラベルを色付け *)
-  let severity_label = severity_label diag.severity in
+  let primary = diag.Serialization.primary in
+  let loc =
+    location_string primary.file primary.start_line primary.start_col
+  in
+  let severity_label = Diagnostic.severity_label diag.severity in
   let colored_severity =
     Color.colorize_by_severity color_mode diag.severity severity_label
   in
-
   let code_fragment =
     match diag.codes with
     | [] -> None
     | codes -> Some (String.concat "," codes)
   in
-
-  (* ヘッダー行を構築 *)
   match (code_fragment, diag.domain) with
   | Some codes, Some domain ->
-      let domain_label = domain_label domain in
+      let domain_label = Diagnostic.domain_label domain in
       Printf.sprintf "%s: %s[%s] (%s): %s" loc colored_severity codes
         domain_label diag.message
   | Some codes, None ->
-      Printf.sprintf "%s: %s[%s]: %s" loc colored_severity codes
-        diag.message
+      Printf.sprintf "%s: %s[%s]: %s" loc colored_severity codes diag.message
   | None, Some domain ->
-      let domain_label = domain_label domain in
+      let domain_label = Diagnostic.domain_label domain in
       Printf.sprintf "%s: %s (%s): %s" loc colored_severity domain_label
         diag.message
   | None, None ->
@@ -163,10 +200,9 @@ let format_header ~diag ~color_mode =
  * @param color_mode カラーモード
  * @return フォーマットされた診断文字列
  *)
-let format_diagnostic ~source ~diag ~color_mode ~include_snippet =
-  let open Diagnostic in
+let format_serialized ~source ~(diag : Serialization.normalized_diagnostic)
+    ~color_mode ~include_snippet =
   let header = format_header ~diag ~color_mode in
-
   let snippet =
     match (include_snippet, source) with
     | true, Some src ->
@@ -175,19 +211,17 @@ let format_diagnostic ~source ~diag ~color_mode ~include_snippet =
             ~severity:diag.severity
     | _ -> ""
   in
-
   let expected_str =
     match diag.expected with
     | None -> ""
     | Some summary ->
+        let open Diagnostic in
         let alternatives_str =
           match summary.alternatives with
           | [] -> ""
           | items ->
               let body =
-                items
-                |> List.map Diagnostic.string_of_expectation
-                |> String.concat ", "
+                items |> List.map string_of_expectation |> String.concat ", "
               in
               "\n期待される入力: " ^ body
         in
@@ -199,11 +233,10 @@ let format_diagnostic ~source ~diag ~color_mode ~include_snippet =
         in
         alternatives_str ^ humanized_str ^ context_str
   in
-
   let related_str =
     let lines =
       diag.secondary
-      |> List.filter_map (fun (entry : span_label) ->
+      |> List.filter_map (fun (entry : Serialization.normalized_secondary) ->
              let message = Option.value ~default:"" entry.message in
              let loc =
                match entry.span with
@@ -220,21 +253,19 @@ let format_diagnostic ~source ~diag ~color_mode ~include_snippet =
     | [] -> ""
     | _ -> "\n関連情報:\n" ^ String.concat "\n" lines
   in
-
   let fixits_str =
     match diag.fixits with
     | [] -> ""
     | fixits ->
         fixits
-        |> List.map (fun f -> "  - " ^ format_fixit f)
+        |> List.map (fun fixit -> "  - " ^ format_fixit fixit)
         |> String.concat "\n"
         |> Printf.sprintf "\n修正候補:\n%s"
   in
-
   let hints_str =
     let lines =
       diag.hints
-      |> List.map (fun (hint : Diagnostic.hint) ->
+      |> List.map (fun (hint : Serialization.normalized_hint) ->
              let head =
                match hint.message with
                | Some msg -> "  - " ^ msg
@@ -251,7 +282,6 @@ let format_diagnostic ~source ~diag ~color_mode ~include_snippet =
     | [] -> ""
     | _ -> "\nヒント:\n" ^ String.concat "\n" lines
   in
-
   let extensions_str =
     let entries =
       List.filter
@@ -261,28 +291,25 @@ let format_diagnostic ~source ~diag ~color_mode ~include_snippet =
     match entries with
     | [] -> ""
     | _ ->
-        entries |> List.rev
+        entries
+        |> List.rev
         |> List.map (fun (key, value) ->
                Printf.sprintf "\n拡張[%s]: %s" key (Json.to_string value))
         |> String.concat ""
   in
-
   let audit_str =
     "\n監査: "
     ^ Json.pretty_to_string (Diagnostic.V2.audit_to_json diag.audit)
   in
-
   let hint_str =
     match diag.severity_hint with
     | None -> ""
-    | Some Rollback -> "\n推奨アクション: ロールバック"
-    | Some Retry -> "\n推奨アクション: 再試行"
-    | Some Ignore -> "\n推奨アクション: 無視可能"
-    | Some Escalate -> "\n推奨アクション: エスカレーション"
+    | Some Diagnostic.Rollback -> "\n推奨アクション: ロールバック"
+    | Some Diagnostic.Retry -> "\n推奨アクション: 再試行"
+    | Some Diagnostic.Ignore -> "\n推奨アクション: 無視可能"
+    | Some Diagnostic.Escalate -> "\n推奨アクション: エスカレーション"
   in
-
   let timestamp_str = "\nタイムスタンプ: " ^ diag.timestamp in
-
   [
     header;
     snippet;
@@ -305,9 +332,16 @@ let format_diagnostic ~source ~diag ~color_mode ~include_snippet =
  * @param color_mode カラーモード
  * @return フォーマットされた診断文字列（改行区切り）
  *)
-let format_diagnostics ~source ~diags ~color_mode ~include_snippet =
+let format_serialized_many ~source ~diags ~color_mode ~include_snippet =
   diags
-  |> List.map
-       (fun diag ->
-         format_diagnostic ~source ~diag ~color_mode ~include_snippet)
+  |> List.map (fun diag ->
+         format_serialized ~source ~diag ~color_mode ~include_snippet)
   |> String.concat "\n\n"
+
+let format_diagnostic ~source ~diag ~color_mode ~include_snippet =
+  let serialized = Serialization.of_diagnostic diag in
+  format_serialized ~source ~diag:serialized ~color_mode ~include_snippet
+
+let format_diagnostics ~source ~diags ~color_mode ~include_snippet =
+  let serialized = List.map Serialization.of_diagnostic diags in
+  format_serialized_many ~source ~diags:serialized ~color_mode ~include_snippet

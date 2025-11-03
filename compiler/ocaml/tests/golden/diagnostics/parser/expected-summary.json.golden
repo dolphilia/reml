@@ -12,10 +12,7 @@
         "endColumn": 12
       },
       "code": "parser.expected_token",
-      "codes": [
-        "parser.expected_token",
-        "parser.recovery.pending"
-      ],
+      "codes": [ "parser.expected_token", "parser.recovery.pending" ],
       "domain": "parser",
       "timestamp": "1970-01-01T00:00:00Z",
       "extensions": {
@@ -32,14 +29,7 @@
         },
         "diagnostic.v2": {
           "timestamp": "1970-01-01T00:00:00Z",
-          "codes": [
-            "parser.expected_token",
-            "parser.recovery.pending"
-          ]
-        },
-        "effects": {
-          "required_capabilities": [],
-          "actual_capabilities": []
+          "codes": [ "parser.expected_token", "parser.recovery.pending" ]
         }
       },
       "audit_metadata": {
@@ -68,31 +58,8 @@
             "workspace": ".",
             "sequence": 0
           },
-          "items": [
-            {
-              "kind": "input",
-              "path": "parser-example.reml"
-            }
-          ]
-        },
-        "effect.required_capabilities": [],
-        "effect.actual_capabilities": [],
-        "parser": {
-          "core": {
-            "rule": {
-              "namespace": "menhir",
-              "name": "compilation_unit",
-              "origin": "static",
-              "fingerprint": "859967339",
-              "ordinal": 0
-            }
-          }
-        },
-        "namespace": "menhir",
-        "name": "compilation_unit",
-        "origin": "static",
-        "fingerprint": "859967339",
-        "ordinal": 0
+          "items": [ { "kind": "input", "path": "parser-example.reml" } ]
+        }
       },
       "audit": {
         "metadata": {
@@ -104,12 +71,7 @@
               "workspace": ".",
               "sequence": 0
             },
-            "items": [
-              {
-                "kind": "input",
-                "path": "parser-example.reml"
-              }
-            ]
+            "items": [ { "kind": "input", "path": "parser-example.reml" } ]
           },
           "audit.source.workspace": ".",
           "audit.sequence": 0,
@@ -127,25 +89,7 @@
           "parser.expected.alternatives": 3,
           "parse.input_name": "parser-example.reml",
           "audit.timestamp": "1970-01-01T00:00:00Z",
-          "schema.version": "1.1",
-          "effect.required_capabilities": [],
-          "effect.actual_capabilities": [],
-          "parser": {
-            "core": {
-              "rule": {
-                "namespace": "menhir",
-                "name": "compilation_unit",
-                "origin": "static",
-                "fingerprint": "859967339",
-                "ordinal": 0
-              }
-            }
-          },
-          "namespace": "menhir",
-          "name": "compilation_unit",
-          "origin": "static",
-          "fingerprint": "859967339",
-          "ordinal": 0
+          "schema.version": "1.1"
         },
         "audit_id": "cli/19700101T000000Z#0",
         "change_set": {
@@ -156,35 +100,17 @@
             "workspace": ".",
             "sequence": 0
           },
-          "items": [
-            {
-              "kind": "input",
-              "path": "parser-example.reml"
-            }
-          ]
+          "items": [ { "kind": "input", "path": "parser-example.reml" } ]
         }
       },
       "expected": {
-        "locale_args": [
-          "else",
-          ")",
-          ","
-        ],
+        "locale_args": [ "else", ")", "," ],
         "humanized": "ここで`else`、`)` または `,`のいずれかが必要です",
         "message_key": "parse.expected",
         "alternatives": [
-          {
-            "kind": "keyword",
-            "value": "else"
-          },
-          {
-            "kind": "token",
-            "value": ")"
-          },
-          {
-            "kind": "token",
-            "value": ","
-          }
+          { "kind": "keyword", "value": "else" },
+          { "kind": "token", "value": ")" },
+          { "kind": "token", "value": "," }
         ]
       }
     }

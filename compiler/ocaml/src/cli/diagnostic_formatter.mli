@@ -6,7 +6,7 @@
 
 val format_snippet :
   source:string ->
-  span:Diagnostic.span ->
+  span:Diagnostic_serialization.normalized_span ->
   color_mode:Options.color_mode ->
   severity:Diagnostic.severity ->
   string
@@ -28,9 +28,9 @@ val format_snippet :
  * @return フォーマットされたスニペット文字列
  *)
 
-val format_diagnostic :
+val format_serialized :
   source:string option ->
-  diag:Diagnostic.t ->
+  diag:Diagnostic_serialization.normalized_diagnostic ->
   color_mode:Options.color_mode ->
   include_snippet:bool ->
   string
@@ -44,6 +44,20 @@ val format_diagnostic :
  * @param color_mode カラーモード
  * @return フォーマットされた診断文字列
  *)
+
+val format_serialized_many :
+  source:string option ->
+  diags:Diagnostic_serialization.normalized_diagnostic list ->
+  color_mode:Options.color_mode ->
+  include_snippet:bool ->
+  string
+
+val format_diagnostic :
+  source:string option ->
+  diag:Diagnostic.t ->
+  color_mode:Options.color_mode ->
+  include_snippet:bool ->
+  string
 
 val format_diagnostics :
   source:string option ->

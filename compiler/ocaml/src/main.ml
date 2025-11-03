@@ -407,14 +407,15 @@ let resolve_color_mode opts =
  *)
 let print_diagnostic opts source diag =
   let color_mode = resolve_color_mode opts in
+  let serialized = Diagnostic_serialization.of_diagnostic diag in
   let output =
     match opts.Cli.Options.format with
     | Cli.Options.Text ->
-        Cli.Diagnostic_formatter.format_diagnostic ~source ~diag ~color_mode
-          ~include_snippet:opts.Cli.Options.include_snippet
+        Cli.Diagnostic_formatter.format_serialized ~source ~diag:serialized
+          ~color_mode ~include_snippet:opts.Cli.Options.include_snippet
     | Cli.Options.Json ->
-        Cli.Json_formatter.diagnostic_to_json ~mode:opts.Cli.Options.json_mode
-          diag
+        Cli.Json_formatter.diagnostic_to_json_serialized
+          ~mode:opts.Cli.Options.json_mode serialized
   in
   Printf.eprintf "%s\n" output
 

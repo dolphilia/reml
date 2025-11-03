@@ -24,10 +24,6 @@
           "timestamp": "1970-01-01T00:00:00Z",
           "codes": [ "ffi.contract.unsupported_abi" ]
         },
-        "effects": {
-          "required_capabilities": [],
-          "actual_capabilities": []
-        },
         "bridge": {
           "status": "error",
           "return": {
@@ -120,9 +116,7 @@
         },
         "schema.version": "1.1",
         "audit.timestamp": "1970-01-01T00:00:00Z",
-        "schema": { "version": "1.1" },
-        "effect.required_capabilities": [],
-        "effect.actual_capabilities": []
+        "schema": { "version": "1.1" }
       },
       "audit": {
         "metadata": {
@@ -195,9 +189,7 @@
           "event.domain": "type",
           "event.kind": "ffi.contract.unsupported_abi",
           "audit.timestamp": "1970-01-01T00:00:00Z",
-          "schema.version": "1.1",
-          "effect.required_capabilities": [],
-          "effect.actual_capabilities": []
+          "schema.version": "1.1"
         },
         "audit_id": "cli/19700101T000000Z#0",
         "change_set": {

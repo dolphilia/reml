@@ -86,7 +86,7 @@
 - `--format text --no-snippet` を追加し、CI 向けログを簡略化。
 - テキストゴールデン (`compiler/ocaml/tests/golden/diagnostics/*.golden`) を更新し、差分は `reports/diagnostic-format-regression.md` に記録。
 
-- **完了状況 (2025-11-08)**: `SerializedDiagnostic` ベースの CLI 出力統合方針を `docs/spec/0-0-overview.md` と `docs/guides/ai-integration.md` のハイライト／ワークフロー節へ追記し、`--format text` / `--format json` と `--format text --no-snippet` の利用手順を共有した。CLI 実装のフォーマット切替と JSON/TEXT ゴールデン更新は未着手のまま Phase 2-8 での差分レビュー対象として維持し、本節に後続タスクとして明記した。
+- **完了状況 (2025-11-08)**: `Diagnostic_formatter` / `Json_formatter` / `main.ml` を `Diagnostic_serialization` 正規化経由に切り替え、`--format`／`--json-mode` の分岐が単一の `SerializedDiagnostic` を共有するよう統合した。テキスト／JSON ゴールデン（`compiler/ocaml/tests/golden/**`）を最新出力で更新し、`dune runtest` による回帰確認を完了。空配列の省略ルールは `reports/diagnostic-format-regression.md` に追記済み。
 
 **成果物**: CLI オプション整理、テキストフォーマッタ更新、ドキュメント追記
 

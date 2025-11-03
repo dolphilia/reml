@@ -19,10 +19,6 @@
         "diagnostic.v2": {
           "timestamp": "1970-01-01T00:00:00Z",
           "codes": [ "demo.info.sample" ]
-        },
-        "effects": {
-          "required_capabilities": [],
-          "actual_capabilities": []
         }
       },
       "audit_metadata": {
@@ -46,9 +42,7 @@
             "sequence": 3
           },
           "items": [ { "kind": "input", "path": "demo.reml" } ]
-        },
-        "effect.required_capabilities": [],
-        "effect.actual_capabilities": []
+        }
       },
       "audit": {
         "metadata": {
@@ -72,9 +66,7 @@
           "event.kind": "demo.info.sample",
           "demo.kind": "info",
           "audit.timestamp": "1970-01-01T00:00:00Z",
-          "schema.version": "1.1",
-          "effect.required_capabilities": [],
-          "effect.actual_capabilities": []
+          "schema.version": "1.1"
         },
         "audit_id": "cli/19700101T000000Z#3",
         "change_set": {
@@ -117,10 +109,6 @@
             }
           ],
           "codes": [ "demo.hint.sample" ]
-        },
-        "effects": {
-          "required_capabilities": [],
-          "actual_capabilities": []
         }
       },
       "audit_metadata": {
@@ -144,9 +132,7 @@
             "sequence": 4
           },
           "items": [ { "kind": "input", "path": "demo.reml" } ]
-        },
-        "effect.required_capabilities": [],
-        "effect.actual_capabilities": []
+        }
       },
       "audit": {
         "metadata": {
@@ -170,9 +156,7 @@
           "event.kind": "demo.hint.sample",
           "demo.kind": "hint",
           "audit.timestamp": "1970-01-01T00:00:00Z",
-          "schema.version": "1.1",
-          "effect.required_capabilities": [],
-          "effect.actual_capabilities": []
+          "schema.version": "1.1"
         },
         "audit_id": "cli/19700101T000000Z#4",
         "change_set": {

@@ -24,8 +24,6 @@
           "codes": [ "effects.contract.residual_leak" ]
         },
         "effects": {
-          "required_capabilities": [ "core.runtime" ],
-          "actual_capabilities": [ "core.runtime" ],
           "stage": { "required": "stable", "actual": "stable" },
           "residual": { "missing": [ "panic" ], "leaked_from": "fn demo" },
           "declared": [ "io" ],
@@ -83,8 +81,6 @@
           { "capability": "core.runtime", "stage": "stable" }
         ],
         "effect.capabilities": [ "core.runtime" ],
-        "effect.required_capabilities": [ "core.runtime" ],
-        "effect.actual_capabilities": [ "core.runtime" ],
         "stage_trace": [
           { "source": "typer", "stage": "stable" },
           { "source": "runtime", "stage": "stable" }
@@ -131,8 +127,6 @@
             { "source": "runtime", "stage": "stable" }
           ],
           "effect.capabilities": [ "core.runtime" ],
-          "effect.required_capabilities": [ "core.runtime" ],
-          "effect.actual_capabilities": [ "core.runtime" ],
           "effect.stage.capabilities": [
             { "capability": "core.runtime", "stage": "stable" }
           ],

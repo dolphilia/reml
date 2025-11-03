@@ -4,6 +4,18 @@
  * LSP（Language Server Protocol）互換の JSON 形式で出力する機能を提供する。
  *)
 
+val diagnostics_to_json_serialized :
+  mode:Options.json_mode ->
+  ?lsp_compatible:bool ->
+  Diagnostic_serialization.normalized_diagnostic list ->
+  string
+
+val diagnostic_to_json_serialized :
+  mode:Options.json_mode ->
+  ?lsp_compatible:bool ->
+  Diagnostic_serialization.normalized_diagnostic ->
+  string
+
 val diagnostics_to_json :
   mode:Options.json_mode ->
   ?lsp_compatible:bool ->

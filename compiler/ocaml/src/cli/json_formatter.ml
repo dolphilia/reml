@@ -117,8 +117,7 @@ let diagnostic_data_block (diag : normalized_diagnostic) =
   let base = ("timestamp", `String diag.timestamp) :: base in
   `Assoc (List.rev base)
 
-let diagnostic_to_lsp_json (diagnostic : Diagnostic.t) =
-  let normalized = of_diagnostic diagnostic in
+let diagnostic_to_lsp_json (normalized : normalized_diagnostic) =
   let primary = normalized.primary in
   let range = lsp_range primary in
   let severity = severity_level_of_severity normalized.severity in
@@ -162,8 +161,7 @@ let diagnostic_to_lsp_json (diagnostic : Diagnostic.t) =
   in
   `Assoc (List.rev base)
 
-let diagnostic_to_reml_json (diagnostic : Diagnostic.t) =
-  let normalized = of_diagnostic diagnostic in
+let diagnostic_to_reml_json (normalized : normalized_diagnostic) =
   let fields = ref [] in
   let push key value = fields := (key, value) :: !fields in
   push "severity" (`String (severity_to_string normalized.severity));
@@ -211,8 +209,8 @@ let encode_diagnostics ~lsp_compatible diagnostics =
   else
     List.map diagnostic_to_reml_json diagnostics
 
-let diagnostics_to_json ~mode ?(lsp_compatible = false)
-    (diagnostics : Diagnostic.t list) : string =
+let diagnostics_to_json_serialized ~mode ?(lsp_compatible = false)
+    (diagnostics : normalized_diagnostic list) : string =
   let json_list = encode_diagnostics ~lsp_compatible diagnostics in
   match mode with
   | Options.JsonPretty ->
@@ -222,10 +220,19 @@ let diagnostics_to_json ~mode ?(lsp_compatible = false)
   | Options.JsonLines ->
       json_list |> List.map Json.to_string |> String.concat "\n"
 
-let diagnostic_to_json ~mode ?(lsp_compatible = false)
-    (diagnostic : Diagnostic.t) : string =
+let diagnostic_to_json_serialized ~mode ?(lsp_compatible = false)
+    (diagnostic : normalized_diagnostic) : string =
   match mode with
   | Options.JsonLines ->
       encode_diagnostics ~lsp_compatible [ diagnostic ]
       |> List.map Json.to_string |> String.concat "\n"
-  | _ -> diagnostics_to_json ~mode ~lsp_compatible [ diagnostic ]
+  | _ -> diagnostics_to_json_serialized ~mode ~lsp_compatible [ diagnostic ]
+
+let diagnostics_to_json ~mode ?(lsp_compatible = false) diagnostics =
+  diagnostics
+  |> List.map of_diagnostic
+  |> diagnostics_to_json_serialized ~mode ~lsp_compatible
+
+let diagnostic_to_json ~mode ?(lsp_compatible = false) diagnostic =
+  let serialized = of_diagnostic diagnostic in
+  diagnostic_to_json_serialized ~mode ~lsp_compatible serialized
