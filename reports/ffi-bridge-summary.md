@@ -4,11 +4,11 @@
 
 ## 1. 集計メタデータ
 
-- 更新日: 2025-10-24
+- 更新日: 2025-11-06
 - 更新者: Codex (AI エージェント)
-- 対象コミット: 修正後の最新状態（test_ffi_lowering 修正完了）
+- 対象コミット: 監査ゲート `--platform windows-msvc|macos-arm64` 導入後の最新状態
 - 参照計画: docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md
-- **状態**: ランタイムヘルパと `llvm_gen/codegen.ml` の最終調整を実施中。Linux/Windows/macOS で `--emit-ir` / `--emit-audit` を再実行し、成果物を `tmp/cli-callconv-out/<platform>/` に集約。2025-10-24 に stub エントリブロックの無終端問題を解消し、`--verify-ir` 付きで 3 ターゲットすべての IR 検証が通過。macOS arm64 では `tmp/cli-callconv-unsupported.reml` を追加実行し、`bridge.status=error` を含む失敗監査ログを取得。
+- **状態**: Windows/macOS CI に `python3 tooling/ci/collect-iterator-audit-metrics.py --platform <target> --require-success` を組み込み、`ffi_bridge.audit_pass_rate` / `iterator.stage.audit_pass_rate` が 1.0 未満の場合はジョブが失敗する構成へ移行。Linux/Windows/macOS で `--emit-ir` / `--emit-audit` を再実行し、`reports/iterator-stage-summary-*.md` と `reports/audit/index.json` を最新化。`macos-arm64` では失敗ケース (`cli-callconv-unsupported.reml`) を含む監査ログを継続収集し、`bridge.platform` の欠落検知を CI で確認した。
 - 関連サマリー: `reports/ffi-linux-summary.md`, `reports/ffi-windows-summary.md`, `reports/ffi-macos-summary.md`
 - スキーマバージョン: 2.0.0-draft
 - V2 検証 (audit/timestamp): ✅ audit/timestamp
@@ -42,6 +42,7 @@
   - 失敗ケースが `collect-iterator-audit-metrics.py` の `bridge.status` 判定を経て `ffi_bridge.audit_pass_rate` に反映（`tmp/cli-callconv-out/macos/cli-callconv-unsupported.diagnostics.json` で pass_rate=0.0 を取得）。
   - `cli.audit_id` / `cli.change_set` / `schema.version` / `bridge.audit_pass_rate` が監査ログ（`audit.metadata`）と診断 JSON 双方に含まれることを `tooling/ci/collect-iterator-audit-metrics.py --source … --audit-source …` で確認。
   - `extensions.bridge.*`（`platform`, `abi`, `ownership`, `return.*`, `audit_pass_rate`）の欠落が無いことを `tooling/ci/sync-iterator-audit.sh` サマリと `failures[].missing` でチェック。
+  - Windows/macOS CI で `tooling/ci/collect-iterator-audit-metrics.py --platform windows-msvc|macos-arm64 --require-success` を実行し、pass_rate が 1.0 未満の場合に `bootstrap-windows.yml#audit`・`bootstrap-macos.yml#iterator-audit` が失敗することを確認（サマリー: `reports/iterator-stage-summary-windows.md`, `reports/iterator-stage-summary-macos.md`）。
   - CLI `--emit-audit` ゴールデンに Borrowed/Transferred 返り値ケースを追加済みで、`dune runtest` を再固定。
 
 ### 3.2 未完了の確認事項
@@ -143,7 +144,7 @@ $ _build/default/src/main.exe ../../tmp/cli-callconv-macos.reml \
 - [x] Borrowed/Transferred の返り値処理（`dec_ref`、`wrap_foreign_ptr` 等）を実装し、メモリ所有権の監査要件を満たす
 - [x] CLI (`remlc --emit-ir`) を Linux/Windows/macOS 向けに再実行し、`tmp/cli-callconv-out/<platform>/` に `reml.bridge.stubs`／`bridge.*` メタデータを含む IR・監査ログを収集（`--verify-ir` 付きでも通過）。
 - [x] `tooling/ci/sync-iterator-audit.sh` / `collect-iterator-audit-metrics.py` を拡張して `ffi_bridge.audit_pass_rate` を CI ゲートへ追加（Darwin `macos-arm64` pass_rate とプラットフォーム別統計を検証）
-- [ ] Linux/Windows/macOS の監査成果物で `cli.audit_id` / `cli.change_set` / `schema.version` / `bridge.audit_pass_rate` / `extensions.bridge.*` が欠落していないことを確認し、`collect-iterator-audit-metrics.py` の `failures[].missing` および `verify-audit-metadata.py --index reports/audit/index.json` のログが空であることを添付
+- [x] Linux/Windows/macOS の監査成果物で `cli.audit_id` / `cli.change_set` / `schema.version` / `bridge.audit_pass_rate` / `extensions.bridge.*` が欠落していないことを確認（2025-11-06）。`collect-iterator-audit-metrics.py --platform windows-msvc|macos-arm64 --require-success` と `tooling/ci/verify-audit-metadata.py --index reports/audit/index.json --strict` を CI で実行し、`failures[].missing` / `schema` エラーが空であるログを `reports/iterator-stage-summary-*.md` に添付。
 - [x] **`reports/ffi-macos-summary.md` を実測ログで更新**（2025-10-20完了）
 - [ ] `reports/ffi-linux-summary.md`・`reports/ffi-windows-summary.md` を実測ログで更新し、監査ゴールデン (`compiler/ocaml/tests/golden/audit/ffi-bridge-*.jsonl.golden`) を確定
 - [ ] 仕様書 `docs/spec/3-9`, `docs/spec/3-6` とガイド `docs/guides/runtime-bridges.md` を stub メタデータ/計測 API 情報で更新し、`docs/notes/licensing-todo.md` の TODO 消化を記録

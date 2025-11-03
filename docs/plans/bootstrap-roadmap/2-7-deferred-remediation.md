@@ -70,6 +70,8 @@
 - `collect-iterator-audit-metrics.py` で `bridge.platform = macos-arm64` の pass_rate 集計を追加し、`ffi_bridge.audit_pass_rate` に反映。
 - `bootstrap-macos.yml` に監査ゲートを追加し、成果物 (audit JSON, summary) をアーティファクト化。
 
+- **完了状況 (2025-11-06)**: `tooling/ci/collect-iterator-audit-metrics.py` に `--platform` フィルタを実装し、Windows (`windows-msvc`) / macOS (`macos-arm64`) / Linux それぞれで `ffi_bridge.audit_pass_rate` と `iterator.stage.audit_pass_rate` を個別にゲートできるようにした。`bootstrap-windows.yml`・`bootstrap-macos.yml` へ同オプションを適用したことで、Windows CI は `tooling/ci/iterator-audit-metrics.json` が `1.0` 未満の場合に失敗し、macOS CI も `iterator-audit` ジョブで `macos-arm64` の pass_rate を強制する。監査サマリ (`reports/iterator-stage-summary-*.md`) と `reports/ffi-bridge-summary.md` を更新し、ID 22/23 の技術的負債は解消済みとして記録した。
+
 **成果物**: Windows/macOS CI 監査ゲート、更新済みレポート、技術的負債リスト反映
 
 ### 2. CLI 出力統合とテキストフォーマット刷新（35週目前半）

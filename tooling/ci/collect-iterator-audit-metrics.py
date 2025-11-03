@@ -10,6 +10,14 @@ Example:
     ./tooling/ci/collect-iterator-audit-metrics.py \
         --source compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden \
         --output tooling/ci/iterator-audit-metrics.json
+
+    # Windows 向けに bridge.platform をフィルタして収集
+    ./tooling/ci/collect-iterator-audit-metrics.py \
+        --source compiler/ocaml/tests/golden/diagnostics/ffi/unsupported-abi.json.golden \
+        --audit-source compiler/ocaml/tests/golden/audit/cli-ffi-bridge-windows.jsonl.golden \
+        --platform windows-msvc \
+        --output tooling/ci/iterator-audit-metrics-windows.json \
+        --require-success
 """
 
 from __future__ import annotations
@@ -381,6 +389,19 @@ def _normalize_domain(value: Optional[object]) -> Optional[str]:
     if isinstance(value, str):
         lowered = value.strip().lower()
         return lowered if lowered else None
+    return None
+
+
+def _normalize_platform(value: Optional[object]) -> Optional[str]:
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if not lowered:
+            return None
+        if lowered in {"windows-msvc-x64", "x86_64-pc-windows-msvc", "win64"}:
+            return "windows-msvc"
+        if lowered in {"macos-arm64", "arm64-apple-darwin", "darwin-arm64"}:
+            return "macos-arm64"
+        return lowered
     return None
 
 
@@ -2471,7 +2492,9 @@ def collect_plugin_bundle_metrics(paths: Sequence[Path]) -> Optional[Dict[str, A
 
 
 def collect_bridge_metrics(
-    paths: List[Path], audit_paths: List[Path]
+    paths: List[Path],
+    audit_paths: List[Path],
+    platform_filters: Optional[Set[str]] = None,
 ) -> Dict:
     total = 0
     passed = 0
@@ -2481,6 +2504,15 @@ def collect_bridge_metrics(
     schema_versions: Set[str] = set()
     status_success = 0
     status_failure = 0
+    normalized_filters: Set[str] = set()
+    platform_hits: Dict[str, bool] = {}
+
+    if platform_filters:
+        for item in platform_filters:
+            normalized = _normalize_platform(item)
+            if normalized:
+                normalized_filters.add(normalized)
+        platform_hits = {key: False for key in normalized_filters}
 
     def _tally_status(value: Optional[object]) -> None:
         nonlocal status_success, status_failure
@@ -2516,16 +2548,23 @@ def collect_bridge_metrics(
             platform_value = extract_bridge_field(
                 audit_dict, extensions_dict, "platform"
             )
+            platform_normalized = _normalize_platform(platform_value)
+            if normalized_filters and platform_normalized not in normalized_filters:
+                continue
+            if platform_normalized in platform_hits:
+                platform_hits[platform_normalized] = True
             _tally_status(status_value)
 
-            platform_key = (
-                str(platform_value)
-                if isinstance(platform_value, str) and platform_value
-                else "<unknown>"
-            )
+            if platform_normalized:
+                platform_key = platform_normalized
+            elif isinstance(platform_value, str) and platform_value.strip():
+                platform_key = platform_value.strip()
+            else:
+                platform_key = "<unknown>"
             platform_record = platform_summary.setdefault(
                 platform_key, {"total": 0, "ok": 0, "failed": 0}
             )
+            total += 1
             platform_record["total"] += 1
 
             audit_missing = check_bridge_audit_fields(audit_dict)
@@ -2553,10 +2592,9 @@ def collect_bridge_metrics(
                         "missing": sorted(set(issues)),
                         "status": status_value,
                         "platform": platform_value,
+                        "platform_normalized": platform_normalized,
                     }
                 )
-
-    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
 
     for path in audit_paths:
         audit_sources.append(str(path))
@@ -2576,6 +2614,7 @@ def collect_bridge_metrics(
                     "missing": ["audit_entries"],
                     "status": None,
                     "platform": None,
+                    "platform_normalized": None,
                 }
             )
             continue
@@ -2610,13 +2649,19 @@ def collect_bridge_metrics(
             platform_value = extract_bridge_field(
                 audit_dict, extensions_dict, "platform"
             )
+            platform_normalized = _normalize_platform(platform_value)
+            if normalized_filters and platform_normalized not in normalized_filters:
+                continue
+            if platform_normalized in platform_hits:
+                platform_hits[platform_normalized] = True
             _tally_status(status_value)
 
-            platform_key = (
-                str(platform_value)
-                if isinstance(platform_value, str) and platform_value
-                else "<unknown>"
-            )
+            if platform_normalized:
+                platform_key = platform_normalized
+            elif isinstance(platform_value, str) and platform_value.strip():
+                platform_key = platform_value.strip()
+            else:
+                platform_key = "<unknown>"
             platform_record = platform_summary.setdefault(
                 platform_key, {"total": 0, "ok": 0, "failed": 0}
             )
@@ -2638,6 +2683,7 @@ def collect_bridge_metrics(
                         "missing": sorted(set(issues)),
                         "status": status_value,
                         "platform": platform_value,
+                        "platform_normalized": platform_normalized,
                     }
                 )
 
@@ -2656,8 +2702,33 @@ def collect_bridge_metrics(
                     "missing": ["bridge"],
                     "status": None,
                     "platform": None,
+                    "platform_normalized": None,
                 }
             )
+
+    if normalized_filters:
+        for platform in normalized_filters:
+            platform_summary.setdefault(platform, {"total": 0, "ok": 0, "failed": 0})
+            if not platform_hits.get(platform, False):
+                total += 1
+                record = platform_summary.setdefault(
+                    platform, {"total": 0, "ok": 0, "failed": 0}
+                )
+                record["total"] += 1
+                record["failed"] += 1
+                failures.append(
+                    {
+                        "file": None,
+                        "index": None,
+                        "code": "ffi.audit.platform_missing",
+                        "missing": ["platform"],
+                        "status": None,
+                        "platform": platform,
+                        "platform_normalized": platform,
+                    }
+                )
+
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
 
     return {
         "metric": "ffi_bridge.audit_pass_rate",
@@ -2672,6 +2743,7 @@ def collect_bridge_metrics(
         "failures": failures,
         "platform_summary": platform_summary,
         "schema_versions": sorted(schema_versions),
+        "platform_filter": sorted(normalized_filters) if normalized_filters else None,
         "status_summary": {
             "success": status_success,
             "failure": status_failure,
@@ -2951,6 +3023,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Collect metrics for a specific section (default: all).",
     )
     parser.add_argument(
+        "--platform",
+        action="append",
+        dest="platforms",
+        help="bridge.platform を指定して各種メトリクスをフィルタ（繰り返し指定可）。",
+    )
+    parser.add_argument(
         "--summary",
         type=Path,
         help="Generate Markdown summary from the specified audit index JSON.",
@@ -3077,6 +3155,19 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(summary_text, end="")
         return 0
 
+    platform_filters: Set[str] = set()
+    if args.platforms:
+        for item in args.platforms:
+            if item is None:
+                continue
+            normalized = _normalize_platform(item)
+            if normalized:
+                platform_filters.add(normalized)
+            elif isinstance(item, str):
+                stripped = item.strip().lower()
+                if stripped:
+                    platform_filters.add(stripped)
+
     sources: List[Path]
     if args.sources:
         sources = [Path(src) for src in args.sources]
@@ -3199,7 +3290,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if "typeclass" in sections:
         typeclass_metrics = collect_typeclass_metrics(sources, audit_paths)
     if "ffi" in sections:
-        bridge_metrics = collect_bridge_metrics(sources, audit_paths)
+        bridge_metrics = collect_bridge_metrics(sources, audit_paths, platform_filters)
     if "review" in sections:
         review_metrics = collect_review_metrics(
             review_diff_paths, review_coverage_paths, review_dashboard_paths
@@ -3247,6 +3338,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         combined["extra_metrics"] = append_metrics
     if append_sources:
         combined["extra_metrics_sources"] = append_sources
+    if platform_filters:
+        combined["platform_filters"] = sorted(platform_filters)
 
     primary_metrics: Optional[Dict[str, Any]] = iterator_metrics
     if primary_metrics is None and metrics_list:

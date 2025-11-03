@@ -99,6 +99,7 @@ jobs:
             --source compiler/ocaml/tests/golden/typeclass_iterator_stage_mismatch.json.golden \
             --source compiler/ocaml/tests/golden/diagnostics/ffi/unsupported-abi.json.golden \
             --audit-source compiler/ocaml/tests/golden/audit/cli-ffi-bridge-windows.jsonl.golden \
+            --platform windows-msvc \
             --output tooling/ci/iterator-audit-metrics.json \
             --require-success
 
@@ -309,6 +310,7 @@ jobs:
           python3 tooling/ci/collect-iterator-audit-metrics.py \
             --source tmp/audit-matrix/${AUDIT_PLATFORM}/diagnostics.json \
             --audit-source "$AUDIT_JSON" \
+            --platform windows-msvc \
             --output reports/audit/summary.json \
             --ci-duration-seconds "${CI_DURATION:-0}" \
             --require-success

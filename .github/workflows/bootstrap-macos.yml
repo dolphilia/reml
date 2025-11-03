@@ -366,6 +366,7 @@ jobs:
           python3 tooling/ci/collect-iterator-audit-metrics.py \
             --source tmp/audit-matrix/${AUDIT_PLATFORM}/diagnostics.json \
             --audit-source "$AUDIT_JSON" \
+            --platform macos-arm64 \
             --output reports/audit/summary.json \
             --ci-duration-seconds "${CI_DURATION:-0}" \
             --append-from "reports/audit/macos/${GITHUB_RUN_ID}/ci-verify-llvm-link.json" \
@@ -795,6 +796,7 @@ jobs:
             --source tmp/cli-callconv-out/linux/cli-callconv-unsupported.diagnostics.json \
             --audit-source tooling/ci/ffi-audit/macos/ffi_dispatch_async.audit.jsonl \
             --audit-source tooling/ci/ffi-audit/macos/ffi_malloc_arm64.audit.jsonl \
+            --platform macos-arm64 \
             --output tooling/ci/iterator-audit-metrics.json \
             --require-success
 

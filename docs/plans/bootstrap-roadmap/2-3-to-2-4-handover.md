@@ -19,8 +19,8 @@
 ## 3. 未完了タスク（Phase 2-4 へ移行）
 | ID | 項目 | 内容 | 追跡先 |
 |----|------|------|--------|
-| 22 | Windows Stage 自動検証不足 | GitHub Actions (windows-latest) 上で `tooling/ci/sync-iterator-audit.sh` を実行し、Stage override と `bridge.platform` を検証する。 | `compiler/ocaml/docs/technical-debt.md` |
-| 23 | macOS FFI サンプル自動検証不足 | `ffi_dispatch_async.reml` / `ffi_malloc_arm64.reml` のビルド・実行と `ffi_bridge.audit_pass_rate` 反映を自動化。 | 同上 |
+| 22 | Windows Stage 自動検証不足 | ✅ (2025-11-06) `collect-iterator-audit-metrics.py --platform windows-msvc --require-success` を `bootstrap-windows.yml#audit` に導入し、Stage override / `bridge.platform` 不整合時に CI が失敗する構成へ切替。 | `compiler/ocaml/docs/technical-debt.md` |
+| 23 | macOS FFI サンプル自動検証不足 | ✅ (2025-11-06) `ffi_dispatch_async.reml` / `ffi_malloc_arm64.reml` の監査ログを CI で生成し、`bootstrap-macos.yml#iterator-audit` で `collect-iterator-audit-metrics.py --platform macos-arm64 --require-success` を実行。pass_rate 低下時はジョブが失敗する。 | 同上 |
 | - | `--verify-ir` 再有効化 | stub 無終端ブロック修正後、CLI 既定で `--verify-ir` を実施できるようにする。 | `docs/plans/bootstrap-roadmap/2-3-completion-report.md` §5 |
 | - | CI ゲート整備 | Linux/Windows/macOS ワークフローに `ffi_bridge.audit_pass_rate` をゲート条件として組み込み。 | 同上 |
 

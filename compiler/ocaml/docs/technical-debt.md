@@ -234,6 +234,7 @@ LLVM 18.1.8のソースビルドを試行した結果、以下の結論に至っ
 - `.github/workflows/bootstrap-windows.yml` に Bash ベースの監査ジョブを追加し、`windows-latest` 上で `tooling/ci/collect-iterator-audit-metrics.py`（`--audit-source cli-ffi-bridge-windows.jsonl.golden` を指定）と `tooling/ci/sync-iterator-audit.sh` を実行。`bridge.platform` / `iterator.stage.audit_pass_rate` を CI で検証するようにした。
 - `collect-iterator-audit-metrics.py` を拡張し、監査ログ（JSON/JSONL）を `--audit-source` で取り込み可能にしたことで、Windows 成功ログが欠落した場合に `ffi_bridge.audit_pass_rate` が低下し CI が失敗する。
 - 生成物（`reports/iterator-stage-summary-windows.md`, `tooling/ci/iterator-audit-metrics.json`）をアーティファクト化し、レビュー時に Windows Stage override と `bridge.platform` の整合を確認できるようにした。
+- **追記（2025-11-06）**: `tooling/ci/collect-iterator-audit-metrics.py --platform windows-msvc --require-success` を導入し、`bootstrap-windows.yml#audit` で Stage/FFI 監査が 1.0 未満の場合に自動で失敗する構成へ更新。生成サマリ (`reports/iterator-stage-summary-windows.md`) の `platform_summary.windows-msvc` を 1.0 で固定し、ID22 の検証ログを `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に反映。
 
 #### 参照
 - `.github/workflows/bootstrap-windows.yml`
@@ -252,6 +253,7 @@ LLVM 18.1.8のソースビルドを試行した結果、以下の結論に至っ
 - `.github/workflows/bootstrap-macos.yml` の `iterator-audit` ジョブで上記サンプルを `remlc --emit-audit` 付きで実行し、`tooling/ci/ffi-audit/macos/*.audit.jsonl` を生成。`collect-iterator-audit-metrics.py` の `--audit-source` で投入しない場合は `ffi_bridge.audit_pass_rate` が 1.0 にならず CI が失敗する。
 - `tooling/ci/sync-iterator-audit.sh` に `--macos-ffi-samples` オプションを追加し、macOS 成功ログを Markdown サマリーに表示。`reports/iterator-stage-summary.md` で macOS FFI サンプルの検証結果を確認できるようにした。
 - `reports/ffi-bridge-summary.md` / `reports/ffi-macos-summary.md` を更新し、macOS 固有サンプルが自動実行される旨と生成ログの保存先を明記。
+- **追記（2025-11-06）**: `collect-iterator-audit-metrics.py --platform macos-arm64 --require-success` を `bootstrap-macos.yml`（`audit-matrix` / `iterator-audit` ジョブ）へ適用し、macOS FFI 監査の欠落時に CI が失敗することを確認。`reports/iterator-stage-summary-macos.md` に `platform_summary.macos-arm64` の 1.0 維持ログを追加し、ID23 をクローズ済みとして `docs/plans/bootstrap-roadmap/2-3-to-2-4-handover.md` に同期。
 
 #### 参照
 - `examples/ffi/macos/ffi_dispatch_async.reml`
