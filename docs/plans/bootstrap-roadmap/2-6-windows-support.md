@@ -126,6 +126,7 @@
 
 ### 2. ABI 差分の調査と整理（18-19週目）
 **担当領域**: ABI 互換性調査
+**ステータス**: ✅ 完了 (2025-11-09)
 
 2.1. **Calling Convention の調査**
 - System V AMD64 ABI (Linux) と x64 calling convention (Windows) の差分
@@ -145,7 +146,15 @@
 - `extern "C"` の挙動差異
 - Phase 2 FFI タスクとの連携
 
-**成果物**: ABI 差分レポート、`docs/notes/llvm-spec-status-survey.md` への追記
+- 2025-11-09 調査サマリ:
+  - `docs/notes/llvm-spec-status-survey.md` §2.2.2a を拡張し、呼出規約／構造体レイアウト／名前マングリング／DLL 公開手順の比較表を追加。
+  - Win64 Shadow Space と `byval`/`sret` 属性の適用条件を Reml 実装メモへ記録し、`examples/ffi/windows/struct_passing.reml` の期待値と照合。
+  - `docs/guides/reml-ffi-handbook.md` の Win64 章更新 TODO を追記（ステップ3でのガイド同期タスク）。
+- フォローアップ:
+  - LLVM IR 拡張フェーズで `win64cc` 属性と Shadow Space 予約を実装・検証（ステップ3へ引き継ぎ）。
+  - GitHub Actions `windows-latest` ジョブへ ABI 定点テストを追加し、Shadow Space 未確保時の診断を自動化（`docs/guides/ci-strategy.md` 更新タスク）。
+
+**成果物**: ABI 差分レポート（`docs/notes/llvm-spec-status-survey.md` §2.2.2a 更新）、関連ガイド更新タスク
 
 ### 3. LLVM IR 生成の拡張（19-20週目）
 **担当領域**: コード生成
