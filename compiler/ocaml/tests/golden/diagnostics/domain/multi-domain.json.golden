@@ -22,6 +22,10 @@
             "provided": "sha256:deadbeef",
             "status": "invalid"
           }
+        },
+        "effects": {
+          "required_capabilities": [],
+          "actual_capabilities": []
         }
       },
       "audit": {
@@ -29,7 +33,9 @@
           "plugin.bundle_id": "demo.bundle",
           "plugin.signature.status": "invalid",
           "event.domain": "plugin",
-          "event.kind": "plugin.bundle.signature_invalid"
+          "event.kind": "plugin.bundle.signature_invalid",
+          "effect.required_capabilities": [],
+          "effect.actual_capabilities": []
         },
         "audit_id": "cli/19700101T000000Z#0",
         "change_set": null
@@ -38,7 +44,9 @@
         "plugin.bundle_id": "demo.bundle",
         "plugin.signature.status": "invalid",
         "event.domain": "plugin",
-        "event.kind": "plugin.bundle.signature_invalid"
+        "event.kind": "plugin.bundle.signature_invalid",
+        "effect.required_capabilities": [],
+        "effect.actual_capabilities": []
       },
       "timestamp": "1970-01-01T00:00:00Z"
     },
@@ -68,7 +76,9 @@
           "lsp.request": "textDocument/hover",
           "lsp.trace_id": "rpc-001",
           "event.domain": "lsp",
-          "event.kind": "lsp.transport.internal_error"
+          "event.kind": "lsp.transport.internal_error",
+          "effect.required_capabilities": [],
+          "effect.actual_capabilities": []
         },
         "audit_id": "cli/19700101T000000Z#1",
         "change_set": null
@@ -76,7 +86,9 @@
       "audit_metadata": {
         "lsp.session": "local-demo",
         "event.domain": "lsp",
-        "event.kind": "lsp.transport.internal_error"
+        "event.kind": "lsp.transport.internal_error",
+        "effect.required_capabilities": [],
+        "effect.actual_capabilities": []
       },
       "timestamp": "1970-01-01T00:00:00Z"
     },
@@ -99,19 +111,27 @@
         "domain.other": "custom_pipeline",
         "diagnostic.v2": {
           "category": "custom_pipeline"
+        },
+        "effects": {
+          "required_capabilities": [],
+          "actual_capabilities": []
         }
       },
       "audit": {
         "metadata": {
           "event.domain": "other",
-          "event.kind": "demo.custom.category"
+          "event.kind": "demo.custom.category",
+          "effect.required_capabilities": [],
+          "effect.actual_capabilities": []
         },
         "audit_id": "cli/19700101T000000Z#2",
         "change_set": null
       },
       "audit_metadata": {
         "event.domain": "other",
-        "event.kind": "demo.custom.category"
+        "event.kind": "demo.custom.category",
+        "effect.required_capabilities": [],
+        "effect.actual_capabilities": []
       },
       "timestamp": "1970-01-01T00:00:00Z"
     }
