@@ -110,6 +110,13 @@
 - `Diagnostic.Builder.add_note` が生成する `recover` notes をローカライズ可能なテンプレートへ移行し、CLI/LSP のテキスト刷新と連動して多言語化を完了させる。`docs/spec/2-5-error.md`・`docs/spec/3-6-core-diagnostics-audit.md` の脚注と整合させる。
 - ストリーミング Pending → resume 循環で FixIt が重複発火しないことを監査ログ (`StreamOutcome.Pending.extensions.recover`) と `collect-iterator-audit-metrics.py` の新指標で確認する。必要に応じて CI に検証ステップを追加する。
 
+- **進捗記録 (2025-11-05)**:
+  - `tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-effects-sample.json` と `diagnostic-v2-ffi-sample.json`（Windows Stage ミスマッチ）および `diagnostic-v2-ffi-macos-sample.json` を確認し、効果・Windows/macOS 向けのフィクスチャカバレッジが Phase 2-7 要件を満たすことをレビュー済み。Packrat 復旧系フィクスチャは今後追加が必要。
+  - `tooling/lsp/tests/client_compat/client-v2.ts` が `tooling/json-schema/diagnostic-v2.schema.json` を AJV で検証していることを確認。フィクスチャ差分レポートを自動生成する `scripts/report-fixture-diff.mjs`（仮称）を Week35 中に追加し、`npm run ci` から `reports/diagnostic-format-regression.md` へ貼り付けられるようにするタスクを登録した。
+  - `.github/workflows` 配下に LSP 専用 CI が存在しないため、`lsp-contract.yml` を追加して V1/V2 JSON の AJV 検証とフィクスチャ差分収集を自動化する作業を次スプリントへ繰り越した。
+  - `tooling/lsp/compat/diagnostic_v1.ml` は最小限のダウングレード実装のみで `[@deprecated]` 属性や欠損フィールド補完が未実装。変換失敗時に `extensions["lsp.compat_error"]` を付与する処理を `tooling/lsp/jsonrpc_server.ml` へ追加する必要がある。
+  - `compiler/ocaml/src/parser_expectation.ml`・`parser_expectation.mli` と `compiler/ocaml/src/diagnostic.ml` を確認したが、`recover` スナップショットやローカライズテンプレートの実装は未着手。`collect-iterator-audit-metrics.py` へ `parser.recover_fixit_coverage` 指標を追加し、Packrat 経路を含む測定ループを整備するフォローアップを設定した。
+
 **成果物**: 拡充済み LSP テスト群、CI ジョブ、更新ドキュメント
 
 ### 4. 技術的負債の棚卸しとクローズ（36週目前半）
