@@ -135,13 +135,42 @@
 - **完了状況 (2025-11-07)**: `compiler/ocaml/docs/technical-debt.md` で ID22/23 を完了扱いに更新し、H1〜H4 のレビュー結果を追記した。`reports/diagnostic-format-regression.md` / `reports/ffi-bridge-summary.md` へ Step4 の差分確認ログを追加し、`reports/audit/phase2-7/*.audit.jsonl` と `reports/audit/index.json` を生成。`tooling/ci/tests/test_create_audit_index.py` を新設し、index 生成ロジックの単体テストを整備済み。
 
 ### 6. ストリーミング PoC フォローアップ（Phase 2-7 序盤）
-**担当領域**: Core.Parse.Streaming / Runtime Bridge
+*参照*: `docs/guides/core-parse-streaming.md`, `docs/guides/runtime-bridges.md`, `docs/spec/2-7-core-parse-streaming.md`, `docs/plans/bootstrap-roadmap/2-5-to-2-7-handover.md` §3.4-§3.5  
+**担当領域**: Core.Parse.Streaming / Runtime Bridge / CLI
 
-- **Packrat キャッシュ共有**: `Parser_driver.Streaming` がチャンク処理時に `Parser_driver.run` へ委譲する PoC 構造を見直し、`Core_parse.State` のメモ化領域を継続に含める。`parser.stream.outcome_consistency` が 1.0 未満の場合は差分レポートを `reports/audit/dashboard/streaming.md` へ記録する。
-- **バックプレッシャ自動化**: `FlowController.policy=Auto` を CLI/LSP から選択できるよう `RunConfig.extensions["stream"].flow` を拡張し、`demand_min_bytes` / `demand_preferred_bytes` と `PendingReason::Backpressure` を同期させる。完了時に `docs/guides/core-parse-streaming.md` §10 の制限項目をクローズする。
-- **Pending/Error 監査**: `StreamEvent::Pending` / `StreamEvent::Error` を `AuditEnvelope` 経由で `parser.stream.pending` / `parser.stream.error` へ転送し、`resume_hint` / `last_reason` / `continuation.meta.last_checkpoint` を必須フィールドとして検証する。`parser.stream.demandhint_coverage` を 1.0 で維持。
-- **CLI メトリクス連携**: `Cli.Stats` と JSON 出力に `stream_meta`（`bytes_consumed` / `resume_count` / `await_count`）を出力し、`collect-iterator-audit-metrics.py --require-success` が値を集計できるようにする。
-- **Runtime Bridge 連携**: `docs/guides/runtime-bridges.md` にストリーミング信号（`DemandHint`, backpressure hooks）を Runtime Bridge へ渡す手順と、`effects.contract.stage_mismatch` 拡張キーの同期方法を追記する。
+6.1. **Packrat キャッシュ共有と KPI 監視**
+- `Parser_driver.Streaming` → `Parser_driver.run` の委譲境界を整理し、`Core_parse.State.memo` と `ContinuationMeta.commit_watermark` を同一ヒープに保持する。`compiler/ocaml/src/parser_driver.ml` / `parser_expectation.ml` を dual-write し、`compiler/ocaml/tests/streaming_runner_tests.ml` に Pending/Resume のスナップショットテストを追加する。
+- `parser.stream.outcome_consistency` を `collect-iterator-audit-metrics.py --section streaming` に新設し、`reports/audit/dashboard/streaming.md` で Linux/Windows/macOS の pass_rate を比較できるようにする。1.0 未満の場合は当該チャンクの `ContinuationMeta.resume_lineage` を差分として記録する。
+- `docs/spec/2-7-core-parse-streaming.md` の `Continuation` / `StreamMeta` 節へ `memo_bytes`・`resume_lineage` の脚注を追加し、Packrat 共有要件を仕様へ反映する。
+
+6.2. **FlowController とバックプレッシャ自動化**
+- `RunConfig.extensions["stream"].flow` を構造体化し、`FlowController.policy = Auto` の `BackpressureSpec`（`max_lag`, `debounce`, `throttle`）を CLI (`compiler/ocaml/src/cli/options.ml`) / LSP (`tooling/lsp/run_config_loader.ml`) から設定できるようにする。
+- `--stream-flow auto` 指定時に `DemandHint.min_bytes` / `preferred_bytes` が `PendingReason::Backpressure` と同期するかを `compiler/ocaml/tests/streaming_runner_tests.ml` と `tooling/lsp/tests/client_compat/streaming_*.json` で検証する。
+- `docs/guides/core-parse-streaming.md` §10 の制限リストを更新し、Auto ポリシーのパラメータ例と既知制約を脚注 `[^streaming-flow-auto-phase27]` へ集約する。
+
+6.3. **Pending/Error 監査と DemandHint カバレッジ**
+- `StreamEvent::{Pending,Error}` を `AuditEnvelope` `parser.stream.pending` / `parser.stream.error` へ転送し、`resume_hint`, `last_reason`, `continuation.meta.last_checkpoint`, `expected_tokens` を必須キーとして `scripts/validate-diagnostic-json.sh --suite streaming` で検証する。
+- `parser.stream.demandhint_coverage` 指標を 1.0 で維持するため、`collect-iterator-audit-metrics.py --require-success --section streaming` で DemandHint 欠損をガードし、逸脱時は `0-4-risk-handling.md` の `STREAM-POC-DEMANDHINT` リスクを再オープンする。
+- LSP/CLI 共通で `StreamEvent::Error` から `Diagnostic.extensions["recover"]` と `expected_tokens` を生成する経路を `parser_expectation.ml` と `diagnostic_serialization.ml` で共有し、`reports/diagnostic-format-regression.md` にストリーミング専用の回帰ログを追加する。
+
+6.4. **CLI / JSON メトリクス連携**
+- `Cli.Stats` と JSON 出力 (`compiler/ocaml/src/cli/json_formatter.ml`) に `stream_meta.bytes_consumed`, `stream_meta.resume_count`, `stream_meta.await_count`, `stream_meta.backpressure_events` を追加し、`compiler/ocaml/tests/golden/diagnostics/streaming/*.json.golden` を整備する。
+- LSP publishDiagnostics にも `stream_meta` を添付し、`tooling/lsp/tests/client_compat/streaming_meta*.snapshot` で比較する。`docs/spec/2-1-parser-type.md` §D の RunConfig 共有節に `extensions["stream"].stats=true` の運用例を追記。
+- CLI `--stats` 出力と `reports/audit/index.json` の指標名を同期し、ログ収集基盤が `stream_meta.*` を自動集計できるよう `docs/guides/ai-integration.md` のログ例を更新する。
+
+6.5. **Runtime Bridge 連携と Stage 監査**
+- `docs/guides/runtime-bridges.md` §10 を更新し、`DemandHint` / Backpressure hooks を Runtime Bridge へ渡すチェックリストと `effects.contract.stage_mismatch` 連携手順を追加する。
+- `RuntimeBridgeRegistry` に `stream_signal` ハンドラを追加し、`PendingReason::Backpressure` を `bridge.stage.backpressure` 診断で監査する。`reports/ffi-bridge-summary.md` にストリーミング信号の導入結果を追記する。
+- `collect-iterator-audit-metrics.py --platform windows-msvc --section streaming` を週次で実行し、Windows でも Backpressure signal が取得できるよう `docs/plans/bootstrap-roadmap/2-6-windows-support.md` の監査要件と同期させる。
+
+6.6. **レポート化とフォローアップ共有**
+- `reports/audit/dashboard/streaming.md` を新設し、Packrat 共有・Backpressure・DemandHint カバレッジ・Runtime Bridge signal の KPI と計測手順を一覧化する。
+- `compiler/ocaml/docs/technical-debt.md` に `STREAM-POC-PACKRAT` / `STREAM-POC-BACKPRESSURE` を追加し、クローズ条件を本節の KPI に揃える。達成後は `docs/notes/core-parse-streaming-todo.md` へ移送可否を記録する。
+- 週次レビューで 6.1〜6.5 の数値を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に転記し、Phase 2-8 キックオフ資料でも同じ表を参照できるようにする。
+
+**成果物**: Packrat 共有済み Streaming ランナー、FlowController Auto 設定、Pending/Error 監査ログ、`stream_meta` 付き CLI/LSP 出力、Runtime Bridge 拡張ガイド、`reports/audit/dashboard/streaming.md`
+
+- **完了状況 (2025-11-04)**: 6.1〜6.6 の作業単位と KPI を明確化し、参照資料・成果物・監査手順を本節に集約した。今後の実装進捗は各小項目へ検証ログを追記し、`collect-iterator-audit-metrics.py` と `docs/guides/runtime-bridges.md` の更新タイミングを同期させる。
 
 ### 7. Unicode 識別子プロファイル移行（SYNTAX-001 / LEXER-001）
 *参照*: `docs/plans/bootstrap-roadmap/2-5-to-2-7-handover.md` §3.1-§3.2、`docs/plans/bootstrap-roadmap/2-5-proposals/LEXER-001-proposal.md`、`docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-001-proposal.md`
@@ -257,3 +286,5 @@
 - [compiler/ocaml/docs/technical-debt.md](../../../compiler/ocaml/docs/technical-debt.md)
 - [reports/diagnostic-format-regression.md](../../../reports/diagnostic-format-regression.md)
 - [reports/ffi-bridge-summary.md](../../../reports/ffi-bridge-summary.md)
+
+[^streaming-flow-auto-phase27]: Phase 2-7 ストリーミング PoC の FlowController Auto ポリシー向け暫定脚注。`docs/guides/core-parse-streaming.md` §10 と `docs/spec/2-7-core-parse-streaming.md` のバックプレッシャ要件を突き合わせ、`max_lag`/`debounce`/`throttle` の既定域と CI での検証手順 (`collect-iterator-audit-metrics.py --section streaming`) を共有する。
