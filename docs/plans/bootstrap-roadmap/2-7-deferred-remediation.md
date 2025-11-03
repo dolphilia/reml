@@ -21,7 +21,36 @@
 - `reports/` : 監査ログサマリ、診断フォーマット差分
 - `compiler/ocaml/docs/technical-debt.md` : ID 22/23, H1〜H4 の進捗更新
 
+## フェーズ実行順序（引き継ぎ反映）
+
+| 順序 | フォーカス | 主な事前条件 | 本書の参照 |
+| --- | --- | --- | --- |
+| 0 | フェーズ起動とハンドオーバー整備 | `docs/plans/bootstrap-roadmap/2-5-to-2-7-handover.md` §6、`docs/plans/bootstrap-roadmap/2-5-to-2-7-type-002-handover.md` | §0 フェーズ起動とハンドオーバー整備 |
+| 1 | 監査ゲート強化（Windows/macOS CI） | フェーズ起動完了、共通スクリプト整備 | §1 監査ゲート整備 |
+| 2 | Unicode 識別子プロファイルの既定化 | Kickoff 合意事項、監査ゲート稼働 | §7 Unicode 識別子プロファイル移行 |
+| 3 | 効果構文・効果操作 PoC の有効化 | Unicode 移行のテレメトリ安定 | §8 効果構文 PoC 移行 |
+| 4 | 効果行統合（TYPE-002） | 効果構文 PoC の KPI 1.0 維持、`type_row_mode=dual-write` 準備 | §TYPE-002 効果行統合ロードマップ |
+| 5 | CLI/LSP/Streaming 出力整備と負債クローズ | 監査ゲート・効果系実装の成果物 | §2〜§6 |
+| 6 | Phase 2-8 への引き継ぎ | KPI 1.0 維持、脚注撤去条件達成 | §5 Phase 2-8 への引き継ぎ準備 |
+
 ## 作業ブレークダウン
+
+### 0. フェーズ起動とハンドオーバー整備（34週目前半）
+*参照*: `docs/plans/bootstrap-roadmap/2-5-to-2-7-handover.md` §6、`docs/plans/bootstrap-roadmap/2-5-to-2-7-type-002-handover.md`、`compiler/ocaml/docs/technical-debt.md`
+
+0.1. **キックオフレビューと役割確認**
+- LEXER-001 / SYNTAX-001 / SYNTAX-003 / EFFECT-002 / TYPE-002 の担当リード合同レビューを開催し、境界 API とスプリント順序を確定する。決定事項は `docs/plans/bootstrap-roadmap/2-5-review-log.md` に `PHASE2-7-KICKOFF` タグで追記する。
+- `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` から各ハンドオーバー資料へ遷移できることを確認し、リンク切れがあれば本書と関連資料を同時更新する。
+
+0.2. **計測スクリプトと CI ベースライン**
+- `tooling/ci/collect-iterator-audit-metrics.py` と `scripts/validate-diagnostic-json.sh` の Phase 2-7 ブランチを作成し、`--require-success` での実行結果を共有ドライブへ保存する。Windows/macOS 用のプリセットが未整備の場合はこの段階で追加する。
+- KPI の初期値（`lexer.identifier_profile_unicode`, `syntax.effect_construct_acceptance`, `diagnostics.effect_row_stage_consistency` など）を測定し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に起動時ベースラインとして記録する。
+
+0.3. **脚注・リスク・RunConfig ガードの整合**
+- `docs/spec/1-1-syntax.md` ほか脚注 `[^lexer-ascii-phase25]`, `[^effects-syntax-poc-phase25]`, `[^type-row-metadata-phase25]` の撤去条件を再確認し、移行時に必要なチェックリストを本書該当セクションへ反映する。
+- `0-4-risk-handling.md` の関連リスク（Unicode XID、効果構文 Stage、TYPE-002 ROW 統合）を Phase 2-7 担当者へ再アサインし、週次レビューのエスカレーション経路を共有する。`compiler/ocaml/docs/technical-debt.md` に記載された ID 22/23 の対応状況を初期ステータスとして確認する。
+
+**成果物**: キックオフ議事録、最新ベースラインメトリクス、脚注およびリスク整合メモ
 
 ### 1. 監査ゲート整備（34-35週目）
 **担当領域**: Windows/macOS CI
@@ -113,6 +142,7 @@
 - **Runtime Bridge 連携**: `docs/guides/runtime-bridges.md` にストリーミング信号（`DemandHint`, backpressure hooks）を Runtime Bridge へ渡す手順と、`effects.contract.stage_mismatch` 拡張キーの同期方法を追記する。
 
 ### 7. Unicode 識別子プロファイル移行（SYNTAX-001 / LEXER-001）
+*参照*: `docs/plans/bootstrap-roadmap/2-5-to-2-7-handover.md` §3.1-§3.2、`docs/plans/bootstrap-roadmap/2-5-proposals/LEXER-001-proposal.md`、`docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-001-proposal.md`
 **担当領域**: Lexer / Docs / Tooling
 
 7.1. **XID テーブル整備**
@@ -131,6 +161,7 @@
 **成果物**: Unicode プロファイル既定の lexer/parser、更新済みテスト・CI 指標、仕様およびガイドの脚注整理
 
 ### 8. 効果構文 PoC 移行（SYNTAX-003 / EFFECT-002）
+*参照*: `docs/plans/bootstrap-roadmap/2-5-to-2-7-handover.md` §3.3-§3.4、`docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-003-proposal.md`、`docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-002-proposal.md`
 **担当領域**: 効果システム / CLI / CI
 
 8.1. **PoC 実装の統合**
@@ -150,6 +181,7 @@
 **成果物**: 効果構文 PoC 実装、CI メトリクス 100% 化、フラグ運用指針、脚注撤去条件の整理
 
 ### TYPE-002 効果行統合ロードマップ {#type-002-effect-row-integration}
+*参照*: `docs/plans/bootstrap-roadmap/2-5-to-2-7-type-002-handover.md`、`docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md`
 **担当領域**: Type + Effects + QA  
 **着手条件**: Phase 2-5 TYPE-002 Step1〜Step4 が完了しており、`compiler/ocaml/docs/effect-system-design-note.md` §3、`docs/spec/1-2-types-Inference.md` / `1-3-effects-safety.md` / `3-6-core-diagnostics-audit.md` の脚注 `[^type-row-metadata-phase25]`、および `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の新規 KPI が整合していること。
 
