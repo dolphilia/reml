@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "reml_platform.h"
+
 /* ========== バージョン定義 ========== */
 #define REML_RUNTIME_VERSION_MAJOR 0
 #define REML_RUNTIME_VERSION_MINOR 1
@@ -118,7 +120,7 @@ void dec_ref(void* ptr);
  * @param msg エラーメッセージ（NULL 終端文字列）
  * @note この関数は決して戻らない（noreturn 属性）
  */
-void panic(const char* msg) __attribute__((noreturn));
+void panic(const char* msg) REML_NORETURN;
 
 /* ========== 観測用ユーティリティ ========== */
 

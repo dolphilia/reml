@@ -9,11 +9,46 @@
  */
 
 #include "../include/reml_runtime.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
+
+#ifdef REML_PLATFORM_WINDOWS
+#include <windows.h>
+#else
 #include <sys/types.h>
 #include <unistd.h>
+#endif
+
+static void reml_format_timestamp(char* buffer, size_t buffer_size) {
+    time_t now = time(NULL);
+    struct tm tm_info;
+#ifdef REML_PLATFORM_WINDOWS
+    if (localtime_s(&tm_info, &now) != 0) {
+        memset(&tm_info, 0, sizeof(tm_info));
+    }
+#else
+    struct tm* tmp = localtime(&now);
+    if (tmp == NULL) {
+        memset(&tm_info, 0, sizeof(tm_info));
+    } else {
+        tm_info = *tmp;
+    }
+#endif
+    if (strftime(buffer, buffer_size, "%Y-%m-%d %H:%M:%S", &tm_info) == 0) {
+        snprintf(buffer, buffer_size, "unknown");
+    }
+}
+
+static unsigned long reml_get_process_id(void) {
+#ifdef REML_PLATFORM_WINDOWS
+    return (unsigned long)GetCurrentProcessId();
+#else
+    return (unsigned long)getpid();
+#endif
+}
 
 /**
  * パニック（プログラムを異常終了させる）
@@ -26,13 +61,11 @@
  */
 void panic(const char* msg) {
     // タイムスタンプ取得
-    time_t now = time(NULL);
     char time_buf[64];
-    struct tm* tm_info = localtime(&now);
-    strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", tm_info);
+    reml_format_timestamp(time_buf, sizeof(time_buf));
 
     // プロセス ID 取得
-    pid_t pid = getpid();
+    unsigned long pid = reml_get_process_id();
 
     // エラーメッセージを stderr に出力
     fprintf(stderr, "\n");
@@ -40,7 +73,7 @@ void panic(const char* msg) {
     fprintf(stderr, "PANIC: Runtime Error\n");
     fprintf(stderr, "===============================================\n");
     fprintf(stderr, "Time:    %s\n", time_buf);
-    fprintf(stderr, "PID:     %d\n", pid);
+    fprintf(stderr, "PID:     %lu\n", pid);
     fprintf(stderr, "Message: %s\n", msg ? msg : "(null)");
     fprintf(stderr, "===============================================\n");
     fprintf(stderr, "\n");
@@ -64,13 +97,11 @@ void panic(const char* msg) {
  */
 void panic_at(const char* msg, const char* file, int line) {
     // タイムスタンプ取得
-    time_t now = time(NULL);
     char time_buf[64];
-    struct tm* tm_info = localtime(&now);
-    strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", tm_info);
+    reml_format_timestamp(time_buf, sizeof(time_buf));
 
     // プロセス ID 取得
-    pid_t pid = getpid();
+    unsigned long pid = reml_get_process_id();
 
     // エラーメッセージを stderr に出力
     fprintf(stderr, "\n");
@@ -78,7 +109,7 @@ void panic_at(const char* msg, const char* file, int line) {
     fprintf(stderr, "PANIC: Runtime Error\n");
     fprintf(stderr, "===============================================\n");
     fprintf(stderr, "Time:     %s\n", time_buf);
-    fprintf(stderr, "PID:      %d\n", pid);
+    fprintf(stderr, "PID:      %lu\n", pid);
     fprintf(stderr, "Location: %s:%d\n", file ? file : "(unknown)", line);
     fprintf(stderr, "Message:  %s\n", msg ? msg : "(null)");
     fprintf(stderr, "===============================================\n");

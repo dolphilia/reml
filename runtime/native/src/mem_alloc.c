@@ -7,14 +7,18 @@
  */
 
 #include "../include/reml_runtime.h"
+#include "../include/reml_atomic.h"
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef REML_PLATFORM_WINDOWS
+#include <windows.h>
+#endif
 
 /* ========== デバッグ支援 ========== */
 
 #ifdef DEBUG
 #include <stdio.h>
-#include <stdatomic.h>
 
 // アロケーション追跡カウンタ（デバッグ時のみ）
 static atomic_size_t alloc_count = 0;
@@ -54,13 +58,18 @@ void* mem_alloc(size_t size) {
     // ヘッダ + ペイロードのサイズを計算
     size_t total_size = sizeof(reml_object_header_t) + aligned_size;
 
-    // malloc でメモリを確保
-    void* raw_ptr = malloc(total_size);
-
+#ifdef REML_PLATFORM_WINDOWS
+    void* raw_ptr = VirtualAlloc(NULL, total_size, MEM_COMMIT | MEM_RESERVE,
+                                 PAGE_READWRITE);
     if (raw_ptr == NULL) {
-        // アロケーション失敗時は panic で異常終了
+        panic("Memory allocation failed (VirtualAlloc)");
+    }
+#else
+    void* raw_ptr = malloc(total_size);
+    if (raw_ptr == NULL) {
         panic("Memory allocation failed");
     }
+#endif
 
     // ヘッダを初期化
     reml_object_header_t* header = (reml_object_header_t*)raw_ptr;
@@ -107,8 +116,17 @@ void mem_free(void* ptr) {
     header->refcount = 0xDEADBEEF;
 #endif
 
-    // ヘッダを含む領域全体を解放
+#ifdef REML_PLATFORM_WINDOWS
+    if (VirtualFree(header, 0, MEM_RELEASE) == 0) {
+#ifdef DEBUG
+        fprintf(stderr, "[ERROR] VirtualFree failed for ptr=%p (error=%lu)\n",
+                ptr, GetLastError());
+#endif
+        panic("VirtualFree failed");
+    }
+#else
     free(header);
+#endif
 }
 
 /* ========== ユーティリティ関数 ========== */

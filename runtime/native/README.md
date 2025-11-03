@@ -112,20 +112,49 @@ make clean && DEBUG=1 make runtime && DEBUG=1 make test
 make clean
 ```
 
+### Windows (MSVC) でのビルド
+
+1. PowerShell で `reml-msvc-env` を実行して MSVC ツールチェーンを有効化する（`tooling/toolchains/setup-windows-toolchain.ps1`が提供）。
+2. CMake 3.20 以上でビルドディレクトリを生成する:
+
+   ```powershell
+   cmake -S runtime/native -B runtime/native/build-msvc -DREML_RUNTIME_ENABLE_DEBUG=OFF
+   ```
+
+3. `cl.exe` / `lib.exe` を用いたビルドを実行する:
+
+   ```powershell
+   cmake --build runtime/native/build-msvc --config Release
+   ```
+
+4. テストを実行する:
+
+   ```powershell
+   ctest --test-dir runtime/native/build-msvc --output-on-failure
+   ```
+
+`REML_RUNTIME_ENABLE_DEBUG=ON` を指定すると `DEBUG` マクロが定義され、参照カウントとアロケータの統計出力が有効になる。MSVC ビルドでは `VirtualAlloc`/`VirtualFree` によるメモリ管理と Windows API ベースの診断出力を利用する。
+
 ## ディレクトリ構成
 
 ```
 runtime/native/
 ├── include/
-│   └── reml_runtime.h     # ランタイム API 定義
+│   ├── reml_runtime.h     # ランタイム API 定義
+│   ├── reml_platform.h    # プラットフォーム判定マクロ
+│   ├── reml_atomic.h      # アトミック操作互換レイヤー
+│   └── reml_os.h          # ファイル/スレッド抽象化 API
 ├── src/
 │   ├── mem_alloc.c        # メモリアロケータ
 │   ├── panic.c            # パニックハンドラ
 │   ├── print_i64.c        # デバッグ出力
-│   └── refcount.c         # 参照カウント実装
+│   ├── refcount.c         # 参照カウント実装
+│   ├── ffi_bridge.c       # FFI ブリッジ補助
+│   └── os.c               # Windows/POSIX 共通 OS ラッパー
 ├── tests/
 │   ├── test_mem_alloc.c   # アロケータテスト
-│   └── test_refcount.c    # 参照カウントテスト
+│   ├── test_refcount.c    # 参照カウントテスト
+│   └── test_ffi_bridge.c  # FFI ブリッジテスト
 ├── build/                 # ビルド成果物（自動生成）
 │   ├── *.o                # オブジェクトファイル
 │   ├── libreml_runtime.a  # 静的ライブラリ

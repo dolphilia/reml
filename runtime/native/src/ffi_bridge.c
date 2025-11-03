@@ -8,8 +8,8 @@
  */
 
 #include "../include/reml_ffi_bridge.h"
+#include "../include/reml_atomic.h"
 #include <limits.h>
-#include <stdatomic.h>
 
 /* ========== 計測カウンタ ========== */
 

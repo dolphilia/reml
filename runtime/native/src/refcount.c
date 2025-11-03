@@ -9,6 +9,7 @@
  */
 
 #include "../include/reml_runtime.h"
+#include "../include/reml_atomic.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,8 +17,6 @@
 /* ========== デバッグ支援 ========== */
 
 #ifdef DEBUG
-#include <stdatomic.h>
-
 // 参照カウント操作の追跡カウンタ（デバッグ時のみ）
 static atomic_size_t inc_ref_count = 0;
 static atomic_size_t dec_ref_count = 0;

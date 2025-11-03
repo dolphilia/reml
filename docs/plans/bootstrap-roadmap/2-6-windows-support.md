@@ -187,27 +187,28 @@
 
 ### 4. ランタイム C コードの移植（20-21週目）
 **担当領域**: ランタイム実装
+**ステータス**: 🟢 完了 (2025-11-12)
 
 4.1. **プラットフォーム依存コードの分離**
-- Linux 固有のコード（`#ifdef __linux__`）の抽出
-- Windows 固有のコード（`#ifdef _WIN32`）の追加
-- 共通コードの抽象化
-- ヘッダファイルの整理（`<windows.h>` vs `<unistd.h>`）
+- ✅ `runtime/native/include/reml_platform.h`・`reml_atomic.h` を新設し、MSVC/Clang/GCC 向けの属性・アトミック互換レイヤーを集約。`panic.c`, `mem_alloc.c`, `refcount.c`, `ffi_bridge.c` から直接のコンパイラ判定を排除。
+- ✅ `_Thread_local` 非対応の MSVC に合わせて `REML_THREAD_LOCAL` を導入し、エラーステートやデバッグ統計のスレッドローカル管理を統一。
 
 4.2. **Windows API への対応**
-- ファイル IO（`CreateFile`, `ReadFile`, `WriteFile` 等）
-- メモリ管理（`VirtualAlloc`, `VirtualFree` 等）
-- スレッド（`CreateThread`, `WaitForSingleObject` 等）
-- エラーハンドリング（`GetLastError`）
+- ✅ `mem_alloc.c` を `VirtualAlloc`/`VirtualFree` ベースへ切替え、失敗時に `GetLastError` を取得。POSIX 側は既存の `malloc`/`free` 実装を保持。
+- ✅ `panic.c` で `GetCurrentProcessId`・`localtime_s` を利用する共通ヘルパーを実装し、Windows/Unix 双方で同一フォーマットの診断メッセージを出力。
+- ✅ `runtime/native/include/reml_os.h` と `src/os.c` を追加し、`CreateFileW`/`ReadFile`/`WriteFile`/`CreateThread` をラップしたクロスプラットフォーム OS API を提供（POSIX 版は `open`/`read`/`write`/`pthread`）。`reml_os_last_error_message` で `GetLastError` / `errno` の情報を統一的に取得可能。
 
 4.3. **MSVC ビルドの実装**
-- `cl.exe` でのコンパイル設定（`/O2`, `/W4` 等）
-- `link.exe` での静的ライブラリ生成（`.lib` ファイル）
-- ビルドスクリプトの作成（CMake or 既存）
-- Phase 1 のランタイムとの整合
-- MinGW 版とのインターフェース差分（例: エラーコード、`errno` の扱い）を比較し共通化ポイントを洗い出す。
+- ✅ `runtime/native/CMakeLists.txt` を追加し、`cl.exe`/`lib.exe` による静的ライブラリ構築と `ctest` 連携をサポート。`REML_RUNTIME_ENABLE_DEBUG` オプションと `/W4` / `/permissive-` の警告設定を適用。
+- ✅ `runtime/native/README.md` に Windows (MSVC) ビルド手順を追記し、`reml-msvc-env` → `cmake --build` → `ctest` のフローを明文化。
+- ✅ MinGW 向け `Makefile` と MSVC 向け CMake が共存できるよう、OS 抽象レイヤー (`reml_platform.h`, `reml_os.h`) を整備し API 差分を吸収。
 
-**成果物**: Windows 対応ランタイム、MSVC ビルド設定
+**成果物**: `runtime/native/include/reml_platform.h`, `runtime/native/include/reml_atomic.h`, `runtime/native/include/reml_os.h`, `runtime/native/src/os.c`, `runtime/native/CMakeLists.txt`, `runtime/native/README.md`（MSVC 手順追記）
+
+#### フォローアップ
+1. `reml_os_*` ラッパをランタイムの診断ログ／標準ライブラリ入出力へ組み込み、ユニットテストを追加する（Phase 2 テスト整備と連動）。
+2. Windows 版での `reml_os_thread_*` 活用シナリオ（将来の GC/ワーカースレッド等）を整理し、`docs/spec/3-8-core-runtime-capability.md` の Capability テーブルへ反映。
+3. `reml_os_last_error_message` を診断パイプライン（`docs/plans/bootstrap-roadmap/2-3-ffi-contract-extension.md`）と統合し、監査ログへエラーコードを記録するタスクを生成。
 
 ### 5. テスト実装とデバッグ（21-22週目）
 **担当領域**: テスト整備
