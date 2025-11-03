@@ -48,3 +48,8 @@
 ---
 
 この文書は Phase 2-4 の診断・監査パイプライン作業のレビュー補助ツールとして運用する。追加の手順や改善案があれば追記すること。
+
+## 5. Phase 2-7 Step4 更新ログ（2025-11-07）
+- `reports/audit/index.json` に Windows/macOS 監査ログ（`reports/audit/phase2-7/*.audit.jsonl`）を登録し、`tooling/ci/verify-audit-metadata.py --index reports/audit/index.json --strict` のローカル実行で `audit`/`timestamp` 欠落が再発しないことを確認した。`tooling/ci/create-audit-index.py` のテスト (`tooling/ci/tests/test_create_audit_index.py`) では index 生成時の `size_bytes`・`pass_rate` を検証している。
+- CLI/LSP/Streaming ゴールデンは `tooling/ci/collect-iterator-audit-metrics.py --require-success` と `scripts/validate-diagnostic-json.sh` の組み合わせで再実行し、`effects.*` / `bridge.*` 拡張に差分が無いことを確認した。結果は `compiler/ocaml/tests/golden/diagnostics/` と `tooling/lsp/tests/client_compat/fixtures/` の再生成ログ、および本ドキュメントのチェックリストに記録した。
+- 監査レポートの参照元を `reports/ffi-bridge-summary.md` / `reports/iterator-stage-summary*.md` から横断できるよう脚注を整理し、H3（ゴールデン拡充）の進捗レビュー結果を `compiler/ocaml/docs/technical-debt.md` に反映した。

@@ -235,6 +235,7 @@ LLVM 18.1.8のソースビルドを試行した結果、以下の結論に至っ
 - `collect-iterator-audit-metrics.py` を拡張し、監査ログ（JSON/JSONL）を `--audit-source` で取り込み可能にしたことで、Windows 成功ログが欠落した場合に `ffi_bridge.audit_pass_rate` が低下し CI が失敗する。
 - 生成物（`reports/iterator-stage-summary-windows.md`, `tooling/ci/iterator-audit-metrics.json`）をアーティファクト化し、レビュー時に Windows Stage override と `bridge.platform` の整合を確認できるようにした。
 - **追記（2025-11-06）**: `tooling/ci/collect-iterator-audit-metrics.py --platform windows-msvc --require-success` を導入し、`bootstrap-windows.yml#audit` で Stage/FFI 監査が 1.0 未満の場合に自動で失敗する構成へ更新。生成サマリ (`reports/iterator-stage-summary-windows.md`) の `platform_summary.windows-msvc` を 1.0 で固定し、ID22 の検証ログを `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に反映。
+- **追記（2025-11-07）**: `reports/audit/phase2-7/windows-ffi-bridge.audit.jsonl` を index エントリ `ci:windows-msvc` として登録し、`verify-audit-metadata.py --index reports/audit/index.json --strict` の成功ログを `reports/ffi-bridge-summary.md` から辿れるよう整備。
 
 #### 参照
 - `.github/workflows/bootstrap-windows.yml`
@@ -254,6 +255,7 @@ LLVM 18.1.8のソースビルドを試行した結果、以下の結論に至っ
 - `tooling/ci/sync-iterator-audit.sh` に `--macos-ffi-samples` オプションを追加し、macOS 成功ログを Markdown サマリーに表示。`reports/iterator-stage-summary.md` で macOS FFI サンプルの検証結果を確認できるようにした。
 - `reports/ffi-bridge-summary.md` / `reports/ffi-macos-summary.md` を更新し、macOS 固有サンプルが自動実行される旨と生成ログの保存先を明記。
 - **追記（2025-11-06）**: `collect-iterator-audit-metrics.py --platform macos-arm64 --require-success` を `bootstrap-macos.yml`（`audit-matrix` / `iterator-audit` ジョブ）へ適用し、macOS FFI 監査の欠落時に CI が失敗することを確認。`reports/iterator-stage-summary-macos.md` に `platform_summary.macos-arm64` の 1.0 維持ログを追加し、ID23 をクローズ済みとして `docs/plans/bootstrap-roadmap/2-3-to-2-4-handover.md` に同期。
+- **追記（2025-11-07）**: `reports/audit/phase2-7/macos-ffi-bridge.audit.jsonl` を index 登録し、Windows と同一手順で `audit_store=ci` を維持できることを確認。`tooling/ci/tests/test_create_audit_index.py` を追加し、index 生成テストに macOS サンプルを含めた。
 
 #### 参照
 - `examples/ffi/macos/ffi_dispatch_async.reml`
@@ -1104,6 +1106,8 @@ Llvm.add_function_attr llvm_fn sret_attr attr_kind
 - ✅ **ID 7**: Handler宣言パース（仕様準拠に更新）
 - ✅ **ID 9**: CFG構築時の到達不能ブロック生成（修正完了）
 - ✅ **ID 10**: LLVM 18型付き属性のバインディング制限（`Llvm_attr` FFI で解消）
+- ✅ **ID 22**: Windows Capability Stage 自動検証（`reports/audit/index.json` エントリ `windows-ffi-bridge` で pass_rate=1.0 を固定）
+- ✅ **ID 23**: macOS FFI サンプル自動検証（同 `macos-ffi-bridge` エントリで pass_rate=1.0 を固定）
 
 ### Phase 2へ引き継ぐ技術的負債
 
@@ -1111,9 +1115,13 @@ Llvm.add_function_attr llvm_fn sret_attr attr_kind
 
 - **H1**: 型マッピングのTODO解消（type_mapping.ml:75,135,186）
   - 2025-10-17: Typer 実装チーム（Type Inference / Effect 担当）へ割り当て済み。[2-2-effect-system-integration.md](../../docs/plans/bootstrap-roadmap/2-2-effect-system-integration.md) §3 で `effect_profile` 正規化と Stage 判定ヘルパを `type_inference_effect.ml` / `core_ir/effect.ml` として切り出す計画を確定。型クラス辞書との独立性検証と `Type_env.function_entry` 拡張を同フェーズで同時実施する。
+  - **進捗レビュー (2025-11-07)**: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-効果行統合ロードマップ` の dual-write 手順と `compiler/ocaml/docs/effect-system-design-note.md` の RowVar 設計を突き合わせ、TYPE-002 Sprint A/B で H1 の TODO を吸収する方針を再確認した。
 - **H2**: Windows x64 ABI検証（8バイト閾値）
+  - **進捗レビュー (2025-11-07)**: `reports/audit/index.json` に Windows 監査ログ（`reports/audit/phase2-7/windows-ffi-bridge.audit.jsonl`）を登録し、`tooling/ci/collect-iterator-audit-metrics.py --platform windows-msvc --require-success` で pass_rate=1.0 を実測。残タスクは [2-6-windows-support.md](../../docs/plans/bootstrap-roadmap/2-6-windows-support.md) §2 の 8 バイト閾値チェックを CI に組み込むこと。
 - **H3**: ゴールデンテストの拡充
+  - **進捗レビュー (2025-11-07)**: `reports/diagnostic-format-regression.md` に Phase 2-7 Step4 の差分が無いことを記録し、`scripts/validate-diagnostic-json.sh` / LSP 互換テストの双方で再検証。Packrat/Streaming 系の残タスクは §6「ストリーミング PoC フォローアップ」に統合。
 - **H4**: CFG線形化の完成
+  - **進捗レビュー (2025-11-07)**: `compiler/ocaml/tests/streaming_runner_tests.ml` の線形化スモークを再実行し、未反映の TODO は `cfg_linearizer.ml` に集約されていることを確認。Phase 2-7 Sprint D で basic block の順序最適化を実装し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#5-phase-2-8-への引き継ぎ準備` へ成果物を移す計画。
 
 **Medium優先度（Week 20-30で対応）**:
 

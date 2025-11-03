@@ -173,3 +173,8 @@ $ _build/default/src/main.exe ../../tmp/cli-callconv-macos.reml \
 - compiler/ocaml/src/codegen/ffi_stub_builder.ml
 - compiler/ocaml/src/main.ml
 - runtime/native/include/reml_ffi_bridge.h
+
+## 9. Phase 2-7 Step4 監査整備ログ（2025-11-07）
+- `reports/audit/phase2-7/windows-ffi-bridge.audit.jsonl` と `reports/audit/phase2-7/macos-ffi-bridge.audit.jsonl` を作成し、`python3 tooling/ci/create-audit-index.py --output reports/audit/index.json ...` で index 化。エントリは `build_id=phase2-7-step4` / `pass_rate=1.0` を保持し、`verify-audit-metadata.py --index reports/audit/index.json --strict` で欠落キーが無いことを確認した。
+- `tooling/ci/tests/test_create_audit_index.py` を追加し、`parse_audit_spec` / `build_entry` / `aggregate_retained` の振る舞いを回帰テスト化。CI で `python3 tooling/ci/tests/test_create_audit_index.py` を実行することで index 生成の退行を検出できる。
+- Windows/macOS CI ワークフロー (`.github/workflows/bootstrap-windows.yml`, `.github/workflows/bootstrap-macos.yml`) では `collect-iterator-audit-metrics.py --platform <target> --require-success` を用いて新しい監査ログを常時ゲート。結果は本レポートと `reports/iterator-stage-summary*.md` に記録し、`compiler/ocaml/docs/technical-debt.md#22` / `#23` に完了ログを追記した。

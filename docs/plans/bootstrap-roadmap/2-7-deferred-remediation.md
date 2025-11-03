@@ -132,19 +132,7 @@
 
 **成果物**: 最新化された技術的負債リスト、報告書更新、移送リスト
 
-### 5. Phase 2-8 への引き継ぎ準備（36週目後半）
-**担当領域**: ドキュメント整備
-
-5.1. **差分記録**
-- Phase 2-4, 2-7 で実施した変更点・残項目を `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の前提セクションへ追記。
-- 監査ログ/診断の安定化完了を `docs/plans/bootstrap-roadmap/2-8-spec-integrity-audit.md`（新規）から参照できるよう脚注を整備。
-
-5.2. **メトリクス更新**
-- `0-3-audit-and-metrics.md` に CI pass_rate の推移と LSP テスト完了状況を記録。
-- `tooling/ci/collect-iterator-audit-metrics.py` の集計結果を `reports/audit/dashboard/` に反映し、Phase 2-8 のベースラインとする。
-- DIAG-003 Step5 で追加された `diagnostics.domain_coverage` / `diagnostics.plugin_bundle_ratio` / `diagnostics.effect_stage_consistency` をダッシュボードへ掲載し、`Plugin` / `Lsp` / `Capability` ドメインの Stage 連携が視覚化されるようグラフとしきい値を設計する（`docs/spec/3-6-core-diagnostics-audit.md` 脚注参照）。
-
-**成果物**: 更新済み前提資料、メトリクス記録、Phase 2-8 用脚注
+- **完了状況 (2025-11-07)**: `compiler/ocaml/docs/technical-debt.md` で ID22/23 を完了扱いに更新し、H1〜H4 のレビュー結果を追記した。`reports/diagnostic-format-regression.md` / `reports/ffi-bridge-summary.md` へ Step4 の差分確認ログを追加し、`reports/audit/phase2-7/*.audit.jsonl` と `reports/audit/index.json` を生成。`tooling/ci/tests/test_create_audit_index.py` を新設し、index 生成ロジックの単体テストを整備済み。
 
 ### 6. ストリーミング PoC フォローアップ（Phase 2-7 序盤）
 **担当領域**: Core.Parse.Streaming / Runtime Bridge
@@ -228,6 +216,21 @@
 **ハンドオーバー**
 - Step5（Phase 2-5 TYPE-002）で作成するハンドオーバーノートを参照し、dual-write 期間の監査ログとテストログを保管。  
 - RowVar（行多相）については Phase 3 へ移管し、`constraint_solver` 拡張案・API 予約値の扱い・性能評価計画を `effect-system-tracking.md#phase-3-以降の検討` に沿って追跡する。
+
+### 5. Phase 2-8 への引き継ぎ準備（36週目後半）
+**担当領域**: ドキュメント整備
+
+5.1. **差分記録**
+- Phase 2-4, 2-7 で実施した変更点・残項目を `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の前提セクションへ追記。
+- 監査ログ/診断の安定化完了を `docs/plans/bootstrap-roadmap/2-8-spec-integrity-audit.md`（新規）から参照できるよう脚注を整備。
+
+5.2. **メトリクス更新**
+- `0-3-audit-and-metrics.md` に CI pass_rate の推移と LSP テスト完了状況を記録。
+- `tooling/ci/collect-iterator-audit-metrics.py` の集計結果を `reports/audit/dashboard/` に反映し、Phase 2-8 のベースラインとする。
+- DIAG-003 Step5 で追加された `diagnostics.domain_coverage` / `diagnostics.plugin_bundle_ratio` / `diagnostics.effect_stage_consistency` をダッシュボードへ掲載し、`Plugin` / `Lsp` / `Capability` ドメインの Stage 連携が視覚化されるようグラフとしきい値を設計する（`docs/spec/3-6-core-diagnostics-audit.md` 脚注参照）。
+
+**成果物**: 更新済み前提資料、メトリクス記録、Phase 2-8 用脚注
+
 
 
 ## 成果物と検証

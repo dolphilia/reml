@@ -1,0 +1,45 @@
+{
+  "entries": [
+    {
+      "build_id": "phase2-7-step4",
+      "timestamp": "2025-11-07T03:10:00Z",
+      "profile": "ci",
+      "audit_store": "ci",
+      "target": "windows-msvc",
+      "audit_level": "full",
+      "path": "reports/audit/phase2-7/windows-ffi-bridge.audit.jsonl",
+      "status": "success",
+      "pass_rate": 1.0,
+      "size_bytes": "639",
+      "commit": "phase2-7-deferred-remediation"
+    },
+    {
+      "build_id": "phase2-7-step4",
+      "timestamp": "2025-11-07T03:10:00Z",
+      "profile": "ci",
+      "audit_store": "ci",
+      "target": "macos-arm64",
+      "audit_level": "full",
+      "path": "reports/audit/phase2-7/macos-ffi-bridge.audit.jsonl",
+      "status": "success",
+      "pass_rate": 1.0,
+      "size_bytes": "635",
+      "commit": "phase2-7-deferred-remediation"
+    }
+  ],
+  "retained_entries": [
+    {
+      "profile": "ci",
+      "target": "macos-arm64",
+      "count": 1,
+      "size_bytes": 635
+    },
+    {
+      "profile": "ci",
+      "target": "windows-msvc",
+      "count": 1,
+      "size_bytes": 639
+    }
+  ],
+  "pruned": []
+}
