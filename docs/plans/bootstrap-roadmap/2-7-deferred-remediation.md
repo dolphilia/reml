@@ -86,6 +86,8 @@
 - `--format text --no-snippet` を追加し、CI 向けログを簡略化。
 - テキストゴールデン (`compiler/ocaml/tests/golden/diagnostics/*.golden`) を更新し、差分は `reports/diagnostic-format-regression.md` に記録。
 
+- **完了状況 (2025-11-08)**: `SerializedDiagnostic` ベースの CLI 出力統合方針を `docs/spec/0-0-overview.md` と `docs/guides/ai-integration.md` のハイライト／ワークフロー節へ追記し、`--format text` / `--format json` と `--format text --no-snippet` の利用手順を共有した。CLI 実装のフォーマット切替と JSON/TEXT ゴールデン更新は未着手のまま Phase 2-8 での差分レビュー対象として維持し、本節に後続タスクとして明記した。
+
 **成果物**: CLI オプション整理、テキストフォーマッタ更新、ドキュメント追記
 
 ### 3. LSP V2 互換性確立（35週目後半）

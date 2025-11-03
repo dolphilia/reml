@@ -21,6 +21,7 @@
 ## 5. ワークフロー統合
 - CLI パイプラインでの利用例（build/test/fmt との連携）。
 - IDE プラグイン（4.3）での UI 仕様。
+- AI 推論へ診断コンテキストを渡す際は `reml diagnose --format json` で `SerializedDiagnostic` JSON を取得し、CI 連携やログ連携で人間可読性を優先する場合は `--format text --no-snippet` を利用する。
 
 ## 6. 今後のタスク
 - セーフティ評価・ログ収集テンプレートの整備。
