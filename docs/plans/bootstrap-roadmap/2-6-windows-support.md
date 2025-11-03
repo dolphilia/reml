@@ -231,6 +231,42 @@
 - ランタイムのバグ修正
 - エッジケースの追加テスト
 
+#### 進捗サマリ（2025-11-15）
+- ✅ スモークテスト対象を `compiler/ocaml/tests/dune` から抽出し、Windows で優先確認すべきテストバイナリと実行コマンドを洗い出した。実施順と確認観点を下表に整理。
+- ✅ `examples/ffi/windows/`（`messagebox.reml` / `struct_passing.reml` / `ownership_transfer.reml`）を中心にサンプル実行パスを選定し、`remlc --target x86_64-pc-windows-msvc` でのビルド手順を PowerShell 前提で固めた。
+- ✅ WinDbg / Visual Studio でのクラッシュ解析手順と PDB 取得経路を整理し、`tooling/toolchains/setup-windows-toolchain.ps1` を起点とした環境初期化フローに紐付けた。
+- 🟡 ランタイム統合テストは `compiler/ocaml/tests/test_runtime_integration.sh` を PowerShell 版へ移植し、MSVC 版ランタイムと連携させる作業が未完。移植後に `Application Verifier` を含むリーク検出手順を自動化する。
+
+#### Windows スモークテスト実行メモ（2025-11-15）
+事前に `pwsh -NoLogo -File tooling/toolchains/setup-windows-toolchain.ps1 -NoCheck` を実行し、PATH と MSVC 環境を初期化する。
+
+| カテゴリ | 実行コマンド例 | 主な確認ポイント | 状態 |
+| --- | --- | --- | --- |
+| Parser | `opam exec -- dune runtest compiler/ocaml/tests/test_parser.exe` | Windows パス区切り（`\\`）を含むエラーメッセージと `stdin` 経由入力の挙動 | 準備完了（要実行ログ） |
+| Parser (補足) | `opam exec -- dune runtest compiler/ocaml/tests/test_parser_expectation.exe` | `expect` ファイルの改行コード（CRLF）差分検出 | 準備完了（要実行ログ） |
+| Typer | `opam exec -- dune runtest compiler/ocaml/tests/test_type_inference.exe` | `StageRequirement` の検証が Linux と同一結果になるか | 準備完了（要実行ログ） |
+| LLVM IR | `opam exec -- dune runtest compiler/ocaml/tests/test_cli_callconv_snapshot.exe` | `x86_64-pc-windows-msvc` 向け DataLayout / CallingConv の差分スナップショット | 準備完了（要実行ログ） |
+| Runtime/FFI | `opam exec -- dune runtest compiler/ocaml/tests/test_ffi_lowering.exe` | `sret` / `byval` 属性と `lld-link` への引数構成 | 準備完了（要実行ログ） |
+| Runtime Smoke | `opam exec -- dune runtest compiler/ocaml/tests/test_abi.exe` | Shadow Space / Struct 受け渡しの FileCheck マーカー | 準備完了（要実行ログ） |
+
+#### サンプルプログラム検証メモ（2025-11-15）
+
+| プログラム | ビルドコマンド例 | 確認ポイント | 状態 |
+| --- | --- | --- | --- |
+| `examples/ffi/windows/messagebox.reml` | `opam exec -- dune exec -- remlc .\examples\ffi\windows\messagebox.reml --target x86_64-pc-windows-msvc --emit-ir --link-runtime --out-dir .\build\windows\messagebox` | `MessageBoxW` 呼び出しでの `stdcall` / UNICODE 変換と `lld-link /SUBSYSTEM:WINDOWS` 指定 | 準備完了（生成物確認待ち） |
+| `examples/ffi/windows/struct_passing.reml` | `opam exec -- dune exec -- remlc .\examples\ffi\windows\struct_passing.reml --target x86_64-pc-windows-msvc --emit-obj --out-dir .\build\windows\struct` | 構造体の `byval align 8` 振る舞いと `WinDbg` でのレジスタ確認 | 準備完了（生成物確認待ち） |
+| `examples/ffi/windows/ownership_transfer.reml` | `opam exec -- dune exec -- remlc .\examples\ffi\windows\ownership_transfer.reml --target x86_64-pc-windows-msvc --emit-ir --link-runtime --out-dir .\build\windows\ownership` | `RuntimeBridge` 経由の参照カウントと `AuditEnvelope.metadata` の整合 | 準備完了（生成物確認待ち） |
+
+#### デバッグ手順とフォローアップ
+- WinDbg でのクラッシュ調査: `lld-link /DEBUG` で生成した `.pdb` を同ディレクトリへ配置し、`windbg.exe -z .\build\windows\struct\struct_passing.exe` を実行。例外発生時は `!analyze -v` の結果を `docs/notes/llvm-spec-status-survey.md` に転記。
+- Visual Studio デバッガーでの動的検証: `devenv /debugexe` で実行し、`compiler/ocaml/src/llvm_gen/abi.ml` の `Win64` 分岐にブレークポイントを設定して引数レイアウトを検証。
+- Application Verifier 導入手順: `appverif.exe /verify struct_passing.exe /tests Heaps Handles` をサンプルごとに実行し、ログを `%LOCALAPPDATA%\Reml\logs\appverifier\` へ収集。PowerShell 版ランタイム統合テストへ組み込み予定。
+
+#### 残タスク / 次ステップ
+1. `compiler/ocaml/tests/test_runtime_integration.sh` をベースに PowerShell 版統合テスト（仮称: `test_runtime_integration.ps1`）を実装し、MSVC 版ランタイムへのリンクと `LLVM` CLI 呼び出しを自動化する。
+2. 上記スモークテスト runlist を GitHub Actions (windows-latest) で実行し、`reports/windows-smoke-*.log` をアーティファクト化する運用を確立する。
+3. Application Verifier の結果を CI アーティファクトとして保存し、`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` に検証ログの保存場所と運用ルールを追記する。
+
 **成果物**: Windows テストスイート、バグ修正
 
 ### 6. GitHub Actions 統合（22-23週目）
