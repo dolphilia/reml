@@ -36,6 +36,28 @@
 - `docs/guides/llvm-integration-notes.md`, `docs/spec/3-9-core-async-ffi-unsafe.md` : Windows 章の更新
 - `docs/notes/llvm-spec-status-survey.md` : プラットフォーム差分・リスクの記録
 
+## ビルド検証ログ（2025-11-03）
+
+- `compiler/ocaml` 直下で `opam exec -- dune build` を実行したところ、LLVM OCaml バインディング（`llvm`, `llvm.bitwriter`）が見つからずビルドに失敗した。
+- エラーログ抜粋:
+
+```text
+File "src/llvm_gen/dune", line 25, characters 2-16:
+  llvm.bitwriter
+Error: Library "llvm.bitwriter" not found.
+File "tests/dune", line 60, characters 2-6:
+  llvm
+Error: Library "llvm" not found.
+```
+
+- 判明した課題:
+  - `opam list --installed` に `llvm` パッケージが存在せず、`conf-llvm-static` 19 のみが導入されている。
+  - 読み取り専用セッションでは `opam install llvm` を実行できないため、Windows 向けセットアップ手順に LLVM バインディング導入ステップを組み込む必要がある。
+- 推奨対応:
+  1. 書き込み可能なセッションで `opam install llvm --yes`（または `opam pin add llvm 19-static`）を実行し、`llvm.bitwriter` を含む OCaml バインディングを追加する。
+  2. `tooling/toolchains/setup-windows-toolchain.ps1` に LLVM バインディング導入チェックを追加し、詳細手順を `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` に追記する（TODO）。
+  3. `opam exec -- dune build` を Windows smoke テストの必須項目として `docs/plans/bootstrap-roadmap/2-3-windows-local-environment.md` に連携し、環境診断で検出できるようにする。
+
 ## 作業ブレークダウン
 
 ### 1. Toolchain 調査と環境準備（17-18週目）
