@@ -158,27 +158,32 @@
 
 ### 3. LLVM IR 生成の拡張（19-20週目）
 **担当領域**: コード生成
+**ステータス**: 🟡 進行中 (2025-11-12)
 
 3.1. **ターゲット切替ロジックの実装**
-- `--target x86_64-w64-windows-gnu`（MinGW）での既存コード生成経路を維持し、smoke テストを追加する。
-- `--target x86_64-pc-windows-msvc` フラグの処理
-- LLVM `TargetMachine` の初期化（Windows ターゲット／MinGW と MSVC の両対応）
-- データレイアウトの設定
-- トリプルの設定と検証
+- ✅ CLI フラグ `--target` を `compiler/ocaml/src/cli/options.ml` から `llvm_gen/target_config.ml` に伝搬し、`TargetMachine` 生成時に `x86_64-pc-windows-msvc` / `x86_64-w64-windows-gnu` の双方を選択できる設計草案を作成。CLI のヘルプ更新案を `docs/guides/llvm-integration-notes.md` に TODO として追加。
+- ✅ LLVM `DataLayout` 文字列の差分を整理し、MSVC 向けは `e-m:w-i64:64-f80:128-n8:16:32:64-S128`、MinGW 向けは既存レイアウトを維持する方針を確定。`llc -mtriple=x86_64-pc-windows-msvc -filetype=obj smoke_test.ll` を用いた検証手順をドラフト化（`windows-llvm-build-investigation.md` 更新準備）。
+- 🟡 CLI/ターゲット切替テスト: `compiler/ocaml/tests/llvm-ir/target_selection/` に MSVC/MinGW の比較ゴールデン (`msvc_shadow_space.ll`, `gnu_shadow_space.ll`) と CLI スナップショット (`test_cli_target_switch.ml`) を追加するブランチを作成済み。`dune runtest codegen` で新テストが実行されることを確認する手順メモを整備し、2025-11-15 までにレビューへ提出予定。
 
 3.2. **Calling Convention の適用**
-- 関数シグネチャへの calling convention 属性付与
-- `cc 0` (C calling convention) の適用
-- 構造体引数の lowering ロジック
-- 戻り値の lowering ロジック
+- ✅ `docs/notes/llvm-spec-status-survey.md` §2.2.2a の Shadow Space 調査結果を反映し、`compiler/ocaml/src/llvm_gen/abi.ml` へ `Win64` 分岐（`CallingConv.win64`, `sret`, `byval align 8`）を導入する実装メモを作成。構造体引数と戻り値の lowering ルールを整理。
+- ✅ `examples/ffi/windows/struct_passing.reml` の期待 IR と照合し、MinGW/MSVC 共通で Shadow Space 32 バイトを確保する必要があることを確認。`llvm_gen/codegen.ml` での `add_function_attribute` 追加ポイントを特定。
+- 🟡 Shadow Space FileCheck: `compiler/ocaml/tests/llvm-ir/win64_shadow_space.ll` に `CHECK: call void @llvm.frameescape` ベースの検証を追加する案を作成し、`tooling/scripts/run-win64-filecheck.ps1` で `llc -mtriple=x86_64-pc-windows-msvc` → `FileCheck` を自動化する下書きを作成。2025-11-18 までに `.ps1` 実装とテストデータを確定させる。
 
 3.3. **デバッグ情報の生成**
-- Windows PDB 形式のデバッグ情報生成
-- DWARF vs PDB の選択ロジック
-- ソースマッピングの正確性確認
-- デバッガ（Visual Studio/WinDbg）での動作確認
+- ✅ Windows では CodeView/PDB を既定、`--emit-dwarf` 指定時に DWARF を出力する切替を `compiler/ocaml/src/llvm_gen/codegen.ml`/`debug_info` で制御する設計をまとめ、Visual Studio / WinDbg での検証項目を列挙。
+- ✅ `DICompileUnit` のソースパス正規化（`\\` → `/`）と `DW_LANG_C_plus_plus_17` など言語識別子の更新を含むチェックリストを作成し、`docs/guides/llvm-integration-notes.md` の追記箇所を特定。
+- 🟡 PDB スモークテスト: `tooling/toolchains/test-pdb-smoke.ps1` で `llc -filetype=obj` → `lld-link /DEBUG` → `llvm-pdbutil -summary` を連鎖実行し、`Summary:` 内に `Publics` と `Globals` が出力されることを確認する自動化スクリプトの骨子を作成。CI 取り込みに向けてアーティファクト保存（`artifact: pdb-smoke-report.txt`）の仕様書きを 2025-11-19 までに確定する。
 
-**成果物**: 拡張 LLVM IR 生成、ターゲット切替
+#### 進捗サマリ（2025-11-12）
+- LLVM ターゲット切替経路と DataLayout 定義を確定し、CLI・生成器それぞれの修正ポイントを `compiler/ocaml/src/cli` / `llvm_gen` 配下に集約。
+- Win64 calling convention の属性セット（`win64cc`/`sret`/`byval`/Shadow Space）を整理し、Phase 2 ABI 調査と整合する lowering ルールを明文化。
+- PDB と DWARF の切替条件、および Visual Studio / WinDbg での検証シナリオを定義し、ガイド更新と CI 自動化へ橋渡しするタスクリストを作成。
+
+#### フォローアップ
+1. ターゲット切替テストブランチのレビューと `compiler/ocaml/tests/llvm-ir/target_selection` ゴールデン取り込み（担当: Windows チーム、期限 2025-11-15、参照: `compiler/ocaml/tests/llvm-ir`）。
+2. Shadow Space FileCheck スクリプト (`tooling/scripts/run-win64-filecheck.ps1`) とテスト資産のコミット、`docs/notes/llvm-spec-status-survey.md` §2.2.2a への結果追記（期限 2025-11-18）。
+3. PDB スモークテスト自動化 (`tooling/toolchains/test-pdb-smoke.ps1`) を CI に統合し、`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md`・`docs/guides/llvm-integration-notes.md` に運用手順を追記（期限 2025-11-19、担当: CI チーム）。
 
 ### 4. ランタイム C コードの移植（20-21週目）
 **担当領域**: ランタイム実装
