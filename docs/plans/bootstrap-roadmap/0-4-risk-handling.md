@@ -54,6 +54,7 @@
 - 状態: Open
 - 関連フェーズ: Phase 2 (2-7)
 - 参照: `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-001-proposal.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`
+- 担当: Phase 2-7 Parser チーム（LEXER-001 / SYNTAX-001）
 - 登録日: 2026-04-20
 - タイトル: 効果構文 Stage 昇格遅延（EFFECT-POC-Stage）
 - カテゴリ: 技術的負債
@@ -63,6 +64,7 @@
 - 状態: Open
 - 関連フェーズ: Phase 2 (2-7)
 - 参照: `docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-002-proposal.md`, `docs/plans/bootstrap-roadmap/2-5-review-log.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`, `docs/notes/effect-system-tracking.md`
+- 担当: Phase 2-7 Effects チーム（SYNTAX-003 / EFFECT-002）
 - 登録日: 2026-04-24
 - タイトル: 効果行統合遅延による型・監査不整合（TYPE-002-ROW-INTEGRATION）
 - カテゴリ: 技術的負債
@@ -72,6 +74,7 @@
 - 状態: Open
 - 関連フェーズ: Phase 2 (2-7)
 - 参照: `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md`, `docs/plans/bootstrap-roadmap/2-5-to-2-7-type-002-handover.md`, `docs/plans/bootstrap-roadmap/2-5-review-log.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`, `docs/notes/effect-system-tracking.md`, `compiler/ocaml/docs/effect-system-design-note.md`
+- 担当: Phase 2-7 Type チーム（TYPE-002）
 - 登録日: 2025-10-10
 - タイトル: Debian sysroot アーカイブのハッシュ未確定
 - カテゴリ: 互換性

@@ -36,19 +36,22 @@
 ## 作業ブレークダウン
 
 ### 0. フェーズ起動とハンドオーバー整備（34週目前半）
-*参照*: `docs/plans/bootstrap-roadmap/2-5-to-2-7-handover.md` §6、`docs/plans/bootstrap-roadmap/2-5-to-2-7-type-002-handover.md`、`compiler/ocaml/docs/technical-debt.md`
+*参照*: [2-5-to-2-7-handover.md](./2-5-to-2-7-handover.md#6-phase-2-7-初期アクションチェックリスト)、[2-5-to-2-7-type-002-handover.md](./2-5-to-2-7-type-002-handover.md)、[compiler/ocaml/docs/technical-debt.md](../../compiler/ocaml/docs/technical-debt.md)
 
 0.1. **キックオフレビューと役割確認**
 - LEXER-001 / SYNTAX-001 / SYNTAX-003 / EFFECT-002 / TYPE-002 の担当リード合同レビューを開催し、境界 API とスプリント順序を確定する。決定事項は `docs/plans/bootstrap-roadmap/2-5-review-log.md` に `PHASE2-7-KICKOFF` タグで追記する。
 - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` から各ハンドオーバー資料へ遷移できることを確認し、リンク切れがあれば本書と関連資料を同時更新する。
+- **完了状況 (2025-11-04)**: Kickoff 合意事項を `docs/plans/bootstrap-roadmap/2-5-review-log.md#phase2-7-キックオフレビュー2025-11-04` に記録し、本節の参照リンクを更新してハンドオーバー資料へ直接遷移できることを確認した。
 
 0.2. **計測スクリプトと CI ベースライン**
 - `tooling/ci/collect-iterator-audit-metrics.py` と `scripts/validate-diagnostic-json.sh` の Phase 2-7 ブランチを作成し、`--require-success` での実行結果を共有ドライブへ保存する。Windows/macOS 用のプリセットが未整備の場合はこの段階で追加する。
 - KPI の初期値（`lexer.identifier_profile_unicode`, `syntax.effect_construct_acceptance`, `diagnostics.effect_row_stage_consistency` など）を測定し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に起動時ベースラインとして記録する。
+- **完了状況 (2025-11-04)**: Phase 2-7 キックオフ時点のベースライン（`lexer.identifier_profile_unicode = 0.0`, `syntax.effect_construct_acceptance = 0.0`, `diagnostics.effect_row_stage_consistency = null`）を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に追記し、スクリプトの Phase 2-7 プロファイル確認結果を `docs/plans/bootstrap-roadmap/2-5-review-log.md#phase2-7-キックオフレビュー2025-11-04` に記録した。
 
 0.3. **脚注・リスク・RunConfig ガードの整合**
 - `docs/spec/1-1-syntax.md` ほか脚注 `[^lexer-ascii-phase25]`, `[^effects-syntax-poc-phase25]`, `[^type-row-metadata-phase25]` の撤去条件を再確認し、移行時に必要なチェックリストを本書該当セクションへ反映する。
 - `0-4-risk-handling.md` の関連リスク（Unicode XID、効果構文 Stage、TYPE-002 ROW 統合）を Phase 2-7 担当者へ再アサインし、週次レビューのエスカレーション経路を共有する。`compiler/ocaml/docs/technical-debt.md` に記載された ID 22/23 の対応状況を初期ステータスとして確認する。
+- **完了状況 (2025-11-04)**: 脚注撤去条件を再確認し、`docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に Phase 2-7 Parser・Effects・Type チームを担当として追記した。技術的負債 ID22/23 の現状は `compiler/ocaml/docs/technical-debt.md` の記載どおりで未変更であることを確認済み。
 
 **成果物**: キックオフ議事録、最新ベースラインメトリクス、脚注およびリスク整合メモ
 

@@ -187,6 +187,7 @@
 - 差分が複数フェーズに跨る場合は、各フェーズで影響範囲を明記し、必要に応じて追加タスクを `0-4-risk-handling.md` に登録する。
 - 2025-10-24 / docs/spec/3-6-core-diagnostics-audit.md:§2.4 / CLI・監査ゴールデン出力で `schema.version`, `audit.timestamp`, `AuditEnvelope.metadata.bridge.*` が欠落していることを確認。`scripts/validate-diagnostic-json.sh` ではスキーマ違反なしだが `ffi_bridge.audit_pass_rate = 0.0` のまま。 / pending (Phase 2-7)
 - 2025-10-24 / docs/spec/3-8-core-runtime-capability.md:§10 / Stage 監査ログで `extensions.bridge.stage.*` と `effect.stage.*` が未出力のため `iterator.stage.audit_pass_rate = 0.0` を維持。Phase 2-7 技術的負債 ID22/23 と連携して解消予定。 / pending (Phase 2-7)
+- 2025-11-04 / docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md:§0 / Phase 2-7 キックオフで KPI ベースラインを設定。`lexer.identifier_profile_unicode = 0.0`, `syntax.effect_construct_acceptance = 0.0`, `diagnostics.effect_row_stage_consistency = null` を測定前の起動値として登録し、`tooling/ci/collect-iterator-audit-metrics.py` Phase 2-7 プロファイルと `scripts/validate-diagnostic-json.sh` Phase 2-7 プロファイルの整備状況を `docs/plans/bootstrap-roadmap/2-5-review-log.md#phase2-7-キックオフレビュー2025-11-04` に記録。 / baseline (Phase 2-7)
 
 ## 0.3.6 最適化パス統計（Phase 3 Week 10-11）
 

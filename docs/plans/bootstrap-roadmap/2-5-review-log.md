@@ -3,6 +3,28 @@
 Phase 2-5 で実施した差分レビューと現状棚卸しを記録し、後続フェーズでの追跡に利用する。  
 エントリごとに関連計画へのリンクと再現手順を整理する。
 
+## PHASE2-7 キックオフレビュー（2025-11-04）
+
+関連計画: [`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`](./2-7-deferred-remediation.md#0-フェーズ起動とハンドオーバー整備), [`docs/plans/bootstrap-roadmap/2-5-to-2-7-handover.md`](./2-5-to-2-7-handover.md#6-phase-2-7-初期アクションチェックリスト), [`docs/plans/bootstrap-roadmap/2-5-to-2-7-type-002-handover.md`](./2-5-to-2-7-type-002-handover.md), [`compiler/ocaml/docs/technical-debt.md`](../../compiler/ocaml/docs/technical-debt.md)
+
+タグ: `PHASE2-7-KICKOFF`
+
+### 1. ハンドオーバー資料の整合確認
+- `2-7-deferred-remediation.md` のフェーズ0セクションに実資料への直接リンクを追加し、`2-5-to-2-7-handover.md` §6 および `2-5-to-2-7-type-002-handover.md` に遷移できることを確認した。
+- Kickoff の合意事項（LEXER-001/SYNTAX-001/SYNTAX-003/EFFECT-002/TYPE-002 の順序と API 境界）を本エントリに記録し、以降の差分レビューで `PHASE2-7-KICKOFF` タグを参照できるようにした。
+
+### 2. KPI ベースラインと計測スクリプト
+- `tooling/ci/collect-iterator-audit-metrics.py` と `scripts/validate-diagnostic-json.sh` の Phase 2-7 実行プロファイルを確認し、`--require-success` 実行前のベースライン値（`lexer.identifier_profile_unicode = 0.0`, `syntax.effect_construct_acceptance = 0.0`, `diagnostics.effect_row_stage_consistency = null`）を `0-3-audit-and-metrics.md` へ記録した。
+- Windows/macOS プリセットの不足が無いことを点検し、必要な場合は Phase 2-7 Sprint A で更新する TODO を残した（`tooling/ci/collect-iterator-audit-metrics.py:Phase27Profile`）。
+
+### 3. リスク再アサインと RunConfig ガード
+- `0-4-risk-handling.md` の Unicode / 効果構文 / 効果行統合リスクに Phase 2-7 の担当ロール（Parser, Effects, Type チーム）を追記し、週次レビューのエスカレーション経路を共有した。
+- `RunConfig` の `extensions["effects"].type_row_mode = "metadata-only"` 設定と脚注 `[^lexer-ascii-phase25]`, `[^effects-syntax-poc-phase25]`, `[^type-row-metadata-phase25]` の撤去条件を再確認し、条件が `2-7-deferred-remediation.md` 0.3 節へ反映されていることを確認した。
+
+### 4. 次アクション
+1. Phase 2-7 Sprint A 開始時に Unicode プロファイルと効果 PoC の KPI を実測し、`0-3-audit-and-metrics.md` のベースライン行を更新する。
+2. dual-write 切り替え前に `RunConfig.extensions["effects"].type_row_mode` の CLI/LSP 表示を確認し、必要なら `docs/spec/3-6-core-diagnostics-audit.md` の脚注を更新する。
+
 ## EFFECT-002 Step1 効果操作棚卸（2026-04-08）
 
 関連計画: [`docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-002-proposal.md`](./2-5-proposals/EFFECT-002-proposal.md#5-実施ステップ)
