@@ -302,6 +302,53 @@ reml_os_result_t reml_os_file_write(reml_os_file_t* file,
     return REML_OS_SUCCESS;
 }
 
+reml_os_result_t reml_os_file_write_all(reml_os_file_t* file,
+                                        const void* buffer,
+                                        size_t buffer_size) {
+    if (file == NULL || buffer == NULL) {
+        return REML_OS_ERROR_INVALID_ARGUMENT;
+    }
+
+    const uint8_t* bytes = (const uint8_t*)buffer;
+    size_t total_written = 0;
+
+    while (total_written < buffer_size) {
+        size_t chunk_written = 0;
+        reml_os_result_t result = reml_os_file_write(
+            file, bytes + total_written, buffer_size - total_written,
+            &chunk_written);
+        if (result != REML_OS_SUCCESS) {
+            return result;
+        }
+        if (chunk_written == 0) {
+            return REML_OS_ERROR_SYSTEM_FAILURE;
+        }
+        total_written += chunk_written;
+    }
+
+    return REML_OS_SUCCESS;
+}
+
+reml_os_file_t reml_os_stdout(void) {
+    reml_os_file_t file;
+#ifdef REML_PLATFORM_WINDOWS
+    file.handle = GetStdHandle(STD_OUTPUT_HANDLE);
+#else
+    file.fd = STDOUT_FILENO;
+#endif
+    return file;
+}
+
+reml_os_file_t reml_os_stderr(void) {
+    reml_os_file_t file;
+#ifdef REML_PLATFORM_WINDOWS
+    file.handle = GetStdHandle(STD_ERROR_HANDLE);
+#else
+    file.fd = STDERR_FILENO;
+#endif
+    return file;
+}
+
 void reml_os_file_close(reml_os_file_t* file) {
     if (file == NULL) {
         return;
@@ -420,4 +467,3 @@ reml_os_result_t reml_os_thread_join(reml_os_thread_t* thread) {
     reml_os_clear_last_error();
     return REML_OS_SUCCESS;
 }
-

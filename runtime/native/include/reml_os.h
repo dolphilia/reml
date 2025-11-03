@@ -51,6 +51,13 @@ reml_os_result_t reml_os_file_write(reml_os_file_t* file,
                                     size_t* bytes_written);
 void reml_os_file_close(reml_os_file_t* file);
 
+reml_os_result_t reml_os_file_write_all(reml_os_file_t* file,
+                                        const void* buffer,
+                                        size_t buffer_size);
+
+reml_os_file_t reml_os_stdout(void);
+reml_os_file_t reml_os_stderr(void);
+
 reml_os_result_t reml_os_thread_start(reml_os_thread_t* thread,
                                       reml_os_thread_entry_t entry,
                                       void* context);
@@ -60,4 +67,3 @@ size_t reml_os_last_error_message(char* buffer, size_t buffer_size);
 void reml_os_clear_last_error(void);
 
 #endif /* REML_OS_H */
-

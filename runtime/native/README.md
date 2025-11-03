@@ -22,7 +22,7 @@ Phase 1 の最小ランタイムおよび Phase 2 以降の Capability 拡張を
   - 型別デストラクタディスパッチ（STRING, TUPLE, RECORD, CLOSURE, ADT）
   - 再帰的な子オブジェクト解放
   - デバッグ統計（inc/dec/destroy カウンタ）
-- ✅ テストスイート（`tests/test_mem_alloc.c`, `tests/test_refcount.c`）
+- ✅ テストスイート（`tests/test_mem_alloc.c`, `tests/test_refcount.c`, `tests/test_ffi_bridge.c`, `tests/test_os.c`）
   - メモリアロケータ：6 件のテストケース成功
   - 参照カウント：8 件のテストケース成功
   - AddressSanitizer 統合：リーク・ダングリングゼロ
@@ -154,7 +154,8 @@ runtime/native/
 ├── tests/
 │   ├── test_mem_alloc.c   # アロケータテスト
 │   ├── test_refcount.c    # 参照カウントテスト
-│   └── test_ffi_bridge.c  # FFI ブリッジテスト
+│   ├── test_ffi_bridge.c  # FFI ブリッジテスト
+│   └── test_os.c          # OS 抽象レイヤーテスト
 ├── build/                 # ビルド成果物（自動生成）
 │   ├── *.o                # オブジェクトファイル
 │   ├── libreml_runtime.a  # 静的ライブラリ

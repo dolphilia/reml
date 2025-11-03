@@ -9,6 +9,7 @@
  */
 
 #include "../include/reml_runtime.h"
+#include "../include/reml_os.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -68,18 +69,30 @@ void panic(const char* msg) {
     unsigned long pid = reml_get_process_id();
 
     // エラーメッセージを stderr に出力
-    fprintf(stderr, "\n");
-    fprintf(stderr, "===============================================\n");
-    fprintf(stderr, "PANIC: Runtime Error\n");
-    fprintf(stderr, "===============================================\n");
-    fprintf(stderr, "Time:    %s\n", time_buf);
-    fprintf(stderr, "PID:     %lu\n", pid);
-    fprintf(stderr, "Message: %s\n", msg ? msg : "(null)");
-    fprintf(stderr, "===============================================\n");
-    fprintf(stderr, "\n");
+    reml_os_file_t stderr_file = reml_os_stderr();
 
-    // stderr をフラッシュして確実に出力
-    fflush(stderr);
+    const char* banner_top = "\n===============================================\n";
+    const char* banner_mid = "PANIC: Runtime Error\n===============================================\n";
+    const char* banner_bottom = "===============================================\n\n";
+
+    reml_os_file_write_all(&stderr_file, banner_top, strlen(banner_top));
+    reml_os_file_write_all(&stderr_file, banner_mid, strlen(banner_mid));
+
+    char line_buffer[256];
+    int length = snprintf(line_buffer, sizeof(line_buffer), "Time:    %s\n", time_buf);
+    if (length > 0) {
+        reml_os_file_write_all(&stderr_file, line_buffer, (size_t)length);
+    }
+    length = snprintf(line_buffer, sizeof(line_buffer), "PID:     %lu\n", pid);
+    if (length > 0) {
+        reml_os_file_write_all(&stderr_file, line_buffer, (size_t)length);
+    }
+    length = snprintf(line_buffer, sizeof(line_buffer), "Message: %s\n", msg ? msg : "(null)");
+    if (length > 0) {
+        reml_os_file_write_all(&stderr_file, line_buffer, (size_t)length);
+    }
+
+    reml_os_file_write_all(&stderr_file, banner_bottom, strlen(banner_bottom));
 
     // プログラムを異常終了（終了コード 1）
     exit(1);
@@ -104,19 +117,34 @@ void panic_at(const char* msg, const char* file, int line) {
     unsigned long pid = reml_get_process_id();
 
     // エラーメッセージを stderr に出力
-    fprintf(stderr, "\n");
-    fprintf(stderr, "===============================================\n");
-    fprintf(stderr, "PANIC: Runtime Error\n");
-    fprintf(stderr, "===============================================\n");
-    fprintf(stderr, "Time:     %s\n", time_buf);
-    fprintf(stderr, "PID:      %lu\n", pid);
-    fprintf(stderr, "Location: %s:%d\n", file ? file : "(unknown)", line);
-    fprintf(stderr, "Message:  %s\n", msg ? msg : "(null)");
-    fprintf(stderr, "===============================================\n");
-    fprintf(stderr, "\n");
+    reml_os_file_t stderr_file = reml_os_stderr();
 
-    // stderr をフラッシュして確実に出力
-    fflush(stderr);
+    const char* banner_top = "\n===============================================\n";
+    const char* banner_mid = "PANIC: Runtime Error\n===============================================\n";
+    const char* banner_bottom = "===============================================\n\n";
+
+    reml_os_file_write_all(&stderr_file, banner_top, strlen(banner_top));
+    reml_os_file_write_all(&stderr_file, banner_mid, strlen(banner_mid));
+
+    char line_buffer[256];
+    int length = snprintf(line_buffer, sizeof(line_buffer), "Time:     %s\n", time_buf);
+    if (length > 0) {
+        reml_os_file_write_all(&stderr_file, line_buffer, (size_t)length);
+    }
+    length = snprintf(line_buffer, sizeof(line_buffer), "PID:      %lu\n", pid);
+    if (length > 0) {
+        reml_os_file_write_all(&stderr_file, line_buffer, (size_t)length);
+    }
+    length = snprintf(line_buffer, sizeof(line_buffer), "Location: %s:%d\n", file ? file : "(unknown)", line);
+    if (length > 0) {
+        reml_os_file_write_all(&stderr_file, line_buffer, (size_t)length);
+    }
+    length = snprintf(line_buffer, sizeof(line_buffer), "Message:  %s\n", msg ? msg : "(null)");
+    if (length > 0) {
+        reml_os_file_write_all(&stderr_file, line_buffer, (size_t)length);
+    }
+
+    reml_os_file_write_all(&stderr_file, banner_bottom, strlen(banner_bottom));
 
     // プログラムを異常終了（終了コード 1）
     exit(1);

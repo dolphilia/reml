@@ -74,7 +74,7 @@ pub enum CapabilityHandle =
 | `AsyncCapability` | `io.async`, `io.timer` | スケジューラ・Waker・バックプレッシャ API を公開し、`Core.Async` を支える | 本章 §1.4, [3-9](3-9-core-async-ffi-unsafe.md) §1.1 |
 | `ActorRuntimeCapability` | `io.async`, `audit` | Mailbox や分散トランスポート、Actor 監査フックを提供 | 本章 §1.4, [3-9](3-9-core-async-ffi-unsafe.md) §1.9 |
 | `SyscallCapability` | `syscall`, `memory`, `unsafe` | OS システムコール呼び出しと監査フック | [4-1 System Capability プラグイン](4-1-system-plugin.md) |
-| `ProcessCapability` | `process`, `thread` | プロセス生成・スレッド管理 | [4-2 Process Capability プラグイン](4-2-process-plugin.md) |
+| `ProcessCapability` | `process`, `thread` | プロセス生成・スレッド管理（標準ランタイムでは `runtime/native/src/os.c` の `reml_os_thread_*` で Win32/POSIX API を抽象化し、GC/ワーカースレッド起動に対応） | [4-2 Process Capability プラグイン](4-2-process-plugin.md) |
 | `MemoryCapability` | `memory` | メモリマップ/共有メモリ/保護制御 | [4-3 Memory Capability プラグイン](4-3-memory-plugin.md) |
 | `SignalCapability` | `signal` | シグナル登録・送信・待機 | [4-4 Signal Capability プラグイン](4-4-signal-plugin.md) |
 | `HardwareCapability` | `hardware` | CPU 検出・性能カウンタ・NUMA | [4-5 Hardware Capability プラグイン](4-5-hardware-plugin.md) |

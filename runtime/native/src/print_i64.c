@@ -6,9 +6,17 @@
  */
 
 #include "../include/reml_runtime.h"
+#include "../include/reml_os.h"
 #include <stdio.h>
+#include <string.h>
 
 void print_i64(int64_t value) {
-    printf("%lld\n", (long long)value);
-    fflush(stdout);
+    char buffer[64];
+    int length = snprintf(buffer, sizeof(buffer), "%lld\n", (long long)value);
+    if (length <= 0) {
+        return;
+    }
+
+    reml_os_file_t stdout_file = reml_os_stdout();
+    reml_os_file_write_all(&stdout_file, buffer, (size_t)length);
 }
