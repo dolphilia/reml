@@ -200,13 +200,14 @@
 - **完了 (2026-11-20)**: `RuntimeBridgeRegistry.stream_signal` を実装し、`Streaming.build_bridge_stage_diagnostic` から既存の直接組み立てを差し替えてバックプレッシャ診断へ監査メタデータ (`cli.*`, `event.*`, Stage 情報) を付与。`compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` を更新し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section streaming --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` で `parser.stream.bridge_backpressure_diagnostics` / `parser.stream.bridge_stage_propagation` の pass_rate=1.0 を確認した（監査 presence 指標は Pending 0 件のため null ）。`collect-iterator-audit-metrics.py` には `IGNORED_BRIDGE_CODES` を追加して `bridge.stage.backpressure` 系診断を KPI 集計から除外、CLI 側は `dune exec tests/test_cli_diagnostics.exe` で JSON 出力回帰を確認済み。Windows 週次の `--platform windows-msvc --section streaming` でも同じコマンドで評価可能になった。
 
 6.6. **レポート化とフォローアップ共有**
-- `reports/audit/dashboard/streaming.md` を新設し、Packrat 共有・Backpressure・DemandHint カバレッジ・Runtime Bridge signal の KPI と計測手順を一覧化する。
-- `compiler/ocaml/docs/technical-debt.md` に `STREAM-POC-PACKRAT` / `STREAM-POC-BACKPRESSURE` を追加し、クローズ条件を本節の KPI に揃える。達成後は `docs/notes/core-parse-streaming-todo.md` へ移送可否を記録する。
-- 週次レビューで 6.1〜6.5 の数値を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に転記し、Phase 2-8 キックオフ資料でも同じ表を参照できるようにする。
+- `reports/audit/dashboard/streaming.md` を更新し、`parser.stream.outcome_consistency` / `parser.stream.backpressure_sync` / `parser.stream.flow.auto_coverage` / `parser.stream.demandhint_coverage` / `parser.stream.bridge_backpressure_diagnostics` / `parser.stream.bridge_stage_propagation` の pass_rate（Linux/macOS/Windows すべて 1.0）と取得コマンド、調査ログ保存先（`reports/audit/phase2-7/streaming/`）を明示した。
+- `compiler/ocaml/docs/technical-debt.md` に `STREAM-POC-PACKRAT` / `STREAM-POC-BACKPRESSURE` を追記し、逸脱時のフォローアップ手順とクローズ条件を KPI（本節 6.1〜6.5）と同期させた。
+- 週次レビュー結果を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` §0.3.5 に記録し、Phase 2-8 キックオフ資料から同じ履歴（2026-11-21 エントリ）を参照できる状態にした。
 
-**成果物**: Packrat 共有済み Streaming ランナー、FlowController Auto 設定、Pending/Error 監査ログ、`stream_meta` 付き CLI/LSP 出力、Runtime Bridge 拡張ガイド、`reports/audit/dashboard/streaming.md`
+**成果物**: Packrat 共有済み Streaming ランナー、FlowController Auto 設定、Pending/Error 監査ログ、`stream_meta` 付き CLI/LSP 出力、Runtime Bridge 拡張ガイド、`reports/audit/dashboard/streaming.md`、`compiler/ocaml/docs/technical-debt.md`（Streaming 項目）、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`
 
 - **完了状況 (2025-11-04)**: 6.1〜6.6 の作業単位と KPI を明確化し、参照資料・成果物・監査手順を本節に集約した。今後の実装進捗は各小項目へ検証ログを追記し、`collect-iterator-audit-metrics.py` と `docs/guides/runtime-bridges.md` の更新タイミングを同期させる。
+- **完了状況 (2026-11-21)**: Streaming ダッシュボードへ Backpressure/Stage 監査を含む KPI テーブルを追加し、pass_rate=1.0 の最新値と収集手順を記録した。技術的負債リストへ `STREAM-POC-PACKRAT` / `STREAM-POC-BACKPRESSURE` を追加してリスク対処フローを定義し、`0-3-audit-and-metrics.md` に週次レビュー結果を転記して Phase 2-8 への引き継ぎ資料と同期済み。
 
 ### 7. Unicode 識別子プロファイル移行（SYNTAX-001 / LEXER-001）
 *参照*: `docs/plans/bootstrap-roadmap/2-5-to-2-7-handover.md` §3.1-§3.2、`docs/plans/bootstrap-roadmap/2-5-proposals/LEXER-001-proposal.md`、`docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-001-proposal.md`

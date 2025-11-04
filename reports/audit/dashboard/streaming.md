@@ -1,6 +1,6 @@
 # ストリーミング指標ダッシュボード
 
-Reml のストリーミング実装に関する KPI を集約する。`parser.stream.outcome_consistency` は `run_stream` と `run` の結果（AST・診断・`stream_meta`）が一致する割合であり、1.0 未満の場合は `ContinuationMeta.resume_lineage` を添付した調査ログを必ず残す。
+Reml のストリーミング実装に関する KPI を集約する。`collect-iterator-audit-metrics.py --section streaming --require-success` の実行結果を週次で反映し、値が 1.0 未満の指標については `reports/audit/phase2-7/` 配下へ調査用ログ（`ContinuationMeta.resume_lineage` など）を保存する。`parser.stream.outcome_consistency` は `run_stream` と `run` の結果（AST・診断・`stream_meta`）が一致する割合であり、1.0 未満の場合は `ContinuationMeta.resume_lineage` を添付した調査ログを必ず残す。
 
 ## parser.stream.outcome_consistency
 
@@ -48,6 +48,22 @@ Auto モードの Pending 記録で Backpressure 理由が欠落した場合、`
 | linux-x86_64 | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | `continuation_meta.resume_hint.{min_bytes,preferred_bytes}` が非 null であることを確認 |
 | macos-arm64 | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --platform macos-arm64 --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | `resume_hint.reason` が `pending.backpressure` であることを維持 |
 | windows-msvc | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --platform windows-msvc --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | DemandHint 欠落検知時は `STREAM-POC-DEMANDHINT` を再オープン |
+
+## parser.stream.bridge_backpressure_diagnostics
+
+| プラットフォーム | pass_rate | 計測ログ | 補足 |
+|------------------|-----------|----------|------|
+| linux-x86_64 | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | `PendingReason::Backpressure` 発生時に `bridge.stage.backpressure` 診断を確認 |
+| macos-arm64 | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --platform macos-arm64 --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | Backpressure 診断と `CLI.audit_id` の整合を確認 |
+| windows-msvc | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --platform windows-msvc --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | 逸脱時は `0-4-risk-handling.md#stream-poc-backpressure` を更新 |
+
+## parser.stream.bridge_stage_propagation
+
+| プラットフォーム | pass_rate | 計測ログ | 補足 |
+|------------------|-----------|----------|------|
+| linux-x86_64 | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | `bridge.stage.backpressure` が `effects.contract.stage_mismatch` へ連鎖することを確認 |
+| macos-arm64 | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --platform macos-arm64 --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | Stage 差分が CLI/LSP/監査ログで一致することを確認 |
+| windows-msvc | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --platform windows-msvc --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | Stage 監査が未達の場合は `RuntimeBridge.stream_signal` を再検証 |
 
 ## 補足
 

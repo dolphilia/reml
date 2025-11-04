@@ -1,7 +1,7 @@
 # 技術的負債リスト
 
-**最終更新**: 2025-10-18
-**Phase**: Phase 2-3 着手前（効果システム統合完了時点）
+**最終更新**: 2026-11-21
+**Phase**: Phase 2-7 ストリーミング PoC フォローアップ中
 
 このドキュメントは、Phase 1-3 で発見された既知の問題と技術的負債を記録し、Phase 2 以降での対応を計画するものです。
 
@@ -108,6 +108,56 @@ let _ = match record with
 - 新設する `tests/test_typeclass_ambiguous.ml` が候補 impl を含む診断を検証し、`dune runtest` が成功する。
 - `0-3-audit-and-metrics.md` に曖昧 impl 件数を記録する導線が整い、CI での監視が可能になる。
 - 既存診断に回帰がなく、`iterator.stage.audit_pass_rate` 指標が 1.0 を維持する。
+
+### 3. Packrat 共有監査フローの定常運用（`STREAM-POC-PACKRAT`）
+
+**分類**: Streaming / 監査
+**優先度**: 🟠 High
+**ステータス**: 進行中（Phase 2-7）
+**発見日**: 2026-11-04 / Phase 2-7 Streaming PoC レビュー
+
+#### 問題の詳細
+- Packrat 共有を導入したが、`parser.stream.outcome_consistency` が 1.0 未満になった際の調査ログ保存手順が暫定運用のままで、レビューごとの属人化が残っている。
+- 週次レビューで参照する KPI 転記先（`reports/audit/dashboard/streaming.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`）の更新が手作業に依存し、逸脱時のフォローアップが遅延するリスクがある。
+
+#### 影響範囲
+- `ContinuationMeta.resume_lineage` や Packrat キャッシュ差分が可視化されないと、ストリーミング PoC の回帰検知が遅れる。
+- 指標未更新が続くと 6.1 で定義した Packrat 共有 PoC の信頼性が担保できない。
+
+#### 対応計画
+- `collect-iterator-audit-metrics.py --section streaming --require-success` の実行ログを `reports/audit/phase2-7/` に週次保存し、ダッシュボードからリンクする運用を定着させる。
+- `0-3-audit-and-metrics.md` §0.3.5 に Packrat 共有 KPI の転記フォーマットを追加し、週次レビューのチェックリストに組み込む。
+- 逸脱時には `STREAM-POC-PACKRAT` のリスクを `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に再オープンし、原因と対処を記録する。
+
+#### 成功基準
+- `parser.stream.outcome_consistency = 1.0` を 4 週連続で維持し、逸脱時は 1 営業日以内に調査ログ・対処方針を提示できる。
+- `reports/audit/dashboard/streaming.md` に週次ログのリンクが追記され、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の履歴に同一データが反映されている。
+- Packrat 共有に起因する未解決リスクが 0 件であることをレビューで確認する。
+
+### 4. Backpressure シグナル監査と Stage 伝搬（`STREAM-POC-BACKPRESSURE`）
+
+**分類**: Streaming / Runtime Bridge
+**優先度**: 🟠 High
+**ステータス**: 進行中（Phase 2-7）
+**発見日**: 2026-11-20 / FlowController Auto フォローアップレビュー
+
+#### 問題の詳細
+- `parser.stream.backpressure_sync`・`parser.stream.bridge_backpressure_diagnostics`・`parser.stream.bridge_stage_propagation` の 3 指標が CI で取得できるようになったが、Windows/macOS ランナーの収集頻度が不足している。
+- `RuntimeBridgeRegistry.stream_signal` を用いた Stage 伝搬の回帰検知が未整備で、`bridge.stage.backpressure` 診断が欠落した際の対応手順も固まっていない。
+
+#### 影響範囲
+- Backpressure 監査が崩れると FlowController Auto のロールバック判断が遅れる。
+- Stage 伝搬が失敗した場合に `effects.contract.stage_mismatch` が検知できず、Capability 監査の信頼性が低下する。
+
+#### 対応計画
+- `collect-iterator-audit-metrics.py --section streaming --platform windows-msvc --require-success`（必要に応じて `--platform macos-arm64`）を週次ジョブへ組み込み、結果を `reports/audit/dashboard/streaming.md` と `reports/ffi-bridge-summary.md` に記録する。
+- `scripts/validate-diagnostic-json.sh --suite streaming` に Backpressure 診断の必須フィールドを追加し、欠落時に CI が失敗するよう更新する。
+- `docs/guides/runtime-bridges.md` §10 のチェックリストに Stage 監査の回帰手順を追記し、再現手順を `reports/audit/phase2-7/backpressure/` に保存する。
+
+#### 成功基準
+- 上記 3 指標がすべて 1.0 を維持し、逸脱発生時には `STREAM-POC-BACKPRESSURE` リスクを 1 営業日以内に更新できる。
+- Stage 伝搬に関する回帰テストが `dune runtest` で自動検知され、CLI/LSP ゴールデンが同日に更新される。
+- Windows/macOS の監査結果がダッシュボードと `0-3-audit-and-metrics.md` の履歴で同期している。
 
 ---
 
