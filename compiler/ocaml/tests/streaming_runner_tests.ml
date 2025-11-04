@@ -68,6 +68,10 @@ let test_pending_resume_flow () =
     |> Run_config.Stream.set_resume_hint (Some "resume-token")
     |> Run_config.Stream.set_demand_min_bytes (Some 4)
     |> Run_config.Stream.set_demand_preferred_bytes (Some 8)
+    |> Run_config.Stream.set_flow_policy (Some Run_config.Stream.Flow.Auto)
+    |> Run_config.Stream.set_flow_max_lag_bytes (Some 8192)
+    |> Run_config.Stream.set_flow_debounce_ms (Some 10)
+    |> Run_config.Stream.set_flow_throttle_ratio (Some 0.75)
   in
   let step = ref 0 in
   let feeder () =
@@ -99,8 +103,15 @@ let test_pending_resume_flow () =
         (match pending.meta.memo_bytes with Some _ -> true | None -> false)
         desc "Packrat メモ統計が memo_bytes に反映されていません";
       ensure
-        (pending.continuation.meta.resume_lineage = [ "feeder.await" ])
-        desc "resume_lineage が Pending 理由を保持していません";
+        (pending.meta.last_reason = Some "pending.backpressure")
+        desc "last_reason がバックプレッシャ理由を指していません";
+      ensure
+        (pending.continuation.meta.resume_lineage
+        = [ "pending.backpressure" ])
+        desc "resume_lineage がバックプレッシャ理由を保持していません";
+      ensure
+        (pending.continuation.meta.backpressure_counter = 1)
+        desc "backpressure_counter がインクリメントされていません";
       ensure
         (match pending.continuation.packrat_cache with
         | Some _ -> true
@@ -109,8 +120,12 @@ let test_pending_resume_flow () =
       ensure
         (pending.demand.action = `Pause
         && pending.demand.min_bytes = Some 4
-        && pending.demand.preferred_bytes = Some 8)
-        desc "DemandHint の min/preferred が RunConfig 設定を引き継いでいません";
+        && pending.demand.preferred_bytes = Some 6)
+        desc "DemandHint の min/preferred が FlowController Auto で再計算されていません";
+      ensure
+        (pending.meta.backpressure_policy = Some "auto"
+        && pending.meta.backpressure_events = 1)
+        desc "バックプレッシャメタデータが期待通りに記録されていません";
       let after_chunk =
         Stream.resume pending.continuation (Stream.Chunk chunk_b)
       in
@@ -131,6 +146,10 @@ let test_pending_resume_flow () =
       ensure
         (completed.meta.resume_count >= 1 && completed.meta.await_count >= 1)
         desc "resume メタデータが更新されていません";
+      ensure
+        (completed.meta.backpressure_policy = Some "auto"
+        && completed.meta.backpressure_events = 1)
+        desc "Completed メタデータのバックプレッシャ情報が不足しています";
       pass desc
 
 let () =

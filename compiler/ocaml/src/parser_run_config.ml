@@ -320,13 +320,6 @@ module Stream = struct
       backpressure : backpressure_spec;
     }
 
-    let default =
-      {
-        policy = Manual;
-        backpressure =
-          { max_lag_bytes = None; debounce_ms = None; throttle_ratio = None };
-      }
-
     let policy_symbol = function Manual -> "manual" | Auto -> "auto"
 
     let policy_of_symbol text =

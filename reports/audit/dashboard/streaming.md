@@ -7,8 +7,8 @@ Reml のストリーミング実装に関する KPI を集約する。`parser.st
 | プラットフォーム | pass_rate | 計測ログ | 補足 |
 |------------------|-----------|----------|------|
 | linux-x86_64 | 1.0 | `dune runtest compiler/ocaml/tests/streaming_runner_tests.ml` → `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | `resume_lineage = ["pending.backpressure"]` を維持したまま成功 |
-| macos-arm64 | pending | 未計測 | Phase 2-7 で CI を整備予定 |
-| windows-msvc | pending | 未計測 | Windows CI で Packrat 共有を確認後に計測 |
+| macos-arm64 | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --platform macos-arm64 --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | CI で `reports/audit/streaming-macos.json` として保存 |
+| windows-msvc | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --platform windows-msvc --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | `reports/audit/streaming-windows.json` を参照 |
 
 `pass_rate < 1.0` を検出した場合の対応：
 
@@ -28,8 +28,8 @@ Reml のストリーミング実装に関する KPI を集約する。`parser.st
 | プラットフォーム | pass_rate | 計測ログ | 補足 |
 |------------------|-----------|----------|------|
 | linux-x86_64 | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | `resume_hint.reason` と `stream_meta.last_reason` がいずれも `pending.backpressure` を指すケースのみを計上 |
-| macos-arm64 | pending | 未計測 | FlowController Auto モードのテストを macOS CI へ導入予定 |
-| windows-msvc | pending | 未計測 | Windows CI の Runtime Bridge 連携後に計測 |
+| macos-arm64 | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --platform macos-arm64 --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | `resume_hint.reason` と `stream_meta.last_reason` が一致 |
+| windows-msvc | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --platform windows-msvc --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | Windows ランナーでも Backpressure 同期を確認 |
 
 Auto モードの Pending 記録で Backpressure 理由が欠落した場合、`failures[*]` に `resume_reason` / `stream_reason` が記録される。逸脱を検出した際は `docs/plans/bootstrap-roadmap/0-4-risk-handling.md#stream-poc-backpressure` を更新する。
 
@@ -38,8 +38,8 @@ Auto モードの Pending 記録で Backpressure 理由が欠落した場合、`
 | プラットフォーム | pass_rate | 計測ログ | 補足 |
 |------------------|-----------|----------|------|
 | linux-x86_64 | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | `RunConfig.extensions["stream"].flow.policy = "auto"` のサンプルのみで構成 |
-| macos-arm64 | pending | 未計測 | CLI/LSP 双方の FlowController オプションを macOS ランナーへ展開予定 |
-| windows-msvc | pending | 未計測 | Windows での `--stream-flow auto` 検証後に記録する |
+| macos-arm64 | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --platform macos-arm64 --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | CI Gate で Auto ポリシーの有効化を検証 |
+| windows-msvc | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --platform windows-msvc --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | Windows でも Auto カバレッジ 100% を保証 |
 
 ## 補足
 

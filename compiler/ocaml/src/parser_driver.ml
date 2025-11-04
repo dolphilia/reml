@@ -343,6 +343,11 @@ module Streaming = struct
   module Stream_cfg = Run_config.Stream
   module Packrat = Parser_expectation.Packrat
 
+  type flow_state = {
+    config : Stream_cfg.Flow.t;
+    mutable events : int;
+  }
+
   type demand_action = [ `Pause | `Continue ]
 
   type demand_hint = {
@@ -368,6 +373,8 @@ module Streaming = struct
     resume_count : int;
     last_reason : string option;
     memo_bytes : int option;
+    backpressure_policy : string option;
+    backpressure_events : int;
   }
 
   type continuation_meta = {
@@ -377,6 +384,7 @@ module Streaming = struct
     expected_tokens : Diagnostic.expectation list;
     last_checkpoint : Diagnostic.span option;
     resume_lineage : string list;
+    backpressure_counter : int;
   }
 
   type continuation = {
@@ -392,6 +400,7 @@ module Streaming = struct
     demand_preferred_bytes : int option;
     packrat_cache : Packrat.t option;
     meta : continuation_meta;
+    flow : flow_state;
   }
 
   type completed = { result : parse_result; meta : stream_meta }
@@ -403,6 +412,94 @@ module Streaming = struct
   }
 
   type outcome = Completed of completed | Pending of pending
+
+  let flow_policy_label (state : flow_state) =
+    match state.config.policy with
+    | Stream_cfg.Flow.Manual -> None
+    | Stream_cfg.Flow.Auto -> Some "auto"
+
+  let init_flow_state (defaults : Stream_cfg.t) : flow_state =
+    let open Stream_cfg.Flow in
+    let config =
+      match defaults.flow with
+      | Some flow -> flow
+      | None ->
+          {
+            policy = Manual;
+            backpressure =
+              { max_lag_bytes = None; debounce_ms = None; throttle_ratio = None };
+          }
+    in
+    { config; events = 0 }
+
+  let apply_backpressure_defaults
+      (defaults : Stream_cfg.t)
+      (flow_state : flow_state)
+      (demand : demand_hint) : demand_hint =
+    match flow_state.config.policy with
+    | Stream_cfg.Flow.Manual -> demand
+    | Stream_cfg.Flow.Auto ->
+        flow_state.events <- flow_state.events + 1;
+        let max_lag = flow_state.config.backpressure.max_lag_bytes in
+        let throttle_ratio =
+          match flow_state.config.backpressure.throttle_ratio with
+          | Some ratio when Float.is_finite ratio && ratio > 0.0 -> ratio
+          | _ -> 1.0
+        in
+        let clamp_positive value =
+          match value with
+          | Some v when v > 0 -> Some v
+          | Some _ -> Some 1
+          | None -> None
+        in
+        let fallback opt default_value =
+          match opt with Some _ -> opt | None -> default_value
+        in
+        let base_min =
+          clamp_positive
+            (fallback demand.min_bytes defaults.demand_min_bytes)
+        in
+        let base_pref =
+          clamp_positive
+            (fallback demand.preferred_bytes defaults.demand_preferred_bytes)
+        in
+        let throttled_pref =
+          match base_pref with
+          | Some pref ->
+              let scaled =
+                int_of_float
+                  (Float.ceil (float_of_int pref *. throttle_ratio))
+              in
+              Some (max 1 scaled)
+          | None -> None
+        in
+        let min_bytes =
+          match (base_min, max_lag) with
+          | Some minv, Some cap -> Some (min minv cap)
+          | Some minv, None -> Some minv
+          | None, Some cap -> Some cap
+          | None, None -> None
+        in
+        let preferred_bytes =
+          let capped_pref =
+            match (throttled_pref, max_lag) with
+            | Some pref, Some cap -> Some (min pref cap)
+            | Some pref, None -> Some pref
+            | None, Some cap -> Some cap
+            | None, None -> None
+          in
+          match (capped_pref, min_bytes) with
+          | Some pref, Some minv when pref < minv -> Some minv
+          | Some pref, _ -> Some pref
+          | None, Some minv -> Some minv
+          | None, None -> None
+        in
+        {
+          demand with
+          min_bytes;
+          preferred_bytes;
+          reason = Some "pending.backpressure";
+        }
 
   let demand_pause ?min_bytes ?preferred_bytes ?resume_hint ?reason () =
     { action = `Pause; min_bytes; preferred_bytes; resume_hint; reason }
@@ -417,7 +514,8 @@ module Streaming = struct
         let stats = Packrat.metrics cache in
         Some stats.approx_bytes
 
-  let make_meta ~bytes ~chunks ~await ~resume ?reason ?packrat_cache () =
+  let make_meta ~bytes ~chunks ~await ~resume ?reason ?packrat_cache
+      (flow_state : flow_state) =
     {
       bytes_consumed = bytes;
       chunks_consumed = chunks;
@@ -425,9 +523,11 @@ module Streaming = struct
       resume_count = resume;
       last_reason = reason;
       memo_bytes = packrat_bytes packrat_cache;
+      backpressure_policy = flow_policy_label flow_state;
+      backpressure_events = flow_state.events;
     }
 
-  let build_continuation_meta ~buffer ~demand ?previous () =
+  let build_continuation_meta ~buffer ~demand ~flow_state ?previous () =
     let buffered_bytes = String.length buffer in
     let lineage_base = match previous with Some meta -> meta.resume_lineage | None -> [] in
     let reason = match demand.reason with Some r -> r | None -> "stream.pending" in
@@ -438,6 +538,7 @@ module Streaming = struct
       expected_tokens = [];
       last_checkpoint = None;
       resume_lineage = reason :: lineage_base;
+      backpressure_counter = flow_state.events;
     }
 
   let fallback first second = match first with Some _ -> first | None -> second
@@ -474,6 +575,7 @@ module Streaming = struct
   let run_stream ?(filename = "<stream>") ?(config = default_run_config)
       ~(feeder : feeder) () : outcome =
     let defaults = Stream_cfg.of_run_config config in
+    let flow_state = init_flow_state defaults in
     let packrat_cache = if config.packrat then Some (Packrat.create ()) else None in
     let buffer = Buffer.create 4096 in
     let rec pump bytes_consumed chunks_consumed await_count packrat_cache =
@@ -489,6 +591,9 @@ module Streaming = struct
             | Some hint ->
                 merge_hint defaults ~fallback_reason:"feeder.await" hint
             | None -> default_pause defaults ~reason:(Some "feeder.await") ()
+          in
+          let demand =
+            apply_backpressure_defaults defaults flow_state demand
           in
           let buffered = Buffer.contents buffer in
           let packrat_cache =
@@ -511,13 +616,15 @@ module Streaming = struct
               demand_min_bytes = demand.min_bytes;
               demand_preferred_bytes = demand.preferred_bytes;
               packrat_cache;
-              meta = build_continuation_meta ~buffer:buffered ~demand ()
+              meta =
+                build_continuation_meta ~buffer:buffered ~demand ~flow_state ();
+              flow = flow_state;
             }
           in
           let meta =
             make_meta ~bytes:bytes_consumed ~chunks:chunks_consumed
               ~await:(await_count + 1) ~resume:0 ?reason:demand.reason
-              ?packrat_cache ()
+              ?packrat_cache flow_state
           in
           Pending { continuation; demand; meta }
       | Closed ->
@@ -525,7 +632,8 @@ module Streaming = struct
           let result = run_string ~filename ~config ?packrat_cache text in
           let meta =
             make_meta ~bytes:bytes_consumed ~chunks:chunks_consumed
-              ~await:await_count ~resume:0 ?reason:None ?packrat_cache ()
+              ~await:await_count ~resume:0 ?reason:None ?packrat_cache
+              flow_state
           in
           Completed { result; meta }
       | Error message ->
@@ -553,13 +661,15 @@ module Streaming = struct
               demand_min_bytes = demand.min_bytes;
               demand_preferred_bytes = demand.preferred_bytes;
               packrat_cache;
-              meta = build_continuation_meta ~buffer:buffered ~demand ()
+              meta =
+                build_continuation_meta ~buffer:buffered ~demand ~flow_state ();
+              flow = flow_state;
             }
           in
           let meta =
             make_meta ~bytes:bytes_consumed ~chunks:chunks_consumed
               ~await:await_count ~resume:0 ?reason:demand.reason
-              ?packrat_cache ()
+              ?packrat_cache flow_state
           in
           Pending { continuation; demand; meta }
     in
@@ -567,6 +677,7 @@ module Streaming = struct
 
   let resume (continuation : continuation) (input : chunk) : outcome =
     let defaults = Stream_cfg.of_run_config continuation.config in
+    let flow_state = continuation.flow in
     let default_min = defaults.demand_min_bytes in
     let default_pref = defaults.demand_preferred_bytes in
     let default_resume = defaults.resume_hint in
@@ -598,7 +709,7 @@ module Streaming = struct
         in
         let meta =
           make_meta ~bytes:(bytes + String.length data) ~chunks:(chunks + 1)
-            ~await ~resume:resume_count ?reason:None ?packrat_cache ()
+            ~await ~resume:resume_count ?reason:None ?packrat_cache flow_state
         in
         Completed { result; meta }
     | Closed ->
@@ -609,7 +720,7 @@ module Streaming = struct
         in
         let meta =
           make_meta ~bytes ~chunks ~await ~resume:resume_count
-            ?reason:(Some "feeder.closed") ?packrat_cache ()
+            ?reason:(Some "feeder.closed") ?packrat_cache flow_state
         in
         Completed { result; meta }
     | Await hint_opt ->
@@ -629,6 +740,7 @@ module Streaming = struct
                 reason = fallback_reason;
               }
         in
+        let demand = apply_backpressure_defaults defaults flow_state demand in
         let new_buffer = Buffer.contents buffer in
         let continuation =
           {
@@ -642,13 +754,15 @@ module Streaming = struct
             demand_min_bytes = demand.min_bytes;
             demand_preferred_bytes = demand.preferred_bytes;
             packrat_cache;
-            meta = build_continuation_meta ~buffer:new_buffer ~demand
-                     ~previous:continuation.meta ()
+            meta =
+              build_continuation_meta ~buffer:new_buffer ~demand ~flow_state
+                ~previous:continuation.meta ();
+            flow = continuation.flow;
           }
         in
         let meta =
           make_meta ~bytes ~chunks ~await:(await + 1) ~resume:resume_count
-            ?reason:demand.reason ?packrat_cache ()
+            ?reason:demand.reason ?packrat_cache flow_state
         in
         Pending { continuation; demand; meta }
     | Error message ->
@@ -671,13 +785,15 @@ module Streaming = struct
             resume_count;
             resume_hint = demand.resume_hint;
             packrat_cache;
-            meta = build_continuation_meta ~buffer:new_buffer ~demand
-                     ~previous:continuation.meta ()
+            meta =
+              build_continuation_meta ~buffer:new_buffer ~demand ~flow_state
+                ~previous:continuation.meta ();
+            flow = continuation.flow;
           }
         in
         let meta =
           make_meta ~bytes ~chunks ~await ~resume:resume_count ?reason
-            ?packrat_cache ()
+            ?packrat_cache flow_state
         in
         Pending { continuation; demand; meta }
 end

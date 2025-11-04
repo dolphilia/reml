@@ -103,6 +103,18 @@ jobs:
             --output tooling/ci/iterator-audit-metrics.json \
             --require-success
 
+      - name: Collect streaming metrics (--stream-flow auto)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/audit
+          python3 tooling/ci/collect-iterator-audit-metrics.py \
+            --section streaming \
+            --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden \
+            --platform windows-msvc \
+            --output reports/audit/streaming-windows.json \
+            --require-success
+
       - name: Prepare verify log placeholder
         shell: bash
         run: |

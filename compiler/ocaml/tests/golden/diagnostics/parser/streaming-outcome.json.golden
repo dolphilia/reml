@@ -52,7 +52,7 @@
     "resume_hint": {
       "action": "Pause",
       "min_bytes": 4,
-      "preferred_bytes": 8,
+      "preferred_bytes": 6,
       "resume_hint": "resume-token",
       "reason": "pending.backpressure"
     },

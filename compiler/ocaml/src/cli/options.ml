@@ -344,23 +344,6 @@ let parse_args argv =
              "Warning: %s には 0 以上の整数を指定してください（入力値: %s）。"
              option_name text)
   in
-  let set_float_option target option_name text =
-    let parsed =
-      try
-        let value = float_of_string (String.trim text) in
-        if Float.is_nan value || Float.is_infinite value then None
-        else if value < 0.0 then None
-        else Some value
-      with Failure _ -> None
-    in
-    match parsed with
-    | Some value -> target := Some value
-    | None ->
-        prerr_endline
-          (Printf.sprintf
-             "Warning: %s には 0 以上の数値を指定してください（入力値: %s）。"
-             option_name text)
-  in
   let set_ratio_option target option_name text =
     let parsed =
       try
