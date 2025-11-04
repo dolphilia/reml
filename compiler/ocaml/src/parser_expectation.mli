@@ -53,6 +53,15 @@ module Packrat : sig
 
   val create : ?initial_capacity:int -> unit -> t
   (** Packrat キャッシュを生成する。 *)
+
+  val prune_before : t -> offset:int -> unit
+  (** 指定したオフセットより前のエントリを破棄してメモリを回収する。 *)
+
+  type metrics = { entries : int; approx_bytes : int }
+  (** キャッシュ内エントリ数と概算ヒープ使用量（バイト）。 *)
+
+  val metrics : t -> metrics
+  (** キャッシュの概算統計値を取得する。 *)
 end
 
 type packrat_status = [ `Hit | `Miss | `Bypassed ]

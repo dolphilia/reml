@@ -124,7 +124,8 @@ struct ContinuationMeta {
   resume_hint: Option<DemandHint>,
   expected_tokens: Set<Expectation>,
   last_checkpoint: Option<Span>,
-  trace_label: Option<Str>
+  trace_label: Option<Str>,
+  resume_lineage: List<Str>
 }
 ```
 
@@ -133,6 +134,7 @@ struct ContinuationMeta {
 * `buffered` には未処理の入力（`Input` ビュー）が格納され、`resume` はこのバッファと新しい `Bytes` を結合して再解析する。
 * `expected_tokens` と `last_checkpoint` は 2.5 で定義される期待集合・同期点を反映し、IDE/LSP 補完の根拠となる。
 * `resume_hint` は Feeder が最適なチャンクを供給するためのヒントであり、`StreamOutcome::Pending.demand` と一致している必要がある。
+* `resume_lineage` は Pending/Resume の履歴を格納し、`parser.stream.outcome_consistency` で逸脱が発生した際に根拠ログとして共有する。[^resume-lineage-phase27]
 
 ### C-2. 復旧と注釈
 
@@ -221,13 +223,15 @@ struct StreamMeta {
   consumed_bytes: usize,
   resume_count: usize,
   lag_nanos: Option<u64>,
-  buffer_fill_ratio: Option<f32>
+  buffer_fill_ratio: Option<f32>,
+  memo_bytes: Option<usize>
 }
 ```
 
 * `consumed_bytes`：累計で処理したバイト数。`Completed` 時は最終入力長と一致する。
 * `resume_count`：継続再開した回数。差分適用・バックプレッシャ挙動の可視化に利用する。
 * `lag_nanos`/`buffer_fill_ratio`：バックプレッシャや待機状況の監視指標。`FlowController` が自動モードのときのみ設定される。
+* `memo_bytes`：Packrat キャッシュが保持している概算ヒープサイズ。`parser.stream.outcome_consistency` や `STREAM-POC-PACKRAT` の監査ログに転記する。[^stream-meta-memo-bytes]
 
 ### G-2. RunConfig 共有キー
 
@@ -274,3 +278,9 @@ struct StreamMeta {
 
 [^streaming-poc-phase25]:
     2026-01-26 追記。`docs/plans/bootstrap-roadmap/2-5-review-log.md`「EXEC-001 Step4」、`docs/plans/bootstrap-roadmap/2-5-proposals/EXEC-001-proposal.md` Step5 実施記録、および `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の `EXEC-001` 引き継ぎ項目を参照。現行 PoC は `parser.stream.outcome_consistency` / `parser.stream.demandhint_coverage` を CI 指標として登録したが、Packrat キャッシュ共有・バックプレッシャ自動化・`Stream.resume` エラー監査は Phase 2-7 でのフォローアップが必要。
+
+[^resume-lineage-phase27]:
+    2026-11-04 追記。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §6.1 で定義された「Packrat キャッシュ共有と KPI 監視」タスクに従い、`ContinuationMeta.resume_lineage` を `parser.stream.outcome_consistency` の失敗ログへ添付する運用を導入した。
+
+[^stream-meta-memo-bytes]:
+    2026-11-04 追記。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §6.1 および `reports/audit/dashboard/streaming.md` を参照。`memo_bytes` は Packrat キャッシュのおおよそのヒープ使用量であり、`STREAM-POC-PACKRAT` リスクの監視指標として転記する。

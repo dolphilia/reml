@@ -370,6 +370,35 @@ module Packrat = struct
 
   let find cache key = Table.find_opt cache key
   let store cache key value = Table.replace cache key value
+
+  let prune_before cache ~offset =
+    Table.filter_map_inplace
+      (fun key value -> if key.offset < offset then None else Some value)
+      cache
+
+  type metrics = { entries : int; approx_bytes : int }
+
+  let metrics cache =
+    let entries = Table.length cache in
+    let approx_bytes =
+      let estimate_collection_bytes collection =
+        let token_cost = List.length collection.sample_tokens * 16 in
+        let expectation_cost = List.length collection.expectations * 24 in
+        let summary_cost =
+          match collection.summary.humanized with
+          | Some text -> 8 + (String.length text * 2)
+          | None -> 8
+        in
+        64 + token_cost + expectation_cost + summary_cost
+      in
+      let bytes = ref 0 in
+      Table.iter
+        (fun _key collection ->
+          bytes := !bytes + estimate_collection_bytes collection)
+        cache;
+      !bytes
+    in
+    { entries; approx_bytes }
 end
 
 let env_of_checkpoint = function

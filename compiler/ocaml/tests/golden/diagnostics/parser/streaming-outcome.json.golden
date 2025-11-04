@@ -33,7 +33,44 @@
     "chunks_consumed": 2,
     "await_count": 1,
     "resume_count": 1,
-    "last_reason": "feeder.await"
+    "last_reason": "feeder.await",
+    "memo_bytes": 0
   },
-  "diagnostics": []
+  "continuation_meta": {
+    "commit_watermark": 42,
+    "buffered_bytes": 42,
+    "resume_hint": {
+      "action": "Pause",
+      "min_bytes": 4,
+      "preferred_bytes": 8,
+      "resume_hint": "resume-token",
+      "reason": "feeder.await"
+    },
+    "expected_tokens": [],
+    "last_checkpoint": null,
+    "resume_lineage": [
+      "feeder.await"
+    ]
+  },
+  "diagnostics": [],
+  "baseline": {
+    "parse_result": {
+      "recovered": false,
+      "consumed": true,
+      "committed": false,
+      "packrat_stats": {
+        "queries": 0,
+        "hits": 0
+      }
+    },
+    "stream_meta": {
+      "bytes_consumed": 42,
+      "chunks_consumed": 2,
+      "await_count": 1,
+      "resume_count": 1,
+      "last_reason": "feeder.await",
+      "memo_bytes": 0
+    },
+    "diagnostics": []
+  }
 }

@@ -9,7 +9,8 @@ type packrat_cache = Parser_expectation.Packrat.t option
 
 type session
 
-val create_session : Run_config.t -> session
+val create_session :
+  ?packrat_cache:Parser_expectation.Packrat.t -> Run_config.t -> session
 
 val config : session -> Run_config.t
 val diag_state : session -> Parser_diag_state.t

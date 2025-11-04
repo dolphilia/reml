@@ -143,6 +143,8 @@
 - `parser.stream.outcome_consistency` を `collect-iterator-audit-metrics.py --section streaming` に新設し、`reports/audit/dashboard/streaming.md` で Linux/Windows/macOS の pass_rate を比較できるようにする。1.0 未満の場合は当該チャンクの `ContinuationMeta.resume_lineage` を差分として記録する。
 - `docs/spec/2-7-core-parse-streaming.md` の `Continuation` / `StreamMeta` 節へ `memo_bytes`・`resume_lineage` の脚注を追加し、Packrat 共有要件を仕様へ反映する。
 
+- **進捗 (2026-11-04)**: `Parser_expectation.Packrat` へ `prune_before` / `metrics` を追加し、`Parser_driver.Streaming` が Pending/Resume 間で Packrat キャッシュと `ContinuationMeta` を共有するよう更新した。`streaming_runner_tests.ml` では Packrat 共有・`resume_lineage` を検証するテストを追加済み。KPI 側は `tooling/ci/collect-iterator-audit-metrics.py --section streaming` に `parser.stream.outcome_consistency` を実装し、`reports/audit/dashboard/streaming.md` を新設して pass_rate を記録できる状態にした。仕様書 (`docs/spec/2-7-core-parse-streaming.md`) には `memo_bytes` / `resume_lineage` の運用脚注を追記済み。
+
 6.2. **FlowController とバックプレッシャ自動化**
 - `RunConfig.extensions["stream"].flow` を構造体化し、`FlowController.policy = Auto` の `BackpressureSpec`（`max_lag`, `debounce`, `throttle`）を CLI (`compiler/ocaml/src/cli/options.ml`) / LSP (`tooling/lsp/run_config_loader.ml`) から設定できるようにする。
 - `--stream-flow auto` 指定時に `DemandHint.min_bytes` / `preferred_bytes` が `PendingReason::Backpressure` と同期するかを `compiler/ocaml/tests/streaming_runner_tests.ml` と `tooling/lsp/tests/client_compat/streaming_*.json` で検証する。

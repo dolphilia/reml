@@ -34,6 +34,7 @@ type parse_result = {
   farthest_error_offset : int option;
   span_trace : (string option * Diagnostic.span) list option;
   packrat_stats : (int * int) option;
+  packrat_cache : Parser_expectation.Packrat.t option;
 }
 
 type parse_result_with_rest = {
@@ -81,6 +82,7 @@ let diagnostic_to_parse_error diag ~consumed ~committed =
 
 let finalize_result session ~value ~span ~legacy_error ~consumed ~committed
     ~packrat_stats =
+  let packrat_cache = Core_stream.packrat_cache session in
   {
     value;
     span;
@@ -92,6 +94,7 @@ let finalize_result session ~value ~span ~legacy_error ~consumed ~committed
     farthest_error_offset = Core_stream.farthest_error_offset session;
     span_trace = Core_stream.span_trace_pairs session;
     packrat_stats;
+    packrat_cache;
   }
 
 let register_diagnostic session diag ~consumed ~committed =
@@ -124,7 +127,7 @@ let warn_left_recursion diag_state lexbuf mode =
           PARSER-003 で導入予定です。"
          mode_text)
 
-let run ?(config = default_run_config) lexbuf =
+let run ?(config = default_run_config) ?packrat_cache lexbuf =
   Fun.protect
     ~finally:(fun () -> Parser_flags.set_experimental_effects_enabled false)
     (fun () ->
@@ -137,7 +140,7 @@ let run ?(config = default_run_config) lexbuf =
         | _ -> (pack, config)
       in
       Core_parse_lex.Api.config_trivia pack lexbuf;
-      let session = Core_stream.create_session config in
+      let session = Core_stream.create_session ?packrat_cache config in
       let diag_state = Core_stream.diag_state session in
       let core_state = Core_stream.core_state session in
       let require_eof = Core_stream.effective_require_eof config in
@@ -291,15 +294,16 @@ let run ?(config = default_run_config) lexbuf =
           ~committed:result.committed ~packrat_stats:result.packrat_stats)
       else result)
 
-let run_partial ?(config = default_run_config) lexbuf =
+let run_partial ?(config = default_run_config) ?packrat_cache lexbuf =
   let cfg = { config with require_eof = false } in
-  { result = run ~config:cfg lexbuf; rest = None }
+  { result = run ~config:cfg ?packrat_cache lexbuf; rest = None }
 
-let run_string ?(filename = "<入力>") ?(config = default_run_config) text =
+let run_string ?(filename = "<入力>") ?(config = default_run_config)
+    ?packrat_cache text =
   let lexbuf = Lexing.from_string text in
   lexbuf.Lexing.lex_curr_p <-
     { lexbuf.Lexing.lex_curr_p with Lexing.pos_fname = filename };
-  run ~config lexbuf
+  run ~config ?packrat_cache lexbuf
 
 let parse_result_to_legacy_fields
     (value : Ast.compilation_unit option)
@@ -337,6 +341,7 @@ let parse_string ?(filename = "<入力>") text =
 
 module Streaming = struct
   module Stream_cfg = Run_config.Stream
+  module Packrat = Parser_expectation.Packrat
 
   type demand_action = [ `Pause | `Continue ]
 
@@ -362,6 +367,16 @@ module Streaming = struct
     await_count : int;
     resume_count : int;
     last_reason : string option;
+    memo_bytes : int option;
+  }
+
+  type continuation_meta = {
+    commit_watermark : int;
+    buffered_bytes : int;
+    resume_hint : demand_hint option;
+    expected_tokens : Diagnostic.expectation list;
+    last_checkpoint : Diagnostic.span option;
+    resume_lineage : string list;
   }
 
   type continuation = {
@@ -375,6 +390,8 @@ module Streaming = struct
     resume_hint : string option;
     demand_min_bytes : int option;
     demand_preferred_bytes : int option;
+    packrat_cache : Packrat.t option;
+    meta : continuation_meta;
   }
 
   type completed = { result : parse_result; meta : stream_meta }
@@ -393,13 +410,34 @@ module Streaming = struct
   let demand_continue ?min_bytes ?preferred_bytes ?resume_hint ?reason () =
     { action = `Continue; min_bytes; preferred_bytes; resume_hint; reason }
 
-  let make_meta ~bytes ~chunks ~await ~resume ?reason () =
+  let packrat_bytes packrat_cache =
+    match packrat_cache with
+    | None -> None
+    | Some cache ->
+        let stats = Packrat.metrics cache in
+        Some stats.approx_bytes
+
+  let make_meta ~bytes ~chunks ~await ~resume ?reason ?packrat_cache () =
     {
       bytes_consumed = bytes;
       chunks_consumed = chunks;
       await_count = await;
       resume_count = resume;
       last_reason = reason;
+      memo_bytes = packrat_bytes packrat_cache;
+    }
+
+  let build_continuation_meta ~buffer ~demand ?previous () =
+    let buffered_bytes = String.length buffer in
+    let lineage_base = match previous with Some meta -> meta.resume_lineage | None -> [] in
+    let reason = match demand.reason with Some r -> r | None -> "stream.pending" in
+    {
+      commit_watermark = buffered_bytes;
+      buffered_bytes;
+      resume_hint = Some demand;
+      expected_tokens = [];
+      last_checkpoint = None;
+      resume_lineage = reason :: lineage_base;
     }
 
   let fallback first second = match first with Some _ -> first | None -> second
@@ -436,13 +474,15 @@ module Streaming = struct
   let run_stream ?(filename = "<stream>") ?(config = default_run_config)
       ~(feeder : feeder) () : outcome =
     let defaults = Stream_cfg.of_run_config config in
+    let packrat_cache = if config.packrat then Some (Packrat.create ()) else None in
     let buffer = Buffer.create 4096 in
-    let rec pump bytes_consumed chunks_consumed await_count =
+    let rec pump bytes_consumed chunks_consumed await_count packrat_cache =
       match feeder () with
       | Chunk data ->
           Buffer.add_string buffer data;
           let len = String.length data in
           pump (bytes_consumed + len) (chunks_consumed + 1) await_count
+            packrat_cache
       | Await hint_opt ->
           let demand =
             match hint_opt with
@@ -450,11 +490,19 @@ module Streaming = struct
                 merge_hint defaults ~fallback_reason:"feeder.await" hint
             | None -> default_pause defaults ~reason:(Some "feeder.await") ()
           in
+          let buffered = Buffer.contents buffer in
+          let packrat_cache =
+            match packrat_cache with
+            | Some cache ->
+                Packrat.prune_before cache ~offset:(String.length buffered);
+                Some cache
+            | None -> None
+          in
           let continuation =
             {
               config;
               source_name = filename;
-              buffer = Buffer.contents buffer;
+              buffer = buffered;
               bytes_consumed;
               chunks_consumed;
               await_count = await_count + 1;
@@ -462,30 +510,41 @@ module Streaming = struct
               resume_hint = demand.resume_hint;
               demand_min_bytes = demand.min_bytes;
               demand_preferred_bytes = demand.preferred_bytes;
+              packrat_cache;
+              meta = build_continuation_meta ~buffer:buffered ~demand ()
             }
           in
           let meta =
             make_meta ~bytes:bytes_consumed ~chunks:chunks_consumed
-              ~await:(await_count + 1) ~resume:0 ?reason:demand.reason ()
+              ~await:(await_count + 1) ~resume:0 ?reason:demand.reason
+              ?packrat_cache ()
           in
           Pending { continuation; demand; meta }
       | Closed ->
           let text = Buffer.contents buffer in
-          let result = run_string ~filename ~config text in
+          let result = run_string ~filename ~config ?packrat_cache text in
           let meta =
             make_meta ~bytes:bytes_consumed ~chunks:chunks_consumed
-              ~await:await_count ~resume:0 ?reason:None ()
+              ~await:await_count ~resume:0 ?reason:None ?packrat_cache ()
           in
           Completed { result; meta }
       | Error message ->
           let demand =
             default_pause defaults ~reason:(Some ("stream.error:" ^ message)) ()
           in
+          let buffered = Buffer.contents buffer in
+          let packrat_cache =
+            match packrat_cache with
+            | Some cache ->
+                Packrat.prune_before cache ~offset:(String.length buffered);
+                Some cache
+            | None -> None
+          in
           let continuation =
             {
               config;
               source_name = filename;
-              buffer = Buffer.contents buffer;
+              buffer = buffered;
               bytes_consumed;
               chunks_consumed;
               await_count;
@@ -493,15 +552,18 @@ module Streaming = struct
               resume_hint = demand.resume_hint;
               demand_min_bytes = demand.min_bytes;
               demand_preferred_bytes = demand.preferred_bytes;
+              packrat_cache;
+              meta = build_continuation_meta ~buffer:buffered ~demand ()
             }
           in
           let meta =
-            make_meta ~bytes:bytes_consumed ~chunks:chunks_consumed ~await:await_count
-              ~resume:0 ?reason:demand.reason ()
+            make_meta ~bytes:bytes_consumed ~chunks:chunks_consumed
+              ~await:await_count ~resume:0 ?reason:demand.reason
+              ?packrat_cache ()
           in
           Pending { continuation; demand; meta }
     in
-    pump 0 0 0
+    pump 0 0 0 packrat_cache
 
   let resume (continuation : continuation) (input : chunk) : outcome =
     let defaults = Stream_cfg.of_run_config continuation.config in
@@ -518,28 +580,36 @@ module Streaming = struct
     let chunks = continuation.chunks_consumed in
     let await = continuation.await_count in
     let resume_count = continuation.resume_count + 1 in
+    let packrat_cache =
+      match continuation.packrat_cache with
+      | Some cache ->
+          Packrat.prune_before cache
+            ~offset:continuation.meta.commit_watermark;
+          Some cache
+      | None -> None
+    in
     match input with
     | Chunk data ->
         Buffer.add_string buffer data;
         let text = Buffer.contents buffer in
         let result =
           run_string ~filename:continuation.source_name
-            ~config:continuation.config text
+            ~config:continuation.config ?packrat_cache text
         in
         let meta =
           make_meta ~bytes:(bytes + String.length data) ~chunks:(chunks + 1)
-            ~await ~resume:resume_count ?reason:None ()
+            ~await ~resume:resume_count ?reason:None ?packrat_cache ()
         in
         Completed { result; meta }
     | Closed ->
         let text = Buffer.contents buffer in
         let result =
           run_string ~filename:continuation.source_name
-            ~config:continuation.config text
+            ~config:continuation.config ?packrat_cache text
         in
         let meta =
           make_meta ~bytes ~chunks ~await ~resume:resume_count
-            ?reason:(Some "feeder.closed") ()
+            ?reason:(Some "feeder.closed") ?packrat_cache ()
         in
         Completed { result; meta }
     | Await hint_opt ->
@@ -571,11 +641,14 @@ module Streaming = struct
             resume_hint = demand.resume_hint;
             demand_min_bytes = demand.min_bytes;
             demand_preferred_bytes = demand.preferred_bytes;
+            packrat_cache;
+            meta = build_continuation_meta ~buffer:new_buffer ~demand
+                     ~previous:continuation.meta ()
           }
         in
         let meta =
           make_meta ~bytes ~chunks ~await:(await + 1) ~resume:resume_count
-            ?reason:demand.reason ()
+            ?reason:demand.reason ?packrat_cache ()
         in
         Pending { continuation; demand; meta }
     | Error message ->
@@ -597,10 +670,14 @@ module Streaming = struct
             buffer = new_buffer;
             resume_count;
             resume_hint = demand.resume_hint;
+            packrat_cache;
+            meta = build_continuation_meta ~buffer:new_buffer ~demand
+                     ~previous:continuation.meta ()
           }
         in
         let meta =
-          make_meta ~bytes ~chunks ~await ~resume:resume_count ?reason ()
+          make_meta ~bytes ~chunks ~await ~resume:resume_count ?reason
+            ?packrat_cache ()
         in
         Pending { continuation; demand; meta }
 end

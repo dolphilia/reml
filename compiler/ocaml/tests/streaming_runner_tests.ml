@@ -63,7 +63,7 @@ let test_pending_resume_flow () =
   let chunk_a = String.sub input 0 midpoint in
   let chunk_b = String.sub input midpoint (String.length input - midpoint) in
   let config =
-    Run_config.default
+    { Run_config.default with packrat = true }
     |> Run_config.Stream.set_enabled true
     |> Run_config.Stream.set_resume_hint (Some "resume-token")
     |> Run_config.Stream.set_demand_min_bytes (Some 4)
@@ -92,6 +92,20 @@ let test_pending_resume_flow () =
       ensure
         (pending.meta.await_count = 1 && pending.meta.resume_count = 0)
         desc "Pending メタデータの await/resume カウントが想定と異なります";
+      ensure
+        (pending.continuation.meta.commit_watermark = String.length chunk_a)
+        desc "commit_watermark がバッファ長と一致しません";
+      ensure
+        (match pending.meta.memo_bytes with Some _ -> true | None -> false)
+        desc "Packrat メモ統計が memo_bytes に反映されていません";
+      ensure
+        (pending.continuation.meta.resume_lineage = [ "feeder.await" ])
+        desc "resume_lineage が Pending 理由を保持していません";
+      ensure
+        (match pending.continuation.packrat_cache with
+        | Some _ -> true
+        | None -> false)
+        desc "Packrat キャッシュが継続へ共有されていません";
       ensure
         (pending.demand.action = `Pause
         && pending.demand.min_bytes = Some 4

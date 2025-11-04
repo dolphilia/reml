@@ -21,7 +21,7 @@ let diag_state t = t.diag_state
 let core_state t = t.core_state
 let packrat_cache t = t.packrat_cache
 
-let create_session config =
+let create_session ?packrat_cache config =
   let recover_config = Run_config.Recover.of_run_config config in
   let diag_state =
     Parser_diag_state.create ~trace:config.trace
@@ -29,8 +29,10 @@ let create_session config =
       ~recover:recover_config ()
   in
   let packrat_cache =
-    if config.packrat then Some (Parser_expectation.Packrat.create ())
-    else None
+    match (packrat_cache, config.packrat) with
+    | Some cache, _ -> Some cache
+    | None, true -> Some (Parser_expectation.Packrat.create ())
+    | None, false -> None
   in
   let core_state = Core_state.create ~config ~diag:diag_state in
   { config; diag_state; core_state; packrat_cache }

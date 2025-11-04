@@ -1771,6 +1771,96 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
     return metrics
 
 
+def _extract_resume_lineage(container: Optional[Dict[str, Any]]) -> Optional[List[str]]:
+    entry = _as_dict(container)
+    if not entry:
+        return None
+    lineage = entry.get("resume_lineage")
+    if isinstance(lineage, list) and lineage:
+        result: List[str] = []
+        for item in lineage:
+            if isinstance(item, str):
+                result.append(item)
+            else:
+                result.append(str(item))
+        return result
+    return None
+
+
+def collect_streaming_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
+    total = 0
+    passed = 0
+    sources: List[str] = []
+    failures: List[Dict[str, Any]] = []
+
+    for path in paths:
+        data = load_json(path)
+        streaming_result = _as_dict(data.get("parse_result"))
+        baseline = _as_dict(data.get("baseline"))
+        baseline_result = (
+            _as_dict(baseline.get("parse_result")) if baseline else None
+        )
+        if not streaming_result or not baseline_result:
+            continue
+
+        sources.append(str(path))
+        total += 1
+
+        streaming_diag = data.get("diagnostics")
+        if not isinstance(streaming_diag, list):
+            streaming_diag = []
+        baseline_diag = []
+        if baseline:
+            base_diag = baseline.get("diagnostics")
+            if isinstance(base_diag, list):
+                baseline_diag = base_diag
+
+        streaming_meta = _as_dict(data.get("stream_meta"))
+        baseline_meta = (
+            _as_dict(baseline.get("stream_meta")) if baseline else None
+        )
+
+        parse_match = streaming_result == baseline_result
+        diagnostics_match = streaming_diag == baseline_diag
+        meta_match = True
+        if baseline_meta is not None:
+            meta_match = streaming_meta == baseline_meta
+
+        if parse_match and diagnostics_match and meta_match:
+            passed += 1
+            continue
+
+        failures.append(
+            {
+                "file": str(path),
+                "parse_result_match": parse_match,
+                "diagnostics_match": diagnostics_match,
+                "stream_meta_match": meta_match,
+                "resume_lineage": _extract_resume_lineage(
+                    data.get("continuation_meta")
+                )
+                or _extract_resume_lineage(baseline.get("continuation_meta") if baseline else None),
+            }
+        )
+
+    if total == 0:
+        return None
+
+    pass_fraction = passed / total
+    status = "success" if pass_fraction == 1.0 else "error"
+    return {
+        "metric": "parser.stream.outcome_consistency",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": 1.0 if pass_fraction == 1.0 else pass_fraction,
+        "pass_fraction": pass_fraction,
+        "status": status,
+        "sources": sources,
+        "failures": failures,
+    }
+
+
 def _core_rule_metadata_missing(diag: Dict[str, Any]) -> List[str]:
     missing: List[str] = []
     extensions = _as_dict(diag.get("extensions"))
@@ -3013,6 +3103,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         choices=[
             "all",
             "parser",
+            "streaming",
             "iterator",
             "type_inference",
             "ffi",
@@ -3230,7 +3321,15 @@ def main(argv: Optional[List[str]] = None) -> int:
                 sys.stderr.write(f"append-from ファイルが dict ではありません: {path}\n")
                 return 2
 
-    section_order = ["parser", "iterator", "type_inference", "typeclass", "ffi", "review"]
+    section_order = [
+        "parser",
+        "streaming",
+        "iterator",
+        "type_inference",
+        "typeclass",
+        "ffi",
+        "review",
+    ]
     if args.section == "all":
         sections = section_order
     else:
@@ -3251,6 +3350,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     bridge_metrics: Optional[Dict[str, Any]] = None
     review_metrics: Optional[Dict[str, Any]] = None
     diagnostic_presence_metric: Optional[Dict[str, Any]] = None
+    streaming_metric: Optional[Dict[str, Any]] = None
 
     if "parser" in sections:
         parser_metrics = collect_parser_metrics(sources)
@@ -3263,6 +3363,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             orphan_parser_related_metrics.extend(runconfig_metrics)
             orphan_parser_related_metrics.extend(core_parser_metrics)
+    if "streaming" in sections:
+        streaming_metric = collect_streaming_metrics(sources)
     if "iterator" in sections:
         iterator_metrics = collect_metrics(sources)
         domain_metrics = collect_domain_metrics(sources)
@@ -3304,6 +3406,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         metrics_list.append(diagnostic_presence_metric)
     if parser_metrics:
         metrics_list.append(parser_metrics)
+    if streaming_metric:
+        metrics_list.append(streaming_metric)
     elif orphan_parser_related_metrics:
         metrics_list.extend(orphan_parser_related_metrics)
     if capability_array_metric and iterator_metrics is None:
