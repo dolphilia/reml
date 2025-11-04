@@ -28,6 +28,16 @@ PATH には JSON ファイルまたはディレクトリを指定できます。
 EOF
 }
 
+SUITE=""
+if [[ "${1:-}" == "--suite" ]]; then
+  if [[ "$#" -lt 2 ]]; then
+    echo "[validate-diagnostic-json] error: --suite オプションには値が必要です" >&2
+    exit 1
+  fi
+  SUITE="$2"
+  shift 2
+fi
+
 if [[ "${1:-}" == "--help" ]]; then
   print_usage
   exit 0
@@ -46,8 +56,12 @@ fi
 
 declare -a TARGETS=()
 if [[ "$#" -eq 0 ]]; then
-  TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/diagnostics")
-  TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/audit")
+  if [[ "$SUITE" == "streaming" ]]; then
+    TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden")
+  else
+    TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/diagnostics")
+    TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/audit")
+  fi
 else
   for arg in "$@"; do
     TARGETS+=("$arg")
@@ -485,6 +499,145 @@ if error:
 PY
     EXIT_CODE=1
   }
+  if [[ "$SUITE" == "streaming" ]]; then
+    python3 - "${DIAG_FILES[@]}" <<'PY' || {
+import json
+import pathlib
+import sys
+
+files = sys.argv[1:]
+error = False
+
+required_pending_keys = [
+    "parser.stream.pending.resume_hint",
+    "parser.stream.pending.last_reason",
+    "parser.stream.pending.expected_tokens",
+    "parser.stream.pending.last_checkpoint",
+]
+
+required_error_keys = [
+    "parser.stream.error.resume_hint",
+    "parser.stream.error.last_reason",
+    "parser.stream.error.expected_tokens",
+    "parser.stream.error.last_checkpoint",
+    "parser.stream.error.diagnostic",
+]
+
+
+def as_dict(value):
+    return value if isinstance(value, dict) else None
+
+
+def ensure_resume_hint(meta: dict, key: str, path: str) -> bool:
+    value = meta.get(key)
+    hint = as_dict(value)
+    if hint is None:
+        print(
+            f"[validate-diagnostic-json] {path}: metadata.{key} が不足しています",
+            file=sys.stderr,
+        )
+        return False
+    min_bytes = hint.get("min_bytes")
+    preferred_bytes = hint.get("preferred_bytes")
+    if not isinstance(min_bytes, int) or not isinstance(preferred_bytes, int):
+        print(
+            f"[validate-diagnostic-json] {path}: metadata.{key} に min_bytes / preferred_bytes が含まれていません",
+            file=sys.stderr,
+        )
+        return False
+    if preferred_bytes < min_bytes:
+        print(
+            f"[validate-diagnostic-json] {path}: metadata.{key} preferred_bytes < min_bytes",
+            file=sys.stderr,
+        )
+        return False
+    return True
+
+
+for raw_path in files:
+    path = str(raw_path)
+    if "stream" not in path.lower():
+        continue
+    text = pathlib.Path(path).read_text().strip()
+    if not text:
+        continue
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        print(f"[validate-diagnostic-json] {path}: JSON parse error: {exc}", file=sys.stderr)
+        error = True
+        continue
+    entries = data if isinstance(data, list) else [data]
+    for entry in entries:
+        events = entry.get("audit_events")
+        if not isinstance(events, list):
+            print(f"[validate-diagnostic-json] {path}: audit_events が配列ではありません", file=sys.stderr)
+            error = True
+            continue
+        categories = {}
+        for event in events:
+            if isinstance(event, dict):
+                categories[event.get("category")] = event
+        pending = categories.get("parser.stream.pending")
+        if pending is None:
+            print(f"[validate-diagnostic-json] {path}: parser.stream.pending イベントがありません", file=sys.stderr)
+            error = True
+            continue
+        pending_meta = as_dict(pending.get("metadata"))
+        if pending_meta is None:
+            print(f"[validate-diagnostic-json] {path}: parser.stream.pending metadata がありません", file=sys.stderr)
+            error = True
+            continue
+        for key in required_pending_keys:
+            if key not in pending_meta:
+                print(f"[validate-diagnostic-json] {path}: metadata.{key} が不足しています", file=sys.stderr)
+                error = True
+        if not ensure_resume_hint(pending_meta, "parser.stream.pending.resume_hint", path):
+            error = True
+        pending_expected = pending_meta.get("parser.stream.pending.expected_tokens")
+        if not isinstance(pending_expected, list):
+            print(f"[validate-diagnostic-json] {path}: metadata.parser.stream.pending.expected_tokens は配列である必要があります", file=sys.stderr)
+            error = True
+        last_checkpoint_pending = pending_meta.get("parser.stream.pending.last_checkpoint")
+        if last_checkpoint_pending is not None and not isinstance(last_checkpoint_pending, dict):
+            print(f"[validate-diagnostic-json] {path}: metadata.parser.stream.pending.last_checkpoint は null またはオブジェクトである必要があります", file=sys.stderr)
+            error = True
+
+        error_event = categories.get("parser.stream.error")
+        if error_event is None:
+            print(f"[validate-diagnostic-json] {path}: parser.stream.error イベントがありません", file=sys.stderr)
+            error = True
+            continue
+        error_meta = as_dict(error_event.get("metadata"))
+        if error_meta is None:
+            print(f"[validate-diagnostic-json] {path}: parser.stream.error metadata がありません", file=sys.stderr)
+            error = True
+            continue
+        for key in required_error_keys:
+            if key not in error_meta:
+                print(f"[validate-diagnostic-json] {path}: metadata.{key} が不足しています", file=sys.stderr)
+                error = True
+        if not ensure_resume_hint(error_meta, "parser.stream.error.resume_hint", path):
+            error = True
+        error_expected = error_meta.get("parser.stream.error.expected_tokens")
+        if not isinstance(error_expected, list):
+            print(f"[validate-diagnostic-json] {path}: metadata.parser.stream.error.expected_tokens は配列である必要があります", file=sys.stderr)
+            error = True
+        last_checkpoint_error = error_meta.get("parser.stream.error.last_checkpoint")
+        if last_checkpoint_error is not None and not isinstance(last_checkpoint_error, dict):
+            print(f"[validate-diagnostic-json] {path}: metadata.parser.stream.error.last_checkpoint は null またはオブジェクトである必要があります", file=sys.stderr)
+            error = True
+        diagnostic_meta = error_meta.get("parser.stream.error.diagnostic")
+        if not isinstance(diagnostic_meta, dict):
+            print(f"[validate-diagnostic-json] {path}: metadata.parser.stream.error.diagnostic はオブジェクトである必要があります", file=sys.stderr)
+            error = True
+
+if error:
+    sys.exit(1)
+PY
+      EXIT_CODE=1
+    }
+  fi
 fi
 
 exit $EXIT_CODE

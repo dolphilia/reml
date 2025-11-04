@@ -1874,6 +1874,9 @@ def collect_streaming_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
     backpressure_checks = 0
     backpressure_synced = 0
     backpressure_failures: List[Dict[str, Any]] = []
+    demandhint_total = 0
+    demandhint_covered = 0
+    demandhint_failures: List[Dict[str, Any]] = []
 
     for path in paths:
         data = load_json(path)
@@ -1901,6 +1904,10 @@ def collect_streaming_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
         baseline_meta = (
             _as_dict(baseline.get("stream_meta")) if baseline else None
         )
+        continuation_meta = _as_dict(data.get("continuation_meta"))
+        baseline_continuation_meta = (
+            _as_dict(baseline.get("continuation_meta")) if baseline else None
+        )
         flow_descriptor = _extract_stream_flow_descriptor(data.get("run_config"))
         flow_policy_normalized: Optional[str] = None
         if flow_descriptor:
@@ -1918,11 +1925,30 @@ def collect_streaming_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
         if baseline_meta is not None:
             meta_match = streaming_meta == baseline_meta
 
+        if continuation_meta is not None:
+            demandhint_total += 1
+            resume_hint = _as_dict(continuation_meta.get("resume_hint"))
+            min_bytes = resume_hint.get("min_bytes") if resume_hint else None
+            preferred_bytes = (
+                resume_hint.get("preferred_bytes") if resume_hint else None
+            )
+            if (
+                isinstance(min_bytes, int)
+                and isinstance(preferred_bytes, int)
+                and preferred_bytes >= min_bytes
+            ):
+                demandhint_covered += 1
+            else:
+                demandhint_failures.append(
+                    {
+                        "file": str(path),
+                        "resume_hint": resume_hint,
+                    }
+                )
+
         if flow_policy_normalized == "auto":
             backpressure_checks += 1
-            resume_reason_raw = _extract_resume_hint_reason(
-                data.get("continuation_meta")
-            )
+            resume_reason_raw = _extract_resume_hint_reason(continuation_meta)
             stream_reason_raw = None
             if streaming_meta:
                 stream_reason_raw = streaming_meta.get("last_reason")
@@ -1950,9 +1976,9 @@ def collect_streaming_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
                 "diagnostics_match": diagnostics_match,
                 "stream_meta_match": meta_match,
                 "resume_lineage": _extract_resume_lineage(
-                    data.get("continuation_meta")
+                    continuation_meta
                 )
-                or _extract_resume_lineage(baseline.get("continuation_meta") if baseline else None),
+                or _extract_resume_lineage(baseline_continuation_meta),
             }
         )
 
@@ -2002,6 +2028,45 @@ def collect_streaming_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
                 "status": sync_status,
                 "sources": sources,
                 "failures": backpressure_failures,
+            }
+        )
+    if demandhint_total > 0:
+        coverage_fraction = demandhint_covered / demandhint_total
+        coverage_status = (
+            "success" if demandhint_covered == demandhint_total else "error"
+        )
+        related_metrics.append(
+            {
+                "metric": "parser.stream.demandhint_coverage",
+                "total": demandhint_total,
+                "covered": demandhint_covered,
+                "missing": demandhint_total - demandhint_covered,
+                "pass_rate": 1.0
+                if demandhint_covered == demandhint_total
+                else coverage_fraction,
+                "pass_fraction": coverage_fraction,
+                "status": coverage_status,
+                "sources": sources,
+                "failures": demandhint_failures,
+            }
+        )
+
+    if demandhint_total > 0:
+        coverage_fraction = demandhint_covered / demandhint_total
+        coverage_status = "success" if demandhint_covered == demandhint_total else "error"
+        related_metrics.append(
+            {
+                "metric": "parser.stream.demandhint_coverage",
+                "total": demandhint_total,
+                "covered": demandhint_covered,
+                "missing": demandhint_total - demandhint_covered,
+                "pass_rate": 1.0
+                if demandhint_covered == demandhint_total
+                else coverage_fraction,
+                "pass_fraction": coverage_fraction,
+                "status": coverage_status,
+                "sources": sources,
+                "failures": demandhint_failures,
             }
         )
 

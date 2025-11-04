@@ -126,6 +126,18 @@ let test_pending_resume_flow () =
         (pending.meta.backpressure_policy = Some "auto"
         && pending.meta.backpressure_events = 1)
         desc "バックプレッシャメタデータが期待通りに記録されていません";
+      ensure
+        (List.exists
+           (fun event ->
+             String.equal event.category "parser.stream.pending")
+           pending.audit_events)
+        desc "Pending 監査イベントが作成されていません";
+      ensure
+        (List.exists
+           (fun event ->
+             String.equal event.category "parser.stream.error")
+           pending.audit_events)
+        desc "Pending のエラー監査イベントが不足しています";
       let after_chunk =
         Stream.resume pending.continuation (Stream.Chunk chunk_b)
       in
@@ -150,6 +162,12 @@ let test_pending_resume_flow () =
         (completed.meta.backpressure_policy = Some "auto"
         && completed.meta.backpressure_events = 1)
         desc "Completed メタデータのバックプレッシャ情報が不足しています";
+      ensure
+        (List.for_all
+           (fun event ->
+             not (String.equal event.category "parser.stream.error"))
+           completed.audit_events)
+        desc "Completed の監査イベントが予期せぬエラーを含んでいます";
       pass desc
 
 let () =

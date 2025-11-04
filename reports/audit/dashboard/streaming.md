@@ -41,8 +41,16 @@ Auto モードの Pending 記録で Backpressure 理由が欠落した場合、`
 | macos-arm64 | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --platform macos-arm64 --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | CI Gate で Auto ポリシーの有効化を検証 |
 | windows-msvc | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --platform windows-msvc --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | Windows でも Auto カバレッジ 100% を保証 |
 
+## parser.stream.demandhint_coverage
+
+| プラットフォーム | pass_rate | 計測ログ | 補足 |
+|------------------|-----------|----------|------|
+| linux-x86_64 | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | `continuation_meta.resume_hint.{min_bytes,preferred_bytes}` が非 null であることを確認 |
+| macos-arm64 | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --platform macos-arm64 --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | `resume_hint.reason` が `pending.backpressure` であることを維持 |
+| windows-msvc | 1.0 | `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success --platform windows-msvc --source compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` | DemandHint 欠落検知時は `STREAM-POC-DEMANDHINT` を再オープン |
+
 ## 補足
 
-- `parser.stream.demandhint_coverage` はバックプレッシャ自動化タスク完了後に本ダッシュボードへ追加する。
 - `collect-iterator-audit-metrics.py` の `collect_streaming_metrics` は `baseline` ブロックを参照するため、ストリーミング診断 JSON には `baseline.parse_result` / `baseline.stream_meta` / `baseline.diagnostics` を含めること。
 - FlowController Auto に関連する KPI（`parser.stream.backpressure_sync`, `parser.stream.flow.auto_coverage`）は `RunConfig.extensions["stream"].flow` と `stream_meta` の両方を参照する。CLI/LSP で FlowController パラメータを更新した場合は、必ず診断ゴールデンと監査ログを同時に更新する。
+- `scripts/validate-diagnostic-json.sh --suite streaming` で `audit_events` 内の `parser.stream.pending` / `parser.stream.error` ペイロードを検証するため、ゴールデン更新時は同スイートを必ず実行する。

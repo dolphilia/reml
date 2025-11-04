@@ -9,6 +9,7 @@ module Run_config = Parser_run_config
 module Core_state = Core_parse.State
 module Core_reply = Core_parse.Reply
 module Core_stream = Core_parse_streaming
+module Json = Yojson.Basic
 
 let default_run_config = Run_config.default
 
@@ -42,6 +43,53 @@ type parse_result_with_rest = {
   rest : string option;
 }
 
+let expectation_kind_and_value (expectation : Diagnostic.expectation) =
+  match expectation with
+  | Diagnostic.Token text -> ("token", text)
+  | Diagnostic.Keyword text -> ("keyword", text)
+  | Diagnostic.Rule text -> ("rule", text)
+  | Diagnostic.Class text -> ("class", text)
+  | Diagnostic.Not text -> ("not", text)
+  | Diagnostic.Custom text -> ("custom", text)
+  | Diagnostic.TypeExpected text -> ("type_expected", text)
+  | Diagnostic.TraitBound text -> ("trait_bound", text)
+  | Diagnostic.Eof -> ("eof", "EOF")
+
+let expectation_to_json expectation =
+  let kind, value = expectation_kind_and_value expectation in
+  `Assoc [ ("kind", `String kind); ("label", `String value) ]
+
+let recover_extension_payload (summary : Diagnostic.expectation_summary) =
+  let tokens =
+    List.map expectation_to_json summary.Diagnostic.alternatives
+  in
+  let fields = ref [ ("expected_tokens", `List tokens) ] in
+  (match summary.humanized with
+  | Some text when String.trim text <> "" ->
+      fields := ("message", `String text) :: !fields
+  | _ -> ());
+  (match summary.context_note with
+  | Some text when String.trim text <> "" ->
+      fields := ("context", `String text) :: !fields
+  | _ -> ());
+  `Assoc (List.rev !fields)
+
+let attach_recover_extension (summary : Diagnostic.expectation_summary option)
+    (diag : Diagnostic.t) =
+  match summary with
+  | None -> diag
+  | Some summary ->
+      let has_tokens = summary.Diagnostic.alternatives <> [] in
+      let has_text =
+        match (summary.humanized, summary.context_note) with
+        | Some text, _ when String.trim text <> "" -> true
+        | _, Some note when String.trim note <> "" -> true
+        | _ -> false
+      in
+      if has_tokens || has_text then
+        Diagnostic.set_extension "recover" (recover_extension_payload summary) diag
+      else diag
+
 let process_lexer_error lexbuf msg =
   let start_pos = Lexing.lexeme_start_p lexbuf in
   let end_pos = Lexing.lexeme_end_p lexbuf in
@@ -60,12 +108,14 @@ let process_parser_error lexbuf message summary =
   let start_pos = Lexing.lexeme_start_p lexbuf in
   let end_pos = Lexing.lexeme_end_p lexbuf in
   build_parser_diagnostic ~message ~start_pos ~end_pos ~summary
+  |> attach_recover_extension (Some summary)
 
 let process_rejected_error lexbuf summary =
   let pos = lexbuf.Lexing.lex_curr_p in
   build_parser_diagnostic
     ~message:"構文エラー: 解析を続行できません"
     ~start_pos:pos ~end_pos:pos ~summary
+  |> attach_recover_extension (Some summary)
 
 let diagnostic_to_parse_error diag ~consumed ~committed =
   let expected =
@@ -358,6 +408,174 @@ module Streaming = struct
     reason : string option;
   }
 
+  type snapshot = {
+    expectations : Diagnostic.expectation list;
+    summary : Diagnostic.expectation_summary option;
+    checkpoint : Diagnostic.span option;
+    diagnostic : Diagnostic.t option;
+  }
+
+  let empty_snapshot =
+    { expectations = []; summary = None; checkpoint = None; diagnostic = None }
+
+  let json_of_option f = function
+    | Some value -> f value
+    | None -> `Null
+
+  let json_of_string_option = json_of_option (fun s -> `String s)
+  let json_of_int_option = json_of_option (fun n -> `Int n)
+
+  let string_list_json entries =
+    `List (List.map (fun value -> `String value) entries)
+
+  let span_to_json (span : Diagnostic.span) =
+    let open Diagnostic in
+    let location_to_json (loc : location) =
+      `Assoc
+        [
+          ("file", `String loc.filename);
+          ("line", `Int loc.line);
+          ("column", `Int loc.column);
+          ("offset", `Int loc.offset);
+        ]
+    in
+    `Assoc
+      [
+        ("start", location_to_json span.start_pos);
+        ("end", location_to_json span.end_pos);
+      ]
+
+  let demand_hint_to_json (demand : demand_hint) =
+    let action =
+      match demand.action with `Pause -> "pause" | `Continue -> "continue"
+    in
+    `Assoc
+      [
+        ("action", `String action);
+        ("min_bytes", json_of_int_option demand.min_bytes);
+        ("preferred_bytes", json_of_int_option demand.preferred_bytes);
+        ("resume_hint", json_of_string_option demand.resume_hint);
+        ("reason", json_of_string_option demand.reason);
+      ]
+
+  let expectations_to_json expectations =
+    `List (List.map expectation_to_json expectations)
+
+  let snapshot_for_buffer ~buffer ~config ~source_name =
+    if buffer = "" then empty_snapshot
+    else
+      let preview_config = { config with Run_config.require_eof = true } in
+      let preview =
+        run_string ~filename:source_name ~config:preview_config buffer
+      in
+      match preview.diagnostics with
+      | diag :: _ ->
+          let summary = diag.Diagnostic.expected in
+          let expectations =
+            match summary with
+            | Some summary -> summary.Diagnostic.alternatives
+            | None -> []
+          in
+          {
+            expectations;
+            summary;
+            checkpoint = Some diag.Diagnostic.primary;
+            diagnostic = Some diag;
+          }
+      | [] -> empty_snapshot
+
+  let snapshot_of_diagnostic (diag : Diagnostic.t) =
+    let summary = diag.Diagnostic.expected in
+    let expectations =
+      match summary with
+      | Some summary -> summary.Diagnostic.alternatives
+      | None -> []
+    in
+    {
+      expectations;
+      summary;
+      checkpoint = Some diag.Diagnostic.primary;
+      diagnostic = Some diag;
+    }
+
+  let make_pending_event ~demand ~(meta : stream_meta)
+      ~(continuation : continuation) ~(snapshot : snapshot) =
+    let base_metadata =
+      [
+        ("parser.stream.pending.resume_hint", demand_hint_to_json demand);
+        ("parser.stream.pending.last_reason", json_of_string_option meta.last_reason);
+        ( "parser.stream.pending.expected_tokens",
+          expectations_to_json snapshot.expectations );
+        ( "parser.stream.pending.resume_lineage",
+          string_list_json continuation.meta.resume_lineage );
+        ( "parser.stream.pending.backpressure_events",
+          `Int meta.backpressure_events );
+      ]
+    in
+    let metadata =
+      match snapshot.checkpoint with
+      | Some span ->
+          ("parser.stream.pending.last_checkpoint", span_to_json span)
+          :: base_metadata
+      | None -> base_metadata
+    in
+    Audit_envelope.make ~category:"parser.stream.pending"
+      ~metadata_pairs:(List.rev metadata) ()
+
+  let make_error_event ?demand ?meta ?continuation ~(snapshot : snapshot)
+      ~(diagnostic : Diagnostic.t) =
+    let expectations =
+      if snapshot.expectations <> [] then snapshot.expectations
+      else
+        match diagnostic.Diagnostic.expected with
+        | Some summary -> summary.Diagnostic.alternatives
+        | None -> []
+    in
+    let resume_hint_json =
+      match demand with
+      | Some hint -> demand_hint_to_json hint
+      | None -> `Null
+    in
+    let last_reason_json =
+      match meta with
+      | Some stream_meta -> json_of_string_option stream_meta.last_reason
+      | None -> `Null
+    in
+    let base_metadata =
+      [
+        ( "parser.stream.error.diagnostic",
+          Diagnostic_serialization.diagnostic_to_json diagnostic );
+        ("parser.stream.error.resume_hint", resume_hint_json);
+        ("parser.stream.error.last_reason", last_reason_json);
+        ( "parser.stream.error.expected_tokens",
+          expectations_to_json expectations );
+      ]
+    in
+    let metadata =
+      match snapshot.checkpoint with
+      | Some span ->
+          ("parser.stream.error.last_checkpoint", span_to_json span)
+          :: base_metadata
+      | None -> base_metadata
+    in
+    let metadata =
+      match continuation with
+      | Some cont ->
+          ("parser.stream.error.resume_lineage",
+           string_list_json cont.meta.resume_lineage)
+          :: metadata
+      | None -> metadata
+    in
+    Audit_envelope.make ~category:"parser.stream.error"
+      ~metadata_pairs:(List.rev metadata) ()
+
+  let error_events_from_result ~(meta : stream_meta) (result : parse_result) =
+    result.diagnostics
+    |> List.filter (fun diag -> diag.Diagnostic.severity = Diagnostic.Error)
+    |> List.map (fun diag ->
+           let snapshot = snapshot_of_diagnostic diag in
+           make_error_event ~meta ~snapshot ~diagnostic:diag)
+
   type chunk =
     | Chunk of string
     | Await of demand_hint option
@@ -403,12 +621,17 @@ module Streaming = struct
     flow : flow_state;
   }
 
-  type completed = { result : parse_result; meta : stream_meta }
+  type completed = {
+    result : parse_result;
+    meta : stream_meta;
+    audit_events : Audit_envelope.event list;
+  }
 
   type pending = {
     continuation : continuation;
     demand : demand_hint;
     meta : stream_meta;
+    audit_events : Audit_envelope.event list;
   }
 
   type outcome = Completed of completed | Pending of pending
@@ -527,16 +750,22 @@ module Streaming = struct
       backpressure_events = flow_state.events;
     }
 
-  let build_continuation_meta ~buffer ~demand ~flow_state ?previous () =
+  let build_continuation_meta ~buffer ~demand ~flow_state ?snapshot ?previous ()
+      =
     let buffered_bytes = String.length buffer in
-    let lineage_base = match previous with Some meta -> meta.resume_lineage | None -> [] in
-    let reason = match demand.reason with Some r -> r | None -> "stream.pending" in
+    let lineage_base =
+      match previous with Some meta -> meta.resume_lineage | None -> []
+    in
+    let reason =
+      match demand.reason with Some r -> r | None -> "stream.pending"
+    in
+    let snapshot = Option.value ~default:empty_snapshot snapshot in
     {
       commit_watermark = buffered_bytes;
       buffered_bytes;
       resume_hint = Some demand;
-      expected_tokens = [];
-      last_checkpoint = None;
+      expected_tokens = snapshot.expectations;
+      last_checkpoint = snapshot.checkpoint;
       resume_lineage = reason :: lineage_base;
       backpressure_counter = flow_state.events;
     }
@@ -596,6 +825,9 @@ module Streaming = struct
             apply_backpressure_defaults defaults flow_state demand
           in
           let buffered = Buffer.contents buffer in
+          let snapshot =
+            snapshot_for_buffer ~buffer:buffered ~config ~source_name:filename
+          in
           let packrat_cache =
             match packrat_cache with
             | Some cache ->
@@ -617,7 +849,8 @@ module Streaming = struct
               demand_preferred_bytes = demand.preferred_bytes;
               packrat_cache;
               meta =
-                build_continuation_meta ~buffer:buffered ~demand ~flow_state ();
+                build_continuation_meta ~buffer:buffered ~demand ~flow_state
+                  ~snapshot ();
               flow = flow_state;
             }
           in
@@ -626,7 +859,20 @@ module Streaming = struct
               ~await:(await_count + 1) ~resume:0 ?reason:demand.reason
               ?packrat_cache flow_state
           in
-          Pending { continuation; demand; meta }
+          let pending_event =
+            make_pending_event ~demand ~meta ~continuation ~snapshot
+          in
+          let audit_events =
+            match snapshot.diagnostic with
+            | Some diagnostic ->
+                let error_event =
+                  make_error_event ~demand ~meta ~continuation ~snapshot
+                    ~diagnostic
+                in
+                [ pending_event; error_event ]
+            | None -> [ pending_event ]
+          in
+          Pending { continuation; demand; meta; audit_events }
       | Closed ->
           let text = Buffer.contents buffer in
           let result = run_string ~filename ~config ?packrat_cache text in
@@ -635,12 +881,16 @@ module Streaming = struct
               ~await:await_count ~resume:0 ?reason:None ?packrat_cache
               flow_state
           in
-          Completed { result; meta }
+          let audit_events = error_events_from_result ~meta result in
+          Completed { result; meta; audit_events }
       | Error message ->
           let demand =
             default_pause defaults ~reason:(Some ("stream.error:" ^ message)) ()
           in
           let buffered = Buffer.contents buffer in
+          let snapshot =
+            snapshot_for_buffer ~buffer:buffered ~config ~source_name:filename
+          in
           let packrat_cache =
             match packrat_cache with
             | Some cache ->
@@ -662,7 +912,8 @@ module Streaming = struct
               demand_preferred_bytes = demand.preferred_bytes;
               packrat_cache;
               meta =
-                build_continuation_meta ~buffer:buffered ~demand ~flow_state ();
+                build_continuation_meta ~buffer:buffered ~demand ~flow_state
+                  ~snapshot ();
               flow = flow_state;
             }
           in
@@ -671,7 +922,20 @@ module Streaming = struct
               ~await:await_count ~resume:0 ?reason:demand.reason
               ?packrat_cache flow_state
           in
-          Pending { continuation; demand; meta }
+          let pending_event =
+            make_pending_event ~demand ~meta ~continuation ~snapshot
+          in
+          let audit_events =
+            match snapshot.diagnostic with
+            | Some diagnostic ->
+                let error_event =
+                  make_error_event ~demand ~meta ~continuation ~snapshot
+                    ~diagnostic
+                in
+                [ pending_event; error_event ]
+            | None -> [ pending_event ]
+          in
+          Pending { continuation; demand; meta; audit_events }
     in
     pump 0 0 0 packrat_cache
 
@@ -711,7 +975,8 @@ module Streaming = struct
           make_meta ~bytes:(bytes + String.length data) ~chunks:(chunks + 1)
             ~await ~resume:resume_count ?reason:None ?packrat_cache flow_state
         in
-        Completed { result; meta }
+        let audit_events = error_events_from_result ~meta result in
+        Completed { result; meta; audit_events }
     | Closed ->
         let text = Buffer.contents buffer in
         let result =
@@ -722,7 +987,8 @@ module Streaming = struct
           make_meta ~bytes ~chunks ~await ~resume:resume_count
             ?reason:(Some "feeder.closed") ?packrat_cache flow_state
         in
-        Completed { result; meta }
+        let audit_events = error_events_from_result ~meta result in
+        Completed { result; meta; audit_events }
     | Await hint_opt ->
         let fallback_reason = Some "feeder.await" in
         let demand =
@@ -742,6 +1008,12 @@ module Streaming = struct
         in
         let demand = apply_backpressure_defaults defaults flow_state demand in
         let new_buffer = Buffer.contents buffer in
+        let snapshot =
+          snapshot_for_buffer ~buffer:new_buffer
+            ~config:continuation.config
+            ~source_name:continuation.source_name
+        in
+        let previous_meta = continuation.meta in
         let continuation =
           {
             continuation with
@@ -756,7 +1028,7 @@ module Streaming = struct
             packrat_cache;
             meta =
               build_continuation_meta ~buffer:new_buffer ~demand ~flow_state
-                ~previous:continuation.meta ();
+                ~snapshot ~previous:previous_meta ();
             flow = continuation.flow;
           }
         in
@@ -764,7 +1036,20 @@ module Streaming = struct
           make_meta ~bytes ~chunks ~await:(await + 1) ~resume:resume_count
             ?reason:demand.reason ?packrat_cache flow_state
         in
-        Pending { continuation; demand; meta }
+        let pending_event =
+          make_pending_event ~demand ~meta ~continuation ~snapshot
+        in
+        let audit_events =
+          match snapshot.diagnostic with
+          | Some diagnostic ->
+              let error_event =
+                make_error_event ~demand ~meta ~continuation ~snapshot
+                  ~diagnostic
+              in
+              [ pending_event; error_event ]
+          | None -> [ pending_event ]
+        in
+        Pending { continuation; demand; meta; audit_events }
     | Error message ->
         let reason = Some ("stream.error:" ^ message) in
         let demand =
@@ -778,6 +1063,12 @@ module Streaming = struct
           }
         in
         let new_buffer = Buffer.contents buffer in
+        let snapshot =
+          snapshot_for_buffer ~buffer:new_buffer
+            ~config:continuation.config
+            ~source_name:continuation.source_name
+        in
+        let previous_meta = continuation.meta in
         let continuation =
           {
             continuation with
@@ -787,7 +1078,7 @@ module Streaming = struct
             packrat_cache;
             meta =
               build_continuation_meta ~buffer:new_buffer ~demand ~flow_state
-                ~previous:continuation.meta ();
+                ~snapshot ~previous:previous_meta ();
             flow = continuation.flow;
           }
         in
@@ -795,5 +1086,18 @@ module Streaming = struct
           make_meta ~bytes ~chunks ~await ~resume:resume_count ?reason
             ?packrat_cache flow_state
         in
-        Pending { continuation; demand; meta }
+        let pending_event =
+          make_pending_event ~demand ~meta ~continuation ~snapshot
+        in
+        let audit_events =
+          match snapshot.diagnostic with
+          | Some diagnostic ->
+              let error_event =
+                make_error_event ~demand ~meta ~continuation ~snapshot
+                  ~diagnostic
+              in
+              [ pending_event; error_event ]
+          | None -> [ pending_event ]
+        in
+        Pending { continuation; demand; meta; audit_events }
 end

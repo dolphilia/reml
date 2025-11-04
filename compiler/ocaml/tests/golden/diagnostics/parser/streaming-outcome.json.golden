@@ -50,7 +50,7 @@
     "commit_watermark": 42,
     "buffered_bytes": 42,
     "resume_hint": {
-      "action": "Pause",
+      "action": "pause",
       "min_bytes": 4,
       "preferred_bytes": 6,
       "resume_hint": "resume-token",
@@ -63,6 +63,51 @@
     ]
   },
   "diagnostics": [],
+  "audit_events": [
+    {
+      "timestamp": "2026-01-01T00:00:00Z",
+      "category": "parser.stream.pending",
+      "metadata": {
+        "parser.stream.pending.resume_hint": {
+          "action": "pause",
+          "min_bytes": 4,
+          "preferred_bytes": 6,
+          "resume_hint": "resume-token",
+          "reason": "pending.backpressure"
+        },
+        "parser.stream.pending.last_reason": "pending.backpressure",
+        "parser.stream.pending.expected_tokens": [],
+        "parser.stream.pending.last_checkpoint": null,
+        "parser.stream.pending.resume_lineage": [
+          "pending.backpressure"
+        ],
+        "parser.stream.pending.backpressure_events": 1
+      }
+    },
+    {
+      "timestamp": "2026-01-01T00:00:00Z",
+      "category": "parser.stream.error",
+      "metadata": {
+        "parser.stream.error.resume_hint": {
+          "action": "pause",
+          "min_bytes": 4,
+          "preferred_bytes": 6,
+          "resume_hint": "resume-token",
+          "reason": "pending.backpressure"
+        },
+        "parser.stream.error.last_reason": "pending.backpressure",
+        "parser.stream.error.expected_tokens": [],
+        "parser.stream.error.last_checkpoint": null,
+        "parser.stream.error.resume_lineage": [
+          "pending.backpressure"
+        ],
+        "parser.stream.error.diagnostic": {
+          "message": "構文エラー: 入力を解釈できません",
+          "severity": "error"
+        }
+      }
+    }
+  ],
   "baseline": {
     "parse_result": {
       "recovered": false,
