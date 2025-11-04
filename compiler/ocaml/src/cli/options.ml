@@ -99,6 +99,14 @@ let print_full_help () =
       "                       DemandHint.min_bytes の既定値を設定";
       "  --stream-demand-preferred <bytes>";
       "                       DemandHint.preferred_bytes の既定値を設定";
+      "  --stream-flow <manual|auto>";
+      "                       FlowController.policy を切り替える（既定: manual）";
+      "  --stream-flow-max-lag <bytes>";
+      "                       FlowController.backpressure.max_lag_bytes を設定";
+      "  --stream-flow-debounce-ms <ms>";
+      "                       FlowController.backpressure.debounce_ms を設定";
+      "  --stream-flow-throttle <ratio>";
+      "                       FlowController.backpressure.throttle_ratio (0.0-1.0)";
       "";
       "コンパイル設定:";
       "  --target <triple>   ターゲットトリプル（既定: x86_64-linux）";
@@ -183,6 +191,10 @@ type options = {
   stream_demand_preferred_bytes : int option;
       (** DemandHint.preferred_bytes 既定値 *)
   stream_chunk_size : int option;  (** CLI が読み込むチャンクサイズ（バイト単位） *)
+  stream_flow_policy : Run_config.Stream.Flow.policy option;
+  stream_flow_max_lag_bytes : int option;
+  stream_flow_debounce_ms : int option;
+  stream_flow_throttle_ratio : float option;
 }
 (** コマンドラインオプション設定 *)
 
@@ -227,6 +239,10 @@ let default_options =
     stream_demand_min_bytes = None;
     stream_demand_preferred_bytes = None;
     stream_chunk_size = None;
+    stream_flow_policy = None;
+    stream_flow_max_lag_bytes = None;
+    stream_flow_debounce_ms = None;
+    stream_flow_throttle_ratio = None;
   }
 
 (** 環境変数から color_mode を判定 *)
@@ -301,6 +317,10 @@ let parse_args argv =
   let stream_demand_min_bytes = ref None in
   let stream_demand_preferred_bytes = ref None in
   let stream_chunk_size = ref None in
+  let stream_flow_policy = ref None in
+  let stream_flow_max_lag_bytes = ref None in
+  let stream_flow_debounce_ms = ref None in
+  let stream_flow_throttle_ratio = ref None in
 
   let usage_msg = "remlc-ocaml [options] <file>" in
 
@@ -323,6 +343,49 @@ let parse_args argv =
           (Printf.sprintf
              "Warning: %s には 0 以上の整数を指定してください（入力値: %s）。"
              option_name text)
+  in
+  let set_float_option target option_name text =
+    let parsed =
+      try
+        let value = float_of_string (String.trim text) in
+        if Float.is_nan value || Float.is_infinite value then None
+        else if value < 0.0 then None
+        else Some value
+      with Failure _ -> None
+    in
+    match parsed with
+    | Some value -> target := Some value
+    | None ->
+        prerr_endline
+          (Printf.sprintf
+             "Warning: %s には 0 以上の数値を指定してください（入力値: %s）。"
+             option_name text)
+  in
+  let set_ratio_option target option_name text =
+    let parsed =
+      try
+        let value = float_of_string (String.trim text) in
+        if Float.is_nan value || Float.is_infinite value then None else Some value
+      with Failure _ -> None
+    in
+    match parsed with
+    | Some value when value >= 0.0 && value <= 1.0 -> target := Some value
+    | Some _ ->
+        prerr_endline
+          (Printf.sprintf
+             "Warning: %s には 0.0〜1.0 の範囲で数値を指定してください（入力値: %s）。"
+             option_name text)
+    | None ->
+        prerr_endline
+          (Printf.sprintf
+             "Warning: %s には 0.0〜1.0 の数値を指定してください（入力値: %s）。"
+             option_name text)
+  in
+  let parse_flow_policy text =
+    match String.lowercase_ascii (String.trim text) with
+    | "auto" -> Some Run_config.Stream.Flow.Auto
+    | "manual" -> Some Run_config.Stream.Flow.Manual
+    | _ -> None
   in
 
   let speclist =
@@ -413,6 +476,35 @@ let parse_args argv =
           (fun value ->
             set_int_option stream_chunk_size "--stream-chunk-size" value),
         "<bytes> Configure CLI chunk size for streaming (>=0)" );
+      ( "--stream-flow",
+        Arg.String
+          (fun value ->
+            match parse_flow_policy value with
+            | Some policy -> stream_flow_policy := Some policy
+            | None ->
+                prerr_endline
+                  (Printf.sprintf
+                     "Warning: --stream-flow には manual または auto を指定してください（入力値: %s）。"
+                     value)),
+        "<manual|auto> Configure FlowController policy" );
+      ( "--stream-flow-max-lag",
+        Arg.String
+          (fun value ->
+            set_int_option stream_flow_max_lag_bytes "--stream-flow-max-lag"
+              value),
+        "<bytes> Configure FlowController.backpressure.max_lag_bytes" );
+      ( "--stream-flow-debounce-ms",
+        Arg.String
+          (fun value ->
+            set_int_option stream_flow_debounce_ms "--stream-flow-debounce-ms"
+              value),
+        "<ms> Configure FlowController.backpressure.debounce_ms" );
+      ( "--stream-flow-throttle",
+        Arg.String
+          (fun value ->
+            set_ratio_option stream_flow_throttle_ratio "--stream-flow-throttle"
+              value),
+        "<ratio> Configure FlowController.backpressure.throttle_ratio (0.0-1.0)" );
       ( "--typeclass-mode",
         Arg.String
           (fun value ->
@@ -653,6 +745,10 @@ let parse_args argv =
           stream_demand_min_bytes = !stream_demand_min_bytes;
           stream_demand_preferred_bytes = !stream_demand_preferred_bytes;
           stream_chunk_size = !stream_chunk_size;
+          stream_flow_policy = !stream_flow_policy;
+          stream_flow_max_lag_bytes = !stream_flow_max_lag_bytes;
+          stream_flow_debounce_ms = !stream_flow_debounce_ms;
+          stream_flow_throttle_ratio = !stream_flow_throttle_ratio;
         }
   with
   | Arg.Help _ ->
@@ -706,4 +802,9 @@ let to_run_config (opts : options) =
   |> Run_config.Stream.set_demand_preferred_bytes
        opts.stream_demand_preferred_bytes
   |> Run_config.Stream.set_chunk_size opts.stream_chunk_size
+  |> Run_config.Stream.set_flow_policy opts.stream_flow_policy
+  |> Run_config.Stream.set_flow_max_lag_bytes opts.stream_flow_max_lag_bytes
+  |> Run_config.Stream.set_flow_debounce_ms opts.stream_flow_debounce_ms
+  |> Run_config.Stream.set_flow_throttle_ratio
+       opts.stream_flow_throttle_ratio
   (* TODO(LEXER-002 Step5): ParserId を取得したら space_id を設定し、CLI で警告を出す。 *)

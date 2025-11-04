@@ -134,6 +134,23 @@ module Recover : sig
 end
 
 module Stream : sig
+  module Flow : sig
+    type policy =
+      | Manual
+      | Auto
+
+    type backpressure_spec = {
+      max_lag_bytes : int option;
+      debounce_ms : int option;
+      throttle_ratio : float option;
+    }
+
+    type t = {
+      policy : policy;
+      backpressure : backpressure_spec;
+    }
+  end
+
   type t = {
     enabled : bool;
     checkpoint : string option;
@@ -141,6 +158,7 @@ module Stream : sig
     demand_min_bytes : int option;
     demand_preferred_bytes : int option;
     chunk_size : int option;
+    flow : Flow.t option;
     namespace : Extensions.Namespace.t option;
   }
 
@@ -152,6 +170,10 @@ module Stream : sig
   val set_demand_min_bytes : int option -> run_config -> run_config
   val set_demand_preferred_bytes : int option -> run_config -> run_config
   val set_chunk_size : int option -> run_config -> run_config
+  val set_flow_policy : Flow.policy option -> run_config -> run_config
+  val set_flow_max_lag_bytes : int option -> run_config -> run_config
+  val set_flow_debounce_ms : int option -> run_config -> run_config
+  val set_flow_throttle_ratio : float option -> run_config -> run_config
 end
 
 module Effects : sig

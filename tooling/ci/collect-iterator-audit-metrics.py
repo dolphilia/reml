@@ -1787,11 +1787,93 @@ def _extract_resume_lineage(container: Optional[Dict[str, Any]]) -> Optional[Lis
     return None
 
 
+def _extract_stream_flow_descriptor(
+    run_config: Optional[Dict[str, Any]]
+) -> Optional[Dict[str, Any]]:
+    config = _as_dict(run_config)
+    if not config:
+        return None
+    extensions = _as_dict(config.get("extensions"))
+    if not extensions:
+        return None
+    stream_ext = _as_dict(extensions.get("stream"))
+    if not stream_ext:
+        return None
+    flow = stream_ext.get("flow")
+    if isinstance(flow, dict):
+        return flow
+
+    descriptor: Dict[str, Any] = {}
+    policy = stream_ext.get("flow_policy")
+    if isinstance(policy, str) and policy.strip():
+        descriptor["policy"] = policy
+    backpressure: Dict[str, Any] = {}
+    for source_key, target_key in (
+        ("flow_max_lag_bytes", "max_lag_bytes"),
+        ("flow_debounce_ms", "debounce_ms"),
+        ("flow_throttle_ratio", "throttle_ratio"),
+    ):
+        value = stream_ext.get(source_key)
+        if isinstance(value, (int, float)):
+            backpressure[target_key] = (
+                float(value) if target_key == "throttle_ratio" else int(value)
+            )
+        elif isinstance(value, str) and value.strip():
+            try:
+                parsed = float(value) if target_key == "throttle_ratio" else int(
+                    float(value)
+                )
+                backpressure[target_key] = parsed
+            except ValueError:
+                continue
+    if backpressure:
+        descriptor["backpressure"] = backpressure
+    return descriptor if descriptor else None
+
+
+def _normalize_reason(value: Optional[str]) -> Optional[str]:
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip().lower()
+    if not normalized:
+        return None
+    prefixes = (
+        "pending.",
+        "parser.stream.",
+        "stream.",
+        "resume.",
+        "demand.",
+    )
+    for prefix in prefixes:
+        if normalized.startswith(prefix):
+            normalized = normalized[len(prefix) :]
+    return normalized
+
+
+def _extract_resume_hint_reason(container: Optional[Dict[str, Any]]) -> Optional[str]:
+    meta = _as_dict(container)
+    if not meta:
+        return None
+    hint = _as_dict(meta.get("resume_hint"))
+    if not hint:
+        return None
+    reason = hint.get("reason")
+    if isinstance(reason, str):
+        return reason
+    return None
+
+
 def collect_streaming_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
     total = 0
     passed = 0
     sources: List[str] = []
     failures: List[Dict[str, Any]] = []
+    flow_total = 0
+    flow_auto = 0
+    flow_policies: List[str] = []
+    backpressure_checks = 0
+    backpressure_synced = 0
+    backpressure_failures: List[Dict[str, Any]] = []
 
     for path in paths:
         data = load_json(path)
@@ -1819,12 +1901,43 @@ def collect_streaming_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
         baseline_meta = (
             _as_dict(baseline.get("stream_meta")) if baseline else None
         )
+        flow_descriptor = _extract_stream_flow_descriptor(data.get("run_config"))
+        flow_policy_normalized: Optional[str] = None
+        if flow_descriptor:
+            raw_policy = flow_descriptor.get("policy")
+            if isinstance(raw_policy, str) and raw_policy.strip():
+                flow_policy_normalized = raw_policy.strip().lower()
+                flow_total += 1
+                flow_policies.append(flow_policy_normalized)
+                if flow_policy_normalized == "auto":
+                    flow_auto += 1
 
         parse_match = streaming_result == baseline_result
         diagnostics_match = streaming_diag == baseline_diag
         meta_match = True
         if baseline_meta is not None:
             meta_match = streaming_meta == baseline_meta
+
+        if flow_policy_normalized == "auto":
+            backpressure_checks += 1
+            resume_reason_raw = _extract_resume_hint_reason(
+                data.get("continuation_meta")
+            )
+            stream_reason_raw = None
+            if streaming_meta:
+                stream_reason_raw = streaming_meta.get("last_reason")
+            resume_reason = _normalize_reason(resume_reason_raw)
+            stream_reason = _normalize_reason(stream_reason_raw)
+            if resume_reason == "backpressure" or stream_reason == "backpressure":
+                backpressure_synced += 1
+            else:
+                backpressure_failures.append(
+                    {
+                        "file": str(path),
+                        "resume_reason": resume_reason_raw,
+                        "stream_reason": stream_reason_raw,
+                    }
+                )
 
         if parse_match and diagnostics_match and meta_match:
             passed += 1
@@ -1848,7 +1961,51 @@ def collect_streaming_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
 
     pass_fraction = passed / total
     status = "success" if pass_fraction == 1.0 else "error"
-    return {
+    related_metrics: List[Dict[str, Any]] = []
+    if flow_total > 0:
+        auto_fraction = flow_auto / flow_total
+        flow_status = "success" if flow_auto == flow_total else "warning"
+        related_metrics.append(
+            {
+                "metric": "parser.stream.flow.auto_coverage",
+                "total": flow_total,
+                "auto": flow_auto,
+                "manual": flow_total - flow_auto,
+                "pass_rate": 1.0
+                if flow_auto == flow_total
+                else auto_fraction,
+                "pass_fraction": auto_fraction,
+                "status": flow_status,
+                "sources": sources,
+                "samples": {"policies": flow_policies},
+            }
+        )
+    if backpressure_checks > 0:
+        sync_fraction = (
+            backpressure_synced / backpressure_checks
+            if backpressure_checks > 0
+            else 0.0
+        )
+        sync_status = (
+            "success" if backpressure_synced == backpressure_checks else "error"
+        )
+        related_metrics.append(
+            {
+                "metric": "parser.stream.backpressure_sync",
+                "total": backpressure_checks,
+                "passed": backpressure_synced,
+                "failed": backpressure_checks - backpressure_synced,
+                "pass_rate": 1.0
+                if backpressure_synced == backpressure_checks
+                else sync_fraction,
+                "pass_fraction": sync_fraction,
+                "status": sync_status,
+                "sources": sources,
+                "failures": backpressure_failures,
+            }
+        )
+
+    result = {
         "metric": "parser.stream.outcome_consistency",
         "total": total,
         "passed": passed,
@@ -1859,6 +2016,9 @@ def collect_streaming_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
         "sources": sources,
         "failures": failures,
     }
+    if related_metrics:
+        result["related_metrics"] = related_metrics
+    return result
 
 
 def _core_rule_metadata_missing(diag: Dict[str, Any]) -> List[str]:

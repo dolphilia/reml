@@ -67,6 +67,13 @@ let int_of_value = function
 
 let string_of_value = function Extensions.String value -> Some value | _ -> None
 
+let float_of_value = function
+  | Extensions.Float value -> Some value
+  | Extensions.Int value -> Some (float_of_int value)
+  | Extensions.String text -> (
+      try Some (float_of_string text) with Failure _ -> None)
+  | _ -> None
+
 let string_list_of_value = function
   | Extensions.List values ->
       values |> List.filter_map string_of_value
@@ -297,6 +304,38 @@ module Recover = struct
 end
 
 module Stream = struct
+  module Flow = struct
+    type policy =
+      | Manual
+      | Auto
+
+    type backpressure_spec = {
+      max_lag_bytes : int option;
+      debounce_ms : int option;
+      throttle_ratio : float option;
+    }
+
+    type t = {
+      policy : policy;
+      backpressure : backpressure_spec;
+    }
+
+    let default =
+      {
+        policy = Manual;
+        backpressure =
+          { max_lag_bytes = None; debounce_ms = None; throttle_ratio = None };
+      }
+
+    let policy_symbol = function Manual -> "manual" | Auto -> "auto"
+
+    let policy_of_symbol text =
+      match String.lowercase_ascii (String.trim text) with
+      | "auto" -> Some Auto
+      | "manual" -> Some Manual
+      | _ -> None
+  end
+
   type t = {
     enabled : bool;
     checkpoint : string option;
@@ -304,6 +343,7 @@ module Stream = struct
     demand_min_bytes : int option;
     demand_preferred_bytes : int option;
     chunk_size : int option;
+    flow : Flow.t option;
     namespace : Namespace.t option;
   }
 
@@ -315,6 +355,7 @@ module Stream = struct
       demand_min_bytes = None;
       demand_preferred_bytes = None;
       chunk_size = None;
+      flow = None;
       namespace = None;
     }
 
@@ -345,6 +386,43 @@ module Stream = struct
     | Some value -> int_of_value value
     | None -> None
 
+  let decode_float namespace key =
+    match Namespace.find key namespace with
+    | Some value -> float_of_value value
+    | None -> None
+
+  let decode_flow namespace =
+    let policy =
+      match Namespace.find "flow_policy" namespace with
+      | Some value -> (
+          match string_of_value value with
+          | Some text -> Flow.policy_of_symbol text
+          | None -> None)
+      | None -> None
+    in
+    let max_lag_bytes = decode_int namespace "flow_max_lag_bytes" in
+    let debounce_ms = decode_int namespace "flow_debounce_ms" in
+    let throttle_ratio = decode_float namespace "flow_throttle_ratio" in
+    let has_payload =
+      Option.is_some policy
+      || Option.is_some max_lag_bytes
+      || Option.is_some debounce_ms
+      || Option.is_some throttle_ratio
+    in
+    if not has_payload then None
+    else
+      let policy = Option.value policy ~default:Flow.Manual in
+      Some
+        {
+          Flow.policy;
+          backpressure =
+            {
+              Flow.max_lag_bytes = max_lag_bytes;
+              debounce_ms;
+              throttle_ratio;
+            };
+        }
+
   let of_run_config config =
     match find_extension "stream" config with
     | None -> default
@@ -358,6 +436,7 @@ module Stream = struct
           demand_preferred_bytes =
             decode_int namespace "demand_preferred_bytes";
           chunk_size = decode_int namespace "chunk_size";
+          flow = decode_flow namespace;
         }
 
   let update_namespace key encode value namespace =
@@ -402,6 +481,42 @@ module Stream = struct
     with_extension "stream"
       (fun namespace ->
         update_namespace "chunk_size" (fun v -> Extensions.Int v) value namespace)
+      config
+
+  let set_flow_policy value config =
+    with_extension "stream"
+      (fun namespace ->
+        match value with
+        | None -> Namespace.remove "flow_policy" namespace
+        | Some policy ->
+            Namespace.add "flow_policy"
+              (Extensions.String (Flow.policy_symbol policy))
+              namespace)
+      config
+
+  let set_flow_max_lag_bytes value config =
+    with_extension "stream"
+      (fun namespace ->
+        update_namespace "flow_max_lag_bytes"
+          (fun v -> Extensions.Int v)
+          value namespace)
+      config
+
+  let set_flow_debounce_ms value config =
+    with_extension "stream"
+      (fun namespace ->
+        update_namespace "flow_debounce_ms"
+          (fun v -> Extensions.Int v)
+          value namespace)
+      config
+
+  let set_flow_throttle_ratio value config =
+    with_extension "stream"
+      (fun namespace ->
+        match value with
+        | None -> Namespace.remove "flow_throttle_ratio" namespace
+        | Some ratio ->
+            Namespace.add "flow_throttle_ratio" (Extensions.Float ratio) namespace)
       config
 end
 

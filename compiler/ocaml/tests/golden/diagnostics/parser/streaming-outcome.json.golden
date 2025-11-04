@@ -15,7 +15,15 @@
         "resume_hint": "resume-token",
         "demand_min_bytes": 4,
         "demand_preferred_bytes": 8,
-        "chunk_size": 1024
+        "chunk_size": 1024,
+        "flow": {
+          "policy": "auto",
+          "backpressure": {
+            "max_lag_bytes": 8192,
+            "debounce_ms": 10,
+            "throttle_ratio": 0.75
+          }
+        }
       }
     }
   },
@@ -33,8 +41,10 @@
     "chunks_consumed": 2,
     "await_count": 1,
     "resume_count": 1,
-    "last_reason": "feeder.await",
-    "memo_bytes": 0
+    "last_reason": "pending.backpressure",
+    "memo_bytes": 0,
+    "backpressure_policy": "auto",
+    "backpressure_events": 1
   },
   "continuation_meta": {
     "commit_watermark": 42,
@@ -44,12 +54,12 @@
       "min_bytes": 4,
       "preferred_bytes": 8,
       "resume_hint": "resume-token",
-      "reason": "feeder.await"
+      "reason": "pending.backpressure"
     },
     "expected_tokens": [],
     "last_checkpoint": null,
     "resume_lineage": [
-      "feeder.await"
+      "pending.backpressure"
     ]
   },
   "diagnostics": [],
@@ -68,8 +78,10 @@
       "chunks_consumed": 2,
       "await_count": 1,
       "resume_count": 1,
-      "last_reason": "feeder.await",
-      "memo_bytes": 0
+      "last_reason": "pending.backpressure",
+      "memo_bytes": 0,
+      "backpressure_policy": "auto",
+      "backpressure_events": 1
     },
     "diagnostics": []
   }

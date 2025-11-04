@@ -32,6 +32,13 @@ let int_field name json =
   | `String text -> (try Some (int_of_string text) with Failure _ -> None)
   | _ -> None
 
+let float_field name json =
+  match member name json with
+  | `Float value -> Some value
+  | `Int value -> Some (float_of_int value)
+  | `String text -> (try Some (float_of_string text) with Failure _ -> None)
+  | _ -> None
+
 let string_list_field name json =
   match member name json with
   | `List values ->
@@ -122,6 +129,43 @@ let decode_stream_namespace json =
     match string_field "resumeHint" json with
     | Some value -> Namespace.add "resume_hint" (Extensions.String value) namespace
     | None -> namespace
+  in
+  let namespace =
+    match member "flow" json with
+    | `Assoc _ as flow_json ->
+        let namespace =
+          match string_field "policy" flow_json with
+          | Some value ->
+              Namespace.add "flow_policy"
+                (Extensions.String (String.lowercase_ascii value))
+                namespace
+          | None -> namespace
+        in
+        let backpressure = member "backpressure" flow_json in
+        let namespace =
+          match int_field "maxLagBytes" backpressure with
+          | Some value when value >= 0 ->
+              Namespace.add "flow_max_lag_bytes"
+                (Extensions.Int value)
+                namespace
+          | _ -> namespace
+        in
+        let namespace =
+          match int_field "debounceMs" backpressure with
+          | Some value when value >= 0 ->
+              Namespace.add "flow_debounce_ms" (Extensions.Int value) namespace
+          | _ -> namespace
+        in
+        let namespace =
+          match float_field "throttleRatio" backpressure with
+          | Some value ->
+              Namespace.add "flow_throttle_ratio"
+                (Extensions.Float value)
+                namespace
+          | None -> namespace
+        in
+        namespace
+    | _ -> namespace
   in
   namespace
 

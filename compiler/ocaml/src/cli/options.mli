@@ -90,6 +90,14 @@ type options = {
   stream_demand_preferred_bytes : int option;
       (** DemandHint.preferred_bytes の既定値（省略時は内部既定） *)
   stream_chunk_size : int option;  (** CLI が読み込むチャンクサイズのヒント（バイト数） *)
+  stream_flow_policy : Parser_run_config.Stream.Flow.policy option;
+      (** FlowController.policy の明示設定（`auto`/`manual`） *)
+  stream_flow_max_lag_bytes : int option;
+      (** FlowController.backpressure.max_lag_bytes （チャンク遅延の上限） *)
+  stream_flow_debounce_ms : int option;
+      (** FlowController.backpressure.debounce_ms （バックプレッシャ反応のデバウンス） *)
+  stream_flow_throttle_ratio : float option;
+      (** FlowController.backpressure.throttle_ratio （0.0〜1.0 のスロットル率） *)
 }
 (** コマンドラインオプション設定 *)
 

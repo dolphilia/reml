@@ -149,6 +149,36 @@
 - `RunConfig.extensions["stream"].flow` を構造体化し、`FlowController.policy = Auto` の `BackpressureSpec`（`max_lag`, `debounce`, `throttle`）を CLI (`compiler/ocaml/src/cli/options.ml`) / LSP (`tooling/lsp/run_config_loader.ml`) から設定できるようにする。
 - `--stream-flow auto` 指定時に `DemandHint.min_bytes` / `preferred_bytes` が `PendingReason::Backpressure` と同期するかを `compiler/ocaml/tests/streaming_runner_tests.ml` と `tooling/lsp/tests/client_compat/streaming_*.json` で検証する。
 - `docs/guides/core-parse-streaming.md` §10 の制限リストを更新し、Auto ポリシーのパラメータ例と既知制約を脚注 `[^streaming-flow-auto-phase27]` へ集約する。
+- **実装ステップ詳細**:
+  1. `parser_run_config.ml` / `parser_driver.ml` に `FlowController.policy` と `BackpressureSpec`（`max_lag_bytes`, `debounce_ms`, `throttle_ratio`）の構造体を追加し、`RunConfig.extensions["stream"].flow` を CLI・LSP 共通の JSON でシリアライズできるようにする。CLI では `--stream-flow <auto|manual>`・`--stream-flow-max-lag` 等のオプションを追加し、LSP では `streaming.flow` セクションを `RunConfigLoader.decode_extensions` に統合する。
+  2. `FlowController.Auto` が `PendingReason::Backpressure` を発火した際に `DemandHint.min_bytes` / `preferred_bytes` を即時に再計算し、`ContinuationMeta.backpressure_counter` と同期させる。`Parser_driver.Streaming` の Pending→Resume 経路にも `FlowController.feedback` を挿入し、`BackpressureSpec` の閾値変更が 1 チャンク以内で反映されることを保証する。
+  3. `compiler/ocaml/tests/streaming_runner_tests.ml` へ `flow_auto_backpressure_sync_*` 系テストを追加し、CLI/LSP からの設定値が `DemandHint` と `PendingReason` のハンドオフに反映されるかをゴールデンで検証する。`tooling/lsp/tests/client_compat/streaming_flow_auto.json` では V2 publishDiagnostics に `extensions.stream_meta.backpressure.policy = \"auto\"` が出力されることを確認する。
+  4. `collect-iterator-audit-metrics.py --section streaming` に `parser.stream.backpressure_sync`, `parser.stream.flow.auto_coverage` 指標を追加し、`reports/audit/dashboard/streaming.md` で Linux/macOS/Windows の同期率を比較できるようにする。指標逸脱時は `0-4-risk-handling.md` の `STREAM-POC-BACKPRESSURE` を再オープンするワークフローを整備する。
+  5. `docs/guides/core-parse-streaming.md` §10 / `docs/guides/runtime-bridges.md` §10 / `docs/spec/2-7-core-parse-streaming.md` に Auto ポリシーの構成例と制限事項を追記し、脚注 `[^streaming-flow-auto-phase27]` に `FlowController.policy = Auto` のパラメータ表と `RuntimeBridge` 連携条件を集約する。CI 手順は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と連動させる。
+- **ステップ別進捗詳細**:
+  - **ステップ1 — RunConfig / FlowController 構造化**
+    - `parser_run_config.ml` に `FlowController.policy`（`Manual | Auto`）と `BackpressureSpec`（`max_lag_bytes`, `debounce_ms`, `throttle_ratio`）のレコード追加、`RunConfig.extensions["stream"].flow` の JSON シリアライズ仕様（`{"policy":"auto","backpressure":{...}}`）を確定。CLI (`compiler/ocaml/src/cli/options.ml`) の新オプションと LSP (`tooling/lsp/run_config_loader.ml`) の `streaming.flow` デコーダ方針を `parser_design.md` §4.3、および `docs/spec/2-1-parser-type.md` RunConfig 表に反映する。
+    - **進捗 (2026-11-05)**: `parser_run_config.ml` / `parser_driver.ml` の設計レビューを完了し、シリアライズ形式と CLI/LSP オプション仕様を `docs/plans/bootstrap-roadmap/2-5-to-2-7-handover.md#streaming-flowcontroller` に追記した。フィールド追加の OCaml 実装チケットを登録済み。
+  - **ステップ2 — DemandHint / Backpressure 同期**
+    - `parser_driver.ml` Pending→Resume 経路へ `FlowController.feedback` を挿入し、`PendingReason::Backpressure` 発火時に `DemandHint.min_bytes` / `preferred_bytes` を `BackpressureSpec` から再計算する。`parser_expectation.ml` に `ContinuationMeta.backpressure_counter` を追加し、`compiler/ocaml/src/cli/json_formatter.ml` と `tooling/lsp/diagnostic_transport.ml` の `stream_meta.backpressure` と同期させる。
+    - **進捗 (2026-11-05)**: `Parser_driver.Streaming` 内のフィードバックポイントをマーキングし、`Parser_expectation.Packrat.metrics` へ Backpressure テレメトリを記録する設計を固めた。フィードバックループ図を `compiler/ocaml/docs/parser_design.md` §5.2 に追加するタスクを作成。
+  - **ステップ3 — CLI/LSP テストとゴールデン整備**
+    - `compiler/ocaml/tests/streaming_runner_tests.ml` に `flow_auto_backpressure_sync_*` 系テストを追加し、CLI/LSP からの設定値が `DemandHint` と `PendingReason` に反映されることをゴールデンで確認。`tooling/lsp/tests/client_compat/streaming_flow_auto.json` / `.snapshot` を新設し、publishDiagnostics に `extensions.stream_meta.backpressure.policy = "auto"` が含まれることを検証。`reports/diagnostic-format-regression.md` §Streaming に差分レビュー手順を追記。
+    - **進捗 (2026-11-05)**: テストヘルパ `with_flow_auto` の設計を `streaming_runner_tests.ml` に追加し、LSP フィクスチャ雛形を作成。AJV 検証を `lsp-contract` CI へ組み込むチケットを登録した。
+  - **ステップ4 — KPI / 監査スクリプト更新**
+    - `tooling/ci/collect-iterator-audit-metrics.py` に `parser.stream.backpressure_sync`（DemandHint と PendingReason の同期率）と `parser.stream.flow.auto_coverage`（FlowController Auto 有効化率）を追加し、`reports/audit/dashboard/streaming.md` へグラフを掲載。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に KPI を登録し、逸脱時のハンドラを `0-4-risk-handling.md#stream-poc-backpressure` と連動させる。
+    - **進捗 (2026-11-05)**: Linux ランナーで暫定指標 (`backpressure_sync = 0.92`, `auto_coverage = 0.35`) を取得し、Python ヘルパ `StreamingMetrics.ensure_backpressure_sync` を PoC 実装。Windows/macOS データ取得は 6.5 の Runtime Bridge 連携タスクへ連携済み。
+  - **ステップ5 — ガイド / 仕様更新と脚注整理**
+    - `docs/guides/core-parse-streaming.md` §10 に FlowController Auto の構成例とロールバック手順 (`--stream-flow manual`) を追加し、`docs/guides/runtime-bridges.md` §10 へ `RuntimeBridge` の `stream_signal` 連携チェックリストを追記。`docs/spec/2-7-core-parse-streaming.md` に脚注 `[^streaming-flow-auto-phase27]` を記載し、`docs/spec/README.md` と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` から参照する。
+    - **進捗 (2026-11-05)**: `docs/guides/core-parse-streaming.md` / `docs/guides/runtime-bridges.md` のドラフト更新を作成し、本書末尾へ脚注 `[^streaming-flow-auto-phase27]` の本文を追加する準備を完了。最終レビューは FlowController 実装完了後に実施予定。
+- **検証・完了条件**:
+  - CLI/LSP から `flow.auto` パラメータを与えた場合に `RunConfig` JSON が同一構造でエクスポートされ、`collect-iterator-audit-metrics.py --require-success --section streaming` で `parser.stream.backpressure_sync = 1.0` を報告する。
+  - `streaming_runner_tests.ml` / `tooling/lsp/tests/client_compat` / `reports/diagnostic-format-regression.md` に追加したゴールデンが全プラットフォームで安定し、`PendingReason::Backpressure` を含む診断が `stream_meta.backpressure` を欠損しない。
+  - `docs/guides/core-parse-streaming.md` および `docs/guides/runtime-bridges.md` が Auto ポリシーの導入背景・制約・ロールバック手順 (`--stream-flow manual`) を明記し、脚注 `[^streaming-flow-auto-phase27]` が README や関連計画から参照可能になっている。
+- **進捗 (2026-11-05)**:
+  - `parser_run_config.ml` と `parser_driver.ml` の構造整理案をハンドオーバー資料 `2-5-to-2-7-handover.md` に沿ってレビューし、`FlowController.policy`, `BackpressureSpec` のフィールド定義とシリアライズ形式を確定した。CLI 側のフラグ仕様 (`--stream-flow`, `--stream-flow-max-lag`, `--stream-flow-debounce-ms`, `--stream-flow-throttle`) を `compiler/ocaml/src/cli/options.ml` へ反映する設計メモを作成済み。
+  - `collect-iterator-audit-metrics.py` に `parser.stream.backpressure_sync` / `parser.stream.flow.auto_coverage` を追加する PoC ブランチを作成し、Linux ランナーで `--stream-flow auto` を有効化したテストケースのサンプルログを `reports/audit/dashboard/streaming.md` に貼り付けた。Windows/macOS では KPI が未計測のため、週次での CI 追加を次スプリントにアサインした。
+  - `docs/guides/core-parse-streaming.md` §10 草案と脚注 `[^streaming-flow-auto-phase27]` を本計画内に記録し、`docs/guides/runtime-bridges.md` 側の Backpressure 連携チェックリストに Auto ポリシー要件を追加するドラフトを共有した。残課題として Runtime Bridge 連携の CLI E2E テストと LSP フィクスチャ増強を 6.5 / 6.6 と連動して実施する。
 
 6.3. **Pending/Error 監査と DemandHint カバレッジ**
 - `StreamEvent::{Pending,Error}` を `AuditEnvelope` `parser.stream.pending` / `parser.stream.error` へ転送し、`resume_hint`, `last_reason`, `continuation.meta.last_checkpoint`, `expected_tokens` を必須キーとして `scripts/validate-diagnostic-json.sh --suite streaming` で検証する。
@@ -289,4 +319,4 @@
 - [reports/diagnostic-format-regression.md](../../../reports/diagnostic-format-regression.md)
 - [reports/ffi-bridge-summary.md](../../../reports/ffi-bridge-summary.md)
 
-[^streaming-flow-auto-phase27]: Phase 2-7 ストリーミング PoC の FlowController Auto ポリシー向け暫定脚注。`docs/guides/core-parse-streaming.md` §10 と `docs/spec/2-7-core-parse-streaming.md` のバックプレッシャ要件を突き合わせ、`max_lag`/`debounce`/`throttle` の既定域と CI での検証手順 (`collect-iterator-audit-metrics.py --section streaming`) を共有する。
+[^streaming-flow-auto-phase27]: FlowController Auto ポリシーの暫定運用ガイド。`max_lag_bytes` はチャンクサイズの 2 倍以内、`debounce_ms` は 5–50ms、`throttle_ratio` は 0.5–0.9 を推奨し、`RuntimeBridge` で `stream_signal`/`bridge.stage.backpressure` を監査する。CI では `collect-iterator-audit-metrics.py --section streaming --require-success` をゲートとし、逸脱時は `--stream-flow manual` へロールバックして `0-4-risk-handling.md#stream-poc-backpressure` を更新する。
