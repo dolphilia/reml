@@ -1033,12 +1033,14 @@ pub type BridgeDiagnostic = {
 | --- | --- | --- | --- | --- |
 | `bridge.contract.violation` | Error | `RuntimeBridgeRegistry::acquire_bridge` が Capability 検証や Stage 条件で失敗。 | `extensions["bridge"].id`, `stage_required`, `stage_actual`, `AuditEnvelope.metadata["bridge.capability"] = capability_id` | 必要 Capability の Stage を昇格させるか、`RuntimeBridgeDescriptor.required_capabilities` を調整する。 |
 | `bridge.stage.experimental` | Warning | `RuntimeBridgeDescriptor.stage = Stage::Experimental` のブリッジを起動した際、最低 1 度記録。 | `extensions["bridge"].stage_required = Some(StageRequirement::Exact(Experimental))`, `stage_actual = Some(Experimental)` | ロールバック手順と監査ログ (`bridge.stage`) を確認し、安定化後は Stage 昇格を実施する。 |
+| `bridge.stage.backpressure` | Error | ストリーミングランナーが `PendingReason::Backpressure` を報告した際に、ブリッジ Stage が要求値を満たさない。 | `extensions["bridge"].stage_required`, `stage_actual`, `extensions["bridge"].signal.kind = "pending"`, `AuditEnvelope.metadata["bridge.stream.signal"]` | Stage の昇格または `RuntimeBridgeDescriptor.stage` の更新を行い、`effects.contract.stage_mismatch` と合わせて CI の KPI（`parser.stream.bridge_backpressure_diagnostics`）が 1.0 になることを確認する。 |
 | `bridge.target.mismatch` | Error | `RuntimeBridgeDescriptor.target_profiles` と `RunConfig.extensions["target"].profile_id` が不一致。 | `target_requested`, `target_detected`, `AuditEnvelope.metadata["target.profile.requested"]` | ターゲットプロファイルの設定を見直し、互換プロファイルで再登録する。 |
 | `bridge.audit.missing_event` | Error | `RuntimeBridgeAuditSpec.mandatory_events` に列挙したイベントが監査ログに存在しない。 | `checklist_missing`, `AuditEnvelope.metadata["bridge.missing_events"]` | 監査ログで `audit.log("bridge.*", …)` を再実行し、`requires_audit_effect = true` を満たす。 |
 | `bridge.diff.invalid` | Error | `RuntimeBridgeReloadSpec.diff_format` に合わない差分がホットリロードへ渡された。 | `AuditEnvelope.metadata["bridge.diff.expected"]`, `"bridge.diff.received"` | `Config.compare`（3-7 §4.2）で生成した差分形式を用い、形式不一致時はロールバックを実行する。 |
 
 - すべての `bridge.*` 診断は `Diagnostic.domain = DiagnosticDomain::Runtime` を既定とし、`AuditEnvelope.metadata["bridge.id"] = extensions["bridge"].id` を必須とする。
 - `RuntimeCapability::ExternalBridge(id)` が Stage 不整合で無効化された場合は `bridge.contract.violation` が発生し、同時に `PlatformInfo.runtime_capabilities` から該当 ID を除外する。
+- `bridge.stage.backpressure` は `effects.contract.stage_mismatch` と同時に収集され、`collect-iterator-audit-metrics.py --section streaming` の `parser.stream.bridge_backpressure_diagnostics` / `parser.stream.bridge_stage_propagation` を 1.0 に保つことで Stage 逸脱を早期検知できる。
 - CI で実験段階ブリッジを禁止する際は `--deny experimental` を指定し、`bridge.stage.experimental` を検出した時点で失敗させる運用を推奨する。
 
 ## 9. 使用例（CLI エラー報告）

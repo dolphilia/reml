@@ -313,6 +313,11 @@ Error: Library "llvm" not found.
 - PR へのコメント自動投稿
 - Phase 1/2 の CI との統合
 
+6.4. **Runtime Bridge 監査連携**
+- ストリーミングランナー用に `python3 tooling/ci/collect-iterator-audit-metrics.py --section streaming --platform windows-msvc --require-success` を追加し、`parser.stream.bridge_backpressure_diagnostics` / `parser.stream.bridge_stage_propagation` が 1.0 を維持することをゲート条件に加える。
+- `bootstrap-windows.yml#audit` ジョブへ `STREAMING_AUDIT=1`（仮環境変数）を導入し、Backpressure Signal の欠落時に `bridge.stage.backpressure` が検出されるよう `RuntimeBridgeRegistry::stream_signal` ログを収集する。
+- CI 成果物として `reports/audit/phase2-7/windows-streaming.audit.jsonl`（仮）を保存し、`reports/ffi-bridge-summary.md` の「Streaming 連携」節と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI ログにリンクする。
+
 **成果物**: Windows CI ジョブ、並行実行設定
 
 ### 7. ドキュメント整備（23週目）

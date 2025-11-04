@@ -43,6 +43,7 @@
   - `cli.audit_id` / `cli.change_set` / `schema.version` / `bridge.audit_pass_rate` が監査ログ（`audit.metadata`）と診断 JSON 双方に含まれることを `tooling/ci/collect-iterator-audit-metrics.py --source … --audit-source …` で確認。
   - `extensions.bridge.*`（`platform`, `abi`, `ownership`, `return.*`, `audit_pass_rate`）の欠落が無いことを `tooling/ci/sync-iterator-audit.sh` サマリと `failures[].missing` でチェック。
   - Windows/macOS CI で `tooling/ci/collect-iterator-audit-metrics.py --platform windows-msvc|macos-arm64 --require-success` を実行し、pass_rate が 1.0 未満の場合に `bootstrap-windows.yml#audit`・`bootstrap-macos.yml#iterator-audit` が失敗することを確認（サマリー: `reports/iterator-stage-summary-windows.md`, `reports/iterator-stage-summary-macos.md`）。
+  - ストリーミング連携: `collect-iterator-audit-metrics.py --section streaming --platform windows-msvc --require-success` を追加実行し、`parser.stream.bridge_backpressure_diagnostics = 1.0`・`parser.stream.bridge_stage_propagation = 1.0` を達成。診断ログ上で `bridge.stage.backpressure` と `effects.contract.stage_mismatch` が同時出力されることをサンプル (`compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden` 系) で確認し、`RuntimeBridgeRegistry::stream_signal` の Backpressure Signal が監査 (`AuditEnvelope.metadata["bridge.stream.signal"]`) に反映されることを記録した。
   - CLI `--emit-audit` ゴールデンに Borrowed/Transferred 返り値ケースを追加済みで、`dune runtest` を再固定。
 
 ### 3.2 未完了の確認事項

@@ -405,6 +405,53 @@ def _normalize_platform(value: Optional[object]) -> Optional[str]:
     return None
 
 
+def _collect_diagnostic_codes(diags: Iterable[Any]) -> Set[str]:
+    codes: Set[str] = set()
+    for diag in diags:
+        if not isinstance(diag, dict):
+            continue
+        primary = primary_code_of(diag)
+        if isinstance(primary, str) and primary.strip():
+            codes.add(primary.strip().lower())
+        raw_codes = diag.get("codes")
+        if isinstance(raw_codes, list):
+            for item in raw_codes:
+                if isinstance(item, str) and item.strip():
+                    codes.add(item.strip().lower())
+    return codes
+
+
+def _extract_bridge_platforms(entry: object) -> Set[str]:
+    platforms: Set[str] = set()
+
+    def visit(node: object, path: Tuple[str, ...]) -> None:
+        if isinstance(node, dict):
+            for key, value in node.items():
+                key_str = str(key)
+                lowered = key_str.strip().lower()
+                next_path = path + (lowered,)
+                in_bridge_scope = "bridge" in lowered or any(
+                    "bridge" in segment for segment in path
+                )
+                if isinstance(value, str):
+                    normalized = None
+                    if "bridge.platform" in lowered:
+                        normalized = _normalize_platform(value)
+                    elif lowered == "platform" and in_bridge_scope:
+                        normalized = _normalize_platform(value)
+                    elif lowered.endswith(".platform") and in_bridge_scope:
+                        normalized = _normalize_platform(value)
+                    if normalized:
+                        platforms.add(normalized)
+                visit(value, next_path)
+        elif isinstance(node, list):
+            for item in node:
+                visit(item, path)
+
+    visit(entry, tuple())
+    return platforms
+
+
 def _is_nonempty_string(value: Optional[object]) -> bool:
     return isinstance(value, str) and value.strip() != ""
 
@@ -1863,7 +1910,9 @@ def _extract_resume_hint_reason(container: Optional[Dict[str, Any]]) -> Optional
     return None
 
 
-def collect_streaming_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
+def collect_streaming_metrics(
+    paths: List[Path], platform_filters: Optional[Set[str]] = None
+) -> Optional[Dict[str, Any]]:
     total = 0
     passed = 0
     sources: List[str] = []
@@ -1877,9 +1926,18 @@ def collect_streaming_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
     demandhint_total = 0
     demandhint_covered = 0
     demandhint_failures: List[Dict[str, Any]] = []
+    platform_filters = platform_filters or set()
+    platform_counts: Dict[str, int] = defaultdict(int)
+    platform_skipped: List[Dict[str, Any]] = []
+    backpressure_diag_total = 0
+    backpressure_diag_covered = 0
+    backpressure_diag_failures: List[Dict[str, Any]] = []
+    stage_mismatch_covered = 0
+    stage_mismatch_failures: List[Dict[str, Any]] = []
 
     for path in paths:
         data = load_json(path)
+        run_config = _as_dict(data.get("run_config"))
         streaming_result = _as_dict(data.get("parse_result"))
         baseline = _as_dict(data.get("baseline"))
         baseline_result = (
@@ -1888,12 +1946,10 @@ def collect_streaming_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
         if not streaming_result or not baseline_result:
             continue
 
-        sources.append(str(path))
-        total += 1
-
         streaming_diag = data.get("diagnostics")
         if not isinstance(streaming_diag, list):
             streaming_diag = []
+        diag_codes = _collect_diagnostic_codes(streaming_diag)
         baseline_diag = []
         if baseline:
             base_diag = baseline.get("diagnostics")
@@ -1909,6 +1965,38 @@ def collect_streaming_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
             _as_dict(baseline.get("continuation_meta")) if baseline else None
         )
         flow_descriptor = _extract_stream_flow_descriptor(data.get("run_config"))
+        entry_platforms: Set[str] = set()
+        if run_config:
+            entry_platforms.update(_extract_bridge_platforms(run_config))
+        entry_platforms.update(_extract_bridge_platforms(data))
+        if streaming_meta:
+            entry_platforms.update(_extract_bridge_platforms(streaming_meta))
+        if continuation_meta:
+            entry_platforms.update(_extract_bridge_platforms(continuation_meta))
+        if baseline:
+            entry_platforms.update(_extract_bridge_platforms(baseline))
+        if platform_filters:
+            if not entry_platforms:
+                platform_skipped.append(
+                    {"file": str(path), "reason": "unspecified", "filters": sorted(platform_filters)}
+                )
+                continue
+            if not entry_platforms.intersection(platform_filters):
+                platform_skipped.append(
+                    {
+                        "file": str(path),
+                        "reason": "filtered",
+                        "platforms": sorted(entry_platforms),
+                        "filters": sorted(platform_filters),
+                    }
+                )
+                continue
+
+        sources.append(str(path))
+        total += 1
+        for platform in entry_platforms:
+            platform_counts[platform] += 1
+
         flow_policy_normalized: Optional[str] = None
         if flow_descriptor:
             raw_policy = flow_descriptor.get("policy")
@@ -1956,6 +2044,29 @@ def collect_streaming_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
             stream_reason = _normalize_reason(stream_reason_raw)
             if resume_reason == "backpressure" or stream_reason == "backpressure":
                 backpressure_synced += 1
+                backpressure_diag_total += 1
+                if "bridge.stage.backpressure" in diag_codes:
+                    backpressure_diag_covered += 1
+                else:
+                    backpressure_diag_failures.append(
+                        {
+                            "file": str(path),
+                            "resume_reason": resume_reason_raw,
+                            "stream_reason": stream_reason_raw,
+                            "diagnostic_codes": sorted(diag_codes),
+                        }
+                    )
+                if "effects.contract.stage_mismatch" in diag_codes:
+                    stage_mismatch_covered += 1
+                else:
+                    stage_mismatch_failures.append(
+                        {
+                            "file": str(path),
+                            "resume_reason": resume_reason_raw,
+                            "stream_reason": stream_reason_raw,
+                            "diagnostic_codes": sorted(diag_codes),
+                        }
+                    )
             else:
                 backpressure_failures.append(
                     {
@@ -2070,6 +2181,52 @@ def collect_streaming_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
             }
         )
 
+    if backpressure_diag_total > 0:
+        diag_fraction = backpressure_diag_covered / backpressure_diag_total
+        diag_status = (
+            "success"
+            if backpressure_diag_covered == backpressure_diag_total
+            else "error"
+        )
+        related_metrics.append(
+            {
+                "metric": "parser.stream.bridge_backpressure_diagnostics",
+                "total": backpressure_diag_total,
+                "covered": backpressure_diag_covered,
+                "missing": backpressure_diag_total - backpressure_diag_covered,
+                "pass_rate": 1.0
+                if backpressure_diag_covered == backpressure_diag_total
+                else diag_fraction,
+                "pass_fraction": diag_fraction,
+                "status": diag_status,
+                "sources": sources,
+                "failures": backpressure_diag_failures,
+            }
+        )
+        stage_fraction = (
+            stage_mismatch_covered / backpressure_diag_total
+            if backpressure_diag_total > 0
+            else 0.0
+        )
+        stage_status = (
+            "success" if stage_mismatch_covered == backpressure_diag_total else "warning"
+        )
+        related_metrics.append(
+            {
+                "metric": "parser.stream.bridge_stage_propagation",
+                "total": backpressure_diag_total,
+                "covered": stage_mismatch_covered,
+                "missing": backpressure_diag_total - stage_mismatch_covered,
+                "pass_rate": 1.0
+                if stage_mismatch_covered == backpressure_diag_total
+                else stage_fraction,
+                "pass_fraction": stage_fraction,
+                "status": stage_status,
+                "sources": sources,
+                "failures": stage_mismatch_failures,
+            }
+        )
+
     result = {
         "metric": "parser.stream.outcome_consistency",
         "total": total,
@@ -2081,6 +2238,12 @@ def collect_streaming_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
         "sources": sources,
         "failures": failures,
     }
+    if platform_counts:
+        result["platform_counts"] = dict(sorted(platform_counts.items()))
+    if platform_filters:
+        result["platform_filters"] = sorted(platform_filters)
+        if platform_skipped:
+            result["platform_skipped"] = platform_skipped
     if related_metrics:
         result["related_metrics"] = related_metrics
     return result
@@ -3589,7 +3752,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             orphan_parser_related_metrics.extend(runconfig_metrics)
             orphan_parser_related_metrics.extend(core_parser_metrics)
     if "streaming" in sections:
-        streaming_metric = collect_streaming_metrics(sources)
+        streaming_metric = collect_streaming_metrics(sources, platform_filters)
     if "iterator" in sections:
         iterator_metrics = collect_metrics(sources)
         domain_metrics = collect_domain_metrics(sources)

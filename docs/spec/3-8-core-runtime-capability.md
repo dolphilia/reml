@@ -997,6 +997,41 @@ fn reload<T>(parser: Parser<T>, state: ReloadState<T>, diff: SchemaDiff<Old, New
 - ブリッジを通じて追加 Capability を有効化する場合は、`PlatformInfo.runtime_capabilities` に `RuntimeCapability::ExternalBridge(id)` を追加し、`describe_bridge` で返すメタデータを IDE/LSP へ共有する。
 - ガイド（`../guides/runtime-bridges.md`）は本節で定義した契約を前提とし、CLI サンプルやケーススタディを維持する。仕様とガイドで情報が乖離した場合は本節を優先し、ガイドに脚注を追加して読者を本節へ誘導すること。
 
+### 10.5 ストリーミング Signal ハンドラ
+
+ストリーミングランナーは Runtime Bridge へ状態を通知するために `RuntimeBridgeHandle::stream_signal` を利用する。Signal は Backpressure・DemandHint・Stage の整合を伝達し、監査と `effects.contract.stage_mismatch` の判定に用いる。
+
+```reml
+pub type StreamSignal = {
+  kind: StreamSignalKind,                  // Pending / Resume / Error / Completed
+  bridge_id: RuntimeBridgeId,
+  demand_hint: Option<DemandHint>,
+  last_reason: Option<Text>,               // 例: "pending.backpressure"
+  stage_required: Option<StageRequirement>,
+  stage_actual: Option<StageId>,
+  flow_policy: Option<Text>,               // "auto" / "manual"
+  backpressure: Option<BackpressureSignal>,
+}
+
+pub enum StreamSignalKind = Pending | Resume | Error | Completed
+
+pub type BackpressureSignal = {
+  max_lag_bytes: Option<Int>,
+  debounce_ms: Option<Int>,
+  throttle_ratio: Option<Float>,
+}
+
+impl RuntimeBridgeHandle {
+  fn stream_signal(signal: StreamSignal) -> Result<(), RuntimeBridgeError>; // `effect {runtime}`
+}
+```
+
+- `bridge_id` は `RuntimeBridgeDescriptor.id` と一致していなければならず、未知の ID を渡した場合は `RuntimeBridgeError::NotFound` を返す。  
+- `kind = Pending` かつ `last_reason` が `pending.backpressure` 系の値を取る場合、`stage_required` と `stage_actual` を比較して `bridge.stage.backpressure` 診断を生成する。診断は [3-6-core-diagnostics-audit.md](3-6-core-diagnostics-audit.md) §8 のフォーマット（`extensions["bridge"].stage.required` / `actual`、`extensions["bridge"].signal.kind` 等）を満たすこと。  
+- 効果ハンドラが要求する Stage と Runtime Bridge Stage の差異は同時に `effects.contract.stage_mismatch` として報告し、`AuditEnvelope.metadata["bridge.stream.signal"]` に `stage_required`・`stage_actual`・`demand_hint` を保存する。これにより Phase 2-7 `Deferred Remediation` の KPI（`parser.stream.bridge_stage_propagation`）を追跡できる[^stream-signal-phase27]。  
+- `flow_policy = Some("auto")` の場合は `backpressure` を必須とし、`collect-iterator-audit-metrics.py --section streaming --platform <profile>` が `parser.stream.bridge_backpressure_diagnostics = 1.0` を維持することを CI ゲートとする。  
+- `Completed` Signal を送る際は Stage が `Stable` であることを確認し、`Stage::Experimental` / `Stage::Beta` のまま終了しようとした場合は `RuntimeBridgeError::StageViolation` を返してロールバックパスへ誘導する。
+
 [^diag003-phase25-capability]: Phase 2-5 DIAG-003 診断ドメイン語彙拡張計画（`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md`）Step5（2025-11-30 完了）で `Target` / `Plugin` / `Lsp` ドメインの監査メタデータと脚注を更新し、`Diagnostic.extensions["target"]`, `["plugin"]`, `["lsp"]`, `["capability"]` を OCaml 実装と仕様で統一した。関連ドキュメント（`docs/spec/3-6-core-diagnostics-audit.md`, `docs/guides/runtime-bridges.md`, `docs/notes/dsl-plugin-roadmap.md`）も同日に同期済み。
 
 [^effects-syntax-poc-phase25]:
@@ -1004,3 +1039,6 @@ fn reload<T>(parser: Parser<T>, state: ReloadState<T>, diff: SchemaDiff<Old, New
 
 [^effect003-phase25-capability-array]:
     Phase 2-5 EFFECT-003 複数 Capability 解析計画 Step4（2025-12-06 完了）で `Diagnostic.extensions["effects"]` と `AuditEnvelope.metadata["effect.*"]` が配列対応へ拡張され、CLI/LSP/監査ログの `required_capabilities` / `actual_capabilities` が一致するようになった。計画書 `docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-003-proposal.md` とレビュー記録 `docs/plans/bootstrap-roadmap/2-5-review-log.md`（EFFECT-003 Week33 Day2）を参照。
+
+[^stream-signal-phase27]:
+    Phase 2-7 Deferred Remediation 6.5（`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`）で定義された Runtime Bridge 連携タスク。`collect-iterator-audit-metrics.py --section streaming` に `parser.stream.bridge_backpressure_diagnostics` / `parser.stream.bridge_stage_propagation` を追加し、`reports/ffi-bridge-summary.md` に Windows ランナーの検証ログを記録することが要求される。

@@ -290,6 +290,27 @@ task.join().await?;
 | Legacy 互換 | GC 設定を指定しない場合でも従来の RC/ヒープ動作が維持されるか | 2-6 実行戦略 |
 | 監査連携 | `gc.stats` と `audit.log` のドメインが重複しないこと、既存ログ解析ツールが新フィールドを無視しても動作するか | 監査運用 |
 
+### 10.5 ストリーミング Flow Signal と Runtime Bridge 連携
+
+`RuntimeBridgeRegistry` はストリーミングランナーの状態変化を `stream_signal` で受け取り、Stage 監査に反映する。以下のチェックリストを完了してからブリッジを `Beta` 以上へ昇格させる。
+
+1. **Signal の配線**  
+   - ストリーミングランナーが `PendingReason::Backpressure` や `PendingReason::DemandHint` を検出した際に `RuntimeBridgeRegistry::stream_signal(id, signal)` を呼び出し、`signal` には `kind`, `resume_hint`, `demand_min_bytes`, `preferred_bytes`, `last_reason` を含める。  
+   - `FlowController.policy = Auto` の場合は必ず Backpressure 情報（`BackpressureSignal { max_lag, debounce, throttle }`）を埋める。CLI/LSP は `stream_meta.bridge.signal` を表示し、監査ログでは `AuditEnvelope.metadata["bridge.stream.signal"]` として保存する。
+
+2. **Stage 監査の統合**  
+   - `PendingReason::Backpressure` を受け取ったら `bridge.stage.backpressure` 診断を発生させ、`extensions["bridge"].stage.required` / `stage.actual` を `RuntimeBridgeDescriptor.stage` と比較した値で埋める。  
+   - `effects.contract.stage_mismatch` を同じイベントで再利用し、効果ハンドラが要求する Stage と Runtime Bridge Stage の差異を二重に検知する。`Diagnostic.related` に橋渡しした Capability ID を載せることで、Type チームが `TYPE-002` の残課題と突き合わせられる。
+
+3. **Windows/MSVC での検証**  
+   - `python3 tooling/ci/collect-iterator-audit-metrics.py --section streaming --platform windows-msvc --require-success` を週次で実行し、`parser.stream.bridge_backpressure_diagnostics` と `parser.stream.bridge_stage_propagation` が 1.0 であることを確認する。  
+   - `reports/ffi-bridge-summary.md` の Windows 節に結果を追記し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI ログを更新する。  
+   - 失敗時は Stage/Capability の昇格を停止し、`bridge.stage.backpressure` の欠落要因（例えば CLI が `RuntimeBridgeDescriptor.stage` を更新していない等）を `0-4-risk-handling.md` に記録する。
+
+4. **CLI / LSP 連携**  
+   - CLI では `--stream-diagnostics` 有効時に `bridge.stage.backpressure` を優先表示し、LSP は `stream_meta` の `bridge.signal` と `resume_hint` を結合してツールチップを生成する。  
+   - `collect-iterator-audit-metrics.py` による `parser.stream.bridge_stage_propagation` が 1.0 未満のときは LSP へ警告バナーを表示し、`effects.contract.stage_mismatch` の解消を促す。
+
 ## 11. 効果ハンドラと Stage 運用（実験段階）
 
 `-Zalgebraic-effects` を用いてランタイム機能を差し替える際は、ステージ管理と Capability の整合を必ず記録する。

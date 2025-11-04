@@ -197,6 +197,7 @@
 - `docs/guides/runtime-bridges.md` §10 を更新し、`DemandHint` / Backpressure hooks を Runtime Bridge へ渡すチェックリストと `effects.contract.stage_mismatch` 連携手順を追加する。
 - `RuntimeBridgeRegistry` に `stream_signal` ハンドラを追加し、`PendingReason::Backpressure` を `bridge.stage.backpressure` 診断で監査する。`reports/ffi-bridge-summary.md` にストリーミング信号の導入結果を追記する。
 - `collect-iterator-audit-metrics.py --platform windows-msvc --section streaming` を週次で実行し、Windows でも Backpressure signal が取得できるよう `docs/plans/bootstrap-roadmap/2-6-windows-support.md` の監査要件と同期させる。
+- **進捗 (2026-11-12)**: ガイド・仕様側で `stream_signal` の契約と Stage 監査手順を追記し、用語集に StreamSignal 定義を追加。`collect-iterator-audit-metrics.py` を拡張して `parser.stream.bridge_backpressure_diagnostics` / `parser.stream.bridge_stage_propagation` を収集できるようにし、`0-3-audit-and-metrics.md`・`reports/ffi-bridge-summary.md`・`2-6-windows-support.md` へ新しいゲート条件を反映した。現状のゴールデン（`streaming-outcome.json.golden`）は `bridge.stage.backpressure` が未出力のため両メトリクスが 0.0 を返す。`RuntimeBridgeRegistry::stream_signal` 実装完了後にゴールデン更新と KPI 達成確認（pass_rate=1.0）を予定。
 
 6.6. **レポート化とフォローアップ共有**
 - `reports/audit/dashboard/streaming.md` を新設し、Packrat 共有・Backpressure・DemandHint カバレッジ・Runtime Bridge signal の KPI と計測手順を一覧化する。
