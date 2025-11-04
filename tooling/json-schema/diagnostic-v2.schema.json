@@ -148,6 +148,28 @@
       "type": "object",
       "description": "自由拡張領域。`diagnostic.v2` キーに派生フィールドを格納する想定。"
     },
+    "stream_meta": {
+      "type": ["object", "null"],
+      "description": "ストリーミングランナーのメタデータ。存在する場合は CLI / LSP で同一値を共有する。",
+      "required": [
+        "bytes_consumed",
+        "chunks_consumed",
+        "await_count",
+        "resume_count",
+        "backpressure_events"
+      ],
+      "properties": {
+        "bytes_consumed": { "type": "integer", "minimum": 0 },
+        "chunks_consumed": { "type": "integer", "minimum": 0 },
+        "await_count": { "type": "integer", "minimum": 0 },
+        "resume_count": { "type": "integer", "minimum": 0 },
+        "last_reason": { "type": ["string", "null"] },
+        "memo_bytes": { "type": ["integer", "null"], "minimum": 0 },
+        "backpressure_policy": { "type": ["string", "null"] },
+        "backpressure_events": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
     "audit": {
       "type": "object",
       "description": "AuditEnvelope の JSON 表現。",

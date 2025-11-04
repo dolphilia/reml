@@ -12,6 +12,7 @@ type publish_params = {
   uri : string;
   version : int option;
   diagnostics : Diagnostic_serialization.normalized_diagnostic list;
+  stream_meta : Yojson.Basic.t option;
 }
 
 val encode_publish_diagnostics :
@@ -22,6 +23,7 @@ val encode_publish_diagnostics :
 
 val diagnostics_payload :
   version:transport_version ->
+  ?stream_meta:Yojson.Basic.t ->
   Diagnostic_serialization.normalized_diagnostic list ->
   Yojson.Basic.t
 (** CLI からも利用できる汎用 JSON ペイロード。 *)

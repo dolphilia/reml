@@ -70,6 +70,16 @@ type DiagnosticV2 = {
   audit_metadata?: Record<string, unknown>;
   audit?: Record<string, unknown> | null;
   timestamp?: string | null;
+  stream_meta?: {
+    bytes_consumed?: number;
+    chunks_consumed?: number;
+    await_count?: number;
+    resume_count?: number;
+    last_reason?: string | null;
+    memo_bytes?: number | null;
+    backpressure_policy?: string | null;
+    backpressure_events?: number;
+  } | null;
 };
 
 const ajv = new Ajv({ allErrors: true, strict: false });

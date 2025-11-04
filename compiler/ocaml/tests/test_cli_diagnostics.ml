@@ -67,6 +67,7 @@ let test_color_output () =
 
 (** JSON 出力のテスト *)
 let test_json_output () =
+  Cli.Stats.reset ();
   let diag = make_test_diagnostic () in
 
   (* JSON 出力を生成 *)
@@ -106,6 +107,34 @@ let test_json_output () =
   assert (message = "型が一致しません");
   assert (domain = "type");
   Printf.printf "✓ JSON出力テスト成功\n"
+
+let test_json_output_with_stream_meta () =
+  Cli.Stats.reset ();
+  let diag = make_test_diagnostic () in
+  let meta =
+    Cli.Stats.
+      {
+        bytes_consumed = 64;
+        chunks_consumed = 4;
+        await_count = 2;
+        resume_count = 2;
+        last_reason = Some "pending.test";
+        memo_bytes = Some 256;
+        backpressure_policy = Some "auto";
+        backpressure_events = 3;
+      }
+  in
+  Cli.Stats.set_stream_meta meta;
+  let json_str =
+    Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
+  in
+  let json = Yojson.Basic.from_string json_str in
+  let stream_meta = Yojson.Basic.Util.member "stream_meta" json in
+  assert (Yojson.Basic.Util.to_int (Yojson.Basic.Util.member "bytes_consumed" stream_meta) = meta.bytes_consumed);
+  assert (Yojson.Basic.Util.to_int (Yojson.Basic.Util.member "backpressure_events" stream_meta) = meta.backpressure_events);
+  Cli.Stats.clear_stream_meta ();
+  Diagnostic.reset_audit_sequence ();
+  Printf.printf "✓ JSON出力 stream_meta テスト成功\n"
 
 let test_other_domain_serialization () =
   let start_pos =
@@ -861,6 +890,7 @@ let () =
   Printf.printf "\n=== CLI 診断出力テスト ===\n";
   test_color_output ();
   test_json_output ();
+  test_json_output_with_stream_meta ();
   test_other_domain_serialization ();
   test_info_hint_snapshot ();
   test_parser_expectation_snapshot ();

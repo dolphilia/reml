@@ -10,6 +10,7 @@ type publish_params = {
   uri : string;
   version : int option;
   diagnostics : normalized_diagnostic list;
+  stream_meta : Json.t option;
 }
 
 let lsp_position line column =
@@ -99,13 +100,16 @@ let data_block diag =
   in
   `Assoc (List.rev base)
 
-let encode_v2_diagnostic (diag : normalized_diagnostic) =
+let encode_v2_diagnostic ?stream_meta (diag : normalized_diagnostic) =
   let base =
     [
       ("range", lsp_range diag.primary);
       ("severity", `Int (severity_level_of_severity diag.severity));
       ("message", `String diag.message);
-      ("data", data_block diag);
+      ( "data",
+        match (stream_meta, data_block diag) with
+        | Some meta, `Assoc fields -> `Assoc (("stream_meta", meta) :: fields)
+        | _ -> data_block diag );
     ]
   in
   let base =
@@ -141,13 +145,18 @@ let encode_v2_diagnostic (diag : normalized_diagnostic) =
 let encode_v1_diagnostic (diag : normalized_diagnostic) =
   Compat.Diagnostic_v1.to_v1_json diag
 
-let diagnostics_payload ~version diagnostics =
+let diagnostics_payload ~version ?stream_meta diagnostics =
   match version with
-  | V2 -> `List (List.map encode_v2_diagnostic diagnostics)
+  | V2 ->
+      `List
+        (List.map (encode_v2_diagnostic ?stream_meta) diagnostics)
   | V1 -> `List (List.map encode_v1_diagnostic diagnostics)
 
 let encode_publish_diagnostics ~version (params : publish_params) =
-  let diagnostics = diagnostics_payload ~version params.diagnostics in
+  let diagnostics =
+    diagnostics_payload ~version ?stream_meta:params.stream_meta
+      params.diagnostics
+  in
   let fields = [ ("uri", `String params.uri); ("diagnostics", diagnostics) ] in
   let fields =
     match params.version with Some v -> ("version", `Int v) :: fields | None -> fields

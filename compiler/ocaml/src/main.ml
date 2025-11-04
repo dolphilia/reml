@@ -414,8 +414,14 @@ let print_diagnostic opts source diag =
         Cli.Diagnostic_formatter.format_serialized ~source ~diag:serialized
           ~color_mode ~include_snippet:opts.Cli.Options.include_snippet
     | Cli.Options.Json ->
-        Cli.Json_formatter.diagnostic_to_json_serialized
-          ~mode:opts.Cli.Options.json_mode serialized
+        (match Cli.Stats.stream_meta_json () with
+        | Some meta ->
+            Cli.Json_formatter.diagnostic_to_json_serialized
+              ~mode:opts.Cli.Options.json_mode ~stream_meta:(Some meta)
+              serialized
+        | None ->
+            Cli.Json_formatter.diagnostic_to_json_serialized
+              ~mode:opts.Cli.Options.json_mode serialized)
   in
   Printf.eprintf "%s\n" output
 
@@ -586,6 +592,7 @@ let () =
   let source = really_input_string ic (in_channel_length ic) in
   close_in ic;
 
+  Cli.Stats.clear_stream_meta ();
   if opts.stats then Cli.Stats.set_input_size_bytes (String.length source);
 
   let collect_trace = opts.trace || opts.stats in
@@ -659,6 +666,19 @@ let () =
           (Parser_driver.Streaming.run_stream ~filename:opts.input_file
              ~config:parser_run_config ~feeder ())
       in
+      let meta = completed.Parser_driver.Streaming.meta in
+      Cli.Stats.set_stream_meta
+        Cli.Stats.
+          {
+            bytes_consumed = meta.bytes_consumed;
+            chunks_consumed = meta.chunks_consumed;
+            await_count = meta.await_count;
+            resume_count = meta.resume_count;
+            last_reason = meta.last_reason;
+            memo_bytes = meta.memo_bytes;
+            backpressure_policy = meta.backpressure_policy;
+            backpressure_events = meta.backpressure_events;
+          };
       completed.Parser_driver.Streaming.result)
     else (
       let lexbuf = Lexing.from_string source in

@@ -129,13 +129,13 @@ let test_pending_resume_flow () =
       ensure
         (List.exists
            (fun event ->
-             String.equal event.category "parser.stream.pending")
+             String.equal event.Audit_envelope.category "parser.stream.pending")
            pending.audit_events)
         desc "Pending 監査イベントが作成されていません";
       ensure
         (List.exists
            (fun event ->
-             String.equal event.category "parser.stream.error")
+             String.equal event.Audit_envelope.category "parser.stream.error")
            pending.audit_events)
         desc "Pending のエラー監査イベントが不足しています";
       let after_chunk =
@@ -165,7 +165,8 @@ let test_pending_resume_flow () =
       ensure
         (List.for_all
            (fun event ->
-             not (String.equal event.category "parser.stream.error"))
+             not
+               (String.equal event.Audit_envelope.category "parser.stream.error"))
            completed.audit_events)
         desc "Completed の監査イベントが予期せぬエラーを含んでいます";
       pass desc

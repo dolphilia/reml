@@ -28,8 +28,22 @@
  *   [STATS] ====================================
  *)
 
+module Json = Yojson.Basic
+
 type phase_timing = Trace.phase_metrics
 (** フェーズタイミング情報（Trace.phase_metrics のエイリアス） *)
+
+type stream_meta = {
+  bytes_consumed : int;
+  chunks_consumed : int;
+  await_count : int;
+  resume_count : int;
+  last_reason : string option;
+  memo_bytes : int option;
+  backpressure_policy : string option;
+  backpressure_events : int;
+}
+(** ストリーミングランナーが収集したメタデータ *)
 
 type stats = {
   mutable token_count : int;  (** パースしたトークン数 *)
@@ -45,6 +59,7 @@ type stats = {
   mutable memory_peak_ratio : float option;
       (** `peak_memory_bytes / input_size_bytes` *)
   mutable input_size_bytes : int option;  (** 処理した入力サイズ（バイト） *)
+  mutable stream_meta : stream_meta option;  (** ストリーミングランナーのメタ情報 *)
 }
 (** 統計情報カウンタ *)
 
@@ -62,6 +77,7 @@ let global_stats : stats =
     peak_memory_bytes = None;
     memory_peak_ratio = None;
     input_size_bytes = None;
+    stream_meta = None;
   }
 
 (** memory_peak_ratio 再計算 *)
@@ -87,7 +103,8 @@ let reset () =
   global_stats.total_allocated_bytes <- 0;
   global_stats.peak_memory_bytes <- None;
   global_stats.memory_peak_ratio <- None;
-  global_stats.input_size_bytes <- None
+  global_stats.input_size_bytes <- None;
+  global_stats.stream_meta <- None
 
 (** トークン数をインクリメント
  *
@@ -146,6 +163,37 @@ let update_trace_summary (summary : Trace.summary) =
  *)
 let get_stats () = global_stats
 
+let set_stream_meta (meta : stream_meta) =
+  global_stats.stream_meta <- Some meta
+
+let clear_stream_meta () = global_stats.stream_meta <- None
+
+let get_stream_meta () = global_stats.stream_meta
+
+let stream_meta_to_json (meta : stream_meta) =
+  let fields = ref [] in
+  let push key value = fields := (key, value) :: !fields in
+  (match meta.backpressure_policy with
+  | Some policy when String.trim policy <> "" ->
+      push "backpressure_policy" (`String policy)
+  | _ -> ());
+  (match meta.memo_bytes with Some memo -> push "memo_bytes" (`Int memo) | None -> ());
+  (match meta.last_reason with
+  | Some reason when String.trim reason <> "" ->
+      push "last_reason" (`String reason)
+  | _ -> ());
+  push "backpressure_events" (`Int meta.backpressure_events);
+  push "resume_count" (`Int meta.resume_count);
+  push "await_count" (`Int meta.await_count);
+  push "chunks_consumed" (`Int meta.chunks_consumed);
+  push "bytes_consumed" (`Int meta.bytes_consumed);
+  `Assoc !fields
+
+let stream_meta_json () =
+  match global_stats.stream_meta with
+  | Some meta -> Some (stream_meta_to_json meta)
+  | None -> None
+
 (** 統計情報を出力
  *
  * 収集した統計情報を標準エラー出力に表示する。
@@ -192,6 +240,21 @@ let print_stats () =
   (match global_stats.memory_peak_ratio with
   | Some ratio -> Printf.eprintf "[STATS] memory_peak_ratio: %.4f\n%!" ratio
   | None -> ());
+  (match global_stats.stream_meta with
+  | Some meta ->
+      Printf.eprintf "[STATS] stream_meta.bytes_consumed: %d\n%!"
+        meta.bytes_consumed;
+      Printf.eprintf "[STATS] stream_meta.await_count: %d\n%!"
+        meta.await_count;
+      Printf.eprintf "[STATS] stream_meta.resume_count: %d\n%!"
+        meta.resume_count;
+      Printf.eprintf "[STATS] stream_meta.backpressure_events: %d\n%!"
+        meta.backpressure_events;
+      (match meta.last_reason with
+      | Some reason ->
+          Printf.eprintf "[STATS] stream_meta.last_reason: %s\n%!" reason
+      | None -> ());
+  | None -> ());
   Printf.eprintf "[STATS] ====================================\n%!"
 
 (** 統計情報をJSON形式で出力
@@ -199,7 +262,6 @@ let print_stats () =
  * @return JSON文字列
  *)
 let to_json () =
-  let module Y = Yojson.Basic in
   let phase_list =
     `List
       (List.map
@@ -235,9 +297,13 @@ let to_json () =
         match global_stats.input_size_bytes with
         | Some v -> `Int v
         | None -> `Null );
+      ( "stream_meta",
+        match global_stats.stream_meta with
+        | Some meta -> stream_meta_to_json meta
+        | None -> `Null );
     ]
   in
-  Y.pretty_to_string (`Assoc assoc)
+  Json.pretty_to_string (`Assoc assoc)
 
 (** 統計情報をCSV形式で出力
  *

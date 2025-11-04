@@ -131,11 +131,13 @@ type MemoTable = Map<MemoKey, Any>  // 実装上は型消去（内部用）
 | --- | --- | --- |
 | `"effects"` | `value_restriction_mode: "strict"|"legacy"`, `max_handler_depth: Int` | 1-2 §C.3, 1-3 §B, 2-6 §B-2, 3-6 §10 |
 | `"lsp"` | LSP/IDE 連携の挙動・シンタックスハイライト設定 | guides/lsp-integration.md |
+| `"stream"` | ストリーミングランナー設定（`enabled`, `chunk_size`, `flow`, `stats` 等） | guides/core-parse-streaming.md §10, docs/spec/2-7-core-parse-streaming.md |
 | `"runtime"` | GC・監査・メトリクスなど実行時基盤の設定 | 3-8-core-runtime-capability.md, guides/runtime-bridges.md |
 | `"logging"` | 構造化ログ・フォーマット設定（例：`format = "json"`） | guides/lsp-integration.md, guides/config-cli.md |
 | `"i18n"` | ロケール検出・未翻訳メッセージの記録、翻訳カタログのホットリロード | guides/lsp-integration.md |
 | その他 | プロジェクト固有の拡張。キー重複を避けるため固有 prefix を推奨 | - |
 * `rule(name, p)` が **ParserId とラベル**を付与し、Packrat と診断に使う。
+* ストリーミング解析で CLI/LSP の統計を同期させるには、`extensions["stream"] = { "enabled": true, "stats": true, ... }` のように `stats` フラグを明示する。`stats = true` のときは `stream_meta` テレメトリが PublishDiagnostics / JSON レポートに追加され、`collect-iterator-audit-metrics.py --section streaming` のカバレッジ判定が有効になる。
 
 ### D-1. `RunConfig` ユーティリティ {#runconfig-utilities}
 

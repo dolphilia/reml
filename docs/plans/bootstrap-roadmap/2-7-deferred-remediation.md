@@ -188,7 +188,9 @@
 
 6.4. **CLI / JSON メトリクス連携**
 - `Cli.Stats` と JSON 出力 (`compiler/ocaml/src/cli/json_formatter.ml`) に `stream_meta.bytes_consumed`, `stream_meta.resume_count`, `stream_meta.await_count`, `stream_meta.backpressure_events` を追加し、`compiler/ocaml/tests/golden/diagnostics/streaming/*.json.golden` を整備する。
+  - **進捗 (2026-11-06)**: `Cli.Stats` に `stream_meta` レコードを追加し、`json_formatter` の JSON 出力・`--stats` 表示・`scripts/validate-diagnostic-json.sh --suite streaming` の検証項目を更新。`compiler/ocaml/tests/test_cli_diagnostics.ml` と `streaming_runner_tests.ml`、ゴールデン (`diagnostics/severity/info-hint.json.golden`, `parser/streaming-outcome.json.golden`) を同期済み。
 - LSP publishDiagnostics にも `stream_meta` を添付し、`tooling/lsp/tests/client_compat/streaming_meta*.snapshot` で比較する。`docs/spec/2-1-parser-type.md` §D の RunConfig 共有節に `extensions["stream"].stats=true` の運用例を追記。
+  - **進捗 (2026-11-06)**: `tooling/lsp/lsp_transport.ml`／`diagnostic_transport.ml`／`jsonrpc_server.ml` を拡張し、V2 `data` ブロックへ `stream_meta` を埋め込む経路を実装。`tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-streaming-meta.json` と `client_compat.test.ts` にカバレッジを追加し、`tooling/json-schema/diagnostic-v2.schema.json` を更新。
 - CLI `--stats` 出力と `reports/audit/index.json` の指標名を同期し、ログ収集基盤が `stream_meta.*` を自動集計できるよう `docs/guides/ai-integration.md` のログ例を更新する。
 
 6.5. **Runtime Bridge 連携と Stage 監査**

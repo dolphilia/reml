@@ -92,6 +92,22 @@ describe("client compatibility scaffolding", () => {
     ).toBe(true);
   });
 
+  it("preserves streaming metadata", () => {
+    const diagnostics = readDiagnostics(fixturesDir, "diagnostic-v2-streaming-meta.json");
+    expect(diagnostics).toHaveLength(1);
+    const [diag] = diagnostics;
+    expect(diag.stream_meta).toStrictEqual({
+      bytes_consumed: 128,
+      chunks_consumed: 4,
+      await_count: 2,
+      resume_count: 2,
+      last_reason: "pending.backpressure",
+      memo_bytes: 64,
+      backpressure_policy: "auto",
+      backpressure_events: 1,
+    });
+  });
+
   it("emits LSP severity values for info/hint diagnostics", () => {
     const diagnostics = readDiagnostics(fixturesDir, "diagnostic-v2-info-hint.json");
     expect(diagnostics).toHaveLength(2);

@@ -498,6 +498,43 @@ module Streaming = struct
       diagnostic = Some diag;
     }
 
+  type stream_meta = {
+    bytes_consumed : int;
+    chunks_consumed : int;
+    await_count : int;
+    resume_count : int;
+    last_reason : string option;
+    memo_bytes : int option;
+    backpressure_policy : string option;
+    backpressure_events : int;
+  }
+
+  type continuation_meta = {
+    commit_watermark : int;
+    buffered_bytes : int;
+    resume_hint : demand_hint option;
+    expected_tokens : Diagnostic.expectation list;
+    last_checkpoint : Diagnostic.span option;
+    resume_lineage : string list;
+    backpressure_counter : int;
+  }
+
+  type continuation = {
+    config : Run_config.t;
+    source_name : string;
+    buffer : string;
+    bytes_consumed : int;
+    chunks_consumed : int;
+    await_count : int;
+    resume_count : int;
+    resume_hint : string option;
+    demand_min_bytes : int option;
+    demand_preferred_bytes : int option;
+    packrat_cache : Packrat.t option;
+    meta : continuation_meta;
+    flow : flow_state;
+  }
+
   let make_pending_event ~demand ~(meta : stream_meta)
       ~(continuation : continuation) ~(snapshot : snapshot) =
     let base_metadata =
@@ -522,8 +559,11 @@ module Streaming = struct
     Audit_envelope.make ~category:"parser.stream.pending"
       ~metadata_pairs:(List.rev metadata) ()
 
-  let make_error_event ?demand ?meta ?continuation ~(snapshot : snapshot)
+  let make_error_event ~demand ~meta ~continuation ~(snapshot : snapshot)
       ~(diagnostic : Diagnostic.t) =
+    let demand = (demand : demand_hint option) in
+    let meta = (meta : stream_meta option) in
+    let continuation = (continuation : continuation option) in
     let expectations =
       if snapshot.expectations <> [] then snapshot.expectations
       else
@@ -574,7 +614,8 @@ module Streaming = struct
     |> List.filter (fun diag -> diag.Diagnostic.severity = Diagnostic.Error)
     |> List.map (fun diag ->
            let snapshot = snapshot_of_diagnostic diag in
-           make_error_event ~meta ~snapshot ~diagnostic:diag)
+           make_error_event ~demand:None ~meta:(Some meta) ~continuation:None
+             ~snapshot ~diagnostic:diag)
 
   type chunk =
     | Chunk of string
@@ -583,43 +624,6 @@ module Streaming = struct
     | Error of string
 
   type feeder = unit -> chunk
-
-  type stream_meta = {
-    bytes_consumed : int;
-    chunks_consumed : int;
-    await_count : int;
-    resume_count : int;
-    last_reason : string option;
-    memo_bytes : int option;
-    backpressure_policy : string option;
-    backpressure_events : int;
-  }
-
-  type continuation_meta = {
-    commit_watermark : int;
-    buffered_bytes : int;
-    resume_hint : demand_hint option;
-    expected_tokens : Diagnostic.expectation list;
-    last_checkpoint : Diagnostic.span option;
-    resume_lineage : string list;
-    backpressure_counter : int;
-  }
-
-  type continuation = {
-    config : Run_config.t;
-    source_name : string;
-    buffer : string;
-    bytes_consumed : int;
-    chunks_consumed : int;
-    await_count : int;
-    resume_count : int;
-    resume_hint : string option;
-    demand_min_bytes : int option;
-    demand_preferred_bytes : int option;
-    packrat_cache : Packrat.t option;
-    meta : continuation_meta;
-    flow : flow_state;
-  }
 
   type completed = {
     result : parse_result;
@@ -866,8 +870,8 @@ module Streaming = struct
             match snapshot.diagnostic with
             | Some diagnostic ->
                 let error_event =
-                  make_error_event ~demand ~meta ~continuation ~snapshot
-                    ~diagnostic
+                  make_error_event ~demand:(Some demand) ~meta:(Some meta)
+                    ~continuation:(Some continuation) ~snapshot ~diagnostic
                 in
                 [ pending_event; error_event ]
             | None -> [ pending_event ]
@@ -929,8 +933,8 @@ module Streaming = struct
             match snapshot.diagnostic with
             | Some diagnostic ->
                 let error_event =
-                  make_error_event ~demand ~meta ~continuation ~snapshot
-                    ~diagnostic
+                  make_error_event ~demand:(Some demand) ~meta:(Some meta)
+                    ~continuation:(Some continuation) ~snapshot ~diagnostic
                 in
                 [ pending_event; error_event ]
             | None -> [ pending_event ]
@@ -1043,8 +1047,8 @@ module Streaming = struct
           match snapshot.diagnostic with
           | Some diagnostic ->
               let error_event =
-                make_error_event ~demand ~meta ~continuation ~snapshot
-                  ~diagnostic
+                make_error_event ~demand:(Some demand) ~meta:(Some meta)
+                  ~continuation:(Some continuation) ~snapshot ~diagnostic
               in
               [ pending_event; error_event ]
           | None -> [ pending_event ]
@@ -1093,8 +1097,8 @@ module Streaming = struct
           match snapshot.diagnostic with
           | Some diagnostic ->
               let error_event =
-                make_error_event ~demand ~meta ~continuation ~snapshot
-                  ~diagnostic
+                make_error_event ~demand:(Some demand) ~meta:(Some meta)
+                  ~continuation:(Some continuation) ~snapshot ~diagnostic
               in
               [ pending_event; error_event ]
           | None -> [ pending_event ]

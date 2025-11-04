@@ -22,6 +22,7 @@
 - CLI パイプラインでの利用例（build/test/fmt との連携）。
 - IDE プラグイン（4.3）での UI 仕様。
 - AI 推論へ診断コンテキストを渡す際は `reml diagnose --format json` で `SerializedDiagnostic` JSON を取得し、CI 連携やログ連携で人間可読性を優先する場合は `--format text --no-snippet` を利用する。
+- ストリーミング解析を含むログでは、`stream_meta.*`（`bytes_consumed`, `await_count`, `resume_count`, `backpressure_events` など）を必須フィールドとして収集し、CLI/LSP 双方で同じ RunConfig (`extensions["stream"].stats=true`) を共有する。これにより `collect-iterator-audit-metrics.py --section streaming` の閾値と AI モデルの信頼度判定が一致する。
 
 ## 6. 今後のタスク
 - セーフティ評価・ログ収集テンプレートの整備。

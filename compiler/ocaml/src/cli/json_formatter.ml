@@ -210,29 +210,46 @@ let encode_diagnostics ~lsp_compatible diagnostics =
     List.map diagnostic_to_reml_json diagnostics
 
 let diagnostics_to_json_serialized ~mode ?(lsp_compatible = false)
-    (diagnostics : normalized_diagnostic list) : string =
+    ?stream_meta (diagnostics : normalized_diagnostic list) : string =
   let json_list = encode_diagnostics ~lsp_compatible diagnostics in
+  let stream_meta =
+    match stream_meta with
+    | Some meta -> meta
+    | None -> Stats.stream_meta_json ()
+  in
   match mode with
   | Options.JsonPretty ->
-      Json.pretty_to_string (`Assoc [ ("diagnostics", `List json_list) ])
+      let fields =
+        match stream_meta with
+        | Some meta -> [ ("diagnostics", `List json_list); ("stream_meta", meta) ]
+        | None -> [ ("diagnostics", `List json_list) ]
+      in
+      Json.pretty_to_string (`Assoc fields)
   | Options.JsonCompact ->
-      Json.to_string (`Assoc [ ("diagnostics", `List json_list) ])
+      let fields =
+        match stream_meta with
+        | Some meta -> [ ("diagnostics", `List json_list); ("stream_meta", meta) ]
+        | None -> [ ("diagnostics", `List json_list) ]
+      in
+      Json.to_string (`Assoc fields)
   | Options.JsonLines ->
       json_list |> List.map Json.to_string |> String.concat "\n"
 
 let diagnostic_to_json_serialized ~mode ?(lsp_compatible = false)
-    (diagnostic : normalized_diagnostic) : string =
+    ?stream_meta (diagnostic : normalized_diagnostic) : string =
   match mode with
   | Options.JsonLines ->
       encode_diagnostics ~lsp_compatible [ diagnostic ]
       |> List.map Json.to_string |> String.concat "\n"
-  | _ -> diagnostics_to_json_serialized ~mode ~lsp_compatible [ diagnostic ]
+  | _ ->
+      diagnostics_to_json_serialized ~mode ~lsp_compatible ?stream_meta
+        [ diagnostic ]
 
-let diagnostics_to_json ~mode ?(lsp_compatible = false) diagnostics =
+let diagnostics_to_json ~mode ?(lsp_compatible = false) ?stream_meta diagnostics =
   diagnostics
   |> List.map of_diagnostic
-  |> diagnostics_to_json_serialized ~mode ~lsp_compatible
+  |> diagnostics_to_json_serialized ~mode ~lsp_compatible ?stream_meta
 
-let diagnostic_to_json ~mode ?(lsp_compatible = false) diagnostic =
+let diagnostic_to_json ~mode ?(lsp_compatible = false) ?stream_meta diagnostic =
   let serialized = of_diagnostic diagnostic in
-  diagnostic_to_json_serialized ~mode ~lsp_compatible serialized
+  diagnostic_to_json_serialized ~mode ~lsp_compatible ?stream_meta serialized

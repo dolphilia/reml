@@ -151,6 +151,8 @@ let test_stats_json () =
     (JU.member "phase_timings" json |> JU.to_list |> List.length >= 0);
   assert_bool "memory_peak_ratio が null ではない"
     (match JU.member "memory_peak_ratio" json with `Null -> false | _ -> true);
+  assert_bool "stream_meta が null である"
+    (match JU.member "stream_meta" json with `Null -> true | _ -> false);
   Printf.printf "✓ test_stats_json passed\n%!"
 
 (* テスト7: サマリー生成と Stats 連携 *)
@@ -189,6 +191,49 @@ let test_trace_summary_stats_integration () =
     (is_some stats.memory_peak_ratio);
   Printf.printf "✓ test_trace_summary_stats_integration passed\n%!"
 
+(* テスト8: ストリーミングメタデータの取り込み *)
+let test_stats_stream_meta () =
+  reset_trace ();
+  let meta =
+    Cli.Stats.
+      {
+        bytes_consumed = 42;
+        chunks_consumed = 3;
+        await_count = 2;
+        resume_count = 1;
+        last_reason = Some "pending.backpressure";
+        memo_bytes = Some 128;
+        backpressure_policy = Some "auto";
+        backpressure_events = 1;
+      }
+  in
+  Cli.Stats.set_stream_meta meta;
+  let json = Cli.Stats.to_json () |> Json.from_string in
+  let stream_meta = JU.member "stream_meta" json in
+  assert_bool "stream_meta が JSON オブジェクトである"
+    (match stream_meta with `Assoc _ -> true | _ -> false);
+  assert_equal ~msg:"stream_meta.bytes_consumed"
+    meta.bytes_consumed
+    (JU.member "bytes_consumed" stream_meta |> JU.to_int);
+  assert_equal ~msg:"stream_meta.await_count" meta.await_count
+    (JU.member "await_count" stream_meta |> JU.to_int);
+  assert_equal ~msg:"stream_meta.resume_count" meta.resume_count
+    (JU.member "resume_count" stream_meta |> JU.to_int);
+  assert_equal ~msg:"stream_meta.backpressure_events"
+    meta.backpressure_events
+    (JU.member "backpressure_events" stream_meta |> JU.to_int);
+  (match Cli.Stats.stream_meta_json () with
+  | Some (`Assoc assoc) ->
+      assert_bool "stream_meta_json include last_reason"
+        (List.exists
+           (fun (key, value) ->
+             String.equal key "last_reason"
+             &&
+             match value with `String s -> String.equal s "pending.backpressure" | _ -> false)
+           assoc)
+  | _ -> failwith "stream_meta_json returned unexpected value");
+  Printf.printf "✓ test_stats_stream_meta passed\n%!"
+
 (* テストスイート *)
 let () =
   Printf.printf "Running CLI Trace Tests...\n%!";
@@ -199,4 +244,5 @@ let () =
   test_stats_reset ();
   test_stats_json ();
   test_trace_summary_stats_integration ();
+  test_stats_stream_meta ();
   Printf.printf "\nAll tests passed! ✓\n%!"

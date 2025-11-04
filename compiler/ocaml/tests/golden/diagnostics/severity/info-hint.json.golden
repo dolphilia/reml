@@ -25,11 +25,11 @@
         "demo.kind": "info",
         "event.kind": "demo.info.sample",
         "event.domain": "cli",
-        "cli.audit_id": "cli/19700101T000000Z#3",
+        "cli.audit_id": "cli/19700101T000000Z#1",
         "audit.policy.version": "phase2.5.audit.v1",
         "audit.channel": "cli",
         "audit.build_id": "19700101T000000Z",
-        "audit.sequence": 3,
+        "audit.sequence": 1,
         "audit.source.workspace": ".",
         "schema.version": "1.1",
         "audit.timestamp": "1970-01-01T00:00:00Z",
@@ -39,7 +39,7 @@
           "source": {
             "build_id": "19700101T000000Z",
             "workspace": ".",
-            "sequence": 3
+            "sequence": 1
           },
           "items": [ { "kind": "input", "path": "demo.reml" } ]
         }
@@ -52,30 +52,30 @@
             "source": {
               "build_id": "19700101T000000Z",
               "workspace": ".",
-              "sequence": 3
+              "sequence": 1
             },
             "items": [ { "kind": "input", "path": "demo.reml" } ]
           },
           "audit.source.workspace": ".",
-          "audit.sequence": 3,
+          "audit.sequence": 1,
           "audit.build_id": "19700101T000000Z",
           "audit.channel": "cli",
           "audit.policy.version": "phase2.5.audit.v1",
-          "cli.audit_id": "cli/19700101T000000Z#3",
+          "cli.audit_id": "cli/19700101T000000Z#1",
           "event.domain": "cli",
           "event.kind": "demo.info.sample",
           "demo.kind": "info",
           "audit.timestamp": "1970-01-01T00:00:00Z",
           "schema.version": "1.1"
         },
-        "audit_id": "cli/19700101T000000Z#3",
+        "audit_id": "cli/19700101T000000Z#1",
         "change_set": {
           "policy": "phase2.5.audit.v1",
           "origin": "cli",
           "source": {
             "build_id": "19700101T000000Z",
             "workspace": ".",
-            "sequence": 3
+            "sequence": 1
           },
           "items": [ { "kind": "input", "path": "demo.reml" } ]
         }
@@ -115,11 +115,11 @@
         "demo.kind": "hint",
         "event.kind": "demo.hint.sample",
         "event.domain": "cli",
-        "cli.audit_id": "cli/19700101T000000Z#4",
+        "cli.audit_id": "cli/19700101T000000Z#2",
         "audit.policy.version": "phase2.5.audit.v1",
         "audit.channel": "cli",
         "audit.build_id": "19700101T000000Z",
-        "audit.sequence": 4,
+        "audit.sequence": 2,
         "audit.source.workspace": ".",
         "schema.version": "1.1",
         "audit.timestamp": "1970-01-01T00:00:00Z",
@@ -129,7 +129,7 @@
           "source": {
             "build_id": "19700101T000000Z",
             "workspace": ".",
-            "sequence": 4
+            "sequence": 2
           },
           "items": [ { "kind": "input", "path": "demo.reml" } ]
         }
@@ -142,30 +142,30 @@
             "source": {
               "build_id": "19700101T000000Z",
               "workspace": ".",
-              "sequence": 4
+              "sequence": 2
             },
             "items": [ { "kind": "input", "path": "demo.reml" } ]
           },
           "audit.source.workspace": ".",
-          "audit.sequence": 4,
+          "audit.sequence": 2,
           "audit.build_id": "19700101T000000Z",
           "audit.channel": "cli",
           "audit.policy.version": "phase2.5.audit.v1",
-          "cli.audit_id": "cli/19700101T000000Z#4",
+          "cli.audit_id": "cli/19700101T000000Z#2",
           "event.domain": "cli",
           "event.kind": "demo.hint.sample",
           "demo.kind": "hint",
           "audit.timestamp": "1970-01-01T00:00:00Z",
           "schema.version": "1.1"
         },
-        "audit_id": "cli/19700101T000000Z#4",
+        "audit_id": "cli/19700101T000000Z#2",
         "change_set": {
           "policy": "phase2.5.audit.v1",
           "origin": "cli",
           "source": {
             "build_id": "19700101T000000Z",
             "workspace": ".",
-            "sequence": 4
+            "sequence": 2
           },
           "items": [ { "kind": "input", "path": "demo.reml" } ]
         }

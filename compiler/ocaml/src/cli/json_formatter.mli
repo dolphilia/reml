@@ -7,18 +7,21 @@
 val diagnostics_to_json_serialized :
   mode:Options.json_mode ->
   ?lsp_compatible:bool ->
+  ?stream_meta:Yojson.Basic.t option ->
   Diagnostic_serialization.normalized_diagnostic list ->
   string
 
 val diagnostic_to_json_serialized :
   mode:Options.json_mode ->
   ?lsp_compatible:bool ->
+  ?stream_meta:Yojson.Basic.t option ->
   Diagnostic_serialization.normalized_diagnostic ->
   string
 
 val diagnostics_to_json :
   mode:Options.json_mode ->
   ?lsp_compatible:bool ->
+  ?stream_meta:Yojson.Basic.t option ->
   Diagnostic.t list ->
   string
 (** 複数の診断を JSON 配列に変換
@@ -71,6 +74,7 @@ val diagnostics_to_json :
 val diagnostic_to_json :
   mode:Options.json_mode ->
   ?lsp_compatible:bool ->
+  ?stream_meta:Yojson.Basic.t option ->
   Diagnostic.t ->
   string
 (** 単一の診断を JSON 文字列に変換
