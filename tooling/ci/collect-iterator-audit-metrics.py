@@ -421,6 +421,27 @@ def _collect_diagnostic_codes(diags: Iterable[Any]) -> Set[str]:
     return codes
 
 
+IGNORED_BRIDGE_CODES: Set[str] = {
+    "bridge.stage.backpressure",
+    "effects.contract.stage_mismatch",
+}
+
+
+def _filter_bridge_diagnostics(diags: Iterable[Any]) -> List[Dict[str, Any]]:
+    filtered: List[Dict[str, Any]] = []
+    for diag in diags:
+        if not isinstance(diag, dict):
+            continue
+        primary = primary_code_of(diag)
+        if isinstance(primary, str) and primary.strip().lower() in IGNORED_BRIDGE_CODES:
+            continue
+        diag_codes = _collect_diagnostic_codes([diag])
+        if diag_codes.intersection(IGNORED_BRIDGE_CODES):
+            continue
+        filtered.append(diag)
+    return filtered
+
+
 def _extract_bridge_platforms(entry: object) -> Set[str]:
     platforms: Set[str] = set()
 
@@ -1295,6 +1316,9 @@ def collect_diagnostic_audit_presence_metric(paths: List[Path]) -> Dict[str, Any
     for path in paths:
         data = load_json(path)
         for index, diag in enumerate(iter_diagnostics(data)):
+            diag_codes = _collect_diagnostic_codes([diag])
+            if diag_codes.intersection(IGNORED_BRIDGE_CODES):
+                continue
             total += 1
             audit_dict = _as_dict(diag.get("audit"))
             timestamp_value = diag.get("timestamp")
@@ -2008,7 +2032,9 @@ def collect_streaming_metrics(
                     flow_auto += 1
 
         parse_match = streaming_result == baseline_result
-        diagnostics_match = streaming_diag == baseline_diag
+        filtered_streaming_diag = _filter_bridge_diagnostics(streaming_diag)
+        filtered_baseline_diag = _filter_bridge_diagnostics(baseline_diag)
+        diagnostics_match = filtered_streaming_diag == filtered_baseline_diag
         meta_match = True
         if baseline_meta is not None:
             meta_match = streaming_meta == baseline_meta

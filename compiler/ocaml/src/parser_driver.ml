@@ -392,6 +392,16 @@ let parse_string ?(filename = "<入力>") text =
 module Streaming = struct
   module Stream_cfg = Run_config.Stream
   module Packrat = Parser_expectation.Packrat
+  module Effects_cfg = Run_config.Effects
+  module Bridge_registry = Runtime_bridge_registry
+
+  let normalize_stage stage =
+    stage |> String.trim |> String.lowercase_ascii
+
+  let default_stage_required = "beta"
+  let fallback_stage_actual = "experimental"
+
+  let default_bridge_id = "core.parse.streaming"
 
   type flow_state = {
     config : Stream_cfg.Flow.t;
@@ -533,7 +543,61 @@ module Streaming = struct
     packrat_cache : Packrat.t option;
     meta : continuation_meta;
     flow : flow_state;
+    diagnostics : Diagnostic.t list;
   }
+
+  let default_span_for_file filename =
+    let open Diagnostic in
+    let location = { filename; line = 0; column = 0; offset = 0 } in
+    { start_pos = location; end_pos = location }
+
+  let build_bridge_stage_diagnostic ~source_name ~config ~defaults:_
+      ~(flow_state : flow_state)
+      ~demand ~(meta : stream_meta) ~(snapshot : snapshot) =
+    match flow_state.config.policy with
+    | Stream_cfg.Flow.Manual -> []
+    | Stream_cfg.Flow.Auto -> (
+        let reason =
+          match demand.reason with
+          | Some r when String.trim r <> "" -> Some r
+          | _ -> meta.last_reason
+        in
+        match reason with
+        | Some reason when String.equal reason "pending.backpressure" ->
+            let required_stage = default_stage_required in
+            let actual_stage =
+              match Effects_cfg.of_run_config config with
+              | { Effects_cfg.stage_override = Some stage; _ }
+                when String.trim stage <> "" ->
+                  normalize_stage stage
+              | _ -> fallback_stage_actual
+            in
+            let span =
+              match snapshot.checkpoint with
+              | Some span -> span
+              | None -> default_span_for_file source_name
+            in
+            let policy_label =
+              match flow_state.config.policy with
+              | Stream_cfg.Flow.Manual -> "manual"
+              | Stream_cfg.Flow.Auto -> "auto"
+            in
+            let signal : Bridge_registry.stream_signal =
+              {
+                bridge_id = default_bridge_id;
+                span;
+                policy = policy_label;
+                reason;
+                demand = demand_hint_to_json demand;
+                await_count = meta.await_count;
+                resume_count = meta.resume_count;
+                backpressure_events = meta.backpressure_events;
+                stage_required = required_stage;
+                stage_actual = actual_stage;
+              }
+            in
+            Bridge_registry.stream_signal signal
+        | _ -> [] )
 
   let make_pending_event ~demand ~(meta : stream_meta)
       ~(continuation : continuation) ~(snapshot : snapshot) =
@@ -636,6 +700,7 @@ module Streaming = struct
     demand : demand_hint;
     meta : stream_meta;
     audit_events : Audit_envelope.event list;
+    diagnostics : Diagnostic.t list;
   }
 
   type outcome = Completed of completed | Pending of pending
@@ -856,6 +921,7 @@ module Streaming = struct
                 build_continuation_meta ~buffer:buffered ~demand ~flow_state
                   ~snapshot ();
               flow = flow_state;
+              diagnostics = [];
             }
           in
           let meta =
@@ -863,6 +929,11 @@ module Streaming = struct
               ~await:(await_count + 1) ~resume:0 ?reason:demand.reason
               ?packrat_cache flow_state
           in
+          let diagnostics =
+            build_bridge_stage_diagnostic ~source_name:filename ~config
+              ~defaults ~flow_state ~demand ~meta ~snapshot
+          in
+          let continuation = { continuation with diagnostics } in
           let pending_event =
             make_pending_event ~demand ~meta ~continuation ~snapshot
           in
@@ -876,7 +947,14 @@ module Streaming = struct
                 [ pending_event; error_event ]
             | None -> [ pending_event ]
           in
-          Pending { continuation; demand; meta; audit_events }
+          Pending
+            {
+              continuation;
+              demand;
+              meta;
+              audit_events;
+              diagnostics = continuation.diagnostics;
+            }
       | Closed ->
           let text = Buffer.contents buffer in
           let result = run_string ~filename ~config ?packrat_cache text in
@@ -895,40 +973,46 @@ module Streaming = struct
           let snapshot =
             snapshot_for_buffer ~buffer:buffered ~config ~source_name:filename
           in
-          let packrat_cache =
-            match packrat_cache with
-            | Some cache ->
-                Packrat.prune_before cache ~offset:(String.length buffered);
-                Some cache
-            | None -> None
-          in
-          let continuation =
-            {
-              config;
-              source_name = filename;
-              buffer = buffered;
-              bytes_consumed;
-              chunks_consumed;
-              await_count;
-              resume_count = 0;
-              resume_hint = demand.resume_hint;
-              demand_min_bytes = demand.min_bytes;
-              demand_preferred_bytes = demand.preferred_bytes;
-              packrat_cache;
-              meta =
-                build_continuation_meta ~buffer:buffered ~demand ~flow_state
-                  ~snapshot ();
-              flow = flow_state;
-            }
-          in
-          let meta =
-            make_meta ~bytes:bytes_consumed ~chunks:chunks_consumed
-              ~await:await_count ~resume:0 ?reason:demand.reason
-              ?packrat_cache flow_state
-          in
-          let pending_event =
-            make_pending_event ~demand ~meta ~continuation ~snapshot
-          in
+        let packrat_cache =
+          match packrat_cache with
+          | Some cache ->
+              Packrat.prune_before cache ~offset:(String.length buffered);
+              Some cache
+          | None -> None
+        in
+        let continuation =
+          {
+            config;
+            source_name = filename;
+            buffer = buffered;
+            bytes_consumed;
+            chunks_consumed;
+            await_count;
+            resume_count = 0;
+            resume_hint = demand.resume_hint;
+            demand_min_bytes = demand.min_bytes;
+            demand_preferred_bytes = demand.preferred_bytes;
+            packrat_cache;
+            meta =
+              build_continuation_meta ~buffer:buffered ~demand ~flow_state
+                ~snapshot ();
+            flow = flow_state;
+            diagnostics = [];
+          }
+        in
+        let meta =
+          make_meta ~bytes:bytes_consumed ~chunks:chunks_consumed
+            ~await:await_count ~resume:0 ?reason:demand.reason
+            ?packrat_cache flow_state
+        in
+        let diagnostics =
+          build_bridge_stage_diagnostic ~source_name:filename ~config ~defaults
+            ~flow_state ~demand ~meta ~snapshot
+        in
+        let continuation = { continuation with diagnostics } in
+        let pending_event =
+          make_pending_event ~demand ~meta ~continuation ~snapshot
+        in
           let audit_events =
             match snapshot.diagnostic with
             | Some diagnostic ->
@@ -939,7 +1023,14 @@ module Streaming = struct
                 [ pending_event; error_event ]
             | None -> [ pending_event ]
           in
-          Pending { continuation; demand; meta; audit_events }
+          Pending
+            {
+              continuation;
+              demand;
+              meta;
+              audit_events;
+              diagnostics = continuation.diagnostics;
+            }
     in
     pump 0 0 0 packrat_cache
 
@@ -975,6 +1066,15 @@ module Streaming = struct
           run_string ~filename:continuation.source_name
             ~config:continuation.config ?packrat_cache text
         in
+        let result =
+          if continuation.diagnostics = [] then result
+          else
+            {
+              result with
+              diagnostics =
+                continuation.diagnostics @ result.diagnostics;
+            }
+        in
         let meta =
           make_meta ~bytes:(bytes + String.length data) ~chunks:(chunks + 1)
             ~await ~resume:resume_count ?reason:None ?packrat_cache flow_state
@@ -986,6 +1086,15 @@ module Streaming = struct
         let result =
           run_string ~filename:continuation.source_name
             ~config:continuation.config ?packrat_cache text
+        in
+        let result =
+          if continuation.diagnostics = [] then result
+          else
+            {
+              result with
+              diagnostics =
+                continuation.diagnostics @ result.diagnostics;
+            }
         in
         let meta =
           make_meta ~bytes ~chunks ~await ~resume:resume_count
@@ -1040,6 +1149,15 @@ module Streaming = struct
           make_meta ~bytes ~chunks ~await:(await + 1) ~resume:resume_count
             ?reason:demand.reason ?packrat_cache flow_state
         in
+        let additional_diagnostics =
+          build_bridge_stage_diagnostic
+            ~source_name:continuation.source_name ~config:continuation.config
+            ~defaults ~flow_state ~demand ~meta ~snapshot
+        in
+        let diagnostics =
+          continuation.diagnostics @ additional_diagnostics
+        in
+        let continuation = { continuation with diagnostics } in
         let pending_event =
           make_pending_event ~demand ~meta ~continuation ~snapshot
         in
@@ -1053,7 +1171,14 @@ module Streaming = struct
               [ pending_event; error_event ]
           | None -> [ pending_event ]
         in
-        Pending { continuation; demand; meta; audit_events }
+        Pending
+          {
+            continuation;
+            demand;
+            meta;
+            audit_events;
+            diagnostics = continuation.diagnostics;
+          }
     | Error message ->
         let reason = Some ("stream.error:" ^ message) in
         let demand =
@@ -1090,6 +1215,15 @@ module Streaming = struct
           make_meta ~bytes ~chunks ~await ~resume:resume_count ?reason
             ?packrat_cache flow_state
         in
+        let additional_diagnostics =
+          build_bridge_stage_diagnostic
+            ~source_name:continuation.source_name ~config:continuation.config
+            ~defaults ~flow_state ~demand ~meta ~snapshot
+        in
+        let diagnostics =
+          continuation.diagnostics @ additional_diagnostics
+        in
+        let continuation = { continuation with diagnostics } in
         let pending_event =
           make_pending_event ~demand ~meta ~continuation ~snapshot
         in
@@ -1103,5 +1237,12 @@ module Streaming = struct
               [ pending_event; error_event ]
           | None -> [ pending_event ]
         in
-        Pending { continuation; demand; meta; audit_events }
+        Pending
+          {
+            continuation;
+            demand;
+            meta;
+            audit_events;
+            diagnostics = continuation.diagnostics;
+          }
 end

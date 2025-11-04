@@ -62,7 +62,136 @@
       "pending.backpressure"
     ]
   },
-  "diagnostics": [],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Runtime Bridge \"streaming\" は Stage BETA を要求しますが、現在の Stage は EXPERIMENTAL です。Flow policy=auto でバックプレッシャ信号を処理できません。",
+      "schema_version": "2.0.0-draft",
+      "location": {
+        "file": "streaming-flow-auto.reml",
+        "line": 1,
+        "column": 1,
+        "endLine": 1,
+        "endColumn": 1
+      },
+      "code": "bridge.stage.backpressure",
+      "codes": [
+        "bridge.stage.backpressure",
+        "effects.contract.stage_mismatch"
+      ],
+      "domain": "runtime",
+      "timestamp": "1970-01-01T00:00:00Z",
+      "extensions": {
+        "bridge": {
+          "id": "core.parse.streaming",
+          "stage": {
+            "required": "beta",
+            "actual": "experimental"
+          },
+          "signal": {
+            "kind": "pending",
+            "reason": "pending.backpressure",
+            "policy": "auto",
+            "backpressure_events": 1,
+            "await_count": 1,
+            "resume_count": 1
+          },
+          "demand": {
+            "action": "pause",
+            "min_bytes": 4,
+            "preferred_bytes": 6,
+            "resume_hint": "resume-token",
+            "reason": "pending.backpressure"
+          }
+        },
+        "effects": {
+          "stage": {
+            "required": "beta",
+            "actual": "experimental"
+          },
+          "reason": "pending.backpressure"
+        },
+        "diagnostic.v2": {
+          "timestamp": "1970-01-01T00:00:00Z",
+          "codes": [
+            "bridge.stage.backpressure",
+            "effects.contract.stage_mismatch"
+          ]
+        }
+      },
+      "audit_metadata": {
+        "schema.version": "1.1",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
+        "event.kind": "bridge.stage.backpressure",
+        "event.domain": "runtime",
+        "cli.audit_id": "cli/19700101T000000Z#0",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [
+            { "kind": "input", "path": "streaming-flow-auto.reml" }
+          ]
+        },
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "19700101T000000Z",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "bridge.stream.signal.kind": "pending",
+        "bridge.stream.signal.reason": "pending.backpressure",
+        "bridge.stream.stage.required": "beta",
+        "bridge.stream.stage.actual": "experimental"
+      },
+      "audit": {
+        "metadata": {
+          "schema.version": "1.1",
+          "audit.timestamp": "1970-01-01T00:00:00Z",
+          "event.kind": "bridge.stage.backpressure",
+          "event.domain": "runtime",
+          "cli.audit_id": "cli/19700101T000000Z#0",
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "19700101T000000Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [
+              { "kind": "input", "path": "streaming-flow-auto.reml" }
+            ]
+          },
+          "audit.policy.version": "phase2.5.audit.v1",
+          "audit.channel": "cli",
+          "audit.build_id": "19700101T000000Z",
+          "audit.sequence": 0,
+          "audit.source.workspace": ".",
+          "bridge.stream.signal.kind": "pending",
+          "bridge.stream.signal.reason": "pending.backpressure",
+          "bridge.stream.stage.required": "beta",
+          "bridge.stream.stage.actual": "experimental"
+        },
+        "audit_id": "cli/19700101T000000Z#0",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [
+            { "kind": "input", "path": "streaming-flow-auto.reml" }
+          ]
+        }
+      }
+    }
+  ],
   "audit_events": [
     {
       "timestamp": "2026-01-01T00:00:00Z",

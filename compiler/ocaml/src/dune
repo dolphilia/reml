@@ -41,6 +41,7 @@
   type_error
   typed_ast
   runtime_capability_resolver
+  runtime_bridge_registry
   type_inference_effect
   type_inference)
  (libraries menhirLib yojson unix))
