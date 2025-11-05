@@ -70,6 +70,17 @@ let expect_lexer_error desc input expected_prefix =
         Printf.printf "✗ %s: unexpected message '%s'\n" desc msg;
         exit 1)
 
+let string_contains haystack needle =
+  let hay_len = String.length haystack in
+  let nee_len = String.length needle in
+  let rec loop idx =
+    if nee_len = 0 then true
+    else if idx + nee_len > hay_len then false
+    else if String.sub haystack idx nee_len = needle then true
+    else loop (idx + 1)
+  in
+  loop 0
+
 (* ========== キーワードテスト ========== *)
 
 let test_keywords () =
@@ -92,8 +103,7 @@ let test_identifiers () =
   expect_token "identifier: snake_case" (IDENT "parse_expr")
     (lex_one "parse_expr");
   expect_token "identifier: digits" (IDENT "var123") (lex_one "var123");
-  (* Phase 1 では ASCII のみサポート *)
-  (* expect_token "identifier: unicode" (IDENT "解析器") (lex_one "解析器") *)
+  (* Unicode 識別子の受理ケースは unicode_ident_tests.ml で網羅検証する。 *)
   ()
 
 (* ========== 整数リテラルテスト ========== *)
@@ -191,6 +201,7 @@ let test_token_sequence () =
 (* ========== エラーテスト ========== *)
 
 let test_lexer_errors () =
+  Lexer.set_identifier_profile Lexer.Identifier_profile.Ascii_compat;
   expect_lexer_error "lexer error: unexpected char" "$invalid"
     "Unexpected character";
   expect_lexer_error "lexer error: unterminated string" "\"hello"
@@ -200,20 +211,19 @@ let test_lexer_errors () =
   let unicode_source = read_fixture "lexer_unicode_identifier.reml" in
   expect_lexer_error
     "lexer error: unicode identifier rejected"
-    unicode_source "Unexpected character:";
-  (* ASCII 限定挙動の証拠として、現在の拒否メッセージと位置を固定化する。 *)
+    unicode_source "識別子の先頭に使用できないコードポイント";
+  (* ASCII 互換モードでの拒否メッセージと位置を固定化する。 *)
   match capture_lexer_error unicode_source with
   | None -> ()
   | Some (msg, span) ->
-      let expected_char = Char.chr 0xE8 in
-      let expected_msg =
-        Printf.sprintf "Unexpected character: %c" expected_char
-      in
-      if String.compare msg expected_msg <> 0 then (
+      if not (string_contains msg "U+89E3") then (
         Printf.printf
-          "✗ lexer error: unicode identifier rejected message mismatch\n";
-        Printf.printf "  Expected exact message: \"%s\"\n" expected_msg;
-        Printf.printf "  Actual message:   \"%s\"\n" msg;
+          "✗ lexer error: unicode identifier rejected missing codepoint U+89E3\n";
+        Printf.printf "  Actual message: \"%s\"\n" msg;
+        exit 1);
+      if not (string_contains msg "profile=ascii-compat") then (
+        Printf.printf "✗ lexer error: expected profile=ascii-compat in message\n";
+        Printf.printf "  Actual message: \"%s\"\n" msg;
         exit 1);
       if span.start <> 4 || span.end_ <> 5 then (
         Printf.printf
@@ -222,8 +232,18 @@ let test_lexer_errors () =
         Printf.printf "  Actual span start/end: %d-%d\n" span.start span.end_;
         exit 1);
       Printf.printf
-        "  ↳ recorded ASCII-only rejection: message \"%s\" at span %d-%d\n"
-        msg span.start span.end_
+        "  ↳ recorded ASCII-only rejection (profile marker present): \"%s\" at span %d-%d\n"
+        msg span.start span.end_;
+  Lexer.set_identifier_profile Lexer.Identifier_profile.Unicode;
+  (match capture_lexer_error unicode_source with
+  | None ->
+      Printf.printf
+        "✓ lexer unicode acceptance: identifier passes under unicode profile\n"
+  | Some (msg, _) ->
+      Printf.printf
+        "✗ lexer unicode acceptance: still rejected in unicode profile (%s)\n"
+        msg;
+      exit 1)
 
 (* ========== メイン ========== *)
 

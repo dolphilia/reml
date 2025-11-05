@@ -28,6 +28,7 @@
   例）`parse`, `ユーザー`, `_aux1`。
   - **トークン分類**: Lexer は先頭文字が大文字の識別子を `UPPER_IDENT`、それ以外を `IDENT` として返す。両者とも同じ Unicode 制約を共有し、構文解析では `ident` 非終端を通じて共通的に扱う。
   - **目的**: `UPPER_IDENT` を導入することで、パターン文脈で列挙子（`Option.None` など）と変数の曖昧さを解消し、Menhir 上での縮約衝突を防ぐ。
+  - **互換プロファイル**: `RunConfig.extensions["lex"].identifier_profile` で `ascii-compat` を指定すると、Phase 1 系ツールとの互換用に ASCII 限定モードへ切り替えられる。CLI／LSP／Streaming いずれのランナーでも同じ設定キーを共有し、監査ログでは `unicode.identifier_profile` で実際に使用されたプロファイルを記録する。
 * 予約語（全一覧）：
   - **モジュール/可視性**: `module`, `use`, `as`, `pub`, `self`, `super`
   - **宣言と定義**: `let`, `var`, `fn`, `type`, `alias`, `new`, `trait`, `impl`, `extern`, `effect`, `operation`, `handler`, `conductor`, `channels`, `execution`, `monitoring`
@@ -38,8 +39,6 @@
 * 将来の拡張に備えて `break`, `continue` を予約語として確保しています。
 * 演算子トークン（固定）：`|>`, `~>`, `.` , `,`, `;`, `:`, `=`, `:=`, `->`, `=>`, `(` `)` `[` `]` `{` `}`,
   `+ - * / % ^`, `== != < <= > >=`, `&& ||`, `!`, `?`, `..`.
-
-> 備考: Lexer 実装（Phase 2-5 時点）は ASCII ベースの制約が残っており、Unicode XID プロファイルは Phase 2-7 `lexer-unicode` タスクで導入予定。仕様との差分と脚注更新は Phase 2-5 `LEXER-001 Step2` で整理済み。[^lexer-ascii-phase25]
 
 ### A.4 リテラル
 
@@ -362,9 +361,6 @@ ConductorMonitoring ::= "monitoring" (Ident | ConductorQualifiedName) Block
 
 [^purpose-perf]: [0-1-project-purpose.md](0-1-project-purpose.md) §1.1「実用に耐える性能」を参照。テンプレートレンダリングでも線形時間処理とメモリ制約を満たすことを目標とする。
 [^purpose-safe]: [0-1-project-purpose.md](0-1-project-purpose.md) §1.2「安全性の確保」を参照。`Result` ベースのエラー処理と Capability 検証により、未ハンドル例外や権限逸脱を防止する。
-
-[^lexer-ascii-phase25]:
-    2026-02-18 更新。Phase 2-5 `LEXER-001 Step2` の成果として、`docs/spec/2-3-lexer.md`・`docs/spec/0-2-glossary.md`・索引 (`docs/spec/README.md`) に ASCII 制約脚注を追加し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ `lexer.identifier_profile_unicode` 指標を登録した。Unicode プロファイル実装は Phase 2-7 `lexer-unicode` タスクで追跡し、レビュー詳細は `docs/plans/bootstrap-roadmap/2-5-review-log.md`（LEXER-001 Step2）を参照。
 
 [^effects-syntax-poc-phase25]:
     Phase 2-5 `SYNTAX-003 S0` の整理として、効果構文は `-Zalgebraic-effects` フラグを有効化した PoC 提供に限定される。正式実装は Phase 2-7 以降で `parser.mly`・型推論・効果解析を統合予定。Stage 契約やロードマップの詳細は `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-003-proposal.md` と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の `SYNTAX-003` 項を参照。

@@ -99,11 +99,27 @@
 - **調査**: Unicode 15 以降の更新頻度と差分（`DerivedCoreProperties.txt`）を把握し、テーブル更新手順を `docs/notes/unicode-maintenance.md`（新設予定）に記録する。  
 - **成果物**: 生成スクリプト、CI 手順、参照ノート。
 
+##### Step5 実施記録（2026-12-05）
+1. テーブル生成  
+   - `compiler/ocaml/src/lexer_tables/unicode_xid_tables.ml` を Unicode 15.1.0 の `XID_Start`/`XID_Continue` 範囲（主要スクリプト・結合文字・全角互換ブロックを含む）へ更新し、ASCII フォールバックを無効化。`unicode_xid_manifest.json` に `ascii_fallback=false`・`unicode_version=15.1.0`・範囲数（start=44, continue=63）を記録した。  
+2. 既定プロファイル切替  
+   - `lexer.mll` の `Identifier_profile` 既定値、および `parser_run_config.ml` の `Lex.default.identifier_profile` を `Unicode` へ変更し、`Core_parse.Lex.Bridge` が CLI/LSP/Streaming へ同一設定を伝播することを確認した（`core_parse_lex.ml` Step5 連携ノート参照）。  
+3. 互換モードの保持  
+   - ASCII 互換モードは `Lex.Ascii_compat` と `Lexer.Identifier_profile.Ascii_compat` で維持し、`collect-iterator-audit-metrics.py` の `lexer.identifier_profile_unicode` KPI が 1.0 以外に落ちた場合にフォールバック理由をログへ残す運用を固めた。
+
 #### Step 6: CLI/LSP・監査整合の検証（着手週 TBD・Tooling/Docs）
 - **目的**: Unicode 識別子導入後の CLI/LSP 表示と監査ログの整合を保証する。  
 - **作業**: CLI でのエラー表示改善案を適用し、`Diagnostic.extensions` に識別子正規化の補助情報を追加。LSP/VS Code 拡張の補完・ハイライトに `--lex-profile=unicode` を連動させ、`docs/guides/plugin-authoring.md`・`docs/notes/dsl-plugin-roadmap.md` の TODO を消化する。  
 - **調査**: `collect-iterator-audit-metrics.py --require-success` の Unicode プロファイル指標、`docs/spec/3-8-core-runtime-capability.md` Stage 表との整合性、`docs/notes/dsl-plugin-roadmap.md` §7 のチェックリストを追跡。  
 - **成果物**: CLI/LSP フィクスチャ更新、監査ログサンプル、レビュー記録。
+
+##### Step6 実施記録（2026-12-05）
+1. CLI/LSP メッセージ整備  
+   - `lexer.mll` の識別子エラー文言を `識別子の先頭に使用できないコードポイント … (profile=...)` 形式へ統一し、`compiler/ocaml/tests/test_lexer.ml` に Unicode 文字列の受理／ASCII フォールバック検証（`profile=ascii-compat` メタデータ確認を含む）を追加。  
+2. ドキュメント更新  
+   - `docs/spec/1-1-syntax.md`, `1-5-formal-grammar-bnf.md`, `2-3-lexer.md`, `0-2-glossary.md`, `docs/spec/README.md` から ASCII 暫定脚注を撤去し、`RunConfig.extensions["lex"].identifier_profile` の互換切替手順を追記。  
+3. ガイド・ロードマップ同期  
+   - `docs/guides/plugin-authoring.md` と `docs/notes/dsl-plugin-roadmap.md` を Unicode 既定前提へ改訂し、ASCII フォールバック時の監査要件とハンドオーバー先（ID22/ID23）を明示した。
 
 ## 5. フォローアップ
 - Phase 2-7 `lexer-unicode` サブタスクで Step5/6 の実装と検証を完了し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の Unicode セクションを更新する。  

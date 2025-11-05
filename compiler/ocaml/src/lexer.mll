@@ -18,7 +18,7 @@ module Identifier_profile = struct
 
   let to_string = function Ascii_compat -> "ascii-compat" | Unicode -> "unicode"
 
-  let current_ref = ref Ascii_compat
+  let current_ref = ref Unicode
 
   let set profile = current_ref := profile
   let current () = !current_ref

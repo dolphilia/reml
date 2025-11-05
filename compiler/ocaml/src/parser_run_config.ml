@@ -197,7 +197,7 @@ module Lex = struct
     {
       space_id = None;
       profile = Strict_json;
-      identifier_profile = Ascii_compat;
+      identifier_profile = Unicode;
       namespace = None;
     }
 

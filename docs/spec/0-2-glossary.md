@@ -144,7 +144,7 @@ Reml 仕様書で繰り返し登場する専門用語と概念をまとめた。
 - **先読み (Lookahead)**: 入力を消費せずに成功可否を判定する技法。分岐予告や曖昧性解消に利用され、`lookahead` コンビネータで実現される。[2-2 コア・コンビネータ](2-2-core-combinator.md) A-6 節を参照。
 - **演算子優先度 (Operator Precedence)**: 式解析で演算子の結合順序を制御する仕組み。宣言的な優先度テーブルで左/右結合や非結合を指定できる。[2-4 演算子優先度ビルダー](2-4-op-builder.md) を参照。
 - **非結合演算子 (Non-associative Operator)**: `a < b < c` のような連鎖を禁止する演算子。連鎖時は専用エラー `E2001` を生成し、`(a < b) && (b < c)` の置換を提案する。[2-5 エラーハンドリング](2-5-error.md) D-2 節を参照。
-- **Unicode 識別子プロファイル（暫定） (Unicode Identifier Profile, provisional)**: `IdentifierProfile` が示す UAX #31 ベースの識別子許容集合。既定の `DefaultId` は XID\_Start/XID\_Continue + `_` を前提とするが、Phase 2-5 時点の OCaml 実装では ASCII 限定の代替経路で運用している。差分と導入計画は [2-3-lexer.md](2-3-lexer.md#d-1-プロファイル)、`docs/plans/bootstrap-roadmap/2-5-proposals/LEXER-001-proposal.md` に加え、Chapter 1/1-5 の脚注と連動する `SYNTAX-001` Step2 計画で索引・用語集を更新している。[^lexer-ascii-phase25-glossary]
+- **Unicode 識別子プロファイル (Unicode Identifier Profile)**: `IdentifierProfile` が示す UAX #31 ベースの識別子許容集合。既定の `DefaultId` は `unicode` プロファイルで、`RunConfig.extensions["lex"].identifier_profile` から切り替えられる。後方互換が必要な場合は `ascii-compat` を指定して Phase 1 系ツールと同じ ASCII 限定挙動を復元する。詳細は [2-3-lexer.md](2-3-lexer.md#d-1-プロファイル) と [1-1-syntax.md](1-1-syntax.md#a3-識別子とキーワード) を参照。`lexer.identifier_profile_unicode` KPI は CI で Unicode プロファイル運用率を監視する。
 
 ## プラグインと拡張性
 - **プラグイン (Plugin)**: Reml の機能を動的に拡張するモジュール。Capability システムと統合され、セキュリティポリシーの下で安全に実行される。[3-8 Core Runtime & Capability](3-8-core-runtime-capability.md) 6 節を参照。
@@ -160,6 +160,3 @@ Reml 仕様書で繰り返し登場する専門用語と概念をまとめた。
 - **型エイリアス (Type Alias)**: `type alias Bytes = [u8]` のような既存型への別名定義。型安全性は維持せず、純粋に記述の簡略化を目的とする。[1-2 型システムと推論](1-2-types-Inference.md) を参照。
 
 [^diag003-phase25-glossary]: Phase 2-5 DIAG-003 診断ドメイン語彙拡張計画（`docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-003-proposal.md`）Step5（2025-11-30 完了）で本項と関連仕様・ガイド・ノートを更新し、`Plugin` / `Lsp` / `Effect` など新語彙に合わせた監査メタデータ（`extensions["plugin"]`, `extensions["lsp"]`, `extensions["capability"]` 等）を OCaml 実装へ反映した。フォローアップタスクは `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の CI 監査ダッシュボード改修項目で追跡する。
-
-[^lexer-ascii-phase25-glossary]:
-    2026-02-24 更新。Phase 2-5 `LEXER-001 Step2` / `SYNTAX-001 Step2` の合同レビューで ASCII 限定挙動を仕様・索引用脚注として統一し、`docs/spec/1-1-syntax.md`・`docs/spec/1-5-formal-grammar-bnf.md`・本用語集・索引（`docs/spec/README.md` / `README.md`）に同じ注意書きを反映した。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `lexer.identifier_profile_unicode` 指標と `docs/plans/repository-restructure-plan.md` のリンク整合チェックに従い、Unicode プロファイル本実装は Phase 2-7 `lexer-unicode` サブタスクで追跡する。

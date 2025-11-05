@@ -10,17 +10,17 @@
 
 ## 1.x 言語コア仕様
 - [1-0-language-core-overview.md](1-0-language-core-overview.md)
-- [1-1-syntax.md](1-1-syntax.md) — 構文仕様（識別子セクションに ASCII 限定の暫定脚注、効果構文は `-Zalgebraic-effects` 前提の PoC 脚注で Stage を明示）
+- [1-1-syntax.md](1-1-syntax.md) — 構文仕様（識別子は Unicode プロファイルを既定とし、`identifier_profile` 切替と効果構文 `-Zalgebraic-effects` の Stage 脚注を掲載）
 - [1-2-types-Inference.md](1-2-types-Inference.md) — 効果行統合の移行ガードと暫定運用を脚注 `[^type-row-metadata-phase25]` で明示
 - [1-3-effects-safety.md](1-3-effects-safety.md) — 残余効果 (`Σ_before`/`Σ_after`) の PoC 計測 (Phase 2-5 `EFFECT-002` Step4) と `type_row_mode` ガード脚注 `[^type-row-metadata-phase25]` を同期管理
 - [1-4-test-unicode-model.md](1-4-test-unicode-model.md)
-- [1-5-formal-grammar-bnf.md](1-5-formal-grammar-bnf.md) — 形式文法（`Ident` に Phase 2-5 時点の ASCII 暫定脚注、効果構文 PoC の注記あり）
+- [1-5-formal-grammar-bnf.md](1-5-formal-grammar-bnf.md) — 形式文法（`Ident` は Unicode プロファイルを前提、効果構文 PoC の注記あり）
 
 ## 2.x 標準パーサー API
 - [2-0-parser-api-overview.md](2-0-parser-api-overview.md)
 - [2-1-parser-type.md](2-1-parser-type.md)
 - [2-2-core-combinator.md](2-2-core-combinator.md)
-- [2-3-lexer.md](2-3-lexer.md) — 字句仕様（Phase 2-5 は ASCII 限定で運用し、脚注で Unicode プロファイル移行計画を参照可能）
+- [2-3-lexer.md](2-3-lexer.md) — 字句仕様（`identifier_profile` による `unicode`／`ascii-compat` の切替と監査指標を含む）
 - [2-4-op-builder.md](2-4-op-builder.md)
 - [2-5-error.md](2-5-error.md)
 - [2-6-execution-strategy.md](2-6-execution-strategy.md)

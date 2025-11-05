@@ -25,7 +25,7 @@ my-plugin/
 | `capabilities` | 要求する Capability ID のセット |
 | `targets` | 対応 OS/アーキテクチャ一覧（`target_os`, `target_family`, `feature`） |
 
-> Phase 2-5（Unicode プロファイル導入前）は `id` と `capabilities` を ASCII のみで登録し、Unicode 別名は README や補助ドキュメントで案内する運用とします。[^plugin-lexer001]
+> Phase 2-7 で Unicode 識別子プロファイルが既定化され、`identifier_profile=unicode` が CLI/LSP/Streaming すべての標準設定になりました。互換運用が必要な場合のみ `identifier_profile=ascii-compat` を指定し、`plugin.toml` や README で ASCII 固定が必要な理由と復帰条件を明示してください。[^plugin-lexer001]
 
 ## 2. Capability と `@cfg`
 
@@ -131,4 +131,4 @@ let register =
 
 さらなる詳細は `docs/notes/dsl-plugin-roadmap.md` の各プランに従って拡張してください。
 
-[^plugin-lexer001]: `docs/plans/bootstrap-roadmap/2-5-proposals/LEXER-001-proposal.md` Step3 実施記録および `docs/notes/dsl-plugin-roadmap.md` §7「Unicode プロファイル導入準備」を参照。Phase 2-7 `lexer-unicode` タスク完了までは ASCII 限定ポリシーを適用する。
+[^plugin-lexer001]: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §7 および `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-001-proposal.md` Step5/6 実施記録を参照。Phase 2-7 で Unicode プロファイルが既定化され、ASCII 互換モードは移行期間中のフォールバック手段としてのみ利用する。

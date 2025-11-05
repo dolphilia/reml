@@ -120,7 +120,7 @@ type IdentifierProfile = {
 fn identifier(profile: IdentifierProfile = DefaultId) -> Parser<Str>
 ```
 
-* 既定プロファイル `DefaultId` は **XID\_Start/XID\_Continue + '\_'**。[^lexer-ascii-phase25]
+* 既定プロファイル `DefaultId` は **XID\_Start/XID\_Continue + '\_'**。`RunConfig.extensions["lex"].identifier_profile` で `ascii-compat` を指定すると Phase 1 互換の ASCII 限定挙動に切り替えられる。
 * 文字モデル（1.4）に従い、**NFC でない**／**Bidi 制御含む**識別子は**エラー**。
 * \*\*紛らわし（UAX #39）\*\*は **警告**として `ParseError.notes` に蓄積。
 
@@ -460,6 +460,3 @@ Core.Parse.Lex は **最小の核**（6 プリミティブ）に、
 
 [^lex-ocaml-phase25-step6]:
     2025-11-30 更新。`Core.Parse.Lex.Api` と `Core.Parse.Lex.Bridge` を `compiler/ocaml/src/core_parse_lex.ml:119` と `:170` 周辺に実装し、`Run_config.Lex.with_profile` が `RunConfig.extensions["lex"]` へ `ConfigTriviaProfile` を往復させる（`compiler/ocaml/src/parser_run_config.ml:231`）。`parser_driver.run` は `Core.Parse.Lex.Api.lexeme` を経由するよう更新され（`compiler/ocaml/src/parser_driver.ml:170`）、CLI/LSP も同じ `lex.profile` を注入する（`compiler/ocaml/src/main.ml:608`, `tooling/lsp/run_config_loader.ml:130`）。共有設定の適用率は `lexer.shared_profile_pass_rate` として `tooling/ci/collect-iterator-audit-metrics.py:732` および `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md:215` に登録済み。
-
-[^lexer-ascii-phase25]:
-    2026-02-18 更新。Phase 2-5 `LEXER-001 Step2`（`docs/plans/bootstrap-roadmap/2-5-proposals/LEXER-001-proposal.md`）で仕様脚注と索引を整備し、OCaml 実装が依然として ASCII 限定であることを明記した。差分記録は `docs/plans/bootstrap-roadmap/2-5-review-log.md`（LEXER-001 Step2）と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`（`lexer.identifier_profile_unicode` 指標）に登録済み。Unicode プロファイル対応は Phase 2-7 `lexer-unicode` タスクで実装予定であり、進捗は `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の `LEXER-001` エントリで追跡する。
