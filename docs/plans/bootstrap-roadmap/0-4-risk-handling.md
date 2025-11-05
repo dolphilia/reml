@@ -48,10 +48,10 @@
 - 登録日: 2026-03-31
 - タイトル: Unicode XID 識別子実装未完了（SYNTAX-001 / LEXER-001）
 - カテゴリ: 技術的負債
-- 詳細: 仕様は `XID_Start`/`XID_Continue` に基づく Unicode 識別子を要求しているが、Phase 2-5 時点の実装は ASCII プロファイルのみを許可している。`lexer.identifier_profile_unicode` 指標が 0.0 のままであり、多言語 DSL サンプルや CLI/LSP の補完機能に制約が残っている。
-- 対応案: Phase 2-7 `lexer-unicode` タスクで XID テーブル生成・正規化チェック・`--lex-profile=unicode` 既定化を完了し、CI で `REML_ENABLE_UNICODE_TESTS=1` を有効化する。進捗は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の Unicode セクションと `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-001-proposal.md` Step5/6 を参照する。
+- 詳細: 仕様は `XID_Start`/`XID_Continue` に基づく Unicode 識別子を要求しているが、Phase 2-5 時点の実装は ASCII プロファイルのみを許可していた。`lexer.identifier_profile_unicode` 指標は当時 0.0 で、多言語 DSL サンプルや CLI/LSP の補完機能に制約が残っていたため、Phase 2-7 では 1.0 を維持する運用監視が必要となる。
+- 対応案: Phase 2-7 `lexer-unicode` タスクで XID テーブル生成・正規化チェック・`--lex-profile=unicode` 既定化を完了し、CI で `REML_ENABLE_UNICODE_TESTS=1` を有効化する。進捗は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の Unicode セクションと `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-001-proposal.md` Step5/6 を参照する。2026-12-02 に GitHub Actions 3 プラットフォームで環境変数を既定化し、`lexer.identifier_profile_unicode = 1.0` を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` §0.3.5 へ記録済み。
 - 期限: 2026-08-31
-- 状態: Open
+- 状態: Mitigating
 - 関連フェーズ: Phase 2 (2-7)
 - 参照: `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `docs/plans/bootstrap-roadmap/2-5-proposals/SYNTAX-001-proposal.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`
 - 担当: Phase 2-7 Parser チーム（LEXER-001 / SYNTAX-001）

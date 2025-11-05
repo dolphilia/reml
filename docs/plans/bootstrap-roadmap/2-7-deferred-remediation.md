@@ -241,6 +241,7 @@
 7.2. **テストとメトリクス**
 - CI で `REML_ENABLE_UNICODE_TESTS=1` を常時有効化し、`compiler/ocaml/tests/unicode_ident_tests.ml` と `unicode_identifiers.reml` フィクスチャを全プラットフォームで実行する。`collect-iterator-audit-metrics.py --require-success` の `parser.runconfig.lex.profile` 集計で `unicode` が 100% となることを確認する。
 - `lexer.identifier_profile_unicode` 指標が 1.0 へ遷移した日付とログを `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に追記し、値が下回った場合は `0-4-risk-handling.md` のリスクを更新する。
+- **進捗 (2026-12-02)**: GitHub Actions `bootstrap-linux`, `bootstrap-windows`, `bootstrap-macos` で `REML_ENABLE_UNICODE_TESTS=1` を既定化し、`tooling/ci/collect-iterator-audit-metrics.py --require-success` の `parser.runconfig.lex.profile` 集計が `unicode 100%` を維持することを `reports/audit/summary.md#parser` で確認した。測定結果を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` §0.3.5 へ記録し、`lexer.identifier_profile_unicode = 1.0` で安定したことに伴い `0-4-risk-handling.md` のリスク状況を更新した。
 
 7.3. **ドキュメントとクライアント整備**
 - `docs/spec/1-1-syntax.md`・`docs/spec/1-5-formal-grammar-bnf.md` の暫定脚注を撤去し、Unicode 識別子仕様への更新内容を `docs/spec/0-2-glossary.md` と `docs/spec/README.md` に波及させる。
