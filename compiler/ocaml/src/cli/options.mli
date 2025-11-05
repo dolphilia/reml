@@ -74,6 +74,8 @@ type options = {
   effect_stage_override : string option;  (** CLI で指定された Stage 名 *)
   runtime_capabilities_path : string option;
       (** Runtime Capability Registry JSON のパス *)
+  parser_experimental_effects : bool;
+      (** `perform` / `handle` 構文を受理する実験的フラグ（`-Zalgebraic-effects`） *)
   (* Parser RunConfig フラグ *)
   parser_require_eof : bool;  (** RunConfig.require_eof を CLI から制御 *)
   parser_packrat : bool;  (** RunConfig.packrat 切替（Packrat メモ化を有効化、実験的） *)

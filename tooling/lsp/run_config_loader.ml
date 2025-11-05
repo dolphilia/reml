@@ -187,6 +187,8 @@ let apply_extensions base json =
            | Run_config.Auto -> "auto"))
     |> Namespace.add "trace" (Extensions.Bool base.Run_config.trace)
     |> Namespace.add "merge_warnings" (Extensions.Bool base.Run_config.merge_warnings)
+    |> Namespace.add "experimental_effects"
+         (Extensions.Bool base.Run_config.experimental_effects)
     |> Namespace.add "legacy_result" (Extensions.Bool base.Run_config.legacy_result)
   in
   let config = Run_config.with_extension "config" (fun _ -> config_namespace) base in
@@ -216,6 +218,11 @@ let of_json json =
       left_recursion = decode_left_recursion json Run_config.default.left_recursion;
       trace = bool_field ~default:Run_config.default.trace "trace" json;
       merge_warnings = bool_field ~default:Run_config.default.merge_warnings "mergeWarnings" json;
+      experimental_effects =
+        bool_field
+          ~default:Run_config.default.experimental_effects
+          "experimentalEffects"
+          json;
       legacy_result = bool_field ~default:false "legacyResult" json;
       locale = string_field "locale" json;
     }

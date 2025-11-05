@@ -85,6 +85,8 @@ let print_full_help () =
       "Parser 実行設定 (PoC):";
       "  --require-eof       RunConfig.require_eof=true を指定";
       "  --packrat           RunConfig.packrat を有効化（実験的）";
+      "  --experimental-effects / -Zalgebraic-effects";
+      "                       効果構文 PoC を受理（RunConfig.experimental_effects=true）";
       "  --left-recursion <off|on|auto>";
       "                       左再帰処理モード（既定: auto）";
       "  --no-merge-warnings 診断警告を統合せず個別に出力";
@@ -177,6 +179,7 @@ type options = {
   (* 効果システム / Stage 制御 *)
   effect_stage_override : string option;  (** CLI で指定された Stage 名 *)
   runtime_capabilities_path : string option;  (** Capability Registry JSON のパス *)
+  parser_experimental_effects : bool;  (** 効果構文 PoC フラグ *)
   (* Parser RunConfig フラグ *)
   parser_require_eof : bool;  (** RunConfig.require_eof を CLI から制御 *)
   parser_packrat : bool;  (** RunConfig.packrat フラグ（Packrat メモ化を有効化、実験的） *)
@@ -229,6 +232,7 @@ let default_options =
     emit_audit_path = None;
     effect_stage_override = None;
     runtime_capabilities_path = None;
+    parser_experimental_effects = Run_config.default.experimental_effects;
     parser_require_eof = Run_config.default.require_eof;
     parser_packrat = Run_config.default.packrat;
     parser_left_recursion = Run_config.default.left_recursion;
@@ -307,6 +311,7 @@ let parse_args argv =
   let json_mode_str = ref "pretty" in
   let include_snippet = ref true in
   let runtime_caps_path = ref None in
+  let parser_experimental_effects = ref Run_config.default.experimental_effects in
   let parser_require_eof = ref Run_config.default.require_eof in
   let parser_packrat = ref Run_config.default.packrat in
   let parser_left_recursion = ref Run_config.default.left_recursion in
@@ -416,6 +421,12 @@ let parse_args argv =
       ( "--packrat",
         Arg.Unit (fun () -> parser_packrat := true),
         "Enable Packrat memoization shim (RunConfig.packrat=true; experimental)" );
+      ( "--experimental-effects",
+        Arg.Unit (fun () -> parser_experimental_effects := true),
+        "Accept algebraic effects syntax PoC (RunConfig.experimental_effects=true)" );
+      ( "-Zalgebraic-effects",
+        Arg.Unit (fun () -> parser_experimental_effects := true),
+        "Alias of --experimental-effects for Stage PoC builds" );
       ( "--left-recursion",
         Arg.String
           (fun value ->
@@ -718,6 +729,7 @@ let parse_args argv =
           emit_audit_path;
           effect_stage_override = !effect_stage;
           runtime_capabilities_path = !runtime_caps_path;
+          parser_experimental_effects = !parser_experimental_effects;
           parser_require_eof = !parser_require_eof;
           parser_packrat = !parser_packrat;
           parser_left_recursion = !parser_left_recursion;
@@ -753,6 +765,7 @@ let to_run_config (opts : options) =
       left_recursion = opts.parser_left_recursion;
       trace = opts.trace;
       merge_warnings = opts.parser_merge_warnings;
+      experimental_effects = opts.parser_experimental_effects;
       legacy_result = true;
     }
   in
@@ -767,6 +780,8 @@ let to_run_config (opts : options) =
     |> Namespace.add "trace" (Extensions.Bool base.trace)
     |> Namespace.add "merge_warnings"
          (Extensions.Bool opts.parser_merge_warnings)
+    |> Namespace.add "experimental_effects"
+         (Extensions.Bool opts.parser_experimental_effects)
     |> Namespace.add "legacy_result" (Extensions.Bool base.legacy_result)
   in
   let lex_namespace =

@@ -1,6 +1,7 @@
 {
   "requireEof": false,
   "packrat": false,
+  "experimentalEffects": false,
   "leftRecursion": "auto",
   "trace": false,
   "mergeWarnings": true,
