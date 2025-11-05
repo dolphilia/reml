@@ -258,6 +258,7 @@
 - `parser.mly` に `perform` / `do` / `handle` を受理する規則を導入し、`Type_inference_effect` へ `TEffectPerform` / `TEffectHandle`（仮称）を追加する。PoC 設計（Phase 2-5 S1/S2）を反映し、`Σ_before` / `Σ_after` の差分が残余効果診断へ渡ることを確認する。
 - `compiler/ocaml/tests/effect_syntax_tests.ml` を新設し、成功ケース・未捕捉ケース・Stage ミスマッチケースをゴールデン化する。`collect-iterator-audit-metrics.py --section effects` で `syntax.effect_construct_acceptance = 1.0`、`effects.syntax_poison_rate = 0.0` を期待値としてゲート化する。
 - `tooling/ci/collect-iterator-audit-metrics.py` に effect 指標の集計関数を実装し、`--require-success` 時には両指標が 1.0 でない場合に失敗するようガードを追加する。逸脱時は `0-4-risk-handling.md` へ登録。
+- **進捗 (2025-11-05)**: `effect_syntax_tests.ml` とゴールデン `syntax-constructs.json.golden` を追加し、`perform`/`handle` 成功と残余効果リーク失敗を OCaml テストで固定化。新設サマリを `collect-iterator-audit-metrics.py --section effects` から参照できるよう効果メトリクスを実装し、`syntax.effect_construct_acceptance` / `effects.syntax_poison_rate` を `--require-success` でゲート化した。Stage ミスマッチケースは属性構文の不整合により現状未再現のため、後続で `@requires_capability` の Stage/Capability 連携を整理し、`0-4-risk-handling.md#effects-stage-mismatch` にフォローアップを登録する予定。
 
 8.2. **フラグ運用とドキュメント**
 - `-Zalgebraic-effects`（仮称）を CLI/LSP/ビルドスクリプトで共通制御する。CLI オプションは `compiler/ocaml/src/cli/options.ml`、LSP は `tooling/lsp/tests/client_compat/fixtures/` で検証し、ビルドスクリプトは `scripts/validate-diagnostic-json.sh` や CI 定義に Experimental フラグを反映する。

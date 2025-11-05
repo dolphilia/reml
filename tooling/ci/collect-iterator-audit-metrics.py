@@ -1315,7 +1315,11 @@ def collect_diagnostic_audit_presence_metric(paths: List[Path]) -> Dict[str, Any
 
     for path in paths:
         data = load_json(path)
-        for index, diag in enumerate(iter_diagnostics(data)):
+        try:
+            diagnostics_iter = iter_diagnostics(data)
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
             diag_codes = _collect_diagnostic_codes([diag])
             if diag_codes.intersection(IGNORED_BRIDGE_CODES):
                 continue
@@ -1364,7 +1368,11 @@ def collect_parser_metrics(paths: List[Path]) -> Dict[str, Any]:
 
     for path in paths:
         data = load_json(path)
-        for index, diag in enumerate(iter_diagnostics(data)):
+        try:
+            diagnostics_iter = iter_diagnostics(data)
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
             if not is_parser_diagnostic(diag):
                 continue
             total += 1
@@ -2420,7 +2428,11 @@ def collect_metrics(paths: List[Path]) -> Dict:
 
     for path in paths:
         data = load_json(path)
-        for index, diag in enumerate(iter_diagnostics(data)):
+        try:
+            diagnostics_iter = iter_diagnostics(data)
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
             code = primary_code_of(diag) or ""
             codes_field = diag.get("codes") if isinstance(diag.get("codes"), list) else []
             target_present = (
@@ -2485,7 +2497,11 @@ def collect_capability_array_metric(
 
     for path in paths:
         data = load_json(path)
-        for index, diag in enumerate(iter_diagnostics(data)):
+        try:
+            diagnostics_iter = iter_diagnostics(data)
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
             code = primary_code_of(diag) or ""
             codes_field = (
                 diag.get("codes") if isinstance(diag.get("codes"), list) else []
@@ -2841,7 +2857,11 @@ def collect_effect_stage_consistency(
 
     for path in paths:
         data = load_json(path)
-        for index, diag in enumerate(iter_diagnostics(data)):
+        try:
+            diagnostics_iter = iter_diagnostics(data)
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
             extensions = _as_dict(diag.get("extensions"))
             capability_ext = None
             if extensions:
@@ -2927,6 +2947,93 @@ def collect_effect_stage_consistency(
     }
 
 
+def collect_effect_syntax_metrics(
+    paths: Sequence[Path],
+) -> Optional[Dict[str, Any]]:
+    total_expected = 0
+    accepted = 0
+    poison = 0
+    failures: List[Dict[str, Any]] = []
+    used_paths: List[str] = []
+
+    for path in paths:
+        data = load_json(path)
+        effect_section = _as_dict(data.get("effect_syntax"))
+        if not effect_section:
+            continue
+        constructs = effect_section.get("constructs")
+        if not isinstance(constructs, list):
+            continue
+        used_paths.append(str(path))
+        for entry in constructs:
+            if not isinstance(entry, dict):
+                continue
+            expectation_raw = entry.get("expectation")
+            expectation = (
+                expectation_raw.lower()
+                if isinstance(expectation_raw, str)
+                else "accept"
+            )
+            if expectation not in ("accept", "reject"):
+                expectation = "accept"
+            diagnostics = _as_string_list(entry.get("diagnostics")) or []
+            status_raw = entry.get("status")
+            status = (
+                status_raw.lower() if isinstance(status_raw, str) else "ok"
+            )
+            name = entry.get("name")
+            if expectation == "accept":
+                total_expected += 1
+                if diagnostics or status not in ("ok", "success"):
+                    poison += 1
+                    failures.append(
+                        {
+                            "name": name,
+                            "status": status,
+                            "diagnostics": diagnostics,
+                            "source": str(path),
+                        }
+                    )
+                else:
+                    accepted += 1
+
+    if total_expected == 0:
+        return None
+
+    pass_rate, pass_fraction = calculate_pass_rates(accepted, total_expected)
+    status = "success" if pass_rate == 1.0 else "error"
+    poison_rate = poison / total_expected if total_expected > 0 else 0.0
+    poison_status = "success" if poison == 0 else "error"
+
+    sources = sorted(set(used_paths))
+    metric: Dict[str, Any] = {
+        "metric": "syntax.effect_construct_acceptance",
+        "total": total_expected,
+        "passed": accepted,
+        "failed": total_expected - accepted,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "status": status,
+        "sources": sources,
+    }
+    if failures:
+        metric["failures"] = failures
+
+    poison_metric: Dict[str, Any] = {
+        "metric": "effects.syntax_poison_rate",
+        "value": poison_rate,
+        "total": total_expected,
+        "failed": poison,
+        "status": poison_status,
+        "sources": sources,
+    }
+    if failures and poison > 0:
+        poison_metric["failures"] = failures
+
+    metric["related_metrics"] = [poison_metric]
+    return metric
+
+
 def collect_plugin_bundle_metrics(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
     total = 0
     passed = 0
@@ -2934,7 +3041,11 @@ def collect_plugin_bundle_metrics(paths: Sequence[Path]) -> Optional[Dict[str, A
 
     for path in paths:
         data = load_json(path)
-        for index, diag in enumerate(iter_diagnostics(data)):
+        try:
+            diagnostics_iter = iter_diagnostics(data)
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
             domain = _normalize_domain(diag.get("domain"))
             extensions = _as_dict(diag.get("extensions"))
             plugin_ext = None
@@ -3029,7 +3140,11 @@ def collect_bridge_metrics(
 
     for path in paths:
         data = load_json(path)
-        for index, diag in enumerate(iter_diagnostics(data)):
+        try:
+            diagnostics_iter = iter_diagnostics(data)
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
             code = primary_code_of(diag)
             codes_field = diag.get("codes")
             has_bridge_code = False
@@ -3267,7 +3382,11 @@ def _collect_typeclass_metadata_metric(
 
     for path in paths:
         data = load_json(path)
-        for index, diag in enumerate(iter_diagnostics(data)):
+        try:
+            diagnostics_iter = iter_diagnostics(data)
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
             code = primary_code_of(diag)
             codes_field = diag.get("codes")
             has_typeclass_code = False
@@ -3365,7 +3484,11 @@ def collect_typeclass_dictionary_metric(
 
     for path in paths:
         data = load_json(path)
-        for index, diag in enumerate(iter_diagnostics(data)):
+        try:
+            diagnostics_iter = iter_diagnostics(data)
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
             code = primary_code_of(diag) or ""
             codes_field = diag.get("codes")
             has_typeclass_code = False
@@ -3519,6 +3642,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "parser",
             "streaming",
             "iterator",
+            "effects",
             "type_inference",
             "ffi",
             "typeclass",
@@ -3686,6 +3810,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "compiler/ocaml/tests/golden/diagnostics/ffi/"
                 "unsupported-abi.json.golden"
             ),
+            Path(
+                "compiler/ocaml/tests/golden/diagnostics/effects/"
+                "syntax-constructs.json.golden"
+            ),
         ]
         sources = [path for path in default_paths if path.is_file()]
 
@@ -3739,6 +3867,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "parser",
         "streaming",
         "iterator",
+        "effects",
         "type_inference",
         "typeclass",
         "ffi",
@@ -3758,6 +3887,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     effect_consistency_metric: Optional[Dict[str, Any]] = None
     capability_array_metric: Optional[Dict[str, Any]] = None
     plugin_bundle_metric: Optional[Dict[str, Any]] = None
+    effects_metric: Optional[Dict[str, Any]] = None
     type_inference_metric: Optional[Dict[str, Any]] = None
     value_restriction_legacy_metric: Optional[Dict[str, Any]] = None
     typeclass_metrics: Optional[Dict[str, Any]] = None
@@ -3795,6 +3925,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             ):
                 if metric:
                     related.append(metric)
+    if "effects" in sections:
+        effects_metric = collect_effect_syntax_metrics(sources)
     if "type_inference" in sections:
         type_inference_metric = collect_value_restriction_violation_metric(sources)
         value_restriction_legacy_metric = collect_value_restriction_legacy_metric(
@@ -3811,9 +3943,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         review_metrics = collect_review_metrics(
             review_diff_paths, review_coverage_paths, review_dashboard_paths
         )
-    diagnostic_presence_metric = collect_diagnostic_audit_presence_metric(sources)
+    if sections == ['effects']:
+        diagnostic_presence_metric = None
+    else:
+        diagnostic_presence_metric = collect_diagnostic_audit_presence_metric(sources)
 
-    diagnostics_summary = summarize_diagnostics(sources)
+    if sections == ['effects']:
+        diagnostics_summary = None
+    else:
+        diagnostics_summary = summarize_diagnostics(sources)
 
     metrics_list: List[Dict[str, Any]] = []
     if diagnostic_presence_metric:
@@ -3828,6 +3966,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         metrics_list.append(capability_array_metric)
     if iterator_metrics:
         metrics_list.append(iterator_metrics)
+    if effects_metric:
+        metrics_list.append(effects_metric)
     if type_inference_metric:
         metrics_list.append(type_inference_metric)
     elif value_restriction_legacy_metric:
@@ -3884,6 +4024,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         combined["parser"] = parser_metrics
     if iterator_metrics:
         combined["iterator"] = iterator_metrics
+    if effects_metric:
+        combined["effects"] = effects_metric
     if type_inference_metric:
         combined["type_inference"] = type_inference_metric
     if value_restriction_legacy_metric:
@@ -3938,7 +4080,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         _enforce(diagnostic_presence_metric, "diagnostic.audit_presence_rate")
         _enforce(parser_metrics, "parser.expected_summary_presence")
         runconfig_targets = (
-            runconfig_metrics if runconfig_metrics else orphan_runconfig_metrics
+            runconfig_metrics if runconfig_metrics else orphan_parser_related_metrics
         )
         for metric in runconfig_targets:
             if isinstance(metric, dict):
@@ -3946,6 +4088,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 _enforce(metric, label)
         _enforce(iterator_metrics, "iterator.stage.audit_pass_rate")
         _enforce(capability_array_metric, "effect.capability_array_pass_rate")
+        _enforce(effects_metric, "syntax.effect_construct_acceptance")
         _enforce(type_inference_metric, "type_inference.value_restriction_violation")
         _enforce(typeclass_metrics, "typeclass.metadata_pass_rate")
         if isinstance(typeclass_metrics, dict):

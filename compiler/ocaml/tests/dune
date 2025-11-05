@@ -42,6 +42,7 @@
   capability_profile_tests
   effect_analysis_tests
   effect_handler_poc_tests
+  effect_syntax_tests
   test_effect_residual
   test_cli_callconv_snapshot
   test_ffi_contract
