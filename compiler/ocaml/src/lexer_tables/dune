@@ -1,0 +1,4 @@
+(library
+ (name lexer_tables)
+ (public_name reml_ocaml.lexer_tables)
+ (modules unicode_xid_tables))

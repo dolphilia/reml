@@ -9,6 +9,38 @@ open Token
 
 module Trivia_profile = Parser_run_config.Lex.Trivia_profile
 module Lex_record = Core_parse_lex_record
+module Unicode_tables = Lexer_tables.Unicode_xid_tables
+
+module Identifier_profile = struct
+  type t =
+    | Ascii_compat
+    | Unicode
+
+  let to_string = function Ascii_compat -> "ascii-compat" | Unicode -> "unicode"
+
+  let current_ref = ref Ascii_compat
+
+  let set profile = current_ref := profile
+  let current () = !current_ref
+
+  let is_start code_point =
+    match !current_ref with
+    | Ascii_compat ->
+        code_point < 0x80 && Unicode_tables.is_xid_start code_point
+    | Unicode -> Unicode_tables.is_xid_start code_point
+
+  let is_continue code_point =
+    match !current_ref with
+    | Ascii_compat ->
+        code_point < 0x80 && Unicode_tables.is_xid_continue code_point
+    | Unicode -> Unicode_tables.is_xid_continue code_point
+end
+
+type identifier_profile = Identifier_profile.t
+
+let set_identifier_profile profile = Identifier_profile.set profile
+let current_identifier_profile () = Identifier_profile.current ()
+let identifier_profile_to_string profile = Identifier_profile.to_string profile
 
 let current_trivia_profile_ref = ref Trivia_profile.strict_json
 
@@ -63,6 +95,115 @@ let escape_char = function
   | '0' -> '\000'
   | c -> c  (* 未対応エスケープはそのまま *)
 
+(* UTF-8 デコードユーティリティ *)
+exception Invalid_utf8_sequence of int
+
+let decode_utf8 text index =
+  let length = String.length text in
+  let byte idx =
+    if idx >= length then raise (Invalid_utf8_sequence index)
+    else Char.code text.[idx]
+  in
+  let ensure_continuation b =
+    if b land 0xC0 <> 0x80 then raise (Invalid_utf8_sequence index)
+  in
+  let first = byte index in
+  if first land 0x80 = 0 then (first, index + 1)
+  else if first land 0xE0 = 0xC0 then (
+    let b1 = byte (index + 1) in
+    ensure_continuation b1;
+    if first < 0xC2 then raise (Invalid_utf8_sequence index);
+    let code =
+      ((first land 0x1F) lsl 6) lor (b1 land 0x3F)
+    in
+    (code, index + 2))
+  else if first land 0xF0 = 0xE0 then (
+    let b1 = byte (index + 1) in
+    let b2 = byte (index + 2) in
+    ensure_continuation b1;
+    ensure_continuation b2;
+    if first = 0xE0 && b1 < 0xA0 then raise (Invalid_utf8_sequence index);
+    if first = 0xED && b1 >= 0xA0 then raise (Invalid_utf8_sequence index);
+    let code =
+      ((first land 0x0F) lsl 12)
+      lor ((b1 land 0x3F) lsl 6)
+      lor (b2 land 0x3F)
+    in
+    (code, index + 3))
+  else if first land 0xF8 = 0xF0 then (
+    if first > 0xF4 then raise (Invalid_utf8_sequence index);
+    let b1 = byte (index + 1) in
+    let b2 = byte (index + 2) in
+    let b3 = byte (index + 3) in
+    ensure_continuation b1;
+    ensure_continuation b2;
+    ensure_continuation b3;
+    if first = 0xF0 && b1 < 0x90 then raise (Invalid_utf8_sequence index);
+    if first = 0xF4 && b1 > 0x8F then raise (Invalid_utf8_sequence index);
+    let code =
+      ((first land 0x07) lsl 18)
+      lor ((b1 land 0x3F) lsl 12)
+      lor ((b2 land 0x3F) lsl 6)
+      lor (b3 land 0x3F)
+    in
+    if code > 0x10FFFF then raise (Invalid_utf8_sequence index);
+    (code, index + 4))
+  else raise (Invalid_utf8_sequence index)
+
+type identifier_validation =
+  | Identifier_valid
+  | Identifier_invalid_start of int
+  | Identifier_invalid_continue of int
+
+let validate_identifier_bytes text =
+  let length = String.length text in
+  let decode index =
+    if index >= length then None
+    else
+      let code_point, next = decode_utf8 text index in
+      Some (code_point, next)
+  in
+  match decode 0 with
+  | None -> Identifier_invalid_start 0
+  | Some (first, next_index) ->
+      if not (Identifier_profile.is_start first) then
+        Identifier_invalid_start first
+      else
+        let rec loop idx =
+          match decode idx with
+          | None -> Identifier_valid
+          | Some (code_point, next_idx) ->
+              if Identifier_profile.is_continue code_point then loop next_idx
+              else Identifier_invalid_continue code_point
+        in
+        loop next_index
+
+let validate_identifier lexbuf identifier_text =
+  try
+    match validate_identifier_bytes identifier_text with
+    | Identifier_valid -> ()
+    | Identifier_invalid_start code_point ->
+        let span = make_span lexbuf in
+        let profile = identifier_profile_to_string (current_identifier_profile ()) in
+        let message =
+          Printf.sprintf
+            "識別子の先頭に使用できないコードポイント U+%04X (profile=%s)"
+            code_point profile
+        in
+        raise (Lexer_error (message, span))
+    | Identifier_invalid_continue code_point ->
+        let span = make_span lexbuf in
+        let profile = identifier_profile_to_string (current_identifier_profile ()) in
+        let message =
+          Printf.sprintf
+            "識別子に使用できないコードポイント U+%04X (profile=%s)"
+            code_point profile
+        in
+        raise (Lexer_error (message, span))
+  with Invalid_utf8_sequence _ ->
+    let span = make_span lexbuf in
+    raise (Lexer_error ("無効な UTF-8 シーケンスです", span))
+
 }
 
 (* 正規表現定義 *)
@@ -74,12 +215,14 @@ let hex_digit = ['0'-'9' 'a'-'f' 'A'-'F']
 let oct_digit = ['0'-'7']
 let bin_digit = ['0'-'1']
 
-(* Unicode XID 準拠の識別子
- * Phase 1 では簡易実装: ASCII + アンダースコアのみ
- * TODO: Phase 2 で Unicode XID 完全対応
- *)
-let xid_start = ['a'-'z' 'A'-'Z' '_']
-let xid_continue = ['a'-'z' 'A'-'Z' '0'-'9' '_']
+(* Unicode XID 準拠の識別子（UTF-8 シーケンスを許可し、識別子検証でフィルタ） *)
+let utf8_cont = ['\128'-'\191']
+let utf8_2 = ['\194'-'\223'] utf8_cont
+let utf8_3 = ['\224'-'\239'] utf8_cont utf8_cont
+let utf8_4 = ['\240'-'\244'] utf8_cont utf8_cont utf8_cont
+let unicode_scalar = utf8_2 | utf8_3 | utf8_4
+let xid_start = ['a'-'z' 'A'-'Z' '_'] | unicode_scalar
+let xid_continue = ['a'-'z' 'A'-'Z' '0'-'9' '_'] | unicode_scalar
 let ident = xid_start xid_continue*
 
 (* 整数リテラル *)
@@ -223,7 +366,10 @@ rule token = parse
 
   (* 識別子とキーワード *)
   | '_'         { UNDERSCORE }
-  | ident as s  { keyword_or_ident s }
+  | ident as s  {
+      validate_identifier lexbuf s;
+      keyword_or_ident s
+    }
 
   (* EOF *)
   | eof       { EOF }

@@ -42,9 +42,9 @@
   typed_ast
   runtime_capability_resolver
   runtime_bridge_registry
-  type_inference_effect
-  type_inference)
- (libraries menhirLib yojson unix))
+ type_inference_effect
+ type_inference)
+ (libraries menhirLib yojson unix lexer_tables))
 
 (executable
  (name main)

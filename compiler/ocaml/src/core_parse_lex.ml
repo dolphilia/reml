@@ -127,6 +127,7 @@ module Pack = struct
     trivia : Trivia_profile.t;
     namespace : Namespace.t option;
     space_id : int option;
+    identifier_profile : Lexer.identifier_profile;
     source : source;
   }
 end
@@ -149,10 +150,20 @@ module Bridge = struct
     let trivia =
       Trivia_profile.of_profile profile ~namespace:lex_namespace.namespace
     in
-    let synced_config =
-      Parser_run_config.Config.with_trivia_profile
+    let identifier_profile_config, identifier_profile =
+      match lex_namespace.identifier_profile with
+      | Lex.Ascii_compat ->
+          (Lex.Ascii_compat, Lexer.Identifier_profile.Ascii_compat)
+      | Lex.Unicode -> (Lex.Unicode, Lexer.Identifier_profile.Unicode)
+      | Lex.Custom _ -> (Lex.Ascii_compat, Lexer.Identifier_profile.Ascii_compat)
+    in
+    let config_with_lex =
+      Lex.set_identifier_profile
         (Lex.set_profile run_config profile)
-        profile
+        identifier_profile_config
+    in
+    let synced_config =
+      Parser_run_config.Config.with_trivia_profile config_with_lex profile
     in
     let pack =
       {
@@ -160,6 +171,7 @@ module Bridge = struct
         trivia;
         namespace = lex_namespace.namespace;
         space_id = lex_namespace.space_id;
+        identifier_profile;
         source;
       }
     in
@@ -179,10 +191,12 @@ module Record = Core_parse_lex_record
 module Api = struct
   type 'a reader = Lexing.lexbuf -> 'a
 
-  let ensure_profile pack = Lexer.set_trivia_profile pack.Pack.trivia
+  let ensure_profiles pack =
+    Lexer.set_identifier_profile pack.Pack.identifier_profile;
+    Lexer.set_trivia_profile pack.Pack.trivia
 
   let config_trivia pack lexbuf =
-    ensure_profile pack;
+    ensure_profiles pack;
     ignore lexbuf
 
   let leading pack reader lexbuf =

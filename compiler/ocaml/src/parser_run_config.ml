@@ -181,19 +181,35 @@ module Lex = struct
     | Toml_relaxed
     | Custom of string
 
+  type identifier_profile =
+    | Ascii_compat
+    | Unicode
+    | Custom of string
+
   type t = {
     space_id : int option;
     profile : profile;
+    identifier_profile : identifier_profile;
     namespace : Namespace.t option;
   }
 
   let default =
-    { space_id = None; profile = Strict_json; namespace = None }
+    {
+      space_id = None;
+      profile = Strict_json;
+      identifier_profile = Ascii_compat;
+      namespace = None;
+    }
 
   let profile_symbol = function
     | Strict_json -> "strict_json"
     | Json_relaxed -> "json_relaxed"
     | Toml_relaxed -> "toml_relaxed"
+    | Custom symbol -> symbol
+
+  let identifier_profile_symbol = function
+    | Ascii_compat -> "ascii-compat"
+    | Unicode -> "unicode"
     | Custom symbol -> symbol
 
   let profile_of_symbol symbol =
@@ -202,6 +218,12 @@ module Lex = struct
     | "json_relaxed" | "json-relaxed" -> Json_relaxed
     | "toml_relaxed" | "toml-relaxed" -> Toml_relaxed
     | _other -> Custom symbol
+
+  let identifier_profile_of_symbol symbol =
+    match String.lowercase_ascii (String.trim symbol) with
+    | "unicode" -> Unicode
+    | "ascii" | "ascii_compat" | "ascii-compat" -> Ascii_compat
+    | other -> Custom other
 
   let decode_space_id namespace =
     match Namespace.find "space_id" namespace with
@@ -216,6 +238,14 @@ module Lex = struct
         | None -> default.profile)
     | None -> default.profile
 
+  let decode_identifier_profile namespace =
+    match Namespace.find "identifier_profile" namespace with
+    | Some value -> (
+        match string_of_value value with
+        | Some symbol -> identifier_profile_of_symbol symbol
+        | None -> default.identifier_profile)
+    | None -> default.identifier_profile
+
   let of_run_config config =
     match find_extension "lex" config with
     | None -> default
@@ -224,6 +254,7 @@ module Lex = struct
           namespace = Some namespace;
           space_id = decode_space_id namespace;
           profile = decode_profile namespace;
+          identifier_profile = decode_identifier_profile namespace;
         }
 
   let effective_trivia (config : t) =
@@ -236,6 +267,12 @@ module Lex = struct
   let encode_profile namespace profile =
     Namespace.add "profile" (Extensions.String (profile_symbol profile)) namespace
 
+  let encode_identifier_profile namespace profile =
+    Namespace.add
+      "identifier_profile"
+      (Extensions.String (identifier_profile_symbol profile))
+      namespace
+
   let encode_space_id namespace = function
     | Some id -> Namespace.add "space_id" (Extensions.Parser_id id) namespace
     | None -> Namespace.remove "space_id" namespace
@@ -245,6 +282,11 @@ module Lex = struct
 
   let set_space_id config space_id =
     with_extension "lex" (fun namespace -> encode_space_id namespace space_id) config
+
+  let set_identifier_profile config profile =
+    with_extension "lex"
+      (fun namespace -> encode_identifier_profile namespace profile)
+      config
 end
 
 module Config = struct

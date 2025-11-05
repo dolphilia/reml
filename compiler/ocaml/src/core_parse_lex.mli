@@ -42,6 +42,7 @@ module Pack : sig
     trivia : Trivia_profile.t;
     namespace : Parser_run_config.Extensions.Namespace.t option;
     space_id : int option;
+    identifier_profile : Lexer.identifier_profile;
     source : source;
   }
 end
@@ -65,8 +66,8 @@ module Api : sig
   type 'a reader = Lexing.lexbuf -> 'a
 
   val config_trivia : Pack.t -> unit reader
-  (** `RunConfig` から導出したトリビア設定を `Lexer` へ適用し、
-      行・ブロックコメント/シェバン設定を同期する。 *)
+  (** `RunConfig` から導出した識別子・トリビア設定を `Lexer` へ適用し、
+      行・ブロックコメント/シェバン設定と識別子プロファイルを同期する。 *)
 
   val leading : Pack.t -> 'a reader -> 'a reader
   (** 先頭側のトリビアをスキップしてから `reader` を実行する。 *)

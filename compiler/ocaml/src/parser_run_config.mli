@@ -100,9 +100,15 @@ module Lex : sig
     | Toml_relaxed
     | Custom of string
 
+  type identifier_profile =
+    | Ascii_compat
+    | Unicode
+    | Custom of string
+
   type t = {
     space_id : int option;
     profile : profile;
+    identifier_profile : identifier_profile;
     namespace : Extensions.Namespace.t option;
   }
 
@@ -110,9 +116,13 @@ module Lex : sig
   val of_run_config : run_config -> t
   val profile_symbol : profile -> string
   val profile_of_symbol : string -> profile
+  val identifier_profile_symbol : identifier_profile -> string
+  val identifier_profile_of_symbol : string -> identifier_profile
   val effective_trivia : t -> Trivia_profile.t
   val set_profile : run_config -> profile -> run_config
   val set_space_id : run_config -> int option -> run_config
+  val set_identifier_profile :
+    run_config -> identifier_profile -> run_config
 end
 
 module Config : sig

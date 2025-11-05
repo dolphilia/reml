@@ -227,9 +227,10 @@
     - **進捗 (2026-11-29)**: 生成スクリプト入出力仕様、`unicode_xid_manifest.json` の必須フィールド（`unicode_version`, `input_sha256`, `generated_at`）と SPDX 表記方針を本節で確定した。`THIRD_PARTY_NOTICES.md` 更新タスクと `dune` ルール追加タスクを Phase 2-7 Sprint C へ登録する。
     - **進捗 (2025-11-05)**: `scripts/unicode/generate-xid-tables.py` を追加し、`--out-dir compiler/ocaml/src/lexer_tables` へ `unicode_xid_tables.ml` / `unicode_xid_manifest.json` を生成する ASCII フォールバック経路を整備した。manifest には `unicode_version`・入力ファイルの SHA256・`Unicode-Derived-Core-Properties-1.0` の SPDX 表記を記録し、テーブル更新の再現条件を明文化。
   - **ステップ2 — lexer/Core.Parse 統合と互換モード**
-    - `lexer.mll` に UTF-8 連続バイト定義（`let utf8_2`, `let utf8_3`, `let utf8_4`）を追加し、`token` ルールから ASCII/Unicode 共通の `read_identifier` ヘルパーを呼び出す。ヘルパーは `Lexer_tables.Unicode_xid_tables.is_start` / `is_continue` を用いてコードポイントを検証し、識別子文字列は `Buffer` に UTF-8 のまま蓄積する。
+    - `lexer.mll` に UTF-8 連続バイト定義（`let utf8_2`, `let utf8_3`, `let utf8_4`）を追加し、`token` ルールで読み取った識別子を `Lexer_tables.Unicode_xid_tables.is_start` / `is_continue` に基づいて検証する。識別子文字列は UTF-8 のまま保持し、コードポイント単位で XID 判定を行う。
     - `Core_parse.Lex.Bridge` へ `identifier_profile` の反映処理を追加し、`RunConfig` に `lex.identifier_profile` が存在しない場合はフェーズ移行用ガード（`UnicodeFallback`）を返す。ASCII モードとの切り替えは `Parser_run_config.Lex.profile` と同期させ、CLI/LSP での表示文字列を `unicode` / `ascii-compat` として統一する。
     - **進捗 (2026-11-29)**: `lexer.mll` 側で使用する UTF-8 ヘルパー API と `RunConfig` 連動の境界条件（互換モード時は現行 ASCII テーブルを強制する）を整理し、`parser_design.md` §4.5 へ差分説明を追記するタスクを割り当てた。`core_parse_lex.ml` と `parser_run_config.ml` の更新対象フィールドを洗い出し、本節に同期ポイント（`identifier_profile`）を明記した。
+    - **進捗 (2025-11-05)**: `lexer.mll` に `Lexer_tables.Unicode_xid_tables` を組み込み、UTF-8 復号と `identifier_profile` 検証（`ascii-compat` / `unicode`）を実装。`Parser_run_config.Lex` / `core_parse_lex.ml` に `identifier_profile` フィールドと `set_identifier_profile` を追加し、`RunConfig.extensions["lex"].identifier_profile` から `Lexer` のプロファイルを切り替えられるようにした。ASCII モードでは非 ASCII を拒否し、Unicode モードでは XID テーブルに基づいて許可/拒否を判定する。
   - **ステップ3 — CI / ライセンス / リリース準備**
     - `dune-project` へ `using fmt` の追加を検討し、`@fmt` と `@check-unicode-tables` を同時に実行するプリセット `scripts/ci-local.sh --section lexer-unicode` を用意する。CI では Linux / Windows / macOS で生成スクリプトが再現可能であることを確認し、生成物の差分があった場合はジョブを失敗させてレビューを促す。
     - 監査ログでは `AuditEnvelope.metadata["unicode.identifier_profile"]` に `{"profile":"unicode","unicode_version":"15.1.0","table_checksum":"..."}`
