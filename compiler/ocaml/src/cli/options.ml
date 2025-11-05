@@ -179,6 +179,7 @@ type options = {
   (* 効果システム / Stage 制御 *)
   effect_stage_override : string option;  (** CLI で指定された Stage 名 *)
   runtime_capabilities_path : string option;  (** Capability Registry JSON のパス *)
+  effects_type_row_mode : string;  (** TYPE-002 効果行モード（metadata-only|dual-write） *)
   parser_experimental_effects : bool;  (** 効果構文 PoC フラグ *)
   (* Parser RunConfig フラグ *)
   parser_require_eof : bool;  (** RunConfig.require_eof を CLI から制御 *)
@@ -232,6 +233,7 @@ let default_options =
     emit_audit_path = None;
     effect_stage_override = None;
     runtime_capabilities_path = None;
+    effects_type_row_mode = "metadata-only";
     parser_experimental_effects = Run_config.default.experimental_effects;
     parser_require_eof = Run_config.default.require_eof;
     parser_packrat = Run_config.default.packrat;
@@ -312,6 +314,7 @@ let parse_args argv =
   let include_snippet = ref true in
   let runtime_caps_path = ref None in
   let parser_experimental_effects = ref Run_config.default.experimental_effects in
+  let type_row_mode_str = ref "metadata-only" in
   let parser_require_eof = ref Run_config.default.require_eof in
   let parser_packrat = ref Run_config.default.packrat in
   let parser_left_recursion = ref Run_config.default.left_recursion in
@@ -424,9 +427,15 @@ let parse_args argv =
       ( "--experimental-effects",
         Arg.Unit (fun () -> parser_experimental_effects := true),
         "Accept algebraic effects syntax PoC (RunConfig.experimental_effects=true)" );
-      ( "-Zalgebraic-effects",
-        Arg.Unit (fun () -> parser_experimental_effects := true),
-        "Alias of --experimental-effects for Stage PoC builds" );
+     ( "-Zalgebraic-effects",
+       Arg.Unit (fun () -> parser_experimental_effects := true),
+       "Alias of --experimental-effects for Stage PoC builds" );
+      ( "--type-row-mode",
+        Arg.String
+          (fun value ->
+            type_row_mode_str :=
+              String.lowercase_ascii (String.trim value)),
+        "<metadata-only|dual-write> TYPE-002 effect row integration mode (default: metadata-only)" );
       ( "--left-recursion",
         Arg.String
           (fun value ->
@@ -680,6 +689,16 @@ let parse_args argv =
                  "Warning: unknown audit level '%s', using 'full'" other);
             AuditLevelFull
       in
+      let type_row_mode =
+        match !type_row_mode_str with
+        | "metadata-only" -> "metadata-only"
+        | "dual-write" -> "dual-write"
+        | other ->
+            prerr_endline
+              (Printf.sprintf
+                 "Warning: unknown type row mode '%s', using 'metadata-only'" other);
+            "metadata-only"
+      in
 
       let audit_dir_override_value = !audit_dir_override in
 
@@ -729,6 +748,7 @@ let parse_args argv =
           emit_audit_path;
           effect_stage_override = !effect_stage;
           runtime_capabilities_path = !runtime_caps_path;
+          effects_type_row_mode = type_row_mode;
           parser_experimental_effects = !parser_experimental_effects;
           parser_require_eof = !parser_require_eof;
           parser_packrat = !parser_packrat;
@@ -793,6 +813,7 @@ let to_run_config (opts : options) =
   |> Run_config.with_extension "lex" (fun _ -> lex_namespace)
   |> Run_config.Effects.set_stage_override opts.effect_stage_override
   |> Run_config.Effects.set_registry_path opts.runtime_capabilities_path
+  |> Run_config.Effects.set_type_row_mode (Some opts.effects_type_row_mode)
   |> Run_config.Stream.set_enabled opts.parser_streaming
   |> Run_config.Stream.set_checkpoint opts.stream_checkpoint
   |> Run_config.Stream.set_resume_hint opts.stream_resume_hint

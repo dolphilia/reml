@@ -42,7 +42,7 @@ let record_metadata_dict_instances (module_def : module_def) =
 let rec build_arrow_type args ret =
   match args with
   | [] -> ret
-  | arg :: rest -> TArrow (arg, build_arrow_type rest ret)
+  | arg :: rest -> ty_arrow arg (build_arrow_type rest ret)
 
 let find_function_def module_def name =
   List.find_opt

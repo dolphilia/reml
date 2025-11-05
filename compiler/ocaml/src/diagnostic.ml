@@ -679,7 +679,7 @@ let diagnostic_of_legacy[@deprecated "Diagnostic.Legacy.t からの変換は段�
 
 let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
     ?capability_meta ?capability_stages ?iterator_fields ?stage_trace
-    ~required_stage ~capability diag =
+    ?type_row ~required_stage ~capability diag =
   let capability_entries =
     match capability_stages with Some entries -> entries | None -> []
   in
@@ -744,6 +744,31 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
       | _ -> ("capabilities_detail", capability_detail_json) :: base
     in
     base
+  in
+  let effect_fields =
+    match type_row with
+    | Some row ->
+        let declared_json =
+          `List (List.map (fun name -> `String name) row.declared)
+        in
+        let residual_json =
+          `List (List.map (fun name -> `String name) row.residual)
+        in
+        let canonical_json =
+          `List
+            (Types.Effect_name_set.fold (fun name acc -> name :: acc) row.canonical []
+            |> List.rev
+            |> List.map (fun name -> `String name))
+        in
+        ( "type_row",
+          `Assoc
+            [
+              ("declared", declared_json);
+              ("residual", residual_json);
+              ("canonical", canonical_json);
+            ] )
+        :: effect_fields
+    | None -> effect_fields
   in
   let effect_fields =
     match residual with
@@ -814,6 +839,27 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
     match capability_detail_entries with
     | [] -> diag
     | _ -> set_extension "effect.stage.capabilities" capability_detail_json diag
+  in
+  let diag =
+    match type_row with
+    | Some row ->
+        let declared_json =
+          `List (List.map (fun name -> `String name) row.declared)
+        in
+        let residual_json =
+          `List (List.map (fun name -> `String name) row.residual)
+        in
+        let canonical_json =
+          `List
+            (Types.Effect_name_set.fold (fun name acc -> name :: acc) row.canonical []
+            |> List.rev
+            |> List.map (fun name -> `String name))
+        in
+        diag
+        |> set_extension "effect.type_row.declared" declared_json
+        |> set_extension "effect.type_row.residual" residual_json
+        |> set_extension "effect.type_row.canonical" canonical_json
+    | None -> diag
   in
   let diag =
     match stage_trace with

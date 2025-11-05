@@ -118,7 +118,7 @@ let initial_env =
       (scheme_to_constrained
          {
            quantified = [ a_some ];
-           body = TArrow (TVar a_some, ty_option (TVar a_some));
+           body = ty_arrow (TVar a_some) (ty_option (TVar a_some));
          })
       env
   in
@@ -142,7 +142,7 @@ let initial_env =
       (scheme_to_constrained
          {
            quantified = [ a_ok; e_ok ];
-           body = TArrow (TVar a_ok, ty_result (TVar a_ok) (TVar e_ok));
+           body = ty_arrow (TVar a_ok) (ty_result (TVar a_ok) (TVar e_ok));
          })
       env
   in
@@ -154,7 +154,7 @@ let initial_env =
       (scheme_to_constrained
          {
            quantified = [ a_err; e_err ];
-           body = TArrow (TVar e_err, ty_result (TVar a_err) (TVar e_err));
+           body = ty_arrow (TVar e_err) (ty_result (TVar a_err) (TVar e_err));
          })
       env
   in

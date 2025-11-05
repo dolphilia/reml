@@ -294,6 +294,7 @@
    - `typed_ast.ml` と `Type_inference` で `effect_row` を構築しつつ、既存の `typed_fn_decl.tfn_effect_profile` を並行保持する dual-write モードを実装。  
    - `RunConfig.extensions["effects"].type_row_mode` に `dual-write` を追加し、CLI/LSP/CI オプションで `metadata-only` ↔ `dual-write` を切り替えられるようにする。  
    - 監査ログへ `effect.type_row.{declared,residual,canonical}` を出力し、`collect-iterator-audit-metrics.py --section effects` のベースラインを記録。
+   - **完了状況 (2026-12-05)**: `compiler/ocaml/src/types.ml` と `type_inference.ml` で `TArrow` 拡張と `typed_fn_decl.tfn_effect_row` を導入し、`--type-row-mode <metadata-only|dual-write>` から dual-write を有効化できるよう `cli/options.ml`・`parser_run_config.ml` を更新した。`Constraint_solver`・`main.ml`・`diagnostic.ml` を拡張して `effect.type_row.*` メタデータを監査／診断に書き出し、既定は `metadata-only` 維持としつつ `dual-write` 時に監査指標へ効果行を反映する。残課題として KPI ゲート (`collect-iterator-audit-metrics.py --section effects`) の閾値見直しと Sprint B での単一化ルール実装を続行する。
 
 2. **Sprint B — 推論・テスト・KPI 実装**  
    - `generalize` / `instantiate` / `Type_unification` / `constraint_solver.ml` で `effect_row` を扱うユーティリティを実装し、RowVar は予約値 (`Open`) として保持。  

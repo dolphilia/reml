@@ -20,7 +20,7 @@ let json_of_tag_list tags = `List (List.map json_of_tag tags)
 
 let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
     ~resolved_stage ~resolved_capability ~resolved_capabilities ~effect_set
-    ~stage_trace ~diagnostic_payload extra_fields :
+    ~stage_trace ~diagnostic_payload ?type_row extra_fields :
     Audit_envelope.metadata =
   let symbol = match symbol with Some name -> name | None -> "<anonymous>" in
   let stage_required =
@@ -66,6 +66,29 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
     diagnostic_payload.Effect_profile.residual_leaks
     |> List.map (fun leak -> `String leak.Effect_profile.leaked_tag.effect_name)
   in
+  let row_fields =
+    match type_row with
+    | None -> []
+    | Some row ->
+        let declared_json =
+          `List (List.map (fun name -> `String name) row.declared)
+        in
+        let residual_json =
+          `List (List.map (fun name -> `String name) row.residual)
+        in
+        let canonical_values =
+          Types.Effect_name_set.fold (fun name acc -> name :: acc) row.canonical []
+          |> List.rev
+        in
+        let canonical_json =
+          `List (List.map (fun name -> `String name) canonical_values)
+        in
+        [
+          ("effect.type_row.declared", declared_json);
+          ("effect.type_row.residual", residual_json);
+          ("effect.type_row.canonical", canonical_json);
+        ]
+  in
   let base_fields =
     [
       ("symbol", `String symbol);
@@ -86,6 +109,7 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
         `Int (List.length diagnostic_payload.residual_leaks) );
     ]
   in
+  let base_fields = List.rev_append row_fields base_fields in
   let base_fields =
     if resolved_capabilities = [] then base_fields
     else
@@ -112,7 +136,8 @@ let event_of_effect_entry ?audit_id ?change_set (entry : EffectTable.entry) =
       ~resolved_capability:entry.resolved_capability
       ~resolved_capabilities:entry.resolved_capabilities
       ~effect_set:entry.effect_set ~stage_trace:entry.stage_trace
-      ~diagnostic_payload:entry.diagnostic_payload []
+      ~diagnostic_payload:entry.diagnostic_payload
+      ?type_row:entry.type_row []
   in
   Audit_envelope.make ?audit_id ?change_set ~category:"effect.stage"
     ~metadata_pairs:metadata ()
@@ -613,8 +638,15 @@ let () =
     Parser_run_config.Effects.set_required_capabilities capability_names
       run_config_base
   in
+  let effects_type_row_mode =
+    match effects_run_config.Parser_run_config.Effects.type_row_mode with
+    | Some mode when String.equal mode "dual-write" ->
+        Type_inference.Type_row_dual_write
+    | _ -> Type_inference.Type_row_metadata_only
+  in
   let type_config =
-    Type_inference.make_config ~effect_context:runtime_stage_context ()
+    Type_inference.make_config ~effect_context:runtime_stage_context
+      ~type_row_mode:effects_type_row_mode ()
   in
   let record_start phase =
     if collect_trace then Cli.Trace.start_phase ~emit_log:emit_trace_logs phase

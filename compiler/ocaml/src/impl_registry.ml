@@ -47,8 +47,8 @@ let rec apply_type_subst (subst : type_subst) (ty : ty) : ty =
   match ty with
   | TVar tv -> (
       match List.assoc_opt tv subst with Some t -> t | None -> TVar tv)
-  | TArrow (t1, t2) ->
-      TArrow (apply_type_subst subst t1, apply_type_subst subst t2)
+  | TArrow (t1, row, t2) ->
+      TArrow (apply_type_subst subst t1, row, apply_type_subst subst t2)
   | TTuple tys -> TTuple (List.map (apply_type_subst subst) tys)
   | TRecord fields ->
       TRecord
@@ -95,7 +95,7 @@ let rec unify_types (pattern : ty) (concrete : ty) (subst : type_subst) :
   | TUnit, TUnit -> Some subst
   | TNever, TNever -> Some subst
   (* 関数型 *)
-  | TArrow (p1, p2), TArrow (c1, c2) -> (
+  | TArrow (p1, _, p2), TArrow (c1, _, c2) -> (
       match unify_types p1 c1 subst with
       | Some subst' -> unify_types p2 c2 subst'
       | None -> None)

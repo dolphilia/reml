@@ -19,14 +19,22 @@ open Typed_ast
 module Ffi = Ffi_contract
 module Typeclass_metadata = Typeclass_metadata
 
-type config = { effect_context : Type_inference_effect.runtime_stage }
+type type_row_mode =
+  | Type_row_metadata_only
+  | Type_row_dual_write
 
-let make_config ?effect_context () =
+type config = {
+  effect_context : Type_inference_effect.runtime_stage;
+  type_row_mode : type_row_mode;
+}
+
+let make_config ?effect_context ?(type_row_mode = Type_row_metadata_only) () =
   {
     effect_context =
       (match effect_context with
       | Some ctx -> ctx
       | None -> Type_inference_effect.runtime_stage_default);
+    type_row_mode;
   }
 
 let default_config = make_config ()
@@ -589,7 +597,7 @@ let rec convert_type_annot (tannot : type_annot) : ty =
   | TyFn (arg_tys, ret_ty) ->
       (* 関数型: (A, B) -> C を A -> B -> C に変換 *)
       List.fold_right
-        (fun arg_ty acc -> TArrow (convert_type_annot arg_ty, acc))
+        (fun arg_ty acc -> ty_arrow (convert_type_annot arg_ty) acc)
         arg_tys
         (convert_type_annot ret_ty)
 
@@ -1097,7 +1105,7 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
 
       (* 関数型を構築: arg1 -> arg2 -> ... -> ret *)
       let expected_fn_ty =
-        List.fold_right (fun arg_ty acc -> TArrow (arg_ty, acc)) arg_tys ret_ty
+        List.fold_right (fun arg_ty acc -> ty_arrow arg_ty acc) arg_tys ret_ty
       in
 
       (* 関数型と単一化 *)
@@ -1198,7 +1206,7 @@ let rec infer_expr ?(ctx = initial_ctx) (env : env) (expr : expr) :
       (* 関数型を構築: param1 -> param2 -> ... -> body_ty *)
       let fn_ty =
         List.fold_right
-          (fun param_ty acc -> TArrow (param_ty, acc))
+          (fun param_ty acc -> ty_arrow param_ty acc)
           param_tys_resolved final_body_ty
       in
 
@@ -2025,7 +2033,7 @@ and infer_pattern ?(ctx = initial_ctx) (env : env) (pat : pattern)
  *)
 and extract_function_args (ty : ty) : ty list * ty =
   match ty with
-  | TArrow (arg_ty, rest_ty) ->
+  | TArrow (arg_ty, _, rest_ty) ->
       let args, result = extract_function_args rest_ty in
       (arg_ty :: args, result)
   | _ -> ([], ty)
@@ -2228,7 +2236,7 @@ and infer_binary_op (op : Ast.binary_op) (ty1 : ty) (ty2 : ty)
       let ty1' = apply_subst subst ty1 in
       let ret_var = TypeVarGen.fresh None in
       let ret_ty = Types.TVar ret_var in
-      let expected_fn_ty = TArrow (ty1', ret_ty) in
+      let expected_fn_ty = ty_arrow ty1' ret_ty in
       let* s1 = unify_as_function subst ty2 expected_fn_ty span2 in
       let final_ret_ty = apply_subst s1 ret_ty in
       Ok (final_ret_ty, s1, [])
@@ -2653,7 +2661,7 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
       let temp_ret_var = TypeVarGen.fresh None in
       let temp_fn_ty =
         List.fold_right
-          (fun param_ty acc -> TArrow (param_ty, acc))
+          (fun param_ty acc -> ty_arrow param_ty acc)
           param_tys (Types.TVar temp_ret_var)
       in
 
@@ -2688,27 +2696,7 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
       in
       let param_tys_resolved = List.map (fun p -> p.tty) tparams' in
 
-      (* 8. 最終的な関数型を構築 *)
-      let fn_ty =
-        List.fold_right
-          (fun param_ty acc -> TArrow (param_ty, acc))
-          param_tys_resolved final_ret_ty
-      in
-
-      (* 9. 一般化してスキームを生成 *)
-      let env' = apply_subst_env s3 env in
-      let scheme = generalize env' fn_ty in
-
-      (* Phase 2 Week 18-19: 型クラス制約の解決
-       *
-       * 関数宣言でも制約を解決する。
-       *)
-      let* dict_refs =
-        if scheme.constraints = [] then Ok []
-        else solve_trait_constraints scheme.constraints
-      in
-
-      (* 10a. 効果プロファイルを解析 *)
+      (* 8. 効果プロファイルを解析（dual-write モード） *)
       let residual_tags = Effect_analysis.collect_from_fn_body tbody in
       let* effect_profile_raw =
         Type_inference_effect.resolve_function_profile
@@ -2720,15 +2708,56 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
           ~fallback_span:effect_profile_raw.source_span effect_profile_raw
           residual_tags
       in
-      record_effect_profile ~symbol:fn.fn_name.name effect_profile;
+      let effect_row_for_audit =
+        match config.type_row_mode with
+        | Type_row_dual_write -> Some effect_row
+        | Type_row_metadata_only -> None
+      in
+      record_effect_profile ?type_row:effect_row_for_audit
+        ~symbol:fn.fn_name.name effect_profile;
 
-      (* 10b. 型付き関数宣言を構築 *)
+      let open Effect_profile in
+      let effect_set = effect_profile.effect_set in
+      let declared_effects =
+        effect_set.declared |> List.map (fun tag -> tag.effect_name)
+      in
+      let residual_effects =
+        effect_set.residual |> List.map (fun tag -> tag.effect_name)
+      in
+      let effect_row =
+        Types.effect_row_make ~declared:declared_effects ~residual:residual_effects ()
+      in
+
+      (* 9. 最終的な関数型を構築 *)
+      let rec build_function_type = function
+        | [] -> final_ret_ty
+        | [ last_param ] -> (
+            match config.type_row_mode with
+            | Type_row_dual_write ->
+                ty_arrow ~effect:effect_row last_param final_ret_ty
+            | Type_row_metadata_only -> ty_arrow last_param final_ret_ty)
+        | param :: rest -> ty_arrow param (build_function_type rest)
+      in
+      let fn_ty = build_function_type param_tys_resolved in
+
+      (* 10. 一般化してスキームを生成 *)
+      let env' = apply_subst_env s3 env in
+      let scheme = generalize env' fn_ty in
+
+      (* Phase 2 Week 18-19: 型クラス制約の解決 *)
+      let* dict_refs =
+        if scheme.constraints = [] then Ok []
+        else solve_trait_constraints scheme.constraints
+      in
+
+      (* 11. 型付き関数宣言を構築 *)
       let tfn =
         {
           tfn_name = fn.fn_name;
           tfn_generic_params = generic_bindings;
           tfn_params = tparams';
           tfn_ret_type = final_ret_ty;
+          tfn_effect_row = effect_row;
           tfn_where_clause = fn.fn_where_clause;
           tfn_effect_profile = effect_profile;
           tfn_body = tbody;
@@ -2741,7 +2770,7 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
       in
       let tdecl = attach_decl_dict_args tdecl dict_refs in
 
-      (* 11. 型環境に追加 *)
+      (* 12. 型環境に追加 *)
       let new_env = extend fn.fn_name.name scheme env' in
 
       Ok (tdecl, new_env, body_constraints)
@@ -2763,7 +2792,7 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
         in
         let fn_ty =
           List.fold_right
-            (fun param_ty acc -> TArrow (param_ty, acc))
+            (fun param_ty acc -> ty_arrow param_ty acc)
             param_tys ret_ty
         in
         (fn_ty, param_tys, ret_ty)

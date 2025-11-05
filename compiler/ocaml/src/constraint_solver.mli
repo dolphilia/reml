@@ -143,6 +143,7 @@ module EffectConstraintTable : sig
     resolved_capabilities : Effect_profile.capability_resolution list;
     stage_trace : Effect_profile.stage_trace;
     diagnostic_payload : Effect_profile.effect_diagnostic_payload;
+    type_row : Types.effect_row option;
   }
 
   type t
@@ -161,10 +162,12 @@ module EffectConstraintTable : sig
     ?resolved_capabilities:Effect_profile.capability_resolution list ->
     ?stage_trace:Effect_profile.stage_trace ->
     ?diagnostic_payload:Effect_profile.effect_diagnostic_payload ->
+    ?type_row:Types.effect_row ->
     unit ->
     t
 
-  val add_profile : t -> symbol:string -> Effect_profile.profile -> t
+  val add_profile :
+    t -> symbol:string -> ?type_row:Types.effect_row -> Effect_profile.profile -> t
   val merge : into:t -> from:t -> t
   val resolve : t -> symbol:string -> entry option
   val effect_set : t -> symbol:string -> Effect_profile.set option
@@ -175,7 +178,8 @@ end
 val reset_effect_constraints : unit -> unit
 (** 効果制約テーブルを初期化する（テスト・新規コンパイル単位用） *)
 
-val record_effect_profile : symbol:string -> Effect_profile.profile -> unit
+val record_effect_profile :
+  ?type_row:Types.effect_row -> symbol:string -> Effect_profile.profile -> unit
 (** 効果プロファイルを登録する（関数宣言など） *)
 
 val record_effect_set :

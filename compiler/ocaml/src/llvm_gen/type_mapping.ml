@@ -124,7 +124,7 @@ and reml_type_to_llvm_impl ctx = function
       (* 現在は constructor を評価（モノモルフィゼーション前提） *)
       reml_type_to_llvm ctx constructor
   (* 関数型 A -> B *)
-  | TArrow (arg_ty, ret_ty) ->
+  | TArrow (arg_ty, _row, ret_ty) ->
       let arg_llty = reml_type_to_llvm ctx arg_ty in
       let ret_llty = reml_type_to_llvm ctx ret_ty in
       Llvm.function_type ret_llty [| arg_llty |]

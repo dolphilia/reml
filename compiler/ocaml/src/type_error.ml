@@ -553,7 +553,7 @@ let explain_type_mismatch (expected : ty) (actual : ty) : string option =
         Some ("タプルの要素型が異なります:\n  " ^ String.concat "\n  " mismatches)
       else None
   (* 関数型の引数・返り値不一致 *)
-  | TArrow (exp_arg, exp_ret), TArrow (act_arg, act_ret) ->
+  | TArrow (exp_arg, exp_row, exp_ret), TArrow (act_arg, act_row, act_ret) ->
       if not (Types.type_equal exp_arg act_arg) then
         Some
           (Printf.sprintf "関数の引数型が異なります: 期待 %s、実際 %s" (string_of_ty exp_arg)
@@ -562,6 +562,12 @@ let explain_type_mismatch (expected : ty) (actual : ty) : string option =
         Some
           (Printf.sprintf "関数の返り値型が異なります: 期待 %s、実際 %s" (string_of_ty exp_ret)
              (string_of_ty act_ret))
+      else if not (Types.effect_row_equal exp_row act_row) then
+        Some
+          (Printf.sprintf
+             "関数の効果行が異なります: 期待 %s、実際 %s"
+             (string_of_ty (TArrow (exp_arg, exp_row, exp_ret)))
+             (string_of_ty (TArrow (act_arg, act_row, act_ret))))
       else None
   (* その他の型不一致は一般的なメッセージのみ *)
   | _ -> None

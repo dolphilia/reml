@@ -169,6 +169,7 @@ and typed_fn_decl = {
   tfn_generic_params : (ident * type_var) list;  (** ジェネリック型パラメータ → 型変数 *)
   tfn_params : typed_param list;
   tfn_ret_type : ty;  (** 推論された返り値型 *)
+  tfn_effect_row : effect_row;  (** 型表現へ統合された効果行（dual-write） *)
   tfn_where_clause : constraint_ list;  (** Phase 2 後半で実装 *)
   tfn_effect_profile : profile;  (** Phase 2-2 効果統合で利用 *)
   tfn_body : typed_fn_body;

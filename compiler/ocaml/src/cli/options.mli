@@ -74,6 +74,8 @@ type options = {
   effect_stage_override : string option;  (** CLI で指定された Stage 名 *)
   runtime_capabilities_path : string option;
       (** Runtime Capability Registry JSON のパス *)
+  effects_type_row_mode : string;
+      (** TYPE-002 効果行モード (`metadata-only` / `dual-write`) *)
   parser_experimental_effects : bool;
       (** `perform` / `handle` 構文を受理する実験的フラグ（`-Zalgebraic-effects`） *)
   (* Parser RunConfig フラグ *)

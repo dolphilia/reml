@@ -35,6 +35,7 @@ module EffectConstraintTable = struct
     resolved_capabilities : Profile.capability_resolution list;
     stage_trace : Profile.stage_trace;
     diagnostic_payload : Profile.effect_diagnostic_payload;
+    type_row : effect_row option;
   }
 
   type t = entry StringMap.t
@@ -49,7 +50,8 @@ module EffectConstraintTable = struct
       ?source_name ?resolved_stage ?resolved_capability
       ?(resolved_capabilities = [])
       ?(stage_trace = Profile.stage_trace_empty)
-      ?(diagnostic_payload = Profile.empty_diagnostic_payload) () =
+      ?(diagnostic_payload = Profile.empty_diagnostic_payload)
+      ?type_row () =
     let resolved_capability =
       Profile.primary_capability_name ?fallback:resolved_capability
         resolved_capabilities
@@ -66,11 +68,12 @@ module EffectConstraintTable = struct
         resolved_capabilities;
         stage_trace;
         diagnostic_payload;
+        type_row;
       }
     in
     add_entry table entry
 
-  let add_profile table ~symbol (profile : Profile.profile) =
+  let add_profile table ~symbol ?type_row (profile : Profile.profile) =
     add_effects table ~symbol ~effect_set:profile.effect_set
       ~stage_requirement:profile.stage_requirement
       ~source_span:profile.source_span ?source_name:profile.source_name
@@ -78,7 +81,7 @@ module EffectConstraintTable = struct
       ?resolved_capability:profile.resolved_capability
       ~resolved_capabilities:profile.resolved_capabilities
       ~stage_trace:profile.stage_trace
-      ~diagnostic_payload:profile.diagnostic_payload ()
+      ~diagnostic_payload:profile.diagnostic_payload ?type_row ()
 
   let merge ~into ~from = StringMap.union (fun _ _ rhs -> Some rhs) into from
   let resolve table ~symbol = StringMap.find_opt (normalize_symbol symbol) table
@@ -114,9 +117,10 @@ let effect_constraints = ref (EffectConstraintTable.empty ())
 let reset_effect_constraints () =
   effect_constraints := EffectConstraintTable.empty ()
 
-let record_effect_profile ~symbol (profile : Profile.profile) =
+let record_effect_profile ?type_row ~symbol (profile : Profile.profile) =
   effect_constraints :=
-    EffectConstraintTable.add_profile !effect_constraints ~symbol profile
+    EffectConstraintTable.add_profile !effect_constraints ~symbol ?type_row
+      profile
 
 let record_effect_set ~symbol ~effect_set ~stage_requirement ~source_span
     ?source_name ?(diagnostic_payload = Profile.empty_diagnostic_payload) () =

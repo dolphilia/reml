@@ -60,7 +60,8 @@ let rec apply_subst subst = function
       match subst_lookup tv subst with Some t' -> t' | None -> t)
   | TCon _ as t -> t
   | TApp (t1, t2) -> TApp (apply_subst subst t1, apply_subst subst t2)
-  | TArrow (t1, t2) -> TArrow (apply_subst subst t1, apply_subst subst t2)
+  | TArrow (t1, row, t2) ->
+      TArrow (apply_subst subst t1, row, apply_subst subst t2)
   | TTuple tys -> TTuple (List.map (apply_subst subst) tys)
   | TRecord fields ->
       TRecord (List.map (fun (name, ty) -> (name, apply_subst subst ty)) fields)
@@ -126,7 +127,7 @@ let rec ftv_ty = function
   | TVar tv -> [ tv ]
   | TCon _ -> []
   | TApp (t1, t2) -> ftv_ty t1 @ ftv_ty t2
-  | TArrow (t1, t2) -> ftv_ty t1 @ ftv_ty t2
+  | TArrow (t1, _, t2) -> ftv_ty t1 @ ftv_ty t2
   | TTuple tys -> List.concat_map ftv_ty tys
   | TRecord fields -> List.concat_map (fun (_, ty) -> ftv_ty ty) fields
   | TArray t -> ftv_ty t
@@ -173,7 +174,7 @@ let rec occurs_check tv ty =
   | TVar tv' -> tv.tv_id = tv'.tv_id
   | TCon _ -> false
   | TApp (t1, t2) -> occurs_check tv t1 || occurs_check tv t2
-  | TArrow (t1, t2) -> occurs_check tv t1 || occurs_check tv t2
+  | TArrow (t1, _, t2) -> occurs_check tv t1 || occurs_check tv t2
   | TTuple tys -> List.exists (occurs_check tv) tys
   | TRecord fields -> List.exists (fun (_, t) -> occurs_check tv t) fields
   | TArray t -> occurs_check tv t
@@ -209,10 +210,11 @@ let rec unify subst t1 t2 span =
       (* 型適用: 両方の要素を単一化 *)
       let* s1 = unify subst t11 t21 span in
       unify s1 t12 t22 span
-  | TArrow (t11, t12), TArrow (t21, t22) ->
-      (* 関数型: 引数と返り値を単一化 *)
+  | TArrow (t11, row1, t12), TArrow (t21, row2, t22) ->
+      (* 関数型: 引数と返り値を単一化（effect_row は Sprint B で検証予定） *)
       let* s1 = unify subst t11 t21 span in
-      unify s1 t12 t22 span
+      let* s2 = unify s1 t12 t22 span in
+      if Types.effect_row_equal row1 row2 then Ok s2 else Ok s2
   | TTuple tys1, TTuple tys2 when List.length tys1 = List.length tys2 ->
       (* タプル型: 各要素を単一化 *)
       unify_list subst (List.combine tys1 tys2) span

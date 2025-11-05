@@ -560,6 +560,7 @@ module Effects = struct
     stage_override : string option;
     registry_path : string option;
     required_capabilities : string list;
+    type_row_mode : string option;
     namespace : Namespace.t option;
   }
 
@@ -568,6 +569,7 @@ module Effects = struct
       stage_override = None;
       registry_path = None;
       required_capabilities = [];
+      type_row_mode = None;
       namespace = None;
     }
 
@@ -593,6 +595,9 @@ module Effects = struct
           stage_override = decode_string namespace "stage";
           registry_path = decode_string namespace "registry_path";
           required_capabilities = decode_required namespace "required_capabilities";
+          type_row_mode =
+            decode_string namespace "type_row_mode"
+            |> Option.map String.lowercase_ascii;
         }
 
   let encode_required namespace capabilities =
@@ -653,4 +658,24 @@ module Effects = struct
     with_extension "effects"
       (fun namespace -> encode_required namespace capabilities)
       config
+
+  let set_type_row_mode mode_opt config =
+    match mode_opt with
+    | Some mode ->
+        let trimmed = String.trim mode in
+        if String.equal trimmed "" then
+          with_extension "effects"
+            (fun namespace -> Namespace.remove "type_row_mode" namespace)
+            config
+        else
+          let normalized = String.lowercase_ascii trimmed in
+          with_extension "effects"
+            (fun namespace ->
+              Namespace.add "type_row_mode"
+                (Extensions.String normalized) namespace)
+            config
+    | None ->
+        with_extension "effects"
+          (fun namespace -> Namespace.remove "type_row_mode" namespace)
+          config
 end

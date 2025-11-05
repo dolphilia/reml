@@ -24,6 +24,63 @@ type int_type = I8 | I16 | I32 | I64 | Isize | U8 | U16 | U32 | U64 | Usize
 type float_type = F32 | F64
 
 (** 型定数 *)
+module Effect_name_set = Set.Make (String)
+
+type row_var = {
+  row_id : int;  (** 将来導入予定の行多相ID（Phase 2-7では予約値） *)
+  row_hint : string option;  (** デバッグ用ヒント（例: ε0） *)
+}
+
+type effect_row = {
+  declared : string list;  (** 宣言された効果タグ（表示順を保持） *)
+  residual : string list;  (** 解析後に残留した効果タグ（表示順を保持） *)
+  canonical : Effect_name_set.t;  (** 正規化済み集合（等価判定用） *)
+  row_var : row_var option;  (** 行多相対応（Phase 2-7では None 固定） *)
+}
+
+let normalize_effect_name name =
+  name |> String.trim |> String.lowercase_ascii
+
+let canonical_of_effect_lists declared residual =
+  let fold acc name =
+    let normalized = normalize_effect_name name in
+    if String.equal normalized "" then acc
+    else Effect_name_set.add normalized acc
+  in
+  let combined = declared @ residual in
+  List.fold_left fold Effect_name_set.empty combined
+
+let effect_row_empty =
+  {
+    declared = [];
+    residual = [];
+    canonical = Effect_name_set.empty;
+    row_var = None;
+  }
+
+let effect_row_make ?row_var ?(declared = []) ?(residual = []) () =
+  let canonical = canonical_of_effect_lists declared residual in
+  { declared; residual; canonical; row_var }
+
+let effect_row_with_declared declared row =
+  let canonical = canonical_of_effect_lists declared row.residual in
+  { row with declared; canonical }
+
+let effect_row_with_residual residual row =
+  let canonical = canonical_of_effect_lists row.declared residual in
+  { row with residual; canonical }
+
+let effect_row_is_pure row =
+  Effect_name_set.is_empty row.canonical
+
+let effect_row_union lhs rhs =
+  {
+    declared = lhs.declared @ rhs.declared;
+    residual = lhs.residual @ rhs.residual;
+    canonical = Effect_name_set.union lhs.canonical rhs.canonical;
+    row_var = (match lhs.row_var with Some _ as v -> v | None -> rhs.row_var);
+  }
+
 type type_const =
   | TCBool  (** Bool *)
   | TCChar  (** Char (Unicode scalar) *)
@@ -49,7 +106,8 @@ type ty =
   | TVar of type_var
   | TCon of type_const
   | TApp of ty * ty  (** Vec<T> = TApp(TCon(TCUser "Vec"), TVar ...) *)
-  | TArrow of ty * ty  (** A -> B -> C = TArrow(A, TArrow(B, C)) *)
+  | TArrow of ty * effect_row * ty
+      (** A -> B -> C = TArrow(A, effect_row, TArrow(B, effect_row, C)) *)
   | TTuple of ty list  (** (A, B, C) *)
   | TRecord of (string * ty) list  (** { x: A, y: B } *)
   | TArray of ty  (** [T] (スライス、動的配列) *)
@@ -151,7 +209,7 @@ let ty_array t = TArray t
 let ty_slice t n = TSlice (t, n)
 
 (** 関数型の構築 *)
-let ty_arrow arg ret = TArrow (arg, ret)
+let ty_arrow ?(effect = effect_row_empty) arg ret = TArrow (arg, effect, ret)
 
 (** タプル型の構築 *)
 let ty_tuple tys = TTuple tys
@@ -198,12 +256,30 @@ let string_of_type_var tv =
   | None -> "t" ^ string_of_int tv.tv_id
 
 (** 型の文字列表現（簡易版） *)
+let rec string_of_effect_row row =
+  if effect_row_is_pure row then ""
+  else
+    let declared =
+      if row.declared = [] then []
+      else [ Printf.sprintf "declared=%s" (String.concat "|" row.declared) ]
+    in
+    let residual =
+      if row.residual = [] then []
+      else [ Printf.sprintf "residual=%s" (String.concat "|" row.residual) ]
+    in
+    let parts = declared @ residual in
+    match parts with
+    | [] -> ""
+    | _ -> Printf.sprintf " ! {%s}" (String.concat "; " parts)
+
 let rec string_of_ty = function
   | TVar tv -> string_of_type_var tv
   | TCon tc -> string_of_type_const tc
   | TApp (t1, t2) -> Printf.sprintf "%s<%s>" (string_of_ty t1) (string_of_ty t2)
-  | TArrow (t1, t2) ->
-      Printf.sprintf "(%s -> %s)" (string_of_ty t1) (string_of_ty t2)
+  | TArrow (t1, row, t2) ->
+      let effect_suffix = string_of_effect_row row in
+      Printf.sprintf "(%s ->%s %s)" (string_of_ty t1) effect_suffix
+        (string_of_ty t2)
   | TTuple tys ->
       Printf.sprintf "(%s)" (String.concat ", " (List.map string_of_ty tys))
   | TRecord fields ->
@@ -244,13 +320,17 @@ let type_const_equal tc1 tc2 =
   | _ -> false
 
 (** 型の等価性判定（構造的等価性） *)
+let rec effect_row_equal lhs rhs =
+  lhs.row_var = rhs.row_var && Effect_name_set.equal lhs.canonical rhs.canonical
+  && lhs.declared = rhs.declared && lhs.residual = rhs.residual
+
 let rec type_equal t1 t2 =
   match (t1, t2) with
   | TVar tv1, TVar tv2 -> type_var_equal tv1 tv2
   | TCon tc1, TCon tc2 -> type_const_equal tc1 tc2
   | TApp (t11, t12), TApp (t21, t22) -> type_equal t11 t21 && type_equal t12 t22
-  | TArrow (t11, t12), TArrow (t21, t22) ->
-      type_equal t11 t21 && type_equal t12 t22
+  | TArrow (t11, row1, t12), TArrow (t21, row2, t22) ->
+      type_equal t11 t21 && type_equal t12 t22 && effect_row_equal row1 row2
   | TTuple tys1, TTuple tys2 ->
       List.length tys1 = List.length tys2 && List.for_all2 type_equal tys1 tys2
   | TRecord fields1, TRecord fields2 ->

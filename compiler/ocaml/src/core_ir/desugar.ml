@@ -275,9 +275,9 @@ let generate_dict_init (trait_name : string) (ty : ty) (span : span) :
   let get_method_sig trait method_name impl_ty =
     match (trait, method_name) with
     | "Eq", "eq" | "Eq", "ne" ->
-        Some (TArrow (impl_ty, TArrow (impl_ty, ty_bool)))
+        Some (ty_arrow impl_ty (ty_arrow impl_ty ty_bool))
     | "Ord", "lt" | "Ord", "le" | "Ord", "gt" | "Ord", "ge" ->
-        Some (TArrow (impl_ty, TArrow (impl_ty, ty_bool)))
+        Some (ty_arrow impl_ty (ty_arrow impl_ty ty_bool))
     | _ -> None
   in
 
