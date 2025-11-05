@@ -301,6 +301,7 @@
    - `Effect_analysis.merge_usage_into_profile` と `Type_inference_effect` を更新し、残余効果が `effect_row.residual` へ反映されるようにする。  
    - テストスイート: `compiler/ocaml/tests/test_type_inference.ml` に `type_effect_row_equivalence_*` ケース、`compiler/ocaml/tests/streaming_runner_tests.ml` に `streaming_effect_row_stage_consistency` を追加。  
    - KPI: `collect-iterator-audit-metrics.py --require-success --section effects` で `diagnostics.effect_row_stage_consistency = 1.0`, `type_effect_row_equivalence = 1.0`, `effect_row_guard_regressions = 0` をゲート条件に設定。逸脱時は自動ロールバック（`type_row_mode=metadata-only`）を実行し、`0-4-risk-handling.md` に登録。
+   - **完了状況 (2025-11-06)**: `constraint.ml` の `unify` が効果行を厳密比較するよう改修し、`type_error`・`main` で効果行メタデータを診断／監査へ展開。`test_type_inference.ml`・`streaming_runner_tests.ml` に効果行統合テストを追加し、`collect-iterator-audit-metrics.py` に `diagnostics.effect_row_stage_consistency` / `type_effect_row_equivalence` / `effect_row_guard_regressions` の集計・ゲート処理を実装した。
 
 3. **Sprint C — Core IR 伝播とプラットフォーム検証**  
    - `core_ir/desugar_fn.ml`, `core_ir/iterator_audit.ml`, `runtime/effect_registry.ml` を更新し、IR/Runtime の効果情報が `effect_row` を参照できる状態にする。  

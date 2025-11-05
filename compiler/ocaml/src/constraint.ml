@@ -211,10 +211,18 @@ let rec unify subst t1 t2 span =
       let* s1 = unify subst t11 t21 span in
       unify s1 t12 t22 span
   | TArrow (t11, row1, t12), TArrow (t21, row2, t22) ->
-      (* 関数型: 引数と返り値を単一化（effect_row は Sprint B で検証予定） *)
+      (* 関数型: 引数・返り値・効果行をすべて比較 *)
       let* s1 = unify subst t11 t21 span in
       let* s2 = unify s1 t12 t22 span in
-      if Types.effect_row_equal row1 row2 then Ok s2 else Ok s2
+      if Types.effect_row_equal row1 row2 then Ok s2
+      else
+        let lhs_arg = apply_subst s2 t11 in
+        let lhs_ret = apply_subst s2 t12 in
+        let rhs_arg = apply_subst s2 t21 in
+        let rhs_ret = apply_subst s2 t22 in
+        let lhs_ty = ty_arrow ~effect:row1 lhs_arg lhs_ret in
+        let rhs_ty = ty_arrow ~effect:row2 rhs_arg rhs_ret in
+        Error (unification_error lhs_ty rhs_ty span)
   | TTuple tys1, TTuple tys2 when List.length tys1 = List.length tys2 ->
       (* タプル型: 各要素を単一化 *)
       unify_list subst (List.combine tys1 tys2) span

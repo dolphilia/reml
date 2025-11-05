@@ -1917,6 +1917,143 @@ let test_trait_constraint_stage_metadata () =
    `value_restriction_mode` の切替と `Value_form` ヘルパ参照のサンプルは
    docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-001-proposal.md Step3 を参照。 *)
 
+(* ========== 効果行統合テスト (TYPE-002 Sprint B) ========== *)
+
+let effect_row_fixture_source =
+  {|
+effect Console : io {
+  operation log : String -> Unit
+}
+
+@allows_effects(Console)
+fn handled_demo(msg: String) = {
+  handle perform Console.log(msg) with handler ConsoleHandler {
+    operation log(value) {
+      ()
+    }
+  }
+}
+|}
+
+let filter_effect_decls ast =
+  {
+    ast with
+    Ast.decls =
+      List.filter
+        (fun decl ->
+          match decl.Ast.decl_kind with Ast.EffectDecl _ -> false | _ -> true)
+        ast.Ast.decls;
+  }
+
+let parse_and_infer_dual_write source =
+  Diagnostic.reset_audit_sequence ();
+  let base_config =
+    Parser_run_config.Legacy.bridge { require_eof = true; legacy_result = true }
+  in
+  let config = Parser_run_config.set_experimental_effects base_config true in
+  let parse_result = Parser_driver.run_string ~config source in
+  match Parser_driver.parse_result_to_legacy parse_result with
+  | Result.Error diag ->
+      failwith (Printf.sprintf "Parse error: %s" (Diagnostic.to_string diag))
+  | Result.Ok ast -> (
+      Type_inference.reset_impl_registry ();
+      let filtered_ast = filter_effect_decls ast in
+      let typer_config = make_config ~type_row_mode:Type_row_dual_write () in
+      match infer_compilation_unit ~config:typer_config filtered_ast with
+      | Result.Ok tast -> tast
+      | Result.Error err ->
+          failwith
+            (Printf.sprintf "Type error: %s"
+               (Type_error.string_of_error err)))
+
+let find_fn_decl tast name =
+  tast.Typed_ast.tcu_items
+  |> List.find_map (fun decl ->
+         match decl.tdecl_kind with
+         | TFnDecl fn when String.equal fn.tfn_name.name name -> Some fn
+         | _ -> None)
+
+let normalize_effect_names names =
+  names
+  |> List.map (fun name -> name |> String.lowercase_ascii |> String.trim)
+
+let effect_tag_names tags =
+  tags
+  |> List.map (fun tag ->
+         tag.Effect_profile.effect_name |> String.lowercase_ascii |> String.trim)
+
+let effect_set_to_list set =
+  Types.Effect_name_set.fold (fun name acc -> name :: acc) set []
+  |> List.sort_uniq String.compare
+
+let test_type_effect_row_equivalence () =
+  Printf.printf "\nEffect Row Integration Tests:\n";
+  run_test "type_effect_row_equivalence_profile" (fun () ->
+      let tast = parse_and_infer_dual_write effect_row_fixture_source in
+      match find_fn_decl tast "handled_demo" with
+      | None -> failwith "handled_demo が型付き AST から見つかりません"
+      | Some fn ->
+          let profile = fn.tfn_effect_profile in
+          let row = fn.tfn_effect_row in
+          let declared_profile =
+            effect_tag_names profile.Effect_profile.effect_set.declared
+          in
+          let residual_profile =
+            effect_tag_names profile.Effect_profile.effect_set.residual
+          in
+          let row_declared = normalize_effect_names row.declared in
+          let row_residual = normalize_effect_names row.residual in
+          if row_declared <> declared_profile then
+            failwith
+              (Printf.sprintf
+                 "効果行 declared の内容が一致しません。\n  期待: [%s]\n  実際: [%s]"
+                 (String.concat ", " declared_profile)
+                 (String.concat ", " row_declared));
+          if row_residual <> residual_profile then
+            failwith
+              (Printf.sprintf
+                 "効果行 residual の内容が一致しません。\n  期待: [%s]\n  実際: [%s]"
+                 (String.concat ", " residual_profile)
+                 (String.concat ", " row_residual));
+          let expected_canonical =
+            List.fold_left
+              (fun acc name -> Types.Effect_name_set.add name acc)
+              Types.Effect_name_set.empty
+              (declared_profile @ residual_profile)
+          in
+          if not (Types.Effect_name_set.equal expected_canonical row.canonical)
+          then
+            let expected_str =
+              String.concat ", " (effect_set_to_list expected_canonical)
+            in
+            let actual_str =
+              String.concat ", " (effect_set_to_list row.canonical)
+            in
+            failwith
+              (Printf.sprintf
+                 "効果行 canonical の内容が一致しません。\n  期待: [%s]\n  実際: [%s]"
+                 expected_str actual_str))
+
+let test_type_effect_row_unify_guard () =
+  Printf.printf "\nEffect Row Unification Tests:\n";
+  run_test "type_effect_row_equivalence_unify_guard" (fun () ->
+      let console_effect = Types.effect_row_make ~declared:[ "console" ] () in
+      let pure_fn = Types.ty_arrow Types.ty_unit Types.ty_unit in
+      let console_fn =
+        Types.ty_arrow ~effect:console_effect Types.ty_unit Types.ty_unit
+      in
+      (match Constraint.unify [] pure_fn console_fn Ast.dummy_span with
+      | Ok _ ->
+          failwith
+            "effect 行が異なる関数型の単一化が成功しました（失敗すべき）"
+      | Error _ -> ());
+      match Constraint.unify [] console_fn console_fn Ast.dummy_span with
+      | Ok _ -> ()
+      | Error err ->
+          let message = Type_error.string_of_error err in
+          failwith
+            (Printf.sprintf "同一効果行の単一化が失敗しました: %s" message))
+
 (* ========== 効果構文 PoC テスト草案 (SYNTAX-003 S2) ==========
  *
  * - `perform Console.log("msg")` が型 `Unit` を返しつつ `Σ_after = {Console}` を保持するケースを追加予定。
@@ -1942,4 +2079,6 @@ let () =
   test_pattern_match_errors ();
   test_mutable_bindings ();
   test_trait_constraint_stage_metadata ();
+  test_type_effect_row_equivalence ();
+  test_type_effect_row_unify_guard ();
   Printf.printf "\nAll type inference tests passed! ✓\n"

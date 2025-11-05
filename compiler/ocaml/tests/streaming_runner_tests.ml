@@ -15,6 +15,20 @@ let ensure predicate desc message =
   if predicate then ()
   else fail desc message
 
+let normalize_effect_names names =
+  names
+  |> List.map (fun name -> name |> String.trim |> String.lowercase_ascii)
+
+let filter_effect_decls ast =
+  {
+    ast with
+    Ast.decls =
+      List.filter
+        (fun decl ->
+          match decl.Ast.decl_kind with Ast.EffectDecl _ -> false | _ -> true)
+        ast.Ast.decls;
+  }
+
 let test_streaming_matches_batch () =
   let desc = "run_stream がバッチランナーと同じ ParseResult を返す" in
   let input =
@@ -201,6 +215,134 @@ let test_pending_resume_flow () =
              details));
       pass desc
 
+let test_streaming_effect_row_stage_consistency () =
+  let desc = "effect.stage 監査イベントに効果行メタデータが含まれる" in
+  let source =
+    {|
+effect Console : io {
+  operation log : String -> Unit
+}
+
+@allows_effects(Console)
+fn handled_demo(msg: String) = {
+  handle perform Console.log(msg) with handler ConsoleHandler {
+    operation log(value) {
+      ()
+    }
+  }
+}
+|}
+  in
+  let index = ref 0 in
+  let feeder () =
+    match !index with
+    | 0 ->
+        incr index;
+        Stream.Chunk source
+    | _ -> Stream.Closed
+  in
+  let config = Run_config.set_experimental_effects Run_config.default true in
+  match
+    Stream.run_stream ~filename:"streaming_effects.reml" ~config ~feeder ()
+  with
+  | Stream.Pending _ ->
+      fail desc "Pending のまま終了しました"
+  | Stream.Completed completed ->
+      let parse_result = completed.result in
+      let ast =
+        match parse_result.value with
+        | Some cu -> cu
+        | None -> fail desc "ストリーミング解析の結果に AST が含まれていません"
+      in
+      let ast = filter_effect_decls ast in
+      let typer_config =
+        Type_inference.make_config
+          ~type_row_mode:Type_inference.Type_row_dual_write ()
+      in
+      let tast =
+        match Type_inference.infer_compilation_unit ~config:typer_config ast with
+        | Result.Ok tast -> tast
+        | Result.Error err ->
+            fail desc
+              (Printf.sprintf "型推論に失敗しました: %s"
+                 (Type_error.string_of_error err))
+      in
+      let fn_opt =
+        tast.Typed_ast.tcu_items
+        |> List.find_map (fun decl ->
+               match decl.Typed_ast.tdecl_kind with
+               | Typed_ast.TFnDecl fn when String.equal fn.tfn_name.name "handled_demo"
+                 -> Some fn
+               | _ -> None)
+      in
+      let fn =
+        match fn_opt with
+        | Some value -> value
+        | None -> fail desc "handled_demo の型付き関数が見つかりませんでした"
+      in
+      let entry =
+        match Constraint_solver.resolve_effect_profile ~symbol:"handled_demo" with
+        | Some entry -> entry
+        | None ->
+            fail desc "効果制約テーブルから handled_demo を取得できませんでした"
+      in
+      ensure
+        (match entry.Constraint_solver.EffectConstraintTable.type_row with
+        | Some row -> Types.effect_row_equal row fn.Typed_ast.tfn_effect_row
+        | None -> false)
+        desc "constraint table の効果行が型情報と一致しません";
+      let declared_expected =
+        normalize_effect_names fn.Typed_ast.tfn_effect_row.declared
+      in
+      let residual_expected =
+        normalize_effect_names fn.Typed_ast.tfn_effect_row.residual
+      in
+      let canonical_expected =
+        Types.Effect_name_set.fold (fun name acc -> name :: acc)
+          fn.Typed_ast.tfn_effect_row.canonical []
+        |> List.sort_uniq String.compare
+      in
+      let effect_set =
+        entry.Constraint_solver.EffectConstraintTable.effect_set
+      in
+      let effect_declared =
+        effect_set.Effect_profile.declared
+        |> List.map (fun tag ->
+               String.lowercase_ascii tag.Effect_profile.effect_name)
+      in
+      let effect_residual =
+        effect_set.residual
+        |> List.map (fun tag ->
+               String.lowercase_ascii tag.Effect_profile.effect_name)
+      in
+      ensure (effect_declared = declared_expected) desc
+        "effect_set.declared が型情報と一致しません";
+      ensure (effect_residual = residual_expected) desc
+        "effect_set.residual が型情報と一致しません";
+      ensure
+        (canonical_expected
+        = List.sort_uniq String.compare (effect_declared @ effect_residual))
+        desc "effect_set の正規化結果が canonical と一致しません";
+      let required_stage =
+        Effect_profile.stage_requirement_to_string entry.stage_requirement
+      in
+      ensure
+        (String.equal required_stage "at_least:stable") desc
+        "Stage 要件が期待値と一致しません";
+      let actual_stage =
+        Option.map Effect_profile.stage_id_to_string entry.resolved_stage
+      in
+      ensure
+        (match actual_stage with Some value -> String.equal value "stable" | _ -> false)
+        desc "実行時 Stage が期待値と一致しません";
+      Constraint_solver.reset_effect_constraints ()
+
 let () =
-  let tests = [ test_streaming_matches_batch; test_pending_resume_flow ] in
+  let tests =
+    [
+      test_streaming_matches_batch;
+      test_pending_resume_flow;
+      test_streaming_effect_row_stage_consistency;
+    ]
+  in
   List.iter (fun fn -> fn ()) tests

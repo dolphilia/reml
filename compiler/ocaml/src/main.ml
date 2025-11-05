@@ -160,6 +160,34 @@ let event_of_profile ?audit_id ?change_set ?symbol
 
 let event_of_stage_mismatch ?audit_id ?change_set ~function_name ~required_stage
     ~actual_stage ~capability ?(capability_stages = []) ~stage_trace () =
+  let row_fields =
+    match Constraint_solver.resolve_effect_profile ~symbol:function_name with
+    | Some entry -> (
+        match entry.EffectTable.type_row with
+        | Some row ->
+            let declared_json =
+              `List (List.map (fun name -> `String name) row.declared)
+            in
+            let residual_json =
+              `List (List.map (fun name -> `String name) row.residual)
+            in
+            let canonical_values =
+              Types.Effect_name_set.fold
+                (fun name acc -> name :: acc)
+                row.canonical []
+              |> List.rev
+            in
+            let canonical_json =
+              `List (List.map (fun name -> `String name) canonical_values)
+            in
+            [
+              ("effect.type_row.declared", declared_json);
+              ("effect.type_row.residual", residual_json);
+              ("effect.type_row.canonical", canonical_json);
+            ]
+        | None -> [])
+    | None -> []
+  in
   let capability_fields =
     if capability_stages = [] then []
     else
@@ -189,7 +217,7 @@ let event_of_stage_mismatch ?audit_id ?change_set ~function_name ~required_stage
       ]
   in
   let metadata =
-    capability_fields
+    row_fields @ capability_fields
     @ [
         ("symbol", `String function_name);
         ("effect.stage.required", `String required_stage);

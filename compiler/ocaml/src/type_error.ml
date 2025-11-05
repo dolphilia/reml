@@ -15,6 +15,7 @@ open Effect_profile
 module Json = Yojson.Basic
 module Ffi = Ffi_contract
 module Typeclass_metadata = Typeclass_metadata
+module EffectTable = Constraint_solver.EffectConstraintTable
 
 type trait_constraint_stage_extension = {
   required_stage : string;
@@ -393,6 +394,13 @@ let append_runtime_stage_trace ?capability stage_trace ~actual_stage =
           else aux (step :: acc) inserted rest
     in
     aux [] false stage_trace
+
+let effect_row_for_function function_name =
+  match Constraint_solver.resolve_effect_profile ~symbol:function_name with
+  | Some entry ->
+      let Constraint_solver.EffectConstraintTable.{ type_row = row; _ } = entry in
+      row
+  | None -> None
 
 (** ミュータブルでない束縛への代入エラーを生成 *)
 let immutable_binding_error name span = ImmutableBinding { name; span }
@@ -916,9 +924,15 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
       let enriched_trace =
         append_runtime_stage_trace stage_trace ~actual_stage ?capability
       in
+      let type_row =
+        match function_name with
+        | Some name -> effect_row_for_function name
+        | None -> None
+      in
       let diag =
-        with_effect_stage_extension ~required_stage ~capability:capability_name
-          ~actual_stage ~stage_trace:enriched_trace
+        with_effect_stage_extension ?type_row ~required_stage
+          ~capability:capability_name ~actual_stage
+          ~stage_trace:enriched_trace
           ~capability_stages diag
       in
       let diag =

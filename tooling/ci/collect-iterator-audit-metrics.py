@@ -3034,6 +3034,284 @@ def collect_effect_syntax_metrics(
     return metric
 
 
+def collect_effect_row_metrics(
+    paths: Sequence[Path],
+) -> Tuple[
+    Optional[Dict[str, Any]],
+    Optional[Dict[str, Any]],
+    Optional[Dict[str, Any]],
+]:
+    stage_total = 0
+    stage_passed = 0
+    stage_failures: List[Dict[str, Any]] = []
+    stage_sources: Set[str] = set()
+
+    type_total = 0
+    type_passed = 0
+    type_failures: List[Dict[str, Any]] = []
+    type_sources: Set[str] = set()
+
+    guard_count = 0
+    guard_occurrences: List[Dict[str, Any]] = []
+    guard_sources: Set[str] = set()
+
+    for path in paths:
+        data = load_json(path)
+        try:
+            diagnostics_iter = iter_diagnostics(data)
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
+            codes = _as_string_list(diag.get("codes"))
+            if codes and any(
+                isinstance(code, str)
+                and code.strip() == "effects.type_row.integration_blocked"
+                for code in codes
+            ):
+                guard_count += 1
+                guard_sources.add(str(path))
+                guard_occurrences.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "message": diag.get("message"),
+                    }
+                )
+
+            extensions = _as_dict(diag.get("extensions"))
+            declared_ext = (
+                _normalize_string_list(
+                    extensions.get("effect.type_row.declared") if extensions else None
+                )
+            )
+            residual_ext = (
+                _normalize_string_list(
+                    extensions.get("effect.type_row.residual") if extensions else None
+                )
+            )
+            canonical_ext = (
+                _normalize_string_list(
+                    extensions.get("effect.type_row.canonical") if extensions else None
+                )
+            )
+
+            if (
+                declared_ext is None
+                and residual_ext is None
+                and canonical_ext is None
+            ):
+                continue
+
+            type_sources.add(str(path))
+            type_total += 1
+            type_reasons: List[str] = []
+            if declared_ext is None:
+                type_reasons.append("extensions.declared.missing")
+                declared_norm: List[str] = []
+            else:
+                declared_norm = [value.lower() for value in declared_ext]
+            if residual_ext is None:
+                type_reasons.append("extensions.residual.missing")
+                residual_norm: List[str] = []
+            else:
+                residual_norm = [value.lower() for value in residual_ext]
+            if canonical_ext is None:
+                type_reasons.append("extensions.canonical.missing")
+                canonical_norm: List[str] = []
+            else:
+                canonical_norm = [value.lower() for value in canonical_ext]
+
+            if not type_reasons:
+                expected_canonical = sorted(set(declared_norm + residual_norm))
+                if sorted(set(canonical_norm)) != expected_canonical:
+                    type_reasons.append("canonical.mismatch")
+
+            if type_reasons:
+                type_failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "reasons": type_reasons,
+                        "declared": declared_ext,
+                        "residual": residual_ext,
+                        "canonical": canonical_ext,
+                    }
+                )
+            else:
+                type_passed += 1
+
+            metadata = _as_dict(diag.get("audit_metadata"))
+            audit_entry = _as_dict(diag.get("audit"))
+            envelope_meta = (
+                _as_dict(audit_entry.get("metadata")) if audit_entry else None
+            )
+
+            stage_total += 1
+            stage_sources.add(str(path))
+            stage_reasons: List[str] = []
+
+            declared_diag = declared_norm
+            residual_diag = residual_norm
+            canonical_diag = sorted(set(canonical_norm))
+
+            metadata_declared = (
+                _normalize_string_list(
+                    metadata.get("effect.type_row.declared") if metadata else None
+                )
+            )
+            metadata_residual = (
+                _normalize_string_list(
+                    metadata.get("effect.type_row.residual") if metadata else None
+                )
+            )
+            metadata_canonical = (
+                _normalize_string_list(
+                    metadata.get("effect.type_row.canonical") if metadata else None
+                )
+            )
+
+            envelope_declared = (
+                _normalize_string_list(
+                    envelope_meta.get("effect.type_row.declared")
+                    if envelope_meta
+                    else None
+                )
+            )
+            envelope_residual = (
+                _normalize_string_list(
+                    envelope_meta.get("effect.type_row.residual")
+                    if envelope_meta
+                    else None
+                )
+            )
+            envelope_canonical = (
+                _normalize_string_list(
+                    envelope_meta.get("effect.type_row.canonical")
+                    if envelope_meta
+                    else None
+                )
+            )
+
+            def _normalize_canonical(value: Optional[List[str]]) -> Optional[List[str]]:
+                if value is None:
+                    return None
+                return sorted(set(entry.lower() for entry in value))
+
+            def _normalize_linear(value: Optional[List[str]]) -> Optional[List[str]]:
+                if value is None:
+                    return None
+                return [entry.lower() for entry in value]
+
+            metadata_declared_norm = _normalize_linear(metadata_declared)
+            metadata_residual_norm = _normalize_linear(metadata_residual)
+            metadata_canonical_norm = _normalize_canonical(metadata_canonical)
+
+            envelope_declared_norm = _normalize_linear(envelope_declared)
+            envelope_residual_norm = _normalize_linear(envelope_residual)
+            envelope_canonical_norm = _normalize_canonical(envelope_canonical)
+
+            if metadata_declared_norm is None:
+                stage_reasons.append("audit_metadata.declared.missing")
+            elif metadata_declared_norm != declared_diag:
+                stage_reasons.append("audit_metadata.declared.mismatch")
+            if metadata_residual_norm is None:
+                stage_reasons.append("audit_metadata.residual.missing")
+            elif metadata_residual_norm != residual_diag:
+                stage_reasons.append("audit_metadata.residual.mismatch")
+            if metadata_canonical_norm is None:
+                stage_reasons.append("audit_metadata.canonical.missing")
+            elif metadata_canonical_norm != canonical_diag:
+                stage_reasons.append("audit_metadata.canonical.mismatch")
+
+            if envelope_declared_norm is None:
+                stage_reasons.append("audit_envelope.declared.missing")
+            elif envelope_declared_norm != declared_diag:
+                stage_reasons.append("audit_envelope.declared.mismatch")
+            if envelope_residual_norm is None:
+                stage_reasons.append("audit_envelope.residual.missing")
+            elif envelope_residual_norm != residual_diag:
+                stage_reasons.append("audit_envelope.residual.mismatch")
+            if envelope_canonical_norm is None:
+                stage_reasons.append("audit_envelope.canonical.missing")
+            elif envelope_canonical_norm != canonical_diag:
+                stage_reasons.append("audit_envelope.canonical.mismatch")
+
+            if stage_reasons:
+                stage_failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "reasons": stage_reasons,
+                        "declared": declared_ext,
+                        "residual": residual_ext,
+                        "canonical": canonical_ext,
+                        "audit_metadata_declared": metadata_declared,
+                        "audit_metadata_residual": metadata_residual,
+                        "audit_metadata_canonical": metadata_canonical,
+                        "audit_envelope_declared": envelope_declared,
+                        "audit_envelope_residual": envelope_residual,
+                        "audit_envelope_canonical": envelope_canonical,
+                    }
+                )
+            else:
+                stage_passed += 1
+
+    stage_metric: Optional[Dict[str, Any]]
+    if stage_total == 0:
+        stage_metric = None
+    else:
+        stage_pass_rate, stage_fraction = calculate_pass_rates(
+            stage_passed, stage_total
+        )
+        stage_metric = {
+            "metric": "diagnostics.effect_row_stage_consistency",
+            "total": stage_total,
+            "passed": stage_passed,
+            "failed": stage_total - stage_passed,
+            "pass_rate": stage_pass_rate,
+            "pass_fraction": stage_fraction,
+            "status": "success" if stage_pass_rate == 1.0 else "error",
+            "sources": sorted(stage_sources),
+        }
+        if stage_failures:
+            stage_metric["failures"] = stage_failures
+
+    type_metric: Optional[Dict[str, Any]]
+    if type_total == 0:
+        type_metric = None
+    else:
+        type_pass_rate, type_fraction = calculate_pass_rates(type_passed, type_total)
+        type_metric = {
+            "metric": "type_effect_row_equivalence",
+            "total": type_total,
+            "passed": type_passed,
+            "failed": type_total - type_passed,
+            "pass_rate": type_pass_rate,
+            "pass_fraction": type_fraction,
+            "status": "success" if type_pass_rate == 1.0 else "error",
+            "sources": sorted(type_sources),
+        }
+        if type_failures:
+            type_metric["failures"] = type_failures
+
+    guard_metric: Optional[Dict[str, Any]]
+    if guard_count == 0:
+        guard_metric = {
+            "metric": "effect_row_guard_regressions",
+            "count": 0,
+            "status": "success",
+        }
+    else:
+        guard_metric = {
+            "metric": "effect_row_guard_regressions",
+            "count": guard_count,
+            "status": "error",
+            "sources": sorted(guard_sources),
+            "occurrences": guard_occurrences,
+        }
+    return stage_metric, type_metric, guard_metric
+
+
 def collect_plugin_bundle_metrics(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
     total = 0
     passed = 0
@@ -3927,6 +4205,22 @@ def main(argv: Optional[List[str]] = None) -> int:
                     related.append(metric)
     if "effects" in sections:
         effects_metric = collect_effect_syntax_metrics(sources)
+        (
+            effect_row_stage_metric,
+            type_effect_row_metric,
+            guard_metric,
+        ) = collect_effect_row_metrics(sources)
+        related_metrics_target: List[Dict[str, Any]] = []
+        if effects_metric:
+            related_metrics_target = effects_metric.setdefault("related_metrics", [])
+        for metric in (effect_row_stage_metric, type_effect_row_metric):
+            if not metric:
+                continue
+            append_metrics.append(metric)
+            if effects_metric:
+                related_metrics_target.append(metric)
+        if guard_metric:
+            append_metrics.append(guard_metric)
     if "type_inference" in sections:
         type_inference_metric = collect_value_restriction_violation_metric(sources)
         value_restriction_legacy_metric = collect_value_restriction_legacy_metric(
