@@ -158,6 +158,13 @@
 | H-O4 | `docs/notes/dsl-plugin-roadmap.md` と Stage テーブルを更新し、効果ハンドラ登録と Capability Stage の整合を監査できるようにする。 | `effects.contract.stage_mismatch` / `bridge.stage.*` 診断が効果構文を通じて再現でき、監査ログに Stage 情報が揃う。 | SYNTAX-003 S4／`docs/spec/3-8-core-runtime-capability.md` |
 | H-O5 | 脚注 `[^effects-syntax-poc-phase25]` の撤去条件を満たした時点で仕様・索引を更新し、Phase 2-8 へ報告する。 | Stage = Stable に昇格した週のレビューで脚注撤去を承認し、`2-5-spec-drift-remediation.md` へ完了記録を残す。 | SYNTAX-003 S4／`2-5-spec-drift-remediation.md` 差分リスト |
 
+### 2026-12-07 H-O3 フラグ運用棚卸
+- `compiler/ocaml/src/cli/options.ml` に `-Zalgebraic-effects` / `--experimental-effects` フラグが未定義であり、`Options.to_run_config` も `Parser_run_config.set_experimental_effects` を呼び出していないことを確認。CLI 実行時に `Parser_flags.set_experimental_effects_enabled` が常に `false` で終わるため、PoC 構文はテスト専用の `Run_config` からしか利用できない状態。
+- LSP 実装では `tooling/lsp/tests/client_compat/fixtures/` の RunConfig JSON に `experimental_effects` キーが存在せず、`diagnostic_transport.ml` も CLI と同じフラグを解釈していない。LSP 経由で PoC を行うと `effects.syntax.experimental_disabled` が発火し続けるため、Phase 2-7 で交渉メッセージへフラグを追加する必要がある。
+- CI/スクリプト側では `scripts/validate-diagnostic-json.sh`・`tooling/ci/collect-iterator-audit-metrics.py` がフラグを渡しておらず、効果構文ゴールデンや KPI 計測を手動で回す際にオプション指定漏れが発生し得る。PoC ゴールデン生成スクリプトを新設し、CI では環境変数 `REML_ENABLE_EFFECT_POC`（仮称）で統一的に有効化する案を検討。
+- ドキュメントは脚注 `[^effects-syntax-poc-phase25]` の記述が最新だが、CLI/LSP 操作ガイドにフラグの導線が無いため、Stage 昇格判定時にユーザー操作が再現できないリスクが残る。`docs/guides/cli-workflow.md` と `docs/notes/dsl-plugin-roadmap.md` にフラグ利用手順を追加するタスクを `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §8.2 へ追記した。
+- 次アクション: Phase 2-7 Sprint A で CLI → LSP → CI → ドキュメントの順に対応するワークフロー案を確定し、完了後は H-O3 の成功条件（CLI/LSP/CI の文言・既定値統一、脚注撤去準備）をレビューでチェックする。
+
 ---
 
 ## Phase 2-5 TYPE-002 Step1 効果行統合棚卸（2026-04-10）

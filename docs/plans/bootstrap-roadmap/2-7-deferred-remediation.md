@@ -261,9 +261,19 @@
 - **進捗 (2025-11-05)**: `effect_syntax_tests.ml` とゴールデン `syntax-constructs.json.golden` を追加し、`perform`/`handle` 成功と残余効果リーク失敗を OCaml テストで固定化。新設サマリを `collect-iterator-audit-metrics.py --section effects` から参照できるよう効果メトリクスを実装し、`syntax.effect_construct_acceptance` / `effects.syntax_poison_rate` を `--require-success` でゲート化した。Stage ミスマッチケースは属性構文の不整合により現状未再現のため、後続で `@requires_capability` の Stage/Capability 連携を整理し、`0-4-risk-handling.md#effects-stage-mismatch` にフォローアップを登録する予定。
 
 8.2. **フラグ運用とドキュメント**
-- `-Zalgebraic-effects`（仮称）を CLI/LSP/ビルドスクリプトで共通制御する。CLI オプションは `compiler/ocaml/src/cli/options.ml`、LSP は `tooling/lsp/tests/client_compat/fixtures/` で検証し、ビルドスクリプトは `scripts/validate-diagnostic-json.sh` や CI 定義に Experimental フラグを反映する。
-- 仕様書 (`docs/spec/1-1-syntax.md`・`1-5-formal-grammar-bnf.md`・`3-8-core-runtime-capability.md`) と索引 (`docs/spec/README.md`) に付与した脚注 `[^effects-syntax-poc-phase25]` の撤去条件を整理し、Stage = Stable へ到達した後に Phase 2-8 へ通知する運用を確立する。
-- `docs/notes/dsl-plugin-roadmap.md` に効果ハンドラと Capability Stage の整合チェックを追加し、`effects.contract.stage_mismatch` / `bridge.stage.*` 診断が PoC 実装で再現できることを検証する。
+- **タスクブレークダウン**:
+  - CLI/RunConfig: `compiler/ocaml/src/cli/options.ml` に `-Zalgebraic-effects`（別名 `--experimental-effects`）を追加し、`Options.to_run_config` で `Parser_run_config.set_experimental_effects` を呼び出す。`compiler/ocaml/src/main.ml` では `Parser_run_config` に伝播した値を `Parser_driver.run` へ渡し、`Parser_flags.set_experimental_effects_enabled` の初期化シーケンスが CLI 実行毎にリセットされることを確認する。ヘルプ出力と `docs/guides/cli-workflow.md` にフラグ説明を追加し、Stage Override メッセージと文言を揃える。
+  - Tooling/LSP/CI: `tooling/lsp/tests/client_compat` の初期化経路（`diagnostic_transport.ml` ほか）で RunConfig を拡張し、`experimental_effects` を LSP セッションへ伝搬する。`tooling/ci/collect-iterator-audit-metrics.py` と `scripts/validate-diagnostic-json.sh` は効果ゴールデン生成時にフラグを既定有効とし、PoC ゴールデン再生成用の補助スクリプト（`scripts/update-effect-poc.sh` 仮称）を整備する。
+  - 文書/脚注: Stage 昇格後に脚注 `[^effects-syntax-poc-phase25]` を撤去できるよう、`docs/spec/1-1-syntax.md`・`docs/spec/1-5-formal-grammar-bnf.md`・`docs/spec/3-8-core-runtime-capability.md`・`docs/spec/README.md` に解除チェックリストを追記し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と同期する。`docs/guides/plugin-authoring.md`・`docs/notes/dsl-plugin-roadmap.md` にフラグ依存の記述を追加し、外部連携ドキュメントの整合を取る。
+  - プラグイン／監査: `effects.syntax.constructs.*` メトリクスへフラグ状態を記録し、`RuntimeBridge` 監査と `reports/diagnostic-format-regression.md` の差分レビューで Experimental モードの挙動を追跡できるようにする。
+- **検証観点**:
+  - CLI: `dune exec bin/remlc -- --help` にフラグ説明が表示され、`-Zalgebraic-effects` 有効／無効の双方で `compiler/ocaml/tests/effect_syntax_tests.ml` と `compiler/ocaml/tests/effect_handler_poc_tests.ml` が通過する。
+  - LSP/CI: `tooling/lsp/tests/client_compat` のプロトコル交渉ログで `experimental_effects` が明示的に切り替わり、`collect-iterator-audit-metrics.py --section effects --require-success` が `syntax.effect_construct_acceptance = 1.0` / `effects.syntax_poison_rate = 0.0` を維持する。
+  - ドキュメント: 脚注撤去後に `docs/spec/README.md`・`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の索引・差分リストに残存リンクがないことを確認する。
+- **リスクとフォローアップ**:
+  - フラグ整合が崩れた場合は `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` の `EFFECT-POC-Stage` を `Escalated` に更新し、Phase 2-7 Sprint C レビューで是正策を確認する。
+  - フラグ名称に変更が生じた際は CLI/LSP/ドキュメントの文言を同時更新し、影響範囲を `docs/notes/effect-system-tracking.md`（H-O3 トラッキング）へ追記する。
+- **進捗 (2026-12-07)**: CLI (`compiler/ocaml/src/cli/options.ml`) に `experimental_effects` を制御するフラグが未導入であること、`Options.to_run_config` が `Parser_run_config.set_experimental_effects` を呼び出していないこと、LSP/CI 側でも PoC フラグが共有されていないことを確認。差分と対応順序（CLI → LSP → CI → ドキュメント）を `docs/notes/effect-system-tracking.md` 2026-12-07 更新分へ記録した。
 
 8.3. **ハンドオーバーとレビュー**
 - `docs/notes/effect-system-tracking.md` の「Phase 2-5 S4 引き継ぎパッケージ」に沿って、PoC 到達条件と残課題を確認。チェックリスト H-O1〜H-O5 が完了した時点で `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` に更新メモを残す。
