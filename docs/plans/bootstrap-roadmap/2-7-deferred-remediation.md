@@ -216,6 +216,24 @@
 7.1. **XID テーブル整備**
 - `scripts/` 配下に UnicodeData 由来の `XID_Start` / `XID_Continue` テーブル生成スクリプトを追加し、CI キャッシュとライセンス整備を実施する。生成物は `compiler/ocaml/src/lexer_tables/`（新設予定）で管理し、`dune` の `@check-unicode-tables` で再生成チェックを行う。
 - `compiler/ocaml/src/lexer.mll` と `Core_parse.Lex` に新テーブルを組み込み、`--lex-profile=unicode` を既定へ移行する段階的ロードマップを作成する。ASCII プロファイルは互換モードとして残し、切り替え手順を `docs/spec/2-3-lexer.md` に記載する。
+- **実装ステップ詳細**:
+  1. **生成パイプラインの整備**: `scripts/unicode/generate-xid-tables.py`（新設）で `DerivedCoreProperties.txt` / `UnicodeData.txt` / `PropList.txt` を入力に `xid_start_ranges.json` と `xid_continue_ranges.json` を生成し、`compiler/ocaml/src/lexer_tables/unicode_xid_tables.ml` へ埋め込む。生成時は `--unicode-version` と `--source-cache` を受け取り、ダウンロードした元データの SPDX ライセンス（Unicode-Derived-Core-Properties-1.0）を `THIRD_PARTY_NOTICES.md` に追記する。`dune` の `rule` と `alias (name check-unicode-tables)` で CI から `dune build @check-unicode-tables` を実行し、生成物のハッシュ差分を監視する。
+  2. **Lexer / Core.Parse 統合**: `compiler/ocaml/src/lexer_tables/unicode_xid_tables.ml` から `is_xid_start` / `is_xid_continue` / `unicode_version` を公開し、`lexer.mll` 側では UTF-8 デコードヘルパー（`Lexer_utf8.decode : Lexing.lexbuf -> Uchar.t option`）を介して識別子を読み取る。ASCII パスは `RunConfig.extensions["lex"].identifier_profile = "ascii"` の場合のみ有効化し、`Core_parse.Lex` で `profile=unicode` を選ぶと `Lexer.set_identifier_profile Unicode` を呼び出してテーブルを用いる構成とする。
+  3. **互換モードと監査連携**: `RunConfig` JSON フォーマットに `lex.identifier_profile` を追加し、CLI/LSP/Streaming で `ascii` / `unicode` を切り替えられるようにする。CI では `collect-iterator-audit-metrics.py` の `lexer.identifier_profile_unicode` を 1.0 に押し上げる際に生成メタデータ（`unicode_version`, `table_checksum`）を `AuditEnvelope.metadata["unicode.identifier_profile"]` に記録し、ASCII モード時は `profile=fallback` の診断を発火させて後方互換テストを維持する。
+- **ステップ別進捗詳細**:
+  - **ステップ1 — 生成パイプライン設計とファイル配置**
+    - `scripts/unicode/` を新設し、Python 3.11 以上で実行する前提とする。`generate-xid-tables.py` は `--out-dir compiler/ocaml/src/lexer_tables` を既定値とし、生成物に `unicode_xid_tables.ml`（OCaml モジュール）と `unicode_xid_manifest.json`（バージョン・入力ハッシュ記録）を出力する。
+    - `unicode_xid_tables.ml` では `let start : int array = [| (* code point ranges *) |]` 形式でコードポイント範囲をエンコードし、`Lexer_tables.Range_set`（同ファイル内で再生成される二分探索ユーティリティ）を介してルックアップする。ASCII 範囲は別途 `let ascii_start_mask` として定義し、Unicode テーブル更新時にも変更が無いことを quick check できるようにする。
+    - **進捗 (2026-11-29)**: 生成スクリプト入出力仕様、`unicode_xid_manifest.json` の必須フィールド（`unicode_version`, `input_sha256`, `generated_at`）と SPDX 表記方針を本節で確定した。`THIRD_PARTY_NOTICES.md` 更新タスクと `dune` ルール追加タスクを Phase 2-7 Sprint C へ登録する。
+  - **ステップ2 — lexer/Core.Parse 統合と互換モード**
+    - `lexer.mll` に UTF-8 連続バイト定義（`let utf8_2`, `let utf8_3`, `let utf8_4`）を追加し、`token` ルールから ASCII/Unicode 共通の `read_identifier` ヘルパーを呼び出す。ヘルパーは `Lexer_tables.Unicode_xid_tables.is_start` / `is_continue` を用いてコードポイントを検証し、識別子文字列は `Buffer` に UTF-8 のまま蓄積する。
+    - `Core_parse.Lex.Bridge` へ `identifier_profile` の反映処理を追加し、`RunConfig` に `lex.identifier_profile` が存在しない場合はフェーズ移行用ガード（`UnicodeFallback`）を返す。ASCII モードとの切り替えは `Parser_run_config.Lex.profile` と同期させ、CLI/LSP での表示文字列を `unicode` / `ascii-compat` として統一する。
+    - **進捗 (2026-11-29)**: `lexer.mll` 側で使用する UTF-8 ヘルパー API と `RunConfig` 連動の境界条件（互換モード時は現行 ASCII テーブルを強制する）を整理し、`parser_design.md` §4.5 へ差分説明を追記するタスクを割り当てた。`core_parse_lex.ml` と `parser_run_config.ml` の更新対象フィールドを洗い出し、本節に同期ポイント（`identifier_profile`）を明記した。
+  - **ステップ3 — CI / ライセンス / リリース準備**
+    - `dune-project` へ `using fmt` の追加を検討し、`@fmt` と `@check-unicode-tables` を同時に実行するプリセット `scripts/ci-local.sh --section lexer-unicode` を用意する。CI では Linux / Windows / macOS で生成スクリプトが再現可能であることを確認し、生成物の差分があった場合はジョブを失敗させてレビューを促す。
+    - 監査ログでは `AuditEnvelope.metadata["unicode.identifier_profile"]` に `{"profile":"unicode","unicode_version":"15.1.0","table_checksum":"..."}`
+      を記録し、ASCII モードの場合は `{"profile":"ascii-compat","reason":"Phase2-7 fallback"}` を出力する。`reports/diagnostic-format-regression.md` に Unicode 文字を含む診断サンプルを追加し、表示崩れを監視する。
+    - **進捗 (2026-11-29)**: CI 連携と監査メタデータの項目名 (`unicode.identifier_profile`, `unicode.tables.checksum`) を確定し、本節に記録した。`collect-iterator-audit-metrics.py` と `ci-local.sh` の更新手順を Phase 2-7 `diagnostics` チームへ共有済み（週次同期 2026-11-28）。
 
 7.2. **テストとメトリクス**
 - CI で `REML_ENABLE_UNICODE_TESTS=1` を常時有効化し、`compiler/ocaml/tests/unicode_ident_tests.ml` と `unicode_identifiers.reml` フィクスチャを全プラットフォームで実行する。`collect-iterator-audit-metrics.py --require-success` の `parser.runconfig.lex.profile` 集計で `unicode` が 100% となることを確認する。
