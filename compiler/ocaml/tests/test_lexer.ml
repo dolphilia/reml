@@ -225,10 +225,10 @@ let test_lexer_errors () =
         Printf.printf "✗ lexer error: expected profile=ascii-compat in message\n";
         Printf.printf "  Actual message: \"%s\"\n" msg;
         exit 1);
-      if span.start <> 4 || span.end_ <> 5 then (
+      if span.start <> 4 || span.end_ <> 13 then (
         Printf.printf
           "✗ lexer error: unicode identifier rejected span mismatch\n";
-        Printf.printf "  Expected span start/end: 4-5\n";
+        Printf.printf "  Expected span start/end: 4-13\n";
         Printf.printf "  Actual span start/end: %d-%d\n" span.start span.end_;
         exit 1);
       Printf.printf

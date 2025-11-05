@@ -681,7 +681,7 @@ let test_function_declarations () =
       match result with
       | Ok (tdecl, _, _) ->
           (* 関数型: i64 -> i64 -> i64 *)
-          let expected_ty = TArrow (ty_i64, TArrow (ty_i64, ty_i64)) in
+          let expected_ty = ty_arrow ty_i64 (ty_arrow ty_i64 ty_i64) in
           assert_type_eq expected_ty tdecl.tdecl_scheme.body "Function type"
       | Error _ -> failwith "Should not reach here");
 
@@ -759,7 +759,7 @@ let test_function_declarations () =
                   assert_type_eq ty_i64 param.tty msg;
                   assert_type_eq ty_i64 param.tpat.tpat_ty msg)
                 tfn.tfn_params;
-              let expected_ty = TArrow (ty_i64, TArrow (ty_i64, ty_i64)) in
+              let expected_ty = ty_arrow ty_i64 (ty_arrow ty_i64 ty_i64) in
               assert_type_eq expected_ty tdecl.tdecl_scheme.body
                 "Inferred add function type"
           | _ -> failwith "Expected a function declaration")
@@ -982,7 +982,7 @@ let test_function_declarations () =
       match result with
       | Ok (tdecl, _, _) ->
           (* 関数型: i64 -> i64 *)
-          let expected_ty = TArrow (ty_i64, ty_i64) in
+          let expected_ty = ty_arrow ty_i64 ty_i64 in
           assert_type_eq expected_ty tdecl.tdecl_scheme.body
             "Factorial function type"
       | Error _ -> failwith "Should not reach here");
@@ -1185,7 +1185,7 @@ let test_binary_operations () =
       let env = initial_env in
       (* identity関数を環境に追加: ∀a. a -> a *)
       let tv_a = TypeVarGen.fresh (Some "a") in
-      let identity_ty = TArrow (Types.TVar tv_a, Types.TVar tv_a) in
+      let identity_ty = ty_arrow (Types.TVar tv_a) (Types.TVar tv_a) in
       let env_with_identity =
         extend "identity"
           (scheme_to_constrained { quantified = [ tv_a ]; body = identity_ty })

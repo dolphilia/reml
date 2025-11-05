@@ -435,7 +435,7 @@ let test_function_type_impl () =
   let impl_eq_fn =
     {
       trait_name = "Eq";
-      impl_type = TArrow (TCon (TCInt I64), TCon TCString);
+      impl_type = ty_arrow (TCon (TCInt I64)) (TCon TCString);
       generic_params = [];
       where_constraints = [];
       methods = [ ("eq", "fn_eq") ];
@@ -447,7 +447,7 @@ let test_function_type_impl () =
 
   (* 検索: Eq for (i64 -> String) *)
   let result =
-    lookup "Eq" (TArrow (TCon (TCInt I64), TCon TCString)) registry
+    lookup "Eq" (ty_arrow (TCon (TCInt I64)) (TCon TCString)) registry
   in
   assert (result = Some impl_eq_fn);
 

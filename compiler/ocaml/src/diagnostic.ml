@@ -747,7 +747,7 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
   in
   let effect_fields =
     match type_row with
-    | Some row ->
+    | Some (row : Types.effect_row) ->
         let declared_json =
           `List (List.map (fun name -> `String name) row.declared)
         in
@@ -842,7 +842,7 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
   in
   let diag =
     match type_row with
-    | Some row ->
+    | Some (row : Types.effect_row) ->
         let declared_json =
           `List (List.map (fun name -> `String name) row.declared)
         in

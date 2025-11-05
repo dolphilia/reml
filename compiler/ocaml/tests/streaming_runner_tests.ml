@@ -72,6 +72,7 @@ let test_pending_resume_flow () =
     |> Run_config.Stream.set_flow_max_lag_bytes (Some 8192)
     |> Run_config.Stream.set_flow_debounce_ms (Some 10)
     |> Run_config.Stream.set_flow_throttle_ratio (Some 0.75)
+    |> Run_config.Effects.set_stage_override (Some "beta")
   in
   let step = ref 0 in
   let feeder () =
@@ -162,13 +163,42 @@ let test_pending_resume_flow () =
         (completed.meta.backpressure_policy = Some "auto"
         && completed.meta.backpressure_events = 1)
         desc "Completed メタデータのバックプレッシャ情報が不足しています";
-      ensure
-        (List.for_all
-           (fun event ->
-             not
-               (String.equal event.Audit_envelope.category "parser.stream.error"))
-           completed.audit_events)
-        desc "Completed の監査イベントが予期せぬエラーを含んでいます";
+      let error_events =
+        completed.audit_events
+        |> List.filter (fun event ->
+               String.equal event.Audit_envelope.category "parser.stream.error")
+      in
+      if error_events <> [] then (
+        let summaries =
+          error_events
+          |> List.mapi (fun idx event ->
+                 let metadata =
+                   event.Audit_envelope.envelope.Audit_envelope.metadata
+                   |> List.map (fun (key, value) ->
+                          Printf.sprintf "%s=%s" key
+                            (Yojson.Basic.to_string value))
+                   |> String.concat "; "
+                 in
+                 Printf.sprintf "#%d(%s)" (idx + 1) metadata)
+          |> String.concat ", "
+        in
+        let diagnostics =
+          completed.result.diagnostics
+          |> List.filter (fun diag ->
+                 diag.Diagnostic.severity = Diagnostic.Error)
+          |> List.map (fun diag ->
+                 Printf.sprintf "%s[%s]" diag.Diagnostic.message
+                   (String.concat "," diag.Diagnostic.codes))
+          |> String.concat "; "
+        in
+        let details =
+          if diagnostics = "" then summaries
+          else Printf.sprintf "%s; diagnostics=%s" summaries diagnostics
+        in
+        fail desc
+          (Printf.sprintf
+             "Completed の監査イベントに parser.stream.error が含まれます: %s"
+             details));
       pass desc
 
 let () =

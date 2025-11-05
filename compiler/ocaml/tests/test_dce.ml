@@ -142,7 +142,7 @@ let test_side_effect_preservation () =
   (* Phase 1 では関数呼び出しは副作用を持つと仮定するため、削除されない *)
   let var_x = VarIdGen.fresh "x" ty_i64 dummy_span in
   let fn_expr =
-    make_var_ref (VarIdGen.fresh "some_fn" (TArrow (ty_i64, ty_i64)) dummy_span)
+    make_var_ref (VarIdGen.fresh "some_fn" (ty_arrow ty_i64 ty_i64) dummy_span)
   in
   let bound =
     make_expr (App (fn_expr, [ make_int_lit 42L ])) ty_i64 dummy_span

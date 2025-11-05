@@ -139,16 +139,16 @@ let test_function_types () =
   let ctx = create_context "test_functions" in
 
   (* 関数型 i64 -> i64 *)
-  let fn_ty = reml_type_to_llvm ctx (TArrow (ty_i64, ty_i64)) in
+  let fn_ty = reml_type_to_llvm ctx (ty_arrow ty_i64 ty_i64) in
   assert_equal "関数型 i64 -> i64" "i64 (i64)" (lltype_to_string fn_ty);
 
   (* 関数型 Bool -> () *)
-  let fn_void_ty = reml_type_to_llvm ctx (TArrow (ty_bool, ty_unit)) in
+  let fn_void_ty = reml_type_to_llvm ctx (ty_arrow ty_bool ty_unit) in
   assert_equal "関数型 Bool -> ()" "void (i1)" (lltype_to_string fn_void_ty);
 
   (* 関数型 (i32, i32) -> i64 *)
   let fn_tuple_ty =
-    reml_type_to_llvm ctx (TArrow (TTuple [ ty_i32; ty_i32 ], ty_i64))
+    reml_type_to_llvm ctx (ty_arrow (TTuple [ ty_i32; ty_i32 ]) ty_i64)
   in
   assert_equal "関数型 (i32, i32) -> i64" "i64 ({ i32, i32 })"
     (lltype_to_string fn_tuple_ty)

@@ -207,7 +207,7 @@ let test_type_size_edge_cases () =
   assert_equal "() 空タプルサイズ" 0 empty_size;
 
   (* 関数型 → 8バイト（関数ポインタ） *)
-  let fn_ty = TArrow (ty_i32, ty_i64) in
+  let fn_ty = ty_arrow ty_i32 ty_i64 in
   let fn_llty = reml_type_to_llvm test_ctx fn_ty in
   let fn_size = get_type_size llctx fn_llty in
   (* 現在の実装では関数ポインタ（8バイト）として扱われる *)

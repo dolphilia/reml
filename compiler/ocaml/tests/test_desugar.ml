@@ -139,10 +139,10 @@ let test_desugar_pipe_simple () =
   let arg = make_typed_expr (TLiteral (Int ("42", Base10))) ty_i64 in
   let fn_id = { name = "f"; span = dummy_span } in
   let fn_scheme =
-    scheme_to_constrained { quantified = []; body = TArrow (ty_i64, ty_i64) }
+    scheme_to_constrained { quantified = []; body = ty_arrow ty_i64 ty_i64 }
   in
   let fn =
-    make_typed_expr (TVar (fn_id, fn_scheme)) (TArrow (ty_i64, ty_i64))
+    make_typed_expr (TVar (fn_id, fn_scheme)) (ty_arrow ty_i64 ty_i64)
   in
   let pipe_expr = make_typed_expr (TPipe (arg, fn)) ty_i64 in
 

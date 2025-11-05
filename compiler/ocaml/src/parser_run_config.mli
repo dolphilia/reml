@@ -191,6 +191,7 @@ module Effects : sig
     stage_override : string option;
     registry_path : string option;
     required_capabilities : string list;
+    type_row_mode : string option;
     namespace : Extensions.Namespace.t option;
   }
 
@@ -199,4 +200,5 @@ module Effects : sig
   val set_stage_override : string option -> run_config -> run_config
   val set_registry_path : string option -> run_config -> run_config
   val set_required_capabilities : string list -> run_config -> run_config
+  val set_type_row_mode : string option -> run_config -> run_config
 end

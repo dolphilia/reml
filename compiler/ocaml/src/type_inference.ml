@@ -2708,14 +2708,6 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
           ~fallback_span:effect_profile_raw.source_span effect_profile_raw
           residual_tags
       in
-      let effect_row_for_audit =
-        match config.type_row_mode with
-        | Type_row_dual_write -> Some effect_row
-        | Type_row_metadata_only -> None
-      in
-      record_effect_profile ?type_row:effect_row_for_audit
-        ~symbol:fn.fn_name.name effect_profile;
-
       let open Effect_profile in
       let effect_set = effect_profile.effect_set in
       let declared_effects =
@@ -2727,6 +2719,13 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
       let effect_row =
         Types.effect_row_make ~declared:declared_effects ~residual:residual_effects ()
       in
+      let effect_row_for_audit =
+        match config.type_row_mode with
+        | Type_row_dual_write -> Some effect_row
+        | Type_row_metadata_only -> None
+      in
+      record_effect_profile ?type_row:effect_row_for_audit
+        ~symbol:fn.fn_name.name effect_profile;
 
       (* 9. 最終的な関数型を構築 *)
       let rec build_function_type = function

@@ -401,6 +401,15 @@ module Streaming = struct
   let default_stage_required = "beta"
   let fallback_stage_actual = "experimental"
 
+  let stage_rank = function
+    | "experimental" -> 0
+    | "beta" -> 1
+    | "stable" -> 2
+    | _ -> 3
+
+  let stage_satisfies ~required ~actual =
+    stage_rank (normalize_stage actual) >= stage_rank (normalize_stage required)
+
   let default_bridge_id = "core.parse.streaming"
 
   type flow_state = {
@@ -572,31 +581,34 @@ module Streaming = struct
                   normalize_stage stage
               | _ -> fallback_stage_actual
             in
-            let span =
-              match snapshot.checkpoint with
-              | Some span -> span
-              | None -> default_span_for_file source_name
-            in
-            let policy_label =
-              match flow_state.config.policy with
-              | Stream_cfg.Flow.Manual -> "manual"
-              | Stream_cfg.Flow.Auto -> "auto"
-            in
-            let signal : Bridge_registry.stream_signal =
-              {
-                bridge_id = default_bridge_id;
-                span;
-                policy = policy_label;
-                reason;
-                demand = demand_hint_to_json demand;
-                await_count = meta.await_count;
-                resume_count = meta.resume_count;
-                backpressure_events = meta.backpressure_events;
-                stage_required = required_stage;
-                stage_actual = actual_stage;
-              }
-            in
-            Bridge_registry.stream_signal signal
+            if stage_satisfies ~required:required_stage ~actual:actual_stage then
+              []
+            else
+              let span =
+                match snapshot.checkpoint with
+                | Some span -> span
+                | None -> default_span_for_file source_name
+              in
+              let policy_label =
+                match flow_state.config.policy with
+                | Stream_cfg.Flow.Manual -> "manual"
+                | Stream_cfg.Flow.Auto -> "auto"
+              in
+              let signal : Bridge_registry.stream_signal =
+                {
+                  bridge_id = default_bridge_id;
+                  span;
+                  policy = policy_label;
+                  reason;
+                  demand = demand_hint_to_json demand;
+                  await_count = meta.await_count;
+                  resume_count = meta.resume_count;
+                  backpressure_events = meta.backpressure_events;
+                  stage_required = required_stage;
+                  stage_actual = actual_stage;
+                }
+              in
+              Bridge_registry.stream_signal signal
         | _ -> [] )
 
   let make_pending_event ~demand ~(meta : stream_meta)

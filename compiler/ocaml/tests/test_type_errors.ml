@@ -152,8 +152,8 @@ let test_unification_failure () =
 
   (* A-3. 関数型の引数型不一致 *)
   run_test "E7001: function argument type mismatch" (fun () ->
-      let expected_ty = TArrow (ty_i64, ty_i64) in
-      let actual_ty = TArrow (ty_string, ty_i64) in
+      let expected_ty = ty_arrow ty_i64 ty_i64 in
+      let actual_ty = ty_arrow ty_string ty_i64 in
       let result = Constraint.unify [] expected_ty actual_ty dummy_span in
       assert_error "UnificationFailure" result "Function argument types differ";
       match result with
@@ -351,7 +351,7 @@ let test_occurs_check () =
       let tv = TypeVarGen.fresh (Some "a") in
       let ty = TVar tv in
       (* 型変数 'a を 'a -> 'a に単一化しようとする *)
-      let arrow_ty = TArrow (ty, ty) in
+      let arrow_ty = ty_arrow ty ty in
       let result = Constraint.unify [] ty arrow_ty dummy_span in
       assert_error "OccursCheck" result "Cannot construct infinite type";
       match result with
@@ -424,7 +424,7 @@ let test_arity_mismatch () =
   run_test "E7004: function arity mismatch (too few args)" (fun () ->
       let env = initial_env in
       (* add: i64 -> i64 -> i64 を環境に追加 *)
-      let add_ty = TArrow (ty_i64, TArrow (ty_i64, ty_i64)) in
+      let add_ty = ty_arrow ty_i64 (ty_arrow ty_i64 ty_i64) in
       let env = extend "add" (scheme_to_constrained (mono_scheme add_ty)) env in
 
       (* add(1) - 引数が1つ不足 *)
@@ -461,7 +461,7 @@ let test_arity_mismatch () =
   run_test "E7004: function arity mismatch (too many args)" (fun () ->
       let env = initial_env in
       (* identity: i64 -> i64 を環境に追加 *)
-      let identity_ty = TArrow (ty_i64, ty_i64) in
+      let identity_ty = ty_arrow ty_i64 ty_i64 in
       let env =
         extend "identity" (scheme_to_constrained (mono_scheme identity_ty)) env
       in

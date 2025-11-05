@@ -256,7 +256,7 @@ let string_of_type_var tv =
   | None -> "t" ^ string_of_int tv.tv_id
 
 (** 型の文字列表現（簡易版） *)
-let rec string_of_effect_row row =
+let string_of_effect_row row =
   if effect_row_is_pure row then ""
   else
     let declared =
@@ -320,7 +320,7 @@ let type_const_equal tc1 tc2 =
   | _ -> false
 
 (** 型の等価性判定（構造的等価性） *)
-let rec effect_row_equal lhs rhs =
+let effect_row_equal lhs rhs =
   lhs.row_var = rhs.row_var && Effect_name_set.equal lhs.canonical rhs.canonical
   && lhs.declared = rhs.declared && lhs.residual = rhs.residual
 

@@ -69,7 +69,7 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
   let row_fields =
     match type_row with
     | None -> []
-    | Some row ->
+    | Some (row : Types.effect_row) ->
         let declared_json =
           `List (List.map (fun name -> `String name) row.declared)
         in

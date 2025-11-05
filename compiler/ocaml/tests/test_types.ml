@@ -80,7 +80,7 @@ let test_type_scheme () =
 
   (* 多相型: ∀a. a -> a *)
   let a = TypeVarGen.fresh (Some "a") in
-  let id_scheme = { quantified = [ a ]; body = TArrow (TVar a, TVar a) } in
+  let id_scheme = { quantified = [ a ]; body = ty_arrow (TVar a) (TVar a) } in
   assert_true "id_scheme is polymorphic" (is_polymorphic id_scheme);
 
   (* 型スキームの文字列表現 *)
@@ -195,9 +195,9 @@ let test_substitution () =
   assert_equal "apply subst to var" ty_i64 result;
 
   (* 関数型への代入 *)
-  let fn_ty = TArrow (TVar a, TVar a) in
+  let fn_ty = ty_arrow (TVar a) (TVar a) in
   let result = apply_subst subst fn_ty in
-  assert_equal "apply subst to arrow" (TArrow (ty_i64, ty_i64)) result;
+  assert_equal "apply subst to arrow" (ty_arrow ty_i64 ty_i64) result;
 
   (* タプル型への代入 *)
   let tuple_ty = TTuple [ TVar a; ty_bool ] in
@@ -224,12 +224,12 @@ let test_free_type_vars () =
 
   (* 関数型 *)
   let b = TypeVarGen.fresh (Some "b") in
-  let fn_ty = TArrow (TVar a, TVar b) in
+  let fn_ty = ty_arrow (TVar a) (TVar b) in
   let fvs = ftv_ty fn_ty in
   assert_equal_int "two free vars in arrow" 2 (List.length fvs);
 
   (* 型スキームの自由変数（量化変数は除外） *)
-  let scheme = { quantified = [ a ]; body = TArrow (TVar a, TVar b) } in
+  let scheme = { quantified = [ a ]; body = ty_arrow (TVar a) (TVar b) } in
   let fvs = ftv_cscheme (scheme_to_constrained scheme) in
   assert_equal_int "one free var in scheme" 1 (List.length fvs);
 
@@ -251,7 +251,7 @@ let test_occurs_check () =
   assert_false "not occurs in i64" (occurs_check a ty_i64);
 
   (* 関数型内に出現 *)
-  let fn_ty = TArrow (TVar a, ty_i64) in
+  let fn_ty = ty_arrow (TVar a) ty_i64 in
   assert_true "occurs in arrow" (occurs_check a fn_ty);
 
   (* タプル内に出現 *)
@@ -289,14 +289,14 @@ let test_unification () =
   TypeVarGen.reset ();
   let a = TypeVarGen.fresh (Some "a") in
   let b = TypeVarGen.fresh (Some "b") in
-  let fn1 = TArrow (TVar a, ty_i64) in
-  let fn2 = TArrow (ty_bool, TVar b) in
+  let fn1 = ty_arrow (TVar a) ty_i64 in
+  let fn2 = ty_arrow ty_bool (TVar b) in
   let result = unify empty_subst fn1 fn2 span in
   (match result with
   | Ok subst ->
       assert_equal_int "arrow unify" 2 (List.length subst);
       let result = apply_subst subst fn1 in
-      assert_equal "arrow unified" (TArrow (ty_bool, ty_i64)) result
+      assert_equal "arrow unified" (ty_arrow ty_bool ty_i64) result
   | Error _ -> failwith "arrow unify failed");
 
   (* 型不一致 *)
@@ -309,7 +309,7 @@ let test_unification () =
   (* Occurs check エラー *)
   TypeVarGen.reset ();
   let a = TypeVarGen.fresh (Some "a") in
-  let recursive = TArrow (TVar a, TVar a) in
+  let recursive = ty_arrow (TVar a) (TVar a) in
   let result = unify empty_subst (TVar a) recursive span in
   (match result with
   | Ok _ -> failwith "should fail on occurs check"

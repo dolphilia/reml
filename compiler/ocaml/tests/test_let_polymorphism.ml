@@ -537,7 +537,7 @@ let test_basic_let_polymorphism () =
           (* 型注釈があるので多相化されない（単相型になる） *)
           assert_quantified_count 0 tdecl.tdecl_scheme
             "Annotated function should be monomorphic";
-          let expected_ty = TArrow (ty_i64, ty_i64) in
+          let expected_ty = ty_arrow ty_i64 ty_i64 in
           assert_type_eq expected_ty tdecl.tdecl_scheme.body
             "Type should match annotation"
       | Error _ -> failwith "Should not reach here");
@@ -983,7 +983,7 @@ let test_recursive_polymorphism () =
           (* 型注釈があるので単相型 *)
           assert_quantified_count 0 tdecl.tdecl_scheme
             "Factorial should be monomorphic";
-          let expected_ty = TArrow (ty_i64, ty_i64) in
+          let expected_ty = ty_arrow ty_i64 ty_i64 in
           assert_type_eq expected_ty tdecl.tdecl_scheme.body "Factorial type"
       | Error _ -> failwith "Should not reach here");
 
