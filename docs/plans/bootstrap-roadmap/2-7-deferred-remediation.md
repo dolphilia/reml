@@ -225,6 +225,7 @@
     - `scripts/unicode/` を新設し、Python 3.11 以上で実行する前提とする。`generate-xid-tables.py` は `--out-dir compiler/ocaml/src/lexer_tables` を既定値とし、生成物に `unicode_xid_tables.ml`（OCaml モジュール）と `unicode_xid_manifest.json`（バージョン・入力ハッシュ記録）を出力する。
     - `unicode_xid_tables.ml` では `let start : int array = [| (* code point ranges *) |]` 形式でコードポイント範囲をエンコードし、`Lexer_tables.Range_set`（同ファイル内で再生成される二分探索ユーティリティ）を介してルックアップする。ASCII 範囲は別途 `let ascii_start_mask` として定義し、Unicode テーブル更新時にも変更が無いことを quick check できるようにする。
     - **進捗 (2026-11-29)**: 生成スクリプト入出力仕様、`unicode_xid_manifest.json` の必須フィールド（`unicode_version`, `input_sha256`, `generated_at`）と SPDX 表記方針を本節で確定した。`THIRD_PARTY_NOTICES.md` 更新タスクと `dune` ルール追加タスクを Phase 2-7 Sprint C へ登録する。
+    - **進捗 (2025-11-05)**: `scripts/unicode/generate-xid-tables.py` を追加し、`--out-dir compiler/ocaml/src/lexer_tables` へ `unicode_xid_tables.ml` / `unicode_xid_manifest.json` を生成する ASCII フォールバック経路を整備した。manifest には `unicode_version`・入力ファイルの SHA256・`Unicode-Derived-Core-Properties-1.0` の SPDX 表記を記録し、テーブル更新の再現条件を明文化。
   - **ステップ2 — lexer/Core.Parse 統合と互換モード**
     - `lexer.mll` に UTF-8 連続バイト定義（`let utf8_2`, `let utf8_3`, `let utf8_4`）を追加し、`token` ルールから ASCII/Unicode 共通の `read_identifier` ヘルパーを呼び出す。ヘルパーは `Lexer_tables.Unicode_xid_tables.is_start` / `is_continue` を用いてコードポイントを検証し、識別子文字列は `Buffer` に UTF-8 のまま蓄積する。
     - `Core_parse.Lex.Bridge` へ `identifier_profile` の反映処理を追加し、`RunConfig` に `lex.identifier_profile` が存在しない場合はフェーズ移行用ガード（`UnicodeFallback`）を返す。ASCII モードとの切り替えは `Parser_run_config.Lex.profile` と同期させ、CLI/LSP での表示文字列を `unicode` / `ascii-compat` として統一する。

@@ -1,0 +1,20 @@
+{
+  "ascii_fallback": true,
+  "generated_at": "2025-11-05T00:03:10.192863+00:00",
+  "input_sha256": {
+    "DerivedCoreProperties.txt": null,
+    "PropList.txt": null,
+    "UnicodeData.txt": null
+  },
+  "inputs": {
+    "DerivedCoreProperties.txt": null,
+    "PropList.txt": null,
+    "UnicodeData.txt": null
+  },
+  "ranges": {
+    "xid_continue": 4,
+    "xid_start": 3
+  },
+  "spdx_license": "Unicode-Derived-Core-Properties-1.0",
+  "unicode_version": "0-ascii"
+}
