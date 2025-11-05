@@ -278,6 +278,7 @@
 8.3. **ハンドオーバーとレビュー**
 - `docs/notes/effect-system-tracking.md` の「Phase 2-5 S4 引き継ぎパッケージ」に沿って、PoC 到達条件と残課題を確認。チェックリスト H-O1〜H-O5 が完了した時点で `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` に更新メモを残す。
 - 週次レビューで効果構文の Stage 遷移を報告し、`syntax.effect_construct_acceptance` / `effects.syntax_poison_rate` の推移を `0-3-audit-and-metrics.md` へ記録する。脚注撤去可否は Phase 2-7 終盤のレビューで判断する。
+- **進捗 (2026-12-12)**: H-O1/H-O2 を完了としてクローズし、週次レビューで `collect-iterator-audit-metrics.py --section effects --require-success` の値が `syntax.effect_construct_acceptance = 1.0` / `effects.syntax_poison_rate = 0.0` で安定していることを確認した。H-O3（フラグ伝播）、H-O4（Stage 監査連携）、H-O5（脚注撤去条件）は未達のため、継続タスクとして backlog に残す。レビュー結果は `docs/notes/effect-system-tracking.md#2026-12-12-h-o1〜h-o5-進捗レビュー` と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` 2026-12-12 記録に同期済み。脚注撤去は H-O3/H-O4 の完了後に再審議する。
 
 **成果物**: 効果構文 PoC 実装、CI メトリクス 100% 化、フラグ運用指針、脚注撤去条件の整理
 

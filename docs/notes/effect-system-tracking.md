@@ -165,6 +165,14 @@
 - ドキュメントは脚注 `[^effects-syntax-poc-phase25]` の記述が最新だが、CLI/LSP 操作ガイドにフラグの導線が無いため、Stage 昇格判定時にユーザー操作が再現できないリスクが残る。`docs/guides/cli-workflow.md` と `docs/notes/dsl-plugin-roadmap.md` にフラグ利用手順を追加するタスクを `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §8.2 へ追記した。
 - 次アクション: Phase 2-7 Sprint A で CLI → LSP → CI → ドキュメントの順に対応するワークフロー案を確定し、完了後は H-O3 の成功条件（CLI/LSP/CI の文言・既定値統一、脚注撤去準備）をレビューでチェックする。
 
+### 2026-12-12 H-O1〜H-O5 進捗レビュー
+- **H-O1 (完了)**: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §8.1 で PoC 実装の統合が完了し、`Type_inference_effect` に `TEffectPerform` / `TEffectHandle` を導入して `Σ_before` / `Σ_after` の差分が診断へ伝播することを確認済み。`effects.contract.residual` のエラーパスも `effect_syntax_tests.ml` で再現できるため、Stage レビューでは residual 判定を重点確認項目から外した。
+- **H-O2 (完了)**: `compiler/ocaml/tests/effect_syntax_tests.ml` のゴールデンと `collect-iterator-audit-metrics.py --section effects --require-success` のゲートが稼働しており、CI で `syntax.effect_construct_acceptance = 1.0` / `effects.syntax_poison_rate = 0.0` を維持している。計測結果は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` 2026-12-12 追記に記録した。
+- **H-O3 (対応中)**: フラグ運用は未整備のままのため、CLI/LSP/CI への伝播タスクを Phase 2-7 Sprint A backlog に固定した。完了までは効果構文レビューで `experimental_effects` を手動設定する暫定手順を維持する。
+- **H-O4 (未着手)**: `docs/notes/dsl-plugin-roadmap.md` と Stage テーブルは Phase 2-5 時点から更新が無い。効果ハンドラ監査のサンプルと `bridge.stage.*` 診断の連携を Phase 2-7 Sprint B のレビュー議題に追加し、Stage ミスマッチ検証を整備する。
+- **H-O5 (未達)**: 脚注 `[^effects-syntax-poc-phase25]` の撤去条件（Stage = Stable、フラグ導線整備、CI 監査の 1.0 維持）は揃っていない。H-O3/H-O4 の完了後に再レビューし、脚注運用の棚卸し結果を `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` 2026-12-12 追記へ反映する。
+- **フォローアップ**: 週次レビューで本メモを参照し、H-O3〜H-O5 の進捗更新を `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §8.3 の進捗欄と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の記録に同期させる。
+
 ---
 
 ## Phase 2-5 TYPE-002 Step1 効果行統合棚卸（2026-04-10）
