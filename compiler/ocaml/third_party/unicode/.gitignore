@@ -1,0 +1,5 @@
+# Unicode データファイルは巨大になるため追跡しない
+*
+!.gitignore
+!*/
+!*/.gitkeep

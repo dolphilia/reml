@@ -236,6 +236,7 @@
     - 監査ログでは `AuditEnvelope.metadata["unicode.identifier_profile"]` に `{"profile":"unicode","unicode_version":"15.1.0","table_checksum":"..."}`
       を記録し、ASCII モードの場合は `{"profile":"ascii-compat","reason":"Phase2-7 fallback"}` を出力する。`reports/diagnostic-format-regression.md` に Unicode 文字を含む診断サンプルを追加し、表示崩れを監視する。
     - **進捗 (2026-11-29)**: CI 連携と監査メタデータの項目名 (`unicode.identifier_profile`, `unicode.tables.checksum`) を確定し、本節に記録した。`collect-iterator-audit-metrics.py` と `ci-local.sh` の更新手順を Phase 2-7 `diagnostics` チームへ共有済み（週次同期 2026-11-28）。
+    - **進捗 (2025-11-05)**: `docs/THIRD_PARTY_NOTICES.md` に Unicode データのライセンス情報を追加し、`scripts/unicode/fetch-unicode-data.sh` で UCD ファイルを取得できるようにした。`compiler/ocaml/third_party/unicode/` をリポジトリに整備し、`compiler/ocaml/src/lexer_tables/dune` へ `@check-unicode-tables` エイリアスを追加して `scripts/unicode/generate-xid-tables.py` の再生成結果を `diff` 検証するフローを確立。CI への組み込みに先立ち、`dune build @check-unicode-tables` でローカル検証可能になった（`compiler/ocaml/scripts/unicode/check_unicode_tables.sh` を介して manifest 差分をタイムスタンプ抜きで比較）。
 
 7.2. **テストとメトリクス**
 - CI で `REML_ENABLE_UNICODE_TESTS=1` を常時有効化し、`compiler/ocaml/tests/unicode_ident_tests.ml` と `unicode_identifiers.reml` フィクスチャを全プラットフォームで実行する。`collect-iterator-audit-metrics.py --require-success` の `parser.runconfig.lex.profile` 集計で `unicode` が 100% となることを確認する。

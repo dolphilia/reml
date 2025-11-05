@@ -2,3 +2,15 @@
  (name lexer_tables)
  (public_name reml_ocaml.lexer_tables)
  (modules unicode_xid_tables))
+
+(rule
+ (alias check-unicode-tables)
+ (deps
+  ../../scripts/unicode/generate-xid-tables.py
+  ../../scripts/unicode/check_unicode_tables.sh
+  unicode_xid_tables.ml
+  unicode_xid_manifest.json
+  (source_tree ../../third_party/unicode))
+ (action
+  (chdir ../..
+   (run scripts/unicode/check_unicode_tables.sh))))
