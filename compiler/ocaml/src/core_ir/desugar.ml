@@ -1764,6 +1764,9 @@ let desugar_fn_decl (decl : typed_decl) (fn_decl : typed_fn_decl) : function_def
         metadata.dict_instances @ dict_environment.dict_instances;
     }
   in
+  let metadata =
+    { metadata with effect_row = Some fn_decl.tfn_effect_row }
+  in
   make_function fn_name all_params return_ty [ entry_block ] metadata
 
 (** トップレベル宣言の変換 *)

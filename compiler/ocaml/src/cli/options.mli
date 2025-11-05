@@ -75,7 +75,7 @@ type options = {
   runtime_capabilities_path : string option;
       (** Runtime Capability Registry JSON のパス *)
   effects_type_row_mode : string;
-      (** TYPE-002 効果行モード (`metadata-only` / `dual-write`) *)
+      (** TYPE-002 効果行モード (`metadata-only` / `dual-write` / `ty-integrated`) *)
   parser_experimental_effects : bool;
       (** `perform` / `handle` 構文を受理する実験的フラグ（`-Zalgebraic-effects`） *)
   (* Parser RunConfig フラグ *)

@@ -6,7 +6,7 @@
 ## 1. 目的とステータス
 - Phase 2-5 では効果行統合ポリシーの設計と脚注整備を完了し、実装は Phase 2-7 へ移管する。  
 - Step4 までに `effect_row` 統合ドラフト・テスト観点・メトリクス案・脚注ガードを整備済み。Step5 ではリスク登録とゲート条件を確定し、2-7 開始時に参照できるハンドオーバー資料を作成する。  
-- 現時点の `RunConfig.extensions["effects"].type_row_mode` は `metadata-only` 固定。Phase 2-7 で `dual-write` → `ty-integrated` へ段階的に切り替える。
+- Phase 2-7 Sprint C で `RunConfig.extensions["effects"].type_row_mode` の既定値を `"ty-integrated"` へ切り替え、`metadata-only` は互換モードとして維持する。
 
 ## 2. 引き継ぎ対象と成果物
 | 項目 | 内容 | 参照 |
@@ -15,7 +15,7 @@
 | テスト観点 | `type_effect_row_*` / `diagnostics.effect_row_stage_consistency` などの追加カテゴリ | `docs/plans/bootstrap-roadmap/2-5-review-log.md#type-002-step4-実装ロードマップとテスト観点2026-04-24` |
 | KPI 基準値 | `diagnostics.effect_row_stage_consistency`, `type_effect_row_equivalence`, `effect_row_guard_regressions` | `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`（2026-04-24 更新分） |
 | 移行ガード | `RunConfig.extensions["effects"].type_row_mode` の運用とロールバック条件 | `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-effect-row-integration` |
-| ドキュメント脚注 | `[^type-row-metadata-phase25]` を含む Chapter 1/3 の暫定脚注 | `docs/spec/1-2-types-Inference.md`, `docs/spec/1-3-effects-safety.md`, `docs/spec/3-6-core-diagnostics-audit.md` |
+| ドキュメント更新 | 効果行統合に関する本文・索引の整合（脚注撤去後の状態） | `docs/spec/1-2-types-Inference.md`, `docs/spec/1-3-effects-safety.md`, `docs/spec/3-6-core-diagnostics-audit.md`, `docs/spec/README.md` |
 | プロジェクトノート | フォローアップログと PoC 運用メモ | `docs/notes/effect-system-tracking.md`（TYPE-002 セクション） |
 
 ## 3. 移行時の Gate 条件
@@ -23,8 +23,8 @@ Phase 2-7 で TYPE-002 実装を着手する前に、以下の条件を満たす
 1. 設計レビュー  
    - `effect_system_design` レビュー（Type/Effect/Runtime リード参加）を実施し、`TArrow` 拡張のデータ構造と RowVar 対応方針を確認する。  
    - レビュー完了ログを `docs/plans/bootstrap-roadmap/2-5-review-log.md` に追記し、`TYPE-002-G1` タグを登録。
-2. 脚注・ガード公開状態確認  
-   - `[^type-row-metadata-phase25]` の内容と `type_row_mode=metadata-only` 設定が最新仕様と一致しているかを Chapter 1/3 で再確認する。  
+2. 仕様・ガードの整合確認  
+   - `docs/spec/` 各章で `type_row_mode` の説明と `effect.type_row.*` メタデータが最新実装と一致しているかを確認する。  
    - 変更があった場合は `docs/spec/README.md` と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の参照を更新。
 3. テスト基盤の準備  
    - `test_type_inference.ml` と `streaming_runner_tests.ml` に effect row 追跡用の仮テストスケルトン（`SKIP` マーカー付）を配置し、`type_effect_row_*` シリーズを追加できる状態にする。  
@@ -43,7 +43,7 @@ Phase 2-7 で TYPE-002 実装を着手する前に、以下の条件を満たす
 1. Sprint A（Week35-36）: `effect_row` 型の導入、`types.ml`・`typed_ast.ml`・`effect_analysis` の dual-write を実装。  
 2. Sprint B（Week37-38）: `generalize` / `instantiate` / `Type_unification` の効果行比較実装と、`type_effect_row_*` テストを有効化。  
 3. Sprint C（Week39-40）: Core IR / LLVM Backend / 診断・監査の効果行伝播、KPI 計測の有効化。  
-4. Phase 3 移行前: `type_row_mode = ty-integrated` を既定化し、脚注 `[^type-row-metadata-phase25]` を撤去して索引・リスク台帳を更新。
+4. Phase 3 移行前: `type_row_mode = ty-integrated` を既定化し、索引・リスク台帳を更新（2026-12-18 に完了済み）。
 
 ## 6. 参照リンク
 - `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md`

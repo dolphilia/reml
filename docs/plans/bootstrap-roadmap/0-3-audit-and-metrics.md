@@ -322,15 +322,14 @@
 - Phase 2-7 で `collect-iterator-audit-metrics.py --section effects --require-success` を実装し、`syntax.effect_construct_acceptance = 1.0` 未満または `effects.syntax_poison_rate < 1.0` の場合は CI を失敗させる。失敗時は `0-4-risk-handling.md` に記録し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の効果構文タスクへリンクする。
 - CLI/LSP ゴールデン更新時は `reports/diagnostic-format-regression.md` §2 のチェックリストに従い、効果構文サンプルを `tooling/lsp/tests/client_compat/fixtures/` と `compiler/ocaml/tests/golden/diagnostics/` に追加する。PoC 期間は `syntax.effect_construct_acceptance = 0.0` / `effects.syntax_poison_rate = 1.0` を維持し、正式実装で値が変化した場合はレビューで意図を説明する。
 
-### 0.3.7b 効果行統合メトリクス運用（Phase 2-5 Step4 追加）
-- Phase 2-5 時点では `diagnostics.effect_row_stage_consistency` / `type_effect_row_equivalence` / `effect_row_guard_regressions` の実測値は確定していない。Phase 2-7 Sprint A までは `metadata-only` モードのままのため、基準値として `N/A`（集計対象外）を記録し、dual-write 期間にのみ値を取得する。  
-- dual-write 期間（Phase 2-7 Sprint B 想定）では `collect-iterator-audit-metrics.py --require-success --section effects` を追加実行し、以下をチェックする。
-  - `diagnostics.effect_row_stage_consistency = 1.0`: CLI/LSP JSON と監査ログで宣言順・残余集合・正規化集合が完全一致する。  
-  - `type_effect_row_equivalence = 1.0`: `compiler/ocaml/tests/test_type_inference.ml` の `type_effect_row_equivalence_*` ケースが全て成功し、`Collect_iterator` の `type_effect_row_equivalence` メトリクスが 1.0 を返す。  
-  - `effect_row_guard_regressions = 0`: `RunConfig.extensions["effects"].type_row_mode` を `dual-write` / `ty-integrated` へ切り替えても `effects.type_row.integration_blocked` が発火しない。発火した場合は自動的に `metadata-only` へロールバックし、メトリクスへ件数を記録する。
-- 監査ログテンプレート: dual-write 期間は `effect.type_row.{declared,residual,canonical}` を JSON Lines へ追記し、`effect_row_guard_regressions` が 0 件であることを `reports/audit/index.json` の summary メモに記録する。  
-- Windows/macOS CI: `bootstrap-windows.yml` / `bootstrap-macos.yml` で `collect-iterator-audit-metrics.py --require-success --section effects --platform <target>` を実行し、プラットフォームごとの `effect_row_guard_regressions` を継続監視する。  
-- 指標が基準値から逸脱した場合は `0-4-risk-handling.md` に `TYPE-002` リスクを登録し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の Type セクションに調整タスクを追加する。
+### 0.3.7b 効果行統合メトリクス運用（2026-12-18 更新）
+- `type_row_mode` の既定値が `"ty-integrated"` となり、Linux/Windows/macOS すべての CI で `python3 tooling/ci/collect-iterator-audit-metrics.py --require-success --section effects --platform <target>` を必須化する。レガシーツールチェーンが `metadata-only` を強制する場合は CI で明示的に `type_row_mode` を切り替え、互換ジョブとして扱う。
+- 監視項目と合格基準:
+  - `diagnostics.effect_row_stage_consistency = 1.0`: CLI/LSP 診断と監査ログで宣言順・残余集合・正規化集合が完全一致する。  
+  - `type_effect_row_equivalence = 1.0`: `compiler/ocaml/tests/test_type_inference.ml` の `type_effect_row_equivalence_*` ケースが全て成功し、収集メトリクスも 1.0 を返す。  
+  - `effect_row_guard_regressions = 0`: `RunConfig.extensions["effects"].type_row_mode` を `ty-integrated` へ切り替えてもガード診断が発生しない。互換モードで `metadata-only` を要求したジョブはガード件数に含めず、結果には註釈を残す。
+- 監査ログには常に `effect.type_row.{declared,residual,canonical}` を出力し、`reports/diagnostic-format-regression.md` §2 のチェックリストで CLI/LSP ゴールデンとの差分をレビューする。  
+- 指標が基準値から逸脱した場合は `0-4-risk-handling.md` の `TYPE-002-ROW-INTEGRATION` を再オープンし、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の Type セクションへフォローアップタスクを登録する。
 
 ## 0.3.8 LLVM ABI テスト統計（Phase 3 Week 15）
 

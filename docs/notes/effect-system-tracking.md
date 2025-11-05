@@ -249,18 +249,18 @@
 ### フォローアップ
 1. Phase 2-7 キックオフ前に `effect_system_design` レビュー（タグ `TYPE-002-G1`）を開催し、`TArrow` 拡張ドラフトと RowVar 先送り方針を承認する。  
 2. `type_row_mode` を `dual-write` へ切り替える前に、CI で `collect-iterator-audit-metrics.py --section effects` が動作し、`effect_row_guard_regressions = 0` を維持できることを検証する。  
-3. KPI が基準値（1.0 / 1.0 / 0.0）を満たした時点で脚注 `[^type-row-metadata-phase25]` 撤去案とリスククローズ条件をまとめ、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` とリスク台帳を更新する。  
+3. KPI が基準値（1.0 / 1.0 / 0.0）を満たした時点で脚注撤去後のリスククローズ条件をまとめ、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` とリスク台帳を更新する。  
 4. RowVar 実装は Phase 3 で判断するため、Phase 2-7 では `Open row_var` を予約値として維持し、API から外部露出しないようレビュー時に確認する。
 
 ## Phase 2-5 TYPE-002 Step3 仕様脚注と移行ガード（2026-04-22）
 
 ### サマリ
-- `docs/spec/1-2-types-Inference.md` §A.2 / §C.6、`docs/spec/1-3-effects-safety.md` §A / §I、`docs/spec/3-6-core-diagnostics-audit.md` §2.4.2 に脚注 `[^type-row-metadata-phase25]` を追加し、Phase 2-5 の暫定運用（効果行は診断メタデータとして保持、`type_row_mode = "metadata-only"` 固定）を明文化。
+- `docs/spec/1-2-types-Inference.md` §A.2 / §C.6、`docs/spec/1-3-effects-safety.md` §A / §I、`docs/spec/3-6-core-diagnostics-audit.md` §2.4.2 に暫定脚注を追加し（2026-12-18 撤去済み）、Phase 2-5 の暫定運用（効果行は診断メタデータとして保持、`type_row_mode = "metadata-only"` 固定）を明文化。
 - `RunConfig.extensions["effects"].type_row_mode` のモード定義を整理し、`ty-integrated` 要求時に `effects.type_row.integration_blocked` を発行するポリシーと `effect.type_row.*` 監査キー（`requested_mode` / `available_mode` / `guard_stage`）を仕様へ登録。
 - `docs/spec/README.md`・`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`・`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に TYPE-002 脚注と解除条件を導線として追加し、索引と後続フェーズ計画の同期を完了。
 
 ### 主要アウトプット
-1. 脚注 `[^type-row-metadata-phase25]` の本文（Phase 2-5 暫定・解除条件・参照先）を 1-2 / 1-3 / 3-6 / spec README / 2-5 Spec Drift 計画に展開。
+1. 暫定脚注の本文（撤去済み）（Phase 2-5 暫定・解除条件・参照先）を 1-2 / 1-3 / 3-6 / spec README / 2-5 Spec Drift 計画に展開。
 2. `effects.type_row.integration_blocked` 診断テンプレートと監査キー `effect.type_row.requested_mode` / `available_mode` / `guard_stage` を `docs/spec/3-6-core-diagnostics-audit.md` に追加。
 3. `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-effect-row-integration` に Phase 2-7 での実装タスク（`TArrow` 拡張、KPI、脚注撤去）と検証条件を登録。
 
@@ -275,4 +275,4 @@
 - レビュー記録: `docs/plans/bootstrap-roadmap/2-5-review-log.md#type-002-step3-効果行脚注と移行ガード2026-04-22`
 - フォローアップ計画: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-effect-row-integration`
 
-[^type-row-metadata-phase25]: Phase 2-5 `TYPE-002 Step3`（2026-04-22 完了）で追加。効果行を `ty` へ統合する前段として `RunConfig.extensions["effects"].type_row_mode = "metadata-only"` とし、`effects.type_row.integration_blocked` 診断・`effect.type_row.*` 監査キーで移行試行を記録する。解除条件は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-effect-row-integration` を参照。
+[^type-row-metadata-phase25]: Phase 2-5 `TYPE-002 Step3`（2026-04-22 完了）で追加した暫定脚注。効果行を `ty` へ統合する前段として `RunConfig.extensions["effects"].type_row_mode = "metadata-only"` を既定とし、`effects.type_row.integration_blocked` 診断・`effect.type_row.*` 監査キーで移行試行を記録した。2026-12-18 に `ty-integrated` が既定化されたため脚注を撤去し、条件は本文に統合している。

@@ -22,13 +22,14 @@ module Typeclass_metadata = Typeclass_metadata
 type type_row_mode =
   | Type_row_metadata_only
   | Type_row_dual_write
+  | Type_row_integrated
 
 type config = {
   effect_context : Type_inference_effect.runtime_stage;
   type_row_mode : type_row_mode;
 }
 
-let make_config ?effect_context ?(type_row_mode = Type_row_metadata_only) () =
+let make_config ?effect_context ?(type_row_mode = Type_row_integrated) () =
   {
     effect_context =
       (match effect_context with
@@ -2721,7 +2722,7 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
       in
       let effect_row_for_audit =
         match config.type_row_mode with
-        | Type_row_dual_write -> Some effect_row
+        | Type_row_dual_write | Type_row_integrated -> Some effect_row
         | Type_row_metadata_only -> None
       in
       record_effect_profile ?type_row:effect_row_for_audit
@@ -2732,7 +2733,7 @@ and infer_decl ?(ctx = initial_ctx) ?config (env : env) (decl : decl) :
         | [] -> final_ret_ty
         | [ last_param ] -> (
             match config.type_row_mode with
-            | Type_row_dual_write ->
+            | Type_row_dual_write | Type_row_integrated ->
                 ty_arrow ~effect:effect_row last_param final_ret_ty
             | Type_row_metadata_only -> ty_arrow last_param final_ret_ty)
         | param :: rest -> ty_arrow param (build_function_type rest)

@@ -59,7 +59,7 @@
 ## 5. リスクと KPI 監視
 - `Unicode XID 識別子実装未完了`（期限 2026-08-31）: KPI `lexer.identifier_profile_unicode = 1.0` 達成と脚注撤去が完了条件。
 - `効果構文 Stage 昇格遅延`（期限 2026-09-30）: KPI `syntax.effect_construct_acceptance = 1.0` / `effects.syntax_poison_rate = 0.0`、`-Zalgebraic-effects` の公開名確定が必須。
-- `効果行統合遅延`（期限 2026-10-31）: `type_row_mode` を `ty-integrated` へ移行し、KPI 3 種の達成と脚注 `[^type-row-metadata-phase25]` 撤去を確認。
+- `効果行統合遅延`（期限 2026-10-31）: `type_row_mode` を `ty-integrated` へ移行し、KPI 3 種の達成と脚注撤去を確認（2026-12-18 に完了、リスククローズ済み）。
 - 進捗は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` と `docs/notes/effect-system-tracking.md` のチェックリストで月次レビューを実施。
 
 ## 6. Phase 2-7 初期アクションチェックリスト

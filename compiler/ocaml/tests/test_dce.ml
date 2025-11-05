@@ -43,6 +43,7 @@ let make_test_function (body_expr : expr) : function_def =
       effects = { declared = []; residual = [] };
       capabilities = { required = []; stage = None };
       dict_instances = [];
+      effect_row = None;
       opt_flags =
         {
           allow_dce = true;

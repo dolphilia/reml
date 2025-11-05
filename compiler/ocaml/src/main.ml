@@ -18,6 +18,26 @@ let json_of_tag tag =
 
 let json_of_tag_list tags = `List (List.map json_of_tag tags)
 
+let effect_row_metadata_pairs (row : Types.effect_row) =
+  let declared_json =
+    `List (List.map (fun name -> `String name) row.declared)
+  in
+  let residual_json =
+    `List (List.map (fun name -> `String name) row.residual)
+  in
+  let canonical_json =
+    let names =
+      Types.Effect_name_set.fold (fun name acc -> name :: acc) row.canonical []
+      |> List.rev
+    in
+    `List (List.map (fun name -> `String name) names)
+  in
+  [
+    ("effect.type_row.declared", declared_json);
+    ("effect.type_row.residual", residual_json);
+    ("effect.type_row.canonical", canonical_json);
+  ]
+
 let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
     ~resolved_stage ~resolved_capability ~resolved_capabilities ~effect_set
     ~stage_trace ~diagnostic_payload ?type_row extra_fields :
@@ -68,26 +88,8 @@ let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
   in
   let row_fields =
     match type_row with
+    | Some row -> effect_row_metadata_pairs row
     | None -> []
-    | Some (row : Types.effect_row) ->
-        let declared_json =
-          `List (List.map (fun name -> `String name) row.declared)
-        in
-        let residual_json =
-          `List (List.map (fun name -> `String name) row.residual)
-        in
-        let canonical_values =
-          Types.Effect_name_set.fold (fun name acc -> name :: acc) row.canonical []
-          |> List.rev
-        in
-        let canonical_json =
-          `List (List.map (fun name -> `String name) canonical_values)
-        in
-        [
-          ("effect.type_row.declared", declared_json);
-          ("effect.type_row.residual", residual_json);
-          ("effect.type_row.canonical", canonical_json);
-        ]
   in
   let base_fields =
     [
@@ -337,13 +339,30 @@ let iterator_stage_event ?audit_id ?change_set runtime_context
   in
   let stage_trace =
     if has_source trace_with_typer "runtime" then trace_with_typer
-    else
+  else
       match trace_with_typer with
       | [] -> [ runtime_step ]
       | [ single ] -> [ single; runtime_step ]
       | first :: second :: rest when String.equal second.source "typer" ->
           first :: second :: runtime_step :: rest
       | first :: rest -> first :: runtime_step :: rest
+  in
+  let effect_row =
+    match entry.IteratorAudit.effect_row with
+    | Some row -> Some row
+    | None ->
+        let open Constraint_solver.EffectConstraintTable in
+        (match
+           resolve (Constraint_solver.current_effect_constraints ())
+             ~symbol:entry.IteratorAudit.function_name
+         with
+        | Some resolved -> resolved.type_row
+        | None -> None)
+  in
+  let effect_row_pairs =
+    match effect_row with
+    | Some row -> effect_row_metadata_pairs row
+    | None -> []
   in
   let capability_json =
     match capability_name with
@@ -360,7 +379,7 @@ let iterator_stage_event ?audit_id ?change_set runtime_context
     | Some src -> `String src
     | None -> `Null
   in
-  let metadata =
+  let base_metadata =
     [
       ("symbol", `String entry.IteratorAudit.function_name);
       ("effect.stage.required", `String required_stage);
@@ -379,8 +398,12 @@ let iterator_stage_event ?audit_id ?change_set runtime_context
           (Printf.sprintf "Iterator audit (%s.%s)"
              entry.IteratorAudit.function_name entry.IteratorAudit.method_name)
       );
-      ("stage_trace", Effect_profile.stage_trace_to_json stage_trace);
     ]
+  in
+  let metadata = effect_row_pairs @ base_metadata in
+  let metadata =
+    metadata
+    @ [ ("stage_trace", Effect_profile.stage_trace_to_json stage_trace) ]
   in
   Audit_envelope.make ?audit_id ?change_set ~category:"effect.stage"
     ~metadata_pairs:metadata ()
@@ -668,9 +691,13 @@ let () =
   in
   let effects_type_row_mode =
     match effects_run_config.Parser_run_config.Effects.type_row_mode with
+    | Some mode when String.equal mode "ty-integrated" ->
+        Type_inference.Type_row_integrated
     | Some mode when String.equal mode "dual-write" ->
         Type_inference.Type_row_dual_write
-    | _ -> Type_inference.Type_row_metadata_only
+    | Some mode when String.equal mode "metadata-only" ->
+        Type_inference.Type_row_metadata_only
+    | _ -> Type_inference.Type_row_integrated
   in
   let type_config =
     Type_inference.make_config ~effect_context:runtime_stage_context

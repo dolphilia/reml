@@ -56,7 +56,7 @@ Chapter 3 の標準ライブラリは `Σ_core` / `Σ_system` を細分化する
 タグは `EffectTag` として単一化され、`allows_effects`／`effect_scope` の検査では `Σ` の一部として扱う。標準ライブラリ外で新しいタグを導入する場合は、本節に追記し関連仕様との整合を確認する。
 
 `Σ = Σ_core ∪ Σ_system` が言語仕様で追跡する効果全体であり、コンパイラは任意の式・関数について潜在効果集合 `effects(expr) ⊆ Σ` を算出する。
-> **実装差分（Phase 2-5）**: OCaml 実装は効果集合を型スキーム `ty` へまだ統合していないため、`typed_fn_decl.tfn_effect_profile` による診断メタデータ運用を維持しつつ `RunConfig.extensions["effects"].type_row_mode = "metadata-only"` で固定されている。`type_row_mode = "ty-integrated"` は Phase 2-7 `TYPE-002` 実装まで予約状態であり、切り替え試行時は `effects.type_row.integration_blocked` を発行して既定へロールバックする[^type-row-metadata-phase25]。
+> **実装状況（Phase 2-7）**: 効果集合は `TArrow` に統合済みであり、既定の `RunConfig.extensions["effects"].type_row_mode` は `"ty-integrated"`。互換目的で効果行を診断メタデータとして扱いたい場合は `"metadata-only"` を明示し、移行期の検証では `"dual-write"` を使用する。
 
 > 参考：`Parser` などの**ライブラリ内“擬似効果”**（バックトラック、`cut`、`trace`）は**言語効果ではない**。外界を変えず、`Parser<T>` の**戻り値に閉じ込める**のが原則。
 
@@ -249,8 +249,6 @@ Chapter 3 の標準ライブラリは `Σ_core` / `Σ_system` を細分化する
 * 各 `operation` にはシグネチャ `Args -> Ret` を付与し、暗黙に `effect` 本体のタグを潜在効果として報告する。
 * Stage 検査は要求 Capability の全件を対象とし、診断および監査ログに `required_capabilities` / `actual_capabilities` の配列を出力して証跡を残す。[^effect003-phase25-capability-array]
 
-[^type-row-metadata-phase25]:
-    2026-04-22 更新。Phase 2-5 `TYPE-002 Step3` で OCaml 実装が効果行を `typed_fn_decl.tfn_effect_profile` に保持する暫定運用を明示し、`RunConfig.extensions["effects"].type_row_mode = "metadata-only"` を既定ガードとして固定した。`type_row_mode = "ty-integrated"` へ昇格する条件は `TArrow of ty * effect_row * ty` 実装・`diagnostics.effect_row_stage_consistency` KPI・移行レビュー完了であり、詳細は `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md#5-実施ステップ`、`docs/plans/bootstrap-roadmap/2-5-review-log.md#type-002-step3-効果行脚注と移行ガード2026-04-22`、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-effect-row-integration` を参照。
 
 [^effect003-phase25-capability-array]:
     Phase 2-5 EFFECT-003 複数 Capability 解析計画 Step4（2025-12-06 完了）で OCaml 実装が `Diagnostic.extensions["effects"]` と `AuditEnvelope.metadata` を配列対応へ拡張した。計画書: `docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-003-proposal.md`、レビュー記録: `docs/plans/bootstrap-roadmap/2-5-review-log.md`「EFFECT-003 Week33 Day2」参照。

@@ -19,7 +19,7 @@
 - [EFFECT-003 修正計画](./EFFECT-003-proposal.md): 複数 Capability を解析・監査へ出力する仕組みを整備し、Stage 契約（`docs/spec/3-8-core-runtime-capability.md`）との齟齬を是正。
 
 ### 型システム（TYPE）
-- [TYPE-002 効果行統合ポリシー計画](./TYPE-002-proposal.md): Step2 で `effect_row` 統合ドラフトを策定し、`TArrow of ty * effect_row * ty` を前提とした型・診断・IR の影響調査を設計ノートに集約[^type-002-row-design]（2026-04-18 更新: 暫定採用案と Phase 2-7 への宿題を登録。2026-04-22 追記: Step3 で仕様脚注と `type_row_mode` ガードを整備し、`effects.type_row.integration_blocked` 診断と監査キー `effect.type_row.*` を定義。2026-04-24 追記: Step5 で Phase 2-7 向けハンドオーバーノートとリスク `TYPE-002-ROW-INTEGRATION` を登録し、Gate 条件と KPI 追跡導線を整備）。
+- [TYPE-002 効果行統合ポリシー計画](./TYPE-002-proposal.md): Step2 で `effect_row` 統合ドラフトを策定し、`TArrow of ty * effect_row * ty` を前提とした型・診断・IR の影響調査を設計ノートに集約[^type-002-row-design]（2026-04-18 更新: 暫定採用案と Phase 2-7 への宿題を登録。2026-04-22 追記: Step3 で仕様脚注と `type_row_mode` ガードを整備し、`effects.type_row.integration_blocked` 診断と監査キー `effect.type_row.*` を定義。2026-04-24 追記: Step5 で Phase 2-7 向けハンドオーバーノートとリスク `TYPE-002-ROW-INTEGRATION` を登録し、Gate 条件と KPI 追跡導線を整備。2026-12-18 追記: Phase 2-7 Sprint C 完了に伴い脚注を撤去し、既定値を `"ty-integrated"` へ更新）。
 
 ### エラー回復（ERR）
 - [ERR-001 修正計画](./ERR-001-proposal.md): Menhir の期待集合を `ExpectationSummary` に反映させ、`docs/spec/2-5-error.md` で定義された期待値提示を実現。（2025-11-15 追記: `collect` の導入と `parser_driver`/`parser_diag_state` の組込みにより、期待集合が `Diagnostic.expected` と legacy API 双方へ伝播することを確認。）
@@ -54,7 +54,7 @@
 
 ### 型システム（TYPE）
 - [TYPE-001 修正計画](./TYPE-001-proposal.md): 値制限と効果タグ連携を復元し、副作用を持つ束縛の多相化を防止。（2025-10-31 Step0 棚卸し完了: 再現ログ記録とチェックリスト共有済み。2025-11-01 Step1 判定ユーティリティ設計完了: `Typed_ast` 値形状分類と `Value_restriction.evaluate` API 案を確定。2025-11-03 Step2 Typer/RunConfig 連携方針確定: `value_restriction_mode` と効果証跡共有モデルを整理。2025-11-05 Step3 テスト雛形・診断テンプレート・CI メトリクス設計を追加し、Strict/Legacy の監視ケースを定義。2025-11-08 Step4 仕様・RunConfig ドキュメント整備完了: 1-2/1-3/2-1/2-6 へ脚注を追加し、Phase 2-7 へのフォローアップを登録。）
-- [TYPE-002 修正計画](./TYPE-002-proposal.md): 効果行を型表現へ統合するロードマップを策定し、型と効果の一体管理を再構築。（2026-04-18 更新: Step2 で `effect_row` 統合ドラフトとデータ構造比較を確定。2026-04-22 追記: Step3 で脚注 `[^type-row-metadata-phase25]` と `RunConfig.extensions["effects"].type_row_mode` ガードを整備。2026-04-24 追記: Step4 で Phase 2-7 の 3 スプリント実装計画・`metadata-only → dual-write → ty-integrated` 移行手順・新規 KPI (`diagnostics.effect_row_stage_consistency` / `type_effect_row_equivalence` / `effect_row_guard_regressions`) とテスト観点を確定し、`2-7-deferred-remediation.md`・`0-3-audit-and-metrics.md`・`effect-system-tracking.md`・`2-5-review-log.md` を同期。)
+- [TYPE-002 修正計画](./TYPE-002-proposal.md): 効果行を型表現へ統合するロードマップを策定し、型と効果の一体管理を再構築。（2026-04-18 更新: Step2 で `effect_row` 統合ドラフトとデータ構造比較を確定。2026-04-22 追記: Step3 で暫定脚注と `RunConfig.extensions["effects"].type_row_mode` ガードを整備。2026-04-24 追記: Step4 で Phase 2-7 の 3 スプリント実装計画・`metadata-only → dual-write → ty-integrated` 移行手順・新規 KPI (`diagnostics.effect_row_stage_consistency` / `type_effect_row_equivalence` / `effect_row_guard_regressions`) とテスト観点を確定し、`2-7-deferred-remediation.md`・`0-3-audit-and-metrics.md`・`effect-system-tracking.md`・`2-5-review-log.md` を同期。2026-12-18 追記: Phase 2-7 Sprint C 完了に伴い脚注を撤去し、既定値を `"ty-integrated"` へ更新。）
 - [TYPE-003 修正計画](./TYPE-003-proposal.md): 型クラス辞書渡しを Core IR へ復元し、監査ログへの Capability 情報出力を再開。（2025-10-30 更新: Typer／Core IR／CI メトリクス整備まで完了。2025-10-31 追記: Stage 逆引き・辞書付き診断ゴールデン・ドキュメント整備まで完了。）
 
 ## 着手順序ガイド
@@ -71,4 +71,4 @@
 - 計画のステータス更新（完了・棚上げ等）は本文と併せてここにも反映し、Phase 2-5 全体の進捗を一目で把握できるようにする。
 - 大幅な構造更新やファイル移動を行った場合は `docs-migrations.log` と `README.md`（リポジトリ索引）を忘れずに追記する。
 
-[^type-002-row-design]: `compiler/ocaml/docs/effect-system-design-note.md`「## 3. 型表現統合ドラフト（TYPE-002 Step2, 2026-04-18）」、`docs/spec/1-2-types-Inference.md` / `1-3-effects-safety.md` / `3-6-core-diagnostics-audit.md` に追加した脚注 `[^type-row-metadata-phase25]`（TYPE-002 Step3, 2026-04-22）、および `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-effect-row-integration`・`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`（TYPE-002 Step4, 2026-04-24）を参照。
+[^type-002-row-design]: `compiler/ocaml/docs/effect-system-design-note.md`「## 3. 型表現統合ドラフト（TYPE-002 Step2, 2026-04-18）」、`docs/spec/1-2-types-Inference.md` / `1-3-effects-safety.md` / `3-6-core-diagnostics-audit.md` に追加した暫定脚注（TYPE-002 Step3, 2026-04-22）および `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-effect-row-integration`・`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`（TYPE-002 Step4, 2026-04-24）を参照。2026-12-18 以降は脚注を撤去し、本文へ恒常運用を反映する。

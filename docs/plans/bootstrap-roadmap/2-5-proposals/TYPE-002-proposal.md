@@ -41,7 +41,7 @@
 
 3. **Step3 仕様脚注と移行ガード設計（Week33 Day1-2 / 担当: Docs） — ✅ 完了（2026-04-22）**  
    - **調査**: `docs/spec/1-2-types-Inference.md` §A.2 / §C.6、`docs/spec/1-3-effects-safety.md` §A・§I、`docs/spec/3-6-core-diagnostics-audit.md` §2.4.2 を突合し、効果行を型スキームへ統合していない現行実装との差異とガード要件（`type_row_mode`）を洗い出した。  
-   - **作業**: 各仕様書に脚注 `[^type-row-metadata-phase25]` を追加し、Phase 2-5 の暫定運用（診断メタデータ保持と `RunConfig.extensions["effects"].type_row_mode = "metadata-only"` ガード）を明文化。`effects.type_row.integration_blocked` 診断と `effect.type_row.*` 監査キーを定義し、索引用 `docs/spec/README.md`・`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` と連動させた。  
+   - **作業**: 各仕様書に脚注 `[^type-row-metadata-phase25]` を追加し、Phase 2-5 の暫定運用（診断メタデータ保持と `RunConfig.extensions["effects"].type_row_mode = "metadata-only"` ガード）を明文化。`effects.type_row.integration_blocked` 診断と `effect.type_row.*` 監査キーを定義し、索引用 `docs/spec/README.md`・`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` と連動させた。2026-12-18 更新で脚注を撤去し、恒常運用を本文へ反映。  
    - **成果物**: `docs/plans/bootstrap-roadmap/2-5-review-log.md#type-002-step3-効果行脚注と移行ガード2026-04-22` にレビュー記録を追加し、`TYPE-002-S3` タグを発行。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-effect-row-integration` へ解除条件（`TArrow` 拡張・`diagnostics.effect_row_stage_consistency` KPI・レビュー承認）を引き継いだ。
 
 4. **Step4 実装ロードマップとテスト観点の確定（Week33 Day3-5 / 担当: Type + QA） — ✅ 完了（2026-04-24）**  

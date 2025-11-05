@@ -11,8 +11,8 @@
 ## 1.x 言語コア仕様
 - [1-0-language-core-overview.md](1-0-language-core-overview.md)
 - [1-1-syntax.md](1-1-syntax.md) — 構文仕様（識別子は Unicode プロファイルを既定とし、`identifier_profile` 切替と効果構文 `-Zalgebraic-effects` の Stage 脚注を掲載）
-- [1-2-types-Inference.md](1-2-types-Inference.md) — 効果行統合の移行ガードと暫定運用を脚注 `[^type-row-metadata-phase25]` で明示
-- [1-3-effects-safety.md](1-3-effects-safety.md) — 残余効果 (`Σ_before`/`Σ_after`) の PoC 計測 (Phase 2-5 `EFFECT-002` Step4) と `type_row_mode` ガード脚注 `[^type-row-metadata-phase25]` を同期管理
+- [1-2-types-Inference.md](1-2-types-Inference.md) — 効果行を `TArrow` に統合した型システム仕様と `type_row_mode` の互換運用
+- [1-3-effects-safety.md](1-3-effects-safety.md) — 残余効果 (`Σ_before`/`Σ_after`) の PoC 計測と `type_row_mode` の運用ポリシー
 - [1-4-test-unicode-model.md](1-4-test-unicode-model.md)
 - [1-5-formal-grammar-bnf.md](1-5-formal-grammar-bnf.md) — 形式文法（`Ident` は Unicode プロファイルを前提、効果構文 PoC の注記あり）
 
@@ -33,7 +33,7 @@
 - [3-3-core-text-unicode.md](3-3-core-text-unicode.md)
 - [3-4-core-numeric-time.md](3-4-core-numeric-time.md)
 - [3-5-core-io-path.md](3-5-core-io-path.md)
-- [3-6-core-diagnostics-audit.md](3-6-core-diagnostics-audit.md) — `effects.type_row.integration_blocked` 診断と `effect.type_row.*` 監査キーを脚注 `[^type-row-metadata-phase25]` で管理
+- [3-6-core-diagnostics-audit.md](3-6-core-diagnostics-audit.md) — `effects.type_row.integration_blocked` 診断と `effect.type_row.*` 監査キーの運用
 - [3-7-core-config-data.md](3-7-core-config-data.md)
 - [3-8-core-runtime-capability.md](3-8-core-runtime-capability.md) — Stage 管理と `-Z` フラグ運用（効果構文 Capability は Phase 2-5 時点で Experimental と明記）
 - [3-9-core-async-ffi-unsafe.md](3-9-core-async-ffi-unsafe.md)
@@ -60,5 +60,3 @@
 
 ---
 更新の際は章番号・ファイル名を維持し、相互リンクを `docs/spec/` 配下で完結させてください。
-
-[^type-row-metadata-phase25]: Phase 2-5 `TYPE-002 Step3`（2026-04-22 完了）で追加した脚注。`RunConfig.extensions["effects"].type_row_mode = "metadata-only"` を既定ガードとし、`ty` に効果行を統合する前に仕様読者へ暫定運用を周知する。解除条件は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#type-002-effect-row-integration` を参照。

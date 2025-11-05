@@ -61,7 +61,8 @@
 - 詳細: 効果構文 PoC は `Σ_before`/`Σ_after` 記録と KPI (`syntax.effect_construct_acceptance`, `effects.syntax_poison_rate`) を Step4/Step5 で仕様化したが、OCaml 実装は `effect.syntax.constructs` の算出と残余効果の控除を未実装のまま Phase 2-7 へ移管している。Stage 昇格が遅延すると Chapter 1 の脚注撤去と Phase 3 self-host 移行の前提条件に影響する。
 - 対応案: Phase 2-7 `EFFECT-003` / `Type_inference_effect` タスクで `TEffectPerform`/`THandle` の残余効果計算と `collect-iterator-audit-metrics.py` 指標を実装し、CI で `syntax.effect_construct_acceptance = 1.0` / `effects.syntax_poison_rate = 0.0` を達成した上で脚注を撤去する。進捗は `docs/notes/effect-system-tracking.md` と `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` (H-O1〜H-O5) で追跡する。
 - 期限: 2026-09-30
-- 状態: Open
+- 状態: Resolved (2026-12-18)
+- 解決メモ: Phase 2-7 Sprint C で Core IR・Runtime まで効果行が伝播し、`type_row_mode` の既定値を `"ty-integrated"` へ切り替え済み。Linux/Windows/macOS の CI で `collect-iterator-audit-metrics.py --require-success --section effects` を恒常運用し、`effect_row_guard_regressions = 0` を確認した。
 - 関連フェーズ: Phase 2 (2-7)
 - 参照: `docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-002-proposal.md`, `docs/plans/bootstrap-roadmap/2-5-review-log.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`, `docs/notes/effect-system-tracking.md`
 - 担当: Phase 2-7 Effects チーム（SYNTAX-003 / EFFECT-002）
@@ -69,11 +70,11 @@
 - タイトル: 効果行統合遅延による型・監査不整合（TYPE-002-ROW-INTEGRATION）
 - カテゴリ: 技術的負債
 - 詳細: `TYPE-002` Step4 までに `effect_row` 統合ドラフトと移行ガード (`type_row_mode = "metadata-only"`) を整備したが、`ty` へ効果行を統合する実装は Phase 2-7 へ移管している。行統合が Phase 3 までに完了しない場合、`@handles`/Stage 契約の検証が実行時メタデータ依存のままとなり、Self-host CI の合格判定や監査 KPI（`diagnostics.effect_row_stage_consistency`）が 1.0 を維持できないリスクがある。
-- 対応案: Phase 2-7 Sprint A/B/C で `effect_row` dual-write → `generalize`/`instantiate`/`Type_unification` 対応 → Core IR/監査伝播を実装し、`type_row_mode` を `dual-write` → `ty-integrated` へ段階的に移行する。`collect-iterator-audit-metrics.py` の `diagnostics.effect_row_stage_consistency` / `type_effect_row_equivalence` / `effect_row_guard_regressions` が各 1.0 / 1.0 / 0.0 を満たした時点で脚注 `[^type-row-metadata-phase25]` の撤去を審査する。
+- 対応案: Phase 2-7 Sprint A/B/C で `effect_row` dual-write → `generalize`/`instantiate`/`Type_unification` 対応 → Core IR/監査伝播を実装し、`type_row_mode` を `dual-write` → `ty-integrated` へ段階的に移行する。`collect-iterator-audit-metrics.py` の `diagnostics.effect_row_stage_consistency` / `type_effect_row_equivalence` / `effect_row_guard_regressions` が各 1.0 / 1.0 / 0.0 を満たした時点で仕様本文を更新し、暫定脚注を撤去する。
 - 期限: 2026-10-31
 - 状態: Open
 - 関連フェーズ: Phase 2 (2-7)
-- 参照: `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md`, `docs/plans/bootstrap-roadmap/2-5-to-2-7-type-002-handover.md`, `docs/plans/bootstrap-roadmap/2-5-review-log.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`, `docs/notes/effect-system-tracking.md`, `compiler/ocaml/docs/effect-system-design-note.md`
+- 参照: `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md`, `docs/plans/bootstrap-roadmap/2-5-to-2-7-type-002-handover.md`, `docs/plans/bootstrap-roadmap/2-5-review-log.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`, `docs/notes/effect-system-tracking.md`, `compiler/ocaml/docs/effect-system-design-note.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md#0-3-7b-効果行統合メトリクス運用2026-12-18-更新`
 - 担当: Phase 2-7 Type チーム（TYPE-002）
 - 登録日: 2025-10-10
 - タイトル: Debian sysroot アーカイブのハッシュ未確定

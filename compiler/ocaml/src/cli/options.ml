@@ -233,7 +233,7 @@ let default_options =
     emit_audit_path = None;
     effect_stage_override = None;
     runtime_capabilities_path = None;
-    effects_type_row_mode = "metadata-only";
+    effects_type_row_mode = "ty-integrated";
     parser_experimental_effects = Run_config.default.experimental_effects;
     parser_require_eof = Run_config.default.require_eof;
     parser_packrat = Run_config.default.packrat;
@@ -314,7 +314,7 @@ let parse_args argv =
   let include_snippet = ref true in
   let runtime_caps_path = ref None in
   let parser_experimental_effects = ref Run_config.default.experimental_effects in
-  let type_row_mode_str = ref "metadata-only" in
+  let type_row_mode_str = ref "ty-integrated" in
   let parser_require_eof = ref Run_config.default.require_eof in
   let parser_packrat = ref Run_config.default.packrat in
   let parser_left_recursion = ref Run_config.default.left_recursion in
@@ -435,7 +435,7 @@ let parse_args argv =
           (fun value ->
             type_row_mode_str :=
               String.lowercase_ascii (String.trim value)),
-        "<metadata-only|dual-write> TYPE-002 effect row integration mode (default: metadata-only)" );
+        "<metadata-only|dual-write|ty-integrated> TYPE-002 effect row integration mode (default: ty-integrated)" );
       ( "--left-recursion",
         Arg.String
           (fun value ->
@@ -693,11 +693,12 @@ let parse_args argv =
         match !type_row_mode_str with
         | "metadata-only" -> "metadata-only"
         | "dual-write" -> "dual-write"
+        | "ty-integrated" -> "ty-integrated"
         | other ->
             prerr_endline
               (Printf.sprintf
-                 "Warning: unknown type row mode '%s', using 'metadata-only'" other);
-            "metadata-only"
+                 "Warning: unknown type row mode '%s', using 'ty-integrated'" other);
+            "ty-integrated"
       in
 
       let audit_dir_override_value = !audit_dir_override in

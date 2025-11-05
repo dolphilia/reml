@@ -371,6 +371,7 @@ type fn_metadata = {
   effects : effect_set;  (** 効果集合 *)
   capabilities : capability_set;  (** Capability 集合 *)
   dict_instances : dict_instance list;  (** 辞書インスタンス *)
+  effect_row : Types.effect_row option;  (** 型表現に統合された効果行 *)
   opt_flags : opt_flags;  (** 最適化フラグ *)
 }
 (** 関数メタデータ *)
@@ -450,6 +451,7 @@ let default_metadata span =
     effects = empty_effect_set;
     capabilities = empty_capability_set;
     dict_instances = [];
+    effect_row = None;
     opt_flags = default_opt_flags;
   }
 
