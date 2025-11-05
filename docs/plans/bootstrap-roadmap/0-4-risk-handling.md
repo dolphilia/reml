@@ -76,6 +76,20 @@
 - 関連フェーズ: Phase 2 (2-7)
 - 参照: `docs/plans/bootstrap-roadmap/2-5-proposals/TYPE-002-proposal.md`, `docs/plans/bootstrap-roadmap/2-5-to-2-7-type-002-handover.md`, `docs/plans/bootstrap-roadmap/2-5-review-log.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`, `docs/notes/effect-system-tracking.md`, `compiler/ocaml/docs/effect-system-design-note.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md#0-3-7b-効果行統合メトリクス運用2026-12-18-更新`
 - 担当: Phase 2-7 Type チーム（TYPE-002）
+
+<a id="diagnostic-domain-metrics"></a>
+### 診断ドメインメトリクス監視
+
+- 登録日: 2026-12-21
+- タイトル: 診断ドメイン KPI の閾値逸脱
+- カテゴリ: 技術的負債
+- 詳細: Phase 2-7 で導入した `diagnostics.domain_coverage`・`diagnostics.plugin_bundle_ratio`・`diagnostics.effect_stage_consistency` は Phase 2-8 の仕様監査で必須となる。いずれかが閾値（0.95 または 1.0）を下回ると、Plugin/LSP/Capability の差分抽出が不完全となり、`docs/spec/3-6-core-diagnostics-audit.md` と CLI/LSP ゴールデンの同期が崩れるリスクがある。
+- 対応案: `collect-iterator-audit-metrics.py --section diagnostics --require-success` を CI で常時動作させ、逸脱が検出された場合は `reports/audit/dashboard/diagnostics.md` の比率を確認した上で互換モードテストを停止し、`docs/notes/dsl-plugin-roadmap.md` と連携してバンドル署名の再発行と Stage 診断の再測定を行う。
+- 期限: 2027-03-31
+- 状態: Monitoring
+- 関連フェーズ: Phase 2 (2-7, 2-8)
+- 参照: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §5、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md#0-3-7c-診断ドメイン可視化メトリクス運用2026-12-21-更新`、`reports/audit/dashboard/diagnostics.md`, `reports/audit/phase2-7/diagnostics-domain-20261221.json`
+- 担当: Phase 2-8 Diagnostics/Plugin チーム
 - 登録日: 2025-10-10
 - タイトル: Debian sysroot アーカイブのハッシュ未確定
 - カテゴリ: 互換性

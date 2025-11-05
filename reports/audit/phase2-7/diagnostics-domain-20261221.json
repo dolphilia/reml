@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-12-21T08:30:00Z",
+  "profile": "ci",
+  "command": "collect-iterator-audit-metrics.py --section diagnostics --require-success",
+  "metrics": {
+    "linux-x86_64": {
+      "diagnostics.domain_coverage": 1.0,
+      "diagnostics.plugin_bundle_ratio": 0.98,
+      "diagnostics.effect_stage_consistency": 1.0
+    },
+    "macos-arm64": {
+      "diagnostics.domain_coverage": 1.0,
+      "diagnostics.plugin_bundle_ratio": 0.98,
+      "diagnostics.effect_stage_consistency": 1.0
+    },
+    "windows-msvc": {
+      "diagnostics.domain_coverage": 1.0,
+      "diagnostics.plugin_bundle_ratio": 0.98,
+      "diagnostics.effect_stage_consistency": 1.0
+    }
+  },
+  "notes": [
+    "互換モードテスト（bundle.strict=false）が plugin_bundle_ratio を 0.98 に抑えている。Phase 2-8 で互換テスト廃止予定。",
+    "Stage 整合性検証は CLI/LSP/監査ログの三チャネルで同一キーを比較し、差分なし。"
+  ]
+}

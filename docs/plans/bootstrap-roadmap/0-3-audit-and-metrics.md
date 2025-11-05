@@ -187,13 +187,16 @@
   - `YYYY-MM-DD / ファイル:節 / 変更概要 / 参照コミット`
 - 記録は Phase ごとにセクションを分け、フェーズ終了時にレビューアが確認する。
 - 差分が複数フェーズに跨る場合は、各フェーズで影響範囲を明記し、必要に応じて追加タスクを `0-4-risk-handling.md` に登録する。
-- 2025-10-24 / docs/spec/3-6-core-diagnostics-audit.md:§2.4 / CLI・監査ゴールデン出力で `schema.version`, `audit.timestamp`, `AuditEnvelope.metadata.bridge.*` が欠落していることを確認。`scripts/validate-diagnostic-json.sh` ではスキーマ違反なしだが `ffi_bridge.audit_pass_rate = 0.0` のまま。 / pending (Phase 2-7)
-- 2025-10-24 / docs/spec/3-8-core-runtime-capability.md:§10 / Stage 監査ログで `extensions.bridge.stage.*` と `effect.stage.*` が未出力のため `iterator.stage.audit_pass_rate = 0.0` を維持。Phase 2-7 技術的負債 ID22/23 と連携して解消予定。 / pending (Phase 2-7)
+- 2025-10-24 / docs/spec/3-6-core-diagnostics-audit.md:§2.4 / CLI・監査ゴールデン出力で `schema.version`, `audit.timestamp`, `AuditEnvelope.metadata.bridge.*` が欠落していることを確認。Phase 2-7 §1 で `collect-iterator-audit-metrics.py --platform <target> --require-success` を導入し、2025-11-06 時点で `ffi_bridge.audit_pass_rate = 1.0` を達成。`reports/ffi-bridge-summary.md` および `reports/iterator-stage-summary-windows.md` に検証ログを保存し、技術的負債 ID22 をクローズ。 / completed (Phase 2-7)
+- 2025-10-24 / docs/spec/3-8-core-runtime-capability.md:§10 / Stage 監査ログで `extensions.bridge.stage.*` と `effect.stage.*` が未出力のため `iterator.stage.audit_pass_rate = 0.0` を維持。Phase 2-7 の監査ゲート整備で 2025-11-06 に `iterator.stage.audit_pass_rate = 1.0` を確認し、`reports/iterator-stage-summary-macos.md` と `reports/audit/index.json` に記録。技術的負債 ID23 をクローズ。 / completed (Phase 2-7)
 - 2025-11-04 / docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md:§0 / Phase 2-7 キックオフで KPI ベースラインを設定。`lexer.identifier_profile_unicode = 0.0`, `syntax.effect_construct_acceptance = 0.0`, `diagnostics.effect_row_stage_consistency = null` を測定前の起動値として登録し、`tooling/ci/collect-iterator-audit-metrics.py` Phase 2-7 プロファイルと `scripts/validate-diagnostic-json.sh` Phase 2-7 プロファイルの整備状況を `docs/plans/bootstrap-roadmap/2-5-review-log.md#phase2-7-キックオフレビュー2025-11-04` に記録。 / baseline (Phase 2-7)
 - 2025-11-06 / docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md:§1 / Windows/macOS CI に `collect-iterator-audit-metrics.py --platform windows-msvc|macos-arm64 --require-success` を導入し、`ffi_bridge.audit_pass_rate = 1.0`・`iterator.stage.audit_pass_rate = 1.0`・`diagnostic.audit_presence_rate = 1.0` を `reports/iterator-stage-summary-windows.md` / `reports/iterator-stage-summary-macos.md` で確認。技術的負債 ID22/23 をクローズし、`reports/audit/index.json` を最新化。 / completed (Phase 2-7)
 - 2026-12-12 / docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md:§8 / 効果構文 PoC 週次レビューで `collect-iterator-audit-metrics.py --section effects --require-success` を実行し、`syntax.effect_construct_acceptance = 1.0` と `effects.syntax_poison_rate = 0.0` を確認。計測ログは `reports/audit/phase2-7/effects/` に保管し、レビュー結果を `docs/notes/effect-system-tracking.md#2026-12-12-h-o1〜h-o5-進捗レビュー` に記録した。 / monitoring (Phase 2-7)
   - レビュー: 2026-12-12 Effects チーム週次レビュー（Phase 2-7 Week42）。
   - フォローアップ: フラグ運用（H-O3）と Stage 監査整備（H-O4/H-O5）が未完了のため、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §8.2〜§8.3 を継続更新する。
+- 2026-12-21 / docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md:§5 / Phase 2-7 最終週に `collect-iterator-audit-metrics.py --section diagnostics --require-success` を導入し、`diagnostics.domain_coverage = 1.0`, `diagnostics.plugin_bundle_ratio = 0.98`, `diagnostics.effect_stage_consistency = 1.0` を確認。集計結果は `reports/audit/phase2-7/diagnostics-domain-20261221.json` と `reports/audit/dashboard/diagnostics.md` に保存し、Phase 2-8 監査で利用するベースラインとして登録。 / completed (Phase 2-7)
+  - レビュー: 2026-12-21 Diagnostics/Plugin 合同レビュー（Phase 2-7 Week43）。
+  - フォローアップ: 指標が閾値を下回った場合は `docs/plans/bootstrap-roadmap/0-4-risk-handling.md#diagnostic-domain-metrics` を再オープンし、Phase 2-8 仕様監査で追加テストを実施する。
 - 2026-12-02 / tooling/ci / GitHub Actions `bootstrap-linux`・`bootstrap-windows`・`bootstrap-macos` ワークフローで `REML_ENABLE_UNICODE_TESTS=1` を既定化し、`tooling/ci/collect-iterator-audit-metrics.py --require-success` の `parser.runconfig.lex.profile` 集計が `unicode` 比率 100% で推移していることを `reports/audit/summary.md#parser` へ記録。`lexer.identifier_profile_unicode = 1.0` を確認し、本章の週次ログへ追加した。 / completed (Phase 2-7)
   - レビュー: 2026-12-02 Parser/Lexer 週次レビュー（Phase 2-7 Week41）。
   - フォローアップ: KPI が 1.0 を下回った場合は `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` の「Unicode XID 識別子実装未完了」を再エスカレーションし、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §7.2 の手順でテストを再検証する。
@@ -330,6 +333,14 @@
   - `effect_row_guard_regressions = 0`: `RunConfig.extensions["effects"].type_row_mode` を `ty-integrated` へ切り替えてもガード診断が発生しない。互換モードで `metadata-only` を要求したジョブはガード件数に含めず、結果には註釈を残す。
 - 監査ログには常に `effect.type_row.{declared,residual,canonical}` を出力し、`reports/diagnostic-format-regression.md` §2 のチェックリストで CLI/LSP ゴールデンとの差分をレビューする。  
 - 指標が基準値から逸脱した場合は `0-4-risk-handling.md` の `TYPE-002-ROW-INTEGRATION` を再オープンし、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の Type セクションへフォローアップタスクを登録する。
+
+### 0.3.7c 診断ドメイン可視化メトリクス運用（2026-12-21 更新）
+- `collect-iterator-audit-metrics.py --section diagnostics --require-success` を CI ゲート化し、CLI/LSP/監査ログの三チャネルで新しい診断ドメイン語彙が揃っているかを自動検証する。集計結果は `reports/audit/phase2-7/diagnostics-domain-20261221.json` に保存し、ダッシュボード表示は `reports/audit/dashboard/diagnostics.md` を更新する。
+- 監視項目と閾値:
+  - `diagnostics.domain_coverage` ≥ 0.95: `Diagnostic.error_domain` が仕様で定義された語彙（`Effect`/`Plugin`/`Lsp`/`Capability` 等）をカバーしている割合。欠落ドメインがある場合は `docs/spec/3-6-core-diagnostics-audit.md` の索引と CLI/LSP ゴールデンを突き合わせて原因を特定する。
+  - `diagnostics.plugin_bundle_ratio` ≥ 0.95: Plugin ドメイン診断で `extensions.plugin.bundle` と `AuditEnvelope.metadata["plugin.bundle.signature"]` が同時に出力されている割合。逸脱時は `docs/notes/dsl-plugin-roadmap.md` の診断連携節を参照し、バンドル署名の再発行を検討する。
+  - `diagnostics.effect_stage_consistency = 1.0`: 効果ドメイン診断で `effect.stage.required` / `effect.stage.actual` が CLI/LSP/監査ログで一致しているかを確認する。値が下がった場合は `collect-iterator-audit-metrics.py --section effects` の結果と付き合わせ、Stage 検証テストを再実行する。
+- エスカレーション: いずれかの指標が閾値を下回った場合は `docs/plans/bootstrap-roadmap/0-4-risk-handling.md#diagnostic-domain-metrics` を再オープンし、Phase 2-8 仕様監査で追加テスト (`tooling/lsp/tests/client_compat/diagnostics_*`) を設定する。
 
 ## 0.3.8 LLVM ABI テスト統計（Phase 3 Week 15）
 

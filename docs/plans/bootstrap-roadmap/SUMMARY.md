@@ -66,6 +66,8 @@
 8. **[2-8-spec-integrity-audit.md](2-8-spec-integrity-audit.md)**: 仕様完全性監査と最終調整
 9. **[2-2-completion-report.md](2-2-completion-report.md)**: Phase 2-2 効果システム統合 完了報告書
 10. **[2-2-to-2-3-handover.md](2-2-to-2-3-handover.md)**: Phase 2-3 FFI 契約拡張への引き継ぎ資料
+11. **[2-7-completion-report.md](2-7-completion-report.md)**: Phase 2-7 診断パイプライン残課題・技術的負債整理 完了報告書
+12. **[2-7-to-2-8-handover.md](2-7-to-2-8-handover.md)**: Phase 2-8 仕様完全性監査への引き継ぎ資料
 
 ### 技術的ハイライト
 - 型クラス実装方式の定量的評価（性能・コードサイズ・保守性）

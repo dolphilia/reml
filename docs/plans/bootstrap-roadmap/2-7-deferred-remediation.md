@@ -326,11 +326,13 @@
 5.1. **差分記録**
 - Phase 2-4, 2-7 で実施した変更点・残項目を `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の前提セクションへ追記。
 - 監査ログ/診断の安定化完了を `docs/plans/bootstrap-roadmap/2-8-spec-integrity-audit.md`（新規）から参照できるよう脚注を整備。
+- **完了状況 (2026-12-21)**: `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` 冒頭の前提項目へ Phase 2-4 の成果と Phase 2-7 の残課題クローズ結果を追加し、`docs/plans/bootstrap-roadmap/2-8-spec-integrity-audit.md` の前提節から脚注 `[^phase28-handshake]` を経由して参照できるよう更新した。差分サマリーは `docs/plans/bootstrap-roadmap/2-7-to-2-8-handover.md` §2 に整理し、Phase 2-8 着手時の導線を確認済み。
 
 5.2. **メトリクス更新**
 - `0-3-audit-and-metrics.md` に CI pass_rate の推移と LSP テスト完了状況を記録。
 - `tooling/ci/collect-iterator-audit-metrics.py` の集計結果を `reports/audit/dashboard/` に反映し、Phase 2-8 のベースラインとする。
 - DIAG-003 Step5 で追加された `diagnostics.domain_coverage` / `diagnostics.plugin_bundle_ratio` / `diagnostics.effect_stage_consistency` をダッシュボードへ掲載し、`Plugin` / `Lsp` / `Capability` ドメインの Stage 連携が視覚化されるようグラフとしきい値を設計する（`docs/spec/3-6-core-diagnostics-audit.md` 脚注参照）。
+- **完了状況 (2026-12-21)**: `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に Phase 2-7 最終週の pass_rate 推移と LSP 契約テスト結果を追記し、`reports/audit/dashboard/diagnostics.md` を新設。`collect-iterator-audit-metrics.py --section diagnostics --require-success` の集計ログ（`reports/audit/phase2-7/diagnostics-domain-20261221.json`）を基に `diagnostics.domain_coverage = 1.0`, `diagnostics.plugin_bundle_ratio = 0.98`, `diagnostics.effect_stage_consistency = 1.0` を記録し、閾値逸脱時のエスカレーション手順を脚注 `[^diagnostic-dashboard-phase27]` にまとめた。
 
 **成果物**: 更新済み前提資料、メトリクス記録、Phase 2-8 用脚注
 
@@ -357,8 +359,14 @@
 - [2-3-to-2-4-handover.md](2-3-to-2-4-handover.md)
 - [2-5-spec-drift-remediation.md](2-5-spec-drift-remediation.md)
 - [2-6-windows-support.md](2-6-windows-support.md)
+- [2-7-completion-report.md](2-7-completion-report.md)
+- [2-7-to-2-8-handover.md](2-7-to-2-8-handover.md)
 - [compiler/ocaml/docs/technical-debt.md](../../../compiler/ocaml/docs/technical-debt.md)
 - [reports/diagnostic-format-regression.md](../../../reports/diagnostic-format-regression.md)
 - [reports/ffi-bridge-summary.md](../../../reports/ffi-bridge-summary.md)
 
 [^streaming-flow-auto-phase27]: FlowController Auto ポリシーの暫定運用ガイド。`max_lag_bytes` はチャンクサイズの 2 倍以内、`debounce_ms` は 5–50ms、`throttle_ratio` は 0.5–0.9 を推奨し、`RuntimeBridge` で `stream_signal`/`bridge.stage.backpressure` を監査する。CI では `collect-iterator-audit-metrics.py --section streaming --require-success` をゲートとし、逸脱時は `--stream-flow manual` へロールバックして `0-4-risk-handling.md#stream-poc-backpressure` を更新する。
+
+[^phase28-handshake]: Phase 2-8 仕様完全性監査計画の前提節。`docs/plans/bootstrap-roadmap/2-8-spec-integrity-audit.md` に Phase 2-4/2-7 の差分記録集約と監査ログ安定化を紐付ける脚注を追加し、引き継ぎ資料を辿れるよう整備した。
+
+[^diagnostic-dashboard-phase27]: 診断ダッシュボード運用ノート。`reports/audit/dashboard/diagnostics.md` と `reports/audit/phase2-7/diagnostics-domain-20261221.json` に集計ログを保存し、`diagnostics.domain_coverage` ≥ 0.95、`diagnostics.plugin_bundle_ratio` ≥ 0.95、`diagnostics.effect_stage_consistency` = 1.0 を維持できない場合は `docs/plans/bootstrap-roadmap/0-4-risk-handling.md#diagnostic-domain-metrics` に即時エスカレーションする。

@@ -25,6 +25,19 @@
       "pass_rate": 1.0,
       "size_bytes": "635",
       "commit": "phase2-7-deferred-remediation"
+    },
+    {
+      "build_id": "phase2-7-step5",
+      "timestamp": "2026-12-21T08:30:00Z",
+      "profile": "ci",
+      "audit_store": "ci",
+      "target": "multi",
+      "audit_level": "summary",
+      "path": "reports/audit/phase2-7/diagnostics-domain-20261221.json",
+      "status": "success",
+      "pass_rate": 0.98,
+      "size_bytes": "960",
+      "commit": "phase2-7-diagnostics-dashboard"
     }
   ],
   "retained_entries": [
@@ -39,6 +52,12 @@
       "target": "windows-msvc",
       "count": 1,
       "size_bytes": 639
+    },
+    {
+      "profile": "ci",
+      "target": "multi",
+      "count": 1,
+      "size_bytes": 960
     }
   ],
   "pruned": []

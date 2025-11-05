@@ -9,7 +9,7 @@
 - **含まない**: 新機能や将来拡張の提案、新たな API 設計（必要であれば Phase 3 にタスク化）。
 - **前提**:
   - Phase 2-5 で主要差分の補正案が承認済みであり、修正案のドラフトが揃っていること。
-  - Phase 2-7 で診断・監査パイプラインの運用が安定していること（CI ゲート・LSP テスト完了）。
+  - Phase 2-7 で診断・監査パイプラインの運用が安定していること（CI ゲート・LSP テスト完了）。[^phase27-handshake-2-8]
   - 技術的負債リストのうち Phase 2 内で解消できる項目が処理済みで、残項目が Phase 3 引き継ぎとして仕分け済みであること。
 
 ## 作業ディレクトリ
@@ -143,3 +143,5 @@
 - [docs/spec/0-0-overview.md](../../spec/0-0-overview.md)
 - [docs/spec/3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md)
 - [docs/notes/repository-restructure-plan.md](../notes/repository-restructure-plan.md)
+
+[^phase27-handshake-2-8]: Phase 2-7 診断パイプライン残課題・技術的負債整理計画の最終成果。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §5、`docs/plans/bootstrap-roadmap/2-7-to-2-8-handover.md`、`reports/audit/dashboard/diagnostics.md` に記録された監査ベースラインと差分ログを参照する。

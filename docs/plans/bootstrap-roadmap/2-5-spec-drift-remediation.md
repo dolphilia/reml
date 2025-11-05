@@ -9,6 +9,7 @@
 - **含まない**: 新機能追加、仕様の大規模刷新。必要な場合は別タスクとして起票。
 - **前提**: Phase 2 の実装タスク（型クラス、効果、FFI、診断）が概ね完了し、差分が明確になっていること。
 - **連携**: Phase 2-7 で診断・監査パイプラインの残課題を処理し、Phase 2-8 で最終監査を行う前提となるため、差分リストは両フェーズから参照可能な構成で記録する。
+- **前提更新 (2026-12-21)**: Phase 2-4 で保留していた監査ゲート整備と Phase 2-7 の残課題解消を反映済み。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §5 と `docs/plans/bootstrap-roadmap/2-7-to-2-8-handover.md` §2 に記録された差分ログ、ならびに `reports/audit/dashboard/diagnostics.md` のベースラインを Phase 2-8 の仕様監査で前提とする[^phase27-handshake-spec].
 
 ## 作業ディレクトリ
 - `docs/spec/` : Chapter 0〜3 の本文・図表・脚注更新
@@ -333,6 +334,8 @@
     2025-11-20 時点。`parser_run_config` に `Config`/`Lex`/`Recover`/`Stream` サブモジュールを追加し、`extensions` ネームスペースを型安全に読み取るシムを実装。`lex.profile` 非指定時の `ConfigTriviaProfile::strict_json` フォールバック、`recover.sync_tokens`/`notes` の `Parser_diag_state` 連携、`stream` プレースホルダの導入、および `dune build` による検証を完了。
 
 [^runconfig-step5-phase25]:
+
+[^phase27-handshake-spec]: Phase 2-7 残課題クローズ記録と Phase 2-8 監査準備の導線。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §5、`docs/plans/bootstrap-roadmap/2-7-to-2-8-handover.md` §2、`reports/audit/dashboard/diagnostics.md` を参照し、Phase 2-8 で使用する監査ベースラインと差分ログを集約した。
     2025-11-22 時点。PARSER-002 Step 5 で `compiler/ocaml/tests/run_config_tests.ml` を追加、RunConfig ゴールデン JSON（`parser-runconfig-packrat.json.golden`）を整備し、`tooling/ci/collect-iterator-audit-metrics.py` に RunConfig 用指標を実装。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ `parser.runconfig_switch_coverage` / `parser.runconfig_extension_pass_rate` を登録し、CI ゲートで値を監視できる状態に移行した。
 6.4. **後半フェーズの仕上げ**
 - **PARSER-003 / EXEC-001 / ERR-002**: Phase 2-5 後半でコアコンビネーター抽出とストリーミング PoC、`recover` FixIt 拡張を実装し、ランナ―整合性を最終確認する。
