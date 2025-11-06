@@ -18,6 +18,10 @@
   - [`1-0-front-end-transition.md`](1-0-front-end-transition.md): パーサ/型推論移植の方針とマイルストーン
   - [`1-1-ast-and-ir-alignment.md`](1-1-ast-and-ir-alignment.md): AST/IR 対応表と検証手順
   - [`1-2-diagnostic-compatibility.md`](1-2-diagnostic-compatibility.md): 診断互換性のチェックリストと dual-write 運用
+- **P2 バックエンド統合**
+  - [`2-0-llvm-backend-plan.md`](2-0-llvm-backend-plan.md): LLVM バックエンド移植・TargetMachine 整合・IR 検証手順
+  - [`2-1-runtime-integration.md`](2-1-runtime-integration.md): ランタイム FFI・Capability Registry・監査ログ統合計画
+  - [`2-2-adapter-layer-guidelines.md`](2-2-adapter-layer-guidelines.md): プラットフォーム差分吸収アダプタ層の設計指針
 - **統合原則**
   - [`unified-porting-principles.md`](unified-porting-principles.md): 移植全体で共有する設計原則と成功指標
 

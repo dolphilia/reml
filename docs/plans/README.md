@@ -20,6 +20,10 @@ Reml 実装ロードマップや運用計画を集約しています。
   - [0-2-windows-toolchain-audit.md](rust-migration/0-2-windows-toolchain-audit.md) — Windows ツールチェーン監査手順
   - [appendix/glossary-alignment.md](rust-migration/appendix/glossary-alignment.md) — Rust↔Reml 用語整合表
 - [unified-porting-principles.md](rust-migration/unified-porting-principles.md) — 移植原則・OCaml→Rust 鉄則・プロジェクト指針を統合したガイド
+- **P2 バックエンド統合**
+  - [2-0-llvm-backend-plan.md](rust-migration/2-0-llvm-backend-plan.md) — LLVM バックエンド統合とターゲット別検証計画
+  - [2-1-runtime-integration.md](rust-migration/2-1-runtime-integration.md) — ランタイム FFI・Capability 連携と監査手順
+  - [2-2-adapter-layer-guidelines.md](rust-migration/2-2-adapter-layer-guidelines.md) — プラットフォーム差分アダプタ層の設計ガイドライン
 
 ---
 計画書を更新する際は、関連する仕様書やガイドのリンクが最新構成になっているか確認し、`docs-migrations.log` に必要な記録を追加してください。
