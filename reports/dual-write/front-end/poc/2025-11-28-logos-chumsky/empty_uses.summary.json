@@ -1,0 +1,11 @@
+{
+  "case": "empty_uses",
+  "ast_match": true,
+  "ocaml_ast": "fn answer() = int(42:base10)",
+  "rust_ast": "fn answer() = int(42:base10)",
+  "ocaml_diag_count": 0,
+  "rust_diag_count": 0,
+  "diag_match": true,
+  "ocaml_diag_messages": [],
+  "rust_diag_messages": []
+}

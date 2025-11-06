@@ -1,0 +1,11 @@
+{
+  "case": "addition",
+  "ast_match": true,
+  "ocaml_ast": "fn add(x, y) = binary(var(x) + var(y))",
+  "rust_ast": "fn add(x, y) = binary(var(x) + var(y))",
+  "ocaml_diag_count": 0,
+  "rust_diag_count": 0,
+  "diag_match": true,
+  "ocaml_diag_messages": [],
+  "rust_diag_messages": []
+}

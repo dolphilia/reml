@@ -64,8 +64,8 @@
 4. **パーサ生成戦略と状態管理の設計**  
    - ✅ 2025-11-28: `docs/notes/core-parser-migration.md#p1-w1-rust-parser-戦略と状態管理（2025-11-28）` に `logos`＋`chumsky` を第一候補（`pomelo` をフォールバック）とする決定と PoC ストーリー、`ParserSession`/`StreamingState` の責務整理を記録した。`lalrpop` はエラー回復と生成物サイズの懸念で除外。  
    - `Core_parse` の state machine・入力ストリーム・エラー復旧フックを分解し、Rust の `ParserDriver`（仮）へ移す責務を定義済み。`ReplyFlags`（`consumed`/`committed`/`far_error`）と `PackratEntry` のキー仕様（`ParserId`＋`Range<u32>`）を固め、`parser.stream.*` のメトリクス更新を `StreamingState` で一元化する設計を確定。  
-   - PoC ゴール：`parser::driver::tests::basic_roundtrip` で AST/診断差分ゼロを確認し、`tests/streaming_metrics.rs` で `packrat_hits` カウンタの増減を検証する。CLI フック（`remlc --frontend rust --emit parse-debug`）案は `1-3-dual-write-runbook.md` の手順と整合した草案を共有済み。
-   - 進捗メモ: `reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/summary.md` に OCaml ベースラインを記録。Rust PoC は `cargo` 依存取得（`logos`/`chumsky`）がオフライン環境では完了せず、`scripts/poc_dualwrite_compare.sh` の実行は未完。ネットワーク取得が可能になり次第、同スクリプトで diff 測定を再試行する。
+   - PoC ゴール：`parser::driver::tests::basic_roundtrip` で AST/診断差分ゼロを確認し、`tests/streaming_metrics.rs` で `packrat_hits` カウンタの増減を検証する。CLI フック（`remlc --frontend rust --emit parse-debug`）案は `1-3-dual-write-runbook.md` の手順と整合した草案を共有済み。  
+   - ✅ 2025-11-28: `scripts/poc_dualwrite_compare.sh` を `cargo test` 後に再実行し、4 ケース（`empty_uses` / `multiple_functions` / `addition` / `missing_paren`）で AST・診断件数が OCaml ベースラインと一致することを確認。`missing_paren` の診断メッセージも OCaml と同値に揃え、期待トークン一覧は `recover.expected_tokens` ノートへ格納した。
 
 5. **Packrat / span_trace 再現の設計**  
    - `Core_parse_streaming` の packrat キャッシュと `span_trace` 収集ロジックを調査し、Rust で利用するデータ構造（`IndexMap`/`HashMap` と寿命管理）を決定する。  
@@ -73,7 +73,8 @@
 
 6. **最小ケースでの dual-write 準備**  
    - `remlc --frontend {ocaml|rust}` 相当の切り替えインターフェースに必要な CLI フラグや build ターゲットを列挙し、未実装部分には TODO を残す。  
-   - `reports/dual-write/front-end/` に W1 用の成果物ディレクトリ構成を作成し、AST/診断 diff とメトリクス出力を保存するコマンドシーケンスを `1-3-dual-write-runbook.md` の手順と照合する。
+   - `reports/dual-write/front-end/` に W1 用の成果物ディレクトリ構成を作成し、AST/診断 diff とメトリクス出力を保存するコマンドシーケンスを `1-3-dual-write-runbook.md` の手順と照合する。  
+   - ✅ 2025-11-28: `scripts/poc_dualwrite_compare.sh` を実行し、`reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/summary.md` に 4 ケース分の AST/診断比較結果を保存。`missing_paren` は診断件数が一致したもののメッセージ粒度が異なるため、W2 で `SimpleReason` → Recover サマリ変換を整備して `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` にフォローアップを登録する。
 
 ## 1.0.6 ワークストリームと主要論点
 

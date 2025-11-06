@@ -13,7 +13,7 @@ pub trait SourceBuffer {
 
 impl SourceBuffer for String {
     fn as_str(&self) -> &str {
-        self.as_str()
+        String::as_str(self)
     }
 }
 
@@ -28,8 +28,7 @@ impl<'a> SourceBuffer for &'a str {
 enum RawToken {
     #[regex(r"[ \t\r\n]+", logos::skip)]
     #[regex(r"//[^\n]*", logos::skip)]
-    #[error]
-    Error,
+    Skip,
 
     #[token("fn")]
     KeywordFn,
@@ -85,49 +84,59 @@ pub fn lex_source(text: &str) -> LexOutput {
     let mut tokens = Vec::new();
     let mut errors = Vec::new();
 
-    while let Some(raw) = lexer.next() {
-        let span = lexer.span();
-        let span = Span::new(span.start as u32, span.end as u32);
-        match raw {
-            RawToken::KeywordFn => {
+    while let Some(result) = lexer.next() {
+        let range = lexer.span();
+        let span = Span::new(range.start as u32, range.end as u32);
+
+        match result {
+            Ok(RawToken::KeywordFn) => {
                 tokens.push(Token::with_lexeme(TokenKind::KeywordFn, span, "fn"));
             }
-            RawToken::KeywordLet => {
+            Ok(RawToken::KeywordLet) => {
                 tokens.push(Token::with_lexeme(TokenKind::KeywordLet, span, "let"));
             }
-            RawToken::KeywordModule => {
+            Ok(RawToken::KeywordModule) => {
                 tokens.push(Token::with_lexeme(TokenKind::KeywordModule, span, "module"));
             }
-            RawToken::KeywordEffect => {
+            Ok(RawToken::KeywordEffect) => {
                 tokens.push(Token::with_lexeme(TokenKind::KeywordEffect, span, "effect"));
             }
-            RawToken::Identifier => {
+            Ok(RawToken::Identifier) => {
                 tokens.push(Token::with_lexeme(
                     TokenKind::Identifier,
                     span,
                     lexer.slice(),
                 ));
             }
-            RawToken::IntLiteral => {
+            Ok(RawToken::IntLiteral) => {
                 tokens.push(Token::with_lexeme(
                     TokenKind::IntLiteral,
                     span,
                     lexer.slice(),
                 ));
             }
-            RawToken::LParen => tokens.push(Token::new(TokenKind::LParen, span)),
-            RawToken::RParen => tokens.push(Token::new(TokenKind::RParen, span)),
-            RawToken::LBrace => tokens.push(Token::new(TokenKind::LBrace, span)),
-            RawToken::RBrace => tokens.push(Token::new(TokenKind::RBrace, span)),
-            RawToken::LBracket => tokens.push(Token::new(TokenKind::LBracket, span)),
-            RawToken::RBracket => tokens.push(Token::new(TokenKind::RBracket, span)),
-            RawToken::Comma => tokens.push(Token::new(TokenKind::Comma, span)),
-            RawToken::Colon => tokens.push(Token::new(TokenKind::Colon, span)),
-            RawToken::Semi => tokens.push(Token::new(TokenKind::Semi, span)),
-            RawToken::Arrow => tokens.push(Token::new(TokenKind::Arrow, span)),
-            RawToken::Assign => tokens.push(Token::new(TokenKind::Assign, span)),
-            RawToken::Plus => tokens.push(Token::with_lexeme(TokenKind::Operator, span, "+")),
-            RawToken::Other | RawToken::Error => {
+            Ok(RawToken::LParen) => tokens.push(Token::new(TokenKind::LParen, span)),
+            Ok(RawToken::RParen) => tokens.push(Token::new(TokenKind::RParen, span)),
+            Ok(RawToken::LBrace) => tokens.push(Token::new(TokenKind::LBrace, span)),
+            Ok(RawToken::RBrace) => tokens.push(Token::new(TokenKind::RBrace, span)),
+            Ok(RawToken::LBracket) => tokens.push(Token::new(TokenKind::LBracket, span)),
+            Ok(RawToken::RBracket) => tokens.push(Token::new(TokenKind::RBracket, span)),
+            Ok(RawToken::Comma) => tokens.push(Token::new(TokenKind::Comma, span)),
+            Ok(RawToken::Colon) => tokens.push(Token::new(TokenKind::Colon, span)),
+            Ok(RawToken::Semi) => tokens.push(Token::new(TokenKind::Semi, span)),
+            Ok(RawToken::Arrow) => tokens.push(Token::new(TokenKind::Arrow, span)),
+            Ok(RawToken::Assign) => tokens.push(Token::new(TokenKind::Assign, span)),
+            Ok(RawToken::Plus) => {
+                tokens.push(Token::with_lexeme(TokenKind::Operator, span, "+"));
+            }
+            Ok(RawToken::Other) => {
+                errors.push(FrontendError::new(
+                    FrontendErrorKind::UnknownToken { span },
+                    Recoverability::Recoverable,
+                ));
+            }
+            Ok(RawToken::Skip) => {}
+            Err(_) => {
                 errors.push(FrontendError::new(
                     FrontendErrorKind::UnknownToken { span },
                     Recoverability::Recoverable,

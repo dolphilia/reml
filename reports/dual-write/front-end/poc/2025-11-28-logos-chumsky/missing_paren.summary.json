@@ -1,0 +1,15 @@
+{
+  "case": "missing_paren",
+  "ast_match": true,
+  "ocaml_ast": "",
+  "rust_ast": "",
+  "ocaml_diag_count": 1,
+  "rust_diag_count": 1,
+  "diag_match": true,
+  "ocaml_diag_messages": [
+    "構文エラー: 入力を解釈できません"
+  ],
+  "rust_diag_messages": [
+    "`RParen / Comma` のいずれかが必要でしたが `Assign` が見つかりました"
+  ]
+}

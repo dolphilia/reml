@@ -1,0 +1,63 @@
+{
+  "ast_render": "fn answer() = int(42:base10)",
+  "diagnostics": [],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/empty_uses.reml",
+  "tokens": [
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 2,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "answer",
+      "span": {
+        "end": 9,
+        "start": 3
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 10,
+        "start": 9
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 11,
+        "start": 10
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 13,
+        "start": 12
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "42",
+      "span": {
+        "end": 16,
+        "start": 14
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 17,
+        "start": 17
+      }
+    }
+  ]
+}

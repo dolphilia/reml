@@ -1,0 +1,103 @@
+{
+  "ast_render": "fn add(x, y) = binary(var(x) + var(y))",
+  "diagnostics": [],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/addition.reml",
+  "tokens": [
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 2,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "add",
+      "span": {
+        "end": 6,
+        "start": 3
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 7,
+        "start": 6
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "x",
+      "span": {
+        "end": 8,
+        "start": 7
+      }
+    },
+    {
+      "kind": "Comma",
+      "lexeme": null,
+      "span": {
+        "end": 9,
+        "start": 8
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "y",
+      "span": {
+        "end": 11,
+        "start": 10
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 12,
+        "start": 11
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 14,
+        "start": 13
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "x",
+      "span": {
+        "end": 16,
+        "start": 15
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 18,
+        "start": 17
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "y",
+      "span": {
+        "end": 20,
+        "start": 19
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 21,
+        "start": 21
+      }
+    }
+  ]
+}

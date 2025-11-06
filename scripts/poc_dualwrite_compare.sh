@@ -11,9 +11,10 @@ RUN_ID="2025-11-28-logos-chumsky"
 CASE_DIR="${REPORT_DIR}/${RUN_ID}"
 
 mkdir -p "${CASE_DIR}"
-export CARGO_HOME="${RUST_DIR}/.cargo"
-export CARGO_TARGET_DIR="${RUST_DIR}/target"
-mkdir -p "${CARGO_HOME}"
+: "${CARGO_HOME:=${HOME}/.cargo}"
+: "${CARGO_TARGET_DIR:=${RUST_DIR}/target}"
+export CARGO_HOME CARGO_TARGET_DIR
+mkdir -p "${CARGO_HOME}" "${CARGO_TARGET_DIR}"
 
 declare -a CASES=(
   "empty_uses::fn answer() = 42"
@@ -32,13 +33,12 @@ for entry in "${CASES[@]}"; do
   printf ">> ケース %s\n" "${name}"
   printf "%b\n" "${payload}" > "${input_path}"
 
-  ocaml_ast="$(cd "${OCAML_DIR}" && dune exec remlc -- --emit-ast "${input_path}")" || true
-  ocaml_diag="$(cd "${OCAML_DIR}" && dune exec remlc -- --format json --json-mode compact "${input_path}" 2>/dev/null || true)"
-  rust_json="$(cd "${RUST_DIR}" && cargo run --quiet --bin poc_frontend -- "${input_path}")"
-
-  printf "%s\n" "${ocaml_ast}" > "${CASE_DIR}/${name}.ocaml.ast.txt"
-  printf "%s\n" "${ocaml_diag}" > "${CASE_DIR}/${name}.ocaml.diagnostics.json"
-  printf "%s\n" "${rust_json}" > "${CASE_DIR}/${name}.rust.json"
+  (cd "${OCAML_DIR}" && dune exec remlc -- --emit-ast "${input_path}") \
+    > "${CASE_DIR}/${name}.ocaml.ast.txt" 2>/dev/null || true
+  (cd "${OCAML_DIR}" && dune exec remlc -- --format json --json-mode compact "${input_path}") \
+    > "${CASE_DIR}/${name}.ocaml.diagnostics.json" 2>&1 || true
+  (cd "${RUST_DIR}" && cargo run --quiet --bin poc_frontend -- "${input_path}") \
+    > "${CASE_DIR}/${name}.rust.json"
 
   python3 - "${CASE_DIR}" "${name}" <<'PY'
 import json

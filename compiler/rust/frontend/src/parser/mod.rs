@@ -1,8 +1,9 @@
 //! OCaml 版 `parser_driver` と同等の責務を担う Rust フロントエンド PoC。
 
-use chumsky::error::{Rich, RichReason};
+use chumsky::error::{Simple, SimpleReason};
 use chumsky::prelude::*;
-use chumsky::span::SimpleSpan;
+use chumsky::stream::Stream;
+use std::ops::Range;
 
 pub mod ast;
 
@@ -38,9 +39,15 @@ impl ParserDriver {
 
         let (ast, parse_errors) = parse_tokens(&tokens, source);
         diagnostics.extend(parse_errors.into_iter().map(|err| {
-            let mut diagnostic = FrontendDiagnostic::new(err.1);
+            let (message, expected_tokens) = err.1;
+            let mut diagnostic = FrontendDiagnostic::new(message);
             if let Some(span) = err.0 {
                 diagnostic = diagnostic.with_span(span);
+            }
+            if !expected_tokens.is_empty() {
+                diagnostic.add_note(
+                    DiagnosticNote::new("recover.expected_tokens", expected_tokens.join(", ")),
+                );
             }
             diagnostic.with_recoverability(Recoverability::Recoverable)
         }));
@@ -85,79 +92,66 @@ impl ParserDriver {
     }
 }
 
-fn parse_tokens(tokens: &[Token], source: &str) -> (Option<Module>, Vec<(Option<Span>, String)>) {
-    let token_stream = tokens
+fn parse_tokens(
+    tokens: &[Token],
+    source: &str,
+) -> (Option<Module>, Vec<(Option<Span>, (String, Vec<String>))>) {
+    let token_pairs: Vec<_> = tokens
         .iter()
         .filter(|token| token.kind != TokenKind::Whitespace)
         .map(|token| {
-            (
-                token.kind,
-                SimpleSpan::new(token.span.start as usize, token.span.end as usize),
-            )
+            let span = token.span;
+            (token.kind, (span.start as usize)..(span.end as usize))
         })
-        .collect::<Vec<_>>();
+        .collect();
 
     let end = source.len();
     let parser = module_parser(source);
-    match parser.parse(Stream::from_iter(
-        SimpleSpan::new(end, end),
-        token_stream.into_iter(),
-    )) {
-        Ok(ast) => (Some(ast), Vec::new()),
-        Err(errors) => {
-            let mapped = errors
-                .into_iter()
-                .map(|err| {
-                    let span = err.span().map(|s| Span::new(s.start as u32, s.end as u32));
-                    let message = format_simple_error(&err, source);
-                    (span, message)
-                })
-                .collect();
-            (None, mapped)
-        }
-    }
+    let (ast, errors) = parser.parse_recovery(Stream::from_iter(end..end, token_pairs.into_iter()));
+
+    let mapped_errors = errors
+        .into_iter()
+        .map(|err| {
+            let span = Some(convert_range(err.span()));
+            let message = format_simple_error(&err);
+            (span, message)
+        })
+        .collect();
+
+    (ast, mapped_errors)
 }
 
-fn format_simple_error(err: &Rich<'_, TokenKind>, source: &str) -> String {
-    match err.reason() {
-        RichReason::ExpectedFound { expected, found } => {
-            let expected_tokens = expected
-                .iter()
-                .filter_map(|token| match token {
-                    Some(kind) => Some(format!("{kind:?}")),
-                    None => None,
-                })
-                .collect::<Vec<_>>();
-            let expected_text = if expected_tokens.is_empty() {
-                "トークン".to_string()
-            } else {
-                expected_tokens.join(", ")
-            };
-            let found_text = found
-                .map(|kind| format!("{kind:?}"))
-                .unwrap_or_else(|| "EOF".to_string());
-            format!("`{expected_text}` のいずれかが必要でしたが `{found_text}` が見つかりました")
+fn convert_range(range: Range<usize>) -> Span {
+    Span::new(range.start as u32, range.end as u32)
+}
+
+fn format_simple_error(err: &Simple<TokenKind>) -> (String, Vec<String>) {
+    let expected_tokens: Vec<String> = err
+        .expected()
+        .filter_map(|opt| opt.map(|kind| format!("{kind:?}")))
+        .collect();
+
+    let message = match err.reason() {
+        SimpleReason::Unexpected | SimpleReason::Unclosed { .. } => {
+            "構文エラー: 入力を解釈できません".to_string()
         }
-        RichReason::Custom(msg) => msg.clone(),
-        RichReason::Many(reasons) => reasons
-            .iter()
-            .map(|reason| format_simple_error(reason, source))
-            .collect::<Vec<_>>()
-            .join("; "),
-    }
+        SimpleReason::Custom(msg) => msg.clone(),
+    };
+
+    (message, expected_tokens)
 }
 
 fn module_parser<'src>(
     source: &'src str,
-) -> impl Parser<TokenKind, Module, Error = Rich<'src, TokenKind>> + Clone {
-    let span_to_span = |span: SimpleSpan<usize>| Span::new(span.start as u32, span.end as u32);
+) -> impl Parser<TokenKind, Module, Error = Simple<TokenKind>> + Clone + 'src {
+    let span_to_span = |span: Range<usize>| Span::new(span.start as u32, span.end as u32);
 
-    let identifier = just(TokenKind::Identifier).map_with_span(move |_, span| {
+    let identifier = just(TokenKind::Identifier).map_with_span(move |_, span: Range<usize>| {
         let slice = &source[span.start..span.end];
         (slice.to_string(), span_to_span(span))
     });
 
-    let int_literal = just(TokenKind::IntLiteral).map_with_span(move |_, span| {
+    let int_literal = just(TokenKind::IntLiteral).map_with_span(move |_, span: Range<usize>| {
         let slice = &source[span.start..span.end];
         let value = slice.parse::<i64>().unwrap_or_default();
         Expr::int(value, span_to_span(span))
@@ -193,17 +187,20 @@ fn module_parser<'src>(
             })
             .boxed();
 
-        let plus = filter_map(move |span: SimpleSpan<usize>, kind| {
+        let plus = filter_map(move |span: Range<usize>, kind| {
             if kind == TokenKind::Operator {
                 let text = &source[span.start..span.end];
                 if text == "+" {
                     Ok(span_to_span(span))
                 } else {
-                    Err(Rich::custom(span, format!("未対応の演算子 `{text}`")))
+                    Err(Simple::custom(
+                        span.clone(),
+                        format!("未対応の演算子 `{text}`"),
+                    ))
                 }
             } else {
-                Err(Rich::custom(
-                    span,
+                Err(Simple::custom(
+                    span.clone(),
                     format!("`+` 演算子を期待しましたが `{kind:?}` でした"),
                 ))
             }
@@ -227,7 +224,7 @@ fn module_parser<'src>(
         .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
 
     let function = just(TokenKind::KeywordFn)
-        .map_with_span(move |_, span| span_to_span(span))
+        .map_with_span(move |_, span: Range<usize>| span_to_span(span))
         .then(identifier.clone())
         .then(params)
         .then_ignore(just(TokenKind::Assign))
@@ -248,4 +245,79 @@ fn module_parser<'src>(
 
 fn span_union(left: Span, right: Span) -> Span {
     Span::new(left.start.min(right.start), left.end.max(right.end))
+}
+
+#[cfg(test)]
+mod driver {
+    use super::*;
+
+    struct Case {
+        source: &'static str,
+        expected_ast: Option<&'static str>,
+        expected_messages: &'static [&'static str],
+    }
+
+    fn run_case(case: &Case) {
+        let result = ParserDriver::parse(case.source);
+
+        match (result.ast_render(), case.expected_ast) {
+            (Some(actual), Some(expected)) => assert_eq!(actual, expected),
+            (None, None) => {}
+            (actual, expected) => panic!("AST mismatch: actual={actual:?}, expected={expected:?}"),
+        }
+
+        assert_eq!(
+            result.diagnostics.len(),
+            case.expected_messages.len(),
+            "diagnostic count mismatch"
+        );
+
+        for (diag, expected_message) in result.diagnostics.iter().zip(case.expected_messages.iter())
+        {
+            assert_eq!(&diag.message, expected_message);
+        }
+    }
+
+    #[test]
+    fn basic_roundtrip() {
+        let cases = [
+            Case {
+                source: "fn answer() = 42",
+                expected_ast: Some("fn answer() = int(42:base10)"),
+                expected_messages: &[],
+            },
+            Case {
+                source: "fn log(x) = x\nfn log_twice(x) = log(log(x))",
+                expected_ast: Some(
+                    "fn log(x) = var(x)\nfn log_twice(x) = call(var(log))[call(var(log))[var(x)]]",
+                ),
+                expected_messages: &[],
+            },
+            Case {
+                source: "fn add(x, y) = x + y",
+                expected_ast: Some("fn add(x, y) = binary(var(x) + var(y))"),
+                expected_messages: &[],
+            },
+            Case {
+                source: "fn missing(x = x",
+                expected_ast: None,
+                expected_messages: &["構文エラー: 入力を解釈できません"],
+            },
+        ];
+
+        for case in cases.iter() {
+            run_case(case);
+        }
+
+        let error_case = ParserDriver::parse("fn missing(x = x");
+        assert_eq!(error_case.diagnostics.len(), 1);
+        let diag = &error_case.diagnostics[0];
+        assert_eq!(diag.message, "構文エラー: 入力を解釈できません");
+        assert!(!diag.notes.is_empty());
+        assert_eq!(diag.notes[0].label, "recover.expected_tokens");
+        assert!(
+            diag.notes[0].message.contains("RParen"),
+            "expected token list to contain RParen"
+        );
+    }
 }

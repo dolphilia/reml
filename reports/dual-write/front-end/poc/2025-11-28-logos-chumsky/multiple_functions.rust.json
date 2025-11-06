@@ -1,0 +1,175 @@
+{
+  "ast_render": "fn log(x) = var(x)\nfn log_twice(x) = call(var(log))[call(var(log))[var(x)]]",
+  "diagnostics": [],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/multiple_functions.reml",
+  "tokens": [
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 2,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "log",
+      "span": {
+        "end": 6,
+        "start": 3
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 7,
+        "start": 6
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "x",
+      "span": {
+        "end": 8,
+        "start": 7
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 9,
+        "start": 8
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 11,
+        "start": 10
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "x",
+      "span": {
+        "end": 13,
+        "start": 12
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 16,
+        "start": 14
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "log_twice",
+      "span": {
+        "end": 26,
+        "start": 17
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 27,
+        "start": 26
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "x",
+      "span": {
+        "end": 28,
+        "start": 27
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 29,
+        "start": 28
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 31,
+        "start": 30
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "log",
+      "span": {
+        "end": 35,
+        "start": 32
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 36,
+        "start": 35
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "log",
+      "span": {
+        "end": 39,
+        "start": 36
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 40,
+        "start": 39
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "x",
+      "span": {
+        "end": 41,
+        "start": 40
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 42,
+        "start": 41
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 43,
+        "start": 42
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 44,
+        "start": 44
+      }
+    }
+  ]
+}

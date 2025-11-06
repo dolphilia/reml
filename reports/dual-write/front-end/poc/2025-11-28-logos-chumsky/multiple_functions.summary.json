@@ -1,0 +1,11 @@
+{
+  "case": "multiple_functions",
+  "ast_match": true,
+  "ocaml_ast": "fn log(x) = var(x)\nfn log_twice(x) = call(var(log))[call(var(log))[var(x)]]",
+  "rust_ast": "fn log(x) = var(x)\nfn log_twice(x) = call(var(log))[call(var(log))[var(x)]]",
+  "ocaml_diag_count": 0,
+  "rust_diag_count": 0,
+  "diag_match": true,
+  "ocaml_diag_messages": [],
+  "rust_diag_messages": []
+}

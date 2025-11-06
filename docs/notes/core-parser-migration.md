@@ -5,7 +5,8 @@
 - Rust 側の `ParserSession`（仮称）は `lexer::SourceBuffer` と `streaming::StreamingState` を束ね、`Core_parse.State`/`Core_parse_streaming.Session` が担っていた `diagnostics`・`packrat_cache`・`span_trace` を `Arc<SessionShared>` へ集約する。`SessionShared` は `AtomicUsize` で `parser.stream.*` メトリクスを更新し、`indexmap::IndexMap` で `PackratEntry`（キー: `(ParserId, ByteRange)`）を管理する。
 - `ParserDriver` は `RunConfig` と `ParserFlags` を受け取り、`Driver::parse` 内で `ParserSession::enter(rule_id)`→`ParserSession::commit(rule_id)`→`ParserSession::reply()` のシーケンスを提供する。OCaml 版 `Core_parse.Reply.{consumed,committed}` は Rust 側で `ReplyFlags`（`bitflags!`）に正規化し、JSON 連携時に `Diagnostic.Builder` 相当の API へ橋渡しする。
 - W1 の成果として `docs/plans/rust-migration/appendix/frontend-crate-evaluation.md` に加え、`ParserSession`/`StreamingState` の責務分割と PoC のストーリーポイントを本メモに記録し、W2 以降の AST/IR 対応表作業へ引き渡す。
-- `scripts/poc_dualwrite_compare.sh` を追加し、`reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/summary.md` に OCaml 側の AST/診断ベースラインを保存。Rust 側は `cargo` が `logos` / `chumsky` 依存を取得できないため未実行。ネットワーク解禁後に同スクリプトで差分取得を再試行する。
+- `scripts/poc_dualwrite_compare.sh` を追加し、`reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/summary.md` に AST/診断比較結果（OCaml vs Rust）を保存。ケース `missing_paren` も含め、診断件数が一致することを確認済み。
+- `parser::driver::tests::basic_roundtrip` と `tests/streaming_metrics.rs` を実装し、`cargo test` で AST ラウンドトリップと Packrat メトリクス操作を自動検証。`scripts/poc_dualwrite_compare.sh` の再実行で 4 ケースの AST/診断件数が OCaml ベースラインと同一であることを確認した。
 
 ### Parser 生成サブシステム
 - `chumsky` は規則ごとに `fn module_decl(input) -> Parser<'a, Token, Ast::ModuleDecl>` のような静的関数を生成するテンプレートを採用し、Menhir の `parser.mly` を機械的に写経できるよう `parser/templates/` にスクリプトを配置する。
