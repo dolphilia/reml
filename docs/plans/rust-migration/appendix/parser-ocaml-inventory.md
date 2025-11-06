@@ -63,6 +63,72 @@
 - Packrat キャッシュの prune ポリシーは `Core_parse_streaming` 実装依存であり、Rust の `IndexMap`/`hashbrown` でのメモリ挙動を要測定。P1 W3 で統計差分を測った上で調整する。  
 - `parser_expectation` の `Keyword`/`Token`/`Class` ラベルは日本語ヒューマンイズ済み。Rust 実装でも ICU 由来の正規化設定を適用するか `docs/spec/3-3-core-text-unicode.md` を参照し、文字列処理の差分を監視する。
 
+## 5. Typed AST / IR インベントリ（W2 追加）
+
+`compiler/ocaml/src/typed_ast.ml` から Typed AST と制約付き IR を洗い出し、Rust 側で 1:1 再現すべきフィールドを整理した。W2 の AST/IR 対応タスクでは以下の要素を差分基準に利用する。
+
+### 5.1 `typed_expr` / `typed_pattern` / `typed_stmt`
+
+- `typed_expr` レコードは `texpr_kind`, `texpr_ty`, `texpr_span`, `texpr_dict_refs`（`dict_ref list`）で構成される。辞書参照は型クラス解決済みの順序付きリストで、Rust 版でも `SmallVec<DictRefId, 4>` など順序保持構造が必要。  
+- `typed_expr_kind` バリアント（23 種類）: `TLiteral`, `TVar`, `TModulePath`, `TCall`, `TEffectPerform`, `TLambda`, `TPipe`, `TBinary`, `TUnary`, `TFieldAccess`, `TTupleAccess`, `TIndex`, `TPropagate`, `TIf`, `TMatch`, `TWhile`, `TFor`, `TLoop`, `THandle`, `TContinue`, `TBlock`, `TUnsafe`, `TReturn`, `TDefer`, `TAssign`（`TFor` と `TEffectPerform` は追加メタ情報を保持）。  
+- `typed_pattern` は `tpat_kind`, `tpat_ty`, `tpat_bindings`, `tpat_span` を保持。`tpat_bindings` は `(string * ty) list` で、Rust 側では `Vec<(SymbolId, TyId)>` へ正規化する。  
+- `typed_pattern_kind` バリアントは `TPatLiteral`, `TPatVar`, `TPatWildcard`, `TPatTuple`, `TPatRecord`, `TPatConstructor`, `TPatGuard`。  
+- `typed_stmt` バリアントは `TDeclStmt`, `TExprStmt`, `TAssignStmt`, `TDeferStmt`。W2 では `parser_driver` の `stmt list` ダンプに合わせ `typed_stmt` も JSON 直列化対象へ含めることを決定。
+
+### 5.2 `typed_decl` と関数系ノード
+
+| OCaml 型 | 主フィールド | Rust 移植メモ |
+| --- | --- | --- |
+| `typed_decl` | `tdecl_attrs`, `tdecl_vis`, `tdecl_kind`, `tdecl_scheme`, `tdecl_span`, `tdecl_dict_refs` | `tdecl_scheme` は `Constraint_solver.constrained_scheme`。Rust 版では `Scheme { ty: TyId, constraints: Vec<ConstraintId> }` へ落とし込み、辞書参照も含めて dual-write 比較する。 |
+| `typed_decl_kind` | `TLetDecl`, `TVarDecl`, `TFnDecl`, `TTypeDecl`, `TTraitDecl`, `TImplDecl`, `TExternDecl`, `TEffectDecl`, `THandlerDecl`, `TConductorDecl` | 型推論対象でない宣言（型/trait/impl 等）は AST をそのまま転送。Rust 側でも「未解析」バリアントを維持し、JSON で `kind` を差分可能にする。 |
+| `typed_fn_decl` | `tfn_name`, `tfn_generic_params`, `tfn_params`, `tfn_ret_type`, `tfn_effect_row`, `tfn_where_clause`, `tfn_effect_profile`, `tfn_body` | `tfn_effect_row` は `Effect_row`（`Types.effect_row`）を保持。Rust 版では `EffectRowId` をインターンし、`collect-iterator-audit-metrics.py --section effects` で比較するためのシリアライズを準備する。 |
+| `typed_handler_decl` / `typed_handler_entry` | 効果ハンドラの `Operation/Return` バリアント | JSON では `entries` 配列内で `variant` を明示。 |
+
+### 5.3 辞書参照と制約付随情報
+
+- `texpr_dict_refs` / `tdecl_dict_refs` の要素型 `Constraint_solver.dict_ref` は `resolver_slot`, `trait_name`, `evidence_ty` を保持。Rust 版では `DictRefId`（整数）に正規化しつつ JSON へフラット化する。  
+- `TFor` は `dict_ref` と `iterator_dict_info option` を保持し、`collect-iterator-audit-metrics.py --section parser` で `parser.stream.iterator_dict.*` を算出する際のキーとなる。Rust 側でも `IteratorDictInfo { trait: Ident, adapter: ModulePath, location: Span }` を保持する。  
+- `typed_compilation_unit`（`tcu_*` フィールド）は `Module_env.use_binding list` を含む。Rust 実装では `use` 展開済みのバインディングも diff 対象にするため、`tcu_use_bindings` を `Vec<UseBinding>` で保持する草案とした。  
+- 制約 (`constraint_ list`) は AST と同型を再利用するため、Rust 版でも `Constraint { trait: Ident, args: Vec<TyId>, span }` を提供し、`p1-front-end-checklists.csv` の「Scheme/Constraint/Impl Registry」の受入条件へ直結させる。
+
+## 6. Core_parse / Streaming インベントリ（W2 追加）
+
+`compiler/ocaml/src/core_parse_streaming.ml` と `parser_driver.ml` からストリーミング状態および `ParseResult` 付随情報を抽出し、Rust 実装で保持すべきテレメトリ項目を固定した。
+
+### 6.1 セッション構造と `ParseResult`
+
+- `Core_parse_streaming.session` は `config`, `diag_state`, `core_state`, `packrat_cache` を保持。Rust 版では `Session { run_config, diag, core, packrat: Option<PackratCache> }` を再現し、`packrat_cache` の有無で `collect-iterator` への出力可否を切り替える。  
+- `parser_driver.parse_result` が保持するフィールドを以下に整理（JSON フィールド名も W2 で固定）。  
+
+| フィールド | 内容 | Rust 側 TODO |
+| --- | --- | --- |
+| `value` | `Ast.compilation_unit option` | AST diff で `null` 可。 |
+| `span` | `Diagnostic.span option` | `serde` で `{ "start": u32, "end": u32 }` に正規化。 |
+| `diagnostics` | `Diagnostic.t list` | `1-2-diagnostic-compatibility.md` と共有。 |
+| `recovered` | `bool` | Recover 拡張判定と同期。 |
+| `legacy_error` | `parse_error option` (`expected`, `committed`, `far_consumed`) | Rust CLI でも `--legacy` 時のみ設定。 |
+| `consumed` / `committed` | Packrat/Reply 状態から転記 | `Core_parse.Reply` の `consumed/committed` を `parser.stream.outcome_consistency` に流す。 |
+| `farthest_error_offset` | `int option` | `Parser_diag_state.farthest_offset` を `u32` へ丸め。 |
+| `span_trace` | `(string option * Diagnostic.span) list option` | Rust 版 `ParserDiagState` で `Vec<(Option<SmolStr>, Span)>` を用意。 |
+| `packrat_stats` | `(queries, hits)` | `StreamingState::packrat_stats()` を通じ JSON 配列 `[queries, hits]` に固定。 |
+| `packrat_cache` | `Parser_expectation.Packrat.t option` | Rust 版ではテスト限定で Base64 直列化し、CI では `None` を返す方針。 |
+
+### 6.2 Packrat / SpanTrace / Metrics
+
+- `Core_parse.State` は `packrat_queries`/`packrat_hits` ミュータブルカウンタを保持。`Core_parse_streaming.packrat_counters` で `(queries, hits)` を返し、`collect-iterator-audit-metrics.py --section parser` では `parser.stream.packrat_queries` / `parser.stream.packrat_hits` として記録している。Rust 側でも `StreamingState` に同名メソッドを実装する。  
+- `Parser_diag_state.span_trace_pairs` は `Vec<(string option, Diagnostic.span)>` を返す。`span_trace` が `None` のケースでは diff をスキップする規約を W2 で明文化し、Rust 版 `ParserDiagState` に `record_span_trace` フックを実装する。  
+- `Parser_expectation.collect` の返り値は `collection.summary` と `status`（`Hit/Miss/Bypassed`）。`record_packrat_status` 経由で `Core_parse.State.record_packrat_access` に伝播する挙動を Rust 版 `ExpectationSummary` へ写経する。  
+- `expectation_summary_for_checkpoint` はレスキュー済みスナップショットを参照し、`recover.expected_tokens` の内容と `packrat` ヒット統計を同一関数で収集する。Rust 実装でも checkpoint 毎に再収集するため、`ParserExpectation` 相当の API に `collect_with_metrics` を用意する。
+
+### 6.3 `collect-iterator` との接続ポイント
+
+- `tooling/ci/collect-iterator-audit-metrics.py` で参照される `parser.stream.*` 系キーのうち、フロントエンド直下で供給する必要があるものを以下に抽出。  
+  - `parser.stream.packrat_hits`, `parser.stream.packrat_queries`, `parser.stream.span_trace_pairs`（`span_trace` 要素数）。  
+  - `parser.stream.outcome_consistency`（`consumed`/`committed` フラグの一致率）。  
+  - `parser.stream_extension_field_coverage`（`extensions.recover` に含まれるフィールド数）。  
+- W2 の棚卸しでは、上記キーを `reports/dual-write/front-end/w2-ast-alignment/metrics/parser-stream-baseline.json`（予定）へ出力するための JSON スキーマを `parser_driver` と `collect-iterator` の双方で確認済み。Rust 版では同スキーマを `serde` モジュールで公開し、dual-write ハーネスから直接呼び出せるようにする。
+
+
 ---
 
 作成日: 2025-03-12 / 作成者: Rust 移植チーム支援エージェント  

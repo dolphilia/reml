@@ -93,6 +93,7 @@
      - **メトリクス同期とレポート化（§1.1.6 step4）**: `collect-iterator-audit-metrics.py --section parser` の結果を W1 では記録していない。W2 では AST/Packrat diff と同時にメトリクス出力を `w2-parser-metrics.json` / `w2-effects-metrics.json` として保存し、0.5pt 以内の一致を確認する。
 
 2. **OCaml AST/IR インベントリの抽出と整理**  
+   - ✅ 2025-11-07: `docs/plans/rust-migration/appendix/parser-ocaml-inventory.md` に Typed AST と Core_parse/Streaming の棚卸し（§5, §6）を追記し、OCaml 側のフィールド一覧とメトリクス項目を整理。`1-1-ast-and-ir-alignment.md` の該当節へ参照リンクを追加する準備を完了。
    - `compiler/ocaml/src/ast.ml`, `typed_ast.ml`, `core_parse/*` からフィールド一覧を抽出し、`scripts/poc_dualwrite_compare.sh` を `--emit-ast --emit parse-debug` 付きで再実行して JSON ダンプを生成、`reports/dual-write/front-end/poc/w2-ast-inventory/` に保管する。  
    - `parser_expectation.ml`／`parser_driver.ml` が追加で吐き出すメタ情報（`expected_tokens`, `packrat_stats` 等）を `tooling/ci/collect-iterator-audit-metrics.py --section parser` で数値化し、`1-1-ast-and-ir-alignment.md#1-1-5-ストリーミング状態-core_parse_streaming` のチェックリストに照らして不足フィールドを洗い出す。  
    - 仕様とのギャップが見つかった場合は `docs/plans/rust-migration/appendix/parser-ocaml-inventory.md` に下書きを追記し、W2 中に Rust 側へ移植する対象を優先度付きで列挙する。
