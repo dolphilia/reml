@@ -33,6 +33,19 @@
 | 5 | CLI/LSP/Streaming 出力整備と負債クローズ | 監査ゲート・効果系実装の成果物 | §2〜§6 |
 | 6 | Phase 2-8 への引き継ぎ | KPI 1.0 維持、脚注撤去条件達成 | §5 Phase 2-8 への引き継ぎ準備 |
 
+## Rust 移植計画とのマッピング（初期タスク）
+Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 でフォローアップが必要な項目を整理する。関連資料と本書内の未解決セクションを明確にし、TODO として追跡する。
+
+| 参照計画 | 早期着手項目 | 本書の未解決箇所 | ステータス / メモ |
+| --- | --- | --- | --- |
+| [3-1-observability-alignment.md](../rust-migration/3-1-observability-alignment.md) §3.1.3〜§3.1.6 | `collect-iterator-audit-metrics.py` へ `frontend` メタデータ追加、`create-audit-index.py --tag dual-write` 実装、`reports/dual-write/logs/` のローテーションスクリプト準備、監査ダッシュボードへ Rust / dual 列追加 | §0.2 計測スクリプトと CI ベースライン | 未着手 → TODO: OBS-RUST-01 |
+| [3-2-benchmark-baseline.md](../rust-migration/3-2-benchmark-baseline.md) §3.2.4〜§3.2.6 | `scripts/benchmark.sh --frontend rust` 対応、`tooling/ci/compare-benchmarks.py` 雛形と `reports/benchmarks/*.json` 保存先の確保、Linux CI での bench ジョブ雛形作成 | §4.2 レポート更新 | 未着手 → TODO: BENCH-RUST-01 |
+| [4-0-risk-register.md](../rust-migration/4-0-risk-register.md) P4-R1〜P4-R3 | `collect-iterator-audit-metrics.py --section bench` のゲート化、`reports/audit/dashboard/perf.md`（新規）と `0-4-risk-handling.md` 連携、ドキュメント同期チェックリストの Rust 版テンプレート作成 | §4.1 技術的負債リスト更新 / §4.2 レポート更新 | 未着手 → TODO: RISK-RUST-01 |
+
+- **TODO: OBS-RUST-01** — Rust dual-write で追加されるメタデータを計測スクリプトに組み込み、`collect-iterator-audit-metrics.py --baseline/--candidate` の `frontend` ラベルと `reports/audit/index.json` の `kind=dual-write` を Phase 2-7 内に実装する。関連: §0.2、`docs/plans/rust-migration/3-1-observability-alignment.md`。
+- **TODO: BENCH-RUST-01** — ベンチマーク出力の保存先を `reports/benchmarks/` に先行確保し、OCaml 版での運用手順と同じ雛形を Rust 版にも適用できるよう CI スクリプトを整備する。関連: §4.2、`docs/plans/rust-migration/3-2-benchmark-baseline.md`。
+- **TODO: RISK-RUST-01** — P4 リスク台帳で求められる性能・監査ゲートを Phase 2-7 の負債整理に組み込み、`0-4-risk-handling.md` と連動したチェックリストを作成する。関連: §4.1〜§4.2、`docs/plans/rust-migration/4-0-risk-register.md`。
+
 ## 作業ブレークダウン
 
 ### 0. フェーズ起動とハンドオーバー整備（34週目前半）

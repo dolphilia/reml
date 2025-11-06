@@ -68,6 +68,24 @@
 - **Windows ツールチェーン差異**: `check-windows-bootstrap-env.ps1` の結果が一致しない場合は `0-2-windows-toolchain-audit.md` の fallback 手順（MSYS2 LLVM 16 継続）を適用し、Rust ジョブを optional に切り替える。
 - **差分の長期化**: Rust 実装の差分が多い状態で dual-write を常時稼働させるとノイズが増える。M1 達成前に既知差分を `reports/dual-write/allowlist.txt` へ登録し、毎週見直す。
 
+## 3.0.9 Rust ジョブ追加時に再利用する CI 設定
+既存の OCaml 向けワークフローで確立した環境変数・キャッシュ・アーティファクト仕様は、Rust フロントエンドのジョブでも整合性維持のため再利用する。以下にプラットフォーム別の主要設定を整理し、Rust ジョブ追加時のチェックリストとする。
+
+### Linux (`.github/workflows/bootstrap-linux.yml`)
+- **環境変数**: `build` ジョブの `LLVM_CONFIG=/usr/bin/llvm-config-19` に合わせ、Rust 版も LLVM 19 系を固定する。`audit-matrix` ジョブでは `AUDIT_TARGET` / `AUDIT_PLATFORM` / `AUDIT_SAMPLE` / `PYTHONUTF8` を設定し、dual-write ジョブから出力する監査メトリクスのキーを揃える。
+- **キャッシュ**: `actions/cache@v4` で `/usr/lib/llvm-18` を共有し、Rust 側も同キー（`llvm-18-${{ runner.os }}`）を利用する。`ocaml/setup-ocaml` の `dune-cache: true` で有効化したディレクトリを Rust ジョブでも `dune cache` 互換の作業領域として扱う。
+- **アーティファクト**: `linux-build`（OCaml バイナリ）、`audit-ci-linux`、`dual-write-front-end`、`test-results-junit`、`test-output-log` を既存命名のまま保持し、Rust フロントエンド成果物は新規名前空間（例: `remlc-rust-linux`）を追加して差異を明示する。dual-write スモーク (`tooling/ci/run-dual-write-smoke.sh`) が書き出す `reports/dual-write/front-end/` 配下の構造は Rust 版でも共有する。
+
+### macOS (`.github/workflows/bootstrap-macos.yml`)
+- **環境変数**: Homebrew 由来の `LDFLAGS` / `CPPFLAGS` / `CMAKE_PREFIX_PATH` を `build`・`audit-matrix` 両ジョブで `GITHUB_ENV` に書き込んでいる。Rust ジョブも LLVM 19（`brew install llvm@19`）を同一プレフィックスで参照し、リンク時のフラグを共有する。
+- **キャッシュ**: Homebrew ダウンロードキャッシュ (`~/Library/Caches/Homebrew/downloads`) と `/opt/homebrew/opt/llvm@19` を共有。Rust ジョブは同じ `key` / `restore-keys`（`homebrew-${{ runner.os }}-arm64-*`, `llvm-19-macos-arm64-*`）を流用し、LLVM ビルド時間を抑制する。
+- **アーティファクト**: `macos-build`、`audit-ci-macos` を既存命名で維持し、Rust 版成果物は `artifacts/build` 内に OCaml 版と並べて格納する。監査ジョブの出力先 (`reports/audit/macos/<run-id>/`) を Rust でも共通化し、`collect-iterator-audit-metrics.py --append-from` によるマージ処理をそのまま適用できるようにする。
+
+### Windows (`.github/workflows/bootstrap-windows.yml`)
+- **環境変数**: `diagnostic-json` / `audit` 両ジョブで `CI_WINDOWS_ENV_JSON_NAME` と `PYTHONUTF8` を利用し、PowerShell スクリプトが `CI_WINDOWS_ENV_JSON_PATH` を `GITHUB_ENV` へ書き込む運用になっている。Rust ジョブでも同じ環境変数名を継承し、ツールチェーン診断 JSON を単一パスで扱う。
+- **キャッシュ**: Windows Runner では LLVM をローカルにインストールせず、Ubuntu 上の `audit-matrix` ジョブで `/usr/lib/llvm-18` をキャッシュしている。Rust 版のクロスビルドも同キー (`llvm-18-${{ runner.os }}`) を使い、OCaml 版とキャッシュを共有する。
+- **アーティファクト**: `windows-env-check-diagnostic` / `windows-env-check-audit`（ツールチェーン診断）、`windows-iterator-audit-summary`、`windows-iterator-audit-metrics` を既存のまま公開し、Rust 版の追加成果物はサフィックス（例: `*-rust`）で区別する。`reports/iterator-stage-summary-windows.md` と `tooling/ci/iterator-audit-metrics.json` のフォーマットは共通であるため、Rust ジョブでは出力を追記する形で管理する。
+
 ---
 
 本計画は P3 完了時に Rust CI をデフォルトへ昇格させるための前提条件を整理したものである。dual-write 成果物の取扱いと監査メトリクスの詳細は [3-1-observability-alignment.md](3-1-observability-alignment.md) へ引き渡す。
