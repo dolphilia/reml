@@ -26,6 +26,10 @@
   - [`3-0-ci-and-dual-write-strategy.md`](3-0-ci-and-dual-write-strategy.md): CI マトリクス拡張と dual-write 運用戦略
   - [`3-1-observability-alignment.md`](3-1-observability-alignment.md): 監査メトリクス・ログ・ダッシュボード整合計画
   - [`3-2-benchmark-baseline.md`](3-2-benchmark-baseline.md): ベンチマーク指標と性能ベースライン構築計画
+- **P4 最適化とハンドオーバー**
+  - [`4-0-risk-register.md`](4-0-risk-register.md): 最終最適化期間のリスク台帳とエスカレーション基準
+  - [`4-1-communication-plan.md`](4-1-communication-plan.md): チーム連携・レビュー頻度・ハンドオーバー準備計画
+  - [`4-2-documentation-sync.md`](4-2-documentation-sync.md): 仕様・ガイド・ノートの同期手順とチェックリスト
 - **統合原則**
   - [`unified-porting-principles.md`](unified-porting-principles.md): 移植全体で共有する設計原則と成功指標
 
