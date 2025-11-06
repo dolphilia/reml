@@ -59,6 +59,7 @@
 3. **Rust フロントエンド骨格の用意**  
    - `compiler/rust/frontend/` 配下に Lexer・Parser・Streaming モジュールの雛形ファイルと `Cargo.toml` の該当セクションを追加し、依存クレート候補（`logos`/`chumsky` 等）の評価メモを添える。  
    - Span 型、トークン列挙、エラー種別、Recoverable 状態など共通で利用する基礎データ構造を Rust で宣言し、`docs/spec/1-1-syntax.md` に沿った命名と型域（`u32` オフセット等）を確認する。
+   - ✅ 2025-11-06: `compiler/rust/frontend/Cargo.toml` と `src/lib.rs` を起点に `span.rs`・`token.rs`・`error.rs`・`diagnostic/mod.rs`・`lexer/mod.rs`・`parser/mod.rs`・`streaming/mod.rs` を追加し、`Span(u32,u32)` や `Recoverability` 分類など共通基礎型を定義した。スケルトン Lexer は識別子／整数リテラル／未知トークンまでを扱い、未知入力時に回復可能診断を返す挙動を確認済み。依存候補の比較結果は `docs/plans/rust-migration/appendix/frontend-crate-evaluation.md` に整理し、`logos`（lexing）と `chumsky`（parsing）を PoC 優先候補として記録した。
 
 4. **パーサ生成戦略と状態管理の設計**  
    - Menhir 相当の構文解析を Rust でどう再現するか（既存ジェネレータ活用か自前 LL/LR 実装か）を比較し、選定理由と PoC 計画を `docs/notes/` に記録する。  

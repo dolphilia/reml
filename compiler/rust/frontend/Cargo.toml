@@ -1,0 +1,20 @@
+[package]
+name = "reml_frontend"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# TODO: `repository` や `license` は Rust 実装全体のガイドライン確定後に追加する
+
+[lib]
+name = "reml_frontend"
+path = "src/lib.rs"
+
+[features]
+default = []
+# lexer-backend と parser-backend は候補クレートの評価完了後に定義する
+
+[dependencies]
+# Lexing 候補: `logos`, `rowan`（トークンツリー）, `reml_syntax`（再利用予定の共通 crate）
+# Parsing 候補: `chumsky`, `pomelo`, `lrpar` 等を比較中。実採用は appendix メモ参照。
+# JSON/診断: `serde`, `serde_json` を予定。用途確定後にバージョンを記載する。

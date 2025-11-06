@@ -15,6 +15,7 @@
   - [`0-2-windows-toolchain-audit.md`](0-2-windows-toolchain-audit.md): Windows ツールチェーン監査手順
   - [`appendix/glossary-alignment.md`](appendix/glossary-alignment.md): Rust↔Reml 用語対応表
   - [`appendix/parser-ocaml-inventory.md`](appendix/parser-ocaml-inventory.md): OCaml パーサ資産棚卸し（W1 Lexer/Parser スケルトン移植）
+  - [`appendix/frontend-crate-evaluation.md`](appendix/frontend-crate-evaluation.md): Lexing/Parsing/診断向けクレート評価メモ（W1 雛形）
 - **P1 フロントエンド移植**
   - [`1-0-front-end-transition.md`](1-0-front-end-transition.md): パーサ/型推論移植の方針とマイルストーン
   - [`1-1-ast-and-ir-alignment.md`](1-1-ast-and-ir-alignment.md): AST/IR 対応表と検証手順
