@@ -4,6 +4,8 @@ open Ast
 
 let () = Unix.putenv "REMLC_FIXED_TIMESTAMP" "1970-01-01T00:00:00Z"
 
+module Run_config = Parser_run_config
+
 let project_root =
   match Sys.getenv_opt "DUNE_SOURCEROOT" with
   | Some root -> root
@@ -159,29 +161,63 @@ let () =
                   ("audit_id", `String audit_id);
                   ("change_set", change_set);
                 ])
-        |> Diagnostic.set_audit_metadata "schema"
+       |> Diagnostic.set_audit_metadata "schema"
              (`Assoc [ ("version", `String "1.1") ])
       in
-      let json =
-        Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
-      in
-       let audit =
-         match err with
-         | Type_error.FfiContractSymbolMissing normalized
-         | Type_error.FfiContractOwnershipMismatch normalized
-         | Type_error.FfiContractUnsupportedAbi normalized ->
-             let event =
-               Audit_envelope.make ~timestamp:"1970-01-01T00:00:00Z"
-                 ~category:"ffi.bridge" ~audit_id
-                 ~change_set:change_set
-                 ~metadata_pairs:
-                   (Ffi_contract.bridge_audit_metadata_pairs ~status:"ok"
-                      normalized)
-                 ()
-            in
-             Yojson.Basic.to_string (Audit_envelope.to_json event) ^ "\n"
-         | _ -> ""
+       let diag =
+         Diagnostic.with_parser_runconfig_metadata ~config:Run_config.default
+           diag
        in
+       let json =
+         Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
+       in
+      let audit =
+        match err with
+        | Type_error.FfiContractSymbolMissing normalized
+        | Type_error.FfiContractOwnershipMismatch normalized
+        | Type_error.FfiContractUnsupportedAbi normalized ->
+            let base_metadata =
+              Ffi_contract.bridge_audit_metadata_pairs ~status:"ok" normalized
+            in
+            let bridge_payload =
+              match
+                List.find_opt
+                  (fun (key, _) -> String.equal key "bridge")
+                  base_metadata
+              with
+              | Some (_, json) -> json
+              | None -> `Assoc []
+            in
+            let metadata_pairs =
+              [
+                ("audit_id", `String audit_id);
+                ("change_set", change_set);
+                ("cli.audit_id", `String audit_id);
+                ("cli.change_set", change_set);
+                ("audit.channel", `String "cli");
+                ("audit.build_id", `String build_id);
+                ("audit.sequence", `Int sequence);
+                ("schema.version", `String Audit_envelope.schema_version);
+                ("audit.timestamp", `String timestamp);
+              ]
+              @ base_metadata
+            in
+            let metadata_json = `Assoc metadata_pairs in
+            let extensions_json = `Assoc [ ("bridge", bridge_payload) ] in
+            let event_json =
+              `Assoc
+                [
+                  ("timestamp", `String timestamp);
+                  ("category", `String "ffi.bridge");
+                  ("metadata", metadata_json);
+                  ("extensions", extensions_json);
+                  ("audit_id", `String audit_id);
+                  ("change_set", change_set);
+                ]
+            in
+            Yojson.Basic.to_string event_json ^ "\n"
+        | _ -> ""
+      in
        compare_with_golden ~name:"unsupported-abi" ~json ~audit);
       Printf.printf "================================\n";
       Printf.printf "FFI contract diagnostics golden completed\n"

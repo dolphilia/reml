@@ -30,6 +30,28 @@
         "diagnostic.v2": {
           "timestamp": "1970-01-01T00:00:00Z",
           "codes": [ "parser.expected_token", "parser.recovery.pending" ]
+        },
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "runconfig": {
+          "packrat": false,
+          "left_recursion": "auto",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": false,
+          "experimental_effects": false,
+          "extensions": {
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "stream": { "enabled": false }
+          }
         }
       },
       "audit_metadata": {
@@ -48,8 +70,6 @@
         "audit.build_id": "19700101T000000Z",
         "audit.sequence": 0,
         "audit.source.workspace": ".",
-        "schema.version": "1.1",
-        "audit.timestamp": "1970-01-01T00:00:00Z",
         "cli.change_set": {
           "policy": "phase2.5.audit.v1",
           "origin": "cli",
@@ -59,10 +79,134 @@
             "sequence": 0
           },
           "items": [ { "kind": "input", "path": "parser-example.reml" } ]
+        },
+        "schema.version": "1.1",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream": { "enabled": false },
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover": {
+          "sync_tokens": [],
+          "notes": false
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.lex": {
+          "profile": "strict_json",
+          "identifier_profile": "unicode"
+        },
+        "parser.runconfig.experimental_effects": false,
+        "parser.runconfig.legacy_result": false,
+        "parser.runconfig.require_eof": false,
+        "parser.runconfig.merge_warnings": true,
+        "parser.runconfig.trace": false,
+        "parser.runconfig.left_recursion": "auto",
+        "parser.runconfig.packrat": false,
+        "parser.runconfig": {
+          "packrat": false,
+          "left_recursion": "auto",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": false,
+          "experimental_effects": false,
+          "extensions": {
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "stream": { "enabled": false }
+          }
+        },
+        "parser.core.rule": {
+          "fingerprint": "859967339",
+          "origin": "static",
+          "ordinal": 0,
+          "name": "compilation_unit",
+          "namespace": "menhir"
+        },
+        "parser": {
+          "core": {
+            "rule": {
+              "fingerprint": "859967339",
+              "origin": "static",
+              "ordinal": 0,
+              "name": "compilation_unit",
+              "namespace": "menhir"
+            }
+          }
         }
       },
       "audit": {
         "metadata": {
+          "parser": {
+            "core": {
+              "rule": {
+                "fingerprint": "859967339",
+                "origin": "static",
+                "ordinal": 0,
+                "name": "compilation_unit",
+                "namespace": "menhir"
+              }
+            }
+          },
+          "parser.core.rule": {
+            "fingerprint": "859967339",
+            "origin": "static",
+            "ordinal": 0,
+            "name": "compilation_unit",
+            "namespace": "menhir"
+          },
+          "parser.runconfig": {
+            "packrat": false,
+            "left_recursion": "auto",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": false,
+            "experimental_effects": false,
+            "extensions": {
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              },
+              "recover": { "sync_tokens": [], "notes": false },
+              "stream": { "enabled": false }
+            }
+          },
+          "parser.runconfig.packrat": false,
+          "parser.runconfig.left_recursion": "auto",
+          "parser.runconfig.trace": false,
+          "parser.runconfig.merge_warnings": true,
+          "parser.runconfig.require_eof": false,
+          "parser.runconfig.legacy_result": false,
+          "parser.runconfig.experimental_effects": false,
+          "parser.runconfig.extensions.lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.recover": {
+            "sync_tokens": [],
+            "notes": false
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": { "enabled": false },
+          "parser.runconfig.extensions.stream.enabled": false,
+          "effect.capabilities": [],
+          "effect.stage.actual_capabilities": [],
+          "effect.actual_capabilities": [],
+          "effect.stage.required_capabilities": [],
+          "effect.required_capabilities": [],
           "cli.change_set": {
             "policy": "phase2.5.audit.v1",
             "origin": "cli",

@@ -104,21 +104,71 @@ let compile_case ~source_path ~target =
 let audit_lines_of_snapshots snapshots =
   let events =
     snapshots
-    |> List.map (fun snapshot ->
+    |> List.mapi (fun index snapshot ->
            let normalized = Type_inference.ffi_snapshot_normalized snapshot in
            let target =
              match normalized.Ffi_contract.target with
              | Some t -> t
              | None -> ""
            in
-           let metadata =
-             Ffi_contract.bridge_audit_metadata_pairs ~status:"ok" normalized
+           let extern_name = normalized.contract.extern_name in
+           let timestamp = "1970-01-01T00:00:00Z" in
+           let build_id = Diagnostic.compute_build_id ~timestamp () in
+           let audit_id = Printf.sprintf "cli/%s#%d" build_id index in
+           let change_set =
+             Diagnostic.make_change_set_template ~origin:"cli" ~build_id
+               ~sequence:index
+               ~items:
+                 [
+                   `Assoc
+                     [
+                       ("kind", `String "ffi-bridge");
+                       ("extern", `String extern_name);
+                       ("target", `String target);
+                     ];
+                 ]
+               ()
            in
-           let event =
-             Audit.make ~timestamp:"1970-01-01T00:00:00Z"
-               ~category:"ffi.bridge" ~metadata_pairs:metadata ()
-           in
-           (target, Audit.to_json event))
+          let base_metadata =
+            Ffi_contract.bridge_audit_metadata_pairs ~status:"ok" normalized
+          in
+          let bridge_payload =
+            match
+              List.find_opt
+                (fun (key, _) -> String.equal key "bridge")
+                base_metadata
+            with
+            | Some (_, json) -> json
+            | None -> `Assoc []
+          in
+          let metadata_pairs =
+            [
+              ("audit_id", `String audit_id);
+              ("change_set", change_set);
+              ("cli.audit_id", `String audit_id);
+              ("cli.change_set", change_set);
+              ("audit.channel", `String "cli");
+              ("audit.build_id", `String build_id);
+              ("audit.sequence", `Int index);
+              ("schema.version", `String Audit.schema_version);
+              ("audit.timestamp", `String timestamp);
+            ]
+            @ base_metadata
+          in
+          let metadata_json = `Assoc metadata_pairs in
+          let extensions_json = `Assoc [ ("bridge", bridge_payload) ] in
+          let event_json =
+            `Assoc
+              [
+                ("timestamp", `String timestamp);
+                ("category", `String "ffi.bridge");
+                ("metadata", metadata_json);
+                ("extensions", extensions_json);
+                ("audit_id", `String audit_id);
+                ("change_set", change_set);
+              ]
+          in
+          (target, event_json))
     |> List.sort (fun (a, _) (b, _) -> compare a b)
   in
   events

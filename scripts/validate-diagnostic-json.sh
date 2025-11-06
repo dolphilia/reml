@@ -312,16 +312,20 @@ def validate_core_parser_fields(diag: dict) -> List[str]:
     if not isinstance(audit_metadata, dict):
         errors.append("audit_metadata (not object)")
     else:
-        errors.extend(
-            _ensure_metadata_strings(
-                audit_metadata,
-                "audit_metadata.parser.core.rule",
-                ("namespace", "name", "origin", "fingerprint"),
+        parser_meta = audit_metadata.get("parser.core.rule")
+        if isinstance(parser_meta, dict):
+            errors.extend(
+                _ensure_metadata_strings(
+                    parser_meta,
+                    "audit_metadata.parser.core.rule",
+                    ("namespace", "name", "origin", "fingerprint"),
+                )
             )
-        )
-        ordinal_meta = audit_metadata.get("parser.core.rule.ordinal")
-        if not isinstance(ordinal_meta, int):
-            errors.append("audit_metadata.parser.core.rule.ordinal")
+            ordinal_meta = parser_meta.get("ordinal")
+            if not isinstance(ordinal_meta, int):
+                errors.append("audit_metadata.parser.core.rule.ordinal")
+        else:
+            errors.append("audit_metadata.parser.core.rule (not object)")
 
     audit_block = diag.get("audit")
     if not isinstance(audit_block, dict):
@@ -331,16 +335,20 @@ def validate_core_parser_fields(diag: dict) -> List[str]:
         if not isinstance(metadata, dict):
             errors.append("audit.metadata (not object)")
         else:
-            errors.extend(
-                _ensure_metadata_strings(
-                    metadata,
-                    "audit.metadata.parser.core.rule",
-                    ("namespace", "name", "origin", "fingerprint"),
+            parser_meta = metadata.get("parser.core.rule")
+            if isinstance(parser_meta, dict):
+                errors.extend(
+                    _ensure_metadata_strings(
+                        parser_meta,
+                        "audit.metadata.parser.core.rule",
+                        ("namespace", "name", "origin", "fingerprint"),
+                    )
                 )
-            )
-            ordinal_meta = metadata.get("parser.core.rule.ordinal")
-            if not isinstance(ordinal_meta, int):
-                errors.append("audit.metadata.parser.core.rule.ordinal")
+                ordinal_meta = parser_meta.get("ordinal")
+                if not isinstance(ordinal_meta, int):
+                    errors.append("audit.metadata.parser.core.rule.ordinal")
+            else:
+                errors.append("audit.metadata.parser.core.rule (not object)")
 
     return errors
 

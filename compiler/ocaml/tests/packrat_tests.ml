@@ -90,6 +90,37 @@ let test_core_rule_metadata () =
   | None ->
       fail desc "parser.core.rule.ordinal が監査メタデータに存在しません");
   ignore (Extensions.get "parser.core.rule.fingerprint" audit_metadata);
+  (match Extensions.get "parser" audit_metadata with
+  | Some (`Assoc parser_fields) -> (
+      match List.assoc_opt "core" parser_fields with
+      | Some (`Assoc core_fields) -> (
+          match List.assoc_opt "rule" core_fields with
+          | Some (`Assoc rule_fields) ->
+              expect_string_field desc
+                (find_assoc "namespace" rule_fields)
+                "menhir";
+              expect_string_field desc (find_assoc "name" rule_fields)
+                "compilation_unit";
+              expect_int_field desc (find_assoc "ordinal" rule_fields) 0;
+              expect_string_field desc (find_assoc "origin" rule_fields)
+                "static";
+              ignore (find_assoc "fingerprint" rule_fields)
+          | Some other ->
+              fail desc
+                (Printf.sprintf
+                   "parser.core.rule がオブジェクトではありません: %s"
+                   (Yojson.Basic.to_string other))
+          | None -> fail desc "parser.core.rule が欠落しています")
+      | Some other ->
+          fail desc
+            (Printf.sprintf "parser.core がオブジェクトではありません: %s"
+               (Yojson.Basic.to_string other))
+      | None -> fail desc "parser.core が欠落しています")
+  | Some other ->
+      fail desc
+        (Printf.sprintf "parser メタデータがオブジェクトではありません: %s"
+           (Yojson.Basic.to_string other))
+  | None -> fail desc "parser メタデータが存在しません");
   pass desc
 
 let test_packrat_stats_disabled () =

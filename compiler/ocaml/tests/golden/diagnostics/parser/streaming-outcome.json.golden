@@ -109,7 +109,9 @@
             "required": "beta",
             "actual": "experimental"
           },
-          "reason": "pending.backpressure"
+          "reason": "pending.backpressure",
+          "required_capabilities": [],
+          "actual_capabilities": []
         },
         "diagnostic.v2": {
           "timestamp": "1970-01-01T00:00:00Z",
@@ -134,7 +136,10 @@
             "sequence": 0
           },
           "items": [
-            { "kind": "input", "path": "streaming-flow-auto.reml" }
+            {
+              "kind": "input",
+              "path": "streaming-flow-auto.reml"
+            }
           ]
         },
         "audit.policy.version": "phase2.5.audit.v1",
@@ -145,7 +150,9 @@
         "bridge.stream.signal.kind": "pending",
         "bridge.stream.signal.reason": "pending.backpressure",
         "bridge.stream.stage.required": "beta",
-        "bridge.stream.stage.actual": "experimental"
+        "bridge.stream.stage.actual": "experimental",
+        "effect.required_capabilities": [],
+        "effect.actual_capabilities": []
       },
       "audit": {
         "metadata": {
@@ -163,7 +170,10 @@
               "sequence": 0
             },
             "items": [
-              { "kind": "input", "path": "streaming-flow-auto.reml" }
+              {
+                "kind": "input",
+                "path": "streaming-flow-auto.reml"
+              }
             ]
           },
           "audit.policy.version": "phase2.5.audit.v1",
@@ -174,7 +184,9 @@
           "bridge.stream.signal.kind": "pending",
           "bridge.stream.signal.reason": "pending.backpressure",
           "bridge.stream.stage.required": "beta",
-          "bridge.stream.stage.actual": "experimental"
+          "bridge.stream.stage.actual": "experimental",
+          "effect.required_capabilities": [],
+          "effect.actual_capabilities": []
         },
         "audit_id": "cli/19700101T000000Z#0",
         "change_set": {
@@ -186,7 +198,10 @@
             "sequence": 0
           },
           "items": [
-            { "kind": "input", "path": "streaming-flow-auto.reml" }
+            {
+              "kind": "input",
+              "path": "streaming-flow-auto.reml"
+            }
           ]
         }
       }

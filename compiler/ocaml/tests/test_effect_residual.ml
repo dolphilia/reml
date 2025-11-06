@@ -6,6 +6,8 @@
 
 let () = Unix.putenv "REMLC_FIXED_TIMESTAMP" "1970-01-01T00:00:00Z"
 
+module Run_config = Parser_run_config
+
 let project_root =
   match Sys.getenv_opt "DUNE_SOURCEROOT" with
   | Some root -> root
@@ -255,6 +257,9 @@ let run_with_mode mode =
     |> Diagnostic.set_audit_id
          (Printf.sprintf "cli/%s#%d" build_id sequence)
     |> Diagnostic.set_change_set change_set
+  in
+  let diag =
+    Diagnostic.with_parser_runconfig_metadata ~config:Run_config.default diag
   in
   let diag_json =
     Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag

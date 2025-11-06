@@ -44,11 +44,34 @@
           "abi": "system_v",
           "ownership": "borrowed",
           "extern_symbol": "ffi_demo_c"
+        },
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "runconfig": {
+          "packrat": false,
+          "left_recursion": "auto",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": false,
+          "experimental_effects": false,
+          "extensions": {
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "stream": { "enabled": false }
+          }
         }
       },
       "audit_metadata": {
         "event.kind": "ffi.contract.unsupported_abi",
         "event.domain": "type",
+        "bridge.source_span": { "start": 0, "end": 168 },
         "bridge": {
           "status": "error",
           "return": {
@@ -70,7 +93,18 @@
           "ownership": "borrowed",
           "extern_symbol": "ffi_demo_c"
         },
-        "bridge.source_span": { "start": 0, "end": 168 },
+        "bridge.abi": "system_v",
+        "bridge.expected_abi": "msvc",
+        "bridge.target": "x86_64-pc-windows-msvc",
+        "bridge.arch": "x86_64",
+        "bridge.platform": "windows-msvc-x64",
+        "bridge.ownership": "borrowed",
+        "bridge.extern_symbol": "ffi_demo_c",
+        "bridge.return.ownership": "borrowed",
+        "bridge.return.status": "wrap",
+        "bridge.return.wrap": "wrap_foreign_ptr",
+        "bridge.return.release_handler": "none",
+        "bridge.return.rc_adjustment": "none",
         "audit.policy.version": "phase2.5.audit.v1",
         "audit.channel": "cli",
         "audit.build_id": "19700101T000000Z",
@@ -114,12 +148,98 @@
             ]
           }
         },
+        "schema": { "version": "1.1" },
         "schema.version": "1.1",
         "audit.timestamp": "1970-01-01T00:00:00Z",
-        "schema": { "version": "1.1" }
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream": { "enabled": false },
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover": {
+          "sync_tokens": [],
+          "notes": false
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.lex": {
+          "profile": "strict_json",
+          "identifier_profile": "unicode"
+        },
+        "parser.runconfig.experimental_effects": false,
+        "parser.runconfig.legacy_result": false,
+        "parser.runconfig.require_eof": false,
+        "parser.runconfig.merge_warnings": true,
+        "parser.runconfig.trace": false,
+        "parser.runconfig.left_recursion": "auto",
+        "parser.runconfig.packrat": false,
+        "parser.runconfig": {
+          "packrat": false,
+          "left_recursion": "auto",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": false,
+          "experimental_effects": false,
+          "extensions": {
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "stream": { "enabled": false }
+          }
+        }
       },
       "audit": {
         "metadata": {
+          "parser.runconfig": {
+            "packrat": false,
+            "left_recursion": "auto",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": false,
+            "experimental_effects": false,
+            "extensions": {
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              },
+              "recover": { "sync_tokens": [], "notes": false },
+              "stream": { "enabled": false }
+            }
+          },
+          "parser.runconfig.packrat": false,
+          "parser.runconfig.left_recursion": "auto",
+          "parser.runconfig.trace": false,
+          "parser.runconfig.merge_warnings": true,
+          "parser.runconfig.require_eof": false,
+          "parser.runconfig.legacy_result": false,
+          "parser.runconfig.experimental_effects": false,
+          "parser.runconfig.extensions.lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.recover": {
+            "sync_tokens": [],
+            "notes": false
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": { "enabled": false },
+          "parser.runconfig.extensions.stream.enabled": false,
+          "effect.capabilities": [],
+          "effect.stage.actual_capabilities": [],
+          "effect.actual_capabilities": [],
+          "effect.stage.required_capabilities": [],
+          "effect.required_capabilities": [],
           "schema": { "version": "1.1" },
           "cli": {
             "audit_id": "cli/19700101T000000Z#0",
@@ -164,7 +284,18 @@
           "audit.build_id": "19700101T000000Z",
           "audit.channel": "cli",
           "audit.policy.version": "phase2.5.audit.v1",
-          "bridge.source_span": { "start": 0, "end": 168 },
+          "bridge.return.rc_adjustment": "none",
+          "bridge.return.release_handler": "none",
+          "bridge.return.wrap": "wrap_foreign_ptr",
+          "bridge.return.status": "wrap",
+          "bridge.return.ownership": "borrowed",
+          "bridge.extern_symbol": "ffi_demo_c",
+          "bridge.ownership": "borrowed",
+          "bridge.platform": "windows-msvc-x64",
+          "bridge.arch": "x86_64",
+          "bridge.target": "x86_64-pc-windows-msvc",
+          "bridge.expected_abi": "msvc",
+          "bridge.abi": "system_v",
           "bridge": {
             "status": "error",
             "return": {
@@ -186,6 +317,7 @@
             "ownership": "borrowed",
             "extern_symbol": "ffi_demo_c"
           },
+          "bridge.source_span": { "start": 0, "end": 168 },
           "event.domain": "type",
           "event.kind": "ffi.contract.unsupported_abi",
           "audit.timestamp": "1970-01-01T00:00:00Z",

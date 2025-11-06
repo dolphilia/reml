@@ -147,7 +147,24 @@
         },
         "typeclass.candidates": [ "Iterator.collect" ],
         "typeclass.pending": [ "Iterator.size_hint" ],
-        "typeclass.generalized_typevars": [ "T" ]
+        "typeclass.generalized_typevars": [ "T" ],
+        "runconfig": {
+          "packrat": false,
+          "left_recursion": "auto",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": false,
+          "experimental_effects": false,
+          "extensions": {
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "stream": { "enabled": false }
+          }
+        }
       },
       "audit_metadata": {
         "event.kind": "typeclass.iterator.stage_mismatch",
@@ -253,12 +270,88 @@
         "typeclass.dictionary.repr": "{}",
         "typeclass.candidates": [ "Iterator.collect" ],
         "typeclass.pending": [ "Iterator.size_hint" ],
+        "typeclass.generalized_typevars": [ "T" ],
         "schema.version": "1.1",
         "audit.timestamp": "1970-01-01T00:00:00Z",
-        "typeclass.generalized_typevars": [ "T" ]
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream": { "enabled": false },
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover": {
+          "sync_tokens": [],
+          "notes": false
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.lex": {
+          "profile": "strict_json",
+          "identifier_profile": "unicode"
+        },
+        "parser.runconfig.experimental_effects": false,
+        "parser.runconfig.legacy_result": false,
+        "parser.runconfig.require_eof": false,
+        "parser.runconfig.merge_warnings": true,
+        "parser.runconfig.trace": false,
+        "parser.runconfig.left_recursion": "auto",
+        "parser.runconfig.packrat": false,
+        "parser.runconfig": {
+          "packrat": false,
+          "left_recursion": "auto",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": false,
+          "experimental_effects": false,
+          "extensions": {
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "stream": { "enabled": false }
+          }
+        }
       },
       "audit": {
         "metadata": {
+          "parser.runconfig": {
+            "packrat": false,
+            "left_recursion": "auto",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": false,
+            "experimental_effects": false,
+            "extensions": {
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              },
+              "recover": { "sync_tokens": [], "notes": false },
+              "stream": { "enabled": false }
+            }
+          },
+          "parser.runconfig.packrat": false,
+          "parser.runconfig.left_recursion": "auto",
+          "parser.runconfig.trace": false,
+          "parser.runconfig.merge_warnings": true,
+          "parser.runconfig.require_eof": false,
+          "parser.runconfig.legacy_result": false,
+          "parser.runconfig.experimental_effects": false,
+          "parser.runconfig.extensions.lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.recover": {
+            "sync_tokens": [],
+            "notes": false
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": { "enabled": false },
+          "parser.runconfig.extensions.stream.enabled": false,
           "typeclass.generalized_typevars": [ "T" ],
           "typeclass.pending": [ "Iterator.size_hint" ],
           "typeclass.candidates": [ "Iterator.collect" ],

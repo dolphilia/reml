@@ -5,6 +5,8 @@
 
 let () = Unix.putenv "REMLC_FIXED_TIMESTAMP" "1970-01-01T00:00:00Z"
 
+module Run_config = Parser_run_config
+
 let project_root =
   match Sys.getenv_opt "DUNE_SOURCEROOT" with
   | Some root -> root
@@ -42,6 +44,19 @@ let make_test_diagnostic () =
 (** テスト用のソースコード *)
 let test_source = "fn main() -> i64 =\n  let x: String = \"hello\" in\n  x + 42"
 
+let enrich_with_runconfig ?(config = Run_config.default) diag =
+  Diagnostic.with_parser_runconfig_metadata ~config diag
+
+let to_cli_json ?(mode = Cli.Options.JsonPretty) ?(config = Run_config.default) diag =
+  enrich_with_runconfig ~config diag
+  |> Cli.Json_formatter.diagnostic_to_json ~mode
+
+let to_cli_json_many ?(mode = Cli.Options.JsonPretty)
+    ?(config = Run_config.default) diagnostics =
+  diagnostics
+  |> List.map (enrich_with_runconfig ~config)
+  |> Cli.Json_formatter.diagnostics_to_json ~mode
+
 (** カラー出力のテスト *)
 let test_color_output () =
   let diag = make_test_diagnostic () in
@@ -71,9 +86,7 @@ let test_json_output () =
   let diag = make_test_diagnostic () in
 
   (* JSON 出力を生成 *)
-  let json_str =
-    Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
-  in
+  let json_str = to_cli_json diag in
 
   (* JSON としてパース可能か確認 *)
   let json = Yojson.Basic.from_string json_str in
@@ -125,9 +138,7 @@ let test_json_output_with_stream_meta () =
       }
   in
   Cli.Stats.set_stream_meta meta;
-  let json_str =
-    Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
-  in
+  let json_str = to_cli_json diag in
   let json = Yojson.Basic.from_string json_str in
   let stream_meta = Yojson.Basic.Util.member "stream_meta" json in
   assert (Yojson.Basic.Util.to_int (Yojson.Basic.Util.member "bytes_consumed" stream_meta) = meta.bytes_consumed);
@@ -153,9 +164,7 @@ let test_other_domain_serialization () =
     |> Diagnostic.Builder.add_note "domain other シリアライズ確認"
     |> Diagnostic.Builder.build
   in
-  let json_str =
-    Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
-  in
+  let json_str = to_cli_json diag in
   let json = Yojson.Basic.from_string json_str in
   let diag_json =
     json |> Yojson.Basic.Util.member "diagnostics"
@@ -237,9 +246,7 @@ let test_parser_expectation_snapshot () =
          (`String "859967339")
   in
   let diag = Diagnostic.Builder.build builder in
-  let json_str =
-    Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
-  in
+  let json_str = to_cli_json diag in
   let golden_path =
     resolve "tests/golden/diagnostics/parser/expected-summary.json.golden"
   in
@@ -478,9 +485,7 @@ let test_stage_extension_snapshot () =
     |> Diagnostic.set_audit_metadata "typeclass.generalized_typevars"
          (`List [ `String "T" ])
   in
-  let json_str =
-    Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
-  in
+  let json_str = to_cli_json diag in
   let golden_path =
     resolve "tests/golden/typeclass_iterator_stage_mismatch.json.golden"
   in
@@ -644,9 +649,7 @@ let test_plugin_bundle_metadata () =
                 ("status", `String "invalid");
               ])
   in
-  let json =
-    Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
-    |> Yojson.Basic.from_string
+  let json = to_cli_json diag |> Yojson.Basic.from_string
   in
   let first_diag =
     json |> Yojson.Basic.Util.member "diagnostics"
@@ -730,9 +733,7 @@ let test_typeclass_dictionary_snapshot () =
       (Typeclass_metadata.metadata_pairs typeclass_summary)
       diag_with_timestamp
   in
-  let json_str =
-    Cli.Json_formatter.diagnostic_to_json ~mode:Cli.Options.JsonPretty diag
-  in
+  let json_str = to_cli_json diag in
   let golden_path =
     resolve "tests/golden/typeclass_dictionary_resolved.json.golden"
   in
@@ -796,10 +797,7 @@ let test_info_hint_snapshot () =
     |> Diagnostic.Builder.add_audit_metadata "demo.kind" (`String "hint")
     |> Diagnostic.Builder.build
   in
-  let json_str =
-    Cli.Json_formatter.diagnostics_to_json ~mode:Cli.Options.JsonPretty
-      [ info_diag; hint_diag ]
-  in
+  let json_str = to_cli_json_many [ info_diag; hint_diag ] in
   let golden_path =
     resolve "tests/golden/diagnostics/severity/info-hint.json.golden"
   in
@@ -874,10 +872,7 @@ let test_multiple_diagnostics () =
   in
 
   (* 複数診断の JSON 出力 *)
-  let json_str =
-    Cli.Json_formatter.diagnostics_to_json ~mode:Cli.Options.JsonPretty
-      [ diag1; diag2 ]
-  in
+  let json_str = to_cli_json_many [ diag1; diag2 ] in
   let json = Yojson.Basic.from_string json_str in
   let diagnostics = json |> Yojson.Basic.Util.member "diagnostics" in
   let diag_list = diagnostics |> Yojson.Basic.Util.to_list in

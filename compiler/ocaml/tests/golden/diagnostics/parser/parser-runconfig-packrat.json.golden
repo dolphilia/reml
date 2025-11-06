@@ -156,7 +156,14 @@
         "origin": "cli",
         "fingerprint": "runconfig-left-recursion",
         "ordinal": 0,
-        "parser.core.rule.ordinal": 0
+        "parser.core.rule.ordinal": 0,
+        "parser.core.rule": {
+          "namespace": "runconfig",
+          "name": "left_recursion",
+          "origin": "cli",
+          "fingerprint": "runconfig-left-recursion",
+          "ordinal": 0
+        }
       },
       "audit": {
         "metadata": {
@@ -196,7 +203,14 @@
           "origin": "cli",
           "fingerprint": "runconfig-left-recursion",
           "ordinal": 0,
-          "parser.core.rule.ordinal": 0
+          "parser.core.rule.ordinal": 0,
+          "parser.core.rule": {
+            "namespace": "runconfig",
+            "name": "left_recursion",
+            "origin": "cli",
+            "fingerprint": "runconfig-left-recursion",
+            "ordinal": 0
+          }
         },
         "audit_id": "cli/19700101T000000Z#11",
         "change_set": {

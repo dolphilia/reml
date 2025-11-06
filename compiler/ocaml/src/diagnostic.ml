@@ -212,6 +212,11 @@ let legacy_of_diagnostic[@deprecated "Diagnostic.Legacy を直接生成せず Di
 let normalize_timestamp ts =
   if String.trim ts <> "" then ts else Audit_envelope.iso8601_timestamp ()
 
+let string_starts_with prefix value =
+  let prefix_len = String.length prefix in
+  String.length value >= prefix_len
+  && String.equal (String.sub value 0 prefix_len) prefix
+
 let ensure_missing_metadata entries =
   let required_cli_keys = [ "cli.audit_id"; "cli.change_set" ] in
   let missing =
@@ -243,6 +248,72 @@ let ensure_missing_metadata entries =
       | _ -> `List (List.map (fun key -> `String key) missing)
     in
     Extensions.set "missing" merged_missing entries
+
+let ensure_parser_core_rule_nested entries =
+  let prefix = "parser.core.rule." in
+  let prefix_len = String.length prefix in
+  let rule_fields =
+    entries
+    |> List.fold_left
+         (fun acc (key, value) ->
+           if String.length key > prefix_len && string_starts_with prefix key
+           then
+             let suffix = String.sub key prefix_len (String.length key - prefix_len) in
+             if String.trim suffix = "" then acc else (suffix, value) :: acc
+           else acc)
+         []
+  in
+  match rule_fields with
+  | [] ->
+      let fallback_keys =
+        [
+          ("namespace", Extensions.get "namespace" entries);
+          ("name", Extensions.get "name" entries);
+          ("origin", Extensions.get "origin" entries);
+          ("fingerprint", Extensions.get "fingerprint" entries);
+        ]
+      in
+      let fallback_fields =
+        fallback_keys
+        |> List.filter_map (function
+             | (label, Some value) -> Some (label, value)
+             | _ -> None)
+      in
+      let fallback_fields =
+        match Extensions.get "ordinal" entries with
+        | Some value -> ("ordinal", value) :: fallback_fields
+        | None -> fallback_fields
+      in
+      if fallback_fields = [] then entries
+      else
+        let rule_json = `Assoc (List.rev fallback_fields) in
+        Extensions.set "parser.core.rule" rule_json entries
+  | fields ->
+      let rule_json = `Assoc (List.rev fields) in
+      let entries = Extensions.set "parser.core.rule" rule_json entries in
+      let parser_payload =
+        match Extensions.get "parser" entries with
+        | Some (`Assoc parser_fields) ->
+            let existing_core =
+              match List.assoc_opt "core" parser_fields with
+              | Some (`Assoc core_fields) -> core_fields
+              | _ -> []
+            in
+            let core_fields =
+              ("rule", rule_json)
+              :: List.filter (fun (key, _) -> not (String.equal key "rule"))
+                   existing_core
+            in
+            let parser_rest =
+              List.filter (fun (key, _) -> not (String.equal key "core"))
+                parser_fields
+            in
+            `Assoc
+              ( ("core", `Assoc core_fields)
+              :: parser_rest )
+        | _ -> `Assoc [ ("core", `Assoc [ ("rule", rule_json) ]) ]
+      in
+      Extensions.set "parser" parser_payload entries
 
 let primary_code (diag : t) =
   match diag.codes with code :: _ -> Some code | [] -> None
@@ -321,6 +392,7 @@ let merge_audit_metadata entries diag =
     List.fold_left
       (fun acc (key, value) -> Extensions.set key value acc)
       base_metadata entries
+    |> ensure_parser_core_rule_nested
     |> ensure_missing_metadata
   in
   let audit = Audit_envelope.merge_metadata diag.audit enriched_entries in
@@ -1754,7 +1826,11 @@ module Builder = struct
            (`String Audit_envelope.schema_version)
       |> Extensions.set "audit.timestamp" (`String timestamp_value)
     in
-    let audit_metadata = ensure_missing_metadata audit_metadata_base in
+    let audit_metadata =
+      audit_metadata_base
+      |> ensure_parser_core_rule_nested
+      |> ensure_missing_metadata
+    in
     let audit_seed =
       match builder.audit_seed with
       | Some env -> env
