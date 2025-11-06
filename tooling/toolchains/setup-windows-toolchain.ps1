@@ -139,11 +139,14 @@ if (-not $NoCheck) {
         throw "check-windows-bootstrap-env.ps1 が見つかりません。($checkScript)"
     }
 
-    $checkArgs = @()
-    if ($CheckOutputJson) {
-        $checkArgs += '-OutputJson'
-        $checkArgs += $CheckOutputJson
+    $checkArgs = @{}
+    if (-not [string]::IsNullOrWhiteSpace($CheckOutputJson)) {
+        $checkArgs['OutputJson'] = $CheckOutputJson
     }
 
-    & $checkScript @checkArgs
+    if ($checkArgs.Count -gt 0) {
+        & $checkScript @checkArgs
+    } else {
+        & $checkScript
+    }
 }

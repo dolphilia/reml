@@ -11,6 +11,7 @@
 ## 現状診断（2025-10-20）
 
 - 2025-11-03 に `tooling/toolchains/check-windows-bootstrap-env.ps1` を再実行し、コンソール出力を確認（リポジトリが読み取り専用のため JSON は未更新）。以下の表へ結果を反映した。
+- 2025-11-06 に Windows ローカル環境で `setup-windows-toolchain.ps1` / `check-windows-bootstrap-env.ps1` を再検証し、JSON 出力を `reports/toolchain/windows/20251106/{setup-windows-toolchain.json,check-windows-bootstrap-env.json}` として保存。PowerShell 7 で `-CheckOutputJson` が伝搬しない不具合を再現し、詳細ログ `reports/toolchain/windows/20251106/setup-windows-toolchain-error.log` を残した。
 - OCaml 本体／dune／menhir、MSVC ツールチェーンのアクティベーション、7-Zip など複数項目が未整備であり、LLVM CLI は clang 19.1.1（MSVC 配布）と MSYS2 16.0.4 の混在状態にある。
 
 | 分類 | 項目 | 状態 | 備考 |
