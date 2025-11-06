@@ -1,0 +1,2021 @@
+{
+  "metrics": [
+    {
+      "metric": "diagnostic.audit_presence_rate",
+      "total": 9,
+      "passed": 9,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "required_audit_keys": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "sources": [
+        "tmp/diagnostics-output/parser-runconfig-packrat.json",
+        "tmp/diagnostics-output/streaming-outcome.json",
+        "tmp/diagnostics-output/expected-summary.json",
+        "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+        "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+        "tmp/diagnostics-output/effects-residual-leak.json",
+        "tmp/diagnostics-output/effects-stage-resolution.json",
+        "tmp/diagnostics-output/ffi-unsupported-abi.json",
+        "tmp/diagnostics-output/severity-info-hint.json"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "parser.expected_summary_presence",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "average_expected_tokens": 3.0,
+      "min_expected_tokens": 3,
+      "max_expected_tokens": 3,
+      "sources": [
+        "tmp/diagnostics-output/parser-runconfig-packrat.json",
+        "tmp/diagnostics-output/streaming-outcome.json",
+        "tmp/diagnostics-output/expected-summary.json",
+        "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+        "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+        "tmp/diagnostics-output/effects-residual-leak.json",
+        "tmp/diagnostics-output/effects-stage-resolution.json",
+        "tmp/diagnostics-output/ffi-unsupported-abi.json",
+        "tmp/diagnostics-output/severity-info-hint.json"
+      ],
+      "failures": [],
+      "schema_versions": [
+        "2.0.0-draft"
+      ],
+      "required_expected_keys": [
+        "expected",
+        "expected.alternatives"
+      ],
+      "status": "success",
+      "related_metrics": [
+        {
+          "metric": "parser.expected_tokens_per_error",
+          "total": 1,
+          "with_expected": 1,
+          "average_tokens": 3.0,
+          "min_tokens": 3,
+          "max_tokens": 3,
+          "status": "success"
+        },
+        {
+          "metric": "parser.runconfig_switch_coverage",
+          "total": 4,
+          "passed": 4,
+          "failed": 0,
+          "missing": [],
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "tmp/diagnostics-output/parser-runconfig-packrat.json",
+            "tmp/diagnostics-output/streaming-outcome.json",
+            "tmp/diagnostics-output/expected-summary.json",
+            "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+            "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+            "tmp/diagnostics-output/effects-residual-leak.json",
+            "tmp/diagnostics-output/effects-stage-resolution.json",
+            "tmp/diagnostics-output/ffi-unsupported-abi.json",
+            "tmp/diagnostics-output/severity-info-hint.json"
+          ],
+          "samples": {
+            "packrat": true,
+            "left_recursion": "auto",
+            "trace": true,
+            "merge_warnings": false
+          }
+        },
+        {
+          "metric": "parser.runconfig_extension_pass_rate",
+          "total": 3,
+          "passed": 3,
+          "failed": 0,
+          "missing": [],
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "tmp/diagnostics-output/parser-runconfig-packrat.json",
+            "tmp/diagnostics-output/streaming-outcome.json",
+            "tmp/diagnostics-output/expected-summary.json",
+            "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+            "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+            "tmp/diagnostics-output/effects-residual-leak.json",
+            "tmp/diagnostics-output/effects-stage-resolution.json",
+            "tmp/diagnostics-output/ffi-unsupported-abi.json",
+            "tmp/diagnostics-output/severity-info-hint.json"
+          ],
+          "samples": {
+            "lex": {
+              "space_id": 512,
+              "profile": "json_relaxed"
+            },
+            "recover": {
+              "sync_tokens": [
+                "}",
+                "end"
+              ],
+              "notes": true
+            },
+            "stream": {
+              "checkpoint": "unit-test",
+              "resume_hint": "after-error"
+            }
+          }
+        },
+        {
+          "metric": "parser.stream_extension_field_coverage",
+          "total": 6,
+          "passed": 6,
+          "failed": 0,
+          "missing": [],
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "tmp/diagnostics-output/parser-runconfig-packrat.json",
+            "tmp/diagnostics-output/streaming-outcome.json",
+            "tmp/diagnostics-output/expected-summary.json",
+            "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+            "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+            "tmp/diagnostics-output/effects-residual-leak.json",
+            "tmp/diagnostics-output/effects-stage-resolution.json",
+            "tmp/diagnostics-output/ffi-unsupported-abi.json",
+            "tmp/diagnostics-output/severity-info-hint.json"
+          ],
+          "samples": {
+            "enabled": true,
+            "checkpoint": "unit-test",
+            "resume_hint": "after-error",
+            "demand_min_bytes": 4,
+            "demand_preferred_bytes": 8,
+            "chunk_size": 1024
+          }
+        },
+        {
+          "metric": "lexer.shared_profile_pass_rate",
+          "total": 2,
+          "passed": 1,
+          "failed": 1,
+          "pass_rate": 0.0,
+          "pass_fraction": 0.5,
+          "status": "error",
+          "sources": [
+            "tmp/diagnostics-output/parser-runconfig-packrat.json",
+            "tmp/diagnostics-output/streaming-outcome.json"
+          ],
+          "failures": [
+            {
+              "file": "tmp/diagnostics-output/streaming-outcome.json",
+              "reasons": [
+                "lex_extension_missing"
+              ],
+              "profile": null,
+              "profile_raw": null,
+              "space_id": null
+            }
+          ],
+          "samples": {
+            "profile": "json_relaxed",
+            "space_id": 512
+          }
+        },
+        {
+          "metric": "lexer.identifier_profile_unicode",
+          "total": 2,
+          "unicode": 0,
+          "ascii": 0,
+          "other": 2,
+          "pass_rate": null,
+          "pass_fraction": 0.0,
+          "unicode_fraction": 0.0,
+          "status": "monitoring",
+          "sources": [
+            "tmp/diagnostics-output/parser-runconfig-packrat.json",
+            "tmp/diagnostics-output/streaming-outcome.json"
+          ],
+          "profile_counts": {
+            "json_relaxed": 1
+          },
+          "cli_switch": "--lex-profile",
+          "cli_values": [
+            "ascii",
+            "unicode"
+          ],
+          "expected_pass_fraction": 1.0
+        },
+        {
+          "metric": "parser.core_comb_rule_coverage",
+          "total": 1,
+          "covered": 1,
+          "missed": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "tmp/diagnostics-output/expected-summary.json"
+          ],
+          "failures": []
+        },
+        {
+          "metric": "parser.packrat_cache_hit_ratio",
+          "queries": 8,
+          "hits": 7,
+          "misses": 1,
+          "hit_ratio": 0.875,
+          "status": "success",
+          "sources": [
+            "tmp/diagnostics-output/parser-runconfig-packrat.json"
+          ],
+          "anomalies": []
+        }
+      ]
+    },
+    {
+      "metric": "parser.expected_tokens_per_error",
+      "total": 1,
+      "with_expected": 1,
+      "average_tokens": 3.0,
+      "min_tokens": 3,
+      "max_tokens": 3,
+      "status": "success"
+    },
+    {
+      "metric": "parser.runconfig_switch_coverage",
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "missing": [],
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "tmp/diagnostics-output/parser-runconfig-packrat.json",
+        "tmp/diagnostics-output/streaming-outcome.json",
+        "tmp/diagnostics-output/expected-summary.json",
+        "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+        "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+        "tmp/diagnostics-output/effects-residual-leak.json",
+        "tmp/diagnostics-output/effects-stage-resolution.json",
+        "tmp/diagnostics-output/ffi-unsupported-abi.json",
+        "tmp/diagnostics-output/severity-info-hint.json"
+      ],
+      "samples": {
+        "packrat": true,
+        "left_recursion": "auto",
+        "trace": true,
+        "merge_warnings": false
+      }
+    },
+    {
+      "metric": "parser.runconfig_extension_pass_rate",
+      "total": 3,
+      "passed": 3,
+      "failed": 0,
+      "missing": [],
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "tmp/diagnostics-output/parser-runconfig-packrat.json",
+        "tmp/diagnostics-output/streaming-outcome.json",
+        "tmp/diagnostics-output/expected-summary.json",
+        "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+        "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+        "tmp/diagnostics-output/effects-residual-leak.json",
+        "tmp/diagnostics-output/effects-stage-resolution.json",
+        "tmp/diagnostics-output/ffi-unsupported-abi.json",
+        "tmp/diagnostics-output/severity-info-hint.json"
+      ],
+      "samples": {
+        "lex": {
+          "space_id": 512,
+          "profile": "json_relaxed"
+        },
+        "recover": {
+          "sync_tokens": [
+            "}",
+            "end"
+          ],
+          "notes": true
+        },
+        "stream": {
+          "checkpoint": "unit-test",
+          "resume_hint": "after-error"
+        }
+      }
+    },
+    {
+      "metric": "parser.stream_extension_field_coverage",
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "missing": [],
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "tmp/diagnostics-output/parser-runconfig-packrat.json",
+        "tmp/diagnostics-output/streaming-outcome.json",
+        "tmp/diagnostics-output/expected-summary.json",
+        "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+        "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+        "tmp/diagnostics-output/effects-residual-leak.json",
+        "tmp/diagnostics-output/effects-stage-resolution.json",
+        "tmp/diagnostics-output/ffi-unsupported-abi.json",
+        "tmp/diagnostics-output/severity-info-hint.json"
+      ],
+      "samples": {
+        "enabled": true,
+        "checkpoint": "unit-test",
+        "resume_hint": "after-error",
+        "demand_min_bytes": 4,
+        "demand_preferred_bytes": 8,
+        "chunk_size": 1024
+      }
+    },
+    {
+      "metric": "lexer.shared_profile_pass_rate",
+      "total": 2,
+      "passed": 1,
+      "failed": 1,
+      "pass_rate": 0.0,
+      "pass_fraction": 0.5,
+      "status": "error",
+      "sources": [
+        "tmp/diagnostics-output/parser-runconfig-packrat.json",
+        "tmp/diagnostics-output/streaming-outcome.json"
+      ],
+      "failures": [
+        {
+          "file": "tmp/diagnostics-output/streaming-outcome.json",
+          "reasons": [
+            "lex_extension_missing"
+          ],
+          "profile": null,
+          "profile_raw": null,
+          "space_id": null
+        }
+      ],
+      "samples": {
+        "profile": "json_relaxed",
+        "space_id": 512
+      }
+    },
+    {
+      "metric": "lexer.identifier_profile_unicode",
+      "total": 2,
+      "unicode": 0,
+      "ascii": 0,
+      "other": 2,
+      "pass_rate": null,
+      "pass_fraction": 0.0,
+      "unicode_fraction": 0.0,
+      "status": "monitoring",
+      "sources": [
+        "tmp/diagnostics-output/parser-runconfig-packrat.json",
+        "tmp/diagnostics-output/streaming-outcome.json"
+      ],
+      "profile_counts": {
+        "json_relaxed": 1
+      },
+      "cli_switch": "--lex-profile",
+      "cli_values": [
+        "ascii",
+        "unicode"
+      ],
+      "expected_pass_fraction": 1.0
+    },
+    {
+      "metric": "parser.core_comb_rule_coverage",
+      "total": 1,
+      "covered": 1,
+      "missed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "tmp/diagnostics-output/expected-summary.json"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "parser.packrat_cache_hit_ratio",
+      "queries": 8,
+      "hits": 7,
+      "misses": 1,
+      "hit_ratio": 0.875,
+      "status": "success",
+      "sources": [
+        "tmp/diagnostics-output/parser-runconfig-packrat.json"
+      ],
+      "anomalies": []
+    },
+    {
+      "metric": "parser.stream.outcome_consistency",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "tmp/diagnostics-output/streaming-outcome.json"
+      ],
+      "failures": [],
+      "related_metrics": [
+        {
+          "metric": "parser.stream.flow.auto_coverage",
+          "total": 1,
+          "auto": 1,
+          "manual": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "tmp/diagnostics-output/streaming-outcome.json"
+          ],
+          "samples": {
+            "policies": [
+              "auto"
+            ]
+          }
+        },
+        {
+          "metric": "parser.stream.backpressure_sync",
+          "total": 1,
+          "passed": 1,
+          "failed": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "tmp/diagnostics-output/streaming-outcome.json"
+          ],
+          "failures": []
+        },
+        {
+          "metric": "parser.stream.demandhint_coverage",
+          "total": 1,
+          "covered": 1,
+          "missing": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "tmp/diagnostics-output/streaming-outcome.json"
+          ],
+          "failures": []
+        },
+        {
+          "metric": "parser.stream.demandhint_coverage",
+          "total": 1,
+          "covered": 1,
+          "missing": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "tmp/diagnostics-output/streaming-outcome.json"
+          ],
+          "failures": []
+        },
+        {
+          "metric": "parser.stream.bridge_backpressure_diagnostics",
+          "total": 1,
+          "covered": 1,
+          "missing": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "tmp/diagnostics-output/streaming-outcome.json"
+          ],
+          "failures": []
+        },
+        {
+          "metric": "parser.stream.bridge_stage_propagation",
+          "total": 1,
+          "covered": 1,
+          "missing": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "tmp/diagnostics-output/streaming-outcome.json"
+          ],
+          "failures": []
+        }
+      ]
+    },
+    {
+      "metric": "parser.stream.flow.auto_coverage",
+      "total": 1,
+      "auto": 1,
+      "manual": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "tmp/diagnostics-output/streaming-outcome.json"
+      ],
+      "samples": {
+        "policies": [
+          "auto"
+        ]
+      }
+    },
+    {
+      "metric": "parser.stream.backpressure_sync",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "tmp/diagnostics-output/streaming-outcome.json"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "parser.stream.demandhint_coverage",
+      "total": 1,
+      "covered": 1,
+      "missing": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "tmp/diagnostics-output/streaming-outcome.json"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "parser.stream.demandhint_coverage",
+      "total": 1,
+      "covered": 1,
+      "missing": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "tmp/diagnostics-output/streaming-outcome.json"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "parser.stream.bridge_backpressure_diagnostics",
+      "total": 1,
+      "covered": 1,
+      "missing": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "tmp/diagnostics-output/streaming-outcome.json"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "parser.stream.bridge_stage_propagation",
+      "total": 1,
+      "covered": 1,
+      "missing": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "tmp/diagnostics-output/streaming-outcome.json"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "iterator.stage.audit_pass_rate",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "required_audit_keys": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "event.domain",
+        "event.kind",
+        "effect.stage.required",
+        "effect.stage.actual",
+        "effect.capability",
+        "capability.ids",
+        "effect.required_capabilities",
+        "effect.stage.required_capabilities",
+        "effect.actual_capabilities",
+        "effect.stage.actual_capabilities",
+        "effect.capability_descriptor",
+        "effect.handler_stack",
+        "effect.unhandled_operations",
+        "effect.stage.iterator.required",
+        "effect.stage.iterator.actual",
+        "effect.stage.iterator.kind",
+        "effect.stage.iterator.capability",
+        "effect.stage.iterator.source",
+        "bridge.audit_pass_rate"
+      ],
+      "sources": [
+        "tmp/diagnostics-output/parser-runconfig-packrat.json",
+        "tmp/diagnostics-output/streaming-outcome.json",
+        "tmp/diagnostics-output/expected-summary.json",
+        "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+        "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+        "tmp/diagnostics-output/effects-residual-leak.json",
+        "tmp/diagnostics-output/effects-stage-resolution.json",
+        "tmp/diagnostics-output/ffi-unsupported-abi.json",
+        "tmp/diagnostics-output/severity-info-hint.json"
+      ],
+      "failures": [],
+      "schema_versions": [
+        "2.0.0-draft"
+      ],
+      "related_metrics": [
+        {
+          "metric": "diagnostics.domain_coverage",
+          "total": 10,
+          "passed": 10,
+          "failed": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "tmp/diagnostics-output/parser-runconfig-packrat.json",
+            "tmp/diagnostics-output/streaming-outcome.json",
+            "tmp/diagnostics-output/expected-summary.json",
+            "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+            "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+            "tmp/diagnostics-output/effects-residual-leak.json",
+            "tmp/diagnostics-output/effects-stage-resolution.json",
+            "tmp/diagnostics-output/ffi-unsupported-abi.json",
+            "tmp/diagnostics-output/severity-info-hint.json"
+          ],
+          "failures": [],
+          "schema_versions": [
+            "2.0.0-draft"
+          ]
+        },
+        {
+          "metric": "diagnostics.effect_stage_consistency",
+          "total": 1,
+          "passed": 1,
+          "failed": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "tmp/diagnostics-output/parser-runconfig-packrat.json",
+            "tmp/diagnostics-output/streaming-outcome.json",
+            "tmp/diagnostics-output/expected-summary.json",
+            "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+            "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+            "tmp/diagnostics-output/effects-residual-leak.json",
+            "tmp/diagnostics-output/effects-stage-resolution.json",
+            "tmp/diagnostics-output/ffi-unsupported-abi.json",
+            "tmp/diagnostics-output/severity-info-hint.json"
+          ],
+          "failures": []
+        },
+        {
+          "metric": "effect.capability_array_pass_rate",
+          "total": 1,
+          "passed": 1,
+          "failed": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "failures": [],
+          "sources": [
+            "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json"
+          ],
+          "schema_versions": [
+            "2.0.0-draft"
+          ]
+        }
+      ]
+    },
+    {
+      "metric": "diagnostics.domain_coverage",
+      "total": 10,
+      "passed": 10,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "tmp/diagnostics-output/parser-runconfig-packrat.json",
+        "tmp/diagnostics-output/streaming-outcome.json",
+        "tmp/diagnostics-output/expected-summary.json",
+        "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+        "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+        "tmp/diagnostics-output/effects-residual-leak.json",
+        "tmp/diagnostics-output/effects-stage-resolution.json",
+        "tmp/diagnostics-output/ffi-unsupported-abi.json",
+        "tmp/diagnostics-output/severity-info-hint.json"
+      ],
+      "failures": [],
+      "schema_versions": [
+        "2.0.0-draft"
+      ]
+    },
+    {
+      "metric": "diagnostics.effect_stage_consistency",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "tmp/diagnostics-output/parser-runconfig-packrat.json",
+        "tmp/diagnostics-output/streaming-outcome.json",
+        "tmp/diagnostics-output/expected-summary.json",
+        "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+        "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+        "tmp/diagnostics-output/effects-residual-leak.json",
+        "tmp/diagnostics-output/effects-stage-resolution.json",
+        "tmp/diagnostics-output/ffi-unsupported-abi.json",
+        "tmp/diagnostics-output/severity-info-hint.json"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "effect.capability_array_pass_rate",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "failures": [],
+      "sources": [
+        "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json"
+      ],
+      "schema_versions": [
+        "2.0.0-draft"
+      ]
+    },
+    {
+      "metric": "type_inference.value_restriction_violation",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "violation_count": 0,
+      "violations": [],
+      "sources": [
+        "tmp/diagnostics-output/parser-runconfig-packrat.json",
+        "tmp/diagnostics-output/streaming-outcome.json",
+        "tmp/diagnostics-output/expected-summary.json",
+        "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+        "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+        "tmp/diagnostics-output/effects-residual-leak.json",
+        "tmp/diagnostics-output/effects-stage-resolution.json",
+        "tmp/diagnostics-output/ffi-unsupported-abi.json",
+        "tmp/diagnostics-output/severity-info-hint.json"
+      ],
+      "schema_versions": [],
+      "related_metrics": [
+        {
+          "metric": "type_inference.value_restriction_legacy_usage",
+          "total": 0,
+          "passed": 0,
+          "failed": 0,
+          "pass_rate": null,
+          "pass_fraction": null,
+          "status": "info",
+          "usage_count": 0,
+          "occurrences": [],
+          "sources": [],
+          "schema_versions": []
+        }
+      ]
+    },
+    {
+      "metric": "type_inference.value_restriction_legacy_usage",
+      "total": 0,
+      "passed": 0,
+      "failed": 0,
+      "pass_rate": null,
+      "pass_fraction": null,
+      "status": "info",
+      "usage_count": 0,
+      "occurrences": [],
+      "sources": [],
+      "schema_versions": []
+    },
+    {
+      "metric": "typeclass.metadata_pass_rate",
+      "total": 2,
+      "passed": 0,
+      "failed": 2,
+      "pass_rate": 0.0,
+      "pass_fraction": 0.0,
+      "required_audit_keys": [
+        "typeclass.trait",
+        "typeclass.type_args",
+        "typeclass.constraint",
+        "typeclass.resolution_state",
+        "typeclass.dictionary.kind",
+        "typeclass.pending",
+        "typeclass.generalized_typevars",
+        "typeclass.candidates"
+      ],
+      "sources": [
+        "tmp/diagnostics-output/parser-runconfig-packrat.json",
+        "tmp/diagnostics-output/streaming-outcome.json",
+        "tmp/diagnostics-output/expected-summary.json",
+        "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+        "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+        "tmp/diagnostics-output/effects-residual-leak.json",
+        "tmp/diagnostics-output/effects-stage-resolution.json",
+        "tmp/diagnostics-output/ffi-unsupported-abi.json",
+        "tmp/diagnostics-output/severity-info-hint.json"
+      ],
+      "audit_sources": [
+        "tmp/diagnostics-output/audit/cli-ffi-bridge-windows.jsonl",
+        "tmp/diagnostics-output/audit/effects-residual.jsonl",
+        "tmp/diagnostics-output/audit/effects-stage.json"
+      ],
+      "failures": [
+        {
+          "file": "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+          "index": 0,
+          "code": "typeclass.iterator.stage_mismatch",
+          "missing": [
+            "typeclass.candidates",
+            "typeclass.constraint",
+            "typeclass.dictionary.kind",
+            "typeclass.generalized_typevars",
+            "typeclass.pending",
+            "typeclass.resolution_state",
+            "typeclass.trait",
+            "typeclass.type_args"
+          ]
+        },
+        {
+          "file": "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+          "index": 0,
+          "code": "typeclass.dictionary.resolved",
+          "missing": [
+            "typeclass.candidates",
+            "typeclass.constraint",
+            "typeclass.dictionary.kind",
+            "typeclass.generalized_typevars",
+            "typeclass.pending",
+            "typeclass.resolution_state",
+            "typeclass.trait",
+            "typeclass.type_args"
+          ]
+        }
+      ],
+      "schema_versions": [
+        "2.0.0-draft"
+      ],
+      "dictionary_metric": {
+        "metric": "typeclass.dictionary_pass_rate",
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "required_audit_keys": [
+          "extensions.typeclass.dictionary.kind",
+          "extensions.typeclass.dictionary.identifier",
+          "extensions.typeclass.dictionary.repr",
+          "typeclass.dictionary.kind",
+          "typeclass.dictionary.identifier",
+          "typeclass.dictionary.repr"
+        ],
+        "sources": [
+          "tmp/diagnostics-output/parser-runconfig-packrat.json",
+          "tmp/diagnostics-output/streaming-outcome.json",
+          "tmp/diagnostics-output/expected-summary.json",
+          "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+          "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+          "tmp/diagnostics-output/effects-residual-leak.json",
+          "tmp/diagnostics-output/effects-stage-resolution.json",
+          "tmp/diagnostics-output/ffi-unsupported-abi.json",
+          "tmp/diagnostics-output/severity-info-hint.json"
+        ],
+        "audit_sources": [
+          "tmp/diagnostics-output/audit/cli-ffi-bridge-windows.jsonl",
+          "tmp/diagnostics-output/audit/effects-stage.json",
+          "tmp/diagnostics-output/audit/effects-residual.jsonl"
+        ],
+        "failures": [],
+        "schema_versions": [
+          "2.0.0-draft"
+        ]
+      },
+      "dictionary_pass_rate": 1.0,
+      "dictionary_pass_fraction": 1.0,
+      "related_metrics": [
+        {
+          "metric": "typeclass.dictionary_pass_rate",
+          "total": 2,
+          "passed": 2,
+          "failed": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "required_audit_keys": [
+            "extensions.typeclass.dictionary.kind",
+            "extensions.typeclass.dictionary.identifier",
+            "extensions.typeclass.dictionary.repr",
+            "typeclass.dictionary.kind",
+            "typeclass.dictionary.identifier",
+            "typeclass.dictionary.repr"
+          ],
+          "sources": [
+            "tmp/diagnostics-output/parser-runconfig-packrat.json",
+            "tmp/diagnostics-output/streaming-outcome.json",
+            "tmp/diagnostics-output/expected-summary.json",
+            "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+            "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+            "tmp/diagnostics-output/effects-residual-leak.json",
+            "tmp/diagnostics-output/effects-stage-resolution.json",
+            "tmp/diagnostics-output/ffi-unsupported-abi.json",
+            "tmp/diagnostics-output/severity-info-hint.json"
+          ],
+          "audit_sources": [
+            "tmp/diagnostics-output/audit/cli-ffi-bridge-windows.jsonl",
+            "tmp/diagnostics-output/audit/effects-stage.json",
+            "tmp/diagnostics-output/audit/effects-residual.jsonl"
+          ],
+          "failures": [],
+          "schema_versions": [
+            "2.0.0-draft"
+          ]
+        }
+      ]
+    },
+    {
+      "metric": "typeclass.dictionary_pass_rate",
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "required_audit_keys": [
+        "extensions.typeclass.dictionary.kind",
+        "extensions.typeclass.dictionary.identifier",
+        "extensions.typeclass.dictionary.repr",
+        "typeclass.dictionary.kind",
+        "typeclass.dictionary.identifier",
+        "typeclass.dictionary.repr"
+      ],
+      "sources": [
+        "tmp/diagnostics-output/parser-runconfig-packrat.json",
+        "tmp/diagnostics-output/streaming-outcome.json",
+        "tmp/diagnostics-output/expected-summary.json",
+        "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+        "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+        "tmp/diagnostics-output/effects-residual-leak.json",
+        "tmp/diagnostics-output/effects-stage-resolution.json",
+        "tmp/diagnostics-output/ffi-unsupported-abi.json",
+        "tmp/diagnostics-output/severity-info-hint.json"
+      ],
+      "audit_sources": [
+        "tmp/diagnostics-output/audit/cli-ffi-bridge-windows.jsonl",
+        "tmp/diagnostics-output/audit/effects-stage.json",
+        "tmp/diagnostics-output/audit/effects-residual.jsonl"
+      ],
+      "failures": [],
+      "schema_versions": [
+        "2.0.0-draft"
+      ]
+    },
+    {
+      "metric": "ffi_bridge.audit_pass_rate",
+      "total": 6,
+      "passed": 1,
+      "failed": 5,
+      "pass_rate": 0.0,
+      "pass_fraction": 0.16666666666666666,
+      "required_audit_keys": [
+        "audit_id",
+        "change_set",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "bridge.audit_pass_rate",
+        "bridge.status",
+        "bridge.target",
+        "bridge.arch",
+        "bridge.abi",
+        "bridge.ownership",
+        "bridge.extern_symbol",
+        "bridge.platform",
+        "bridge.return.ownership",
+        "bridge.return.status",
+        "bridge.return.wrap",
+        "bridge.return.release_handler",
+        "bridge.return.rc_adjustment"
+      ],
+      "sources": [
+        "tmp/diagnostics-output/parser-runconfig-packrat.json",
+        "tmp/diagnostics-output/streaming-outcome.json",
+        "tmp/diagnostics-output/expected-summary.json",
+        "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+        "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+        "tmp/diagnostics-output/effects-residual-leak.json",
+        "tmp/diagnostics-output/effects-stage-resolution.json",
+        "tmp/diagnostics-output/ffi-unsupported-abi.json",
+        "tmp/diagnostics-output/severity-info-hint.json"
+      ],
+      "audit_sources": [
+        "tmp/diagnostics-output/audit/cli-ffi-bridge-windows.jsonl",
+        "tmp/diagnostics-output/audit/effects-stage.json",
+        "tmp/diagnostics-output/audit/effects-residual.jsonl"
+      ],
+      "failures": [
+        {
+          "file": "tmp/diagnostics-output/audit/cli-ffi-bridge-windows.jsonl",
+          "index": 0,
+          "code": "ffi.bridge",
+          "missing": [
+            "audit_id",
+            "change_set",
+            "cli.audit_id",
+            "cli.change_set",
+            "extensions.bridge.abi",
+            "extensions.bridge.audit_pass_rate",
+            "extensions.bridge.ownership",
+            "extensions.bridge.platform",
+            "extensions.bridge.return.ownership",
+            "extensions.bridge.return.rc_adjustment",
+            "extensions.bridge.return.release_handler",
+            "extensions.bridge.return.status",
+            "extensions.bridge.return.wrap",
+            "extensions.bridge.target"
+          ],
+          "status": "ok",
+          "platform": "macos-arm64",
+          "platform_normalized": "macos-arm64"
+        },
+        {
+          "file": "tmp/diagnostics-output/audit/cli-ffi-bridge-windows.jsonl",
+          "index": 1,
+          "code": "ffi.bridge",
+          "missing": [
+            "audit_id",
+            "change_set",
+            "cli.audit_id",
+            "cli.change_set",
+            "extensions.bridge.abi",
+            "extensions.bridge.audit_pass_rate",
+            "extensions.bridge.ownership",
+            "extensions.bridge.platform",
+            "extensions.bridge.return.ownership",
+            "extensions.bridge.return.rc_adjustment",
+            "extensions.bridge.return.release_handler",
+            "extensions.bridge.return.status",
+            "extensions.bridge.return.wrap",
+            "extensions.bridge.target"
+          ],
+          "status": "ok",
+          "platform": "windows-msvc-x64",
+          "platform_normalized": "windows-msvc"
+        },
+        {
+          "file": "tmp/diagnostics-output/audit/effects-stage.json",
+          "index": null,
+          "code": "ffi.audit.missing_bridge",
+          "missing": [
+            "bridge"
+          ],
+          "status": null,
+          "platform": null,
+          "platform_normalized": null
+        },
+        {
+          "file": "tmp/diagnostics-output/audit/effects-residual.jsonl",
+          "index": null,
+          "code": "ffi.audit.missing_bridge",
+          "missing": [
+            "bridge"
+          ],
+          "status": null,
+          "platform": null,
+          "platform_normalized": null
+        }
+      ],
+      "platform_summary": {
+        "windows-msvc": {
+          "total": 2,
+          "ok": 1,
+          "failed": 1
+        },
+        "macos-arm64": {
+          "total": 1,
+          "ok": 0,
+          "failed": 1
+        },
+        "<missing>": {
+          "total": 2,
+          "ok": 0,
+          "failed": 2
+        }
+      },
+      "schema_versions": [
+        "2.0.0-draft"
+      ],
+      "platform_filter": null,
+      "status_summary": {
+        "success": 2,
+        "failure": 1,
+        "platforms": {
+          "windows-msvc": {
+            "total": 2,
+            "ok": 1,
+            "failed": 1
+          },
+          "macos-arm64": {
+            "total": 1,
+            "ok": 0,
+            "failed": 1
+          },
+          "<missing>": {
+            "total": 2,
+            "ok": 0,
+            "failed": 2
+          }
+        }
+      }
+    },
+    {
+      "metric": "audit_review.summary",
+      "audit_diff": {
+        "regressions": 0,
+        "metadata_changed": 0,
+        "new": 0,
+        "pass_rate": {
+          "delta": null,
+          "min_delta": null,
+          "max_delta": null
+        },
+        "sources": [],
+        "entries": [],
+        "total_regressions": 0
+      },
+      "audit_query": {
+        "coverage": null,
+        "matched": 0,
+        "total": 0,
+        "entries": [],
+        "sources": []
+      },
+      "audit_dashboard": {
+        "generated": 0,
+        "sources": [],
+        "missing": []
+      },
+      "failures": []
+    },
+    {
+      "metric": "effect_row_guard_regressions",
+      "count": 0,
+      "status": "success"
+    }
+  ],
+  "extra_metrics": [
+    {
+      "metric": "effect_row_guard_regressions",
+      "count": 0,
+      "status": "success"
+    }
+  ],
+  "metric": "iterator.stage.audit_pass_rate",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "pass_rate": 1.0,
+  "pass_fraction": 1.0,
+  "required_audit_keys": [
+    "cli.audit_id",
+    "cli.change_set",
+    "schema.version",
+    "event.domain",
+    "event.kind",
+    "effect.stage.required",
+    "effect.stage.actual",
+    "effect.capability",
+    "capability.ids",
+    "effect.required_capabilities",
+    "effect.stage.required_capabilities",
+    "effect.actual_capabilities",
+    "effect.stage.actual_capabilities",
+    "effect.capability_descriptor",
+    "effect.handler_stack",
+    "effect.unhandled_operations",
+    "effect.stage.iterator.required",
+    "effect.stage.iterator.actual",
+    "effect.stage.iterator.kind",
+    "effect.stage.iterator.capability",
+    "effect.stage.iterator.source",
+    "bridge.audit_pass_rate"
+  ],
+  "sources": [
+    "tmp/diagnostics-output/parser-runconfig-packrat.json",
+    "tmp/diagnostics-output/streaming-outcome.json",
+    "tmp/diagnostics-output/expected-summary.json",
+    "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+    "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+    "tmp/diagnostics-output/effects-residual-leak.json",
+    "tmp/diagnostics-output/effects-stage-resolution.json",
+    "tmp/diagnostics-output/ffi-unsupported-abi.json",
+    "tmp/diagnostics-output/severity-info-hint.json"
+  ],
+  "failures": [],
+  "diagnostic_audit": {
+    "metric": "diagnostic.audit_presence_rate",
+    "total": 9,
+    "passed": 9,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
+    "required_audit_keys": [
+      "cli.audit_id",
+      "cli.change_set",
+      "schema.version",
+      "timestamp"
+    ],
+    "sources": [
+      "tmp/diagnostics-output/parser-runconfig-packrat.json",
+      "tmp/diagnostics-output/streaming-outcome.json",
+      "tmp/diagnostics-output/expected-summary.json",
+      "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+      "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+      "tmp/diagnostics-output/effects-residual-leak.json",
+      "tmp/diagnostics-output/effects-stage-resolution.json",
+      "tmp/diagnostics-output/ffi-unsupported-abi.json",
+      "tmp/diagnostics-output/severity-info-hint.json"
+    ],
+    "failures": []
+  },
+  "parser": {
+    "metric": "parser.expected_summary_presence",
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
+    "average_expected_tokens": 3.0,
+    "min_expected_tokens": 3,
+    "max_expected_tokens": 3,
+    "sources": [
+      "tmp/diagnostics-output/parser-runconfig-packrat.json",
+      "tmp/diagnostics-output/streaming-outcome.json",
+      "tmp/diagnostics-output/expected-summary.json",
+      "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+      "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+      "tmp/diagnostics-output/effects-residual-leak.json",
+      "tmp/diagnostics-output/effects-stage-resolution.json",
+      "tmp/diagnostics-output/ffi-unsupported-abi.json",
+      "tmp/diagnostics-output/severity-info-hint.json"
+    ],
+    "failures": [],
+    "schema_versions": [
+      "2.0.0-draft"
+    ],
+    "required_expected_keys": [
+      "expected",
+      "expected.alternatives"
+    ],
+    "status": "success",
+    "related_metrics": [
+      {
+        "metric": "parser.expected_tokens_per_error",
+        "total": 1,
+        "with_expected": 1,
+        "average_tokens": 3.0,
+        "min_tokens": 3,
+        "max_tokens": 3,
+        "status": "success"
+      },
+      {
+        "metric": "parser.runconfig_switch_coverage",
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "missing": [],
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "status": "success",
+        "sources": [
+          "tmp/diagnostics-output/parser-runconfig-packrat.json",
+          "tmp/diagnostics-output/streaming-outcome.json",
+          "tmp/diagnostics-output/expected-summary.json",
+          "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+          "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+          "tmp/diagnostics-output/effects-residual-leak.json",
+          "tmp/diagnostics-output/effects-stage-resolution.json",
+          "tmp/diagnostics-output/ffi-unsupported-abi.json",
+          "tmp/diagnostics-output/severity-info-hint.json"
+        ],
+        "samples": {
+          "packrat": true,
+          "left_recursion": "auto",
+          "trace": true,
+          "merge_warnings": false
+        }
+      },
+      {
+        "metric": "parser.runconfig_extension_pass_rate",
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "missing": [],
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "status": "success",
+        "sources": [
+          "tmp/diagnostics-output/parser-runconfig-packrat.json",
+          "tmp/diagnostics-output/streaming-outcome.json",
+          "tmp/diagnostics-output/expected-summary.json",
+          "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+          "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+          "tmp/diagnostics-output/effects-residual-leak.json",
+          "tmp/diagnostics-output/effects-stage-resolution.json",
+          "tmp/diagnostics-output/ffi-unsupported-abi.json",
+          "tmp/diagnostics-output/severity-info-hint.json"
+        ],
+        "samples": {
+          "lex": {
+            "space_id": 512,
+            "profile": "json_relaxed"
+          },
+          "recover": {
+            "sync_tokens": [
+              "}",
+              "end"
+            ],
+            "notes": true
+          },
+          "stream": {
+            "checkpoint": "unit-test",
+            "resume_hint": "after-error"
+          }
+        }
+      },
+      {
+        "metric": "parser.stream_extension_field_coverage",
+        "total": 6,
+        "passed": 6,
+        "failed": 0,
+        "missing": [],
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "status": "success",
+        "sources": [
+          "tmp/diagnostics-output/parser-runconfig-packrat.json",
+          "tmp/diagnostics-output/streaming-outcome.json",
+          "tmp/diagnostics-output/expected-summary.json",
+          "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+          "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+          "tmp/diagnostics-output/effects-residual-leak.json",
+          "tmp/diagnostics-output/effects-stage-resolution.json",
+          "tmp/diagnostics-output/ffi-unsupported-abi.json",
+          "tmp/diagnostics-output/severity-info-hint.json"
+        ],
+        "samples": {
+          "enabled": true,
+          "checkpoint": "unit-test",
+          "resume_hint": "after-error",
+          "demand_min_bytes": 4,
+          "demand_preferred_bytes": 8,
+          "chunk_size": 1024
+        }
+      },
+      {
+        "metric": "lexer.shared_profile_pass_rate",
+        "total": 2,
+        "passed": 1,
+        "failed": 1,
+        "pass_rate": 0.0,
+        "pass_fraction": 0.5,
+        "status": "error",
+        "sources": [
+          "tmp/diagnostics-output/parser-runconfig-packrat.json",
+          "tmp/diagnostics-output/streaming-outcome.json"
+        ],
+        "failures": [
+          {
+            "file": "tmp/diagnostics-output/streaming-outcome.json",
+            "reasons": [
+              "lex_extension_missing"
+            ],
+            "profile": null,
+            "profile_raw": null,
+            "space_id": null
+          }
+        ],
+        "samples": {
+          "profile": "json_relaxed",
+          "space_id": 512
+        }
+      },
+      {
+        "metric": "lexer.identifier_profile_unicode",
+        "total": 2,
+        "unicode": 0,
+        "ascii": 0,
+        "other": 2,
+        "pass_rate": null,
+        "pass_fraction": 0.0,
+        "unicode_fraction": 0.0,
+        "status": "monitoring",
+        "sources": [
+          "tmp/diagnostics-output/parser-runconfig-packrat.json",
+          "tmp/diagnostics-output/streaming-outcome.json"
+        ],
+        "profile_counts": {
+          "json_relaxed": 1
+        },
+        "cli_switch": "--lex-profile",
+        "cli_values": [
+          "ascii",
+          "unicode"
+        ],
+        "expected_pass_fraction": 1.0
+      },
+      {
+        "metric": "parser.core_comb_rule_coverage",
+        "total": 1,
+        "covered": 1,
+        "missed": 0,
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "status": "success",
+        "sources": [
+          "tmp/diagnostics-output/expected-summary.json"
+        ],
+        "failures": []
+      },
+      {
+        "metric": "parser.packrat_cache_hit_ratio",
+        "queries": 8,
+        "hits": 7,
+        "misses": 1,
+        "hit_ratio": 0.875,
+        "status": "success",
+        "sources": [
+          "tmp/diagnostics-output/parser-runconfig-packrat.json"
+        ],
+        "anomalies": []
+      }
+    ]
+  },
+  "iterator": {
+    "metric": "iterator.stage.audit_pass_rate",
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
+    "required_audit_keys": [
+      "cli.audit_id",
+      "cli.change_set",
+      "schema.version",
+      "event.domain",
+      "event.kind",
+      "effect.stage.required",
+      "effect.stage.actual",
+      "effect.capability",
+      "capability.ids",
+      "effect.required_capabilities",
+      "effect.stage.required_capabilities",
+      "effect.actual_capabilities",
+      "effect.stage.actual_capabilities",
+      "effect.capability_descriptor",
+      "effect.handler_stack",
+      "effect.unhandled_operations",
+      "effect.stage.iterator.required",
+      "effect.stage.iterator.actual",
+      "effect.stage.iterator.kind",
+      "effect.stage.iterator.capability",
+      "effect.stage.iterator.source",
+      "bridge.audit_pass_rate"
+    ],
+    "sources": [
+      "tmp/diagnostics-output/parser-runconfig-packrat.json",
+      "tmp/diagnostics-output/streaming-outcome.json",
+      "tmp/diagnostics-output/expected-summary.json",
+      "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+      "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+      "tmp/diagnostics-output/effects-residual-leak.json",
+      "tmp/diagnostics-output/effects-stage-resolution.json",
+      "tmp/diagnostics-output/ffi-unsupported-abi.json",
+      "tmp/diagnostics-output/severity-info-hint.json"
+    ],
+    "failures": [],
+    "schema_versions": [
+      "2.0.0-draft"
+    ],
+    "related_metrics": [
+      {
+        "metric": "diagnostics.domain_coverage",
+        "total": 10,
+        "passed": 10,
+        "failed": 0,
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "status": "success",
+        "sources": [
+          "tmp/diagnostics-output/parser-runconfig-packrat.json",
+          "tmp/diagnostics-output/streaming-outcome.json",
+          "tmp/diagnostics-output/expected-summary.json",
+          "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+          "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+          "tmp/diagnostics-output/effects-residual-leak.json",
+          "tmp/diagnostics-output/effects-stage-resolution.json",
+          "tmp/diagnostics-output/ffi-unsupported-abi.json",
+          "tmp/diagnostics-output/severity-info-hint.json"
+        ],
+        "failures": [],
+        "schema_versions": [
+          "2.0.0-draft"
+        ]
+      },
+      {
+        "metric": "diagnostics.effect_stage_consistency",
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "status": "success",
+        "sources": [
+          "tmp/diagnostics-output/parser-runconfig-packrat.json",
+          "tmp/diagnostics-output/streaming-outcome.json",
+          "tmp/diagnostics-output/expected-summary.json",
+          "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+          "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+          "tmp/diagnostics-output/effects-residual-leak.json",
+          "tmp/diagnostics-output/effects-stage-resolution.json",
+          "tmp/diagnostics-output/ffi-unsupported-abi.json",
+          "tmp/diagnostics-output/severity-info-hint.json"
+        ],
+        "failures": []
+      },
+      {
+        "metric": "effect.capability_array_pass_rate",
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "status": "success",
+        "failures": [],
+        "sources": [
+          "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json"
+        ],
+        "schema_versions": [
+          "2.0.0-draft"
+        ]
+      }
+    ]
+  },
+  "type_inference": {
+    "metric": "type_inference.value_restriction_violation",
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
+    "status": "success",
+    "violation_count": 0,
+    "violations": [],
+    "sources": [
+      "tmp/diagnostics-output/parser-runconfig-packrat.json",
+      "tmp/diagnostics-output/streaming-outcome.json",
+      "tmp/diagnostics-output/expected-summary.json",
+      "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+      "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+      "tmp/diagnostics-output/effects-residual-leak.json",
+      "tmp/diagnostics-output/effects-stage-resolution.json",
+      "tmp/diagnostics-output/ffi-unsupported-abi.json",
+      "tmp/diagnostics-output/severity-info-hint.json"
+    ],
+    "schema_versions": [],
+    "related_metrics": [
+      {
+        "metric": "type_inference.value_restriction_legacy_usage",
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "pass_rate": null,
+        "pass_fraction": null,
+        "status": "info",
+        "usage_count": 0,
+        "occurrences": [],
+        "sources": [],
+        "schema_versions": []
+      }
+    ]
+  },
+  "type_inference_legacy": {
+    "metric": "type_inference.value_restriction_legacy_usage",
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "pass_rate": null,
+    "pass_fraction": null,
+    "status": "info",
+    "usage_count": 0,
+    "occurrences": [],
+    "sources": [],
+    "schema_versions": []
+  },
+  "typeclass": {
+    "metric": "typeclass.metadata_pass_rate",
+    "total": 2,
+    "passed": 0,
+    "failed": 2,
+    "pass_rate": 0.0,
+    "pass_fraction": 0.0,
+    "required_audit_keys": [
+      "typeclass.trait",
+      "typeclass.type_args",
+      "typeclass.constraint",
+      "typeclass.resolution_state",
+      "typeclass.dictionary.kind",
+      "typeclass.pending",
+      "typeclass.generalized_typevars",
+      "typeclass.candidates"
+    ],
+    "sources": [
+      "tmp/diagnostics-output/parser-runconfig-packrat.json",
+      "tmp/diagnostics-output/streaming-outcome.json",
+      "tmp/diagnostics-output/expected-summary.json",
+      "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+      "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+      "tmp/diagnostics-output/effects-residual-leak.json",
+      "tmp/diagnostics-output/effects-stage-resolution.json",
+      "tmp/diagnostics-output/ffi-unsupported-abi.json",
+      "tmp/diagnostics-output/severity-info-hint.json"
+    ],
+    "audit_sources": [
+      "tmp/diagnostics-output/audit/cli-ffi-bridge-windows.jsonl",
+      "tmp/diagnostics-output/audit/effects-residual.jsonl",
+      "tmp/diagnostics-output/audit/effects-stage.json"
+    ],
+    "failures": [
+      {
+        "file": "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+        "index": 0,
+        "code": "typeclass.iterator.stage_mismatch",
+        "missing": [
+          "typeclass.candidates",
+          "typeclass.constraint",
+          "typeclass.dictionary.kind",
+          "typeclass.generalized_typevars",
+          "typeclass.pending",
+          "typeclass.resolution_state",
+          "typeclass.trait",
+          "typeclass.type_args"
+        ]
+      },
+      {
+        "file": "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+        "index": 0,
+        "code": "typeclass.dictionary.resolved",
+        "missing": [
+          "typeclass.candidates",
+          "typeclass.constraint",
+          "typeclass.dictionary.kind",
+          "typeclass.generalized_typevars",
+          "typeclass.pending",
+          "typeclass.resolution_state",
+          "typeclass.trait",
+          "typeclass.type_args"
+        ]
+      }
+    ],
+    "schema_versions": [
+      "2.0.0-draft"
+    ],
+    "dictionary_metric": {
+      "metric": "typeclass.dictionary_pass_rate",
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "required_audit_keys": [
+        "extensions.typeclass.dictionary.kind",
+        "extensions.typeclass.dictionary.identifier",
+        "extensions.typeclass.dictionary.repr",
+        "typeclass.dictionary.kind",
+        "typeclass.dictionary.identifier",
+        "typeclass.dictionary.repr"
+      ],
+      "sources": [
+        "tmp/diagnostics-output/parser-runconfig-packrat.json",
+        "tmp/diagnostics-output/streaming-outcome.json",
+        "tmp/diagnostics-output/expected-summary.json",
+        "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+        "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+        "tmp/diagnostics-output/effects-residual-leak.json",
+        "tmp/diagnostics-output/effects-stage-resolution.json",
+        "tmp/diagnostics-output/ffi-unsupported-abi.json",
+        "tmp/diagnostics-output/severity-info-hint.json"
+      ],
+      "audit_sources": [
+        "tmp/diagnostics-output/audit/cli-ffi-bridge-windows.jsonl",
+        "tmp/diagnostics-output/audit/effects-stage.json",
+        "tmp/diagnostics-output/audit/effects-residual.jsonl"
+      ],
+      "failures": [],
+      "schema_versions": [
+        "2.0.0-draft"
+      ]
+    },
+    "dictionary_pass_rate": 1.0,
+    "dictionary_pass_fraction": 1.0,
+    "related_metrics": [
+      {
+        "metric": "typeclass.dictionary_pass_rate",
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "required_audit_keys": [
+          "extensions.typeclass.dictionary.kind",
+          "extensions.typeclass.dictionary.identifier",
+          "extensions.typeclass.dictionary.repr",
+          "typeclass.dictionary.kind",
+          "typeclass.dictionary.identifier",
+          "typeclass.dictionary.repr"
+        ],
+        "sources": [
+          "tmp/diagnostics-output/parser-runconfig-packrat.json",
+          "tmp/diagnostics-output/streaming-outcome.json",
+          "tmp/diagnostics-output/expected-summary.json",
+          "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+          "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+          "tmp/diagnostics-output/effects-residual-leak.json",
+          "tmp/diagnostics-output/effects-stage-resolution.json",
+          "tmp/diagnostics-output/ffi-unsupported-abi.json",
+          "tmp/diagnostics-output/severity-info-hint.json"
+        ],
+        "audit_sources": [
+          "tmp/diagnostics-output/audit/cli-ffi-bridge-windows.jsonl",
+          "tmp/diagnostics-output/audit/effects-stage.json",
+          "tmp/diagnostics-output/audit/effects-residual.jsonl"
+        ],
+        "failures": [],
+        "schema_versions": [
+          "2.0.0-draft"
+        ]
+      }
+    ]
+  },
+  "ffi_bridge": {
+    "metric": "ffi_bridge.audit_pass_rate",
+    "total": 6,
+    "passed": 1,
+    "failed": 5,
+    "pass_rate": 0.0,
+    "pass_fraction": 0.16666666666666666,
+    "required_audit_keys": [
+      "audit_id",
+      "change_set",
+      "cli.audit_id",
+      "cli.change_set",
+      "schema.version",
+      "bridge.audit_pass_rate",
+      "bridge.status",
+      "bridge.target",
+      "bridge.arch",
+      "bridge.abi",
+      "bridge.ownership",
+      "bridge.extern_symbol",
+      "bridge.platform",
+      "bridge.return.ownership",
+      "bridge.return.status",
+      "bridge.return.wrap",
+      "bridge.return.release_handler",
+      "bridge.return.rc_adjustment"
+    ],
+    "sources": [
+      "tmp/diagnostics-output/parser-runconfig-packrat.json",
+      "tmp/diagnostics-output/streaming-outcome.json",
+      "tmp/diagnostics-output/expected-summary.json",
+      "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+      "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+      "tmp/diagnostics-output/effects-residual-leak.json",
+      "tmp/diagnostics-output/effects-stage-resolution.json",
+      "tmp/diagnostics-output/ffi-unsupported-abi.json",
+      "tmp/diagnostics-output/severity-info-hint.json"
+    ],
+    "audit_sources": [
+      "tmp/diagnostics-output/audit/cli-ffi-bridge-windows.jsonl",
+      "tmp/diagnostics-output/audit/effects-stage.json",
+      "tmp/diagnostics-output/audit/effects-residual.jsonl"
+    ],
+    "failures": [
+      {
+        "file": "tmp/diagnostics-output/audit/cli-ffi-bridge-windows.jsonl",
+        "index": 0,
+        "code": "ffi.bridge",
+        "missing": [
+          "audit_id",
+          "change_set",
+          "cli.audit_id",
+          "cli.change_set",
+          "extensions.bridge.abi",
+          "extensions.bridge.audit_pass_rate",
+          "extensions.bridge.ownership",
+          "extensions.bridge.platform",
+          "extensions.bridge.return.ownership",
+          "extensions.bridge.return.rc_adjustment",
+          "extensions.bridge.return.release_handler",
+          "extensions.bridge.return.status",
+          "extensions.bridge.return.wrap",
+          "extensions.bridge.target"
+        ],
+        "status": "ok",
+        "platform": "macos-arm64",
+        "platform_normalized": "macos-arm64"
+      },
+      {
+        "file": "tmp/diagnostics-output/audit/cli-ffi-bridge-windows.jsonl",
+        "index": 1,
+        "code": "ffi.bridge",
+        "missing": [
+          "audit_id",
+          "change_set",
+          "cli.audit_id",
+          "cli.change_set",
+          "extensions.bridge.abi",
+          "extensions.bridge.audit_pass_rate",
+          "extensions.bridge.ownership",
+          "extensions.bridge.platform",
+          "extensions.bridge.return.ownership",
+          "extensions.bridge.return.rc_adjustment",
+          "extensions.bridge.return.release_handler",
+          "extensions.bridge.return.status",
+          "extensions.bridge.return.wrap",
+          "extensions.bridge.target"
+        ],
+        "status": "ok",
+        "platform": "windows-msvc-x64",
+        "platform_normalized": "windows-msvc"
+      },
+      {
+        "file": "tmp/diagnostics-output/audit/effects-stage.json",
+        "index": null,
+        "code": "ffi.audit.missing_bridge",
+        "missing": [
+          "bridge"
+        ],
+        "status": null,
+        "platform": null,
+        "platform_normalized": null
+      },
+      {
+        "file": "tmp/diagnostics-output/audit/effects-residual.jsonl",
+        "index": null,
+        "code": "ffi.audit.missing_bridge",
+        "missing": [
+          "bridge"
+        ],
+        "status": null,
+        "platform": null,
+        "platform_normalized": null
+      }
+    ],
+    "platform_summary": {
+      "windows-msvc": {
+        "total": 2,
+        "ok": 1,
+        "failed": 1
+      },
+      "macos-arm64": {
+        "total": 1,
+        "ok": 0,
+        "failed": 1
+      },
+      "<missing>": {
+        "total": 2,
+        "ok": 0,
+        "failed": 2
+      }
+    },
+    "schema_versions": [
+      "2.0.0-draft"
+    ],
+    "platform_filter": null,
+    "status_summary": {
+      "success": 2,
+      "failure": 1,
+      "platforms": {
+        "windows-msvc": {
+          "total": 2,
+          "ok": 1,
+          "failed": 1
+        },
+        "macos-arm64": {
+          "total": 1,
+          "ok": 0,
+          "failed": 1
+        },
+        "<missing>": {
+          "total": 2,
+          "ok": 0,
+          "failed": 2
+        }
+      }
+    }
+  },
+  "audit_review": {
+    "metric": "audit_review.summary",
+    "audit_diff": {
+      "regressions": 0,
+      "metadata_changed": 0,
+      "new": 0,
+      "pass_rate": {
+        "delta": null,
+        "min_delta": null,
+        "max_delta": null
+      },
+      "sources": [],
+      "entries": [],
+      "total_regressions": 0
+    },
+    "audit_query": {
+      "coverage": null,
+      "matched": 0,
+      "total": 0,
+      "entries": [],
+      "sources": []
+    },
+    "audit_dashboard": {
+      "generated": 0,
+      "sources": [],
+      "missing": []
+    },
+    "failures": []
+  },
+  "audit_sources": [
+    "tmp/diagnostics-output/audit/cli-ffi-bridge-windows.jsonl",
+    "tmp/diagnostics-output/audit/effects-residual.jsonl",
+    "tmp/diagnostics-output/audit/effects-stage.json"
+  ],
+  "schema_versions": [
+    "2.0.0-draft"
+  ],
+  "diagnostics": {
+    "total": 10,
+    "error": 6,
+    "warning": 1,
+    "info": 2,
+    "hint": 1,
+    "other": 0,
+    "sources": [
+      "tmp/diagnostics-output/parser-runconfig-packrat.json",
+      "tmp/diagnostics-output/streaming-outcome.json",
+      "tmp/diagnostics-output/expected-summary.json",
+      "tmp/diagnostics-output/typeclass-iterator-stage-mismatch.json",
+      "tmp/diagnostics-output/typeclass-dictionary-resolved.json",
+      "tmp/diagnostics-output/effects-residual-leak.json",
+      "tmp/diagnostics-output/effects-stage-resolution.json",
+      "tmp/diagnostics-output/ffi-unsupported-abi.json",
+      "tmp/diagnostics-output/severity-info-hint.json"
+    ],
+    "info_fraction": 0.2,
+    "hint_fraction": 0.1,
+    "info_hint_ratio": 0.3,
+    "parser_total": 1,
+    "parser_expected": 1,
+    "parser_expected_ratio": 1.0,
+    "parser_expected_tokens_avg": 3.0
+  },
+  "enforcement": {
+    "failures": [
+      "lexer.shared_profile_pass_rate < 1.0",
+      "lexer.identifier_profile_unicode < 1.0",
+      "typeclass.metadata_pass_rate < 1.0",
+      "ffi_bridge.audit_pass_rate < 1.0"
+    ],
+    "require_success": true
+  }
+}

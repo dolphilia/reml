@@ -28,4 +28,5 @@
 ## 次回アクション
 1. `scripts/validate-diagnostic-json.sh tmp/diagnostics-output/` を実行し、JSON 出力を `reports/dual-write/front-end/ocaml/<date>/` へ保存する。
 2. 効果構文・FFI・タイプクラス関連の追加サンプルを `--source` に指定し、`--require-success` を再実行してメトリクス欠落を解消する。
-3. 成功した測定値を `reports/diagnostic-format-regression.md` および `docs/plans/rust-migration/0-1-baseline-and-diff-assets.md` の該当欄へ反映する。
+3. 成功した測定値を `reports/diagnostic-format-regression.md` および `docs/plans/rust-migration/0-1-baseline-and-diff-assets.md` の該当欄へ反映する。  
+   - 進捗メモ: 2025-11-06 時点で再実行した結果は `reports/dual-write/20251106-ocaml-diagnostics-refresh.md` を参照。
