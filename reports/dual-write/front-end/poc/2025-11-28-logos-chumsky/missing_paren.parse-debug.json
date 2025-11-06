@@ -1,5 +1,4 @@
 {
-  "ast_render": null,
   "diagnostics": [
     {
       "code": null,
@@ -39,6 +38,24 @@
       }
     ]
   },
+  "run_config": {
+    "extensions": {
+      "stream": {
+        "checkpoint": "poc_frontend",
+        "chunk_size": 0,
+        "enabled": true,
+        "resume_hint": "n/a"
+      }
+    },
+    "switches": {
+      "left_recursion": "auto",
+      "legacy_result": false,
+      "merge_warnings": true,
+      "packrat": true,
+      "require_eof": true,
+      "trace": false
+    }
+  },
   "stream_meta": {
     "packrat": {
       "approx_bytes": 363,
@@ -53,63 +70,5 @@
       "dropped": 0,
       "retained": 1
     }
-  },
-  "tokens": [
-    {
-      "kind": "KeywordFn",
-      "lexeme": "fn",
-      "span": {
-        "end": 2,
-        "start": 0
-      }
-    },
-    {
-      "kind": "Identifier",
-      "lexeme": "missing",
-      "span": {
-        "end": 10,
-        "start": 3
-      }
-    },
-    {
-      "kind": "LParen",
-      "lexeme": null,
-      "span": {
-        "end": 11,
-        "start": 10
-      }
-    },
-    {
-      "kind": "Identifier",
-      "lexeme": "x",
-      "span": {
-        "end": 12,
-        "start": 11
-      }
-    },
-    {
-      "kind": "Assign",
-      "lexeme": null,
-      "span": {
-        "end": 14,
-        "start": 13
-      }
-    },
-    {
-      "kind": "Identifier",
-      "lexeme": "x",
-      "span": {
-        "end": 16,
-        "start": 15
-      }
-    },
-    {
-      "kind": "EndOfFile",
-      "lexeme": null,
-      "span": {
-        "end": 17,
-        "start": 17
-      }
-    }
-  ]
+  }
 }

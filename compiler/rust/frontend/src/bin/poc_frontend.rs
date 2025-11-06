@@ -11,13 +11,8 @@ use reml_frontend::span::Span;
 use serde::Serialize;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let input_path = match parse_args() {
-        Some(path) => path,
-        None => {
-            eprintln!("使用方法: poc_frontend <input.reml>");
-            std::process::exit(1);
-        }
-    };
+    let args = parse_args()?;
+    let input_path = args.input.clone();
     let source = fs::read_to_string(&input_path)?;
 
     let result = ParserDriver::parse(&source);
@@ -40,8 +35,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let payload = serde_json::json!({
         "input": input_path,
         "ast_render": result.ast_render(),
-        "parse_result": parse_result,
-        "stream_meta": stream_meta,
+        "parse_result": parse_result.clone(),
+        "stream_meta": stream_meta.clone(),
         "diagnostics": diagnostics,
         "tokens": result.tokens.iter().map(|token| serde_json::json!({
             "kind": format!("{:?}", token.kind),
@@ -52,11 +47,82 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("{}", serde_json::to_string_pretty(&payload)?);
 
+    if let Some(path) = args.parse_debug_output {
+        let diagnostics_json = payload
+            .get("diagnostics")
+            .cloned()
+            .unwrap_or_else(|| serde_json::Value::Array(vec![]));
+        let parse_debug = serde_json::json!({
+            "run_config": {
+                "switches": {
+                    "require_eof": true,
+                    "packrat": true,
+                    "left_recursion": "auto",
+                    "trace": false,
+                    "merge_warnings": true,
+                    "legacy_result": false,
+                },
+                "extensions": {
+                    "stream": {
+                        "enabled": true,
+                        "checkpoint": "poc_frontend",
+                        "resume_hint": "n/a",
+                        "chunk_size": 0,
+                    }
+                }
+            },
+            "input": input_path,
+            "diagnostics": diagnostics_json,
+            "parse_result": parse_result,
+            "stream_meta": stream_meta,
+        });
+        fs::write(path, serde_json::to_string_pretty(&parse_debug)?)?;
+    }
+
     Ok(())
 }
 
-fn parse_args() -> Option<PathBuf> {
-    env::args().nth(1).map(PathBuf::from)
+struct CliArgs {
+    input: PathBuf,
+    parse_debug_output: Option<PathBuf>,
+}
+
+fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
+    let mut args = env::args().skip(1);
+    let mut input = None;
+    let mut parse_debug = None;
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--emit-parse-debug" => {
+                let path = args
+                    .next()
+                    .ok_or_else(|| "--emit-parse-debug は出力パスを伴う必要があります")?;
+                parse_debug = Some(PathBuf::from(path));
+            }
+            _ if arg.starts_with("--") => {
+                return Err(format!("未知のオプション: {arg}").into());
+            }
+            _ => {
+                if input.is_some() {
+                    return Err("入力ファイルは 1 つのみ指定できます".into());
+                }
+                input = Some(PathBuf::from(arg));
+            }
+        }
+    }
+
+    let input = match input {
+        Some(path) => path,
+        None => {
+            eprintln!("使用方法: poc_frontend [--emit-parse-debug <path>] <input.reml>");
+            std::process::exit(1);
+        }
+    };
+
+    Ok(CliArgs {
+        input,
+        parse_debug_output: parse_debug,
+    })
 }
 
 #[derive(Debug, Serialize)]

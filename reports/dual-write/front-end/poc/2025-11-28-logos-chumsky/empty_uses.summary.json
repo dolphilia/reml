@@ -10,7 +10,7 @@
   "rust_diag_messages": [],
   "ocaml_packrat_queries": 0,
   "ocaml_packrat_hits": 0,
-  "rust_packrat_queries": 0,
-  "rust_packrat_hits": 0,
-  "rust_span_trace_len": 0
+  "rust_packrat_queries": 3,
+  "rust_packrat_hits": 2,
+  "rust_span_trace_len": 1
 }

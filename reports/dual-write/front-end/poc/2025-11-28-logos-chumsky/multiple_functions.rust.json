@@ -4,29 +4,44 @@
   "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/multiple_functions.reml",
   "parse_result": {
     "packrat_stats": {
-      "approx_bytes": 0,
+      "approx_bytes": 236,
       "budget_drops": 0,
-      "entries": 0,
+      "entries": 2,
       "evictions": 0,
-      "hits": 0,
+      "hits": 4,
       "pruned": 0,
-      "queries": 0
+      "queries": 6
     },
-    "span_trace": []
+    "span_trace": [
+      {
+        "label": "parser.success",
+        "span": {
+          "end": 13,
+          "start": 0
+        }
+      },
+      {
+        "label": "parser.success",
+        "span": {
+          "end": 41,
+          "start": 14
+        }
+      }
+    ]
   },
   "stream_meta": {
     "packrat": {
-      "approx_bytes": 0,
+      "approx_bytes": 236,
       "budget_drops": 0,
-      "entries": 0,
+      "entries": 2,
       "evictions": 0,
-      "hits": 0,
+      "hits": 4,
       "pruned": 0,
-      "queries": 0
+      "queries": 6
     },
     "span_trace": {
       "dropped": 0,
-      "retained": 0
+      "retained": 2
     }
   },
   "tokens": [

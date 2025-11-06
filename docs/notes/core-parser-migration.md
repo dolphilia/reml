@@ -42,6 +42,7 @@
 ## P1 W1: Packrat / span_trace 呼び出し統合（2025-12-06）
 - `compiler/rust/frontend/src/parser/mod.rs` に `record_streaming_error` を追加し、`Simple<TokenKind>` から得た期待トークン情報を `StreamingState::store_packrat` / `push_span_trace` へ連携。`ParserDriver::parse` は処理終了時に `metrics_snapshot` と `drain_span_trace` を取り出し、`ParsedModule.packrat_stats` / `span_trace` として CLI へ返す。
 - CLI PoC (`compiler/rust/frontend/src/bin/poc_frontend.rs`) の JSON に `parse_result.packrat_stats`・`parse_result.span_trace`・`stream_meta` を追加し、`tooling/ci/collect-iterator-audit-metrics.py` が Rust 出力の Packrat 統計を検出できることを確認した。空入力では `queries=0` のままだが、エラー時に `span_trace` が出力される。
+- `poc_frontend --emit-parse-debug <path> <input.reml>` を追加し、OCaml 側 `remlc --emit parse-debug` と同形状の `run_config` / `parse_result` / `stream_meta` JSON を生成する。CI や `scripts/poc_dualwrite_compare.sh` からこのファイルを `collect-iterator-audit-metrics.py` に渡すことで Rust 版の Packrat/SpanTrace を公式ツールチェーンへ配布できる。
 - `scripts/poc_dualwrite_compare.sh` が OCaml/Rust の `packrat_stats` を比較できるようサマリ JSON/Markdown に `packrat_queries`/`packrat_hits` を追加。`reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/*.summary.json` へ保存されるため、Packrat 実装差分を含むレビューが可能になった。
 - フォローアップ: 現状 Rust パーサはキャッシュ問い合わせ (`lookup_packrat`) を行っていないためヒット数は 0 のまま。W2 以降で `ParserDriver` のバックトラック／回復経路と統合し、OCaml 実装と同等のクエリ回数を収集できるようにする。評価結果は `docs/plans/rust-migration/1-1-ast-and-ir-alignment.md` の Packrat チェックリストへ反映する。
 

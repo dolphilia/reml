@@ -44,7 +44,7 @@
 | W4 | 診断互換試験 | JSON エミッタ・`recover` 拡張・`extensions.*` の対照テスト、CLI/LSP 連携確認 | `scripts/validate-diagnostic-json.sh`、`reports/diagnostic-format-regression.md` |
 | W4.5 | P1 クロージングレビュー | 成果物レビュー、差分リスト整理、P2 ハンドオーバー資料草案 | `docs/plans/rust-migration/README.md` 更新、`docs-migrations.log` 記録 |
 
-### W1 具体的な進め方（Lexer/Parser スケルトン移植）
+### W1 具体的な進め方（Lexer/Parser スケルトン移植）✅ 完了
 
 1. **準備と方針の再確認**  
    - P0 完了条件が満たされ、最新のゴールデンデータと Windows 監査結果を Rust 側でも参照できる状態を確認する。  
@@ -72,11 +72,13 @@
    - メトリクス項目（`parser.stream.*`）と連携するカウンタをどこで更新するか設計ノートに明記する。  
    - ✅ 2025-12-05: `docs/notes/core-parser-migration.md#p1-w1-packrat--span_trace-キャッシュ再現設計2025-12-05` に Packrat キャッシュと `span_trace` の Rust 再現方針を記録。`IndexMap<(ParserId, Range<u32>)>`＋`SmallVec` ベースの `PackratEntry`、`RwLock` で包んだ `VecDeque` トレース、および `parser.stream.packrat_*` / `parser.stream.span_trace_*` の更新ポイントと予算超過時の制御手順を整理した。  
    - ✅ 2025-12-06: `compiler/rust/frontend/src/streaming/mod.rs` に Packrat キャッシュ／`span_trace` 実装を追加し、`ParserDriver::parse` から `StreamingState` を呼び出して `packrat_stats`・`span_trace` を収集。CLI PoC（`poc_frontend`）は `parse_result.packrat_stats` / `parse_result.span_trace` を JSON 出力し、`tests/streaming_metrics.rs` と `tooling/ci/collect-iterator-audit-metrics.py` で統合経路を確認済み。
+   - ✅ 2025-12-07: 成功パスでも `StreamingState` を参照するよう `module_parser` を改修し、Packrat キャッシュが実際に再参照される状態を確認。`poc_frontend` に `--emit-parse-debug <path>` を追加し、OCaml 版の `remlc --emit parse-debug` 相当の JSON (`run_config`/`parse_result`/`stream_meta`) を生成して dual-write レポート／CI に `packrat_stats` を配布できるようにした。
 
 6. **最小ケースでの dual-write 準備**  
    - `remlc --frontend {ocaml|rust}` 相当の切り替えインターフェースに必要な CLI フラグや build ターゲットを列挙し、未実装部分には TODO を残す。  
    - `reports/dual-write/front-end/` に W1 用の成果物ディレクトリ構成を作成し、AST/診断 diff とメトリクス出力を保存するコマンドシーケンスを `1-3-dual-write-runbook.md` の手順と照合する。  
    - ✅ 2025-11-28: `scripts/poc_dualwrite_compare.sh` を実行し、`reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/summary.md` に 4 ケース分の AST/診断比較結果を保存。`missing_paren` は診断件数が一致したもののメッセージ粒度が異なるため、W2 で `SimpleReason` → Recover サマリ変換を整備して `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` にフォローアップを登録する。
+   - ✅ 2025-12-07: W1 成果物を `reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/` に再集約し、`w1-packrat-summary.json`（dual-write Packrat 統計）と `w1-parse-debug-summary.json`（Rust `--emit-parse-debug` 出力）を作成。`reports/dual-write/front-end/poc/w1-recap.md` に概要をまとめ、W2 の AST/IR 対応表タスクへの入力資料として共有した。
 
 ## 1.0.6 ワークストリームと主要論点
 
