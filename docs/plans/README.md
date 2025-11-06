@@ -13,6 +13,12 @@ Reml 実装ロードマップや運用計画を集約しています。
 
 ## Rust 移植計画 (`docs/plans/rust-migration/`)
 - [README.md](rust-migration/README.md) — Rust 版コンパイラ移行タスクのドキュメント集約
+- [overview.md](rust-migration/overview.md) — 移植計画の背景と必要ドキュメント一覧
+- **P0 ベースライン整備**
+  - [0-0-roadmap.md](rust-migration/0-0-roadmap.md) — P0 マイルストーンと完了条件
+  - [0-1-baseline-and-diff-assets.md](rust-migration/0-1-baseline-and-diff-assets.md) — OCaml 資産棚卸しと差分ハーネス設計
+  - [0-2-windows-toolchain-audit.md](rust-migration/0-2-windows-toolchain-audit.md) — Windows ツールチェーン監査手順
+  - [appendix/glossary-alignment.md](rust-migration/appendix/glossary-alignment.md) — Rust↔Reml 用語整合表
 - [unified-porting-principles.md](rust-migration/unified-porting-principles.md) — 移植原則・OCaml→Rust 鉄則・プロジェクト指針を統合したガイド
 
 ---

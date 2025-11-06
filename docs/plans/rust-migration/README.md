@@ -1,21 +1,25 @@
 # Rust 移植計画ドキュメント集約
 
-このディレクトリには、OCaml 実装から Rust 実装へ移行するための計画書と補助資料をまとめる。Phase 2-6 の Windows 対応停滞を解消し、Phase 3 のセルフホスト移行前に Rust 版コンパイラの足場を固めることが目的である。
+このディレクトリは OCaml 実装から Rust 実装へ移行するための計画書と補助資料を管理する。Phase 2-6 で判明した Windows 対応課題を解消し、Phase 3 のセルフホスト移行前に Rust 版コンパイラの足場を整えることを目的とする。
 
 ## 位置づけ
-- `docs/plans/bootstrap-roadmap/2-6-windows-support-migration-options.md` の決定（移植言語を Rust に確定）を受けたフォローアップ
-- Phase 2-8 以降の仕様監査やセルフホスト準備と並行して進める移行タスク群
-- `compiler/rust/` 以下で進める実装成果物との対応関係を管理
+- `docs/plans/bootstrap-roadmap/2-6-windows-support-migration-options.md` で Rust 採用を決定した後続計画のハブ
+- Phase 2-8 仕様監査や Phase 3 Self-Host 計画と並行して進める移行タスク群の参照点
+- `compiler/ocaml/` 資産と Rust 実装（`compiler/rust/` 予定）を比較する際のドキュメント基準
 
-## 初期構成（案）
-- [`overview.md`](overview.md): Rust 移植プログラムの全体像、マイルストーン、依存関係
-- `milestones/`: フェーズ別・モジュール別の詳細計画
-- `risk-register.md`: 移植固有のリスクと緩和策
-- `ci-strategy.md`: Rust 版のビルド・テスト・CI 方針
+## ファイル構成
+- [`overview.md`](overview.md): 移植計画の背景、フェーズ構成、必要ドキュメント一覧
+- **P0 ベースライン整備**
+  - [`0-0-roadmap.md`](0-0-roadmap.md): P0 の目的、マイルストーン、完了条件
+  - [`0-1-baseline-and-diff-assets.md`](0-1-baseline-and-diff-assets.md): OCaml 資産棚卸しと差分ハーネス設計
+  - [`0-2-windows-toolchain-audit.md`](0-2-windows-toolchain-audit.md): Windows ツールチェーン監査手順
+  - [`appendix/glossary-alignment.md`](appendix/glossary-alignment.md): Rust↔Reml 用語対応表
+- **統合原則**
+  - [`unified-porting-principles.md`](unified-porting-principles.md): 移植全体で共有する設計原則と成功指標
 
-ドキュメントの正式な採番は `overview.md` 完成時に設定する。暫定構成は `docs/plans/bootstrap-roadmap/0-2-roadmap-structure.md` の命名規則を参考に調整する。
+今後のフェーズ（P1〜P4）の詳細計画は `docs/plans/bootstrap-roadmap/0-2-roadmap-structure.md` の命名規則に従い、同ディレクトリに追加する。
 
-## 作業ルール
-- 既存仕様との整合を保ち、差分が発生した場合は `docs/spec/` および関連ガイドを更新する
-- 新規に作成した計画書は `docs/plans/README.md` から参照可能にする
-- 構成変更や大規模改訂を行った際は `docs-migrations.log` に記録する
+## 運用ルール
+- 既存仕様との整合を保つため、更新時は `docs/spec/` および関連ガイドの該当箇所を確認する。
+- 新規ドキュメントを作成した場合は、本 README に追記し、必要に応じて `docs/plans/README.md` からの導線を整備する。
+- ファイルの大規模改訂や名称変更を行った際は `docs-migrations.log` に記録し、レビューコメントを `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に残す。
