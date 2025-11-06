@@ -1,0 +1,2 @@
+fn log(x) = x
+fn log_twice(x) = log(log(x))

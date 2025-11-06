@@ -1,5 +1,27 @@
 # Core Parser Migration メモ
 
+## P1 W1: Rust Parser 戦略と状態管理（2025-11-28）
+- パーサ生成は `logos`（字句）と `chumsky`（構文）を組み合わせたコンビネータ方式を第一候補とし、`pomelo` ベースの LR(1) 生成をフォールバック案として保持する。`lalrpop` はエラー回復の柔軟性と生成物サイズの理由で除外した[^frontend-eval]。
+- Rust 側の `ParserSession`（仮称）は `lexer::SourceBuffer` と `streaming::StreamingState` を束ね、`Core_parse.State`/`Core_parse_streaming.Session` が担っていた `diagnostics`・`packrat_cache`・`span_trace` を `Arc<SessionShared>` へ集約する。`SessionShared` は `AtomicUsize` で `parser.stream.*` メトリクスを更新し、`indexmap::IndexMap` で `PackratEntry`（キー: `(ParserId, ByteRange)`）を管理する。
+- `ParserDriver` は `RunConfig` と `ParserFlags` を受け取り、`Driver::parse` 内で `ParserSession::enter(rule_id)`→`ParserSession::commit(rule_id)`→`ParserSession::reply()` のシーケンスを提供する。OCaml 版 `Core_parse.Reply.{consumed,committed}` は Rust 側で `ReplyFlags`（`bitflags!`）に正規化し、JSON 連携時に `Diagnostic.Builder` 相当の API へ橋渡しする。
+- W1 の成果として `docs/plans/rust-migration/appendix/frontend-crate-evaluation.md` に加え、`ParserSession`/`StreamingState` の責務分割と PoC のストーリーポイントを本メモに記録し、W2 以降の AST/IR 対応表作業へ引き渡す。
+- `scripts/poc_dualwrite_compare.sh` を追加し、`reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/summary.md` に OCaml 側の AST/診断ベースラインを保存。Rust 側は `cargo` が `logos` / `chumsky` 依存を取得できないため未実行。ネットワーク解禁後に同スクリプトで差分取得を再試行する。
+
+### Parser 生成サブシステム
+- `chumsky` は規則ごとに `fn module_decl(input) -> Parser<'a, Token, Ast::ModuleDecl>` のような静的関数を生成するテンプレートを採用し、Menhir の `parser.mly` を機械的に写経できるよう `parser/templates/` にスクリプトを配置する。
+- `Recover` 系 API は `chumsky::Parser::recover_with` をベースにしつつ、`RecoverBudget` を `RunConfig.recover_budget` から供給する拡張ラッパを作成する。これにより OCaml 実装の `Parser_expectation`→`Diagnostic.Builder` の流れと同じ `expected_tokens`/`message` を生成できる。
+- フォールバックとして `pomelo` を利用する場合は、`parser/build.rs` で `.pom` ファイルからテーブルを生成し、`SessionShared` の `packrat_cache` を共有する構成にする。PoC の段階で `parser/tests/pomelo_roundtrip.rs` を用意し、`dual-write` 比較に参加できるようにする。
+
+### StreamingState と Packrat 設計
+- `StreamingState` は `packrat_cache` と `span_trace` の両方を `RwLock` で管理し、読取パスと書込パスを明示する。Packrat のキーには `ParserId` と `byte_range` を採用し、`ParserId` は `u16`、`byte_range` は `ops::Range<u32>` に正規化する。`span_trace` は `VecDeque<TraceFrame>` として保存し、`RunConfig.trace_limit` を超えた場合は古いフレームから削除する。
+- OCaml 実装から移植する重要メソッドは以下の対応でラップする：`Core_stream.register_diagnostic` → `StreamingState::push_diagnostic`、`Core_stream.commit` → `StreamingState::mark_committed(rule_id)`、`Core_stream.packrat_cache` → `StreamingState::packrat_snapshot()`。
+- `parser_expectation` に相当する `expectation::Collector` モジュールを用意し、`RecoverExtension` を生成する際に `StreamingState` へ格納する。`Collector` は `HashMap<RuleId, ExpectationSummary>` を持ち、Rust 版 `Diagnostic` で JSON 化する時に `serde_json::Value` へ変換する。
+
+### PoC マイルストーン（W1→W2 移行条件）
+1. `parser::driver::tests::basic_roundtrip` で `module Main {}` 程度の AST を生成し、`dual-write` 比較スクリプト（OCaml 側スナップショットに倣った JSON）で差分ゼロを確認する。
+2. `StreamingState` の `packrat_cache` をモックデータで検証し、`parser.stream.packrat_entries` と `parser.stream.packrat_hits` を増減させるユニットテストを `tests/streaming_metrics.rs` に追加する。
+3. `docs/plans/rust-migration/1-3-dual-write-runbook.md` に記載された CLI フック案と互換になるよう、`remlc --frontend rust --emit parse-debug` フラグの要求仕様を `runconfig` チームへ共有する（W2 冒頭でレビュー予定）。
+
 ## Phase 2-5 RunConfig 移行サマリ（2025-11-24）
 - Step1: `parser_run_config.{ml,mli}` を導入し、仕様と同じフィールド／拡張 API を実装（`compiler/ocaml/src/parser_run_config.ml`）。
 - Step2: `parser_driver` と `Parser_diag_state` を `RunConfig` 受け取りへ移行し、CLI・テストが新 API を利用する準備を完了。
@@ -23,6 +45,7 @@
 - 複数 Capability を保持するために `RunConfig.Effects`（compiler/ocaml/src/parser_run_config.ml:320）と `Diagnostic` 拡張（compiler/ocaml/src/diagnostic.ml:846-896）を突合し、Packrat キャッシュヒット時でも Stage/Capability 情報を欠落させないよう `Reply` へメタデータを埋め込む案を整理した。  
 - フォローアップ: `tooling/ci/collect-iterator-audit-metrics.py` へ Packrat/回復の KPI を追加し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `parser.packrat_cache_hit_ratio` / `parser.recover_sync_success_rate` を仮登録。Step5 で実装と検証を行う。
 
+[^frontend-eval]: `docs/plans/rust-migration/appendix/frontend-crate-evaluation.md` の評価結果を参照。
 ### コアコンビネーター現況
 - **`ok`**  
   - 仕様: 非消費で成功し値を返す（`docs/spec/2-2-core-combinator.md:15`）。  

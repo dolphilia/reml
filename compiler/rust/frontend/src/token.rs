@@ -38,10 +38,23 @@ pub enum TokenKind {
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
+    pub lexeme: Option<String>,
 }
 
 impl Token {
     pub fn new(kind: TokenKind, span: Span) -> Self {
-        Self { kind, span }
+        Self {
+            kind,
+            span,
+            lexeme: None,
+        }
+    }
+
+    pub fn with_lexeme(kind: TokenKind, span: Span, lexeme: impl Into<String>) -> Self {
+        Self {
+            kind,
+            span,
+            lexeme: Some(lexeme.into()),
+        }
     }
 }

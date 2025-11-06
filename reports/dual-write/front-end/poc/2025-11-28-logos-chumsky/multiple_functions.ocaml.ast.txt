@@ -1,0 +1,2 @@
+fn log(x) = var(x)
+fn log_twice(x) = call(var(log))[call(var(log))[var(x)]]

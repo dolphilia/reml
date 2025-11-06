@@ -33,7 +33,10 @@ pub struct FrontendError {
 
 impl FrontendError {
     pub fn new(kind: FrontendErrorKind, recoverability: Recoverability) -> Self {
-        Self { kind, recoverability }
+        Self {
+            kind,
+            recoverability,
+        }
     }
 
     /// 診断向けにメッセージを抽出する。

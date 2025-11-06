@@ -1,10 +1,11 @@
 //! ソースコード上の位置情報を表現するユーティリティ。
 
+use serde::Serialize;
 use std::fmt;
 
 /// 半開区間で表現したソースコード上の範囲。
 /// `start` はバイトオフセット、`end` は `start` 以上である必要がある。
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct Span {
     pub start: u32,
     pub end: u32,
@@ -38,7 +39,7 @@ impl fmt::Display for Span {
 }
 
 /// 値と `Span` をペアにしたユーティリティ。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SpanTagged<T> {
     pub span: Span,
     pub value: T,

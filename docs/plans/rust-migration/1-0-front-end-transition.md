@@ -62,8 +62,10 @@
    - ✅ 2025-11-06: `compiler/rust/frontend/Cargo.toml` と `src/lib.rs` を起点に `span.rs`・`token.rs`・`error.rs`・`diagnostic/mod.rs`・`lexer/mod.rs`・`parser/mod.rs`・`streaming/mod.rs` を追加し、`Span(u32,u32)` や `Recoverability` 分類など共通基礎型を定義した。スケルトン Lexer は識別子／整数リテラル／未知トークンまでを扱い、未知入力時に回復可能診断を返す挙動を確認済み。依存候補の比較結果は `docs/plans/rust-migration/appendix/frontend-crate-evaluation.md` に整理し、`logos`（lexing）と `chumsky`（parsing）を PoC 優先候補として記録した。
 
 4. **パーサ生成戦略と状態管理の設計**  
-   - Menhir 相当の構文解析を Rust でどう再現するか（既存ジェネレータ活用か自前 LL/LR 実装か）を比較し、選定理由と PoC 計画を `docs/notes/` に記録する。  
-   - `Core_parse` の state machine・入力ストリーム・エラー復旧フックを分解し、Rust の `ParserDriver`（仮）に移す責務を定義する。
+   - ✅ 2025-11-28: `docs/notes/core-parser-migration.md#p1-w1-rust-parser-戦略と状態管理（2025-11-28）` に `logos`＋`chumsky` を第一候補（`pomelo` をフォールバック）とする決定と PoC ストーリー、`ParserSession`/`StreamingState` の責務整理を記録した。`lalrpop` はエラー回復と生成物サイズの懸念で除外。  
+   - `Core_parse` の state machine・入力ストリーム・エラー復旧フックを分解し、Rust の `ParserDriver`（仮）へ移す責務を定義済み。`ReplyFlags`（`consumed`/`committed`/`far_error`）と `PackratEntry` のキー仕様（`ParserId`＋`Range<u32>`）を固め、`parser.stream.*` のメトリクス更新を `StreamingState` で一元化する設計を確定。  
+   - PoC ゴール：`parser::driver::tests::basic_roundtrip` で AST/診断差分ゼロを確認し、`tests/streaming_metrics.rs` で `packrat_hits` カウンタの増減を検証する。CLI フック（`remlc --frontend rust --emit parse-debug`）案は `1-3-dual-write-runbook.md` の手順と整合した草案を共有済み。
+   - 進捗メモ: `reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/summary.md` に OCaml ベースラインを記録。Rust PoC は `cargo` 依存取得（`logos`/`chumsky`）がオフライン環境では完了せず、`scripts/poc_dualwrite_compare.sh` の実行は未完。ネットワーク取得が可能になり次第、同スクリプトで diff 測定を再試行する。
 
 5. **Packrat / span_trace 再現の設計**  
    - `Core_parse_streaming` の packrat キャッシュと `span_trace` 収集ロジックを調査し、Rust で利用するデータ構造（`IndexMap`/`HashMap` と寿命管理）を決定する。  

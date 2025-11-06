@@ -3,17 +3,17 @@
 //! OCaml 実装の `parser_driver`・`core_parse_streaming`・`parser_expectation`
 //! 相当の機能を段階的に移植するための雛形を提供する。
 
-pub mod span;
-pub mod token;
 pub mod diagnostic;
 pub mod error;
 pub mod lexer;
 pub mod parser;
+pub mod span;
 pub mod streaming;
+pub mod token;
 
+pub use error::{FrontendError, FrontendErrorKind, Recoverability};
 pub use span::{Span, SpanTagged};
 pub use token::{Token, TokenKind};
-pub use error::{FrontendError, FrontendErrorKind, Recoverability};
 
 /// フロントエンド共通で保持するソースファイル識別子。
 /// OCaml 版の `Source_code.file_id` に対応する。

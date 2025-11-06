@@ -1,0 +1,1 @@
+fn answer() = int(42:base10)
