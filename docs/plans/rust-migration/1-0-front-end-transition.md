@@ -69,7 +69,8 @@
 
 5. **Packrat / span_trace 再現の設計**  
    - `Core_parse_streaming` の packrat キャッシュと `span_trace` 収集ロジックを調査し、Rust で利用するデータ構造（`IndexMap`/`HashMap` と寿命管理）を決定する。  
-   - メトリクス項目（`parser.stream.*`）と連携するカウンタをどこで更新するか設計ノートに明記する。
+   - メトリクス項目（`parser.stream.*`）と連携するカウンタをどこで更新するか設計ノートに明記する。  
+   - ✅ 2025-12-05: `docs/notes/core-parser-migration.md#p1-w1-packrat--span_trace-キャッシュ再現設計2025-12-05` に Packrat キャッシュと `span_trace` の Rust 再現方針を記録。`IndexMap<(ParserId, Range<u32>)>`＋`SmallVec` ベースの `PackratEntry`、`RwLock` で包んだ `VecDeque` トレース、および `parser.stream.packrat_*` / `parser.stream.span_trace_*` の更新ポイントと予算超過時の制御手順を整理した。
 
 6. **最小ケースでの dual-write 準備**  
    - `remlc --frontend {ocaml|rust}` 相当の切り替えインターフェースに必要な CLI フラグや build ターゲットを列挙し、未実装部分には TODO を残す。  

@@ -18,6 +18,27 @@
 - OCaml 実装から移植する重要メソッドは以下の対応でラップする：`Core_stream.register_diagnostic` → `StreamingState::push_diagnostic`、`Core_stream.commit` → `StreamingState::mark_committed(rule_id)`、`Core_stream.packrat_cache` → `StreamingState::packrat_snapshot()`。
 - `parser_expectation` に相当する `expectation::Collector` モジュールを用意し、`RecoverExtension` を生成する際に `StreamingState` へ格納する。`Collector` は `HashMap<RuleId, ExpectationSummary>` を持ち、Rust 版 `Diagnostic` で JSON 化する時に `serde_json::Value` へ変換する。
 
+## P1 W1: Packrat / span_trace キャッシュ再現設計（2025-12-05）
+- **PackratCache の型定義**  
+  - `type PackratKey = (ParserId, Range<u32>)`。`ParserId` は `u16` に収め、`Range<u32>` はバイトオフセットで管理する。  
+  - `struct PackratEntry` は次のフィールドを保持する：`smallvec::SmallVec<[TokenSample; 8]> sample_tokens`、`Vec<Expectation>`、`Option<Summary>`、`usize approx_bytes`。`Summary` は OCaml 版 `Diagnostic.expectation_summary` と 1:1 対応する構造体を `serde` 互換で定義する。  
+  - 実装は `indexmap::IndexMap<PackratKey, PackratEntry>` を `StreamingStateShared` 内に保持し、キー順序を維持しつつ `shift_remove` で古い要素を安価に破棄できるようにする。`IndexMap` は `RwLock` で包み、読み手のホットパス（キャッシュヒット）は `try_read`、書き込みは `write` 経由で行う。
+- **API とメトリクス更新ポイント**  
+  - `StreamingState::lookup_packrat(key) -> Option<PackratEntryRef>`：`parser.stream.packrat_queries` を `AtomicU64` でインクリメントし、ヒット時は `parser.stream.packrat_hits` を増やす。`CollectWarmCache` 用に連続アクセスする場合は、同じロックを再利用できる `lookup_packrat_with_filter` を提供する。  
+  - `StreamingState::store_packrat(key, entry)`：既存値を置き換えた場合は `parser.stream.packrat_evictions` を増やし、新規挿入時は `parser.stream.packrat_entries` を増やす。`approx_bytes` は `entry.approx_bytes` を利用し、総和を `AtomicU64` でキャッシュして `parser.stream.packrat_bytes` に報告する。  
+  - `StreamingState::prune_before(offset)`：`IndexMap::retain` を用いて `range.start < offset` を削除する。削除件数とバイト数を差し引き、`parser.stream.packrat_pruned` と `parser.stream.packrat_bytes` を更新する。`collect-iterator-audit-metrics.py` が参照するキーと整合するよう、メトリクス命名は OCaml 実装の `Core_state.packrat_*` に合わせる。
+- **span_trace 設計**  
+  - `SpanTrace` は `VecDeque<TraceFrame>` を `RwLock` で包んだ構造体。`TraceFrame` は `{ label: Option<SmolStr>, span: Span }`。`Span` は `start: Position` / `end: Position` を保持し、`Position` は `line`・`column`・`offset` を `u32` で格納する。  
+  - `StreamingState::push_span_trace(label, span)` は `trace_enabled` が `false` の場合は早期に return し、挿入後に `RunConfig.trace_limit` を超えたら `pop_front`。操作結果に応じて `parser.stream.span_trace_retained` / `parser.stream.span_trace_dropped` を更新する。  
+  - `StreamingState::drain_span_trace()` は診断生成フローでのみ使用し、`VecDeque` を `SmallVec<[TraceFrame; 16]>` へ複製して `Diagnostic::with_span_trace` に渡す。複数診断で共有する場合は `Arc<[TraceFrame]>` を利用してコピーを抑制する。
+- **Core_parse_streaming との対応**  
+  - `Core_parse_streaming.expectation_summary_for_checkpoint` 相当のロジックは `lookup_packrat`→`store_packrat`→`collect_warm_cache` の 1 サイクルでヒット状況を測定する。結果は `ParserMetrics` に格納し、`parser.stream.packrat_hits` と `parser.stream.packrat_queries` を更新してから `SessionShared` へ返す。  
+  - `span_trace_pairs` は `StreamingState::drain_span_trace` を呼び出し、`(Option<String>, Span)` の配列として受け取った `TraceFrame` を `Diagnostic` の `extensions["parse"]["span_trace"]` に JSON で埋め込む。  
+  - `StreamingState::packrat_snapshot()` は `PackratSnapshot { entries, approx_bytes }` を返し、`remlc --frontend rust --emit parse-debug` が OCaml 版と同形式の統計を出力できるようにする。
+- **負荷制御と落とし穴対策**  
+  - キャッシュサイズは `RunConfig.packrat_budget_bytes`（デフォルト 4 MiB）を超えた段階で `prune_before` を強制し、溢れた際は `parser.stream.packrat_budget_drops` をインクリメントする。  
+  - `span_trace` についても `RunConfig.trace_limit` のハード上限を守り、上限到達時は `Diagnostic` に `trace_truncated: true` を付加する。Packrat と同様にトレース破棄が発生した場合は `SessionShared` で警告ログを残し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` にフォローアップを記録する。
+
 ### PoC マイルストーン（W1→W2 移行条件）
 1. `parser::driver::tests::basic_roundtrip` で `module Main {}` 程度の AST を生成し、`dual-write` 比較スクリプト（OCaml 側スナップショットに倣った JSON）で差分ゼロを確認する。
 2. `StreamingState` の `packrat_cache` をモックデータで検証し、`parser.stream.packrat_entries` と `parser.stream.packrat_hits` を増減させるユニットテストを `tests/streaming_metrics.rs` に追加する。
