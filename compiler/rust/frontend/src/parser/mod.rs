@@ -378,7 +378,11 @@ fn record_streaming_error(
     if range_end <= range_start {
         range_end = range_start.saturating_add(1);
     }
-    streaming_state.store_packrat(1, range_start..range_end, entry);
+    let parser_id = 1;
+    let range = range_start..range_end;
+    // Packrat キャッシュ参照でクエリ数を記録し、既存エントリがあればヒット扱いにする。
+    let _ = streaming_state.lookup_packrat(parser_id, range.clone());
+    streaming_state.store_packrat(parser_id, range, entry);
 }
 
 #[cfg(test)]
