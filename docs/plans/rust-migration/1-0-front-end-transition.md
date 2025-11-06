@@ -80,6 +80,38 @@
    - ✅ 2025-11-28: `scripts/poc_dualwrite_compare.sh` を実行し、`reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/summary.md` に 4 ケース分の AST/診断比較結果を保存。`missing_paren` は診断件数が一致したもののメッセージ粒度が異なるため、W2 で `SimpleReason` → Recover サマリ変換を整備して `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` にフォローアップを登録する。
    - ✅ 2025-12-07: W1 成果物を `reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/` に再集約し、`w1-packrat-summary.json`（dual-write Packrat 統計）と `w1-parse-debug-summary.json`（Rust `--emit-parse-debug` 出力）を作成。`reports/dual-write/front-end/poc/w1-recap.md` に概要をまとめ、W2 の AST/IR 対応表タスクへの入力資料として共有した。
 
+### W2 具体的な進め方（AST/IR 対応表の確定）🟡 着手準備
+
+1. **事前同期と対象スコープの固定**  
+   - `1-1-ast-and-ir-alignment.md` の §1.1.2〜1.1.7 と `p1-front-end-checklists.csv` の AST/Typed AST/ストリーミング行を読み返し、今回の W2 で「どこまでを完了させれば良いか」を明文化する。  
+   - `reports/dual-write/front-end/poc/w1-recap.md` と `docs/plans/rust-migration/appendix/parser-ocaml-inventory.md` に記録済みの W1 成果物を確認し、不足しているノード/型カテゴリを TODO 化して `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` へ転記する。  
+   - 参照仕様（`docs/spec/1-1-syntax.md`, `docs/spec/1-2-types-Inference.md`, `docs/spec/3-6-core-diagnostics-audit.md`）が最新版であることを確認し、変更が入っていれば `appendix/glossary-alignment.md` とクロスチェックする。
+   - ✅ 2025-12-10: `1-1-ast-and-ir-alignment.md`／`p1-front-end-checklists.csv` と `reports/dual-write/front-end/poc/w1-recap.md` を突き合わせ、以下の W2 TODO を抽出。
+     - **AST カバレッジ再測定（§1.1.3）**: W1 の 4 ケースでは `ExprKind`/`PatternKind`/`DeclKind` のごく一部しか diff 検証できていない。`examples/cli/` と `compiler/ocaml/tests/parser_*` を用いた AST ダンプバッチを追加し、`reports/dual-write/front-end/w2-ast-alignment/` へ網羅レポートを保存する。
+     - **Typed AST / 制約ログの欠落（§1.1.4）**: W1 では `typed_expr`/`Scheme`/`Constraint` の JSON を取得しておらず、`collect-iterator-audit-metrics.py --section effects` も未実行。`test_type_inference.ml` 入力の dual-write ランを追加し、型 ID・制約リストが一致することを確認する。
+     - **Packrat/SpanTrace の OCaml 側計測（§1.1.5, §1.1.6 step3）**: W1 レポートは Rust 版のみ `packrat_hits`/`span_trace` が記録され、OCaml は常に `0/0`。`Core_parse_streaming` のメトリクスを CLI から出力できるよう `parser_driver` のフラグを再確認し、OCaml JSON を `reports/dual-write/front-end/w2-ast-alignment/*/parse-debug.ocaml.json` に出力して比較する。
+     - **メトリクス同期とレポート化（§1.1.6 step4）**: `collect-iterator-audit-metrics.py --section parser` の結果を W1 では記録していない。W2 では AST/Packrat diff と同時にメトリクス出力を `w2-parser-metrics.json` / `w2-effects-metrics.json` として保存し、0.5pt 以内の一致を確認する。
+
+2. **OCaml AST/IR インベントリの抽出と整理**  
+   - `compiler/ocaml/src/ast.ml`, `typed_ast.ml`, `core_parse/*` からフィールド一覧を抽出し、`scripts/poc_dualwrite_compare.sh` を `--emit-ast --emit parse-debug` 付きで再実行して JSON ダンプを生成、`reports/dual-write/front-end/poc/w2-ast-inventory/` に保管する。  
+   - `parser_expectation.ml`／`parser_driver.ml` が追加で吐き出すメタ情報（`expected_tokens`, `packrat_stats` 等）を `tooling/ci/collect-iterator-audit-metrics.py --section parser` で数値化し、`1-1-ast-and-ir-alignment.md#1-1-5-ストリーミング状態-core_parse_streaming` のチェックリストに照らして不足フィールドを洗い出す。  
+   - 仕様とのギャップが見つかった場合は `docs/plans/rust-migration/appendix/parser-ocaml-inventory.md` に下書きを追記し、W2 中に Rust 側へ移植する対象を優先度付きで列挙する。
+
+3. **Rust AST/Typed AST データモデル草案の確定**  
+   - `compiler/rust/frontend/src/syntax/ast.rs`（仮）と `semantics/typed.rs` に対応するモジュール階層と型シグネチャ案を作成し、`Span/Ident/ExprKind/PatternKind/DeclKind` の命名・フィールド順を OCaml 版と 1:1 に揃える。  
+   - `TypedExpr`・`Scheme`・`Constraint` など Typed AST/制約要素について、所有権モデル（`Arc<Ty>` か `Interned<Ty>`）と `StageRequirement` の保持方法を決定し、`1-1-ast-and-ir-alignment.md#1-1-4-typed-ast--型情報の整合` の表へドラフトを反映する。  
+   - `p1-front-end-checklists.csv` の該当行に W2 で作成する成果物（例: `typed_ast_schema_draft.md`, `rust_ast_span_tests.rs`）を記入し、完了条件を「dual-write AST JSON 差分ゼロ」「型 ID/制約リスト一致」として設定する。
+
+4. **Dual-write 検証ラインとストリーミング確認の自動化**  
+   - `1-3-dual-write-runbook.md` 手順 1〜3 を W2 版テスト入力セット（`examples/cli/*.reml`, `compiler/ocaml/tests/parser_expectation/*.reml`, `compiler/ocaml/tests/streaming_runner_tests.ml` 由来ケース）に適用し、`reports/dual-write/front-end/w2-ast-alignment/<case>/` 以下へ AST/Typed AST/packrat diff を保存する。  
+   - ストリーミング指標（`packrat_hits`, `span_trace_pairs`, `Reply.consumed/committed`）を Rust 側テレメトリで収集できるように `compiler/rust/frontend/tests/streaming_metrics.rs` を更新し、`collect-iterator-audit-metrics.py --section parser --require-success` の実行結果を `w2-streaming-metrics.json` にまとめる。  
+   - 診断側ハーネスとの整合が必要な差分は `1-2-diagnostic-compatibility.md` にも記載し、Recover 系拡張が AST ノード情報に依存している場合は同時に検証する。
+
+5. **ドキュメント／追跡ファイルの更新とフォローアップ登録**  
+   - W2 の調査結果を `1-1-ast-and-ir-alignment.md` の対応表・検証パイプラインに逐次反映し、完了したチェック項目には日付と成果物パスを記入する。  
+   - `p1-front-end-checklists.csv` で完了判定できない項目は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に課題として登録し、`reports/dual-write/front-end/README.md` へ参照リンクを残す。  
+   - 型/AST 名称の変更や JSON スキーマ更新が発生した場合は `README.md`（本章リスト）と `docs/spec/0-2-glossary.md` を更新する準備メモを `docs-migrations.log` に追加し、P2 へのハンドオーバー素材として整理する。
+
 ## 1.0.6 ワークストリームと主要論点
 
 - **Parser/Streaming**  
