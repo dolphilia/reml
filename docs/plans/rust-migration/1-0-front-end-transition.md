@@ -44,6 +44,32 @@
 | W4 | 診断互換試験 | JSON エミッタ・`recover` 拡張・`extensions.*` の対照テスト、CLI/LSP 連携確認 | `scripts/validate-diagnostic-json.sh`、`reports/diagnostic-format-regression.md` |
 | W4.5 | P1 クロージングレビュー | 成果物レビュー、差分リスト整理、P2 ハンドオーバー資料草案 | `docs/plans/rust-migration/README.md` 更新、`docs-migrations.log` 記録 |
 
+### W1 具体的な進め方（Lexer/Parser スケルトン移植）
+
+1. **準備と方針の再確認**  
+   - P0 完了条件が満たされ、最新のゴールデンデータと Windows 監査結果を Rust 側でも参照できる状態を確認する。  
+   - `unified-porting-principles.md` の優先順位原則と dual-write 前提をチームで再共有し、性能・安全性の許容範囲を明文化する。
+
+2. **OCaml 実装の棚卸しと設計ノート整備**  
+   - `compiler/ocaml/docs/parser_design.md` を読み、字句要素・演算子優先順位・構文カテゴリを洗い出して Rust 実装で必要となるトークン/ノード一覧を作成する。  
+   - `parser_driver.ml` と `parser_expectation.ml` の役割分担（状態遷移、回復戦略、期待トークン生成）を整理し、抜け漏れをメモ化する。
+
+3. **Rust フロントエンド骨格の用意**  
+   - `compiler/rust/frontend/` 配下に Lexer・Parser・Streaming モジュールの雛形ファイルと `Cargo.toml` の該当セクションを追加し、依存クレート候補（`logos`/`chumsky` 等）の評価メモを添える。  
+   - Span 型、トークン列挙、エラー種別、Recoverable 状態など共通で利用する基礎データ構造を Rust で宣言し、`docs/spec/1-1-syntax.md` に沿った命名と型域（`u32` オフセット等）を確認する。
+
+4. **パーサ生成戦略と状態管理の設計**  
+   - Menhir 相当の構文解析を Rust でどう再現するか（既存ジェネレータ活用か自前 LL/LR 実装か）を比較し、選定理由と PoC 計画を `docs/notes/` に記録する。  
+   - `Core_parse` の state machine・入力ストリーム・エラー復旧フックを分解し、Rust の `ParserDriver`（仮）に移す責務を定義する。
+
+5. **Packrat / span_trace 再現の設計**  
+   - `Core_parse_streaming` の packrat キャッシュと `span_trace` 収集ロジックを調査し、Rust で利用するデータ構造（`IndexMap`/`HashMap` と寿命管理）を決定する。  
+   - メトリクス項目（`parser.stream.*`）と連携するカウンタをどこで更新するか設計ノートに明記する。
+
+6. **最小ケースでの dual-write 準備**  
+   - `remlc --frontend {ocaml|rust}` 相当の切り替えインターフェースに必要な CLI フラグや build ターゲットを列挙し、未実装部分には TODO を残す。  
+   - `reports/dual-write/front-end/` に W1 用の成果物ディレクトリ構成を作成し、AST/診断 diff とメトリクス出力を保存するコマンドシーケンスを `1-3-dual-write-runbook.md` の手順と照合する。
+
 ## 1.0.6 ワークストリームと主要論点
 
 - **Parser/Streaming**  
