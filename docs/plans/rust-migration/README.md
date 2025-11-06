@@ -14,6 +14,10 @@
   - [`0-1-baseline-and-diff-assets.md`](0-1-baseline-and-diff-assets.md): OCaml 資産棚卸しと差分ハーネス設計
   - [`0-2-windows-toolchain-audit.md`](0-2-windows-toolchain-audit.md): Windows ツールチェーン監査手順
   - [`appendix/glossary-alignment.md`](appendix/glossary-alignment.md): Rust↔Reml 用語対応表
+- **P1 フロントエンド移植**
+  - [`1-0-front-end-transition.md`](1-0-front-end-transition.md): パーサ/型推論移植の方針とマイルストーン
+  - [`1-1-ast-and-ir-alignment.md`](1-1-ast-and-ir-alignment.md): AST/IR 対応表と検証手順
+  - [`1-2-diagnostic-compatibility.md`](1-2-diagnostic-compatibility.md): 診断互換性のチェックリストと dual-write 運用
 - **統合原則**
   - [`unified-porting-principles.md`](unified-porting-principles.md): 移植全体で共有する設計原則と成功指標
 
