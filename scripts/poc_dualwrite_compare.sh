@@ -116,6 +116,7 @@ for entry in "${CASE_ENTRIES[@]}"; do
   ocaml_ast_path="${CASE_DIR}/${safe_name}.ocaml.ast.txt"
   ocaml_tast_path="${CASE_DIR}/${safe_name}.ocaml.tast.txt"
   ocaml_diag_path="${CASE_DIR}/${safe_name}.ocaml.diagnostics.json"
+  ocaml_parse_debug_path="${CASE_DIR}/${safe_name}.ocaml.parse-debug.json"
   rust_json_path="${CASE_DIR}/${safe_name}.rust.json"
   rust_parse_debug_path="${CASE_DIR}/${safe_name}.rust.parse-debug.json"
 
@@ -153,7 +154,12 @@ for entry in "${CASE_ENTRIES[@]}"; do
 
   (
     cd "${OCAML_DIR}"
-    dune exec remlc -- --format json --json-mode compact --packrat "${input_path}"
+    dune exec remlc -- \
+      --packrat \
+      --format json \
+      --json-mode compact \
+      --emit-parse-debug "${ocaml_parse_debug_path}" \
+      "${input_path}"
   ) > "${ocaml_diag_path}" 2>&1 || true
 
   (
@@ -195,10 +201,13 @@ source_info = read_text(case_dir / f"{safe_name}.source.txt").strip()
 ocaml_ast = read_text(case_dir / f"{safe_name}.ocaml.ast.txt").strip()
 ocaml_tast = read_text(case_dir / f"{safe_name}.ocaml.tast.txt").strip()
 ocaml_diag_json = load_json(case_dir / f"{safe_name}.ocaml.diagnostics.json") or {}
+ocaml_parse_debug = load_json(case_dir / f"{safe_name}.ocaml.parse-debug.json") or {}
 rust_json = load_json(case_dir / f"{safe_name}.rust.json") or {}
 
 ocaml_diagnostics = ocaml_diag_json.get("diagnostics", [])
-ocaml_parse_result = ocaml_diag_json.get("parse_result") or {}
+
+ocaml_parse_result = ocaml_parse_debug.get("parse_result") or ocaml_diag_json.get("parse_result") or {}
+ocaml_stream_meta = ocaml_parse_debug.get("stream_meta")
 
 def packrat_numbers(stats):
     if isinstance(stats, dict):
@@ -224,6 +233,8 @@ summary = {
     "rust_diag_messages": [diag.get("message") for diag in rust_diagnostics],
     "ocaml_packrat_queries": ocaml_queries,
     "ocaml_packrat_hits": ocaml_hits,
+    "ocaml_span_trace_len": len(ocaml_parse_result.get("span_trace") or []),
+    "ocaml_stream_meta": ocaml_stream_meta,
     "rust_packrat_queries": rust_queries,
     "rust_packrat_hits": rust_hits,
     "rust_span_trace_len": rust_span_trace_len,

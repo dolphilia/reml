@@ -63,7 +63,18 @@ python3 tooling/ci/collect-iterator-audit-metrics.py \
 - スクリプトが失敗した場合はログ末尾の `missing_keys`・`mismatch` を確認し、`1-2-diagnostic-compatibility.md` の重点監視フィールドへ差分を登録する。
 - メトリクス差の許容範囲は `1-1-ast-and-ir-alignment.md#1-1-6-検証パイプライン` で規定された 0.5pt 以内。
 
-### 手順 4: 付随テスト（任意）
+### 手順 4: 自動判定レポートの生成
+```bash
+RUN_DIR=reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory
+scripts/dualwrite_summary_report.py \
+  "$RUN_DIR" \
+  --out-json "$RUN_DIR/summary_report.json" \
+  --out-md "$RUN_DIR/summary_report.md"
+```
+- `*.summary.json` を集計し、AST/診断/Packrat の一致状況を Markdown・JSON にまとめる。CI では Markdown をアーティファクト化し、JSON をゲート判定に利用する。
+- 診断件数差分など追加の考察は `reports/dual-write/front-end/<run>/diagnostic_diff.md` のような派生レポートに記録し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の TODO と連携させる。
+
+### 手順 5: 付随テスト（任意）
 - `compiler/ocaml/tests/parser_*` や `test_type_inference.ml` に対応する dual-write テストハーネスがある場合は、`cargo test --package remlc_frontend --features dual-write` のような形で同時実行する。
 - ベンチマークを取得する場合は `scripts/benchmark.sh --suite <name> --frontend {ocaml|rust}` を用い、結果を `reports/dual-write/benchmarks/` へ保存する（詳細は `3-2-benchmark-baseline.md` を参照）。
 
@@ -96,4 +107,3 @@ python3 tooling/ci/collect-iterator-audit-metrics.py \
 - 新しいケースを追加した場合は `p1-front-end-checklists.csv` に該当項目を追加し、完了可否を管理する。
 - トラブルシュートの知見は `docs/notes/` に TODO 付きで転記し、次回実行時の参考とする。
 - CI 連携を実施した際は `3-0-ci-and-dual-write-strategy.md` に反映し、命名規則の差異がないか確認する。
-

@@ -45,6 +45,8 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
 - **TODO: OBS-RUST-01** — Rust dual-write で追加されるメタデータを計測スクリプトに組み込み、`collect-iterator-audit-metrics.py --baseline/--candidate` の `frontend` ラベルと `reports/audit/index.json` の `kind=dual-write` を Phase 2-7 内に実装する。関連: §0.2、`docs/plans/rust-migration/3-1-observability-alignment.md`。
 - **TODO: BENCH-RUST-01** — ベンチマーク出力の保存先を `reports/benchmarks/` に先行確保し、OCaml 版での運用手順と同じ雛形を Rust 版にも適用できるよう CI スクリプトを整備する。関連: §4.2、`docs/plans/rust-migration/3-2-benchmark-baseline.md`。
 - **TODO: RISK-RUST-01** — P4 リスク台帳で求められる性能・監査ゲートを Phase 2-7 の負債整理に組み込み、`0-4-risk-handling.md` と連動したチェックリストを作成する。関連: §4.1〜§4.2、`docs/plans/rust-migration/4-0-risk-register.md`。
+- **TODO: DIAG-RUST-01** — `reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/diagnostic_diff.md` で列挙した `ffi_callconv_sample` / `pattern_examples` / `unicode_identifiers` の診断件数差分を調査し、Rust フロントエンドの recover 戦略（`ParserExpectation`/`Diagnostic.Builder` 連携）を OCaml と同等に揃える。
+- **TODO: DIAG-RUST-02** — `emit_suite_cli` / `simple_module` / `trace_sample_cli` / `type_error_cli` など CLI サンプルで Rust 側のみ診断が増えるケースを `docs/plans/rust-migration/1-2-diagnostic-compatibility.md` の監視対象へ追記し、Packrat/Recover のヒューリスティクを共有する。
 
 ## 作業ブレークダウン
 

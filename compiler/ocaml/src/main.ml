@@ -2,6 +2,8 @@ module EffectTable = Constraint_solver.EffectConstraintTable
 module IteratorAudit = Core_ir.Iterator_audit
 module Ffi = Ffi_contract
 module Ffi_stub = Ffi_stub_builder
+module Run_config_ext = Parser_run_config.Extensions
+module Run_config_ns = Parser_run_config.Extensions.Namespace
 
 let iterator_audit_entries : (string, IteratorAudit.entry) Hashtbl.t =
   Hashtbl.create 32
@@ -37,6 +39,230 @@ let effect_row_metadata_pairs (row : Types.effect_row) =
     ("effect.type_row.residual", residual_json);
     ("effect.type_row.canonical", canonical_json);
   ]
+
+let json_of_left_recursion = function
+  | Parser_run_config.Off -> `String "off"
+  | Parser_run_config.On -> `String "on"
+  | Parser_run_config.Auto -> `String "auto"
+
+let rec json_of_extension_value = function
+  | Run_config_ext.Bool value -> `Bool value
+  | Run_config_ext.Int value -> `Int value
+  | Run_config_ext.Float value -> `Float value
+  | Run_config_ext.String value -> `String value
+  | Run_config_ext.Parser_id value -> `Int value
+  | Run_config_ext.List values ->
+      `List (List.map json_of_extension_value values)
+
+let json_of_extensions extensions =
+  if Run_config_ext.is_empty extensions then None
+  else
+    let namespaces =
+      Run_config_ext.bindings extensions
+      |> List.map (fun (namespace, entries) ->
+             let fields =
+               Run_config_ns.bindings entries
+               |> List.map (fun (key, value) ->
+                      (key, json_of_extension_value value))
+             in
+             (namespace, `Assoc fields))
+    in
+    Some (`Assoc namespaces)
+
+let json_of_parser_run_config (config : Parser_run_config.t) =
+  let fields =
+    [
+      ("require_eof", `Bool config.require_eof);
+      ("packrat", `Bool config.packrat);
+      ("left_recursion", json_of_left_recursion config.left_recursion);
+      ("trace", `Bool config.trace);
+      ("merge_warnings", `Bool config.merge_warnings);
+      ("legacy_result", `Bool config.legacy_result);
+      ("experimental_effects", `Bool config.experimental_effects);
+    ]
+  in
+  let fields =
+    match config.locale with
+    | Some locale when String.trim locale <> "" ->
+        ("locale", `String locale) :: fields
+    | _ -> fields
+  in
+  let fields =
+    match json_of_extensions config.extensions with
+    | Some extensions_json -> ("extensions", extensions_json) :: fields
+    | None -> fields
+  in
+  `Assoc (List.rev fields)
+
+let json_of_position pos =
+  let open Lexing in
+  let line = max 1 pos.pos_lnum in
+  let column = max 0 (pos.pos_cnum - pos.pos_bol) in
+  `Assoc
+    [
+      ("file", `String pos.pos_fname);
+      ("line", `Int line);
+      ("column", `Int column);
+      ("offset", `Int pos.pos_cnum);
+    ]
+
+let lexing_pos_of_location (loc : Diagnostic.location) =
+  let open Lexing in
+  {
+    pos_fname = loc.filename;
+    pos_lnum = loc.line;
+    pos_bol = loc.offset - loc.column;
+    pos_cnum = loc.offset;
+  }
+
+let json_of_span_option span_opt =
+  match span_opt with
+  | None -> `Null
+  | Some span ->
+      let open Diagnostic in
+      let start_pos = lexing_pos_of_location span.start_pos in
+      let end_pos = lexing_pos_of_location span.end_pos in
+      `Assoc
+        [
+          ("start", json_of_position start_pos);
+          ("end", json_of_position end_pos);
+        ]
+
+let json_of_span_trace span_trace =
+  match span_trace with
+  | None -> `Null
+  | Some entries ->
+      `List
+        (List.map
+           (fun (label_opt, span) ->
+             let fields = [ ("span", json_of_span_option (Some span)) ] in
+             let fields =
+               match label_opt with
+               | Some label when String.trim label <> "" ->
+                   ("label", `String label) :: fields
+               | _ -> fields
+             in
+             `Assoc (List.rev fields))
+           entries)
+
+let json_of_packrat_stats = function
+  | None -> `Null
+  | Some (queries, hits) ->
+      `Assoc [ ("queries", `Int queries); ("hits", `Int hits) ]
+
+let json_of_expectation expectation =
+  let open Diagnostic in
+  match expectation with
+  | Token text -> `Assoc [ ("kind", `String "token"); ("label", `String text) ]
+  | Keyword text ->
+      `Assoc [ ("kind", `String "keyword"); ("label", `String text) ]
+  | Rule text ->
+      `Assoc [ ("kind", `String "rule"); ("label", `String text) ]
+  | Eof -> `Assoc [ ("kind", `String "eof"); ("label", `String "EOF") ]
+  | Not text ->
+      `Assoc [ ("kind", `String "not"); ("label", `String text) ]
+  | Class text ->
+      `Assoc [ ("kind", `String "class"); ("label", `String text) ]
+  | Custom text ->
+      `Assoc [ ("kind", `String "custom"); ("label", `String text) ]
+  | TypeExpected text ->
+      `Assoc
+        [ ("kind", `String "type_expected"); ("label", `String text) ]
+  | TraitBound text ->
+      `Assoc [ ("kind", `String "trait_bound"); ("label", `String text) ]
+
+let json_of_expectations expectations =
+  `List (List.map json_of_expectation expectations)
+
+let json_of_legacy_error legacy_error =
+  match legacy_error with
+  | None -> `Null
+  | Some (error : Parser_driver.parse_error) ->
+      `Assoc
+        [
+          ("span", json_of_span_option (Some error.span));
+          ("expected", json_of_expectations error.expected);
+          ("committed", `Bool error.committed);
+          ("far_consumed", `Bool error.far_consumed);
+        ]
+
+let json_of_stream_meta = function
+  | None -> `Null
+  | Some meta ->
+      let open Cli.Stats in
+      let meta = meta in
+      let fields =
+        [
+          ("bytes_consumed", `Int meta.bytes_consumed);
+          ("chunks_consumed", `Int meta.chunks_consumed);
+          ("await_count", `Int meta.await_count);
+          ("resume_count", `Int meta.resume_count);
+          ("backpressure_events", `Int meta.backpressure_events);
+        ]
+      in
+      let fields =
+        match meta.last_reason with
+        | Some reason when String.trim reason <> "" ->
+            ("last_reason", `String reason) :: fields
+        | _ -> fields
+      in
+      let fields =
+        match meta.memo_bytes with
+        | Some memo -> ("memo_bytes", `Int memo) :: fields
+        | None -> fields
+      in
+      let fields =
+        match meta.backpressure_policy with
+        | Some policy when String.trim policy <> "" ->
+            ("backpressure_policy", `String policy) :: fields
+        | _ -> fields
+      in
+      `Assoc (List.rev fields)
+
+let write_parse_debug ~path ~input ~parser_config ~parse_result ~stream_meta =
+  try
+    let dir = Filename.dirname path in
+    if dir <> "" && dir <> "." then Cli.File_util.ensure_directory dir;
+    let open Parser_driver in
+    let diagnostics_json =
+      `List
+        (Diagnostic_serialization.diagnostics_to_json parse_result.diagnostics)
+    in
+    let parse_result_fields =
+      [
+        ("has_value", `Bool (Option.is_some parse_result.value));
+        ("recovered", `Bool parse_result.recovered);
+        ("consumed", `Bool parse_result.consumed);
+        ("committed", `Bool parse_result.committed);
+        ("span", json_of_span_option parse_result.span);
+        ( "farthest_error_offset",
+          match parse_result.farthest_error_offset with
+          | Some offset -> `Int offset
+          | None -> `Null );
+        ("legacy_error", json_of_legacy_error parse_result.legacy_error);
+        ("packrat_stats", json_of_packrat_stats parse_result.packrat_stats);
+        ("span_trace", json_of_span_trace parse_result.span_trace);
+      ]
+    in
+    let parse_result_json = `Assoc (List.rev parse_result_fields) in
+    let json =
+      `Assoc
+        [
+          ("input", `String input);
+          ("parser_run_config", json_of_parser_run_config parser_config);
+          ("diagnostics", diagnostics_json);
+          ("parse_result", parse_result_json);
+          ("stream_meta", json_of_stream_meta stream_meta);
+        ]
+    in
+    let channel = open_out path in
+    Yojson.Basic.pretty_to_channel channel json;
+    output_char channel '\n';
+    close_out channel
+  with exn ->
+    Printf.eprintf
+      "[parse-debug] failed to write %s (%s)\n%!"
+      path (Printexc.to_string exn)
 
 let metadata_for_effect ?symbol ?source_name ~source_span ~stage_requirement
     ~resolved_stage ~resolved_capability ~resolved_capabilities ~effect_set
@@ -573,6 +799,7 @@ let () =
       ("emit_tast", opts.emit_tast);
       ("emit_ir", opts.emit_ir);
       ("emit_bc", opts.emit_bc);
+      ("emit_parse_debug", Option.is_some opts.emit_parse_debug);
     ]
     |> List.filter_map (fun (name, enabled) ->
            if enabled then Some (`String name) else None)
@@ -776,6 +1003,14 @@ let () =
         { lexbuf.Lexing.lex_curr_p with Lexing.pos_fname = opts.input_file };
       Parser_driver.run ~config:parser_run_config lexbuf)
   in
+  let stream_meta_snapshot = Cli.Stats.get_stream_meta () in
+  (match opts.emit_parse_debug with
+  | Some path ->
+      write_parse_debug ~path ~input:opts.input_file
+        ~parser_config:parser_run_config ~parse_result:parse_output
+        ~stream_meta:stream_meta_snapshot
+  | None -> ());
+  Cli.Stats.clear_stream_meta ();
   match Parser_driver.parse_result_to_legacy parse_output with
   | Ok ast ->
       (* Phase 1-6 Week 15: パース完了 *)

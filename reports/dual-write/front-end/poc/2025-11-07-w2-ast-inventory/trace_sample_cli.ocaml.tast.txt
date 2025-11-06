@@ -72,10 +72,10 @@
       "policy": "phase2.5.audit.v1",
       "origin": "cli",
       "source": {
-        "build_id": "20251106T220446Z-1d598e4",
+        "build_id": "20251106T222010Z-f878115",
         "workspace": ".",
         "sequence": 0,
-        "commit": "1d598e4"
+        "commit": "f878115"
       },
       "items": [
         {
@@ -95,11 +95,11 @@
         { "kind": "outputs", "values": [ "emit_tast" ] }
       ]
     },
-    "cli.audit_id": "cli/20251106T220446Z-1d598e4#0",
-    "audit.source.commit": "1d598e4",
+    "cli.audit_id": "cli/20251106T222010Z-f878115#0",
+    "audit.source.commit": "f878115",
     "audit.source.workspace": ".",
     "audit.sequence": 0,
-    "audit.build_id": "20251106T220446Z-1d598e4",
+    "audit.build_id": "20251106T222010Z-f878115",
     "audit.channel": "cli",
     "audit.policy.version": "phase2.5.audit.v1",
     "effect.capabilities": [],
@@ -117,18 +117,18 @@
     "parser.core.rule.name": "compilation_unit",
     "parser.core.rule.namespace": "menhir",
     "event.domain": "parser",
-    "audit.timestamp": "2025-11-06T22:04:46Z",
+    "audit.timestamp": "2025-11-06T22:20:10Z",
     "schema.version": "1.1"
   },
-  "audit_id": "cli/20251106T220446Z-1d598e4#0",
+  "audit_id": "cli/20251106T222010Z-f878115#0",
   "change_set": {
     "policy": "phase2.5.audit.v1",
     "origin": "cli",
     "source": {
-      "build_id": "20251106T220446Z-1d598e4",
+      "build_id": "20251106T222010Z-f878115",
       "workspace": ".",
       "sequence": 0,
-      "commit": "1d598e4"
+      "commit": "f878115"
     },
     "items": [
       {
@@ -149,4 +149,4 @@
     ]
   }
 }
-タイムスタンプ: 2025-11-06T22:04:46Z
+タイムスタンプ: 2025-11-06T22:20:10Z

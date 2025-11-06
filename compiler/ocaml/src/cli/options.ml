@@ -60,6 +60,8 @@ let print_full_help () =
       "  --emit-tast         型付き AST を標準出力に書き出す";
       "  --emit-ir           LLVM IR (.ll) を出力ディレクトリに生成";
       "  --emit-bc           LLVM Bitcode (.bc) を出力ディレクトリに生成";
+      "  --emit-parse-debug <path>";
+      "                       Parser debug JSON (packrat/span_trace) を指定パスへ出力";
       "  --out-dir <dir>     中間成果物の出力先ディレクトリ（既定: .）";
       "";
       "診断・フォーマット:";
@@ -153,6 +155,7 @@ type options = {
   emit_tast : bool;  (** Typed AST を標準出力に出力 *)
   emit_ir : bool;  (** LLVM IR (.ll) を出力ディレクトリに生成 *)
   emit_bc : bool;  (** LLVM Bitcode (.bc) を出力ディレクトリに生成 *)
+  emit_parse_debug : string option;  (** Parser debug JSON をファイル出力 *)
   out_dir : string;  (** 出力ディレクトリ *)
   (* 診断 *)
   format : output_format;  (** 診断メッセージの出力形式 *)
@@ -209,12 +212,13 @@ let default_options =
     use_stdin = false;
     emit_ast = false;
     emit_tast = false;
-    emit_ir = false;
-    emit_bc = false;
-    out_dir = ".";
-    format = Text;
-    json_mode = JsonPretty;
-    include_snippet = true;
+  emit_ir = false;
+  emit_bc = false;
+  emit_parse_debug = None;
+  out_dir = ".";
+  format = Text;
+  json_mode = JsonPretty;
+  include_snippet = true;
     color = Auto;
     typeclass_mode = TypeclassDictionary;
     trace = false;
@@ -290,6 +294,7 @@ let parse_args argv =
   let emit_tast = ref false in
   let emit_ir = ref false in
   let emit_bc = ref false in
+  let emit_parse_debug = ref None in
   let out_dir = ref "." in
   let format_str = ref "text" in
   let color_str = ref "auto" in
@@ -388,6 +393,9 @@ let parse_args argv =
       ( "--emit-bc",
         Arg.Set emit_bc,
         "Emit LLVM Bitcode (.bc) to output directory" );
+      ( "--emit-parse-debug",
+        Arg.String (fun value -> emit_parse_debug := Some value),
+        "<path> Emit parser debug JSON (packrat/span_trace) to file" );
       ( "--out-dir",
         Arg.Set_string out_dir,
         "<dir> Output directory (default: .)" );
@@ -727,6 +735,10 @@ let parse_args argv =
           emit_tast = !emit_tast;
           emit_ir = !emit_ir;
           emit_bc = !emit_bc;
+          emit_parse_debug =
+            (match !emit_parse_debug with
+            | Some path when String.trim path <> "" -> Some (String.trim path)
+            | _ -> None);
           out_dir = !out_dir;
           format;
           json_mode;

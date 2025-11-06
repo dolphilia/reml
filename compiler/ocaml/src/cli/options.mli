@@ -48,6 +48,7 @@ type options = {
   emit_tast : bool;  (** Typed AST を標準出力に出力 *)
   emit_ir : bool;  (** LLVM IR (.ll) を出力ディレクトリに生成 *)
   emit_bc : bool;  (** LLVM Bitcode (.bc) を出力ディレクトリに生成 *)
+  emit_parse_debug : string option;  (** Parser debug JSON の出力先パス *)
   out_dir : string;  (** 出力ディレクトリ *)
   (* 診断 *)
   format : output_format;  (** 診断メッセージの出力形式 *)
