@@ -3461,7 +3461,6 @@ def collect_bridge_metrics(
             platform_record = platform_summary.setdefault(
                 platform_key, {"total": 0, "ok": 0, "failed": 0}
             )
-            total += 1
             platform_record["total"] += 1
 
             audit_missing = check_bridge_audit_fields(audit_dict)
