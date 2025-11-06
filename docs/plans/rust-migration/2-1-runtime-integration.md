@@ -100,7 +100,7 @@
 - `docs/plans/rust-migration/README.md`・`docs/plans/README.md` の P2 セクションに本章追加を反映する。
 
 ## 2.1.10 次フェーズとの接続
-- P3 CI 統合では本章で整備した監査ログと FFI テストハーネスを `3-0-ci-and-dual-write-strategy.md`（予定）に組み込み、dual-write 監査の自動比較を実現する。  
+- P3 CI 統合では本章で整備した監査ログと FFI テストハーネスを `3-0-ci-and-dual-write-strategy.md` に組み込み、dual-write 監査の自動比較を実現する。  
 - P4 リスク登録 (`4-0-risk-register.md`) へ移行する際、FFI・Capability 関連の残存リスク（権限昇格・未検証ターゲット）を共有する。  
 - Adapter 層設計 (`2-2-adapter-layer-guidelines.md`) と連携し、プラットフォーム差異を FFI 呼び出し前に吸収するための API 要件を同期する。
 

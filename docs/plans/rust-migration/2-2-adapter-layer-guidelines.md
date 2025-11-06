@@ -110,7 +110,7 @@
 - Windows ツールチェーン関連の変更は `0-2-windows-toolchain-audit.md` と `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` にフィードバックし、`docs-migrations.log` を更新する。
 
 ## 2.2.10 次フェーズ連携
-- P3 CI 統合計画（`3-0-ci-and-dual-write-strategy.md` 予定）でアダプタ API を活用し、dual-write テストや監査メトリクス収集の基盤を提供する。  
+- P3 CI 統合計画（`3-0-ci-and-dual-write-strategy.md`）でアダプタ API を活用し、dual-write テストや監査メトリクス収集の基盤を提供する。  
 - P4 リスク登録 (`4-0-risk-register.md`) ではアダプタ層の未対応ターゲット・依存クレート更新リスクを追跡する。  
 - DSL プラグイン／Capability 拡張（Chapter 4）の準備として、アダプタ API の公開仕様を `docs/guides/plugin-authoring.md` 等へ展開する。
 

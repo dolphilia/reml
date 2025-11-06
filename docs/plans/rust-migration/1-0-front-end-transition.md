@@ -66,13 +66,13 @@
 
 ## 1.0.7 Dual-write 運用方針
 - OCaml 実装を `remlc --ocaml-frontend`、Rust 実装を `remlc --rust-frontend` のようなフラグで切り替え可能にし、同一入力から AST/診断 JSON を取得。
-- 差分結果は `tmp/rust-frontend-diff/`（仮）に JSON とメトリクスサマリを保存し、`collect-iterator-audit-metrics.py` で主要メトリクス（`parser.stream.*`、`effects.*` 等）を集計。
+- 差分結果は `reports/dual-write/front-end/` に JSON とメトリクスサマリを保存し、`collect-iterator-audit-metrics.py` で主要メトリクス（`parser.stream.*`、`effects.*` 等）を集計。
 - Dual-write 期間は最長 2 スプリントとし、P1 完了時に Rust 版をフィーチャーフラグ既定値へ昇格する判断材料を提示。
 
 ## 1.0.8 依存関係とハンドオーバー
 - Phase P0 で確定したゴールデンデータ・Windows 環境診断結果を継承し、更新が必要な場合は `0-1`/`0-2` へ逆流更新を行う。
 - Phase 2-5 仕様乖離対策 (`2-5-spec-drift-remediation.md`) と連動し、Rust 版で検出した差分は同文書の追跡表へ登録。
-- P1 の成果は P2 (LLVM バックエンド) と P3 (CI/監査統合) へ引き継ぎ、特に診断 JSON の差分メトリクスは CI ハーネス更新 (`3-0-ci-and-dual-write-strategy.md` 予定) の入力とする。
+- P1 の成果は P2 (LLVM バックエンド) と P3 (CI/監査統合) へ引き継ぎ、特に診断 JSON の差分メトリクスは CI ハーネス更新 (`3-0-ci-and-dual-write-strategy.md`) の入力とする。
 
 ## 1.0.9 リスクと対策
 - **パーサ生成器の選定遅延**: Rust 向けツール選定が難航した場合は、OCaml Menhir のテーブルを Rust で再利用する PoC を `docs/notes/` に記録し、暫定バージョンで dual-write を継続する。  

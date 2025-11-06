@@ -5,7 +5,7 @@
 ## 2.0.1 目的
 - Reml Rust 実装の LLVM IR 生成器を構築し、OCaml 実装が出力する IR と観測可能な挙動（`TargetMachine` 設定、`DataLayout`、最適化パス、診断ログ）を等価に再現する。
 - Windows x64 (`x86_64-pc-windows-gnu` / `x86_64-pc-windows-msvc`) を含む 3 ターゲット（Linux GNU、macOS Darwin、Windows GNU/MSVC）で LLVM バックエンドが動作することを `opt -verify` と `llc` 生成物比較で保証する。
-- バックエンドの成果物を P2 以降のランタイム統合 (`2-1-runtime-integration.md`) と CI 統合 (`3-0-ci-and-dual-write-strategy.md` 予定) に引き渡せる状態に整理し、`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` が示す環境制約を Rust 実装側の運用に落とし込む。
+- バックエンドの成果物を P2 以降のランタイム統合 (`2-1-runtime-integration.md`) と CI 統合 (`3-0-ci-and-dual-write-strategy.md`) に引き渡せる状態に整理し、`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` が示す環境制約を Rust 実装側の運用に落とし込む。
 
 ## 2.0.2 スコープと前提
 - **対象範囲**
@@ -96,7 +96,7 @@
 - バックエンド仕様に影響が出る場合は `docs/spec/3-8-core-runtime-capability.md` / `3-9-core-async-ffi-unsafe.md` の該当節を参照し、必要であれば脚注を提案する。
 
 ## 2.0.10 ハンドオーバーと次フェーズ
-- Rust バックエンドの API と差分検証ログを P3 CI 統合チームへ渡し、`3-0-ci-and-dual-write-strategy.md`（作成予定）での自動検証に利用する。  
+- Rust バックエンドの API と差分検証ログを P3 CI 統合チームへ渡し、`3-0-ci-and-dual-write-strategy.md` での自動検証に利用する。  
 - ランタイム連携タスクは `2-1-runtime-integration.md` へ移譲し、`ffi`, `panic`, `audit` 関連の呼び出し箇所を共有。  
 - P4 最適化フェーズで性能調整を行えるよう、バックエンド内の計測ポイント（カウンタ、トレースログ）を残しておく。
 

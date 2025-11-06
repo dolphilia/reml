@@ -31,11 +31,11 @@ Rust フロントエンド移植において、OCaml 実装と同一の診断 (`
 | Precision 差分 | 数値のフォーマット違い | `serde_json::Number` の文字列表現を OCaml と揃える（`format!("{:.6}", ...)` 等） |
 
 ## 1.2.5 Dual-write 検証フロー
-1. `remlc --frontend ocaml --format json --emit-ast path.reml > tmp/ocaml.json`
-2. `remlc --frontend rust --format json --emit-ast path.reml > tmp/rust.json`
-3. `scripts/validate-diagnostic-json.sh tmp/{ocaml,rust}.json` を実行して Schema 検証
-4. `jq --sort-keys` で整形し `diff -u`。差分がある場合は `tmp/diff/diagnostic_<case>.diff` に保存
-5. `collect-iterator-audit-metrics.py --section parser --baseline tmp/ocaml.json --candidate tmp/rust.json` を実行し、メトリクス差分を取得
+1. `remlc --frontend ocaml --format json --emit-ast path.reml > reports/dual-write/front-end/ocaml/<case>.json`
+2. `remlc --frontend rust --format json --emit-ast path.reml > reports/dual-write/front-end/rust/<case>.json`
+3. `scripts/validate-diagnostic-json.sh reports/dual-write/front-end/{ocaml,rust}/<case>.json` を実行して Schema 検証
+4. `jq --sort-keys` で整形し `diff -u`。差分がある場合は `reports/dual-write/front-end/diff/diagnostic_<case>.diff` に保存
+5. `collect-iterator-audit-metrics.py --section parser --baseline reports/dual-write/front-end/ocaml/<case>.json --candidate reports/dual-write/front-end/rust/<case>.json` を実行し、メトリクス差分を取得
 6. 差分内容を `reports/diagnostic-format-regression.md` のフォーマットで記録し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に TODO を追加（必要なら）
 
 ## 1.2.6 重点監視フィールド
@@ -68,4 +68,4 @@ Rust フロントエンド移植において、OCaml 実装と同一の診断 (`
 ## 1.2.10 ドキュメント連携
 - 本計画で確定した比較ルールは `1-0-front-end-transition.md` に記載したマイルストーンと連動させ、レビュー時に参照する。
 - 差分の緩和条件や例外は `appendix/glossary-alignment.md`・`docs/spec/3-6-core-diagnostics-audit.md` に反映し、用語・キー名称の整合を保つ。
-- CI への組み込み手順は P3 ドキュメント (`3-0-ci-and-dual-write-strategy.md` 予定) に移植する。P1 ではローカルおよび臨時 CI ジョブで実施。
+- CI への組み込み手順は P3 ドキュメント (`3-0-ci-and-dual-write-strategy.md`) に移植する。P1 ではローカルおよび臨時 CI ジョブで実施。
