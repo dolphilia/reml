@@ -332,6 +332,42 @@ jobs:
             tmp/audit-matrix/linux
           retention-days: 14
 
+  dual-write-smoke:
+    name: Dual-write Frontend Smoke
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download build outputs (optional)
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-build
+          path: artifacts/build
+        continue-on-error: true
+
+      - name: Generate dual-write sample outputs
+        run: |
+          chmod +x tooling/ci/run-dual-write-smoke.sh
+          tooling/ci/run-dual-write-smoke.sh reports/dual-write/front-end
+
+      - name: Verify dual-write outputs
+        run: |
+          test -f reports/dual-write/front-end/ocaml/smoke.json
+          test -f reports/dual-write/front-end/rust/smoke.json
+          test -f reports/dual-write/front-end/diff/smoke.diff
+          test -f reports/dual-write/front-end/summary.json
+
+      - name: Upload dual-write artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dual-write-front-end
+          path: reports/dual-write/front-end
+          retention-days: 14
+
   test:
     name: Test
     runs-on: ubuntu-latest
