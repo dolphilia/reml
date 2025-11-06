@@ -16,6 +16,7 @@
 | Cargo | Cargo（ビルドツール） | Rust の公式ビルド/パッケージ管理ツール。Reml の `reml package` 等と区別するため、原語のまま使用し脚注で説明する。 | `docs/guides/tooling-overview.md`（更新予定） |
 | Target Triple | ターゲット Triple | LLVM/Rust で使用するターゲット識別子。Reml 仕様では `TargetTriple` と表記しているため、説明時は「ターゲット Triple (`x86_64-pc-windows-msvc`)」のように併記する。 | `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` |
 | Feature Flag | フィーチャフラグ | Rust の `#[cfg(feature = ...)]` と Reml の Capability フラグを区別するため、「フィーチャフラグ（Rust）」と「Capability フラグ」を明示的に使い分ける。 | `docs/spec/3-8-core-runtime-capability.md` |
+| Dual-write | 二重書き（dual-write）運用 | Rust 実装と OCaml 実装を並行実行して挙動差分を検証する運用。計画書では「二重書き（dual-write）」と併記し、差分ログは `reports/dual-write/` 配下へ保存する。 | `docs/plans/rust-migration/0-0-roadmap.md`, `docs/plans/rust-migration/1-0-front-end-transition.md` |
 | Module | モジュール | Reml 仕様では `module` を「モジュール」と訳出済み。Rust の `mod` と対応づけて説明するが、名前空間構造が異なる場合は「Rust モジュール」と記す。 | `docs/spec/0-2-glossary.md` 「モジュール」 |
 
 ## A.2 運用ルール

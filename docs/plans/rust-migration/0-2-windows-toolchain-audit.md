@@ -15,15 +15,15 @@
 | LLVM | LLVM 19 系（MSVC 配布） + `llvm-config`, `opt`, `llc` | `llvm-config --version`, `where opt`, `where llc` | バージョン、パス、`DataLayout` サマリ | `LLVM_DIR` 環境変数を記録し、Rust 版 `llvm-sys` 設定に利用。 |
 | MSVC | Visual Studio Build Tools, `cl.exe`, `link.exe` | `vswhere.exe -latest -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64` | `installationPath`, バージョン, `VCToolsVersion`, `WindowsSdkDir` | `setup-windows-toolchain.ps1` で自動収集可。 |
 | MinGW (任意) | `x86_64-w64-mingw32-gcc`, `ld`, `ar` | `where gcc`, `gcc -v` | バージョン、`sysroot` | GNU toolchain でのクロス検証向け。 |
-| PowerShell スクリプト | `tooling/toolchains/setup-windows-toolchain.ps1`, `check-windows-bootstrap-env.ps1`, `run-final-check.ps1` | `.\setup-windows-toolchain.ps1 -VerifyOnly`, `.\check-windows-bootstrap-env.ps1 -EmitJson` | 実行結果ステータス、エラー詳細、生成 JSON | Rust 版セットアップ時も同スクリプトを再利用し、ログは `reports/toolchain/...` へ保存。 |
+| PowerShell スクリプト | `tooling/toolchains/setup-windows-toolchain.ps1`, `check-windows-bootstrap-env.ps1`, `run-final-check.ps1` | `.\setup-windows-toolchain.ps1 -CheckOutputJson <出力パス>`, `.\check-windows-bootstrap-env.ps1 -OutputJson <出力パス>` | 実行結果ステータス、エラー詳細、生成 JSON | Rust 版セットアップ時も同スクリプトを再利用し、ログは `reports/toolchain/...` へ保存。 |
 | GitHub Actions | `windows-latest` イメージ、MSVC/MinGW マトリクス | CI 設定ファイル（`.github/workflows/`） | 成功/失敗ログ、`collect-iterator-audit-metrics.py` 出力 | Rust 版 CI 追加時に同マトリクスへジョブ追加。 |
 
 ## 0.2.3 ログ出力と保管方針
-- PowerShell スクリプトは `-EmitJson`（または同等引数）で JSON を出力し、`reports/toolchain/windows/YYYYMMDD/` に保存する。Rust 版は同フォーマットを読み取り、差分比較に利用する。
+- PowerShell スクリプトは `-CheckOutputJson` / `-OutputJson` 引数で JSON を出力し、`reports/toolchain/windows/YYYYMMDD/` に保存する。Rust 版は同フォーマットを読み取り、差分比較に利用する。
 - `setup-windows-toolchain.ps1` の実行時には環境変数 `RUSTUP_TOOLCHAIN`, `LLVM_VERSION`, `VCVARSALL_ARCH` を明示し、ログへ出力する。
 - CI では以下のアーティファクトを保存する:
-  - `collect-iterator-audit-metrics.py --profile windows-msvc` の結果（JSON）
-  - `check-windows-bootstrap-env.ps1 -EmitJson` の結果
+  - `collect-iterator-audit-metrics.py --platform windows-msvc` の結果（JSON）
+  - `check-windows-bootstrap-env.ps1 -OutputJson <出力パス>` の結果
   - `cargo version`, `rustc -Vv`, `cl.exe /?` の標準出力
 
 ## 0.2.4 検証シナリオ
@@ -37,14 +37,14 @@
    - `opt --version` と `llc --version` が同一バージョンであることを確認。  
    - `llvm-config --host-target` の出力を `unified-porting-principles.md` §2 の `TargetMachine` 設定と照合する。
 4. **Rust CLI PoC 事前検証**  
-   - Phase P1 の Rust CLI が準備でき次第、`collect-iterator-audit-metrics.py --require-success --profile windows-msvc` を Rust 出力に対して実行し、OCaml 版と比較する。
+   - Phase P1 の Rust CLI が準備でき次第、`collect-iterator-audit-metrics.py --require-success --platform windows-msvc` を Rust 出力に対して実行し、OCaml 版と比較する。
 
 ## 0.2.5 CI 統合方針
 - `.github/workflows/` に Windows 用 Rust ジョブを追加し、以下の順序で実行する:
-  1. PowerShell で `setup-windows-toolchain.ps1 -VerifyOnly`
+  1. PowerShell で `setup-windows-toolchain.ps1 -CheckOutputJson <出力パス>`
   2. `rustup`/`cargo` セットアップ（MSVC/MinGW マトリクス）
   3. Rust CLI/ライブラリのビルド + スモークテスト
-  4. `collect-iterator-audit-metrics.py --profile windows-msvc --require-success`
+  4. `collect-iterator-audit-metrics.py --platform windows-msvc --require-success`
   5. アーティファクト保存 (`reports/toolchain`, `metrics/`)
 - 既存の OCaml ジョブと同じ Gate (`stage_mismatch_count == 0`) を Rust ジョブにも適用し、差分発生時はジョブ全体を失敗させる。
 

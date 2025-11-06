@@ -391,6 +391,18 @@
 - 関連チェックリスト: `docs/plans/bootstrap-roadmap/checklists/spec-drift-review-checklist.md`（Phase 2-5 仕様差分レビュー）
 - ログ記録手順: 各マイルストーン完了後に本表の状態欄を更新し、差分リスト ID とリンクを追記する。未達の場合は理由とリカバリ計画を備考欄へ記載し、必要に応じて `0-4-risk-handling.md` へエスカレーションする。
 
+### phaseP0.review-2025-11-06
+| 文書 | 主な確認事項 | 状態 | フォローアップ | Reviewer | Due |
+|------|--------------|------|----------------|----------|-----|
+| `docs/plans/rust-migration/0-0-roadmap.md` | セクション欠落と参照先の妥当性確認（問題なし） | 完了 | - | Codex (2025-11-06) | - |
+| `docs/plans/rust-migration/0-1-baseline-and-diff-assets.md` | `collect-iterator-audit-metrics.py` 引数表記の更新（`--platform` へ修正） | 完了 | - | Codex (2025-11-06) | - |
+| `docs/plans/rust-migration/0-2-windows-toolchain-audit.md` | PowerShell スクリプト引数と CI アーティファクト手順の現行化 | 完了 | - | Codex (2025-11-06) | - |
+| `docs/plans/rust-migration/appendix/glossary-alignment.md` | Rust 固有語彙の不足確認（`Dual-write` 追記） | 完了 | - | Codex (2025-11-06) | - |
+
+- 2025-11-06 / docs/plans/rust-migration/0-0-roadmap.md 他 / P0 文書セットアップのセルフレビューを実施し、`collect-iterator-audit-metrics.py --platform windows-msvc` など最新のコマンド体系へ更新。`0-2-windows-toolchain-audit.md` の PowerShell 引数と glossary の `Dual-write` 行を修正して差分を解消。 / completed (Phase P0)
+  - レビュー: 2025-11-06 Rust Migration WG セルフレビュー（Codex）
+  - フォローアップ: 追加課題なし。Phase P1 着手時に `reports/dual-write/` 配下のログ運用を開始する。
+
 - 2025-10-06 / compiler/ocaml / パーサードライバーを `Result<Ast, Diagnostic>` へ移行し、`tests/test_parser.ml` に診断メタデータ検証を追加。`diagnostic_regressions` 指標は `dune test` による差分チェックで監視。
 - 2025-10-07 / compiler/ocaml / Phase 3 Week 10-11 完了: Core IR 最適化パス（定数畳み込み、死コード削除、パイプライン統合）を実装。総コード行数: 約5,642行、テスト: 42件全て成功。
 - 2025-10-09 / compiler/ocaml / Phase 3 Week 15 完了: ABI判定・属性設定のユニットテスト実装。総テストケース: 61件（既存45件 + 新規16件）、成功率: 100%。16バイト境界の正確な判定を検証済み。
