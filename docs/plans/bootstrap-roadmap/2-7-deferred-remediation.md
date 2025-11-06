@@ -47,6 +47,9 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
 - **TODO: RISK-RUST-01** — P4 リスク台帳で求められる性能・監査ゲートを Phase 2-7 の負債整理に組み込み、`0-4-risk-handling.md` と連動したチェックリストを作成する。関連: §4.1〜§4.2、`docs/plans/rust-migration/4-0-risk-register.md`。
 - **TODO: DIAG-RUST-01** — `reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/diagnostic_diff.md` で列挙した `ffi_callconv_sample` / `pattern_examples` / `unicode_identifiers` の診断件数差分を調査し、Rust フロントエンドの recover 戦略（`ParserExpectation`/`Diagnostic.Builder` 連携）を OCaml と同等に揃える。
 - **TODO: DIAG-RUST-02** — `emit_suite_cli` / `simple_module` / `trace_sample_cli` / `type_error_cli` など CLI サンプルで Rust 側のみ診断が増えるケースを `docs/plans/rust-migration/1-2-diagnostic-compatibility.md` の監視対象へ追記し、Packrat/Recover のヒューリスティクを共有する。
+- **TODO: W2-AST-001** — `EffectMeta` に `CapabilityStage` を保持する層（AST か Typed AST か）を決定し、`docs/spec/3-8-core-runtime-capability.md` の stage 検証との整合を確認する。W2 草案 (`appendix/typed_ast_schema_draft.md`) で保留した内容。関連: `docs/plans/rust-migration/1-1-ast-and-ir-alignment.md#1-1-9`.
+- **TODO: W2-AST-002** — `TyPool` 実装方式（`slotmap` vs `index_vec`）を比較し、Dual-write JSON での `ty_id` 安定化と所有権コストを測定する。測定結果は W3 型推論タスク着手前に共有する。関連: `compiler/rust/frontend/src/semantics/types.rs`.
+- **TODO: W2-AST-003** — `typed_expr.dict_refs` の JSON 表現を単一テーブルへ正規化するか、各ノードに直接埋め込むか検討し、`collect-iterator-audit-metrics.py --section effects` が期待するキー構造を確定させる。関連: `tooling/ci/collect-iterator-audit-metrics.py`, `appendix/typed_ast_schema_draft.md`.
 
 ## 作業ブレークダウン
 
