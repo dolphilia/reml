@@ -3,8 +3,14 @@
   "diagnostics": [
     {
       "code": null,
-      "message": "`RParen / Comma` のいずれかが必要でしたが `Assign` が見つかりました",
-      "notes": [],
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`)`、`,`のいずれかが必要です",
+          "span": null
+        }
+      ],
       "recoverability": "recoverable",
       "span": {
         "end": 14,

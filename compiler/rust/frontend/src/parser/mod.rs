@@ -39,14 +39,14 @@ impl ParserDriver {
 
         let (ast, parse_errors) = parse_tokens(&tokens, source);
         diagnostics.extend(parse_errors.into_iter().map(|err| {
-            let (message, expected_tokens) = err.1;
+            let (message, recover_message) = err.1;
             let mut diagnostic = FrontendDiagnostic::new(message);
             if let Some(span) = err.0 {
                 diagnostic = diagnostic.with_span(span);
             }
-            if !expected_tokens.is_empty() {
+            if !recover_message.is_empty() {
                 diagnostic.add_note(
-                    DiagnosticNote::new("recover.expected_tokens", expected_tokens.join(", ")),
+                    DiagnosticNote::new("recover.expected_tokens", recover_message.clone()),
                 );
             }
             diagnostic.with_recoverability(Recoverability::Recoverable)
@@ -95,7 +95,7 @@ impl ParserDriver {
 fn parse_tokens(
     tokens: &[Token],
     source: &str,
-) -> (Option<Module>, Vec<(Option<Span>, (String, Vec<String>))>) {
+) -> (Option<Module>, Vec<(Option<Span>, (String, String))>) {
     let token_pairs: Vec<_> = tokens
         .iter()
         .filter(|token| token.kind != TokenKind::Whitespace)
@@ -113,8 +113,8 @@ fn parse_tokens(
         .into_iter()
         .map(|err| {
             let span = Some(convert_range(err.span()));
-            let message = format_simple_error(&err);
-            (span, message)
+            let (message, recover) = format_simple_error(&err);
+            (span, (message, recover))
         })
         .collect();
 
@@ -125,11 +125,18 @@ fn convert_range(range: Range<usize>) -> Span {
     Span::new(range.start as u32, range.end as u32)
 }
 
-fn format_simple_error(err: &Simple<TokenKind>) -> (String, Vec<String>) {
-    let expected_tokens: Vec<String> = err
-        .expected()
-        .filter_map(|opt| opt.map(|kind| format!("{kind:?}")))
-        .collect();
+fn format_simple_error(err: &Simple<TokenKind>) -> (String, String) {
+    let expected_tokens = expected_token_labels(err);
+    let recover_message = if expected_tokens.is_empty() {
+        String::new()
+    } else {
+        let formatted = expected_tokens
+            .iter()
+            .map(|token| format!("`{}`", token))
+            .collect::<Vec<_>>()
+            .join("、");
+        format!("ここで{}のいずれかが必要です", formatted)
+    };
 
     let message = match err.reason() {
         SimpleReason::Unexpected | SimpleReason::Unclosed { .. } => {
@@ -138,7 +145,43 @@ fn format_simple_error(err: &Simple<TokenKind>) -> (String, Vec<String>) {
         SimpleReason::Custom(msg) => msg.clone(),
     };
 
-    (message, expected_tokens)
+    (message, recover_message.clone())
+}
+
+fn expected_token_labels(err: &Simple<TokenKind>) -> Vec<String> {
+    err.expected()
+        .filter_map(|opt| opt.map(token_kind_label))
+        .collect()
+}
+
+fn token_kind_label(kind: TokenKind) -> String {
+    match kind {
+        TokenKind::KeywordFn => "fn",
+        TokenKind::KeywordLet => "let",
+        TokenKind::KeywordModule => "module",
+        TokenKind::KeywordEffect => "effect",
+        TokenKind::Identifier => "識別子",
+        TokenKind::IntLiteral => "整数リテラル",
+        TokenKind::FloatLiteral => "浮動小数リテラル",
+        TokenKind::StringLiteral => "文字列リテラル",
+        TokenKind::LParen => "(",
+        TokenKind::RParen => ")",
+        TokenKind::LBrace => "{",
+        TokenKind::RBrace => "}",
+        TokenKind::LBracket => "[",
+        TokenKind::RBracket => "]",
+        TokenKind::Comma => ",",
+        TokenKind::Colon => ":",
+        TokenKind::Semi => ";",
+        TokenKind::Arrow => "->",
+        TokenKind::Assign => "=",
+        TokenKind::Operator => "演算子",
+        TokenKind::Comment => "コメント",
+        TokenKind::Whitespace => "空白",
+        TokenKind::EndOfFile => "EOF",
+        TokenKind::Unknown => "未知のトークン",
+    }
+    .to_string()
 }
 
 fn module_parser<'src>(
@@ -315,9 +358,9 @@ mod driver {
         assert_eq!(diag.message, "構文エラー: 入力を解釈できません");
         assert!(!diag.notes.is_empty());
         assert_eq!(diag.notes[0].label, "recover.expected_tokens");
-        assert!(
-            diag.notes[0].message.contains("RParen"),
-            "expected token list to contain RParen"
+        assert_eq!(
+            diag.notes[0].message,
+            "ここで`)`、`,`のいずれかが必要です"
         );
     }
 }
