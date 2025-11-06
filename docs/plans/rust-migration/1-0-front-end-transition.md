@@ -49,6 +49,7 @@
 1. **準備と方針の再確認**  
    - P0 完了条件が満たされ、最新のゴールデンデータと Windows 監査結果を Rust 側でも参照できる状態を確認する。  
    - `unified-porting-principles.md` の優先順位原則と dual-write 前提をチームで再共有し、性能・安全性の許容範囲を明文化する。
+   - ✅ 2025-03-09: `reports/dual-write/front-end/`（ゴールデン OCaml 出力／差分格納レイアウト）と `reports/toolchain/windows/20251106/*.json`（`setup-windows-toolchain.ps1`・`check-windows-bootstrap-env.ps1` の監査ログ）が Rust チームから直接参照可能であることを確認。`docs/plans/rust-migration/0-1-baseline-and-diff-assets.md` に記載された既知の欠落項目（`parser.core.rule.*` など）を引き継ぎつつ、`unified-porting-principles.md` §1 の優先順位と成功指標（診断キー一致 100%、性能回帰 ±10% 以内、Windows MSVC/GNU 5 連続成功）を本計画書の進捗ログとして再記録した。
 
 2. **OCaml 実装の棚卸しと設計ノート整備**  
    - `compiler/ocaml/docs/parser_design.md` を読み、字句要素・演算子優先順位・構文カテゴリを洗い出して Rust 実装で必要となるトークン/ノード一覧を作成する。  
