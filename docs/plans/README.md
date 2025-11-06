@@ -11,5 +11,9 @@ Reml 実装ロードマップや運用計画を集約しています。
 ## リポジトリ再編計画
 - [repository-restructure-plan.md](repository-restructure-plan.md)
 
+## Rust 移植計画 (`docs/plans/rust-migration/`)
+- [README.md](rust-migration/README.md) — Rust 版コンパイラ移行タスクのドキュメント集約
+- [unified-porting-principles.md](rust-migration/unified-porting-principles.md) — 移植原則・OCaml→Rust 鉄則・プロジェクト指針を統合したガイド
+
 ---
 計画書を更新する際は、関連する仕様書やガイドのリンクが最新構成になっているか確認し、`docs-migrations.log` に必要な記録を追加してください。

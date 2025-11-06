@@ -74,6 +74,7 @@
 2. F# で Windows 専用フロントエンド PoC を実施し、IDE 連携と LLVMSharp 統合の工数を評価する。
 3. PoC 結果を比較し、Phase 2-6 ドキュメントへ Windows 対策ロードマップとして追記するレビューセッションを設定する。
 4. 選定後は Phase 3 マイルストーンに影響するタスク（標準ライブラリ実装、Capability 整合）の再計画と、`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` の更新を行う。
+5. Rust 移植計画の詳細策定を `docs/plans/rust-migration/overview.md` に移譲し、以降の工程管理は同ディレクトリで追跡する。
 
 ## 参照資料
 - [docs/plans/bootstrap-roadmap/2-6-windows-support.md](./2-6-windows-support.md)
