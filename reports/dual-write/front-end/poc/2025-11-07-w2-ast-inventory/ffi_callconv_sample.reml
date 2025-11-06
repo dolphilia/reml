@@ -1,0 +1,18 @@
+// CLI 手動検証用 FFI サンプル
+// Windows (win64) と macOS (aapcs64) の呼出規約を一度に確認する
+
+extern "C" {
+  @target("x86_64-pc-windows-msvc")
+  @link_name("ffi_win_probe")
+  @ownership("transferred")
+  @callconv("msvc")
+  fn ffi_win_probe() -> i32;
+
+  @target("arm64-apple-darwin")
+  @link_name("ffi_macos_probe")
+  @ownership("borrowed")
+  @callconv("aapcs64")
+  fn ffi_macos_probe() -> i32;
+}
+
+pub fn main() -> i64 = 0

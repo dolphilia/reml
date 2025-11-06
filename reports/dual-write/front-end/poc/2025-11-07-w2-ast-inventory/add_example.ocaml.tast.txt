@@ -1,0 +1,152 @@
+/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/add_example.reml:4:3: エラー (構文解析): 構文エラー: 入力を解釈できません
+   3 | fn main() -> i64 =
+   4 |   let result = add(2, 40)
+         ^^^
+   5 |   result
+期待される入力: キーワード 'continue', キーワード 'defer', キーワード 'do', キーワード 'false', キーワード 'for', キーワード 'handle', キーワード 'if', キーワード 'loop', キーワード 'match', キーワード 'perform', キーワード 'return', キーワード 'self', キーワード 'true', キーワード 'unsafe', キーワード 'while', トークン '!', トークン '(', トークン '-', トークン '[', トークン '{', トークン '|', 文字クラス 'char-literal', 文字クラス 'float-literal', 文字クラス 'identifier', 文字クラス 'integer-literal', 文字クラス 'string-literal', 文字クラス 'upper-identifier'
+ここで`continue`、`defer`、`do`、`false`、`for`、`handle`、`if`、`loop`、`match`、`perform`、`return`、`self`、`true`、`unsafe`、`while`、`!`、`(`、`-`、`[`、`{`、`|`、char-literal、float-literal、identifier、integer-literal、string-literal または upper-identifierのいずれかが必要です
+拡張[recover]: {"expected_tokens":[{"kind":"keyword","label":"continue"},{"kind":"keyword","label":"defer"},{"kind":"keyword","label":"do"},{"kind":"keyword","label":"false"},{"kind":"keyword","label":"for"},{"kind":"keyword","label":"handle"},{"kind":"keyword","label":"if"},{"kind":"keyword","label":"loop"},{"kind":"keyword","label":"match"},{"kind":"keyword","label":"perform"},{"kind":"keyword","label":"return"},{"kind":"keyword","label":"self"},{"kind":"keyword","label":"true"},{"kind":"keyword","label":"unsafe"},{"kind":"keyword","label":"while"},{"kind":"token","label":"!"},{"kind":"token","label":"("},{"kind":"token","label":"-"},{"kind":"token","label":"["},{"kind":"token","label":"{"},{"kind":"token","label":"|"},{"kind":"class","label":"char-literal"},{"kind":"class","label":"float-literal"},{"kind":"class","label":"identifier"},{"kind":"class","label":"integer-literal"},{"kind":"class","label":"string-literal"},{"kind":"class","label":"upper-identifier"}],"message":"ここで`continue`、`defer`、`do`、`false`、`for`、`handle`、`if`、`loop`、`match`、`perform`、`return`、`self`、`true`、`unsafe`、`while`、`!`、`(`、`-`、`[`、`{`、`|`、char-literal、float-literal、identifier、integer-literal、string-literal または upper-identifierのいずれかが必要です"}
+拡張[parse]: {"parser_id":{"namespace":"menhir","name":"compilation_unit","ordinal":0,"origin":"static","fingerprint":"859967339"}}
+拡張[effect.required_capabilities]: []
+拡張[effect.stage.required_capabilities]: []
+拡張[effect.actual_capabilities]: []
+拡張[effect.stage.actual_capabilities]: []
+拡張[effect.capabilities]: []
+拡張[runconfig]: {"packrat":false,"left_recursion":"auto","trace":false,"merge_warnings":true,"require_eof":false,"legacy_result":true,"experimental_effects":false,"extensions":{"lex":{"profile":"strict_json","identifier_profile":"unicode"},"recover":{"sync_tokens":[],"notes":false},"stream":{"enabled":false}}}
+監査: {
+  "metadata": {
+    "parser": {
+      "core": {
+        "rule": {
+          "fingerprint": "859967339",
+          "origin": "static",
+          "ordinal": 0,
+          "name": "compilation_unit",
+          "namespace": "menhir"
+        }
+      }
+    },
+    "parser.core.rule": {
+      "fingerprint": "859967339",
+      "origin": "static",
+      "ordinal": 0,
+      "name": "compilation_unit",
+      "namespace": "menhir"
+    },
+    "parser.runconfig": {
+      "packrat": false,
+      "left_recursion": "auto",
+      "trace": false,
+      "merge_warnings": true,
+      "require_eof": false,
+      "legacy_result": true,
+      "experimental_effects": false,
+      "extensions": {
+        "lex": { "profile": "strict_json", "identifier_profile": "unicode" },
+        "recover": { "sync_tokens": [], "notes": false },
+        "stream": { "enabled": false }
+      }
+    },
+    "parser.runconfig.packrat": false,
+    "parser.runconfig.left_recursion": "auto",
+    "parser.runconfig.trace": false,
+    "parser.runconfig.merge_warnings": true,
+    "parser.runconfig.require_eof": false,
+    "parser.runconfig.legacy_result": true,
+    "parser.runconfig.experimental_effects": false,
+    "parser.runconfig.extensions.lex": {
+      "profile": "strict_json",
+      "identifier_profile": "unicode"
+    },
+    "parser.runconfig.extensions.lex.profile": "strict_json",
+    "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+    "parser.runconfig.extensions.recover": {
+      "sync_tokens": [],
+      "notes": false
+    },
+    "parser.runconfig.extensions.recover.notes": false,
+    "parser.runconfig.extensions.recover.sync_tokens": [],
+    "parser.runconfig.extensions.stream": { "enabled": false },
+    "parser.runconfig.extensions.stream.enabled": false,
+    "cli.change_set": {
+      "policy": "phase2.5.audit.v1",
+      "origin": "cli",
+      "source": {
+        "build_id": "20251106T220444Z-1d598e4",
+        "workspace": ".",
+        "sequence": 0,
+        "commit": "1d598e4"
+      },
+      "items": [
+        {
+          "kind": "cli-command",
+          "command": "remlc",
+          "args": [
+            "/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc",
+            "--emit-tast",
+            "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/add_example.reml"
+          ]
+        },
+        {
+          "kind": "input",
+          "path": "add_example.reml",
+          "target": "x86_64-linux"
+        },
+        { "kind": "outputs", "values": [ "emit_tast" ] }
+      ]
+    },
+    "cli.audit_id": "cli/20251106T220444Z-1d598e4#0",
+    "audit.source.commit": "1d598e4",
+    "audit.source.workspace": ".",
+    "audit.sequence": 0,
+    "audit.build_id": "20251106T220444Z-1d598e4",
+    "audit.channel": "cli",
+    "audit.policy.version": "phase2.5.audit.v1",
+    "effect.capabilities": [],
+    "effect.stage.actual_capabilities": [],
+    "effect.actual_capabilities": [],
+    "effect.stage.required_capabilities": [],
+    "effect.required_capabilities": [],
+    "fingerprint": "859967339",
+    "origin": "static",
+    "name": "compilation_unit",
+    "namespace": "menhir",
+    "parser.core.rule.fingerprint": "859967339",
+    "parser.core.rule.origin": "static",
+    "parser.core.rule.ordinal": 0,
+    "parser.core.rule.name": "compilation_unit",
+    "parser.core.rule.namespace": "menhir",
+    "event.domain": "parser",
+    "audit.timestamp": "2025-11-06T22:04:44Z",
+    "schema.version": "1.1"
+  },
+  "audit_id": "cli/20251106T220444Z-1d598e4#0",
+  "change_set": {
+    "policy": "phase2.5.audit.v1",
+    "origin": "cli",
+    "source": {
+      "build_id": "20251106T220444Z-1d598e4",
+      "workspace": ".",
+      "sequence": 0,
+      "commit": "1d598e4"
+    },
+    "items": [
+      {
+        "kind": "cli-command",
+        "command": "remlc",
+        "args": [
+          "/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc",
+          "--emit-tast",
+          "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/add_example.reml"
+        ]
+      },
+      {
+        "kind": "input",
+        "path": "add_example.reml",
+        "target": "x86_64-linux"
+      },
+      { "kind": "outputs", "values": [ "emit_tast" ] }
+    ]
+  }
+}
+タイムスタンプ: 2025-11-06T22:04:44Z

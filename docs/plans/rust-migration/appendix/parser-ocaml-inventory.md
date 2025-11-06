@@ -91,6 +91,7 @@
 - `typed_compilation_unit`（`tcu_*` フィールド）は `Module_env.use_binding list` を含む。Rust 実装では `use` 展開済みのバインディングも diff 対象にするため、`tcu_use_bindings` を `Vec<UseBinding>` で保持する草案とした。  
 - 制約 (`constraint_ list`) は AST と同型を再利用するため、Rust 版でも `Constraint { trait: Ident, args: Vec<TyId>, span }` を提供し、`p1-front-end-checklists.csv` の「Scheme/Constraint/Impl Registry」の受入条件へ直結させる。
 
+> W2 dual-write で収集した Typed AST/制約ログは `reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/` に保存している。
 ## 6. Core_parse / Streaming インベントリ（W2 追加）
 
 `compiler/ocaml/src/core_parse_streaming.ml` と `parser_driver.ml` からストリーミング状態および `ParseResult` 付随情報を抽出し、Rust 実装で保持すべきテレメトリ項目を固定した。
@@ -127,6 +128,8 @@
   - `parser.stream.outcome_consistency`（`consumed`/`committed` フラグの一致率）。  
   - `parser.stream_extension_field_coverage`（`extensions.recover` に含まれるフィールド数）。  
 - W2 の棚卸しでは、上記キーを `reports/dual-write/front-end/w2-ast-alignment/metrics/parser-stream-baseline.json`（予定）へ出力するための JSON スキーマを `parser_driver` と `collect-iterator` の双方で確認済み。Rust 版では同スキーマを `serde` モジュールで公開し、dual-write ハーネスから直接呼び出せるようにする。
+
+> 2025-11-07 の W2 バッチ結果（Rust 側 parse-debug JSON）は `reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/` に格納。OCaml 側の packrat 計測は CLI 拡張待ちのため未取得（summary では 0/0 として記録）。
 
 
 ---

@@ -1,0 +1,7 @@
+=== Typed AST ===
+
+fn square(n: i64) : (i64 -> i64)
+
+fn choose(flag: Bool, lhs: i64, rhs: i64) : (Bool -> (i64 -> (i64 -> i64)))
+
+fn main(()) : i64

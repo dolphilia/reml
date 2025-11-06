@@ -1,0 +1,3 @@
+fn square(n: i64) -> i64 = binary(var(n) * var(n))
+fn choose(flag: Bool, lhs: i64, rhs: i64) -> i64 {block 1 stmts}
+fn main() -> i64 {block 3 stmts}

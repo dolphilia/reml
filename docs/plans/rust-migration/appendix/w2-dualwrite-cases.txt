@@ -1,0 +1,11 @@
+# W2 dual-write input cases
+# format: name::file::<relative path>
+add_example::file::examples/cli/add.reml
+emit_suite_cli::file::examples/cli/emit_suite.reml
+trace_sample_cli::file::examples/cli/trace_sample.reml
+type_error_cli::file::examples/cli/type_error.reml
+simple_module::file::compiler/ocaml/tests/simple.reml
+pattern_examples::file::compiler/ocaml/tests/pattern_examples.reml
+effectful_sum::file::compiler/ocaml/tests/typeclass_effects/effectful_sum.reml
+unicode_identifiers::file::compiler/ocaml/tests/samples/unicode_identifiers.reml
+ffi_callconv_sample::file::compiler/ocaml/tests/samples/ffi/cli-callconv-sample.reml

@@ -1,0 +1,124 @@
+/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/type_error_cli.reml:2:6: エラー[E7006] (型システム): 条件式は Bool 型である必要があります
+   1 | fn bad_condition(x: i64) -> i64 =
+   2 |   if x then 1 else 0
+            ^
+   3 | 
+関連情報:
+  - この条件式の型は i64 です
+拡張[effect.required_capabilities]: []
+拡張[effect.stage.required_capabilities]: []
+拡張[effect.actual_capabilities]: []
+拡張[effect.stage.actual_capabilities]: []
+拡張[effect.capabilities]: []
+拡張[runconfig]: {"packrat":false,"left_recursion":"auto","trace":false,"merge_warnings":true,"require_eof":false,"legacy_result":true,"experimental_effects":false,"extensions":{"lex":{"profile":"strict_json","identifier_profile":"unicode"},"recover":{"sync_tokens":[],"notes":false},"stream":{"enabled":false}}}
+監査: {
+  "metadata": {
+    "parser.runconfig": {
+      "packrat": false,
+      "left_recursion": "auto",
+      "trace": false,
+      "merge_warnings": true,
+      "require_eof": false,
+      "legacy_result": true,
+      "experimental_effects": false,
+      "extensions": {
+        "lex": { "profile": "strict_json", "identifier_profile": "unicode" },
+        "recover": { "sync_tokens": [], "notes": false },
+        "stream": { "enabled": false }
+      }
+    },
+    "parser.runconfig.packrat": false,
+    "parser.runconfig.left_recursion": "auto",
+    "parser.runconfig.trace": false,
+    "parser.runconfig.merge_warnings": true,
+    "parser.runconfig.require_eof": false,
+    "parser.runconfig.legacy_result": true,
+    "parser.runconfig.experimental_effects": false,
+    "parser.runconfig.extensions.lex": {
+      "profile": "strict_json",
+      "identifier_profile": "unicode"
+    },
+    "parser.runconfig.extensions.lex.profile": "strict_json",
+    "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+    "parser.runconfig.extensions.recover": {
+      "sync_tokens": [],
+      "notes": false
+    },
+    "parser.runconfig.extensions.recover.notes": false,
+    "parser.runconfig.extensions.recover.sync_tokens": [],
+    "parser.runconfig.extensions.stream": { "enabled": false },
+    "parser.runconfig.extensions.stream.enabled": false,
+    "effect.capabilities": [],
+    "effect.stage.actual_capabilities": [],
+    "effect.actual_capabilities": [],
+    "effect.stage.required_capabilities": [],
+    "effect.required_capabilities": [],
+    "cli.change_set": {
+      "policy": "phase2.5.audit.v1",
+      "origin": "cli",
+      "source": {
+        "build_id": "20251106T220446Z-1d598e4",
+        "workspace": ".",
+        "sequence": 0,
+        "commit": "1d598e4"
+      },
+      "items": [
+        {
+          "kind": "cli-command",
+          "command": "remlc",
+          "args": [
+            "/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc",
+            "--emit-tast",
+            "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/type_error_cli.reml"
+          ]
+        },
+        {
+          "kind": "input",
+          "path": "type_error_cli.reml",
+          "target": "x86_64-linux"
+        },
+        { "kind": "outputs", "values": [ "emit_tast" ] }
+      ]
+    },
+    "cli.audit_id": "cli/20251106T220446Z-1d598e4#0",
+    "audit.source.commit": "1d598e4",
+    "audit.source.workspace": ".",
+    "audit.sequence": 0,
+    "audit.build_id": "20251106T220446Z-1d598e4",
+    "audit.channel": "cli",
+    "audit.policy.version": "phase2.5.audit.v1",
+    "event.domain": "type",
+    "event.kind": "E7006",
+    "audit.timestamp": "2025-11-06T22:04:46Z",
+    "schema.version": "1.1"
+  },
+  "audit_id": "cli/20251106T220446Z-1d598e4#0",
+  "change_set": {
+    "policy": "phase2.5.audit.v1",
+    "origin": "cli",
+    "source": {
+      "build_id": "20251106T220446Z-1d598e4",
+      "workspace": ".",
+      "sequence": 0,
+      "commit": "1d598e4"
+    },
+    "items": [
+      {
+        "kind": "cli-command",
+        "command": "remlc",
+        "args": [
+          "/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc",
+          "--emit-tast",
+          "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/type_error_cli.reml"
+        ]
+      },
+      {
+        "kind": "input",
+        "path": "type_error_cli.reml",
+        "target": "x86_64-linux"
+      },
+      { "kind": "outputs", "values": [ "emit_tast" ] }
+    ]
+  }
+}
+タイムスタンプ: 2025-11-06T22:04:46Z

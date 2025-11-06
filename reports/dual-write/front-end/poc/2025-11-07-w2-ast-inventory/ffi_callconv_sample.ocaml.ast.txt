@@ -1,0 +1,2 @@
+extern "C" {items=2}
+pub fn main() -> i64 = int(0:base10)

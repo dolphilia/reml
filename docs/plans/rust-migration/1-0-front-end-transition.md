@@ -104,6 +104,7 @@
    - `p1-front-end-checklists.csv` の該当行に W2 で作成する成果物（例: `typed_ast_schema_draft.md`, `rust_ast_span_tests.rs`）を記入し、完了条件を「dual-write AST JSON 差分ゼロ」「型 ID/制約リスト一致」として設定する。
 
 4. **Dual-write 検証ラインとストリーミング確認の自動化**  
+   - ✅ 2025-11-07: `scripts/poc_dualwrite_compare.sh --run-id 2025-11-07-w2-ast-inventory --cases docs/plans/rust-migration/appendix/w2-dualwrite-cases.txt` を実行し、`reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/` に AST／Typed AST／診断出力を収集。`summary.md` にケース別統計（packrat, diagnostics）を集約した。  
    - `1-3-dual-write-runbook.md` 手順 1〜3 を W2 版テスト入力セット（`examples/cli/*.reml`, `compiler/ocaml/tests/parser_expectation/*.reml`, `compiler/ocaml/tests/streaming_runner_tests.ml` 由来ケース）に適用し、`reports/dual-write/front-end/w2-ast-alignment/<case>/` 以下へ AST/Typed AST/packrat diff を保存する。  
    - ストリーミング指標（`packrat_hits`, `span_trace_pairs`, `Reply.consumed/committed`）を Rust 側テレメトリで収集できるように `compiler/rust/frontend/tests/streaming_metrics.rs` を更新し、`collect-iterator-audit-metrics.py --section parser --require-success` の実行結果を `w2-streaming-metrics.json` にまとめる。  
    - 診断側ハーネスとの整合が必要な差分は `1-2-diagnostic-compatibility.md` にも記載し、Recover 系拡張が AST ノード情報に依存している場合は同時に検証する。

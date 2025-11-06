@@ -1,0 +1,9 @@
+=== Typed AST ===
+
+let (answer : i64 [answer: i64]) = ... : i64
+
+fn add(x: i64, y: i64) : (i64 -> (i64 -> i64))
+
+fn fact(n: i64) : (i64 -> i64)
+
+let (result : i64 [result: i64]) = ... : i64

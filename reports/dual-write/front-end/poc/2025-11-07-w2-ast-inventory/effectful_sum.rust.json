@@ -1,0 +1,222 @@
+{
+  "ast_render": null,
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 29,
+            "start": 28
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 29,
+        "start": 28
+      }
+    },
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`)`、`,`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 20,
+        "start": 19
+      }
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/effectful_sum.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 389,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": [
+      {
+        "label": "parser.simple_error",
+        "span": {
+          "end": 20,
+          "start": 19
+        }
+      }
+    ]
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 389,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  },
+  "tokens": [
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 2,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "effectful_sum",
+      "span": {
+        "end": 16,
+        "start": 3
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 17,
+        "start": 16
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "xs",
+      "span": {
+        "end": 19,
+        "start": 17
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 20,
+        "start": 19
+      }
+    },
+    {
+      "kind": "LBracket",
+      "lexeme": null,
+      "span": {
+        "end": 22,
+        "start": 21
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 25,
+        "start": 22
+      }
+    },
+    {
+      "kind": "RBracket",
+      "lexeme": null,
+      "span": {
+        "end": 26,
+        "start": 25
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 27,
+        "start": 26
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 30,
+        "start": 29
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "io",
+      "span": {
+        "end": 33,
+        "start": 31
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 35,
+        "start": 34
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 38,
+        "start": 36
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 42,
+        "start": 39
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 44,
+        "start": 43
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "0",
+      "span": {
+        "end": 48,
+        "start": 47
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 50,
+        "start": 49
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 51,
+        "start": 51
+      }
+    }
+  ]
+}

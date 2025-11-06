@@ -1,0 +1,228 @@
+// パターンマッチング実用例
+// Phase 1 パーサの網羅的検証用サンプル
+
+module test.pattern_examples
+
+use ::Core.Prelude.{Result, Option}
+
+// ========== 基本的なパターンマッチ ==========
+
+fn simple_option(opt: Option<i64>) -> i64 =
+  match opt with
+  | Some(x) -> x
+  | None -> 0
+
+fn simple_result(res: Result<i64, Str>) -> i64 =
+  match res with
+  | Ok(value) -> value
+  | Err(msg) -> -1
+
+// ========== ネストしたコンストラクタパターン ==========
+
+fn nested_option(opt: Option<Option<i64>>) -> i64 =
+  match opt with
+  | Some(Some(x)) -> x
+  | Some(None) -> 0
+  | None -> -1
+
+fn nested_result_option(res: Result<Option<i64>, Str>) -> i64 =
+  match res with
+  | Ok(Some(value)) -> value
+  | Ok(None) -> 0
+  | Err(msg) -> -1
+
+fn triple_nested(opt: Option<Result<Option<i64>, Str>>) -> i64 =
+  match opt with
+  | Some(Ok(Some(x))) -> x
+  | Some(Ok(None)) -> 0
+  | Some(Err(msg)) -> -1
+  | None -> -2
+
+// ========== タプルパターン ==========
+
+fn tuple_simple(pair: (i64, i64)) -> i64 =
+  match pair with
+  | (x, y) -> x + y
+
+fn tuple_with_option(pair: (Option<i64>, Option<i64>)) -> i64 =
+  match pair with
+  | (Some(x), Some(y)) -> x + y
+  | (Some(x), None) -> x
+  | (None, Some(y)) -> y
+  | (None, None) -> 0
+
+fn nested_tuples(nested: ((i64, i64), (i64, i64))) -> i64 =
+  match nested with
+  | ((a, b), (c, d)) -> a + b + c + d
+
+fn deep_tuple_nest(deep: (i64, (i64, (i64, i64)))) -> i64 =
+  match deep with
+  | (x, (y, (z, w))) -> x + y + z + w
+
+// ========== レコードパターン ==========
+
+fn record_basic(point: { x: i64, y: i64 }) -> i64 =
+  match point with
+  | { x, y } -> x + y
+
+fn record_with_option(rec: { x: Option<i64>, y: i64 }) -> i64 =
+  match rec with
+  | { x: Some(value), y } -> value + y
+  | { x: None, y } -> y
+
+fn record_with_rest(rec: { x: i64, y: i64, z: i64 }) -> i64 =
+  match rec with
+  | { x, .. } -> x
+
+fn nested_record(outer: { inner: { value: i64 } }) -> i64 =
+  match outer with
+  | { inner: { value } } -> value
+
+// ========== ガード条件付きパターン ==========
+
+fn guard_simple(opt: Option<i64>) -> Str =
+  match opt with
+  | Some(x) if x > 10 -> "large"
+  | Some(x) if x > 0 -> "positive"
+  | Some(x) -> "non-positive"
+  | None -> "none"
+
+fn guard_tuple(pair: (i64, i64)) -> Str =
+  match pair with
+  | (x, y) if x > y -> "x bigger"
+  | (x, y) if x < y -> "y bigger"
+  | (x, y) -> "equal"
+
+fn guard_nested_pattern(opt: Option<Option<i64>>) -> i64 =
+  match opt with
+  | Some(Some(x)) if x != 0 -> x
+  | Some(Some(x)) -> 1
+  | Some(None) -> 0
+  | None -> -1
+
+fn guard_complex(res: Result<i64, Str>) -> Str =
+  match res with
+  | Ok(value) if value > 100 -> "too large"
+  | Ok(value) if value >= 0 -> "ok"
+  | Ok(value) -> "negative"
+  | Err(msg) if msg == "timeout" -> "retry"
+  | Err(msg) -> "error"
+
+// ========== リテラルパターン ==========
+
+fn literal_int(code: i64) -> Str =
+  match code with
+  | 0 -> "success"
+  | 1 -> "warning"
+  | 2 -> "error"
+  | _ -> "unknown"
+
+fn literal_string(status: Str) -> i64 =
+  match status with
+  | "ok" -> 0
+  | "error" -> 1
+  | "pending" -> 2
+  | _ -> 3
+
+fn literal_bool(flag: bool) -> i64 =
+  match flag with
+  | true -> 1
+  | false -> 0
+
+fn literal_with_constructor(opt: Option<i64>) -> Str =
+  match opt with
+  | Some(0) -> "zero"
+  | Some(1) -> "one"
+  | Some(n) -> "other"
+  | None -> "none"
+
+// ========== 複雑な組み合わせパターン ==========
+
+fn complex_nested(data: Option<(Result<i64, i64>, Option<Str>)>) -> Str =
+  match data with
+  | Some((Ok(0), Some("success"))) -> "perfect"
+  | Some((Ok(n), Some(msg))) if n > 0 -> "ok with value"
+  | Some((Ok(n), None)) -> "ok no message"
+  | Some((Err(code), Some(msg))) if code == 404 -> "not found"
+  | Some((Err(_), _)) -> "error"
+  | None -> "no data"
+
+fn complex_record_tuple_constructor(
+  response: { status: Result<(i64, Str), Str>, data: Option<i64> }
+) -> i64 =
+  match response with
+  | { status: Ok((code, msg)), data: Some(value) } -> value
+  | { status: Ok((code, msg)), data: None } -> 0
+  | { status: Err(err), data: _ } -> -1
+
+fn complex_multiple_arms(
+  input: Option<{ x: (i64, i64), y: Option<i64> }>
+) -> Str =
+  match input with
+  | Some({ x: (a, b), y: Some(c) }) if a + b > c -> "case1"
+  | Some({ x: (a, b), y: None }) if a > 0 -> "case2"
+  | Some({ x: _, y: Some(c) }) -> "case3"
+  | None -> "none"
+
+// ========== ネストしたmatch式 ==========
+
+fn nested_match(outer: Option<Result<i64, Str>>) -> i64 =
+  match outer with
+  | Some(inner) ->
+    match inner with
+    | Ok(value) -> value
+    | Err(_) -> 0
+  | None -> -1
+
+// ========== 実践的な例: 二分木の処理 ==========
+
+type Tree = Leaf(i64) | Node(Box<Tree>, i64, Box<Tree>)
+
+fn tree_sum(tree: Tree) -> i64 =
+  match tree with
+  | Leaf(value) -> value
+  | Node(left, value, right) ->
+    tree_sum(*left) + value + tree_sum(*right)
+
+fn tree_height(tree: Tree) -> i64 =
+  match tree with
+  | Leaf(_) -> 1
+  | Node(left, _, right) ->
+    let left_height = tree_height(*left)
+    let right_height = tree_height(*right)
+    if left_height > right_height then left_height + 1 else right_height + 1
+
+// ========== 実践的な例: リスト処理 ==========
+
+type List<T> = Nil | Cons(T, Box<List<T>>)
+
+fn list_length<T>(list: List<T>) -> i64 =
+  match list with
+  | Nil -> 0
+  | Cons(_, tail) -> 1 + list_length(*tail)
+
+fn list_sum(list: List<i64>) -> i64 =
+  match list with
+  | Nil -> 0
+  | Cons(head, tail) -> head + list_sum(*tail)
+
+fn list_map<A, B>(list: List<A>, f: A -> B) -> List<B> =
+  match list with
+  | Nil -> Nil
+  | Cons(head, tail) -> Cons(f(head), Box.of(list_map(*tail, f)))
+
+// ========== エッジケース ==========
+
+fn edge_unit(unit_val: ()) -> i64 =
+  match unit_val with
+  | () -> 0
+
+fn edge_wildcard_only(anything: i64) -> i64 =
+  match anything with
+  | _ -> 42
+
+fn edge_multiple_wildcards(complex: Option<(i64, Option<i64>)>) -> i64 =
+  match complex with
+  | Some((_, Some(_))) -> 1
+  | Some((_, None)) -> 2
+  | None -> 0

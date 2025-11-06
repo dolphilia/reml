@@ -1,0 +1,26 @@
+{
+  "case": "simple_module",
+  "source": "compiler/ocaml/tests/simple.reml",
+  "ast_match": false,
+  "ocaml_ast": "module test.simple\nuse ::Core.Parse\nlet answer = int(42:base10)\nfn add(x, y) -> i64 = binary(var(x) + var(y))\nfn fact(n) -> i64 {block 1 stmts}\nlet result = call(var(add))[int(10:base10), int(20:base10)]",
+  "rust_ast": null,
+  "ocaml_diag_count": 0,
+  "rust_diag_count": 6,
+  "diag_match": false,
+  "ocaml_diag_messages": [],
+  "rust_diag_messages": [
+    "未定義のトークンを検出しました",
+    "未定義のトークンを検出しました",
+    "未定義のトークンを検出しました",
+    "未定義のトークンを検出しました",
+    "未定義のトークンを検出しました",
+    "構文エラー: 入力を解釈できません"
+  ],
+  "ocaml_packrat_queries": 0,
+  "ocaml_packrat_hits": 0,
+  "rust_packrat_queries": 7,
+  "rust_packrat_hits": 6,
+  "rust_span_trace_len": 1,
+  "ocaml_tast_lines": 9,
+  "ocaml_tast_available": true
+}
