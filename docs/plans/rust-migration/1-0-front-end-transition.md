@@ -54,6 +54,7 @@
 2. **OCaml 実装の棚卸しと設計ノート整備**  
    - `compiler/ocaml/docs/parser_design.md` を読み、字句要素・演算子優先順位・構文カテゴリを洗い出して Rust 実装で必要となるトークン/ノード一覧を作成する。  
    - `parser_driver.ml` と `parser_expectation.ml` の役割分担（状態遷移、回復戦略、期待トークン生成）を整理し、抜け漏れをメモ化する。
+   - ✅ 2025-03-12: `docs/plans/rust-migration/appendix/parser-ocaml-inventory.md` を追加し、トークン集合・AST ノード列挙・`parser_driver`/`parser_expectation` の責務を整理した。Packrat メトリクスと診断拡張の再現要件もギャップとして記録済み。
 
 3. **Rust フロントエンド骨格の用意**  
    - `compiler/rust/frontend/` 配下に Lexer・Parser・Streaming モジュールの雛形ファイルと `Cargo.toml` の該当セクションを追加し、依存クレート候補（`logos`/`chumsky` 等）の評価メモを添える。  
