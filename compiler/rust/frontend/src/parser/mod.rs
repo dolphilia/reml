@@ -45,9 +45,10 @@ impl ParserDriver {
                 diagnostic = diagnostic.with_span(span);
             }
             if !recover_message.is_empty() {
-                diagnostic.add_note(
-                    DiagnosticNote::new("recover.expected_tokens", recover_message.clone()),
-                );
+                diagnostic.add_note(DiagnosticNote::new(
+                    "recover.expected_tokens",
+                    recover_message.clone(),
+                ));
             }
             diagnostic.with_recoverability(Recoverability::Recoverable)
         }));
@@ -101,7 +102,10 @@ fn parse_tokens(
         .filter(|token| token.kind != TokenKind::Whitespace)
         .map(|token| {
             let span = token.span;
-            (token.kind, (span.start as usize)..(span.end as usize))
+            (
+                token.kind,
+                (span.start as usize)..(span.end as usize),
+            )
         })
         .collect();
 
@@ -150,38 +154,40 @@ fn format_simple_error(err: &Simple<TokenKind>) -> (String, String) {
 
 fn expected_token_labels(err: &Simple<TokenKind>) -> Vec<String> {
     err.expected()
-        .filter_map(|opt| opt.map(token_kind_label))
+        .flat_map(|opt| match opt {
+            Some(kind) => token_kind_labels(&kind),
+            None => vec!["EOF".to_string()],
+        })
         .collect()
 }
 
-fn token_kind_label(kind: TokenKind) -> String {
+fn token_kind_labels(kind: &TokenKind) -> Vec<String> {
     match kind {
-        TokenKind::KeywordFn => "fn",
-        TokenKind::KeywordLet => "let",
-        TokenKind::KeywordModule => "module",
-        TokenKind::KeywordEffect => "effect",
-        TokenKind::Identifier => "識別子",
-        TokenKind::IntLiteral => "整数リテラル",
-        TokenKind::FloatLiteral => "浮動小数リテラル",
-        TokenKind::StringLiteral => "文字列リテラル",
-        TokenKind::LParen => "(",
-        TokenKind::RParen => ")",
-        TokenKind::LBrace => "{",
-        TokenKind::RBrace => "}",
-        TokenKind::LBracket => "[",
-        TokenKind::RBracket => "]",
-        TokenKind::Comma => ",",
-        TokenKind::Colon => ":",
-        TokenKind::Semi => ";",
-        TokenKind::Arrow => "->",
-        TokenKind::Assign => "=",
-        TokenKind::Operator => "演算子",
-        TokenKind::Comment => "コメント",
-        TokenKind::Whitespace => "空白",
-        TokenKind::EndOfFile => "EOF",
-        TokenKind::Unknown => "未知のトークン",
+        TokenKind::KeywordFn => vec!["fn".to_string()],
+        TokenKind::KeywordLet => vec!["let".to_string()],
+        TokenKind::KeywordModule => vec!["module".to_string()],
+        TokenKind::KeywordEffect => vec!["effect".to_string()],
+        TokenKind::Identifier => vec!["識別子".to_string()],
+        TokenKind::IntLiteral => vec!["整数リテラル".to_string()],
+        TokenKind::FloatLiteral => vec!["浮動小数リテラル".to_string()],
+        TokenKind::StringLiteral => vec!["文字列リテラル".to_string()],
+        TokenKind::LParen => vec!["(".to_string()],
+        TokenKind::RParen => vec![")".to_string()],
+        TokenKind::LBrace => vec!["{".to_string()],
+        TokenKind::RBrace => vec!["}".to_string()],
+        TokenKind::LBracket => vec!["[".to_string()],
+        TokenKind::RBracket => vec!["]".to_string()],
+        TokenKind::Comma => vec![",".to_string()],
+        TokenKind::Colon => vec![":".to_string()],
+        TokenKind::Semi => vec![";".to_string()],
+        TokenKind::Arrow => vec!["->".to_string()],
+        TokenKind::Assign => vec!["=".to_string()],
+        TokenKind::Operator => vec!["+".to_string()],
+        TokenKind::Comment => vec!["コメント".to_string()],
+        TokenKind::Whitespace => vec!["空白".to_string()],
+        TokenKind::EndOfFile => vec!["EOF".to_string()],
+        TokenKind::Unknown => vec!["未知のトークン".to_string()],
     }
-    .to_string()
 }
 
 fn module_parser<'src>(
@@ -358,9 +364,6 @@ mod driver {
         assert_eq!(diag.message, "構文エラー: 入力を解釈できません");
         assert!(!diag.notes.is_empty());
         assert_eq!(diag.notes[0].label, "recover.expected_tokens");
-        assert_eq!(
-            diag.notes[0].message,
-            "ここで`)`、`,`のいずれかが必要です"
-        );
+        assert_eq!(diag.notes[0].message, "ここで`)`、`,`のいずれかが必要です");
     }
 }
