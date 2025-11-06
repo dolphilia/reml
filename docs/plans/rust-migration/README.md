@@ -22,6 +22,10 @@
   - [`2-0-llvm-backend-plan.md`](2-0-llvm-backend-plan.md): LLVM バックエンド移植・TargetMachine 整合・IR 検証手順
   - [`2-1-runtime-integration.md`](2-1-runtime-integration.md): ランタイム FFI・Capability Registry・監査ログ統合計画
   - [`2-2-adapter-layer-guidelines.md`](2-2-adapter-layer-guidelines.md): プラットフォーム差分吸収アダプタ層の設計指針
+- **P3 CI/監査統合**
+  - [`3-0-ci-and-dual-write-strategy.md`](3-0-ci-and-dual-write-strategy.md): CI マトリクス拡張と dual-write 運用戦略
+  - [`3-1-observability-alignment.md`](3-1-observability-alignment.md): 監査メトリクス・ログ・ダッシュボード整合計画
+  - [`3-2-benchmark-baseline.md`](3-2-benchmark-baseline.md): ベンチマーク指標と性能ベースライン構築計画
 - **統合原則**
   - [`unified-porting-principles.md`](unified-porting-principles.md): 移植全体で共有する設計原則と成功指標
 
