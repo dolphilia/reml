@@ -19,6 +19,41 @@
     }
   ],
   "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/missing_paren.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 363,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 0,
+      "pruned": 0,
+      "queries": 0
+    },
+    "span_trace": [
+      {
+        "label": "parser.simple_error",
+        "span": {
+          "end": 14,
+          "start": 13
+        }
+      }
+    ]
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 363,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 0,
+      "pruned": 0,
+      "queries": 0
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  },
   "tokens": [
     {
       "kind": "KeywordFn",

@@ -39,6 +39,12 @@
   - キャッシュサイズは `RunConfig.packrat_budget_bytes`（デフォルト 4 MiB）を超えた段階で `prune_before` を強制し、溢れた際は `parser.stream.packrat_budget_drops` をインクリメントする。  
   - `span_trace` についても `RunConfig.trace_limit` のハード上限を守り、上限到達時は `Diagnostic` に `trace_truncated: true` を付加する。Packrat と同様にトレース破棄が発生した場合は `SessionShared` で警告ログを残し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` にフォローアップを記録する。
 
+## P1 W1: Packrat / span_trace 呼び出し統合（2025-12-06）
+- `compiler/rust/frontend/src/parser/mod.rs` に `record_streaming_error` を追加し、`Simple<TokenKind>` から得た期待トークン情報を `StreamingState::store_packrat` / `push_span_trace` へ連携。`ParserDriver::parse` は処理終了時に `metrics_snapshot` と `drain_span_trace` を取り出し、`ParsedModule.packrat_stats` / `span_trace` として CLI へ返す。
+- CLI PoC (`compiler/rust/frontend/src/bin/poc_frontend.rs`) の JSON に `parse_result.packrat_stats`・`parse_result.span_trace`・`stream_meta` を追加し、`tooling/ci/collect-iterator-audit-metrics.py` が Rust 出力の Packrat 統計を検出できることを確認した。空入力では `queries=0` のままだが、エラー時に `span_trace` が出力される。
+- `scripts/poc_dualwrite_compare.sh` が OCaml/Rust の `packrat_stats` を比較できるようサマリ JSON/Markdown に `packrat_queries`/`packrat_hits` を追加。`reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/*.summary.json` へ保存されるため、Packrat 実装差分を含むレビューが可能になった。
+- フォローアップ: 現状 Rust パーサはキャッシュ問い合わせ (`lookup_packrat`) を行っていないためヒット数は 0 のまま。W2 以降で `ParserDriver` のバックトラック／回復経路と統合し、OCaml 実装と同等のクエリ回数を収集できるようにする。評価結果は `docs/plans/rust-migration/1-1-ast-and-ir-alignment.md` の Packrat チェックリストへ反映する。
+
 ### PoC マイルストーン（W1→W2 移行条件）
 1. `parser::driver::tests::basic_roundtrip` で `module Main {}` 程度の AST を生成し、`dual-write` 比較スクリプト（OCaml 側スナップショットに倣った JSON）で差分ゼロを確認する。
 2. `StreamingState` の `packrat_cache` をモックデータで検証し、`parser.stream.packrat_entries` と `parser.stream.packrat_hits` を増減させるユニットテストを `tests/streaming_metrics.rs` に追加する。

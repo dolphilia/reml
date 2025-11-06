@@ -62,12 +62,27 @@ if ocaml_diag_raw:
     try:
         ocaml_diag_json = json.loads(ocaml_diag_raw)
         ocaml_diag_list = ocaml_diag_json.get("diagnostics", [])
+        ocaml_packrat = (
+            ocaml_diag_json.get("parse_result", {}).get("packrat_stats") or {}
+        )
     except json.JSONDecodeError:
         ocaml_diag_list = []
+        ocaml_packrat = {}
 else:
     ocaml_diag_list = []
+    ocaml_packrat = {}
 
 rust_diag_list = rust_data.get("diagnostics", [])
+rust_packrat = rust_data.get("parse_result", {}).get("packrat_stats") or {}
+rust_span_trace = rust_data.get("parse_result", {}).get("span_trace") or []
+
+def packrat_numbers(stats):
+    if not isinstance(stats, dict):
+        return 0, 0
+    return int(stats.get("queries", 0) or 0), int(stats.get("hits", 0) or 0)
+
+ocaml_queries, ocaml_hits = packrat_numbers(ocaml_packrat)
+rust_queries, rust_hits = packrat_numbers(rust_packrat)
 
 summary = {
     "case": name,
@@ -79,6 +94,11 @@ summary = {
     "diag_match": len(ocaml_diag_list) == len(rust_diag_list),
     "ocaml_diag_messages": [diag.get("message") for diag in ocaml_diag_list],
     "rust_diag_messages": [diag.get("message") for diag in rust_diag_list],
+    "ocaml_packrat_queries": ocaml_queries,
+    "ocaml_packrat_hits": ocaml_hits,
+    "rust_packrat_queries": rust_queries,
+    "rust_packrat_hits": rust_hits,
+    "rust_span_trace_len": len(rust_span_trace),
 }
 
 (case_dir / f"{name}.summary.json").write_text(
@@ -98,13 +118,15 @@ for path in sorted(case_dir.glob("*.summary.json")):
     summaries.append(json.loads(path.read_text(encoding="utf-8")))
 
 lines = [
-    "| case | ast_match | diag_match | ocaml_diag | rust_diag |",
-    "| --- | --- | --- | --- | --- |",
+    "| case | ast_match | diag_match | ocaml_diag | rust_diag | ocaml_packrat (q/h) | rust_packrat (q/h) |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
 ]
 for summary in summaries:
     lines.append(
         f"| {summary['case']} | {summary['ast_match']} | {summary['diag_match']} | "
-        f"{summary['ocaml_diag_count']} | {summary['rust_diag_count']} |"
+        f"{summary['ocaml_diag_count']} | {summary['rust_diag_count']} | "
+        f"{summary['ocaml_packrat_queries']}/{summary['ocaml_packrat_hits']} | "
+        f"{summary['rust_packrat_queries']}/{summary['rust_packrat_hits']} |"
     )
 
 (case_dir / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")

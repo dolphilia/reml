@@ -7,5 +7,10 @@
   "rust_diag_count": 0,
   "diag_match": true,
   "ocaml_diag_messages": [],
-  "rust_diag_messages": []
+  "rust_diag_messages": [],
+  "ocaml_packrat_queries": 0,
+  "ocaml_packrat_hits": 0,
+  "rust_packrat_queries": 0,
+  "rust_packrat_hits": 0,
+  "rust_span_trace_len": 0
 }

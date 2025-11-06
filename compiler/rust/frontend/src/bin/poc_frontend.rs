@@ -27,9 +27,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(DiagnosticJson::from)
         .collect::<Vec<_>>();
 
+    let parse_result = serde_json::json!({
+        "packrat_stats": result.packrat_stats,
+        "span_trace": result.span_trace,
+    });
+
+    let stream_meta = serde_json::json!({
+        "packrat": result.stream_metrics.packrat,
+        "span_trace": result.stream_metrics.span_trace,
+    });
+
     let payload = serde_json::json!({
         "input": input_path,
         "ast_render": result.ast_render(),
+        "parse_result": parse_result,
+        "stream_meta": stream_meta,
         "diagnostics": diagnostics,
         "tokens": result.tokens.iter().map(|token| serde_json::json!({
             "kind": format!("{:?}", token.kind),

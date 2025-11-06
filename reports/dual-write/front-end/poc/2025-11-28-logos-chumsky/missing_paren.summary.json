@@ -11,5 +11,10 @@
   ],
   "rust_diag_messages": [
     "構文エラー: 入力を解釈できません"
-  ]
+  ],
+  "ocaml_packrat_queries": 0,
+  "ocaml_packrat_hits": 0,
+  "rust_packrat_queries": 0,
+  "rust_packrat_hits": 0,
+  "rust_span_trace_len": 1
 }

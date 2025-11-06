@@ -1,7 +1,8 @@
-use reml_frontend::streaming::{
-    Expectation, ExpectationSummary, PackratEntry, StreamingState, StreamingStateConfig, TokenSample,
-};
 use reml_frontend::span::Span;
+use reml_frontend::streaming::{
+    Expectation, ExpectationSummary, PackratEntry, StreamingState, StreamingStateConfig,
+    TokenSample,
+};
 use smallvec::smallvec;
 use smol_str::SmolStr;
 

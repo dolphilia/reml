@@ -3,6 +3,8 @@
 use chumsky::error::{Simple, SimpleReason};
 use chumsky::prelude::*;
 use chumsky::stream::Stream;
+use smallvec::SmallVec;
+use smol_str::SmolStr;
 use std::ops::Range;
 
 pub mod ast;
@@ -11,6 +13,10 @@ use crate::diagnostic::{DiagnosticNote, FrontendDiagnostic};
 use crate::error::{FrontendError, Recoverability};
 use crate::lexer::{lex_source, LexOutput};
 use crate::span::Span;
+use crate::streaming::{
+    Expectation as StreamingExpectation, ExpectationSummary, PackratEntry, PackratStats,
+    StreamMetrics, StreamingState, StreamingStateConfig, TokenSample, TraceFrame,
+};
 use crate::token::{Token, TokenKind};
 use ast::{Expr, Function, Module, Param};
 
@@ -20,6 +26,9 @@ pub struct ParsedModule {
     pub tokens: Vec<Token>,
     pub diagnostics: Vec<FrontendDiagnostic>,
     pub ast: Option<Module>,
+    pub packrat_stats: PackratStats,
+    pub stream_metrics: StreamMetrics,
+    pub span_trace: Vec<TraceFrame>,
 }
 
 impl ParsedModule {
@@ -34,10 +43,12 @@ pub struct ParserDriver;
 impl ParserDriver {
     pub fn parse(source: &str) -> ParsedModule {
         let LexOutput { tokens, errors } = lex_source(source);
+        let streaming_state = StreamingState::new(StreamingStateConfig::default());
+
         let mut diagnostics: Vec<FrontendDiagnostic> =
             errors.into_iter().map(Self::error_to_diagnostic).collect();
 
-        let (ast, parse_errors) = parse_tokens(&tokens, source);
+        let (ast, parse_errors) = parse_tokens(&tokens, source, &streaming_state);
         diagnostics.extend(parse_errors.into_iter().map(|err| {
             let (message, recover_message) = err.1;
             let mut diagnostic = FrontendDiagnostic::new(message);
@@ -53,10 +64,16 @@ impl ParserDriver {
             diagnostic.with_recoverability(Recoverability::Recoverable)
         }));
 
+        let span_trace = streaming_state.drain_span_trace();
+        let stream_metrics = streaming_state.metrics_snapshot();
+
         ParsedModule {
             tokens,
             diagnostics,
             ast,
+            packrat_stats: stream_metrics.packrat,
+            stream_metrics,
+            span_trace,
         }
     }
 
@@ -96,16 +113,14 @@ impl ParserDriver {
 fn parse_tokens(
     tokens: &[Token],
     source: &str,
+    streaming_state: &StreamingState,
 ) -> (Option<Module>, Vec<(Option<Span>, (String, String))>) {
     let token_pairs: Vec<_> = tokens
         .iter()
         .filter(|token| token.kind != TokenKind::Whitespace)
         .map(|token| {
             let span = token.span;
-            (
-                token.kind,
-                (span.start as usize)..(span.end as usize),
-            )
+            (token.kind, (span.start as usize)..(span.end as usize))
         })
         .collect();
 
@@ -118,6 +133,7 @@ fn parse_tokens(
         .map(|err| {
             let span = Some(convert_range(err.span()));
             let (message, recover) = format_simple_error(&err);
+            record_streaming_error(streaming_state, &err, tokens, &message, &recover);
             (span, (message, recover))
         })
         .collect();
@@ -294,6 +310,75 @@ fn module_parser<'src>(
 
 fn span_union(left: Span, right: Span) -> Span {
     Span::new(left.start.min(right.start), left.end.max(right.end))
+}
+
+fn record_streaming_error(
+    streaming_state: &StreamingState,
+    err: &Simple<TokenKind>,
+    tokens: &[Token],
+    message: &str,
+    recover_message: &str,
+) {
+    let span = convert_range(err.span());
+    streaming_state.push_span_trace(Some(SmolStr::new_inline("parser.simple_error")), span);
+
+    let mut sample_tokens: SmallVec<[TokenSample; 8]> = SmallVec::new();
+    let context_start = span.start.saturating_sub(16);
+    let context_end = span.end.saturating_add(16);
+    for token in tokens
+        .iter()
+        .filter(|token| !matches!(token.kind, TokenKind::Whitespace | TokenKind::Comment))
+    {
+        if token.span.end < context_start || token.span.start > context_end {
+            continue;
+        }
+        let kind_label = format!("{:?}", token.kind);
+        let lexeme = token.lexeme.as_deref().unwrap_or_default();
+        sample_tokens.push(TokenSample {
+            kind: SmolStr::from(kind_label),
+            lexeme: SmolStr::from(lexeme),
+        });
+        if sample_tokens.len() >= 8 {
+            break;
+        }
+    }
+    if sample_tokens.is_empty() {
+        sample_tokens.push(TokenSample {
+            kind: SmolStr::new_inline("None"),
+            lexeme: SmolStr::new_inline(""),
+        });
+    }
+
+    let expectation_labels = expected_token_labels(err);
+    let expectations: Vec<StreamingExpectation> = expectation_labels
+        .iter()
+        .map(|label| StreamingExpectation {
+            description: SmolStr::from(label.as_str()),
+        })
+        .collect();
+    let summary_humanized = if !recover_message.is_empty() {
+        Some(SmolStr::from(recover_message))
+    } else if !message.is_empty() {
+        Some(SmolStr::from(message))
+    } else {
+        None
+    };
+    let summary = if summary_humanized.is_some() || !expectation_labels.is_empty() {
+        Some(ExpectationSummary {
+            humanized: summary_humanized,
+            alternatives: expectation_labels.into_iter().map(SmolStr::from).collect(),
+        })
+    } else {
+        None
+    };
+
+    let entry = PackratEntry::new(sample_tokens, expectations, summary);
+    let range_start = span.start;
+    let mut range_end = span.end;
+    if range_end <= range_start {
+        range_end = range_start.saturating_add(1);
+    }
+    streaming_state.store_packrat(1, range_start..range_end, entry);
 }
 
 #[cfg(test)]

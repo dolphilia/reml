@@ -2,6 +2,33 @@
   "ast_render": "fn answer() = int(42:base10)",
   "diagnostics": [],
   "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-28-logos-chumsky/empty_uses.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 0,
+      "budget_drops": 0,
+      "entries": 0,
+      "evictions": 0,
+      "hits": 0,
+      "pruned": 0,
+      "queries": 0
+    },
+    "span_trace": []
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 0,
+      "budget_drops": 0,
+      "entries": 0,
+      "evictions": 0,
+      "hits": 0,
+      "pruned": 0,
+      "queries": 0
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 0
+    }
+  },
   "tokens": [
     {
       "kind": "KeywordFn",

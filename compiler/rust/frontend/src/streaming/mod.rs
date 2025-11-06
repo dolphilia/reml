@@ -358,11 +358,7 @@ impl StreamingState {
 
         let mut evicted = 0u64;
         while self.config.packrat_budget_bytes > 0 {
-            let current_bytes = self
-                .shared
-                .packrat_metrics
-                .snapshot()
-                .approx_bytes;
+            let current_bytes = self.shared.packrat_metrics.snapshot().approx_bytes;
             if current_bytes <= self.config.packrat_budget_bytes {
                 break;
             }
@@ -404,12 +400,8 @@ impl StreamingState {
         if removed > 0 {
             self.shared.packrat_metrics.record_entries(cache.len());
             self.shared.packrat_metrics.add_bytes(-released_bytes);
-            self.shared
-                .packrat_metrics
-                .inc_pruned(removed as u64);
-            self.shared
-                .packrat_metrics
-                .inc_evictions(removed as u64);
+            self.shared.packrat_metrics.inc_pruned(removed as u64);
+            self.shared.packrat_metrics.inc_evictions(removed as u64);
         }
         removed
     }
