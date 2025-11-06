@@ -23,10 +23,61 @@
           "timestamp": "1970-01-01T00:00:00Z",
           "codes": [ "effects.contract.residual_leak" ]
         },
-        "effects": {
+        "capability": {
+          "detail": [ { "capability": "core.runtime", "stage": "stable" } ],
+          "ids": [ "core.runtime" ],
           "stage": { "required": "stable", "actual": "stable" },
-          "residual": { "missing": [ "panic" ], "leaked_from": "fn demo" },
+          "primary": "core.runtime",
+          "required": [ "core.runtime" ],
+          "actual": [ { "capability": "core.runtime", "stage": "stable" } ]
+        },
+        "effect.capabilities": [ "core.runtime" ],
+        "effect.required_capabilities": [ "core.runtime" ],
+        "effect.actual_capabilities": [
+          { "capability": "core.runtime", "stage": "stable" }
+        ],
+        "effect.stage.required_capabilities": [ "core.runtime" ],
+        "effect.stage.actual_capabilities": [
+          { "capability": "core.runtime", "stage": "stable" }
+        ],
+        "effect.stage.capabilities": [
+          { "capability": "core.runtime", "stage": "stable" }
+        ],
+        "effect.stage_trace": [
+          { "source": "cli_option", "note": "not provided" },
+          { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
+          {
+            "source": "typer",
+            "stage": "stable",
+            "capability": "core.runtime"
+          },
+          {
+            "source": "runtime",
+            "stage": "stable",
+            "capability": "core.runtime"
+          },
+          {
+            "source": "capability_json",
+            "stage": "stable",
+            "file": "tooling/runtime/capabilities/default.json"
+          }
+        ],
+        "effect.stage.required": "stable",
+        "effect.stage.actual": "stable",
+        "effect.stage.capability": "core.runtime",
+        "effects": {
           "declared": [ "io" ],
+          "actual_capabilities": [
+            { "capability": "core.runtime", "stage": "stable" }
+          ],
+          "required_capabilities": [ "core.runtime" ],
+          "capabilities": [ "core.runtime" ],
+          "capability": "core.runtime",
+          "stage": { "required": "stable", "actual": "stable" },
+          "capabilities_detail": [
+            { "capability": "core.runtime", "stage": "stable" }
+          ],
+          "residual": { "missing": [ "panic" ], "leaked_from": "fn demo" },
           "stage_trace": [
             { "source": "cli_option", "note": "not provided" },
             { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
@@ -47,44 +98,42 @@
             }
           ]
         },
-        "effect.stage.required": "stable",
-        "effect.stage.actual": "stable",
-        "effect.stage.capability": "core.runtime",
-        "effect.stage_trace": [
-          { "source": "cli_option", "note": "not provided" },
-          { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
-          {
-            "source": "typer",
-            "stage": "stable",
-            "capability": "core.runtime"
-          },
-          {
-            "source": "runtime",
-            "stage": "stable",
-            "capability": "core.runtime"
-          },
-          {
-            "source": "capability_json",
-            "stage": "stable",
-            "file": "tooling/runtime/capabilities/default.json"
-          }
-        ]
+        "effect.declared": [ "io" ],
+        "effect.residual.missing": [ "panic" ],
+        "effect.residual.leaked_from": "fn demo"
       },
       "audit_metadata": {
         "event.kind": "effects.contract.residual_leak",
         "event.domain": "type",
-        "effect.residual.tags": [ "panic" ],
-        "effect.capability": "core.runtime",
-        "effect.stage.actual": "stable",
         "effect.stage.required": "stable",
+        "effect.stage.actual": "stable",
+        "effect.capability": "core.runtime",
+        "effect.required_capabilities": [ "core.runtime" ],
+        "effect.stage.required_capabilities": [ "core.runtime" ],
+        "effect.actual_capabilities": [
+          { "capability": "core.runtime", "stage": "stable" }
+        ],
+        "effect.stage.actual_capabilities": [
+          { "capability": "core.runtime", "stage": "stable" }
+        ],
+        "capability.primary": "core.runtime",
+        "capability.ids": [ "core.runtime" ],
+        "effect.capabilities": [ "core.runtime" ],
         "effect.stage.capabilities": [
           { "capability": "core.runtime", "stage": "stable" }
         ],
-        "effect.capabilities": [ "core.runtime" ],
+        "effect.residual": {
+          "missing": [ "panic" ],
+          "leaked_from": "fn demo"
+        },
         "stage_trace": [
           { "source": "typer", "stage": "stable" },
           { "source": "runtime", "stage": "stable" }
         ],
+        "effect.declared": [ "io" ],
+        "effect.residual.tags": [ "panic" ],
+        "effect.residual.leaked_from": "fn demo",
+        "effect.residual.missing": [ "panic" ],
         "audit.policy.version": "phase2.5.audit.v1",
         "audit.channel": "cli",
         "audit.build_id": "19700101T000000Z",
@@ -122,18 +171,35 @@
           "audit.build_id": "19700101T000000Z",
           "audit.channel": "cli",
           "audit.policy.version": "phase2.5.audit.v1",
+          "effect.residual.missing": [ "panic" ],
+          "effect.residual.leaked_from": "fn demo",
+          "effect.residual.tags": [ "panic" ],
+          "effect.declared": [ "io" ],
           "stage_trace": [
             { "source": "typer", "stage": "stable" },
             { "source": "runtime", "stage": "stable" }
           ],
-          "effect.capabilities": [ "core.runtime" ],
+          "effect.residual": {
+            "missing": [ "panic" ],
+            "leaked_from": "fn demo"
+          },
           "effect.stage.capabilities": [
             { "capability": "core.runtime", "stage": "stable" }
           ],
-          "effect.stage.required": "stable",
-          "effect.stage.actual": "stable",
+          "effect.capabilities": [ "core.runtime" ],
+          "capability.ids": [ "core.runtime" ],
+          "capability.primary": "core.runtime",
+          "effect.stage.actual_capabilities": [
+            { "capability": "core.runtime", "stage": "stable" }
+          ],
+          "effect.actual_capabilities": [
+            { "capability": "core.runtime", "stage": "stable" }
+          ],
+          "effect.stage.required_capabilities": [ "core.runtime" ],
+          "effect.required_capabilities": [ "core.runtime" ],
           "effect.capability": "core.runtime",
-          "effect.residual.tags": [ "panic" ],
+          "effect.stage.actual": "stable",
+          "effect.stage.required": "stable",
           "event.domain": "type",
           "event.kind": "effects.contract.residual_leak",
           "audit.timestamp": "1970-01-01T00:00:00Z",

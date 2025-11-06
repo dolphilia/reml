@@ -49,6 +49,7 @@
       "audit_metadata": {
         "event.kind": "ffi.contract.unsupported_abi",
         "event.domain": "type",
+        "bridge.source_span": { "start": 0, "end": 168 },
         "bridge": {
           "status": "error",
           "return": {
@@ -70,7 +71,18 @@
           "ownership": "borrowed",
           "extern_symbol": "ffi_demo_c"
         },
-        "bridge.source_span": { "start": 0, "end": 168 },
+        "bridge.abi": "system_v",
+        "bridge.expected_abi": "msvc",
+        "bridge.target": "x86_64-pc-windows-msvc",
+        "bridge.arch": "x86_64",
+        "bridge.platform": "windows-msvc-x64",
+        "bridge.ownership": "borrowed",
+        "bridge.extern_symbol": "ffi_demo_c",
+        "bridge.return.ownership": "borrowed",
+        "bridge.return.status": "wrap",
+        "bridge.return.wrap": "wrap_foreign_ptr",
+        "bridge.return.release_handler": "none",
+        "bridge.return.rc_adjustment": "none",
         "audit.policy.version": "phase2.5.audit.v1",
         "audit.channel": "cli",
         "audit.build_id": "19700101T000000Z",
@@ -164,7 +176,18 @@
           "audit.build_id": "19700101T000000Z",
           "audit.channel": "cli",
           "audit.policy.version": "phase2.5.audit.v1",
-          "bridge.source_span": { "start": 0, "end": 168 },
+          "bridge.return.rc_adjustment": "none",
+          "bridge.return.release_handler": "none",
+          "bridge.return.wrap": "wrap_foreign_ptr",
+          "bridge.return.status": "wrap",
+          "bridge.return.ownership": "borrowed",
+          "bridge.extern_symbol": "ffi_demo_c",
+          "bridge.ownership": "borrowed",
+          "bridge.platform": "windows-msvc-x64",
+          "bridge.arch": "x86_64",
+          "bridge.target": "x86_64-pc-windows-msvc",
+          "bridge.expected_abi": "msvc",
+          "bridge.abi": "system_v",
           "bridge": {
             "status": "error",
             "return": {
@@ -186,6 +209,7 @@
             "ownership": "borrowed",
             "extern_symbol": "ffi_demo_c"
           },
+          "bridge.source_span": { "start": 0, "end": 168 },
           "event.domain": "type",
           "event.kind": "ffi.contract.unsupported_abi",
           "audit.timestamp": "1970-01-01T00:00:00Z",

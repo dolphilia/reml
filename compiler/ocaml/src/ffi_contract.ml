@@ -393,10 +393,39 @@ let bridge_json_of_normalized ?status (normalized : normalized_contract) :
 let bridge_audit_metadata_pairs ?(status = "ok")
     (normalized : normalized_contract) : (string * Json.t) list =
   let source_span = span_to_json normalized.contract.source_span in
-  [
-    ("bridge", bridge_json_of_normalized ~status normalized);
-    ("bridge.source_span", source_span);
-  ]
+  let bridge_json = bridge_json_of_normalized ~status normalized in
+  let find_field name =
+    match bridge_json with
+    | `Assoc fields -> List.assoc_opt name fields
+    | _ -> None
+  in
+  let find_return_field name =
+    match find_field "return" with
+    | Some (`Assoc fields) -> List.assoc_opt name fields
+    | _ -> None
+  in
+  let add_if_present key value acc =
+    match value with
+    | Some (`Null) | None -> acc
+    | Some data -> (key, data) :: acc
+  in
+  []
+  |> add_if_present "bridge.return.rc_adjustment" (find_return_field "rc_adjustment")
+  |> add_if_present "bridge.return.release_handler" (find_return_field "release_handler")
+  |> add_if_present "bridge.return.wrap" (find_return_field "wrap")
+  |> add_if_present "bridge.return.status" (find_return_field "status")
+  |> add_if_present "bridge.return.ownership" (find_return_field "ownership")
+  |> add_if_present "bridge.extern_symbol" (find_field "extern_symbol")
+  |> add_if_present "bridge.ownership" (find_field "ownership")
+  |> add_if_present "bridge.platform" (find_field "platform")
+  |> add_if_present "bridge.arch" (find_field "arch")
+  |> add_if_present "bridge.target" (find_field "target")
+  |> add_if_present "bridge.expected_abi" (find_field "expected_abi")
+  |> add_if_present "bridge.abi" (find_field "abi")
+  |> add_if_present "bridge.status" (find_field "status")
+  |> add_if_present "bridge.audit_pass_rate" (find_field "audit_pass_rate")
+  |> add_if_present "bridge" (Some bridge_json)
+  |> add_if_present "bridge.source_span" (Some source_span)
 
 let bridge_audit_metadata ?(status = "ok") (normalized : normalized_contract) :
     Json.t =

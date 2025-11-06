@@ -54,3 +54,4 @@
 2. Parser 系メタデータをドット区切りからネスト構造へ移行する（`scripts/validate-diagnostic-json.sh` の期待値と整合）。
 3. `streaming-outcome` 系 RunConfig に `lex` プロファイルを付与し、lexer メトリクスを満たす CLI フラグを文書化。
 4. FFI 監査ログの `bridge` メタデータを `collect-iterator-audit-metrics.py` の必須キーと一致させる。
+5. `parser.core.rule.*` の監査メタデータをネスト形式に統一しつつ、既存のドット表記と併存させる。

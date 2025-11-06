@@ -481,9 +481,12 @@ let resolve_color_mode opts =
  * @param source ソースコード文字列（オプション）
  * @param diag 診断情報
  *)
-let print_diagnostic opts source diag =
+let print_diagnostic opts source ~run_config diag =
   let color_mode = resolve_color_mode opts in
-  let serialized = Diagnostic_serialization.of_diagnostic diag in
+  let enriched =
+    Diagnostic.with_parser_runconfig_metadata ~config:run_config diag
+  in
+  let serialized = Diagnostic_serialization.of_diagnostic enriched in
   let output =
     match opts.Cli.Options.format with
     | Cli.Options.Text ->
@@ -883,7 +886,7 @@ let () =
                      | Error err ->
                          mark_audit_failure ();
                          let diag = Verify.error_to_diagnostic err None in
-                         print_diagnostic opts None diag;
+                         print_diagnostic opts None ~run_config:parser_run_config diag;
                          exit 1);
 
                   let basename = get_basename opts.input_file in
@@ -958,7 +961,7 @@ let () =
                         |> Builder.build)
                       |> attach_audit
                     in
-                    print_diagnostic opts (Some source) diag;
+                    print_diagnostic opts (Some source) ~run_config:parser_run_config diag;
                     exit 1
                 | Codegen.CodegenError msg ->
                     mark_audit_failure ();
@@ -981,7 +984,7 @@ let () =
                         |> Builder.build)
                       |> attach_audit
                     in
-                    print_diagnostic opts None diag;
+                    print_diagnostic opts None ~run_config:parser_run_config diag;
                     exit 1
               in
               Cli.File_util.ensure_directory opts.out_dir;
@@ -1033,7 +1036,7 @@ let () =
                 type_err
               |> attach_audit
             in
-            print_diagnostic opts (Some source) diag;
+            print_diagnostic opts (Some source) ~run_config:parser_run_config diag;
             exit 1);
 
       (* Phase 1-6 Week 15: トレース・統計サマリー出力（正常終了時） *)
@@ -1089,5 +1092,5 @@ let () =
     :: iterator_events);
 
   let diag = attach_audit diag in
-  print_diagnostic opts (Some source) diag;
+  print_diagnostic opts (Some source) ~run_config:parser_run_config diag;
   exit 1

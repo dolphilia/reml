@@ -34,6 +34,8 @@ let get key entries =
   | None -> None
 end
 
+module Run_config = Parser_run_config
+
 (* ========== 重要度 ========== *)
 
 type severity = Error | Warning | Info | Hint
@@ -962,6 +964,253 @@ let with_effect_stage_extension ?actual_stage ?residual ?provider ?manifest_path
     | _ -> diag
   in
   diag
+
+let with_parser_runconfig_metadata ~(config : Run_config.t) diag =
+  let add_field key value fields = (key, value) :: fields in
+  let add_string_field key value fields =
+    if String.trim value = "" then fields else add_field key (`String value) fields
+  in
+  let add_option_field key value fields =
+    match value with
+    | Some v -> add_field key v fields
+    | None -> fields
+  in
+  let effects_config = Run_config.Effects.of_run_config config in
+  let normalized_required =
+    effects_config.Run_config.Effects.required_capabilities
+    |> List.map String.trim
+    |> List.filter (fun value -> value <> "")
+    |> List.sort_uniq String.compare
+  in
+  let required_capabilities_json =
+    `List (List.map (fun name -> `String name) normalized_required)
+  in
+  let empty_capabilities_json = `List [] in
+  let has_effect_extensions =
+    match Extensions.get "effect.required_capabilities" diag.extensions with
+    | Some _ -> true
+    | None -> false
+  in
+  let diag =
+    if has_effect_extensions then diag
+    else
+      diag
+      |> set_extension "effect.required_capabilities"
+           required_capabilities_json
+      |> set_extension "effect.stage.required_capabilities"
+           required_capabilities_json
+      |> set_extension "effect.actual_capabilities"
+           empty_capabilities_json
+      |> set_extension "effect.stage.actual_capabilities"
+           empty_capabilities_json
+      |> set_extension "effect.capabilities" required_capabilities_json
+  in
+  let has_effect_audit =
+    match Extensions.get "effect.required_capabilities" diag.audit_metadata with
+    | Some _ -> true
+    | None -> false
+  in
+  let effect_audit_entries =
+    if has_effect_audit then []
+    else
+      [
+        ("effect.required_capabilities", required_capabilities_json);
+        ("effect.stage.required_capabilities", required_capabilities_json);
+        ("effect.actual_capabilities", empty_capabilities_json);
+        ("effect.stage.actual_capabilities", empty_capabilities_json);
+        ("effect.capabilities", required_capabilities_json);
+      ]
+  in
+  let left_recursion_label =
+    match config.left_recursion with
+    | Run_config.Off -> "off"
+    | Run_config.On -> "on"
+    | Run_config.Auto -> "auto"
+  in
+  let runconfig_fields =
+    []
+    |> add_field "packrat" (`Bool config.packrat)
+    |> add_string_field "left_recursion" left_recursion_label
+    |> add_field "trace" (`Bool config.trace)
+    |> add_field "merge_warnings" (`Bool config.merge_warnings)
+    |> add_field "require_eof" (`Bool config.require_eof)
+    |> add_field "legacy_result" (`Bool config.legacy_result)
+    |> add_field "experimental_effects" (`Bool config.experimental_effects)
+  in
+  let runconfig_fields =
+    match config.locale with
+    | Some locale -> add_string_field "locale" locale runconfig_fields
+    | None -> runconfig_fields
+  in
+  let lex_config = Run_config.Lex.of_run_config config in
+  let lex_profile = Run_config.Lex.profile_symbol lex_config.profile in
+  let lex_identifier_profile =
+    Run_config.Lex.identifier_profile_symbol lex_config.identifier_profile
+  in
+  let lex_fields =
+    []
+    |> add_field "profile" (`String lex_profile)
+    |> add_field "identifier_profile" (`String lex_identifier_profile)
+    |> (fun acc ->
+         match lex_config.space_id with
+         | Some id -> add_field "space_id" (`Int id) acc
+         | None -> acc)
+  in
+  let lex_json = `Assoc (List.rev lex_fields) in
+  let recover_config = Run_config.Recover.of_run_config config in
+  let recover_json =
+    `Assoc
+      [
+        ( "sync_tokens",
+          `List
+            (List.map
+               (fun token -> `String token)
+               recover_config.sync_tokens) );
+        ("notes", `Bool recover_config.emit_notes);
+      ]
+  in
+  let stream_config = Run_config.Stream.of_run_config config in
+  let stream_fields =
+    []
+    |> add_field "enabled" (`Bool stream_config.enabled)
+    |> (fun acc ->
+         match stream_config.checkpoint with
+         | Some checkpoint ->
+             add_string_field "checkpoint" checkpoint acc
+         | None -> acc)
+    |> (fun acc ->
+         match stream_config.resume_hint with
+         | Some hint -> add_string_field "resume_hint" hint acc
+         | None -> acc)
+    |> add_option_field "demand_min_bytes"
+         (Option.map (fun value -> `Int value) stream_config.demand_min_bytes)
+    |> add_option_field "demand_preferred_bytes"
+         (Option.map (fun value -> `Int value) stream_config.demand_preferred_bytes)
+    |> add_option_field "chunk_size"
+         (Option.map (fun value -> `Int value) stream_config.chunk_size)
+    |> (fun acc ->
+         match stream_config.flow with
+         | None -> acc
+        | Some flow ->
+            let policy_label =
+              match flow.Run_config.Stream.Flow.policy with
+              | Run_config.Stream.Flow.Manual -> "manual"
+              | Run_config.Stream.Flow.Auto -> "auto"
+            in
+            let flow_fields =
+              []
+              |> add_field "policy" (`String policy_label)
+             in
+             let backpressure_fields =
+               []
+               |> add_option_field "max_lag_bytes"
+                    (Option.map (fun value -> `Int value) flow.backpressure.max_lag_bytes)
+               |> add_option_field "debounce_ms"
+                    (Option.map (fun value -> `Int value) flow.backpressure.debounce_ms)
+               |> add_option_field "throttle_ratio"
+                    (Option.map (fun value -> `Float value) flow.backpressure.throttle_ratio)
+             in
+             let flow_fields =
+               match backpressure_fields with
+               | [] -> flow_fields
+               | _ ->
+                   add_field "backpressure" (`Assoc (List.rev backpressure_fields))
+                     flow_fields
+             in
+             add_field "flow" (`Assoc (List.rev flow_fields)) acc)
+  in
+  let stream_json = `Assoc (List.rev stream_fields) in
+  let extensions_json =
+    `Assoc [ ("lex", lex_json); ("recover", recover_json); ("stream", stream_json) ]
+  in
+  let runconfig_json =
+    `Assoc (List.rev (add_field "extensions" extensions_json runconfig_fields))
+  in
+  let base_audit_entries =
+    []
+      |> add_field "parser.runconfig" runconfig_json
+      |> add_field "parser.runconfig.packrat" (`Bool config.packrat)
+      |> add_field "parser.runconfig.left_recursion" (`String left_recursion_label)
+      |> add_field "parser.runconfig.trace" (`Bool config.trace)
+      |> add_field "parser.runconfig.merge_warnings" (`Bool config.merge_warnings)
+      |> add_field "parser.runconfig.require_eof" (`Bool config.require_eof)
+      |> add_field "parser.runconfig.legacy_result" (`Bool config.legacy_result)
+      |> add_field "parser.runconfig.experimental_effects"
+           (`Bool config.experimental_effects)
+  in
+  let base_audit_entries =
+    match config.locale with
+    | Some locale ->
+        add_string_field "parser.runconfig.locale" locale base_audit_entries
+    | None -> base_audit_entries
+  in
+  let base_audit_entries =
+    base_audit_entries
+    |> add_field "parser.runconfig.extensions.lex" lex_json
+    |> add_field "parser.runconfig.extensions.lex.profile" (`String lex_profile)
+    |> add_field "parser.runconfig.extensions.lex.identifier_profile"
+         (`String lex_identifier_profile)
+    |> (fun acc ->
+         match lex_config.space_id with
+         | Some id ->
+             add_field "parser.runconfig.extensions.lex.space_id" (`Int id) acc
+         | None -> acc)
+    |> add_field "parser.runconfig.extensions.recover" recover_json
+    |> add_field "parser.runconfig.extensions.recover.notes"
+         (`Bool recover_config.emit_notes)
+    |> add_field "parser.runconfig.extensions.recover.sync_tokens"
+         (`List
+            (List.map
+               (fun token -> `String token)
+               recover_config.sync_tokens))
+    |> add_field "parser.runconfig.extensions.stream" stream_json
+    |> add_field "parser.runconfig.extensions.stream.enabled"
+         (`Bool stream_config.enabled)
+    |> (fun acc ->
+         match stream_config.checkpoint with
+         | Some checkpoint ->
+             add_string_field "parser.runconfig.extensions.stream.checkpoint"
+               checkpoint acc
+         | None -> acc)
+    |> (fun acc ->
+         match stream_config.resume_hint with
+         | Some hint ->
+             add_string_field "parser.runconfig.extensions.stream.resume_hint" hint acc
+         | None -> acc)
+    |> add_option_field "parser.runconfig.extensions.stream.demand_min_bytes"
+         (Option.map (fun value -> `Int value) stream_config.demand_min_bytes)
+    |> add_option_field
+         "parser.runconfig.extensions.stream.demand_preferred_bytes"
+         (Option.map (fun value -> `Int value) stream_config.demand_preferred_bytes)
+    |> add_option_field "parser.runconfig.extensions.stream.chunk_size"
+         (Option.map (fun value -> `Int value) stream_config.chunk_size)
+  in
+  let base_audit_entries =
+    match stream_config.flow with
+    | None -> base_audit_entries
+    | Some flow ->
+        let policy_label =
+          match flow.Run_config.Stream.Flow.policy with
+          | Run_config.Stream.Flow.Manual -> "manual"
+          | Run_config.Stream.Flow.Auto -> "auto"
+        in
+        base_audit_entries
+        |> add_field
+             "parser.runconfig.extensions.stream.flow.policy"
+             (`String policy_label)
+        |> add_option_field
+             "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes"
+             (Option.map (fun value -> `Int value) flow.backpressure.max_lag_bytes)
+        |> add_option_field
+             "parser.runconfig.extensions.stream.flow.backpressure.debounce_ms"
+             (Option.map (fun value -> `Int value) flow.backpressure.debounce_ms)
+        |> add_option_field
+             "parser.runconfig.extensions.stream.flow.backpressure.throttle_ratio"
+             (Option.map (fun value -> `Float value) flow.backpressure.throttle_ratio)
+  in
+  let base_audit_entries = effect_audit_entries @ base_audit_entries in
+  let diag = set_extension "runconfig" runconfig_json diag in
+  merge_audit_metadata base_audit_entries diag
 
 let with_plugin_metadata ?signature ?(extra_metadata = []) ~bundle_id diag =
   let payload_fields =

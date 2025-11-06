@@ -671,8 +671,8 @@
         },
         {
           "metric": "diagnostics.effect_stage_consistency",
-          "total": 1,
-          "passed": 1,
+          "total": 2,
+          "passed": 2,
           "failed": 0,
           "pass_rate": 1.0,
           "pass_fraction": 1.0,
@@ -734,8 +734,8 @@
     },
     {
       "metric": "diagnostics.effect_stage_consistency",
-      "total": 1,
-      "passed": 1,
+      "total": 2,
+      "passed": 2,
       "failed": 0,
       "pass_rate": 1.0,
       "pass_fraction": 1.0,
@@ -1555,8 +1555,8 @@
       },
       {
         "metric": "diagnostics.effect_stage_consistency",
-        "total": 1,
-        "passed": 1,
+        "total": 2,
+        "passed": 2,
         "failed": 0,
         "pass_rate": 1.0,
         "pass_fraction": 1.0,

@@ -1305,16 +1305,6 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
         | Some cap -> cap
         | None -> ""
       in
-      let stage_json =
-        `Assoc
-          [
-            ("required", `String required_stage);
-            ( "actual",
-              match actual_stage_opt with
-              | Some stage -> `String stage
-              | None -> `Null );
-          ]
-      in
       let enriched_trace =
         match actual_stage_opt with
         | Some actual ->
@@ -1326,44 +1316,39 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
               ?capability:cap_opt
         | None -> profile.stage_trace
       in
-      let effects_fields =
-        [
-          ("declared", declared_json);
-          ("residual", residual_json);
-          ("stage", stage_json);
-        ]
-      in
-      let effects_fields =
-        if enriched_trace <> [] then
-          ("stage_trace", stage_trace_to_json enriched_trace) :: effects_fields
-        else effects_fields
+      let capability_entries =
+        profile.Effect_profile.resolved_capabilities
+        |> List.map (fun entry ->
+               ( entry.Effect_profile.capability_name,
+                 Effect_profile.stage_string_of_id_option entry.capability_stage ))
       in
       let diag =
-        Diagnostic.set_extension "effects"
-          (`Assoc (List.rev effects_fields))
-          diag
+        Diagnostic.with_effect_stage_extension
+          ?actual_stage:actual_stage_opt ~residual:residual_json
+          ~stage_trace:enriched_trace ~capability_stages:capability_entries
+          ~required_stage ~capability:capability_str diag
       in
       let diag =
-        Diagnostic.set_extension "effect.stage.required"
-          (`String required_stage) diag
+        let open Diagnostic in
+        let updated =
+          match Extensions.get "effects" diag.extensions with
+          | Some (`Assoc entries) ->
+              let filtered =
+                List.filter (fun (key, _) -> not (String.equal key "declared")) entries
+              in
+              `Assoc (("declared", declared_json) :: filtered)
+          | _ -> `Assoc [ ("declared", declared_json) ]
+        in
+        set_extension "effects" updated diag
       in
       let diag =
-        Diagnostic.set_extension "effect.stage.actual"
-          (match actual_stage_opt with
-          | Some stage -> `String stage
-          | None -> `Null)
-          diag
+        Diagnostic.set_extension "effect.declared" declared_json diag
       in
       let diag =
-        Diagnostic.set_extension "effect.stage.capability"
-          (`String capability_str) diag
-      in
-      let diag =
-        if enriched_trace <> [] then
-          Diagnostic.set_extension "effect.stage_trace"
-            (stage_trace_to_json enriched_trace)
-            diag
-        else diag
+        diag
+        |> Diagnostic.set_extension "effect.residual.missing" missing_json
+        |> Diagnostic.set_extension "effect.residual.leaked_from"
+             (`String leaked_from)
       in
       let audit_trace =
         enriched_trace
@@ -1382,41 +1367,17 @@ let to_diagnostic (err : type_error) : Diagnostic.t =
                `Assoc fields)
       in
       let audit_entries =
-        let base =
-          [
-            ("effect.stage.required", `String required_stage);
-            ( "effect.stage.actual",
-              match actual_stage_opt with
-              | Some stage -> `String stage
-              | None -> `Null );
-            ("effect.capability", `String capability_str);
-            ( "effect.residual.tags",
-              `List (List.map (fun name -> `String name) leak_names) );
-          ]
-        in
-        let base =
-          if profile.resolved_capabilities <> [] then
-            let detail_json =
-              Effect_profile.capability_resolutions_to_json
-                profile.resolved_capabilities
-            in
-            let names_json =
-              `List
-                (List.map
-                   (fun (entry : Effect_profile.capability_resolution) ->
-                     `String entry.capability_name)
-                   profile.resolved_capabilities)
-            in
-            ("effect.capabilities", names_json)
-            :: ("effect.stage.capabilities", detail_json)
-            :: base
-          else base
-        in
-        let base =
-          if audit_trace <> [] then ("stage_trace", `List audit_trace) :: base
-          else base
-        in
-        List.rev base
+        [
+          ("effect.declared", declared_json);
+          ( "effect.residual.tags",
+            `List (List.map (fun name -> `String name) leak_names) );
+          ("effect.residual.leaked_from", `String leaked_from);
+          ("effect.residual.missing", missing_json);
+        ]
+      in
+      let audit_entries =
+        if audit_trace = [] then audit_entries
+        else ("stage_trace", `List audit_trace) :: audit_entries
       in
       Diagnostic.merge_audit_metadata audit_entries diag
   | FfiContractSymbolMissing normalized ->

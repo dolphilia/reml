@@ -80,8 +80,11 @@ let expectation_summary_for_checkpoint session checkpoint =
     | None -> Parser_expectation.empty_summary
 
 let register_diagnostic session diagnostic ~consumed ~committed =
-  Parser_diag_state.record_diagnostic session.diag_state ~diagnostic ~committed
-    ~consumed
+  let enriched =
+    Diagnostic.with_parser_runconfig_metadata ~config:session.config diagnostic
+  in
+  Parser_diag_state.record_diagnostic session.diag_state ~diagnostic:enriched
+    ~committed ~consumed
 
 let diagnostics session = Parser_diag_state.diagnostics session.diag_state
 
@@ -124,6 +127,10 @@ let annotate_core_rule_metadata diag id_opt =
             ("parser.core.rule.ordinal", `Int ordinal);
             ("parser.core.rule.origin", `String origin);
             ("parser.core.rule.fingerprint", `String fingerprint);
+            ("namespace", `String namespace);
+            ("name", `String name);
+            ("origin", `String origin);
+            ("fingerprint", `String fingerprint);
           ]
           diag
       in
