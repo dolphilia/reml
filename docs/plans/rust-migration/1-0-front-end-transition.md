@@ -130,6 +130,7 @@
    - `Type_inference.make_config` の設定項目（効果コンテキスト、row polymorphism モード、recover 設定）を Rust の構成体 `TypecheckConfig` として再現し、`OnceCell<TypecheckConfig>` で CLI から注入できるようにする。`1-1-ast-and-ir-alignment.md#1-1-4-typed-ast--型情報の整合` の ID/Span 規約を引用し、Rust 型推論でも同じ ID 領域を利用するルールを追記する。  
    - `Type_inference_effect`／`Impl_registry` で利用しているグローバル表を Rust では `DashMap` or `RwLock<IndexMap<ImplKey, ImplSpec>>` に置き換え、dual-write で determinism を保つためのシリアライズ順序を `docs/plans/rust-migration/unified-porting-principles.md` の優先順位原則に沿って決定する。  
    - 設計内容と未決事項は `docs/plans/rust-migration/appendix/type-inference-architecture.md`（新規）にまとめ、`1-3-dual-write-runbook.md` の前準備（入力セット、CLI フラグ、成果物ディレクトリ）とリンクさせる。
+   - ✅ 2027-01-08: `docs/plans/rust-migration/appendix/type-inference-architecture.md` を作成し、`compiler/rust/frontend/src/typeck/` 配下のモジュール構成（`mod.rs`/`types.rs`/`constraint.rs`/`solver.rs`/`effect.rs`/`impl_registry.rs`/`env.rs`）、`TypecheckConfig` 注入手順（`OnceCell` + `TypeContext`）、`RwLock<IndexMap<..>>` 採用による determinism 確保策、`DualWriteGuards` と `1-3-dual-write-runbook.md#1-3-2-w3-type-inference-モード` を結び付けるログ生成手順を確定。`TyId`/`SpanId` 等の ID 空間共有ルールと `diagnostic::codes::TYPE_*` へのエラー写像も同メモで文書化し、W3 以降の実装インプットを整備した。
 
 3. **制約生成・ソルバ移植とテスト整備**  
    - 移植順序: (a) AST→Typed AST の制約生成（`infer_expr`/`infer_pattern`/`infer_decl`）→ (b) `ConstraintSet` と `Scheme` のシリアル化 API → (c) `Constraint_solver.unify` / `occurs_check` / `effect_row::merge` → (d) `Impl_registry` と `Type_inference_effect` の照合。各段階で Rust 側ユニットテスト (`compiler/rust/frontend/tests/type_inference.rs`) を追加し、OCaml 実装から取得した JSON ログと比較する。  
