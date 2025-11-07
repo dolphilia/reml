@@ -10,6 +10,7 @@ pub mod parser;
 pub mod span;
 pub mod streaming;
 pub mod token;
+pub mod typeck;
 
 pub use error::{FrontendError, FrontendErrorKind, Recoverability};
 pub use span::{Span, SpanTagged};
