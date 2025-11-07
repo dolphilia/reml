@@ -1,0 +1,331 @@
+{
+  "ast_render": null,
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 94,
+            "start": 93
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 94,
+        "start": 93
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 95,
+            "start": 94
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 95,
+        "start": 94
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 98,
+            "start": 97
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 98,
+        "start": 97
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 99,
+            "start": 98
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 99,
+        "start": 98
+      }
+    },
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`fn`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 6,
+        "start": 0
+      }
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/residual_effect/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 255,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": [
+      {
+        "label": "parser.simple_error",
+        "span": {
+          "end": 6,
+          "start": 0
+        }
+      }
+    ]
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 255,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  },
+  "tokens": [
+    {
+      "kind": "KeywordEffect",
+      "lexeme": "effect",
+      "span": {
+        "end": 6,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "ConsoleLog",
+      "span": {
+        "end": 17,
+        "start": 7
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "handler",
+      "span": {
+        "end": 25,
+        "start": 18
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "ConsoleLog",
+      "span": {
+        "end": 36,
+        "start": 26
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 38,
+        "start": 37
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 41,
+        "start": 39
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "perform",
+      "span": {
+        "end": 49,
+        "start": 42
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 50,
+        "start": 49
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "msg",
+      "span": {
+        "end": 53,
+        "start": 50
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 54,
+        "start": 53
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 56,
+        "start": 55
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 58,
+        "start": 57
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 59,
+        "start": 58
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 61,
+        "start": 60
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 64,
+        "start": 62
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "main",
+      "span": {
+        "end": 69,
+        "start": 65
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 70,
+        "start": 69
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 71,
+        "start": 70
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 73,
+        "start": 72
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "perform",
+      "span": {
+        "end": 81,
+        "start": 74
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "ConsoleLog",
+      "span": {
+        "end": 92,
+        "start": 82
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "hi",
+      "span": {
+        "end": 97,
+        "start": 95
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 101,
+        "start": 101
+      }
+    }
+  ],
+  "typecheck": {
+    "functions": [],
+    "metrics": {
+      "binary_expressions": 0,
+      "call_sites": 0,
+      "constraint_breakdown": {},
+      "constraints_total": 0,
+      "typed_exprs": 0,
+      "typed_functions": 0,
+      "unresolved_identifiers": 0
+    }
+  }
+}

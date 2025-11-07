@@ -83,26 +83,26 @@
 ### W2 具体的な進め方（AST/IR 対応表の確定）✅ 完了
 
 1. **事前同期と対象スコープの固定**  
-   - `1-1-ast-and-ir-alignment.md` の §1.1.2〜1.1.7 と `p1-front-end-checklists.csv` の AST/Typed AST/ストリーミング行を読み返し、今回の W2 で「どこまでを完了させれば良いか」を明文化する。  
+   - `1-1-ast-and-ir-alignment.md` の §1.1.2〜1.1.8 と `p1-front-end-checklists.csv` の AST/Typed AST/ストリーミング行を読み返し、今回の W2 で「どこまでを完了させれば良いか」を明文化する。  
    - `reports/dual-write/front-end/poc/w1-recap.md` と `docs/plans/rust-migration/appendix/parser-ocaml-inventory.md` に記録済みの W1 成果物を確認し、不足しているノード/型カテゴリを TODO 化して `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` へ転記する。  
    - 参照仕様（`docs/spec/1-1-syntax.md`, `docs/spec/1-2-types-Inference.md`, `docs/spec/3-6-core-diagnostics-audit.md`）が最新版であることを確認し、変更が入っていれば `appendix/glossary-alignment.md` とクロスチェックする。
    - ✅ 2025-12-10: `1-1-ast-and-ir-alignment.md`／`p1-front-end-checklists.csv` と `reports/dual-write/front-end/poc/w1-recap.md` を突き合わせ、以下の W2 TODO を抽出。
      - **AST カバレッジ再測定（§1.1.3）**: W1 の 4 ケースでは `ExprKind`/`PatternKind`/`DeclKind` のごく一部しか diff 検証できていない。`examples/cli/` と `compiler/ocaml/tests/parser_*` を用いた AST ダンプバッチを追加し、`reports/dual-write/front-end/w2-ast-alignment/` へ網羅レポートを保存する。
      - **Typed AST / 制約ログの欠落（§1.1.4）**: W1 では `typed_expr`/`Scheme`/`Constraint` の JSON を取得しておらず、`collect-iterator-audit-metrics.py --section effects` も未実行。`test_type_inference.ml` 入力の dual-write ランを追加し、型 ID・制約リストが一致することを確認する。
-     - **Packrat/SpanTrace の OCaml 側計測（§1.1.5, §1.1.6 step3）**: W1 レポートは Rust 版のみ `packrat_hits`/`span_trace` が記録され、OCaml は常に `0/0`。`Core_parse_streaming` のメトリクスを CLI から出力できるよう `parser_driver` のフラグを再確認し、OCaml JSON を `reports/dual-write/front-end/w2-ast-alignment/*/parse-debug.ocaml.json` に出力して比較する。
-    - **メトリクス同期とレポート化（§1.1.6 step4）**: `collect-iterator-audit-metrics.py --section parser` の結果を W1 では記録していない。W2 では AST/Packrat diff と同時にメトリクス出力を `reports/dual-write/front-end/w2-ast-alignment/metrics/{streaming,parser}.json` として保存し、0.5pt 以内の一致を確認する。
+     - **Packrat/SpanTrace の OCaml 側計測（§1.1.6, §1.1.7 step3）**: W1 レポートは Rust 版のみ `packrat_hits`/`span_trace` が記録され、OCaml は常に `0/0`。`Core_parse_streaming` のメトリクスを CLI から出力できるよう `parser_driver` のフラグを再確認し、OCaml JSON を `reports/dual-write/front-end/w2-ast-alignment/*/parse-debug.ocaml.json` に出力して比較する。
+    - **メトリクス同期とレポート化（§1.1.7 step4）**: `collect-iterator-audit-metrics.py --section parser` の結果を W1 では記録していない。W2 では AST/Packrat diff と同時にメトリクス出力を `reports/dual-write/front-end/w2-ast-alignment/metrics/{streaming,parser}.json` として保存し、0.5pt 以内の一致を確認する。
 
 2. **OCaml AST/IR インベントリの抽出と整理**  
    - ✅ 2025-11-07: `docs/plans/rust-migration/appendix/parser-ocaml-inventory.md` に Typed AST と Core_parse/Streaming の棚卸し（§5, §6）を追記し、OCaml 側のフィールド一覧とメトリクス項目を整理。`1-1-ast-and-ir-alignment.md` の該当節へ参照リンクを追加する準備を完了。
    - `compiler/ocaml/src/ast.ml`, `typed_ast.ml`, `core_parse/*` からフィールド一覧を抽出し、`scripts/poc_dualwrite_compare.sh` を `--emit-ast --emit parse-debug` 付きで再実行して JSON ダンプを生成、`reports/dual-write/front-end/poc/w2-ast-inventory/` に保管する。  
-   - `parser_expectation.ml`／`parser_driver.ml` が追加で吐き出すメタ情報（`expected_tokens`, `packrat_stats` 等）を `tooling/ci/collect-iterator-audit-metrics.py --section parser` で数値化し、`1-1-ast-and-ir-alignment.md#1-1-5-ストリーミング状態-core_parse_streaming` のチェックリストに照らして不足フィールドを洗い出す。  
+   - `parser_expectation.ml`／`parser_driver.ml` が追加で吐き出すメタ情報（`expected_tokens`, `packrat_stats` 等）を `tooling/ci/collect-iterator-audit-metrics.py --section parser` で数値化し、`1-1-ast-and-ir-alignment.md#1-1-6-ストリーミング状態-core_parse_streaming` のチェックリストに照らして不足フィールドを洗い出す。  
    - 仕様とのギャップが見つかった場合は `docs/plans/rust-migration/appendix/parser-ocaml-inventory.md` に下書きを追記し、W2 中に Rust 側へ移植する対象を優先度付きで列挙する。
 
 3. **Rust AST/Typed AST データモデル草案の確定**  
    - `compiler/rust/frontend/src/syntax/ast.rs`（仮）と `semantics/typed.rs` に対応するモジュール階層と型シグネチャ案を作成し、`Span/Ident/ExprKind/PatternKind/DeclKind` の命名・フィールド順を OCaml 版と 1:1 に揃える。  
    - `TypedExpr`・`Scheme`・`Constraint` など Typed AST/制約要素について、所有権モデル（`Arc<Ty>` か `Interned<Ty>`）と `StageRequirement` の保持方法を決定し、`1-1-ast-and-ir-alignment.md#1-1-4-typed-ast--型情報の整合` の表へドラフトを反映する。  
    - `p1-front-end-checklists.csv` の該当行に W2 で作成する成果物（例: `typed_ast_schema_draft.md`, `rust_ast_span_tests.rs`）を記入し、完了条件を「dual-write AST JSON 差分ゼロ」「型 ID/制約リスト一致」として設定する。
-   - ✅ 2025-12-12: `docs/plans/rust-migration/appendix/typed_ast_schema_draft.md` を追加し、`syntax::*`/`semantics::*` のモジュール構成、`Span/Ident/StageRequirement`、`Expr/Pattern/Decl`、`TypedExpr/TypedDecl/EffectRow` のフィールド仕様、Dual-write JSON 出力、`collect-iterator-audit-metrics.py` 連携を明文化。`1-1-ast-and-ir-alignment.md#1-1-9` に要約を追記し、`p1-front-end-checklists.csv` の AST/Typed AST 行へ成果物パスと完了条件（dual-write AST JSON 差分ゼロ／型 ID・制約リスト一致）を反映した。保留事項だった Stage 判定/`TyPool`/`dict_ref` の正規化は `appendix/typed_ast_schema_draft.md#7` で解決済み。
+   - ✅ 2025-12-12: `docs/plans/rust-migration/appendix/typed_ast_schema_draft.md` を追加し、`syntax::*`/`semantics::*` のモジュール構成、`Span/Ident/StageRequirement`、`Expr/Pattern/Decl`、`TypedExpr/TypedDecl/EffectRow` のフィールド仕様、Dual-write JSON 出力、`collect-iterator-audit-metrics.py` 連携を明文化。`1-1-ast-and-ir-alignment.md#1-1-10` に要約を追記し、`p1-front-end-checklists.csv` の AST/Typed AST 行へ成果物パスと完了条件（dual-write AST JSON 差分ゼロ／型 ID・制約リスト一致）を反映した。保留事項だった Stage 判定/`TyPool`/`dict_ref` の正規化は `appendix/typed_ast_schema_draft.md#7` で解決済み。
    - ✅ 2025-12-12: `scripts/w2_ast_alignment_sync.py` で CASE ごとの成果物を `reports/dual-write/front-end/w2-ast-alignment/<case>/` に集約（`input.reml`, `ast/typed-ast.{ocaml,rust}.json`, `dualwrite.bundle.json` など 9 ケースぶんを生成）。同時に `metrics/{streaming,parser}.json` を出力し、`collect-iterator-audit-metrics.py --section streaming|parser` の結果を保存した。監査必須キー（`cli.audit_id`, `schema.version` 等）が Rust PoC には未出力のため pass_rate=0.0 で失敗していることを確認し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へフォローアップ（Stage/Audit 拡張）を記録した。
 
 4. **Dual-write 検証ラインとストリーミング確認の自動化**  
@@ -137,7 +137,9 @@
    - 移植順序: (a) AST→Typed AST の制約生成（`infer_expr`/`infer_pattern`/`infer_decl`）→ (b) `ConstraintSet` と `Scheme` のシリアル化 API → (c) `Constraint_solver.unify` / `occurs_check` / `effect_row::merge` → (d) `Impl_registry` と `Type_inference_effect` の照合。各段階で Rust 側ユニットテスト (`compiler/rust/frontend/tests/type_inference.rs`) を追加し、OCaml 実装から取得した JSON ログと比較する。  
    - `compiler/ocaml/tests/test_type_inference.ml` のケースを `p1-front-end-checklists.csv` に沿ってカテゴリ分けし、`cargo test --package reml-frontend --typeck`（仮）で実行するスナップショットテストへ変換。失敗時は `reports/dual-write/front-end/w3-type-inference/case-*/typed-ast.{ocaml,rust}.json` と `constraint.{ocaml,rust}.json` を保存する。  
    - `test_cli_callconv_snapshot.ml` / `test_ffi_contract.ml` / `test_cli_diagnostics.ml` のうち型推論に依存する CLI シナリオを抽出し、Rust 側 CLI（`remlc --frontend rust --emit typed-ast --emit constraints`）と OCaml CLI を同一スクリプト（`scripts/poc_dualwrite_compare.sh --mode typeck`）で呼び出せるよう、コマンドラインオプションと JSON schema を揃える。  
-   - 例外→`Result` 変換で追加されるエラー型は `diagnostic::codes::TYPE_*`（`docs/spec/3-6-core-diagnostics-audit.md`）にマッピングし、差分が出た場合は `docs/plans/rust-migration/1-2-diagnostic-compatibility.md` の重点監視リストへ追記する。
+   - 例外→`Result` 変換で追加されるエラー型は `diagnostic::codes::TYPE_*`（`docs/spec/3-6-core-diagnostics-audit.md`）にマッピングし、差分が出た場合は `docs/plans/rust-migration/1-2-diagnostic-compatibility.md` の重点監視リストへ追記する。  
+   - 🆕 2027-01-15: `docs/plans/rust-migration/appendix/w3-typeck-dualwrite-plan.md` を追加し、Constraint/Impl/Effect ログの命名規約・CLI フラグ・`collect-iterator-audit-metrics.py --section effects` の閾値を明文化。タイプ別テストグループと成果物表を同メモに統合したことで、Dual-write の再実行とレビュー観点を共有できる。  
+   - 🆕 2027-01-15: `p1-front-end-checklists.csv` に Typed AST / Constraint / Impl Registry / Effect Metrics それぞれの完了条件を追記し、`reports/dual-write/front-end/w3-type-inference/summary.md` を評定根拠とするよう更新。Checklists の「制約ソルバ」行で成果物ファイル名を明示したため、W3 期間中の受入判定が自動化できる。
 
 4. **Dual-write パイプラインとメトリクス可視化**  
    - `1-3-dual-write-runbook.md` Step4〜6 を型推論向けに拡張し、`reports/dual-write/front-end/w3-type-inference/` に `typed-ast`, `constraints`, `impl-registry`, `effects-metrics.json`, `summary.md` を保存する命名規約を追加。`collect-iterator-audit-metrics.py --section effects` を Rust/OCaml 両方で実行し、`parser.stream.*` に加えて `effects.unify.*`, `effects.impl_resolve.*` を 0.5pt 以内で一致させる。  

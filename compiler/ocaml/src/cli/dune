@@ -10,5 +10,6 @@
   stats
   version
   audit_path_resolver
-  audit_persistence)
+  audit_persistence
+  typeck_output)
  (libraries unix yojson reml_parser camlzip))

@@ -1,0 +1,3 @@
+fn pair() = tuple(int(1:base10), int(2:base10))
+let (x, y) = call(var(pair))[]
+fn main() = binary(var(x) + var(y))

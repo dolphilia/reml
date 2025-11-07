@@ -1,0 +1,144 @@
+/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/residual_effect/input.reml:2:1: エラー (構文解析): 構文エラー: 入力を解釈できません
+   1 | effect ConsoleLog
+   2 | handler ConsoleLog { fn perform(msg) = () }
+       ^^^^^^^
+   3 | fn main() = perform ConsoleLog \"hi\"
+期待される入力: トークン ':'
+ここで`:`が必要です
+拡張[recover]: {"expected_tokens":[{"kind":"token","label":":"}],"message":"ここで`:`が必要です"}
+拡張[parse]: {"parser_id":{"namespace":"menhir","name":"compilation_unit","ordinal":0,"origin":"static","fingerprint":"859967339"}}
+拡張[effect.required_capabilities]: []
+拡張[effect.stage.required_capabilities]: []
+拡張[effect.actual_capabilities]: []
+拡張[effect.stage.actual_capabilities]: []
+拡張[effect.capabilities]: []
+拡張[runconfig]: {"packrat":false,"left_recursion":"auto","trace":false,"merge_warnings":true,"require_eof":false,"legacy_result":true,"experimental_effects":false,"extensions":{"lex":{"profile":"strict_json","identifier_profile":"unicode"},"recover":{"sync_tokens":[],"notes":false},"stream":{"enabled":false}}}
+監査: {
+  "metadata": {
+    "parser": {
+      "core": {
+        "rule": {
+          "fingerprint": "859967339",
+          "origin": "static",
+          "ordinal": 0,
+          "name": "compilation_unit",
+          "namespace": "menhir"
+        }
+      }
+    },
+    "parser.core.rule": {
+      "fingerprint": "859967339",
+      "origin": "static",
+      "ordinal": 0,
+      "name": "compilation_unit",
+      "namespace": "menhir"
+    },
+    "parser.runconfig": {
+      "packrat": false,
+      "left_recursion": "auto",
+      "trace": false,
+      "merge_warnings": true,
+      "require_eof": false,
+      "legacy_result": true,
+      "experimental_effects": false,
+      "extensions": {
+        "lex": { "profile": "strict_json", "identifier_profile": "unicode" },
+        "recover": { "sync_tokens": [], "notes": false },
+        "stream": { "enabled": false }
+      }
+    },
+    "parser.runconfig.packrat": false,
+    "parser.runconfig.left_recursion": "auto",
+    "parser.runconfig.trace": false,
+    "parser.runconfig.merge_warnings": true,
+    "parser.runconfig.require_eof": false,
+    "parser.runconfig.legacy_result": true,
+    "parser.runconfig.experimental_effects": false,
+    "parser.runconfig.extensions.lex": {
+      "profile": "strict_json",
+      "identifier_profile": "unicode"
+    },
+    "parser.runconfig.extensions.lex.profile": "strict_json",
+    "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+    "parser.runconfig.extensions.recover": {
+      "sync_tokens": [],
+      "notes": false
+    },
+    "parser.runconfig.extensions.recover.notes": false,
+    "parser.runconfig.extensions.recover.sync_tokens": [],
+    "parser.runconfig.extensions.stream": { "enabled": false },
+    "parser.runconfig.extensions.stream.enabled": false,
+    "cli.change_set": {
+      "policy": "phase2.5.audit.v1",
+      "origin": "cli",
+      "source": {
+        "build_id": "20251107T045245Z-3365f70",
+        "workspace": ".",
+        "sequence": 0,
+        "commit": "3365f70"
+      },
+      "items": [
+        {
+          "kind": "cli-command",
+          "command": "remlc",
+          "args": [
+            "/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc",
+            "--emit-tast",
+            "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/residual_effect/input.reml"
+          ]
+        },
+        { "kind": "input", "path": "input.reml", "target": "x86_64-linux" },
+        { "kind": "outputs", "values": [ "emit_tast" ] }
+      ]
+    },
+    "cli.audit_id": "cli/20251107T045245Z-3365f70#0",
+    "audit.source.commit": "3365f70",
+    "audit.source.workspace": ".",
+    "audit.sequence": 0,
+    "audit.build_id": "20251107T045245Z-3365f70",
+    "audit.channel": "cli",
+    "audit.policy.version": "phase2.5.audit.v1",
+    "effect.capabilities": [],
+    "effect.stage.actual_capabilities": [],
+    "effect.actual_capabilities": [],
+    "effect.stage.required_capabilities": [],
+    "effect.required_capabilities": [],
+    "fingerprint": "859967339",
+    "origin": "static",
+    "name": "compilation_unit",
+    "namespace": "menhir",
+    "parser.core.rule.fingerprint": "859967339",
+    "parser.core.rule.origin": "static",
+    "parser.core.rule.ordinal": 0,
+    "parser.core.rule.name": "compilation_unit",
+    "parser.core.rule.namespace": "menhir",
+    "event.domain": "parser",
+    "audit.timestamp": "2025-11-07T04:52:45Z",
+    "schema.version": "1.1"
+  },
+  "audit_id": "cli/20251107T045245Z-3365f70#0",
+  "change_set": {
+    "policy": "phase2.5.audit.v1",
+    "origin": "cli",
+    "source": {
+      "build_id": "20251107T045245Z-3365f70",
+      "workspace": ".",
+      "sequence": 0,
+      "commit": "3365f70"
+    },
+    "items": [
+      {
+        "kind": "cli-command",
+        "command": "remlc",
+        "args": [
+          "/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc",
+          "--emit-tast",
+          "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/residual_effect/input.reml"
+        ]
+      },
+      { "kind": "input", "path": "input.reml", "target": "x86_64-linux" },
+      { "kind": "outputs", "values": [ "emit_tast" ] }
+    ]
+  }
+}
+タイムスタンプ: 2025-11-07T04:52:45Z

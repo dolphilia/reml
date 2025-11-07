@@ -45,7 +45,7 @@ AstModule {
 ```
 
 - `ModuleHeader` や `UseDecl` は OCaml 版と同じレイアウト。  
-- `PackratStats/span_trace` は `1-1-ast-and-ir-alignment.md#1-1-5` に準拠し、Dual-write JSON の `parse_result.*` に同梱する。
+- `PackratStats/span_trace` は `1-1-ast-and-ir-alignment.md#1-1-6` に準拠し、Dual-write JSON の `parse_result.*` に同梱する。
 
 ### 4.2 Expr / Pattern / Decl
 

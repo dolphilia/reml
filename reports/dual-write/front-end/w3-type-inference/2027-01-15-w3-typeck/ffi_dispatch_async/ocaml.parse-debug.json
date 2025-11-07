@@ -1,0 +1,136 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/ffi_dispatch_async/input.reml",
+  "parser_run_config": {
+    "experimental_effects": false,
+    "legacy_result": true,
+    "merge_warnings": true,
+    "trace": false,
+    "left_recursion": "auto",
+    "packrat": true,
+    "require_eof": false,
+    "extensions": {
+      "config": {
+        "experimental_effects": false,
+        "left_recursion": "auto",
+        "legacy_result": true,
+        "merge_warnings": true,
+        "packrat": true,
+        "require_eof": false,
+        "source": "cli",
+        "trace": false
+      },
+      "effects": { "type_row_mode": "ty-integrated" },
+      "lex": { "profile": "strict_json" }
+    }
+  },
+  "diagnostics": [
+    {
+      "expected": null,
+      "audit": {
+        "metadata": {
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "20251107T045247Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [ { "kind": "input", "path": "input.reml" } ]
+          },
+          "audit.source.workspace": ".",
+          "audit.sequence": 0,
+          "audit.build_id": "20251107T045247Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "cli.audit_id": "cli/20251107T045247Z#0",
+          "event.domain": "config",
+          "event.kind": "parser.runconfig.left_recursion_unimplemented",
+          "audit.timestamp": "2025-11-07T04:52:47Z",
+          "schema.version": "1.1"
+        },
+        "audit_id": "cli/20251107T045247Z#0",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "20251107T045247Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "input.reml" } ]
+        }
+      },
+      "audit_metadata": {
+        "event.kind": "parser.runconfig.left_recursion_unimplemented",
+        "event.domain": "config",
+        "cli.audit_id": "cli/20251107T045247Z#0",
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "20251107T045247Z",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "schema.version": "1.1",
+        "audit.timestamp": "2025-11-07T04:52:47Z",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "20251107T045247Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "input.reml" } ]
+        }
+      },
+      "extensions": {
+        "diagnostic.v2": {
+          "timestamp": "2025-11-07T04:52:47Z",
+          "codes": [ "parser.runconfig.left_recursion_unimplemented" ]
+        }
+      },
+      "schema_version": "2.0.0-draft",
+      "fixits": [],
+      "hints": [],
+      "secondary": [],
+      "codes": [ "parser.runconfig.left_recursion_unimplemented" ],
+      "primary": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/ffi_dispatch_async/input.reml",
+        "start_line": 0,
+        "start_col": 0,
+        "end_line": 0,
+        "end_col": 0
+      },
+      "severity_level": 2,
+      "severity": "warning",
+      "message": "RunConfig.left_recursion=\"auto\" を利用できません。左再帰シムは PARSER-003 で導入予定です。",
+      "domain": "config",
+      "timestamp": "2025-11-07T04:52:47Z"
+    }
+  ],
+  "parse_result": {
+    "span_trace": null,
+    "packrat_stats": { "queries": 0, "hits": 0 },
+    "legacy_error": null,
+    "farthest_error_offset": null,
+    "span": {
+      "start": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/ffi_dispatch_async/input.reml",
+        "line": 1,
+        "column": 1,
+        "offset": 0
+      },
+      "end": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/ffi_dispatch_async/input.reml",
+        "line": 23,
+        "column": 1,
+        "offset": 450
+      }
+    },
+    "committed": false,
+    "consumed": true,
+    "recovered": false,
+    "has_value": true
+  },
+  "stream_meta": null
+}

@@ -1,0 +1,116 @@
+/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/pattern_tuple/input.reml:2:14: エラー[E7005] (型システム): 関数ではない値に引数を適用しようとしています
+   1 | fn pair() = (1, 2)
+   2 | let (x, y) = pair()
+                    ^^^^^^
+   3 | fn main() = x + y
+関連情報:
+  - この式の型は (i64, i64) ですが、関数型が必要です
+拡張[effect.required_capabilities]: []
+拡張[effect.stage.required_capabilities]: []
+拡張[effect.actual_capabilities]: []
+拡張[effect.stage.actual_capabilities]: []
+拡張[effect.capabilities]: []
+拡張[runconfig]: {"packrat":false,"left_recursion":"auto","trace":false,"merge_warnings":true,"require_eof":false,"legacy_result":true,"experimental_effects":false,"extensions":{"lex":{"profile":"strict_json","identifier_profile":"unicode"},"recover":{"sync_tokens":[],"notes":false},"stream":{"enabled":false}}}
+監査: {
+  "metadata": {
+    "parser.runconfig": {
+      "packrat": false,
+      "left_recursion": "auto",
+      "trace": false,
+      "merge_warnings": true,
+      "require_eof": false,
+      "legacy_result": true,
+      "experimental_effects": false,
+      "extensions": {
+        "lex": { "profile": "strict_json", "identifier_profile": "unicode" },
+        "recover": { "sync_tokens": [], "notes": false },
+        "stream": { "enabled": false }
+      }
+    },
+    "parser.runconfig.packrat": false,
+    "parser.runconfig.left_recursion": "auto",
+    "parser.runconfig.trace": false,
+    "parser.runconfig.merge_warnings": true,
+    "parser.runconfig.require_eof": false,
+    "parser.runconfig.legacy_result": true,
+    "parser.runconfig.experimental_effects": false,
+    "parser.runconfig.extensions.lex": {
+      "profile": "strict_json",
+      "identifier_profile": "unicode"
+    },
+    "parser.runconfig.extensions.lex.profile": "strict_json",
+    "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+    "parser.runconfig.extensions.recover": {
+      "sync_tokens": [],
+      "notes": false
+    },
+    "parser.runconfig.extensions.recover.notes": false,
+    "parser.runconfig.extensions.recover.sync_tokens": [],
+    "parser.runconfig.extensions.stream": { "enabled": false },
+    "parser.runconfig.extensions.stream.enabled": false,
+    "effect.capabilities": [],
+    "effect.stage.actual_capabilities": [],
+    "effect.actual_capabilities": [],
+    "effect.stage.required_capabilities": [],
+    "effect.required_capabilities": [],
+    "cli.change_set": {
+      "policy": "phase2.5.audit.v1",
+      "origin": "cli",
+      "source": {
+        "build_id": "20251107T045244Z-3365f70",
+        "workspace": ".",
+        "sequence": 0,
+        "commit": "3365f70"
+      },
+      "items": [
+        {
+          "kind": "cli-command",
+          "command": "remlc",
+          "args": [
+            "/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc",
+            "--emit-tast",
+            "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/pattern_tuple/input.reml"
+          ]
+        },
+        { "kind": "input", "path": "input.reml", "target": "x86_64-linux" },
+        { "kind": "outputs", "values": [ "emit_tast" ] }
+      ]
+    },
+    "cli.audit_id": "cli/20251107T045244Z-3365f70#0",
+    "audit.source.commit": "3365f70",
+    "audit.source.workspace": ".",
+    "audit.sequence": 0,
+    "audit.build_id": "20251107T045244Z-3365f70",
+    "audit.channel": "cli",
+    "audit.policy.version": "phase2.5.audit.v1",
+    "event.domain": "type",
+    "event.kind": "E7005",
+    "audit.timestamp": "2025-11-07T04:52:44Z",
+    "schema.version": "1.1"
+  },
+  "audit_id": "cli/20251107T045244Z-3365f70#0",
+  "change_set": {
+    "policy": "phase2.5.audit.v1",
+    "origin": "cli",
+    "source": {
+      "build_id": "20251107T045244Z-3365f70",
+      "workspace": ".",
+      "sequence": 0,
+      "commit": "3365f70"
+    },
+    "items": [
+      {
+        "kind": "cli-command",
+        "command": "remlc",
+        "args": [
+          "/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc",
+          "--emit-tast",
+          "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/pattern_tuple/input.reml"
+        ]
+      },
+      { "kind": "input", "path": "input.reml", "target": "x86_64-linux" },
+      { "kind": "outputs", "values": [ "emit_tast" ] }
+    ]
+  }
+}
+タイムスタンプ: 2025-11-07T04:52:44Z

@@ -1,0 +1,4 @@
+effect ConsoleLog
+handler ConsoleLog { fn perform(msg) = () }
+fn main() = perform ConsoleLog \"hi\"
+

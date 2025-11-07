@@ -1,0 +1,3 @@
+fn pair() = (1, 2)
+let (x, y) = pair()
+fn main() = x + y

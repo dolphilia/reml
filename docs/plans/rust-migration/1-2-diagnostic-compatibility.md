@@ -69,3 +69,9 @@ Rust フロントエンド移植において、OCaml 実装と同一の診断 (`
 - 本計画で確定した比較ルールは `1-0-front-end-transition.md` に記載したマイルストーンと連動させ、レビュー時に参照する。
 - 差分の緩和条件や例外は `appendix/glossary-alignment.md`・`docs/spec/3-6-core-diagnostics-audit.md` に反映し、用語・キー名称の整合を保つ。
 - CI への組み込み手順は P3 ドキュメント (`3-0-ci-and-dual-write-strategy.md`) に移植する。P1 ではローカルおよび臨時 CI ジョブで実施。
+
+## 1.2.11 型推論起因診断の比較手順（W3 拡張）
+- `docs/plans/rust-migration/appendix/w3-typeck-dualwrite-plan.md` で定義した `effects-metrics.{ocaml,rust}.json` と `typeck-debug.{ocaml,rust}.json` を診断互換性の必須成果物に追加する。`collect-iterator-audit-metrics.py --section effects --require-success` を実行し、`effects.impl_resolve.delta` `effects.stage_mismatch.delta` が ±0.5pt 以内であることを確認する。
+- `scripts/poc_dualwrite_compare.sh --mode typeck --run-id <label> --cases <file>` を実行すると、`reports/dual-write/front-end/w3-type-inference/<case>/` に `diagnostics.{ocaml,rust}.json` / `effects-metrics.*` / `typeck-debug.*` が保存される。`typeck-debug` には `effect_scope`, `residual_effects`, `recoverable`, `ocaml_exception` など型推論固有のフィールドが含まれるため、`jq --sort-keys` で整形した後 `diff -u` を取得する。
+- Rust 側で `Result<T, TypeError>` を導入した箇所は、OCaml 側の例外名・診断コード・Recover ヒントを `diagnostic::codes::TYPE_*` に写像し、`typeck-debug` に `{"ocaml_exception": "...", "rust_error": "...", "diagnostic_code": "TYPE_xxx"}` の形で両実装のメタデータを併記する。これにより、`scripts/validate-diagnostic-json.sh` が指摘した差分を `typeck-debug` から逆引きできる。
+- CLI 追加フラグ: `remlc --frontend rust --emit typed-ast --emit constraints --emit typeck-debug <dir>` / `remlc --frontend ocaml --emit-constraints-json <path> --emit-typeck-debug <path>`。両方の出力を `p1-front-end-checklists.csv` の新規行（型推論診断）の受入基準として記録し、`docs/spec/3-6-core-diagnostics-audit.md` へのフィードバック対象にする。

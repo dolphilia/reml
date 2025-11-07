@@ -43,6 +43,18 @@ scripts/validate-diagnostic-json.sh "$OUT_OCAML" "$OUT_RUST"
 - スキーマエラーが出た場合は `1-2-diagnostic-compatibility.md` の重点監視フィールドを参照し、欠落フィールドや型違いを調査する。
 - 差分比較は `diff -u` または `jq --sort-keys` で再度差分を出力し、`reports/dual-write/front-end/$(date)-sample/diagnostic.diff` に保存する。
 
+### 手順 2b: 型推論ログ（typeck モード）の取得
+```bash
+scripts/poc_dualwrite_compare.sh \
+  --mode typeck \
+  --run-id 20270115-w3-typeck \
+  --cases docs/plans/rust-migration/appendix/w3-dualwrite-cases.txt
+```
+
+- `--mode typeck` を指定すると `reports/dual-write/front-end/<run>/<case>/typeck/` に `typed-ast.{ocaml,rust}.json`, `constraints.{ocaml,rust}.json`, `impl-registry.{ocaml,rust}.json`, `effects-metrics.{ocaml,rust}.json`, `typeck-debug.{ocaml,rust}.json` が保存される（スキーマ定義: `appendix/w3-typeck-dualwrite-plan.md`）。
+- OCaml CLI には `--emit-constraints-json`, `--emit-typeck-debug` を、Rust CLI には `--emit typed-ast --emit constraints --emit typeck-debug <dir>` を追加し、同一ケースを dual-write 実行する。
+- 失敗ケースは `typeck/stderr.log` と `typeck/command.json` に再現手順を残す。`summary.json` の `typeck_metrics.match` が `false` の場合は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に TODO を登録する。
+
 ### 手順 3: メトリクス比較
 ```bash
 python3 tooling/ci/collect-iterator-audit-metrics.py \
@@ -61,7 +73,7 @@ python3 tooling/ci/collect-iterator-audit-metrics.py \
 ```
 
 - スクリプトが失敗した場合はログ末尾の `missing_keys`・`mismatch` を確認し、`1-2-diagnostic-compatibility.md` の重点監視フィールドへ差分を登録する。
-- メトリクス差の許容範囲は `1-1-ast-and-ir-alignment.md#1-1-6-検証パイプライン` で規定された 0.5pt 以内。
+- メトリクス差の許容範囲は `1-1-ast-and-ir-alignment.md#1-1-7-検証パイプライン` で規定された 0.5pt 以内。typeck モードでは追加で `collect-iterator-audit-metrics.py --section effects` を実行し、`effects.impl_resolve.delta` / `effects.stage_mismatch.delta` が ±0.5pt 以内であることを確認する（`appendix/w3-typeck-dualwrite-plan.md` 参照）。
 
 ### 手順 4: 自動判定レポートの生成
 ```bash
@@ -99,6 +111,7 @@ scripts/dualwrite_summary_report.py \
 | Diff ファイル | `<artifact>.diff` | `diagnostic.diff`, `ast.diff` | `diff -u` の結果を保存 |
 | メトリクス | `<artifact>-<section>-metrics.json` | `diagnostic-parser-metrics.json` | `collect-iterator-audit-metrics.py` の標準出力を保存 |
 | 補足ノート | `README.md` または `notes.md` | `reports/dual-write/20251109-sample/README.md` | 手動調査の要点を Markdown で記録 |
+| 型推論ログ | `typeck/<artifact>.<frontend>.json` | `typeck/typed-ast.rust.json`, `typeck/effects-metrics.ocaml.json` | `--mode typeck` 実行時のみ。詳細は `appendix/w3-typeck-dualwrite-plan.md` |
 
 - CI から生成される成果物は同じ命名規則を用いる。`3-0-ci-and-dual-write-strategy.md` で定義するジョブは `UPLOAD_PATH=reports/dual-write/<date>-<workflow>` を用いてアーティファクト化する。
 - ベンチマークや追加ログを保存する場合はサブディレクトリ（`benchmarks/`, `lsp/` 等）を作成し、この命名規則を基に管理する。

@@ -1,0 +1,12 @@
+{
+  "metrics": {
+    "typed_functions": 0,
+    "typed_exprs": 0,
+    "constraints_total": 0,
+    "constraint_breakdown": {},
+    "unresolved_identifiers": 0,
+    "call_sites": 0,
+    "binary_expressions": 0
+  },
+  "typed_functions": []
+}

@@ -1049,6 +1049,13 @@ let () =
                let rendered = Typed_ast.string_of_typed_compilation_unit tast in
                Printf.printf "%s\n" rendered);
 
+            Cli.Typeck_output.emit ~input:opts.input_file ~typed_ast:tast
+              ~type_config ~runtime_stage:runtime_stage_context
+              ~stats:(Cli.Stats.get_stats ())
+              ~typed_ast_path:opts.emit_typed_ast_json
+              ~constraints_path:opts.emit_constraints_json
+              ~debug_path:opts.emit_typeck_debug_json;
+
             (* Phase 3: LLVM IR 生成パイプライン *)
             if
               opts.emit_ir || opts.emit_bc || opts.verify_ir

@@ -2,7 +2,7 @@
 
 use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use reml_frontend::diagnostic::{DiagnosticNote, FrontendDiagnostic};
@@ -37,6 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .as_ref()
         .map(|module| TypecheckDriver::infer_module(module, &args.typecheck_config))
         .unwrap_or_default();
+    let artifacts = TypeckArtifacts::new(&input_path, &typeck_report, &args.typecheck_config);
     let diagnostics = result
         .diagnostics
         .iter()
@@ -104,8 +105,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         fs::write(path, serde_json::to_string_pretty(&parse_debug)?)?;
     }
 
+    if let Some(path) = &args.emit_typed_ast {
+        write_json_file(path, &artifacts.typed_ast)?;
+    }
+    if let Some(path) = &args.emit_constraints {
+        write_json_file(path, &artifacts.constraints)?;
+    }
+    if let Some(path) = &args.emit_typeck_debug {
+        write_json_file(path, &artifacts.debug)?;
+    }
+
     if let Some(guards) = dualwrite {
-        write_dualwrite_typeck_payload(&guards, &typeck_report, &args.typecheck_config)?;
+        write_dualwrite_typeck_payload(
+            &guards,
+            &typeck_report,
+            &args.typecheck_config,
+            &artifacts,
+        )?;
     }
 
     Ok(())
@@ -123,6 +139,9 @@ struct CliArgs {
     parse_debug_output: Option<PathBuf>,
     typecheck_config: TypecheckConfig,
     dualwrite: Option<DualwriteCliOpts>,
+    emit_typed_ast: Option<PathBuf>,
+    emit_constraints: Option<PathBuf>,
+    emit_typeck_debug: Option<PathBuf>,
 }
 
 #[derive(Clone)]
@@ -145,6 +164,9 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut dualwrite_run_label = None;
     let mut dualwrite_case_label = None;
     let mut dualwrite_root = None;
+    let mut emit_typed_ast = None;
+    let mut emit_constraints = None;
+    let mut emit_typeck_debug = None;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--emit-parse-debug" => {
@@ -212,6 +234,24 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                         "--dualwrite-root はパスを伴う必要があります"
                     })?));
             }
+            "--emit-typed-ast" => {
+                let path = args
+                    .next()
+                    .ok_or_else(|| "--emit-typed-ast は出力パスを伴う必要があります")?;
+                emit_typed_ast = Some(PathBuf::from(path));
+            }
+            "--emit-constraints" => {
+                let path = args
+                    .next()
+                    .ok_or_else(|| "--emit-constraints は出力パスを伴う必要があります")?;
+                emit_constraints = Some(PathBuf::from(path));
+            }
+            "--emit-typeck-debug" => {
+                let path = args
+                    .next()
+                    .ok_or_else(|| "--emit-typeck-debug は出力パスを伴う必要があります")?;
+                emit_typeck_debug = Some(PathBuf::from(path));
+            }
             _ if arg.starts_with("--") => {
                 return Err(format!("未知のオプション: {arg}").into());
             }
@@ -263,6 +303,9 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         parse_debug_output: parse_debug,
         typecheck_config: builder.build(),
         dualwrite,
+        emit_typed_ast,
+        emit_constraints,
+        emit_typeck_debug,
     })
 }
 
@@ -278,6 +321,7 @@ fn write_dualwrite_typeck_payload(
     guards: &DualWriteGuards,
     report: &TypecheckReport,
     config: &TypecheckConfig,
+    artifacts: &TypeckArtifacts,
 ) -> Result<(), Box<dyn std::error::Error>> {
     guards.write_json("typeck/config.json", config)?;
     let payload = TypecheckMetricsPayload {
@@ -285,6 +329,9 @@ fn write_dualwrite_typeck_payload(
         typed_functions: &report.functions,
     };
     guards.write_json("typeck/metrics.json", &payload)?;
+    guards.write_json("typeck/typed-ast.rust.json", &artifacts.typed_ast)?;
+    guards.write_json("typeck/constraints.rust.json", &artifacts.constraints)?;
+    guards.write_json("typeck/typeck-debug.rust.json", &artifacts.debug)?;
     Ok(())
 }
 
@@ -292,6 +339,101 @@ fn write_dualwrite_typeck_payload(
 struct TypecheckMetricsPayload<'a> {
     metrics: &'a TypecheckMetrics,
     typed_functions: &'a [TypedFunctionSummary],
+}
+
+#[derive(Clone, Serialize)]
+struct TypeckArtifacts {
+    typed_ast: TypedAstFile,
+    constraints: ConstraintFile,
+    debug: TypeckDebugFile,
+}
+
+#[derive(Clone, Serialize)]
+struct TypedAstFile {
+    input: String,
+    functions: Vec<TypedFunctionSummary>,
+}
+
+#[derive(Clone, Serialize)]
+struct ConstraintFile {
+    total_constraints: usize,
+    breakdown: Vec<ConstraintBucket>,
+    functions: Vec<FunctionConstraintSummary>,
+}
+
+#[derive(Clone, Serialize)]
+struct ConstraintBucket {
+    metric: String,
+    count: usize,
+}
+
+#[derive(Clone, Serialize)]
+struct FunctionConstraintSummary {
+    name: String,
+    constraints: usize,
+    typed_exprs: usize,
+    unresolved_identifiers: usize,
+}
+
+#[derive(Clone, Serialize)]
+struct TypeckDebugFile {
+    effect_context: StageContext,
+    type_row_mode: TypeRowMode,
+    recover: RecoverConfig,
+    metrics: TypecheckMetrics,
+}
+
+impl TypeckArtifacts {
+    fn new(input: &Path, report: &TypecheckReport, config: &TypecheckConfig) -> Self {
+        let typed_ast = TypedAstFile {
+            input: input.display().to_string(),
+            functions: report.functions.clone(),
+        };
+        let functions = report
+            .functions
+            .iter()
+            .map(|function| FunctionConstraintSummary {
+                name: function.name.clone(),
+                constraints: function.constraints,
+                typed_exprs: function.typed_exprs,
+                unresolved_identifiers: function.unresolved_identifiers,
+            })
+            .collect();
+        let breakdown = report
+            .metrics
+            .constraint_breakdown
+            .iter()
+            .map(|(metric, count)| ConstraintBucket {
+                metric: metric.clone(),
+                count: *count,
+            })
+            .collect();
+        let constraints = ConstraintFile {
+            total_constraints: report.metrics.constraints_total,
+            breakdown,
+            functions,
+        };
+        let debug = TypeckDebugFile {
+            effect_context: config.effect_context.clone(),
+            type_row_mode: config.type_row_mode,
+            recover: config.recover.clone(),
+            metrics: report.metrics.clone(),
+        };
+        Self {
+            typed_ast,
+            constraints,
+            debug,
+        }
+    }
+}
+
+fn write_json_file(path: &Path, value: &impl Serialize) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let json = serde_json::to_vec_pretty(value)?;
+    std::fs::write(path, json)?;
+    Ok(())
 }
 
 #[derive(Debug, Serialize)]

@@ -10,14 +10,17 @@ REPORT_DIR="${REPO_ROOT}/reports/dual-write/front-end/poc"
 
 RUN_ID="${DUALWRITE_RUN_ID:-2025-11-28-logos-chumsky}"
 CASES_FILE="${DUALWRITE_CASES_FILE:-}"
+MODE="ast"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/poc_dualwrite_compare.sh [--run-id <id>] [--cases <path>]
+Usage: scripts/poc_dualwrite_compare.sh [--run-id <id>] [--cases <path>] [--mode <ast|typeck>]
 
 Options:
   --run-id <id>     出力ディレクトリ名を上書き（既定: 2025-11-28-logos-chumsky）
   --cases <path>    ケース定義ファイル（format: name::inline::<src> | name::file::<path>）
+  --mode <ast|typeck>
+                     実行モード（typeck は型推論成果物を収集）
   --help            このヘルプを表示
 
 環境変数:
@@ -36,6 +39,10 @@ while [[ $# -gt 0 ]]; do
       CASES_FILE="$2"
       shift 2
       ;;
+    --mode)
+      MODE="$2"
+      shift 2
+      ;;
     --help)
       usage
       exit 0
@@ -45,8 +52,15 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 1
       ;;
-  esac
+esac
 done
+
+if [[ "${MODE}" == "typeck" ]]; then
+  REPORT_DIR="${REPO_ROOT}/reports/dual-write/front-end/w3-type-inference"
+elif [[ "${MODE}" != "ast" ]]; then
+  echo "Unsupported mode: ${MODE}" >&2
+  exit 1
+fi
 
 declare -a CASE_ENTRIES=()
 
@@ -77,15 +91,15 @@ if [[ ${#CASE_ENTRIES[@]} -eq 0 ]]; then
   exit 1
 fi
 
-CASE_DIR="${REPORT_DIR}/${RUN_ID}"
-mkdir -p "${CASE_DIR}"
+RUN_DIR="${REPORT_DIR}/${RUN_ID}"
+mkdir -p "${RUN_DIR}"
 
 : "${CARGO_HOME:=${HOME}/.cargo}"
 : "${CARGO_TARGET_DIR:=${RUST_DIR}/target}"
 export CARGO_HOME CARGO_TARGET_DIR
 mkdir -p "${CARGO_HOME}" "${CARGO_TARGET_DIR}"
 
-printf "==> 出力ディレクトリ: %s\n" "${CASE_DIR}"
+printf "==> 出力ディレクトリ: %s\n" "${RUN_DIR}"
 
 sanitize_name() {
   local value="$1"
@@ -111,14 +125,42 @@ for entry in "${CASE_ENTRIES[@]}"; do
   fi
 
   safe_name="$(sanitize_name "${case_name}")"
-  input_path="${CASE_DIR}/${safe_name}.reml"
-  source_info="${CASE_DIR}/${safe_name}.source.txt"
-  ocaml_ast_path="${CASE_DIR}/${safe_name}.ocaml.ast.txt"
-  ocaml_tast_path="${CASE_DIR}/${safe_name}.ocaml.tast.txt"
-  ocaml_diag_path="${CASE_DIR}/${safe_name}.ocaml.diagnostics.json"
-  ocaml_parse_debug_path="${CASE_DIR}/${safe_name}.ocaml.parse-debug.json"
-  rust_json_path="${CASE_DIR}/${safe_name}.rust.json"
-  rust_parse_debug_path="${CASE_DIR}/${safe_name}.rust.parse-debug.json"
+  case_dir="${RUN_DIR}/${safe_name}"
+  mkdir -p "${case_dir}"
+  input_path="${case_dir}/input.reml"
+  source_info="${case_dir}/source.txt"
+  ocaml_ast_path="${case_dir}/ocaml.ast.txt"
+  ocaml_tast_path="${case_dir}/ocaml.tast.txt"
+  ocaml_diag_path="${case_dir}/ocaml.diagnostics.json"
+  ocaml_parse_debug_path="${case_dir}/ocaml.parse-debug.json"
+  rust_json_path="${case_dir}/rust.json"
+  rust_parse_debug_path="${case_dir}/rust.parse-debug.json"
+  typeck_dir="${case_dir}/typeck"
+  if [[ "${MODE}" == "typeck" ]]; then
+    mkdir -p "${typeck_dir}"
+    ocaml_typed_json="${typeck_dir}/typed-ast.ocaml.json"
+    ocaml_constraints_json="${typeck_dir}/constraints.ocaml.json"
+    ocaml_typeck_debug_json="${typeck_dir}/typeck-debug.ocaml.json"
+    rust_typed_json="${typeck_dir}/typed-ast.rust.json"
+    rust_constraints_json="${typeck_dir}/constraints.rust.json"
+    rust_typeck_debug_json="${typeck_dir}/typeck-debug.rust.json"
+  fi
+  typeck_ocaml_flags=()
+  if [[ "${MODE}" == "typeck" ]]; then
+    typeck_ocaml_flags+=(
+      --emit-typed-ast "${ocaml_typed_json}"
+      --emit-constraints "${ocaml_constraints_json}"
+      --emit-typeck-debug "${ocaml_typeck_debug_json}"
+    )
+  fi
+  typeck_rust_flags=()
+  if [[ "${MODE}" == "typeck" ]]; then
+    typeck_rust_flags+=(
+      --emit-typed-ast "${rust_typed_json}"
+      --emit-constraints "${rust_constraints_json}"
+      --emit-typeck-debug "${rust_typeck_debug_json}"
+    )
+  fi
 
   case "${mode}" in
     inline)
@@ -159,6 +201,7 @@ for entry in "${CASE_ENTRIES[@]}"; do
       --format json \
       --json-mode compact \
       --emit-parse-debug "${ocaml_parse_debug_path}" \
+      "${typeck_ocaml_flags[@]}" \
       "${input_path}"
   ) > "${ocaml_diag_path}" 2>&1 || true
 
@@ -169,10 +212,11 @@ for entry in "${CASE_ENTRIES[@]}"; do
       --dualwrite-root "${REPORT_DIR}" \
       --dualwrite-run-label "${RUN_ID}" \
       --dualwrite-case-label "${safe_name}" \
+      "${typeck_rust_flags[@]}" \
       "${input_path}"
   ) > "${rust_json_path}" || true
 
-  python3 - "${CASE_DIR}" "${case_name}" "${safe_name}" "${RUN_ID}" "${REPORT_DIR}" <<'PY'
+  python3 - "${case_dir}" "${case_name}" "${safe_name}" "${RUN_ID}" "${REPORT_DIR}" "${MODE}" <<'PY'
 import json
 import pathlib
 import sys
@@ -181,8 +225,9 @@ case_dir = pathlib.Path(sys.argv[1])
 case_name = sys.argv[2]
 safe_name = sys.argv[3]
 run_id = sys.argv[4]
-report_dir = pathlib.Path(sys.argv[5])
-rust_typeck_dir = report_dir / run_id / safe_name / "typeck"
+report_root = pathlib.Path(sys.argv[5])
+mode = sys.argv[6]
+typeck_dir = case_dir / "typeck"
 
 def read_text(path: pathlib.Path) -> str:
     if not path.exists():
@@ -203,10 +248,15 @@ def load_json(path: pathlib.Path):
     except json.JSONDecodeError:
         return None
 
-def derive_ocaml_typeck_metrics(tast_text: str):
+def derive_ocaml_typeck_metrics(tast_text: str, summary_json):
     typed_functions = 0
     typed_exprs = 0
     functions = []
+    if isinstance(summary_json, dict):
+        fn_list = summary_json.get("function_summaries")
+        if isinstance(fn_list, list):
+            typed_functions = len(fn_list)
+            functions = fn_list
     if tast_text:
         for line in tast_text.splitlines():
             stripped = line.strip()
@@ -214,11 +264,6 @@ def derive_ocaml_typeck_metrics(tast_text: str):
                 continue
             if stripped.startswith("fn "):
                 typed_functions += 1
-                parts = stripped.split()
-                name = parts[1] if len(parts) > 1 else f"fn_{typed_functions}"
-                functions.append(
-                    {"name": name, "param_types": [], "return_type": "unknown"}
-                )
             if stripped.startswith("(") or stripped.startswith("case "):
                 typed_exprs += 1
     metrics = {
@@ -240,39 +285,39 @@ def diff_typeck_metrics(ocaml, rust):
     r_metrics = rust.get("metrics") or {}
     fields = {}
     for key in sorted(set(o_metrics.keys()) | set(r_metrics.keys())):
-        fields[key] = {
-            "ocaml": o_metrics.get(key),
-            "rust": r_metrics.get(key),
-            "delta": (r_metrics.get(key, 0) or 0) - (o_metrics.get(key, 0) or 0),
-        }
+        o_val = o_metrics.get(key)
+        r_val = r_metrics.get(key)
+        delta = None
+        if isinstance(o_val, (int, float)) and isinstance(r_val, (int, float)):
+            delta = (r_val or 0) - (o_val or 0)
+        fields[key] = {"ocaml": o_val, "rust": r_val, "delta": delta}
     result["fields"] = fields
-    result["match"] = all(item["delta"] == 0 for item in fields.values())
+    result["match"] = all(
+        (item["delta"] is None or item["delta"] == 0) for item in fields.values()
+    )
     return result
-
-source_info = read_text(case_dir / f"{safe_name}.source.txt").strip()
-ocaml_ast = read_text(case_dir / f"{safe_name}.ocaml.ast.txt").strip()
-ocaml_tast = read_text(case_dir / f"{safe_name}.ocaml.tast.txt").strip()
-ocaml_diag_json = load_json(case_dir / f"{safe_name}.ocaml.diagnostics.json") or {}
-ocaml_parse_debug = load_json(case_dir / f"{safe_name}.ocaml.parse-debug.json") or {}
-rust_json = load_json(case_dir / f"{safe_name}.rust.json") or {}
-
-ocaml_diagnostics = ocaml_diag_json.get("diagnostics", [])
-
-ocaml_parse_result = ocaml_parse_debug.get("parse_result") or ocaml_diag_json.get("parse_result") or {}
-ocaml_stream_meta = ocaml_parse_debug.get("stream_meta")
 
 def packrat_numbers(stats):
     if isinstance(stats, dict):
         return int(stats.get("queries", 0) or 0), int(stats.get("hits", 0) or 0)
     return 0, 0
 
+source_info = read_text(case_dir / "source.txt").strip()
+ocaml_ast = read_text(case_dir / "ocaml.ast.txt").strip()
+ocaml_tast = read_text(case_dir / "ocaml.tast.txt").strip()
+ocaml_diag_json = load_json(case_dir / "ocaml.diagnostics.json") or {}
+ocaml_parse_debug = load_json(case_dir / "ocaml.parse-debug.json") or {}
+rust_json = load_json(case_dir / "rust.json") or {}
+
+ocaml_diagnostics = ocaml_diag_json.get("diagnostics", [])
+ocaml_parse_result = ocaml_parse_debug.get("parse_result") or ocaml_diag_json.get("parse_result") or {}
+ocaml_stream_meta = ocaml_parse_debug.get("stream_meta")
+
 ocaml_queries, ocaml_hits = packrat_numbers(ocaml_parse_result.get("packrat_stats"))
 rust_diagnostics = rust_json.get("diagnostics", [])
 rust_parse_result = rust_json.get("parse_result") or {}
 rust_queries, rust_hits = packrat_numbers(rust_parse_result.get("packrat_stats"))
 rust_span_trace_len = len(rust_parse_result.get("span_trace") or [])
-rust_typecheck = rust_json.get("typecheck") or {}
-rust_typeck_metrics = rust_typeck_dir / "metrics.json"
 
 summary = {
     "case": case_name,
@@ -292,46 +337,41 @@ summary = {
     "rust_packrat_queries": rust_queries,
     "rust_packrat_hits": rust_hits,
     "rust_span_trace_len": rust_span_trace_len,
-    "ocaml_tast_lines": ocaml_tast.count("\n") + 1 if ocaml_tast else 0,
+    "ocaml_tast_lines": ocaml_tast.count("\\n") + 1 if ocaml_tast else 0,
     "ocaml_tast_available": bool(ocaml_tast),
-    "typeck_metrics": {
-        "ocaml": None,
-        "rust": rust_typecheck.get("metrics"),
-    },
 }
 
-(case_dir / f"{safe_name}.ocaml.typeck.json").write_text(
-    json.dumps(derive_ocaml_typeck_metrics(ocaml_tast), ensure_ascii=False, indent=2),
-    encoding="utf-8",
-)
+if mode == "typeck":
+    ocaml_summary_json = load_json(typeck_dir / "typed-ast.ocaml.json")
+    ocaml_metrics = derive_ocaml_typeck_metrics(ocaml_tast, ocaml_summary_json)
+    rust_metrics = load_json(typeck_dir / "metrics.json")
+    typeck_diff = diff_typeck_metrics(ocaml_metrics, rust_metrics)
+    summary["typeck_metrics"] = {
+        "ocaml": ocaml_metrics.get("metrics") if ocaml_metrics else None,
+        "rust": rust_metrics.get("metrics") if rust_metrics else None,
+        "match": typeck_diff.get("match", False),
+    }
+    (case_dir / "typeck.diff.json").write_text(
+        json.dumps(typeck_diff, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
 
-ocaml_typeck_path = case_dir / f"{safe_name}.ocaml.typeck.json"
-ocaml_typeck = load_json(ocaml_typeck_path)
-rust_typeck = load_json(rust_typeck_metrics)
-typeck_diff = diff_typeck_metrics(ocaml_typeck, rust_typeck)
-summary["typeck_metrics"]["ocaml"] = ocaml_typeck.get("metrics") if ocaml_typeck else None
-summary["typeck_metrics"]["rust"] = rust_typeck.get("metrics") if rust_typeck else None
-summary["typeck_metrics"]["match"] = typeck_diff.get("match", False)
-(case_dir / f"{safe_name}.typeck.diff.json").write_text(
-    json.dumps(typeck_diff, ensure_ascii=False, indent=2),
-    encoding="utf-8",
-)
-
-(case_dir / f"{safe_name}.summary.json").write_text(
+(case_dir / "summary.json").write_text(
     json.dumps(summary, ensure_ascii=False, indent=2),
     encoding="utf-8",
 )
 PY
 done
 
-python3 - "${CASE_DIR}" <<'PY'
+python3 - "${RUN_DIR}" "${MODE}" <<'PY'
 import json
 import pathlib
 import sys
 
-case_dir = pathlib.Path(sys.argv[1])
+run_dir = pathlib.Path(sys.argv[1])
+mode = sys.argv[2]
 summaries = []
-for path in sorted(case_dir.glob("*.summary.json")):
+for path in sorted(run_dir.glob("*/summary.json")):
     summaries.append(json.loads(path.read_text(encoding="utf-8")))
 
 lines = [
@@ -351,7 +391,7 @@ for summary in summaries:
         f"{summary['rust_packrat_queries']}/{summary['rust_packrat_hits']} |"
     )
 
-(case_dir / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+(run_dir / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 PY
 
-printf "==> サマリ: %s\n" "${CASE_DIR}/summary.md"
+printf "==> サマリ: %s\n" "${RUN_DIR}/summary.md"

@@ -1,0 +1,2 @@
+effect AsyncOnly
+fn disallowed() = perform AsyncOnly 1

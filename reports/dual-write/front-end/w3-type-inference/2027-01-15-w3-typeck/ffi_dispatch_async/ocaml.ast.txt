@@ -1,0 +1,3 @@
+module examples.ffi.macos.dispatch_async
+extern "C" target=arm64-apple-darwin {items=2}
+pub fn main() -> i64 = int(0:base10)

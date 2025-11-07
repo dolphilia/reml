@@ -1,0 +1,42 @@
+{
+  "match": true,
+  "fields": {
+    "binary_expressions": {
+      "ocaml": 0,
+      "rust": 0,
+      "delta": 0
+    },
+    "call_sites": {
+      "ocaml": 0,
+      "rust": 0,
+      "delta": 0
+    },
+    "constraint_breakdown": {
+      "ocaml": {
+        "ocaml_stub": 0
+      },
+      "rust": {},
+      "delta": null
+    },
+    "constraints_total": {
+      "ocaml": 0,
+      "rust": 0,
+      "delta": 0
+    },
+    "typed_exprs": {
+      "ocaml": 0,
+      "rust": 0,
+      "delta": 0
+    },
+    "typed_functions": {
+      "ocaml": 0,
+      "rust": 0,
+      "delta": 0
+    },
+    "unresolved_identifiers": {
+      "ocaml": 0,
+      "rust": 0,
+      "delta": 0
+    }
+  }
+}

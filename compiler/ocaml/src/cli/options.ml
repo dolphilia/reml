@@ -58,6 +58,12 @@ let print_full_help () =
       "出力制御:";
       "  --emit-ast          AST を標準出力に書き出す";
       "  --emit-tast         型付き AST を標準出力に書き出す";
+      "  --emit-typed-ast <path>";
+      "                       型付き AST サマリ JSON を指定パスに出力";
+      "  --emit-constraints <path>";
+      "                       制約サマリ JSON を指定パスに出力";
+      "  --emit-typeck-debug <path>";
+      "                       型推論デバッグ JSON を指定パスに出力";
       "  --emit-ir           LLVM IR (.ll) を出力ディレクトリに生成";
       "  --emit-bc           LLVM Bitcode (.bc) を出力ディレクトリに生成";
       "  --emit-parse-debug <path>";
@@ -153,6 +159,9 @@ type options = {
   (* 出力 *)
   emit_ast : bool;  (** AST を標準出力に出力 *)
   emit_tast : bool;  (** Typed AST を標準出力に出力 *)
+  emit_typed_ast_json : string option;  (** Typed AST サマリ JSON 出力先 *)
+  emit_constraints_json : string option;  (** 制約サマリ JSON 出力先 *)
+  emit_typeck_debug_json : string option;  (** Typeck debug JSON 出力先 *)
   emit_ir : bool;  (** LLVM IR (.ll) を出力ディレクトリに生成 *)
   emit_bc : bool;  (** LLVM Bitcode (.bc) を出力ディレクトリに生成 *)
   emit_parse_debug : string option;  (** Parser debug JSON をファイル出力 *)
@@ -210,8 +219,11 @@ let default_options =
   {
     input_file = "";
     use_stdin = false;
-    emit_ast = false;
-    emit_tast = false;
+  emit_ast = false;
+  emit_tast = false;
+  emit_typed_ast_json = None;
+  emit_constraints_json = None;
+  emit_typeck_debug_json = None;
   emit_ir = false;
   emit_bc = false;
   emit_parse_debug = None;
@@ -292,6 +304,9 @@ let parse_args argv =
   (* Arg.parse で使用する ref 変数 *)
   let emit_ast = ref false in
   let emit_tast = ref false in
+  let emit_typed_ast_json = ref None in
+  let emit_constraints_json = ref None in
+  let emit_typeck_debug_json = ref None in
   let emit_ir = ref false in
   let emit_bc = ref false in
   let emit_parse_debug = ref None in
@@ -389,6 +404,15 @@ let parse_args argv =
       (* 出力オプション *)
       ("--emit-ast", Arg.Set emit_ast, "Emit AST to stdout");
       ("--emit-tast", Arg.Set emit_tast, "Emit Typed AST to stdout");
+      ( "--emit-typed-ast",
+        Arg.String (fun value -> emit_typed_ast_json := Some value),
+        "<path> Emit Typed AST summary JSON to file" );
+      ( "--emit-constraints",
+        Arg.String (fun value -> emit_constraints_json := Some value),
+        "<path> Emit constraint summary JSON to file" );
+      ( "--emit-typeck-debug",
+        Arg.String (fun value -> emit_typeck_debug_json := Some value),
+        "<path> Emit typechecker debug JSON to file" );
       ("--emit-ir", Arg.Set emit_ir, "Emit LLVM IR (.ll) to output directory");
       ( "--emit-bc",
         Arg.Set emit_bc,
@@ -733,6 +757,9 @@ let parse_args argv =
           use_stdin = false;
           emit_ast = !emit_ast;
           emit_tast = !emit_tast;
+          emit_typed_ast_json = !emit_typed_ast_json;
+          emit_constraints_json = !emit_constraints_json;
+          emit_typeck_debug_json = !emit_typeck_debug_json;
           emit_ir = !emit_ir;
           emit_bc = !emit_bc;
           emit_parse_debug =
