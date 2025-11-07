@@ -76,3 +76,10 @@ Rust フロントエンド移植において、OCaml 実装と同一の診断 (`
 - Rust 側で `Result<T, TypeError>` を導入した箇所は、OCaml 側の例外名・診断コード・Recover ヒントを `diagnostic::codes::TYPE_*` に写像し、`typeck-debug` に `{"ocaml_exception": "...", "rust_error": "...", "diagnostic_code": "TYPE_xxx"}` の形で両実装のメタデータを併記する。これにより、`scripts/validate-diagnostic-json.sh` が指摘した差分を `typeck-debug` から逆引きできる。
 - CLI 追加フラグ: `remlc --frontend rust --emit typed-ast --emit constraints --emit typeck-debug <dir>` / `remlc --frontend ocaml --emit-constraints-json <path> --emit-typeck-debug <path>`。両方の出力を `p1-front-end-checklists.csv` の新規行（型推論診断）の受入基準として記録し、`docs/spec/3-6-core-diagnostics-audit.md` へのフィードバック対象にする。
 - *2027-01-17 進捗*: `reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/diagnostic-validate.log` で `scripts/validate-diagnostic-json.sh` 通過、`effects-metrics.{ocaml,rust}.json` の `effects.unify.*` / `effects.impl_resolve.*` 誤差 0 を確認した。`ffi_dispatch_async` のみ OCaml 側診断が `Type_error` で終了するため `typeck_match=false` だが、診断 JSON の差分は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#W3-TYPECK-ffi-dispatch-async` で追跡し、その他 4 ケースは `typeck-debug` を含め完全一致した。
+
+## 1.2.12 W4 診断互換試験向けベースライン更新
+- *2027-11-07 進捗*: W4 Step1（ゲート設定）として OCaml 側資産を再検証し、`reports/dual-write/front-end/w4-diagnostics/baseline/` に成果物を集約した。  
+  - `npm ci && npm run ci --prefix tooling/lsp/tests/client_compat` を実行し、LSP V2 フィクスチャ 9 件の pass を確認。  
+  - `scripts/validate-diagnostic-json.sh $(cat tmp/w4-parser-diag-paths.txt)` で Schema v2.0.0-draft を 10 ケース通過させ、リスト外だった `compiler/ocaml/tests/golden/diagnostics/effects/syntax-constructs.json.golden` は診断 JSON ではないため `TODO: DIAG-RUST-03` として別扱いにした。  
+  - `collect-iterator-audit-metrics.py --section parser|effects|streaming` の結果を `parser-metrics.ocaml.json` / `effects-metrics.ocaml.json` / `streaming-metrics.ocaml.json` に保存し、`domain/multi-domain.json.golden` の audit メタデータ不足で `diagnostic.audit_presence_rate` が 0.7 から上がらないことを確認。是正タスクは `TODO: DIAG-RUST-04`（`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`）で追跡する。  
+- Rust 側 dual-write を始める前に上記 TODO を解消し、OCaml 基準の完全通過を達成することが W4 Step2 以降の着手条件となる。

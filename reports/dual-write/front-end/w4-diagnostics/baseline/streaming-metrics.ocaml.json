@@ -1,0 +1,370 @@
+{
+  "metrics": [
+    {
+      "metric": "diagnostic.audit_presence_rate",
+      "total": 10,
+      "passed": 7,
+      "failed": 3,
+      "pass_rate": 0.0,
+      "pass_fraction": 0.7,
+      "required_audit_keys": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "sources": [
+        "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
+        "compiler/ocaml/tests/golden/diagnostics/effects/invalid-attribute-unknown-tag.json.golden",
+        "compiler/ocaml/tests/golden/diagnostics/effects/invalid-attribute.json.golden",
+        "compiler/ocaml/tests/golden/diagnostics/effects/residual-leak.json.golden",
+        "compiler/ocaml/tests/golden/diagnostics/effects/stage-resolution.json.golden",
+        "compiler/ocaml/tests/golden/diagnostics/ffi/unsupported-abi.json.golden",
+        "compiler/ocaml/tests/golden/diagnostics/parser/expected-summary.json.golden",
+        "compiler/ocaml/tests/golden/diagnostics/parser/parser-runconfig-packrat.json.golden",
+        "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
+      ],
+      "failures": [
+        {
+          "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
+          "index": 0,
+          "missing": [
+            "cli.change_set",
+            "schema.version"
+          ],
+          "code": "plugin.bundle.signature_invalid"
+        },
+        {
+          "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
+          "index": 1,
+          "missing": [
+            "cli.change_set",
+            "schema.version"
+          ],
+          "code": "lsp.transport.internal_error"
+        },
+        {
+          "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
+          "index": 2,
+          "missing": [
+            "cli.change_set",
+            "schema.version"
+          ],
+          "code": "demo.custom.category"
+        }
+      ]
+    },
+    {
+      "metric": "parser.stream.outcome_consistency",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
+      ],
+      "failures": [],
+      "related_metrics": [
+        {
+          "metric": "parser.stream.flow.auto_coverage",
+          "total": 1,
+          "auto": 1,
+          "manual": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
+          ],
+          "samples": {
+            "policies": [
+              "auto"
+            ]
+          }
+        },
+        {
+          "metric": "parser.stream.backpressure_sync",
+          "total": 1,
+          "passed": 1,
+          "failed": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
+          ],
+          "failures": []
+        },
+        {
+          "metric": "parser.stream.demandhint_coverage",
+          "total": 1,
+          "covered": 1,
+          "missing": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
+          ],
+          "failures": []
+        },
+        {
+          "metric": "parser.stream.demandhint_coverage",
+          "total": 1,
+          "covered": 1,
+          "missing": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
+          ],
+          "failures": []
+        },
+        {
+          "metric": "parser.stream.bridge_backpressure_diagnostics",
+          "total": 1,
+          "covered": 1,
+          "missing": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
+          ],
+          "failures": []
+        },
+        {
+          "metric": "parser.stream.bridge_stage_propagation",
+          "total": 1,
+          "covered": 1,
+          "missing": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
+          ],
+          "failures": []
+        }
+      ]
+    },
+    {
+      "metric": "parser.stream.flow.auto_coverage",
+      "total": 1,
+      "auto": 1,
+      "manual": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
+      ],
+      "samples": {
+        "policies": [
+          "auto"
+        ]
+      }
+    },
+    {
+      "metric": "parser.stream.backpressure_sync",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "parser.stream.demandhint_coverage",
+      "total": 1,
+      "covered": 1,
+      "missing": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "parser.stream.demandhint_coverage",
+      "total": 1,
+      "covered": 1,
+      "missing": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "parser.stream.bridge_backpressure_diagnostics",
+      "total": 1,
+      "covered": 1,
+      "missing": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "parser.stream.bridge_stage_propagation",
+      "total": 1,
+      "covered": 1,
+      "missing": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
+      ],
+      "failures": []
+    }
+  ],
+  "metric": "diagnostic.audit_presence_rate",
+  "total": 10,
+  "passed": 7,
+  "failed": 3,
+  "pass_rate": 0.0,
+  "pass_fraction": 0.7,
+  "required_audit_keys": [
+    "cli.audit_id",
+    "cli.change_set",
+    "schema.version",
+    "timestamp"
+  ],
+  "sources": [
+    "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
+    "compiler/ocaml/tests/golden/diagnostics/effects/invalid-attribute-unknown-tag.json.golden",
+    "compiler/ocaml/tests/golden/diagnostics/effects/invalid-attribute.json.golden",
+    "compiler/ocaml/tests/golden/diagnostics/effects/residual-leak.json.golden",
+    "compiler/ocaml/tests/golden/diagnostics/effects/stage-resolution.json.golden",
+    "compiler/ocaml/tests/golden/diagnostics/ffi/unsupported-abi.json.golden",
+    "compiler/ocaml/tests/golden/diagnostics/parser/expected-summary.json.golden",
+    "compiler/ocaml/tests/golden/diagnostics/parser/parser-runconfig-packrat.json.golden",
+    "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
+  ],
+  "failures": [
+    {
+      "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
+      "index": 0,
+      "missing": [
+        "cli.change_set",
+        "schema.version"
+      ],
+      "code": "plugin.bundle.signature_invalid"
+    },
+    {
+      "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
+      "index": 1,
+      "missing": [
+        "cli.change_set",
+        "schema.version"
+      ],
+      "code": "lsp.transport.internal_error"
+    },
+    {
+      "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
+      "index": 2,
+      "missing": [
+        "cli.change_set",
+        "schema.version"
+      ],
+      "code": "demo.custom.category"
+    }
+  ],
+  "diagnostic_audit": {
+    "metric": "diagnostic.audit_presence_rate",
+    "total": 10,
+    "passed": 7,
+    "failed": 3,
+    "pass_rate": 0.0,
+    "pass_fraction": 0.7,
+    "required_audit_keys": [
+      "cli.audit_id",
+      "cli.change_set",
+      "schema.version",
+      "timestamp"
+    ],
+    "sources": [
+      "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
+      "compiler/ocaml/tests/golden/diagnostics/effects/invalid-attribute-unknown-tag.json.golden",
+      "compiler/ocaml/tests/golden/diagnostics/effects/invalid-attribute.json.golden",
+      "compiler/ocaml/tests/golden/diagnostics/effects/residual-leak.json.golden",
+      "compiler/ocaml/tests/golden/diagnostics/effects/stage-resolution.json.golden",
+      "compiler/ocaml/tests/golden/diagnostics/ffi/unsupported-abi.json.golden",
+      "compiler/ocaml/tests/golden/diagnostics/parser/expected-summary.json.golden",
+      "compiler/ocaml/tests/golden/diagnostics/parser/parser-runconfig-packrat.json.golden",
+      "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
+    ],
+    "failures": [
+      {
+        "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
+        "index": 0,
+        "missing": [
+          "cli.change_set",
+          "schema.version"
+        ],
+        "code": "plugin.bundle.signature_invalid"
+      },
+      {
+        "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
+        "index": 1,
+        "missing": [
+          "cli.change_set",
+          "schema.version"
+        ],
+        "code": "lsp.transport.internal_error"
+      },
+      {
+        "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
+        "index": 2,
+        "missing": [
+          "cli.change_set",
+          "schema.version"
+        ],
+        "code": "demo.custom.category"
+      }
+    ]
+  },
+  "schema_versions": [],
+  "diagnostics": {
+    "total": 11,
+    "error": 7,
+    "warning": 2,
+    "info": 2,
+    "hint": 0,
+    "other": 0,
+    "sources": [
+      "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
+      "compiler/ocaml/tests/golden/diagnostics/effects/invalid-attribute-unknown-tag.json.golden",
+      "compiler/ocaml/tests/golden/diagnostics/effects/invalid-attribute.json.golden",
+      "compiler/ocaml/tests/golden/diagnostics/effects/residual-leak.json.golden",
+      "compiler/ocaml/tests/golden/diagnostics/effects/stage-resolution.json.golden",
+      "compiler/ocaml/tests/golden/diagnostics/ffi/unsupported-abi.json.golden",
+      "compiler/ocaml/tests/golden/diagnostics/parser/expected-summary.json.golden",
+      "compiler/ocaml/tests/golden/diagnostics/parser/parser-runconfig-packrat.json.golden",
+      "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
+    ],
+    "info_fraction": 0.18181818181818182,
+    "hint_fraction": 0.0,
+    "info_hint_ratio": 0.18181818181818182,
+    "parser_total": 1,
+    "parser_expected": 1,
+    "parser_expected_ratio": 1.0,
+    "parser_expected_tokens_avg": 3.0
+  }
+}

@@ -164,13 +164,16 @@
      - ✅ 2027-01-18: `docs/spec/1-2-types-Inference.md` の §C に `TypecheckConfig` の設定表と `Type_inference_effect` ログ拡張（`effect_scope` / `residual_effects` / `recoverable`）を追加。  
      - ✅ 2027-01-18: `docs/spec/3-6-core-diagnostics-audit.md` へ `effects-metrics.{ocaml,rust}.json`・`typeck-debug.{ocaml,rust}.json` の成果物要件と `effects.unify.*`／`effects.impl_resolve.*`／`effects.stage_mismatch.*` の KPI を組み込み。追加のフォローアップは現時点で発生していない。  
 
-### W4 具体的な進め方（診断互換試験）🆕 着手準備中
+### W4 具体的な進め方（診断互換試験）🟡 ゲート確認中
 
 1. **前提資産のリフレッシュとゲート設定**  
    - `1-2-diagnostic-compatibility.md`・`reports/diagnostic-format-regression.md`・`p1-front-end-checklists.csv`（診断カテゴリ）を読み返し、W4 の完了条件（JSON/LSP/監査メトリクスの完全一致）を改めて明文化する。  
    - OCaml 側ゴールデン（`compiler/ocaml/tests/golden/diagnostics/`、`tooling/lsp/tests/client_compat/fixtures/`）に対して `scripts/validate-diagnostic-json.sh`・`npm run ci --prefix tooling/lsp/tests/client_compat` を実行し、基準が劣化していないことを先に確認する。  
    - `tooling/ci/collect-iterator-audit-metrics.py` の `parser`/`effects`/`streaming` 各セクションを OCaml 出力で走らせ、`collect-iterator-audit-metrics.log` を `reports/dual-write/front-end/w4-diagnostics/baseline/` に保存してから Rust 側比較を開始する。  
    - 上記ゲートを通過しない場合は診断互換試験を進めず、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` 側で是正タスクとして扱う（W4 期間中のゴールデン更新を禁止）。
+   - ✅ 2027-11-07: `npm ci && npm run ci --prefix tooling/lsp/tests/client_compat` を再実行し、LSP V2 フィクスチャ 9 件の pass を確認。ログは `reports/dual-write/front-end/w4-diagnostics/baseline/README.md` に集約。  
+   - ✅ 2027-11-07: `scripts/validate-diagnostic-json.sh` を OCaml ゴールデン 10 件（`tmp/w4-parser-diag-paths.txt`）へ適用し、Schema v2.0.0-draft を pass。診断形式ではない `effects/syntax-constructs.json.golden` は `TODO: DIAG-RUST-03` として 2-7 文書へ移送。  
+   - ✅ 2027-11-07: `collect-iterator-audit-metrics.py --section parser|effects|streaming` を実行し、基準メトリクスを `reports/dual-write/front-end/w4-diagnostics/baseline/{parser,effects,streaming}-metrics.ocaml.json` に保存。`diagnostic.audit_presence_rate` が 0.7（`domain/multi-domain.json.golden` の audit 欠落）で頭打ちのため `TODO: DIAG-RUST-04` を登録し、Rust 側の dual-write を始める前に是正する。  
 
 2. **ケースマトリクスと入力セット整備**  
    - `compiler/ocaml/tests/test_cli_diagnostics.ml`, `parser_recover_tests.ml`, `streaming_runner_tests.ml`, `test_cli_callconv_snapshot.ml`, `test_ffi_contract.ml`、および `docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-002-proposal.md` を横断し、診断カテゴリ（parser recover / streaming meta / type&effect / capability stage / CLI config / LSP RPC）の代表ケースを抽出する。  
