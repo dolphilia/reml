@@ -156,8 +156,14 @@
 
 5. **ドキュメント／追跡ファイル更新とハンドオーバー準備**  
    - `p1-front-end-checklists.csv` の「Typed AST」「制約ソルバ」行に W3 で作成する成果物（例: `typeck_config.md`, `rust_type_inference_tests.rs`, `effects-metrics.json`）と受入基準（dual-write Typed AST/Constraint 差分ゼロ、`collect-iterator-audit-metrics.py --section effects` pass）を追記する。  
+     - ✅ 2027-01-17: `p1-front-end-checklists.csv` に dual-write 実行結果（`2027-01-15-w3-typeck`）と `ffi_dispatch_async` 保留の参照先を記録し、Typed AST / 制約ソルバ行の受入基準に完了日と成果物パスを追記した。  
    - 進捗と調査結果を `1-1-ast-and-ir-alignment.md`（Typed AST/型情報節）と `1-2-diagnostic-compatibility.md`（型推論由来診断節）へフィードバックし、更新内容を `docs-migrations.log` に記録。  
-   - W3 で新規に決まった API/CLI 仕様や既存仕様の修正点は `README.md`、`docs/spec/1-2-types-Inference.md`、`docs/spec/3-6-core-diagnostics-audit.md` へ反映するタスクをリスト化し、P1 クロージングレビュー（W4.5）までに反映できるようフォローアップを明記する。
+     - ✅ 2027-01-17: 両ドキュメントへ `reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/` の比較結果を追記し、`docs-migrations.log` に W3 Step5 更新として記録。  
+   - W3 で新規に決まった API/CLI 仕様や既存仕様の修正点は `README.md`、`docs/spec/1-2-types-Inference.md`、`docs/spec/3-6-core-diagnostics-audit.md` へ反映するタスクをリスト化し、P1 クロージングレビュー（W4.5）までに反映できるようフォローアップを明記する。  
+     - 🗒️ フォローアップ一覧（W4.5 までに実施）:  
+       1. `docs/plans/rust-migration/README.md` と ルート `README.md` に `--emit typeck-debug` / `--dualwrite-root` 追加手順と `reports/dual-write/front-end/w3-type-inference/README.md` への導線を追記する。  
+       2. `docs/spec/1-2-types-Inference.md` §効果行／型推論設定に `TypecheckConfig`（`--type-row-mode`, `--effect-stage-*`, `--recover-*`）の振る舞いと `Type_inference_effect` ログ新フィールド（`residual_effects`, `recoverable`) を反映する。  
+       3. `docs/spec/3-6-core-diagnostics-audit.md` に `effects-metrics.{ocaml,rust}.json` / `typeck-debug.{ocaml,rust}.json` を診断監査成果物として追加し、`collect-iterator-audit-metrics.py --section effects` の新キー（`effects.impl_resolve.*`, `effects.stage_mismatch.*`）を図表へ組み込む。  
 
 ## 1.0.6 ワークストリームと主要論点
 
