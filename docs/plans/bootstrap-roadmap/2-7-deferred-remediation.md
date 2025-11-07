@@ -318,8 +318,9 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
    - `generalize` / `instantiate` / `Type_unification` / `constraint_solver.ml` で `effect_row` を扱うユーティリティを実装し、RowVar は予約値 (`Open`) として保持。  
    - `Effect_analysis.merge_usage_into_profile` と `Type_inference_effect` を更新し、残余効果が `effect_row.residual` へ反映されるようにする。  
    - テストスイート: `compiler/ocaml/tests/test_type_inference.ml` に `type_effect_row_equivalence_*` ケース、`compiler/ocaml/tests/streaming_runner_tests.ml` に `streaming_effect_row_stage_consistency` を追加。  
-   - KPI: `collect-iterator-audit-metrics.py --require-success --section effects` で `diagnostics.effect_row_stage_consistency = 1.0`, `type_effect_row_equivalence = 1.0`, `effect_row_guard_regressions = 0` をゲート条件に設定。逸脱時は自動ロールバック（`type_row_mode=metadata-only`）を実行し、`0-4-risk-handling.md` に登録。
-   - **完了状況 (2025-11-06)**: `constraint.ml` の `unify` が効果行を厳密比較するよう改修し、`type_error`・`main` で効果行メタデータを診断／監査へ展開。`test_type_inference.ml`・`streaming_runner_tests.ml` に効果行統合テストを追加し、`collect-iterator-audit-metrics.py` に `diagnostics.effect_row_stage_consistency` / `type_effect_row_equivalence` / `effect_row_guard_regressions` の集計・ゲート処理を実装した。
+   - KPI: `collect-iterator-audit-metrics.py --require-success --section effects` で `diagnostics.effect_row_stage_consistency = 1.0`, `type_effect_row_equivalence = 1.0`, `effect_row_guard_regressions = 0` をゲート条件に設定。逸脱時は自動ロールバック（`type_row_mode=metadata-only`）を実行し、`0-4-risk-handling.md` に登録。  
+   - **完了状況 (2025-11-06)**: `constraint.ml` の `unify` が効果行を厳密比較するよう改修し、`type_error`・`main` で効果行メタデータを診断／監査へ展開。`test_type_inference.ml`・`streaming_runner_tests.ml` に効果行統合テストを追加し、`collect-iterator-audit-metrics.py` に `diagnostics.effect_row_stage_consistency` / `type_effect_row_equivalence` / `effect_row_guard_regressions` の集計・ゲート処理を実装した。  
+   - *2027-01-05 追記*: Rust 移植 P1 W3 で `docs/plans/rust-migration/appendix/type-inference-ocaml-inventory.md` を整備し、`type_row_mode` と KPI ゲート (`effects.unify.*`, `effects.impl_resolve.*`) を dual-write へ組み込む準備を実施。W3 以降は Rust 側の `TypecheckConfig` が同 KPI を計測できることを本書 §検証・完了条件に含める。
 
 3. **Sprint C — Core IR 伝播とプラットフォーム検証**  
    - `core_ir/desugar_fn.ml`, `core_ir/iterator_audit.ml`, `runtime/effect_registry.ml` を更新し、IR/Runtime の効果情報が `effect_row` を参照できる状態にする。  

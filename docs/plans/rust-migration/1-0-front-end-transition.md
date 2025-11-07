@@ -116,13 +116,14 @@
    - `p1-front-end-checklists.csv` で完了判定できない項目は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に課題として登録し、`reports/dual-write/front-end/README.md` へ参照リンクを残す。  
    - 型/AST 名称の変更や JSON スキーマ更新が発生した場合は `README.md`（本章リスト）と `docs/spec/0-2-glossary.md` を更新する準備メモを `docs-migrations.log` に追加し、P2 へのハンドオーバー素材として整理する。
 
-### W3 具体的な進め方（型推論コア移植）🟡 着手前
+### W3 具体的な進め方（型推論コア移植）🟡 Step1 完了
 
 1. **OCaml 型推論スタックの棚卸しとギャップ抽出**  
    - 対象モジュール: `compiler/ocaml/src/type_inference.ml`, `constraint.ml`, `constraint_solver.ml`, `type_inference_effect.ml`, `impl_registry.ml`、および `compiler/ocaml/docs/effect-system-design-note.md`・`docs/spec/1-2-types-Inference.md`。役割と公開 API を一覧化し、例外／グローバル状態の扱いを整理する。  
    - `compiler/ocaml/tests/test_type_inference.ml`, `tests/test_cli_callconv_snapshot.ml`, `tests/test_ffi_contract.ml`, `tests/test_cli_diagnostics.ml` でカバーしているシナリオ種別（パターン推論、impl 解決、callconv、FFI 契約、diagnostic 連携）を表にまとめ、`p1-front-end-checklists.csv` の「制約ソルバ」行へ必要な検証ケースを追記する。  
    - W3 用の棚卸し成果物として `docs/plans/rust-migration/appendix/type-inference-ocaml-inventory.md`（仮）を作成し、`Scheme`/`Constraint`/`EffectRow`/`ImplRegistry` のフィールド仕様とログ出力項目を記載。既存 W2 の `appendix/typed_ast_schema_draft.md` と突き合わせ、Typed AST と型推論が共有する ID/Span/Stage の整合を確認する。  
    - 既知の仕様乖離（`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`）と突合し、型推論に関する未解決チケットをリストアップ。着手前に `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ再掲し、W3 で解決するもの／後続に送るものをラベル付けする。
+   - ✅ 2027-01-05: 上記棚卸しを完了。成果物 `docs/plans/rust-migration/appendix/type-inference-ocaml-inventory.md` を公開し、`TYPE-001`/`TYPE-002`/`TYPE-003`/`EFFECT-001` の観測結果を `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`・`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に追記。`p1-front-end-checklists.csv` へ制約ソルバ検証ケース（パターン推論／CallConv／FFI／CLI 診断）を登録済み。
 
 2. **Rust 型推論モジュールの設計スケルトン確立**  
    - `compiler/rust/frontend/src/typeck/`（仮ディレクトリ）を用意し、`mod.rs`, `constraint.rs`, `types.rs`, `solver.rs`, `effect.rs`, `impl_registry.rs`, `env.rs` を配置。`TyId`, `TyVar`, `Scheme`, `Constraint`, `EffectRow`, `StageRequirement` などの基本型を定義し、`TypeVarGen` 相当は `AtomicU32` + `ThinVec` で実装する方針を文書化する。  

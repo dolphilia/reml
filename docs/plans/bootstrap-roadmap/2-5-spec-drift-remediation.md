@@ -224,6 +224,8 @@
   | `EXEC-001` | Chapter 2／実行戦略 | `run_stream` 等が未実装でストリーミング検証不可 | `stream-runner PoC` の責任分担とタイムラインを Phase 2-7 と合意 |
   | `DIAG-002` | Chapter 3／診断監査 | `AuditEnvelope`/`timestamp` が任意扱いで監査欠落 | 最低限の自動補完案とリスク登録フローを決定し、監査メトリクスの閾値を再設定 |
 
+  *2027-01-05 追記*: 型推論系の 3 ID（`TYPE-001` / `TYPE-003` / `EFFECT-001`）について、Rust 移植 P1 W3 で棚卸しメモ `docs/plans/rust-migration/appendix/type-inference-ocaml-inventory.md` を作成し、`Type_inference`/`Constraint_solver`/`Impl_registry` の現状・ギャップ・テスト資産を一覧化した。移植タスク側での解決状況を同メモで更新し、ここでは差分 ID の優先度のみ維持する。
+
 - High（Phase 3 着手前に解消したい差分）:
 
   | ID | 章/領域 | 差分概要 | 推奨初動 |
