@@ -160,10 +160,9 @@
    - 進捗と調査結果を `1-1-ast-and-ir-alignment.md`（Typed AST/型情報節）と `1-2-diagnostic-compatibility.md`（型推論由来診断節）へフィードバックし、更新内容を `docs-migrations.log` に記録。  
      - ✅ 2027-01-17: 両ドキュメントへ `reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/` の比較結果を追記し、`docs-migrations.log` に W3 Step5 更新として記録。  
    - W3 で新規に決まった API/CLI 仕様や既存仕様の修正点は `README.md`、`docs/spec/1-2-types-Inference.md`、`docs/spec/3-6-core-diagnostics-audit.md` へ反映するタスクをリスト化し、P1 クロージングレビュー（W4.5）までに反映できるようフォローアップを明記する。  
-     - 🗒️ フォローアップ一覧（W4.5 までに実施）:  
-       1. `docs/plans/rust-migration/README.md` と ルート `README.md` に `--emit typeck-debug` / `--dualwrite-root` 追加手順と `reports/dual-write/front-end/w3-type-inference/README.md` への導線を追記する。  
-       2. `docs/spec/1-2-types-Inference.md` §効果行／型推論設定に `TypecheckConfig`（`--type-row-mode`, `--effect-stage-*`, `--recover-*`）の振る舞いと `Type_inference_effect` ログ新フィールド（`residual_effects`, `recoverable`) を反映する。  
-       3. `docs/spec/3-6-core-diagnostics-audit.md` に `effects-metrics.{ocaml,rust}.json` / `typeck-debug.{ocaml,rust}.json` を診断監査成果物として追加し、`collect-iterator-audit-metrics.py --section effects` の新キー（`effects.impl_resolve.*`, `effects.stage_mismatch.*`）を図表へ組み込む。  
+     - ✅ 2027-01-18: `docs/plans/rust-migration/README.md` と ルート `README.md` に `--dualwrite-root` 指定、`--emit typeck-debug`、`reports/dual-write/front-end/w3-type-inference/README.md` への導線を追記し、P1 W3 の運用手順を共有。  
+     - ✅ 2027-01-18: `docs/spec/1-2-types-Inference.md` の §C に `TypecheckConfig` の設定表と `Type_inference_effect` ログ拡張（`effect_scope` / `residual_effects` / `recoverable`）を追加。  
+     - ✅ 2027-01-18: `docs/spec/3-6-core-diagnostics-audit.md` へ `effects-metrics.{ocaml,rust}.json`・`typeck-debug.{ocaml,rust}.json` の成果物要件と `effects.unify.*`／`effects.impl_resolve.*`／`effects.stage_mismatch.*` の KPI を組み込み。追加のフォローアップは現時点で発生していない。  
 
 ## 1.0.6 ワークストリームと主要論点
 

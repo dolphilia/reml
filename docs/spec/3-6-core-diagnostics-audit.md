@@ -574,6 +574,33 @@ fn example_syscall(fd: i32, sink: AuditSink) -> Result<usize, SyscallError> = {
 
 このパターンにより、`effect {audit}` を付与した API は常に監査ログを伴い、`CapabilitySecurity.effect_scope` で宣言した `audit` タグと整合が保たれる。
 
+### 3.4 型推論 dual-write 監査成果物（W3 拡張）
+
+P1 W3 で導入した型推論 dual-write では、診断ログに加えて以下の成果物を `--dualwrite-root`（既定: `reports/dual-write/front-end/w3-type-inference/`）へ保存し、CI とローカル検証の双方で共有する。
+
+| 成果物 | 内容 | 生成元 | 用途 |
+| --- | --- | --- | --- |
+| `typeck/typed-ast.{ocaml,rust}.json` | 型推論後 AST（`TyId` と `StageRequirement` を含む） | `remlc --frontend {ocaml,rust} --emit typed-ast` | Dual-write 差分、`p1-front-end-checklists.csv` の受入判定 |
+| `typeck/constraints.{ocaml,rust}.json` | `Scheme`/`ConstraintSet` のシリアライズ | `--emit constraints` / `--emit-constraints-json` | 制約解決順序の比較 |
+| `typeck/impl-registry.{ocaml,rust}.json` | 型クラス辞書（Impl Registry）のスナップショット | `scripts/poc_dualwrite_compare.sh --mode typeck` | determinism（行順・キー一致）の検証 |
+| `typeck/effects-metrics.{ocaml,rust}.json` | `collect-iterator-audit-metrics.py --section effects` の出力 | `scripts/poc_dualwrite_compare.sh --mode typeck` 経由 | 効果監査 KPI（下表）を 0.5pt 以内に維持 |
+| `typeck/typeck-debug.{ocaml,rust}.json` | `Type_inference_effect` / `Constraint_solver` の詳細ログ (`effect_scope`, `residual_effects`, `recoverable` 等) | `--emit typeck-debug <dir>` | `effects.stage_mismatch.*` 診断との突合、Recover 設定の検証 |
+| `typeck/diagnostic-validate.log` | `scripts/validate-diagnostic-json.sh` の結果 | `scripts/poc_dualwrite_compare.sh --mode typeck` | JSON Schema 検証ログの監査証跡 |
+
+成果物のディレクトリ構造と更新手順は [`reports/dual-write/front-end/w3-type-inference/README.md`](../../reports/dual-write/front-end/w3-type-inference/README.md) で詳細に定義し、CI（`bootstrap-linux.yml` の `dual-write-typeck` ジョブ）も同 README の命名規約に従う。
+
+#### 3.4.1 `effects` セクションの必須メトリクス
+
+`collect-iterator-audit-metrics.py --section effects --require-success` は `effects-metrics.{ocaml,rust}.json` に次のキーを出力し、OCaml/Rust 双方の値を ±0.5pt 以内で一致させる。
+
+| メトリクスキー | 説明 | 合格条件 |
+| --- | --- | --- |
+| `effects.unify.match` / `effects.unify.delta` | 単一化（`Constraint_solver.unify`）の一致率と差分件数 | `effects.unify.match = 1.0` かつ `|delta| ≤ 0.5` |
+| `effects.impl_resolve.match` / `effects.impl_resolve.delta` | Impl Registry 解決結果の一致率と差分件数 | `effects.impl_resolve.match = 1.0`、`effects.impl_resolve.delta = 0` |
+| `effects.stage_mismatch.match` / `effects.stage_mismatch.delta` | `StageRequirement` 判定の一致率と Stage 差分件数 (`Type_inference_effect.effect_scope`) | `effects.stage_mismatch.match = 1.0`、`effects.stage_mismatch.delta = 0` |
+
+`typeck-debug.{ocaml,rust}.json` の `effect_scope`, `residual_effects`, `recoverable` フィールドは上記メトリクスの根拠データであり、`effects.stage_mismatch.delta > 0` の場合は `Diagnostic.extensions["effects"]` と照らして差分内容を追跡する。CLI から `--recover-disable` を指定した場合でも `effects.impl_resolve.match` と `effects.stage_mismatch.match` は 1.0 を維持する必要がある。
+
 ## 4. プライバシー保護とセキュリティ
 
 ### 4.1 個人情報の除去

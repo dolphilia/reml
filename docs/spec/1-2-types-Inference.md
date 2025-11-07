@@ -211,6 +211,22 @@ type RunConfigTarget = {
 * `features` や `extra` を参照する型レベルロジックは単純な等価比較に限定される。複雑な依存を導入する場合は標準ライブラリの設定 API（3-7）で明示的に型を表現する。
 * `diagnostics` が `true` の場合、`@cfg` 判定で得た詳細ログを `Diagnostic.extensions["cfg"]` に添付する（2.5 §B-9）。
 
+### C.9 `TypecheckConfig` と `Type_inference_effect` ログ
+
+`TypecheckConfig` は CLI から注入される型推論用の設定構造体で、dual-write 運用時の成果物や効果監査の粒度を統一する。主要フィールドと CLI フラグの対応は以下の通り。
+
+| フィールド | CLI フラグ（例） | 役割 |
+| --- | --- | --- |
+| `type_row_mode: TypeRowMode` | `--type-row-mode {ty-integrated,metadata-only,dual-write}` | 効果行を型表現へ統合するか（`ty-integrated`）、診断メタデータのみで保持するか（`metadata-only`）を切り替える。`dual-write` は W3 型推論 PoC のように両モードの出力を同時に得るための互換モード。 |
+| `effect_stage_runtime: StageRequirement` | `--effect-stage-runtime <Stage>` | ランタイムが保証する Stage の下限。`StageRequirement::{Exact,AtLeast}` を使い、`effects.contract.stage_mismatch` 診断の期待値となる。 |
+| `effect_stage_capability: StageRequirement` | `--effect-stage-capability <Stage>` | Capability Registry 側で要求される Stage。`effect_stage_runtime` と突き合わせて Stage の不足分を検出する。 |
+| `recover: RecoverConfig` | `--recover-max-depth <n>`, `--recover-disable`, `--recover-emit-hints` など | Recover（再回復）探索の深さやヒント出力の有無を制御する。`diagnostic.extensions["recover"]` に記録するヒント件数や `Type_inference_effect.recoverable` の既定値もここで決定される。 |
+| `dualwrite_root: Option<PathBuf>` | `--dualwrite-root <dir>` | Dual-write 成果物（Typed AST, Constraint, Impl Registry, effects metrics, typeck-debug）の格納先。CI/P1 では `reports/dual-write/front-end/w3-type-inference/` を指定して再現性を担保する。 |
+
+- Rust 版 CLI は `remlc --frontend rust --emit typed-ast --emit constraints --emit typeck-debug <dir>`、OCaml 版は `remlc --frontend ocaml --emit-constraints-json <path> --emit-typeck-debug <dir>` を組み合わせ、上表のフラグから `TypecheckConfig` を構築して dual-write を実行する。  
+- `Type_inference_effect` ログ（`typeck-debug.{ocaml,rust}.json`）は `effect_scope`（現在の Stage と Capability 文脈）、`residual_effects`（未処理の効果集合）、`recoverable`（診断を Recover で再提示できるかの真偽値）を必須フィールドとして保持し、`collect-iterator-audit-metrics.py --section effects` が算出する `effects.impl_resolve.*` / `effects.stage_mismatch.*` と連動する。  
+- dual-write 比較では `Type_inference_effect` の `residual_effects` を `type_row_mode` ごとに照合し、差分が残った場合は `effects-metrics.{ocaml,rust}.json` へ転写する。`recoverable=false` かつ `residual_effects ≠ ∅` の組み合わせは `effects.contract.stage_mismatch` の候補として扱われ、`--recover-disable` を指定しても一致することが完了条件となる。
+
 ---
 
 ## D. パターンの型付け

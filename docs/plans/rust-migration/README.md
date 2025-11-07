@@ -43,3 +43,9 @@
 - 既存仕様との整合を保つため、更新時は `docs/spec/` および関連ガイドの該当箇所を確認する。
 - 新規ドキュメントを作成した場合は、本 README に追記し、必要に応じて `docs/plans/README.md` からの導線を整備する。
 - ファイルの大規模改訂や名称変更を行った際は `docs-migrations.log` に記録し、レビューコメントを `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に残す。
+
+### P1 dual-write 実行メモ（型推論）
+
+- W3 以降の Typecheck dual-write では、CLI に `--emit typeck-debug <dir>` を指定して `Type_inference_effect` / `Constraint_solver` の JSON ログを出力する（Rust: `remlc --frontend rust --emit typed-ast --emit constraints --emit typeck-debug <dir>`、OCaml: `remlc --frontend ocaml --emit-constraints-json <path> --emit-typeck-debug <dir>`）。  
+- `scripts/poc_dualwrite_compare.sh --mode typeck --dualwrite-root reports/dual-write/front-end/w3-type-inference --run-id <label>` を利用すると、`typed-ast.{ocaml,rust}.json`／`constraints.{ocaml,rust}.json`／`impl-registry.{ocaml,rust}.json`／`effects-metrics.{ocaml,rust}.json`／`typeck-debug.{ocaml,rust}.json` が一括生成される。`--dualwrite-root` を必ず指定し、ランごとの成果物を `reports/dual-write/front-end/w3-type-inference/` に集約する。  
+- 成果物のディレクトリ構造・メトリクス検証手順は [`reports/dual-write/front-end/w3-type-inference/README.md`](../../reports/dual-write/front-end/w3-type-inference/README.md) を参照。`--typeck-debug` のフィールド仕様や `collect-iterator-audit-metrics.py --section effects` の必須キーも同 README と `appendix/w3-typeck-dualwrite-plan.md` に記載されている。
