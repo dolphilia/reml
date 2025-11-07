@@ -116,7 +116,7 @@
    - `p1-front-end-checklists.csv` で完了判定できない項目は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に課題として登録し、`reports/dual-write/front-end/README.md` へ参照リンクを残す。  
    - 型/AST 名称の変更や JSON スキーマ更新が発生した場合は `README.md`（本章リスト）と `docs/spec/0-2-glossary.md` を更新する準備メモを `docs-migrations.log` に追加し、P2 へのハンドオーバー素材として整理する。
 
-### W3 具体的な進め方（型推論コア移植）🟡 Step1 完了
+### W3 具体的な進め方（型推論コア移植）✅ 完了
 
 1. **OCaml 型推論スタックの棚卸しとギャップ抽出**  
    - 対象モジュール: `compiler/ocaml/src/type_inference.ml`, `constraint.ml`, `constraint_solver.ml`, `type_inference_effect.ml`, `impl_registry.ml`、および `compiler/ocaml/docs/effect-system-design-note.md`・`docs/spec/1-2-types-Inference.md`。役割と公開 API を一覧化し、例外／グローバル状態の扱いを整理する。  
@@ -138,8 +138,8 @@
    - `compiler/ocaml/tests/test_type_inference.ml` のケースを `p1-front-end-checklists.csv` に沿ってカテゴリ分けし、`cargo test --package reml-frontend --typeck`（仮）で実行するスナップショットテストへ変換。失敗時は `reports/dual-write/front-end/w3-type-inference/case-*/typed-ast.{ocaml,rust}.json` と `constraint.{ocaml,rust}.json` を保存する。  
    - `test_cli_callconv_snapshot.ml` / `test_ffi_contract.ml` / `test_cli_diagnostics.ml` のうち型推論に依存する CLI シナリオを抽出し、Rust 側 CLI（`remlc --frontend rust --emit typed-ast --emit constraints`）と OCaml CLI を同一スクリプト（`scripts/poc_dualwrite_compare.sh --mode typeck`）で呼び出せるよう、コマンドラインオプションと JSON schema を揃える。  
    - 例外→`Result` 変換で追加されるエラー型は `diagnostic::codes::TYPE_*`（`docs/spec/3-6-core-diagnostics-audit.md`）にマッピングし、差分が出た場合は `docs/plans/rust-migration/1-2-diagnostic-compatibility.md` の重点監視リストへ追記する。  
-   - 🆕 2027-01-15: `docs/plans/rust-migration/appendix/w3-typeck-dualwrite-plan.md` を追加し、Constraint/Impl/Effect ログの命名規約・CLI フラグ・`collect-iterator-audit-metrics.py --section effects` の閾値を明文化。タイプ別テストグループと成果物表を同メモに統合したことで、Dual-write の再実行とレビュー観点を共有できる。  
-   - 🆕 2027-01-15: `p1-front-end-checklists.csv` に Typed AST / Constraint / Impl Registry / Effect Metrics それぞれの完了条件を追記し、`reports/dual-write/front-end/w3-type-inference/summary.md` を評定根拠とするよう更新。Checklists の「制約ソルバ」行で成果物ファイル名を明示したため、W3 期間中の受入判定が自動化できる。  
+   - ✅ 2027-01-15: `docs/plans/rust-migration/appendix/w3-typeck-dualwrite-plan.md` を追加し、Constraint/Impl/Effect ログの命名規約・CLI フラグ・`collect-iterator-audit-metrics.py --section effects` の閾値を明文化。タイプ別テストグループと成果物表を同メモに統合したことで、Dual-write の再実行とレビュー観点を共有できる。  
+   - ✅ 2027-01-15: `p1-front-end-checklists.csv` に Typed AST / Constraint / Impl Registry / Effect Metrics それぞれの完了条件を追記し、`reports/dual-write/front-end/w3-type-inference/summary.md` を評定根拠とするよう更新。Checklists の「制約ソルバ」行で成果物ファイル名を明示したため、W3 期間中の受入判定が自動化できる。  
    - ✅ 2027-01-15: `scripts/poc_dualwrite_compare.sh --mode typeck --run-id 2027-01-15-w3-typeck --cases docs/plans/rust-migration/appendix/w3-dualwrite-cases.txt` を実行し、`reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/` に 5 ケース分の `typed-ast.{ocaml,rust}.json` / `constraints.{ocaml,rust}.json` / `typeck-debug.{ocaml,rust}.json` と `summary.md` を保存。`typeck_metrics.match` は 4 ケースで一致し、残る 1 ケース（`ffi_dispatch_async`）は Rust typed function 集計が未対応のため `typed_functions.delta=-1` を記録した。差分は `reports/.../typeck.diff.json` に残し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#W3-TYPECK-ffi-dispatch-async` へ TODO を登録して後続の Rust typeck 実装タスクへ引き継ぎ。  
    - ✅ 2027-01-16: Rust fallback typeck をソース解析ベースへ刷新（`compiler/rust/frontend/src/typeck/driver.rs`, `compiler/rust/frontend/src/bin/poc_frontend.rs`）し、`extern \"C\"` ブロックや `pub fn` を適切にフィルタしたうえでトップレベル関数数を推定できるようにした。`scripts/poc_dualwrite_compare.sh --mode typeck` も同日の実装に合わせて OCaml 側 Typed AST 不在時のフォールバック集計を改良。再実行した dual-write では `pattern_tuple` / `residual_effect` / `diagnostic_effect_stage` / `callconv_windows_messagebox` の `typeck_match` が True となり、未解決は OCaml 側が型推論エラーを返す `ffi_dispatch_async` のみであることを `reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/summary.md` に記録。該当差分は前述 TODO（`W3-TYPECK-ffi-dispatch-async`）で継続管理する。  
 
