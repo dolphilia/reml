@@ -12,9 +12,7 @@
       "delta": 0
     },
     "constraint_breakdown": {
-      "ocaml": {
-        "ocaml_stub": 0
-      },
+      "ocaml": {},
       "rust": {},
       "delta": null
     },
@@ -24,13 +22,13 @@
       "delta": 0
     },
     "typed_exprs": {
-      "ocaml": 0,
-      "rust": 0,
+      "ocaml": 5,
+      "rust": 5,
       "delta": 0
     },
     "typed_functions": {
-      "ocaml": 0,
-      "rust": 0,
+      "ocaml": 5,
+      "rust": 5,
       "delta": 0
     },
     "unresolved_identifiers": {

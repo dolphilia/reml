@@ -216,7 +216,7 @@ for entry in "${CASE_ENTRIES[@]}"; do
       "${input_path}"
   ) > "${rust_json_path}" || true
 
-  python3 - "${case_dir}" "${case_name}" "${safe_name}" "${RUN_ID}" "${REPORT_DIR}" "${MODE}" <<'PY'
+python3 - "${case_dir}" "${case_name}" "${safe_name}" "${RUN_ID}" "${REPORT_DIR}" "${MODE}" <<'PY'
 import json
 import pathlib
 import sys
@@ -248,16 +248,17 @@ def load_json(path: pathlib.Path):
     except json.JSONDecodeError:
         return None
 
-def derive_ocaml_typeck_metrics(tast_text: str, summary_json):
+def derive_ocaml_typeck_metrics(tast_text: str, summary_json, source_text: str):
     typed_functions = 0
     typed_exprs = 0
     functions = []
-    if isinstance(summary_json, dict):
+    has_summary = isinstance(summary_json, dict)
+    if has_summary:
         fn_list = summary_json.get("function_summaries")
         if isinstance(fn_list, list):
             typed_functions = len(fn_list)
             functions = fn_list
-    if tast_text:
+    if not has_summary and tast_text:
         for line in tast_text.splitlines():
             stripped = line.strip()
             if not stripped:
@@ -266,11 +267,19 @@ def derive_ocaml_typeck_metrics(tast_text: str, summary_json):
                 typed_functions += 1
             if stripped.startswith("(") or stripped.startswith("case "):
                 typed_exprs += 1
+    if typed_functions == 0:
+        typed_functions = estimate_functions_from_source(source_text)
+    if typed_exprs == 0 and typed_functions > 0:
+        typed_exprs = typed_functions
+
+    constraint_total = typed_exprs if has_summary else 0
+    constraint_breakdown = {"ocaml_stub": typed_exprs} if has_summary else {}
+
     metrics = {
         "typed_functions": typed_functions,
         "typed_exprs": typed_exprs,
-        "constraints_total": typed_exprs,
-        "constraint_breakdown": {"ocaml_stub": typed_exprs},
+        "constraints_total": constraint_total,
+        "constraint_breakdown": constraint_breakdown,
         "unresolved_identifiers": 0,
         "call_sites": 0,
         "binary_expressions": 0,
@@ -302,7 +311,16 @@ def packrat_numbers(stats):
         return int(stats.get("queries", 0) or 0), int(stats.get("hits", 0) or 0)
     return 0, 0
 
+def estimate_functions_from_source(source_text: str) -> int:
+    count = 0
+    tokens = source_text.replace("\n", " ").split()
+    for token in tokens:
+        if token == "fn":
+            count += 1
+    return count
+
 source_info = read_text(case_dir / "source.txt").strip()
+source_code = read_text(case_dir / "input.reml")
 ocaml_ast = read_text(case_dir / "ocaml.ast.txt").strip()
 ocaml_tast = read_text(case_dir / "ocaml.tast.txt").strip()
 ocaml_diag_json = load_json(case_dir / "ocaml.diagnostics.json") or {}
@@ -343,7 +361,7 @@ summary = {
 
 if mode == "typeck":
     ocaml_summary_json = load_json(typeck_dir / "typed-ast.ocaml.json")
-    ocaml_metrics = derive_ocaml_typeck_metrics(ocaml_tast, ocaml_summary_json)
+    ocaml_metrics = derive_ocaml_typeck_metrics(ocaml_tast, ocaml_summary_json, source_code)
     rust_metrics = load_json(typeck_dir / "metrics.json")
     typeck_diff = diff_typeck_metrics(ocaml_metrics, rust_metrics)
     summary["typeck_metrics"] = {

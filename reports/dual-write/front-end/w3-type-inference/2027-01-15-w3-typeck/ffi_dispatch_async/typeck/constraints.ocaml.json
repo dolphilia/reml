@@ -1,0 +1,13 @@
+{
+  "functions": [
+    {
+      "name": "main",
+      "param_count": 0,
+      "return_type": "i64",
+      "effect_row": "",
+      "span": { "start": 421, "end": 449 },
+      "dict_refs": 0
+    }
+  ],
+  "stats": { "unify_calls": 0, "ast_nodes": 0, "token_count": 0 }
+}

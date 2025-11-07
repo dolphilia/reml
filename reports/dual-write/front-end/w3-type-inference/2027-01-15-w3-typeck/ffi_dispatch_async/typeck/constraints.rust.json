@@ -1,5 +1,24 @@
 {
   "total_constraints": 0,
   "breakdown": [],
-  "functions": []
+  "functions": [
+    {
+      "name": "dispatch_get_main_queue",
+      "constraints": 0,
+      "typed_exprs": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "dispatch_async_f",
+      "constraints": 0,
+      "typed_exprs": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "main",
+      "constraints": 0,
+      "typed_exprs": 0,
+      "unresolved_identifiers": 0
+    }
+  ]
 }

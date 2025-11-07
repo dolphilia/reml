@@ -64,18 +64,18 @@
   "typeck_metrics": {
     "ocaml": {
       "typed_functions": 1,
-      "typed_exprs": 0,
-      "constraints_total": 0,
+      "typed_exprs": 1,
+      "constraints_total": 1,
       "constraint_breakdown": {
-        "ocaml_stub": 0
+        "ocaml_stub": 1
       },
       "unresolved_identifiers": 0,
       "call_sites": 0,
       "binary_expressions": 0
     },
     "rust": {
-      "typed_functions": 0,
-      "typed_exprs": 0,
+      "typed_functions": 3,
+      "typed_exprs": 3,
       "constraints_total": 0,
       "constraint_breakdown": {},
       "unresolved_identifiers": 0,

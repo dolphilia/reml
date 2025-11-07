@@ -1,5 +1,12 @@
 {
   "total_constraints": 0,
   "breakdown": [],
-  "functions": []
+  "functions": [
+    {
+      "name": "disallowed",
+      "constraints": 0,
+      "typed_exprs": 0,
+      "unresolved_identifiers": 0
+    }
+  ]
 }

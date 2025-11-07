@@ -32,7 +32,7 @@
             "policy": "phase2.5.audit.v1",
             "origin": "cli",
             "source": {
-              "build_id": "20251107T045245Z",
+              "build_id": "20251107T051801Z",
               "workspace": ".",
               "sequence": 0
             },
@@ -40,21 +40,21 @@
           },
           "audit.source.workspace": ".",
           "audit.sequence": 0,
-          "audit.build_id": "20251107T045245Z",
+          "audit.build_id": "20251107T051801Z",
           "audit.channel": "cli",
           "audit.policy.version": "phase2.5.audit.v1",
-          "cli.audit_id": "cli/20251107T045245Z#0",
+          "cli.audit_id": "cli/20251107T051801Z#0",
           "event.domain": "config",
           "event.kind": "parser.runconfig.left_recursion_unimplemented",
-          "audit.timestamp": "2025-11-07T04:52:45Z",
+          "audit.timestamp": "2025-11-07T05:18:01Z",
           "schema.version": "1.1"
         },
-        "audit_id": "cli/20251107T045245Z#0",
+        "audit_id": "cli/20251107T051801Z#0",
         "change_set": {
           "policy": "phase2.5.audit.v1",
           "origin": "cli",
           "source": {
-            "build_id": "20251107T045245Z",
+            "build_id": "20251107T051801Z",
             "workspace": ".",
             "sequence": 0
           },
@@ -64,19 +64,19 @@
       "audit_metadata": {
         "event.kind": "parser.runconfig.left_recursion_unimplemented",
         "event.domain": "config",
-        "cli.audit_id": "cli/20251107T045245Z#0",
+        "cli.audit_id": "cli/20251107T051801Z#0",
         "audit.policy.version": "phase2.5.audit.v1",
         "audit.channel": "cli",
-        "audit.build_id": "20251107T045245Z",
+        "audit.build_id": "20251107T051801Z",
         "audit.sequence": 0,
         "audit.source.workspace": ".",
         "schema.version": "1.1",
-        "audit.timestamp": "2025-11-07T04:52:45Z",
+        "audit.timestamp": "2025-11-07T05:18:01Z",
         "cli.change_set": {
           "policy": "phase2.5.audit.v1",
           "origin": "cli",
           "source": {
-            "build_id": "20251107T045245Z",
+            "build_id": "20251107T051801Z",
             "workspace": ".",
             "sequence": 0
           },
@@ -85,7 +85,7 @@
       },
       "extensions": {
         "diagnostic.v2": {
-          "timestamp": "2025-11-07T04:52:45Z",
+          "timestamp": "2025-11-07T05:18:01Z",
           "codes": [ "parser.runconfig.left_recursion_unimplemented" ]
         }
       },
@@ -105,7 +105,7 @@
       "severity": "warning",
       "message": "RunConfig.left_recursion=\"auto\" を利用できません。左再帰シムは PARSER-003 で導入予定です。",
       "domain": "config",
-      "timestamp": "2025-11-07T04:52:45Z"
+      "timestamp": "2025-11-07T05:18:01Z"
     },
     {
       "expected": {
@@ -190,7 +190,7 @@
             "policy": "phase2.5.audit.v1",
             "origin": "cli",
             "source": {
-              "build_id": "20251107T045245Z",
+              "build_id": "20251107T051801Z",
               "workspace": ".",
               "sequence": 1
             },
@@ -198,20 +198,20 @@
           },
           "audit.source.workspace": ".",
           "audit.sequence": 1,
-          "audit.build_id": "20251107T045245Z",
+          "audit.build_id": "20251107T051801Z",
           "audit.channel": "cli",
           "audit.policy.version": "phase2.5.audit.v1",
-          "cli.audit_id": "cli/20251107T045245Z#1",
+          "cli.audit_id": "cli/20251107T051801Z#1",
           "event.domain": "parser",
-          "audit.timestamp": "2025-11-07T04:52:45Z",
+          "audit.timestamp": "2025-11-07T05:18:01Z",
           "schema.version": "1.1"
         },
-        "audit_id": "cli/20251107T045245Z#1",
+        "audit_id": "cli/20251107T051801Z#1",
         "change_set": {
           "policy": "phase2.5.audit.v1",
           "origin": "cli",
           "source": {
-            "build_id": "20251107T045245Z",
+            "build_id": "20251107T051801Z",
             "workspace": ".",
             "sequence": 1
           },
@@ -220,17 +220,17 @@
       },
       "audit_metadata": {
         "event.domain": "parser",
-        "cli.audit_id": "cli/20251107T045245Z#1",
+        "cli.audit_id": "cli/20251107T051801Z#1",
         "audit.policy.version": "phase2.5.audit.v1",
         "audit.channel": "cli",
-        "audit.build_id": "20251107T045245Z",
+        "audit.build_id": "20251107T051801Z",
         "audit.sequence": 1,
         "audit.source.workspace": ".",
         "cli.change_set": {
           "policy": "phase2.5.audit.v1",
           "origin": "cli",
           "source": {
-            "build_id": "20251107T045245Z",
+            "build_id": "20251107T051801Z",
             "workspace": ".",
             "sequence": 1
           },
@@ -246,7 +246,7 @@
         "origin": "static",
         "fingerprint": "859967339",
         "schema.version": "1.1",
-        "audit.timestamp": "2025-11-07T04:52:45Z",
+        "audit.timestamp": "2025-11-07T05:18:01Z",
         "effect.required_capabilities": [],
         "effect.stage.required_capabilities": [],
         "effect.actual_capabilities": [],
@@ -310,7 +310,7 @@
         }
       },
       "extensions": {
-        "diagnostic.v2": { "timestamp": "2025-11-07T04:52:45Z" },
+        "diagnostic.v2": { "timestamp": "2025-11-07T05:18:01Z" },
         "recover": {
           "expected_tokens": [ { "kind": "token", "label": ":" } ],
           "message": "ここで`:`が必要です"
@@ -363,7 +363,7 @@
       "severity": "error",
       "message": "構文エラー: 入力を解釈できません",
       "domain": "parser",
-      "timestamp": "2025-11-07T04:52:45Z"
+      "timestamp": "2025-11-07T05:18:01Z"
     }
   ],
   "parse_result": {

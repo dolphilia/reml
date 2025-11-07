@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde::Serialize;
 
 use crate::parser::ast::{Expr, Function, Module};
+use crate::token::{TokenKind};
 
 use super::env::TypecheckConfig;
 use super::metrics::TypecheckMetrics;
@@ -36,6 +37,88 @@ impl TypecheckDriver {
 
         TypecheckReport { metrics, functions }
     }
+
+    pub fn infer_fallback_from_source(source: &str) -> TypecheckReport {
+        let mut metrics = TypecheckMetrics::default();
+        let mut functions = Vec::new();
+
+        for name in extract_top_level_functions(source) {
+            metrics.record_function();
+            metrics.record_expr();
+            functions.push(TypedFunctionSummary {
+                name,
+                param_types: Vec::new(),
+                return_type: SimpleType::Unknown.label(),
+                typed_exprs: 0,
+                constraints: 0,
+                unresolved_identifiers: 0,
+            });
+        }
+
+        TypecheckReport { metrics, functions }
+    }
+}
+
+fn extract_top_level_functions(source: &str) -> Vec<String> {
+    let mut names = Vec::new();
+    let mut extern_depth: i32 = 0;
+    let mut pending_extern = false;
+
+    for line in source.lines() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("extern") {
+            pending_extern = true;
+        }
+
+        if extern_depth == 0 && !pending_extern {
+            let mut candidate = trimmed;
+            if candidate.starts_with("pub ") {
+                candidate = candidate[4..].trim_start();
+            }
+            if let Some(rest) = candidate.strip_prefix("fn ") {
+                let mut name = String::new();
+                for ch in rest.chars() {
+                    if ch.is_alphanumeric() || ch == '_' {
+                        name.push(ch);
+                    } else {
+                        break;
+                    }
+                }
+                if !name.is_empty() {
+                    let remainder = &rest[name.len()..];
+                    let next_sig_char = remainder.chars().find(|c| !c.is_whitespace());
+                    if next_sig_char != Some(';') {
+                        names.push(name);
+                    }
+                }
+            }
+        }
+
+        for ch in trimmed.chars() {
+            match ch {
+                '{' => {
+                    if pending_extern {
+                        extern_depth += 1;
+                        pending_extern = false;
+                    }
+                }
+                '}' => {
+                    if extern_depth > 0 {
+                        extern_depth -= 1;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        if pending_extern && !trimmed.contains('{') {
+            // keep pending flag until opening brace appears
+        } else {
+            pending_extern = false;
+        }
+    }
+
+    names
 }
 
 #[derive(Debug, Serialize, Default, Clone)]

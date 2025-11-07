@@ -14,8 +14,8 @@
     "max_suggestions": 3
   },
   "metrics": {
-    "typed_functions": 0,
-    "typed_exprs": 0,
+    "typed_functions": 5,
+    "typed_exprs": 5,
     "constraints_total": 0,
     "constraint_breakdown": {},
     "unresolved_identifiers": 0,

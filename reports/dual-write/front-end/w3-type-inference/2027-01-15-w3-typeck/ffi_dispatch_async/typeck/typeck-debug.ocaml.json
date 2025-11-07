@@ -1,0 +1,5 @@
+{
+  "effect_context": { "default_stage": "stable", "capability_stages": [] },
+  "type_row_mode": "integrated",
+  "stats": { "unify_calls": 0, "ast_nodes": 0, "token_count": 0 }
+}

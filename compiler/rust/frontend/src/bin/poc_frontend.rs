@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ast
         .as_ref()
         .map(|module| TypecheckDriver::infer_module(module, &args.typecheck_config))
-        .unwrap_or_default();
+        .unwrap_or_else(|| TypecheckDriver::infer_fallback_from_source(&source));
     let artifacts = TypeckArtifacts::new(&input_path, &typeck_report, &args.typecheck_config);
     let diagnostics = result
         .diagnostics

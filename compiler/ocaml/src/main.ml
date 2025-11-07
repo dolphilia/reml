@@ -1022,7 +1022,13 @@ let () =
          Printf.printf "%s\n" rendered);
 
       (* Phase 2+: 型推論が必要な処理 *)
-      if opts.emit_tast || opts.emit_ir || opts.emit_bc || opts.verify_ir then (
+      let needs_typecheck_outputs =
+        opts.emit_tast || opts.emit_ir || opts.emit_bc || opts.verify_ir
+        || Option.is_some opts.emit_typed_ast_json
+        || Option.is_some opts.emit_constraints_json
+        || Option.is_some opts.emit_typeck_debug_json
+      in
+      if needs_typecheck_outputs then (
         (* Phase 1-6 Week 15: 型推論開始 *)
         record_start TypeChecking;
 

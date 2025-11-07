@@ -1,12 +1,21 @@
 {
   "metrics": {
-    "typed_functions": 0,
-    "typed_exprs": 0,
+    "typed_functions": 1,
+    "typed_exprs": 1,
     "constraints_total": 0,
     "constraint_breakdown": {},
     "unresolved_identifiers": 0,
     "call_sites": 0,
     "binary_expressions": 0
   },
-  "typed_functions": []
+  "typed_functions": [
+    {
+      "name": "disallowed",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    }
+  ]
 }

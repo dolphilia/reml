@@ -1,0 +1,14 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/ffi_dispatch_async/input.reml",
+  "function_summaries": [
+    {
+      "name": "main",
+      "param_count": 0,
+      "return_type": "i64",
+      "effect_row": "",
+      "span": { "start": 421, "end": 449 },
+      "dict_refs": 0
+    }
+  ],
+  "rendered": "=== Typed AST ===\n\nextern ... : ()\n\nfn main(()) : i64"
+}

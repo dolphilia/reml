@@ -1,4 +1,21 @@
 {
   "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/residual_effect/input.reml",
-  "functions": []
+  "functions": [
+    {
+      "name": "perform",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "main",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    }
+  ]
 }

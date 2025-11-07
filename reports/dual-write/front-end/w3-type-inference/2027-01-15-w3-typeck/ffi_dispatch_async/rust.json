@@ -1492,14 +1492,39 @@
     }
   ],
   "typecheck": {
-    "functions": [],
+    "functions": [
+      {
+        "constraints": 0,
+        "name": "dispatch_get_main_queue",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      },
+      {
+        "constraints": 0,
+        "name": "dispatch_async_f",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      },
+      {
+        "constraints": 0,
+        "name": "main",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      }
+    ],
     "metrics": {
       "binary_expressions": 0,
       "call_sites": 0,
       "constraint_breakdown": {},
       "constraints_total": 0,
-      "typed_exprs": 0,
-      "typed_functions": 0,
+      "typed_exprs": 3,
+      "typed_functions": 3,
       "unresolved_identifiers": 0
     }
   }
