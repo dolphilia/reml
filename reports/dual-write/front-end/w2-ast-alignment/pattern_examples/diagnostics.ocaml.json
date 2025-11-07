@@ -1,0 +1,300 @@
+{
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "message": "RunConfig.left_recursion=\"auto\" を利用できません。左再帰シムは PARSER-003 で導入予定です。",
+      "schema_version": "2.0.0-draft",
+      "location": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/pattern_examples.reml",
+        "line": 1,
+        "column": 1,
+        "endLine": 1,
+        "endColumn": 1
+      },
+      "code": "parser.runconfig.left_recursion_unimplemented",
+      "codes": [
+        "parser.runconfig.left_recursion_unimplemented"
+      ],
+      "domain": "config",
+      "timestamp": "2025-11-06T22:20:12Z",
+      "extensions": {
+        "diagnostic.v2": {
+          "timestamp": "2025-11-06T22:20:12Z",
+          "codes": [
+            "parser.runconfig.left_recursion_unimplemented"
+          ]
+        },
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "runconfig": {
+          "packrat": true,
+          "left_recursion": "auto",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": true,
+          "experimental_effects": false,
+          "extensions": {
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            },
+            "recover": {
+              "sync_tokens": [],
+              "notes": false
+            },
+            "stream": {
+              "enabled": false
+            }
+          }
+        }
+      },
+      "audit_metadata": {
+        "event.kind": "parser.runconfig.left_recursion_unimplemented",
+        "event.domain": "config",
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "20251106T222012Z-f878115",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "audit.source.commit": "f878115",
+        "cli.audit_id": "cli/20251106T222012Z-f878115#0",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "20251106T222012Z-f878115",
+            "workspace": ".",
+            "sequence": 0,
+            "commit": "f878115"
+          },
+          "items": [
+            {
+              "kind": "cli-command",
+              "command": "remlc",
+              "args": [
+                "/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc",
+                "--packrat",
+                "--format",
+                "json",
+                "--json-mode",
+                "compact",
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/pattern_examples.ocaml.parse-debug.json",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/pattern_examples.reml"
+              ]
+            },
+            {
+              "kind": "input",
+              "path": "pattern_examples.reml",
+              "target": "x86_64-linux"
+            },
+            {
+              "kind": "outputs",
+              "values": [
+                "emit_parse_debug"
+              ]
+            }
+          ]
+        },
+        "schema.version": "1.1",
+        "audit.timestamp": "2025-11-06T22:20:12Z",
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream": {
+          "enabled": false
+        },
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover": {
+          "sync_tokens": [],
+          "notes": false
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.lex": {
+          "profile": "strict_json",
+          "identifier_profile": "unicode"
+        },
+        "parser.runconfig.experimental_effects": false,
+        "parser.runconfig.legacy_result": true,
+        "parser.runconfig.require_eof": false,
+        "parser.runconfig.merge_warnings": true,
+        "parser.runconfig.trace": false,
+        "parser.runconfig.left_recursion": "auto",
+        "parser.runconfig.packrat": true,
+        "parser.runconfig": {
+          "packrat": true,
+          "left_recursion": "auto",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": true,
+          "experimental_effects": false,
+          "extensions": {
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            },
+            "recover": {
+              "sync_tokens": [],
+              "notes": false
+            },
+            "stream": {
+              "enabled": false
+            }
+          }
+        }
+      },
+      "audit": {
+        "metadata": {
+          "parser.runconfig": {
+            "packrat": true,
+            "left_recursion": "auto",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": true,
+            "experimental_effects": false,
+            "extensions": {
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              },
+              "recover": {
+                "sync_tokens": [],
+                "notes": false
+              },
+              "stream": {
+                "enabled": false
+              }
+            }
+          },
+          "parser.runconfig.packrat": true,
+          "parser.runconfig.left_recursion": "auto",
+          "parser.runconfig.trace": false,
+          "parser.runconfig.merge_warnings": true,
+          "parser.runconfig.require_eof": false,
+          "parser.runconfig.legacy_result": true,
+          "parser.runconfig.experimental_effects": false,
+          "parser.runconfig.extensions.lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.recover": {
+            "sync_tokens": [],
+            "notes": false
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "enabled": false
+          },
+          "parser.runconfig.extensions.stream.enabled": false,
+          "effect.capabilities": [],
+          "effect.stage.actual_capabilities": [],
+          "effect.actual_capabilities": [],
+          "effect.stage.required_capabilities": [],
+          "effect.required_capabilities": [],
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "20251106T222012Z-f878115",
+              "workspace": ".",
+              "sequence": 0,
+              "commit": "f878115"
+            },
+            "items": [
+              {
+                "kind": "cli-command",
+                "command": "remlc",
+                "args": [
+                  "/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc",
+                  "--packrat",
+                  "--format",
+                  "json",
+                  "--json-mode",
+                  "compact",
+                  "--emit-parse-debug",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/pattern_examples.ocaml.parse-debug.json",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/pattern_examples.reml"
+                ]
+              },
+              {
+                "kind": "input",
+                "path": "pattern_examples.reml",
+                "target": "x86_64-linux"
+              },
+              {
+                "kind": "outputs",
+                "values": [
+                  "emit_parse_debug"
+                ]
+              }
+            ]
+          },
+          "cli.audit_id": "cli/20251106T222012Z-f878115#0",
+          "audit.source.commit": "f878115",
+          "audit.source.workspace": ".",
+          "audit.sequence": 0,
+          "audit.build_id": "20251106T222012Z-f878115",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "event.domain": "config",
+          "event.kind": "parser.runconfig.left_recursion_unimplemented",
+          "audit.timestamp": "2025-11-06T22:20:12Z",
+          "schema.version": "1.1"
+        },
+        "audit_id": "cli/20251106T222012Z-f878115#0",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "20251106T222012Z-f878115",
+            "workspace": ".",
+            "sequence": 0,
+            "commit": "f878115"
+          },
+          "items": [
+            {
+              "kind": "cli-command",
+              "command": "remlc",
+              "args": [
+                "/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc",
+                "--packrat",
+                "--format",
+                "json",
+                "--json-mode",
+                "compact",
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/pattern_examples.ocaml.parse-debug.json",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/pattern_examples.reml"
+              ]
+            },
+            {
+              "kind": "input",
+              "path": "pattern_examples.reml",
+              "target": "x86_64-linux"
+            },
+            {
+              "kind": "outputs",
+              "values": [
+                "emit_parse_debug"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

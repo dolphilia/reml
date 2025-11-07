@@ -1,0 +1,663 @@
+{
+  "case": "effectful_sum",
+  "source": "compiler/ocaml/tests/typeclass_effects/effectful_sum.reml",
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 29,
+            "start": 28
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 29,
+        "start": 28
+      }
+    },
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`)`、`,`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 20,
+        "start": 19
+      }
+    }
+  ],
+  "baseline": {
+    "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/effectful_sum.reml",
+    "run_config": {
+      "experimental_effects": false,
+      "legacy_result": true,
+      "merge_warnings": true,
+      "trace": false,
+      "left_recursion": "auto",
+      "packrat": true,
+      "require_eof": false,
+      "extensions": {
+        "config": {
+          "experimental_effects": false,
+          "left_recursion": "auto",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "source": "cli",
+          "trace": false
+        },
+        "effects": {
+          "type_row_mode": "ty-integrated"
+        },
+        "lex": {
+          "profile": "strict_json"
+        }
+      }
+    },
+    "parse_result": {
+      "span_trace": null,
+      "packrat_stats": {
+        "queries": 8,
+        "hits": 7
+      },
+      "legacy_error": {
+        "span": {
+          "start": {
+            "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/effectful_sum.reml",
+            "line": 1,
+            "column": 22,
+            "offset": 21
+          },
+          "end": {
+            "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/effectful_sum.reml",
+            "line": 1,
+            "column": 23,
+            "offset": 22
+          }
+        },
+        "expected": [
+          {
+            "kind": "keyword",
+            "label": "self"
+          },
+          {
+            "kind": "token",
+            "label": "("
+          },
+          {
+            "kind": "token",
+            "label": "{"
+          },
+          {
+            "kind": "class",
+            "label": "identifier"
+          },
+          {
+            "kind": "class",
+            "label": "upper-identifier"
+          }
+        ],
+        "committed": false,
+        "far_consumed": true
+      },
+      "farthest_error_offset": 21,
+      "span": null,
+      "committed": false,
+      "consumed": true,
+      "recovered": false,
+      "has_value": false
+    },
+    "stream_meta": null,
+    "diagnostics": [
+      {
+        "severity": "warning",
+        "message": "RunConfig.left_recursion=\"auto\" を利用できません。左再帰シムは PARSER-003 で導入予定です。",
+        "schema_version": "2.0.0-draft",
+        "location": {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/effectful_sum.reml",
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 1
+        },
+        "code": "parser.runconfig.left_recursion_unimplemented",
+        "codes": [
+          "parser.runconfig.left_recursion_unimplemented"
+        ],
+        "domain": "config",
+        "timestamp": "2025-11-06T22:20:13Z",
+        "extensions": {
+          "diagnostic.v2": {
+            "timestamp": "2025-11-06T22:20:13Z",
+            "codes": [
+              "parser.runconfig.left_recursion_unimplemented"
+            ]
+          },
+          "effect.required_capabilities": [],
+          "effect.stage.required_capabilities": [],
+          "effect.actual_capabilities": [],
+          "effect.stage.actual_capabilities": [],
+          "effect.capabilities": [],
+          "runconfig": {
+            "packrat": true,
+            "left_recursion": "auto",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": true,
+            "experimental_effects": false,
+            "extensions": {
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              },
+              "recover": {
+                "sync_tokens": [],
+                "notes": false
+              },
+              "stream": {
+                "enabled": false
+              }
+            }
+          }
+        },
+        "audit_metadata": {
+          "event.kind": "parser.runconfig.left_recursion_unimplemented",
+          "event.domain": "config",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "audit.channel": "cli",
+          "audit.build_id": "20251106T222013Z-f878115",
+          "audit.sequence": 0,
+          "audit.source.workspace": ".",
+          "audit.source.commit": "f878115",
+          "cli.audit_id": "cli/20251106T222013Z-f878115#0",
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "20251106T222013Z-f878115",
+              "workspace": ".",
+              "sequence": 0,
+              "commit": "f878115"
+            },
+            "items": [
+              {
+                "kind": "cli-command",
+                "command": "remlc",
+                "args": [
+                  "/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc",
+                  "--packrat",
+                  "--format",
+                  "json",
+                  "--json-mode",
+                  "compact",
+                  "--emit-parse-debug",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/effectful_sum.ocaml.parse-debug.json",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/effectful_sum.reml"
+                ]
+              },
+              {
+                "kind": "input",
+                "path": "effectful_sum.reml",
+                "target": "x86_64-linux"
+              },
+              {
+                "kind": "outputs",
+                "values": [
+                  "emit_parse_debug"
+                ]
+              }
+            ]
+          },
+          "schema.version": "1.1",
+          "audit.timestamp": "2025-11-06T22:20:13Z",
+          "effect.required_capabilities": [],
+          "effect.stage.required_capabilities": [],
+          "effect.actual_capabilities": [],
+          "effect.stage.actual_capabilities": [],
+          "effect.capabilities": [],
+          "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream": {
+            "enabled": false
+          },
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover": {
+            "sync_tokens": [],
+            "notes": false
+          },
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "parser.runconfig.experimental_effects": false,
+          "parser.runconfig.legacy_result": true,
+          "parser.runconfig.require_eof": false,
+          "parser.runconfig.merge_warnings": true,
+          "parser.runconfig.trace": false,
+          "parser.runconfig.left_recursion": "auto",
+          "parser.runconfig.packrat": true,
+          "parser.runconfig": {
+            "packrat": true,
+            "left_recursion": "auto",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": true,
+            "experimental_effects": false,
+            "extensions": {
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              },
+              "recover": {
+                "sync_tokens": [],
+                "notes": false
+              },
+              "stream": {
+                "enabled": false
+              }
+            }
+          }
+        },
+        "audit": {
+          "metadata": {
+            "parser.runconfig": {
+              "packrat": true,
+              "left_recursion": "auto",
+              "trace": false,
+              "merge_warnings": true,
+              "require_eof": false,
+              "legacy_result": true,
+              "experimental_effects": false,
+              "extensions": {
+                "lex": {
+                  "profile": "strict_json",
+                  "identifier_profile": "unicode"
+                },
+                "recover": {
+                  "sync_tokens": [],
+                  "notes": false
+                },
+                "stream": {
+                  "enabled": false
+                }
+              }
+            },
+            "parser.runconfig.packrat": true,
+            "parser.runconfig.left_recursion": "auto",
+            "parser.runconfig.trace": false,
+            "parser.runconfig.merge_warnings": true,
+            "parser.runconfig.require_eof": false,
+            "parser.runconfig.legacy_result": true,
+            "parser.runconfig.experimental_effects": false,
+            "parser.runconfig.extensions.lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            },
+            "parser.runconfig.extensions.lex.profile": "strict_json",
+            "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+            "parser.runconfig.extensions.recover": {
+              "sync_tokens": [],
+              "notes": false
+            },
+            "parser.runconfig.extensions.recover.notes": false,
+            "parser.runconfig.extensions.recover.sync_tokens": [],
+            "parser.runconfig.extensions.stream": {
+              "enabled": false
+            },
+            "parser.runconfig.extensions.stream.enabled": false,
+            "effect.capabilities": [],
+            "effect.stage.actual_capabilities": [],
+            "effect.actual_capabilities": [],
+            "effect.stage.required_capabilities": [],
+            "effect.required_capabilities": [],
+            "cli.change_set": {
+              "policy": "phase2.5.audit.v1",
+              "origin": "cli",
+              "source": {
+                "build_id": "20251106T222013Z-f878115",
+                "workspace": ".",
+                "sequence": 0,
+                "commit": "f878115"
+              },
+              "items": [
+                {
+                  "kind": "cli-command",
+                  "command": "remlc",
+                  "args": [
+                    "/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc",
+                    "--packrat",
+                    "--format",
+                    "json",
+                    "--json-mode",
+                    "compact",
+                    "--emit-parse-debug",
+                    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/effectful_sum.ocaml.parse-debug.json",
+                    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/effectful_sum.reml"
+                  ]
+                },
+                {
+                  "kind": "input",
+                  "path": "effectful_sum.reml",
+                  "target": "x86_64-linux"
+                },
+                {
+                  "kind": "outputs",
+                  "values": [
+                    "emit_parse_debug"
+                  ]
+                }
+              ]
+            },
+            "cli.audit_id": "cli/20251106T222013Z-f878115#0",
+            "audit.source.commit": "f878115",
+            "audit.source.workspace": ".",
+            "audit.sequence": 0,
+            "audit.build_id": "20251106T222013Z-f878115",
+            "audit.channel": "cli",
+            "audit.policy.version": "phase2.5.audit.v1",
+            "event.domain": "config",
+            "event.kind": "parser.runconfig.left_recursion_unimplemented",
+            "audit.timestamp": "2025-11-06T22:20:13Z",
+            "schema.version": "1.1"
+          },
+          "audit_id": "cli/20251106T222013Z-f878115#0",
+          "change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "20251106T222013Z-f878115",
+              "workspace": ".",
+              "sequence": 0,
+              "commit": "f878115"
+            },
+            "items": [
+              {
+                "kind": "cli-command",
+                "command": "remlc",
+                "args": [
+                  "/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc",
+                  "--packrat",
+                  "--format",
+                  "json",
+                  "--json-mode",
+                  "compact",
+                  "--emit-parse-debug",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/effectful_sum.ocaml.parse-debug.json",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/effectful_sum.reml"
+                ]
+              },
+              {
+                "kind": "input",
+                "path": "effectful_sum.reml",
+                "target": "x86_64-linux"
+              },
+              {
+                "kind": "outputs",
+                "values": [
+                  "emit_parse_debug"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "candidate": {
+    "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/effectful_sum.reml",
+    "run_config": {
+      "extensions": {
+        "stream": {
+          "checkpoint": "poc_frontend",
+          "chunk_size": 0,
+          "enabled": true,
+          "resume_hint": "n/a"
+        }
+      },
+      "switches": {
+        "left_recursion": "auto",
+        "legacy_result": false,
+        "merge_warnings": true,
+        "packrat": true,
+        "require_eof": true,
+        "trace": false
+      }
+    },
+    "parse_result": {
+      "packrat_stats": {
+        "approx_bytes": 389,
+        "budget_drops": 0,
+        "entries": 1,
+        "evictions": 0,
+        "hits": 6,
+        "pruned": 0,
+        "queries": 7
+      },
+      "span_trace": [
+        {
+          "label": "parser.simple_error",
+          "span": {
+            "end": 20,
+            "start": 19
+          }
+        }
+      ]
+    },
+    "stream_meta": {
+      "packrat": {
+        "approx_bytes": 389,
+        "budget_drops": 0,
+        "entries": 1,
+        "evictions": 0,
+        "hits": 6,
+        "pruned": 0,
+        "queries": 7
+      },
+      "span_trace": {
+        "dropped": 0,
+        "retained": 1
+      }
+    },
+    "diagnostics": [
+      {
+        "code": null,
+        "message": "未定義のトークンを検出しました",
+        "notes": [
+          {
+            "label": "lexer",
+            "message": "未定義のトークンをスキップします",
+            "span": {
+              "end": 29,
+              "start": 28
+            }
+          }
+        ],
+        "recoverability": "recoverable",
+        "span": {
+          "end": 29,
+          "start": 28
+        }
+      },
+      {
+        "code": null,
+        "message": "構文エラー: 入力を解釈できません",
+        "notes": [
+          {
+            "label": "recover.expected_tokens",
+            "message": "ここで`)`、`,`のいずれかが必要です",
+            "span": null
+          }
+        ],
+        "recoverability": "recoverable",
+        "span": {
+          "end": 20,
+          "start": 19
+        }
+      }
+    ]
+  },
+  "tokens": [
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 2,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "effectful_sum",
+      "span": {
+        "end": 16,
+        "start": 3
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 17,
+        "start": 16
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "xs",
+      "span": {
+        "end": 19,
+        "start": 17
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 20,
+        "start": 19
+      }
+    },
+    {
+      "kind": "LBracket",
+      "lexeme": null,
+      "span": {
+        "end": 22,
+        "start": 21
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 25,
+        "start": 22
+      }
+    },
+    {
+      "kind": "RBracket",
+      "lexeme": null,
+      "span": {
+        "end": 26,
+        "start": 25
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 27,
+        "start": 26
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 30,
+        "start": 29
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "io",
+      "span": {
+        "end": 33,
+        "start": 31
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 35,
+        "start": 34
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 38,
+        "start": 36
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 42,
+        "start": 39
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 44,
+        "start": 43
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "0",
+      "span": {
+        "end": 48,
+        "start": 47
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 50,
+        "start": 49
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 51,
+        "start": 51
+      }
+    }
+  ],
+  "ast_render": null
+}

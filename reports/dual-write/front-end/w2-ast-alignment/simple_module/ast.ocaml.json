@@ -1,0 +1,4 @@
+{
+  "format": "text",
+  "content": "module test.simple\nuse ::Core.Parse\nlet answer = int(42:base10)\nfn add(x, y) -> i64 = binary(var(x) + var(y))\nfn fact(n) -> i64 {block 1 stmts}\nlet result = call(var(add))[int(10:base10), int(20:base10)]\n"
+}

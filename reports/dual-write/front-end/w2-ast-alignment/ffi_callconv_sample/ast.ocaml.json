@@ -1,0 +1,4 @@
+{
+  "format": "text",
+  "content": "extern \"C\" {items=2}\npub fn main() -> i64 = int(0:base10)\n"
+}

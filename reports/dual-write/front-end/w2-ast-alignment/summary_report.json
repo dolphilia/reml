@@ -1,0 +1,122 @@
+{
+  "run_dir": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory",
+  "totals": {
+    "cases": 9,
+    "ast_ok": 0,
+    "diag_ok": 1,
+    "packrat_ok": 0,
+    "ast_fail": 9,
+    "diag_fail": 8,
+    "packrat_fail": 9
+  },
+  "cases": [
+    {
+      "case": "add_example",
+      "source": "examples/cli/add.reml",
+      "ast_ok": false,
+      "diag_ok": true,
+      "packrat_ok": false,
+      "ocaml_diag": 1,
+      "rust_diag": 1,
+      "ocaml_packrat": "8/7",
+      "rust_packrat": "7/6",
+      "diag_delta": 0
+    },
+    {
+      "case": "effectful_sum",
+      "source": "compiler/ocaml/tests/typeclass_effects/effectful_sum.reml",
+      "ast_ok": false,
+      "diag_ok": false,
+      "packrat_ok": false,
+      "ocaml_diag": 1,
+      "rust_diag": 2,
+      "ocaml_packrat": "8/7",
+      "rust_packrat": "7/6",
+      "diag_delta": 1
+    },
+    {
+      "case": "emit_suite_cli",
+      "source": "examples/cli/emit_suite.reml",
+      "ast_ok": false,
+      "diag_ok": false,
+      "packrat_ok": false,
+      "ocaml_diag": 0,
+      "rust_diag": 2,
+      "ocaml_packrat": "0/0",
+      "rust_packrat": "7/6",
+      "diag_delta": 2
+    },
+    {
+      "case": "ffi_callconv_sample",
+      "source": "compiler/ocaml/tests/samples/ffi/cli-callconv-sample.reml",
+      "ast_ok": false,
+      "diag_ok": false,
+      "packrat_ok": false,
+      "ocaml_diag": 0,
+      "rust_diag": 32,
+      "ocaml_packrat": "0/0",
+      "rust_packrat": "7/6",
+      "diag_delta": 32
+    },
+    {
+      "case": "pattern_examples",
+      "source": "compiler/ocaml/tests/pattern_examples.reml",
+      "ast_ok": false,
+      "diag_ok": false,
+      "packrat_ok": false,
+      "ocaml_diag": 1,
+      "rust_diag": 272,
+      "ocaml_packrat": "8/7",
+      "rust_packrat": "7/6",
+      "diag_delta": 271
+    },
+    {
+      "case": "simple_module",
+      "source": "compiler/ocaml/tests/simple.reml",
+      "ast_ok": false,
+      "diag_ok": false,
+      "packrat_ok": false,
+      "ocaml_diag": 0,
+      "rust_diag": 6,
+      "ocaml_packrat": "0/0",
+      "rust_packrat": "7/6",
+      "diag_delta": 6
+    },
+    {
+      "case": "trace_sample_cli",
+      "source": "examples/cli/trace_sample.reml",
+      "ast_ok": false,
+      "diag_ok": false,
+      "packrat_ok": false,
+      "ocaml_diag": 1,
+      "rust_diag": 4,
+      "ocaml_packrat": "8/7",
+      "rust_packrat": "7/6",
+      "diag_delta": 3
+    },
+    {
+      "case": "type_error_cli",
+      "source": "examples/cli/type_error.reml",
+      "ast_ok": false,
+      "diag_ok": false,
+      "packrat_ok": false,
+      "ocaml_diag": 0,
+      "rust_diag": 1,
+      "ocaml_packrat": "0/0",
+      "rust_packrat": "7/6",
+      "diag_delta": 1
+    },
+    {
+      "case": "unicode_identifiers",
+      "source": "compiler/ocaml/tests/samples/unicode_identifiers.reml",
+      "ast_ok": false,
+      "diag_ok": false,
+      "packrat_ok": false,
+      "ocaml_diag": 1,
+      "rust_diag": 139,
+      "ocaml_packrat": "0/0",
+      "rust_packrat": "7/6",
+      "diag_delta": 138
+    }
+  ]
+}

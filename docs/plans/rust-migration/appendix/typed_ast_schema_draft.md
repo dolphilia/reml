@@ -80,7 +80,7 @@ pub struct TypedExpr {
 ```
 
 - `TypedExprKind` は OCaml `typed_expr_kind` を 1:1 対応させ、`TFor` の `dict_ref` や `iterator_dict_info` を `ForLoopInfo` に包含。  
-- `TyId` は `Idx<Ty>`（`slotmap` もしくは `arena::Idx`）を利用し、`Arc<Ty>` ではなく ID + `TyPool` を採用。これにより `serde` 直列化時に `ty_table` を添付できる。
+- `TyId` は `IndexVec<TyId, TyKind>` に対するインデックスで、`Arc<Ty>` ではなく ID + `TyPool` を採用。これにより `serde` 直列化時に `ty_table` を添付できる。
 
 ### 5.2 TypedPattern / TypedDecl
 
@@ -95,7 +95,7 @@ pub struct TypedExpr {
 | 要素 | Rust 型案 | ポイント |
 | --- | --- | --- |
 | 型表現 | `enum TyKind { Prim(PrimTy), Tuple(SmallVec<[TyId; 3]>), Fn { params: Box<[TyId]>, ret: TyId, effect: EffectRowId }, Record(Vec<RecordField>), Array(TyId), Alias { ident: IdentId, args: Box<[TyId]> }, Infer(InferVarId) }` | `EffectRowId` は `effect_row::Id`。 |
-| 型 ID | `struct TyId(NonZeroU32)` | `TyPool` で実体化。Dual-write JSON では `ty_id` を整数で出力し、別テーブルで展開。 |
+| 型 ID | `struct TyId(NonZeroU32)` | `TyPool = IndexVec<TyId, TyKind>` で実体化。Dual-write JSON では `ty_id` を整数で出力し、別テーブルで展開。 |
 | `Scheme` | `struct Scheme { vars: SmallVec<[InferVarId; 4]>, body: TyId, constraints: Vec<ConstraintId> }` | `forall` 変数順序は OCaml と同じ（AST 由来の出現順）。 |
 | `Constraint` | `enum Constraint { Equals(TyId, TyId), Implements { ty: TyId, trait_id: IdentId }, EffectSubRow { lhs: EffectRowId, rhs: EffectRowId } }` | `ConstraintId` で参照し、JSON では同名キーを使う。 |
 | `DictRef` | `struct DictRef { trait_name: IdentId, witness: NodeId, stage: StageRequirement }` | `typed_expr_dict_refs` を 1:1 対応。 |
@@ -118,23 +118,26 @@ pub struct TypedExpr {
 
 ## 6. Dual-write 連携と検証フロー
 
-1. `scripts/poc_dualwrite_compare.sh --emit-ast --emit-typed --emit-parse-debug` を実行し、`reports/dual-write/front-end/w2-ast-alignment/<case>/` に OCaml / Rust の JSON を保存。  
-2. `tooling/ci/collect-iterator-audit-metrics.py --section parser --input <parse-debug.json>` で `packrat_hits`, `span_trace_pairs` を算出し、`w2-parser-metrics.json` として保存。  
-3. `--section effects` では `typed_decls` に含まれる `effect_row` / `dict_refs` から `effects.row.len`, `effects.dict_refs` を算出し、`w2-effects-metrics.json` に出力。  
-4. `1-1-ast-and-ir-alignment.md` のチェックリストを更新し、完了列に `2025-12-12` と本書ファイルパスを追記する。
+1. `scripts/w2_ast_alignment_sync.py` を実行し、`reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/` から `reports/dual-write/front-end/w2-ast-alignment/<case>/` へ成果物を同期（`input.reml`, `ast/typed-ast.{ocaml,rust}.json`, `dualwrite.bundle.json` 等を生成）。  
+2. `tooling/ci/collect-iterator-audit-metrics.py --section streaming|parser --source <bundle> ... --output metrics/<name>.json` を実行し、Packrat / span_trace / RunConfig の整合を確認する。`dualwrite.bundle.json` には baseline (OCaml) と candidate (Rust) の `parse_result` / `stream_meta` / `diagnostics` を同梱しているため、このファイルだけを `--source` に渡せばよい。  
+3. `1-1-ast-and-ir-alignment.md` のチェックリストを更新し、完了列に `2025-12-12` と本書ファイルパスを追記する。
 
-## 7. 未決事項 / TODO
+## 7. W2-AST 追跡事項の解決状況
 
-| ID | 内容 | 対応先 |
-| --- | --- | --- |
-| TODO-W2-AST-001 | `EffectMeta`（効果注釈）へ `CapabilityStage` をどの層で付与するか未確定。`docs/spec/3-8-core-runtime-capability.md` の整理後に決定。 | `docs/plans/rust-migration/1-2-diagnostic-compatibility.md` |
-| TODO-W2-AST-002 | `TyPool` を `slotmap` / `index_vec` のどちらで実装するか検討が必要。メモリ断片化の測定を W3 の型推論移植開始時に実施。 | `compiler/rust/frontend/src/semantics/types.rs` |
-| TODO-W2-AST-003 | `typed_expr.dict_refs` を JSON でフラット配列にするか、`dict_ref_table` を共有するか再検討。`collect-iterator-audit-metrics.py` の入力要件を確認する。 | `tooling/ci/collect-iterator-audit-metrics.py` |
+- **W2-AST-001（EffectMeta と CapabilityStage）**: Stage 判定は型推論の副産物として求まるため、Typed AST 側の `EffectMeta` に `CapabilityStage` と `residual_effect_row` を保持し、AST 側は構文レベルの `StageRequirement` 参照のみを持つ。診断拡張や `collect-iterator-audit-metrics.py` からは Typed AST の `EffectMeta` を参照する。  
+- **W2-AST-002（TyPool 実装）**: 参照の安定性よりもシリアル化容易性を優先し、`TyPool = IndexVec<TyId, TyKind>` を採用。`TyId` は `NonZeroU32` を用い、`serde` では `types: [{ "id": <u32>, "kind": {...} }]` のテーブルとして出力する。  
+- **W2-AST-003（dict_ref JSON 正規化）**: `dict_ref_table` に全辞書情報を格納し、各ノードは `dict_ref_ids: [u32, ...]` で参照する。`collect-iterator-audit-metrics.py --section effects` では `dict_ref_table` と `dict_ref_ids` の両方を用いて `effects.dict_refs` を算出する。  
 
-- 上記 TODO は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` にも登録し、追跡番号で参照できるようにする。  
-- 新しい用語（例: `NodeId`, `TyPool`）は `appendix/glossary-alignment.md` の W2 セクションへ反映する予定。
+上記 3 件は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の TODO リストから削除し、本書に最終案を記録済み。
+
+## 8. 実データとメトリクス
+
+- `reports/dual-write/front-end/w2-ast-alignment/<case>/` に 9 ケースの成果物（AST/Typed AST JSON、診断、`dualwrite.bundle.json` など）を配置。`scripts/w2_ast_alignment_sync.py` で `reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/` から再生成できる。  
+- `metrics/streaming.json` と `metrics/parser.json` は `collect-iterator-audit-metrics.py --section streaming|parser --source <bundle>` の出力。現状は Rust PoC に監査メタデータ (`cli.audit_id`, `schema.version` など) が含まれないため `pass_rate=0.0` で失敗ログが残る。課題は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の「診断/監査整備 (OBS-RUST-01)」にリンクさせた。  
+- `summary.alignment.md` では AST/診断/Packrat 差分の集計を Markdown で確認できる。`pattern_examples` など高差分ケースは W3 型推論タスクの入力として扱う。
 
 ---
 
 **更新履歴**  
 - 2025-12-12: 初稿（W2 AST/Typed AST データモデル草案）。作者: Codex (Rust migration support)。
+- 2025-12-12: `w2-ast-alignment/` データセットとメトリクスの追加、W2-AST-001〜003 を解決。

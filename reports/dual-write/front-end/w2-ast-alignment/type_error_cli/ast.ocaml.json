@@ -1,0 +1,4 @@
+{
+  "format": "text",
+  "content": "fn bad_condition(x: i64) -> i64 = if(var(x), int(1:base10), int(0:base10))\nfn main() -> i64 = call(var(bad_condition))[int(42:base10)]\n"
+}

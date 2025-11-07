@@ -1,0 +1,23 @@
+{
+  "case": "type_error_cli",
+  "source": "examples/cli/type_error.reml",
+  "ast_match": false,
+  "ocaml_ast": "fn bad_condition(x: i64) -> i64 = if(var(x), int(1:base10), int(0:base10))\nfn main() -> i64 = call(var(bad_condition))[int(42:base10)]",
+  "rust_ast": null,
+  "ocaml_diag_count": 0,
+  "rust_diag_count": 1,
+  "diag_match": false,
+  "ocaml_diag_messages": [],
+  "rust_diag_messages": [
+    "構文エラー: 入力を解釈できません"
+  ],
+  "ocaml_packrat_queries": 0,
+  "ocaml_packrat_hits": 0,
+  "ocaml_span_trace_len": 0,
+  "ocaml_stream_meta": null,
+  "rust_packrat_queries": 7,
+  "rust_packrat_hits": 6,
+  "rust_span_trace_len": 1,
+  "ocaml_tast_lines": 124,
+  "ocaml_tast_available": true
+}

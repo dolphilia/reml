@@ -1,0 +1,4 @@
+{
+  "status": "unavailable",
+  "reason": "Rust フロントエンド PoC は Typed AST 出力に未対応です。"
+}

@@ -1,0 +1,4 @@
+{
+  "format": "text",
+  "content": "fn square(n: i64) -> i64 = binary(var(n) * var(n))\nfn choose(flag: Bool, lhs: i64, rhs: i64) -> i64 {block 1 stmts}\nfn main() -> i64 {block 3 stmts}\n"
+}

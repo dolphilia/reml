@@ -1,0 +1,382 @@
+{
+  "case": "type_error_cli",
+  "source": "examples/cli/type_error.reml",
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`)`、`,`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 19,
+        "start": 18
+      }
+    }
+  ],
+  "baseline": {
+    "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/type_error_cli.reml",
+    "run_config": {
+      "experimental_effects": false,
+      "legacy_result": true,
+      "merge_warnings": true,
+      "trace": false,
+      "left_recursion": "auto",
+      "packrat": true,
+      "require_eof": false,
+      "extensions": {
+        "config": {
+          "experimental_effects": false,
+          "left_recursion": "auto",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "source": "cli",
+          "trace": false
+        },
+        "effects": {
+          "type_row_mode": "ty-integrated"
+        },
+        "lex": {
+          "profile": "strict_json"
+        }
+      }
+    },
+    "parse_result": {
+      "span_trace": null,
+      "packrat_stats": {
+        "queries": 0,
+        "hits": 0
+      },
+      "legacy_error": null,
+      "farthest_error_offset": null,
+      "span": {
+        "start": {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/type_error_cli.reml",
+          "line": 1,
+          "column": 1,
+          "offset": 0
+        },
+        "end": {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/type_error_cli.reml",
+          "line": 6,
+          "column": 1,
+          "offset": 95
+        }
+      },
+      "committed": false,
+      "consumed": true,
+      "recovered": false,
+      "has_value": true
+    },
+    "stream_meta": null,
+    "diagnostics": []
+  },
+  "candidate": {
+    "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/type_error_cli.reml",
+    "run_config": {
+      "extensions": {
+        "stream": {
+          "checkpoint": "poc_frontend",
+          "chunk_size": 0,
+          "enabled": true,
+          "resume_hint": "n/a"
+        }
+      },
+      "switches": {
+        "left_recursion": "auto",
+        "legacy_result": false,
+        "merge_warnings": true,
+        "packrat": true,
+        "require_eof": true,
+        "trace": false
+      }
+    },
+    "parse_result": {
+      "packrat_stats": {
+        "approx_bytes": 388,
+        "budget_drops": 0,
+        "entries": 1,
+        "evictions": 0,
+        "hits": 6,
+        "pruned": 0,
+        "queries": 7
+      },
+      "span_trace": [
+        {
+          "label": "parser.simple_error",
+          "span": {
+            "end": 19,
+            "start": 18
+          }
+        }
+      ]
+    },
+    "stream_meta": {
+      "packrat": {
+        "approx_bytes": 388,
+        "budget_drops": 0,
+        "entries": 1,
+        "evictions": 0,
+        "hits": 6,
+        "pruned": 0,
+        "queries": 7
+      },
+      "span_trace": {
+        "dropped": 0,
+        "retained": 1
+      }
+    },
+    "diagnostics": [
+      {
+        "code": null,
+        "message": "構文エラー: 入力を解釈できません",
+        "notes": [
+          {
+            "label": "recover.expected_tokens",
+            "message": "ここで`)`、`,`のいずれかが必要です",
+            "span": null
+          }
+        ],
+        "recoverability": "recoverable",
+        "span": {
+          "end": 19,
+          "start": 18
+        }
+      }
+    ]
+  },
+  "tokens": [
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 2,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "bad_condition",
+      "span": {
+        "end": 16,
+        "start": 3
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 17,
+        "start": 16
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "x",
+      "span": {
+        "end": 18,
+        "start": 17
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 19,
+        "start": 18
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 23,
+        "start": 20
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 24,
+        "start": 23
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 27,
+        "start": 25
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 31,
+        "start": 28
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 33,
+        "start": 32
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "if",
+      "span": {
+        "end": 38,
+        "start": 36
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "x",
+      "span": {
+        "end": 40,
+        "start": 39
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "then",
+      "span": {
+        "end": 45,
+        "start": 41
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "1",
+      "span": {
+        "end": 47,
+        "start": 46
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "else",
+      "span": {
+        "end": 52,
+        "start": 48
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "0",
+      "span": {
+        "end": 54,
+        "start": 53
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 58,
+        "start": 56
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "main",
+      "span": {
+        "end": 63,
+        "start": 59
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 64,
+        "start": 63
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 65,
+        "start": 64
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 68,
+        "start": 66
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 72,
+        "start": 69
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 74,
+        "start": 73
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "bad_condition",
+      "span": {
+        "end": 90,
+        "start": 77
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 91,
+        "start": 90
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "42",
+      "span": {
+        "end": 93,
+        "start": 91
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 94,
+        "start": 93
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 95,
+        "start": 95
+      }
+    }
+  ],
+  "ast_render": null
+}

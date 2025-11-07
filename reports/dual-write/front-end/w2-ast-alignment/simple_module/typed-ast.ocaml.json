@@ -1,0 +1,4 @@
+{
+  "format": "text",
+  "content": "=== Typed AST ===\n\nlet (answer : i64 [answer: i64]) = ... : i64\n\nfn add(x: i64, y: i64) : (i64 -> (i64 -> i64))\n\nfn fact(n: i64) : (i64 -> i64)\n\nlet (result : i64 [result: i64]) = ... : i64\n"
+}

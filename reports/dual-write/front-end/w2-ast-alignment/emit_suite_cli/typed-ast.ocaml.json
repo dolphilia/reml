@@ -1,0 +1,4 @@
+{
+  "format": "text",
+  "content": "=== Typed AST ===\n\nfn square(n: i64) : (i64 -> i64)\n\nfn choose(flag: Bool, lhs: i64, rhs: i64) : (Bool -> (i64 -> (i64 -> i64)))\n\nfn main(()) : i64\n"
+}

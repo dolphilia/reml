@@ -1,0 +1,1387 @@
+{
+  "case": "trace_sample_cli",
+  "source": "examples/cli/trace_sample.reml",
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 52,
+            "start": 51
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 52,
+        "start": 51
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 83,
+            "start": 82
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 83,
+        "start": 82
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 114,
+            "start": 113
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 114,
+        "start": 113
+      }
+    },
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`)`、`,`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 13,
+        "start": 12
+      }
+    }
+  ],
+  "baseline": {
+    "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/trace_sample_cli.reml",
+    "run_config": {
+      "experimental_effects": false,
+      "legacy_result": true,
+      "merge_warnings": true,
+      "trace": false,
+      "left_recursion": "auto",
+      "packrat": true,
+      "require_eof": false,
+      "extensions": {
+        "config": {
+          "experimental_effects": false,
+          "left_recursion": "auto",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "source": "cli",
+          "trace": false
+        },
+        "effects": {
+          "type_row_mode": "ty-integrated"
+        },
+        "lex": {
+          "profile": "strict_json"
+        }
+      }
+    },
+    "parse_result": {
+      "span_trace": null,
+      "packrat_stats": {
+        "queries": 8,
+        "hits": 7
+      },
+      "legacy_error": {
+        "span": {
+          "start": {
+            "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/trace_sample_cli.reml",
+            "line": 2,
+            "column": 3,
+            "offset": 38
+          },
+          "end": {
+            "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/trace_sample_cli.reml",
+            "line": 2,
+            "column": 6,
+            "offset": 41
+          }
+        },
+        "expected": [
+          {
+            "kind": "keyword",
+            "label": "continue"
+          },
+          {
+            "kind": "keyword",
+            "label": "defer"
+          },
+          {
+            "kind": "keyword",
+            "label": "do"
+          },
+          {
+            "kind": "keyword",
+            "label": "false"
+          },
+          {
+            "kind": "keyword",
+            "label": "for"
+          },
+          {
+            "kind": "keyword",
+            "label": "handle"
+          },
+          {
+            "kind": "keyword",
+            "label": "if"
+          },
+          {
+            "kind": "keyword",
+            "label": "loop"
+          },
+          {
+            "kind": "keyword",
+            "label": "match"
+          },
+          {
+            "kind": "keyword",
+            "label": "perform"
+          },
+          {
+            "kind": "keyword",
+            "label": "return"
+          },
+          {
+            "kind": "keyword",
+            "label": "self"
+          },
+          {
+            "kind": "keyword",
+            "label": "true"
+          },
+          {
+            "kind": "keyword",
+            "label": "unsafe"
+          },
+          {
+            "kind": "keyword",
+            "label": "while"
+          },
+          {
+            "kind": "token",
+            "label": "!"
+          },
+          {
+            "kind": "token",
+            "label": "("
+          },
+          {
+            "kind": "token",
+            "label": "-"
+          },
+          {
+            "kind": "token",
+            "label": "["
+          },
+          {
+            "kind": "token",
+            "label": "{"
+          },
+          {
+            "kind": "token",
+            "label": "|"
+          },
+          {
+            "kind": "class",
+            "label": "char-literal"
+          },
+          {
+            "kind": "class",
+            "label": "float-literal"
+          },
+          {
+            "kind": "class",
+            "label": "identifier"
+          },
+          {
+            "kind": "class",
+            "label": "integer-literal"
+          },
+          {
+            "kind": "class",
+            "label": "string-literal"
+          },
+          {
+            "kind": "class",
+            "label": "upper-identifier"
+          }
+        ],
+        "committed": false,
+        "far_consumed": true
+      },
+      "farthest_error_offset": 38,
+      "span": null,
+      "committed": false,
+      "consumed": true,
+      "recovered": false,
+      "has_value": false
+    },
+    "stream_meta": null,
+    "diagnostics": [
+      {
+        "severity": "warning",
+        "message": "RunConfig.left_recursion=\"auto\" を利用できません。左再帰シムは PARSER-003 で導入予定です。",
+        "schema_version": "2.0.0-draft",
+        "location": {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/trace_sample_cli.reml",
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 1
+        },
+        "code": "parser.runconfig.left_recursion_unimplemented",
+        "codes": [
+          "parser.runconfig.left_recursion_unimplemented"
+        ],
+        "domain": "config",
+        "timestamp": "2025-11-06T22:20:11Z",
+        "extensions": {
+          "diagnostic.v2": {
+            "timestamp": "2025-11-06T22:20:11Z",
+            "codes": [
+              "parser.runconfig.left_recursion_unimplemented"
+            ]
+          },
+          "effect.required_capabilities": [],
+          "effect.stage.required_capabilities": [],
+          "effect.actual_capabilities": [],
+          "effect.stage.actual_capabilities": [],
+          "effect.capabilities": [],
+          "runconfig": {
+            "packrat": true,
+            "left_recursion": "auto",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": true,
+            "experimental_effects": false,
+            "extensions": {
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              },
+              "recover": {
+                "sync_tokens": [],
+                "notes": false
+              },
+              "stream": {
+                "enabled": false
+              }
+            }
+          }
+        },
+        "audit_metadata": {
+          "event.kind": "parser.runconfig.left_recursion_unimplemented",
+          "event.domain": "config",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "audit.channel": "cli",
+          "audit.build_id": "20251106T222011Z-f878115",
+          "audit.sequence": 0,
+          "audit.source.workspace": ".",
+          "audit.source.commit": "f878115",
+          "cli.audit_id": "cli/20251106T222011Z-f878115#0",
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "20251106T222011Z-f878115",
+              "workspace": ".",
+              "sequence": 0,
+              "commit": "f878115"
+            },
+            "items": [
+              {
+                "kind": "cli-command",
+                "command": "remlc",
+                "args": [
+                  "/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc",
+                  "--packrat",
+                  "--format",
+                  "json",
+                  "--json-mode",
+                  "compact",
+                  "--emit-parse-debug",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/trace_sample_cli.ocaml.parse-debug.json",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/trace_sample_cli.reml"
+                ]
+              },
+              {
+                "kind": "input",
+                "path": "trace_sample_cli.reml",
+                "target": "x86_64-linux"
+              },
+              {
+                "kind": "outputs",
+                "values": [
+                  "emit_parse_debug"
+                ]
+              }
+            ]
+          },
+          "schema.version": "1.1",
+          "audit.timestamp": "2025-11-06T22:20:11Z",
+          "effect.required_capabilities": [],
+          "effect.stage.required_capabilities": [],
+          "effect.actual_capabilities": [],
+          "effect.stage.actual_capabilities": [],
+          "effect.capabilities": [],
+          "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream": {
+            "enabled": false
+          },
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover": {
+            "sync_tokens": [],
+            "notes": false
+          },
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "parser.runconfig.experimental_effects": false,
+          "parser.runconfig.legacy_result": true,
+          "parser.runconfig.require_eof": false,
+          "parser.runconfig.merge_warnings": true,
+          "parser.runconfig.trace": false,
+          "parser.runconfig.left_recursion": "auto",
+          "parser.runconfig.packrat": true,
+          "parser.runconfig": {
+            "packrat": true,
+            "left_recursion": "auto",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": true,
+            "experimental_effects": false,
+            "extensions": {
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              },
+              "recover": {
+                "sync_tokens": [],
+                "notes": false
+              },
+              "stream": {
+                "enabled": false
+              }
+            }
+          }
+        },
+        "audit": {
+          "metadata": {
+            "parser.runconfig": {
+              "packrat": true,
+              "left_recursion": "auto",
+              "trace": false,
+              "merge_warnings": true,
+              "require_eof": false,
+              "legacy_result": true,
+              "experimental_effects": false,
+              "extensions": {
+                "lex": {
+                  "profile": "strict_json",
+                  "identifier_profile": "unicode"
+                },
+                "recover": {
+                  "sync_tokens": [],
+                  "notes": false
+                },
+                "stream": {
+                  "enabled": false
+                }
+              }
+            },
+            "parser.runconfig.packrat": true,
+            "parser.runconfig.left_recursion": "auto",
+            "parser.runconfig.trace": false,
+            "parser.runconfig.merge_warnings": true,
+            "parser.runconfig.require_eof": false,
+            "parser.runconfig.legacy_result": true,
+            "parser.runconfig.experimental_effects": false,
+            "parser.runconfig.extensions.lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            },
+            "parser.runconfig.extensions.lex.profile": "strict_json",
+            "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+            "parser.runconfig.extensions.recover": {
+              "sync_tokens": [],
+              "notes": false
+            },
+            "parser.runconfig.extensions.recover.notes": false,
+            "parser.runconfig.extensions.recover.sync_tokens": [],
+            "parser.runconfig.extensions.stream": {
+              "enabled": false
+            },
+            "parser.runconfig.extensions.stream.enabled": false,
+            "effect.capabilities": [],
+            "effect.stage.actual_capabilities": [],
+            "effect.actual_capabilities": [],
+            "effect.stage.required_capabilities": [],
+            "effect.required_capabilities": [],
+            "cli.change_set": {
+              "policy": "phase2.5.audit.v1",
+              "origin": "cli",
+              "source": {
+                "build_id": "20251106T222011Z-f878115",
+                "workspace": ".",
+                "sequence": 0,
+                "commit": "f878115"
+              },
+              "items": [
+                {
+                  "kind": "cli-command",
+                  "command": "remlc",
+                  "args": [
+                    "/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc",
+                    "--packrat",
+                    "--format",
+                    "json",
+                    "--json-mode",
+                    "compact",
+                    "--emit-parse-debug",
+                    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/trace_sample_cli.ocaml.parse-debug.json",
+                    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/trace_sample_cli.reml"
+                  ]
+                },
+                {
+                  "kind": "input",
+                  "path": "trace_sample_cli.reml",
+                  "target": "x86_64-linux"
+                },
+                {
+                  "kind": "outputs",
+                  "values": [
+                    "emit_parse_debug"
+                  ]
+                }
+              ]
+            },
+            "cli.audit_id": "cli/20251106T222011Z-f878115#0",
+            "audit.source.commit": "f878115",
+            "audit.source.workspace": ".",
+            "audit.sequence": 0,
+            "audit.build_id": "20251106T222011Z-f878115",
+            "audit.channel": "cli",
+            "audit.policy.version": "phase2.5.audit.v1",
+            "event.domain": "config",
+            "event.kind": "parser.runconfig.left_recursion_unimplemented",
+            "audit.timestamp": "2025-11-06T22:20:11Z",
+            "schema.version": "1.1"
+          },
+          "audit_id": "cli/20251106T222011Z-f878115#0",
+          "change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "20251106T222011Z-f878115",
+              "workspace": ".",
+              "sequence": 0,
+              "commit": "f878115"
+            },
+            "items": [
+              {
+                "kind": "cli-command",
+                "command": "remlc",
+                "args": [
+                  "/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc",
+                  "--packrat",
+                  "--format",
+                  "json",
+                  "--json-mode",
+                  "compact",
+                  "--emit-parse-debug",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/trace_sample_cli.ocaml.parse-debug.json",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/trace_sample_cli.reml"
+                ]
+              },
+              {
+                "kind": "input",
+                "path": "trace_sample_cli.reml",
+                "target": "x86_64-linux"
+              },
+              {
+                "kind": "outputs",
+                "values": [
+                  "emit_parse_debug"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "candidate": {
+    "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/poc/2025-11-07-w2-ast-inventory/trace_sample_cli.reml",
+    "run_config": {
+      "extensions": {
+        "stream": {
+          "checkpoint": "poc_frontend",
+          "chunk_size": 0,
+          "enabled": true,
+          "resume_hint": "n/a"
+        }
+      },
+      "switches": {
+        "left_recursion": "auto",
+        "legacy_result": false,
+        "merge_warnings": true,
+        "packrat": true,
+        "require_eof": true,
+        "trace": false
+      }
+    },
+    "parse_result": {
+      "packrat_stats": {
+        "approx_bytes": 387,
+        "budget_drops": 0,
+        "entries": 1,
+        "evictions": 0,
+        "hits": 6,
+        "pruned": 0,
+        "queries": 7
+      },
+      "span_trace": [
+        {
+          "label": "parser.simple_error",
+          "span": {
+            "end": 13,
+            "start": 12
+          }
+        }
+      ]
+    },
+    "stream_meta": {
+      "packrat": {
+        "approx_bytes": 387,
+        "budget_drops": 0,
+        "entries": 1,
+        "evictions": 0,
+        "hits": 6,
+        "pruned": 0,
+        "queries": 7
+      },
+      "span_trace": {
+        "dropped": 0,
+        "retained": 1
+      }
+    },
+    "diagnostics": [
+      {
+        "code": null,
+        "message": "未定義のトークンを検出しました",
+        "notes": [
+          {
+            "label": "lexer",
+            "message": "未定義のトークンをスキップします",
+            "span": {
+              "end": 52,
+              "start": 51
+            }
+          }
+        ],
+        "recoverability": "recoverable",
+        "span": {
+          "end": 52,
+          "start": 51
+        }
+      },
+      {
+        "code": null,
+        "message": "未定義のトークンを検出しました",
+        "notes": [
+          {
+            "label": "lexer",
+            "message": "未定義のトークンをスキップします",
+            "span": {
+              "end": 83,
+              "start": 82
+            }
+          }
+        ],
+        "recoverability": "recoverable",
+        "span": {
+          "end": 83,
+          "start": 82
+        }
+      },
+      {
+        "code": null,
+        "message": "未定義のトークンを検出しました",
+        "notes": [
+          {
+            "label": "lexer",
+            "message": "未定義のトークンをスキップします",
+            "span": {
+              "end": 114,
+              "start": 113
+            }
+          }
+        ],
+        "recoverability": "recoverable",
+        "span": {
+          "end": 114,
+          "start": 113
+        }
+      },
+      {
+        "code": null,
+        "message": "構文エラー: 入力を解釈できません",
+        "notes": [
+          {
+            "label": "recover.expected_tokens",
+            "message": "ここで`)`、`,`のいずれかが必要です",
+            "span": null
+          }
+        ],
+        "recoverability": "recoverable",
+        "span": {
+          "end": 13,
+          "start": 12
+        }
+      }
+    ]
+  },
+  "tokens": [
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 2,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "compute",
+      "span": {
+        "end": 10,
+        "start": 3
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 11,
+        "start": 10
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "a",
+      "span": {
+        "end": 12,
+        "start": 11
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 13,
+        "start": 12
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 17,
+        "start": 14
+      }
+    },
+    {
+      "kind": "Comma",
+      "lexeme": null,
+      "span": {
+        "end": 18,
+        "start": 17
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "b",
+      "span": {
+        "end": 20,
+        "start": 19
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 21,
+        "start": 20
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 25,
+        "start": 22
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 26,
+        "start": 25
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 29,
+        "start": 27
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 33,
+        "start": 30
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 35,
+        "start": 34
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 41,
+        "start": 38
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "prod",
+      "span": {
+        "end": 46,
+        "start": 42
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 48,
+        "start": 47
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "a",
+      "span": {
+        "end": 50,
+        "start": 49
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "b",
+      "span": {
+        "end": 54,
+        "start": 53
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 60,
+        "start": 57
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "sum",
+      "span": {
+        "end": 64,
+        "start": 61
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 66,
+        "start": 65
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "a",
+      "span": {
+        "end": 68,
+        "start": 67
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 70,
+        "start": 69
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "b",
+      "span": {
+        "end": 72,
+        "start": 71
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "if",
+      "span": {
+        "end": 77,
+        "start": 75
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "sum",
+      "span": {
+        "end": 81,
+        "start": 78
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "10",
+      "span": {
+        "end": 86,
+        "start": 84
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "then",
+      "span": {
+        "end": 91,
+        "start": 87
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "prod",
+      "span": {
+        "end": 96,
+        "start": 92
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 98,
+        "start": 97
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "sum",
+      "span": {
+        "end": 102,
+        "start": 99
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "else",
+      "span": {
+        "end": 107,
+        "start": 103
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "prod",
+      "span": {
+        "end": 112,
+        "start": 108
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "sum",
+      "span": {
+        "end": 118,
+        "start": 115
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 122,
+        "start": 120
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "pipeline",
+      "span": {
+        "end": 131,
+        "start": 123
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 132,
+        "start": 131
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "base",
+      "span": {
+        "end": 136,
+        "start": 132
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 137,
+        "start": 136
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 141,
+        "start": 138
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 142,
+        "start": 141
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 145,
+        "start": 143
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 149,
+        "start": 146
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 151,
+        "start": 150
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 157,
+        "start": 154
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "first",
+      "span": {
+        "end": 163,
+        "start": 158
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 165,
+        "start": 164
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "compute",
+      "span": {
+        "end": 173,
+        "start": 166
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 174,
+        "start": 173
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "base",
+      "span": {
+        "end": 178,
+        "start": 174
+      }
+    },
+    {
+      "kind": "Comma",
+      "lexeme": null,
+      "span": {
+        "end": 179,
+        "start": 178
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "base",
+      "span": {
+        "end": 184,
+        "start": 180
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 186,
+        "start": 185
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "2",
+      "span": {
+        "end": 188,
+        "start": 187
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 189,
+        "start": 188
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 195,
+        "start": 192
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "second",
+      "span": {
+        "end": 202,
+        "start": 196
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 204,
+        "start": 203
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "compute",
+      "span": {
+        "end": 212,
+        "start": 205
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 213,
+        "start": 212
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "base",
+      "span": {
+        "end": 217,
+        "start": 213
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 219,
+        "start": 218
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "1",
+      "span": {
+        "end": 221,
+        "start": 220
+      }
+    },
+    {
+      "kind": "Comma",
+      "lexeme": null,
+      "span": {
+        "end": 222,
+        "start": 221
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "base",
+      "span": {
+        "end": 227,
+        "start": 223
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 229,
+        "start": 228
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "3",
+      "span": {
+        "end": 231,
+        "start": 230
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 232,
+        "start": 231
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "first",
+      "span": {
+        "end": 240,
+        "start": 235
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 242,
+        "start": 241
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "second",
+      "span": {
+        "end": 249,
+        "start": 243
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 253,
+        "start": 251
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "main",
+      "span": {
+        "end": 258,
+        "start": 254
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 259,
+        "start": 258
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 260,
+        "start": 259
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 263,
+        "start": 261
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 267,
+        "start": 264
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 269,
+        "start": 268
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 275,
+        "start": 272
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "result",
+      "span": {
+        "end": 282,
+        "start": 276
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 284,
+        "start": 283
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "pipeline",
+      "span": {
+        "end": 293,
+        "start": 285
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 294,
+        "start": 293
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "4",
+      "span": {
+        "end": 295,
+        "start": 294
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 296,
+        "start": 295
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "result",
+      "span": {
+        "end": 305,
+        "start": 299
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 306,
+        "start": 306
+      }
+    }
+  ],
+  "ast_render": null
+}

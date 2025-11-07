@@ -1,0 +1,15 @@
+// Simple test file for Phase 1 Parser
+
+module test.simple
+
+use ::Core.Parse
+
+let answer = 42
+
+fn add(x, y) -> i64 = x + y
+
+fn fact(n) -> i64 {
+  if n <= 1 then 1 else n * fact(n - 1)
+}
+
+let result = add(10, 20)

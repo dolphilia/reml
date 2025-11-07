@@ -1,0 +1,3 @@
+fn effectful_sum(xs: [i64]) !{ io } -> i64 {
+  0
+}

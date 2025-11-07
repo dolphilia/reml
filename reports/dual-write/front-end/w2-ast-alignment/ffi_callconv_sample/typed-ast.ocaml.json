@@ -1,0 +1,4 @@
+{
+  "format": "text",
+  "content": "=== Typed AST ===\n\nextern ... : ()\n\nfn main(()) : i64\n"
+}
