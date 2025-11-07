@@ -10,8 +10,9 @@ use reml_frontend::error::Recoverability;
 use reml_frontend::parser::ParserDriver;
 use reml_frontend::span::Span;
 use reml_frontend::typeck::{
-    self, config as global_typeck_config, DualWriteGuards, InstallConfigError, RecoverConfig,
-    StageContext, StageId, StageRequirement, TypeRowMode, TypecheckConfig,
+    self, DualWriteGuards, InstallConfigError, RecoverConfig, StageContext, StageId,
+    StageRequirement, TypeRowMode, TypecheckConfig, TypecheckDriver, TypecheckMetrics,
+    TypecheckReport, TypedFunctionSummary,
 };
 use serde::Serialize;
 
@@ -31,6 +32,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let result = ParserDriver::parse(&source);
+    let typeck_report = result
+        .ast
+        .as_ref()
+        .map(|module| TypecheckDriver::infer_module(module, &args.typecheck_config))
+        .unwrap_or_default();
     let diagnostics = result
         .diagnostics
         .iter()
@@ -53,6 +59,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "parse_result": parse_result.clone(),
         "stream_meta": stream_meta.clone(),
         "diagnostics": diagnostics,
+        "typecheck": serde_json::json!({
+            "metrics": typeck_report.metrics,
+            "functions": typeck_report.functions,
+        }),
         "tokens": result.tokens.iter().map(|token| serde_json::json!({
             "kind": format!("{:?}", token.kind),
             "span": token.span,
@@ -95,7 +105,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if let Some(guards) = dualwrite {
-        write_dualwrite_typeck_payload(&guards)?;
+        write_dualwrite_typeck_payload(&guards, &typeck_report, &args.typecheck_config)?;
     }
 
     Ok(())
@@ -266,27 +276,22 @@ fn parse_on_off(value: &str) -> Result<bool, String> {
 
 fn write_dualwrite_typeck_payload(
     guards: &DualWriteGuards,
+    report: &TypecheckReport,
+    config: &TypecheckConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let snapshot = TypecheckDualWriteSnapshot {
-        config: global_typeck_config().clone(),
-        metrics: TypecheckMetrics::default(),
+    guards.write_json("typeck/config.json", config)?;
+    let payload = TypecheckMetricsPayload {
+        metrics: &report.metrics,
+        typed_functions: &report.functions,
     };
-    guards.write_json("typeck/config.json", &snapshot)?;
-    guards.write_json("typeck/metrics.json", &snapshot.metrics)?;
+    guards.write_json("typeck/metrics.json", &payload)?;
     Ok(())
 }
 
-#[derive(Debug, Serialize)]
-struct TypecheckDualWriteSnapshot {
-    config: TypecheckConfig,
-    metrics: TypecheckMetrics,
-}
-
-#[derive(Debug, Default, Serialize)]
-struct TypecheckMetrics {
-    constraints_emitted: usize,
-    typed_nodes: usize,
-    notes: Vec<String>,
+#[derive(Serialize)]
+struct TypecheckMetricsPayload<'a> {
+    metrics: &'a TypecheckMetrics,
+    typed_functions: &'a [TypedFunctionSummary],
 }
 
 #[derive(Debug, Serialize)]

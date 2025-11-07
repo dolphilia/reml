@@ -65,6 +65,7 @@
   - `impl-registry.{ocaml,rust}.json`（登録順序）  
   - `effects-metrics.{ocaml,rust}.json`（`collect-iterator-audit-metrics.py` 入力）  
 - `poc_frontend` CLI へ `--type-row-mode` / `--effect-stage-*(runtime|capability)` / `--recover-*` を追加済みで、実行時に `TypecheckConfig::builder` へ注入し `typeck::install_config` を呼び出す。`scripts/poc_dualwrite_compare.sh` からは `--dualwrite-root` `--dualwrite-run-label` `--dualwrite-case-label` が渡され、`DualWriteGuards` が `typeck/config.json` `typeck/metrics.json` を生成する。
+- `TypecheckDriver::infer_module` は `parser::ast::Module` を走査し、`TypecheckMetrics`（`typed_functions`/`typed_exprs`/`constraints_total`/`constraint_breakdown`/`call_sites` 等）と `TypedFunctionSummary`（戻り値ラベル、式件数、制約件数）を返す。CLI 出力と dual-write ログはこのメトリクスを JSON 化し、`scripts/poc_dualwrite_compare.sh` で OCaml 由来の暫定メトリクスと比較する。
 - CLI 検証は `scripts/poc_dualwrite_compare.sh --mode typeck --cases @p1-front-end-checklists.csv` で統一し、`docs/plans/rust-migration/1-3-dual-write-runbook.md#1-3-2-w3-type-inference-モード` に沿って運用する。  
 - 失敗時は `reports/dual-write/front-end/w3-type-inference/case-*/` 以下へ差分を保存し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に再掲する。
 

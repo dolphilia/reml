@@ -1,11 +1,15 @@
 //! 型推論スタックのルートモジュール。
 //!
-//! 現時点では設定と dual-write 補助のみを実装し、W3 以降で
-//! `types.rs` や `constraint.rs` などのサブモジュールを拡張していく。
+//! W3 時点では設定・メトリクス・簡易型推論の骨組みのみを提供し、
+//! 今後 `types.rs` や `constraint.rs` を拡張していく。
 
+mod driver;
 pub mod env;
+mod metrics;
 
+pub use driver::{TypecheckDriver, TypecheckReport, TypedFunctionSummary};
 pub use env::{
     config, install_config, DualWriteGuards, InstallConfigError, RecoverConfig, StageContext,
     StageId, StageRequirement, TypeRowMode, TypecheckConfig, TypecheckConfigBuilder,
 };
+pub use metrics::TypecheckMetrics;
