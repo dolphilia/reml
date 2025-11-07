@@ -42,16 +42,15 @@ CASE_DIR=reports/dual-write/front-end/w3-type-inference/2027-01-15-w3-typeck/pat
 
 python3 tooling/ci/collect-iterator-audit-metrics.py \
   --section effects \
-  --baseline "$CASE_DIR/ocaml.diagnostics.json" \
-  --candidate "$CASE_DIR/rust.json" \
+  --source "$CASE_DIR/ocaml.diagnostics.json" \
   --require-success \
-  > "$CASE_DIR/typeck/effects-metrics.rust.json"
+  > "$CASE_DIR/typeck/effects-metrics.ocaml.json"
 
 python3 tooling/ci/collect-iterator-audit-metrics.py \
   --section effects \
-  --baseline "$CASE_DIR/rust.json" \
-  --candidate "$CASE_DIR/ocaml.diagnostics.json" \
-  > "$CASE_DIR/typeck/effects-metrics.ocaml.json"
+  --source "$CASE_DIR/rust.json" \
+  --require-success \
+  > "$CASE_DIR/typeck/effects-metrics.rust.json"
 ```
 
 - 結果ファイルは `typeck/effects-metrics.{ocaml,rust}.json` に格納し、`1-0-front-end-transition.md#W3` の Step4 で参照する。
@@ -70,6 +69,8 @@ scripts/validate-diagnostic-json.sh \
 
 ## 2027-01-15 ランのサマリ
 
+<!-- TYPECK_TABLE_START -->
+
 | case | typeck_match | typed_functions (ocaml/rust) | constraints_total (ocaml/rust) | diagnostics (ocaml/rust) |
 | --- | --- | --- | --- | --- |
 | callconv_windows_messagebox | True | 5 / 5 | 0 / 0 | 1 / 64 |
@@ -78,13 +79,19 @@ scripts/validate-diagnostic-json.sh \
 | pattern_tuple | True | 2 / 2 | 0 / 0 | 1 / 1 |
 | residual_effect | True | 2 / 2 | 0 / 0 | 1 / 5 |
 
+<!-- TYPECK_TABLE_END -->
+
 - `ffi_dispatch_async` は OCaml 側が型推論エラーを返す一方、Rust 側は fallback 集計のみとなっているため `typed_functions.delta=-2` で `typeck_metrics.match=false`。`W3-TYPECK-ffi-dispatch-async`（`2-7-deferred-remediation.md`）で追跡。  
 - `callconv_windows_messagebox` / `residual_effect` では AST/診断 diff が残っているため、W4 診断互換タスクで再検証する。  
 - すべての `typeck-debug.{ocaml,rust}.json` は `effect_scope` / `residual_effects` の配列長が一致しており、ログ整形規約が機能している。
 
 ## フォローアップ
 
-- `impl-registry.{ocaml,rust}.json` と `effects-metrics.{ocaml,rust}.json` の生成を自動化し、`summary.json` にリンクを追加する。  
-- `scripts/poc_dualwrite_compare.sh --mode typeck` 実行時に `diagnostic-validate.log` を常に保存するオプションを追加（Issue: `W3-TYPECK-log-retention`）。  
-- 今後のランでは `summary.md` だけでなく `summary.json` からメトリクスを抽出し、`README.md` のサマリ表を更新する運用とする。
+- `impl-registry.{ocaml,rust}.json` の自動生成と `typeck/summary.json` 連携は継続検討。  
+- ✅ 2027-01-17: `scripts/poc_dualwrite_compare.sh --mode typeck` が `effects-metrics.{ocaml,rust}.json`／`diagnostic-validate.log` を自動生成。  
+- ✅ 2027-01-17: `scripts/dualwrite_summary_report.py --update-typeck-readme` で `summary.json` からサマリ表を更新する CI フローを整備。
 
+## 自動更新フロー
+
+- `scripts/poc_dualwrite_compare.sh --mode typeck` は各ケースで `typeck/effects-metrics.{ocaml,rust}.json` と `typeck/diagnostic-validate.log` を自動生成し、Schema/メトリクス検証を省力化する。  
+- README のサマリ表は `scripts/dualwrite_summary_report.py <run_dir> --update-typeck-readme reports/dual-write/front-end/w3-type-inference/README.md` を実行すると `summary.json` から自動更新できる（CI でも同コマンドを呼び出す）。必要に応じて `--typeck-table <path>` で Markdown 断片を別ファイルへ出力し、レビューに添付する。

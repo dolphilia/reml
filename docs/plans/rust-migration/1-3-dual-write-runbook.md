@@ -59,17 +59,27 @@ scripts/poc_dualwrite_compare.sh \
 ```bash
 python3 tooling/ci/collect-iterator-audit-metrics.py \
   --section parser \
-  --baseline "$OUT_OCAML" \
-  --candidate "$OUT_RUST" \
+  --source "$OUT_OCAML" \
   --require-success \
   > "${OUT_OCAML%.json}-parser-metrics.json"
 
 python3 tooling/ci/collect-iterator-audit-metrics.py \
   --section effects \
-  --baseline "$OUT_OCAML" \
-  --candidate "$OUT_RUST" \
+  --source "$OUT_OCAML" \
   --require-success \
   > "${OUT_OCAML%.json}-effects-metrics.json"
+
+python3 tooling/ci/collect-iterator-audit-metrics.py \
+  --section parser \
+  --source "$OUT_RUST" \
+  --require-success \
+  > "${OUT_RUST%.json}-parser-metrics.json"
+
+python3 tooling/ci/collect-iterator-audit-metrics.py \
+  --section effects \
+  --source "$OUT_RUST" \
+  --require-success \
+  > "${OUT_RUST%.json}-effects-metrics.json"
 ```
 
 - スクリプトが失敗した場合はログ末尾の `missing_keys`・`mismatch` を確認し、`1-2-diagnostic-compatibility.md` の重点監視フィールドへ差分を登録する。

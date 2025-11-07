@@ -7,6 +7,8 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 OCAML_DIR="${REPO_ROOT}/compiler/ocaml"
 RUST_DIR="${REPO_ROOT}/compiler/rust/frontend"
 REPORT_DIR="${REPO_ROOT}/reports/dual-write/front-end/poc"
+COLLECT_METRICS_SCRIPT="${REPO_ROOT}/tooling/ci/collect-iterator-audit-metrics.py"
+VALIDATE_DIAG_SCRIPT="${SCRIPT_DIR}/validate-diagnostic-json.sh"
 
 RUN_ID="${DUALWRITE_RUN_ID:-2025-11-28-logos-chumsky}"
 CASES_FILE="${DUALWRITE_CASES_FILE:-}"
@@ -104,6 +106,44 @@ printf "==> 出力ディレクトリ: %s\n" "${RUN_DIR}"
 sanitize_name() {
   local value="$1"
   printf "%s" "${value}" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9._-' '_'
+}
+
+collect_effects_metrics() {
+  local diag_path="$1"
+  local output_path="$2"
+  local label="$3"
+
+  if [[ ! -s "${diag_path}" ]]; then
+    printf "!! %s diagnostics not found, skip effects metrics (%s)\n" "${label}" "${diag_path}" >&2
+    return
+  fi
+  local err_path="${output_path%.json}.err.log"
+  if python3 "${COLLECT_METRICS_SCRIPT}" \
+    --section effects \
+    --source "${diag_path}" \
+    --require-success \
+    > "${output_path}" 2> "${err_path}"
+  then
+    rm -f "${err_path}"
+  else
+    printf "!! collect-iterator-audit-metrics failed for %s (see %s)\n" "${label}" "${err_path}" >&2
+  fi
+}
+
+validate_diagnostics_schema() {
+  local ocaml_path="$1"
+  local rust_path="$2"
+  local log_path="$3"
+
+  if [[ ! -s "${ocaml_path}" || ! -s "${rust_path}" ]]; then
+    printf "!! Diagnostics validation skipped (missing files: %s / %s)\n" "${ocaml_path}" "${rust_path}" >&2
+    return
+  fi
+  if bash "${VALIDATE_DIAG_SCRIPT}" "${ocaml_path}" "${rust_path}" > "${log_path}" 2>&1; then
+    :
+  else
+    printf "!! Diagnostic schema validation failed (see %s)\n" "${log_path}" >&2
+  fi
 }
 
 for entry in "${CASE_ENTRIES[@]}"; do
@@ -215,6 +255,12 @@ for entry in "${CASE_ENTRIES[@]}"; do
       "${typeck_rust_flags[@]}" \
       "${input_path}"
   ) > "${rust_json_path}" || true
+
+  if [[ "${MODE}" == "typeck" ]]; then
+    collect_effects_metrics "${ocaml_diag_path}" "${typeck_dir}/effects-metrics.ocaml.json" "OCaml"
+    collect_effects_metrics "${rust_json_path}" "${typeck_dir}/effects-metrics.rust.json" "Rust"
+    validate_diagnostics_schema "${ocaml_diag_path}" "${rust_json_path}" "${typeck_dir}/diagnostic-validate.log"
+  fi
 
 python3 - "${case_dir}" "${case_name}" "${safe_name}" "${RUN_ID}" "${REPORT_DIR}" "${MODE}" <<'PY'
 import json
