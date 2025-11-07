@@ -147,6 +147,8 @@
    - `1-3-dual-write-runbook.md` Step4〜6 を型推論向けに拡張し、`reports/dual-write/front-end/w3-type-inference/` に `typed-ast`, `constraints`, `impl-registry`, `effects-metrics.json`, `summary.md` を保存する命名規約を追加。`collect-iterator-audit-metrics.py --section effects` を Rust/OCaml 両方で実行し、`parser.stream.*` に加えて `effects.unify.*`, `effects.impl_resolve.*` を 0.5pt 以内で一致させる。  
    - CLI へ `--emit typeck-debug <dir>` を追加し、`Type_inference_effect` のトレース（`effect_scope`, `residual_effects`, `recoverable`）と `Constraint_solver` の統計を JSON で出力。OCaml 版 `parser_driver.ml` の同等ログと比較し、`reports/dual-write/front-end/w3-type-inference/metrics/typeck-debug.{ocaml,rust}.json` を生成する。  
    - `scripts/validate-diagnostic-json.sh` を W3 入力ケースで再実行し、型推論エラー由来の診断 JSON が既存スキーマを満たすことを確認。差分が残れば `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ TODO として登録する。
+   - ✅ 2027-01-17: `reports/dual-write/front-end/w3-type-inference/README.md` を追加し、ケース別成果物・`collect-iterator-audit-metrics.py --section effects` の保存先・`scripts/validate-diagnostic-json.sh` 再実行ログの扱いを明文化。`2027-01-15-w3-typeck` ランの `typeck_metrics` を表形式で掲載し、`ffi_dispatch_async` で残る差分（`typed_functions.delta=-2`）を可視化した。  
+   - ✅ 2027-01-17: `1-3-dual-write-runbook.md` を更新し、typeck モードの成果物参照先として上記 README を明示。メトリクス取得手順では `reports/.../README.md#メトリクス可視化` を参照する導線を追加し、Step4 の命名規約がランブックと同期した。
 
 5. **ドキュメント／追跡ファイル更新とハンドオーバー準備**  
    - `p1-front-end-checklists.csv` の「Typed AST」「制約ソルバ」行に W3 で作成する成果物（例: `typeck_config.md`, `rust_type_inference_tests.rs`, `effects-metrics.json`）と受入基準（dual-write Typed AST/Constraint 差分ゼロ、`collect-iterator-audit-metrics.py --section effects` pass）を追記する。  

@@ -51,7 +51,7 @@ scripts/poc_dualwrite_compare.sh \
   --cases docs/plans/rust-migration/appendix/w3-dualwrite-cases.txt
 ```
 
-- `--mode typeck` を指定すると `reports/dual-write/front-end/<run>/<case>/typeck/` に `typed-ast.{ocaml,rust}.json`, `constraints.{ocaml,rust}.json`, `impl-registry.{ocaml,rust}.json`, `effects-metrics.{ocaml,rust}.json`, `typeck-debug.{ocaml,rust}.json` が保存される（スキーマ定義: `appendix/w3-typeck-dualwrite-plan.md`）。
+- `--mode typeck` を指定すると `reports/dual-write/front-end/<run>/<case>/typeck/` に `typed-ast.{ocaml,rust}.json`, `constraints.{ocaml,rust}.json`, `impl-registry.{ocaml,rust}.json`, `effects-metrics.{ocaml,rust}.json`, `typeck-debug.{ocaml,rust}.json` が保存される（スキーマ定義: `appendix/w3-typeck-dualwrite-plan.md`、成果物例・命名規約: `reports/dual-write/front-end/w3-type-inference/README.md`）。
 - OCaml CLI には `--emit-constraints-json`, `--emit-typeck-debug` を、Rust CLI には `--emit typed-ast --emit constraints --emit typeck-debug <dir>` を追加し、同一ケースを dual-write 実行する。
 - 失敗ケースは `typeck/stderr.log` と `typeck/command.json` に再現手順を残す。`summary.json` の `typeck_metrics.match` が `false` の場合は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に TODO を登録する。
 
@@ -73,7 +73,7 @@ python3 tooling/ci/collect-iterator-audit-metrics.py \
 ```
 
 - スクリプトが失敗した場合はログ末尾の `missing_keys`・`mismatch` を確認し、`1-2-diagnostic-compatibility.md` の重点監視フィールドへ差分を登録する。
-- メトリクス差の許容範囲は `1-1-ast-and-ir-alignment.md#1-1-7-検証パイプライン` で規定された 0.5pt 以内。typeck モードでは追加で `collect-iterator-audit-metrics.py --section effects` を実行し、`effects.impl_resolve.delta` / `effects.stage_mismatch.delta` が ±0.5pt 以内であることを確認する（`appendix/w3-typeck-dualwrite-plan.md` 参照）。
+- メトリクス差の許容範囲は `1-1-ast-and-ir-alignment.md#1-1-7-検証パイプライン` で規定された 0.5pt 以内。typeck モードでは追加で `collect-iterator-audit-metrics.py --section effects` を実行し、`effects.impl_resolve.delta` / `effects.stage_mismatch.delta` が ±0.5pt 以内であることを確認する（具体的な保存手順: `reports/dual-write/front-end/w3-type-inference/README.md#メトリクス可視化`）。
 
 ### 手順 4: 自動判定レポートの生成
 ```bash
