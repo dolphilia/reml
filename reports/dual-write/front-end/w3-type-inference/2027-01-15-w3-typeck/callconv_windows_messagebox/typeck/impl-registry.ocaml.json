@@ -1,0 +1,7 @@
+{
+  "schema_version": "w3-typeck-impl-registry/0.1",
+  "frontend": "ocaml",
+  "case": "callconv_windows_messagebox",
+  "run_id": "2027-01-15-w3-typeck",
+  "entries": []
+}

@@ -266,6 +266,7 @@ python3 - "${case_dir}" "${case_name}" "${safe_name}" "${RUN_ID}" "${REPORT_DIR}
 import json
 import pathlib
 import sys
+import re
 
 case_dir = pathlib.Path(sys.argv[1])
 case_name = sys.argv[2]
@@ -298,6 +299,7 @@ def derive_ocaml_typeck_metrics(tast_text: str, summary_json, source_text: str):
     typed_functions = 0
     typed_exprs = 0
     functions = []
+    fallback_functions = []
     has_summary = isinstance(summary_json, dict)
     if has_summary:
         fn_list = summary_json.get("function_summaries")
@@ -311,10 +313,32 @@ def derive_ocaml_typeck_metrics(tast_text: str, summary_json, source_text: str):
                 continue
             if stripped.startswith("fn "):
                 typed_functions += 1
+                name = stripped[3:].split("(")[0].strip()
+                fallback_functions.append(
+                    {
+                        "name": name,
+                        "param_types": [],
+                        "return_type": "Unknown",
+                        "source": "typed_ast_text",
+                    }
+                )
             if stripped.startswith("(") or stripped.startswith("case "):
                 typed_exprs += 1
+    if not functions and fallback_functions:
+        functions = fallback_functions
     if typed_functions == 0:
-        typed_functions = estimate_functions_from_source(source_text)
+        guessed_names = guess_function_names_from_source(source_text)
+        typed_functions = len(guessed_names)
+        if not functions and guessed_names:
+            functions = [
+                {
+                    "name": name,
+                    "param_types": [],
+                    "return_type": "Unknown",
+                    "source": "source_scan",
+                }
+                for name in guessed_names
+            ]
     if typed_exprs == 0 and typed_functions > 0:
         typed_exprs = typed_functions
 
@@ -357,13 +381,52 @@ def packrat_numbers(stats):
         return int(stats.get("queries", 0) or 0), int(stats.get("hits", 0) or 0)
     return 0, 0
 
-def estimate_functions_from_source(source_text: str) -> int:
-    count = 0
-    tokens = source_text.replace("\n", " ").split()
-    for token in tokens:
-        if token == "fn":
-            count += 1
-    return count
+def guess_function_names_from_source(source_text: str):
+    if not source_text:
+        return []
+    pattern = re.compile(r"\bfn\s+([A-Za-z0-9_]+)")
+    return pattern.findall(source_text)
+
+def build_impl_registry_payload(frontend: str, case: str, run: str, typed_functions):
+    typed_functions = typed_functions or []
+    entries = []
+    for index, fn in enumerate(typed_functions):
+        if isinstance(fn, dict):
+            name = fn.get("name") or f"{frontend}_fn_{index}"
+            entries.append(
+                {
+                    "index": index,
+                    "impl_name": name,
+                    "trait_path": fn.get("trait_path") or fn.get("trait"),
+                    "impl_type": fn.get("return_type"),
+                    "param_types": fn.get("param_types"),
+                    "origin": fn.get("source") or "typed_functions",
+                }
+            )
+        elif isinstance(fn, str):
+            entries.append(
+                {
+                    "index": index,
+                    "impl_name": fn,
+                    "trait_path": None,
+                    "impl_type": None,
+                    "param_types": None,
+                    "origin": "typed_functions",
+                }
+            )
+    return {
+        "schema_version": "w3-typeck-impl-registry/0.1",
+        "frontend": frontend,
+        "case": case,
+        "run_id": run,
+        "entries": entries,
+    }
+
+def ensure_impl_registry_snapshot(path: pathlib.Path, payload: dict):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists() and path.stat().st_size > 0:
+        return
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 source_info = read_text(case_dir / "source.txt").strip()
 source_code = read_text(case_dir / "input.reml")
@@ -419,6 +482,20 @@ if mode == "typeck":
         json.dumps(typeck_diff, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+    ocaml_impl_payload = build_impl_registry_payload(
+        "ocaml",
+        case_name,
+        run_id,
+        ocaml_metrics.get("typed_functions") if ocaml_metrics else None,
+    )
+    rust_impl_payload = build_impl_registry_payload(
+        "rust",
+        case_name,
+        run_id,
+        rust_metrics.get("typed_functions") if isinstance(rust_metrics, dict) else None,
+    )
+    ensure_impl_registry_snapshot(typeck_dir / "impl-registry.ocaml.json", ocaml_impl_payload)
+    ensure_impl_registry_snapshot(typeck_dir / "impl-registry.rust.json", rust_impl_payload)
 
 (case_dir / "summary.json").write_text(
     json.dumps(summary, ensure_ascii=False, indent=2),

@@ -1,0 +1,24 @@
+{
+  "schema_version": "w3-typeck-impl-registry/0.1",
+  "frontend": "rust",
+  "case": "pattern_tuple",
+  "run_id": "2027-01-15-w3-typeck",
+  "entries": [
+    {
+      "index": 0,
+      "impl_name": "pair",
+      "trait_path": null,
+      "impl_type": "Unknown",
+      "param_types": [],
+      "origin": "typed_functions"
+    },
+    {
+      "index": 1,
+      "impl_name": "main",
+      "trait_path": null,
+      "impl_type": "Unknown",
+      "param_types": [],
+      "origin": "typed_functions"
+    }
+  ]
+}

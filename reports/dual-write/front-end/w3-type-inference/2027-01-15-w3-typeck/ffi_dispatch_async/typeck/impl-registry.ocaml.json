@@ -1,0 +1,16 @@
+{
+  "schema_version": "w3-typeck-impl-registry/0.1",
+  "frontend": "ocaml",
+  "case": "ffi_dispatch_async",
+  "run_id": "2027-01-15-w3-typeck",
+  "entries": [
+    {
+      "index": 0,
+      "impl_name": "main",
+      "trait_path": null,
+      "impl_type": "i64",
+      "param_types": null,
+      "origin": "typed_functions"
+    }
+  ]
+}

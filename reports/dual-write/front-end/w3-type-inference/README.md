@@ -8,7 +8,7 @@ W3（型推論コア移植）における dual-write 実行結果と派生メト
   - `<case>/summary.json` — AST/診断/typeck の一致状況 (`typeck_metrics.match` など)  
   - `<case>/typeck/typed-ast.{ocaml,rust}.json` — Typed AST のスナップショット  
   - `<case>/typeck/constraints.{ocaml,rust}.json` — 制約セット/スキームの比較用ログ  
-  - `<case>/typeck/impl-registry.{ocaml,rust}.json` — Impl Registry の登録順序確認ログ（今後追加予定）  
+  - `<case>/typeck/impl-registry.{ocaml,rust}.json` — 型クラス辞書の登録順序スナップショット（Typed Function 情報から自動生成。実装済み辞書がまだ無いケースでは `entries: []` になる）  
   - `<case>/typeck/effects-metrics.{ocaml,rust}.json` — `collect-iterator-audit-metrics.py --section effects` 実行結果（Step4 で生成）  
   - `<case>/typeck/typeck-debug.{ocaml,rust}.json` — `Type_inference_effect` / `Constraint_solver` の詳細トレース  
   - `<case>/typeck/metrics.json` — Rust 版 typeck が出力した集計値（`typed_functions`, `constraints_total` など）
@@ -87,11 +87,11 @@ scripts/validate-diagnostic-json.sh \
 
 ## フォローアップ
 
-- `impl-registry.{ocaml,rust}.json` の自動生成と `typeck/summary.json` 連携は継続検討。  
-- ✅ 2027-01-17: `scripts/poc_dualwrite_compare.sh --mode typeck` が `effects-metrics.{ocaml,rust}.json`／`diagnostic-validate.log` を自動生成。  
+- ✅ 2027-01-17: `scripts/poc_dualwrite_compare.sh --mode typeck` で `impl-registry.{ocaml,rust}.json` のスナップショットを生成（Typed Function 情報からの暫定写像／将来は実際の Impl Registry ダンプへ置き換え予定）。  
+- ✅ 2027-01-17: 同スクリプトが `effects-metrics.{ocaml,rust}.json`／`diagnostic-validate.log` を自動生成。  
 - ✅ 2027-01-17: `scripts/dualwrite_summary_report.py --update-typeck-readme` で `summary.json` からサマリ表を更新する CI フローを整備。
 
 ## 自動更新フロー
 
-- `scripts/poc_dualwrite_compare.sh --mode typeck` は各ケースで `typeck/effects-metrics.{ocaml,rust}.json` と `typeck/diagnostic-validate.log` を自動生成し、Schema/メトリクス検証を省力化する。  
-- README のサマリ表は `scripts/dualwrite_summary_report.py <run_dir> --update-typeck-readme reports/dual-write/front-end/w3-type-inference/README.md` を実行すると `summary.json` から自動更新できる（CI でも同コマンドを呼び出す）。必要に応じて `--typeck-table <path>` で Markdown 断片を別ファイルへ出力し、レビューに添付する。
+- `scripts/poc_dualwrite_compare.sh --mode typeck` は各ケースで `typeck/impl-registry.{ocaml,rust}.json`、`typeck/effects-metrics.{ocaml,rust}.json`、`typeck/diagnostic-validate.log` を自動生成し、Schema/メトリクス検証を省力化する。  
+- README のサマリ表は `scripts/dualwrite_summary_report.py <run_dir> --update-typeck-readme reports/dual-write/front-end/w3-type-inference/README.md` を実行すると `summary.json` から自動更新できる。GitHub Actions (`bootstrap-linux.yml` の `dual-write-typeck` ジョブ) でも `scripts/poc_dualwrite_compare.sh --mode typeck` → `scripts/dualwrite_summary_report.py --update-typeck-readme` を連続実行し、更新済み README と成果物をアーティファクトへ保存する。必要に応じて `--typeck-table <path>` で Markdown 断片を別ファイルへ出力し、レビューに添付する。

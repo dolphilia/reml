@@ -1,0 +1,48 @@
+{
+  "schema_version": "w3-typeck-impl-registry/0.1",
+  "frontend": "rust",
+  "case": "callconv_windows_messagebox",
+  "run_id": "2027-01-15-w3-typeck",
+  "entries": [
+    {
+      "index": 0,
+      "impl_name": "win32_messagebox_w",
+      "trait_path": null,
+      "impl_type": "Unknown",
+      "param_types": [],
+      "origin": "typed_functions"
+    },
+    {
+      "index": 1,
+      "impl_name": "utf8_to_utf16",
+      "trait_path": null,
+      "impl_type": "Unknown",
+      "param_types": [],
+      "origin": "typed_functions"
+    },
+    {
+      "index": 2,
+      "impl_name": "show_message",
+      "trait_path": null,
+      "impl_type": "Unknown",
+      "param_types": [],
+      "origin": "typed_functions"
+    },
+    {
+      "index": 3,
+      "impl_name": "show_yes_no",
+      "trait_path": null,
+      "impl_type": "Unknown",
+      "param_types": [],
+      "origin": "typed_functions"
+    },
+    {
+      "index": 4,
+      "impl_name": "main",
+      "trait_path": null,
+      "impl_type": "Unknown",
+      "param_types": [],
+      "origin": "typed_functions"
+    }
+  ]
+}

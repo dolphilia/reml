@@ -368,6 +368,68 @@ jobs:
           path: reports/dual-write/front-end
           retention-days: 14
 
+  dual-write-typeck:
+    name: Dual-write Typeck
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      PYTHONUTF8: "1"
+      DUALWRITE_RUN_ID: ci-${{ github.run_id }}-${{ github.run_attempt }}-typeck
+      DUALWRITE_CASES_FILE: docs/plans/rust-migration/appendix/w3-dualwrite-cases.txt
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.2.1
+          dune-cache: true
+          opam-local-packages: |
+            compiler/ocaml/reml_ocaml.opam
+
+      - name: Install OCaml dependencies
+        run: opam install . --deps-only --with-test --yes
+        working-directory: compiler/ocaml
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run typeck dual-write suite
+        env:
+          RUN_ID: ${{ env.DUALWRITE_RUN_ID }}
+        run: |
+          set -euo pipefail
+          eval "$(opam env)"
+          scripts/poc_dualwrite_compare.sh \
+            --mode typeck \
+            --run-id "${RUN_ID}" \
+            --cases "${DUALWRITE_CASES_FILE}"
+
+      - name: Update typeck README summary
+        env:
+          RUN_ID: ${{ env.DUALWRITE_RUN_ID }}
+        run: |
+          set -euo pipefail
+          python3 scripts/dualwrite_summary_report.py \
+            "reports/dual-write/front-end/w3-type-inference/${RUN_ID}" \
+            --out-json "reports/dual-write/front-end/w3-type-inference/${RUN_ID}/summary_report.json" \
+            --update-typeck-readme reports/dual-write/front-end/w3-type-inference/README.md
+
+      - name: Show README diff
+        run: git --no-pager diff -- reports/dual-write/front-end/w3-type-inference/README.md
+
+      - name: Upload dual-write typeck artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dual-write-typeck
+          path: |
+            reports/dual-write/front-end/w3-type-inference/${{ env.DUALWRITE_RUN_ID }}
+            reports/dual-write/front-end/w3-type-inference/README.md
+          retention-days: 14
+
   test:
     name: Test
     runs-on: ubuntu-latest

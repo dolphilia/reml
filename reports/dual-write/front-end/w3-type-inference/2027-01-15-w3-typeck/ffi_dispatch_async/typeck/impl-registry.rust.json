@@ -1,0 +1,32 @@
+{
+  "schema_version": "w3-typeck-impl-registry/0.1",
+  "frontend": "rust",
+  "case": "ffi_dispatch_async",
+  "run_id": "2027-01-15-w3-typeck",
+  "entries": [
+    {
+      "index": 0,
+      "impl_name": "dispatch_get_main_queue",
+      "trait_path": null,
+      "impl_type": "Unknown",
+      "param_types": [],
+      "origin": "typed_functions"
+    },
+    {
+      "index": 1,
+      "impl_name": "dispatch_async_f",
+      "trait_path": null,
+      "impl_type": "Unknown",
+      "param_types": [],
+      "origin": "typed_functions"
+    },
+    {
+      "index": 2,
+      "impl_name": "main",
+      "trait_path": null,
+      "impl_type": "Unknown",
+      "param_types": [],
+      "origin": "typed_functions"
+    }
+  ]
+}
