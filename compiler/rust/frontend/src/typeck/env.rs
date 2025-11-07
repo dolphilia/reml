@@ -3,6 +3,7 @@
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use once_cell::sync::OnceCell;
 use serde::Serialize;
@@ -18,7 +19,7 @@ static GLOBAL_TYPECHECK_CONFIG: OnceCell<TypecheckConfig> = OnceCell::new();
 /// OCaml 版 `Type_inference.make_config` のパラメータを Rust でも
 /// 再現する目的で導入している。今後 W3/W4 の実装に合わせて
 /// 項目を拡張する前提のスケルトン。
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TypecheckConfig {
     /// 効果プロファイルや Capability Stage を判定するための文脈。
     pub effect_context: StageContext,
@@ -102,7 +103,7 @@ pub enum InstallConfigError {
 }
 
 /// 効果ステージに関する最小限の文脈情報。
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct StageContext {
     pub runtime: StageRequirement,
     pub capability: StageRequirement,
@@ -118,7 +119,7 @@ impl Default for StageContext {
 }
 
 /// StageRequirement で使用する ID 種別。
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct StageId(SmolStr);
 
 impl StageId {
@@ -150,14 +151,34 @@ impl Default for StageId {
 }
 
 /// Capability Stage の要求を表す。
-#[derive(Debug, Clone, PartialEq, Eq)]
+impl FromStr for StageId {
+    type Err = StageIdParseError;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "stable" => Ok(StageId::stable()),
+            "beta" => Ok(StageId::beta()),
+            "experimental" | "exper" | "exp" => Ok(StageId::experimental()),
+            other if !other.is_empty() => Ok(StageId::new(other)),
+            _ => Err(StageIdParseError::Empty),
+        }
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum StageIdParseError {
+    #[error("stage_id が空です")]
+    Empty,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum StageRequirement {
     Exact(StageId),
     AtLeast(StageId),
 }
 
 /// 型行の処理モードを表す列挙。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum TypeRowMode {
     MetadataOnly,
     DualWrite,
@@ -170,8 +191,25 @@ impl Default for TypeRowMode {
     }
 }
 
+impl FromStr for TypeRowMode {
+    type Err = TypeRowModeParseError;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "metadata-only" | "metadata_only" => Ok(TypeRowMode::MetadataOnly),
+            "dual-write" | "dual_write" | "dual" => Ok(TypeRowMode::DualWrite),
+            "integrated" | "full" | "default" => Ok(TypeRowMode::Integrated),
+            other => Err(TypeRowModeParseError(other.to_string())),
+        }
+    }
+}
+
+#[derive(Debug, Error)]
+#[error("未知の type_row_mode: {0}")]
+pub struct TypeRowModeParseError(String);
+
 /// Recover 拡張の挙動を制御する設定。
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RecoverConfig {
     pub emit_expected_tokens: bool,
     pub emit_context: bool,
@@ -199,11 +237,21 @@ pub struct DualWriteGuards {
 impl DualWriteGuards {
     /// 既定ルートまたは `REML_FRONTEND_DUALWRITE_ROOT` を基に初期化する。
     pub fn new(run_label: impl Into<SmolStr>, case_label: impl Into<SmolStr>) -> io::Result<Self> {
-        let run_label = sanitize_label(run_label.into());
-        let case_label = sanitize_label(case_label.into());
         let base = std::env::var("REML_FRONTEND_DUALWRITE_ROOT")
             .map(PathBuf::from)
             .unwrap_or_else(|_| PathBuf::from(DEFAULT_DUALWRITE_ROOT));
+        Self::with_root(base, run_label, case_label)
+    }
+
+    /// ルートディレクトリを明示指定して初期化する。
+    pub fn with_root(
+        base: impl Into<PathBuf>,
+        run_label: impl Into<SmolStr>,
+        case_label: impl Into<SmolStr>,
+    ) -> io::Result<Self> {
+        let run_label = sanitize_label(run_label.into());
+        let case_label = sanitize_label(case_label.into());
+        let base = base.into();
         let root = base.join(run_label.as_str()).join(case_label.as_str());
         fs::create_dir_all(&root)?;
         Ok(Self {
@@ -285,18 +333,12 @@ mod tests {
     #[test]
     fn dualwrite_creates_directory() {
         let tempdir = tempfile::tempdir().expect("tempdir");
-        let prev = std::env::var("REML_FRONTEND_DUALWRITE_ROOT").ok();
-        std::env::set_var("REML_FRONTEND_DUALWRITE_ROOT", tempdir.path());
-        let guards = DualWriteGuards::new("Run-01", "Case A").expect("guards");
+        let guards =
+            DualWriteGuards::with_root(tempdir.path(), "Run-01", "Case A").expect("guards");
         assert!(guards.root().exists());
         guards
             .write_bytes("foo/bar.txt", "hello")
             .expect("write bytes");
         assert!(guards.root().join("foo/bar.txt").exists());
-        if let Some(value) = prev {
-            std::env::set_var("REML_FRONTEND_DUALWRITE_ROOT", value);
-        } else {
-            std::env::remove_var("REML_FRONTEND_DUALWRITE_ROOT");
-        }
     }
 }

@@ -3,17 +3,32 @@
 use std::env;
 use std::fs;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use reml_frontend::diagnostic::{DiagnosticNote, FrontendDiagnostic};
 use reml_frontend::error::Recoverability;
 use reml_frontend::parser::ParserDriver;
 use reml_frontend::span::Span;
+use reml_frontend::typeck::{
+    self, config as global_typeck_config, DualWriteGuards, InstallConfigError, RecoverConfig,
+    StageContext, StageId, StageRequirement, TypeRowMode, TypecheckConfig,
+};
 use serde::Serialize;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = parse_args()?;
+    install_typecheck_config(&args.typecheck_config)?;
     let input_path = args.input.clone();
     let source = fs::read_to_string(&input_path)?;
+    let dualwrite = if let Some(opts) = args.dualwrite.clone() {
+        Some(if let Some(root) = opts.root {
+            DualWriteGuards::with_root(root, &opts.run_label, &opts.case_label)?
+        } else {
+            DualWriteGuards::new(&opts.run_label, &opts.case_label)?
+        })
+    } else {
+        None
+    };
 
     let result = ParserDriver::parse(&source);
     let diagnostics = result
@@ -79,18 +94,47 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         fs::write(path, serde_json::to_string_pretty(&parse_debug)?)?;
     }
 
+    if let Some(guards) = dualwrite {
+        write_dualwrite_typeck_payload(&guards)?;
+    }
+
     Ok(())
+}
+
+fn install_typecheck_config(config: &TypecheckConfig) -> Result<(), InstallConfigError> {
+    match typeck::install_config(config.clone()) {
+        Ok(()) => Ok(()),
+        Err(InstallConfigError::AlreadyInstalled) => Ok(()),
+    }
 }
 
 struct CliArgs {
     input: PathBuf,
     parse_debug_output: Option<PathBuf>,
+    typecheck_config: TypecheckConfig,
+    dualwrite: Option<DualwriteCliOpts>,
+}
+
+#[derive(Clone)]
+struct DualwriteCliOpts {
+    run_label: String,
+    case_label: String,
+    root: Option<PathBuf>,
 }
 
 fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut args = env::args().skip(1);
     let mut input = None;
     let mut parse_debug = None;
+    let mut row_mode = None;
+    let mut runtime_stage = None;
+    let mut capability_stage = None;
+    let mut recover_expected_tokens = None;
+    let mut recover_context = None;
+    let mut recover_max_suggestions = None;
+    let mut dualwrite_run_label = None;
+    let mut dualwrite_case_label = None;
+    let mut dualwrite_root = None;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--emit-parse-debug" => {
@@ -98,6 +142,65 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     .next()
                     .ok_or_else(|| "--emit-parse-debug は出力パスを伴う必要があります")?;
                 parse_debug = Some(PathBuf::from(path));
+            }
+            "--type-row-mode" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--type-row-mode は値を伴う必要があります")?;
+                row_mode =
+                    Some(TypeRowMode::from_str(&value).map_err(|err| {
+                        format!("--type-row-mode の値 `{value}` が不正です: {err}")
+                    })?);
+            }
+            "--effect-stage-runtime" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--effect-stage-runtime は stage 名を伴う必要があります")?;
+                runtime_stage = Some(StageId::from_str(&value).map(StageRequirement::AtLeast)?);
+            }
+            "--effect-stage-capability" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--effect-stage-capability は stage 名を伴う必要があります")?;
+                capability_stage = Some(StageId::from_str(&value).map(StageRequirement::AtLeast)?);
+            }
+            "--recover-expected-tokens" => {
+                let value = args.next().ok_or_else(|| {
+                    "--recover-expected-tokens は on/off の値を伴う必要があります"
+                })?;
+                recover_expected_tokens = Some(parse_on_off(&value)?);
+            }
+            "--recover-context" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--recover-context は on/off の値を伴う必要があります")?;
+                recover_context = Some(parse_on_off(&value)?);
+            }
+            "--recover-max-suggestions" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--recover-max-suggestions は数値を伴う必要があります")?;
+                recover_max_suggestions = Some(value.parse::<usize>().map_err(|_| {
+                    format!("--recover-max-suggestions の値 `{value}` は整数ではありません")
+                })?);
+            }
+            "--dualwrite-run-label" => {
+                dualwrite_run_label = Some(
+                    args.next()
+                        .ok_or_else(|| "--dualwrite-run-label は値を伴う必要があります")?,
+                );
+            }
+            "--dualwrite-case-label" => {
+                dualwrite_case_label = Some(
+                    args.next()
+                        .ok_or_else(|| "--dualwrite-case-label は値を伴う必要があります")?,
+                );
+            }
+            "--dualwrite-root" => {
+                dualwrite_root =
+                    Some(PathBuf::from(args.next().ok_or_else(|| {
+                        "--dualwrite-root はパスを伴う必要があります"
+                    })?));
             }
             _ if arg.starts_with("--") => {
                 return Err(format!("未知のオプション: {arg}").into());
@@ -114,15 +217,76 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let input = match input {
         Some(path) => path,
         None => {
-            eprintln!("使用方法: poc_frontend [--emit-parse-debug <path>] <input.reml>");
+            eprintln!("使用方法: poc_frontend [options] <input.reml>");
             std::process::exit(1);
         }
     };
 
+    if dualwrite_run_label.is_some() ^ dualwrite_case_label.is_some() {
+        return Err("dual-write の run/case ラベルはセットで指定してください".into());
+    }
+
+    let effect_context = StageContext {
+        runtime: runtime_stage.unwrap_or(StageRequirement::AtLeast(StageId::stable())),
+        capability: capability_stage.unwrap_or(StageRequirement::AtLeast(StageId::beta())),
+    };
+    let recover = RecoverConfig {
+        emit_expected_tokens: recover_expected_tokens.unwrap_or(true),
+        emit_context: recover_context.unwrap_or(true),
+        max_suggestions: recover_max_suggestions.unwrap_or(3),
+    };
+    let mut builder = TypecheckConfig::builder()
+        .effect_context(effect_context)
+        .recover(recover);
+    if let Some(mode) = row_mode {
+        builder = builder.type_row_mode(mode);
+    }
+
+    let dualwrite = dualwrite_run_label.map(|run_label| DualwriteCliOpts {
+        run_label,
+        case_label: dualwrite_case_label.expect("validated together"),
+        root: dualwrite_root,
+    });
+
     Ok(CliArgs {
         input,
         parse_debug_output: parse_debug,
+        typecheck_config: builder.build(),
+        dualwrite,
     })
+}
+
+fn parse_on_off(value: &str) -> Result<bool, String> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "on" | "true" | "1" => Ok(true),
+        "off" | "false" | "0" => Ok(false),
+        other => Err(format!("値 `{other}` は on/off ではありません")),
+    }
+}
+
+fn write_dualwrite_typeck_payload(
+    guards: &DualWriteGuards,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let snapshot = TypecheckDualWriteSnapshot {
+        config: global_typeck_config().clone(),
+        metrics: TypecheckMetrics::default(),
+    };
+    guards.write_json("typeck/config.json", &snapshot)?;
+    guards.write_json("typeck/metrics.json", &snapshot.metrics)?;
+    Ok(())
+}
+
+#[derive(Debug, Serialize)]
+struct TypecheckDualWriteSnapshot {
+    config: TypecheckConfig,
+    metrics: TypecheckMetrics,
+}
+
+#[derive(Debug, Default, Serialize)]
+struct TypecheckMetrics {
+    constraints_emitted: usize,
+    typed_nodes: usize,
+    notes: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]

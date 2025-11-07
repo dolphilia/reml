@@ -166,6 +166,9 @@ for entry in "${CASE_ENTRIES[@]}"; do
     cd "${RUST_DIR}"
     cargo run --quiet --bin poc_frontend -- \
       --emit-parse-debug "${rust_parse_debug_path}" \
+      --dualwrite-root "${REPORT_DIR}" \
+      --dualwrite-run-label "${RUN_ID}" \
+      --dualwrite-case-label "${safe_name}" \
       "${input_path}"
   ) > "${rust_json_path}" || true
 
