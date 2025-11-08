@@ -149,7 +149,7 @@ collect_all_metrics() {
   if needs_streaming_metrics "$diag_path"; then
     sections+=(streaming)
   else
-    printf "-- streaming metrics skipped for %s (no parser.stream.* extensions)\n" "$frontend" >&2
+    printf '%s\n' "-- streaming metrics skipped for ${frontend} (no parser.stream.* extensions)" >&2
   fi
   for section in "${sections[@]}"; do
     local out_path="${case_dir}/${section}-metrics.${frontend}.json"

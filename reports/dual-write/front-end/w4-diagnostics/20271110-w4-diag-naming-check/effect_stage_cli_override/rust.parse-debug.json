@@ -1,0 +1,169 @@
+{
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 21,
+            "start": 20
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 21,
+        "start": 20
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 50,
+            "start": 49
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 50,
+        "start": 49
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 51,
+            "start": 50
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 51,
+        "start": 50
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 56,
+            "start": 55
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 56,
+        "start": 55
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 57,
+            "start": 56
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 57,
+        "start": 56
+      }
+    },
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`fn`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 6,
+        "start": 0
+      }
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/effect_stage_cli_override/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 269,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": [
+      {
+        "label": "parser.simple_error",
+        "span": {
+          "end": 6,
+          "start": 0
+        }
+      }
+    ]
+  },
+  "run_config": {
+    "extensions": {
+      "stream": {
+        "checkpoint": "poc_frontend",
+        "chunk_size": 0,
+        "enabled": true,
+        "resume_hint": "n/a"
+      }
+    },
+    "switches": {
+      "left_recursion": "auto",
+      "legacy_result": false,
+      "merge_warnings": true,
+      "packrat": true,
+      "require_eof": true,
+      "trace": false
+    }
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 269,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  }
+}

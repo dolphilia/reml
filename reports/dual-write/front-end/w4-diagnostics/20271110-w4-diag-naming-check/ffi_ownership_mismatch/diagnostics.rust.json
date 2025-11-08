@@ -1,0 +1,3477 @@
+{
+  "ast_render": null,
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 16,
+            "start": 15
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 16,
+        "start": 15
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 20,
+            "start": 19
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 20,
+        "start": 19
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 28,
+            "start": 27
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 28,
+        "start": 27
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 636,
+            "start": 635
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 636,
+        "start": 635
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 641,
+            "start": 640
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 641,
+        "start": 640
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 743,
+            "start": 742
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 743,
+        "start": 742
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 994,
+            "start": 993
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 994,
+        "start": 993
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 996,
+            "start": 995
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 996,
+        "start": 995
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1002,
+            "start": 1001
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1002,
+        "start": 1001
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1011,
+            "start": 1010
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1011,
+        "start": 1010
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1018,
+            "start": 1017
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1018,
+        "start": 1017
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1021,
+            "start": 1020
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1021,
+        "start": 1020
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1029,
+            "start": 1028
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1029,
+        "start": 1028
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1034,
+            "start": 1033
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1034,
+        "start": 1033
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1040,
+            "start": 1039
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1040,
+        "start": 1039
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1052,
+            "start": 1051
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1052,
+        "start": 1051
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1074,
+            "start": 1073
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1074,
+        "start": 1073
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1080,
+            "start": 1079
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1080,
+        "start": 1079
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1101,
+            "start": 1100
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1101,
+        "start": 1100
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1107,
+            "start": 1106
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1107,
+        "start": 1106
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1113,
+            "start": 1112
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1113,
+        "start": 1112
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1125,
+            "start": 1124
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1125,
+        "start": 1124
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1137,
+            "start": 1136
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1137,
+        "start": 1136
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1432,
+            "start": 1431
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1432,
+        "start": 1431
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1434,
+            "start": 1433
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1434,
+        "start": 1433
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1440,
+            "start": 1439
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1440,
+        "start": 1439
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1449,
+            "start": 1448
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1449,
+        "start": 1448
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1456,
+            "start": 1455
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1456,
+        "start": 1455
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1459,
+            "start": 1458
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1459,
+        "start": 1458
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1467,
+            "start": 1466
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1467,
+        "start": 1466
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1472,
+            "start": 1471
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1472,
+        "start": 1471
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1478,
+            "start": 1477
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1478,
+        "start": 1477
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1490,
+            "start": 1489
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1490,
+        "start": 1489
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1508,
+            "start": 1507
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1508,
+        "start": 1507
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1514,
+            "start": 1513
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1514,
+        "start": 1513
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1535,
+            "start": 1534
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1535,
+        "start": 1534
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1541,
+            "start": 1540
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1541,
+        "start": 1540
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1547,
+            "start": 1546
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1547,
+        "start": 1546
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1559,
+            "start": 1558
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1559,
+        "start": 1558
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1571,
+            "start": 1570
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1571,
+        "start": 1570
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1883,
+            "start": 1882
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1883,
+        "start": 1882
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1885,
+            "start": 1884
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1885,
+        "start": 1884
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1891,
+            "start": 1890
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1891,
+        "start": 1890
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1900,
+            "start": 1899
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1900,
+        "start": 1899
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1907,
+            "start": 1906
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1907,
+        "start": 1906
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1910,
+            "start": 1909
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1910,
+        "start": 1909
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1918,
+            "start": 1917
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1918,
+        "start": 1917
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1923,
+            "start": 1922
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1923,
+        "start": 1922
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1929,
+            "start": 1928
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1929,
+        "start": 1928
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1941,
+            "start": 1940
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1941,
+        "start": 1940
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1959,
+            "start": 1958
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1959,
+        "start": 1958
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1965,
+            "start": 1964
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1965,
+        "start": 1964
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1986,
+            "start": 1985
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1986,
+        "start": 1985
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1992,
+            "start": 1991
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1992,
+        "start": 1991
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1998,
+            "start": 1997
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1998,
+        "start": 1997
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 2010,
+            "start": 2009
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 2010,
+        "start": 2009
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 2019,
+            "start": 2018
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 2019,
+        "start": 2018
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3580,
+            "start": 3579
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3580,
+        "start": 3579
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3603,
+            "start": 3602
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3603,
+        "start": 3602
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3611,
+            "start": 3610
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3611,
+        "start": 3610
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3675,
+            "start": 3674
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3675,
+        "start": 3674
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3695,
+            "start": 3694
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3695,
+        "start": 3694
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3703,
+            "start": 3702
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3703,
+        "start": 3702
+      }
+    },
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`fn`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 6,
+        "start": 0
+      }
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 282,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": [
+      {
+        "label": "parser.simple_error",
+        "span": {
+          "end": 6,
+          "start": 0
+        }
+      }
+    ]
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 282,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  },
+  "tokens": [
+    {
+      "kind": "KeywordModule",
+      "lexeme": "module",
+      "span": {
+        "end": 6,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "examples",
+      "span": {
+        "end": 15,
+        "start": 7
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "ffi",
+      "span": {
+        "end": 19,
+        "start": 16
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "windows",
+      "span": {
+        "end": 27,
+        "start": 20
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "ownership_transfer",
+      "span": {
+        "end": 46,
+        "start": 28
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "use",
+      "span": {
+        "end": 628,
+        "start": 625
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 630,
+        "start": 629
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 631,
+        "start": 630
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "Core",
+      "span": {
+        "end": 635,
+        "start": 631
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "Text",
+      "span": {
+        "end": 640,
+        "start": 636
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "String",
+      "span": {
+        "end": 647,
+        "start": 641
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "as",
+      "span": {
+        "end": 650,
+        "start": 648
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "Str",
+      "span": {
+        "end": 654,
+        "start": 651
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "type",
+      "span": {
+        "end": 726,
+        "start": 722
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "OpaqueHandle",
+      "span": {
+        "end": 739,
+        "start": 727
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 741,
+        "start": 740
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "const",
+      "span": {
+        "end": 748,
+        "start": 743
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "u8",
+      "span": {
+        "end": 751,
+        "start": 749
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "extern",
+      "span": {
+        "end": 992,
+        "start": 986
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "C",
+      "span": {
+        "end": 995,
+        "start": 994
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 998,
+        "start": 997
+      }
+    },
+    {
+      "kind": "LBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1003,
+        "start": 1002
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "target",
+      "span": {
+        "end": 1009,
+        "start": 1003
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 1010,
+        "start": 1009
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "x86_64",
+      "span": {
+        "end": 1017,
+        "start": 1011
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "pc",
+      "span": {
+        "end": 1020,
+        "start": 1018
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "windows",
+      "span": {
+        "end": 1028,
+        "start": 1021
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "msvc",
+      "span": {
+        "end": 1033,
+        "start": 1029
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 1035,
+        "start": 1034
+      }
+    },
+    {
+      "kind": "RBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1036,
+        "start": 1035
+      }
+    },
+    {
+      "kind": "LBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1041,
+        "start": 1040
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "link_name",
+      "span": {
+        "end": 1050,
+        "start": 1041
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 1051,
+        "start": 1050
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "ffi_allocate_resource",
+      "span": {
+        "end": 1073,
+        "start": 1052
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 1075,
+        "start": 1074
+      }
+    },
+    {
+      "kind": "RBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1076,
+        "start": 1075
+      }
+    },
+    {
+      "kind": "LBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1081,
+        "start": 1080
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "calling_convention",
+      "span": {
+        "end": 1099,
+        "start": 1081
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 1100,
+        "start": 1099
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "win64",
+      "span": {
+        "end": 1106,
+        "start": 1101
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 1108,
+        "start": 1107
+      }
+    },
+    {
+      "kind": "RBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1109,
+        "start": 1108
+      }
+    },
+    {
+      "kind": "LBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1114,
+        "start": 1113
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "ownership",
+      "span": {
+        "end": 1123,
+        "start": 1114
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 1124,
+        "start": 1123
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "transferred",
+      "span": {
+        "end": 1136,
+        "start": 1125
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 1138,
+        "start": 1137
+      }
+    },
+    {
+      "kind": "RBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1139,
+        "start": 1138
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 1164,
+        "start": 1162
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "allocate_resource",
+      "span": {
+        "end": 1182,
+        "start": 1165
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 1183,
+        "start": 1182
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "size",
+      "span": {
+        "end": 1187,
+        "start": 1183
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 1188,
+        "start": 1187
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "u64",
+      "span": {
+        "end": 1192,
+        "start": 1189
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 1193,
+        "start": 1192
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 1196,
+        "start": 1194
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "OpaqueHandle",
+      "span": {
+        "end": 1209,
+        "start": 1197
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 1211,
+        "start": 1210
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "extern",
+      "span": {
+        "end": 1430,
+        "start": 1424
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "C",
+      "span": {
+        "end": 1433,
+        "start": 1432
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 1436,
+        "start": 1435
+      }
+    },
+    {
+      "kind": "LBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1441,
+        "start": 1440
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "target",
+      "span": {
+        "end": 1447,
+        "start": 1441
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 1448,
+        "start": 1447
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "x86_64",
+      "span": {
+        "end": 1455,
+        "start": 1449
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "pc",
+      "span": {
+        "end": 1458,
+        "start": 1456
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "windows",
+      "span": {
+        "end": 1466,
+        "start": 1459
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "msvc",
+      "span": {
+        "end": 1471,
+        "start": 1467
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 1473,
+        "start": 1472
+      }
+    },
+    {
+      "kind": "RBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1474,
+        "start": 1473
+      }
+    },
+    {
+      "kind": "LBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1479,
+        "start": 1478
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "link_name",
+      "span": {
+        "end": 1488,
+        "start": 1479
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 1489,
+        "start": 1488
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "ffi_free_resource",
+      "span": {
+        "end": 1507,
+        "start": 1490
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 1509,
+        "start": 1508
+      }
+    },
+    {
+      "kind": "RBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1510,
+        "start": 1509
+      }
+    },
+    {
+      "kind": "LBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1515,
+        "start": 1514
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "calling_convention",
+      "span": {
+        "end": 1533,
+        "start": 1515
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 1534,
+        "start": 1533
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "win64",
+      "span": {
+        "end": 1540,
+        "start": 1535
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 1542,
+        "start": 1541
+      }
+    },
+    {
+      "kind": "RBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1543,
+        "start": 1542
+      }
+    },
+    {
+      "kind": "LBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1548,
+        "start": 1547
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "ownership",
+      "span": {
+        "end": 1557,
+        "start": 1548
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 1558,
+        "start": 1557
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "transferred",
+      "span": {
+        "end": 1570,
+        "start": 1559
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 1572,
+        "start": 1571
+      }
+    },
+    {
+      "kind": "RBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1573,
+        "start": 1572
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 1607,
+        "start": 1605
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "free_resource",
+      "span": {
+        "end": 1621,
+        "start": 1608
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 1622,
+        "start": 1621
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "handle",
+      "span": {
+        "end": 1628,
+        "start": 1622
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 1629,
+        "start": 1628
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "OpaqueHandle",
+      "span": {
+        "end": 1642,
+        "start": 1630
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 1643,
+        "start": 1642
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 1645,
+        "start": 1644
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "extern",
+      "span": {
+        "end": 1881,
+        "start": 1875
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "C",
+      "span": {
+        "end": 1884,
+        "start": 1883
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 1887,
+        "start": 1886
+      }
+    },
+    {
+      "kind": "LBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1892,
+        "start": 1891
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "target",
+      "span": {
+        "end": 1898,
+        "start": 1892
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 1899,
+        "start": 1898
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "x86_64",
+      "span": {
+        "end": 1906,
+        "start": 1900
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "pc",
+      "span": {
+        "end": 1909,
+        "start": 1907
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "windows",
+      "span": {
+        "end": 1917,
+        "start": 1910
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "msvc",
+      "span": {
+        "end": 1922,
+        "start": 1918
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 1924,
+        "start": 1923
+      }
+    },
+    {
+      "kind": "RBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1925,
+        "start": 1924
+      }
+    },
+    {
+      "kind": "LBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1930,
+        "start": 1929
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "link_name",
+      "span": {
+        "end": 1939,
+        "start": 1930
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 1940,
+        "start": 1939
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "ffi_read_resource",
+      "span": {
+        "end": 1958,
+        "start": 1941
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 1960,
+        "start": 1959
+      }
+    },
+    {
+      "kind": "RBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1961,
+        "start": 1960
+      }
+    },
+    {
+      "kind": "LBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1966,
+        "start": 1965
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "calling_convention",
+      "span": {
+        "end": 1984,
+        "start": 1966
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 1985,
+        "start": 1984
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "win64",
+      "span": {
+        "end": 1991,
+        "start": 1986
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 1993,
+        "start": 1992
+      }
+    },
+    {
+      "kind": "RBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1994,
+        "start": 1993
+      }
+    },
+    {
+      "kind": "LBracket",
+      "lexeme": null,
+      "span": {
+        "end": 1999,
+        "start": 1998
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "ownership",
+      "span": {
+        "end": 2008,
+        "start": 1999
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 2009,
+        "start": 2008
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "borrowed",
+      "span": {
+        "end": 2018,
+        "start": 2010
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 2020,
+        "start": 2019
+      }
+    },
+    {
+      "kind": "RBracket",
+      "lexeme": null,
+      "span": {
+        "end": 2021,
+        "start": 2020
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 2067,
+        "start": 2065
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "read_resource",
+      "span": {
+        "end": 2081,
+        "start": 2068
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 2082,
+        "start": 2081
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "handle",
+      "span": {
+        "end": 2088,
+        "start": 2082
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 2089,
+        "start": 2088
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "OpaqueHandle",
+      "span": {
+        "end": 2102,
+        "start": 2090
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 2103,
+        "start": 2102
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 2106,
+        "start": 2104
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i32",
+      "span": {
+        "end": 2110,
+        "start": 2107
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 2112,
+        "start": 2111
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "pub",
+      "span": {
+        "end": 2642,
+        "start": 2639
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 2645,
+        "start": 2643
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "test_ownership_lifecycle",
+      "span": {
+        "end": 2670,
+        "start": 2646
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 2671,
+        "start": 2670
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 2672,
+        "start": 2671
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 2675,
+        "start": 2673
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i32",
+      "span": {
+        "end": 2679,
+        "start": 2676
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 2681,
+        "start": 2680
+      }
+    },
+    {
+      "kind": "KeywordEffect",
+      "lexeme": "effect",
+      "span": {
+        "end": 2690,
+        "start": 2684
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 2692,
+        "start": 2691
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "unsafe",
+      "span": {
+        "end": 2698,
+        "start": 2692
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 2699,
+        "start": 2698
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 2701,
+        "start": 2700
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 2752,
+        "start": 2749
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "handle",
+      "span": {
+        "end": 2759,
+        "start": 2753
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 2761,
+        "start": 2760
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "allocate_resource",
+      "span": {
+        "end": 2779,
+        "start": 2762
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 2780,
+        "start": 2779
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "1024",
+      "span": {
+        "end": 2784,
+        "start": 2780
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 2785,
+        "start": 2784
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 2840,
+        "start": 2837
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "value",
+      "span": {
+        "end": 2846,
+        "start": 2841
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 2848,
+        "start": 2847
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "read_resource",
+      "span": {
+        "end": 2862,
+        "start": 2849
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 2863,
+        "start": 2862
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "handle",
+      "span": {
+        "end": 2869,
+        "start": 2863
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 2870,
+        "start": 2869
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "free_resource",
+      "span": {
+        "end": 2932,
+        "start": 2919
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 2933,
+        "start": 2932
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "handle",
+      "span": {
+        "end": 2939,
+        "start": 2933
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 2940,
+        "start": 2939
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "value",
+      "span": {
+        "end": 2951,
+        "start": 2946
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 2955,
+        "start": 2954
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 2957,
+        "start": 2956
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "pub",
+      "span": {
+        "end": 3175,
+        "start": 3172
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 3178,
+        "start": 3176
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "test_borrowed_only",
+      "span": {
+        "end": 3197,
+        "start": 3179
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 3198,
+        "start": 3197
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 3199,
+        "start": 3198
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 3202,
+        "start": 3200
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i32",
+      "span": {
+        "end": 3206,
+        "start": 3203
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 3208,
+        "start": 3207
+      }
+    },
+    {
+      "kind": "KeywordEffect",
+      "lexeme": "effect",
+      "span": {
+        "end": 3217,
+        "start": 3211
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 3219,
+        "start": 3218
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "unsafe",
+      "span": {
+        "end": 3225,
+        "start": 3219
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 3226,
+        "start": 3225
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 3228,
+        "start": 3227
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 3236,
+        "start": 3233
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "handle",
+      "span": {
+        "end": 3243,
+        "start": 3237
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 3245,
+        "start": 3244
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "allocate_resource",
+      "span": {
+        "end": 3263,
+        "start": 3246
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 3264,
+        "start": 3263
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "512",
+      "span": {
+        "end": 3267,
+        "start": 3264
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 3268,
+        "start": 3267
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 3328,
+        "start": 3325
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "v1",
+      "span": {
+        "end": 3331,
+        "start": 3329
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 3333,
+        "start": 3332
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "read_resource",
+      "span": {
+        "end": 3347,
+        "start": 3334
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 3348,
+        "start": 3347
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "handle",
+      "span": {
+        "end": 3354,
+        "start": 3348
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 3355,
+        "start": 3354
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 3363,
+        "start": 3360
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "v2",
+      "span": {
+        "end": 3366,
+        "start": 3364
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 3368,
+        "start": 3367
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "read_resource",
+      "span": {
+        "end": 3382,
+        "start": 3369
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 3383,
+        "start": 3382
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "handle",
+      "span": {
+        "end": 3389,
+        "start": 3383
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 3390,
+        "start": 3389
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 3398,
+        "start": 3395
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "v3",
+      "span": {
+        "end": 3401,
+        "start": 3399
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 3403,
+        "start": 3402
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "read_resource",
+      "span": {
+        "end": 3417,
+        "start": 3404
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 3418,
+        "start": 3417
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "handle",
+      "span": {
+        "end": 3424,
+        "start": 3418
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 3425,
+        "start": 3424
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "free_resource",
+      "span": {
+        "end": 3444,
+        "start": 3431
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 3445,
+        "start": 3444
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "handle",
+      "span": {
+        "end": 3451,
+        "start": 3445
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 3452,
+        "start": 3451
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "v1",
+      "span": {
+        "end": 3459,
+        "start": 3457
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 3461,
+        "start": 3460
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "v2",
+      "span": {
+        "end": 3464,
+        "start": 3462
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 3466,
+        "start": 3465
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "v3",
+      "span": {
+        "end": 3469,
+        "start": 3467
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 3473,
+        "start": 3472
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 3475,
+        "start": 3474
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "pub",
+      "span": {
+        "end": 3509,
+        "start": 3506
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 3512,
+        "start": 3510
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "main",
+      "span": {
+        "end": 3517,
+        "start": 3513
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 3518,
+        "start": 3517
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 3519,
+        "start": 3518
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 3522,
+        "start": 3520
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i32",
+      "span": {
+        "end": 3526,
+        "start": 3523
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 3528,
+        "start": 3527
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 3534,
+        "start": 3531
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "value1",
+      "span": {
+        "end": 3541,
+        "start": 3535
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 3543,
+        "start": 3542
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "test_ownership_lifecycle",
+      "span": {
+        "end": 3568,
+        "start": 3544
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 3569,
+        "start": 3568
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 3570,
+        "start": 3569
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "print",
+      "span": {
+        "end": 3578,
+        "start": 3573
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 3579,
+        "start": 3578
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "Lifecycle",
+      "span": {
+        "end": 3589,
+        "start": 3580
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "test",
+      "span": {
+        "end": 3594,
+        "start": 3590
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "value",
+      "span": {
+        "end": 3600,
+        "start": 3595
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 3601,
+        "start": 3600
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 3605,
+        "start": 3604
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 3606,
+        "start": 3605
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "Str",
+      "span": {
+        "end": 3610,
+        "start": 3607
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "from_i32",
+      "span": {
+        "end": 3619,
+        "start": 3611
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 3620,
+        "start": 3619
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "value1",
+      "span": {
+        "end": 3626,
+        "start": 3620
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 3627,
+        "start": 3626
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 3628,
+        "start": 3627
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 3635,
+        "start": 3632
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "value2",
+      "span": {
+        "end": 3642,
+        "start": 3636
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 3644,
+        "start": 3643
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "test_borrowed_only",
+      "span": {
+        "end": 3663,
+        "start": 3645
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 3664,
+        "start": 3663
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 3665,
+        "start": 3664
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "print",
+      "span": {
+        "end": 3673,
+        "start": 3668
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 3674,
+        "start": 3673
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "Borrowed",
+      "span": {
+        "end": 3683,
+        "start": 3675
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "test",
+      "span": {
+        "end": 3688,
+        "start": 3684
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "sum",
+      "span": {
+        "end": 3692,
+        "start": 3689
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 3693,
+        "start": 3692
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 3697,
+        "start": 3696
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 3698,
+        "start": 3697
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "Str",
+      "span": {
+        "end": 3702,
+        "start": 3699
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "from_i32",
+      "span": {
+        "end": 3711,
+        "start": 3703
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 3712,
+        "start": 3711
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "value2",
+      "span": {
+        "end": 3718,
+        "start": 3712
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 3719,
+        "start": 3718
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 3720,
+        "start": 3719
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "0",
+      "span": {
+        "end": 3725,
+        "start": 3724
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 3727,
+        "start": 3726
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 3728,
+        "start": 3728
+      }
+    }
+  ],
+  "typecheck": {
+    "functions": [
+      {
+        "constraints": 0,
+        "name": "test_ownership_lifecycle",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      },
+      {
+        "constraints": 0,
+        "name": "test_borrowed_only",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      },
+      {
+        "constraints": 0,
+        "name": "main",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      }
+    ],
+    "metrics": {
+      "binary_expressions": 0,
+      "call_sites": 0,
+      "constraint_breakdown": {},
+      "constraints_total": 0,
+      "typed_exprs": 3,
+      "typed_functions": 3,
+      "unresolved_identifiers": 0
+    }
+  }
+}

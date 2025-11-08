@@ -1,0 +1,159 @@
+{
+  "ast_render": "fn literal_guard() = var(if)",
+  "diagnostics": [],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/type_condition_literal_bool/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 118,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 2,
+      "pruned": 0,
+      "queries": 3
+    },
+    "span_trace": [
+      {
+        "label": "parser.success",
+        "span": {
+          "end": 25,
+          "start": 0
+        }
+      }
+    ]
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 118,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 2,
+      "pruned": 0,
+      "queries": 3
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  },
+  "tokens": [
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 2,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "literal_guard",
+      "span": {
+        "end": 16,
+        "start": 3
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 17,
+        "start": 16
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 18,
+        "start": 17
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 20,
+        "start": 19
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "if",
+      "span": {
+        "end": 25,
+        "start": 23
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "1",
+      "span": {
+        "end": 27,
+        "start": 26
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "then",
+      "span": {
+        "end": 32,
+        "start": 28
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "0",
+      "span": {
+        "end": 34,
+        "start": 33
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "else",
+      "span": {
+        "end": 39,
+        "start": 35
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "1",
+      "span": {
+        "end": 41,
+        "start": 40
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 42,
+        "start": 42
+      }
+    }
+  ],
+  "typecheck": {
+    "functions": [
+      {
+        "constraints": 0,
+        "name": "literal_guard",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 1,
+        "unresolved_identifiers": 1
+      }
+    ],
+    "metrics": {
+      "binary_expressions": 0,
+      "call_sites": 0,
+      "constraint_breakdown": {},
+      "constraints_total": 0,
+      "typed_exprs": 1,
+      "typed_functions": 1,
+      "unresolved_identifiers": 1
+    }
+  }
+}

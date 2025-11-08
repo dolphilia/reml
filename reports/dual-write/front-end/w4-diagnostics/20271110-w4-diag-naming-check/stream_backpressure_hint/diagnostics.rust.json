@@ -1,0 +1,452 @@
+{
+  "ast_render": null,
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 19,
+            "start": 18
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 19,
+        "start": 18
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 22,
+            "start": 21
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 22,
+        "start": 21
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 86,
+            "start": 85
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 86,
+        "start": 85
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 117,
+            "start": 116
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 117,
+        "start": 116
+      }
+    },
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`fn`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 6,
+        "start": 0
+      }
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/stream_backpressure_hint/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 296,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": [
+      {
+        "label": "parser.simple_error",
+        "span": {
+          "end": 6,
+          "start": 0
+        }
+      }
+    ]
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 296,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  },
+  "tokens": [
+    {
+      "kind": "KeywordModule",
+      "lexeme": "module",
+      "span": {
+        "end": 6,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "diagnostics",
+      "span": {
+        "end": 18,
+        "start": 7
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "w4",
+      "span": {
+        "end": 21,
+        "start": 19
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "stream_backpressure",
+      "span": {
+        "end": 41,
+        "start": 22
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 44,
+        "start": 42
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "produce",
+      "span": {
+        "end": 52,
+        "start": 45
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 53,
+        "start": 52
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "limit",
+      "span": {
+        "end": 58,
+        "start": 53
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 59,
+        "start": 58
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i32",
+      "span": {
+        "end": 63,
+        "start": 60
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 64,
+        "start": 63
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 67,
+        "start": 65
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i32",
+      "span": {
+        "end": 71,
+        "start": 68
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 73,
+        "start": 72
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "if",
+      "span": {
+        "end": 78,
+        "start": 76
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "limit",
+      "span": {
+        "end": 84,
+        "start": 79
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 87,
+        "start": 86
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "0",
+      "span": {
+        "end": 89,
+        "start": 88
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "then",
+      "span": {
+        "end": 94,
+        "start": 90
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "0",
+      "span": {
+        "end": 96,
+        "start": 95
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "else",
+      "span": {
+        "end": 101,
+        "start": 97
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "produce",
+      "span": {
+        "end": 109,
+        "start": 102
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 110,
+        "start": 109
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "limit",
+      "span": {
+        "end": 115,
+        "start": 110
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "1",
+      "span": {
+        "end": 119,
+        "start": 118
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 120,
+        "start": 119
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 123,
+        "start": 121
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "main",
+      "span": {
+        "end": 128,
+        "start": 124
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 129,
+        "start": 128
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 130,
+        "start": 129
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 132,
+        "start": 131
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "produce",
+      "span": {
+        "end": 140,
+        "start": 133
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 141,
+        "start": 140
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "4",
+      "span": {
+        "end": 142,
+        "start": 141
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 143,
+        "start": 142
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 144,
+        "start": 144
+      }
+    }
+  ],
+  "typecheck": {
+    "functions": [
+      {
+        "constraints": 0,
+        "name": "produce",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      },
+      {
+        "constraints": 0,
+        "name": "main",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      }
+    ],
+    "metrics": {
+      "binary_expressions": 0,
+      "call_sites": 0,
+      "constraint_breakdown": {},
+      "constraints_total": 0,
+      "typed_exprs": 2,
+      "typed_functions": 2,
+      "unresolved_identifiers": 0
+    }
+  }
+}

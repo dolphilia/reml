@@ -199,6 +199,7 @@
 
 4. **診断 dual-write 実行とメトリクス取得**  
    - `scripts/poc_dualwrite_compare.sh --mode diag --run-id <date>-w4-diag --cases docs/.../w4-diagnostic-cases.txt` を実行し、各ケースごとに OCaml/Rust の JSON を `jq --sort-keys` で整形後 diff を保存。Recover 系は `extensions.recover.*`、Streaming 系は `parser.stream.*`、Type/Effects 系は `effects.*`/`type_row.*` を重点比較する。  
+     - ✅ 2027-11-10: `scripts/poc_dualwrite_compare.sh --mode diag --run-id 20271110-w4-diag-naming-check --cases docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt` を実行し、新命名の成果物が `reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/<case>/` に揃うこと、および `summary.json` が `gating/schema_ok/metrics_ok` を適切に記録することを確認。`collect-iterator-audit-metrics.py` は recover/type/effect ケースで `parser.stream_extension_field_coverage < 1.0` を検出し、期待どおり `metrics_ok=false` へ反映された。  
    - `collect-iterator-audit-metrics.py` の結果を `parser-metrics.{ocaml,rust}.json`／`effects-metrics.{ocaml,rust}.json`／`streaming-metrics.{ocaml,rust}.json` として格納し、`delta` が ±0.5pt を超えたら `summary.json` に `metrics_regression=true` を記録する。  
    - LSP 側は `npm run ci --prefix tooling/lsp/tests/client_compat` を同じ入力セットで再実行し、`fixtures/` に Rust 版の結果を一時保存した上で diff。`reports/dual-write/front-end/w4-diagnostics/<run>/lsp/<case>.diff` に残す。  
    - 追加で `scripts/validate-diagnostic-json.sh <ocaml> <rust>` のログ、`diagnostic_formatter.mli` ベースの CLI テキスト比較（必要に応じて `--format text`）を取得し、`reports/diagnostic-format-regression.md` のテンプレートでサマリを作成する。

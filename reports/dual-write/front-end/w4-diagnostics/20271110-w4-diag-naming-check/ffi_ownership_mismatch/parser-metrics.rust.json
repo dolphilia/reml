@@ -1,0 +1,2732 @@
+{
+  "metrics": [
+    {
+      "metric": "diagnostic.audit_presence_rate",
+      "total": 64,
+      "passed": 0,
+      "failed": 64,
+      "pass_rate": 0.0,
+      "pass_fraction": 0.0,
+      "required_audit_keys": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+      ],
+      "failures": [
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 0,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 1,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 2,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 3,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 4,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 5,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 6,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 7,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 8,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 9,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 10,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 11,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 12,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 13,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 14,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 15,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 16,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 17,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 18,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 19,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 20,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 21,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 22,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 23,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 24,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 25,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 26,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 27,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 28,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 29,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 30,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 31,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 32,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 33,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 34,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 35,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 36,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 37,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 38,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 39,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 40,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 41,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 42,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 43,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 44,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 45,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 46,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 47,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 48,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 49,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 50,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 51,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 52,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 53,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 54,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 55,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 56,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 57,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 58,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 59,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 60,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 61,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 62,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+          "index": 63,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        }
+      ]
+    },
+    {
+      "metric": "parser.expected_summary_presence",
+      "total": 0,
+      "passed": 0,
+      "failed": 0,
+      "pass_rate": 0.0,
+      "pass_fraction": 0.0,
+      "average_expected_tokens": 0.0,
+      "min_expected_tokens": 0,
+      "max_expected_tokens": 0,
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+      ],
+      "failures": [],
+      "schema_versions": [],
+      "required_expected_keys": [
+        "expected",
+        "expected.alternatives"
+      ],
+      "status": "error",
+      "related_metrics": [
+        {
+          "metric": "parser.expected_tokens_per_error",
+          "total": 0,
+          "with_expected": 0,
+          "average_tokens": 0.0,
+          "min_tokens": 0,
+          "max_tokens": 0,
+          "status": "error"
+        },
+        {
+          "metric": "parser.runconfig_switch_coverage",
+          "total": 4,
+          "passed": 0,
+          "failed": 4,
+          "missing": [
+            "left_recursion",
+            "merge_warnings",
+            "packrat",
+            "trace"
+          ],
+          "pass_rate": 0.0,
+          "pass_fraction": 0.0,
+          "status": "error",
+          "sources": [
+            "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+          ],
+          "samples": {}
+        },
+        {
+          "metric": "parser.runconfig_extension_pass_rate",
+          "total": 3,
+          "passed": 0,
+          "failed": 3,
+          "missing": [
+            "lex",
+            "recover",
+            "stream"
+          ],
+          "pass_rate": 0.0,
+          "pass_fraction": 0.0,
+          "status": "error",
+          "sources": [
+            "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+          ],
+          "samples": {}
+        },
+        {
+          "metric": "parser.stream_extension_field_coverage",
+          "total": 6,
+          "passed": 0,
+          "failed": 6,
+          "missing": [
+            "checkpoint",
+            "chunk_size",
+            "demand_min_bytes",
+            "demand_preferred_bytes",
+            "enabled",
+            "resume_hint"
+          ],
+          "pass_rate": 0.0,
+          "pass_fraction": 0.0,
+          "status": "warning",
+          "sources": [
+            "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+          ],
+          "samples": {}
+        },
+        {
+          "metric": "lexer.identifier_profile_unicode",
+          "total": 0,
+          "unicode": 0,
+          "ascii": 0,
+          "other": 0,
+          "pass_rate": null,
+          "pass_fraction": null,
+          "unicode_fraction": null,
+          "status": "pending",
+          "sources": [],
+          "profile_counts": {},
+          "cli_switch": "--lex-profile",
+          "cli_values": [
+            "ascii",
+            "unicode"
+          ],
+          "expected_pass_fraction": 1.0
+        },
+        {
+          "metric": "parser.packrat_cache_hit_ratio",
+          "queries": 7,
+          "hits": 6,
+          "misses": 1,
+          "hit_ratio": 0.8571428571428571,
+          "status": "success",
+          "sources": [
+            "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+          ],
+          "anomalies": []
+        }
+      ]
+    },
+    {
+      "metric": "parser.expected_tokens_per_error",
+      "total": 0,
+      "with_expected": 0,
+      "average_tokens": 0.0,
+      "min_tokens": 0,
+      "max_tokens": 0,
+      "status": "error"
+    },
+    {
+      "metric": "parser.runconfig_switch_coverage",
+      "total": 4,
+      "passed": 0,
+      "failed": 4,
+      "missing": [
+        "left_recursion",
+        "merge_warnings",
+        "packrat",
+        "trace"
+      ],
+      "pass_rate": 0.0,
+      "pass_fraction": 0.0,
+      "status": "error",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+      ],
+      "samples": {}
+    },
+    {
+      "metric": "parser.runconfig_extension_pass_rate",
+      "total": 3,
+      "passed": 0,
+      "failed": 3,
+      "missing": [
+        "lex",
+        "recover",
+        "stream"
+      ],
+      "pass_rate": 0.0,
+      "pass_fraction": 0.0,
+      "status": "error",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+      ],
+      "samples": {}
+    },
+    {
+      "metric": "parser.stream_extension_field_coverage",
+      "total": 6,
+      "passed": 0,
+      "failed": 6,
+      "missing": [
+        "checkpoint",
+        "chunk_size",
+        "demand_min_bytes",
+        "demand_preferred_bytes",
+        "enabled",
+        "resume_hint"
+      ],
+      "pass_rate": 0.0,
+      "pass_fraction": 0.0,
+      "status": "warning",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+      ],
+      "samples": {}
+    },
+    {
+      "metric": "lexer.identifier_profile_unicode",
+      "total": 0,
+      "unicode": 0,
+      "ascii": 0,
+      "other": 0,
+      "pass_rate": null,
+      "pass_fraction": null,
+      "unicode_fraction": null,
+      "status": "pending",
+      "sources": [],
+      "profile_counts": {},
+      "cli_switch": "--lex-profile",
+      "cli_values": [
+        "ascii",
+        "unicode"
+      ],
+      "expected_pass_fraction": 1.0
+    },
+    {
+      "metric": "parser.packrat_cache_hit_ratio",
+      "queries": 7,
+      "hits": 6,
+      "misses": 1,
+      "hit_ratio": 0.8571428571428571,
+      "status": "success",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+      ],
+      "anomalies": []
+    }
+  ],
+  "metric": "diagnostic.audit_presence_rate",
+  "total": 64,
+  "passed": 0,
+  "failed": 64,
+  "pass_rate": 0.0,
+  "pass_fraction": 0.0,
+  "required_audit_keys": [
+    "cli.audit_id",
+    "cli.change_set",
+    "schema.version",
+    "timestamp"
+  ],
+  "sources": [
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+  ],
+  "failures": [
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 0,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 1,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 2,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 3,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 4,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 5,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 6,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 7,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 8,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 9,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 10,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 11,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 12,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 13,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 14,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 15,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 16,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 17,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 18,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 19,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 20,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 21,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 22,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 23,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 24,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 25,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 26,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 27,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 28,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 29,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 30,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 31,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 32,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 33,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 34,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 35,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 36,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 37,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 38,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 39,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 40,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 41,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 42,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 43,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 44,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 45,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 46,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 47,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 48,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 49,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 50,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 51,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 52,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 53,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 54,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 55,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 56,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 57,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 58,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 59,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 60,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 61,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 62,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+      "index": 63,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    }
+  ],
+  "diagnostic_audit": {
+    "metric": "diagnostic.audit_presence_rate",
+    "total": 64,
+    "passed": 0,
+    "failed": 64,
+    "pass_rate": 0.0,
+    "pass_fraction": 0.0,
+    "required_audit_keys": [
+      "cli.audit_id",
+      "cli.change_set",
+      "schema.version",
+      "timestamp"
+    ],
+    "sources": [
+      "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+    ],
+    "failures": [
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 0,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 1,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 2,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 3,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 4,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 5,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 6,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 7,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 8,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 9,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 10,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 11,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 12,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 13,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 14,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 15,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 16,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 17,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 18,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 19,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 20,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 21,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 22,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 23,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 24,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 25,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 26,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 27,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 28,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 29,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 30,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 31,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 32,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 33,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 34,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 35,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 36,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 37,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 38,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 39,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 40,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 41,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 42,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 43,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 44,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 45,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 46,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 47,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 48,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 49,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 50,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 51,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 52,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 53,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 54,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 55,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 56,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 57,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 58,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 59,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 60,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 61,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 62,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json",
+        "index": 63,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      }
+    ]
+  },
+  "parser": {
+    "metric": "parser.expected_summary_presence",
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "pass_rate": 0.0,
+    "pass_fraction": 0.0,
+    "average_expected_tokens": 0.0,
+    "min_expected_tokens": 0,
+    "max_expected_tokens": 0,
+    "sources": [
+      "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+    ],
+    "failures": [],
+    "schema_versions": [],
+    "required_expected_keys": [
+      "expected",
+      "expected.alternatives"
+    ],
+    "status": "error",
+    "related_metrics": [
+      {
+        "metric": "parser.expected_tokens_per_error",
+        "total": 0,
+        "with_expected": 0,
+        "average_tokens": 0.0,
+        "min_tokens": 0,
+        "max_tokens": 0,
+        "status": "error"
+      },
+      {
+        "metric": "parser.runconfig_switch_coverage",
+        "total": 4,
+        "passed": 0,
+        "failed": 4,
+        "missing": [
+          "left_recursion",
+          "merge_warnings",
+          "packrat",
+          "trace"
+        ],
+        "pass_rate": 0.0,
+        "pass_fraction": 0.0,
+        "status": "error",
+        "sources": [
+          "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+        ],
+        "samples": {}
+      },
+      {
+        "metric": "parser.runconfig_extension_pass_rate",
+        "total": 3,
+        "passed": 0,
+        "failed": 3,
+        "missing": [
+          "lex",
+          "recover",
+          "stream"
+        ],
+        "pass_rate": 0.0,
+        "pass_fraction": 0.0,
+        "status": "error",
+        "sources": [
+          "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+        ],
+        "samples": {}
+      },
+      {
+        "metric": "parser.stream_extension_field_coverage",
+        "total": 6,
+        "passed": 0,
+        "failed": 6,
+        "missing": [
+          "checkpoint",
+          "chunk_size",
+          "demand_min_bytes",
+          "demand_preferred_bytes",
+          "enabled",
+          "resume_hint"
+        ],
+        "pass_rate": 0.0,
+        "pass_fraction": 0.0,
+        "status": "warning",
+        "sources": [
+          "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+        ],
+        "samples": {}
+      },
+      {
+        "metric": "lexer.identifier_profile_unicode",
+        "total": 0,
+        "unicode": 0,
+        "ascii": 0,
+        "other": 0,
+        "pass_rate": null,
+        "pass_fraction": null,
+        "unicode_fraction": null,
+        "status": "pending",
+        "sources": [],
+        "profile_counts": {},
+        "cli_switch": "--lex-profile",
+        "cli_values": [
+          "ascii",
+          "unicode"
+        ],
+        "expected_pass_fraction": 1.0
+      },
+      {
+        "metric": "parser.packrat_cache_hit_ratio",
+        "queries": 7,
+        "hits": 6,
+        "misses": 1,
+        "hit_ratio": 0.8571428571428571,
+        "status": "success",
+        "sources": [
+          "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+        ],
+        "anomalies": []
+      }
+    ]
+  },
+  "schema_versions": [],
+  "diagnostics": {
+    "total": 64,
+    "error": 0,
+    "warning": 0,
+    "info": 0,
+    "hint": 0,
+    "other": 64,
+    "sources": [
+      "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271110-w4-diag-naming-check/ffi_ownership_mismatch/diagnostics.rust.json"
+    ],
+    "info_fraction": 0.0,
+    "hint_fraction": 0.0,
+    "info_hint_ratio": 0.0,
+    "parser_total": 0,
+    "parser_expected": 0,
+    "parser_expected_ratio": 0.0,
+    "parser_expected_tokens_avg": 0.0
+  },
+  "enforcement": {
+    "failures": [
+      "diagnostic.audit_presence_rate < 1.0",
+      "parser.runconfig_switch_coverage < 1.0",
+      "parser.runconfig_extension_pass_rate < 1.0",
+      "parser.stream_extension_field_coverage < 1.0",
+      "parser.expected_summary_presence: total=0"
+    ],
+    "require_success": true
+  }
+}
