@@ -75,6 +75,7 @@ scripts/dualwrite_summary_report.py \
   - `summary.json`（case ごとのゲート判定・Diag/metrics 状態を記録）
 - `scripts/validate-diagnostic-json.sh` は `reports/diagnostic-format-regression.md#1-ローカル検証手順` のスキーマ要件を満たすよう拡張済みなので、diag モードでも出力ペアを必ず同スクリプトへ渡し、失敗したケースは `summary.json` の `schema_ok=false` / `gating=false` で識別できるようにする。
 - `scripts/dualwrite_summary_report.py --diag-table` で Markdown テーブルを生成し、`reports/dual-write/front-end/w4-diagnostics/README.md` の `<!-- DIAG_TABLE_START/END -->` ブロックへ自動埋め込みする。CI で運用する場合は `README.md` をソースオブトゥルースとして扱い、Run ID ごとに表を更新する。
+- CI (`bootstrap-linux` / `diag-dualwrite` ジョブ想定) でもローカルと同じ Run ID を指定し、`scripts/dualwrite_summary_report.py <run_dir> --diag-table <tmp.md> --update-diag-readme reports/dual-write/front-end/w4-diagnostics/README.md` を実行してからレポートを保存する。これにより `reports/dual-write/front-end/w4-diagnostics/README.md` が常に最新の `gating/schema_ok/metrics_ok` サマリになり、後続フェーズは README の表だけを参照すればよい。
 - ケース行に `gating=false` が記録された場合は `summary.json` / `.err.log` を参照し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の該当 TODO へリンクを貼って再実行手順を残す。
 - LSP 連携や CLI RunConfig ケースは `appendix/w4-diagnostic-case-matrix.md` 側で管理し、Ready になり次第 `cases.txt` と README のサマリ表を更新する。
 - diag モードでは OCaml CLI に `--left-recursion off` を自動付与しつつ `--packrat` を有効化し、PARSER-003 未実装警告を抑止した状態で Packrat メトリクスを取得する（Rust CLI は未対応なので空配列）。Streaming メトリクスを持たないケースでも `collect-iterator-audit-metrics.py --section streaming` を実行し、`parser.stream_extension_field_coverage < 1.0` が出た場合は `DIAG-RUST-05` へ転記して原因をトリアージする。
