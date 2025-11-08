@@ -1,37 +1,82 @@
 # W4 dual-write input cases for diag mode
 # format: name::(inline|file)::value
+# diag default flags: `--packrat --format json --json-mode compact --emit-parse-debug <out>`
+# metadata lines per case:
+#   # tests: 参照テストや提案書
+#   # flags: CLI/LSP の追加フラグ（必要に応じて記載）
+#   # lsp-fixture: LSP フィクスチャ（LSP ケースのみ）
 
+# parser recover (ERR-002 / parser_recover_tests 準拠)
+# tests: compiler/ocaml/tests/test_cli_diagnostics.ml (recover snapshots); docs/plans/bootstrap-roadmap/2-5-review-log.md (Step3 parser_recover_tests)
+# flags: diag default
 recover_missing_semicolon::inline::fn main() =\n  let x = 1\n  let y = 2\n  x + y
+# tests: docs/plans/bootstrap-roadmap/2-5-proposals/ERR-002-proposal.md §3; docs/plans/bootstrap-roadmap/2-5-review-log.md (recover-unclosed-block)
+# flags: diag default
 recover_unclosed_block::inline::fn main() = {\n  let value = 42
+# tests: compiler/ocaml/tests/golden/diagnostics/parser/expected-summary.json.golden
+# flags: diag default
 recover_else_without_if::inline::fn orphan() =\n  else { 1 }
+# tests: compiler/ocaml/tests/test_parser.ml (tuple error expectation)
+# flags: diag default
 recover_missing_tuple_comma::inline::fn tuple_demo() = (1 2, 3)
+# tests: compiler/ocaml/tests/test_cli_diagnostics.ml (lambda recover note)
+# flags: diag default
 recover_lambda_body::inline::fn lambda_demo(fn op(i64) -> i64) = {\n  let apply = fn(x) => { op(x }\n  apply(1)
 
-# type/effect
-# file based sample relying on existing CLI golden
+# type / effect（experimental effects & type-row dual-write）
+# tests: compiler/ocaml/tests/test_type_inference.ml (condition bool)
+# flags: --experimental-effects --effect-stage beta --type-row-mode dual-write --emit-typeck-debug <dir>
 type_condition_bool::inline::fn type_mismatch(x: i64) -> i64 =\n  if x then 1 else 0
+# tests: compiler/ocaml/tests/test_type_errors.ml (literal guard)
+# flags: --experimental-effects --effect-stage beta --type-row-mode dual-write --emit-typeck-debug <dir>
 type_condition_literal_bool::inline::fn literal_guard() =\n  if 1 then 0 else 1
-
-# streaming meta（CLI 実行時に --streaming --stream-resume-hint diag-w4 を付与）
-stream_pending_resume::inline::module diagnostics.w4.stream_pending_resume\nfn chunked(value: String) -> String =\n  if value == \"resume\" then value else value\nfn main() = chunked(\"resume\")
-stream_backpressure_hint::inline::module diagnostics.w4.stream_backpressure\nfn produce(limit: i32) -> i32 =\n  if limit <= 0 then 0 else produce(limit - 1)\nfn main() = produce(4)
-stream_checkpoint_drift::inline::module diagnostics.w4.stream_checkpoint\nfn tick(counter: i32) -> i32 =\n  let next = counter + 1\n  if next > 2 then counter else tick(next)\nfn main() = tick(0)
-
-# effect / capability stage（--experimental-effects と --effect-stage beta を併用）
+# tests: compiler/ocaml/tests/test_effect_residual.ml; docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-002-proposal.md
+# flags: --experimental-effects --effect-stage beta --type-row-mode dual-write --emit-effects-metrics <dir>
 effect_residual_leak::inline::effect ConsoleLog\nfn emit(msg: String) = perform ConsoleLog msg\nfn main() = emit(\"leak\")
+# tests: compiler/ocaml/tests/test_cli_callconv_snapshot.ml::callconv_windows_messagebox
+# flags: --experimental-effects --effect-stage beta --type-row-mode dual-write --emit-typeck-debug <dir>
 effect_stage_cli_override::inline::effect ConsoleAudit\n@requires_capability(stage = \"beta\")\nfn gated() = perform ConsoleAudit 1\nfn main() = gated()
 
-# capability / FFI
+# streaming meta（core-parse-streaming ガイドと streaming_runner_tests に準拠）
+# tests: compiler/ocaml/tests/streaming_runner_tests.ml::test_pending_resume_flow
+# flags: --streaming --stream-resume-hint diag-w4 --stream-flow-policy auto --stream-demand-min-bytes 4 --stream-demand-preferred-bytes 8 --stream-flow-max-lag 8192
+stream_pending_resume::inline::module diagnostics.w4.stream_pending_resume\nfn chunked(value: String) -> String =\n  if value == \"resume\" then value else value\nfn main() = chunked(\"resume\")
+# tests: compiler/ocaml/tests/streaming_runner_tests.ml::test_streaming_matches_batch
+# flags: --streaming --stream-flow-policy auto --stream-flow-max-lag 8192
+stream_backpressure_hint::inline::module diagnostics.w4.stream_backpressure\nfn produce(limit: i32) -> i32 =\n  if limit <= 0 then 0 else produce(limit - 1)\nfn main() = produce(4)
+# tests: streaming_runner_tests.ml （checkpoint/packrat coverage）
+# flags: --streaming --stream-checkpoint diag-w4
+stream_checkpoint_drift::inline::module diagnostics.w4.stream_checkpoint\nfn tick(counter: i32) -> i32 =\n  let next = counter + 1\n  if next > 2 then counter else tick(next)\nfn main() = tick(0)
+
+# capability / FFI（Stage & audit 一致確認）
+# tests: compiler/ocaml/tests/test_cli_callconv_snapshot.ml::callconv_windows_messagebox
+# flags: --effect-stage beta --runtime-capabilities windows.messagebox --experimental-effects
 ffi_stage_messagebox::file::examples/ffi/windows/messagebox.reml
+# tests: compiler/ocaml/tests/test_ffi_contract.ml::ownership_transfer
+# flags: --effect-stage beta --runtime-capabilities windows.ffi --experimental-effects
 ffi_ownership_mismatch::file::examples/ffi/windows/ownership_transfer.reml
+# tests: compiler/ocaml/tests/test_ffi_contract.ml::ffi_dispatch_async
+# flags: --effect-stage beta --experimental-effects
 ffi_async_dispatch::file::examples/ffi/macos/ffi_dispatch_async.reml
 
-# CLI RunConfig
+# CLI RunConfig / DIAG-002 監査必須化
+# tests: compiler/ocaml/tests/run_config_tests.ml::packrat_switch; docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-002-proposal.md
+# flags: run twice with --packrat / --no-packrat（audit_id/timestamp を比較）
 cli_packrat_switch::file::examples/cli/emit_suite.reml
+# tests: compiler/ocaml/tests/run_config_tests.ml::trace_options
+# flags: --trace --no-merge-warnings
 cli_trace_toggle::file::examples/cli/trace_sample.reml
+# tests: compiler/ocaml/tests/test_cli_diagnostics.ml（warning merge snapshot）
+# flags: --no-merge-warnings --json-mode compact
 cli_merge_warnings::file::examples/cli/type_error.reml
 
-# LSP RPC（fixtures: tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-*.json）
+# LSP RPC（tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-*.json と同期）
+# tests: tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-hover-internal.json
+# flags: CLI=diag default; lsp-fixture: diagnostic-v2-hover-internal.json（`npm run ci --prefix tooling/lsp/tests/client_compat`）
 lsp_hover_internal_error::file::examples/cli/type_error.reml
+# tests: tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-stream.json
+# flags: CLI=--streaming --stream-resume-hint diag-w4; lsp-fixture: diagnostic-v2-stream.json
 lsp_diagnostic_stream::file::examples/cli/trace_sample.reml
+# tests: tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-workspace-config.json
+# flags: CLI=diag default --config tooling/lsp/tests/client_compat/fixtures/workspace-config.json; lsp-fixture: diagnostic-v2-workspace-config.json
 lsp_workspace_config::file::examples/cli/emit_suite.reml

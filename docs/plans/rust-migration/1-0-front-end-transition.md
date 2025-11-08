@@ -184,6 +184,7 @@
       - LSP 連携向けには `tooling/lsp/tests/client_compat/fixtures/` に相当するケースを `cases.txt` と同期させ、CLI 実行と LSP フィクスチャが同じ構文/型パスを辿るようタグ付けする。
       - 🆕 2027-11-07: `appendix/w4-diagnostic-case-matrix.md` と `w4-diagnostic-cases.txt` を追加し、parser recover 5 件と type mismatch ケースを Ready として登録。Streaming / Capability / CLI / LSP の各カテゴリは `TODO: DIAG-RUST-05〜07` で追跡し、`cases.txt` ではコメント化したテンプレートを先行配置した。
       - 🆕 2027-11-09: `cases.txt` へ streaming / effect / capability / CLI / LSP ケース（計 12 件）を追加し、`appendix/w4-diagnostic-case-matrix.md` で `Ready` ステータスと必要 CLI フラグ（`--streaming`, `--experimental-effects`, `--effect-stage beta` など）を明記。`reports/dual-write/front-end/w4-diagnostics/README.md` に追補セクション「追加ケース（DIAG-RUST-05/06/07）」を設け、CLI と LSP の実行手順を共有した。
+      - ✅ 2027-11-12: `appendix/w4-diagnostic-case-matrix.md` に Source/CLI 列を追加し、`test_cli_diagnostics.ml`・`streaming_runner_tests.ml`・`test_cli_callconv_snapshot.ml`・`test_ffi_contract.ml`・`DIAG-002-proposal.md` との対応を明示。`w4-diagnostic-cases.txt` へ `#tests`/`#flags` メタデータを記載し、カテゴリ（parser recover・streaming・type/effect・capability・CLI・LSP）ごとに 3+ ケースが `poc_dualwrite_compare.sh --mode diag` / LSP フィクスチャ両方で再利用できる状態を確認した。
 
    3. **ハーネス/スクリプト拡張とラン構成**  
       - `scripts/poc_dualwrite_compare.sh` に `--mode diag` を追加し、出力先を `reports/dual-write/front-end/w4-diagnostics/<run>/<case>/` に固定。`diagnostics.ocaml.json` / `diagnostics.rust.json` / `diagnostics.diff.json` / `parser-metrics.*.json` / `effects-metrics.*.json` / `streaming-metrics.*.json` / `schema-validate.log` をまとめて生成する。  
