@@ -10,7 +10,28 @@ recover_lambda_body::inline::fn lambda_demo(fn op(i64) -> i64) = {\n  let apply 
 # type/effect
 # file based sample relying on existing CLI golden
 type_condition_bool::inline::fn type_mismatch(x: i64) -> i64 =\n  if x then 1 else 0
+type_condition_literal_bool::inline::fn literal_guard() =\n  if 1 then 0 else 1
 
-# TODO: stream_pending_resume::inline::(pending streaming fixture)
-# TODO: effect_residual_leak::inline::(pending effect fixture)
-# TODO: cli_packrat_switch::file::examples/cli/emit_suite.reml
+# streaming meta（CLI 実行時に --streaming --stream-resume-hint diag-w4 を付与）
+stream_pending_resume::inline::module diagnostics.w4.stream_pending_resume\nfn chunked(value: String) -> String =\n  if value == \"resume\" then value else value\nfn main() = chunked(\"resume\")
+stream_backpressure_hint::inline::module diagnostics.w4.stream_backpressure\nfn produce(limit: i32) -> i32 =\n  if limit <= 0 then 0 else produce(limit - 1)\nfn main() = produce(4)
+stream_checkpoint_drift::inline::module diagnostics.w4.stream_checkpoint\nfn tick(counter: i32) -> i32 =\n  let next = counter + 1\n  if next > 2 then counter else tick(next)\nfn main() = tick(0)
+
+# effect / capability stage（--experimental-effects と --effect-stage beta を併用）
+effect_residual_leak::inline::effect ConsoleLog\nfn emit(msg: String) = perform ConsoleLog msg\nfn main() = emit(\"leak\")
+effect_stage_cli_override::inline::effect ConsoleAudit\n@requires_capability(stage = \"beta\")\nfn gated() = perform ConsoleAudit 1\nfn main() = gated()
+
+# capability / FFI
+ffi_stage_messagebox::file::examples/ffi/windows/messagebox.reml
+ffi_ownership_mismatch::file::examples/ffi/windows/ownership_transfer.reml
+ffi_async_dispatch::file::examples/ffi/macos/ffi_dispatch_async.reml
+
+# CLI RunConfig
+cli_packrat_switch::file::examples/cli/emit_suite.reml
+cli_trace_toggle::file::examples/cli/trace_sample.reml
+cli_merge_warnings::file::examples/cli/type_error.reml
+
+# LSP RPC（fixtures: tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-*.json）
+lsp_hover_internal_error::file::examples/cli/type_error.reml
+lsp_diagnostic_stream::file::examples/cli/trace_sample.reml
+lsp_workspace_config::file::examples/cli/emit_suite.reml

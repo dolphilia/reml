@@ -177,18 +177,20 @@
    - ✅ 2027-11-09: `scripts/validate-diagnostic-json.sh` を更新して非診断系 JSON を自動除外し、`compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden` へ `cli.change_set` / `schema.version` を付与（`DIAG-RUST-03/04` クローズ）。  
    - 🆕 2027-11-09: `scripts/poc_dualwrite_compare.sh --mode diag`（`--left-recursion off` を自動付与）と `scripts/dualwrite_summary_report.py --diag-table` を整備し、`docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md` / `appendix/w4-diagnostic-cases.txt` にカテゴリ別ケースを登録済み。初回ラン `reports/dual-write/front-end/w4-diagnostics/20271107-w4-new/` では recover 5 件＋ type/effect 1 件を収集し、Rust 側は recover 2 件で診断欠落・全ケースで streaming メトリクスが不足（`DIAG-RUST-05/06`）。サマリ表は `reports/dual-write/front-end/w4-diagnostics/README.md` に自動埋め込み。
 
-2. **ケースマトリクスと入力セット整備**  
-   - `compiler/ocaml/tests/test_cli_diagnostics.ml`, `parser_recover_tests.ml`, `streaming_runner_tests.ml`, `test_cli_callconv_snapshot.ml`, `test_ffi_contract.ml`、および `docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-002-proposal.md` を横断し、診断カテゴリ（parser recover / streaming meta / type&effect / capability stage / CLI config / LSP RPC）の代表ケースを抽出する。  
-   - 各カテゴリごとに最低 3 ケース（recover 系だけは 5 ケース）の入力を `docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md`（新設）へ表形式で記載し、case id / 参照テスト / 期待する拡張キー / 必須メトリクス列を定義する。  
-   - ケース定義ファイル（`docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt` を想定）を作成し、`scripts/poc_dualwrite_compare.sh --cases ... --mode diag` で呼び出せるフォーマット `name::file::<path>` or `name::inline::<src>` に落とし込む。  
-   - LSP 連携向けには `tooling/lsp/tests/client_compat/fixtures/` に相当するケースを `cases.txt` と同期させ、CLI 実行と LSP フィクスチャが同じ構文/型パスを辿るようタグ付けする。
-   - 🆕 2027-11-07: `appendix/w4-diagnostic-case-matrix.md` と `w4-diagnostic-cases.txt` を追加し、parser recover 5 件と type mismatch ケースを Ready として登録。Streaming / Capability / CLI / LSP の各カテゴリは `TODO: DIAG-RUST-05〜07` で追跡し、`cases.txt` ではコメント化したテンプレートを先行配置した。
+   2. **ケースマトリクスと入力セット整備**  
+      - `compiler/ocaml/tests/test_cli_diagnostics.ml`, `parser_recover_tests.ml`, `streaming_runner_tests.ml`, `test_cli_callconv_snapshot.ml`, `test_ffi_contract.ml`、および `docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-002-proposal.md` を横断し、診断カテゴリ（parser recover / streaming meta / type&effect / capability stage / CLI config / LSP RPC）の代表ケースを抽出する。  
+      - 各カテゴリごとに最低 3 ケース（recover 系だけは 5 ケース）の入力を `docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md`（新設）へ表形式で記載し、case id / 参照テスト / 期待する拡張キー / 必須メトリクス列を定義する。  
+      - ケース定義ファイル（`docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt` を想定）を作成し、`scripts/poc_dualwrite_compare.sh --cases ... --mode diag` で呼び出せるフォーマット `name::file::<path>` or `name::inline::<src>` に落とし込む。  
+      - LSP 連携向けには `tooling/lsp/tests/client_compat/fixtures/` に相当するケースを `cases.txt` と同期させ、CLI 実行と LSP フィクスチャが同じ構文/型パスを辿るようタグ付けする。
+      - 🆕 2027-11-07: `appendix/w4-diagnostic-case-matrix.md` と `w4-diagnostic-cases.txt` を追加し、parser recover 5 件と type mismatch ケースを Ready として登録。Streaming / Capability / CLI / LSP の各カテゴリは `TODO: DIAG-RUST-05〜07` で追跡し、`cases.txt` ではコメント化したテンプレートを先行配置した。
+      - 🆕 2027-11-09: `cases.txt` へ streaming / effect / capability / CLI / LSP ケース（計 12 件）を追加し、`appendix/w4-diagnostic-case-matrix.md` で `Ready` ステータスと必要 CLI フラグ（`--streaming`, `--experimental-effects`, `--effect-stage beta` など）を明記。`reports/dual-write/front-end/w4-diagnostics/README.md` に追補セクション「追加ケース（DIAG-RUST-05/06/07）」を設け、CLI と LSP の実行手順を共有した。
 
-3. **ハーネス/スクリプト拡張とラン構成**  
-   - `scripts/poc_dualwrite_compare.sh` に `--mode diag` を追加し、出力先を `reports/dual-write/front-end/w4-diagnostics/<run>/<case>/` に固定。`diagnostics.ocaml.json` / `diagnostics.rust.json` / `diagnostics.diff.json` / `parser-metrics.*.json` / `effects-metrics.*.json` / `streaming-metrics.*.json` / `schema-validate.log` をまとめて生成する。  
-   - 同スクリプト内で `collect-iterator-audit-metrics.py --section parser|effects|streaming` と `scripts/validate-diagnostic-json.sh` を必ず呼び出し、失敗したケースは `summary.json` に `gating=false` を記録する。  
-   - LSP/CLI 共通の比較結果を `scripts/dualwrite_summary_report.py --diag-table`（新規オプション）で集計し、`reports/dual-write/front-end/w4-diagnostics/README.md` にテーブル化する。  
-   - `1-3-dual-write-runbook.md#手順2:診断` を W4 向け手順に更新し、`diag` モードの CLI 例、成果物命名規約、`reports/diagnostic-format-regression.md#1-ローカル検証手順` へのリンクを追記する。
+   3. **ハーネス/スクリプト拡張とラン構成**  
+      - `scripts/poc_dualwrite_compare.sh` に `--mode diag` を追加し、出力先を `reports/dual-write/front-end/w4-diagnostics/<run>/<case>/` に固定。`diagnostics.ocaml.json` / `diagnostics.rust.json` / `diagnostics.diff.json` / `parser-metrics.*.json` / `effects-metrics.*.json` / `streaming-metrics.*.json` / `schema-validate.log` をまとめて生成する。  
+      - 同スクリプト内で `collect-iterator-audit-metrics.py --section parser|effects|streaming` と `scripts/validate-diagnostic-json.sh` を必ず呼び出し、失敗したケースは `summary.json` に `gating=false` を記録する。  
+      - LSP/CLI 共通の比較結果を `scripts/dualwrite_summary_report.py --diag-table`（新規オプション）で集計し、`reports/dual-write/front-end/w4-diagnostics/README.md` にテーブル化する。  
+      - `1-3-dual-write-runbook.md#手順2:診断` を W4 向け手順に更新し、`diag` モードの CLI 例、成果物命名規約、`reports/diagnostic-format-regression.md#1-ローカル検証手順` へのリンクを追記する。
+      - 🆕 2027-11-09: `scripts/poc_dualwrite_compare.sh` の `collect_all_metrics` で `parser.stream.*` が存在しない診断を検出した場合は `--section streaming` をスキップし、非ストリーミングケースでも `parser.stream_extension_field_coverage` で落ちないようにした。
 
 4. **診断 dual-write 実行とメトリクス取得**  
    - `scripts/poc_dualwrite_compare.sh --mode diag --run-id <date>-w4-diag --cases docs/.../w4-diagnostic-cases.txt` を実行し、各ケースごとに OCaml/Rust の JSON を `jq --sort-keys` で整形後 diff を保存。Recover 系は `extensions.recover.*`、Streaming 系は `parser.stream.*`、Type/Effects 系は `effects.*`/`type_row.*` を重点比較する。  
@@ -196,11 +198,12 @@
    - LSP 側は `npm run ci --prefix tooling/lsp/tests/client_compat` を同じ入力セットで再実行し、`fixtures/` に Rust 版の結果を一時保存した上で diff。`reports/dual-write/front-end/w4-diagnostics/<run>/lsp/<case>.diff` に残す。  
    - 追加で `scripts/validate-diagnostic-json.sh <ocaml> <rust>` のログ、`diagnostic_formatter.mli` ベースの CLI テキスト比較（必要に応じて `--format text`）を取得し、`reports/diagnostic-format-regression.md` のテンプレートでサマリを作成する。
 
-5. **差分トリアージとドキュメント/チケット連携**  
-   - `1-2-diagnostic-compatibility.md#1-2-4-差分分類` に従い、差分を 4 区分（仕様差分/実装差分/拡張追加/Precision 差）へ分類し、結果を `reports/dual-write/front-end/w4-diagnostics/<run>/triage.md` にまとめる。  
-   - 許容外差分は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に移送し、対策オーナー・予定週・参照ケースを記入。仕様更新が伴う場合は `docs/spec/3-6-core-diagnostics-audit.md`・`docs/spec/1-3-effects-safety.md` への TODO を `docs-migrations.log` で追跡する。  
-   - `p1-front-end-checklists.csv` の診断行を W4 ラン結果で更新し、合格ケースには成果物パスを、未解決ケースには triage ID をリンクする。  
-   - P1 クロージングレビュー（W4.5）に向け、`README.md` と `docs/plans/rust-migration/1-2-diagnostic-compatibility.md` へ今回の手順・成果サマリを反映する準備メモを残す。
+   5. **差分トリアージとドキュメント/チケット連携**  
+      - `1-2-diagnostic-compatibility.md#1-2-4-差分分類` に従い、差分を 4 区分（仕様差分/実装差分/拡張追加/Precision 差）へ分類し、結果を `reports/dual-write/front-end/w4-diagnostics/<run>/triage.md` にまとめる。  
+      - 許容外差分は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に移送し、対策オーナー・予定週・参照ケースを記入。仕様更新が伴う場合は `docs/spec/3-6-core-diagnostics-audit.md`・`docs/spec/1-3-effects-safety.md` への TODO を `docs-migrations.log` で追跡する。  
+      - `p1-front-end-checklists.csv` の診断行を W4 ラン結果で更新し、合格ケースには成果物パスを、未解決ケースには triage ID をリンクする。  
+      - P1 クロージングレビュー（W4.5）に向け、`README.md` と `docs/plans/rust-migration/1-2-diagnostic-compatibility.md` へ今回の手順・成果サマリを反映する準備メモを残す。
+      - 🆕 2027-11-09: `type_condition_bool` の差分を `DIAG-RUST-06` へ切り分け。OCaml 側は parser で終了しているため JSON が空（`diagnostics=[]`）、Rust 側は `:` 解析未対応で recover 診断が 1 件のみ。`cases.txt` に `type_condition_literal_bool` を追加し、型注釈なしでも bool 条件違反を観測できるフォールバックを確保した。
 
 ## 1.0.6 ワークストリームと主要論点
 

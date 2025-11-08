@@ -21,6 +21,11 @@
 
 <!-- DIAG_TABLE_END -->
 
+## 追加ケース（DIAG-RUST-05/06/07）
+- **ストリーミング**: `stream_pending_resume`, `stream_backpressure_hint`, `stream_checkpoint_drift` を `docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt` に登録。CLI 実行時は `--streaming --stream-resume-hint diag-w4 --stream-flow-policy auto` を付与し、`parser.stream.*` メトリクスが計測可能なケースのみ `collect-iterator-audit-metrics.py --section streaming` を実行する。
+- **効果 / Capability**: `type_condition_literal_bool`（bool 条件リテラル簡易版）、`effect_residual_leak`, `effect_stage_cli_override`、および `ffi_stage_messagebox`, `ffi_ownership_mismatch`, `ffi_async_dispatch` を追加。`--experimental-effects --type-row-mode dual-write --effect-stage beta --runtime-capabilities tooling/audit-store/capabilities/dev.json` を既定フラグとして記録した。
+- **CLI / LSP**: `cli_packrat_switch`, `cli_trace_toggle`, `cli_merge_warnings` を CLI RunConfig 用に登録し、同一入力を利用する LSP フィクスチャ（`lsp_hover_internal_error`, `lsp_diagnostic_stream`, `lsp_workspace_config`）を `tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-*.json` と関連付けた。`npm run ci --prefix tooling/lsp/tests/client_compat` のログを `reports/dual-write/front-end/w4-diagnostics/<run>/lsp/` に保存する。
+
 ## 参考
 - OCaml ベースライン: `reports/dual-write/front-end/w4-diagnostics/baseline/`
 - diag ハーネス: `scripts/poc_dualwrite_compare.sh --mode diag`, `scripts/dualwrite_summary_report.py --diag-table`

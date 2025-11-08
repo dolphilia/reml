@@ -116,6 +116,17 @@ run_in_dir() {
   (cd "${dir}" && "$@")
 }
 
+needs_streaming_metrics() {
+  local diag_path="$1"
+  if [[ ! -s "${diag_path}" ]]; then
+    return 1
+  fi
+  if grep -q '"parser\.stream' "${diag_path}"; then
+    return 0
+  fi
+  return 1
+}
+
 declare -a diag_ocaml_flags=()
 declare -a diag_rust_flags=()
 if [[ "${MODE}" == "diag" ]]; then
@@ -135,7 +146,13 @@ collect_all_metrics() {
   fi
 
   mkdir -p "$output_dir"
-  for section in parser effects streaming; do
+  local sections=(parser effects)
+  if needs_streaming_metrics "$diag_path"; then
+    sections+=(streaming)
+  else
+    printf "-- streaming metrics skipped for %s (no parser.stream.* extensions)\n" "$frontend" >&2
+  fi
+  for section in "${sections[@]}"; do
     local out_path="${output_dir}/${section}.${frontend}.json"
     local err_path="${out_path%.json}.err.log"
     if python3 "${COLLECT_METRICS_SCRIPT}" \
