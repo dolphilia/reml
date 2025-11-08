@@ -136,7 +136,7 @@ fi
 collect_all_metrics() {
   local diag_path="$1"
   local frontend="$2"
-  local output_dir="$3"
+  local case_dir="$3"
   local status=0
   local section
 
@@ -145,7 +145,6 @@ collect_all_metrics() {
     return 1
   fi
 
-  mkdir -p "$output_dir"
   local sections=(parser effects)
   if needs_streaming_metrics "$diag_path"; then
     sections+=(streaming)
@@ -153,7 +152,7 @@ collect_all_metrics() {
     printf "-- streaming metrics skipped for %s (no parser.stream.* extensions)\n" "$frontend" >&2
   fi
   for section in "${sections[@]}"; do
-    local out_path="${output_dir}/${section}.${frontend}.json"
+    local out_path="${case_dir}/${section}-metrics.${frontend}.json"
     local err_path="${out_path%.json}.err.log"
     if python3 "${COLLECT_METRICS_SCRIPT}" \
       --section "${section}" \
@@ -333,8 +332,6 @@ for entry in "${CASE_ENTRIES[@]}"; do
   printf ">> ケース %s (safe=%s)\n" "${case_name}" "${safe_name}"
 
   if [[ "${MODE}" == "diag" ]]; then
-    diag_metrics_dir="${case_dir}/metrics"
-    mkdir -p "${diag_metrics_dir}"
     ocaml_parse_debug_path="${case_dir}/ocaml.parse-debug.json"
     rust_parse_debug_path="${case_dir}/rust.parse-debug.json"
     ocaml_diag_path="${case_dir}/diagnostics.ocaml.json"
@@ -376,11 +373,11 @@ for entry in "${CASE_ENTRIES[@]}"; do
       case_gating="false"
     fi
 
-    if ! collect_all_metrics "${ocaml_diag_path}" "ocaml" "${diag_metrics_dir}"; then
+    if ! collect_all_metrics "${ocaml_diag_path}" "ocaml" "${case_dir}"; then
       metrics_ok="false"
       case_gating="false"
     fi
-    if ! collect_all_metrics "${rust_diag_path}" "rust" "${diag_metrics_dir}"; then
+    if ! collect_all_metrics "${rust_diag_path}" "rust" "${case_dir}"; then
       metrics_ok="false"
       case_gating="false"
     fi
@@ -475,13 +472,12 @@ rust_diag = load_json(case_dir / "diagnostics.rust.json") or {}
 ocaml_diagnostics = ocaml_diag.get("diagnostics") or []
 rust_diagnostics = rust_diag.get("diagnostics") or []
 
-metrics_dir = case_dir / "metrics"
-parser_metrics_ocaml = load_json(metrics_dir / "parser.ocaml.json")
-parser_metrics_rust = load_json(metrics_dir / "parser.rust.json")
-effects_metrics_ocaml = load_json(metrics_dir / "effects.ocaml.json")
-effects_metrics_rust = load_json(metrics_dir / "effects.rust.json")
-streaming_metrics_ocaml = load_json(metrics_dir / "streaming.ocaml.json")
-streaming_metrics_rust = load_json(metrics_dir / "streaming.rust.json")
+parser_metrics_ocaml = load_json(case_dir / "parser-metrics.ocaml.json")
+parser_metrics_rust = load_json(case_dir / "parser-metrics.rust.json")
+effects_metrics_ocaml = load_json(case_dir / "effects-metrics.ocaml.json")
+effects_metrics_rust = load_json(case_dir / "effects-metrics.rust.json")
+streaming_metrics_ocaml = load_json(case_dir / "streaming-metrics.ocaml.json")
+streaming_metrics_rust = load_json(case_dir / "streaming-metrics.rust.json")
 
 summary = {
     "case": case_name,

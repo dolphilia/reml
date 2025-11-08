@@ -188,14 +188,18 @@
 
 3. **ハーネス/スクリプト拡張とラン構成**  
    - `scripts/poc_dualwrite_compare.sh` に `--mode diag` を追加し、出力先を `reports/dual-write/front-end/w4-diagnostics/<run>/<case>/` に固定。`diagnostics.ocaml.json` / `diagnostics.rust.json` / `diagnostics.diff.json` / `parser-metrics.*.json` / `effects-metrics.*.json` / `streaming-metrics.*.json` / `schema-validate.log` をまとめて生成する。  
+     - ✅ 2027-11-10: diag モードの成果物命名を仕様に合わせて統一し、`parser-metrics.{ocaml,rust}.json` 等をケース直下へ出力するよう `scripts/poc_dualwrite_compare.sh` を更新。`reports/dual-write/front-end/w4-diagnostics/<run>/<case>/` 配下に `diagnostics.*`, `parser|effects|streaming-metrics.*`, `schema-validate.log`, `diagnostics.diff.json` が揃うことを確認した。  
    - 同スクリプト内で `collect-iterator-audit-metrics.py --section parser|effects|streaming` と `scripts/validate-diagnostic-json.sh` を必ず呼び出し、失敗したケースは `summary.json` に `gating=false` を記録する。  
+     - ✅ 2027-11-10: `collect_all_metrics` を diag モード専用のハンドラとして呼び分け、スキップや失敗時には `summary.json` の `gating/schema_ok/metrics_ok` に反映させる仕組みを追加。メトリクス実行ログは `*-metrics.<frontend>.json` の隣に `*.err.log` を吐き出し、`gating=false` ケースの切り分けを自動化した。  
    - LSP/CLI 共通の比較結果を `scripts/dualwrite_summary_report.py --diag-table`（新規オプション）で集計し、`reports/dual-write/front-end/w4-diagnostics/README.md` にテーブル化する。  
-   - `1-3-dual-write-runbook.md#手順2:診断` を W4 向け手順に更新し、`diag` モードの CLI 例、成果物命名規約、`reports/diagnostic-format-regression.md#1-ローカル検証手順` へのリンクを追記する。
+     - ✅ 2027-11-10: `1-3-dual-write-runbook.md#手順2c` と `reports/dual-write/front-end/w4-diagnostics/README.md` に `--diag-table` の適用手順を追記し、`summary.json` 由来の `gating`/`schema_ok`/`metrics_ok` を README へ反映する運用を定義。CI でも README をソースオブトゥルースにできるよう説明を揃えた。  
+   - `1-3-dual-write-runbook.md#手順2:診断` を W4 向け手順に更新し、`diag` モードの CLI 例、成果物命名規約、`reports/diagnostic-format-regression.md#1-ローカル検証手順` へのリンクを追記する。  
+     - ✅ 2027-11-10: 手順 2c に `--mode diag` のコマンド例、`parser|effects|streaming-metrics.*.json` の命名規約、`reports/diagnostic-format-regression.md#1-ローカル検証手順` への参照、`--diag-table` の適用フェーズを追記し、W4 向け手順を確定した。  
    - ✅ 2027-11-09: `scripts/poc_dualwrite_compare.sh` の `collect_all_metrics` で `parser.stream.*` が存在しない診断を検出した場合は `--section streaming` をスキップし、非ストリーミングケースでも `parser.stream_extension_field_coverage` で落ちないようにした。
 
 4. **診断 dual-write 実行とメトリクス取得**  
    - `scripts/poc_dualwrite_compare.sh --mode diag --run-id <date>-w4-diag --cases docs/.../w4-diagnostic-cases.txt` を実行し、各ケースごとに OCaml/Rust の JSON を `jq --sort-keys` で整形後 diff を保存。Recover 系は `extensions.recover.*`、Streaming 系は `parser.stream.*`、Type/Effects 系は `effects.*`/`type_row.*` を重点比較する。  
-   - `collect-iterator-audit-metrics.py` の結果を `metrics/parser.{ocaml,rust}.json` 等として格納し、`delta` が ±0.5pt を超えたら `summary.json` に `metrics_regression=true` を記録する。  
+   - `collect-iterator-audit-metrics.py` の結果を `parser-metrics.{ocaml,rust}.json`／`effects-metrics.{ocaml,rust}.json`／`streaming-metrics.{ocaml,rust}.json` として格納し、`delta` が ±0.5pt を超えたら `summary.json` に `metrics_regression=true` を記録する。  
    - LSP 側は `npm run ci --prefix tooling/lsp/tests/client_compat` を同じ入力セットで再実行し、`fixtures/` に Rust 版の結果を一時保存した上で diff。`reports/dual-write/front-end/w4-diagnostics/<run>/lsp/<case>.diff` に残す。  
    - 追加で `scripts/validate-diagnostic-json.sh <ocaml> <rust>` のログ、`diagnostic_formatter.mli` ベースの CLI テキスト比較（必要に応じて `--format text`）を取得し、`reports/diagnostic-format-regression.md` のテンプレートでサマリを作成する。
 
