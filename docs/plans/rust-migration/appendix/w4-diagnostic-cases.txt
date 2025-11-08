@@ -1,0 +1,16 @@
+# W4 dual-write input cases for diag mode
+# format: name::(inline|file)::value
+
+recover_missing_semicolon::inline::fn main() =\n  let x = 1\n  let y = 2\n  x + y
+recover_unclosed_block::inline::fn main() = {\n  let value = 42
+recover_else_without_if::inline::fn orphan() =\n  else { 1 }
+recover_missing_tuple_comma::inline::fn tuple_demo() = (1 2, 3)
+recover_lambda_body::inline::fn lambda_demo(fn op(i64) -> i64) = {\n  let apply = fn(x) => { op(x }\n  apply(1)
+
+# type/effect
+# file based sample relying on existing CLI golden
+type_condition_bool::inline::fn type_mismatch(x: i64) -> i64 =\n  if x then 1 else 0
+
+# TODO: stream_pending_resume::inline::(pending streaming fixture)
+# TODO: effect_residual_leak::inline::(pending effect fixture)
+# TODO: cli_packrat_switch::file::examples/cli/emit_suite.reml

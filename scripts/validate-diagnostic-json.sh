@@ -101,6 +101,63 @@ for path in "${FILES[@]}"; do
   fi
 done
 
+if [[ "${#DIAG_FILES[@]}" -gt 0 ]]; then
+  KEEP_TMP="$(mktemp)"
+  SKIP_TMP="$(mktemp)"
+  if ! python3 - "$KEEP_TMP" "$SKIP_TMP" "${DIAG_FILES[@]}" <<'PY'
+import json
+import pathlib
+import sys
+
+keep_path = pathlib.Path(sys.argv[1])
+skip_path = pathlib.Path(sys.argv[2])
+files = sys.argv[3:]
+
+keep: list[str] = []
+skipped: list[str] = []
+
+for raw in files:
+    path = pathlib.Path(raw)
+    try:
+        text = path.read_text(encoding="utf-8")
+    except Exception:
+        keep.append(str(path))
+        continue
+    text = text.strip()
+    if not text:
+        keep.append(str(path))
+        continue
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        keep.append(str(path))
+        continue
+    if isinstance(data, dict) and "diagnostics" in data:
+        keep.append(str(path))
+    else:
+        skipped.append(str(path))
+
+keep_path.write_text("\n".join(keep), encoding="utf-8")
+skip_path.write_text("\n".join(skipped), encoding="utf-8")
+PY
+  then
+    rm -f "$KEEP_TMP" "$SKIP_TMP"
+    exit 1
+  fi
+  DIAG_FILES=()
+  if [[ -s "$KEEP_TMP" ]]; then
+    while IFS= read -r line; do
+      [[ -n "$line" ]] && DIAG_FILES+=("$line")
+    done < "$KEEP_TMP"
+  fi
+  if [[ -s "$SKIP_TMP" ]]; then
+    while IFS= read -r line; do
+      [[ -n "$line" ]] && echo "[validate-diagnostic-json] info: skip non-diagnostic file: $line" >&2
+    done < "$SKIP_TMP"
+  fi
+  rm -f "$KEEP_TMP" "$SKIP_TMP"
+fi
+
 EXIT_CODE=0
 
 if [[ "${#DIAG_FILES[@]}" -gt 0 ]]; then

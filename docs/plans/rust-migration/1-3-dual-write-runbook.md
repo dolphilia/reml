@@ -56,6 +56,28 @@ scripts/poc_dualwrite_compare.sh \
 - 失敗ケースは `typeck/stderr.log` と `typeck/command.json` に再現手順を残す。`summary.json` の `typeck_metrics.match` が `false` の場合は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に TODO を登録する。
 - CI (`.github/workflows/bootstrap-linux.yml` の `dual-write-typeck` ジョブ) では `scripts/poc_dualwrite_compare.sh --mode typeck` 実行後に `scripts/dualwrite_summary_report.py --update-typeck-readme` を呼び出し、README のサマリ表と `typeck/impl-registry.{ocaml,rust}.json` を含む成果物をアーティファクト化する。
 
+### 手順 2c: 診断互換（diag モード）
+```bash
+scripts/poc_dualwrite_compare.sh \
+  --mode diag \
+  --run-id 20271107-w4-diagnostics \
+  --cases docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt
+
+scripts/dualwrite_summary_report.py \
+  reports/dual-write/front-end/w4-diagnostics/20271107-w4-diagnostics \
+  --diag-table tmp/w4-diagnostics-table.md \
+  --update-diag-readme reports/dual-write/front-end/w4-diagnostics/README.md
+```
+
+- `appendix/w4-diagnostic-cases.txt` に登録されたケースを順番に実行し、`reports/dual-write/front-end/w4-diagnostics/<run>/<case>/` に以下を保存する:
+  - `diagnostics.{ocaml,rust}.json`, `diagnostics.diff.json`, `schema-validate.log`
+  - `metrics/parser.{ocaml,rust}.json`, `metrics/effects.{ocaml,rust}.json`, `metrics/streaming.{ocaml,rust}.json`
+  - `summary.json`（case ごとのゲート判定・Diag/metrics 状態を記録）
+- `scripts/dualwrite_summary_report.py --diag-table` で Markdown テーブルを生成し、`reports/dual-write/front-end/w4-diagnostics/README.md` の `<!-- DIAG_TABLE_START/END -->` ブロックへ自動埋め込みする。CI で運用する場合は `README.md` を常にソースオブトゥルースとして扱い、Run ID ごとに表を更新する。
+- ケース行に `gating=false` が記録された場合は `summary.json` / `.err.log` を参照し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の該当 TODO へリンクを貼って再実行手順を残す。
+- LSP 連携や CLI RunConfig ケースは `appendix/w4-diagnostic-case-matrix.md` 側で管理し、Ready になり次第 `cases.txt` と README のサマリ表を更新する。
+- diag モードでは OCaml CLI に `--left-recursion off` を自動付与しつつ `--packrat` を有効化し、PARSER-003 未実装警告を抑止した状態で Packrat メトリクスを取得する（Rust CLI は未対応なので空配列）。Streaming メトリクスを持たないケースでも `collect-iterator-audit-metrics.py --section streaming` を実行し、`parser.stream_extension_field_coverage < 1.0` が出た場合は `DIAG-RUST-05` へ転記して原因をトリアージする。
+
 ### 手順 3: メトリクス比較
 ```bash
 python3 tooling/ci/collect-iterator-audit-metrics.py \

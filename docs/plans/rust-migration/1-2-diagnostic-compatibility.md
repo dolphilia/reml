@@ -80,6 +80,11 @@ Rust フロントエンド移植において、OCaml 実装と同一の診断 (`
 ## 1.2.12 W4 診断互換試験向けベースライン更新
 - *2027-11-07 進捗*: W4 Step1（ゲート設定）として OCaml 側資産を再検証し、`reports/dual-write/front-end/w4-diagnostics/baseline/` に成果物を集約した。  
   - `npm ci && npm run ci --prefix tooling/lsp/tests/client_compat` を実行し、LSP V2 フィクスチャ 9 件の pass を確認。  
-  - `scripts/validate-diagnostic-json.sh $(cat tmp/w4-parser-diag-paths.txt)` で Schema v2.0.0-draft を 10 ケース通過させ、リスト外だった `compiler/ocaml/tests/golden/diagnostics/effects/syntax-constructs.json.golden` は診断 JSON ではないため `TODO: DIAG-RUST-03` として別扱いにした。  
-  - `collect-iterator-audit-metrics.py --section parser|effects|streaming` の結果を `parser-metrics.ocaml.json` / `effects-metrics.ocaml.json` / `streaming-metrics.ocaml.json` に保存し、`domain/multi-domain.json.golden` の audit メタデータ不足で `diagnostic.audit_presence_rate` が 0.7 から上がらないことを確認。是正タスクは `TODO: DIAG-RUST-04`（`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`）で追跡する。  
+  - `scripts/validate-diagnostic-json.sh $(cat tmp/w4-parser-diag-paths.txt)` で Schema v2.0.0-draft を 10 ケース通過させ、リスト外だった `compiler/ocaml/tests/golden/diagnostics/effects/syntax-constructs.json.golden` は validator 側のフィルタ（2027-11-07 `DIAG-RUST-03` 完了）で除外。  
+  - `collect-iterator-audit-metrics.py --section parser|effects|streaming` の結果を `parser-metrics.ocaml.json` / `effects-metrics.ocaml.json` / `streaming-metrics.ocaml.json` に保存し、`domain/multi-domain.json.golden` の audit メタデータを補完して `diagnostic.audit_presence_rate=1.0`（`DIAG-RUST-04` 完了）。  
 - Rust 側 dual-write を始める前に上記 TODO を解消し、OCaml 基準の完全通過を達成することが W4 Step2 以降の着手条件となる。
+- `appendix/w4-diagnostic-case-matrix.md` でカテゴリ別ケースを公開し、`w4-diagnostic-cases.txt` から `scripts/poc_dualwrite_compare.sh --mode diag --cases ...` を実行できるようにした。`scripts/dualwrite_summary_report.py --diag-table reports/dual-write/front-end/w4-diagnostics/README.md --update-diag-readme ...` を併用し、`reports/dual-write/front-end/w4-diagnostics/README.md` の `<!-- DIAG_TABLE_* -->` ブロックにサマリ表を自動埋め込みする。
+- *2027-11-09 進捗*: `reports/dual-write/front-end/w4-diagnostics/20271107-w4-new` で diag モードの初回ランを実施し、recover 5 件 + type/effect 1 件を OCaml/Rust で収集。結果は `tmp/w4new-table.md` および README の diag テーブルに反映済み。課題として以下を確認した。
+  - Rust recover ケースで `diagnostics` が 0（`recover_else_without_if`）/2（`recover_lambda_body`）になり、`gating=false`。`DOC: DIAG-RUST-05` で Rust parser recover 実装の差分を追跡。  
+  - すべてのケースで `collect-iterator-audit-metrics.py --section streaming` が `parser.stream_extension_field_coverage < 1.0` を返し、メトリクスゲートがブロック。Streaming ケースを追加し、非ストリーミング入力では `--section streaming` をスキップする条件を `DIAG-RUST-05` で検討する。  
+  - `type_condition_bool` は inline 化したものの、OCaml 側 JSON が未生成で schema 検証が実行されず（Rust 側のみ 1 件）。Type/Efffect ケースの再現と CLI フラグの見直しは `DIAG-RUST-06` でフォローする。

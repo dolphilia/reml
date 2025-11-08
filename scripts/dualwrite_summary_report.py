@@ -22,6 +22,7 @@ def load_summary_files(run_dir: pathlib.Path) -> List[Dict[str, Any]]:
 
 
 def evaluate_case(entry: Dict[str, Any]) -> Dict[str, Any]:
+    mode = entry.get("mode")
     ocaml_queries = entry.get("ocaml_packrat_queries", 0)
     ocaml_hits = entry.get("ocaml_packrat_hits", 0)
     rust_queries = entry.get("rust_packrat_queries", 0)
@@ -29,6 +30,9 @@ def evaluate_case(entry: Dict[str, Any]) -> Dict[str, Any]:
     packrat_ok = (ocaml_queries == rust_queries) and (ocaml_hits == rust_hits)
     diag_ok = bool(entry.get("diag_match"))
     ast_ok = bool(entry.get("ast_match"))
+    if mode == "diag":
+        ast_ok = diag_ok
+        packrat_ok = bool(entry.get("metrics_ok"))
     result = {
         "case": entry.get("case", "<unknown>"),
         "source": entry.get("source", ""),
@@ -138,6 +142,106 @@ def update_typeck_readme(readme_path: pathlib.Path, table_markdown: str) -> None
     readme_path.write_text(new_content, encoding="utf-8")
 
 
+def update_diag_readme(readme_path: pathlib.Path, table_markdown: str) -> None:
+    start_marker = "<!-- DIAG_TABLE_START -->"
+    end_marker = "<!-- DIAG_TABLE_END -->"
+    content = readme_path.read_text(encoding="utf-8")
+    if start_marker not in content or end_marker not in content:
+        raise ValueError(
+            f"{readme_path} に diag テーブル用マーカーが見つかりません。"
+        )
+    start_idx = content.index(start_marker) + len(start_marker)
+    end_idx = content.index(end_marker)
+    new_content = (
+        content[:start_idx].rstrip()
+        + "\n\n"
+        + table_markdown.rstrip()
+        + "\n\n"
+        + content[end_idx:]
+    )
+    readme_path.write_text(new_content, encoding="utf-8")
+
+
+def _pair_text(values: Any) -> str:
+    if not isinstance(values, (list, tuple)) or len(values) != 2:
+        return "-"
+    left, right = values
+
+    def _fmt(value: Any) -> str:
+        if value is None:
+            return "-"
+        if isinstance(value, float):
+            return f"{value:.3f}"
+        return str(value)
+
+    return f"{_fmt(left)} / {_fmt(right)}"
+
+
+def build_diag_rows(summaries: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for entry in summaries:
+        if entry.get("mode") != "diag":
+            continue
+        diag = entry.get("diag") or {}
+        parser = diag.get("parser") or {}
+        effects = diag.get("effects") or {}
+        streaming = diag.get("streaming") or {}
+        rows.append(
+            {
+                "case": entry.get("case", "<unknown>"),
+                "gating": bool(entry.get("gating")),
+                "schema": bool(entry.get("schema_ok")),
+                "metrics": bool(entry.get("metrics_ok")),
+                "diag_match": bool(entry.get("diag_match")),
+                "parser_audit": (
+                    (parser.get("ocaml") or {}).get("audit_pass_fraction"),
+                    (parser.get("rust") or {}).get("audit_pass_fraction"),
+                ),
+                "parser_expected": (
+                    (parser.get("ocaml") or {}).get("expected_pass_fraction"),
+                    (parser.get("rust") or {}).get("expected_pass_fraction"),
+                ),
+                "stream_outcome": (
+                    (streaming.get("ocaml") or {}).get("outcome_pass_rate"),
+                    (streaming.get("rust") or {}).get("outcome_pass_rate"),
+                ),
+                "effects_regressions": (
+                    (effects.get("ocaml") or {}).get("regressions"),
+                    (effects.get("rust") or {}).get("regressions"),
+                ),
+                "diag_counts": (
+                    entry.get("ocaml_diag_count"),
+                    entry.get("rust_diag_count"),
+                ),
+            }
+        )
+    rows.sort(key=lambda row: row["case"])
+    return rows
+
+
+def format_diag_table(rows: Sequence[Dict[str, Any]]) -> str:
+    lines = [
+        "| case | gating | schema | metrics | diag_match | parser_audit (ocaml/rust) | parser_expected (ocaml/rust) | stream_outcome (ocaml/rust) | effects_regressions (ocaml/rust) | diag_counts (ocaml/rust) |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for row in rows:
+        lines.append(
+            "| {case} | {gating} | {schema} | {metrics} | {diag_match} | {parser_audit} | {parser_expected} | {stream_outcome} | {effects_regressions} | {diag_counts} |".format(
+                case=row["case"],
+                gating="✅" if row["gating"] else "❌",
+                schema="✅" if row["schema"] else "❌",
+                metrics="✅" if row["metrics"] else "❌",
+                diag_match="✅" if row["diag_match"] else "❌",
+                parser_audit=_pair_text(row["parser_audit"]),
+                parser_expected=_pair_text(row["parser_expected"]),
+                stream_outcome=_pair_text(row["stream_outcome"]),
+                effects_regressions=_pair_text(row["effects_regressions"]),
+                diag_counts=_pair_text(row["diag_counts"]),
+            )
+        )
+    return "\n".join(lines) + "\n"
+
+
 def format_markdown(report: Dict[str, Any]) -> str:
     totals = report["totals"]
     lines = [
@@ -207,6 +311,16 @@ def main() -> None:
         help="Typeck サマリ表を埋め込む README パス",
         default="",
     )
+    parser.add_argument(
+        "--diag-table",
+        help="診断互換サマリ表を Markdown で出力するパス",
+        default="",
+    )
+    parser.add_argument(
+        "--update-diag-readme",
+        help="診断サマリ表を埋め込む README パス",
+        default="",
+    )
     args = parser.parse_args()
 
     run_dir = pathlib.Path(args.run_dir).resolve()
@@ -243,7 +357,28 @@ def main() -> None:
                 table_md,
             )
 
-    if not args.out_json and not args.out_md and not needs_typeck_table:
+    needs_diag_table = bool(args.diag_table or args.update_diag_readme)
+    if needs_diag_table:
+        diag_rows = build_diag_rows(summaries)
+        if not diag_rows:
+            parser.error(
+                "diag サマリを生成できませんでした（mode=diag の summary が存在しません）。"
+            )
+        diag_md = format_diag_table(diag_rows)
+        if args.diag_table:
+            pathlib.Path(args.diag_table).write_text(diag_md, encoding="utf-8")
+        if args.update_diag_readme:
+            update_diag_readme(
+                pathlib.Path(args.update_diag_readme).resolve(),
+                diag_md,
+            )
+
+    if (
+        not args.out_json
+        and not args.out_md
+        and not needs_typeck_table
+        and not needs_diag_table
+    ):
         print(json.dumps(report, ensure_ascii=False, indent=2))
 
 

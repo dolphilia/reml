@@ -16,13 +16,13 @@ MODE="ast"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/poc_dualwrite_compare.sh [--run-id <id>] [--cases <path>] [--mode <ast|typeck>]
+Usage: scripts/poc_dualwrite_compare.sh [--run-id <id>] [--cases <path>] [--mode <ast|typeck|diag>]
 
 Options:
   --run-id <id>     出力ディレクトリ名を上書き（既定: 2025-11-28-logos-chumsky）
   --cases <path>    ケース定義ファイル（format: name::inline::<src> | name::file::<path>）
-  --mode <ast|typeck>
-                     実行モード（typeck は型推論成果物を収集）
+  --mode <ast|typeck|diag>
+                     実行モード（typeck は型推論成果物、diag は W4 診断互換向け成果物を収集）
   --help            このヘルプを表示
 
 環境変数:
@@ -59,6 +59,8 @@ done
 
 if [[ "${MODE}" == "typeck" ]]; then
   REPORT_DIR="${REPO_ROOT}/reports/dual-write/front-end/w3-type-inference"
+elif [[ "${MODE}" == "diag" ]]; then
+  REPORT_DIR="${REPO_ROOT}/reports/dual-write/front-end/w4-diagnostics"
 elif [[ "${MODE}" != "ast" ]]; then
   echo "Unsupported mode: ${MODE}" >&2
   exit 1
@@ -106,6 +108,95 @@ printf "==> 出力ディレクトリ: %s\n" "${RUN_DIR}"
 sanitize_name() {
   local value="$1"
   printf "%s" "${value}" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9._-' '_'
+}
+
+run_in_dir() {
+  local dir="$1"
+  shift
+  (cd "${dir}" && "$@")
+}
+
+declare -a diag_ocaml_flags=()
+declare -a diag_rust_flags=()
+if [[ "${MODE}" == "diag" ]]; then
+  diag_ocaml_flags+=(--left-recursion off)
+fi
+
+collect_all_metrics() {
+  local diag_path="$1"
+  local frontend="$2"
+  local output_dir="$3"
+  local status=0
+  local section
+
+  if [[ ! -s "$diag_path" ]]; then
+    printf "!! %s diagnostics missing, skip metrics (%s)\n" "$frontend" "$diag_path" >&2
+    return 1
+  fi
+
+  mkdir -p "$output_dir"
+  for section in parser effects streaming; do
+    local out_path="${output_dir}/${section}.${frontend}.json"
+    local err_path="${out_path%.json}.err.log"
+    if python3 "${COLLECT_METRICS_SCRIPT}" \
+      --section "${section}" \
+      --source "${diag_path}" \
+      --require-success \
+      > "${out_path}" 2> "${err_path}"
+    then
+      rm -f "${err_path}"
+    else
+      printf "!! metrics (%s:%s) failed, see %s\n" "$frontend" "$section" "$err_path" >&2
+      status=1
+    fi
+  done
+  return $status
+}
+
+create_diag_diff() {
+  local ocaml_path="$1"
+  local rust_path="$2"
+  local output_path="$3"
+  if [[ ! -s "$ocaml_path" || ! -s "$rust_path" ]]; then
+    return
+  fi
+  python3 - "$ocaml_path" "$rust_path" "$output_path" <<'PY' || true
+import json
+import pathlib
+import sys
+from difflib import unified_diff
+
+ocaml_path = pathlib.Path(sys.argv[1])
+rust_path = pathlib.Path(sys.argv[2])
+out_path = pathlib.Path(sys.argv[3])
+
+def load_sorted(path: pathlib.Path) -> str:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:  # pragma: no cover
+        return f"<<failed to load {path}: {exc}>>"
+    return json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True)
+
+ocaml_text = load_sorted(ocaml_path)
+rust_text = load_sorted(rust_path)
+diff_lines = list(
+    unified_diff(
+        ocaml_text.splitlines(),
+        rust_text.splitlines(),
+        fromfile="ocaml",
+        tofile="rust",
+        lineterm="",
+    )
+)
+
+payload = {
+    "ocaml_sorted": ocaml_text,
+    "rust_sorted": rust_text,
+    "diff": diff_lines,
+    "delta": len(diff_lines),
+}
+out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+PY
 }
 
 collect_effects_metrics() {
@@ -223,6 +314,191 @@ for entry in "${CASE_ENTRIES[@]}"; do
   esac
 
   printf ">> ケース %s (safe=%s)\n" "${case_name}" "${safe_name}"
+
+  if [[ "${MODE}" == "diag" ]]; then
+    diag_metrics_dir="${case_dir}/metrics"
+    mkdir -p "${diag_metrics_dir}"
+    ocaml_parse_debug_path="${case_dir}/ocaml.parse-debug.json"
+    rust_parse_debug_path="${case_dir}/rust.parse-debug.json"
+    ocaml_diag_path="${case_dir}/diagnostics.ocaml.json"
+    rust_diag_path="${case_dir}/diagnostics.rust.json"
+    schema_log="${case_dir}/schema-validate.log"
+    diag_diff_path="${case_dir}/diagnostics.diff.json"
+    case_gating="true"
+    schema_ok="true"
+    metrics_ok="true"
+
+    ocaml_diag_cmd=(
+      dune exec remlc --
+      --packrat
+      --format json
+      --json-mode compact
+      --emit-parse-debug "${ocaml_parse_debug_path}"
+    )
+    if [[ ${#diag_ocaml_flags[@]} -gt 0 ]]; then
+      ocaml_diag_cmd+=("${diag_ocaml_flags[@]}")
+    fi
+    ocaml_diag_cmd+=("${input_path}")
+    run_in_dir "${OCAML_DIR}" "${ocaml_diag_cmd[@]}" > "${ocaml_diag_path}" 2>&1 || true
+
+    rust_diag_cmd=(
+      cargo run --quiet --bin poc_frontend --
+      --emit-parse-debug "${rust_parse_debug_path}"
+      --dualwrite-root "${REPORT_DIR}"
+      --dualwrite-run-label "${RUN_ID}"
+      --dualwrite-case-label "${safe_name}"
+    )
+    if [[ ${#diag_rust_flags[@]} -gt 0 ]]; then
+      rust_diag_cmd+=("${diag_rust_flags[@]}")
+    fi
+    rust_diag_cmd+=("${input_path}")
+    run_in_dir "${RUST_DIR}" "${rust_diag_cmd[@]}" > "${rust_diag_path}" || true
+
+    if ! bash "${VALIDATE_DIAG_SCRIPT}" "${ocaml_diag_path}" "${rust_diag_path}" > "${schema_log}" 2>&1; then
+      schema_ok="false"
+      case_gating="false"
+    fi
+
+    if ! collect_all_metrics "${ocaml_diag_path}" "ocaml" "${diag_metrics_dir}"; then
+      metrics_ok="false"
+      case_gating="false"
+    fi
+    if ! collect_all_metrics "${rust_diag_path}" "rust" "${diag_metrics_dir}"; then
+      metrics_ok="false"
+      case_gating="false"
+    fi
+
+    create_diag_diff "${ocaml_diag_path}" "${rust_diag_path}" "${diag_diff_path}"
+
+python3 - "${case_dir}" "${case_name}" "${safe_name}" "${RUN_ID}" "${REPORT_DIR}" "${MODE}" "${case_gating}" "${schema_ok}" "${metrics_ok}" <<'PY'
+import json
+import pathlib
+import sys
+
+case_dir = pathlib.Path(sys.argv[1])
+case_name = sys.argv[2]
+safe_name = sys.argv[3]
+run_id = sys.argv[4]
+report_root = pathlib.Path(sys.argv[5])
+mode = sys.argv[6]
+gating_flag = sys.argv[7].lower() == "true"
+schema_ok = sys.argv[8].lower() == "true"
+metrics_ok = sys.argv[9].lower() == "true"
+
+def read_text(path: pathlib.Path) -> str:
+    if not path.exists():
+        return ""
+    try:
+        return path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return path.read_bytes().decode("utf-8", errors="replace")
+
+def load_json(path: pathlib.Path):
+    if not path.exists():
+        return None
+    text = read_text(path).strip()
+    if not text:
+        return None
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return None
+
+def summarize_parser_metrics(data):
+    if not isinstance(data, dict):
+        return None
+    metrics = data.get("metrics")
+    if not isinstance(metrics, list):
+        return None
+    summary = {}
+    for item in metrics:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("metric")
+        if name == "diagnostic.audit_presence_rate":
+            summary["audit_pass_fraction"] = item.get("pass_fraction")
+            summary["audit_pass_rate"] = item.get("pass_rate")
+        if name == "parser.expected_summary_presence":
+            summary["expected_pass_fraction"] = item.get("pass_fraction")
+    return summary or None
+
+def summarize_streaming_metrics(data):
+    if not isinstance(data, dict):
+        return None
+    metrics = data.get("metrics")
+    if not isinstance(metrics, list):
+        return None
+    summary = {}
+    for item in metrics:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("metric")
+        if name == "diagnostic.audit_presence_rate":
+            summary["audit_pass_fraction"] = item.get("pass_fraction")
+        if name == "parser.stream.outcome_consistency":
+            summary["outcome_pass_rate"] = item.get("pass_rate")
+    return summary or None
+
+def summarize_effects_metrics(data):
+    if not isinstance(data, dict):
+        return None
+    metrics = data.get("metrics")
+    if not isinstance(metrics, list):
+        return None
+    summary = {}
+    for item in metrics:
+        if not isinstance(item, dict):
+            continue
+        if item.get("metric") == "effect_row_guard_regressions":
+            summary["regressions"] = item.get("count")
+    return summary or None
+
+ocaml_diag = load_json(case_dir / "diagnostics.ocaml.json") or {}
+rust_diag = load_json(case_dir / "diagnostics.rust.json") or {}
+ocaml_diagnostics = ocaml_diag.get("diagnostics") or []
+rust_diagnostics = rust_diag.get("diagnostics") or []
+
+metrics_dir = case_dir / "metrics"
+parser_metrics_ocaml = load_json(metrics_dir / "parser.ocaml.json")
+parser_metrics_rust = load_json(metrics_dir / "parser.rust.json")
+effects_metrics_ocaml = load_json(metrics_dir / "effects.ocaml.json")
+effects_metrics_rust = load_json(metrics_dir / "effects.rust.json")
+streaming_metrics_ocaml = load_json(metrics_dir / "streaming.ocaml.json")
+streaming_metrics_rust = load_json(metrics_dir / "streaming.rust.json")
+
+summary = {
+    "case": case_name,
+    "mode": mode,
+    "source": read_text(case_dir / "source.txt").strip() or "inline",
+    "ocaml_diag_count": len(ocaml_diagnostics),
+    "rust_diag_count": len(rust_diagnostics),
+    "diag_match": len(ocaml_diagnostics) == len(rust_diagnostics),
+    "gating": gating_flag,
+    "schema_ok": schema_ok,
+    "metrics_ok": metrics_ok,
+    "diag": {
+        "parser": {
+            "ocaml": summarize_parser_metrics(parser_metrics_ocaml),
+            "rust": summarize_parser_metrics(parser_metrics_rust),
+        },
+        "effects": {
+            "ocaml": summarize_effects_metrics(effects_metrics_ocaml),
+            "rust": summarize_effects_metrics(effects_metrics_rust),
+        },
+        "streaming": {
+            "ocaml": summarize_streaming_metrics(streaming_metrics_ocaml),
+            "rust": summarize_streaming_metrics(streaming_metrics_rust),
+        },
+    },
+}
+
+(case_dir / "summary.json").write_text(
+    json.dumps(summary, ensure_ascii=False, indent=2),
+    encoding="utf-8",
+)
+PY
+    continue
+  fi
 
   (
     cd "${OCAML_DIR}"
@@ -515,24 +791,45 @@ summaries = []
 for path in sorted(run_dir.glob("*/summary.json")):
     summaries.append(json.loads(path.read_text(encoding="utf-8")))
 
-lines = [
-    "| case | source | ast_match | diag_match | typeck_match | ocaml_diag | rust_diag | ocaml_packrat (q/h) | rust_packrat (q/h) |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
-]
-for summary in summaries:
-    typeck_match = (
-        summary.get("typeck_metrics", {}).get("match")
-        if isinstance(summary.get("typeck_metrics"), dict)
-        else None
-    )
-    lines.append(
-        f"| {summary['case']} | {summary['source']} | {summary['ast_match']} | "
-        f"{summary['diag_match']} | {typeck_match} | {summary['ocaml_diag_count']} | {summary['rust_diag_count']} | "
-        f"{summary['ocaml_packrat_queries']}/{summary['ocaml_packrat_hits']} | "
-        f"{summary['rust_packrat_queries']}/{summary['rust_packrat_hits']} |"
-    )
+if mode == "diag":
+    lines = [
+        "| case | source | gating | schema | metrics | diag_match | ocaml_diag | rust_diag |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for summary in summaries:
+        lines.append(
+            "| {case} | {source} | {gating} | {schema} | {metrics} | {diag_match} | {ocaml} | {rust} |".format(
+                case=summary.get("case"),
+                source=summary.get("source"),
+                gating="✅" if summary.get("gating") else "❌",
+                schema="✅" if summary.get("schema_ok") else "❌",
+                metrics="✅" if summary.get("metrics_ok") else "❌",
+                diag_match="✅" if summary.get("diag_match") else "❌",
+                ocaml=summary.get("ocaml_diag_count"),
+                rust=summary.get("rust_diag_count"),
+            )
+        )
+    content = "\n".join(lines) + "\n"
+else:
+    lines = [
+        "| case | source | ast_match | diag_match | typeck_match | ocaml_diag | rust_diag | ocaml_packrat (q/h) | rust_packrat (q/h) |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for summary in summaries:
+        typeck_match = (
+            summary.get("typeck_metrics", {}).get("match")
+            if isinstance(summary.get("typeck_metrics"), dict)
+            else None
+        )
+        lines.append(
+            f"| {summary['case']} | {summary['source']} | {summary.get('ast_match')} | "
+            f"{summary.get('diag_match')} | {typeck_match} | {summary.get('ocaml_diag_count')} | {summary.get('rust_diag_count')} | "
+            f"{summary.get('ocaml_packrat_queries')}/{summary.get('ocaml_packrat_hits')} | "
+            f"{summary.get('rust_packrat_queries')}/{summary.get('rust_packrat_hits')} |"
+        )
+    content = "\n".join(lines) + "\n"
 
-(run_dir / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+(run_dir / "summary.md").write_text(content, encoding="utf-8")
 PY
 
 printf "==> サマリ: %s\n" "${RUN_DIR}/summary.md"

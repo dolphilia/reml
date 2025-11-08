@@ -1,0 +1,156 @@
+{
+  "metrics": [
+    {
+      "metric": "diagnostic.audit_presence_rate",
+      "total": 2,
+      "passed": 0,
+      "failed": 2,
+      "pass_rate": 0.0,
+      "pass_fraction": 0.0,
+      "required_audit_keys": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271107-w4-new/recover_lambda_body/diagnostics.rust.json"
+      ],
+      "failures": [
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271107-w4-new/recover_lambda_body/diagnostics.rust.json",
+          "index": 0,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271107-w4-new/recover_lambda_body/diagnostics.rust.json",
+          "index": 1,
+          "missing": [
+            "audit",
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "unknown"
+        }
+      ]
+    }
+  ],
+  "metric": "diagnostic.audit_presence_rate",
+  "total": 2,
+  "passed": 0,
+  "failed": 2,
+  "pass_rate": 0.0,
+  "pass_fraction": 0.0,
+  "required_audit_keys": [
+    "cli.audit_id",
+    "cli.change_set",
+    "schema.version",
+    "timestamp"
+  ],
+  "sources": [
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271107-w4-new/recover_lambda_body/diagnostics.rust.json"
+  ],
+  "failures": [
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271107-w4-new/recover_lambda_body/diagnostics.rust.json",
+      "index": 0,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    },
+    {
+      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271107-w4-new/recover_lambda_body/diagnostics.rust.json",
+      "index": 1,
+      "missing": [
+        "audit",
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "unknown"
+    }
+  ],
+  "diagnostic_audit": {
+    "metric": "diagnostic.audit_presence_rate",
+    "total": 2,
+    "passed": 0,
+    "failed": 2,
+    "pass_rate": 0.0,
+    "pass_fraction": 0.0,
+    "required_audit_keys": [
+      "cli.audit_id",
+      "cli.change_set",
+      "schema.version",
+      "timestamp"
+    ],
+    "sources": [
+      "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271107-w4-new/recover_lambda_body/diagnostics.rust.json"
+    ],
+    "failures": [
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271107-w4-new/recover_lambda_body/diagnostics.rust.json",
+        "index": 0,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271107-w4-new/recover_lambda_body/diagnostics.rust.json",
+        "index": 1,
+        "missing": [
+          "audit",
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "unknown"
+      }
+    ]
+  },
+  "schema_versions": [],
+  "diagnostics": {
+    "total": 2,
+    "error": 0,
+    "warning": 0,
+    "info": 0,
+    "hint": 0,
+    "other": 2,
+    "sources": [
+      "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271107-w4-new/recover_lambda_body/diagnostics.rust.json"
+    ],
+    "info_fraction": 0.0,
+    "hint_fraction": 0.0,
+    "info_hint_ratio": 0.0,
+    "parser_total": 0,
+    "parser_expected": 0,
+    "parser_expected_ratio": 0.0,
+    "parser_expected_tokens_avg": 0.0
+  },
+  "enforcement": {
+    "failures": [
+      "diagnostic.audit_presence_rate < 1.0"
+    ],
+    "require_success": true
+  }
+}

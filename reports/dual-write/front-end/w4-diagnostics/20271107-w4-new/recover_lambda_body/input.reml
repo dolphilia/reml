@@ -1,0 +1,3 @@
+fn lambda_demo(fn op(i64) -> i64) = {
+  let apply = fn(x) => { op(x }
+  apply(1)

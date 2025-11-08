@@ -170,16 +170,19 @@
    - `1-2-diagnostic-compatibility.md`・`reports/diagnostic-format-regression.md`・`p1-front-end-checklists.csv`（診断カテゴリ）を読み返し、W4 の完了条件（JSON/LSP/監査メトリクスの完全一致）を改めて明文化する。  
    - OCaml 側ゴールデン（`compiler/ocaml/tests/golden/diagnostics/`、`tooling/lsp/tests/client_compat/fixtures/`）に対して `scripts/validate-diagnostic-json.sh`・`npm run ci --prefix tooling/lsp/tests/client_compat` を実行し、基準が劣化していないことを先に確認する。  
    - `tooling/ci/collect-iterator-audit-metrics.py` の `parser`/`effects`/`streaming` 各セクションを OCaml 出力で走らせ、`collect-iterator-audit-metrics.log` を `reports/dual-write/front-end/w4-diagnostics/baseline/` に保存してから Rust 側比較を開始する。  
-   - 上記ゲートを通過しない場合は診断互換試験を進めず、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` 側で是正タスクとして扱う（W4 期間中のゴールデン更新を禁止）。
+   - 上記ゲートを通過しない場合は診断互換試験を進めず、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` 側で是正タスクとして扱う（W4 期間中のゴールデン更新を禁止）。  
    - ✅ 2027-11-07: `npm ci && npm run ci --prefix tooling/lsp/tests/client_compat` を再実行し、LSP V2 フィクスチャ 9 件の pass を確認。ログは `reports/dual-write/front-end/w4-diagnostics/baseline/README.md` に集約。  
    - ✅ 2027-11-07: `scripts/validate-diagnostic-json.sh` を OCaml ゴールデン 10 件（`tmp/w4-parser-diag-paths.txt`）へ適用し、Schema v2.0.0-draft を pass。診断形式ではない `effects/syntax-constructs.json.golden` は `TODO: DIAG-RUST-03` として 2-7 文書へ移送。  
    - ✅ 2027-11-07: `collect-iterator-audit-metrics.py --section parser|effects|streaming` を実行し、基準メトリクスを `reports/dual-write/front-end/w4-diagnostics/baseline/{parser,effects,streaming}-metrics.ocaml.json` に保存。`diagnostic.audit_presence_rate` が 0.7（`domain/multi-domain.json.golden` の audit 欠落）で頭打ちのため `TODO: DIAG-RUST-04` を登録し、Rust 側の dual-write を始める前に是正する。  
+   - ✅ 2027-11-09: `scripts/validate-diagnostic-json.sh` を更新して非診断系 JSON を自動除外し、`compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden` へ `cli.change_set` / `schema.version` を付与（`DIAG-RUST-03/04` クローズ）。  
+   - 🆕 2027-11-09: `scripts/poc_dualwrite_compare.sh --mode diag`（`--left-recursion off` を自動付与）と `scripts/dualwrite_summary_report.py --diag-table` を整備し、`docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md` / `appendix/w4-diagnostic-cases.txt` にカテゴリ別ケースを登録済み。初回ラン `reports/dual-write/front-end/w4-diagnostics/20271107-w4-new/` では recover 5 件＋ type/effect 1 件を収集し、Rust 側は recover 2 件で診断欠落・全ケースで streaming メトリクスが不足（`DIAG-RUST-05/06`）。サマリ表は `reports/dual-write/front-end/w4-diagnostics/README.md` に自動埋め込み。
 
 2. **ケースマトリクスと入力セット整備**  
    - `compiler/ocaml/tests/test_cli_diagnostics.ml`, `parser_recover_tests.ml`, `streaming_runner_tests.ml`, `test_cli_callconv_snapshot.ml`, `test_ffi_contract.ml`、および `docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-002-proposal.md` を横断し、診断カテゴリ（parser recover / streaming meta / type&effect / capability stage / CLI config / LSP RPC）の代表ケースを抽出する。  
    - 各カテゴリごとに最低 3 ケース（recover 系だけは 5 ケース）の入力を `docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md`（新設）へ表形式で記載し、case id / 参照テスト / 期待する拡張キー / 必須メトリクス列を定義する。  
    - ケース定義ファイル（`docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt` を想定）を作成し、`scripts/poc_dualwrite_compare.sh --cases ... --mode diag` で呼び出せるフォーマット `name::file::<path>` or `name::inline::<src>` に落とし込む。  
    - LSP 連携向けには `tooling/lsp/tests/client_compat/fixtures/` に相当するケースを `cases.txt` と同期させ、CLI 実行と LSP フィクスチャが同じ構文/型パスを辿るようタグ付けする。
+   - 🆕 2027-11-07: `appendix/w4-diagnostic-case-matrix.md` と `w4-diagnostic-cases.txt` を追加し、parser recover 5 件と type mismatch ケースを Ready として登録。Streaming / Capability / CLI / LSP の各カテゴリは `TODO: DIAG-RUST-05〜07` で追跡し、`cases.txt` ではコメント化したテンプレートを先行配置した。
 
 3. **ハーネス/スクリプト拡張とラン構成**  
    - `scripts/poc_dualwrite_compare.sh` に `--mode diag` を追加し、出力先を `reports/dual-write/front-end/w4-diagnostics/<run>/<case>/` に固定。`diagnostics.ocaml.json` / `diagnostics.rust.json` / `diagnostics.diff.json` / `parser-metrics.*.json` / `effects-metrics.*.json` / `streaming-metrics.*.json` / `schema-validate.log` をまとめて生成する。  

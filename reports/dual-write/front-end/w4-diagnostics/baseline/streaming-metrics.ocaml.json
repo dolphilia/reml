@@ -3,10 +3,10 @@
     {
       "metric": "diagnostic.audit_presence_rate",
       "total": 10,
-      "passed": 7,
-      "failed": 3,
-      "pass_rate": 0.0,
-      "pass_fraction": 0.7,
+      "passed": 10,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
       "required_audit_keys": [
         "cli.audit_id",
         "cli.change_set",
@@ -24,35 +24,7 @@
         "compiler/ocaml/tests/golden/diagnostics/parser/parser-runconfig-packrat.json.golden",
         "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
       ],
-      "failures": [
-        {
-          "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
-          "index": 0,
-          "missing": [
-            "cli.change_set",
-            "schema.version"
-          ],
-          "code": "plugin.bundle.signature_invalid"
-        },
-        {
-          "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
-          "index": 1,
-          "missing": [
-            "cli.change_set",
-            "schema.version"
-          ],
-          "code": "lsp.transport.internal_error"
-        },
-        {
-          "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
-          "index": 2,
-          "missing": [
-            "cli.change_set",
-            "schema.version"
-          ],
-          "code": "demo.custom.category"
-        }
-      ]
+      "failures": []
     },
     {
       "metric": "parser.stream.outcome_consistency",
@@ -236,10 +208,10 @@
   ],
   "metric": "diagnostic.audit_presence_rate",
   "total": 10,
-  "passed": 7,
-  "failed": 3,
-  "pass_rate": 0.0,
-  "pass_fraction": 0.7,
+  "passed": 10,
+  "failed": 0,
+  "pass_rate": 1.0,
+  "pass_fraction": 1.0,
   "required_audit_keys": [
     "cli.audit_id",
     "cli.change_set",
@@ -257,42 +229,14 @@
     "compiler/ocaml/tests/golden/diagnostics/parser/parser-runconfig-packrat.json.golden",
     "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
   ],
-  "failures": [
-    {
-      "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
-      "index": 0,
-      "missing": [
-        "cli.change_set",
-        "schema.version"
-      ],
-      "code": "plugin.bundle.signature_invalid"
-    },
-    {
-      "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
-      "index": 1,
-      "missing": [
-        "cli.change_set",
-        "schema.version"
-      ],
-      "code": "lsp.transport.internal_error"
-    },
-    {
-      "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
-      "index": 2,
-      "missing": [
-        "cli.change_set",
-        "schema.version"
-      ],
-      "code": "demo.custom.category"
-    }
-  ],
+  "failures": [],
   "diagnostic_audit": {
     "metric": "diagnostic.audit_presence_rate",
     "total": 10,
-    "passed": 7,
-    "failed": 3,
-    "pass_rate": 0.0,
-    "pass_fraction": 0.7,
+    "passed": 10,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
     "required_audit_keys": [
       "cli.audit_id",
       "cli.change_set",
@@ -310,35 +254,7 @@
       "compiler/ocaml/tests/golden/diagnostics/parser/parser-runconfig-packrat.json.golden",
       "compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden"
     ],
-    "failures": [
-      {
-        "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
-        "index": 0,
-        "missing": [
-          "cli.change_set",
-          "schema.version"
-        ],
-        "code": "plugin.bundle.signature_invalid"
-      },
-      {
-        "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
-        "index": 1,
-        "missing": [
-          "cli.change_set",
-          "schema.version"
-        ],
-        "code": "lsp.transport.internal_error"
-      },
-      {
-        "file": "compiler/ocaml/tests/golden/diagnostics/domain/multi-domain.json.golden",
-        "index": 2,
-        "missing": [
-          "cli.change_set",
-          "schema.version"
-        ],
-        "code": "demo.custom.category"
-      }
-    ]
+    "failures": []
   },
   "schema_versions": [],
   "diagnostics": {

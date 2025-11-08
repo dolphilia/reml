@@ -1,0 +1,12 @@
+{
+  "total_constraints": 0,
+  "breakdown": [],
+  "functions": [
+    {
+      "name": "type_mismatch",
+      "constraints": 0,
+      "typed_exprs": 0,
+      "unresolved_identifiers": 0
+    }
+  ]
+}
