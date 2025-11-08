@@ -1,0 +1,168 @@
+{
+  "ast_render": null,
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`(`、`識別子`、`整数リテラル`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 13,
+        "start": 12
+      }
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271112-w4-diag-m1/recover_unclosed_block/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 492,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": [
+      {
+        "label": "parser.simple_error",
+        "span": {
+          "end": 13,
+          "start": 12
+        }
+      }
+    ]
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 492,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  },
+  "tokens": [
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 2,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "main",
+      "span": {
+        "end": 7,
+        "start": 3
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 8,
+        "start": 7
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 9,
+        "start": 8
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 11,
+        "start": 10
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 13,
+        "start": 12
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 19,
+        "start": 16
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "value",
+      "span": {
+        "end": 25,
+        "start": 20
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 27,
+        "start": 26
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "42",
+      "span": {
+        "end": 30,
+        "start": 28
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 31,
+        "start": 31
+      }
+    }
+  ],
+  "typecheck": {
+    "functions": [
+      {
+        "constraints": 0,
+        "name": "main",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      }
+    ],
+    "metrics": {
+      "binary_expressions": 0,
+      "call_sites": 0,
+      "constraint_breakdown": {},
+      "constraints_total": 0,
+      "typed_exprs": 1,
+      "typed_functions": 1,
+      "unresolved_identifiers": 0
+    }
+  }
+}

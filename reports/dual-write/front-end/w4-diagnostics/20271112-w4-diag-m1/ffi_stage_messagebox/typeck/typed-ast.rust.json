@@ -1,0 +1,37 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271112-w4-diag-m1/ffi_stage_messagebox/input.reml",
+  "functions": [
+    {
+      "name": "utf8_to_utf16",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "show_message",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "show_yes_no",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "main",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    }
+  ]
+}

@@ -1,0 +1,312 @@
+{
+  "ast_render": null,
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`)`、`,`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 19,
+        "start": 18
+      }
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271112-w4-diag-m1/cli_merge_warnings/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 388,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": [
+      {
+        "label": "parser.simple_error",
+        "span": {
+          "end": 19,
+          "start": 18
+        }
+      }
+    ]
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 388,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  },
+  "tokens": [
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 2,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "bad_condition",
+      "span": {
+        "end": 16,
+        "start": 3
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 17,
+        "start": 16
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "x",
+      "span": {
+        "end": 18,
+        "start": 17
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 19,
+        "start": 18
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 23,
+        "start": 20
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 24,
+        "start": 23
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 27,
+        "start": 25
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 31,
+        "start": 28
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 33,
+        "start": 32
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "if",
+      "span": {
+        "end": 38,
+        "start": 36
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "x",
+      "span": {
+        "end": 40,
+        "start": 39
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "then",
+      "span": {
+        "end": 45,
+        "start": 41
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "1",
+      "span": {
+        "end": 47,
+        "start": 46
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "else",
+      "span": {
+        "end": 52,
+        "start": 48
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "0",
+      "span": {
+        "end": 54,
+        "start": 53
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 58,
+        "start": 56
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "main",
+      "span": {
+        "end": 63,
+        "start": 59
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 64,
+        "start": 63
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 65,
+        "start": 64
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 68,
+        "start": 66
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 72,
+        "start": 69
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 74,
+        "start": 73
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "bad_condition",
+      "span": {
+        "end": 90,
+        "start": 77
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 91,
+        "start": 90
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "42",
+      "span": {
+        "end": 93,
+        "start": 91
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 94,
+        "start": 93
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 95,
+        "start": 95
+      }
+    }
+  ],
+  "typecheck": {
+    "functions": [
+      {
+        "constraints": 0,
+        "name": "bad_condition",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      },
+      {
+        "constraints": 0,
+        "name": "main",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      }
+    ],
+    "metrics": {
+      "binary_expressions": 0,
+      "call_sites": 0,
+      "constraint_breakdown": {},
+      "constraints_total": 0,
+      "typed_exprs": 2,
+      "typed_functions": 2,
+      "unresolved_identifiers": 0
+    }
+  }
+}

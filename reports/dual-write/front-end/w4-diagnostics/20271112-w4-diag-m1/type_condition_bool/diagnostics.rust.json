@@ -1,0 +1,216 @@
+{
+  "ast_render": null,
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`)`、`,`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 19,
+        "start": 18
+      }
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271112-w4-diag-m1/type_condition_bool/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 388,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": [
+      {
+        "label": "parser.simple_error",
+        "span": {
+          "end": 19,
+          "start": 18
+        }
+      }
+    ]
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 388,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  },
+  "tokens": [
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 2,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "type_mismatch",
+      "span": {
+        "end": 16,
+        "start": 3
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 17,
+        "start": 16
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "x",
+      "span": {
+        "end": 18,
+        "start": 17
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 19,
+        "start": 18
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 23,
+        "start": 20
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 24,
+        "start": 23
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 27,
+        "start": 25
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 31,
+        "start": 28
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 33,
+        "start": 32
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "if",
+      "span": {
+        "end": 38,
+        "start": 36
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "x",
+      "span": {
+        "end": 40,
+        "start": 39
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "then",
+      "span": {
+        "end": 45,
+        "start": 41
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "1",
+      "span": {
+        "end": 47,
+        "start": 46
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "else",
+      "span": {
+        "end": 52,
+        "start": 48
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "0",
+      "span": {
+        "end": 54,
+        "start": 53
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 55,
+        "start": 55
+      }
+    }
+  ],
+  "typecheck": {
+    "functions": [
+      {
+        "constraints": 0,
+        "name": "type_mismatch",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      }
+    ],
+    "metrics": {
+      "binary_expressions": 0,
+      "call_sites": 0,
+      "constraint_breakdown": {},
+      "constraints_total": 0,
+      "typed_exprs": 1,
+      "typed_functions": 1,
+      "unresolved_identifiers": 0
+    }
+  }
+}

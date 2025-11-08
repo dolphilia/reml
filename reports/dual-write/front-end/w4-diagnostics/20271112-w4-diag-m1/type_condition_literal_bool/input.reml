@@ -1,0 +1,2 @@
+fn literal_guard() =
+  if 1 then 0 else 1

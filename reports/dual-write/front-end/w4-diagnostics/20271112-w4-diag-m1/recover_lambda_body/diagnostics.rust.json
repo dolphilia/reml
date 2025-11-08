@@ -1,0 +1,347 @@
+{
+  "ast_render": null,
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 60,
+            "start": 59
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 60,
+        "start": 59
+      }
+    },
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`識別子`、`)`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 17,
+        "start": 15
+      }
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271112-w4-diag-m1/recover_lambda_body/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 418,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": [
+      {
+        "label": "parser.simple_error",
+        "span": {
+          "end": 17,
+          "start": 15
+        }
+      }
+    ]
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 418,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  },
+  "tokens": [
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 2,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "lambda_demo",
+      "span": {
+        "end": 14,
+        "start": 3
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 15,
+        "start": 14
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 17,
+        "start": 15
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "op",
+      "span": {
+        "end": 20,
+        "start": 18
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 21,
+        "start": 20
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 24,
+        "start": 21
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 25,
+        "start": 24
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 28,
+        "start": 26
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 32,
+        "start": 29
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 33,
+        "start": 32
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 35,
+        "start": 34
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 37,
+        "start": 36
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 43,
+        "start": 40
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "apply",
+      "span": {
+        "end": 49,
+        "start": 44
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 51,
+        "start": 50
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 54,
+        "start": 52
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 55,
+        "start": 54
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "x",
+      "span": {
+        "end": 56,
+        "start": 55
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 57,
+        "start": 56
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 59,
+        "start": 58
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 62,
+        "start": 61
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "op",
+      "span": {
+        "end": 65,
+        "start": 63
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 66,
+        "start": 65
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "x",
+      "span": {
+        "end": 67,
+        "start": 66
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 69,
+        "start": 68
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "apply",
+      "span": {
+        "end": 77,
+        "start": 72
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 78,
+        "start": 77
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "1",
+      "span": {
+        "end": 79,
+        "start": 78
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 80,
+        "start": 79
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 81,
+        "start": 81
+      }
+    }
+  ],
+  "typecheck": {
+    "functions": [
+      {
+        "constraints": 0,
+        "name": "lambda_demo",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      }
+    ],
+    "metrics": {
+      "binary_expressions": 0,
+      "call_sites": 0,
+      "constraint_breakdown": {},
+      "constraints_total": 0,
+      "typed_exprs": 1,
+      "typed_functions": 1,
+      "unresolved_identifiers": 0
+    }
+  }
+}

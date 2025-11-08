@@ -1,0 +1,1515 @@
+{
+  "ast_render": null,
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 16,
+            "start": 15
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 16,
+        "start": 15
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 20,
+            "start": 19
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 20,
+        "start": 19
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 26,
+            "start": 25
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 26,
+        "start": 25
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 50,
+            "start": 49
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 50,
+        "start": 49
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 52,
+            "start": 51
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 52,
+        "start": 51
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 58,
+            "start": 57
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 58,
+        "start": 57
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 66,
+            "start": 65
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 66,
+        "start": 65
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 72,
+            "start": 71
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 72,
+        "start": 71
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 78,
+            "start": 77
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 78,
+        "start": 77
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 85,
+            "start": 84
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 85,
+        "start": 84
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 90,
+            "start": 89
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 90,
+        "start": 89
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 101,
+            "start": 100
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 101,
+        "start": 100
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 125,
+            "start": 124
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 125,
+        "start": 124
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 130,
+            "start": 129
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 130,
+        "start": 129
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 140,
+            "start": 139
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 140,
+        "start": 139
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 148,
+            "start": 147
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 148,
+        "start": 147
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 153,
+            "start": 152
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 153,
+        "start": 152
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 164,
+            "start": 163
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 164,
+        "start": 163
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 173,
+            "start": 172
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 173,
+        "start": 172
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 213,
+            "start": 212
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 213,
+        "start": 212
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 216,
+            "start": 215
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 216,
+        "start": 215
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 222,
+            "start": 221
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 222,
+        "start": 221
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 230,
+            "start": 229
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 230,
+        "start": 229
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 236,
+            "start": 235
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 236,
+        "start": 235
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 242,
+            "start": 241
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 242,
+        "start": 241
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 249,
+            "start": 248
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 249,
+        "start": 248
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 254,
+            "start": 253
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 254,
+        "start": 253
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 265,
+            "start": 264
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 265,
+        "start": 264
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 282,
+            "start": 281
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 282,
+        "start": 281
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 287,
+            "start": 286
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 287,
+        "start": 286
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 297,
+            "start": 296
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 297,
+        "start": 296
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 305,
+            "start": 304
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 305,
+        "start": 304
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 310,
+            "start": 309
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 310,
+        "start": 309
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 321,
+            "start": 320
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 321,
+        "start": 320
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 330,
+            "start": 329
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 330,
+        "start": 329
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 370,
+            "start": 369
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 370,
+        "start": 369
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 373,
+            "start": 372
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 373,
+        "start": 372
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 392,
+            "start": 391
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 392,
+        "start": 391
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 395,
+            "start": 394
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 395,
+        "start": 394
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 411,
+            "start": 410
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 411,
+        "start": 410
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 414,
+            "start": 413
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 414,
+        "start": 413
+      }
+    },
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`fn`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 6,
+        "start": 0
+      }
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271112-w4-diag-m1/ffi_async_dispatch/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 280,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": [
+      {
+        "label": "parser.simple_error",
+        "span": {
+          "end": 6,
+          "start": 0
+        }
+      }
+    ]
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 280,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  },
+  "tokens": [
+    {
+      "kind": "KeywordModule",
+      "lexeme": "module",
+      "span": {
+        "end": 6,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "examples",
+      "span": {
+        "end": 15,
+        "start": 7
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "ffi",
+      "span": {
+        "end": 19,
+        "start": 16
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "macos",
+      "span": {
+        "end": 25,
+        "start": 20
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "dispatch_async",
+      "span": {
+        "end": 40,
+        "start": 26
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "extern",
+      "span": {
+        "end": 48,
+        "start": 42
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "C",
+      "span": {
+        "end": 51,
+        "start": 50
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 54,
+        "start": 53
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "target",
+      "span": {
+        "end": 64,
+        "start": 58
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 65,
+        "start": 64
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "arm64",
+      "span": {
+        "end": 71,
+        "start": 66
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "apple",
+      "span": {
+        "end": 77,
+        "start": 72
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "darwin",
+      "span": {
+        "end": 84,
+        "start": 78
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 86,
+        "start": 85
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "link_name",
+      "span": {
+        "end": 99,
+        "start": 90
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 100,
+        "start": 99
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "dispatch_get_main_queue",
+      "span": {
+        "end": 124,
+        "start": 101
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 126,
+        "start": 125
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "callconv",
+      "span": {
+        "end": 138,
+        "start": 130
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 139,
+        "start": 138
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "aapcs64",
+      "span": {
+        "end": 147,
+        "start": 140
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 149,
+        "start": 148
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "ownership",
+      "span": {
+        "end": 162,
+        "start": 153
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 163,
+        "start": 162
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "borrowed",
+      "span": {
+        "end": 172,
+        "start": 164
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 174,
+        "start": 173
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 179,
+        "start": 177
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "dispatch_get_main_queue",
+      "span": {
+        "end": 203,
+        "start": 180
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 204,
+        "start": 203
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 205,
+        "start": 204
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 208,
+        "start": 206
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "Ptr",
+      "span": {
+        "end": 212,
+        "start": 209
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "u8",
+      "span": {
+        "end": 215,
+        "start": 213
+      }
+    },
+    {
+      "kind": "Semi",
+      "lexeme": null,
+      "span": {
+        "end": 217,
+        "start": 216
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "target",
+      "span": {
+        "end": 228,
+        "start": 222
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 229,
+        "start": 228
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "arm64",
+      "span": {
+        "end": 235,
+        "start": 230
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "apple",
+      "span": {
+        "end": 241,
+        "start": 236
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "darwin",
+      "span": {
+        "end": 248,
+        "start": 242
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 250,
+        "start": 249
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "link_name",
+      "span": {
+        "end": 263,
+        "start": 254
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 264,
+        "start": 263
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "dispatch_async_f",
+      "span": {
+        "end": 281,
+        "start": 265
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 283,
+        "start": 282
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "callconv",
+      "span": {
+        "end": 295,
+        "start": 287
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 296,
+        "start": 295
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "aapcs64",
+      "span": {
+        "end": 304,
+        "start": 297
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 306,
+        "start": 305
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "ownership",
+      "span": {
+        "end": 319,
+        "start": 310
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 320,
+        "start": 319
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "borrowed",
+      "span": {
+        "end": 329,
+        "start": 321
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 331,
+        "start": 330
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 336,
+        "start": 334
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "dispatch_async_f",
+      "span": {
+        "end": 353,
+        "start": 337
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 354,
+        "start": 353
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "queue",
+      "span": {
+        "end": 364,
+        "start": 359
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 365,
+        "start": 364
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "Ptr",
+      "span": {
+        "end": 369,
+        "start": 366
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "u8",
+      "span": {
+        "end": 372,
+        "start": 370
+      }
+    },
+    {
+      "kind": "Comma",
+      "lexeme": null,
+      "span": {
+        "end": 374,
+        "start": 373
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "context",
+      "span": {
+        "end": 386,
+        "start": 379
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 387,
+        "start": 386
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "Ptr",
+      "span": {
+        "end": 391,
+        "start": 388
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "u8",
+      "span": {
+        "end": 394,
+        "start": 392
+      }
+    },
+    {
+      "kind": "Comma",
+      "lexeme": null,
+      "span": {
+        "end": 396,
+        "start": 395
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "work",
+      "span": {
+        "end": 405,
+        "start": 401
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 406,
+        "start": 405
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "Ptr",
+      "span": {
+        "end": 410,
+        "start": 407
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "u8",
+      "span": {
+        "end": 413,
+        "start": 411
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 418,
+        "start": 417
+      }
+    },
+    {
+      "kind": "Semi",
+      "lexeme": null,
+      "span": {
+        "end": 419,
+        "start": 418
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 421,
+        "start": 420
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "pub",
+      "span": {
+        "end": 426,
+        "start": 423
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 429,
+        "start": 427
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "main",
+      "span": {
+        "end": 434,
+        "start": 430
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 435,
+        "start": 434
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 436,
+        "start": 435
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 439,
+        "start": 437
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 443,
+        "start": 440
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 445,
+        "start": 444
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "0",
+      "span": {
+        "end": 449,
+        "start": 448
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 450,
+        "start": 450
+      }
+    }
+  ],
+  "typecheck": {
+    "functions": [
+      {
+        "constraints": 0,
+        "name": "main",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      }
+    ],
+    "metrics": {
+      "binary_expressions": 0,
+      "call_sites": 0,
+      "constraint_breakdown": {},
+      "constraints_total": 0,
+      "typed_exprs": 1,
+      "typed_functions": 1,
+      "unresolved_identifiers": 0
+    }
+  }
+}

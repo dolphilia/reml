@@ -1,0 +1,1271 @@
+{
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 16,
+            "start": 15
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 16,
+        "start": 15
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 20,
+            "start": 19
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 20,
+        "start": 19
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 28,
+            "start": 27
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 28,
+        "start": 27
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 590,
+            "start": 589
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 590,
+        "start": 589
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 595,
+            "start": 594
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 595,
+        "start": 594
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 705,
+            "start": 704
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 705,
+        "start": 704
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 712,
+            "start": 711
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 712,
+        "start": 711
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 723,
+            "start": 722
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 723,
+        "start": 722
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 733,
+            "start": 732
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 733,
+        "start": 732
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 743,
+            "start": 742
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 743,
+        "start": 742
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 754,
+            "start": 753
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 754,
+        "start": 753
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 762,
+            "start": 761
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 762,
+        "start": 761
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 769,
+            "start": 768
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 769,
+        "start": 768
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 782,
+            "start": 781
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 782,
+        "start": 781
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 795,
+            "start": 794
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 795,
+        "start": 794
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1004,
+            "start": 1003
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1004,
+        "start": 1003
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1006,
+            "start": 1005
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1006,
+        "start": 1005
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1012,
+            "start": 1011
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1012,
+        "start": 1011
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1021,
+            "start": 1020
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1021,
+        "start": 1020
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1028,
+            "start": 1027
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1028,
+        "start": 1027
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1031,
+            "start": 1030
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1031,
+        "start": 1030
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1039,
+            "start": 1038
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1039,
+        "start": 1038
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1044,
+            "start": 1043
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1044,
+        "start": 1043
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1050,
+            "start": 1049
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1050,
+        "start": 1049
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1062,
+            "start": 1061
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1062,
+        "start": 1061
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1074,
+            "start": 1073
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1074,
+        "start": 1073
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1080,
+            "start": 1079
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1080,
+        "start": 1079
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1101,
+            "start": 1100
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1101,
+        "start": 1100
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1107,
+            "start": 1106
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1107,
+        "start": 1106
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1113,
+            "start": 1112
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1113,
+        "start": 1112
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1125,
+            "start": 1124
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1125,
+        "start": 1124
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1134,
+            "start": 1133
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1134,
+        "start": 1133
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1317,
+            "start": 1316
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1317,
+        "start": 1316
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1374,
+            "start": 1373
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1374,
+        "start": 1373
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1993,
+            "start": 1992
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1993,
+        "start": 1992
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 1997,
+            "start": 1996
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 1997,
+        "start": 1996
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 2122,
+            "start": 2121
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 2122,
+        "start": 2121
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 2141,
+            "start": 2140
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 2141,
+        "start": 2140
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 2593,
+            "start": 2592
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 2593,
+        "start": 2592
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 2608,
+            "start": 2607
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 2608,
+        "start": 2607
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 2626,
+            "start": 2625
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 2626,
+        "start": 2625
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 2644,
+            "start": 2643
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 2644,
+        "start": 2643
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 2668,
+            "start": 2667
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 2668,
+        "start": 2667
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 2757,
+            "start": 2756
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 2757,
+        "start": 2756
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 2794,
+            "start": 2793
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 2794,
+        "start": 2793
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 2839,
+            "start": 2838
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 2839,
+        "start": 2838
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 2878,
+            "start": 2877
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 2878,
+        "start": 2877
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 2915,
+            "start": 2914
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 2915,
+        "start": 2914
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3226,
+            "start": 3225
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3226,
+        "start": 3225
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3241,
+            "start": 3240
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3241,
+        "start": 3240
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3259,
+            "start": 3258
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3259,
+        "start": 3258
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3277,
+            "start": 3276
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3277,
+        "start": 3276
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3304,
+            "start": 3303
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3304,
+        "start": 3303
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3456,
+            "start": 3455
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3456,
+        "start": 3455
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3486,
+            "start": 3485
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3486,
+        "start": 3485
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3489,
+            "start": 3488
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3489,
+        "start": 3488
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3503,
+            "start": 3502
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3503,
+        "start": 3502
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3528,
+            "start": 3527
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3528,
+        "start": 3527
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3568,
+            "start": 3567
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3568,
+        "start": 3567
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3584,
+            "start": 3583
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3584,
+        "start": 3583
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3605,
+            "start": 3604
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3605,
+        "start": 3604
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3626,
+            "start": 3625
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3626,
+        "start": 3625
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 3644,
+            "start": 3643
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 3644,
+        "start": 3643
+      }
+    },
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`fn`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 6,
+        "start": 0
+      }
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271112-w4-diag-m1/ffi_stage_messagebox/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 282,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": [
+      {
+        "label": "parser.simple_error",
+        "span": {
+          "end": 6,
+          "start": 0
+        }
+      }
+    ]
+  },
+  "run_config": {
+    "extensions": {
+      "stream": {
+        "checkpoint": "poc_frontend",
+        "chunk_size": 0,
+        "enabled": true,
+        "resume_hint": "n/a"
+      }
+    },
+    "switches": {
+      "left_recursion": "auto",
+      "legacy_result": false,
+      "merge_warnings": true,
+      "packrat": true,
+      "require_eof": true,
+      "trace": false
+    }
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 282,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  }
+}

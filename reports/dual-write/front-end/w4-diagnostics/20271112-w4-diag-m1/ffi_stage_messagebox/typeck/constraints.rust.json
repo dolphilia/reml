@@ -1,0 +1,30 @@
+{
+  "total_constraints": 0,
+  "breakdown": [],
+  "functions": [
+    {
+      "name": "utf8_to_utf16",
+      "constraints": 0,
+      "typed_exprs": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "show_message",
+      "constraints": 0,
+      "typed_exprs": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "show_yes_no",
+      "constraints": 0,
+      "typed_exprs": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "main",
+      "constraints": 0,
+      "typed_exprs": 0,
+      "unresolved_identifiers": 0
+    }
+  ]
+}

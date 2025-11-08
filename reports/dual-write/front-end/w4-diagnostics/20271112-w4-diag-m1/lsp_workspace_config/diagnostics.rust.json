@@ -1,0 +1,659 @@
+{
+  "ast_render": null,
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 95,
+            "start": 94
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 95,
+        "start": 94
+      }
+    },
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`)`、`,`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 77,
+        "start": 76
+      }
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271112-w4-diag-m1/lsp_workspace_config/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 381,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": [
+      {
+        "label": "parser.simple_error",
+        "span": {
+          "end": 77,
+          "start": 76
+        }
+      }
+    ]
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 381,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  },
+  "tokens": [
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 67,
+        "start": 65
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "square",
+      "span": {
+        "end": 74,
+        "start": 68
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 75,
+        "start": 74
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "n",
+      "span": {
+        "end": 76,
+        "start": 75
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 77,
+        "start": 76
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 81,
+        "start": 78
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 82,
+        "start": 81
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 85,
+        "start": 83
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 89,
+        "start": 86
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 91,
+        "start": 90
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "n",
+      "span": {
+        "end": 93,
+        "start": 92
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "n",
+      "span": {
+        "end": 97,
+        "start": 96
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 101,
+        "start": 99
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "choose",
+      "span": {
+        "end": 108,
+        "start": 102
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 109,
+        "start": 108
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "flag",
+      "span": {
+        "end": 113,
+        "start": 109
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 114,
+        "start": 113
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "Bool",
+      "span": {
+        "end": 119,
+        "start": 115
+      }
+    },
+    {
+      "kind": "Comma",
+      "lexeme": null,
+      "span": {
+        "end": 120,
+        "start": 119
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "lhs",
+      "span": {
+        "end": 124,
+        "start": 121
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 125,
+        "start": 124
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 129,
+        "start": 126
+      }
+    },
+    {
+      "kind": "Comma",
+      "lexeme": null,
+      "span": {
+        "end": 130,
+        "start": 129
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "rhs",
+      "span": {
+        "end": 134,
+        "start": 131
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 135,
+        "start": 134
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 139,
+        "start": 136
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 140,
+        "start": 139
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 143,
+        "start": 141
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 147,
+        "start": 144
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 149,
+        "start": 148
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "if",
+      "span": {
+        "end": 154,
+        "start": 152
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "flag",
+      "span": {
+        "end": 159,
+        "start": 155
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "then",
+      "span": {
+        "end": 164,
+        "start": 160
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "lhs",
+      "span": {
+        "end": 168,
+        "start": 165
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "else",
+      "span": {
+        "end": 173,
+        "start": 169
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "rhs",
+      "span": {
+        "end": 177,
+        "start": 174
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 179,
+        "start": 178
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 183,
+        "start": 181
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "main",
+      "span": {
+        "end": 188,
+        "start": 184
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 189,
+        "start": 188
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 190,
+        "start": 189
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 193,
+        "start": 191
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 197,
+        "start": 194
+      }
+    },
+    {
+      "kind": "LBrace",
+      "lexeme": null,
+      "span": {
+        "end": 199,
+        "start": 198
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 205,
+        "start": 202
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "primary",
+      "span": {
+        "end": 213,
+        "start": 206
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 215,
+        "start": 214
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "square",
+      "span": {
+        "end": 222,
+        "start": 216
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 223,
+        "start": 222
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "3",
+      "span": {
+        "end": 224,
+        "start": 223
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 225,
+        "start": 224
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 231,
+        "start": 228
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "fallback",
+      "span": {
+        "end": 240,
+        "start": 232
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 242,
+        "start": 241
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "square",
+      "span": {
+        "end": 249,
+        "start": 243
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 250,
+        "start": 249
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "2",
+      "span": {
+        "end": 251,
+        "start": 250
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 252,
+        "start": 251
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "choose",
+      "span": {
+        "end": 261,
+        "start": 255
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 262,
+        "start": 261
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "true",
+      "span": {
+        "end": 266,
+        "start": 262
+      }
+    },
+    {
+      "kind": "Comma",
+      "lexeme": null,
+      "span": {
+        "end": 267,
+        "start": 266
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "primary",
+      "span": {
+        "end": 275,
+        "start": 268
+      }
+    },
+    {
+      "kind": "Comma",
+      "lexeme": null,
+      "span": {
+        "end": 276,
+        "start": 275
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "fallback",
+      "span": {
+        "end": 285,
+        "start": 277
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 286,
+        "start": 285
+      }
+    },
+    {
+      "kind": "RBrace",
+      "lexeme": null,
+      "span": {
+        "end": 288,
+        "start": 287
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 289,
+        "start": 289
+      }
+    }
+  ],
+  "typecheck": {
+    "functions": [
+      {
+        "constraints": 0,
+        "name": "square",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      },
+      {
+        "constraints": 0,
+        "name": "choose",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      },
+      {
+        "constraints": 0,
+        "name": "main",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      }
+    ],
+    "metrics": {
+      "binary_expressions": 0,
+      "call_sites": 0,
+      "constraint_breakdown": {},
+      "constraints_total": 0,
+      "typed_exprs": 3,
+      "typed_functions": 3,
+      "unresolved_identifiers": 0
+    }
+  }
+}

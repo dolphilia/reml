@@ -1,0 +1,21 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271112-w4-diag-m1/cli_merge_warnings/input.reml",
+  "functions": [
+    {
+      "name": "bad_condition",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "main",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    }
+  ]
+}

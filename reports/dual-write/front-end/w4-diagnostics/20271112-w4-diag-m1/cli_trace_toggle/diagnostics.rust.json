@@ -1,0 +1,857 @@
+{
+  "ast_render": null,
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 52,
+            "start": 51
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 52,
+        "start": 51
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 83,
+            "start": 82
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 83,
+        "start": 82
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 114,
+            "start": 113
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 114,
+        "start": 113
+      }
+    },
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`)`、`,`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 13,
+        "start": 12
+      }
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271112-w4-diag-m1/cli_trace_toggle/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 387,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": [
+      {
+        "label": "parser.simple_error",
+        "span": {
+          "end": 13,
+          "start": 12
+        }
+      }
+    ]
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 387,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  },
+  "tokens": [
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 2,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "compute",
+      "span": {
+        "end": 10,
+        "start": 3
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 11,
+        "start": 10
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "a",
+      "span": {
+        "end": 12,
+        "start": 11
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 13,
+        "start": 12
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 17,
+        "start": 14
+      }
+    },
+    {
+      "kind": "Comma",
+      "lexeme": null,
+      "span": {
+        "end": 18,
+        "start": 17
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "b",
+      "span": {
+        "end": 20,
+        "start": 19
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 21,
+        "start": 20
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 25,
+        "start": 22
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 26,
+        "start": 25
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 29,
+        "start": 27
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 33,
+        "start": 30
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 35,
+        "start": 34
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 41,
+        "start": 38
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "prod",
+      "span": {
+        "end": 46,
+        "start": 42
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 48,
+        "start": 47
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "a",
+      "span": {
+        "end": 50,
+        "start": 49
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "b",
+      "span": {
+        "end": 54,
+        "start": 53
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 60,
+        "start": 57
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "sum",
+      "span": {
+        "end": 64,
+        "start": 61
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 66,
+        "start": 65
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "a",
+      "span": {
+        "end": 68,
+        "start": 67
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 70,
+        "start": 69
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "b",
+      "span": {
+        "end": 72,
+        "start": 71
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "if",
+      "span": {
+        "end": 77,
+        "start": 75
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "sum",
+      "span": {
+        "end": 81,
+        "start": 78
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "10",
+      "span": {
+        "end": 86,
+        "start": 84
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "then",
+      "span": {
+        "end": 91,
+        "start": 87
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "prod",
+      "span": {
+        "end": 96,
+        "start": 92
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 98,
+        "start": 97
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "sum",
+      "span": {
+        "end": 102,
+        "start": 99
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "else",
+      "span": {
+        "end": 107,
+        "start": 103
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "prod",
+      "span": {
+        "end": 112,
+        "start": 108
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "sum",
+      "span": {
+        "end": 118,
+        "start": 115
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 122,
+        "start": 120
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "pipeline",
+      "span": {
+        "end": 131,
+        "start": 123
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 132,
+        "start": 131
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "base",
+      "span": {
+        "end": 136,
+        "start": 132
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 137,
+        "start": 136
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 141,
+        "start": 138
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 142,
+        "start": 141
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 145,
+        "start": 143
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 149,
+        "start": 146
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 151,
+        "start": 150
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 157,
+        "start": 154
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "first",
+      "span": {
+        "end": 163,
+        "start": 158
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 165,
+        "start": 164
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "compute",
+      "span": {
+        "end": 173,
+        "start": 166
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 174,
+        "start": 173
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "base",
+      "span": {
+        "end": 178,
+        "start": 174
+      }
+    },
+    {
+      "kind": "Comma",
+      "lexeme": null,
+      "span": {
+        "end": 179,
+        "start": 178
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "base",
+      "span": {
+        "end": 184,
+        "start": 180
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 186,
+        "start": 185
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "2",
+      "span": {
+        "end": 188,
+        "start": 187
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 189,
+        "start": 188
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 195,
+        "start": 192
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "second",
+      "span": {
+        "end": 202,
+        "start": 196
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 204,
+        "start": 203
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "compute",
+      "span": {
+        "end": 212,
+        "start": 205
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 213,
+        "start": 212
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "base",
+      "span": {
+        "end": 217,
+        "start": 213
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 219,
+        "start": 218
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "1",
+      "span": {
+        "end": 221,
+        "start": 220
+      }
+    },
+    {
+      "kind": "Comma",
+      "lexeme": null,
+      "span": {
+        "end": 222,
+        "start": 221
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "base",
+      "span": {
+        "end": 227,
+        "start": 223
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 229,
+        "start": 228
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "3",
+      "span": {
+        "end": 231,
+        "start": 230
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 232,
+        "start": 231
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "first",
+      "span": {
+        "end": 240,
+        "start": 235
+      }
+    },
+    {
+      "kind": "Operator",
+      "lexeme": "+",
+      "span": {
+        "end": 242,
+        "start": 241
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "second",
+      "span": {
+        "end": 249,
+        "start": 243
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 253,
+        "start": 251
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "main",
+      "span": {
+        "end": 258,
+        "start": 254
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 259,
+        "start": 258
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 260,
+        "start": 259
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 263,
+        "start": 261
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "i64",
+      "span": {
+        "end": 267,
+        "start": 264
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 269,
+        "start": 268
+      }
+    },
+    {
+      "kind": "KeywordLet",
+      "lexeme": "let",
+      "span": {
+        "end": 275,
+        "start": 272
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "result",
+      "span": {
+        "end": 282,
+        "start": 276
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 284,
+        "start": 283
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "pipeline",
+      "span": {
+        "end": 293,
+        "start": 285
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 294,
+        "start": 293
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "4",
+      "span": {
+        "end": 295,
+        "start": 294
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 296,
+        "start": 295
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "result",
+      "span": {
+        "end": 305,
+        "start": 299
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 306,
+        "start": 306
+      }
+    }
+  ],
+  "typecheck": {
+    "functions": [
+      {
+        "constraints": 0,
+        "name": "compute",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      },
+      {
+        "constraints": 0,
+        "name": "pipeline",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      },
+      {
+        "constraints": 0,
+        "name": "main",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      }
+    ],
+    "metrics": {
+      "binary_expressions": 0,
+      "call_sites": 0,
+      "constraint_breakdown": {},
+      "constraints_total": 0,
+      "typed_exprs": 3,
+      "typed_functions": 3,
+      "unresolved_identifiers": 0
+    }
+  }
+}

@@ -1,0 +1,3 @@
+effect ConsoleLog
+fn emit(msg: String) = perform ConsoleLog msg
+fn main() = emit(\"leak\")

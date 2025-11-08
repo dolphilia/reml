@@ -1,0 +1,383 @@
+{
+  "ast_render": null,
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 21,
+            "start": 20
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 21,
+        "start": 20
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 50,
+            "start": 49
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 50,
+        "start": 49
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 51,
+            "start": 50
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 51,
+        "start": 50
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 56,
+            "start": 55
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 56,
+        "start": 55
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 57,
+            "start": 56
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 57,
+        "start": 56
+      }
+    },
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`fn`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 6,
+        "start": 0
+      }
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271112-w4-diag-m1/effect_stage_cli_override/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 269,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": [
+      {
+        "label": "parser.simple_error",
+        "span": {
+          "end": 6,
+          "start": 0
+        }
+      }
+    ]
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 269,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  },
+  "tokens": [
+    {
+      "kind": "KeywordEffect",
+      "lexeme": "effect",
+      "span": {
+        "end": 6,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "ConsoleAudit",
+      "span": {
+        "end": 19,
+        "start": 7
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "requires_capability",
+      "span": {
+        "end": 40,
+        "start": 21
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 41,
+        "start": 40
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "stage",
+      "span": {
+        "end": 46,
+        "start": 41
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 48,
+        "start": 47
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "beta",
+      "span": {
+        "end": 55,
+        "start": 51
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 58,
+        "start": 57
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 61,
+        "start": 59
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "gated",
+      "span": {
+        "end": 67,
+        "start": 62
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 68,
+        "start": 67
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 69,
+        "start": 68
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 71,
+        "start": 70
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "perform",
+      "span": {
+        "end": 79,
+        "start": 72
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "ConsoleAudit",
+      "span": {
+        "end": 92,
+        "start": 80
+      }
+    },
+    {
+      "kind": "IntLiteral",
+      "lexeme": "1",
+      "span": {
+        "end": 94,
+        "start": 93
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 97,
+        "start": 95
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "main",
+      "span": {
+        "end": 102,
+        "start": 98
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 103,
+        "start": 102
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 104,
+        "start": 103
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 106,
+        "start": 105
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "gated",
+      "span": {
+        "end": 112,
+        "start": 107
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 113,
+        "start": 112
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 114,
+        "start": 113
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 115,
+        "start": 115
+      }
+    }
+  ],
+  "typecheck": {
+    "functions": [
+      {
+        "constraints": 0,
+        "name": "gated",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      },
+      {
+        "constraints": 0,
+        "name": "main",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      }
+    ],
+    "metrics": {
+      "binary_expressions": 0,
+      "call_sites": 0,
+      "constraint_breakdown": {},
+      "constraints_total": 0,
+      "typed_exprs": 2,
+      "typed_functions": 2,
+      "unresolved_identifiers": 0
+    }
+  }
+}

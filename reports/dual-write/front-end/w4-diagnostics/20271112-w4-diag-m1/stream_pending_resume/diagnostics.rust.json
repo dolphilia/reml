@@ -1,0 +1,542 @@
+{
+  "ast_render": null,
+  "diagnostics": [
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 19,
+            "start": 18
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 19,
+        "start": 18
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 22,
+            "start": 21
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 22,
+        "start": 21
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 97,
+            "start": 96
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 97,
+        "start": 96
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 98,
+            "start": 97
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 98,
+        "start": 97
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 105,
+            "start": 104
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 105,
+        "start": 104
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 106,
+            "start": 105
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 106,
+        "start": 105
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 150,
+            "start": 149
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 150,
+        "start": 149
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 151,
+            "start": 150
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 151,
+        "start": 150
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 158,
+            "start": 157
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 158,
+        "start": 157
+      }
+    },
+    {
+      "code": null,
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "end": 159,
+            "start": 158
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 159,
+        "start": 158
+      }
+    },
+    {
+      "code": null,
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`fn`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "span": {
+        "end": 6,
+        "start": 0
+      }
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20271112-w4-diag-m1/stream_pending_resume/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 298,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": [
+      {
+        "label": "parser.simple_error",
+        "span": {
+          "end": 6,
+          "start": 0
+        }
+      }
+    ]
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 298,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  },
+  "tokens": [
+    {
+      "kind": "KeywordModule",
+      "lexeme": "module",
+      "span": {
+        "end": 6,
+        "start": 0
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "diagnostics",
+      "span": {
+        "end": 18,
+        "start": 7
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "w4",
+      "span": {
+        "end": 21,
+        "start": 19
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "stream_pending_resume",
+      "span": {
+        "end": 43,
+        "start": 22
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 46,
+        "start": 44
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "chunked",
+      "span": {
+        "end": 54,
+        "start": 47
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 55,
+        "start": 54
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "value",
+      "span": {
+        "end": 60,
+        "start": 55
+      }
+    },
+    {
+      "kind": "Colon",
+      "lexeme": null,
+      "span": {
+        "end": 61,
+        "start": 60
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "String",
+      "span": {
+        "end": 68,
+        "start": 62
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 69,
+        "start": 68
+      }
+    },
+    {
+      "kind": "Arrow",
+      "lexeme": null,
+      "span": {
+        "end": 72,
+        "start": 70
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "String",
+      "span": {
+        "end": 79,
+        "start": 73
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 81,
+        "start": 80
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "if",
+      "span": {
+        "end": 86,
+        "start": 84
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "value",
+      "span": {
+        "end": 92,
+        "start": 87
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 94,
+        "start": 93
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 95,
+        "start": 94
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "resume",
+      "span": {
+        "end": 104,
+        "start": 98
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "then",
+      "span": {
+        "end": 111,
+        "start": 107
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "value",
+      "span": {
+        "end": 117,
+        "start": 112
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "else",
+      "span": {
+        "end": 122,
+        "start": 118
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "value",
+      "span": {
+        "end": 128,
+        "start": 123
+      }
+    },
+    {
+      "kind": "KeywordFn",
+      "lexeme": "fn",
+      "span": {
+        "end": 131,
+        "start": 129
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "main",
+      "span": {
+        "end": 136,
+        "start": 132
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 137,
+        "start": 136
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 138,
+        "start": 137
+      }
+    },
+    {
+      "kind": "Assign",
+      "lexeme": null,
+      "span": {
+        "end": 140,
+        "start": 139
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "chunked",
+      "span": {
+        "end": 148,
+        "start": 141
+      }
+    },
+    {
+      "kind": "LParen",
+      "lexeme": null,
+      "span": {
+        "end": 149,
+        "start": 148
+      }
+    },
+    {
+      "kind": "Identifier",
+      "lexeme": "resume",
+      "span": {
+        "end": 157,
+        "start": 151
+      }
+    },
+    {
+      "kind": "RParen",
+      "lexeme": null,
+      "span": {
+        "end": 160,
+        "start": 159
+      }
+    },
+    {
+      "kind": "EndOfFile",
+      "lexeme": null,
+      "span": {
+        "end": 161,
+        "start": 161
+      }
+    }
+  ],
+  "typecheck": {
+    "functions": [
+      {
+        "constraints": 0,
+        "name": "chunked",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      },
+      {
+        "constraints": 0,
+        "name": "main",
+        "param_types": [],
+        "return_type": "Unknown",
+        "typed_exprs": 0,
+        "unresolved_identifiers": 0
+      }
+    ],
+    "metrics": {
+      "binary_expressions": 0,
+      "call_sites": 0,
+      "constraint_breakdown": {},
+      "constraints_total": 0,
+      "typed_exprs": 2,
+      "typed_functions": 2,
+      "unresolved_identifiers": 0
+    }
+  }
+}

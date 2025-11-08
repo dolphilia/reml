@@ -1,0 +1,31 @@
+{
+  "case": "stream_backpressure_hint",
+  "mode": "diag",
+  "source": "inline",
+  "ocaml_diag_count": 0,
+  "rust_diag_count": 5,
+  "diag_match": false,
+  "gating": false,
+  "schema_ok": true,
+  "metrics_ok": false,
+  "diag": {
+    "parser": {
+      "ocaml": null,
+      "rust": {
+        "audit_pass_fraction": 0.0,
+        "audit_pass_rate": 0.0,
+        "expected_pass_fraction": 0.0
+      }
+    },
+    "effects": {
+      "ocaml": null,
+      "rust": {
+        "regressions": 0
+      }
+    },
+    "streaming": {
+      "ocaml": null,
+      "rust": null
+    }
+  }
+}
