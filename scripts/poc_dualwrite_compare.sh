@@ -178,6 +178,87 @@ needs_streaming_metrics() {
   return 1
 }
 
+is_streaming_case() {
+  local case_name="$1"
+  [[ "${case_name}" == stream_* ]]
+}
+
+enforce_streaming_metrics_gate() {
+  local case_name="$1"
+  local case_dir="$2"
+  python3 - "${case_name}" "${case_dir}" <<'PY'
+import json
+import math
+import sys
+from pathlib import Path
+
+case = sys.argv[1]
+case_dir = Path(sys.argv[2])
+
+if not case.startswith("stream_"):
+    sys.exit(0)
+
+def load_metric(path: Path, metric_name: str):
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    metrics = data.get("metrics")
+    if not isinstance(metrics, list):
+        return None
+    for item in metrics:
+        if isinstance(item, dict) and item.get("metric") == metric_name:
+            return item
+    return None
+
+frontends = ("ocaml", "rust")
+payload = {
+    "case": case,
+    "parser_expected_summary_presence": {},
+    "parser_stream_extension_field_coverage": {},
+}
+errors = []
+
+def check_metric(metric, label, frontend):
+    if metric is None:
+        errors.append(f"{frontend}: {label} missing")
+        return
+    pass_rate = metric.get("pass_rate")
+    if not isinstance(pass_rate, (int, float)):
+        errors.append(f"{frontend}: {label} has invalid pass_rate")
+        return
+    if not math.isclose(pass_rate, 1.0, rel_tol=1e-9, abs_tol=1e-9):
+        errors.append(f"{frontend}: {label}={pass_rate}")
+
+for frontend in frontends:
+    parser_path = case_dir / f"parser-metrics.{frontend}.json"
+    streaming_path = case_dir / f"streaming-metrics.{frontend}.json"
+    parser_metric = load_metric(parser_path, "parser.expected_summary_presence")
+    streaming_metric = load_metric(
+        streaming_path, "parser.stream_extension_field_coverage"
+    )
+    payload["parser_expected_summary_presence"][frontend] = parser_metric
+    payload["parser_stream_extension_field_coverage"][frontend] = streaming_metric
+    check_metric(parser_metric, "parser.expected_summary_presence", frontend)
+    check_metric(streaming_metric, "parser.stream_extension_field_coverage", frontend)
+
+if errors:
+    payload["errors"] = errors
+
+out_path = case_dir / "parser_expected_summary.json"
+out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+if errors:
+    for message in errors:
+        print(f"[streaming-metrics-gate] {message}", file=sys.stderr)
+    sys.exit(1)
+
+sys.exit(0)
+PY
+}
+
 option_requires_value() {
   case "$1" in
     --type-row-mode|--effect-stage|--effect-stage-runtime|--effect-stage-capability)
@@ -588,6 +669,13 @@ for idx in "${!CASE_ENTRIES[@]}"; do
     fi
 
     create_diag_diff "${ocaml_diag_path}" "${rust_diag_path}" "${diag_diff_path}"
+
+    if is_streaming_case "${case_name}"; then
+      if ! enforce_streaming_metrics_gate "${case_name}" "${case_dir}"; then
+        metrics_ok="false"
+        case_gating="false"
+      fi
+    fi
 
 python3 - "${case_dir}" "${case_name}" "${safe_name}" "${RUN_ID}" "${REPORT_DIR}" "${MODE}" "${case_gating}" "${schema_ok}" "${metrics_ok}" "${case_tests}" "${case_lsp}" <<'PY'
 import json

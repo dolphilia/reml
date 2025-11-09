@@ -79,7 +79,7 @@ scripts/dualwrite_summary_report.py \
 - ケース行に `gating=false` が記録された場合は `summary.json` / `.err.log` を参照し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の該当 TODO へリンクを貼って再実行手順を残す。
 - LSP 連携や CLI RunConfig ケースは `appendix/w4-diagnostic-case-matrix.md` 側で管理し、Ready になり次第 `cases.txt` と README のサマリ表を更新する。
 - diag モードでは OCaml CLI に `--left-recursion off` を自動付与しつつ `--packrat` を有効化し、PARSER-003 未実装警告を抑止した状態で Packrat メトリクスを取得する（Rust CLI は未対応なので空配列）。Streaming メトリクスを持たないケースでも `collect-iterator-audit-metrics.py --section streaming` を実行し、`parser.stream_extension_field_coverage < 1.0` が出た場合は `DIAG-RUST-05` へ転記して原因をトリアージする。
-- 🆕 2028-01-15 以降は Streaming ケースごとに `parser.expected_summary_presence` をゲート条件へ追加する。`parser-metrics.(ocaml|rust).json` の `metrics[].metric == "parser.expected_summary_presence"` を `jq` で抽出し、値が 1.0 でなければ `parser_expected_summary.json`（`metrics[].related_metrics[]` の `parser.expected_tokens_per_error` も含む）を同ディレクトリへ保存する。`parser-metrics.*.err.log` に同エラーが記録されている場合は `reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/triage.md` の該当行へ Run ID を追記して再トリアージする。
+- 🆕 2028-02-26: Streaming ケース（`stream_*`）は diag ハーネス側で自動的に `parser.expected_summary_presence` をゲートへ追加するよう更新済み。`collect-iterator-audit-metrics.py` の結果を解析し、`parser_expected_summary.json`（`parser-metrics.{ocaml,rust}.json` 内 `parser.expected_summary_presence` と `related_metrics`、および `parser.stream_extension_field_coverage`）を同ディレクトリへ保存する。いずれかの `pass_rate` が 1.0 未満の場合は `summary.json` の `metrics_ok`/`gating` を自動で `false` に戻し、次回 Run で基準を満たした時点で `README.md` と `p1-front-end-checklists.csv` のステータスをそのまま更新できる。
 
 ### 手順 3: メトリクス比較
 ```bash
@@ -109,7 +109,7 @@ python3 tooling/ci/collect-iterator-audit-metrics.py \
 ```
 
 - スクリプトが失敗した場合はログ末尾の `missing_keys`・`mismatch` を確認し、`1-2-diagnostic-compatibility.md` の重点監視フィールドへ差分を登録する。
-- Streaming ケースでは `--section streaming` も追加で実行し、`parser.stream_extension_field_coverage` / `parser.stream.backpressure_sync` / `parser.stream.demandhint_coverage` が 1.0 であることを確認する。`parser_expected_summary_presence` が 1.0 未満の場合は `parser-metrics.*.json` から該当メトリクスを抽出して `parser_expected_summary.json` として保存し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-DIAG-RUST-05` に Run ID と一緒にリンクする。
+- Streaming ケースでは `--section streaming` も追加で実行し、`parser.stream_extension_field_coverage` / `parser.stream.backpressure_sync` / `parser.stream.demandhint_coverage` が 1.0 であることを確認する。`scripts/poc_dualwrite_compare.sh --mode diag` が自動生成する `parser_expected_summary.json`（`stream_*` ディレクトリ内）で `pass_rate=1.0` を外した項目がないかを確認し、未達の場合は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-DIAG-RUST-05` へ Run ID とともにリンクする。
 - メトリクス差の許容範囲は `1-1-ast-and-ir-alignment.md#1-1-7-検証パイプライン` で規定された 0.5pt 以内。typeck モードでは追加で `collect-iterator-audit-metrics.py --section effects` を実行し、`effects.impl_resolve.delta` / `effects.stage_mismatch.delta` が ±0.5pt 以内であることを確認する（具体的な保存手順: `reports/dual-write/front-end/w3-type-inference/README.md#メトリクス可視化`）。
 
 ### 手順 4: 自動判定レポートの生成
