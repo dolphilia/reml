@@ -1471,6 +1471,8 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
         "demand_min_bytes": False,
         "demand_preferred_bytes": False,
         "chunk_size": False,
+        "flow.policy": False,
+        "flow.backpressure.max_lag_bytes": False,
     }
     stream_field_samples: Dict[str, Any] = {
         key: None for key in stream_field_state
@@ -1511,16 +1513,27 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
     def _mark_stream_fields(entry: Optional[Dict]) -> None:
         if not isinstance(entry, dict):
             return
+
+        def _lookup_path(container: Dict[str, Any], path: str) -> Tuple[bool, Any]:
+            current: Any = container
+            for part in path.split("."):
+                if isinstance(current, dict) and part in current:
+                    current = current[part]
+                else:
+                    return False, None
+            return True, current
+
         for key in stream_field_state:
             if stream_field_state[key]:
                 continue
-            if key in entry:
-                value = entry.get(key)
-                if value in (None, "", [], {}):
-                    continue
-                stream_field_state[key] = True
-                if stream_field_samples[key] is None:
-                    stream_field_samples[key] = value
+            exists, value = _lookup_path(entry, key)
+            if not exists:
+                continue
+            if value in (None, "", [], {}):
+                continue
+            stream_field_state[key] = True
+            if stream_field_samples[key] is None:
+                stream_field_samples[key] = value
 
     for path in paths:
         data = load_json(path)

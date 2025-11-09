@@ -924,6 +924,23 @@ fn build_audit_metadata(
                     chunk.clone(),
                 );
             }
+            if let Some(flow) = stream.get("flow") {
+                if let Some(policy) = flow.get("policy") {
+                    metadata.insert(
+                        "parser.runconfig.extensions.stream.flow.policy".to_string(),
+                        policy.clone(),
+                    );
+                }
+                if let Some(backpressure) = flow.get("backpressure") {
+                    if let Some(max_lag) = backpressure.get("max_lag_bytes") {
+                        metadata.insert(
+                            "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes"
+                                .to_string(),
+                            max_lag.clone(),
+                        );
+                    }
+                }
+            }
         }
     }
     metadata.insert(
