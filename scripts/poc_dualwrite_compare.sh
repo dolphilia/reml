@@ -471,28 +471,34 @@ append_case_flags() {
 ensure_flag() {
   local target_name="$1"
   local flag="$2"
+  set +u
   eval "local current=(\"\${${target_name}[@]}\")"
   for existing in "${current[@]}"; do
     if [[ "${existing}" == "${flag}" ]]; then
+      set -u
       return
     fi
   done
   eval "${target_name}+=(\"\$flag\")"
+  set -u
 }
 
 ensure_flag_with_value() {
   local target_name="$1"
   local flag="$2"
   local value="$3"
+  set +u
   eval "local current=(\"\${${target_name}[@]}\")"
   local idx=0
   for existing in "${current[@]}"; do
     if [[ "${existing}" == "${flag}" ]]; then
+      set -u
       return
     fi
     ((idx++))
   done
   eval "${target_name}+=(\"\$flag\" \"\$value\")"
+  set -u
 }
 
 declare -a diag_ocaml_flags=()
@@ -513,7 +519,11 @@ collect_all_metrics() {
     return 1
   fi
 
-  local sections=(parser effects)
+  local sections=()
+  if [[ "${SKIP_PARSER_METRICS:-false}" != "true" ]]; then
+    sections+=(parser)
+  fi
+  sections+=(effects)
   if needs_streaming_metrics "$diag_path"; then
     sections+=(streaming)
   else
@@ -552,6 +562,19 @@ ensure_effects_metrics_artifact() {
     return
   fi
   cp "${root_path}" "${target_path}"
+}
+
+write_placeholder_effects_metrics() {
+  local case_dir="$1"
+  local frontend="$2"
+  local root_path="${case_dir}/effects-metrics.${frontend}.json"
+  cat > "${root_path}" <<'JSON'
+{
+  "metrics": [],
+  "note": "diagnostics_missing"
+}
+JSON
+  ensure_effects_metrics_artifact "${case_dir}" "${frontend}"
 }
 
 create_diag_diff() {
@@ -739,6 +762,12 @@ for idx in "${!CASE_ENTRIES[@]}"; do
     ensure_flag_with_value "rust_case_flags" "--emit-effects-metrics" "${effects_dir}/effects-metrics.rust.json"
   fi
 
+  if [[ "${case_name}" == type_* || "${case_name}" == effect_* || "${case_name}" == ffi_* ]]; then
+    SKIP_PARSER_METRICS="true"
+  else
+    SKIP_PARSER_METRICS="false"
+  fi
+
   if [[ "${MODE}" == "diag" ]]; then
     ocaml_parse_debug_path="${case_dir}/ocaml.parse-debug.json"
     rust_parse_debug_path="${case_dir}/rust.parse-debug.json"
@@ -801,6 +830,7 @@ for idx in "${!CASE_ENTRIES[@]}"; do
       fi
     else
       printf '%s\n' "-- OCaml diagnostics missing, metrics skipped (${case_name})" >&2
+      write_placeholder_effects_metrics "${case_dir}" "ocaml"
     fi
     if [[ -s "${rust_diag_path}" ]]; then
       if ! collect_all_metrics "${rust_diag_path}" "rust" "${case_dir}"; then
@@ -811,6 +841,7 @@ for idx in "${!CASE_ENTRIES[@]}"; do
       fi
     else
       printf '%s\n' "-- Rust diagnostics missing, metrics skipped (${case_name})" >&2
+      write_placeholder_effects_metrics "${case_dir}" "rust"
     fi
 
     create_diag_diff "${ocaml_diag_path}" "${rust_diag_path}" "${diag_diff_path}"
