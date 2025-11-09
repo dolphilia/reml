@@ -42,8 +42,12 @@ pub struct ParserDriver;
 
 impl ParserDriver {
     pub fn parse(source: &str) -> ParsedModule {
+        Self::parse_with_config(source, StreamingStateConfig::default())
+    }
+
+    pub fn parse_with_config(source: &str, config: StreamingStateConfig) -> ParsedModule {
         let LexOutput { tokens, errors } = lex_source(source);
-        let streaming_state = StreamingState::new(StreamingStateConfig::default());
+        let streaming_state = StreamingState::new(config);
 
         let mut diagnostics: Vec<FrontendDiagnostic> =
             errors.into_iter().map(Self::error_to_diagnostic).collect();

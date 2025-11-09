@@ -1,5 +1,7 @@
 //! logos × chumsky フロントエンド PoC。入力ファイルを解析し JSON を出力する。
 
+use chrono::{DateTime, Utc};
+use serde_json::{json, Value};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -9,12 +11,20 @@ use reml_frontend::diagnostic::{DiagnosticNote, FrontendDiagnostic};
 use reml_frontend::error::Recoverability;
 use reml_frontend::parser::ParserDriver;
 use reml_frontend::span::Span;
+use reml_frontend::streaming::StreamingStateConfig;
 use reml_frontend::typeck::{
     self, DualWriteGuards, InstallConfigError, RecoverConfig, StageContext, StageId,
-    StageRequirement, TypeRowMode, TypecheckConfig, TypecheckDriver, TypecheckMetrics,
-    TypecheckReport, TypedFunctionSummary,
+    StageRequirement, TypeRowMode, TypecheckConfig, TypecheckConfigBuilder, TypecheckDriver,
+    TypecheckMetrics, TypecheckReport, TypedFunctionSummary,
 };
 use serde::Serialize;
+
+const PARSER_NAMESPACE: &str = "rust.poc";
+const PARSER_NAME: &str = "compilation_unit";
+const PARSER_ORIGIN: &str = "poc_frontend";
+const PARSER_FINGERPRINT: &str = "rust-poc-0001";
+const SCHEMA_VERSION: &str = "2.0.0-draft";
+const AUDIT_POLICY_VERSION: &str = "rust.poc.audit.v1";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = parse_args()?;
@@ -31,19 +41,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         None
     };
 
-    let result = ParserDriver::parse(&source);
+    let result = ParserDriver::parse_with_config(&source, args.streaming_state_config());
     let typeck_report = result
         .ast
         .as_ref()
         .map(|module| TypecheckDriver::infer_module(module, &args.typecheck_config))
         .unwrap_or_else(|| TypecheckDriver::infer_fallback_from_source(&source));
     let artifacts = TypeckArtifacts::new(&input_path, &typeck_report, &args.typecheck_config);
-    let diagnostics = result
-        .diagnostics
-        .iter()
-        .map(DiagnosticJson::from)
-        .collect::<Vec<_>>();
-
     let parse_result = serde_json::json!({
         "packrat_stats": result.packrat_stats,
         "span_trace": result.span_trace,
@@ -54,51 +58,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "span_trace": result.stream_metrics.span_trace,
     });
 
-    let payload = serde_json::json!({
+    let runconfig_summary = build_runconfig_summary(&args);
+    let runconfig_top_level = build_runconfig_top_level(&args);
+    let diagnostics_entries = build_diagnostics(
+        &result.diagnostics,
+        &args,
+        &input_path,
+        &source,
+        &runconfig_summary,
+    );
+    let diagnostics_json = Value::Array(diagnostics_entries.clone());
+    let diag_document = json!({
         "input": input_path,
-        "ast_render": result.ast_render(),
+        "diagnostics": diagnostics_json.clone(),
+        "run_config": runconfig_top_level.clone(),
         "parse_result": parse_result.clone(),
         "stream_meta": stream_meta.clone(),
-        "diagnostics": diagnostics,
-        "typecheck": serde_json::json!({
-            "metrics": typeck_report.metrics,
-            "functions": typeck_report.functions,
-        }),
-        "tokens": result.tokens.iter().map(|token| serde_json::json!({
-            "kind": format!("{:?}", token.kind),
-            "span": token.span,
-            "lexeme": token.lexeme,
-        })).collect::<Vec<_>>(),
     });
 
-    println!("{}", serde_json::to_string_pretty(&payload)?);
+    println!("{}", serde_json::to_string_pretty(&diag_document)?);
 
     if let Some(path) = args.parse_debug_output {
-        let diagnostics_json = payload
-            .get("diagnostics")
-            .cloned()
-            .unwrap_or_else(|| serde_json::Value::Array(vec![]));
-        let parse_debug = serde_json::json!({
-            "run_config": {
-                "switches": {
-                    "require_eof": true,
-                    "packrat": true,
-                    "left_recursion": "auto",
-                    "trace": false,
-                    "merge_warnings": true,
-                    "legacy_result": false,
-                },
-                "extensions": {
-                    "stream": {
-                        "enabled": true,
-                        "checkpoint": "poc_frontend",
-                        "resume_hint": "n/a",
-                        "chunk_size": 0,
-                    }
-                }
-            },
+        let parse_debug = json!({
+            "parser_run_config": runconfig_top_level.clone(),
             "input": input_path,
-            "diagnostics": diagnostics_json,
+            "diagnostics": diagnostics_json.clone(),
             "parse_result": parse_result,
             "stream_meta": stream_meta,
         });
@@ -135,6 +119,8 @@ fn install_typecheck_config(config: &TypecheckConfig) -> Result<(), InstallConfi
 }
 
 struct CliArgs {
+    program_name: String,
+    raw_args: Vec<String>,
     input: PathBuf,
     parse_debug_output: Option<PathBuf>,
     typecheck_config: TypecheckConfig,
@@ -142,6 +128,10 @@ struct CliArgs {
     emit_typed_ast: Option<PathBuf>,
     emit_constraints: Option<PathBuf>,
     emit_typeck_debug: Option<PathBuf>,
+    run_config: RunSettings,
+    stream_config: StreamSettings,
+    runtime_capabilities: Vec<String>,
+    config_path: Option<PathBuf>,
 }
 
 #[derive(Clone)]
@@ -151,8 +141,65 @@ struct DualwriteCliOpts {
     root: Option<PathBuf>,
 }
 
+#[derive(Clone)]
+struct RunSettings {
+    packrat: bool,
+    left_recursion: String,
+    trace: bool,
+    merge_warnings: bool,
+    require_eof: bool,
+    legacy_result: bool,
+    experimental_effects: bool,
+}
+
+impl Default for RunSettings {
+    fn default() -> Self {
+        Self {
+            packrat: true,
+            left_recursion: "off".to_string(),
+            trace: false,
+            merge_warnings: true,
+            require_eof: false,
+            legacy_result: true,
+            experimental_effects: false,
+        }
+    }
+}
+
+#[derive(Clone, Default)]
+struct StreamSettings {
+    enabled: bool,
+    resume_hint: Option<String>,
+    flow_policy: Option<String>,
+    flow_max_lag: Option<u64>,
+    demand_min_bytes: Option<u64>,
+    demand_preferred_bytes: Option<u64>,
+    checkpoint: Option<String>,
+    chunk_size: Option<u64>,
+}
+
+impl CliArgs {
+    fn streaming_state_config(&self) -> StreamingStateConfig {
+        let mut config = StreamingStateConfig::default();
+        config.packrat_enabled = self.run_config.packrat;
+        config.trace_enabled = self.stream_config.enabled || self.run_config.trace;
+        config
+    }
+
+    fn cli_command(&self) -> String {
+        std::iter::once(self.program_name.clone())
+            .chain(self.raw_args.iter().cloned())
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+}
+
 fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
-    let mut args = env::args().skip(1);
+    let mut argv = env::args();
+    let program_name = argv.next().unwrap_or_else(|| "poc_frontend".to_string());
+    let remaining: Vec<String> = argv.collect();
+    let raw_cli_args = remaining.clone();
+    let mut args = remaining.into_iter();
     let mut input = None;
     let mut parse_debug = None;
     let mut row_mode = None;
@@ -167,6 +214,10 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut emit_typed_ast = None;
     let mut emit_constraints = None;
     let mut emit_typeck_debug = None;
+    let mut run_config = RunSettings::default();
+    let mut stream_config = StreamSettings::default();
+    let mut runtime_capabilities: Vec<String> = Vec::new();
+    let mut config_path: Option<PathBuf> = None;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--emit-parse-debug" => {
@@ -252,6 +303,89 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     .ok_or_else(|| "--emit-typeck-debug は出力パスを伴う必要があります")?;
                 emit_typeck_debug = Some(PathBuf::from(path));
             }
+            "--packrat" => run_config.packrat = true,
+            "--no-packrat" => run_config.packrat = false,
+            "--trace" => run_config.trace = true,
+            "--no-trace" => run_config.trace = false,
+            "--merge-warnings" => run_config.merge_warnings = true,
+            "--no-merge-warnings" => run_config.merge_warnings = false,
+            "--require-eof" => run_config.require_eof = true,
+            "--no-require-eof" => run_config.require_eof = false,
+            "--legacy-result" => run_config.legacy_result = true,
+            "--no-legacy-result" => run_config.legacy_result = false,
+            "--experimental-effects" => run_config.experimental_effects = true,
+            "--no-experimental-effects" => run_config.experimental_effects = false,
+            "--left-recursion" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--left-recursion は値を伴う必要があります")?;
+                run_config.left_recursion = value;
+            }
+            "--streaming" => stream_config.enabled = true,
+            "--no-streaming" => stream_config.enabled = false,
+            "--stream-resume-hint" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--stream-resume-hint は値を伴う必要があります")?;
+                stream_config.resume_hint = Some(value);
+            }
+            "--stream-flow-policy" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--stream-flow-policy は値を伴う必要があります")?;
+                stream_config.flow_policy = Some(value);
+            }
+            "--stream-flow-max-lag" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--stream-flow-max-lag は値を伴う必要があります")?;
+                stream_config.flow_max_lag = Some(value.parse::<u64>().map_err(|_| {
+                    format!("--stream-flow-max-lag の値 `{value}` は整数ではありません")
+                })?);
+            }
+            "--stream-demand-min-bytes" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--stream-demand-min-bytes は値を伴う必要があります")?;
+                stream_config.demand_min_bytes = Some(value.parse::<u64>().map_err(|_| {
+                    format!("--stream-demand-min-bytes の値 `{value}` は整数ではありません")
+                })?);
+            }
+            "--stream-demand-preferred-bytes" => {
+                let value = args.next().ok_or_else(|| {
+                    "--stream-demand-preferred-bytes は値を伴う必要があります"
+                })?;
+                stream_config.demand_preferred_bytes = Some(value.parse::<u64>().map_err(
+                    |_| {
+                        format!(
+                            "--stream-demand-preferred-bytes の値 `{value}` は整数ではありません"
+                        )
+                    },
+                )?);
+            }
+            "--stream-checkpoint" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--stream-checkpoint は値を伴う必要があります")?;
+                stream_config.checkpoint = Some(value);
+            }
+            "--runtime-capabilities" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--runtime-capabilities は値を伴う必要があります")?;
+                for entry in value.split(',') {
+                    let trimmed = entry.trim();
+                    if !trimmed.is_empty() {
+                        runtime_capabilities.push(trimmed.to_string());
+                    }
+                }
+            }
+            "--config" => {
+                let path = args
+                    .next()
+                    .ok_or_else(|| "--config はパスを伴う必要があります")?;
+                config_path = Some(PathBuf::from(path));
+            }
             _ if arg.starts_with("--") => {
                 return Err(format!("未知のオプション: {arg}").into());
             }
@@ -287,7 +421,8 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     };
     let mut builder = TypecheckConfig::builder()
         .effect_context(effect_context)
-        .recover(recover);
+        .recover(recover)
+        .experimental_effects(run_config.experimental_effects);
     if let Some(mode) = row_mode {
         builder = builder.type_row_mode(mode);
     }
@@ -299,6 +434,8 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     });
 
     Ok(CliArgs {
+        program_name,
+        raw_args: raw_cli_args,
         input,
         parse_debug_output: parse_debug,
         typecheck_config: builder.build(),
@@ -306,6 +443,10 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         emit_typed_ast,
         emit_constraints,
         emit_typeck_debug,
+        run_config,
+        stream_config,
+        runtime_capabilities,
+        config_path,
     })
 }
 
@@ -334,6 +475,381 @@ fn write_dualwrite_typeck_payload(
     guards.write_json("typeck/typeck-debug.rust.json", &artifacts.debug)?;
     Ok(())
 }
+
+fn build_runconfig_summary(args: &CliArgs) -> Value {
+    json!({
+        "packrat": args.run_config.packrat,
+        "left_recursion": args.run_config.left_recursion,
+        "trace": args.run_config.trace,
+        "merge_warnings": args.run_config.merge_warnings,
+        "require_eof": args.run_config.require_eof,
+        "legacy_result": args.run_config.legacy_result,
+        "experimental_effects": args.run_config.experimental_effects,
+        "extensions": {
+            "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode",
+            },
+            "recover": {
+                "sync_tokens": [],
+                "notes": false,
+            },
+            "stream": build_stream_extension(&args.stream_config),
+        },
+    })
+}
+
+fn build_runconfig_top_level(args: &CliArgs) -> Value {
+    json!({
+        "switches": {
+            "packrat": args.run_config.packrat,
+            "left_recursion": args.run_config.left_recursion,
+            "trace": args.run_config.trace,
+            "merge_warnings": args.run_config.merge_warnings,
+            "require_eof": args.run_config.require_eof,
+            "legacy_result": args.run_config.legacy_result,
+            "experimental_effects": args.run_config.experimental_effects,
+        },
+        "extensions": {
+            "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode",
+            },
+            "recover": {
+                "sync_tokens": [],
+                "notes": false,
+            },
+            "stream": build_stream_extension(&args.stream_config),
+            "effects": {
+                "type_row_mode": type_row_mode_label(args.typecheck_config.type_row_mode),
+            },
+            "config": {
+                "path": args
+                    .config_path
+                    .as_ref()
+                    .map(|path| path.display().to_string()),
+            },
+        },
+        "runtime_capabilities": args.runtime_capabilities.clone(),
+    })
+}
+
+fn build_stream_extension(stream: &StreamSettings) -> Value {
+    if stream.enabled {
+        json!({
+            "enabled": true,
+            "checkpoint": stream.checkpoint.clone().unwrap_or_else(|| "unspecified".to_string()),
+            "resume_hint": stream.resume_hint.clone().unwrap_or_else(|| "unspecified".to_string()),
+            "flow_policy": stream.flow_policy.clone().unwrap_or_else(|| "auto".to_string()),
+            "flow_max_lag": stream.flow_max_lag.unwrap_or(0),
+            "demand_min_bytes": stream.demand_min_bytes.unwrap_or(0),
+            "demand_preferred_bytes": stream.demand_preferred_bytes.unwrap_or(0),
+            "chunk_size": stream.chunk_size.unwrap_or(0),
+        })
+    } else {
+        json!({ "enabled": false })
+    }
+}
+
+fn build_diagnostics(
+    diagnostics: &[FrontendDiagnostic],
+    args: &CliArgs,
+    input_path: &Path,
+    source: &str,
+    runconfig_summary: &Value,
+) -> Vec<Value> {
+    let line_index = LineIndex::new(source);
+    diagnostics
+        .iter()
+        .map(|diag| {
+            let timestamp = Utc::now().to_rfc3339();
+            let location_value = diag
+                .span
+                .map(|span| span_to_location(span, &line_index, input_path))
+                .unwrap_or(Value::Null);
+            let notes = diag
+                .notes
+                .iter()
+                .map(|note| note_to_json(note, &line_index, input_path))
+                .collect::<Vec<_>>();
+            let recover_extension = build_recover_extension(diag);
+            let mut extensions = serde_json::Map::new();
+            extensions.insert(
+                "diagnostic.v2".to_string(),
+                json!({ "timestamp": timestamp }),
+            );
+            if let Some(recover) = recover_extension.clone() {
+                extensions.insert("recover".to_string(), recover);
+            }
+            extensions.insert(
+                "parse".to_string(),
+                json!({
+                    "parser_id": {
+                        "namespace": PARSER_NAMESPACE,
+                        "name": PARSER_NAME,
+                        "ordinal": 0,
+                        "origin": PARSER_ORIGIN,
+                        "fingerprint": PARSER_FINGERPRINT,
+                    }
+                }),
+            );
+            extensions.insert(
+                "effect.required_capabilities".to_string(),
+                Value::Array(Vec::new()),
+            );
+            extensions.insert(
+                "effect.stage.required_capabilities".to_string(),
+                Value::Array(Vec::new()),
+            );
+            let runtime_caps: Vec<Value> = args
+                .runtime_capabilities
+                .iter()
+                .map(|cap| json!(cap))
+                .collect();
+            extensions.insert(
+                "effect.capabilities".to_string(),
+                Value::Array(runtime_caps.clone()),
+            );
+            extensions.insert(
+                "effect.actual_capabilities".to_string(),
+                Value::Array(runtime_caps.clone()),
+            );
+            extensions.insert(
+                "effect.stage.actual_capabilities".to_string(),
+                Value::Array(runtime_caps.clone()),
+            );
+            extensions.insert("runconfig".to_string(), runconfig_summary.clone());
+
+            let audit_metadata = build_audit_metadata(&timestamp, args, input_path);
+            let audit = json!({
+                "metadata": audit_metadata.clone(),
+                "audit_id": audit_metadata
+                    .get("cli.audit_id")
+                    .cloned()
+                    .unwrap_or_else(|| json!(format!("cli/{}#0", timestamp))),
+                "change_set": audit_metadata
+                    .get("cli.change_set")
+                    .cloned()
+                    .unwrap_or_else(|| json!({})),
+            });
+
+            json!({
+                "severity": "error",
+                "message": diag.message,
+                "schema_version": SCHEMA_VERSION,
+                "location": location_value,
+                "domain": "parser",
+                "timestamp": timestamp,
+                "extensions": Value::Object(extensions),
+                "audit_metadata": Value::Object(audit_metadata),
+                "audit": audit,
+                "notes": notes,
+                "recoverability": recoverability_label(diag.recoverability),
+                "code": diag.code,
+                "expected": build_expected_field(diag),
+            })
+        })
+        .collect()
+}
+
+fn build_recover_extension(diag: &FrontendDiagnostic) -> Option<Value> {
+    diag.notes.iter().find_map(|note| {
+        if note.label == "recover.expected_tokens" {
+            Some(json!({
+                "message": note.message,
+                "expected_tokens": [],
+            }))
+        } else {
+            None
+        }
+    })
+}
+
+fn build_expected_field(_diag: &FrontendDiagnostic) -> Value {
+    Value::Null
+}
+
+fn build_audit_metadata(
+    timestamp: &str,
+    args: &CliArgs,
+    input_path: &Path,
+) -> serde_json::Map<String, Value> {
+    let mut metadata = serde_json::Map::new();
+    metadata.insert("event.domain".to_string(), json!("parser"));
+    metadata.insert(
+        "parser.core.rule.namespace".to_string(),
+        json!(PARSER_NAMESPACE),
+    );
+    metadata.insert("parser.core.rule.name".to_string(), json!(PARSER_NAME));
+    metadata.insert("parser.core.rule.ordinal".to_string(), json!(0));
+    metadata.insert("parser.core.rule.origin".to_string(), json!(PARSER_ORIGIN));
+    metadata.insert(
+        "parser.core.rule.fingerprint".to_string(),
+        json!(PARSER_FINGERPRINT),
+    );
+    metadata.insert("namespace".to_string(), json!(PARSER_NAMESPACE));
+    metadata.insert("name".to_string(), json!(PARSER_NAME));
+    metadata.insert("origin".to_string(), json!(PARSER_ORIGIN));
+    metadata.insert("fingerprint".to_string(), json!(PARSER_FINGERPRINT));
+    metadata.insert("audit.policy.version".to_string(), json!(AUDIT_POLICY_VERSION));
+    metadata.insert("audit.channel".to_string(), json!("cli"));
+    metadata.insert("audit.timestamp".to_string(), json!(timestamp));
+    let cli_audit_id = format!("cli/{}#0", timestamp.replace(':', "").replace('-', ""));
+    metadata.insert("cli.audit_id".to_string(), json!(cli_audit_id));
+    let change_set = json!({
+        "policy": AUDIT_POLICY_VERSION,
+        "origin": "cli",
+        "source": {
+            "command": &args.program_name,
+            "args": &args.raw_args,
+            "workspace": ".",
+        },
+        "items": [
+            {
+                "kind": "cli-command",
+                "command": &args.program_name,
+                "args": &args.raw_args,
+            },
+            {
+                "kind": "input",
+                "path": input_path,
+                "target": "rust-poc",
+            }
+        ],
+    });
+    metadata.insert("cli.change_set".to_string(), change_set);
+    metadata.insert(
+        "parser.runconfig.switches.packrat".to_string(),
+        json!(args.run_config.packrat),
+    );
+    metadata.insert(
+        "parser.runconfig.switches.left_recursion".to_string(),
+        json!(args.run_config.left_recursion),
+    );
+    metadata.insert(
+        "parser.runconfig.switches.trace".to_string(),
+        json!(args.run_config.trace),
+    );
+    metadata.insert(
+        "parser.runconfig.switches.merge_warnings".to_string(),
+        json!(args.run_config.merge_warnings),
+    );
+    metadata.insert(
+        "parser.runconfig.switches.require_eof".to_string(),
+        json!(args.run_config.require_eof),
+    );
+    metadata.insert(
+        "parser.runconfig.switches.legacy_result".to_string(),
+        json!(args.run_config.legacy_result),
+    );
+    metadata.insert(
+        "parser.runconfig.extensions.stream.enabled".to_string(),
+        json!(args.stream_config.enabled),
+    );
+    metadata.insert(
+        "parser.stream.resume_hint".to_string(),
+        json!(args
+            .stream_config
+            .resume_hint
+            .clone()
+            .unwrap_or_else(|| "unspecified".to_string())),
+    );
+    metadata.insert(
+        "parser.stream.demand_min_bytes".to_string(),
+        json!(args.stream_config.demand_min_bytes.unwrap_or(0)),
+    );
+    metadata.insert(
+        "parser.stream.demand_preferred_bytes".to_string(),
+        json!(args.stream_config.demand_preferred_bytes.unwrap_or(0)),
+    );
+    metadata.insert(
+        "parser.stream.flow_policy".to_string(),
+        json!(args
+            .stream_config
+            .flow_policy
+            .clone()
+            .unwrap_or_else(|| "auto".to_string())),
+    );
+    metadata.insert(
+        "parser.stream.flow_max_lag".to_string(),
+        json!(args.stream_config.flow_max_lag.unwrap_or(0)),
+    );
+    metadata.insert(
+        "parser.stream.checkpoint".to_string(),
+        json!(args
+            .stream_config
+            .checkpoint
+            .clone()
+            .unwrap_or_else(|| "unspecified".to_string())),
+    );
+    metadata
+}
+
+fn type_row_mode_label(mode: TypeRowMode) -> &'static str {
+    match mode {
+        TypeRowMode::MetadataOnly => "ty-metadata-only",
+        TypeRowMode::DualWrite => "ty-dual-write",
+        TypeRowMode::Integrated => "ty-integrated",
+    }
+}
+
+struct LineIndex {
+    starts: Vec<usize>,
+    len: usize,
+}
+
+impl LineIndex {
+    fn new(source: &str) -> Self {
+        let mut starts = vec![0];
+        for (idx, ch) in source.char_indices() {
+            if ch == '\n' {
+                starts.push(idx + ch.len_utf8());
+            }
+        }
+        Self {
+            starts,
+            len: source.len(),
+        }
+    }
+
+    fn line_col(&self, offset: usize) -> (u32, u32) {
+        let clamped = offset.min(self.len);
+        let idx = match self.starts.binary_search(&clamped) {
+            Ok(pos) => pos,
+            Err(pos) => pos.saturating_sub(1),
+        };
+        let line_start = self.starts[idx];
+        (
+            idx as u32 + 1,
+            (clamped.saturating_sub(line_start)) as u32 + 1,
+        )
+    }
+}
+
+fn span_to_location(span: Span, index: &LineIndex, input_path: &Path) -> Value {
+    let (line, column) = index.line_col(span.start as usize);
+    let (end_line, end_column) = index.line_col(span.end as usize);
+    json!({
+        "file": input_path,
+        "line": line,
+        "column": column,
+        "endLine": end_line,
+        "endColumn": end_column,
+    })
+}
+
+fn note_to_json(note: &DiagnosticNote, index: &LineIndex, input_path: &Path) -> Value {
+    let span_value = note
+        .span
+        .map(|span| span_to_location(span, index, input_path))
+        .unwrap_or(Value::Null);
+    json!({
+        "label": note.label,
+        "message": note.message,
+        "span": span_value,
+    })
+}
+
 
 #[derive(Serialize)]
 struct TypecheckMetricsPayload<'a> {
@@ -434,44 +950,6 @@ fn write_json_file(path: &Path, value: &impl Serialize) -> Result<(), Box<dyn st
     let json = serde_json::to_vec_pretty(value)?;
     std::fs::write(path, json)?;
     Ok(())
-}
-
-#[derive(Debug, Serialize)]
-struct DiagnosticJson {
-    message: String,
-    code: Option<String>,
-    recoverability: String,
-    span: Option<Span>,
-    notes: Vec<NoteJson>,
-}
-
-impl From<&FrontendDiagnostic> for DiagnosticJson {
-    fn from(value: &FrontendDiagnostic) -> Self {
-        Self {
-            message: value.message.clone(),
-            code: value.code.clone(),
-            recoverability: recoverability_label(value.recoverability).to_string(),
-            span: value.span,
-            notes: value.notes.iter().map(NoteJson::from).collect(),
-        }
-    }
-}
-
-#[derive(Debug, Serialize)]
-struct NoteJson {
-    label: String,
-    message: String,
-    span: Option<Span>,
-}
-
-impl From<&DiagnosticNote> for NoteJson {
-    fn from(value: &DiagnosticNote) -> Self {
-        Self {
-            label: value.label.clone(),
-            message: value.message.clone(),
-            span: value.span,
-        }
-    }
 }
 
 fn recoverability_label(value: Recoverability) -> &'static str {

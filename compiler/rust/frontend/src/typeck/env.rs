@@ -27,6 +27,8 @@ pub struct TypecheckConfig {
     pub type_row_mode: TypeRowMode,
     /// Recover 拡張の挙動を制御する設定。
     pub recover: RecoverConfig,
+    /// 実験的効果を許可するかどうか。
+    pub experimental_effects: bool,
 }
 
 impl TypecheckConfig {
@@ -42,6 +44,7 @@ impl Default for TypecheckConfig {
             effect_context: StageContext::default(),
             type_row_mode: TypeRowMode::Integrated,
             recover: RecoverConfig::default(),
+            experimental_effects: false,
         }
     }
 }
@@ -52,6 +55,7 @@ pub struct TypecheckConfigBuilder {
     effect_context: Option<StageContext>,
     type_row_mode: Option<TypeRowMode>,
     recover: Option<RecoverConfig>,
+    experimental_effects: Option<bool>,
 }
 
 impl TypecheckConfigBuilder {
@@ -74,11 +78,17 @@ impl TypecheckConfigBuilder {
         self
     }
 
+    pub fn experimental_effects(mut self, enabled: bool) -> Self {
+        self.experimental_effects = Some(enabled);
+        self
+    }
+
     pub fn build(self) -> TypecheckConfig {
         TypecheckConfig {
             effect_context: self.effect_context.unwrap_or_default(),
             type_row_mode: self.type_row_mode.unwrap_or(TypeRowMode::Integrated),
             recover: self.recover.unwrap_or_default(),
+            experimental_effects: self.experimental_effects.unwrap_or(false),
         }
     }
 }

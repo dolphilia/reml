@@ -72,11 +72,14 @@ cli_merge_warnings::file::examples/cli/type_error.reml
 
 # LSP RPC（tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-*.json と同期）
 # tests: tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-hover-internal.json
-# flags: CLI=diag default; lsp-fixture: diagnostic-v2-hover-internal.json（`npm run ci --prefix tooling/lsp/tests/client_compat`）
+# flags: diag default
+# lsp-fixture: diagnostic-v2-hover-internal.json
 lsp_hover_internal_error::file::examples/cli/type_error.reml
 # tests: tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-stream.json
-# flags: CLI=--streaming --stream-resume-hint diag-w4; lsp-fixture: diagnostic-v2-stream.json
+# flags: --streaming --stream-resume-hint diag-w4
+# lsp-fixture: diagnostic-v2-stream.json
 lsp_diagnostic_stream::file::examples/cli/trace_sample.reml
 # tests: tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-workspace-config.json
-# flags: CLI=diag default --config tooling/lsp/tests/client_compat/fixtures/workspace-config.json; lsp-fixture: diagnostic-v2-workspace-config.json
+# flags: diag default --config tooling/lsp/tests/client_compat/fixtures/workspace-config.json
+# lsp-fixture: diagnostic-v2-workspace-config.json
 lsp_workspace_config::file::examples/cli/emit_suite.reml

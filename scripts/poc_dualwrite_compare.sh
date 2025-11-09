@@ -67,6 +67,9 @@ elif [[ "${MODE}" != "ast" ]]; then
 fi
 
 declare -a CASE_ENTRIES=()
+declare -a CASE_TESTS_META=()
+declare -a CASE_FLAGS_META=()
+declare -a CASE_LSP_META=()
 
 if [[ -n "${CASES_FILE}" ]]; then
   if [[ ! -f "${CASES_FILE}" ]]; then
@@ -74,12 +77,36 @@ if [[ -n "${CASES_FILE}" ]]; then
     exit 1
   fi
   while IFS= read -r line || [[ -n "$line" ]]; do
-    trimmed="${line%%#*}"
-    trimmed="$(printf '%s' "${trimmed}" | sed 's/[[:space:]]*$//')"
-    if [[ -z "${trimmed}" ]]; then
+    line="$(printf '%s' "${line}" | sed 's/[[:space:]]*$//')"
+    if [[ -z "${line}" ]]; then
       continue
     fi
-    CASE_ENTRIES+=("${trimmed}")
+    if [[ "${line}" =~ ^#[[:space:]]*(.*)$ ]]; then
+      comment="${BASH_REMATCH[1]}"
+      if [[ "${comment}" =~ ^([A-Za-z0-9._-]+)[[:space:]]*:(.*)$ ]]; then
+        key="$(printf '%s' "${BASH_REMATCH[1]}" | tr '[:upper:]' '[:lower:]')"
+        value="$(printf '%s' "${BASH_REMATCH[2]}" | sed 's/^[[:space:]]*//')"
+        case "${key}" in
+          tests)
+            current_tests="${value}"
+            ;;
+          flags)
+            current_flags="${value}"
+            ;;
+          lsp-fixture|lsp_fixture)
+            current_lsp="${value}"
+            ;;
+        esac
+      fi
+      continue
+    fi
+    CASE_ENTRIES+=("${line}")
+    CASE_TESTS_META+=("${current_tests:-}")
+    CASE_FLAGS_META+=("${current_flags:-}")
+    CASE_LSP_META+=("${current_lsp:-}")
+    current_tests=""
+    current_flags=""
+    current_lsp=""
   done < "${CASES_FILE}"
 else
   CASE_ENTRIES+=(
@@ -88,6 +115,11 @@ else
     "addition::inline::fn add(x, y) = x + y"
     "missing_paren::inline::fn missing(x = x"
   )
+  for _ in "${CASE_ENTRIES[@]}"; do
+    CASE_TESTS_META+=("")
+    CASE_FLAGS_META+=("")
+    CASE_LSP_META+=("")
+  done
 fi
 
 if [[ ${#CASE_ENTRIES[@]} -eq 0 ]]; then
@@ -125,6 +157,112 @@ needs_streaming_metrics() {
     return 0
   fi
   return 1
+}
+
+option_requires_value() {
+  case "$1" in
+    --type-row-mode|--effect-stage-runtime|--effect-stage-capability)
+      return 0
+      ;;
+    --recover-expected-tokens|--recover-context|--recover-max-suggestions)
+      return 0
+      ;;
+    --stream-resume-hint|--stream-flow-policy|--stream-flow-max-lag|--stream-demand-min-bytes|--stream-demand-preferred-bytes|--stream-checkpoint)
+      return 0
+      ;;
+    --runtime-capabilities|--emit-typeck-debug|--emit-effects-metrics|--config|--left-recursion)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+resolve_placeholder_value() {
+  local option="$1"
+  local value="$2"
+  local case_dir="$3"
+  local typeck_dir="$4"
+  local frontend="$5"
+  local label="$frontend"
+  case "${value}" in
+    "<dir>")
+      case "${option}" in
+        --emit-typeck-debug)
+          mkdir -p "${typeck_dir}"
+          printf "%s/typeck-debug.%s.json" "${typeck_dir}" "${label}"
+          ;;
+        --emit-effects-metrics)
+          mkdir -p "${case_dir}/effects"
+          printf "%s/effects-metrics.%s.json" "${case_dir}/effects" "${label}"
+          ;;
+        *)
+          printf "%s" "${case_dir}"
+          ;;
+      esac
+      ;;
+    *)
+      printf "%s" "${value}"
+      ;;
+  esac
+}
+
+parse_case_flags() {
+  local raw="$1"
+  local case_dir="$2"
+  local typeck_dir="$3"
+  local frontend="$4"
+  local -n _target="$5"
+  _target=()
+  if [[ -z "${raw}" ]]; then
+    return
+  fi
+  local tokens=()
+  read -r -a tokens <<<"${raw}"
+  local idx=0
+  while [[ ${idx} -lt ${#tokens[@]} ]]; do
+    local tok="${tokens[$idx]}"
+    if [[ "${tok}" != -* ]]; then
+      ((idx++))
+      continue
+    fi
+    _target+=("${tok}")
+    if option_requires_value "${tok}"; then
+      ((idx++))
+      if [[ ${idx} -ge ${#tokens[@]} ]]; then
+        break
+      fi
+      local next_value="${tokens[$idx]}"
+      _target+=("$(resolve_placeholder_value "${tok}" "${next_value}" "${case_dir}" "${typeck_dir}" "${frontend}")")
+    fi
+    ((idx++))
+  done
+}
+
+ensure_flag() {
+  local -n _arr="$1"
+  local flag="$2"
+  for existing in "${_arr[@]}"; do
+    if [[ "${existing}" == "${flag}" ]]; then
+      return
+    fi
+  done
+  _arr+=("${flag}")
+}
+
+ensure_flag_with_value() {
+  local -n _arr="$1"
+  local flag="$2"
+  local value="$3"
+  local idx=0
+  while [[ ${idx} -lt ${#_arr[@]} ]]; do
+    if [[ "${_arr[$idx]}" == "${flag}" ]]; then
+      return
+    fi
+    ((idx++))
+  done
+  _arr+=("${flag}" "${value}")
 }
 
 declare -a diag_ocaml_flags=()
@@ -253,7 +391,8 @@ validate_diagnostics_schema() {
   fi
 }
 
-for entry in "${CASE_ENTRIES[@]}"; do
+for idx in "${!CASE_ENTRIES[@]}"; do
+  entry="${CASE_ENTRIES[$idx]}"
   case_name="${entry%%::*}"
   rest="${entry#*::}"
   if [[ "${case_name}" == "${entry}" ]]; then
@@ -283,15 +422,13 @@ for entry in "${CASE_ENTRIES[@]}"; do
   rust_json_path="${case_dir}/rust.json"
   rust_parse_debug_path="${case_dir}/rust.parse-debug.json"
   typeck_dir="${case_dir}/typeck"
-  if [[ "${MODE}" == "typeck" ]]; then
-    mkdir -p "${typeck_dir}"
-    ocaml_typed_json="${typeck_dir}/typed-ast.ocaml.json"
-    ocaml_constraints_json="${typeck_dir}/constraints.ocaml.json"
-    ocaml_typeck_debug_json="${typeck_dir}/typeck-debug.ocaml.json"
-    rust_typed_json="${typeck_dir}/typed-ast.rust.json"
-    rust_constraints_json="${typeck_dir}/constraints.rust.json"
-    rust_typeck_debug_json="${typeck_dir}/typeck-debug.rust.json"
-  fi
+  mkdir -p "${typeck_dir}"
+  ocaml_typed_json="${typeck_dir}/typed-ast.ocaml.json"
+  ocaml_constraints_json="${typeck_dir}/constraints.ocaml.json"
+  ocaml_typeck_debug_json="${typeck_dir}/typeck-debug.ocaml.json"
+  rust_typed_json="${typeck_dir}/typed-ast.rust.json"
+  rust_constraints_json="${typeck_dir}/constraints.rust.json"
+  rust_typeck_debug_json="${typeck_dir}/typeck-debug.rust.json"
   typeck_ocaml_flags=()
   if [[ "${MODE}" == "typeck" ]]; then
     typeck_ocaml_flags+=(
@@ -330,6 +467,21 @@ for entry in "${CASE_ENTRIES[@]}"; do
   esac
 
   printf ">> ケース %s (safe=%s)\n" "${case_name}" "${safe_name}"
+  case_tests="${CASE_TESTS_META[$idx]}"
+  case_flags_raw="${CASE_FLAGS_META[$idx]}"
+  case_lsp="${CASE_LSP_META[$idx]}"
+  declare -a ocaml_case_flags=()
+  declare -a rust_case_flags=()
+  parse_case_flags "${case_flags_raw}" "${case_dir}" "${typeck_dir}" "ocaml" ocaml_case_flags
+  parse_case_flags "${case_flags_raw}" "${case_dir}" "${typeck_dir}" "rust" rust_case_flags
+  if [[ "${case_name}" == type_* || "${case_name}" == effect_* || "${case_name}" == ffi_* ]]; then
+    ensure_flag ocaml_case_flags "--experimental-effects"
+    ensure_flag_with_value ocaml_case_flags "--type-row-mode" "dual-write"
+    ensure_flag_with_value ocaml_case_flags "--emit-typeck-debug" "${ocaml_typeck_debug_json}"
+    ensure_flag rust_case_flags "--experimental-effects"
+    ensure_flag_with_value rust_case_flags "--type-row-mode" "dual-write"
+    ensure_flag_with_value rust_case_flags "--emit-typeck-debug" "${rust_typeck_debug_json}"
+  fi
 
   if [[ "${MODE}" == "diag" ]]; then
     ocaml_parse_debug_path="${case_dir}/ocaml.parse-debug.json"
@@ -352,6 +504,9 @@ for entry in "${CASE_ENTRIES[@]}"; do
     if [[ ${#diag_ocaml_flags[@]} -gt 0 ]]; then
       ocaml_diag_cmd+=("${diag_ocaml_flags[@]}")
     fi
+    if [[ ${#ocaml_case_flags[@]} -gt 0 ]]; then
+      ocaml_diag_cmd+=("${ocaml_case_flags[@]}")
+    fi
     ocaml_diag_cmd+=("${input_path}")
     run_in_dir "${OCAML_DIR}" "${ocaml_diag_cmd[@]}" > "${ocaml_diag_path}" 2>&1 || true
 
@@ -364,6 +519,9 @@ for entry in "${CASE_ENTRIES[@]}"; do
     )
     if [[ ${#diag_rust_flags[@]} -gt 0 ]]; then
       rust_diag_cmd+=("${diag_rust_flags[@]}")
+    fi
+    if [[ ${#rust_case_flags[@]} -gt 0 ]]; then
+      rust_diag_cmd+=("${rust_case_flags[@]}")
     fi
     rust_diag_cmd+=("${input_path}")
     run_in_dir "${RUST_DIR}" "${rust_diag_cmd[@]}" > "${rust_diag_path}" || true
@@ -384,7 +542,7 @@ for entry in "${CASE_ENTRIES[@]}"; do
 
     create_diag_diff "${ocaml_diag_path}" "${rust_diag_path}" "${diag_diff_path}"
 
-python3 - "${case_dir}" "${case_name}" "${safe_name}" "${RUN_ID}" "${REPORT_DIR}" "${MODE}" "${case_gating}" "${schema_ok}" "${metrics_ok}" <<'PY'
+python3 - "${case_dir}" "${case_name}" "${safe_name}" "${RUN_ID}" "${REPORT_DIR}" "${MODE}" "${case_gating}" "${schema_ok}" "${metrics_ok}" "${case_tests}" "${case_lsp}" <<'PY'
 import json
 import pathlib
 import sys
@@ -398,6 +556,8 @@ mode = sys.argv[6]
 gating_flag = sys.argv[7].lower() == "true"
 schema_ok = sys.argv[8].lower() == "true"
 metrics_ok = sys.argv[9].lower() == "true"
+case_tests = sys.argv[10]
+case_lsp = sys.argv[11]
 
 def read_text(path: pathlib.Path) -> str:
     if not path.exists():
@@ -504,6 +664,10 @@ summary = {
         },
     },
 }
+if case_tests:
+    summary["tests"] = case_tests
+if case_lsp:
+    summary["lsp_fixture"] = case_lsp
 
 (case_dir / "summary.json").write_text(
     json.dumps(summary, ensure_ascii=False, indent=2),
@@ -531,6 +695,7 @@ PY
       --json-mode compact \
       --emit-parse-debug "${ocaml_parse_debug_path}" \
       "${typeck_ocaml_flags[@]}" \
+      "${ocaml_case_flags[@]}" \
       "${input_path}"
   ) > "${ocaml_diag_path}" 2>&1 || true
 
@@ -542,6 +707,7 @@ PY
       --dualwrite-run-label "${RUN_ID}" \
       --dualwrite-case-label "${safe_name}" \
       "${typeck_rust_flags[@]}" \
+      "${rust_case_flags[@]}" \
       "${input_path}"
   ) > "${rust_json_path}" || true
 
