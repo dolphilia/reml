@@ -537,6 +537,23 @@ collect_all_metrics() {
   return $status
 }
 
+ensure_effects_metrics_artifact() {
+  local case_dir="$1"
+  local frontend="$2"
+  local root_path="${case_dir}/effects-metrics.${frontend}.json"
+  local effects_dir="${case_dir}/effects"
+  local target_path="${effects_dir}/effects-metrics.${frontend}.json"
+
+  if [[ ! -s "${root_path}" ]]; then
+    return
+  fi
+  mkdir -p "${effects_dir}"
+  if [[ -s "${target_path}" ]]; then
+    return
+  fi
+  cp "${root_path}" "${target_path}"
+}
+
 create_diag_diff() {
   local ocaml_path="$1"
   local rust_path="$2"
@@ -779,6 +796,8 @@ for idx in "${!CASE_ENTRIES[@]}"; do
       if ! collect_all_metrics "${ocaml_diag_path}" "ocaml" "${case_dir}"; then
         metrics_ok="false"
         case_gating="false"
+      else
+        ensure_effects_metrics_artifact "${case_dir}" "ocaml"
       fi
     else
       printf '%s\n' "-- OCaml diagnostics missing, metrics skipped (${case_name})" >&2
@@ -787,6 +806,8 @@ for idx in "${!CASE_ENTRIES[@]}"; do
       if ! collect_all_metrics "${rust_diag_path}" "rust" "${case_dir}"; then
         metrics_ok="false"
         case_gating="false"
+      else
+        ensure_effects_metrics_artifact "${case_dir}" "rust"
       fi
     else
       printf '%s\n' "-- Rust diagnostics missing, metrics skipped (${case_name})" >&2
