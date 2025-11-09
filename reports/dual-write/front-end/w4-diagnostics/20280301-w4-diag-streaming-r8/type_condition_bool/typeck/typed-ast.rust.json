@@ -1,0 +1,13 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280301-w4-diag-streaming-r8/type_condition_bool/input.reml",
+  "functions": [
+    {
+      "name": "type_mismatch",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    }
+  ]
+}

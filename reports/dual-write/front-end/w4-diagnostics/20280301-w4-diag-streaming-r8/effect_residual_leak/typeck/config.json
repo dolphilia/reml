@@ -1,0 +1,17 @@
+{
+  "effect_context": {
+    "runtime": {
+      "Exact": "beta"
+    },
+    "capability": {
+      "Exact": "beta"
+    }
+  },
+  "type_row_mode": "DualWrite",
+  "recover": {
+    "emit_expected_tokens": true,
+    "emit_context": true,
+    "max_suggestions": 3
+  },
+  "experimental_effects": true
+}

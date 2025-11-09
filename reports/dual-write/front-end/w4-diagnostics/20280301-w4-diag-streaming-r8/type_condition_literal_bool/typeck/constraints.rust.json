@@ -1,0 +1,12 @@
+{
+  "total_constraints": 0,
+  "breakdown": [],
+  "functions": [
+    {
+      "name": "literal_guard",
+      "constraints": 0,
+      "typed_exprs": 1,
+      "unresolved_identifiers": 1
+    }
+  ]
+}

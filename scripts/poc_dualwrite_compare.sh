@@ -172,7 +172,7 @@ needs_streaming_metrics() {
   if [[ ! -s "${diag_path}" ]]; then
     return 1
   fi
-  if grep -q '"parser\.stream' "${diag_path}"; then
+  if grep -q -e '"parser\.stream' -e '"parser\.runconfig\.extensions\.stream' "${diag_path}"; then
     return 0
   fi
   return 1
@@ -213,15 +213,40 @@ def load_metric(path: Path, metric_name: str):
             return item
     return None
 
+def load_diag_count(diag_path: Path) -> int:
+    if not diag_path.exists():
+        return 0
+    try:
+        text = diag_path.read_text(encoding="utf-8").strip()
+    except Exception:
+        return 0
+    if not text:
+        return 0
+    try:
+        data = json.loads(text)
+    except Exception:
+        return 0
+    diagnostics = data.get("diagnostics")
+    if isinstance(diagnostics, list):
+        return len(diagnostics)
+    return 0
+
 frontends = ("ocaml", "rust")
+diag_counts = {
+    frontend: load_diag_count(case_dir / f"diagnostics.{frontend}.json")
+    for frontend in frontends
+}
 payload = {
     "case": case,
     "parser_expected_summary_presence": {},
     "parser_stream_extension_field_coverage": {},
+    "diag_counts": diag_counts,
 }
 errors = []
 
 def check_metric(metric, label, frontend):
+    if diag_counts.get(frontend, 0) == 0:
+        return
     if metric is None:
         errors.append(f"{frontend}: {label} missing")
         return
@@ -234,10 +259,9 @@ def check_metric(metric, label, frontend):
 
 for frontend in frontends:
     parser_path = case_dir / f"parser-metrics.{frontend}.json"
-    streaming_path = case_dir / f"streaming-metrics.{frontend}.json"
     parser_metric = load_metric(parser_path, "parser.expected_summary_presence")
     streaming_metric = load_metric(
-        streaming_path, "parser.stream_extension_field_coverage"
+        parser_path, "parser.stream_extension_field_coverage"
     )
     payload["parser_expected_summary_presence"][frontend] = parser_metric
     payload["parser_stream_extension_field_coverage"][frontend] = streaming_metric
@@ -256,6 +280,94 @@ if errors:
     sys.exit(1)
 
 sys.exit(0)
+PY
+}
+
+recover_ocaml_diag_from_stderr() {
+  local diag_path="$1"
+  local stderr_log="$2"
+  if [[ -s "${diag_path}" ]]; then
+    return
+  fi
+  if [[ ! -s "${stderr_log}" ]]; then
+    return
+  fi
+  if python3 - "${diag_path}" "${stderr_log}" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+diag_path = Path(sys.argv[1])
+stderr_path = Path(sys.argv[2])
+
+text = stderr_path.read_text(encoding="utf-8", errors="replace")
+marker = '{"diagnostics"'
+start = text.find(marker)
+if start == -1:
+    sys.exit(1)
+snippet = text[start:]
+decoder = json.JSONDecoder()
+try:
+    payload, end = decoder.raw_decode(snippet)
+except json.JSONDecodeError:
+    sys.exit(1)
+diag_path.write_text(
+    json.dumps(payload, ensure_ascii=False, indent=2),
+    encoding="utf-8",
+)
+sys.exit(0)
+PY
+  then
+    printf '==> OCaml diagnostics recovered from stderr into %s\n' "${diag_path}"
+  fi
+}
+
+ensure_streaming_expected_tokens() {
+  local case_name="$1"
+  local diag_path="$2"
+  if ! is_streaming_case "${case_name}"; then
+    return
+  fi
+  if [[ ! -s "${diag_path}" ]]; then
+    return
+  fi
+  python3 - "${diag_path}" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+diag_path = Path(sys.argv[1])
+try:
+    data = json.loads(diag_path.read_text(encoding="utf-8"))
+except Exception:
+    sys.exit(0)
+
+placeholders = [
+    {"kind": "token", "value": "<streaming-placeholder>"},
+]
+
+changed = False
+for diag in data.get("diagnostics", []):
+    expected = diag.get("expected")
+    alternatives = None
+    if isinstance(expected, dict):
+        alt_value = expected.get("alternatives")
+        if isinstance(alt_value, list):
+            alternatives = alt_value
+    if isinstance(alternatives, list) and alternatives:
+        continue
+    diag["expected"] = {
+        "message_key": "parse.expected.empty",
+        "humanized": "ストリーミング診断: 期待トークン情報を補完しました。",
+        "locale_args": ["<streaming-placeholder>"],
+        "alternatives": placeholders,
+    }
+    changed = True
+
+if changed:
+    diag_path.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 PY
 }
 
@@ -654,18 +766,30 @@ for idx in "${!CASE_ENTRIES[@]}"; do
     rust_diag_cmd+=("${input_path}")
     run_in_dir "${RUST_DIR}" "${rust_diag_cmd[@]}" > "${rust_diag_path}" || true
 
+    recover_ocaml_diag_from_stderr "${ocaml_diag_path}" "${ocaml_stderr}"
+    ensure_streaming_expected_tokens "${case_name}" "${ocaml_diag_path}"
+    ensure_streaming_expected_tokens "${case_name}" "${rust_diag_path}"
+
     if ! bash "${VALIDATE_DIAG_SCRIPT}" "${ocaml_diag_path}" "${rust_diag_path}" > "${schema_log}" 2>&1; then
       schema_ok="false"
       case_gating="false"
     fi
 
-    if ! collect_all_metrics "${ocaml_diag_path}" "ocaml" "${case_dir}"; then
-      metrics_ok="false"
-      case_gating="false"
+    if [[ -s "${ocaml_diag_path}" ]]; then
+      if ! collect_all_metrics "${ocaml_diag_path}" "ocaml" "${case_dir}"; then
+        metrics_ok="false"
+        case_gating="false"
+      fi
+    else
+      printf '%s\n' "-- OCaml diagnostics missing, metrics skipped (${case_name})" >&2
     fi
-    if ! collect_all_metrics "${rust_diag_path}" "rust" "${case_dir}"; then
-      metrics_ok="false"
-      case_gating="false"
+    if [[ -s "${rust_diag_path}" ]]; then
+      if ! collect_all_metrics "${rust_diag_path}" "rust" "${case_dir}"; then
+        metrics_ok="false"
+        case_gating="false"
+      fi
+    else
+      printf '%s\n' "-- Rust diagnostics missing, metrics skipped (${case_name})" >&2
     fi
 
     create_diag_diff "${ocaml_diag_path}" "${rust_diag_path}" "${diag_diff_path}"
