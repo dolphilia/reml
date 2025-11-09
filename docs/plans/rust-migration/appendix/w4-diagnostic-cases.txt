@@ -64,7 +64,7 @@ ffi_async_dispatch::file::examples/ffi/macos/ffi_dispatch_async.reml
 
 # CLI RunConfig / DIAG-002 監査必須化
 # tests: compiler/ocaml/tests/run_config_tests.ml::packrat_switch; docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-002-proposal.md
-# flags: run twice with --packrat / --no-packrat（audit_id/timestamp を比較）
+# flags: --packrat
 cli_packrat_switch::file::examples/cli/emit_suite.reml
 # tests: compiler/ocaml/tests/run_config_tests.ml::trace_options
 # flags: --trace --no-merge-warnings

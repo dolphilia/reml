@@ -2,7 +2,7 @@
   "diagnostics": [
     {
       "audit": {
-        "audit_id": "cli/20251109T022523Z#0",
+        "audit_id": "cli/20251109T025143Z#0",
         "change_set": {
           "items": [
             {
@@ -51,8 +51,8 @@
         "metadata": {
           "audit.channel": "cli",
           "audit.policy.version": "rust.poc.audit.v1",
-          "audit.timestamp": "2025-11-09T02:25:23Z",
-          "cli.audit_id": "cli/20251109T022523Z#0",
+          "audit.timestamp": "2025-11-09T02:51:43Z",
+          "cli.audit_id": "cli/20251109T025143Z#0",
           "cli.change_set": {
             "items": [
               {
@@ -99,6 +99,7 @@
             }
           },
           "event.domain": "parser",
+          "event.kind": "diagnostic",
           "fingerprint": "rust-poc-0001",
           "name": "compilation_unit",
           "namespace": "rust.poc",
@@ -108,7 +109,84 @@
           "parser.core.rule.namespace": "rust.poc",
           "parser.core.rule.ordinal": 0,
           "parser.core.rule.origin": "poc_frontend",
+          "parser.runconfig": {
+            "extensions": {
+              "config": {
+                "path": "tooling/lsp/tests/client_compat/fixtures/workspace-config.json"
+              },
+              "effects": {
+                "type_row_mode": "ty-integrated"
+              },
+              "lex": {
+                "identifier_profile": "unicode",
+                "profile": "strict_json"
+              },
+              "recover": {
+                "notes": false,
+                "sync_tokens": []
+              },
+              "stream": {
+                "checkpoint": "unspecified",
+                "chunk_size": 0,
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "enabled": false,
+                "flow": {
+                  "backpressure": {
+                    "max_lag_bytes": 0
+                  },
+                  "policy": "auto"
+                },
+                "flow_max_lag": 0,
+                "flow_policy": "auto",
+                "resume_hint": "unspecified"
+              }
+            },
+            "runtime_capabilities": [],
+            "switches": {
+              "experimental_effects": false,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "trace": false
+            }
+          },
+          "parser.runconfig.extensions.lex": {
+            "identifier_profile": "unicode",
+            "profile": "strict_json"
+          },
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.recover": {
+            "notes": false,
+            "sync_tokens": []
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "checkpoint": "unspecified",
+            "chunk_size": 0,
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "enabled": false,
+            "flow": {
+              "backpressure": {
+                "max_lag_bytes": 0
+              },
+              "policy": "auto"
+            },
+            "flow_max_lag": 0,
+            "flow_policy": "auto",
+            "resume_hint": "unspecified"
+          },
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
           "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
           "parser.runconfig.switches.left_recursion": "off",
           "parser.runconfig.switches.legacy_result": true,
           "parser.runconfig.switches.merge_warnings": true,
@@ -120,14 +198,15 @@
           "parser.stream.demand_preferred_bytes": 0,
           "parser.stream.flow_max_lag": 0,
           "parser.stream.flow_policy": "auto",
-          "parser.stream.resume_hint": "unspecified"
+          "parser.stream.resume_hint": "unspecified",
+          "schema.version": "2.0.0-draft"
         }
       },
       "audit_metadata": {
         "audit.channel": "cli",
         "audit.policy.version": "rust.poc.audit.v1",
-        "audit.timestamp": "2025-11-09T02:25:23Z",
-        "cli.audit_id": "cli/20251109T022523Z#0",
+        "audit.timestamp": "2025-11-09T02:51:43Z",
+        "cli.audit_id": "cli/20251109T025143Z#0",
         "cli.change_set": {
           "items": [
             {
@@ -174,6 +253,7 @@
           }
         },
         "event.domain": "parser",
+        "event.kind": "diagnostic",
         "fingerprint": "rust-poc-0001",
         "name": "compilation_unit",
         "namespace": "rust.poc",
@@ -183,7 +263,84 @@
         "parser.core.rule.namespace": "rust.poc",
         "parser.core.rule.ordinal": 0,
         "parser.core.rule.origin": "poc_frontend",
+        "parser.runconfig": {
+          "extensions": {
+            "config": {
+              "path": "tooling/lsp/tests/client_compat/fixtures/workspace-config.json"
+            },
+            "effects": {
+              "type_row_mode": "ty-integrated"
+            },
+            "lex": {
+              "identifier_profile": "unicode",
+              "profile": "strict_json"
+            },
+            "recover": {
+              "notes": false,
+              "sync_tokens": []
+            },
+            "stream": {
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": false,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "resume_hint": "unspecified"
+            }
+          },
+          "runtime_capabilities": [],
+          "switches": {
+            "experimental_effects": false,
+            "left_recursion": "off",
+            "legacy_result": true,
+            "merge_warnings": true,
+            "packrat": true,
+            "require_eof": false,
+            "trace": false
+          }
+        },
+        "parser.runconfig.extensions.lex": {
+          "identifier_profile": "unicode",
+          "profile": "strict_json"
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.recover": {
+          "notes": false,
+          "sync_tokens": []
+        },
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.stream": {
+          "checkpoint": "unspecified",
+          "chunk_size": 0,
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "enabled": false,
+          "flow": {
+            "backpressure": {
+              "max_lag_bytes": 0
+            },
+            "policy": "auto"
+          },
+          "flow_max_lag": 0,
+          "flow_policy": "auto",
+          "resume_hint": "unspecified"
+        },
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
         "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
         "parser.runconfig.switches.left_recursion": "off",
         "parser.runconfig.switches.legacy_result": true,
         "parser.runconfig.switches.merge_warnings": true,
@@ -195,14 +352,15 @@
         "parser.stream.demand_preferred_bytes": 0,
         "parser.stream.flow_max_lag": 0,
         "parser.stream.flow_policy": "auto",
-        "parser.stream.resume_hint": "unspecified"
+        "parser.stream.resume_hint": "unspecified",
+        "schema.version": "2.0.0-draft"
       },
       "code": null,
       "domain": "parser",
       "expected": null,
       "extensions": {
         "diagnostic.v2": {
-          "timestamp": "2025-11-09T02:25:23Z"
+          "timestamp": "2025-11-09T02:51:43Z"
         },
         "effect.actual_capabilities": [],
         "effect.capabilities": [],
@@ -230,7 +388,20 @@
               "sync_tokens": []
             },
             "stream": {
-              "enabled": false
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": false,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "resume_hint": "unspecified"
             }
           },
           "left_recursion": "off",
@@ -265,11 +436,11 @@
       "recoverability": "recoverable",
       "schema_version": "2.0.0-draft",
       "severity": "error",
-      "timestamp": "2025-11-09T02:25:23Z"
+      "timestamp": "2025-11-09T02:51:43Z"
     },
     {
       "audit": {
-        "audit_id": "cli/20251109T022523Z#0",
+        "audit_id": "cli/20251109T025143Z#0",
         "change_set": {
           "items": [
             {
@@ -318,8 +489,8 @@
         "metadata": {
           "audit.channel": "cli",
           "audit.policy.version": "rust.poc.audit.v1",
-          "audit.timestamp": "2025-11-09T02:25:23Z",
-          "cli.audit_id": "cli/20251109T022523Z#0",
+          "audit.timestamp": "2025-11-09T02:51:43Z",
+          "cli.audit_id": "cli/20251109T025143Z#0",
           "cli.change_set": {
             "items": [
               {
@@ -366,6 +537,7 @@
             }
           },
           "event.domain": "parser",
+          "event.kind": "diagnostic",
           "fingerprint": "rust-poc-0001",
           "name": "compilation_unit",
           "namespace": "rust.poc",
@@ -375,7 +547,84 @@
           "parser.core.rule.namespace": "rust.poc",
           "parser.core.rule.ordinal": 0,
           "parser.core.rule.origin": "poc_frontend",
+          "parser.runconfig": {
+            "extensions": {
+              "config": {
+                "path": "tooling/lsp/tests/client_compat/fixtures/workspace-config.json"
+              },
+              "effects": {
+                "type_row_mode": "ty-integrated"
+              },
+              "lex": {
+                "identifier_profile": "unicode",
+                "profile": "strict_json"
+              },
+              "recover": {
+                "notes": false,
+                "sync_tokens": []
+              },
+              "stream": {
+                "checkpoint": "unspecified",
+                "chunk_size": 0,
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "enabled": false,
+                "flow": {
+                  "backpressure": {
+                    "max_lag_bytes": 0
+                  },
+                  "policy": "auto"
+                },
+                "flow_max_lag": 0,
+                "flow_policy": "auto",
+                "resume_hint": "unspecified"
+              }
+            },
+            "runtime_capabilities": [],
+            "switches": {
+              "experimental_effects": false,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "trace": false
+            }
+          },
+          "parser.runconfig.extensions.lex": {
+            "identifier_profile": "unicode",
+            "profile": "strict_json"
+          },
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.recover": {
+            "notes": false,
+            "sync_tokens": []
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "checkpoint": "unspecified",
+            "chunk_size": 0,
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "enabled": false,
+            "flow": {
+              "backpressure": {
+                "max_lag_bytes": 0
+              },
+              "policy": "auto"
+            },
+            "flow_max_lag": 0,
+            "flow_policy": "auto",
+            "resume_hint": "unspecified"
+          },
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
           "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
           "parser.runconfig.switches.left_recursion": "off",
           "parser.runconfig.switches.legacy_result": true,
           "parser.runconfig.switches.merge_warnings": true,
@@ -387,14 +636,15 @@
           "parser.stream.demand_preferred_bytes": 0,
           "parser.stream.flow_max_lag": 0,
           "parser.stream.flow_policy": "auto",
-          "parser.stream.resume_hint": "unspecified"
+          "parser.stream.resume_hint": "unspecified",
+          "schema.version": "2.0.0-draft"
         }
       },
       "audit_metadata": {
         "audit.channel": "cli",
         "audit.policy.version": "rust.poc.audit.v1",
-        "audit.timestamp": "2025-11-09T02:25:23Z",
-        "cli.audit_id": "cli/20251109T022523Z#0",
+        "audit.timestamp": "2025-11-09T02:51:43Z",
+        "cli.audit_id": "cli/20251109T025143Z#0",
         "cli.change_set": {
           "items": [
             {
@@ -441,6 +691,7 @@
           }
         },
         "event.domain": "parser",
+        "event.kind": "diagnostic",
         "fingerprint": "rust-poc-0001",
         "name": "compilation_unit",
         "namespace": "rust.poc",
@@ -450,7 +701,84 @@
         "parser.core.rule.namespace": "rust.poc",
         "parser.core.rule.ordinal": 0,
         "parser.core.rule.origin": "poc_frontend",
+        "parser.runconfig": {
+          "extensions": {
+            "config": {
+              "path": "tooling/lsp/tests/client_compat/fixtures/workspace-config.json"
+            },
+            "effects": {
+              "type_row_mode": "ty-integrated"
+            },
+            "lex": {
+              "identifier_profile": "unicode",
+              "profile": "strict_json"
+            },
+            "recover": {
+              "notes": false,
+              "sync_tokens": []
+            },
+            "stream": {
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": false,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "resume_hint": "unspecified"
+            }
+          },
+          "runtime_capabilities": [],
+          "switches": {
+            "experimental_effects": false,
+            "left_recursion": "off",
+            "legacy_result": true,
+            "merge_warnings": true,
+            "packrat": true,
+            "require_eof": false,
+            "trace": false
+          }
+        },
+        "parser.runconfig.extensions.lex": {
+          "identifier_profile": "unicode",
+          "profile": "strict_json"
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.recover": {
+          "notes": false,
+          "sync_tokens": []
+        },
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.stream": {
+          "checkpoint": "unspecified",
+          "chunk_size": 0,
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "enabled": false,
+          "flow": {
+            "backpressure": {
+              "max_lag_bytes": 0
+            },
+            "policy": "auto"
+          },
+          "flow_max_lag": 0,
+          "flow_policy": "auto",
+          "resume_hint": "unspecified"
+        },
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
         "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
         "parser.runconfig.switches.left_recursion": "off",
         "parser.runconfig.switches.legacy_result": true,
         "parser.runconfig.switches.merge_warnings": true,
@@ -462,14 +790,32 @@
         "parser.stream.demand_preferred_bytes": 0,
         "parser.stream.flow_max_lag": 0,
         "parser.stream.flow_policy": "auto",
-        "parser.stream.resume_hint": "unspecified"
+        "parser.stream.resume_hint": "unspecified",
+        "schema.version": "2.0.0-draft"
       },
       "code": null,
       "domain": "parser",
-      "expected": null,
+      "expected": {
+        "alternatives": [
+          {
+            "kind": "token",
+            "value": ")"
+          },
+          {
+            "kind": "token",
+            "value": ","
+          }
+        ],
+        "humanized": "ここで`)`、`,`のいずれかが必要です",
+        "locale_args": [
+          ")",
+          ","
+        ],
+        "message_key": "parse.expected"
+      },
       "extensions": {
         "diagnostic.v2": {
-          "timestamp": "2025-11-09T02:25:23Z"
+          "timestamp": "2025-11-09T02:51:43Z"
         },
         "effect.actual_capabilities": [],
         "effect.capabilities": [],
@@ -486,7 +832,10 @@
           }
         },
         "recover": {
-          "expected_tokens": [],
+          "expected_tokens": [
+            ")",
+            ","
+          ],
           "message": "ここで`)`、`,`のいずれかが必要です"
         },
         "runconfig": {
@@ -501,7 +850,20 @@
               "sync_tokens": []
             },
             "stream": {
-              "enabled": false
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": false,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "resume_hint": "unspecified"
             }
           },
           "left_recursion": "off",
@@ -530,7 +892,7 @@
       "recoverability": "recoverable",
       "schema_version": "2.0.0-draft",
       "severity": "error",
-      "timestamp": "2025-11-09T02:25:23Z"
+      "timestamp": "2025-11-09T02:51:43Z"
     }
   ],
   "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/lsp_workspace_config/input.reml",
@@ -563,7 +925,20 @@
         "sync_tokens": []
       },
       "stream": {
-        "enabled": false
+        "checkpoint": "unspecified",
+        "chunk_size": 0,
+        "demand_min_bytes": 0,
+        "demand_preferred_bytes": 0,
+        "enabled": false,
+        "flow": {
+          "backpressure": {
+            "max_lag_bytes": 0
+          },
+          "policy": "auto"
+        },
+        "flow_max_lag": 0,
+        "flow_policy": "auto",
+        "resume_hint": "unspecified"
       }
     },
     "runtime_capabilities": [],

@@ -70,9 +70,11 @@
               "recover": { "sync_tokens": [], "notes": false },
               "stream": {
                 "enabled": true,
+                "checkpoint": "unspecified",
                 "resume_hint": "diag-w4",
                 "demand_min_bytes": 4,
                 "demand_preferred_bytes": 8,
+                "chunk_size": 0,
                 "flow": {
                   "policy": "auto",
                   "backpressure": { "max_lag_bytes": 8192 }
@@ -101,18 +103,22 @@
           "parser.runconfig.extensions.recover.sync_tokens": [],
           "parser.runconfig.extensions.stream": {
             "enabled": true,
+            "checkpoint": "unspecified",
             "resume_hint": "diag-w4",
             "demand_min_bytes": 4,
             "demand_preferred_bytes": 8,
+            "chunk_size": 0,
             "flow": {
               "policy": "auto",
               "backpressure": { "max_lag_bytes": 8192 }
             }
           },
           "parser.runconfig.extensions.stream.enabled": true,
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
           "parser.runconfig.extensions.stream.resume_hint": "diag-w4",
           "parser.runconfig.extensions.stream.demand_min_bytes": 4,
           "parser.runconfig.extensions.stream.demand_preferred_bytes": 8,
+          "parser.runconfig.extensions.stream.chunk_size": 0,
           "parser.runconfig.extensions.stream.flow.policy": "auto",
           "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 8192,
           "effect.capabilities": [],
@@ -133,7 +139,7 @@
             "policy": "phase2.5.audit.v1",
             "origin": "cli",
             "source": {
-              "build_id": "20251109T022512Z",
+              "build_id": "20251109T025130Z",
               "workspace": ".",
               "sequence": 0
             },
@@ -141,20 +147,20 @@
           },
           "audit.source.workspace": ".",
           "audit.sequence": 0,
-          "audit.build_id": "20251109T022512Z",
+          "audit.build_id": "20251109T025130Z",
           "audit.channel": "cli",
           "audit.policy.version": "phase2.5.audit.v1",
-          "cli.audit_id": "cli/20251109T022512Z#0",
+          "cli.audit_id": "cli/20251109T025130Z#0",
           "event.domain": "parser",
-          "audit.timestamp": "2025-11-09T02:25:12Z",
+          "audit.timestamp": "2025-11-09T02:51:30Z",
           "schema.version": "1.1"
         },
-        "audit_id": "cli/20251109T022512Z#0",
+        "audit_id": "cli/20251109T025130Z#0",
         "change_set": {
           "policy": "phase2.5.audit.v1",
           "origin": "cli",
           "source": {
-            "build_id": "20251109T022512Z",
+            "build_id": "20251109T025130Z",
             "workspace": ".",
             "sequence": 0
           },
@@ -163,17 +169,17 @@
       },
       "audit_metadata": {
         "event.domain": "parser",
-        "cli.audit_id": "cli/20251109T022512Z#0",
+        "cli.audit_id": "cli/20251109T025130Z#0",
         "audit.policy.version": "phase2.5.audit.v1",
         "audit.channel": "cli",
-        "audit.build_id": "20251109T022512Z",
+        "audit.build_id": "20251109T025130Z",
         "audit.sequence": 0,
         "audit.source.workspace": ".",
         "cli.change_set": {
           "policy": "phase2.5.audit.v1",
           "origin": "cli",
           "source": {
-            "build_id": "20251109T022512Z",
+            "build_id": "20251109T025130Z",
             "workspace": ".",
             "sequence": 0
           },
@@ -189,7 +195,7 @@
         "origin": "static",
         "fingerprint": "859967339",
         "schema.version": "1.1",
-        "audit.timestamp": "2025-11-09T02:25:12Z",
+        "audit.timestamp": "2025-11-09T02:51:30Z",
         "effect.required_capabilities": [],
         "effect.stage.required_capabilities": [],
         "effect.actual_capabilities": [],
@@ -197,15 +203,19 @@
         "effect.capabilities": [],
         "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 8192,
         "parser.runconfig.extensions.stream.flow.policy": "auto",
+        "parser.runconfig.extensions.stream.chunk_size": 0,
         "parser.runconfig.extensions.stream.demand_preferred_bytes": 8,
         "parser.runconfig.extensions.stream.demand_min_bytes": 4,
         "parser.runconfig.extensions.stream.resume_hint": "diag-w4",
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
         "parser.runconfig.extensions.stream.enabled": true,
         "parser.runconfig.extensions.stream": {
           "enabled": true,
+          "checkpoint": "unspecified",
           "resume_hint": "diag-w4",
           "demand_min_bytes": 4,
           "demand_preferred_bytes": 8,
+          "chunk_size": 0,
           "flow": {
             "policy": "auto",
             "backpressure": { "max_lag_bytes": 8192 }
@@ -246,9 +256,11 @@
             "recover": { "sync_tokens": [], "notes": false },
             "stream": {
               "enabled": true,
+              "checkpoint": "unspecified",
               "resume_hint": "diag-w4",
               "demand_min_bytes": 4,
               "demand_preferred_bytes": 8,
+              "chunk_size": 0,
               "flow": {
                 "policy": "auto",
                 "backpressure": { "max_lag_bytes": 8192 }
@@ -276,7 +288,7 @@
         }
       },
       "extensions": {
-        "diagnostic.v2": { "timestamp": "2025-11-09T02:25:12Z" },
+        "diagnostic.v2": { "timestamp": "2025-11-09T02:51:30Z" },
         "parse": {
           "parser_id": {
             "namespace": "menhir",
@@ -307,9 +319,11 @@
             "recover": { "sync_tokens": [], "notes": false },
             "stream": {
               "enabled": true,
+              "checkpoint": "unspecified",
               "resume_hint": "diag-w4",
               "demand_min_bytes": 4,
               "demand_preferred_bytes": 8,
+              "chunk_size": 0,
               "flow": {
                 "policy": "auto",
                 "backpressure": { "max_lag_bytes": 8192 }
@@ -334,7 +348,7 @@
       "severity": "error",
       "message": "Unexpected character: \\",
       "domain": "parser",
-      "timestamp": "2025-11-09T02:25:12Z"
+      "timestamp": "2025-11-09T02:51:30Z"
     }
   ],
   "parse_result": {

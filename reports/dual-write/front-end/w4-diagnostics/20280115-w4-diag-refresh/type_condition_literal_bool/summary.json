@@ -15,13 +15,19 @@
         "audit_pass_rate": 1.0,
         "expected_pass_fraction": 0.0
       },
-      "rust": null
+      "rust": {
+        "audit_pass_fraction": null,
+        "audit_pass_rate": null,
+        "expected_pass_fraction": 0.0
+      }
     },
     "effects": {
       "ocaml": {
         "regressions": 0
       },
-      "rust": null
+      "rust": {
+        "regressions": 0
+      }
     },
     "streaming": {
       "ocaml": null,

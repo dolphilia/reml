@@ -54,10 +54,14 @@ impl ParserDriver {
 
         let (ast, parse_errors) = parse_tokens(&tokens, source, &streaming_state);
         diagnostics.extend(parse_errors.into_iter().map(|err| {
-            let (message, recover_message) = err.1;
+            let (message, recover_message, expected_tokens) = err.1;
             let mut diagnostic = FrontendDiagnostic::new(message);
             if let Some(span) = err.0 {
                 diagnostic = diagnostic.with_span(span);
+            }
+            if !expected_tokens.is_empty() {
+                diagnostic = diagnostic
+                    .set_expected_tokens(expected_tokens.clone(), Some(recover_message.clone()));
             }
             if !recover_message.is_empty() {
                 diagnostic.add_note(DiagnosticNote::new(
@@ -118,7 +122,10 @@ fn parse_tokens(
     tokens: &[Token],
     source: &str,
     streaming_state: &StreamingState,
-) -> (Option<Module>, Vec<(Option<Span>, (String, String))>) {
+) -> (
+    Option<Module>,
+    Vec<(Option<Span>, (String, String, Vec<String>))>,
+) {
     let token_pairs: Vec<_> = tokens
         .iter()
         .filter(|token| token.kind != TokenKind::Whitespace)
@@ -136,9 +143,9 @@ fn parse_tokens(
         .into_iter()
         .map(|err| {
             let span = Some(convert_range(err.span()));
-            let (message, recover) = format_simple_error(&err);
+            let (message, recover, expected_tokens) = format_simple_error(&err);
             record_streaming_error(streaming_state, &err, tokens, &message, &recover);
-            (span, (message, recover))
+            (span, (message, recover, expected_tokens))
         })
         .collect();
 
@@ -149,7 +156,7 @@ fn convert_range(range: Range<usize>) -> Span {
     Span::new(range.start as u32, range.end as u32)
 }
 
-fn format_simple_error(err: &Simple<TokenKind>) -> (String, String) {
+fn format_simple_error(err: &Simple<TokenKind>) -> (String, String, Vec<String>) {
     let expected_tokens = expected_token_labels(err);
     let recover_message = if expected_tokens.is_empty() {
         String::new()
@@ -169,7 +176,7 @@ fn format_simple_error(err: &Simple<TokenKind>) -> (String, String) {
         SimpleReason::Custom(msg) => msg.clone(),
     };
 
-    (message, recover_message.clone())
+    (message, recover_message.clone(), expected_tokens)
 }
 
 fn expected_token_labels(err: &Simple<TokenKind>) -> Vec<String> {

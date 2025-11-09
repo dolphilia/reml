@@ -1142,54 +1142,64 @@ let with_parser_runconfig_metadata ~(config : Run_config.t) diag =
       ]
   in
   let stream_config = Run_config.Stream.of_run_config config in
+  let checkpoint_value =
+    Option.value ~default:"unspecified" stream_config.checkpoint
+  in
+  let resume_hint_value =
+    Option.value ~default:"unspecified" stream_config.resume_hint
+  in
+  let demand_min_value =
+    Option.value ~default:0 stream_config.demand_min_bytes
+  in
+  let demand_preferred_value =
+    Option.value ~default:0 stream_config.demand_preferred_bytes
+  in
+  let chunk_size_value = Option.value ~default:0 stream_config.chunk_size in
+  let flow_policy_label, backpressure_fields =
+    match stream_config.flow with
+    | None ->
+        ( "auto",
+          [ ("max_lag_bytes", `Int 0) ] )
+    | Some flow ->
+        let policy_label =
+          match flow.Run_config.Stream.Flow.policy with
+          | Run_config.Stream.Flow.Manual -> "manual"
+          | Run_config.Stream.Flow.Auto -> "auto"
+        in
+        let fields =
+          []
+          |> add_option_field "max_lag_bytes"
+               (Option.map
+                  (fun value -> `Int value)
+                  flow.Run_config.Stream.Flow.backpressure.max_lag_bytes)
+          |> add_option_field "debounce_ms"
+               (Option.map
+                  (fun value -> `Int value)
+                  flow.Run_config.Stream.Flow.backpressure.debounce_ms)
+          |> add_option_field "throttle_ratio"
+               (Option.map
+                  (fun value -> `Float value)
+                  flow.Run_config.Stream.Flow.backpressure.throttle_ratio)
+        in
+        (policy_label, fields)
+  in
+  let flow_fields =
+    []
+    |> add_field "policy" (`String flow_policy_label)
+    |> (fun acc ->
+         match backpressure_fields with
+         | [] -> acc
+         | _ -> add_field "backpressure" (`Assoc (List.rev backpressure_fields)) acc)
+  in
   let stream_fields =
     []
     |> add_field "enabled" (`Bool stream_config.enabled)
-    |> (fun acc ->
-         match stream_config.checkpoint with
-         | Some checkpoint ->
-             add_string_field "checkpoint" checkpoint acc
-         | None -> acc)
-    |> (fun acc ->
-         match stream_config.resume_hint with
-         | Some hint -> add_string_field "resume_hint" hint acc
-         | None -> acc)
-    |> add_option_field "demand_min_bytes"
-         (Option.map (fun value -> `Int value) stream_config.demand_min_bytes)
-    |> add_option_field "demand_preferred_bytes"
-         (Option.map (fun value -> `Int value) stream_config.demand_preferred_bytes)
-    |> add_option_field "chunk_size"
-         (Option.map (fun value -> `Int value) stream_config.chunk_size)
-    |> (fun acc ->
-         match stream_config.flow with
-         | None -> acc
-        | Some flow ->
-            let policy_label =
-              match flow.Run_config.Stream.Flow.policy with
-              | Run_config.Stream.Flow.Manual -> "manual"
-              | Run_config.Stream.Flow.Auto -> "auto"
-            in
-            let flow_fields =
-              []
-              |> add_field "policy" (`String policy_label)
-             in
-             let backpressure_fields =
-               []
-               |> add_option_field "max_lag_bytes"
-                    (Option.map (fun value -> `Int value) flow.backpressure.max_lag_bytes)
-               |> add_option_field "debounce_ms"
-                    (Option.map (fun value -> `Int value) flow.backpressure.debounce_ms)
-               |> add_option_field "throttle_ratio"
-                    (Option.map (fun value -> `Float value) flow.backpressure.throttle_ratio)
-             in
-             let flow_fields =
-               match backpressure_fields with
-               | [] -> flow_fields
-               | _ ->
-                   add_field "backpressure" (`Assoc (List.rev backpressure_fields))
-                     flow_fields
-             in
-             add_field "flow" (`Assoc (List.rev flow_fields)) acc)
+    |> add_field "checkpoint" (`String checkpoint_value)
+    |> add_field "resume_hint" (`String resume_hint_value)
+    |> add_field "demand_min_bytes" (`Int demand_min_value)
+    |> add_field "demand_preferred_bytes" (`Int demand_preferred_value)
+    |> add_field "chunk_size" (`Int chunk_size_value)
+    |> add_field "flow" (`Assoc (List.rev flow_fields))
   in
   let stream_json = `Assoc (List.rev stream_fields) in
   let extensions_json =
@@ -1238,24 +1248,16 @@ let with_parser_runconfig_metadata ~(config : Run_config.t) diag =
     |> add_field "parser.runconfig.extensions.stream" stream_json
     |> add_field "parser.runconfig.extensions.stream.enabled"
          (`Bool stream_config.enabled)
-    |> (fun acc ->
-         match stream_config.checkpoint with
-         | Some checkpoint ->
-             add_string_field "parser.runconfig.extensions.stream.checkpoint"
-               checkpoint acc
-         | None -> acc)
-    |> (fun acc ->
-         match stream_config.resume_hint with
-         | Some hint ->
-             add_string_field "parser.runconfig.extensions.stream.resume_hint" hint acc
-         | None -> acc)
-    |> add_option_field "parser.runconfig.extensions.stream.demand_min_bytes"
-         (Option.map (fun value -> `Int value) stream_config.demand_min_bytes)
-    |> add_option_field
-         "parser.runconfig.extensions.stream.demand_preferred_bytes"
-         (Option.map (fun value -> `Int value) stream_config.demand_preferred_bytes)
-    |> add_option_field "parser.runconfig.extensions.stream.chunk_size"
-         (Option.map (fun value -> `Int value) stream_config.chunk_size)
+    |> add_field "parser.runconfig.extensions.stream.checkpoint"
+         (`String checkpoint_value)
+    |> add_field "parser.runconfig.extensions.stream.resume_hint"
+         (`String resume_hint_value)
+    |> add_field "parser.runconfig.extensions.stream.demand_min_bytes"
+         (`Int demand_min_value)
+    |> add_field "parser.runconfig.extensions.stream.demand_preferred_bytes"
+         (`Int demand_preferred_value)
+    |> add_field "parser.runconfig.extensions.stream.chunk_size"
+         (`Int chunk_size_value)
   in
   let base_audit_entries =
     match stream_config.flow with

@@ -30,7 +30,20 @@
         "sync_tokens": []
       },
       "stream": {
-        "enabled": false
+        "checkpoint": "unspecified",
+        "chunk_size": 0,
+        "demand_min_bytes": 0,
+        "demand_preferred_bytes": 0,
+        "enabled": false,
+        "flow": {
+          "backpressure": {
+            "max_lag_bytes": 0
+          },
+          "policy": "auto"
+        },
+        "flow_max_lag": 0,
+        "flow_policy": "auto",
+        "resume_hint": "unspecified"
       }
     },
     "runtime_capabilities": [],

@@ -16,9 +16,9 @@
         "expected_pass_fraction": 0.0
       },
       "rust": {
-        "audit_pass_fraction": 0.0,
-        "audit_pass_rate": 0.0,
-        "expected_pass_fraction": 0.0
+        "audit_pass_fraction": 1.0,
+        "audit_pass_rate": 1.0,
+        "expected_pass_fraction": 0.09090909090909091
       }
     },
     "effects": {
@@ -32,7 +32,7 @@
     "streaming": {
       "ocaml": null,
       "rust": {
-        "audit_pass_fraction": 0.0
+        "audit_pass_fraction": 1.0
       }
     }
   },

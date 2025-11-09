@@ -99,7 +99,18 @@
                 "identifier_profile": "unicode"
               },
               "recover": { "sync_tokens": [], "notes": false },
-              "stream": { "enabled": false }
+              "stream": {
+                "enabled": false,
+                "checkpoint": "unspecified",
+                "resume_hint": "unspecified",
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "chunk_size": 0,
+                "flow": {
+                  "policy": "auto",
+                  "backpressure": { "max_lag_bytes": 0 }
+                }
+              }
             }
           },
           "parser.runconfig.packrat": true,
@@ -121,8 +132,24 @@
           },
           "parser.runconfig.extensions.recover.notes": false,
           "parser.runconfig.extensions.recover.sync_tokens": [],
-          "parser.runconfig.extensions.stream": { "enabled": false },
+          "parser.runconfig.extensions.stream": {
+            "enabled": false,
+            "checkpoint": "unspecified",
+            "resume_hint": "unspecified",
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "chunk_size": 0,
+            "flow": {
+              "policy": "auto",
+              "backpressure": { "max_lag_bytes": 0 }
+            }
+          },
           "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.chunk_size": 0,
           "effect.capabilities": [],
           "effect.stage.actual_capabilities": [],
           "effect.actual_capabilities": [],
@@ -141,7 +168,7 @@
             "policy": "phase2.5.audit.v1",
             "origin": "cli",
             "source": {
-              "build_id": "20251109T022505Z",
+              "build_id": "20251109T025121Z",
               "workspace": ".",
               "sequence": 0
             },
@@ -149,20 +176,20 @@
           },
           "audit.source.workspace": ".",
           "audit.sequence": 0,
-          "audit.build_id": "20251109T022505Z",
+          "audit.build_id": "20251109T025121Z",
           "audit.channel": "cli",
           "audit.policy.version": "phase2.5.audit.v1",
-          "cli.audit_id": "cli/20251109T022505Z#0",
+          "cli.audit_id": "cli/20251109T025121Z#0",
           "event.domain": "parser",
-          "audit.timestamp": "2025-11-09T02:25:05Z",
+          "audit.timestamp": "2025-11-09T02:51:21Z",
           "schema.version": "1.1"
         },
-        "audit_id": "cli/20251109T022505Z#0",
+        "audit_id": "cli/20251109T025121Z#0",
         "change_set": {
           "policy": "phase2.5.audit.v1",
           "origin": "cli",
           "source": {
-            "build_id": "20251109T022505Z",
+            "build_id": "20251109T025121Z",
             "workspace": ".",
             "sequence": 0
           },
@@ -171,17 +198,17 @@
       },
       "audit_metadata": {
         "event.domain": "parser",
-        "cli.audit_id": "cli/20251109T022505Z#0",
+        "cli.audit_id": "cli/20251109T025121Z#0",
         "audit.policy.version": "phase2.5.audit.v1",
         "audit.channel": "cli",
-        "audit.build_id": "20251109T022505Z",
+        "audit.build_id": "20251109T025121Z",
         "audit.sequence": 0,
         "audit.source.workspace": ".",
         "cli.change_set": {
           "policy": "phase2.5.audit.v1",
           "origin": "cli",
           "source": {
-            "build_id": "20251109T022505Z",
+            "build_id": "20251109T025121Z",
             "workspace": ".",
             "sequence": 0
           },
@@ -197,14 +224,30 @@
         "origin": "static",
         "fingerprint": "859967339",
         "schema.version": "1.1",
-        "audit.timestamp": "2025-11-09T02:25:05Z",
+        "audit.timestamp": "2025-11-09T02:51:21Z",
         "effect.required_capabilities": [],
         "effect.stage.required_capabilities": [],
         "effect.actual_capabilities": [],
         "effect.stage.actual_capabilities": [],
         "effect.capabilities": [],
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
         "parser.runconfig.extensions.stream.enabled": false,
-        "parser.runconfig.extensions.stream": { "enabled": false },
+        "parser.runconfig.extensions.stream": {
+          "enabled": false,
+          "checkpoint": "unspecified",
+          "resume_hint": "unspecified",
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "chunk_size": 0,
+          "flow": {
+            "policy": "auto",
+            "backpressure": { "max_lag_bytes": 0 }
+          }
+        },
         "parser.runconfig.extensions.recover.sync_tokens": [],
         "parser.runconfig.extensions.recover.notes": false,
         "parser.runconfig.extensions.recover": {
@@ -238,7 +281,18 @@
               "identifier_profile": "unicode"
             },
             "recover": { "sync_tokens": [], "notes": false },
-            "stream": { "enabled": false }
+            "stream": {
+              "enabled": false,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "backpressure": { "max_lag_bytes": 0 }
+              }
+            }
           }
         },
         "parser.core.rule": {
@@ -261,7 +315,7 @@
         }
       },
       "extensions": {
-        "diagnostic.v2": { "timestamp": "2025-11-09T02:25:05Z" },
+        "diagnostic.v2": { "timestamp": "2025-11-09T02:51:21Z" },
         "recover": {
           "expected_tokens": [
             { "kind": "keyword", "label": "continue" },
@@ -322,7 +376,18 @@
               "identifier_profile": "unicode"
             },
             "recover": { "sync_tokens": [], "notes": false },
-            "stream": { "enabled": false }
+            "stream": {
+              "enabled": false,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "backpressure": { "max_lag_bytes": 0 }
+              }
+            }
           }
         }
       },
@@ -342,7 +407,7 @@
       "severity": "error",
       "message": "構文エラー: 入力を解釈できません",
       "domain": "parser",
-      "timestamp": "2025-11-09T02:25:05Z"
+      "timestamp": "2025-11-09T02:51:21Z"
     }
   ],
   "parse_result": {

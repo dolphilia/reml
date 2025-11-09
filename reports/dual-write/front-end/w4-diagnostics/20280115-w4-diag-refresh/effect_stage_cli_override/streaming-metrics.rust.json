@@ -1,0 +1,78 @@
+{
+  "metrics": [
+    {
+      "metric": "diagnostic.audit_presence_rate",
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "required_audit_keys": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/effect_stage_cli_override/diagnostics.rust.json"
+      ],
+      "failures": []
+    }
+  ],
+  "metric": "diagnostic.audit_presence_rate",
+  "total": 6,
+  "passed": 6,
+  "failed": 0,
+  "pass_rate": 1.0,
+  "pass_fraction": 1.0,
+  "required_audit_keys": [
+    "cli.audit_id",
+    "cli.change_set",
+    "schema.version",
+    "timestamp"
+  ],
+  "sources": [
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/effect_stage_cli_override/diagnostics.rust.json"
+  ],
+  "failures": [],
+  "diagnostic_audit": {
+    "metric": "diagnostic.audit_presence_rate",
+    "total": 6,
+    "passed": 6,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
+    "required_audit_keys": [
+      "cli.audit_id",
+      "cli.change_set",
+      "schema.version",
+      "timestamp"
+    ],
+    "sources": [
+      "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/effect_stage_cli_override/diagnostics.rust.json"
+    ],
+    "failures": []
+  },
+  "schema_versions": [],
+  "diagnostics": {
+    "total": 6,
+    "error": 6,
+    "warning": 0,
+    "info": 0,
+    "hint": 0,
+    "other": 0,
+    "sources": [
+      "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/effect_stage_cli_override/diagnostics.rust.json"
+    ],
+    "info_fraction": 0.0,
+    "hint_fraction": 0.0,
+    "info_hint_ratio": 0.0,
+    "parser_total": 6,
+    "parser_expected": 1,
+    "parser_expected_ratio": 0.16666666666666666,
+    "parser_expected_tokens_avg": 1.0
+  },
+  "enforcement": {
+    "require_success": true
+  }
+}

@@ -3,10 +3,10 @@
     {
       "metric": "diagnostic.audit_presence_rate",
       "total": 11,
-      "passed": 0,
-      "failed": 11,
-      "pass_rate": 0.0,
-      "pass_fraction": 0.0,
+      "passed": 11,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
       "required_audit_keys": [
         "cli.audit_id",
         "cli.change_set",
@@ -16,104 +16,15 @@
       "sources": [
         "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json"
       ],
-      "failures": [
-        {
-          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-          "index": 0,
-          "missing": [
-            "schema.version"
-          ],
-          "code": "unknown"
-        },
-        {
-          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-          "index": 1,
-          "missing": [
-            "schema.version"
-          ],
-          "code": "unknown"
-        },
-        {
-          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-          "index": 2,
-          "missing": [
-            "schema.version"
-          ],
-          "code": "unknown"
-        },
-        {
-          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-          "index": 3,
-          "missing": [
-            "schema.version"
-          ],
-          "code": "unknown"
-        },
-        {
-          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-          "index": 4,
-          "missing": [
-            "schema.version"
-          ],
-          "code": "unknown"
-        },
-        {
-          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-          "index": 5,
-          "missing": [
-            "schema.version"
-          ],
-          "code": "unknown"
-        },
-        {
-          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-          "index": 6,
-          "missing": [
-            "schema.version"
-          ],
-          "code": "unknown"
-        },
-        {
-          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-          "index": 7,
-          "missing": [
-            "schema.version"
-          ],
-          "code": "unknown"
-        },
-        {
-          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-          "index": 8,
-          "missing": [
-            "schema.version"
-          ],
-          "code": "unknown"
-        },
-        {
-          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-          "index": 9,
-          "missing": [
-            "schema.version"
-          ],
-          "code": "unknown"
-        },
-        {
-          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-          "index": 10,
-          "missing": [
-            "schema.version"
-          ],
-          "code": "unknown"
-        }
-      ]
+      "failures": []
     }
   ],
   "metric": "diagnostic.audit_presence_rate",
   "total": 11,
-  "passed": 0,
-  "failed": 11,
-  "pass_rate": 0.0,
-  "pass_fraction": 0.0,
+  "passed": 11,
+  "failed": 0,
+  "pass_rate": 1.0,
+  "pass_fraction": 1.0,
   "required_audit_keys": [
     "cli.audit_id",
     "cli.change_set",
@@ -123,103 +34,14 @@
   "sources": [
     "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json"
   ],
-  "failures": [
-    {
-      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-      "index": 0,
-      "missing": [
-        "schema.version"
-      ],
-      "code": "unknown"
-    },
-    {
-      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-      "index": 1,
-      "missing": [
-        "schema.version"
-      ],
-      "code": "unknown"
-    },
-    {
-      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-      "index": 2,
-      "missing": [
-        "schema.version"
-      ],
-      "code": "unknown"
-    },
-    {
-      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-      "index": 3,
-      "missing": [
-        "schema.version"
-      ],
-      "code": "unknown"
-    },
-    {
-      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-      "index": 4,
-      "missing": [
-        "schema.version"
-      ],
-      "code": "unknown"
-    },
-    {
-      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-      "index": 5,
-      "missing": [
-        "schema.version"
-      ],
-      "code": "unknown"
-    },
-    {
-      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-      "index": 6,
-      "missing": [
-        "schema.version"
-      ],
-      "code": "unknown"
-    },
-    {
-      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-      "index": 7,
-      "missing": [
-        "schema.version"
-      ],
-      "code": "unknown"
-    },
-    {
-      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-      "index": 8,
-      "missing": [
-        "schema.version"
-      ],
-      "code": "unknown"
-    },
-    {
-      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-      "index": 9,
-      "missing": [
-        "schema.version"
-      ],
-      "code": "unknown"
-    },
-    {
-      "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-      "index": 10,
-      "missing": [
-        "schema.version"
-      ],
-      "code": "unknown"
-    }
-  ],
+  "failures": [],
   "diagnostic_audit": {
     "metric": "diagnostic.audit_presence_rate",
     "total": 11,
-    "passed": 0,
-    "failed": 11,
-    "pass_rate": 0.0,
-    "pass_fraction": 0.0,
+    "passed": 11,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
     "required_audit_keys": [
       "cli.audit_id",
       "cli.change_set",
@@ -229,96 +51,7 @@
     "sources": [
       "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json"
     ],
-    "failures": [
-      {
-        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-        "index": 0,
-        "missing": [
-          "schema.version"
-        ],
-        "code": "unknown"
-      },
-      {
-        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-        "index": 1,
-        "missing": [
-          "schema.version"
-        ],
-        "code": "unknown"
-      },
-      {
-        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-        "index": 2,
-        "missing": [
-          "schema.version"
-        ],
-        "code": "unknown"
-      },
-      {
-        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-        "index": 3,
-        "missing": [
-          "schema.version"
-        ],
-        "code": "unknown"
-      },
-      {
-        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-        "index": 4,
-        "missing": [
-          "schema.version"
-        ],
-        "code": "unknown"
-      },
-      {
-        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-        "index": 5,
-        "missing": [
-          "schema.version"
-        ],
-        "code": "unknown"
-      },
-      {
-        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-        "index": 6,
-        "missing": [
-          "schema.version"
-        ],
-        "code": "unknown"
-      },
-      {
-        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-        "index": 7,
-        "missing": [
-          "schema.version"
-        ],
-        "code": "unknown"
-      },
-      {
-        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-        "index": 8,
-        "missing": [
-          "schema.version"
-        ],
-        "code": "unknown"
-      },
-      {
-        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-        "index": 9,
-        "missing": [
-          "schema.version"
-        ],
-        "code": "unknown"
-      },
-      {
-        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/diagnostics.rust.json",
-        "index": 10,
-        "missing": [
-          "schema.version"
-        ],
-        "code": "unknown"
-      }
-    ]
+    "failures": []
   },
   "schema_versions": [],
   "diagnostics": {
@@ -335,14 +68,11 @@
     "hint_fraction": 0.0,
     "info_hint_ratio": 0.0,
     "parser_total": 11,
-    "parser_expected": 0,
-    "parser_expected_ratio": 0.0,
-    "parser_expected_tokens_avg": 0.0
+    "parser_expected": 1,
+    "parser_expected_ratio": 0.09090909090909091,
+    "parser_expected_tokens_avg": 1.0
   },
   "enforcement": {
-    "failures": [
-      "diagnostic.audit_presence_rate < 1.0"
-    ],
     "require_success": true
   }
 }

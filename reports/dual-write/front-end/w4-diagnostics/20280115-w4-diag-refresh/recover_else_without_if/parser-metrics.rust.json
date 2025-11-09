@@ -89,30 +89,42 @@
               "sync_tokens": []
             },
             "stream": {
-              "enabled": false
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": false,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "resume_hint": "unspecified"
             }
           }
         },
         {
           "metric": "parser.stream_extension_field_coverage",
           "total": 6,
-          "passed": 1,
-          "failed": 5,
-          "missing": [
-            "checkpoint",
-            "chunk_size",
-            "demand_min_bytes",
-            "demand_preferred_bytes",
-            "resume_hint"
-          ],
-          "pass_rate": 0.0,
-          "pass_fraction": 0.16666666666666666,
-          "status": "warning",
+          "passed": 6,
+          "failed": 0,
+          "missing": [],
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
           "sources": [
             "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/recover_else_without_if/diagnostics.rust.json"
           ],
           "samples": {
-            "enabled": false
+            "enabled": false,
+            "checkpoint": "unspecified",
+            "resume_hint": "unspecified",
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "chunk_size": 0
           }
         },
         {
@@ -132,8 +144,8 @@
               "reasons": [
                 "diagnostics_absent"
               ],
-              "profile": "strict_json",
-              "profile_raw": "strict_json",
+              "profile": "unicode",
+              "profile_raw": "unicode",
               "space_id": null
             }
           ],
@@ -142,18 +154,18 @@
         {
           "metric": "lexer.identifier_profile_unicode",
           "total": 1,
-          "unicode": 0,
+          "unicode": 1,
           "ascii": 0,
-          "other": 1,
+          "other": 0,
           "pass_rate": null,
-          "pass_fraction": 0.0,
-          "unicode_fraction": 0.0,
-          "status": "monitoring",
+          "pass_fraction": 1.0,
+          "unicode_fraction": 1.0,
+          "status": "success",
           "sources": [
             "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/recover_else_without_if/diagnostics.rust.json"
           ],
           "profile_counts": {
-            "strict_json": 1
+            "unicode": 1
           },
           "cli_switch": "--lex-profile",
           "cli_values": [
@@ -226,30 +238,42 @@
           "sync_tokens": []
         },
         "stream": {
-          "enabled": false
+          "checkpoint": "unspecified",
+          "chunk_size": 0,
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "enabled": false,
+          "flow": {
+            "backpressure": {
+              "max_lag_bytes": 0
+            },
+            "policy": "auto"
+          },
+          "flow_max_lag": 0,
+          "flow_policy": "auto",
+          "resume_hint": "unspecified"
         }
       }
     },
     {
       "metric": "parser.stream_extension_field_coverage",
       "total": 6,
-      "passed": 1,
-      "failed": 5,
-      "missing": [
-        "checkpoint",
-        "chunk_size",
-        "demand_min_bytes",
-        "demand_preferred_bytes",
-        "resume_hint"
-      ],
-      "pass_rate": 0.0,
-      "pass_fraction": 0.16666666666666666,
-      "status": "warning",
+      "passed": 6,
+      "failed": 0,
+      "missing": [],
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
       "sources": [
         "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/recover_else_without_if/diagnostics.rust.json"
       ],
       "samples": {
-        "enabled": false
+        "enabled": false,
+        "checkpoint": "unspecified",
+        "resume_hint": "unspecified",
+        "demand_min_bytes": 0,
+        "demand_preferred_bytes": 0,
+        "chunk_size": 0
       }
     },
     {
@@ -269,8 +293,8 @@
           "reasons": [
             "diagnostics_absent"
           ],
-          "profile": "strict_json",
-          "profile_raw": "strict_json",
+          "profile": "unicode",
+          "profile_raw": "unicode",
           "space_id": null
         }
       ],
@@ -279,18 +303,18 @@
     {
       "metric": "lexer.identifier_profile_unicode",
       "total": 1,
-      "unicode": 0,
+      "unicode": 1,
       "ascii": 0,
-      "other": 1,
+      "other": 0,
       "pass_rate": null,
-      "pass_fraction": 0.0,
-      "unicode_fraction": 0.0,
-      "status": "monitoring",
+      "pass_fraction": 1.0,
+      "unicode_fraction": 1.0,
+      "status": "success",
       "sources": [
         "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/recover_else_without_if/diagnostics.rust.json"
       ],
       "profile_counts": {
-        "strict_json": 1
+        "unicode": 1
       },
       "cli_switch": "--lex-profile",
       "cli_values": [
@@ -417,30 +441,42 @@
             "sync_tokens": []
           },
           "stream": {
-            "enabled": false
+            "checkpoint": "unspecified",
+            "chunk_size": 0,
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "enabled": false,
+            "flow": {
+              "backpressure": {
+                "max_lag_bytes": 0
+              },
+              "policy": "auto"
+            },
+            "flow_max_lag": 0,
+            "flow_policy": "auto",
+            "resume_hint": "unspecified"
           }
         }
       },
       {
         "metric": "parser.stream_extension_field_coverage",
         "total": 6,
-        "passed": 1,
-        "failed": 5,
-        "missing": [
-          "checkpoint",
-          "chunk_size",
-          "demand_min_bytes",
-          "demand_preferred_bytes",
-          "resume_hint"
-        ],
-        "pass_rate": 0.0,
-        "pass_fraction": 0.16666666666666666,
-        "status": "warning",
+        "passed": 6,
+        "failed": 0,
+        "missing": [],
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "status": "success",
         "sources": [
           "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/recover_else_without_if/diagnostics.rust.json"
         ],
         "samples": {
-          "enabled": false
+          "enabled": false,
+          "checkpoint": "unspecified",
+          "resume_hint": "unspecified",
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "chunk_size": 0
         }
       },
       {
@@ -460,8 +496,8 @@
             "reasons": [
               "diagnostics_absent"
             ],
-            "profile": "strict_json",
-            "profile_raw": "strict_json",
+            "profile": "unicode",
+            "profile_raw": "unicode",
             "space_id": null
           }
         ],
@@ -470,18 +506,18 @@
       {
         "metric": "lexer.identifier_profile_unicode",
         "total": 1,
-        "unicode": 0,
+        "unicode": 1,
         "ascii": 0,
-        "other": 1,
+        "other": 0,
         "pass_rate": null,
-        "pass_fraction": 0.0,
-        "unicode_fraction": 0.0,
-        "status": "monitoring",
+        "pass_fraction": 1.0,
+        "unicode_fraction": 1.0,
+        "status": "success",
         "sources": [
           "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/recover_else_without_if/diagnostics.rust.json"
         ],
         "profile_counts": {
-          "strict_json": 1
+          "unicode": 1
         },
         "cli_switch": "--lex-profile",
         "cli_values": [
@@ -525,9 +561,7 @@
   },
   "enforcement": {
     "failures": [
-      "parser.stream_extension_field_coverage < 1.0",
       "lexer.shared_profile_pass_rate < 1.0",
-      "lexer.identifier_profile_unicode < 1.0",
       "parser.expected_summary_presence: total=0"
     ],
     "require_success": true

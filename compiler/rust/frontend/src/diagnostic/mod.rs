@@ -12,6 +12,8 @@ pub struct FrontendDiagnostic {
     pub span: Option<Span>,
     pub recoverability: Recoverability,
     pub notes: Vec<DiagnosticNote>,
+    pub expected_tokens: Vec<String>,
+    pub expected_humanized: Option<String>,
 }
 
 impl FrontendDiagnostic {
@@ -22,6 +24,8 @@ impl FrontendDiagnostic {
             span: None,
             recoverability: Recoverability::Fatal,
             notes: Vec::new(),
+            expected_tokens: Vec::new(),
+            expected_humanized: None,
         }
     }
 
@@ -42,6 +46,16 @@ impl FrontendDiagnostic {
 
     pub fn add_note(&mut self, note: DiagnosticNote) {
         self.notes.push(note);
+    }
+
+    pub fn set_expected_tokens(mut self, tokens: Vec<String>, humanized: Option<String>) -> Self {
+        self.expected_tokens = tokens;
+        self.expected_humanized = humanized;
+        self
+    }
+
+    pub fn has_expected_tokens(&self) -> bool {
+        !self.expected_tokens.is_empty()
     }
 }
 

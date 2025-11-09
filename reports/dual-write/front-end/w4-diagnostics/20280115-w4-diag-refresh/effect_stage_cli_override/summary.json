@@ -3,7 +3,7 @@
   "mode": "diag",
   "source": "inline",
   "ocaml_diag_count": 1,
-  "rust_diag_count": 0,
+  "rust_diag_count": 6,
   "diag_match": false,
   "gating": false,
   "schema_ok": true,
@@ -15,17 +15,25 @@
         "audit_pass_rate": 1.0,
         "expected_pass_fraction": 1.0
       },
-      "rust": null
+      "rust": {
+        "audit_pass_fraction": 1.0,
+        "audit_pass_rate": 1.0,
+        "expected_pass_fraction": 0.16666666666666666
+      }
     },
     "effects": {
       "ocaml": {
         "regressions": 0
       },
-      "rust": null
+      "rust": {
+        "regressions": 0
+      }
     },
     "streaming": {
       "ocaml": null,
-      "rust": null
+      "rust": {
+        "audit_pass_fraction": 1.0
+      }
     }
   },
   "tests": "compiler/ocaml/tests/test_cli_callconv_snapshot.ml::callconv_windows_messagebox"

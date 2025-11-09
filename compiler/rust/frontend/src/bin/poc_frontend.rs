@@ -98,6 +98,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(path) = &args.emit_typeck_debug {
         write_json_file(path, &artifacts.debug)?;
     }
+    if let Some(path) = &args.emit_effects_metrics {
+        let payload = TypecheckMetricsPayload {
+            metrics: &typeck_report.metrics,
+            typed_functions: &typeck_report.functions,
+        };
+        write_json_file(path, &payload)?;
+    }
 
     if let Some(guards) = dualwrite {
         write_dualwrite_typeck_payload(
@@ -128,6 +135,7 @@ struct CliArgs {
     emit_typed_ast: Option<PathBuf>,
     emit_constraints: Option<PathBuf>,
     emit_typeck_debug: Option<PathBuf>,
+    emit_effects_metrics: Option<PathBuf>,
     run_config: RunSettings,
     stream_config: StreamSettings,
     runtime_capabilities: Vec<String>,
@@ -214,6 +222,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut emit_typed_ast = None;
     let mut emit_constraints = None;
     let mut emit_typeck_debug = None;
+    let mut emit_effects_metrics = None;
     let mut run_config = RunSettings::default();
     let mut stream_config = StreamSettings::default();
     let mut runtime_capabilities: Vec<String> = Vec::new();
@@ -246,6 +255,15 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     .next()
                     .ok_or_else(|| "--effect-stage-capability は stage 名を伴う必要があります")?;
                 capability_stage = Some(StageId::from_str(&value).map(StageRequirement::AtLeast)?);
+            }
+            "--effect-stage" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--effect-stage は stage 名を伴う必要があります")?;
+                let stage = StageId::from_str(&value)?;
+                let requirement = StageRequirement::Exact(stage);
+                runtime_stage = Some(requirement.clone());
+                capability_stage = Some(requirement);
             }
             "--recover-expected-tokens" => {
                 let value = args.next().ok_or_else(|| {
@@ -303,6 +321,12 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     .ok_or_else(|| "--emit-typeck-debug は出力パスを伴う必要があります")?;
                 emit_typeck_debug = Some(PathBuf::from(path));
             }
+            "--emit-effects-metrics" => {
+                let path = args
+                    .next()
+                    .ok_or_else(|| "--emit-effects-metrics は出力パスを伴う必要があります")?;
+                emit_effects_metrics = Some(PathBuf::from(path));
+            }
             "--packrat" => run_config.packrat = true,
             "--no-packrat" => run_config.packrat = false,
             "--trace" => run_config.trace = true,
@@ -352,16 +376,15 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                 })?);
             }
             "--stream-demand-preferred-bytes" => {
-                let value = args.next().ok_or_else(|| {
-                    "--stream-demand-preferred-bytes は値を伴う必要があります"
-                })?;
-                stream_config.demand_preferred_bytes = Some(value.parse::<u64>().map_err(
-                    |_| {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--stream-demand-preferred-bytes は値を伴う必要があります")?;
+                stream_config.demand_preferred_bytes =
+                    Some(value.parse::<u64>().map_err(|_| {
                         format!(
                             "--stream-demand-preferred-bytes の値 `{value}` は整数ではありません"
                         )
-                    },
-                )?);
+                    })?);
             }
             "--stream-checkpoint" => {
                 let value = args
@@ -443,6 +466,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         emit_typed_ast,
         emit_constraints,
         emit_typeck_debug,
+        emit_effects_metrics,
         run_config,
         stream_config,
         runtime_capabilities,
@@ -535,20 +559,38 @@ fn build_runconfig_top_level(args: &CliArgs) -> Value {
 }
 
 fn build_stream_extension(stream: &StreamSettings) -> Value {
-    if stream.enabled {
-        json!({
-            "enabled": true,
-            "checkpoint": stream.checkpoint.clone().unwrap_or_else(|| "unspecified".to_string()),
-            "resume_hint": stream.resume_hint.clone().unwrap_or_else(|| "unspecified".to_string()),
-            "flow_policy": stream.flow_policy.clone().unwrap_or_else(|| "auto".to_string()),
-            "flow_max_lag": stream.flow_max_lag.unwrap_or(0),
-            "demand_min_bytes": stream.demand_min_bytes.unwrap_or(0),
-            "demand_preferred_bytes": stream.demand_preferred_bytes.unwrap_or(0),
-            "chunk_size": stream.chunk_size.unwrap_or(0),
-        })
-    } else {
-        json!({ "enabled": false })
-    }
+    let checkpoint = stream
+        .checkpoint
+        .clone()
+        .unwrap_or_else(|| "unspecified".to_string());
+    let resume_hint = stream
+        .resume_hint
+        .clone()
+        .unwrap_or_else(|| "unspecified".to_string());
+    let demand_min_bytes = stream.demand_min_bytes.unwrap_or(0);
+    let demand_preferred_bytes = stream.demand_preferred_bytes.unwrap_or(0);
+    let chunk_size = stream.chunk_size.unwrap_or(0);
+    let flow_policy = stream
+        .flow_policy
+        .clone()
+        .unwrap_or_else(|| "auto".to_string());
+    let flow_max_lag = stream.flow_max_lag.unwrap_or(0);
+    json!({
+        "enabled": stream.enabled,
+        "checkpoint": checkpoint,
+        "resume_hint": resume_hint,
+        "demand_min_bytes": demand_min_bytes,
+        "demand_preferred_bytes": demand_preferred_bytes,
+        "chunk_size": chunk_size,
+        "flow_policy": flow_policy.clone(),
+        "flow_max_lag": flow_max_lag,
+        "flow": {
+            "policy": flow_policy,
+            "backpressure": {
+                "max_lag_bytes": flow_max_lag,
+            }
+        }
+    })
 }
 
 fn build_diagnostics(
@@ -653,20 +695,81 @@ fn build_diagnostics(
 }
 
 fn build_recover_extension(diag: &FrontendDiagnostic) -> Option<Value> {
-    diag.notes.iter().find_map(|note| {
-        if note.label == "recover.expected_tokens" {
-            Some(json!({
-                "message": note.message,
-                "expected_tokens": [],
-            }))
-        } else {
-            None
-        }
+    if diag.has_expected_tokens() {
+        let message = diag
+            .expected_humanized
+            .clone()
+            .unwrap_or_else(|| default_expected_message(&diag.expected_tokens));
+        Some(json!({
+            "message": message,
+            "expected_tokens": diag.expected_tokens,
+        }))
+    } else {
+        diag.notes.iter().find_map(|note| {
+            if note.label == "recover.expected_tokens" {
+                Some(json!({
+                    "message": note.message,
+                    "expected_tokens": [],
+                }))
+            } else {
+                None
+            }
+        })
+    }
+}
+
+fn build_expected_field(diag: &FrontendDiagnostic) -> Value {
+    if !diag.has_expected_tokens() {
+        return Value::Null;
+    }
+    let alternatives: Vec<Value> = diag
+        .expected_tokens
+        .iter()
+        .map(|token| {
+            json!({
+                "kind": classify_expected_token(token),
+                "value": token,
+            })
+        })
+        .collect();
+    let humanized = diag
+        .expected_humanized
+        .clone()
+        .unwrap_or_else(|| default_expected_message(&diag.expected_tokens));
+    json!({
+        "message_key": "parse.expected",
+        "humanized": humanized,
+        "locale_args": diag.expected_tokens,
+        "alternatives": alternatives,
     })
 }
 
-fn build_expected_field(_diag: &FrontendDiagnostic) -> Value {
-    Value::Null
+fn classify_expected_token(token: &str) -> &'static str {
+    let trimmed = token.trim();
+    if trimmed.is_empty() {
+        "token"
+    } else if trimmed
+        .chars()
+        .all(|ch| ch.is_ascii_alphabetic() && ch.is_lowercase())
+    {
+        "keyword"
+    } else if trimmed.chars().all(|ch| ch.is_ascii_uppercase()) || trimmed.contains("identifier") {
+        "class"
+    } else {
+        "token"
+    }
+}
+
+fn default_expected_message(tokens: &[String]) -> String {
+    if tokens.is_empty() {
+        return "解析を続行するには追加のトークンが必要です".to_string();
+    }
+    let formatted = tokens
+        .iter()
+        .map(|token| format!("`{}`", token))
+        .collect::<Vec<_>>()
+        .join("、");
+    format!("ここで{}のいずれかが必要です", formatted)
 }
 
 fn build_audit_metadata(
@@ -676,6 +779,8 @@ fn build_audit_metadata(
 ) -> serde_json::Map<String, Value> {
     let mut metadata = serde_json::Map::new();
     metadata.insert("event.domain".to_string(), json!("parser"));
+    metadata.insert("event.kind".to_string(), json!("diagnostic"));
+    metadata.insert("schema.version".to_string(), json!(SCHEMA_VERSION));
     metadata.insert(
         "parser.core.rule.namespace".to_string(),
         json!(PARSER_NAMESPACE),
@@ -691,7 +796,10 @@ fn build_audit_metadata(
     metadata.insert("name".to_string(), json!(PARSER_NAME));
     metadata.insert("origin".to_string(), json!(PARSER_ORIGIN));
     metadata.insert("fingerprint".to_string(), json!(PARSER_FINGERPRINT));
-    metadata.insert("audit.policy.version".to_string(), json!(AUDIT_POLICY_VERSION));
+    metadata.insert(
+        "audit.policy.version".to_string(),
+        json!(AUDIT_POLICY_VERSION),
+    );
     metadata.insert("audit.channel".to_string(), json!("cli"));
     metadata.insert("audit.timestamp".to_string(), json!(timestamp));
     let cli_audit_id = format!("cli/{}#0", timestamp.replace(':', "").replace('-', ""));
@@ -742,6 +850,82 @@ fn build_audit_metadata(
         "parser.runconfig.switches.legacy_result".to_string(),
         json!(args.run_config.legacy_result),
     );
+    let runconfig_value = build_runconfig_top_level(args);
+    metadata.insert("parser.runconfig".to_string(), runconfig_value.clone());
+    if let Some(extensions) = runconfig_value
+        .get("extensions")
+        .and_then(|value| value.as_object())
+    {
+        if let Some(lex) = extensions.get("lex") {
+            metadata.insert("parser.runconfig.extensions.lex".to_string(), lex.clone());
+            if let Some(profile) = lex.get("profile") {
+                metadata.insert(
+                    "parser.runconfig.extensions.lex.profile".to_string(),
+                    profile.clone(),
+                );
+            }
+            if let Some(identifier_profile) = lex.get("identifier_profile") {
+                metadata.insert(
+                    "parser.runconfig.extensions.lex.identifier_profile".to_string(),
+                    identifier_profile.clone(),
+                );
+            }
+        }
+        if let Some(recover) = extensions.get("recover") {
+            metadata.insert(
+                "parser.runconfig.extensions.recover".to_string(),
+                recover.clone(),
+            );
+            if let Some(notes) = recover.get("notes") {
+                metadata.insert(
+                    "parser.runconfig.extensions.recover.notes".to_string(),
+                    notes.clone(),
+                );
+            }
+            if let Some(tokens) = recover.get("sync_tokens") {
+                metadata.insert(
+                    "parser.runconfig.extensions.recover.sync_tokens".to_string(),
+                    tokens.clone(),
+                );
+            }
+        }
+        if let Some(stream) = extensions.get("stream") {
+            metadata.insert(
+                "parser.runconfig.extensions.stream".to_string(),
+                stream.clone(),
+            );
+            if let Some(checkpoint) = stream.get("checkpoint") {
+                metadata.insert(
+                    "parser.runconfig.extensions.stream.checkpoint".to_string(),
+                    checkpoint.clone(),
+                );
+            }
+            if let Some(resume_hint) = stream.get("resume_hint") {
+                metadata.insert(
+                    "parser.runconfig.extensions.stream.resume_hint".to_string(),
+                    resume_hint.clone(),
+                );
+            }
+            if let Some(min_bytes) = stream.get("demand_min_bytes") {
+                metadata.insert(
+                    "parser.runconfig.extensions.stream.demand_min_bytes".to_string(),
+                    min_bytes.clone(),
+                );
+            }
+            if let Some(pref_bytes) = stream.get("demand_preferred_bytes") {
+                metadata.insert(
+                    "parser.runconfig.extensions.stream.demand_preferred_bytes".to_string(),
+                    pref_bytes.clone(),
+                );
+            }
+            if let Some(chunk) = stream.get("chunk_size") {
+                metadata.insert(
+                    "parser.runconfig.extensions.stream.chunk_size".to_string(),
+                    chunk.clone(),
+                );
+            }
+        }
+    }
     metadata.insert(
         "parser.runconfig.extensions.stream.enabled".to_string(),
         json!(args.stream_config.enabled),
@@ -849,7 +1033,6 @@ fn note_to_json(note: &DiagnosticNote, index: &LineIndex, input_path: &Path) -> 
         "span": span_value,
     })
 }
-
 
 #[derive(Serialize)]
 struct TypecheckMetricsPayload<'a> {
@@ -965,9 +1148,7 @@ fn current_timestamp() -> String {
         .unwrap_or_else(|_| Duration::from_secs(0));
     let seconds = duration.as_secs() as i64;
     let (year, month, day, hour, minute, second) = unix_seconds_to_components(seconds);
-    format!(
-        "{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}Z"
-    )
+    format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}Z")
 }
 
 fn unix_seconds_to_components(seconds: i64) -> (i32, u32, u32, u32, u32, u32) {

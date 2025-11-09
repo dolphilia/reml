@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::Serialize;
 
 use crate::parser::ast::{Expr, Function, Module};
-use crate::token::{TokenKind};
+use crate::token::TokenKind;
 
 use super::env::TypecheckConfig;
 use super::metrics::TypecheckMetrics;

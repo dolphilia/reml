@@ -5,9 +5,9 @@
   "ocaml_diag_count": 1,
   "rust_diag_count": 1,
   "diag_match": true,
-  "gating": false,
+  "gating": true,
   "schema_ok": true,
-  "metrics_ok": false,
+  "metrics_ok": true,
   "diag": {
     "parser": {
       "ocaml": {
@@ -16,9 +16,9 @@
         "expected_pass_fraction": 1.0
       },
       "rust": {
-        "audit_pass_fraction": 0.0,
-        "audit_pass_rate": 0.0,
-        "expected_pass_fraction": 0.0
+        "audit_pass_fraction": 1.0,
+        "audit_pass_rate": 1.0,
+        "expected_pass_fraction": 1.0
       }
     },
     "effects": {
@@ -32,7 +32,7 @@
     "streaming": {
       "ocaml": null,
       "rust": {
-        "audit_pass_fraction": 0.0
+        "audit_pass_fraction": 1.0
       }
     }
   },

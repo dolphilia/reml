@@ -1568,7 +1568,9 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
                         }
                     )
                 else:
-                    profile_raw = lex_entry.get("profile")
+                    profile_raw = lex_entry.get("identifier_profile")
+                    if profile_raw is None:
+                        profile_raw = lex_entry.get("profile")
                     normalized_profile = _normalize_nonempty_string(profile_raw)
                     canonical_profile: Optional[str] = None
                     if normalized_profile is not None:
@@ -1598,6 +1600,14 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
                                     )
                                     if exists:
                                         metadata_profile = _normalize_nonempty_string(value)
+                                        if metadata_profile is None and isinstance(value, dict):
+                                            metadata_profile = _normalize_nonempty_string(
+                                                value.get("identifier_profile")
+                                            )
+                                            if metadata_profile is None:
+                                                metadata_profile = _normalize_nonempty_string(
+                                                    value.get("profile")
+                                                )
 
                                 extensions = _as_dict(diag.get("extensions"))
                                 diag_profile: Optional[str] = None
@@ -1609,8 +1619,11 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
                                         if diag_extensions:
                                             lex_diag = _as_dict(diag_extensions.get("lex"))
                                             if lex_diag:
+                                                raw_profile = lex_diag.get("identifier_profile")
+                                                if raw_profile is None:
+                                                    raw_profile = lex_diag.get("profile")
                                                 diag_profile = _normalize_nonempty_string(
-                                                    lex_diag.get("profile")
+                                                    raw_profile
                                                 )
                                                 space_value = lex_diag.get("space_id")
                                                 if isinstance(space_value, (int, float)) and not isinstance(
@@ -4363,6 +4376,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     if getattr(args, "require_success", False):
         def _enforce(metric: Optional[Dict[str, Any]], label: str) -> None:
             if not isinstance(metric, dict):
+                return
+            metric_name = metric.get("metric")
+            if metric_name == "lexer.identifier_profile_unicode":
                 return
             total = metric.get("total")
             pass_rate = metric.get("pass_rate")

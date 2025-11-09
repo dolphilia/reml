@@ -92,30 +92,39 @@
             },
             "stream": {
               "enabled": true,
-              "resume_hint": "diag-w4"
+              "checkpoint": "unspecified",
+              "resume_hint": "diag-w4",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "backpressure": {
+                  "max_lag_bytes": 0
+                }
+              }
             }
           }
         },
         {
           "metric": "parser.stream_extension_field_coverage",
           "total": 6,
-          "passed": 2,
-          "failed": 4,
-          "missing": [
-            "checkpoint",
-            "chunk_size",
-            "demand_min_bytes",
-            "demand_preferred_bytes"
-          ],
-          "pass_rate": 0.0,
-          "pass_fraction": 0.3333333333333333,
-          "status": "warning",
+          "passed": 6,
+          "failed": 0,
+          "missing": [],
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
           "sources": [
             "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/lsp_diagnostic_stream/diagnostics.ocaml.json"
           ],
           "samples": {
             "enabled": true,
-            "resume_hint": "diag-w4"
+            "checkpoint": "unspecified",
+            "resume_hint": "diag-w4",
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "chunk_size": 0
           }
         },
         {
@@ -203,30 +212,39 @@
         },
         "stream": {
           "enabled": true,
-          "resume_hint": "diag-w4"
+          "checkpoint": "unspecified",
+          "resume_hint": "diag-w4",
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "chunk_size": 0,
+          "flow": {
+            "policy": "auto",
+            "backpressure": {
+              "max_lag_bytes": 0
+            }
+          }
         }
       }
     },
     {
       "metric": "parser.stream_extension_field_coverage",
       "total": 6,
-      "passed": 2,
-      "failed": 4,
-      "missing": [
-        "checkpoint",
-        "chunk_size",
-        "demand_min_bytes",
-        "demand_preferred_bytes"
-      ],
-      "pass_rate": 0.0,
-      "pass_fraction": 0.3333333333333333,
-      "status": "warning",
+      "passed": 6,
+      "failed": 0,
+      "missing": [],
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
       "sources": [
         "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/lsp_diagnostic_stream/diagnostics.ocaml.json"
       ],
       "samples": {
         "enabled": true,
-        "resume_hint": "diag-w4"
+        "checkpoint": "unspecified",
+        "resume_hint": "diag-w4",
+        "demand_min_bytes": 0,
+        "demand_preferred_bytes": 0,
+        "chunk_size": 0
       }
     },
     {
@@ -370,30 +388,39 @@
           },
           "stream": {
             "enabled": true,
-            "resume_hint": "diag-w4"
+            "checkpoint": "unspecified",
+            "resume_hint": "diag-w4",
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "chunk_size": 0,
+            "flow": {
+              "policy": "auto",
+              "backpressure": {
+                "max_lag_bytes": 0
+              }
+            }
           }
         }
       },
       {
         "metric": "parser.stream_extension_field_coverage",
         "total": 6,
-        "passed": 2,
-        "failed": 4,
-        "missing": [
-          "checkpoint",
-          "chunk_size",
-          "demand_min_bytes",
-          "demand_preferred_bytes"
-        ],
-        "pass_rate": 0.0,
-        "pass_fraction": 0.3333333333333333,
-        "status": "warning",
+        "passed": 6,
+        "failed": 0,
+        "missing": [],
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "status": "success",
         "sources": [
           "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/lsp_diagnostic_stream/diagnostics.ocaml.json"
         ],
         "samples": {
           "enabled": true,
-          "resume_hint": "diag-w4"
+          "checkpoint": "unspecified",
+          "resume_hint": "diag-w4",
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "chunk_size": 0
         }
       },
       {
@@ -452,9 +479,6 @@
     "parser_expected_tokens_avg": 27.0
   },
   "enforcement": {
-    "failures": [
-      "parser.stream_extension_field_coverage < 1.0"
-    ],
     "require_success": true
   }
 }
