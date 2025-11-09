@@ -189,7 +189,7 @@ option_requires_value() {
     --stream-resume-hint|--stream-flow-policy|--stream-flow-max-lag|--stream-demand-min-bytes|--stream-demand-preferred-bytes|--stream-checkpoint)
       return 0
       ;;
-    --runtime-capabilities|--emit-typeck-debug|--emit-effects-metrics|--config|--left-recursion)
+    --runtime-capabilities|--emit-typeck-debug|--emit-effects-metrics|--config|--left-recursion|--json-mode)
       return 0
       ;;
     *)
@@ -554,7 +554,8 @@ for idx in "${!CASE_ENTRIES[@]}"; do
       ocaml_diag_cmd+=("${ocaml_case_flags[@]}")
     fi
     ocaml_diag_cmd+=("${input_path}")
-    run_in_dir "${OCAML_DIR}" "${ocaml_diag_cmd[@]}" > "${ocaml_diag_path}" 2>&1 || true
+    ocaml_stderr="${case_dir}/ocaml.stderr.log"
+    run_in_dir "${OCAML_DIR}" "${ocaml_diag_cmd[@]}" > "${ocaml_diag_path}" 2> "${ocaml_stderr}" || true
 
     rust_diag_cmd=(
       cargo run --quiet --bin poc_frontend --
