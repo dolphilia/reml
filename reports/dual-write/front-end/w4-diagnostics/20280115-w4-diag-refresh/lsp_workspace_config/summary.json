@@ -1,0 +1,35 @@
+{
+  "case": "lsp_workspace_config",
+  "mode": "diag",
+  "source": "examples/cli/emit_suite.reml",
+  "ocaml_diag_count": 0,
+  "rust_diag_count": 2,
+  "diag_match": false,
+  "gating": false,
+  "schema_ok": false,
+  "metrics_ok": false,
+  "diag": {
+    "parser": {
+      "ocaml": null,
+      "rust": {
+        "audit_pass_fraction": 0.0,
+        "audit_pass_rate": 0.0,
+        "expected_pass_fraction": 0.0
+      }
+    },
+    "effects": {
+      "ocaml": null,
+      "rust": {
+        "regressions": 0
+      }
+    },
+    "streaming": {
+      "ocaml": null,
+      "rust": {
+        "audit_pass_fraction": 0.0
+      }
+    }
+  },
+  "tests": "tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-workspace-config.json",
+  "lsp_fixture": "diagnostic-v2-workspace-config.json"
+}

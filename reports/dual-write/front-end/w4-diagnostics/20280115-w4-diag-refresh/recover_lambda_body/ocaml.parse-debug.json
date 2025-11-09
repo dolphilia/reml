@@ -1,0 +1,365 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/recover_lambda_body/input.reml",
+  "parser_run_config": {
+    "experimental_effects": false,
+    "legacy_result": true,
+    "merge_warnings": true,
+    "trace": false,
+    "left_recursion": "off",
+    "packrat": true,
+    "require_eof": false,
+    "extensions": {
+      "config": {
+        "experimental_effects": false,
+        "left_recursion": "off",
+        "legacy_result": true,
+        "merge_warnings": true,
+        "packrat": true,
+        "require_eof": false,
+        "source": "cli",
+        "trace": false
+      },
+      "effects": { "type_row_mode": "ty-integrated" },
+      "lex": { "profile": "strict_json" }
+    }
+  },
+  "diagnostics": [
+    {
+      "expected": {
+        "locale_args": [
+          "false", "self", "true", "(", ")", "[", "_", "{", "char-literal",
+          "float-literal", "identifier", "integer-literal", "string-literal",
+          "upper-identifier"
+        ],
+        "humanized": "ここで`false`、`self`、`true`、`(`、`)`、`[`、`_`、`{`、char-literal、float-literal、identifier、integer-literal、string-literal または upper-identifierのいずれかが必要です",
+        "message_key": "parse.expected",
+        "alternatives": [
+          { "kind": "keyword", "value": "false" },
+          { "kind": "keyword", "value": "self" },
+          { "kind": "keyword", "value": "true" },
+          { "kind": "token", "value": "(" },
+          { "kind": "token", "value": ")" },
+          { "kind": "token", "value": "[" },
+          { "kind": "token", "value": "_" },
+          { "kind": "token", "value": "{" },
+          { "kind": "class", "value": "char-literal" },
+          { "kind": "class", "value": "float-literal" },
+          { "kind": "class", "value": "identifier" },
+          { "kind": "class", "value": "integer-literal" },
+          { "kind": "class", "value": "string-literal" },
+          { "kind": "class", "value": "upper-identifier" }
+        ]
+      },
+      "audit": {
+        "metadata": {
+          "parser": {
+            "core": {
+              "rule": {
+                "fingerprint": "859967339",
+                "origin": "static",
+                "ordinal": 0,
+                "name": "compilation_unit",
+                "namespace": "menhir"
+              }
+            }
+          },
+          "parser.core.rule": {
+            "fingerprint": "859967339",
+            "origin": "static",
+            "ordinal": 0,
+            "name": "compilation_unit",
+            "namespace": "menhir"
+          },
+          "parser.runconfig": {
+            "packrat": true,
+            "left_recursion": "off",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": true,
+            "experimental_effects": false,
+            "extensions": {
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              },
+              "recover": { "sync_tokens": [], "notes": false },
+              "stream": { "enabled": false }
+            }
+          },
+          "parser.runconfig.packrat": true,
+          "parser.runconfig.left_recursion": "off",
+          "parser.runconfig.trace": false,
+          "parser.runconfig.merge_warnings": true,
+          "parser.runconfig.require_eof": false,
+          "parser.runconfig.legacy_result": true,
+          "parser.runconfig.experimental_effects": false,
+          "parser.runconfig.extensions.lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.recover": {
+            "sync_tokens": [],
+            "notes": false
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": { "enabled": false },
+          "parser.runconfig.extensions.stream.enabled": false,
+          "effect.capabilities": [],
+          "effect.stage.actual_capabilities": [],
+          "effect.actual_capabilities": [],
+          "effect.stage.required_capabilities": [],
+          "effect.required_capabilities": [],
+          "fingerprint": "859967339",
+          "origin": "static",
+          "name": "compilation_unit",
+          "namespace": "menhir",
+          "parser.core.rule.fingerprint": "859967339",
+          "parser.core.rule.origin": "static",
+          "parser.core.rule.ordinal": 0,
+          "parser.core.rule.name": "compilation_unit",
+          "parser.core.rule.namespace": "menhir",
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "20251109T022507Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [ { "kind": "input", "path": "input.reml" } ]
+          },
+          "audit.source.workspace": ".",
+          "audit.sequence": 0,
+          "audit.build_id": "20251109T022507Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "cli.audit_id": "cli/20251109T022507Z#0",
+          "event.domain": "parser",
+          "audit.timestamp": "2025-11-09T02:25:07Z",
+          "schema.version": "1.1"
+        },
+        "audit_id": "cli/20251109T022507Z#0",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "20251109T022507Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "input.reml" } ]
+        }
+      },
+      "audit_metadata": {
+        "event.domain": "parser",
+        "cli.audit_id": "cli/20251109T022507Z#0",
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "20251109T022507Z",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "20251109T022507Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "input.reml" } ]
+        },
+        "parser.core.rule.namespace": "menhir",
+        "parser.core.rule.name": "compilation_unit",
+        "parser.core.rule.ordinal": 0,
+        "parser.core.rule.origin": "static",
+        "parser.core.rule.fingerprint": "859967339",
+        "namespace": "menhir",
+        "name": "compilation_unit",
+        "origin": "static",
+        "fingerprint": "859967339",
+        "schema.version": "1.1",
+        "audit.timestamp": "2025-11-09T02:25:07Z",
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream": { "enabled": false },
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover": {
+          "sync_tokens": [],
+          "notes": false
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.lex": {
+          "profile": "strict_json",
+          "identifier_profile": "unicode"
+        },
+        "parser.runconfig.experimental_effects": false,
+        "parser.runconfig.legacy_result": true,
+        "parser.runconfig.require_eof": false,
+        "parser.runconfig.merge_warnings": true,
+        "parser.runconfig.trace": false,
+        "parser.runconfig.left_recursion": "off",
+        "parser.runconfig.packrat": true,
+        "parser.runconfig": {
+          "packrat": true,
+          "left_recursion": "off",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": true,
+          "experimental_effects": false,
+          "extensions": {
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "stream": { "enabled": false }
+          }
+        },
+        "parser.core.rule": {
+          "fingerprint": "859967339",
+          "origin": "static",
+          "ordinal": 0,
+          "name": "compilation_unit",
+          "namespace": "menhir"
+        },
+        "parser": {
+          "core": {
+            "rule": {
+              "fingerprint": "859967339",
+              "origin": "static",
+              "ordinal": 0,
+              "name": "compilation_unit",
+              "namespace": "menhir"
+            }
+          }
+        }
+      },
+      "extensions": {
+        "diagnostic.v2": { "timestamp": "2025-11-09T02:25:07Z" },
+        "recover": {
+          "expected_tokens": [
+            { "kind": "keyword", "label": "false" },
+            { "kind": "keyword", "label": "self" },
+            { "kind": "keyword", "label": "true" },
+            { "kind": "token", "label": "(" },
+            { "kind": "token", "label": ")" },
+            { "kind": "token", "label": "[" },
+            { "kind": "token", "label": "_" },
+            { "kind": "token", "label": "{" },
+            { "kind": "class", "label": "char-literal" },
+            { "kind": "class", "label": "float-literal" },
+            { "kind": "class", "label": "identifier" },
+            { "kind": "class", "label": "integer-literal" },
+            { "kind": "class", "label": "string-literal" },
+            { "kind": "class", "label": "upper-identifier" }
+          ],
+          "message": "ここで`false`、`self`、`true`、`(`、`)`、`[`、`_`、`{`、char-literal、float-literal、identifier、integer-literal、string-literal または upper-identifierのいずれかが必要です"
+        },
+        "parse": {
+          "parser_id": {
+            "namespace": "menhir",
+            "name": "compilation_unit",
+            "ordinal": 0,
+            "origin": "static",
+            "fingerprint": "859967339"
+          }
+        },
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "runconfig": {
+          "packrat": true,
+          "left_recursion": "off",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": true,
+          "experimental_effects": false,
+          "extensions": {
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "stream": { "enabled": false }
+          }
+        }
+      },
+      "schema_version": "2.0.0-draft",
+      "fixits": [],
+      "hints": [],
+      "secondary": [],
+      "codes": [],
+      "primary": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/recover_lambda_body/input.reml",
+        "start_line": 0,
+        "start_col": 15,
+        "end_line": 0,
+        "end_col": 17
+      },
+      "severity_level": 1,
+      "severity": "error",
+      "message": "構文エラー: 入力を解釈できません",
+      "domain": "parser",
+      "timestamp": "2025-11-09T02:25:07Z"
+    }
+  ],
+  "parse_result": {
+    "span_trace": null,
+    "packrat_stats": { "queries": 8, "hits": 7 },
+    "legacy_error": {
+      "span": {
+        "start": {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/recover_lambda_body/input.reml",
+          "line": 1,
+          "column": 16,
+          "offset": 15
+        },
+        "end": {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/recover_lambda_body/input.reml",
+          "line": 1,
+          "column": 18,
+          "offset": 17
+        }
+      },
+      "expected": [
+        { "kind": "keyword", "label": "false" },
+        { "kind": "keyword", "label": "self" },
+        { "kind": "keyword", "label": "true" },
+        { "kind": "token", "label": "(" },
+        { "kind": "token", "label": ")" },
+        { "kind": "token", "label": "[" },
+        { "kind": "token", "label": "_" },
+        { "kind": "token", "label": "{" },
+        { "kind": "class", "label": "char-literal" },
+        { "kind": "class", "label": "float-literal" },
+        { "kind": "class", "label": "identifier" },
+        { "kind": "class", "label": "integer-literal" },
+        { "kind": "class", "label": "string-literal" },
+        { "kind": "class", "label": "upper-identifier" }
+      ],
+      "committed": false,
+      "far_consumed": true
+    },
+    "farthest_error_offset": 15,
+    "span": null,
+    "committed": false,
+    "consumed": true,
+    "recovered": false,
+    "has_value": false
+  },
+  "stream_meta": null
+}

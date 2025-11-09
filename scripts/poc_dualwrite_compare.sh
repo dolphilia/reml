@@ -227,13 +227,11 @@ resolve_placeholder_value() {
   esac
 }
 
-parse_case_flags() {
+emit_case_flags() {
   local raw="$1"
   local case_dir="$2"
   local typeck_dir="$3"
   local frontend="$4"
-  local -n _target="$5"
-  _target=()
   if [[ -z "${raw}" ]]; then
     return
   fi
@@ -246,42 +244,62 @@ parse_case_flags() {
       ((idx++))
       continue
     fi
-    _target+=("${tok}")
+    printf '%s\0' "${tok}"
     if option_requires_value "${tok}"; then
       ((idx++))
       if [[ ${idx} -ge ${#tokens[@]} ]]; then
         break
       fi
       local next_value="${tokens[$idx]}"
-      _target+=("$(resolve_placeholder_value "${tok}" "${next_value}" "${case_dir}" "${typeck_dir}" "${frontend}")")
+      printf '%s\0' "$(resolve_placeholder_value "${tok}" "${next_value}" "${case_dir}" "${typeck_dir}" "${frontend}")"
     fi
     ((idx++))
   done
 }
 
+append_case_flags() {
+  local frontend="$1"
+  local raw="$2"
+  local case_dir="$3"
+  local typeck_dir="$4"
+  local flag
+  if [[ -z "${raw}" ]]; then
+    return
+  fi
+  while IFS= read -r -d '' flag; do
+    if [[ "${frontend}" == "ocaml" ]]; then
+      ocaml_case_flags+=("${flag}")
+    else
+      rust_case_flags+=("${flag}")
+    fi
+  done < <(emit_case_flags "${raw}" "${case_dir}" "${typeck_dir}" "${frontend}")
+}
+
 ensure_flag() {
-  local -n _arr="$1"
+  local target_name="$1"
   local flag="$2"
-  for existing in "${_arr[@]}"; do
+  eval "local current=(\"\${${target_name}[@]}\")"
+  for existing in "${current[@]}"; do
     if [[ "${existing}" == "${flag}" ]]; then
       return
     fi
   done
-  _arr+=("${flag}")
+  eval "${target_name}+=(\"\$flag\")"
 }
 
 ensure_flag_with_value() {
-  local -n _arr="$1"
+  local target_name="$1"
   local flag="$2"
   local value="$3"
+  eval "local current=(\"\${${target_name}[@]}\")"
   local idx=0
-  while [[ ${idx} -lt ${#_arr[@]} ]]; do
-    if [[ "${_arr[$idx]}" == "${flag}" ]]; then
+  for existing in "${current[@]}"; do
+    if [[ "${existing}" == "${flag}" ]]; then
       return
     fi
     ((idx++))
   done
-  _arr+=("${flag}" "${value}")
+  eval "${target_name}+=(\"\$flag\" \"\$value\")"
 }
 
 declare -a diag_ocaml_flags=()
@@ -495,21 +513,20 @@ for idx in "${!CASE_ENTRIES[@]}"; do
   case_lsp="${CASE_LSP_META[$idx]}"
   declare -a ocaml_case_flags=()
   declare -a rust_case_flags=()
-  parse_case_flags "${case_flags_raw}" "${case_dir}" "${typeck_dir}" "ocaml" ocaml_case_flags
-  parse_case_flags "${case_flags_raw}" "${case_dir}" "${typeck_dir}" "rust" rust_case_flags
-  parse_case_flags "${case_flags_raw_ocaml}" "${case_dir}" "${typeck_dir}" "ocaml" ocaml_case_flags
-  parse_case_flags "${case_flags_raw_rust}" "${case_dir}" "${typeck_dir}" "rust" rust_case_flags
+  append_case_flags "ocaml" "${case_flags_raw}" "${case_dir}" "${typeck_dir}"
+  append_case_flags "rust" "${case_flags_raw}" "${case_dir}" "${typeck_dir}"
+  append_case_flags "ocaml" "${case_flags_raw_ocaml}" "${case_dir}" "${typeck_dir}"
+  append_case_flags "rust" "${case_flags_raw_rust}" "${case_dir}" "${typeck_dir}"
   if [[ "${case_name}" == type_* || "${case_name}" == effect_* || "${case_name}" == ffi_* ]]; then
-    ensure_flag ocaml_case_flags "--experimental-effects"
-    ensure_flag_with_value ocaml_case_flags "--type-row-mode" "dual-write"
-    ensure_flag_with_value ocaml_case_flags "--effect-stage" "beta"
-    ensure_flag_with_value ocaml_case_flags "--emit-typeck-debug" "${ocaml_typeck_debug_json}"
-    ensure_flag_with_value ocaml_case_flags "--emit-effects-metrics" "${effects_dir}/effects-metrics.ocaml.json"
-    ensure_flag rust_case_flags "--experimental-effects"
-    ensure_flag_with_value rust_case_flags "--type-row-mode" "dual-write"
-    ensure_flag_with_value rust_case_flags "--effect-stage" "beta"
-    ensure_flag_with_value rust_case_flags "--emit-typeck-debug" "${rust_typeck_debug_json}"
-    ensure_flag_with_value rust_case_flags "--emit-effects-metrics" "${effects_dir}/effects-metrics.rust.json"
+    ensure_flag "ocaml_case_flags" "--experimental-effects"
+    ensure_flag_with_value "ocaml_case_flags" "--type-row-mode" "dual-write"
+    ensure_flag_with_value "ocaml_case_flags" "--effect-stage" "beta"
+    ensure_flag_with_value "ocaml_case_flags" "--emit-typeck-debug" "${ocaml_typeck_debug_json}"
+    ensure_flag "rust_case_flags" "--experimental-effects"
+    ensure_flag_with_value "rust_case_flags" "--type-row-mode" "dual-write"
+    ensure_flag_with_value "rust_case_flags" "--effect-stage" "beta"
+    ensure_flag_with_value "rust_case_flags" "--emit-typeck-debug" "${rust_typeck_debug_json}"
+    ensure_flag_with_value "rust_case_flags" "--emit-effects-metrics" "${effects_dir}/effects-metrics.rust.json"
   fi
 
   if [[ "${MODE}" == "diag" ]]; then

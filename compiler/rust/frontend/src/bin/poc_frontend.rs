@@ -1,11 +1,11 @@
 //! logos × chumsky フロントエンド PoC。入力ファイルを解析し JSON を出力する。
 
-use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use reml_frontend::diagnostic::{DiagnosticNote, FrontendDiagnostic};
 use reml_frontend::error::Recoverability;
@@ -562,7 +562,7 @@ fn build_diagnostics(
     diagnostics
         .iter()
         .map(|diag| {
-            let timestamp = Utc::now().to_rfc3339();
+            let timestamp = current_timestamp();
             let location_value = diag
                 .span
                 .map(|span| span_to_location(span, &line_index, input_path))
@@ -957,4 +957,48 @@ fn recoverability_label(value: Recoverability) -> &'static str {
         Recoverability::Recoverable => "recoverable",
         Recoverability::Fatal => "fatal",
     }
+}
+
+fn current_timestamp() -> String {
+    let duration = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_else(|_| Duration::from_secs(0));
+    let seconds = duration.as_secs() as i64;
+    let (year, month, day, hour, minute, second) = unix_seconds_to_components(seconds);
+    format!(
+        "{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}Z"
+    )
+}
+
+fn unix_seconds_to_components(seconds: i64) -> (i32, u32, u32, u32, u32, u32) {
+    const SECONDS_PER_DAY: i64 = 86_400;
+    let days = seconds.div_euclid(SECONDS_PER_DAY);
+    let mut rem = seconds.rem_euclid(SECONDS_PER_DAY);
+    if rem < 0 {
+        rem += SECONDS_PER_DAY;
+    }
+    let hour = (rem / 3_600) as u32;
+    rem %= 3_600;
+    let minute = (rem / 60) as u32;
+    let second = (rem % 60) as u32;
+    let (year, month, day) = civil_from_days(days);
+    (year, month, day, hour, minute, second)
+}
+
+fn civil_from_days(days: i64) -> (i32, u32, u32) {
+    let z = days + 719_468;
+    let era = if z >= 0 {
+        z / 146_097
+    } else {
+        (z - 146_096) / 146_097
+    };
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let mut year = (yoe + era * 400) as i32;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    year += ((mp + 2) / 12) as i32;
+    let month = ((mp + 2) % 12 + 1) as u32;
+    (year, month, day)
 }

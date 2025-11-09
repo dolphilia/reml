@@ -1,0 +1,26 @@
+{
+  "case": "ffi_async_dispatch",
+  "mode": "diag",
+  "source": "examples/ffi/macos/ffi_dispatch_async.reml",
+  "ocaml_diag_count": 0,
+  "rust_diag_count": 0,
+  "diag_match": true,
+  "gating": false,
+  "schema_ok": true,
+  "metrics_ok": false,
+  "diag": {
+    "parser": {
+      "ocaml": null,
+      "rust": null
+    },
+    "effects": {
+      "ocaml": null,
+      "rust": null
+    },
+    "streaming": {
+      "ocaml": null,
+      "rust": null
+    }
+  },
+  "tests": "compiler/ocaml/tests/test_ffi_contract.ml::ffi_dispatch_async"
+}

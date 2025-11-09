@@ -1,0 +1,13 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/recover_else_without_if/input.reml",
+  "functions": [
+    {
+      "name": "orphan",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 1,
+      "constraints": 0,
+      "unresolved_identifiers": 1
+    }
+  ]
+}

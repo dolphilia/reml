@@ -1,0 +1,38 @@
+{
+  "case": "recover_else_without_if",
+  "mode": "diag",
+  "source": "inline",
+  "ocaml_diag_count": 1,
+  "rust_diag_count": 0,
+  "diag_match": false,
+  "gating": false,
+  "schema_ok": true,
+  "metrics_ok": false,
+  "diag": {
+    "parser": {
+      "ocaml": {
+        "audit_pass_fraction": 1.0,
+        "audit_pass_rate": 1.0,
+        "expected_pass_fraction": 1.0
+      },
+      "rust": {
+        "audit_pass_fraction": null,
+        "audit_pass_rate": null,
+        "expected_pass_fraction": 0.0
+      }
+    },
+    "effects": {
+      "ocaml": {
+        "regressions": 0
+      },
+      "rust": {
+        "regressions": 0
+      }
+    },
+    "streaming": {
+      "ocaml": null,
+      "rust": null
+    }
+  },
+  "tests": "compiler/ocaml/tests/golden/diagnostics/parser/expected-summary.json.golden"
+}

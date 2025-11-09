@@ -506,6 +506,18 @@ let parse_args argv =
             set_int_option stream_demand_preferred_bytes
               "--stream-demand-preferred" value),
         "<bytes> Set DemandHint.preferred_bytes default (>=0)" );
+      ( "--stream-demand-min-bytes",
+        Arg.String
+          (fun value ->
+            set_int_option stream_demand_min_bytes "--stream-demand-min-bytes"
+              value),
+        "<bytes> Alias of --stream-demand-min (>=0)" );
+      ( "--stream-demand-preferred-bytes",
+        Arg.String
+          (fun value ->
+            set_int_option stream_demand_preferred_bytes
+              "--stream-demand-preferred-bytes" value),
+        "<bytes> Alias of --stream-demand-preferred (>=0)" );
       ( "--stream-chunk-size",
         Arg.String
           (fun value ->
@@ -522,6 +534,17 @@ let parse_args argv =
                      "Warning: --stream-flow には manual または auto を指定してください（入力値: %s）。"
                      value)),
         "<manual|auto> Configure FlowController policy" );
+      ( "--stream-flow-policy",
+        Arg.String
+          (fun value ->
+            match parse_flow_policy value with
+            | Some policy -> stream_flow_policy := Some policy
+            | None ->
+                prerr_endline
+                  (Printf.sprintf
+                     "Warning: --stream-flow-policy には manual または auto を指定してください（入力値: %s）。"
+                     value)),
+        "<manual|auto> Alias of --stream-flow" );
       ( "--stream-flow-max-lag",
         Arg.String
           (fun value ->

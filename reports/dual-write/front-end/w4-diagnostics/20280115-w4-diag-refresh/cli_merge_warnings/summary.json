@@ -1,0 +1,26 @@
+{
+  "case": "cli_merge_warnings",
+  "mode": "diag",
+  "source": "examples/cli/type_error.reml",
+  "ocaml_diag_count": 0,
+  "rust_diag_count": 0,
+  "diag_match": true,
+  "gating": false,
+  "schema_ok": false,
+  "metrics_ok": false,
+  "diag": {
+    "parser": {
+      "ocaml": null,
+      "rust": null
+    },
+    "effects": {
+      "ocaml": null,
+      "rust": null
+    },
+    "streaming": {
+      "ocaml": null,
+      "rust": null
+    }
+  },
+  "tests": "compiler/ocaml/tests/test_cli_diagnostics.ml（warning merge snapshot）"
+}

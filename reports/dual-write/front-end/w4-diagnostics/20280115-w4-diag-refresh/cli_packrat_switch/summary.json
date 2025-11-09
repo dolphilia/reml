@@ -1,0 +1,26 @@
+{
+  "case": "cli_packrat_switch",
+  "mode": "diag",
+  "source": "examples/cli/emit_suite.reml",
+  "ocaml_diag_count": 0,
+  "rust_diag_count": 0,
+  "diag_match": true,
+  "gating": false,
+  "schema_ok": false,
+  "metrics_ok": false,
+  "diag": {
+    "parser": {
+      "ocaml": null,
+      "rust": null
+    },
+    "effects": {
+      "ocaml": null,
+      "rust": null
+    },
+    "streaming": {
+      "ocaml": null,
+      "rust": null
+    }
+  },
+  "tests": "compiler/ocaml/tests/run_config_tests.ml::packrat_switch; docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-002-proposal.md"
+}

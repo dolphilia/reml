@@ -1,0 +1,32 @@
+{
+  "case": "type_condition_literal_bool",
+  "mode": "diag",
+  "source": "inline",
+  "ocaml_diag_count": 1,
+  "rust_diag_count": 0,
+  "diag_match": false,
+  "gating": false,
+  "schema_ok": true,
+  "metrics_ok": false,
+  "diag": {
+    "parser": {
+      "ocaml": {
+        "audit_pass_fraction": 1.0,
+        "audit_pass_rate": 1.0,
+        "expected_pass_fraction": 0.0
+      },
+      "rust": null
+    },
+    "effects": {
+      "ocaml": {
+        "regressions": 0
+      },
+      "rust": null
+    },
+    "streaming": {
+      "ocaml": null,
+      "rust": null
+    }
+  },
+  "tests": "compiler/ocaml/tests/test_type_errors.ml (literal guard)"
+}

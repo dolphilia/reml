@@ -1,0 +1,4 @@
+module diagnostics.w4.stream_pending_resume
+fn chunked(value: String) -> String =
+  if value == \"resume\" then value else value
+fn main() = chunked(\"resume\")

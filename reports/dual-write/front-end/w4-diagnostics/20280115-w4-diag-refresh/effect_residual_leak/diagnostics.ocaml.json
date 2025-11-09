@@ -1,0 +1,57 @@
+/Users/dolphilia/github/kestrel/compiler/ocaml/_build/install/default/bin/remlc: unknown option '--emit-effects-metrics'.
+remlc-ocaml [options] <file>
+  --emit-ast Emit AST to stdout
+  --emit-tast Emit Typed AST to stdout
+  --emit-typed-ast <path> Emit Typed AST summary JSON to file
+  --emit-constraints <path> Emit constraint summary JSON to file
+  --emit-typeck-debug <path> Emit typechecker debug JSON to file
+  --emit-ir Emit LLVM IR (.ll) to output directory
+  --emit-bc Emit LLVM Bitcode (.bc) to output directory
+  --emit-parse-debug <path> Emit parser debug JSON (packrat/span_trace) to file
+  --out-dir <dir> Output directory (default: .)
+  --format <text|json> Output format (default: text)
+  --json-mode <pretty|compact|lines> JSON output mode (default: pretty)
+  --no-snippet Disable source snippets in text diagnostics
+  --color <auto|always|never> Color mode (default: auto)
+  --trace Enable phase tracing
+  --stats Show compilation statistics
+  --verbose <0-3> Verbosity level (default: 1)
+  --metrics <path> Output metrics to file
+  --metrics-format <json|csv> Metrics output format (default: json)
+  --require-eof Require parser to consume entire input (RunConfig.require_eof=true)
+  --packrat Enable Packrat memoization shim (RunConfig.packrat=true; experimental)
+  --experimental-effects Accept algebraic effects syntax PoC (RunConfig.experimental_effects=true)
+  -Zalgebraic-effects Alias of --experimental-effects for Stage PoC builds
+  --type-row-mode <metadata-only|dual-write|ty-integrated> TYPE-002 effect row integration mode (default: ty-integrated)
+  --left-recursion <off|on|auto> Left recursion handling mode (default: auto)
+  --no-merge-warnings Emit all parser warnings without merging (RunConfig.merge_warnings=false)
+  --streaming Enable streaming runner PoC (RunConfig.extensions["stream"].enabled)
+  --stream-checkpoint <token> Set stream checkpoint token
+  --stream-resume-hint <hint> Set stream resume_hint token
+  --stream-demand-min <bytes> Set DemandHint.min_bytes default (>=0)
+  --stream-demand-preferred <bytes> Set DemandHint.preferred_bytes default (>=0)
+  --stream-demand-min-bytes <bytes> Alias of --stream-demand-min (>=0)
+  --stream-demand-preferred-bytes <bytes> Alias of --stream-demand-preferred (>=0)
+  --stream-chunk-size <bytes> Configure CLI chunk size for streaming (>=0)
+  --stream-flow <manual|auto> Configure FlowController policy
+  --stream-flow-policy <manual|auto> Alias of --stream-flow
+  --stream-flow-max-lag <bytes> Configure FlowController.backpressure.max_lag_bytes
+  --stream-flow-debounce-ms <ms> Configure FlowController.backpressure.debounce_ms
+  --stream-flow-throttle <ratio> Configure FlowController.backpressure.throttle_ratio (0.0-1.0)
+  --typeclass-mode <dictionary|monomorph|both> Type class strategy (default: dictionary)
+  --target <triple> Target triple (default: x86_64-linux)
+  --link-runtime Link with runtime library to produce executable
+  --runtime-path <path> Path to runtime library
+  --verify-ir Verify generated LLVM IR
+  --effect-stage <stage> Override runtime Stage (experimental|beta|stable|...)
+  --runtime-capabilities <file> Load Runtime Capability Registry from JSON file
+  --emit-audit <off|on|tmp|local|ci|path> Control audit logging (default: on)
+  --no-emit-audit Disable audit logging
+  --audit-store <tmp|local|ci> Select audit log store profile (default: tmp)
+  --audit-dir <path> Override audit output directory
+  --audit-level <summary|full|debug> Control audit log detail level (default: full)
+  --version Show version information
+  -version Show version information
+  --help Show detailed help
+  -help Show detailed help
+
