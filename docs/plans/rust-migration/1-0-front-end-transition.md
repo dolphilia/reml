@@ -164,7 +164,7 @@
      - ✅ 2027-01-18: `docs/spec/1-2-types-Inference.md` の §C に `TypecheckConfig` の設定表と `Type_inference_effect` ログ拡張（`effect_scope` / `residual_effects` / `recoverable`）を追加。  
      - ✅ 2027-01-18: `docs/spec/3-6-core-diagnostics-audit.md` へ `effects-metrics.{ocaml,rust}.json`・`typeck-debug.{ocaml,rust}.json` の成果物要件と `effects.unify.*`／`effects.impl_resolve.*`／`effects.stage_mismatch.*` の KPI を組み込み。追加のフォローアップは現時点で発生していない。  
 
-### W4 具体的な進め方（診断互換試験）🟡 ゲート確認中
+### W4 具体的な進め方（診断互換試験）🟠 差分トリアージ進行中
 
 1. **前提資産のリフレッシュとゲート設定**  
    - `1-2-diagnostic-compatibility.md`・`reports/diagnostic-format-regression.md`・`p1-front-end-checklists.csv`（診断カテゴリ）を読み返し、W4 の完了条件（JSON/LSP/監査メトリクスの完全一致）を改めて明文化する。  
@@ -216,6 +216,7 @@
    - `p1-front-end-checklists.csv` の診断行を W4 ラン結果で更新し、合格ケースには成果物パスを、未解決ケースには triage ID をリンクする。  
    - P1 クロージングレビュー（W4.5）に向け、`README.md` と `docs/plans/rust-migration/1-2-diagnostic-compatibility.md` へ今回の手順・成果サマリを反映する準備メモを残す。
    - ✅ 2027-11-09: `type_condition_bool` の差分を `DIAG-RUST-06` へ切り分け。OCaml 側は parser で終了しているため JSON が空（`diagnostics=[]`）、Rust 側は `:` 解析未対応で recover 診断が 1 件のみ。`cases.txt` に `type_condition_literal_bool` を追加し、型注釈なしでも bool 条件違反を観測できるフォールバックを確保した。
+   - 🆕 2028-01-15: Run `20280115-w4-diag-refresh` の結果を `reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/triage.md` に集約し、Streaming/CLI/LSP/Effect 計 18 ケースを `DIAG-RUST-01/05/06/07` へ再マッピング。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に同日メモを追記し、`p1-front-end-checklists.csv`（診断カテゴリ）へ triage リンクと Run ID を反映した。
 
 ## 1.0.6 ワークストリームと主要論点
 
