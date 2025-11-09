@@ -3,8 +3,11 @@
 # diag default flags: `--packrat --format json --json-mode compact --emit-parse-debug <out>`
 # metadata lines per case:
 #   # tests: 参照テストや提案書
-#   # flags: CLI/LSP の追加フラグ（必要に応じて記載）
+#   # flags: OCaml/Rust 共通で適用する CLI フラグ（例: `--streaming --stream-resume-hint diag-w4`）
+#   # flags.ocaml / # flags.rust: 片側だけに適用したい CLI フラグ
 #   # lsp-fixture: LSP フィクスチャ（LSP ケースのみ）
+# placeholders:
+#   <dir> は `scripts/poc_dualwrite_compare.sh` がケースごとの作業ディレクトリへ展開する（`--emit-typeck-debug <dir>` など）
 
 # parser recover (ERR-002 / parser_recover_tests 準拠)
 # tests: compiler/ocaml/tests/test_cli_diagnostics.ml (recover snapshots); docs/plans/bootstrap-roadmap/2-5-review-log.md (Step3 parser_recover_tests)

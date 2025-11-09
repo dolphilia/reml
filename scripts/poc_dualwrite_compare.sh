@@ -69,6 +69,8 @@ fi
 declare -a CASE_ENTRIES=()
 declare -a CASE_TESTS_META=()
 declare -a CASE_FLAGS_META=()
+declare -a CASE_FLAGS_META_OCAML=()
+declare -a CASE_FLAGS_META_RUST=()
 declare -a CASE_LSP_META=()
 
 if [[ -n "${CASES_FILE}" ]]; then
@@ -76,6 +78,11 @@ if [[ -n "${CASES_FILE}" ]]; then
     echo "ケース定義ファイルが見つかりません: ${CASES_FILE}" >&2
     exit 1
   fi
+  current_tests=""
+  current_flags=""
+  current_flags_ocaml=""
+  current_flags_rust=""
+  current_lsp=""
   while IFS= read -r line || [[ -n "$line" ]]; do
     line="$(printf '%s' "${line}" | sed 's/[[:space:]]*$//')"
     if [[ -z "${line}" ]]; then
@@ -93,6 +100,12 @@ if [[ -n "${CASES_FILE}" ]]; then
           flags)
             current_flags="${value}"
             ;;
+          flags.ocaml|flags_ocaml)
+            current_flags_ocaml="${value}"
+            ;;
+          flags.rust|flags_rust)
+            current_flags_rust="${value}"
+            ;;
           lsp-fixture|lsp_fixture)
             current_lsp="${value}"
             ;;
@@ -103,9 +116,13 @@ if [[ -n "${CASES_FILE}" ]]; then
     CASE_ENTRIES+=("${line}")
     CASE_TESTS_META+=("${current_tests:-}")
     CASE_FLAGS_META+=("${current_flags:-}")
+    CASE_FLAGS_META_OCAML+=("${current_flags_ocaml:-}")
+    CASE_FLAGS_META_RUST+=("${current_flags_rust:-}")
     CASE_LSP_META+=("${current_lsp:-}")
     current_tests=""
     current_flags=""
+    current_flags_ocaml=""
+    current_flags_rust=""
     current_lsp=""
   done < "${CASES_FILE}"
 else
@@ -118,6 +135,8 @@ else
   for _ in "${CASE_ENTRIES[@]}"; do
     CASE_TESTS_META+=("")
     CASE_FLAGS_META+=("")
+    CASE_FLAGS_META_OCAML+=("")
+    CASE_FLAGS_META_RUST+=("")
     CASE_LSP_META+=("")
   done
 fi
@@ -161,7 +180,7 @@ needs_streaming_metrics() {
 
 option_requires_value() {
   case "$1" in
-    --type-row-mode|--effect-stage-runtime|--effect-stage-capability)
+    --type-row-mode|--effect-stage|--effect-stage-runtime|--effect-stage-capability)
       return 0
       ;;
     --recover-expected-tokens|--recover-context|--recover-max-suggestions)
@@ -422,7 +441,9 @@ for idx in "${!CASE_ENTRIES[@]}"; do
   rust_json_path="${case_dir}/rust.json"
   rust_parse_debug_path="${case_dir}/rust.parse-debug.json"
   typeck_dir="${case_dir}/typeck"
+  effects_dir="${case_dir}/effects"
   mkdir -p "${typeck_dir}"
+  mkdir -p "${effects_dir}"
   ocaml_typed_json="${typeck_dir}/typed-ast.ocaml.json"
   ocaml_constraints_json="${typeck_dir}/constraints.ocaml.json"
   ocaml_typeck_debug_json="${typeck_dir}/typeck-debug.ocaml.json"
@@ -469,18 +490,26 @@ for idx in "${!CASE_ENTRIES[@]}"; do
   printf ">> ケース %s (safe=%s)\n" "${case_name}" "${safe_name}"
   case_tests="${CASE_TESTS_META[$idx]}"
   case_flags_raw="${CASE_FLAGS_META[$idx]}"
+  case_flags_raw_ocaml="${CASE_FLAGS_META_OCAML[$idx]}"
+  case_flags_raw_rust="${CASE_FLAGS_META_RUST[$idx]}"
   case_lsp="${CASE_LSP_META[$idx]}"
   declare -a ocaml_case_flags=()
   declare -a rust_case_flags=()
   parse_case_flags "${case_flags_raw}" "${case_dir}" "${typeck_dir}" "ocaml" ocaml_case_flags
   parse_case_flags "${case_flags_raw}" "${case_dir}" "${typeck_dir}" "rust" rust_case_flags
+  parse_case_flags "${case_flags_raw_ocaml}" "${case_dir}" "${typeck_dir}" "ocaml" ocaml_case_flags
+  parse_case_flags "${case_flags_raw_rust}" "${case_dir}" "${typeck_dir}" "rust" rust_case_flags
   if [[ "${case_name}" == type_* || "${case_name}" == effect_* || "${case_name}" == ffi_* ]]; then
     ensure_flag ocaml_case_flags "--experimental-effects"
     ensure_flag_with_value ocaml_case_flags "--type-row-mode" "dual-write"
+    ensure_flag_with_value ocaml_case_flags "--effect-stage" "beta"
     ensure_flag_with_value ocaml_case_flags "--emit-typeck-debug" "${ocaml_typeck_debug_json}"
+    ensure_flag_with_value ocaml_case_flags "--emit-effects-metrics" "${effects_dir}/effects-metrics.ocaml.json"
     ensure_flag rust_case_flags "--experimental-effects"
     ensure_flag_with_value rust_case_flags "--type-row-mode" "dual-write"
+    ensure_flag_with_value rust_case_flags "--effect-stage" "beta"
     ensure_flag_with_value rust_case_flags "--emit-typeck-debug" "${rust_typeck_debug_json}"
+    ensure_flag_with_value rust_case_flags "--emit-effects-metrics" "${effects_dir}/effects-metrics.rust.json"
   fi
 
   if [[ "${MODE}" == "diag" ]]; then
