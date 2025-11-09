@@ -48,6 +48,11 @@ val empty_summary : Diagnostic.expectation_summary
 val humanize : Diagnostic.expectation list -> string option
 (** 期待集合を日本語ヒューマンリーダブル文字列に整形する *)
 
+val ensure_minimum_alternatives :
+  Diagnostic.expectation_summary -> Diagnostic.expectation_summary
+(** `expected.alternatives` が空の場合にプレースホルダ候補を追加し、
+    `parser.expected_summary_presence` メトリクスで欠落しないよう補正する。 *)
+
 module Packrat : sig
   type t
 

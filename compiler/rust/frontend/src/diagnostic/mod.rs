@@ -3,6 +3,11 @@
 use crate::error::Recoverability;
 use crate::span::Span;
 
+const EXPECTED_PLACEHOLDER_TOKEN: &str = "解析継続トークン";
+const EXPECTED_EMPTY_HUMANIZED: &str = "ここで解釈可能な構文が見つかりません";
+const PARSE_EXPECTED_KEY: &str = "parse.expected";
+const PARSE_EXPECTED_EMPTY_KEY: &str = "parse.expected.empty";
+
 /// Rust フロントエンドが生成する診断レコードの最小構造。
 /// W4 の診断互換試験に向け、`serde` スキーマと合わせて拡張する。
 #[derive(Debug, Clone)]
@@ -13,7 +18,9 @@ pub struct FrontendDiagnostic {
     pub recoverability: Recoverability,
     pub notes: Vec<DiagnosticNote>,
     pub expected_tokens: Vec<String>,
+    pub expected_locale_args: Vec<String>,
     pub expected_humanized: Option<String>,
+    pub expected_message_key: Option<String>,
 }
 
 impl FrontendDiagnostic {
@@ -25,7 +32,9 @@ impl FrontendDiagnostic {
             recoverability: Recoverability::Fatal,
             notes: Vec::new(),
             expected_tokens: Vec::new(),
+            expected_locale_args: Vec::new(),
             expected_humanized: None,
+            expected_message_key: None,
         }
     }
 
@@ -49,8 +58,20 @@ impl FrontendDiagnostic {
     }
 
     pub fn set_expected_tokens(mut self, tokens: Vec<String>, humanized: Option<String>) -> Self {
-        self.expected_tokens = tokens;
-        self.expected_humanized = humanized;
+        if tokens.is_empty() {
+            self.expected_tokens = vec![EXPECTED_PLACEHOLDER_TOKEN.to_string()];
+            self.expected_locale_args = Vec::new();
+            self.expected_message_key = Some(PARSE_EXPECTED_EMPTY_KEY.to_string());
+            self.expected_humanized = match humanized {
+                Some(text) if !text.trim().is_empty() => Some(text),
+                _ => Some(EXPECTED_EMPTY_HUMANIZED.to_string()),
+            };
+        } else {
+            self.expected_locale_args = tokens.clone();
+            self.expected_tokens = tokens;
+            self.expected_message_key = Some(PARSE_EXPECTED_KEY.to_string());
+            self.expected_humanized = humanized;
+        }
         self
     }
 

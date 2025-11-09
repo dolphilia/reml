@@ -73,11 +73,14 @@ let expectation_summary_for_checkpoint session checkpoint =
           record_packrat_status session.core_state warm_status)
         warm_consumers
   | _ -> ());
-  if collection.expectations <> [] then collection.summary
-  else
-    match Parser_diag_state.farthest_snapshot session.diag_state with
-    | Some snapshot -> summarize_snapshot snapshot
-    | None -> Parser_expectation.empty_summary
+  let summary =
+    if collection.expectations <> [] then collection.summary
+    else
+      match Parser_diag_state.farthest_snapshot session.diag_state with
+      | Some snapshot -> summarize_snapshot snapshot
+      | None -> Parser_expectation.empty_summary
+  in
+  Parser_expectation.ensure_minimum_alternatives summary
 
 let register_diagnostic session diagnostic ~consumed ~committed =
   let enriched =

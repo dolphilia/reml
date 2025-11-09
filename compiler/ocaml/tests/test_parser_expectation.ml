@@ -113,4 +113,22 @@ let () =
            (match other with None -> "None" | Some k -> k)));
   if empty.Diagnostic.alternatives = [] then
     ok "empty summary has no alternatives"
-  else fail "empty summary has no alternatives" "  expected []"
+  else fail "empty summary has no alternatives" "  expected []";
+  let ensured = ensure_minimum_alternatives empty in
+  (match ensured.Diagnostic.alternatives with
+  | [ Diagnostic.Custom label ] when String.equal label "解析継続トークン" ->
+      ok "ensure_minimum_alternatives inserts placeholder"
+  | other ->
+      let actual =
+        String.concat ", "
+          (List.map string_of_expectation other)
+      in
+      fail "ensure_minimum_alternatives inserts placeholder"
+        (Printf.sprintf "  unexpected alternatives: %s" actual));
+  (match ensured.Diagnostic.message_key with
+  | Some "parse.expected.empty" ->
+      ok "ensure_minimum_alternatives keeps empty message key"
+  | other ->
+      fail "ensure_minimum_alternatives keeps empty message key"
+        (Printf.sprintf "  unexpected message key: %s"
+           (match other with None -> "None" | Some key -> key)))

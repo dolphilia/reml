@@ -59,10 +59,8 @@ impl ParserDriver {
             if let Some(span) = err.0 {
                 diagnostic = diagnostic.with_span(span);
             }
-            if !expected_tokens.is_empty() {
-                diagnostic = diagnostic
-                    .set_expected_tokens(expected_tokens.clone(), Some(recover_message.clone()));
-            }
+            diagnostic =
+                diagnostic.set_expected_tokens(expected_tokens, Some(recover_message.clone()));
             if !recover_message.is_empty() {
                 diagnostic.add_note(DiagnosticNote::new(
                     "recover.expected_tokens",

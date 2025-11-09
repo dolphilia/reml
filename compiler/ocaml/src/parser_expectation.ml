@@ -14,6 +14,10 @@ type collection = {
   summary : expectation_summary;
 }
 
+let fallback_placeholder_label = "解析継続トークン"
+let fallback_placeholder = Diagnostic.Custom fallback_placeholder_label
+let empty_summary_humanized = "ここで解釈可能な構文が見つかりません"
+
 let keyword_to_expectation token =
   match token with
   | Token.MODULE
@@ -235,13 +239,23 @@ let summarize_with_defaults ?context_note expectations =
   match normalized with
   | [] ->
       summarize ~message_key:"parse.expected.empty" ~locale_args:[]
-        ~humanized:"ここで解釈可能な構文が見つかりません"
+        ~humanized:empty_summary_humanized
         ?context_note normalized
   | _ ->
       summarize ~message_key:"parse.expected"
         ~locale_args:(List.map raw_label normalized) ?context_note normalized
 
 let empty_summary = summarize_with_defaults []
+
+let ensure_minimum_alternatives summary =
+  if summary.alternatives <> [] then summary
+  else
+    let humanized =
+      match summary.humanized with
+      | Some text when String.trim text <> "" -> summary.humanized
+      | _ -> Some empty_summary_humanized
+    in
+    { summary with alternatives = [ fallback_placeholder ]; humanized }
 
 let keyword_samples =
   [

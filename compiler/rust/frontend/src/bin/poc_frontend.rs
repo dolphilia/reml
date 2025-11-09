@@ -722,6 +722,10 @@ fn build_expected_field(diag: &FrontendDiagnostic) -> Value {
     if !diag.has_expected_tokens() {
         return Value::Null;
     }
+    let message_key = diag
+        .expected_message_key
+        .clone()
+        .unwrap_or_else(|| "parse.expected".to_string());
     let alternatives: Vec<Value> = diag
         .expected_tokens
         .iter()
@@ -736,10 +740,15 @@ fn build_expected_field(diag: &FrontendDiagnostic) -> Value {
         .expected_humanized
         .clone()
         .unwrap_or_else(|| default_expected_message(&diag.expected_tokens));
+    let locale_args = if diag.expected_locale_args.is_empty() {
+        diag.expected_tokens.clone()
+    } else {
+        diag.expected_locale_args.clone()
+    };
     json!({
-        "message_key": "parse.expected",
+        "message_key": message_key,
         "humanized": humanized,
-        "locale_args": diag.expected_tokens,
+        "locale_args": locale_args,
         "alternatives": alternatives,
     })
 }
@@ -762,7 +771,7 @@ fn classify_expected_token(token: &str) -> &'static str {
 
 fn default_expected_message(tokens: &[String]) -> String {
     if tokens.is_empty() {
-        return "解析を続行するには追加のトークンが必要です".to_string();
+        return "ここで解釈可能な構文が見つかりません".to_string();
     }
     let formatted = tokens
         .iter()
