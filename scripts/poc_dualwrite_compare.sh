@@ -1127,7 +1127,6 @@ for idx in "${!CASE_ENTRIES[@]}"; do
     strip_case_flag "ocaml_case_flags" "--emit-typeck-debug"
     strip_case_flag "rust_case_flags" "--emit-typeck-debug"
     strip_case_flag "rust_case_flags" "--emit-effects-metrics"
-    strip_case_flag "rust_case_flags" "--emit-typeck-debug-format"
     ensure_flag "ocaml_case_flags" "--experimental-effects"
     ensure_flag_with_value "ocaml_case_flags" "--type-row-mode" "dual-write"
     ensure_flag_with_value "ocaml_case_flags" "--effect-stage" "beta"
@@ -1137,7 +1136,6 @@ for idx in "${!CASE_ENTRIES[@]}"; do
     ensure_flag_with_value "rust_case_flags" "--effect-stage" "beta"
     ensure_flag_with_value "rust_case_flags" "--emit-typeck-debug" "${rust_typeck_debug_json}"
     ensure_flag_with_value "rust_case_flags" "--emit-effects-metrics" "${effects_dir}/effects-metrics.rust.json"
-    ensure_flag_with_value "rust_case_flags" "--emit-typeck-debug-format" "json"
   fi
 
   if [[ "${MODE}" == "diag" ]]; then
@@ -1400,15 +1398,31 @@ def summarize_streaming_metrics(data):
 def summarize_effects_metrics(data):
     if not isinstance(data, dict):
         return None
+    entries = []
     metrics = data.get("metrics")
-    if not isinstance(metrics, list):
+    if isinstance(metrics, list):
+        entries.extend(metrics)
+    extra_metrics = data.get("extra_metrics")
+    if isinstance(extra_metrics, list):
+        entries.extend(extra_metrics)
+    if not entries:
         return None
     summary = {}
-    for item in metrics:
+    for item in entries:
         if not isinstance(item, dict):
             continue
-        if item.get("metric") == "effect_row_guard_regressions":
+        metric_name = item.get("metric")
+        if metric_name == "effect_row_guard_regressions":
             summary["regressions"] = item.get("count")
+        elif metric_name == "effect_scope.audit_presence":
+            summary["scope"] = {
+                "pass_rate": item.get("pass_rate"),
+                "pass_fraction": item.get("pass_fraction"),
+                "status": item.get("status"),
+                "total": item.get("total"),
+                "failed": item.get("failed"),
+                "failures": item.get("failures"),
+            }
     return summary or None
 
 ocaml_diag = load_json(case_dir / "diagnostics.ocaml.json") or {}

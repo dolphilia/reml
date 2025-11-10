@@ -1,0 +1,26 @@
+{
+  "cwd": "/Users/dolphilia/github/kestrel/compiler/ocaml",
+  "argv": [
+    "dune",
+    "exec",
+    "remlc",
+    "--",
+    "--packrat",
+    "--format",
+    "json",
+    "--json-mode",
+    "compact",
+    "--emit-parse-debug",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280418-w4-diag-effects-r3/effect_residual_leak/ocaml.parse-debug.json",
+    "--left-recursion",
+    "off",
+    "--experimental-effects",
+    "--effect-stage",
+    "beta",
+    "--type-row-mode",
+    "dual-write",
+    "--emit-typeck-debug",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280418-w4-diag-effects-r3/effect_residual_leak/typeck/typeck-debug.ocaml.json",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280418-w4-diag-effects-r3/effect_residual_leak/input.reml"
+  ]
+}

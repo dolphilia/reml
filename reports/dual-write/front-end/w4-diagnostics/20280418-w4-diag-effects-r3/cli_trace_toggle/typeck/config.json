@@ -1,0 +1,19 @@
+{
+  "effect_context": {
+    "runtime": {
+      "AtLeast": "stable"
+    },
+    "capability": {
+      "AtLeast": "beta"
+    }
+  },
+  "type_row_mode": "Integrated",
+  "recover": {
+    "emit_expected_tokens": true,
+    "emit_context": true,
+    "max_suggestions": 3
+  },
+  "experimental_effects": false,
+  "runtime_capabilities": [],
+  "trace_enabled": true
+}

@@ -1,0 +1,31 @@
+{
+  "cwd": "/Users/dolphilia/github/kestrel/compiler/rust/frontend",
+  "argv": [
+    "cargo",
+    "run",
+    "--quiet",
+    "--bin",
+    "poc_frontend",
+    "--",
+    "--emit-parse-debug",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280418-w4-diag-effects-r3/ffi_ownership_mismatch/rust.parse-debug.json",
+    "--dualwrite-root",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+    "--dualwrite-run-label",
+    "20280418-w4-diag-effects-r3",
+    "--dualwrite-case-label",
+    "ffi_ownership_mismatch",
+    "--experimental-effects",
+    "--effect-stage",
+    "beta",
+    "--type-row-mode",
+    "dual-write",
+    "--runtime-capabilities",
+    "windows.ffi",
+    "--emit-typeck-debug",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280418-w4-diag-effects-r3/ffi_ownership_mismatch/typeck/typeck-debug.rust.json",
+    "--emit-effects-metrics",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280418-w4-diag-effects-r3/ffi_ownership_mismatch/effects/effects-metrics.rust.json",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280418-w4-diag-effects-r3/ffi_ownership_mismatch/input.reml"
+  ]
+}

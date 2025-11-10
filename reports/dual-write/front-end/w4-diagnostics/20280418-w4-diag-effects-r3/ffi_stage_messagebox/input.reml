@@ -1,0 +1,136 @@
+module examples.ffi.windows.messagebox
+
+/// Windows MessageBoxW API 呼び出しサンプル
+///
+/// **検証対象**:
+/// - 3-9-core-async-ffi-unsafe.md の FFI 契約 (Windows x64 MSVC ABI)
+/// - `calling_convention("win64")` の正しい lowering
+/// - 借用所有権 (`ownership("borrowed")`) の検証
+/// - LLVM IR メタデータ `reml.bridge.platform = x86_64-pc-windows-msvc`
+///
+/// **ABI要件**:
+/// - CallConv: Win64 (LLVM CallConv = 79)
+/// - 構造体戻り値: N/A (i32 戻り値)
+/// - ポインタ引数: UTF-16文字列 (*const u16) は借用として扱う
+
+use ::Core.Text.String as Str
+
+/// MessageBoxW の戻り値型 (ユーザーが押したボタン)
+type MessageBoxResult =
+  | Ok
+  | Cancel
+  | Abort
+  | Retry
+  | Ignore
+  | Yes
+  | No
+  | TryAgain
+  | Continue
+  | Unknown { code: i32 }
+
+/// Windows MessageBoxW API (user32.dll)
+///
+/// ```c
+/// int MessageBoxW(
+///   HWND    hWnd,
+///   LPCWSTR lpText,
+///   LPCWSTR lpCaption,
+///   UINT    uType
+/// );
+/// ```
+extern "C" {
+  #[target("x86_64-pc-windows-msvc")]
+  #[link_name("MessageBoxW")]
+  #[calling_convention("win64")]
+  #[ownership("borrowed")]  // ポインタ引数は借用 (Remlランタイムが管理しない)
+  fn win32_messagebox_w(
+    hwnd: i64,          // HWND (ハンドル、0 = デスクトップ)
+    text: *const u16,   // LPCWSTR (UTF-16 文字列)
+    caption: *const u16, // LPCWSTR (タイトル)
+    utype: u32          // UINT (ボタン種別)
+  ) -> i32
+}
+
+/// MessageBox タイプフラグ (user32.h より)
+let MB_OK: u32 = 0x00000000
+let MB_OKCANCEL: u32 = 0x00000001
+let MB_YESNO: u32 = 0x00000004
+let MB_ICONINFORMATION: u32 = 0x00000040
+
+/// MessageBox 戻り値定数
+let IDOK: i32 = 1
+let IDCANCEL: i32 = 2
+let IDYES: i32 = 6
+let IDNO: i32 = 7
+
+/// UTF-8文字列をUTF-16に変換 (簡易実装)
+///
+/// NOTE: 本来は Core.Text.Codec で変換すべきだが、Phase 2-3 では
+///       FFI検証のためスタブ実装を使用
+fn utf8_to_utf16(s: Str) -> List<u16> {
+  // TODO: 実際のエンコーディング変換を実装
+  // 現時点ではASCII範囲のみ対応
+  let bytes = Str.to_bytes(s)
+  List.map(bytes, fn(b) -> b as u16)
+}
+
+/// メッセージボックスを表示
+///
+/// ```reml
+/// let result = show_message("Hello, World!", "FFI Test")
+/// ```
+pub fn show_message(text: Str, caption: Str) -> MessageBoxResult {
+  let text_utf16 = utf8_to_utf16(text)
+  let caption_utf16 = utf8_to_utf16(caption)
+
+  // FFI呼び出し (unsafe 境界)
+  effect {unsafe} {
+    let code = win32_messagebox_w(
+      0,  // NULL hwnd = デスクトップ
+      &text_utf16 as *const u16,
+      &caption_utf16 as *const u16,
+      MB_OK | MB_ICONINFORMATION
+    )
+
+    // 戻り値を型安全に変換
+    match code {
+      | IDOK -> MessageBoxResult::Ok
+      | IDCANCEL -> MessageBoxResult::Cancel
+      | IDYES -> MessageBoxResult::Yes
+      | IDNO -> MessageBoxResult::No
+      | other -> MessageBoxResult::Unknown { code: other }
+    }
+  }
+}
+
+/// Yes/No ダイアログを表示
+pub fn show_yes_no(text: Str, caption: Str) -> bool {
+  let text_utf16 = utf8_to_utf16(text)
+  let caption_utf16 = utf8_to_utf16(caption)
+
+  effect {unsafe} {
+    let code = win32_messagebox_w(
+      0,
+      &text_utf16 as *const u16,
+      &caption_utf16 as *const u16,
+      MB_YESNO | MB_ICONINFORMATION
+    )
+    code == IDYES
+  }
+}
+
+/// エントリポイント: サンプル実行
+pub fn main() -> i32 {
+  let result = show_message("FFI Test: Windows MessageBoxW", "Reml Compiler")
+
+  match result {
+    | MessageBoxResult::Ok -> {
+      print("User clicked OK")
+      0
+    }
+    | _ -> {
+      print("Unexpected result")
+      1
+    }
+  }
+}

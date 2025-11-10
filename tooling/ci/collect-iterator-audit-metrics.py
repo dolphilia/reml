@@ -450,6 +450,16 @@ def _as_string_list(value: Optional[object]) -> Optional[List[str]]:
     return None
 
 
+def _value_present(value: Optional[object]) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (list, tuple, set, dict)):
+        return len(value) > 0
+    return True
+
+
 def _diagnostic_has_code(diag: Dict[str, Any], target: str) -> bool:
     primary = primary_code_of(diag)
     if primary == target:
@@ -3122,6 +3132,108 @@ def collect_effect_stage_consistency(
     }
 
 
+def _diagnostic_is_rust_frontend(metadata: Optional[Dict[str, Any]]) -> bool:
+    if not metadata:
+        return False
+    candidates = []
+    for key in ("namespace", "parser.core.rule.namespace", "parser.core.rule.origin"):
+        value = metadata.get(key)
+        if isinstance(value, str) and value.strip():
+            candidates.append(value.strip().lower())
+    return any("rust" in candidate for candidate in candidates)
+
+
+def collect_effect_scope_audit_presence(
+    paths: Sequence[Path],
+) -> Optional[Dict[str, Any]]:
+    required_extension_keys = [
+        "effect.capabilities",
+        "effect.required_capabilities",
+        "effect.stage.required_capabilities",
+        "effect.stage.actual_capabilities",
+        "effect.stage.required",
+        "effect.stage.actual",
+    ]
+    required_metadata_keys = [
+        "capability.ids",
+        "effect.required_capabilities",
+        "effect.stage.required_capabilities",
+        "effect.stage.actual_capabilities",
+        "effect.stage.required",
+        "effect.stage.actual",
+        "bridge.stage.required_capabilities",
+        "bridge.stage.actual_capabilities",
+        "bridge.stage.capability",
+    ]
+
+    total = 0
+    passed = 0
+    failures: List[Dict[str, Any]] = []
+
+    for path in paths:
+        data = load_json(path)
+        try:
+            diagnostics_iter = iter_diagnostics(data)
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
+            metadata = _as_dict(diag.get("audit_metadata"))
+            if not _diagnostic_is_rust_frontend(metadata):
+                continue
+            extensions = _as_dict(diag.get("extensions"))
+            if not extensions:
+                continue
+            # Only enforce when capability payload is expected.
+            capability_payload = extensions.get("effect.capabilities")
+            if capability_payload is None:
+                continue
+            if isinstance(capability_payload, list) and not capability_payload:
+                continue
+            if isinstance(capability_payload, str) and not capability_payload.strip():
+                continue
+
+            total += 1
+            missing_keys: List[str] = []
+            for key in required_extension_keys:
+                if not _value_present(extensions.get(key)):
+                    missing_keys.append(f"extensions.{key}")
+            for key in required_metadata_keys:
+                if not _value_present(_diagnostic_metadata_lookup(diag, key)):
+                    missing_keys.append(f"audit.{key}")
+
+            if missing_keys:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "missing_keys": sorted(set(missing_keys)),
+                    }
+                )
+            else:
+                passed += 1
+
+    if total == 0:
+        return None
+
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+    status = "success" if pass_rate == 1.0 else "error"
+    return {
+        "metric": "effect_scope.audit_presence",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "status": status,
+        "sources": [str(path) for path in paths],
+        "failures": failures,
+        "required_keys": {
+            "extensions": required_extension_keys,
+            "audit_metadata": required_metadata_keys,
+        },
+    }
+
+
 def collect_effect_syntax_metrics(
     paths: Sequence[Path],
 ) -> Optional[Dict[str, Any]]:
@@ -4384,10 +4496,15 @@ def main(argv: Optional[List[str]] = None) -> int:
             type_effect_row_metric,
             guard_metric,
         ) = collect_effect_row_metrics(sources)
+        effect_scope_metric = collect_effect_scope_audit_presence(sources)
         related_metrics_target: List[Dict[str, Any]] = []
         if effects_metric:
             related_metrics_target = effects_metric.setdefault("related_metrics", [])
-        for metric in (effect_row_stage_metric, type_effect_row_metric):
+        for metric in (
+            effect_row_stage_metric,
+            type_effect_row_metric,
+            effect_scope_metric,
+        ):
             if not metric:
                 continue
             append_metrics.append(metric)
