@@ -1,0 +1,392 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r16/stream_pending_resume/input.reml",
+  "parser_run_config": {
+    "experimental_effects": false,
+    "legacy_result": true,
+    "merge_warnings": true,
+    "trace": false,
+    "left_recursion": "off",
+    "packrat": true,
+    "require_eof": false,
+    "extensions": {
+      "config": {
+        "experimental_effects": false,
+        "left_recursion": "off",
+        "legacy_result": true,
+        "merge_warnings": true,
+        "packrat": true,
+        "require_eof": false,
+        "source": "cli",
+        "trace": false
+      },
+      "effects": { "type_row_mode": "ty-integrated" },
+      "lex": { "profile": "strict_json" },
+      "stream": {
+        "demand_min_bytes": 4,
+        "demand_preferred_bytes": 8,
+        "enabled": true,
+        "flow_max_lag_bytes": 8192,
+        "flow_policy": "auto",
+        "resume_hint": "diag-w4"
+      }
+    }
+  },
+  "diagnostics": [
+    {
+      "expected": null,
+      "audit": {
+        "metadata": {
+          "parser": {
+            "core": {
+              "rule": {
+                "fingerprint": "859967339",
+                "origin": "static",
+                "ordinal": 0,
+                "name": "compilation_unit",
+                "namespace": "menhir"
+              }
+            }
+          },
+          "parser.core.rule": {
+            "fingerprint": "859967339",
+            "origin": "static",
+            "ordinal": 0,
+            "name": "compilation_unit",
+            "namespace": "menhir"
+          },
+          "parser.runconfig": {
+            "packrat": true,
+            "left_recursion": "off",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": true,
+            "experimental_effects": false,
+            "extensions": {
+              "stream": {
+                "enabled": true,
+                "checkpoint": "unspecified",
+                "resume_hint": "diag-w4",
+                "demand_min_bytes": 4,
+                "demand_preferred_bytes": 8,
+                "chunk_size": 0,
+                "flow": {
+                  "policy": "auto",
+                  "backpressure": { "max_lag_bytes": 8192 }
+                }
+              },
+              "recover": { "sync_tokens": [], "notes": false },
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              }
+            }
+          },
+          "parser.runconfig.packrat": true,
+          "parser.runconfig.left_recursion": "off",
+          "parser.runconfig.trace": false,
+          "parser.runconfig.merge_warnings": true,
+          "parser.runconfig.require_eof": false,
+          "parser.runconfig.legacy_result": true,
+          "parser.runconfig.experimental_effects": false,
+          "parser.runconfig.extensions.lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.recover": {
+            "sync_tokens": [],
+            "notes": false
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "enabled": true,
+            "checkpoint": "unspecified",
+            "resume_hint": "diag-w4",
+            "demand_min_bytes": 4,
+            "demand_preferred_bytes": 8,
+            "chunk_size": 0,
+            "flow": {
+              "policy": "auto",
+              "backpressure": { "max_lag_bytes": 8192 }
+            }
+          },
+          "parser.runconfig.extensions.stream.enabled": true,
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.resume_hint": "diag-w4",
+          "parser.runconfig.extensions.stream.demand_min_bytes": 4,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 8,
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "parser.runconfig.extensions.stream.flow.policy": "auto",
+          "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 8192,
+          "effect.capabilities": [],
+          "effect.stage.actual_capabilities": [],
+          "effect.actual_capabilities": [],
+          "effect.stage.required_capabilities": [],
+          "effect.required_capabilities": [],
+          "fingerprint": "859967339",
+          "origin": "static",
+          "name": "compilation_unit",
+          "namespace": "menhir",
+          "parser.core.rule.fingerprint": "859967339",
+          "parser.core.rule.origin": "static",
+          "parser.core.rule.ordinal": 0,
+          "parser.core.rule.name": "compilation_unit",
+          "parser.core.rule.namespace": "menhir",
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "20251110T052735Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [ { "kind": "input", "path": "input.reml" } ]
+          },
+          "audit.source.workspace": ".",
+          "audit.sequence": 0,
+          "audit.build_id": "20251110T052735Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "cli.audit_id": "cli/20251110T052735Z#0",
+          "event.domain": "parser",
+          "audit.timestamp": "2025-11-10T05:27:35Z",
+          "schema.version": "1.1"
+        },
+        "audit_id": "cli/20251110T052735Z#0",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "20251110T052735Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "input.reml" } ]
+        }
+      },
+      "audit_metadata": {
+        "event.domain": "parser",
+        "cli.audit_id": "cli/20251110T052735Z#0",
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "20251110T052735Z",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "20251110T052735Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "input.reml" } ]
+        },
+        "parser.core.rule.namespace": "menhir",
+        "parser.core.rule.name": "compilation_unit",
+        "parser.core.rule.ordinal": 0,
+        "parser.core.rule.origin": "static",
+        "parser.core.rule.fingerprint": "859967339",
+        "namespace": "menhir",
+        "name": "compilation_unit",
+        "origin": "static",
+        "fingerprint": "859967339",
+        "schema.version": "1.1",
+        "audit.timestamp": "2025-11-10T05:27:35Z",
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 8192,
+        "parser.runconfig.extensions.stream.flow.policy": "auto",
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 8,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 4,
+        "parser.runconfig.extensions.stream.resume_hint": "diag-w4",
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.enabled": true,
+        "parser.runconfig.extensions.stream": {
+          "enabled": true,
+          "checkpoint": "unspecified",
+          "resume_hint": "diag-w4",
+          "demand_min_bytes": 4,
+          "demand_preferred_bytes": 8,
+          "chunk_size": 0,
+          "flow": {
+            "policy": "auto",
+            "backpressure": { "max_lag_bytes": 8192 }
+          }
+        },
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover": {
+          "sync_tokens": [],
+          "notes": false
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.lex": {
+          "profile": "strict_json",
+          "identifier_profile": "unicode"
+        },
+        "parser.runconfig.experimental_effects": false,
+        "parser.runconfig.legacy_result": true,
+        "parser.runconfig.require_eof": false,
+        "parser.runconfig.merge_warnings": true,
+        "parser.runconfig.trace": false,
+        "parser.runconfig.left_recursion": "off",
+        "parser.runconfig.packrat": true,
+        "parser.runconfig": {
+          "packrat": true,
+          "left_recursion": "off",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": true,
+          "experimental_effects": false,
+          "extensions": {
+            "stream": {
+              "enabled": true,
+              "checkpoint": "unspecified",
+              "resume_hint": "diag-w4",
+              "demand_min_bytes": 4,
+              "demand_preferred_bytes": 8,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "backpressure": { "max_lag_bytes": 8192 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        },
+        "parser.core.rule": {
+          "fingerprint": "859967339",
+          "origin": "static",
+          "ordinal": 0,
+          "name": "compilation_unit",
+          "namespace": "menhir"
+        },
+        "parser": {
+          "core": {
+            "rule": {
+              "fingerprint": "859967339",
+              "origin": "static",
+              "ordinal": 0,
+              "name": "compilation_unit",
+              "namespace": "menhir"
+            }
+          }
+        }
+      },
+      "extensions": {
+        "diagnostic.v2": { "timestamp": "2025-11-10T05:27:35Z" },
+        "parse": {
+          "parser_id": {
+            "namespace": "menhir",
+            "name": "compilation_unit",
+            "ordinal": 0,
+            "origin": "static",
+            "fingerprint": "859967339"
+          }
+        },
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "runconfig": {
+          "packrat": true,
+          "left_recursion": "off",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": true,
+          "experimental_effects": false,
+          "extensions": {
+            "stream": {
+              "enabled": true,
+              "checkpoint": "unspecified",
+              "resume_hint": "diag-w4",
+              "demand_min_bytes": 4,
+              "demand_preferred_bytes": 8,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "backpressure": { "max_lag_bytes": 8192 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        }
+      },
+      "schema_version": "2.0.0-draft",
+      "fixits": [],
+      "hints": [],
+      "secondary": [],
+      "codes": [],
+      "primary": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r16/stream_pending_resume/input.reml",
+        "start_line": 2,
+        "start_col": 14,
+        "end_line": 2,
+        "end_col": 15
+      },
+      "severity_level": 1,
+      "severity": "error",
+      "message": "Unexpected character: \\",
+      "domain": "parser",
+      "timestamp": "2025-11-10T05:27:35Z"
+    }
+  ],
+  "parse_result": {
+    "span_trace": null,
+    "packrat_stats": { "queries": 0, "hits": 0 },
+    "legacy_error": {
+      "span": {
+        "start": {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r16/stream_pending_resume/input.reml",
+          "line": 3,
+          "column": 15,
+          "offset": 96
+        },
+        "end": {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r16/stream_pending_resume/input.reml",
+          "line": 3,
+          "column": 16,
+          "offset": 97
+        }
+      },
+      "expected": [],
+      "committed": false,
+      "far_consumed": true
+    },
+    "farthest_error_offset": 96,
+    "span": null,
+    "committed": false,
+    "consumed": true,
+    "recovered": false,
+    "has_value": false
+  },
+  "stream_meta": {
+    "backpressure_events": 0,
+    "resume_count": 0,
+    "await_count": 0,
+    "chunks_consumed": 1,
+    "bytes_consumed": 161,
+    "memo_bytes": 0,
+    "backpressure_policy": "auto"
+  }
+}

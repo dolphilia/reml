@@ -247,6 +247,59 @@ let summarize_with_defaults ?context_note expectations =
 
 let empty_summary = summarize_with_defaults []
 
+module Streaming_expected = struct
+  let keyword_labels =
+    [
+      "continue";
+      "defer";
+      "do";
+      "false";
+      "for";
+      "handle";
+      "if";
+      "loop";
+      "match";
+      "perform";
+      "return";
+      "self";
+      "true";
+      "unsafe";
+      "while";
+    ]
+
+  let token_labels = [ "!"; "("; "-"; "["; "{"; "|" ]
+
+  let class_labels =
+    [
+      "char-literal";
+      "float-literal";
+      "identifier";
+      "integer-literal";
+      "string-literal";
+      "upper-identifier";
+    ]
+
+  let summary =
+    lazy
+      (let keyword_expectations =
+         List.map (fun label -> Keyword label) keyword_labels
+       in
+       let token_expectations =
+         List.map (fun label -> Token label) token_labels
+       in
+       let class_expectations =
+         List.map (fun label -> Class label) class_labels
+       in
+       let expectations =
+         keyword_expectations @ token_expectations @ class_expectations
+       in
+       summarize_with_defaults expectations)
+
+  let summary () = Lazy.force summary
+end
+
+let streaming_expression_summary () = Streaming_expected.summary ()
+
 let ensure_minimum_alternatives summary =
   if summary.alternatives <> [] then summary
   else

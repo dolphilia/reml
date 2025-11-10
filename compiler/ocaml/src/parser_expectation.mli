@@ -45,6 +45,12 @@ val summarize_with_defaults :
 val empty_summary : Diagnostic.expectation_summary
 (** 期待集合が空だった場合に利用するフォールバックサマリ *)
 
+val streaming_expression_summary : unit -> Diagnostic.expectation_summary
+(** Streaming recover 向けにあらかじめ整列済みの期待候補リストを返す。
+    `collect-iterator-audit-metrics.py` の `parser.expected_summary_presence`
+    ゲートが Streaming ケースでも 1.0 になるよう、`if/loop/identifier` 等
+    の代表キーワード／トークン／クラスをまとめて出力する。 *)
+
 val humanize : Diagnostic.expectation list -> string option
 (** 期待集合を日本語ヒューマンリーダブル文字列に整形する *)
 

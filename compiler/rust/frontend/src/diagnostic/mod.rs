@@ -109,6 +109,23 @@ impl FrontendDiagnostic {
     pub fn has_expected_tokens(&self) -> bool {
         !self.expected_tokens.is_empty()
     }
+
+    /// Streaming Pending/Resume で recover が走らない場合でも、
+    /// `ExpectedTokenCollector` による既定セットを診断へ埋め込む。
+    pub fn ensure_streaming_expected(self) -> Self {
+        let needs_override = self.expected_tokens.is_empty()
+            || (self.expected_tokens.len() == 1
+                && self.expected_tokens[0] == EXPECTED_PLACEHOLDER_TOKEN);
+        if !needs_override {
+            return self;
+        }
+        let summary = recover::streaming_expression_summary();
+        debug_assert!(
+            summary.has_alternatives(),
+            "streaming_expression_summary should provide alternatives"
+        );
+        self.apply_expected_summary(&summary)
+    }
 }
 
 /// 診断の補足情報。
@@ -252,5 +269,18 @@ mod tests {
 
         let diags = builder.into_vec();
         assert_eq!(diags.len(), 3);
+    }
+
+    #[test]
+    fn ensure_streaming_expected_populates_tokens() {
+        let diag = FrontendDiagnostic::new("streaming").ensure_streaming_expected();
+        assert!(
+            !diag.expected_tokens.is_empty(),
+            "streaming_expected should supply non-empty tokens"
+        );
+        assert_eq!(
+            diag.expected_message_key.as_deref(),
+            Some(PARSE_EXPECTED_KEY)
+        );
     }
 }

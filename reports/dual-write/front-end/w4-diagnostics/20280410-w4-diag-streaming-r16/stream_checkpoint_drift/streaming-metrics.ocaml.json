@@ -1,0 +1,78 @@
+{
+  "metrics": [
+    {
+      "metric": "diagnostic.audit_presence_rate",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "required_audit_keys": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r16/stream_checkpoint_drift/diagnostics.ocaml.json"
+      ],
+      "failures": []
+    }
+  ],
+  "metric": "diagnostic.audit_presence_rate",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "pass_rate": 1.0,
+  "pass_fraction": 1.0,
+  "required_audit_keys": [
+    "cli.audit_id",
+    "cli.change_set",
+    "schema.version",
+    "timestamp"
+  ],
+  "sources": [
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r16/stream_checkpoint_drift/diagnostics.ocaml.json"
+  ],
+  "failures": [],
+  "diagnostic_audit": {
+    "metric": "diagnostic.audit_presence_rate",
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
+    "required_audit_keys": [
+      "cli.audit_id",
+      "cli.change_set",
+      "schema.version",
+      "timestamp"
+    ],
+    "sources": [
+      "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r16/stream_checkpoint_drift/diagnostics.ocaml.json"
+    ],
+    "failures": []
+  },
+  "schema_versions": [],
+  "diagnostics": {
+    "total": 1,
+    "error": 1,
+    "warning": 0,
+    "info": 0,
+    "hint": 0,
+    "other": 0,
+    "sources": [
+      "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r16/stream_checkpoint_drift/diagnostics.ocaml.json"
+    ],
+    "info_fraction": 0.0,
+    "hint_fraction": 0.0,
+    "info_hint_ratio": 0.0,
+    "parser_total": 1,
+    "parser_expected": 1,
+    "parser_expected_ratio": 1.0,
+    "parser_expected_tokens_avg": 27.0
+  },
+  "enforcement": {
+    "require_success": true
+  }
+}

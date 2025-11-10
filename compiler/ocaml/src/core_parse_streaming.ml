@@ -21,6 +21,17 @@ let diag_state t = t.diag_state
 let core_state t = t.core_state
 let packrat_cache t = t.packrat_cache
 
+let parse_expected_empty_key = "parse.expected.empty"
+
+let streaming_summary_if_needed session summary =
+  let stream_config = Run_config.Stream.of_run_config session.config in
+  if not stream_config.Run_config.Stream.enabled then summary
+  else
+    match summary.Diagnostic.message_key with
+    | Some key when String.equal key parse_expected_empty_key ->
+        Parser_expectation.streaming_expression_summary ()
+    | _ -> summary
+
 let create_session ?packrat_cache config =
   let recover_config = Run_config.Recover.of_run_config config in
   let diag_state =
@@ -80,7 +91,8 @@ let expectation_summary_for_checkpoint session checkpoint =
       | Some snapshot -> summarize_snapshot snapshot
       | None -> Parser_expectation.empty_summary
   in
-  Parser_expectation.ensure_minimum_alternatives summary
+  let summary = Parser_expectation.ensure_minimum_alternatives summary in
+  streaming_summary_if_needed session summary
 
 let register_diagnostic session diagnostic ~consumed ~committed =
   let enriched =

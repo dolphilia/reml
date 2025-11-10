@@ -1,0 +1,10 @@
+{
+  "case": "stream_backpressure_hint",
+  "frontend": "ocaml",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r13/stream_backpressure_hint/diagnostics.ocaml.json",
+  "diagnostic_count": 0,
+  "diagnostics": [],
+  "first_expected_tokens": [],
+  "first_diagnostic_index": null,
+  "total_expected_token_count": 0
+}
