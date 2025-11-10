@@ -1,0 +1,34 @@
+{
+  "case": "recover_lambda_body",
+  "frontend": "rust",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280210-w4-diag-recover-else-r4/recover_lambda_body/diagnostics.rust.json",
+  "diagnostic_count": 1,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 2,
+      "expected_tokens": [
+        {
+          "kind": "token",
+          "label": ")"
+        },
+        {
+          "kind": "token",
+          "label": "識別子"
+        }
+      ]
+    }
+  ],
+  "first_expected_tokens": [
+    {
+      "kind": "token",
+      "label": ")"
+    },
+    {
+      "kind": "token",
+      "label": "識別子"
+    }
+  ],
+  "first_diagnostic_index": 0,
+  "total_expected_token_count": 2
+}

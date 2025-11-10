@@ -1,0 +1,231 @@
+{
+  "case": "recover_else_without_if",
+  "match": true,
+  "ocaml_count": 27,
+  "rust_count": 27,
+  "differences": [],
+  "ocaml_tokens": [
+    {
+      "kind": "keyword",
+      "label": "continue"
+    },
+    {
+      "kind": "keyword",
+      "label": "defer"
+    },
+    {
+      "kind": "keyword",
+      "label": "do"
+    },
+    {
+      "kind": "keyword",
+      "label": "false"
+    },
+    {
+      "kind": "keyword",
+      "label": "for"
+    },
+    {
+      "kind": "keyword",
+      "label": "handle"
+    },
+    {
+      "kind": "keyword",
+      "label": "if"
+    },
+    {
+      "kind": "keyword",
+      "label": "loop"
+    },
+    {
+      "kind": "keyword",
+      "label": "match"
+    },
+    {
+      "kind": "keyword",
+      "label": "perform"
+    },
+    {
+      "kind": "keyword",
+      "label": "return"
+    },
+    {
+      "kind": "keyword",
+      "label": "self"
+    },
+    {
+      "kind": "keyword",
+      "label": "true"
+    },
+    {
+      "kind": "keyword",
+      "label": "unsafe"
+    },
+    {
+      "kind": "keyword",
+      "label": "while"
+    },
+    {
+      "kind": "token",
+      "label": "!"
+    },
+    {
+      "kind": "token",
+      "label": "("
+    },
+    {
+      "kind": "token",
+      "label": "-"
+    },
+    {
+      "kind": "token",
+      "label": "["
+    },
+    {
+      "kind": "token",
+      "label": "{"
+    },
+    {
+      "kind": "token",
+      "label": "|"
+    },
+    {
+      "kind": "class",
+      "label": "char-literal"
+    },
+    {
+      "kind": "class",
+      "label": "float-literal"
+    },
+    {
+      "kind": "class",
+      "label": "identifier"
+    },
+    {
+      "kind": "class",
+      "label": "integer-literal"
+    },
+    {
+      "kind": "class",
+      "label": "string-literal"
+    },
+    {
+      "kind": "class",
+      "label": "upper-identifier"
+    }
+  ],
+  "rust_tokens": [
+    {
+      "kind": "keyword",
+      "label": "continue"
+    },
+    {
+      "kind": "keyword",
+      "label": "defer"
+    },
+    {
+      "kind": "keyword",
+      "label": "do"
+    },
+    {
+      "kind": "keyword",
+      "label": "false"
+    },
+    {
+      "kind": "keyword",
+      "label": "for"
+    },
+    {
+      "kind": "keyword",
+      "label": "handle"
+    },
+    {
+      "kind": "keyword",
+      "label": "if"
+    },
+    {
+      "kind": "keyword",
+      "label": "loop"
+    },
+    {
+      "kind": "keyword",
+      "label": "match"
+    },
+    {
+      "kind": "keyword",
+      "label": "perform"
+    },
+    {
+      "kind": "keyword",
+      "label": "return"
+    },
+    {
+      "kind": "keyword",
+      "label": "self"
+    },
+    {
+      "kind": "keyword",
+      "label": "true"
+    },
+    {
+      "kind": "keyword",
+      "label": "unsafe"
+    },
+    {
+      "kind": "keyword",
+      "label": "while"
+    },
+    {
+      "kind": "token",
+      "label": "!"
+    },
+    {
+      "kind": "token",
+      "label": "("
+    },
+    {
+      "kind": "token",
+      "label": "-"
+    },
+    {
+      "kind": "token",
+      "label": "["
+    },
+    {
+      "kind": "token",
+      "label": "{"
+    },
+    {
+      "kind": "token",
+      "label": "|"
+    },
+    {
+      "kind": "class",
+      "label": "char-literal"
+    },
+    {
+      "kind": "class",
+      "label": "float-literal"
+    },
+    {
+      "kind": "class",
+      "label": "identifier"
+    },
+    {
+      "kind": "class",
+      "label": "integer-literal"
+    },
+    {
+      "kind": "class",
+      "label": "string-literal"
+    },
+    {
+      "kind": "class",
+      "label": "upper-identifier"
+    }
+  ],
+  "ocaml_first_index": 0,
+  "rust_first_index": 0,
+  "ocaml_payload_present": true,
+  "rust_payload_present": true
+}

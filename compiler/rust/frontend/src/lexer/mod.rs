@@ -38,6 +38,8 @@ enum RawToken {
     KeywordModule,
     #[token("effect")]
     KeywordEffect,
+    #[token("else")]
+    KeywordElse,
 
     #[regex(r"[A-Za-z_][A-Za-z0-9_]*")]
     Identifier,
@@ -102,6 +104,9 @@ pub fn lex_source(text: &str) -> LexOutput {
             }
             Ok(RawToken::KeywordEffect) => {
                 tokens.push(Token::with_lexeme(TokenKind::KeywordEffect, span, "effect"));
+            }
+            Ok(RawToken::KeywordElse) => {
+                tokens.push(Token::with_lexeme(TokenKind::KeywordElse, span, "else"));
             }
             Ok(RawToken::Identifier) => {
                 tokens.push(Token::with_lexeme(

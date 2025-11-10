@@ -1,0 +1,130 @@
+{
+  "case": "recover_lambda_body",
+  "frontend": "ocaml",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280210-w4-diag-recover-else-r4/recover_lambda_body/diagnostics.ocaml.json",
+  "diagnostic_count": 1,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 14,
+      "expected_tokens": [
+        {
+          "kind": "keyword",
+          "label": "false"
+        },
+        {
+          "kind": "keyword",
+          "label": "self"
+        },
+        {
+          "kind": "keyword",
+          "label": "true"
+        },
+        {
+          "kind": "token",
+          "label": "("
+        },
+        {
+          "kind": "token",
+          "label": ")"
+        },
+        {
+          "kind": "token",
+          "label": "["
+        },
+        {
+          "kind": "token",
+          "label": "_"
+        },
+        {
+          "kind": "token",
+          "label": "{"
+        },
+        {
+          "kind": "class",
+          "label": "char-literal"
+        },
+        {
+          "kind": "class",
+          "label": "float-literal"
+        },
+        {
+          "kind": "class",
+          "label": "identifier"
+        },
+        {
+          "kind": "class",
+          "label": "integer-literal"
+        },
+        {
+          "kind": "class",
+          "label": "string-literal"
+        },
+        {
+          "kind": "class",
+          "label": "upper-identifier"
+        }
+      ]
+    }
+  ],
+  "first_expected_tokens": [
+    {
+      "kind": "keyword",
+      "label": "false"
+    },
+    {
+      "kind": "keyword",
+      "label": "self"
+    },
+    {
+      "kind": "keyword",
+      "label": "true"
+    },
+    {
+      "kind": "token",
+      "label": "("
+    },
+    {
+      "kind": "token",
+      "label": ")"
+    },
+    {
+      "kind": "token",
+      "label": "["
+    },
+    {
+      "kind": "token",
+      "label": "_"
+    },
+    {
+      "kind": "token",
+      "label": "{"
+    },
+    {
+      "kind": "class",
+      "label": "char-literal"
+    },
+    {
+      "kind": "class",
+      "label": "float-literal"
+    },
+    {
+      "kind": "class",
+      "label": "identifier"
+    },
+    {
+      "kind": "class",
+      "label": "integer-literal"
+    },
+    {
+      "kind": "class",
+      "label": "string-literal"
+    },
+    {
+      "kind": "class",
+      "label": "upper-identifier"
+    }
+  ],
+  "first_diagnostic_index": 0,
+  "total_expected_token_count": 14
+}

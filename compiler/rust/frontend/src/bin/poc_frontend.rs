@@ -700,9 +700,19 @@ fn build_recover_extension(diag: &FrontendDiagnostic) -> Option<Value> {
             .expected_humanized
             .clone()
             .unwrap_or_else(|| default_expected_message(&diag.expected_tokens));
+        let tokens: Vec<Value> = diag
+            .expected_tokens
+            .iter()
+            .map(|token| {
+                json!({
+                    "kind": classify_expected_token(token),
+                    "label": token,
+                })
+            })
+            .collect();
         Some(json!({
             "message": message,
-            "expected_tokens": diag.expected_tokens,
+            "expected_tokens": tokens,
         }))
     } else {
         diag.notes.iter().find_map(|note| {
@@ -732,7 +742,7 @@ fn build_expected_field(diag: &FrontendDiagnostic) -> Value {
         .map(|token| {
             json!({
                 "kind": classify_expected_token(token),
-                "value": token,
+                "label": token,
             })
         })
         .collect();
@@ -757,12 +767,17 @@ fn classify_expected_token(token: &str) -> &'static str {
     let trimmed = token.trim();
     if trimmed.is_empty() {
         "token"
+    } else if trimmed.contains("identifier")
+        || trimmed.ends_with("literal")
+        || trimmed.ends_with("-literal")
+    {
+        "class"
     } else if trimmed
         .chars()
         .all(|ch| ch.is_ascii_alphabetic() && ch.is_lowercase())
     {
         "keyword"
-    } else if trimmed.chars().all(|ch| ch.is_ascii_uppercase()) || trimmed.contains("identifier") {
+    } else if trimmed.chars().all(|ch| ch.is_ascii_uppercase()) {
         "class"
     } else {
         "token"

@@ -173,13 +173,66 @@ fn format_simple_error(err: &Simple<TokenKind>) -> FormattedSimpleError {
 
 fn build_expected_summary(err: &Simple<TokenKind>) -> ExpectedTokensSummary {
     let mut collector = ExpectedTokenCollector::new();
-    for expectation in err.expected() {
-        match expectation {
-            Some(kind) => collector.extend(token_kind_expectations(&kind)),
-            None => collector.push(ExpectedToken::eof()),
+    let expectations: Vec<Option<TokenKind>> = err.expected().cloned().collect();
+    if is_expression_recover_context(&expectations) {
+        collector.extend(expression_expected_tokens());
+    } else {
+        for expectation in expectations {
+            match expectation {
+                Some(kind) => collector.extend(token_kind_expectations(&kind)),
+                None => collector.push(ExpectedToken::eof()),
+            }
         }
     }
     collector.summarize()
+}
+
+fn is_expression_recover_context(expectations: &[Option<TokenKind>]) -> bool {
+    let mut has_identifier = false;
+    let mut has_int_literal = false;
+    let mut has_lparen = false;
+    for expectation in expectations {
+        match expectation {
+            Some(TokenKind::Identifier) => has_identifier = true,
+            Some(TokenKind::IntLiteral) => has_int_literal = true,
+            Some(TokenKind::LParen) => has_lparen = true,
+            _ => {}
+        }
+    }
+    has_identifier && has_int_literal && has_lparen
+}
+
+fn expression_expected_tokens() -> Vec<ExpectedToken> {
+    use ExpectedToken as ET;
+    vec![
+        ET::keyword("continue"),
+        ET::keyword("defer"),
+        ET::keyword("do"),
+        ET::keyword("false"),
+        ET::keyword("for"),
+        ET::keyword("handle"),
+        ET::keyword("if"),
+        ET::keyword("loop"),
+        ET::keyword("match"),
+        ET::keyword("perform"),
+        ET::keyword("return"),
+        ET::keyword("self"),
+        ET::keyword("true"),
+        ET::keyword("unsafe"),
+        ET::keyword("while"),
+        ET::token("!"),
+        ET::token("("),
+        ET::token("-"),
+        ET::token("["),
+        ET::token("{"),
+        ET::token("|"),
+        ET::class("char-literal"),
+        ET::class("float-literal"),
+        ET::class("identifier"),
+        ET::class("integer-literal"),
+        ET::class("string-literal"),
+        ET::class("upper-identifier"),
+    ]
 }
 
 fn token_kind_expectations(kind: &TokenKind) -> Vec<ExpectedToken> {
@@ -188,6 +241,7 @@ fn token_kind_expectations(kind: &TokenKind) -> Vec<ExpectedToken> {
     match kind {
         TokenKind::KeywordFn => vec![ET::keyword("fn")],
         TokenKind::KeywordLet => vec![ET::keyword("let")],
+        TokenKind::KeywordElse => vec![ET::keyword("else")],
         TokenKind::KeywordModule => vec![ET::keyword("module")],
         TokenKind::KeywordEffect => vec![ET::keyword("effect")],
         TokenKind::Identifier => vec![ET::class("識別子")],

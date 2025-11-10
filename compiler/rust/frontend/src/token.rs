@@ -11,6 +11,7 @@ pub enum TokenKind {
     FloatLiteral,
     StringLiteral,
     KeywordLet,
+    KeywordElse,
     KeywordFn,
     KeywordEffect,
     KeywordModule,
