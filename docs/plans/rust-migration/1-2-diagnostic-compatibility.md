@@ -205,3 +205,24 @@ Rust フロントエンド移植において、OCaml 実装と同一の診断 (`
 - `cli_packrat_switch` / `cli_trace_toggle` / `cli_merge_warnings` / `lsp_hover_internal_error` / `lsp_diagnostic_stream` / `lsp_workspace_config` の `summary.json` で `diag_match=true`、`metrics_ok=true`、`parser.runconfig_switch_coverage=1.0` が揃っている。  
 - `reports/dual-write/front-end/w4-diagnostics/<run>/lsp/<case>.diff` に Schema 差分がなく、`npm run ci --prefix tooling/lsp/tests/client_compat` が同 Run ID のフィクスチャでパスしている。  
 - `p1-front-end-checklists.csv` と `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-diag-rust-07` が Run ID / 成果物パス / 再現手順で一致し、`cli_trace_toggle` の `[TRACE]` ログが JSON とは別ファイルになっていることを確認できる。
+
+## 1.2.18 20280418 Type/Effect/FFI ラン再評価（DIAG-RUST-06 継続中）
+- Run `reports/dual-write/front-end/w4-diagnostics/20280418-w4-diag-effects-r3/summary.md` は `type_*/effect_*/ffi_*` の 10 ケースを一括で再測定したが、`effect_residual_leak/summary.json` では `ocaml_diag_count=1` / `rust_diag_count=5`、`parser.expected_pass_fraction` も Rust 側だけ 0.2 のままで recover が過剰発火している。  
+- `type_condition_literal_bool/summary.json` では Rust 側診断が 0 件で `diag_match=false` のまま、`typeck/typeck-debug.ocaml.json` が生成されず `typeck_requirements.frontends.ocaml.typeck_debug_exists=false` がブロッカーになっている。OCaml CLI へ `--emit-typeck-debug` を強制注入しない限り DIAG-RUST-06 の受入条件を満たせない。  
+- `ffi_ownership_mismatch/effects-metrics.rust.err.log` および `ffi_async_dispatch/effects-metrics.rust.err.log` は `missing_keys=["effect.stage.required","effect.stage.actual","bridge.stage.required_capabilities","bridge.stage.actual_capabilities"]` を報告し続けており、Stage 監査の JSON/Audit 出力が Rust 側に存在しないことが明示された。  
+- 対応:  
+  1. `poc_frontend` から `StageAuditPayload`（`effect.stage.*`, `bridge.stage.*`, `effect.capabilities_detail`）を出力し、`collect-iterator-audit-metrics.py --section effects --require-success` が `effect_scope.audit_presence=1.0` を返すまで再実行する。  
+  2. Type/Effect ケースは OCaml CLI でも `typeck/typeck-debug.ocaml.json`・`effects/effects-metrics.ocaml.json` が生成されるようにし、`typeck_requirements` が双方 `ok=true` になるまで `summary.json` を確認する。  
+  3. `effect_residual_leak` など Rust 側の過剰診断は `Diagnostic.Builder` と `recover.expected_tokens` の統合を優先し、OCaml の 1 件と同一の `expected.alternatives` を返すまで `expected_tokens.diff.json` をレビューする。  
+- 成果が出次第、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-diag-rust-06` と `p1-front-end-checklists.csv`（診断カテゴリ行）へ Run ID・pass 条件を追記して W4 判定に反映する。
+
+## 1.2.19 20280430 CLI/LSP + 20290415 Streaming 再測定と W4 判定
+- `reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/cli_packrat_switch/summary.json` では OCaml 側診断が 0 件、Rust 側 2 件のまま `diag_match=false`・`metrics_ok=false` が継続している。`cli_merge_warnings/summary.json` も `expected_tokens` が `0 vs 2` で不一致となり、`parser.runconfig_switch_coverage` の差分が RunConfig 同期の欠如を示している。  
+- 同 Run の LSP `diagnostic-v2-stream` は `diag_match=true` だが、`lsp_hover_internal_error` / `lsp_workspace_config` は CLI と同じ理由で `metrics_ok=false`。`tooling/lsp/tests/client_compat` の diff 自体は生成できているものの、CLI/LSP ペアでの診断件数一致が達成できていない。  
+- Streaming 再測定 `reports/dual-write/front-end/w4-diagnostics/20290415-w4-diag-streaming-recheck2/` では `stream_pending_resume` / `stream_checkpoint_drift` が `diag_match=true` まで復帰したものの、`expected_tokens` が `27 vs 1` で `metrics_ok=false` に戻った。`stream_backpressure_hint` は OCaml 側診断が 0 件のため `diag_counts` が揃わないまま。  
+- この結果、`reports/dual-write/front-end/w4-diagnostics/README.md` のサマリ表（2028-03 時点）よりも後退しており、W4 完了条件（JSON/LSP/監査メトリクス完全一致）は依然満たされていない。  
+- **W4 判定**: `summary.json.gating=false` が streaming / type&effect / CLI の 3 カテゴリで残っているため W4 を完了扱いにはできず、`1-0-front-end-transition.md` に記載したとおり W4.5 へ進む前に DIAG-RUST-05/06/07 を解消する。  
+- **次アクション**:  
+  1. Streaming 3 ケースに `ExpectedTokenCollector`（Rust 側）を適用し、`expected_tokens.diff.json` を空にした Run を `reports/dual-write/front-end/w4-diagnostics/README.md` へ反映する。  
+  2. CLI/LSP ケースでは Rust RunConfig 実装と OCaml 側診断生成を同時に修正し、`parser.runconfig_switch_coverage` と `diag_counts` が一致する Run（例: 20280430 再走）を作成する。  
+  3. 2 つの成果を `p1-front-end-checklists.csv` と `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に記録し、W4 判定資料（`reports/.../README.md`）を更新する。

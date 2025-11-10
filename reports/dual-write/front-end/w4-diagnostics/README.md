@@ -36,8 +36,13 @@
 | stream_pending_resume | ✅ | ✅ | ✅ | ❌ | 1.000 / 1.000 | 1.000 / 1.000 | - / - | 0 / 0 | 1 / 11 |
 | type_condition_bool | ❌ | ✅ | ❌ | ✅ | 1.000 / 1.000 | 0.000 / 1.000 | - / - | 0 / 0 | 1 / 1 |
 | type_condition_literal_bool | ❌ | ✅ | ❌ | ❌ | 1.000 / - | 0.000 / 0.000 | - / - | 0 / 0 | 1 / 0 |
-
 <!-- DIAG_TABLE_END -->
+
+## 直近のラン状況（2028-04〜2029-04）
+- **20280418-w4-diag-effects-r3**: Type/Effect/FFI 10 ケースを再測定したが、`effect_residual_leak` は `ocaml_diag_count=1` / `rust_diag_count=5`、`type_condition_literal_bool` は Rust 側診断 0 件、`ffi_ownership_mismatch` / `ffi_async_dispatch` では `effects-metrics.rust.err.log` に `missing_keys=["effect.stage.required", ...]` が残り `metrics_ok=false`。Stage 監査の JSON/Audit 出力が未実装。
+- **20280430-w4-diag-cli-lsp**: LSP `diagnostic-v2-stream` のみ pass。`cli_packrat_switch` / `cli_merge_warnings` は OCaml 側診断 0 件で `diag_match=false`、`parser.runconfig_switch_coverage` も Rust 側だけ 1.0。RunConfig 拡張と OCaml CLI のフラグ注入が未整備。
+- **20290415-w4-diag-streaming-recheck2**: `stream_pending_resume` / `stream_checkpoint_drift` は `diag_match=true` だが `expected_tokens` が `27 vs 1` で `metrics_ok=false` に逆戻り。`stream_backpressure_hint` も `diag_counts` が揃わず、`ExpectedTokenCollector.streaming` 基準が再度ブロックされた。
+- 上記 3 Run の結果、Streaming / Type&Effect / CLI の各カテゴリに `summary.json.gating=false` が残り W4 の完了条件を満たしていない。次回 Run では `expected_tokens.diff.json`・`effect.stage.*`・`parser.runconfig_switch_coverage` を同時に解決することが必要。
 
 ## DIAG-RUST-01（Parser Recover）対応計画
 - 対象ケース: `recover_else_without_if`, `recover_lambda_body`。`diag_match=false` のまま残っており、`parser_expected (ocaml/rust)` がそれぞれ `1.000/0.000`、`1.000/0.500` に留まる。  

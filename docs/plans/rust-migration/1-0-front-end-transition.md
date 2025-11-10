@@ -260,6 +260,19 @@
      - OCaml/Rust 共通: `--experimental-effects --effect-stage beta --type-row-mode dual-write --emit-typeck-debug <case>/typeck`。Rust 専用: `--emit-effects-metrics <case>/effects` と `--emit-typeck-debug-format json`. これにより diag モード実行でも型推論フェーズを必ず通過し、`typeck/typeck-debug.{ocaml,rust}.json`・`effects/effects-metrics.{ocaml,rust}.json`・`typeck/command.{ocaml,rust}.json` が自動生成される。`docs/plans/rust-migration/1-3-dual-write-runbook.md#手順-2c-診断互換（diag-モード）` と `1-2-diagnostic-compatibility.md#1-2-13-diag-rust-06-typeeffectcapabilityffi-再実行ガイド` に同条件を明文化し、運用と文書を同期した。  
      - `summary.json` の `diag_match` / `metrics_ok` 判定へ `effect_scope.audit_presence`（`collect-iterator-audit-metrics.py --section effects`）と `parser.expected_summary_presence` を合成するゲートを導入し、Run `20280418-w4-diag-effects-r3` で 7 ケース中 5 ケースを ✅ に復帰させた。未解決の `ffi_ownership_mismatch` / `ffi_async_dispatch` は Rust 側が Stage 監査ログ（`effects.stage.requirement` と `bridge.stage.*`）を生成できていないため、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-diag-rust-06` にフォローアップを追加し `p1-front-end-checklists.csv`（診断カテゴリ）で Run ID を共有する。
 
+#### W4 進捗レビュー（2029-04-15 時点）🔴 未完
+
+- **Streaming（DIAG-RUST-05）**: `reports/dual-write/front-end/w4-diagnostics/20290415-w4-diag-streaming-recheck2/stream_pending_resume/summary.json` では `diag_match=true` まで回復したものの、`expected_tokens` が `27（OCaml）` vs `1（Rust）` のまま乖離し `metrics_ok=false` が継続している。`stream_checkpoint_drift` も同様に `expected_tokens_match=false`、`stream_backpressure_hint` は OCaml 側診断が 0 件で `diag_counts` が揃わず、Streaming カテゴリ全体でゲート未達。
+- **Type / Effect / FFI（DIAG-RUST-06）**: Run `reports/dual-write/front-end/w4-diagnostics/20280418-w4-diag-effects-r3/summary.md` では `effect_residual_leak` が `ocaml_diag_count=1` / `rust_diag_count=5`、`type_condition_literal_bool` は Rust 側診断 0 件・`typeck/typeck-debug.ocaml.json` 欠落のまま。`ffi_ownership_mismatch` / `ffi_async_dispatch` も `effects-metrics.rust.err.log` に `missing_keys=["effect.stage.required", ...]` が残り、Stage 監査シリアライズ未実装が `metrics_ok=false` を引き起こしている。
+- **CLI / LSP（DIAG-RUST-07）**: `reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/cli_packrat_switch/summary.json` などでは OCaml 側診断が 0 件で `diag_match=false`。LSP `diagnostic-v2-stream` は pass 済みだが、`parser.runconfig_switch_coverage` が Rust のみ 1.0 で OCaml 0.0 のままなため RunConfig 連携の完了条件を満たせていない。
+- **判断**: 上記 3 カテゴリに `summary.json.gating=false` が残存しており、W4 の完了条件（JSON/LSP/監査メトリクス完全一致）を満たしていない。従って W4 は未完了で、W4.5（クロージングレビュー）へ進む前に DIAG-RUST-05/06/07 の是正が必須。
+- **直近の優先タスク**:
+  1. Streaming 3 ケースで `expected_tokens.diff.json` を一致させるため、Rust Recover へ `ExpectedTokenCollector` を移植し `collect-iterator-audit-metrics.py` の `ExpectedTokenCollector.streaming` を pass させる。
+  2. Type/Effect/FFI ケースでは OCaml CLI に `--emit-typeck-debug` を注入しつつ、Rust 側に `StageAuditPayload`（`effect.stage.*`, `bridge.stage.*`）を実装して `effects-metrics` の `missing_keys` を解消する。
+  3. CLI/LSP ケース用に Rust `RunConfigBuilder` を実装し、`--trace`, `--packrat`, `--no-merge-warnings`, `--config` を Audit メタデータへ出力する。OCaml 側でも同じ診断件数を得られるよう `cases.txt` のフラグ伝播を再確認し、`parser.runconfig_switch_coverage=1.0` を両フロントエンドで揃える。
+  4. すべての修正で Run ID と成果物パスを `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`・`p1-front-end-checklists.csv` と同期し、W4.5 向け資料はこれらの pass 証跡が出るまで保留する。
+
+
 ## 1.0.6 ワークストリームと主要論点
 
 - **Parser/Streaming**  
