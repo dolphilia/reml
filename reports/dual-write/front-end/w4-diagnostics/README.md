@@ -5,6 +5,7 @@
 ## 実行手順メモ
 1. `scripts/poc_dualwrite_compare.sh --mode diag --run-id <label> --cases docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt`
 2. `scripts/dualwrite_summary_report.py <run_dir> --diag-table <tmp.md> --update-diag-readme reports/dual-write/front-end/w4-diagnostics/README.md`
+3. LSP diff の確認が必要な場合は `npm run ci --prefix tooling/lsp/tests/client_compat -- diag-w4 <label>` を実行し、`scripts/report-fixture-diff.mjs` が `reports/dual-write/front-end/w4-diagnostics/<run>/lsp/<case>.diff` を生成することを確認する。
 3. 必要に応じて `baseline/` データ（OCaml 側ゲート）と比較し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の TODO を更新する。
 
 `diag` モードはケース直下に `diagnostics.{ocaml,rust}.json`, `diagnostics.diff.json`, `schema-validate.log`, `parser-metrics.{ocaml,rust}.json`, `effects-metrics.{ocaml,rust}.json`, `streaming-metrics.{ocaml,rust}.json`, `summary.json` を生成する。`summary.json` の `gating/schema_ok/metrics_ok` は `scripts/dualwrite_summary_report.py --diag-table` によって表形式へ転写され、CLI/LSP 共通のレビュー指標として README に埋め込まれる。

@@ -7,7 +7,7 @@
   "scripts": {
     "test": "vitest run --reporter=default --run",
     "validate:schema": "npm run test",
-    "ci": "npm run test"
+    "ci": "node scripts/ci.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",

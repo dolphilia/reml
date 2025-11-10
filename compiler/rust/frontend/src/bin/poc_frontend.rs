@@ -693,6 +693,7 @@ fn build_runconfig_summary(args: &CliArgs) -> Value {
                 "notes": false,
             },
             "stream": build_stream_extension(&args.stream_config),
+            "config": build_config_extension(args),
         },
     })
 }
@@ -721,15 +722,44 @@ fn build_runconfig_top_level(args: &CliArgs) -> Value {
             "effects": {
                 "type_row_mode": type_row_mode_label(args.typecheck_config.type_row_mode),
             },
-            "config": {
-                "path": args
-                    .config_path
-                    .as_ref()
-                    .map(|path| path.display().to_string()),
-            },
+            "config": build_config_extension(args),
         },
         "runtime_capabilities": args.runtime_capabilities.clone(),
     })
+}
+
+fn build_config_extension(args: &CliArgs) -> Value {
+    let mut config = serde_json::Map::new();
+    config.insert("source".to_string(), json!("cli"));
+    config.insert("packrat".to_string(), json!(args.run_config.packrat));
+    config.insert(
+        "left_recursion".to_string(),
+        json!(args.run_config.left_recursion),
+    );
+    config.insert("trace".to_string(), json!(args.run_config.trace));
+    config.insert(
+        "merge_warnings".to_string(),
+        json!(args.run_config.merge_warnings),
+    );
+    config.insert(
+        "require_eof".to_string(),
+        json!(args.run_config.require_eof),
+    );
+    config.insert(
+        "legacy_result".to_string(),
+        json!(args.run_config.legacy_result),
+    );
+    config.insert(
+        "experimental_effects".to_string(),
+        json!(args.run_config.experimental_effects),
+    );
+    if let Some(path) = args.config_path.as_ref() {
+        config.insert(
+            "path".to_string(),
+            json!(path.display().to_string()),
+        );
+    }
+    Value::Object(config)
 }
 
 fn build_stream_extension(stream: &StreamSettings) -> Value {
@@ -1315,6 +1345,24 @@ fn build_audit_metadata(
                         );
                     }
                 }
+            }
+        }
+        if let Some(config_extension) = extensions.get("config") {
+            metadata.insert(
+                "parser.runconfig.extensions.config".to_string(),
+                config_extension.clone(),
+            );
+            if let Some(path) = config_extension.get("path") {
+                metadata.insert(
+                    "parser.runconfig.extensions.config.path".to_string(),
+                    path.clone(),
+                );
+            }
+            if let Some(source) = config_extension.get("source") {
+                metadata.insert(
+                    "parser.runconfig.extensions.config.source".to_string(),
+                    source.clone(),
+                );
             }
         }
     }

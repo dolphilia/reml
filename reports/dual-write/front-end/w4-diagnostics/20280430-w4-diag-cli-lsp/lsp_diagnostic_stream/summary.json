@@ -1,0 +1,51 @@
+{
+  "case": "lsp_diagnostic_stream",
+  "mode": "diag",
+  "source": "examples/cli/trace_sample.reml",
+  "ocaml_diag_count": 1,
+  "rust_diag_count": 1,
+  "diag_match": true,
+  "gating": true,
+  "schema_ok": true,
+  "metrics_ok": true,
+  "diag": {
+    "parser": {
+      "ocaml": {
+        "audit_pass_fraction": 1.0,
+        "audit_pass_rate": 1.0,
+        "expected_pass_fraction": 1.0
+      },
+      "rust": {
+        "audit_pass_fraction": 1.0,
+        "audit_pass_rate": 1.0,
+        "expected_pass_fraction": 1.0
+      }
+    },
+    "effects": {
+      "ocaml": {
+        "regressions": 0
+      },
+      "rust": {
+        "regressions": 0
+      }
+    },
+    "streaming": {
+      "ocaml": {
+        "audit_pass_fraction": 1.0,
+        "outcome_pass_rate": 1.0
+      },
+      "rust": {
+        "audit_pass_fraction": 1.0,
+        "outcome_pass_rate": 1.0
+      }
+    }
+  },
+  "tests": "tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-stream.json",
+  "lsp_fixture": "diagnostic-v2-stream.json",
+  "expected_tokens": {
+    "match": false,
+    "ocaml_count": 27,
+    "rust_count": 2
+  },
+  "type_effect_case": false
+}

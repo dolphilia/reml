@@ -1,0 +1,49 @@
+{
+  "case": "cli_trace_toggle",
+  "frontend": "rust",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/cli_trace_toggle/diagnostics.rust.json",
+  "diagnostic_count": 4,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 1,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 2,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 3,
+      "token_count": 2,
+      "expected_tokens": [
+        {
+          "kind": "token",
+          "label": ")"
+        },
+        {
+          "kind": "token",
+          "label": ","
+        }
+      ]
+    }
+  ],
+  "first_expected_tokens": [
+    {
+      "kind": "token",
+      "label": ")"
+    },
+    {
+      "kind": "token",
+      "label": ","
+    }
+  ],
+  "first_diagnostic_index": 3,
+  "total_expected_token_count": 2
+}

@@ -1,0 +1,48 @@
+{
+  "case": "cli_trace_toggle",
+  "mode": "diag",
+  "source": "examples/cli/trace_sample.reml",
+  "ocaml_diag_count": 1,
+  "rust_diag_count": 4,
+  "diag_match": false,
+  "gating": false,
+  "schema_ok": true,
+  "metrics_ok": false,
+  "diag": {
+    "parser": {
+      "ocaml": {
+        "audit_pass_fraction": 1.0,
+        "audit_pass_rate": 1.0,
+        "expected_pass_fraction": 1.0
+      },
+      "rust": {
+        "audit_pass_fraction": 1.0,
+        "audit_pass_rate": 1.0,
+        "expected_pass_fraction": 0.25
+      }
+    },
+    "effects": {
+      "ocaml": {
+        "regressions": 0
+      },
+      "rust": {
+        "regressions": 0
+      }
+    },
+    "streaming": {
+      "ocaml": {
+        "audit_pass_fraction": 1.0
+      },
+      "rust": {
+        "audit_pass_fraction": 1.0
+      }
+    }
+  },
+  "tests": "compiler/ocaml/tests/run_config_tests.ml::trace_options",
+  "expected_tokens": {
+    "match": false,
+    "ocaml_count": 27,
+    "rust_count": 2
+  },
+  "type_effect_case": false
+}
