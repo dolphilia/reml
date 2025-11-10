@@ -38,6 +38,15 @@
 
 <!-- DIAG_TABLE_END -->
 
+## DIAG-RUST-01（Parser Recover）対応計画
+- 対象ケース: `recover_else_without_if`, `recover_lambda_body`。`diag_match=false` のまま残っており、`parser_expected (ocaml/rust)` がそれぞれ `1.000/0.000`、`1.000/0.500` に留まる。  
+- 目的: Rust フロントエンドで `recover.expected_tokens` を OCaml と同じ件数・順序で出力し、診断件数を双方 1 件に揃えて `parser.expected_summary_presence=1.0` を回復する。  
+- 実行手順:  
+  1. `scripts/poc_dualwrite_compare.sh --mode diag` へ `--emit-expected-tokens <dir>` と `--case-filter '^recover_(else_without_if|lambda_body)$'` を追加し、各ケースで `expected_tokens.{ocaml,rust}.json` / `expected_tokens.diff.json` を保存する。  
+  2. `collect-iterator-audit-metrics.py --section parser --require-success` を必須化し、`diag_counts` / `parser.expected_summary_presence` を `summary.json` の `metrics_ok` 判定に連動させる。  
+  3. 検証ラン（例: `202804xx-w4-diag-parser`）で `summary.json` の `diag_match` / `metrics_ok` が双方 true になったら `scripts/dualwrite_summary_report.py --diag-table` を再実行し、本 README と `docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md` を Ready + Pass へ更新する。  
+- 参照: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-DIAG-RUST-01`, `docs/plans/rust-migration/1-0-front-end-transition.md#W4-具体的な進め方診断互換試験`, `docs/plans/rust-migration/1-2-diagnostic-compatibility.md#1-2-15-recover-ケース-expected_tokens--診断件数パリティ計画diag-rust-01`.
+
 ## 追加ケース（DIAG-RUST-05/06/07）
 - **ストリーミング**: `stream_pending_resume`, `stream_backpressure_hint`, `stream_checkpoint_drift` を `docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt` に登録。CLI 実行時は `--streaming --stream-resume-hint diag-w4 --stream-flow-policy auto` を付与し、`parser.stream.*` メトリクスが計測可能なケースのみ `collect-iterator-audit-metrics.py --section streaming` を実行する。
 - **効果 / Capability**: `type_condition_literal_bool`（bool 条件リテラル簡易版）、`effect_residual_leak`, `effect_stage_cli_override`、および `ffi_stage_messagebox`, `ffi_ownership_mismatch`, `ffi_async_dispatch` を追加。`--experimental-effects --type-row-mode dual-write --effect-stage beta --runtime-capabilities tooling/audit-store/capabilities/dev.json` を既定フラグとして記録した。

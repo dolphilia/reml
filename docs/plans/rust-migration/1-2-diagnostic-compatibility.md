@@ -124,3 +124,31 @@ Rust フロントエンド移植において、OCaml 実装と同一の診断 (`
     - 🆕 2028-02-26: diag ハーネスが `stream_*` ケースを検出すると自動的に `parser_expected_summary.json` を出力し、`parser.expected_summary_presence` / `parser.stream_extension_field_coverage` の `pass_rate` が 1.0 でない限り `metrics_ok=false` / `gating=false` を再設定するよう更新した。これにより Streaming ケースは Run 再実行だけで `summary.json` と `README.md` の pass 状態を更新でき、手動 `jq` 抽出や CSV 編集を省略できる。
     - ✅ 2028-03-01: Run `20280301-w4-diag-streaming-r8` を再実行し、`stream_pending_resume` / `stream_checkpoint_drift` は OCaml/Rust の両方で `parser_expected_summary_presence=1.0` / `parser.stream_extension_field_coverage=1.0` を記録した。`stream_backpressure_hint` は OCaml 側で診断が発生しないため `diag_counts.ocaml=0` のケースとして扱い、Rust 側指標のみを `parser_expected_summary.json` に保存して README の diag テーブルへ反映した（`reports/dual-write/front-end/w4-diagnostics/20280301-w4-diag-streaming-r8/stream_backpressure_hint/summary.json` 参照）。
 - これらの作業が完了した時点で `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-DIAG-RUST-05` と `p1-front-end-checklists.csv`（Streaming/診断行）を「20280115 run で pass」ステータスへ更新し、P1 W4 の診断互換ゲートが閉じられる。
+
+## 1.2.15 Recover ケース `expected_tokens` / 診断件数パリティ計画（DIAG-RUST-01）
+
+### 背景
+- `reports/dual-write/front-end/w4-diagnostics/README.md` のケースサマリでは `recover_else_without_if` と `recover_lambda_body` が唯一 `diag_match=false` のまま残り、Rust 側 `parser_expected (ocaml/rust)` が `1.000/0.000`（else）と `1.000/0.500`（lambda）で頭打ちになっている。  
+- `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-DIAG-RUST-01` でも両ケースが Recover 互換性の決定版として指定されており、`expected_tokens` の順序・件数と診断件数を揃えない限り P1 W4（JSON/LSP/メトリクス一致）の完了条件を満たせない。
+
+### 対象ケースとゴール
+| Case | 現状 | 必要な改善 | 出力先 |
+| --- | --- | --- | --- |
+| `recover_else_without_if` | Rust 側 `diagnostics=[]` / `parser_expected=0.000` | `recover.expected_tokens` に OCaml と同じ 27 エントリ（`if/loop/identifier/...`）を出力し、`diag_counts` を 1 件で一致させる | `reports/dual-write/front-end/w4-diagnostics/<run>/recover_else_without_if/expected_tokens.diff.json` |
+| `recover_lambda_body` | Rust 側診断が 2 件（`parse.expected` 重複） / `parser_expected=0.500` | `Diagnostic.Builder` で `message_key=parse.expected` + `span` が一致した場合は後勝ちマージし、`parser.expected_summary_presence=1.0` を回復する | `.../recover_lambda_body/summary.json`, `parser-metrics.rust.json` |
+
+### 実装 / ハーネス更新
+1. **`expected_tokens` 収集の共通化**  
+   - OCaml 側は `compiler/ocaml/src/parser_expectation.ml` の `dedup_and_sort` と `humanize` を通じて `Keyword`→`Token`→`Class`→`Rule` 優先で整列している。Rust 版は `frontend/src/diagnostic/recover.rs`（仮称）に `ExpectedTokenCollector` を追加し、Menhir → `DiagnosticExpectation` の写像を 1:1 で実装する。  
+   - `scripts/poc_dualwrite_compare.sh --mode diag` へ `--emit-expected-tokens <dir>` オプションを追加し、各ケースで `expected_tokens.ocaml.json` / `expected_tokens.rust.json` / `expected_tokens.diff.json` を生成する。`jq -r '.diagnostics[].extensions.recover.expected_tokens'` を利用し、空配列の場合は `[]` を明示的に保存する。
+2. **診断件数の整合**  
+   - Rust Recover は `parser_expectation` の再入時に 2 件目を生成しているため、`FrontendDiagnostic::finalize()`（想定）で `message_key=parse.expected` かつ `location` が一致する場合に `recover.expected_tokens` を後勝ちで上書きし、古い診断を破棄する。  
+   - `collect-iterator-audit-metrics.py --section parser` の `diag_counts.ocaml/rust` と `parser.expected_summary_presence` をエラーに昇格させ、0 か 1 以外の件数差を `reports/dual-write/front-end/w4-diagnostics/<run>/parser-metrics.*.err.log` へ出力する。
+3. **成果物とチェックポイント**  
+   - 新しい Run ID（例: `202804XX-w4-diag-parser`）を `scripts/poc_dualwrite_compare.sh --mode diag --case-filter '^recover_(else_without_if|lambda_body)$'` で実行し、`summary.json` の `diag_match` / `metrics_ok` / `parser_expected` がすべて `true` / `1.0` になったら `p1-front-end-checklists.csv` および `docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md` を更新する。  
+   - LSP/CLI 連携が完了した時点で `reports/dual-write/front-end/w4-diagnostics/README.md` のテーブルを `scripts/dualwrite_summary_report.py --diag-table` で再生成し、`case=parser recover` 行が `Ready + Pass` へ移行したことをスクリーンショットまたはログで添付する。
+
+### 完了判定
+- `recover_else_without_if` / `recover_lambda_body` の `expected_tokens.diff.json` が空であること。  
+- `collect-iterator-audit-metrics.py --section parser --require-success` が `parser.expected_summary_presence=1.0` と `diag_counts.ocaml=diag_counts.rust=1` を記録し、`reports/dual-write/front-end/w4-diagnostics/<run>/summary.json` の `diag_match` / `metrics_ok` が true になること。  
+- `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-DIAG-RUST-01` と `p1-front-end-checklists.csv`（Parser Recover 行）が「Done（Run <id>）」へ更新され、`w4-diagnostic-case-matrix.md` の Parser 行が `Ready + Pass` で揃った状態になること。
