@@ -13,16 +13,20 @@ VALIDATE_DIAG_SCRIPT="${SCRIPT_DIR}/validate-diagnostic-json.sh"
 RUN_ID="${DUALWRITE_RUN_ID:-2025-11-28-logos-chumsky}"
 CASES_FILE="${DUALWRITE_CASES_FILE:-}"
 MODE="ast"
+EXPECTED_TOKENS_PREFIX=""
 
 usage() {
   cat <<'EOF'
-Usage: scripts/poc_dualwrite_compare.sh [--run-id <id>] [--cases <path>] [--mode <ast|typeck|diag>]
+Usage: scripts/poc_dualwrite_compare.sh [--run-id <id>] [--cases <path>] [--mode <ast|typeck|diag>] [--emit-expected-tokens <prefix>]
 
 Options:
   --run-id <id>     出力ディレクトリ名を上書き（既定: 2025-11-28-logos-chumsky）
   --cases <path>    ケース定義ファイル（format: name::inline::<src> | name::file::<path>）
   --mode <ast|typeck|diag>
                      実行モード（typeck は型推論成果物、diag は W4 診断互換向け成果物を収集）
+  --emit-expected-tokens <prefix>
+                     diag モード時に Recover 期待トークンを抽出して
+                     `<prefix>.{ocaml,rust,diff}.json` をケース配下へ保存する
   --help            このヘルプを表示
 
 環境変数:
@@ -45,6 +49,10 @@ while [[ $# -gt 0 ]]; do
       MODE="$2"
       shift 2
       ;;
+    --emit-expected-tokens)
+      EXPECTED_TOKENS_PREFIX="$2"
+      shift 2
+      ;;
     --help)
       usage
       exit 0
@@ -63,6 +71,11 @@ elif [[ "${MODE}" == "diag" ]]; then
   REPORT_DIR="${REPO_ROOT}/reports/dual-write/front-end/w4-diagnostics"
 elif [[ "${MODE}" != "ast" ]]; then
   echo "Unsupported mode: ${MODE}" >&2
+  exit 1
+fi
+
+if [[ -n "${EXPECTED_TOKENS_PREFIX}" && "${MODE}" != "diag" ]]; then
+  echo "--emit-expected-tokens は diag モードでのみ利用できます" >&2
   exit 1
 fi
 
@@ -623,6 +636,169 @@ out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding=
 PY
 }
 
+emit_expected_tokens_payload() {
+  local diag_path="$1"
+  local case_name="$2"
+  local frontend="$3"
+  local output_path="$4"
+
+  mkdir -p "$(dirname "${output_path}")"
+  python3 - "${diag_path}" "${case_name}" "${frontend}" "${output_path}" <<'PY' || true
+import json
+import pathlib
+import sys
+
+diag_path = pathlib.Path(sys.argv[1])
+case_name = sys.argv[2]
+frontend = sys.argv[3]
+out_path = pathlib.Path(sys.argv[4])
+
+missing = not diag_path.exists()
+payload = {}
+try:
+    payload = json.loads(diag_path.read_text(encoding="utf-8"))
+except Exception:
+    payload = {}
+
+diagnostics = payload.get("diagnostics")
+result = {
+    "case": case_name,
+    "frontend": frontend,
+    "source": str(diag_path),
+    "diagnostic_count": 0,
+    "diagnostics": [],
+    "first_expected_tokens": [],
+    "first_diagnostic_index": None,
+    "total_expected_token_count": 0,
+}
+if missing:
+    result["note"] = "diagnostics_missing"
+
+if isinstance(diagnostics, list):
+    result["diagnostic_count"] = len(diagnostics)
+    first_tokens = None
+    first_index = None
+    entries = []
+    total_tokens = 0
+    for idx, diag in enumerate(diagnostics):
+        tokens = []
+        if isinstance(diag, dict):
+            extensions = diag.get("extensions") or {}
+            if isinstance(extensions, dict):
+                recover = extensions.get("recover") or {}
+                if isinstance(recover, dict):
+                    raw_tokens = recover.get("expected_tokens")
+                    if isinstance(raw_tokens, list):
+                        for token in raw_tokens:
+                            if not isinstance(token, dict):
+                                continue
+                            entry = {}
+                            kind = token.get("kind")
+                            label = token.get("label") or token.get("value")
+                            if kind is not None:
+                                entry["kind"] = str(kind)
+                            if label is not None:
+                                entry["label"] = str(label)
+                            if entry:
+                                tokens.append(entry)
+        entries.append(
+            {
+                "index": idx,
+                "token_count": len(tokens),
+                "expected_tokens": tokens,
+            }
+        )
+        if tokens and first_tokens is None:
+            first_tokens = tokens
+            first_index = idx
+        total_tokens += len(tokens)
+    result["diagnostics"] = entries
+    result["first_expected_tokens"] = first_tokens or []
+    result["first_diagnostic_index"] = first_index
+    result["total_expected_token_count"] = total_tokens
+
+out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+PY
+}
+
+create_expected_tokens_diff() {
+  local ocaml_path="$1"
+  local rust_path="$2"
+  local output_path="$3"
+
+  mkdir -p "$(dirname "${output_path}")"
+  python3 - "${ocaml_path}" "${rust_path}" "${output_path}" <<'PY' || true
+import json
+import pathlib
+import sys
+
+ocaml_path = pathlib.Path(sys.argv[1])
+rust_path = pathlib.Path(sys.argv[2])
+out_path = pathlib.Path(sys.argv[3])
+
+def load_payload(path: pathlib.Path):
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+def normalized_tokens(payload):
+    if not isinstance(payload, dict):
+        return [], None
+    tokens = payload.get("first_expected_tokens")
+    if not isinstance(tokens, list):
+        tokens = []
+    normalized = []
+    for token in tokens:
+        if isinstance(token, dict):
+            normalized.append(
+                {
+                    "kind": token.get("kind"),
+                    "label": token.get("label"),
+                }
+            )
+    return normalized, payload.get("first_diagnostic_index")
+
+ocaml_payload = load_payload(ocaml_path)
+rust_payload = load_payload(rust_path)
+ocaml_tokens, ocaml_index = normalized_tokens(ocaml_payload)
+rust_tokens, rust_index = normalized_tokens(rust_payload)
+
+differences = []
+max_len = max(len(ocaml_tokens), len(rust_tokens))
+for idx in range(max_len):
+    ocaml_token = ocaml_tokens[idx] if idx < len(ocaml_tokens) else None
+    rust_token = rust_tokens[idx] if idx < len(rust_tokens) else None
+    if ocaml_token != rust_token:
+        differences.append(
+            {
+                "index": idx,
+                "ocaml": ocaml_token,
+                "rust": rust_token,
+            }
+        )
+
+match = not differences and len(ocaml_tokens) == len(rust_tokens)
+summary = {
+    "case": (ocaml_payload or rust_payload or {}).get("case"),
+    "match": match,
+    "ocaml_count": len(ocaml_tokens),
+    "rust_count": len(rust_tokens),
+    "differences": differences,
+    "ocaml_tokens": ocaml_tokens,
+    "rust_tokens": rust_tokens,
+    "ocaml_first_index": ocaml_index,
+    "rust_first_index": rust_index,
+    "ocaml_payload_present": ocaml_payload is not None,
+    "rust_payload_present": rust_payload is not None,
+}
+
+out_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+PY
+}
+
 collect_effects_metrics() {
   local diag_path="$1"
   local output_path="$2"
@@ -778,6 +954,9 @@ for idx in "${!CASE_ENTRIES[@]}"; do
     case_gating="true"
     schema_ok="true"
     metrics_ok="true"
+    expected_tokens_match=""
+    expected_tokens_count_ocaml=""
+    expected_tokens_count_rust=""
 
     ocaml_diag_cmd=(
       dune exec remlc --
@@ -853,7 +1032,57 @@ for idx in "${!CASE_ENTRIES[@]}"; do
       fi
     fi
 
-python3 - "${case_dir}" "${case_name}" "${safe_name}" "${RUN_ID}" "${REPORT_DIR}" "${MODE}" "${case_gating}" "${schema_ok}" "${metrics_ok}" "${case_tests}" "${case_lsp}" <<'PY'
+    if [[ -n "${EXPECTED_TOKENS_PREFIX}" ]]; then
+      if [[ "${EXPECTED_TOKENS_PREFIX}" == /* ]]; then
+        expected_tokens_prefix_path="${EXPECTED_TOKENS_PREFIX}"
+      else
+        expected_tokens_prefix_path="${case_dir}/${EXPECTED_TOKENS_PREFIX}"
+      fi
+      ocaml_expected_tokens_path="${expected_tokens_prefix_path}.ocaml.json"
+      rust_expected_tokens_path="${expected_tokens_prefix_path}.rust.json"
+      expected_tokens_diff_path="${expected_tokens_prefix_path}.diff.json"
+      emit_expected_tokens_payload "${ocaml_diag_path}" "${case_name}" "ocaml" "${ocaml_expected_tokens_path}"
+      emit_expected_tokens_payload "${rust_diag_path}" "${case_name}" "rust" "${rust_expected_tokens_path}"
+      create_expected_tokens_diff "${ocaml_expected_tokens_path}" "${rust_expected_tokens_path}" "${expected_tokens_diff_path}"
+      if [[ -s "${expected_tokens_diff_path}" ]]; then
+        read -r expected_tokens_match expected_tokens_count_ocaml expected_tokens_count_rust <<<$(
+          python3 - "${expected_tokens_diff_path}" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    print("false 0 0")
+    sys.exit(0)
+
+match = "true" if data.get("match") else "false"
+ocaml_count = data.get("ocaml_count") or 0
+rust_count = data.get("rust_count") or 0
+print(match, ocaml_count, rust_count)
+PY
+        )
+      else
+        expected_tokens_match="false"
+        expected_tokens_count_ocaml="0"
+        expected_tokens_count_rust="0"
+      fi
+
+      if [[ "${case_name}" == "recover_else_without_if" ]]; then
+        if [[ "${expected_tokens_match}" != "true" ]]; then
+          printf '!! expected-tokens gate: %s で OCaml/Rust が不一致です\n' "${case_name}" >&2
+          case_gating="false"
+        elif [[ "${expected_tokens_count_ocaml}" != "27" || "${expected_tokens_count_rust}" != "27" ]]; then
+          printf '!! expected-tokens gate: %s のトークン数が揃っていません (ocaml=%s rust=%s)\n' \
+            "${case_name}" "${expected_tokens_count_ocaml}" "${expected_tokens_count_rust}" >&2
+          case_gating="false"
+        fi
+      fi
+    fi
+
+python3 - "${case_dir}" "${case_name}" "${safe_name}" "${RUN_ID}" "${REPORT_DIR}" "${MODE}" "${case_gating}" "${schema_ok}" "${metrics_ok}" "${case_tests}" "${case_lsp}" "${expected_tokens_match}" "${expected_tokens_count_ocaml}" "${expected_tokens_count_rust}" <<'PY'
 import json
 import pathlib
 import sys
@@ -869,6 +1098,9 @@ schema_ok = sys.argv[8].lower() == "true"
 metrics_ok = sys.argv[9].lower() == "true"
 case_tests = sys.argv[10]
 case_lsp = sys.argv[11]
+expected_tokens_match = sys.argv[12]
+expected_tokens_count_ocaml = sys.argv[13]
+expected_tokens_count_rust = sys.argv[14]
 
 def read_text(path: pathlib.Path) -> str:
     if not path.exists():
@@ -887,6 +1119,20 @@ def load_json(path: pathlib.Path):
     try:
         return json.loads(text)
     except json.JSONDecodeError:
+        return None
+
+def coerce_bool(value: str):
+    if value is None:
+        return None
+    normalized = value.strip().lower()
+    if normalized in ("true", "false"):
+        return normalized == "true"
+    return None
+
+def coerce_int(value: str):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
         return None
 
 def summarize_parser_metrics(data):
@@ -979,6 +1225,13 @@ if case_tests:
     summary["tests"] = case_tests
 if case_lsp:
     summary["lsp_fixture"] = case_lsp
+match_flag = coerce_bool(expected_tokens_match)
+if match_flag is not None:
+    summary["expected_tokens"] = {
+        "match": match_flag,
+        "ocaml_count": coerce_int(expected_tokens_count_ocaml) or 0,
+        "rust_count": coerce_int(expected_tokens_count_rust) or 0,
+    }
 
 (case_dir / "summary.json").write_text(
     json.dumps(summary, ensure_ascii=False, indent=2),

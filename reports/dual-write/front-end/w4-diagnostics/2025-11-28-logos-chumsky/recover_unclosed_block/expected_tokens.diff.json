@@ -1,0 +1,495 @@
+{
+  "case": "recover_unclosed_block",
+  "match": false,
+  "ocaml_count": 40,
+  "rust_count": 0,
+  "differences": [
+    {
+      "index": 0,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "continue"
+      },
+      "rust": null
+    },
+    {
+      "index": 1,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "defer"
+      },
+      "rust": null
+    },
+    {
+      "index": 2,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "do"
+      },
+      "rust": null
+    },
+    {
+      "index": 3,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "effect"
+      },
+      "rust": null
+    },
+    {
+      "index": 4,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "extern"
+      },
+      "rust": null
+    },
+    {
+      "index": 5,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "false"
+      },
+      "rust": null
+    },
+    {
+      "index": 6,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "fn"
+      },
+      "rust": null
+    },
+    {
+      "index": 7,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "for"
+      },
+      "rust": null
+    },
+    {
+      "index": 8,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "handle"
+      },
+      "rust": null
+    },
+    {
+      "index": 9,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "handler"
+      },
+      "rust": null
+    },
+    {
+      "index": 10,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "if"
+      },
+      "rust": null
+    },
+    {
+      "index": 11,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "impl"
+      },
+      "rust": null
+    },
+    {
+      "index": 12,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "let"
+      },
+      "rust": null
+    },
+    {
+      "index": 13,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "loop"
+      },
+      "rust": null
+    },
+    {
+      "index": 14,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "match"
+      },
+      "rust": null
+    },
+    {
+      "index": 15,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "perform"
+      },
+      "rust": null
+    },
+    {
+      "index": 16,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "pub"
+      },
+      "rust": null
+    },
+    {
+      "index": 17,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "return"
+      },
+      "rust": null
+    },
+    {
+      "index": 18,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "self"
+      },
+      "rust": null
+    },
+    {
+      "index": 19,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "trait"
+      },
+      "rust": null
+    },
+    {
+      "index": 20,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "true"
+      },
+      "rust": null
+    },
+    {
+      "index": 21,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "type"
+      },
+      "rust": null
+    },
+    {
+      "index": 22,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "unsafe"
+      },
+      "rust": null
+    },
+    {
+      "index": 23,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "var"
+      },
+      "rust": null
+    },
+    {
+      "index": 24,
+      "ocaml": {
+        "kind": "keyword",
+        "label": "while"
+      },
+      "rust": null
+    },
+    {
+      "index": 25,
+      "ocaml": {
+        "kind": "token",
+        "label": "!"
+      },
+      "rust": null
+    },
+    {
+      "index": 26,
+      "ocaml": {
+        "kind": "token",
+        "label": "("
+      },
+      "rust": null
+    },
+    {
+      "index": 27,
+      "ocaml": {
+        "kind": "token",
+        "label": "-"
+      },
+      "rust": null
+    },
+    {
+      "index": 28,
+      "ocaml": {
+        "kind": "token",
+        "label": ";"
+      },
+      "rust": null
+    },
+    {
+      "index": 29,
+      "ocaml": {
+        "kind": "token",
+        "label": "@"
+      },
+      "rust": null
+    },
+    {
+      "index": 30,
+      "ocaml": {
+        "kind": "token",
+        "label": "["
+      },
+      "rust": null
+    },
+    {
+      "index": 31,
+      "ocaml": {
+        "kind": "token",
+        "label": "{"
+      },
+      "rust": null
+    },
+    {
+      "index": 32,
+      "ocaml": {
+        "kind": "token",
+        "label": "|"
+      },
+      "rust": null
+    },
+    {
+      "index": 33,
+      "ocaml": {
+        "kind": "token",
+        "label": "}"
+      },
+      "rust": null
+    },
+    {
+      "index": 34,
+      "ocaml": {
+        "kind": "class",
+        "label": "char-literal"
+      },
+      "rust": null
+    },
+    {
+      "index": 35,
+      "ocaml": {
+        "kind": "class",
+        "label": "float-literal"
+      },
+      "rust": null
+    },
+    {
+      "index": 36,
+      "ocaml": {
+        "kind": "class",
+        "label": "identifier"
+      },
+      "rust": null
+    },
+    {
+      "index": 37,
+      "ocaml": {
+        "kind": "class",
+        "label": "integer-literal"
+      },
+      "rust": null
+    },
+    {
+      "index": 38,
+      "ocaml": {
+        "kind": "class",
+        "label": "string-literal"
+      },
+      "rust": null
+    },
+    {
+      "index": 39,
+      "ocaml": {
+        "kind": "class",
+        "label": "upper-identifier"
+      },
+      "rust": null
+    }
+  ],
+  "ocaml_tokens": [
+    {
+      "kind": "keyword",
+      "label": "continue"
+    },
+    {
+      "kind": "keyword",
+      "label": "defer"
+    },
+    {
+      "kind": "keyword",
+      "label": "do"
+    },
+    {
+      "kind": "keyword",
+      "label": "effect"
+    },
+    {
+      "kind": "keyword",
+      "label": "extern"
+    },
+    {
+      "kind": "keyword",
+      "label": "false"
+    },
+    {
+      "kind": "keyword",
+      "label": "fn"
+    },
+    {
+      "kind": "keyword",
+      "label": "for"
+    },
+    {
+      "kind": "keyword",
+      "label": "handle"
+    },
+    {
+      "kind": "keyword",
+      "label": "handler"
+    },
+    {
+      "kind": "keyword",
+      "label": "if"
+    },
+    {
+      "kind": "keyword",
+      "label": "impl"
+    },
+    {
+      "kind": "keyword",
+      "label": "let"
+    },
+    {
+      "kind": "keyword",
+      "label": "loop"
+    },
+    {
+      "kind": "keyword",
+      "label": "match"
+    },
+    {
+      "kind": "keyword",
+      "label": "perform"
+    },
+    {
+      "kind": "keyword",
+      "label": "pub"
+    },
+    {
+      "kind": "keyword",
+      "label": "return"
+    },
+    {
+      "kind": "keyword",
+      "label": "self"
+    },
+    {
+      "kind": "keyword",
+      "label": "trait"
+    },
+    {
+      "kind": "keyword",
+      "label": "true"
+    },
+    {
+      "kind": "keyword",
+      "label": "type"
+    },
+    {
+      "kind": "keyword",
+      "label": "unsafe"
+    },
+    {
+      "kind": "keyword",
+      "label": "var"
+    },
+    {
+      "kind": "keyword",
+      "label": "while"
+    },
+    {
+      "kind": "token",
+      "label": "!"
+    },
+    {
+      "kind": "token",
+      "label": "("
+    },
+    {
+      "kind": "token",
+      "label": "-"
+    },
+    {
+      "kind": "token",
+      "label": ";"
+    },
+    {
+      "kind": "token",
+      "label": "@"
+    },
+    {
+      "kind": "token",
+      "label": "["
+    },
+    {
+      "kind": "token",
+      "label": "{"
+    },
+    {
+      "kind": "token",
+      "label": "|"
+    },
+    {
+      "kind": "token",
+      "label": "}"
+    },
+    {
+      "kind": "class",
+      "label": "char-literal"
+    },
+    {
+      "kind": "class",
+      "label": "float-literal"
+    },
+    {
+      "kind": "class",
+      "label": "identifier"
+    },
+    {
+      "kind": "class",
+      "label": "integer-literal"
+    },
+    {
+      "kind": "class",
+      "label": "string-literal"
+    },
+    {
+      "kind": "class",
+      "label": "upper-identifier"
+    }
+  ],
+  "rust_tokens": [],
+  "ocaml_first_index": 0,
+  "rust_first_index": null,
+  "ocaml_payload_present": true,
+  "rust_payload_present": true
+}

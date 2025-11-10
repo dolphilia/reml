@@ -1,0 +1,219 @@
+{
+  "case": "recover_missing_tuple_comma",
+  "match": false,
+  "ocaml_count": 17,
+  "rust_count": 0,
+  "differences": [
+    {
+      "index": 0,
+      "ocaml": {
+        "kind": "token",
+        "label": "!="
+      },
+      "rust": null
+    },
+    {
+      "index": 1,
+      "ocaml": {
+        "kind": "token",
+        "label": "%"
+      },
+      "rust": null
+    },
+    {
+      "index": 2,
+      "ocaml": {
+        "kind": "token",
+        "label": "&&"
+      },
+      "rust": null
+    },
+    {
+      "index": 3,
+      "ocaml": {
+        "kind": "token",
+        "label": ")"
+      },
+      "rust": null
+    },
+    {
+      "index": 4,
+      "ocaml": {
+        "kind": "token",
+        "label": "*"
+      },
+      "rust": null
+    },
+    {
+      "index": 5,
+      "ocaml": {
+        "kind": "token",
+        "label": "+"
+      },
+      "rust": null
+    },
+    {
+      "index": 6,
+      "ocaml": {
+        "kind": "token",
+        "label": ","
+      },
+      "rust": null
+    },
+    {
+      "index": 7,
+      "ocaml": {
+        "kind": "token",
+        "label": "-"
+      },
+      "rust": null
+    },
+    {
+      "index": 8,
+      "ocaml": {
+        "kind": "token",
+        "label": "/"
+      },
+      "rust": null
+    },
+    {
+      "index": 9,
+      "ocaml": {
+        "kind": "token",
+        "label": "<"
+      },
+      "rust": null
+    },
+    {
+      "index": 10,
+      "ocaml": {
+        "kind": "token",
+        "label": "<="
+      },
+      "rust": null
+    },
+    {
+      "index": 11,
+      "ocaml": {
+        "kind": "token",
+        "label": "=="
+      },
+      "rust": null
+    },
+    {
+      "index": 12,
+      "ocaml": {
+        "kind": "token",
+        "label": ">"
+      },
+      "rust": null
+    },
+    {
+      "index": 13,
+      "ocaml": {
+        "kind": "token",
+        "label": ">="
+      },
+      "rust": null
+    },
+    {
+      "index": 14,
+      "ocaml": {
+        "kind": "token",
+        "label": "^"
+      },
+      "rust": null
+    },
+    {
+      "index": 15,
+      "ocaml": {
+        "kind": "token",
+        "label": "|>"
+      },
+      "rust": null
+    },
+    {
+      "index": 16,
+      "ocaml": {
+        "kind": "token",
+        "label": "||"
+      },
+      "rust": null
+    }
+  ],
+  "ocaml_tokens": [
+    {
+      "kind": "token",
+      "label": "!="
+    },
+    {
+      "kind": "token",
+      "label": "%"
+    },
+    {
+      "kind": "token",
+      "label": "&&"
+    },
+    {
+      "kind": "token",
+      "label": ")"
+    },
+    {
+      "kind": "token",
+      "label": "*"
+    },
+    {
+      "kind": "token",
+      "label": "+"
+    },
+    {
+      "kind": "token",
+      "label": ","
+    },
+    {
+      "kind": "token",
+      "label": "-"
+    },
+    {
+      "kind": "token",
+      "label": "/"
+    },
+    {
+      "kind": "token",
+      "label": "<"
+    },
+    {
+      "kind": "token",
+      "label": "<="
+    },
+    {
+      "kind": "token",
+      "label": "=="
+    },
+    {
+      "kind": "token",
+      "label": ">"
+    },
+    {
+      "kind": "token",
+      "label": ">="
+    },
+    {
+      "kind": "token",
+      "label": "^"
+    },
+    {
+      "kind": "token",
+      "label": "|>"
+    },
+    {
+      "kind": "token",
+      "label": "||"
+    }
+  ],
+  "rust_tokens": [],
+  "ocaml_first_index": 0,
+  "rust_first_index": null,
+  "ocaml_payload_present": true,
+  "rust_payload_present": true
+}

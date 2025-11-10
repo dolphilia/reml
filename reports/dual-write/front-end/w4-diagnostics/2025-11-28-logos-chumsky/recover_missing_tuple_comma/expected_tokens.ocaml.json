@@ -1,0 +1,154 @@
+{
+  "case": "recover_missing_tuple_comma",
+  "frontend": "ocaml",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_missing_tuple_comma/diagnostics.ocaml.json",
+  "diagnostic_count": 1,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 17,
+      "expected_tokens": [
+        {
+          "kind": "token",
+          "label": "!="
+        },
+        {
+          "kind": "token",
+          "label": "%"
+        },
+        {
+          "kind": "token",
+          "label": "&&"
+        },
+        {
+          "kind": "token",
+          "label": ")"
+        },
+        {
+          "kind": "token",
+          "label": "*"
+        },
+        {
+          "kind": "token",
+          "label": "+"
+        },
+        {
+          "kind": "token",
+          "label": ","
+        },
+        {
+          "kind": "token",
+          "label": "-"
+        },
+        {
+          "kind": "token",
+          "label": "/"
+        },
+        {
+          "kind": "token",
+          "label": "<"
+        },
+        {
+          "kind": "token",
+          "label": "<="
+        },
+        {
+          "kind": "token",
+          "label": "=="
+        },
+        {
+          "kind": "token",
+          "label": ">"
+        },
+        {
+          "kind": "token",
+          "label": ">="
+        },
+        {
+          "kind": "token",
+          "label": "^"
+        },
+        {
+          "kind": "token",
+          "label": "|>"
+        },
+        {
+          "kind": "token",
+          "label": "||"
+        }
+      ]
+    }
+  ],
+  "first_expected_tokens": [
+    {
+      "kind": "token",
+      "label": "!="
+    },
+    {
+      "kind": "token",
+      "label": "%"
+    },
+    {
+      "kind": "token",
+      "label": "&&"
+    },
+    {
+      "kind": "token",
+      "label": ")"
+    },
+    {
+      "kind": "token",
+      "label": "*"
+    },
+    {
+      "kind": "token",
+      "label": "+"
+    },
+    {
+      "kind": "token",
+      "label": ","
+    },
+    {
+      "kind": "token",
+      "label": "-"
+    },
+    {
+      "kind": "token",
+      "label": "/"
+    },
+    {
+      "kind": "token",
+      "label": "<"
+    },
+    {
+      "kind": "token",
+      "label": "<="
+    },
+    {
+      "kind": "token",
+      "label": "=="
+    },
+    {
+      "kind": "token",
+      "label": ">"
+    },
+    {
+      "kind": "token",
+      "label": ">="
+    },
+    {
+      "kind": "token",
+      "label": "^"
+    },
+    {
+      "kind": "token",
+      "label": "|>"
+    },
+    {
+      "kind": "token",
+      "label": "||"
+    }
+  ],
+  "first_diagnostic_index": 0,
+  "total_expected_token_count": 17
+}

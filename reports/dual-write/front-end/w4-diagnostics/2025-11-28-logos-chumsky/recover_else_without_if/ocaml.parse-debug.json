@@ -1,0 +1,471 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_else_without_if/input.reml",
+  "parser_run_config": {
+    "experimental_effects": false,
+    "legacy_result": true,
+    "merge_warnings": true,
+    "trace": false,
+    "left_recursion": "off",
+    "packrat": true,
+    "require_eof": false,
+    "extensions": {
+      "config": {
+        "experimental_effects": false,
+        "left_recursion": "off",
+        "legacy_result": true,
+        "merge_warnings": true,
+        "packrat": true,
+        "require_eof": false,
+        "source": "cli",
+        "trace": false
+      },
+      "effects": { "type_row_mode": "ty-integrated" },
+      "lex": { "profile": "strict_json" }
+    }
+  },
+  "diagnostics": [
+    {
+      "expected": {
+        "locale_args": [
+          "continue", "defer", "do", "false", "for", "handle", "if", "loop",
+          "match", "perform", "return", "self", "true", "unsafe", "while",
+          "!", "(", "-", "[", "{", "|", "char-literal", "float-literal",
+          "identifier", "integer-literal", "string-literal",
+          "upper-identifier"
+        ],
+        "humanized": "ここで`continue`、`defer`、`do`、`false`、`for`、`handle`、`if`、`loop`、`match`、`perform`、`return`、`self`、`true`、`unsafe`、`while`、`!`、`(`、`-`、`[`、`{`、`|`、char-literal、float-literal、identifier、integer-literal、string-literal または upper-identifierのいずれかが必要です",
+        "message_key": "parse.expected",
+        "alternatives": [
+          { "kind": "keyword", "value": "continue" },
+          { "kind": "keyword", "value": "defer" },
+          { "kind": "keyword", "value": "do" },
+          { "kind": "keyword", "value": "false" },
+          { "kind": "keyword", "value": "for" },
+          { "kind": "keyword", "value": "handle" },
+          { "kind": "keyword", "value": "if" },
+          { "kind": "keyword", "value": "loop" },
+          { "kind": "keyword", "value": "match" },
+          { "kind": "keyword", "value": "perform" },
+          { "kind": "keyword", "value": "return" },
+          { "kind": "keyword", "value": "self" },
+          { "kind": "keyword", "value": "true" },
+          { "kind": "keyword", "value": "unsafe" },
+          { "kind": "keyword", "value": "while" },
+          { "kind": "token", "value": "!" },
+          { "kind": "token", "value": "(" },
+          { "kind": "token", "value": "-" },
+          { "kind": "token", "value": "[" },
+          { "kind": "token", "value": "{" },
+          { "kind": "token", "value": "|" },
+          { "kind": "class", "value": "char-literal" },
+          { "kind": "class", "value": "float-literal" },
+          { "kind": "class", "value": "identifier" },
+          { "kind": "class", "value": "integer-literal" },
+          { "kind": "class", "value": "string-literal" },
+          { "kind": "class", "value": "upper-identifier" }
+        ]
+      },
+      "audit": {
+        "metadata": {
+          "parser": {
+            "core": {
+              "rule": {
+                "fingerprint": "859967339",
+                "origin": "static",
+                "ordinal": 0,
+                "name": "compilation_unit",
+                "namespace": "menhir"
+              }
+            }
+          },
+          "parser.core.rule": {
+            "fingerprint": "859967339",
+            "origin": "static",
+            "ordinal": 0,
+            "name": "compilation_unit",
+            "namespace": "menhir"
+          },
+          "parser.runconfig": {
+            "packrat": true,
+            "left_recursion": "off",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": true,
+            "experimental_effects": false,
+            "extensions": {
+              "stream": {
+                "enabled": false,
+                "checkpoint": "unspecified",
+                "resume_hint": "unspecified",
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "chunk_size": 0,
+                "flow": {
+                  "policy": "auto",
+                  "backpressure": { "max_lag_bytes": 0 }
+                }
+              },
+              "recover": { "sync_tokens": [], "notes": false },
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              }
+            }
+          },
+          "parser.runconfig.packrat": true,
+          "parser.runconfig.left_recursion": "off",
+          "parser.runconfig.trace": false,
+          "parser.runconfig.merge_warnings": true,
+          "parser.runconfig.require_eof": false,
+          "parser.runconfig.legacy_result": true,
+          "parser.runconfig.experimental_effects": false,
+          "parser.runconfig.extensions.lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.recover": {
+            "sync_tokens": [],
+            "notes": false
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "enabled": false,
+            "checkpoint": "unspecified",
+            "resume_hint": "unspecified",
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "chunk_size": 0,
+            "flow": {
+              "policy": "auto",
+              "backpressure": { "max_lag_bytes": 0 }
+            }
+          },
+          "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "effect.capabilities": [],
+          "effect.stage.actual_capabilities": [],
+          "effect.actual_capabilities": [],
+          "effect.stage.required_capabilities": [],
+          "effect.required_capabilities": [],
+          "fingerprint": "859967339",
+          "origin": "static",
+          "name": "compilation_unit",
+          "namespace": "menhir",
+          "parser.core.rule.fingerprint": "859967339",
+          "parser.core.rule.origin": "static",
+          "parser.core.rule.ordinal": 0,
+          "parser.core.rule.name": "compilation_unit",
+          "parser.core.rule.namespace": "menhir",
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "20251110T025142Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [ { "kind": "input", "path": "input.reml" } ]
+          },
+          "audit.source.workspace": ".",
+          "audit.sequence": 0,
+          "audit.build_id": "20251110T025142Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "cli.audit_id": "cli/20251110T025142Z#0",
+          "event.domain": "parser",
+          "audit.timestamp": "2025-11-10T02:51:42Z",
+          "schema.version": "1.1"
+        },
+        "audit_id": "cli/20251110T025142Z#0",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "20251110T025142Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "input.reml" } ]
+        }
+      },
+      "audit_metadata": {
+        "event.domain": "parser",
+        "cli.audit_id": "cli/20251110T025142Z#0",
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "20251110T025142Z",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "20251110T025142Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "input.reml" } ]
+        },
+        "parser.core.rule.namespace": "menhir",
+        "parser.core.rule.name": "compilation_unit",
+        "parser.core.rule.ordinal": 0,
+        "parser.core.rule.origin": "static",
+        "parser.core.rule.fingerprint": "859967339",
+        "namespace": "menhir",
+        "name": "compilation_unit",
+        "origin": "static",
+        "fingerprint": "859967339",
+        "schema.version": "1.1",
+        "audit.timestamp": "2025-11-10T02:51:42Z",
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream": {
+          "enabled": false,
+          "checkpoint": "unspecified",
+          "resume_hint": "unspecified",
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "chunk_size": 0,
+          "flow": {
+            "policy": "auto",
+            "backpressure": { "max_lag_bytes": 0 }
+          }
+        },
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover": {
+          "sync_tokens": [],
+          "notes": false
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.lex": {
+          "profile": "strict_json",
+          "identifier_profile": "unicode"
+        },
+        "parser.runconfig.experimental_effects": false,
+        "parser.runconfig.legacy_result": true,
+        "parser.runconfig.require_eof": false,
+        "parser.runconfig.merge_warnings": true,
+        "parser.runconfig.trace": false,
+        "parser.runconfig.left_recursion": "off",
+        "parser.runconfig.packrat": true,
+        "parser.runconfig": {
+          "packrat": true,
+          "left_recursion": "off",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": true,
+          "experimental_effects": false,
+          "extensions": {
+            "stream": {
+              "enabled": false,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "backpressure": { "max_lag_bytes": 0 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        },
+        "parser.core.rule": {
+          "fingerprint": "859967339",
+          "origin": "static",
+          "ordinal": 0,
+          "name": "compilation_unit",
+          "namespace": "menhir"
+        },
+        "parser": {
+          "core": {
+            "rule": {
+              "fingerprint": "859967339",
+              "origin": "static",
+              "ordinal": 0,
+              "name": "compilation_unit",
+              "namespace": "menhir"
+            }
+          }
+        }
+      },
+      "extensions": {
+        "diagnostic.v2": { "timestamp": "2025-11-10T02:51:42Z" },
+        "recover": {
+          "expected_tokens": [
+            { "kind": "keyword", "label": "continue" },
+            { "kind": "keyword", "label": "defer" },
+            { "kind": "keyword", "label": "do" },
+            { "kind": "keyword", "label": "false" },
+            { "kind": "keyword", "label": "for" },
+            { "kind": "keyword", "label": "handle" },
+            { "kind": "keyword", "label": "if" },
+            { "kind": "keyword", "label": "loop" },
+            { "kind": "keyword", "label": "match" },
+            { "kind": "keyword", "label": "perform" },
+            { "kind": "keyword", "label": "return" },
+            { "kind": "keyword", "label": "self" },
+            { "kind": "keyword", "label": "true" },
+            { "kind": "keyword", "label": "unsafe" },
+            { "kind": "keyword", "label": "while" },
+            { "kind": "token", "label": "!" },
+            { "kind": "token", "label": "(" },
+            { "kind": "token", "label": "-" },
+            { "kind": "token", "label": "[" },
+            { "kind": "token", "label": "{" },
+            { "kind": "token", "label": "|" },
+            { "kind": "class", "label": "char-literal" },
+            { "kind": "class", "label": "float-literal" },
+            { "kind": "class", "label": "identifier" },
+            { "kind": "class", "label": "integer-literal" },
+            { "kind": "class", "label": "string-literal" },
+            { "kind": "class", "label": "upper-identifier" }
+          ],
+          "message": "ここで`continue`、`defer`、`do`、`false`、`for`、`handle`、`if`、`loop`、`match`、`perform`、`return`、`self`、`true`、`unsafe`、`while`、`!`、`(`、`-`、`[`、`{`、`|`、char-literal、float-literal、identifier、integer-literal、string-literal または upper-identifierのいずれかが必要です"
+        },
+        "parse": {
+          "parser_id": {
+            "namespace": "menhir",
+            "name": "compilation_unit",
+            "ordinal": 0,
+            "origin": "static",
+            "fingerprint": "859967339"
+          }
+        },
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "runconfig": {
+          "packrat": true,
+          "left_recursion": "off",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": true,
+          "experimental_effects": false,
+          "extensions": {
+            "stream": {
+              "enabled": false,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "backpressure": { "max_lag_bytes": 0 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        }
+      },
+      "schema_version": "2.0.0-draft",
+      "fixits": [],
+      "hints": [],
+      "secondary": [],
+      "codes": [],
+      "primary": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_else_without_if/input.reml",
+        "start_line": 1,
+        "start_col": 2,
+        "end_line": 1,
+        "end_col": 6
+      },
+      "severity_level": 1,
+      "severity": "error",
+      "message": "構文エラー: 入力を解釈できません",
+      "domain": "parser",
+      "timestamp": "2025-11-10T02:51:42Z"
+    }
+  ],
+  "parse_result": {
+    "span_trace": null,
+    "packrat_stats": { "queries": 8, "hits": 7 },
+    "legacy_error": {
+      "span": {
+        "start": {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_else_without_if/input.reml",
+          "line": 2,
+          "column": 3,
+          "offset": 16
+        },
+        "end": {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_else_without_if/input.reml",
+          "line": 2,
+          "column": 7,
+          "offset": 20
+        }
+      },
+      "expected": [
+        { "kind": "keyword", "label": "continue" },
+        { "kind": "keyword", "label": "defer" },
+        { "kind": "keyword", "label": "do" },
+        { "kind": "keyword", "label": "false" },
+        { "kind": "keyword", "label": "for" },
+        { "kind": "keyword", "label": "handle" },
+        { "kind": "keyword", "label": "if" },
+        { "kind": "keyword", "label": "loop" },
+        { "kind": "keyword", "label": "match" },
+        { "kind": "keyword", "label": "perform" },
+        { "kind": "keyword", "label": "return" },
+        { "kind": "keyword", "label": "self" },
+        { "kind": "keyword", "label": "true" },
+        { "kind": "keyword", "label": "unsafe" },
+        { "kind": "keyword", "label": "while" },
+        { "kind": "token", "label": "!" },
+        { "kind": "token", "label": "(" },
+        { "kind": "token", "label": "-" },
+        { "kind": "token", "label": "[" },
+        { "kind": "token", "label": "{" },
+        { "kind": "token", "label": "|" },
+        { "kind": "class", "label": "char-literal" },
+        { "kind": "class", "label": "float-literal" },
+        { "kind": "class", "label": "identifier" },
+        { "kind": "class", "label": "integer-literal" },
+        { "kind": "class", "label": "string-literal" },
+        { "kind": "class", "label": "upper-identifier" }
+      ],
+      "committed": false,
+      "far_consumed": true
+    },
+    "farthest_error_offset": 16,
+    "span": null,
+    "committed": false,
+    "consumed": true,
+    "recovered": false,
+    "has_value": false
+  },
+  "stream_meta": null
+}
