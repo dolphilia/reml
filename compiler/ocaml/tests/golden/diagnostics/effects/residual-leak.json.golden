@@ -110,12 +110,23 @@
           "legacy_result": false,
           "experimental_effects": false,
           "extensions": {
+            "stream": {
+              "enabled": false,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "backpressure": { "max_lag_bytes": 0 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
             "lex": {
               "profile": "strict_json",
               "identifier_profile": "unicode"
-            },
-            "recover": { "sync_tokens": [], "notes": false },
-            "stream": { "enabled": false }
+            }
           }
         }
       },
@@ -169,8 +180,24 @@
         },
         "schema.version": "1.1",
         "audit.timestamp": "1970-01-01T00:00:00Z",
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
         "parser.runconfig.extensions.stream.enabled": false,
-        "parser.runconfig.extensions.stream": { "enabled": false },
+        "parser.runconfig.extensions.stream": {
+          "enabled": false,
+          "checkpoint": "unspecified",
+          "resume_hint": "unspecified",
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "chunk_size": 0,
+          "flow": {
+            "policy": "auto",
+            "backpressure": { "max_lag_bytes": 0 }
+          }
+        },
         "parser.runconfig.extensions.recover.sync_tokens": [],
         "parser.runconfig.extensions.recover.notes": false,
         "parser.runconfig.extensions.recover": {
@@ -199,12 +226,23 @@
           "legacy_result": false,
           "experimental_effects": false,
           "extensions": {
+            "stream": {
+              "enabled": false,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "backpressure": { "max_lag_bytes": 0 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
             "lex": {
               "profile": "strict_json",
               "identifier_profile": "unicode"
-            },
-            "recover": { "sync_tokens": [], "notes": false },
-            "stream": { "enabled": false }
+            }
           }
         }
       },
@@ -219,12 +257,23 @@
             "legacy_result": false,
             "experimental_effects": false,
             "extensions": {
+              "stream": {
+                "enabled": false,
+                "checkpoint": "unspecified",
+                "resume_hint": "unspecified",
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "chunk_size": 0,
+                "flow": {
+                  "policy": "auto",
+                  "backpressure": { "max_lag_bytes": 0 }
+                }
+              },
+              "recover": { "sync_tokens": [], "notes": false },
               "lex": {
                 "profile": "strict_json",
                 "identifier_profile": "unicode"
-              },
-              "recover": { "sync_tokens": [], "notes": false },
-              "stream": { "enabled": false }
+              }
             }
           },
           "parser.runconfig.packrat": false,
@@ -246,8 +295,24 @@
           },
           "parser.runconfig.extensions.recover.notes": false,
           "parser.runconfig.extensions.recover.sync_tokens": [],
-          "parser.runconfig.extensions.stream": { "enabled": false },
+          "parser.runconfig.extensions.stream": {
+            "enabled": false,
+            "checkpoint": "unspecified",
+            "resume_hint": "unspecified",
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "chunk_size": 0,
+            "flow": {
+              "policy": "auto",
+              "backpressure": { "max_lag_bytes": 0 }
+            }
+          },
           "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.chunk_size": 0,
           "cli.change_set": {
             "policy": "phase2.5.audit.v1",
             "origin": "cli",
