@@ -395,13 +395,46 @@ option_requires_value() {
     --stream-resume-hint|--stream-flow-policy|--stream-flow-max-lag|--stream-demand-min-bytes|--stream-demand-preferred-bytes|--stream-checkpoint)
       return 0
       ;;
-    --runtime-capabilities|--emit-typeck-debug|--emit-effects-metrics|--config|--left-recursion|--json-mode)
+    --runtime-capabilities|--emit-typeck-debug|--emit-effects-metrics|--config|--left-recursion|--json-mode|--emit-typeck-debug-format)
       return 0
       ;;
     *)
       return 1
       ;;
   esac
+}
+
+is_type_effect_case() {
+  local name="$1"
+  [[ "${name}" == type_* || "${name}" == effect_* || "${name}" == ffi_* ]]
+}
+
+strip_case_flag() {
+  local target_name="$1"
+  local flag="$2"
+  local requires_value="false"
+  if option_requires_value "${flag}"; then
+    requires_value="true"
+  fi
+  set +u
+  eval "local current=(\"\${${target_name}[@]}\")"
+  set -u
+  local new_flags=()
+  local skip_next=0
+  for token in "${current[@]}"; do
+    if [[ ${skip_next} -eq 1 ]]; then
+      skip_next=0
+      continue
+    fi
+    if [[ "${token}" == "${flag}" ]]; then
+      if [[ "${requires_value}" == "true" ]]; then
+        skip_next=1
+      fi
+      continue
+    fi
+    new_flags+=("${token}")
+  done
+  eval "${target_name}=(\"\${new_flags[@]}\")"
 }
 
 resolve_placeholder_value() {
@@ -588,6 +621,168 @@ write_placeholder_effects_metrics() {
 }
 JSON
   ensure_effects_metrics_artifact "${case_dir}" "${frontend}"
+}
+
+record_typeck_command() {
+  local output_path="$1"
+  local cwd="$2"
+  shift 2
+  if [[ $# -eq 0 ]]; then
+    return
+  fi
+  mkdir -p "$(dirname "${output_path}")"
+  python3 - "$output_path" "$cwd" "$@" <<'PY'
+import json
+import pathlib
+import sys
+
+out_path = pathlib.Path(sys.argv[1])
+cwd = sys.argv[2]
+argv = sys.argv[3:]
+payload = {
+    "cwd": cwd,
+    "argv": argv,
+}
+out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+PY
+}
+
+copy_if_exists() {
+  local src="$1"
+  local dest="$2"
+  if [[ -f "${src}" ]]; then
+    mkdir -p "$(dirname "${dest}")"
+    cp "${src}" "${dest}"
+  fi
+}
+
+generate_type_effect_report() {
+  local case_dir="$1"
+  local case_name="$2"
+  python3 - "${case_dir}" "${case_name}" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+case_dir = Path(sys.argv[1])
+case_name = sys.argv[2]
+typeck_dir = case_dir / "typeck"
+report_path = typeck_dir / "requirements.json"
+
+def load_json(path: Path):
+    if not path.exists():
+        return None
+    text = path.read_text(encoding="utf-8").strip()
+    if not text:
+        return None
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return None
+
+def find_metric(data, metric_name: str):
+    if not isinstance(data, dict):
+        return None
+    metrics = data.get("metrics")
+    if not isinstance(metrics, list):
+        return None
+    for item in metrics:
+        if isinstance(item, dict) and item.get("metric") == metric_name:
+            return item
+    return None
+
+def effects_metric_ok(data):
+    if not isinstance(data, dict):
+        return False
+    metrics = data.get("metrics")
+    if not isinstance(metrics, list) or not metrics:
+        return False
+    for item in metrics:
+        if not isinstance(item, dict):
+            continue
+        status = item.get("status")
+        if status is None:
+            continue
+        normalized = str(status).strip().lower()
+        if normalized not in ("success", "ok", "passed"):
+            return False
+    return True
+
+def has_effect_context(path: Path):
+    data = load_json(path)
+    if not isinstance(data, dict):
+        return False
+    effect_ctx = data.get("effect_context")
+    return isinstance(effect_ctx, dict) and bool(effect_ctx)
+
+required = case_name.startswith(("type_", "effect_", "ffi_"))
+frontends = ("ocaml", "rust")
+report = {
+    "required": required,
+    "frontends": {},
+    "ok": True,
+    "failures": [],
+}
+
+if not typeck_dir.exists():
+    typeck_dir.mkdir(parents=True, exist_ok=True)
+
+if not required:
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    sys.exit(0)
+
+for frontend in frontends:
+    frontend_report = {}
+    typeck_path = typeck_dir / f"typeck-debug.{frontend}.json"
+    parser_metrics_path = case_dir / f"parser-metrics.{frontend}.json"
+    effects_metrics_path = case_dir / f"effects-metrics.{frontend}.json"
+
+    typeck_exists = typeck_path.exists() and typeck_path.stat().st_size > 0
+    frontend_report["typeck_debug_path"] = str(typeck_path)
+    frontend_report["typeck_debug_exists"] = typeck_exists
+    frontend_report["effect_context_present"] = typeck_exists and has_effect_context(typeck_path)
+
+    parser_metric = find_metric(load_json(parser_metrics_path), "parser.expected_summary_presence")
+    frontend_report["parser_metric_present"] = parser_metric is not None
+    parser_metric_status = False
+    if parser_metric is not None:
+        pass_rate = parser_metric.get("pass_rate")
+        parser_metric_status = isinstance(pass_rate, (int, float)) and pass_rate == 1.0
+    frontend_report["parser_metric_status"] = parser_metric_status
+
+    effects_metric_data = load_json(effects_metrics_path)
+    frontend_report["effects_metrics_present"] = isinstance(effects_metric_data, dict)
+    frontend_report["effects_metrics_status"] = (
+        effects_metric_ok(effects_metric_data) if isinstance(effects_metric_data, dict) else False
+    )
+
+    frontend_ok = (
+        frontend_report["typeck_debug_exists"]
+        and frontend_report["effect_context_present"]
+        and frontend_report["parser_metric_present"]
+        and frontend_report["parser_metric_status"]
+        and frontend_report["effects_metrics_present"]
+        and frontend_report["effects_metrics_status"]
+    )
+
+    frontend_report["ok"] = frontend_ok
+    if not frontend_ok:
+        report["ok"] = False
+        report["failures"].append(
+            f"{frontend}: missing artifacts (typeck_debug={frontend_report['typeck_debug_exists']}, "
+            f"effect_context={frontend_report['effect_context_present']}, "
+            f"parser_metric={frontend_report['parser_metric_present']}, "
+            f"effects_metrics={frontend_report['effects_metrics_present']})"
+        )
+
+    report["frontends"][frontend] = frontend_report
+
+report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+
+if report["ok"]:
+    sys.exit(0)
+sys.exit(1)
+PY
 }
 
 create_diag_diff() {
@@ -926,7 +1121,13 @@ for idx in "${!CASE_ENTRIES[@]}"; do
   append_case_flags "rust" "${case_flags_raw}" "${case_dir}" "${typeck_dir}"
   append_case_flags "ocaml" "${case_flags_raw_ocaml}" "${case_dir}" "${typeck_dir}"
   append_case_flags "rust" "${case_flags_raw_rust}" "${case_dir}" "${typeck_dir}"
-  if [[ "${case_name}" == type_* || "${case_name}" == effect_* || "${case_name}" == ffi_* ]]; then
+  type_effect_case="false"
+  if is_type_effect_case "${case_name}"; then
+    type_effect_case="true"
+    strip_case_flag "ocaml_case_flags" "--emit-typeck-debug"
+    strip_case_flag "rust_case_flags" "--emit-typeck-debug"
+    strip_case_flag "rust_case_flags" "--emit-effects-metrics"
+    strip_case_flag "rust_case_flags" "--emit-typeck-debug-format"
     ensure_flag "ocaml_case_flags" "--experimental-effects"
     ensure_flag_with_value "ocaml_case_flags" "--type-row-mode" "dual-write"
     ensure_flag_with_value "ocaml_case_flags" "--effect-stage" "beta"
@@ -936,12 +1137,7 @@ for idx in "${!CASE_ENTRIES[@]}"; do
     ensure_flag_with_value "rust_case_flags" "--effect-stage" "beta"
     ensure_flag_with_value "rust_case_flags" "--emit-typeck-debug" "${rust_typeck_debug_json}"
     ensure_flag_with_value "rust_case_flags" "--emit-effects-metrics" "${effects_dir}/effects-metrics.rust.json"
-  fi
-
-  if [[ "${case_name}" == type_* || "${case_name}" == effect_* || "${case_name}" == ffi_* ]]; then
-    SKIP_PARSER_METRICS="true"
-  else
-    SKIP_PARSER_METRICS="false"
+    ensure_flag_with_value "rust_case_flags" "--emit-typeck-debug-format" "json"
   fi
 
   if [[ "${MODE}" == "diag" ]]; then
@@ -973,6 +1169,9 @@ for idx in "${!CASE_ENTRIES[@]}"; do
     fi
     ocaml_diag_cmd+=("${input_path}")
     ocaml_stderr="${case_dir}/ocaml.stderr.log"
+    if [[ "${type_effect_case}" == "true" ]]; then
+      record_typeck_command "${typeck_dir}/command.ocaml.json" "${OCAML_DIR}" "${ocaml_diag_cmd[@]}"
+    fi
     run_in_dir "${OCAML_DIR}" "${ocaml_diag_cmd[@]}" > "${ocaml_diag_path}" 2> "${ocaml_stderr}" || true
 
     rust_diag_cmd=(
@@ -989,7 +1188,11 @@ for idx in "${!CASE_ENTRIES[@]}"; do
       rust_diag_cmd+=("${rust_case_flags[@]}")
     fi
     rust_diag_cmd+=("${input_path}")
-    run_in_dir "${RUST_DIR}" "${rust_diag_cmd[@]}" > "${rust_diag_path}" || true
+    rust_stderr="${case_dir}/rust.stderr.log"
+    if [[ "${type_effect_case}" == "true" ]]; then
+      record_typeck_command "${typeck_dir}/command.rust.json" "${RUST_DIR}" "${rust_diag_cmd[@]}"
+    fi
+    run_in_dir "${RUST_DIR}" "${rust_diag_cmd[@]}" > "${rust_diag_path}" 2> "${rust_stderr}" || true
 
     recover_ocaml_diag_from_stderr "${ocaml_diag_path}" "${ocaml_stderr}"
     ensure_streaming_expected_tokens "${case_name}" "${ocaml_diag_path}"
@@ -1091,6 +1294,18 @@ PY
           case_gating="false"
           metrics_ok="false"
         fi
+      fi
+    fi
+
+    if [[ "${type_effect_case}" == "true" ]]; then
+      copy_if_exists "${ocaml_stderr}" "${typeck_dir}/stderr.ocaml.log"
+      copy_if_exists "${rust_stderr}" "${typeck_dir}/stderr.rust.log"
+    fi
+
+    if [[ "${type_effect_case}" == "true" ]]; then
+      if ! generate_type_effect_report "${case_dir}" "${case_name}"; then
+        case_gating="false"
+        metrics_ok="false"
       fi
     fi
 
@@ -1244,6 +1459,11 @@ if match_flag is not None:
         "ocaml_count": coerce_int(expected_tokens_count_ocaml) or 0,
         "rust_count": coerce_int(expected_tokens_count_rust) or 0,
     }
+
+summary["type_effect_case"] = case_name.startswith(("type_", "effect_", "ffi_"))
+typeck_requirements = load_json(case_dir / "typeck" / "requirements.json")
+if isinstance(typeck_requirements, dict):
+    summary["typeck_requirements"] = typeck_requirements
 
 (case_dir / "summary.json").write_text(
     json.dumps(summary, ensure_ascii=False, indent=2),
