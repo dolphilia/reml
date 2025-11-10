@@ -90,11 +90,6 @@ let attach_recover_extension (summary : Diagnostic.expectation_summary option)
         Diagnostic.set_extension "recover" (recover_extension_payload summary) diag
       else diag
 
-let process_lexer_error lexbuf msg =
-  let start_pos = Lexing.lexeme_start_p lexbuf in
-  let end_pos = Lexing.lexeme_end_p lexbuf in
-  Diagnostic.of_lexer_error ~message:msg ~start_pos ~end_pos
-
 let build_parser_diagnostic ~message ~start_pos ~end_pos ~summary =
   Builder.create
     ~message
@@ -103,6 +98,15 @@ let build_parser_diagnostic ~message ~start_pos ~end_pos ~summary =
     ()
   |> Builder.set_expected summary
   |> Builder.build
+
+let process_lexer_error ?streaming_summary lexbuf msg =
+  let start_pos = Lexing.lexeme_start_p lexbuf in
+  let end_pos = Lexing.lexeme_end_p lexbuf in
+  match streaming_summary with
+  | Some summary ->
+      build_parser_diagnostic ~message:msg ~start_pos ~end_pos ~summary
+      |> attach_recover_extension (Some summary)
+  | None -> Diagnostic.of_lexer_error ~message:msg ~start_pos ~end_pos
 
 let process_parser_error lexbuf message summary =
   let start_pos = Lexing.lexeme_start_p lexbuf in
@@ -201,6 +205,12 @@ let run ?(config = default_run_config) ?packrat_cache lexbuf =
       | Run_config.Auto when config.packrat ->
           warn_left_recursion diag_state lexbuf Run_config.Auto
       | _ -> ());
+      let stream_config = Run_config.Stream.of_run_config config in
+      let streaming_expected_summary =
+        if stream_config.enabled then
+          Some (Parser_expectation.streaming_expression_summary ())
+        else None
+      in
       let read_token () =
         let token, start_pos, end_pos =
           Core_parse_lex.Api.lexeme pack Lexer.read_token lexbuf
@@ -217,7 +227,10 @@ let run ?(config = default_run_config) ?packrat_cache lexbuf =
               let triple = read_token () in
               loop state (I.offer checkpoint triple)
             with Lexer.Lexer_error (msg, _) ->
-              let diag = process_lexer_error lexbuf msg in
+              let diag =
+                process_lexer_error ?streaming_summary:streaming_expected_summary
+                  lexbuf msg
+              in
               Core_reply.err ~id:None ~diagnostic:diag
                 ~consumed:(Core_state.consumed state)
                 ~committed:(Core_state.committed state))

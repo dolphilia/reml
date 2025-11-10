@@ -1003,6 +1003,24 @@ let () =
         { lexbuf.Lexing.lex_curr_p with Lexing.pos_fname = opts.input_file };
       Parser_driver.run ~config:parser_run_config lexbuf)
   in
+  let parse_output =
+    if use_streaming then
+      let streaming_summary =
+        Parser_expectation.streaming_expression_summary ()
+      in
+      let diagnostics =
+        List.map
+          (fun diag ->
+            match diag.Diagnostic.expected with
+            | Some summary
+              when not (Parser_expectation.is_streaming_placeholder summary) ->
+                diag
+            | _ -> { diag with Diagnostic.expected = Some streaming_summary })
+          parse_output.diagnostics
+      in
+      { parse_output with diagnostics }
+    else parse_output
+  in
   let stream_meta_snapshot = Cli.Stats.get_stream_meta () in
   (match opts.emit_parse_debug with
   | Some path ->

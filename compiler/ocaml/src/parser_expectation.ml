@@ -300,6 +300,13 @@ end
 
 let streaming_expression_summary () = Streaming_expected.summary ()
 
+let is_streaming_placeholder summary =
+  match summary.Diagnostic.alternatives with
+  | [] -> true
+  | [ Diagnostic.Custom label ] ->
+      String.equal label fallback_placeholder_label
+  | _ -> false
+
 let ensure_minimum_alternatives summary =
   if summary.alternatives <> [] then summary
   else

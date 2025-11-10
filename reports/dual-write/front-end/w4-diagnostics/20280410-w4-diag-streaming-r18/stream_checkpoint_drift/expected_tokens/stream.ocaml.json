@@ -1,0 +1,234 @@
+{
+  "case": "stream_checkpoint_drift",
+  "frontend": "ocaml",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/diagnostics.ocaml.json",
+  "diagnostic_count": 1,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 27,
+      "expected_tokens": [
+        {
+          "kind": "keyword",
+          "label": "continue"
+        },
+        {
+          "kind": "keyword",
+          "label": "defer"
+        },
+        {
+          "kind": "keyword",
+          "label": "do"
+        },
+        {
+          "kind": "keyword",
+          "label": "false"
+        },
+        {
+          "kind": "keyword",
+          "label": "for"
+        },
+        {
+          "kind": "keyword",
+          "label": "handle"
+        },
+        {
+          "kind": "keyword",
+          "label": "if"
+        },
+        {
+          "kind": "keyword",
+          "label": "loop"
+        },
+        {
+          "kind": "keyword",
+          "label": "match"
+        },
+        {
+          "kind": "keyword",
+          "label": "perform"
+        },
+        {
+          "kind": "keyword",
+          "label": "return"
+        },
+        {
+          "kind": "keyword",
+          "label": "self"
+        },
+        {
+          "kind": "keyword",
+          "label": "true"
+        },
+        {
+          "kind": "keyword",
+          "label": "unsafe"
+        },
+        {
+          "kind": "keyword",
+          "label": "while"
+        },
+        {
+          "kind": "token",
+          "label": "!"
+        },
+        {
+          "kind": "token",
+          "label": "("
+        },
+        {
+          "kind": "token",
+          "label": "-"
+        },
+        {
+          "kind": "token",
+          "label": "["
+        },
+        {
+          "kind": "token",
+          "label": "{"
+        },
+        {
+          "kind": "token",
+          "label": "|"
+        },
+        {
+          "kind": "class",
+          "label": "char-literal"
+        },
+        {
+          "kind": "class",
+          "label": "float-literal"
+        },
+        {
+          "kind": "class",
+          "label": "identifier"
+        },
+        {
+          "kind": "class",
+          "label": "integer-literal"
+        },
+        {
+          "kind": "class",
+          "label": "string-literal"
+        },
+        {
+          "kind": "class",
+          "label": "upper-identifier"
+        }
+      ]
+    }
+  ],
+  "first_expected_tokens": [
+    {
+      "kind": "keyword",
+      "label": "continue"
+    },
+    {
+      "kind": "keyword",
+      "label": "defer"
+    },
+    {
+      "kind": "keyword",
+      "label": "do"
+    },
+    {
+      "kind": "keyword",
+      "label": "false"
+    },
+    {
+      "kind": "keyword",
+      "label": "for"
+    },
+    {
+      "kind": "keyword",
+      "label": "handle"
+    },
+    {
+      "kind": "keyword",
+      "label": "if"
+    },
+    {
+      "kind": "keyword",
+      "label": "loop"
+    },
+    {
+      "kind": "keyword",
+      "label": "match"
+    },
+    {
+      "kind": "keyword",
+      "label": "perform"
+    },
+    {
+      "kind": "keyword",
+      "label": "return"
+    },
+    {
+      "kind": "keyword",
+      "label": "self"
+    },
+    {
+      "kind": "keyword",
+      "label": "true"
+    },
+    {
+      "kind": "keyword",
+      "label": "unsafe"
+    },
+    {
+      "kind": "keyword",
+      "label": "while"
+    },
+    {
+      "kind": "token",
+      "label": "!"
+    },
+    {
+      "kind": "token",
+      "label": "("
+    },
+    {
+      "kind": "token",
+      "label": "-"
+    },
+    {
+      "kind": "token",
+      "label": "["
+    },
+    {
+      "kind": "token",
+      "label": "{"
+    },
+    {
+      "kind": "token",
+      "label": "|"
+    },
+    {
+      "kind": "class",
+      "label": "char-literal"
+    },
+    {
+      "kind": "class",
+      "label": "float-literal"
+    },
+    {
+      "kind": "class",
+      "label": "identifier"
+    },
+    {
+      "kind": "class",
+      "label": "integer-literal"
+    },
+    {
+      "kind": "class",
+      "label": "string-literal"
+    },
+    {
+      "kind": "class",
+      "label": "upper-identifier"
+    }
+  ],
+  "first_diagnostic_index": 0,
+  "total_expected_token_count": 27
+}

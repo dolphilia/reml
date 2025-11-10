@@ -1,0 +1,547 @@
+{
+  "diagnostics": [
+    {
+      "audit": {
+        "audit_id": "cli/20251110T054021Z#0",
+        "change_set": {
+          "items": [
+            {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20280410-w4-diag-streaming-r18",
+                "--dualwrite-case-label",
+                "stream_checkpoint_drift",
+                "--streaming",
+                "--stream-checkpoint",
+                "diag-w4",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "kind": "cli-command"
+            },
+            {
+              "kind": "input",
+              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/input.reml",
+              "target": "rust-poc"
+            }
+          ],
+          "origin": "cli",
+          "policy": "rust.poc.audit.v1",
+          "source": {
+            "args": [
+              "--emit-parse-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/rust.parse-debug.json",
+              "--dualwrite-root",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+              "--dualwrite-run-label",
+              "20280410-w4-diag-streaming-r18",
+              "--dualwrite-case-label",
+              "stream_checkpoint_drift",
+              "--streaming",
+              "--stream-checkpoint",
+              "diag-w4",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/input.reml"
+            ],
+            "command": "target/debug/poc_frontend",
+            "workspace": "."
+          }
+        },
+        "metadata": {
+          "audit.channel": "cli",
+          "audit.policy.version": "rust.poc.audit.v1",
+          "audit.timestamp": "2025-11-10T05:40:21Z",
+          "cli.audit_id": "cli/20251110T054021Z#0",
+          "cli.change_set": {
+            "items": [
+              {
+                "args": [
+                  "--emit-parse-debug",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/rust.parse-debug.json",
+                  "--dualwrite-root",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                  "--dualwrite-run-label",
+                  "20280410-w4-diag-streaming-r18",
+                  "--dualwrite-case-label",
+                  "stream_checkpoint_drift",
+                  "--streaming",
+                  "--stream-checkpoint",
+                  "diag-w4",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/input.reml"
+                ],
+                "command": "target/debug/poc_frontend",
+                "kind": "cli-command"
+              },
+              {
+                "kind": "input",
+                "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/input.reml",
+                "target": "rust-poc"
+              }
+            ],
+            "origin": "cli",
+            "policy": "rust.poc.audit.v1",
+            "source": {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20280410-w4-diag-streaming-r18",
+                "--dualwrite-case-label",
+                "stream_checkpoint_drift",
+                "--streaming",
+                "--stream-checkpoint",
+                "diag-w4",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "workspace": "."
+            }
+          },
+          "event.domain": "parser",
+          "event.kind": "diagnostic",
+          "fingerprint": "rust-poc-0001",
+          "name": "compilation_unit",
+          "namespace": "rust.poc",
+          "origin": "poc_frontend",
+          "parser.core.rule.fingerprint": "rust-poc-0001",
+          "parser.core.rule.name": "compilation_unit",
+          "parser.core.rule.namespace": "rust.poc",
+          "parser.core.rule.ordinal": 0,
+          "parser.core.rule.origin": "poc_frontend",
+          "parser.runconfig": {
+            "extensions": {
+              "config": {
+                "path": null
+              },
+              "effects": {
+                "type_row_mode": "ty-integrated"
+              },
+              "lex": {
+                "identifier_profile": "unicode",
+                "profile": "strict_json"
+              },
+              "recover": {
+                "notes": false,
+                "sync_tokens": []
+              },
+              "stream": {
+                "checkpoint": "diag-w4",
+                "chunk_size": 0,
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "enabled": true,
+                "flow": {
+                  "backpressure": {
+                    "max_lag_bytes": 0
+                  },
+                  "policy": "auto"
+                },
+                "flow_max_lag": 0,
+                "flow_policy": "auto",
+                "resume_hint": "unspecified"
+              }
+            },
+            "runtime_capabilities": [],
+            "switches": {
+              "experimental_effects": false,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "trace": false
+            }
+          },
+          "parser.runconfig.extensions.lex": {
+            "identifier_profile": "unicode",
+            "profile": "strict_json"
+          },
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.recover": {
+            "notes": false,
+            "sync_tokens": []
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "checkpoint": "diag-w4",
+            "chunk_size": 0,
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "enabled": true,
+            "flow": {
+              "backpressure": {
+                "max_lag_bytes": 0
+              },
+              "policy": "auto"
+            },
+            "flow_max_lag": 0,
+            "flow_policy": "auto",
+            "resume_hint": "unspecified"
+          },
+          "parser.runconfig.extensions.stream.checkpoint": "diag-w4",
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.enabled": true,
+          "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 0,
+          "parser.runconfig.extensions.stream.flow.policy": "auto",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.switches.left_recursion": "off",
+          "parser.runconfig.switches.legacy_result": true,
+          "parser.runconfig.switches.merge_warnings": true,
+          "parser.runconfig.switches.packrat": true,
+          "parser.runconfig.switches.require_eof": false,
+          "parser.runconfig.switches.trace": false,
+          "parser.stream.checkpoint": "diag-w4",
+          "parser.stream.demand_min_bytes": 0,
+          "parser.stream.demand_preferred_bytes": 0,
+          "parser.stream.flow_max_lag": 0,
+          "parser.stream.flow_policy": "auto",
+          "parser.stream.resume_hint": "unspecified",
+          "schema.version": "2.0.0-draft"
+        }
+      },
+      "audit_metadata": {
+        "audit.channel": "cli",
+        "audit.policy.version": "rust.poc.audit.v1",
+        "audit.timestamp": "2025-11-10T05:40:21Z",
+        "cli.audit_id": "cli/20251110T054021Z#0",
+        "cli.change_set": {
+          "items": [
+            {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20280410-w4-diag-streaming-r18",
+                "--dualwrite-case-label",
+                "stream_checkpoint_drift",
+                "--streaming",
+                "--stream-checkpoint",
+                "diag-w4",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "kind": "cli-command"
+            },
+            {
+              "kind": "input",
+              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/input.reml",
+              "target": "rust-poc"
+            }
+          ],
+          "origin": "cli",
+          "policy": "rust.poc.audit.v1",
+          "source": {
+            "args": [
+              "--emit-parse-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/rust.parse-debug.json",
+              "--dualwrite-root",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+              "--dualwrite-run-label",
+              "20280410-w4-diag-streaming-r18",
+              "--dualwrite-case-label",
+              "stream_checkpoint_drift",
+              "--streaming",
+              "--stream-checkpoint",
+              "diag-w4",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/input.reml"
+            ],
+            "command": "target/debug/poc_frontend",
+            "workspace": "."
+          }
+        },
+        "event.domain": "parser",
+        "event.kind": "diagnostic",
+        "fingerprint": "rust-poc-0001",
+        "name": "compilation_unit",
+        "namespace": "rust.poc",
+        "origin": "poc_frontend",
+        "parser.core.rule.fingerprint": "rust-poc-0001",
+        "parser.core.rule.name": "compilation_unit",
+        "parser.core.rule.namespace": "rust.poc",
+        "parser.core.rule.ordinal": 0,
+        "parser.core.rule.origin": "poc_frontend",
+        "parser.runconfig": {
+          "extensions": {
+            "config": {
+              "path": null
+            },
+            "effects": {
+              "type_row_mode": "ty-integrated"
+            },
+            "lex": {
+              "identifier_profile": "unicode",
+              "profile": "strict_json"
+            },
+            "recover": {
+              "notes": false,
+              "sync_tokens": []
+            },
+            "stream": {
+              "checkpoint": "diag-w4",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": true,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "resume_hint": "unspecified"
+            }
+          },
+          "runtime_capabilities": [],
+          "switches": {
+            "experimental_effects": false,
+            "left_recursion": "off",
+            "legacy_result": true,
+            "merge_warnings": true,
+            "packrat": true,
+            "require_eof": false,
+            "trace": false
+          }
+        },
+        "parser.runconfig.extensions.lex": {
+          "identifier_profile": "unicode",
+          "profile": "strict_json"
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.recover": {
+          "notes": false,
+          "sync_tokens": []
+        },
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.stream": {
+          "checkpoint": "diag-w4",
+          "chunk_size": 0,
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "enabled": true,
+          "flow": {
+            "backpressure": {
+              "max_lag_bytes": 0
+            },
+            "policy": "auto"
+          },
+          "flow_max_lag": 0,
+          "flow_policy": "auto",
+          "resume_hint": "unspecified"
+        },
+        "parser.runconfig.extensions.stream.checkpoint": "diag-w4",
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.enabled": true,
+        "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 0,
+        "parser.runconfig.extensions.stream.flow.policy": "auto",
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.switches.left_recursion": "off",
+        "parser.runconfig.switches.legacy_result": true,
+        "parser.runconfig.switches.merge_warnings": true,
+        "parser.runconfig.switches.packrat": true,
+        "parser.runconfig.switches.require_eof": false,
+        "parser.runconfig.switches.trace": false,
+        "parser.stream.checkpoint": "diag-w4",
+        "parser.stream.demand_min_bytes": 0,
+        "parser.stream.demand_preferred_bytes": 0,
+        "parser.stream.flow_max_lag": 0,
+        "parser.stream.flow_policy": "auto",
+        "parser.stream.resume_hint": "unspecified",
+        "schema.version": "2.0.0-draft"
+      },
+      "code": null,
+      "domain": "parser",
+      "expected": {
+        "alternatives": [
+          {
+            "kind": "keyword",
+            "label": "fn"
+          }
+        ],
+        "humanized": "ここで`fn`が必要です",
+        "locale_args": [
+          "fn"
+        ],
+        "message_key": "parse.expected"
+      },
+      "extensions": {
+        "diagnostic.v2": {
+          "timestamp": "2025-11-10T05:40:21Z"
+        },
+        "effect.actual_capabilities": [],
+        "effect.capabilities": [],
+        "effect.required_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "parse": {
+          "parser_id": {
+            "fingerprint": "rust-poc-0001",
+            "name": "compilation_unit",
+            "namespace": "rust.poc",
+            "ordinal": 0,
+            "origin": "poc_frontend"
+          }
+        },
+        "recover": {
+          "expected_tokens": [
+            {
+              "kind": "keyword",
+              "label": "fn"
+            }
+          ],
+          "message": "ここで`fn`が必要です"
+        },
+        "runconfig": {
+          "experimental_effects": false,
+          "extensions": {
+            "lex": {
+              "identifier_profile": "unicode",
+              "profile": "strict_json"
+            },
+            "recover": {
+              "notes": false,
+              "sync_tokens": []
+            },
+            "stream": {
+              "checkpoint": "diag-w4",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": true,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "resume_hint": "unspecified"
+            }
+          },
+          "left_recursion": "off",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "trace": false
+        }
+      },
+      "location": {
+        "column": 1,
+        "endColumn": 7,
+        "endLine": 1,
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/input.reml",
+        "line": 1
+      },
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`fn`が必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "schema_version": "2.0.0-draft",
+      "severity": "error",
+      "timestamp": "2025-11-10T05:40:21Z"
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r18/stream_checkpoint_drift/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 279,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": [
+      {
+        "label": "parser.simple_error",
+        "span": {
+          "end": 6,
+          "start": 0
+        }
+      }
+    ]
+  },
+  "run_config": {
+    "extensions": {
+      "config": {
+        "path": null
+      },
+      "effects": {
+        "type_row_mode": "ty-integrated"
+      },
+      "lex": {
+        "identifier_profile": "unicode",
+        "profile": "strict_json"
+      },
+      "recover": {
+        "notes": false,
+        "sync_tokens": []
+      },
+      "stream": {
+        "checkpoint": "diag-w4",
+        "chunk_size": 0,
+        "demand_min_bytes": 0,
+        "demand_preferred_bytes": 0,
+        "enabled": true,
+        "flow": {
+          "backpressure": {
+            "max_lag_bytes": 0
+          },
+          "policy": "auto"
+        },
+        "flow_max_lag": 0,
+        "flow_policy": "auto",
+        "resume_hint": "unspecified"
+      }
+    },
+    "runtime_capabilities": [],
+    "switches": {
+      "experimental_effects": false,
+      "left_recursion": "off",
+      "legacy_result": true,
+      "merge_warnings": true,
+      "packrat": true,
+      "require_eof": false,
+      "trace": false
+    }
+  },
+  "stream_meta": {
+    "packrat": {
+      "approx_bytes": 279,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 1
+    }
+  }
+}

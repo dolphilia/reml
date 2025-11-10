@@ -349,6 +349,95 @@ def _as_dict(value: Optional[object]) -> Optional[Dict]:
     return None
 
 
+def _coerce_bool(value: Optional[object]) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"true", "1", "yes", "on"}:
+            return True
+        if lowered in {"false", "0", "no", "off"}:
+            return False
+    return False
+
+
+def _extract_stream_extension(
+    run_config: Optional[Dict[str, Any]]
+) -> Optional[Dict[str, Any]]:
+    if not isinstance(run_config, dict):
+        return None
+    extensions = _as_dict(run_config.get("extensions"))
+    if not extensions:
+        return None
+    return _as_dict(extensions.get("stream"))
+
+
+def _is_streaming_enabled(entry: Dict[str, Any]) -> bool:
+    run_config = _as_dict(entry.get("run_config"))
+    if not run_config:
+        diagnostics = entry.get("diagnostics")
+        if isinstance(diagnostics, list):
+            for diag in diagnostics:
+                extensions = _as_dict(diag.get("extensions"))
+                if not extensions:
+                    continue
+                run_config_ext = _as_dict(extensions.get("runconfig"))
+                if run_config_ext:
+                    run_config = run_config_ext
+                    break
+    stream_extension = _extract_stream_extension(run_config)
+    if not stream_extension:
+        return False
+    return _coerce_bool(stream_extension.get("enabled"))
+
+
+def _expected_alternative_labels(alternatives: object) -> List[str]:
+    labels: List[str] = []
+    if not isinstance(alternatives, list):
+        return labels
+    for entry in alternatives:
+        label: Optional[str] = None
+        if isinstance(entry, dict):
+            for key in ("label", "value", "text", "name"):
+                candidate = entry.get(key)
+                if isinstance(candidate, str) and candidate.strip():
+                    label = candidate.strip()
+                    break
+        elif isinstance(entry, str) and entry.strip():
+            label = entry.strip()
+        if label:
+            labels.append(label)
+    return labels
+
+
+def _streaming_expected_tokens_status(entry: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
+    parser_diag_count = 0
+    placeholder_only = False
+    for diag in iter_diagnostics(entry):
+        if not isinstance(diag, dict) or not is_parser_diagnostic(diag):
+            continue
+        parser_diag_count += 1
+        expected = diag.get("expected")
+        if not isinstance(expected, dict):
+            continue
+        labels = _expected_alternative_labels(expected.get("alternatives"))
+        if not labels:
+            continue
+        if any(label not in STREAMING_PLACEHOLDER_LABELS for label in labels):
+            return True, {"parser_diagnostics": parser_diag_count}
+        placeholder_only = True
+    failure: Dict[str, Any] = {"parser_diagnostics": parser_diag_count}
+    if placeholder_only:
+        failure["placeholder_only"] = True
+        failure["reason"] = "placeholder_only"
+    else:
+        failure["reason"] = "missing_expected_tokens"
+    return False, failure
+
+
+
 def _as_string_list(value: Optional[object]) -> Optional[List[str]]:
     if isinstance(value, list):
         result: List[str] = []
@@ -425,6 +514,8 @@ IGNORED_BRIDGE_CODES: Set[str] = {
     "bridge.stage.backpressure",
     "effects.contract.stage_mismatch",
 }
+
+STREAMING_PLACEHOLDER_LABELS = {"<streaming-placeholder>", "解析継続トークン"}
 
 
 def _filter_bridge_diagnostics(diags: Iterable[Any]) -> List[Dict[str, Any]]:
@@ -1992,6 +2083,10 @@ def collect_streaming_metrics(
     backpressure_diag_failures: List[Dict[str, Any]] = []
     stage_mismatch_covered = 0
     stage_mismatch_failures: List[Dict[str, Any]] = []
+    expected_total = 0
+    expected_passed = 0
+    expected_failures: List[Dict[str, Any]] = []
+    expected_sources: List[str] = []
 
     for path in paths:
         data = load_json(path)
@@ -2001,6 +2096,18 @@ def collect_streaming_metrics(
         baseline_result = (
             _as_dict(baseline.get("parse_result")) if baseline else None
         )
+        streaming_enabled = _is_streaming_enabled(data)
+        if streaming_enabled:
+            expected_total += 1
+            expected_sources.append(str(path))
+            expected_ok, expected_detail = _streaming_expected_tokens_status(data)
+            if expected_ok:
+                expected_passed += 1
+            else:
+                failure_entry = {"file": str(path)}
+                failure_entry.update(expected_detail)
+                expected_failures.append(failure_entry)
+
         if not streaming_result or not baseline_result:
             continue
 
@@ -2153,11 +2260,15 @@ def collect_streaming_metrics(
             }
         )
 
-    if total == 0:
+    if total == 0 and expected_total == 0:
         return None
 
-    pass_fraction = passed / total
-    status = "success" if pass_fraction == 1.0 else "error"
+    if total > 0:
+        pass_fraction = passed / total
+        status = "success" if pass_fraction == 1.0 else "error"
+    else:
+        pass_fraction = 1.0
+        status = "success"
     related_metrics: List[Dict[str, Any]] = []
     if flow_total > 0:
         auto_fraction = flow_auto / flow_total
@@ -2284,6 +2395,26 @@ def collect_streaming_metrics(
                 "status": stage_status,
                 "sources": sources,
                 "failures": stage_mismatch_failures,
+            }
+        )
+    if expected_total > 0:
+        expected_fraction = expected_passed / expected_total
+        expected_status = (
+            "success" if expected_passed == expected_total else "error"
+        )
+        related_metrics.append(
+            {
+                "metric": "ExpectedTokenCollector.streaming",
+                "total": expected_total,
+                "passed": expected_passed,
+                "failed": expected_total - expected_passed,
+                "pass_rate": 1.0
+                if expected_passed == expected_total
+                else expected_fraction,
+                "pass_fraction": expected_fraction,
+                "status": expected_status,
+                "sources": expected_sources if expected_sources else sources,
+                "failures": expected_failures,
             }
         )
 
@@ -4343,6 +4474,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         combined["parser"] = parser_metrics
     if iterator_metrics:
         combined["iterator"] = iterator_metrics
+    if streaming_metric:
+        combined["streaming"] = streaming_metric
     if effects_metric:
         combined["effects"] = effects_metric
     if type_inference_metric:
@@ -4408,6 +4541,17 @@ def main(argv: Optional[List[str]] = None) -> int:
             if isinstance(metric, dict):
                 label = metric.get("metric") or "parser.runconfig"
                 _enforce(metric, label)
+        _enforce(streaming_metric, "parser.stream.outcome_consistency")
+        if streaming_metric:
+            for related_metric in streaming_metric.get("related_metrics") or []:
+                if (
+                    isinstance(related_metric, dict)
+                    and related_metric.get("metric")
+                    == "ExpectedTokenCollector.streaming"
+                ):
+                    _enforce(
+                        related_metric, "ExpectedTokenCollector.streaming"
+                    )
         _enforce(iterator_metrics, "iterator.stage.audit_pass_rate")
         _enforce(capability_array_metric, "effect.capability_array_pass_rate")
         _enforce(effects_metric, "syntax.effect_construct_acceptance")

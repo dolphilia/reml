@@ -51,6 +51,10 @@ val streaming_expression_summary : unit -> Diagnostic.expectation_summary
     ゲートが Streaming ケースでも 1.0 になるよう、`if/loop/identifier` 等
     の代表キーワード／トークン／クラスをまとめて出力する。 *)
 
+val is_streaming_placeholder : Diagnostic.expectation_summary -> bool
+(** `ensure_minimum_alternatives` が付与した Streaming 用プレースホルダのみが
+    含まれている（または空）の場合に true を返す。 *)
+
 val humanize : Diagnostic.expectation list -> string option
 (** 期待集合を日本語ヒューマンリーダブル文字列に整形する *)
 
