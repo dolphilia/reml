@@ -1,0 +1,34 @@
+{
+  "case": "cli_merge_warnings",
+  "mode": "diag",
+  "source": "examples/cli/type_error.reml",
+  "ocaml_diag_count": 0,
+  "rust_diag_count": 1,
+  "diag_match": false,
+  "gating": true,
+  "schema_ok": true,
+  "metrics_ok": true,
+  "diag": {
+    "parser": {
+      "ocaml": null,
+      "rust": {
+        "audit_pass_fraction": 1.0,
+        "audit_pass_rate": 1.0,
+        "expected_pass_fraction": 1.0
+      }
+    },
+    "effects": {
+      "ocaml": null,
+      "rust": {
+        "regressions": 0
+      }
+    },
+    "streaming": {
+      "ocaml": null,
+      "rust": {
+        "audit_pass_fraction": 1.0
+      }
+    }
+  },
+  "tests": "compiler/ocaml/tests/test_cli_diagnostics.ml（warning merge snapshot）"
+}

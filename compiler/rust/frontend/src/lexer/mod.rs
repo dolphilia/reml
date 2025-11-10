@@ -64,6 +64,8 @@ enum RawToken {
     Semi,
     #[token("->")]
     Arrow,
+    #[token("=>")]
+    FatArrow,
     #[token("=")]
     Assign,
     #[token("+")]
@@ -124,7 +126,9 @@ pub fn lex_source(text: &str) -> LexOutput {
             Ok(RawToken::Comma) => tokens.push(Token::new(TokenKind::Comma, span)),
             Ok(RawToken::Colon) => tokens.push(Token::new(TokenKind::Colon, span)),
             Ok(RawToken::Semi) => tokens.push(Token::new(TokenKind::Semi, span)),
-            Ok(RawToken::Arrow) => tokens.push(Token::new(TokenKind::Arrow, span)),
+            Ok(RawToken::Arrow) | Ok(RawToken::FatArrow) => {
+                tokens.push(Token::new(TokenKind::Arrow, span))
+            }
             Ok(RawToken::Assign) => tokens.push(Token::new(TokenKind::Assign, span)),
             Ok(RawToken::Plus) => {
                 tokens.push(Token::with_lexeme(TokenKind::Operator, span, "+"));

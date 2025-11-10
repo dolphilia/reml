@@ -10,8 +10,8 @@ use std::ops::Range;
 pub mod ast;
 
 use crate::diagnostic::{
-    recover::ExpectedTokensSummary, DiagnosticNote, ExpectedToken, ExpectedTokenCollector,
-    FrontendDiagnostic,
+    recover::ExpectedTokensSummary, DiagnosticBuilder, DiagnosticNote, ExpectedToken,
+    ExpectedTokenCollector, FrontendDiagnostic,
 };
 use crate::error::{FrontendError, Recoverability};
 use crate::lexer::{lex_source, LexOutput};
@@ -52,8 +52,8 @@ impl ParserDriver {
         let LexOutput { tokens, errors } = lex_source(source);
         let streaming_state = StreamingState::new(config);
 
-        let mut diagnostics: Vec<FrontendDiagnostic> =
-            errors.into_iter().map(Self::error_to_diagnostic).collect();
+        let mut diagnostics = DiagnosticBuilder::with_capacity(errors.len());
+        diagnostics.extend(errors.into_iter().map(Self::error_to_diagnostic));
 
         let (ast, parse_errors) = parse_tokens(&tokens, source, &streaming_state);
         diagnostics.extend(parse_errors.into_iter().map(|err| {
@@ -73,6 +73,8 @@ impl ParserDriver {
 
         let span_trace = streaming_state.drain_span_trace();
         let stream_metrics = streaming_state.metrics_snapshot();
+
+        let diagnostics = diagnostics.into_vec();
 
         ParsedModule {
             tokens,

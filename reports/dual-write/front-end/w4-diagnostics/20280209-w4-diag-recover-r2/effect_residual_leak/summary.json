@@ -1,0 +1,34 @@
+{
+  "case": "effect_residual_leak",
+  "mode": "diag",
+  "source": "inline",
+  "ocaml_diag_count": 1,
+  "rust_diag_count": 5,
+  "diag_match": false,
+  "gating": true,
+  "schema_ok": true,
+  "metrics_ok": true,
+  "diag": {
+    "parser": {
+      "ocaml": null,
+      "rust": null
+    },
+    "effects": {
+      "ocaml": {
+        "regressions": 0
+      },
+      "rust": {
+        "regressions": 0
+      }
+    },
+    "streaming": {
+      "ocaml": {
+        "audit_pass_fraction": 1.0
+      },
+      "rust": {
+        "audit_pass_fraction": 1.0
+      }
+    }
+  },
+  "tests": "compiler/ocaml/tests/test_effect_residual.ml; docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-002-proposal.md"
+}

@@ -1,0 +1,2 @@
+fn type_mismatch(x: i64) -> i64 =
+  if x then 1 else 0

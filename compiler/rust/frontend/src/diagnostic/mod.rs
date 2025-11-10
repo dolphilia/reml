@@ -2,6 +2,7 @@
 
 use crate::error::Recoverability;
 use crate::span::Span;
+use std::collections::BTreeMap;
 
 pub mod recover;
 
@@ -130,5 +131,106 @@ impl DiagnosticNote {
     pub fn with_span(mut self, span: Span) -> Self {
         self.span = Some(span);
         self
+    }
+}
+
+/// `parser_expectation` 相当の重複排除ルールを適用しながら診断を構築するビルダー。
+#[derive(Debug, Default)]
+pub struct DiagnosticBuilder {
+    diagnostics: Vec<FrontendDiagnostic>,
+    parse_expected_index: BTreeMap<(u32, u32), usize>,
+}
+
+impl DiagnosticBuilder {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            diagnostics: Vec::with_capacity(capacity),
+            parse_expected_index: BTreeMap::new(),
+        }
+    }
+
+    pub fn push(&mut self, diagnostic: FrontendDiagnostic) {
+        if let Some(key) = Self::parse_expected_key(&diagnostic) {
+            if let Some(&index) = self.parse_expected_index.get(&key) {
+                self.diagnostics[index] = diagnostic;
+                return;
+            }
+            let index = self.diagnostics.len();
+            self.diagnostics.push(diagnostic);
+            self.parse_expected_index.insert(key, index);
+        } else {
+            self.diagnostics.push(diagnostic);
+        }
+    }
+
+    pub fn extend<I>(&mut self, diagnostics: I)
+    where
+        I: IntoIterator<Item = FrontendDiagnostic>,
+    {
+        for diagnostic in diagnostics {
+            self.push(diagnostic);
+        }
+    }
+
+    pub fn into_vec(self) -> Vec<FrontendDiagnostic> {
+        self.diagnostics
+    }
+
+    fn parse_expected_key(diagnostic: &FrontendDiagnostic) -> Option<(u32, u32)> {
+        match diagnostic.expected_message_key.as_deref()? {
+            key if key == PARSE_EXPECTED_KEY || key == PARSE_EXPECTED_EMPTY_KEY => {
+                diagnostic.span.map(|span| (span.start, span.end))
+            }
+            _ => None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DiagnosticBuilder, FrontendDiagnostic, PARSE_EXPECTED_KEY};
+    use crate::span::Span;
+
+    #[test]
+    fn builder_merges_parse_expected_with_same_span() {
+        let mut builder = DiagnosticBuilder::new();
+
+        let mut first = FrontendDiagnostic::new("first").with_span(Span::new(10, 20));
+        first.expected_message_key = Some(PARSE_EXPECTED_KEY.to_string());
+        first.expected_tokens = vec!["fn".to_string()];
+        builder.push(first);
+
+        let mut second = FrontendDiagnostic::new("second").with_span(Span::new(10, 20));
+        second.expected_message_key = Some(PARSE_EXPECTED_KEY.to_string());
+        second.expected_tokens = vec!["let".to_string()];
+        builder.push(second);
+
+        let diags = builder.into_vec();
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].message, "second");
+        assert_eq!(diags[0].expected_tokens, vec!["let".to_string()]);
+    }
+
+    #[test]
+    fn builder_keeps_distinct_keys_or_spans() {
+        let mut builder = DiagnosticBuilder::new();
+
+        let mut expected = FrontendDiagnostic::new("expected").with_span(Span::new(0, 5));
+        expected.expected_message_key = Some(PARSE_EXPECTED_KEY.to_string());
+        builder.push(expected);
+
+        builder.push(FrontendDiagnostic::new("other"));
+
+        let mut different_span =
+            FrontendDiagnostic::new("expected-other").with_span(Span::new(6, 10));
+        different_span.expected_message_key = Some(PARSE_EXPECTED_KEY.to_string());
+        builder.push(different_span);
+
+        let diags = builder.into_vec();
+        assert_eq!(diags.len(), 3);
     }
 }

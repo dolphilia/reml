@@ -1,0 +1,645 @@
+{
+  "metrics": [
+    {
+      "metric": "diagnostic.audit_presence_rate",
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "required_audit_keys": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "parser.expected_summary_presence",
+      "total": 4,
+      "passed": 1,
+      "failed": 3,
+      "pass_rate": 0.0,
+      "pass_fraction": 0.25,
+      "average_expected_tokens": 2.0,
+      "min_expected_tokens": 2,
+      "max_expected_tokens": 2,
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+      ],
+      "failures": [
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json",
+          "index": 0,
+          "code": "unknown",
+          "missing": [
+            "expected"
+          ]
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json",
+          "index": 1,
+          "code": "unknown",
+          "missing": [
+            "expected"
+          ]
+        },
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json",
+          "index": 2,
+          "code": "unknown",
+          "missing": [
+            "expected"
+          ]
+        }
+      ],
+      "schema_versions": [
+        "2.0.0-draft"
+      ],
+      "required_expected_keys": [
+        "expected",
+        "expected.alternatives"
+      ],
+      "status": "error",
+      "related_metrics": [
+        {
+          "metric": "parser.expected_tokens_per_error",
+          "total": 4,
+          "with_expected": 1,
+          "average_tokens": 2.0,
+          "min_tokens": 2,
+          "max_tokens": 2,
+          "status": "success"
+        },
+        {
+          "metric": "parser.runconfig_switch_coverage",
+          "total": 4,
+          "passed": 4,
+          "failed": 0,
+          "missing": [],
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+          ],
+          "samples": {
+            "packrat": true,
+            "left_recursion": "off",
+            "trace": false,
+            "merge_warnings": true
+          }
+        },
+        {
+          "metric": "parser.runconfig_extension_pass_rate",
+          "total": 3,
+          "passed": 3,
+          "failed": 0,
+          "missing": [],
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+          ],
+          "samples": {
+            "lex": {
+              "identifier_profile": "unicode",
+              "profile": "strict_json"
+            },
+            "recover": {
+              "notes": false,
+              "sync_tokens": []
+            },
+            "stream": {
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": true,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "resume_hint": "diag-w4"
+            }
+          }
+        },
+        {
+          "metric": "parser.stream_extension_field_coverage",
+          "total": 8,
+          "passed": 8,
+          "failed": 0,
+          "missing": [],
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+          ],
+          "samples": {
+            "enabled": true,
+            "checkpoint": "unspecified",
+            "resume_hint": "diag-w4",
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "chunk_size": 0,
+            "flow.policy": "auto",
+            "flow.backpressure.max_lag_bytes": 0
+          }
+        },
+        {
+          "metric": "lexer.shared_profile_pass_rate",
+          "total": 1,
+          "passed": 1,
+          "failed": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+          ],
+          "failures": [],
+          "samples": {
+            "profile": "unicode"
+          }
+        },
+        {
+          "metric": "lexer.identifier_profile_unicode",
+          "total": 1,
+          "unicode": 1,
+          "ascii": 0,
+          "other": 0,
+          "pass_rate": null,
+          "pass_fraction": 1.0,
+          "unicode_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+          ],
+          "profile_counts": {
+            "unicode": 1
+          },
+          "cli_switch": "--lex-profile",
+          "cli_values": [
+            "ascii",
+            "unicode"
+          ],
+          "expected_pass_fraction": 1.0
+        },
+        {
+          "metric": "parser.core_comb_rule_coverage",
+          "total": 4,
+          "covered": 4,
+          "missed": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+          ],
+          "failures": []
+        },
+        {
+          "metric": "parser.packrat_cache_hit_ratio",
+          "queries": 7,
+          "hits": 6,
+          "misses": 1,
+          "hit_ratio": 0.8571428571428571,
+          "status": "success",
+          "sources": [
+            "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+          ],
+          "anomalies": []
+        }
+      ]
+    },
+    {
+      "metric": "parser.expected_tokens_per_error",
+      "total": 4,
+      "with_expected": 1,
+      "average_tokens": 2.0,
+      "min_tokens": 2,
+      "max_tokens": 2,
+      "status": "success"
+    },
+    {
+      "metric": "parser.runconfig_switch_coverage",
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "missing": [],
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+      ],
+      "samples": {
+        "packrat": true,
+        "left_recursion": "off",
+        "trace": false,
+        "merge_warnings": true
+      }
+    },
+    {
+      "metric": "parser.runconfig_extension_pass_rate",
+      "total": 3,
+      "passed": 3,
+      "failed": 0,
+      "missing": [],
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+      ],
+      "samples": {
+        "lex": {
+          "identifier_profile": "unicode",
+          "profile": "strict_json"
+        },
+        "recover": {
+          "notes": false,
+          "sync_tokens": []
+        },
+        "stream": {
+          "checkpoint": "unspecified",
+          "chunk_size": 0,
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "enabled": true,
+          "flow": {
+            "backpressure": {
+              "max_lag_bytes": 0
+            },
+            "policy": "auto"
+          },
+          "flow_max_lag": 0,
+          "flow_policy": "auto",
+          "resume_hint": "diag-w4"
+        }
+      }
+    },
+    {
+      "metric": "parser.stream_extension_field_coverage",
+      "total": 8,
+      "passed": 8,
+      "failed": 0,
+      "missing": [],
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+      ],
+      "samples": {
+        "enabled": true,
+        "checkpoint": "unspecified",
+        "resume_hint": "diag-w4",
+        "demand_min_bytes": 0,
+        "demand_preferred_bytes": 0,
+        "chunk_size": 0,
+        "flow.policy": "auto",
+        "flow.backpressure.max_lag_bytes": 0
+      }
+    },
+    {
+      "metric": "lexer.shared_profile_pass_rate",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+      ],
+      "failures": [],
+      "samples": {
+        "profile": "unicode"
+      }
+    },
+    {
+      "metric": "lexer.identifier_profile_unicode",
+      "total": 1,
+      "unicode": 1,
+      "ascii": 0,
+      "other": 0,
+      "pass_rate": null,
+      "pass_fraction": 1.0,
+      "unicode_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+      ],
+      "profile_counts": {
+        "unicode": 1
+      },
+      "cli_switch": "--lex-profile",
+      "cli_values": [
+        "ascii",
+        "unicode"
+      ],
+      "expected_pass_fraction": 1.0
+    },
+    {
+      "metric": "parser.core_comb_rule_coverage",
+      "total": 4,
+      "covered": 4,
+      "missed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "parser.packrat_cache_hit_ratio",
+      "queries": 7,
+      "hits": 6,
+      "misses": 1,
+      "hit_ratio": 0.8571428571428571,
+      "status": "success",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+      ],
+      "anomalies": []
+    }
+  ],
+  "metric": "diagnostic.audit_presence_rate",
+  "total": 4,
+  "passed": 4,
+  "failed": 0,
+  "pass_rate": 1.0,
+  "pass_fraction": 1.0,
+  "required_audit_keys": [
+    "cli.audit_id",
+    "cli.change_set",
+    "schema.version",
+    "timestamp"
+  ],
+  "sources": [
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+  ],
+  "failures": [],
+  "diagnostic_audit": {
+    "metric": "diagnostic.audit_presence_rate",
+    "total": 4,
+    "passed": 4,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
+    "required_audit_keys": [
+      "cli.audit_id",
+      "cli.change_set",
+      "schema.version",
+      "timestamp"
+    ],
+    "sources": [
+      "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+    ],
+    "failures": []
+  },
+  "parser": {
+    "metric": "parser.expected_summary_presence",
+    "total": 4,
+    "passed": 1,
+    "failed": 3,
+    "pass_rate": 0.0,
+    "pass_fraction": 0.25,
+    "average_expected_tokens": 2.0,
+    "min_expected_tokens": 2,
+    "max_expected_tokens": 2,
+    "sources": [
+      "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+    ],
+    "failures": [
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json",
+        "index": 0,
+        "code": "unknown",
+        "missing": [
+          "expected"
+        ]
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json",
+        "index": 1,
+        "code": "unknown",
+        "missing": [
+          "expected"
+        ]
+      },
+      {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json",
+        "index": 2,
+        "code": "unknown",
+        "missing": [
+          "expected"
+        ]
+      }
+    ],
+    "schema_versions": [
+      "2.0.0-draft"
+    ],
+    "required_expected_keys": [
+      "expected",
+      "expected.alternatives"
+    ],
+    "status": "error",
+    "related_metrics": [
+      {
+        "metric": "parser.expected_tokens_per_error",
+        "total": 4,
+        "with_expected": 1,
+        "average_tokens": 2.0,
+        "min_tokens": 2,
+        "max_tokens": 2,
+        "status": "success"
+      },
+      {
+        "metric": "parser.runconfig_switch_coverage",
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "missing": [],
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "status": "success",
+        "sources": [
+          "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+        ],
+        "samples": {
+          "packrat": true,
+          "left_recursion": "off",
+          "trace": false,
+          "merge_warnings": true
+        }
+      },
+      {
+        "metric": "parser.runconfig_extension_pass_rate",
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "missing": [],
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "status": "success",
+        "sources": [
+          "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+        ],
+        "samples": {
+          "lex": {
+            "identifier_profile": "unicode",
+            "profile": "strict_json"
+          },
+          "recover": {
+            "notes": false,
+            "sync_tokens": []
+          },
+          "stream": {
+            "checkpoint": "unspecified",
+            "chunk_size": 0,
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "enabled": true,
+            "flow": {
+              "backpressure": {
+                "max_lag_bytes": 0
+              },
+              "policy": "auto"
+            },
+            "flow_max_lag": 0,
+            "flow_policy": "auto",
+            "resume_hint": "diag-w4"
+          }
+        }
+      },
+      {
+        "metric": "parser.stream_extension_field_coverage",
+        "total": 8,
+        "passed": 8,
+        "failed": 0,
+        "missing": [],
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "status": "success",
+        "sources": [
+          "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+        ],
+        "samples": {
+          "enabled": true,
+          "checkpoint": "unspecified",
+          "resume_hint": "diag-w4",
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "chunk_size": 0,
+          "flow.policy": "auto",
+          "flow.backpressure.max_lag_bytes": 0
+        }
+      },
+      {
+        "metric": "lexer.shared_profile_pass_rate",
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "status": "success",
+        "sources": [
+          "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+        ],
+        "failures": [],
+        "samples": {
+          "profile": "unicode"
+        }
+      },
+      {
+        "metric": "lexer.identifier_profile_unicode",
+        "total": 1,
+        "unicode": 1,
+        "ascii": 0,
+        "other": 0,
+        "pass_rate": null,
+        "pass_fraction": 1.0,
+        "unicode_fraction": 1.0,
+        "status": "success",
+        "sources": [
+          "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+        ],
+        "profile_counts": {
+          "unicode": 1
+        },
+        "cli_switch": "--lex-profile",
+        "cli_values": [
+          "ascii",
+          "unicode"
+        ],
+        "expected_pass_fraction": 1.0
+      },
+      {
+        "metric": "parser.core_comb_rule_coverage",
+        "total": 4,
+        "covered": 4,
+        "missed": 0,
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "status": "success",
+        "sources": [
+          "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+        ],
+        "failures": []
+      },
+      {
+        "metric": "parser.packrat_cache_hit_ratio",
+        "queries": 7,
+        "hits": 6,
+        "misses": 1,
+        "hit_ratio": 0.8571428571428571,
+        "status": "success",
+        "sources": [
+          "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+        ],
+        "anomalies": []
+      }
+    ]
+  },
+  "schema_versions": [
+    "2.0.0-draft"
+  ],
+  "diagnostics": {
+    "total": 4,
+    "error": 4,
+    "warning": 0,
+    "info": 0,
+    "hint": 0,
+    "other": 0,
+    "sources": [
+      "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280209-w4-diag-recover-r2/lsp_diagnostic_stream/diagnostics.rust.json"
+    ],
+    "info_fraction": 0.0,
+    "hint_fraction": 0.0,
+    "info_hint_ratio": 0.0,
+    "parser_total": 4,
+    "parser_expected": 1,
+    "parser_expected_ratio": 0.25,
+    "parser_expected_tokens_avg": 2.0
+  },
+  "enforcement": {
+    "failures": [
+      "parser.expected_summary_presence < 1.0"
+    ],
+    "require_success": true
+  }
+}
