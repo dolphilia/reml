@@ -135,25 +135,45 @@ impl DiagnosticNote {
 }
 
 /// `parser_expectation` 相当の重複排除ルールを適用しながら診断を構築するビルダー。
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct DiagnosticBuilder {
     diagnostics: Vec<FrontendDiagnostic>,
     parse_expected_index: BTreeMap<(u32, u32), usize>,
+    merge_parse_expected: bool,
 }
 
 impl DiagnosticBuilder {
     pub fn new() -> Self {
-        Self::default()
+        Self::with_merge_parse_expected(true)
     }
 
-    pub fn with_capacity(capacity: usize) -> Self {
+    pub fn with_merge_parse_expected(merge: bool) -> Self {
         Self {
-            diagnostics: Vec::with_capacity(capacity),
+            diagnostics: Vec::new(),
             parse_expected_index: BTreeMap::new(),
+            merge_parse_expected: merge,
         }
     }
 
+    pub fn with_capacity(capacity: usize) -> Self {
+        let mut builder = Self::with_merge_parse_expected(true);
+        builder.diagnostics = Vec::with_capacity(capacity);
+        builder
+    }
+
     pub fn push(&mut self, diagnostic: FrontendDiagnostic) {
+        if self.merge_parse_expected {
+            if let Some(key) = Self::parse_expected_key(&diagnostic) {
+                if let Some(&index) = self.parse_expected_index.get(&key) {
+                    self.diagnostics[index] = diagnostic;
+                    return;
+                }
+                let index = self.diagnostics.len();
+                self.diagnostics.push(diagnostic);
+                self.parse_expected_index.insert(key, index);
+                return;
+            }
+        }
         if let Some(key) = Self::parse_expected_key(&diagnostic) {
             if let Some(&index) = self.parse_expected_index.get(&key) {
                 self.diagnostics[index] = diagnostic;

@@ -29,6 +29,10 @@ pub struct TypecheckConfig {
     pub recover: RecoverConfig,
     /// 実験的効果を許可するかどうか。
     pub experimental_effects: bool,
+    /// CLI から指定された Runtime Capabilities。
+    pub runtime_capabilities: Vec<String>,
+    /// 型推論で詳細トレースを出力するかどうか。
+    pub trace_enabled: bool,
 }
 
 impl TypecheckConfig {
@@ -45,6 +49,8 @@ impl Default for TypecheckConfig {
             type_row_mode: TypeRowMode::Integrated,
             recover: RecoverConfig::default(),
             experimental_effects: false,
+            runtime_capabilities: Vec::new(),
+            trace_enabled: false,
         }
     }
 }
@@ -56,6 +62,8 @@ pub struct TypecheckConfigBuilder {
     type_row_mode: Option<TypeRowMode>,
     recover: Option<RecoverConfig>,
     experimental_effects: Option<bool>,
+    runtime_capabilities: Option<Vec<String>>,
+    trace_enabled: Option<bool>,
 }
 
 impl TypecheckConfigBuilder {
@@ -83,12 +91,24 @@ impl TypecheckConfigBuilder {
         self
     }
 
+    pub fn runtime_capabilities(mut self, capabilities: Vec<String>) -> Self {
+        self.runtime_capabilities = Some(capabilities);
+        self
+    }
+
+    pub fn trace_enabled(mut self, enabled: bool) -> Self {
+        self.trace_enabled = Some(enabled);
+        self
+    }
+
     pub fn build(self) -> TypecheckConfig {
         TypecheckConfig {
             effect_context: self.effect_context.unwrap_or_default(),
             type_row_mode: self.type_row_mode.unwrap_or(TypeRowMode::Integrated),
             recover: self.recover.unwrap_or_default(),
             experimental_effects: self.experimental_effects.unwrap_or(false),
+            runtime_capabilities: self.runtime_capabilities.unwrap_or_else(Vec::new),
+            trace_enabled: self.trace_enabled.unwrap_or(false),
         }
     }
 }
@@ -206,9 +226,9 @@ impl FromStr for TypeRowMode {
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value.trim().to_ascii_lowercase().as_str() {
-            "metadata-only" | "metadata_only" => Ok(TypeRowMode::MetadataOnly),
-            "dual-write" | "dual_write" | "dual" => Ok(TypeRowMode::DualWrite),
-            "integrated" | "full" | "default" => Ok(TypeRowMode::Integrated),
+            "metadata-only" | "metadata_only" | "metadata" => Ok(TypeRowMode::MetadataOnly),
+            "dual-write" | "dual_write" | "dual" | "dualwrite" => Ok(TypeRowMode::DualWrite),
+            "integrated" | "full" | "default" | "ty-integrated" => Ok(TypeRowMode::Integrated),
             other => Err(TypeRowModeParseError(other.to_string())),
         }
     }

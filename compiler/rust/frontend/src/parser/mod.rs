@@ -40,6 +40,11 @@ impl ParsedModule {
     }
 }
 
+pub struct ParserOptions {
+    pub streaming: StreamingStateConfig,
+    pub merge_parse_expected: bool,
+}
+
 /// Rust フロントエンドのパーサドライバ。
 pub struct ParserDriver;
 
@@ -49,10 +54,24 @@ impl ParserDriver {
     }
 
     pub fn parse_with_config(source: &str, config: StreamingStateConfig) -> ParsedModule {
-        let LexOutput { tokens, errors } = lex_source(source);
-        let streaming_state = StreamingState::new(config);
+        Self::parse_with_options(
+            source,
+            ParserOptions {
+                streaming: config,
+                merge_parse_expected: true,
+            },
+        )
+    }
 
-        let mut diagnostics = DiagnosticBuilder::with_capacity(errors.len());
+    pub fn parse_with_options(source: &str, options: ParserOptions) -> ParsedModule {
+        let LexOutput { tokens, errors } = lex_source(source);
+        let streaming_state = StreamingState::new(options.streaming);
+
+        let mut diagnostics = if options.merge_parse_expected {
+            DiagnosticBuilder::with_capacity(errors.len())
+        } else {
+            DiagnosticBuilder::with_merge_parse_expected(false)
+        };
         diagnostics.extend(errors.into_iter().map(Self::error_to_diagnostic));
 
         let (ast, parse_errors) = parse_tokens(&tokens, source, &streaming_state);
@@ -183,7 +202,7 @@ fn build_expected_summary(err: &Simple<TokenKind>) -> ExpectedTokensSummary {
                 None => collector.push(ExpectedToken::eof()),
             }
         }
-    }
+}
     collector.summarize()
 }
 
@@ -554,6 +573,9 @@ mod driver {
         assert_eq!(diag.message, "構文エラー: 入力を解釈できません");
         assert!(!diag.notes.is_empty());
         assert_eq!(diag.notes[0].label, "recover.expected_tokens");
-        assert_eq!(diag.notes[0].message, "ここで`)` または `,`のいずれかが必要です");
+        assert_eq!(
+            diag.notes[0].message,
+            "ここで`)` または `,`のいずれかが必要です"
+        );
     }
 }

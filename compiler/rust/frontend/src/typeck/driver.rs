@@ -3,8 +3,6 @@ use std::collections::HashMap;
 use serde::Serialize;
 
 use crate::parser::ast::{Expr, Function, Module};
-use crate::token::TokenKind;
-
 use super::env::TypecheckConfig;
 use super::metrics::TypecheckMetrics;
 
@@ -13,9 +11,16 @@ use super::metrics::TypecheckMetrics;
 pub struct TypecheckDriver;
 
 impl TypecheckDriver {
-    pub fn infer_module(module: &Module, _config: &TypecheckConfig) -> TypecheckReport {
+    pub fn infer_module(module: &Module, config: &TypecheckConfig) -> TypecheckReport {
         let mut metrics = TypecheckMetrics::default();
         let mut functions = Vec::new();
+
+        if config.trace_enabled {
+            eprintln!(
+                "[TRACE] typecheck.start functions={}",
+                module.functions.len()
+            );
+        }
 
         for function in &module.functions {
             metrics.record_function();
@@ -35,12 +40,20 @@ impl TypecheckDriver {
             });
         }
 
+        if config.trace_enabled {
+            eprintln!("[TRACE] typecheck.finish");
+        }
+
         TypecheckReport { metrics, functions }
     }
 
-    pub fn infer_fallback_from_source(source: &str) -> TypecheckReport {
+    pub fn infer_fallback_from_source(source: &str, config: &TypecheckConfig) -> TypecheckReport {
         let mut metrics = TypecheckMetrics::default();
         let mut functions = Vec::new();
+
+        if config.trace_enabled {
+            eprintln!("[TRACE] typecheck.fallback");
+        }
 
         for name in extract_top_level_functions(source) {
             metrics.record_function();
