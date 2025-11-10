@@ -9,7 +9,10 @@ use std::ops::Range;
 
 pub mod ast;
 
-use crate::diagnostic::{DiagnosticNote, FrontendDiagnostic};
+use crate::diagnostic::{
+    recover::ExpectedTokensSummary, DiagnosticNote, ExpectedToken, ExpectedTokenCollector,
+    FrontendDiagnostic,
+};
 use crate::error::{FrontendError, Recoverability};
 use crate::lexer::{lex_source, LexOutput};
 use crate::span::Span;
@@ -54,18 +57,16 @@ impl ParserDriver {
 
         let (ast, parse_errors) = parse_tokens(&tokens, source, &streaming_state);
         diagnostics.extend(parse_errors.into_iter().map(|err| {
-            let (message, recover_message, expected_tokens) = err.1;
-            let mut diagnostic = FrontendDiagnostic::new(message);
+            let formatted = err.1;
+            let mut diagnostic = FrontendDiagnostic::new(formatted.message.clone());
             if let Some(span) = err.0 {
                 diagnostic = diagnostic.with_span(span);
             }
-            diagnostic =
-                diagnostic.set_expected_tokens(expected_tokens, Some(recover_message.clone()));
-            if !recover_message.is_empty() {
-                diagnostic.add_note(DiagnosticNote::new(
-                    "recover.expected_tokens",
-                    recover_message.clone(),
-                ));
+            diagnostic = diagnostic.apply_expected_summary(&formatted.summary);
+            if formatted.summary.has_alternatives() {
+                if let Some(text) = formatted.summary.humanized.clone() {
+                    diagnostic.add_note(DiagnosticNote::new("recover.expected_tokens", text));
+                }
             }
             diagnostic.with_recoverability(Recoverability::Recoverable)
         }));
@@ -116,14 +117,16 @@ impl ParserDriver {
     }
 }
 
+struct FormattedSimpleError {
+    message: String,
+    summary: ExpectedTokensSummary,
+}
+
 fn parse_tokens(
     tokens: &[Token],
     source: &str,
     streaming_state: &StreamingState,
-) -> (
-    Option<Module>,
-    Vec<(Option<Span>, (String, String, Vec<String>))>,
-) {
+) -> (Option<Module>, Vec<(Option<Span>, FormattedSimpleError)>) {
     let token_pairs: Vec<_> = tokens
         .iter()
         .filter(|token| token.kind != TokenKind::Whitespace)
@@ -141,9 +144,9 @@ fn parse_tokens(
         .into_iter()
         .map(|err| {
             let span = Some(convert_range(err.span()));
-            let (message, recover, expected_tokens) = format_simple_error(&err);
-            record_streaming_error(streaming_state, &err, tokens, &message, &recover);
-            (span, (message, recover, expected_tokens))
+            let formatted = format_simple_error(&err);
+            record_streaming_error(streaming_state, &err, tokens, &formatted);
+            (span, formatted)
         })
         .collect();
 
@@ -154,19 +157,8 @@ fn convert_range(range: Range<usize>) -> Span {
     Span::new(range.start as u32, range.end as u32)
 }
 
-fn format_simple_error(err: &Simple<TokenKind>) -> (String, String, Vec<String>) {
-    let expected_tokens = expected_token_labels(err);
-    let recover_message = if expected_tokens.is_empty() {
-        String::new()
-    } else {
-        let formatted = expected_tokens
-            .iter()
-            .map(|token| format!("`{}`", token))
-            .collect::<Vec<_>>()
-            .join("、");
-        format!("ここで{}のいずれかが必要です", formatted)
-    };
-
+fn format_simple_error(err: &Simple<TokenKind>) -> FormattedSimpleError {
+    let summary = build_expected_summary(err);
     let message = match err.reason() {
         SimpleReason::Unexpected | SimpleReason::Unclosed { .. } => {
             "構文エラー: 入力を解釈できません".to_string()
@@ -174,44 +166,48 @@ fn format_simple_error(err: &Simple<TokenKind>) -> (String, String, Vec<String>)
         SimpleReason::Custom(msg) => msg.clone(),
     };
 
-    (message, recover_message.clone(), expected_tokens)
+    FormattedSimpleError { message, summary }
 }
 
-fn expected_token_labels(err: &Simple<TokenKind>) -> Vec<String> {
-    err.expected()
-        .flat_map(|opt| match opt {
-            Some(kind) => token_kind_labels(&kind),
-            None => vec!["EOF".to_string()],
-        })
-        .collect()
+fn build_expected_summary(err: &Simple<TokenKind>) -> ExpectedTokensSummary {
+    let mut collector = ExpectedTokenCollector::new();
+    for expectation in err.expected() {
+        match expectation {
+            Some(kind) => collector.extend(token_kind_expectations(&kind)),
+            None => collector.push(ExpectedToken::eof()),
+        }
+    }
+    collector.summarize()
 }
 
-fn token_kind_labels(kind: &TokenKind) -> Vec<String> {
+fn token_kind_expectations(kind: &TokenKind) -> Vec<ExpectedToken> {
+    use ExpectedToken as ET;
+
     match kind {
-        TokenKind::KeywordFn => vec!["fn".to_string()],
-        TokenKind::KeywordLet => vec!["let".to_string()],
-        TokenKind::KeywordModule => vec!["module".to_string()],
-        TokenKind::KeywordEffect => vec!["effect".to_string()],
-        TokenKind::Identifier => vec!["識別子".to_string()],
-        TokenKind::IntLiteral => vec!["整数リテラル".to_string()],
-        TokenKind::FloatLiteral => vec!["浮動小数リテラル".to_string()],
-        TokenKind::StringLiteral => vec!["文字列リテラル".to_string()],
-        TokenKind::LParen => vec!["(".to_string()],
-        TokenKind::RParen => vec![")".to_string()],
-        TokenKind::LBrace => vec!["{".to_string()],
-        TokenKind::RBrace => vec!["}".to_string()],
-        TokenKind::LBracket => vec!["[".to_string()],
-        TokenKind::RBracket => vec!["]".to_string()],
-        TokenKind::Comma => vec![",".to_string()],
-        TokenKind::Colon => vec![":".to_string()],
-        TokenKind::Semi => vec![";".to_string()],
-        TokenKind::Arrow => vec!["->".to_string()],
-        TokenKind::Assign => vec!["=".to_string()],
-        TokenKind::Operator => vec!["+".to_string()],
-        TokenKind::Comment => vec!["コメント".to_string()],
-        TokenKind::Whitespace => vec!["空白".to_string()],
-        TokenKind::EndOfFile => vec!["EOF".to_string()],
-        TokenKind::Unknown => vec!["未知のトークン".to_string()],
+        TokenKind::KeywordFn => vec![ET::keyword("fn")],
+        TokenKind::KeywordLet => vec![ET::keyword("let")],
+        TokenKind::KeywordModule => vec![ET::keyword("module")],
+        TokenKind::KeywordEffect => vec![ET::keyword("effect")],
+        TokenKind::Identifier => vec![ET::class("識別子")],
+        TokenKind::IntLiteral => vec![ET::class("整数リテラル")],
+        TokenKind::FloatLiteral => vec![ET::class("浮動小数リテラル")],
+        TokenKind::StringLiteral => vec![ET::class("文字列リテラル")],
+        TokenKind::LParen => vec![ET::token("(")],
+        TokenKind::RParen => vec![ET::token(")")],
+        TokenKind::LBrace => vec![ET::token("{")],
+        TokenKind::RBrace => vec![ET::token("}")],
+        TokenKind::LBracket => vec![ET::token("[")],
+        TokenKind::RBracket => vec![ET::token("]")],
+        TokenKind::Comma => vec![ET::token(",")],
+        TokenKind::Colon => vec![ET::token(":")],
+        TokenKind::Semi => vec![ET::token(";")],
+        TokenKind::Arrow => vec![ET::token("->")],
+        TokenKind::Assign => vec![ET::token("=")],
+        TokenKind::Operator => vec![ET::token("+")],
+        TokenKind::Comment => vec![ET::class("コメント")],
+        TokenKind::Whitespace => vec![ET::class("空白")],
+        TokenKind::EndOfFile => vec![ET::eof()],
+        TokenKind::Unknown => vec![ET::custom("未知のトークン")],
     }
 }
 
@@ -331,8 +327,7 @@ fn record_streaming_error(
     streaming_state: &StreamingState,
     err: &Simple<TokenKind>,
     tokens: &[Token],
-    message: &str,
-    recover_message: &str,
+    formatted: &FormattedSimpleError,
 ) {
     let span = convert_range(err.span());
     streaming_state.push_span_trace(Some(SmolStr::new_inline("parser.simple_error")), span);
@@ -364,17 +359,17 @@ fn record_streaming_error(
         });
     }
 
-    let expectation_labels = expected_token_labels(err);
+    let expectation_labels = formatted.summary.tokens();
     let expectations: Vec<StreamingExpectation> = expectation_labels
         .iter()
         .map(|label| StreamingExpectation {
             description: SmolStr::from(label.as_str()),
         })
         .collect();
-    let summary_humanized = if !recover_message.is_empty() {
-        Some(SmolStr::from(recover_message))
-    } else if !message.is_empty() {
-        Some(SmolStr::from(message))
+    let summary_humanized = if let Some(text) = formatted.summary.humanized.as_ref() {
+        Some(SmolStr::from(text.as_str()))
+    } else if !formatted.message.is_empty() {
+        Some(SmolStr::from(formatted.message.as_str()))
     } else {
         None
     };
@@ -503,6 +498,6 @@ mod driver {
         assert_eq!(diag.message, "構文エラー: 入力を解釈できません");
         assert!(!diag.notes.is_empty());
         assert_eq!(diag.notes[0].label, "recover.expected_tokens");
-        assert_eq!(diag.notes[0].message, "ここで`)`、`,`のいずれかが必要です");
+        assert_eq!(diag.notes[0].message, "ここで`)` または `,`のいずれかが必要です");
     }
 }
