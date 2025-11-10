@@ -43,7 +43,7 @@ type parse_result_with_rest = {
   rest : string option;
 }
 
-let expectation_kind_and_value (expectation : Diagnostic.expectation) =
+let expectation_hint_and_token (expectation : Diagnostic.expectation) =
   match expectation with
   | Diagnostic.Token text -> ("token", text)
   | Diagnostic.Keyword text -> ("keyword", text)
@@ -56,8 +56,14 @@ let expectation_kind_and_value (expectation : Diagnostic.expectation) =
   | Diagnostic.Eof -> ("eof", "EOF")
 
 let expectation_to_json expectation =
-  let kind, value = expectation_kind_and_value expectation in
-  `Assoc [ ("kind", `String kind); ("label", `String value) ]
+  let hint, token = expectation_hint_and_token expectation in
+  `Assoc
+    [
+      ("token", `String token);
+      ("label", `String token);
+      ("hint", `String hint);
+      ("kind", `String hint);
+    ]
 
 let recover_extension_payload (summary : Diagnostic.expectation_summary) =
   let tokens =

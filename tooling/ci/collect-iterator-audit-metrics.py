@@ -400,7 +400,7 @@ def _expected_alternative_labels(alternatives: object) -> List[str]:
     for entry in alternatives:
         label: Optional[str] = None
         if isinstance(entry, dict):
-            for key in ("label", "value", "text", "name"):
+            for key in ("token", "label", "value", "text", "name"):
                 candidate = entry.get(key)
                 if isinstance(candidate, str) and candidate.strip():
                     label = candidate.strip()

@@ -356,7 +356,12 @@ except Exception:
     sys.exit(0)
 
 placeholders = [
-    {"kind": "token", "value": "<streaming-placeholder>"},
+    {
+        "token": "<streaming-placeholder>",
+        "label": "<streaming-placeholder>",
+        "hint": "token",
+        "kind": "token",
+    },
 ]
 
 changed = False
@@ -885,17 +890,22 @@ if isinstance(diagnostics, list):
                     raw_tokens = recover.get("expected_tokens")
                     if isinstance(raw_tokens, list):
                         for token in raw_tokens:
-                            if not isinstance(token, dict):
-                                continue
-                            entry = {}
-                            kind = token.get("kind")
-                            label = token.get("label") or token.get("value")
-                            if kind is not None:
-                                entry["kind"] = str(kind)
-                            if label is not None:
-                                entry["label"] = str(label)
-                            if entry:
-                                tokens.append(entry)
+                            if isinstance(token, dict):
+                                entry = {}
+                                token_value = (
+                                    token.get("token")
+                                    or token.get("label")
+                                    or token.get("value")
+                                )
+                                hint_value = token.get("hint") or token.get("kind")
+                                if token_value is not None:
+                                    entry["token"] = str(token_value)
+                                if hint_value is not None:
+                                    entry["hint"] = str(hint_value)
+                                if entry:
+                                    tokens.append(entry)
+                            elif isinstance(token, str):
+                                tokens.append({"token": token, "hint": "token"})
         entries.append(
             {
                 "index": idx,
@@ -950,10 +960,14 @@ def normalized_tokens(payload):
         if isinstance(token, dict):
             normalized.append(
                 {
-                    "kind": token.get("kind"),
-                    "label": token.get("label"),
+                    "token": token.get("token")
+                    or token.get("label")
+                    or token.get("value"),
+                    "hint": token.get("hint") or token.get("kind"),
                 }
             )
+        elif isinstance(token, str):
+            normalized.append({"token": token, "hint": "token"})
     return normalized, payload.get("first_diagnostic_index")
 
 ocaml_payload = load_payload(ocaml_path)
@@ -1237,12 +1251,17 @@ for idx in "${!CASE_ENTRIES[@]}"; do
       fi
     fi
 
+    expected_tokens_prefix_path=""
     if [[ -n "${EXPECTED_TOKENS_PREFIX}" ]]; then
       if [[ "${EXPECTED_TOKENS_PREFIX}" == /* ]]; then
         expected_tokens_prefix_path="${EXPECTED_TOKENS_PREFIX}"
       else
         expected_tokens_prefix_path="${case_dir}/${EXPECTED_TOKENS_PREFIX}"
       fi
+    elif is_streaming_case "${case_name}"; then
+      expected_tokens_prefix_path="${case_dir}/expected_tokens/${case_name}"
+    fi
+    if [[ -n "${expected_tokens_prefix_path}" ]]; then
       ocaml_expected_tokens_path="${expected_tokens_prefix_path}.ocaml.json"
       rust_expected_tokens_path="${expected_tokens_prefix_path}.rust.json"
       expected_tokens_diff_path="${expected_tokens_prefix_path}.diff.json"

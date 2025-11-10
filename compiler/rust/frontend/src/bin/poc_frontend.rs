@@ -1074,6 +1074,16 @@ fn is_streaming_placeholder_lexer(diag: &FrontendDiagnostic) -> bool {
         && diag.notes.iter().all(|note| note.label == "lexer")
 }
 
+fn expected_token_object(token: &str) -> Value {
+    let hint = classify_expected_token(token);
+    json!({
+        "token": token,
+        "label": token,
+        "hint": hint,
+        "kind": hint,
+    })
+}
+
 fn build_recover_extension(diag: &FrontendDiagnostic) -> Option<Value> {
     if diag.has_expected_tokens() {
         let message = diag
@@ -1083,12 +1093,7 @@ fn build_recover_extension(diag: &FrontendDiagnostic) -> Option<Value> {
         let tokens: Vec<Value> = diag
             .expected_tokens
             .iter()
-            .map(|token| {
-                json!({
-                    "kind": classify_expected_token(token),
-                    "label": token,
-                })
-            })
+            .map(|token| expected_token_object(token))
             .collect();
         Some(json!({
             "message": message,
@@ -1119,12 +1124,7 @@ fn build_expected_field(diag: &FrontendDiagnostic) -> Value {
     let alternatives: Vec<Value> = diag
         .expected_tokens
         .iter()
-        .map(|token| {
-            json!({
-                "kind": classify_expected_token(token),
-                "label": token,
-            })
-        })
+        .map(|token| expected_token_object(token))
         .collect();
     let humanized = diag
         .expected_humanized

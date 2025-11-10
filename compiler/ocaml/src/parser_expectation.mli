@@ -63,6 +63,27 @@ val ensure_minimum_alternatives :
 (** `expected.alternatives` が空の場合にプレースホルダ候補を追加し、
     `parser.expected_summary_presence` メトリクスで欠落しないよう補正する。 *)
 
+module ExpectedTokenCollector : sig
+  type t
+
+  val create : unit -> t
+  (** Streaming 向けに期待トークンを保持する Collector を生成する。 *)
+
+  val clear : t -> unit
+  (** Collector に保持されている期待トークン情報を破棄する。 *)
+
+  val record_summary :
+    t -> Diagnostic.expectation_summary -> unit
+  (** `expected.alternatives` を含むサマリを Collector へ記録する。 *)
+
+  val record_expectations :
+    t -> Diagnostic.expectation list -> unit
+  (** Expectation 配列から Collector を更新する（空配列は無視）。 *)
+
+  val last_summary : t -> Diagnostic.expectation_summary option
+  (** 直近に記録したサマリ（存在する場合）を返す。 *)
+end
+
 module Packrat : sig
   type t
 

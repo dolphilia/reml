@@ -14,6 +14,7 @@ type session = {
   diag_state : Parser_diag_state.t;
   core_state : Core_state.t;
   packrat_cache : packrat_cache;
+  expected_collector : Parser_expectation.ExpectedTokenCollector.t;
 }
 
 let config t = t.config
@@ -42,7 +43,8 @@ let create_session ?packrat_cache config =
     | None, false -> None
   in
   let core_state = Core_state.create ~config ~diag:diag_state in
-  { config; diag_state; core_state; packrat_cache }
+  let expected_collector = Parser_expectation.ExpectedTokenCollector.create () in
+  { config; diag_state; core_state; packrat_cache; expected_collector }
 
 let effective_require_eof config =
   match Run_config.Config.find config with
@@ -63,6 +65,7 @@ let record_packrat_status state = function
   | `Bypassed -> ()
 
 let expectation_summary_for_checkpoint session checkpoint =
+  let collector = session.expected_collector in
   let collection, status =
     Parser_expectation.collect ~checkpoint ~packrat:session.packrat_cache
   in
@@ -81,14 +84,26 @@ let expectation_summary_for_checkpoint session checkpoint =
         warm_consumers
   | _ -> ());
   let summary =
-    if collection.expectations <> [] then collection.summary
+    if collection.expectations <> [] then (
+      Parser_expectation.ExpectedTokenCollector.record_expectations collector
+        collection.expectations;
+      collection.summary)
     else
-      match Parser_diag_state.farthest_snapshot session.diag_state with
-      | Some snapshot -> summarize_snapshot snapshot
-      | None -> Parser_expectation.empty_summary
+      match Parser_expectation.ExpectedTokenCollector.last_summary collector with
+      | Some cached -> cached
+      | None -> (
+          match Parser_diag_state.farthest_snapshot session.diag_state with
+          | Some snapshot ->
+              let snapshot_summary = summarize_snapshot snapshot in
+              Parser_expectation.ExpectedTokenCollector.record_summary collector
+                snapshot_summary;
+              snapshot_summary
+          | None -> Parser_expectation.empty_summary)
   in
   let summary = Parser_expectation.ensure_minimum_alternatives summary in
-  streaming_summary_if_needed session summary
+  let summary = streaming_summary_if_needed session summary in
+  Parser_expectation.ExpectedTokenCollector.record_summary collector summary;
+  summary
 
 let register_diagnostic session diagnostic ~consumed ~committed =
   let diagnostic =
@@ -106,6 +121,11 @@ let register_diagnostic session diagnostic ~consumed ~committed =
   let enriched =
     Diagnostic.with_parser_runconfig_metadata ~config:session.config diagnostic
   in
+  (match enriched.Diagnostic.expected with
+  | Some summary ->
+      Parser_expectation.ExpectedTokenCollector.record_summary
+        session.expected_collector summary
+  | None -> ());
   Parser_diag_state.record_diagnostic session.diag_state ~diagnostic:enriched
     ~committed ~consumed
 

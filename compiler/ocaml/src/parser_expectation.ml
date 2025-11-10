@@ -317,6 +317,26 @@ let ensure_minimum_alternatives summary =
     in
     { summary with alternatives = [ fallback_placeholder ]; humanized }
 
+module ExpectedTokenCollector = struct
+  type t = { mutable last : expectation_summary option }
+
+  let create () = { last = None }
+
+  let clear t = t.last <- None
+
+  let record_summary t summary =
+    if summary.alternatives <> [] then t.last <- Some summary
+
+  let record_expectations t expectations =
+    match expectations with
+    | [] -> ()
+    | _ ->
+        let summary = summarize_with_defaults expectations in
+        record_summary t summary
+
+  let last_summary t = t.last
+end
+
 let keyword_samples =
   [
     Token.MODULE;
