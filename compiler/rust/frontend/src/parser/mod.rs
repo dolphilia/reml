@@ -43,6 +43,7 @@ impl ParsedModule {
 pub struct ParserOptions {
     pub streaming: StreamingStateConfig,
     pub merge_parse_expected: bool,
+    pub streaming_enabled: bool,
 }
 
 /// Rust フロントエンドのパーサドライバ。
@@ -59,6 +60,7 @@ impl ParserDriver {
             ParserOptions {
                 streaming: config,
                 merge_parse_expected: true,
+                streaming_enabled: false,
             },
         )
     }
@@ -75,20 +77,11 @@ impl ParserDriver {
         diagnostics.extend(errors.into_iter().map(Self::error_to_diagnostic));
 
         let (ast, parse_errors) = parse_tokens(&tokens, source, &streaming_state);
-        diagnostics.extend(parse_errors.into_iter().map(|err| {
-            let formatted = err.1;
-            let mut diagnostic = FrontendDiagnostic::new(formatted.message.clone());
-            if let Some(span) = err.0 {
-                diagnostic = diagnostic.with_span(span);
-            }
-            diagnostic = diagnostic.apply_expected_summary(&formatted.summary);
-            if formatted.summary.has_alternatives() {
-                if let Some(text) = formatted.summary.humanized.clone() {
-                    diagnostic.add_note(DiagnosticNote::new("recover.expected_tokens", text));
-                }
-            }
-            diagnostic.with_recoverability(Recoverability::Recoverable)
-        }));
+        let mut streaming_recover = StreamingRecoverController::new(options.streaming_enabled);
+        for (span, formatted) in parse_errors.into_iter() {
+            streaming_recover.record(span, formatted, &mut diagnostics);
+        }
+        streaming_recover.checkpoint_end(&mut diagnostics);
 
         let span_trace = streaming_state.drain_span_trace();
         let stream_metrics = streaming_state.metrics_snapshot();
@@ -143,6 +136,15 @@ struct FormattedSimpleError {
     summary: ExpectedTokensSummary,
 }
 
+impl FormattedSimpleError {
+    fn absorb(&mut self, other: FormattedSimpleError) {
+        self.summary.merge_with(&other.summary);
+        if self.message.is_empty() {
+            self.message = other.message;
+        }
+    }
+}
+
 fn parse_tokens(
     tokens: &[Token],
     source: &str,
@@ -188,6 +190,24 @@ fn format_simple_error(err: &Simple<TokenKind>) -> FormattedSimpleError {
     };
 
     FormattedSimpleError { message, summary }
+}
+
+fn build_diagnostic_from_error(
+    span: Option<Span>,
+    error: FormattedSimpleError,
+) -> FrontendDiagnostic {
+    let FormattedSimpleError { message, summary } = error;
+    let mut diagnostic = FrontendDiagnostic::new(message);
+    if let Some(span) = span {
+        diagnostic = diagnostic.with_span(span);
+    }
+    diagnostic = diagnostic.apply_expected_summary(&summary);
+    if summary.has_alternatives() {
+        if let Some(text) = summary.humanized.clone() {
+            diagnostic.add_note(DiagnosticNote::new("recover.expected_tokens", text));
+        }
+    }
+    diagnostic.with_recoverability(Recoverability::Recoverable)
 }
 
 fn build_expected_summary(err: &Simple<TokenKind>) -> ExpectedTokensSummary {
@@ -505,6 +525,66 @@ fn record_streaming_success(streaming_state: &StreamingState, span: Span) {
     }
 }
 
+struct StreamingRecoverController {
+    enabled: bool,
+    pending: Option<PendingRecover>,
+}
+
+impl StreamingRecoverController {
+    fn new(enabled: bool) -> Self {
+        Self {
+            enabled,
+            pending: None,
+        }
+    }
+
+    fn record(
+        &mut self,
+        span: Option<Span>,
+        error: FormattedSimpleError,
+        diagnostics: &mut DiagnosticBuilder,
+    ) {
+        if !self.enabled {
+            diagnostics.push(build_diagnostic_from_error(span, error));
+            return;
+        }
+
+        if let Some(pending) = &mut self.pending {
+            pending.merge(error);
+        } else {
+            self.pending = Some(PendingRecover::new(span, error));
+        }
+    }
+
+    fn checkpoint_end(&mut self, diagnostics: &mut DiagnosticBuilder) {
+        if !self.enabled {
+            return;
+        }
+        if let Some(pending) = self.pending.take() {
+            diagnostics.push(pending.into_diagnostic());
+        }
+    }
+}
+
+struct PendingRecover {
+    span: Option<Span>,
+    error: FormattedSimpleError,
+}
+
+impl PendingRecover {
+    fn new(span: Option<Span>, error: FormattedSimpleError) -> Self {
+        Self { span, error }
+    }
+
+    fn merge(&mut self, next: FormattedSimpleError) {
+        self.error.absorb(next);
+    }
+
+    fn into_diagnostic(self) -> FrontendDiagnostic {
+        build_diagnostic_from_error(self.span, self.error)
+    }
+}
+
 #[cfg(test)]
 mod driver {
     use super::*;
@@ -577,5 +657,46 @@ mod driver {
             diag.notes[0].message,
             "ここで`)` または `,`のいずれかが必要です"
         );
+    }
+
+    fn sample_error(tokens: &[&str]) -> FormattedSimpleError {
+        let mut collector = ExpectedTokenCollector::new();
+        for token in tokens {
+            collector.push_keyword(*token);
+        }
+        FormattedSimpleError {
+            message: "構文エラー: 入力を解釈できません".to_string(),
+            summary: collector.summarize(),
+        }
+    }
+
+    #[test]
+    fn streaming_recover_coalesces_errors() {
+        let mut builder = DiagnosticBuilder::with_capacity(2);
+        let mut controller = StreamingRecoverController::new(true);
+
+        controller.record(Some(Span::new(0, 1)), sample_error(&["fn"]), &mut builder);
+        controller.record(Some(Span::new(2, 3)), sample_error(&["if"]), &mut builder);
+        controller.checkpoint_end(&mut builder);
+
+        let diagnostics = builder.into_vec();
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics[0].expected_tokens,
+            vec!["fn".to_string(), "if".to_string()]
+        );
+    }
+
+    #[test]
+    fn non_streaming_emits_all_errors() {
+        let mut builder = DiagnosticBuilder::with_capacity(2);
+        let mut controller = StreamingRecoverController::new(false);
+
+        controller.record(Some(Span::new(0, 1)), sample_error(&["fn"]), &mut builder);
+        controller.record(Some(Span::new(2, 3)), sample_error(&["if"]), &mut builder);
+        controller.checkpoint_end(&mut builder);
+
+        let diagnostics = builder.into_vec();
+        assert_eq!(diagnostics.len(), 2);
     }
 }

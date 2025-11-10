@@ -226,6 +226,29 @@ impl ExpectedTokensSummary {
     pub fn has_alternatives(&self) -> bool {
         !self.alternatives.is_empty()
     }
+
+    pub fn merge_with(&mut self, other: &ExpectedTokensSummary) {
+        if self.alternatives.is_empty() {
+            self.alternatives = other.alternatives.clone();
+            self.locale_args = other.locale_args.clone();
+        } else if !other.alternatives.is_empty() {
+            merge_alternatives(&mut self.alternatives, &other.alternatives);
+            self.locale_args = rebuild_locale_args(&self.alternatives);
+        }
+
+        if self.humanized.is_none() && other.humanized.is_some() {
+            self.humanized = other.humanized.clone();
+        }
+        if self.context_note.is_none() && other.context_note.is_some() {
+            self.context_note = other.context_note.clone();
+        }
+        if self.message_key.is_none() {
+            self.message_key = other.message_key.clone();
+        }
+        if self.locale_args.is_empty() && !other.locale_args.is_empty() {
+            self.locale_args = other.locale_args.clone();
+        }
+    }
 }
 
 pub fn streaming_expression_summary() -> ExpectedTokensSummary {
@@ -284,6 +307,22 @@ fn humanize(expectations: &[ExpectedToken]) -> Option<String> {
             }
         }
     }
+}
+
+fn merge_alternatives(
+    existing: &mut Vec<ExpectedToken>,
+    additions: &[ExpectedToken],
+) {
+    existing.extend_from_slice(additions);
+    existing.sort_by(|a, b| a.cmp_for_sort(b));
+    existing.dedup();
+}
+
+fn rebuild_locale_args(tokens: &[ExpectedToken]) -> Vec<String> {
+    tokens
+        .iter()
+        .map(|token| token.raw_label().to_string())
+        .collect()
 }
 
 #[cfg(test)]
@@ -349,5 +388,27 @@ mod tests {
             summary.humanized.as_deref(),
             Some(super::EXPECTED_EMPTY_HUMANIZED)
         );
+    }
+
+    #[test]
+    fn merge_with_combines_tokens_and_metadata() {
+        let mut collector_a = ExpectedTokenCollector::new();
+        collector_a.push_keyword("fn");
+        let summary_a = collector_a.summarize();
+
+        let mut collector_b = ExpectedTokenCollector::new();
+        collector_b.push_keyword("if");
+        collector_b.push_rule("expression");
+        let summary_b = collector_b.summarize();
+
+        let mut merged = summary_a.clone();
+        merged.merge_with(&summary_b);
+
+        assert_eq!(
+            merged.tokens(),
+            vec!["fn".to_string(), "if".to_string(), "expression".to_string()]
+        );
+        // Ensure merge keeps base message key when present.
+        assert_eq!(merged.message_key, summary_a.message_key);
     }
 }

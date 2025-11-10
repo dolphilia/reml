@@ -42,9 +42,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     trace_log(&args, "parsing", "start");
-    let parser_options = ParserOptions {
+  let parser_options = ParserOptions {
         streaming: args.streaming_state_config(),
         merge_parse_expected: args.run_config.merge_warnings,
+        streaming_enabled: args.stream_config.enabled,
     };
     let result = ParserDriver::parse_with_options(&source, parser_options);
     trace_log(&args, "parsing", "finish");
