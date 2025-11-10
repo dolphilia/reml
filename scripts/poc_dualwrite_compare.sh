@@ -1010,6 +1010,8 @@ for idx in "${!CASE_ENTRIES[@]}"; do
     else
       printf '%s\n' "-- OCaml diagnostics missing, metrics skipped (${case_name})" >&2
       write_placeholder_effects_metrics "${case_dir}" "ocaml"
+      metrics_ok="false"
+      case_gating="false"
     fi
     if [[ -s "${rust_diag_path}" ]]; then
       if ! collect_all_metrics "${rust_diag_path}" "rust" "${case_dir}"; then
@@ -1021,6 +1023,8 @@ for idx in "${!CASE_ENTRIES[@]}"; do
     else
       printf '%s\n' "-- Rust diagnostics missing, metrics skipped (${case_name})" >&2
       write_placeholder_effects_metrics "${case_dir}" "rust"
+      metrics_ok="false"
+      case_gating="false"
     fi
 
     create_diag_diff "${ocaml_diag_path}" "${rust_diag_path}" "${diag_diff_path}"
@@ -1074,10 +1078,18 @@ PY
         if [[ "${expected_tokens_match}" != "true" ]]; then
           printf '!! expected-tokens gate: %s で OCaml/Rust が不一致です\n' "${case_name}" >&2
           case_gating="false"
+          metrics_ok="false"
         elif [[ "${expected_tokens_count_ocaml}" != "27" || "${expected_tokens_count_rust}" != "27" ]]; then
           printf '!! expected-tokens gate: %s のトークン数が揃っていません (ocaml=%s rust=%s)\n' \
             "${case_name}" "${expected_tokens_count_ocaml}" "${expected_tokens_count_rust}" >&2
           case_gating="false"
+          metrics_ok="false"
+        fi
+      elif is_streaming_case "${case_name}"; then
+        if [[ "${expected_tokens_match}" != "true" ]]; then
+          printf '!! expected-tokens gate: streaming %s で OCaml/Rust が不一致です\n' "${case_name}" >&2
+          case_gating="false"
+          metrics_ok="false"
         fi
       fi
     fi

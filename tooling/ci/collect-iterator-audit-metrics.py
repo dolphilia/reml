@@ -1356,6 +1356,9 @@ def summarize_diagnostics(paths: Sequence[Path]) -> Dict[str, Any]:
 
     parser_expected_tokens_sum = 0
 
+    expected_metric_detail: Optional[Dict[str, Any]] = None
+    expected_summary: Optional[Dict[str, Any]] = None
+
     for path in paths:
         data = load_json(path)
         for diag in iter_diagnostics(data):
@@ -2402,21 +2405,32 @@ def collect_streaming_metrics(
         expected_status = (
             "success" if expected_passed == expected_total else "error"
         )
-        related_metrics.append(
-            {
-                "metric": "ExpectedTokenCollector.streaming",
-                "total": expected_total,
-                "passed": expected_passed,
-                "failed": expected_total - expected_passed,
-                "pass_rate": 1.0
-                if expected_passed == expected_total
-                else expected_fraction,
-                "pass_fraction": expected_fraction,
-                "status": expected_status,
-                "sources": expected_sources if expected_sources else sources,
-                "failures": expected_failures,
-            }
-        )
+        expected_metric = {
+            "metric": "ExpectedTokenCollector.streaming",
+            "total": expected_total,
+            "passed": expected_passed,
+            "failed": expected_total - expected_passed,
+            "pass_rate": 1.0
+            if expected_passed == expected_total
+            else expected_fraction,
+            "pass_fraction": expected_fraction,
+            "status": expected_status,
+            "sources": expected_sources if expected_sources else sources,
+            "failures": expected_failures,
+        }
+        related_metrics.append(expected_metric)
+        expected_metric_detail = expected_metric
+        result_expected_summary = {
+            "total": expected_total,
+            "passed": expected_passed,
+            "failed": expected_total - expected_passed,
+            "pass_rate": expected_metric["pass_rate"],
+            "pass_fraction": expected_fraction,
+            "status": expected_status,
+        }
+        if expected_failures:
+            result_expected_summary["failures"] = expected_failures
+        expected_summary = result_expected_summary
 
     result = {
         "metric": "parser.stream.outcome_consistency",
@@ -2437,6 +2451,10 @@ def collect_streaming_metrics(
             result["platform_skipped"] = platform_skipped
     if related_metrics:
         result["related_metrics"] = related_metrics
+    if expected_metric_detail:
+        result["expected_tokens_metric"] = expected_metric_detail
+    if expected_summary:
+        result["expected_tokens"] = expected_summary
     return result
 
 
