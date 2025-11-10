@@ -5,6 +5,9 @@
 //! 対応するため `RwLock` で保護する。トレースは `VecDeque` に蓄積し、`trace_limit`
 //! で上限を設ける。
 
+pub mod flow;
+pub use flow::{StreamFlowConfig, StreamFlowMetrics, StreamFlowState};
+
 use crate::span::Span;
 use indexmap::IndexMap;
 use serde::Serialize;

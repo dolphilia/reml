@@ -11,7 +11,7 @@ use reml_frontend::diagnostic::{DiagnosticNote, FrontendDiagnostic};
 use reml_frontend::error::Recoverability;
 use reml_frontend::parser::{ParserDriver, ParserOptions};
 use reml_frontend::span::Span;
-use reml_frontend::streaming::StreamingStateConfig;
+use reml_frontend::streaming::{StreamFlowConfig, StreamFlowState, StreamingStateConfig};
 use reml_frontend::typeck::{
     self, DualWriteGuards, InstallConfigError, RecoverConfig, StageContext, StageId,
     StageRequirement, TypeRowMode, TypecheckConfig, TypecheckDriver, TypecheckMetrics,
@@ -42,10 +42,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     trace_log(&args, "parsing", "start");
-  let parser_options = ParserOptions {
+  let stream_flow_state =
+        StreamFlowState::new(args.stream_config.to_flow_config(args.run_config.packrat));
+    let parser_options = ParserOptions {
         streaming: args.streaming_state_config(),
         merge_parse_expected: args.run_config.merge_warnings,
         streaming_enabled: args.stream_config.enabled,
+        stream_flow: Some(stream_flow_state.clone()),
     };
     let result = ParserDriver::parse_with_options(&source, parser_options);
     trace_log(&args, "parsing", "finish");
@@ -62,13 +65,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "span_trace": result.span_trace,
     });
 
+  let flow_metrics = result
+        .stream_flow_state
+        .as_ref()
+        .map(|state| state.metrics().checkpoints_closed)
+        .unwrap_or(0);
     let stream_meta = serde_json::json!({
         "packrat": result.stream_metrics.packrat,
         "span_trace": result.stream_metrics.span_trace,
+        "flow": {
+            "checkpoints_closed": flow_metrics,
+        }
     });
 
-    let runconfig_summary = build_runconfig_summary(&args);
-    let runconfig_top_level = build_runconfig_top_level(&args);
+    let runconfig_summary = build_runconfig_summary(&args, &stream_flow_state);
+    let runconfig_top_level = build_runconfig_top_level(&args, &stream_flow_state);
     let diagnostics_entries = build_diagnostics(
         &result.diagnostics,
         &args,
@@ -193,6 +204,21 @@ struct StreamSettings {
     demand_preferred_bytes: Option<u64>,
     checkpoint: Option<String>,
     chunk_size: Option<u64>,
+}
+
+impl StreamSettings {
+    fn to_flow_config(&self, packrat_enabled: bool) -> StreamFlowConfig {
+        StreamFlowConfig {
+            enabled: self.enabled,
+            packrat_enabled,
+            resume_hint: self.resume_hint.clone(),
+            checkpoint: self.checkpoint.clone(),
+            flow_policy: self.flow_policy.clone(),
+            flow_max_lag: self.flow_max_lag,
+            demand_min_bytes: self.demand_min_bytes,
+            demand_preferred_bytes: self.demand_preferred_bytes,
+        }
+    }
 }
 
 impl CliArgs {
@@ -675,7 +701,8 @@ fn write_dualwrite_typeck_payload(
     Ok(())
 }
 
-fn build_runconfig_summary(args: &CliArgs) -> Value {
+fn build_runconfig_summary(args: &CliArgs, flow: &StreamFlowState) -> Value {
+    let flow_metrics = flow.metrics();
     json!({
         "packrat": args.run_config.packrat,
         "left_recursion": args.run_config.left_recursion,
@@ -693,13 +720,14 @@ fn build_runconfig_summary(args: &CliArgs) -> Value {
                 "sync_tokens": [],
                 "notes": false,
             },
-            "stream": build_stream_extension(&args.stream_config),
+            "stream": build_stream_extension(&args.stream_config, &flow_metrics),
             "config": build_config_extension(args),
         },
     })
 }
 
-fn build_runconfig_top_level(args: &CliArgs) -> Value {
+fn build_runconfig_top_level(args: &CliArgs, flow: &StreamFlowState) -> Value {
+    let flow_metrics = flow.metrics();
     json!({
         "switches": {
             "packrat": args.run_config.packrat,
@@ -719,7 +747,7 @@ fn build_runconfig_top_level(args: &CliArgs) -> Value {
                 "sync_tokens": [],
                 "notes": false,
             },
-            "stream": build_stream_extension(&args.stream_config),
+            "stream": build_stream_extension(&args.stream_config, &flow_metrics),
             "effects": {
                 "type_row_mode": type_row_mode_label(args.typecheck_config.type_row_mode),
             },
@@ -1256,7 +1284,7 @@ fn build_audit_metadata(
         "parser.runconfig.switches.legacy_result".to_string(),
         json!(args.run_config.legacy_result),
     );
-    let runconfig_value = build_runconfig_top_level(args);
+    let runconfig_value = build_runconfig_top_level(args, flow);
     metadata.insert("parser.runconfig".to_string(), runconfig_value.clone());
     if let Some(extensions) = runconfig_value
         .get("extensions")

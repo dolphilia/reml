@@ -18,7 +18,7 @@ use crate::lexer::{lex_source, LexOutput};
 use crate::span::Span;
 use crate::streaming::{
     Expectation as StreamingExpectation, ExpectationSummary, PackratEntry, PackratStats,
-    StreamMetrics, StreamingState, StreamingStateConfig, TokenSample, TraceFrame,
+    StreamFlowState, StreamMetrics, StreamingState, StreamingStateConfig, TokenSample, TraceFrame,
 };
 use crate::token::{Token, TokenKind};
 use ast::{Expr, Function, Module, Param};
@@ -32,6 +32,7 @@ pub struct ParsedModule {
     pub packrat_stats: PackratStats,
     pub stream_metrics: StreamMetrics,
     pub span_trace: Vec<TraceFrame>,
+    pub stream_flow_state: Option<StreamFlowState>,
 }
 
 impl ParsedModule {
@@ -40,10 +41,23 @@ impl ParsedModule {
     }
 }
 
+#[derive(Clone)]
 pub struct ParserOptions {
     pub streaming: StreamingStateConfig,
     pub merge_parse_expected: bool,
     pub streaming_enabled: bool,
+    pub stream_flow: Option<StreamFlowState>,
+}
+
+impl Default for ParserOptions {
+    fn default() -> Self {
+        Self {
+            streaming: StreamingStateConfig::default(),
+            merge_parse_expected: true,
+            streaming_enabled: false,
+            stream_flow: None,
+        }
+    }
 }
 
 /// Rust フロントエンドのパーサドライバ。
@@ -55,19 +69,22 @@ impl ParserDriver {
     }
 
     pub fn parse_with_config(source: &str, config: StreamingStateConfig) -> ParsedModule {
-        Self::parse_with_options(
-            source,
-            ParserOptions {
-                streaming: config,
-                merge_parse_expected: true,
-                streaming_enabled: false,
-            },
-        )
+        let mut options = ParserOptions::default();
+        options.streaming = config;
+        options.merge_parse_expected = true;
+        options.streaming_enabled = false;
+        Self::parse_with_options(source, options)
     }
 
     pub fn parse_with_options(source: &str, options: ParserOptions) -> ParsedModule {
         let LexOutput { tokens, errors } = lex_source(source);
-        let streaming_state = StreamingState::new(options.streaming);
+        let streaming_state = StreamingState::new(options.streaming.clone());
+        let stream_flow_state = options.stream_flow.clone();
+        let streaming_enabled = options.streaming_enabled
+            || stream_flow_state
+                .as_ref()
+                .map(|state| state.enabled())
+                .unwrap_or(false);
 
         let mut diagnostics = if options.merge_parse_expected {
             DiagnosticBuilder::with_capacity(errors.len())
@@ -77,11 +94,15 @@ impl ParserDriver {
         diagnostics.extend(errors.into_iter().map(Self::error_to_diagnostic));
 
         let (ast, parse_errors) = parse_tokens(&tokens, source, &streaming_state);
-        let mut streaming_recover = StreamingRecoverController::new(options.streaming_enabled);
+        let mut streaming_recover = StreamingRecoverController::new(streaming_enabled);
         for (span, formatted) in parse_errors.into_iter() {
             streaming_recover.record(span, formatted, &mut diagnostics);
         }
-        streaming_recover.checkpoint_end(&mut diagnostics);
+        if let Some(flow_state) = stream_flow_state.as_ref() {
+            flow_state.checkpoint_end(&mut streaming_recover, &mut diagnostics);
+        } else {
+            streaming_recover.checkpoint_end(&mut diagnostics);
+        }
 
         let span_trace = streaming_state.drain_span_trace();
         let stream_metrics = streaming_state.metrics_snapshot();
@@ -95,6 +116,7 @@ impl ParserDriver {
             packrat_stats: stream_metrics.packrat,
             stream_metrics,
             span_trace,
+            stream_flow_state,
         }
     }
 
@@ -525,7 +547,7 @@ fn record_streaming_success(streaming_state: &StreamingState, span: Span) {
     }
 }
 
-struct StreamingRecoverController {
+pub struct StreamingRecoverController {
     enabled: bool,
     pending: Option<PendingRecover>,
 }
@@ -556,7 +578,7 @@ impl StreamingRecoverController {
         }
     }
 
-    fn checkpoint_end(&mut self, diagnostics: &mut DiagnosticBuilder) {
+    pub(crate) fn checkpoint_end(&mut self, diagnostics: &mut DiagnosticBuilder) {
         if !self.enabled {
             return;
         }
@@ -566,7 +588,7 @@ impl StreamingRecoverController {
     }
 }
 
-struct PendingRecover {
+pub(crate) struct PendingRecover {
     span: Option<Span>,
     error: FormattedSimpleError,
 }
