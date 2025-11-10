@@ -1,0 +1,13 @@
+{
+  "case": "cli_merge_warnings",
+  "match": true,
+  "ocaml_count": 0,
+  "rust_count": 0,
+  "differences": [],
+  "ocaml_tokens": [],
+  "rust_tokens": [],
+  "ocaml_first_index": null,
+  "rust_first_index": null,
+  "ocaml_payload_present": true,
+  "rust_payload_present": true
+}

@@ -1,0 +1,10 @@
+{
+  "case": "cli_packrat_switch",
+  "frontend": "ocaml",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/diagnostics.ocaml.json",
+  "diagnostic_count": 0,
+  "diagnostics": [],
+  "first_expected_tokens": [],
+  "first_diagnostic_index": null,
+  "total_expected_token_count": 0
+}

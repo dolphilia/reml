@@ -1,0 +1,58 @@
+{
+  "case": "ffi_ownership_mismatch",
+  "frontend": "ocaml",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/ffi_ownership_mismatch/diagnostics.ocaml.json",
+  "diagnostic_count": 1,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 5,
+      "expected_tokens": [
+        {
+          "kind": "keyword",
+          "label": "new"
+        },
+        {
+          "kind": "keyword",
+          "label": "self"
+        },
+        {
+          "kind": "token",
+          "label": "|"
+        },
+        {
+          "kind": "class",
+          "label": "identifier"
+        },
+        {
+          "kind": "class",
+          "label": "upper-identifier"
+        }
+      ]
+    }
+  ],
+  "first_expected_tokens": [
+    {
+      "kind": "keyword",
+      "label": "new"
+    },
+    {
+      "kind": "keyword",
+      "label": "self"
+    },
+    {
+      "kind": "token",
+      "label": "|"
+    },
+    {
+      "kind": "class",
+      "label": "identifier"
+    },
+    {
+      "kind": "class",
+      "label": "upper-identifier"
+    }
+  ],
+  "first_diagnostic_index": 0,
+  "total_expected_token_count": 5
+}

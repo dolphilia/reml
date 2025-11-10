@@ -892,7 +892,7 @@
     },
     "span_trace": []
   },
-  "run_config": {
+  "parser_run_config": {
     "extensions": {
       "config": {
         "path": null

@@ -1,0 +1,39 @@
+{
+  "case": "ffi_stage_messagebox",
+  "mode": "diag",
+  "source": "examples/ffi/windows/messagebox.reml",
+  "ocaml_diag_count": 1,
+  "rust_diag_count": 64,
+  "diag_match": false,
+  "gating": true,
+  "schema_ok": true,
+  "metrics_ok": true,
+  "diag": {
+    "parser": {
+      "ocaml": null,
+      "rust": null
+    },
+    "effects": {
+      "ocaml": {
+        "regressions": 0
+      },
+      "rust": {
+        "regressions": 0
+      }
+    },
+    "streaming": {
+      "ocaml": {
+        "audit_pass_fraction": 1.0
+      },
+      "rust": {
+        "audit_pass_fraction": 1.0
+      }
+    }
+  },
+  "tests": "compiler/ocaml/tests/test_cli_callconv_snapshot.ml::callconv_windows_messagebox",
+  "expected_tokens": {
+    "match": false,
+    "ocaml_count": 12,
+    "rust_count": 0
+  }
+}

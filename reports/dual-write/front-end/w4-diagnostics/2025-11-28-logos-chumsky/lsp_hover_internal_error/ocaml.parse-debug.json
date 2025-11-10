@@ -1,0 +1,52 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/lsp_hover_internal_error/input.reml",
+  "parser_run_config": {
+    "experimental_effects": false,
+    "legacy_result": true,
+    "merge_warnings": true,
+    "trace": false,
+    "left_recursion": "off",
+    "packrat": true,
+    "require_eof": false,
+    "extensions": {
+      "config": {
+        "experimental_effects": false,
+        "left_recursion": "off",
+        "legacy_result": true,
+        "merge_warnings": true,
+        "packrat": true,
+        "require_eof": false,
+        "source": "cli",
+        "trace": false
+      },
+      "effects": { "type_row_mode": "ty-integrated" },
+      "lex": { "profile": "strict_json" }
+    }
+  },
+  "diagnostics": [],
+  "parse_result": {
+    "span_trace": null,
+    "packrat_stats": { "queries": 0, "hits": 0 },
+    "legacy_error": null,
+    "farthest_error_offset": null,
+    "span": {
+      "start": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/lsp_hover_internal_error/input.reml",
+        "line": 1,
+        "column": 1,
+        "offset": 0
+      },
+      "end": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/lsp_hover_internal_error/input.reml",
+        "line": 6,
+        "column": 1,
+        "offset": 95
+      }
+    },
+    "committed": false,
+    "consumed": true,
+    "recovered": false,
+    "has_value": true
+  },
+  "stream_meta": null
+}

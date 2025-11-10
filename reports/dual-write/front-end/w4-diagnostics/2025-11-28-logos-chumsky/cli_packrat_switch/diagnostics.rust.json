@@ -2,27 +2,28 @@
   "diagnostics": [
     {
       "audit": {
-        "audit_id": "cli/20251110T025145Z#0",
+        "audit_id": "cli/20251110T025201Z#0",
         "change_set": {
           "items": [
             {
               "args": [
                 "--emit-parse-debug",
-                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/rust.parse-debug.json",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/rust.parse-debug.json",
                 "--dualwrite-root",
                 "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
                 "--dualwrite-run-label",
                 "2025-11-28-logos-chumsky",
                 "--dualwrite-case-label",
-                "recover_lambda_body",
-                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml"
+                "cli_packrat_switch",
+                "--packrat",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml"
               ],
               "command": "target/debug/poc_frontend",
               "kind": "cli-command"
             },
             {
               "kind": "input",
-              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml",
+              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml",
               "target": "rust-poc"
             }
           ],
@@ -31,14 +32,15 @@
           "source": {
             "args": [
               "--emit-parse-debug",
-              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/rust.parse-debug.json",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/rust.parse-debug.json",
               "--dualwrite-root",
               "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
               "--dualwrite-run-label",
               "2025-11-28-logos-chumsky",
               "--dualwrite-case-label",
-              "recover_lambda_body",
-              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml"
+              "cli_packrat_switch",
+              "--packrat",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml"
             ],
             "command": "target/debug/poc_frontend",
             "workspace": "."
@@ -47,28 +49,29 @@
         "metadata": {
           "audit.channel": "cli",
           "audit.policy.version": "rust.poc.audit.v1",
-          "audit.timestamp": "2025-11-10T02:51:45Z",
-          "cli.audit_id": "cli/20251110T025145Z#0",
+          "audit.timestamp": "2025-11-10T02:52:01Z",
+          "cli.audit_id": "cli/20251110T025201Z#0",
           "cli.change_set": {
             "items": [
               {
                 "args": [
                   "--emit-parse-debug",
-                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/rust.parse-debug.json",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/rust.parse-debug.json",
                   "--dualwrite-root",
                   "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
                   "--dualwrite-run-label",
                   "2025-11-28-logos-chumsky",
                   "--dualwrite-case-label",
-                  "recover_lambda_body",
-                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml"
+                  "cli_packrat_switch",
+                  "--packrat",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml"
                 ],
                 "command": "target/debug/poc_frontend",
                 "kind": "cli-command"
               },
               {
                 "kind": "input",
-                "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml",
+                "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml",
                 "target": "rust-poc"
               }
             ],
@@ -77,14 +80,15 @@
             "source": {
               "args": [
                 "--emit-parse-debug",
-                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/rust.parse-debug.json",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/rust.parse-debug.json",
                 "--dualwrite-root",
                 "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
                 "--dualwrite-run-label",
                 "2025-11-28-logos-chumsky",
                 "--dualwrite-case-label",
-                "recover_lambda_body",
-                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml"
+                "cli_packrat_switch",
+                "--packrat",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml"
               ],
               "command": "target/debug/poc_frontend",
               "workspace": "."
@@ -199,28 +203,29 @@
       "audit_metadata": {
         "audit.channel": "cli",
         "audit.policy.version": "rust.poc.audit.v1",
-        "audit.timestamp": "2025-11-10T02:51:45Z",
-        "cli.audit_id": "cli/20251110T025145Z#0",
+        "audit.timestamp": "2025-11-10T02:52:01Z",
+        "cli.audit_id": "cli/20251110T025201Z#0",
         "cli.change_set": {
           "items": [
             {
               "args": [
                 "--emit-parse-debug",
-                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/rust.parse-debug.json",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/rust.parse-debug.json",
                 "--dualwrite-root",
                 "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
                 "--dualwrite-run-label",
                 "2025-11-28-logos-chumsky",
                 "--dualwrite-case-label",
-                "recover_lambda_body",
-                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml"
+                "cli_packrat_switch",
+                "--packrat",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml"
               ],
               "command": "target/debug/poc_frontend",
               "kind": "cli-command"
             },
             {
               "kind": "input",
-              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml",
+              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml",
               "target": "rust-poc"
             }
           ],
@@ -229,14 +234,15 @@
           "source": {
             "args": [
               "--emit-parse-debug",
-              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/rust.parse-debug.json",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/rust.parse-debug.json",
               "--dualwrite-root",
               "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
               "--dualwrite-run-label",
               "2025-11-28-logos-chumsky",
               "--dualwrite-case-label",
-              "recover_lambda_body",
-              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml"
+              "cli_packrat_switch",
+              "--packrat",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml"
             ],
             "command": "target/debug/poc_frontend",
             "workspace": "."
@@ -352,7 +358,7 @@
       "expected": null,
       "extensions": {
         "diagnostic.v2": {
-          "timestamp": "2025-11-10T02:51:45Z"
+          "timestamp": "2025-11-10T02:52:01Z"
         },
         "effect.actual_capabilities": [],
         "effect.capabilities": [],
@@ -405,11 +411,11 @@
         }
       },
       "location": {
-        "column": 22,
-        "endColumn": 23,
-        "endLine": 2,
-        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml",
-        "line": 2
+        "column": 30,
+        "endColumn": 31,
+        "endLine": 3,
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml",
+        "line": 3
       },
       "message": "未定義のトークンを検出しました",
       "notes": [
@@ -417,42 +423,43 @@
           "label": "lexer",
           "message": "未定義のトークンをスキップします",
           "span": {
-            "column": 22,
-            "endColumn": 23,
-            "endLine": 2,
-            "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml",
-            "line": 2
+            "column": 30,
+            "endColumn": 31,
+            "endLine": 3,
+            "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml",
+            "line": 3
           }
         }
       ],
       "recoverability": "recoverable",
       "schema_version": "2.0.0-draft",
       "severity": "error",
-      "timestamp": "2025-11-10T02:51:45Z"
+      "timestamp": "2025-11-10T02:52:01Z"
     },
     {
       "audit": {
-        "audit_id": "cli/20251110T025145Z#0",
+        "audit_id": "cli/20251110T025201Z#0",
         "change_set": {
           "items": [
             {
               "args": [
                 "--emit-parse-debug",
-                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/rust.parse-debug.json",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/rust.parse-debug.json",
                 "--dualwrite-root",
                 "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
                 "--dualwrite-run-label",
                 "2025-11-28-logos-chumsky",
                 "--dualwrite-case-label",
-                "recover_lambda_body",
-                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml"
+                "cli_packrat_switch",
+                "--packrat",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml"
               ],
               "command": "target/debug/poc_frontend",
               "kind": "cli-command"
             },
             {
               "kind": "input",
-              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml",
+              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml",
               "target": "rust-poc"
             }
           ],
@@ -461,14 +468,15 @@
           "source": {
             "args": [
               "--emit-parse-debug",
-              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/rust.parse-debug.json",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/rust.parse-debug.json",
               "--dualwrite-root",
               "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
               "--dualwrite-run-label",
               "2025-11-28-logos-chumsky",
               "--dualwrite-case-label",
-              "recover_lambda_body",
-              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml"
+              "cli_packrat_switch",
+              "--packrat",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml"
             ],
             "command": "target/debug/poc_frontend",
             "workspace": "."
@@ -477,28 +485,29 @@
         "metadata": {
           "audit.channel": "cli",
           "audit.policy.version": "rust.poc.audit.v1",
-          "audit.timestamp": "2025-11-10T02:51:45Z",
-          "cli.audit_id": "cli/20251110T025145Z#0",
+          "audit.timestamp": "2025-11-10T02:52:01Z",
+          "cli.audit_id": "cli/20251110T025201Z#0",
           "cli.change_set": {
             "items": [
               {
                 "args": [
                   "--emit-parse-debug",
-                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/rust.parse-debug.json",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/rust.parse-debug.json",
                   "--dualwrite-root",
                   "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
                   "--dualwrite-run-label",
                   "2025-11-28-logos-chumsky",
                   "--dualwrite-case-label",
-                  "recover_lambda_body",
-                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml"
+                  "cli_packrat_switch",
+                  "--packrat",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml"
                 ],
                 "command": "target/debug/poc_frontend",
                 "kind": "cli-command"
               },
               {
                 "kind": "input",
-                "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml",
+                "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml",
                 "target": "rust-poc"
               }
             ],
@@ -507,14 +516,15 @@
             "source": {
               "args": [
                 "--emit-parse-debug",
-                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/rust.parse-debug.json",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/rust.parse-debug.json",
                 "--dualwrite-root",
                 "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
                 "--dualwrite-run-label",
                 "2025-11-28-logos-chumsky",
                 "--dualwrite-case-label",
-                "recover_lambda_body",
-                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml"
+                "cli_packrat_switch",
+                "--packrat",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml"
               ],
               "command": "target/debug/poc_frontend",
               "workspace": "."
@@ -629,28 +639,29 @@
       "audit_metadata": {
         "audit.channel": "cli",
         "audit.policy.version": "rust.poc.audit.v1",
-        "audit.timestamp": "2025-11-10T02:51:45Z",
-        "cli.audit_id": "cli/20251110T025145Z#0",
+        "audit.timestamp": "2025-11-10T02:52:01Z",
+        "cli.audit_id": "cli/20251110T025201Z#0",
         "cli.change_set": {
           "items": [
             {
               "args": [
                 "--emit-parse-debug",
-                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/rust.parse-debug.json",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/rust.parse-debug.json",
                 "--dualwrite-root",
                 "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
                 "--dualwrite-run-label",
                 "2025-11-28-logos-chumsky",
                 "--dualwrite-case-label",
-                "recover_lambda_body",
-                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml"
+                "cli_packrat_switch",
+                "--packrat",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml"
               ],
               "command": "target/debug/poc_frontend",
               "kind": "cli-command"
             },
             {
               "kind": "input",
-              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml",
+              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml",
               "target": "rust-poc"
             }
           ],
@@ -659,14 +670,15 @@
           "source": {
             "args": [
               "--emit-parse-debug",
-              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/rust.parse-debug.json",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/rust.parse-debug.json",
               "--dualwrite-root",
               "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
               "--dualwrite-run-label",
               "2025-11-28-logos-chumsky",
               "--dualwrite-case-label",
-              "recover_lambda_body",
-              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml"
+              "cli_packrat_switch",
+              "--packrat",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml"
             ],
             "command": "target/debug/poc_frontend",
             "workspace": "."
@@ -787,19 +799,19 @@
           },
           {
             "kind": "token",
-            "value": "識別子"
+            "value": ","
           }
         ],
-        "humanized": "ここで`)` または 識別子のいずれかが必要です",
+        "humanized": "ここで`)` または `,`のいずれかが必要です",
         "locale_args": [
           ")",
-          "識別子"
+          ","
         ],
         "message_key": "parse.expected"
       },
       "extensions": {
         "diagnostic.v2": {
-          "timestamp": "2025-11-10T02:51:45Z"
+          "timestamp": "2025-11-10T02:52:01Z"
         },
         "effect.actual_capabilities": [],
         "effect.capabilities": [],
@@ -818,9 +830,9 @@
         "recover": {
           "expected_tokens": [
             ")",
-            "識別子"
+            ","
           ],
-          "message": "ここで`)` または 識別子のいずれかが必要です"
+          "message": "ここで`)` または `,`のいずれかが必要です"
         },
         "runconfig": {
           "experimental_effects": false,
@@ -859,30 +871,30 @@
         }
       },
       "location": {
-        "column": 16,
-        "endColumn": 18,
-        "endLine": 1,
-        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml",
-        "line": 1
+        "column": 12,
+        "endColumn": 13,
+        "endLine": 3,
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml",
+        "line": 3
       },
       "message": "構文エラー: 入力を解釈できません",
       "notes": [
         {
           "label": "recover.expected_tokens",
-          "message": "ここで`)` または 識別子のいずれかが必要です",
+          "message": "ここで`)` または `,`のいずれかが必要です",
           "span": null
         }
       ],
       "recoverability": "recoverable",
       "schema_version": "2.0.0-draft",
       "severity": "error",
-      "timestamp": "2025-11-10T02:51:45Z"
+      "timestamp": "2025-11-10T02:52:01Z"
     }
   ],
-  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/recover_lambda_body/input.reml",
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/cli_packrat_switch/input.reml",
   "parse_result": {
     "packrat_stats": {
-      "approx_bytes": 424,
+      "approx_bytes": 389,
       "budget_drops": 0,
       "entries": 1,
       "evictions": 0,
@@ -938,7 +950,7 @@
   },
   "stream_meta": {
     "packrat": {
-      "approx_bytes": 424,
+      "approx_bytes": 389,
       "budget_drops": 0,
       "entries": 1,
       "evictions": 0,

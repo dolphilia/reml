@@ -1,0 +1,114 @@
+{
+  "case": "ffi_stage_messagebox",
+  "frontend": "ocaml",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/ffi_stage_messagebox/diagnostics.ocaml.json",
+  "diagnostic_count": 1,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 12,
+      "expected_tokens": [
+        {
+          "kind": "keyword",
+          "label": "effect"
+        },
+        {
+          "kind": "keyword",
+          "label": "extern"
+        },
+        {
+          "kind": "keyword",
+          "label": "fn"
+        },
+        {
+          "kind": "keyword",
+          "label": "handler"
+        },
+        {
+          "kind": "keyword",
+          "label": "impl"
+        },
+        {
+          "kind": "keyword",
+          "label": "let"
+        },
+        {
+          "kind": "keyword",
+          "label": "pub"
+        },
+        {
+          "kind": "keyword",
+          "label": "trait"
+        },
+        {
+          "kind": "keyword",
+          "label": "type"
+        },
+        {
+          "kind": "keyword",
+          "label": "var"
+        },
+        {
+          "kind": "token",
+          "label": "@"
+        },
+        {
+          "kind": "eof",
+          "label": "EOF"
+        }
+      ]
+    }
+  ],
+  "first_expected_tokens": [
+    {
+      "kind": "keyword",
+      "label": "effect"
+    },
+    {
+      "kind": "keyword",
+      "label": "extern"
+    },
+    {
+      "kind": "keyword",
+      "label": "fn"
+    },
+    {
+      "kind": "keyword",
+      "label": "handler"
+    },
+    {
+      "kind": "keyword",
+      "label": "impl"
+    },
+    {
+      "kind": "keyword",
+      "label": "let"
+    },
+    {
+      "kind": "keyword",
+      "label": "pub"
+    },
+    {
+      "kind": "keyword",
+      "label": "trait"
+    },
+    {
+      "kind": "keyword",
+      "label": "type"
+    },
+    {
+      "kind": "keyword",
+      "label": "var"
+    },
+    {
+      "kind": "token",
+      "label": "@"
+    },
+    {
+      "kind": "eof",
+      "label": "EOF"
+    }
+  ],
+  "first_diagnostic_index": 0,
+  "total_expected_token_count": 12
+}
