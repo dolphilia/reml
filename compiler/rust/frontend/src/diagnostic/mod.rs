@@ -3,10 +3,14 @@
 use crate::error::Recoverability;
 use crate::span::Span;
 
-const EXPECTED_PLACEHOLDER_TOKEN: &str = "解析継続トークン";
-const EXPECTED_EMPTY_HUMANIZED: &str = "ここで解釈可能な構文が見つかりません";
-const PARSE_EXPECTED_KEY: &str = "parse.expected";
-const PARSE_EXPECTED_EMPTY_KEY: &str = "parse.expected.empty";
+pub mod recover;
+
+pub use recover::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
+
+pub(crate) const EXPECTED_PLACEHOLDER_TOKEN: &str = "解析継続トークン";
+pub(crate) const EXPECTED_EMPTY_HUMANIZED: &str = "ここで解釈可能な構文が見つかりません";
+pub(crate) const PARSE_EXPECTED_KEY: &str = "parse.expected";
+pub(crate) const PARSE_EXPECTED_EMPTY_KEY: &str = "parse.expected.empty";
 
 /// Rust フロントエンドが生成する診断レコードの最小構造。
 /// W4 の診断互換試験に向け、`serde` スキーマと合わせて拡張する。
@@ -71,6 +75,32 @@ impl FrontendDiagnostic {
             self.expected_tokens = tokens;
             self.expected_message_key = Some(PARSE_EXPECTED_KEY.to_string());
             self.expected_humanized = humanized;
+        }
+        self
+    }
+
+    pub fn apply_expected_summary(mut self, summary: &ExpectedTokensSummary) -> Self {
+        if summary.has_alternatives() {
+            self.expected_locale_args = summary.locale_args.clone();
+            self.expected_tokens = summary.tokens();
+            self.expected_message_key = summary
+                .message_key
+                .clone()
+                .or_else(|| Some(PARSE_EXPECTED_KEY.to_string()));
+            self.expected_humanized = summary.humanized.clone();
+        } else {
+            self.expected_tokens = vec![EXPECTED_PLACEHOLDER_TOKEN.to_string()];
+            self.expected_locale_args.clear();
+            self.expected_message_key = summary
+                .message_key
+                .clone()
+                .or_else(|| Some(PARSE_EXPECTED_EMPTY_KEY.to_string()));
+            self.expected_humanized = Some(
+                summary
+                    .humanized
+                    .clone()
+                    .unwrap_or_else(|| EXPECTED_EMPTY_HUMANIZED.to_string()),
+            );
         }
         self
     }
