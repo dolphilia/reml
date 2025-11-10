@@ -536,6 +536,7 @@ module Streaming = struct
       diagnostic = Some diag;
     }
 
+
   type stream_meta = {
     bytes_consumed : int;
     chunks_consumed : int;
@@ -578,6 +579,53 @@ module Streaming = struct
     let open Diagnostic in
     let location = { filename; line = 0; column = 0; offset = 0 } in
     { start_pos = location; end_pos = location }
+
+  let reason_is_backpressure = function
+    | Some reason -> String.equal (String.trim reason) "pending.backpressure"
+    | None -> false
+
+  let synthesize_streaming_recover ~source_name snapshot =
+    let span =
+      match snapshot.checkpoint with
+      | Some span -> span
+      | None -> default_span_for_file source_name
+    in
+    let summary =
+      match snapshot.summary with
+      | Some summary -> summary
+      | None -> Parser_expectation.streaming_expression_summary ()
+    in
+    let summary = Parser_expectation.ensure_minimum_alternatives summary
+    in
+    Builder.create
+      ~message:"ストリーミング入力が未完のため、追加トークンを待機しています"
+      ~primary:span ()
+    |> Builder.set_expected summary
+    |> Builder.build
+
+  let diagnostic_with_expected ~snapshot diag =
+    match diag.Diagnostic.expected with
+    | Some summary when summary.Diagnostic.alternatives <> [] -> diag
+    | _ ->
+        let summary =
+          match snapshot.summary with
+          | Some summary -> summary
+          | None -> Parser_expectation.streaming_expression_summary ()
+        in
+        let summary = Parser_expectation.ensure_minimum_alternatives summary
+        in
+        { diag with expected = Some summary }
+
+  let recover_diagnostics_for_pending ~source_name ~demand ~snapshot =
+    let needs_recover = reason_is_backpressure demand.reason in
+    match snapshot.diagnostic with
+    | Some diag when needs_recover ->
+        [ diagnostic_with_expected ~snapshot diag;
+          synthesize_streaming_recover ~source_name snapshot ]
+    | Some diag -> [ diagnostic_with_expected ~snapshot diag ]
+    | None when needs_recover ->
+        [ synthesize_streaming_recover ~source_name snapshot ]
+    | None -> []
 
   let build_bridge_stage_diagnostic ~source_name ~config ~defaults:_
       ~(flow_state : flow_state)
@@ -935,6 +983,10 @@ module Streaming = struct
                 Some cache
             | None -> None
           in
+          let pending_recover_diags =
+            recover_diagnostics_for_pending ~source_name:filename ~demand
+              ~snapshot
+          in
           let continuation =
             {
               config;
@@ -952,7 +1004,7 @@ module Streaming = struct
                 build_continuation_meta ~buffer:buffered ~demand ~flow_state
                   ~snapshot ();
               flow = flow_state;
-              diagnostics = [];
+              diagnostics = pending_recover_diags;
             }
           in
           let meta =
@@ -961,8 +1013,9 @@ module Streaming = struct
               ?packrat_cache flow_state
           in
           let diagnostics =
-            build_bridge_stage_diagnostic ~source_name:filename ~config
-              ~defaults ~flow_state ~demand ~meta ~snapshot
+            continuation.diagnostics
+            @ build_bridge_stage_diagnostic ~source_name:filename ~config
+                ~defaults ~flow_state ~demand ~meta ~snapshot
           in
           let continuation = { continuation with diagnostics } in
           let pending_event =
@@ -1176,6 +1229,10 @@ module Streaming = struct
             flow = continuation.flow;
           }
         in
+        let recover_diags =
+          recover_diagnostics_for_pending
+            ~source_name:continuation.source_name ~demand ~snapshot
+        in
         let meta =
           make_meta ~bytes ~chunks ~await:(await + 1) ~resume:resume_count
             ?reason:demand.reason ?packrat_cache flow_state
@@ -1186,7 +1243,7 @@ module Streaming = struct
             ~defaults ~flow_state ~demand ~meta ~snapshot
         in
         let diagnostics =
-          continuation.diagnostics @ additional_diagnostics
+          (continuation.diagnostics @ recover_diags) @ additional_diagnostics
         in
         let continuation = { continuation with diagnostics } in
         let pending_event =

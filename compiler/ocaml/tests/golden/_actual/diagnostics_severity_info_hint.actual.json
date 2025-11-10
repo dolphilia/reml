@@ -1,0 +1,521 @@
+{
+  "diagnostics": [
+    {
+      "severity": "info",
+      "message": "情報レベルの診断メッセージです",
+      "schema_version": "2.0.0-draft",
+      "location": {
+        "file": "demo.reml",
+        "line": 1,
+        "column": 1,
+        "endLine": 1,
+        "endColumn": 4
+      },
+      "code": "demo.info.sample",
+      "codes": [ "demo.info.sample" ],
+      "domain": "cli",
+      "timestamp": "1970-01-01T00:00:00Z",
+      "extensions": {
+        "diagnostic.v2": {
+          "timestamp": "1970-01-01T00:00:00Z",
+          "codes": [ "demo.info.sample" ]
+        },
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "runconfig": {
+          "packrat": false,
+          "left_recursion": "auto",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": false,
+          "experimental_effects": false,
+          "extensions": {
+            "stream": {
+              "enabled": false,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "backpressure": { "max_lag_bytes": 0 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        }
+      },
+      "audit_metadata": {
+        "demo.kind": "info",
+        "event.kind": "demo.info.sample",
+        "event.domain": "cli",
+        "cli.audit_id": "cli/19700101T000000Z#1",
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "19700101T000000Z",
+        "audit.sequence": 1,
+        "audit.source.workspace": ".",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 1
+          },
+          "items": [ { "kind": "input", "path": "demo.reml" } ]
+        },
+        "schema.version": "1.1",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream": {
+          "enabled": false,
+          "checkpoint": "unspecified",
+          "resume_hint": "unspecified",
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "chunk_size": 0,
+          "flow": {
+            "policy": "auto",
+            "backpressure": { "max_lag_bytes": 0 }
+          }
+        },
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover": {
+          "sync_tokens": [],
+          "notes": false
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.lex": {
+          "profile": "strict_json",
+          "identifier_profile": "unicode"
+        },
+        "parser.runconfig.experimental_effects": false,
+        "parser.runconfig.legacy_result": false,
+        "parser.runconfig.require_eof": false,
+        "parser.runconfig.merge_warnings": true,
+        "parser.runconfig.trace": false,
+        "parser.runconfig.left_recursion": "auto",
+        "parser.runconfig.packrat": false,
+        "parser.runconfig": {
+          "packrat": false,
+          "left_recursion": "auto",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": false,
+          "experimental_effects": false,
+          "extensions": {
+            "stream": {
+              "enabled": false,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "backpressure": { "max_lag_bytes": 0 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        }
+      },
+      "audit": {
+        "metadata": {
+          "parser.runconfig": {
+            "packrat": false,
+            "left_recursion": "auto",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": false,
+            "experimental_effects": false,
+            "extensions": {
+              "stream": {
+                "enabled": false,
+                "checkpoint": "unspecified",
+                "resume_hint": "unspecified",
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "chunk_size": 0,
+                "flow": {
+                  "policy": "auto",
+                  "backpressure": { "max_lag_bytes": 0 }
+                }
+              },
+              "recover": { "sync_tokens": [], "notes": false },
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              }
+            }
+          },
+          "parser.runconfig.packrat": false,
+          "parser.runconfig.left_recursion": "auto",
+          "parser.runconfig.trace": false,
+          "parser.runconfig.merge_warnings": true,
+          "parser.runconfig.require_eof": false,
+          "parser.runconfig.legacy_result": false,
+          "parser.runconfig.experimental_effects": false,
+          "parser.runconfig.extensions.lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.recover": {
+            "sync_tokens": [],
+            "notes": false
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "enabled": false,
+            "checkpoint": "unspecified",
+            "resume_hint": "unspecified",
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "chunk_size": 0,
+            "flow": {
+              "policy": "auto",
+              "backpressure": { "max_lag_bytes": 0 }
+            }
+          },
+          "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "effect.capabilities": [],
+          "effect.stage.actual_capabilities": [],
+          "effect.actual_capabilities": [],
+          "effect.stage.required_capabilities": [],
+          "effect.required_capabilities": [],
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "19700101T000000Z",
+              "workspace": ".",
+              "sequence": 1
+            },
+            "items": [ { "kind": "input", "path": "demo.reml" } ]
+          },
+          "audit.source.workspace": ".",
+          "audit.sequence": 1,
+          "audit.build_id": "19700101T000000Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "cli.audit_id": "cli/19700101T000000Z#1",
+          "event.domain": "cli",
+          "event.kind": "demo.info.sample",
+          "demo.kind": "info",
+          "audit.timestamp": "1970-01-01T00:00:00Z",
+          "schema.version": "1.1"
+        },
+        "audit_id": "cli/19700101T000000Z#1",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 1
+          },
+          "items": [ { "kind": "input", "path": "demo.reml" } ]
+        }
+      }
+    },
+    {
+      "severity": "hint",
+      "message": "ヒントレベルの診断メッセージです",
+      "schema_version": "2.0.0-draft",
+      "location": {
+        "file": "demo.reml",
+        "line": 2,
+        "column": 1,
+        "endLine": 2,
+        "endColumn": 5
+      },
+      "code": "demo.hint.sample",
+      "codes": [ "demo.hint.sample" ],
+      "domain": "cli",
+      "timestamp": "1970-01-01T00:00:00Z",
+      "severity_hint": "ignore",
+      "hints": [
+        { "message": "構文ヒント: use 文を展開してください" }
+      ],
+      "extensions": {
+        "diagnostic.v2": {
+          "timestamp": "1970-01-01T00:00:00Z",
+          "hints": [
+            {
+              "message": "構文ヒント: use 文を展開してください"
+            }
+          ],
+          "codes": [ "demo.hint.sample" ]
+        },
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "runconfig": {
+          "packrat": false,
+          "left_recursion": "auto",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": false,
+          "experimental_effects": false,
+          "extensions": {
+            "stream": {
+              "enabled": false,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "backpressure": { "max_lag_bytes": 0 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        }
+      },
+      "audit_metadata": {
+        "demo.kind": "hint",
+        "event.kind": "demo.hint.sample",
+        "event.domain": "cli",
+        "cli.audit_id": "cli/19700101T000000Z#2",
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "19700101T000000Z",
+        "audit.sequence": 2,
+        "audit.source.workspace": ".",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 2
+          },
+          "items": [ { "kind": "input", "path": "demo.reml" } ]
+        },
+        "schema.version": "1.1",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream": {
+          "enabled": false,
+          "checkpoint": "unspecified",
+          "resume_hint": "unspecified",
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "chunk_size": 0,
+          "flow": {
+            "policy": "auto",
+            "backpressure": { "max_lag_bytes": 0 }
+          }
+        },
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover": {
+          "sync_tokens": [],
+          "notes": false
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.lex": {
+          "profile": "strict_json",
+          "identifier_profile": "unicode"
+        },
+        "parser.runconfig.experimental_effects": false,
+        "parser.runconfig.legacy_result": false,
+        "parser.runconfig.require_eof": false,
+        "parser.runconfig.merge_warnings": true,
+        "parser.runconfig.trace": false,
+        "parser.runconfig.left_recursion": "auto",
+        "parser.runconfig.packrat": false,
+        "parser.runconfig": {
+          "packrat": false,
+          "left_recursion": "auto",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": false,
+          "experimental_effects": false,
+          "extensions": {
+            "stream": {
+              "enabled": false,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "backpressure": { "max_lag_bytes": 0 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        }
+      },
+      "audit": {
+        "metadata": {
+          "parser.runconfig": {
+            "packrat": false,
+            "left_recursion": "auto",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": false,
+            "experimental_effects": false,
+            "extensions": {
+              "stream": {
+                "enabled": false,
+                "checkpoint": "unspecified",
+                "resume_hint": "unspecified",
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "chunk_size": 0,
+                "flow": {
+                  "policy": "auto",
+                  "backpressure": { "max_lag_bytes": 0 }
+                }
+              },
+              "recover": { "sync_tokens": [], "notes": false },
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              }
+            }
+          },
+          "parser.runconfig.packrat": false,
+          "parser.runconfig.left_recursion": "auto",
+          "parser.runconfig.trace": false,
+          "parser.runconfig.merge_warnings": true,
+          "parser.runconfig.require_eof": false,
+          "parser.runconfig.legacy_result": false,
+          "parser.runconfig.experimental_effects": false,
+          "parser.runconfig.extensions.lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.recover": {
+            "sync_tokens": [],
+            "notes": false
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "enabled": false,
+            "checkpoint": "unspecified",
+            "resume_hint": "unspecified",
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "chunk_size": 0,
+            "flow": {
+              "policy": "auto",
+              "backpressure": { "max_lag_bytes": 0 }
+            }
+          },
+          "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "effect.capabilities": [],
+          "effect.stage.actual_capabilities": [],
+          "effect.actual_capabilities": [],
+          "effect.stage.required_capabilities": [],
+          "effect.required_capabilities": [],
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "19700101T000000Z",
+              "workspace": ".",
+              "sequence": 2
+            },
+            "items": [ { "kind": "input", "path": "demo.reml" } ]
+          },
+          "audit.source.workspace": ".",
+          "audit.sequence": 2,
+          "audit.build_id": "19700101T000000Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "cli.audit_id": "cli/19700101T000000Z#2",
+          "event.domain": "cli",
+          "event.kind": "demo.hint.sample",
+          "demo.kind": "hint",
+          "audit.timestamp": "1970-01-01T00:00:00Z",
+          "schema.version": "1.1"
+        },
+        "audit_id": "cli/19700101T000000Z#2",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 2
+          },
+          "items": [ { "kind": "input", "path": "demo.reml" } ]
+        }
+      }
+    }
+  ]
+}

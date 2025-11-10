@@ -182,7 +182,23 @@ let test_pending_resume_flow () =
         |> List.filter (fun event ->
                String.equal event.Audit_envelope.category "parser.stream.error")
       in
-      if error_events <> [] then (
+      let error_events_require_fail events =
+        List.exists
+          (fun event ->
+            let metadata =
+              event.Audit_envelope.envelope.Audit_envelope.metadata
+            in
+            let has_expected_tokens =
+              List.exists
+                (fun (key, value) ->
+                  String.equal key "parser.stream.error.expected_tokens"
+                  && (not (Yojson.Basic.equal value `Null)))
+                metadata
+            in
+            not has_expected_tokens)
+          events
+      in
+      if error_events_require_fail error_events then (
         let summaries =
           error_events
           |> List.mapi (fun idx event ->
@@ -212,6 +228,118 @@ let test_pending_resume_flow () =
         fail desc
           (Printf.sprintf
              "Completed の監査イベントに parser.stream.error が含まれます: %s"
+             details));
+      pass desc
+
+let test_backpressure_recover_diagnostic () =
+  let desc = "バックプレッシャ Pending で recover 診断が生成される" in
+  let input =
+    "module diagnostics.w4.stream_backpressure\n\
+fn produce(limit: i32) -> i32 =\n\
+  if limit <= 0 then 0 else produce(limit - 1)\n\
+fn main() = produce(4)\n"
+  in
+  let len = String.length input in
+  let split = max 1 (len / 2) in
+  let chunk_a = String.sub input 0 split in
+  let chunk_b = String.sub input split (len - split) in
+  let config =
+    Run_config.default
+    |> Run_config.Stream.set_enabled true
+    |> Run_config.Stream.set_flow_policy (Some Run_config.Stream.Flow.Auto)
+    |> Run_config.Stream.set_demand_min_bytes (Some 4)
+    |> Run_config.Stream.set_demand_preferred_bytes (Some 8)
+    |> Run_config.Stream.set_flow_max_lag_bytes (Some 8192)
+  in
+  let step = ref 0 in
+  let feeder () =
+    match !step with
+    | 0 ->
+        incr step;
+        Stream.Chunk chunk_a
+    | 1 ->
+        incr step;
+        Stream.Await None
+    | _ -> Stream.Closed
+  in
+  match
+    Stream.run_stream ~filename:"stream_backpressure_hint.reml" ~config ~feeder
+      ()
+  with
+  | Stream.Completed _ ->
+      fail desc "バックプレッシャ Pending を再現できませんでした"
+  | Stream.Pending pending ->
+      ensure
+        (List.length pending.diagnostics >= 1)
+        desc "Pending へ recover 診断が添付されていません";
+      ensure
+        (match pending.demand.reason with
+        | Some reason -> String.equal (String.trim reason) "pending.backpressure"
+        | None -> false)
+        desc "Pending demand.reason が pending.backpressure ではありません";
+      let pending_has_expected =
+        List.exists
+          (fun diag ->
+            match diag.Diagnostic.expected with
+            | Some summary -> summary.Diagnostic.alternatives <> []
+            | None -> false)
+          pending.diagnostics
+      in
+      if not pending_has_expected then (
+        let details =
+          pending.diagnostics
+          |> List.mapi (fun idx diag ->
+                 let label = diag.Diagnostic.message in
+                 let expected_info =
+                   match diag.Diagnostic.expected with
+                   | Some summary ->
+                       string_of_int (List.length summary.Diagnostic.alternatives)
+                   | None -> "none"
+                 in
+                 Printf.sprintf "#%d:%s(%s)" (idx + 1) label expected_info)
+          |> String.concat "; "
+        in
+        fail desc
+          (Printf.sprintf
+             "Pending 診断に expected_tokens がありません (details: %s)" details));
+      let after_chunk =
+        Stream.resume pending.continuation (Stream.Chunk chunk_b)
+      in
+      let completed =
+        match after_chunk with
+        | Stream.Completed completed -> completed
+        | Stream.Pending pending2 -> (
+            match Stream.resume pending2.continuation Stream.Closed with
+            | Stream.Completed completed -> completed
+            | Stream.Pending _ ->
+                fail desc "resume 後に Completed へ到達しませんでした")
+      in
+      let diag_count = List.length completed.result.diagnostics in
+      ensure (diag_count >= 1) desc "Completed 結果に診断がありません";
+      let has_expected =
+        List.exists
+          (fun diag ->
+            match diag.Diagnostic.expected with
+            | Some summary -> summary.Diagnostic.alternatives <> []
+            | None -> false)
+          completed.result.diagnostics
+      in
+      if not has_expected then (
+        let details =
+          completed.result.diagnostics
+          |> List.mapi (fun idx diag ->
+                 let expected_info =
+                   match diag.Diagnostic.expected with
+                   | Some summary ->
+                       string_of_int (List.length summary.Diagnostic.alternatives)
+                   | None -> "none"
+                 in
+                 Printf.sprintf "#%d:%s" (idx + 1) expected_info)
+          |> String.concat "; "
+        in
+        fail desc
+          (Printf.sprintf
+             "recover 診断に expected_tokens が含まれていません (details: %s)"
              details));
       pass desc
 
@@ -342,6 +470,7 @@ let () =
     [
       test_streaming_matches_batch;
       test_pending_resume_flow;
+      test_backpressure_recover_diagnostic;
       test_streaming_effect_row_stage_consistency;
     ]
   in

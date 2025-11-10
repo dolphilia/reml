@@ -1,0 +1,380 @@
+{
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "残余効果が閉じていません",
+      "schema_version": "2.0.0-draft",
+      "location": {
+        "file": "<入力>",
+        "line": 1,
+        "column": 1,
+        "endLine": 1,
+        "endColumn": 1
+      },
+      "code": "effects.contract.residual_leak",
+      "codes": [ "effects.contract.residual_leak" ],
+      "domain": "type",
+      "timestamp": "1970-01-01T00:00:00Z",
+      "notes": [
+        "`panic` のハンドラが宣言されていないためステージ検証に失敗しました"
+      ],
+      "extensions": {
+        "diagnostic.v2": {
+          "timestamp": "1970-01-01T00:00:00Z",
+          "codes": [ "effects.contract.residual_leak" ]
+        },
+        "capability": {
+          "detail": [ { "capability": "core.runtime", "stage": "stable" } ],
+          "ids": [ "core.runtime" ],
+          "stage": { "required": "stable", "actual": "stable" },
+          "primary": "core.runtime",
+          "required": [ "core.runtime" ],
+          "actual": [ { "capability": "core.runtime", "stage": "stable" } ]
+        },
+        "effect.capabilities": [ "core.runtime" ],
+        "effect.required_capabilities": [ "core.runtime" ],
+        "effect.actual_capabilities": [
+          { "capability": "core.runtime", "stage": "stable" }
+        ],
+        "effect.stage.required_capabilities": [ "core.runtime" ],
+        "effect.stage.actual_capabilities": [
+          { "capability": "core.runtime", "stage": "stable" }
+        ],
+        "effect.stage.capabilities": [
+          { "capability": "core.runtime", "stage": "stable" }
+        ],
+        "effect.stage_trace": [
+          { "source": "cli_option", "note": "not provided" },
+          { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
+          {
+            "source": "typer",
+            "stage": "stable",
+            "capability": "core.runtime"
+          },
+          {
+            "source": "runtime",
+            "stage": "stable",
+            "capability": "core.runtime"
+          },
+          {
+            "source": "capability_json",
+            "stage": "stable",
+            "file": "tooling/runtime/capabilities/default.json"
+          }
+        ],
+        "effect.stage.required": "stable",
+        "effect.stage.actual": "stable",
+        "effect.stage.capability": "core.runtime",
+        "effects": {
+          "declared": [ "io" ],
+          "actual_capabilities": [
+            { "capability": "core.runtime", "stage": "stable" }
+          ],
+          "required_capabilities": [ "core.runtime" ],
+          "capabilities": [ "core.runtime" ],
+          "capability": "core.runtime",
+          "stage": { "required": "stable", "actual": "stable" },
+          "capabilities_detail": [
+            { "capability": "core.runtime", "stage": "stable" }
+          ],
+          "residual": { "missing": [ "panic" ], "leaked_from": "fn demo" },
+          "stage_trace": [
+            { "source": "cli_option", "note": "not provided" },
+            { "source": "env_var", "note": "REMLC_EFFECT_STAGE not set" },
+            {
+              "source": "typer",
+              "stage": "stable",
+              "capability": "core.runtime"
+            },
+            {
+              "source": "runtime",
+              "stage": "stable",
+              "capability": "core.runtime"
+            },
+            {
+              "source": "capability_json",
+              "stage": "stable",
+              "file": "tooling/runtime/capabilities/default.json"
+            }
+          ]
+        },
+        "effect.declared": [ "io" ],
+        "effect.residual.missing": [ "panic" ],
+        "effect.residual.leaked_from": "fn demo",
+        "runconfig": {
+          "packrat": false,
+          "left_recursion": "auto",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": false,
+          "experimental_effects": false,
+          "extensions": {
+            "stream": {
+              "enabled": false,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "backpressure": { "max_lag_bytes": 0 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        }
+      },
+      "audit_metadata": {
+        "event.kind": "effects.contract.residual_leak",
+        "event.domain": "type",
+        "effect.stage.required": "stable",
+        "effect.stage.actual": "stable",
+        "effect.capability": "core.runtime",
+        "effect.required_capabilities": [ "core.runtime" ],
+        "effect.stage.required_capabilities": [ "core.runtime" ],
+        "effect.actual_capabilities": [
+          { "capability": "core.runtime", "stage": "stable" }
+        ],
+        "effect.stage.actual_capabilities": [
+          { "capability": "core.runtime", "stage": "stable" }
+        ],
+        "capability.primary": "core.runtime",
+        "capability.ids": [ "core.runtime" ],
+        "effect.capabilities": [ "core.runtime" ],
+        "effect.stage.capabilities": [
+          { "capability": "core.runtime", "stage": "stable" }
+        ],
+        "effect.residual": {
+          "missing": [ "panic" ],
+          "leaked_from": "fn demo"
+        },
+        "stage_trace": [
+          { "source": "typer", "stage": "stable" },
+          { "source": "runtime", "stage": "stable" }
+        ],
+        "effect.declared": [ "io" ],
+        "effect.residual.tags": [ "panic" ],
+        "effect.residual.leaked_from": "fn demo",
+        "effect.residual.missing": [ "panic" ],
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "19700101T000000Z",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "cli.audit_id": "cli/19700101T000000Z#0",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "<入力>" } ]
+        },
+        "schema.version": "1.1",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream": {
+          "enabled": false,
+          "checkpoint": "unspecified",
+          "resume_hint": "unspecified",
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "chunk_size": 0,
+          "flow": {
+            "policy": "auto",
+            "backpressure": { "max_lag_bytes": 0 }
+          }
+        },
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover": {
+          "sync_tokens": [],
+          "notes": false
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.lex": {
+          "profile": "strict_json",
+          "identifier_profile": "unicode"
+        },
+        "parser.runconfig.experimental_effects": false,
+        "parser.runconfig.legacy_result": false,
+        "parser.runconfig.require_eof": false,
+        "parser.runconfig.merge_warnings": true,
+        "parser.runconfig.trace": false,
+        "parser.runconfig.left_recursion": "auto",
+        "parser.runconfig.packrat": false,
+        "parser.runconfig": {
+          "packrat": false,
+          "left_recursion": "auto",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": false,
+          "experimental_effects": false,
+          "extensions": {
+            "stream": {
+              "enabled": false,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "backpressure": { "max_lag_bytes": 0 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        }
+      },
+      "audit": {
+        "metadata": {
+          "parser.runconfig": {
+            "packrat": false,
+            "left_recursion": "auto",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": false,
+            "experimental_effects": false,
+            "extensions": {
+              "stream": {
+                "enabled": false,
+                "checkpoint": "unspecified",
+                "resume_hint": "unspecified",
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "chunk_size": 0,
+                "flow": {
+                  "policy": "auto",
+                  "backpressure": { "max_lag_bytes": 0 }
+                }
+              },
+              "recover": { "sync_tokens": [], "notes": false },
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              }
+            }
+          },
+          "parser.runconfig.packrat": false,
+          "parser.runconfig.left_recursion": "auto",
+          "parser.runconfig.trace": false,
+          "parser.runconfig.merge_warnings": true,
+          "parser.runconfig.require_eof": false,
+          "parser.runconfig.legacy_result": false,
+          "parser.runconfig.experimental_effects": false,
+          "parser.runconfig.extensions.lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.recover": {
+            "sync_tokens": [],
+            "notes": false
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "enabled": false,
+            "checkpoint": "unspecified",
+            "resume_hint": "unspecified",
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "chunk_size": 0,
+            "flow": {
+              "policy": "auto",
+              "backpressure": { "max_lag_bytes": 0 }
+            }
+          },
+          "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "19700101T000000Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [ { "kind": "input", "path": "<入力>" } ]
+          },
+          "cli.audit_id": "cli/19700101T000000Z#0",
+          "audit.source.workspace": ".",
+          "audit.sequence": 0,
+          "audit.build_id": "19700101T000000Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "effect.residual.missing": [ "panic" ],
+          "effect.residual.leaked_from": "fn demo",
+          "effect.residual.tags": [ "panic" ],
+          "effect.declared": [ "io" ],
+          "stage_trace": [
+            { "source": "typer", "stage": "stable" },
+            { "source": "runtime", "stage": "stable" }
+          ],
+          "effect.residual": {
+            "missing": [ "panic" ],
+            "leaked_from": "fn demo"
+          },
+          "effect.stage.capabilities": [
+            { "capability": "core.runtime", "stage": "stable" }
+          ],
+          "effect.capabilities": [ "core.runtime" ],
+          "capability.ids": [ "core.runtime" ],
+          "capability.primary": "core.runtime",
+          "effect.stage.actual_capabilities": [
+            { "capability": "core.runtime", "stage": "stable" }
+          ],
+          "effect.actual_capabilities": [
+            { "capability": "core.runtime", "stage": "stable" }
+          ],
+          "effect.stage.required_capabilities": [ "core.runtime" ],
+          "effect.required_capabilities": [ "core.runtime" ],
+          "effect.capability": "core.runtime",
+          "effect.stage.actual": "stable",
+          "effect.stage.required": "stable",
+          "event.domain": "type",
+          "event.kind": "effects.contract.residual_leak",
+          "audit.timestamp": "1970-01-01T00:00:00Z",
+          "schema.version": "1.1"
+        },
+        "audit_id": "cli/19700101T000000Z#0",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "<入力>" } ]
+        }
+      }
+    }
+  ]
+}
