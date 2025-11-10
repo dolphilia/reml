@@ -129,6 +129,7 @@ module Config : sig
   val find : t -> Extensions.Namespace.t option
   val require_eof_override : Extensions.Namespace.t -> bool option
   val trivia_profile : Extensions.Namespace.t -> Lex.profile option
+  val path : Extensions.Namespace.t -> string option
   val with_trivia_profile : t -> Lex.profile -> t
 end
 

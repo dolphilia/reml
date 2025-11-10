@@ -87,6 +87,8 @@ type options = {
   parser_packrat : bool;  (** RunConfig.packrat 切替（Packrat メモ化を有効化、実験的） *)
   parser_left_recursion : Parser_run_config.left_recursion;
       (** RunConfig.left_recursion モード *)
+  config_path : string option;
+      (** `--config` で指定された設定ファイルパス（RunConfig.extensions.config.path） *)
   parser_merge_warnings : bool;
       (** RunConfig.merge_warnings（診断集約の有無） *)
   parser_streaming : bool;  (** ストリーミングランナー PoC を有効化 *)

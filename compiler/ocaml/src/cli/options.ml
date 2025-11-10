@@ -198,6 +198,7 @@ type options = {
   parser_packrat : bool;  (** RunConfig.packrat フラグ（Packrat メモ化を有効化、実験的） *)
   parser_left_recursion : Run_config.left_recursion;
       (** RunConfig.left_recursion モード *)
+  config_path : string option;  (** `--config` で指定された設定ファイルパス *)
   parser_merge_warnings : bool;
       (** RunConfig.merge_warnings（診断集約の有無） *)
   parser_streaming : bool;  (** ストリーミングランナー PoC を有効化 *)
@@ -254,6 +255,7 @@ let default_options =
     parser_require_eof = Run_config.default.require_eof;
     parser_packrat = Run_config.default.packrat;
     parser_left_recursion = Run_config.default.left_recursion;
+    config_path = None;
     parser_merge_warnings = Run_config.default.merge_warnings;
     parser_streaming = false;
     stream_checkpoint = None;
@@ -338,6 +340,7 @@ let parse_args argv =
   let parser_require_eof = ref Run_config.default.require_eof in
   let parser_packrat = ref Run_config.default.packrat in
   let parser_left_recursion = ref Run_config.default.left_recursion in
+  let config_path = ref None in
   let parser_merge_warnings = ref Run_config.default.merge_warnings in
   let parser_streaming = ref false in
   let stream_checkpoint = ref None in
@@ -445,6 +448,9 @@ let parse_args argv =
       ( "--metrics",
         Arg.String (fun path -> metrics_path := Some path),
         "<path> Output metrics to file" );
+      ( "--config",
+        Arg.String (fun value -> config_path := Some value),
+        "<path> Load workspace configuration metadata (Phase 2 PoC)" );
       ( "--metrics-format",
         Arg.String
           (fun value -> metrics_format_str := String.lowercase_ascii value),
@@ -816,6 +822,10 @@ let parse_args argv =
           parser_require_eof = !parser_require_eof;
           parser_packrat = !parser_packrat;
           parser_left_recursion = !parser_left_recursion;
+          config_path =
+            (match !config_path with
+            | Some path when String.trim path <> "" -> Some (String.trim path)
+            | _ -> None);
           parser_merge_warnings = !parser_merge_warnings;
           parser_streaming = !parser_streaming;
           stream_checkpoint = !stream_checkpoint;
@@ -866,6 +876,10 @@ let to_run_config (opts : options) =
     |> Namespace.add "experimental_effects"
          (Extensions.Bool opts.parser_experimental_effects)
     |> Namespace.add "legacy_result" (Extensions.Bool base.legacy_result)
+    |> (fun namespace ->
+         match opts.config_path with
+         | Some path -> Namespace.add "path" (Extensions.String path) namespace
+         | None -> namespace)
   in
   let lex_namespace =
     Namespace.empty

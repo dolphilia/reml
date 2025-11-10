@@ -728,7 +728,7 @@ let print_diagnostic opts source ~run_config diag =
             Cli.Json_formatter.diagnostic_to_json_serialized
               ~mode:opts.Cli.Options.json_mode serialized)
   in
-  Printf.eprintf "%s\n" output
+  Printf.printf "%s\n%!" output
 
 (** 出力ファイル名生成 *)
 let output_filename out_dir basename suffix =

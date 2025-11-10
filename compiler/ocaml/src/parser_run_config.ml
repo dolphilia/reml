@@ -305,6 +305,11 @@ module Config = struct
         | None -> None)
     | None -> None
 
+  let path namespace =
+    match Namespace.find "path" namespace with
+    | Some value -> string_of_value value
+    | None -> None
+
   let with_trivia_profile config profile =
     with_extension "config"
       (fun namespace ->

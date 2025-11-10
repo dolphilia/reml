@@ -77,7 +77,8 @@ cli_packrat_switch::file::examples/cli/emit_suite.reml
 # flags: --trace --no-merge-warnings
 cli_trace_toggle::file::examples/cli/trace_sample.reml
 # tests: compiler/ocaml/tests/test_cli_diagnostics.ml（warning merge snapshot）
-# flags: --no-merge-warnings --json-mode compact
+# flags: --no-merge-warnings
+# flags.ocaml: --json-mode compact
 cli_merge_warnings::file::examples/cli/type_error.reml
 
 # LSP RPC（tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-*.json と同期）

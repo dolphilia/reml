@@ -1099,6 +1099,20 @@ let with_parser_runconfig_metadata ~(config : Run_config.t) diag =
     | Run_config.On -> "on"
     | Run_config.Auto -> "auto"
   in
+  let config_namespace = Run_config.Config.find config in
+  let config_path_value =
+    match config_namespace with
+    | Some namespace -> (
+        match Run_config.Config.path namespace with
+        | Some path when String.trim path <> "" -> Some path
+        | _ -> None)
+    | None -> None
+  in
+  let config_extension_json =
+    match config_path_value with
+    | Some path -> Some (`Assoc [ ("path", `String path) ])
+    | None -> None
+  in
   let runconfig_fields =
     []
     |> add_field "packrat" (`Bool config.packrat)
@@ -1202,9 +1216,15 @@ let with_parser_runconfig_metadata ~(config : Run_config.t) diag =
     |> add_field "flow" (`Assoc (List.rev flow_fields))
   in
   let stream_json = `Assoc (List.rev stream_fields) in
-  let extensions_json =
-    `Assoc [ ("lex", lex_json); ("recover", recover_json); ("stream", stream_json) ]
+  let extensions_pairs =
+    [ ("lex", lex_json); ("recover", recover_json); ("stream", stream_json) ]
   in
+  let extensions_pairs =
+    match config_extension_json with
+    | Some json -> ("config", json) :: extensions_pairs
+    | None -> extensions_pairs
+  in
+  let extensions_json = `Assoc (List.rev extensions_pairs) in
   let runconfig_json =
     `Assoc (List.rev (add_field "extensions" extensions_json runconfig_fields))
   in
@@ -1281,6 +1301,13 @@ let with_parser_runconfig_metadata ~(config : Run_config.t) diag =
         |> add_option_field
              "parser.runconfig.extensions.stream.flow.backpressure.throttle_ratio"
              (Option.map (fun value -> `Float value) flow.backpressure.throttle_ratio)
+  in
+  let base_audit_entries =
+    match config_path_value with
+    | Some path ->
+        add_field "parser.runconfig.extensions.config.path" (`String path)
+          base_audit_entries
+    | None -> base_audit_entries
   in
   let base_audit_entries = effect_audit_entries @ base_audit_entries in
   let diag = set_extension "runconfig" runconfig_json diag in
