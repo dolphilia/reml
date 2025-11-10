@@ -181,3 +181,27 @@ Rust フロントエンド移植において、OCaml 実装と同一の診断 (`
    2. Runtime Capability ID ごとの Stage 情報を OCaml 側と同じソース（`tooling/audit-store/capabilities/*.json`、`docs/spec/3-8-core-runtime-capability.md`）から逆引きできるヘルパーを Rust フロントエンドへ実装し、`effect.capabilities_detail` / `effect.stage.actual_capabilities` / `bridge.stage.actual_capabilities` を埋める。  
    3. `build_audit_metadata` および `DualWriteGuards` に Stage 情報を伝搬させ、`bridge.stage.required_capabilities` / `bridge.stage.actual_capabilities` / `effect.stage.capability` / `effect.stage.stage_trace` を OCaml と同一キーで生成する。  
    4. `collect-iterator-audit-metrics.py --section effects` に `effect_scope.audit_presence`（Stage/Capability 拡張が揃っているかの pass_rate）を追加し、`scripts/poc_dualwrite_compare.sh` の `metrics_ok` 判定へ組み込む。`effects-metrics.rust.err.log` に `missing_keys` が無い状態で `ffi_ownership_mismatch` / `ffi_async_dispatch` の `metrics_ok=true` を確認できたら DIAG-RUST-06 をクローズする。
+
+## 1.2.17 CLI/LSP RunConfig 整合（DIAG-RUST-07）
+`cli_packrat_switch` / `cli_trace_toggle` / `cli_merge_warnings` および `lsp_*` ケースは、OCaml 側では `--config` 伝播と `[TRACE]` ログ分離の実装が完了している一方で、Rust 側 `poc_frontend` の RunConfig 拡張が未整備なため `diag_match=false`・`parser.runconfig_switch_coverage=0.0` が継続している。本節では CLI/LSP 両チャネルで同じ入力／設定を再実行し、`extensions.config.*` と `parser.runconfig.*` を一致させる手順をまとめる。
+
+### 手順
+1. **Rust CLI の RunConfig 実装**  
+   - `compiler/rust/frontend/src/bin/poc_frontend.rs` に `RunConfigBuilder` を追加し、`--config <path>`（JSON/TOML）・`--trace`・`--no-merge-warnings`・`--packrat` を `RunConfig` へ格納する。  
+   - 設定結果は `extensions.config.path`・`extensions.config.source`・`extensions.cli.trace_toggle`・`extensions.cli.packrat_switch` として `diagnostics.*` および `audit_metadata.cli.*` にシリアライズする。`cli_trace_toggle` ケースでは `[TRACE]` ログを CLI JSON から分離し、`reports/dual-write/front-end/w4-diagnostics/<run>/cli_trace_toggle/trace/rust.log` へ保存する。  
+   - `parser.runconfig_switch_coverage` を Rust 側 `collect_cli_extensions`（仮称）で算出し、`collect-iterator-audit-metrics.py --section parser --require-success` の `runconfig_switch` ゲートにフィードする。
+
+2. **CLI/LSP 同期実行**  
+   - `scripts/poc_dualwrite_compare.sh --mode diag --run-id <date>-w4-diag-cli-lsp --cases docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt --case-filter '^(cli_|lsp_)' --emit-expected-tokens expected_tokens/cli-lsp` を実行し、CLI 3 ケース + LSP 3 ケースの成果物を `reports/dual-write/front-end/w4-diagnostics/<run-id>/` に格納する。  
+   - LSP ケースは `w4-diagnostic-cases.txt` の `#lsp-fixture` 情報を利用し、同一入力ファイルを `npm run ci --prefix tooling/lsp/tests/client_compat -- diag-w4 <run-id>` で再実行する。`tooling/lsp/tests/client_compat/fixtures/*.json` と CLI 出力を `lsp/<case>.diff` に保存し、`audit_metadata.channel` が `cli` / `lsp` で一致することを確認する。  
+   - `scripts/validate-diagnostic-json.sh <case>/diagnostics.ocaml.json <case>/diagnostics.rust.json` と `collect-iterator-audit-metrics.py --section parser --source <case>/diagnostics.rust.json --require-success` を各ケースへ適用し、`summary.json` の `diag_match` / `metrics_ok` / `parser.runconfig_switch_coverage` を更新する。
+
+3. **成果物整理とドキュメント反映**  
+   - `reports/dual-write/front-end/w4-diagnostics/<run>/summary.md` の CLI/LSP 行へ `extensions.config.path` 差分／`parser.runconfig_switch_coverage` の数値を追記し、`reports/dual-write/front-end/w4-diagnostics/README.md` の CLI/LSP セクションを `scripts/dualwrite_summary_report.py --diag-table --case-filter '^(cli_|lsp_)'` で更新する。  
+   - `p1-front-end-checklists.csv`（診断 / CLI/LSP RunConfig 行）に Run ID・`diag_match` 結果・成果物パスを追記し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-diag-rust-07` のアクションアイテム番号とリンクを同期する。  
+   - `docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md` では CLI Config / LSP RPC の `Status` 列を `Ready → Pass` へ更新し、Notes に `parser.runconfig_switch_coverage=1.0` / `extensions.config.path` 差分ゼロを明記する。
+
+### 完了判定
+- `cli_packrat_switch` / `cli_trace_toggle` / `cli_merge_warnings` / `lsp_hover_internal_error` / `lsp_diagnostic_stream` / `lsp_workspace_config` の `summary.json` で `diag_match=true`、`metrics_ok=true`、`parser.runconfig_switch_coverage=1.0` が揃っている。  
+- `reports/dual-write/front-end/w4-diagnostics/<run>/lsp/<case>.diff` に Schema 差分がなく、`npm run ci --prefix tooling/lsp/tests/client_compat` が同 Run ID のフィクスチャでパスしている。  
+- `p1-front-end-checklists.csv` と `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-diag-rust-07` が Run ID / 成果物パス / 再現手順で一致し、`cli_trace_toggle` の `[TRACE]` ログが JSON とは別ファイルになっていることを確認できる。
