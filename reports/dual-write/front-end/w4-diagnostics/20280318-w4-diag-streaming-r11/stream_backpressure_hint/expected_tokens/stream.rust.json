@@ -1,0 +1,46 @@
+{
+  "case": "stream_backpressure_hint",
+  "frontend": "rust",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280318-w4-diag-streaming-r11/stream_backpressure_hint/diagnostics.rust.json",
+  "diagnostic_count": 5,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 1,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 2,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 3,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 4,
+      "token_count": 1,
+      "expected_tokens": [
+        {
+          "kind": "keyword",
+          "label": "fn"
+        }
+      ]
+    }
+  ],
+  "first_expected_tokens": [
+    {
+      "kind": "keyword",
+      "label": "fn"
+    }
+  ],
+  "first_diagnostic_index": 4,
+  "total_expected_token_count": 1
+}

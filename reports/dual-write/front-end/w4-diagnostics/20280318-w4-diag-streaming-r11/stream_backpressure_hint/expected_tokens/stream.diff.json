@@ -1,0 +1,27 @@
+{
+  "case": "stream_backpressure_hint",
+  "match": false,
+  "ocaml_count": 0,
+  "rust_count": 1,
+  "differences": [
+    {
+      "index": 0,
+      "ocaml": null,
+      "rust": {
+        "kind": "keyword",
+        "label": "fn"
+      }
+    }
+  ],
+  "ocaml_tokens": [],
+  "rust_tokens": [
+    {
+      "kind": "keyword",
+      "label": "fn"
+    }
+  ],
+  "ocaml_first_index": null,
+  "rust_first_index": 4,
+  "ocaml_payload_present": true,
+  "rust_payload_present": true
+}

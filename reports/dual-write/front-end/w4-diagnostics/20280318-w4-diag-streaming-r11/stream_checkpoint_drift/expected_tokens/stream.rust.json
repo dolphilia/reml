@@ -1,0 +1,41 @@
+{
+  "case": "stream_checkpoint_drift",
+  "frontend": "rust",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280318-w4-diag-streaming-r11/stream_checkpoint_drift/diagnostics.rust.json",
+  "diagnostic_count": 4,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 1,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 2,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 3,
+      "token_count": 1,
+      "expected_tokens": [
+        {
+          "kind": "keyword",
+          "label": "fn"
+        }
+      ]
+    }
+  ],
+  "first_expected_tokens": [
+    {
+      "kind": "keyword",
+      "label": "fn"
+    }
+  ],
+  "first_diagnostic_index": 3,
+  "total_expected_token_count": 1
+}
