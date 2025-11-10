@@ -148,6 +148,11 @@ Rust フロントエンド移植において、OCaml 実装と同一の診断 (`
    - 新しい Run ID（例: `202804XX-w4-diag-parser`）を `scripts/poc_dualwrite_compare.sh --mode diag --case-filter '^recover_(else_without_if|lambda_body)$'` で実行し、`summary.json` の `diag_match` / `metrics_ok` / `parser_expected` がすべて `true` / `1.0` になったら `p1-front-end-checklists.csv` および `docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md` を更新する。  
    - LSP/CLI 連携が完了した時点で `reports/dual-write/front-end/w4-diagnostics/README.md` のテーブルを `scripts/dualwrite_summary_report.py --diag-table` で再生成し、`case=parser recover` 行が `Ready + Pass` へ移行したことをスクリーンショットまたはログで添付する。
 
+### 運用メモ
+- `scripts/poc_dualwrite_compare.sh --mode diag` の `collect_case_artifacts` フェーズに `--emit-expected-tokens <dir>` を追加し、`expected_tokens/ocaml.json` / `expected_tokens/rust.json` / `expected_tokens.diff.json` を必ず保存する。`diff` は `jq -S '.[].alternatives'` から生成し、`summary.json.expected_tokens_match` フラグに反映する。  
+- `collect-iterator-audit-metrics.py --section parser` へ `expected_tokens_match` を新設し、`parser.expected_summary_presence` と連動させて `metrics_ok=false` 判定を出す。エラーメッセージは `reports/dual-write/front-end/w4-diagnostics/<run>/<case>/parser-metrics.rust.err.log` に記録し、`p1-front-end-checklists.csv` と triage 表で Run ID を追跡する。  
+- `Diagnostic.Builder` で `message_key=parse.expected` + `Span` が一致する場合に後勝ちマージを行う設計を `frontend/src/diagnostic/recover.rs` のコメントと `docs/plans/rust-migration/1-3-dual-write-runbook.md#手順-2c-診断互換diag-モード` に記し、`recover_lambda_body` の 2 重発火を設計上排除する。
+
 ### 完了判定
 - `recover_else_without_if` / `recover_lambda_body` の `expected_tokens.diff.json` が空であること。  
 - `collect-iterator-audit-metrics.py --section parser --require-success` が `parser.expected_summary_presence=1.0` と `diag_counts.ocaml=diag_counts.rust=1` を記録し、`reports/dual-write/front-end/w4-diagnostics/<run>/summary.json` の `diag_match` / `metrics_ok` が true になること。  

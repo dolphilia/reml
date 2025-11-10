@@ -73,6 +73,7 @@ scripts/dualwrite_summary_report.py \
   - `diagnostics.{ocaml,rust}.json`, `diagnostics.diff.json`, `schema-validate.log`
   - `parser-metrics.{ocaml,rust}.json`, `effects-metrics.{ocaml,rust}.json`, `streaming-metrics.{ocaml,rust}.json`
   - `summary.json`（case ごとのゲート判定・Diag/metrics 状態を記録）
+- Recover ケースでは `--emit-expected-tokens <dir>` を追加し、`expected_tokens/ocaml.json`・`expected_tokens/rust.json`・`expected_tokens.diff.json` を保存する。`diff` は `jq -S '.diagnostics[].extensions.recover.expected_tokens // []'` の結果を比較して生成し、`summary.json.expected_tokens_match` に反映する。`expected_tokens_match=false` の場合は `gating=false` とし、Run 全体を再試行する。
 - `scripts/validate-diagnostic-json.sh` は `reports/diagnostic-format-regression.md#1-ローカル検証手順` のスキーマ要件を満たすよう拡張済みなので、diag モードでも出力ペアを必ず同スクリプトへ渡し、失敗したケースは `summary.json` の `schema_ok=false` / `gating=false` で識別できるようにする。
 - `scripts/dualwrite_summary_report.py --diag-table` で Markdown テーブルを生成し、`reports/dual-write/front-end/w4-diagnostics/README.md` の `<!-- DIAG_TABLE_START/END -->` ブロックへ自動埋め込みする。CI で運用する場合は `README.md` をソースオブトゥルースとして扱い、Run ID ごとに表を更新する。
 - CI (`bootstrap-linux` / `diag-dualwrite` ジョブ想定) でもローカルと同じ Run ID を指定し、`scripts/dualwrite_summary_report.py <run_dir> --diag-table <tmp.md> --update-diag-readme reports/dual-write/front-end/w4-diagnostics/README.md` を実行してからレポートを保存する。これにより `reports/dual-write/front-end/w4-diagnostics/README.md` が常に最新の `gating/schema_ok/metrics_ok` サマリになり、後続フェーズは README の表だけを参照すればよい。
