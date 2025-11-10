@@ -769,6 +769,165 @@ fn build_stream_extension(stream: &StreamSettings) -> Value {
 
 const STREAMING_PLACEHOLDER_TOKEN: &str = "解析継続トークン";
 
+#[derive(Clone, Debug)]
+struct StageAuditPayload {
+    required_stage: Option<String>,
+    actual_stage: Option<String>,
+    capability_ids: Vec<String>,
+}
+
+impl StageAuditPayload {
+    fn new(context: &StageContext, capability_ids: &[String]) -> Self {
+        Self {
+            required_stage: Some(stage_requirement_label(&context.capability)),
+            actual_stage: Some(stage_requirement_label(&context.runtime)),
+            capability_ids: capability_ids.to_vec(),
+        }
+    }
+
+    fn primary_capability(&self) -> Option<&str> {
+        self.capability_ids.first().map(|s| s.as_str())
+    }
+
+    fn capability_details(&self) -> Vec<Value> {
+        if self.capability_ids.is_empty() {
+            return Vec::new();
+        }
+        self.capability_ids
+            .iter()
+            .map(|cap| {
+                let mut entry = serde_json::Map::new();
+                entry.insert("capability".to_string(), json!(cap));
+                if let Some(actual) = &self.actual_stage {
+                    entry.insert("stage".to_string(), json!(actual));
+                }
+                Value::Object(entry)
+            })
+            .collect()
+    }
+
+    fn capability_ids_value(&self) -> Value {
+        Value::Array(
+            self.capability_ids
+                .iter()
+                .map(|cap| Value::String(cap.clone()))
+                .collect(),
+        )
+    }
+
+    fn apply_extensions(&self, extensions: &mut serde_json::Map<String, Value>) {
+        let ids_value = self.capability_ids_value();
+        let capability_details = Value::Array(self.capability_details());
+        extensions.insert("effect.capabilities".to_string(), ids_value.clone());
+        extensions.insert(
+            "effect.required_capabilities".to_string(),
+            ids_value.clone(),
+        );
+        extensions.insert(
+            "effect.stage.required_capabilities".to_string(),
+            ids_value.clone(),
+        );
+        extensions.insert(
+            "effect.actual_capabilities".to_string(),
+            capability_details.clone(),
+        );
+        extensions.insert(
+            "effect.stage.actual_capabilities".to_string(),
+            capability_details.clone(),
+        );
+        if let Some(required) = &self.required_stage {
+            extensions.insert("effect.stage.required".to_string(), json!(required));
+        }
+        if let Some(actual) = &self.actual_stage {
+            extensions.insert("effect.stage.actual".to_string(), json!(actual));
+        }
+        if let Some(primary) = self.primary_capability() {
+            extensions.insert("effect.capability".to_string(), json!(primary));
+        }
+        let mut capability_ext = serde_json::Map::new();
+        capability_ext.insert("ids".to_string(), ids_value.clone());
+        if let Some(primary) = self.primary_capability() {
+            capability_ext.insert("primary".to_string(), json!(primary));
+        }
+        capability_ext.insert(
+            "stage".to_string(),
+            json!({
+                "required": self.required_stage.as_deref(),
+                "actual": self.actual_stage.as_deref(),
+            }),
+        );
+        capability_ext.insert("detail".to_string(), capability_details);
+        capability_ext.insert("required_capabilities".to_string(), ids_value.clone());
+        extensions.insert("capability".to_string(), Value::Object(capability_ext));
+    }
+
+    fn apply_audit_metadata(&self, metadata: &mut serde_json::Map<String, Value>) {
+        if let Some(required) = &self.required_stage {
+            metadata.insert("effect.stage.required".to_string(), json!(required));
+        }
+        if let Some(actual) = &self.actual_stage {
+            metadata.insert("effect.stage.actual".to_string(), json!(actual));
+        }
+        let ids_value = self.capability_ids_value();
+        let capability_details = Value::Array(self.capability_details());
+        metadata.insert("capability.ids".to_string(), ids_value.clone());
+        metadata.insert(
+            "effect.required_capabilities".to_string(),
+            ids_value.clone(),
+        );
+        metadata.insert(
+            "effect.stage.required_capabilities".to_string(),
+            ids_value.clone(),
+        );
+        metadata.insert(
+            "effect.actual_capabilities".to_string(),
+            capability_details.clone(),
+        );
+        metadata.insert(
+            "effect.stage.actual_capabilities".to_string(),
+            capability_details.clone(),
+        );
+        metadata.insert(
+            "bridge.stage.required_capabilities".to_string(),
+            ids_value.clone(),
+        );
+        metadata.insert(
+            "bridge.stage.actual_capabilities".to_string(),
+            capability_details.clone(),
+        );
+        if let Some(primary) = self.primary_capability() {
+            metadata.insert("bridge.stage.capability".to_string(), json!(primary));
+            metadata.insert("effect.capability".to_string(), json!(primary));
+        }
+        let mut stage_trace = Vec::new();
+        if let Some(required) = &self.required_stage {
+            stage_trace.push(json!({
+                "source": "cli_option",
+                "stage": required,
+                "note": "--effect-stage",
+            }));
+        }
+        if let Some(actual) = &self.actual_stage {
+            stage_trace.push(json!({
+                "source": "runtime",
+                "stage": actual,
+            }));
+        }
+        if !stage_trace.is_empty() {
+            let trace_value = Value::Array(stage_trace.clone());
+            metadata.insert("stage.trace".to_string(), trace_value.clone());
+            metadata.insert("effect.stage.trace".to_string(), trace_value);
+        }
+    }
+}
+
+fn stage_requirement_label(requirement: &StageRequirement) -> String {
+    match requirement {
+        StageRequirement::Exact(stage) => stage.as_str().to_string(),
+        StageRequirement::AtLeast(stage) => format!("at_least:{}", stage.as_str()),
+    }
+}
+
 fn build_diagnostics(
     diagnostics: &[FrontendDiagnostic],
     args: &CliArgs,
@@ -780,6 +939,10 @@ fn build_diagnostics(
     let streaming_enabled = args.stream_config.enabled;
     let has_streaming_recover = streaming_enabled && diagnostics.iter().any(has_recover_note);
     let mut placeholder_emitted = false;
+    let stage_payload = StageAuditPayload::new(
+        &args.typecheck_config.effect_context,
+        &args.runtime_capabilities,
+    );
 
     diagnostics
         .iter()
@@ -832,34 +995,10 @@ fn build_diagnostics(
                     }
                 }),
             );
-            extensions.insert(
-                "effect.required_capabilities".to_string(),
-                Value::Array(Vec::new()),
-            );
-            extensions.insert(
-                "effect.stage.required_capabilities".to_string(),
-                Value::Array(Vec::new()),
-            );
-            let runtime_caps: Vec<Value> = args
-                .runtime_capabilities
-                .iter()
-                .map(|cap| json!(cap))
-                .collect();
-            extensions.insert(
-                "effect.capabilities".to_string(),
-                Value::Array(runtime_caps.clone()),
-            );
-            extensions.insert(
-                "effect.actual_capabilities".to_string(),
-                Value::Array(runtime_caps.clone()),
-            );
-            extensions.insert(
-                "effect.stage.actual_capabilities".to_string(),
-                Value::Array(runtime_caps.clone()),
-            );
+            stage_payload.apply_extensions(&mut extensions);
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
 
-            let audit_metadata = build_audit_metadata(&timestamp, args, input_path);
+            let audit_metadata = build_audit_metadata(&timestamp, args, input_path, &stage_payload);
             let audit = json!({
                 "metadata": audit_metadata.clone(),
                 "audit_id": audit_metadata
@@ -1011,6 +1150,7 @@ fn build_audit_metadata(
     timestamp: &str,
     args: &CliArgs,
     input_path: &Path,
+    stage_payload: &StageAuditPayload,
 ) -> serde_json::Map<String, Value> {
     let mut metadata = serde_json::Map::new();
     metadata.insert("event.domain".to_string(), json!("parser"));
@@ -1218,6 +1358,7 @@ fn build_audit_metadata(
             .clone()
             .unwrap_or_else(|| "unspecified".to_string())),
     );
+    stage_payload.apply_audit_metadata(&mut metadata);
     metadata
 }
 
