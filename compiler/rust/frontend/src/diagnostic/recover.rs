@@ -57,7 +57,7 @@ impl ExpectedToken {
         }
     }
 
-    fn raw_label(&self) -> &str {
+    pub fn raw_label(&self) -> &str {
         match self {
             ExpectedToken::Keyword(value)
             | ExpectedToken::Token(value)
@@ -89,6 +89,20 @@ impl ExpectedToken {
         match self.priority().cmp(&other.priority()) {
             Ordering::Equal => self.raw_label().cmp(other.raw_label()),
             ordering => ordering,
+        }
+    }
+
+    pub fn kind_label(&self) -> &'static str {
+        match self {
+            ExpectedToken::Keyword(_) => "keyword",
+            ExpectedToken::Token(_) => "token",
+            ExpectedToken::Class(_) => "class",
+            ExpectedToken::Rule(_) => "rule",
+            ExpectedToken::Eof => "eof",
+            ExpectedToken::Not(_) => "not",
+            ExpectedToken::Custom(_) => "custom",
+            ExpectedToken::TypeExpected(_) => "type",
+            ExpectedToken::TraitBound(_) => "trait",
         }
     }
 }
@@ -212,6 +226,41 @@ impl ExpectedTokensSummary {
     pub fn has_alternatives(&self) -> bool {
         !self.alternatives.is_empty()
     }
+}
+
+pub fn streaming_expression_summary() -> ExpectedTokensSummary {
+    use ExpectedToken as ET;
+    let mut collector = ExpectedTokenCollector::new();
+    collector.extend([
+        ET::keyword("continue"),
+        ET::keyword("defer"),
+        ET::keyword("do"),
+        ET::keyword("false"),
+        ET::keyword("for"),
+        ET::keyword("handle"),
+        ET::keyword("if"),
+        ET::keyword("loop"),
+        ET::keyword("match"),
+        ET::keyword("perform"),
+        ET::keyword("return"),
+        ET::keyword("self"),
+        ET::keyword("true"),
+        ET::keyword("unsafe"),
+        ET::keyword("while"),
+        ET::token("!"),
+        ET::token("("),
+        ET::token("-"),
+        ET::token("["),
+        ET::token("{"),
+        ET::token("|"),
+        ET::class("char-literal"),
+        ET::class("float-literal"),
+        ET::class("identifier"),
+        ET::class("integer-literal"),
+        ET::class("string-literal"),
+        ET::class("upper-identifier"),
+    ]);
+    collector.summarize()
 }
 
 fn humanize(expectations: &[ExpectedToken]) -> Option<String> {

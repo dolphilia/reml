@@ -7,15 +7,17 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use reml_frontend::diagnostic::{DiagnosticNote, FrontendDiagnostic};
+use reml_frontend::diagnostic::{
+    recover::streaming_expression_summary, DiagnosticNote, FrontendDiagnostic,
+};
 use reml_frontend::error::Recoverability;
 use reml_frontend::parser::ParserDriver;
 use reml_frontend::span::Span;
 use reml_frontend::streaming::StreamingStateConfig;
 use reml_frontend::typeck::{
     self, DualWriteGuards, InstallConfigError, RecoverConfig, StageContext, StageId,
-    StageRequirement, TypeRowMode, TypecheckConfig, TypecheckConfigBuilder, TypecheckDriver,
-    TypecheckMetrics, TypecheckReport, TypedFunctionSummary,
+    StageRequirement, TypeRowMode, TypecheckConfig, TypecheckDriver, TypecheckMetrics,
+    TypecheckReport, TypedFunctionSummary,
 };
 use serde::Serialize;
 
@@ -593,6 +595,10 @@ fn build_stream_extension(stream: &StreamSettings) -> Value {
     })
 }
 
+use std::borrow::Cow;
+
+const STREAMING_PLACEHOLDER_TOKEN: &str = "解析継続トークン";
+
 fn build_diagnostics(
     diagnostics: &[FrontendDiagnostic],
     args: &CliArgs,
@@ -601,8 +607,33 @@ fn build_diagnostics(
     runconfig_summary: &Value,
 ) -> Vec<Value> {
     let line_index = LineIndex::new(source);
+    let streaming_enabled = args.stream_config.enabled;
+    let has_streaming_recover = streaming_enabled && diagnostics.iter().any(has_recover_note);
+    let mut placeholder_emitted = false;
+
     diagnostics
         .iter()
+        .filter_map(|diag| {
+            if streaming_enabled && is_streaming_placeholder_lexer(diag) {
+                if has_streaming_recover {
+                    return None;
+                }
+                if placeholder_emitted {
+                    return None;
+                }
+                placeholder_emitted = true;
+            }
+
+            let mut adjusted: Cow<'_, FrontendDiagnostic> = Cow::Borrowed(diag);
+            if streaming_enabled && has_recover_note(diag) {
+                if args.stream_config.checkpoint.is_some() {
+                    adjusted = Cow::Owned(apply_streaming_checkpoint_expected(diag.clone()));
+                } else {
+                    adjusted = Cow::Owned(suppress_streaming_expected(diag.clone()));
+                }
+            }
+            Some(adjusted)
+        })
         .map(|diag| {
             let timestamp = current_timestamp();
             let location_value = diag
@@ -614,7 +645,7 @@ fn build_diagnostics(
                 .iter()
                 .map(|note| note_to_json(note, &line_index, input_path))
                 .collect::<Vec<_>>();
-            let recover_extension = build_recover_extension(diag);
+            let recover_extension = build_recover_extension(&diag);
             let mut extensions = serde_json::Map::new();
             extensions.insert(
                 "diagnostic.v2".to_string(),
@@ -688,10 +719,56 @@ fn build_diagnostics(
                 "notes": notes,
                 "recoverability": recoverability_label(diag.recoverability),
                 "code": diag.code,
-                "expected": build_expected_field(diag),
+                "expected": build_expected_field(&diag),
             })
         })
         .collect()
+}
+
+fn has_recover_note(diag: &FrontendDiagnostic) -> bool {
+    diag.notes
+        .iter()
+        .any(|note| note.label == "recover.expected_tokens")
+}
+
+fn is_streaming_placeholder_lexer(diag: &FrontendDiagnostic) -> bool {
+    (diag.expected_tokens.is_empty()
+        || (diag.expected_tokens.len() == 1
+            && diag.expected_tokens[0] == STREAMING_PLACEHOLDER_TOKEN))
+        && !diag.notes.is_empty()
+        && diag.notes.iter().all(|note| note.label == "lexer")
+}
+
+fn apply_streaming_checkpoint_expected(mut diag: FrontendDiagnostic) -> FrontendDiagnostic {
+    let summary = streaming_expression_summary();
+    let tokens = summary.tokens();
+    diag.expected_tokens = tokens.clone();
+    diag.expected_locale_args = if summary.locale_args.is_empty() {
+        tokens.clone()
+    } else {
+        summary.locale_args.clone()
+    };
+    diag.expected_message_key = summary
+        .message_key
+        .clone()
+        .or_else(|| Some("parse.expected".to_string()));
+    diag.expected_humanized = summary
+        .humanized
+        .clone()
+        .or_else(|| Some(default_expected_message(&diag.expected_tokens)));
+    diag.notes
+        .retain(|note| note.label != "recover.expected_tokens");
+    diag
+}
+
+fn suppress_streaming_expected(mut diag: FrontendDiagnostic) -> FrontendDiagnostic {
+    diag.expected_tokens.clear();
+    diag.expected_locale_args.clear();
+    diag.expected_message_key = None;
+    diag.expected_humanized = None;
+    diag.notes
+        .retain(|note| note.label != "recover.expected_tokens");
+    diag
 }
 
 fn build_recover_extension(diag: &FrontendDiagnostic) -> Option<Value> {
