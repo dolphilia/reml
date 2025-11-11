@@ -40,14 +40,8 @@ let has_streaming_expected_tokens diag =
   | None -> false
 
 let recover_extension_token_count diag =
-  match
-    Diagnostic.Extensions.get "recover" diag.Diagnostic.extensions
-  with
-  | Some (`Assoc fields) -> (
-      match List.assoc_opt "expected_tokens" fields with
-      | Some (`List tokens) -> List.length tokens
-      | _ -> 0)
-  | _ -> 0
+  Diagnostic.Extensions.recover_expected_tokens diag.Diagnostic.extensions
+  |> List.length
 
 let test_streaming_matches_batch () =
   let desc = "run_stream がバッチランナーと同じ ParseResult を返す" in

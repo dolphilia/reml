@@ -32,6 +32,19 @@ let get key entries =
   match List.find_opt (fun (k, _) -> String.equal k key) entries with
   | Some (_, value) -> Some value
   | None -> None
+
+let recover_field entries =
+  match get "recover" entries with
+  | Some (`Assoc fields) -> Some fields
+  | _ -> None
+
+let recover_expected_tokens entries =
+  match recover_field entries with
+  | None -> []
+  | Some fields -> (
+      match List.find_opt (fun (k, _) -> String.equal k "expected_tokens") fields with
+      | Some (_, `List tokens) -> tokens
+      | _ -> [])
 end
 
 module Run_config = Parser_run_config

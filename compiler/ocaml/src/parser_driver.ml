@@ -602,6 +602,7 @@ module Streaming = struct
       ~primary:span ()
     |> Builder.set_expected summary
     |> Builder.build
+    |> attach_recover_extension (Some summary)
 
   let diagnostic_with_expected ~snapshot diag =
     match diag.Diagnostic.expected with
@@ -614,7 +615,8 @@ module Streaming = struct
         in
         let summary = Parser_expectation.ensure_minimum_alternatives summary
         in
-        { diag with expected = Some summary }
+        let diag = { diag with expected = Some summary } in
+        attach_recover_extension (Some summary) diag
 
   let recover_diagnostics_for_pending ~source_name ~demand ~snapshot =
     let needs_recover = reason_is_backpressure demand.reason in
