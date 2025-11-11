@@ -112,6 +112,57 @@ let expectation_summary_for_checkpoint session checkpoint =
   Parser_expectation.ExpectedTokenCollector.record_summary collector summary;
   summary
 
+let set_parser_id_extension diag ~namespace ~name ~ordinal ~origin ~fingerprint =
+  let parser_id =
+    `Assoc
+      [
+        ("namespace", `String namespace);
+        ("name", `String name);
+        ("ordinal", `Int ordinal);
+        ("origin", `String origin);
+        ("fingerprint", `String fingerprint);
+      ]
+  in
+  let existing_parse =
+    match Extensions.get "parse" diag.Diagnostic.extensions with
+    | Some (`Assoc fields) -> fields
+    | _ -> []
+  in
+  let filtered =
+    List.filter (fun (key, _) -> not (String.equal key "parser_id"))
+      existing_parse
+  in
+  Diagnostic.set_extension "parse"
+    (`Assoc (("parser_id", parser_id) :: filtered))
+    diag
+
+let ensure_streaming_parser_rule diag =
+  let has_parser_rule entries =
+    match Extensions.get "parser.core.rule" entries with
+    | Some (`Assoc fields) -> fields <> []
+    | Some _ -> true
+    | None -> false
+  in
+  if
+    has_parser_rule diag.Diagnostic.audit_metadata
+    || has_parser_rule diag.Diagnostic.extensions
+  then diag
+  else
+    Diagnostic.merge_audit_metadata
+      [
+        ("parser.core.rule.namespace", `String "core.parse.streaming");
+        ("parser.core.rule.name", `String "streaming_recover");
+        ("parser.core.rule.origin", `String "synthetic");
+        ("parser.core.rule.ordinal", `Int 0);
+        ( "parser.core.rule.fingerprint",
+          `String "streaming-recover-placeholder" );
+      ]
+      diag
+    |> set_parser_id_extension
+         ~namespace:"core.parse.streaming"
+         ~name:"streaming_recover" ~ordinal:0 ~origin:"synthetic"
+         ~fingerprint:"streaming-recover-placeholder"
+
 let register_diagnostic session diagnostic ~consumed ~committed =
   let stream_config = Run_config.Stream.of_run_config session.config in
   let diagnostic =
@@ -124,29 +175,6 @@ let register_diagnostic session diagnostic ~consumed ~committed =
       | _ ->
           let summary = Parser_expectation.streaming_expression_summary () in
           { diagnostic with Diagnostic.expected = Some summary }
-  in
-  let ensure_streaming_parser_rule diag =
-    let has_parser_rule entries =
-      match Extensions.get "parser.core.rule" entries with
-      | Some (`Assoc fields) -> fields <> []
-      | Some _ -> true
-      | None -> false
-    in
-    if
-      has_parser_rule diag.Diagnostic.audit_metadata
-      || has_parser_rule diag.extensions
-    then diag
-    else
-      Diagnostic.merge_audit_metadata
-        [
-          ("parser.core.rule.namespace", `String "core.parse.streaming");
-          ("parser.core.rule.name", `String "streaming_recover");
-          ("parser.core.rule.origin", `String "synthetic");
-          ("parser.core.rule.ordinal", `Int 0);
-          ( "parser.core.rule.fingerprint",
-            `String "streaming-recover-placeholder" );
-        ]
-        diag
   in
   let enriched =
     Diagnostic.with_parser_runconfig_metadata ~config:session.config diagnostic
@@ -197,8 +225,7 @@ let annotate_core_rule_metadata diag id_opt =
       let fingerprint =
         Core_parse.Id.fingerprint id |> Int64.to_string
       in
-      let diag =
-        Diagnostic.merge_audit_metadata
+      Diagnostic.merge_audit_metadata
           [
             ("parser.core.rule.namespace", `String namespace);
             ("parser.core.rule.name", `String name);
@@ -211,25 +238,5 @@ let annotate_core_rule_metadata diag id_opt =
             ("fingerprint", `String fingerprint);
           ]
           diag
-      in
-      let existing_parse =
-        match Extensions.get "parse" diag.extensions with
-        | Some (`Assoc fields) -> fields
-        | _ -> []
-      in
-      let filtered =
-        List.filter (fun (key, _) -> not (String.equal key "parser_id"))
-          existing_parse
-      in
-      let parser_id =
-        ("parser_id",
-         `Assoc
-           [
-             ("namespace", `String namespace);
-             ("name", `String name);
-             ("ordinal", `Int ordinal);
-             ("origin", `String origin);
-             ("fingerprint", `String fingerprint);
-           ])
-      in
-      Diagnostic.set_extension "parse" (`Assoc (parser_id :: filtered)) diag
+      |> set_parser_id_extension ~namespace ~name ~ordinal ~origin
+           ~fingerprint

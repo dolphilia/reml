@@ -305,11 +305,11 @@ let ensure_parser_core_rule_nested entries =
   | fields ->
       let rule_json = `Assoc (List.rev fields) in
       let entries = Extensions.set "parser.core.rule" rule_json entries in
-      let parser_payload =
-        match Extensions.get "parser" entries with
-        | Some (`Assoc parser_fields) ->
+      let parse_payload =
+        match Extensions.get "parse" entries with
+        | Some (`Assoc fields) ->
             let existing_core =
-              match List.assoc_opt "core" parser_fields with
+              match List.assoc_opt "core" fields with
               | Some (`Assoc core_fields) -> core_fields
               | _ -> []
             in
@@ -318,16 +318,13 @@ let ensure_parser_core_rule_nested entries =
               :: List.filter (fun (key, _) -> not (String.equal key "rule"))
                    existing_core
             in
-            let parser_rest =
-              List.filter (fun (key, _) -> not (String.equal key "core"))
-                parser_fields
+            let parse_rest =
+              List.filter (fun (key, _) -> not (String.equal key "core")) fields
             in
-            `Assoc
-              ( ("core", `Assoc core_fields)
-              :: parser_rest )
+            `Assoc (("core", `Assoc core_fields) :: parse_rest)
         | _ -> `Assoc [ ("core", `Assoc [ ("rule", rule_json) ]) ]
       in
-      Extensions.set "parser" parser_payload entries
+      Extensions.set "parse" parse_payload entries
 
 let primary_code (diag : t) =
   match diag.codes with code :: _ -> Some code | [] -> None

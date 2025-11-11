@@ -1,0 +1,4 @@
+module diagnostics.w4.stream_backpressure
+fn produce(limit: i32) -> i32 =
+  if limit <= 0 then 0 else produce(limit - 1)
+fn main() = produce(4)

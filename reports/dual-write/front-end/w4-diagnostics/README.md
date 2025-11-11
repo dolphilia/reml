@@ -31,14 +31,15 @@
 | recover_missing_semicolon | ✅ | ✅ | ✅ | ✅ | 1.000 / 1.000 | 1.000 / 1.000 | - / - | 0 / 0 | 1 / 1 |
 | recover_missing_tuple_comma | ✅ | ✅ | ✅ | ✅ | 1.000 / 1.000 | 1.000 / 1.000 | - / - | 0 / 0 | 1 / 1 |
 | recover_unclosed_block | ✅ | ✅ | ✅ | ✅ | 1.000 / 1.000 | 1.000 / 1.000 | - / - | 0 / 0 | 1 / 1 |
-| stream_backpressure_hint | ❌ | ❌ | ✅ | ✅ | 1.000 / 1.000 | 1.000 / 1.000 | 1.000 / 1.000 | 0 / 0 | 1 / 1 |
+| stream_backpressure_hint | ✅ | ✅ | ✅ | ✅ | 1.000 / 1.000 | 1.000 / 1.000 | 1.000 / 1.000 | 0 / 0 | 1 / 1 |
 | stream_checkpoint_drift | ✅ | ✅ | ✅ | ✅ | 1.000 / 1.000 | 1.000 / 1.000 | 1.000 / 1.000 | 0 / 0 | 1 / 1 |
-| stream_pending_resume | ❌ | ❌ | ✅ | ✅ | 1.000 / 1.000 | 1.000 / 1.000 | 1.000 / 1.000 | 0 / 0 | 1 / 1 |
+| stream_pending_resume | ✅ | ✅ | ✅ | ✅ | 1.000 / 1.000 | 1.000 / 1.000 | 1.000 / 1.000 | 0 / 0 | 1 / 1 |
 | type_condition_bool | ❌ | ✅ | ❌ | ✅ | 1.000 / 1.000 | 0.000 / 1.000 | - / - | 0 / 0 | 1 / 1 |
 | type_condition_literal_bool | ❌ | ✅ | ❌ | ❌ | 1.000 / - | 0.000 / 0.000 | - / - | 0 / 0 | 1 / 0 |
 <!-- DIAG_TABLE_END -->
 
-## 直近のラン状況（2028-04〜2029-05）
+## 直近のラン状況（2028-04〜2029-06）
+- **20290601-w4-diag-streaming-r21**: `diagnostic_serialization.ml` で `extensions.parse`／`audit_metadata["parser.core.rule"]` を欠いている場合に Streaming プレースホルダ（`namespace=core.parse.streaming` 等）を自動補完するよう更新後、Streaming 3 ケースを再測定して `gating/schema/metrics` すべてを ✅ へ回復（例: `reports/dual-write/front-end/w4-diagnostics/20290601-w4-diag-streaming-r21/stream_backpressure_hint/summary.json`）。`schema-validate.log` は空になり、`scripts/validate-diagnostic-json.sh` も通過。DIAG-RUST-05 を Close 済み。
 - **20290531-w4-diag-streaming-r17**: `tmp/w4-diagnostic-streaming-cases.txt` で Streaming 3 ケースのみを再測定し、Rust/OCaml ともに `diag_match=true`・`metrics_ok=true`・`expected_tokens_match=true` を再現（例: `reports/dual-write/front-end/w4-diagnostics/20290531-w4-diag-streaming-r17/stream_backpressure_hint/summary.json`）。`parser_expected_summary.json` を経由した `collect-iterator-audit-metrics.py --section parser|streaming --require-success` も通過したが、OCaml `diagnostics.ocaml.json` が `extensions.parse` / `audit_metadata["parser.core.rule"]` をオブジェクトで保持していないため `schema-validate.log` が `parser core metadata missing` を出力し `gating=false` が継続（例: `reports/dual-write/front-end/w4-diagnostics/20290531-w4-diag-streaming-r17/stream_backpressure_hint/schema-validate.log`）。Schema 修正が残課題。
 - **20290531-w4-diag-streaming-r16**: Streaming 再測定の初回試行。`compiler/ocaml/src/core_parse_streaming.ml:155` の `stream_config` 参照が `Unbound value` になり OCaml CLI がクラッシュして `diagnostics.ocaml.json` が空のまま（`reports/dual-write/front-end/w4-diagnostics/20290531-w4-diag-streaming-r16/stream_backpressure_hint/ocaml.stderr.log`）。Rust 側 `expected_tokens` は 27 件で揃ったが `expected_tokens.diff.json` は `ocaml_count=0` のまま。ワークアラウンド: `register_diagnostic` 冒頭へ `stream_config` を移動したうえで r17 を再実行。
 - **20290510-w4-diag-streaming-r12**: Streaming 3 ケースのみを `tmp/w4-diagnostic-streaming-cases.txt` で再実行し、Rust Recover limiter を更新して `expected_tokens.diff.json` / `diag_match` をすべて解消。`parser.stream_extension_field_coverage` と `ExpectedTokenCollector.streaming` は OCaml/Rust 双方 1.0、`collect-iterator-audit-metrics.py --section parser` / `--section streaming` も `--require-success` で通過。残る `gating=false` は `schema-validate.log` が `parser.core.rule.*` を報告している既知の OCaml 側問題。成果物: `reports/dual-write/front-end/w4-diagnostics/20290510-w4-diag-streaming-r12/summary.md`。

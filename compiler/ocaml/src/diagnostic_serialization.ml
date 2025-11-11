@@ -59,6 +59,97 @@ type normalized_diagnostic = {
   timestamp : string;
 }
 
+let assoc_find key fields =
+  List.find_map
+    (fun (candidate, value) ->
+      if String.equal candidate key then Some value else None)
+    fields
+
+let streaming_enabled_in_extensions extensions =
+  match Extensions.get "runconfig" extensions with
+  | Some (`Assoc run_fields) -> (
+      match assoc_find "extensions" run_fields with
+      | Some (`Assoc ext_fields) -> (
+          match assoc_find "stream" ext_fields with
+          | Some (`Assoc stream_fields) -> (
+              match assoc_find "enabled" stream_fields with
+              | Some (`Bool flag) -> flag
+              | _ -> false)
+          | _ -> false)
+      | _ -> false)
+  | _ -> false
+
+let has_parse_extension extensions =
+  match Extensions.get "parse" extensions with
+  | Some (`Assoc fields) -> (
+      match assoc_find "parser_id" fields with
+      | Some (`Assoc id_fields) -> assoc_find "namespace" id_fields <> None
+      | _ -> false)
+  | _ -> false
+
+let has_parser_core_rule metadata =
+  match Extensions.get "parser.core.rule" metadata with
+  | Some (`Assoc fields) -> fields <> []
+  | _ -> false
+
+let streaming_placeholder_namespace = "core.parse.streaming"
+let streaming_placeholder_name = "streaming_recover"
+let streaming_placeholder_origin = "synthetic"
+let streaming_placeholder_fingerprint = "streaming-recover-placeholder"
+
+let parser_id_placeholder () =
+  `Assoc
+    [
+      ("namespace", `String streaming_placeholder_namespace);
+      ("name", `String streaming_placeholder_name);
+      ("ordinal", `Int 0);
+      ("origin", `String streaming_placeholder_origin);
+      ("fingerprint", `String streaming_placeholder_fingerprint);
+    ]
+
+let parser_rule_placeholder () =
+  `Assoc
+    [
+      ("namespace", `String streaming_placeholder_namespace);
+      ("name", `String streaming_placeholder_name);
+      ("ordinal", `Int 0);
+      ("origin", `String streaming_placeholder_origin);
+      ("fingerprint", `String streaming_placeholder_fingerprint);
+    ]
+
+let ensure_streaming_parser_metadata
+    (diag : normalized_diagnostic) : normalized_diagnostic =
+  if not (streaming_enabled_in_extensions diag.extensions) then diag
+  else
+    let extensions =
+      if has_parse_extension diag.extensions then diag.extensions
+      else
+        let parse_value = `Assoc [ ("parser_id", parser_id_placeholder ()) ] in
+        Extensions.set "parse" parse_value diag.extensions
+    in
+    let needs_audit_update = not (has_parser_core_rule diag.audit_metadata) in
+    let audit_metadata =
+      if not needs_audit_update then diag.audit_metadata
+      else
+        diag.audit_metadata
+        |> Extensions.set "parser.core.rule" (parser_rule_placeholder ())
+        |> Extensions.set "parser.core.rule.namespace"
+             (`String streaming_placeholder_namespace)
+        |> Extensions.set "parser.core.rule.name"
+             (`String streaming_placeholder_name)
+        |> Extensions.set "parser.core.rule.ordinal" (`Int 0)
+        |> Extensions.set "parser.core.rule.origin"
+             (`String streaming_placeholder_origin)
+        |> Extensions.set "parser.core.rule.fingerprint"
+             (`String streaming_placeholder_fingerprint)
+    in
+    let audit =
+      if needs_audit_update then
+        Audit_envelope.merge_metadata diag.audit audit_metadata
+      else diag.audit
+    in
+    { diag with extensions; audit_metadata; audit }
+
 let normalize_span (span : span) =
   {
     file = span.start_pos.filename;
@@ -100,24 +191,27 @@ let of_diagnostic (diag : Diagnostic.t) : normalized_diagnostic =
     let message = "Diagnostic.timestamp が空です" in
     prerr_endline ("[diagnostic_serialization] " ^ message);
     invalid_arg message);
-  {
-    id = diag.id;
-    message = diag.message;
-    severity = diag.severity;
-    severity_hint = diag.severity_hint;
-    domain;
-    codes = diag.codes;
-    primary = normalize_span diag.primary;
-    secondary = List.map normalize_secondary diag.secondary;
-    hints = List.map normalize_hint diag.hints;
-    fixits = List.map normalize_fixit diag.fixits;
-    expected = diag.expected;
-    schema_version = Diagnostic.schema_version;
-    extensions;
-    audit_metadata = diag.audit_metadata;
-    audit = diag.audit;
-    timestamp = diag.timestamp;
-  }
+  let normalized =
+    {
+      id = diag.id;
+      message = diag.message;
+      severity = diag.severity;
+      severity_hint = diag.severity_hint;
+      domain;
+      codes = diag.codes;
+      primary = normalize_span diag.primary;
+      secondary = List.map normalize_secondary diag.secondary;
+      hints = List.map normalize_hint diag.hints;
+      fixits = List.map normalize_fixit diag.fixits;
+      expected = diag.expected;
+      schema_version = Diagnostic.schema_version;
+      extensions;
+      audit_metadata = diag.audit_metadata;
+      audit = diag.audit;
+      timestamp = diag.timestamp;
+    }
+  in
+  ensure_streaming_parser_metadata normalized
 
 let span_to_json (span : normalized_span) =
   `Assoc
