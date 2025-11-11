@@ -7,11 +7,11 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use reml_frontend::diagnostic::{DiagnosticNote, FrontendDiagnostic};
+use reml_frontend::diagnostic::{DiagnosticNote, ExpectedToken, FrontendDiagnostic};
 use reml_frontend::error::Recoverability;
 use reml_frontend::parser::{ParserDriver, ParserOptions};
 use reml_frontend::span::Span;
-use reml_frontend::streaming::{StreamFlowConfig, StreamFlowState, StreamingStateConfig};
+use reml_frontend::streaming::{StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig};
 use reml_frontend::typeck::{
     self, DualWriteGuards, InstallConfigError, RecoverConfig, StageContext, StageId,
     StageRequirement, TypeRowMode, TypecheckConfig, TypecheckDriver, TypecheckMetrics,
@@ -86,6 +86,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &input_path,
         &source,
         &runconfig_summary,
+        &stream_flow_state,
     );
     let diagnostics_json = Value::Array(diagnostics_entries.clone());
     let diag_document = json!({
@@ -791,7 +792,7 @@ fn build_config_extension(args: &CliArgs) -> Value {
     Value::Object(config)
 }
 
-fn build_stream_extension(stream: &StreamSettings) -> Value {
+fn build_stream_extension(stream: &StreamSettings, flow: &StreamFlowMetrics) -> Value {
     let checkpoint = stream
         .checkpoint
         .clone()
@@ -821,7 +822,8 @@ fn build_stream_extension(stream: &StreamSettings) -> Value {
             "policy": flow_policy,
             "backpressure": {
                 "max_lag_bytes": flow_max_lag,
-            }
+            },
+            "checkpoints_closed": flow.checkpoints_closed,
         }
     })
 }
@@ -993,6 +995,7 @@ fn build_diagnostics(
     input_path: &Path,
     source: &str,
     runconfig_summary: &Value,
+    flow: &StreamFlowState,
 ) -> Vec<Value> {
     let line_index = LineIndex::new(source);
     let streaming_enabled = args.stream_config.enabled;
@@ -1057,7 +1060,8 @@ fn build_diagnostics(
             stage_payload.apply_extensions(&mut extensions);
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
 
-            let audit_metadata = build_audit_metadata(&timestamp, args, input_path, &stage_payload);
+            let audit_metadata =
+                build_audit_metadata(&timestamp, args, input_path, &stage_payload, flow);
             let audit = json!({
                 "metadata": audit_metadata.clone(),
                 "audit_id": audit_metadata
@@ -1103,7 +1107,18 @@ fn is_streaming_placeholder_lexer(diag: &FrontendDiagnostic) -> bool {
         && diag.notes.iter().all(|note| note.label == "lexer")
 }
 
-fn expected_token_object(token: &str) -> Value {
+fn expected_token_object_from_expected(token: &ExpectedToken) -> Value {
+    let label = token.raw_label();
+    let hint = token.kind_label();
+    json!({
+        "token": label,
+        "label": label,
+        "hint": hint,
+        "kind": hint,
+    })
+}
+
+fn expected_token_object_from_label(token: &str) -> Value {
     let hint = classify_expected_token(token);
     json!({
         "token": token,
@@ -1119,11 +1134,17 @@ fn build_recover_extension(diag: &FrontendDiagnostic) -> Option<Value> {
             .expected_humanized
             .clone()
             .unwrap_or_else(|| default_expected_message(&diag.expected_tokens));
-        let tokens: Vec<Value> = diag
-            .expected_tokens
-            .iter()
-            .map(|token| expected_token_object(token))
-            .collect();
+        let tokens: Vec<Value> = if !diag.expected_alternatives().is_empty() {
+            diag.expected_alternatives()
+                .iter()
+                .map(expected_token_object_from_expected)
+                .collect()
+        } else {
+            diag.expected_tokens
+                .iter()
+                .map(|token| expected_token_object_from_label(token))
+                .collect()
+        };
         Some(json!({
             "message": message,
             "expected_tokens": tokens,
@@ -1150,11 +1171,17 @@ fn build_expected_field(diag: &FrontendDiagnostic) -> Value {
         .expected_message_key
         .clone()
         .unwrap_or_else(|| "parse.expected".to_string());
-    let alternatives: Vec<Value> = diag
-        .expected_tokens
-        .iter()
-        .map(|token| expected_token_object(token))
-        .collect();
+    let alternatives: Vec<Value> = if !diag.expected_alternatives().is_empty() {
+        diag.expected_alternatives()
+            .iter()
+            .map(expected_token_object_from_expected)
+            .collect()
+    } else {
+        diag.expected_tokens
+            .iter()
+            .map(|token| expected_token_object_from_label(token))
+            .collect()
+    };
     let humanized = diag
         .expected_humanized
         .clone()
@@ -1210,6 +1237,7 @@ fn build_audit_metadata(
     args: &CliArgs,
     input_path: &Path,
     stage_payload: &StageAuditPayload,
+    flow: &StreamFlowState,
 ) -> serde_json::Map<String, Value> {
     let mut metadata = serde_json::Map::new();
     metadata.insert("event.domain".to_string(), json!("parser"));

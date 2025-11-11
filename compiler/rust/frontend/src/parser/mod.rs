@@ -95,6 +95,7 @@ impl ParserDriver {
 
         let (ast, parse_errors) = parse_tokens(&tokens, source, &streaming_state);
         let mut streaming_recover = StreamingRecoverController::new(streaming_enabled);
+        streaming_recover.start_checkpoint();
         for (span, formatted) in parse_errors.into_iter() {
             streaming_recover.record(span, formatted, &mut diagnostics);
         }
@@ -153,6 +154,7 @@ impl ParserDriver {
     }
 }
 
+#[derive(Clone)]
 struct FormattedSimpleError {
     message: String,
     summary: ExpectedTokensSummary,
@@ -550,6 +552,7 @@ fn record_streaming_success(streaming_state: &StreamingState, span: Span) {
 pub struct StreamingRecoverController {
     enabled: bool,
     pending: Option<PendingRecover>,
+    limiter: Option<StreamingRecoverLimiter>,
 }
 
 impl StreamingRecoverController {
@@ -557,6 +560,17 @@ impl StreamingRecoverController {
         Self {
             enabled,
             pending: None,
+            limiter: if enabled {
+                Some(StreamingRecoverLimiter::new(1))
+            } else {
+                None
+            },
+        }
+    }
+
+    fn start_checkpoint(&mut self) {
+        if let Some(limiter) = &mut self.limiter {
+            limiter.reset();
         }
     }
 
@@ -583,8 +597,52 @@ impl StreamingRecoverController {
             return;
         }
         if let Some(pending) = self.pending.take() {
-            diagnostics.push(pending.into_diagnostic());
+            if let Some(limiter) = &mut self.limiter {
+                let summary = pending.error.summary.clone();
+                if limiter.can_emit() {
+                    let index = diagnostics.push_with_index(pending.into_diagnostic());
+                    limiter.record_emission(index);
+                } else if let Some(index) = limiter.last_emitted_index() {
+                    diagnostics.merge_expected_summary_at(index, &summary);
+                }
+            } else {
+                diagnostics.push(pending.into_diagnostic());
+            }
         }
+    }
+}
+
+struct StreamingRecoverLimiter {
+    max_per_checkpoint: usize,
+    emitted_in_checkpoint: usize,
+    last_emitted_index: Option<usize>,
+}
+
+impl StreamingRecoverLimiter {
+    fn new(max_per_checkpoint: usize) -> Self {
+        Self {
+            max_per_checkpoint,
+            emitted_in_checkpoint: 0,
+            last_emitted_index: None,
+        }
+    }
+
+    fn reset(&mut self) {
+        self.emitted_in_checkpoint = 0;
+        self.last_emitted_index = None;
+    }
+
+    fn can_emit(&self) -> bool {
+        self.emitted_in_checkpoint < self.max_per_checkpoint
+    }
+
+    fn record_emission(&mut self, index: usize) {
+        self.emitted_in_checkpoint = self.emitted_in_checkpoint.saturating_add(1);
+        self.last_emitted_index = Some(index);
+    }
+
+    fn last_emitted_index(&self) -> Option<usize> {
+        self.last_emitted_index
     }
 }
 

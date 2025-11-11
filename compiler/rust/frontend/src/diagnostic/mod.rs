@@ -26,6 +26,7 @@ pub struct FrontendDiagnostic {
     pub expected_locale_args: Vec<String>,
     pub expected_humanized: Option<String>,
     pub expected_message_key: Option<String>,
+    pub expected_alternatives: Vec<ExpectedToken>,
 }
 
 impl FrontendDiagnostic {
@@ -40,6 +41,7 @@ impl FrontendDiagnostic {
             expected_locale_args: Vec::new(),
             expected_humanized: None,
             expected_message_key: None,
+            expected_alternatives: Vec::new(),
         }
     }
 
@@ -71,16 +73,55 @@ impl FrontendDiagnostic {
                 Some(text) if !text.trim().is_empty() => Some(text),
                 _ => Some(EXPECTED_EMPTY_HUMANIZED.to_string()),
             };
+            self.expected_alternatives.clear();
         } else {
             self.expected_locale_args = tokens.clone();
             self.expected_tokens = tokens;
             self.expected_message_key = Some(PARSE_EXPECTED_KEY.to_string());
             self.expected_humanized = humanized;
+            self.expected_alternatives = self
+                .expected_tokens
+                .iter()
+                .cloned()
+                .map(ExpectedToken::custom)
+                .collect();
         }
         self
     }
 
     pub fn apply_expected_summary(mut self, summary: &ExpectedTokensSummary) -> Self {
+        self.overwrite_expected_summary(summary);
+        self
+    }
+
+    pub fn has_expected_tokens(&self) -> bool {
+        !self.expected_tokens.is_empty()
+    }
+
+    pub fn expected_alternatives(&self) -> &[ExpectedToken] {
+        &self.expected_alternatives
+    }
+
+    pub fn merge_expected_summary(&mut self, summary: &ExpectedTokensSummary) {
+        if summary.alternatives.is_empty() {
+            return;
+        }
+        let mut collector = ExpectedTokenCollector::with_capacity(
+            self.expected_alternatives.len() + summary.alternatives.len(),
+        );
+        if !self.expected_alternatives.is_empty() {
+            collector.extend(self.expected_alternatives.clone());
+        } else {
+            for token in &self.expected_tokens {
+                collector.push(ExpectedToken::custom(token.clone()));
+            }
+        }
+        collector.extend(summary.alternatives.clone());
+        let merged = collector.summarize();
+        self.overwrite_expected_summary(&merged);
+    }
+
+    fn overwrite_expected_summary(&mut self, summary: &ExpectedTokensSummary) {
         if summary.has_alternatives() {
             self.expected_locale_args = summary.locale_args.clone();
             self.expected_tokens = summary.tokens();
@@ -89,6 +130,7 @@ impl FrontendDiagnostic {
                 .clone()
                 .or_else(|| Some(PARSE_EXPECTED_KEY.to_string()));
             self.expected_humanized = summary.humanized.clone();
+            self.expected_alternatives = summary.alternatives.clone();
         } else {
             self.expected_tokens = vec![EXPECTED_PLACEHOLDER_TOKEN.to_string()];
             self.expected_locale_args.clear();
@@ -102,17 +144,13 @@ impl FrontendDiagnostic {
                     .clone()
                     .unwrap_or_else(|| EXPECTED_EMPTY_HUMANIZED.to_string()),
             );
+            self.expected_alternatives.clear();
         }
-        self
-    }
-
-    pub fn has_expected_tokens(&self) -> bool {
-        !self.expected_tokens.is_empty()
     }
 
     /// Streaming Pending/Resume で recover が走らない場合でも、
     /// `ExpectedTokenCollector` による既定セットを診断へ埋め込む。
-    pub fn ensure_streaming_expected(self) -> Self {
+    pub fn ensure_streaming_expected(mut self) -> Self {
         let needs_override = self.expected_tokens.is_empty()
             || (self.expected_tokens.len() == 1
                 && self.expected_tokens[0] == EXPECTED_PLACEHOLDER_TOKEN);
@@ -124,7 +162,8 @@ impl FrontendDiagnostic {
             summary.has_alternatives(),
             "streaming_expression_summary should provide alternatives"
         );
-        self.apply_expected_summary(&summary)
+        self.overwrite_expected_summary(&summary);
+        self
     }
 }
 
@@ -179,28 +218,47 @@ impl DiagnosticBuilder {
     }
 
     pub fn push(&mut self, diagnostic: FrontendDiagnostic) {
+        self.push_internal(diagnostic, false);
+    }
+
+    pub fn push_with_index(&mut self, diagnostic: FrontendDiagnostic) -> usize {
+        self.push_internal(diagnostic, true)
+            .expect("push_with_index must return an index")
+    }
+
+    fn push_internal(
+        &mut self,
+        diagnostic: FrontendDiagnostic,
+        wants_index: bool,
+    ) -> Option<usize> {
         if self.merge_parse_expected {
             if let Some(key) = Self::parse_expected_key(&diagnostic) {
                 if let Some(&index) = self.parse_expected_index.get(&key) {
                     self.diagnostics[index] = diagnostic;
-                    return;
+                    return if wants_index { Some(index) } else { None };
                 }
                 let index = self.diagnostics.len();
                 self.diagnostics.push(diagnostic);
                 self.parse_expected_index.insert(key, index);
-                return;
+                return if wants_index { Some(index) } else { None };
             }
         }
         if let Some(key) = Self::parse_expected_key(&diagnostic) {
             if let Some(&index) = self.parse_expected_index.get(&key) {
                 self.diagnostics[index] = diagnostic;
-                return;
+                return if wants_index { Some(index) } else { None };
             }
             let index = self.diagnostics.len();
             self.diagnostics.push(diagnostic);
             self.parse_expected_index.insert(key, index);
+            return if wants_index { Some(index) } else { None };
+        }
+        let index = self.diagnostics.len();
+        self.diagnostics.push(diagnostic);
+        if wants_index {
+            Some(index)
         } else {
-            self.diagnostics.push(diagnostic);
+            None
         }
     }
 
@@ -215,6 +273,16 @@ impl DiagnosticBuilder {
 
     pub fn into_vec(self) -> Vec<FrontendDiagnostic> {
         self.diagnostics
+    }
+
+    pub fn merge_expected_summary_at(
+        &mut self,
+        index: usize,
+        summary: &ExpectedTokensSummary,
+    ) {
+        if let Some(diagnostic) = self.diagnostics.get_mut(index) {
+            diagnostic.merge_expected_summary(summary);
+        }
     }
 
     fn parse_expected_key(diagnostic: &FrontendDiagnostic) -> Option<(u32, u32)> {
