@@ -1,0 +1,218 @@
+{
+  "metrics": {
+    "typed_functions": 4,
+    "typed_exprs": 4,
+    "constraints_total": 0,
+    "constraint_breakdown": {},
+    "unresolved_identifiers": 0,
+    "call_sites": 0,
+    "binary_expressions": 0
+  },
+  "typed_functions": [
+    {
+      "name": "utf8_to_utf16",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "show_message",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "show_yes_no",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "main",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    }
+  ],
+  "extensions": {
+    "bridge": {
+      "capability": "windows.messagebox",
+      "stage": {
+        "actual": "beta",
+        "actual_capabilities": [
+          {
+            "capability": "windows.messagebox",
+            "stage": "beta"
+          }
+        ],
+        "capability": "windows.messagebox",
+        "required": "beta",
+        "required_capabilities": [
+          "windows.messagebox"
+        ],
+        "trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ]
+      }
+    },
+    "capability": {
+      "detail": [
+        {
+          "capability": "windows.messagebox",
+          "stage": "beta"
+        }
+      ],
+      "ids": [
+        "windows.messagebox"
+      ],
+      "primary": "windows.messagebox",
+      "required_capabilities": [
+        "windows.messagebox"
+      ],
+      "stage": {
+        "actual": "beta",
+        "required": "beta"
+      }
+    },
+    "effect.actual_capabilities": [
+      {
+        "capability": "windows.messagebox",
+        "stage": "beta"
+      }
+    ],
+    "effect.capabilities": [
+      "windows.messagebox"
+    ],
+    "effect.capability": "windows.messagebox",
+    "effect.required_capabilities": [
+      "windows.messagebox"
+    ],
+    "effect.stage.actual": "beta",
+    "effect.stage.actual_capabilities": [
+      {
+        "capability": "windows.messagebox",
+        "stage": "beta"
+      }
+    ],
+    "effect.stage.required": "beta",
+    "effect.stage.required_capabilities": [
+      "windows.messagebox"
+    ],
+    "effects": {
+      "capabilities": [
+        "windows.messagebox"
+      ],
+      "capability": "windows.messagebox",
+      "stage": {
+        "actual": "beta",
+        "actual_capabilities": [
+          {
+            "capability": "windows.messagebox",
+            "stage": "beta"
+          }
+        ],
+        "capability": "windows.messagebox",
+        "required": "beta",
+        "required_capabilities": [
+          "windows.messagebox"
+        ],
+        "trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ]
+      },
+      "stage_trace": [
+        {
+          "note": "--effect-stage",
+          "source": "cli_option",
+          "stage": "beta"
+        },
+        {
+          "source": "runtime",
+          "stage": "beta"
+        }
+      ]
+    }
+  },
+  "audit_metadata": {
+    "bridge.stage.actual_capabilities": [
+      {
+        "capability": "windows.messagebox",
+        "stage": "beta"
+      }
+    ],
+    "bridge.stage.capability": "windows.messagebox",
+    "bridge.stage.required_capabilities": [
+      "windows.messagebox"
+    ],
+    "capability.ids": [
+      "windows.messagebox"
+    ],
+    "effect.actual_capabilities": [
+      {
+        "capability": "windows.messagebox",
+        "stage": "beta"
+      }
+    ],
+    "effect.capability": "windows.messagebox",
+    "effect.required_capabilities": [
+      "windows.messagebox"
+    ],
+    "effect.stage.actual": "beta",
+    "effect.stage.actual_capabilities": [
+      {
+        "capability": "windows.messagebox",
+        "stage": "beta"
+      }
+    ],
+    "effect.stage.required": "beta",
+    "effect.stage.required_capabilities": [
+      "windows.messagebox"
+    ],
+    "effect.stage.trace": [
+      {
+        "note": "--effect-stage",
+        "source": "cli_option",
+        "stage": "beta"
+      },
+      {
+        "source": "runtime",
+        "stage": "beta"
+      }
+    ],
+    "stage.trace": [
+      {
+        "note": "--effect-stage",
+        "source": "cli_option",
+        "stage": "beta"
+      },
+      {
+        "source": "runtime",
+        "stage": "beta"
+      }
+    ]
+  }
+}

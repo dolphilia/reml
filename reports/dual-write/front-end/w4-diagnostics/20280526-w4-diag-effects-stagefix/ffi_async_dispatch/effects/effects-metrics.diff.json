@@ -1,0 +1,8 @@
+{
+  "match": false,
+  "ocaml_only": [],
+  "rust_only": [
+    "audit_metadata",
+    "extensions"
+  ]
+}

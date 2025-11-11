@@ -413,8 +413,7 @@ option_requires_value() {
     --stream-resume-hint|--stream-flow-policy|--stream-flow-max-lag|--stream-demand-min-bytes|--stream-demand-preferred-bytes|--stream-checkpoint)
       return 0
       ;;
-    --runtime-capabilities|--emit-typeck-debug|--emit-effects-metrics|--config|--left-recursion|--json-mode|--emit-typeck-debug-format)
-    --runtime-capabilities|--runtime-capabilities-file|--emit-typeck-debug|--emit-effects-metrics|--config|--left-recursion|--json-mode|--emit-typeck-debug-format)
+    --runtime-capabilities|--emit-typeck-debug|--emit-effects-metrics|--config|--left-recursion|--json-mode|--emit-typeck-debug-format|--runtime-capabilities-file)
       return 0
       ;;
     *)

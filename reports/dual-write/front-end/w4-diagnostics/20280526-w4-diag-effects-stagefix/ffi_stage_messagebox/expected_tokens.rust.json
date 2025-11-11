@@ -1,0 +1,341 @@
+{
+  "case": "ffi_stage_messagebox",
+  "frontend": "rust",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280526-w4-diag-effects-stagefix/ffi_stage_messagebox/diagnostics.rust.json",
+  "diagnostic_count": 64,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 1,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 2,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 3,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 4,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 5,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 6,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 7,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 8,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 9,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 10,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 11,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 12,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 13,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 14,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 15,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 16,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 17,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 18,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 19,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 20,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 21,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 22,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 23,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 24,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 25,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 26,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 27,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 28,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 29,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 30,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 31,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 32,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 33,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 34,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 35,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 36,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 37,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 38,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 39,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 40,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 41,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 42,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 43,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 44,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 45,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 46,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 47,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 48,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 49,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 50,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 51,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 52,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 53,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 54,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 55,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 56,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 57,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 58,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 59,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 60,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 61,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 62,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 63,
+      "token_count": 1,
+      "expected_tokens": [
+        {
+          "token": "fn",
+          "hint": "keyword"
+        }
+      ]
+    }
+  ],
+  "first_expected_tokens": [
+    {
+      "token": "fn",
+      "hint": "keyword"
+    }
+  ],
+  "first_diagnostic_index": 63,
+  "total_expected_token_count": 1
+}

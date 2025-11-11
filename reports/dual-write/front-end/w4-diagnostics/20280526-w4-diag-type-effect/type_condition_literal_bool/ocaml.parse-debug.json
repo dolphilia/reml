@@ -1,0 +1,58 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280526-w4-diag-type-effect/type_condition_literal_bool/input.reml",
+  "parser_run_config": {
+    "experimental_effects": true,
+    "legacy_result": true,
+    "merge_warnings": true,
+    "trace": false,
+    "left_recursion": "off",
+    "packrat": true,
+    "require_eof": false,
+    "extensions": {
+      "config": {
+        "experimental_effects": true,
+        "left_recursion": "off",
+        "legacy_result": true,
+        "merge_warnings": true,
+        "packrat": true,
+        "require_eof": false,
+        "source": "cli",
+        "trace": false
+      },
+      "effects": {
+        "required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "stage": "beta",
+        "type_row_mode": "dual-write"
+      },
+      "lex": { "profile": "strict_json" }
+    }
+  },
+  "diagnostics": [],
+  "parse_result": {
+    "span_trace": null,
+    "packrat_stats": { "queries": 0, "hits": 0 },
+    "legacy_error": null,
+    "farthest_error_offset": null,
+    "span": {
+      "start": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280526-w4-diag-type-effect/type_condition_literal_bool/input.reml",
+        "line": 1,
+        "column": 1,
+        "offset": 0
+      },
+      "end": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280526-w4-diag-type-effect/type_condition_literal_bool/input.reml",
+        "line": 3,
+        "column": 1,
+        "offset": 42
+      }
+    },
+    "committed": false,
+    "consumed": true,
+    "recovered": false,
+    "has_value": true
+  },
+  "stream_meta": null
+}

@@ -1,0 +1,10 @@
+{
+  "case": "type_condition_literal_bool",
+  "frontend": "rust",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280526-w4-diag-type-effect/type_condition_literal_bool/diagnostics.rust.json",
+  "diagnostic_count": 0,
+  "diagnostics": [],
+  "first_expected_tokens": [],
+  "first_diagnostic_index": null,
+  "total_expected_token_count": 0
+}

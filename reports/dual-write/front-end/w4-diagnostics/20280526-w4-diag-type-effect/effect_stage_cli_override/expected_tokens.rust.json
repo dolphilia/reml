@@ -1,0 +1,51 @@
+{
+  "case": "effect_stage_cli_override",
+  "frontend": "rust",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280526-w4-diag-type-effect/effect_stage_cli_override/diagnostics.rust.json",
+  "diagnostic_count": 6,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 1,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 2,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 3,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 4,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 5,
+      "token_count": 1,
+      "expected_tokens": [
+        {
+          "token": "fn",
+          "hint": "keyword"
+        }
+      ]
+    }
+  ],
+  "first_expected_tokens": [
+    {
+      "token": "fn",
+      "hint": "keyword"
+    }
+  ],
+  "first_diagnostic_index": 5,
+  "total_expected_token_count": 1
+}

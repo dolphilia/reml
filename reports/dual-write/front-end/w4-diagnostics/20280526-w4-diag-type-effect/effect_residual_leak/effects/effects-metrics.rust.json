@@ -1,0 +1,202 @@
+{
+  "metrics": {
+    "typed_functions": 2,
+    "typed_exprs": 2,
+    "constraints_total": 0,
+    "constraint_breakdown": {},
+    "unresolved_identifiers": 0,
+    "call_sites": 0,
+    "binary_expressions": 0
+  },
+  "typed_functions": [
+    {
+      "name": "emit",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "main",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    }
+  ],
+  "extensions": {
+    "bridge": {
+      "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+      "stage": {
+        "actual": "beta",
+        "actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "required": "beta",
+        "required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ]
+      }
+    },
+    "capability": {
+      "detail": [
+        {
+          "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "stage": "beta"
+        }
+      ],
+      "ids": [
+        "docs/spec/3-8-core-runtime-capability.md#samples"
+      ],
+      "primary": "docs/spec/3-8-core-runtime-capability.md#samples",
+      "required_capabilities": [
+        "docs/spec/3-8-core-runtime-capability.md#samples"
+      ],
+      "stage": {
+        "actual": "beta",
+        "required": "beta"
+      }
+    },
+    "effect.actual_capabilities": [
+      {
+        "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "stage": "beta"
+      }
+    ],
+    "effect.capabilities": [
+      "docs/spec/3-8-core-runtime-capability.md#samples"
+    ],
+    "effect.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+    "effect.required_capabilities": [
+      "docs/spec/3-8-core-runtime-capability.md#samples"
+    ],
+    "effect.stage.actual": "beta",
+    "effect.stage.actual_capabilities": [
+      {
+        "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "stage": "beta"
+      }
+    ],
+    "effect.stage.required": "beta",
+    "effect.stage.required_capabilities": [
+      "docs/spec/3-8-core-runtime-capability.md#samples"
+    ],
+    "effects": {
+      "capabilities": [
+        "docs/spec/3-8-core-runtime-capability.md#samples"
+      ],
+      "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+      "stage": {
+        "actual": "beta",
+        "actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "required": "beta",
+        "required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ]
+      },
+      "stage_trace": [
+        {
+          "note": "--effect-stage",
+          "source": "cli_option",
+          "stage": "beta"
+        },
+        {
+          "source": "runtime",
+          "stage": "beta"
+        }
+      ]
+    }
+  },
+  "audit_metadata": {
+    "bridge.stage.actual_capabilities": [
+      {
+        "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "stage": "beta"
+      }
+    ],
+    "bridge.stage.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+    "bridge.stage.required_capabilities": [
+      "docs/spec/3-8-core-runtime-capability.md#samples"
+    ],
+    "capability.ids": [
+      "docs/spec/3-8-core-runtime-capability.md#samples"
+    ],
+    "effect.actual_capabilities": [
+      {
+        "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "stage": "beta"
+      }
+    ],
+    "effect.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+    "effect.required_capabilities": [
+      "docs/spec/3-8-core-runtime-capability.md#samples"
+    ],
+    "effect.stage.actual": "beta",
+    "effect.stage.actual_capabilities": [
+      {
+        "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "stage": "beta"
+      }
+    ],
+    "effect.stage.required": "beta",
+    "effect.stage.required_capabilities": [
+      "docs/spec/3-8-core-runtime-capability.md#samples"
+    ],
+    "effect.stage.trace": [
+      {
+        "note": "--effect-stage",
+        "source": "cli_option",
+        "stage": "beta"
+      },
+      {
+        "source": "runtime",
+        "stage": "beta"
+      }
+    ],
+    "stage.trace": [
+      {
+        "note": "--effect-stage",
+        "source": "cli_option",
+        "stage": "beta"
+      },
+      {
+        "source": "runtime",
+        "stage": "beta"
+      }
+    ]
+  }
+}
