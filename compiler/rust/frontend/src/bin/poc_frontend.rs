@@ -17,7 +17,7 @@ use reml_frontend::streaming::{
 use reml_frontend::typeck::{
     self, DualWriteGuards, InstallConfigError, RecoverConfig, StageContext, StageId,
     StageRequirement, TypeRowMode, TypecheckConfig, TypecheckDriver, TypecheckMetrics,
-    TypecheckReport, TypedFunctionSummary,
+    TypecheckReport, TypecheckViolation, TypecheckViolationKind, TypedFunctionSummary,
 };
 use serde::Serialize;
 
@@ -57,7 +57,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let typeck_report = result
         .ast
         .as_ref()
-        .map(|module| TypecheckDriver::infer_module(module, &args.typecheck_config))
+        .map(|module| {
+            TypecheckDriver::infer_module(module, &source, &args.typecheck_config)
+        })
         .unwrap_or_else(|| {
             TypecheckDriver::infer_fallback_from_source(&source, &args.typecheck_config)
         });
@@ -87,7 +89,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &args.typecheck_config.effect_context,
         &args.runtime_capabilities,
     );
-    let diagnostics_entries = build_diagnostics(
+    let mut diagnostics_entries = build_parser_diagnostics(
         &result.diagnostics,
         &args,
         &input_path,
@@ -96,6 +98,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &stream_flow_state,
         &stage_payload,
     );
+    let mut type_diagnostics = build_type_diagnostics(
+        &typeck_report,
+        &args,
+        &input_path,
+        &source,
+        &runconfig_summary,
+        &stream_flow_state,
+        &stage_payload,
+    );
+    diagnostics_entries.append(&mut type_diagnostics);
     let diagnostics_json = Value::Array(diagnostics_entries.clone());
     let diag_document = json!({
         "input": input_path,
@@ -1094,7 +1106,7 @@ fn ensure_object(value: &mut Value) -> &mut serde_json::Map<String, Value> {
         .expect("value should be converted into an object")
 }
 
-fn build_diagnostics(
+fn build_parser_diagnostics(
     diagnostics: &[FrontendDiagnostic],
     args: &CliArgs,
     input_path: &Path,
@@ -1163,8 +1175,14 @@ fn build_diagnostics(
             stage_payload.apply_extensions(&mut extensions);
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
 
-            let audit_metadata =
-                build_audit_metadata(&timestamp, args, input_path, &stage_payload, flow);
+            let audit_metadata = build_audit_metadata(
+                &timestamp,
+                args,
+                input_path,
+                &stage_payload,
+                flow,
+                "parser",
+            );
             let audit = json!({
                 "metadata": audit_metadata.clone(),
                 "audit_id": audit_metadata
@@ -1191,6 +1209,88 @@ fn build_diagnostics(
                 "recoverability": recoverability_label(diag.recoverability),
                 "code": diag.code,
                 "expected": build_expected_field(&diag),
+            })
+        })
+        .collect()
+}
+
+fn build_type_diagnostics(
+    report: &TypecheckReport,
+    args: &CliArgs,
+    input_path: &Path,
+    source: &str,
+    runconfig_summary: &Value,
+    flow: &StreamFlowState,
+    stage_payload: &StageAuditPayload,
+) -> Vec<Value> {
+    if report.violations.is_empty() {
+        return Vec::new();
+    }
+    let line_index = LineIndex::new(source);
+    report
+        .violations
+        .iter()
+        .map(|violation| {
+            let timestamp = current_timestamp();
+            let location_value = violation
+                .span
+                .map(|span| span_to_location(span, &line_index, input_path))
+                .unwrap_or(Value::Null);
+            let notes = violation
+                .notes
+                .iter()
+                .map(|note| {
+                    json!({
+                        "label": note.label,
+                        "message": note.message,
+                        "span": Value::Null,
+                    })
+                })
+                .collect::<Vec<_>>();
+            let mut extensions = serde_json::Map::new();
+            extensions.insert(
+                "diagnostic.v2".to_string(),
+                json!({
+                    "timestamp": timestamp,
+                    "codes": [violation.code],
+                }),
+            );
+            stage_payload.apply_extensions(&mut extensions);
+            extensions.insert("runconfig".to_string(), runconfig_summary.clone());
+            let audit_metadata = build_audit_metadata(
+                &timestamp,
+                args,
+                input_path,
+                stage_payload,
+                flow,
+                violation.domain(),
+            );
+            let audit = json!({
+                "metadata": Value::Object(audit_metadata.clone()),
+                "audit_id": audit_metadata
+                    .get("cli.audit_id")
+                    .cloned()
+                    .unwrap_or_else(|| json!(format!("cli/{}#0", timestamp))),
+                "change_set": audit_metadata
+                    .get("cli.change_set")
+                    .cloned()
+                    .unwrap_or_else(|| json!({})),
+            });
+            json!({
+                "severity": "error",
+                "message": violation.message,
+                "schema_version": SCHEMA_VERSION,
+                "location": location_value,
+                "domain": violation.domain(),
+                "timestamp": timestamp,
+                "extensions": Value::Object(extensions),
+                "audit_metadata": Value::Object(audit_metadata),
+                "audit": audit,
+                "notes": notes,
+                "recoverability": recoverability_label(Recoverability::Fatal),
+                "code": violation.code,
+                "codes": [violation.code],
+                "expected": Value::Null,
             })
         })
         .collect()
@@ -1341,9 +1441,10 @@ fn build_audit_metadata(
     input_path: &Path,
     stage_payload: &StageAuditPayload,
     flow: &StreamFlowState,
+    domain: &str,
 ) -> serde_json::Map<String, Value> {
     let mut metadata = serde_json::Map::new();
-    metadata.insert("event.domain".to_string(), json!("parser"));
+    metadata.insert("event.domain".to_string(), json!(domain));
     metadata.insert("event.kind".to_string(), json!("diagnostic"));
     metadata.insert("schema.version".to_string(), json!(SCHEMA_VERSION));
     metadata.insert(
@@ -1673,6 +1774,7 @@ impl<'a> TypecheckMetricsPayload<'a> {
     fn from_report(report: &'a TypecheckReport, stage_payload: &StageAuditPayload) -> Self {
         let mut extensions = serde_json::Map::new();
         stage_payload.apply_extensions(&mut extensions);
+        apply_residual_extension(&mut extensions, report);
         let mut audit_metadata = serde_json::Map::new();
         stage_payload.apply_audit_metadata(&mut audit_metadata);
         Self {
@@ -1682,6 +1784,39 @@ impl<'a> TypecheckMetricsPayload<'a> {
             audit_metadata,
         }
     }
+}
+
+fn apply_residual_extension(
+    extensions: &mut serde_json::Map<String, Value>,
+    report: &TypecheckReport,
+) {
+    let residuals: Vec<String> = report
+        .violations
+        .iter()
+        .filter_map(|violation| match violation.kind {
+            TypecheckViolationKind::ResidualLeak => Some(
+                violation
+                    .capability
+                    .clone()
+                    .unwrap_or_else(|| "unknown".to_string()),
+            ),
+            _ => None,
+        })
+        .collect();
+    if residuals.is_empty() {
+        return;
+    }
+    let effects_entry = extensions
+        .entry("effects".to_string())
+        .or_insert_with(|| Value::Object(serde_json::Map::new()));
+    let effects_obj = ensure_object(effects_entry);
+    effects_obj.insert(
+        "residual".to_string(),
+        json!({
+            "leaks": residuals,
+            "count": residuals.len(),
+        }),
+    );
 }
 
 #[derive(Clone, Serialize)]
@@ -1726,6 +1861,7 @@ struct TypeckDebugFile {
     runtime_capabilities: Vec<String>,
     trace_enabled: bool,
     metrics: TypecheckMetrics,
+    violations: Vec<TypecheckViolation>,
 }
 
 impl TypeckArtifacts {
@@ -1765,6 +1901,7 @@ impl TypeckArtifacts {
             runtime_capabilities: config.runtime_capabilities.clone(),
             trace_enabled: config.trace_enabled,
             metrics: report.metrics.clone(),
+            violations: report.violations.clone(),
         };
         Self {
             typed_ast,

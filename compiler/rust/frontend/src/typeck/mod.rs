@@ -7,7 +7,10 @@ mod driver;
 pub mod env;
 mod metrics;
 
-pub use driver::{TypecheckDriver, TypecheckReport, TypedFunctionSummary};
+pub use driver::{
+    TypecheckDriver, TypecheckReport, TypecheckViolation, TypecheckViolationKind,
+    TypedFunctionSummary,
+};
 pub use env::{
     config, install_config, DualWriteGuards, InstallConfigError, RecoverConfig, StageContext,
     StageId, StageRequirement, TypeRowMode, TypecheckConfig, TypecheckConfigBuilder,

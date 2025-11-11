@@ -1,19 +1,25 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use serde::Serialize;
 
-use super::env::TypecheckConfig;
+use super::env::{TypeRowMode, TypecheckConfig};
 use super::metrics::TypecheckMetrics;
 use crate::parser::ast::{Expr, Function, Module};
+use crate::span::Span;
 
 /// 型推論の簡易ドライバ。現時点では AST を走査して
 /// メトリクスとサマリ情報のみを生成する。
 pub struct TypecheckDriver;
 
 impl TypecheckDriver {
-    pub fn infer_module(module: &Module, config: &TypecheckConfig) -> TypecheckReport {
+    pub fn infer_module(
+        module: &Module,
+        source: &str,
+        config: &TypecheckConfig,
+    ) -> TypecheckReport {
         let mut metrics = TypecheckMetrics::default();
         let mut functions = Vec::new();
+        let mut violations = Vec::new();
 
         if config.trace_enabled {
             eprintln!(
@@ -25,7 +31,13 @@ impl TypecheckDriver {
         for function in &module.functions {
             metrics.record_function();
             let mut stats = FunctionStats::default();
-            let typed_return = infer_function(function, &mut stats, &mut metrics);
+            let typed_return = infer_function(
+                function,
+                &function.name,
+                &mut stats,
+                &mut metrics,
+                &mut violations,
+            );
             functions.push(TypedFunctionSummary {
                 name: function.name.clone(),
                 param_types: function
@@ -44,7 +56,13 @@ impl TypecheckDriver {
             eprintln!("[TRACE] typecheck.finish");
         }
 
-        TypecheckReport { metrics, functions }
+        violations.extend(detect_residual_leaks(source, config));
+
+        TypecheckReport {
+            metrics,
+            functions,
+            violations,
+        }
     }
 
     pub fn infer_fallback_from_source(source: &str, config: &TypecheckConfig) -> TypecheckReport {
@@ -68,7 +86,13 @@ impl TypecheckDriver {
             });
         }
 
-        TypecheckReport { metrics, functions }
+        let violations = detect_residual_leaks(source, config);
+
+        TypecheckReport {
+            metrics,
+            functions,
+            violations,
+        }
     }
 }
 
@@ -138,6 +162,7 @@ fn extract_top_level_functions(source: &str) -> Vec<String> {
 pub struct TypecheckReport {
     pub metrics: TypecheckMetrics,
     pub functions: Vec<TypedFunctionSummary>,
+    pub violations: Vec<TypecheckViolation>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -150,6 +175,90 @@ pub struct TypedFunctionSummary {
     pub unresolved_identifiers: usize,
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub struct TypecheckViolation {
+    pub kind: TypecheckViolationKind,
+    pub code: &'static str,
+    pub message: String,
+    pub span: Option<Span>,
+    pub notes: Vec<ViolationNote>,
+    pub capability: Option<String>,
+    pub function: Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub enum TypecheckViolationKind {
+    ConditionLiteralBool,
+    ResidualLeak,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct ViolationNote {
+    pub label: Option<String>,
+    pub message: String,
+}
+
+impl ViolationNote {
+    fn plain(message: impl Into<String>) -> Self {
+        Self {
+            label: None,
+            message: message.into(),
+        }
+    }
+
+    #[allow(dead_code)]
+    fn labeled(label: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            label: Some(label.into()),
+            message: message.into(),
+        }
+    }
+}
+
+impl TypecheckViolation {
+    fn condition_literal_bool(
+        span: Span,
+        actual: SimpleType,
+        function: Option<String>,
+    ) -> Self {
+        Self {
+            kind: TypecheckViolationKind::ConditionLiteralBool,
+            code: "E7006",
+            message: "条件式は Bool 型である必要があります".to_string(),
+            span: Some(span),
+            notes: vec![ViolationNote::plain(format!(
+                "この条件式の型は {} です",
+                actual.label()
+            ))],
+            capability: None,
+            function,
+        }
+    }
+
+    fn residual_leak(span: Option<Span>, capability: Option<String>) -> Self {
+        let note_message = capability
+            .as_ref()
+            .map(|cap| format!("`{cap}` のハンドラが宣言されていません"))
+            .unwrap_or_else(|| "宣言された効果集合が残余集合を包含していません".to_string());
+        Self {
+            kind: TypecheckViolationKind::ResidualLeak,
+            code: "effects.contract.residual_leak",
+            message: "残余効果が閉じていません".to_string(),
+            span,
+            notes: vec![ViolationNote::plain(note_message)],
+            capability,
+            function: None,
+        }
+    }
+
+    pub fn domain(&self) -> &'static str {
+        match self.kind {
+            TypecheckViolationKind::ConditionLiteralBool => "type",
+            TypecheckViolationKind::ResidualLeak => "effects",
+        }
+    }
+}
+
 #[derive(Default)]
 struct FunctionStats {
     typed_exprs: usize,
@@ -159,14 +268,23 @@ struct FunctionStats {
 
 fn infer_function(
     function: &Function,
+    function_name: &str,
     stats: &mut FunctionStats,
     metrics: &mut TypecheckMetrics,
+    violations: &mut Vec<TypecheckViolation>,
 ) -> SimpleType {
     let mut env = HashMap::new();
     for param in &function.params {
         env.insert(param.name.clone(), SimpleType::from_param(&param.name));
     }
-    infer_expr(&function.body, &env, stats, metrics)
+    infer_expr(
+        &function.body,
+        &env,
+        stats,
+        metrics,
+        violations,
+        Some(function_name),
+    )
 }
 
 fn infer_expr(
@@ -174,11 +292,14 @@ fn infer_expr(
     env: &HashMap<String, SimpleType>,
     stats: &mut FunctionStats,
     metrics: &mut TypecheckMetrics,
+    violations: &mut Vec<TypecheckViolation>,
+    function_name: Option<&str>,
 ) -> SimpleType {
     stats.typed_exprs += 1;
     metrics.record_expr();
     match expr {
         Expr::Int { .. } => SimpleType::Int,
+        Expr::Bool { .. } => SimpleType::Bool,
         Expr::Identifier { name, .. } => match env.get(name) {
             Some(ty) => *ty,
             None => {
@@ -189,8 +310,8 @@ fn infer_expr(
         },
         Expr::Binary { left, right, .. } => {
             metrics.record_binary_expr();
-            let left_ty = infer_expr(left, env, stats, metrics);
-            let right_ty = infer_expr(right, env, stats, metrics);
+            let left_ty = infer_expr(left, env, stats, metrics, violations, function_name);
+            let right_ty = infer_expr(right, env, stats, metrics, violations, function_name);
             stats.constraints += 1;
             metrics.record_constraint("binary.operands");
             combine_numeric_types(left_ty, right_ty)
@@ -199,18 +320,43 @@ fn infer_expr(
             metrics.record_call_site();
             stats.constraints += 1;
             metrics.record_constraint("call.arity");
-            let _callee_ty = infer_expr(callee, env, stats, metrics);
+            let _callee_ty = infer_expr(callee, env, stats, metrics, violations, function_name);
             for arg in args {
-                let _ = infer_expr(arg, env, stats, metrics);
+                let _ = infer_expr(arg, env, stats, metrics, violations, function_name);
             }
             SimpleType::Unknown
+        }
+        Expr::IfElse {
+            condition,
+            then_branch,
+            else_branch,
+            ..
+        } => {
+            let condition_ty =
+                infer_expr(condition, env, stats, metrics, violations, function_name);
+            check_bool_condition(
+                condition.span(),
+                condition_ty,
+                violations,
+                function_name,
+            );
+            let then_ty =
+                infer_expr(then_branch, env, stats, metrics, violations, function_name);
+            let else_ty =
+                infer_expr(else_branch, env, stats, metrics, violations, function_name);
+            if then_ty == else_ty {
+                then_ty
+            } else {
+                SimpleType::Unknown
+            }
         }
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum SimpleType {
     Int,
+    Bool,
     Unknown,
 }
 
@@ -218,6 +364,7 @@ impl SimpleType {
     fn label(self) -> &'static str {
         match self {
             SimpleType::Int => "Int",
+            SimpleType::Bool => "Bool",
             SimpleType::Unknown => "Unknown",
         }
     }
@@ -225,6 +372,8 @@ impl SimpleType {
     fn from_param(name: &str) -> Self {
         if name.ends_with("_int") {
             SimpleType::Int
+        } else if name.ends_with("_bool") {
+            SimpleType::Bool
         } else {
             SimpleType::Unknown
         }
@@ -236,4 +385,88 @@ fn combine_numeric_types(left: SimpleType, right: SimpleType) -> SimpleType {
         (SimpleType::Int, SimpleType::Int) => SimpleType::Int,
         _ => SimpleType::Unknown,
     }
+}
+
+fn check_bool_condition(
+    span: Span,
+    ty: SimpleType,
+    violations: &mut Vec<TypecheckViolation>,
+    function_name: Option<&str>,
+) {
+    if ty == SimpleType::Bool {
+        return;
+    }
+    violations.push(TypecheckViolation::condition_literal_bool(
+        span,
+        ty,
+        function_name.map(|name| name.to_string()),
+    ));
+}
+
+fn detect_residual_leaks(
+    source: &str,
+    config: &TypecheckConfig,
+) -> Vec<TypecheckViolation> {
+    if !matches!(config.type_row_mode, TypeRowMode::DualWrite) {
+        return Vec::new();
+    }
+    let mut leaks = Vec::new();
+    let mut seen_capabilities: HashSet<String> = HashSet::new();
+    let mut seen_generic = false;
+    let mut offset: u32 = 0;
+    for line in source.lines() {
+        let mut local_matches = find_perform_matches(line);
+        if local_matches.is_empty() {
+            offset = offset.saturating_add(line.len() as u32 + 1);
+            continue;
+        }
+        for (byte_index, capability) in local_matches.drain(..) {
+            if let Some(cap) = capability.clone() {
+                if !seen_capabilities.insert(cap.clone()) {
+                    continue;
+                }
+            } else if seen_generic {
+                continue;
+            } else {
+                seen_generic = true;
+            }
+            let span = Span::new(
+                offset.saturating_add(byte_index),
+                offset.saturating_add(byte_index + "perform".len() as u32),
+            );
+            leaks.push(TypecheckViolation::residual_leak(Some(span), capability));
+        }
+        offset = offset.saturating_add(line.len() as u32 + 1);
+    }
+    leaks
+}
+
+fn find_perform_matches(line: &str) -> Vec<(u32, Option<String>)> {
+    let mut matches = Vec::new();
+    let keyword = "perform";
+    let mut search_start = 0;
+    while let Some(idx) = line[search_start..].find(keyword) {
+        let absolute = search_start + idx;
+        let before = line[..absolute].chars().last();
+        let after_index = absolute + keyword.len();
+        let after_char = line[after_index..].chars().next();
+        let is_identifier_char = |ch: char| ch.is_ascii_alphanumeric() || ch == '_';
+        let boundary_before = before.map_or(true, |ch| !is_identifier_char(ch));
+        let boundary_after = after_char.map_or(true, |ch| !is_identifier_char(ch));
+        if boundary_before && boundary_after {
+            let rest = line[after_index..].trim_start();
+            let capability = rest
+                .split_whitespace()
+                .next()
+                .map(|token| token.trim_matches(|c: char| c == '(' || c == ')' || c == ',' || c == ';'))
+                .filter(|token| !token.is_empty())
+                .map(|token| token.to_string());
+            matches.push((absolute as u32, capability));
+        }
+        search_start = absolute + keyword.len();
+        if search_start >= line.len() {
+            break;
+        }
+    }
+    matches
 }

@@ -52,6 +52,10 @@ pub enum Expr {
         value: i64,
         span: Span,
     },
+    Bool {
+        value: bool,
+        span: Span,
+    },
     Identifier {
         name: String,
         span: Span,
@@ -67,11 +71,21 @@ pub enum Expr {
         right: Box<Expr>,
         span: Span,
     },
+    IfElse {
+        condition: Box<Expr>,
+        then_branch: Box<Expr>,
+        else_branch: Box<Expr>,
+        span: Span,
+    },
 }
 
 impl Expr {
     pub fn int(value: i64, span: Span) -> Self {
         Self::Int { value, span }
+    }
+
+    pub fn bool(value: bool, span: Span) -> Self {
+        Self::Bool { value, span }
     }
 
     pub fn identifier(name: impl Into<String>, span: Span) -> Self {
@@ -101,15 +115,18 @@ impl Expr {
     pub fn span(&self) -> Span {
         match self {
             Expr::Int { span, .. }
+            | Expr::Bool { span, .. }
             | Expr::Identifier { span, .. }
             | Expr::Call { span, .. }
-            | Expr::Binary { span, .. } => *span,
+            | Expr::Binary { span, .. }
+            | Expr::IfElse { span, .. } => *span,
         }
     }
 
     pub fn render(&self) -> String {
         match self {
             Expr::Int { value, .. } => format!("int({value}:base10)"),
+            Expr::Bool { value, .. } => format!("bool({value})"),
             Expr::Identifier { name, .. } => format!("var({name})"),
             Expr::Call { callee, args, .. } => {
                 let rendered_args = args.iter().map(Expr::render).collect::<Vec<_>>();
@@ -121,6 +138,17 @@ impl Expr {
                 right,
                 ..
             } => format!("binary({} {} {})", left.render(), operator, right.render()),
+            Expr::IfElse {
+                condition,
+                then_branch,
+                else_branch,
+                ..
+            } => format!(
+                "if {} then {} else {}",
+                condition.render(),
+                then_branch.render(),
+                else_branch.render()
+            ),
         }
     }
 }

@@ -305,6 +305,10 @@ fn token_kind_expectations(kind: &TokenKind) -> Vec<ExpectedToken> {
         TokenKind::KeywordFn => vec![ET::keyword("fn")],
         TokenKind::KeywordLet => vec![ET::keyword("let")],
         TokenKind::KeywordElse => vec![ET::keyword("else")],
+        TokenKind::KeywordIf => vec![ET::keyword("if")],
+        TokenKind::KeywordThen => vec![ET::keyword("then")],
+        TokenKind::KeywordTrue => vec![ET::keyword("true")],
+        TokenKind::KeywordFalse => vec![ET::keyword("false")],
         TokenKind::KeywordModule => vec![ET::keyword("module")],
         TokenKind::KeywordEffect => vec![ET::keyword("effect")],
         TokenKind::Identifier => vec![ET::class("識別子")],
@@ -353,11 +357,20 @@ fn module_parser<'src>(
             .clone()
             .map(|(name, span)| Expr::identifier(name, span));
 
+        let bool_literal = choice((
+            just(TokenKind::KeywordTrue).map_with_span(move |_, span: Range<usize>| {
+                Expr::bool(true, span_to_span(span))
+            }),
+            just(TokenKind::KeywordFalse).map_with_span(move |_, span: Range<usize>| {
+                Expr::bool(false, span_to_span(span))
+            }),
+        ));
+
         let paren_expr = expr
             .clone()
             .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
 
-        let atom = choice((int_literal.clone(), ident_expr, paren_expr)).boxed();
+        let atom = choice((int_literal.clone(), bool_literal, ident_expr, paren_expr)).boxed();
 
         let args = expr
             .clone()
@@ -397,14 +410,37 @@ fn module_parser<'src>(
             }
         });
 
-        call.clone()
+        let additive = call
+            .clone()
             .then(plus.then(call).map(|(_, rhs)| rhs).repeated())
             .map(|(first, rest)| {
                 rest.into_iter().fold(first, |lhs, rhs| {
                     let span = span_union(lhs.span(), rhs.span());
                     Expr::binary("+", lhs, rhs, span)
                 })
-            })
+            });
+
+        let if_expr = just(TokenKind::KeywordIf)
+            .map_with_span(move |_, span: Range<usize>| span_to_span(span))
+            .then(expr.clone())
+            .then_ignore(just(TokenKind::KeywordThen))
+            .then(expr.clone())
+            .then_ignore(just(TokenKind::KeywordElse))
+            .then(expr.clone())
+            .map(|(((if_pair, then_branch), else_branch))| {
+                let (if_span, condition) = if_pair;
+                let if_span_start = if_span.start;
+                let else_span = else_branch.span();
+                let full_span = Span::new(if_span_start, else_span.end);
+                Expr::IfElse {
+                    condition: Box::new(condition),
+                    then_branch: Box::new(then_branch),
+                    else_branch: Box::new(else_branch),
+                    span: full_span,
+                }
+            });
+
+        choice((if_expr, additive)).boxed()
     });
 
     let params = identifier

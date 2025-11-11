@@ -40,6 +40,14 @@ enum RawToken {
     KeywordEffect,
     #[token("else")]
     KeywordElse,
+    #[token("if")]
+    KeywordIf,
+    #[token("then")]
+    KeywordThen,
+    #[token("true")]
+    KeywordTrue,
+    #[token("false")]
+    KeywordFalse,
 
     #[regex(r"[A-Za-z_][A-Za-z0-9_]*")]
     Identifier,
@@ -107,6 +115,18 @@ pub fn lex_source(text: &str) -> LexOutput {
             }
             Ok(RawToken::KeywordElse) => {
                 tokens.push(Token::with_lexeme(TokenKind::KeywordElse, span, "else"));
+            }
+            Ok(RawToken::KeywordIf) => {
+                tokens.push(Token::with_lexeme(TokenKind::KeywordIf, span, "if"));
+            }
+            Ok(RawToken::KeywordThen) => {
+                tokens.push(Token::with_lexeme(TokenKind::KeywordThen, span, "then"));
+            }
+            Ok(RawToken::KeywordTrue) => {
+                tokens.push(Token::with_lexeme(TokenKind::KeywordTrue, span, "true"));
+            }
+            Ok(RawToken::KeywordFalse) => {
+                tokens.push(Token::with_lexeme(TokenKind::KeywordFalse, span, "false"));
             }
             Ok(RawToken::Identifier) => {
                 tokens.push(Token::with_lexeme(
