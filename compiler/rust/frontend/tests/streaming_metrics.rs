@@ -1,3 +1,5 @@
+use reml_frontend::diagnostic::recover::streaming_expression_summary;
+use reml_frontend::diagnostic::FrontendDiagnostic;
 use reml_frontend::span::Span;
 use reml_frontend::streaming::{
     Expectation, ExpectationSummary, PackratEntry, StreamingState, StreamingStateConfig,
@@ -5,6 +7,36 @@ use reml_frontend::streaming::{
 };
 use smallvec::smallvec;
 use smol_str::SmolStr;
+
+const EXPECTED_STREAMING_TOKENS: [&str; 27] = [
+    "continue",
+    "defer",
+    "do",
+    "false",
+    "for",
+    "handle",
+    "if",
+    "loop",
+    "match",
+    "perform",
+    "return",
+    "self",
+    "true",
+    "unsafe",
+    "while",
+    "!",
+    "(",
+    "-",
+    "[",
+    "{",
+    "|",
+    "char-literal",
+    "float-literal",
+    "identifier",
+    "integer-literal",
+    "string-literal",
+    "upper-identifier",
+];
 
 fn make_entry() -> PackratEntry {
     let tokens = smallvec![TokenSample {
@@ -72,4 +104,36 @@ fn span_trace_collects_frames() {
     let trace_stats = state.span_trace_stats();
     assert_eq!(trace_stats.retained, 3);
     assert_eq!(trace_stats.dropped, 1);
+}
+
+#[test]
+fn streaming_expected_token_snapshot_matches() {
+    let summary = streaming_expression_summary();
+    let tokens: Vec<String> = summary.tokens();
+    let expected: Vec<String> = EXPECTED_STREAMING_TOKENS
+        .iter()
+        .map(|token| token.to_string())
+        .collect();
+    assert_eq!(
+        tokens, expected,
+        "streaming expected-token summary deviated from snapshot"
+    );
+}
+
+#[test]
+fn streaming_diagnostics_inject_expected_tokens() {
+    let diag = FrontendDiagnostic::new("streaming placeholder").ensure_streaming_expected();
+    let expected: Vec<String> = EXPECTED_STREAMING_TOKENS
+        .iter()
+        .map(|token| token.to_string())
+        .collect();
+    assert_eq!(
+        diag.expected_tokens, expected,
+        "streaming diagnostics should embed ExpectedTokenCollector summary"
+    );
+    assert_eq!(
+        diag.expected_message_key.as_deref(),
+        Some("parse.expected"),
+        "streaming diagnostics should emit the standard parse.expected key"
+    );
 }

@@ -1570,6 +1570,7 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
     extension_samples: Dict[str, Any] = {key: None for key in extensions_state}
     stream_field_state: Dict[str, bool] = {
         "enabled": False,
+        "packrat_enabled": False,
         "checkpoint": False,
         "resume_hint": False,
         "demand_min_bytes": False,
@@ -1577,6 +1578,7 @@ def collect_runconfig_metrics(paths: List[Path]) -> List[Dict[str, Any]]:
         "chunk_size": False,
         "flow.policy": False,
         "flow.backpressure.max_lag_bytes": False,
+        "flow.checkpoints_closed": False,
     }
     stream_field_samples: Dict[str, Any] = {
         key: None for key in stream_field_state

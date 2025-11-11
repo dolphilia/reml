@@ -11,7 +11,9 @@ use reml_frontend::diagnostic::{DiagnosticNote, ExpectedToken, FrontendDiagnosti
 use reml_frontend::error::Recoverability;
 use reml_frontend::parser::{ParserDriver, ParserOptions};
 use reml_frontend::span::Span;
-use reml_frontend::streaming::{StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig};
+use reml_frontend::streaming::{
+    StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig,
+};
 use reml_frontend::typeck::{
     self, DualWriteGuards, InstallConfigError, RecoverConfig, StageContext, StageId,
     StageRequirement, TypeRowMode, TypecheckConfig, TypecheckDriver, TypecheckMetrics,
@@ -42,7 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     trace_log(&args, "parsing", "start");
-  let stream_flow_state =
+    let stream_flow_state =
         StreamFlowState::new(args.stream_config.to_flow_config(args.run_config.packrat));
     let parser_options = ParserOptions {
         streaming: args.streaming_state_config(),
@@ -65,7 +67,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "span_trace": result.span_trace,
     });
 
-  let flow_metrics = result
+    let flow_metrics = result
         .stream_flow_state
         .as_ref()
         .map(|state| state.metrics().checkpoints_closed)
@@ -75,7 +77,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "span_trace": result.stream_metrics.span_trace,
         "flow": {
             "checkpoints_closed": flow_metrics,
-        }
+        },
+        "packrat_enabled": args.run_config.packrat,
     });
 
     let runconfig_summary = build_runconfig_summary(&args, &stream_flow_state);
@@ -721,7 +724,11 @@ fn build_runconfig_summary(args: &CliArgs, flow: &StreamFlowState) -> Value {
                 "sync_tokens": [],
                 "notes": false,
             },
-            "stream": build_stream_extension(&args.stream_config, &flow_metrics),
+            "stream": build_stream_extension(
+                &args.stream_config,
+                &flow_metrics,
+                args.run_config.packrat,
+            ),
             "config": build_config_extension(args),
         },
     })
@@ -748,7 +755,11 @@ fn build_runconfig_top_level(args: &CliArgs, flow: &StreamFlowState) -> Value {
                 "sync_tokens": [],
                 "notes": false,
             },
-            "stream": build_stream_extension(&args.stream_config, &flow_metrics),
+            "stream": build_stream_extension(
+                &args.stream_config,
+                &flow_metrics,
+                args.run_config.packrat,
+            ),
             "effects": {
                 "type_row_mode": type_row_mode_label(args.typecheck_config.type_row_mode),
             },
@@ -784,15 +795,16 @@ fn build_config_extension(args: &CliArgs) -> Value {
         json!(args.run_config.experimental_effects),
     );
     if let Some(path) = args.config_path.as_ref() {
-        config.insert(
-            "path".to_string(),
-            json!(path.display().to_string()),
-        );
+        config.insert("path".to_string(), json!(path.display().to_string()));
     }
     Value::Object(config)
 }
 
-fn build_stream_extension(stream: &StreamSettings, flow: &StreamFlowMetrics) -> Value {
+fn build_stream_extension(
+    stream: &StreamSettings,
+    flow: &StreamFlowMetrics,
+    packrat_enabled: bool,
+) -> Value {
     let checkpoint = stream
         .checkpoint
         .clone()
@@ -811,6 +823,7 @@ fn build_stream_extension(stream: &StreamSettings, flow: &StreamFlowMetrics) -> 
     let flow_max_lag = stream.flow_max_lag.unwrap_or(0);
     json!({
         "enabled": stream.enabled,
+        "packrat_enabled": packrat_enabled,
         "checkpoint": checkpoint,
         "resume_hint": resume_hint,
         "demand_min_bytes": demand_min_bytes,
@@ -1463,6 +1476,32 @@ fn build_audit_metadata(
             .clone()
             .unwrap_or_else(|| "unspecified".to_string())),
     );
+    let flow_metrics = flow.metrics();
+    let flow_config = flow.config();
+    let packrat_enabled = flow_config
+        .as_ref()
+        .map(|cfg| cfg.packrat_enabled)
+        .unwrap_or(args.run_config.packrat);
+    metadata.insert(
+        "parser.stream.packrat_enabled".to_string(),
+        json!(packrat_enabled),
+    );
+    metadata.insert(
+        "parser.stream.flow.checkpoints_closed".to_string(),
+        json!(flow_metrics.checkpoints_closed),
+    );
+    if let Some(config) = flow_config.as_ref() {
+        metadata.insert(
+            "parser.stream.flow.enabled".to_string(),
+            json!(config.enabled),
+        );
+        if let Some(resume_hint) = config.resume_hint.as_ref() {
+            metadata.insert(
+                "parser.stream.flow.resume_source".to_string(),
+                json!(resume_hint),
+            );
+        }
+    }
     stage_payload.apply_audit_metadata(&mut metadata);
     metadata
 }
