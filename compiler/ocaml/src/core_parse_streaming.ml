@@ -113,8 +113,8 @@ let expectation_summary_for_checkpoint session checkpoint =
   summary
 
 let register_diagnostic session diagnostic ~consumed ~committed =
+  let stream_config = Run_config.Stream.of_run_config session.config in
   let diagnostic =
-    let stream_config = Run_config.Stream.of_run_config session.config in
     if not stream_config.Run_config.Stream.enabled then diagnostic
     else
       match diagnostic.Diagnostic.expected with

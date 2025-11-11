@@ -1,0 +1,10 @@
+{
+  "case": "stream_pending_resume",
+  "frontend": "ocaml",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290531-w4-diag-streaming-r16/stream_pending_resume/diagnostics.ocaml.json",
+  "diagnostic_count": 0,
+  "diagnostics": [],
+  "first_expected_tokens": [],
+  "first_diagnostic_index": null,
+  "total_expected_token_count": 0
+}
