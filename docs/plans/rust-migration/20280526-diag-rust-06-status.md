@@ -34,6 +34,36 @@
    4.1 上記修正後、`scripts/poc_dualwrite_compare.sh --force-type-effect-flags --mode diag --run-id <新ID> --cases docs/.../w4-diagnostic-cases.txt` をフルで再実行し、`reports/.../summary.md` を `docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md` と `p1-front-end-checklists.csv` に転記。  
    4.2 `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-diag-rust-06` に今回の Run ID（20280526-...）と残課題（parser metrics / typeck debug）を追記し、完了条件を更新する。
 
+## Rust 型推論エラー実装: 調査メモ
+
+### ギャップの把握
+- `compiler/rust/frontend/src/typeck/driver.rs:14-134` は `SimpleType::{Int,Unknown}` しか扱わず、`Expr::If` や Bool リテラルを前提とした分岐が存在しない。`type_condition_literal_bool` の AST も `typed_exprs=1` / `unresolved_identifiers=1` のままなので、条件式の型評価そのものが実行されていない。
+- `compiler/rust/frontend/src/parser/mod.rs:277-420` の `module_parser` は `keyword("if")` を `ExpectedToken` にだけ列挙し、実際の構文規則は `fn ... = <expr>`（call / `+` 演算）で止まっている。Bool リテラルや `if ... then ... else ...` を解釈できないため、TypecheckDriver まで Bool 条件が伝搬していない。
+- `compiler/rust/frontend/src/bin/poc_frontend.rs:1665-1704` の `TypecheckMetricsPayload` は Stage/Audit キーのみをシリアライズしており、OCaml 側 `typeck/typeck-debug.ocaml.json` に含まれる `type_row_mode` や `extensions.effects.residual` が空のまま。`collect-iterator-audit-metrics.py --section effects` の `residual` 系指標を満たせない。
+- `docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt` の Type/Effect ケースは `--experimental-effects --effect-stage beta --type-row-mode dual-write --emit-typeck-debug <dir>` を必須とするが、Rust 版は `typeck/typeck-debug.rust.json` に `residual_effects` 情報を残さず `effect_residual_leak` の CLI 監査条件を満たせていない。
+
+### 実装プラン（最小スコープ）
+1. **構文と AST の拡張**
+   - `token.rs` に `KeywordIf` / `KeywordThen` / `KeywordElse` / Bool リテラルを追加し、`lexer` で `true|false` を `BoolLiteral` として切り出す。
+   - `parser/ast.rs` に `Expr::Bool { value, span }` と `Expr::IfElse { cond, then_branch, else_branch, span }` を追加。`module_parser` では `if` 式を再帰的に解釈し、`span_union` を利用して `Span` を生成する。
+2. **型推論ロジック**
+   - `SimpleType` に `Bool` を追加。`infer_expr` に `Expr::Bool` / `Expr::IfElse` 分岐を用意し、条件節の型を `check_bool_condition`（内部関数）で検証する。
+   - `check_bool_condition` は `SimpleType::Bool` 以外を検出したら `TypecheckViolation::ConditionLiteralBool` を生成し、`TypecheckReport` に `violations` を蓄積する。`code=E7006` / `message="条件式は Bool 型である必要があります"` を OCaml diag（`reports/.../type_condition_literal_bool/diagnostics.ocaml.json`）と一致させる。
+3. **効果行（ResidualLeak）**
+   - `TypeRowMode::DualWrite` 時に限定して `emit_effect_violation` を呼び出し、`effect_residual_leak` 入力で `perform` 呼び出しが `resume` されない関数を簡易検知する。最小実装では `effect` 宣言 + `perform` 単体を検知し、`TypecheckViolation::ResidualLeak` を `extensions.effects.residual` にシリアライズする。
+   - 上記判定結果を `TypeckDebugFile.metrics` にも反映させ、OCaml 側 `typeck/typeck-debug.ocaml.json` と diff を取りやすくする。
+4. **シリアライズと CLI 連携**
+   - `TypecheckMetricsPayload` / `TypeckArtifacts` に `type_row_mode`, `residual_effects`, `violations` フィールドを追加。`StageAuditPayload::apply_extensions` 後に `extensions.effects.residual` / `extensions.effects.stage.trace` を補完する。
+   - Dual-write ハーネス（`write_dualwrite_typeck_payload`）でも同じ JSON を出力し、`collect-iterator-audit-metrics.py` の `typeck_debug_match` が 1.0 になるようファイル構造を揃える。
+5. **検証**
+   - `scripts/poc_dualwrite_compare.sh --force-type-effect-flags --mode diag --run-id <新ID> --cases <type/effect case list>` を実行し、`reports/.../type_condition_literal_bool/summary.json` で `rust_diag_count=1` / `diag_match=true` を確認。
+   - `effect_residual_leak` / `effect_stage_cli_override` でも `effects-metrics.rust.err.log` が空になることを確認し、結果を `docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md` に反映する。
+
+### 実装前提と依存関係
+- 仕様参照: `docs/spec/1-2-types-Inference.md`（Bool 条件の規定）、`docs/spec/3-6-core-diagnostics-audit.md`（Effect 監査キー）。
+- OCaml 実装参照: `compiler/ocaml/src/type_inference.ml`（`ConditionLiteralBool`）と `compiler/ocaml/tests/test_type_inference.ml`（該当テストケース）。
+- CLI 連携: `scripts/poc_dualwrite_compare.sh` に `--case-filter '^(type_|effect_)'` を追加し、再測定ログを `reports/dual-write/front-end/w4-diagnostics/20280526-w4-diag-type-effect/summary.md` に追記する。
+
 ## 実行ログ
 - `scripts/poc_dualwrite_compare.sh --force-type-effect-flags --mode diag --run-id 20280526-w4-diag-effects-stagefix --cases <ffi-only file> --emit-expected-tokens expected_tokens`
 - `scripts/poc_dualwrite_compare.sh --force-type-effect-flags --mode diag --run-id 20280526-w4-diag-type-effect --cases <type/effect file> --emit-expected-tokens expected_tokens`
