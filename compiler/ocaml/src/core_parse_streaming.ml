@@ -66,6 +66,7 @@ let record_packrat_status state = function
 
 let expectation_summary_for_checkpoint session checkpoint =
   let collector = session.expected_collector in
+  let stream_config = Run_config.Stream.of_run_config session.config in
   let collection, status =
     Parser_expectation.collect ~checkpoint ~packrat:session.packrat_cache
   in
@@ -83,8 +84,9 @@ let expectation_summary_for_checkpoint session checkpoint =
           record_packrat_status session.core_state warm_status)
         warm_consumers
   | _ -> ());
+  let has_fresh_expectations = collection.expectations <> [] in
   let summary =
-    if collection.expectations <> [] then (
+    if has_fresh_expectations then (
       Parser_expectation.ExpectedTokenCollector.record_expectations collector
         collection.expectations;
       collection.summary)
@@ -101,6 +103,11 @@ let expectation_summary_for_checkpoint session checkpoint =
           | None -> Parser_expectation.empty_summary)
   in
   let summary = Parser_expectation.ensure_minimum_alternatives summary in
+  let summary =
+    if stream_config.Run_config.Stream.enabled && not has_fresh_expectations then
+      Parser_expectation.streaming_expression_summary ()
+    else summary
+  in
   let summary = streaming_summary_if_needed session summary in
   Parser_expectation.ExpectedTokenCollector.record_summary collector summary;
   summary

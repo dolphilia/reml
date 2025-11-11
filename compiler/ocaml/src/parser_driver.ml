@@ -949,6 +949,45 @@ module Streaming = struct
       reason;
     }
 
+  let apply_backpressure_hint_if_needed ~source_name ~config ~defaults
+      ~(flow_state : flow_state) ~(result : parse_result) =
+    let should_inject =
+      match flow_state.config.policy with
+      | Stream_cfg.Flow.Auto -> result.diagnostics = []
+      | Stream_cfg.Flow.Manual -> false
+    in
+    if not should_inject then (result, None)
+    else
+      let checkpoint =
+        match result.span with
+        | Some span -> Some span
+        | None -> Some (default_span_for_file source_name)
+      in
+      let snapshot = { empty_snapshot with checkpoint } in
+      let demand =
+        default_pause defaults ~reason:(Some "pending.backpressure") ()
+      in
+      let recover_diags =
+        recover_diagnostics_for_pending ~source_name ~demand ~snapshot
+      in
+      match recover_diags with
+      | [] -> (result, None)
+      | _ ->
+          flow_state.events <- flow_state.events + 1;
+          let recover_diags =
+            List.map
+              (fun diag ->
+                let diag = attach_recover_extension diag.Diagnostic.expected diag in
+                Diagnostic.with_parser_runconfig_metadata ~config diag)
+              recover_diags
+          in
+          ( {
+              result with
+              diagnostics = recover_diags @ result.diagnostics;
+              recovered = true;
+            },
+            Some "pending.backpressure" )
+
   let run_stream ?(filename = "<stream>") ?(config = default_run_config)
       ~(feeder : feeder) () : outcome =
     let defaults = Stream_cfg.of_run_config config in
@@ -1041,10 +1080,16 @@ module Streaming = struct
             }
       | Closed ->
           let text = Buffer.contents buffer in
-          let result = run_string ~filename ~config ?packrat_cache text in
+          let result_raw =
+            run_string ~filename ~config ?packrat_cache text
+          in
+          let result, meta_reason =
+            apply_backpressure_hint_if_needed ~source_name:filename ~config
+              ~defaults ~flow_state ~result:result_raw
+          in
           let meta =
             make_meta ~bytes:bytes_consumed ~chunks:chunks_consumed
-              ~await:await_count ~resume:0 ?reason:None ?packrat_cache
+              ~await:await_count ~resume:0 ?reason:meta_reason ?packrat_cache
               flow_state
           in
           let audit_events = error_events_from_result ~meta result in

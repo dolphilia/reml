@@ -29,6 +29,26 @@ let filter_effect_decls ast =
         ast.Ast.decls;
   }
 
+let streaming_expected_token_count =
+  Parser_expectation.streaming_expression_summary ()
+  |> fun summary -> List.length summary.Diagnostic.alternatives
+
+let has_streaming_expected_tokens diag =
+  match diag.Diagnostic.expected with
+  | Some summary ->
+      List.length summary.Diagnostic.alternatives = streaming_expected_token_count
+  | None -> false
+
+let recover_extension_token_count diag =
+  match
+    Diagnostic.Extensions.get "recover" diag.Diagnostic.extensions
+  with
+  | Some (`Assoc fields) -> (
+      match List.assoc_opt "expected_tokens" fields with
+      | Some (`List tokens) -> List.length tokens
+      | _ -> 0)
+  | _ -> 0
+
 let test_streaming_matches_batch () =
   let desc = "run_stream がバッチランナーと同じ ParseResult を返す" in
   let input =
@@ -302,6 +322,11 @@ fn main() = produce(4)\n"
         fail desc
           (Printf.sprintf
              "Pending 診断に expected_tokens がありません (details: %s)" details));
+      ensure
+        (List.exists
+           (fun diag -> recover_extension_token_count diag > 0)
+           pending.diagnostics)
+        desc "Pending recover 拡張に expected_tokens が含まれていません";
       let after_chunk =
         Stream.resume pending.continuation (Stream.Chunk chunk_b)
       in
@@ -341,6 +366,63 @@ fn main() = produce(4)\n"
           (Printf.sprintf
              "recover 診断に expected_tokens が含まれていません (details: %s)"
              details));
+      ensure
+        (List.exists
+           (fun diag -> recover_extension_token_count diag > 0)
+           completed.result.diagnostics)
+        desc "Completed recover 拡張に expected_tokens が含まれていません";
+      pass desc
+
+let test_backpressure_hint_without_pending () =
+  let desc = "Flow.Auto で Await 無しでも recover 診断を生成する" in
+  let input =
+    "module diagnostics.w4.stream_backpressure\n\
+fn produce(limit: i32) -> i32 =\n\
+  if limit <= 0 then limit else produce(limit - 1)\n\
+fn main() = produce(2)\n"
+  in
+  let finished = ref false in
+  let feeder () =
+    if !finished then Stream.Closed
+    else (
+      finished := true;
+      Stream.Chunk input)
+  in
+  let config =
+    Run_config.default
+    |> Run_config.Stream.set_enabled true
+    |> Run_config.Stream.set_flow_policy (Some Run_config.Stream.Flow.Auto)
+    |> Run_config.Stream.set_flow_max_lag_bytes (Some 8192)
+  in
+  match
+    Stream.run_stream ~filename:"stream_backpressure_hint_auto.reml" ~config
+      ~feeder ()
+  with
+  | Stream.Pending _ ->
+      fail desc "Await を返さない feeder で Pending になりました"
+  | Stream.Completed completed ->
+      ensure
+        (Option.is_some completed.result.value)
+        desc "Completed 結果に AST が含まれていません";
+      let diagnostics = completed.result.diagnostics in
+      ensure (List.length diagnostics >= 1) desc
+        "Flow.Auto で recover 診断が生成されませんでした";
+      ensure
+        (List.exists has_streaming_expected_tokens diagnostics)
+        desc
+        "Flow.Auto recover 診断に streaming placeholder expected_tokens がありません";
+      ensure
+        (completed.meta.backpressure_events >= 1)
+        desc "backpressure_events が記録されていません";
+      ensure
+        (completed.meta.last_reason = Some "pending.backpressure")
+        desc "meta.last_reason が pending.backpressure ではありません";
+      ensure
+        (List.exists
+           (fun event ->
+             String.equal event.Audit_envelope.category "parser.stream.error")
+           completed.audit_events)
+        desc "parser.stream.error 監査イベントが生成されていません";
       pass desc
 
 let test_streaming_effect_row_stage_consistency () =
@@ -471,6 +553,7 @@ let () =
       test_streaming_matches_batch;
       test_pending_resume_flow;
       test_backpressure_recover_diagnostic;
+      test_backpressure_hint_without_pending;
       test_streaming_effect_row_stage_consistency;
     ]
   in
