@@ -120,6 +120,13 @@ let typeck_debug_json ~runtime_stage ~type_config ~stats =
       ("stats", `Assoc stats_json);
     ]
 
+let emit_debug_only ~type_config ~runtime_stage ~stats ~debug_path =
+  match debug_path with
+  | Some path ->
+      let json = typeck_debug_json ~runtime_stage ~type_config ~stats in
+      write_json ~path json
+  | None -> ()
+
 let write_json ~path json =
   ensure_parent_directory path;
   let channel = open_out path in
@@ -139,13 +146,7 @@ let emit ~input ~typed_ast ~type_config ~runtime_stage ~stats
       let json = constraints_json ~stats typed_ast in
       write_json ~path json
   | None -> ());
-  (match debug_path with
-  | Some path ->
-      let json =
-        typeck_debug_json ~runtime_stage ~type_config ~stats
-      in
-      write_json ~path json
-  | None -> ());
+  emit_debug_only ~type_config ~runtime_stage ~stats ~debug_path;
   (match effects_metrics_path with
   | Some path ->
       let metric_entries = typed_function_metrics typed_ast in

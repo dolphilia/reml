@@ -1,0 +1,35 @@
+{
+  "case": "effect_residual_leak",
+  "match": false,
+  "ocaml_count": 1,
+  "rust_count": 1,
+  "differences": [
+    {
+      "index": 0,
+      "ocaml": {
+        "token": ":",
+        "hint": "token"
+      },
+      "rust": {
+        "token": "fn",
+        "hint": "keyword"
+      }
+    }
+  ],
+  "ocaml_tokens": [
+    {
+      "token": ":",
+      "hint": "token"
+    }
+  ],
+  "rust_tokens": [
+    {
+      "token": "fn",
+      "hint": "keyword"
+    }
+  ],
+  "ocaml_first_index": 0,
+  "rust_first_index": 4,
+  "ocaml_payload_present": true,
+  "rust_payload_present": true
+}

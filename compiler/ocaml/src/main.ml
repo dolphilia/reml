@@ -1282,6 +1282,10 @@ let () =
                     ~collect_metrics:false)
         | Error type_err ->
             (* 型推論エラー *)
+            Cli.Typeck_output.emit_debug_only ~type_config
+              ~runtime_stage:runtime_stage_context
+              ~stats:(Cli.Stats.get_stats ())
+              ~debug_path:opts.emit_typeck_debug_json;
             let runtime_event =
               runtime_stage_event ~audit_id ~change_set:change_set_json
                 runtime_stage_context
