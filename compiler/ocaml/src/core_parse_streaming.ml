@@ -125,8 +125,36 @@ let register_diagnostic session diagnostic ~consumed ~committed =
           let summary = Parser_expectation.streaming_expression_summary () in
           { diagnostic with Diagnostic.expected = Some summary }
   in
+  let ensure_streaming_parser_rule diag =
+    let has_parser_rule entries =
+      match Extensions.get "parser.core.rule" entries with
+      | Some (`Assoc fields) -> fields <> []
+      | Some _ -> true
+      | None -> false
+    in
+    if
+      has_parser_rule diag.Diagnostic.audit_metadata
+      || has_parser_rule diag.extensions
+    then diag
+    else
+      Diagnostic.merge_audit_metadata
+        [
+          ("parser.core.rule.namespace", `String "core.parse.streaming");
+          ("parser.core.rule.name", `String "streaming_recover");
+          ("parser.core.rule.origin", `String "synthetic");
+          ("parser.core.rule.ordinal", `Int 0);
+          ( "parser.core.rule.fingerprint",
+            `String "streaming-recover-placeholder" );
+        ]
+        diag
+  in
   let enriched =
     Diagnostic.with_parser_runconfig_metadata ~config:session.config diagnostic
+  in
+  let enriched =
+    if stream_config.Run_config.Stream.enabled then
+      ensure_streaming_parser_rule enriched
+    else enriched
   in
   (match enriched.Diagnostic.expected with
   | Some summary ->
