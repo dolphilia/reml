@@ -1,0 +1,27 @@
+{
+  "effect_context": {
+    "runtime": {
+      "Exact": "beta"
+    },
+    "capability": {
+      "Exact": "beta"
+    }
+  },
+  "type_row_mode": "DualWrite",
+  "recover": {
+    "emit_expected_tokens": true,
+    "emit_context": true,
+    "max_suggestions": 3
+  },
+  "runtime_capabilities": [],
+  "trace_enabled": false,
+  "metrics": {
+    "typed_functions": 2,
+    "typed_exprs": 2,
+    "constraints_total": 0,
+    "constraint_breakdown": {},
+    "unresolved_identifiers": 0,
+    "call_sites": 0,
+    "binary_expressions": 0
+  }
+}

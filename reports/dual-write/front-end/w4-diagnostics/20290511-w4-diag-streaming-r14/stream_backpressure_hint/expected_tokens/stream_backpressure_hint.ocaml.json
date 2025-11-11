@@ -1,0 +1,234 @@
+{
+  "case": "stream_backpressure_hint",
+  "frontend": "ocaml",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r14/stream_backpressure_hint/diagnostics.ocaml.json",
+  "diagnostic_count": 1,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 27,
+      "expected_tokens": [
+        {
+          "token": "continue",
+          "hint": "keyword"
+        },
+        {
+          "token": "defer",
+          "hint": "keyword"
+        },
+        {
+          "token": "do",
+          "hint": "keyword"
+        },
+        {
+          "token": "false",
+          "hint": "keyword"
+        },
+        {
+          "token": "for",
+          "hint": "keyword"
+        },
+        {
+          "token": "handle",
+          "hint": "keyword"
+        },
+        {
+          "token": "if",
+          "hint": "keyword"
+        },
+        {
+          "token": "loop",
+          "hint": "keyword"
+        },
+        {
+          "token": "match",
+          "hint": "keyword"
+        },
+        {
+          "token": "perform",
+          "hint": "keyword"
+        },
+        {
+          "token": "return",
+          "hint": "keyword"
+        },
+        {
+          "token": "self",
+          "hint": "keyword"
+        },
+        {
+          "token": "true",
+          "hint": "keyword"
+        },
+        {
+          "token": "unsafe",
+          "hint": "keyword"
+        },
+        {
+          "token": "while",
+          "hint": "keyword"
+        },
+        {
+          "token": "!",
+          "hint": "token"
+        },
+        {
+          "token": "(",
+          "hint": "token"
+        },
+        {
+          "token": "-",
+          "hint": "token"
+        },
+        {
+          "token": "[",
+          "hint": "token"
+        },
+        {
+          "token": "{",
+          "hint": "token"
+        },
+        {
+          "token": "|",
+          "hint": "token"
+        },
+        {
+          "token": "char-literal",
+          "hint": "class"
+        },
+        {
+          "token": "float-literal",
+          "hint": "class"
+        },
+        {
+          "token": "identifier",
+          "hint": "class"
+        },
+        {
+          "token": "integer-literal",
+          "hint": "class"
+        },
+        {
+          "token": "string-literal",
+          "hint": "class"
+        },
+        {
+          "token": "upper-identifier",
+          "hint": "class"
+        }
+      ]
+    }
+  ],
+  "first_expected_tokens": [
+    {
+      "token": "continue",
+      "hint": "keyword"
+    },
+    {
+      "token": "defer",
+      "hint": "keyword"
+    },
+    {
+      "token": "do",
+      "hint": "keyword"
+    },
+    {
+      "token": "false",
+      "hint": "keyword"
+    },
+    {
+      "token": "for",
+      "hint": "keyword"
+    },
+    {
+      "token": "handle",
+      "hint": "keyword"
+    },
+    {
+      "token": "if",
+      "hint": "keyword"
+    },
+    {
+      "token": "loop",
+      "hint": "keyword"
+    },
+    {
+      "token": "match",
+      "hint": "keyword"
+    },
+    {
+      "token": "perform",
+      "hint": "keyword"
+    },
+    {
+      "token": "return",
+      "hint": "keyword"
+    },
+    {
+      "token": "self",
+      "hint": "keyword"
+    },
+    {
+      "token": "true",
+      "hint": "keyword"
+    },
+    {
+      "token": "unsafe",
+      "hint": "keyword"
+    },
+    {
+      "token": "while",
+      "hint": "keyword"
+    },
+    {
+      "token": "!",
+      "hint": "token"
+    },
+    {
+      "token": "(",
+      "hint": "token"
+    },
+    {
+      "token": "-",
+      "hint": "token"
+    },
+    {
+      "token": "[",
+      "hint": "token"
+    },
+    {
+      "token": "{",
+      "hint": "token"
+    },
+    {
+      "token": "|",
+      "hint": "token"
+    },
+    {
+      "token": "char-literal",
+      "hint": "class"
+    },
+    {
+      "token": "float-literal",
+      "hint": "class"
+    },
+    {
+      "token": "identifier",
+      "hint": "class"
+    },
+    {
+      "token": "integer-literal",
+      "hint": "class"
+    },
+    {
+      "token": "string-literal",
+      "hint": "class"
+    },
+    {
+      "token": "upper-identifier",
+      "hint": "class"
+    }
+  ],
+  "first_diagnostic_index": 0,
+  "total_expected_token_count": 27
+}

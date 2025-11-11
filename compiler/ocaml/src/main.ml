@@ -1028,9 +1028,15 @@ let () =
         ~parser_config:parser_run_config ~parse_result:parse_output
         ~stream_meta:stream_meta_snapshot
   | None -> ());
-  Cli.Stats.clear_stream_meta ();
   match Parser_driver.parse_result_to_legacy parse_output with
   | Ok ast ->
+      if parse_output.diagnostics <> [] then
+        List.iter
+          (fun diag ->
+            let diag = attach_audit diag in
+            print_diagnostic opts (Some source) ~run_config:parser_run_config diag)
+          parse_output.diagnostics;
+      Cli.Stats.clear_stream_meta ();
       (* Phase 1-6 Week 15: パース完了 *)
       record_end Parsing;
 
@@ -1359,4 +1365,5 @@ let () =
 
   let diag = attach_audit diag in
   print_diagnostic opts (Some source) ~run_config:parser_run_config diag;
+  Cli.Stats.clear_stream_meta ();
   exit 1

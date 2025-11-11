@@ -600,6 +600,7 @@ module Streaming = struct
     Builder.create
       ~message:"ストリーミング入力が未完のため、追加トークンを待機しています"
       ~primary:span ()
+    |> Builder.set_domain Diagnostic.Parser
     |> Builder.set_expected summary
     |> Builder.build
     |> attach_recover_extension (Some summary)

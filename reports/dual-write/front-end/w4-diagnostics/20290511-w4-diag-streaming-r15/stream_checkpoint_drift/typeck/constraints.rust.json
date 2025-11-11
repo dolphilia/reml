@@ -1,0 +1,18 @@
+{
+  "total_constraints": 0,
+  "breakdown": [],
+  "functions": [
+    {
+      "name": "tick",
+      "constraints": 0,
+      "typed_exprs": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "main",
+      "constraints": 0,
+      "typed_exprs": 0,
+      "unresolved_identifiers": 0
+    }
+  ]
+}

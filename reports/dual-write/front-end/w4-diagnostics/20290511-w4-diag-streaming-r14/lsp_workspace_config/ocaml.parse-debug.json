@@ -1,0 +1,53 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r14/lsp_workspace_config/input.reml",
+  "parser_run_config": {
+    "experimental_effects": false,
+    "legacy_result": true,
+    "merge_warnings": true,
+    "trace": false,
+    "left_recursion": "off",
+    "packrat": true,
+    "require_eof": false,
+    "extensions": {
+      "config": {
+        "experimental_effects": false,
+        "left_recursion": "off",
+        "legacy_result": true,
+        "merge_warnings": true,
+        "packrat": true,
+        "path": "tooling/lsp/tests/client_compat/fixtures/workspace-config.json",
+        "require_eof": false,
+        "source": "cli",
+        "trace": false
+      },
+      "effects": { "type_row_mode": "ty-integrated" },
+      "lex": { "profile": "strict_json" }
+    }
+  },
+  "diagnostics": [],
+  "parse_result": {
+    "span_trace": null,
+    "packrat_stats": { "queries": 0, "hits": 0 },
+    "legacy_error": null,
+    "farthest_error_offset": null,
+    "span": {
+      "start": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r14/lsp_workspace_config/input.reml",
+        "line": 1,
+        "column": 1,
+        "offset": 0
+      },
+      "end": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r14/lsp_workspace_config/input.reml",
+        "line": 14,
+        "column": 1,
+        "offset": 289
+      }
+    },
+    "committed": false,
+    "consumed": true,
+    "recovered": false,
+    "has_value": true
+  },
+  "stream_meta": null
+}

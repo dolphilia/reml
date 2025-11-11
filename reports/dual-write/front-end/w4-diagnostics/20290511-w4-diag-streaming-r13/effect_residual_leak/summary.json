@@ -1,0 +1,73 @@
+{
+  "case": "effect_residual_leak",
+  "mode": "diag",
+  "source": "inline",
+  "ocaml_diag_count": 1,
+  "rust_diag_count": 5,
+  "diag_match": false,
+  "gating": false,
+  "schema_ok": true,
+  "metrics_ok": false,
+  "diag": {
+    "parser": {
+      "ocaml": {
+        "audit_pass_fraction": 1.0,
+        "audit_pass_rate": 1.0,
+        "expected_pass_fraction": 1.0
+      },
+      "rust": {
+        "audit_pass_fraction": 1.0,
+        "audit_pass_rate": 1.0,
+        "expected_pass_fraction": 0.2
+      }
+    },
+    "effects": {
+      "ocaml": {
+        "regressions": 0
+      },
+      "rust": {
+        "regressions": 0
+      }
+    },
+    "streaming": {
+      "ocaml": {
+        "audit_pass_fraction": 1.0
+      },
+      "rust": {
+        "audit_pass_fraction": 1.0
+      }
+    }
+  },
+  "tests": "compiler/ocaml/tests/test_effect_residual.ml; docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-002-proposal.md",
+  "type_effect_case": true,
+  "typeck_requirements": {
+    "required": true,
+    "frontends": {
+      "ocaml": {
+        "typeck_debug_path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/effect_residual_leak/typeck/typeck-debug.ocaml.json",
+        "typeck_debug_exists": false,
+        "effect_context_present": false,
+        "parser_metric_present": true,
+        "parser_metric_status": true,
+        "effects_metrics_present": true,
+        "effects_metrics_status": true,
+        "ok": false
+      },
+      "rust": {
+        "typeck_debug_path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/effect_residual_leak/typeck/typeck-debug.rust.json",
+        "typeck_debug_exists": true,
+        "effect_context_present": true,
+        "parser_metric_present": true,
+        "parser_metric_status": false,
+        "effects_metrics_present": true,
+        "effects_metrics_status": true,
+        "ok": false
+      }
+    },
+    "ok": false,
+    "failures": [
+      "ocaml: missing artifacts (typeck_debug=False, effect_context=False, parser_metric=True, effects_metrics=True)",
+      "rust: missing artifacts (typeck_debug=True, effect_context=True, parser_metric=True, effects_metrics=True)"
+    ]
+  }
+}

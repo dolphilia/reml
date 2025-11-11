@@ -1,0 +1,4 @@
+effect ConsoleAudit
+@requires_capability(stage = \"beta\")
+fn gated() = perform ConsoleAudit 1
+fn main() = gated()

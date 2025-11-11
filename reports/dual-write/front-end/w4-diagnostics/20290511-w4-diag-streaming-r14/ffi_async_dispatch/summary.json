@@ -1,0 +1,65 @@
+{
+  "case": "ffi_async_dispatch",
+  "mode": "diag",
+  "source": "examples/ffi/macos/ffi_dispatch_async.reml",
+  "ocaml_diag_count": 0,
+  "rust_diag_count": 42,
+  "diag_match": false,
+  "gating": false,
+  "schema_ok": true,
+  "metrics_ok": false,
+  "diag": {
+    "parser": {
+      "ocaml": null,
+      "rust": {
+        "audit_pass_fraction": 1.0,
+        "audit_pass_rate": 1.0,
+        "expected_pass_fraction": 0.023809523809523808
+      }
+    },
+    "effects": {
+      "ocaml": null,
+      "rust": {
+        "regressions": 0
+      }
+    },
+    "streaming": {
+      "ocaml": null,
+      "rust": {
+        "audit_pass_fraction": 1.0
+      }
+    }
+  },
+  "tests": "compiler/ocaml/tests/test_ffi_contract.ml::ffi_dispatch_async",
+  "type_effect_case": true,
+  "typeck_requirements": {
+    "required": true,
+    "frontends": {
+      "ocaml": {
+        "typeck_debug_path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r14/ffi_async_dispatch/typeck/typeck-debug.ocaml.json",
+        "typeck_debug_exists": true,
+        "effect_context_present": true,
+        "parser_metric_present": false,
+        "parser_metric_status": false,
+        "effects_metrics_present": true,
+        "effects_metrics_status": false,
+        "ok": false
+      },
+      "rust": {
+        "typeck_debug_path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r14/ffi_async_dispatch/typeck/typeck-debug.rust.json",
+        "typeck_debug_exists": true,
+        "effect_context_present": true,
+        "parser_metric_present": true,
+        "parser_metric_status": false,
+        "effects_metrics_present": true,
+        "effects_metrics_status": true,
+        "ok": false
+      }
+    },
+    "ok": false,
+    "failures": [
+      "ocaml: missing artifacts (typeck_debug=True, effect_context=True, parser_metric=False, effects_metrics=True)",
+      "rust: missing artifacts (typeck_debug=True, effect_context=True, parser_metric=True, effects_metrics=True)"
+    ]
+  }
+}

@@ -1,0 +1,998 @@
+{
+  "diagnostics": [
+    {
+      "audit": {
+        "audit_id": "cli/20251111T003028Z#0",
+        "change_set": {
+          "items": [
+            {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_missing_semicolon/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20290511-w4-diag-streaming-r13",
+                "--dualwrite-case-label",
+                "recover_missing_semicolon",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_missing_semicolon/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "kind": "cli-command"
+            },
+            {
+              "kind": "input",
+              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_missing_semicolon/input.reml",
+              "target": "rust-poc"
+            }
+          ],
+          "origin": "cli",
+          "policy": "rust.poc.audit.v1",
+          "source": {
+            "args": [
+              "--emit-parse-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_missing_semicolon/rust.parse-debug.json",
+              "--dualwrite-root",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+              "--dualwrite-run-label",
+              "20290511-w4-diag-streaming-r13",
+              "--dualwrite-case-label",
+              "recover_missing_semicolon",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_missing_semicolon/input.reml"
+            ],
+            "command": "target/debug/poc_frontend",
+            "workspace": "."
+          }
+        },
+        "metadata": {
+          "audit.channel": "cli",
+          "audit.policy.version": "rust.poc.audit.v1",
+          "audit.timestamp": "2025-11-11T00:30:28Z",
+          "bridge.stage.actual_capabilities": [],
+          "bridge.stage.required_capabilities": [],
+          "capability.ids": [],
+          "cli.audit_id": "cli/20251111T003028Z#0",
+          "cli.change_set": {
+            "items": [
+              {
+                "args": [
+                  "--emit-parse-debug",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_missing_semicolon/rust.parse-debug.json",
+                  "--dualwrite-root",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                  "--dualwrite-run-label",
+                  "20290511-w4-diag-streaming-r13",
+                  "--dualwrite-case-label",
+                  "recover_missing_semicolon",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_missing_semicolon/input.reml"
+                ],
+                "command": "target/debug/poc_frontend",
+                "kind": "cli-command"
+              },
+              {
+                "kind": "input",
+                "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_missing_semicolon/input.reml",
+                "target": "rust-poc"
+              }
+            ],
+            "origin": "cli",
+            "policy": "rust.poc.audit.v1",
+            "source": {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_missing_semicolon/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20290511-w4-diag-streaming-r13",
+                "--dualwrite-case-label",
+                "recover_missing_semicolon",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_missing_semicolon/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "workspace": "."
+            }
+          },
+          "effect.actual_capabilities": [],
+          "effect.required_capabilities": [],
+          "effect.stage.actual": "at_least:stable",
+          "effect.stage.actual_capabilities": [],
+          "effect.stage.required": "at_least:beta",
+          "effect.stage.required_capabilities": [],
+          "effect.stage.trace": [
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "at_least:beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "at_least:stable"
+            }
+          ],
+          "event.domain": "parser",
+          "event.kind": "diagnostic",
+          "fingerprint": "rust-poc-0001",
+          "name": "compilation_unit",
+          "namespace": "rust.poc",
+          "origin": "poc_frontend",
+          "parser.core.rule.fingerprint": "rust-poc-0001",
+          "parser.core.rule.name": "compilation_unit",
+          "parser.core.rule.namespace": "rust.poc",
+          "parser.core.rule.ordinal": 0,
+          "parser.core.rule.origin": "poc_frontend",
+          "parser.runconfig": {
+            "extensions": {
+              "config": {
+                "experimental_effects": false,
+                "left_recursion": "off",
+                "legacy_result": true,
+                "merge_warnings": true,
+                "packrat": true,
+                "require_eof": false,
+                "source": "cli",
+                "trace": false
+              },
+              "effects": {
+                "type_row_mode": "ty-integrated"
+              },
+              "lex": {
+                "identifier_profile": "unicode",
+                "profile": "strict_json"
+              },
+              "recover": {
+                "notes": false,
+                "sync_tokens": []
+              },
+              "stream": {
+                "checkpoint": "unspecified",
+                "chunk_size": 0,
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "enabled": false,
+                "flow": {
+                  "backpressure": {
+                    "max_lag_bytes": 0
+                  },
+                  "checkpoints_closed": 1,
+                  "policy": "auto"
+                },
+                "flow_max_lag": 0,
+                "flow_policy": "auto",
+                "resume_hint": "unspecified"
+              }
+            },
+            "runtime_capabilities": [],
+            "switches": {
+              "experimental_effects": false,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "trace": false
+            }
+          },
+          "parser.runconfig.extensions.config": {
+            "experimental_effects": false,
+            "left_recursion": "off",
+            "legacy_result": true,
+            "merge_warnings": true,
+            "packrat": true,
+            "require_eof": false,
+            "source": "cli",
+            "trace": false
+          },
+          "parser.runconfig.extensions.config.source": "cli",
+          "parser.runconfig.extensions.lex": {
+            "identifier_profile": "unicode",
+            "profile": "strict_json"
+          },
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.recover": {
+            "notes": false,
+            "sync_tokens": []
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "checkpoint": "unspecified",
+            "chunk_size": 0,
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "enabled": false,
+            "flow": {
+              "backpressure": {
+                "max_lag_bytes": 0
+              },
+              "checkpoints_closed": 1,
+              "policy": "auto"
+            },
+            "flow_max_lag": 0,
+            "flow_policy": "auto",
+            "resume_hint": "unspecified"
+          },
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 0,
+          "parser.runconfig.extensions.stream.flow.policy": "auto",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.switches.left_recursion": "off",
+          "parser.runconfig.switches.legacy_result": true,
+          "parser.runconfig.switches.merge_warnings": true,
+          "parser.runconfig.switches.packrat": true,
+          "parser.runconfig.switches.require_eof": false,
+          "parser.runconfig.switches.trace": false,
+          "parser.stream.checkpoint": "unspecified",
+          "parser.stream.demand_min_bytes": 0,
+          "parser.stream.demand_preferred_bytes": 0,
+          "parser.stream.flow_max_lag": 0,
+          "parser.stream.flow_policy": "auto",
+          "parser.stream.resume_hint": "unspecified",
+          "schema.version": "2.0.0-draft",
+          "stage.trace": [
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "at_least:beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "at_least:stable"
+            }
+          ]
+        }
+      },
+      "audit_metadata": {
+        "audit.channel": "cli",
+        "audit.policy.version": "rust.poc.audit.v1",
+        "audit.timestamp": "2025-11-11T00:30:28Z",
+        "bridge.stage.actual_capabilities": [],
+        "bridge.stage.required_capabilities": [],
+        "capability.ids": [],
+        "cli.audit_id": "cli/20251111T003028Z#0",
+        "cli.change_set": {
+          "items": [
+            {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_missing_semicolon/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20290511-w4-diag-streaming-r13",
+                "--dualwrite-case-label",
+                "recover_missing_semicolon",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_missing_semicolon/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "kind": "cli-command"
+            },
+            {
+              "kind": "input",
+              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_missing_semicolon/input.reml",
+              "target": "rust-poc"
+            }
+          ],
+          "origin": "cli",
+          "policy": "rust.poc.audit.v1",
+          "source": {
+            "args": [
+              "--emit-parse-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_missing_semicolon/rust.parse-debug.json",
+              "--dualwrite-root",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+              "--dualwrite-run-label",
+              "20290511-w4-diag-streaming-r13",
+              "--dualwrite-case-label",
+              "recover_missing_semicolon",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_missing_semicolon/input.reml"
+            ],
+            "command": "target/debug/poc_frontend",
+            "workspace": "."
+          }
+        },
+        "effect.actual_capabilities": [],
+        "effect.required_capabilities": [],
+        "effect.stage.actual": "at_least:stable",
+        "effect.stage.actual_capabilities": [],
+        "effect.stage.required": "at_least:beta",
+        "effect.stage.required_capabilities": [],
+        "effect.stage.trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "at_least:beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "at_least:stable"
+          }
+        ],
+        "event.domain": "parser",
+        "event.kind": "diagnostic",
+        "fingerprint": "rust-poc-0001",
+        "name": "compilation_unit",
+        "namespace": "rust.poc",
+        "origin": "poc_frontend",
+        "parser.core.rule.fingerprint": "rust-poc-0001",
+        "parser.core.rule.name": "compilation_unit",
+        "parser.core.rule.namespace": "rust.poc",
+        "parser.core.rule.ordinal": 0,
+        "parser.core.rule.origin": "poc_frontend",
+        "parser.runconfig": {
+          "extensions": {
+            "config": {
+              "experimental_effects": false,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "source": "cli",
+              "trace": false
+            },
+            "effects": {
+              "type_row_mode": "ty-integrated"
+            },
+            "lex": {
+              "identifier_profile": "unicode",
+              "profile": "strict_json"
+            },
+            "recover": {
+              "notes": false,
+              "sync_tokens": []
+            },
+            "stream": {
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": false,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "checkpoints_closed": 1,
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "resume_hint": "unspecified"
+            }
+          },
+          "runtime_capabilities": [],
+          "switches": {
+            "experimental_effects": false,
+            "left_recursion": "off",
+            "legacy_result": true,
+            "merge_warnings": true,
+            "packrat": true,
+            "require_eof": false,
+            "trace": false
+          }
+        },
+        "parser.runconfig.extensions.config": {
+          "experimental_effects": false,
+          "left_recursion": "off",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "source": "cli",
+          "trace": false
+        },
+        "parser.runconfig.extensions.config.source": "cli",
+        "parser.runconfig.extensions.lex": {
+          "identifier_profile": "unicode",
+          "profile": "strict_json"
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.recover": {
+          "notes": false,
+          "sync_tokens": []
+        },
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.stream": {
+          "checkpoint": "unspecified",
+          "chunk_size": 0,
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "enabled": false,
+          "flow": {
+            "backpressure": {
+              "max_lag_bytes": 0
+            },
+            "checkpoints_closed": 1,
+            "policy": "auto"
+          },
+          "flow_max_lag": 0,
+          "flow_policy": "auto",
+          "resume_hint": "unspecified"
+        },
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 0,
+        "parser.runconfig.extensions.stream.flow.policy": "auto",
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.switches.left_recursion": "off",
+        "parser.runconfig.switches.legacy_result": true,
+        "parser.runconfig.switches.merge_warnings": true,
+        "parser.runconfig.switches.packrat": true,
+        "parser.runconfig.switches.require_eof": false,
+        "parser.runconfig.switches.trace": false,
+        "parser.stream.checkpoint": "unspecified",
+        "parser.stream.demand_min_bytes": 0,
+        "parser.stream.demand_preferred_bytes": 0,
+        "parser.stream.flow_max_lag": 0,
+        "parser.stream.flow_policy": "auto",
+        "parser.stream.resume_hint": "unspecified",
+        "schema.version": "2.0.0-draft",
+        "stage.trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "at_least:beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "at_least:stable"
+          }
+        ]
+      },
+      "code": null,
+      "domain": "parser",
+      "expected": {
+        "alternatives": [
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "continue",
+            "token": "continue"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "defer",
+            "token": "defer"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "do",
+            "token": "do"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "false",
+            "token": "false"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "for",
+            "token": "for"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "handle",
+            "token": "handle"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "if",
+            "token": "if"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "loop",
+            "token": "loop"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "match",
+            "token": "match"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "perform",
+            "token": "perform"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "return",
+            "token": "return"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "self",
+            "token": "self"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "true",
+            "token": "true"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "unsafe",
+            "token": "unsafe"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "while",
+            "token": "while"
+          },
+          {
+            "hint": "token",
+            "kind": "token",
+            "label": "!",
+            "token": "!"
+          },
+          {
+            "hint": "token",
+            "kind": "token",
+            "label": "(",
+            "token": "("
+          },
+          {
+            "hint": "token",
+            "kind": "token",
+            "label": "-",
+            "token": "-"
+          },
+          {
+            "hint": "token",
+            "kind": "token",
+            "label": "[",
+            "token": "["
+          },
+          {
+            "hint": "token",
+            "kind": "token",
+            "label": "{",
+            "token": "{"
+          },
+          {
+            "hint": "token",
+            "kind": "token",
+            "label": "|",
+            "token": "|"
+          },
+          {
+            "hint": "class",
+            "kind": "class",
+            "label": "char-literal",
+            "token": "char-literal"
+          },
+          {
+            "hint": "class",
+            "kind": "class",
+            "label": "float-literal",
+            "token": "float-literal"
+          },
+          {
+            "hint": "class",
+            "kind": "class",
+            "label": "identifier",
+            "token": "identifier"
+          },
+          {
+            "hint": "class",
+            "kind": "class",
+            "label": "integer-literal",
+            "token": "integer-literal"
+          },
+          {
+            "hint": "class",
+            "kind": "class",
+            "label": "string-literal",
+            "token": "string-literal"
+          },
+          {
+            "hint": "class",
+            "kind": "class",
+            "label": "upper-identifier",
+            "token": "upper-identifier"
+          }
+        ],
+        "humanized": "ここで`continue`、`defer`、`do`、`false`、`for`、`handle`、`if`、`loop`、`match`、`perform`、`return`、`self`、`true`、`unsafe`、`while`、`!`、`(`、`-`、`[`、`{`、`|`、char-literal、float-literal、identifier、integer-literal、string-literal または upper-identifierのいずれかが必要です",
+        "locale_args": [
+          "continue",
+          "defer",
+          "do",
+          "false",
+          "for",
+          "handle",
+          "if",
+          "loop",
+          "match",
+          "perform",
+          "return",
+          "self",
+          "true",
+          "unsafe",
+          "while",
+          "!",
+          "(",
+          "-",
+          "[",
+          "{",
+          "|",
+          "char-literal",
+          "float-literal",
+          "identifier",
+          "integer-literal",
+          "string-literal",
+          "upper-identifier"
+        ],
+        "message_key": "parse.expected"
+      },
+      "extensions": {
+        "capability": {
+          "detail": [],
+          "ids": [],
+          "required_capabilities": [],
+          "stage": {
+            "actual": "at_least:stable",
+            "required": "at_least:beta"
+          }
+        },
+        "diagnostic.v2": {
+          "timestamp": "2025-11-11T00:30:28Z"
+        },
+        "effect.actual_capabilities": [],
+        "effect.capabilities": [],
+        "effect.required_capabilities": [],
+        "effect.stage.actual": "at_least:stable",
+        "effect.stage.actual_capabilities": [],
+        "effect.stage.required": "at_least:beta",
+        "effect.stage.required_capabilities": [],
+        "parse": {
+          "parser_id": {
+            "fingerprint": "rust-poc-0001",
+            "name": "compilation_unit",
+            "namespace": "rust.poc",
+            "ordinal": 0,
+            "origin": "poc_frontend"
+          }
+        },
+        "recover": {
+          "expected_tokens": [
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "continue",
+              "token": "continue"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "defer",
+              "token": "defer"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "do",
+              "token": "do"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "false",
+              "token": "false"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "for",
+              "token": "for"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "handle",
+              "token": "handle"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "if",
+              "token": "if"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "loop",
+              "token": "loop"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "match",
+              "token": "match"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "perform",
+              "token": "perform"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "return",
+              "token": "return"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "self",
+              "token": "self"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "true",
+              "token": "true"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "unsafe",
+              "token": "unsafe"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "while",
+              "token": "while"
+            },
+            {
+              "hint": "token",
+              "kind": "token",
+              "label": "!",
+              "token": "!"
+            },
+            {
+              "hint": "token",
+              "kind": "token",
+              "label": "(",
+              "token": "("
+            },
+            {
+              "hint": "token",
+              "kind": "token",
+              "label": "-",
+              "token": "-"
+            },
+            {
+              "hint": "token",
+              "kind": "token",
+              "label": "[",
+              "token": "["
+            },
+            {
+              "hint": "token",
+              "kind": "token",
+              "label": "{",
+              "token": "{"
+            },
+            {
+              "hint": "token",
+              "kind": "token",
+              "label": "|",
+              "token": "|"
+            },
+            {
+              "hint": "class",
+              "kind": "class",
+              "label": "char-literal",
+              "token": "char-literal"
+            },
+            {
+              "hint": "class",
+              "kind": "class",
+              "label": "float-literal",
+              "token": "float-literal"
+            },
+            {
+              "hint": "class",
+              "kind": "class",
+              "label": "identifier",
+              "token": "identifier"
+            },
+            {
+              "hint": "class",
+              "kind": "class",
+              "label": "integer-literal",
+              "token": "integer-literal"
+            },
+            {
+              "hint": "class",
+              "kind": "class",
+              "label": "string-literal",
+              "token": "string-literal"
+            },
+            {
+              "hint": "class",
+              "kind": "class",
+              "label": "upper-identifier",
+              "token": "upper-identifier"
+            }
+          ],
+          "message": "ここで`continue`、`defer`、`do`、`false`、`for`、`handle`、`if`、`loop`、`match`、`perform`、`return`、`self`、`true`、`unsafe`、`while`、`!`、`(`、`-`、`[`、`{`、`|`、char-literal、float-literal、identifier、integer-literal、string-literal または upper-identifierのいずれかが必要です"
+        },
+        "runconfig": {
+          "experimental_effects": false,
+          "extensions": {
+            "config": {
+              "experimental_effects": false,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "source": "cli",
+              "trace": false
+            },
+            "lex": {
+              "identifier_profile": "unicode",
+              "profile": "strict_json"
+            },
+            "recover": {
+              "notes": false,
+              "sync_tokens": []
+            },
+            "stream": {
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": false,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "checkpoints_closed": 1,
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "resume_hint": "unspecified"
+            }
+          },
+          "left_recursion": "off",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "trace": false
+        }
+      },
+      "location": {
+        "column": 3,
+        "endColumn": 6,
+        "endLine": 2,
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_missing_semicolon/input.reml",
+        "line": 2
+      },
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`continue`、`defer`、`do`、`false`、`for`、`handle`、`if`、`loop`、`match`、`perform`、`return`、`self`、`true`、`unsafe`、`while`、`!`、`(`、`-`、`[`、`{`、`|`、char-literal、float-literal、identifier、integer-literal、string-literal または upper-identifierのいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "schema_version": "2.0.0-draft",
+      "severity": "error",
+      "timestamp": "2025-11-11T00:30:28Z"
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_missing_semicolon/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 1570,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": []
+  },
+  "parser_run_config": {
+    "extensions": {
+      "config": {
+        "experimental_effects": false,
+        "left_recursion": "off",
+        "legacy_result": true,
+        "merge_warnings": true,
+        "packrat": true,
+        "require_eof": false,
+        "source": "cli",
+        "trace": false
+      },
+      "effects": {
+        "type_row_mode": "ty-integrated"
+      },
+      "lex": {
+        "identifier_profile": "unicode",
+        "profile": "strict_json"
+      },
+      "recover": {
+        "notes": false,
+        "sync_tokens": []
+      },
+      "stream": {
+        "checkpoint": "unspecified",
+        "chunk_size": 0,
+        "demand_min_bytes": 0,
+        "demand_preferred_bytes": 0,
+        "enabled": false,
+        "flow": {
+          "backpressure": {
+            "max_lag_bytes": 0
+          },
+          "checkpoints_closed": 1,
+          "policy": "auto"
+        },
+        "flow_max_lag": 0,
+        "flow_policy": "auto",
+        "resume_hint": "unspecified"
+      }
+    },
+    "runtime_capabilities": [],
+    "switches": {
+      "experimental_effects": false,
+      "left_recursion": "off",
+      "legacy_result": true,
+      "merge_warnings": true,
+      "packrat": true,
+      "require_eof": false,
+      "trace": false
+    }
+  },
+  "stream_meta": {
+    "flow": {
+      "checkpoints_closed": 1
+    },
+    "packrat": {
+      "approx_bytes": 1570,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": {
+      "dropped": 0,
+      "retained": 0
+    }
+  }
+}

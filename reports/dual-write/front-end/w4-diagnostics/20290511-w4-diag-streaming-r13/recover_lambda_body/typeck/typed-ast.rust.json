@@ -1,0 +1,13 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290511-w4-diag-streaming-r13/recover_lambda_body/input.reml",
+  "functions": [
+    {
+      "name": "lambda_demo",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    }
+  ]
+}
