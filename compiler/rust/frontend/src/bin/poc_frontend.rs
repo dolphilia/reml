@@ -1033,7 +1033,9 @@ fn build_diagnostics(
             }
 
             let mut adjusted = diag.clone();
-            if streaming_enabled && adjusted.expected_tokens.is_empty() {
+            if streaming_enabled && has_streaming_recover && has_recover_note(&adjusted) {
+                adjusted = adjusted.force_streaming_expected();
+            } else if streaming_enabled && adjusted.expected_tokens.is_empty() {
                 adjusted = adjusted.ensure_streaming_expected();
             }
             Some(adjusted)

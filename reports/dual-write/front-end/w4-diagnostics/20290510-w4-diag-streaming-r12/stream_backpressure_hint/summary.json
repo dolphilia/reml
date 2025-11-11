@@ -7,7 +7,7 @@
   "diag_match": true,
   "gating": false,
   "schema_ok": false,
-  "metrics_ok": false,
+  "metrics_ok": true,
   "diag": {
     "parser": {
       "ocaml": {
@@ -42,9 +42,9 @@
   },
   "tests": "compiler/ocaml/tests/streaming_runner_tests.ml::test_streaming_matches_batch",
   "expected_tokens": {
-    "match": false,
+    "match": true,
     "ocaml_count": 27,
-    "rust_count": 1
+    "rust_count": 27
   },
   "type_effect_case": false
 }

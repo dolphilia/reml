@@ -43,7 +43,8 @@ impl StreamFlowState {
     }
 
     pub fn enabled(&self) -> bool {
-        self.with_inner(|inner| inner.config.enabled).unwrap_or(false)
+        self.with_inner(|inner| inner.config.enabled)
+            .unwrap_or(false)
     }
 
     pub fn config(&self) -> Option<StreamFlowConfig> {

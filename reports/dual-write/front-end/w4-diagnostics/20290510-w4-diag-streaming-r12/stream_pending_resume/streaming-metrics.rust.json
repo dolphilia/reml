@@ -177,7 +177,7 @@
     "parser_total": 1,
     "parser_expected": 1,
     "parser_expected_ratio": 1.0,
-    "parser_expected_tokens_avg": 1.0
+    "parser_expected_tokens_avg": 27.0
   },
   "enforcement": {
     "require_success": true

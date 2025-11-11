@@ -165,6 +165,14 @@ impl FrontendDiagnostic {
         self.overwrite_expected_summary(&summary);
         self
     }
+
+    /// Streaming recover では既存 `expected_tokens` があっても
+    /// OCaml と同じ placeholder セットへ強制上書きする。
+    pub fn force_streaming_expected(mut self) -> Self {
+        let summary = recover::streaming_expression_summary();
+        self.overwrite_expected_summary(&summary);
+        self
+    }
 }
 
 /// 診断の補足情報。
@@ -275,11 +283,7 @@ impl DiagnosticBuilder {
         self.diagnostics
     }
 
-    pub fn merge_expected_summary_at(
-        &mut self,
-        index: usize,
-        summary: &ExpectedTokensSummary,
-    ) {
+    pub fn merge_expected_summary_at(&mut self, index: usize, summary: &ExpectedTokensSummary) {
         if let Some(diagnostic) = self.diagnostics.get_mut(index) {
             diagnostic.merge_expected_summary(summary);
         }

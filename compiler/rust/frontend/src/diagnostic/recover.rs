@@ -309,10 +309,7 @@ fn humanize(expectations: &[ExpectedToken]) -> Option<String> {
     }
 }
 
-fn merge_alternatives(
-    existing: &mut Vec<ExpectedToken>,
-    additions: &[ExpectedToken],
-) {
+fn merge_alternatives(existing: &mut Vec<ExpectedToken>, additions: &[ExpectedToken]) {
     existing.extend_from_slice(additions);
     existing.sort_by(|a, b| a.cmp_for_sort(b));
     existing.dedup();

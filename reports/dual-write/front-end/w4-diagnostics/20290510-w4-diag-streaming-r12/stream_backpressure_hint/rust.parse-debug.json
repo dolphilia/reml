@@ -2,7 +2,7 @@
   "diagnostics": [
     {
       "audit": {
-        "audit_id": "cli/20251111T012133Z#0",
+        "audit_id": "cli/20251111T012855Z#0",
         "change_set": {
           "items": [
             {
@@ -57,11 +57,11 @@
         "metadata": {
           "audit.channel": "cli",
           "audit.policy.version": "rust.poc.audit.v1",
-          "audit.timestamp": "2025-11-11T01:21:33Z",
+          "audit.timestamp": "2025-11-11T01:28:55Z",
           "bridge.stage.actual_capabilities": [],
           "bridge.stage.required_capabilities": [],
           "capability.ids": [],
-          "cli.audit_id": "cli/20251111T012133Z#0",
+          "cli.audit_id": "cli/20251111T012855Z#0",
           "cli.change_set": {
             "items": [
               {
@@ -275,11 +275,11 @@
       "audit_metadata": {
         "audit.channel": "cli",
         "audit.policy.version": "rust.poc.audit.v1",
-        "audit.timestamp": "2025-11-11T01:21:33Z",
+        "audit.timestamp": "2025-11-11T01:28:55Z",
         "bridge.stage.actual_capabilities": [],
         "bridge.stage.required_capabilities": [],
         "capability.ids": [],
-        "cli.audit_id": "cli/20251111T012133Z#0",
+        "cli.audit_id": "cli/20251111T012855Z#0",
         "cli.change_set": {
           "items": [
             {
@@ -496,13 +496,195 @@
           {
             "hint": "keyword",
             "kind": "keyword",
-            "label": "fn",
-            "token": "fn"
+            "label": "continue",
+            "token": "continue"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "defer",
+            "token": "defer"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "do",
+            "token": "do"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "false",
+            "token": "false"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "for",
+            "token": "for"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "handle",
+            "token": "handle"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "if",
+            "token": "if"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "loop",
+            "token": "loop"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "match",
+            "token": "match"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "perform",
+            "token": "perform"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "return",
+            "token": "return"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "self",
+            "token": "self"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "true",
+            "token": "true"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "unsafe",
+            "token": "unsafe"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "while",
+            "token": "while"
+          },
+          {
+            "hint": "token",
+            "kind": "token",
+            "label": "!",
+            "token": "!"
+          },
+          {
+            "hint": "token",
+            "kind": "token",
+            "label": "(",
+            "token": "("
+          },
+          {
+            "hint": "token",
+            "kind": "token",
+            "label": "-",
+            "token": "-"
+          },
+          {
+            "hint": "token",
+            "kind": "token",
+            "label": "[",
+            "token": "["
+          },
+          {
+            "hint": "token",
+            "kind": "token",
+            "label": "{",
+            "token": "{"
+          },
+          {
+            "hint": "token",
+            "kind": "token",
+            "label": "|",
+            "token": "|"
+          },
+          {
+            "hint": "class",
+            "kind": "class",
+            "label": "char-literal",
+            "token": "char-literal"
+          },
+          {
+            "hint": "class",
+            "kind": "class",
+            "label": "float-literal",
+            "token": "float-literal"
+          },
+          {
+            "hint": "class",
+            "kind": "class",
+            "label": "identifier",
+            "token": "identifier"
+          },
+          {
+            "hint": "class",
+            "kind": "class",
+            "label": "integer-literal",
+            "token": "integer-literal"
+          },
+          {
+            "hint": "class",
+            "kind": "class",
+            "label": "string-literal",
+            "token": "string-literal"
+          },
+          {
+            "hint": "class",
+            "kind": "class",
+            "label": "upper-identifier",
+            "token": "upper-identifier"
           }
         ],
-        "humanized": "ここで`fn`が必要です",
+        "humanized": "ここで`continue`、`defer`、`do`、`false`、`for`、`handle`、`if`、`loop`、`match`、`perform`、`return`、`self`、`true`、`unsafe`、`while`、`!`、`(`、`-`、`[`、`{`、`|`、char-literal、float-literal、identifier、integer-literal、string-literal または upper-identifierのいずれかが必要です",
         "locale_args": [
-          "fn"
+          "continue",
+          "defer",
+          "do",
+          "false",
+          "for",
+          "handle",
+          "if",
+          "loop",
+          "match",
+          "perform",
+          "return",
+          "self",
+          "true",
+          "unsafe",
+          "while",
+          "!",
+          "(",
+          "-",
+          "[",
+          "{",
+          "|",
+          "char-literal",
+          "float-literal",
+          "identifier",
+          "integer-literal",
+          "string-literal",
+          "upper-identifier"
         ],
         "message_key": "parse.expected"
       },
@@ -517,7 +699,7 @@
           }
         },
         "diagnostic.v2": {
-          "timestamp": "2025-11-11T01:21:33Z"
+          "timestamp": "2025-11-11T01:28:55Z"
         },
         "effect.actual_capabilities": [],
         "effect.capabilities": [],
@@ -540,11 +722,167 @@
             {
               "hint": "keyword",
               "kind": "keyword",
-              "label": "fn",
-              "token": "fn"
+              "label": "continue",
+              "token": "continue"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "defer",
+              "token": "defer"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "do",
+              "token": "do"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "false",
+              "token": "false"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "for",
+              "token": "for"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "handle",
+              "token": "handle"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "if",
+              "token": "if"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "loop",
+              "token": "loop"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "match",
+              "token": "match"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "perform",
+              "token": "perform"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "return",
+              "token": "return"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "self",
+              "token": "self"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "true",
+              "token": "true"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "unsafe",
+              "token": "unsafe"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "while",
+              "token": "while"
+            },
+            {
+              "hint": "token",
+              "kind": "token",
+              "label": "!",
+              "token": "!"
+            },
+            {
+              "hint": "token",
+              "kind": "token",
+              "label": "(",
+              "token": "("
+            },
+            {
+              "hint": "token",
+              "kind": "token",
+              "label": "-",
+              "token": "-"
+            },
+            {
+              "hint": "token",
+              "kind": "token",
+              "label": "[",
+              "token": "["
+            },
+            {
+              "hint": "token",
+              "kind": "token",
+              "label": "{",
+              "token": "{"
+            },
+            {
+              "hint": "token",
+              "kind": "token",
+              "label": "|",
+              "token": "|"
+            },
+            {
+              "hint": "class",
+              "kind": "class",
+              "label": "char-literal",
+              "token": "char-literal"
+            },
+            {
+              "hint": "class",
+              "kind": "class",
+              "label": "float-literal",
+              "token": "float-literal"
+            },
+            {
+              "hint": "class",
+              "kind": "class",
+              "label": "identifier",
+              "token": "identifier"
+            },
+            {
+              "hint": "class",
+              "kind": "class",
+              "label": "integer-literal",
+              "token": "integer-literal"
+            },
+            {
+              "hint": "class",
+              "kind": "class",
+              "label": "string-literal",
+              "token": "string-literal"
+            },
+            {
+              "hint": "class",
+              "kind": "class",
+              "label": "upper-identifier",
+              "token": "upper-identifier"
             }
           ],
-          "message": "ここで`fn`が必要です"
+          "message": "ここで`continue`、`defer`、`do`、`false`、`for`、`handle`、`if`、`loop`、`match`、`perform`、`return`、`self`、`true`、`unsafe`、`while`、`!`、`(`、`-`、`[`、`{`、`|`、char-literal、float-literal、identifier、integer-literal、string-literal または upper-identifierのいずれかが必要です"
         },
         "runconfig": {
           "experimental_effects": false,
@@ -612,7 +950,7 @@
       "recoverability": "recoverable",
       "schema_version": "2.0.0-draft",
       "severity": "error",
-      "timestamp": "2025-11-11T01:21:33Z"
+      "timestamp": "2025-11-11T01:28:55Z"
     }
   ],
   "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290510-w4-diag-streaming-r12/stream_backpressure_hint/input.reml",

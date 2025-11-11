@@ -31,15 +31,15 @@
 | recover_missing_semicolon | ✅ | ✅ | ✅ | ✅ | 1.000 / 1.000 | 1.000 / 1.000 | - / - | 0 / 0 | 1 / 1 |
 | recover_missing_tuple_comma | ✅ | ✅ | ✅ | ✅ | 1.000 / 1.000 | 1.000 / 1.000 | - / - | 0 / 0 | 1 / 1 |
 | recover_unclosed_block | ✅ | ✅ | ✅ | ✅ | 1.000 / 1.000 | 1.000 / 1.000 | - / - | 0 / 0 | 1 / 1 |
-| stream_backpressure_hint | ✅ | ✅ | ✅ | ❌ | - / 1.000 | - / 1.000 | - / - | - / 0 | 0 / 5 |
-| stream_checkpoint_drift | ✅ | ✅ | ✅ | ❌ | 1.000 / 1.000 | 1.000 / 1.000 | - / - | 0 / 0 | 1 / 4 |
-| stream_pending_resume | ✅ | ✅ | ✅ | ❌ | 1.000 / 1.000 | 1.000 / 1.000 | - / - | 0 / 0 | 1 / 11 |
+| stream_backpressure_hint | ❌ | ❌ | ✅ | ✅ | 1.000 / 1.000 | 1.000 / 1.000 | 1.000 / 1.000 | 0 / 0 | 1 / 1 |
+| stream_checkpoint_drift | ✅ | ✅ | ✅ | ✅ | 1.000 / 1.000 | 1.000 / 1.000 | 1.000 / 1.000 | 0 / 0 | 1 / 1 |
+| stream_pending_resume | ❌ | ❌ | ✅ | ✅ | 1.000 / 1.000 | 1.000 / 1.000 | 1.000 / 1.000 | 0 / 0 | 1 / 1 |
 | type_condition_bool | ❌ | ✅ | ❌ | ✅ | 1.000 / 1.000 | 0.000 / 1.000 | - / - | 0 / 0 | 1 / 1 |
 | type_condition_literal_bool | ❌ | ✅ | ❌ | ❌ | 1.000 / - | 0.000 / 0.000 | - / - | 0 / 0 | 1 / 0 |
 <!-- DIAG_TABLE_END -->
 
 ## 直近のラン状況（2028-04〜2029-04）
-- **20290510-w4-diag-streaming-r12**: Streaming 3 ケースのみを `tmp/w4-diagnostic-streaming-cases.txt` で実行。`parser.stream_extension_field_coverage` と `ExpectedTokenCollector.streaming` は OCaml/Rust 双方 1.0 となり、`collect-iterator-audit-metrics.py --section parser` / `--section streaming` も `--require-success` で通過。ただし Rust 側 `expected_tokens` が 1 件に畳み込まれていないため `expected-tokens gate` と `diag_match` は未解消。成果物: `reports/dual-write/front-end/w4-diagnostics/20290510-w4-diag-streaming-r12/summary.md`。
+- **20290510-w4-diag-streaming-r12**: Streaming 3 ケースのみを `tmp/w4-diagnostic-streaming-cases.txt` で再実行し、Rust Recover limiter を更新して `expected_tokens.diff.json` / `diag_match` をすべて解消。`parser.stream_extension_field_coverage` と `ExpectedTokenCollector.streaming` は OCaml/Rust 双方 1.0、`collect-iterator-audit-metrics.py --section parser` / `--section streaming` も `--require-success` で通過。残る `gating=false` は `schema-validate.log` が `parser.core.rule.*` を報告している既知の OCaml 側問題。成果物: `reports/dual-write/front-end/w4-diagnostics/20290510-w4-diag-streaming-r12/summary.md`。
 - **20280418-w4-diag-effects-r3**: Type/Effect/FFI 10 ケースを再測定したが、`effect_residual_leak` は `ocaml_diag_count=1` / `rust_diag_count=5`、`type_condition_literal_bool` は Rust 側診断 0 件、`ffi_ownership_mismatch` / `ffi_async_dispatch` では `effects-metrics.rust.err.log` に `missing_keys=["effect.stage.required", ...]` が残り `metrics_ok=false`。Stage 監査の JSON/Audit 出力が未実装。
 - **20280430-w4-diag-cli-lsp**: LSP `diagnostic-v2-stream` のみ pass。`cli_packrat_switch` / `cli_merge_warnings` は OCaml 側診断 0 件で `diag_match=false`、`parser.runconfig_switch_coverage` も Rust 側だけ 1.0。RunConfig 拡張と OCaml CLI のフラグ注入が未整備。
 - **20290415-w4-diag-streaming-recheck2**: `stream_pending_resume` / `stream_checkpoint_drift` は `diag_match=true` だが `expected_tokens` が `27 vs 1` で `metrics_ok=false` に逆戻り。`stream_backpressure_hint` も `diag_counts` が揃わず、`ExpectedTokenCollector.streaming` 基準が再度ブロックされた。

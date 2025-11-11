@@ -5,9 +5,9 @@
   "ocaml_diag_count": 1,
   "rust_diag_count": 1,
   "diag_match": true,
-  "gating": false,
+  "gating": true,
   "schema_ok": true,
-  "metrics_ok": false,
+  "metrics_ok": true,
   "diag": {
     "parser": {
       "ocaml": {
@@ -42,9 +42,9 @@
   },
   "tests": "streaming_runner_tests.ml （checkpoint/packrat coverage）",
   "expected_tokens": {
-    "match": false,
+    "match": true,
     "ocaml_count": 27,
-    "rust_count": 1
+    "rust_count": 27
   },
   "type_effect_case": false
 }

@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 
-use crate::parser::ast::{Expr, Function, Module};
 use super::env::TypecheckConfig;
 use super::metrics::TypecheckMetrics;
+use crate::parser::ast::{Expr, Function, Module};
 
 /// 型推論の簡易ドライバ。現時点では AST を走査して
 /// メトリクスとサマリ情報のみを生成する。

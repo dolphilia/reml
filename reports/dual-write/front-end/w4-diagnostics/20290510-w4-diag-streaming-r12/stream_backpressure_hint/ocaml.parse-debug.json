@@ -154,7 +154,7 @@
             "policy": "phase2.5.audit.v1",
             "origin": "cli",
             "source": {
-              "build_id": "20251111T012133Z",
+              "build_id": "20251111T012854Z",
               "workspace": ".",
               "sequence": 0
             },
@@ -162,20 +162,20 @@
           },
           "audit.source.workspace": ".",
           "audit.sequence": 0,
-          "audit.build_id": "20251111T012133Z",
+          "audit.build_id": "20251111T012854Z",
           "audit.channel": "cli",
           "audit.policy.version": "phase2.5.audit.v1",
-          "cli.audit_id": "cli/20251111T012133Z#0",
+          "cli.audit_id": "cli/20251111T012854Z#0",
           "event.domain": "parser",
-          "audit.timestamp": "2025-11-11T01:21:33Z",
+          "audit.timestamp": "2025-11-11T01:28:54Z",
           "schema.version": "1.1"
         },
-        "audit_id": "cli/20251111T012133Z#0",
+        "audit_id": "cli/20251111T012854Z#0",
         "change_set": {
           "policy": "phase2.5.audit.v1",
           "origin": "cli",
           "source": {
-            "build_id": "20251111T012133Z",
+            "build_id": "20251111T012854Z",
             "workspace": ".",
             "sequence": 0
           },
@@ -184,24 +184,24 @@
       },
       "audit_metadata": {
         "event.domain": "parser",
-        "cli.audit_id": "cli/20251111T012133Z#0",
+        "cli.audit_id": "cli/20251111T012854Z#0",
         "audit.policy.version": "phase2.5.audit.v1",
         "audit.channel": "cli",
-        "audit.build_id": "20251111T012133Z",
+        "audit.build_id": "20251111T012854Z",
         "audit.sequence": 0,
         "audit.source.workspace": ".",
         "cli.change_set": {
           "policy": "phase2.5.audit.v1",
           "origin": "cli",
           "source": {
-            "build_id": "20251111T012133Z",
+            "build_id": "20251111T012854Z",
             "workspace": ".",
             "sequence": 0
           },
           "items": [ { "kind": "input", "path": "input.reml" } ]
         },
         "schema.version": "1.1",
-        "audit.timestamp": "2025-11-11T01:21:33Z",
+        "audit.timestamp": "2025-11-11T01:28:54Z",
         "effect.required_capabilities": [],
         "effect.stage.required_capabilities": [],
         "effect.actual_capabilities": [],
@@ -282,7 +282,7 @@
         }
       },
       "extensions": {
-        "diagnostic.v2": { "timestamp": "2025-11-11T01:21:33Z" },
+        "diagnostic.v2": { "timestamp": "2025-11-11T01:28:54Z" },
         "recover": {
           "expected_tokens": [
             {
@@ -472,7 +472,7 @@
       "severity": "error",
       "message": "ストリーミング入力が未完のため、追加トークンを待機しています",
       "domain": "parser",
-      "timestamp": "2025-11-11T01:21:33Z"
+      "timestamp": "2025-11-11T01:28:54Z"
     }
   ],
   "parse_result": {

@@ -246,7 +246,7 @@ fn build_expected_summary(err: &Simple<TokenKind>) -> ExpectedTokensSummary {
                 None => collector.push(ExpectedToken::eof()),
             }
         }
-}
+    }
     collector.summarize()
 }
 
