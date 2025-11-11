@@ -1202,3 +1202,16 @@ CLI は `CliDiagnosticEnvelope` を生成した後、`emit(envelope.diagnostics[
 - 永続ストアは `reports/audit/index.json` および `reports/audit/usage.csv` を更新し、総容量が 500 MB を超えた場合は `0-4-risk-handling.md` に記録する。`tooling/ci/collect-iterator-audit-metrics.py` はこれらのメタデータを前提に `ffi_bridge.audit_pass_rate` と `iterator.stage.audit_pass_rate` を集計する。
 
 本節の CLI フラグ仕様は `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に記載された運用手順と同期させ、計画書と仕様の齟齬を防止する。
+
+## 12. Streaming Recover メトリクス
+
+Streaming ランナーの Recover 収束状況は `parser.runconfig.extensions["stream"]` と `AuditEnvelope.metadata["parser.runconfig.extensions.stream.*"]` に同じ値を記録し、`parser.stream_extension_field_coverage` の必須項目をすべて満たすことで担保する。とくに Packrat 利用と checkpoint クロージャは次のように扱う。
+
+| フィールド | 型 | 取得元 / 意図 |
+| --- | --- | --- |
+| `packrat_enabled` | `Bool` | CLI/LSP の `--packrat` フラグ、または `RunConfig.packrat`。Streaming Recover が Packrat キャッシュを利用できる状態かどうかを示し、`parser.expected_summary_presence` が 1.0 の場合にはこの値も両フロントエンドで一致している必要がある。 |
+| `flow.checkpoints_closed` | `Int` | ストリーミング実行中にクローズされた checkpoint 件数。Rust/OCaml の `StreamFlowState` が収集した実測値があればそれを出力し、まだ未計測の環境では `0` を既定値とする。 |
+
+- これらの値は `diagnostics.{ocaml,rust}.json` と `parser-metrics.*.json` の両方に直列化し、Dual Write レポート（`reports/dual-write/front-end/w4-diagnostics/<run_id>/<case>/`）で差分を追跡する。
+- `tooling/ci/collect-iterator-audit-metrics.py --section streaming` は上記フィールドを前提に `parser.stream_extension_field_coverage`, `parser.stream.outcome_consistency`, `ExpectedTokenCollector.streaming` を評価し、`require-success` 実行時に 1.0 を必須とする。
+- Packrat／checkpoint 情報は `ExpectedTokenCollector.streaming`（期待トークン補完）と `parser.runconfig_switch_coverage`（CLI スイッチ覆い）と連携して計測され、Streaming Recover が Packrat キャッシュと checkpoint 制御の両方と同期しているかを保証する。

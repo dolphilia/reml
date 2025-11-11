@@ -48,6 +48,7 @@ let recover_expected_tokens entries =
 end
 
 module Run_config = Parser_run_config
+module Run_ext = Parser_run_config.Extensions
 
 (* ========== 重要度 ========== *)
 
@@ -1168,7 +1169,45 @@ let with_parser_runconfig_metadata ~(config : Run_config.t) diag =
         ("notes", `Bool recover_config.emit_notes);
       ]
   in
+  let int_of_string_opt text =
+    try Some (int_of_string text) with Failure _ -> None
+  in
   let stream_config = Run_config.Stream.of_run_config config in
+  let stream_namespace_lookup key =
+    match stream_config.namespace with
+    | Some namespace -> Run_ext.Namespace.find key namespace
+    | None -> None
+  in
+  let int_of_extension_value = function
+    | Run_ext.Int value -> Some value
+    | Run_ext.Parser_id value -> Some value
+    | Run_ext.Bool flag -> Some (if flag then 1 else 0)
+    | Run_ext.String text -> (
+        match int_of_string_opt (String.trim text) with
+        | Some value -> Some value
+        | None -> None)
+    | _ -> None
+  in
+  let bool_of_extension_value = function
+    | Run_ext.Bool flag -> Some flag
+    | Run_ext.Int value -> Some (value <> 0)
+    | Run_ext.String text -> (
+        match String.lowercase_ascii (String.trim text) with
+        | "1" | "true" | "yes" | "on" -> Some true
+        | "0" | "false" | "no" | "off" -> Some false
+        | _ -> None)
+    | _ -> None
+  in
+  let packrat_enabled_value =
+    match stream_namespace_lookup "packrat_enabled" with
+    | Some value -> Option.value ~default:config.packrat (bool_of_extension_value value)
+    | None -> config.packrat
+  in
+  let flow_checkpoints_closed_value =
+    match stream_namespace_lookup "flow_checkpoints_closed" with
+    | Some value -> Option.value ~default:0 (int_of_extension_value value)
+    | None -> 0
+  in
   let checkpoint_value =
     Option.value ~default:"unspecified" stream_config.checkpoint
   in
@@ -1213,6 +1252,7 @@ let with_parser_runconfig_metadata ~(config : Run_config.t) diag =
   let flow_fields =
     []
     |> add_field "policy" (`String flow_policy_label)
+    |> add_field "checkpoints_closed" (`Int flow_checkpoints_closed_value)
     |> (fun acc ->
          match backpressure_fields with
          | [] -> acc
@@ -1221,6 +1261,7 @@ let with_parser_runconfig_metadata ~(config : Run_config.t) diag =
   let stream_fields =
     []
     |> add_field "enabled" (`Bool stream_config.enabled)
+    |> add_field "packrat_enabled" (`Bool packrat_enabled_value)
     |> add_field "checkpoint" (`String checkpoint_value)
     |> add_field "resume_hint" (`String resume_hint_value)
     |> add_field "demand_min_bytes" (`Int demand_min_value)
@@ -1281,6 +1322,8 @@ let with_parser_runconfig_metadata ~(config : Run_config.t) diag =
     |> add_field "parser.runconfig.extensions.stream" stream_json
     |> add_field "parser.runconfig.extensions.stream.enabled"
          (`Bool stream_config.enabled)
+    |> add_field "parser.runconfig.extensions.stream.packrat_enabled"
+         (`Bool packrat_enabled_value)
     |> add_field "parser.runconfig.extensions.stream.checkpoint"
          (`String checkpoint_value)
     |> add_field "parser.runconfig.extensions.stream.resume_hint"
@@ -1314,6 +1357,9 @@ let with_parser_runconfig_metadata ~(config : Run_config.t) diag =
         |> add_option_field
              "parser.runconfig.extensions.stream.flow.backpressure.throttle_ratio"
              (Option.map (fun value -> `Float value) flow.backpressure.throttle_ratio)
+        |> add_field
+             "parser.runconfig.extensions.stream.flow.checkpoints_closed"
+             (`Int flow_checkpoints_closed_value)
   in
   let base_audit_entries =
     match config_path_value with

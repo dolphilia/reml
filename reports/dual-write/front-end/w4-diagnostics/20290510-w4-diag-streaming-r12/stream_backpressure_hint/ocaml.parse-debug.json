@@ -1,0 +1,512 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290510-w4-diag-streaming-r12/stream_backpressure_hint/input.reml",
+  "parser_run_config": {
+    "experimental_effects": false,
+    "legacy_result": true,
+    "merge_warnings": true,
+    "trace": false,
+    "left_recursion": "off",
+    "packrat": true,
+    "require_eof": false,
+    "extensions": {
+      "config": {
+        "experimental_effects": false,
+        "left_recursion": "off",
+        "legacy_result": true,
+        "merge_warnings": true,
+        "packrat": true,
+        "require_eof": false,
+        "source": "cli",
+        "trace": false
+      },
+      "effects": { "type_row_mode": "ty-integrated" },
+      "lex": { "profile": "strict_json" },
+      "stream": {
+        "enabled": true,
+        "flow_max_lag_bytes": 8192,
+        "flow_policy": "auto"
+      }
+    }
+  },
+  "diagnostics": [
+    {
+      "expected": {
+        "locale_args": [
+          "continue", "defer", "do", "false", "for", "handle", "if", "loop",
+          "match", "perform", "return", "self", "true", "unsafe", "while",
+          "!", "(", "-", "[", "{", "|", "char-literal", "float-literal",
+          "identifier", "integer-literal", "string-literal",
+          "upper-identifier"
+        ],
+        "humanized": "ここで`continue`、`defer`、`do`、`false`、`for`、`handle`、`if`、`loop`、`match`、`perform`、`return`、`self`、`true`、`unsafe`、`while`、`!`、`(`、`-`、`[`、`{`、`|`、char-literal、float-literal、identifier、integer-literal、string-literal または upper-identifierのいずれかが必要です",
+        "message_key": "parse.expected",
+        "alternatives": [
+          { "kind": "keyword", "value": "continue" },
+          { "kind": "keyword", "value": "defer" },
+          { "kind": "keyword", "value": "do" },
+          { "kind": "keyword", "value": "false" },
+          { "kind": "keyword", "value": "for" },
+          { "kind": "keyword", "value": "handle" },
+          { "kind": "keyword", "value": "if" },
+          { "kind": "keyword", "value": "loop" },
+          { "kind": "keyword", "value": "match" },
+          { "kind": "keyword", "value": "perform" },
+          { "kind": "keyword", "value": "return" },
+          { "kind": "keyword", "value": "self" },
+          { "kind": "keyword", "value": "true" },
+          { "kind": "keyword", "value": "unsafe" },
+          { "kind": "keyword", "value": "while" },
+          { "kind": "token", "value": "!" },
+          { "kind": "token", "value": "(" },
+          { "kind": "token", "value": "-" },
+          { "kind": "token", "value": "[" },
+          { "kind": "token", "value": "{" },
+          { "kind": "token", "value": "|" },
+          { "kind": "class", "value": "char-literal" },
+          { "kind": "class", "value": "float-literal" },
+          { "kind": "class", "value": "identifier" },
+          { "kind": "class", "value": "integer-literal" },
+          { "kind": "class", "value": "string-literal" },
+          { "kind": "class", "value": "upper-identifier" }
+        ]
+      },
+      "audit": {
+        "metadata": {
+          "parser.runconfig": {
+            "packrat": true,
+            "left_recursion": "off",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": true,
+            "experimental_effects": false,
+            "extensions": {
+              "stream": {
+                "enabled": true,
+                "packrat_enabled": true,
+                "checkpoint": "unspecified",
+                "resume_hint": "unspecified",
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "chunk_size": 0,
+                "flow": {
+                  "policy": "auto",
+                  "checkpoints_closed": 0,
+                  "backpressure": { "max_lag_bytes": 8192 }
+                }
+              },
+              "recover": { "sync_tokens": [], "notes": false },
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              }
+            }
+          },
+          "parser.runconfig.packrat": true,
+          "parser.runconfig.left_recursion": "off",
+          "parser.runconfig.trace": false,
+          "parser.runconfig.merge_warnings": true,
+          "parser.runconfig.require_eof": false,
+          "parser.runconfig.legacy_result": true,
+          "parser.runconfig.experimental_effects": false,
+          "parser.runconfig.extensions.lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.recover": {
+            "sync_tokens": [],
+            "notes": false
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "enabled": true,
+            "packrat_enabled": true,
+            "checkpoint": "unspecified",
+            "resume_hint": "unspecified",
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "chunk_size": 0,
+            "flow": {
+              "policy": "auto",
+              "checkpoints_closed": 0,
+              "backpressure": { "max_lag_bytes": 8192 }
+            }
+          },
+          "parser.runconfig.extensions.stream.enabled": true,
+          "parser.runconfig.extensions.stream.packrat_enabled": true,
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "parser.runconfig.extensions.stream.flow.policy": "auto",
+          "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 8192,
+          "parser.runconfig.extensions.stream.flow.checkpoints_closed": 0,
+          "effect.capabilities": [],
+          "effect.stage.actual_capabilities": [],
+          "effect.actual_capabilities": [],
+          "effect.stage.required_capabilities": [],
+          "effect.required_capabilities": [],
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "20251111T012133Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [ { "kind": "input", "path": "input.reml" } ]
+          },
+          "audit.source.workspace": ".",
+          "audit.sequence": 0,
+          "audit.build_id": "20251111T012133Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "cli.audit_id": "cli/20251111T012133Z#0",
+          "event.domain": "parser",
+          "audit.timestamp": "2025-11-11T01:21:33Z",
+          "schema.version": "1.1"
+        },
+        "audit_id": "cli/20251111T012133Z#0",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "20251111T012133Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "input.reml" } ]
+        }
+      },
+      "audit_metadata": {
+        "event.domain": "parser",
+        "cli.audit_id": "cli/20251111T012133Z#0",
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "20251111T012133Z",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "20251111T012133Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "input.reml" } ]
+        },
+        "schema.version": "1.1",
+        "audit.timestamp": "2025-11-11T01:21:33Z",
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "parser.runconfig.extensions.stream.flow.checkpoints_closed": 0,
+        "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 8192,
+        "parser.runconfig.extensions.stream.flow.policy": "auto",
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.packrat_enabled": true,
+        "parser.runconfig.extensions.stream.enabled": true,
+        "parser.runconfig.extensions.stream": {
+          "enabled": true,
+          "packrat_enabled": true,
+          "checkpoint": "unspecified",
+          "resume_hint": "unspecified",
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "chunk_size": 0,
+          "flow": {
+            "policy": "auto",
+            "checkpoints_closed": 0,
+            "backpressure": { "max_lag_bytes": 8192 }
+          }
+        },
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover": {
+          "sync_tokens": [],
+          "notes": false
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.lex": {
+          "profile": "strict_json",
+          "identifier_profile": "unicode"
+        },
+        "parser.runconfig.experimental_effects": false,
+        "parser.runconfig.legacy_result": true,
+        "parser.runconfig.require_eof": false,
+        "parser.runconfig.merge_warnings": true,
+        "parser.runconfig.trace": false,
+        "parser.runconfig.left_recursion": "off",
+        "parser.runconfig.packrat": true,
+        "parser.runconfig": {
+          "packrat": true,
+          "left_recursion": "off",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": true,
+          "experimental_effects": false,
+          "extensions": {
+            "stream": {
+              "enabled": true,
+              "packrat_enabled": true,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "checkpoints_closed": 0,
+                "backpressure": { "max_lag_bytes": 8192 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        }
+      },
+      "extensions": {
+        "diagnostic.v2": { "timestamp": "2025-11-11T01:21:33Z" },
+        "recover": {
+          "expected_tokens": [
+            {
+              "token": "continue",
+              "label": "continue",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "defer",
+              "label": "defer",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "do",
+              "label": "do",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "false",
+              "label": "false",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "for",
+              "label": "for",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "handle",
+              "label": "handle",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "if",
+              "label": "if",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "loop",
+              "label": "loop",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "match",
+              "label": "match",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "perform",
+              "label": "perform",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "return",
+              "label": "return",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "self",
+              "label": "self",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "true",
+              "label": "true",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "unsafe",
+              "label": "unsafe",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "while",
+              "label": "while",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            { "token": "!", "label": "!", "hint": "token", "kind": "token" },
+            { "token": "(", "label": "(", "hint": "token", "kind": "token" },
+            { "token": "-", "label": "-", "hint": "token", "kind": "token" },
+            { "token": "[", "label": "[", "hint": "token", "kind": "token" },
+            { "token": "{", "label": "{", "hint": "token", "kind": "token" },
+            { "token": "|", "label": "|", "hint": "token", "kind": "token" },
+            {
+              "token": "char-literal",
+              "label": "char-literal",
+              "hint": "class",
+              "kind": "class"
+            },
+            {
+              "token": "float-literal",
+              "label": "float-literal",
+              "hint": "class",
+              "kind": "class"
+            },
+            {
+              "token": "identifier",
+              "label": "identifier",
+              "hint": "class",
+              "kind": "class"
+            },
+            {
+              "token": "integer-literal",
+              "label": "integer-literal",
+              "hint": "class",
+              "kind": "class"
+            },
+            {
+              "token": "string-literal",
+              "label": "string-literal",
+              "hint": "class",
+              "kind": "class"
+            },
+            {
+              "token": "upper-identifier",
+              "label": "upper-identifier",
+              "hint": "class",
+              "kind": "class"
+            }
+          ],
+          "message": "ここで`continue`、`defer`、`do`、`false`、`for`、`handle`、`if`、`loop`、`match`、`perform`、`return`、`self`、`true`、`unsafe`、`while`、`!`、`(`、`-`、`[`、`{`、`|`、char-literal、float-literal、identifier、integer-literal、string-literal または upper-identifierのいずれかが必要です"
+        },
+        "effect.required_capabilities": [],
+        "effect.stage.required_capabilities": [],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [],
+        "runconfig": {
+          "packrat": true,
+          "left_recursion": "off",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": true,
+          "experimental_effects": false,
+          "extensions": {
+            "stream": {
+              "enabled": true,
+              "packrat_enabled": true,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "checkpoints_closed": 0,
+                "backpressure": { "max_lag_bytes": 8192 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        }
+      },
+      "schema_version": "2.0.0-draft",
+      "fixits": [],
+      "hints": [],
+      "secondary": [],
+      "codes": [],
+      "primary": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290510-w4-diag-streaming-r12/stream_backpressure_hint/input.reml",
+        "start_line": 0,
+        "start_col": 0,
+        "end_line": 4,
+        "end_col": 0
+      },
+      "severity_level": 1,
+      "severity": "error",
+      "message": "ストリーミング入力が未完のため、追加トークンを待機しています",
+      "domain": "parser",
+      "timestamp": "2025-11-11T01:21:33Z"
+    }
+  ],
+  "parse_result": {
+    "span_trace": null,
+    "packrat_stats": { "queries": 0, "hits": 0 },
+    "legacy_error": null,
+    "farthest_error_offset": null,
+    "span": {
+      "start": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290510-w4-diag-streaming-r12/stream_backpressure_hint/input.reml",
+        "line": 1,
+        "column": 1,
+        "offset": 0
+      },
+      "end": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20290510-w4-diag-streaming-r12/stream_backpressure_hint/input.reml",
+        "line": 5,
+        "column": 1,
+        "offset": 144
+      }
+    },
+    "committed": false,
+    "consumed": true,
+    "recovered": true,
+    "has_value": true
+  },
+  "stream_meta": {
+    "backpressure_events": 1,
+    "resume_count": 0,
+    "await_count": 0,
+    "chunks_consumed": 1,
+    "bytes_consumed": 144,
+    "last_reason": "pending.backpressure",
+    "memo_bytes": 0,
+    "backpressure_policy": "auto"
+  }
+}
