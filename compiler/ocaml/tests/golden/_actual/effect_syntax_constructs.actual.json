@@ -1,0 +1,35 @@
+{
+  "effect_syntax": {
+    "constructs": [
+      {
+        "name": "handled_demo",
+        "kind": "handle",
+        "expectation": "accept",
+        "status": "ok",
+        "diagnostics": [],
+        "effect_profile": {
+          "declared": [ "console" ],
+          "residual": [ "console" ],
+          "stage": { "required": "at_least:stable", "actual": "stable" },
+          "capabilities": []
+        }
+      },
+      {
+        "name": "unhandled_demo",
+        "kind": "perform",
+        "expectation": "reject",
+        "status": "error",
+        "diagnostics": [ "effects.contract.residual_leak" ],
+        "message": "残余効果が閉じていません"
+      },
+      {
+        "name": "experimental_demo",
+        "kind": "perform",
+        "expectation": "reject",
+        "status": "error",
+        "diagnostics": [],
+        "message": "構文エラー: 入力を解釈できません"
+      }
+    ]
+  }
+}

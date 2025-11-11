@@ -14,6 +14,8 @@ RUN_ID="${DUALWRITE_RUN_ID:-2025-11-28-logos-chumsky}"
 CASES_FILE="${DUALWRITE_CASES_FILE:-}"
 MODE="ast"
 EXPECTED_TOKENS_PREFIX=""
+FORCE_TYPE_EFFECT_FLAGS="${FORCE_TYPE_EFFECT_FLAGS:-false}"
+TYPE_EFFECT_RUNTIME_CAPS="${TYPE_EFFECT_RUNTIME_CAPS:-docs/spec/3-8-core-runtime-capability.md#samples}"
 
 usage() {
   cat <<'EOF'
@@ -27,11 +29,18 @@ Options:
   --emit-expected-tokens <prefix>
                      diag モード時に Recover 期待トークンを抽出して
                      `<prefix>.{ocaml,rust,diff}.json` をケース配下へ保存する
+  --force-type-effect-flags
+                     type_* / effect_* / ffi_* ケースへ Type/Effector フラグを強制注入し、
+                     成果物（typeck-debug / effects-metrics）の生成を必須化する
   --help            このヘルプを表示
 
 環境変数:
   DUALWRITE_RUN_ID       --run-id と同様
   DUALWRITE_CASES_FILE   --cases と同様
+  FORCE_TYPE_EFFECT_FLAGS
+                     `true` にすると --force-type-effect-flags を暗黙的に有効化
+  TYPE_EFFECT_RUNTIME_CAPS
+                     --runtime-capabilities の既定値（type/effect/ffi ケースのみ）
 EOF
 }
 
@@ -52,6 +61,10 @@ while [[ $# -gt 0 ]]; do
     --emit-expected-tokens)
       EXPECTED_TOKENS_PREFIX="$2"
       shift 2
+      ;;
+    --force-type-effect-flags)
+      FORCE_TYPE_EFFECT_FLAGS="true"
+      shift 1
       ;;
     --help)
       usage
@@ -401,6 +414,7 @@ option_requires_value() {
       return 0
       ;;
     --runtime-capabilities|--emit-typeck-debug|--emit-effects-metrics|--config|--left-recursion|--json-mode|--emit-typeck-debug-format)
+    --runtime-capabilities|--runtime-capabilities-file|--emit-typeck-debug|--emit-effects-metrics|--config|--left-recursion|--json-mode|--emit-typeck-debug-format)
       return 0
       ;;
     *)
@@ -1046,6 +1060,46 @@ validate_diagnostics_schema() {
   fi
 }
 
+create_effects_metrics_diff() {
+  local ocaml_path="$1"
+  local rust_path="$2"
+  local output_path="$3"
+  if [[ ! -s "${ocaml_path}" || ! -s "${rust_path}" ]]; then
+    return
+  fi
+  python3 - "${ocaml_path}" "${rust_path}" "${output_path}" <<'PY' || true
+import json
+import pathlib
+import sys
+
+ocaml_path = pathlib.Path(sys.argv[1])
+rust_path = pathlib.Path(sys.argv[2])
+output_path = pathlib.Path(sys.argv[3])
+
+def load(path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+ocaml = load(ocaml_path)
+rust = load(rust_path)
+
+payload = {
+    "match": ocaml == rust,
+}
+
+if isinstance(ocaml, dict) and isinstance(rust, dict):
+    ocaml_keys = set(ocaml.keys())
+    rust_keys = set(rust.keys())
+    payload["ocaml_only"] = sorted(ocaml_keys - rust_keys)
+    payload["rust_only"] = sorted(rust_keys - ocaml_keys)
+
+output_path.parent.mkdir(parents=True, exist_ok=True)
+output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+PY
+}
+
 for idx in "${!CASE_ENTRIES[@]}"; do
   entry="${CASE_ENTRIES[$idx]}"
   case_name="${entry%%::*}"
@@ -1150,6 +1204,11 @@ for idx in "${!CASE_ENTRIES[@]}"; do
     ensure_flag_with_value "rust_case_flags" "--effect-stage" "beta"
     ensure_flag_with_value "rust_case_flags" "--emit-typeck-debug" "${rust_typeck_debug_json}"
     ensure_flag_with_value "rust_case_flags" "--emit-effects-metrics" "${effects_dir}/effects-metrics.rust.json"
+    if [[ "${FORCE_TYPE_EFFECT_FLAGS}" == "true" ]]; then
+      ensure_flag_with_value "ocaml_case_flags" "--runtime-capabilities" "${TYPE_EFFECT_RUNTIME_CAPS}"
+      ensure_flag_with_value "rust_case_flags" "--runtime-capabilities" "${TYPE_EFFECT_RUNTIME_CAPS}"
+      ensure_flag_with_value "ocaml_case_flags" "--emit-effects-metrics" "${effects_dir}/effects-metrics.ocaml.json"
+    fi
   fi
 
   if [[ "${MODE}" == "diag" ]]; then
@@ -1317,6 +1376,10 @@ PY
     if [[ "${type_effect_case}" == "true" ]]; then
       copy_if_exists "${ocaml_stderr}" "${typeck_dir}/stderr.ocaml.log"
       copy_if_exists "${rust_stderr}" "${typeck_dir}/stderr.rust.log"
+      create_effects_metrics_diff \
+        "${case_dir}/effects/effects-metrics.ocaml.json" \
+        "${case_dir}/effects/effects-metrics.rust.json" \
+        "${case_dir}/effects/effects-metrics.diff.json"
     fi
 
     if [[ "${type_effect_case}" == "true" ]]; then

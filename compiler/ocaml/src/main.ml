@@ -1051,6 +1051,7 @@ let () =
         || Option.is_some opts.emit_typed_ast_json
         || Option.is_some opts.emit_constraints_json
         || Option.is_some opts.emit_typeck_debug_json
+        || Option.is_some opts.emit_effects_metrics_json
       in
       if needs_typecheck_outputs then (
         (* Phase 1-6 Week 15: 型推論開始 *)
@@ -1084,7 +1085,8 @@ let () =
               ~stats:(Cli.Stats.get_stats ())
               ~typed_ast_path:opts.emit_typed_ast_json
               ~constraints_path:opts.emit_constraints_json
-              ~debug_path:opts.emit_typeck_debug_json;
+              ~debug_path:opts.emit_typeck_debug_json
+              ~effects_metrics_path:opts.emit_effects_metrics_json;
 
             (* Phase 3: LLVM IR 生成パイプライン *)
             if

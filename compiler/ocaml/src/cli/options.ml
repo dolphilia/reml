@@ -64,6 +64,8 @@ let print_full_help () =
       "                       制約サマリ JSON を指定パスに出力";
       "  --emit-typeck-debug <path>";
       "                       型推論デバッグ JSON を指定パスに出力";
+      "  --emit-effects-metrics <path>";
+      "                       Type/Effect メトリクス JSON を指定パスに出力";
       "  --emit-ir           LLVM IR (.ll) を出力ディレクトリに生成";
       "  --emit-bc           LLVM Bitcode (.bc) を出力ディレクトリに生成";
       "  --emit-parse-debug <path>";
@@ -129,7 +131,9 @@ let print_full_help () =
       "効果システム・監査:";
       "  --effect-stage <stage>";
       "                       実行時 Stage を明示的に指定（例: experimental/beta/stable）";
-      "  --runtime-capabilities <file>";
+      "  --runtime-capabilities <cap1,cap2,...>";
+      "                       実行時 Capability 名をカンマ区切りで指定し、Stage 監査に反映";
+      "  --runtime-capabilities-file <path>";
       "                       Runtime Capability Registry JSON を読み込み、Stage を解決";
       "  --emit-audit <off|on|tmp|local|ci|path>";
       "                       監査ログ出力を制御（既定: on = tmp プロファイル）";
@@ -162,6 +166,7 @@ type options = {
   emit_typed_ast_json : string option;  (** Typed AST サマリ JSON 出力先 *)
   emit_constraints_json : string option;  (** 制約サマリ JSON 出力先 *)
   emit_typeck_debug_json : string option;  (** Typeck debug JSON 出力先 *)
+  emit_effects_metrics_json : string option;  (** 効果メトリクス出力先 *)
   emit_ir : bool;  (** LLVM IR (.ll) を出力ディレクトリに生成 *)
   emit_bc : bool;  (** LLVM Bitcode (.bc) を出力ディレクトリに生成 *)
   emit_parse_debug : string option;  (** Parser debug JSON をファイル出力 *)
@@ -191,6 +196,7 @@ type options = {
   (* 効果システム / Stage 制御 *)
   effect_stage_override : string option;  (** CLI で指定された Stage 名 *)
   runtime_capabilities_path : string option;  (** Capability Registry JSON のパス *)
+  runtime_capabilities : string list;  (** Stage 監査用 Capability 名リスト *)
   effects_type_row_mode : string;  (** TYPE-002 効果行モード（metadata-only|dual-write） *)
   parser_experimental_effects : bool;  (** 効果構文 PoC フラグ *)
   (* Parser RunConfig フラグ *)
@@ -225,6 +231,7 @@ let default_options =
   emit_typed_ast_json = None;
   emit_constraints_json = None;
   emit_typeck_debug_json = None;
+  emit_effects_metrics_json = None;
   emit_ir = false;
   emit_bc = false;
   emit_parse_debug = None;
@@ -250,6 +257,7 @@ let default_options =
     emit_audit_path = None;
     effect_stage_override = None;
     runtime_capabilities_path = None;
+    runtime_capabilities = [];
     effects_type_row_mode = "ty-integrated";
     parser_experimental_effects = Run_config.default.experimental_effects;
     parser_require_eof = Run_config.default.require_eof;
@@ -309,6 +317,7 @@ let parse_args argv =
   let emit_typed_ast_json = ref None in
   let emit_constraints_json = ref None in
   let emit_typeck_debug_json = ref None in
+  let emit_effects_metrics_json = ref None in
   let emit_ir = ref false in
   let emit_bc = ref false in
   let emit_parse_debug = ref None in
@@ -335,6 +344,7 @@ let parse_args argv =
   let json_mode_str = ref "pretty" in
   let include_snippet = ref true in
   let runtime_caps_path = ref None in
+  let runtime_caps = ref [] in
   let parser_experimental_effects = ref Run_config.default.experimental_effects in
   let type_row_mode_str = ref "ty-integrated" in
   let parser_require_eof = ref Run_config.default.require_eof in
@@ -395,6 +405,23 @@ let parse_args argv =
              "Warning: %s には 0.0〜1.0 の数値を指定してください（入力値: %s）。"
              option_name text)
   in
+  let add_runtime_capabilities text =
+    let values =
+      text
+      |> String.split_on_char ','
+      |> List.filter_map (fun raw ->
+             let trimmed = String.trim raw in
+             if String.length trimmed = 0 then None else Some trimmed)
+    in
+    let dedup =
+      List.fold_left
+        (fun acc value ->
+          if List.exists (fun existing -> String.equal existing value) acc then acc
+          else acc @ [ value ])
+        !runtime_caps values
+    in
+    runtime_caps := dedup
+  in
   let parse_flow_policy text =
     match String.lowercase_ascii (String.trim text) with
     | "auto" -> Some Run_config.Stream.Flow.Auto
@@ -416,6 +443,9 @@ let parse_args argv =
       ( "--emit-typeck-debug",
         Arg.String (fun value -> emit_typeck_debug_json := Some value),
         "<path> Emit typechecker debug JSON to file" );
+      ( "--emit-effects-metrics",
+        Arg.String (fun value -> emit_effects_metrics_json := Some value),
+        "<path> Emit effects/type metrics JSON to file" );
       ("--emit-ir", Arg.Set emit_ir, "Emit LLVM IR (.ll) to output directory");
       ( "--emit-bc",
         Arg.Set emit_bc,
@@ -589,6 +619,9 @@ let parse_args argv =
         Arg.String (fun value -> effect_stage := Some value),
         "<stage> Override runtime Stage (experimental|beta|stable|...)" );
       ( "--runtime-capabilities",
+        Arg.String (fun value -> add_runtime_capabilities value),
+        "<cap1,cap2,...> Declare required runtime capabilities (comma separated)" );
+      ( "--runtime-capabilities-file",
         Arg.String (fun value -> runtime_caps_path := Some value),
         "<file> Load Runtime Capability Registry from JSON file" );
       ( "--emit-audit",
@@ -789,6 +822,10 @@ let parse_args argv =
           emit_typed_ast_json = !emit_typed_ast_json;
           emit_constraints_json = !emit_constraints_json;
           emit_typeck_debug_json = !emit_typeck_debug_json;
+          emit_effects_metrics_json =
+            (match !emit_effects_metrics_json with
+            | Some path when String.trim path <> "" -> Some (String.trim path)
+            | _ -> None);
           emit_ir = !emit_ir;
           emit_bc = !emit_bc;
           emit_parse_debug =
@@ -817,6 +854,7 @@ let parse_args argv =
           emit_audit_path;
           effect_stage_override = !effect_stage;
           runtime_capabilities_path = !runtime_caps_path;
+          runtime_capabilities = !runtime_caps;
           effects_type_row_mode = type_row_mode;
           parser_experimental_effects = !parser_experimental_effects;
           parser_require_eof = !parser_require_eof;
@@ -888,6 +926,7 @@ let to_run_config (opts : options) =
   in
   Run_config.with_extension "config" (fun _ -> config_namespace) base
   |> Run_config.with_extension "lex" (fun _ -> lex_namespace)
+  |> Run_config.Effects.set_required_capabilities opts.runtime_capabilities
   |> Run_config.Effects.set_stage_override opts.effect_stage_override
   |> Run_config.Effects.set_registry_path opts.runtime_capabilities_path
   |> Run_config.Effects.set_type_row_mode (Some opts.effects_type_row_mode)

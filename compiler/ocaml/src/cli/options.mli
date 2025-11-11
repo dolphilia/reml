@@ -49,6 +49,7 @@ type options = {
   emit_typed_ast_json : string option;  (** Typed AST サマリ JSON 出力先 *)
   emit_constraints_json : string option;  (** 制約サマリ JSON 出力先 *)
   emit_typeck_debug_json : string option;  (** 型推論デバッグ JSON 出力先 *)
+  emit_effects_metrics_json : string option;  (** 効果メトリクス JSON 出力先 *)
   emit_ir : bool;  (** LLVM IR (.ll) を出力ディレクトリに生成 *)
   emit_bc : bool;  (** LLVM Bitcode (.bc) を出力ディレクトリに生成 *)
   emit_parse_debug : string option;  (** Parser debug JSON の出力先パス *)
@@ -78,6 +79,8 @@ type options = {
   effect_stage_override : string option;  (** CLI で指定された Stage 名 *)
   runtime_capabilities_path : string option;
       (** Runtime Capability Registry JSON のパス *)
+  runtime_capabilities : string list;
+      (** Stage 監査用に CLI が要求する Capability 名のリスト *)
   effects_type_row_mode : string;
       (** TYPE-002 効果行モード (`metadata-only` / `dual-write` / `ty-integrated`) *)
   parser_experimental_effects : bool;
