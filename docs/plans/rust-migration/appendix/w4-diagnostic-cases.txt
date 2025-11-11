@@ -65,7 +65,7 @@ ffi_stage_messagebox::file::examples/ffi/windows/messagebox.reml
 # flags.rust: --emit-effects-metrics <dir>
 ffi_ownership_mismatch::file::examples/ffi/windows/ownership_transfer.reml
 # tests: compiler/ocaml/tests/test_ffi_contract.ml::ffi_dispatch_async
-# flags: --experimental-effects --effect-stage beta --type-row-mode dual-write --emit-typeck-debug <dir>
+# flags: --experimental-effects --effect-stage beta --type-row-mode dual-write --runtime-capabilities macos.dispatch_queue --emit-typeck-debug <dir>
 # flags.rust: --emit-effects-metrics <dir>
 ffi_async_dispatch::file::examples/ffi/macos/ffi_dispatch_async.reml
 

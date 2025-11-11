@@ -3236,6 +3236,227 @@ def collect_effect_scope_audit_presence(
     }
 
 
+def collect_effect_stage_extension_presence(
+    paths: Sequence[Path],
+) -> Optional[Dict[str, Any]]:
+    required_fields = [
+        "required",
+        "actual",
+        "required_capabilities",
+        "actual_capabilities",
+    ]
+    total = 0
+    passed = 0
+    failures: List[Dict[str, Any]] = []
+
+    for path in paths:
+        data = load_json(path)
+        try:
+            diagnostics_iter = iter_diagnostics(data)
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
+            metadata = _as_dict(diag.get("audit_metadata"))
+            if not _diagnostic_is_rust_frontend(metadata):
+                continue
+            extensions = _as_dict(diag.get("extensions"))
+            effects_ext = _as_dict(extensions.get("effects")) if extensions else None
+            if not effects_ext:
+                continue
+            capabilities_payload = effects_ext.get("capabilities")
+            if capabilities_payload is None:
+                continue
+            if isinstance(capabilities_payload, list) and not capabilities_payload:
+                continue
+            stage_ext = _as_dict(effects_ext.get("stage"))
+            total += 1
+            missing: List[str] = []
+            if stage_ext is None:
+                missing.append("stage")
+            else:
+                for field in required_fields:
+                    value = stage_ext.get(field)
+                    if not _value_present(value):
+                        missing.append(field)
+            if missing:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "missing_fields": sorted(set(missing)),
+                    }
+                )
+            else:
+                passed += 1
+
+    if total == 0:
+        return None
+
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+    status = "success" if pass_rate == 1.0 else "error"
+    return {
+        "metric": "effect_stage.audit_presence",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "status": status,
+        "sources": [str(path) for path in paths],
+        "failures": failures,
+        "required_fields": required_fields,
+    }
+
+
+def collect_bridge_stage_extension_presence(
+    paths: Sequence[Path],
+) -> Optional[Dict[str, Any]]:
+    required_fields = [
+        "required_capabilities",
+        "actual_capabilities",
+        "required",
+        "actual",
+        "capability",
+    ]
+    total = 0
+    passed = 0
+    failures: List[Dict[str, Any]] = []
+
+    for path in paths:
+        data = load_json(path)
+        try:
+            diagnostics_iter = iter_diagnostics(data)
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
+            metadata = _as_dict(diag.get("audit_metadata"))
+            if not _diagnostic_is_rust_frontend(metadata):
+                continue
+            extensions = _as_dict(diag.get("extensions"))
+            bridge_ext = _as_dict(extensions.get("bridge")) if extensions else None
+            if not bridge_ext:
+                continue
+            stage_ext = _as_dict(bridge_ext.get("stage"))
+            if stage_ext is None:
+                continue
+            total += 1
+            missing: List[str] = []
+            for field in required_fields:
+                value = stage_ext.get(field)
+                if not _value_present(value):
+                    missing.append(field)
+            if missing:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "missing_fields": sorted(set(missing)),
+                    }
+                )
+            else:
+                passed += 1
+
+    if total == 0:
+        return None
+
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+    status = "success" if pass_rate == 1.0 else "error"
+    return {
+        "metric": "bridge_stage.audit_presence",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "status": status,
+        "sources": [str(path) for path in paths],
+        "failures": failures,
+        "required_fields": required_fields,
+    }
+
+
+def _type_row_mode_is_dual(value: Any) -> bool:
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        return normalized in {"dual", "dual-write", "dualwrite", "ty-dual-write"}
+    return False
+
+
+def collect_typeck_debug_metric(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
+    total = 0
+    passed = 0
+    failures: List[Dict[str, Any]] = []
+    sources: Set[str] = set()
+
+    for diag_path in paths:
+        case_dir = diag_path.parent
+        typeck_dir = case_dir / "typeck"
+        if not typeck_dir.is_dir():
+            continue
+        rust_debug = typeck_dir / "typeck-debug.rust.json"
+        ocaml_debug = typeck_dir / "typeck-debug.ocaml.json"
+        requirements = typeck_dir / "requirements.json"
+        if not requirements.exists():
+            continue
+
+        total += 1
+        sources.add(str(typeck_dir))
+        missing: List[str] = []
+        try:
+            rust_payload = load_json(rust_debug)
+        except Exception:
+            rust_payload = None
+        try:
+            ocaml_payload = load_json(ocaml_debug) if ocaml_debug.exists() else None
+        except Exception:
+            ocaml_payload = None
+
+        if rust_payload is None:
+            missing.append("typeck-debug.rust.json")
+        if ocaml_payload is None:
+            missing.append("typeck-debug.ocaml.json")
+        rust_mode = (
+            rust_payload.get("type_row_mode") if isinstance(rust_payload, dict) else None
+        )
+        ocaml_mode = (
+            ocaml_payload.get("type_row_mode")
+            if isinstance(ocaml_payload, dict)
+            else None
+        )
+        if rust_mode is not None and not _type_row_mode_is_dual(rust_mode):
+            missing.append("type_row_mode.rust")
+        if ocaml_payload is not None and not _type_row_mode_is_dual(ocaml_mode):
+            missing.append("type_row_mode.ocaml")
+
+        if missing:
+            failures.append(
+                {
+                    "case": case_dir.name,
+                    "typeck_dir": str(typeck_dir),
+                    "missing": sorted(set(missing)),
+                }
+            )
+        else:
+            passed += 1
+
+    if total == 0:
+        return None
+
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+    status = "success" if pass_rate == 1.0 else "error"
+    return {
+        "metric": "typeck_debug_match",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "status": status,
+        "sources": sorted(sources),
+        "failures": failures,
+    }
+
+
 def collect_effect_syntax_metrics(
     paths: Sequence[Path],
 ) -> Optional[Dict[str, Any]]:
@@ -4454,6 +4675,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     capability_array_metric: Optional[Dict[str, Any]] = None
     plugin_bundle_metric: Optional[Dict[str, Any]] = None
     effects_metric: Optional[Dict[str, Any]] = None
+    effect_stage_metric: Optional[Dict[str, Any]] = None
+    bridge_stage_metric: Optional[Dict[str, Any]] = None
+    typeck_debug_metric: Optional[Dict[str, Any]] = None
     type_inference_metric: Optional[Dict[str, Any]] = None
     value_restriction_legacy_metric: Optional[Dict[str, Any]] = None
     typeclass_metrics: Optional[Dict[str, Any]] = None
@@ -4499,6 +4723,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             guard_metric,
         ) = collect_effect_row_metrics(sources)
         effect_scope_metric = collect_effect_scope_audit_presence(sources)
+        effect_stage_metric = collect_effect_stage_extension_presence(sources)
+        bridge_stage_metric = collect_bridge_stage_extension_presence(sources)
+        typeck_debug_metric = collect_typeck_debug_metric(sources)
         related_metrics_target: List[Dict[str, Any]] = []
         if effects_metric:
             related_metrics_target = effects_metric.setdefault("related_metrics", [])
@@ -4506,6 +4733,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             effect_row_stage_metric,
             type_effect_row_metric,
             effect_scope_metric,
+            effect_stage_metric,
+            bridge_stage_metric,
+            typeck_debug_metric,
         ):
             if not metric:
                 continue
@@ -4691,7 +4921,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                     )
         _enforce(iterator_metrics, "iterator.stage.audit_pass_rate")
         _enforce(capability_array_metric, "effect.capability_array_pass_rate")
+        _enforce(effect_stage_metric, "effect_stage.audit_presence")
+        _enforce(bridge_stage_metric, "bridge_stage.audit_presence")
         _enforce(effects_metric, "syntax.effect_construct_acceptance")
+        _enforce(typeck_debug_metric, "typeck_debug_match")
         _enforce(type_inference_metric, "type_inference.value_restriction_violation")
         _enforce(typeclass_metrics, "typeclass.metadata_pass_rate")
         if isinstance(typeclass_metrics, dict):
