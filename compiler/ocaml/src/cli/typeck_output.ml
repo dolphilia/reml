@@ -120,19 +120,19 @@ let typeck_debug_json ~runtime_stage ~type_config ~stats =
       ("stats", `Assoc stats_json);
     ]
 
-let emit_debug_only ~type_config ~runtime_stage ~stats ~debug_path =
-  match debug_path with
-  | Some path ->
-      let json = typeck_debug_json ~runtime_stage ~type_config ~stats in
-      write_json ~path json
-  | None -> ()
-
 let write_json ~path json =
   ensure_parent_directory path;
   let channel = open_out path in
   Yojson.Basic.pretty_to_channel channel json;
   output_char channel '\n';
   close_out channel
+
+let emit_debug_only ~type_config ~runtime_stage ~stats ~debug_path =
+  match debug_path with
+  | Some path ->
+      let json = typeck_debug_json ~runtime_stage ~type_config ~stats in
+      write_json ~path json
+  | None -> ()
 
 let emit ~input ~typed_ast ~type_config ~runtime_stage ~stats
     ~typed_ast_path ~constraints_path ~debug_path ~effects_metrics_path =

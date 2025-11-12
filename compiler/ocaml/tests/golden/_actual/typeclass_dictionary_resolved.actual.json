@@ -2,35 +2,64 @@
   "diagnostics": [
     {
       "severity": "error",
-      "message": "構文エラー: 入力を解釈できません",
+      "message": "Eq 辞書を Core IR へ渡して監査ログへ記録しました",
       "schema_version": "2.0.0-draft",
       "location": {
-        "file": "parser-example.reml",
-        "line": 3,
-        "column": 12,
-        "endLine": 3,
-        "endColumn": 12
+        "file": "dict.reml",
+        "line": 5,
+        "column": 7,
+        "endLine": 5,
+        "endColumn": 18
       },
-      "code": "parser.expected_token",
-      "codes": [ "parser.expected_token", "parser.recovery.pending" ],
-      "domain": "parser",
+      "code": "typeclass.dictionary.resolved",
+      "codes": [ "typeclass.dictionary.resolved" ],
+      "domain": "type",
       "timestamp": "1970-01-01T00:00:00Z",
       "extensions": {
-        "parse": {
-          "input_name": "parser-example.reml",
-          "stage_trace": [],
-          "parser_id": {
-            "namespace": "menhir",
-            "name": "compilation_unit",
-            "ordinal": 0,
-            "origin": "static",
-            "fingerprint": "859967339"
-          }
-        },
         "diagnostic.v2": {
           "timestamp": "1970-01-01T00:00:00Z",
-          "codes": [ "parser.expected_token", "parser.recovery.pending" ]
+          "codes": [ "typeclass.dictionary.resolved" ]
         },
+        "typeclass": {
+          "trait": "Eq",
+          "type_args": [ "i64" ],
+          "constraint": "Eq<i64>",
+          "resolution_state": "resolved",
+          "dictionary": {
+            "kind": "implicit",
+            "identifier": "Eq",
+            "trait": "Eq",
+            "type_args": [ "i64" ],
+            "repr": "DictImplicit(Eq, [i64])"
+          },
+          "candidates": [],
+          "pending": [],
+          "generalized_typevars": [],
+          "graph": { "export_dot": null },
+          "stage": null
+        },
+        "typeclass.trait": "Eq",
+        "typeclass.type_args": [ "i64" ],
+        "typeclass.constraint": "Eq<i64>",
+        "typeclass.resolution_state": "resolved",
+        "typeclass.dictionary": {
+          "kind": "implicit",
+          "identifier": "Eq",
+          "trait": "Eq",
+          "type_args": [ "i64" ],
+          "repr": "DictImplicit(Eq, [i64])"
+        },
+        "typeclass.candidates": [],
+        "typeclass.pending": [],
+        "typeclass.generalized_typevars": [],
+        "typeclass.graph.export_dot": null,
+        "typeclass.span.start": 58,
+        "typeclass.span.end": 69,
+        "typeclass.dictionary.kind": "implicit",
+        "typeclass.dictionary.identifier": "Eq",
+        "typeclass.dictionary.trait": "Eq",
+        "typeclass.dictionary.type_args": [ "i64" ],
+        "typeclass.dictionary.repr": "DictImplicit(Eq, [i64])",
         "effect.required_capabilities": [],
         "effect.stage.required_capabilities": [],
         "effect.actual_capabilities": [],
@@ -68,31 +97,40 @@
         }
       },
       "audit_metadata": {
-        "parse.input_name": "parser-example.reml",
-        "parser.expected.alternatives": 3,
-        "parser.core.rule.namespace": "menhir",
-        "parser.core.rule.name": "compilation_unit",
-        "parser.core.rule.ordinal": 0,
-        "parser.core.rule.origin": "static",
-        "parser.core.rule.fingerprint": "859967339",
-        "event.kind": "parser.expected_token",
-        "event.domain": "parser",
-        "cli.audit_id": "cli/19700101T000000Z#0",
+        "event.kind": "typeclass.dictionary.resolved",
+        "event.domain": "type",
         "audit.policy.version": "phase2.5.audit.v1",
         "audit.channel": "cli",
         "audit.build_id": "19700101T000000Z",
         "audit.sequence": 0,
         "audit.source.workspace": ".",
+        "cli.audit_id": "22222222-2222-2222-2222-222222222222",
         "cli.change_set": {
-          "policy": "phase2.5.audit.v1",
-          "origin": "cli",
-          "source": {
-            "build_id": "19700101T000000Z",
-            "workspace": ".",
-            "sequence": 0
-          },
-          "items": [ { "kind": "input", "path": "parser-example.reml" } ]
+          "command": "typeclass-diagnostic-test",
+          "input": "dict.reml"
         },
+        "typeclass.trait": "Eq",
+        "typeclass.type_args": [ "i64" ],
+        "typeclass.constraint": "Eq<i64>",
+        "typeclass.resolution_state": "resolved",
+        "typeclass.dictionary": {
+          "kind": "implicit",
+          "identifier": "Eq",
+          "trait": "Eq",
+          "type_args": [ "i64" ],
+          "repr": "DictImplicit(Eq, [i64])"
+        },
+        "typeclass.candidates": [],
+        "typeclass.pending": [],
+        "typeclass.generalized_typevars": [],
+        "typeclass.graph.export_dot": null,
+        "typeclass.span.start": 58,
+        "typeclass.span.end": 69,
+        "typeclass.dictionary.kind": "implicit",
+        "typeclass.dictionary.identifier": "Eq",
+        "typeclass.dictionary.trait": "Eq",
+        "typeclass.dictionary.type_args": [ "i64" ],
+        "typeclass.dictionary.repr": "DictImplicit(Eq, [i64])",
         "schema.version": "1.1",
         "audit.timestamp": "1970-01-01T00:00:00Z",
         "effect.required_capabilities": [],
@@ -169,46 +207,10 @@
               "identifier_profile": "unicode"
             }
           }
-        },
-        "parser.core.rule": {
-          "fingerprint": "859967339",
-          "origin": "static",
-          "ordinal": 0,
-          "name": "compilation_unit",
-          "namespace": "menhir"
-        },
-        "parse": {
-          "core": {
-            "rule": {
-              "fingerprint": "859967339",
-              "origin": "static",
-              "ordinal": 0,
-              "name": "compilation_unit",
-              "namespace": "menhir"
-            }
-          }
         }
       },
       "audit": {
         "metadata": {
-          "parse": {
-            "core": {
-              "rule": {
-                "fingerprint": "859967339",
-                "origin": "static",
-                "ordinal": 0,
-                "name": "compilation_unit",
-                "namespace": "menhir"
-              }
-            }
-          },
-          "parser.core.rule": {
-            "fingerprint": "859967339",
-            "origin": "static",
-            "ordinal": 0,
-            "name": "compilation_unit",
-            "namespace": "menhir"
-          },
           "parser.runconfig": {
             "packrat": false,
             "left_recursion": "auto",
@@ -284,55 +286,48 @@
           "effect.actual_capabilities": [],
           "effect.stage.required_capabilities": [],
           "effect.required_capabilities": [],
-          "cli.change_set": {
-            "policy": "phase2.5.audit.v1",
-            "origin": "cli",
-            "source": {
-              "build_id": "19700101T000000Z",
-              "workspace": ".",
-              "sequence": 0
-            },
-            "items": [ { "kind": "input", "path": "parser-example.reml" } ]
+          "typeclass.dictionary.repr": "DictImplicit(Eq, [i64])",
+          "typeclass.dictionary.type_args": [ "i64" ],
+          "typeclass.dictionary.trait": "Eq",
+          "typeclass.dictionary.identifier": "Eq",
+          "typeclass.dictionary.kind": "implicit",
+          "typeclass.span.end": 69,
+          "typeclass.span.start": 58,
+          "typeclass.graph.export_dot": null,
+          "typeclass.generalized_typevars": [],
+          "typeclass.pending": [],
+          "typeclass.candidates": [],
+          "typeclass.dictionary": {
+            "kind": "implicit",
+            "identifier": "Eq",
+            "trait": "Eq",
+            "type_args": [ "i64" ],
+            "repr": "DictImplicit(Eq, [i64])"
           },
+          "typeclass.resolution_state": "resolved",
+          "typeclass.constraint": "Eq<i64>",
+          "typeclass.type_args": [ "i64" ],
+          "typeclass.trait": "Eq",
+          "cli.change_set": {
+            "command": "typeclass-diagnostic-test",
+            "input": "dict.reml"
+          },
+          "cli.audit_id": "22222222-2222-2222-2222-222222222222",
           "audit.source.workspace": ".",
           "audit.sequence": 0,
           "audit.build_id": "19700101T000000Z",
           "audit.channel": "cli",
           "audit.policy.version": "phase2.5.audit.v1",
-          "cli.audit_id": "cli/19700101T000000Z#0",
-          "event.domain": "parser",
-          "event.kind": "parser.expected_token",
-          "parser.core.rule.fingerprint": "859967339",
-          "parser.core.rule.origin": "static",
-          "parser.core.rule.ordinal": 0,
-          "parser.core.rule.name": "compilation_unit",
-          "parser.core.rule.namespace": "menhir",
-          "parser.expected.alternatives": 3,
-          "parse.input_name": "parser-example.reml",
+          "event.domain": "type",
+          "event.kind": "typeclass.dictionary.resolved",
           "audit.timestamp": "1970-01-01T00:00:00Z",
           "schema.version": "1.1"
         },
-        "audit_id": "cli/19700101T000000Z#0",
+        "audit_id": "22222222-2222-2222-2222-222222222222",
         "change_set": {
-          "policy": "phase2.5.audit.v1",
-          "origin": "cli",
-          "source": {
-            "build_id": "19700101T000000Z",
-            "workspace": ".",
-            "sequence": 0
-          },
-          "items": [ { "kind": "input", "path": "parser-example.reml" } ]
+          "command": "typeclass-diagnostic-test",
+          "input": "dict.reml"
         }
-      },
-      "expected": {
-        "locale_args": [ "else", ")", "," ],
-        "humanized": "ここで`else`、`)` または `,`のいずれかが必要です",
-        "message_key": "parse.expected",
-        "alternatives": [
-          { "kind": "keyword", "value": "else" },
-          { "kind": "token", "value": ")" },
-          { "kind": "token", "value": "," }
-        ]
       }
     }
   ]

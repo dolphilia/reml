@@ -36,6 +36,7 @@
           "extensions": {
             "stream": {
               "enabled": false,
+              "packrat_enabled": false,
               "checkpoint": "unspecified",
               "resume_hint": "unspecified",
               "demand_min_bytes": 0,
@@ -43,6 +44,7 @@
               "chunk_size": 0,
               "flow": {
                 "policy": "auto",
+                "checkpoints_closed": 0,
                 "backpressure": { "max_lag_bytes": 0 }
               }
             },
@@ -86,9 +88,11 @@
         "parser.runconfig.extensions.stream.demand_min_bytes": 0,
         "parser.runconfig.extensions.stream.resume_hint": "unspecified",
         "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.packrat_enabled": false,
         "parser.runconfig.extensions.stream.enabled": false,
         "parser.runconfig.extensions.stream": {
           "enabled": false,
+          "packrat_enabled": false,
           "checkpoint": "unspecified",
           "resume_hint": "unspecified",
           "demand_min_bytes": 0,
@@ -96,6 +100,7 @@
           "chunk_size": 0,
           "flow": {
             "policy": "auto",
+            "checkpoints_closed": 0,
             "backpressure": { "max_lag_bytes": 0 }
           }
         },
@@ -129,6 +134,7 @@
           "extensions": {
             "stream": {
               "enabled": false,
+              "packrat_enabled": false,
               "checkpoint": "unspecified",
               "resume_hint": "unspecified",
               "demand_min_bytes": 0,
@@ -136,6 +142,7 @@
               "chunk_size": 0,
               "flow": {
                 "policy": "auto",
+                "checkpoints_closed": 0,
                 "backpressure": { "max_lag_bytes": 0 }
               }
             },
@@ -160,6 +167,7 @@
             "extensions": {
               "stream": {
                 "enabled": false,
+                "packrat_enabled": false,
                 "checkpoint": "unspecified",
                 "resume_hint": "unspecified",
                 "demand_min_bytes": 0,
@@ -167,6 +175,7 @@
                 "chunk_size": 0,
                 "flow": {
                   "policy": "auto",
+                  "checkpoints_closed": 0,
                   "backpressure": { "max_lag_bytes": 0 }
                 }
               },
@@ -198,6 +207,7 @@
           "parser.runconfig.extensions.recover.sync_tokens": [],
           "parser.runconfig.extensions.stream": {
             "enabled": false,
+            "packrat_enabled": false,
             "checkpoint": "unspecified",
             "resume_hint": "unspecified",
             "demand_min_bytes": 0,
@@ -205,10 +215,12 @@
             "chunk_size": 0,
             "flow": {
               "policy": "auto",
+              "checkpoints_closed": 0,
               "backpressure": { "max_lag_bytes": 0 }
             }
           },
           "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.packrat_enabled": false,
           "parser.runconfig.extensions.stream.checkpoint": "unspecified",
           "parser.runconfig.extensions.stream.resume_hint": "unspecified",
           "parser.runconfig.extensions.stream.demand_min_bytes": 0,
@@ -299,6 +311,7 @@
           "extensions": {
             "stream": {
               "enabled": false,
+              "packrat_enabled": false,
               "checkpoint": "unspecified",
               "resume_hint": "unspecified",
               "demand_min_bytes": 0,
@@ -306,6 +319,7 @@
               "chunk_size": 0,
               "flow": {
                 "policy": "auto",
+                "checkpoints_closed": 0,
                 "backpressure": { "max_lag_bytes": 0 }
               }
             },
@@ -349,9 +363,11 @@
         "parser.runconfig.extensions.stream.demand_min_bytes": 0,
         "parser.runconfig.extensions.stream.resume_hint": "unspecified",
         "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.packrat_enabled": false,
         "parser.runconfig.extensions.stream.enabled": false,
         "parser.runconfig.extensions.stream": {
           "enabled": false,
+          "packrat_enabled": false,
           "checkpoint": "unspecified",
           "resume_hint": "unspecified",
           "demand_min_bytes": 0,
@@ -359,6 +375,7 @@
           "chunk_size": 0,
           "flow": {
             "policy": "auto",
+            "checkpoints_closed": 0,
             "backpressure": { "max_lag_bytes": 0 }
           }
         },
@@ -392,6 +409,7 @@
           "extensions": {
             "stream": {
               "enabled": false,
+              "packrat_enabled": false,
               "checkpoint": "unspecified",
               "resume_hint": "unspecified",
               "demand_min_bytes": 0,
@@ -399,6 +417,7 @@
               "chunk_size": 0,
               "flow": {
                 "policy": "auto",
+                "checkpoints_closed": 0,
                 "backpressure": { "max_lag_bytes": 0 }
               }
             },
@@ -423,6 +442,7 @@
             "extensions": {
               "stream": {
                 "enabled": false,
+                "packrat_enabled": false,
                 "checkpoint": "unspecified",
                 "resume_hint": "unspecified",
                 "demand_min_bytes": 0,
@@ -430,6 +450,7 @@
                 "chunk_size": 0,
                 "flow": {
                   "policy": "auto",
+                  "checkpoints_closed": 0,
                   "backpressure": { "max_lag_bytes": 0 }
                 }
               },
@@ -461,6 +482,7 @@
           "parser.runconfig.extensions.recover.sync_tokens": [],
           "parser.runconfig.extensions.stream": {
             "enabled": false,
+            "packrat_enabled": false,
             "checkpoint": "unspecified",
             "resume_hint": "unspecified",
             "demand_min_bytes": 0,
@@ -468,10 +490,12 @@
             "chunk_size": 0,
             "flow": {
               "policy": "auto",
+              "checkpoints_closed": 0,
               "backpressure": { "max_lag_bytes": 0 }
             }
           },
           "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.packrat_enabled": false,
           "parser.runconfig.extensions.stream.checkpoint": "unspecified",
           "parser.runconfig.extensions.stream.resume_hint": "unspecified",
           "parser.runconfig.extensions.stream.demand_min_bytes": 0,

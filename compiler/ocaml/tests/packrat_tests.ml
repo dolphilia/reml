@@ -90,7 +90,12 @@ let test_core_rule_metadata () =
   | None ->
       fail desc "parser.core.rule.ordinal が監査メタデータに存在しません");
   ignore (Extensions.get "parser.core.rule.fingerprint" audit_metadata);
-  (match Extensions.get "parser" audit_metadata with
+  let parser_metadata =
+    match Extensions.get "parser" audit_metadata with
+    | Some value -> Some value
+    | None -> Extensions.get "parse" audit_metadata
+  in
+  (match parser_metadata with
   | Some (`Assoc parser_fields) -> (
       match List.assoc_opt "core" parser_fields with
       | Some (`Assoc core_fields) -> (
