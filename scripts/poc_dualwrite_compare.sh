@@ -641,6 +641,28 @@ JSON
   ensure_effects_metrics_artifact "${case_dir}" "${frontend}"
 }
 
+run_typeck_debug_gate() {
+  local case_dir="$1"
+  local diag_path="$2"
+  local typeck_dir="${case_dir}/typeck"
+  local metrics_path="${typeck_dir}/typeck-debug.metrics.json"
+  local err_path="${typeck_dir}/typeck-debug.metrics.err.log"
+
+  mkdir -p "${typeck_dir}"
+  if "${COLLECT_METRICS_SCRIPT}" \
+      --section effects \
+      --source "${diag_path}" \
+      --require-success \
+      > "${metrics_path}" 2> "${err_path}"
+  then
+    rm -f "${err_path}"
+    return 0
+  fi
+
+  printf '!! typeck_debug_match gate failed for %s (see %s)\n' "${case_dir}" "${err_path}" >&2
+  return 1
+}
+
 record_typeck_command() {
   local output_path="$1"
   local cwd="$2"
@@ -1379,6 +1401,10 @@ PY
         "${case_dir}/effects/effects-metrics.ocaml.json" \
         "${case_dir}/effects/effects-metrics.rust.json" \
         "${case_dir}/effects/effects-metrics.diff.json"
+      if ! run_typeck_debug_gate "${case_dir}" "${rust_diag_path}"; then
+        case_gating="false"
+        metrics_ok="false"
+      fi
     fi
 
     if [[ "${type_effect_case}" == "true" ]]; then
