@@ -1,0 +1,16 @@
+{
+  "case": "type_condition_literal_bool",
+  "frontend": "ocaml",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/type_condition_literal_bool/diagnostics.ocaml.json",
+  "diagnostic_count": 1,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 0,
+      "expected_tokens": []
+    }
+  ],
+  "first_expected_tokens": [],
+  "first_diagnostic_index": null,
+  "total_expected_token_count": 0
+}

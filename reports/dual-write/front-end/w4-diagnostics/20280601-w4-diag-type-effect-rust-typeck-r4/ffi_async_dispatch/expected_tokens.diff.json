@@ -1,0 +1,39 @@
+{
+  "case": "ffi_async_dispatch",
+  "match": false,
+  "ocaml_count": 0,
+  "rust_count": 2,
+  "differences": [
+    {
+      "index": 0,
+      "ocaml": null,
+      "rust": {
+        "token": "effect",
+        "hint": "keyword"
+      }
+    },
+    {
+      "index": 1,
+      "ocaml": null,
+      "rust": {
+        "token": "fn",
+        "hint": "keyword"
+      }
+    }
+  ],
+  "ocaml_tokens": [],
+  "rust_tokens": [
+    {
+      "token": "effect",
+      "hint": "keyword"
+    },
+    {
+      "token": "fn",
+      "hint": "keyword"
+    }
+  ],
+  "ocaml_first_index": null,
+  "rust_first_index": 41,
+  "ocaml_payload_present": true,
+  "rust_payload_present": true
+}

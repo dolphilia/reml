@@ -1,0 +1,21 @@
+{
+  "case": "effect_residual_leak",
+  "frontend": "rust",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_residual_leak/diagnostics.rust.json",
+  "diagnostic_count": 2,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 1,
+      "token_count": 0,
+      "expected_tokens": []
+    }
+  ],
+  "first_expected_tokens": [],
+  "first_diagnostic_index": null,
+  "total_expected_token_count": 0
+}

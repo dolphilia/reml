@@ -1,0 +1,10 @@
+| case | source | gating | schema | metrics | diag_match | ocaml_diag | rust_diag |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| effect_residual_leak | inline | ❌ | ✅ | ❌ | ❌ | 1 | 3 |
+| effect_stage_cli_override | inline | ❌ | ✅ | ❌ | ❌ | 1 | 4 |
+| ffi_async_dispatch | examples/ffi/macos/ffi_dispatch_async.reml | ❌ | ✅ | ❌ | ❌ | 0 | 20 |
+| ffi_ownership_mismatch | examples/ffi/windows/ownership_transfer.reml | ❌ | ✅ | ❌ | ❌ | 1 | 21 |
+| ffi_stage_messagebox | examples/ffi/windows/messagebox.reml | ❌ | ✅ | ❌ | ❌ | 1 | 43 |
+| recover_missing_semicolon | inline | ❌ | ✅ | ❌ | ✅ | 1 | 1 |
+| type_condition_bool | inline | ❌ | ✅ | ❌ | ✅ | 1 | 1 |
+| type_condition_literal_bool | inline | ❌ | ✅ | ❌ | ✅ | 1 | 1 |

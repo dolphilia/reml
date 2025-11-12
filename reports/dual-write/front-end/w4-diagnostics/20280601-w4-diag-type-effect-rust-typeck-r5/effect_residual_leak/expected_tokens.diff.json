@@ -1,0 +1,47 @@
+{
+  "case": "effect_residual_leak",
+  "match": false,
+  "ocaml_count": 1,
+  "rust_count": 2,
+  "differences": [
+    {
+      "index": 0,
+      "ocaml": {
+        "token": ":",
+        "hint": "token"
+      },
+      "rust": {
+        "token": ")",
+        "hint": "token"
+      }
+    },
+    {
+      "index": 1,
+      "ocaml": null,
+      "rust": {
+        "token": ",",
+        "hint": "token"
+      }
+    }
+  ],
+  "ocaml_tokens": [
+    {
+      "token": ":",
+      "hint": "token"
+    }
+  ],
+  "rust_tokens": [
+    {
+      "token": ")",
+      "hint": "token"
+    },
+    {
+      "token": ",",
+      "hint": "token"
+    }
+  ],
+  "ocaml_first_index": 0,
+  "rust_first_index": 2,
+  "ocaml_payload_present": true,
+  "rust_payload_present": true
+}

@@ -1,0 +1,13 @@
+{
+  "effect_context": {
+    "default_stage": "beta",
+    "capability_stages": [
+      {
+        "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "stage": "beta"
+      }
+    ]
+  },
+  "type_row_mode": "dual-write",
+  "stats": { "unify_calls": 0, "ast_nodes": 0, "token_count": 0 }
+}

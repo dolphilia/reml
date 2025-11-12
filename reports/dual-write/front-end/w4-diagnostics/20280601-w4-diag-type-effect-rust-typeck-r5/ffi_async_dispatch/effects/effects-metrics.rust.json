@@ -1,0 +1,194 @@
+{
+  "metrics": {
+    "typed_functions": 1,
+    "typed_exprs": 1,
+    "constraints_total": 0,
+    "constraint_breakdown": {},
+    "unresolved_identifiers": 0,
+    "call_sites": 0,
+    "binary_expressions": 0
+  },
+  "typed_functions": [
+    {
+      "name": "main",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    }
+  ],
+  "extensions": {
+    "bridge": {
+      "capability": "macos.dispatch_queue",
+      "stage": {
+        "actual": "beta",
+        "actual_capabilities": [
+          {
+            "capability": "macos.dispatch_queue",
+            "stage": "beta"
+          }
+        ],
+        "capability": "macos.dispatch_queue",
+        "required": "beta",
+        "required_capabilities": [
+          "macos.dispatch_queue"
+        ],
+        "trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ]
+      }
+    },
+    "capability": {
+      "detail": [
+        {
+          "capability": "macos.dispatch_queue",
+          "stage": "beta"
+        }
+      ],
+      "ids": [
+        "macos.dispatch_queue"
+      ],
+      "primary": "macos.dispatch_queue",
+      "required_capabilities": [
+        "macos.dispatch_queue"
+      ],
+      "stage": {
+        "actual": "beta",
+        "required": "beta"
+      }
+    },
+    "effect.actual_capabilities": [
+      {
+        "capability": "macos.dispatch_queue",
+        "stage": "beta"
+      }
+    ],
+    "effect.capabilities": [
+      "macos.dispatch_queue"
+    ],
+    "effect.capability": "macos.dispatch_queue",
+    "effect.required_capabilities": [
+      "macos.dispatch_queue"
+    ],
+    "effect.stage.actual": "beta",
+    "effect.stage.actual_capabilities": [
+      {
+        "capability": "macos.dispatch_queue",
+        "stage": "beta"
+      }
+    ],
+    "effect.stage.required": "beta",
+    "effect.stage.required_capabilities": [
+      "macos.dispatch_queue"
+    ],
+    "effects": {
+      "capabilities": [
+        "macos.dispatch_queue"
+      ],
+      "capability": "macos.dispatch_queue",
+      "stage": {
+        "actual": "beta",
+        "actual_capabilities": [
+          {
+            "capability": "macos.dispatch_queue",
+            "stage": "beta"
+          }
+        ],
+        "capability": "macos.dispatch_queue",
+        "required": "beta",
+        "required_capabilities": [
+          "macos.dispatch_queue"
+        ],
+        "trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ]
+      },
+      "stage_trace": [
+        {
+          "note": "--effect-stage",
+          "source": "cli_option",
+          "stage": "beta"
+        },
+        {
+          "source": "runtime",
+          "stage": "beta"
+        }
+      ]
+    }
+  },
+  "audit_metadata": {
+    "bridge.stage.actual_capabilities": [
+      {
+        "capability": "macos.dispatch_queue",
+        "stage": "beta"
+      }
+    ],
+    "bridge.stage.capability": "macos.dispatch_queue",
+    "bridge.stage.required_capabilities": [
+      "macos.dispatch_queue"
+    ],
+    "capability.ids": [
+      "macos.dispatch_queue"
+    ],
+    "effect.actual_capabilities": [
+      {
+        "capability": "macos.dispatch_queue",
+        "stage": "beta"
+      }
+    ],
+    "effect.capability": "macos.dispatch_queue",
+    "effect.required_capabilities": [
+      "macos.dispatch_queue"
+    ],
+    "effect.stage.actual": "beta",
+    "effect.stage.actual_capabilities": [
+      {
+        "capability": "macos.dispatch_queue",
+        "stage": "beta"
+      }
+    ],
+    "effect.stage.required": "beta",
+    "effect.stage.required_capabilities": [
+      "macos.dispatch_queue"
+    ],
+    "effect.stage.trace": [
+      {
+        "note": "--effect-stage",
+        "source": "cli_option",
+        "stage": "beta"
+      },
+      {
+        "source": "runtime",
+        "stage": "beta"
+      }
+    ],
+    "stage.trace": [
+      {
+        "note": "--effect-stage",
+        "source": "cli_option",
+        "stage": "beta"
+      },
+      {
+        "source": "runtime",
+        "stage": "beta"
+      }
+    ]
+  }
+}

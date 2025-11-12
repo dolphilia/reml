@@ -1,0 +1,122 @@
+{
+  "metrics": {
+    "typed_functions": 1,
+    "typed_exprs": 1,
+    "constraints_total": 0,
+    "constraint_breakdown": {},
+    "unresolved_identifiers": 0,
+    "call_sites": 0,
+    "binary_expressions": 0
+  },
+  "typed_functions": [
+    {
+      "name": "main",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    }
+  ],
+  "extensions": {
+    "bridge": {
+      "stage": {
+        "actual": "at_least:stable",
+        "actual_capabilities": [],
+        "required": "at_least:beta",
+        "required_capabilities": [],
+        "trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "at_least:beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "at_least:stable"
+          }
+        ]
+      }
+    },
+    "capability": {
+      "detail": [],
+      "ids": [],
+      "required_capabilities": [],
+      "stage": {
+        "actual": "at_least:stable",
+        "required": "at_least:beta"
+      }
+    },
+    "effect.actual_capabilities": [],
+    "effect.capabilities": [],
+    "effect.required_capabilities": [],
+    "effect.stage.actual": "at_least:stable",
+    "effect.stage.actual_capabilities": [],
+    "effect.stage.required": "at_least:beta",
+    "effect.stage.required_capabilities": [],
+    "effects": {
+      "capabilities": [],
+      "stage": {
+        "actual": "at_least:stable",
+        "actual_capabilities": [],
+        "required": "at_least:beta",
+        "required_capabilities": [],
+        "trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "at_least:beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "at_least:stable"
+          }
+        ]
+      },
+      "stage_trace": [
+        {
+          "note": "--effect-stage",
+          "source": "cli_option",
+          "stage": "at_least:beta"
+        },
+        {
+          "source": "runtime",
+          "stage": "at_least:stable"
+        }
+      ]
+    }
+  },
+  "audit_metadata": {
+    "bridge.stage.actual_capabilities": [],
+    "bridge.stage.required_capabilities": [],
+    "capability.ids": [],
+    "effect.actual_capabilities": [],
+    "effect.required_capabilities": [],
+    "effect.stage.actual": "at_least:stable",
+    "effect.stage.actual_capabilities": [],
+    "effect.stage.required": "at_least:beta",
+    "effect.stage.required_capabilities": [],
+    "effect.stage.trace": [
+      {
+        "note": "--effect-stage",
+        "source": "cli_option",
+        "stage": "at_least:beta"
+      },
+      {
+        "source": "runtime",
+        "stage": "at_least:stable"
+      }
+    ],
+    "stage.trace": [
+      {
+        "note": "--effect-stage",
+        "source": "cli_option",
+        "stage": "at_least:beta"
+      },
+      {
+        "source": "runtime",
+        "stage": "at_least:stable"
+      }
+    ]
+  }
+}

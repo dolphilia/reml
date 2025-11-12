@@ -1,0 +1,13 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r6/type_condition_literal_bool/input.reml",
+  "functions": [
+    {
+      "name": "literal_guard",
+      "param_types": [],
+      "return_type": "Int",
+      "typed_exprs": 4,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    }
+  ]
+}

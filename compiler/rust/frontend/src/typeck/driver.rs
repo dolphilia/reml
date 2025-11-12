@@ -12,11 +12,7 @@ use crate::span::Span;
 pub struct TypecheckDriver;
 
 impl TypecheckDriver {
-    pub fn infer_module(
-        module: &Module,
-        source: &str,
-        config: &TypecheckConfig,
-    ) -> TypecheckReport {
+    pub fn infer_module(module: &Module, config: &TypecheckConfig) -> TypecheckReport {
         let mut metrics = TypecheckMetrics::default();
         let mut functions = Vec::new();
         let mut violations = Vec::new();
@@ -56,7 +52,7 @@ impl TypecheckDriver {
             eprintln!("[TRACE] typecheck.finish");
         }
 
-        violations.extend(detect_residual_leaks(source, config));
+        violations.extend(detect_residual_leaks_from_module(module, config));
 
         TypecheckReport {
             metrics,
@@ -86,7 +82,7 @@ impl TypecheckDriver {
             });
         }
 
-        let violations = detect_residual_leaks(source, config);
+        let violations = detect_residual_leaks_from_source(source, config);
 
         TypecheckReport {
             metrics,
@@ -216,11 +212,7 @@ impl ViolationNote {
 }
 
 impl TypecheckViolation {
-    fn condition_literal_bool(
-        span: Span,
-        actual: SimpleType,
-        function: Option<String>,
-    ) -> Self {
+    fn condition_literal_bool(span: Span, actual: SimpleType, function: Option<String>) -> Self {
         Self {
             kind: TypecheckViolationKind::ConditionLiteralBool,
             code: "E7006",
@@ -300,6 +292,7 @@ fn infer_expr(
     match expr {
         Expr::Int { .. } => SimpleType::Int,
         Expr::Bool { .. } => SimpleType::Bool,
+        Expr::String { .. } => SimpleType::Unknown,
         Expr::Identifier { name, .. } => match env.get(name) {
             Some(ty) => *ty,
             None => {
@@ -326,6 +319,10 @@ fn infer_expr(
             }
             SimpleType::Unknown
         }
+        Expr::Perform { argument, .. } => {
+            let _ = infer_expr(argument, env, stats, metrics, violations, function_name);
+            SimpleType::Unknown
+        }
         Expr::IfElse {
             condition,
             then_branch,
@@ -334,16 +331,9 @@ fn infer_expr(
         } => {
             let condition_ty =
                 infer_expr(condition, env, stats, metrics, violations, function_name);
-            check_bool_condition(
-                condition.span(),
-                condition_ty,
-                violations,
-                function_name,
-            );
-            let then_ty =
-                infer_expr(then_branch, env, stats, metrics, violations, function_name);
-            let else_ty =
-                infer_expr(else_branch, env, stats, metrics, violations, function_name);
+            check_bool_condition(condition.span(), condition_ty, violations, function_name);
+            let then_ty = infer_expr(then_branch, env, stats, metrics, violations, function_name);
+            let else_ty = infer_expr(else_branch, env, stats, metrics, violations, function_name);
             if then_ty == else_ty {
                 then_ty
             } else {
@@ -403,7 +393,76 @@ fn check_bool_condition(
     ));
 }
 
-fn detect_residual_leaks(
+fn detect_residual_leaks_from_module(
+    module: &Module,
+    config: &TypecheckConfig,
+) -> Vec<TypecheckViolation> {
+    if !matches!(config.type_row_mode, TypeRowMode::DualWrite) {
+        return Vec::new();
+    }
+    let mut usages = Vec::new();
+    for function in &module.functions {
+        collect_perform_effects(&function.body, &mut usages);
+    }
+    let mut seen = HashSet::new();
+    usages
+        .into_iter()
+        .filter_map(|(effect, span)| {
+            if seen.insert(effect.clone()) {
+                Some(TypecheckViolation::residual_leak(Some(span), Some(effect)))
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+fn collect_perform_effects(expr: &Expr, usages: &mut Vec<(String, Span)>) {
+    match expr {
+        &Expr::Perform {
+            ref effect,
+            ref argument,
+            ref span,
+        } => {
+            usages.push((effect.clone(), *span));
+            collect_perform_effects(argument.as_ref(), usages);
+        }
+        &Expr::IfElse {
+            ref condition,
+            ref then_branch,
+            ref else_branch,
+            ..
+        } => {
+            collect_perform_effects(condition, usages);
+            collect_perform_effects(then_branch, usages);
+            collect_perform_effects(else_branch, usages);
+        }
+        &Expr::Binary {
+            ref left,
+            ref right,
+            ..
+        } => {
+            collect_perform_effects(left, usages);
+            collect_perform_effects(right, usages);
+        }
+        &Expr::Call {
+            ref callee,
+            ref args,
+            ..
+        } => {
+            collect_perform_effects(callee, usages);
+            for arg in args {
+                collect_perform_effects(arg, usages);
+            }
+        }
+        &Expr::Int { .. }
+        | &Expr::Bool { .. }
+        | &Expr::String { .. }
+        | &Expr::Identifier { .. } => {}
+    }
+}
+
+fn detect_residual_leaks_from_source(
     source: &str,
     config: &TypecheckConfig,
 ) -> Vec<TypecheckViolation> {
@@ -458,7 +517,9 @@ fn find_perform_matches(line: &str) -> Vec<(u32, Option<String>)> {
             let capability = rest
                 .split_whitespace()
                 .next()
-                .map(|token| token.trim_matches(|c: char| c == '(' || c == ')' || c == ',' || c == ';'))
+                .map(|token| {
+                    token.trim_matches(|c: char| c == '(' || c == ')' || c == ',' || c == ';')
+                })
                 .filter(|token| !token.is_empty())
                 .map(|token| token.to_string());
             matches.push((absolute as u32, capability));

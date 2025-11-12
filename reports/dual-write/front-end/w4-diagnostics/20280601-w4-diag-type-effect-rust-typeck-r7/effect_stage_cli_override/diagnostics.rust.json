@@ -1,0 +1,3242 @@
+{
+  "diagnostics": [
+    {
+      "audit": {
+        "audit_id": "cli/20251112T002216Z#0",
+        "change_set": {
+          "items": [
+            {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20280601-w4-diag-type-effect-rust-typeck-r7",
+                "--dualwrite-case-label",
+                "effect_stage_cli_override",
+                "--experimental-effects",
+                "--effect-stage",
+                "beta",
+                "--type-row-mode",
+                "dual-write",
+                "--emit-typeck-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+                "--emit-effects-metrics",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+                "--runtime-capabilities",
+                "docs/spec/3-8-core-runtime-capability.md#samples",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "kind": "cli-command"
+            },
+            {
+              "kind": "input",
+              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+              "target": "rust-poc"
+            }
+          ],
+          "origin": "cli",
+          "policy": "rust.poc.audit.v1",
+          "source": {
+            "args": [
+              "--emit-parse-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+              "--dualwrite-root",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+              "--dualwrite-run-label",
+              "20280601-w4-diag-type-effect-rust-typeck-r7",
+              "--dualwrite-case-label",
+              "effect_stage_cli_override",
+              "--experimental-effects",
+              "--effect-stage",
+              "beta",
+              "--type-row-mode",
+              "dual-write",
+              "--emit-typeck-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+              "--emit-effects-metrics",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+              "--runtime-capabilities",
+              "docs/spec/3-8-core-runtime-capability.md#samples",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+            ],
+            "command": "target/debug/poc_frontend",
+            "workspace": "."
+          }
+        },
+        "metadata": {
+          "audit.channel": "cli",
+          "audit.policy.version": "rust.poc.audit.v1",
+          "audit.timestamp": "2025-11-12T00:22:16Z",
+          "bridge.stage.actual_capabilities": [
+            {
+              "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+              "stage": "beta"
+            }
+          ],
+          "bridge.stage.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "bridge.stage.required_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "capability.ids": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "cli.audit_id": "cli/20251112T002216Z#0",
+          "cli.change_set": {
+            "items": [
+              {
+                "args": [
+                  "--emit-parse-debug",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+                  "--dualwrite-root",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                  "--dualwrite-run-label",
+                  "20280601-w4-diag-type-effect-rust-typeck-r7",
+                  "--dualwrite-case-label",
+                  "effect_stage_cli_override",
+                  "--experimental-effects",
+                  "--effect-stage",
+                  "beta",
+                  "--type-row-mode",
+                  "dual-write",
+                  "--emit-typeck-debug",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+                  "--emit-effects-metrics",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+                  "--runtime-capabilities",
+                  "docs/spec/3-8-core-runtime-capability.md#samples",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+                ],
+                "command": "target/debug/poc_frontend",
+                "kind": "cli-command"
+              },
+              {
+                "kind": "input",
+                "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+                "target": "rust-poc"
+              }
+            ],
+            "origin": "cli",
+            "policy": "rust.poc.audit.v1",
+            "source": {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20280601-w4-diag-type-effect-rust-typeck-r7",
+                "--dualwrite-case-label",
+                "effect_stage_cli_override",
+                "--experimental-effects",
+                "--effect-stage",
+                "beta",
+                "--type-row-mode",
+                "dual-write",
+                "--emit-typeck-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+                "--emit-effects-metrics",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+                "--runtime-capabilities",
+                "docs/spec/3-8-core-runtime-capability.md#samples",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "workspace": "."
+            }
+          },
+          "effect.actual_capabilities": [
+            {
+              "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+              "stage": "beta"
+            }
+          ],
+          "effect.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "effect.required_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "effect.stage.actual": "beta",
+          "effect.stage.actual_capabilities": [
+            {
+              "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+              "stage": "beta"
+            }
+          ],
+          "effect.stage.required": "beta",
+          "effect.stage.required_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "effect.stage.trace": [
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "beta"
+            }
+          ],
+          "event.domain": "parser",
+          "event.kind": "diagnostic",
+          "fingerprint": "rust-poc-0001",
+          "name": "compilation_unit",
+          "namespace": "rust.poc",
+          "origin": "poc_frontend",
+          "parser.core.rule.fingerprint": "rust-poc-0001",
+          "parser.core.rule.name": "compilation_unit",
+          "parser.core.rule.namespace": "rust.poc",
+          "parser.core.rule.ordinal": 0,
+          "parser.core.rule.origin": "poc_frontend",
+          "parser.runconfig": {
+            "extensions": {
+              "config": {
+                "experimental_effects": true,
+                "left_recursion": "off",
+                "legacy_result": true,
+                "merge_warnings": true,
+                "packrat": true,
+                "require_eof": false,
+                "source": "cli",
+                "trace": false
+              },
+              "effects": {
+                "type_row_mode": "ty-dual-write"
+              },
+              "lex": {
+                "identifier_profile": "unicode",
+                "profile": "strict_json"
+              },
+              "recover": {
+                "notes": false,
+                "sync_tokens": []
+              },
+              "stream": {
+                "checkpoint": "unspecified",
+                "chunk_size": 0,
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "enabled": false,
+                "flow": {
+                  "backpressure": {
+                    "max_lag_bytes": 0
+                  },
+                  "checkpoints_closed": 1,
+                  "policy": "auto"
+                },
+                "flow_max_lag": 0,
+                "flow_policy": "auto",
+                "packrat_enabled": true,
+                "resume_hint": "unspecified"
+              }
+            },
+            "runtime_capabilities": [
+              "docs/spec/3-8-core-runtime-capability.md#samples"
+            ],
+            "switches": {
+              "experimental_effects": true,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "trace": false
+            }
+          },
+          "parser.runconfig.extensions.config": {
+            "experimental_effects": true,
+            "left_recursion": "off",
+            "legacy_result": true,
+            "merge_warnings": true,
+            "packrat": true,
+            "require_eof": false,
+            "source": "cli",
+            "trace": false
+          },
+          "parser.runconfig.extensions.config.source": "cli",
+          "parser.runconfig.extensions.lex": {
+            "identifier_profile": "unicode",
+            "profile": "strict_json"
+          },
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.recover": {
+            "notes": false,
+            "sync_tokens": []
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "checkpoint": "unspecified",
+            "chunk_size": 0,
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "enabled": false,
+            "flow": {
+              "backpressure": {
+                "max_lag_bytes": 0
+              },
+              "checkpoints_closed": 1,
+              "policy": "auto"
+            },
+            "flow_max_lag": 0,
+            "flow_policy": "auto",
+            "packrat_enabled": true,
+            "resume_hint": "unspecified"
+          },
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 0,
+          "parser.runconfig.extensions.stream.flow.policy": "auto",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.switches.left_recursion": "off",
+          "parser.runconfig.switches.legacy_result": true,
+          "parser.runconfig.switches.merge_warnings": true,
+          "parser.runconfig.switches.packrat": true,
+          "parser.runconfig.switches.require_eof": false,
+          "parser.runconfig.switches.trace": false,
+          "parser.stream.checkpoint": "unspecified",
+          "parser.stream.demand_min_bytes": 0,
+          "parser.stream.demand_preferred_bytes": 0,
+          "parser.stream.flow.checkpoints_closed": 1,
+          "parser.stream.flow.enabled": false,
+          "parser.stream.flow_max_lag": 0,
+          "parser.stream.flow_policy": "auto",
+          "parser.stream.packrat_enabled": true,
+          "parser.stream.resume_hint": "unspecified",
+          "schema.version": "2.0.0-draft",
+          "stage.trace": [
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "beta"
+            }
+          ]
+        }
+      },
+      "audit_metadata": {
+        "audit.channel": "cli",
+        "audit.policy.version": "rust.poc.audit.v1",
+        "audit.timestamp": "2025-11-12T00:22:16Z",
+        "bridge.stage.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "bridge.stage.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "bridge.stage.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "capability.ids": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "cli.audit_id": "cli/20251112T002216Z#0",
+        "cli.change_set": {
+          "items": [
+            {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20280601-w4-diag-type-effect-rust-typeck-r7",
+                "--dualwrite-case-label",
+                "effect_stage_cli_override",
+                "--experimental-effects",
+                "--effect-stage",
+                "beta",
+                "--type-row-mode",
+                "dual-write",
+                "--emit-typeck-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+                "--emit-effects-metrics",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+                "--runtime-capabilities",
+                "docs/spec/3-8-core-runtime-capability.md#samples",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "kind": "cli-command"
+            },
+            {
+              "kind": "input",
+              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+              "target": "rust-poc"
+            }
+          ],
+          "origin": "cli",
+          "policy": "rust.poc.audit.v1",
+          "source": {
+            "args": [
+              "--emit-parse-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+              "--dualwrite-root",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+              "--dualwrite-run-label",
+              "20280601-w4-diag-type-effect-rust-typeck-r7",
+              "--dualwrite-case-label",
+              "effect_stage_cli_override",
+              "--experimental-effects",
+              "--effect-stage",
+              "beta",
+              "--type-row-mode",
+              "dual-write",
+              "--emit-typeck-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+              "--emit-effects-metrics",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+              "--runtime-capabilities",
+              "docs/spec/3-8-core-runtime-capability.md#samples",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+            ],
+            "command": "target/debug/poc_frontend",
+            "workspace": "."
+          }
+        },
+        "effect.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "effect.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "effect.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effect.stage.actual": "beta",
+        "effect.stage.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "effect.stage.required": "beta",
+        "effect.stage.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effect.stage.trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ],
+        "event.domain": "parser",
+        "event.kind": "diagnostic",
+        "fingerprint": "rust-poc-0001",
+        "name": "compilation_unit",
+        "namespace": "rust.poc",
+        "origin": "poc_frontend",
+        "parser.core.rule.fingerprint": "rust-poc-0001",
+        "parser.core.rule.name": "compilation_unit",
+        "parser.core.rule.namespace": "rust.poc",
+        "parser.core.rule.ordinal": 0,
+        "parser.core.rule.origin": "poc_frontend",
+        "parser.runconfig": {
+          "extensions": {
+            "config": {
+              "experimental_effects": true,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "source": "cli",
+              "trace": false
+            },
+            "effects": {
+              "type_row_mode": "ty-dual-write"
+            },
+            "lex": {
+              "identifier_profile": "unicode",
+              "profile": "strict_json"
+            },
+            "recover": {
+              "notes": false,
+              "sync_tokens": []
+            },
+            "stream": {
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": false,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "checkpoints_closed": 1,
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "packrat_enabled": true,
+              "resume_hint": "unspecified"
+            }
+          },
+          "runtime_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "switches": {
+            "experimental_effects": true,
+            "left_recursion": "off",
+            "legacy_result": true,
+            "merge_warnings": true,
+            "packrat": true,
+            "require_eof": false,
+            "trace": false
+          }
+        },
+        "parser.runconfig.extensions.config": {
+          "experimental_effects": true,
+          "left_recursion": "off",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "source": "cli",
+          "trace": false
+        },
+        "parser.runconfig.extensions.config.source": "cli",
+        "parser.runconfig.extensions.lex": {
+          "identifier_profile": "unicode",
+          "profile": "strict_json"
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.recover": {
+          "notes": false,
+          "sync_tokens": []
+        },
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.stream": {
+          "checkpoint": "unspecified",
+          "chunk_size": 0,
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "enabled": false,
+          "flow": {
+            "backpressure": {
+              "max_lag_bytes": 0
+            },
+            "checkpoints_closed": 1,
+            "policy": "auto"
+          },
+          "flow_max_lag": 0,
+          "flow_policy": "auto",
+          "packrat_enabled": true,
+          "resume_hint": "unspecified"
+        },
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 0,
+        "parser.runconfig.extensions.stream.flow.policy": "auto",
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.switches.left_recursion": "off",
+        "parser.runconfig.switches.legacy_result": true,
+        "parser.runconfig.switches.merge_warnings": true,
+        "parser.runconfig.switches.packrat": true,
+        "parser.runconfig.switches.require_eof": false,
+        "parser.runconfig.switches.trace": false,
+        "parser.stream.checkpoint": "unspecified",
+        "parser.stream.demand_min_bytes": 0,
+        "parser.stream.demand_preferred_bytes": 0,
+        "parser.stream.flow.checkpoints_closed": 1,
+        "parser.stream.flow.enabled": false,
+        "parser.stream.flow_max_lag": 0,
+        "parser.stream.flow_policy": "auto",
+        "parser.stream.packrat_enabled": true,
+        "parser.stream.resume_hint": "unspecified",
+        "schema.version": "2.0.0-draft",
+        "stage.trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ]
+      },
+      "code": null,
+      "domain": "parser",
+      "expected": null,
+      "extensions": {
+        "bridge": {
+          "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "stage": {
+            "actual": "beta",
+            "actual_capabilities": [
+              {
+                "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+                "stage": "beta"
+              }
+            ],
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "required": "beta",
+            "required_capabilities": [
+              "docs/spec/3-8-core-runtime-capability.md#samples"
+            ],
+            "trace": [
+              {
+                "note": "--effect-stage",
+                "source": "cli_option",
+                "stage": "beta"
+              },
+              {
+                "source": "runtime",
+                "stage": "beta"
+              }
+            ]
+          }
+        },
+        "capability": {
+          "detail": [
+            {
+              "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+              "stage": "beta"
+            }
+          ],
+          "ids": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "primary": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "required_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "stage": {
+            "actual": "beta",
+            "required": "beta"
+          }
+        },
+        "diagnostic.v2": {
+          "timestamp": "2025-11-12T00:22:16Z"
+        },
+        "effect.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "effect.capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effect.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "effect.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effect.stage.actual": "beta",
+        "effect.stage.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "effect.stage.required": "beta",
+        "effect.stage.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effects": {
+          "capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "stage": {
+            "actual": "beta",
+            "actual_capabilities": [
+              {
+                "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+                "stage": "beta"
+              }
+            ],
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "required": "beta",
+            "required_capabilities": [
+              "docs/spec/3-8-core-runtime-capability.md#samples"
+            ],
+            "trace": [
+              {
+                "note": "--effect-stage",
+                "source": "cli_option",
+                "stage": "beta"
+              },
+              {
+                "source": "runtime",
+                "stage": "beta"
+              }
+            ]
+          },
+          "stage_trace": [
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "beta"
+            }
+          ]
+        },
+        "parse": {
+          "parser_id": {
+            "fingerprint": "rust-poc-0001",
+            "name": "compilation_unit",
+            "namespace": "rust.poc",
+            "ordinal": 0,
+            "origin": "poc_frontend"
+          }
+        },
+        "runconfig": {
+          "experimental_effects": true,
+          "extensions": {
+            "config": {
+              "experimental_effects": true,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "source": "cli",
+              "trace": false
+            },
+            "lex": {
+              "identifier_profile": "unicode",
+              "profile": "strict_json"
+            },
+            "recover": {
+              "notes": false,
+              "sync_tokens": []
+            },
+            "stream": {
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": false,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "checkpoints_closed": 1,
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "packrat_enabled": true,
+              "resume_hint": "unspecified"
+            }
+          },
+          "left_recursion": "off",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "trace": false
+        }
+      },
+      "location": {
+        "column": 1,
+        "endColumn": 2,
+        "endLine": 2,
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+        "line": 2
+      },
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "column": 1,
+            "endColumn": 2,
+            "endLine": 2,
+            "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+            "line": 2
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "schema_version": "2.0.0-draft",
+      "severity": "error",
+      "timestamp": "2025-11-12T00:22:16Z"
+    },
+    {
+      "audit": {
+        "audit_id": "cli/20251112T002216Z#0",
+        "change_set": {
+          "items": [
+            {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20280601-w4-diag-type-effect-rust-typeck-r7",
+                "--dualwrite-case-label",
+                "effect_stage_cli_override",
+                "--experimental-effects",
+                "--effect-stage",
+                "beta",
+                "--type-row-mode",
+                "dual-write",
+                "--emit-typeck-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+                "--emit-effects-metrics",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+                "--runtime-capabilities",
+                "docs/spec/3-8-core-runtime-capability.md#samples",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "kind": "cli-command"
+            },
+            {
+              "kind": "input",
+              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+              "target": "rust-poc"
+            }
+          ],
+          "origin": "cli",
+          "policy": "rust.poc.audit.v1",
+          "source": {
+            "args": [
+              "--emit-parse-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+              "--dualwrite-root",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+              "--dualwrite-run-label",
+              "20280601-w4-diag-type-effect-rust-typeck-r7",
+              "--dualwrite-case-label",
+              "effect_stage_cli_override",
+              "--experimental-effects",
+              "--effect-stage",
+              "beta",
+              "--type-row-mode",
+              "dual-write",
+              "--emit-typeck-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+              "--emit-effects-metrics",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+              "--runtime-capabilities",
+              "docs/spec/3-8-core-runtime-capability.md#samples",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+            ],
+            "command": "target/debug/poc_frontend",
+            "workspace": "."
+          }
+        },
+        "metadata": {
+          "audit.channel": "cli",
+          "audit.policy.version": "rust.poc.audit.v1",
+          "audit.timestamp": "2025-11-12T00:22:16Z",
+          "bridge.stage.actual_capabilities": [
+            {
+              "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+              "stage": "beta"
+            }
+          ],
+          "bridge.stage.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "bridge.stage.required_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "capability.ids": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "cli.audit_id": "cli/20251112T002216Z#0",
+          "cli.change_set": {
+            "items": [
+              {
+                "args": [
+                  "--emit-parse-debug",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+                  "--dualwrite-root",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                  "--dualwrite-run-label",
+                  "20280601-w4-diag-type-effect-rust-typeck-r7",
+                  "--dualwrite-case-label",
+                  "effect_stage_cli_override",
+                  "--experimental-effects",
+                  "--effect-stage",
+                  "beta",
+                  "--type-row-mode",
+                  "dual-write",
+                  "--emit-typeck-debug",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+                  "--emit-effects-metrics",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+                  "--runtime-capabilities",
+                  "docs/spec/3-8-core-runtime-capability.md#samples",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+                ],
+                "command": "target/debug/poc_frontend",
+                "kind": "cli-command"
+              },
+              {
+                "kind": "input",
+                "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+                "target": "rust-poc"
+              }
+            ],
+            "origin": "cli",
+            "policy": "rust.poc.audit.v1",
+            "source": {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20280601-w4-diag-type-effect-rust-typeck-r7",
+                "--dualwrite-case-label",
+                "effect_stage_cli_override",
+                "--experimental-effects",
+                "--effect-stage",
+                "beta",
+                "--type-row-mode",
+                "dual-write",
+                "--emit-typeck-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+                "--emit-effects-metrics",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+                "--runtime-capabilities",
+                "docs/spec/3-8-core-runtime-capability.md#samples",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "workspace": "."
+            }
+          },
+          "effect.actual_capabilities": [
+            {
+              "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+              "stage": "beta"
+            }
+          ],
+          "effect.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "effect.required_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "effect.stage.actual": "beta",
+          "effect.stage.actual_capabilities": [
+            {
+              "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+              "stage": "beta"
+            }
+          ],
+          "effect.stage.required": "beta",
+          "effect.stage.required_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "effect.stage.trace": [
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "beta"
+            }
+          ],
+          "event.domain": "parser",
+          "event.kind": "diagnostic",
+          "fingerprint": "rust-poc-0001",
+          "name": "compilation_unit",
+          "namespace": "rust.poc",
+          "origin": "poc_frontend",
+          "parser.core.rule.fingerprint": "rust-poc-0001",
+          "parser.core.rule.name": "compilation_unit",
+          "parser.core.rule.namespace": "rust.poc",
+          "parser.core.rule.ordinal": 0,
+          "parser.core.rule.origin": "poc_frontend",
+          "parser.runconfig": {
+            "extensions": {
+              "config": {
+                "experimental_effects": true,
+                "left_recursion": "off",
+                "legacy_result": true,
+                "merge_warnings": true,
+                "packrat": true,
+                "require_eof": false,
+                "source": "cli",
+                "trace": false
+              },
+              "effects": {
+                "type_row_mode": "ty-dual-write"
+              },
+              "lex": {
+                "identifier_profile": "unicode",
+                "profile": "strict_json"
+              },
+              "recover": {
+                "notes": false,
+                "sync_tokens": []
+              },
+              "stream": {
+                "checkpoint": "unspecified",
+                "chunk_size": 0,
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "enabled": false,
+                "flow": {
+                  "backpressure": {
+                    "max_lag_bytes": 0
+                  },
+                  "checkpoints_closed": 1,
+                  "policy": "auto"
+                },
+                "flow_max_lag": 0,
+                "flow_policy": "auto",
+                "packrat_enabled": true,
+                "resume_hint": "unspecified"
+              }
+            },
+            "runtime_capabilities": [
+              "docs/spec/3-8-core-runtime-capability.md#samples"
+            ],
+            "switches": {
+              "experimental_effects": true,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "trace": false
+            }
+          },
+          "parser.runconfig.extensions.config": {
+            "experimental_effects": true,
+            "left_recursion": "off",
+            "legacy_result": true,
+            "merge_warnings": true,
+            "packrat": true,
+            "require_eof": false,
+            "source": "cli",
+            "trace": false
+          },
+          "parser.runconfig.extensions.config.source": "cli",
+          "parser.runconfig.extensions.lex": {
+            "identifier_profile": "unicode",
+            "profile": "strict_json"
+          },
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.recover": {
+            "notes": false,
+            "sync_tokens": []
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "checkpoint": "unspecified",
+            "chunk_size": 0,
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "enabled": false,
+            "flow": {
+              "backpressure": {
+                "max_lag_bytes": 0
+              },
+              "checkpoints_closed": 1,
+              "policy": "auto"
+            },
+            "flow_max_lag": 0,
+            "flow_policy": "auto",
+            "packrat_enabled": true,
+            "resume_hint": "unspecified"
+          },
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 0,
+          "parser.runconfig.extensions.stream.flow.policy": "auto",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.switches.left_recursion": "off",
+          "parser.runconfig.switches.legacy_result": true,
+          "parser.runconfig.switches.merge_warnings": true,
+          "parser.runconfig.switches.packrat": true,
+          "parser.runconfig.switches.require_eof": false,
+          "parser.runconfig.switches.trace": false,
+          "parser.stream.checkpoint": "unspecified",
+          "parser.stream.demand_min_bytes": 0,
+          "parser.stream.demand_preferred_bytes": 0,
+          "parser.stream.flow.checkpoints_closed": 1,
+          "parser.stream.flow.enabled": false,
+          "parser.stream.flow_max_lag": 0,
+          "parser.stream.flow_policy": "auto",
+          "parser.stream.packrat_enabled": true,
+          "parser.stream.resume_hint": "unspecified",
+          "schema.version": "2.0.0-draft",
+          "stage.trace": [
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "beta"
+            }
+          ]
+        }
+      },
+      "audit_metadata": {
+        "audit.channel": "cli",
+        "audit.policy.version": "rust.poc.audit.v1",
+        "audit.timestamp": "2025-11-12T00:22:16Z",
+        "bridge.stage.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "bridge.stage.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "bridge.stage.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "capability.ids": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "cli.audit_id": "cli/20251112T002216Z#0",
+        "cli.change_set": {
+          "items": [
+            {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20280601-w4-diag-type-effect-rust-typeck-r7",
+                "--dualwrite-case-label",
+                "effect_stage_cli_override",
+                "--experimental-effects",
+                "--effect-stage",
+                "beta",
+                "--type-row-mode",
+                "dual-write",
+                "--emit-typeck-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+                "--emit-effects-metrics",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+                "--runtime-capabilities",
+                "docs/spec/3-8-core-runtime-capability.md#samples",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "kind": "cli-command"
+            },
+            {
+              "kind": "input",
+              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+              "target": "rust-poc"
+            }
+          ],
+          "origin": "cli",
+          "policy": "rust.poc.audit.v1",
+          "source": {
+            "args": [
+              "--emit-parse-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+              "--dualwrite-root",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+              "--dualwrite-run-label",
+              "20280601-w4-diag-type-effect-rust-typeck-r7",
+              "--dualwrite-case-label",
+              "effect_stage_cli_override",
+              "--experimental-effects",
+              "--effect-stage",
+              "beta",
+              "--type-row-mode",
+              "dual-write",
+              "--emit-typeck-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+              "--emit-effects-metrics",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+              "--runtime-capabilities",
+              "docs/spec/3-8-core-runtime-capability.md#samples",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+            ],
+            "command": "target/debug/poc_frontend",
+            "workspace": "."
+          }
+        },
+        "effect.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "effect.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "effect.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effect.stage.actual": "beta",
+        "effect.stage.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "effect.stage.required": "beta",
+        "effect.stage.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effect.stage.trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ],
+        "event.domain": "parser",
+        "event.kind": "diagnostic",
+        "fingerprint": "rust-poc-0001",
+        "name": "compilation_unit",
+        "namespace": "rust.poc",
+        "origin": "poc_frontend",
+        "parser.core.rule.fingerprint": "rust-poc-0001",
+        "parser.core.rule.name": "compilation_unit",
+        "parser.core.rule.namespace": "rust.poc",
+        "parser.core.rule.ordinal": 0,
+        "parser.core.rule.origin": "poc_frontend",
+        "parser.runconfig": {
+          "extensions": {
+            "config": {
+              "experimental_effects": true,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "source": "cli",
+              "trace": false
+            },
+            "effects": {
+              "type_row_mode": "ty-dual-write"
+            },
+            "lex": {
+              "identifier_profile": "unicode",
+              "profile": "strict_json"
+            },
+            "recover": {
+              "notes": false,
+              "sync_tokens": []
+            },
+            "stream": {
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": false,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "checkpoints_closed": 1,
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "packrat_enabled": true,
+              "resume_hint": "unspecified"
+            }
+          },
+          "runtime_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "switches": {
+            "experimental_effects": true,
+            "left_recursion": "off",
+            "legacy_result": true,
+            "merge_warnings": true,
+            "packrat": true,
+            "require_eof": false,
+            "trace": false
+          }
+        },
+        "parser.runconfig.extensions.config": {
+          "experimental_effects": true,
+          "left_recursion": "off",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "source": "cli",
+          "trace": false
+        },
+        "parser.runconfig.extensions.config.source": "cli",
+        "parser.runconfig.extensions.lex": {
+          "identifier_profile": "unicode",
+          "profile": "strict_json"
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.recover": {
+          "notes": false,
+          "sync_tokens": []
+        },
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.stream": {
+          "checkpoint": "unspecified",
+          "chunk_size": 0,
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "enabled": false,
+          "flow": {
+            "backpressure": {
+              "max_lag_bytes": 0
+            },
+            "checkpoints_closed": 1,
+            "policy": "auto"
+          },
+          "flow_max_lag": 0,
+          "flow_policy": "auto",
+          "packrat_enabled": true,
+          "resume_hint": "unspecified"
+        },
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 0,
+        "parser.runconfig.extensions.stream.flow.policy": "auto",
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.switches.left_recursion": "off",
+        "parser.runconfig.switches.legacy_result": true,
+        "parser.runconfig.switches.merge_warnings": true,
+        "parser.runconfig.switches.packrat": true,
+        "parser.runconfig.switches.require_eof": false,
+        "parser.runconfig.switches.trace": false,
+        "parser.stream.checkpoint": "unspecified",
+        "parser.stream.demand_min_bytes": 0,
+        "parser.stream.demand_preferred_bytes": 0,
+        "parser.stream.flow.checkpoints_closed": 1,
+        "parser.stream.flow.enabled": false,
+        "parser.stream.flow_max_lag": 0,
+        "parser.stream.flow_policy": "auto",
+        "parser.stream.packrat_enabled": true,
+        "parser.stream.resume_hint": "unspecified",
+        "schema.version": "2.0.0-draft",
+        "stage.trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ]
+      },
+      "code": null,
+      "domain": "parser",
+      "expected": null,
+      "extensions": {
+        "bridge": {
+          "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "stage": {
+            "actual": "beta",
+            "actual_capabilities": [
+              {
+                "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+                "stage": "beta"
+              }
+            ],
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "required": "beta",
+            "required_capabilities": [
+              "docs/spec/3-8-core-runtime-capability.md#samples"
+            ],
+            "trace": [
+              {
+                "note": "--effect-stage",
+                "source": "cli_option",
+                "stage": "beta"
+              },
+              {
+                "source": "runtime",
+                "stage": "beta"
+              }
+            ]
+          }
+        },
+        "capability": {
+          "detail": [
+            {
+              "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+              "stage": "beta"
+            }
+          ],
+          "ids": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "primary": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "required_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "stage": {
+            "actual": "beta",
+            "required": "beta"
+          }
+        },
+        "diagnostic.v2": {
+          "timestamp": "2025-11-12T00:22:16Z"
+        },
+        "effect.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "effect.capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effect.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "effect.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effect.stage.actual": "beta",
+        "effect.stage.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "effect.stage.required": "beta",
+        "effect.stage.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effects": {
+          "capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "stage": {
+            "actual": "beta",
+            "actual_capabilities": [
+              {
+                "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+                "stage": "beta"
+              }
+            ],
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "required": "beta",
+            "required_capabilities": [
+              "docs/spec/3-8-core-runtime-capability.md#samples"
+            ],
+            "trace": [
+              {
+                "note": "--effect-stage",
+                "source": "cli_option",
+                "stage": "beta"
+              },
+              {
+                "source": "runtime",
+                "stage": "beta"
+              }
+            ]
+          },
+          "stage_trace": [
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "beta"
+            }
+          ]
+        },
+        "parse": {
+          "parser_id": {
+            "fingerprint": "rust-poc-0001",
+            "name": "compilation_unit",
+            "namespace": "rust.poc",
+            "ordinal": 0,
+            "origin": "poc_frontend"
+          }
+        },
+        "runconfig": {
+          "experimental_effects": true,
+          "extensions": {
+            "config": {
+              "experimental_effects": true,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "source": "cli",
+              "trace": false
+            },
+            "lex": {
+              "identifier_profile": "unicode",
+              "profile": "strict_json"
+            },
+            "recover": {
+              "notes": false,
+              "sync_tokens": []
+            },
+            "stream": {
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": false,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "checkpoints_closed": 1,
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "packrat_enabled": true,
+              "resume_hint": "unspecified"
+            }
+          },
+          "left_recursion": "off",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "trace": false
+        }
+      },
+      "location": {
+        "column": 30,
+        "endColumn": 1,
+        "endLine": 5,
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+        "line": 2
+      },
+      "message": "未定義のトークンを検出しました",
+      "notes": [
+        {
+          "label": "lexer",
+          "message": "未定義のトークンをスキップします",
+          "span": {
+            "column": 30,
+            "endColumn": 1,
+            "endLine": 5,
+            "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+            "line": 2
+          }
+        }
+      ],
+      "recoverability": "recoverable",
+      "schema_version": "2.0.0-draft",
+      "severity": "error",
+      "timestamp": "2025-11-12T00:22:16Z"
+    },
+    {
+      "audit": {
+        "audit_id": "cli/20251112T002216Z#0",
+        "change_set": {
+          "items": [
+            {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20280601-w4-diag-type-effect-rust-typeck-r7",
+                "--dualwrite-case-label",
+                "effect_stage_cli_override",
+                "--experimental-effects",
+                "--effect-stage",
+                "beta",
+                "--type-row-mode",
+                "dual-write",
+                "--emit-typeck-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+                "--emit-effects-metrics",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+                "--runtime-capabilities",
+                "docs/spec/3-8-core-runtime-capability.md#samples",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "kind": "cli-command"
+            },
+            {
+              "kind": "input",
+              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+              "target": "rust-poc"
+            }
+          ],
+          "origin": "cli",
+          "policy": "rust.poc.audit.v1",
+          "source": {
+            "args": [
+              "--emit-parse-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+              "--dualwrite-root",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+              "--dualwrite-run-label",
+              "20280601-w4-diag-type-effect-rust-typeck-r7",
+              "--dualwrite-case-label",
+              "effect_stage_cli_override",
+              "--experimental-effects",
+              "--effect-stage",
+              "beta",
+              "--type-row-mode",
+              "dual-write",
+              "--emit-typeck-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+              "--emit-effects-metrics",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+              "--runtime-capabilities",
+              "docs/spec/3-8-core-runtime-capability.md#samples",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+            ],
+            "command": "target/debug/poc_frontend",
+            "workspace": "."
+          }
+        },
+        "metadata": {
+          "audit.channel": "cli",
+          "audit.policy.version": "rust.poc.audit.v1",
+          "audit.timestamp": "2025-11-12T00:22:16Z",
+          "bridge.stage.actual_capabilities": [
+            {
+              "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+              "stage": "beta"
+            }
+          ],
+          "bridge.stage.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "bridge.stage.required_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "capability.ids": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "cli.audit_id": "cli/20251112T002216Z#0",
+          "cli.change_set": {
+            "items": [
+              {
+                "args": [
+                  "--emit-parse-debug",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+                  "--dualwrite-root",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                  "--dualwrite-run-label",
+                  "20280601-w4-diag-type-effect-rust-typeck-r7",
+                  "--dualwrite-case-label",
+                  "effect_stage_cli_override",
+                  "--experimental-effects",
+                  "--effect-stage",
+                  "beta",
+                  "--type-row-mode",
+                  "dual-write",
+                  "--emit-typeck-debug",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+                  "--emit-effects-metrics",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+                  "--runtime-capabilities",
+                  "docs/spec/3-8-core-runtime-capability.md#samples",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+                ],
+                "command": "target/debug/poc_frontend",
+                "kind": "cli-command"
+              },
+              {
+                "kind": "input",
+                "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+                "target": "rust-poc"
+              }
+            ],
+            "origin": "cli",
+            "policy": "rust.poc.audit.v1",
+            "source": {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20280601-w4-diag-type-effect-rust-typeck-r7",
+                "--dualwrite-case-label",
+                "effect_stage_cli_override",
+                "--experimental-effects",
+                "--effect-stage",
+                "beta",
+                "--type-row-mode",
+                "dual-write",
+                "--emit-typeck-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+                "--emit-effects-metrics",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+                "--runtime-capabilities",
+                "docs/spec/3-8-core-runtime-capability.md#samples",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "workspace": "."
+            }
+          },
+          "effect.actual_capabilities": [
+            {
+              "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+              "stage": "beta"
+            }
+          ],
+          "effect.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "effect.required_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "effect.stage.actual": "beta",
+          "effect.stage.actual_capabilities": [
+            {
+              "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+              "stage": "beta"
+            }
+          ],
+          "effect.stage.required": "beta",
+          "effect.stage.required_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "effect.stage.trace": [
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "beta"
+            }
+          ],
+          "event.domain": "parser",
+          "event.kind": "diagnostic",
+          "fingerprint": "rust-poc-0001",
+          "name": "compilation_unit",
+          "namespace": "rust.poc",
+          "origin": "poc_frontend",
+          "parser.core.rule.fingerprint": "rust-poc-0001",
+          "parser.core.rule.name": "compilation_unit",
+          "parser.core.rule.namespace": "rust.poc",
+          "parser.core.rule.ordinal": 0,
+          "parser.core.rule.origin": "poc_frontend",
+          "parser.runconfig": {
+            "extensions": {
+              "config": {
+                "experimental_effects": true,
+                "left_recursion": "off",
+                "legacy_result": true,
+                "merge_warnings": true,
+                "packrat": true,
+                "require_eof": false,
+                "source": "cli",
+                "trace": false
+              },
+              "effects": {
+                "type_row_mode": "ty-dual-write"
+              },
+              "lex": {
+                "identifier_profile": "unicode",
+                "profile": "strict_json"
+              },
+              "recover": {
+                "notes": false,
+                "sync_tokens": []
+              },
+              "stream": {
+                "checkpoint": "unspecified",
+                "chunk_size": 0,
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "enabled": false,
+                "flow": {
+                  "backpressure": {
+                    "max_lag_bytes": 0
+                  },
+                  "checkpoints_closed": 1,
+                  "policy": "auto"
+                },
+                "flow_max_lag": 0,
+                "flow_policy": "auto",
+                "packrat_enabled": true,
+                "resume_hint": "unspecified"
+              }
+            },
+            "runtime_capabilities": [
+              "docs/spec/3-8-core-runtime-capability.md#samples"
+            ],
+            "switches": {
+              "experimental_effects": true,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "trace": false
+            }
+          },
+          "parser.runconfig.extensions.config": {
+            "experimental_effects": true,
+            "left_recursion": "off",
+            "legacy_result": true,
+            "merge_warnings": true,
+            "packrat": true,
+            "require_eof": false,
+            "source": "cli",
+            "trace": false
+          },
+          "parser.runconfig.extensions.config.source": "cli",
+          "parser.runconfig.extensions.lex": {
+            "identifier_profile": "unicode",
+            "profile": "strict_json"
+          },
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.recover": {
+            "notes": false,
+            "sync_tokens": []
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "checkpoint": "unspecified",
+            "chunk_size": 0,
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "enabled": false,
+            "flow": {
+              "backpressure": {
+                "max_lag_bytes": 0
+              },
+              "checkpoints_closed": 1,
+              "policy": "auto"
+            },
+            "flow_max_lag": 0,
+            "flow_policy": "auto",
+            "packrat_enabled": true,
+            "resume_hint": "unspecified"
+          },
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 0,
+          "parser.runconfig.extensions.stream.flow.policy": "auto",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.switches.left_recursion": "off",
+          "parser.runconfig.switches.legacy_result": true,
+          "parser.runconfig.switches.merge_warnings": true,
+          "parser.runconfig.switches.packrat": true,
+          "parser.runconfig.switches.require_eof": false,
+          "parser.runconfig.switches.trace": false,
+          "parser.stream.checkpoint": "unspecified",
+          "parser.stream.demand_min_bytes": 0,
+          "parser.stream.demand_preferred_bytes": 0,
+          "parser.stream.flow.checkpoints_closed": 1,
+          "parser.stream.flow.enabled": false,
+          "parser.stream.flow_max_lag": 0,
+          "parser.stream.flow_policy": "auto",
+          "parser.stream.packrat_enabled": true,
+          "parser.stream.resume_hint": "unspecified",
+          "schema.version": "2.0.0-draft",
+          "stage.trace": [
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "beta"
+            }
+          ]
+        }
+      },
+      "audit_metadata": {
+        "audit.channel": "cli",
+        "audit.policy.version": "rust.poc.audit.v1",
+        "audit.timestamp": "2025-11-12T00:22:16Z",
+        "bridge.stage.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "bridge.stage.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "bridge.stage.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "capability.ids": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "cli.audit_id": "cli/20251112T002216Z#0",
+        "cli.change_set": {
+          "items": [
+            {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20280601-w4-diag-type-effect-rust-typeck-r7",
+                "--dualwrite-case-label",
+                "effect_stage_cli_override",
+                "--experimental-effects",
+                "--effect-stage",
+                "beta",
+                "--type-row-mode",
+                "dual-write",
+                "--emit-typeck-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+                "--emit-effects-metrics",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+                "--runtime-capabilities",
+                "docs/spec/3-8-core-runtime-capability.md#samples",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "kind": "cli-command"
+            },
+            {
+              "kind": "input",
+              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+              "target": "rust-poc"
+            }
+          ],
+          "origin": "cli",
+          "policy": "rust.poc.audit.v1",
+          "source": {
+            "args": [
+              "--emit-parse-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+              "--dualwrite-root",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+              "--dualwrite-run-label",
+              "20280601-w4-diag-type-effect-rust-typeck-r7",
+              "--dualwrite-case-label",
+              "effect_stage_cli_override",
+              "--experimental-effects",
+              "--effect-stage",
+              "beta",
+              "--type-row-mode",
+              "dual-write",
+              "--emit-typeck-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+              "--emit-effects-metrics",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+              "--runtime-capabilities",
+              "docs/spec/3-8-core-runtime-capability.md#samples",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+            ],
+            "command": "target/debug/poc_frontend",
+            "workspace": "."
+          }
+        },
+        "effect.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "effect.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "effect.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effect.stage.actual": "beta",
+        "effect.stage.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "effect.stage.required": "beta",
+        "effect.stage.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effect.stage.trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ],
+        "event.domain": "parser",
+        "event.kind": "diagnostic",
+        "fingerprint": "rust-poc-0001",
+        "name": "compilation_unit",
+        "namespace": "rust.poc",
+        "origin": "poc_frontend",
+        "parser.core.rule.fingerprint": "rust-poc-0001",
+        "parser.core.rule.name": "compilation_unit",
+        "parser.core.rule.namespace": "rust.poc",
+        "parser.core.rule.ordinal": 0,
+        "parser.core.rule.origin": "poc_frontend",
+        "parser.runconfig": {
+          "extensions": {
+            "config": {
+              "experimental_effects": true,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "source": "cli",
+              "trace": false
+            },
+            "effects": {
+              "type_row_mode": "ty-dual-write"
+            },
+            "lex": {
+              "identifier_profile": "unicode",
+              "profile": "strict_json"
+            },
+            "recover": {
+              "notes": false,
+              "sync_tokens": []
+            },
+            "stream": {
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": false,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "checkpoints_closed": 1,
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "packrat_enabled": true,
+              "resume_hint": "unspecified"
+            }
+          },
+          "runtime_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "switches": {
+            "experimental_effects": true,
+            "left_recursion": "off",
+            "legacy_result": true,
+            "merge_warnings": true,
+            "packrat": true,
+            "require_eof": false,
+            "trace": false
+          }
+        },
+        "parser.runconfig.extensions.config": {
+          "experimental_effects": true,
+          "left_recursion": "off",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "source": "cli",
+          "trace": false
+        },
+        "parser.runconfig.extensions.config.source": "cli",
+        "parser.runconfig.extensions.lex": {
+          "identifier_profile": "unicode",
+          "profile": "strict_json"
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.recover": {
+          "notes": false,
+          "sync_tokens": []
+        },
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.stream": {
+          "checkpoint": "unspecified",
+          "chunk_size": 0,
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "enabled": false,
+          "flow": {
+            "backpressure": {
+              "max_lag_bytes": 0
+            },
+            "checkpoints_closed": 1,
+            "policy": "auto"
+          },
+          "flow_max_lag": 0,
+          "flow_policy": "auto",
+          "packrat_enabled": true,
+          "resume_hint": "unspecified"
+        },
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 0,
+        "parser.runconfig.extensions.stream.flow.policy": "auto",
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.switches.left_recursion": "off",
+        "parser.runconfig.switches.legacy_result": true,
+        "parser.runconfig.switches.merge_warnings": true,
+        "parser.runconfig.switches.packrat": true,
+        "parser.runconfig.switches.require_eof": false,
+        "parser.runconfig.switches.trace": false,
+        "parser.stream.checkpoint": "unspecified",
+        "parser.stream.demand_min_bytes": 0,
+        "parser.stream.demand_preferred_bytes": 0,
+        "parser.stream.flow.checkpoints_closed": 1,
+        "parser.stream.flow.enabled": false,
+        "parser.stream.flow_max_lag": 0,
+        "parser.stream.flow_policy": "auto",
+        "parser.stream.packrat_enabled": true,
+        "parser.stream.resume_hint": "unspecified",
+        "schema.version": "2.0.0-draft",
+        "stage.trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ]
+      },
+      "code": null,
+      "domain": "parser",
+      "expected": {
+        "alternatives": [
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "effect",
+            "token": "effect"
+          },
+          {
+            "hint": "keyword",
+            "kind": "keyword",
+            "label": "fn",
+            "token": "fn"
+          }
+        ],
+        "humanized": "ここで`effect` または `fn`のいずれかが必要です",
+        "locale_args": [
+          "effect",
+          "fn"
+        ],
+        "message_key": "parse.expected"
+      },
+      "extensions": {
+        "bridge": {
+          "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "stage": {
+            "actual": "beta",
+            "actual_capabilities": [
+              {
+                "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+                "stage": "beta"
+              }
+            ],
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "required": "beta",
+            "required_capabilities": [
+              "docs/spec/3-8-core-runtime-capability.md#samples"
+            ],
+            "trace": [
+              {
+                "note": "--effect-stage",
+                "source": "cli_option",
+                "stage": "beta"
+              },
+              {
+                "source": "runtime",
+                "stage": "beta"
+              }
+            ]
+          }
+        },
+        "capability": {
+          "detail": [
+            {
+              "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+              "stage": "beta"
+            }
+          ],
+          "ids": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "primary": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "required_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "stage": {
+            "actual": "beta",
+            "required": "beta"
+          }
+        },
+        "diagnostic.v2": {
+          "timestamp": "2025-11-12T00:22:16Z"
+        },
+        "effect.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "effect.capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effect.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "effect.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effect.stage.actual": "beta",
+        "effect.stage.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "effect.stage.required": "beta",
+        "effect.stage.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effects": {
+          "capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "stage": {
+            "actual": "beta",
+            "actual_capabilities": [
+              {
+                "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+                "stage": "beta"
+              }
+            ],
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "required": "beta",
+            "required_capabilities": [
+              "docs/spec/3-8-core-runtime-capability.md#samples"
+            ],
+            "trace": [
+              {
+                "note": "--effect-stage",
+                "source": "cli_option",
+                "stage": "beta"
+              },
+              {
+                "source": "runtime",
+                "stage": "beta"
+              }
+            ]
+          },
+          "stage_trace": [
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "beta"
+            }
+          ]
+        },
+        "parse": {
+          "parser_id": {
+            "fingerprint": "rust-poc-0001",
+            "name": "compilation_unit",
+            "namespace": "rust.poc",
+            "ordinal": 0,
+            "origin": "poc_frontend"
+          }
+        },
+        "recover": {
+          "expected_tokens": [
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "effect",
+              "token": "effect"
+            },
+            {
+              "hint": "keyword",
+              "kind": "keyword",
+              "label": "fn",
+              "token": "fn"
+            }
+          ],
+          "message": "ここで`effect` または `fn`のいずれかが必要です"
+        },
+        "runconfig": {
+          "experimental_effects": true,
+          "extensions": {
+            "config": {
+              "experimental_effects": true,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "source": "cli",
+              "trace": false
+            },
+            "lex": {
+              "identifier_profile": "unicode",
+              "profile": "strict_json"
+            },
+            "recover": {
+              "notes": false,
+              "sync_tokens": []
+            },
+            "stream": {
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": false,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "checkpoints_closed": 1,
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "packrat_enabled": true,
+              "resume_hint": "unspecified"
+            }
+          },
+          "left_recursion": "off",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "trace": false
+        }
+      },
+      "location": {
+        "column": 2,
+        "endColumn": 21,
+        "endLine": 2,
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+        "line": 2
+      },
+      "message": "構文エラー: 入力を解釈できません",
+      "notes": [
+        {
+          "label": "recover.expected_tokens",
+          "message": "ここで`effect` または `fn`のいずれかが必要です",
+          "span": null
+        }
+      ],
+      "recoverability": "recoverable",
+      "schema_version": "2.0.0-draft",
+      "severity": "error",
+      "timestamp": "2025-11-12T00:22:16Z"
+    },
+    {
+      "audit": {
+        "audit_id": "cli/20251112T002216Z#0",
+        "change_set": {
+          "items": [
+            {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20280601-w4-diag-type-effect-rust-typeck-r7",
+                "--dualwrite-case-label",
+                "effect_stage_cli_override",
+                "--experimental-effects",
+                "--effect-stage",
+                "beta",
+                "--type-row-mode",
+                "dual-write",
+                "--emit-typeck-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+                "--emit-effects-metrics",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+                "--runtime-capabilities",
+                "docs/spec/3-8-core-runtime-capability.md#samples",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "kind": "cli-command"
+            },
+            {
+              "kind": "input",
+              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+              "target": "rust-poc"
+            }
+          ],
+          "origin": "cli",
+          "policy": "rust.poc.audit.v1",
+          "source": {
+            "args": [
+              "--emit-parse-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+              "--dualwrite-root",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+              "--dualwrite-run-label",
+              "20280601-w4-diag-type-effect-rust-typeck-r7",
+              "--dualwrite-case-label",
+              "effect_stage_cli_override",
+              "--experimental-effects",
+              "--effect-stage",
+              "beta",
+              "--type-row-mode",
+              "dual-write",
+              "--emit-typeck-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+              "--emit-effects-metrics",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+              "--runtime-capabilities",
+              "docs/spec/3-8-core-runtime-capability.md#samples",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+            ],
+            "command": "target/debug/poc_frontend",
+            "workspace": "."
+          }
+        },
+        "metadata": {
+          "audit.channel": "cli",
+          "audit.policy.version": "rust.poc.audit.v1",
+          "audit.timestamp": "2025-11-12T00:22:16Z",
+          "bridge.stage.actual_capabilities": [
+            {
+              "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+              "stage": "beta"
+            }
+          ],
+          "bridge.stage.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "bridge.stage.required_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "capability.ids": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "cli.audit_id": "cli/20251112T002216Z#0",
+          "cli.change_set": {
+            "items": [
+              {
+                "args": [
+                  "--emit-parse-debug",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+                  "--dualwrite-root",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                  "--dualwrite-run-label",
+                  "20280601-w4-diag-type-effect-rust-typeck-r7",
+                  "--dualwrite-case-label",
+                  "effect_stage_cli_override",
+                  "--experimental-effects",
+                  "--effect-stage",
+                  "beta",
+                  "--type-row-mode",
+                  "dual-write",
+                  "--emit-typeck-debug",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+                  "--emit-effects-metrics",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+                  "--runtime-capabilities",
+                  "docs/spec/3-8-core-runtime-capability.md#samples",
+                  "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+                ],
+                "command": "target/debug/poc_frontend",
+                "kind": "cli-command"
+              },
+              {
+                "kind": "input",
+                "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+                "target": "rust-poc"
+              }
+            ],
+            "origin": "cli",
+            "policy": "rust.poc.audit.v1",
+            "source": {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20280601-w4-diag-type-effect-rust-typeck-r7",
+                "--dualwrite-case-label",
+                "effect_stage_cli_override",
+                "--experimental-effects",
+                "--effect-stage",
+                "beta",
+                "--type-row-mode",
+                "dual-write",
+                "--emit-typeck-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+                "--emit-effects-metrics",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+                "--runtime-capabilities",
+                "docs/spec/3-8-core-runtime-capability.md#samples",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "workspace": "."
+            }
+          },
+          "effect.actual_capabilities": [
+            {
+              "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+              "stage": "beta"
+            }
+          ],
+          "effect.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "effect.required_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "effect.stage.actual": "beta",
+          "effect.stage.actual_capabilities": [
+            {
+              "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+              "stage": "beta"
+            }
+          ],
+          "effect.stage.required": "beta",
+          "effect.stage.required_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "effect.stage.trace": [
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "beta"
+            }
+          ],
+          "event.domain": "effects",
+          "event.kind": "diagnostic",
+          "fingerprint": "rust-poc-0001",
+          "name": "compilation_unit",
+          "namespace": "rust.poc",
+          "origin": "poc_frontend",
+          "parser.core.rule.fingerprint": "rust-poc-0001",
+          "parser.core.rule.name": "compilation_unit",
+          "parser.core.rule.namespace": "rust.poc",
+          "parser.core.rule.ordinal": 0,
+          "parser.core.rule.origin": "poc_frontend",
+          "parser.runconfig": {
+            "extensions": {
+              "config": {
+                "experimental_effects": true,
+                "left_recursion": "off",
+                "legacy_result": true,
+                "merge_warnings": true,
+                "packrat": true,
+                "require_eof": false,
+                "source": "cli",
+                "trace": false
+              },
+              "effects": {
+                "type_row_mode": "ty-dual-write"
+              },
+              "lex": {
+                "identifier_profile": "unicode",
+                "profile": "strict_json"
+              },
+              "recover": {
+                "notes": false,
+                "sync_tokens": []
+              },
+              "stream": {
+                "checkpoint": "unspecified",
+                "chunk_size": 0,
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "enabled": false,
+                "flow": {
+                  "backpressure": {
+                    "max_lag_bytes": 0
+                  },
+                  "checkpoints_closed": 1,
+                  "policy": "auto"
+                },
+                "flow_max_lag": 0,
+                "flow_policy": "auto",
+                "packrat_enabled": true,
+                "resume_hint": "unspecified"
+              }
+            },
+            "runtime_capabilities": [
+              "docs/spec/3-8-core-runtime-capability.md#samples"
+            ],
+            "switches": {
+              "experimental_effects": true,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "trace": false
+            }
+          },
+          "parser.runconfig.extensions.config": {
+            "experimental_effects": true,
+            "left_recursion": "off",
+            "legacy_result": true,
+            "merge_warnings": true,
+            "packrat": true,
+            "require_eof": false,
+            "source": "cli",
+            "trace": false
+          },
+          "parser.runconfig.extensions.config.source": "cli",
+          "parser.runconfig.extensions.lex": {
+            "identifier_profile": "unicode",
+            "profile": "strict_json"
+          },
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.recover": {
+            "notes": false,
+            "sync_tokens": []
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "checkpoint": "unspecified",
+            "chunk_size": 0,
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "enabled": false,
+            "flow": {
+              "backpressure": {
+                "max_lag_bytes": 0
+              },
+              "checkpoints_closed": 1,
+              "policy": "auto"
+            },
+            "flow_max_lag": 0,
+            "flow_policy": "auto",
+            "packrat_enabled": true,
+            "resume_hint": "unspecified"
+          },
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 0,
+          "parser.runconfig.extensions.stream.flow.policy": "auto",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.switches.left_recursion": "off",
+          "parser.runconfig.switches.legacy_result": true,
+          "parser.runconfig.switches.merge_warnings": true,
+          "parser.runconfig.switches.packrat": true,
+          "parser.runconfig.switches.require_eof": false,
+          "parser.runconfig.switches.trace": false,
+          "parser.stream.checkpoint": "unspecified",
+          "parser.stream.demand_min_bytes": 0,
+          "parser.stream.demand_preferred_bytes": 0,
+          "parser.stream.flow.checkpoints_closed": 1,
+          "parser.stream.flow.enabled": false,
+          "parser.stream.flow_max_lag": 0,
+          "parser.stream.flow_policy": "auto",
+          "parser.stream.packrat_enabled": true,
+          "parser.stream.resume_hint": "unspecified",
+          "schema.version": "2.0.0-draft",
+          "stage.trace": [
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "beta"
+            }
+          ]
+        }
+      },
+      "audit_metadata": {
+        "audit.channel": "cli",
+        "audit.policy.version": "rust.poc.audit.v1",
+        "audit.timestamp": "2025-11-12T00:22:16Z",
+        "bridge.stage.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "bridge.stage.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "bridge.stage.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "capability.ids": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "cli.audit_id": "cli/20251112T002216Z#0",
+        "cli.change_set": {
+          "items": [
+            {
+              "args": [
+                "--emit-parse-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+                "--dualwrite-root",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+                "--dualwrite-run-label",
+                "20280601-w4-diag-type-effect-rust-typeck-r7",
+                "--dualwrite-case-label",
+                "effect_stage_cli_override",
+                "--experimental-effects",
+                "--effect-stage",
+                "beta",
+                "--type-row-mode",
+                "dual-write",
+                "--emit-typeck-debug",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+                "--emit-effects-metrics",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+                "--runtime-capabilities",
+                "docs/spec/3-8-core-runtime-capability.md#samples",
+                "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+              ],
+              "command": "target/debug/poc_frontend",
+              "kind": "cli-command"
+            },
+            {
+              "kind": "input",
+              "path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+              "target": "rust-poc"
+            }
+          ],
+          "origin": "cli",
+          "policy": "rust.poc.audit.v1",
+          "source": {
+            "args": [
+              "--emit-parse-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/rust.parse-debug.json",
+              "--dualwrite-root",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+              "--dualwrite-run-label",
+              "20280601-w4-diag-type-effect-rust-typeck-r7",
+              "--dualwrite-case-label",
+              "effect_stage_cli_override",
+              "--experimental-effects",
+              "--effect-stage",
+              "beta",
+              "--type-row-mode",
+              "dual-write",
+              "--emit-typeck-debug",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/typeck/typeck-debug.rust.json",
+              "--emit-effects-metrics",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/effects/effects-metrics.rust.json",
+              "--runtime-capabilities",
+              "docs/spec/3-8-core-runtime-capability.md#samples",
+              "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml"
+            ],
+            "command": "target/debug/poc_frontend",
+            "workspace": "."
+          }
+        },
+        "effect.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "effect.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "effect.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effect.stage.actual": "beta",
+        "effect.stage.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "effect.stage.required": "beta",
+        "effect.stage.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effect.stage.trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ],
+        "event.domain": "effects",
+        "event.kind": "diagnostic",
+        "fingerprint": "rust-poc-0001",
+        "name": "compilation_unit",
+        "namespace": "rust.poc",
+        "origin": "poc_frontend",
+        "parser.core.rule.fingerprint": "rust-poc-0001",
+        "parser.core.rule.name": "compilation_unit",
+        "parser.core.rule.namespace": "rust.poc",
+        "parser.core.rule.ordinal": 0,
+        "parser.core.rule.origin": "poc_frontend",
+        "parser.runconfig": {
+          "extensions": {
+            "config": {
+              "experimental_effects": true,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "source": "cli",
+              "trace": false
+            },
+            "effects": {
+              "type_row_mode": "ty-dual-write"
+            },
+            "lex": {
+              "identifier_profile": "unicode",
+              "profile": "strict_json"
+            },
+            "recover": {
+              "notes": false,
+              "sync_tokens": []
+            },
+            "stream": {
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": false,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "checkpoints_closed": 1,
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "packrat_enabled": true,
+              "resume_hint": "unspecified"
+            }
+          },
+          "runtime_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "switches": {
+            "experimental_effects": true,
+            "left_recursion": "off",
+            "legacy_result": true,
+            "merge_warnings": true,
+            "packrat": true,
+            "require_eof": false,
+            "trace": false
+          }
+        },
+        "parser.runconfig.extensions.config": {
+          "experimental_effects": true,
+          "left_recursion": "off",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "source": "cli",
+          "trace": false
+        },
+        "parser.runconfig.extensions.config.source": "cli",
+        "parser.runconfig.extensions.lex": {
+          "identifier_profile": "unicode",
+          "profile": "strict_json"
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.recover": {
+          "notes": false,
+          "sync_tokens": []
+        },
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.stream": {
+          "checkpoint": "unspecified",
+          "chunk_size": 0,
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "enabled": false,
+          "flow": {
+            "backpressure": {
+              "max_lag_bytes": 0
+            },
+            "checkpoints_closed": 1,
+            "policy": "auto"
+          },
+          "flow_max_lag": 0,
+          "flow_policy": "auto",
+          "packrat_enabled": true,
+          "resume_hint": "unspecified"
+        },
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream.flow.backpressure.max_lag_bytes": 0,
+        "parser.runconfig.extensions.stream.flow.policy": "auto",
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.switches.left_recursion": "off",
+        "parser.runconfig.switches.legacy_result": true,
+        "parser.runconfig.switches.merge_warnings": true,
+        "parser.runconfig.switches.packrat": true,
+        "parser.runconfig.switches.require_eof": false,
+        "parser.runconfig.switches.trace": false,
+        "parser.stream.checkpoint": "unspecified",
+        "parser.stream.demand_min_bytes": 0,
+        "parser.stream.demand_preferred_bytes": 0,
+        "parser.stream.flow.checkpoints_closed": 1,
+        "parser.stream.flow.enabled": false,
+        "parser.stream.flow_max_lag": 0,
+        "parser.stream.flow_policy": "auto",
+        "parser.stream.packrat_enabled": true,
+        "parser.stream.resume_hint": "unspecified",
+        "schema.version": "2.0.0-draft",
+        "stage.trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ]
+      },
+      "code": "effects.contract.residual_leak",
+      "codes": [
+        "effects.contract.residual_leak"
+      ],
+      "domain": "effects",
+      "expected": null,
+      "extensions": {
+        "bridge": {
+          "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "stage": {
+            "actual": "beta",
+            "actual_capabilities": [
+              {
+                "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+                "stage": "beta"
+              }
+            ],
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "required": "beta",
+            "required_capabilities": [
+              "docs/spec/3-8-core-runtime-capability.md#samples"
+            ],
+            "trace": [
+              {
+                "note": "--effect-stage",
+                "source": "cli_option",
+                "stage": "beta"
+              },
+              {
+                "source": "runtime",
+                "stage": "beta"
+              }
+            ]
+          }
+        },
+        "capability": {
+          "detail": [
+            {
+              "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+              "stage": "beta"
+            }
+          ],
+          "ids": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "primary": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "required_capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "stage": {
+            "actual": "beta",
+            "required": "beta"
+          }
+        },
+        "diagnostic.v2": {
+          "codes": [
+            "effects.contract.residual_leak"
+          ],
+          "timestamp": "2025-11-12T00:22:16Z"
+        },
+        "effect.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "effect.capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effect.capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+        "effect.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effect.stage.actual": "beta",
+        "effect.stage.actual_capabilities": [
+          {
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "stage": "beta"
+          }
+        ],
+        "effect.stage.required": "beta",
+        "effect.stage.required_capabilities": [
+          "docs/spec/3-8-core-runtime-capability.md#samples"
+        ],
+        "effects": {
+          "capabilities": [
+            "docs/spec/3-8-core-runtime-capability.md#samples"
+          ],
+          "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+          "stage": {
+            "actual": "beta",
+            "actual_capabilities": [
+              {
+                "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+                "stage": "beta"
+              }
+            ],
+            "capability": "docs/spec/3-8-core-runtime-capability.md#samples",
+            "required": "beta",
+            "required_capabilities": [
+              "docs/spec/3-8-core-runtime-capability.md#samples"
+            ],
+            "trace": [
+              {
+                "note": "--effect-stage",
+                "source": "cli_option",
+                "stage": "beta"
+              },
+              {
+                "source": "runtime",
+                "stage": "beta"
+              }
+            ]
+          },
+          "stage_trace": [
+            {
+              "note": "--effect-stage",
+              "source": "cli_option",
+              "stage": "beta"
+            },
+            {
+              "source": "runtime",
+              "stage": "beta"
+            }
+          ]
+        },
+        "runconfig": {
+          "experimental_effects": true,
+          "extensions": {
+            "config": {
+              "experimental_effects": true,
+              "left_recursion": "off",
+              "legacy_result": true,
+              "merge_warnings": true,
+              "packrat": true,
+              "require_eof": false,
+              "source": "cli",
+              "trace": false
+            },
+            "lex": {
+              "identifier_profile": "unicode",
+              "profile": "strict_json"
+            },
+            "recover": {
+              "notes": false,
+              "sync_tokens": []
+            },
+            "stream": {
+              "checkpoint": "unspecified",
+              "chunk_size": 0,
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "enabled": false,
+              "flow": {
+                "backpressure": {
+                  "max_lag_bytes": 0
+                },
+                "checkpoints_closed": 1,
+                "policy": "auto"
+              },
+              "flow_max_lag": 0,
+              "flow_policy": "auto",
+              "packrat_enabled": true,
+              "resume_hint": "unspecified"
+            }
+          },
+          "left_recursion": "off",
+          "legacy_result": true,
+          "merge_warnings": true,
+          "packrat": true,
+          "require_eof": false,
+          "trace": false
+        }
+      },
+      "location": {
+        "column": 14,
+        "endColumn": 21,
+        "endLine": 3,
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+        "line": 3
+      },
+      "message": "残余効果が閉じていません",
+      "notes": [
+        {
+          "label": null,
+          "message": "`ConsoleAudit` のハンドラが宣言されていません",
+          "span": null
+        }
+      ],
+      "recoverability": "fatal",
+      "schema_version": "2.0.0-draft",
+      "severity": "error",
+      "timestamp": "2025-11-12T00:22:16Z"
+    }
+  ],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_stage_cli_override/input.reml",
+  "parse_result": {
+    "packrat_stats": {
+      "approx_bytes": 399,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "span_trace": []
+  },
+  "run_config": {
+    "extensions": {
+      "config": {
+        "experimental_effects": true,
+        "left_recursion": "off",
+        "legacy_result": true,
+        "merge_warnings": true,
+        "packrat": true,
+        "require_eof": false,
+        "source": "cli",
+        "trace": false
+      },
+      "effects": {
+        "type_row_mode": "ty-dual-write"
+      },
+      "lex": {
+        "identifier_profile": "unicode",
+        "profile": "strict_json"
+      },
+      "recover": {
+        "notes": false,
+        "sync_tokens": []
+      },
+      "stream": {
+        "checkpoint": "unspecified",
+        "chunk_size": 0,
+        "demand_min_bytes": 0,
+        "demand_preferred_bytes": 0,
+        "enabled": false,
+        "flow": {
+          "backpressure": {
+            "max_lag_bytes": 0
+          },
+          "checkpoints_closed": 1,
+          "policy": "auto"
+        },
+        "flow_max_lag": 0,
+        "flow_policy": "auto",
+        "packrat_enabled": true,
+        "resume_hint": "unspecified"
+      }
+    },
+    "runtime_capabilities": [
+      "docs/spec/3-8-core-runtime-capability.md#samples"
+    ],
+    "switches": {
+      "experimental_effects": true,
+      "left_recursion": "off",
+      "legacy_result": true,
+      "merge_warnings": true,
+      "packrat": true,
+      "require_eof": false,
+      "trace": false
+    }
+  },
+  "stream_meta": {
+    "flow": {
+      "checkpoints_closed": 1
+    },
+    "packrat": {
+      "approx_bytes": 399,
+      "budget_drops": 0,
+      "entries": 1,
+      "evictions": 0,
+      "hits": 6,
+      "pruned": 0,
+      "queries": 7
+    },
+    "packrat_enabled": true,
+    "span_trace": {
+      "dropped": 0,
+      "retained": 0
+    }
+  }
+}

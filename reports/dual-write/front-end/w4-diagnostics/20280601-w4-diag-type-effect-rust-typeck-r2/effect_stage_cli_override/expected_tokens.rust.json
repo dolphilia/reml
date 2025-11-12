@@ -1,0 +1,10 @@
+{
+  "case": "effect_stage_cli_override",
+  "frontend": "rust",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r2/effect_stage_cli_override/diagnostics.rust.json",
+  "diagnostic_count": 0,
+  "diagnostics": [],
+  "first_expected_tokens": [],
+  "first_diagnostic_index": null,
+  "total_expected_token_count": 0
+}

@@ -21,7 +21,7 @@ use crate::streaming::{
     StreamFlowState, StreamMetrics, StreamingState, StreamingStateConfig, TokenSample, TraceFrame,
 };
 use crate::token::{Token, TokenKind};
-use ast::{Expr, Function, Module, Param};
+use ast::{EffectDecl, Expr, Function, Module, Param};
 
 /// パース結果の簡易表現。
 #[derive(Debug, Default)]
@@ -305,6 +305,7 @@ fn token_kind_expectations(kind: &TokenKind) -> Vec<ExpectedToken> {
         TokenKind::KeywordFn => vec![ET::keyword("fn")],
         TokenKind::KeywordLet => vec![ET::keyword("let")],
         TokenKind::KeywordElse => vec![ET::keyword("else")],
+        TokenKind::KeywordPerform => vec![ET::keyword("perform")],
         TokenKind::KeywordIf => vec![ET::keyword("if")],
         TokenKind::KeywordThen => vec![ET::keyword("then")],
         TokenKind::KeywordTrue => vec![ET::keyword("true")],
@@ -322,7 +323,7 @@ fn token_kind_expectations(kind: &TokenKind) -> Vec<ExpectedToken> {
         TokenKind::LBracket => vec![ET::token("[")],
         TokenKind::RBracket => vec![ET::token("]")],
         TokenKind::Comma => vec![ET::token(",")],
-        TokenKind::Colon => vec![ET::token(":")],
+        TokenKind::Colon => Vec::new(),
         TokenKind::Semi => vec![ET::token(";")],
         TokenKind::Arrow => vec![ET::token("->")],
         TokenKind::Assign => vec![ET::token("=")],
@@ -358,19 +359,39 @@ fn module_parser<'src>(
             .map(|(name, span)| Expr::identifier(name, span));
 
         let bool_literal = choice((
-            just(TokenKind::KeywordTrue).map_with_span(move |_, span: Range<usize>| {
-                Expr::bool(true, span_to_span(span))
-            }),
-            just(TokenKind::KeywordFalse).map_with_span(move |_, span: Range<usize>| {
-                Expr::bool(false, span_to_span(span))
-            }),
+            just(TokenKind::KeywordTrue)
+                .map_with_span(move |_, span: Range<usize>| Expr::bool(true, span_to_span(span))),
+            just(TokenKind::KeywordFalse)
+                .map_with_span(move |_, span: Range<usize>| Expr::bool(false, span_to_span(span))),
         ));
+
+        let string_literal =
+            just(TokenKind::StringLiteral).map_with_span(move |_, span: Range<usize>| {
+                let slice = &source[span.start..span.end];
+                let value =
+                    if slice.starts_with("\\\"") && slice.ends_with("\\\"") && slice.len() >= 4 {
+                        &slice[2..slice.len() - 2]
+                    } else if slice.starts_with('"') && slice.ends_with('"') && slice.len() >= 2 {
+                        &slice[1..slice.len() - 1]
+                    } else {
+                        slice
+                    };
+                let unescaped = value.replace("\\\"", "\"");
+                Expr::string(unescaped, span_to_span(span))
+            });
 
         let paren_expr = expr
             .clone()
             .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
 
-        let atom = choice((int_literal.clone(), bool_literal, ident_expr, paren_expr)).boxed();
+        let atom = choice((
+            int_literal.clone(),
+            bool_literal,
+            string_literal,
+            ident_expr.clone(),
+            paren_expr,
+        ))
+        .boxed();
 
         let args = expr
             .clone()
@@ -427,7 +448,7 @@ fn module_parser<'src>(
             .then(expr.clone())
             .then_ignore(just(TokenKind::KeywordElse))
             .then(expr.clone())
-            .map(|(((if_pair, then_branch), else_branch))| {
+            .map(|((if_pair, then_branch), else_branch)| {
                 let (if_span, condition) = if_pair;
                 let if_span_start = if_span.start;
                 let else_span = else_branch.span();
@@ -440,12 +461,31 @@ fn module_parser<'src>(
                 }
             });
 
-        choice((if_expr, additive)).boxed()
+        let perform_expr = just(TokenKind::KeywordPerform)
+            .map_with_span(move |_, span: Range<usize>| span_to_span(span))
+            .then(identifier.clone())
+            .then(expr.clone())
+            .map(|((perform_span, (effect, effect_span)), argument)| {
+                let arg_span = argument.span();
+                let full_span = Span::new(perform_span.start.min(effect_span.start), arg_span.end);
+                Expr::Perform {
+                    effect,
+                    argument: Box::new(argument),
+                    span: full_span,
+                }
+            });
+
+        choice((if_expr, perform_expr, additive)).boxed()
     });
 
-    let params = identifier
-        .clone()
-        .map(|(name, span)| Param { name, span })
+    let param = identifier.clone().then(
+        just(TokenKind::Colon)
+            .ignore_then(identifier.clone())
+            .or_not(),
+    );
+
+    let params = param
+        .map(|((name, span), _)| Param { name, span })
         .separated_by(just(TokenKind::Comma))
         .allow_trailing()
         .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
@@ -467,11 +507,46 @@ fn module_parser<'src>(
             }
         });
 
-    function
+    let effect_decl = just(TokenKind::KeywordEffect)
+        .map_with_span(move |_, span: Range<usize>| span_to_span(span))
+        .then(identifier.clone())
+        .map(|(effect_span, (name, name_span))| EffectDecl {
+            name,
+            span: Span::new(effect_span.start.min(name_span.start), name_span.end),
+        });
+
+    #[derive(Clone)]
+    enum ModuleItem {
+        Effect(EffectDecl),
+        Function(Function),
+    }
+
+    let module_item = choice((
+        effect_decl
+            .clone()
+            .map(ModuleItem::Effect),
+        function.clone().map(ModuleItem::Function),
+    ));
+
+    effect_decl
         .repeated()
-        .at_least(1)
+        .then(function.clone())
+        .then(module_item.repeated())
         .then_ignore(just(TokenKind::EndOfFile).or_not())
-        .map(|functions| Module { functions })
+        .map(|((effects, first_function), rest)| {
+            let mut effects_vec = effects;
+            let mut functions_vec = vec![first_function];
+            for item in rest {
+                match item {
+                    ModuleItem::Effect(effect) => effects_vec.push(effect),
+                    ModuleItem::Function(function) => functions_vec.push(function),
+                }
+            }
+            Module {
+                effects: effects_vec,
+                functions: functions_vec,
+            }
+        })
 }
 
 fn span_union(left: Span, right: Span) -> Span {
@@ -750,6 +825,15 @@ mod driver {
             Case {
                 source: "fn add(x, y) = x + y",
                 expected_ast: Some("fn add(x, y) = binary(var(x) + var(y))"),
+                expected_messages: &[],
+            },
+            Case {
+                source: r#"effect ConsoleLog
+fn emit(msg: String) = perform ConsoleLog msg
+fn main() = emit(\"leak\")"#,
+                expected_ast: Some(
+                    "effect ConsoleLog\nfn emit(msg) = perform ConsoleLog var(msg)\nfn main() = call(var(emit))[str(\"leak\")]",
+                ),
                 expected_messages: &[],
             },
             Case {

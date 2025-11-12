@@ -1,6 +1,6 @@
 //! Reml フロントエンドの字句解析器実装（W1 PoC）。
 
-use logos::Logos;
+use logos::{Lexer as LogosLexer, Logos};
 
 use crate::error::{FrontendError, FrontendErrorKind, Recoverability};
 use crate::span::Span;
@@ -40,6 +40,8 @@ enum RawToken {
     KeywordEffect,
     #[token("else")]
     KeywordElse,
+    #[token("perform")]
+    KeywordPerform,
     #[token("if")]
     KeywordIf,
     #[token("then")]
@@ -53,6 +55,9 @@ enum RawToken {
     Identifier,
     #[regex(r"[0-9]+")]
     IntLiteral,
+    #[regex(r#""([^"\\]|\\.)*""#)]
+    #[regex(r#"\\""#, lex_escaped_string)]
+    StringLiteral,
 
     #[token("(")]
     LParen,
@@ -90,6 +95,19 @@ pub struct LexOutput {
     pub errors: Vec<FrontendError>,
 }
 
+fn lex_escaped_string(lex: &mut LogosLexer<RawToken>) -> Option<()> {
+    let mut offset = 0usize;
+    let remainder = lex.remainder().as_bytes();
+    while offset + 1 < remainder.len() {
+        if remainder[offset] == b'\\' && remainder[offset + 1] == b'"' {
+            lex.bump(offset + 2);
+            return Some(());
+        }
+        offset += 1;
+    }
+    None
+}
+
 /// `SourceBuffer` を `logos` で解析し、`Token` の列を生成する。
 pub fn lex_source(text: &str) -> LexOutput {
     let mut lexer = RawToken::lexer(text);
@@ -116,6 +134,13 @@ pub fn lex_source(text: &str) -> LexOutput {
             Ok(RawToken::KeywordElse) => {
                 tokens.push(Token::with_lexeme(TokenKind::KeywordElse, span, "else"));
             }
+            Ok(RawToken::KeywordPerform) => {
+                tokens.push(Token::with_lexeme(
+                    TokenKind::KeywordPerform,
+                    span,
+                    "perform",
+                ));
+            }
             Ok(RawToken::KeywordIf) => {
                 tokens.push(Token::with_lexeme(TokenKind::KeywordIf, span, "if"));
             }
@@ -138,6 +163,13 @@ pub fn lex_source(text: &str) -> LexOutput {
             Ok(RawToken::IntLiteral) => {
                 tokens.push(Token::with_lexeme(
                     TokenKind::IntLiteral,
+                    span,
+                    lexer.slice(),
+                ));
+            }
+            Ok(RawToken::StringLiteral) => {
+                tokens.push(Token::with_lexeme(
+                    TokenKind::StringLiteral,
                     span,
                     lexer.slice(),
                 ));
@@ -178,6 +210,31 @@ pub fn lex_source(text: &str) -> LexOutput {
     tokens.push(Token::new(TokenKind::EndOfFile, eof_span));
 
     LexOutput { tokens, errors }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lex_handles_escaped_string_literal() {
+        let source = "fn main() = emit(\\\"leak\\\")";
+        let output = lex_source(source);
+        let string_tokens: Vec<_> = output
+            .tokens
+            .iter()
+            .filter(|token| token.kind == TokenKind::StringLiteral)
+            .collect();
+        assert!(
+            output.errors.is_empty(),
+            "lexer returned errors: {:?}",
+            output.errors
+                .iter()
+                .map(|err| err.message())
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(string_tokens.len(), 1, "expected exactly one string literal");
+    }
 }
 
 /// 字句解析器の薄いラッパー。

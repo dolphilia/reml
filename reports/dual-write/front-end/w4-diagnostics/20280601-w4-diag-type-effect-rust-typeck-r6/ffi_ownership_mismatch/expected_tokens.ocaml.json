@@ -1,0 +1,58 @@
+{
+  "case": "ffi_ownership_mismatch",
+  "frontend": "ocaml",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r6/ffi_ownership_mismatch/diagnostics.ocaml.json",
+  "diagnostic_count": 1,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 5,
+      "expected_tokens": [
+        {
+          "token": "new",
+          "hint": "keyword"
+        },
+        {
+          "token": "self",
+          "hint": "keyword"
+        },
+        {
+          "token": "|",
+          "hint": "token"
+        },
+        {
+          "token": "identifier",
+          "hint": "class"
+        },
+        {
+          "token": "upper-identifier",
+          "hint": "class"
+        }
+      ]
+    }
+  ],
+  "first_expected_tokens": [
+    {
+      "token": "new",
+      "hint": "keyword"
+    },
+    {
+      "token": "self",
+      "hint": "keyword"
+    },
+    {
+      "token": "|",
+      "hint": "token"
+    },
+    {
+      "token": "identifier",
+      "hint": "class"
+    },
+    {
+      "token": "upper-identifier",
+      "hint": "class"
+    }
+  ],
+  "first_diagnostic_index": 0,
+  "total_expected_token_count": 5
+}

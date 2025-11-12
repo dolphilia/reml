@@ -1,0 +1,30 @@
+{
+  "required": true,
+  "frontends": {
+    "ocaml": {
+      "typeck_debug_path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r3/ffi_ownership_mismatch/typeck/typeck-debug.ocaml.json",
+      "typeck_debug_exists": false,
+      "effect_context_present": false,
+      "parser_metric_present": true,
+      "parser_metric_status": true,
+      "effects_metrics_present": true,
+      "effects_metrics_status": true,
+      "ok": false
+    },
+    "rust": {
+      "typeck_debug_path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r3/ffi_ownership_mismatch/typeck/typeck-debug.rust.json",
+      "typeck_debug_exists": false,
+      "effect_context_present": false,
+      "parser_metric_present": false,
+      "parser_metric_status": false,
+      "effects_metrics_present": true,
+      "effects_metrics_status": false,
+      "ok": false
+    }
+  },
+  "ok": false,
+  "failures": [
+    "ocaml: missing artifacts (typeck_debug=False, effect_context=False, parser_metric=True, effects_metrics=True)",
+    "rust: missing artifacts (typeck_debug=False, effect_context=False, parser_metric=False, effects_metrics=True)"
+  ]
+}

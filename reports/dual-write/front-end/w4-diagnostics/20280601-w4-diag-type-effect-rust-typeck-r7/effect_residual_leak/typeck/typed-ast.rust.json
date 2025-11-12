@@ -1,0 +1,23 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/effect_residual_leak/input.reml",
+  "functions": [
+    {
+      "name": "emit",
+      "param_types": [
+        "Unknown"
+      ],
+      "return_type": "Unknown",
+      "typed_exprs": 2,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "main",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 1,
+      "constraints": 0,
+      "unresolved_identifiers": 1
+    }
+  ]
+}

@@ -1,0 +1,159 @@
+{
+  "case": "ffi_stage_messagebox",
+  "match": false,
+  "ocaml_count": 12,
+  "rust_count": 0,
+  "differences": [
+    {
+      "index": 0,
+      "ocaml": {
+        "token": "effect",
+        "hint": "keyword"
+      },
+      "rust": null
+    },
+    {
+      "index": 1,
+      "ocaml": {
+        "token": "extern",
+        "hint": "keyword"
+      },
+      "rust": null
+    },
+    {
+      "index": 2,
+      "ocaml": {
+        "token": "fn",
+        "hint": "keyword"
+      },
+      "rust": null
+    },
+    {
+      "index": 3,
+      "ocaml": {
+        "token": "handler",
+        "hint": "keyword"
+      },
+      "rust": null
+    },
+    {
+      "index": 4,
+      "ocaml": {
+        "token": "impl",
+        "hint": "keyword"
+      },
+      "rust": null
+    },
+    {
+      "index": 5,
+      "ocaml": {
+        "token": "let",
+        "hint": "keyword"
+      },
+      "rust": null
+    },
+    {
+      "index": 6,
+      "ocaml": {
+        "token": "pub",
+        "hint": "keyword"
+      },
+      "rust": null
+    },
+    {
+      "index": 7,
+      "ocaml": {
+        "token": "trait",
+        "hint": "keyword"
+      },
+      "rust": null
+    },
+    {
+      "index": 8,
+      "ocaml": {
+        "token": "type",
+        "hint": "keyword"
+      },
+      "rust": null
+    },
+    {
+      "index": 9,
+      "ocaml": {
+        "token": "var",
+        "hint": "keyword"
+      },
+      "rust": null
+    },
+    {
+      "index": 10,
+      "ocaml": {
+        "token": "@",
+        "hint": "token"
+      },
+      "rust": null
+    },
+    {
+      "index": 11,
+      "ocaml": {
+        "token": "EOF",
+        "hint": "eof"
+      },
+      "rust": null
+    }
+  ],
+  "ocaml_tokens": [
+    {
+      "token": "effect",
+      "hint": "keyword"
+    },
+    {
+      "token": "extern",
+      "hint": "keyword"
+    },
+    {
+      "token": "fn",
+      "hint": "keyword"
+    },
+    {
+      "token": "handler",
+      "hint": "keyword"
+    },
+    {
+      "token": "impl",
+      "hint": "keyword"
+    },
+    {
+      "token": "let",
+      "hint": "keyword"
+    },
+    {
+      "token": "pub",
+      "hint": "keyword"
+    },
+    {
+      "token": "trait",
+      "hint": "keyword"
+    },
+    {
+      "token": "type",
+      "hint": "keyword"
+    },
+    {
+      "token": "var",
+      "hint": "keyword"
+    },
+    {
+      "token": "@",
+      "hint": "token"
+    },
+    {
+      "token": "EOF",
+      "hint": "eof"
+    }
+  ],
+  "rust_tokens": [],
+  "ocaml_first_index": 0,
+  "rust_first_index": null,
+  "ocaml_payload_present": true,
+  "rust_payload_present": true
+}

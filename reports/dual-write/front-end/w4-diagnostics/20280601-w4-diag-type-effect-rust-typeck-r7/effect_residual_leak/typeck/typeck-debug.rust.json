@@ -1,0 +1,48 @@
+{
+  "effect_context": {
+    "runtime": {
+      "Exact": "beta"
+    },
+    "capability": {
+      "Exact": "beta"
+    }
+  },
+  "type_row_mode": "DualWrite",
+  "recover": {
+    "emit_expected_tokens": true,
+    "emit_context": true,
+    "max_suggestions": 3
+  },
+  "runtime_capabilities": [
+    "docs/spec/3-8-core-runtime-capability.md#samples"
+  ],
+  "trace_enabled": false,
+  "metrics": {
+    "typed_functions": 2,
+    "typed_exprs": 3,
+    "constraints_total": 0,
+    "constraint_breakdown": {},
+    "unresolved_identifiers": 1,
+    "call_sites": 0,
+    "binary_expressions": 0
+  },
+  "violations": [
+    {
+      "kind": "ResidualLeak",
+      "code": "effects.contract.residual_leak",
+      "message": "残余効果が閉じていません",
+      "span": {
+        "start": 41,
+        "end": 63
+      },
+      "notes": [
+        {
+          "label": null,
+          "message": "`ConsoleLog` のハンドラが宣言されていません"
+        }
+      ],
+      "capability": "ConsoleLog",
+      "function": null
+    }
+  ]
+}

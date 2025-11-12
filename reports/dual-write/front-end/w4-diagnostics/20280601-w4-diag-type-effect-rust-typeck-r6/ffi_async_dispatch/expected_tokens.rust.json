@@ -1,0 +1,129 @@
+{
+  "case": "ffi_async_dispatch",
+  "frontend": "rust",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r6/ffi_async_dispatch/diagnostics.rust.json",
+  "diagnostic_count": 20,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 1,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 2,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 3,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 4,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 5,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 6,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 7,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 8,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 9,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 10,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 11,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 12,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 13,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 14,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 15,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 16,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 17,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 18,
+      "token_count": 0,
+      "expected_tokens": []
+    },
+    {
+      "index": 19,
+      "token_count": 2,
+      "expected_tokens": [
+        {
+          "token": "effect",
+          "hint": "keyword"
+        },
+        {
+          "token": "fn",
+          "hint": "keyword"
+        }
+      ]
+    }
+  ],
+  "first_expected_tokens": [
+    {
+      "token": "effect",
+      "hint": "keyword"
+    },
+    {
+      "token": "fn",
+      "hint": "keyword"
+    }
+  ],
+  "first_diagnostic_index": 19,
+  "total_expected_token_count": 2
+}

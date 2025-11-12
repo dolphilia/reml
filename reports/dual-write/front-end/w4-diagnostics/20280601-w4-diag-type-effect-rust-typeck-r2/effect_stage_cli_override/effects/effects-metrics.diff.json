@@ -1,0 +1,11 @@
+{
+  "match": false,
+  "ocaml_only": [
+    "enforcement",
+    "extra_metrics",
+    "schema_versions"
+  ],
+  "rust_only": [
+    "note"
+  ]
+}

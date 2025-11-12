@@ -1,0 +1,31 @@
+{
+  "cwd": "/Users/dolphilia/github/kestrel/compiler/rust/frontend",
+  "argv": [
+    "cargo",
+    "run",
+    "--quiet",
+    "--bin",
+    "poc_frontend",
+    "--",
+    "--emit-parse-debug",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/type_condition_bool/rust.parse-debug.json",
+    "--dualwrite-root",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics",
+    "--dualwrite-run-label",
+    "20280601-w4-diag-type-effect-rust-typeck-r7",
+    "--dualwrite-case-label",
+    "type_condition_bool",
+    "--experimental-effects",
+    "--effect-stage",
+    "beta",
+    "--type-row-mode",
+    "dual-write",
+    "--emit-typeck-debug",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/type_condition_bool/typeck/typeck-debug.rust.json",
+    "--emit-effects-metrics",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/type_condition_bool/effects/effects-metrics.rust.json",
+    "--runtime-capabilities",
+    "docs/spec/3-8-core-runtime-capability.md#samples",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/type_condition_bool/input.reml"
+  ]
+}

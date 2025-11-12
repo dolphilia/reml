@@ -6,17 +6,37 @@ use crate::span::Span;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Module {
+    pub effects: Vec<EffectDecl>,
     pub functions: Vec<Function>,
 }
 
 impl Module {
     pub fn render(&self) -> String {
-        self.functions
+        let mut rendered = Vec::new();
+        for effect in &self.effects {
+            rendered.push(format!("effect {}", effect.name));
+        }
+        let func_render = self
+            .functions
             .iter()
             .map(Function::render)
             .collect::<Vec<_>>()
-            .join("\n")
+            .join("\n");
+        if func_render.is_empty() {
+            rendered.join("\n")
+        } else if rendered.is_empty() {
+            func_render
+        } else {
+            rendered.push(func_render);
+            rendered.join("\n")
+        }
     }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct EffectDecl {
+    pub name: String,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -56,6 +76,10 @@ pub enum Expr {
         value: bool,
         span: Span,
     },
+    String {
+        value: String,
+        span: Span,
+    },
     Identifier {
         name: String,
         span: Span,
@@ -77,6 +101,11 @@ pub enum Expr {
         else_branch: Box<Expr>,
         span: Span,
     },
+    Perform {
+        effect: String,
+        argument: Box<Expr>,
+        span: Span,
+    },
 }
 
 impl Expr {
@@ -86,6 +115,13 @@ impl Expr {
 
     pub fn bool(value: bool, span: Span) -> Self {
         Self::Bool { value, span }
+    }
+
+    pub fn string(value: impl Into<String>, span: Span) -> Self {
+        Self::String {
+            value: value.into(),
+            span,
+        }
     }
 
     pub fn identifier(name: impl Into<String>, span: Span) -> Self {
@@ -116,10 +152,12 @@ impl Expr {
         match self {
             Expr::Int { span, .. }
             | Expr::Bool { span, .. }
+            | Expr::String { span, .. }
             | Expr::Identifier { span, .. }
             | Expr::Call { span, .. }
             | Expr::Binary { span, .. }
-            | Expr::IfElse { span, .. } => *span,
+            | Expr::IfElse { span, .. }
+            | Expr::Perform { span, .. } => *span,
         }
     }
 
@@ -128,6 +166,7 @@ impl Expr {
             Expr::Int { value, .. } => format!("int({value}:base10)"),
             Expr::Bool { value, .. } => format!("bool({value})"),
             Expr::Identifier { name, .. } => format!("var({name})"),
+            Expr::String { value, .. } => format!("str(\"{}\")", value),
             Expr::Call { callee, args, .. } => {
                 let rendered_args = args.iter().map(Expr::render).collect::<Vec<_>>();
                 format!("call({})[{}]", callee.render(), rendered_args.join(", "))
@@ -149,6 +188,9 @@ impl Expr {
                 then_branch.render(),
                 else_branch.render()
             ),
+            Expr::Perform {
+                effect, argument, ..
+            } => format!("perform {} {}", effect, argument.render()),
         }
     }
 }

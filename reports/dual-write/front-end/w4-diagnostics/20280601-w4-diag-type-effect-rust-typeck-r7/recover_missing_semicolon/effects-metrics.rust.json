@@ -1,0 +1,84 @@
+{
+  "metrics": [
+    {
+      "metric": "bridge_stage.audit_presence",
+      "total": 1,
+      "passed": 0,
+      "failed": 1,
+      "pass_rate": 0.0,
+      "pass_fraction": 0.0,
+      "status": "error",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/recover_missing_semicolon/diagnostics.rust.json"
+      ],
+      "failures": [
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/recover_missing_semicolon/diagnostics.rust.json",
+          "index": 0,
+          "missing_fields": [
+            "actual_capabilities",
+            "capability",
+            "required_capabilities"
+          ]
+        }
+      ],
+      "required_fields": [
+        "required_capabilities",
+        "actual_capabilities",
+        "required",
+        "actual",
+        "capability"
+      ]
+    },
+    {
+      "metric": "effect_row_guard_regressions",
+      "count": 0,
+      "status": "success"
+    }
+  ],
+  "extra_metrics": [
+    {
+      "metric": "bridge_stage.audit_presence",
+      "total": 1,
+      "passed": 0,
+      "failed": 1,
+      "pass_rate": 0.0,
+      "pass_fraction": 0.0,
+      "status": "error",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/recover_missing_semicolon/diagnostics.rust.json"
+      ],
+      "failures": [
+        {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/recover_missing_semicolon/diagnostics.rust.json",
+          "index": 0,
+          "missing_fields": [
+            "actual_capabilities",
+            "capability",
+            "required_capabilities"
+          ]
+        }
+      ],
+      "required_fields": [
+        "required_capabilities",
+        "actual_capabilities",
+        "required",
+        "actual",
+        "capability"
+      ]
+    },
+    {
+      "metric": "effect_row_guard_regressions",
+      "count": 0,
+      "status": "success"
+    }
+  ],
+  "schema_versions": [],
+  "enforcement": {
+    "failures": [
+      "bridge_stage.audit_presence < 1.0",
+      "bridge_stage.audit_presence: status=error"
+    ],
+    "require_success": true
+  }
+}

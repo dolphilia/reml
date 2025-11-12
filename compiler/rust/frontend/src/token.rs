@@ -15,6 +15,7 @@ pub enum TokenKind {
     KeywordFn,
     KeywordEffect,
     KeywordModule,
+    KeywordPerform,
     KeywordIf,
     KeywordThen,
     KeywordTrue,

@@ -1,0 +1,166 @@
+{
+  "metrics": [
+    {
+      "metric": "effect_scope.audit_presence",
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r4/effect_residual_leak/diagnostics.rust.json"
+      ],
+      "failures": [],
+      "required_keys": {
+        "extensions": [
+          "effect.capabilities",
+          "effect.required_capabilities",
+          "effect.stage.required_capabilities",
+          "effect.stage.actual_capabilities",
+          "effect.stage.required",
+          "effect.stage.actual"
+        ],
+        "audit_metadata": [
+          "capability.ids",
+          "effect.required_capabilities",
+          "effect.stage.required_capabilities",
+          "effect.stage.actual_capabilities",
+          "effect.stage.required",
+          "effect.stage.actual",
+          "bridge.stage.required_capabilities",
+          "bridge.stage.actual_capabilities",
+          "bridge.stage.capability"
+        ]
+      }
+    },
+    {
+      "metric": "effect_stage.audit_presence",
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r4/effect_residual_leak/diagnostics.rust.json"
+      ],
+      "failures": [],
+      "required_fields": [
+        "required",
+        "actual",
+        "required_capabilities",
+        "actual_capabilities"
+      ]
+    },
+    {
+      "metric": "bridge_stage.audit_presence",
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r4/effect_residual_leak/diagnostics.rust.json"
+      ],
+      "failures": [],
+      "required_fields": [
+        "required_capabilities",
+        "actual_capabilities",
+        "required",
+        "actual",
+        "capability"
+      ]
+    },
+    {
+      "metric": "effect_row_guard_regressions",
+      "count": 0,
+      "status": "success"
+    }
+  ],
+  "extra_metrics": [
+    {
+      "metric": "effect_scope.audit_presence",
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r4/effect_residual_leak/diagnostics.rust.json"
+      ],
+      "failures": [],
+      "required_keys": {
+        "extensions": [
+          "effect.capabilities",
+          "effect.required_capabilities",
+          "effect.stage.required_capabilities",
+          "effect.stage.actual_capabilities",
+          "effect.stage.required",
+          "effect.stage.actual"
+        ],
+        "audit_metadata": [
+          "capability.ids",
+          "effect.required_capabilities",
+          "effect.stage.required_capabilities",
+          "effect.stage.actual_capabilities",
+          "effect.stage.required",
+          "effect.stage.actual",
+          "bridge.stage.required_capabilities",
+          "bridge.stage.actual_capabilities",
+          "bridge.stage.capability"
+        ]
+      }
+    },
+    {
+      "metric": "effect_stage.audit_presence",
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r4/effect_residual_leak/diagnostics.rust.json"
+      ],
+      "failures": [],
+      "required_fields": [
+        "required",
+        "actual",
+        "required_capabilities",
+        "actual_capabilities"
+      ]
+    },
+    {
+      "metric": "bridge_stage.audit_presence",
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r4/effect_residual_leak/diagnostics.rust.json"
+      ],
+      "failures": [],
+      "required_fields": [
+        "required_capabilities",
+        "actual_capabilities",
+        "required",
+        "actual",
+        "capability"
+      ]
+    },
+    {
+      "metric": "effect_row_guard_regressions",
+      "count": 0,
+      "status": "success"
+    }
+  ],
+  "schema_versions": [],
+  "enforcement": {
+    "require_success": true
+  }
+}

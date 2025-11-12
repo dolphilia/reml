@@ -1,0 +1,39 @@
+{
+  "case": "type_condition_bool",
+  "match": false,
+  "ocaml_count": 0,
+  "rust_count": 2,
+  "differences": [
+    {
+      "index": 0,
+      "ocaml": null,
+      "rust": {
+        "token": ")",
+        "hint": "token"
+      }
+    },
+    {
+      "index": 1,
+      "ocaml": null,
+      "rust": {
+        "token": ",",
+        "hint": "token"
+      }
+    }
+  ],
+  "ocaml_tokens": [],
+  "rust_tokens": [
+    {
+      "token": ")",
+      "hint": "token"
+    },
+    {
+      "token": ",",
+      "hint": "token"
+    }
+  ],
+  "ocaml_first_index": null,
+  "rust_first_index": 0,
+  "ocaml_payload_present": true,
+  "rust_payload_present": true
+}

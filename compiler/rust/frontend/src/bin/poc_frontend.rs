@@ -57,9 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let typeck_report = result
         .ast
         .as_ref()
-        .map(|module| {
-            TypecheckDriver::infer_module(module, &source, &args.typecheck_config)
-        })
+        .map(|module| TypecheckDriver::infer_module(module, &args.typecheck_config))
         .unwrap_or_else(|| {
             TypecheckDriver::infer_fallback_from_source(&source, &args.typecheck_config)
         });
@@ -1175,14 +1173,8 @@ fn build_parser_diagnostics(
             stage_payload.apply_extensions(&mut extensions);
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
 
-            let audit_metadata = build_audit_metadata(
-                &timestamp,
-                args,
-                input_path,
-                &stage_payload,
-                flow,
-                "parser",
-            );
+            let audit_metadata =
+                build_audit_metadata(&timestamp, args, input_path, &stage_payload, flow, "parser");
             let audit = json!({
                 "metadata": audit_metadata.clone(),
                 "audit_id": audit_metadata

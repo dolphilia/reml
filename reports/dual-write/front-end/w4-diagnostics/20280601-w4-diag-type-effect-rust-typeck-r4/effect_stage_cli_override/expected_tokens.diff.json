@@ -1,0 +1,47 @@
+{
+  "case": "effect_stage_cli_override",
+  "match": false,
+  "ocaml_count": 1,
+  "rust_count": 2,
+  "differences": [
+    {
+      "index": 0,
+      "ocaml": {
+        "token": ":",
+        "hint": "token"
+      },
+      "rust": {
+        "token": "effect",
+        "hint": "keyword"
+      }
+    },
+    {
+      "index": 1,
+      "ocaml": null,
+      "rust": {
+        "token": "fn",
+        "hint": "keyword"
+      }
+    }
+  ],
+  "ocaml_tokens": [
+    {
+      "token": ":",
+      "hint": "token"
+    }
+  ],
+  "rust_tokens": [
+    {
+      "token": "effect",
+      "hint": "keyword"
+    },
+    {
+      "token": "fn",
+      "hint": "keyword"
+    }
+  ],
+  "ocaml_first_index": 0,
+  "rust_first_index": 5,
+  "ocaml_payload_present": true,
+  "rust_payload_present": true
+}

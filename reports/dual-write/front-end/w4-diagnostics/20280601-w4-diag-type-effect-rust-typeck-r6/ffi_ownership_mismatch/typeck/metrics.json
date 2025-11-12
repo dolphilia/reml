@@ -1,0 +1,210 @@
+{
+  "metrics": {
+    "typed_functions": 3,
+    "typed_exprs": 3,
+    "constraints_total": 0,
+    "constraint_breakdown": {},
+    "unresolved_identifiers": 0,
+    "call_sites": 0,
+    "binary_expressions": 0
+  },
+  "typed_functions": [
+    {
+      "name": "test_ownership_lifecycle",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "test_borrowed_only",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "main",
+      "param_types": [],
+      "return_type": "Unknown",
+      "typed_exprs": 0,
+      "constraints": 0,
+      "unresolved_identifiers": 0
+    }
+  ],
+  "extensions": {
+    "bridge": {
+      "capability": "windows.ffi",
+      "stage": {
+        "actual": "beta",
+        "actual_capabilities": [
+          {
+            "capability": "windows.ffi",
+            "stage": "beta"
+          }
+        ],
+        "capability": "windows.ffi",
+        "required": "beta",
+        "required_capabilities": [
+          "windows.ffi"
+        ],
+        "trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ]
+      }
+    },
+    "capability": {
+      "detail": [
+        {
+          "capability": "windows.ffi",
+          "stage": "beta"
+        }
+      ],
+      "ids": [
+        "windows.ffi"
+      ],
+      "primary": "windows.ffi",
+      "required_capabilities": [
+        "windows.ffi"
+      ],
+      "stage": {
+        "actual": "beta",
+        "required": "beta"
+      }
+    },
+    "effect.actual_capabilities": [
+      {
+        "capability": "windows.ffi",
+        "stage": "beta"
+      }
+    ],
+    "effect.capabilities": [
+      "windows.ffi"
+    ],
+    "effect.capability": "windows.ffi",
+    "effect.required_capabilities": [
+      "windows.ffi"
+    ],
+    "effect.stage.actual": "beta",
+    "effect.stage.actual_capabilities": [
+      {
+        "capability": "windows.ffi",
+        "stage": "beta"
+      }
+    ],
+    "effect.stage.required": "beta",
+    "effect.stage.required_capabilities": [
+      "windows.ffi"
+    ],
+    "effects": {
+      "capabilities": [
+        "windows.ffi"
+      ],
+      "capability": "windows.ffi",
+      "stage": {
+        "actual": "beta",
+        "actual_capabilities": [
+          {
+            "capability": "windows.ffi",
+            "stage": "beta"
+          }
+        ],
+        "capability": "windows.ffi",
+        "required": "beta",
+        "required_capabilities": [
+          "windows.ffi"
+        ],
+        "trace": [
+          {
+            "note": "--effect-stage",
+            "source": "cli_option",
+            "stage": "beta"
+          },
+          {
+            "source": "runtime",
+            "stage": "beta"
+          }
+        ]
+      },
+      "stage_trace": [
+        {
+          "note": "--effect-stage",
+          "source": "cli_option",
+          "stage": "beta"
+        },
+        {
+          "source": "runtime",
+          "stage": "beta"
+        }
+      ]
+    }
+  },
+  "audit_metadata": {
+    "bridge.stage.actual_capabilities": [
+      {
+        "capability": "windows.ffi",
+        "stage": "beta"
+      }
+    ],
+    "bridge.stage.capability": "windows.ffi",
+    "bridge.stage.required_capabilities": [
+      "windows.ffi"
+    ],
+    "capability.ids": [
+      "windows.ffi"
+    ],
+    "effect.actual_capabilities": [
+      {
+        "capability": "windows.ffi",
+        "stage": "beta"
+      }
+    ],
+    "effect.capability": "windows.ffi",
+    "effect.required_capabilities": [
+      "windows.ffi"
+    ],
+    "effect.stage.actual": "beta",
+    "effect.stage.actual_capabilities": [
+      {
+        "capability": "windows.ffi",
+        "stage": "beta"
+      }
+    ],
+    "effect.stage.required": "beta",
+    "effect.stage.required_capabilities": [
+      "windows.ffi"
+    ],
+    "effect.stage.trace": [
+      {
+        "note": "--effect-stage",
+        "source": "cli_option",
+        "stage": "beta"
+      },
+      {
+        "source": "runtime",
+        "stage": "beta"
+      }
+    ],
+    "stage.trace": [
+      {
+        "note": "--effect-stage",
+        "source": "cli_option",
+        "stage": "beta"
+      },
+      {
+        "source": "runtime",
+        "stage": "beta"
+      }
+    ]
+  }
+}

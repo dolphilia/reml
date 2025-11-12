@@ -1,0 +1,34 @@
+{
+  "case": "type_condition_bool",
+  "frontend": "rust",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r5/type_condition_bool/diagnostics.rust.json",
+  "diagnostic_count": 1,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 2,
+      "expected_tokens": [
+        {
+          "token": ")",
+          "hint": "token"
+        },
+        {
+          "token": ",",
+          "hint": "token"
+        }
+      ]
+    }
+  ],
+  "first_expected_tokens": [
+    {
+      "token": ")",
+      "hint": "token"
+    },
+    {
+      "token": ",",
+      "hint": "token"
+    }
+  ],
+  "first_diagnostic_index": 0,
+  "total_expected_token_count": 2
+}

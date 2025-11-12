@@ -1,0 +1,26 @@
+{
+  "case": "effect_stage_cli_override",
+  "frontend": "ocaml",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r4/effect_stage_cli_override/diagnostics.ocaml.json",
+  "diagnostic_count": 1,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 1,
+      "expected_tokens": [
+        {
+          "token": ":",
+          "hint": "token"
+        }
+      ]
+    }
+  ],
+  "first_expected_tokens": [
+    {
+      "token": ":",
+      "hint": "token"
+    }
+  ],
+  "first_diagnostic_index": 0,
+  "total_expected_token_count": 1
+}

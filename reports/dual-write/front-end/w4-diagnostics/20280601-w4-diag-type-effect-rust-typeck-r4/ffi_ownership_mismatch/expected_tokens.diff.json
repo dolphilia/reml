@@ -1,0 +1,90 @@
+{
+  "case": "ffi_ownership_mismatch",
+  "match": false,
+  "ocaml_count": 5,
+  "rust_count": 2,
+  "differences": [
+    {
+      "index": 0,
+      "ocaml": {
+        "token": "new",
+        "hint": "keyword"
+      },
+      "rust": {
+        "token": "effect",
+        "hint": "keyword"
+      }
+    },
+    {
+      "index": 1,
+      "ocaml": {
+        "token": "self",
+        "hint": "keyword"
+      },
+      "rust": {
+        "token": "fn",
+        "hint": "keyword"
+      }
+    },
+    {
+      "index": 2,
+      "ocaml": {
+        "token": "|",
+        "hint": "token"
+      },
+      "rust": null
+    },
+    {
+      "index": 3,
+      "ocaml": {
+        "token": "identifier",
+        "hint": "class"
+      },
+      "rust": null
+    },
+    {
+      "index": 4,
+      "ocaml": {
+        "token": "upper-identifier",
+        "hint": "class"
+      },
+      "rust": null
+    }
+  ],
+  "ocaml_tokens": [
+    {
+      "token": "new",
+      "hint": "keyword"
+    },
+    {
+      "token": "self",
+      "hint": "keyword"
+    },
+    {
+      "token": "|",
+      "hint": "token"
+    },
+    {
+      "token": "identifier",
+      "hint": "class"
+    },
+    {
+      "token": "upper-identifier",
+      "hint": "class"
+    }
+  ],
+  "rust_tokens": [
+    {
+      "token": "effect",
+      "hint": "keyword"
+    },
+    {
+      "token": "fn",
+      "hint": "keyword"
+    }
+  ],
+  "ocaml_first_index": 0,
+  "rust_first_index": 63,
+  "ocaml_payload_present": true,
+  "rust_payload_present": true
+}

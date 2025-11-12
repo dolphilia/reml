@@ -1,0 +1,30 @@
+{
+  "cwd": "/Users/dolphilia/github/kestrel/compiler/ocaml",
+  "argv": [
+    "dune",
+    "exec",
+    "remlc",
+    "--",
+    "--packrat",
+    "--format",
+    "json",
+    "--json-mode",
+    "compact",
+    "--emit-parse-debug",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/ffi_async_dispatch/ocaml.parse-debug.json",
+    "--left-recursion",
+    "off",
+    "--experimental-effects",
+    "--effect-stage",
+    "beta",
+    "--type-row-mode",
+    "dual-write",
+    "--runtime-capabilities",
+    "macos.dispatch_queue",
+    "--emit-typeck-debug",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/ffi_async_dispatch/typeck/typeck-debug.ocaml.json",
+    "--emit-effects-metrics",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/ffi_async_dispatch/effects/effects-metrics.ocaml.json",
+    "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/ffi_async_dispatch/input.reml"
+  ]
+}

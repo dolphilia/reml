@@ -1,0 +1,489 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r4/ffi_stage_messagebox/input.reml",
+  "parser_run_config": {
+    "experimental_effects": true,
+    "legacy_result": true,
+    "merge_warnings": true,
+    "trace": false,
+    "left_recursion": "off",
+    "packrat": true,
+    "require_eof": false,
+    "extensions": {
+      "config": {
+        "experimental_effects": true,
+        "left_recursion": "off",
+        "legacy_result": true,
+        "merge_warnings": true,
+        "packrat": true,
+        "require_eof": false,
+        "source": "cli",
+        "trace": false
+      },
+      "effects": {
+        "required_capabilities": [ "windows.messagebox" ],
+        "stage": "beta",
+        "type_row_mode": "dual-write"
+      },
+      "lex": { "profile": "strict_json" }
+    }
+  },
+  "diagnostics": [
+    {
+      "expected": {
+        "locale_args": [
+          "effect", "extern", "fn", "handler", "impl", "let", "pub", "trait",
+          "type", "var", "@", "EOF"
+        ],
+        "humanized": "ここで`effect`、`extern`、`fn`、`handler`、`impl`、`let`、`pub`、`trait`、`type`、`var`、`@` または 入力終端のいずれかが必要です",
+        "message_key": "parse.expected",
+        "alternatives": [
+          { "kind": "keyword", "value": "effect" },
+          { "kind": "keyword", "value": "extern" },
+          { "kind": "keyword", "value": "fn" },
+          { "kind": "keyword", "value": "handler" },
+          { "kind": "keyword", "value": "impl" },
+          { "kind": "keyword", "value": "let" },
+          { "kind": "keyword", "value": "pub" },
+          { "kind": "keyword", "value": "trait" },
+          { "kind": "keyword", "value": "type" },
+          { "kind": "keyword", "value": "var" },
+          { "kind": "token", "value": "@" },
+          { "kind": "eof" }
+        ]
+      },
+      "audit": {
+        "metadata": {
+          "parse": {
+            "core": {
+              "rule": {
+                "fingerprint": "859967339",
+                "origin": "static",
+                "ordinal": 0,
+                "name": "compilation_unit",
+                "namespace": "menhir"
+              }
+            }
+          },
+          "parser.core.rule": {
+            "fingerprint": "859967339",
+            "origin": "static",
+            "ordinal": 0,
+            "name": "compilation_unit",
+            "namespace": "menhir"
+          },
+          "parser.runconfig": {
+            "packrat": true,
+            "left_recursion": "off",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": true,
+            "experimental_effects": true,
+            "extensions": {
+              "stream": {
+                "enabled": false,
+                "packrat_enabled": true,
+                "checkpoint": "unspecified",
+                "resume_hint": "unspecified",
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "chunk_size": 0,
+                "flow": {
+                  "policy": "auto",
+                  "checkpoints_closed": 0,
+                  "backpressure": { "max_lag_bytes": 0 }
+                }
+              },
+              "recover": { "sync_tokens": [], "notes": false },
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              }
+            }
+          },
+          "parser.runconfig.packrat": true,
+          "parser.runconfig.left_recursion": "off",
+          "parser.runconfig.trace": false,
+          "parser.runconfig.merge_warnings": true,
+          "parser.runconfig.require_eof": false,
+          "parser.runconfig.legacy_result": true,
+          "parser.runconfig.experimental_effects": true,
+          "parser.runconfig.extensions.lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.recover": {
+            "sync_tokens": [],
+            "notes": false
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "enabled": false,
+            "packrat_enabled": true,
+            "checkpoint": "unspecified",
+            "resume_hint": "unspecified",
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "chunk_size": 0,
+            "flow": {
+              "policy": "auto",
+              "checkpoints_closed": 0,
+              "backpressure": { "max_lag_bytes": 0 }
+            }
+          },
+          "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.packrat_enabled": true,
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "effect.capabilities": [ "windows.messagebox" ],
+          "effect.stage.actual_capabilities": [],
+          "effect.actual_capabilities": [],
+          "effect.stage.required_capabilities": [ "windows.messagebox" ],
+          "effect.required_capabilities": [ "windows.messagebox" ],
+          "fingerprint": "859967339",
+          "origin": "static",
+          "name": "compilation_unit",
+          "namespace": "menhir",
+          "parser.core.rule.fingerprint": "859967339",
+          "parser.core.rule.origin": "static",
+          "parser.core.rule.ordinal": 0,
+          "parser.core.rule.name": "compilation_unit",
+          "parser.core.rule.namespace": "menhir",
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "20251112T001355Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [ { "kind": "input", "path": "input.reml" } ]
+          },
+          "audit.source.workspace": ".",
+          "audit.sequence": 0,
+          "audit.build_id": "20251112T001355Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "cli.audit_id": "cli/20251112T001355Z#0",
+          "event.domain": "parser",
+          "audit.timestamp": "2025-11-12T00:13:55Z",
+          "schema.version": "1.1"
+        },
+        "audit_id": "cli/20251112T001355Z#0",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "20251112T001355Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "input.reml" } ]
+        }
+      },
+      "audit_metadata": {
+        "event.domain": "parser",
+        "cli.audit_id": "cli/20251112T001355Z#0",
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "20251112T001355Z",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "20251112T001355Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [ { "kind": "input", "path": "input.reml" } ]
+        },
+        "parser.core.rule.namespace": "menhir",
+        "parser.core.rule.name": "compilation_unit",
+        "parser.core.rule.ordinal": 0,
+        "parser.core.rule.origin": "static",
+        "parser.core.rule.fingerprint": "859967339",
+        "namespace": "menhir",
+        "name": "compilation_unit",
+        "origin": "static",
+        "fingerprint": "859967339",
+        "schema.version": "1.1",
+        "audit.timestamp": "2025-11-12T00:13:55Z",
+        "effect.required_capabilities": [ "windows.messagebox" ],
+        "effect.stage.required_capabilities": [ "windows.messagebox" ],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [ "windows.messagebox" ],
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.packrat_enabled": true,
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream": {
+          "enabled": false,
+          "packrat_enabled": true,
+          "checkpoint": "unspecified",
+          "resume_hint": "unspecified",
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "chunk_size": 0,
+          "flow": {
+            "policy": "auto",
+            "checkpoints_closed": 0,
+            "backpressure": { "max_lag_bytes": 0 }
+          }
+        },
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover": {
+          "sync_tokens": [],
+          "notes": false
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.lex": {
+          "profile": "strict_json",
+          "identifier_profile": "unicode"
+        },
+        "parser.runconfig.experimental_effects": true,
+        "parser.runconfig.legacy_result": true,
+        "parser.runconfig.require_eof": false,
+        "parser.runconfig.merge_warnings": true,
+        "parser.runconfig.trace": false,
+        "parser.runconfig.left_recursion": "off",
+        "parser.runconfig.packrat": true,
+        "parser.runconfig": {
+          "packrat": true,
+          "left_recursion": "off",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": true,
+          "experimental_effects": true,
+          "extensions": {
+            "stream": {
+              "enabled": false,
+              "packrat_enabled": true,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "checkpoints_closed": 0,
+                "backpressure": { "max_lag_bytes": 0 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        },
+        "parser.core.rule": {
+          "fingerprint": "859967339",
+          "origin": "static",
+          "ordinal": 0,
+          "name": "compilation_unit",
+          "namespace": "menhir"
+        },
+        "parse": {
+          "core": {
+            "rule": {
+              "fingerprint": "859967339",
+              "origin": "static",
+              "ordinal": 0,
+              "name": "compilation_unit",
+              "namespace": "menhir"
+            }
+          }
+        }
+      },
+      "extensions": {
+        "diagnostic.v2": { "timestamp": "2025-11-12T00:13:55Z" },
+        "recover": {
+          "expected_tokens": [
+            {
+              "token": "effect",
+              "label": "effect",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "extern",
+              "label": "extern",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "fn",
+              "label": "fn",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "handler",
+              "label": "handler",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "impl",
+              "label": "impl",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "let",
+              "label": "let",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "pub",
+              "label": "pub",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "trait",
+              "label": "trait",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "type",
+              "label": "type",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            {
+              "token": "var",
+              "label": "var",
+              "hint": "keyword",
+              "kind": "keyword"
+            },
+            { "token": "@", "label": "@", "hint": "token", "kind": "token" },
+            { "token": "EOF", "label": "EOF", "hint": "eof", "kind": "eof" }
+          ],
+          "message": "ここで`effect`、`extern`、`fn`、`handler`、`impl`、`let`、`pub`、`trait`、`type`、`var`、`@` または 入力終端のいずれかが必要です"
+        },
+        "parse": {
+          "parser_id": {
+            "namespace": "menhir",
+            "name": "compilation_unit",
+            "ordinal": 0,
+            "origin": "static",
+            "fingerprint": "859967339"
+          }
+        },
+        "effect.required_capabilities": [ "windows.messagebox" ],
+        "effect.stage.required_capabilities": [ "windows.messagebox" ],
+        "effect.actual_capabilities": [],
+        "effect.stage.actual_capabilities": [],
+        "effect.capabilities": [ "windows.messagebox" ],
+        "runconfig": {
+          "packrat": true,
+          "left_recursion": "off",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": true,
+          "experimental_effects": true,
+          "extensions": {
+            "stream": {
+              "enabled": false,
+              "packrat_enabled": true,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "checkpoints_closed": 0,
+                "backpressure": { "max_lag_bytes": 0 }
+              }
+            },
+            "recover": { "sync_tokens": [], "notes": false },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        }
+      },
+      "schema_version": "2.0.0-draft",
+      "fixits": [],
+      "hints": [],
+      "secondary": [],
+      "codes": [],
+      "primary": {
+        "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r4/ffi_stage_messagebox/input.reml",
+        "start_line": 28,
+        "start_col": 12,
+        "end_line": 28,
+        "end_col": 13
+      },
+      "severity_level": 1,
+      "severity": "error",
+      "message": "構文エラー: 入力を解釈できません",
+      "domain": "parser",
+      "timestamp": "2025-11-12T00:13:55Z"
+    }
+  ],
+  "parse_result": {
+    "span_trace": null,
+    "packrat_stats": { "queries": 8, "hits": 7 },
+    "legacy_error": {
+      "span": {
+        "start": {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r4/ffi_stage_messagebox/input.reml",
+          "line": 29,
+          "column": 13,
+          "offset": 804
+        },
+        "end": {
+          "file": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r4/ffi_stage_messagebox/input.reml",
+          "line": 29,
+          "column": 14,
+          "offset": 805
+        }
+      },
+      "expected": [
+        { "kind": "keyword", "label": "effect" },
+        { "kind": "keyword", "label": "extern" },
+        { "kind": "keyword", "label": "fn" },
+        { "kind": "keyword", "label": "handler" },
+        { "kind": "keyword", "label": "impl" },
+        { "kind": "keyword", "label": "let" },
+        { "kind": "keyword", "label": "pub" },
+        { "kind": "keyword", "label": "trait" },
+        { "kind": "keyword", "label": "type" },
+        { "kind": "keyword", "label": "var" },
+        { "kind": "token", "label": "@" },
+        { "kind": "eof", "label": "EOF" }
+      ],
+      "committed": false,
+      "far_consumed": true
+    },
+    "farthest_error_offset": 804,
+    "span": null,
+    "committed": false,
+    "consumed": true,
+    "recovered": false,
+    "has_value": false
+  },
+  "stream_meta": null
+}
