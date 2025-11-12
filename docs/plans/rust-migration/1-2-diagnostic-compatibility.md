@@ -226,3 +226,21 @@ Rust フロントエンド移植において、OCaml 実装と同一の診断 (`
   1. Streaming 3 ケースに `ExpectedTokenCollector`（Rust 側）を適用し、`expected_tokens.diff.json` を空にした Run を `reports/dual-write/front-end/w4-diagnostics/README.md` へ反映する。  
   2. CLI/LSP ケースでは Rust RunConfig 実装と OCaml 側診断生成を同時に修正し、`parser.runconfig_switch_coverage` と `diag_counts` が一致する Run（例: 20280430 再走）を作成する。  
   3. 2 つの成果を `p1-front-end-checklists.csv` と `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に記録し、W4 判定資料（`reports/.../README.md`）を更新する。
+
+## 1.2.20 20280601-20280602 Type/Effect/FFI 再測定ログ（DIAG-RUST-06 フォローアップ）
+- *2028-06-02 (Type 完了判定)*: Run `reports/dual-write/front-end/w4-diagnostics/20280602-w4-diag-type-condition-r2/summary.md` は `type_condition_bool` / `type_condition_literal_bool` の双方で `gating=metrics=diag_match=✅` を記録し、`typeck/typeck-debug.{ocaml,rust}.json`・`effects/effects-metrics.{ocaml,rust}.json` とも生成された。`type_condition_literal_bool/summary.json` の `typeck_requirements.frontends.ocaml/rust.ok=true` を確認済みで、Type ケースは DIAG-RUST-06 の成果物要件を満たした。  
+- *2028-06-01 (Effect/FFI 継続課題)*: Run `reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/summary.md` では `effect_residual_leak` が `ocaml_diag_count=1` / `rust_diag_count=2`、`ffi_ownership_mismatch` が `1 vs 21`、`ffi_async_dispatch` が `0 vs 20` と過剰診断が残存し、すべて `metrics_ok=false`。各ケースの `summary.json.expected_tokens.match=false` で `expected_tokens.diff.json` に 2〜5 件差分が出ている。  
+- *Stage/Audit の状態*: 同 Run の `effects/effects-metrics.rust.json` は `extensions.effect.stage.required/actual`・`audit_metadata.bridge.stage.*` をすべて出力しており、`collect-iterator-audit-metrics.py --section effects --source reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/ffi_ownership_mismatch/diagnostics.rust.json` が `effect_stage.audit_presence=bridge_stage.audit_presence=1.0` を返すことを確認した。  
+- *typeck_debug_match 失敗の再現*:  
+  ```bash
+  python3 tooling/ci/collect-iterator-audit-metrics.py \
+    --section effects \
+    --require-success \
+    --source reports/dual-write/front-end/w4-diagnostics/20280601-w4-diag-type-effect-rust-typeck-r7/ffi_ownership_mismatch/diagnostics.rust.json
+  ```
+  - 上記コマンドは `typeck_debug_match < 1.0` で失敗し、`typeck/typeck-debug.ocaml.json` が生成されていないことが直接の原因である（`typeck/requirements.json` の `typeck_debug_exists=false` を参照）。OCaml CLI では `--emit-typeck-debug` を渡しているにもかかわらず効果系入力でファイルが書き出されないため、`compiler/ocaml/src/main.ml`→`typeck_output.ml` の制御フローをテーブル駆動にして「型推論で診断を検出しても debug JSON を emit する」ことを追加で実装する。  
+- *残タスク整理*:  
+  1. **OCaml typeck debug の強制出力** — `type_condition_*` では成功しているため、効果行や FFI 入力で fallback path に入らないよう `typeck_output.emit_debug_only` 呼び出し位置を `Type_inference_effect` の診断完了後にも実行する。  
+  2. **Rust 診断件数の縮約** — `effect_residual_leak/summary.json`（`expected_tokens.ocaml=1` / `rust=0`）と `ffi_*` 3 ケースで `ExpectedTokenCollector` の集約が働いていない。`compiler/rust/frontend/src/typeck/driver.rs` に OCaml 同等の `ResidualLeak` handler を追加し、`Diagnostic::expected_tokens` を 1 件へ圧縮する。  
+  3. **メトリクスゲート** — `collect-iterator-audit-metrics.py` の `typeck_debug_match` エラーを CI で検出できるよう、`scripts/poc_dualwrite_compare.sh --mode diag --force-type-effect-flags` の post-hook に上記コマンドを組み込み、`summary.json.metrics_ok` と `typeck_requirements.ok` を同時に満たさない Run を自動で ❌ に倒す。  
+- *追跡先*: `docs/plans/rust-migration/1-0-front-end-transition.md#type--effect--ffi（diag-rust-06）是正計画`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-DIAG-RUST-06`, `docs/plans/rust-migration/p1-front-end-checklists.csv`（診断カテゴリ行 12）へ Run ID `20280602-w4-diag-type-condition-r2` / `20280601-w4-diag-type-effect-rust-typeck-r7` を記録し、Type 完了 / Effect・FFI 継続の状態が一目で分かるよう同期させる。
