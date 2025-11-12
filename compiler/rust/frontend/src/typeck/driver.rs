@@ -4,6 +4,7 @@ use serde::Serialize;
 
 use super::env::{TypeRowMode, TypecheckConfig};
 use super::metrics::TypecheckMetrics;
+use crate::diagnostic::{ExpectedTokenCollector, ExpectedTokensSummary};
 use crate::parser::ast::{Expr, Function, Module};
 use crate::span::Span;
 
@@ -53,6 +54,7 @@ impl TypecheckDriver {
         }
 
         violations.extend(detect_residual_leaks_from_module(module, config));
+        let violations = compress_typecheck_violations(violations);
 
         TypecheckReport {
             metrics,
@@ -83,6 +85,7 @@ impl TypecheckDriver {
         }
 
         let violations = detect_residual_leaks_from_source(source, config);
+        let violations = compress_typecheck_violations(violations);
 
         TypecheckReport {
             metrics,
@@ -180,6 +183,8 @@ pub struct TypecheckViolation {
     pub notes: Vec<ViolationNote>,
     pub capability: Option<String>,
     pub function: Option<String>,
+    #[serde(skip_serializing)]
+    expected: Option<ExpectedTokensSummary>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -224,6 +229,7 @@ impl TypecheckViolation {
             ))],
             capability: None,
             function,
+            expected: None,
         }
     }
 
@@ -240,6 +246,7 @@ impl TypecheckViolation {
             notes: vec![ViolationNote::plain(note_message)],
             capability,
             function: None,
+            expected: None,
         }
     }
 
@@ -248,6 +255,15 @@ impl TypecheckViolation {
             TypecheckViolationKind::ConditionLiteralBool => "type",
             TypecheckViolationKind::ResidualLeak => "effects",
         }
+    }
+
+    fn with_expected_summary(mut self, summary: ExpectedTokensSummary) -> Self {
+        self.expected = Some(summary);
+        self
+    }
+
+    pub fn expected_summary(&self) -> Option<&ExpectedTokensSummary> {
+        self.expected.as_ref()
     }
 }
 
@@ -530,4 +546,72 @@ fn find_perform_matches(line: &str) -> Vec<(u32, Option<String>)> {
         }
     }
     matches
+}
+
+fn compress_typecheck_violations(violations: Vec<TypecheckViolation>) -> Vec<TypecheckViolation> {
+    if violations.is_empty() {
+        return violations;
+    }
+    let mut residual = ResidualLeakAccumulator::default();
+    let mut others = Vec::new();
+    for violation in violations.into_iter() {
+        if matches!(violation.kind, TypecheckViolationKind::ResidualLeak) {
+            residual.ingest(&violation);
+        } else {
+            others.push(violation);
+        }
+    }
+    if let Some(merged) = residual.finish() {
+        others.push(merged);
+    }
+    others
+}
+
+#[derive(Default)]
+struct ResidualLeakAccumulator {
+    span: Option<Span>,
+    tokens: ExpectedTokenCollector,
+    notes: Vec<ViolationNote>,
+    seen_capabilities: HashSet<String>,
+    has_generic: bool,
+}
+
+impl ResidualLeakAccumulator {
+    fn ingest(&mut self, violation: &TypecheckViolation) {
+        if self.span.is_none() {
+            self.span = violation.span;
+        }
+        if let Some(capability) = violation.capability.clone() {
+            if self.seen_capabilities.insert(capability.clone()) {
+                self.tokens.push_custom(capability);
+                self.notes.extend(violation.notes.clone());
+            }
+        } else if !self.has_generic {
+            self.has_generic = true;
+            self.tokens.push_custom("residual.effect");
+            self.notes.extend(violation.notes.clone());
+        }
+    }
+
+    fn finish(self) -> Option<TypecheckViolation> {
+        if self.span.is_none() && !self.has_generic && self.seen_capabilities.is_empty() {
+            return None;
+        }
+        let mut violation = TypecheckViolation::residual_leak(self.span, None);
+        if !self.notes.is_empty() {
+            violation.notes = self.notes;
+        }
+        let summary = if self.tokens.is_empty() {
+            let mut collector = ExpectedTokenCollector::new();
+            collector.push_custom("residual.effect");
+            collector.summarize_with_context(Some(
+                "不足している Capability を Runtime Registry へ登録してください".to_string(),
+            ))
+        } else {
+            self.tokens.summarize_with_context(Some(
+                "不足している Capability を Runtime Registry へ登録してください".to_string(),
+            ))
+        };
+        Some(violation.with_expected_summary(summary))
+    }
 }

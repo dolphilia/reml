@@ -7,7 +7,9 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use reml_frontend::diagnostic::{DiagnosticNote, ExpectedToken, FrontendDiagnostic};
+use reml_frontend::diagnostic::{
+    DiagnosticNote, ExpectedToken, ExpectedTokensSummary, FrontendDiagnostic,
+};
 use reml_frontend::error::Recoverability;
 use reml_frontend::parser::{ParserDriver, ParserOptions};
 use reml_frontend::span::Span;
@@ -1248,6 +1250,12 @@ fn build_type_diagnostics(
                 }),
             );
             stage_payload.apply_extensions(&mut extensions);
+            let mut expected_value = Value::Null;
+            if let Some(summary) = violation.expected_summary() {
+                let payload = expected_payload_from_summary(summary);
+                expected_value = payload.clone();
+                extensions.insert("recover".to_string(), payload);
+            }
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
             let audit_metadata = build_audit_metadata(
                 &timestamp,
@@ -1282,7 +1290,7 @@ fn build_type_diagnostics(
                 "recoverability": recoverability_label(Recoverability::Fatal),
                 "code": violation.code,
                 "codes": [violation.code],
-                "expected": Value::Null,
+                "expected": expected_value,
             })
         })
         .collect()
@@ -1320,6 +1328,22 @@ fn expected_token_object_from_label(token: &str) -> Value {
         "label": token,
         "hint": hint,
         "kind": hint,
+    })
+}
+
+fn expected_payload_from_summary(summary: &ExpectedTokensSummary) -> Value {
+    let token_labels = summary.tokens();
+    let expected_tokens: Vec<Value> = token_labels
+        .iter()
+        .map(|token| expected_token_object_from_label(token))
+        .collect();
+    let message = summary
+        .humanized
+        .clone()
+        .unwrap_or_else(|| token_labels.join(", "));
+    json!({
+        "message": message,
+        "expected_tokens": expected_tokens,
     })
 }
 
