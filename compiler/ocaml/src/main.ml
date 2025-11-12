@@ -933,6 +933,15 @@ let () =
     Type_inference.make_config ~effect_context:runtime_stage_context
       ~type_row_mode:effects_type_row_mode ()
   in
+  let emit_typeck_debug_if_requested () =
+    match opts.emit_typeck_debug_json with
+    | Some _ ->
+        Cli.Typeck_output.emit_debug_only ~type_config
+          ~runtime_stage:runtime_stage_context
+          ~stats:(Cli.Stats.get_stats ())
+          ~debug_path:opts.emit_typeck_debug_json
+    | None -> ()
+  in
   let record_start phase =
     if collect_trace then Cli.Trace.start_phase ~emit_log:emit_trace_logs phase
   in
@@ -1282,10 +1291,7 @@ let () =
                     ~collect_metrics:false)
         | Error type_err ->
             (* 型推論エラー *)
-            Cli.Typeck_output.emit_debug_only ~type_config
-              ~runtime_stage:runtime_stage_context
-              ~stats:(Cli.Stats.get_stats ())
-              ~debug_path:opts.emit_typeck_debug_json;
+            emit_typeck_debug_if_requested ();
             let runtime_event =
               runtime_stage_event ~audit_id ~change_set:change_set_json
                 runtime_stage_context
@@ -1315,7 +1321,9 @@ let () =
               |> attach_audit
             in
             print_diagnostic opts (Some source) ~run_config:parser_run_config diag;
-            exit 1);
+            exit 1)
+      else
+        emit_typeck_debug_if_requested ();
 
       (* Phase 1-6 Week 15: トレース・統計サマリー出力（正常終了時） *)
       let trace_summary =
@@ -1355,6 +1363,7 @@ let () =
 
       exit 0
   | Error diag ->
+      emit_typeck_debug_if_requested ();
       (* Phase 1-6 Week 15: パース失敗時はトレース終了 *)
       if collect_trace then
         Cli.Trace.end_phase ~emit_log:emit_trace_logs Parsing;
