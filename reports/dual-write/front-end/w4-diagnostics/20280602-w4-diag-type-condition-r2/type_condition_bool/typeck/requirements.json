@@ -1,0 +1,27 @@
+{
+  "required": true,
+  "frontends": {
+    "ocaml": {
+      "typeck_debug_path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280602-w4-diag-type-condition-r2/type_condition_bool/typeck/typeck-debug.ocaml.json",
+      "typeck_debug_exists": true,
+      "effect_context_present": true,
+      "parser_metric_present": true,
+      "parser_metric_status": true,
+      "effects_metrics_present": true,
+      "effects_metrics_status": true,
+      "ok": true
+    },
+    "rust": {
+      "typeck_debug_path": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280602-w4-diag-type-condition-r2/type_condition_bool/typeck/typeck-debug.rust.json",
+      "typeck_debug_exists": true,
+      "effect_context_present": true,
+      "parser_metric_present": true,
+      "parser_metric_status": true,
+      "effects_metrics_present": true,
+      "effects_metrics_status": true,
+      "ok": true
+    }
+  },
+  "ok": true,
+  "failures": []
+}

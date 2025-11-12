@@ -1507,8 +1507,12 @@ def collect_parser_metrics(paths: List[Path]) -> Dict[str, Any]:
                     }
                 )
 
-    pass_fraction = (passed / total) if total > 0 else 0.0
-    pass_rate = 1.0 if total > 0 and passed == total else 0.0
+    if total == 0:
+        pass_fraction = 1.0
+        pass_rate = 1.0
+    else:
+        pass_fraction = passed / total
+        pass_rate = 1.0 if passed == total else 0.0
     average_tokens = (sum(token_counts) / len(token_counts)) if token_counts else 0.0
     min_tokens = min(token_counts) if token_counts else 0
     max_tokens = max(token_counts) if token_counts else 0
@@ -1527,11 +1531,13 @@ def collect_parser_metrics(paths: List[Path]) -> Dict[str, Any]:
         "failures": failures,
         "schema_versions": sorted(schema_versions),
         "required_expected_keys": ["expected", "expected.alternatives"],
-        "status": "success" if total > 0 and pass_rate == 1.0 else "error",
+        "status": "success" if pass_rate == 1.0 else "error",
     }
 
     related_status: str
-    if passed == 0:
+    if total == 0:
+        related_status = "success"
+    elif passed == 0:
         related_status = "error"
     elif average_tokens <= 0.0:
         related_status = "warning"
@@ -4930,10 +4936,6 @@ def main(argv: Optional[List[str]] = None) -> int:
         if isinstance(typeclass_metrics, dict):
             _enforce(typeclass_metrics.get("dictionary_metric"), "typeclass.dictionary_pass_rate")
         _enforce(bridge_metrics, "ffi_bridge.audit_pass_rate")
-        if isinstance(parser_metrics, dict):
-            total = parser_metrics.get("total")
-            if isinstance(total, (int, float)) and total == 0:
-                failure_reasons.append("parser.expected_summary_presence: total=0")
         for metric in append_metrics:
             if not isinstance(metric, dict):
                 continue

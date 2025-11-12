@@ -1,0 +1,46 @@
+{
+  "metrics": [
+    {
+      "metric": "typeck_debug_match",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280602-w4-diag-type-condition-r2/type_condition_literal_bool/typeck"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "effect_row_guard_regressions",
+      "count": 0,
+      "status": "success"
+    }
+  ],
+  "extra_metrics": [
+    {
+      "metric": "typeck_debug_match",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280602-w4-diag-type-condition-r2/type_condition_literal_bool/typeck"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "effect_row_guard_regressions",
+      "count": 0,
+      "status": "success"
+    }
+  ],
+  "schema_versions": [],
+  "enforcement": {
+    "require_success": true
+  }
+}
