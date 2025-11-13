@@ -62,6 +62,24 @@
 | FRG-19 | Packrat メトリクス | ✅ Rust `ParsedModule` は `PackratStats` を返すが cache snapshot (`PackratEntry`) を CLI や JSON へ出さない（`compiler/rust/frontend/src/parser/mod.rs:26`）。 | OCaml CLI は `Packrat.dump` を `parse-debug` へ保存し `collect-iterator-audit-metrics.py` が参照（`compiler/ocaml/src/parser_driver.ml:145` + `docs/plans/rust-migration/1-3-dual-write-runbook.md`）。 | Packrat cache の JSON シリアライズを追加し、`reports/dual-write/front-end/*/packrat_cache.json` を出力。 |
 | FRG-20 | RunConfig 同期 | Rust CLI `RunSettings` は独自フィールドで `parser_run_config` JSON へも落ちない（`compiler/rust/frontend/src/bin/poc_frontend.rs:188` 付近）。 | OCaml `Parser_run_config` が CLI/テスト/Streaming で共有され JSON へ記録（`compiler/ocaml/src/parser_driver.ml:6`）。 | `FrontendConfig`/`RunSettings` を `Run_config` と同構造に再設計し、dual-write レポートに `parser_run_config` を含める。 |
 
+### 3.6 `p1-spec-compliance-gap.md` から追加
+
+| ID | SCG | 状態 | 主な差分 | 参照 |
+| --- | --- | --- | --- | --- |
+| FRG-21 | SCG-01 | 未着手 | Unicode XID/`UPPER_IDENT`、`LexProfile` 切り替えと `RunConfig.extensions["lex"]` 連動が欠落 | `p1-spec-compliance-gap.md#SCG-01` |
+| FRG-22 | SCG-02 | 未着手 | `TokenKind` や `ExpectedToken` 表現が var/match/type/Option、`0x`/`0b`/複数行 raw 文字列などを含まない | `p1-spec-compliance-gap.md#SCG-02` |
+| FRG-23 | SCG-03 | 未着手 | `Parser<T>`/`State`/`Reply`/`RunConfig` API が欠如し、`ParserDriver::parse` が `ParsedModule` の単一戻り値のみ | `p1-spec-compliance-gap.md#SCG-03` |
+| FRG-24 | SCG-05 | 未着手 | AST の `ExprKind`/`PatternKind`/`DeclKind` が限定され、OCaml `ast.ml` の列挙が移植されていない | `p1-spec-compliance-gap.md#SCG-05` |
+| FRG-25 | SCG-06 | 未着手 | Typed AST/型情報（`typed_expr`/`dict_ref`/`scheme`）の構成が存在せず dual-write JSON もダミー | `p1-spec-compliance-gap.md#SCG-06` |
+| FRG-26 | SCG-07 | 未着手 | Packrat/Streaming 状態 (`Core_parse_streaming`) が parser と接続しておらず、`packrat_snapshot` や `span_trace` を `ParseResult` に渡せない | `p1-spec-compliance-gap.md#SCG-07` |
+| FRG-27 | SCG-08 | 未着手 | Algorithm W による制約生成・一般化・値制限・ソルバが存在せず、`typeck/driver` は `SimpleType`のみ | `p1-spec-compliance-gap.md#SCG-08` |
+| FRG-28 | SCG-09 | 未着手 | 効果行・残余効果・Capability Stage 監査（`effects.contract.*`）が未実装で StageContext/RuntimeCapability 連携もない | `p1-spec-compliance-gap.md#SCG-09` |
+| FRG-29 | SCG-10 | 未着手 | Typed AST・Constraints・Impl Registry による dual-write 出力が OCaml 形式と整合しておらず、JSON がゴースト | `p1-spec-compliance-gap.md#SCG-10` |
+| FRG-30 | SCG-11 | 未着手 | `FrontendDiagnostic` に severity/domain/audit/timestamp/context_note が無く、OCaml と同一構造でない | `p1-spec-compliance-gap.md#SCG-11` |
+| FRG-31 | SCG-12 | 未着手 | `parser_expectation` 由来の期待集合整形・優先順位・`Not`/`Class` 一覧が十分ではない | `p1-spec-compliance-gap.md#SCG-12` |
+| FRG-32 | SCG-13 | 未着手 | CLI JSON 出力で severity/domain 固定・audit_id 疑似値のため、`DiagnosticFormatter` 相当が必要 | `p1-spec-compliance-gap.md#SCG-13` |
+| FRG-33 | SCG-14 | 未着手 | `run_stream`/`resume` API と `StreamOutcome` 管理がなく、StreamingRunner/CLI `--streaming` に未統合 | `p1-spec-compliance-gap.md#SCG-14` |
+
 ## 4. 具体的な計画
 
 ### FRG-06
