@@ -24,7 +24,7 @@ use crate::streaming::{
     StreamFlowState, StreamMetrics, StreamingState, StreamingStateConfig, TokenSample, TraceFrame,
 };
 use crate::token::{Token, TokenKind};
-use ast::{EffectDecl, Expr, Function, Module, Param};
+use ast::{EffectDecl, Expr, Function, Ident, Module, Param};
 
 /// パース結果の簡易表現。
 #[derive(Debug, Default)]
@@ -444,16 +444,16 @@ fn module_parser<'src>(
         (slice.to_string(), span_to_span(span))
     });
 
+    let ident = identifier.clone().map(|(name, span)| Ident { name, span });
+
     let int_literal = just(TokenKind::IntLiteral).map_with_span(move |_, span: Range<usize>| {
         let slice = &source[span.start..span.end];
         let value = slice.parse::<i64>().unwrap_or_default();
-        Expr::int(value, span_to_span(span))
+        Expr::int(value, slice.to_string(), span_to_span(span))
     });
 
     let expr = recursive(|expr| {
-        let ident_expr = identifier
-            .clone()
-            .map(|(name, span)| Expr::identifier(name, span));
+        let ident_expr = ident.clone().map(Expr::identifier);
 
         let bool_literal = choice((
             just(TokenKind::KeywordTrue)
@@ -531,26 +531,17 @@ fn module_parser<'src>(
                 let if_span_start = if_span.start;
                 let else_span = else_branch.span();
                 let full_span = Span::new(if_span_start, else_span.end);
-                Expr::IfElse {
-                    condition: Box::new(condition),
-                    then_branch: Box::new(then_branch),
-                    else_branch: Box::new(else_branch),
-                    span: full_span,
-                }
+                Expr::if_else(condition, then_branch, else_branch, full_span)
             });
 
         let perform_expr = just(TokenKind::KeywordPerform)
             .map_with_span(move |_, span: Range<usize>| span_to_span(span))
-            .then(identifier.clone())
+            .then(ident.clone())
             .then(expr.clone())
-            .map(|((perform_span, (effect, effect_span)), argument)| {
+            .map(|((perform_span, effect), argument)| {
                 let arg_span = argument.span();
-                let full_span = Span::new(perform_span.start.min(effect_span.start), arg_span.end);
-                Expr::Perform {
-                    effect,
-                    argument: Box::new(argument),
-                    span: full_span,
-                }
+                let full_span = Span::new(perform_span.start.min(effect.span.start), arg_span.end);
+                Expr::perform(effect, argument, full_span)
             });
 
         choice((if_expr, perform_expr, additive)).boxed()
@@ -563,19 +554,21 @@ fn module_parser<'src>(
     );
 
     let params = param
-        .map(|((name, span), _)| Param { name, span })
+        .map(|((name, span), _)| Param {
+            name: Ident { name, span },
+        })
         .separated_by(just(TokenKind::Comma))
         .allow_trailing()
         .delimited_by(just(TokenKind::LParen), just(TokenKind::RParen));
 
     let function = just(TokenKind::KeywordFn)
         .map_with_span(move |_, span: Range<usize>| span_to_span(span))
-        .then(identifier.clone())
+        .then(ident.clone())
         .then(params)
         .then_ignore(just(TokenKind::Assign))
         .then(expr)
-        .map(move |(((fn_span, (name, name_span)), params), body)| {
-            let function_span = Span::new(fn_span.start.min(name_span.start), body.span().end);
+        .map(move |(((fn_span, name), params), body)| {
+            let function_span = Span::new(fn_span.start.min(name.span.start), body.span().end);
             record_streaming_success(&streaming_state_success, function_span);
             Function {
                 name,
@@ -587,10 +580,10 @@ fn module_parser<'src>(
 
     let effect_decl = just(TokenKind::KeywordEffect)
         .map_with_span(move |_, span: Range<usize>| span_to_span(span))
-        .then(identifier.clone())
-        .map(|(effect_span, (name, name_span))| EffectDecl {
+        .then(ident.clone())
+        .map(|(effect_span, name)| EffectDecl {
+            span: Span::new(effect_span.start.min(name.span.start), name.span.end),
             name,
-            span: Span::new(effect_span.start.min(name_span.start), name_span.end),
         });
 
     #[derive(Clone)]
@@ -621,6 +614,7 @@ fn module_parser<'src>(
             Module {
                 effects: effects_vec,
                 functions: functions_vec,
+                decls: Vec::new(),
             }
         })
 }

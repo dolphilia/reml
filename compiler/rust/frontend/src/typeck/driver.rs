@@ -5,7 +5,7 @@ use serde::Serialize;
 use super::env::{TypeRowMode, TypecheckConfig};
 use super::metrics::TypecheckMetrics;
 use crate::diagnostic::{ExpectedTokenCollector, ExpectedTokensSummary};
-use crate::parser::ast::{Expr, Function, Module};
+use crate::parser::ast::{Expr, ExprKind, Function, Literal, Module};
 use crate::span::Span;
 
 /// 型推論の簡易ドライバ。現時点では AST を走査して
@@ -30,17 +30,17 @@ impl TypecheckDriver {
             let mut stats = FunctionStats::default();
             let typed_return = infer_function(
                 function,
-                &function.name,
+                function.name.name.as_str(),
                 &mut stats,
                 &mut metrics,
                 &mut violations,
             );
             functions.push(TypedFunctionSummary {
-                name: function.name.clone(),
+                name: function.name.name.clone(),
                 param_types: function
                     .params
                     .iter()
-                    .map(|param| SimpleType::from_param(param.name.as_str()).label())
+                    .map(|param| SimpleType::from_param(param.name.name.as_str()).label())
                     .collect(),
                 return_type: typed_return.label(),
                 typed_exprs: stats.typed_exprs,
@@ -283,7 +283,10 @@ fn infer_function(
 ) -> SimpleType {
     let mut env = HashMap::new();
     for param in &function.params {
-        env.insert(param.name.clone(), SimpleType::from_param(&param.name));
+        env.insert(
+            param.name.name.clone(),
+            SimpleType::from_param(param.name.name.as_str()),
+        );
     }
     infer_expr(
         &function.body,
@@ -305,11 +308,11 @@ fn infer_expr(
 ) -> SimpleType {
     stats.typed_exprs += 1;
     metrics.record_expr();
-    match expr {
-        Expr::Int { .. } => SimpleType::Int,
-        Expr::Bool { .. } => SimpleType::Bool,
-        Expr::String { .. } => SimpleType::Unknown,
-        Expr::Identifier { name, .. } => match env.get(name) {
+    match &expr.kind {
+        ExprKind::Literal(Literal::Int { .. }) => SimpleType::Int,
+        ExprKind::Literal(Literal::Bool { .. }) => SimpleType::Bool,
+        ExprKind::Literal(Literal::String { .. }) => SimpleType::Unknown,
+        ExprKind::Identifier(ident) => match env.get(ident.name.as_str()) {
             Some(ty) => *ty,
             None => {
                 stats.unresolved_identifiers += 1;
@@ -317,7 +320,7 @@ fn infer_expr(
                 SimpleType::Unknown
             }
         },
-        Expr::Binary { left, right, .. } => {
+        ExprKind::Binary { left, right, .. } => {
             metrics.record_binary_expr();
             let left_ty = infer_expr(left, env, stats, metrics, violations, function_name);
             let right_ty = infer_expr(right, env, stats, metrics, violations, function_name);
@@ -325,7 +328,7 @@ fn infer_expr(
             metrics.record_constraint("binary.operands");
             combine_numeric_types(left_ty, right_ty)
         }
-        Expr::Call { callee, args, .. } => {
+        ExprKind::Call { callee, args, .. } => {
             metrics.record_call_site();
             stats.constraints += 1;
             metrics.record_constraint("call.arity");
@@ -335,15 +338,21 @@ fn infer_expr(
             }
             SimpleType::Unknown
         }
-        Expr::Perform { argument, .. } => {
-            let _ = infer_expr(argument, env, stats, metrics, violations, function_name);
+        ExprKind::PerformCall { call } => {
+            let _ = infer_expr(
+                &call.argument,
+                env,
+                stats,
+                metrics,
+                violations,
+                function_name,
+            );
             SimpleType::Unknown
         }
-        Expr::IfElse {
+        ExprKind::IfElse {
             condition,
             then_branch,
             else_branch,
-            ..
         } => {
             let condition_ty =
                 infer_expr(condition, env, stats, metrics, violations, function_name);
@@ -356,6 +365,7 @@ fn infer_expr(
                 SimpleType::Unknown
             }
         }
+        _ => SimpleType::Unknown,
     }
 }
 
@@ -434,47 +444,32 @@ fn detect_residual_leaks_from_module(
 }
 
 fn collect_perform_effects(expr: &Expr, usages: &mut Vec<(String, Span)>) {
-    match expr {
-        &Expr::Perform {
-            ref effect,
-            ref argument,
-            ref span,
-        } => {
-            usages.push((effect.clone(), *span));
-            collect_perform_effects(argument.as_ref(), usages);
+    match &expr.kind {
+        ExprKind::PerformCall { call } => {
+            usages.push((call.effect.name.clone(), expr.span()));
+            collect_perform_effects(&call.argument, usages);
         }
-        &Expr::IfElse {
-            ref condition,
-            ref then_branch,
-            ref else_branch,
-            ..
+        ExprKind::IfElse {
+            condition,
+            then_branch,
+            else_branch,
         } => {
             collect_perform_effects(condition, usages);
             collect_perform_effects(then_branch, usages);
             collect_perform_effects(else_branch, usages);
         }
-        &Expr::Binary {
-            ref left,
-            ref right,
-            ..
-        } => {
+        ExprKind::Binary { left, right, .. } => {
             collect_perform_effects(left, usages);
             collect_perform_effects(right, usages);
         }
-        &Expr::Call {
-            ref callee,
-            ref args,
-            ..
-        } => {
+        ExprKind::Call { callee, args, .. } => {
             collect_perform_effects(callee, usages);
             for arg in args {
                 collect_perform_effects(arg, usages);
             }
         }
-        &Expr::Int { .. }
-        | &Expr::Bool { .. }
-        | &Expr::String { .. }
-        | &Expr::Identifier { .. } => {}
+        ExprKind::Literal(_) | ExprKind::Identifier(_) => {}
+        _ => {}
     }
 }
 

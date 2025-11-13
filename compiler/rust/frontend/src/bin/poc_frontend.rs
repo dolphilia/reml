@@ -12,7 +12,10 @@ use reml_frontend::diagnostic::{
 };
 use reml_frontend::error::Recoverability;
 use reml_frontend::lexer::IdentifierProfile;
-use reml_frontend::parser::{LeftRecursionMode, ParserDriver, ParserOptions, RunConfig};
+use reml_frontend::parser::ast::Module;
+use reml_frontend::parser::{
+    LeftRecursionMode, ParseResult, ParserDriver, ParserOptions, RunConfig,
+};
 use reml_frontend::span::Span;
 use reml_frontend::streaming::{
     StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig,
@@ -132,6 +135,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         fs::write(path, serde_json::to_string_pretty(&parse_debug)?)?;
     }
 
+    if let Some(path) = &args.emit_ast {
+        if let Some(ast) = &result.value {
+            write_json_file(path, ast)?;
+        }
+    }
+
     if let Some(path) = &args.emit_typed_ast {
         write_json_file(path, &artifacts.typed_ast)?;
     }
@@ -154,6 +163,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &artifacts,
             &stage_payload,
         )?;
+        write_dualwrite_parse_payload(&guards, &result)?;
     }
 
     Ok(())
@@ -174,6 +184,7 @@ struct CliArgs {
     typecheck_config: TypecheckConfig,
     dualwrite: Option<DualwriteCliOpts>,
     emit_typed_ast: Option<PathBuf>,
+    emit_ast: Option<PathBuf>,
     emit_constraints: Option<PathBuf>,
     emit_typeck_debug: Option<PathBuf>,
     emit_effects_metrics: Option<PathBuf>,
@@ -432,6 +443,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut dualwrite_run_label = None;
     let mut dualwrite_case_label = None;
     let mut dualwrite_root = None;
+    let mut emit_ast = None;
     let mut emit_typed_ast = None;
     let mut emit_constraints = None;
     let mut emit_typeck_debug = None;
@@ -449,6 +461,12 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     .next()
                     .ok_or_else(|| "--emit-parse-debug は出力パスを伴う必要があります")?;
                 parse_debug = Some(PathBuf::from(path));
+            }
+            "--emit-ast" => {
+                let path = args
+                    .next()
+                    .ok_or_else(|| "--emit-ast は出力パスを伴う必要があります")?;
+                emit_ast = Some(PathBuf::from(path));
             }
             "--type-row-mode" => {
                 let value = args
@@ -711,6 +729,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         parse_debug_output: parse_debug,
         typecheck_config: builder.build(),
         dualwrite,
+        emit_ast,
         emit_typed_ast,
         emit_constraints,
         emit_typeck_debug,
@@ -743,6 +762,14 @@ fn write_dualwrite_typeck_payload(
     guards.write_json("typeck/typed-ast.rust.json", &artifacts.typed_ast)?;
     guards.write_json("typeck/constraints.rust.json", &artifacts.constraints)?;
     guards.write_json("typeck/typeck-debug.rust.json", &artifacts.debug)?;
+    Ok(())
+}
+
+fn write_dualwrite_parse_payload(
+    guards: &DualWriteGuards,
+    result: &ParseResult<Module>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    guards.write_json("parse/ast.rust.json", &result.value)?;
     Ok(())
 }
 
