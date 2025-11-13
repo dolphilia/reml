@@ -13,7 +13,8 @@ use reml_frontend::error::Recoverability;
 use reml_frontend::lexer::IdentifierProfile;
 use reml_frontend::parser::ast::Module;
 use reml_frontend::parser::{
-    LeftRecursionMode, ParseResult, ParserDriver, ParserOptions, RunConfig,
+    LeftRecursionMode, ParseResult, ParserDriver, ParserOptions, RunConfig, StreamOutcome,
+    StreamingRunner,
 };
 use reml_frontend::semantics::typed;
 use reml_frontend::span::Span;
@@ -58,8 +59,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     parser_options.streaming_enabled = args.stream_config.enabled || run_config.trace;
     parser_options.stream_flow = Some(stream_flow_state.clone());
     parser_options.lex_identifier_profile = IdentifierProfile::Unicode;
-    let result =
-        ParserDriver::parse_with_options_and_run_config(&source, parser_options, run_config);
+    let result = if args.stream_config.enabled {
+        let runner = StreamingRunner::new(
+            source.clone(),
+            parser_options.clone(),
+            run_config.clone(),
+            stream_flow_state.clone(),
+        );
+        resolve_completed_stream_outcome(runner.run_stream())
+    } else {
+        ParserDriver::parse_with_options_and_run_config(&source, parser_options, run_config)
+    };
     trace_log(&args, "parsing", "finish");
     let typeck_report = result
         .value
@@ -176,6 +186,21 @@ fn install_typecheck_config(config: &TypecheckConfig) -> Result<(), InstallConfi
     match typeck::install_config(config.clone()) {
         Ok(()) => Ok(()),
         Err(InstallConfigError::AlreadyInstalled) => Ok(()),
+    }
+}
+
+fn resolve_completed_stream_outcome(outcome: StreamOutcome) -> ParseResult<Module> {
+    match outcome {
+        StreamOutcome::Completed { result, .. } => result,
+        StreamOutcome::Pending { continuation, .. } => {
+            let runner = StreamingRunner::new(
+                continuation.buffer,
+                continuation.parser_options,
+                continuation.run_config,
+                continuation.stream_flow,
+            );
+            resolve_completed_stream_outcome(runner.run_stream())
+        }
     }
 }
 

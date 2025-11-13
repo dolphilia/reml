@@ -275,7 +275,27 @@ FRG-16 は `scripts/validate-diagnostic-json.sh` で定義された `diagnostic-
 - 進捗ログ
   - ✅ `FrontendDiagnostic` が `ExpectedTokensSummary` を保持し、`apply_expected_summary`/`merge_expected_summary` で context を保持したまま `expected_*` フィールドを更新するようになった。
   - ✅ `diag_json::recover_extension_payload_from_summary` を追加し、`build_recover_extension`/`build_type_diagnostics` が context note を含む `recover` JSON を生成するようになった。
-  - ✅ `diagnostic/json.rs` に context note を含む recover 拡張を検証するユニットテストを追加し、Rustfmt を通してファイル整形を確認した。
+- ✅ `diagnostic/json.rs` に context note を含む recover 拡張を検証するユニットテストを追加し、Rustfmt を通してファイル整形を確認した。
+
+### FRG-18
+
+FRG-18 は `docs/spec/2-7-core-parse-streaming.md` に記された `run_stream` / `resume` の API と `Parser_driver.Streaming.run_stream` 相当の dual-write 経路を Rust 側で実現することで、`docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt` にある streaming シナリオ用の `reports/dual-write/front-end/w4-diagnostics` を正しく生成できるようにすることを目的とする。
+
+1. **StreamingRunner の骨格整備（Day 1）**  
+   - `compiler/rust/frontend/src/parser/streaming_runner.rs` を新設し、`StreamOutcome`／`Continuation`／`DemandHint`／`StreamMeta` を定義。`ParserDriver::parse_with_options_and_run_config` を呼び出し、`StreamFlowState` を共有した上で `Completed` 結果を返す rust 実装を整備する。  
+   - `parser/mod.rs` で `streaming_runner` を `pub use` し、API 消費者が `StreamingRunner` を直接利用できるように再エクスポート。
+2. **CLI への統合（Day 2）**  
+   - `compiler/rust/frontend/src/bin/poc_frontend.rs` の `--streaming` 判定で `StreamingRunner::run_stream` を呼び出し、`source` をクローンした上で `parser_options`/`run_config`/`stream_flow_state` を渡す。`resolve_completed_stream_outcome` ヘルパーで `Pending` を折りたたみ、従来型の `ParseResult` を受け取る経路を保持する。  
+   - `stream_meta` の JSON や `build_runconfig_summary`/`build_parser_diagnostics` で共有する `StreamFlowState` を引き続き使いつつ、`--streaming` 時には `run_stream` 経路を通じて `streaming` 扱いのメトリクスを出力できることを検証する。  
+3. **dual-write streaming ケースの検証（Day 3）**  
+   - `scripts/poc_dualwrite_compare.sh --mode streaming` で `reports/dual-write/front-end/w4-diagnostics/<run>/<case>/streaming/*` を生成できることを確認し、OCaml 側と同様の `stream_meta`/`packrat_cache`/`continuation` モデルを比較する。  
+   - 必要なら `2-5-spec-drift-remediation.md` や `docs/plans/rust-migration/p1-spec-compliance-gap.md` に FRG-18 の達成メトリクス（`parser.stream.outcome_consistency` など）を追記する。
+
+- 進捗ログ
+  - ✅ `compiler/rust/frontend/src/parser/streaming_runner.rs` で `StreamOutcome`/`Continuation`/`StreamingRunner` を実装し、`ParserDriver` 経由で `StreamFlowState` を再利用するランナーを提供した。
+  - ✅ `compiler/rust/frontend/src/parser/mod.rs` で `streaming_runner` を再エクスポートし、外部から `StreamingRunner`/`StreamOutcome` を使えるようにした。
+  - ✅ `compiler/rust/frontend/src/bin/poc_frontend.rs` が `--streaming` でランナーを呼び出し、`resolve_completed_stream_outcome` で `Pending` を展開して従来通りの `ParseResult` を得るようになった。
+  - ⏳ `reports/dual-write/front-end/w4-diagnostics` に streaming ケースを流して `docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt` のファイル群と比較する作業（`scripts/poc_dualwrite_compare.sh --mode streaming`）は環境が整い次第、再検証を予定している。
 
 ## 5. ノート
 

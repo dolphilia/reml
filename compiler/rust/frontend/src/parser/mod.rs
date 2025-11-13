@@ -9,8 +9,12 @@ use std::ops::Range;
 
 pub mod api;
 pub mod ast;
+pub mod streaming_runner;
 
 pub use self::api::{LeftRecursionMode, ParseResult, ParseResultWithRest, RunConfig};
+pub use self::streaming_runner::{
+    Continuation, DemandHint, StreamMeta, StreamOutcome, StreamingRunner,
+};
 
 use crate::diagnostic::{
     recover::ExpectedTokensSummary, DiagnosticBuilder, DiagnosticNote, ExpectedToken,
