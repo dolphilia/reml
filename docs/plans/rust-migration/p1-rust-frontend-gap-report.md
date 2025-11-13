@@ -64,7 +64,7 @@
 
 ## 4. 具体的な計画
 
-### FRG-06: トークン網羅性と識別子プロファイル
+### FRG-06
 
 1. **仕様ソースの統合表を確定（Day 1）**  
    - `docs/spec/1-1-syntax.md#A.3` と `compiler/ocaml/src/token.ml` を突き合わせ、キーワード 38 種・将来予約語 2 種・演算子 26 種・リテラル 4 系列（INT/FLOAT/CHAR/STRING）を Rust で再現するマッピング表を `docs/plans/rust-migration/p1-spec-compliance-gap.md#FRG-06` に追記する。  
@@ -77,12 +77,21 @@
    - `compiler/rust/frontend/tests/lexer_token_coverage.rs`（新規）で ① Unicode 識別子、② 主要キーワード、③ 代表演算子、④ 基数別整数リテラルをフィクスチャ化し、`cargo test -p reml_frontend lexer_token_coverage` を CI で回す。  
    - `p1-rust-frontend-gap-report.md` の FRG-06 状態を「対応中」に更新し、`reports/dual-write/front-end/w4-diagnostics/*` の Lexer メトリクスから `lexer.identifier_profile_unicode=1.0` を再測定して `collect-iterator-audit-metrics.py` に記録する。
 
-#### FRG-06 進捗ログ（2028-02-XX 時点）
+- 進捗ログ
+  - ✅ `docs/plans/rust-migration/p1-spec-compliance-gap.md` に仕様トークン表を追記し、Rust `TokenKind` の不足を明文化（Day 1 完了）。
+  - ✅ `compiler/rust/frontend/src/token.rs` と `src/lexer/mod.rs` を刷新し、38+ キーワード・演算子 26 種・`IdentifierProfile::{Unicode,AsciiCompat}` を実装。`ParserOptions.lex_identifier_profile` と CLI (`poc_frontend.rs`) まで配線済み。
+  - ✅ `compiler/rust/frontend/tests/lexer_token_coverage.rs` を追加し `cargo test --test lexer_token_coverage` で Unicode/ASCII プロファイル・基数・文字列種別を検証。
+  - ⏳ RunConfig/LSP からの `identifier_profile` 伝播、および dual-write メトリクス (`lexer.identifier_profile_unicode`) の再測定は未完。CLI/LSP 設定取得の導線を整備した上で、`collect-iterator-audit-metrics.py` で値を反映させる。
 
-- ✅ `docs/plans/rust-migration/p1-spec-compliance-gap.md` に仕様トークン表を追記し、Rust `TokenKind` の不足を明文化（Day 1 完了）。
-- ✅ `compiler/rust/frontend/src/token.rs` と `src/lexer/mod.rs` を刷新し、38+ キーワード・演算子 26 種・`IdentifierProfile::{Unicode,AsciiCompat}` を実装。`ParserOptions.lex_identifier_profile` と CLI (`poc_frontend.rs`) まで配線済み。
-- ✅ `compiler/rust/frontend/tests/lexer_token_coverage.rs` を追加し `cargo test --test lexer_token_coverage` で Unicode/ASCII プロファイル・基数・文字列種別を検証。
-- ⏳ RunConfig/LSP からの `identifier_profile` 伝播、および dual-write メトリクス (`lexer.identifier_profile_unicode`) の再測定は未完。CLI/LSP 設定取得の導線を整備した上で、`collect-iterator-audit-metrics.py` で値を反映させる。
+### FRG-07
+
+FRG-07 は `docs/spec/2-1-parser-type.md` に記された `Parser<T>` / `State` / `RunConfig` / `ParseResult` を Rust 側へ導入し、OCaml 側 `parser_driver` に倣った dual-write API を実現することが目的である。今回の対応では以下のように段階を踏み、構造と実装の両面を整備した。
+
+1. `compiler/rust/frontend/src/parser/api.rs` を追加し、RunConfig の拡張扱い（`with_extension` など）や `ParseResult` のメタデータを定義。`LeftRecursionMode` などの仕様型を `indexmap` + `serde_json::Value` で保持し、将来的な CLI/LSP 連携に備えた拡張基盤を整備した。
+2. `ParserDriver` を `ParseResult<Module>` を返すようリファクタリングし、`ParserOptions::from_run_config` + `parse_with_options_and_run_config` で既存のトークン解析ループと streaming 状態を `RunConfig` に紐付け。テストでは新 API を用いて AST の検証・診断の比較を維持しつつ、`parse_result_from_module` で従来の `ParsedModule` から変換できるようにした。
+3. `compiler/rust/frontend/src/bin/poc_frontend.rs` 側に `RunSettings::to_run_config` を実装し、CLI フラグから RunConfig を構築。その RunConfig を `ParserDriver` へ渡すことで、diagnostic JSON や streaming メトリクスを `ParseResult` で受け取り、`packrat_stats`/`stream_meta` などの出力をそのまま継続できるようにした。
+
+これらのステップを実施したことで、FRG-07 の計画は実装済みとなり、今後の RunConfig 拡張や Menhir 互換コンビネータ導入に向けて必要な型基盤と CLI パスが整ったと言える。
 
 ## 5. ノート
 

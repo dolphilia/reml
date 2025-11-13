@@ -12,7 +12,7 @@ use reml_frontend::diagnostic::{
 };
 use reml_frontend::error::Recoverability;
 use reml_frontend::lexer::IdentifierProfile;
-use reml_frontend::parser::{ParserDriver, ParserOptions};
+use reml_frontend::parser::{LeftRecursionMode, ParserDriver, ParserOptions, RunConfig};
 use reml_frontend::span::Span;
 use reml_frontend::streaming::{
     StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig,
@@ -49,17 +49,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     trace_log(&args, "parsing", "start");
     let stream_flow_state =
         StreamFlowState::new(args.stream_config.to_flow_config(args.run_config.packrat));
-    let parser_options = ParserOptions {
-        streaming: args.streaming_state_config(),
-        merge_parse_expected: args.run_config.merge_warnings,
-        streaming_enabled: args.stream_config.enabled,
-        stream_flow: Some(stream_flow_state.clone()),
-        lex_identifier_profile: IdentifierProfile::Unicode,
-    };
-    let result = ParserDriver::parse_with_options(&source, parser_options);
+    let run_config = args.run_config.to_run_config();
+    let mut parser_options = ParserOptions::from_run_config(&run_config);
+    parser_options.streaming = args.streaming_state_config();
+    parser_options.streaming_enabled = args.stream_config.enabled || run_config.trace;
+    parser_options.stream_flow = Some(stream_flow_state.clone());
+    parser_options.lex_identifier_profile = IdentifierProfile::Unicode;
+    let result =
+        ParserDriver::parse_with_options_and_run_config(&source, parser_options, run_config);
     trace_log(&args, "parsing", "finish");
     let typeck_report = result
-        .ast
+        .value
         .as_ref()
         .map(|module| TypecheckDriver::infer_module(module, &args.typecheck_config))
         .unwrap_or_else(|| {
@@ -212,6 +212,32 @@ impl Default for RunSettings {
             legacy_result: true,
             experimental_effects: false,
         }
+    }
+}
+
+impl RunSettings {
+    fn to_run_config(&self) -> RunConfig {
+        let left_recursion =
+            LeftRecursionMode::from_str(&self.left_recursion).unwrap_or(LeftRecursionMode::Auto);
+        let mut config = RunConfig {
+            require_eof: self.require_eof,
+            packrat: self.packrat,
+            left_recursion,
+            trace: self.trace,
+            merge_warnings: self.merge_warnings,
+            legacy_result: self.legacy_result,
+            ..Default::default()
+        };
+        if self.experimental_effects {
+            config = config.with_extension("effects", |existing| {
+                let mut payload = existing
+                    .and_then(|value| value.as_object().cloned())
+                    .unwrap_or_default();
+                payload.insert("experimental_effects".to_string(), json!(true));
+                Value::Object(payload)
+            });
+        }
+        config
     }
 }
 

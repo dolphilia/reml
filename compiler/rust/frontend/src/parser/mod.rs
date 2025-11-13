@@ -7,7 +7,10 @@ use smallvec::SmallVec;
 use smol_str::SmolStr;
 use std::ops::Range;
 
+pub mod api;
 pub mod ast;
+
+pub use self::api::{LeftRecursionMode, ParseResult, ParseResultWithRest, RunConfig};
 
 use crate::diagnostic::{
     recover::ExpectedTokensSummary, DiagnosticBuilder, DiagnosticNote, ExpectedToken,
@@ -62,12 +65,44 @@ impl Default for ParserOptions {
     }
 }
 
+impl ParserOptions {
+    pub fn from_run_config(run_config: &RunConfig) -> Self {
+        let mut streaming = StreamingStateConfig::default();
+        streaming.packrat_enabled = run_config.packrat;
+        streaming.trace_enabled = run_config.trace;
+        Self {
+            streaming,
+            merge_parse_expected: run_config.merge_warnings,
+            streaming_enabled: run_config.trace,
+            stream_flow: None,
+            lex_identifier_profile: IdentifierProfile::Unicode,
+        }
+    }
+
+    pub fn with_stream_flow(mut self, flow: Option<StreamFlowState>) -> Self {
+        self.stream_flow = flow;
+        self
+    }
+
+    pub fn with_streaming_enabled(mut self, enabled: bool) -> Self {
+        self.streaming_enabled = enabled;
+        self
+    }
+
+    pub fn with_lex_identifier_profile(mut self, profile: IdentifierProfile) -> Self {
+        self.lex_identifier_profile = profile;
+        self
+    }
+}
+
 /// Rust フロントエンドのパーサドライバ。
 pub struct ParserDriver;
 
 impl ParserDriver {
-    pub fn parse(source: &str) -> ParsedModule {
-        Self::parse_with_config(source, StreamingStateConfig::default())
+    pub fn parse(source: &str) -> ParseResult<Module> {
+        let run_config = RunConfig::default();
+        let options = ParserOptions::from_run_config(&run_config);
+        Self::parse_with_options_and_run_config(source, options, run_config)
     }
 
     pub fn parse_with_config(source: &str, config: StreamingStateConfig) -> ParsedModule {
@@ -76,6 +111,15 @@ impl ParserDriver {
         options.merge_parse_expected = true;
         options.streaming_enabled = false;
         Self::parse_with_options(source, options)
+    }
+
+    pub fn parse_with_options_and_run_config(
+        source: &str,
+        options: ParserOptions,
+        run_config: RunConfig,
+    ) -> ParseResult<Module> {
+        let parsed = Self::parse_with_options(source, options);
+        parse_result_from_module(parsed, run_config)
     }
 
     pub fn parse_with_options(source: &str, options: ParserOptions) -> ParsedModule {
@@ -209,6 +253,29 @@ fn convert_range(range: Range<usize>) -> Span {
     Span::new(range.start as u32, range.end as u32)
 }
 
+fn parse_result_from_module(parsed: ParsedModule, run_config: RunConfig) -> ParseResult<Module> {
+    let recovered = parsed.ast.is_some() && !parsed.diagnostics.is_empty();
+    ParseResult::new(
+        parsed.ast,
+        None,
+        parsed.diagnostics,
+        recovered,
+        None,
+        parsed.tokens,
+        parsed.packrat_stats,
+        parsed.stream_metrics,
+        parsed.span_trace,
+        parsed.stream_flow_state,
+        run_config,
+    )
+}
+
+impl ParseResult<Module> {
+    pub(crate) fn ast_render(&self) -> Option<String> {
+        self.value.as_ref().map(Module::render)
+    }
+}
+
 fn format_simple_error(err: &Simple<TokenKind>) -> FormattedSimpleError {
     let summary = build_expected_summary(err);
     let message = match err.reason() {
@@ -261,9 +328,7 @@ fn is_expression_recover_context(expectations: &[Option<TokenKind>]) -> bool {
     let mut has_lparen = false;
     for expectation in expectations {
         match expectation {
-            Some(TokenKind::Identifier) | Some(TokenKind::UpperIdentifier) => {
-                has_identifier = true
-            }
+            Some(TokenKind::Identifier) | Some(TokenKind::UpperIdentifier) => has_identifier = true,
             Some(TokenKind::IntLiteral) => has_int_literal = true,
             Some(TokenKind::LParen) => has_lparen = true,
             _ => {}
@@ -370,11 +435,14 @@ fn module_parser<'src>(
     let span_to_span = |span: Range<usize>| Span::new(span.start as u32, span.end as u32);
     let streaming_state_success = streaming_state.clone();
 
-    let identifier = choice((just(TokenKind::Identifier), just(TokenKind::UpperIdentifier)))
-        .map_with_span(move |_, span: Range<usize>| {
-            let slice = &source[span.start..span.end];
-            (slice.to_string(), span_to_span(span))
-        });
+    let identifier = choice((
+        just(TokenKind::Identifier),
+        just(TokenKind::UpperIdentifier),
+    ))
+    .map_with_span(move |_, span: Range<usize>| {
+        let slice = &source[span.start..span.end];
+        (slice.to_string(), span_to_span(span))
+    });
 
     let int_literal = just(TokenKind::IntLiteral).map_with_span(move |_, span: Range<usize>| {
         let slice = &source[span.start..span.end];
@@ -443,11 +511,7 @@ fn module_parser<'src>(
 
         let additive = call
             .clone()
-            .then(
-                just(TokenKind::Plus)
-                    .ignore_then(call.clone())
-                    .repeated(),
-            )
+            .then(just(TokenKind::Plus).ignore_then(call.clone()).repeated())
             .map(|(first, rest)| {
                 rest.into_iter().fold(first, |lhs, rhs| {
                     let span = span_union(lhs.span(), rhs.span());
@@ -536,9 +600,7 @@ fn module_parser<'src>(
     }
 
     let module_item = choice((
-        effect_decl
-            .clone()
-            .map(ModuleItem::Effect),
+        effect_decl.clone().map(ModuleItem::Effect),
         function.clone().map(ModuleItem::Function),
     ));
 
@@ -844,7 +906,7 @@ mod driver {
             Case {
                 source: r#"effect ConsoleLog
 fn emit(msg: String) = perform ConsoleLog msg
-fn main() = emit(\"leak\")"#,
+fn main() = emit("leak")"#,
                 expected_ast: Some(
                     "effect ConsoleLog\nfn emit(msg) = perform ConsoleLog var(msg)\nfn main() = call(var(emit))[str(\"leak\")]",
                 ),
@@ -869,7 +931,7 @@ fn main() = emit(\"leak\")"#,
         assert_eq!(diag.notes[0].label, "recover.expected_tokens");
         assert_eq!(
             diag.notes[0].message,
-            "ここで`)` または `,`のいずれかが必要です"
+            "ここで`)`、`,` または `:`のいずれかが必要です"
         );
     }
 

@@ -309,7 +309,10 @@ fn lex_multiline_string(lex: &mut LogosLexer<RawToken>) -> Option<()> {
     let mut offset = 0usize;
     let remainder = lex.remainder().as_bytes();
     while offset + 2 < remainder.len() {
-        if remainder[offset] == b'"' && remainder[offset + 1] == b'"' && remainder[offset + 2] == b'"' {
+        if remainder[offset] == b'"'
+            && remainder[offset + 1] == b'"'
+            && remainder[offset + 2] == b'"'
+        {
             lex.bump(offset + 3);
             return Some(());
         }
@@ -353,51 +356,129 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
         let range = lexer.span();
         let span = Span::new(range.start as u32, range.end as u32);
         match result {
-            Ok(RawToken::KeywordModule) => push_keyword(&mut tokens, span, TokenKind::KeywordModule, "module"),
-            Ok(RawToken::KeywordUse) => push_keyword(&mut tokens, span, TokenKind::KeywordUse, "use"),
+            Ok(RawToken::KeywordModule) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordModule, "module")
+            }
+            Ok(RawToken::KeywordUse) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordUse, "use")
+            }
             Ok(RawToken::KeywordAs) => push_keyword(&mut tokens, span, TokenKind::KeywordAs, "as"),
-            Ok(RawToken::KeywordPub) => push_keyword(&mut tokens, span, TokenKind::KeywordPub, "pub"),
-            Ok(RawToken::KeywordSelf) => push_keyword(&mut tokens, span, TokenKind::KeywordSelf, "self"),
-            Ok(RawToken::KeywordSuper) => push_keyword(&mut tokens, span, TokenKind::KeywordSuper, "super"),
-            Ok(RawToken::KeywordLet) => push_keyword(&mut tokens, span, TokenKind::KeywordLet, "let"),
-            Ok(RawToken::KeywordVar) => push_keyword(&mut tokens, span, TokenKind::KeywordVar, "var"),
+            Ok(RawToken::KeywordPub) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordPub, "pub")
+            }
+            Ok(RawToken::KeywordSelf) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordSelf, "self")
+            }
+            Ok(RawToken::KeywordSuper) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordSuper, "super")
+            }
+            Ok(RawToken::KeywordLet) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordLet, "let")
+            }
+            Ok(RawToken::KeywordVar) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordVar, "var")
+            }
             Ok(RawToken::KeywordFn) => push_keyword(&mut tokens, span, TokenKind::KeywordFn, "fn"),
-            Ok(RawToken::KeywordType) => push_keyword(&mut tokens, span, TokenKind::KeywordType, "type"),
-            Ok(RawToken::KeywordAlias) => push_keyword(&mut tokens, span, TokenKind::KeywordAlias, "alias"),
-            Ok(RawToken::KeywordNew) => push_keyword(&mut tokens, span, TokenKind::KeywordNew, "new"),
-            Ok(RawToken::KeywordTrait) => push_keyword(&mut tokens, span, TokenKind::KeywordTrait, "trait"),
-            Ok(RawToken::KeywordImpl) => push_keyword(&mut tokens, span, TokenKind::KeywordImpl, "impl"),
-            Ok(RawToken::KeywordExtern) => push_keyword(&mut tokens, span, TokenKind::KeywordExtern, "extern"),
-            Ok(RawToken::KeywordEffect) => push_keyword(&mut tokens, span, TokenKind::KeywordEffect, "effect"),
-            Ok(RawToken::KeywordOperation) => push_keyword(&mut tokens, span, TokenKind::KeywordOperation, "operation"),
-            Ok(RawToken::KeywordHandler) => push_keyword(&mut tokens, span, TokenKind::KeywordHandler, "handler"),
-            Ok(RawToken::KeywordConductor) => push_keyword(&mut tokens, span, TokenKind::KeywordConductor, "conductor"),
-            Ok(RawToken::KeywordChannels) => push_keyword(&mut tokens, span, TokenKind::KeywordChannels, "channels"),
-            Ok(RawToken::KeywordExecution) => push_keyword(&mut tokens, span, TokenKind::KeywordExecution, "execution"),
-            Ok(RawToken::KeywordMonitoring) => push_keyword(&mut tokens, span, TokenKind::KeywordMonitoring, "monitoring"),
+            Ok(RawToken::KeywordType) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordType, "type")
+            }
+            Ok(RawToken::KeywordAlias) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordAlias, "alias")
+            }
+            Ok(RawToken::KeywordNew) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordNew, "new")
+            }
+            Ok(RawToken::KeywordTrait) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordTrait, "trait")
+            }
+            Ok(RawToken::KeywordImpl) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordImpl, "impl")
+            }
+            Ok(RawToken::KeywordExtern) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordExtern, "extern")
+            }
+            Ok(RawToken::KeywordEffect) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordEffect, "effect")
+            }
+            Ok(RawToken::KeywordOperation) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordOperation, "operation")
+            }
+            Ok(RawToken::KeywordHandler) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordHandler, "handler")
+            }
+            Ok(RawToken::KeywordConductor) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordConductor, "conductor")
+            }
+            Ok(RawToken::KeywordChannels) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordChannels, "channels")
+            }
+            Ok(RawToken::KeywordExecution) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordExecution, "execution")
+            }
+            Ok(RawToken::KeywordMonitoring) => push_keyword(
+                &mut tokens,
+                span,
+                TokenKind::KeywordMonitoring,
+                "monitoring",
+            ),
             Ok(RawToken::KeywordIf) => push_keyword(&mut tokens, span, TokenKind::KeywordIf, "if"),
-            Ok(RawToken::KeywordThen) => push_keyword(&mut tokens, span, TokenKind::KeywordThen, "then"),
-            Ok(RawToken::KeywordElse) => push_keyword(&mut tokens, span, TokenKind::KeywordElse, "else"),
-            Ok(RawToken::KeywordMatch) => push_keyword(&mut tokens, span, TokenKind::KeywordMatch, "match"),
-            Ok(RawToken::KeywordWith) => push_keyword(&mut tokens, span, TokenKind::KeywordWith, "with"),
-            Ok(RawToken::KeywordFor) => push_keyword(&mut tokens, span, TokenKind::KeywordFor, "for"),
+            Ok(RawToken::KeywordThen) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordThen, "then")
+            }
+            Ok(RawToken::KeywordElse) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordElse, "else")
+            }
+            Ok(RawToken::KeywordMatch) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordMatch, "match")
+            }
+            Ok(RawToken::KeywordWith) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordWith, "with")
+            }
+            Ok(RawToken::KeywordFor) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordFor, "for")
+            }
             Ok(RawToken::KeywordIn) => push_keyword(&mut tokens, span, TokenKind::KeywordIn, "in"),
-            Ok(RawToken::KeywordWhile) => push_keyword(&mut tokens, span, TokenKind::KeywordWhile, "while"),
-            Ok(RawToken::KeywordLoop) => push_keyword(&mut tokens, span, TokenKind::KeywordLoop, "loop"),
-            Ok(RawToken::KeywordReturn) => push_keyword(&mut tokens, span, TokenKind::KeywordReturn, "return"),
-            Ok(RawToken::KeywordDefer) => push_keyword(&mut tokens, span, TokenKind::KeywordDefer, "defer"),
-            Ok(RawToken::KeywordUnsafe) => push_keyword(&mut tokens, span, TokenKind::KeywordUnsafe, "unsafe"),
-            Ok(RawToken::KeywordPerform) => push_keyword(&mut tokens, span, TokenKind::KeywordPerform, "perform"),
+            Ok(RawToken::KeywordWhile) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordWhile, "while")
+            }
+            Ok(RawToken::KeywordLoop) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordLoop, "loop")
+            }
+            Ok(RawToken::KeywordReturn) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordReturn, "return")
+            }
+            Ok(RawToken::KeywordDefer) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordDefer, "defer")
+            }
+            Ok(RawToken::KeywordUnsafe) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordUnsafe, "unsafe")
+            }
+            Ok(RawToken::KeywordPerform) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordPerform, "perform")
+            }
             Ok(RawToken::KeywordDo) => push_keyword(&mut tokens, span, TokenKind::KeywordDo, "do"),
-            Ok(RawToken::KeywordHandle) => push_keyword(&mut tokens, span, TokenKind::KeywordHandle, "handle"),
-            Ok(RawToken::KeywordWhere) => push_keyword(&mut tokens, span, TokenKind::KeywordWhere, "where"),
-            Ok(RawToken::KeywordTrue) => push_keyword(&mut tokens, span, TokenKind::KeywordTrue, "true"),
-            Ok(RawToken::KeywordFalse) => push_keyword(&mut tokens, span, TokenKind::KeywordFalse, "false"),
-            Ok(RawToken::KeywordBreak) => push_keyword(&mut tokens, span, TokenKind::KeywordBreak, "break"),
-            Ok(RawToken::KeywordContinue) => push_keyword(&mut tokens, span, TokenKind::KeywordContinue, "continue"),
+            Ok(RawToken::KeywordHandle) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordHandle, "handle")
+            }
+            Ok(RawToken::KeywordWhere) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordWhere, "where")
+            }
+            Ok(RawToken::KeywordTrue) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordTrue, "true")
+            }
+            Ok(RawToken::KeywordFalse) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordFalse, "false")
+            }
+            Ok(RawToken::KeywordBreak) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordBreak, "break")
+            }
+            Ok(RawToken::KeywordContinue) => {
+                push_keyword(&mut tokens, span, TokenKind::KeywordContinue, "continue")
+            }
             Ok(RawToken::Identifier) => {
                 let slice = lexer.slice();
-                if options.identifier_profile == IdentifierProfile::AsciiCompat && !slice.is_ascii() {
+                if options.identifier_profile == IdentifierProfile::AsciiCompat && !slice.is_ascii()
+                {
                     push_ascii_error(span, slice, &mut errors, &mut tokens);
                     continue;
                 }
@@ -573,12 +654,17 @@ mod tests {
         assert!(
             output.errors.is_empty(),
             "lexer returned errors: {:?}",
-            output.errors
+            output
+                .errors
                 .iter()
                 .map(|err| err.message())
                 .collect::<Vec<_>>()
         );
-        assert_eq!(string_tokens.len(), 1, "expected exactly one string literal");
+        assert_eq!(
+            string_tokens.len(),
+            1,
+            "expected exactly one string literal"
+        );
     }
 }
 

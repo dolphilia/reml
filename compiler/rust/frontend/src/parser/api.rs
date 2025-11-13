@@ -1,0 +1,220 @@
+#![allow(dead_code)]
+//! FRP Parser API を仕様文書 `docs/spec/2-1-parser-type.md` に沿って整理した共通型群。
+//!
+//! Phase 2-5 では以下の型を実装することで、OCaml 実装の `parser_driver` に近い外部 API を提供し、
+//! `Parser<T>` / `RunConfig` / `ParseResult` による dual-write 連携を目指します。
+
+use crate::diagnostic::{ExpectedToken, FrontendDiagnostic};
+use crate::span::Span;
+use crate::streaming::{PackratStats, StreamFlowState, StreamMetrics, TraceFrame};
+use crate::token::Token;
+use indexmap::IndexMap;
+use serde_json::Value;
+use std::str::FromStr;
+
+/// 左再帰のモード。OCaml 側 `Parser_run_config.left_recursion` と互換。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LeftRecursionMode {
+    Off,
+    On,
+    Auto,
+}
+
+impl Default for LeftRecursionMode {
+    fn default() -> Self {
+        Self::Auto
+    }
+}
+
+impl FromStr for LeftRecursionMode {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "off" => Ok(LeftRecursionMode::Off),
+            "on" => Ok(LeftRecursionMode::On),
+            "auto" => Ok(LeftRecursionMode::Auto),
+            _ => Err(()),
+        }
+    }
+}
+
+/// ランナー向け実行設定。
+#[derive(Debug, Clone)]
+pub struct RunConfig {
+    pub require_eof: bool,
+    pub packrat: bool,
+    pub left_recursion: LeftRecursionMode,
+    pub trace: bool,
+    pub merge_warnings: bool,
+    pub legacy_result: bool,
+    pub locale: Option<String>,
+    pub extensions: IndexMap<String, Value>,
+}
+
+impl Default for RunConfig {
+    fn default() -> Self {
+        Self {
+            require_eof: false,
+            packrat: true,
+            left_recursion: LeftRecursionMode::Auto,
+            trace: true,
+            merge_warnings: true,
+            legacy_result: false,
+            locale: None,
+            extensions: IndexMap::new(),
+        }
+    }
+}
+
+impl RunConfig {
+    /// 指定されたネームスペースをイミュータブルに更新し、新しい `RunConfig` を返す。
+    pub fn with_extension(
+        &self,
+        key: impl Into<String>,
+        update: impl FnOnce(Option<&Value>) -> Value,
+    ) -> Self {
+        let mut extensions = self.extensions.clone();
+        let key_string = key.into();
+        let updated = update(extensions.get(&key_string));
+        extensions.insert(key_string, updated);
+        let mut next = self.clone();
+        next.extensions = extensions;
+        next
+    }
+
+    /// 拡張データを上書きするユーティリティ。
+    pub fn insert_extension(mut self, key: impl Into<String>, value: Value) -> Self {
+        self.extensions.insert(key.into(), value);
+        self
+    }
+
+    /// 指定されたネームスペースを取得する。
+    pub fn extension(&self, key: &str) -> Option<&Value> {
+        self.extensions.get(key)
+    }
+}
+
+/// パーサ入力ビュー（仕様上の `Input`）。
+#[derive(Debug, Clone)]
+pub struct Input<'src> {
+    pub source: &'src str,
+    pub offset: usize,
+}
+
+impl<'src> Input<'src> {
+    pub fn new(source: &'src str) -> Self {
+        Self { source, offset: 0 }
+    }
+
+    pub fn rest(&self) -> &'src str {
+        &self.source[self.offset..]
+    }
+
+    pub fn advance(&self, bytes: usize) -> Self {
+        Self {
+            source: self.source,
+            offset: self.offset.saturating_add(bytes),
+        }
+    }
+}
+
+/// パーサ状態（補助）。
+#[derive(Debug)]
+pub struct State<'src> {
+    pub input: Input<'src>,
+    pub config: RunConfig,
+    pub diagnostics: Vec<FrontendDiagnostic>,
+    pub trace: Vec<TraceFrame>,
+    pub memo: (),
+}
+
+/// 最小限の失敗表現。
+#[derive(Debug, Clone)]
+pub struct ParseError {
+    pub at: Span,
+    pub expected: Vec<ExpectedToken>,
+    pub context: Vec<String>,
+    pub committed: bool,
+    pub notes: Vec<String>,
+}
+
+impl ParseError {
+    pub fn new(at: Span, expected: Vec<ExpectedToken>) -> Self {
+        Self {
+            at,
+            expected,
+            context: Vec::new(),
+            committed: false,
+            notes: Vec::new(),
+        }
+    }
+}
+
+/// `Parser<T>` の実行結果。仕様上の `Reply` を模倣。
+#[derive(Debug)]
+pub enum Reply<T> {
+    Ok {
+        value: T,
+        span: Span,
+        consumed: bool,
+    },
+    Err {
+        error: ParseError,
+        consumed: bool,
+        committed: bool,
+    },
+}
+
+/// パーサランナーが CLI/LSP へ返す結果。
+#[derive(Debug, Clone)]
+pub struct ParseResult<T> {
+    pub value: Option<T>,
+    pub span: Option<Span>,
+    pub diagnostics: Vec<FrontendDiagnostic>,
+    pub recovered: bool,
+    pub legacy_error: Option<ParseError>,
+    pub tokens: Vec<Token>,
+    pub packrat_stats: PackratStats,
+    pub stream_metrics: StreamMetrics,
+    pub span_trace: Vec<TraceFrame>,
+    pub stream_flow_state: Option<StreamFlowState>,
+    pub run_config: RunConfig,
+}
+
+impl<T> ParseResult<T> {
+    pub fn new(
+        value: Option<T>,
+        span: Option<Span>,
+        diagnostics: Vec<FrontendDiagnostic>,
+        recovered: bool,
+        legacy_error: Option<ParseError>,
+        tokens: Vec<Token>,
+        packrat_stats: PackratStats,
+        stream_metrics: StreamMetrics,
+        span_trace: Vec<TraceFrame>,
+        stream_flow_state: Option<StreamFlowState>,
+        run_config: RunConfig,
+    ) -> Self {
+        Self {
+            value,
+            span,
+            diagnostics,
+            recovered,
+            legacy_error,
+            tokens,
+            packrat_stats,
+            stream_metrics,
+            span_trace,
+            stream_flow_state,
+            run_config,
+        }
+    }
+}
+
+/// 残り入力を含む部分パース結果。
+#[derive(Debug, Clone)]
+pub struct ParseResultWithRest<T> {
+    pub result: ParseResult<T>,
+    pub rest: Option<String>,
+}

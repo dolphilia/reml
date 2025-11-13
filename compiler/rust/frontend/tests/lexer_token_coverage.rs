@@ -14,16 +14,15 @@ fn unicode_identifier_is_classified_correctly() {
     assert!(
         output.errors.is_empty(),
         "expected no lexer errors, got {:?}",
-        output.errors
+        output
+            .errors
             .iter()
             .map(|err| err.message())
             .collect::<Vec<_>>()
     );
     let mut seen_unicode_ident = false;
     for token in output.tokens {
-        if token.kind == TokenKind::Identifier
-            && token.lexeme.as_deref() == Some("ユーザー")
-        {
+        if token.kind == TokenKind::Identifier && token.lexeme.as_deref() == Some("ユーザー") {
             seen_unicode_ident = true;
         }
     }
@@ -71,7 +70,12 @@ fn int_literal_bases_are_preserved() {
         .collect();
     assert_eq!(
         bases,
-        vec![IntBase::Binary, IntBase::Octal, IntBase::Decimal, IntBase::Hexadecimal]
+        vec![
+            IntBase::Binary,
+            IntBase::Octal,
+            IntBase::Decimal,
+            IntBase::Hexadecimal
+        ]
     );
 }
 
