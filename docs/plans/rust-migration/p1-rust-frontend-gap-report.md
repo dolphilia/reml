@@ -93,7 +93,7 @@ FRG-07 は `docs/spec/2-1-parser-type.md` に記された `Parser<T>` / `State` 
 
 これらのステップを実施したことで、FRG-07 の計画は実装済みとなり、今後の RunConfig 拡張や Menhir 互換コンビネータ導入に向けて必要な型基盤と CLI パスが整ったと言える。
 
-## FRG-08
+### FRG-08
 
 FRG-08（`parser_expectation`）では、`docs/spec/2-5-error.md#b-7` に則った期待集合の優先順位・テンプレート・フォールバックを Rust 版 Recover が再現することを目指す。
 
