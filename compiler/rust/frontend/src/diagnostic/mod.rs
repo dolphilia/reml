@@ -2,6 +2,7 @@
 
 use crate::error::Recoverability;
 use crate::span::Span;
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 pub mod recover;
@@ -13,15 +14,186 @@ pub(crate) const EXPECTED_EMPTY_HUMANIZED: &str = "ここで解釈可能な構�
 pub(crate) const PARSE_EXPECTED_KEY: &str = "parse.expected";
 pub(crate) const PARSE_EXPECTED_EMPTY_KEY: &str = "parse.expected.empty";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DiagnosticSeverity {
+    Error,
+    Warning,
+    Info,
+    Hint,
+}
+
+impl DiagnosticSeverity {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            DiagnosticSeverity::Error => "error",
+            DiagnosticSeverity::Warning => "warning",
+            DiagnosticSeverity::Info => "info",
+            DiagnosticSeverity::Hint => "hint",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SeverityHint {
+    Rollback,
+    Retry,
+    Ignore,
+    Escalate,
+}
+
+impl SeverityHint {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SeverityHint::Rollback => "rollback",
+            SeverityHint::Retry => "retry",
+            SeverityHint::Ignore => "ignore",
+            SeverityHint::Escalate => "escalate",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DiagnosticDomain {
+    Effect,
+    Target,
+    Plugin,
+    Lsp,
+    Runtime,
+    Parser,
+    Type,
+    Config,
+    Network,
+    Data,
+    Audit,
+    Security,
+    Cli,
+    Other(String),
+}
+
+impl DiagnosticDomain {
+    pub fn label(&self) -> Cow<'static, str> {
+        match self {
+            DiagnosticDomain::Effect => Cow::Borrowed("effect"),
+            DiagnosticDomain::Target => Cow::Borrowed("target"),
+            DiagnosticDomain::Plugin => Cow::Borrowed("plugin"),
+            DiagnosticDomain::Lsp => Cow::Borrowed("lsp"),
+            DiagnosticDomain::Runtime => Cow::Borrowed("runtime"),
+            DiagnosticDomain::Parser => Cow::Borrowed("parser"),
+            DiagnosticDomain::Type => Cow::Borrowed("type"),
+            DiagnosticDomain::Config => Cow::Borrowed("config"),
+            DiagnosticDomain::Network => Cow::Borrowed("network"),
+            DiagnosticDomain::Data => Cow::Borrowed("data"),
+            DiagnosticDomain::Audit => Cow::Borrowed("audit"),
+            DiagnosticDomain::Security => Cow::Borrowed("security"),
+            DiagnosticDomain::Cli => Cow::Borrowed("cli"),
+            DiagnosticDomain::Other(ref value) => Cow::Owned(value.clone()),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DiagnosticSpanLabel {
+    pub span: Option<Span>,
+    pub message: Option<String>,
+}
+
+impl DiagnosticSpanLabel {
+    pub fn new(span: Option<Span>, message: Option<String>) -> Self {
+        Self { span, message }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DiagnosticHint {
+    pub message: Option<String>,
+    pub actions: Vec<DiagnosticFixIt>,
+}
+
+impl DiagnosticHint {
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: Some(message.into()),
+            actions: Vec::new(),
+        }
+    }
+
+    pub fn with_actions(mut self, actions: Vec<DiagnosticFixIt>) -> Self {
+        self.actions = actions;
+        self
+    }
+
+    pub fn push_action(&mut self, action: DiagnosticFixIt) {
+        self.actions.push(action);
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum DiagnosticFixIt {
+    Insert { span: Span, text: String },
+    Replace { span: Span, text: String },
+    Delete { span: Span },
+}
+
+impl DiagnosticFixIt {
+    pub fn insert(span: Span, text: impl Into<String>) -> Self {
+        Self::Insert {
+            span,
+            text: text.into(),
+        }
+    }
+
+    pub fn replace(span: Span, text: impl Into<String>) -> Self {
+        Self::Replace {
+            span,
+            text: text.into(),
+        }
+    }
+
+    pub fn delete(span: Span) -> Self {
+        Self::Delete { span }
+    }
+
+    pub fn span(&self) -> Span {
+        match self {
+            DiagnosticFixIt::Insert { span, .. } => *span,
+            DiagnosticFixIt::Replace { span, .. } => *span,
+            DiagnosticFixIt::Delete { span } => *span,
+        }
+    }
+
+    pub fn kind(&self) -> &'static str {
+        match self {
+            DiagnosticFixIt::Insert { .. } => "insert",
+            DiagnosticFixIt::Replace { .. } => "replace",
+            DiagnosticFixIt::Delete { .. } => "delete",
+        }
+    }
+
+    pub fn text(&self) -> Option<&str> {
+        match self {
+            DiagnosticFixIt::Insert { text, .. } => Some(text),
+            DiagnosticFixIt::Replace { text, .. } => Some(text),
+            DiagnosticFixIt::Delete { .. } => None,
+        }
+    }
+}
+
 /// Rust フロントエンドが生成する診断レコードの最小構造。
 /// W4 の診断互換試験に向け、`serde` スキーマと合わせて拡張する。
 #[derive(Debug, Clone)]
 pub struct FrontendDiagnostic {
     pub code: Option<String>,
+    pub codes: Vec<String>,
     pub message: String,
+    pub severity: DiagnosticSeverity,
+    pub severity_hint: Option<SeverityHint>,
+    pub domain: Option<DiagnosticDomain>,
     pub span: Option<Span>,
+    pub secondary_spans: Vec<DiagnosticSpanLabel>,
     pub recoverability: Recoverability,
     pub notes: Vec<DiagnosticNote>,
+    pub hints: Vec<DiagnosticHint>,
+    pub fixits: Vec<DiagnosticFixIt>,
     pub expected_tokens: Vec<String>,
     pub expected_locale_args: Vec<String>,
     pub expected_humanized: Option<String>,
@@ -33,10 +205,17 @@ impl FrontendDiagnostic {
     pub fn new(message: impl Into<String>) -> Self {
         Self {
             code: None,
+            codes: Vec::new(),
             message: message.into(),
+            severity: DiagnosticSeverity::Error,
+            severity_hint: None,
+            domain: None,
             span: None,
+            secondary_spans: Vec::new(),
             recoverability: Recoverability::Fatal,
             notes: Vec::new(),
+            hints: Vec::new(),
+            fixits: Vec::new(),
             expected_tokens: Vec::new(),
             expected_locale_args: Vec::new(),
             expected_humanized: None,
@@ -51,7 +230,35 @@ impl FrontendDiagnostic {
     }
 
     pub fn with_code(mut self, code: impl Into<String>) -> Self {
-        self.code = Some(code.into());
+        self.push_code_value(code.into());
+        self
+    }
+
+    pub fn push_code(&mut self, code: impl Into<String>) {
+        self.push_code_value(code.into());
+    }
+
+    fn push_code_value(&mut self, code: String) {
+        if self.code.is_none() {
+            self.code = Some(code.clone());
+        }
+        if !self.codes.iter().any(|existing| existing == &code) {
+            self.codes.push(code);
+        }
+    }
+
+    pub fn with_severity(mut self, severity: DiagnosticSeverity) -> Self {
+        self.severity = severity;
+        self
+    }
+
+    pub fn with_severity_hint(mut self, hint: SeverityHint) -> Self {
+        self.severity_hint = Some(hint);
+        self
+    }
+
+    pub fn with_domain(mut self, domain: DiagnosticDomain) -> Self {
+        self.domain = Some(domain);
         self
     }
 
@@ -62,6 +269,23 @@ impl FrontendDiagnostic {
 
     pub fn add_note(&mut self, note: DiagnosticNote) {
         self.notes.push(note);
+    }
+
+    pub fn add_secondary_span(&mut self, span_label: DiagnosticSpanLabel) {
+        self.secondary_spans.push(span_label);
+    }
+
+    pub fn with_secondary_span(mut self, span_label: DiagnosticSpanLabel) -> Self {
+        self.add_secondary_span(span_label);
+        self
+    }
+
+    pub fn add_hint(&mut self, hint: DiagnosticHint) {
+        self.hints.push(hint);
+    }
+
+    pub fn add_fixit(&mut self, fixit: DiagnosticFixIt) {
+        self.fixits.push(fixit);
     }
 
     pub fn set_expected_tokens(mut self, tokens: Vec<String>, humanized: Option<String>) -> Self {

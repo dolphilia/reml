@@ -8,7 +8,8 @@ use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use reml_frontend::diagnostic::{
-    DiagnosticNote, ExpectedToken, ExpectedTokensSummary, FrontendDiagnostic,
+    DiagnosticFixIt, DiagnosticHint, DiagnosticNote, DiagnosticSpanLabel, ExpectedToken,
+    ExpectedTokensSummary, FrontendDiagnostic,
 };
 use reml_frontend::error::Recoverability;
 use reml_frontend::lexer::IdentifierProfile;
@@ -1231,8 +1232,19 @@ fn build_parser_diagnostics(
             stage_payload.apply_extensions(&mut extensions);
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
 
-            let audit_metadata =
-                build_audit_metadata(&timestamp, args, input_path, &stage_payload, flow, "parser");
+            let domain_label = diag
+                .domain
+                .as_ref()
+                .map(|domain| domain.label().into_owned())
+                .unwrap_or_else(|| "parser".to_string());
+            let audit_metadata = build_audit_metadata(
+                &timestamp,
+                args,
+                input_path,
+                &stage_payload,
+                flow,
+                domain_label.as_str(),
+            );
             let audit = json!({
                 "metadata": audit_metadata.clone(),
                 "audit_id": audit_metadata
@@ -1245,19 +1257,40 @@ fn build_parser_diagnostics(
                     .unwrap_or_else(|| json!({})),
             });
 
+            let hints = diag
+                .hints
+                .iter()
+                .map(|hint| diagnostic_hint_to_json(hint, &line_index, input_path))
+                .collect::<Vec<_>>();
+            let fixits = diag
+                .fixits
+                .iter()
+                .map(|fixit| diagnostic_fixit_to_json(fixit, &line_index, input_path))
+                .collect::<Vec<_>>();
+            let secondary = diag
+                .secondary_spans
+                .iter()
+                .map(|label| secondary_span_to_json(label, &line_index, input_path))
+                .collect::<Vec<_>>();
+            let severity_hint = diag.severity_hint.map(|hint| hint.as_str());
             json!({
-                "severity": "error",
+                "severity": diag.severity.as_str(),
+                "severity_hint": severity_hint,
                 "message": diag.message,
                 "schema_version": SCHEMA_VERSION,
                 "location": location_value,
-                "domain": "parser",
+                "domain": domain_label,
                 "timestamp": timestamp,
                 "extensions": Value::Object(extensions),
                 "audit_metadata": Value::Object(audit_metadata),
                 "audit": audit,
                 "notes": notes,
+                "secondary": secondary,
+                "hints": hints,
+                "fixits": fixits,
                 "recoverability": recoverability_label(diag.recoverability),
                 "code": diag.code,
+                "codes": diag.codes.clone(),
                 "expected": build_expected_field(&diag),
             })
         })
@@ -1472,6 +1505,50 @@ fn build_expected_field(diag: &FrontendDiagnostic) -> Value {
         "locale_args": locale_args,
         "alternatives": alternatives,
     })
+}
+
+fn secondary_span_to_json(
+    label: &DiagnosticSpanLabel,
+    index: &LineIndex,
+    input_path: &Path,
+) -> Value {
+    let span_value = label
+        .span
+        .map(|span| span_to_location(span, index, input_path))
+        .unwrap_or(Value::Null);
+    json!({
+        "span": span_value,
+        "message": label.message.clone(),
+    })
+}
+
+fn diagnostic_hint_to_json(hint: &DiagnosticHint, index: &LineIndex, input_path: &Path) -> Value {
+    let actions = hint
+        .actions
+        .iter()
+        .map(|action| diagnostic_fixit_to_json(action, index, input_path))
+        .collect::<Vec<_>>();
+    json!({
+        "message": hint.message.clone(),
+        "actions": actions,
+    })
+}
+
+fn diagnostic_fixit_to_json(
+    fixit: &DiagnosticFixIt,
+    index: &LineIndex,
+    input_path: &Path,
+) -> Value {
+    let mut map = serde_json::Map::new();
+    map.insert(
+        "span".to_string(),
+        span_to_location(fixit.span(), index, input_path),
+    );
+    map.insert("kind".to_string(), json!(fixit.kind()));
+    if let Some(text) = fixit.text() {
+        map.insert("text".to_string(), json!(text));
+    }
+    Value::Object(map)
 }
 
 fn classify_expected_token(token: &str) -> &'static str {

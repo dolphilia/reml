@@ -221,6 +221,21 @@ FRG-14 では `reports/dual-write/front-end/w3-type-inference` に格納する t
   - ✅ `ConstraintFile` に `function_summaries` と `stats` を追加しつつ、既存の `total_constraints`/`constraint_breakdown`/`constraints`/`used_impls` を保持する構造に書き換えた。
   - ✅ `poc_frontend.rs` の `write_dualwrite_typeck_payload` で新構造を `typeck/typed-ast.rust.json`/`typeck/constraints.rust.json`/`typeck/typeck-debug.rust.json` へ吐き出す経路を実装し、dual-write 出力が OCaml に近づいた状態にした。
 
+### FRG-15
+
+1. **診断モデルの再定義（Day 1）**
+   - `docs/spec/3-6-core-diagnostics-audit.md` と OCaml `compiler/ocaml/src/diagnostic.ml:165` をもとに `Diagnostic` に必要な severity/domain/codes/hints/audit フィールドを整理し、Rust 側 `FrontendDiagnostic` に severity/SeverityHint/Domain/codes/secondary/hints/fixits を持たせるスキーマ案を `docs/plans/rust-migration/p1-spec-compliance-gap.md#FRG-15` にまで落とし込む。
+   - 既存 `Diagnostic` Builder や構成コードがこれらのフィールドを使えるよう、`FrontendDiagnostic::with_*` 系メソッドを増設し、`code` と `codes` の関係やセカンダリ span 追加処理を明文化。
+2. **CLI 側へのパスと JSON シリアライズの強化（Day 2）**
+   - `build_parser_diagnostics` へ severity/domain 情報を渡し、`build_audit_metadata` の `event.domain` などにも反映。メトリクス側の RunConfig/Streaming extensions はそのまま保持しながら、diags.json へ `severity_hint`/`codes`/`secondary`/`hints`/`fixits` を追加。
+   - `'recover'`/`expected` のビルドは継続しつつ、新たな `DiagnosticHint`/`DiagnosticFixIt` 用の JSON レイヤーを実装し、`Span` から位置を引ける helper を組み込む。
+3. **差分検証と dual-write への記録（Day 3）**
+   - FRG-15 の出力変更が既存の dual-write 形式 (`reports/dual-write/front-end/*/`) に与える影響を `p1-spec-compliance-gap.md` と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` に追記し、OCaml との差分検証方針を明示。
+
+- 進捗ログ
+  - ✅ `compiler/rust/frontend/src/diagnostic/mod.rs` で `FrontendDiagnostic` を severity/domain/codes/hints/fixits/secondary 付きの仕様に再定義し、`with_code`/`with_severity`/`with_domain` などの API を整備。
+  - ✅ `compiler/rust/frontend/src/bin/poc_frontend.rs` の `build_parser_diagnostics` で `severity`/`severity_hint`/`domain`/`codes`/`secondary`/`hints`/`fixits` を JSON 化する helper を追加し、`diagnostic.v2` 拡張や `audit_metadata` の `event.domain` を `FrontendDiagnostic` 由来に更新。
+
 ## 5. ノート
 
 - 仕様参照: `docs/spec/1-1-syntax.md`, `1-2-types-Inference.md`, `1-3-effects-safety.md`, `2-1-parser-type.md`, `2-5-error.md`, `2-7-core-parse-streaming.md`, `3-6-core-diagnostics-audit.md`
