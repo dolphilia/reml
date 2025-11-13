@@ -7,10 +7,8 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use reml_frontend::diagnostic::{
-    DiagnosticFixIt, DiagnosticHint, DiagnosticNote, DiagnosticSpanLabel, ExpectedToken,
-    ExpectedTokensSummary, FrontendDiagnostic,
-};
+use reml_frontend::diagnostic::json as diag_json;
+use reml_frontend::diagnostic::FrontendDiagnostic;
 use reml_frontend::error::Recoverability;
 use reml_frontend::lexer::IdentifierProfile;
 use reml_frontend::parser::ast::Module;
@@ -1172,7 +1170,7 @@ fn build_parser_diagnostics(
     flow: &StreamFlowState,
     stage_payload: &StageAuditPayload,
 ) -> Vec<Value> {
-    let line_index = LineIndex::new(source);
+    let line_index = diag_json::LineIndex::new(source);
     let streaming_enabled = args.stream_config.enabled;
     let has_streaming_recover = streaming_enabled && diagnostics.iter().any(has_recover_note);
     let mut placeholder_emitted = false;
@@ -1199,22 +1197,13 @@ fn build_parser_diagnostics(
         })
         .map(|diag| {
             let timestamp = current_timestamp();
-            let location_value = diag
-                .span
-                .map(|span| span_to_location(span, &line_index, input_path))
-                .unwrap_or(Value::Null);
-            let notes = diag
-                .notes
-                .iter()
-                .map(|note| note_to_json(note, &line_index, input_path))
-                .collect::<Vec<_>>();
-            let recover_extension = build_recover_extension(&diag);
+            let recover_extension = diag_json::build_recover_extension(&diag);
             let mut extensions = serde_json::Map::new();
             extensions.insert(
                 "diagnostic.v2".to_string(),
                 json!({ "timestamp": timestamp }),
             );
-            if let Some(recover) = recover_extension.clone() {
+            if let Some(recover) = recover_extension {
                 extensions.insert("recover".to_string(), recover);
             }
             extensions.insert(
@@ -1237,7 +1226,7 @@ fn build_parser_diagnostics(
                 .as_ref()
                 .map(|domain| domain.label().into_owned())
                 .unwrap_or_else(|| "parser".to_string());
-            let audit_metadata = build_audit_metadata(
+            let mut audit_metadata = build_audit_metadata(
                 &timestamp,
                 args,
                 input_path,
@@ -1246,7 +1235,7 @@ fn build_parser_diagnostics(
                 domain_label.as_str(),
             );
             let audit = json!({
-                "metadata": audit_metadata.clone(),
+                "metadata": Value::Object(audit_metadata.clone()),
                 "audit_id": audit_metadata
                     .get("cli.audit_id")
                     .cloned()
@@ -1257,41 +1246,19 @@ fn build_parser_diagnostics(
                     .unwrap_or_else(|| json!({})),
             });
 
-            let hints = diag
-                .hints
-                .iter()
-                .map(|hint| diagnostic_hint_to_json(hint, &line_index, input_path))
-                .collect::<Vec<_>>();
-            let fixits = diag
-                .fixits
-                .iter()
-                .map(|fixit| diagnostic_fixit_to_json(fixit, &line_index, input_path))
-                .collect::<Vec<_>>();
-            let secondary = diag
-                .secondary_spans
-                .iter()
-                .map(|label| secondary_span_to_json(label, &line_index, input_path))
-                .collect::<Vec<_>>();
-            let severity_hint = diag.severity_hint.map(|hint| hint.as_str());
-            json!({
-                "severity": diag.severity.as_str(),
-                "severity_hint": severity_hint,
-                "message": diag.message,
-                "schema_version": SCHEMA_VERSION,
-                "location": location_value,
-                "domain": domain_label,
-                "timestamp": timestamp,
-                "extensions": Value::Object(extensions),
-                "audit_metadata": Value::Object(audit_metadata),
-                "audit": audit,
-                "notes": notes,
-                "secondary": secondary,
-                "hints": hints,
-                "fixits": fixits,
-                "recoverability": recoverability_label(diag.recoverability),
-                "code": diag.code,
-                "codes": diag.codes.clone(),
-                "expected": build_expected_field(&diag),
+            let expected_value = diag_json::build_expected_field(&diag);
+            diag_json::build_frontend_diagnostic(diag_json::FrontendDiagnosticPayload {
+                diag: &diag,
+                timestamp: &timestamp,
+                domain_label: &domain_label,
+                line_index: &line_index,
+                input_path,
+                extensions,
+                audit_metadata,
+                audit,
+                recoverability: recoverability_label(diag.recoverability),
+                expected: expected_value,
+                schema_version: SCHEMA_VERSION,
             })
         })
         .collect()
@@ -1309,27 +1276,12 @@ fn build_type_diagnostics(
     if report.violations.is_empty() {
         return Vec::new();
     }
-    let line_index = LineIndex::new(source);
+    let line_index = diag_json::LineIndex::new(source);
     report
         .violations
         .iter()
         .map(|violation| {
             let timestamp = current_timestamp();
-            let location_value = violation
-                .span
-                .map(|span| span_to_location(span, &line_index, input_path))
-                .unwrap_or(Value::Null);
-            let notes = violation
-                .notes
-                .iter()
-                .map(|note| {
-                    json!({
-                        "label": note.label,
-                        "message": note.message,
-                        "span": Value::Null,
-                    })
-                })
-                .collect::<Vec<_>>();
             let mut extensions = serde_json::Map::new();
             extensions.insert(
                 "diagnostic.v2".to_string(),
@@ -1341,12 +1293,12 @@ fn build_type_diagnostics(
             stage_payload.apply_extensions(&mut extensions);
             let mut expected_value = Value::Null;
             if let Some(summary) = violation.expected_summary() {
-                let payload = expected_payload_from_summary(summary);
+                let payload = diag_json::expected_payload_from_summary(summary);
                 expected_value = payload.clone();
                 extensions.insert("recover".to_string(), payload);
             }
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
-            let audit_metadata = build_audit_metadata(
+            let mut audit_metadata = build_audit_metadata(
                 &timestamp,
                 args,
                 input_path,
@@ -1365,17 +1317,35 @@ fn build_type_diagnostics(
                     .cloned()
                     .unwrap_or_else(|| json!({})),
             });
+            let notes = violation
+                .notes
+                .iter()
+                .map(|note| {
+                    json!({
+                        "label": note.label.clone(),
+                        "message": note.message.clone(),
+                        "span": Value::Null,
+                    })
+                })
+                .collect::<Vec<_>>();
+            let primary = diag_json::span_to_primary_value(violation.span, &line_index, input_path);
+            let location = diag_json::span_to_location_opt(violation.span, &line_index, input_path);
             json!({
-                "severity": "error",
-                "message": violation.message,
                 "schema_version": SCHEMA_VERSION,
-                "location": location_value,
-                "domain": violation.domain(),
                 "timestamp": timestamp,
+                "message": violation.message,
+                "severity": "error",
+                "severity_hint": Value::Null,
+                "domain": violation.domain(),
+                "primary": primary,
+                "location": location,
                 "extensions": Value::Object(extensions),
                 "audit_metadata": Value::Object(audit_metadata),
                 "audit": audit,
                 "notes": notes,
+                "secondary": Value::Array(vec![]),
+                "hints": Value::Array(vec![]),
+                "fixits": Value::Array(vec![]),
                 "recoverability": recoverability_label(Recoverability::Fatal),
                 "code": violation.code,
                 "codes": [violation.code],
@@ -1397,191 +1367,6 @@ fn is_streaming_placeholder_lexer(diag: &FrontendDiagnostic) -> bool {
             && diag.expected_tokens[0] == STREAMING_PLACEHOLDER_TOKEN))
         && !diag.notes.is_empty()
         && diag.notes.iter().all(|note| note.label == "lexer")
-}
-
-fn expected_token_object_from_expected(token: &ExpectedToken) -> Value {
-    let label = token.raw_label();
-    let hint = token.kind_label();
-    json!({
-        "token": label,
-        "label": label,
-        "hint": hint,
-        "kind": hint,
-    })
-}
-
-fn expected_token_object_from_label(token: &str) -> Value {
-    let hint = classify_expected_token(token);
-    json!({
-        "token": token,
-        "label": token,
-        "hint": hint,
-        "kind": hint,
-    })
-}
-
-fn expected_payload_from_summary(summary: &ExpectedTokensSummary) -> Value {
-    let token_labels = summary.tokens();
-    let expected_tokens: Vec<Value> = token_labels
-        .iter()
-        .map(|token| expected_token_object_from_label(token))
-        .collect();
-    let message = summary
-        .humanized
-        .clone()
-        .unwrap_or_else(|| token_labels.join(", "));
-    json!({
-        "message": message,
-        "expected_tokens": expected_tokens,
-    })
-}
-
-fn build_recover_extension(diag: &FrontendDiagnostic) -> Option<Value> {
-    if diag.has_expected_tokens() {
-        let message = diag
-            .expected_humanized
-            .clone()
-            .unwrap_or_else(|| default_expected_message(&diag.expected_tokens));
-        let tokens: Vec<Value> = if !diag.expected_alternatives().is_empty() {
-            diag.expected_alternatives()
-                .iter()
-                .map(expected_token_object_from_expected)
-                .collect()
-        } else {
-            diag.expected_tokens
-                .iter()
-                .map(|token| expected_token_object_from_label(token))
-                .collect()
-        };
-        Some(json!({
-            "message": message,
-            "expected_tokens": tokens,
-        }))
-    } else {
-        diag.notes.iter().find_map(|note| {
-            if note.label == "recover.expected_tokens" {
-                Some(json!({
-                    "message": note.message,
-                    "expected_tokens": [],
-                }))
-            } else {
-                None
-            }
-        })
-    }
-}
-
-fn build_expected_field(diag: &FrontendDiagnostic) -> Value {
-    if !diag.has_expected_tokens() {
-        return Value::Null;
-    }
-    let message_key = diag
-        .expected_message_key
-        .clone()
-        .unwrap_or_else(|| "parse.expected".to_string());
-    let alternatives: Vec<Value> = if !diag.expected_alternatives().is_empty() {
-        diag.expected_alternatives()
-            .iter()
-            .map(expected_token_object_from_expected)
-            .collect()
-    } else {
-        diag.expected_tokens
-            .iter()
-            .map(|token| expected_token_object_from_label(token))
-            .collect()
-    };
-    let humanized = diag
-        .expected_humanized
-        .clone()
-        .unwrap_or_else(|| default_expected_message(&diag.expected_tokens));
-    let locale_args = if diag.expected_locale_args.is_empty() {
-        diag.expected_tokens.clone()
-    } else {
-        diag.expected_locale_args.clone()
-    };
-    json!({
-        "message_key": message_key,
-        "humanized": humanized,
-        "locale_args": locale_args,
-        "alternatives": alternatives,
-    })
-}
-
-fn secondary_span_to_json(
-    label: &DiagnosticSpanLabel,
-    index: &LineIndex,
-    input_path: &Path,
-) -> Value {
-    let span_value = label
-        .span
-        .map(|span| span_to_location(span, index, input_path))
-        .unwrap_or(Value::Null);
-    json!({
-        "span": span_value,
-        "message": label.message.clone(),
-    })
-}
-
-fn diagnostic_hint_to_json(hint: &DiagnosticHint, index: &LineIndex, input_path: &Path) -> Value {
-    let actions = hint
-        .actions
-        .iter()
-        .map(|action| diagnostic_fixit_to_json(action, index, input_path))
-        .collect::<Vec<_>>();
-    json!({
-        "message": hint.message.clone(),
-        "actions": actions,
-    })
-}
-
-fn diagnostic_fixit_to_json(
-    fixit: &DiagnosticFixIt,
-    index: &LineIndex,
-    input_path: &Path,
-) -> Value {
-    let mut map = serde_json::Map::new();
-    map.insert(
-        "span".to_string(),
-        span_to_location(fixit.span(), index, input_path),
-    );
-    map.insert("kind".to_string(), json!(fixit.kind()));
-    if let Some(text) = fixit.text() {
-        map.insert("text".to_string(), json!(text));
-    }
-    Value::Object(map)
-}
-
-fn classify_expected_token(token: &str) -> &'static str {
-    let trimmed = token.trim();
-    if trimmed.is_empty() {
-        "token"
-    } else if trimmed.contains("identifier")
-        || trimmed.ends_with("literal")
-        || trimmed.ends_with("-literal")
-    {
-        "class"
-    } else if trimmed
-        .chars()
-        .all(|ch| ch.is_ascii_alphabetic() && ch.is_lowercase())
-    {
-        "keyword"
-    } else if trimmed.chars().all(|ch| ch.is_ascii_uppercase()) {
-        "class"
-    } else {
-        "token"
-    }
-}
-
-fn default_expected_message(tokens: &[String]) -> String {
-    if tokens.is_empty() {
-        return "ここで解釈可能な構文が見つかりません".to_string();
-    }
-    let formatted = tokens
-        .iter()
-        .map(|token| format!("`{}`", token))
-        .collect::<Vec<_>>()
-        .join("、");
-    format!("ここで{}のいずれかが必要です", formatted)
 }
 
 fn build_audit_metadata(
@@ -1852,63 +1637,6 @@ fn type_row_mode_label(mode: TypeRowMode) -> &'static str {
         TypeRowMode::DualWrite => "ty-dual-write",
         TypeRowMode::Integrated => "ty-integrated",
     }
-}
-
-struct LineIndex {
-    starts: Vec<usize>,
-    len: usize,
-}
-
-impl LineIndex {
-    fn new(source: &str) -> Self {
-        let mut starts = vec![0];
-        for (idx, ch) in source.char_indices() {
-            if ch == '\n' {
-                starts.push(idx + ch.len_utf8());
-            }
-        }
-        Self {
-            starts,
-            len: source.len(),
-        }
-    }
-
-    fn line_col(&self, offset: usize) -> (u32, u32) {
-        let clamped = offset.min(self.len);
-        let idx = match self.starts.binary_search(&clamped) {
-            Ok(pos) => pos,
-            Err(pos) => pos.saturating_sub(1),
-        };
-        let line_start = self.starts[idx];
-        (
-            idx as u32 + 1,
-            (clamped.saturating_sub(line_start)) as u32 + 1,
-        )
-    }
-}
-
-fn span_to_location(span: Span, index: &LineIndex, input_path: &Path) -> Value {
-    let (line, column) = index.line_col(span.start as usize);
-    let (end_line, end_column) = index.line_col(span.end as usize);
-    json!({
-        "file": input_path,
-        "line": line,
-        "column": column,
-        "endLine": end_line,
-        "endColumn": end_column,
-    })
-}
-
-fn note_to_json(note: &DiagnosticNote, index: &LineIndex, input_path: &Path) -> Value {
-    let span_value = note
-        .span
-        .map(|span| span_to_location(span, index, input_path))
-        .unwrap_or(Value::Null);
-    json!({
-        "label": note.label,
-        "message": note.message,
-        "span": span_value,
-    })
 }
 
 #[derive(Serialize)]

@@ -5,6 +5,7 @@ use crate::span::Span;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
+pub mod json;
 pub mod recover;
 
 pub use recover::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};

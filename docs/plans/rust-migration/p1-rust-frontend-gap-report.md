@@ -236,6 +236,28 @@ FRG-14 では `reports/dual-write/front-end/w3-type-inference` に格納する t
   - ✅ `compiler/rust/frontend/src/diagnostic/mod.rs` で `FrontendDiagnostic` を severity/domain/codes/hints/fixits/secondary 付きの仕様に再定義し、`with_code`/`with_severity`/`with_domain` などの API を整備。
   - ✅ `compiler/rust/frontend/src/bin/poc_frontend.rs` の `build_parser_diagnostics` で `severity`/`severity_hint`/`domain`/`codes`/`secondary`/`hints`/`fixits` を JSON 化する helper を追加し、`diagnostic.v2` 拡張や `audit_metadata` の `event.domain` を `FrontendDiagnostic` 由来に更新。
 
+### FRG-16
+
+FRG-16 は `scripts/validate-diagnostic-json.sh` で定義された `diagnostic-v2` スキーマに沿って Rust 側の JSON エミッタを再設計し、OCaml 側と同等の `primary`/`codes`/`audit` を出せるようにする。
+
+1. **スキーマと既存実装の整理（Day 1）**
+   - `tooling/json-schema/diagnostic-v2.schema.json` および `scripts/validate-diagnostic-json.sh` を読み込み、必須フィールド（`primary`・`audit`・`audit_metadata`）と任意フィールドの表現を確認する。
+   - `FrontendDiagnostic` のフィールドと `diagnostic.v2` 拡張がどのように `poc_frontend.rs` の `extensions`/`audit_metadata` に写るかを追い、差分を `docs/plans/rust-migration/p1-spec-compliance-gap.md#FRG-16` に記録する。
+
+2. **JSON 変換モジュールの実装（Day 2）**
+   - `compiler/rust/frontend/src/diagnostic/json.rs` を新設し、`LineIndex`・`span`→`primary` 変換・`recover`/`expected`/`hint`/`fixit` の JSON 化を集約する。
+   - `poc_frontend.rs` の `build_parser_diagnostics` を同モジュール経由に置き換え、`primary`/`expected`/`codes`/`severity_hint` などを Schema 準拠で組み立てる。`audit_metadata`/`audit` は生成後に `frontend` 側へ渡す。
+   - `build_type_diagnostics` も `primary`/`location`/`expected` を出力し、`diagnostic.v2` キーに `codes` を含める。
+
+3. **検証と dual-write 連携（Day 3）**
+   - `scripts/validate-diagnostic-json.sh` および `diagnostic-v2.schema.json` で出力 JSON を検証し、不足していた Schema 要件を満たしたことを確認する。
+   - 既存 `reports/dual-write/front-end/*/` を集約するスクリプトに対し、JSON を生成して `FRG-16` の状態を「対応済」に更新する。
+
+- 進捗ログ
+  - ✅ `compiler/rust/frontend/src/diagnostic/json.rs` に JSON 変換ロジックを集中させ、`LineIndex`/`primary`/`recover`/`expected`/`fixit` の出力を再利用可能にした。
+  - ✅ `poc_frontend.rs` の `build_parser_diagnostics` と `build_type_diagnostics` を `diag_json` モジュール経由へ切り替え、`primary`/`codes`/`audit` をスキーマ正準な形で出力するようにした。
+  - ⏳ `scripts/validate-diagnostic-json.sh` は Node.js ランタイムと `tooling/lsp/tests/client_compat/node_modules` が整備されていないため未実行。実行環境が揃い次第 `diagnostic-v2.schema.json` との比較を走らせる。
+
 ## 5. ノート
 
 - 仕様参照: `docs/spec/1-1-syntax.md`, `1-2-types-Inference.md`, `1-3-effects-safety.md`, `2-1-parser-type.md`, `2-5-error.md`, `2-7-core-parse-streaming.md`, `3-6-core-diagnostics-audit.md`
