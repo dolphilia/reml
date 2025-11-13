@@ -62,31 +62,7 @@
 | FRG-19 | Packrat メトリクス | Rust `ParsedModule` は `PackratStats` を返すが cache snapshot (`PackratEntry`) を CLI や JSON へ出さない（`compiler/rust/frontend/src/parser/mod.rs:26`）。 | OCaml CLI は `Packrat.dump` を `parse-debug` へ保存し `collect-iterator-audit-metrics.py` が参照（`compiler/ocaml/src/parser_driver.ml:145` + `docs/plans/rust-migration/1-3-dual-write-runbook.md`）。 | Packrat cache の JSON シリアライズを追加し、`reports/dual-write/front-end/*/packrat_cache.json` を出力。 |
 | FRG-20 | RunConfig 同期 | Rust CLI `RunSettings` は独自フィールドで `parser_run_config` JSON へも落ちない（`compiler/rust/frontend/src/bin/poc_frontend.rs:188` 付近）。 | OCaml `Parser_run_config` が CLI/テスト/Streaming で共有され JSON へ記録（`compiler/ocaml/src/parser_driver.ml:6`）。 | `FrontendConfig`/`RunSettings` を `Run_config` と同構造に再設計し、dual-write レポートに `parser_run_config` を含める。 |
 
-## 4. 推奨フォローアップ
-
-1. **Lexer/Token プロファイル整備**（W4-Parser-Blocker）  
-   - `TokenKind` を仕様 1-1 セットに拡張し、`parser_expectation` 等で `ExpectedToken::keyword/token/class` を正しく生成。  
-   - `RunConfig.extensions["lex"]` を CLI から Rust Lexer へ伝搬。
-
-2. **Parser ランタイム再構築**（W4-PARSER-API）  
-   - `Parser<T>`/`State`/`Reply` 抽象と `ParseResult` フィールドを Rust に導入。  
-   - Streaming 状態 (`packrat_cache`, `span_trace`) を CLI/dual-write へ出力。
-
-3. **AST/Typed AST 実装**（W4-AST-IR）  
-   - `Ast`/`Typed_ast` の構造を Rust で 1:1 に再現し、`--emit {ast,typed-ast}` の JSON を OCaml と揃える。  
-   - `p1-front-end-checklists.csv` AST 項目の完了条件に dual-write Run ID を記録。
-
-4. **HM 型推論 + 効果行**（W4-TYPECK-HM）  
-   - `TypecheckDriver` を分割し、Constraint 生成・ソルバ・dict 解決・Stage 監査を Rust へ移植。  
-   - `effects.contract.*` 診断と `type_row.*` メトリクスを JSON/LSP へ出力。
-
-5. **診断モデルと JSON エミッタ刷新**（W4-DIAG-V2）  
-   - `Diagnostic` 構造・`DiagnosticBuilder` を Rust に導入し、`validate-diagnostic-json.sh` をパスする。  
-   - `ExpectedTokenCollector` を OCaml 相当に強化し `recover` 拡張を完全同期。
-
-6. **Streaming Runner 実装**（W4-STREAM-RESUME）  
-   - `run_stream`/`resume` を Rust CLI に統合し、`parser.stream.*`/`packrat_snapshot` を dual-write で比較。  
-   - `collect-iterator-audit-metrics.py --section streaming` の出力を Rust でも生成できるようにする。
+## 4. 具体的な計画
 
 ## 5. ノート
 
