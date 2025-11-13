@@ -167,7 +167,7 @@ pub enum Literal {
     },
     String {
         value: String,
-        kind: StringKind,
+        string_kind: StringKind,
     },
     Bool {
         value: bool,
@@ -318,7 +318,7 @@ impl Expr {
         Self::literal(
             Literal::String {
                 value: value.into(),
-                kind: StringKind::Normal,
+                string_kind: StringKind::Normal,
             },
             span,
         )
