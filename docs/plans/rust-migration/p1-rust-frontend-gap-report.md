@@ -103,7 +103,7 @@
 
 ### FRG-21
 
-1. **仕様の確認と対象範囲の明文化（Day 0）**  
+1. **仕様の確認と対象範囲の明文化（Day 0）**
    - `docs/spec/1-1-syntax.md#a3`・`docs/spec/2-3-lexer.md#d-1` に従い、`IDENT`/`UPPER_IDENT` は Unicode XID 由来で `RunConfig.extensions["lex"].identifier_profile` による `ascii-compat` 互換モードを持つことを再確認し、`p1-spec-compliance-gap.md#SCG-01` の図に Gap を追記する。  
    - `RunConfig` で `lex` 拡張が必ず `profile`/`identifier_profile` を含むように整備し、dual-write で `parser.runconfig.extensions.lex` を監査ログに現行の `profile` と一致させる契約を据える。
 2. **実装と CLI/workspace 連携（Day 1-2）**  
@@ -115,9 +115,25 @@
    - 生成される `parser_run_config.rust.json` / `diagnostics` の `lex.identifier_profile` を `reports/dual-write` で検証し、`lexer.identifier_profile_unicode` KPI の監視値が `1.0` へ向かう材料を確保する。
 
 - 進捗ログ
-  - ✅ `compiler/rust/frontend/src/lexer/mod.rs` に `IdentifierProfile::from_str`/`as_str` を導入し、`ParserOptions` で `RunConfig.extensions["lex"].identifier_profile` を取得するヘルパを追加してインフラを整備した。
-  - ✅ `compiler/rust/frontend/src/bin/poc_frontend.rs` に `RunSettings.lex_identifier_profile`・`--lex-profile`・workspace config の `parser.extensions.lex` 取り込み・lex 拡張出力・`runconfig_summary`/`top_level` の lex 依存を実装し、dual-write JSON と監査へ正しい値が降りるようにした。
+- ✅ `compiler/rust/frontend/src/lexer/mod.rs` に `IdentifierProfile::from_str`/`as_str` を導入し、`ParserOptions` で `RunConfig.extensions["lex"].identifier_profile` を取得するヘルパを追加してインフラを整備した。
+- ✅ `compiler/rust/frontend/src/bin/poc_frontend.rs` に `RunSettings.lex_identifier_profile`・`--lex-profile`・workspace config の `parser.extensions.lex` 取り込み・lex 拡張出力・`runconfig_summary`/`top_level` の lex 依存を実装し、dual-write JSON と監査へ正しい値が降りるようにした。
   - ✅ `compiler/rust/frontend/src/parser/mod.rs` に `ParserOptions` が拡張を参照するテストを追加し、`collect-iterator-audit-metrics.py` での `parser.runconfig.extensions.lex.identifier_profile` 認識に手を入れる準備を整えた。
+
+### FRG-22
+
+1. **SCG-02 仕様差分の精査（Day 0）**  
+   - `docs/spec/1-1-syntax.md#a3`・`docs/spec/1-1-syntax.md#a4` と `docs/spec/2-3-lexer.md#E`〜`#F` を再読し、予約語（`var`/`match`/`type` など）・演算子・整数基数・`stringRawHash` の要件を一覧化して `TokenKind`/`ExpectedToken` の抜けを洗い出す。`p1-spec-compliance-gap.md#SCG-02` に記された `0x`/`0b`/`` `r#""#` `` などを優先的に扱うことを確認する。  
+   - 既存 `TokenKind::keyword_literal` のカバレッジを確認し、`KeywordVar`/`KeywordMatch`/`KeywordType` が `ExpectedToken` に渡ることを保証できるよう表を整備する。
+2. **Lexer と期待トークン基盤の更新（Day 1）**  
+   - `RawToken::RawStringLiteral` を `#[regex(r#"r#*""#, lex_raw_string)]` に差し替え、`lex_raw_string` で `#` の数と閉じ `"#` のペアを正しく検出して `` `r#""#` `` 形式を許容。`LiteralMetadata::String { kind: StringKind::Raw }` も保持したまま `Token` を生成する。  
+   - `TokenKind` が予約語列と `Identifier`/`UpperIdentifier` をマッピングし、`token_kind_expectations` が `var`/`match`/`type` を `ExpectedToken::Keyword` へ変換し、`Option` に相当する `UpperIdentifier` を `upper-identifier` クラスとして出力することを確認する。
+3. **検証と dual-write 監査（Day 2）**  
+   - `lexer` のユニットテストに `` `r#"foo"#` `` や `` `r##"bar"##` `` を渡して `lexeme`/`LiteralMetadata` が正しいことを検証し、`cargo test -p reml_frontend --lib` へ含める。  
+   - `parser/mod.rs` に `token_kind_expectations` のテストを追加し、`ExpectedToken::keyword("var")`/`"match"`/`"type"`、`ExpectedToken::class("upper-identifier")` が出ることを保証する。これにより diagnostically `Option` 相当の `upper-identifier` も `SCG-02` の「Option 表示」を一致させる。
+
+- 進捗ログ
+  - ✅ `compiler/rust/frontend/src/lexer/mod.rs` で `RawToken::RawStringLiteral` を `#[regex(r#"r#*""#, lex_raw_string)]` に置き換え、`lex_raw_string` が `` `r#""#` `` 系のデリミタを検出して `LiteralMetadata::String { kind: StringKind::Raw }` を保持するように改修。`lexer` テストに `` `r#"foo"#` ``/`` `r##"bar"##` `` を追加し、`lexeme` とメタデータを確認した。  
+  - ✅ `compiler/rust/frontend/src/parser/mod.rs` に `token_kind_expectations` のテストを追加し、`var`/`match`/`type` が期待される `ExpectedToken::Keyword` を出力し、`UpperIdentifier` が `upper-identifier` クラスになることを保証。これで `ExpectedToken` 側も `Option` を含む階層に対応できた。
 
 ### FRG-07
 

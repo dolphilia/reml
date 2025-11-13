@@ -1042,3 +1042,35 @@ mod parser_option_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod expectation_tests {
+    use super::{token_kind_expectations, TokenKind};
+    use crate::diagnostic::ExpectedToken;
+
+    #[test]
+    fn keyword_expectations_cover_spec_keywords() {
+        let keywords = [
+            (TokenKind::KeywordVar, "var"),
+            (TokenKind::KeywordMatch, "match"),
+            (TokenKind::KeywordType, "type"),
+        ];
+
+        for &(kind, label) in keywords.iter() {
+            let expectations = token_kind_expectations(&kind);
+            assert_eq!(expectations, vec![ExpectedToken::keyword(label)]);
+        }
+    }
+
+    #[test]
+    fn identifier_expectations_group_by_profile() {
+        let upper = token_kind_expectations(&TokenKind::UpperIdentifier);
+        assert_eq!(
+            upper,
+            vec![ExpectedToken::class("upper-identifier")]
+        );
+
+        let lower = token_kind_expectations(&TokenKind::Identifier);
+        assert_eq!(lower, vec![ExpectedToken::class("identifier")]);
+    }
+}

@@ -256,7 +256,7 @@ enum RawToken {
 
     #[token("\"\"\"", lex_multiline_string, priority = 2)]
     MultilineStringLiteral,
-    #[token("r\"", lex_raw_string)]
+    #[regex(r#"r#*""#, lex_raw_string)]
     RawStringLiteral,
     #[token("\"", lex_string_literal)]
     StringLiteral,
@@ -318,11 +318,25 @@ fn lex_string_literal(lex: &mut LogosLexer<RawToken>) -> Option<()> {
 }
 
 fn lex_raw_string(lex: &mut LogosLexer<RawToken>) -> Option<()> {
-    for (idx, ch) in lex.remainder().char_indices() {
-        if ch == '"' {
-            lex.bump(idx + 1);
-            return Some(());
+    let prefix = lex.slice();
+    let hash_count = prefix.chars().filter(|ch| *ch == '#').count();
+    let remainder = lex.remainder().as_bytes();
+    let mut offset = 0usize;
+    while offset < remainder.len() {
+        if remainder[offset] == b'"' {
+            let mut matches_hash = true;
+            for i in 0..hash_count {
+                if remainder.get(offset + 1 + i) != Some(&b'#') {
+                    matches_hash = false;
+                    break;
+                }
+            }
+            if matches_hash {
+                lex.bump(offset + 1 + hash_count);
+                return Some(());
+            }
         }
+        offset += 1;
     }
     None
 }
@@ -687,6 +701,33 @@ mod tests {
             1,
             "expected exactly one string literal"
         );
+    }
+
+    #[test]
+    fn lex_handles_hash_raw_string_literal() {
+        let source = "r#\"foo\"# r##\"bar\"##";
+        let output = lex_source(source);
+        assert!(output.errors.is_empty(), "lexer returned errors: {:?}", output.errors);
+        let string_tokens: Vec<_> = output
+            .tokens
+            .iter()
+            .filter(|token| token.kind == TokenKind::StringLiteral)
+            .collect();
+        assert_eq!(string_tokens.len(), 2, "expected two string literals");
+        let lexemes: Vec<&str> = string_tokens
+            .iter()
+            .map(|token| token.lexeme.as_deref().expect("lexeme should exist"))
+            .collect();
+        assert_eq!(lexemes, vec!["r#\"foo\"#", "r##\"bar\"##"]);
+        for token in string_tokens {
+            let literal = token.literal.as_ref().expect("literal metadata missing");
+            match literal {
+                LiteralMetadata::String { kind } => {
+                    assert_eq!(*kind, StringKind::Raw);
+                }
+                other => panic!("unexpected literal metadata: {other:?}"),
+            }
+        }
     }
 }
 
