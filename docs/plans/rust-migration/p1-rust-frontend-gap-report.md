@@ -66,7 +66,7 @@
 
 | ID | SCG | 状態 | 主な差分 | 参照 |
 | --- | --- | --- | --- | --- |
-| FRG-21 | SCG-01 | 未着手 | Unicode XID/`UPPER_IDENT`、`LexProfile` 切り替えと `RunConfig.extensions["lex"]` 連動が欠落 | `p1-spec-compliance-gap.md#SCG-01` |
+| FRG-21 | SCG-01 | ✅ | Unicode XID/`UPPER_IDENT`、`LexProfile` 切り替えと `RunConfig.extensions["lex"]` 連動が欠落 | `p1-spec-compliance-gap.md#SCG-01` |
 | FRG-22 | SCG-02 | 未着手 | `TokenKind` や `ExpectedToken` 表現が var/match/type/Option、`0x`/`0b`/複数行 raw 文字列などを含まない | `p1-spec-compliance-gap.md#SCG-02` |
 | FRG-23 | SCG-03 | 未着手 | `Parser<T>`/`State`/`Reply`/`RunConfig` API が欠如し、`ParserDriver::parse` が `ParsedModule` の単一戻り値のみ | `p1-spec-compliance-gap.md#SCG-03` |
 | FRG-24 | SCG-05 | 未着手 | AST の `ExprKind`/`PatternKind`/`DeclKind` が限定され、OCaml `ast.ml` の列挙が移植されていない | `p1-spec-compliance-gap.md#SCG-05` |
