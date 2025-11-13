@@ -378,12 +378,12 @@ fn token_kind_expectations(kind: &TokenKind) -> Vec<ExpectedToken> {
     }
 
     match kind {
-        TokenKind::Identifier => vec![ET::class("識別子")],
-        TokenKind::UpperIdentifier => vec![ET::class("大文字識別子")],
-        TokenKind::IntLiteral => vec![ET::class("整数リテラル")],
-        TokenKind::FloatLiteral => vec![ET::class("浮動小数リテラル")],
-        TokenKind::CharLiteral => vec![ET::class("文字リテラル")],
-        TokenKind::StringLiteral => vec![ET::class("文字列リテラル")],
+        TokenKind::Identifier => vec![ET::class("identifier")],
+        TokenKind::UpperIdentifier => vec![ET::class("upper-identifier")],
+        TokenKind::IntLiteral => vec![ET::class("integer-literal")],
+        TokenKind::FloatLiteral => vec![ET::class("float-literal")],
+        TokenKind::CharLiteral => vec![ET::class("char-literal")],
+        TokenKind::StringLiteral => vec![ET::class("string-literal")],
         TokenKind::LParen => vec![ET::token("(")],
         TokenKind::RParen => vec![ET::token(")")],
         TokenKind::LBrace => vec![ET::token("{")],
@@ -420,10 +420,10 @@ fn token_kind_expectations(kind: &TokenKind) -> Vec<ExpectedToken> {
         TokenKind::Dot => vec![ET::token(".")],
         TokenKind::DotDot => vec![ET::token("..")],
         TokenKind::Underscore => vec![ET::token("_")],
-        TokenKind::Comment => vec![ET::class("コメント")],
-        TokenKind::Whitespace => vec![ET::class("空白")],
+        TokenKind::Comment => vec![ET::custom("comment")],
+        TokenKind::Whitespace => vec![ET::custom("whitespace")],
         TokenKind::EndOfFile => vec![ET::eof()],
-        TokenKind::Unknown => vec![ET::custom("未知のトークン")],
+        TokenKind::Unknown => vec![ET::custom("unknown token")],
         _ => Vec::new(),
     }
 }

@@ -46,6 +46,18 @@ impl ExpectedToken {
         Self::Eof
     }
 
+    pub fn not(value: impl Into<String>) -> Self {
+        Self::Not(value.into())
+    }
+
+    pub fn type_expected(value: impl Into<String>) -> Self {
+        Self::TypeExpected(value.into())
+    }
+
+    pub fn trait_bound(value: impl Into<String>) -> Self {
+        Self::TraitBound(value.into())
+    }
+
     fn priority(&self) -> u8 {
         match self {
             ExpectedToken::Keyword(_) => 0,
@@ -148,6 +160,18 @@ impl ExpectedTokenCollector {
 
     pub fn push_custom(&mut self, text: impl Into<String>) {
         self.push(ExpectedToken::custom(text));
+    }
+
+    pub fn push_not(&mut self, text: impl Into<String>) {
+        self.push(ExpectedToken::not(text));
+    }
+
+    pub fn push_type_expected(&mut self, text: impl Into<String>) {
+        self.push(ExpectedToken::type_expected(text));
+    }
+
+    pub fn push_trait_bound(&mut self, text: impl Into<String>) {
+        self.push(ExpectedToken::trait_bound(text));
     }
 
     pub fn extend<I>(&mut self, iter: I)

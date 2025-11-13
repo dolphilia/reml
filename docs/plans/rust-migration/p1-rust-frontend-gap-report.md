@@ -93,6 +93,24 @@ FRG-07 は `docs/spec/2-1-parser-type.md` に記された `Parser<T>` / `State` 
 
 これらのステップを実施したことで、FRG-07 の計画は実装済みとなり、今後の RunConfig 拡張や Menhir 互換コンビネータ導入に向けて必要な型基盤と CLI パスが整ったと言える。
 
+## FRG-08
+
+FRG-08（`parser_expectation`）では、`docs/spec/2-5-error.md#b-7` に則った期待集合の優先順位・テンプレート・フォールバックを Rust 版 Recover が再現することを目指す。
+
+1. **期待の分類と整列**
+   - `compiler/ocaml/src/parser_expectation.ml` の `Keyword`/`Token`/`Class` 等の列挙、`priority`/`raw_label`/`quoted_label` を参考に `ExpectedToken` のバリアントを網羅しつつ、`ExpectedTokenCollector` が OCaml と同じ順序・重複除去・humanize を遂行できるようにする。
+   - `recover` モジュールの `ExpectedTokensSummary` が `parse.expected` の `message_key`/`locale_args`/`humanized` を仕様 2-5 §B-7 と整合させるべく、欠損時のフォールバック文字列や streaming 用 placeholder も含めた検証を行う。
+
+2. **トークン期待値の正規化**
+   - `compiler/rust/frontend/src/parser/mod.rs` における `build_expected_summary` が `TokenKind` から `identifier`/`upper-identifier`/`integer-literal` など OCaml と同一のラベルを出力し、`expected_tokens` の JSON 表現・CLI 表示ともに両実装で一致する。
+   - 既存の `expression_expected_tokens` や streaming 再開処理で使うプレースホルダも上記 `ExpectedToken` を再利用し、`collect-iterator-audit-metrics.py --section streaming` の `ExpectedTokenCollector.streaming` との比較で `expected_tokens_match` を満たす。
+
+3. **将来対応と検証**
+   - `ExpectedTokenCollector` に `Not`/`TypeExpected`/`TraitBound` などのビルダーを追加し、将来的に `Expectation::not` や `TraitBound` を捕捉する際にもラベルが正規化された出力になるよう拡張する。
+   - `cargo fmt` を含む `compiler/rust/frontend` の Rustfmt/テストを走らせ、変更後 `expected_tokens` 出力が人間可読な `quoted_label`（例:「ここで `)` または identifier が必要です」）になっていることを確認する。
+
+上記の計画はすでに実施済みで、`compiler/rust/frontend/src/diagnostic/recover.rs` では `ExpectedToken` のバリアントを拡張し `ExpectedTokenCollector::humanize` を仕様通りに整備、`compiler/rust/frontend/src/parser/mod.rs` では `TokenKind` から英語ラベルを返すように改修済みであるため、FRG-08 については OCaml 実装に倣った `expected_tokens` サマリを出力できる準備が整ったと考えている。
+
 ## 5. ノート
 
 - 仕様参照: `docs/spec/1-1-syntax.md`, `1-2-types-Inference.md`, `1-3-effects-safety.md`, `2-1-parser-type.md`, `2-5-error.md`, `2-7-core-parse-streaming.md`, `3-6-core-diagnostics-audit.md`
