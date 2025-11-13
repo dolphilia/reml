@@ -798,6 +798,11 @@ fn write_dualwrite_parse_payload(
     result: &ParseResult<Module>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     guards.write_json("parse/ast.rust.json", &result.value)?;
+    let cache_payload = json!({
+        "packrat_stats": result.packrat_stats,
+        "packrat_cache": result.packrat_cache,
+    });
+    guards.write_json("parse/packrat_cache.json", &cache_payload)?;
     Ok(())
 }
 

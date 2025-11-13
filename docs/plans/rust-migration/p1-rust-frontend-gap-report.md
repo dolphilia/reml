@@ -294,8 +294,26 @@ FRG-18 は `docs/spec/2-7-core-parse-streaming.md` に記された `run_stream` 
 - 進捗ログ
   - ✅ `compiler/rust/frontend/src/parser/streaming_runner.rs` で `StreamOutcome`/`Continuation`/`StreamingRunner` を実装し、`ParserDriver` 経由で `StreamFlowState` を再利用するランナーを提供した。
   - ✅ `compiler/rust/frontend/src/parser/mod.rs` で `streaming_runner` を再エクスポートし、外部から `StreamingRunner`/`StreamOutcome` を使えるようにした。
-  - ✅ `compiler/rust/frontend/src/bin/poc_frontend.rs` が `--streaming` でランナーを呼び出し、`resolve_completed_stream_outcome` で `Pending` を展開して従来通りの `ParseResult` を得るようになった。
-  - ⏳ `reports/dual-write/front-end/w4-diagnostics` に streaming ケースを流して `docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt` のファイル群と比較する作業（`scripts/poc_dualwrite_compare.sh --mode streaming`）は環境が整い次第、再検証を予定している。
+- ✅ `compiler/rust/frontend/src/bin/poc_frontend.rs` が `--streaming` でランナーを呼び出し、`resolve_completed_stream_outcome` で `Pending` を展開して従来通りの `ParseResult` を得るようになった。
+- ⏳ `reports/dual-write/front-end/w4-diagnostics` に streaming ケースを流して `docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt` のファイル群と比較する作業（`scripts/poc_dualwrite_compare.sh --mode streaming`）は環境が整い次第、再検証を予定している。
+
+### FRG-19
+
+FRG-19 は `Packrat.dump` 相当の Packrat キャッシュスナップショットを Rust 側でも CLI / dual-write 成果物として出力し、OCaml 側の `collect-iterator-audit-metrics.py` や `docs/plans/rust-migration/1-3-dual-write-runbook.md` に記された解析フローと整合させることを目的とする。
+
+1. **OCaml と dual-write 仕様の整理（Day 0）**
+   - `compiler/ocaml/src/parser_driver.ml:145` および `docs/plans/rust-migration/1-3-dual-write-runbook.md` を読み、`Packrat.dump` が `parse-debug` にどのような JSON を書き込んで `collect-iterator-audit-metrics.py` が参照するかを確認し、必要なスキーマ・ファイルパス（`packrat_stats` / `packrat_cache` / `packrat_snapshot`）を一覧化する。
+   - Rust 側 `StreamingState::packrat_cache_entries` / `PackratCacheEntry` の `Serialize` 設計と `ParseResult::packrat_cache` フィールドが CLI / dual-write で使えることを確認する。
+2. **Rust dual-write への Packrat キャッシュ追加（Day 1）**
+   - `compiler/rust/frontend/src/bin/poc_frontend.rs` の `write_dualwrite_parse_payload` で `parse/packrat_cache.json` を出力し、`result.packrat_cache` の `serde::Serialize` を活用して `PackratCacheEntry` を OCaml `packrat_cache` スキーマと同じように並べる。
+   - `poc_frontend` の `parse_result` / `parse_debug` 出力に `packrat_cache` を含めた上で `reports/dual-write/front-end/<run>/<case>/packrat_cache.json` が生成されることを確認する。
+3. **dual-write レポートと README の更新（Day 2）**
+   - `scripts/poc_dualwrite_compare.sh` や `reports/dual-write/front-end/poc/` に `packrat_cache.json` の存在を追記し、OCaml 側と Rust 側の `packrat_cache` を比較する差分パスを README へ書き込む。
+   - `reports/dual-write/front-end/poc/<run>/summary` などに `packrat_cache` の有無と `collect-iterator-audit-metrics.py` が読む JSON ファイルへのリンクを追記し、`docs/plans/rust-migration/p1-spec-compliance-gap.md` に FRG-19 を定義した箇所への cross reference を残す。
+
+- 進捗ログ
+  - ✅ `poc_frontend.rs` の `write_dualwrite_parse_payload` で `parse/packrat_cache.json` を出力し、Packrat Stats と `PackratCacheEntry` を dual-write 成果物に含める経路を実装。
+  - ⏳ README/スクリプトの更新と `collect-iterator-audit-metrics.py` との整合確認は継続予定。
 
 ## 5. ノート
 
