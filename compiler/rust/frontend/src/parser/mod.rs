@@ -20,9 +20,9 @@ use crate::error::{FrontendError, Recoverability};
 use crate::lexer::{lex_source_with_options, IdentifierProfile, LexOutput, LexerOptions};
 use crate::span::Span;
 use crate::streaming::{
-    Expectation as StreamingExpectation, ExpectationSummary, PackratEntry, PackratStats,
-    PackratCacheEntry,
-    StreamFlowState, StreamMetrics, StreamingState, StreamingStateConfig, TokenSample, TraceFrame,
+    Expectation as StreamingExpectation, ExpectationSummary, PackratCacheEntry, PackratEntry,
+    PackratStats, StreamFlowState, StreamMetrics, StreamingState, StreamingStateConfig,
+    TokenSample, TraceFrame,
 };
 use crate::token::{Token, TokenKind};
 use ast::{EffectDecl, Expr, Function, Ident, Module, Param};

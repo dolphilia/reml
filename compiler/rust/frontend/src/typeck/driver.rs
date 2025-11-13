@@ -352,7 +352,9 @@ impl TypecheckViolation {
     pub fn domain(&self) -> &'static str {
         match self.kind {
             TypecheckViolationKind::ConditionLiteralBool => "type",
-            TypecheckViolationKind::ResidualLeak | TypecheckViolationKind::StageMismatch => "effects",
+            TypecheckViolationKind::ResidualLeak | TypecheckViolationKind::StageMismatch => {
+                "effects"
+            }
         }
     }
 
@@ -683,8 +685,7 @@ fn detect_capability_violations(
     let mut violations = Vec::new();
     for usage in usages {
         let descriptor = CapabilityDescriptor::resolve(&usage.effect_name);
-        let descriptor_requirement =
-            StageRequirement::AtLeast(descriptor.stage().clone());
+        let descriptor_requirement = StageRequirement::AtLeast(descriptor.stage().clone());
         let required_stage =
             StageRequirement::merged_with(&descriptor_requirement, &capability_requirement);
         if !runtime_stage.satisfies(&required_stage) {

@@ -3,8 +3,8 @@
 //! W3 時点では設定・メトリクス・簡易型推論の骨組みのみを提供し、
 //! 今後 `types.rs` や `constraint.rs` を拡張していく。
 
-mod constraint;
 mod capability;
+mod constraint;
 mod driver;
 pub mod env;
 mod metrics;

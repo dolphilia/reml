@@ -88,11 +88,7 @@ impl CapabilityDescriptor {
             }
         }
         // Fallback: use first segment of the identifier as capability.
-        let fallback = normalized
-            .split('.')
-            .next()
-            .unwrap_or(&normalized)
-            .trim();
+        let fallback = normalized.split('.').next().unwrap_or(&normalized).trim();
         if fallback.is_empty() {
             Self::with_id("unknown")
         } else {

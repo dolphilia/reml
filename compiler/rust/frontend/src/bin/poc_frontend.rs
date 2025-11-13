@@ -1901,16 +1901,47 @@ struct TypeckArtifacts {
 #[derive(Clone, Serialize)]
 struct TypedAstFile {
     input: String,
+    function_summaries: Vec<FunctionSummaryExport>,
+    rendered: String,
     module: typed::TypedModule,
 }
 
 #[derive(Clone, Serialize)]
 struct ConstraintFile {
+    function_summaries: Vec<FunctionSummaryExport>,
+    stats: ConstraintStats,
     total_constraints: usize,
     breakdown: Vec<ConstraintBucket>,
     functions: Vec<FunctionConstraintSummary>,
     constraints: Vec<Constraint>,
     used_impls: Vec<String>,
+}
+
+#[derive(Clone, Serialize)]
+struct FunctionSummaryExport {
+    name: String,
+    param_count: usize,
+    return_type: String,
+    effect_row: String,
+    span: Span,
+    dict_refs: usize,
+}
+
+#[derive(Clone, Serialize)]
+struct ConstraintStats {
+    unify_calls: usize,
+    ast_nodes: usize,
+    token_count: usize,
+}
+
+impl Default for ConstraintStats {
+    fn default() -> Self {
+        Self {
+            unify_calls: 0,
+            ast_nodes: 0,
+            token_count: 0,
+        }
+    }
 }
 
 #[derive(Clone, Serialize)]
@@ -1938,11 +1969,67 @@ struct TypeckDebugFile {
     violations: Vec<TypecheckViolation>,
 }
 
+fn build_function_summaries(
+    module: &typed::TypedModule,
+    metrics: &[TypedFunctionSummary],
+) -> Vec<FunctionSummaryExport> {
+    let mut summaries = Vec::with_capacity(module.functions.len().max(metrics.len()));
+    for (typed_fn, stats) in module.functions.iter().zip(metrics.iter()) {
+        summaries.push(FunctionSummaryExport {
+            name: typed_fn.name.clone(),
+            param_count: typed_fn.params.len(),
+            return_type: stats.return_type.clone(),
+            effect_row: String::new(),
+            span: typed_fn.span,
+            dict_refs: 0,
+        });
+    }
+    if summaries.len() < metrics.len() {
+        for stats in &metrics[summaries.len()..] {
+            summaries.push(FunctionSummaryExport {
+                name: stats.name.clone(),
+                param_count: stats.param_types.len(),
+                return_type: stats.return_type.clone(),
+                effect_row: String::new(),
+                span: Span::default(),
+                dict_refs: 0,
+            });
+        }
+    }
+    summaries
+}
+
+fn render_typed_module(module: &typed::TypedModule) -> String {
+    if module.functions.is_empty() {
+        return "=== Typed AST ===\n\n<empty>".to_string();
+    }
+    let mut lines = vec!["=== Typed AST ===".to_string()];
+    for function in &module.functions {
+        let params = function
+            .params
+            .iter()
+            .map(|param| format!("{}: {}", param.name, param.ty))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let line = format!(
+            "fn {}({}) : {}",
+            function.name, params, function.return_type
+        );
+        lines.push(line);
+    }
+    lines.join("\n\n")
+}
+
 impl TypeckArtifacts {
     fn new(input: &Path, report: &TypecheckReport, config: &TypecheckConfig) -> Self {
+        let typed_module = report.typed_module.clone();
+        let function_summaries = build_function_summaries(&typed_module, &report.functions);
+        let rendered = render_typed_module(&typed_module);
         let typed_ast = TypedAstFile {
             input: input.display().to_string(),
-            module: report.typed_module.clone(),
+            function_summaries: function_summaries.clone(),
+            rendered,
+            module: typed_module,
         };
         let functions = report
             .functions
@@ -1964,6 +2051,8 @@ impl TypeckArtifacts {
             })
             .collect();
         let constraints = ConstraintFile {
+            function_summaries: function_summaries.clone(),
+            stats: ConstraintStats::default(),
             total_constraints: report.metrics.constraints_total,
             breakdown,
             functions,
