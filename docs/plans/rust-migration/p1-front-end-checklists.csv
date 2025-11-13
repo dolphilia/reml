@@ -1,4 +1,5 @@
 "カテゴリ","ワークストリーム","項目","受入基準","参照元","typeck-debug","effects-metrics"
+"制約ソルバ","型推論","Type inference (FRG-12) HM 基盤の写経","`docs/plans/rust-migration/p1-spec-compliance-gap.md#FRG-12` に列挙した TypeEnv/Scheme/Constraint/Driver の差分が dual-write リソースで検証され、`reports/dual-write/front-end/w3-type-inference` の constraints JSON と `TypecheckReport` の `used_impls`/`constraints` が OCaml と一致。","docs/spec/1-2-types-Inference.md#C / docs/plans/rust-migration/p1-spec-compliance-gap.md#FRG-12","",""
 "AST","Lexer/Parser","Span 構造の start/end を u32 で再現","`remlc --frontend {ocaml,rust} --emit-ast --format json` の diff がゼロ","docs/plans/rust-migration/1-1-ast-and-ir-alignment.md#1-1-3-ast-ノード対応チェックリスト","",""
 "AST","Lexer/Parser","識別子の文字列正規化と Span 同期","Dual-write AST 比較で `name` と `span` が完全一致","docs/plans/rust-migration/1-1-ast-and-ir-alignment.md#1-1-3-ast-ノード対応チェックリスト","",""
 "AST","AST/IR","ExprKind/PatternKind/DeclKind の列挙子整合（成果物: docs/plans/rust-migration/appendix/typed_ast_schema_draft.md）","dual-write AST JSON 差分ゼロ（reports/dual-write/front-end/w2-ast-alignment/）","docs/plans/rust-migration/1-1-ast-and-ir-alignment.md#1-1-3-ast-ノード対応チェックリスト","",""

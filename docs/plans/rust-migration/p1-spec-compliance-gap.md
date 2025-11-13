@@ -10,6 +10,24 @@ Phase P1（フロントエンド移植）の達成条件を Reml 仕様に照ら
 - 計画: `docs/plans/rust-migration/1-0-front-end-transition.md`, `1-1-ast-and-ir-alignment.md`, `1-2-diagnostic-compatibility.md`, `1-3-dual-write-runbook.md`
 - 実装: `compiler/rust/frontend/src/{lexer,parser,diagnostic,streaming,typeck}` および CLI `compiler/rust/frontend/src/bin/poc_frontend.rs`
 
+## 1. FRG-12: HM 基盤仕様の写経と整理
+
+`docs/spec/1-2-types-Inference.md` と `compiler/ocaml/src/type_inference.ml` を軸に、OCaml 側で動作している Algorithm W 系の型・スキーム・制約・型環境の構成を Rust に落とし込むための差分を整理する。
+
+### FRG-12
+
+以下の一覧は Day1 において模式的に写経すべきモジュール群と、現行 `TypecheckDriver` (PoC) に足りない要素を示し、`docs/plans/rust-migration/p1-rust-frontend-gap-report.md#FRG-12` の Day1 ログと並行して検証・双方向比較を進める。
+
+| 項目 | 仕様 / OCaml 実装 | Rust 現状 | FRG-12 で補う差分と移植方針 |
+| --- | --- | --- | --- |
+| 型表現とスキーム | `docs/spec/1-2 §A` の `ty`/`type_scheme`/`constrained_scheme` を `compiler/ocaml/src/types.ml` で表現。`constrained_scheme` は量化変数・トレイト制約・型本体を保持し、`typeck/type_inference.ml:626-685` の `generalize`/`instantiate` で操作。 | `compiler/rust/frontend/src/typeck/driver.rs:458-517` の `SimpleType` は `Int`/`Bool`/`Unknown` だけで効果行やトレイト制約、スキームが欠けている。 typed AST も `SimpleType` のラベルを返すのみ。 | `typeck/types.rs` を新規に設け、`Type`（`Var`, `Builtin`, `App`, `Arrow` 等）、`TypeKind`、`TypeVariable`、`CapabilityContext` を定義。`serde::Serialize`/`Display` を実装し、OCaml `Type_expr` と comparable な JSON を生成する。量化変数の生成（`TypeVarGen`）やトレイト制約の記録もここに置く。 |
+| 型環境 (`Type_env`) | `compiler/ocaml/src/type_env.ml:32-180` に `env` 型、`empty`/`extend`/`lookup`/`enter_scope`/`exit_scope`、`initial_env`（`Some`, `None`, `Never` などの組み込み束縛）が定義され、`lookup` は親スコープまで再帰、`extend` はシャドーイングを許す。 | Rust 版では `TypecheckDriver` 内部で `env: &HashMap<String, SimpleType>` を使用 (`driver.rs:328-344`)、スコープの概念や `Scheme` を保持する仕組みがなく、`insert`/`lookup` も単純な `HashMap::get` しかない。 | `typeck/env` に `TypeEnv` 構造体を追加し、`bindings: IndexMap<String, Binding>` + `parent` を持ち、OCaml 版と同様に `insert`（`extend`）はシャドーイング。`lookup` は親方向に再帰し、`enter_scope`/`exit_scope` を提供。初期環境で OCaml と同じ型スコープを再現し、`StageContext` / `runtime_capabilities` を注入する。 |
+| 制約生成・一般化・インスタンス化 | `docs/spec/1-2 §C` / `compiler/ocaml/src/type_inference.ml:626-716` で `generalize` が自由変数収集・量化、`instantiate` が新鮮な型変数への置換を行い、`infer_expr` 系で `constraint` を生成。返却値に `typed_expr`/`ty`/`substitution`/`constraints` が含まれる。 | 現行 `TypecheckDriver` は `infer_expr` が `SimpleType` を返すのみ。制約（`Constraint`）、辞書（`dict`）、`Substitution` を扱う構造が存在せず、`generalize`/`instantiate` の概念もない。 | `typeck/scheme.rs` で `Scheme`（`quantifiers`, `constraints`）と `instantiate`/`generalize` を実装し、`constraints` を `IndexMap<Name, Type>` で保持。`typeck/constraint.rs` に `Constraint`（`Equal`, `HasCapability`, `ImplBound`）と `Substitution` を追加して `ConstraintSolver` に渡すことで `infer_expr` から制約を返せるようにする。 |
+| 制約ソルバと impl レジストリ | `compiler/ocaml/src/constraint.ml` は `Constraint`/`substitution`/`apply_subst`/`compose_subst` などを定義し、`Constraint_solver` で `solve` を実行。`type_inference.ml:44-56` に global impl registry（`Impl_registry.impl_registry ref`）を置き、`ConstraintSolver` 内で `dict` を解決する。 | Rust には `Constraint` の実装も `Substitution` もなく、`impl` 情報も保持していない。型検査でどの `impl` を使ったかの記録も `TypecheckReport` にない。 | `typeck/constraint.rs` 内で `Substitution::apply_unwrap`/`merge` と `ConstraintSolver::solve` を定義し、`crate::frontend::impl_registry` モジュールを用意。`TypeEnv` は `ConstraintSolver` に `impl_registry` への参照を渡し、`Dict` 構造体で使用された `impl` を追跡して dual-write へ出力。 |
+| 型推論ドライバと Dual-write | `type_inference.ml` は `infer_module`/`infer_expr`/`infer_pattern` で `InferContext` を使い、`TypecheckReport`（型付き AST、制約、辞書など）と `TypeckArtifacts` を生成し、`docs/spec/1-3-effects-safety.md` の能力チェックを `Constraint` として挿入する。 | Rust の `TypecheckDriver` は `TypecheckReport` に関数一覧・指標・簡易な `TypedModule` を入れるのみで、`constraints`/`used_impls`/`effects` 情報がなく、`StageContext` も伝播していない。 | `TypecheckDriver` を再構成し、`InferContext` で `TypeEnv` と `Substitution` を共有して `Constraint` を蓄積。 `TypecheckReport` を拡張して `constraints`/`typed_module`/`used_impls` を dual-write し、`StageContext`/`runtime_capabilities` を `TypeEnv` に注入して `resolver` により `Capability` を `Constraint` として追加できるようにする。 `reports/dual-write/front-end/w3-type-inference` 形式で制約を JSON 化し、`FRG-13` の Capability Registry 整合へつなぐ。 |
+
+本表を参照して `docs/plans/rust-migration/p1-front-end-checklists.csv` の “Type inference” 項目を `FRG-12` にリンクし、ステータスや検証手順を `docs/plans/rust-migration/p1-spec-compliance-gap.md#FRG-12` で補足すること。
+
 ## 1. 構文解析（lexer / parser_driver）
 
 | ID | ギャップ | 根拠仕様 | 現状 | 対応案 |
