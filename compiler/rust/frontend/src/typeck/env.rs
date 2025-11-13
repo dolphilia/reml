@@ -5,6 +5,8 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use super::scheme::Scheme;
+use indexmap::IndexMap;
 use once_cell::sync::OnceCell;
 use serde::Serialize;
 use smol_str::SmolStr;
@@ -347,6 +349,59 @@ fn sanitize_label(label: SmolStr) -> SmolStr {
         sanitized.push_str("case");
     }
     SmolStr::new(sanitized)
+}
+
+/// 型環境で保持する束縛。
+#[derive(Debug, Clone)]
+pub struct Binding {
+    pub scheme: Scheme,
+}
+
+/// 型推論で利用する環境。新しいスコープは `enter_scope` で作られ、`exit_scope` で親に戻る。
+#[derive(Debug, Clone)]
+pub struct TypeEnv {
+    bindings: IndexMap<String, Binding>,
+    parent: Option<Box<TypeEnv>>,
+}
+
+impl Default for TypeEnv {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl TypeEnv {
+    pub fn new() -> Self {
+        Self {
+            bindings: IndexMap::new(),
+            parent: None,
+        }
+    }
+
+    pub fn insert(&mut self, name: impl Into<String>, scheme: Scheme) {
+        self.bindings.insert(name.into(), Binding { scheme });
+    }
+
+    pub fn lookup(&self, name: &str) -> Option<&Binding> {
+        if let Some(binding) = self.bindings.get(name) {
+            Some(binding)
+        } else {
+            self.parent
+                .as_deref()
+                .and_then(|parent| parent.lookup(name))
+        }
+    }
+
+    pub fn enter_scope(&self) -> TypeEnv {
+        TypeEnv {
+            bindings: IndexMap::new(),
+            parent: Some(Box::new(self.clone())),
+        }
+    }
+
+    pub fn exit_scope(self) -> Option<TypeEnv> {
+        self.parent.map(|parent| *parent)
+    }
 }
 
 #[cfg(test)]

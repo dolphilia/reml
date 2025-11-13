@@ -1,9 +1,13 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use serde::Serialize;
 
-use super::env::{TypeRowMode, TypecheckConfig};
+use super::constraint::Constraint;
+use super::constraint::ConstraintSolver;
+use super::env::{TypeEnv, TypeRowMode, TypecheckConfig};
 use super::metrics::TypecheckMetrics;
+use super::scheme::Scheme;
+use super::types::{BuiltinType, Type, TypeVarGen};
 use crate::diagnostic::{ExpectedTokenCollector, ExpectedTokensSummary};
 use crate::parser::ast::{Expr, ExprKind, Function, Literal, Module};
 use crate::semantics::typed;
@@ -27,44 +31,68 @@ impl TypecheckDriver {
             );
         }
 
+        let solver = ConstraintSolver::new();
+        let mut var_gen = TypeVarGen::default();
         for function in &module.functions {
             metrics.record_function();
             let mut stats = FunctionStats::default();
+            let mut constraints = Vec::new();
+            let mut env = TypeEnv::new();
+
+            let param_bindings: Vec<(String, Type)> = function
+                .params
+                .iter()
+                .map(|param| {
+                    (
+                        param.name.name.clone(),
+                        type_for_param(param.name.name.as_str()),
+                    )
+                })
+                .collect();
+            for (name, ty) in &param_bindings {
+                env.insert(name.clone(), Scheme::simple(ty.clone()));
+            }
+
             let typed_body = infer_function(
                 function,
                 function.name.name.as_str(),
+                &mut env,
+                &mut var_gen,
+                &mut constraints,
                 &mut stats,
                 &mut metrics,
                 &mut violations,
             );
+            let _ = solver.solve(&constraints);
+
+            let param_type_labels: Vec<String> =
+                param_bindings.iter().map(|(_, ty)| ty.label()).collect();
+
             functions.push(TypedFunctionSummary {
                 name: function.name.name.clone(),
-                param_types: function
-                    .params
-                    .iter()
-                    .map(|param| SimpleType::from_param(param.name.name.as_str()).label())
-                    .collect(),
+                param_types: param_type_labels,
                 return_type: typed_body.ty.label(),
                 typed_exprs: stats.typed_exprs,
                 constraints: stats.constraints,
                 unresolved_identifiers: stats.unresolved_identifiers,
             });
+
+            let typed_params = function
+                .params
+                .iter()
+                .zip(param_bindings.iter())
+                .map(|(param, (_, param_ty))| typed::TypedParam {
+                    name: param.name.name.clone(),
+                    span: param.name.span,
+                    ty: param_ty.label(),
+                })
+                .collect();
+
             typed_functions.push(typed::TypedFunction {
                 name: function.name.name.clone(),
                 span: function.span,
-                params: function
-                    .params
-                    .iter()
-                    .map(|param| {
-                        let param_ty = SimpleType::from_param(param.name.name.as_str());
-                        typed::TypedParam {
-                            name: param.name.name.clone(),
-                            span: param.name.span,
-                            ty: param_ty.label().to_string(),
-                        }
-                    })
-                    .collect(),
-                return_type: typed_body.ty.label().to_string(),
+                params: typed_params,
+                return_type: typed_body.ty.label(),
                 body: typed_body.node,
             });
         }
@@ -100,7 +128,7 @@ impl TypecheckDriver {
             functions.push(TypedFunctionSummary {
                 name,
                 param_types: Vec::new(),
-                return_type: SimpleType::Unknown.label(),
+                return_type: Type::builtin(BuiltinType::Unknown).label(),
                 typed_exprs: 0,
                 constraints: 0,
                 unresolved_identifiers: 0,
@@ -192,8 +220,8 @@ pub struct TypecheckReport {
 #[derive(Debug, Serialize, Clone)]
 pub struct TypedFunctionSummary {
     pub name: String,
-    pub param_types: Vec<&'static str>,
-    pub return_type: &'static str,
+    pub param_types: Vec<String>,
+    pub return_type: String,
     pub typed_exprs: usize,
     pub constraints: usize,
     pub unresolved_identifiers: usize,
@@ -242,7 +270,7 @@ impl ViolationNote {
 }
 
 impl TypecheckViolation {
-    fn condition_literal_bool(span: Span, actual: SimpleType, function: Option<String>) -> Self {
+    fn condition_literal_bool(span: Span, actual: Type, function: Option<String>) -> Self {
         Self {
             kind: TypecheckViolationKind::ConditionLiteralBool,
             code: "E7006",
@@ -302,20 +330,18 @@ struct FunctionStats {
 fn infer_function(
     function: &Function,
     function_name: &str,
+    env: &mut TypeEnv,
+    var_gen: &mut TypeVarGen,
+    constraints: &mut Vec<Constraint>,
     stats: &mut FunctionStats,
     metrics: &mut TypecheckMetrics,
     violations: &mut Vec<TypecheckViolation>,
 ) -> TypedExprResult {
-    let mut env = HashMap::new();
-    for param in &function.params {
-        env.insert(
-            param.name.name.clone(),
-            SimpleType::from_param(param.name.name.as_str()),
-        );
-    }
     infer_expr(
         &function.body,
-        &env,
+        env,
+        var_gen,
+        constraints,
         stats,
         metrics,
         violations,
@@ -325,7 +351,9 @@ fn infer_function(
 
 fn infer_expr(
     expr: &Expr,
-    env: &HashMap<String, SimpleType>,
+    env: &TypeEnv,
+    var_gen: &mut TypeVarGen,
+    constraints: &mut Vec<Constraint>,
     stats: &mut FunctionStats,
     metrics: &mut TypecheckMetrics,
     violations: &mut Vec<TypecheckViolation>,
@@ -335,20 +363,16 @@ fn infer_expr(
     metrics.record_expr();
     match &expr.kind {
         ExprKind::Literal(literal) => {
-            let ty = match literal {
-                Literal::Int { .. } => SimpleType::Int,
-                Literal::Bool { .. } => SimpleType::Bool,
-                _ => SimpleType::Unknown,
-            };
+            let ty = type_for_literal(literal);
             make_typed(expr, typed::TypedExprKind::Literal(literal.clone()), ty)
         }
         ExprKind::Identifier(ident) => {
-            let ty = match env.get(ident.name.as_str()) {
-                Some(ty) => *ty,
+            let ty = match env.lookup(ident.name.as_str()) {
+                Some(binding) => binding.scheme.instantiate(var_gen),
                 None => {
                     stats.unresolved_identifiers += 1;
                     metrics.record_unresolved_identifier();
-                    SimpleType::Unknown
+                    Type::builtin(BuiltinType::Unknown)
                 }
             };
             make_typed(
@@ -365,11 +389,33 @@ fn infer_expr(
             right,
         } => {
             metrics.record_binary_expr();
-            let left_result = infer_expr(left, env, stats, metrics, violations, function_name);
-            let right_result = infer_expr(right, env, stats, metrics, violations, function_name);
+            let left_result = infer_expr(
+                left,
+                env,
+                var_gen,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                function_name,
+            );
+            let right_result = infer_expr(
+                right,
+                env,
+                var_gen,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                function_name,
+            );
             stats.constraints += 1;
             metrics.record_constraint("binary.operands");
-            let ty = combine_numeric_types(left_result.ty, right_result.ty);
+            constraints.push(Constraint::equal(
+                left_result.ty.clone(),
+                right_result.ty.clone(),
+            ));
+            let ty = combine_numeric_types(&left_result.ty, &right_result.ty);
             make_typed(
                 expr,
                 typed::TypedExprKind::Binary {
@@ -384,10 +430,28 @@ fn infer_expr(
             metrics.record_call_site();
             stats.constraints += 1;
             metrics.record_constraint("call.arity");
-            let callee_result = infer_expr(callee, env, stats, metrics, violations, function_name);
+            let callee_result = infer_expr(
+                callee,
+                env,
+                var_gen,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                function_name,
+            );
             let mut typed_args = Vec::new();
             for arg in args {
-                let arg_result = infer_expr(arg, env, stats, metrics, violations, function_name);
+                let arg_result = infer_expr(
+                    arg,
+                    env,
+                    var_gen,
+                    constraints,
+                    stats,
+                    metrics,
+                    violations,
+                    function_name,
+                );
                 typed_args.push(arg_result.node);
             }
             make_typed(
@@ -396,18 +460,24 @@ fn infer_expr(
                     callee: Box::new(callee_result.node),
                     args: typed_args,
                 },
-                SimpleType::Unknown,
+                Type::builtin(BuiltinType::Unknown),
             )
         }
         ExprKind::PerformCall { call } => {
             let argument_result = infer_expr(
                 &call.argument,
                 env,
+                var_gen,
+                constraints,
                 stats,
                 metrics,
                 violations,
                 function_name,
             );
+            constraints.push(Constraint::has_capability(
+                Type::builtin(BuiltinType::Unknown),
+                call.effect.name.clone(),
+            ));
             make_typed(
                 expr,
                 typed::TypedExprKind::PerformCall {
@@ -416,7 +486,7 @@ fn infer_expr(
                         argument: Box::new(argument_result.node),
                     },
                 },
-                SimpleType::Unknown,
+                Type::builtin(BuiltinType::Unknown),
             )
         }
         ExprKind::IfElse {
@@ -424,22 +494,52 @@ fn infer_expr(
             then_branch,
             else_branch,
         } => {
-            let condition_result =
-                infer_expr(condition, env, stats, metrics, violations, function_name);
-            check_bool_condition(
-                condition.span(),
-                condition_result.ty,
+            let condition_result = infer_expr(
+                condition,
+                env,
+                var_gen,
+                constraints,
+                stats,
+                metrics,
                 violations,
                 function_name,
             );
-            let then_result =
-                infer_expr(then_branch, env, stats, metrics, violations, function_name);
-            let else_result =
-                infer_expr(else_branch, env, stats, metrics, violations, function_name);
+            check_bool_condition(
+                condition.span(),
+                &condition_result.ty,
+                violations,
+                function_name,
+            );
+            let then_result = infer_expr(
+                then_branch,
+                env,
+                var_gen,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                function_name,
+            );
+            let else_result = infer_expr(
+                else_branch,
+                env,
+                var_gen,
+                constraints,
+                stats,
+                metrics,
+                violations,
+                function_name,
+            );
+            stats.constraints += 1;
+            metrics.record_constraint("conditional");
+            constraints.push(Constraint::equal(
+                then_result.ty.clone(),
+                else_result.ty.clone(),
+            ));
             let ty = if then_result.ty == else_result.ty {
-                then_result.ty
+                then_result.ty.clone()
             } else {
-                SimpleType::Unknown
+                Type::builtin(BuiltinType::Unknown)
             };
             make_typed(
                 expr,
@@ -454,68 +554,63 @@ fn infer_expr(
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum SimpleType {
-    Int,
-    Bool,
-    Unknown,
-}
-
-impl SimpleType {
-    fn label(self) -> &'static str {
-        match self {
-            SimpleType::Int => "Int",
-            SimpleType::Bool => "Bool",
-            SimpleType::Unknown => "Unknown",
-        }
-    }
-
-    fn from_param(name: &str) -> Self {
-        if name.ends_with("_int") {
-            SimpleType::Int
-        } else if name.ends_with("_bool") {
-            SimpleType::Bool
-        } else {
-            SimpleType::Unknown
-        }
+fn type_for_literal(literal: &Literal) -> Type {
+    match literal {
+        Literal::Int { .. } => Type::builtin(BuiltinType::Int),
+        Literal::Bool { .. } => Type::builtin(BuiltinType::Bool),
+        _ => Type::builtin(BuiltinType::Unknown),
     }
 }
 
-fn combine_numeric_types(left: SimpleType, right: SimpleType) -> SimpleType {
-    match (left, right) {
-        (SimpleType::Int, SimpleType::Int) => SimpleType::Int,
-        _ => SimpleType::Unknown,
+fn type_for_param(name: &str) -> Type {
+    if name.ends_with("_int") {
+        Type::builtin(BuiltinType::Int)
+    } else if name.ends_with("_bool") {
+        Type::builtin(BuiltinType::Bool)
+    } else {
+        Type::builtin(BuiltinType::Unknown)
+    }
+}
+
+fn combine_numeric_types(left: &Type, right: &Type) -> Type {
+    if matches!(left, Type::Builtin(BuiltinType::Int))
+        && matches!(right, Type::Builtin(BuiltinType::Int))
+    {
+        Type::builtin(BuiltinType::Int)
+    } else {
+        Type::builtin(BuiltinType::Unknown)
     }
 }
 
 struct TypedExprResult {
-    ty: SimpleType,
+    ty: Type,
     node: typed::TypedExpr,
 }
 
-fn make_typed(expr: &Expr, kind: typed::TypedExprKind, ty: SimpleType) -> TypedExprResult {
+fn make_typed(expr: &Expr, kind: typed::TypedExprKind, ty: Type) -> TypedExprResult {
+    let label = ty.label();
     TypedExprResult {
         ty,
         node: typed::TypedExpr {
             span: expr.span,
             kind,
-            ty: ty.label().to_string(),
+            ty: label,
         },
     }
 }
 
 fn check_bool_condition(
     span: Span,
-    ty: SimpleType,
+    ty: &Type,
     violations: &mut Vec<TypecheckViolation>,
     function_name: Option<&str>,
 ) {
-    if ty == SimpleType::Bool {
+    if matches!(ty, Type::Builtin(BuiltinType::Bool)) {
         return;
     }
     violations.push(TypecheckViolation::condition_literal_bool(
         span,
-        ty,
+        ty.clone(),
         function_name.map(|name| name.to_string()),
     ));
 }

@@ -87,3 +87,9 @@ Phase P1（フロントエンド移植）の達成条件を Reml 仕様に照ら
 - ギャップ修正後は `p1-front-end-checklists.csv` の該当行に完了日と根拠（dual-write run ID）を記載する。
 - 仕様追加・用語変更が発生した場合は `docs/spec/0-2-glossary.md` と `README.md` を忘れずに同期させる。
 - 大規模ファイル移動やリネームがある場合は `docs-migrations.log` に記録する（再編計画の運用ルール）。
+
+### FRG-12 実装メモ（Day 2-3）
+
+- ✅ `compiler/rust/frontend/src/typeck/env.rs` に `TypeEnv`/`Binding` を追加し、`IndexMap` を使ったスコープ付き環境を再帰的な `lookup`/`insert` で実装。`Scheme` を保持しつつ親環境を再参照できるようになった。
+- ✅ `compiler/rust/frontend/src/typeck/types.rs`/`scheme.rs`/`constraint.rs` を追加し、`Type`/`Scheme`/`Constraint`/`Substitution` の骨格と `ConstraintSolver` を整備。`Constraint::equal`/`has_capability`/`impl_bound` と `Substitution::apply_unwrap`/`merge` に serde/Display を持たせ、dual-write に向けた型・制約データを出力できる。
+- ✅ `compiler/rust/frontend/src/typeck/driver.rs` を `Type`/`Scheme`/`Constraint` ベースの API に再設計し、`infer_expr` が `Vec<Constraint>` を蓄積して `ConstraintSolver::solve` を呼び出しつつ、`TypedExpr` に `Type` ラベルを含めて dual-write 比較の準備を整えた。
