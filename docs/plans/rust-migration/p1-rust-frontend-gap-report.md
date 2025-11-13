@@ -52,7 +52,7 @@
 | --- | --- | --- | --- | --- |
 | FRG-15 | `Diagnostic` モデル | ✅ `FrontendDiagnostic` は `code/message/span/expected` のみで severity/domain/audit/hints を保持しない（`compiler/rust/frontend/src/diagnostic/mod.rs:16`）。 | OCaml `Diagnostic.t` は仕様 3-6 のフィールド（severity/domain/codes/hints/fixits/audit/extensions）を実装（`compiler/ocaml/src/diagnostic.ml:165`）。 | `Diagnostic` 構造体を再定義し、`Diagnostic.Builder` 相当の API を Rust に追加。 |
 | FRG-16 | JSON エミッタ | ✅ `build_parser_diagnostics` が `severity="error"`, `domain="parser"` を固定値で出力し `audit_id` も仮値生成のみ（`compiler/rust/frontend/src/bin/poc_frontend.rs:1192`）。 | OCaml CLI は各診断の severity/domain/audit_metadata を `Diagnostic.Builder` から受け取り JSON 化（`compiler/ocaml/src/parser_driver.ml:68` 等）。 | `Diagnostic` から JSON へ変換する専用モジュールを用意し、`scripts/validate-diagnostic-json.sh` の Schema v2.0.0-draft を満たす。 |
-| FRG-17 | Recover 拡張 | Rust は streaming recover 用 placeholder のみを挿入し、`Diagnostic.expectation_summary` 由来の `context_note` などを生成しない（`compiler/rust/frontend/src/diagnostic/mod.rs:151`）。 | OCaml `parser_expectation` + `attach_recover_extension` が `expected_tokens` + `message` + `context` を JSON 拡張へ埋め込む（`compiler/ocaml/src/parser_driver.ml:68`）。 | `ExpectedTokensSummary` を JSON へ変換するヘルパーを実装し、`recover_extension_payload` 相当のフィールドを出力。 |
+| FRG-17 | Recover 拡張 | ✅ Rust は streaming recover 用 placeholder のみを挿入し、`Diagnostic.expectation_summary` 由来の `context_note` などを生成しない（`compiler/rust/frontend/src/diagnostic/mod.rs:151`）。 | OCaml `parser_expectation` + `attach_recover_extension` が `expected_tokens` + `message` + `context` を JSON 拡張へ埋め込む（`compiler/ocaml/src/parser_driver.ml:68`）。 | `ExpectedTokensSummary` を JSON へ変換するヘルパーを実装し、`recover_extension_payload` 相当のフィールドを出力。 |
 
 ### 3.5 Streaming / RunConfig / dual-write
 
