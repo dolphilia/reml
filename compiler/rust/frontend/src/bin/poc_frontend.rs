@@ -59,7 +59,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     parser_options.streaming = args.streaming_state_config();
     parser_options.streaming_enabled = args.stream_config.enabled || run_config.trace;
     parser_options.stream_flow = Some(stream_flow_state.clone());
-    parser_options.lex_identifier_profile = IdentifierProfile::Unicode;
     let result = if args.stream_config.enabled {
         let runner = StreamingRunner::new(
             source.clone(),
@@ -237,6 +236,7 @@ struct DualwriteCliOpts {
 struct RunSettings {
     config: RunConfig,
     experimental_effects: bool,
+    lex_identifier_profile: IdentifierProfile,
 }
 
 impl Default for RunSettings {
@@ -248,6 +248,7 @@ impl Default for RunSettings {
         Self {
             config,
             experimental_effects: false,
+            lex_identifier_profile: IdentifierProfile::Unicode,
         }
     }
 }
@@ -268,16 +269,32 @@ impl DerefMut for RunSettings {
 
 impl RunSettings {
     fn to_run_config(&self) -> RunConfig {
-        if !self.experimental_effects {
-            return self.config.clone();
+        let mut config = self.config.clone();
+        config = config.with_extension("lex", |existing| self.lex_extension(existing));
+        if self.experimental_effects {
+            config = config.with_extension("effects", |existing| {
+                let mut payload = existing
+                    .and_then(|value| value.as_object().cloned())
+                    .unwrap_or_default();
+                payload.insert("experimental_effects".to_string(), json!(true));
+                Value::Object(payload)
+            });
         }
-        self.config.clone().with_extension("effects", |existing| {
-            let mut payload = existing
-                .and_then(|value| value.as_object().cloned())
-                .unwrap_or_default();
-            payload.insert("experimental_effects".to_string(), json!(true));
-            Value::Object(payload)
-        })
+        config
+    }
+
+    fn lex_extension(&self, existing: Option<&Value>) -> Value {
+        let mut payload = existing
+            .and_then(|value| value.as_object().cloned())
+            .unwrap_or_default();
+        payload.insert(
+            "identifier_profile".to_string(),
+            json!(self.lex_identifier_profile.as_str()),
+        );
+        payload
+            .entry("profile".to_string())
+            .or_insert_with(|| json!("strict_json"));
+        Value::Object(payload)
     }
 }
 
@@ -394,6 +411,22 @@ fn apply_workspace_config(
                 stream_config.flow_max_lag = Some(max_lag);
             }
         }
+
+        if let Some(extensions) = parser.get("extensions").and_then(|v| v.as_object()) {
+            if let Some(lex) = extensions.get("lex").and_then(|v| v.as_object()) {
+                run_config.config = run_config
+                    .config
+                    .with_extension("lex", |existing| merge_extension(existing, lex));
+                if let Some(profile) = lex.get("identifier_profile").and_then(|v| v.as_str()) {
+                    match IdentifierProfile::from_str(profile) {
+                        Ok(parsed) => run_config.lex_identifier_profile = parsed,
+                        Err(_) => eprintln!(
+                            "[CONFIG] lex.identifier_profile `{profile}` は ascii/unicode 以外の値なので無視されました"
+                        ),
+                    }
+                }
+            }
+        }
     }
 
     if let Some(effects) = value.get("effects") {
@@ -443,6 +476,16 @@ fn apply_workspace_config(
     }
 
     Ok(())
+}
+
+fn merge_extension(existing: Option<&Value>, overrides: &serde_json::Map<String, Value>) -> Value {
+    let mut payload = existing
+        .and_then(|value| value.as_object().cloned())
+        .unwrap_or_default();
+    for (key, value) in overrides {
+        payload.insert(key.clone(), value.clone());
+    }
+    Value::Object(payload)
 }
 
 fn extend_capabilities(target: &mut Vec<String>, value: &Value) {
@@ -625,6 +668,18 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     .ok_or_else(|| "--left-recursion は値を伴う必要があります")?;
                 run_config.left_recursion = LeftRecursionMode::from_str(&value)
                     .map_err(|_| format!("--left-recursion の値 `{value}` は無効です"))?;
+            }
+            "--lex-profile" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--lex-profile は ascii|unicode の値を伴う必要があります")?;
+                run_config.lex_identifier_profile = value
+                    .parse::<IdentifierProfile>()
+                    .map_err(|_| {
+                        format!(
+                            "--lex-profile の値 `{value}` は `ascii` または `unicode` である必要があります"
+                        )
+                    })?;
             }
             "--streaming" => stream_config.enabled = true,
             "--no-streaming" => stream_config.enabled = false,
@@ -830,6 +885,7 @@ fn build_runconfig_summary(
     flow: &StreamFlowState,
 ) -> Value {
     let flow_metrics = flow.metrics();
+    let lex_extension = lex_extension_payload(run_config);
     json!({
         "packrat": run_config.packrat,
         "left_recursion": left_recursion_label(run_config.left_recursion),
@@ -839,10 +895,7 @@ fn build_runconfig_summary(
         "legacy_result": run_config.legacy_result,
         "experimental_effects": args.run_config.experimental_effects,
         "extensions": {
-            "lex": {
-                "profile": "strict_json",
-                "identifier_profile": "unicode",
-            },
+            "lex": lex_extension.clone(),
             "recover": {
                 "sync_tokens": [],
                 "notes": false,
@@ -863,6 +916,7 @@ fn build_runconfig_top_level(
     flow: &StreamFlowState,
 ) -> Value {
     let flow_metrics = flow.metrics();
+    let lex_extension = lex_extension_payload(run_config);
     json!({
         "switches": {
             "packrat": run_config.packrat,
@@ -874,10 +928,7 @@ fn build_runconfig_top_level(
             "experimental_effects": args.run_config.experimental_effects,
         },
         "extensions": {
-            "lex": {
-                "profile": "strict_json",
-                "identifier_profile": "unicode",
-            },
+            "lex": lex_extension.clone(),
             "recover": {
                 "sync_tokens": [],
                 "notes": false,
@@ -893,6 +944,15 @@ fn build_runconfig_top_level(
             "config": build_config_extension(run_config, args),
         },
         "runtime_capabilities": args.runtime_capabilities.clone(),
+    })
+}
+
+fn lex_extension_payload(run_config: &RunConfig) -> Value {
+    run_config.extension("lex").cloned().unwrap_or_else(|| {
+        json!({
+            "profile": "strict_json",
+            "identifier_profile": IdentifierProfile::Unicode.as_str(),
+        })
     })
 }
 

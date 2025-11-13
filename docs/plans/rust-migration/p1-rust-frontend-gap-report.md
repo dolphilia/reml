@@ -99,7 +99,25 @@
   - ✅ `docs/plans/rust-migration/p1-spec-compliance-gap.md` に仕様トークン表を追記し、Rust `TokenKind` の不足を明文化（Day 1 完了）。
   - ✅ `compiler/rust/frontend/src/token.rs` と `src/lexer/mod.rs` を刷新し、38+ キーワード・演算子 26 種・`IdentifierProfile::{Unicode,AsciiCompat}` を実装。`ParserOptions.lex_identifier_profile` と CLI (`poc_frontend.rs`) まで配線済み。
   - ✅ `compiler/rust/frontend/tests/lexer_token_coverage.rs` を追加し `cargo test --test lexer_token_coverage` で Unicode/ASCII プロファイル・基数・文字列種別を検証。
-  - ⏳ RunConfig/LSP からの `identifier_profile` 伝播、および dual-write メトリクス (`lexer.identifier_profile_unicode`) の再測定は未完。CLI/LSP 設定取得の導線を整備した上で、`collect-iterator-audit-metrics.py` で値を反映させる。
+- ⏳ RunConfig/LSP からの `identifier_profile` 伝播、および dual-write メトリクス (`lexer.identifier_profile_unicode`) の再測定は未完。CLI/LSP 設定取得の導線を整備した上で、`collect-iterator-audit-metrics.py` で値を反映させる。
+
+### FRG-21
+
+1. **仕様の確認と対象範囲の明文化（Day 0）**  
+   - `docs/spec/1-1-syntax.md#a3`・`docs/spec/2-3-lexer.md#d-1` に従い、`IDENT`/`UPPER_IDENT` は Unicode XID 由来で `RunConfig.extensions["lex"].identifier_profile` による `ascii-compat` 互換モードを持つことを再確認し、`p1-spec-compliance-gap.md#SCG-01` の図に Gap を追記する。  
+   - `RunConfig` で `lex` 拡張が必ず `profile`/`identifier_profile` を含むように整備し、dual-write で `parser.runconfig.extensions.lex` を監査ログに現行の `profile` と一致させる契約を据える。
+2. **実装と CLI/workspace 連携（Day 1-2）**  
+   - `RunSettings` に `lex_identifier_profile` を保持させ、`to_run_config` で `lex` 拡張を `json!({ "identifier_profile": ..., "profile": "strict_json" })` として常時出力する。`apply_workspace_config` では `parser.extensions.lex` を取り込みつつ `identifier_profile` を引き継ぎ、`--lex-profile=ascii|unicode` オプションで CLI から上書きできるようにする。  
+   - `ParserOptions::from_run_config` は `RunConfig.extensions["lex"].identifier_profile` を読み込み、`lex_identifier_profile` を `LexerOptions` に伝播させることで `lex` プロファイルごとの `IDENT`/`UPPER_IDENT` 出力が dual-write で比較できるようにする。  
+   - `build_runconfig_summary`/`build_runconfig_top_level` も実際の `lex` 拡張を使い、`parser.runconfig.extensions.lex.identifier_profile` を `metadata`/`diagnostics` に含めて `lexer.identifier_profile_unicode` メトリクスとの対応を担保する。
+3. **検証と dual-write 差分（Day 3）**  
+   - `ParserOptions` が `RunConfig` 拡張を尊重することを `parser_option_tests::parser_options_follow_lex_identifier_profile_extension` で保証し、CLI で `--lex-profile=ascii` を渡して `collector` が `ascii-compat` を emit するゴールデンを `collect-iterator-audit-metrics.py` に埋め込む準備をする。  
+   - 生成される `parser_run_config.rust.json` / `diagnostics` の `lex.identifier_profile` を `reports/dual-write` で検証し、`lexer.identifier_profile_unicode` KPI の監視値が `1.0` へ向かう材料を確保する。
+
+- 進捗ログ
+  - ✅ `compiler/rust/frontend/src/lexer/mod.rs` に `IdentifierProfile::from_str`/`as_str` を導入し、`ParserOptions` で `RunConfig.extensions["lex"].identifier_profile` を取得するヘルパを追加してインフラを整備した。
+  - ✅ `compiler/rust/frontend/src/bin/poc_frontend.rs` に `RunSettings.lex_identifier_profile`・`--lex-profile`・workspace config の `parser.extensions.lex` 取り込み・lex 拡張出力・`runconfig_summary`/`top_level` の lex 依存を実装し、dual-write JSON と監査へ正しい値が降りるようにした。
+  - ✅ `compiler/rust/frontend/src/parser/mod.rs` に `ParserOptions` が拡張を参照するテストを追加し、`collect-iterator-audit-metrics.py` での `parser.runconfig.extensions.lex.identifier_profile` 認識に手を入れる準備を整えた。
 
 ### FRG-07
 

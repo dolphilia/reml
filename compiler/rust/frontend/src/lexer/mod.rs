@@ -5,6 +5,7 @@
 //! できるようにし、RunConfig (`extensions.lex.identifier_profile`) から渡せる経路もここで確保する。
 
 use logos::{Lexer as LogosLexer, Logos};
+use std::str::FromStr;
 
 use crate::error::{FrontendError, FrontendErrorKind, Recoverability};
 use crate::span::Span;
@@ -37,6 +38,27 @@ pub enum IdentifierProfile {
 impl Default for IdentifierProfile {
     fn default() -> Self {
         IdentifierProfile::Unicode
+    }
+}
+
+impl IdentifierProfile {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            IdentifierProfile::Unicode => "unicode",
+            IdentifierProfile::AsciiCompat => "ascii-compat",
+        }
+    }
+}
+
+impl FromStr for IdentifierProfile {
+    type Err = ();
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        match input.trim().to_ascii_lowercase().as_str() {
+            "unicode" => Ok(IdentifierProfile::Unicode),
+            "ascii" | "ascii-compat" | "ascii_compat" => Ok(IdentifierProfile::AsciiCompat),
+            _ => Err(()),
+        }
     }
 }
 

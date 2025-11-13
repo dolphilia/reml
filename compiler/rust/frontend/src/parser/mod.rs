@@ -82,7 +82,7 @@ impl ParserOptions {
             merge_parse_expected: run_config.merge_warnings,
             streaming_enabled: run_config.trace,
             stream_flow: None,
-            lex_identifier_profile: IdentifierProfile::Unicode,
+            lex_identifier_profile: lex_identifier_profile_from_run_config(run_config),
         }
     }
 
@@ -100,6 +100,16 @@ impl ParserOptions {
         self.lex_identifier_profile = profile;
         self
     }
+}
+
+fn lex_identifier_profile_from_run_config(run_config: &RunConfig) -> IdentifierProfile {
+    run_config
+        .extension("lex")
+        .and_then(|value| value.as_object())
+        .and_then(|map| map.get("identifier_profile"))
+        .and_then(|value| value.as_str())
+        .and_then(|text| text.parse::<IdentifierProfile>().ok())
+        .unwrap_or_default()
 }
 
 /// Rust フロントエンドのパーサドライバ。
@@ -1007,5 +1017,28 @@ fn main() = emit("leak")"#,
 
         let diagnostics = builder.into_vec();
         assert_eq!(diagnostics.len(), 2);
+    }
+}
+
+#[cfg(test)]
+mod parser_option_tests {
+    use super::api::RunConfig;
+    use super::*;
+    use serde_json::{json, Value};
+
+    #[test]
+    fn parser_options_follow_lex_identifier_profile_extension() {
+        let run_config = RunConfig::default().with_extension("lex", |existing| {
+            let mut payload = existing
+                .and_then(|value| value.as_object().cloned())
+                .unwrap_or_default();
+            payload.insert("identifier_profile".to_string(), json!("ascii-compat"));
+            Value::Object(payload)
+        });
+        let options = ParserOptions::from_run_config(&run_config);
+        assert_eq!(
+            options.lex_identifier_profile,
+            IdentifierProfile::AsciiCompat
+        );
     }
 }
