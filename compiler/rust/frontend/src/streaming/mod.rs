@@ -146,6 +146,15 @@ impl PackratEntry {
     }
 }
 
+/// Packrat キャッシュのキーデータとエントリをまとめたシリアライズ用レコード。
+#[derive(Debug, Clone, Serialize)]
+pub struct PackratCacheEntry {
+    pub parser_id: u16,
+    pub range_start: u32,
+    pub range_end: u32,
+    pub entry: PackratEntry,
+}
+
 /// span_trace の 1 フレーム。
 #[derive(Debug, Clone, Serialize)]
 pub struct TraceFrame {
@@ -416,6 +425,27 @@ impl StreamingState {
             entries: stats.entries,
             approx_bytes: stats.approx_bytes,
         }
+    }
+
+    /// Packrat キャッシュ内の全エントリをコピーして取得する。
+    pub fn packrat_cache_entries(&self) -> Option<Vec<PackratCacheEntry>> {
+        if !self.config.packrat_enabled {
+            return None;
+        }
+        let cache = match self.shared.packrat_cache.read() {
+            Ok(lock) => lock,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        let entries = cache
+            .iter()
+            .map(|(key, entry)| PackratCacheEntry {
+                parser_id: key.parser_id,
+                range_start: key.range.start,
+                range_end: key.range.end,
+                entry: entry.clone(),
+            })
+            .collect::<Vec<_>>();
+        Some(entries)
     }
 
     /// Packrat 統計値を取得する。

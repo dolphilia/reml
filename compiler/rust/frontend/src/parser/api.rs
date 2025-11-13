@@ -6,7 +6,9 @@
 
 use crate::diagnostic::{ExpectedToken, FrontendDiagnostic};
 use crate::span::Span;
-use crate::streaming::{PackratStats, StreamFlowState, StreamMetrics, TraceFrame};
+use crate::streaming::{
+    PackratCacheEntry, PackratStats, StreamFlowState, StreamMetrics, TraceFrame,
+};
 use crate::token::Token;
 use indexmap::IndexMap;
 use serde_json::Value;
@@ -174,6 +176,8 @@ pub struct ParseResult<T> {
     pub diagnostics: Vec<FrontendDiagnostic>,
     pub recovered: bool,
     pub legacy_error: Option<ParseError>,
+    pub farthest_error_offset: Option<u32>,
+    pub packrat_cache: Option<Vec<PackratCacheEntry>>,
     pub tokens: Vec<Token>,
     pub packrat_stats: PackratStats,
     pub stream_metrics: StreamMetrics,
@@ -189,6 +193,8 @@ impl<T> ParseResult<T> {
         diagnostics: Vec<FrontendDiagnostic>,
         recovered: bool,
         legacy_error: Option<ParseError>,
+        farthest_error_offset: Option<u32>,
+        packrat_cache: Option<Vec<PackratCacheEntry>>,
         tokens: Vec<Token>,
         packrat_stats: PackratStats,
         stream_metrics: StreamMetrics,
@@ -202,6 +208,8 @@ impl<T> ParseResult<T> {
             diagnostics,
             recovered,
             legacy_error,
+            farthest_error_offset,
+            packrat_cache,
             tokens,
             packrat_stats,
             stream_metrics,

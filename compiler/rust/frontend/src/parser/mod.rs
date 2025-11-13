@@ -21,6 +21,7 @@ use crate::lexer::{lex_source_with_options, IdentifierProfile, LexOutput, LexerO
 use crate::span::Span;
 use crate::streaming::{
     Expectation as StreamingExpectation, ExpectationSummary, PackratEntry, PackratStats,
+    PackratCacheEntry,
     StreamFlowState, StreamMetrics, StreamingState, StreamingStateConfig, TokenSample, TraceFrame,
 };
 use crate::token::{Token, TokenKind};
@@ -31,10 +32,12 @@ use ast::{EffectDecl, Expr, Function, Ident, Module, Param};
 pub struct ParsedModule {
     pub tokens: Vec<Token>,
     pub diagnostics: Vec<FrontendDiagnostic>,
+    pub recovered: bool,
     pub ast: Option<Module>,
     pub packrat_stats: PackratStats,
     pub stream_metrics: StreamMetrics,
     pub span_trace: Vec<TraceFrame>,
+    pub packrat_cache: Option<Vec<PackratCacheEntry>>,
     pub stream_flow_state: Option<StreamFlowState>,
 }
 
@@ -154,18 +157,22 @@ impl ParserDriver {
             streaming_recover.checkpoint_end(&mut diagnostics);
         }
 
+        let packrat_cache = streaming_state.packrat_cache_entries();
         let span_trace = streaming_state.drain_span_trace();
         let stream_metrics = streaming_state.metrics_snapshot();
+        let recovered = streaming_recover.recovered();
 
         let diagnostics = diagnostics.into_vec();
 
         ParsedModule {
             tokens,
             diagnostics,
+            recovered,
             ast,
             packrat_stats: stream_metrics.packrat,
             stream_metrics,
             span_trace,
+            packrat_cache,
             stream_flow_state,
         }
     }
@@ -254,18 +261,36 @@ fn convert_range(range: Range<usize>) -> Span {
 }
 
 fn parse_result_from_module(parsed: ParsedModule, run_config: RunConfig) -> ParseResult<Module> {
-    let recovered = parsed.ast.is_some() && !parsed.diagnostics.is_empty();
+    let ParsedModule {
+        tokens,
+        diagnostics,
+        recovered,
+        ast,
+        packrat_stats,
+        stream_metrics,
+        span_trace,
+        packrat_cache,
+        stream_flow_state,
+    } = parsed;
+
+    let farthest_error_offset = diagnostics
+        .iter()
+        .filter_map(|diag| diag.span.map(|span| span.end))
+        .max();
+
     ParseResult::new(
-        parsed.ast,
+        ast,
         None,
-        parsed.diagnostics,
+        diagnostics,
         recovered,
         None,
-        parsed.tokens,
-        parsed.packrat_stats,
-        parsed.stream_metrics,
-        parsed.span_trace,
-        parsed.stream_flow_state,
+        farthest_error_offset,
+        packrat_cache,
+        tokens,
+        packrat_stats,
+        stream_metrics,
+        span_trace,
+        stream_flow_state,
         run_config,
     )
 }
@@ -734,6 +759,7 @@ pub struct StreamingRecoverController {
     enabled: bool,
     pending: Option<PendingRecover>,
     limiter: Option<StreamingRecoverLimiter>,
+    recovered: bool,
 }
 
 impl StreamingRecoverController {
@@ -746,6 +772,7 @@ impl StreamingRecoverController {
             } else {
                 None
             },
+            recovered: false,
         }
     }
 
@@ -765,6 +792,8 @@ impl StreamingRecoverController {
             diagnostics.push(build_diagnostic_from_error(span, error));
             return;
         }
+
+        self.recovered = true;
 
         if let Some(pending) = &mut self.pending {
             pending.merge(error);
@@ -790,6 +819,12 @@ impl StreamingRecoverController {
                 diagnostics.push(pending.into_diagnostic());
             }
         }
+    }
+}
+
+impl StreamingRecoverController {
+    pub fn recovered(&self) -> bool {
+        self.recovered
     }
 }
 

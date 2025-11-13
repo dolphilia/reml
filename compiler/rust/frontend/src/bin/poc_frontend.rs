@@ -73,6 +73,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let parse_result = serde_json::json!({
         "packrat_stats": result.packrat_stats,
         "span_trace": result.span_trace,
+        "packrat_cache": result.packrat_cache,
+        "recovered": result.recovered,
+        "farthest_error_offset": result.farthest_error_offset,
     });
 
     let flow_metrics = result
