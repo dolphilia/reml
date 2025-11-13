@@ -23,6 +23,7 @@ impl TypecheckDriver {
         let mut functions = Vec::new();
         let mut violations = Vec::new();
         let mut typed_functions = Vec::new();
+        let mut all_constraints = Vec::new();
 
         if config.trace_enabled {
             eprintln!(
@@ -64,6 +65,7 @@ impl TypecheckDriver {
                 &mut violations,
             );
             let _ = solver.solve(&constraints);
+            all_constraints.extend(constraints.into_iter());
 
             let param_type_labels: Vec<String> =
                 param_bindings.iter().map(|(_, ty)| ty.label()).collect();
@@ -104,6 +106,14 @@ impl TypecheckDriver {
         violations.extend(detect_residual_leaks_from_module(module, config));
         let violations = compress_typecheck_violations(violations);
 
+        let used_impls = all_constraints
+            .iter()
+            .filter_map(|constraint| match constraint {
+                Constraint::ImplBound { implementation, .. } => Some(implementation.to_string()),
+                _ => None,
+            })
+            .collect();
+
         TypecheckReport {
             metrics,
             functions,
@@ -111,6 +121,8 @@ impl TypecheckDriver {
             typed_module: typed::TypedModule {
                 functions: typed_functions,
             },
+            constraints: all_constraints,
+            used_impls,
         }
     }
 
@@ -143,6 +155,8 @@ impl TypecheckDriver {
             functions,
             violations,
             typed_module: typed::TypedModule::default(),
+            constraints: Vec::new(),
+            used_impls: Vec::new(),
         }
     }
 }
@@ -215,6 +229,8 @@ pub struct TypecheckReport {
     pub functions: Vec<TypedFunctionSummary>,
     pub violations: Vec<TypecheckViolation>,
     pub typed_module: typed::TypedModule,
+    pub constraints: Vec<Constraint>,
+    pub used_impls: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Clone)]

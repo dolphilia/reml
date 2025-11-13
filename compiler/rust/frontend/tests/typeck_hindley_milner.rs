@@ -1,0 +1,65 @@
+use reml_frontend::parser::ast::Module;
+use reml_frontend::parser::ParserDriver;
+use reml_frontend::typeck::{
+    BuiltinType, Constraint, Type, TypecheckConfig, TypecheckDriver, TypecheckReport,
+    TypecheckViolationKind,
+};
+use serde_json;
+
+fn parse_module(source: &str) -> Module {
+    let result = ParserDriver::parse(source);
+    assert!(
+        result.diagnostics.is_empty(),
+        "parser diagnostics: {:?}",
+        result
+            .diagnostics
+            .iter()
+            .map(|diag| &diag.message)
+            .collect::<Vec<_>>()
+    );
+    result.value.expect("AST")
+}
+
+fn typecheck_source(source: &str) -> TypecheckReport {
+    let module = parse_module(source);
+    TypecheckDriver::infer_module(&module, &TypecheckConfig::default())
+}
+
+#[test]
+fn hindley_milner_collects_binary_constraints() {
+    let report = typecheck_source("fn sum(x_int, y_int) = x_int + y_int");
+    assert_eq!(report.functions.len(), 1);
+    assert_eq!(report.metrics.constraints_total, report.constraints.len());
+    assert_eq!(report.constraints.len(), 1);
+    assert!(matches!(
+        &report.constraints[0],
+        Constraint::Equal { left, right }
+        if matches!(left, Type::Builtin(BuiltinType::Int)) && matches!(right, Type::Builtin(BuiltinType::Int))
+    ));
+    assert!(
+        report.used_impls.is_empty(),
+        "現状では辞書が未使用のため空の Vec を返す"
+    );
+}
+
+#[test]
+fn hindley_milner_flags_non_bool_condition() {
+    let report = typecheck_source(
+        "fn check(flag_bool, value_int) = if value_int then flag_bool else flag_bool",
+    );
+    assert_eq!(report.functions.len(), 1);
+    assert!(
+        report.violations.iter().any(|violation| {
+            matches!(violation.kind, TypecheckViolationKind::ConditionLiteralBool)
+        }),
+        "非 Bool 条件は diagnostic に記録される"
+    );
+}
+
+#[test]
+fn hindley_milner_constraints_json_roundtrip() {
+    let report = typecheck_source("fn pair(x_int, y_int) = x_int + y_int");
+    let serialized =
+        serde_json::to_value(&report.constraints).expect("constraints should serialize");
+    assert!(serialized.is_array());
+}

@@ -93,3 +93,9 @@ Phase P1（フロントエンド移植）の達成条件を Reml 仕様に照ら
 - ✅ `compiler/rust/frontend/src/typeck/env.rs` に `TypeEnv`/`Binding` を追加し、`IndexMap` を使ったスコープ付き環境を再帰的な `lookup`/`insert` で実装。`Scheme` を保持しつつ親環境を再参照できるようになった。
 - ✅ `compiler/rust/frontend/src/typeck/types.rs`/`scheme.rs`/`constraint.rs` を追加し、`Type`/`Scheme`/`Constraint`/`Substitution` の骨格と `ConstraintSolver` を整備。`Constraint::equal`/`has_capability`/`impl_bound` と `Substitution::apply_unwrap`/`merge` に serde/Display を持たせ、dual-write に向けた型・制約データを出力できる。
 - ✅ `compiler/rust/frontend/src/typeck/driver.rs` を `Type`/`Scheme`/`Constraint` ベースの API に再設計し、`infer_expr` が `Vec<Constraint>` を蓄積して `ConstraintSolver::solve` を呼び出しつつ、`TypedExpr` に `Type` ラベルを含めて dual-write 比較の準備を整えた。
+
+### Day 6: constraints/dual-write 検証
+
+- `TypecheckReport` に `constraints`/`used_impls` を追加し、`poc_frontend` の `TypeckArtifacts::constraints` で `reports/dual-write/front-end/w3-type-inference/<case>/constraints.rust.json` に `Constraint` の JSON を直接出力できるようにした。
+- `compiler/rust/frontend/tests/typeck_hindley_milner.rs` を追加して `Constraint::Equal` 集約と `ConditionLiteralBool` 診断のトリガーを検証し、`cargo test -p reml_frontend hindley_milner` を通じて dual-write に必要なデータ生成の仕組みを確認した。
+- `docs/spec/1-3-effects-safety.md` を FRG-12 検証スコープへリンクし、`StageContext`/`Capability` による制約追加が必要であることを明示的に記録している。

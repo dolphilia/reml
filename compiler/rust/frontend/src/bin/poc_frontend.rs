@@ -22,7 +22,7 @@ use reml_frontend::streaming::{
     StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig,
 };
 use reml_frontend::typeck::{
-    self, DualWriteGuards, InstallConfigError, RecoverConfig, StageContext, StageId,
+    self, Constraint, DualWriteGuards, InstallConfigError, RecoverConfig, StageContext, StageId,
     StageRequirement, TypeRowMode, TypecheckConfig, TypecheckDriver, TypecheckMetrics,
     TypecheckReport, TypecheckViolation, TypecheckViolationKind, TypedFunctionSummary,
 };
@@ -1912,6 +1912,8 @@ struct ConstraintFile {
     total_constraints: usize,
     breakdown: Vec<ConstraintBucket>,
     functions: Vec<FunctionConstraintSummary>,
+    constraints: Vec<Constraint>,
+    used_impls: Vec<String>,
 }
 
 #[derive(Clone, Serialize)]
@@ -1968,6 +1970,8 @@ impl TypeckArtifacts {
             total_constraints: report.metrics.constraints_total,
             breakdown,
             functions,
+            constraints: report.constraints.clone(),
+            used_impls: report.used_impls.clone(),
         };
         let debug = TypeckDebugFile {
             effect_context: config.effect_context.clone(),
