@@ -43,7 +43,7 @@
 | ID | ギャップ | 現状 (Rust) | 期待仕様 / OCaml | 必要対応 |
 | --- | --- | --- | --- | --- |
 | FRG-12 | HM 実装 | ✅ `TypecheckDriver` は `SimpleType` (Int/Bool/Unknown) を返すのみで、制約生成・一般化・辞書引数が無い（`compiler/rust/frontend/src/typeck/driver.rs:11`）。 | OCaml `type_inference.ml` が Algorithm W + 制約ソルバ + impl レジストリ + 効果解析を実装（`compiler/ocaml/src/type_inference.ml:1`）。 | `types.rs`/`scheme.rs`/`constraint.rs` を分割実装し、`Type_env` と同等の環境を提供。`p1-front-end-checklists.csv` Typed AST 項目を満たす。 |
-| FRG-13 | 効果行 / Capability | Rust 残余効果検出は `perform` 文字列検索で `TypecheckViolation::residual_leak` を生成する簡易版（`compiler/rust/frontend/src/typeck/driver.rs:232`）。 | OCaml は `Type_inference_effect` と `Effect_profile` で Capability Registry・StageContext を参照（`compiler/ocaml/src/type_inference.ml:80`）。 | `StageContext` と `runtime_capabilities` を `TypecheckDriver` に渡し、Capability Registry との一致判定を Rust でも実装。`effects.contract.*` 診断を JSON へ出力。 |
+| FRG-13 | 効果行 / Capability |✅ Rust 残余効果検出は `perform` 文字列検索で `TypecheckViolation::residual_leak` を生成する簡易版（`compiler/rust/frontend/src/typeck/driver.rs:232`）。 | OCaml は `Type_inference_effect` と `Effect_profile` で Capability Registry・StageContext を参照（`compiler/ocaml/src/type_inference.ml:80`）。 | `StageContext` と `runtime_capabilities` を `TypecheckDriver` に渡し、Capability Registry との一致判定を Rust でも実装。`effects.contract.*` 診断を JSON へ出力。 |
 | FRG-14 | dual-write 成果物 | Rust CLI `--emit typed-ast/constraints/typeck-debug` は統計 JSON を作るが AST/constraints 詳細が欠落（`compiler/rust/frontend/src/bin/poc_frontend.rs:1866`）。 | dual-write 手順（`1-3-dual-write-runbook.md`）では OCaml フォーマットと 1:1 の JSON が前提。 | HM 完了後に AST/constraint/export のスキーマを OCaml に合わせ、`reports/dual-write/front-end/w3-type-inference` 形式で保存。 |
 
 ### 3.4 診断前処理・JSON
