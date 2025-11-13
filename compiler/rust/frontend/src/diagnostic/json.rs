@@ -112,6 +112,11 @@ pub fn build_frontend_diagnostic(payload: FrontendDiagnosticPayload<'_>) -> Valu
 }
 
 pub fn build_recover_extension(diag: &FrontendDiagnostic) -> Option<Value> {
+    if let Some(summary) = diag.expected_summary.as_ref() {
+        if summary_has_recover_payload(summary) {
+            return Some(recover_extension_payload_from_summary(summary));
+        }
+    }
     if diag.has_expected_tokens() {
         let message = diag
             .expected_humanized
@@ -196,6 +201,29 @@ pub fn expected_payload_from_summary(summary: &ExpectedTokensSummary) -> Value {
         "message": message,
         "expected_tokens": expected_tokens,
     })
+}
+
+pub fn recover_extension_payload_from_summary(summary: &ExpectedTokensSummary) -> Value {
+    let token_labels = summary.tokens();
+    let expected_tokens: Vec<Value> = token_labels
+        .iter()
+        .map(|token| expected_token_object_from_label(token))
+        .collect();
+    let mut map = Map::new();
+    map.insert("expected_tokens".to_string(), Value::Array(expected_tokens));
+    if let Some(message) = non_blank_string(summary.humanized.as_ref()) {
+        map.insert("message".to_string(), json!(message));
+    }
+    if let Some(context) = non_blank_string(summary.context_note.as_ref()) {
+        map.insert("context".to_string(), json!(context));
+    }
+    Value::Object(map)
+}
+
+fn summary_has_recover_payload(summary: &ExpectedTokensSummary) -> bool {
+    summary.has_alternatives()
+        || non_blank_string(summary.humanized.as_ref()).is_some()
+        || non_blank_string(summary.context_note.as_ref()).is_some()
 }
 
 pub fn span_to_primary_value(span: Option<Span>, index: &LineIndex, input_path: &Path) -> Value {
@@ -355,6 +383,16 @@ fn default_expected_message(tokens: &[String]) -> String {
     format!("ここで{}のいずれかが必要です", formatted)
 }
 
+fn non_blank_string(value: Option<&String>) -> Option<String> {
+    value.and_then(|text| {
+        if text.trim().is_empty() {
+            None
+        } else {
+            Some(text.clone())
+        }
+    })
+}
+
 fn effective_codes(diag: &FrontendDiagnostic) -> Vec<String> {
     if !diag.codes.is_empty() {
         diag.codes.clone()
@@ -362,5 +400,40 @@ fn effective_codes(diag: &FrontendDiagnostic) -> Vec<String> {
         vec![code.clone()]
     } else {
         vec!["unknown".to_string()]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        build_recover_extension, ExpectedToken, ExpectedTokensSummary, FrontendDiagnostic,
+    };
+
+    #[test]
+    fn recover_extension_from_summary_includes_context() {
+        let summary = ExpectedTokensSummary {
+            message_key: Some("parse.expected".to_string()),
+            locale_args: vec!["fn".to_string()],
+            humanized: Some("ここで `fn` が必要です".to_string()),
+            context_note: Some("式の中でここに来ました".to_string()),
+            alternatives: vec![ExpectedToken::keyword("fn")],
+        };
+        let diag = FrontendDiagnostic::new("oops").apply_expected_summary(&summary);
+        let payload = build_recover_extension(&diag).expect("recover extension must exist");
+        assert_eq!(
+            payload.get("context").and_then(|value| value.as_str()),
+            Some("式の中でここに来ました")
+        );
+        assert_eq!(
+            payload.get("message").and_then(|value| value.as_str()),
+            Some("ここで `fn` が必要です")
+        );
+        assert_eq!(
+            payload
+                .get("expected_tokens")
+                .and_then(|value| value.as_array())
+                .map(|arr| arr.len()),
+            Some(1)
+        );
     }
 }

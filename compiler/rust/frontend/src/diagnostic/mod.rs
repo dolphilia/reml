@@ -200,6 +200,7 @@ pub struct FrontendDiagnostic {
     pub expected_humanized: Option<String>,
     pub expected_message_key: Option<String>,
     pub expected_alternatives: Vec<ExpectedToken>,
+    pub expected_summary: Option<ExpectedTokensSummary>,
 }
 
 impl FrontendDiagnostic {
@@ -222,6 +223,7 @@ impl FrontendDiagnostic {
             expected_humanized: None,
             expected_message_key: None,
             expected_alternatives: Vec::new(),
+            expected_summary: None,
         }
     }
 
@@ -311,6 +313,7 @@ impl FrontendDiagnostic {
                 .map(ExpectedToken::custom)
                 .collect();
         }
+        self.expected_summary = None;
         self
     }
 
@@ -371,6 +374,7 @@ impl FrontendDiagnostic {
             );
             self.expected_alternatives.clear();
         }
+        self.expected_summary = Some(summary.clone());
     }
 
     /// Streaming Pending/Resume で recover が走らない場合でも、

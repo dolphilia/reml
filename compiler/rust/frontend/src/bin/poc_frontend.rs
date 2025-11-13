@@ -1295,7 +1295,10 @@ fn build_type_diagnostics(
             if let Some(summary) = violation.expected_summary() {
                 let payload = diag_json::expected_payload_from_summary(summary);
                 expected_value = payload.clone();
-                extensions.insert("recover".to_string(), payload);
+                extensions.insert(
+                    "recover".to_string(),
+                    diag_json::recover_extension_payload_from_summary(summary),
+                );
             }
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
             let mut audit_metadata = build_audit_metadata(

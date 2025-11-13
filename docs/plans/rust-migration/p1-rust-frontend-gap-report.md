@@ -258,6 +258,25 @@ FRG-16 は `scripts/validate-diagnostic-json.sh` で定義された `diagnostic-
   - ✅ `poc_frontend.rs` の `build_parser_diagnostics` と `build_type_diagnostics` を `diag_json` モジュール経由へ切り替え、`primary`/`codes`/`audit` をスキーマ正準な形で出力するようにした。
   - ⏳ `scripts/validate-diagnostic-json.sh` は Node.js ランタイムと `tooling/lsp/tests/client_compat/node_modules` が整備されていないため未実行。実行環境が揃い次第 `diagnostic-v2.schema.json` との比較を走らせる。
 
+### FRG-17
+
+1. **`ExpectationSummary` を診断に保持（Day 1）**
+   - `docs/spec/2-5-error.md` に記された `ExpectationSummary` の `context_note` / `message_key` / `alternatives` を再確認し、Rust `FrontendDiagnostic` へ `ExpectedTokensSummary` を持たせて再利用できる API（`apply_expected_summary` / `merge_expected_summary`）を整理する。
+   - `compiler/ocaml/src/parser_driver.ml:77` の `attach_recover_extension` を参照し、context note が JSON へ出力される出力経路を把握して `diagnostic/mod.rs` の構造を再設計する。
+
+2. **Recover 拡張の JSON 化（Day 2）**
+   - `compiler/rust/frontend/src/diagnostic/json.rs` に `recover_extension_payload_from_summary` を実装し、`ExpectedTokensSummary` から `expected_tokens`・`message`・`context` を取り出す helper を定義する。
+   - `build_recover_extension` を更新して summary を優先しつつ既存の `expected_tokens`/`recover.expected_tokens` ノートフォーマットをフォールバックに残し、context note を含めたまま `extensions["recover"]` を出力できるようにする。
+
+3. **dual-write と検証（Day 3）**
+   - `compiler/rust/frontend/src/bin/poc_frontend.rs` の `build_type_diagnostics` でも新 helper を使い、Typecheck 側の recover extension でも context が出力されるようにする。
+   - `compiler/rust/frontend/src/diagnostic/json.rs` にユニットテストを追加して context note を保持した recover extension が `build_recover_extension` から返ることを保証し、JSON 生成が仕様通りであることを `cargo fmt`/`cargo test` でも確認する（テストは `reml_frontend` クレートに含める）。
+
+- 進捗ログ
+  - ✅ `FrontendDiagnostic` が `ExpectedTokensSummary` を保持し、`apply_expected_summary`/`merge_expected_summary` で context を保持したまま `expected_*` フィールドを更新するようになった。
+  - ✅ `diag_json::recover_extension_payload_from_summary` を追加し、`build_recover_extension`/`build_type_diagnostics` が context note を含む `recover` JSON を生成するようになった。
+  - ✅ `diagnostic/json.rs` に context note を含む recover 拡張を検証するユニットテストを追加し、Rustfmt を通してファイル整形を確認した。
+
 ## 5. ノート
 
 - 仕様参照: `docs/spec/1-1-syntax.md`, `1-2-types-Inference.md`, `1-3-effects-safety.md`, `2-1-parser-type.md`, `2-5-error.md`, `2-7-core-parse-streaming.md`, `3-6-core-diagnostics-audit.md`
