@@ -1,10 +1,14 @@
-//! Reml フロントエンドの字句解析器実装（W1 PoC）。
+//! Reml フロントエンドの字句解析器実装。
+//!
+//! 仕様 1-1 §A.3〜A.4（字句）および OCaml 実装 `lexer.mll` に基づき、キーワード／演算子／
+//! Unicode 識別子を Rust で再実装する。`IdentifierProfile` で ASCII 互換モードへ切り替え
+//! できるようにし、RunConfig (`extensions.lex.identifier_profile`) から渡せる経路もここで確保する。
 
 use logos::{Lexer as LogosLexer, Logos};
 
 use crate::error::{FrontendError, FrontendErrorKind, Recoverability};
 use crate::span::Span;
-use crate::token::{Token, TokenKind};
+use crate::token::{IntBase, LiteralMetadata, StringKind, Token, TokenKind};
 
 /// 字句解析に利用する入力ソースの抽象化。
 pub trait SourceBuffer {
@@ -23,6 +27,33 @@ impl<'a> SourceBuffer for &'a str {
     }
 }
 
+/// Unicode 識別子プロファイルの切替。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IdentifierProfile {
+    Unicode,
+    AsciiCompat,
+}
+
+impl Default for IdentifierProfile {
+    fn default() -> Self {
+        IdentifierProfile::Unicode
+    }
+}
+
+/// Lexer のオプション。
+#[derive(Debug, Clone, Copy)]
+pub struct LexerOptions {
+    pub identifier_profile: IdentifierProfile,
+}
+
+impl Default for LexerOptions {
+    fn default() -> Self {
+        Self {
+            identifier_profile: IdentifierProfile::Unicode,
+        }
+    }
+}
+
 /// `logos` が生成する内部トークン列挙。
 #[derive(Debug, Clone, Copy, Logos, PartialEq, Eq)]
 enum RawToken {
@@ -30,63 +61,188 @@ enum RawToken {
     #[regex(r"//[^\n]*", logos::skip)]
     Skip,
 
-    #[token("fn")]
-    KeywordFn,
-    #[token("let")]
-    KeywordLet,
+    #[token("/*", lex_block_comment)]
+    BlockComment,
+
     #[token("module")]
     KeywordModule,
+    #[token("use")]
+    KeywordUse,
+    #[token("as")]
+    KeywordAs,
+    #[token("pub")]
+    KeywordPub,
+    #[token("self")]
+    KeywordSelf,
+    #[token("super")]
+    KeywordSuper,
+    #[token("let")]
+    KeywordLet,
+    #[token("var")]
+    KeywordVar,
+    #[token("fn")]
+    KeywordFn,
+    #[token("type")]
+    KeywordType,
+    #[token("alias")]
+    KeywordAlias,
+    #[token("new")]
+    KeywordNew,
+    #[token("trait")]
+    KeywordTrait,
+    #[token("impl")]
+    KeywordImpl,
+    #[token("extern")]
+    KeywordExtern,
     #[token("effect")]
     KeywordEffect,
-    #[token("else")]
-    KeywordElse,
-    #[token("perform")]
-    KeywordPerform,
+    #[token("operation")]
+    KeywordOperation,
+    #[token("handler")]
+    KeywordHandler,
+    #[token("conductor")]
+    KeywordConductor,
+    #[token("channels")]
+    KeywordChannels,
+    #[token("execution")]
+    KeywordExecution,
+    #[token("monitoring")]
+    KeywordMonitoring,
     #[token("if")]
     KeywordIf,
     #[token("then")]
     KeywordThen,
+    #[token("else")]
+    KeywordElse,
+    #[token("match")]
+    KeywordMatch,
+    #[token("with")]
+    KeywordWith,
+    #[token("for")]
+    KeywordFor,
+    #[token("in")]
+    KeywordIn,
+    #[token("while")]
+    KeywordWhile,
+    #[token("loop")]
+    KeywordLoop,
+    #[token("return")]
+    KeywordReturn,
+    #[token("defer")]
+    KeywordDefer,
+    #[token("unsafe")]
+    KeywordUnsafe,
+    #[token("perform")]
+    KeywordPerform,
+    #[token("do")]
+    KeywordDo,
+    #[token("handle")]
+    KeywordHandle,
+    #[token("where")]
+    KeywordWhere,
     #[token("true")]
     KeywordTrue,
     #[token("false")]
     KeywordFalse,
+    #[token("break")]
+    KeywordBreak,
+    #[token("continue")]
+    KeywordContinue,
 
-    #[regex(r"[A-Za-z_][A-Za-z0-9_]*")]
-    Identifier,
-    #[regex(r"[0-9]+")]
-    IntLiteral,
-    #[regex(r#""([^"\\]|\\.)*""#)]
-    #[regex(r#"\\""#, lex_escaped_string)]
-    StringLiteral,
+    #[token("|>")]
+    PipeForward,
+    #[token("~>")]
+    ChannelPipe,
+    #[token("..")]
+    DotDot,
+    #[token("=>")]
+    DoubleArrow,
+    #[token("->")]
+    Arrow,
+    #[token(":=")]
+    ColonAssign,
+    #[token("&&")]
+    LogicalAnd,
+    #[token("||")]
+    LogicalOr,
+    #[token("==")]
+    EqEq,
+    #[token("!=")]
+    NotEq,
+    #[token("<=")]
+    Le,
+    #[token(">=")]
+    Ge,
 
+    #[token(".")]
+    Dot,
+    #[token(",")]
+    Comma,
+    #[token(";")]
+    Semicolon,
+    #[token(":")]
+    Colon,
+    #[token("@")]
+    At,
+    #[token("|")]
+    Bar,
+    #[token("=")]
+    Assign,
     #[token("(")]
     LParen,
     #[token(")")]
     RParen,
-    #[token("{")]
-    LBrace,
-    #[token("}")]
-    RBrace,
     #[token("[")]
     LBracket,
     #[token("]")]
     RBracket,
-    #[token(",")]
-    Comma,
-    #[token(":")]
-    Colon,
-    #[token(";")]
-    Semi,
-    #[token("->")]
-    Arrow,
-    #[token("=>")]
-    FatArrow,
-    #[token("=")]
-    Assign,
+    #[token("{")]
+    LBrace,
+    #[token("}")]
+    RBrace,
     #[token("+")]
     Plus,
-    #[regex(r"[^\s]", priority = 0)]
-    Other,
+    #[token("-")]
+    Minus,
+    #[token("*")]
+    Star,
+    #[token("/")]
+    Slash,
+    #[token("%")]
+    Percent,
+    #[token("^")]
+    Caret,
+    #[token("<")]
+    Lt,
+    #[token(">")]
+    Gt,
+    #[token("!")]
+    Not,
+    #[token("?")]
+    Question,
+    #[token("_", priority = 4)]
+    Underscore,
+
+    #[regex(r"[0-9][0-9_]*\.[0-9_]+([eE][+-]?[0-9_]+)?", priority = 3)]
+    #[regex(r"[0-9][0-9_]*[eE][+-]?[0-9_]+", priority = 2)]
+    FloatLiteral,
+    #[regex(r"0[bB][01_]+", priority = 4)]
+    #[regex(r"0[oO][0-7_]+", priority = 4)]
+    #[regex(r"0[xX][0-9a-fA-F_]+", priority = 4)]
+    #[regex(r"[0-9][0-9_]*", priority = 2)]
+    IntLiteral,
+
+    #[token("\"\"\"", lex_multiline_string, priority = 2)]
+    MultilineStringLiteral,
+    #[token("r\"", lex_raw_string)]
+    RawStringLiteral,
+    #[token("\"", lex_string_literal)]
+    StringLiteral,
+    #[token("'", lex_char_literal)]
+    CharLiteral,
+
+    #[regex(r"(?u)(?:_|\p{XID_Start})\p{XID_Continue}*", priority = 1)]
+    Identifier,
 }
 
 /// 字句解析結果。
@@ -95,12 +251,66 @@ pub struct LexOutput {
     pub errors: Vec<FrontendError>,
 }
 
-fn lex_escaped_string(lex: &mut LogosLexer<RawToken>) -> Option<()> {
+fn lex_block_comment(lex: &mut LogosLexer<RawToken>) -> Option<()> {
+    let mut depth = 1usize;
+    let mut offset = 0usize;
+    let bytes = lex.remainder().as_bytes();
+    while offset + 1 < bytes.len() {
+        match (bytes[offset], bytes[offset + 1]) {
+            (b'/', b'*') => {
+                depth += 1;
+                offset += 2;
+            }
+            (b'*', b'/') => {
+                depth -= 1;
+                offset += 2;
+                if depth == 0 {
+                    lex.bump(offset);
+                    return Some(());
+                }
+            }
+            _ => offset += 1,
+        }
+    }
+    None
+}
+
+fn lex_string_literal(lex: &mut LogosLexer<RawToken>) -> Option<()> {
+    let mut escaped = false;
+    for (idx, ch) in lex.remainder().char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        match ch {
+            '\\' => escaped = true,
+            '"' => {
+                lex.bump(idx + 1);
+                return Some(());
+            }
+            '\n' | '\r' => return None,
+            _ => {}
+        }
+    }
+    None
+}
+
+fn lex_raw_string(lex: &mut LogosLexer<RawToken>) -> Option<()> {
+    for (idx, ch) in lex.remainder().char_indices() {
+        if ch == '"' {
+            lex.bump(idx + 1);
+            return Some(());
+        }
+    }
+    None
+}
+
+fn lex_multiline_string(lex: &mut LogosLexer<RawToken>) -> Option<()> {
     let mut offset = 0usize;
     let remainder = lex.remainder().as_bytes();
-    while offset + 1 < remainder.len() {
-        if remainder[offset] == b'\\' && remainder[offset + 1] == b'"' {
-            lex.bump(offset + 2);
+    while offset + 2 < remainder.len() {
+        if remainder[offset] == b'"' && remainder[offset + 1] == b'"' && remainder[offset + 2] == b'"' {
+            lex.bump(offset + 3);
             return Some(());
         }
         offset += 1;
@@ -108,8 +318,33 @@ fn lex_escaped_string(lex: &mut LogosLexer<RawToken>) -> Option<()> {
     None
 }
 
-/// `SourceBuffer` を `logos` で解析し、`Token` の列を生成する。
+fn lex_char_literal(lex: &mut LogosLexer<RawToken>) -> Option<()> {
+    let mut escaped = false;
+    for (idx, ch) in lex.remainder().char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        match ch {
+            '\\' => escaped = true,
+            '\'' => {
+                lex.bump(idx + 1);
+                return Some(());
+            }
+            '\n' | '\r' => return None,
+            _ => {}
+        }
+    }
+    None
+}
+
+/// `SourceBuffer` を解析し、`Token` の列を生成する。
 pub fn lex_source(text: &str) -> LexOutput {
+    lex_source_with_options(text, LexerOptions::default())
+}
+
+/// `SourceBuffer` を解析し、`Token` の列を生成する（プロファイル指定版）。
+pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
     let mut lexer = RawToken::lexer(text);
     let mut tokens = Vec::new();
     let mut errors = Vec::new();
@@ -117,91 +352,159 @@ pub fn lex_source(text: &str) -> LexOutput {
     while let Some(result) = lexer.next() {
         let range = lexer.span();
         let span = Span::new(range.start as u32, range.end as u32);
-
         match result {
-            Ok(RawToken::KeywordFn) => {
-                tokens.push(Token::with_lexeme(TokenKind::KeywordFn, span, "fn"));
-            }
-            Ok(RawToken::KeywordLet) => {
-                tokens.push(Token::with_lexeme(TokenKind::KeywordLet, span, "let"));
-            }
-            Ok(RawToken::KeywordModule) => {
-                tokens.push(Token::with_lexeme(TokenKind::KeywordModule, span, "module"));
-            }
-            Ok(RawToken::KeywordEffect) => {
-                tokens.push(Token::with_lexeme(TokenKind::KeywordEffect, span, "effect"));
-            }
-            Ok(RawToken::KeywordElse) => {
-                tokens.push(Token::with_lexeme(TokenKind::KeywordElse, span, "else"));
-            }
-            Ok(RawToken::KeywordPerform) => {
-                tokens.push(Token::with_lexeme(
-                    TokenKind::KeywordPerform,
-                    span,
-                    "perform",
-                ));
-            }
-            Ok(RawToken::KeywordIf) => {
-                tokens.push(Token::with_lexeme(TokenKind::KeywordIf, span, "if"));
-            }
-            Ok(RawToken::KeywordThen) => {
-                tokens.push(Token::with_lexeme(TokenKind::KeywordThen, span, "then"));
-            }
-            Ok(RawToken::KeywordTrue) => {
-                tokens.push(Token::with_lexeme(TokenKind::KeywordTrue, span, "true"));
-            }
-            Ok(RawToken::KeywordFalse) => {
-                tokens.push(Token::with_lexeme(TokenKind::KeywordFalse, span, "false"));
-            }
+            Ok(RawToken::KeywordModule) => push_keyword(&mut tokens, span, TokenKind::KeywordModule, "module"),
+            Ok(RawToken::KeywordUse) => push_keyword(&mut tokens, span, TokenKind::KeywordUse, "use"),
+            Ok(RawToken::KeywordAs) => push_keyword(&mut tokens, span, TokenKind::KeywordAs, "as"),
+            Ok(RawToken::KeywordPub) => push_keyword(&mut tokens, span, TokenKind::KeywordPub, "pub"),
+            Ok(RawToken::KeywordSelf) => push_keyword(&mut tokens, span, TokenKind::KeywordSelf, "self"),
+            Ok(RawToken::KeywordSuper) => push_keyword(&mut tokens, span, TokenKind::KeywordSuper, "super"),
+            Ok(RawToken::KeywordLet) => push_keyword(&mut tokens, span, TokenKind::KeywordLet, "let"),
+            Ok(RawToken::KeywordVar) => push_keyword(&mut tokens, span, TokenKind::KeywordVar, "var"),
+            Ok(RawToken::KeywordFn) => push_keyword(&mut tokens, span, TokenKind::KeywordFn, "fn"),
+            Ok(RawToken::KeywordType) => push_keyword(&mut tokens, span, TokenKind::KeywordType, "type"),
+            Ok(RawToken::KeywordAlias) => push_keyword(&mut tokens, span, TokenKind::KeywordAlias, "alias"),
+            Ok(RawToken::KeywordNew) => push_keyword(&mut tokens, span, TokenKind::KeywordNew, "new"),
+            Ok(RawToken::KeywordTrait) => push_keyword(&mut tokens, span, TokenKind::KeywordTrait, "trait"),
+            Ok(RawToken::KeywordImpl) => push_keyword(&mut tokens, span, TokenKind::KeywordImpl, "impl"),
+            Ok(RawToken::KeywordExtern) => push_keyword(&mut tokens, span, TokenKind::KeywordExtern, "extern"),
+            Ok(RawToken::KeywordEffect) => push_keyword(&mut tokens, span, TokenKind::KeywordEffect, "effect"),
+            Ok(RawToken::KeywordOperation) => push_keyword(&mut tokens, span, TokenKind::KeywordOperation, "operation"),
+            Ok(RawToken::KeywordHandler) => push_keyword(&mut tokens, span, TokenKind::KeywordHandler, "handler"),
+            Ok(RawToken::KeywordConductor) => push_keyword(&mut tokens, span, TokenKind::KeywordConductor, "conductor"),
+            Ok(RawToken::KeywordChannels) => push_keyword(&mut tokens, span, TokenKind::KeywordChannels, "channels"),
+            Ok(RawToken::KeywordExecution) => push_keyword(&mut tokens, span, TokenKind::KeywordExecution, "execution"),
+            Ok(RawToken::KeywordMonitoring) => push_keyword(&mut tokens, span, TokenKind::KeywordMonitoring, "monitoring"),
+            Ok(RawToken::KeywordIf) => push_keyword(&mut tokens, span, TokenKind::KeywordIf, "if"),
+            Ok(RawToken::KeywordThen) => push_keyword(&mut tokens, span, TokenKind::KeywordThen, "then"),
+            Ok(RawToken::KeywordElse) => push_keyword(&mut tokens, span, TokenKind::KeywordElse, "else"),
+            Ok(RawToken::KeywordMatch) => push_keyword(&mut tokens, span, TokenKind::KeywordMatch, "match"),
+            Ok(RawToken::KeywordWith) => push_keyword(&mut tokens, span, TokenKind::KeywordWith, "with"),
+            Ok(RawToken::KeywordFor) => push_keyword(&mut tokens, span, TokenKind::KeywordFor, "for"),
+            Ok(RawToken::KeywordIn) => push_keyword(&mut tokens, span, TokenKind::KeywordIn, "in"),
+            Ok(RawToken::KeywordWhile) => push_keyword(&mut tokens, span, TokenKind::KeywordWhile, "while"),
+            Ok(RawToken::KeywordLoop) => push_keyword(&mut tokens, span, TokenKind::KeywordLoop, "loop"),
+            Ok(RawToken::KeywordReturn) => push_keyword(&mut tokens, span, TokenKind::KeywordReturn, "return"),
+            Ok(RawToken::KeywordDefer) => push_keyword(&mut tokens, span, TokenKind::KeywordDefer, "defer"),
+            Ok(RawToken::KeywordUnsafe) => push_keyword(&mut tokens, span, TokenKind::KeywordUnsafe, "unsafe"),
+            Ok(RawToken::KeywordPerform) => push_keyword(&mut tokens, span, TokenKind::KeywordPerform, "perform"),
+            Ok(RawToken::KeywordDo) => push_keyword(&mut tokens, span, TokenKind::KeywordDo, "do"),
+            Ok(RawToken::KeywordHandle) => push_keyword(&mut tokens, span, TokenKind::KeywordHandle, "handle"),
+            Ok(RawToken::KeywordWhere) => push_keyword(&mut tokens, span, TokenKind::KeywordWhere, "where"),
+            Ok(RawToken::KeywordTrue) => push_keyword(&mut tokens, span, TokenKind::KeywordTrue, "true"),
+            Ok(RawToken::KeywordFalse) => push_keyword(&mut tokens, span, TokenKind::KeywordFalse, "false"),
+            Ok(RawToken::KeywordBreak) => push_keyword(&mut tokens, span, TokenKind::KeywordBreak, "break"),
+            Ok(RawToken::KeywordContinue) => push_keyword(&mut tokens, span, TokenKind::KeywordContinue, "continue"),
             Ok(RawToken::Identifier) => {
-                tokens.push(Token::with_lexeme(
-                    TokenKind::Identifier,
-                    span,
-                    lexer.slice(),
-                ));
+                let slice = lexer.slice();
+                if options.identifier_profile == IdentifierProfile::AsciiCompat && !slice.is_ascii() {
+                    push_ascii_error(span, slice, &mut errors, &mut tokens);
+                    continue;
+                }
+                if slice == "_" {
+                    tokens.push(Token::new(TokenKind::Underscore, span));
+                    continue;
+                }
+                let first = slice.chars().next().unwrap_or('_');
+                let kind = if is_upper_identifier_start(first) {
+                    TokenKind::UpperIdentifier
+                } else {
+                    TokenKind::Identifier
+                };
+                tokens.push(Token::with_lexeme(kind, span, slice));
             }
             Ok(RawToken::IntLiteral) => {
-                tokens.push(Token::with_lexeme(
+                let lexeme = lexer.slice();
+                let base = detect_int_base(lexeme);
+                tokens.push(Token::with_literal(
                     TokenKind::IntLiteral,
                     span,
-                    lexer.slice(),
+                    lexeme,
+                    LiteralMetadata::Int { base },
                 ));
             }
-            Ok(RawToken::StringLiteral) => {
-                tokens.push(Token::with_lexeme(
-                    TokenKind::StringLiteral,
+            Ok(RawToken::FloatLiteral) => {
+                tokens.push(Token::with_literal(
+                    TokenKind::FloatLiteral,
                     span,
                     lexer.slice(),
+                    LiteralMetadata::Float,
                 ));
             }
+            Ok(RawToken::StringLiteral) => tokens.push(Token::with_literal(
+                TokenKind::StringLiteral,
+                span,
+                collect_string_lexeme(text, range),
+                LiteralMetadata::String {
+                    kind: StringKind::Normal,
+                },
+            )),
+            Ok(RawToken::RawStringLiteral) => tokens.push(Token::with_literal(
+                TokenKind::StringLiteral,
+                span,
+                collect_string_lexeme(text, range),
+                LiteralMetadata::String {
+                    kind: StringKind::Raw,
+                },
+            )),
+            Ok(RawToken::MultilineStringLiteral) => tokens.push(Token::with_literal(
+                TokenKind::StringLiteral,
+                span,
+                collect_string_lexeme(text, range),
+                LiteralMetadata::String {
+                    kind: StringKind::Multiline,
+                },
+            )),
+            Ok(RawToken::CharLiteral) => tokens.push(Token::with_literal(
+                TokenKind::CharLiteral,
+                span,
+                collect_string_lexeme(text, range),
+                LiteralMetadata::Char,
+            )),
+            Ok(RawToken::PipeForward) => tokens.push(Token::new(TokenKind::PipeForward, span)),
+            Ok(RawToken::ChannelPipe) => tokens.push(Token::new(TokenKind::ChannelPipe, span)),
+            Ok(RawToken::Dot) => tokens.push(Token::new(TokenKind::Dot, span)),
+            Ok(RawToken::Comma) => tokens.push(Token::new(TokenKind::Comma, span)),
+            Ok(RawToken::Semicolon) => tokens.push(Token::new(TokenKind::Semicolon, span)),
+            Ok(RawToken::Colon) => tokens.push(Token::new(TokenKind::Colon, span)),
+            Ok(RawToken::ColonAssign) => tokens.push(Token::new(TokenKind::ColonAssign, span)),
+            Ok(RawToken::At) => tokens.push(Token::new(TokenKind::At, span)),
+            Ok(RawToken::Bar) => tokens.push(Token::new(TokenKind::Bar, span)),
+            Ok(RawToken::Assign) => tokens.push(Token::new(TokenKind::Assign, span)),
+            Ok(RawToken::Arrow) => tokens.push(Token::new(TokenKind::Arrow, span)),
+            Ok(RawToken::DoubleArrow) => tokens.push(Token::new(TokenKind::DoubleArrow, span)),
             Ok(RawToken::LParen) => tokens.push(Token::new(TokenKind::LParen, span)),
             Ok(RawToken::RParen) => tokens.push(Token::new(TokenKind::RParen, span)),
-            Ok(RawToken::LBrace) => tokens.push(Token::new(TokenKind::LBrace, span)),
-            Ok(RawToken::RBrace) => tokens.push(Token::new(TokenKind::RBrace, span)),
             Ok(RawToken::LBracket) => tokens.push(Token::new(TokenKind::LBracket, span)),
             Ok(RawToken::RBracket) => tokens.push(Token::new(TokenKind::RBracket, span)),
-            Ok(RawToken::Comma) => tokens.push(Token::new(TokenKind::Comma, span)),
-            Ok(RawToken::Colon) => tokens.push(Token::new(TokenKind::Colon, span)),
-            Ok(RawToken::Semi) => tokens.push(Token::new(TokenKind::Semi, span)),
-            Ok(RawToken::Arrow) | Ok(RawToken::FatArrow) => {
-                tokens.push(Token::new(TokenKind::Arrow, span))
-            }
-            Ok(RawToken::Assign) => tokens.push(Token::new(TokenKind::Assign, span)),
-            Ok(RawToken::Plus) => {
-                tokens.push(Token::with_lexeme(TokenKind::Operator, span, "+"));
-            }
-            Ok(RawToken::Other) => {
-                errors.push(FrontendError::new(
-                    FrontendErrorKind::UnknownToken { span },
-                    Recoverability::Recoverable,
-                ));
-            }
+            Ok(RawToken::LBrace) => tokens.push(Token::new(TokenKind::LBrace, span)),
+            Ok(RawToken::RBrace) => tokens.push(Token::new(TokenKind::RBrace, span)),
+            Ok(RawToken::Plus) => tokens.push(Token::new(TokenKind::Plus, span)),
+            Ok(RawToken::Minus) => tokens.push(Token::new(TokenKind::Minus, span)),
+            Ok(RawToken::Star) => tokens.push(Token::new(TokenKind::Star, span)),
+            Ok(RawToken::Slash) => tokens.push(Token::new(TokenKind::Slash, span)),
+            Ok(RawToken::Percent) => tokens.push(Token::new(TokenKind::Percent, span)),
+            Ok(RawToken::Caret) => tokens.push(Token::new(TokenKind::Caret, span)),
+            Ok(RawToken::EqEq) => tokens.push(Token::new(TokenKind::EqEq, span)),
+            Ok(RawToken::NotEq) => tokens.push(Token::new(TokenKind::NotEqual, span)),
+            Ok(RawToken::Lt) => tokens.push(Token::new(TokenKind::Lt, span)),
+            Ok(RawToken::Le) => tokens.push(Token::new(TokenKind::Le, span)),
+            Ok(RawToken::Gt) => tokens.push(Token::new(TokenKind::Gt, span)),
+            Ok(RawToken::Ge) => tokens.push(Token::new(TokenKind::Ge, span)),
+            Ok(RawToken::LogicalAnd) => tokens.push(Token::new(TokenKind::LogicalAnd, span)),
+            Ok(RawToken::LogicalOr) => tokens.push(Token::new(TokenKind::LogicalOr, span)),
+            Ok(RawToken::Not) => tokens.push(Token::new(TokenKind::Not, span)),
+            Ok(RawToken::Question) => tokens.push(Token::new(TokenKind::Question, span)),
+            Ok(RawToken::DotDot) => tokens.push(Token::new(TokenKind::DotDot, span)),
+            Ok(RawToken::Underscore) => tokens.push(Token::new(TokenKind::Underscore, span)),
+            Ok(RawToken::BlockComment) => {}
             Ok(RawToken::Skip) => {}
             Err(_) => {
                 errors.push(FrontendError::new(
                     FrontendErrorKind::UnknownToken { span },
                     Recoverability::Recoverable,
                 ));
+                tokens.push(Token::with_lexeme(TokenKind::Unknown, span, lexer.slice()));
             }
         }
     }
@@ -212,13 +515,55 @@ pub fn lex_source(text: &str) -> LexOutput {
     LexOutput { tokens, errors }
 }
 
+fn collect_string_lexeme(text: &str, range: std::ops::Range<usize>) -> String {
+    text[range.start..range.end].to_string()
+}
+
+fn push_keyword(tokens: &mut Vec<Token>, span: Span, kind: TokenKind, text: &'static str) {
+    tokens.push(Token::with_lexeme(kind, span, text));
+}
+
+fn detect_int_base(lexeme: &str) -> IntBase {
+    if lexeme.len() >= 2 {
+        let prefix = &lexeme[0..2];
+        match prefix {
+            "0b" | "0B" => return IntBase::Binary,
+            "0o" | "0O" => return IntBase::Octal,
+            "0x" | "0X" => return IntBase::Hexadecimal,
+            _ => {}
+        }
+    }
+    IntBase::Decimal
+}
+
+fn push_ascii_error(
+    span: Span,
+    lexeme: &str,
+    errors: &mut Vec<FrontendError>,
+    tokens: &mut Vec<Token>,
+) {
+    errors.push(FrontendError::new(
+        FrontendErrorKind::UnknownToken { span },
+        Recoverability::Recoverable,
+    ));
+    tokens.push(Token::with_lexeme(TokenKind::Unknown, span, lexeme));
+}
+
+fn is_upper_identifier_start(ch: char) -> bool {
+    if ch.is_ascii() {
+        ch.is_ascii_uppercase()
+    } else {
+        ch.is_uppercase()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn lex_handles_escaped_string_literal() {
-        let source = "fn main() = emit(\\\"leak\\\")";
+        let source = "fn main() = emit(\"leak\")";
         let output = lex_source(source);
         let string_tokens: Vec<_> = output
             .tokens
@@ -251,5 +596,9 @@ impl<'input> Lexer<'input> {
 
     pub fn run(&self) -> LexOutput {
         lex_source(self.source)
+    }
+
+    pub fn run_with_options(&self, options: LexerOptions) -> LexOutput {
+        lex_source_with_options(self.source, options)
     }
 }

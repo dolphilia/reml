@@ -2,41 +2,185 @@
 
 use crate::span::Span;
 
+/// 整数リテラルの基数。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum IntBase {
+    Binary,
+    Octal,
+    Decimal,
+    Hexadecimal,
+}
+
+/// 文字列リテラルの種別。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StringKind {
+    /// 通常のダブルクォート文字列（C系のエスケープシーケンスを解釈）。
+    Normal,
+    /// `r"..."` 形式の Raw 文字列。
+    Raw,
+    /// `""" ... """` で囲む複数行文字列。
+    Multiline,
+}
+
+/// リテラルに付随する追加情報。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LiteralMetadata {
+    Int { base: IntBase },
+    Float,
+    Char,
+    String { kind: StringKind },
+}
+
 /// 字句解析で得られるトークン種別。
-/// 実際の列挙子は W2 以降の AST 対応表と同期しながら拡張する。
+/// 仕様 1-1 §A.3〜A.4 と `compiler/ocaml/src/token.ml` に合わせて定義する。
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TokenKind {
     Identifier,
+    UpperIdentifier,
     IntLiteral,
     FloatLiteral,
+    CharLiteral,
     StringLiteral,
-    KeywordLet,
-    KeywordElse,
-    KeywordFn,
-    KeywordEffect,
+
     KeywordModule,
-    KeywordPerform,
+    KeywordUse,
+    KeywordAs,
+    KeywordPub,
+    KeywordSelf,
+    KeywordSuper,
+    KeywordLet,
+    KeywordVar,
+    KeywordFn,
+    KeywordType,
+    KeywordAlias,
+    KeywordNew,
+    KeywordTrait,
+    KeywordImpl,
+    KeywordExtern,
+    KeywordEffect,
+    KeywordOperation,
+    KeywordHandler,
+    KeywordConductor,
+    KeywordChannels,
+    KeywordExecution,
+    KeywordMonitoring,
     KeywordIf,
     KeywordThen,
+    KeywordElse,
+    KeywordMatch,
+    KeywordWith,
+    KeywordFor,
+    KeywordIn,
+    KeywordWhile,
+    KeywordLoop,
+    KeywordReturn,
+    KeywordDefer,
+    KeywordUnsafe,
+    KeywordPerform,
+    KeywordDo,
+    KeywordHandle,
+    KeywordWhere,
     KeywordTrue,
     KeywordFalse,
+    KeywordBreak,
+    KeywordContinue,
+
+    PipeForward,
+    ChannelPipe,
+    Dot,
+    Comma,
+    Semicolon,
+    Colon,
+    At,
+    Bar,
+    Assign,
+    ColonAssign,
+    Arrow,
+    DoubleArrow,
     LParen,
     RParen,
-    LBrace,
-    RBrace,
     LBracket,
     RBracket,
-    Comma,
-    Colon,
-    Semi,
-    Arrow,
-    Assign,
-    Operator,
+    LBrace,
+    RBrace,
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    Percent,
+    Caret,
+    EqEq,
+    NotEqual,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+    LogicalAnd,
+    LogicalOr,
+    Not,
+    Question,
+    DotDot,
+    Underscore,
+
     Comment,
     Whitespace,
     EndOfFile,
-    /// 未知のトークン。診断で recover 可能な状態として扱う。
+    /// 未定義のトークン。診断で recover 可能な状態として扱う。
     Unknown,
+}
+
+impl TokenKind {
+    /// キーワードの場合は対応する文字列表現を返す。
+    pub fn keyword_literal(&self) -> Option<&'static str> {
+        use TokenKind::*;
+        let keyword = match self {
+            KeywordModule => "module",
+            KeywordUse => "use",
+            KeywordAs => "as",
+            KeywordPub => "pub",
+            KeywordSelf => "self",
+            KeywordSuper => "super",
+            KeywordLet => "let",
+            KeywordVar => "var",
+            KeywordFn => "fn",
+            KeywordType => "type",
+            KeywordAlias => "alias",
+            KeywordNew => "new",
+            KeywordTrait => "trait",
+            KeywordImpl => "impl",
+            KeywordExtern => "extern",
+            KeywordEffect => "effect",
+            KeywordOperation => "operation",
+            KeywordHandler => "handler",
+            KeywordConductor => "conductor",
+            KeywordChannels => "channels",
+            KeywordExecution => "execution",
+            KeywordMonitoring => "monitoring",
+            KeywordIf => "if",
+            KeywordThen => "then",
+            KeywordElse => "else",
+            KeywordMatch => "match",
+            KeywordWith => "with",
+            KeywordFor => "for",
+            KeywordIn => "in",
+            KeywordWhile => "while",
+            KeywordLoop => "loop",
+            KeywordReturn => "return",
+            KeywordDefer => "defer",
+            KeywordUnsafe => "unsafe",
+            KeywordPerform => "perform",
+            KeywordDo => "do",
+            KeywordHandle => "handle",
+            KeywordWhere => "where",
+            KeywordTrue => "true",
+            KeywordFalse => "false",
+            KeywordBreak => "break",
+            KeywordContinue => "continue",
+            _ => return None,
+        };
+        Some(keyword)
+    }
 }
 
 /// `TokenKind` に付随するメタデータ。
@@ -45,6 +189,7 @@ pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
     pub lexeme: Option<String>,
+    pub literal: Option<LiteralMetadata>,
 }
 
 impl Token {
@@ -53,6 +198,7 @@ impl Token {
             kind,
             span,
             lexeme: None,
+            literal: None,
         }
     }
 
@@ -61,6 +207,21 @@ impl Token {
             kind,
             span,
             lexeme: Some(lexeme.into()),
+            literal: None,
+        }
+    }
+
+    pub fn with_literal(
+        kind: TokenKind,
+        span: Span,
+        lexeme: impl Into<String>,
+        literal: LiteralMetadata,
+    ) -> Self {
+        Self {
+            kind,
+            span,
+            lexeme: Some(lexeme.into()),
+            literal: Some(literal),
         }
     }
 }

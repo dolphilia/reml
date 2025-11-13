@@ -19,6 +19,18 @@ Phase P1（フロントエンド移植）の達成条件を Reml 仕様に照ら
 | SCG-03 | `Parser<T> = fn(&mut State)->Reply<T>` / `RunConfig` / `ParseResult` が未整備 | 2-1 §A〜C, 2-6 §A〜D | `ParserDriver::parse` は `ParsedModule` を返す PoC。`State`/`Reply`/`RunConfig` の概念が無い | `crate::frontend` 直下に `state.rs` を新設し、OCaml `parser_driver.ml` と同じ API に揃える |
 | SCG-04 | Packrat/左再帰/`cut`/`attempt` 等のコンビネータ移植なし | 2-2 §A〜C | `parser/mod.rs` は `chumsky` で単純な構文のみ。`cut_here` や `recover` はダミー | `Core_parse` のコアコンビネータを Rust で再実装し、Menhir 相当のテーブル生成方法を明示 |
 
+### 1.1 FRG-06 トークン網羅性リファレンス
+
+| 区分 | 仕様上の要素（出典: 1-1 §A.3〜A.4, `compiler/ocaml/src/token.ml`） | Rust `TokenKind` (2028-02) | 差分メモ |
+| --- | --- | --- | --- |
+| キーワード（38 種） | `module,use,as,pub,self,super,let,var,fn,type,alias,new,trait,impl,extern,effect,operation,handler,conductor,channels,execution,monitoring,if,then,else,match,with,for,in,while,loop,return,defer,unsafe,perform,do,handle,where` + 真偽語 `true,false` | `KeywordFn/KeywordLet/KeywordElse/KeywordIf/KeywordThen/KeywordTrue/KeywordFalse/KeywordModule/KeywordEffect/KeywordPerform` の 10 個のみ | 28 個不足。Rust 版では `var/trait/handler/...` を識別できず、AST/診断で `identifier` 扱いになる |
+| 将来予約語 | `break, continue` | 無し | 予約語扱いされないため `continue {` などが `IDENT` として解析される |
+| 識別子 | `IDENT`, `UPPER_IDENT`（先頭大文字・Unicode 可）、`RunConfig.extensions["lex"].identifier_profile` で `unicode`/`ascii-compat` 切替 | `Identifier` の 1 種類のみ。`UPPER_IDENT` と ASCII モード無し | `lexer` 側で `unicode-ident` による XID 判定と ASCII 限定プロファイルを実装する必要がある |
+| 演算子 / 区切り （26 種） | `|>, ~>, ., ,, ;, :, @, |, =, :=, ->, =>, (, ), [, ], {, }, +, -, *, /, %, ^, ==, !=, <, <=, >, >=, &&, ||, !, ?, .., _` | `Arrow`, `Assign`, `Comma`, `Colon`, `Semi`, `Plus`, `Paren/Brace/Bracket` 程度 | 複数文字演算子（`~>`, `:=`, `=>`, `..` 等）と論理演算子が欠落。`_` も `Identifier` になる |
+| リテラル | `INT(base=dec/bin/oct/hex)`, `FLOAT`, `CHAR`, `STRING(通常/生/複数行)` | `IntLiteral`, `FloatLiteral`, `StringLiteral`（エスケープ最小限） | 基数や `_` 区切り、`r#"..."#`/`"""`/`'a'` が未対応。`Token` 側に `Ast.int_base`/`string_kind` 相当の情報が無い |
+
+> 備考: 上表は `FRG-06` の実装スコープを Rust/OCaml 双方で共有するための参照であり、実装完了時には `TokenKind` の列挙名と `lexer::RawToken` の網羅性チェックをこのリストと突き合わせて確認する。`p1-rust-frontend-gap-report.md` では本表を参照して進捗を更新する。
+
 ## 2. AST / IR モデル
 
 | ID | ギャップ | 根拠 | 現状 | 対応案 |

@@ -14,7 +14,7 @@ pub mod typeck;
 
 pub use error::{FrontendError, FrontendErrorKind, Recoverability};
 pub use span::{Span, SpanTagged};
-pub use token::{Token, TokenKind};
+pub use token::{IntBase, LiteralMetadata, StringKind, Token, TokenKind};
 
 /// フロントエンド共通で保持するソースファイル識別子。
 /// OCaml 版の `Source_code.file_id` に対応する。

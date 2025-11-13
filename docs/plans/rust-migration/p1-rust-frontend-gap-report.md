@@ -26,7 +26,7 @@
 
 | ID | ギャップ | 現状 (Rust) | 期待仕様 / OCaml | 必要対応 |
 | --- | --- | --- | --- | --- |
-| FRG-06 | トークン網羅性 | `TokenKind` は 30 種弱（ASCII 識別子、`KeywordFn` 等のみ）。Unicode `IDENT` や `UPPER_IDENT`、`var`/`trait`/`handler` など未定義（`compiler/rust/frontend/src/token.rs:7`）。 | `Token.token` は仕様 1-1 §A に沿ってキーワード・演算子・複数基数リテラルを網羅（`compiler/ocaml/src/token.ml:7`）。 | `unicode-ident` 等で XID 判定を導入し、`RunConfig.extensions["lex"]` に応じたプロファイルを Rust Lexer へ追加。 |
+| FRG-06 | トークン網羅性 | ✅ `token.rs`/`lexer/mod.rs` を刷新し 38+ キーワード／演算子 26 種／`IdentifierProfile` 実装済み。CLI からは常に `Unicode` を指定中で、RunConfig 伝播と dual-write メトリクス更新が未着手。 | `Token.token` は仕様 1-1 §A に沿ってキーワード・演算子・複数基数リテラルを網羅（`compiler/ocaml/src/token.ml:7`）。 | RunConfig/LSP/CLI で `identifier_profile` を切替・記録し、`collect-iterator-audit-metrics.py` の `lexer.identifier_profile_*` を再測定。ASCII 互換モードでの CLI/LSP ゴールデン実行を追加。 |
 | FRG-07 | Parser API | `ParserDriver::parse` は `ParsedModule` を返す PoC。`State`/`Reply`/`RunConfig`/`ParseResult` が存在せず、Menhir コンビネータ (`cut`, `attempt`) 未実装（`compiler/rust/frontend/src/parser/mod.rs:26`）。 | OCaml `parser_driver` は `Run_config`／`Core_parse.State` を介し Packrat 状態、`legacy_error`、`span_trace` を `parse_result` へ格納（`compiler/ocaml/src/parser_driver.ml:6`）。 | `docs/spec/2-1-parser-type.md` どおりに `Parser<T>`/`State` 抽象を実装し、`RunConfig`/`ParseResult` を Rust 側へ導入。Menhir 互換コンビネータを `core_parse` 直伝で移植。 |
 | FRG-08 | `parser_expectation` | Rust `ExpectedTokenCollector` は一部分類のみで、`Not`/`Class`/`TraitBound` のラベル正規化が不足（`compiler/rust/frontend/src/diagnostic/recover.rs:11`）。 | OCaml `parser_expectation.ml` は優先順位・人間可読メッセージ・`recover` 拡張を完全実装（`compiler/ocaml/src/parser_expectation.ml:21`）。 | `parser_expectation` の列挙と整列ロジックを Rust 側へ写経し、`ExpectedToken` 列挙子を仕様 2-5 §B-7 と一致させる。 |
 
@@ -63,6 +63,26 @@
 | FRG-20 | RunConfig 同期 | Rust CLI `RunSettings` は独自フィールドで `parser_run_config` JSON へも落ちない（`compiler/rust/frontend/src/bin/poc_frontend.rs:188` 付近）。 | OCaml `Parser_run_config` が CLI/テスト/Streaming で共有され JSON へ記録（`compiler/ocaml/src/parser_driver.ml:6`）。 | `FrontendConfig`/`RunSettings` を `Run_config` と同構造に再設計し、dual-write レポートに `parser_run_config` を含める。 |
 
 ## 4. 具体的な計画
+
+### FRG-06: トークン網羅性と識別子プロファイル
+
+1. **仕様ソースの統合表を確定（Day 1）**  
+   - `docs/spec/1-1-syntax.md#A.3` と `compiler/ocaml/src/token.ml` を突き合わせ、キーワード 38 種・将来予約語 2 種・演算子 26 種・リテラル 4 系列（INT/FLOAT/CHAR/STRING）を Rust で再現するマッピング表を `docs/plans/rust-migration/p1-spec-compliance-gap.md#FRG-06` に追記する。  
+   - 既存 `TokenKind` との diff をコメントで宣言し、Rust 実装が何を未実装だったのかを可視化する。これにより `p1-front-end-checklists.csv` の「Lexer coverage」列を更新できる。
+2. **Lexer 実装の再設計（Day 2-3）**  
+   - `unicode-ident` クレートを導入し、`IdentifierProfile::{Unicode, AsciiCompat}` を Rust 側に実装する。`ParserOptions`（暫定 RunConfig）に `lex_identifier_profile` を追加し、今後 CLI/LSP から `extensions.lex.identifier_profile` を渡せる経路を確保する。  
+   - `lexer::RawToken` を再生成し、全キーワードを `#[token(...)]` で網羅、演算子は優先順位を付けてロングトークン（`~>`, `=>`, `:=` 等）から検出する。`INT` は基数接頭辞（`0b/0o/0x`）と `Ast.int_base` の区別を維持し、`Token` 側で `lexeme` とあわせて `NumericBase` を保持する。  
+   - Unicode 識別子は `unicode_ident::is_xid_start`/`is_xid_continue` を使って `IDENT`/`UPPER_IDENT` を分岐し、ASCII 互換モードでは `[A-Za-z_]` の範囲に絞る。
+3. **検証と CI 連携（Day 4）**  
+   - `compiler/rust/frontend/tests/lexer_token_coverage.rs`（新規）で ① Unicode 識別子、② 主要キーワード、③ 代表演算子、④ 基数別整数リテラルをフィクスチャ化し、`cargo test -p reml_frontend lexer_token_coverage` を CI で回す。  
+   - `p1-rust-frontend-gap-report.md` の FRG-06 状態を「対応中」に更新し、`reports/dual-write/front-end/w4-diagnostics/*` の Lexer メトリクスから `lexer.identifier_profile_unicode=1.0` を再測定して `collect-iterator-audit-metrics.py` に記録する。
+
+#### FRG-06 進捗ログ（2028-02-XX 時点）
+
+- ✅ `docs/plans/rust-migration/p1-spec-compliance-gap.md` に仕様トークン表を追記し、Rust `TokenKind` の不足を明文化（Day 1 完了）。
+- ✅ `compiler/rust/frontend/src/token.rs` と `src/lexer/mod.rs` を刷新し、38+ キーワード・演算子 26 種・`IdentifierProfile::{Unicode,AsciiCompat}` を実装。`ParserOptions.lex_identifier_profile` と CLI (`poc_frontend.rs`) まで配線済み。
+- ✅ `compiler/rust/frontend/tests/lexer_token_coverage.rs` を追加し `cargo test --test lexer_token_coverage` で Unicode/ASCII プロファイル・基数・文字列種別を検証。
+- ⏳ RunConfig/LSP からの `identifier_profile` 伝播、および dual-write メトリクス (`lexer.identifier_profile_unicode`) の再測定は未完。CLI/LSP 設定取得の導線を整備した上で、`collect-iterator-audit-metrics.py` で値を反映させる。
 
 ## 5. ノート
 

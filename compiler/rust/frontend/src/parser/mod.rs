@@ -14,7 +14,7 @@ use crate::diagnostic::{
     ExpectedTokenCollector, FrontendDiagnostic,
 };
 use crate::error::{FrontendError, Recoverability};
-use crate::lexer::{lex_source, LexOutput};
+use crate::lexer::{lex_source_with_options, IdentifierProfile, LexOutput, LexerOptions};
 use crate::span::Span;
 use crate::streaming::{
     Expectation as StreamingExpectation, ExpectationSummary, PackratEntry, PackratStats,
@@ -47,6 +47,7 @@ pub struct ParserOptions {
     pub merge_parse_expected: bool,
     pub streaming_enabled: bool,
     pub stream_flow: Option<StreamFlowState>,
+    pub lex_identifier_profile: IdentifierProfile,
 }
 
 impl Default for ParserOptions {
@@ -56,6 +57,7 @@ impl Default for ParserOptions {
             merge_parse_expected: true,
             streaming_enabled: false,
             stream_flow: None,
+            lex_identifier_profile: IdentifierProfile::Unicode,
         }
     }
 }
@@ -77,7 +79,10 @@ impl ParserDriver {
     }
 
     pub fn parse_with_options(source: &str, options: ParserOptions) -> ParsedModule {
-        let LexOutput { tokens, errors } = lex_source(source);
+        let lexer_options = LexerOptions {
+            identifier_profile: options.lex_identifier_profile,
+        };
+        let LexOutput { tokens, errors } = lex_source_with_options(source, lexer_options);
         let streaming_state = StreamingState::new(options.streaming.clone());
         let stream_flow_state = options.stream_flow.clone();
         let streaming_enabled = options.streaming_enabled
@@ -256,7 +261,9 @@ fn is_expression_recover_context(expectations: &[Option<TokenKind>]) -> bool {
     let mut has_lparen = false;
     for expectation in expectations {
         match expectation {
-            Some(TokenKind::Identifier) => has_identifier = true,
+            Some(TokenKind::Identifier) | Some(TokenKind::UpperIdentifier) => {
+                has_identifier = true
+            }
             Some(TokenKind::IntLiteral) => has_int_literal = true,
             Some(TokenKind::LParen) => has_lparen = true,
             _ => {}
@@ -301,20 +308,16 @@ fn expression_expected_tokens() -> Vec<ExpectedToken> {
 fn token_kind_expectations(kind: &TokenKind) -> Vec<ExpectedToken> {
     use ExpectedToken as ET;
 
+    if let Some(keyword) = kind.keyword_literal() {
+        return vec![ET::keyword(keyword)];
+    }
+
     match kind {
-        TokenKind::KeywordFn => vec![ET::keyword("fn")],
-        TokenKind::KeywordLet => vec![ET::keyword("let")],
-        TokenKind::KeywordElse => vec![ET::keyword("else")],
-        TokenKind::KeywordPerform => vec![ET::keyword("perform")],
-        TokenKind::KeywordIf => vec![ET::keyword("if")],
-        TokenKind::KeywordThen => vec![ET::keyword("then")],
-        TokenKind::KeywordTrue => vec![ET::keyword("true")],
-        TokenKind::KeywordFalse => vec![ET::keyword("false")],
-        TokenKind::KeywordModule => vec![ET::keyword("module")],
-        TokenKind::KeywordEffect => vec![ET::keyword("effect")],
         TokenKind::Identifier => vec![ET::class("識別子")],
+        TokenKind::UpperIdentifier => vec![ET::class("大文字識別子")],
         TokenKind::IntLiteral => vec![ET::class("整数リテラル")],
         TokenKind::FloatLiteral => vec![ET::class("浮動小数リテラル")],
+        TokenKind::CharLiteral => vec![ET::class("文字リテラル")],
         TokenKind::StringLiteral => vec![ET::class("文字列リテラル")],
         TokenKind::LParen => vec![ET::token("(")],
         TokenKind::RParen => vec![ET::token(")")],
@@ -323,15 +326,40 @@ fn token_kind_expectations(kind: &TokenKind) -> Vec<ExpectedToken> {
         TokenKind::LBracket => vec![ET::token("[")],
         TokenKind::RBracket => vec![ET::token("]")],
         TokenKind::Comma => vec![ET::token(",")],
-        TokenKind::Colon => Vec::new(),
-        TokenKind::Semi => vec![ET::token(";")],
+        TokenKind::Colon => vec![ET::token(":")],
+        TokenKind::Semicolon => vec![ET::token(";")],
         TokenKind::Arrow => vec![ET::token("->")],
+        TokenKind::DoubleArrow => vec![ET::token("=>")],
         TokenKind::Assign => vec![ET::token("=")],
-        TokenKind::Operator => vec![ET::token("+")],
+        TokenKind::ColonAssign => vec![ET::token(":=")],
+        TokenKind::PipeForward => vec![ET::token("|>")],
+        TokenKind::ChannelPipe => vec![ET::token("~>")],
+        TokenKind::Bar => vec![ET::token("|")],
+        TokenKind::At => vec![ET::token("@")],
+        TokenKind::Plus => vec![ET::token("+")],
+        TokenKind::Minus => vec![ET::token("-")],
+        TokenKind::Star => vec![ET::token("*")],
+        TokenKind::Slash => vec![ET::token("/")],
+        TokenKind::Percent => vec![ET::token("%")],
+        TokenKind::Caret => vec![ET::token("^")],
+        TokenKind::Lt => vec![ET::token("<")],
+        TokenKind::Le => vec![ET::token("<=")],
+        TokenKind::Gt => vec![ET::token(">")],
+        TokenKind::Ge => vec![ET::token(">=")],
+        TokenKind::EqEq => vec![ET::token("==")],
+        TokenKind::NotEqual => vec![ET::token("!=")],
+        TokenKind::LogicalAnd => vec![ET::token("&&")],
+        TokenKind::LogicalOr => vec![ET::token("||")],
+        TokenKind::Not => vec![ET::token("!")],
+        TokenKind::Question => vec![ET::token("?")],
+        TokenKind::Dot => vec![ET::token(".")],
+        TokenKind::DotDot => vec![ET::token("..")],
+        TokenKind::Underscore => vec![ET::token("_")],
         TokenKind::Comment => vec![ET::class("コメント")],
         TokenKind::Whitespace => vec![ET::class("空白")],
         TokenKind::EndOfFile => vec![ET::eof()],
         TokenKind::Unknown => vec![ET::custom("未知のトークン")],
+        _ => Vec::new(),
     }
 }
 
@@ -342,10 +370,11 @@ fn module_parser<'src>(
     let span_to_span = |span: Range<usize>| Span::new(span.start as u32, span.end as u32);
     let streaming_state_success = streaming_state.clone();
 
-    let identifier = just(TokenKind::Identifier).map_with_span(move |_, span: Range<usize>| {
-        let slice = &source[span.start..span.end];
-        (slice.to_string(), span_to_span(span))
-    });
+    let identifier = choice((just(TokenKind::Identifier), just(TokenKind::UpperIdentifier)))
+        .map_with_span(move |_, span: Range<usize>| {
+            let slice = &source[span.start..span.end];
+            (slice.to_string(), span_to_span(span))
+        });
 
     let int_literal = just(TokenKind::IntLiteral).map_with_span(move |_, span: Range<usize>| {
         let slice = &source[span.start..span.end];
@@ -412,28 +441,13 @@ fn module_parser<'src>(
             })
             .boxed();
 
-        let plus = filter_map(move |span: Range<usize>, kind| {
-            if kind == TokenKind::Operator {
-                let text = &source[span.start..span.end];
-                if text == "+" {
-                    Ok(span_to_span(span))
-                } else {
-                    Err(Simple::custom(
-                        span.clone(),
-                        format!("未対応の演算子 `{text}`"),
-                    ))
-                }
-            } else {
-                Err(Simple::custom(
-                    span.clone(),
-                    format!("`+` 演算子を期待しましたが `{kind:?}` でした"),
-                ))
-            }
-        });
-
         let additive = call
             .clone()
-            .then(plus.then(call).map(|(_, rhs)| rhs).repeated())
+            .then(
+                just(TokenKind::Plus)
+                    .ignore_then(call.clone())
+                    .repeated(),
+            )
             .map(|(first, rest)| {
                 rest.into_iter().fold(first, |lhs, rhs| {
                     let span = span_union(lhs.span(), rhs.span());

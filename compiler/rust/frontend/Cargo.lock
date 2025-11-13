@@ -265,6 +265,7 @@ dependencies = [
  "smol_str",
  "tempfile",
  "thiserror",
+ "unicode-ident",
 ]
 
 [[package]]

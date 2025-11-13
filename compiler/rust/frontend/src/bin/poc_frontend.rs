@@ -11,6 +11,7 @@ use reml_frontend::diagnostic::{
     DiagnosticNote, ExpectedToken, ExpectedTokensSummary, FrontendDiagnostic,
 };
 use reml_frontend::error::Recoverability;
+use reml_frontend::lexer::IdentifierProfile;
 use reml_frontend::parser::{ParserDriver, ParserOptions};
 use reml_frontend::span::Span;
 use reml_frontend::streaming::{
@@ -53,6 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         merge_parse_expected: args.run_config.merge_warnings,
         streaming_enabled: args.stream_config.enabled,
         stream_flow: Some(stream_flow_state.clone()),
+        lex_identifier_profile: IdentifierProfile::Unicode,
     };
     let result = ParserDriver::parse_with_options(&source, parser_options);
     trace_log(&args, "parsing", "finish");
