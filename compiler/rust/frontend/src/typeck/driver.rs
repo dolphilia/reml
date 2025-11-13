@@ -2,9 +2,10 @@ use std::collections::HashSet;
 
 use serde::Serialize;
 
+use super::capability::{CapabilityDescriptor, EffectUsage, RuntimeCapability};
 use super::constraint::Constraint;
 use super::constraint::ConstraintSolver;
-use super::env::{TypeEnv, TypeRowMode, TypecheckConfig};
+use super::env::{StageRequirement, TypeEnv, TypeRowMode, TypecheckConfig};
 use super::metrics::TypecheckMetrics;
 use super::scheme::Scheme;
 use super::types::{BuiltinType, Type, TypeVarGen};
@@ -103,7 +104,7 @@ impl TypecheckDriver {
             eprintln!("[TRACE] typecheck.finish");
         }
 
-        violations.extend(detect_residual_leaks_from_module(module, config));
+        violations.extend(detect_capability_violations(module, config));
         let violations = compress_typecheck_violations(violations);
 
         let used_impls = all_constraints
@@ -260,6 +261,7 @@ pub struct TypecheckViolation {
 pub enum TypecheckViolationKind {
     ConditionLiteralBool,
     ResidualLeak,
+    StageMismatch,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -319,10 +321,38 @@ impl TypecheckViolation {
         }
     }
 
+    fn stage_mismatch(
+        span: Option<Span>,
+        capability: String,
+        required: StageRequirement,
+        actual: StageRequirement,
+    ) -> Self {
+        let message = format!(
+            "`{capability}` を呼び出すにはステージ `{}` が必要ですが、実行時ステージ `{}` では許可されていません",
+            required.label(),
+            actual.label()
+        );
+        let note_message = format!(
+            "要求: `{}` / 実行時: `{}`",
+            required.label(),
+            actual.label()
+        );
+        Self {
+            kind: TypecheckViolationKind::StageMismatch,
+            code: "effects.contract.stage_mismatch",
+            message,
+            span,
+            notes: vec![ViolationNote::plain(note_message)],
+            capability: Some(capability),
+            function: None,
+            expected: None,
+        }
+    }
+
     pub fn domain(&self) -> &'static str {
         match self.kind {
             TypecheckViolationKind::ConditionLiteralBool => "type",
-            TypecheckViolationKind::ResidualLeak => "effects",
+            TypecheckViolationKind::ResidualLeak | TypecheckViolationKind::StageMismatch => "effects",
         }
     }
 
@@ -631,34 +661,55 @@ fn check_bool_condition(
     ));
 }
 
-fn detect_residual_leaks_from_module(
+fn detect_capability_violations(
     module: &Module,
     config: &TypecheckConfig,
 ) -> Vec<TypecheckViolation> {
-    if !matches!(config.type_row_mode, TypeRowMode::DualWrite) {
-        return Vec::new();
-    }
     let mut usages = Vec::new();
     for function in &module.functions {
         collect_perform_effects(&function.body, &mut usages);
     }
-    let mut seen = HashSet::new();
-    usages
-        .into_iter()
-        .filter_map(|(effect, span)| {
-            if seen.insert(effect.clone()) {
-                Some(TypecheckViolation::residual_leak(Some(span), Some(effect)))
-            } else {
-                None
-            }
-        })
-        .collect()
+    if usages.is_empty() {
+        return Vec::new();
+    }
+    let provided_capabilities = config
+        .runtime_capabilities
+        .iter()
+        .filter_map(|value| RuntimeCapability::parse(value))
+        .map(|cap| cap.id().clone())
+        .collect::<HashSet<_>>();
+    let runtime_stage = config.effect_context.runtime.clone();
+    let capability_requirement = config.effect_context.capability.clone();
+    let mut violations = Vec::new();
+    for usage in usages {
+        let descriptor = CapabilityDescriptor::resolve(&usage.effect_name);
+        let descriptor_requirement =
+            StageRequirement::AtLeast(descriptor.stage().clone());
+        let required_stage =
+            StageRequirement::merged_with(&descriptor_requirement, &capability_requirement);
+        if !runtime_stage.satisfies(&required_stage) {
+            violations.push(TypecheckViolation::stage_mismatch(
+                Some(usage.span),
+                descriptor.id().to_string(),
+                required_stage.clone(),
+                runtime_stage.clone(),
+            ));
+            continue;
+        }
+        if !provided_capabilities.contains(descriptor.id()) {
+            violations.push(TypecheckViolation::residual_leak(
+                Some(usage.span),
+                Some(descriptor.id().to_string()),
+            ));
+        }
+    }
+    violations
 }
 
-fn collect_perform_effects(expr: &Expr, usages: &mut Vec<(String, Span)>) {
+fn collect_perform_effects(expr: &Expr, usages: &mut Vec<EffectUsage>) {
     match &expr.kind {
         ExprKind::PerformCall { call } => {
-            usages.push((call.effect.name.clone(), expr.span()));
+            usages.push(EffectUsage::new(call.effect.name.clone(), expr.span()));
             collect_perform_effects(&call.argument, usages);
         }
         ExprKind::IfElse {

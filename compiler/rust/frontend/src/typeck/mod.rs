@@ -4,6 +4,7 @@
 //! 今後 `types.rs` や `constraint.rs` を拡張していく。
 
 mod constraint;
+mod capability;
 mod driver;
 pub mod env;
 mod metrics;

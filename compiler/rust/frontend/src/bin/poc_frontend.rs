@@ -1150,10 +1150,7 @@ impl StageAuditPayload {
 }
 
 fn stage_requirement_label(requirement: &StageRequirement) -> String {
-    match requirement {
-        StageRequirement::Exact(stage) => stage.as_str().to_string(),
-        StageRequirement::AtLeast(stage) => format!("at_least:{}", stage.as_str()),
-    }
+    requirement.label()
 }
 
 fn ensure_object(value: &mut Value) -> &mut serde_json::Map<String, Value> {

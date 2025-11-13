@@ -174,6 +174,23 @@ impl StageId {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    fn rank_value(&self) -> u8 {
+        match self.as_str().to_ascii_lowercase().as_str() {
+            "stable" => 0,
+            "beta" => 1,
+            "experimental" => 2,
+            _ => 3,
+        }
+    }
+
+    pub fn max(a: &StageId, b: &StageId) -> StageId {
+        if a.rank_value() >= b.rank_value() {
+            a.clone()
+        } else {
+            b.clone()
+        }
+    }
 }
 
 impl Default for StageId {
@@ -207,6 +224,47 @@ pub enum StageIdParseError {
 pub enum StageRequirement {
     Exact(StageId),
     AtLeast(StageId),
+}
+
+impl StageRequirement {
+    pub fn base_stage(&self) -> &StageId {
+        match self {
+            StageRequirement::Exact(stage) | StageRequirement::AtLeast(stage) => stage,
+        }
+    }
+
+    pub fn is_exact(&self) -> bool {
+        matches!(self, StageRequirement::Exact(_))
+    }
+
+    pub fn label(&self) -> String {
+        match self {
+            StageRequirement::Exact(stage) => stage.as_str().to_string(),
+            StageRequirement::AtLeast(stage) => format!("at_least:{}", stage.as_str()),
+        }
+    }
+
+    pub fn rank(&self) -> u8 {
+        self.base_stage().rank_value()
+    }
+
+    pub fn satisfies(&self, required: &StageRequirement) -> bool {
+        let actual_rank = self.rank();
+        let required_rank = required.rank();
+        if actual_rank < required_rank {
+            return false;
+        }
+        if required.is_exact() {
+            actual_rank == required_rank
+        } else {
+            true
+        }
+    }
+
+    pub fn merged_with(lhs: &StageRequirement, rhs: &StageRequirement) -> StageRequirement {
+        let max_stage = StageId::max(lhs.base_stage(), rhs.base_stage());
+        StageRequirement::AtLeast(max_stage)
+    }
 }
 
 /// 型行の処理モードを表す列挙。
