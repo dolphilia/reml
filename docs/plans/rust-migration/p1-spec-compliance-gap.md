@@ -50,37 +50,7 @@ Phase P1（フロントエンド移植）の達成条件を Reml 仕様に照ら
 | SCG-14 | `run_stream` / `resume` API が存在せず `StreamOutcome::{Completed,Pending}` を返せない | 2-7 §A〜C | `ParserDriver` は常にバッチ。`StreamingState` はメトリクス採取のみで `Pending` 制御なし | `StreamingRunner` を新設し、Feeder/DemandHint/Continuation を管理。CLI `--streaming` が `run_stream` を呼ぶよう統合 |
 | SCG-15 | `RunConfig`/`StreamingConfig`/`FlowController` の仕様字段と CLI 実装が同期していない | 2-6 §B, 2-7 §A, `p1-front-end-checklists.csv` | CLI 側 `RunSettings` は独自フィールド (`legacy_result` など) を持つが `RunConfig.extensions` を JSON に落とさない | 共通 `RunConfig` 構造を crate に配置し CLI/テスト/ランナーで共有、`parser_run_config` JSON を出力して dual-write で比較 |
 
-## 6. 推奨タスクと依存関係
-
-1. **Lexer/Token 拡張（W4-Parser-Blocker）**  
-   - 仕様 `1-1 §A` の表を完読し、`TokenKind` を全網羅。  
-   - `RunConfig.extensions["lex"]` を導入して `parser_expectation` との整合を確保。  
-   - 依存: `docs/spec/1-1`、`parser_expectation.ml`。
-
-2. **Parser ランタイム再設計（W4-PARSER-API）**  
-   - `State`/`Reply`/`ParseResult`/`RunConfig` を実装し `ParserDriver` を差し替え。  
-   - `StreamingState`/`Packrat` と接続し、`parse_result.recovered` や `span_trace` を JSON に含める。  
-   - 依存: OCaml `parser_driver.ml`, `core_parse_state.ml`。
-
-3. **AST/Typed AST 整備（W4-AST-IR）**  
-   - `Ast`/`Typed_ast` に合わせた struct/enum を新設し、dual-write AST diff を再開。  
-   - `reports/dual-write/front-end/w2-ast-alignment` をゴールデンとして参照。  
-   - 依存: `docs/plans/rust-migration/1-1-ast-and-ir-alignment.md`。
-
-4. **HM 型推論 & 効果行実装（W4-TYPECK-HM）**  
-   - `typeck` crate を `types`, `scheme`, `constraint`, `solver` に再分割し Algorithm W を移植。  
-   - `effects.contract.*` 診断を `TypecheckViolation` に統合。  
-   - 依存: `compiler/ocaml/src/type_inference.ml`, `constraint_solver.ml`, `docs/spec/1-2`, `1-3`。
-
-5. **診断構造と JSON エミッタ刷新（W4-DIAG-V2）**  
-   - `Diagnostic` を仕様 3.6 と完全同期し、CLI JSON/LSP 出力を `diagnostic-format-regression.md` の手順で検証。  
-   - `ExpectedTokenCollector` を `parser_expectation` 同等にし、`extensions["recover"]` へ `context_note` を記録。  
-   - 依存: `parser_expectation.ml`, `diagnostic.ml`, `reports/diagnostic-format-regression.md`。
-
-6. **Streaming Runner 実装（W4-STREAM-RESUME）**  
-   - `run_stream`/`resume`/`Continuation` 署名を追加し、`docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt` の streaming_* ケースを Rust CLI で再現。  
-   - `collect-iterator-audit-metrics.py --section streaming` が `parser.stream.*` を取得できるよう `stream_meta` を整備。  
-   - 依存: `docs/spec/2-7`, `streaming_runner_tests.ml`。
+## 6. 具体的な計画
 
 ## 7. 今後の共有ポイント
 
