@@ -7,6 +7,7 @@ pub mod diagnostic;
 pub mod error;
 pub mod lexer;
 pub mod parser;
+pub mod semantics;
 pub mod span;
 pub mod streaming;
 pub mod token;

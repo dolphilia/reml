@@ -6,6 +6,7 @@ use super::env::{TypeRowMode, TypecheckConfig};
 use super::metrics::TypecheckMetrics;
 use crate::diagnostic::{ExpectedTokenCollector, ExpectedTokensSummary};
 use crate::parser::ast::{Expr, ExprKind, Function, Literal, Module};
+use crate::semantics::typed;
 use crate::span::Span;
 
 /// 型推論の簡易ドライバ。現時点では AST を走査して
@@ -17,6 +18,7 @@ impl TypecheckDriver {
         let mut metrics = TypecheckMetrics::default();
         let mut functions = Vec::new();
         let mut violations = Vec::new();
+        let mut typed_functions = Vec::new();
 
         if config.trace_enabled {
             eprintln!(
@@ -28,7 +30,7 @@ impl TypecheckDriver {
         for function in &module.functions {
             metrics.record_function();
             let mut stats = FunctionStats::default();
-            let typed_return = infer_function(
+            let typed_body = infer_function(
                 function,
                 function.name.name.as_str(),
                 &mut stats,
@@ -42,10 +44,28 @@ impl TypecheckDriver {
                     .iter()
                     .map(|param| SimpleType::from_param(param.name.name.as_str()).label())
                     .collect(),
-                return_type: typed_return.label(),
+                return_type: typed_body.ty.label(),
                 typed_exprs: stats.typed_exprs,
                 constraints: stats.constraints,
                 unresolved_identifiers: stats.unresolved_identifiers,
+            });
+            typed_functions.push(typed::TypedFunction {
+                name: function.name.name.clone(),
+                span: function.span,
+                params: function
+                    .params
+                    .iter()
+                    .map(|param| {
+                        let param_ty = SimpleType::from_param(param.name.name.as_str());
+                        typed::TypedParam {
+                            name: param.name.name.clone(),
+                            span: param.name.span,
+                            ty: param_ty.label().to_string(),
+                        }
+                    })
+                    .collect(),
+                return_type: typed_body.ty.label().to_string(),
+                body: typed_body.node,
             });
         }
 
@@ -60,6 +80,9 @@ impl TypecheckDriver {
             metrics,
             functions,
             violations,
+            typed_module: typed::TypedModule {
+                functions: typed_functions,
+            },
         }
     }
 
@@ -91,6 +114,7 @@ impl TypecheckDriver {
             metrics,
             functions,
             violations,
+            typed_module: typed::TypedModule::default(),
         }
     }
 }
@@ -162,6 +186,7 @@ pub struct TypecheckReport {
     pub metrics: TypecheckMetrics,
     pub functions: Vec<TypedFunctionSummary>,
     pub violations: Vec<TypecheckViolation>,
+    pub typed_module: typed::TypedModule,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -280,7 +305,7 @@ fn infer_function(
     stats: &mut FunctionStats,
     metrics: &mut TypecheckMetrics,
     violations: &mut Vec<TypecheckViolation>,
-) -> SimpleType {
+) -> TypedExprResult {
     let mut env = HashMap::new();
     for param in &function.params {
         env.insert(
@@ -305,41 +330,77 @@ fn infer_expr(
     metrics: &mut TypecheckMetrics,
     violations: &mut Vec<TypecheckViolation>,
     function_name: Option<&str>,
-) -> SimpleType {
+) -> TypedExprResult {
     stats.typed_exprs += 1;
     metrics.record_expr();
     match &expr.kind {
-        ExprKind::Literal(Literal::Int { .. }) => SimpleType::Int,
-        ExprKind::Literal(Literal::Bool { .. }) => SimpleType::Bool,
-        ExprKind::Literal(Literal::String { .. }) => SimpleType::Unknown,
-        ExprKind::Identifier(ident) => match env.get(ident.name.as_str()) {
-            Some(ty) => *ty,
-            None => {
-                stats.unresolved_identifiers += 1;
-                metrics.record_unresolved_identifier();
-                SimpleType::Unknown
-            }
-        },
-        ExprKind::Binary { left, right, .. } => {
+        ExprKind::Literal(literal) => {
+            let ty = match literal {
+                Literal::Int { .. } => SimpleType::Int,
+                Literal::Bool { .. } => SimpleType::Bool,
+                _ => SimpleType::Unknown,
+            };
+            make_typed(expr, typed::TypedExprKind::Literal(literal.clone()), ty)
+        }
+        ExprKind::Identifier(ident) => {
+            let ty = match env.get(ident.name.as_str()) {
+                Some(ty) => *ty,
+                None => {
+                    stats.unresolved_identifiers += 1;
+                    metrics.record_unresolved_identifier();
+                    SimpleType::Unknown
+                }
+            };
+            make_typed(
+                expr,
+                typed::TypedExprKind::Identifier {
+                    ident: ident.clone(),
+                },
+                ty,
+            )
+        }
+        ExprKind::Binary {
+            operator,
+            left,
+            right,
+        } => {
             metrics.record_binary_expr();
-            let left_ty = infer_expr(left, env, stats, metrics, violations, function_name);
-            let right_ty = infer_expr(right, env, stats, metrics, violations, function_name);
+            let left_result = infer_expr(left, env, stats, metrics, violations, function_name);
+            let right_result = infer_expr(right, env, stats, metrics, violations, function_name);
             stats.constraints += 1;
             metrics.record_constraint("binary.operands");
-            combine_numeric_types(left_ty, right_ty)
+            let ty = combine_numeric_types(left_result.ty, right_result.ty);
+            make_typed(
+                expr,
+                typed::TypedExprKind::Binary {
+                    operator: operator.clone(),
+                    left: Box::new(left_result.node),
+                    right: Box::new(right_result.node),
+                },
+                ty,
+            )
         }
-        ExprKind::Call { callee, args, .. } => {
+        ExprKind::Call { callee, args } => {
             metrics.record_call_site();
             stats.constraints += 1;
             metrics.record_constraint("call.arity");
-            let _callee_ty = infer_expr(callee, env, stats, metrics, violations, function_name);
+            let callee_result = infer_expr(callee, env, stats, metrics, violations, function_name);
+            let mut typed_args = Vec::new();
             for arg in args {
-                let _ = infer_expr(arg, env, stats, metrics, violations, function_name);
+                let arg_result = infer_expr(arg, env, stats, metrics, violations, function_name);
+                typed_args.push(arg_result.node);
             }
-            SimpleType::Unknown
+            make_typed(
+                expr,
+                typed::TypedExprKind::Call {
+                    callee: Box::new(callee_result.node),
+                    args: typed_args,
+                },
+                SimpleType::Unknown,
+            )
         }
         ExprKind::PerformCall { call } => {
-            let _ = infer_expr(
+            let argument_result = infer_expr(
                 &call.argument,
                 env,
                 stats,
@@ -347,25 +408,49 @@ fn infer_expr(
                 violations,
                 function_name,
             );
-            SimpleType::Unknown
+            make_typed(
+                expr,
+                typed::TypedExprKind::PerformCall {
+                    call: typed::TypedEffectCall {
+                        effect: call.effect.clone(),
+                        argument: Box::new(argument_result.node),
+                    },
+                },
+                SimpleType::Unknown,
+            )
         }
         ExprKind::IfElse {
             condition,
             then_branch,
             else_branch,
         } => {
-            let condition_ty =
+            let condition_result =
                 infer_expr(condition, env, stats, metrics, violations, function_name);
-            check_bool_condition(condition.span(), condition_ty, violations, function_name);
-            let then_ty = infer_expr(then_branch, env, stats, metrics, violations, function_name);
-            let else_ty = infer_expr(else_branch, env, stats, metrics, violations, function_name);
-            if then_ty == else_ty {
-                then_ty
+            check_bool_condition(
+                condition.span(),
+                condition_result.ty,
+                violations,
+                function_name,
+            );
+            let then_result =
+                infer_expr(then_branch, env, stats, metrics, violations, function_name);
+            let else_result =
+                infer_expr(else_branch, env, stats, metrics, violations, function_name);
+            let ty = if then_result.ty == else_result.ty {
+                then_result.ty
             } else {
                 SimpleType::Unknown
-            }
+            };
+            make_typed(
+                expr,
+                typed::TypedExprKind::IfElse {
+                    condition: Box::new(condition_result.node),
+                    then_branch: Box::new(then_result.node),
+                    else_branch: Box::new(else_result.node),
+                },
+                ty,
+            )
         }
-        _ => SimpleType::Unknown,
     }
 }
 
@@ -400,6 +485,22 @@ fn combine_numeric_types(left: SimpleType, right: SimpleType) -> SimpleType {
     match (left, right) {
         (SimpleType::Int, SimpleType::Int) => SimpleType::Int,
         _ => SimpleType::Unknown,
+    }
+}
+
+struct TypedExprResult {
+    ty: SimpleType,
+    node: typed::TypedExpr,
+}
+
+fn make_typed(expr: &Expr, kind: typed::TypedExprKind, ty: SimpleType) -> TypedExprResult {
+    TypedExprResult {
+        ty,
+        node: typed::TypedExpr {
+            span: expr.span,
+            kind,
+            ty: ty.label().to_string(),
+        },
     }
 }
 

@@ -16,6 +16,7 @@ use reml_frontend::parser::ast::Module;
 use reml_frontend::parser::{
     LeftRecursionMode, ParseResult, ParserDriver, ParserOptions, RunConfig,
 };
+use reml_frontend::semantics::typed;
 use reml_frontend::span::Span;
 use reml_frontend::streaming::{
     StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig,
@@ -1900,7 +1901,7 @@ struct TypeckArtifacts {
 #[derive(Clone, Serialize)]
 struct TypedAstFile {
     input: String,
-    functions: Vec<TypedFunctionSummary>,
+    module: typed::TypedModule,
 }
 
 #[derive(Clone, Serialize)]
@@ -1939,7 +1940,7 @@ impl TypeckArtifacts {
     fn new(input: &Path, report: &TypecheckReport, config: &TypecheckConfig) -> Self {
         let typed_ast = TypedAstFile {
             input: input.display().to_string(),
-            functions: report.functions.clone(),
+            module: report.typed_module.clone(),
         };
         let functions = report
             .functions
