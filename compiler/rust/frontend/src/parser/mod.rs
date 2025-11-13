@@ -3,6 +3,7 @@
 use chumsky::error::{Simple, SimpleReason};
 use chumsky::prelude::*;
 use chumsky::stream::Stream;
+use chumsky::Parser as ChumskyParser;
 use smallvec::SmallVec;
 use smol_str::SmolStr;
 use std::ops::Range;
@@ -11,7 +12,10 @@ pub mod api;
 pub mod ast;
 pub mod streaming_runner;
 
-pub use self::api::{LeftRecursionMode, ParseResult, ParseResultWithRest, RunConfig};
+pub use self::api::{
+    LeftRecursionMode, ParseError, ParseResult, ParseResultWithRest, Parser, Reply, RunConfig,
+    State,
+};
 pub use self::streaming_runner::{
     Continuation, DemandHint, StreamMeta, StreamOutcome, StreamingRunner,
 };
@@ -127,7 +131,8 @@ impl ParserDriver {
         options.streaming = config;
         options.merge_parse_expected = true;
         options.streaming_enabled = false;
-        Self::parse_with_options(source, options)
+        let (parsed, _) = Self::parse_with_options(source, options);
+        parsed
     }
 
     pub fn parse_with_options_and_run_config(
@@ -135,11 +140,15 @@ impl ParserDriver {
         options: ParserOptions,
         run_config: RunConfig,
     ) -> ParseResult<Module> {
-        let parsed = Self::parse_with_options(source, options);
-        parse_result_from_module(parsed, run_config)
+        let (parsed, legacy_error) = Self::parse_with_options(source, options);
+        let _reply = build_parser_reply(source, &parsed, legacy_error.as_ref());
+        parse_result_from_module(parsed, run_config, legacy_error)
     }
 
-    pub fn parse_with_options(source: &str, options: ParserOptions) -> ParsedModule {
+    pub fn parse_with_options(
+        source: &str,
+        options: ParserOptions,
+    ) -> (ParsedModule, Option<ParseError>) {
         let lexer_options = LexerOptions {
             identifier_profile: options.lex_identifier_profile,
         };
@@ -159,7 +168,7 @@ impl ParserDriver {
         };
         diagnostics.extend(errors.into_iter().map(Self::error_to_diagnostic));
 
-        let (ast, parse_errors) = parse_tokens(&tokens, source, &streaming_state);
+        let (ast, parse_errors, legacy_error) = parse_tokens(&tokens, source, &streaming_state);
         let mut streaming_recover = StreamingRecoverController::new(streaming_enabled);
         streaming_recover.start_checkpoint();
         for (span, formatted) in parse_errors.into_iter() {
@@ -178,17 +187,20 @@ impl ParserDriver {
 
         let diagnostics = diagnostics.into_vec();
 
-        ParsedModule {
-            tokens,
-            diagnostics,
-            recovered,
-            ast,
-            packrat_stats: stream_metrics.packrat,
-            stream_metrics,
-            span_trace,
-            packrat_cache,
-            stream_flow_state,
-        }
+        (
+            ParsedModule {
+                tokens,
+                diagnostics,
+                recovered,
+                ast,
+                packrat_stats: stream_metrics.packrat,
+                stream_metrics,
+                span_trace,
+                packrat_cache,
+                stream_flow_state,
+            },
+            legacy_error,
+        )
     }
 
     fn error_to_diagnostic(error: FrontendError) -> FrontendDiagnostic {
@@ -243,7 +255,11 @@ fn parse_tokens(
     tokens: &[Token],
     source: &str,
     streaming_state: &StreamingState,
-) -> (Option<Module>, Vec<(Option<Span>, FormattedSimpleError)>) {
+) -> (
+    Option<Module>,
+    Vec<(Option<Span>, FormattedSimpleError)>,
+    Option<ParseError>,
+) {
     let token_pairs: Vec<_> = tokens
         .iter()
         .filter(|token| token.kind != TokenKind::Whitespace)
@@ -257,24 +273,35 @@ fn parse_tokens(
     let parser = module_parser(source, streaming_state);
     let (ast, errors) = parser.parse_recovery(Stream::from_iter(end..end, token_pairs.into_iter()));
 
+    let mut legacy_error = None;
     let mapped_errors = errors
         .into_iter()
         .map(|err| {
             let span = Some(convert_range(err.span()));
             let formatted = format_simple_error(&err);
             record_streaming_error(streaming_state, &err, tokens, &formatted);
+            if legacy_error.is_none() {
+                legacy_error = Some(build_parse_error(
+                    span.unwrap_or_else(|| Span::new(0, 0)),
+                    &formatted.summary,
+                ));
+            }
             (span, formatted)
         })
         .collect();
 
-    (ast, mapped_errors)
+    (ast, mapped_errors, legacy_error)
 }
 
 fn convert_range(range: Range<usize>) -> Span {
     Span::new(range.start as u32, range.end as u32)
 }
 
-fn parse_result_from_module(parsed: ParsedModule, run_config: RunConfig) -> ParseResult<Module> {
+fn parse_result_from_module(
+    parsed: ParsedModule,
+    run_config: RunConfig,
+    legacy_error: Option<ParseError>,
+) -> ParseResult<Module> {
     let ParsedModule {
         tokens,
         diagnostics,
@@ -297,7 +324,7 @@ fn parse_result_from_module(parsed: ParsedModule, run_config: RunConfig) -> Pars
         None,
         diagnostics,
         recovered,
-        None,
+        legacy_error,
         farthest_error_offset,
         packrat_cache,
         tokens,
@@ -307,6 +334,34 @@ fn parse_result_from_module(parsed: ParsedModule, run_config: RunConfig) -> Pars
         stream_flow_state,
         run_config,
     )
+}
+
+fn build_parser_reply(
+    source: &str,
+    parsed: &ParsedModule,
+    legacy_error: Option<&ParseError>,
+) -> Reply<Module> {
+    if let Some(module) = &parsed.ast {
+        let span_end = source.len().min(u32::MAX as usize) as u32;
+        let span = Span::new(0, span_end);
+        Reply::Ok {
+            value: module.clone(),
+            span,
+            consumed: true,
+        }
+    } else if let Some(error) = legacy_error {
+        Reply::Err {
+            error: error.clone(),
+            consumed: true,
+            committed: error.committed,
+        }
+    } else {
+        Reply::Err {
+            error: ParseError::new(Span::new(0, 0), Vec::new()),
+            consumed: false,
+            committed: false,
+        }
+    }
 }
 
 impl ParseResult<Module> {
@@ -359,6 +414,23 @@ fn build_expected_summary(err: &Simple<TokenKind>) -> ExpectedTokensSummary {
         }
     }
     collector.summarize()
+}
+
+fn build_parse_error(span: Span, summary: &ExpectedTokensSummary) -> ParseError {
+    let mut context = Vec::new();
+    if let Some(text) = summary.context_note.as_ref() {
+        if !text.trim().is_empty() {
+            context.push(text.clone());
+        }
+    }
+    if let Some(text) = summary.humanized.as_ref() {
+        if !text.trim().is_empty() {
+            context.push(text.clone());
+        }
+    }
+    let mut error = ParseError::new(span, summary.alternatives.clone());
+    error.context = context;
+    error
 }
 
 fn is_expression_recover_context(expectations: &[Option<TokenKind>]) -> bool {
@@ -470,7 +542,7 @@ fn token_kind_expectations(kind: &TokenKind) -> Vec<ExpectedToken> {
 fn module_parser<'src>(
     source: &'src str,
     streaming_state: &StreamingState,
-) -> impl Parser<TokenKind, Module, Error = Simple<TokenKind>> + Clone + 'src {
+) -> impl chumsky::Parser<TokenKind, Module, Error = Simple<TokenKind>> + Clone + 'src {
     let span_to_span = |span: Range<usize>| Span::new(span.start as u32, span.end as u32);
     let streaming_state_success = streaming_state.clone();
 
@@ -1065,10 +1137,7 @@ mod expectation_tests {
     #[test]
     fn identifier_expectations_group_by_profile() {
         let upper = token_kind_expectations(&TokenKind::UpperIdentifier);
-        assert_eq!(
-            upper,
-            vec![ExpectedToken::class("upper-identifier")]
-        );
+        assert_eq!(upper, vec![ExpectedToken::class("upper-identifier")]);
 
         let lower = token_kind_expectations(&TokenKind::Identifier);
         assert_eq!(lower, vec![ExpectedToken::class("identifier")]);

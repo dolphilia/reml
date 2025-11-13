@@ -131,6 +131,9 @@ pub struct State<'src> {
     pub memo: (),
 }
 
+/// 外部から呼び出すパーサ関数。
+pub type Parser<'src, T> = fn(&mut State<'src>) -> Reply<T>;
+
 /// 最小限の失敗表現。
 #[derive(Debug, Clone)]
 pub struct ParseError {
@@ -150,6 +153,35 @@ impl ParseError {
             committed: false,
             notes: Vec::new(),
         }
+    }
+}
+
+impl<'src> State<'src> {
+    /// 指定されたソースと設定から状態を構築する。
+    pub fn new(source: &'src str, config: RunConfig) -> Self {
+        Self {
+            input: Input::new(source),
+            config,
+            diagnostics: Vec::new(),
+            trace: Vec::new(),
+            memo: (),
+        }
+    }
+
+    /// 残り入力を末尾まで進める。
+    pub fn consume_to_end(&mut self) {
+        let len = self.input.source.len();
+        self.input = self.input.advance(len);
+    }
+
+    /// 診断情報を更新する。
+    pub fn record_diagnostics(&mut self, diagnostics: Vec<FrontendDiagnostic>) {
+        self.diagnostics = diagnostics;
+    }
+
+    /// スパン トレースを書き込む。
+    pub fn record_span_trace(&mut self, trace: Vec<TraceFrame>) {
+        self.trace = trace;
     }
 }
 

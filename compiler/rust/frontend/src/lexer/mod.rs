@@ -707,7 +707,11 @@ mod tests {
     fn lex_handles_hash_raw_string_literal() {
         let source = "r#\"foo\"# r##\"bar\"##";
         let output = lex_source(source);
-        assert!(output.errors.is_empty(), "lexer returned errors: {:?}", output.errors);
+        assert!(
+            output.errors.is_empty(),
+            "lexer returned errors: {:?}",
+            output.errors
+        );
         let string_tokens: Vec<_> = output
             .tokens
             .iter()
