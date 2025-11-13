@@ -3,6 +3,7 @@
 use serde_json::{json, Value};
 use std::env;
 use std::fs;
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -98,11 +99,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "flow": {
             "checkpoints_closed": flow_metrics,
         },
-        "packrat_enabled": args.run_config.packrat,
+        "packrat_enabled": result.run_config.packrat,
     });
 
-    let runconfig_summary = build_runconfig_summary(&args, &stream_flow_state);
-    let runconfig_top_level = build_runconfig_top_level(&args, &stream_flow_state);
+    let runconfig_summary = build_runconfig_summary(&result.run_config, &args, &stream_flow_state);
+    let runconfig_top_level =
+        build_runconfig_top_level(&result.run_config, &args, &stream_flow_state);
     let stage_payload = StageAuditPayload::new(
         &args.typecheck_config.effect_context,
         &args.runtime_capabilities,
@@ -112,6 +114,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &args,
         &input_path,
         &source,
+        &result.run_config,
         &runconfig_summary,
         &stream_flow_state,
         &stage_payload,
@@ -121,6 +124,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &args,
         &input_path,
         &source,
+        &result.run_config,
         &runconfig_summary,
         &stream_flow_state,
         &stage_payload,
@@ -176,7 +180,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &artifacts,
             &stage_payload,
         )?;
-        write_dualwrite_parse_payload(&guards, &result)?;
+        write_dualwrite_parse_payload(&guards, &result, &runconfig_top_level)?;
     }
 
     Ok(())
@@ -231,52 +235,49 @@ struct DualwriteCliOpts {
 
 #[derive(Clone)]
 struct RunSettings {
-    packrat: bool,
-    left_recursion: String,
-    trace: bool,
-    merge_warnings: bool,
-    require_eof: bool,
-    legacy_result: bool,
+    config: RunConfig,
     experimental_effects: bool,
 }
 
 impl Default for RunSettings {
     fn default() -> Self {
+        let mut config = RunConfig::default();
+        config.trace = false;
+        config.legacy_result = true;
+        config.left_recursion = LeftRecursionMode::Off;
         Self {
-            packrat: true,
-            left_recursion: "off".to_string(),
-            trace: false,
-            merge_warnings: true,
-            require_eof: false,
-            legacy_result: true,
+            config,
             experimental_effects: false,
         }
     }
 }
 
+impl Deref for RunSettings {
+    type Target = RunConfig;
+
+    fn deref(&self) -> &Self::Target {
+        &self.config
+    }
+}
+
+impl DerefMut for RunSettings {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.config
+    }
+}
+
 impl RunSettings {
     fn to_run_config(&self) -> RunConfig {
-        let left_recursion =
-            LeftRecursionMode::from_str(&self.left_recursion).unwrap_or(LeftRecursionMode::Auto);
-        let mut config = RunConfig {
-            require_eof: self.require_eof,
-            packrat: self.packrat,
-            left_recursion,
-            trace: self.trace,
-            merge_warnings: self.merge_warnings,
-            legacy_result: self.legacy_result,
-            ..Default::default()
-        };
-        if self.experimental_effects {
-            config = config.with_extension("effects", |existing| {
-                let mut payload = existing
-                    .and_then(|value| value.as_object().cloned())
-                    .unwrap_or_default();
-                payload.insert("experimental_effects".to_string(), json!(true));
-                Value::Object(payload)
-            });
+        if !self.experimental_effects {
+            return self.config.clone();
         }
-        config
+        self.config.clone().with_extension("effects", |existing| {
+            let mut payload = existing
+                .and_then(|value| value.as_object().cloned())
+                .unwrap_or_default();
+            payload.insert("experimental_effects".to_string(), json!(true));
+            Value::Object(payload)
+        })
     }
 }
 
@@ -356,7 +357,13 @@ fn apply_workspace_config(
             run_config.require_eof = require_eof;
         }
         if let Some(left_recursion) = parser.get("left_recursion").and_then(|v| v.as_str()) {
-            run_config.left_recursion = left_recursion.to_string();
+            match LeftRecursionMode::from_str(left_recursion) {
+                Ok(mode) => run_config.left_recursion = mode,
+                Err(_) => eprintln!(
+                    "[CONFIG] left_recursion `{}` は未サポートの値なので無視します",
+                    left_recursion
+                ),
+            }
         }
         if let Some(stream) = parser.get("stream").and_then(|v| v.as_object()) {
             if let Some(enabled) = stream.get("enabled").and_then(|v| v.as_bool()) {
@@ -616,7 +623,8 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                 let value = args
                     .next()
                     .ok_or_else(|| "--left-recursion は値を伴う必要があります")?;
-                run_config.left_recursion = value;
+                run_config.left_recursion = LeftRecursionMode::from_str(&value)
+                    .map_err(|_| format!("--left-recursion の値 `{value}` は無効です"))?;
             }
             "--streaming" => stream_config.enabled = true,
             "--no-streaming" => stream_config.enabled = false,
@@ -796,6 +804,7 @@ fn write_dualwrite_typeck_payload(
 fn write_dualwrite_parse_payload(
     guards: &DualWriteGuards,
     result: &ParseResult<Module>,
+    run_config_value: &Value,
 ) -> Result<(), Box<dyn std::error::Error>> {
     guards.write_json("parse/ast.rust.json", &result.value)?;
     let cache_payload = json!({
@@ -803,18 +812,31 @@ fn write_dualwrite_parse_payload(
         "packrat_cache": result.packrat_cache,
     });
     guards.write_json("parse/packrat_cache.json", &cache_payload)?;
+    guards.write_json("parse/parser_run_config.rust.json", run_config_value)?;
     Ok(())
 }
 
-fn build_runconfig_summary(args: &CliArgs, flow: &StreamFlowState) -> Value {
+fn left_recursion_label(mode: LeftRecursionMode) -> &'static str {
+    match mode {
+        LeftRecursionMode::Off => "off",
+        LeftRecursionMode::On => "on",
+        LeftRecursionMode::Auto => "auto",
+    }
+}
+
+fn build_runconfig_summary(
+    run_config: &RunConfig,
+    args: &CliArgs,
+    flow: &StreamFlowState,
+) -> Value {
     let flow_metrics = flow.metrics();
     json!({
-        "packrat": args.run_config.packrat,
-        "left_recursion": args.run_config.left_recursion,
-        "trace": args.run_config.trace,
-        "merge_warnings": args.run_config.merge_warnings,
-        "require_eof": args.run_config.require_eof,
-        "legacy_result": args.run_config.legacy_result,
+        "packrat": run_config.packrat,
+        "left_recursion": left_recursion_label(run_config.left_recursion),
+        "trace": run_config.trace,
+        "merge_warnings": run_config.merge_warnings,
+        "require_eof": run_config.require_eof,
+        "legacy_result": run_config.legacy_result,
         "experimental_effects": args.run_config.experimental_effects,
         "extensions": {
             "lex": {
@@ -828,23 +850,27 @@ fn build_runconfig_summary(args: &CliArgs, flow: &StreamFlowState) -> Value {
             "stream": build_stream_extension(
                 &args.stream_config,
                 &flow_metrics,
-                args.run_config.packrat,
+                run_config.packrat,
             ),
-            "config": build_config_extension(args),
+            "config": build_config_extension(run_config, args),
         },
     })
 }
 
-fn build_runconfig_top_level(args: &CliArgs, flow: &StreamFlowState) -> Value {
+fn build_runconfig_top_level(
+    run_config: &RunConfig,
+    args: &CliArgs,
+    flow: &StreamFlowState,
+) -> Value {
     let flow_metrics = flow.metrics();
     json!({
         "switches": {
-            "packrat": args.run_config.packrat,
-            "left_recursion": args.run_config.left_recursion,
-            "trace": args.run_config.trace,
-            "merge_warnings": args.run_config.merge_warnings,
-            "require_eof": args.run_config.require_eof,
-            "legacy_result": args.run_config.legacy_result,
+            "packrat": run_config.packrat,
+            "left_recursion": left_recursion_label(run_config.left_recursion),
+            "trace": run_config.trace,
+            "merge_warnings": run_config.merge_warnings,
+            "require_eof": run_config.require_eof,
+            "legacy_result": run_config.legacy_result,
             "experimental_effects": args.run_config.experimental_effects,
         },
         "extensions": {
@@ -859,38 +885,32 @@ fn build_runconfig_top_level(args: &CliArgs, flow: &StreamFlowState) -> Value {
             "stream": build_stream_extension(
                 &args.stream_config,
                 &flow_metrics,
-                args.run_config.packrat,
+                run_config.packrat,
             ),
             "effects": {
                 "type_row_mode": type_row_mode_label(args.typecheck_config.type_row_mode),
             },
-            "config": build_config_extension(args),
+            "config": build_config_extension(run_config, args),
         },
         "runtime_capabilities": args.runtime_capabilities.clone(),
     })
 }
 
-fn build_config_extension(args: &CliArgs) -> Value {
+fn build_config_extension(run_config: &RunConfig, args: &CliArgs) -> Value {
     let mut config = serde_json::Map::new();
     config.insert("source".to_string(), json!("cli"));
-    config.insert("packrat".to_string(), json!(args.run_config.packrat));
+    config.insert("packrat".to_string(), json!(run_config.packrat));
     config.insert(
         "left_recursion".to_string(),
-        json!(args.run_config.left_recursion),
+        json!(left_recursion_label(run_config.left_recursion)),
     );
-    config.insert("trace".to_string(), json!(args.run_config.trace));
+    config.insert("trace".to_string(), json!(run_config.trace));
     config.insert(
         "merge_warnings".to_string(),
-        json!(args.run_config.merge_warnings),
+        json!(run_config.merge_warnings),
     );
-    config.insert(
-        "require_eof".to_string(),
-        json!(args.run_config.require_eof),
-    );
-    config.insert(
-        "legacy_result".to_string(),
-        json!(args.run_config.legacy_result),
-    );
+    config.insert("require_eof".to_string(), json!(run_config.require_eof));
+    config.insert("legacy_result".to_string(), json!(run_config.legacy_result));
     config.insert(
         "experimental_effects".to_string(),
         json!(args.run_config.experimental_effects),
@@ -1196,6 +1216,7 @@ fn build_parser_diagnostics(
     args: &CliArgs,
     input_path: &Path,
     source: &str,
+    run_config: &RunConfig,
     runconfig_summary: &Value,
     flow: &StreamFlowState,
     stage_payload: &StageAuditPayload,
@@ -1256,9 +1277,10 @@ fn build_parser_diagnostics(
                 .as_ref()
                 .map(|domain| domain.label().into_owned())
                 .unwrap_or_else(|| "parser".to_string());
-            let mut audit_metadata = build_audit_metadata(
+            let audit_metadata = build_audit_metadata(
                 &timestamp,
                 args,
+                run_config,
                 input_path,
                 &stage_payload,
                 flow,
@@ -1299,6 +1321,7 @@ fn build_type_diagnostics(
     args: &CliArgs,
     input_path: &Path,
     source: &str,
+    run_config: &RunConfig,
     runconfig_summary: &Value,
     flow: &StreamFlowState,
     stage_payload: &StageAuditPayload,
@@ -1331,9 +1354,10 @@ fn build_type_diagnostics(
                 );
             }
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
-            let mut audit_metadata = build_audit_metadata(
+            let audit_metadata = build_audit_metadata(
                 &timestamp,
                 args,
+                run_config,
                 input_path,
                 stage_payload,
                 flow,
@@ -1405,6 +1429,7 @@ fn is_streaming_placeholder_lexer(diag: &FrontendDiagnostic) -> bool {
 fn build_audit_metadata(
     timestamp: &str,
     args: &CliArgs,
+    run_config: &RunConfig,
     input_path: &Path,
     stage_payload: &StageAuditPayload,
     flow: &StreamFlowState,
@@ -1461,29 +1486,33 @@ fn build_audit_metadata(
     metadata.insert("cli.change_set".to_string(), change_set);
     metadata.insert(
         "parser.runconfig.switches.packrat".to_string(),
-        json!(args.run_config.packrat),
+        json!(run_config.packrat),
     );
     metadata.insert(
         "parser.runconfig.switches.left_recursion".to_string(),
-        json!(args.run_config.left_recursion),
+        json!(left_recursion_label(run_config.left_recursion)),
     );
     metadata.insert(
         "parser.runconfig.switches.trace".to_string(),
-        json!(args.run_config.trace),
+        json!(run_config.trace),
     );
     metadata.insert(
         "parser.runconfig.switches.merge_warnings".to_string(),
-        json!(args.run_config.merge_warnings),
+        json!(run_config.merge_warnings),
     );
     metadata.insert(
         "parser.runconfig.switches.require_eof".to_string(),
-        json!(args.run_config.require_eof),
+        json!(run_config.require_eof),
     );
     metadata.insert(
         "parser.runconfig.switches.legacy_result".to_string(),
-        json!(args.run_config.legacy_result),
+        json!(run_config.legacy_result),
     );
-    let runconfig_value = build_runconfig_top_level(args, flow);
+    metadata.insert(
+        "parser.runconfig.switches.experimental_effects".to_string(),
+        json!(args.run_config.experimental_effects),
+    );
+    let runconfig_value = build_runconfig_top_level(run_config, args, flow);
     metadata.insert("parser.runconfig".to_string(), runconfig_value.clone());
     if let Some(extensions) = runconfig_value
         .get("extensions")
@@ -1639,7 +1668,7 @@ fn build_audit_metadata(
     let packrat_enabled = flow_config
         .as_ref()
         .map(|cfg| cfg.packrat_enabled)
-        .unwrap_or(args.run_config.packrat);
+        .unwrap_or(run_config.packrat);
     metadata.insert(
         "parser.stream.packrat_enabled".to_string(),
         json!(packrat_enabled),

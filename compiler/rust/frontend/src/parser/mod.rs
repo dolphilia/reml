@@ -51,7 +51,7 @@ impl ParsedModule {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ParserOptions {
     pub streaming: StreamingStateConfig,
     pub merge_parse_expected: bool,

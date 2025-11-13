@@ -78,7 +78,7 @@ Phase P1（フロントエンド移植）の達成条件を Reml 仕様に照ら
 | ID | ギャップ | 根拠仕様 | 現状 | 対応案 |
 | --- | --- | --- | --- | --- |
 | SCG-14 | `run_stream` / `resume` API が存在せず `StreamOutcome::{Completed,Pending}` を返せない | 2-7 §A〜C | `ParserDriver` は常にバッチ。`StreamingState` はメトリクス採取のみで `Pending` 制御なし | `StreamingRunner` を新設し、Feeder/DemandHint/Continuation を管理。CLI `--streaming` が `run_stream` を呼ぶよう統合 |
-| SCG-15 | `RunConfig`/`StreamingConfig`/`FlowController` の仕様字段と CLI 実装が同期していない | 2-6 §B, 2-7 §A, `p1-front-end-checklists.csv` | CLI 側 `RunSettings` は独自フィールド (`legacy_result` など) を持つが `RunConfig.extensions` を JSON に落とさない | 共通 `RunConfig` 構造を crate に配置し CLI/テスト/ランナーで共有、`parser_run_config` JSON を出力して dual-write で比較 |
+| SCG-15 | `RunConfig`/`StreamingConfig`/`FlowController` の仕様字段と CLI 実装が同期していない | 2-6 §B, 2-7 §A, `p1-front-end-checklists.csv` | Rust CLI は `RunConfig` を `RunSettings` から構築し、`build_runconfig_*`/`build_audit_metadata` を `ParseResult.run_config` で生成した `parser_run_config` JSON（`diagnostics`, `parse_debug`, `parse/parser_run_config.rust.json`）で出力している | FRG-20 で `RunConfig` と dual-write `parser_run_config` の共通化を完了し、`docs/plans/rust-migration/p1-rust-frontend-gap-report.md#FRG-20` に達成記録を残した |
 
 ## 6. 具体的な計画
 

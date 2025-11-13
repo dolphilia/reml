@@ -315,6 +315,26 @@ FRG-19 は `Packrat.dump` 相当の Packrat キャッシュスナップショッ
   - ✅ `poc_frontend.rs` の `write_dualwrite_parse_payload` で `parse/packrat_cache.json` を出力し、Packrat Stats と `PackratCacheEntry` を dual-write 成果物に含める経路を実装。
   - ⏳ README/スクリプトの更新と `collect-iterator-audit-metrics.py` との整合確認は継続予定。
 
+### FRG-20
+
+FRG-20 は `docs/spec/2-1-parser-type.md` に記された `Parser.run_config` を Rust CLI/Streaming/dual-write の共通データとして再現し、`parser_run_config` JSON を実行時に常に出力できるようにすることで、OCaml 側 `Parser_run_config` と双方向で比較できるようにする作業である。
+
+1. **CLI `RunSettings` を `RunConfig` に沿って再構成（Day 1）**  
+   - `reml_frontend::parser::api::RunConfig` の `packrat`/`left_recursion`/`trace`/`merge_warnings` を `RunSettings` が `Deref` で透過するようにして CLI にherited し、`LeftRecursionMode::from_str` で `--left-recursion` を正規化して `ParserOptions::from_run_config` に引き渡す。`apply_workspace_config` でも同じモード変換を行って workspace config との齟齬を防ぐ（`compiler/rust/frontend/src/bin/poc_frontend.rs`）。
+   - `RunSettings` を `RunConfig` のラッパーに書き換えたうえで `RunSettings::to_run_config` で `experimental_effects` 拡張を挿入し、CLI が所有する `RunConfig` を streaming/Parser にそのまま渡すようにする。
+2. **診断/オーディットで実行時 `RunConfig` を利用（Day 2）**  
+   - `build_runconfig_summary`/`build_runconfig_top_level` を `ParseResult.run_config` を受け取るようにして `parser_runconfig.switches.*` を `left_recursion_label` で文字列化、監査メタデータにも `parser.runconfig` を直接埋めることで `build_parser_diagnostics`/`build_type_diagnostics` の `extensions.runconfig` と一致させる。
+   - `build_audit_metadata` に `run_config` 引数を追加し、`metadata["parser.runconfig"]` に `runconfig_top_level` を挿入すると同時に `parser.runconfig.switches.*` を RFC 相当のスキーマで出力する。
+3. **dual-write に `parser_run_config.rust.json` を追加（Day 3）**  
+   - `runconfig_top_level` で生成した JSON を `diagnostics`/`parse_debug`/`reports/dual-write/front-end/*` 全体で再利用し、`write_dualwrite_parse_payload` で `parse/parser_run_config.rust.json` を書き出して OCaml 側 `parser_run_config` と比較可能な実行設定を dual-write 成果物に含める。
+   - `collect-iterator-audit-metrics.py`、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`、`p1-front-end-checklists.csv` へ FRG-20 の完了ライン（`parser.runconfig.switches.*` メトリクスと `parser_run_config` JSON）が記録されていることを明記する。
+
+- 進捗ログ
+  - ✅ `compiler/rust/frontend/src/bin/poc_frontend.rs` の `RunSettings` を `RunConfig` ラップへ書き換え、`LeftRecursionMode` による CLI フラグの正規化と `ParserOptions::from_run_config` への引継ぎを実装した。
+  - ✅ `build_runconfig_summary`/`build_runconfig_top_level`/`build_audit_metadata` を `ParseResult.run_config` ベースで再設計し、`left_recursion_label` ヘルパーで `parser.runconfig.switches.*` を文字列化できるようにした。
+  - ✅ `write_dualwrite_parse_payload` で `parse/parser_run_config.rust.json` を出力し、`diagnostics`・`parse_debug`・dual-write のすべてで同じ `parser_run_config` JSON を再利用する連携を整備した。
+  - ✅ `docs/plans/rust-migration/p1-spec-compliance-gap.md` の SCG-15 を更新して FRG-20 の共通化と `parser_run_config` 出力が完成したことを記録した。
+
 ## 5. ノート
 
 - 仕様参照: `docs/spec/1-1-syntax.md`, `1-2-types-Inference.md`, `1-3-effects-safety.md`, `2-1-parser-type.md`, `2-5-error.md`, `2-7-core-parse-streaming.md`, `3-6-core-diagnostics-audit.md`
