@@ -76,7 +76,7 @@
 | FRG-28 | SCG-09 | ✅ | 効果行・残余効果・Capability Stage 監査（`effects.contract.*`）が未実装で StageContext/RuntimeCapability 連携もない | `p1-spec-compliance-gap.md#SCG-09` |
 | FRG-29 | SCG-10 | ✅ | TypecheckReport から typed_module/constraints/used_impls を使って dual-write `typeck/typed-ast.rust.json`/`constraints.rust.json` を出力し、`typeck/impl-registry.rust.json` も追加した | `p1-spec-compliance-gap.md#SCG-10` |
 | FRG-30 | SCG-11 | ✅ | `FrontendDiagnostic` に severity/domain/audit/timestamp/context_note が無く、OCaml と同一構造でない | `p1-spec-compliance-gap.md#SCG-11` |
-| FRG-31 | SCG-12 | 未着手 | `parser_expectation` 由来の期待集合整形・優先順位・`Not`/`Class` 一覧が十分ではない | `p1-spec-compliance-gap.md#SCG-12` |
+| FRG-31 | SCG-12 | ✅ | `parser_expectation` 由来の期待集合整形・優先順位・`Not`/`Class` 一覧が十分ではない | `p1-spec-compliance-gap.md#SCG-12` |
 | FRG-32 | SCG-13 | 未着手 | CLI JSON 出力で severity/domain 固定・audit_id 疑似値のため、`DiagnosticFormatter` 相当が必要 | `p1-spec-compliance-gap.md#SCG-13` |
 | FRG-33 | SCG-14 | 未着手 | `run_stream`/`resume` API と `StreamOutcome` 管理がなく、StreamingRunner/CLI `--streaming` に未統合 | `p1-spec-compliance-gap.md#SCG-14` |
 
