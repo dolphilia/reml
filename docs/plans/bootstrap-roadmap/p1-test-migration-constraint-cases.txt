@@ -1,0 +1,17 @@
+# P1 TPM-TYPE-02 制約／型エラーの Dual-write ケース
+# format: name::inline::<source>
+# tests: constraint_solver.rs / typeck_error.rs
+# metrics-case: constraint_errors
+constraint_basic::inline::fn sum(x_int, y_int) = x_int + y_int
+
+# tests: constraint_solver.rs
+# metrics-case: constraint_errors
+constraint_tuple::inline::fn pair(x_int, y_int) = (x_int, y_int)
+
+# tests: typeck_error.rs
+# metrics-case: constraint_errors
+condition_violation::inline::fn condition_violation() = if 42 then 1 else 0
+
+# tests: typeck_error.rs
+# metrics-case: constraint_errors
+effect_stage_mismatch::inline::fn log() = perform Console.log("hi")

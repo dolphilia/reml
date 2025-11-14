@@ -37,9 +37,18 @@ fn typecheck_report_emits_typed_function_summary() {
         .map(|param| param.ty.as_str())
         .collect::<Vec<_>>();
     assert_eq!(param_types.len(), 2);
-    assert_eq!(param_types[0], param_types[1], "第一引数と第二引数は同じ型変数を共有");
-    assert!(param_types[0].starts_with("'"), "型は未解決型変数であるべき");
-    assert!(!function.return_type.is_empty(), "戻り型ラベルが記録されている");
+    assert_eq!(
+        param_types[0], param_types[1],
+        "第一引数と第二引数は同じ型変数を共有"
+    );
+    assert!(
+        param_types[0].starts_with("'"),
+        "型は未解決型変数であるべき"
+    );
+    assert!(
+        !function.return_type.is_empty(),
+        "戻り型ラベルが記録されている"
+    );
     assert_eq!(typed_module.schemes.len(), 1);
     assert!(typed_module.dict_refs.is_empty());
 }
@@ -61,7 +70,8 @@ fn typecheck_report_serializes_typed_module_and_metrics() {
     let report = typecheck_source("fn pair(x_int, y_int) = x_int + y_int");
     assert_eq!(report.metrics.typed_functions, 1);
     assert!(report.metrics.constraints_total >= 1);
-    let serialized = serde_json::to_value(&report).expect("TypecheckReport は serde_json で直列化可能");
+    let serialized =
+        serde_json::to_value(&report).expect("TypecheckReport は serde_json で直列化可能");
     assert!(
         matches!(serialized.get("typed_module"), Some(Value::Object(_))),
         "typed_module が JSON オブジェクトとして出力される"
