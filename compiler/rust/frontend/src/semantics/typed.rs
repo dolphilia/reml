@@ -3,20 +3,16 @@ use serde::Serialize;
 use crate::parser::ast::{Ident, Literal};
 use crate::span::Span;
 
+pub type DictRefId = usize;
+
 /// TypecheckDriver が生成する型付き AST。
-/// `docs/plans/rust-migration/appendix/typed_ast_schema_draft.md` に記されたフィールドに
-/// 追従することを目指しているが、現時点では関数本体と式の型ラベルに絞っている。
-#[derive(Debug, Clone, Serialize)]
+/// `docs/plans/rust-migration/appendix/typed_ast_schema_draft.md` に記された構造に合わせ、
+/// TypedModule に関数・dict_ref・scheme を含める。
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct TypedModule {
     pub functions: Vec<TypedFunction>,
-}
-
-impl Default for TypedModule {
-    fn default() -> Self {
-        Self {
-            functions: Vec::new(),
-        }
-    }
+    pub dict_refs: Vec<DictRef>,
+    pub schemes: Vec<SchemeInfo>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -26,6 +22,8 @@ pub struct TypedFunction {
     pub params: Vec<TypedParam>,
     pub return_type: String,
     pub body: TypedExpr,
+    pub dict_ref_ids: Vec<DictRefId>,
+    pub scheme_id: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -40,6 +38,7 @@ pub struct TypedExpr {
     pub span: Span,
     pub kind: TypedExprKind,
     pub ty: String,
+    pub dict_ref_ids: Vec<DictRefId>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -74,4 +73,21 @@ pub enum TypedExprKind {
 pub struct TypedEffectCall {
     pub effect: Ident,
     pub argument: Box<TypedExpr>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DictRef {
+    pub id: DictRefId,
+    pub impl_id: String,
+    pub span: Span,
+    pub requirements: Vec<String>,
+    pub ty: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SchemeInfo {
+    pub id: usize,
+    pub quantifiers: Vec<String>,
+    pub constraints: Vec<String>,
+    pub ty: String,
 }

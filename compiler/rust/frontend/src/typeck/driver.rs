@@ -25,6 +25,7 @@ impl TypecheckDriver {
         let mut violations = Vec::new();
         let mut typed_functions = Vec::new();
         let mut all_constraints = Vec::new();
+        let mut dict_refs = Vec::new();
 
         if config.trace_enabled {
             eprintln!(
@@ -55,6 +56,7 @@ impl TypecheckDriver {
                 env.insert(name.clone(), Scheme::simple(ty.clone()));
             }
 
+            let dict_ref_start = dict_refs.len();
             let typed_body = infer_function(
                 function,
                 function.name.name.as_str(),
@@ -64,6 +66,7 @@ impl TypecheckDriver {
                 &mut stats,
                 &mut metrics,
                 &mut violations,
+                &mut dict_refs,
             );
             let _ = solver.solve(&constraints);
             all_constraints.extend(constraints.into_iter());
@@ -91,12 +94,15 @@ impl TypecheckDriver {
                 })
                 .collect();
 
+            let dict_ref_ids: Vec<typed::DictRefId> = (dict_ref_start..dict_refs.len()).collect();
             typed_functions.push(typed::TypedFunction {
                 name: function.name.name.clone(),
                 span: function.span,
                 params: typed_params,
                 return_type: typed_body.ty.label(),
                 body: typed_body.node,
+                dict_ref_ids,
+                scheme_id: None,
             });
         }
 
@@ -115,13 +121,16 @@ impl TypecheckDriver {
             })
             .collect();
 
+        let typed_module = typed::TypedModule {
+            functions: typed_functions,
+            dict_refs,
+            schemes: Vec::new(),
+        };
         TypecheckReport {
             metrics,
             functions,
             violations,
-            typed_module: typed::TypedModule {
-                functions: typed_functions,
-            },
+            typed_module,
             constraints: all_constraints,
             used_impls,
         }
@@ -384,6 +393,7 @@ fn infer_function(
     stats: &mut FunctionStats,
     metrics: &mut TypecheckMetrics,
     violations: &mut Vec<TypecheckViolation>,
+    dict_refs: &mut Vec<typed::DictRef>,
 ) -> TypedExprResult {
     infer_expr(
         &function.body,
@@ -393,6 +403,7 @@ fn infer_function(
         stats,
         metrics,
         violations,
+        dict_refs,
         Some(function_name),
     )
 }
@@ -405,6 +416,7 @@ fn infer_expr(
     stats: &mut FunctionStats,
     metrics: &mut TypecheckMetrics,
     violations: &mut Vec<TypecheckViolation>,
+    dict_refs: &mut Vec<typed::DictRef>,
     function_name: Option<&str>,
 ) -> TypedExprResult {
     stats.typed_exprs += 1;
@@ -412,7 +424,12 @@ fn infer_expr(
     match &expr.kind {
         ExprKind::Literal(literal) => {
             let ty = type_for_literal(literal);
-            make_typed(expr, typed::TypedExprKind::Literal(literal.clone()), ty)
+            make_typed(
+                expr,
+                typed::TypedExprKind::Literal(literal.clone()),
+                ty,
+                Vec::new(),
+            )
         }
         ExprKind::Identifier(ident) => {
             let ty = match env.lookup(ident.name.as_str()) {
@@ -429,6 +446,7 @@ fn infer_expr(
                     ident: ident.clone(),
                 },
                 ty,
+                Vec::new(),
             )
         }
         ExprKind::Binary {
@@ -445,6 +463,7 @@ fn infer_expr(
                 stats,
                 metrics,
                 violations,
+                dict_refs,
                 function_name,
             );
             let right_result = infer_expr(
@@ -455,6 +474,7 @@ fn infer_expr(
                 stats,
                 metrics,
                 violations,
+                dict_refs,
                 function_name,
             );
             stats.constraints += 1;
@@ -472,6 +492,7 @@ fn infer_expr(
                     right: Box::new(right_result.node),
                 },
                 ty,
+                Vec::new(),
             )
         }
         ExprKind::Call { callee, args } => {
@@ -486,6 +507,7 @@ fn infer_expr(
                 stats,
                 metrics,
                 violations,
+                dict_refs,
                 function_name,
             );
             let mut typed_args = Vec::new();
@@ -498,6 +520,7 @@ fn infer_expr(
                     stats,
                     metrics,
                     violations,
+                    dict_refs,
                     function_name,
                 );
                 typed_args.push(arg_result.node);
@@ -509,6 +532,7 @@ fn infer_expr(
                     args: typed_args,
                 },
                 Type::builtin(BuiltinType::Unknown),
+                Vec::new(),
             )
         }
         ExprKind::PerformCall { call } => {
@@ -520,12 +544,19 @@ fn infer_expr(
                 stats,
                 metrics,
                 violations,
+                dict_refs,
                 function_name,
             );
             constraints.push(Constraint::has_capability(
                 Type::builtin(BuiltinType::Unknown),
                 call.effect.name.clone(),
             ));
+            let dict_ref_id = register_dict_ref(
+                dict_refs,
+                expr.span,
+                call.effect.name.clone(),
+                &argument_result.ty,
+            );
             make_typed(
                 expr,
                 typed::TypedExprKind::PerformCall {
@@ -535,6 +566,7 @@ fn infer_expr(
                     },
                 },
                 Type::builtin(BuiltinType::Unknown),
+                vec![dict_ref_id],
             )
         }
         ExprKind::IfElse {
@@ -550,6 +582,7 @@ fn infer_expr(
                 stats,
                 metrics,
                 violations,
+                dict_refs,
                 function_name,
             );
             check_bool_condition(
@@ -566,6 +599,7 @@ fn infer_expr(
                 stats,
                 metrics,
                 violations,
+                dict_refs,
                 function_name,
             );
             let synthetic_else = Expr::literal(
@@ -583,6 +617,7 @@ fn infer_expr(
                 stats,
                 metrics,
                 violations,
+                dict_refs,
                 function_name,
             );
             stats.constraints += 1;
@@ -604,12 +639,14 @@ fn infer_expr(
                     else_branch: Box::new(else_result.node),
                 },
                 ty,
+                Vec::new(),
             )
         }
         _ => make_typed(
             expr,
             typed::TypedExprKind::Unknown,
             Type::builtin(BuiltinType::Unknown),
+            Vec::new(),
         ),
     }
 }
@@ -651,7 +688,12 @@ struct TypedExprResult {
     node: typed::TypedExpr,
 }
 
-fn make_typed(expr: &Expr, kind: typed::TypedExprKind, ty: Type) -> TypedExprResult {
+fn make_typed(
+    expr: &Expr,
+    kind: typed::TypedExprKind,
+    ty: Type,
+    dict_ref_ids: Vec<typed::DictRefId>,
+) -> TypedExprResult {
     let label = ty.label();
     TypedExprResult {
         ty,
@@ -659,8 +701,26 @@ fn make_typed(expr: &Expr, kind: typed::TypedExprKind, ty: Type) -> TypedExprRes
             span: expr.span,
             kind,
             ty: label,
+            dict_ref_ids,
         },
     }
+}
+
+fn register_dict_ref(
+    dict_refs: &mut Vec<typed::DictRef>,
+    span: Span,
+    impl_id: String,
+    ty: &Type,
+) -> typed::DictRefId {
+    let id = dict_refs.len();
+    dict_refs.push(typed::DictRef {
+        id,
+        impl_id,
+        span,
+        requirements: Vec::new(),
+        ty: ty.label(),
+    });
+    id
 }
 
 fn check_bool_condition(

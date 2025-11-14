@@ -100,6 +100,10 @@ pub struct TypedExpr {
 | `Constraint` | `enum Constraint { Equals(TyId, TyId), Implements { ty: TyId, trait_id: IdentId }, EffectSubRow { lhs: EffectRowId, rhs: EffectRowId } }` | `ConstraintId` で参照し、JSON では同名キーを使う。 |
 | `DictRef` | `struct DictRef { trait_name: IdentId, witness: NodeId, stage: StageRequirement }` | `typed_expr_dict_refs` を 1:1 対応。 |
 
+#### Rust 実装の補足（FRG-25）
+
+`compiler/rust/frontend/src/semantics/typed.rs` では `TypedModule` が `functions` に加えて `dict_refs: Vec<DictRef>` と `schemes: Vec<SchemeInfo>` を保持し、`TypedExpr` 側は `dict_ref_ids: Vec<DictRefId>` を常に直列化する構成になっている。`DictRef` は `id`/`impl_id`/`span`/`requirements`/`ty` という最小構成で `TypecheckDriver::register_dict_ref`（`compiler/rust/frontend/src/typeck/driver.rs`）から `PerformCall` 等のノードに付与されるため、dual-write JSON で `dict_ref_ids` をたどれば `effects.dict_refs` を再構成しやすい。`SchemeInfo` は `id`/`quantifiers`/`constraints`/`ty` を持ち、現時点では空の配列だが、`constraint_solver` の出力や `typed_fn_decl.scheme` に含める前準備になっている。
+
 ### 5.4 JSON ダンプ構造
 
 ```text

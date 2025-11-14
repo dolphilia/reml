@@ -1908,7 +1908,7 @@ fn build_function_summaries(
             return_type: stats.return_type.clone(),
             effect_row: String::new(),
             span: typed_fn.span,
-            dict_refs: 0,
+            dict_refs: typed_fn.dict_ref_ids.len(),
         });
     }
     if summaries.len() < metrics.len() {
