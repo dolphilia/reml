@@ -10,7 +10,7 @@ use super::metrics::TypecheckMetrics;
 use super::scheme::Scheme;
 use super::types::{BuiltinType, Type, TypeVarGen};
 use crate::diagnostic::{ExpectedTokenCollector, ExpectedTokensSummary};
-use crate::parser::ast::{Expr, ExprKind, Function, Literal, Module};
+use crate::parser::ast::{Expr, ExprKind, Function, Literal, LiteralKind, Module};
 use crate::semantics::typed;
 use crate::span::Span;
 
@@ -467,7 +467,7 @@ fn infer_expr(
             make_typed(
                 expr,
                 typed::TypedExprKind::Binary {
-                    operator: operator.clone(),
+                    operator: operator.symbol().to_string(),
                     left: Box::new(left_result.node),
                     right: Box::new(right_result.node),
                 },
@@ -568,8 +568,15 @@ fn infer_expr(
                 violations,
                 function_name,
             );
+            let synthetic_else = Expr::literal(
+                Literal {
+                    value: LiteralKind::Unit,
+                },
+                expr.span(),
+            );
+            let else_expr = else_branch.as_deref().unwrap_or_else(|| &synthetic_else);
             let else_result = infer_expr(
-                else_branch,
+                else_expr,
                 env,
                 var_gen,
                 constraints,
@@ -599,13 +606,22 @@ fn infer_expr(
                 ty,
             )
         }
+        _ => make_typed(
+            expr,
+            typed::TypedExprKind::Unknown,
+            Type::builtin(BuiltinType::Unknown),
+        ),
     }
 }
 
 fn type_for_literal(literal: &Literal) -> Type {
     match literal {
-        Literal::Int { .. } => Type::builtin(BuiltinType::Int),
-        Literal::Bool { .. } => Type::builtin(BuiltinType::Bool),
+        Literal {
+            value: LiteralKind::Int { .. },
+        } => Type::builtin(BuiltinType::Int),
+        Literal {
+            value: LiteralKind::Bool { .. },
+        } => Type::builtin(BuiltinType::Bool),
         _ => Type::builtin(BuiltinType::Unknown),
     }
 }
@@ -720,7 +736,11 @@ fn collect_perform_effects(expr: &Expr, usages: &mut Vec<EffectUsage>) {
         } => {
             collect_perform_effects(condition, usages);
             collect_perform_effects(then_branch, usages);
-            collect_perform_effects(else_branch, usages);
+            if let Some(else_branch_expr) = else_branch {
+                collect_perform_effects(&else_branch_expr, usages);
+            } else {
+                collect_perform_effects(then_branch, usages);
+            }
         }
         ExprKind::Binary { left, right, .. } => {
             collect_perform_effects(left, usages);

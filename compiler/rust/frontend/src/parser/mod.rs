@@ -667,6 +667,9 @@ fn module_parser<'src>(
     let params = param
         .map(|((name, span), _)| Param {
             name: Ident { name, span },
+            type_annotation: None,
+            default: None,
+            span,
         })
         .separated_by(just(TokenKind::Comma))
         .allow_trailing()
@@ -686,6 +689,7 @@ fn module_parser<'src>(
                 params,
                 span: function_span,
                 body,
+                ret_type: None,
             }
         });
 
@@ -695,6 +699,8 @@ fn module_parser<'src>(
         .map(|(effect_span, name)| EffectDecl {
             span: Span::new(effect_span.start.min(name.span.start), name.span.end),
             name,
+            tag: None,
+            operations: Vec::new(),
         });
 
     #[derive(Clone)]

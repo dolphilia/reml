@@ -66,6 +66,8 @@ pub enum TypedExprKind {
     PerformCall {
         call: TypedEffectCall,
     },
+    #[serde(rename = "unknown")]
+    Unknown,
 }
 
 #[derive(Debug, Clone, Serialize)]
