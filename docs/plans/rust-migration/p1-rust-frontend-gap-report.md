@@ -73,7 +73,7 @@
 | FRG-25 | SCG-06 | ✅ | Typed AST/型情報（`typed_expr`/`dict_ref`/`scheme`）の構成が存在せず dual-write JSON もダミー | `p1-spec-compliance-gap.md#SCG-06` |
 | FRG-26 | SCG-07 | ✅ | Packrat/Streaming 状態 (`Core_parse_streaming`) が parser と接続しておらず、`packrat_snapshot` や `span_trace` を `ParseResult` に渡せない | `p1-spec-compliance-gap.md#SCG-07` |
 | FRG-27 | SCG-08 | ✅ | Algorithm W による制約生成・一般化・値制限・ソルバが存在せず、`typeck/driver` は `SimpleType`のみ | `p1-spec-compliance-gap.md#SCG-08` |
-| FRG-28 | SCG-09 | 未着手 | 効果行・残余効果・Capability Stage 監査（`effects.contract.*`）が未実装で StageContext/RuntimeCapability 連携もない | `p1-spec-compliance-gap.md#SCG-09` |
+| FRG-28 | SCG-09 | ✅ | 効果行・残余効果・Capability Stage 監査（`effects.contract.*`）が未実装で StageContext/RuntimeCapability 連携もない | `p1-spec-compliance-gap.md#SCG-09` |
 | FRG-29 | SCG-10 | 未着手 | Typed AST・Constraints・Impl Registry による dual-write 出力が OCaml 形式と整合しておらず、JSON がゴースト | `p1-spec-compliance-gap.md#SCG-10` |
 | FRG-30 | SCG-11 | 未着手 | `FrontendDiagnostic` に severity/domain/audit/timestamp/context_note が無く、OCaml と同一構造でない | `p1-spec-compliance-gap.md#SCG-11` |
 | FRG-31 | SCG-12 | 未着手 | `parser_expectation` 由来の期待集合整形・優先順位・`Not`/`Class` 一覧が十分ではない | `p1-spec-compliance-gap.md#SCG-12` |
