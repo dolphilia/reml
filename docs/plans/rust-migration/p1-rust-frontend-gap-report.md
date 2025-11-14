@@ -537,6 +537,24 @@ FRG-30 は `p1-spec-compliance-gap.md#SCG-11` の **OCaml `Diagnostic` 構造（
   - ✅ `compiler/rust/frontend/src/diagnostic/json.rs` で `expected.context_note` を出力し、`diag_json::build_frontend_diagnostic` の `audit` JSON に `capability` を含め、recover 拡張と dual-write スキーマを同期させた。  
   - ✅ `compiler/rust/frontend/src/bin/poc_frontend.rs` の diagnostics パスが `StageAuditPayload` から `AuditEnvelope` を構成し `timestamp` を `FrontendDiagnostic` に設定するようにし、`cargo fmt`/`cargo check --manifest-path compiler/rust/frontend/Cargo.toml` を実行して整合性を確認した。  
 
+### FRG-31
+
+FRG-31 は `p1-spec-compliance-gap.md#SCG-12` で指摘された `parser_expectation` 相当の期待集合整形・優先順位（キーワード → トークン → クラス → ルール）および `Not`/`Class` ラベルの差分を埋めるタスクである。`docs/spec/2-5-error.md` §A の `Diagnostic.expectation` と `parser_expectation.ml` の `dedup_and_sort`/`humanize` を基準に、`ExpectedTokensSummary.alternatives` から `kind`/`hint` 情報を保持した `expected_tokens` 出力を Rust 側でも再現し、dual-write で Type/Parser 診断が `kind: keyword|class|rule|not` を含めて比較できるようにする。
+
+1. **Day 0 – 仕様確認**  
+   - `docs/spec/2-5-error.md#A` と `compiler/ocaml/src/parser_expectation.ml` を再読し、`ExpectedTokensSummary` の `alternatives` に `ExpectedToken`（`Keyword`/`Token`/`Class`/`Rule`/`Not`/`TraitBound`）が含まれていることを確認。`p1-spec-compliance-gap.md#SCG-12` の表記例と `ExpectedTokenCollector` の正規化ルールを併せて整理し、Rust `diagnostic::recover` モジュールに必要な追加情報を洗い出す。
+2. **Day 1 – JSON ヘルパーの追加と共有**  
+   - `compiler/rust/frontend/src/diagnostic/json.rs` に `expected_tokens_array_from_summary` 相当のヘルパーを追加し、`ExpectedTokensSummary.alternatives` の `kind`/`hint` をそのまま `expected_tokens` オブジェクトへ変換するロジックを実装する。ノードが空の場合は従来どおり文字列ヒューリスティックでフォールバックする。
+3. **Day 2 – 期待出力の適用とテスト**  
+   - 上記ヘルパーを `expected_payload_from_summary`／`recover_extension_payload_from_summary` で使いまわすことで、Parser/Type 拡張の JSON 出力が常に `kind` を持つように統一。`build_type_diagnostics` 側では既存の `expected_payload_from_summary` 呼び出しで勝手に `kind` 付きデータを含めるため、dual-write で `expected_tokens` の差分比較がより精密になる。
+4. **Day 3 – 回帰確認と出力ログへの反映**  
+   - `compiler/rust/frontend/src/diagnostic/json.rs` の recover 拡張テストに `kind` 中身の検証を追加し、`cargo test -p reml_frontend recover_extension` で `ExpectedToken::keyword`/`Not`/`Class` が `expected_tokens` に正しく出力されることを確認。`reports/dual-write` の `parser`/`typeck` JSON を定期的に PAT 加工して `kind` 情報が含まれることを記録する（必要なら `reports/dual-write/front-end/.../summary.md` に追記）。
+
+- 進捗ログ
+  - ✅ `compiler/rust/frontend/src/diagnostic/json.rs` に `ExpectedTokensSummary.alternatives` を使うヘルパーを追加し、`kind`/`hint` を `expected_tokens` 拡張・`expected` フィールドの両方でそのまま出力できるようにした。  
+  - ✅ `build_type_diagnostics`／`recover` 系の `expected_payload_from_summary` 呼び出しは変更不要で、自動的に `kind` 情報を dual-write 扱いに含めるようになっている。  
+  - ✅ `compiler/rust/frontend/src/diagnostic/json.rs` に `recover_extension_obtains_kind_from_summary_alternatives` テストを追加し、`cargo test -p reml_frontend recover_extension` を実行して regression を通過させた (`reports/dual-write/front-end/poc/...` の `recover` 拡張でも `kind` が出力されていることを確認)。  
+
 ## 5. Rust フロントエンドのビルド/テスト状況
 
 - `compiler/rust/frontend` で `cargo test` を実行し、ライブラリ・バイナリ・ユニットテスト（合計 35 件以上）がすべて成功しました。存在する警告は `target/debug` に記録されており、dual-write 差分確認で必要な診断・Streaming パスへの影響は確認済みです。

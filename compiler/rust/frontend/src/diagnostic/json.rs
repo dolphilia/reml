@@ -195,15 +195,11 @@ pub fn build_expected_field(diag: &FrontendDiagnostic) -> Value {
 }
 
 pub fn expected_payload_from_summary(summary: &ExpectedTokensSummary) -> Value {
-    let token_labels = summary.tokens();
-    let expected_tokens: Vec<Value> = token_labels
-        .iter()
-        .map(|token| expected_token_object_from_label(token))
-        .collect();
+    let expected_tokens = expected_tokens_array_from_summary(summary);
     let message = summary
         .humanized
         .clone()
-        .unwrap_or_else(|| token_labels.join(", "));
+        .unwrap_or_else(|| summary.tokens().join(", "));
     json!({
         "message": message,
         "expected_tokens": expected_tokens,
@@ -211,11 +207,7 @@ pub fn expected_payload_from_summary(summary: &ExpectedTokensSummary) -> Value {
 }
 
 pub fn recover_extension_payload_from_summary(summary: &ExpectedTokensSummary) -> Value {
-    let token_labels = summary.tokens();
-    let expected_tokens: Vec<Value> = token_labels
-        .iter()
-        .map(|token| expected_token_object_from_label(token))
-        .collect();
+    let expected_tokens = expected_tokens_array_from_summary(summary);
     let mut map = Map::new();
     map.insert("expected_tokens".to_string(), Value::Array(expected_tokens));
     if let Some(message) = non_blank_string(summary.humanized.as_ref()) {
@@ -225,6 +217,22 @@ pub fn recover_extension_payload_from_summary(summary: &ExpectedTokensSummary) -
         map.insert("context".to_string(), json!(context));
     }
     Value::Object(map)
+}
+
+fn expected_tokens_array_from_summary(summary: &ExpectedTokensSummary) -> Vec<Value> {
+    if summary.alternatives.is_empty() {
+        summary
+            .tokens()
+            .iter()
+            .map(|token| expected_token_object_from_label(token))
+            .collect()
+    } else {
+        summary
+            .alternatives
+            .iter()
+            .map(expected_token_object_from_expected)
+            .collect()
+    }
 }
 
 fn summary_has_recover_payload(summary: &ExpectedTokensSummary) -> bool {
@@ -441,6 +449,45 @@ mod tests {
                 .and_then(|value| value.as_array())
                 .map(|arr| arr.len()),
             Some(1)
+        );
+    }
+
+    #[test]
+    fn recover_extension_obtains_kind_from_summary_alternatives() {
+        let summary = ExpectedTokensSummary {
+            message_key: Some("parse.expected".to_string()),
+            locale_args: Vec::new(),
+            humanized: None,
+            context_note: None,
+            alternatives: vec![
+                ExpectedToken::keyword("fn"),
+                ExpectedToken::not("identifier"),
+                ExpectedToken::class("identifier"),
+            ],
+        };
+        let diag = FrontendDiagnostic::new("oops").apply_expected_summary(&summary);
+        let payload = build_recover_extension(&diag).expect("recover extension must exist");
+        let expected_tokens = payload
+            .get("expected_tokens")
+            .and_then(|value| value.as_array())
+            .expect("expected tokens array present");
+        assert_eq!(
+            expected_tokens[0]
+                .get("kind")
+                .and_then(|value| value.as_str()),
+            Some("keyword")
+        );
+        assert_eq!(
+            expected_tokens[1]
+                .get("kind")
+                .and_then(|value| value.as_str()),
+            Some("not")
+        );
+        assert_eq!(
+            expected_tokens[2]
+                .get("kind")
+                .and_then(|value| value.as_str()),
+            Some("class")
         );
     }
 }
