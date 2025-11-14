@@ -1,6 +1,6 @@
 use reml_frontend::{
     error::FrontendErrorKind,
-    lexer::{lex_source_with_options, IdentifierProfile, LexerOptions, LexOutput},
+    lexer::{lex_source_with_options, IdentifierProfile, LexOutput, LexerOptions},
     token::TokenKind,
     Token,
 };
@@ -20,11 +20,7 @@ fn first_non_eof_token<'a>(output: &'a LexOutput) -> &'a Token {
         .expect("字句列に EndOfFile 以外のトークンが含まれていません")
 }
 
-fn find_token<'a>(
-    output: &'a LexOutput,
-    kind: TokenKind,
-    lexeme: &str,
-) -> Option<&'a Token> {
+fn find_token<'a>(output: &'a LexOutput, kind: TokenKind, lexeme: &str) -> Option<&'a Token> {
     output
         .tokens
         .iter()
@@ -71,9 +67,17 @@ fn unicode_profile_accepts_non_ascii_identifiers() {
     let profile = IdentifierProfile::Unicode;
     let cases = [
         ("let れむる = 1", TokenKind::Identifier, "れむる"),
-        ("let ユーザー_識別子 = 1", TokenKind::Identifier, "ユーザー_識別子"),
+        (
+            "let ユーザー_識別子 = 1",
+            TokenKind::Identifier,
+            "ユーザー_識別子",
+        ),
         ("let Δοκιμή = 1", TokenKind::UpperIdentifier, "Δοκιμή"),
-        ("let пользователь = 1", TokenKind::Identifier, "пользователь"),
+        (
+            "let пользователь = 1",
+            TokenKind::Identifier,
+            "пользователь",
+        ),
         ("let 데이터 = 1", TokenKind::Identifier, "데이터"),
     ];
 
@@ -135,7 +139,11 @@ fn ascii_profile_reports_unicode_rejection() {
         .iter()
         .find(|err| matches!(err.kind, FrontendErrorKind::UnexpectedStructure { .. }))
         .expect("UnexpectedStructure の診断がありません");
-    if let FrontendErrorKind::UnexpectedStructure { message, span: Some(span) } = &error.kind {
+    if let FrontendErrorKind::UnexpectedStructure {
+        message,
+        span: Some(span),
+    } = &error.kind
+    {
         assert!(
             message.contains("U+89E3"),
             "拒否メッセージにコードポイントが含まれていません: {message}"
@@ -153,7 +161,8 @@ fn ascii_profile_reports_unicode_rejection() {
         output
             .tokens
             .iter()
-            .any(|token| token.kind == TokenKind::Unknown && token.lexeme.as_deref() == Some("解析器")),
+            .any(|token| token.kind == TokenKind::Unknown
+                && token.lexeme.as_deref() == Some("解析器")),
         "Unknown トークンに拒否された識別子が含まれていません"
     );
 }
