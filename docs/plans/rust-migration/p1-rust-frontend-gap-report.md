@@ -78,7 +78,7 @@
 | FRG-30 | SCG-11 | ✅ | `FrontendDiagnostic` に severity/domain/audit/timestamp/context_note が無く、OCaml と同一構造でない | `p1-spec-compliance-gap.md#SCG-11` |
 | FRG-31 | SCG-12 | ✅ | `parser_expectation` 由来の期待集合整形・優先順位・`Not`/`Class` 一覧が十分ではない | `p1-spec-compliance-gap.md#SCG-12` |
 | FRG-32 | SCG-13 | ✅ | CLI JSON 出力で severity/domain 固定・audit_id 疑似値のため、`DiagnosticFormatter` 相当が必要 | `p1-spec-compliance-gap.md#SCG-13` |
-| FRG-33 | SCG-14 | 未着手 | `run_stream`/`resume` API と `StreamOutcome` 管理がなく、StreamingRunner/CLI `--streaming` に未統合 | `p1-spec-compliance-gap.md#SCG-14` |
+| FRG-33 | SCG-14 | ✅ | `run_stream`/`resume` API と `StreamOutcome` 管理がなく、StreamingRunner/CLI `--streaming` に未統合 | `p1-spec-compliance-gap.md#SCG-14` |
 
 ## 4. 具体的な計画
 
@@ -568,6 +568,23 @@ FRG-32 は `p1-spec-compliance-gap.md#SCG-13` で指摘した CLI JSON の `seve
 
 - 進捗ログ
   - ⏳ 実装着手中: `formatter` ヘルパーを定義して `poc_frontend` の診断出力を通すインフラを整備し、`collect-iterator` が要求する監査キーを満たすように調整中。  
+
+### FRG-33
+
+FRG-33 は `p1-spec-compliance-gap.md#SCG-14` で指摘された `run_stream`/`resume` API と `StreamOutcome` 管理の未整備を Rust でも解消する取り組みであり、`docs/spec/2-7-core-parse-streaming.md` に記された DemandHint / Continuation 戻り値と CLI の `parser.stream.*` 拡張との整合を確保する必要がある。
+
+1. **Day 0 – 仕様/実装差分の再照合**  
+   - `docs/spec/2-7-core-parse-streaming.md` §A/B を読み、`StreamOutcome::{Pending,Completed}` の要件や `DemandHint` フィールド、`Continuation` が保持すべき `cursor`/`chunk_hint`/`resume_hint` などを整理する。`p1-spec-compliance-gap.md#SCG-14` の `StreamingRunner` 欠落の記述と `compiler/ocaml/src/parser_driver.ml:run_stream` の `await`/`continuation` ロジックを参照しながら、Rust 側で必要なメタデータと CLI JSON への出力経路を洗い出す。  
+2. **Day 1 – ストリーミングランナー・RunConfig 拡張の実装**  
+   - `StreamingRunner` の `Continuation` に `cursor`/`chunk_size` を持たせ、`run_stream` が `run_config.extensions["stream"].chunk_size` を参照して chunk 単位で `Pending` を返すよう再設計。`StreamOutcome::Pending` には `DemandHint`（`min_bytes`・`preferred_bytes` に chunk_size・`resume_hint`・`reason`）を添付し、`StreamingRunner::from_continuation` で `Continuation` を再利用できる API を公開する。`compiler/rust/frontend/src/bin/poc_frontend.rs` では `parser.runconfig.extensions.stream` に `enabled`/`checkpoint`/`resume_hint`/`demand_*`/`chunk_size`/`flow_*` キーを記録し、`resolve_completed_stream_outcome` が `Pending` を再帰的に解決することで `--streaming` モードでも `StreamOutcome` が無限ループしないようにする。  
+3. **Day 2 – テストとメトリクス連携**  
+   - `compiler/rust/frontend/tests/streaming_runner.rs` を追加し、chunk_size を設定した場合に `StreamOutcome::Pending` → `Completed` の遷移が確認できること、chunk_size 未設定では即座に `Completed` を返すことを `cargo test -p reml_frontend streaming_runner` で検証。`collect-iterator-audit-metrics.py` が参照する `parser.stream_extension_field_coverage` には `parser.runconfig.extensions.stream` のキーを常時含めることで `SCG-14` の KPI を満たす証跡を残す。  
+
+- 進捗ログ
+  - ✅ `Continuation` に `cursor`/`chunk_size` を持たせ、`StreamOutcome::Pending` で chunk_size ベースの `DemandHint` と `StreamingRunner::from_continuation` を返すようランナーを再設計。  
+  - ✅ `poc_frontend.rs` で `run_config.extensions["stream"]` を構築し、`resolve_completed_stream_outcome` が `Pending` を再帰的に処理。`parser.stream_extension_field_coverage` で期待される `enabled`/`demand_*`/`chunk_size` が保証される。  
+  - ✅ `compiler/rust/frontend/tests/streaming_runner.rs` を追加して chunk_size あり/なしの経路を検証し、`cargo test -p reml_frontend streaming_runner` が通過。  
+  - ⏳ 今後: `collect-iterator` KPI に `parser.stream.outcome_consistency` を加えて chunk_size の有無で `StreamOutcome` が安定することを定量的に監視する予定。  
 
 ## 5. Rust フロントエンドのビルド/テスト状況
 

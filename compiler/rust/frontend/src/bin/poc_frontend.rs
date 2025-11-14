@@ -1,6 +1,6 @@
 //! logos × chumsky フロントエンド PoC。入力ファイルを解析し JSON を出力する。
 
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 use std::collections::HashMap;
 use std::env;
 use std::fs;
@@ -56,7 +56,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     trace_log(&args, "parsing", "start");
     let stream_flow_state =
         StreamFlowState::new(args.stream_config.to_flow_config(args.run_config.packrat));
-    let run_config = args.run_config.to_run_config();
+    let mut run_config = args.run_config.to_run_config();
+    let packrat_enabled = run_config.packrat;
+    run_config = run_config.with_extension("stream", |existing| {
+        merge_stream_extension(existing, &args.stream_config, packrat_enabled)
+    });
     let mut parser_options = ParserOptions::from_run_config(&run_config);
     parser_options.streaming = args.streaming_state_config();
     parser_options.streaming_enabled = args.stream_config.enabled || run_config.trace;
@@ -203,12 +207,7 @@ fn resolve_completed_stream_outcome(outcome: StreamOutcome) -> ParseResult<Modul
     match outcome {
         StreamOutcome::Completed { result, .. } => result,
         StreamOutcome::Pending { continuation, .. } => {
-            let runner = StreamingRunner::new(
-                continuation.buffer,
-                continuation.parser_options,
-                continuation.run_config,
-                continuation.stream_flow,
-            );
+            let runner = StreamingRunner::from_continuation(continuation);
             resolve_completed_stream_outcome(runner.run_stream())
         }
     }
@@ -1046,40 +1045,81 @@ fn build_stream_extension(
     flow: &StreamFlowMetrics,
     packrat_enabled: bool,
 ) -> Value {
-    let checkpoint = stream
-        .checkpoint
-        .clone()
-        .unwrap_or_else(|| "unspecified".to_string());
-    let resume_hint = stream
-        .resume_hint
-        .clone()
-        .unwrap_or_else(|| "unspecified".to_string());
-    let demand_min_bytes = stream.demand_min_bytes.unwrap_or(0);
-    let demand_preferred_bytes = stream.demand_preferred_bytes.unwrap_or(0);
-    let chunk_size = stream.chunk_size.unwrap_or(0);
+    let mut payload = stream_config_payload(stream, packrat_enabled);
     let flow_policy = stream
         .flow_policy
         .clone()
         .unwrap_or_else(|| "auto".to_string());
     let flow_max_lag = stream.flow_max_lag.unwrap_or(0);
-    json!({
-        "enabled": stream.enabled,
-        "packrat_enabled": packrat_enabled,
-        "checkpoint": checkpoint,
-        "resume_hint": resume_hint,
-        "demand_min_bytes": demand_min_bytes,
-        "demand_preferred_bytes": demand_preferred_bytes,
-        "chunk_size": chunk_size,
-        "flow_policy": flow_policy.clone(),
-        "flow_max_lag": flow_max_lag,
-        "flow": {
+    payload.insert(
+        "flow".to_string(),
+        json!({
             "policy": flow_policy,
             "backpressure": {
                 "max_lag_bytes": flow_max_lag,
             },
             "checkpoints_closed": flow.checkpoints_closed,
-        }
-    })
+        }),
+    );
+    Value::Object(payload)
+}
+
+fn stream_config_payload(stream: &StreamSettings, packrat_enabled: bool) -> Map<String, Value> {
+    let mut payload = Map::new();
+    payload.insert("enabled".to_string(), json!(stream.enabled));
+    payload.insert("packrat_enabled".to_string(), json!(packrat_enabled));
+    payload.insert(
+        "checkpoint".to_string(),
+        json!(stream
+            .checkpoint
+            .clone()
+            .unwrap_or_else(|| "unspecified".to_string())),
+    );
+    payload.insert(
+        "resume_hint".to_string(),
+        json!(stream
+            .resume_hint
+            .clone()
+            .unwrap_or_else(|| "unspecified".to_string())),
+    );
+    payload.insert(
+        "demand_min_bytes".to_string(),
+        json!(stream.demand_min_bytes.unwrap_or(0)),
+    );
+    payload.insert(
+        "demand_preferred_bytes".to_string(),
+        json!(stream.demand_preferred_bytes.unwrap_or(0)),
+    );
+    payload.insert(
+        "chunk_size".to_string(),
+        json!(stream.chunk_size.unwrap_or(0)),
+    );
+    payload.insert(
+        "flow_policy".to_string(),
+        json!(stream
+            .flow_policy
+            .clone()
+            .unwrap_or_else(|| "auto".to_string())),
+    );
+    payload.insert(
+        "flow_max_lag".to_string(),
+        json!(stream.flow_max_lag.unwrap_or(0)),
+    );
+    payload
+}
+
+fn merge_stream_extension(
+    existing: Option<&Value>,
+    stream: &StreamSettings,
+    packrat_enabled: bool,
+) -> Value {
+    let mut payload = existing
+        .and_then(|value| value.as_object().cloned())
+        .unwrap_or_default();
+    for (key, value) in stream_config_payload(stream, packrat_enabled) {
+        payload.insert(key, value);
+    }
+    Value::Object(payload)
 }
 
 const STREAMING_PLACEHOLDER_TOKEN: &str = "解析継続トークン";
