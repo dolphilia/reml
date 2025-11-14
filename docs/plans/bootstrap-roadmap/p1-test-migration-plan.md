@@ -215,4 +215,34 @@
 
 - `compiler/ocaml/tests/test_constraint_solver.ml`/`test_type_errors.ml`/`test_let_polymorphism.ml` を精読し、ConstraintSolver のプリミティブ・複合・再帰・エラーのケースと `E7001`〜`E7021` の診断要件を一覧化し `docs/plans/bootstrap-roadmap/p1-test-migration-typeck-cases.txt` に追加する項目の素案を整理。  
 - `docs/spec/1-2-types-Inference.md` と `docs/spec/3-6-core-diagnostics-audit.md` を参照しつつ、`collect-iterator-audit-metrics.py` の `typeck` セクションで比較すべき `violations`/`constraint_graph_cycles`/`diagnostic.secondary` のメトリクスを選定し、`docs/plans/rust-migration/p1-front-end-checklists.csv` へ記入すべき観測ポイントを記録。  
-- `docs/plans/rust-migration/unified-porting-principles.md` の「振る舞いが最優先」や `p1-spec-compliance-gap.md` の `FRG-12`/`FRG-13` を踏まえ、Rust 側の `TypecheckReport` JSON で `typed_functions`・`constraints_total` だけでなく `TypecheckError` の `code`/`notes` まで含めるべきことを確認した。
+- `docs/plans/rust-migration/unified-porting-principles.md` の「振る舞いが最優先」や `p1-spec-compliance-gap.md` の `FRG-12`/`FRG-13` を踏まえ、Rust 側の `TypecheckReport` JSON で `typed_functions`・`constraints_total` だけでなく `TypecheckError` の `code`/`notes` まで含めるべきことを確認した。  
+
+### TPM-TYPE-03
+
+1. **調査・前提整理（1日）**  
+   1. `compiler/ocaml/tests/test_cli_callconv_snapshot.ml` / `test_ffi_contract.ml` を精読し、IR ゴールデン・診断 JSON・監査 `audit.metadata` の構造、`effects.contract.stage_mismatch` などの診断コードと `StageContext`/`RuntimeCapability` に係る監査タグを抽出したうえで `p1-spec-compliance-gap.md#SCG-09` に掲げた残余効果監査の要件と照合する。  
+   2. `docs/spec/3-8-core-runtime-capability.md` / `docs/spec/1-3-effects-safety.md` を参照し、`effects.contract.*` メトリクスが何を担保すべきか（Stage フェーズ・Capability レジストリの照合・呼出し規約/効果行の整合性）を整理し、Dual-write で比較すべき JSON キーを `docs/plans/rust-migration/p1-front-end-checklists.csv` に追記する。  
+
+2. **テストハーネス設計（0.5日）**  
+   1. `scripts/poc_dualwrite_compare.sh --mode diag` に TPM-TYPE-03 用ケース群（`cli-callconv`、`ffi-contract`）を登録するため、`docs/plans/bootstrap-roadmap/p1-test-migration-ffi-cases.txt` を作成し、`#flags`/`#metrics-case` で `--emit-effects`・`--runtime-capabilities` などの CLI フラグと `effects.contract.stage_mismatch` メトリクスラベルを指定する。  
+   2. `reports/dual-write/front-end/w4-diagnostics/effects-contract/<case>` 配下へ `diagnostics.{ocaml,rust}.json`・`audit.{ocaml,rust}.jsonl` を書き出すルールを定め、`collect-iterator-audit-metrics.py --section diag --metrics-case effects-contract` から `effects.contract.stage_mismatch` / `effects.contract.capability_missing` / `effects.contract.ownership` の差分を収集するパイプラインを決める。  
+
+3. **実装（1日）**  
+   1. Rust 側に `compiler/rust/frontend/tests/cli/ffi_effects.rs`（仮称）を追加し、`poc_frontend` に `--emit-typed-ast`・`--emit-effects`・`--emit-diagnostics` を渡して OCaml の `cli-callconv`/`ffi-contract` サンプルと同一 IR・診断・監査 JSON を生成し、`effects.contract.stage_mismatch` を含む `Diagnostic`／`Audit` 出力のキー・metadata を比較する。StageContext の run-time フェーズと `RuntimeCapability` の `capability.target`/`capability.stage` を JSON に含めるビヘイビアも確認する。  
+   2. `compiler/rust/frontend/src/diagnostic/json.rs` を拡張し、`Cli.Json_formatter` 経由で `FfiContractViolation` の `StageContext` と `RuntimeCapability` を `audit.metadata["effects.contract.*"]` へ埋め込み、OCaml の `Ffi_contract` 監査と schema マッチする出力にする。`scripts/validate-diagnostic-json.sh --frontend rust` を使った schema 検証も想定する。  
+   3. `scripts/poc_dualwrite_compare.sh` に `TPM-TYPE-03` 用の `--case-origin`/`--flags` を用意し、`FORCE_TYPE_EFFECT_FLAGS` 環境変数で `--runtime-capabilities` を強制することで `effects`/`ffi` ケースの出力検査を自動化する。Dual-write の `reports/dual-write/front-end/w4-diagnostics/effects-contract/<run>` に `diff.json` も残す。  
+
+4. **検証・監査（0.5日）**  
+   1. `cargo test --test cli_ffi_effects`（仮称）や `scripts/poc_dualwrite_compare.sh --mode diag --cases docs/plans/bootstrap-roadmap/p1-test-migration-ffi-cases.txt` を実行し、`reports/dual-write/front-end/w4-diagnostics` に `diagnostics.{ocaml,rust}`・`audit.{ocaml,rust}`・`effects.contract.*.json` を生成したことを確認する。  
+   2. `collect-iterator-audit-metrics.py --section diag --metrics-case effects-contract` で `effects.contract.stage_mismatch`/`effects.contract.capability_missing`/`effects.contract.ownership` の差分が許容範囲内（`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` で定義したスキーマ）であることを記録し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#effects-change-log` に該当差分と展開済みケースを記載する。  
+   3. `scripts/validate-diagnostic-json.sh --frontend rust --schema diagnostics-v2.schema.json` で JSON schema に則った `Diagnostic`/`Audit` 出力を照合し、`reports/dual-write/front-end/w4-diagnostics/effects-contract/<case>/schema.{ocaml,rust}.log` を保存する。  
+
+5. **記録・フォローアップ（0.25日）**  
+   1. `docs-migrations.log` に「TPM-TYPE-03: CLI FFI 効果/契約の dual-write 検証」エントリを追加し、`docs/plans/rust-migration/1-3-dual-write-runbook.md` / `p1-spec-compliance-gap.md#SCG-09` に `--emit-effects`/`StageContext`・`RuntimeCapability` フラグと `effects.contract.*` 出力形式を追記する。  
+   2. `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の診断進捗表に TPM-TYPE-03 を追記し、残存する `effects.contract.stage_mismatch` の差分を `p1-spec-compliance-gap.md` の `SCG` 列で `Deferred` に分類したうえで次フェーズの追跡ノートを `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` にリンクする。  
+
+#### TPM-TYPE-03 進捗
+
+- `compiler/ocaml/tests/test_cli_callconv_snapshot.ml` / `test_ffi_contract.ml` を読み込み、IR・診断・監査出力のゴールデン構造と `StageContext`/`RuntimeCapability` の関連付けを整理して `effects.contract.stage_mismatch` の期待結果を把握し、`p1-spec-compliance-gap.md#SCG-09` の要件へ適用した。  
+- `docs/spec/3-8-core-runtime-capability.md`・`docs/spec/1-3-effects-safety.md` を参照し、`effects.contract.*` メトリクスと `RuntimeCapability` レジストリの照合ルールを `docs/plans/rust-migration/p1-front-end-checklists.csv` に追記する候補を挙げた。  
+- `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の診断 JSON スキーマと `collect-iterator-audit-metrics.py` の `diag` セクションを確認し、TPM-TYPE-03 用に `effects-contract` という新規 metrics-case を追加する必要を確認した。  
