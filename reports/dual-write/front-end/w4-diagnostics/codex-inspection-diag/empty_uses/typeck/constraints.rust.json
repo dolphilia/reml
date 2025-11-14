@@ -1,0 +1,32 @@
+{
+  "function_summaries": [
+    {
+      "name": "answer",
+      "param_count": 0,
+      "return_type": "Int",
+      "effect_row": "",
+      "span": {
+        "start": 0,
+        "end": 16
+      },
+      "dict_refs": 0
+    }
+  ],
+  "stats": {
+    "unify_calls": 0,
+    "ast_nodes": 1,
+    "token_count": 2
+  },
+  "total_constraints": 0,
+  "breakdown": [],
+  "functions": [
+    {
+      "name": "answer",
+      "constraints": 0,
+      "typed_exprs": 1,
+      "unresolved_identifiers": 0
+    }
+  ],
+  "constraints": [],
+  "used_impls": []
+}

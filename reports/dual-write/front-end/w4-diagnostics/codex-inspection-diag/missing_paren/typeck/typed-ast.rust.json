@@ -1,0 +1,22 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/codex-inspection-diag/missing_paren/input.reml",
+  "function_summaries": [
+    {
+      "name": "missing",
+      "param_count": 0,
+      "return_type": "Unknown",
+      "effect_row": "",
+      "span": {
+        "start": 0,
+        "end": 0
+      },
+      "dict_refs": 0
+    }
+  ],
+  "rendered": "=== Typed AST ===\n\n<empty>",
+  "module": {
+    "functions": [],
+    "dict_refs": [],
+    "schemes": []
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "schema_version": "w3-typeck-impl-registry/0.1",
+  "frontend": "rust",
+  "case": "missing_paren",
+  "run_id": "codex-inspection-typeck",
+  "entries": []
+}

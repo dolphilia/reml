@@ -1,0 +1,34 @@
+{
+  "case": "addition",
+  "source": "inline",
+  "ast_match": false,
+  "ocaml_ast": "fn add(x, y) = binary(var(x) + var(y))",
+  "rust_ast": "",
+  "ocaml_diag_count": 0,
+  "rust_diag_count": 0,
+  "diag_match": true,
+  "ocaml_diag_messages": [],
+  "rust_diag_messages": [],
+  "ocaml_packrat_queries": 0,
+  "ocaml_packrat_hits": 0,
+  "ocaml_span_trace_len": 0,
+  "ocaml_stream_meta": null,
+  "rust_packrat_queries": 0,
+  "rust_packrat_hits": 0,
+  "rust_span_trace_len": 0,
+  "ocaml_tast_lines": 1,
+  "ocaml_tast_available": true,
+  "typeck_metrics": {
+    "ocaml": {
+      "typed_functions": 1,
+      "typed_exprs": 1,
+      "constraints_total": 0,
+      "constraint_breakdown": {},
+      "unresolved_identifiers": 0,
+      "call_sites": 0,
+      "binary_expressions": 0
+    },
+    "rust": null,
+    "match": false
+  }
+}

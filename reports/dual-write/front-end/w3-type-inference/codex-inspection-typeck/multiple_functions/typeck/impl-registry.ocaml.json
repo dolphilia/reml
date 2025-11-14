@@ -1,0 +1,24 @@
+{
+  "schema_version": "w3-typeck-impl-registry/0.1",
+  "frontend": "ocaml",
+  "case": "multiple_functions",
+  "run_id": "codex-inspection-typeck",
+  "entries": [
+    {
+      "index": 0,
+      "impl_name": "log",
+      "trait_path": null,
+      "impl_type": "Unknown",
+      "param_types": [],
+      "origin": "typed_ast_text"
+    },
+    {
+      "index": 1,
+      "impl_name": "log_twice",
+      "trait_path": null,
+      "impl_type": "Unknown",
+      "param_types": [],
+      "origin": "typed_ast_text"
+    }
+  ]
+}

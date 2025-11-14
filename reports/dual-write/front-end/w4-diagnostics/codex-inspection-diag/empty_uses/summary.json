@@ -1,0 +1,32 @@
+{
+  "case": "empty_uses",
+  "mode": "diag",
+  "source": "inline",
+  "ocaml_diag_count": 0,
+  "rust_diag_count": 0,
+  "diag_match": true,
+  "gating": false,
+  "schema_ok": true,
+  "metrics_ok": false,
+  "diag": {
+    "parser": {
+      "ocaml": null,
+      "rust": {
+        "audit_pass_fraction": null,
+        "audit_pass_rate": null,
+        "expected_pass_fraction": 1.0
+      }
+    },
+    "effects": {
+      "ocaml": null,
+      "rust": {
+        "regressions": 0
+      }
+    },
+    "streaming": {
+      "ocaml": null,
+      "rust": null
+    }
+  },
+  "type_effect_case": false
+}

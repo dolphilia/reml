@@ -1,0 +1,49 @@
+{
+  "function_summaries": [
+    {
+      "name": "add",
+      "param_count": 2,
+      "return_type": "Unknown",
+      "effect_row": "",
+      "span": {
+        "start": 0,
+        "end": 20
+      },
+      "dict_refs": 0
+    }
+  ],
+  "stats": {
+    "unify_calls": 1,
+    "ast_nodes": 3,
+    "token_count": 7
+  },
+  "total_constraints": 1,
+  "breakdown": [
+    {
+      "metric": "binary.operands",
+      "count": 1
+    }
+  ],
+  "functions": [
+    {
+      "name": "add",
+      "constraints": 1,
+      "typed_exprs": 3,
+      "unresolved_identifiers": 0
+    }
+  ],
+  "constraints": [
+    {
+      "kind": "equal",
+      "left": {
+        "kind": "var",
+        "id": 0
+      },
+      "right": {
+        "kind": "var",
+        "id": 1
+      }
+    }
+  ],
+  "used_impls": []
+}

@@ -1,0 +1,189 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/codex-inspection-diag/multiple_functions/input.reml",
+  "function_summaries": [
+    {
+      "name": "log",
+      "param_count": 1,
+      "return_type": "'t0",
+      "effect_row": "",
+      "span": {
+        "start": 0,
+        "end": 13
+      },
+      "dict_refs": 0
+    },
+    {
+      "name": "log_twice",
+      "param_count": 1,
+      "return_type": "Unknown",
+      "effect_row": "",
+      "span": {
+        "start": 14,
+        "end": 41
+      },
+      "dict_refs": 0
+    }
+  ],
+  "rendered": "=== Typed AST ===\n\nfn log(x: 't0) : 't0\n\nfn log_twice(x: 't1) : Unknown",
+  "module": {
+    "functions": [
+      {
+        "name": "log",
+        "span": {
+          "start": 0,
+          "end": 13
+        },
+        "params": [
+          {
+            "name": "x",
+            "span": {
+              "start": 7,
+              "end": 8
+            },
+            "ty": "'t0"
+          }
+        ],
+        "return_type": "'t0",
+        "body": {
+          "span": {
+            "start": 12,
+            "end": 13
+          },
+          "kind": {
+            "kind": "identifier",
+            "ident": {
+              "name": "x",
+              "span": {
+                "start": 12,
+                "end": 13
+              }
+            }
+          },
+          "ty": "'t0",
+          "dict_ref_ids": []
+        },
+        "dict_ref_ids": [],
+        "scheme_id": 0
+      },
+      {
+        "name": "log_twice",
+        "span": {
+          "start": 14,
+          "end": 41
+        },
+        "params": [
+          {
+            "name": "x",
+            "span": {
+              "start": 27,
+              "end": 28
+            },
+            "ty": "'t1"
+          }
+        ],
+        "return_type": "Unknown",
+        "body": {
+          "span": {
+            "start": 32,
+            "end": 41
+          },
+          "kind": {
+            "kind": "call",
+            "callee": {
+              "span": {
+                "start": 32,
+                "end": 35
+              },
+              "kind": {
+                "kind": "identifier",
+                "ident": {
+                  "name": "log",
+                  "span": {
+                    "start": 32,
+                    "end": 35
+                  }
+                }
+              },
+              "ty": "('t2) -> 't2",
+              "dict_ref_ids": []
+            },
+            "args": [
+              {
+                "span": {
+                  "start": 36,
+                  "end": 41
+                },
+                "kind": {
+                  "kind": "call",
+                  "callee": {
+                    "span": {
+                      "start": 36,
+                      "end": 39
+                    },
+                    "kind": {
+                      "kind": "identifier",
+                      "ident": {
+                        "name": "log",
+                        "span": {
+                          "start": 36,
+                          "end": 39
+                        }
+                      }
+                    },
+                    "ty": "('t3) -> 't3",
+                    "dict_ref_ids": []
+                  },
+                  "args": [
+                    {
+                      "span": {
+                        "start": 40,
+                        "end": 41
+                      },
+                      "kind": {
+                        "kind": "identifier",
+                        "ident": {
+                          "name": "x",
+                          "span": {
+                            "start": 40,
+                            "end": 41
+                          }
+                        }
+                      },
+                      "ty": "'t1",
+                      "dict_ref_ids": []
+                    }
+                  ]
+                },
+                "ty": "Unknown",
+                "dict_ref_ids": []
+              }
+            ]
+          },
+          "ty": "Unknown",
+          "dict_ref_ids": []
+        },
+        "dict_ref_ids": [],
+        "scheme_id": 1
+      }
+    ],
+    "dict_refs": [],
+    "schemes": [
+      {
+        "id": 0,
+        "quantifiers": [
+          "'t0"
+        ],
+        "constraints": [],
+        "ty": "('t0) -> 't0"
+      },
+      {
+        "id": 1,
+        "quantifiers": [
+          "'t1"
+        ],
+        "constraints": [],
+        "ty": "('t1) -> Unknown"
+      }
+    ]
+  }
+}

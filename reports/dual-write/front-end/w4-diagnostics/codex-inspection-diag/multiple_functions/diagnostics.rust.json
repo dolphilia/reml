@@ -1,0 +1,134 @@
+{
+  "diagnostics": [],
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/codex-inspection-diag/multiple_functions/input.reml",
+  "parse_result": {
+    "farthest_error_offset": null,
+    "packrat_cache": [
+      {
+        "entry": {
+          "approx_bytes": 118,
+          "expectations": [],
+          "sample_tokens": [
+            {
+              "kind": "Success",
+              "lexeme": "function"
+            }
+          ],
+          "summary": {
+            "alternatives": [],
+            "humanized": "success"
+          }
+        },
+        "parser_id": 2,
+        "range_end": 13,
+        "range_start": 0
+      },
+      {
+        "entry": {
+          "approx_bytes": 118,
+          "expectations": [],
+          "sample_tokens": [
+            {
+              "kind": "Success",
+              "lexeme": "function"
+            }
+          ],
+          "summary": {
+            "alternatives": [],
+            "humanized": "success"
+          }
+        },
+        "parser_id": 2,
+        "range_end": 41,
+        "range_start": 14
+      }
+    ],
+    "packrat_snapshot": {
+      "approx_bytes": 236,
+      "entries": 2
+    },
+    "packrat_stats": {
+      "approx_bytes": 236,
+      "budget_drops": 0,
+      "entries": 2,
+      "evictions": 0,
+      "hits": 4,
+      "pruned": 0,
+      "queries": 6
+    },
+    "recovered": false,
+    "span_trace": []
+  },
+  "run_config": {
+    "extensions": {
+      "config": {
+        "experimental_effects": false,
+        "left_recursion": "off",
+        "legacy_result": true,
+        "merge_warnings": true,
+        "packrat": true,
+        "require_eof": false,
+        "source": "cli",
+        "trace": false
+      },
+      "effects": {
+        "type_row_mode": "ty-integrated"
+      },
+      "lex": {
+        "identifier_profile": "unicode",
+        "profile": "strict_json"
+      },
+      "recover": {
+        "notes": false,
+        "sync_tokens": []
+      },
+      "stream": {
+        "checkpoint": "unspecified",
+        "chunk_size": 0,
+        "demand_min_bytes": 0,
+        "demand_preferred_bytes": 0,
+        "enabled": false,
+        "flow": {
+          "backpressure": {
+            "max_lag_bytes": 0
+          },
+          "checkpoints_closed": 1,
+          "policy": "auto"
+        },
+        "flow_max_lag": 0,
+        "flow_policy": "auto",
+        "packrat_enabled": true,
+        "resume_hint": "unspecified"
+      }
+    },
+    "runtime_capabilities": [],
+    "switches": {
+      "experimental_effects": false,
+      "left_recursion": "off",
+      "legacy_result": true,
+      "merge_warnings": true,
+      "packrat": true,
+      "require_eof": false,
+      "trace": false
+    }
+  },
+  "stream_meta": {
+    "flow": {
+      "checkpoints_closed": 1
+    },
+    "packrat": {
+      "approx_bytes": 236,
+      "budget_drops": 0,
+      "entries": 2,
+      "evictions": 0,
+      "hits": 4,
+      "pruned": 0,
+      "queries": 6
+    },
+    "packrat_enabled": true,
+    "span_trace": {
+      "dropped": 0,
+      "retained": 0
+    }
+  }
+}

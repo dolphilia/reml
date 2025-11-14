@@ -1,0 +1,54 @@
+{
+  "function_summaries": [
+    {
+      "name": "log",
+      "param_count": 1,
+      "return_type": "'t0",
+      "effect_row": "",
+      "span": {
+        "start": 0,
+        "end": 13
+      },
+      "dict_refs": 0
+    },
+    {
+      "name": "log_twice",
+      "param_count": 1,
+      "return_type": "Unknown",
+      "effect_row": "",
+      "span": {
+        "start": 14,
+        "end": 41
+      },
+      "dict_refs": 0
+    }
+  ],
+  "stats": {
+    "unify_calls": 0,
+    "ast_nodes": 6,
+    "token_count": 22
+  },
+  "total_constraints": 2,
+  "breakdown": [
+    {
+      "metric": "call.arity",
+      "count": 2
+    }
+  ],
+  "functions": [
+    {
+      "name": "log",
+      "constraints": 0,
+      "typed_exprs": 1,
+      "unresolved_identifiers": 0
+    },
+    {
+      "name": "log_twice",
+      "constraints": 2,
+      "typed_exprs": 5,
+      "unresolved_identifiers": 0
+    }
+  ],
+  "constraints": [],
+  "used_impls": []
+}

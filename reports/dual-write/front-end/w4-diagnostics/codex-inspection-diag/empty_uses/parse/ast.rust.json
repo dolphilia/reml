@@ -1,0 +1,36 @@
+{
+  "effects": [],
+  "functions": [
+    {
+      "name": {
+        "name": "answer",
+        "span": {
+          "start": 3,
+          "end": 9
+        }
+      },
+      "params": [],
+      "body": {
+        "kind": {
+          "kind": "literal",
+          "value": {
+            "kind": "int",
+            "value": 42,
+            "raw": "42",
+            "base": "base10"
+          }
+        },
+        "span": {
+          "start": 14,
+          "end": 16
+        }
+      },
+      "ret_type": null,
+      "span": {
+        "start": 0,
+        "end": 16
+      }
+    }
+  ],
+  "decls": []
+}

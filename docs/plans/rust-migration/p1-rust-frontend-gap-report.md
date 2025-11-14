@@ -609,11 +609,15 @@ FRG-33 は `p1-spec-compliance-gap.md#SCG-14` で指摘された `run_stream`/`r
 ### 6.2 実行結果と観察
 - `ast` モードで空ケース 4件（`empty_uses`/`multiple_functions`/`addition`/`missing_paren`）を `codex-inspection` で比較した結果、全件 `ast_match=false`、`diag_match=true`（`typeck_match` は生成されず `None`）。`ocaml_diag`/`rust_diag` いずれも `0` で `diagnostic` 系の構造上の齟齬は現時点では検出されていない。
 - `collect-iterator` による `effects.stage` 系キーはまだウォークしていないため認証できていない（`SCG-13` で要求される `audit`/`change_set` とは別途追跡必須）。`typeck_rust_flags` 未定義のエラーは `typeck` モード用フラグセットの整備が必要なことを暗示しており、`SCG-12`/`FRG-14` を追う際の補充項目とする。
+- `scripts/poc_dualwrite_compare.sh --mode diag --run-id codex-inspection-diag` を実行し、`reports/dual-write/front-end/w4-diagnostics/codex-inspection-diag/summary.md` で `diag_match=true` を確保しつつ `gating` および `metrics` が `❌` になることを確認。OCaml 側の診断 JSON が出力されず `metrics` 判定で `parser`/`effects` の収集が失敗し、各ケースで `parser-metrics.rust.err.log`/`effects-metrics.rust.err.log` が出力されたため（`missing diagnostics`）、`SCG-13` で求める `severity`/`domain`/`audit` 埋め込みを後続で再取得する必要がある。
+- `FORCE_TYPE_EFFECT_FLAGS=true scripts/poc_dualwrite_compare.sh --mode typeck --run-id codex-inspection-typeck` では、`reports/dual-write/front-end/w3-type-inference/codex-inspection-typeck/summary.md` が `typeck_match=false` で全ケース一致せず。ログには `rust_case_flags[@]: unbound variable`（line 1621）という警告も出ており、OCaml/Rust 両方で `diagnostics.json` を生成できていないため `collect-iterator` の `effects-metrics.*.ocaml.json` も作成されなかった。これらの出力が揃わないと `SCG-12`/`FRG-14` の型推論差分チェックが進められない。
+- `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success` を叩いたところ、`ValueError: diagnostics array is missing`（`tooling/ci/collect-iterator-audit-metrics.py:284`）により実行できず。`diagnostics.json` が存在しない状態では `parser.stream_extension_field_coverage` などの KPI を収集できないため、まず `diag`/`typeck` で正規の JSON を出力する必要がある。
 
 ### 6.3 次の検査フェーズ
 - `scripts/poc_dualwrite_compare.sh --mode diag --run-id <run>` を実行して `SCG-13` で求める `diagnostics.json` の `severity`/`domain`/`audit` メタデータ差分を再取得し、`reports/dual-write/front-end/w4-diagnostics/<run>/summary.md` に注記する。
 - `scripts/poc_dualwrite_compare.sh --mode typeck` を `FORCE_TYPE_EFFECT_FLAGS=true` で再実行し、`typeck_debug.json`/`typed_ast.json`/`constraints.json` を OCaml 側と並べて `reports/dual-write/front-end/w3-type-inference/<run>/` に記録。`typeck_rust_flags` を `docs/plans/rust-migration/p1-front-end-checklists.csv` の該当行に合わせて構成し、`SCG-12`/`FRG-14` の型推論すり合わせを完了させる。
 - `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success` を走らせ、`parser.stream_extension_field_coverage`・`parser.stream.outcome_consistency`・`effects.stage.required` を `reports/dual-write/front-end/README.md` などに記録することで `SCG-14`/`SCG-13` に必要な RunConfig メタデータを整備する。
+- `diag`/`typeck` のパスで `diagnostics.json` が出力された後に `collect-iterator` を再実行し、前出の `ValueError` を解消。`rust_case_flags[@]` 警告が発生しているため必要なフラグを事前に `CASE_FLAGS_META_RUST` あるいは `docs/plans/rust-migration/p1-front-end-checklists.csv` へ追記し、`typeck` モードでの `rust_case_flags` が空配列にならないようにして再発を防ぐ。
 
 ## 7. ノート
 

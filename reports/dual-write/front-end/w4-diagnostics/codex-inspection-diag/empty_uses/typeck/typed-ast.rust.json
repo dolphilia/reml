@@ -1,0 +1,58 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/codex-inspection-diag/empty_uses/input.reml",
+  "function_summaries": [
+    {
+      "name": "answer",
+      "param_count": 0,
+      "return_type": "Int",
+      "effect_row": "",
+      "span": {
+        "start": 0,
+        "end": 16
+      },
+      "dict_refs": 0
+    }
+  ],
+  "rendered": "=== Typed AST ===\n\nfn answer() : Int",
+  "module": {
+    "functions": [
+      {
+        "name": "answer",
+        "span": {
+          "start": 0,
+          "end": 16
+        },
+        "params": [],
+        "return_type": "Int",
+        "body": {
+          "span": {
+            "start": 14,
+            "end": 16
+          },
+          "kind": {
+            "kind": "literal",
+            "value": {
+              "kind": "int",
+              "value": 42,
+              "raw": "42",
+              "base": "base10"
+            }
+          },
+          "ty": "Int",
+          "dict_ref_ids": []
+        },
+        "dict_ref_ids": [],
+        "scheme_id": 0
+      }
+    ],
+    "dict_refs": [],
+    "schemes": [
+      {
+        "id": 0,
+        "quantifiers": [],
+        "constraints": [],
+        "ty": "() -> Int"
+      }
+    ]
+  }
+}

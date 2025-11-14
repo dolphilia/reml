@@ -1,0 +1,90 @@
+{
+  "effects": [],
+  "functions": [
+    {
+      "name": {
+        "name": "add",
+        "span": {
+          "start": 3,
+          "end": 6
+        }
+      },
+      "params": [
+        {
+          "name": {
+            "name": "x",
+            "span": {
+              "start": 7,
+              "end": 8
+            }
+          },
+          "type_annotation": null,
+          "default": null,
+          "span": {
+            "start": 7,
+            "end": 8
+          }
+        },
+        {
+          "name": {
+            "name": "y",
+            "span": {
+              "start": 10,
+              "end": 11
+            }
+          },
+          "type_annotation": null,
+          "default": null,
+          "span": {
+            "start": 10,
+            "end": 11
+          }
+        }
+      ],
+      "body": {
+        "kind": {
+          "kind": "binary",
+          "operator": "Add",
+          "left": {
+            "kind": {
+              "kind": "identifier",
+              "name": "x",
+              "span": {
+                "start": 15,
+                "end": 16
+              }
+            },
+            "span": {
+              "start": 15,
+              "end": 16
+            }
+          },
+          "right": {
+            "kind": {
+              "kind": "identifier",
+              "name": "y",
+              "span": {
+                "start": 19,
+                "end": 20
+              }
+            },
+            "span": {
+              "start": 19,
+              "end": 20
+            }
+          }
+        },
+        "span": {
+          "start": 15,
+          "end": 20
+        }
+      },
+      "ret_type": null,
+      "span": {
+        "start": 0,
+        "end": 20
+      }
+    }
+  ],
+  "decls": []
+}

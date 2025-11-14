@@ -1,0 +1,16 @@
+{
+  "schema_version": "w3-typeck-impl-registry/0.1",
+  "frontend": "ocaml",
+  "case": "empty_uses",
+  "run_id": "codex-inspection-typeck",
+  "entries": [
+    {
+      "index": 0,
+      "impl_name": "answer",
+      "trait_path": null,
+      "impl_type": "Unknown",
+      "param_types": [],
+      "origin": "typed_ast_text"
+    }
+  ]
+}

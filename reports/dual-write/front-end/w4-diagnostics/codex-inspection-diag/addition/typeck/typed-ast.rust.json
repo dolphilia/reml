@@ -1,0 +1,108 @@
+{
+  "input": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/codex-inspection-diag/addition/input.reml",
+  "function_summaries": [
+    {
+      "name": "add",
+      "param_count": 2,
+      "return_type": "Unknown",
+      "effect_row": "",
+      "span": {
+        "start": 0,
+        "end": 20
+      },
+      "dict_refs": 0
+    }
+  ],
+  "rendered": "=== Typed AST ===\n\nfn add(x: 't1, y: 't1) : Unknown",
+  "module": {
+    "functions": [
+      {
+        "name": "add",
+        "span": {
+          "start": 0,
+          "end": 20
+        },
+        "params": [
+          {
+            "name": "x",
+            "span": {
+              "start": 7,
+              "end": 8
+            },
+            "ty": "'t1"
+          },
+          {
+            "name": "y",
+            "span": {
+              "start": 10,
+              "end": 11
+            },
+            "ty": "'t1"
+          }
+        ],
+        "return_type": "Unknown",
+        "body": {
+          "span": {
+            "start": 15,
+            "end": 20
+          },
+          "kind": {
+            "kind": "binary",
+            "operator": "+",
+            "left": {
+              "span": {
+                "start": 15,
+                "end": 16
+              },
+              "kind": {
+                "kind": "identifier",
+                "ident": {
+                  "name": "x",
+                  "span": {
+                    "start": 15,
+                    "end": 16
+                  }
+                }
+              },
+              "ty": "'t1",
+              "dict_ref_ids": []
+            },
+            "right": {
+              "span": {
+                "start": 19,
+                "end": 20
+              },
+              "kind": {
+                "kind": "identifier",
+                "ident": {
+                  "name": "y",
+                  "span": {
+                    "start": 19,
+                    "end": 20
+                  }
+                }
+              },
+              "ty": "'t1",
+              "dict_ref_ids": []
+            }
+          },
+          "ty": "Unknown",
+          "dict_ref_ids": []
+        },
+        "dict_ref_ids": [],
+        "scheme_id": 0
+      }
+    ],
+    "dict_refs": [],
+    "schemes": [
+      {
+        "id": 0,
+        "quantifiers": [
+          "'t1"
+        ],
+        "constraints": [],
+        "ty": "('t1, 't1) -> Unknown"
+      }
+    ]
+  }
+}

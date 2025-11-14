@@ -1,0 +1,32 @@
+{
+  "function_summaries": [
+    {
+      "name": "missing",
+      "param_count": 0,
+      "return_type": "Unknown",
+      "effect_row": "",
+      "span": {
+        "start": 0,
+        "end": 0
+      },
+      "dict_refs": 0
+    }
+  ],
+  "stats": {
+    "unify_calls": 0,
+    "ast_nodes": 0,
+    "token_count": 0
+  },
+  "total_constraints": 0,
+  "breakdown": [],
+  "functions": [
+    {
+      "name": "missing",
+      "constraints": 0,
+      "typed_exprs": 0,
+      "unresolved_identifiers": 0
+    }
+  ],
+  "constraints": [],
+  "used_impls": []
+}

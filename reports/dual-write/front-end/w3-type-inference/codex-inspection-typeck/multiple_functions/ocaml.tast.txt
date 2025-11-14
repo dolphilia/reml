@@ -1,0 +1,5 @@
+=== Typed AST ===
+
+fn log(x: i64) : ∀t0. (i64 -> t0)
+
+fn log_twice(x: i64) : ∀t7. (i64 -> t7)
