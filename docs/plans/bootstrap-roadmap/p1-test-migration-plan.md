@@ -164,3 +164,29 @@
 - `compiler/rust/frontend/src/parser/mod.rs` の `expectation_tests` に `ExpectedTokenCollector` 経由で空集合補正後の `解析継続トークン` プレースホルダを確認するユニットテストを追加し、`parse_result_tests` モジュールを新設して `ParserDriver::parse` の失敗結果で `farthest_error_offset`/`legacy_error.expected`/`diagnostics.expected_summary` を検証するテスト群を実装した。  
 - `cargo test --test parser` を実行し、新規テストを含むパーサモジュール全体がグリーンであることを確認した。  
 - `docs-migrations.log` に本作業の記録（TPM-LEX-04）を追加し、関連する `docs/plans/bootstrap-roadmap/{2-5-spec-drift-remediation.md,2-7-deferred-remediation.md}` と `docs/plans/rust-migration/1-0-front-end-transition.md` への追記を今後検討する旨をコメントとして残した。  
+
+### TPM-TYPE-01
+
+1. **調査・前提整理（1日）**  
+   1. `compiler/ocaml/tests/test_type_inference.ml` と `docs/plans/rust-migration/appendix/type-inference-ocaml-inventory.md` を横断し、パターンマッチ・型パラメータ・スキームがどのように `TypecheckReport` の `typed_module`/`constraints`/`violations` に対応するかを整理する。特に `p1-spec-compliance-gap.md` の `FRG-12` が要求する Typed AST/Constraint/Scheme の JSON スキーマ構造と照合する。  
+   2. `docs/plans/bootstrap-roadmap/p1-test-migration-plan.md` と `docs/plans/rust-migration/p1-front-end-checklists.csv` に必要な Dual-write case 名と期待メトリクス（`constraints_total`・`typed_functions`・`violations`）を記載し、`reports/dual-write/front-end/w3-type-inference/<case>` に保存する JSON 出力のプロパティを定義する。  
+2. **ハーネス設計（0.5日）**  
+   1. `scripts/poc_dualwrite_compare.sh --mode typeck` に `--cases docs/plans/bootstrap-roadmap/p1-test-migration-typeck-cases.txt` を追加し、`parser_driver` で再現できる ReML ソースのタプル型・コンストレイントテストを case 化して `reports/dual-write/front-end/w3-type-inference/<run>/<case>/` に `typed-ast.{ocaml,rust}.json`・`constraints.{ocaml,rust}.json` を出力する。  
+   2. `compiler/rust/frontend/src/bin/poc_frontend.rs` に `--emit-typed-ast`／`--emit-constraints` を整備し、`TypecheckDriver` の `typed_module`/`constraints` を `serde_json` で書き出す処理を `typeck` モードに追加する。  
+3. **実装（1日）**  
+   1. `compiler/rust/frontend/tests/typeck_*` 下に `typeck_inference_report.rs` などのテストモジュールを作り、OCaml 側の `test_type_inference.ml` に対応する Typed AST（関数・パラメータ・body）・制約・スキームを Rust でも生成できることを `serde_json` で検証する。  
+   2. 上記テストで生成した `TypecheckReport` を `serde_json::to_value` して `typed_module.functions`・`constraints`・`metrics` のキーが揃うことを確認する。これにより `reports/dual-write/front-end/w3-type-inference` へ出力する JSON のスキーマと配列サイズの前提が担保される。  
+   3. `scripts/poc_dualwrite_compare.sh --mode typeck` で OCaml/Rust の `typed-ast` と `constraints` を比較して `reports/dual-write/front-end/w3-type-inference/<run>` に保存する処理をアサートするテストを `collect-iterator-audit-metrics.py --section typeck --case <case>` でトリガー可能にする。  
+4. **検証・監査（0.5日）**  
+   1. `cargo test --test typeck_inference_report` と `scripts/poc_dualwrite_compare.sh --mode typeck --cases docs/plans/bootstrap-roadmap/p1-test-migration-typeck-cases.txt` を走らせ、`reports/dual-write/front-end/w3-type-inference/<run>/<case>` に `typed-ast.{ocaml,rust}.json`・`constraints.{ocaml,rust}.json`・`typeck-debug.*` を溜める。  
+   2. `collect-iterator-audit-metrics.py --section typeck --case <case>` で `constraints_total`/`typed_functions`/`violations` の `±0.5` ルールをチェックし、`docs/plans/rust-migration/p1-front-end-checklists.csv` に書き込んで `reports/dual-write` の JSON との差分を監査。  
+5. **記録・フォローアップ（0.25日）**  
+   1. `docs-migrations.log` と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の `typeck` セクションを更新し、Rust 側テストの `TypecheckReport` JSON と差分監査の出力パスを記録する。  
+   2. `docs/plans/rust-migration/1-0-front-end-transition.md` の `FRG-12`・`FRG-14` で `typed-ast` 出力例を追記し、スキーム・制約・診断の Dual-write 用 CLI フラグ（`--emit-typed-ast`/`--emit-constraints`）を明記する。  
+
+#### TPM-TYPE-01 進捗
+
+- `compiler/ocaml/tests/test_type_inference.ml` を `docs/plans/rust-migration/appendix/type-inference-ocaml-inventory.md` と突き合わせて必要なパターン/制約を洗い出し、`p1-spec-compliance-gap.md` の `FRG-12` に対応する Typed AST/Constraint 出力の要件を整理した。  
+- `compiler/rust/frontend/tests/typeck_inference_report.rs` を追加し、`TypecheckReport` の `typed_module.functions`・`constraints`・`metrics` が `serde_json::to_value` で直列化可能であること、パラメータが同一の型変数で共有されること、`constraints` に `Equal` 制約が含まれることを検証するテストを実装した。  
+- `cargo test --test typeck_inference_report` を実行して新規テストが通ることを確認し、`TypecheckReport` の JSON 出力が `reports/dual-write/front-end/w3-type-inference` で想定されるスキーマ構造を満たすことと、`typed_functions`/`constraints_total` メトリクスが記録されることを確認した。  
+- `docs-migrations.log` に「TPM-TYPE-01: `TypecheckReport` JSON/Constraint テストの Rust 移植」エントリを追加し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` と `docs/plans/rust-migration/1-0-front-end-transition.md` への追記を今後検討する旨をコメントとして残した。  
