@@ -1,5 +1,7 @@
+use std::fmt;
 use std::str::FromStr;
 
+use serde::Serialize;
 use smol_str::SmolStr;
 
 use super::env::StageId;
@@ -109,7 +111,7 @@ impl CapabilityDescriptor {
 }
 
 /// CLI やコンフィグから渡された Runtime Capability の情報。
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RuntimeCapability {
     id: SmolStr,
     stage: StageId,
@@ -145,6 +147,24 @@ impl RuntimeCapability {
 
     pub fn stage(&self) -> &StageId {
         &self.stage
+    }
+
+    pub fn new(id: impl Into<SmolStr>, stage: StageId) -> Self {
+        Self {
+            id: id.into(),
+            stage,
+        }
+    }
+}
+
+impl fmt::Display for RuntimeCapability {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let stage_label = self.stage().as_str();
+        if stage_label.eq_ignore_ascii_case("stable") {
+            write!(f, "{}", self.id())
+        } else {
+            write!(f, "{}@{}", self.id(), stage_label)
+        }
     }
 }
 

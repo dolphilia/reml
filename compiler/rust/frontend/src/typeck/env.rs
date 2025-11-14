@@ -6,6 +6,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use super::capability::RuntimeCapability;
 use super::scheme::Scheme;
 use super::types::TypeVariable;
 use indexmap::IndexMap;
@@ -34,7 +35,7 @@ pub struct TypecheckConfig {
     /// 実験的効果を許可するかどうか。
     pub experimental_effects: bool,
     /// CLI から指定された Runtime Capabilities。
-    pub runtime_capabilities: Vec<String>,
+    pub runtime_capabilities: Vec<RuntimeCapability>,
     /// 型推論で詳細トレースを出力するかどうか。
     pub trace_enabled: bool,
 }
@@ -66,7 +67,7 @@ pub struct TypecheckConfigBuilder {
     type_row_mode: Option<TypeRowMode>,
     recover: Option<RecoverConfig>,
     experimental_effects: Option<bool>,
-    runtime_capabilities: Option<Vec<String>>,
+    runtime_capabilities: Option<Vec<RuntimeCapability>>,
     trace_enabled: Option<bool>,
 }
 
@@ -95,7 +96,7 @@ impl TypecheckConfigBuilder {
         self
     }
 
-    pub fn runtime_capabilities(mut self, capabilities: Vec<String>) -> Self {
+    pub fn runtime_capabilities(mut self, capabilities: Vec<RuntimeCapability>) -> Self {
         self.runtime_capabilities = Some(capabilities);
         self
     }

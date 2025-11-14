@@ -11,6 +11,7 @@ mod metrics;
 mod scheme;
 mod types;
 
+pub use capability::RuntimeCapability;
 pub use constraint::{Constraint, ConstraintSolver, ConstraintSolverError, Substitution};
 pub use driver::{
     TypecheckDriver, TypecheckReport, TypecheckViolation, TypecheckViolationKind,

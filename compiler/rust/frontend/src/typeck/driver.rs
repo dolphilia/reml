@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use serde::Serialize;
 
-use super::capability::{CapabilityDescriptor, EffectUsage, RuntimeCapability};
+use super::capability::{CapabilityDescriptor, EffectUsage};
 use super::constraint::{Constraint, ConstraintSolver, Substitution};
 use super::env::{StageRequirement, TypeEnv, TypeRowMode, TypecheckConfig};
 use super::metrics::TypecheckMetrics;
@@ -899,7 +899,6 @@ fn detect_capability_violations(
     let provided_capabilities = config
         .runtime_capabilities
         .iter()
-        .filter_map(|value| RuntimeCapability::parse(value))
         .map(|cap| cap.id().clone())
         .collect::<HashSet<_>>();
     let runtime_stage = config.effect_context.runtime.clone();

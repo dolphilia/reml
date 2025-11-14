@@ -23,9 +23,10 @@ use reml_frontend::streaming::{
     StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig,
 };
 use reml_frontend::typeck::{
-    self, Constraint, DualWriteGuards, InstallConfigError, RecoverConfig, StageContext, StageId,
-    StageRequirement, TypeRowMode, TypecheckConfig, TypecheckDriver, TypecheckMetrics,
-    TypecheckReport, TypecheckViolation, TypecheckViolationKind, TypedFunctionSummary,
+    self, Constraint, DualWriteGuards, InstallConfigError, RecoverConfig, RuntimeCapability,
+    StageContext, StageId, StageRequirement, TypeRowMode, TypecheckConfig, TypecheckDriver,
+    TypecheckMetrics, TypecheckReport, TypecheckViolation, TypecheckViolationKind,
+    TypedFunctionSummary,
 };
 use serde::Serialize;
 
@@ -222,7 +223,7 @@ struct CliArgs {
     emit_effects_metrics: Option<PathBuf>,
     run_config: RunSettings,
     stream_config: StreamSettings,
-    runtime_capabilities: Vec<String>,
+    runtime_capabilities: Vec<RuntimeCapability>,
     config_path: Option<PathBuf>,
 }
 
@@ -346,7 +347,7 @@ fn apply_workspace_config(
     path: &Path,
     run_config: &mut RunSettings,
     stream_config: &mut StreamSettings,
-    runtime_capabilities: &mut Vec<String>,
+    runtime_capabilities: &mut Vec<RuntimeCapability>,
     row_mode: &mut Option<TypeRowMode>,
     emit_typeck_debug: &mut Option<PathBuf>,
     trace_overridden: bool,
@@ -489,20 +490,52 @@ fn merge_extension(existing: Option<&Value>, overrides: &serde_json::Map<String,
     Value::Object(payload)
 }
 
-fn extend_capabilities(target: &mut Vec<String>, value: &Value) {
+fn extend_capabilities(target: &mut Vec<RuntimeCapability>, value: &Value) {
     match value {
         Value::String(name) => {
-            if !name.is_empty() && !target.iter().any(|existing| existing == name) {
-                target.push(name.to_string());
-            }
+            add_runtime_capability_from_str(target, name);
         }
         Value::Array(entries) => {
             for entry in entries {
                 extend_capabilities(target, entry);
             }
         }
+        Value::Object(map) => {
+            if let Some(id) = map.get("id").and_then(|v| v.as_str()) {
+                let stage_str = map
+                    .get("stage")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .trim()
+                    .to_string();
+                let stage = if stage_str.is_empty() {
+                    StageId::stable()
+                } else {
+                    StageId::from_str(&stage_str).unwrap_or_else(|_| {
+                        eprintln!(
+                            "[CONFIG] runtime_capability `{id}` の stage `{stage_str}` は解釈できないため stable を使用します"
+                        );
+                        StageId::stable()
+                    })
+                };
+                push_runtime_capability(target, RuntimeCapability::new(id, stage));
+            }
+        }
         _ => {}
     }
+}
+
+fn add_runtime_capability_from_str(target: &mut Vec<RuntimeCapability>, entry: &str) {
+    if let Some(capability) = RuntimeCapability::parse(entry) {
+        push_runtime_capability(target, capability);
+    } else if !entry.trim().is_empty() {
+        eprintln!("[CONFIG] runtime_capability `{entry}` は Capability として解析できませんでした");
+    }
+}
+
+fn push_runtime_capability(target: &mut Vec<RuntimeCapability>, capability: RuntimeCapability) {
+    target.retain(|existing| existing.id() != capability.id());
+    target.push(capability);
 }
 
 fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
@@ -529,7 +562,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut emit_effects_metrics = None;
     let mut run_config = RunSettings::default();
     let mut stream_config = StreamSettings::default();
-    let mut runtime_capabilities: Vec<String> = Vec::new();
+    let mut runtime_capabilities: Vec<RuntimeCapability> = Vec::new();
     let mut config_path: Option<PathBuf> = None;
     let mut trace_overridden = false;
     let mut merge_warnings_overridden = false;
@@ -735,12 +768,15 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     .ok_or_else(|| "--runtime-capabilities は値を伴う必要があります")?;
                 for entry in value.split(',') {
                     let trimmed = entry.trim();
-                    if !trimmed.is_empty()
-                        && !runtime_capabilities
-                            .iter()
-                            .any(|existing| existing == trimmed)
-                    {
-                        runtime_capabilities.push(trimmed.to_string());
+                    if trimmed.is_empty() {
+                        continue;
+                    }
+                    if let Some(capability) = RuntimeCapability::parse(trimmed) {
+                        push_runtime_capability(&mut runtime_capabilities, capability);
+                    } else {
+                        eprintln!(
+                            "[CONFIG] `--runtime-capabilities {trimmed}` が Capability として解析できませんでした"
+                        );
                     }
                 }
             }
@@ -945,7 +981,11 @@ fn build_runconfig_top_level(
             },
             "config": build_config_extension(run_config, args),
         },
-        "runtime_capabilities": args.runtime_capabilities.clone(),
+        "runtime_capabilities": args
+            .runtime_capabilities
+            .iter()
+            .map(|cap| cap.to_string())
+            .collect::<Vec<_>>(),
     })
 }
 
@@ -1030,34 +1070,31 @@ const STREAMING_PLACEHOLDER_TOKEN: &str = "解析継続トークン";
 struct StageAuditPayload {
     required_stage: Option<String>,
     actual_stage: Option<String>,
-    capability_ids: Vec<String>,
+    runtime_capabilities: Vec<RuntimeCapability>,
 }
 
 impl StageAuditPayload {
-    fn new(context: &StageContext, capability_ids: &[String]) -> Self {
+    fn new(context: &StageContext, capabilities: &[RuntimeCapability]) -> Self {
         Self {
             required_stage: Some(stage_requirement_label(&context.capability)),
             actual_stage: Some(stage_requirement_label(&context.runtime)),
-            capability_ids: capability_ids.to_vec(),
+            runtime_capabilities: capabilities.to_vec(),
         }
     }
 
     fn primary_capability(&self) -> Option<&str> {
-        self.capability_ids.first().map(|s| s.as_str())
+        self.runtime_capabilities
+            .first()
+            .map(|cap| cap.id().as_str())
     }
 
     fn capability_details(&self) -> Vec<Value> {
-        if self.capability_ids.is_empty() {
-            return Vec::new();
-        }
-        self.capability_ids
+        self.runtime_capabilities
             .iter()
             .map(|cap| {
                 let mut entry = serde_json::Map::new();
-                entry.insert("capability".to_string(), json!(cap));
-                if let Some(actual) = &self.actual_stage {
-                    entry.insert("stage".to_string(), json!(actual));
-                }
+                entry.insert("capability".to_string(), json!(cap.id()));
+                entry.insert("stage".to_string(), json!(cap.stage().as_str()));
                 Value::Object(entry)
             })
             .collect()
@@ -1065,9 +1102,9 @@ impl StageAuditPayload {
 
     fn capability_ids_value(&self) -> Value {
         Value::Array(
-            self.capability_ids
+            self.runtime_capabilities
                 .iter()
-                .map(|cap| Value::String(cap.clone()))
+                .map(|cap| Value::String(cap.id().to_string()))
                 .collect(),
         )
     }
@@ -1085,6 +1122,13 @@ impl StageAuditPayload {
             stage_trace.push(json!({
                 "source": "runtime",
                 "stage": actual,
+            }));
+        }
+        for cap in &self.runtime_capabilities {
+            stage_trace.push(json!({
+                "source": "runtime_capability",
+                "capability": cap.id(),
+                "stage": cap.stage().as_str(),
             }));
         }
         stage_trace
@@ -1892,7 +1936,7 @@ struct TypeckDebugFile {
     effect_context: StageContext,
     type_row_mode: TypeRowMode,
     recover: RecoverConfig,
-    runtime_capabilities: Vec<String>,
+    runtime_capabilities: Vec<RuntimeCapability>,
     trace_enabled: bool,
     metrics: TypecheckMetrics,
     violations: Vec<TypecheckViolation>,
