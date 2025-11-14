@@ -24,8 +24,8 @@ Usage: scripts/poc_dualwrite_compare.sh [--run-id <id>] [--cases <path>] [--mode
 Options:
   --run-id <id>     出力ディレクトリ名を上書き（既定: 2025-11-28-logos-chumsky）
   --cases <path>    ケース定義ファイル（format: name::inline::<src> | name::file::<path>）
-  --mode <ast|typeck|diag>
-                     実行モード（typeck は型推論成果物、diag は W4 診断互換向け成果物を収集）
+  --mode <ast|typeck|diag|lexer>
+                     実行モード（typeck は型推論成果物、diag は W4 診断、lexer は LEXER ケースのトークン比較）
   --emit-expected-tokens <prefix>
                      diag モード時に Recover 期待トークンを抽出して
                      `<prefix>.{ocaml,rust,diff}.json` をケース配下へ保存する
@@ -82,6 +82,8 @@ if [[ "${MODE}" == "typeck" ]]; then
   REPORT_DIR="${REPO_ROOT}/reports/dual-write/front-end/w3-type-inference"
 elif [[ "${MODE}" == "diag" ]]; then
   REPORT_DIR="${REPO_ROOT}/reports/dual-write/front-end/w4-diagnostics"
+elif [[ "${MODE}" == "lexer" ]]; then
+  REPORT_DIR="${REPO_ROOT}/reports/dual-write/front-end/w1-lexer"
 elif [[ "${MODE}" != "ast" ]]; then
   echo "Unsupported mode: ${MODE}" >&2
   exit 1
@@ -98,6 +100,7 @@ declare -a CASE_FLAGS_META=()
 declare -a CASE_FLAGS_META_OCAML=()
 declare -a CASE_FLAGS_META_RUST=()
 declare -a CASE_LSP_META=()
+declare -a CASE_METRICS_META=()
 
 if [[ -n "${CASES_FILE}" ]]; then
   if [[ ! -f "${CASES_FILE}" ]]; then
@@ -109,6 +112,7 @@ if [[ -n "${CASES_FILE}" ]]; then
   current_flags_ocaml=""
   current_flags_rust=""
   current_lsp=""
+  current_metrics_case=""
   while IFS= read -r line || [[ -n "$line" ]]; do
     line="$(printf '%s' "${line}" | sed 's/[[:space:]]*$//')"
     if [[ -z "${line}" ]]; then
@@ -135,6 +139,9 @@ if [[ -n "${CASES_FILE}" ]]; then
           lsp-fixture|lsp_fixture)
             current_lsp="${value}"
             ;;
+          metrics-case|metrics_case)
+            current_metrics_case="${value}"
+            ;;
         esac
       fi
       continue
@@ -145,11 +152,13 @@ if [[ -n "${CASES_FILE}" ]]; then
     CASE_FLAGS_META_OCAML+=("${current_flags_ocaml:-}")
     CASE_FLAGS_META_RUST+=("${current_flags_rust:-}")
     CASE_LSP_META+=("${current_lsp:-}")
+    CASE_METRICS_META+=("${current_metrics_case:-}")
     current_tests=""
     current_flags=""
     current_flags_ocaml=""
     current_flags_rust=""
     current_lsp=""
+    current_metrics_case=""
   done < "${CASES_FILE}"
 else
   CASE_ENTRIES+=(
@@ -164,6 +173,7 @@ else
     CASE_FLAGS_META_OCAML+=("")
     CASE_FLAGS_META_RUST+=("")
     CASE_LSP_META+=("")
+    CASE_METRICS_META+=("")
   done
 fi
 
@@ -611,6 +621,235 @@ collect_all_metrics() {
   return $status
 }
 
+collect_lexer_metrics() {
+  local case_dir="$1"
+  local frontend="$2"
+  local case_label="$3"
+  shift 3
+  local diag_paths=("$@")
+  if [[ ${#diag_paths[@]} -eq 0 ]]; then
+    return 0
+  fi
+  local out_path="${case_dir}/lexer-metrics.${frontend}.json"
+  local err_path="${out_path%.json}.err.log"
+  local args=(--section lexer --require-success)
+  if [[ -n "${case_label}" ]]; then
+    args+=(--case "${case_label}")
+  fi
+  for diag in "${diag_paths[@]}"; do
+    args+=(--source "${diag}")
+  done
+
+  if python3 "${COLLECT_METRICS_SCRIPT}" "${args[@]}" > "${out_path}" 2> "${err_path}"; then
+    rm -f "${err_path}"
+    return 0
+  fi
+  printf "!! lexer metrics (%s) failed, see %s\n" "${frontend}" "${err_path}" >&2
+  return 1
+}
+
+generate_lexer_artifacts() {
+  local tokens_src="$1"
+  local rust_tokens_out="$2"
+  local case_dir="$3"
+  local ocaml_dir="$4"
+  local rust_dir="$5"
+  local run_id="$6"
+  local report_dir="$7"
+  local case_label="$8"
+
+  python3 - "${tokens_src}" "${rust_tokens_out}" "${case_dir}" "${ocaml_dir}" "${rust_dir}" "${run_id}" "${report_dir}" "${case_label}" <<'PY'
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+tokens_path = Path(sys.argv[1])
+rust_tokens_out = Path(sys.argv[2])
+case_dir = Path(sys.argv[3])
+ocaml_dir = Path(sys.argv[4])
+rust_dir = Path(sys.argv[5])
+run_id = sys.argv[6]
+report_dir = Path(sys.argv[7])
+case_label = sys.argv[8] or "lexer-case"
+
+entries = json.loads(tokens_path.read_text(encoding="utf-8"))
+sources_dir = case_dir / "lexer-sources"
+rust_tokens_dir = case_dir / "lexer-tokens"
+ocaml_diag_dir = case_dir / "lexer-diags" / "ocaml"
+rust_diag_dir = case_dir / "lexer-diags" / "rust"
+sources_dir.mkdir(parents=True, exist_ok=True)
+rust_tokens_dir.mkdir(parents=True, exist_ok=True)
+ocaml_diag_dir.mkdir(parents=True, exist_ok=True)
+rust_diag_dir.mkdir(parents=True, exist_ok=True)
+
+ocaml_diag_paths = []
+rust_diag_paths = []
+rust_entries = []
+
+for idx, entry in enumerate(entries):
+    name = entry.get("name") or f"lex_case_{idx}"
+    profile = entry.get("profile") or "unicode"
+    source = entry.get("source") or ""
+    source_path = sources_dir / f"{name}.reml"
+    source_path.write_text(source, encoding="utf-8")
+
+    ocaml_diag_path = ocaml_diag_dir / f"{name}.ocaml.json"
+    subprocess.run(
+        [
+            "dune",
+            "exec",
+            "remlc",
+            "--",
+            "--packrat",
+            "--format",
+            "json",
+            "--json-mode",
+            "compact",
+            "--emit-parse-debug",
+            str(ocaml_diag_path),
+            str(source_path),
+        ],
+        cwd=ocaml_dir,
+        check=True,
+    )
+    ocaml_diag_paths.append(str(ocaml_diag_path))
+
+    rust_diag_path = rust_diag_dir / f"{name}.rust.json"
+    rust_tokens_path = rust_tokens_dir / f"{name}.rust.tokens.json"
+    rust_cmd = [
+        "cargo",
+        "run",
+        "--quiet",
+        "--bin",
+        "poc_frontend",
+        "--",
+        "--emit-tokens",
+        str(rust_tokens_path),
+        "--emit-parse-debug",
+        str(rust_diag_path),
+        "--dualwrite-root",
+        str(report_dir),
+        "--dualwrite-run-label",
+        run_id,
+        "--dualwrite-case-label",
+        case_label,
+        "--lex-profile",
+        profile,
+        str(source_path),
+    ]
+    subprocess.run(rust_cmd, cwd=rust_dir, check=True)
+    rust_diag_paths.append(str(rust_diag_path))
+
+    tokens_data = json.loads(rust_tokens_path.read_text(encoding="utf-8"))
+    rust_entries.append(
+        {
+            "name": name,
+            "profile": profile,
+            "source": source,
+            "tokens": tokens_data,
+        }
+    )
+
+ocaml_tokens_out = case_dir / "tokens.ocaml.json"
+ocaml_tokens_out.write_text(json.dumps(entries, ensure_ascii=False, indent=2), encoding="utf-8")
+rust_tokens_out.write_text(json.dumps(rust_entries, ensure_ascii=False, indent=2), encoding="utf-8")
+
+ocaml_paths_file = case_dir / "lexer-diags" / "ocaml.paths"
+rust_paths_file = case_dir / "lexer-diags" / "rust.paths"
+ocaml_paths_file.write_text("\n".join(ocaml_diag_paths), encoding="utf-8")
+rust_paths_file.write_text("\n".join(rust_diag_paths), encoding="utf-8")
+PY
+}
+
+compare_lexer_tokens() {
+  local ocaml_path="$1"
+  local rust_path="$2"
+  local diff_path="$3"
+
+  python3 - "${ocaml_path}" "${rust_path}" "${diff_path}" <<'PY'
+import json
+import pathlib
+import sys
+
+ocaml_path = pathlib.Path(sys.argv[1])
+rust_path = pathlib.Path(sys.argv[2])
+diff_path = pathlib.Path(sys.argv[3])
+
+def load_entries(path):
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return []
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        return data.get("entries") or data.get("tokens") or []
+    return []
+
+ocaml_entries = load_entries(ocaml_path)
+rust_entries = load_entries(rust_path)
+
+ocaml_map = {entry.get("name"): entry for entry in ocaml_entries if isinstance(entry, dict)}
+rust_map = {entry.get("name"): entry for entry in rust_entries if isinstance(entry, dict)}
+
+differences = []
+ocaml_total = 0
+rust_total = 0
+
+for name, ocaml_entry in ocaml_map.items():
+    ocaml_tokens = ocaml_entry.get("tokens")
+    rust_entry = rust_map.get(name)
+    rust_tokens = rust_entry.get("tokens") if isinstance(rust_entry, dict) else None
+    ocaml_count = len(ocaml_tokens) if isinstance(ocaml_tokens, list) else 0
+    rust_count = len(rust_tokens) if isinstance(rust_tokens, list) else 0
+    ocaml_total += ocaml_count
+    rust_total += rust_count
+
+    if ocaml_tokens != rust_tokens:
+        first_diff = None
+        if isinstance(ocaml_tokens, list) and isinstance(rust_tokens, list):
+            for idx, (o, r) in enumerate(zip(ocaml_tokens, rust_tokens)):
+                if o != r:
+                    first_diff = idx
+                    break
+        detail = "missing" if rust_entry is None else "tokens_mismatch"
+        differences.append(
+            {
+                "name": name,
+                "ocaml_tokens": ocaml_count,
+                "rust_tokens": rust_count,
+                "first_difference_index": first_diff,
+                "detail": detail,
+            }
+        )
+
+for name, rust_entry in rust_map.items():
+    if name not in ocaml_map:
+        rust_tokens = rust_entry.get("tokens")
+        rust_total += len(rust_tokens) if isinstance(rust_tokens, list) else 0
+        differences.append(
+            {
+                "name": name,
+                "ocaml_tokens": 0,
+                "rust_tokens": len(rust_tokens) if isinstance(rust_tokens, list) else 0,
+                "detail": "extra_case",
+            }
+        )
+
+match = not differences and len(ocaml_map) == len(rust_map)
+summary = {
+    "case": ocaml_path.name,
+    "match": match,
+    "ocaml_total_tokens": ocaml_total,
+    "rust_total_tokens": rust_total,
+    "differences": differences,
+}
+diff_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+PY
+}
 ensure_effects_metrics_artifact() {
   local case_dir="$1"
   local frontend="$2"
@@ -1241,6 +1480,7 @@ for idx in "${!CASE_ENTRIES[@]}"; do
     diag_diff_path="${case_dir}/diagnostics.diff.json"
     case_gating="true"
     schema_ok="true"
+    schema_ok="true"
     metrics_ok="true"
     expected_tokens_match=""
     expected_tokens_count_ocaml=""
@@ -1585,6 +1825,142 @@ summary["type_effect_case"] = case_name.startswith(("type_", "effect_", "ffi_"))
 typeck_requirements = load_json(case_dir / "typeck" / "requirements.json")
 if isinstance(typeck_requirements, dict):
     summary["typeck_requirements"] = typeck_requirements
+
+    (case_dir / "summary.json").write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+PY
+    continue
+  elif [[ "${MODE}" == "lexer" ]]; then
+    tokens_source="${REPO_ROOT}/${value}"
+    if [[ ! -f "${tokens_source}" ]]; then
+      printf "!! lexer tokens source missing: %s\n" "${tokens_source}" >&2
+      case_gating="false"
+      metrics_ok="false"
+      continue
+    fi
+    case_metrics_label="${CASE_METRICS_META[$idx]:-${case_name}}"
+    case_metrics_label="$(
+      printf '%s' "${case_metrics_label:-${case_name}}" \
+        | tr '[:upper:]' '[:lower:]' \
+        | tr -cs 'a-z0-9._-' '_'
+    )"
+    if [[ -z "${case_metrics_label}" ]]; then
+      case_metrics_label="${safe_name}"
+    fi
+    tokens_ocaml_path="${case_dir}/tokens.ocaml.json"
+    tokens_rust_path="${case_dir}/tokens.rust.json"
+    tokens_diff_path="${case_dir}/tokens.diff.json"
+    case_gating="true"
+    if ! generate_lexer_artifacts \
+      "${tokens_source}" \
+      "${tokens_rust_path}" \
+      "${case_dir}" \
+      "${OCAML_DIR}" \
+      "${RUST_DIR}" \
+      "${RUN_ID}" \
+      "${REPORT_DIR}" \
+      "${case_metrics_label}"
+    then
+      case_gating="false"
+      metrics_ok="false"
+    fi
+    compare_lexer_tokens "${tokens_ocaml_path}" "${tokens_rust_path}" "${tokens_diff_path}"
+
+    ocaml_diag_paths=()
+    if [[ -f "${case_dir}/lexer-diags/ocaml.paths" ]]; then
+      mapfile -t ocaml_diag_paths < <(
+        grep -v '^$' "${case_dir}/lexer-diags/ocaml.paths"
+      )
+    fi
+    rust_diag_paths=()
+    if [[ -f "${case_dir}/lexer-diags/rust.paths" ]]; then
+      mapfile -t rust_diag_paths < <(
+        grep -v '^$' "${case_dir}/lexer-diags/rust.paths"
+      )
+    fi
+
+    metrics_ok="true"
+    if ! collect_lexer_metrics \
+      "${case_dir}" \
+      "ocaml" \
+      "${case_metrics_label}" \
+      "${ocaml_diag_paths[@]}"
+    then
+      metrics_ok="false"
+    fi
+    if ! collect_lexer_metrics \
+      "${case_dir}" \
+      "rust" \
+      "${case_metrics_label}" \
+      "${rust_diag_paths[@]}"
+    then
+      metrics_ok="false"
+    fi
+
+    ocaml_diag_count=${#ocaml_diag_paths[@]}
+    rust_diag_count=${#rust_diag_paths[@]}
+
+    python3 - "${case_dir}" "${case_name}" "${case_tests}" "${case_lsp}" "${value}" \
+      "${tokens_diff_path}" "${case_dir}/lexer-metrics.ocaml.json" \
+      "${case_dir}/lexer-metrics.rust.json" "${metrics_ok}" \
+      "${case_gating}" "${schema_ok}" "${ocaml_diag_count}" "${rust_diag_count}" <<'PY'
+import json
+import pathlib
+import sys
+
+case_dir = pathlib.Path(sys.argv[1])
+case_name = sys.argv[2]
+case_tests = sys.argv[3]
+case_lsp = sys.argv[4]
+source_ref = sys.argv[5]
+tokens_diff_path = pathlib.Path(sys.argv[6])
+metrics_ocaml = pathlib.Path(sys.argv[7])
+metrics_rust = pathlib.Path(sys.argv[8])
+metrics_ok = sys.argv[9].lower() == "true"
+case_gating_flag = sys.argv[10].lower() == "true"
+schema_ok_flag = sys.argv[11].lower() == "true"
+ocaml_diag_count = int(sys.argv[12])
+rust_diag_count = int(sys.argv[13])
+
+def load_json(path: pathlib.Path):
+    if not path.exists() or path.stat().st_size == 0:
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+
+tokens_diff = load_json(tokens_diff_path) or {}
+expected_tokens = {
+    "match": bool(tokens_diff.get("match")),
+    "ocaml_count": tokens_diff.get("ocaml_total_tokens") or 0,
+    "rust_count": tokens_diff.get("rust_total_tokens") or 0,
+}
+summary = {
+    "case": case_name,
+    "mode": "lexer",
+    "source": source_ref,
+    "gating": case_gating_flag,
+    "schema_ok": schema_ok_flag,
+    "metrics_ok": metrics_ok,
+    "ocaml_diag_count": ocaml_diag_count,
+    "rust_diag_count": rust_diag_count,
+    "diag_match": ocaml_diag_count == rust_diag_count,
+    "ast_match": expected_tokens["match"],
+    "expected_tokens": expected_tokens,
+    "tokens": tokens_diff,
+    "lexer_metrics": {
+        "ocaml": load_json(metrics_ocaml),
+        "rust": load_json(metrics_rust),
+    },
+    "type_effect_case": False,
+}
+if case_tests:
+    summary["tests"] = case_tests
+if case_lsp:
+    summary["lsp_fixture"] = case_lsp
 
 (case_dir / "summary.json").write_text(
     json.dumps(summary, ensure_ascii=False, indent=2),

@@ -4433,6 +4433,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         choices=[
             "all",
             "parser",
+            "lexer",
             "streaming",
             "iterator",
             "effects",
@@ -4443,6 +4444,10 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         ],
         default="all",
         help="Collect metrics for a specific section (default: all).",
+    )
+    parser.add_argument(
+        "--case",
+        help="Associate the collected metrics with a named case (metadata-only).",
     )
     parser.add_argument(
         "--platform",
@@ -4658,6 +4663,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     section_order = [
         "parser",
+        "lexer",
         "streaming",
         "iterator",
         "effects",
@@ -4671,8 +4677,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     else:
         sections = [args.section]
 
+    runconfig_metrics: Optional[List[Dict[str, Any]]] = None
+    lexer_metrics: List[Dict[str, Any]] = []
+    if "parser" in sections or "lexer" in sections:
+        runconfig_metrics = collect_runconfig_metrics(sources)
+
     parser_metrics: Optional[Dict[str, Any]] = None
-    runconfig_metrics: List[Dict[str, Any]] = []
     core_parser_metrics: List[Dict[str, Any]] = []
     orphan_parser_related_metrics: List[Dict[str, Any]] = []
     iterator_metrics: Optional[Dict[str, Any]] = None
@@ -4694,15 +4704,23 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if "parser" in sections:
         parser_metrics = collect_parser_metrics(sources)
-        runconfig_metrics = collect_runconfig_metrics(sources)
         core_parser_metrics = collect_core_parser_metrics(sources)
+        runconfig_results = runconfig_metrics or []
         if parser_metrics:
             related = parser_metrics.setdefault("related_metrics", [])
-            related.extend(runconfig_metrics)
+            related.extend(runconfig_results)
             related.extend(core_parser_metrics)
         else:
-            orphan_parser_related_metrics.extend(runconfig_metrics)
+            orphan_parser_related_metrics.extend(runconfig_results)
             orphan_parser_related_metrics.extend(core_parser_metrics)
+    if "lexer" in sections:
+        runconfig_results = runconfig_metrics or []
+        lexer_metrics = [
+            metric
+            for metric in runconfig_results
+            if isinstance(metric, dict)
+            and str(metric.get("metric", "")).startswith("lexer.")
+        ]
     if "streaming" in sections:
         streaming_metric = collect_streaming_metrics(sources, platform_filters)
     if "iterator" in sections:
@@ -4802,6 +4820,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     if review_metrics:
         metrics_list.append(review_metrics)
 
+    if lexer_metrics and "parser" not in sections:
+        metrics_list.extend(lexer_metrics)
+
     all_metrics: List[Dict[str, Any]] = []
     for metric in metrics_list:
         all_metrics.append(metric)
@@ -4821,6 +4842,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         combined["extra_metrics_sources"] = append_sources
     if platform_filters:
         combined["platform_filters"] = sorted(platform_filters)
+    if getattr(args, "case", None):
+        combined["case"] = args.case
 
     primary_metrics: Optional[Dict[str, Any]] = iterator_metrics
     if primary_metrics is None and metrics_list:
@@ -4845,6 +4868,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         combined["diagnostic_audit"] = diagnostic_presence_metric
     if parser_metrics:
         combined["parser"] = parser_metrics
+    if lexer_metrics:
+        combined["lexer"] = {"metrics": lexer_metrics}
     if iterator_metrics:
         combined["iterator"] = iterator_metrics
     if streaming_metric:

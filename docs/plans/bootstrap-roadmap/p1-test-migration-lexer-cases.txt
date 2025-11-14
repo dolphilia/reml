@@ -1,0 +1,5 @@
+# P1 TPM-LEX-01 lexer tokens case
+# format: name::file::<path>
+# tests: core_parse_lex_tests
+# metrics-case: core_parse_lex_tests
+TPM-LEX-01::file::compiler/ocaml/tests/golden/core_parse_lex_tests.tokens.json
