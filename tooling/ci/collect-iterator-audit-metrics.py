@@ -2476,6 +2476,73 @@ def collect_streaming_metrics(
     return result
 
 
+def collect_effect_contract_metrics(paths: List[Path]) -> Optional[Dict[str, Any]]:
+    required_codes = [
+        "effects.contract.stage_mismatch",
+        "effects.contract.capability_missing",
+        "effects.contract.ownership",
+    ]
+    total = 0
+    passed = 0
+    sources: List[str] = []
+    failures: List[Dict[str, Any]] = []
+    code_counts: Dict[str, int] = {code: 0 for code in required_codes}
+    schema_versions: Set[str] = set()
+
+    for path in paths:
+        data = load_json(path)
+        diagnostics = data.get("diagnostics")
+        if not isinstance(diagnostics, list):
+            continue
+        diag_codes = _collect_diagnostic_codes(diagnostics)
+        total += 1
+        sources.append(str(path))
+        for code in diag_codes:
+            if code in code_counts:
+                code_counts[code] += 1
+        missing = [code for code in required_codes if code not in diag_codes]
+        if missing:
+            failures.append(
+                {"file": str(path), "missing": missing, "diag_codes": sorted(diag_codes)}
+            )
+        else:
+            passed += 1
+        for diag in diagnostics:
+            schema = extract_schema_version(diag)
+            if schema:
+                schema_versions.add(schema)
+
+    if total == 0:
+        return None
+
+    pass_rate = passed / total if total else None
+    return {
+        "metric": "effects-contract",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_rate,
+        "metrics_case": "effects-contract",
+        "required_codes": required_codes,
+        "code_counts": code_counts,
+        "failures": failures,
+        "sources": sources,
+        "schema_versions": sorted(schema_versions),
+    }
+
+
+def collect_diag_metrics(
+    paths: List[Path], metrics_case: Optional[str]
+) -> Optional[Dict[str, Any]]:
+    if not metrics_case:
+        return None
+    normalized = metrics_case.strip().lower()
+    if normalized == "effects-contract":
+        return collect_effect_contract_metrics(paths)
+    return None
+
+
 def _core_rule_metadata_missing(diag: Dict[str, Any]) -> List[str]:
     missing: List[str] = []
     extensions = _as_dict(diag.get("extensions"))
@@ -4437,6 +4504,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "streaming",
             "iterator",
             "effects",
+            "diag",
             "type_inference",
             "ffi",
             "typeclass",
@@ -4448,6 +4516,10 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--case",
         help="Associate the collected metrics with a named case (metadata-only).",
+    )
+    parser.add_argument(
+        "--metrics-case",
+        help="diag セクションで検証するメトリクスケース名 (例: effects-contract)。",
     )
     parser.add_argument(
         "--platform",
@@ -4701,6 +4773,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     review_metrics: Optional[Dict[str, Any]] = None
     diagnostic_presence_metric: Optional[Dict[str, Any]] = None
     streaming_metric: Optional[Dict[str, Any]] = None
+    diag_metric: Optional[Dict[str, Any]] = None
 
     if "parser" in sections:
         parser_metrics = collect_parser_metrics(sources)
@@ -4784,6 +4857,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         review_metrics = collect_review_metrics(
             review_diff_paths, review_coverage_paths, review_dashboard_paths
         )
+    if "diag" in sections:
+        diag_metric = collect_diag_metrics(sources, args.metrics_case)
     if sections == ['effects']:
         diagnostic_presence_metric = None
     else:
@@ -4819,6 +4894,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         metrics_list.append(bridge_metrics)
     if review_metrics:
         metrics_list.append(review_metrics)
+    if diag_metric:
+        metrics_list.append(diag_metric)
 
     if lexer_metrics and "parser" not in sections:
         metrics_list.extend(lexer_metrics)
@@ -4868,6 +4945,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         combined["diagnostic_audit"] = diagnostic_presence_metric
     if parser_metrics:
         combined["parser"] = parser_metrics
+    if diag_metric:
+        combined["diagnostics"] = diag_metric
     if lexer_metrics:
         combined["lexer"] = {"metrics": lexer_metrics}
     if iterator_metrics:
@@ -4961,6 +5040,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         if isinstance(typeclass_metrics, dict):
             _enforce(typeclass_metrics.get("dictionary_metric"), "typeclass.dictionary_pass_rate")
         _enforce(bridge_metrics, "ffi_bridge.audit_pass_rate")
+        _enforce(diag_metric, "effects-contract")
         for metric in append_metrics:
             if not isinstance(metric, dict):
                 continue

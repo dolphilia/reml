@@ -101,6 +101,7 @@ declare -a CASE_FLAGS_META_OCAML=()
 declare -a CASE_FLAGS_META_RUST=()
 declare -a CASE_LSP_META=()
 declare -a CASE_METRICS_META=()
+declare -a CASE_ORIGINS=()
 
 if [[ -n "${CASES_FILE}" ]]; then
   if [[ ! -f "${CASES_FILE}" ]]; then
@@ -113,6 +114,7 @@ if [[ -n "${CASES_FILE}" ]]; then
   current_flags_rust=""
   current_lsp=""
   current_metrics_case=""
+  current_origin=""
   while IFS= read -r line || [[ -n "$line" ]]; do
     line="$(printf '%s' "${line}" | sed 's/[[:space:]]*$//')"
     if [[ -z "${line}" ]]; then
@@ -142,6 +144,9 @@ if [[ -n "${CASES_FILE}" ]]; then
           metrics-case|metrics_case)
             current_metrics_case="${value}"
             ;;
+          origin|case-origin|case_origin)
+            current_origin="${value}"
+            ;;
         esac
       fi
       continue
@@ -153,12 +158,14 @@ if [[ -n "${CASES_FILE}" ]]; then
     CASE_FLAGS_META_RUST+=("${current_flags_rust:-}")
     CASE_LSP_META+=("${current_lsp:-}")
     CASE_METRICS_META+=("${current_metrics_case:-}")
+    CASE_ORIGINS+=("${current_origin:-}")
     current_tests=""
     current_flags=""
     current_flags_ocaml=""
     current_flags_rust=""
     current_lsp=""
     current_metrics_case=""
+    current_origin=""
   done < "${CASES_FILE}"
 else
   CASE_ENTRIES+=(
@@ -174,6 +181,7 @@ else
     CASE_FLAGS_META_RUST+=("")
     CASE_LSP_META+=("")
     CASE_METRICS_META+=("")
+    CASE_ORIGINS+=("")
   done
 fi
 
@@ -585,6 +593,7 @@ collect_all_metrics() {
   local diag_path="$1"
   local frontend="$2"
   local case_dir="$3"
+  local case_label="$4"
   local status=0
   local section
 
@@ -606,11 +615,11 @@ collect_all_metrics() {
   for section in "${sections[@]}"; do
     local out_path="${case_dir}/${section}-metrics.${frontend}.json"
     local err_path="${out_path%.json}.err.log"
-    if python3 "${COLLECT_METRICS_SCRIPT}" \
-      --section "${section}" \
-      --source "${diag_path}" \
-      --require-success \
-      > "${out_path}" 2> "${err_path}"
+    local args=(--section "${section}" --source "${diag_path}" --require-success)
+    if [[ -n "${case_label}" ]]; then
+      args+=(--case "${case_label}")
+    fi
+    if python3 "${COLLECT_METRICS_SCRIPT}" "${args[@]}" > "${out_path}" 2> "${err_path}"
     then
       rm -f "${err_path}"
     else
@@ -619,6 +628,42 @@ collect_all_metrics() {
     fi
   done
   return $status
+}
+
+collect_diag_case_metrics() {
+  local diag_path="$1"
+  local frontend="$2"
+  local case_dir="$3"
+  local metrics_case="$4"
+  local metrics_label="$5"
+  local status=0
+
+  if [[ -z "${metrics_case}" ]]; then
+    return 0
+  fi
+
+  local out_path="${case_dir}/diag-metrics.${frontend}.json"
+  local err_path="${out_path%.json}.err.log"
+  local args=(
+    --section
+    diag
+    --metrics-case
+    "${metrics_case}"
+    --source
+    "${diag_path}"
+    --require-success
+  )
+  if [[ -n "${metrics_label}" ]]; then
+    args+=(--case "${metrics_label}")
+  fi
+
+  if python3 "${COLLECT_METRICS_SCRIPT}" "${args[@]}" > "${out_path}" 2> "${err_path}"; then
+    rm -f "${err_path}"
+    return 0
+  fi
+
+  printf "!! diag metrics (%s:%s) failed, see %s\n" "${frontend}" "${metrics_case}" "${err_path}" >&2
+  return 1
 }
 
 collect_lexer_metrics() {
@@ -1380,6 +1425,16 @@ for idx in "${!CASE_ENTRIES[@]}"; do
   fi
 
   safe_name="$(sanitize_name "${case_name}")"
+  case_origin="${CASE_ORIGINS[$idx]}"
+  case_origin_label="$(sanitize_name "${case_origin}")"
+  case_metrics_raw="${CASE_METRICS_META[$idx]:-}"
+  case_metrics_label=""
+  if [[ -n "${case_metrics_raw}" ]]; then
+    case_metrics_label="$(sanitize_name "${case_metrics_raw}")"
+  fi
+  if [[ -z "${case_metrics_label}" ]]; then
+    case_metrics_label="${safe_name}"
+  fi
   case_dir="${RUN_DIR}/${safe_name}"
   mkdir -p "${case_dir}"
   input_path="${case_dir}/input.reml"
@@ -1450,7 +1505,7 @@ for idx in "${!CASE_ENTRIES[@]}"; do
   append_case_flags "ocaml" "${case_flags_raw_ocaml}" "${case_dir}" "${typeck_dir}"
   append_case_flags "rust" "${case_flags_raw_rust}" "${case_dir}" "${typeck_dir}"
   type_effect_case="false"
-  if is_type_effect_case "${case_name}"; then
+  if is_type_effect_case "${case_name}" || [[ "${case_metrics_raw}" == "effects-contract" ]]; then
     type_effect_case="true"
     strip_case_flag "ocaml_case_flags" "--emit-typeck-debug"
     strip_case_flag "rust_case_flags" "--emit-typeck-debug"
@@ -1536,11 +1591,21 @@ for idx in "${!CASE_ENTRIES[@]}"; do
     fi
 
     if [[ -s "${ocaml_diag_path}" ]]; then
-      if ! collect_all_metrics "${ocaml_diag_path}" "ocaml" "${case_dir}"; then
+      if ! collect_all_metrics "${ocaml_diag_path}" "ocaml" "${case_dir}" "${case_metrics_label}"; then
         metrics_ok="false"
         case_gating="false"
       else
         ensure_effects_metrics_artifact "${case_dir}" "ocaml"
+        if ! collect_diag_case_metrics \
+          "${ocaml_diag_path}" \
+          "ocaml" \
+          "${case_dir}" \
+          "${case_metrics_raw}" \
+          "${case_metrics_label}"
+        then
+          metrics_ok="false"
+          case_gating="false"
+        fi
       fi
     else
       printf '%s\n' "-- OCaml diagnostics missing, metrics skipped (${case_name})" >&2
@@ -1549,11 +1614,21 @@ for idx in "${!CASE_ENTRIES[@]}"; do
       case_gating="false"
     fi
     if [[ -s "${rust_diag_path}" ]]; then
-      if ! collect_all_metrics "${rust_diag_path}" "rust" "${case_dir}"; then
+      if ! collect_all_metrics "${rust_diag_path}" "rust" "${case_dir}" "${case_metrics_label}"; then
         metrics_ok="false"
         case_gating="false"
       else
         ensure_effects_metrics_artifact "${case_dir}" "rust"
+        if ! collect_diag_case_metrics \
+          "${rust_diag_path}" \
+          "rust" \
+          "${case_dir}" \
+          "${case_metrics_raw}" \
+          "${case_metrics_label}"
+        then
+          metrics_ok="false"
+          case_gating="false"
+        fi
       fi
     else
       printf '%s\n' "-- Rust diagnostics missing, metrics skipped (${case_name})" >&2
@@ -1654,7 +1729,7 @@ PY
       fi
     fi
 
-python3 - "${case_dir}" "${case_name}" "${safe_name}" "${RUN_ID}" "${REPORT_DIR}" "${MODE}" "${case_gating}" "${schema_ok}" "${metrics_ok}" "${case_tests}" "${case_lsp}" "${expected_tokens_match}" "${expected_tokens_count_ocaml}" "${expected_tokens_count_rust}" <<'PY'
+python3 - "${case_dir}" "${case_name}" "${safe_name}" "${RUN_ID}" "${REPORT_DIR}" "${MODE}" "${case_gating}" "${schema_ok}" "${metrics_ok}" "${case_tests}" "${case_lsp}" "${expected_tokens_match}" "${expected_tokens_count_ocaml}" "${expected_tokens_count_rust}" "${case_origin}" "${case_origin_label}" "${case_metrics_label}" "${case_metrics_raw}" <<'PY'
 import json
 import pathlib
 import sys
@@ -1673,6 +1748,10 @@ case_lsp = sys.argv[11]
 expected_tokens_match = sys.argv[12]
 expected_tokens_count_ocaml = sys.argv[13]
 expected_tokens_count_rust = sys.argv[14]
+case_origin = sys.argv[15]
+case_origin_label = sys.argv[16]
+case_metrics_label = sys.argv[17]
+case_metrics_raw = sys.argv[18]
 
 def read_text(path: pathlib.Path) -> str:
     if not path.exists():
@@ -1784,6 +1863,10 @@ effects_metrics_rust = load_json(case_dir / "effects-metrics.rust.json")
 streaming_metrics_ocaml = load_json(case_dir / "streaming-metrics.ocaml.json")
 streaming_metrics_rust = load_json(case_dir / "streaming-metrics.rust.json")
 
+metrics_case_value = (case_metrics_raw or "").strip().lower()
+origin_label = case_origin_label or case_origin
+metrics_case_label_value = case_metrics_label or safe_name
+
 summary = {
     "case": case_name,
     "mode": mode,
@@ -1808,6 +1891,9 @@ summary = {
             "rust": summarize_streaming_metrics(streaming_metrics_rust),
         },
     },
+    "case_origin": origin_label,
+    "metrics_case": metrics_case_value,
+    "metrics_case_label": metrics_case_label_value,
 }
 if case_tests:
     summary["tests"] = case_tests
@@ -1821,7 +1907,10 @@ if match_flag is not None:
         "rust_count": coerce_int(expected_tokens_count_rust) or 0,
     }
 
-summary["type_effect_case"] = case_name.startswith(("type_", "effect_", "ffi_"))
+summary["type_effect_case"] = (
+    case_name.startswith(("type_", "effect_", "ffi_"))
+    or metrics_case_value == "effects-contract"
+)
 typeck_requirements = load_json(case_dir / "typeck" / "requirements.json")
 if isinstance(typeck_requirements, dict):
     summary["typeck_requirements"] = typeck_requirements

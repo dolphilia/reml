@@ -243,6 +243,6 @@
 
 #### TPM-TYPE-03 進捗
 
-- `compiler/ocaml/tests/test_cli_callconv_snapshot.ml` / `test_ffi_contract.ml` を読み込み、IR・診断・監査出力のゴールデン構造と `StageContext`/`RuntimeCapability` の関連付けを整理して `effects.contract.stage_mismatch` の期待結果を把握し、`p1-spec-compliance-gap.md#SCG-09` の要件へ適用した。  
-- `docs/spec/3-8-core-runtime-capability.md`・`docs/spec/1-3-effects-safety.md` を参照し、`effects.contract.*` メトリクスと `RuntimeCapability` レジストリの照合ルールを `docs/plans/rust-migration/p1-front-end-checklists.csv` に追記する候補を挙げた。  
-- `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の診断 JSON スキーマと `collect-iterator-audit-metrics.py` の `diag` セクションを確認し、TPM-TYPE-03 用に `effects-contract` という新規 metrics-case を追加する必要を確認した。  
+- `docs/plans/bootstrap-roadmap/p1-test-migration-ffi-cases.txt` を作成し、`cli-callconv`/`ffi-contract` 両ケースに `#origin`/`#metrics-case`/`#flags` を記述して `poc_dualwrite_compare.sh --mode diag` から `effects-contract` ラベル付きで実行可能な構成を整備した。  
+- `scripts/poc_dualwrite_compare.sh` を拡張し、ケース定義で `case_origin`/`case_metrics_label` を保持、`case_metrics_label` を `collect-iterator-audit-metrics.py` の `--case`/`--metrics-case` に渡すとともに `FORCE_TYPE_EFFECT_FLAGS` で `effects.contract.*` 出力を強制し、summary.json にメタデータを刻むことで `effects-contract` 系ケースの差分を明示できるようにした。  
+- `tooling/ci/collect-iterator-audit-metrics.py` に `--section diag`/`--metrics-case` を導入し、`effects-contract` ケースでは `effects.contract.stage_mismatch`/`capability_missing`/`ownership` をカウントする新規メトリクスを追加して gating に組み込み、`poc_dualwrite_compare.sh` から `diag-metrics.{frontend}.json` が生成されるフローを確立した。  

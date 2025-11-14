@@ -1,0 +1,20 @@
+# P1 TPM-TYPE-03 FFI/CLI 効果契約診断ケース
+# format: name::file::<relative path>
+
+# CLI case
+# tests: test_cli_callconv_snapshot.ml
+# metrics-case: effects-contract
+# origin: TPM-TYPE-03
+# flags: --experimental-effects --effect-stage beta --type-row-mode dual-write --runtime-capabilities windows.ffi
+# flags.ocaml: --runtime-capabilities windows.ffi
+# flags.rust: --runtime-capabilities windows.ffi
+cli-callconv::file::compiler/ocaml/tests/samples/ffi/cli-callconv-sample.reml
+
+# FFI contract diagnostics
+# tests: test_ffi_contract.ml
+# metrics-case: effects-contract
+# origin: TPM-TYPE-03
+# flags: --experimental-effects --effect-stage beta --type-row-mode dual-write --runtime-capabilities windows.ffi
+# flags.ocaml: --runtime-capabilities windows.ffi
+# flags.rust: --runtime-capabilities windows.ffi
+ffi-contract::file::compiler/ocaml/tests/golden/diagnostics/ffi/unsupported-abi.reml

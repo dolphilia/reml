@@ -28,6 +28,11 @@
 
 ## 作業ブレークダウン
 
+### TPM-TYPE-03: effects-contract 監査
+
+- `docs/plans/bootstrap-roadmap/p1-test-migration-ffi-cases.txt` に `cli-callconv`/`ffi-contract` を `#metrics-case: effects-contract` で登録し、`scripts/poc_dualwrite_compare.sh --mode diag --cases ... --force-type-effect-flags` で `--runtime-capabilities windows.ffi` や `--effect-stage beta` を両フロントエンドへ注入することで `reports/dual-write/front-end/w4-diagnostics/effects-contract/<run>/<case>` に `diagnostics`・`audit`・`diag-metrics` を保存する運用を確立した。  
+- `collect-iterator-audit-metrics.py` の `--section diag --metrics-case effects-contract` は `effects.contract.stage_mismatch`/`capability_missing`/`ownership` をチェックし、TPM-TYPE-03 の `summary.json`/`diag-metrics.{frontend}.json` で `pass_rate` が 1.0 にならないケースを `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#effects-change-log` に転記することで `p1-spec-compliance-gap.md#SCG-09` の残差差分を追跡する。  
+
 ### 1. レビュー計画と体制整備（31週目）
 **担当領域**: 計画策定
 

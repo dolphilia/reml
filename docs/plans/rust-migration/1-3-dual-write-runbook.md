@@ -69,6 +69,8 @@ scripts/dualwrite_summary_report.py \
   --update-diag-readme reports/dual-write/front-end/w4-diagnostics/README.md
 ```
 
+- TPM-TYPE-03 用には `docs/plans/bootstrap-roadmap/p1-test-migration-ffi-cases.txt` に `cli-callconv` / `ffi-contract` を `#metrics-case: effects-contract` で追加し、`scripts/poc_dualwrite_compare.sh --mode diag --cases docs/plans/bootstrap-roadmap/p1-test-migration-ffi-cases.txt` を `FORCE_TYPE_EFFECT_FLAGS=true` で実行する。これにより `--runtime-capabilities windows.ffi`/`--experimental-effects --effect-stage beta` を両フロントエンドに注入し、`reports/dual-write/front-end/w4-diagnostics/effects-contract/<run>/<case>/` に `diagnostics.{ocaml,rust}.json`、`audit.{ocaml,rust}.jsonl`、`diag-metrics.{frontend}.json`（`collect-iterator-audit-metrics.py --section diag --metrics-case effects-contract` の出力）を残す運用を確立した。
+
 - `appendix/w4-diagnostic-cases.txt` に登録されたケースを順番に実行し、`reports/dual-write/front-end/w4-diagnostics/<run>/<case>/` に以下を保存する:
   - `diagnostics.{ocaml,rust}.json`, `diagnostics.diff.json`, `schema-validate.log`
   - `parser-metrics.{ocaml,rust}.json`, `effects-metrics.{ocaml,rust}.json`, `streaming-metrics.{ocaml,rust}.json`
