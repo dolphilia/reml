@@ -21,7 +21,7 @@
 ### 3.2 型推論・制約周り
 | ID | テスト | 依存対象 | コメント |
 | --- | --- | --- | --- |
-| TPM-TYPE-01 | `test_type_inference.ml` | `type_inference.ml` + `constraint.ml` + `constraint_solver.ml` | `p1-spec-compliance-gap` の `FRG-12` で要求された Constraint/TyEnv/Scheme が Rust へ揃っているため、型推論ケースの JSON（Typed AST + Constraint + Typecheck Report）を `scripts/poc_dualwrite_compare.sh --mode typeck` で再現し、`reports/dual-write/front-end/w3-type-inference/<case>` に出力。 |
+| TPM-TYPE-01 | `test_type_inference.ml` | `type_inference.ml` + `constraint.ml` + `constraint_solver.ml` | ✅ `p1-spec-compliance-gap` の `FRG-12` で要求された Constraint/TyEnv/Scheme が Rust へ揃っているため、型推論ケースの JSON（Typed AST + Constraint + Typecheck Report）を `scripts/poc_dualwrite_compare.sh --mode typeck` で再現し、`reports/dual-write/front-end/w3-type-inference/<case>` に出力。 |
 | TPM-TYPE-02 | `test_constraint_solver.ml` / `test_type_errors.ml` / `test_let_polymorphism.ml` | 同上 | それぞれ `Constraint` の解決、型エラー検出、スコープ・一般化の振る舞いを確認するため、Rust 側の `ConstraintSolver` と `TypecheckDriver` が出す `TypecheckReport`/`Diagnostic` に対して JSON で差分を記録。 |
 | TPM-TYPE-03 | `test_cli_callconv_snapshot.ml` / `test_ffi_contract.ml` | CLI (`StageContext`/`runtime_capabilities`) + `effect` | CLI 連携が `p1-spec-compliance-gap#SCG-09` や `FRG-13` で整理されているため、Rust CLI へ同じフラグを渡し `--emit-typed-ast`/`--emit-effects` を出力、`reports/dual-write/front-end/w4-diagnostics` に `effects.contract.stage_mismatch` などを記録。 |
 
