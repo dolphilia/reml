@@ -16,7 +16,7 @@
 | TPM-LEX-01 | `core_parse_lex_tests.ml` | `lexer`/`token` API | ✅ `FRG-06` に沿ってトークン網羅性が確認済みのため、UTF/Escape/コメントを前提としたトークン列比較を `lexer_token_coverage` のように `cargo test` へ組み込み可能。<br>Dual-write で `collect-iterator-audit-metrics.py` の `lexer.identifier_profile_*` を再利用する。 |
 | TPM-LEX-02 | `test_lexer.ml` / `unicode_ident_tests.ml` | 同上 + 識別子正規化 | ✅ Rust 側が Unicode 識別子・ASCII プロファイルを持つため、実際の文字列パターンを `tests/lexer.rs` として再実装。 |
 | TPM-LEX-03 | `packrat_tests.ml` / `test_parser.ml` / `test_parser_driver.ml` | ✅ `parser_driver.ml` の RunConfig/State | `FRG-07` の `RunConfig`/`Parser<T>` 達成をもとに `parser_driver` と `ParseResult` の Rust 版を `rust` CLI で叩き、ゴールデン AST（`--emit-ast`）を比較。 |
-| TPM-LEX-04 | `test_parser_expectation.ml` / `test_parse_result_state.ml` | `parser_expectation` | `FRG-08` で `ExpectedTokenCollector` を Enhancement したため、期待候補の正規化/空集合補正を再現できる。 |
+| TPM-LEX-04 | `test_parser_expectation.ml` / `test_parse_result_state.ml` | `parser_expectation` | ✅ `FRG-08` で `ExpectedTokenCollector` を Enhancement したため、期待候補の正規化/空集合補正を再現できる。 |
 
 ### 3.2 型推論・制約周り
 | ID | テスト | 依存対象 | コメント |
@@ -135,3 +135,32 @@
 - `parser_driver.ml` で `read_core_rule_metadata` `packrat_cache` `packrat_stats` を保持する箇所を確認し、Rust 側 `poc_frontend` の `--emit-ast`/`write_dualwrite_parse_payload` 出力に対応するよう `reports/dual-write/front-end/w2-ast-alignment` の構成を想定した。  
 - `scripts/poc_dualwrite_compare.sh --mode ast` の既存フローを踏まえ、OCaml/Rust の `ast.{ocaml,rust}.json`、`parse_result.{ocaml,rust}.json` を `reports/dual-write/front-end` に保存しつつ `collect-iterator-audit-metrics.py --section parser` へ渡す運用案を plan に落とし込んだ。
 - `compiler/rust/frontend/tests/parser.rs` および `tests/parser/packrat.rs` に `ParserDriver` の Packrat 統計・`diagnostics.expected_summary` を検証する統合テストを実装し、`cargo test --test parser` で `packrat_stats` クエリ/ヒット、`span_trace`、`packrat_cache`、期待候補の代替表現をカバーするエントリを追加した。
+
+### TPM-LEX-04
+
+1. **調査・要件整理（1日）**  
+   1. `compiler/ocaml/tests/test_parser_expectation.ml` と `test_parse_result_state.ml` を読み込み、`Parser_expectation` が `Diagnostic.expected` を補完するために提供する `Keyword`/`Token`/`Class`/`Rule`/`Not`/`Custom` の振る舞いと優先度/空集合補正ロジックを `docs/spec/1-1-syntax.md §A.3`／`docs/spec/1-4-test-unicode-model.md` のトークン分類と対照し、Rust 側の `token_kind_expectations`/`ExpectedTokenCollector`—`FrontendDiagnostic` の連携で再現すべき期待候補の出力要件をまとめる。  
+   2. `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` および `2-7-deferred-remediation.md` が提示する診断 JSON メトリクス（`parser.expected_summary_presence`，`parser.expected_tokens` など）と `docs/plans/rust-migration/1-0-front-end-transition.md#expected-summary` の `ExpectedTokenCollector` 拡張を再確認し、Rust パーサが `legacy_error`/`diagnostics.expected_summary` に留めるべき情報と、OCaml パッケージが期待する `farthest_error_offset`・`legacy_error.expected` の構造を整理する。
+
+2. **テストハーネス設計（0.5日）**  
+   1. `compiler/rust/frontend/src/parser/mod.rs` の `expectation_tests` に `ExpectedTokenCollector`＋`FrontendDiagnostic::apply_expected_summary` を使って空集合補正後に `解析継続トークン` プレースホルダと `parse.expected.empty` キーが設定されることを確認するユニットテストを追加し、OCaml `ensure_minimum_alternatives` 相当の契約を担保する。  
+   2. 同ファイルに `parse_result_tests` モジュールを新設し、`ParserDriver::parse("fn broken( ->")` や `ParserDriver::parse("fn @@@")` を実行して `value`/`diagnostics`/`farthest_error_offset`/`legacy_error.expected`/`diagnostics.expected_summary` の期待値を検証するテストケースを定義する。これにより `test_parse_result_state.ml` の `run_string` 期待値が Rust ビルドでもカバーされる。
+
+3. **実装・移植（1日）**  
+   1. 上記テストを `parser/mod.rs` の `#[cfg(test)]` 内に実装し、`token_kind_expectations` を利用した `Keyword`/`Identifier` の分類と `ExpectedTokenCollector` の `summarize()` 出力順が `Humanize` の `ここで…` メッセージと整合することを検証する。  
+   2. `ParserDriver::parse` の結果から `ParseResult` を観察し、`legacy_error` が `ExpectedToken` を必ず持ち、`diagnostics.first().expected_summary` が `has_alternatives()` を満たすことを `cargo test --test parser` で確認できるようにすることで `test_parse_result_state` の `legacy_expected` 期待値を満たす。
+
+4. **検証・監査（0.5日）**  
+   1. `cargo test --test parser` を実行し、`parser.rs`（Packrat 統計）に加えて期待候補/Legacy 期待値テストもグリーンとなることを確認してから、`reports/dual-write/front-end/w4-diagnostics` 向けの `parser-metrics` スキーマに `expected_summary` が出力されることを `collect-iterator-audit-metrics.py` の `parser.expected_summary_presence` 条件と合わせて再点検する。  
+   2. 新規テストで依存する `ExpectedTokenCollector` の `humanize` 文字列が日本語表現（`ここで...`）を出力することと、`FrontEndDiagnostic::apply_expected_summary` により `expected_tokens` が空のとき `EXPECTED_PLACEHOLDER_TOKEN` へフォールバックする挙動を確認する。
+
+5. **記録・フォローアップ（0.25日）**  
+   1. `docs-migrations.log` に「TPM-LEX-04: parser期待候補/ParseResult 状態テストの Rust 移植」として差分と進捗を記録し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の `parser.expected_summary` 監査欄と `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の `legacy_error` 追跡欄へ「Rust 側テストを追加」旨を追記する。  
+   2. `docs/plans/rust-migration/1-0-front-end-transition.md` の expected-summary セクションに、`ParserDriver::parse` 実行例を `reports/dual-write/front-end/w4-diagnostics/` の `parser-metrics.rust.json` から得た結果と合わせて既存の `diags/expected_summary_presence` 条件へリンクする注記を追記する（必要に応じて P2 以降の補遺へ引き渡す）。
+
+#### TPM-LEX-04 進捗
+
+- `compiler/ocaml/tests/test_parser_expectation.ml` と `test_parse_result_state.ml` を精査し、OCaml の `Diagnostic.expected` に期待される `ExpectedToken` の優先順位・空集合補正・`legacy_error` との関係を抽出した。  
+- `compiler/rust/frontend/src/parser/mod.rs` の `expectation_tests` に `ExpectedTokenCollector` 経由で空集合補正後の `解析継続トークン` プレースホルダを確認するユニットテストを追加し、`parse_result_tests` モジュールを新設して `ParserDriver::parse` の失敗結果で `farthest_error_offset`/`legacy_error.expected`/`diagnostics.expected_summary` を検証するテスト群を実装した。  
+- `cargo test --test parser` を実行し、新規テストを含むパーサモジュール全体がグリーンであることを確認した。  
+- `docs-migrations.log` に本作業の記録（TPM-LEX-04）を追加し、関連する `docs/plans/bootstrap-roadmap/{2-5-spec-drift-remediation.md,2-7-deferred-remediation.md}` と `docs/plans/rust-migration/1-0-front-end-transition.md` への追記を今後検討する旨をコメントとして残した。  

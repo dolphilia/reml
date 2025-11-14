@@ -1129,7 +1129,10 @@ mod parser_option_tests {
 #[cfg(test)]
 mod expectation_tests {
     use super::{token_kind_expectations, TokenKind};
-    use crate::diagnostic::ExpectedToken;
+    use crate::diagnostic::{
+        ExpectedToken, ExpectedTokenCollector, FrontendDiagnostic, EXPECTED_PLACEHOLDER_TOKEN,
+        PARSE_EXPECTED_EMPTY_KEY,
+    };
 
     #[test]
     fn keyword_expectations_cover_spec_keywords() {
@@ -1152,5 +1155,59 @@ mod expectation_tests {
 
         let lower = token_kind_expectations(&TokenKind::Identifier);
         assert_eq!(lower, vec![ExpectedToken::class("identifier")]);
+    }
+
+    #[test]
+    fn empty_expected_summary_injects_placeholder_tokens() {
+        let summary = ExpectedTokenCollector::new().summarize();
+        assert!(summary.alternatives.is_empty());
+
+        let diagnostic = FrontendDiagnostic::new("oops").apply_expected_summary(&summary);
+        assert_eq!(
+            diagnostic.expected_tokens,
+            vec![EXPECTED_PLACEHOLDER_TOKEN.to_string()]
+        );
+        assert_eq!(
+            diagnostic.expected_message_key.as_deref(),
+            Some(PARSE_EXPECTED_EMPTY_KEY)
+        );
+        assert!(diagnostic.expected_alternatives.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod parse_result_tests {
+    use super::ParserDriver;
+
+    #[test]
+    fn parse_failure_records_offset_and_expected_summary() {
+        let result = ParserDriver::parse("fn broken( ->");
+        assert!(result.value.is_none());
+        assert!(!result.diagnostics.is_empty());
+        assert!(result.farthest_error_offset.is_some());
+
+        let diag = result.diagnostics.first().expect("diagnostics missing");
+        assert!(
+            diag.expected_summary
+                .as_ref()
+                .map(|summary| summary.has_alternatives())
+                .unwrap_or(false),
+            "expected summary alternatives missing"
+        );
+
+        let legacy = result.legacy_error.expect("legacy error missing");
+        assert!(
+            !legacy.expected.is_empty(),
+            "legacy expected tokens should not be empty"
+        );
+    }
+
+    #[test]
+    fn lexer_error_generates_diagnostics() {
+        let result = ParserDriver::parse("fn @@@");
+        assert!(
+            !result.diagnostics.is_empty(),
+            "lexer error should produce diagnostics"
+        );
     }
 }
