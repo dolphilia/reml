@@ -80,3 +80,26 @@
 - Rust 側で `core_parse_lex_tests.ml` 相当のトークン列を `compiler/ocaml/tests/golden/core_parse_lex_tests.tokens.json` にゴールデン化し、`compiler/rust/frontend/tests/lexer/core_parse.rs` で `lexer::lex_source_with_options` 結果を厳密一致させることで `cargo test --test lexer_core_parse` だけで移植済みケースの差分が検知できるようになった。  
 - `poc_frontend` に `--emit-tokens` フラグを追加し、Dual-write のトークン JSON を `reports/dual-write/front-end/w1-lexer/core_parse_lex_tests/` 以下に書き出して `collect-iterator-audit-metrics.py` の `lexer.identifier_profile_*` 指標に流し込むパイプラインを確立。`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` にもこのワークフローを追記した。  
 - 実装済み: `scripts/poc_dualwrite_compare.sh --mode lexer` に `TPM-LEX-01` ケースを登録し、`docs/plans/bootstrap-roadmap/p1-test-migration-lexer-cases.txt` で `compiler/ocaml/tests/golden/core_parse_lex_tests.tokens.json` を読み込んだトークン列を Rust 出力（`reports/dual-write/front-end/w1-lexer/<run>`）と比較して `tokens.{ocaml,rust}.json`/`tokens.diff.json` を記録、OCaml/Rust の診断 JSON を `collect-iterator-audit-metrics.py --section lexer --case core_parse_lex_tests` へ与えて `lexer-metrics.{ocaml,rust}.json` を生成し、`lexer.identifier_profile_unicode`/`lexer.identifier_profile_ascii` の ±0.5 ルールを追跡する運用を確立した。
+
+### TPM-LEX-02
+
+1. **調査・前提整理（1日）**
+   1. `compiler/ocaml/tests/test_lexer.ml` の識別子・Unicode 検証（`test_identifiers`〜`test_lexer_errors`）と `compiler/ocaml/tests/unicode_ident_tests.ml` の承認ケースを読み、`docs/spec/1-1-syntax.md §A.3` / `docs/spec/1-4-test-unicode-model.md` の要件と照らし合わせて必要なコードポイント群（ひらがな、カタカナ、大文字ラテン、ギリシャ・キリル・ハングル、合成文字）および ASCII 互換拒否メッセージ（`U+89E3`, `profile=ascii-compat`）を整理します。
+   2. `unicode_identifiers.reml` フィクスチャと `REML_ENABLE_UNICODE_TESTS` の制御フローを確認し、Rust 側で `IdentifierProfile::AsciiCompat`／`IdentifierProfile::Unicode` を切り替える `--identifier-profile` フラグや環境変数の扱いを定義します。`docs/plans/rust-migration/p1-front-end-checklists.csv` の `lexer.identifier_profile_*` 項目に対応するメトリクスを再現するための出力フォーマット（`serde_json` で `TokenKind`・`span` を記録）も明文化します。
+2. **テストハーネス設計（0.5日）**
+   1. `compiler/rust/frontend/tests/lexer/identifier.rs` モジュールを追加し、OCaml の `test_identifiers`/`unicode_ident_tests` で使われるラベルごとに `#[test_case]` を定義。`IdentifierProfile::AsciiCompat` と `IdentifierProfile::Unicode` で期待トークン・正規化文字列・`span` を `serde_json` 出力や `Token::to_string` で確認できるようにし、`compiler/ocaml/tests/golden/` に相当する Rust 用ゴールデン JSON（`identifiers.{ocaml,rust}.json`）を扱えるようにします。
+   2. `scripts/poc_dualwrite_compare.sh --mode lexer` に `--case-origin ocaml-identifier` を追加し、ASCII プロファイル拒否ケースと Unicode 合格ケースの両方を `reports/dual-write/front-end/w1-lexer/identifier/` 以下へ吐き出す。`collect-iterator-audit-metrics.py --section lexer` が `identifier_profile_ascii`/`identifier_profile_unicode` に記録する差分を `docs/plans/rust-migration/p1-front-end-checklists.csv` にリンクします。
+3. **実装・移植（1日）**
+   1. Rust 側で ASCII 用のエラーメッセージが `test_lexer.ml` で期待される文字列（`U+89E3` を含み `profile=ascii-compat` を出力）および `span` 値と一致することを `#[test]` で検証し、`IdentifierProfile::AsciiCompat` から `capture_lexer_error` 風の `Result<Token, LexerError>` を生成するユーティリティを作る。
+   2. Unicode プロファイルでは `Unicode` 文字も `IDENT`/`UPPER_IDENT` として受理され、正規化（`café`）や補助ケース（ゼロ幅結合子）も `TokenKind` 文字列と `Token::lexeme()` を比較して得られるようにする。`compiler/rust/frontend/src/bin/poc_frontend.rs` に `--identifier-profile`＋`--emit-tokens` を追加して Dual-write JSON を `reports/dual-write/front-end/w1-lexer/identifier/{ocaml,rust}` に並べます。
+4. **検証・監査（0.5日）**
+   1. `cargo test --test lexer_identifier` で ASCII/Unicode ケースを通し、`reports/dual-write/front-end/w1-lexer/identifier/tokens.{ocaml,rust}.json` に `TokenKind`・`span` が一致することを確認。Unicode スキップフラグ（`REML_ENABLE_UNICODE_TESTS=0`）が動作することを `cargo test --test lexer_identifier --no-unicode` で確かめます。
+   2. `collect-iterator-audit-metrics.py --section lexer --case identifier` を実行し、ASCII 拒否時の `identifier_profile_ascii` と Unicode 受理時の `identifier_profile_unicode` が ±0.5 以内に収まるよう `docs/plans/rust-migration/p1-front-end-checklists.csv` に追記します。`scripts/validate-diagnostic-json.sh` の `--frontend rust --case identifier` を使ってメッセージスキーマの互換性を検証。
+5. **記録・フォローアップ（0.25日）**
+   1. `docs-migrations.log` に「TPM-LEX-02: test_lexer/unicode_ident_tests の識別子プロファイル移植」の記録を書き、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の診断 JSON 更新欄で ASCII/Unicode リジェクト／アクセプトを明記する。
+   2. Unicode 観点でまだ再現できない項目（例: `ZERO WIDTH` 文字の `span` や `CPP-style` コメントを挟んだ際の `profile` 表示）が残る場合は `docs/plans/rust-migration/p1-spec-compliance-gap.md` で `SCG-xx` にまとめ、Phase P2 以降の deferred リストに誘導する。
+
+#### TPM-LEX-02 進捗
+
+- `test_lexer.ml` および `unicode_ident_tests.ml` のケースを読み込み、各ラベルが期待する `TokenKind`・`span`・エラーメッセージを整理。`unicode_identifiers.reml` の入力と `REML_ENABLE_UNICODE_TESTS` のフローを押さえた上で、Rust の `IdentifierProfile` 切り替えが同等の挙動を提供するような `scripts/poc_dualwrite_compare.sh` のパラメータ設計を確定した。
+- `docs/spec/1-1-syntax.md §A.3`/`docs/spec/1-4-test-unicode-model.md` および `docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md` と突き合わせながら、ASCII 互換拒否メッセージの文言 (`U+89E3`, `profile=ascii-compat`) と Unicode 受理の正規化ケース（`café` やゼロ幅結合子）を `docs/plans/bootstrap-roadmap/p1-test-migration-plan.md` に列挙し、Dual-write JSON のメトリクス収集と `docs/plans/rust-migration/p1-front-end-checklists.csv` への記録方針を明文化した。
