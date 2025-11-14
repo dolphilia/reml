@@ -246,3 +246,29 @@
 - `docs/plans/bootstrap-roadmap/p1-test-migration-ffi-cases.txt` を作成し、`cli-callconv`/`ffi-contract` 両ケースに `#origin`/`#metrics-case`/`#flags` を記述して `poc_dualwrite_compare.sh --mode diag` から `effects-contract` ラベル付きで実行可能な構成を整備した。  
 - `scripts/poc_dualwrite_compare.sh` を拡張し、ケース定義で `case_origin`/`case_metrics_label` を保持、`case_metrics_label` を `collect-iterator-audit-metrics.py` の `--case`/`--metrics-case` に渡すとともに `FORCE_TYPE_EFFECT_FLAGS` で `effects.contract.*` 出力を強制し、summary.json にメタデータを刻むことで `effects-contract` 系ケースの差分を明示できるようにした。  
 - `tooling/ci/collect-iterator-audit-metrics.py` に `--section diag`/`--metrics-case` を導入し、`effects-contract` ケースでは `effects.contract.stage_mismatch`/`capability_missing`/`ownership` をカウントする新規メトリクスを追加して gating に組み込み、`poc_dualwrite_compare.sh` から `diag-metrics.{frontend}.json` が生成されるフローを確立した。  
+
+### TPM-DIAG-01
+
+1. **調査・前提整理（1日）**  
+   1. `compiler/ocaml/tests/test_cli_diagnostics.ml` のケース群（`StageContext` による PhaseRack、`Diagnostic` の `aux`/`secondary`、`effects.contract.*` メタデータ）と `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` および `2-7-deferred-remediation.md` に掲載された JSON スキーマ（`diagnostics.*.json`、`audit.metadata`、`metrics`）を読み、Rust 側で再現すべき `Diagnostic`/`Audit` の構造と許容差（メトリクスの ±0.5 ルール、`collect-iterator` の `code`/`notes`/`secondary` カウント）を明文化する。  
+   2. `docs/plans/rust-migration/1-2-diagnostic-compatibility.md` と `docs/spec/3-6-core-diagnostics-audit.md` を参照し、`scripts/validate-diagnostic-json.sh` で使用する `diagnostics-v2.schema.json`（`diagnostics.*.schema`）や `collect-iterator-audit-metrics.py --section diag` が求めるメトリクスラベル（`diagnostics.count`、`diagnostics.expected_summary_presence`、`diagnostics.kind_summary`）をドキュメント化し、既存の `docs/plans/rust-migration/p1-front-end-checklists.csv` に対応する欄を設ける。  
+2. **テストハーネス設計（0.5日）**  
+   1. Dual-write 診断比較用に `docs/plans/bootstrap-roadmap/p1-test-migration-diagnostic-cases.txt` を案定義し、`scripts/poc_dualwrite_compare.sh --mode diag` で `test_cli_diagnostics.ml` の CLI フラグ（`--show-stage-context`、`--effects-summary`、`--runtime-capabilities`）と `--emit-diagnostics`/`--emit-audit` を同時に渡せるようにする。  
+   2. `reports/dual-write/front-end/w4-diagnostics/cli_diagnostics/<case>` 以下に `diagnostics.{ocaml,rust}.json`、`audit.{ocaml,rust}.json`、`metrics.{ocaml,rust}.json`、`diff.json` を書き出し、`collect-iterator-audit-metrics.py --section diag --metrics-case cli_diagnostics` で `diagnostics.expected_summary`/`diagnostics.count`/`effects.contract.*` を比較できる構成を整理する。  
+3. **実装（1日）**  
+   1. `compiler/rust/frontend/tests/diagnostics/cli_diagnostics.rs` を新設し、OCaml の `test_cli_diagnostics.ml` に記載された CLI ケース（`stage_callconv`、`ffi_effects`、`diagnostic_notes`）を `poc_frontend` に渡して `diagnostics`/`audit` を `serde_json` で生成、`collect-iterator` に送るテストを追加する。  
+   2. `compiler/rust/frontend/src/bin/poc_frontend.rs` に `--emit-diagnostics`/`--emit-audit`/`--emit-effects` を整理し、`collect-iterator` の `DiagnosticMetric`/`AuditMetric` に合わせたフィールド（`code`/`notes`/`secondary`/`metrics`）を JSON に含めるよう `diagnostic/json.rs` を拡張する。  
+   3. `scripts/poc_dualwrite_compare.sh` の `diag` モードで `case_metrics_label` と `case_origin` を扱えるようにし、`FORCE_DIAGNOSTIC_FLAGS=1` を使って `--runtime-capabilities` `--effects-summary` を強制、`reports/dual-write/front-end/w4-diagnostics/cli_diagnostics/<run>/diff.json` を残す自動化を追加する。  
+4. **検証・監査（0.5日）**  
+   1. `cargo test --test cli_diagnostics` と `scripts/poc_dualwrite_compare.sh --mode diag --cases docs/plans/bootstrap-roadmap/p1-test-migration-diagnostic-cases.txt` を実行し、`reports/dual-write/front-end/w4-diagnostics/cli_diagnostics/{ocaml,rust}` に `diagnostics`/`audit`/`metrics` を吐き出す運用を確認。  
+   2. `collect-iterator-audit-metrics.py --section diag --metrics-case cli_diagnostics` で `diagnostics.expected_summary_presence`/`diagnostics.count`/`effects.contract.stage_mismatch` を ±0.5 ルールで監査し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md#diagnostic-audit` のテーブルに結果を追記する。  
+   3. `scripts/validate-diagnostic-json.sh --frontend rust --schema diagnostics-v2.schema.json` を回し、`reports/dual-write/front-end/w4-diagnostics/cli_diagnostics/schema.{ocaml,rust}.log` を残して JSON schema 準拠を担保する。  
+5. **記録・フォローアップ（0.25日）**  
+   1. `docs-migrations.log` に「TPM-DIAG-01: CLI 診断 JSON の dual-write 移植」エントリを追記し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の診断差分表と `docs/plans/rust-migration/1-2-diagnostic-compatibility.md` の Diagnostic フラグ一覧を更新する旨を記載。  
+   2. `p1-spec-compliance-gap.md#SCG-xx` に残る診断コード（例: `E8050` - StageContext の不一致）を deferred に分類し、Phase P2 以降のアクションリンクを `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に張る。  
+
+#### TPM-DIAG-01 進捗
+
+- `compiler/ocaml/tests/test_cli_diagnostics.ml` を読み、CLI (`StageContext`/`RuntimeCapability`/`effects.contract.*`) で出力される `diagnostics`/`audit`/`metrics` の構造と `collect-iterator-audit-metrics.py --section diag` に渡すべきラベル（`diagnostics.count`/`diagnostics.expected_summary_presence`/`effects.contract.stage_mismatch`）を整理した。  
+- `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の診断 JSON スキーマ節と `2-7-deferred-remediation.md` の `effects-contract` ロードマップを参照し、Rust 側にも `diagnostics-v2.schema.json` を `scripts/validate-diagnostic-json.sh` で検証すること、`reports/dual-write/front-end/w4-diagnostics/cli_diagnostics/<case>` に `schema.{ocaml,rust}.log` を残す運用を追記する方針を固めた。  
+- 必要 CLI/metrics/Golden JSON の組み合わせを `docs/plans/bootstrap-roadmap/p1-test-migration-plan.md` に記載し、`docs/plans/rust-migration/p1-front-end-checklists.csv` の `collect-iterator` 担当列へ `diag.expected_summary_presence`/`diag.effects.contract.*` を追記する案を立てて、Dual-write の監査ゴールと比較項目を明確にした。
