@@ -33,6 +33,10 @@
 - `docs/plans/bootstrap-roadmap/p1-test-migration-ffi-cases.txt` に `cli-callconv`/`ffi-contract` を `#metrics-case: effects-contract` で登録し、`scripts/poc_dualwrite_compare.sh --mode diag --cases ... --force-type-effect-flags` で `--runtime-capabilities windows.ffi` や `--effect-stage beta` を両フロントエンドへ注入することで `reports/dual-write/front-end/w4-diagnostics/effects-contract/<run>/<case>` に `diagnostics`・`audit`・`diag-metrics` を保存する運用を確立した。  
 - `collect-iterator-audit-metrics.py` の `--section diag --metrics-case effects-contract` は `effects.contract.stage_mismatch`/`capability_missing`/`ownership` をチェックし、TPM-TYPE-03 の `summary.json`/`diag-metrics.{frontend}.json` で `pass_rate` が 1.0 にならないケースを `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#effects-change-log` に転記することで `p1-spec-compliance-gap.md#SCG-09` の残差差分を追跡する。  
 
+### 診断監査フロー {#diagnostic-audit}
+
+- `docs/plans/bootstrap-roadmap/p1-test-migration-diagnostic-cases.txt` で `stage_callconv`/`ffi_effects`/`diagnostic_notes` を `#metrics-case: cli_diagnostics` として整理し、`scripts/poc_dualwrite_compare.sh --mode diag --cases docs/plans/bootstrap-roadmap/p1-test-migration-diagnostic-cases.txt` で `diagnostics`/`audit`/`diag-metrics` を `reports/dual-write/front-end/w4-diagnostics/cli_diagnostics/<case>` に出力する運用を確立した。`collect-iterator-audit-metrics.py --section diag --metrics-case cli_diagnostics` は `diagnostics.expected_summary_presence`/`diagnostics.count`/`effects.contract.stage_mismatch`/`effects.contract.capability_missing`/`effects.contract.ownership` を ±0.5 ルールで監査し、`scripts/validate-diagnostic-json.sh --frontend rust --schema diagnostics-v2.schema.json` で JSON Schema 準拠を確認する。差分は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#diagnostic-audit` へ転記し、結果を継続監査する。  
+
 ### 1. レビュー計画と体制整備（31週目）
 **担当領域**: 計画策定
 

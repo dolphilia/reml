@@ -1,0 +1,22 @@
+# P1 TPM-DIAG-01 CLI 診断ケース
+# format: name::file::<relative path>
+# metrics-case: cli_diagnostics
+# origin: TPM-DIAG-01
+# flags: --emit-diagnostics --emit-audit --show-stage-context --effects-summary
+# flags.ocaml: --emit-effects --diagnostic-stream
+# flags.rust: --emit-effects --diagnostics-stream
+
+# StageContext / StageCallConv 監査
+# tests: compiler/ocaml/tests/test_cli_diagnostics.ml::test_stage_extension_snapshot
+# flags: --effect-stage beta --runtime-capabilities core.runtime
+stage_callconv::file::compiler/ocaml/tests/golden/diagnostics/effects/stage-resolution.reml
+
+# FFI 効果契約ステージ差分
+# tests: compiler/ocaml/tests/test_cli_diagnostics.ml::test_typeclass_dictionary_snapshot
+# flags: --effect-stage beta --runtime-capabilities windows.ffi
+ffi_effects::file::compiler/ocaml/tests/golden/diagnostics/ffi/unsupported-abi.reml
+
+# Diagnostic Notes / 複数診断パターン
+# tests: compiler/ocaml/tests/test_cli_diagnostics.ml::test_multiple_diagnostics
+# flags: --effect-stage beta --runtime-capabilities core.runtime
+diagnostic_notes::file::compiler/ocaml/tests/golden/diagnostics/effects/invalid-attribute.reml

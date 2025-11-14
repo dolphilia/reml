@@ -28,7 +28,7 @@
 ### 3.3 診断・Streaming
 | ID | テスト | 依存対象 | 理由 |
 | --- | --- | --- | --- |
-| TPM-DIAG-01 | `test_cli_diagnostics.ml` | `diagnostic.ml` + `Collect-iterator` metrics | `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`/`2-7-deferred-remediation.md` で扱った診断 JSON スキーマと `scripts/validate-diagnostic-json.sh` の整備を Rust でも実行し、`diagnostics.*` のメトリクスを `collect-iterator-audit-metrics.py` で評価。 |
+| TPM-DIAG-01 | `test_cli_diagnostics.ml` | `diagnostic.ml` + `Collect-iterator` metrics | ✅ `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`/`2-7-deferred-remediation.md` で扱った診断 JSON スキーマと `scripts/validate-diagnostic-json.sh` の整備を Rust でも実行し、`diagnostics.*` のメトリクスを `collect-iterator-audit-metrics.py` で評価。 |
 | TPM-DIAG-02 | `streaming_runner_tests.ml` | `parser_driver.ml` + `Core_parse_streaming` | `FRG-05` を踏まえて Rust 版 `StreamingRunner` に `chunk_size` や `recover` 拡張があるため、Pending/Completed コードパスを再現し、`recover` の `expected_tokens` を JSON で検証するテストを `streaming_runner.rs` に移行。 |
 | TPM-DIAG-03 | `effect_analysis_tests.ml` / `effect_handler_poc_tests.ml` | `type_inference_effect.ml`/`impl_registry` | Stage/Capability レポートが整備されている現在、diagnostics/metrics の `effects.contract.*` での確認が可能。 |
 
@@ -272,3 +272,5 @@
 - `compiler/ocaml/tests/test_cli_diagnostics.ml` を読み、CLI (`StageContext`/`RuntimeCapability`/`effects.contract.*`) で出力される `diagnostics`/`audit`/`metrics` の構造と `collect-iterator-audit-metrics.py --section diag` に渡すべきラベル（`diagnostics.count`/`diagnostics.expected_summary_presence`/`effects.contract.stage_mismatch`）を整理した。  
 - `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の診断 JSON スキーマ節と `2-7-deferred-remediation.md` の `effects-contract` ロードマップを参照し、Rust 側にも `diagnostics-v2.schema.json` を `scripts/validate-diagnostic-json.sh` で検証すること、`reports/dual-write/front-end/w4-diagnostics/cli_diagnostics/<case>` に `schema.{ocaml,rust}.log` を残す運用を追記する方針を固めた。  
 - 必要 CLI/metrics/Golden JSON の組み合わせを `docs/plans/bootstrap-roadmap/p1-test-migration-plan.md` に記載し、`docs/plans/rust-migration/p1-front-end-checklists.csv` の `collect-iterator` 担当列へ `diag.expected_summary_presence`/`diag.effects.contract.*` を追記する案を立てて、Dual-write の監査ゴールと比較項目を明確にした。
+- `docs/plans/bootstrap-roadmap/p1-test-migration-diagnostic-cases.txt` に `stage_callconv`/`ffi_effects`/`diagnostic_notes` ケースを `#metrics-case: cli_diagnostics` のもとで整理し、`poc_dualwrite_compare.sh --mode diag` で両フロントエンドに `--emit-diagnostics`/`--emit-audit` を併用することで `diagnostics`・`audit`・`diag-metrics` を `reports/dual-write/front-end/w4-diagnostics/cli_diagnostics/<case>` に残せるようにした。
+- `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` と `2-7-deferred-remediation.md` に TPM-DIAG-01 の監査フローと `collect-iterator-audit-metrics.py --section diag --metrics-case cli_diagnostics` の追跡欄を追加し、`docs/plans/rust-migration/1-2-diagnostic-compatibility.md` の比較手順にも CLI diag ケースの記録を参照する旨を追記した。

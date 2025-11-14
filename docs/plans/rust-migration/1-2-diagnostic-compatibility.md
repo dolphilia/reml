@@ -37,6 +37,7 @@ Rust フロントエンド移植において、OCaml 実装と同一の診断 (`
 4. `jq --sort-keys` で整形し `diff -u`。差分がある場合は `reports/dual-write/front-end/diff/diagnostic_<case>.diff` に保存
 5. `collect-iterator-audit-metrics.py --section parser --baseline reports/dual-write/front-end/ocaml/<case>.json --candidate reports/dual-write/front-end/rust/<case>.json` を実行し、メトリクス差分を取得
 6. 差分内容を `reports/diagnostic-format-regression.md` のフォーマットで記録し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に TODO を追加（必要なら）
+7. `scripts/poc_dualwrite_compare.sh --mode diag --cases docs/plans/bootstrap-roadmap/p1-test-migration-diagnostic-cases.txt` を実行して `reports/dual-write/front-end/w4-diagnostics/cli_diagnostics/<case>` に `diagnostics`/`audit`/`diag-metrics` を生成し、`collect-iterator-audit-metrics.py --section diag --metrics-case cli_diagnostics` で `diagnostics.expected_summary_presence`/`diagnostics.count`/`effects.contract.stage_mismatch`/`effects.contract.capability_missing`/`effects.contract.ownership` を ±0.5 ルールで監査、`scripts/validate-diagnostic-json.sh --frontend rust --schema diagnostics-v2.schema.json` で JSON Schema 互換性を確認する。差分は `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md#diagnostic-audit` へ報告する。
 
 ## 1.2.6 重点監視フィールド
 
