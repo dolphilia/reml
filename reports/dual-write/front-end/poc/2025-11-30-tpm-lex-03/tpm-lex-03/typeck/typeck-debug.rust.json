@@ -1,0 +1,31 @@
+{
+  "effect_context": {
+    "runtime": {
+      "AtLeast": "stable"
+    },
+    "capability": {
+      "AtLeast": "beta"
+    }
+  },
+  "type_row_mode": "Integrated",
+  "recover": {
+    "emit_expected_tokens": true,
+    "emit_context": true,
+    "max_suggestions": 3
+  },
+  "runtime_capabilities": [],
+  "trace_enabled": false,
+  "metrics": {
+    "typed_functions": 1,
+    "typed_exprs": 1,
+    "constraints_total": 0,
+    "constraint_breakdown": {},
+    "unresolved_identifiers": 0,
+    "call_sites": 0,
+    "binary_expressions": 0,
+    "unify_calls": 0,
+    "ast_nodes": 0,
+    "token_count": 0
+  },
+  "violations": []
+}

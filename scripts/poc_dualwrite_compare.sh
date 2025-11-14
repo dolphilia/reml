@@ -1980,29 +1980,29 @@ PY
     dune exec remlc -- --emit-tast "${input_path}"
   ) > "${ocaml_tast_path}" 2>&1 || true
 
-  (
-    cd "${OCAML_DIR}"
-    dune exec remlc -- \
-      --packrat \
-      --format json \
-      --json-mode compact \
-      --emit-parse-debug "${ocaml_parse_debug_path}" \
-      "${typeck_ocaml_flags[@]}" \
-      "${ocaml_case_flags[@]}" \
-      "${input_path}"
-  ) > "${ocaml_diag_path}" 2>&1 || true
+    (
+      cd "${OCAML_DIR}"
+      dune exec remlc -- \
+        --packrat \
+        --format json \
+        --json-mode compact \
+        --emit-parse-debug "${ocaml_parse_debug_path}" \
+        "${typeck_ocaml_flags[@]:-}" \
+        "${ocaml_case_flags[@]:-}" \
+        "${input_path}"
+    ) > "${ocaml_diag_path}" 2>&1 || true
 
-  (
-    cd "${RUST_DIR}"
-    cargo run --quiet --bin poc_frontend -- \
-      --emit-parse-debug "${rust_parse_debug_path}" \
-      --dualwrite-root "${REPORT_DIR}" \
-      --dualwrite-run-label "${RUN_ID}" \
-      --dualwrite-case-label "${safe_name}" \
-      "${typeck_rust_flags[@]}" \
-      "${rust_case_flags[@]}" \
-      "${input_path}"
-  ) > "${rust_json_path}" || true
+    (
+      cd "${RUST_DIR}"
+      cargo run --quiet --bin poc_frontend -- \
+        --emit-parse-debug "${rust_parse_debug_path}" \
+        --dualwrite-root "${REPORT_DIR}" \
+        --dualwrite-run-label "${RUN_ID}" \
+        --dualwrite-case-label "${safe_name}" \
+        "${typeck_rust_flags[@]:-}" \
+        "${rust_case_flags[@]:-}" \
+        "${input_path}"
+    ) > "${rust_json_path}" || true
 
   if [[ "${MODE}" == "typeck" ]]; then
     collect_effects_metrics "${ocaml_diag_path}" "${typeck_dir}/effects-metrics.ocaml.json" "OCaml"

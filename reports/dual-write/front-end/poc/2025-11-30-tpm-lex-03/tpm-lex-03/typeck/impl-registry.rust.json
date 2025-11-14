@@ -1,0 +1,8 @@
+{
+  "schema_version": "w3-typeck-impl-registry/0.1",
+  "frontend": "rust",
+  "run_label": "2025-11-30-tpm-lex-03",
+  "case_label": "tpm-lex-03",
+  "used_impls": [],
+  "entries": []
+}

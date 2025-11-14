@@ -1,0 +1,53 @@
+{
+  "extensions": {
+    "config": {
+      "experimental_effects": false,
+      "left_recursion": "off",
+      "legacy_result": true,
+      "merge_warnings": true,
+      "packrat": true,
+      "require_eof": false,
+      "source": "cli",
+      "trace": false
+    },
+    "effects": {
+      "type_row_mode": "ty-integrated"
+    },
+    "lex": {
+      "identifier_profile": "unicode",
+      "profile": "strict_json"
+    },
+    "recover": {
+      "notes": false,
+      "sync_tokens": []
+    },
+    "stream": {
+      "checkpoint": "unspecified",
+      "chunk_size": 0,
+      "demand_min_bytes": 0,
+      "demand_preferred_bytes": 0,
+      "enabled": false,
+      "flow": {
+        "backpressure": {
+          "max_lag_bytes": 0
+        },
+        "checkpoints_closed": 1,
+        "policy": "auto"
+      },
+      "flow_max_lag": 0,
+      "flow_policy": "auto",
+      "packrat_enabled": true,
+      "resume_hint": "unspecified"
+    }
+  },
+  "runtime_capabilities": [],
+  "switches": {
+    "experimental_effects": false,
+    "left_recursion": "off",
+    "legacy_result": true,
+    "merge_warnings": true,
+    "packrat": true,
+    "require_eof": false,
+    "trace": false
+  }
+}

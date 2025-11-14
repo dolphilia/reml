@@ -79,6 +79,7 @@ Phase P1（フロントエンド移植）の達成条件を Reml 仕様に照ら
 | --- | --- | --- | --- | --- |
 | SCG-14 | `run_stream` / `resume` API が存在せず `StreamOutcome::{Completed,Pending}` を返せない | 2-7 §A〜C | `ParserDriver` は常にバッチ。`StreamingState` はメトリクス採取のみで `Pending` 制御なし | `StreamingRunner` を新設し、Feeder/DemandHint/Continuation を管理。CLI `--streaming` が `run_stream` を呼ぶよう統合 |
 | SCG-15 | `RunConfig`/`StreamingConfig`/`FlowController` の仕様字段と CLI 実装が同期していない | 2-6 §B, 2-7 §A, `p1-front-end-checklists.csv` | Rust CLI は `RunConfig` を `RunSettings` から構築し、`build_runconfig_*`/`build_audit_metadata` を `ParseResult.run_config` で生成した `parser_run_config` JSON（`diagnostics`, `parse_debug`, `parse/parser_run_config.rust.json`）で出力している | FRG-20 で `RunConfig` と dual-write `parser_run_config` の共通化を完了し、`docs/plans/rust-migration/p1-rust-frontend-gap-report.md#FRG-20` に達成記録を残した |
+| SCG-16 | Packrat キャッシュ/期待候補の左再帰パスがまだ比較対象に含まれていない | 2-5 §E, docs/plans/bootstrap-roadmap/p1-test-migration-plan.md#TPM-LEX-03 | `TPM-LEX-03` では `fn missing(x, y = x + y` を使って `packrat_stats` と `diagnostics.expected_summary` を確認できたが、`left_recursion` フラグを伴うケースでの `packrat_cache` エントリや期待候補サマリの dual-write 比較は未着手 | `scripts/poc_dualwrite_compare.sh --mode ast` に `--run-config '--left-recursion=on'` などを追加し、`reports/dual-write/front-end/w2-ast-alignment/tpm-lex-03/dualwrite.bundle.json` を更新して `collect-iterator-audit-metrics.py --section parser` を再実行することで差分ギャップを定量化し、Phase P2 で対応予定 |
 
 ## 6. 具体的な計画
 

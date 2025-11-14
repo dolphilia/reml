@@ -1,0 +1,78 @@
+{
+  "packrat_cache": [
+    {
+      "entry": {
+        "approx_bytes": 426,
+        "expectations": [
+          {
+            "description": ")"
+          },
+          {
+            "description": ","
+          },
+          {
+            "description": ":"
+          }
+        ],
+        "sample_tokens": [
+          {
+            "kind": "KeywordFn",
+            "lexeme": "fn"
+          },
+          {
+            "kind": "Identifier",
+            "lexeme": "missing"
+          },
+          {
+            "kind": "LParen",
+            "lexeme": ""
+          },
+          {
+            "kind": "Identifier",
+            "lexeme": "x"
+          },
+          {
+            "kind": "Comma",
+            "lexeme": ""
+          },
+          {
+            "kind": "Identifier",
+            "lexeme": "y"
+          },
+          {
+            "kind": "Assign",
+            "lexeme": ""
+          },
+          {
+            "kind": "Identifier",
+            "lexeme": "x"
+          }
+        ],
+        "summary": {
+          "alternatives": [
+            ")",
+            ",",
+            ":"
+          ],
+          "humanized": "ここで`)`、`,` または `:`のいずれかが必要です"
+        }
+      },
+      "parser_id": 1,
+      "range_end": 17,
+      "range_start": 16
+    }
+  ],
+  "packrat_snapshot": {
+    "approx_bytes": 426,
+    "entries": 1
+  },
+  "packrat_stats": {
+    "approx_bytes": 426,
+    "budget_drops": 0,
+    "entries": 1,
+    "evictions": 0,
+    "hits": 6,
+    "pruned": 0,
+    "queries": 7
+  }
+}
