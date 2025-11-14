@@ -598,6 +598,23 @@ FRG-33 は `p1-spec-compliance-gap.md#SCG-14` で指摘された `run_stream`/`r
 
 ## 6. 最終的な検査
 
+### 6.1 デュアルライト差分の再確認
+1. **Day 0 – コマンド実行**  
+   - `scripts/poc_dualwrite_compare.sh --mode ast --run-id codex-inspection` を走らせ、OCaml/Rust 両方の AST/diagnostic/typeck 用 JSON を `reports/dual-write/front-end/poc/codex-inspection/*` に出力。標準出力から `typeck_rust_flags` 未定義の箇所を確認して、後続の typeck モードでフラグを注入する必要性を記録（`SCG-12`/`FRG-14` の typeck 出力と整合するため）。
+2. **Day 1 – JSON diff の整理**  
+   - 生成された `summary.md` を基に `ast_match` (False)・`diag_match` (True) をケース別に把握し、`p1-spec-compliance-gap.md#SCG-14` の Streaming/AST ギャップと `p1-rust-frontend-gap-report.md#FRG-09` の AST 芝台差分をクロス参照。`diag_match` が `True` であることをもって Rust 診断の構造が最小限一致していることを確認しつつ、AST の不一致点を次段階で `reports/dual-write/front-end/w2-ast` に差分ファイルとして記録する計画を立てる。
+3. **Day 2 – メトリクス & LSP 対応**  
+   - `tooling/ci/collect-iterator-audit-metrics.py --section effects --recover-lsp` で `effects.stage.required`/`parser.stream_extension_field_coverage` 等のキーメトリクスが Rust JSON に含まれる状態を確認し、`docs/spec/3-6-core-diagnostics-audit.md` §1.1 で要求される `severity`・`domain`・`audit_id` の埋め込みと `SCG-13` の `diagnostics.json` 拡張が活きているか追跡。差分が残る場合は `reports/dual-write/front-end/w4-diagnostics/<run>/summary.md` に記録。
+
+### 6.2 実行結果と観察
+- `ast` モードで空ケース 4件（`empty_uses`/`multiple_functions`/`addition`/`missing_paren`）を `codex-inspection` で比較した結果、全件 `ast_match=false`、`diag_match=true`（`typeck_match` は生成されず `None`）。`ocaml_diag`/`rust_diag` いずれも `0` で `diagnostic` 系の構造上の齟齬は現時点では検出されていない。
+- `collect-iterator` による `effects.stage` 系キーはまだウォークしていないため認証できていない（`SCG-13` で要求される `audit`/`change_set` とは別途追跡必須）。`typeck_rust_flags` 未定義のエラーは `typeck` モード用フラグセットの整備が必要なことを暗示しており、`SCG-12`/`FRG-14` を追う際の補充項目とする。
+
+### 6.3 次の検査フェーズ
+- `scripts/poc_dualwrite_compare.sh --mode diag --run-id <run>` を実行して `SCG-13` で求める `diagnostics.json` の `severity`/`domain`/`audit` メタデータ差分を再取得し、`reports/dual-write/front-end/w4-diagnostics/<run>/summary.md` に注記する。
+- `scripts/poc_dualwrite_compare.sh --mode typeck` を `FORCE_TYPE_EFFECT_FLAGS=true` で再実行し、`typeck_debug.json`/`typed_ast.json`/`constraints.json` を OCaml 側と並べて `reports/dual-write/front-end/w3-type-inference/<run>/` に記録。`typeck_rust_flags` を `docs/plans/rust-migration/p1-front-end-checklists.csv` の該当行に合わせて構成し、`SCG-12`/`FRG-14` の型推論すり合わせを完了させる。
+- `tooling/ci/collect-iterator-audit-metrics.py --section streaming --require-success` を走らせ、`parser.stream_extension_field_coverage`・`parser.stream.outcome_consistency`・`effects.stage.required` を `reports/dual-write/front-end/README.md` などに記録することで `SCG-14`/`SCG-13` に必要な RunConfig メタデータを整備する。
+
 ## 7. ノート
 
 - 仕様参照: `docs/spec/1-1-syntax.md`, `1-2-types-Inference.md`, `1-3-effects-safety.md`, `2-1-parser-type.md`, `2-5-error.md`, `2-7-core-parse-streaming.md`, `3-6-core-diagnostics-audit.md`
