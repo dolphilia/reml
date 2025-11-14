@@ -9,8 +9,9 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use reml_frontend::diagnostic::json as diag_json;
-use reml_frontend::diagnostic::FrontendDiagnostic;
+use reml_frontend::diagnostic::{
+    json as diag_json, AuditEnvelope, DiagnosticDomain, FrontendDiagnostic,
+};
 use reml_frontend::error::Recoverability;
 use reml_frontend::lexer::IdentifierProfile;
 use reml_frontend::parser::ast::Module;
@@ -1372,6 +1373,11 @@ fn build_parser_diagnostics(
         })
         .map(|diag| {
             let timestamp = current_timestamp();
+            let mut diag = diag.clone();
+            if diag.domain.is_none() {
+                diag.domain = Some(DiagnosticDomain::Parser);
+            }
+            diag.timestamp = Some(timestamp.clone());
             let recover_extension = diag_json::build_recover_extension(&diag);
             let mut extensions = serde_json::Map::new();
             extensions.insert(
@@ -1401,7 +1407,7 @@ fn build_parser_diagnostics(
                 .as_ref()
                 .map(|domain| domain.label().into_owned())
                 .unwrap_or_else(|| "parser".to_string());
-            let audit_metadata = build_audit_metadata(
+            let metadata = build_audit_metadata(
                 &timestamp,
                 args,
                 run_config,
@@ -1410,17 +1416,35 @@ fn build_parser_diagnostics(
                 flow,
                 domain_label.as_str(),
             );
-            let audit = json!({
-                "metadata": Value::Object(audit_metadata.clone()),
-                "audit_id": audit_metadata
-                    .get("cli.audit_id")
-                    .cloned()
-                    .unwrap_or_else(|| json!(format!("cli/{}#0", timestamp))),
-                "change_set": audit_metadata
-                    .get("cli.change_set")
-                    .cloned()
-                    .unwrap_or_else(|| json!({})),
-            });
+            let payload_metadata = metadata.clone();
+            let audit_id_value = metadata
+                .get("cli.audit_id")
+                .cloned()
+                .unwrap_or_else(|| json!(format!("cli/{}#0", timestamp)));
+            let change_set_value = metadata
+                .get("cli.change_set")
+                .cloned()
+                .unwrap_or_else(|| json!({}));
+            let capability_value = stage_payload.primary_capability().map(|id| id.to_string());
+            let audit_envelope = AuditEnvelope::from_parts(
+                metadata.clone(),
+                audit_id_value.as_str().map(|s| s.to_string()),
+                Some(change_set_value.clone()),
+                capability_value.clone(),
+            );
+            diag.audit_metadata = metadata;
+            diag.audit = audit_envelope;
+
+            let mut audit_object = serde_json::Map::new();
+            audit_object.insert(
+                "metadata".to_string(),
+                Value::Object(payload_metadata.clone()),
+            );
+            audit_object.insert("audit_id".to_string(), audit_id_value);
+            audit_object.insert("change_set".to_string(), change_set_value);
+            if let Some(capability) = capability_value {
+                audit_object.insert("capability".to_string(), json!(capability));
+            }
 
             let expected_value = diag_json::build_expected_field(&diag);
             diag_json::build_frontend_diagnostic(diag_json::FrontendDiagnosticPayload {
@@ -1430,8 +1454,8 @@ fn build_parser_diagnostics(
                 line_index: &line_index,
                 input_path,
                 extensions,
-                audit_metadata,
-                audit,
+                audit_metadata: payload_metadata,
+                audit: Value::Object(audit_object),
                 recoverability: recoverability_label(diag.recoverability),
                 expected: expected_value,
                 schema_version: SCHEMA_VERSION,
@@ -1478,7 +1502,7 @@ fn build_type_diagnostics(
                 );
             }
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
-            let audit_metadata = build_audit_metadata(
+            let metadata = build_audit_metadata(
                 &timestamp,
                 args,
                 run_config,
@@ -1487,17 +1511,26 @@ fn build_type_diagnostics(
                 flow,
                 violation.domain(),
             );
-            let audit = json!({
-                "metadata": Value::Object(audit_metadata.clone()),
-                "audit_id": audit_metadata
-                    .get("cli.audit_id")
-                    .cloned()
-                    .unwrap_or_else(|| json!(format!("cli/{}#0", timestamp))),
-                "change_set": audit_metadata
-                    .get("cli.change_set")
-                    .cloned()
-                    .unwrap_or_else(|| json!({})),
-            });
+            let payload_metadata = metadata.clone();
+            let audit_id_value = metadata
+                .get("cli.audit_id")
+                .cloned()
+                .unwrap_or_else(|| json!(format!("cli/{}#0", timestamp)));
+            let change_set_value = metadata
+                .get("cli.change_set")
+                .cloned()
+                .unwrap_or_else(|| json!({}));
+            let capability_value = stage_payload.primary_capability().map(|id| id.to_string());
+            let mut audit_object = serde_json::Map::new();
+            audit_object.insert(
+                "metadata".to_string(),
+                Value::Object(payload_metadata.clone()),
+            );
+            audit_object.insert("audit_id".to_string(), audit_id_value);
+            audit_object.insert("change_set".to_string(), change_set_value);
+            if let Some(capability) = capability_value {
+                audit_object.insert("capability".to_string(), json!(capability));
+            }
             let notes = violation
                 .notes
                 .iter()
@@ -1521,8 +1554,8 @@ fn build_type_diagnostics(
                 "primary": primary,
                 "location": location,
                 "extensions": Value::Object(extensions),
-                "audit_metadata": Value::Object(audit_metadata),
-                "audit": audit,
+                "audit_metadata": Value::Object(payload_metadata),
+                "audit": Value::Object(audit_object),
                 "notes": notes,
                 "secondary": Value::Array(vec![]),
                 "hints": Value::Array(vec![]),

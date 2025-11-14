@@ -179,12 +179,19 @@ pub fn build_expected_field(diag: &FrontendDiagnostic) -> Value {
     } else {
         diag.expected_locale_args.clone()
     };
-    json!({
-        "message_key": message_key,
-        "humanized": humanized,
-        "locale_args": locale_args,
-        "alternatives": alternatives,
-    })
+    let mut map = Map::new();
+    map.insert("message_key".to_string(), json!(message_key));
+    map.insert("humanized".to_string(), json!(humanized));
+    map.insert("locale_args".to_string(), json!(locale_args));
+    map.insert("alternatives".to_string(), json!(alternatives));
+    if let Some(summary) = diag.expected_summary.as_ref() {
+        if let Some(context) = summary.context_note.as_ref() {
+            if !context.trim().is_empty() {
+                map.insert("context_note".to_string(), json!(context));
+            }
+        }
+    }
+    Value::Object(map)
 }
 
 pub fn expected_payload_from_summary(summary: &ExpectedTokensSummary) -> Value {

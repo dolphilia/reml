@@ -75,7 +75,7 @@
 | FRG-27 | SCG-08 | ✅ | Algorithm W による制約生成・一般化・値制限・ソルバが存在せず、`typeck/driver` は `SimpleType`のみ | `p1-spec-compliance-gap.md#SCG-08` |
 | FRG-28 | SCG-09 | ✅ | 効果行・残余効果・Capability Stage 監査（`effects.contract.*`）が未実装で StageContext/RuntimeCapability 連携もない | `p1-spec-compliance-gap.md#SCG-09` |
 | FRG-29 | SCG-10 | ✅ | TypecheckReport から typed_module/constraints/used_impls を使って dual-write `typeck/typed-ast.rust.json`/`constraints.rust.json` を出力し、`typeck/impl-registry.rust.json` も追加した | `p1-spec-compliance-gap.md#SCG-10` |
-| FRG-30 | SCG-11 | 未着手 | `FrontendDiagnostic` に severity/domain/audit/timestamp/context_note が無く、OCaml と同一構造でない | `p1-spec-compliance-gap.md#SCG-11` |
+| FRG-30 | SCG-11 | ✅ | `FrontendDiagnostic` に severity/domain/audit/timestamp/context_note が無く、OCaml と同一構造でない | `p1-spec-compliance-gap.md#SCG-11` |
 | FRG-31 | SCG-12 | 未着手 | `parser_expectation` 由来の期待集合整形・優先順位・`Not`/`Class` 一覧が十分ではない | `p1-spec-compliance-gap.md#SCG-12` |
 | FRG-32 | SCG-13 | 未着手 | CLI JSON 出力で severity/domain 固定・audit_id 疑似値のため、`DiagnosticFormatter` 相当が必要 | `p1-spec-compliance-gap.md#SCG-13` |
 | FRG-33 | SCG-14 | 未着手 | `run_stream`/`resume` API と `StreamOutcome` 管理がなく、StreamingRunner/CLI `--streaming` に未統合 | `p1-spec-compliance-gap.md#SCG-14` |
@@ -520,6 +520,22 @@ FRG-29 は `p1-spec-compliance-gap.md#SCG-10` にある **Typed AST / Constraint
   - ✅ `TypecheckMetrics` へ unify/ast/node/token のメトリクスを追加し、`ConstraintFile.stats` に流し込むことで `constraints.rust.json` に実測値を含めるようにした。  
   - ✅ `TypeckArtifacts` が `typed_module.dict_refs`/`used_impls` を含む typed AST + constraints JSON を出力するので、dual-write の `typeck/typed-ast.rust.json`/`constraints.rust.json` に OCaml スキーマと同等のデータが含まれるようになった。  
   - ✅ CLI に `--emit-impl-registry` を追加し `DualWriteGuards` でも `typeck/impl-registry.rust.json` を書き出せるインフラを整備した。  
+
+### FRG-30
+
+FRG-30 は `p1-spec-compliance-gap.md#SCG-11` の **OCaml `Diagnostic` 構造（`severity` / `domain` / `audit` / `timestamp` / `expected_summary.context_note`）を Rust 側でも保持する** という要件に応える。`docs/spec/3-6-core-diagnostics-audit.md` §1 および `docs/spec/2-5-error.md` §A/B で定義された `AuditEnvelope`・`ExpectationSummary`・`Diagnostic` モデルを参照し、Rust の `FrontendDiagnostic` がデータを漏れなく保持・JSON 化できるようにする。
+
+1. **診断モデルの再定義（Day 0）**  
+   - `docs/spec/3-6-core-diagnostics-audit.md` §1.1`AuditEnvelope`、`docs/spec/2-5-error.md` §A/B の `ExpectationSummary` と `context_note` を再確認し、`FrontendDiagnostic` に `timestamp`/`audit_metadata`/`audit` フィールドを追加する。`p1-spec-compliance-gap.md` の差分表に `AuditEnvelope` が dual-write に載るべきキー（`metadata`・`audit_id`・`change_set`・`capability`）を記録する。  
+2. **JSON 出力の拡張（Day 1）**  
+   - `compiler/rust/frontend/src/diagnostic/json.rs` の `expected` 出力に `context_note` を追加し、`build_frontend_diagnostic` が `AuditEnvelope` をステージ付きの `capability` でシリアライズするようにする。`diagnostic/recover.rs` の `ExpectedTokensSummary` と `parser_expectation` の出力 (recover extension) も `context` を同一文字列で再利用できるように確認する。  
+3. **CLI ハーネスの連携と検証（Day 2）**  
+   - `bin/poc_frontend.rs` の診断生成で `current_timestamp()`/`StageAuditPayload::primary_capability()` を使って `FrontendDiagnostic` を更新し、`AuditEnvelope` + `audit_metadata`/`audit` JSON を統一する。`cargo fmt`・`cargo check --manifest-path compiler/rust/frontend/Cargo.toml` を実行し、既存の解析フローに警告が出ないことを確認する。
+
+- 進捗ログ
+  - ✅ `FrontendDiagnostic` に `timestamp`/`audit_metadata`/`audit` フィールドと `AuditEnvelope` を追加し、OCaml 側 `Diagnostic` が保持する `severity`/`domain`/`expected_summary.context_note` との 1 対 1 対応を明文化した。  
+  - ✅ `compiler/rust/frontend/src/diagnostic/json.rs` で `expected.context_note` を出力し、`diag_json::build_frontend_diagnostic` の `audit` JSON に `capability` を含め、recover 拡張と dual-write スキーマを同期させた。  
+  - ✅ `compiler/rust/frontend/src/bin/poc_frontend.rs` の diagnostics パスが `StageAuditPayload` から `AuditEnvelope` を構成し `timestamp` を `FrontendDiagnostic` に設定するようにし、`cargo fmt`/`cargo check --manifest-path compiler/rust/frontend/Cargo.toml` を実行して整合性を確認した。  
 
 ## 5. Rust フロントエンドのビルド/テスト状況
 

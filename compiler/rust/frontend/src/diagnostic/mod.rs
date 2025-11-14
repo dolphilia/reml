@@ -2,6 +2,7 @@
 
 use crate::error::Recoverability;
 use crate::span::Span;
+use serde_json::{Map, Value};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
@@ -14,6 +15,45 @@ pub(crate) const EXPECTED_PLACEHOLDER_TOKEN: &str = "解析継続トークン";
 pub(crate) const EXPECTED_EMPTY_HUMANIZED: &str = "ここで解釈可能な構文が見つかりません";
 pub(crate) const PARSE_EXPECTED_KEY: &str = "parse.expected";
 pub(crate) const PARSE_EXPECTED_EMPTY_KEY: &str = "parse.expected.empty";
+
+#[derive(Debug, Clone)]
+pub struct AuditEnvelope {
+    pub metadata: Map<String, Value>,
+    pub audit_id: Option<String>,
+    pub change_set: Option<Value>,
+    pub capability: Option<String>,
+}
+
+impl AuditEnvelope {
+    pub fn new() -> Self {
+        Self {
+            metadata: Map::new(),
+            audit_id: None,
+            change_set: None,
+            capability: None,
+        }
+    }
+
+    pub fn from_parts(
+        metadata: Map<String, Value>,
+        audit_id: Option<String>,
+        change_set: Option<Value>,
+        capability: Option<String>,
+    ) -> Self {
+        Self {
+            metadata,
+            audit_id,
+            change_set,
+            capability,
+        }
+    }
+}
+
+impl Default for AuditEnvelope {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiagnosticSeverity {
@@ -186,6 +226,7 @@ pub struct FrontendDiagnostic {
     pub code: Option<String>,
     pub codes: Vec<String>,
     pub message: String,
+    pub timestamp: Option<String>,
     pub severity: DiagnosticSeverity,
     pub severity_hint: Option<SeverityHint>,
     pub domain: Option<DiagnosticDomain>,
@@ -201,6 +242,8 @@ pub struct FrontendDiagnostic {
     pub expected_message_key: Option<String>,
     pub expected_alternatives: Vec<ExpectedToken>,
     pub expected_summary: Option<ExpectedTokensSummary>,
+    pub audit_metadata: Map<String, Value>,
+    pub audit: AuditEnvelope,
 }
 
 impl FrontendDiagnostic {
@@ -224,6 +267,9 @@ impl FrontendDiagnostic {
             expected_message_key: None,
             expected_alternatives: Vec::new(),
             expected_summary: None,
+            timestamp: None,
+            audit_metadata: Map::new(),
+            audit: AuditEnvelope::new(),
         }
     }
 
