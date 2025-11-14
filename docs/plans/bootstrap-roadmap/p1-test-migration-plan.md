@@ -105,3 +105,32 @@
 - `docs/spec/1-1-syntax.md §A.3`/`docs/spec/1-4-test-unicode-model.md` および `docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md` と突き合わせながら、ASCII 互換拒否メッセージの文言 (`U+89E3`, `profile=ascii-compat`) と Unicode 受理の正規化ケース（`café` やゼロ幅結合子）を `docs/plans/bootstrap-roadmap/p1-test-migration-plan.md` に列挙し、Dual-write JSON のメトリクス収集と `docs/plans/rust-migration/p1-front-end-checklists.csv` への記録方針を明文化した。
 - Rust 側に `lexer/identifier.rs` テストを追加し、ASCII プロファイルの拒否メッセージ（コードポイント/プロファイル/Span）と Unicode プロファイルの正規化/ゼロ幅結合子の動作を検証するケースを定義。Normalization に `unicode-normalization` を導入、ASCII 拒否時の `FrontendErrorKind::UnexpectedStructure` と `TokenKind::Unknown` を使って `push_ascii_error` をリファクタリングした。
 - `compiler/ocaml/tests/golden/identifier_lex_tests.tokens.json` を作成して `poc_frontend --emit-tokens` の出力を集約し、`docs/plans/bootstrap-roadmap/p1-test-migration-lexer-cases.txt` に `TPM-LEX-02` エントリを追加することで `scripts/poc_dualwrite_compare.sh --mode lexer` から `reports/dual-write/front-end/w1-lexer/identifier` に JSON/metrics を蓄積できるようにした。
+
+### TPM-LEX-03
+
+1. **調査・前提整理（1日）**  
+   1. `compiler/ocaml/tests/packrat_tests.ml`/`test_parser.ml`/`test_parser_driver.ml` と `parser_driver.ml` を読み、`Parser_driver.run_string`/`ParseResult` がどのような `diagnostics` 期待情報・`packrat_stats`・`span_trace` を保持しているか、`docs/spec/1-5-formal-grammar-bnf.md` に定められる期待候補の構造（`Diagnostic.expectation_summary`）と照らし合わせて整理。  
+   2. `Parser_run_config`/`RunConfig` の制御点（`packrat` フラグ、`left_recursion` など）と、`packrat_tests.ml` が検証している `Core_parse` 由来メタデータ・Packrat メトリクス出力の関係を `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` で定義された監査項目と結び付けて記録。
+
+2. **テストハーネス設計（0.5日）**  
+   1. `compiler/rust/frontend/tests/parser/packrat.rs` を追加し、OCaml 版と同様のサンプル入力を `ParserDriver::parse_with_options_and_run_config` で処理して `ParseResult` の `packrat_stats` や `diagnostics` を `serde_json` でダンプし、Golden AST（`reports/dual-write/front-end/ocaml/packrat/<case>/ast.json`）と比較できる構成を設計。  
+   2. `scripts/poc_dualwrite_compare.sh --mode ast` の既存ケース定義に `TPM-LEX-03` エントリを追加し、OCaml 側の `packrat_tests` 出力（`compiler/ocaml/tests/golden/packrat_*.json` など）と Rust 側の `reports/dual-write/front-end/w2-ast-alignment/<run>/` 以下の `parse_result.{ocaml,rust}.json` を並列に収集するパラメータ設計を決める。
+
+3. **実装・移植（1日）**  
+   1. Rust の `parser` テストハーネスで `ParserDriver` 実行結果から `diagnostics` の `recover`/`expected_tokens` 拡張や `packrat_stats` を `serde_json` で保存し、`compiler/ocaml/tests/packrat_tests.ml` が期待する `parser_id`/`namespace`/`origin` を `PARSER_NAMESPACE`/`PARSER_NAME` にそろえた JSON を生成。  
+   2. `poc_frontend` に `--emit-ast` 出力と `write_dualwrite_parse_payload` を `scripts/poc_dualwrite_compare.sh` の `TPM-LEX-03` ケースにフックして、日本語の Golden AST/diagnostic メタデータを `reports/dual-write/front-end/w2-ast-alignment/<run>/<case>` に `ast.{ocaml,rust}.json`・`parse_result.{ocaml,rust}.json` で残す。  
+   3. `Parser_run_config` の `packrat`/`streaming`/`left_recursion` のフラグを CLI `--run-config` で再現するため、`docs/plans/rust-migration/p1-front-end-checklists.csv` に必要な `run_config` パターンを追記。
+
+4. **検証・監査（0.5日）**  
+   1. `cargo test --test parser_packrat` を実行し、`reports/dual-write/front-end/w2-ast-alignment/<run>/packrat` 以下の `parse_result.{ocaml,rust}.json` が同一 `diagnostics.expected` の候補や `packrat_stats` 比、`value`/`span` 形状を保持することを確認。  
+   2. `scripts/poc_dualwrite_compare.sh --mode ast --cases docs/plans/bootstrap-roadmap/p1-test-migration-parser-cases.txt` を用い、OCaml/Rust の AST 比較レポート（`ast.diff.json`）と `collect-iterator-audit-metrics.py --section parser --case packrat` で得たメトリクスを `docs/plans/rust-migration/p1-front-end-checklists.csv` に書き込み、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` に親和性がある監査結果を記録。
+
+5. **記録・フォローアップ（0.25日）**  
+   1. `docs-migrations.log` に「TPM-LEX-03: packrat/test_parser/test_parser_driver の AST/ParseResult 移植」として結果を記録し、既存の `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` と `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` のテスト/診断整合欄にも言及。  
+   2. `TPM-LEX-03` で再現できなかった期待候補（`left_recursion` シナリオや Packrat キャッシュ不足）を `docs/plans/rust-migration/p1-spec-compliance-gap.md` に `SCG-xx` で収束させ、Phase P2 以降の補遺計画へつなげる。
+
+#### TPM-LEX-03 進捗
+
+- `compiler/ocaml/tests/packrat_tests.ml`/`test_parser.ml`/`test_parser_driver.ml` を読み、`Parser_driver.parse_string`/`run_string` が出力する `ParseResult` の `diagnostics` `packrat_stats` `span_trace` の構造と `diagnostic.expected` のサマリ候補を把握し、`Parser_run_config` のフラグを `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の監査指標に対応付けた。  
+- `parser_driver.ml` で `read_core_rule_metadata` `packrat_cache` `packrat_stats` を保持する箇所を確認し、Rust 側 `poc_frontend` の `--emit-ast`/`write_dualwrite_parse_payload` 出力に対応するよう `reports/dual-write/front-end/w2-ast-alignment` の構成を想定した。  
+- `scripts/poc_dualwrite_compare.sh --mode ast` の既存フローを踏まえ、OCaml/Rust の `ast.{ocaml,rust}.json`、`parse_result.{ocaml,rust}.json` を `reports/dual-write/front-end` に保存しつつ `collect-iterator-audit-metrics.py --section parser` へ渡す運用案を plan に落とし込んだ。

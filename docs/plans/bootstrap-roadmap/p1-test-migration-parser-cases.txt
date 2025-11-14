@@ -1,0 +1,5 @@
+# P1 TPM-LEX-03 parser AST / Packrat case
+# format: name::file::<path>
+# tests: packrat_tests.ml / test_parser.ml / test_parser_driver.ml (RunConfig/ParseResult)
+# metrics-case: parser-packrat
+TPM-LEX-03::file::compiler/ocaml/tests/golden/packrat_core_rule_metadata.json
