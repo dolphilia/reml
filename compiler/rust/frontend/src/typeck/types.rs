@@ -1,5 +1,6 @@
 use serde::Serialize;
 use smol_str::SmolStr;
+use std::collections::HashSet;
 use std::fmt;
 
 /// 委譲される型変数を表す識別子。
@@ -11,6 +12,9 @@ pub struct TypeVariable {
 impl TypeVariable {
     pub fn new(id: u32) -> Self {
         Self { id }
+    }
+    pub fn id(&self) -> u32 {
+        self.id
     }
 }
 
@@ -75,6 +79,48 @@ impl Type {
             Type::Builtin(_) => TypeKind::Builtin,
             Type::Arrow { .. } => TypeKind::Arrow,
             Type::App { .. } => TypeKind::Application,
+        }
+    }
+
+    pub fn contains_variable(&self, target: &TypeVariable) -> bool {
+        match self {
+            Type::Var(variable) => variable == target,
+            Type::Arrow { parameters, result } => {
+                parameters
+                    .iter()
+                    .any(|parameter| parameter.contains_variable(target))
+                    || result.contains_variable(target)
+            }
+            Type::App { arguments, .. } => arguments
+                .iter()
+                .any(|argument| argument.contains_variable(target)),
+            _ => false,
+        }
+    }
+
+    pub fn free_type_variables(&self) -> HashSet<TypeVariable> {
+        let mut vars = HashSet::new();
+        self.collect_free_type_variables(&mut vars);
+        vars
+    }
+
+    fn collect_free_type_variables(&self, vars: &mut HashSet<TypeVariable>) {
+        match self {
+            Type::Var(variable) => {
+                vars.insert(*variable);
+            }
+            Type::Arrow { parameters, result } => {
+                for parameter in parameters {
+                    parameter.collect_free_type_variables(vars);
+                }
+                result.collect_free_type_variables(vars);
+            }
+            Type::App { arguments, .. } => {
+                for argument in arguments {
+                    argument.collect_free_type_variables(vars);
+                }
+            }
+            _ => {}
         }
     }
 

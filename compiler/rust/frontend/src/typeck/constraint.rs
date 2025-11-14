@@ -111,19 +111,122 @@ impl From<IndexMap<TypeVariable, Type>> for Substitution {
 }
 
 /// 制約ソルバ。
-#[derive(Debug, Default)]
-pub struct ConstraintSolver;
+#[derive(Debug, Clone)]
+pub struct ConstraintSolver {
+    substitution: Substitution,
+}
 
 impl ConstraintSolver {
     pub fn new() -> Self {
-        Self
+        Self {
+            substitution: Substitution::default(),
+        }
+    }
+
+    pub fn substitution(&self) -> &Substitution {
+        &self.substitution
+    }
+
+    pub fn unify(&mut self, left: Type, right: Type) -> Result<(), ConstraintSolverError> {
+        let left = self.substitution.apply(&left);
+        let right = self.substitution.apply(&right);
+        match (left, right) {
+            (Type::Var(variable), ty) => self.bind_variable(variable, ty),
+            (ty, Type::Var(variable)) => self.bind_variable(variable, ty),
+            (Type::Builtin(left_builtin), Type::Builtin(right_builtin))
+                if left_builtin == right_builtin =>
+            {
+                Ok(())
+            }
+            (
+                Type::Arrow {
+                    parameters: left_params,
+                    result: left_result,
+                },
+                Type::Arrow {
+                    parameters: right_params,
+                    result: right_result,
+                },
+            ) => {
+                if left_params.len() != right_params.len() {
+                    return Err(ConstraintSolverError::Mismatch(
+                        Type::Arrow {
+                            parameters: left_params,
+                            result: left_result,
+                        },
+                        Type::Arrow {
+                            parameters: right_params,
+                            result: right_result,
+                        },
+                    ));
+                }
+                for (left_param, right_param) in
+                    left_params.into_iter().zip(right_params.into_iter())
+                {
+                    self.unify(left_param, right_param)?;
+                }
+                self.unify(*left_result, *right_result)
+            }
+            (
+                Type::App {
+                    constructor: left_ctor,
+                    arguments: left_arguments,
+                },
+                Type::App {
+                    constructor: right_ctor,
+                    arguments: right_arguments,
+                },
+            ) => {
+                if left_ctor != right_ctor || left_arguments.len() != right_arguments.len() {
+                    return Err(ConstraintSolverError::Mismatch(
+                        Type::App {
+                            constructor: left_ctor,
+                            arguments: left_arguments,
+                        },
+                        Type::App {
+                            constructor: right_ctor,
+                            arguments: right_arguments,
+                        },
+                    ));
+                }
+                for (left_arg, right_arg) in
+                    left_arguments.into_iter().zip(right_arguments.into_iter())
+                {
+                    self.unify(left_arg, right_arg)?;
+                }
+                Ok(())
+            }
+            (left, right) => Err(ConstraintSolverError::Mismatch(left, right)),
+        }
+    }
+
+    fn bind_variable(
+        &mut self,
+        variable: TypeVariable,
+        ty: Type,
+    ) -> Result<(), ConstraintSolverError> {
+        let placeholder = Type::Var(variable);
+        if ty == placeholder {
+            return Ok(());
+        }
+        if ty.contains_variable(&variable) {
+            return Err(ConstraintSolverError::Occurs(variable, ty));
+        }
+        self.substitution.insert(variable, ty);
+        Ok(())
     }
 
     pub fn solve(
         &self,
         _constraints: &[Constraint],
     ) -> Result<Substitution, ConstraintSolverError> {
-        Ok(Substitution::default())
+        Ok(self.substitution.clone())
+    }
+}
+
+impl Default for ConstraintSolver {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -132,4 +235,8 @@ impl ConstraintSolver {
 pub enum ConstraintSolverError {
     #[error("constraint solver の実装が完了していません: {0}")]
     NotImplemented(String),
+    #[error("{0} と {1} は一致しません")]
+    Mismatch(Type, Type),
+    #[error("型変数 {0} が {1} に出現するため unify できません")]
+    Occurs(TypeVariable, Type),
 }

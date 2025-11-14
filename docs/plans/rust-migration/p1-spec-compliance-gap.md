@@ -61,7 +61,7 @@ Phase P1（フロントエンド移植）の達成条件を Reml 仕様に照ら
 
 | ID | ギャップ | 根拠仕様 | 現状 | 対応案 |
 | --- | --- | --- | --- | --- |
-| SCG-08 | Hindley–Milner (Algorithm W) / 値制限 / 制約ソルバが未実装 | 1-2 §B〜F, `p1-front-end-checklists.csv` Typed AST 項目 | `typeck/driver.rs` は `SimpleType` で Int/Bool/Unknown を返すだけ。制約/環境/強制力なし | `Types`, `Scheme`, `Constraint`, `Type_env` を OCaml 実装から写像し、`type_inference.ml` のアルゴリズムを Rust 化 |
+| SCG-08 | Hindley–Milner (Algorithm W) / 値制限 / 制約ソルバが未実装 | 1-2 §B〜F, `p1-front-end-checklists.csv` Typed AST 項目 | `typeck/driver.rs` が Algorithm W 風の制約生成・型環境操作・一般化を行い、`ConstraintSolver`・`Scheme`・`TypedExpr` を用いて typed AST／dict_ref を構築し dual-write に供給。 | `typeck/types.rs`/`env.rs`/`constraint.rs`/`driver.rs` を更新し、`TypecheckReport` に typed module・scheme table 及び dict_ref を含め、`cargo check` でビルドが通ることを確認した |
 | SCG-09 | 効果行 / 残余効果 / Capability Stage 監査 (`effects.contract.*`) 未実装 | 1-3 §I, EFFECT-002, `w4` cases | `TypecheckViolation::ResidualLeak` は `perform` の文字列抽出のみ。Stage/Capability コンテキストと連動していない | `StageContext` と `RuntimeCapability` を参照し、効果タグと Capability Registry の照合作業を Rust でも実装 |
 | SCG-10 | Typed AST / constraints / impl-registry の dual-write エクスポートが無い | 1-1-ast-and-ir-alignment.md, `1-3-dual-write-runbook.md` | CLI フラグ `--emit typed-ast/constraints/typeck-debug` は存在するがダミー JSON を出力 | HM 実装と連動させ、OCaml ゴールデンと diff できる JSON を生成 |
 

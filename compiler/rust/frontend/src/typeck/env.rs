@@ -1,11 +1,13 @@
 //! 型推論モジュール全体で共有する設定やデュアルライト補助ツール。
 
+use std::collections::HashSet;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use super::scheme::Scheme;
+use super::types::TypeVariable;
 use indexmap::IndexMap;
 use once_cell::sync::OnceCell;
 use serde::Serialize;
@@ -459,6 +461,24 @@ impl TypeEnv {
 
     pub fn exit_scope(self) -> Option<TypeEnv> {
         self.parent.map(|parent| *parent)
+    }
+
+    pub fn free_type_variables(&self) -> HashSet<TypeVariable> {
+        let mut vars = HashSet::new();
+        self.collect_free_type_variables(&mut vars);
+        vars
+    }
+
+    fn collect_free_type_variables(&self, vars: &mut HashSet<TypeVariable>) {
+        for binding in self.bindings.values() {
+            vars.extend(binding.scheme.ty.free_type_variables());
+            for constraint_ty in binding.scheme.constraints.values() {
+                vars.extend(constraint_ty.free_type_variables());
+            }
+        }
+        if let Some(parent) = &self.parent {
+            parent.collect_free_type_variables(vars);
+        }
     }
 }
 

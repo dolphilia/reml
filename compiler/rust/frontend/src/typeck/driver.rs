@@ -3,14 +3,13 @@ use std::collections::HashSet;
 use serde::Serialize;
 
 use super::capability::{CapabilityDescriptor, EffectUsage, RuntimeCapability};
-use super::constraint::Constraint;
-use super::constraint::ConstraintSolver;
+use super::constraint::{Constraint, ConstraintSolver, Substitution};
 use super::env::{StageRequirement, TypeEnv, TypeRowMode, TypecheckConfig};
 use super::metrics::TypecheckMetrics;
 use super::scheme::Scheme;
 use super::types::{BuiltinType, Type, TypeVarGen};
 use crate::diagnostic::{ExpectedTokenCollector, ExpectedTokensSummary};
-use crate::parser::ast::{Expr, ExprKind, Function, Literal, LiteralKind, Module};
+use crate::parser::ast::{Expr, ExprKind, Function, Ident, Literal, LiteralKind, Module};
 use crate::semantics::typed;
 use crate::span::Span;
 
@@ -23,9 +22,9 @@ impl TypecheckDriver {
         let mut metrics = TypecheckMetrics::default();
         let mut functions = Vec::new();
         let mut violations = Vec::new();
-        let mut typed_functions = Vec::new();
+        let mut typed_module = typed::TypedModule::default();
+        let mut dict_ref_drafts = Vec::new();
         let mut all_constraints = Vec::new();
-        let mut dict_refs = Vec::new();
 
         if config.trace_enabled {
             eprintln!(
@@ -34,75 +33,90 @@ impl TypecheckDriver {
             );
         }
 
-        let solver = ConstraintSolver::new();
+        let mut solver = ConstraintSolver::new();
         let mut var_gen = TypeVarGen::default();
+        let mut module_env = TypeEnv::new();
+
         for function in &module.functions {
             metrics.record_function();
             let mut stats = FunctionStats::default();
             let mut constraints = Vec::new();
-            let mut env = TypeEnv::new();
+            let mut env = module_env.clone();
+            let mut param_bindings = Vec::new();
 
-            let param_bindings: Vec<(String, Type)> = function
-                .params
-                .iter()
-                .map(|param| {
-                    (
-                        param.name.name.clone(),
-                        type_for_param(param.name.name.as_str()),
-                    )
-                })
-                .collect();
-            for (name, ty) in &param_bindings {
-                env.insert(name.clone(), Scheme::simple(ty.clone()));
+            for param in &function.params {
+                let ty = var_gen.fresh_type();
+                env.insert(param.name.name.clone(), Scheme::simple(ty.clone()));
+                param_bindings.push(ParamBinding {
+                    name: param.name.name.clone(),
+                    span: param.name.span,
+                    ty,
+                });
             }
 
-            let dict_ref_start = dict_refs.len();
             let typed_body = infer_function(
                 function,
                 function.name.name.as_str(),
                 &mut env,
                 &mut var_gen,
+                &mut solver,
                 &mut constraints,
                 &mut stats,
                 &mut metrics,
                 &mut violations,
-                &mut dict_refs,
+                &mut dict_ref_drafts,
             );
-            let _ = solver.solve(&constraints);
-            all_constraints.extend(constraints.into_iter());
 
-            let param_type_labels: Vec<String> =
-                param_bindings.iter().map(|(_, ty)| ty.label()).collect();
+            all_constraints.extend(constraints.drain(..));
+
+            let substitution = solver.substitution().clone();
+            let resolved_return = substitution.apply(&typed_body.ty);
+            let param_types = param_bindings
+                .iter()
+                .map(|binding| substitution.apply(&binding.ty))
+                .collect::<Vec<_>>();
+            let function_type = Type::arrow(param_types.clone(), resolved_return.clone());
+            let scheme = generalize_function_type(&module_env, function_type);
+            let scheme_id = typed_module.schemes.len();
+            typed_module
+                .schemes
+                .push(build_scheme_info(scheme_id, &scheme, &substitution));
+            module_env.insert(function.name.name.clone(), scheme.clone());
+
+            let typed_params = param_bindings
+                .into_iter()
+                .map(|binding| typed::TypedParam {
+                    name: binding.name,
+                    span: binding.span,
+                    ty: substitution.apply(&binding.ty).label(),
+                })
+                .collect::<Vec<_>>();
+            let param_type_labels = typed_params
+                .iter()
+                .map(|param| param.ty.clone())
+                .collect::<Vec<_>>();
+
+            let typed_body = finalize_typed_expr(typed_body, &substitution);
+            let dict_ref_ids = typed_body.dict_ref_ids.clone();
+            let return_label = resolved_return.label();
 
             functions.push(TypedFunctionSummary {
                 name: function.name.name.clone(),
                 param_types: param_type_labels,
-                return_type: typed_body.ty.label(),
+                return_type: return_label.clone(),
                 typed_exprs: stats.typed_exprs,
                 constraints: stats.constraints,
                 unresolved_identifiers: stats.unresolved_identifiers,
             });
 
-            let typed_params = function
-                .params
-                .iter()
-                .zip(param_bindings.iter())
-                .map(|(param, (_, param_ty))| typed::TypedParam {
-                    name: param.name.name.clone(),
-                    span: param.name.span,
-                    ty: param_ty.label(),
-                })
-                .collect();
-
-            let dict_ref_ids: Vec<typed::DictRefId> = (dict_ref_start..dict_refs.len()).collect();
-            typed_functions.push(typed::TypedFunction {
+            typed_module.functions.push(typed::TypedFunction {
                 name: function.name.name.clone(),
                 span: function.span,
                 params: typed_params,
-                return_type: typed_body.ty.label(),
-                body: typed_body.node,
+                return_type: return_label,
+                body: typed_body,
                 dict_ref_ids,
-                scheme_id: None,
+                scheme_id: Some(scheme_id),
             });
         }
 
@@ -119,13 +133,22 @@ impl TypecheckDriver {
                 Constraint::ImplBound { implementation, .. } => Some(implementation.to_string()),
                 _ => None,
             })
-            .collect();
+            .collect::<Vec<_>>();
 
-        let typed_module = typed::TypedModule {
-            functions: typed_functions,
-            dict_refs,
-            schemes: Vec::new(),
-        };
+        let final_substitution = solver.substitution().clone();
+        let dict_refs = dict_ref_drafts
+            .into_iter()
+            .enumerate()
+            .map(|(id, draft)| typed::DictRef {
+                id,
+                impl_id: draft.impl_id,
+                span: draft.span,
+                requirements: draft.requirements,
+                ty: final_substitution.apply(&draft.ty).label(),
+            })
+            .collect::<Vec<_>>();
+        typed_module.dict_refs = dict_refs;
+
         TypecheckReport {
             metrics,
             functions,
@@ -389,16 +412,18 @@ fn infer_function(
     function_name: &str,
     env: &mut TypeEnv,
     var_gen: &mut TypeVarGen,
+    solver: &mut ConstraintSolver,
     constraints: &mut Vec<Constraint>,
     stats: &mut FunctionStats,
     metrics: &mut TypecheckMetrics,
     violations: &mut Vec<TypecheckViolation>,
-    dict_refs: &mut Vec<typed::DictRef>,
-) -> TypedExprResult {
+    dict_refs: &mut Vec<DictRefDraft>,
+) -> TypedExprDraft {
     infer_expr(
         &function.body,
         env,
         var_gen,
+        solver,
         constraints,
         stats,
         metrics,
@@ -412,13 +437,14 @@ fn infer_expr(
     expr: &Expr,
     env: &TypeEnv,
     var_gen: &mut TypeVarGen,
+    solver: &mut ConstraintSolver,
     constraints: &mut Vec<Constraint>,
     stats: &mut FunctionStats,
     metrics: &mut TypecheckMetrics,
     violations: &mut Vec<TypecheckViolation>,
-    dict_refs: &mut Vec<typed::DictRef>,
+    dict_refs: &mut Vec<DictRefDraft>,
     function_name: Option<&str>,
-) -> TypedExprResult {
+) -> TypedExprDraft {
     stats.typed_exprs += 1;
     metrics.record_expr();
     match &expr.kind {
@@ -426,13 +452,13 @@ fn infer_expr(
             let ty = type_for_literal(literal);
             make_typed(
                 expr,
-                typed::TypedExprKind::Literal(literal.clone()),
+                TypedExprKindDraft::Literal(literal.clone()),
                 ty,
                 Vec::new(),
             )
         }
         ExprKind::Identifier(ident) => {
-            let ty = match env.lookup(ident.name.as_str()) {
+            let mut ty = match env.lookup(ident.name.as_str()) {
                 Some(binding) => binding.scheme.instantiate(var_gen),
                 None => {
                     stats.unresolved_identifiers += 1;
@@ -440,9 +466,10 @@ fn infer_expr(
                     Type::builtin(BuiltinType::Unknown)
                 }
             };
+            ty = solver.substitution().apply(&ty);
             make_typed(
                 expr,
-                typed::TypedExprKind::Identifier {
+                TypedExprKindDraft::Identifier {
                     ident: ident.clone(),
                 },
                 ty,
@@ -459,6 +486,7 @@ fn infer_expr(
                 left,
                 env,
                 var_gen,
+                solver,
                 constraints,
                 stats,
                 metrics,
@@ -470,6 +498,7 @@ fn infer_expr(
                 right,
                 env,
                 var_gen,
+                solver,
                 constraints,
                 stats,
                 metrics,
@@ -483,13 +512,14 @@ fn infer_expr(
                 left_result.ty.clone(),
                 right_result.ty.clone(),
             ));
+            let _ = solver.unify(left_result.ty.clone(), right_result.ty.clone());
             let ty = combine_numeric_types(&left_result.ty, &right_result.ty);
             make_typed(
                 expr,
-                typed::TypedExprKind::Binary {
+                TypedExprKindDraft::Binary {
                     operator: operator.symbol().to_string(),
-                    left: Box::new(left_result.node),
-                    right: Box::new(right_result.node),
+                    left: Box::new(left_result),
+                    right: Box::new(right_result),
                 },
                 ty,
                 Vec::new(),
@@ -503,6 +533,7 @@ fn infer_expr(
                 callee,
                 env,
                 var_gen,
+                solver,
                 constraints,
                 stats,
                 metrics,
@@ -510,25 +541,27 @@ fn infer_expr(
                 dict_refs,
                 function_name,
             );
-            let mut typed_args = Vec::new();
-            for arg in args {
-                let arg_result = infer_expr(
-                    arg,
-                    env,
-                    var_gen,
-                    constraints,
-                    stats,
-                    metrics,
-                    violations,
-                    dict_refs,
-                    function_name,
-                );
-                typed_args.push(arg_result.node);
-            }
+            let typed_args = args
+                .iter()
+                .map(|arg| {
+                    infer_expr(
+                        arg,
+                        env,
+                        var_gen,
+                        solver,
+                        constraints,
+                        stats,
+                        metrics,
+                        violations,
+                        dict_refs,
+                        function_name,
+                    )
+                })
+                .collect();
             make_typed(
                 expr,
-                typed::TypedExprKind::Call {
-                    callee: Box::new(callee_result.node),
+                TypedExprKindDraft::Call {
+                    callee: Box::new(callee_result),
                     args: typed_args,
                 },
                 Type::builtin(BuiltinType::Unknown),
@@ -540,6 +573,7 @@ fn infer_expr(
                 &call.argument,
                 env,
                 var_gen,
+                solver,
                 constraints,
                 stats,
                 metrics,
@@ -559,10 +593,10 @@ fn infer_expr(
             );
             make_typed(
                 expr,
-                typed::TypedExprKind::PerformCall {
-                    call: typed::TypedEffectCall {
+                TypedExprKindDraft::PerformCall {
+                    call: TypedEffectCallDraft {
                         effect: call.effect.clone(),
-                        argument: Box::new(argument_result.node),
+                        argument: Box::new(argument_result),
                     },
                 },
                 Type::builtin(BuiltinType::Unknown),
@@ -578,6 +612,7 @@ fn infer_expr(
                 condition,
                 env,
                 var_gen,
+                solver,
                 constraints,
                 stats,
                 metrics,
@@ -595,6 +630,7 @@ fn infer_expr(
                 then_branch,
                 env,
                 var_gen,
+                solver,
                 constraints,
                 stats,
                 metrics,
@@ -613,6 +649,7 @@ fn infer_expr(
                 else_expr,
                 env,
                 var_gen,
+                solver,
                 constraints,
                 stats,
                 metrics,
@@ -626,6 +663,7 @@ fn infer_expr(
                 then_result.ty.clone(),
                 else_result.ty.clone(),
             ));
+            let _ = solver.unify(then_result.ty.clone(), else_result.ty.clone());
             let ty = if then_result.ty == else_result.ty {
                 then_result.ty.clone()
             } else {
@@ -633,10 +671,10 @@ fn infer_expr(
             };
             make_typed(
                 expr,
-                typed::TypedExprKind::IfElse {
-                    condition: Box::new(condition_result.node),
-                    then_branch: Box::new(then_result.node),
-                    else_branch: Box::new(else_result.node),
+                TypedExprKindDraft::IfElse {
+                    condition: Box::new(condition_result),
+                    then_branch: Box::new(then_result),
+                    else_branch: Box::new(else_result),
                 },
                 ty,
                 Vec::new(),
@@ -644,7 +682,7 @@ fn infer_expr(
         }
         _ => make_typed(
             expr,
-            typed::TypedExprKind::Unknown,
+            TypedExprKindDraft::Unknown,
             Type::builtin(BuiltinType::Unknown),
             Vec::new(),
         ),
@@ -663,16 +701,6 @@ fn type_for_literal(literal: &Literal) -> Type {
     }
 }
 
-fn type_for_param(name: &str) -> Type {
-    if name.ends_with("_int") {
-        Type::builtin(BuiltinType::Int)
-    } else if name.ends_with("_bool") {
-        Type::builtin(BuiltinType::Bool)
-    } else {
-        Type::builtin(BuiltinType::Unknown)
-    }
-}
-
 fn combine_numeric_types(left: &Type, right: &Type) -> Type {
     if matches!(left, Type::Builtin(BuiltinType::Int))
         && matches!(right, Type::Builtin(BuiltinType::Int))
@@ -683,44 +711,162 @@ fn combine_numeric_types(left: &Type, right: &Type) -> Type {
     }
 }
 
-struct TypedExprResult {
+struct TypedExprDraft {
+    span: Span,
+    kind: TypedExprKindDraft,
     ty: Type,
-    node: typed::TypedExpr,
+    dict_ref_ids: Vec<typed::DictRefId>,
+}
+
+enum TypedExprKindDraft {
+    Literal(Literal),
+    Identifier {
+        ident: Ident,
+    },
+    Call {
+        callee: Box<TypedExprDraft>,
+        args: Vec<TypedExprDraft>,
+    },
+    Binary {
+        operator: String,
+        left: Box<TypedExprDraft>,
+        right: Box<TypedExprDraft>,
+    },
+    PerformCall {
+        call: TypedEffectCallDraft,
+    },
+    IfElse {
+        condition: Box<TypedExprDraft>,
+        then_branch: Box<TypedExprDraft>,
+        else_branch: Box<TypedExprDraft>,
+    },
+    Unknown,
+}
+
+struct TypedEffectCallDraft {
+    effect: Ident,
+    argument: Box<TypedExprDraft>,
+}
+
+struct DictRefDraft {
+    impl_id: String,
+    span: Span,
+    requirements: Vec<String>,
+    ty: Type,
+}
+
+struct ParamBinding {
+    name: String,
+    span: Span,
+    ty: Type,
 }
 
 fn make_typed(
     expr: &Expr,
-    kind: typed::TypedExprKind,
+    kind: TypedExprKindDraft,
     ty: Type,
     dict_ref_ids: Vec<typed::DictRefId>,
-) -> TypedExprResult {
-    let label = ty.label();
-    TypedExprResult {
+) -> TypedExprDraft {
+    TypedExprDraft {
+        span: expr.span,
+        kind,
         ty,
-        node: typed::TypedExpr {
-            span: expr.span,
-            kind,
-            ty: label,
-            dict_ref_ids,
+        dict_ref_ids,
+    }
+}
+
+fn finalize_typed_expr(expr: TypedExprDraft, substitution: &Substitution) -> typed::TypedExpr {
+    let ty = substitution.apply(&expr.ty);
+    let kind = match expr.kind {
+        TypedExprKindDraft::Literal(literal) => typed::TypedExprKind::Literal(literal),
+        TypedExprKindDraft::Identifier { ident } => typed::TypedExprKind::Identifier { ident },
+        TypedExprKindDraft::Binary {
+            operator,
+            left,
+            right,
+        } => typed::TypedExprKind::Binary {
+            operator,
+            left: Box::new(finalize_typed_expr(*left, substitution)),
+            right: Box::new(finalize_typed_expr(*right, substitution)),
         },
+        TypedExprKindDraft::Call { callee, args } => typed::TypedExprKind::Call {
+            callee: Box::new(finalize_typed_expr(*callee, substitution)),
+            args: args
+                .into_iter()
+                .map(|arg| finalize_typed_expr(arg, substitution))
+                .collect(),
+        },
+        TypedExprKindDraft::PerformCall { call } => typed::TypedExprKind::PerformCall {
+            call: typed::TypedEffectCall {
+                effect: call.effect,
+                argument: Box::new(finalize_typed_expr(*call.argument, substitution)),
+            },
+        },
+        TypedExprKindDraft::IfElse {
+            condition,
+            then_branch,
+            else_branch,
+        } => typed::TypedExprKind::IfElse {
+            condition: Box::new(finalize_typed_expr(*condition, substitution)),
+            then_branch: Box::new(finalize_typed_expr(*then_branch, substitution)),
+            else_branch: Box::new(finalize_typed_expr(*else_branch, substitution)),
+        },
+        TypedExprKindDraft::Unknown => typed::TypedExprKind::Unknown,
+    };
+    typed::TypedExpr {
+        span: expr.span,
+        kind,
+        ty: ty.label(),
+        dict_ref_ids: expr.dict_ref_ids,
     }
 }
 
 fn register_dict_ref(
-    dict_refs: &mut Vec<typed::DictRef>,
+    dict_refs: &mut Vec<DictRefDraft>,
     span: Span,
     impl_id: String,
     ty: &Type,
 ) -> typed::DictRefId {
     let id = dict_refs.len();
-    dict_refs.push(typed::DictRef {
-        id,
+    dict_refs.push(DictRefDraft {
         impl_id,
         span,
         requirements: Vec::new(),
-        ty: ty.label(),
+        ty: ty.clone(),
     });
     id
+}
+
+fn generalize_function_type(env: &TypeEnv, ty: Type) -> Scheme {
+    let env_vars = env.free_type_variables();
+    let mut quantifiers = ty
+        .free_type_variables()
+        .into_iter()
+        .filter(|variable| !env_vars.contains(variable))
+        .collect::<Vec<_>>();
+    quantifiers.sort_unstable_by_key(|variable| variable.id());
+    let mut scheme = Scheme::generalize(ty);
+    scheme.quantifiers = quantifiers;
+    scheme
+}
+
+fn build_scheme_info(id: usize, scheme: &Scheme, substitution: &Substitution) -> typed::SchemeInfo {
+    let quantifiers = scheme
+        .quantifiers
+        .iter()
+        .map(|variable| variable.to_string())
+        .collect::<Vec<_>>();
+    let constraints = scheme
+        .constraints
+        .iter()
+        .map(|(name, ty)| format!("{}: {}", name, substitution.apply(ty).label()))
+        .collect::<Vec<_>>();
+    typed::SchemeInfo {
+        id,
+        quantifiers,
+        constraints,
+        ty: substitution.apply(&scheme.ty).label(),
+    }
 }
 
 fn check_bool_condition(
