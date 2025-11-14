@@ -596,7 +596,9 @@ FRG-33 は `p1-spec-compliance-gap.md#SCG-14` で指摘された `run_stream`/`r
   - `src/bin/poc_frontend.rs:319:8` の `cli_command` メソッドが使用されず `dead_code`。
 - エラーはなく、テストログと生成物は `target/debug` 以下にあり、CI/dual-write ハーネスで同じコマンドを再現すれば再検証可能です。
 
-## 6. ノート
+## 6. 最終的な検査
+
+## 7. ノート
 
 - 仕様参照: `docs/spec/1-1-syntax.md`, `1-2-types-Inference.md`, `1-3-effects-safety.md`, `2-1-parser-type.md`, `2-5-error.md`, `2-7-core-parse-streaming.md`, `3-6-core-diagnostics-audit.md`
 - 作業ログ: 大きな rename/移動が発生する場合は `docs-migrations.log` を更新すること。
