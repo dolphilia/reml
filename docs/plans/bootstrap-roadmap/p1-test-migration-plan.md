@@ -190,3 +190,29 @@
 - `compiler/rust/frontend/tests/typeck_inference_report.rs` を追加し、`TypecheckReport` の `typed_module.functions`・`constraints`・`metrics` が `serde_json::to_value` で直列化可能であること、パラメータが同一の型変数で共有されること、`constraints` に `Equal` 制約が含まれることを検証するテストを実装した。  
 - `cargo test --test typeck_inference_report` を実行して新規テストが通ることを確認し、`TypecheckReport` の JSON 出力が `reports/dual-write/front-end/w3-type-inference` で想定されるスキーマ構造を満たすことと、`typed_functions`/`constraints_total` メトリクスが記録されることを確認した。  
 - `docs-migrations.log` に「TPM-TYPE-01: `TypecheckReport` JSON/Constraint テストの Rust 移植」エントリを追加し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` と `docs/plans/rust-migration/1-0-front-end-transition.md` への追記を今後検討する旨をコメントとして残した。  
+
+### TPM-TYPE-02
+
+1. **調査・前提整理（1日）**  
+   1. `compiler/ocaml/tests/test_constraint_solver.ml`/`test_type_errors.ml`/`test_let_polymorphism.ml` を読み込み、`FRG-12`〜`FRG-14` で求められる Constraint/TyEnv/Scheme 出力、`docs/spec/1-2-types-Inference.md` や `docs/spec/3-6-core-diagnostics-audit.md` でのエラーコード・診断メトリクス要件（`E7001`〜`E7021`、`effects.contract.*`）と照合する。  
+   2. `docs/plans/rust-migration/unified-porting-principles.md` の優先順位（振る舞い→設計→実装）と `docs/plans/rust-migration/p1-spec-compliance-gap.md` の `TPM-TYPE-02` 要件を踏まえ、OCaml テストが評価する ConstraintSolver の振る舞い（プリミティブ/複合型/再帰/エラー）と診断メッセージの品質基準を洗い出す。  
+   3. `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`/`2-7-deferred-remediation.md` に記載した診断 JSON スキーマと `collect-iterator-audit-metrics.py` の `diagnostics.*` メトリクス項目を参照しつつ、Rust 版で比較すべき `TypecheckReport`・`Diagnostic` のキーを整理し `docs/plans/rust-migration/p1-front-end-checklists.csv` に追記する。  
+2. **テストハーネス設計（0.5日）**  
+   1. `scripts/poc_dualwrite_compare.sh --mode typeck` の既存フローに ConstraintSolver/TypeError ケースを追加し、`docs/plans/bootstrap-roadmap/p1-test-migration-typeck-cases.txt` と同様に `docs/plans/bootstrap-roadmap/p1-test-migration-constraint-cases.txt` を作成して `reports/dual-write/front-end/w3-type-inference/<case>` に `constraints.{ocaml,rust}.json`・`diagnostics.{ocaml,rust}.json` を格納。  
+   2. `collect-iterator-audit-metrics.py` の `--section typeck` に `constraint_errors`/`let_polymorphism` カテゴリを付加し、`metrics` に `violations`・`constraint_graph_cycles` などの比較対象を定義して `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` と同期する。  
+3. **実装（1日）**  
+   1. `compiler/rust/frontend/src/typeck/constraint.rs`/`typeck/driver.rs` の `ConstraintSolver` 実装を補完し、`ConstraintSolver::solve` が複合制約・OccursCheck・ミスマッチを検出するように `tests/constraint_solver.rs` などのユニットテストを追加する。OCaml 側のサンプル（Eq<Tuple>・Eq<Option>・再帰）を Rust でも再現し、`serde_json` 出力で `constraint`/`substitutions` を `reports/dual-write/front-end/w3-type-inference/<run>/constraints.{ocaml,rust}.json` に残す。  
+   2. `compiler/rust/frontend/tests/typeck_error.rs` を新設し、`TypecheckDriver` による `E7001`〜`E7021` の診断コード・メッセージ・notes の整合性と `LET` 多相・`TraitConstraintFailure` の扱いを `diagnostics.{rust}` で `diagnostic_summary`/`expected_tokens` を JSON に出力、`scripts/poc_dualwrite_compare.sh --mode typeck` で OCaml の `diagnostics.{ocaml}` と比較。（`docs/spec/3-6-core-diagnostics-audit.md` の診断指標に言及）  
+   3. `compiler/rust/frontend/src/diagnostic/json.rs` に `TypecheckReport` 拡張を追加し、`Diagnostic` の `code`/`notes`/`secondary` を `serde` で出力することで `collect-iterator-audit-metrics.py` が期待するスキーマに一致させる。  
+4. **検証・監査（0.5日）**  
+   1. `cargo test --test constraint_solver`/`cargo test --test typeck_error` を実行し、`reports/dual-write/front-end/w3-type-inference/<run>` に JSON が生成されることを確認したあと、`scripts/poc_dualwrite_compare.sh --mode typeck --cases docs/plans/bootstrap-roadmap/p1-test-migration-constraint-cases.txt` で OCaml/Rust の `diagnostics`/`constraints` に差分がないことを `collect-iterator-audit-metrics.py --section typeck --case <case>` でチェック。  
+   2. `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` に `constraint_errors` セクションを追記し、`reports/dual-write/front-end/w3-type-inference` の出力や `collect-iterator` メトリクス（`constraint_graph_cycles`・`violations`）を記録。  
+5. **記録・フォローアップ（0.25日）**  
+   1. `docs-migrations.log` に「TPM-TYPE-02: ConstraintSolver/type error JSON の dual-write 移植」エントリを追加し、`docs/plans/rust-migration/1-0-front-end-transition.md` および `docs/plans/rust-migration/1-2-diagnostic-compatibility.md` に `--emit-diagnostics`/`--emit-type-errors` フラグと出力フォーマットを追記する。  
+   2. `p1-spec-compliance-gap.md` の `SCG-xx` で残り課題（例えば `TraitConstraintFailure` のメトリクスや `let` 多相の generalization）を記録し、Phase P2 以降での改善トラッキングにリンク。  
+
+#### TPM-TYPE-02 進捗
+
+- `compiler/ocaml/tests/test_constraint_solver.ml`/`test_type_errors.ml`/`test_let_polymorphism.ml` を精読し、ConstraintSolver のプリミティブ・複合・再帰・エラーのケースと `E7001`〜`E7021` の診断要件を一覧化し `docs/plans/bootstrap-roadmap/p1-test-migration-typeck-cases.txt` に追加する項目の素案を整理。  
+- `docs/spec/1-2-types-Inference.md` と `docs/spec/3-6-core-diagnostics-audit.md` を参照しつつ、`collect-iterator-audit-metrics.py` の `typeck` セクションで比較すべき `violations`/`constraint_graph_cycles`/`diagnostic.secondary` のメトリクスを選定し、`docs/plans/rust-migration/p1-front-end-checklists.csv` へ記入すべき観測ポイントを記録。  
+- `docs/plans/rust-migration/unified-porting-principles.md` の「振る舞いが最優先」や `p1-spec-compliance-gap.md` の `FRG-12`/`FRG-13` を踏まえ、Rust 側の `TypecheckReport` JSON で `typed_functions`・`constraints_total` だけでなく `TypecheckError` の `code`/`notes` まで含めるべきことを確認した。
