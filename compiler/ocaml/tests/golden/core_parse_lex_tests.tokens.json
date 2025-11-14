@@ -1,0 +1,442 @@
+[
+  {
+    "name": "core_parse_unicode_ident",
+    "profile": "unicode",
+    "source": "let ユーザー = 1\nlet 英語 = ユーザー + 2\n",
+    "tokens": [
+      {
+        "kind": "KeywordLet",
+        "span": {
+          "start": 0,
+          "end": 3
+        },
+        "lexeme": "let"
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 4,
+          "end": 16
+        },
+        "lexeme": "ユーザー"
+      },
+      {
+        "kind": "Assign",
+        "span": {
+          "start": 17,
+          "end": 18
+        }
+      },
+      {
+        "kind": "IntLiteral",
+        "span": {
+          "start": 19,
+          "end": 20
+        },
+        "lexeme": "1",
+        "literal": {
+          "Int": {
+            "base": "Decimal"
+          }
+        }
+      },
+      {
+        "kind": "KeywordLet",
+        "span": {
+          "start": 21,
+          "end": 24
+        },
+        "lexeme": "let"
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 25,
+          "end": 31
+        },
+        "lexeme": "英語"
+      },
+      {
+        "kind": "Assign",
+        "span": {
+          "start": 32,
+          "end": 33
+        }
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 34,
+          "end": 46
+        },
+        "lexeme": "ユーザー"
+      },
+      {
+        "kind": "Plus",
+        "span": {
+          "start": 47,
+          "end": 48
+        }
+      },
+      {
+        "kind": "IntLiteral",
+        "span": {
+          "start": 49,
+          "end": 50
+        },
+        "lexeme": "2",
+        "literal": {
+          "Int": {
+            "base": "Decimal"
+          }
+        }
+      },
+      {
+        "kind": "EndOfFile",
+        "span": {
+          "start": 51,
+          "end": 51
+        }
+      }
+    ]
+  },
+  {
+    "name": "core_parse_string_literals",
+    "profile": "unicode",
+    "source": "let quote = \"\\\"escaped\\\"\"\nlet raw = r\"raw\\n\"\nlet multi = \"\"\"multi\nline\"\"\"\nlet char = 'c'\n",
+    "tokens": [
+      {
+        "kind": "KeywordLet",
+        "span": {
+          "start": 0,
+          "end": 3
+        },
+        "lexeme": "let"
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 4,
+          "end": 9
+        },
+        "lexeme": "quote"
+      },
+      {
+        "kind": "Assign",
+        "span": {
+          "start": 10,
+          "end": 11
+        }
+      },
+      {
+        "kind": "StringLiteral",
+        "span": {
+          "start": 12,
+          "end": 25
+        },
+        "lexeme": "\"\\\"escaped\\\"\"",
+        "literal": {
+          "String": {
+            "kind": "Normal"
+          }
+        }
+      },
+      {
+        "kind": "KeywordLet",
+        "span": {
+          "start": 26,
+          "end": 29
+        },
+        "lexeme": "let"
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 30,
+          "end": 33
+        },
+        "lexeme": "raw"
+      },
+      {
+        "kind": "Assign",
+        "span": {
+          "start": 34,
+          "end": 35
+        }
+      },
+      {
+        "kind": "StringLiteral",
+        "span": {
+          "start": 36,
+          "end": 44
+        },
+        "lexeme": "r\"raw\\n\"",
+        "literal": {
+          "String": {
+            "kind": "Raw"
+          }
+        }
+      },
+      {
+        "kind": "KeywordLet",
+        "span": {
+          "start": 45,
+          "end": 48
+        },
+        "lexeme": "let"
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 49,
+          "end": 54
+        },
+        "lexeme": "multi"
+      },
+      {
+        "kind": "Assign",
+        "span": {
+          "start": 55,
+          "end": 56
+        }
+      },
+      {
+        "kind": "StringLiteral",
+        "span": {
+          "start": 57,
+          "end": 73
+        },
+        "lexeme": "\"\"\"multi\nline\"\"\"",
+        "literal": {
+          "String": {
+            "kind": "Multiline"
+          }
+        }
+      },
+      {
+        "kind": "KeywordLet",
+        "span": {
+          "start": 74,
+          "end": 77
+        },
+        "lexeme": "let"
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 78,
+          "end": 82
+        },
+        "lexeme": "char"
+      },
+      {
+        "kind": "Assign",
+        "span": {
+          "start": 83,
+          "end": 84
+        }
+      },
+      {
+        "kind": "CharLiteral",
+        "span": {
+          "start": 85,
+          "end": 88
+        },
+        "lexeme": "'c'",
+        "literal": "Char"
+      },
+      {
+        "kind": "EndOfFile",
+        "span": {
+          "start": 89,
+          "end": 89
+        }
+      }
+    ]
+  },
+  {
+    "name": "core_parse_shebang_comment",
+    "profile": "unicode",
+    "source": "#!/usr/bin/env reml\n# comment\nlet value = 42\nlet result = value * 2\n",
+    "tokens": [
+      {
+        "kind": "Unknown",
+        "span": {
+          "start": 0,
+          "end": 1
+        },
+        "lexeme": "#"
+      },
+      {
+        "kind": "Not",
+        "span": {
+          "start": 1,
+          "end": 2
+        }
+      },
+      {
+        "kind": "Slash",
+        "span": {
+          "start": 2,
+          "end": 3
+        }
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 3,
+          "end": 6
+        },
+        "lexeme": "usr"
+      },
+      {
+        "kind": "Slash",
+        "span": {
+          "start": 6,
+          "end": 7
+        }
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 7,
+          "end": 10
+        },
+        "lexeme": "bin"
+      },
+      {
+        "kind": "Slash",
+        "span": {
+          "start": 10,
+          "end": 11
+        }
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 11,
+          "end": 14
+        },
+        "lexeme": "env"
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 15,
+          "end": 19
+        },
+        "lexeme": "reml"
+      },
+      {
+        "kind": "Unknown",
+        "span": {
+          "start": 20,
+          "end": 21
+        },
+        "lexeme": "#"
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 22,
+          "end": 29
+        },
+        "lexeme": "comment"
+      },
+      {
+        "kind": "KeywordLet",
+        "span": {
+          "start": 30,
+          "end": 33
+        },
+        "lexeme": "let"
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 34,
+          "end": 39
+        },
+        "lexeme": "value"
+      },
+      {
+        "kind": "Assign",
+        "span": {
+          "start": 40,
+          "end": 41
+        }
+      },
+      {
+        "kind": "IntLiteral",
+        "span": {
+          "start": 42,
+          "end": 44
+        },
+        "lexeme": "42",
+        "literal": {
+          "Int": {
+            "base": "Decimal"
+          }
+        }
+      },
+      {
+        "kind": "KeywordLet",
+        "span": {
+          "start": 45,
+          "end": 48
+        },
+        "lexeme": "let"
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 49,
+          "end": 55
+        },
+        "lexeme": "result"
+      },
+      {
+        "kind": "Assign",
+        "span": {
+          "start": 56,
+          "end": 57
+        }
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 58,
+          "end": 63
+        },
+        "lexeme": "value"
+      },
+      {
+        "kind": "Star",
+        "span": {
+          "start": 64,
+          "end": 65
+        }
+      },
+      {
+        "kind": "IntLiteral",
+        "span": {
+          "start": 66,
+          "end": 67
+        },
+        "lexeme": "2",
+        "literal": {
+          "Int": {
+            "base": "Decimal"
+          }
+        }
+      },
+      {
+        "kind": "EndOfFile",
+        "span": {
+          "start": 68,
+          "end": 68
+        }
+      }
+    ]
+  }
+]

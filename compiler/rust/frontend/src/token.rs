@@ -1,9 +1,10 @@
 //! Reml ソースコードのトークン定義。
 
 use crate::span::Span;
+use serde::Serialize;
 
 /// 整数リテラルの基数。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum IntBase {
     Binary,
     Octal,
@@ -12,7 +13,7 @@ pub enum IntBase {
 }
 
 /// 文字列リテラルの種別。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum StringKind {
     /// 通常のダブルクォート文字列（C系のエスケープシーケンスを解釈）。
     Normal,
@@ -23,7 +24,7 @@ pub enum StringKind {
 }
 
 /// リテラルに付随する追加情報。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum LiteralMetadata {
     Int { base: IntBase },
     Float,
@@ -34,7 +35,7 @@ pub enum LiteralMetadata {
 /// 字句解析で得られるトークン種別。
 /// 仕様 1-1 §A.3〜A.4 と `compiler/ocaml/src/token.ml` に合わせて定義する。
 #[allow(clippy::enum_variant_names)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum TokenKind {
     Identifier,
     UpperIdentifier,
@@ -184,11 +185,13 @@ impl TokenKind {
 }
 
 /// `TokenKind` に付随するメタデータ。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub lexeme: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub literal: Option<LiteralMetadata>,
 }
 

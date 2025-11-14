@@ -13,7 +13,7 @@ use reml_frontend::diagnostic::{
     json as diag_json, DiagnosticDomain, FrontendDiagnostic,
 };
 use reml_frontend::error::Recoverability;
-use reml_frontend::lexer::IdentifierProfile;
+use reml_frontend::lexer::{lex_source_with_options, IdentifierProfile, LexerOptions};
 use reml_frontend::parser::ast::Module;
 use reml_frontend::parser::{
     LeftRecursionMode, ParseResult, ParserDriver, ParserOptions, RunConfig, StreamOutcome,
@@ -43,6 +43,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     install_typecheck_config(&args.typecheck_config)?;
     let input_path = args.input.clone();
     let source = fs::read_to_string(&input_path)?;
+    if let Some(path) = &args.emit_tokens {
+        let options = LexerOptions {
+            identifier_profile: args.run_config.lex_identifier_profile,
+        };
+        let lex_output = lex_source_with_options(&source, options);
+        write_json_file(path, &lex_output.tokens)?;
+    }
     let dualwrite = if let Some(opts) = args.dualwrite.clone() {
         Some(if let Some(root) = opts.root {
             DualWriteGuards::with_root(root, &opts.run_label, &opts.case_label)?
@@ -226,6 +233,7 @@ struct CliArgs {
     emit_typeck_debug: Option<PathBuf>,
     emit_effects_metrics: Option<PathBuf>,
     emit_impl_registry: Option<PathBuf>,
+    emit_tokens: Option<PathBuf>,
     run_config: RunSettings,
     stream_config: StreamSettings,
     runtime_capabilities: Vec<RuntimeCapability>,
@@ -566,6 +574,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut emit_typeck_debug = None;
     let mut emit_effects_metrics = None;
     let mut emit_impl_registry = None;
+    let mut emit_tokens = None;
     let mut run_config = RunSettings::default();
     let mut stream_config = StreamSettings::default();
     let mut runtime_capabilities: Vec<RuntimeCapability> = Vec::new();
@@ -683,6 +692,12 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     .next()
                     .ok_or_else(|| "--emit-impl-registry は出力パスを伴う必要があります")?;
                 emit_impl_registry = Some(PathBuf::from(path));
+            }
+            "--emit-tokens" => {
+                let path = args
+                    .next()
+                    .ok_or_else(|| "--emit-tokens は出力パスを伴う必要があります")?;
+                emit_tokens = Some(PathBuf::from(path));
             }
             "--packrat" => run_config.packrat = true,
             "--no-packrat" => run_config.packrat = false,
@@ -875,6 +890,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         emit_typeck_debug,
         emit_effects_metrics,
         emit_impl_registry,
+        emit_tokens,
         run_config,
         stream_config,
         runtime_capabilities,

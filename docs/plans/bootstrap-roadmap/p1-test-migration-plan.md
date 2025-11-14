@@ -13,7 +13,7 @@
 ### 3.1 Lexer／Parser 系
 | ID | テスト | 依存対象 | Rust 移植の理由・補足 |
 | --- | --- | --- | --- |
-| TPM-LEX-01 | `core_parse_lex_tests.ml` | `lexer`/`token` API | `FRG-06` に沿ってトークン網羅性が確認済みのため、UTF/Escape/コメントを前提としたトークン列比較を `lexer_token_coverage` のように `cargo test` へ組み込み可能。<br>Dual-write で `collect-iterator-audit-metrics.py` の `lexer.identifier_profile_*` を再利用する。 |
+| TPM-LEX-01 | `core_parse_lex_tests.ml` | `lexer`/`token` API | ✅ `FRG-06` に沿ってトークン網羅性が確認済みのため、UTF/Escape/コメントを前提としたトークン列比較を `lexer_token_coverage` のように `cargo test` へ組み込み可能。<br>Dual-write で `collect-iterator-audit-metrics.py` の `lexer.identifier_profile_*` を再利用する。 |
 | TPM-LEX-02 | `test_lexer.ml` / `unicode_ident_tests.ml` | 同上 + 識別子正規化 | Rust 側が Unicode 識別子・ASCII プロファイルを持つため、実際の文字列パターンを `tests/lexer.rs` として再実装。 |
 | TPM-LEX-03 | `packrat_tests.ml` / `test_parser.ml` / `test_parser_driver.ml` | `parser_driver.ml` の RunConfig/State | `FRG-07` の `RunConfig`/`Parser<T>` 達成をもとに `parser_driver` と `ParseResult` の Rust 版を `rust` CLI で叩き、ゴールデン AST（`--emit-ast`）を比較。 |
 | TPM-LEX-04 | `test_parser_expectation.ml` / `test_parse_result_state.ml` | `parser_expectation` | `FRG-08` で `ExpectedTokenCollector` を Enhancement したため、期待候補の正規化/空集合補正を再現できる。 |
@@ -57,7 +57,7 @@
 
 ## 6. 具体的な計画
 
-## TPM-LEX-01
+### TPM-LEX-01
 
 1. **調査・前提整理（1日）**  
    1. `compiler/ocaml/tests/core_parse_lex_tests.ml` の各ケース（UTF-8、エスケープ、コメント、マルチラインリテラルなど）の入力 ReML スニペットと期待トークン列を一覧化し、`docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md` と `docs/plans/rust-migration/p1-front-end-checklists.csv` に記載されている要件（`lexer.identifier_profile_*` など）と照合します。  
@@ -74,3 +74,9 @@
 5. **記録・フォローアップ（0.25日）**  
    1. `docs-migrations.log` に「TPM-LEX-01: core_parse_lex_tests.lexer トークン移植」として成果・差分・未再現ケースを記録し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の診断 JSON 進捗欄にも言及。  
    2. 未移植の corner case（`CPP-style` コメント、Zero-width space など）が残っている場合は `docs/plans/rust-migration/p1-spec-compliance-gap.md` に `SCG-xx` として再分類し、将来の deferred リストに追加。
+
+#### TPM-LEX-01 進捗
+
+- Rust 側で `core_parse_lex_tests.ml` 相当のトークン列を `compiler/ocaml/tests/golden/core_parse_lex_tests.tokens.json` にゴールデン化し、`compiler/rust/frontend/tests/lexer/core_parse.rs` で `lexer::lex_source_with_options` 結果を厳密一致させることで `cargo test --test lexer_core_parse` だけで移植済みケースの差分が検知できるようになった。  
+- `poc_frontend` に `--emit-tokens` フラグを追加し、Dual-write のトークン JSON を `reports/dual-write/front-end/w1-lexer/core_parse_lex_tests/` 以下に書き出して `collect-iterator-audit-metrics.py` の `lexer.identifier_profile_*` 指標に流し込むパイプラインを確立。`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` にもこのワークフローを追記した。  
+- 残タスク: `scripts/poc_dualwrite_compare.sh --mode lexer` に `TPM-LEX-01` ケースを組み込み、OCaml 由来の `tokens.ocaml.json` と Rust 出力を比較するループを作り、`collect-iterator-audit-metrics.py --section lexer --case core_parse_lex_tests` で `lexer.identifier_profile_unicode`/`lexer.identifier_profile_ascii` の ±0.5 ルールを追跡する。
