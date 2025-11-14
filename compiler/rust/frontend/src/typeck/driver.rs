@@ -447,6 +447,8 @@ fn infer_expr(
 ) -> TypedExprDraft {
     stats.typed_exprs += 1;
     metrics.record_expr();
+    metrics.record_ast_node();
+    metrics.record_token_count(expr.span.len() as usize);
     match &expr.kind {
         ExprKind::Literal(literal) => {
             let ty = type_for_literal(literal);
@@ -512,6 +514,7 @@ fn infer_expr(
                 left_result.ty.clone(),
                 right_result.ty.clone(),
             ));
+            metrics.record_unify_call();
             let _ = solver.unify(left_result.ty.clone(), right_result.ty.clone());
             let ty = combine_numeric_types(&left_result.ty, &right_result.ty);
             make_typed(
@@ -663,6 +666,7 @@ fn infer_expr(
                 then_result.ty.clone(),
                 else_result.ty.clone(),
             ));
+            metrics.record_unify_call();
             let _ = solver.unify(then_result.ty.clone(), else_result.ty.clone());
             let ty = if then_result.ty == else_result.ty {
                 then_result.ty.clone()

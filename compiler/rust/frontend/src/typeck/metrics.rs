@@ -11,6 +11,9 @@ pub struct TypecheckMetrics {
     pub unresolved_identifiers: usize,
     pub call_sites: usize,
     pub binary_expressions: usize,
+    pub unify_calls: usize,
+    pub ast_nodes: usize,
+    pub token_count: usize,
 }
 
 impl Default for TypecheckMetrics {
@@ -23,6 +26,9 @@ impl Default for TypecheckMetrics {
             unresolved_identifiers: 0,
             call_sites: 0,
             binary_expressions: 0,
+            unify_calls: 0,
+            ast_nodes: 0,
+            token_count: 0,
         }
     }
 }
@@ -52,5 +58,17 @@ impl TypecheckMetrics {
 
     pub fn record_binary_expr(&mut self) {
         self.binary_expressions += 1;
+    }
+
+    pub fn record_unify_call(&mut self) {
+        self.unify_calls += 1;
+    }
+
+    pub fn record_ast_node(&mut self) {
+        self.ast_nodes += 1;
+    }
+
+    pub fn record_token_count(&mut self, token_count: usize) {
+        self.token_count += token_count;
     }
 }

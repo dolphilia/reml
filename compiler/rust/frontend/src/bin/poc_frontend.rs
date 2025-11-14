@@ -1,6 +1,7 @@
 //! logos × chumsky フロントエンド PoC。入力ファイルを解析し JSON を出力する。
 
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::ops::{Deref, DerefMut};
@@ -172,6 +173,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let payload = TypecheckMetricsPayload::from_report(&typeck_report, &stage_payload);
         write_json_file(path, &payload)?;
     }
+    if let Some(path) = &args.emit_impl_registry {
+        let payload = build_impl_registry_payload(&typeck_report, None, None);
+        write_json_file(path, &payload)?;
+    }
 
     if let Some(guards) = dualwrite {
         write_dualwrite_typeck_payload(
@@ -221,6 +226,7 @@ struct CliArgs {
     emit_constraints: Option<PathBuf>,
     emit_typeck_debug: Option<PathBuf>,
     emit_effects_metrics: Option<PathBuf>,
+    emit_impl_registry: Option<PathBuf>,
     run_config: RunSettings,
     stream_config: StreamSettings,
     runtime_capabilities: Vec<RuntimeCapability>,
@@ -560,6 +566,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut emit_constraints = None;
     let mut emit_typeck_debug = None;
     let mut emit_effects_metrics = None;
+    let mut emit_impl_registry = None;
     let mut run_config = RunSettings::default();
     let mut stream_config = StreamSettings::default();
     let mut runtime_capabilities: Vec<RuntimeCapability> = Vec::new();
@@ -671,6 +678,12 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     .next()
                     .ok_or_else(|| "--emit-effects-metrics は出力パスを伴う必要があります")?;
                 emit_effects_metrics = Some(PathBuf::from(path));
+            }
+            "--emit-impl-registry" => {
+                let path = args
+                    .next()
+                    .ok_or_else(|| "--emit-impl-registry は出力パスを伴う必要があります")?;
+                emit_impl_registry = Some(PathBuf::from(path));
             }
             "--packrat" => run_config.packrat = true,
             "--no-packrat" => run_config.packrat = false,
@@ -862,6 +875,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         emit_constraints,
         emit_typeck_debug,
         emit_effects_metrics,
+        emit_impl_registry,
         run_config,
         stream_config,
         runtime_capabilities,
@@ -890,6 +904,10 @@ fn write_dualwrite_typeck_payload(
     guards.write_json("typeck/typed-ast.rust.json", &artifacts.typed_ast)?;
     guards.write_json("typeck/constraints.rust.json", &artifacts.constraints)?;
     guards.write_json("typeck/typeck-debug.rust.json", &artifacts.debug)?;
+    let (run_label, case_label) = guards.labels();
+    let impl_registry =
+        build_impl_registry_payload(report, Some(run_label.as_ref()), Some(case_label.as_ref()));
+    guards.write_json("typeck/impl-registry.rust.json", &impl_registry)?;
     Ok(())
 }
 
@@ -1907,6 +1925,26 @@ struct ConstraintStats {
     token_count: usize,
 }
 
+#[derive(Clone, Serialize)]
+struct ImplRegistryEntry {
+    index: usize,
+    impl_id: String,
+    span: Span,
+    requirements: Vec<String>,
+    ty: String,
+    functions: Vec<String>,
+}
+
+#[derive(Clone, Serialize)]
+struct ImplRegistryFile {
+    schema_version: &'static str,
+    frontend: &'static str,
+    run_label: Option<String>,
+    case_label: Option<String>,
+    used_impls: Vec<String>,
+    entries: Vec<ImplRegistryEntry>,
+}
+
 impl Default for ConstraintStats {
     fn default() -> Self {
         Self {
@@ -2025,7 +2063,11 @@ impl TypeckArtifacts {
             .collect();
         let constraints = ConstraintFile {
             function_summaries: function_summaries.clone(),
-            stats: ConstraintStats::default(),
+            stats: ConstraintStats {
+                unify_calls: report.metrics.unify_calls,
+                ast_nodes: report.metrics.ast_nodes,
+                token_count: report.metrics.token_count,
+            },
             total_constraints: report.metrics.constraints_total,
             breakdown,
             functions,
@@ -2046,6 +2088,44 @@ impl TypeckArtifacts {
             constraints,
             debug,
         }
+    }
+}
+
+fn build_impl_registry_payload(
+    report: &TypecheckReport,
+    run_label: Option<&str>,
+    case_label: Option<&str>,
+) -> ImplRegistryFile {
+    let mut owners: HashMap<typed::DictRefId, Vec<String>> = HashMap::new();
+    for function in &report.typed_module.functions {
+        for &dict_ref_id in &function.dict_ref_ids {
+            owners
+                .entry(dict_ref_id)
+                .or_insert_with(Vec::new)
+                .push(function.name.clone());
+        }
+    }
+    let entries = report
+        .typed_module
+        .dict_refs
+        .iter()
+        .enumerate()
+        .map(|(index, dict_ref)| ImplRegistryEntry {
+            index,
+            impl_id: dict_ref.impl_id.clone(),
+            span: dict_ref.span,
+            requirements: dict_ref.requirements.clone(),
+            ty: dict_ref.ty.clone(),
+            functions: owners.get(&index).cloned().unwrap_or_else(Vec::new),
+        })
+        .collect();
+    ImplRegistryFile {
+        schema_version: "w3-typeck-impl-registry/0.1",
+        frontend: "rust",
+        run_label: run_label.map(|value| value.to_string()),
+        case_label: case_label.map(|value| value.to_string()),
+        used_impls: report.used_impls.clone(),
+        entries,
     }
 }
 
