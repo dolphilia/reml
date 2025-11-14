@@ -69,7 +69,7 @@
 | FRG-21 | SCG-01 | ✅ | Unicode XID/`UPPER_IDENT`、`LexProfile` 切り替えと `RunConfig.extensions["lex"]` 連動が欠落 | `p1-spec-compliance-gap.md#SCG-01` |
 | FRG-22 | SCG-02 | ✅ | `TokenKind` や `ExpectedToken` 表現が var/match/type/Option、`0x`/`0b`/複数行 raw 文字列などを含まない | `p1-spec-compliance-gap.md#SCG-02` |
 | FRG-23 | SCG-03 | ✅ | `Parser<T>`/`State`/`Reply`/`RunConfig` API が欠如し、`ParserDriver::parse` が `ParsedModule` の単一戻り値のみ | `p1-spec-compliance-gap.md#SCG-03` |
-| FRG-24 | SCG-05 | 未着手 | AST の `ExprKind`/`PatternKind`/`DeclKind` が限定され、OCaml `ast.ml` の列挙が移植されていない | `p1-spec-compliance-gap.md#SCG-05` |
+| FRG-24 | SCG-05 | ✅ | AST の `ExprKind`/`PatternKind`/`DeclKind` が限定され、OCaml `ast.ml` の列挙が移植されていない | `p1-spec-compliance-gap.md#SCG-05` |
 | FRG-25 | SCG-06 | 未着手 | Typed AST/型情報（`typed_expr`/`dict_ref`/`scheme`）の構成が存在せず dual-write JSON もダミー | `p1-spec-compliance-gap.md#SCG-06` |
 | FRG-26 | SCG-07 | 未着手 | Packrat/Streaming 状態 (`Core_parse_streaming`) が parser と接続しておらず、`packrat_snapshot` や `span_trace` を `ParseResult` に渡せない | `p1-spec-compliance-gap.md#SCG-07` |
 | FRG-27 | SCG-08 | 未着手 | Algorithm W による制約生成・一般化・値制限・ソルバが存在せず、`typeck/driver` は `SimpleType`のみ | `p1-spec-compliance-gap.md#SCG-08` |
