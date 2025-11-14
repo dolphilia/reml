@@ -1,0 +1,402 @@
+[
+  {
+    "name": "ascii_reject_unicode",
+    "profile": "ascii-compat",
+    "source": "let 解析器 = 1\n",
+    "tokens": [
+      {
+        "kind": "KeywordLet",
+        "span": {
+          "start": 0,
+          "end": 3
+        },
+        "lexeme": "let"
+      },
+      {
+        "kind": "Unknown",
+        "span": {
+          "start": 4,
+          "end": 13
+        },
+        "lexeme": "解析器"
+      },
+      {
+        "kind": "Assign",
+        "span": {
+          "start": 14,
+          "end": 15
+        }
+      },
+      {
+        "kind": "IntLiteral",
+        "span": {
+          "start": 16,
+          "end": 17
+        },
+        "lexeme": "1",
+        "literal": {
+          "Int": {
+            "base": "Decimal"
+          }
+        }
+      },
+      {
+        "kind": "EndOfFile",
+        "span": {
+          "start": 18,
+          "end": 18
+        }
+      }
+    ]
+  },
+  {
+    "name": "unicode_hiragana",
+    "profile": "unicode",
+    "source": "let れむる = 42\n",
+    "tokens": [
+      {
+        "kind": "KeywordLet",
+        "span": {
+          "start": 0,
+          "end": 3
+        },
+        "lexeme": "let"
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 4,
+          "end": 13
+        },
+        "lexeme": "れむる"
+      },
+      {
+        "kind": "Assign",
+        "span": {
+          "start": 14,
+          "end": 15
+        }
+      },
+      {
+        "kind": "IntLiteral",
+        "span": {
+          "start": 16,
+          "end": 18
+        },
+        "lexeme": "42",
+        "literal": {
+          "Int": {
+            "base": "Decimal"
+          }
+        }
+      },
+      {
+        "kind": "EndOfFile",
+        "span": {
+          "start": 19,
+          "end": 19
+        }
+      }
+    ]
+  },
+  {
+    "name": "unicode_katakana",
+    "profile": "unicode",
+    "source": "let ユーザー_識別子 = 1\n",
+    "tokens": [
+      {
+        "kind": "KeywordLet",
+        "span": {
+          "start": 0,
+          "end": 3
+        },
+        "lexeme": "let"
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 4,
+          "end": 26
+        },
+        "lexeme": "ユーザー_識別子"
+      },
+      {
+        "kind": "Assign",
+        "span": {
+          "start": 27,
+          "end": 28
+        }
+      },
+      {
+        "kind": "IntLiteral",
+        "span": {
+          "start": 29,
+          "end": 30
+        },
+        "lexeme": "1",
+        "literal": {
+          "Int": {
+            "base": "Decimal"
+          }
+        }
+      },
+      {
+        "kind": "EndOfFile",
+        "span": {
+          "start": 31,
+          "end": 31
+        }
+      }
+    ]
+  },
+  {
+    "name": "unicode_greek_upper",
+    "profile": "unicode",
+    "source": "let Δοκιμή = 1\n",
+    "tokens": [
+      {
+        "kind": "KeywordLet",
+        "span": {
+          "start": 0,
+          "end": 3
+        },
+        "lexeme": "let"
+      },
+      {
+        "kind": "UpperIdentifier",
+        "span": {
+          "start": 4,
+          "end": 16
+        },
+        "lexeme": "Δοκιμή"
+      },
+      {
+        "kind": "Assign",
+        "span": {
+          "start": 17,
+          "end": 18
+        }
+      },
+      {
+        "kind": "IntLiteral",
+        "span": {
+          "start": 19,
+          "end": 20
+        },
+        "lexeme": "1",
+        "literal": {
+          "Int": {
+            "base": "Decimal"
+          }
+        }
+      },
+      {
+        "kind": "EndOfFile",
+        "span": {
+          "start": 21,
+          "end": 21
+        }
+      }
+    ]
+  },
+  {
+    "name": "unicode_cyrillic",
+    "profile": "unicode",
+    "source": "let пользователь = 1\n",
+    "tokens": [
+      {
+        "kind": "KeywordLet",
+        "span": {
+          "start": 0,
+          "end": 3
+        },
+        "lexeme": "let"
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 4,
+          "end": 28
+        },
+        "lexeme": "пользователь"
+      },
+      {
+        "kind": "Assign",
+        "span": {
+          "start": 29,
+          "end": 30
+        }
+      },
+      {
+        "kind": "IntLiteral",
+        "span": {
+          "start": 31,
+          "end": 32
+        },
+        "lexeme": "1",
+        "literal": {
+          "Int": {
+            "base": "Decimal"
+          }
+        }
+      },
+      {
+        "kind": "EndOfFile",
+        "span": {
+          "start": 33,
+          "end": 33
+        }
+      }
+    ]
+  },
+  {
+    "name": "unicode_hangul",
+    "profile": "unicode",
+    "source": "let 데이터 = 1\n",
+    "tokens": [
+      {
+        "kind": "KeywordLet",
+        "span": {
+          "start": 0,
+          "end": 3
+        },
+        "lexeme": "let"
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 4,
+          "end": 13
+        },
+        "lexeme": "데이터"
+      },
+      {
+        "kind": "Assign",
+        "span": {
+          "start": 14,
+          "end": 15
+        }
+      },
+      {
+        "kind": "IntLiteral",
+        "span": {
+          "start": 16,
+          "end": 17
+        },
+        "lexeme": "1",
+        "literal": {
+          "Int": {
+            "base": "Decimal"
+          }
+        }
+      },
+      {
+        "kind": "EndOfFile",
+        "span": {
+          "start": 18,
+          "end": 18
+        }
+      }
+    ]
+  },
+  {
+    "name": "unicode_combining",
+    "profile": "unicode",
+    "source": "let café = 1\n",
+    "tokens": [
+      {
+        "kind": "KeywordLet",
+        "span": {
+          "start": 0,
+          "end": 3
+        },
+        "lexeme": "let"
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 4,
+          "end": 10
+        },
+        "lexeme": "café"
+      },
+      {
+        "kind": "Assign",
+        "span": {
+          "start": 11,
+          "end": 12
+        }
+      },
+      {
+        "kind": "IntLiteral",
+        "span": {
+          "start": 13,
+          "end": 14
+        },
+        "lexeme": "1",
+        "literal": {
+          "Int": {
+            "base": "Decimal"
+          }
+        }
+      },
+      {
+        "kind": "EndOfFile",
+        "span": {
+          "start": 15,
+          "end": 15
+        }
+      }
+    ]
+  },
+  {
+    "name": "unicode_zero_width",
+    "profile": "unicode",
+    "source": "let مثال‍اختبار = 1\n",
+    "tokens": [
+      {
+        "kind": "KeywordLet",
+        "span": {
+          "start": 0,
+          "end": 3
+        },
+        "lexeme": "let"
+      },
+      {
+        "kind": "Identifier",
+        "span": {
+          "start": 4,
+          "end": 27
+        },
+        "lexeme": "مثال‍اختبار"
+      },
+      {
+        "kind": "Assign",
+        "span": {
+          "start": 28,
+          "end": 29
+        }
+      },
+      {
+        "kind": "IntLiteral",
+        "span": {
+          "start": 30,
+          "end": 31
+        },
+        "lexeme": "1",
+        "literal": {
+          "Int": {
+            "base": "Decimal"
+          }
+        }
+      },
+      {
+        "kind": "EndOfFile",
+        "span": {
+          "start": 32,
+          "end": 32
+        }
+      }
+    ]
+  }
+]

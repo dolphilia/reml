@@ -14,7 +14,7 @@
 | ID | テスト | 依存対象 | Rust 移植の理由・補足 |
 | --- | --- | --- | --- |
 | TPM-LEX-01 | `core_parse_lex_tests.ml` | `lexer`/`token` API | ✅ `FRG-06` に沿ってトークン網羅性が確認済みのため、UTF/Escape/コメントを前提としたトークン列比較を `lexer_token_coverage` のように `cargo test` へ組み込み可能。<br>Dual-write で `collect-iterator-audit-metrics.py` の `lexer.identifier_profile_*` を再利用する。 |
-| TPM-LEX-02 | `test_lexer.ml` / `unicode_ident_tests.ml` | 同上 + 識別子正規化 | Rust 側が Unicode 識別子・ASCII プロファイルを持つため、実際の文字列パターンを `tests/lexer.rs` として再実装。 |
+| TPM-LEX-02 | `test_lexer.ml` / `unicode_ident_tests.ml` | 同上 + 識別子正規化 | ✅ Rust 側が Unicode 識別子・ASCII プロファイルを持つため、実際の文字列パターンを `tests/lexer.rs` として再実装。 |
 | TPM-LEX-03 | `packrat_tests.ml` / `test_parser.ml` / `test_parser_driver.ml` | `parser_driver.ml` の RunConfig/State | `FRG-07` の `RunConfig`/`Parser<T>` 達成をもとに `parser_driver` と `ParseResult` の Rust 版を `rust` CLI で叩き、ゴールデン AST（`--emit-ast`）を比較。 |
 | TPM-LEX-04 | `test_parser_expectation.ml` / `test_parse_result_state.ml` | `parser_expectation` | `FRG-08` で `ExpectedTokenCollector` を Enhancement したため、期待候補の正規化/空集合補正を再現できる。 |
 
@@ -103,3 +103,5 @@
 
 - `test_lexer.ml` および `unicode_ident_tests.ml` のケースを読み込み、各ラベルが期待する `TokenKind`・`span`・エラーメッセージを整理。`unicode_identifiers.reml` の入力と `REML_ENABLE_UNICODE_TESTS` のフローを押さえた上で、Rust の `IdentifierProfile` 切り替えが同等の挙動を提供するような `scripts/poc_dualwrite_compare.sh` のパラメータ設計を確定した。
 - `docs/spec/1-1-syntax.md §A.3`/`docs/spec/1-4-test-unicode-model.md` および `docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md` と突き合わせながら、ASCII 互換拒否メッセージの文言 (`U+89E3`, `profile=ascii-compat`) と Unicode 受理の正規化ケース（`café` やゼロ幅結合子）を `docs/plans/bootstrap-roadmap/p1-test-migration-plan.md` に列挙し、Dual-write JSON のメトリクス収集と `docs/plans/rust-migration/p1-front-end-checklists.csv` への記録方針を明文化した。
+- Rust 側に `lexer/identifier.rs` テストを追加し、ASCII プロファイルの拒否メッセージ（コードポイント/プロファイル/Span）と Unicode プロファイルの正規化/ゼロ幅結合子の動作を検証するケースを定義。Normalization に `unicode-normalization` を導入、ASCII 拒否時の `FrontendErrorKind::UnexpectedStructure` と `TokenKind::Unknown` を使って `push_ascii_error` をリファクタリングした。
+- `compiler/ocaml/tests/golden/identifier_lex_tests.tokens.json` を作成して `poc_frontend --emit-tokens` の出力を集約し、`docs/plans/bootstrap-roadmap/p1-test-migration-lexer-cases.txt` に `TPM-LEX-02` エントリを追加することで `scripts/poc_dualwrite_compare.sh --mode lexer` から `reports/dual-write/front-end/w1-lexer/identifier` に JSON/metrics を蓄積できるようにした。

@@ -3,3 +3,9 @@
 # tests: core_parse_lex_tests
 # metrics-case: core_parse_lex_tests
 TPM-LEX-01::file::compiler/ocaml/tests/golden/core_parse_lex_tests.tokens.json
+
+# P1 TPM-LEX-02 lexer identifier case
+# format: name::file::<path>
+# tests: test_lexer.ml / unicode_ident_tests.ml (ascii + unicode)
+# metrics-case: identifier
+TPM-LEX-02::file::compiler/ocaml/tests/golden/identifier_lex_tests.tokens.json

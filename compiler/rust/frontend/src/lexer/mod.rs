@@ -6,6 +6,7 @@
 
 use logos::{Lexer as LogosLexer, Logos};
 use std::str::FromStr;
+use unicode_normalization::UnicodeNormalization;
 
 use crate::error::{FrontendError, FrontendErrorKind, Recoverability};
 use crate::span::Span;
@@ -263,7 +264,7 @@ enum RawToken {
     #[token("'", lex_char_literal)]
     CharLiteral,
 
-    #[regex(r"(?u)(?:_|\p{XID_Start})\p{XID_Continue}*", priority = 1)]
+    #[regex(r"(?u)(?:_|\p{XID_Start})(?:\p{XID_Continue}|\u200D)*", priority = 1)]
     Identifier,
 }
 
@@ -528,7 +529,8 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
                 } else {
                     TokenKind::Identifier
                 };
-                tokens.push(Token::with_lexeme(kind, span, slice));
+                let lexeme = normalize_identifier(slice);
+                tokens.push(Token::with_lexeme(kind, span, lexeme));
             }
             Ok(RawToken::IntLiteral) => {
                 let lexeme = lexer.slice();
@@ -636,6 +638,10 @@ fn collect_string_lexeme(text: &str, range: std::ops::Range<usize>) -> String {
     text[range.start..range.end].to_string()
 }
 
+fn normalize_identifier(value: &str) -> String {
+    value.nfc().collect()
+}
+
 fn push_keyword(tokens: &mut Vec<Token>, span: Span, kind: TokenKind, text: &'static str) {
     tokens.push(Token::with_lexeme(kind, span, text));
 }
@@ -659,8 +665,30 @@ fn push_ascii_error(
     errors: &mut Vec<FrontendError>,
     tokens: &mut Vec<Token>,
 ) {
+    let invalid_code_point = lexeme
+        .chars()
+        .find(|ch| !ch.is_ascii())
+        .unwrap_or('\u{FFFD}');
+    let prefix = if lexeme
+        .chars()
+        .next()
+        .map(|ch| !ch.is_ascii())
+        .unwrap_or(false)
+    {
+        "識別子の先頭に使用できないコードポイント"
+    } else {
+        "識別子に使用できないコードポイント"
+    };
+    let message = format!(
+        "{prefix} U+{:04X} (profile={})",
+        invalid_code_point as u32,
+        IdentifierProfile::AsciiCompat.as_str()
+    );
     errors.push(FrontendError::new(
-        FrontendErrorKind::UnknownToken { span },
+        FrontendErrorKind::UnexpectedStructure {
+            message,
+            span: Some(span),
+        },
         Recoverability::Recoverable,
     ));
     tokens.push(Token::with_lexeme(TokenKind::Unknown, span, lexeme));
