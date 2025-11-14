@@ -59,18 +59,18 @@
 
 ## TPM-LEX-01
 
-  1. **調査・前提整理（1日）**  
-     1. `compiler/ocaml/tests/core_parse_lex_tests.ml` の各ケース（UTF-8、エスケープ、コメント、マルチラインリテラルなど）の入力 ReML スニペットと期待トークン列を一覧化し、`docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md` と `docs/plans/rust-migration/p1-front-end-checklists.csv` に記載されている要件（`lexer.identifier_profile_*` など）と照合します。  
-     2. Rust 側で `lexer_token_coverage` に再現できるトークン列の構造（`TokenKind`/`Lexer` ルール）を把握し、`scripts/poc_dualwrite_compare.sh --mode lexer` で OCaml 由来のケースを CLI に渡せるよう入力フォーマットを定義します。
-  2. **テストハーネス設計（0.5日）**  
-     1. 新規モジュール `compiler/rust/frontend/tests/lexer/core_parse.rs` を作り、`core_parse_lex_tests.ml` 相当の `#[test]` を `reml` の文字列リテラル＋期待トークン列で定義。テストは `lexer::tokenize` → `serde_json::to_string_pretty` で得られたトークン配列を `compiler/ocaml/tests/golden/core_parse_lex_tests.tokens.json` と比較する。  
-     2. `scripts/poc_dualwrite_compare.sh --mode lexer` に `--case-origin ocaml-core-parse` を追加し、生成 JSON を `reports/dual-write/front-end/w1-lexer/core_parse_lex_tests/` に書き出して `collect-iterator-audit-metrics.py` で `lexer.identifier_profile_*` を計測するフックを呼び出す。
-  3. **実装・移植（1日）**  
-     1. Rust 側の `lexer_token_coverage.rs` に `core_parse` 系ケースを `#[test_case(...)]` で統合し、`TokenProfile` が `lexer.identifier_profile_*` に近い分布を維持していることを `assert!` で検証。  
-     2. `compiler/rust/frontend/src/bin/poc_frontend.rs` に `--emit-tokens` フラグを追加し、`lexer::tokenize` と `serde_json` で同名ファイルを出力するようにすることで、`scripts/poc_dualwrite_compare.sh` でも同じ golden データを確認できる。
-  4. **検証・監査（0.5日）**  
-     1. `cargo test --test lexer_core_parse` を実行し、`reports/dual-write/front-end/w1-lexer/core_parse_lex_tests/tokens.{ocaml,rust}.json` に同一のトークン列（`TokenKind`/`span`）が出力されることを確認。  
-     2. `collect-iterator-audit-metrics.py --section lexer --case core_parse_lex_tests` でメトリクスを取り（±0.5 ルール）、結果を `docs/plans/rust-migration/p1-front-end-checklists.csv` に書き込む。  
-  5. **記録・フォローアップ（0.25日）**  
-     1. `docs-migrations.log` に「TPM-LEX-01: core_parse_lex_tests.lexer トークン移植」として成果・差分・未再現ケースを記録し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の診断 JSON 進捗欄にも言及。  
-     2. 未移植の corner case（`CPP-style` コメント、Zero-width space など）が残っている場合は `docs/plans/rust-migration/p1-spec-compliance-gap.md` に `SCG-xx` として再分類し、将来の deferred リストに追加。
+1. **調査・前提整理（1日）**  
+   1. `compiler/ocaml/tests/core_parse_lex_tests.ml` の各ケース（UTF-8、エスケープ、コメント、マルチラインリテラルなど）の入力 ReML スニペットと期待トークン列を一覧化し、`docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md` と `docs/plans/rust-migration/p1-front-end-checklists.csv` に記載されている要件（`lexer.identifier_profile_*` など）と照合します。  
+   2. Rust 側で `lexer_token_coverage` に再現できるトークン列の構造（`TokenKind`/`Lexer` ルール）を把握し、`scripts/poc_dualwrite_compare.sh --mode lexer` で OCaml 由来のケースを CLI に渡せるよう入力フォーマットを定義します。
+2. **テストハーネス設計（0.5日）**  
+   1. 新規モジュール `compiler/rust/frontend/tests/lexer/core_parse.rs` を作り、`core_parse_lex_tests.ml` 相当の `#[test]` を `reml` の文字列リテラル＋期待トークン列で定義。テストは `lexer::tokenize` → `serde_json::to_string_pretty` で得られたトークン配列を `compiler/ocaml/tests/golden/core_parse_lex_tests.tokens.json` と比較する。  
+   2. `scripts/poc_dualwrite_compare.sh --mode lexer` に `--case-origin ocaml-core-parse` を追加し、生成 JSON を `reports/dual-write/front-end/w1-lexer/core_parse_lex_tests/` に書き出して `collect-iterator-audit-metrics.py` で `lexer.identifier_profile_*` を計測するフックを呼び出す。
+3. **実装・移植（1日）**  
+   1. Rust 側の `lexer_token_coverage.rs` に `core_parse` 系ケースを `#[test_case(...)]` で統合し、`TokenProfile` が `lexer.identifier_profile_*` に近い分布を維持していることを `assert!` で検証。  
+   2. `compiler/rust/frontend/src/bin/poc_frontend.rs` に `--emit-tokens` フラグを追加し、`lexer::tokenize` と `serde_json` で同名ファイルを出力するようにすることで、`scripts/poc_dualwrite_compare.sh` でも同じ golden データを確認できる。
+4. **検証・監査（0.5日）**  
+   1. `cargo test --test lexer_core_parse` を実行し、`reports/dual-write/front-end/w1-lexer/core_parse_lex_tests/tokens.{ocaml,rust}.json` に同一のトークン列（`TokenKind`/`span`）が出力されることを確認。  
+   2. `collect-iterator-audit-metrics.py --section lexer --case core_parse_lex_tests` でメトリクスを取り（±0.5 ルール）、結果を `docs/plans/rust-migration/p1-front-end-checklists.csv` に書き込む。  
+5. **記録・フォローアップ（0.25日）**  
+   1. `docs-migrations.log` に「TPM-LEX-01: core_parse_lex_tests.lexer トークン移植」として成果・差分・未再現ケースを記録し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の診断 JSON 進捗欄にも言及。  
+   2. 未移植の corner case（`CPP-style` コメント、Zero-width space など）が残っている場合は `docs/plans/rust-migration/p1-spec-compliance-gap.md` に `SCG-xx` として再分類し、将来の deferred リストに追加。
