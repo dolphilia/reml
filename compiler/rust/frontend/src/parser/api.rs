@@ -7,7 +7,7 @@
 use crate::diagnostic::{ExpectedToken, FrontendDiagnostic};
 use crate::span::Span;
 use crate::streaming::{
-    PackratCacheEntry, PackratStats, StreamFlowState, StreamMetrics, TraceFrame,
+    PackratCacheEntry, PackratSnapshot, PackratStats, StreamFlowState, StreamMetrics, TraceFrame,
 };
 use crate::token::Token;
 use indexmap::IndexMap;
@@ -212,6 +212,7 @@ pub struct ParseResult<T> {
     pub packrat_cache: Option<Vec<PackratCacheEntry>>,
     pub tokens: Vec<Token>,
     pub packrat_stats: PackratStats,
+    pub packrat_snapshot: PackratSnapshot,
     pub stream_metrics: StreamMetrics,
     pub span_trace: Vec<TraceFrame>,
     pub stream_flow_state: Option<StreamFlowState>,
@@ -229,6 +230,7 @@ impl<T> ParseResult<T> {
         packrat_cache: Option<Vec<PackratCacheEntry>>,
         tokens: Vec<Token>,
         packrat_stats: PackratStats,
+        packrat_snapshot: PackratSnapshot,
         stream_metrics: StreamMetrics,
         span_trace: Vec<TraceFrame>,
         stream_flow_state: Option<StreamFlowState>,
@@ -244,6 +246,7 @@ impl<T> ParseResult<T> {
             packrat_cache,
             tokens,
             packrat_stats,
+            packrat_snapshot,
             stream_metrics,
             span_trace,
             stream_flow_state,

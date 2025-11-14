@@ -29,8 +29,8 @@ use crate::lexer::{lex_source_with_options, IdentifierProfile, LexOutput, LexerO
 use crate::span::Span;
 use crate::streaming::{
     Expectation as StreamingExpectation, ExpectationSummary, PackratCacheEntry, PackratEntry,
-    PackratStats, StreamFlowState, StreamMetrics, StreamingState, StreamingStateConfig,
-    TokenSample, TraceFrame,
+    PackratSnapshot, PackratStats, StreamFlowState, StreamMetrics, StreamingState,
+    StreamingStateConfig, TokenSample, TraceFrame,
 };
 use crate::token::{Token, TokenKind};
 use ast::{EffectDecl, Expr, Function, Ident, Module, Param};
@@ -43,6 +43,7 @@ pub struct ParsedModule {
     pub recovered: bool,
     pub ast: Option<Module>,
     pub packrat_stats: PackratStats,
+    pub packrat_snapshot: PackratSnapshot,
     pub stream_metrics: StreamMetrics,
     pub span_trace: Vec<TraceFrame>,
     pub packrat_cache: Option<Vec<PackratCacheEntry>>,
@@ -183,6 +184,7 @@ impl ParserDriver {
         let packrat_cache = streaming_state.packrat_cache_entries();
         let span_trace = streaming_state.drain_span_trace();
         let stream_metrics = streaming_state.metrics_snapshot();
+        let packrat_snapshot = streaming_state.packrat_snapshot();
         let recovered = streaming_recover.recovered();
 
         let diagnostics = diagnostics.into_vec();
@@ -194,6 +196,7 @@ impl ParserDriver {
                 recovered,
                 ast,
                 packrat_stats: stream_metrics.packrat,
+                packrat_snapshot,
                 stream_metrics,
                 span_trace,
                 packrat_cache,
@@ -308,6 +311,7 @@ fn parse_result_from_module(
         recovered,
         ast,
         packrat_stats,
+        packrat_snapshot,
         stream_metrics,
         span_trace,
         packrat_cache,
@@ -329,6 +333,7 @@ fn parse_result_from_module(
         packrat_cache,
         tokens,
         packrat_stats,
+        packrat_snapshot,
         stream_metrics,
         span_trace,
         stream_flow_state,

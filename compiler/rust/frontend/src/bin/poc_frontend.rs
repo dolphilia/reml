@@ -81,6 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let artifacts = TypeckArtifacts::new(&input_path, &typeck_report, &args.typecheck_config);
     let parse_result = serde_json::json!({
         "packrat_stats": result.packrat_stats,
+        "packrat_snapshot": result.packrat_snapshot,
         "span_trace": result.span_trace,
         "packrat_cache": result.packrat_cache,
         "recovered": result.recovered,
@@ -864,6 +865,7 @@ fn write_dualwrite_parse_payload(
     guards.write_json("parse/ast.rust.json", &result.value)?;
     let cache_payload = json!({
         "packrat_stats": result.packrat_stats,
+        "packrat_snapshot": result.packrat_snapshot,
         "packrat_cache": result.packrat_cache,
     });
     guards.write_json("parse/packrat_cache.json", &cache_payload)?;
