@@ -7,10 +7,10 @@ use std::fs;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use reml_frontend::diagnostic::{
-    json as diag_json, AuditEnvelope, DiagnosticDomain, FrontendDiagnostic,
+    formatter::{self, FormatterContext},
+    json as diag_json, DiagnosticDomain, FrontendDiagnostic,
 };
 use reml_frontend::error::Recoverability;
 use reml_frontend::lexer::IdentifierProfile;
@@ -37,7 +37,6 @@ const PARSER_NAME: &str = "compilation_unit";
 const PARSER_ORIGIN: &str = "poc_frontend";
 const PARSER_FINGERPRINT: &str = "rust-poc-0001";
 const SCHEMA_VERSION: &str = "2.0.0-draft";
-const AUDIT_POLICY_VERSION: &str = "rust.poc.audit.v1";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = parse_args()?;
@@ -1372,7 +1371,7 @@ fn build_parser_diagnostics(
             Some(adjusted)
         })
         .map(|diag| {
-            let timestamp = current_timestamp();
+            let timestamp = formatter::current_timestamp();
             let mut diag = diag.clone();
             if diag.domain.is_none() {
                 diag.domain = Some(DiagnosticDomain::Parser);
@@ -1407,42 +1406,39 @@ fn build_parser_diagnostics(
                 .as_ref()
                 .map(|domain| domain.label().into_owned())
                 .unwrap_or_else(|| "parser".to_string());
-            let metadata = build_audit_metadata(
+            let mut metadata = build_audit_metadata(
                 &timestamp,
                 args,
                 run_config,
-                input_path,
                 &stage_payload,
                 flow,
                 domain_label.as_str(),
             );
-            let payload_metadata = metadata.clone();
-            let audit_id_value = metadata
-                .get("cli.audit_id")
-                .cloned()
-                .unwrap_or_else(|| json!(format!("cli/{}#0", timestamp)));
-            let change_set_value = metadata
-                .get("cli.change_set")
-                .cloned()
-                .unwrap_or_else(|| json!({}));
-            let capability_value = stage_payload.primary_capability().map(|id| id.to_string());
-            let audit_envelope = AuditEnvelope::from_parts(
-                metadata.clone(),
-                audit_id_value.as_str().map(|s| s.to_string()),
-                Some(change_set_value.clone()),
-                capability_value.clone(),
+            let context = FormatterContext {
+                program_name: &args.program_name,
+                raw_args: &args.raw_args,
+                input_path,
+            };
+            let audit_envelope = formatter::finalize_audit_metadata(
+                &mut metadata,
+                &mut diag,
+                &timestamp,
+                &context,
+                stage_payload.primary_capability(),
             );
-            diag.audit_metadata = metadata;
-            diag.audit = audit_envelope;
-
+            let payload_metadata = metadata.clone();
             let mut audit_object = serde_json::Map::new();
             audit_object.insert(
                 "metadata".to_string(),
                 Value::Object(payload_metadata.clone()),
             );
-            audit_object.insert("audit_id".to_string(), audit_id_value);
-            audit_object.insert("change_set".to_string(), change_set_value);
-            if let Some(capability) = capability_value {
+            if let Some(audit_id) = audit_envelope.audit_id {
+                audit_object.insert("audit_id".to_string(), json!(audit_id));
+            }
+            if let Some(change_set) = audit_envelope.change_set {
+                audit_object.insert("change_set".to_string(), change_set);
+            }
+            if let Some(capability) = audit_envelope.capability {
                 audit_object.insert("capability".to_string(), json!(capability));
             }
 
@@ -1482,7 +1478,7 @@ fn build_type_diagnostics(
         .violations
         .iter()
         .map(|violation| {
-            let timestamp = current_timestamp();
+            let timestamp = formatter::current_timestamp();
             let mut extensions = serde_json::Map::new();
             extensions.insert(
                 "diagnostic.v2".to_string(),
@@ -1502,33 +1498,38 @@ fn build_type_diagnostics(
                 );
             }
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
-            let metadata = build_audit_metadata(
+            let mut metadata = build_audit_metadata(
                 &timestamp,
                 args,
                 run_config,
-                input_path,
                 stage_payload,
                 flow,
                 violation.domain(),
             );
+            let context = FormatterContext {
+                program_name: &args.program_name,
+                raw_args: &args.raw_args,
+                input_path,
+            };
+            let audit_envelope = formatter::complete_audit_metadata(
+                &mut metadata,
+                &timestamp,
+                &context,
+                stage_payload.primary_capability(),
+            );
             let payload_metadata = metadata.clone();
-            let audit_id_value = metadata
-                .get("cli.audit_id")
-                .cloned()
-                .unwrap_or_else(|| json!(format!("cli/{}#0", timestamp)));
-            let change_set_value = metadata
-                .get("cli.change_set")
-                .cloned()
-                .unwrap_or_else(|| json!({}));
-            let capability_value = stage_payload.primary_capability().map(|id| id.to_string());
             let mut audit_object = serde_json::Map::new();
             audit_object.insert(
                 "metadata".to_string(),
                 Value::Object(payload_metadata.clone()),
             );
-            audit_object.insert("audit_id".to_string(), audit_id_value);
-            audit_object.insert("change_set".to_string(), change_set_value);
-            if let Some(capability) = capability_value {
+            if let Some(audit_id) = audit_envelope.audit_id {
+                audit_object.insert("audit_id".to_string(), json!(audit_id));
+            }
+            if let Some(change_set) = audit_envelope.change_set {
+                audit_object.insert("change_set".to_string(), change_set);
+            }
+            if let Some(capability) = audit_envelope.capability {
                 audit_object.insert("capability".to_string(), json!(capability));
             }
             let notes = violation
@@ -1587,7 +1588,6 @@ fn build_audit_metadata(
     timestamp: &str,
     args: &CliArgs,
     run_config: &RunConfig,
-    input_path: &Path,
     stage_payload: &StageAuditPayload,
     flow: &StreamFlowState,
     domain: &str,
@@ -1613,34 +1613,10 @@ fn build_audit_metadata(
     metadata.insert("fingerprint".to_string(), json!(PARSER_FINGERPRINT));
     metadata.insert(
         "audit.policy.version".to_string(),
-        json!(AUDIT_POLICY_VERSION),
+        json!(formatter::AUDIT_POLICY_VERSION),
     );
     metadata.insert("audit.channel".to_string(), json!("cli"));
     metadata.insert("audit.timestamp".to_string(), json!(timestamp));
-    let cli_audit_id = format!("cli/{}#0", timestamp.replace(':', "").replace('-', ""));
-    metadata.insert("cli.audit_id".to_string(), json!(cli_audit_id));
-    let change_set = json!({
-        "policy": AUDIT_POLICY_VERSION,
-        "origin": "cli",
-        "source": {
-            "command": &args.program_name,
-            "args": &args.raw_args,
-            "workspace": ".",
-        },
-        "items": [
-            {
-                "kind": "cli-command",
-                "command": &args.program_name,
-                "args": &args.raw_args,
-            },
-            {
-                "kind": "input",
-                "path": input_path,
-                "target": "rust-poc",
-            }
-        ],
-    });
-    metadata.insert("cli.change_set".to_string(), change_set);
     metadata.insert(
         "parser.runconfig.switches.packrat".to_string(),
         json!(run_config.packrat),
@@ -2182,46 +2158,4 @@ fn recoverability_label(value: Recoverability) -> &'static str {
         Recoverability::Recoverable => "recoverable",
         Recoverability::Fatal => "fatal",
     }
-}
-
-fn current_timestamp() -> String {
-    let duration = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_else(|_| Duration::from_secs(0));
-    let seconds = duration.as_secs() as i64;
-    let (year, month, day, hour, minute, second) = unix_seconds_to_components(seconds);
-    format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}Z")
-}
-
-fn unix_seconds_to_components(seconds: i64) -> (i32, u32, u32, u32, u32, u32) {
-    const SECONDS_PER_DAY: i64 = 86_400;
-    let days = seconds.div_euclid(SECONDS_PER_DAY);
-    let mut rem = seconds.rem_euclid(SECONDS_PER_DAY);
-    if rem < 0 {
-        rem += SECONDS_PER_DAY;
-    }
-    let hour = (rem / 3_600) as u32;
-    rem %= 3_600;
-    let minute = (rem / 60) as u32;
-    let second = (rem % 60) as u32;
-    let (year, month, day) = civil_from_days(days);
-    (year, month, day, hour, minute, second)
-}
-
-fn civil_from_days(days: i64) -> (i32, u32, u32) {
-    let z = days + 719_468;
-    let era = if z >= 0 {
-        z / 146_097
-    } else {
-        (z - 146_096) / 146_097
-    };
-    let doe = z - era * 146_097;
-    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
-    let mut year = (yoe + era * 400) as i32;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let day = (doy - (153 * mp + 2) / 5 + 1) as u32;
-    year += ((mp + 2) / 12) as i32;
-    let month = ((mp + 2) % 12 + 1) as u32;
-    (year, month, day)
 }

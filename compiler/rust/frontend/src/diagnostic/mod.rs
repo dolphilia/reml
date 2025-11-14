@@ -55,6 +55,8 @@ impl Default for AuditEnvelope {
     }
 }
 
+pub mod formatter;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiagnosticSeverity {
     Error,

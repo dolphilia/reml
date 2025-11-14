@@ -77,7 +77,7 @@
 | FRG-29 | SCG-10 | ✅ | TypecheckReport から typed_module/constraints/used_impls を使って dual-write `typeck/typed-ast.rust.json`/`constraints.rust.json` を出力し、`typeck/impl-registry.rust.json` も追加した | `p1-spec-compliance-gap.md#SCG-10` |
 | FRG-30 | SCG-11 | ✅ | `FrontendDiagnostic` に severity/domain/audit/timestamp/context_note が無く、OCaml と同一構造でない | `p1-spec-compliance-gap.md#SCG-11` |
 | FRG-31 | SCG-12 | ✅ | `parser_expectation` 由来の期待集合整形・優先順位・`Not`/`Class` 一覧が十分ではない | `p1-spec-compliance-gap.md#SCG-12` |
-| FRG-32 | SCG-13 | 未着手 | CLI JSON 出力で severity/domain 固定・audit_id 疑似値のため、`DiagnosticFormatter` 相当が必要 | `p1-spec-compliance-gap.md#SCG-13` |
+| FRG-32 | SCG-13 | ✅ | CLI JSON 出力で severity/domain 固定・audit_id 疑似値のため、`DiagnosticFormatter` 相当が必要 | `p1-spec-compliance-gap.md#SCG-13` |
 | FRG-33 | SCG-14 | 未着手 | `run_stream`/`resume` API と `StreamOutcome` 管理がなく、StreamingRunner/CLI `--streaming` に未統合 | `p1-spec-compliance-gap.md#SCG-14` |
 
 ## 4. 具体的な計画
@@ -554,6 +554,20 @@ FRG-31 は `p1-spec-compliance-gap.md#SCG-12` で指摘された `parser_expecta
   - ✅ `compiler/rust/frontend/src/diagnostic/json.rs` に `ExpectedTokensSummary.alternatives` を使うヘルパーを追加し、`kind`/`hint` を `expected_tokens` 拡張・`expected` フィールドの両方でそのまま出力できるようにした。  
   - ✅ `build_type_diagnostics`／`recover` 系の `expected_payload_from_summary` 呼び出しは変更不要で、自動的に `kind` 情報を dual-write 扱いに含めるようになっている。  
   - ✅ `compiler/rust/frontend/src/diagnostic/json.rs` に `recover_extension_obtains_kind_from_summary_alternatives` テストを追加し、`cargo test -p reml_frontend recover_extension` を実行して regression を通過させた (`reports/dual-write/front-end/poc/...` の `recover` 拡張でも `kind` が出力されていることを確認)。  
+
+### FRG-32
+
+FRG-32 は `p1-spec-compliance-gap.md#SCG-13` で指摘した CLI JSON の `severity="error"`/`domain="parser"` 固定、`audit_id` の疑似値という整合性欠落を解消する作業である。仕様書 `docs/spec/3-6-core-diagnostics-audit.md` §1 の `Diagnostic`/`AuditEnvelope` モデルと `reports/diagnostic-format-regression.md` で求められているメタデータをそのまま Rust に持ち込みつつ、OCaml 側の `DiagnosticFormatter` と同等の `AuditEnvelope` 構築・RunConfig メタ情報・ステージ監査フィールドを出力する `formatter` を導入して dual-write 差分を縮める。
+
+1. **Day 0 – 仕様の再照合**  
+   - `docs/spec/3-6-core-diagnostics-audit.md` §1〜§1.1 で `severity`/`domain`/`audit`/`change_set` など CLI JSON に含めるべき鍵を明示し、`diagnostic-format-regression.md` に掲載されたフォーマットとのギャップを一覧化する。`p1-spec-compliance-gap.md#SCG-13` で言及された `collect-iterator-audit-metrics.py` が追う `effects.stage.*` や `capability.ids` のキーもこの段階で洗い出す。  
+2. **Day 1 – フォーマッタ実装と CLI 側への差し込み**  
+   - `compiler/rust/frontend/src/diagnostic/formatter.rs` を新設し、audit シーケンス（`channel/build_id/sequence`）、change_set JSON、`FormatterContext` に基づく metadata 拡張、`current_timestamp` の共通化処理を提供する。`poc_frontend` の `build_parser_diagnostics`/`build_type_diagnostics` でこのフォーマッタを利用し、`FrontendDiagnostic` に `severity`/`domain`/`audit_metadata`/`AuditEnvelope` を明示的にセットすることで `diagnostics.json` の `severity`/`domain`/`audit_id` を OCaml 出力に一致させる。  
+3. **Day 2 – 検証とメトリクス連携**  
+   - `cargo fmt --manifest-path compiler/rust/frontend/Cargo.toml`・`cargo check --manifest-path compiler/rust/frontend/Cargo.toml` を実行し、`collect-iterator-audit-metrics.py --section effects --require-success` で `effects.stage.required`/`effect.capability` などの監査フィールドが Rust JSON に存在することを確認。`reports/dual-write/front-end/w4-diagnostics/<run>/summary.md` を更新し、`severity`/`domain`/`audit_id` で差分が解消されたことを記録する。必要であれば `docs/plans/rust-migration/p1-front-end-checklists.csv` の FRG-32 行に注釈を追加する。
+
+- 進捗ログ
+  - ⏳ 実装着手中: `formatter` ヘルパーを定義して `poc_frontend` の診断出力を通すインフラを整備し、`collect-iterator` が要求する監査キーを満たすように調整中。  
 
 ## 5. Rust フロントエンドのビルド/テスト状況
 
