@@ -109,6 +109,7 @@
 ## 2.0.12 具体的な作業
 
 ### W1
+
 - **目的**: `unified-porting-principles.md` の「振る舞いの同一性優先」と `docs/spec/0-1-project-purpose.md` の性能・安全性指針に沿って、OCaml 側 LLVM backend のモジュール構造・`DataLayout`・呼び出し規約を Rust 側へ忠実に移すためのインベントリを完成させる。
 - **実施内容**
   - `compiler/ocaml/src/llvm_gen/` 以下の主要モジュールを読み込み、責務と依存関係を整理した。特に `codegen.ml` が `type_mapping`/`abi`/`target_config` を参照し、`verify.ml` が `llvm_attr` と `target_config` を使って `opt -verify` の診断を生成する点を確認した。
@@ -131,6 +132,8 @@
   1. `target_config` の Triple/`DataLayout`/`alignment_spec` を Rust の `TargetMachine` 初期化コードに写して、`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` に記載されている MSYS2 LLVM 16 と公式 ZIP の挙動差異を検証する。
   2. `codegen.ml` → `ffi_value_lowering.ml` の呼び出し順を `2-1-runtime-integration.md` と照合し、GC フック・`panic` 呼び出しの位置を Rust MIR 生成に正しく反映できるように具体的なトレース手順をまとめる。
   3. W1 の依存表と `DataLayout`/`CallingConvention` マッピングを `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` のドリフト追跡手法で監査し、差分があれば `docs-migrations.log` に記録する。
+
+### W2
 
 ---
 **参照**: `docs/plans/rust-migration/overview.md`, `docs/plans/rust-migration/unified-porting-principles.md`, `docs/guides/llvm-integration-notes.md`, `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `reports/diagnostic-format-regression.md`
