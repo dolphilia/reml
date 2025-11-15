@@ -167,6 +167,7 @@
   - `opt -verify` や `llc` 実行で `target.config.*`, `effects.contract.stage_mismatch` などの診断が出ないことを GitHub Actions `llvm-backend-verify` ジョブで監視し、ログを `reports/backend-verify/` に保存。5 連続成功後は P3 CI にハンドオーバー。
   - W3 で収集した `DataLayout`/`CallingConvention`/`diagnostic` の差分は `docs/plans/rust-migration/appendix/llvm-backend-inventory.md` に追記し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の脚注欄から参照できるようにする。
   - `collect-iterator-audit-metrics.py` を通じて `runtime.refcount.*`・`backend.verify.*` のパスを収集し、`docs/notes/dsl-plugin-roadmap.md` に記載された監査チェックポイントと同期させる。
+  - 差分メトリクスのサンプル出力は `reports/backend-ir-diff/w3-demo-log.json` に JSON 形式で残し、W3 以降の差分監査資料として共有する。
 
 - **成果物**：`compiler/rust/backend/llvm/` のコードジェン + ラッパ層が dual-run 差分で合格し、`opt -verify`/`llc` ログが `reports/diagnostic-format-regression.md` に定義された診断 ID と一致する。Windows ビルド手順書と `docs-migrations.log` の W3 エントリを P3 チームに渡すことで `3-0-ci-and-dual-write-strategy.md` の `llvm-backend-verify` ジョブの呼び出しを開始できる。
 

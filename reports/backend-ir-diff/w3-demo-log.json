@@ -1,0 +1,32 @@
+{
+  "module": "reml_backend_module",
+  "target_triple": "x86_64-pc-windows-msvc",
+  "data_layout": "e-m:w-p:64:64-f64:64:64-v128:128:128-a:0:64",
+  "windows_toolchain": "msvc-llvm-19.1.1",
+  "functions": [
+    {
+      "name": "@k__main",
+      "return_layout": "i32",
+      "calling_conv": "ccc",
+      "attributes": [
+        "nounwind",
+        "uwtable"
+      ],
+      "ffi_calls": [
+        "ccc::mem_alloc -> ptr",
+        "ccc::panic -> void"
+      ]
+    }
+  ],
+  "diagnostics": [],
+  "audit_entries": [
+    "audit.source=opt.verify reml_backend_module",
+    "audit.target=Triple=x86_64-pc-windows-msvc CPU=x86-64 features=+sse4.2,+popcnt layout=e-m:w-p:64:64-f64:64:64-v128:128:128-a:0:64",
+    "audit.module=reml_backend_module",
+    "audit.verdict=pass",
+    "audit.toolchain=msvc-llvm-19.1.1",
+    "audit.llc_path=C:\llvm-19.1.1\\bin\\llc.exe",
+    "audit.opt_path=C:\llvm-19.1.1\\bin\\opt.exe"
+  ],
+  "passed": true
+}

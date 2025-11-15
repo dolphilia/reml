@@ -40,6 +40,12 @@
 - CLI 側で `--emit-llvm --backend=rust` が選択されると `verify.rs` を起動し、`opt -verify` → `llc` → `llvm-dis` の順にプロセスを呼び出す。各コマンドの出力は `reports/diagnostic-format-regression.md` に記載された診断 ID（`target.config.*`, `effects.contract.stage_mismatch` など）と比較し、差分は `Diagnostic.extensions["backend"]` / `audit.log("llvm.verify", ...)` で JSON 化して保存する。
 - 差分や検証結果は `docs/spec/3-6-core-diagnostics-audit.md` の監査メタデータ定義と合わせて `docs-migrations.log` の W2 章に追加し、P3 の CI/監査パイプラインに引き継ぐ。
 
+## W3 差分スナップショット
+
+- `compiler/rust/backend/llvm::integration::generate_w3_snapshot` を通じて、`CodegenContext` に `MirFunction`（`@k__main`）を流し込み、`TargetMachineBuilder` の `Triple::WindowsMSVC` / `DataLayout` / `OptimizationLevel` 設定と属性・FFI 呼び出しを含む `GeneratedFunction` を構築する。
+- `Verifier` で `opt -verify`/`llc` 相当の検証をシミュレートし、`Diagnostic.extensions["backend"]="rust"` と `audit.log("llvm.verify", …)` 形式のエントリを署名付きで残すことで、`docs/spec/3-6-core-diagnostics-audit.md` と整合した差分監査のメタデータを得る。
+- 設計検証の出力は `reports/backend-ir-diff/w3-demo-log.json` に JSON 形式で保存し、`DataLayout`/`calling_conv`/`ffi_calls` の観測値と `audit_entries` を `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の差分監査欄や `docs-migrations.log` の W2 章にリンクさせることで、W3 以降のハンドオーバー証跡とする。
+
 ## W2 チェックリスト（差分監査との接続）
 1. `TargetMachineBuilder` の Triple/CPU/features/relocation/code_model/opt_level を `target_config.ml` の数値と照合し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の差分欄に記帳。
 2. `DataLayoutSpec` の文字列と `type_mapping` に記録したアラインメント（`i8:8` 等）を `docs/guides/llvm-integration-notes.md` §5.0 の表と突き合わせ、差異があれば `docs-migrations.log` に対応箇所を記録。

@@ -6,15 +6,17 @@
 
 pub mod codegen;
 pub mod ffi_lowering;
+pub mod integration;
 pub mod target_machine;
 pub mod type_mapping;
 pub mod verify;
 
-pub use codegen::{CodegenContext, GeneratedFunction, ModuleIr, MirFunction};
+pub use codegen::{CodegenContext, GeneratedFunction, MirFunction, ModuleIr};
 pub use ffi_lowering::{FfiCallSignature, FfiLowering, LoweredFfiCall};
+pub use integration::{generate_w3_snapshot, BackendDiffSnapshot, BackendFunctionRecord};
 pub use target_machine::{
-  CodeModel, DataLayoutSpec, OptimizationLevel, RelocModel, TargetMachine,
-  TargetMachineBuilder, Triple, WindowsToolchainConfig,
+    CodeModel, DataLayoutSpec, OptimizationLevel, RelocModel, TargetMachine, TargetMachineBuilder,
+    Triple, WindowsToolchainConfig,
 };
 pub use type_mapping::{RemlType, TypeLayout, TypeMappingContext};
 pub use verify::{AuditEntry, AuditLog, Diagnostic, VerificationResult, Verifier};
