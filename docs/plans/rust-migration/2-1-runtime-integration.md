@@ -68,6 +68,7 @@
 - `reml_set_type_tag`/`reml_get_type_tag` は `reml_runtime.h:184-198` にあるが、`codegen.ml` では `call_mem_alloc` 側でヘッダに直接 type tag を書き込んでいる（`codegen.ml:277-315`）。Rust では `ForeignPtr::from_payload` が `type_tag` を検証するため、当面は手動でヘッダを書き換える実装のままにし、将来的に `reml_set_type_tag` を呼ぶか検討する。
 - `string_eq/string_compare` 以外の文字列ビルトイン（`reml_string_t` や `REML_GET_HEADER`）は `reml_runtime.h` で定義済みの構造体/マクロなので、Rust 側で同じ `repr(C)` を再現して ABI を一致させる。
 - `panic` の FAT pointer と `mem_free` の利用状況を踏まえ、Rust からの呼び出し時に `bindgen --allowlist-function ...` を走らせ、手書き `extern` のシグネチャと自動生成の結果を突き合わせる予定。`cargo test ffi_signature_smoke`（W1 の検証項目）については `compiler/rust/runtime/ffi` crate の初期実装が整い次第、`mem_alloc`/`inc_ref`/`dec_ref`/`panic` を呼び出すスモークテストとして実行する。
+- `compiler/rust/runtime/ffi` では `ForeignPtr`/`ReMlString`/`BridgeStatus` などのラッパーと `#[link(name = "reml_runtime")] extern` をまとめ、`README.md` で呼び出し順や `AuditEnvelope.metadata.bridge.*` との接続方針を記述。`scripts/generate-runtime-ffi-bindings.sh` により `reml_runtime.h` から `bindgen` 出力を生成し、生成コード (`bindings-bindgen.rs`) を `src/lib.rs` と比較することで FAT pointer やステータス列挙の食い違いを検出できるようにしています。
 
 ## 2.1.6 作業ストリーム
 

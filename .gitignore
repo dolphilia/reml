@@ -153,3 +153,4 @@ valgrind-*.log
 .cache/
 *.orig
 tooling/ci/ffi-audit/
+compiler/rust/runtime/ffi/bindings-bindgen.rs
