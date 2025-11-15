@@ -55,6 +55,7 @@ impl Default for AuditEnvelope {
     }
 }
 
+pub mod effects;
 pub mod formatter;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

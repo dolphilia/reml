@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use reml_frontend::diagnostic::{
+    effects,
     formatter::{self, FormatterContext},
     json as diag_json, DiagnosticDomain, FrontendDiagnostic,
 };
@@ -234,6 +235,16 @@ struct CliArgs {
     emit_effects_metrics: Option<PathBuf>,
     emit_impl_registry: Option<PathBuf>,
     emit_tokens: Option<PathBuf>,
+    #[allow(dead_code)]
+    emit_effects: bool,
+    #[allow(dead_code)]
+    emit_diagnostics: bool,
+    #[allow(dead_code)]
+    emit_audit: bool,
+    #[allow(dead_code)]
+    show_stage_context: bool,
+    #[allow(dead_code)]
+    diagnostics_stream: bool,
     run_config: RunSettings,
     stream_config: StreamSettings,
     runtime_capabilities: Vec<RuntimeCapability>,
@@ -575,6 +586,11 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut emit_effects_metrics = None;
     let mut emit_impl_registry = None;
     let mut emit_tokens = None;
+    let mut emit_effects = false;
+    let mut emit_diagnostics = false;
+    let mut emit_audit = false;
+    let mut show_stage_context = false;
+    let mut diagnostics_stream = false;
     let mut run_config = RunSettings::default();
     let mut stream_config = StreamSettings::default();
     let mut runtime_capabilities: Vec<RuntimeCapability> = Vec::new();
@@ -587,8 +603,13 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                 let path = args
                     .next()
                     .ok_or_else(|| "--emit-parse-debug は出力パスを伴う必要があります")?;
-                parse_debug = Some(PathBuf::from(path));
+                    parse_debug = Some(PathBuf::from(path));
             }
+            "--emit-effects" => emit_effects = true,
+            "--emit-diagnostics" => emit_diagnostics = true,
+            "--emit-audit" => emit_audit = true,
+            "--show-stage-context" => show_stage_context = true,
+            "--diagnostics-stream" => diagnostics_stream = true,
             "--emit-ast" => {
                 let path = args
                     .next()
@@ -891,6 +912,11 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         emit_effects_metrics,
         emit_impl_registry,
         emit_tokens,
+        emit_effects,
+        emit_diagnostics,
+        emit_audit,
+        show_stage_context,
+        diagnostics_stream,
         run_config,
         stream_config,
         runtime_capabilities,
@@ -1162,219 +1188,20 @@ impl StageAuditPayload {
             .map(|cap| cap.id().as_str())
     }
 
-    fn capability_details(&self) -> Vec<Value> {
-        self.runtime_capabilities
-            .iter()
-            .map(|cap| {
-                let mut entry = serde_json::Map::new();
-                entry.insert("capability".to_string(), json!(cap.id()));
-                entry.insert("stage".to_string(), json!(cap.stage().as_str()));
-                Value::Object(entry)
-            })
-            .collect()
-    }
-
-    fn capability_ids_value(&self) -> Value {
-        Value::Array(
-            self.runtime_capabilities
-                .iter()
-                .map(|cap| Value::String(cap.id().to_string()))
-                .collect(),
+    fn effect_context(&self) -> effects::EffectAuditContext {
+        effects::EffectAuditContext::new(
+            self.required_stage.clone(),
+            self.actual_stage.clone(),
+            self.runtime_capabilities.clone(),
         )
     }
 
-    fn stage_trace(&self) -> Vec<Value> {
-        let mut stage_trace = Vec::new();
-        if let Some(required) = &self.required_stage {
-            stage_trace.push(json!({
-                "source": "cli_option",
-                "stage": required,
-                "note": "--effect-stage",
-            }));
-        }
-        if let Some(actual) = &self.actual_stage {
-            stage_trace.push(json!({
-                "source": "runtime",
-                "stage": actual,
-            }));
-        }
-        for cap in &self.runtime_capabilities {
-            stage_trace.push(json!({
-                "source": "runtime_capability",
-                "capability": cap.id(),
-                "stage": cap.stage().as_str(),
-            }));
-        }
-        stage_trace
-    }
-
     fn apply_extensions(&self, extensions: &mut serde_json::Map<String, Value>) {
-        self.apply_effects_extension(extensions);
-        self.apply_bridge_extension(extensions);
-        self.apply_flattened_extension_keys(extensions);
-    }
-
-    fn apply_effects_extension(&self, extensions: &mut serde_json::Map<String, Value>) {
-        let ids_value = self.capability_ids_value();
-        let capability_details = Value::Array(self.capability_details());
-        let stage_trace = self.stage_trace();
-        let effects_entry = extensions
-            .entry("effects".to_string())
-            .or_insert_with(|| Value::Object(serde_json::Map::new()));
-        let effects_obj = ensure_object(effects_entry);
-        effects_obj.insert("capabilities".to_string(), ids_value.clone());
-        if let Some(primary) = self.primary_capability() {
-            effects_obj.insert("capability".to_string(), json!(primary));
-        }
-        let stage_entry = effects_obj
-            .entry("stage".to_string())
-            .or_insert_with(|| Value::Object(serde_json::Map::new()));
-        let stage_obj = ensure_object(stage_entry);
-        if let Some(required) = &self.required_stage {
-            stage_obj.insert("required".to_string(), json!(required));
-        }
-        if let Some(actual) = &self.actual_stage {
-            stage_obj.insert("actual".to_string(), json!(actual));
-        }
-        stage_obj.insert("required_capabilities".to_string(), ids_value.clone());
-        stage_obj.insert(
-            "actual_capabilities".to_string(),
-            capability_details.clone(),
-        );
-        if let Some(primary) = self.primary_capability() {
-            stage_obj.insert("capability".to_string(), json!(primary));
-        }
-        if !stage_trace.is_empty() {
-            let trace_value = Value::Array(stage_trace.clone());
-            stage_obj.insert("trace".to_string(), trace_value.clone());
-            effects_obj.insert("stage_trace".to_string(), trace_value);
-        }
-    }
-
-    fn apply_bridge_extension(&self, extensions: &mut serde_json::Map<String, Value>) {
-        let ids_value = self.capability_ids_value();
-        let capability_details = Value::Array(self.capability_details());
-        let stage_trace = self.stage_trace();
-        let bridge_entry = extensions
-            .entry("bridge".to_string())
-            .or_insert_with(|| Value::Object(serde_json::Map::new()));
-        let bridge_obj = ensure_object(bridge_entry);
-        if let Some(primary) = self.primary_capability() {
-            bridge_obj.insert("capability".to_string(), json!(primary));
-        }
-        let stage_entry = bridge_obj
-            .entry("stage".to_string())
-            .or_insert_with(|| Value::Object(serde_json::Map::new()));
-        let stage_obj = ensure_object(stage_entry);
-        stage_obj.insert("required_capabilities".to_string(), ids_value.clone());
-        stage_obj.insert(
-            "actual_capabilities".to_string(),
-            capability_details.clone(),
-        );
-        if let Some(required) = &self.required_stage {
-            stage_obj.insert("required".to_string(), json!(required));
-        }
-        if let Some(actual) = &self.actual_stage {
-            stage_obj.insert("actual".to_string(), json!(actual));
-        }
-        if let Some(primary) = self.primary_capability() {
-            stage_obj.insert("capability".to_string(), json!(primary));
-        }
-        if !stage_trace.is_empty() {
-            stage_obj.insert("trace".to_string(), Value::Array(stage_trace));
-        }
-    }
-
-    fn apply_flattened_extension_keys(&self, extensions: &mut serde_json::Map<String, Value>) {
-        let ids_value = self.capability_ids_value();
-        let capability_details = Value::Array(self.capability_details());
-        extensions.insert("effect.capabilities".to_string(), ids_value.clone());
-        extensions.insert(
-            "effect.required_capabilities".to_string(),
-            ids_value.clone(),
-        );
-        extensions.insert(
-            "effect.stage.required_capabilities".to_string(),
-            ids_value.clone(),
-        );
-        extensions.insert(
-            "effect.actual_capabilities".to_string(),
-            capability_details.clone(),
-        );
-        extensions.insert(
-            "effect.stage.actual_capabilities".to_string(),
-            capability_details.clone(),
-        );
-        if let Some(required) = &self.required_stage {
-            extensions.insert("effect.stage.required".to_string(), json!(required));
-        }
-        if let Some(actual) = &self.actual_stage {
-            extensions.insert("effect.stage.actual".to_string(), json!(actual));
-        }
-        if let Some(primary) = self.primary_capability() {
-            extensions.insert("effect.capability".to_string(), json!(primary));
-        }
-        let mut capability_ext = serde_json::Map::new();
-        capability_ext.insert("ids".to_string(), ids_value.clone());
-        if let Some(primary) = self.primary_capability() {
-            capability_ext.insert("primary".to_string(), json!(primary));
-        }
-        capability_ext.insert(
-            "stage".to_string(),
-            json!({
-                "required": self.required_stage.as_deref(),
-                "actual": self.actual_stage.as_deref(),
-            }),
-        );
-        capability_ext.insert("detail".to_string(), capability_details);
-        capability_ext.insert("required_capabilities".to_string(), ids_value);
-        extensions.insert("capability".to_string(), Value::Object(capability_ext));
+        effects::apply_extensions(&self.effect_context(), extensions);
     }
 
     fn apply_audit_metadata(&self, metadata: &mut serde_json::Map<String, Value>) {
-        if let Some(required) = &self.required_stage {
-            metadata.insert("effect.stage.required".to_string(), json!(required));
-        }
-        if let Some(actual) = &self.actual_stage {
-            metadata.insert("effect.stage.actual".to_string(), json!(actual));
-        }
-        let ids_value = self.capability_ids_value();
-        let capability_details = Value::Array(self.capability_details());
-        metadata.insert("capability.ids".to_string(), ids_value.clone());
-        metadata.insert(
-            "effect.required_capabilities".to_string(),
-            ids_value.clone(),
-        );
-        metadata.insert(
-            "effect.stage.required_capabilities".to_string(),
-            ids_value.clone(),
-        );
-        metadata.insert(
-            "effect.actual_capabilities".to_string(),
-            capability_details.clone(),
-        );
-        metadata.insert(
-            "effect.stage.actual_capabilities".to_string(),
-            capability_details.clone(),
-        );
-        metadata.insert(
-            "bridge.stage.required_capabilities".to_string(),
-            ids_value.clone(),
-        );
-        metadata.insert(
-            "bridge.stage.actual_capabilities".to_string(),
-            capability_details.clone(),
-        );
-        if let Some(primary) = self.primary_capability() {
-            metadata.insert("bridge.stage.capability".to_string(), json!(primary));
-            metadata.insert("effect.capability".to_string(), json!(primary));
-        }
-        let stage_trace = self.stage_trace();
-        if !stage_trace.is_empty() {
-            let trace_value = Value::Array(stage_trace.clone());
-            metadata.insert("stage.trace".to_string(), trace_value.clone());
-            metadata.insert("effect.stage.trace".to_string(), trace_value);
-        }
+        effects::apply_audit_metadata(&self.effect_context(), metadata);
     }
 }
 
@@ -1382,14 +1209,6 @@ fn stage_requirement_label(requirement: &StageRequirement) -> String {
     requirement.label()
 }
 
-fn ensure_object(value: &mut Value) -> &mut serde_json::Map<String, Value> {
-    if !value.is_object() {
-        *value = Value::Object(serde_json::Map::new());
-    }
-    value
-        .as_object_mut()
-        .expect("value should be converted into an object")
-}
 
 fn build_parser_diagnostics(
     diagnostics: &[FrontendDiagnostic],
@@ -1937,7 +1756,7 @@ fn apply_residual_extension(
     let effects_entry = extensions
         .entry("effects".to_string())
         .or_insert_with(|| Value::Object(serde_json::Map::new()));
-    let effects_obj = ensure_object(effects_entry);
+    let effects_obj = effects::ensure_object(effects_entry);
     effects_obj.insert(
         "residual".to_string(),
         json!({

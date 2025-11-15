@@ -452,9 +452,9 @@ strip_case_flag() {
   if option_requires_value "${flag}"; then
     requires_value="true"
   fi
+  local current=()
   set +u
-  eval "local current=(\"\${${target_name}[@]}\")"
-  set -u
+  eval "current=(\"\${${target_name}[@]}\")"
   local new_flags=()
   local skip_next=0
   for token in "${current[@]}"; do
@@ -471,6 +471,7 @@ strip_case_flag() {
     new_flags+=("${token}")
   done
   eval "${target_name}=(\"\${new_flags[@]}\")"
+  set -u
 }
 
 resolve_placeholder_value() {

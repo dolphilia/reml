@@ -2,9 +2,9 @@
 # format: name::file::<relative path>
 # metrics-case: effects-contract
 # origin: TPM-DIAG-03
-# flags: --emit-effects --emit-diagnostics --emit-audit --show-stage-context --runtime-capabilities core.runtime
-# flags.ocaml: --emit-effects --diagnostic-stream
-# flags.rust: --emit-effects --diagnostics-stream
+# flags: --emit-audit --show-stage-context --runtime-capabilities core.runtime
+# flags.ocaml:
+# flags.rust: --emit-effects --emit-diagnostics --diagnostics-stream
 
 # 効果タグ収集 POC（mut/io/ffi）
 # tests: compiler/ocaml/tests/effect_analysis_tests.ml
