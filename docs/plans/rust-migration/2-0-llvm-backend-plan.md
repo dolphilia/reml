@@ -106,5 +106,31 @@
 - `p1-front-end-checklists.csv` と `appendix/w4-diagnostic-case-matrix.md#W4.5-ハンドオーバーメモ` が `HandedOver` ステータスを保持している。LLVM backend 側で新しい検証ジョブを追加する際は、この表から Run ID と成果物パスを読み込み `opt -verify` / `llc` 実行ログと紐付ける。
 - `w4-diagnostic-cases.txt` の `#handed_over` コメントを利用し、CI で再実行すべきケース（Streaming/TypeEffect/CLI）に限定した backend 連携テストを構築する。
 
+## 2.0.12 具体的な作業
+
+### W1
+- **目的**: `unified-porting-principles.md` の「振る舞いの同一性優先」と `docs/spec/0-1-project-purpose.md` の性能・安全性指針に沿って、OCaml 側 LLVM backend のモジュール構造・`DataLayout`・呼び出し規約を Rust 側へ忠実に移すためのインベントリを完成させる。
+- **実施内容**
+  - `compiler/ocaml/src/llvm_gen/` 以下の主要モジュールを読み込み、責務と依存関係を整理した。特に `codegen.ml` が `type_mapping`/`abi`/`target_config` を参照し、`verify.ml` が `llvm_attr` と `target_config` を使って `opt -verify` の診断を生成する点を確認した。
+  - `target_config.ml` に定義される Triple (`x86_64-unknown-linux-gnu`, `x86_64-pc-windows-msvc`)、`DataLayout` 文字列、SystemV (`"ccc"`) / Win64 (`"win64cc"`) 呼び出し規約、および `alignment_spec` を抽出し、Rust 側の `TargetMachine` 設定と `DataLayout` テーブルのゴールとして記録した。
+  - `type_mapping.ml` で Reml の構造体・ベクター・配列型が LLVM の `StructType`/`ArrayType` に変換される過程を追い、`target_config` による `pointer_size`・`alignment` の参照がどの段階で必要かを明らかにした。
+  - `ffi_value_lowering.ml`/`runtime_link.ml` が `mem_alloc`, `inc_ref`, `panic` などのランタイム呼び出しを管理していることから、`2-1-runtime-integration.md` との境界線を整理し、W1 の棚卸し結果を `docs/plans/rust-migration/overview.md` に追記しながら P2 以降のハンドオーバーに備えた。
+
+| モジュール | 役割 | 依存・確認ポイント |
+| --- | --- | --- |
+| `codegen` | MIR→LLVM IR のエントリ。`type_mapping`/`abi`/`target_config` から型・ABI 情報を取り込み LLVM Builder を動かす | `type_mapping`, `abi`, `llvm_attr`, `target_config` |
+| `type_mapping` | Reml 型を LLVM 型へ丸めつつ、アライメントを `alignment_spec` で計算 | `target_config` の `pointer_size` と `alignment_spec` を参照 |
+| `target_config` | Triple/`DataLayout`/`CallingConvention`・アラインメントを定義し、`Llvm.set_target_triple`/`set_data_layout` を呼ぶ | `docs/guides/llvm-integration-notes.md §5.0` と整合 |
+| `abi` | SystemV・Win64 論理を `CallingConvention` 文字列として公開 | `target_config` の `calling_conv` を利用 |
+| `llvm_attr` | `NoUnwind`, `AlwaysInline` 等の属性を定義し、`codegen` や `verify` が再利用 | `llvm_attr_stubs.c` との連携点も確認 |
+| `verify` | `opt -verify` 実行 + `Diagnostic.domain = "Backend"` 診断を生成 | `llvm_attr`, `target_config`, `reports/diagnostic-format-regression.md` を参照 |
+| `ffi_value_lowering` + `runtime_link` | ランタイム呼び出し / リンク情報を取りまとめ、`2-1-runtime-integration.md` への橋渡しを行う | FFI 関連仕様との対応表として `docs/plans/rust-migration/appendix/glossary-alignment.md` を参照 |
+
+- **成果**: 棚卸し結果（モジュール責務、Triple/`DataLayout`/呼び出し規約のマッピング、`llvm_attr`/`verify` の診断網）をこの節に記録し、Rust 側で再現すべきテーブルとチェックリストの土台とした。今後はこの表を基に `docs/plans/rust-migration/appendix` 以下へ補助資料（`llvm-backend-inventory.md` など）を追加する予定。
+- **次のアクション**
+  1. `target_config` の Triple/`DataLayout`/`alignment_spec` を Rust の `TargetMachine` 初期化コードに写して、`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` に記載されている MSYS2 LLVM 16 と公式 ZIP の挙動差異を検証する。
+  2. `codegen.ml` → `ffi_value_lowering.ml` の呼び出し順を `2-1-runtime-integration.md` と照合し、GC フック・`panic` 呼び出しの位置を Rust MIR 生成に正しく反映できるように具体的なトレース手順をまとめる。
+  3. W1 の依存表と `DataLayout`/`CallingConvention` マッピングを `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` のドリフト追跡手法で監査し、差分があれば `docs-migrations.log` に記録する。
+
 ---
 **参照**: `docs/plans/rust-migration/overview.md`, `docs/plans/rust-migration/unified-porting-principles.md`, `docs/guides/llvm-integration-notes.md`, `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `reports/diagnostic-format-regression.md`
