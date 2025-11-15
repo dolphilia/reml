@@ -99,7 +99,13 @@
 - ランタイム API 更新時は `runtime/native/README.md` と `compiler/ocaml/docs/runtime-api-integration-status.md` を確認し、差分があれば追記する。  
 - `docs/plans/rust-migration/README.md`・`docs/plans/README.md` の P2 セクションに本章追加を反映する。
 
-## 2.1.10 次フェーズとの接続
+## 2.1.10 P1 W4.5 ハンドオーバー
+- `reports/dual-write/front-end/P1_W4.5_frontend_handover/diag/effects/` に `type_condition_*`, `effect_residual_leak`, `ffi_*` の Run ID（`20280418-w4-diag-effects-r3`, `20280601-w4-diag-type-effect-rust-typeck-r7`）を集約。Stage/Audit JSON（`effect.stage.*`, `bridge.stage.*`）と `effects-metrics.{ocaml,rust}.json` を FFI/Capability 実装の既知欠陥として受領し、`StageAuditPayload` 実装と `--runtime-capabilities` 伝播を最優先で補完する。
+- Streaming ケース (`diag/streaming/20280410-w4-diag-streaming-r21`) の `runconfig.extensions.stream.*` / `flow.backpressure.max_lag_bytes`、CLI/LSP ケース (`diag/cli-lsp/20280430-w4-diag-cli-lsp`) の `extensions.config.*` / `extensions.cli.*` / `extensions.lsp.*` をランタイム統合テストへ導入し、Rust CLI がアダプタ層と同じメタデータを生成できるかを検証する。
+- `p1-front-end-checklists.csv` と `appendix/w4-diagnostic-case-matrix.md#W4.5-ハンドオーバーメモ` に追加した `HandedOver` 情報を参照し、Parser Recover（`W4.5:Pass`）以外のカテゴリは `Pending(W4.5)` であることを P2 のリスク登録に記載する。
+- `w4-diagnostic-cases.txt` の `#handed_over` コメントで Streaming / TypeEffect / CLI ケースが明示されているため、ランタイム統合テストでは該当ケースの再実行をデフォルトにする。
+
+## 2.1.11 次フェーズとの接続
 - P3 CI 統合では本章で整備した監査ログと FFI テストハーネスを `3-0-ci-and-dual-write-strategy.md` に組み込み、dual-write 監査の自動比較を実現する。  
 - P4 リスク登録 (`4-0-risk-register.md`) へ移行する際、FFI・Capability 関連の残存リスク（権限昇格・未検証ターゲット）を共有する。  
 - Adapter 層設計 (`2-2-adapter-layer-guidelines.md`) と連携し、プラットフォーム差異を FFI 呼び出し前に吸収するための API 要件を同期する。

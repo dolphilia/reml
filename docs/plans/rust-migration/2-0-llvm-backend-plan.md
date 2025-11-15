@@ -100,5 +100,11 @@
 - ランタイム連携タスクは `2-1-runtime-integration.md` へ移譲し、`ffi`, `panic`, `audit` 関連の呼び出し箇所を共有。  
 - P4 最適化フェーズで性能調整を行えるよう、バックエンド内の計測ポイント（カウンタ、トレースログ）を残しておく。
 
+## 2.0.11 P1 W4.5 ハンドオーバーインプット
+- `reports/dual-write/front-end/P1_W4.5_frontend_handover/ast-ir/` を LLVM backend のゴールデン入力とし、`w3-type-inference/2027-01-15-w3-typeck/{typed-ast,constraints,impl-registry}.{ocaml,rust}.json` を MIR→LLVM 変換テストで使用する。詳細は `1-1-ast-and-ir-alignment.md#1-1-11-p2-連携メモw4.5` を参照。
+- 診断／RunConfig 情報は `P1_W4.5_frontend_handover/diag/<category>/` に整理されている。Parser Recover（`recover_*`）は `W4.5:Pass`、Streaming／Type&Effect／CLI/LSP は `Pending(W4.5)` のため、バックエンド実装時には `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-DIAG-RUST-05`〜`07` を参照して不足メトリクス（StageAuditPayload, ExpectedTokenCollector, RunConfigBuilder）を補完する。
+- `p1-front-end-checklists.csv` と `appendix/w4-diagnostic-case-matrix.md#W4.5-ハンドオーバーメモ` が `HandedOver` ステータスを保持している。LLVM backend 側で新しい検証ジョブを追加する際は、この表から Run ID と成果物パスを読み込み `opt -verify` / `llc` 実行ログと紐付ける。
+- `w4-diagnostic-cases.txt` の `#handed_over` コメントを利用し、CI で再実行すべきケース（Streaming/TypeEffect/CLI）に限定した backend 連携テストを構築する。
+
 ---
 **参照**: `docs/plans/rust-migration/overview.md`, `docs/plans/rust-migration/unified-porting-principles.md`, `docs/guides/llvm-integration-notes.md`, `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `reports/diagnostic-format-regression.md`

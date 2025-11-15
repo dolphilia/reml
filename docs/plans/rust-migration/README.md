@@ -17,15 +17,17 @@
   - [`appendix/parser-ocaml-inventory.md`](appendix/parser-ocaml-inventory.md): OCaml パーサ資産棚卸し（W1 Lexer/Parser スケルトン移植）
   - [`appendix/frontend-crate-evaluation.md`](appendix/frontend-crate-evaluation.md): Lexing/Parsing/診断向けクレート評価メモ（W1 雛形）
 - **P1 フロントエンド移植**
-  - [`1-0-front-end-transition.md`](1-0-front-end-transition.md): パーサ/型推論移植の方針とマイルストーン
-  - [`1-1-ast-and-ir-alignment.md`](1-1-ast-and-ir-alignment.md): AST/IR 対応表と検証手順
-  - [`1-2-diagnostic-compatibility.md`](1-2-diagnostic-compatibility.md): 診断互換性のチェックリストと dual-write 運用
-  - [`p1-front-end-checklists.csv`](p1-front-end-checklists.csv): P1 チェックリストのスプレッドシート転記用データ
-  - [`1-3-dual-write-runbook.md`](1-3-dual-write-runbook.md): dual-write 実行コマンド・切り分け・レポート命名規則
+- [`1-0-front-end-transition.md`](1-0-front-end-transition.md): パーサ/型推論移植の方針とマイルストーン
+- [`1-1-ast-and-ir-alignment.md`](1-1-ast-and-ir-alignment.md): AST/IR 対応表と検証手順
+- [`1-2-diagnostic-compatibility.md`](1-2-diagnostic-compatibility.md): 診断互換性のチェックリストと dual-write 運用
+- [`p1-front-end-checklists.csv`](p1-front-end-checklists.csv): P1 チェックリストのスプレッドシート転記用データ
+- [`1-3-dual-write-runbook.md`](1-3-dual-write-runbook.md): dual-write 実行コマンド・切り分け・レポート命名規則
+- **W4.5 ハンドオーバー**: `reports/dual-write/front-end/P1_W4.5_frontend_handover/` に Parser Recover（Pass）と Streaming/Type&Effect/CLI/LSP（Pending）ケースの成果物をまとめ、`1-0`〜`1-3` 各章で Run ID と参照手順を記載。`p1-front-end-checklists.csv` と `appendix/w4-diagnostic-case-matrix.md` の `HandedOver` 列から受け渡し状況を確認できる。
 - **P2 バックエンド統合**
   - [`2-0-llvm-backend-plan.md`](2-0-llvm-backend-plan.md): LLVM バックエンド移植・TargetMachine 整合・IR 検証手順
   - [`2-1-runtime-integration.md`](2-1-runtime-integration.md): ランタイム FFI・Capability Registry・監査ログ統合計画
   - [`2-2-adapter-layer-guidelines.md`](2-2-adapter-layer-guidelines.md): プラットフォーム差分吸収アダプタ層の設計指針
+  - [`2-3-p2-backend-integration-roadmap.md`](2-3-p2-backend-integration-roadmap.md): LLVM/Runtime/Adapter を束ねた Rust P2 作業計画と Go/No-Go 条件
 - **P3 CI/監査統合**
   - [`3-0-ci-and-dual-write-strategy.md`](3-0-ci-and-dual-write-strategy.md): CI マトリクス拡張と dual-write 運用戦略
   - [`3-1-observability-alignment.md`](3-1-observability-alignment.md): 監査メトリクス・ログ・ダッシュボード整合計画

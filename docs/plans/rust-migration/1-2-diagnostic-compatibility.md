@@ -264,3 +264,32 @@ Rust フロントエンド移植において、OCaml 実装と同一の診断 (`
 - Type/Effect/FFI recover の `parser.expected_summary_presence` / `expected_tokens` を 1.0 へ回復し、OCaml CLI の `diagnostics.ocaml.json` が空になる問題を解消する。`TypeEffectRecoverLimiter` による recover 1 件化と `ExpectedTokenCollector` の `expected.alternatives` 復元を `compiler/rust/frontend/src/diagnostic/recover.rs`・`parser/expect.rs` へ導入し、`ffi_ownership_mismatch` / `ffi_stage_messagebox` / `ffi_async_dispatch` について `expected_tokens.diff.json`（例: `ocaml_count=5` vs `rust_count=2`）が消えるまで `scripts/poc_dualwrite_compare.sh --mode diag --case-filter '^(ffi_)'` で再計測する。`collect-iterator-audit-metrics.py --section parser --require-success` へ `expected_tokens_match` / `parser.expected_summary_presence` / `diag_counts_match` を必須キーとして追加し、`typeck_output.emit_debug_only` 改修後の OCaml CLI でも常に 1 件の診断が出力されることを確認する。  
 - `reports/dual-write/front-end/w4-diagnostics/20290429-w4-diag-cli-lsp/summary.md` に記録された CLI/LSP の `diag_match=false` には `reports/.../lsp/<case>.diff` を含む GUI/LSP 差分も含まれており、`report-fixture-diff.mjs` / `npm run ci --prefix tooling/lsp/tests/client_compat -- diag-w4 20290429-w4-diag-cli-lsp` の成果を再確認したうえで `extensions.config.*` / `parser.runconfig.*` の同期と `diagnostics.ocaml.json` の出力を揃える。Rust CLI の RunConfig 拡張後は `scripts/poc_dualwrite_compare.sh --mode diag --run-id 20290520-w4-diag-cli-lsp --case-filter '^(cli_|lsp_)'` を再実行し、`collect-iterator-audit-metrics.py --section parser --require-success` で `parser.runconfig_switch_coverage=1.0` / `diag_match=true` を確認した Run を `p1-front-end-checklists.csv` と `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-diag-rust-07` に記録する。  
 - `summary.json.gating=false` が streaming/type&effect/CLI の 3 カテゴリに残っているため、前述の改善を反映した `scripts/poc_dualwrite_compare.sh --mode diag --force-type-effect-flags` の再 run で `summary.json.gating=true` に切り替える。Streaming は `20290531-w4-diag-streaming-r17` 以降、Type/Effect/FFI は `20280601-w4-diag-type-effect-rust-typeck-r7` 以降、CLI/LSP は `20290520-w4-diag-cli-lsp` 以降を対象とし、各カテゴリごとの Run ID を `reports/dual-write/front-end/w4-diagnostics/summary.md` ・ `README.md` ・ `p1-front-end-checklists.csv` へ追記して Phase 2-8 のゲート条件に流し込む。  
+
+## 1.2.22 W4.5 診断クロージングメモ
+
+`1-0-front-end-transition.md#w4.5-p1-クロージングレビューp2-ハンドオーバー準備` のレビュー結果を診断観点で具体化する。
+
+### 判定と Run ID
+
+| カテゴリ | Run ID (成果物) | ステータス | 備考 |
+| --- | --- | --- | --- |
+| Parser recover | `reports/dual-write/front-end/w4-diagnostics/20280210-w4-diag-recover-else-r4/` | ✅ `diag_match`/`metrics_ok`/`ExpectedTokenCollector.streaming=1.0`。 | `expected_tokens`/`summary.json` を `P1_W4.5_frontend_handover/diag/recover/` へ収集。 |
+| Streaming diagnostics | `reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r21/` | ⚠️ Rust 側 `expected_tokens_match=false` が継続。 | `2-2-adapter-layer-guidelines.md` と連携し、`flow.policy` / `runconfig.extensions.stream.*` をアダプタ要件として明示。 |
+| Type / Effect / FFI | `reports/dual-write/front-end/w4-diagnostics/20280418-w4-diag-effects-r3/`, `20280601-w4-diag-type-effect-rust-typeck-r7/` | 🔴 Stage/Audit 欠落・診断 0 件が継続。 | `effects-metrics.rust.err.log` の `missing_keys` を `2-1-runtime-integration.md` と `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-DIAG-RUST-06` で追跡。 |
+| CLI / LSP | `reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/` | 🔴 `parser.runconfig_switch_coverage` 未整合、LSP diff 残。 | RunConfig/LSP diff を `2-2-adapter-layer-guidelines.md`・`3-0-ci-and-dual-write-strategy.md` の入力にし、DIAG-RUST-07 として移送。 |
+
+### ハンドオーバー手順
+- `reports/dual-write/front-end/` から上記 Run ID を `P1_W4.5_frontend_handover/diag/` にまとめ、`summary.{md,json}`・`diagnostics.{ocaml,rust}.json`・`audit_metadata.*`・`parser-metrics.*`・`effects-metrics.*`・`expected_tokens.*`・`typeck-debug.*` を同梱する。
+- `appendix/w4-diagnostic-case-matrix.md` と `w4-diagnostic-cases.txt` に `HandedOver=W4.5` 列を追加し、Recover ✅ / Streaming・TypeEffect・CLI Pending を可視化する。
+- `p1-front-end-checklists.csv` の診断行へ `HandedOver` 列と Run ID を記載し、`Pending(W4.5)` の行は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の対応する TODO（DIAG-RUST-05/06/07）へリンクする。
+
+### P2 連携ポイント
+- **`2-0-llvm-backend-plan.md`**: `summary.json.gating` の閾値と `diagnostics.*` の必須キーを P2 バックエンド検証の前提条件として追記し、現状の欠落（Stage/Audit, RunConfig）を既知リスクに分類する。
+- **`2-1-runtime-integration.md`**: Stage/Audit ペイロードの欠落や `--runtime-capabilities` の伝播不足を Rust ランタイム統合の必須 TODO に組み込み、`effect_stage.audit_presence` / `bridge_stage.audit_presence` を P2 完了判定に追加する。
+- **`2-2-adapter-layer-guidelines.md`**: Streaming Flow / RunConfig / CLI/LSP 設定の JSON 例を付録化し、アダプタ API が `extensions.stream.*` や `extensions.cli.*` を生成する際の監査要件を明文化する。
+- **`3-0-ci-and-dual-write-strategy.md`**: `summary.json.metrics_ok` と `gating` を CI ゲートに昇格し、`Pending(W4.5)` のカテゴリは `allow_failure=false` で継続実行する。Run ID は CI アーティファクト名にも含める。
+
+### フォローアップ
+1. `docs/plans/rust-migration/overview.md` と `README.md` に本節の表を引用し、P2 の読者が即座に未完項目を把握できるようにする。
+2. `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の DIAG-RUST-05/06/07 セクションへ最新 Run ID・成果物パス・担当を転記する。
+3. `docs-migrations.log` に「2029-05 Rust Migration P1 W4.5 Diagnostics handover」を追加し、再編計画の履歴を残す（別タスク）。

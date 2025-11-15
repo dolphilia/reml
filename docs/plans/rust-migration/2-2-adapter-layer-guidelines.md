@@ -104,12 +104,18 @@
   - *リスク*: 将来ターゲットでアダプタが動作しない。  
   - *対応*: `adapter` API を最小インタフェースに限定し、未対応ターゲットは `UnsupportedCapability` として `Diagnostic` を発行。詳細調査は `docs/notes/cross-compilation-spec-intro.md` と連携。
 
-## 2.2.9 関連ドキュメント更新
+## 2.2.9 P1 W4.5 ハンドオーバー
+- `reports/dual-write/front-end/P1_W4.5_frontend_handover/diag/streaming/20280410-w4-diag-streaming-r21/` から `runconfig.extensions.stream.*` / `flow.backpressure.max_lag_bytes` / `expected_tokens.*` を抽出し、アダプタ API の Streaming Flow 設定（`AdapterStreamConfig`）へ取り込む。`appendix/w4-diagnostic-case-matrix.md#W4.5-ハンドオーバーメモ` で `Pending(W4.5)` とされた項目は P2 着手前に補完必須。
+- CLI/LSP ケース (`diag/cli-lsp/20280430-w4-diag-cli-lsp/`) に `extensions.config.*` / `extensions.cli.*` / `extensions.lsp.*` の基準値が記録されている。アダプタ層で RunConfig を構築する際にこの JSON をゴールデンとし、`p1-front-end-checklists.csv` の `HandedOver` 列に記載された Run ID を参照する。
+- Type/Effect/FFI ケース (`diag/effects/20280418-w4-diag-effects-r3/`, `20280601-w4-diag-type-effect-rust-typeck-r7/`) では `StageAuditPayload` と `--runtime-capabilities` の欠落が `Pending(W4.5)` として残っているため、アダプタ層の Capability 宣言にも TODO として登録し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-DIAG-RUST-06` とリンクする。
+- `w4-diagnostic-cases.txt` に追加した `#handed_over` コメントを読み取り、Recover（Pass）以外のケースを優先的に再実行する `adapter-smoke` ターゲットを用意する。
+
+## 2.2.10 関連ドキュメント更新
 - 本章の API 追加時には `docs/plans/rust-migration/README.md`・`docs/plans/README.md` に P2 セクションを追記する。  
 - `RunConfig` や `Diagnostic` の拡張フィールドを変更した場合は `docs/spec/2-6-execution-strategy.md`・`docs/spec/3-6-core-diagnostics-audit.md` の参照箇所を確認し、必要なら更新提案を行う。  
 - Windows ツールチェーン関連の変更は `0-2-windows-toolchain-audit.md` と `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` にフィードバックし、`docs-migrations.log` を更新する。
 
-## 2.2.10 次フェーズ連携
+## 2.2.11 次フェーズ連携
 - P3 CI 統合計画（`3-0-ci-and-dual-write-strategy.md`）でアダプタ API を活用し、dual-write テストや監査メトリクス収集の基盤を提供する。  
 - P4 リスク登録 (`4-0-risk-register.md`) ではアダプタ層の未対応ターゲット・依存クレート更新リスクを追跡する。  
 - DSL プラグイン／Capability 拡張（Chapter 4）の準備として、アダプタ API の公開仕様を `docs/guides/plugin-authoring.md` 等へ展開する。

@@ -333,6 +333,28 @@
   3. CLI/LSP ケース用に Rust `RunConfigBuilder` を実装し、`--trace`, `--packrat`, `--no-merge-warnings`, `--config` を Audit メタデータへ出力する。OCaml 側でも同じ診断件数を得られるよう `cases.txt` のフラグ伝播を再確認し、`parser.runconfig_switch_coverage=1.0` を両フロントエンドで揃える。
   4. すべての修正で Run ID と成果物パスを `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`・`p1-front-end-checklists.csv` と同期し、W4.5 向け資料はこれらの pass 証跡が出るまで保留する。
 
+### W4.5 P1 クロージングレビュー（P2 ハンドオーバー準備）
+
+`W4` の長期化を受け、`W4.5` では完了済みと保留中の成果物を明示し、P2 に渡すハンドオーバー資料を固定する。
+
+| カテゴリ | 最新 Run ID / 根拠ファイル | 判定 | P2 への影響 |
+| --- | --- | --- | --- |
+| Parser recover（DIAG-RUST-05） | `reports/dual-write/front-end/w4-diagnostics/20280210-w4-diag-recover-else-r4/`（`expected_tokens.diff.json`, `summary.json`） | ✅ `diag_match`/`metrics_ok`/`ExpectedTokenCollector.streaming=1.0` で完了。`p1-front-end-checklists.csv` recover 行を Pass 済み。 | `1-1-ast-and-ir-alignment.md` の `expected_tokens` / `Span` 定義を P2 の AST/IR 仕様へ転記可能。 |
+| Streaming diagnostics（DIAG-RUST-05 未解決） | `reports/dual-write/front-end/w4-diagnostics/20280410-w4-diag-streaming-r21/` | ⚠️ OCaml 側は `parser.expected_summary_presence=1.0`、Rust 側は `expected_tokens_match=false`。`metrics_ok=false` が継続。 | `2-2-adapter-layer-guidelines.md` と `1-3-dual-write-runbook.md` に Streaming Flow 設定 (`flow.policy` など) と不足メトリクスを添付し、P2 で `ExpectedTokenCollector` 同期を最優先にする。 |
+| Type / Effect / FFI（DIAG-RUST-06） | `reports/dual-write/front-end/w4-diagnostics/20280418-w4-diag-effects-r3/`, `20280601-w4-diag-type-effect-rust-typeck-r7/` | 🔴 `type_condition_literal_bool` は Rust 診断 0 件、`ffi_*` は Stage/Audit キー欠落。`typeck/typeck-debug.ocaml.json` 欠落も再燃。 | `2-0-llvm-backend-plan.md` §2.0.10 と `2-1-runtime-integration.md` §2.1.7 で Stage/Audit 欠落を既知リスク扱いとし、Rust CLI の `--emit-effects-metrics` / `--runtime-capabilities` 実装を P2 で追う。 |
+| CLI / LSP RunConfig（DIAG-RUST-07） | `reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/` | 🔴 `parser.runconfig_switch_coverage`／`extensions.config.*` が揃わず `diag_match=false`。LSP フィクスチャ差分も残存。 | `2-2-adapter-layer-guidelines.md` と `3-0-ci-and-dual-write-strategy.md` に RunConfigBuilder/CLI/LSP 拡張キーの要件を移し、P2 CI で監査できるようにする。 |
+
+#### ハンドオーバーパッケージ
+- `reports/dual-write/front-end/` 直下の W3/W4 成果物（`w3-type-inference/2027-01-15-w3-typeck`、`w4-diagnostics/20280210-*`, `20280410-*`, `20280418-*`, `20280430-*`）を `P1_W4.5_frontend_handover/` としてまとめ、`summary.{md,json}`、`expected_tokens/*.json`、`typeck/*`、`effects-metrics/*` を保持する（Runbook へ追記）。
+- `1-1-ast-and-ir-alignment.md`・`1-2-diagnostic-compatibility.md`・`1-3-dual-write-runbook.md` に W4.5 の Run ID と参照表を追加し、`p1-front-end-checklists.csv` と `appendix/w4-diagnostic-case-matrix.md` は recover ✅ / その他 Pending(W4.5) として更新する。
+- `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の `DIAG-RUST-05/06/07` 行に最新 Run ID・差分内容・必要 CLI フラグを記録し、P2 側の TODO へ直結させる。
+
+#### レビュー後フォローアップ
+1. `ExpectedTokenCollector.streaming`（Rust 側）のマージ処理実装と `collect-iterator-audit-metrics.py --section streaming` のゲート引き上げ。
+2. Type/Effect/FFI 向け `StageAuditPayload` の Rust 実装と `--runtime-capabilities` 伝播、`typeck/typeck-debug` 強制生成の恒久化。
+3. RunConfigBuilder の CLI/LSP 拡張キー（`extensions.cli.*`, `extensions.lsp.*`, `extensions.config.*`）を Rust でも生成し、LSP diff を `reports/dual-write/front-end/w4-diagnostics/README.md` へ要約。
+4. `docs/plans/rust-migration/overview.md`・`README.md`・`2-0`/`2-1`/`2-2` 各章で「P1 W4.5 Pending」表を参照できるようリンクを追加し、`docs-migrations.log` へ「Rust Migration P1 W4.5 ハンドオーバー」を記録する。
+
 
 ## 1.0.6 ワークストリームと主要論点
 

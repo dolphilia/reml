@@ -162,3 +162,48 @@ scripts/dualwrite_summary_report.py \
 - 新しいケースを追加した場合は `p1-front-end-checklists.csv` に該当項目を追加し、完了可否を管理する。
 - トラブルシュートの知見は `docs/notes/` に TODO 付きで転記し、次回実行時の参考とする。
 - CI 連携を実施した際は `3-0-ci-and-dual-write-strategy.md` に反映し、命名規則の差異がないか確認する。
+
+## 1.3.6 W4.5 引き継ぎパッケージ作成手順
+
+`1-0-front-end-transition.md#w4.5-p1-クロージングレビューp2-ハンドオーバー準備` で定義した通り、P1 W4.5 の成果物は `reports/dual-write/front-end/` に散在する Run をまとめて P2 へ渡す。以下の手順で `P1_W4.5_frontend_handover/` を構築する。
+
+1. **ディレクトリ構成**  
+   ```
+   reports/dual-write/front-end/
+     P1_W4.5_frontend_handover/
+       ast-ir/            # w3-typeck / AST スナップショット
+       diag/recover/      # 20280210-w4-diag-recover-else-r4
+       diag/streaming/    # 20280410-w4-diag-streaming-r21
+       diag/effects/      # 20280418-w4-diag-effects-r3, 20280601-*
+       diag/cli-lsp/      # 20280430-w4-diag-cli-lsp
+       README.md          # この節の要約
+   ```
+   - `ast-ir/` には `w3-type-inference/2027-01-15-w3-typeck/{typed-ast,constraints,impl-registry}.{ocaml,rust}.json` と `summary.md` を保存する。
+   - `diag/*` サブディレクトリは `summary.{md,json}` / `diagnostics.{ocaml,rust}.json` / `audit_metadata.*` / `parser-metrics.*` / `effects-metrics.*` / `expected_tokens.*` / `typeck-debug.*` をフロントエンド別に格納する。
+
+2. **Run ID の収集**  
+   - Recover: `20280210-w4-diag-recover-else-r4`
+   - Streaming: `20280410-w4-diag-streaming-r21`
+   - Type/Effect/FFI: `20280418-w4-diag-effects-r3` + `20280601-w4-diag-type-effect-rust-typeck-r7`
+   - CLI/LSP: `20280430-w4-diag-cli-lsp`
+   これらの Run ID を `P1_W4.5_frontend_handover/README.md` 内で表にまとめ、`docs/plans/rust-migration/overview.md` や P2 計画書から参照できるようにする。
+
+3. **コマンド記録 (`command.json`)**  
+   各ケースディレクトリに `command.json`（`scripts/poc_dualwrite_compare.sh` / `collect-iterator-audit-metrics.py` / `scripts/dualwrite_summary_report.py` の引数と環境変数）を保存する。`--emit-expected-tokens` や `--force-type-effect-flags` の値も記録し、P2 側で Run を再現できるようにする。
+
+4. **チェックリスト更新**  
+   - `p1-front-end-checklists.csv` に `HandedOver` 列を追加し、Recover は `Pass(W4.5)`、Streaming/TypeEffect/CLI は `Pending(W4.5)` と Run ID を記録する。
+   - `appendix/w4-diagnostic-case-matrix.md` と `w4-diagnostic-cases.txt` へ `HandedOver` 列を追加し、`P1_W4.5_frontend_handover/diag/<category>/` のパスをリンクさせる。
+
+5. **ログと README の作成**  
+   - `P1_W4.5_frontend_handover/README.md` に以下を含める:  
+     - 各カテゴリの Run ID / 成果物パス / ステータス（✅ or Pending）  
+     - `docs/plans/rust-migration/1-0`, `1-1`, `1-2`, `1-3` の該当節へのリンク  
+     - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の DIAG-RUST-05/06/07 番号  
+   - `docs/migrations.log` へ「2029-05 Rust Migration P1 W4.5 handover」を追記する（別タスク）。
+
+6. **P2 ドキュメントへの導線**  
+   - `2-0-llvm-backend-plan.md` §2.0.10、`2-1-runtime-integration.md` §2.1.7、`2-2-adapter-layer-guidelines.md` §2.2.8 へ本ディレクトリをリンクする。
+   - `3-0-ci-and-dual-write-strategy.md` では `P1_W4.5_frontend_handover/diag/*/summary.json` を CI ゲート入力として参照する旨を記載する。
+
+これにより、P2 着手時に W4.5 の成果物／未解決課題を即座に再現・検証できる。

@@ -10,6 +10,7 @@
 #   <dir> は `scripts/poc_dualwrite_compare.sh` がケースごとの作業ディレクトリへ展開する（`--emit-typeck-debug <dir>` など）
 
 # parser recover (ERR-002 / parser_recover_tests 準拠)
+# handover: w4.5-pass (20280210-w4-diag-recover-else-r4 / docs/plans/rust-migration/1-0-front-end-transition.md#w4.5-p1-クロージングレビューp2-ハンドオーバー準備)
 # tests: compiler/ocaml/tests/test_cli_diagnostics.ml (recover snapshots); docs/plans/bootstrap-roadmap/2-5-review-log.md (Step3 parser_recover_tests)
 # flags: diag default
 recover_missing_semicolon::inline::fn main() =\n  let x = 1\n  let y = 2\n  x + y
@@ -27,6 +28,7 @@ recover_missing_tuple_comma::inline::fn tuple_demo() = (1 2, 3)
 recover_lambda_body::inline::fn lambda_demo(fn op(i64) -> i64) = {\n  let apply = fn(x) => { op(x }\n  apply(1)
 
 # type / effect（experimental effects & type-row dual-write）
+# handover: pending-w4.5 (20280418-w4-diag-effects-r3, 20280601-w4-diag-type-effect-rust-typeck-r7)
 # tests: compiler/ocaml/tests/test_type_inference.ml (condition bool)
 # flags: --experimental-effects --effect-stage beta --type-row-mode dual-write --emit-typeck-debug <dir>
 # flags.rust: --emit-effects-metrics <dir>
@@ -45,6 +47,7 @@ effect_residual_leak::inline::effect ConsoleLog\nfn emit(msg: String) = perform 
 effect_stage_cli_override::inline::effect ConsoleAudit\n@requires_capability(stage = \"beta\")\nfn gated() = perform ConsoleAudit 1\nfn main() = gated()
 
 # streaming meta（core-parse-streaming ガイドと streaming_runner_tests に準拠）
+# handover: pending-w4.5 (20280410-w4-diag-streaming-r21)
 # tests: compiler/ocaml/tests/streaming_runner_tests.ml::test_pending_resume_flow
 # flags: --streaming --stream-resume-hint diag-w4 --stream-flow-policy auto --stream-demand-min-bytes 4 --stream-demand-preferred-bytes 8 --stream-flow-max-lag 8192
 stream_pending_resume::inline::module diagnostics.w4.stream_pending_resume\nfn chunked(value: String) -> String =\n  if value == \"resume\" then value else value\nfn main() = chunked(\"resume\")
@@ -56,6 +59,7 @@ stream_backpressure_hint::inline::module diagnostics.w4.stream_backpressure\nfn 
 stream_checkpoint_drift::inline::module diagnostics.w4.stream_checkpoint\nfn tick(counter: i32) -> i32 =\n  let next = counter + 1\n  if next > 2 then counter else tick(next)\nfn main() = tick(0)
 
 # capability / FFI（Stage & audit 一致確認）
+# handover: pending-w4.5 (20280418-w4-diag-effects-r3 / StageAuditPayload 欠落)
 # tests: compiler/ocaml/tests/test_cli_callconv_snapshot.ml::callconv_windows_messagebox
 # flags: --experimental-effects --effect-stage beta --type-row-mode dual-write --runtime-capabilities windows.messagebox --emit-typeck-debug <dir>
 # flags.rust: --emit-effects-metrics <dir>
@@ -70,6 +74,7 @@ ffi_ownership_mismatch::file::examples/ffi/windows/ownership_transfer.reml
 ffi_async_dispatch::file::examples/ffi/macos/ffi_dispatch_async.reml
 
 # CLI RunConfig / DIAG-002 監査必須化
+# handover: pending-w4.5 (20280430-w4-diag-cli-lsp)
 # tests: compiler/ocaml/tests/run_config_tests.ml::packrat_switch; docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-002-proposal.md
 # flags: --packrat
 cli_packrat_switch::file::examples/cli/emit_suite.reml
@@ -82,6 +87,7 @@ cli_trace_toggle::file::examples/cli/trace_sample.reml
 cli_merge_warnings::file::examples/cli/type_error.reml
 
 # LSP RPC（tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-*.json と同期）
+# handover: pending-w4.5 (20280430-w4-diag-cli-lsp)
 # tests: tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-hover-internal.json
 # flags: diag default
 # lsp-fixture: diagnostic-v2-hover-internal.json

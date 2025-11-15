@@ -2,6 +2,21 @@
 
 W4 では `scripts/poc_dualwrite_compare.sh --mode diag` と `scripts/dualwrite_summary_report.py --diag-table` を組み合わせて、カテゴリ別に代表ケースを回しながら OCaml/Rust フロントエンドの診断互換性を確認する。本マトリクスではカテゴリごとに最低 3 ケース（parser recover は 5 ケース）を登録し、入力種別・期待する拡張キー／メトリクス・準備状況を横断管理する。`Status` が Ready のケースは `docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt` から自動読み込みできる。
 
+## W4.5 ハンドオーバーメモ
+
+`1-0-front-end-transition.md#w4.5-p1-クロージングレビューp2-ハンドオーバー準備` の判定に基づき、各カテゴリの受け渡し状態を以下の表で管理する。`HandedOver` 列は `p1-front-end-checklists.csv` と同じ表記を用いる。
+
+| カテゴリ | ケース | 最新 Run | Status | HandedOver |
+| --- | --- | --- | --- | --- |
+| Parser Recover | `recover_else_without_if`, `recover_lambda_body` | `20280210-w4-diag-recover-else-r4` | ✅ `diag_match`/`metrics_ok`/`ExpectedTokenCollector.streaming=1.0` | `W4.5:Pass(20280210-w4-diag-recover-else-r4)` |
+| Streaming diag | `stream_pending_resume`, `stream_backpressure_hint`, `stream_checkpoint_drift` | `20280410-w4-diag-streaming-r21` | ⚠️ Rust 側 `expected_tokens_match=false` | `Pending(W4.5):20280410-w4-diag-streaming-r21` |
+| Type / Effect / FFI | `type_condition_*`, `effect_residual_leak`, `ffi_*` | `20280418-w4-diag-effects-r3` / `20280601-w4-diag-type-effect-rust-typeck-r7` | 🔴 Stage/Audit 欠落・診断 0 件 | `Pending(W4.5):20280418-w4-diag-effects-r3 + 20280601-w4-diag-type-effect-rust-typeck-r7` |
+| CLI / LSP | `cli_packrat_switch`, `cli_trace_toggle`, `cli_merge_warnings`, `lsp_*` | `20280430-w4-diag-cli-lsp` | 🔴 `parser.runconfig_switch_coverage` 未整合 / LSP diff 残 | `Pending(W4.5):20280430-w4-diag-cli-lsp` |
+
+- Recover 行だけ `P1_W4.5_frontend_handover/diag/recover/` へ収集済みで、他カテゴリは `P1_W4.5_frontend_handover/diag/<category>/` に Pending のまま格納する。
+- `w4-diagnostic-cases.txt` には `#handed_over` コメントを付け、P2 チームが再実行すべきケース（Streaming/TypeEffect/CLI）を区別する。
+- `reports/dual-write/front-end/w4-diagnostics/README.md` にも同じ表を複製し、CI で参照できるようにする。
+
 - *2027-11-12 更新*: `compiler/ocaml/tests/test_cli_diagnostics.ml`, `streaming_runner_tests.ml`, `test_cli_callconv_snapshot.ml`, `test_ffi_contract.ml`, `docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-002-proposal.md` など W4 Step2 で指定された参照元を横断し、各ケースへ「どのテスト／計画書を根拠にするか」「CLI/LSP でどのフラグを使うか」を明記した。これにより `poc_dualwrite_compare.sh --mode diag` と LSP フィクスチャの両方で同一入力・同一監査キーを辿れる。同日実行した `reports/dual-write/front-end/w4-diagnostics/20271112-w4-diag-m1/summary.md` では 21 ケースすべて `gating=false` となり、Rust 側診断に schema 情報が欠落している（`parser_audit=0.0`）こと、およびケース固有フラグが CLI へ伝播していないことが確認された。
 - *2028-01-15 更新*: Run ID `20280115-w4-diag-refresh` を `scripts/poc_dualwrite_compare.sh --mode diag` で実行し、`reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/summary.md` を取得。Streaming 系は CLI フラグが適用され `runconfig.extensions.stream.enabled=true` になったが、`collect-iterator-audit-metrics.py` が `parser.stream_extension_field_coverage < 1.0` / `parser.expected_summary_presence < 1.0` を継続検出し、`reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_pending_resume/parser-metrics.ocaml.err.log` と `reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/stream_backpressure_hint/parser-metrics.rust.err.log` に同指標が残った。Type/Effect 系は OCaml 側が `diagnostics.ocaml.json` に 1 件ずつ記録されるようになった一方、Rust 側 `diagnostics.rust.json` は空（`reports/dual-write/front-end/w4-diagnostics/20280115-w4-diag-refresh/type_condition_bool/diagnostics.rust.json`）のままで `summary.json` でも `rust_diag_count=0`。`reports/dual-write/front-end/w4-diagnostics/README.md` のケース表は `--diag-table` で更新済み。
 - *2028-01-15 夕方更新*: 同 Run ID を再実行した結果、Streaming 系の `parser.stream_extension_field_coverage`／`parser.expected_summary_presence` は両フロントエンドで 1.0 まで回復し、Type/Effect 系も Rust 側 `diagnostics.rust.json` に parser 由来の recover 記録・`expected.alternatives` が出力されるようになった。`diagnostic.audit_presence_rate`／`parser.runconfig_switch_coverage` も ✅ になり、残るゲートは `lexer.identifier_profile_unicode`（lex プロファイルが `strict_json` のため監視モード）だけである。
