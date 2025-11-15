@@ -1,0 +1,15 @@
+# P1 TPM-DIAG-03 効果分析/ハンドラケース
+# format: name::file::<relative path>
+# metrics-case: effects-contract
+# origin: TPM-DIAG-03
+# flags: --emit-effects --emit-diagnostics --emit-audit --show-stage-context --runtime-capabilities core.runtime
+# flags.ocaml: --emit-effects --diagnostic-stream
+# flags.rust: --emit-effects --diagnostics-stream
+
+# 効果タグ収集 POC（mut/io/ffi）
+# tests: compiler/ocaml/tests/effect_analysis_tests.ml
+effect_analysis::file::compiler/ocaml/tests/golden/effects/effect_analysis_demo.reml
+
+# perform/handle ハンドラ POC
+# tests: compiler/ocaml/tests/effect_handler_poc_tests.ml
+effect_handler_demo::file::compiler/ocaml/tests/golden/effects/effect_handler_demo.reml

@@ -1,0 +1,14 @@
+effect Console : io {
+  operation log : String -> Unit
+}
+
+extern "C" fn ffi_entry() -> Unit
+
+@allows_effects(Console)
+fn effect_analysis_demo(msg: String) -> Unit {
+  var counter = 0
+  counter := counter + 1
+  Core.IO.write_line("analysis start")
+  unsafe { ffi_entry() }
+  perform Console.log(msg)
+}

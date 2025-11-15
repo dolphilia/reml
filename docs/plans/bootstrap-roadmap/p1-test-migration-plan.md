@@ -300,3 +300,33 @@
 - `docs/spec/0-1-project-purpose.md` / `docs/plans/rust-migration/overview.md` / `docs/plans/rust-migration/unified-porting-principles.md` を再掲して Phase1 の「振る舞い最優先」方針を確認しつつ、`compiler/ocaml/tests/streaming_runner_tests.ml` と `Parser_driver.Streaming` 側の `expected_tokens`/`continue` ロジック、`docs/plans/rust-migration/appendix/w4-diagnostic-case-matrix.md`、`docs/plans/rust-migration/p1-front-end-checklists.csv` で `streaming` ケース配置を把握した。  
 - `docs/spec/2-7-core-parse-streaming.md` と `docs/guides/core-parse-streaming.md` から `StreamOutcome`・`ContinuationMeta`・`DemandHint` の仕様を参照し、`FRG-05` の recover/expected token 出力が `docs/spec/3-6-core-diagnostics-audit.md` の JSON schema に則っているかを整理した。  
 - `docs/plans/bootstrap-roadmap/p1-test-migration-streaming-cases.txt` を作成し、`compiler/ocaml/tests/golden/streaming/streaming_matches_batch.reml` / `pending_resume_flow.reml` を新設して `poc_dualwrite_compare.sh --mode diag` から `streaming_runner` ケースを `--emit-expected-tokens streaming_runner` で実行できるようにした。 `collect-iterator-audit-metrics.py` の `--section streaming` で `parser.stream.*`・`ExpectedTokenCollector.streaming` を取得する仕様を既存コードから洗い出し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md#streaming-audit` で追跡する候補指標を整理した。
+
+### TPM-DIAG-03
+
+1. **調査・前提整理（1日）**
+   1. `compiler/ocaml/tests/effect_analysis_tests.ml` / `compiler/ocaml/tests/effect_handler_poc_tests.ml` を精読し、`mut`/`io`/`ffi` タグ収集と `perform`/`handle` による残余効果、`StageContext`・`RuntimeCapability` を含む `Diagnostic`/`Audit` のゴールデータを抽出して `p1-spec-compliance-gap.md#SCG-09` に掲げた残余効果監査要件と突き合わせる。
+   2. `docs/spec/1-3-effects-safety.md`・`docs/spec/3-6-core-diagnostics-audit.md`・`docs/spec/3-8-core-runtime-capability.md` を参照して `effects.contract.*` メトリクスが担保すべき Stage フェーズ／Capability レジストリの照合と `@allows_effects`/`effect` 宣言との整合性を整理し、`docs/plans/rust-migration/p1-front-end-checklists.csv` の `collect-iterator` 担当列に比較対象キーを追記する。
+
+2. **テストハーネス設計（0.5日）**
+   1. `docs/plans/bootstrap-roadmap/p1-test-migration-effect-cases.txt` を新設し、`scripts/poc_dualwrite_compare.sh --mode diag` に `effects-contract` ラベル付きのケース群（`effect_analysis`、`effect_handler_poc`）と `#flags`/`#metrics-case`/`#origin TPM-DIAG-03` を定義して `--emit-effects`・`--runtime-capabilities`・`--show-stage-context` などの CLI フラグを一元管理する。
+   2. `reports/dual-write/front-end/w4-diagnostics/effects-contract/<case>` 下に `diagnostics.{ocaml,rust}.json`・`audit.{ocaml,rust}.jsonl`・`effects.contract.*.json`・`diff.json` を書き出すフォルダ構造を決め、`collect-iterator-audit-metrics.py --section diag --metrics-case effects-contract` で `effects.contract.stage_mismatch`/`capability_missing`/`ownership` を収集できるパイプラインを設計する。
+
+3. **実装（1日）**
+   1. Rust 側に `compiler/rust/frontend/tests/diagnostics/effect_analysis.rs` と `effect_handler_poc.rs` を追加し、`EffectAnalysis` 相当の `mut`/`io`/`ffi` タグ検出と `perform`/`handle` 構文の残余タグ・`Console` 相当の `effect` を `assert_eq!` で確認するケースを実装する。
+   2. `poc_frontend` の `--emit-effects`/`--emit-diagnostics`/`--emit-audit` を整理し、`diagnostic/json.rs` で `StageContext`/`RuntimeCapability` を `audit.metadata["effects.contract.*"]` に含め、Rust CLI 出力が `effect_handler_poc_tests.ml` の期待と一致するよう `FfiContractViolation` の `capability.stage`/`capability.target` も記録する。
+   3. `scripts/poc_dualwrite_compare.sh` の `diag` モードに `effects-contract` ケース（`case_origin`/`case_metrics_label`）と `FORCE_EFFECT_FLAGS` 環境変数を追加し、`collect-iterator-audit-metrics.py` への `metadata` ラベルの伝達と `reports/dual-write/front-end/w4-diagnostics/effects-contract/<run>/diff.json` 出力を自動化する。
+
+4. **検証・監査（0.5日）**
+   1. `cargo test --test effect_analysis`・`cargo test --test effect_handler_poc` と `scripts/poc_dualwrite_compare.sh --mode diag --cases docs/plans/bootstrap-roadmap/p1-test-migration-effect-cases.txt` を実行し、`reports/dual-write/front-end/w4-diagnostics/effects-contract/{ocaml,rust}` に `diagnostics`/`audit`/`effects.contract.*` を出力する。
+   2. `collect-iterator-audit-metrics.py --section diag --metrics-case effects-contract` で `effects.contract.stage_mismatch`/`capability_missing`/`ownership` の `±0.5` ルールを確認し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` と `2-7-deferred-remediation.md#effects-change-log` に監査結果を追記する。
+   3. `scripts/validate-diagnostic-json.sh --frontend rust --schema diagnostics-v2.schema.json` で `Diagnostic`/`Audit`/`effects.contract.*` のスキーマ検証を `reports/dual-write/front-end/w4-diagnostics/effects-contract/<case>/schema.{ocaml,rust}.log` へ残す。
+
+5. **記録・フォローアップ（0.25日）**
+   1. `docs-migrations.log` に「TPM-DIAG-03: 効果タグと FFI handler の dual-write 監査」エントリを追加し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の `effects-change-log` や `docs/plans/rust-migration/1-3-dual-write-runbook.md` に `--emit-effects`/`StageContext` の出力と `collect-iterator` 指標を追記する。
+   2. `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の診断監査表に `effects-contract` 行を加え、`p1-spec-compliance-gap.md#SCG-09` で現状の `effects.contract.stage_mismatch` 差分を `Deferred` に分類し `docs/plans/rust-migration/unified-porting-principles.md` の「振る舞い最優先」方針と合わせて次フェーズのフォローにリンクする。
+
+#### TPM-DIAG-03 進捗
+
+- `compiler/ocaml/tests/effect_analysis_tests.ml` / `effect_handler_poc_tests.ml` を読み、`mut`/`io`/`ffi` タグ検出と `perform`/`handle` の残余タグのチェックポイント、`StageContext`・`RuntimeCapability` を含む `Diagnostic`/`Audit` JSON の構造を整理した。
+- `docs/spec/1-3-effects-safety.md`・`docs/spec/3-6-core-diagnostics-audit.md`・`docs/spec/3-8-core-runtime-capability.md`・`docs/plans/rust-migration/p1-spec-compliance-gap.md#SCG-09` を参照し、`effects.contract.*` の監査レベルと `CapabilityRegistry` の Stage 情報を `p1-front-end-checklists.csv` の `collect-iterator` 担当列に追加すべき比較キーとして洗い出した。
+- `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`/`2-7-deferred-remediation.md` の診断差分表と `scripts/validate-diagnostic-json.sh` の schema 検証フローを見直し、`collect-iterator-audit-metrics.py --section diag` に `effects-contract` ケースを渡す運用、`p1-test-migration-effect-cases.txt` に `#metrics-case: effects-contract` などの metadata を含める設計案をまとめた。
