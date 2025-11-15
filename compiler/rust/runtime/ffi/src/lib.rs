@@ -8,6 +8,17 @@ use std::{
     ptr::NonNull,
 };
 
+mod audit;
+mod registry;
+mod security;
+
+pub use audit::{AuditContext, AuditEntry, AuditError, AuditSink};
+pub use registry::{
+    CapabilityDescriptor, CapabilityError, CapabilityHandle, CapabilityId, CapabilityProvider,
+    CapabilityRegistry, StageId, StageRequirement,
+};
+pub use security::{CallOptions, SecurityCapability, SecurityError, SecurityPolicy};
+
 /// Reml ランタイムの文字列表現（`{ ptr, i64 }`）。
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -35,7 +46,8 @@ impl ReMlString {
 
     /// UTF-8 文字列として解釈する。
     pub unsafe fn as_str(&self) -> Option<&str> {
-        self.as_bytes().and_then(|bytes| std::str::from_utf8(bytes).ok())
+        self.as_bytes()
+            .and_then(|bytes| std::str::from_utf8(bytes).ok())
     }
 }
 
@@ -51,6 +63,17 @@ pub enum BridgeStatus {
     Transferred = 2,
     /// その他の異常。
     Failure = 100,
+}
+
+impl BridgeStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            BridgeStatus::Ok => "ok",
+            BridgeStatus::Borrowed => "borrowed",
+            BridgeStatus::Transferred => "transferred",
+            BridgeStatus::Failure => "failure",
+        }
+    }
 }
 
 /// 所有権付きポインタ。`inc_ref`/`dec_ref` を自動化する。
@@ -342,8 +365,13 @@ mod tests {
         let span = Span::new(0, 7);
         let rt_string =
             unsafe { RuntimeString::from_parts(ptr, 7, span, Ownership::Borrowed).unwrap() };
-        let metadata =
-            rt_string.to_bridge_metadata(BridgeStatus::Borrowed, "local", "linux-x64", "sysv", "foo");
+        let metadata = rt_string.to_bridge_metadata(
+            BridgeStatus::Borrowed,
+            "local",
+            "linux-x64",
+            "sysv",
+            "foo",
+        );
         let entries = metadata.as_entries();
         assert_eq!(entries.status, "borrowed");
         assert_eq!(entries.ownership, "borrowed");
