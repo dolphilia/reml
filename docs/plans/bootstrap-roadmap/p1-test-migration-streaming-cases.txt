@@ -1,0 +1,15 @@
+# P1 TPM-DIAG-02 Streaming Runner ケース
+# format: name::file::<relative path>
+# metrics-case: streaming_runner
+# origin: TPM-DIAG-02
+# flags: --emit-diagnostics --emit-audit --streaming --stream-demand-min-bytes 4 --stream-demand-preferred-bytes 8 --stream-flow-max-lag 8192
+# flags.ocaml: --emit-diagnostics --emit-audit --streaming --stream-demand-min-bytes 4 --stream-demand-preferred-bytes 8 --stream-flow-max-lag 8192
+# flags.rust: --emit-diagnostics --emit-audit --streaming --stream-demand-min-bytes 4 --stream-demand-preferred-bytes 8 --stream-flow-max-lag 8192
+
+# Streaming がバッチパスと一致することを検証するモジュール input
+# tests: compiler/ocaml/tests/streaming_runner_tests.ml::test_streaming_matches_batch
+streaming_matches_batch::file::compiler/ocaml/tests/golden/streaming/streaming_matches_batch.reml
+
+# Pending → resume → Completed の recover/expected token を再現するケース
+# tests: compiler/ocaml/tests/streaming_runner_tests.ml::test_pending_resume_flow
+pending_resume_flow::file::compiler/ocaml/tests/golden/streaming/pending_resume_flow.reml
