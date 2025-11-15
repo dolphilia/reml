@@ -9,6 +9,7 @@
 - `BridgeStatus`：`reml_ffi_bridge_record_status` に送るステータス列挙。
 - `runtime_panic`/`print_i64_debug`：`panic`/`print_i64` への安全ラッパー。
 - `acquire_borrowed_result`/`acquire_transferred_result`：`reml_ffi_*` ブリッジを Rust 側所有権に接続。
+- `Span`／`RuntimeString`：ソース位置・所有権情報を伴う文字列ラッパと、`AuditEnvelope.metadata.bridge` を構築するための `BridgeAuditMetadata`。
 
 ## bindgen と照合するための手順
 
@@ -23,4 +24,4 @@
 
 ## 監査ログとの連携
 
-`record_bridge_status` は `reml_ffi_bridge_record_status` への直送ですが、`audit.log("ffi.call.*")` を補完するラッパーは別途 `crate` もしくは `caps` モジュールとして追加します。ドキュメント更新は `docs/spec/3-6-core-diagnostics-audit.md` を参照してください。
+`record_bridge_status` は `reml_ffi_bridge_record_status` への直送ですが、`Span`/`RuntimeString` と `BridgeAuditMetadata` を組み合わせたメタデータを `AuditEnvelope.metadata.bridge` に埋める仕組みを補完することで、`audit.log("ffi.call.*")` との整合を取ります。`record_bridge_with_metadata` で `BridgeStatus` を渡して `bridge.status` を記録し、`BridgeAuditMetadata::as_entries()` を通じて `bridge.ownership`/`bridge.span`/`bridge.target` などをテンプレート化できます。ドキュメント更新は `docs/spec/3-6-core-diagnostics-audit.md` を参照してください。

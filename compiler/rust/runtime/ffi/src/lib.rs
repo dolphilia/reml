@@ -2,7 +2,7 @@
 //! 手動定義の `extern` 宣言と安全なラッパーをまとめる。
 use std::{
     ffi::CStr,
-    fmt::Display,
+    fmt::{self, Display},
     mem,
     os::raw::{c_char, c_void},
     ptr::NonNull,
@@ -56,6 +56,154 @@ pub enum BridgeStatus {
 /// 所有権付きポインタ。`inc_ref`/`dec_ref` を自動化する。
 pub struct ForeignPtr {
     ptr: NonNull<c_void>,
+}
+
+/// ソースコードの位置範囲を保持する Span。
+#[repr(C)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Span {
+    pub start: u32,
+    pub end: u32,
+}
+
+impl Span {
+    /// `end < start` のときは `start` に丸める。
+    pub const fn new(start: u32, end: u32) -> Self {
+        if end < start {
+            Self { start, end: start }
+        } else {
+            Self { start, end }
+        }
+    }
+
+    /// 長さ（バイト数）。
+    pub const fn len(&self) -> u32 {
+        self.end.saturating_sub(self.start)
+    }
+
+    /// 空範囲か。
+    pub const fn is_empty(&self) -> bool {
+        self.start >= self.end
+    }
+}
+
+/// 所有権移動の分類。Audit の `bridge.ownership` に対応する。
+#[repr(i32)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Ownership {
+    Borrowed = 1,
+    Transferred = 2,
+    Pinned = 3,
+}
+
+impl Ownership {
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Ownership::Borrowed => "borrowed",
+            Ownership::Transferred => "transferred",
+            Ownership::Pinned => "pinned",
+        }
+    }
+}
+
+/// Audit 用に渡すデータを一括管理する構造体。
+pub struct BridgeAuditMetadata<'a> {
+    pub status: BridgeStatus,
+    pub ownership: Ownership,
+    pub span: Span,
+    pub target: &'a str,
+    pub platform: &'a str,
+    pub abi: &'a str,
+    pub symbol: &'a str,
+}
+
+impl<'a> BridgeAuditMetadata<'a> {
+    /// `AuditEnvelope.metadata.bridge` に対応する文字列化されたキー一覧。
+    pub fn as_entries(&self) -> BridgeAuditEntries<'a> {
+        BridgeAuditEntries {
+            status: self.status.as_str(),
+            ownership: self.ownership.as_str(),
+            span: self.span,
+            target: self.target,
+            platform: self.platform,
+            abi: self.abi,
+            symbol: self.symbol,
+        }
+    }
+}
+
+pub struct BridgeAuditEntries<'a> {
+    pub status: &'static str,
+    pub ownership: &'static str,
+    pub span: Span,
+    pub target: &'a str,
+    pub platform: &'a str,
+    pub abi: &'a str,
+    pub symbol: &'a str,
+}
+
+/// ランタイム文字列と Span を組み合わせたラッパ。
+pub struct RuntimeString {
+    inner: ReMlString,
+    span: Span,
+    ownership: Ownership,
+}
+
+impl RuntimeString {
+    /// ポインタから構築するユーティリティ。
+    pub unsafe fn from_parts(
+        ptr: *const c_char,
+        len: i64,
+        span: Span,
+        ownership: Ownership,
+    ) -> Option<Self> {
+        if ptr.is_null() {
+            return None;
+        }
+        Some(Self {
+            inner: ReMlString {
+                data: ptr,
+                length: len,
+            },
+            span,
+            ownership,
+        })
+    }
+
+    /// 内部文字列を `&str` として解釈する。
+    pub fn as_str(&self) -> Option<&str> {
+        unsafe { self.inner.as_str() }
+    }
+
+    /// Span を返す。
+    pub fn span(&self) -> Span {
+        self.span
+    }
+
+    /// 所有権カテゴリを返す。
+    pub fn ownership(&self) -> Ownership {
+        self.ownership
+    }
+
+    /// Audit に渡すメタデータ。
+    pub fn to_bridge_metadata<'a>(
+        &'a self,
+        status: BridgeStatus,
+        target: &'a str,
+        platform: &'a str,
+        abi: &'a str,
+        symbol: &'a str,
+    ) -> BridgeAuditMetadata<'a> {
+        BridgeAuditMetadata {
+            status,
+            ownership: self.ownership,
+            span: self.span,
+            target,
+            platform,
+            abi,
+            symbol,
+        }
+    }
 }
 
 impl ForeignPtr {
@@ -161,6 +309,46 @@ pub fn acquire_transferred_result(source: ForeignPtr) -> ForeignPtr {
     unsafe {
         ForeignPtr::from_raw(raw)
             .unwrap_or_else(|| panic!("reml_ffi_acquire_transferred_result が NULL を返しました"))
+    }
+}
+
+/// Audit で使用する `bridge.status` を `extern` 呼び出しで記録する補助。
+pub fn record_bridge_with_metadata(meta: &BridgeAuditMetadata<'_>) {
+    record_bridge_status(meta.status);
+    // TODO: AuditContext への記録は上位レイヤで処理する。
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ffi::c_char;
+
+    #[test]
+    fn span_length_and_empty() {
+        let span = Span::new(3, 7);
+        assert_eq!(span.len(), 4);
+        assert!(!span.is_empty());
+
+        let reversed = Span::new(10, 5);
+        assert_eq!(reversed.start, 10);
+        assert_eq!(reversed.end, 10);
+        assert!(reversed.is_empty());
+    }
+
+    #[test]
+    fn runtime_string_metadata_roundtrip() {
+        let data = b"bridged\x00";
+        let ptr = data.as_ptr() as *const c_char;
+        let span = Span::new(0, 7);
+        let rt_string =
+            unsafe { RuntimeString::from_parts(ptr, 7, span, Ownership::Borrowed).unwrap() };
+        let metadata =
+            rt_string.to_bridge_metadata(BridgeStatus::Borrowed, "local", "linux-x64", "sysv", "foo");
+        let entries = metadata.as_entries();
+        assert_eq!(entries.status, "borrowed");
+        assert_eq!(entries.ownership, "borrowed");
+        assert_eq!(entries.span.len(), 7);
+        assert_eq!(entries.target, "local");
     }
 }
 
