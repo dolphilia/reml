@@ -1,0 +1,26 @@
+{
+  "case": "pending_resume_flow",
+  "frontend": "rust",
+  "source": "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/2025-11-28-logos-chumsky/pending_resume_flow/diagnostics.rust.json",
+  "diagnostic_count": 1,
+  "diagnostics": [
+    {
+      "index": 0,
+      "token_count": 1,
+      "expected_tokens": [
+        {
+          "token": "=",
+          "hint": "token"
+        }
+      ]
+    }
+  ],
+  "first_expected_tokens": [
+    {
+      "token": "=",
+      "hint": "token"
+    }
+  ],
+  "first_diagnostic_index": 0,
+  "total_expected_token_count": 1
+}
