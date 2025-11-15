@@ -330,11 +330,14 @@ pub fn generate_snapshot_from_mir_json<P: AsRef<Path>>(
 ) -> Result<BackendDiffSnapshot, MirSnapshotError> {
     let module_default = default_module_name.into();
     let spec = MirModuleSpec::from_file(path)?;
-    let module_name = spec.module.unwrap_or_else(|| module_default.clone());
+    let module_name = spec
+        .module
+        .clone()
+        .unwrap_or_else(|| module_default.clone());
     let mut runtime_symbols = runtime_symbols;
-    runtime_symbols.extend(spec.runtime_symbols);
+    runtime_symbols.extend(spec.runtime_symbols.iter().cloned());
     let mut metadata = metadata;
-    metadata.extend(spec.metadata);
+    metadata.extend(spec.metadata.iter().cloned());
     let functions = spec.into_functions();
     Ok(generate_snapshot(
         module_name,
