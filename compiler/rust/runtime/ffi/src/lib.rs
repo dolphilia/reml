@@ -1,5 +1,6 @@
 //! Rust 側から Reml ランタイムへの FFI アクセスを提供する最小層。
 //! 手動定義の `extern` 宣言と安全なラッパーをまとめる。
+use serde_json::json;
 use std::{
     ffi::CStr,
     fmt::{self, Display},
@@ -339,6 +340,80 @@ pub fn acquire_transferred_result(source: ForeignPtr) -> ForeignPtr {
 pub fn record_bridge_with_metadata(meta: &BridgeAuditMetadata<'_>) {
     record_bridge_status(meta.status);
     // TODO: AuditContext への記録は上位レイヤで処理する。
+}
+
+/// FFI 呼び出しの共通処理: capability と audit を検証し、ライフサイクル監査を記録する。
+pub fn audited_bridge_call<F, R>(
+    options: &CallOptions,
+    capability_id: &str,
+    symbol: &str,
+    metadata: &BridgeAuditMetadata<'_>,
+    body: F,
+) -> Result<R, BridgeError>
+where
+    F: FnOnce(&AuditContext, &CapabilityDescriptor) -> Result<R, BridgeError>,
+{
+    let registry = CapabilityRegistry::registry();
+    let handle = registry
+        .verify_capability_stage(capability_id, options.stage_requirement)
+        .map_err(BridgeError::Capability)?;
+
+    options
+        .security_policy
+        .verify(handle.descriptor())
+        .map_err(BridgeError::Security)?;
+
+    let ctx = options.new_context(symbol).map_err(BridgeError::Audit)?;
+
+    let log_payload = json!({
+        "capability": handle.descriptor().id,
+        "stage": handle.descriptor().stage.to_string(),
+        "symbol": symbol,
+    });
+    ctx.log_bridge_metadata("ffi.call.start", metadata, log_payload)
+        .map_err(BridgeError::Audit)?;
+
+    let result = body(&ctx, handle.descriptor());
+    let status = match &result {
+        Ok(_) => BridgeStatus::Ok,
+        Err(_) => BridgeStatus::Failure,
+    };
+    let log_payload = json!({
+        "capability": handle.descriptor().id,
+        "stage": handle.descriptor().stage.to_string(),
+        "symbol": symbol,
+        "status": status.as_str(),
+    });
+    ctx.log_bridge_metadata("ffi.call.end", metadata, log_payload)
+        .map_err(BridgeError::Audit)?;
+
+    result
+}
+
+/// Bridge 連携で発生するエラー。
+#[derive(Debug)]
+pub enum BridgeError {
+    Capability(CapabilityError),
+    Security(SecurityError),
+    Audit(AuditError),
+}
+
+impl From<CapabilityError> for BridgeError {
+    fn from(err: CapabilityError) -> Self {
+        BridgeError::Capability(err)
+    }
+}
+
+impl From<SecurityError> for BridgeError {
+    fn from(err: SecurityError) -> Self {
+        BridgeError::Security(err)
+    }
+}
+
+impl From<AuditError> for BridgeError {
+    fn from(err: AuditError) -> Self {
+        BridgeError::Audit(err)
+    }
 }
 
 #[cfg(test)]
