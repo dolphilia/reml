@@ -154,5 +154,25 @@
   - W1 では OCaml 側構成の完全な棚卸しにより Rust ゴールの土台を固めたため、今後は `compiler/rust/backend/llvm/` の初期実装でこのチェックリストを反映する。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` と `docs/notes/dsl-plugin-roadmap.md` に補足する差分記録は、P2 後半での監査に備えたエビデンスとして残す。
   - 暫定の差異監査結果とリンクは `docs-migrations.log` の W2 章にまとめ、該当箇所が `docs/guides/llvm-integration-notes.md` や `docs/spec/3-8-core-runtime-capability.md` に影響する場合は脚注を追加して整合性を維持する。
 
+### W3：LLVM IR 実装と差分検証
+
+- **目的**：W2 で整理した責務マップと `TargetMachineBuilder` の設計案を実際の `compiler/rust/backend/llvm` 実装に落とし込み、OCaml 側と観測可能な振る舞い（IR 出力・最適化パス・診断ログ）を一致させる。`unified-porting-principles.md` で定義された「振る舞いの同一性優先」と `docs/spec/0-1-project-purpose.md` に掲げられた性能・安全性指針を起点に、差分を測定可能な形で残す。
+- **実施内容**
+  1. `compiler/ocaml/src/llvm_gen/codegen.ml` の制御フロー・型マッピング・呼び出し規約を `codegen.rs` / `type_mapping.rs` / `target_config.rs` に再現し、MIR から LLVM IR を構築する際に `TargetMachineBuilder` 経由で Triple・`DataLayout`・`OptimizationLevel` を設定する。また、`ffi_lowering`/`runtime_link` との境界を `2-1-runtime-integration.md` に照らし合わせて明記し、GC・panic・ランタイム API 呼び出しの順序を Rust 側コードにもトレース可能なコメント・チェックリストとして残す。
+  2. `verify.rs` を中心に `opt -verify` → `llc` → `llvm-dis` のパイプラインを CLI に統合し、それぞれのログを `reports/diagnostic-format-regression.md` の診断 ID と照合する。差分は `Diagnostic.extensions["backend"]` に `backend=rust` を付与し、`audit.log("llvm.verify", ...)` で JSON 形式にして保存することで `docs/spec/3-6-core-diagnostics-audit.md` の監査メタデータに連携させる。
+  3. `remlc --backend=rust` + `remlc --backend=ocaml` の dual-run を `reports/backend-ir-diff/*.json` に保存し、差分の大きい関数は `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` のドリフト欄に記録。`collect-iterator-audit-metrics.py` には `backend.verify.{pass,fail}` メトリクスを追加し、`p1-test-migration-plan.md` に記録された代表ケースの `opt -verify` 時間と一致するかを比較する。
+  4. Windows の MSVC/GNU 各ツールチェーンと macOS/Linux を `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` や `0-2-windows-toolchain-audit.md` のチェックリストで検証し、`TargetMachineBuilder::windows_toolchain` から `llvm-config` のパス・`clang-cl`/`link.exe` の追加ライブラリを注入する。選択した LLVM Distro（MSYS2 16 or 19.1.1）の違いは `docs-migrations.log` W3 章に記録し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に Windows 固有の差分項目として報告する。
+
+- **検証とメトリクス**
+  - `opt -verify` や `llc` 実行で `target.config.*`, `effects.contract.stage_mismatch` などの診断が出ないことを GitHub Actions `llvm-backend-verify` ジョブで監視し、ログを `reports/backend-verify/` に保存。5 連続成功後は P3 CI にハンドオーバー。
+  - W3 で収集した `DataLayout`/`CallingConvention`/`diagnostic` の差分は `docs/plans/rust-migration/appendix/llvm-backend-inventory.md` に追記し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の脚注欄から参照できるようにする。
+  - `collect-iterator-audit-metrics.py` を通じて `runtime.refcount.*`・`backend.verify.*` のパスを収集し、`docs/notes/dsl-plugin-roadmap.md` に記載された監査チェックポイントと同期させる。
+
+- **成果物**：`compiler/rust/backend/llvm/` のコードジェン + ラッパ層が dual-run 差分で合格し、`opt -verify`/`llc` ログが `reports/diagnostic-format-regression.md` に定義された診断 ID と一致する。Windows ビルド手順書と `docs-migrations.log` の W3 エントリを P3 チームに渡すことで `3-0-ci-and-dual-write-strategy.md` の `llvm-backend-verify` ジョブの呼び出しを開始できる。
+
+- **次フェーズへの橋渡し**
+  - W3 のコードと検証結果を `2-3-p2-backend-integration-roadmap.md` にまとめ、P2-1/P2-2 のランタイム・アダプタ設計と連携する箇所（GC フック、FFI 診断、TargetMachine から渡す `Module`）を明記する。
+  - W3 の差分ログが CI に反映されたら、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の `TODO:-DIAG-RUST-*` 項目に進捗バッジを付け、Stage Audit 失敗時用のフィードバックループを `docs/spec/3-8-core-runtime-capability.md` に脚注する。
+
 ---
 **参照**: `docs/plans/rust-migration/overview.md`, `docs/plans/rust-migration/unified-porting-principles.md`, `docs/guides/llvm-integration-notes.md`, `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `reports/diagnostic-format-regression.md`
