@@ -135,5 +135,19 @@
 
 ### W2
 
+- **W2-W1 追行計画**
+  1. `docs/spec/0-1-project-purpose.md` と `docs/plans/rust-migration/unified-porting-principles.md` の行動指針を貼り合わせて W2 での「振る舞いの同一性優先」を確認しつつ、`docs/guides/llvm-integration-notes.md` のセクション 5.0 で示された `TargetMachine`/`DataLayout` 設定を Rust 側ゴールとして定量化する。
+  2. `2-1-runtime-integration.md` と `2-2-adapter-layer-guidelines.md` の境界を意識しながら `codegen` から `ffi_value_lowering` までの呼び出し連鎖をトレースし、監査用チェックリスト（Triple、Alignment、CallingConv、verify 診断）のエントリを W1 に追加する。
+  3. `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` で定義された差分監査プロセスを使って `target_config`/`type_mapping` 由来の設定と現行 Rust コードのスナップショットを対比し、`docs-migrations.log` への参照を残す。
+
+- **W1 実施済タスク**
+  1. OCaml 側 `compiler/ocaml/src/llvm_gen/` の全モジュールをレビューし、`codegen` → `type_mapping` → `target_config` → `verify` の依存関係と `abi`/`llvm_attr` の再利用点を表として整理した（上表参照）。
+  2. `target_config.ml` で定義された Triple/`DataLayout`/`CallingConvention`/`alignment_spec` を Rust `TargetMachine` 初期化コードの目標値として記録し、`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` に記載の MSYS2 LLVM 16 と公式 ZIP 19.1.1 の差異点を検証対象として明記した。
+  3. `ffi_value_lowering` と `runtime_link` の RC・panic・リンク呼び出し管理が `2-1-runtime-integration.md` で扱うランタイム境界と一致することを確認し、診断やメトリクス（`reports/diagnostic-format-regression.md`、`collect-iterator-audit-metrics.py`）を監査対象に追加した。
+
+- **実績と次の展望**
+  - W1 では OCaml 側構成の完全な棚卸しにより Rust ゴールの土台を固めたため、今後は `compiler/rust/backend/llvm/` の初期実装でこのチェックリストを反映する。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` と `docs/notes/dsl-plugin-roadmap.md` に補足する差分記録は、P2 後半での監査に備えたエビデンスとして残す。
+  - 暫定の差異監査結果とリンクは `docs-migrations.log` の W2 章にまとめ、該当箇所が `docs/guides/llvm-integration-notes.md` や `docs/spec/3-8-core-runtime-capability.md` に影響する場合は脚注を追加して整合性を維持する。
+
 ---
 **参照**: `docs/plans/rust-migration/overview.md`, `docs/plans/rust-migration/unified-porting-principles.md`, `docs/guides/llvm-integration-notes.md`, `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `reports/diagnostic-format-regression.md`
