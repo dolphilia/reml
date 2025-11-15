@@ -76,6 +76,28 @@
 - `compiler/ocaml/README.md` に macOS 手元検証ガイド（Homebrew セットアップ、`opam env` の読み込み、LLVM パス設定）を追記。
 - `docs/plans/bootstrap-roadmap/1-5-runtime-integration.md` へ Mach-O 向け TODO を脚注で追加し、Phase 2 以降に検討すべき項目（Notarization、ARM64 対応）を記録。
 
+## Rust バックエンドの macOS ローカルビルド
+
+Phase 2 以降の Rust 移植計画において macOS ローカルビルドが実現していることは、`docs/plans/rust-migration/2-0-llvm-backend-plan.md` で定義する LLVM バックエンド整合と `docs/plans/rust-migration/1-3-dual-write-runbook.md` にある差分検証の両方を支える鍵になります。`compiler/rust/README.md` に記した手順を参考に、以下の観点を本計画の作業項目として含めます。
+
+1. **依存の文書化**  
+   - `compiler/rust/README.md` へ Homebrew + Rust toolchain（`llvm@19`/`rustup`）のインストール手順と `REML_LLVM_TARGET`/`REML_BACKEND_VERIFY` の環境変数設定を明示し、macOS 開発者が `cargo build` を再現できるようにする。
+   - `docs/notes/llvm-spec-status-survey.md` へ macOS の LLVM CLI バージョン・`opt`/`llc` 出力を記録し、`docs-migrations.log` にセッションのステップを整理して移行計画のトレースを残す。
+
+2. **ビルド・検証ワークフロー**  
+   - `cargo build --manifest-path compiler/rust/frontend/Cargo.toml` でフロントエンドを組み立て、`cargo test` で基本的なパーサ/型推論レベルまで通す。`docs/plans/rust-migration/p1-spec-compliance-gap.md` の `FRG-*` ケースに該当するテストを Rust 側で再現できていることを確認する。
+   - `REML_LLVM_TARGET={x86_64-apple-darwin,arm64-apple-darwin}` を設定して `compiler/rust/backend/llvm` を `cargo build` する（`REML_BACKEND_VERIFY=1` により `reports/backend-verify/macOS/opt-verify.log` / `llc.ll` に結果を保存）。このログ出力は `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` で定義されたドリフト監査ラインに接続される。
+
+3. **差分監査との連携**  
+   - `scripts/poc_dualwrite_compare.sh --frontend rust --backend rust <cases>` を macOS 上で実行し、`reports/dual-write/front-end/` に記録された Diagnostics/Audit の JSON を `docs/plans/rust-migration/1-3-dual-write-runbook.md` に転記することで、Dual-write の証跡を確保する。
+   - `reports/backend-ir-diff/macOS/` に `opt`/`llc` 生成物を置き、Windows/Linux との差分を `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` で管理する監査フローに渡す。
+
+4. **マルチターゲットとしての文脈化**  
+   - macOS ローカルビルドの成果物とログを `docs/plans/rust-migration/2-1-runtime-integration.md`、`2-2-adapter-layer-guidelines.md` に記載されている FFI/アダプタ試験と突き合わせ、Stage/Capability の整合性を `reports/runtime-bridge/macOS/` へ保存する。
+   - `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` の手順を参考にして `REML_LLVM_PATH` など macOS 特有のパス設定を `reports/backend-verify/macOS/toolchain.json` で監査し、後続フェーズへの引き継ぎを容易にする。
+
+これらの取り組みにより macOS 上で Rust 版 Reml が `cargo build` で再現できるようになり、Phase 2 のマルチターゲット整合と Phase 3 以降の Windows/Linux 両対応に向けた足場が固まります。
+
 ## 成果物と検証
 - GitHub Actions で `bootstrap-macos` ワークフローが push/pr/schedule の各トリガーで成功し、`dune build` と `dune runtest` が macOS 上で安定実行される。
 - `remlc-ocaml-macos` と `libreml_runtime.a`（Mach-O）がアーティファクトとして 30 日保持され、レビューでダウンロード・実行できる。
