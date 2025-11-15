@@ -47,6 +47,28 @@
 | W4 | クロスプラットフォーム検証 | Windows GNU/MSVC, macOS, Linux での FFI 連携テスト・監査ログ収集、`panic`/`timeout` シナリオ確認 | GitHub Actions matrix、`reports/runtime-bridge/*.json` |
 | W4.5 | P2 統合レビュー | 成果物レビュー、`2-2-adapter-layer-guidelines.md` との連携事項整理、P3 ハンドオーバー | `docs/plans/rust-migration/README.md` 更新、`docs-migrations.log` |
 
+### W1: ランタイム API 棚卸し状況
+
+- 予定している Rust 側 FFI 入口は `compiler/rust/runtime/ffi/`（`#[link(name = "reml_runtime")]`）に集約するが、現時点でのオーソリティは `runtime/native/include/reml_runtime.h` に記された C API と、実際に LLVM IR から呼んでいる OCaml 側の宣言です。`compiler/ocaml/src/llvm_gen/runtime_stub.ml` は存在せず、`declare_runtime_functions`（`compiler/ocaml/src/llvm_gen/codegen.ml:196-255`）が実装済みのエクスポート群になるため、これらを共通基準とします。
+- 以下の表は W1 で確認したヘッダ側の API と、OCaml で宣言／利用されている関数（参照行）を照合したものです。Rust では同等の `extern "C"` を手書きし、必要に応じて `bindgen` で検証します。
+
+| C API (`reml_runtime.h`) | OCaml 側宣言/利用（`codegen.ml`） | Rust 側 `extern` の予定 | 備考 |
+| --- | --- | --- | --- |
+| `mem_alloc(size_t)` (line 68) | `Llvm.declare_function "mem_alloc"` (`codegen.ml:201-205`) | `extern "C" fn mem_alloc(size: usize) -> *mut c_void` → `ForeignPtr` に変換し、ペイロードポインタを返す | ヘッダは payload 直後のポインタを返す。`type_tag` は `call_mem_alloc` 側で 4 バイト先に書き込む |
+| `mem_free(void*)` (line 79) | 現在宣言・呼び出しなし | `extern "C" fn mem_free(ptr: *mut c_void)`（まずは `ForeignPtr::drop` から呼び出す予定） | OCaml は `dec_ref` 側で内部的に解放。不要な重複を避けるため Rust ではまだ呼ばないが、API 総覧には含む |
+| `inc_ref(void*)` (line 92) | `Llvm.declare_function "inc_ref"` + `call_inc_ref`（`codegen.ml:206-340`） | `extern "C" fn inc_ref(ptr: *mut c_void)` → `ForeignPtr::clone`/`ResourceHandle` で利用 | 同期フェーズ 2 用。Rust でも `ForeignPtr::clone` から呼ぶ前提 |
+| `dec_ref(void*)` (line 104) | `Llvm.declare_function "dec_ref"` + `call_dec_ref`（`codegen.ml:211-340`） | `extern "C" fn dec_ref(ptr: *mut c_void)` → `Drop` で呼び出す予定 | `ForeignPtr::Drop` と `AuditEnvelope.metadata.bridge.ownership` を合わせる |
+| `panic(const char*)` (line 123) | `Llvm.declare_function "panic"` が `(ptr, i64) -> void` で `noreturn` 属性（`codegen.ml:216-223`） | `extern "C" fn panic(ptr: *const c_char, len: i64)` + `CStr` 化してログ出力、残りは無視 | LLVM 側が FAT pointer を渡すため長さパラメータあり。Rust では `panic` を `Abort` 相当とみなし、`effect {unsafe}` で許可 |
+| `print_i64(int64_t)` (line 136) | `Llvm.declare_function "print_i64"`（`codegen.ml:224-227`） | `extern "C" fn print_i64(value: i64)` | デバッグ用途。Rust でも `--effects-debug` で呼び出すケースを確認 |
+| `string_eq`/`string_compare` (lines 149-165) | `Llvm.declare_function "string_eq"`（`codegen.ml:1650-1668`）、`"string_compare"`（`codegen.ml:1731-1751`） | `extern "C" fn string_eq(a: *const ReMlString, b: *const ReMlString) -> i32` / `string_compare` 同様 | `ReMlString` 構造体は `reml_runtime.h` に記載。Rust でも `repr(C)` 構造を共有する |
+| `reml_ffi_bridge_record_status(i32)` | `Llvm.declare_function "reml_ffi_bridge_record_status"`（`codegen.ml:229-237`） | `extern "C" fn reml_ffi_bridge_record_status(status: i32)` | Capability/Audit 構造との連携で、`AuditEnvelope.metadata.bridge.status` を更新 |
+| `reml_ffi_acquire_borrowed_result(ptr) -> ptr` | `Llvm.declare_function "reml_ffi_acquire_borrowed_result"`（`codegen.ml:239-246`） | `extern "C" fn reml_ffi_acquire_borrowed_result(ptr: *mut c_void) -> *mut c_void` | `Borrowed` 経路で所有権を明示的に保持するための橋渡し |
+| `reml_ffi_acquire_transferred_result(ptr) -> ptr` | `Llvm.declare_function "reml_ffi_acquire_transferred_result"`（`codegen.ml:248-255`） | `extern "C" fn reml_ffi_acquire_transferred_result(ptr: *mut c_void) -> *mut c_void` | `Transferred` 経路で所有権を移すための補助関数 |
+
+- `reml_set_type_tag`/`reml_get_type_tag` は `reml_runtime.h:184-198` にあるが、`codegen.ml` では `call_mem_alloc` 側でヘッダに直接 type tag を書き込んでいる（`codegen.ml:277-315`）。Rust では `ForeignPtr::from_payload` が `type_tag` を検証するため、当面は手動でヘッダを書き換える実装のままにし、将来的に `reml_set_type_tag` を呼ぶか検討する。
+- `string_eq/string_compare` 以外の文字列ビルトイン（`reml_string_t` や `REML_GET_HEADER`）は `reml_runtime.h` で定義済みの構造体/マクロなので、Rust 側で同じ `repr(C)` を再現して ABI を一致させる。
+- `panic` の FAT pointer と `mem_free` の利用状況を踏まえ、Rust からの呼び出し時に `bindgen --allowlist-function ...` を走らせ、手書き `extern` のシグネチャと自動生成の結果を突き合わせる予定。`cargo test ffi_signature_smoke`（W1 の検証項目）については `compiler/rust/runtime/ffi` crate の初期実装が整い次第、`mem_alloc`/`inc_ref`/`dec_ref`/`panic` を呼び出すスモークテストとして実行する。
+
 ## 2.1.6 作業ストリーム
 
 - **FFI シグネチャ整備**  
