@@ -30,7 +30,7 @@
 | --- | --- | --- | --- |
 | TPM-DIAG-01 | `test_cli_diagnostics.ml` | `diagnostic.ml` + `Collect-iterator` metrics | ✅ `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`/`2-7-deferred-remediation.md` で扱った診断 JSON スキーマと `scripts/validate-diagnostic-json.sh` の整備を Rust でも実行し、`diagnostics.*` のメトリクスを `collect-iterator-audit-metrics.py` で評価。 |
 | TPM-DIAG-02 | `streaming_runner_tests.ml` | `parser_driver.ml` + `Core_parse_streaming` | ✅ `FRG-05` を踏まえて Rust 版 `StreamingRunner` に `chunk_size` や `recover` 拡張があるため、Pending/Completed コードパスを再現し、`recover` の `expected_tokens` を JSON で検証するテストを `streaming_runner.rs` に移行。 |
-| TPM-DIAG-03 | `effect_analysis_tests.ml` / `effect_handler_poc_tests.ml` | `type_inference_effect.ml`/`impl_registry` | Stage/Capability レポートが整備されている現在、diagnostics/metrics の `effects.contract.*` での確認が可能。 |
+| TPM-DIAG-03 | `effect_analysis_tests.ml` / `effect_handler_poc_tests.ml` | `type_inference_effect.ml`/`impl_registry` | ✅ Stage/Capability レポートが整備されている現在、diagnostics/metrics の `effects.contract.*` での確認が可能。 |
 
 ## 4. 移植アプローチ
 1. **対象テストの翻訳設計**  
