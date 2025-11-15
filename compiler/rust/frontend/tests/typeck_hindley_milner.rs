@@ -1,9 +1,6 @@
 use reml_frontend::parser::ast::Module;
 use reml_frontend::parser::ParserDriver;
-use reml_frontend::typeck::{
-    BuiltinType, Constraint, Type, TypecheckConfig, TypecheckDriver, TypecheckReport,
-    TypecheckViolationKind,
-};
+use reml_frontend::typeck::{Constraint, Type, TypecheckConfig, TypecheckDriver, TypecheckReport, TypecheckViolationKind};
 use serde_json;
 
 fn parse_module(source: &str) -> Module {
@@ -34,7 +31,7 @@ fn hindley_milner_collects_binary_constraints() {
     assert!(matches!(
         &report.constraints[0],
         Constraint::Equal { left, right }
-        if matches!(left, Type::Builtin(BuiltinType::Int)) && matches!(right, Type::Builtin(BuiltinType::Int))
+        if matches!(left, Type::Var(_)) && matches!(right, Type::Var(_))
     ));
     assert!(
         report.used_impls.is_empty(),

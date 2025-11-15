@@ -4,12 +4,12 @@
 //! 今後 `types.rs` や `constraint.rs` を拡張していく。
 
 mod capability;
-mod constraint;
+pub mod constraint;
 mod driver;
 pub mod env;
 mod metrics;
 mod scheme;
-mod types;
+pub mod types;
 
 pub use capability::RuntimeCapability;
 pub use constraint::{Constraint, ConstraintSolver, ConstraintSolverError, Substitution};

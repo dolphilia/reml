@@ -1,8 +1,6 @@
 use reml_frontend::parser::ast::Module;
 use reml_frontend::parser::ParserDriver;
-use reml_frontend::typeck::{
-    TypecheckConfig, TypecheckConfigBuilder, TypecheckDriver, TypecheckReport,
-};
+use reml_frontend::typeck::{TypecheckConfig, TypecheckDriver, TypecheckReport};
 use serde_json::Value;
 
 fn parse_module(source: &str) -> Module {
@@ -62,7 +60,7 @@ fn effect_stage_mismatch_is_serialized() {
     let config = TypecheckConfig::builder()
         .experimental_effects(true)
         .build();
-    let report = typecheck_with_config(r#"fn log() = perform Console.log("hello")"#, config);
+    let report = typecheck_with_config(r#"fn log() = perform Console "hello""#, config);
     assert!(
         report
             .violations
