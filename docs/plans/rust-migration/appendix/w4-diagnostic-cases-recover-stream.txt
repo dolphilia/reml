@@ -1,0 +1,29 @@
+# Recover and Streaming cases for diag mode
+# derived from docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt
+# parser recover
+# tests: compiler/ocaml/tests/test_cli_diagnostics.ml (recover snapshots); docs/plans/bootstrap-roadmap/2-5-review-log.md (Step3 parser_recover_tests)
+# flags: diag default
+recover_missing_semicolon::inline::fn main() =\n  let x = 1\n  let y = 2\n  x + y
+# tests: docs/plans/bootstrap-roadmap/2-5-proposals/ERR-002-proposal.md §3; docs/plans/bootstrap-roadmap/2-5-review-log.md (recover-unclosed-block)
+# flags: diag default
+recover_unclosed_block::inline::fn main() = {\n  let value = 42
+# tests: compiler/ocaml/tests/golden/diagnostics/parser/expected-summary.json.golden
+# flags: diag default
+recover_else_without_if::inline::fn orphan() =\n  else { 1 }
+# tests: compiler/ocaml/tests/test_parser.ml (tuple error expectation)
+# flags: diag default
+recover_missing_tuple_comma::inline::fn tuple_demo() = (1 2, 3)
+# tests: compiler/ocaml/tests/test_cli_diagnostics.ml (lambda recover note)
+# flags: diag default
+recover_lambda_body::inline::fn lambda_demo(fn op(i64) -> i64) = {\n  let apply = fn(x) => { op(x }\n  apply(1)
+
+# streaming meta
+# tests: compiler/ocaml/tests/streaming_runner_tests.ml::test_pending_resume_flow
+# flags: --streaming --stream-resume-hint diag-w4 --stream-flow-policy auto --stream-demand-min-bytes 4 --stream-demand-preferred-bytes 8 --stream-flow-max-lag 8192
+stream_pending_resume::inline::module diagnostics.w4.stream_pending_resume\nfn chunked(value: String) -> String =\n  if value == "resume" then value else value\nfn main() = chunked("resume")
+# tests: compiler/ocaml/tests/streaming_runner_tests.ml::test_streaming_matches_batch
+# flags: --streaming --stream-flow-policy auto --stream-flow-max-lag 8192
+stream_backpressure_hint::inline::module diagnostics.w4.stream_backpressure\nfn produce(limit: i32) -> i32 =\n  if limit <= 0 then 0 else produce(limit - 1)\nfn main() = produce(4)
+# tests: streaming_runner_tests.ml （checkpoint/packrat coverage）
+# flags: --streaming --stream-checkpoint diag-w4
+stream_checkpoint_drift::inline::module diagnostics.w4.stream_checkpoint\nfn tick(counter: i32) -> i32 =\n  let next = counter + 1\n  if next > 2 then counter else tick(next)\nfn main() = tick(0)

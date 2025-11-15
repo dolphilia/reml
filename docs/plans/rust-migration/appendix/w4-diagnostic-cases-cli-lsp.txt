@@ -1,0 +1,27 @@
+# CLI + LSP cases for diag mode
+# derived from docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt
+# CLI RunConfig / DIAG-002
+# tests: compiler/ocaml/tests/run_config_tests.ml::packrat_switch; docs/plans/bootstrap-roadmap/2-5-proposals/DIAG-002-proposal.md
+# flags: --packrat
+cli_packrat_switch::file::examples/cli/emit_suite.reml
+# tests: compiler/ocaml/tests/run_config_tests.ml::trace_options
+# flags: --trace --no-merge-warnings
+cli_trace_toggle::file::examples/cli/trace_sample.reml
+# tests: compiler/ocaml/tests/test_cli_diagnostics.ml（warning merge snapshot）
+# flags: --no-merge-warnings
+# flags.ocaml: --json-mode compact
+cli_merge_warnings::file::examples/cli/type_error.reml
+
+# LSP RPC
+# tests: tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-hover-internal.json
+# flags: diag default
+# lsp-fixture: diagnostic-v2-hover-internal.json
+lsp_hover_internal_error::file::examples/cli/type_error.reml
+# tests: tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-stream.json
+# flags: --streaming --stream-resume-hint diag-w4
+# lsp-fixture: diagnostic-v2-stream.json
+lsp_diagnostic_stream::file::examples/cli/trace_sample.reml
+# tests: tooling/lsp/tests/client_compat/fixtures/diagnostic-v2-workspace-config.json
+# flags: diag default --config tooling/lsp/tests/client_compat/fixtures/workspace-config.json
+# lsp-fixture: diagnostic-v2-workspace-config.json
+lsp_workspace_config::file::examples/cli/emit_suite.reml

@@ -207,6 +207,10 @@ Rust フロントエンド移植において、OCaml 実装と同一の診断 (`
 - `reports/dual-write/front-end/w4-diagnostics/<run>/lsp/<case>.diff` に Schema 差分がなく、`npm run ci --prefix tooling/lsp/tests/client_compat` が同 Run ID のフィクスチャでパスしている。  
 - `p1-front-end-checklists.csv` と `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-diag-rust-07` が Run ID / 成果物パス / 再現手順で一致し、`cli_trace_toggle` の `[TRACE]` ログが JSON とは別ファイルになっていることを確認できる。
 
+#### 20290429-w4-diag-cli-lsp 再実行
+- CLI/LSP ケースに絞った `scripts/poc_dualwrite_compare.sh --mode diag --run-id 20290429-w4-diag-cli-lsp --cases docs/plans/rust-migration/appendix/w4-diagnostic-cases-cli-lsp.txt` を再実行したところ、`cli_packrat_switch` / `cli_merge_warnings` の `diagnostics.ocaml.json` は空で `diag_match=false`、LSP ケースは `effects-metrics.rust.err.log` に `bridge_stage.audit_presence < 1.0` を記録して `metrics_ok=false`、`parser.runconfig_switch_coverage` も 0 から変化していない。`reports/.../lsp/` に `report-fixture-diff.mjs` の diff 出力を残してあるので、ファイル差分自体は再現可能だが `bridge_stage` の拡張と OCaml CLI の diagnostics 出力が揃うまで DIAG-RUST-07 の完了判定が出せない状態が続いている。
+- `npm run ci --prefix tooling/lsp/tests/client_compat -- diag-w4 20290429-w4-diag-cli-lsp` を実行して `reports/dual-write/front-end/w4-diagnostics/20290429-w4-diag-cli-lsp/lsp/<case>.diff` を生成し、Run ID を `p1-front-end-checklists.csv` の CLI/LSP 行へ追記した。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#TODO:-diag-rust-07` へのリンクも更新し、本 Run ID が追跡対象である旨を明示している。
+
 ## 1.2.18 20280418 Type/Effect/FFI ラン再評価（DIAG-RUST-06 継続中）
 - Run `reports/dual-write/front-end/w4-diagnostics/20280418-w4-diag-effects-r3/summary.md` は `type_*/effect_*/ffi_*` の 10 ケースを一括で再測定したが、`effect_residual_leak/summary.json` では `ocaml_diag_count=1` / `rust_diag_count=5`、`parser.expected_pass_fraction` も Rust 側だけ 0.2 のままで recover が過剰発火している。  
 - `type_condition_literal_bool/summary.json` では Rust 側診断が 0 件で `diag_match=false` のまま、`typeck/typeck-debug.ocaml.json` が生成されず `typeck_requirements.frontends.ocaml.typeck_debug_exists=false` がブロッカーになっている。OCaml CLI へ `--emit-typeck-debug` を強制注入しない限り DIAG-RUST-06 の受入条件を満たせない。  

@@ -1,0 +1,33 @@
+# Type/Effect/FFI cases for diag mode
+# derived from docs/plans/rust-migration/appendix/w4-diagnostic-cases.txt
+# type / effect
+# tests: compiler/ocaml/tests/test_type_inference.ml (condition bool)
+# flags: --experimental-effects --effect-stage beta --type-row-mode dual-write --emit-typeck-debug <dir>
+# flags.rust: --emit-effects-metrics <dir>
+type_condition_bool::inline::fn type_mismatch(x: i64) -> i64 =\n  if x then 1 else 0
+# tests: compiler/ocaml/tests/test_type_errors.ml (literal guard)
+# flags: --experimental-effects --effect-stage beta --type-row-mode dual-write --emit-typeck-debug <dir>
+# flags.rust: --emit-effects-metrics <dir>
+type_condition_literal_bool::inline::fn literal_guard() =\n  if 1 then 0 else 1
+# tests: compiler/ocaml/tests/test_effect_residual.ml; docs/plans/bootstrap-roadmap/2-5-proposals/EFFECT-002-proposal.md
+# flags: --experimental-effects --effect-stage beta --type-row-mode dual-write --emit-typeck-debug <dir>
+# flags.rust: --emit-effects-metrics <dir>
+effect_residual_leak::inline::effect ConsoleLog\nfn emit(msg: String) = perform ConsoleLog msg\nfn main() = emit("leak")
+# tests: compiler/ocaml/tests/test_cli_callconv_snapshot.ml::callconv_windows_messagebox
+# flags: --experimental-effects --effect-stage beta --type-row-mode dual-write --emit-typeck-debug <dir>
+# flags.rust: --emit-effects-metrics <dir>
+effect_stage_cli_override::inline::effect ConsoleAudit\n@requires_capability(stage = "beta")\nfn gated() = perform ConsoleAudit 1\nfn main() = gated()
+
+# capability / FFI
+# tests: compiler/ocaml/tests/test_cli_callconv_snapshot.ml::callconv_windows_messagebox
+# flags: --experimental-effects --effect-stage beta --type-row-mode dual-write --runtime-capabilities windows.messagebox --emit-typeck-debug <dir>
+# flags.rust: --emit-effects-metrics <dir>
+ffi_stage_messagebox::file::examples/ffi/windows/messagebox.reml
+# tests: compiler/ocaml/tests/test_ffi_contract.ml::ownership_transfer
+# flags: --experimental-effects --effect-stage beta --type-row-mode dual-write --runtime-capabilities windows.ffi --emit-typeck-debug <dir>
+# flags.rust: --emit-effects-metrics <dir>
+ffi_ownership_mismatch::file::examples/ffi/windows/ownership_transfer.reml
+# tests: compiler/ocaml/tests/test_ffi_contract.ml::ffi_dispatch_async
+# flags: --experimental-effects --effect-stage beta --type-row-mode dual-write --runtime-capabilities macos.dispatch_queue --emit-typeck-debug <dir>
+# flags.rust: --emit-effects-metrics <dir>
+ffi_async_dispatch::file::examples/ffi/macos/ffi_dispatch_async.reml
