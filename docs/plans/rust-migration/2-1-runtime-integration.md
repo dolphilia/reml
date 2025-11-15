@@ -45,7 +45,6 @@
 | W2 | 所有権ラッパ実装 | `ForeignPtr`, `Span`, `RuntimeString` 等の実装、`inc_ref`/`dec_ref` 呼び出し位置決定 | `runtime.refcount.*` メトリクス比較、AddressSanitizer 実行 |
 | W3 | Capability & Audit 統合 | `CapabilityRegistry` FFI、`AuditContext`, `SecurityPolicy` の Rust ラッパ、`effect` 検証 | `audit.log` 確認、`--effects-debug` 出力チェック |
 | W4 | クロスプラットフォーム検証 | Windows GNU/MSVC, macOS, Linux での FFI 連携テスト・監査ログ収集、`panic`/`timeout` シナリオ確認 | GitHub Actions matrix、`reports/runtime-bridge/*.json` |
-| W4.5 | P2 統合レビュー | 成果物レビュー、`2-2-adapter-layer-guidelines.md` との連携事項整理、P3 ハンドオーバー | `docs/plans/rust-migration/README.md` 更新、`docs-migrations.log` |
 
 ### W1: ランタイム API 棚卸し状況
 
@@ -69,6 +68,18 @@
 - `string_eq/string_compare` 以外の文字列ビルトイン（`reml_string_t` や `REML_GET_HEADER`）は `reml_runtime.h` で定義済みの構造体/マクロなので、Rust 側で同じ `repr(C)` を再現して ABI を一致させる。
 - `panic` の FAT pointer と `mem_free` の利用状況を踏まえ、Rust からの呼び出し時に `bindgen --allowlist-function ...` を走らせ、手書き `extern` のシグネチャと自動生成の結果を突き合わせる予定。`cargo test ffi_signature_smoke`（W1 の検証項目）については `compiler/rust/runtime/ffi` crate の初期実装が整い次第、`mem_alloc`/`inc_ref`/`dec_ref`/`panic` を呼び出すスモークテストとして実行する。
 - `compiler/rust/runtime/ffi` では `ForeignPtr`/`ReMlString`/`BridgeStatus` などのラッパーと `#[link(name = "reml_runtime")] extern` をまとめ、`README.md` で呼び出し順や `AuditEnvelope.metadata.bridge.*` との接続方針を記述。`scripts/generate-runtime-ffi-bindings.sh` により `reml_runtime.h` から `bindgen` 出力を生成し、生成コード (`bindings-bindgen.rs`) を `src/lib.rs` と比較することで FAT pointer やステータス列挙の食い違いを検出できるようにしています。
+
+### W2: 所有権ラッパ実装の進捗と残課題
+
+- `compiler/rust/runtime/ffi/src/lib.rs` (L11-L170) に `ReMlString`/`BridgeStatus`/`ForeignPtr` を実装し、`ForeignPtr::Clone`/`Drop` で `inc_ref`/`dec_ref` を呼ぶことで W2 の要件にある所有権マーカーが Rust 側に揃った。`runtime_panic`、`record_bridge_status`、`acquire_borrowed_result`/`acquire_transferred_result` も同ファイルにあり、`mem_alloc` からのライフサイクルをパッケージ化している。
+- `compiler/rust/runtime/ffi/README.md` (L1-L26) と `scripts/generate-runtime-ffi-bindings.sh` (L1-L17) は C ヘッダとの齟齬を検出するルーチンを示しており、W2 の「`extern` 宣言とヘッダ差分のチェック」要件を満たすための手順になる。
+- W2 の検証で求められる `runtime.refcount.*` メトリクスと AddressSanitizer を確保するため、README に記載の `ffi_signature_smoke`（`ForeignPtr::allocate_payload`→`inc_ref`/`dec_ref`→`record_bridge_status`→`runtime_panic`）を `cargo test` で具現化し、`tooling/ci/collect-iterator-audit-metrics.py` に `runtime.refcount.inc`／`runtime.refcount.dec` を追記して OCaml 実装との ±5% 差分を管理する予定。
+#### 残タスク
+
+- `Span`/`RuntimeString` まわりのラッパを runtime FFI crate に公開し、`compiler/rust/frontend/src/span.rs` (L1-L38) のレイアウトを再利用して診断や文字列パラメータにソース位置を添える。`docs/plans/rust-migration/2-3-p2-backend-integration-roadmap.md` で求められる `Span` 付き所有権モデルとの接続を意識する。
+- `RuntimeString` 変換では Borrowed/Transferred マーカーを持たせ、`docs/spec/3-3-core-text-unicode.md` の文字列契約と同期させる。`ReMlString` を `ForeignPtr` ベースで包み `record_bridge_status` に `ownership` 情報を含められるように設計する。
+- `ffi_signature_smoke` などのテストに AddressSanitizer を適用し、`runtime.refcount.*` の増減が `audit.log("ffi.call", ...)` と `reports/runtime-bridge/*.json` に記録されることを確認する。このパスが安定したら `docs/spec/3-6-core-diagnostics-audit.md` で定義された監査キーと照合しながら差分を `reports/runtime-bridge/` に蓄積する。
+- 上記が整った段階で `AuditEnvelope.metadata.bridge` / `CapabilityRegistry` との橋渡しきっかけを README で補足し、W3 で想定している `CapabilityRegistry::register`/`StageRequirement` への引き継ぎを容易にする。
 
 ## 2.1.6 作業ストリーム
 
