@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
 use crate::codegen::ModuleIr;
+use crate::target_diagnostics::TargetDiagnosticEmitter;
+use serde_json::Value;
 
 /// 単一診断レコード。
 #[derive(Clone, Debug)]
@@ -63,6 +65,11 @@ impl AuditLog {
     pub fn record(&mut self, key: impl Into<String>, value: impl Into<String>) {
         self.entries.push(AuditEntry::new(key, value));
     }
+
+    pub fn record_value(&mut self, key: impl Into<String>, value: &Value) {
+        let serialized = serde_json::to_string(value).unwrap_or_else(|_| format!("{:?}", value));
+        self.record(key, serialized);
+    }
 }
 
 /// 検証結果。
@@ -84,6 +91,7 @@ impl Verifier {
 
     pub fn verify_module(&self, module: &ModuleIr) -> VerificationResult {
         let mut diagnostics = Vec::new();
+        let target_report = TargetDiagnosticEmitter::new(module.target_context.clone()).emit();
         if module.functions.is_empty() {
             diagnostics.push(
                 Diagnostic::new(
@@ -116,10 +124,24 @@ impl Verifier {
                 );
             }
         }
+        for target_diag in target_report.diagnostics {
+            diagnostics.push(
+                Diagnostic::new("Target", target_diag.code, target_diag.message)
+                    .with_extension(
+                        "target",
+                        serde_json::to_string(&target_diag.extension)
+                            .unwrap_or_else(|_| format!("{:?}", target_diag.extension)),
+                    )
+                    .with_extension("backend", "rust"),
+            );
+        }
         let mut audit = AuditLog::new();
         audit.record("audit.source", format!("opt.verify {}", module.name));
         audit.record("audit.target", module.target.describe());
         audit.record("audit.module", module.name.clone());
+        for entry in target_report.audit {
+            audit.record_value(entry.key, &entry.value);
+        }
         audit.record(
             "audit.verdict",
             if diagnostics.is_empty() {

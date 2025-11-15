@@ -1,6 +1,7 @@
 use std::fmt::Write;
 
 use crate::ffi_lowering::{FfiCallSignature, FfiLowering, LoweredFfiCall};
+use crate::target_diagnostics::TargetDiagnosticContext;
 use crate::target_machine::{TargetMachine, WindowsToolchainConfig};
 use crate::type_mapping::{RemlType, TypeLayout, TypeMappingContext};
 
@@ -94,6 +95,7 @@ pub struct ModuleIr {
     pub functions: Vec<GeneratedFunction>,
     pub metadata: Vec<String>,
     pub windows_toolchain: Option<WindowsToolchainConfig>,
+    pub target_context: TargetDiagnosticContext,
 }
 
 impl ModuleIr {
@@ -123,6 +125,7 @@ pub struct CodegenContext {
     ffi_lowering: FfiLowering,
     functions: Vec<GeneratedFunction>,
     module_metadata: Vec<String>,
+    target_context: TargetDiagnosticContext,
 }
 
 impl CodegenContext {
@@ -137,6 +140,7 @@ impl CodegenContext {
             target_machine,
             functions: Vec::new(),
             module_metadata: Vec::new(),
+            target_context: TargetDiagnosticContext::from_target_machine(&target_machine),
         }
     }
 
@@ -146,6 +150,14 @@ impl CodegenContext {
             self.target_machine.describe(),
             self.functions.len()
         )
+    }
+
+    pub fn target_context(&self) -> &TargetDiagnosticContext {
+        &self.target_context
+    }
+
+    pub fn set_target_context(&mut self, context: TargetDiagnosticContext) {
+        self.target_context = context;
     }
 
     pub fn target_machine(&self) -> &TargetMachine {
@@ -189,6 +201,7 @@ impl CodegenContext {
             functions: self.functions,
             metadata: self.module_metadata,
             windows_toolchain: self.target_machine.windows_toolchain.clone(),
+            target_context: self.target_context.clone(),
         }
     }
 }

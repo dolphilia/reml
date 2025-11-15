@@ -16,6 +16,7 @@ MODE="ast"
 EXPECTED_TOKENS_PREFIX=""
 FORCE_TYPE_EFFECT_FLAGS="${FORCE_TYPE_EFFECT_FLAGS:-false}"
 TYPE_EFFECT_RUNTIME_CAPS="${TYPE_EFFECT_RUNTIME_CAPS:-docs/spec/3-8-core-runtime-capability.md#samples}"
+EMIT_TARGET_DIAG="false"
 
 usage() {
   cat <<'EOF'
@@ -29,6 +30,9 @@ Options:
   --emit-expected-tokens <prefix>
                      diag モード時に Recover 期待トークンを抽出して
                      `<prefix>.{ocaml,rust,diff}.json` をケース配下へ保存する
+  --emit-target-diag
+                      diag モード時に target ドメインの JSON を
+                      `reports/dual-write/target-diag/<run-id>/diagnostics.{rust,ocaml}.json` に保存する
   --force-type-effect-flags
                      type_* / effect_* / ffi_* ケースへ Type/Effector フラグを強制注入し、
                      成果物（typeck-debug / effects-metrics）の生成を必須化する
@@ -62,6 +66,10 @@ while [[ $# -gt 0 ]]; do
       EXPECTED_TOKENS_PREFIX="$2"
       shift 2
       ;;
+    --emit-target-diag)
+      EMIT_TARGET_DIAG="true"
+      shift 1
+      ;;
     --force-type-effect-flags)
       FORCE_TYPE_EFFECT_FLAGS="true"
       shift 1
@@ -91,6 +99,11 @@ fi
 
 if [[ -n "${EXPECTED_TOKENS_PREFIX}" && "${MODE}" != "diag" ]]; then
   echo "--emit-expected-tokens は diag モードでのみ利用できます" >&2
+  exit 1
+fi
+
+if [[ "${EMIT_TARGET_DIAG}" == "true" && "${MODE}" != "diag" ]]; then
+  echo "--emit-target-diag は diag モードでのみ利用できます" >&2
   exit 1
 fi
 
@@ -192,6 +205,11 @@ fi
 
 RUN_DIR="${REPORT_DIR}/${RUN_ID}"
 mkdir -p "${RUN_DIR}"
+TARGET_DIAG_DIR=""
+if [[ "${EMIT_TARGET_DIAG}" == "true" ]]; then
+  TARGET_DIAG_DIR="${REPO_ROOT}/reports/dual-write/target-diag/${RUN_ID}"
+  mkdir -p "${TARGET_DIAG_DIR}"
+fi
 
 : "${CARGO_HOME:=${HOME}/.cargo}"
 : "${CARGO_TARGET_DIR:=${RUST_DIR}/target}"
@@ -1328,6 +1346,48 @@ out_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding=
 PY
 }
 
+emit_target_diag_snapshot() {
+  local case_name="$1"
+  local frontend="$2"
+  local diag_path="$3"
+  local run_id="$4"
+  local target_file="$5"
+  python3 - "${case_name}" "${frontend}" "${diag_path}" "${target_file}" "${run_id}" <<'PY'
+import json
+import pathlib
+import sys
+
+case_name, frontend, diag_path, target_file, run_id = sys.argv[1:]
+target_path = pathlib.Path(target_file)
+payload = {}
+source_path = pathlib.Path(diag_path)
+if source_path.exists():
+    try:
+        payload = json.loads(source_path.read_text(encoding="utf-8"))
+    except Exception:
+        payload = {}
+existing = {}
+if target_path.exists():
+    try:
+        existing = json.loads(target_path.read_text(encoding="utf-8"))
+    except Exception:
+        existing = {}
+cases = existing.get("cases", [])
+cases = [entry for entry in cases if entry.get("case") != case_name]
+cases.append(
+    {
+        "case": case_name,
+        "diagnostics": payload,
+    }
+)
+existing["run_id"] = run_id
+existing["frontend"] = frontend
+existing["cases"] = cases
+target_path.parent.mkdir(parents=True, exist_ok=True)
+target_path.write_text(json.dumps(existing, ensure_ascii=False, indent=2), encoding="utf-8")
+PY
+}
+
 collect_effects_metrics() {
   local diag_path="$1"
   local output_path="$2"
@@ -1639,6 +1699,21 @@ for idx in "${!CASE_ENTRIES[@]}"; do
     fi
 
     create_diag_diff "${ocaml_diag_path}" "${rust_diag_path}" "${diag_diff_path}"
+
+    if [[ "${EMIT_TARGET_DIAG}" == "true" && -n "${TARGET_DIAG_DIR}" ]]; then
+      emit_target_diag_snapshot \
+        "${case_name}" \
+        "ocaml" \
+        "${ocaml_diag_path}" \
+        "${RUN_ID}" \
+        "${TARGET_DIAG_DIR}/diagnostics.ocaml.json"
+      emit_target_diag_snapshot \
+        "${case_name}" \
+        "rust" \
+        "${rust_diag_path}" \
+        "${RUN_ID}" \
+        "${TARGET_DIAG_DIR}/diagnostics.rust.json"
+    fi
 
     if is_streaming_case "${case_name}"; then
       if ! enforce_streaming_metrics_gate "${case_name}" "${case_dir}"; then
