@@ -44,6 +44,7 @@
 
 - `compiler/rust/backend/llvm::integration::generate_w3_snapshot` を通じて、`CodegenContext` に `MirFunction`（`@k__main`）を流し込み、`TargetMachineBuilder` の `Triple::WindowsMSVC` / `DataLayout` / `OptimizationLevel` 設定と属性・FFI 呼び出しを含む `GeneratedFunction` を構築する。
 - `Verifier` で `opt -verify`/`llc` 相当の検証をシミュレートし、`Diagnostic.extensions["backend"]="rust"` と `audit.log("llvm.verify", …)` 形式のエントリを署名付きで残すことで、`docs/spec/3-6-core-diagnostics-audit.md` と整合した差分監査のメタデータを得る。
+- JSON ベースの MIR 入力は `compiler/rust/backend/llvm::integration::generate_snapshot_from_mir_json` に与えることで `reports/dual-write/front-end/.../mir.json` や `reports/backend-ir-diff/w3-demo-log.json` を差分展開に利用できる。入力形式は `module`/`metadata`/`runtime_symbols` に加え `functions` 配列を持ち、各関数には `name`/`calling_conv`/`params`/`return`/`attributes`/`ffi_calls` を記述できる。`FfiCall` も `name`/`calling_conv`/`args`/`return` を持ち、`parse_reml_type` で `RemlType` へマップされる。
 - 設計検証の出力は `reports/backend-ir-diff/w3-demo-log.json` に JSON 形式で保存し、`DataLayout`/`calling_conv`/`ffi_calls` の観測値と `audit_entries` を `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の差分監査欄や `docs-migrations.log` の W2 章にリンクさせることで、W3 以降のハンドオーバー証跡とする。
 
 ## W2 チェックリスト（差分監査との接続）

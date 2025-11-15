@@ -13,7 +13,10 @@ pub mod verify;
 
 pub use codegen::{CodegenContext, GeneratedFunction, MirFunction, ModuleIr};
 pub use ffi_lowering::{FfiCallSignature, FfiLowering, LoweredFfiCall};
-pub use integration::{generate_w3_snapshot, BackendDiffSnapshot, BackendFunctionRecord};
+pub use integration::{
+    generate_snapshot, generate_snapshot_from_mir_json, generate_w3_snapshot,
+    load_mir_functions_from_json, BackendDiffSnapshot, BackendFunctionRecord, MirSnapshotError,
+};
 pub use target_machine::{
     CodeModel, DataLayoutSpec, OptimizationLevel, RelocModel, TargetMachine, TargetMachineBuilder,
     Triple, WindowsToolchainConfig,
