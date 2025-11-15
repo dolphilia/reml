@@ -24,6 +24,7 @@ Thumbs.db
 *.tmp
 *.temp
 *.log
+!docs-migrations.log
 *.bak
 *.backup
 *~

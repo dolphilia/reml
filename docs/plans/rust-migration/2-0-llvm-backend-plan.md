@@ -176,5 +176,19 @@
   - W3 のコードと検証結果を `2-3-p2-backend-integration-roadmap.md` にまとめ、P2-1/P2-2 のランタイム・アダプタ設計と連携する箇所（GC フック、FFI 診断、TargetMachine から渡す `Module`）を明記する。
   - W3 の差分ログが CI に反映されたら、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の `TODO:-DIAG-RUST-*` 項目に進捗バッジを付け、Stage Audit 失敗時用のフィードバックループを `docs/spec/3-8-core-runtime-capability.md` に脚注する。
 
+### W4：Windows/macOS 向け統合
+
+- **目的**：`x86_64-pc-windows-gnu`/`x86_64-pc-windows-msvc`/`x86_64-apple-darwin` を含むビルドマトリクスで Rust LLVM バックエンドを動作させ、`opt -verify`/`llc` による差分検証と TargetMachine 設定を OCaml 実装と一致させながら P3 CI へ引き渡せる状態をつくる。
+- **実施内容**
+  1. `TargetMachineBuilder` に Triple・Relocation・CodeModel のテーブルを用意し、Windows 上では `CodeModel::Large`（MSVC）/`Default`（GNU）や `DataLayout` の差異を `docs/guides/llvm-integration-notes.md §5.0`・`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` に定義されたゴールに合わせる。`REML_LLVM_DISTRIBUTION={msys2,official-zip}` フラグで MSYS2 LLVM 16 と公式 ZIP 19.1.1 の `llvm-config` パス・ライブラリ配置を切り替え、`docs/plans/rust-migration/0-2-windows-toolchain-audit.md` に `libcmt.lib`/`msvcprt.lib` などの依存を追加する。
+  2. Windows の `clang-cl`/`link.exe` および macOS の `clang`/`lld` をそれぞれ `tooling/toolchains/` スクリプトで囲い、`REML_LLVM_TARGET` で `cargo build` をターゲットごとに切り替える。`opt -verify`/`llc` は `REML_BACKEND_VERIFY=1` により `reports/backend-verify/<target>/opt-verify.log` と `.../llc.ll` に出力し、`reports/backend-ir-diff/{target}/` に dual-run 差分を保存して `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` のドリフト監査へ連動させる。
+  3. GitHub Actions `llvm-backend-verify` マトリクスを `windows-latest`/`macos-latest` 向けに拡張し、`remlc --backend=rust` と `--backend=ocaml` の dual run を実施。各ターゲットで `reports/backend-verify/{target}/` の成果物をアップロードし、5 連続成功を契機に `3-0-ci-and-dual-write-strategy.md` の P3 CI ジョブへ通知する。
+- **検証とメトリクス**
+  - `opt -verify`/`llc` のログを `reports/diagnostic-format-regression.md` の診断 ID と照合し、`target.config.*`, `effects.contract.stage_mismatch`, `llvm.verify.failed` 等が発生しないことを確認。`Diagnostic.extensions["backend"]` に `target`/`toolchain` を記録し、`collect-iterator-audit-metrics.py --section backend` で `backend.verify.pass`・`backend.verify.fail` をターゲット別に時系列保存する。
+  - Windows では `clang-cl`/`link.exe` が `libcmt.lib` 等の欠落を警告しないことを `reports/windows-env-check.json` に記録し、`audit.log("windows.toolchain", ...)` にツールチェーン構成を吐き出す。macOS では `platform-sdk` や `target-features` の不足ログを `reports/mac-llvm-setup.log` に集約し、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の未完項目（たとえば `TODO:-DIAG-RUST-05`〜`07`）へ参照を追加して W4 で補えない診断リスクを P2 後半へ連携する。
+- **ログと次のアクション**
+  - `reports/backend-verify/{target}/` の `opt -verify` 成功ログと `llc` 生成物を保存し、5 回連続で成功した段階で `docs/plans/rust-migration/README.md` へ W4 完了注記を追加するとともに `docs-migrations.log` にこの節の追加と検証結果を記録する。
+  - W4 の成果（`target` 設定・`opt -verify` 自動化）を `docs/plans/bootstrap-roadmap/2-9-rust-migration-p2-plan.md` および `3-0-ci-and-dual-write-strategy.md` に渡し、P3/P4 に `TargetMachine` 設定・`opt -verify` 自動化を再利用可能な形で共有する。
+
 ---
-**参照**: `docs/plans/rust-migration/overview.md`, `docs/plans/rust-migration/unified-porting-principles.md`, `docs/guides/llvm-integration-notes.md`, `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `reports/diagnostic-format-regression.md`
+**参照**: `docs/plans/rust-migration/overview.md`, `docs/plans/rust-migration/unified-porting-principles.md`, `docs/guides/llvm-integration-notes.md`, `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md`, `docs/plans/bootstrap-roadmap/2-9-rust-migration-p2-plan.md`, `docs/plans/rust-migration/0-2-windows-toolchain-audit.md`, `3-0-ci-and-dual-write-strategy.md`, `reports/diagnostic-format-regression.md`
