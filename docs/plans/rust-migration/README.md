@@ -28,6 +28,8 @@
   - [`2-1-runtime-integration.md`](2-1-runtime-integration.md): ランタイム FFI・Capability Registry・監査ログ統合計画
   - [`2-2-adapter-layer-guidelines.md`](2-2-adapter-layer-guidelines.md): プラットフォーム差分吸収アダプタ層の設計指針
   - [`2-3-p2-backend-integration-roadmap.md`](2-3-p2-backend-integration-roadmap.md): LLVM/Runtime/Adapter を束ねた Rust P2 作業計画と Go/No-Go 条件
+  - [`p2-spec-compliance-gap.md`](p2-spec-compliance-gap.md): LLVM バックエンド／ランタイム計画（`2-0`〜`2-2`）達成度チェックと `P2G-XX` ギャップ一覧
+  - [`p2-runtime-gap-report.md`](p2-runtime-gap-report.md): P2 のコードリーディングで追加確認した Stage 解決・Runtime Bridge・FFI スタブ計画・リンク連携の未達整理
 - **P3 CI/監査統合**
   - [`3-0-ci-and-dual-write-strategy.md`](3-0-ci-and-dual-write-strategy.md): CI マトリクス拡張と dual-write 運用戦略
   - [`3-1-observability-alignment.md`](3-1-observability-alignment.md): 監査メトリクス・ログ・ダッシュボード整合計画
