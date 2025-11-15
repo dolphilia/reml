@@ -145,6 +145,11 @@
   2. `target_config.ml` で定義された Triple/`DataLayout`/`CallingConvention`/`alignment_spec` を Rust `TargetMachine` 初期化コードの目標値として記録し、`docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` に記載の MSYS2 LLVM 16 と公式 ZIP 19.1.1 の差異点を検証対象として明記した。
   3. `ffi_value_lowering` と `runtime_link` の RC・panic・リンク呼び出し管理が `2-1-runtime-integration.md` で扱うランタイム境界と一致することを確認し、診断やメトリクス（`reports/diagnostic-format-regression.md`、`collect-iterator-audit-metrics.py`）を監査対象に追加した。
 
+- **W2 実施状況（Rust LLVM ラッパ層）**
+  1. `docs/plans/rust-migration/appendix/llvm-backend-inventory.md` を作成し、OCaml モジュール/責務一覧・`TargetMachine`/`DataLayout` 設定・診断/verify の呼び出し順を記録することで W2 以降の実装ガイドにした。
+  2. `TargetMachineBuilder` 設計案では Triple/CPU/features/relocation/code_model/opt_level を `docs/guides/llvm-integration-notes.md` §5.0 の `DataLayout` と一致させ、Windows toolchain では `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` に記された MSYS2 LLVM 16 及び LLVM 19.1.1 のパスを切り替える API を想定している。
+  3. `verify`/`opt -verify`/`llc` の出力を `reports/diagnostic-format-regression.md` の診断 ID と照合する手順と、`Diagnostic.extensions["backend"]` や `audit.log("llvm.verify", ...)` に差分を記録する方針を明記し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の監査プロセスにつなげた。
+
 - **実績と次の展望**
   - W1 では OCaml 側構成の完全な棚卸しにより Rust ゴールの土台を固めたため、今後は `compiler/rust/backend/llvm/` の初期実装でこのチェックリストを反映する。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` と `docs/notes/dsl-plugin-roadmap.md` に補足する差分記録は、P2 後半での監査に備えたエビデンスとして残す。
   - 暫定の差異監査結果とリンクは `docs-migrations.log` の W2 章にまとめ、該当箇所が `docs/guides/llvm-integration-notes.md` や `docs/spec/3-8-core-runtime-capability.md` に影響する場合は脚注を追加して整合性を維持する。

@@ -11,3 +11,4 @@
 - `docs/plans/rust-migration/` で定義する計画書に従い、初期スケルトン（Cargo プロジェクト）を作成する
 - Windows / Linux / macOS 向けのビルドフローを段階的に整備し、CI から `cargo build` を実行できるようにする
 - OCaml 実装と Rust 実装の差分メトリクスを収集する自動化スクリプトを追加する
+- `backend/llvm/` に TargetMachineBuilder/TypeMappingContext/FFI ロワリングのスケルトンを置き、W2 の数値設計との整合を追跡する
