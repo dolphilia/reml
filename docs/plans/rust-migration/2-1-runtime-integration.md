@@ -81,6 +81,28 @@
 - `ffi_signature_smoke` などのテストに AddressSanitizer を適用し、`runtime.refcount.*` の増減が `audit.log("ffi.call", ...)` と `reports/runtime-bridge/*.json` に記録されることを確認する。このパスが安定したら `docs/spec/3-6-core-diagnostics-audit.md` で定義された監査キーと照合しながら差分を `reports/runtime-bridge/` に蓄積する。
 - 上記が整った段階で `AuditEnvelope.metadata.bridge` / `CapabilityRegistry` との橋渡しきっかけを README で補足し、W3 で想定している `CapabilityRegistry::register`/`StageRequirement` への引き継ぎを容易にする。
 
+### W3: Capability & Audit 統合
+
+W3 では Rust 側で `CapabilityRegistry` を直接取り込み、`AuditContext`/`SecurityPolicy` と `AuditEnvelope.metadata.bridge` を融合させて `effect` 契約をクリアする体制を整える。以下の作業を進めることで `CapabilityRegistry::register` に必要な stage 情報と `audit.log("ffi.call.*", …)` の結果を `reports/runtime-bridge/` に蓄積し、`--effects-debug` の residual なし/診断ゼロの完了条件に近づける。
+
+- **CapabilityRegistry FFI の整備**  
+  - `docs/spec/3-8-core-runtime-capability.md` に準拠して `runtime/native/include/reml_runtime.h` に書かれた `CapabilityRegistry::register`/`get` を Rust の `extern "C"` で包み、`compiler/rust/runtime/ffi/registry.rs` から `OnceLock<CapabilityRegistry>` にアクセス。`StageRequirement::{Exact, AtLeast}` を Rust 型で再現し、`verify_capability_stage` を呼んで `Diagnostic.extensions["effects"]` に `effects.contract.stage_mismatch` を記録する。
+  - `CapabilityRegistry::register` が返す `CapabilityDescriptor` に `stage`/`effect`/`capability_id` を含め、`AuditEnvelope.metadata.bridge.stage` に渡すヘルパを `audit.rs` 側に用意する。
+
+- **AuditContext・SecurityPolicy の連携**  
+  - `docs/spec/3-6-core-diagnostics-audit.md` で定義されたキー（`latency_ns`, `target`, `abi`, `ownership`, `status`）を `AuditContext` が生成する `audit.log("ffi.call.start", ...)` / `audit.log("ffi.call.end", ...)` に確実に含め、`AuditEnvelope.metadata.bridge.status` を `"ok"` で更新するラッパを `compiler/rust/runtime/ffi/audit.rs` に置く。
+  - `security.report_violation` を `CallOptions` の `SecuritySink` から呼び出し、`SecurityCapability` から得た権限が不足するケースで `Diagnostic` を返す。`SecurityCapability` は `docs/spec/3-9-core-async-ffi-unsafe.md` の `SecurityPolicy` 仕様に合わせて stage 情報と `audit.log("security.violation", …)` に `bridge.stage.*` を含める。
+
+- **effect タグの検証強化**  
+  - `effect {ffi, audit, runtime, unsafe}` の必要な組み合わせを `CallOptions` で列挙し、FFI 呼び出しのエントリで `effects::scope("ffi")` を展開して `--effects-debug` で residual が空になることを確認する。`reml trace --effects-debug fixtures/ffi/*.reml` で `effects.contract.stage_mismatch` や `effects.contract.unpermitted` が発生しないことを検証し、`Diagnostic.extensions["effects"].residual` を `reports/runtime-bridge/effects-debug/*.json` に保存。
+  - `StageRequirement` にズレがある場合は `effects.contract.stage_mismatch` を追加で発行し、`docs/spec/3-8-core-runtime-capability.md` の Stage ポリシー節と照合するためのメタデータを `reports/runtime-bridge/` の JSON に付与する。
+
+- **監査ログ・診断メタデータの蓄積**  
+  - `audit.log("ffi.call.*", …)` の結果を `reports/runtime-bridge/*.json` に記録し、`Diagnostic.extensions["bridge"]` に `CapabilityRegistry`/`AuditContext` の値（`bridge.stage`, `bridge.capability_id`, `bridge.status`）を含める。`reports/dual-write/front-end/P1_W4.5_frontend_handover/diag/effects/` で管理している Run ID と比較し、Rust 側監査と OCaml 側監査で共通するメタデータを確認。
+  - `CapabilityRegistry::register` の呼び出しと `AuditEnvelope.metadata.bridge.stage` の更新を README に追記し、W4 以降のクロスプラットフォーム検証や CI で同じ stage 情報を引き継げるようにする（`docs/guides/runtime-bridges.md` / `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` にも脚注を追加）。
+
+W3 の成果を `docs/migrations` シリーズに記録するとともに、`3-0-ci-and-dual-write-strategy.md` に連携ログの自動比較ルートとして `reports/runtime-bridge/` を加え、P3 CI で `AuditEnvelope.metadata.bridge` の整合性を活用できるようにする。
+
 ## 2.1.6 作業ストリーム
 
 - **FFI シグネチャ整備**  
