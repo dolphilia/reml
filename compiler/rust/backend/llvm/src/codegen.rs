@@ -142,12 +142,15 @@ impl CodegenContext {
     let layout = target_machine.data_layout.clone();
     let target_context = TargetDiagnosticContext::from_target_machine(&target_machine);
     let bridge_metadata = BridgeMetadataContext::new(&target_machine);
+    let ffi_lowering = FfiLowering::new(
+      TypeMappingContext::new(target_machine.data_layout.clone()),
+      runtime_symbols,
+      target_machine.triple,
+      target_machine.backend_abi().to_string(),
+    );
     Self {
       type_mapping: TypeMappingContext::new(layout),
-      ffi_lowering: FfiLowering::new(
-        TypeMappingContext::new(target_machine.data_layout.clone()),
-        runtime_symbols,
-      ),
+      ffi_lowering,
       target_machine,
       functions: Vec::new(),
       module_metadata: Vec::new(),
@@ -186,13 +189,11 @@ impl CodegenContext {
                 align: 1,
                 description: "void".into(),
             });
-        let lowered_calls = mir
-            .ffi_calls
-            .iter()
-            .map(|sig| self.ffi_lowering.lower_call(sig))
-            .collect();
-        for call in &mir.ffi_calls {
-            self.bridge_metadata.record_stub(call);
+        let mut lowered_calls = Vec::new();
+        for sig in &mir.ffi_calls {
+            let lowered = self.ffi_lowering.lower_call(sig);
+            self.bridge_metadata.record_stub(&lowered.stub_plan);
+            lowered_calls.push(lowered);
         }
         let generated = GeneratedFunction {
             name: mir.name.clone(),

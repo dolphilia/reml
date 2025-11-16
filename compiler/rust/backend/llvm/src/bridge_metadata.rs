@@ -1,7 +1,4 @@
-use crate::{
-    ffi_lowering::FfiCallSignature,
-    target_machine::{TargetMachine, Triple},
-};
+use crate::{ffi_lowering::FfiStubPlan, target_machine::TargetMachine};
 
 #[derive(Clone, Debug)]
 pub struct BridgeStubMetadata {
@@ -21,26 +18,24 @@ pub struct BridgeStubMetadata {
 }
 
 impl BridgeStubMetadata {
-    fn from_call(index: usize, call: &FfiCallSignature, target: &str, platform: &str) -> Self {
-        let sanitized = Self::sanitize_symbol(&call.name);
+    fn from_plan(index: usize, plan: &FfiStubPlan) -> Self {
+        let sanitized = Self::sanitize_symbol(&plan.extern_name);
         let stub_symbol = format!("reml_bridge_stub_{}_{}", sanitized, index + 1);
         let thunk_symbol = format!("reml_bridge_thunk_{}_{}", sanitized, index + 1);
-        let callconv = call.calling_conv.clone();
-        let abi = Self::infer_abi(&callconv);
         Self {
             stub_index: index,
-            extern_name: call.name.clone(),
+            extern_name: plan.extern_name.clone(),
             stub_symbol,
             thunk_symbol,
-            target: target.to_string(),
-            platform: platform.to_string(),
-            callconv,
-            abi,
-            ownership: "borrowed".into(),
+            target: plan.target_triple.clone(),
+            platform: plan.platform.clone(),
+            callconv: plan.callconv.clone(),
+            abi: plan.abi.clone(),
+            ownership: plan.ownership.clone(),
             return_wrap: "wrap_foreign_ptr".into(),
             return_release_handler: "none".into(),
             return_rc_adjustment: "none".into(),
-            extras: Vec::new(),
+            extras: plan.register_save_area_tags(),
         }
     }
 
@@ -104,15 +99,6 @@ impl BridgeStubMetadata {
         }
     }
 
-    fn infer_abi(callconv: &str) -> String {
-        match callconv.to_lowercase().as_str() {
-            "win64" | "msvc" => "msvc".into(),
-            "aarch64_aapcscc" | "aapcs64" | "arm_aapcscc" | "darwin" => "darwin_aapcs64".into(),
-            "ccc" | "system_v" | "systemv" => "system_v".into(),
-            other => other.into(),
-        }
-    }
-
     fn sanitize_value(value: &str) -> String {
         value.trim().replace('\n', " ").replace('\r', " ")
     }
@@ -133,15 +119,14 @@ impl BridgeMetadataContext {
         let triple = target_machine.triple;
         Self {
             target: triple.to_string(),
-            platform: platform_label(triple).to_string(),
+            platform: triple.platform_label().to_string(),
             stubs: Vec::new(),
             next_index: 0,
         }
     }
 
-    pub fn record_stub(&mut self, call: &FfiCallSignature) {
-        let stub =
-            BridgeStubMetadata::from_call(self.next_index, call, &self.target, &self.platform);
+    pub fn record_stub(&mut self, plan: &FfiStubPlan) {
+        let stub = BridgeStubMetadata::from_plan(self.next_index, plan);
         self.next_index += 1;
         self.stubs.push(stub);
     }
@@ -184,13 +169,5 @@ impl BridgeMetadataContext {
             entries.push(("audit.bridge.stub".into(), stub_line));
         }
         entries
-    }
-}
-
-fn platform_label(triple: Triple) -> &'static str {
-    match triple {
-        Triple::LinuxGNU => "linux-x86_64",
-        Triple::AppleDarwin => "macos-arm64",
-        Triple::WindowsGNU | Triple::WindowsMSVC => "windows-msvc-x64",
     }
 }

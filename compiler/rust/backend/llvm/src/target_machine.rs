@@ -23,6 +23,23 @@ impl Triple {
 }
 
 impl Triple {
+  pub fn platform_label(&self) -> &'static str {
+    match self {
+      Triple::LinuxGNU => "linux-x86_64",
+      Triple::AppleDarwin => "macos-arm64",
+      Triple::WindowsGNU | Triple::WindowsMSVC => "windows-msvc-x64",
+    }
+  }
+
+  pub fn canonical_arch(&self) -> &'static str {
+    match self {
+      Triple::AppleDarwin => "arm64",
+      _ => "x86_64",
+    }
+  }
+}
+
+impl Triple {
   fn from_str(triple: &str) -> Option<Self> {
     match triple.to_ascii_lowercase().as_str() {
       "x86_64-unknown-linux-gnu" | "x86_64-linux-gnu" | "x86_64-linux" => Some(Triple::LinuxGNU),
