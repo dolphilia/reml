@@ -1,6 +1,6 @@
 //! Rust 側から Reml ランタイムへの FFI アクセスを提供する最小層。
 //! 手動定義の `extern` 宣言と安全なラッパーをまとめる。
-use serde_json::json;
+use serde_json::{json, Value};
 use std::{
     ffi::CStr,
     fmt::{self, Display},
@@ -62,7 +62,7 @@ impl ReMlString {
 
 /// 機能ブリッジの状態を監査ログに送るためのステータス。
 #[repr(i32)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum BridgeStatus {
     /// 正常終了。
     Ok = 0,
@@ -139,14 +139,57 @@ impl Ownership {
 }
 
 /// Audit 用に渡すデータを一括管理する構造体。
+#[derive(Copy, Clone)]
+pub struct BridgeReturnAuditMetadata<'a> {
+    pub ownership: Ownership,
+    pub status: &'a str,
+    pub wrap: &'a str,
+    pub release_handler: &'a str,
+    pub rc_adjustment: &'a str,
+}
+
+impl<'a> BridgeReturnAuditMetadata<'a> {
+    fn as_entries(&self) -> BridgeReturnAuditEntries<'a> {
+        BridgeReturnAuditEntries {
+            ownership: self.ownership.as_str(),
+            status: self.status,
+            wrap: self.wrap,
+            release_handler: self.release_handler,
+            rc_adjustment: self.rc_adjustment,
+        }
+    }
+
+    pub fn pending(ownership: Ownership) -> Self {
+        Self {
+            ownership,
+            status: "pending",
+            wrap: "wrap_foreign_ptr",
+            release_handler: "dec_ref",
+            rc_adjustment: "none",
+        }
+    }
+
+    pub fn with_status(self, status: &'a str) -> Self {
+        Self { status, ..self }
+    }
+}
+
+/// `AuditEnvelope.metadata.bridge` に渡すメタデータ。
+#[derive(Copy, Clone)]
 pub struct BridgeAuditMetadata<'a> {
     pub status: BridgeStatus,
     pub ownership: Ownership,
     pub span: Span,
     pub target: &'a str,
+    pub arch: &'a str,
     pub platform: &'a str,
     pub abi: &'a str,
+    pub expected_abi: &'a str,
     pub symbol: &'a str,
+    pub extern_symbol: &'a str,
+    pub extern_name: &'a str,
+    pub link_name: &'a str,
+    pub return_info: BridgeReturnAuditMetadata<'a>,
 }
 
 impl<'a> BridgeAuditMetadata<'a> {
@@ -157,11 +200,32 @@ impl<'a> BridgeAuditMetadata<'a> {
             ownership: self.ownership.as_str(),
             span: self.span,
             target: self.target,
+            arch: self.arch,
             platform: self.platform,
             abi: self.abi,
+            expected_abi: self.expected_abi,
             symbol: self.symbol,
+            extern_symbol: self.extern_symbol,
+            extern_name: self.extern_name,
+            link_name: self.link_name,
+            return_info: self.return_info.as_entries(),
         }
     }
+
+    pub fn with_return_info(&self, return_info: BridgeReturnAuditMetadata<'a>) -> Self {
+        Self {
+            return_info,
+            ..*self
+        }
+    }
+}
+
+pub struct BridgeReturnAuditEntries<'a> {
+    pub ownership: &'static str,
+    pub status: &'a str,
+    pub wrap: &'a str,
+    pub release_handler: &'a str,
+    pub rc_adjustment: &'a str,
 }
 
 pub struct BridgeAuditEntries<'a> {
@@ -169,9 +233,31 @@ pub struct BridgeAuditEntries<'a> {
     pub ownership: &'static str,
     pub span: Span,
     pub target: &'a str,
+    pub arch: &'a str,
     pub platform: &'a str,
     pub abi: &'a str,
+    pub expected_abi: &'a str,
     pub symbol: &'a str,
+    pub extern_symbol: &'a str,
+    pub extern_name: &'a str,
+    pub link_name: &'a str,
+    pub return_info: BridgeReturnAuditEntries<'a>,
+}
+
+/// `RuntimeString::to_bridge_metadata` に渡す設定。
+#[derive(Copy, Clone)]
+pub struct BridgeAuditMetadataArgs<'a> {
+    pub status: BridgeStatus,
+    pub target: &'a str,
+    pub arch: &'a str,
+    pub platform: &'a str,
+    pub abi: &'a str,
+    pub expected_abi: &'a str,
+    pub symbol: &'a str,
+    pub extern_symbol: &'a str,
+    pub extern_name: &'a str,
+    pub link_name: &'a str,
+    pub return_info: BridgeReturnAuditMetadata<'a>,
 }
 
 /// ランタイム文字列と Span を組み合わせたラッパ。
@@ -220,20 +306,22 @@ impl RuntimeString {
     /// Audit に渡すメタデータ。
     pub fn to_bridge_metadata<'a>(
         &'a self,
-        status: BridgeStatus,
-        target: &'a str,
-        platform: &'a str,
-        abi: &'a str,
-        symbol: &'a str,
+        args: BridgeAuditMetadataArgs<'a>,
     ) -> BridgeAuditMetadata<'a> {
         BridgeAuditMetadata {
-            status,
+            status: args.status,
             ownership: self.ownership,
             span: self.span,
-            target,
-            platform,
-            abi,
-            symbol,
+            target: args.target,
+            arch: args.arch,
+            platform: args.platform,
+            abi: args.abi,
+            expected_abi: args.expected_abi,
+            symbol: args.symbol,
+            extern_symbol: args.extern_symbol,
+            extern_name: args.extern_name,
+            link_name: args.link_name,
+            return_info: args.return_info,
         }
     }
 }
@@ -345,9 +433,14 @@ pub fn acquire_transferred_result(source: ForeignPtr) -> ForeignPtr {
 }
 
 /// Audit で使用する `bridge.status` を `extern` 呼び出しで記録する補助。
-pub fn record_bridge_with_metadata(meta: &BridgeAuditMetadata<'_>) {
+pub fn record_bridge_with_metadata(
+    ctx: &AuditContext,
+    event: impl Into<String>,
+    meta: &BridgeAuditMetadata<'_>,
+    payload: Value,
+) -> Result<(), AuditError> {
     record_bridge_status(meta.status);
-    // TODO: AuditContext への記録は上位レイヤで処理する。
+    ctx.log_bridge_metadata(event, meta, payload)
 }
 
 /// FFI 呼び出しの共通処理: capability と audit を検証し、ライフサイクル監査を記録する。
@@ -382,7 +475,7 @@ where
         "stage": handle.descriptor().stage.to_string(),
         "symbol": symbol,
     });
-    ctx.log_bridge_metadata("ffi.call.start", metadata, log_payload)
+    record_bridge_with_metadata(&ctx, "ffi.call.start", metadata, log_payload)
         .map_err(BridgeError::Audit)?;
 
     let result = body(&ctx, handle.descriptor());
@@ -390,13 +483,30 @@ where
         Ok(_) => BridgeStatus::Ok,
         Err(_) => BridgeStatus::Failure,
     };
-    let log_payload = json!({
+    let end_payload = json!({
         "capability": handle.descriptor().id,
         "stage": handle.descriptor().stage.to_string(),
         "symbol": symbol,
         "status": status.as_str(),
     });
-    ctx.log_bridge_metadata("ffi.call.end", metadata, log_payload)
+    record_bridge_with_metadata(&ctx, "ffi.call.end", metadata, end_payload)
+        .map_err(BridgeError::Audit)?;
+
+    let return_status = if status == BridgeStatus::Ok {
+        "wrap"
+    } else {
+        "failure"
+    };
+    let result_payload = json!({
+        "capability": handle.descriptor().id,
+        "stage": handle.descriptor().stage.to_string(),
+        "symbol": symbol,
+        "status": status.as_str(),
+        "return_status": return_status,
+    });
+    let result_return_info = metadata.return_info.with_status(return_status);
+    let result_metadata = metadata.with_return_info(result_return_info);
+    record_bridge_with_metadata(&ctx, "ffi.call.result", &result_metadata, result_payload)
         .map_err(BridgeError::Audit)?;
 
     result
@@ -452,18 +562,27 @@ mod tests {
         let span = Span::new(0, 7);
         let rt_string =
             unsafe { RuntimeString::from_parts(ptr, 7, span, Ownership::Borrowed).unwrap() };
-        let metadata = rt_string.to_bridge_metadata(
-            BridgeStatus::Borrowed,
-            "local",
-            "linux-x64",
-            "sysv",
-            "foo",
-        );
+        let metadata = rt_string.to_bridge_metadata(BridgeAuditMetadataArgs {
+            status: BridgeStatus::Borrowed,
+            target: "local",
+            arch: "x86_64",
+            platform: "linux-x64",
+            abi: "sysv",
+            expected_abi: "sysv",
+            symbol: "foo",
+            extern_symbol: "foo",
+            extern_name: "foo",
+            link_name: "foo",
+            return_info: BridgeReturnAuditMetadata::pending(Ownership::Borrowed),
+        });
         let entries = metadata.as_entries();
         assert_eq!(entries.status, "borrowed");
         assert_eq!(entries.ownership, "borrowed");
         assert_eq!(entries.span.len(), 7);
         assert_eq!(entries.target, "local");
+        assert_eq!(entries.arch, "x86_64");
+        assert_eq!(entries.return_info.status, "pending");
+        assert_eq!(entries.return_info.wrap, "wrap_foreign_ptr");
     }
 }
 

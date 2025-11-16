@@ -1,4 +1,4 @@
-use crate::{BridgeAuditMetadata, Span};
+use crate::{BridgeAuditMetadata, BridgeReturnAuditMetadata, Span};
 use serde_json::{json, Map, Value};
 use std::fmt;
 use std::sync::{Arc, Mutex};
@@ -140,28 +140,7 @@ impl AuditContext {
     ) -> Result<(), AuditError> {
         let event = event.into();
         let mut metadata = self.build_metadata();
-        metadata.insert(
-            "bridge.status".into(),
-            Value::String(bridge.status.as_str().to_string()),
-        );
-        metadata.insert(
-            "bridge.ownership".into(),
-            Value::String(bridge.ownership.as_str().to_string()),
-        );
-        metadata.insert("bridge.span".into(), span_to_value(bridge.span));
-        metadata.insert(
-            "bridge.target".into(),
-            Value::String(bridge.target.to_string()),
-        );
-        metadata.insert(
-            "bridge.platform".into(),
-            Value::String(bridge.platform.to_string()),
-        );
-        metadata.insert("bridge.abi".into(), Value::String(bridge.abi.to_string()));
-        metadata.insert(
-            "bridge.symbol".into(),
-            Value::String(bridge.symbol.to_string()),
-        );
+        add_bridge_metadata(&mut metadata, bridge);
         self.sink.log(event, payload, metadata)
     }
 
@@ -175,6 +154,62 @@ impl AuditContext {
 
 fn span_to_value(span: Span) -> Value {
     json!({ "start": span.start, "end": span.end, "length": span.len() })
+}
+
+fn add_bridge_metadata(metadata: &mut Map<String, Value>, bridge: &BridgeAuditMetadata<'_>) {
+    metadata.insert(
+        "bridge.status".into(),
+        Value::String(bridge.status.as_str().to_string()),
+    );
+    metadata.insert(
+        "bridge.ownership".into(),
+        Value::String(bridge.ownership.as_str().to_string()),
+    );
+    metadata.insert("bridge.span".into(), span_to_value(bridge.span));
+    metadata.insert(
+        "bridge.target".into(),
+        Value::String(bridge.target.to_string()),
+    );
+    metadata.insert("bridge.arch".into(), Value::String(bridge.arch.to_string()));
+    metadata.insert(
+        "bridge.platform".into(),
+        Value::String(bridge.platform.to_string()),
+    );
+    metadata.insert("bridge.abi".into(), Value::String(bridge.abi.to_string()));
+    metadata.insert(
+        "bridge.expected_abi".into(),
+        Value::String(bridge.expected_abi.to_string()),
+    );
+    metadata.insert(
+        "bridge.symbol".into(),
+        Value::String(bridge.symbol.to_string()),
+    );
+    metadata.insert(
+        "bridge.extern_symbol".into(),
+        Value::String(bridge.extern_symbol.to_string()),
+    );
+    metadata.insert(
+        "bridge.extern_name".into(),
+        Value::String(bridge.extern_name.to_string()),
+    );
+    metadata.insert(
+        "bridge.link_name".into(),
+        Value::String(bridge.link_name.to_string()),
+    );
+    metadata.insert(
+        "bridge.return".into(),
+        bridge_return_to_value(&bridge.return_info),
+    );
+}
+
+fn bridge_return_to_value(return_info: &BridgeReturnAuditMetadata<'_>) -> Value {
+    json!({
+        "ownership": return_info.ownership.as_str(),
+        "status": return_info.status,
+        "wrap": return_info.wrap,
+        "release_handler": return_info.release_handler,
+        "rc_adjustment": return_info.rc_adjustment,
+    })
 }
 
 /// 監査に失敗した場合のエラー。
