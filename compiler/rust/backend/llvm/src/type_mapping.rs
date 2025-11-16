@@ -1,7 +1,7 @@
 use crate::target_machine::DataLayoutSpec;
 
 /// Reml 型の簡易列挙。最小限の構造体と ADT を扱う。
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RemlType {
   Bool,
   I32,

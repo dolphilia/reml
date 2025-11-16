@@ -528,7 +528,13 @@ mod tests {
             "json_module",
         )?;
         assert_eq!(snapshot.module_name, "json_module");
-        assert!(snapshot.passed);
+        assert!(
+            snapshot
+                .diagnostics
+                .iter()
+                .any(|entry| entry.contains("target.profile.missing")),
+            "target profile missing diagnostic を含むこと"
+        );
         fs::remove_file(tmp)?;
         Ok(())
     }

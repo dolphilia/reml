@@ -17,7 +17,7 @@
 | ✅ P2R-01 | Stage コンテキスト解決 | 未実装 | CLI／環境変数／`REML_RUNTIME_CAPABILITIES` JSON を統合して Stage trace を生成する `Runtime_capability_resolver` 相当の処理が Rust に存在しない。Stage trace 拡張や監査メタデータも CLI 入力の写経のみ。 | `runtime_capability_resolver.ml`, `main.ml`, `diagnostic.ml`, `poc_frontend.rs`, `diagnostic/effects.rs` |
 | ✅ P2R-02 | ランタイム Bridge バックプレッシャ診断 | 未実装 | `bridge.stage.backpressure` / `effects.contract.stage_mismatch` を Streaming parser から発火する仕組みが Rust にはない。Stage mismatch を `Runtime_bridge_registry.stream_signal` で監査する経路も欠落。 | `parser_driver.ml`, `runtime_bridge_registry.ml`, `poc_frontend.rs`, `streaming/flow.rs` |
 | ✅ P2R-03 | FFI スタブ計画と Register Save Area | 未実装 | OCaml の `ffi_stub_builder.ml` が提供するターゲット別スタブ計画・Darwin 向け register save area メタデータが Rust `ffi_lowering.rs` では再現されていない。 | `codegen/ffi_stub_builder.ml`, `ffi_lowering.rs` |
-| P2R-04 | LLVM 生成物のリンク & ランタイム連携 | 未実装 | OCaml 版が `llc`→`clang` 連携で `runtime/native` をリンクするのに対し、Rust バックエンドは MIR → JSON スナップショット生成のみで実行ファイルを生成しない。 | `llvm_gen/runtime_link.ml`, `backend/llvm/src/integration.rs` |
+| ✅ P2R-04 | LLVM 生成物のリンク & ランタイム連携 | 未実装 | OCaml 版が `llc`→`clang` 連携で `runtime/native` をリンクするのに対し、Rust バックエンドは MIR → JSON スナップショット生成のみで実行ファイルを生成しない。 | `llvm_gen/runtime_link.ml`, `backend/llvm/src/integration.rs` |
 
 ## 3. 詳細ギャップ
 
@@ -96,3 +96,10 @@
 2. `compiler/rust/backend/llvm/src/ffi_lowering.rs` にターゲット Triple に基づく stub plan コンテキスト（ターゲット文字列、Platform ラベル、arch、backend ABI、既定 ownership）の構造体を導入し、`LoweredFfiCall` が `bridge.*` タグと Darwin register save area を `audit_tags` で保持できるように改修する。`collect-iterator-audit-metrics.py` および既存の JSON スナップショット（`scripts/poc_dualwrite_compare.sh` など）に投入されるフィールド名と順序を明示し、OCaml と同じタグ群を出力できることを確認する。
 3. `compiler/rust/backend/llvm/src/bridge_metadata.rs` では `record_stub` を新しい stub plan に合わせて更新し、`BridgeStubMetadata` が `FfiStubPlan` から `bridge.platform/target/arch/abi/ownership` と `bridge.darwin.register_save_area.*` を `extras` に追加するようにする。これにより `BackendDiffSnapshot` と `collect-iterator-audit-metrics.py` で参照される `reml.bridge.stubs` ログにも詳細が反映される。
 4. 実装後に `docs/plans/rust-migration/2-0-llvm-backend-plan.md` で言及している「bridge.* 監査エントリ」と `docs/plans/rust-migration/2-3-p2-backend-integration-roadmap.md` の差分検証フローをつなぎ、追加タグの存在を記録した JSON スナップショットを `scripts/poc_dualwrite_compare.sh` で比較検証できることをコメントまたは README に残す。
+
+### P2R-04: LLVM 生成物のリンク & ランタイム連携の自動化
+
+ 1. `compiler/ocaml/src/llvm_gen/runtime_link.ml` に記述された `REML_RUNTIME_PATH` 検出、`llc` → `clang`/`cc` の呼び出し系列、macOS/Linux のリンカ設定、`runtime/native/build`・インストール済みパスの順で `libreml_runtime.a` を探索するロジックを Rust 側の `runtime_link.rs` へ写す。`RuntimeLinkError`/`LinkCommand` で出力結果をキャプチャし、失敗時の診断を `diagnostic/audit` に回せるようにする。
+ 2. `scripts/poc_dualwrite_compare.sh` の Rust 側実行コードパスに `--runtime-link` 相当のフラグを追加し、`cargo run --bin poc_frontend` 実行後に `rust.json` と並列して生成される `.o`/実行ファイルを OCaml 側成果物（`diagnostics.ocaml.*` のケース出力）と比較するゲートを追加する。`runtime_link.rs` で `Platform` 情報・`LinkCommand` を明示的に出力し、監査ログに `runtime.linker`/`runtime.platform` などを追加する。
+ 3. `docs/plans/rust-migration/2-1-runtime-integration.md` §6-§8 で整理された実行パス（`REML_RUNTIME_PATH`・`CapabilityRegistry`・MSVC/GNU/clang のターゲット差異）と `docs/plans/bootstrap-roadmap/1-5-runtime-integration.md` §6.3 のトレースを参照しつつ、Rust 側で `llc`/`clang` が失敗したときの再試行方針・監査イベント（`bridge.runtime.link` など）のテンプレートを `docs/migrations.log` に記録する。
+ 4. 実装後は `scripts/poc_dualwrite_compare.sh --mode diag` で生じる `reports/dual-write/front-end/poc/<run>/` 以下に `.o`/実行ファイルのハッシュや `runtime_link` の `stdout` を保存し、OCaml 実行時と Rust 実行時でファイルサイズ・シンボル数を比較する自動差分チェックを追加する。

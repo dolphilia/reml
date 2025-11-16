@@ -36,7 +36,7 @@ pub struct FfiStubPlan {
 }
 
 impl FfiStubPlan {
-  fn register_save_area_tags(&self) -> Vec<(String, String)> {
+  pub(crate) fn register_save_area_tags(&self) -> Vec<(String, String)> {
     let mut tags = Vec::new();
     if let Some(area) = &self.register_save_area {
       tags.push((
