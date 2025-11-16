@@ -361,7 +361,11 @@ where
 {
     let registry = CapabilityRegistry::registry();
     let handle = registry
-        .verify_capability_stage(capability_id, options.stage_requirement)
+        .verify_capability_stage(
+            capability_id,
+            options.stage_requirement,
+            &options.security_policy.required_effects,
+        )
         .map_err(BridgeError::Capability)?;
 
     options

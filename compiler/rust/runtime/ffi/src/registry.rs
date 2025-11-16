@@ -54,6 +54,7 @@ impl CapabilityRegistry {
         &self,
         id: impl AsRef<str>,
         requirement: StageRequirement,
+        required_effects: &[String],
     ) -> Result<CapabilityHandle, CapabilityError> {
         let mut lock = self
             .handles
@@ -68,12 +69,30 @@ impl CapabilityRegistry {
                 id: requested_id.clone(),
             })?;
 
-        if !requirement.matches(handle.descriptor().stage) {
-            return Err(CapabilityError::StageViolation {
-                id: handle.descriptor().id.clone(),
-                required: requirement,
-                actual: handle.descriptor().stage,
-            });
+        {
+            let descriptor = handle.descriptor();
+            if !requirement.matches(descriptor.stage) {
+                return Err(CapabilityError::StageViolation {
+                    id: descriptor.id.clone(),
+                    required: requirement,
+                    actual: descriptor.stage,
+                });
+            }
+
+            let actual_scope = descriptor.effect_scope.clone();
+            let missing_effects: Vec<String> = required_effects
+                .iter()
+                .filter(|effect| !actual_scope.contains(effect))
+                .cloned()
+                .collect();
+            if !missing_effects.is_empty() {
+                return Err(CapabilityError::EffectViolation {
+                    id: descriptor.id.clone(),
+                    required: required_effects.to_vec(),
+                    missing: missing_effects,
+                    actual_scope,
+                });
+            }
         }
 
         handle.descriptor_mut().last_verified_at = Some(SystemTime::now());
@@ -95,6 +114,12 @@ pub enum CapabilityError {
         required: StageRequirement,
         actual: StageId,
     },
+    EffectViolation {
+        id: CapabilityId,
+        required: Vec<String>,
+        missing: Vec<String>,
+        actual_scope: Vec<String>,
+    },
 }
 
 impl fmt::Display for CapabilityError {
@@ -114,6 +139,18 @@ impl fmt::Display for CapabilityError {
                 f,
                 "Capability '{}' の stage が一致しません (required={}, actual={})",
                 id, required, actual
+            ),
+            CapabilityError::EffectViolation {
+                id,
+                missing,
+                actual_scope,
+                ..
+            } => write!(
+                f,
+                "Capability '{}' に required effects {} が含まれていません (available={})",
+                id,
+                missing.join(", "),
+                actual_scope.join(", ")
             ),
         }
     }
@@ -155,8 +192,13 @@ mod tests {
             .register(handle.clone())
             .expect("登録に失敗しました");
 
+        let required_effects = vec!["ffi".into()];
         let verified = registry
-            .verify_capability_stage(&id, StageRequirement::Exact(StageId::Beta))
+            .verify_capability_stage(
+                &id,
+                StageRequirement::Exact(StageId::Beta),
+                &required_effects,
+            )
             .expect("stage 検証に失敗");
         assert_eq!(verified.descriptor().stage, StageId::Beta);
         assert!(verified.as_gc().is_some());
@@ -170,10 +212,34 @@ mod tests {
         let _ = registry.handles.lock().expect("lock").remove(&id);
         registry.register(handle).expect("登録失敗");
 
-        let result = registry.verify_capability_stage(&id, StageRequirement::Exact(StageId::Beta));
+        let required_effects: &[String] = &[];
+        let result = registry.verify_capability_stage(
+            &id,
+            StageRequirement::Exact(StageId::Beta),
+            required_effects,
+        );
         assert!(matches!(
             result,
             Err(CapabilityError::StageViolation { .. })
+        ));
+    }
+    #[test]
+    fn effect_violation_error() {
+        let registry = CapabilityRegistry::registry();
+        let handle = new_gc_handle("ffi.effect-test", StageId::Beta);
+        let id = handle.descriptor().id.clone();
+        let _ = registry.handles.lock().expect("lock").remove(&id);
+        registry.register(handle).expect("登録失敗");
+
+        let required_effects = vec!["audit".into()];
+        let result = registry.verify_capability_stage(
+            &id,
+            StageRequirement::Exact(StageId::Beta),
+            &required_effects,
+        );
+        assert!(matches!(
+            result,
+            Err(CapabilityError::EffectViolation { .. })
         ));
     }
 }
