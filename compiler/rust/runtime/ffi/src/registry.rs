@@ -6,6 +6,7 @@ use std::{
 };
 
 use once_cell::sync::OnceCell;
+use serde::Serialize;
 use serde_json::{json, Map, Value};
 
 use crate::{
@@ -17,6 +18,94 @@ use crate::{
         ManifestCapabilityEntry, ManifestError,
     },
 };
+
+/// Bridge/Streaming から渡される Stage trace の 1 フレーム。
+#[derive(Debug, Clone, Serialize)]
+pub struct BridgeStageTraceStep {
+    pub source: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stage: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub capability: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
+}
+
+/// Streaming parser / Runtime Bridge の意図を表す。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum BridgeIntent {
+    Await,
+    Resume,
+    Backpressure,
+}
+
+impl BridgeIntent {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            BridgeIntent::Await => "await",
+            BridgeIntent::Resume => "resume",
+            BridgeIntent::Backpressure => "backpressure",
+        }
+    }
+}
+
+/// Runtime から収集する Stage mismatch/backpressure 診断のメタデータ。
+#[derive(Debug, Clone, Serialize)]
+pub struct RuntimeBridgeStreamSignal {
+    pub bridge_id: String,
+    pub required_stage: String,
+    pub actual_stage: String,
+    pub intent: BridgeIntent,
+    pub reason: String,
+    pub await_count: u32,
+    pub resume_count: u32,
+    pub backpressure_count: u32,
+    pub parser_offset: Option<u32>,
+    pub stream_sequence: Option<u64>,
+    pub stage_trace: Vec<BridgeStageTraceStep>,
+    pub timestamp: SystemTime,
+}
+
+impl RuntimeBridgeStreamSignal {
+    pub fn normalized_reason(&self) -> String {
+        self.reason.clone()
+    }
+}
+
+/// Runtime 側で Stage/backpressure 信号をキャッシュするレジストリ。
+pub struct RuntimeBridgeRegistry {
+    signals: Mutex<HashMap<String, RuntimeBridgeStreamSignal>>,
+}
+
+impl RuntimeBridgeRegistry {
+    pub fn registry() -> &'static RuntimeBridgeRegistry {
+        static INSTANCE: OnceCell<RuntimeBridgeRegistry> = OnceCell::new();
+        INSTANCE.get_or_init(|| RuntimeBridgeRegistry {
+            signals: Mutex::new(HashMap::new()),
+        })
+    }
+
+    pub fn stream_signal(&self, signal: RuntimeBridgeStreamSignal) {
+        let mut lock = self
+            .signals
+            .lock()
+            .expect("RuntimeBridgeRegistry mutex がロックできません");
+        lock.insert(signal.bridge_id.clone(), signal);
+    }
+
+    pub fn latest_signal(&self, bridge_id: &str) -> Option<RuntimeBridgeStreamSignal> {
+        if let Ok(lock) = self.signals.lock() {
+            lock.get(bridge_id).cloned()
+        } else {
+            None
+        }
+    }
+}
 
 /// Registry 内の Capability を格納するシングルトン。
 pub struct CapabilityRegistry {

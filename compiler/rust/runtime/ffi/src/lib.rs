@@ -35,7 +35,10 @@ pub use env::{
     PlatformSnapshot,
 };
 pub use manifest_contract::{ConductorCapabilityContract, ConductorCapabilityRequirement};
-pub use registry::{CapabilityError, CapabilityRegistry};
+pub use registry::{
+    BridgeIntent, BridgeStageTraceStep, CapabilityError, CapabilityRegistry, RuntimeBridgeRegistry,
+    RuntimeBridgeStreamSignal,
+};
 pub use security::{CallOptions, SecurityError, SecurityPolicy};
 
 /// Reml ランタイムの文字列表現（`{ ptr, i64 }`）。
