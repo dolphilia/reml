@@ -5,6 +5,7 @@ use crate::ffi_contract::{
 };
 use serde_json::{json, Value};
 use std::{
+    cell::RefCell,
     ffi::CStr,
     fmt::{self, Display},
     mem,
@@ -142,6 +143,15 @@ impl Ownership {
     }
 }
 
+const RETURN_WRAP_STATUS: &str = "wrap";
+const RETURN_WRAP_AND_RELEASE_STATUS: &str = "wrap_and_release";
+const RETURN_FAILURE_STATUS: &str = "failure";
+const RETURN_WRAP_FN: &str = "wrap_foreign_ptr";
+const RETURN_RELEASE_HANDLER_NONE: &str = "none";
+const RETURN_RELEASE_HANDLER_DEC_REF: &str = "dec_ref";
+const RETURN_RC_NONE: &str = "none";
+const RETURN_RC_DEC_REF: &str = "dec_ref";
+
 /// Audit 用に渡すデータを一括管理する構造体。
 #[derive(Copy, Clone)]
 pub struct BridgeReturnAuditMetadata<'a> {
@@ -160,6 +170,36 @@ impl<'a> BridgeReturnAuditMetadata<'a> {
             wrap: self.wrap,
             release_handler: self.release_handler,
             rc_adjustment: self.rc_adjustment,
+        }
+    }
+
+    pub const fn borrowed_wrap() -> Self {
+        Self {
+            ownership: Ownership::Borrowed,
+            status: RETURN_WRAP_STATUS,
+            wrap: RETURN_WRAP_FN,
+            release_handler: RETURN_RELEASE_HANDLER_NONE,
+            rc_adjustment: RETURN_RC_NONE,
+        }
+    }
+
+    pub const fn transferred_wrap_and_release() -> Self {
+        Self {
+            ownership: Ownership::Transferred,
+            status: RETURN_WRAP_AND_RELEASE_STATUS,
+            wrap: RETURN_WRAP_FN,
+            release_handler: RETURN_RELEASE_HANDLER_DEC_REF,
+            rc_adjustment: RETURN_RC_DEC_REF,
+        }
+    }
+
+    pub const fn failure(ownership: Ownership) -> Self {
+        Self {
+            ownership,
+            status: RETURN_FAILURE_STATUS,
+            wrap: RETURN_RELEASE_HANDLER_NONE,
+            release_handler: RETURN_RELEASE_HANDLER_NONE,
+            rc_adjustment: RETURN_RC_NONE,
         }
     }
 
@@ -330,6 +370,29 @@ impl RuntimeString {
     }
 }
 
+thread_local! {
+    static RECORDED_RETURN_INFO: RefCell<Option<BridgeReturnAuditMetadata<'static>>> =
+        RefCell::new(None);
+}
+
+fn record_bridge_return_metadata(metadata: BridgeReturnAuditMetadata<'static>) {
+    RECORDED_RETURN_INFO.with(|slot| {
+        *slot.borrow_mut() = Some(metadata);
+    });
+}
+
+fn take_bridge_return_metadata() -> Option<BridgeReturnAuditMetadata<'static>> {
+    RECORDED_RETURN_INFO.with(|slot| slot.borrow_mut().take())
+}
+
+fn note_borrowed_return() {
+    record_bridge_return_metadata(BridgeReturnAuditMetadata::borrowed_wrap());
+}
+
+fn note_transferred_return() {
+    record_bridge_return_metadata(BridgeReturnAuditMetadata::transferred_wrap_and_release());
+}
+
 impl ForeignPtr {
     /// 生ポインタから安全なハンドルを構築する。
     pub unsafe fn from_raw(ptr: *mut c_void) -> Option<Self> {
@@ -420,6 +483,7 @@ pub fn record_bridge_status(status: BridgeStatus) {
 /// 手動で借用経路のハンドルを取得。
 pub fn acquire_borrowed_result(source: &ForeignPtr) -> ForeignPtr {
     let raw = unsafe { reml_ffi_acquire_borrowed_result(source.as_ptr()) };
+    note_borrowed_return();
     unsafe {
         ForeignPtr::from_raw(raw)
             .unwrap_or_else(|| panic!("reml_ffi_acquire_borrowed_result が NULL を返しました"))
@@ -429,6 +493,7 @@ pub fn acquire_borrowed_result(source: &ForeignPtr) -> ForeignPtr {
 /// 所有権が移譲された結果を取得し、元のハンドルの `Drop` を防ぐ。
 pub fn acquire_transferred_result(source: ForeignPtr) -> ForeignPtr {
     let raw = unsafe { reml_ffi_acquire_transferred_result(source.as_ptr()) };
+    note_transferred_return();
     mem::forget(source);
     unsafe {
         ForeignPtr::from_raw(raw)
@@ -499,6 +564,7 @@ where
     record_bridge_with_metadata(&ctx, "ffi.call.start", metadata, log_payload)
         .map_err(BridgeError::Audit)?;
 
+    take_bridge_return_metadata();
     let result = body(&ctx, handle.descriptor());
     let status = match &result {
         Ok(_) => BridgeStatus::Ok,
@@ -513,20 +579,24 @@ where
     record_bridge_with_metadata(&ctx, "ffi.call.end", metadata, end_payload)
         .map_err(BridgeError::Audit)?;
 
-    let return_status = if status == BridgeStatus::Ok {
-        "wrap"
+    let recorded_return_info = take_bridge_return_metadata();
+    let base_return_info = recorded_return_info.unwrap_or(metadata.return_info);
+    let failure_return_info = recorded_return_info
+        .map(|info| info.with_status(RETURN_FAILURE_STATUS))
+        .unwrap_or_else(|| BridgeReturnAuditMetadata::failure(metadata.return_info.ownership));
+    let result_return_info = if status == BridgeStatus::Ok {
+        base_return_info
     } else {
-        "failure"
+        failure_return_info
     };
+    let result_metadata = metadata.with_return_info(result_return_info);
     let result_payload = json!({
         "capability": handle.descriptor().id,
         "stage": handle.descriptor().stage.to_string(),
         "symbol": symbol,
         "status": status.as_str(),
-        "return_status": return_status,
+        "return_status": result_return_info.status,
     });
-    let result_return_info = metadata.return_info.with_status(return_status);
-    let result_metadata = metadata.with_return_info(result_return_info);
     record_bridge_with_metadata(&ctx, "ffi.call.result", &result_metadata, result_payload)
         .map_err(BridgeError::Audit)?;
 
@@ -611,6 +681,32 @@ mod tests {
         assert_eq!(entries.arch, "x86_64");
         assert_eq!(entries.return_info.status, "pending");
         assert_eq!(entries.return_info.wrap, "wrap_foreign_ptr");
+    }
+
+    #[test]
+    fn borrowed_return_metadata_is_tracked() {
+        let _ = take_bridge_return_metadata();
+        note_borrowed_return();
+        let entry =
+            take_bridge_return_metadata().expect("borrowed return metadata が記録されているはず");
+        assert_eq!(entry.status, RETURN_WRAP_STATUS);
+        assert_eq!(entry.wrap, RETURN_WRAP_FN);
+        assert_eq!(entry.release_handler, RETURN_RELEASE_HANDLER_NONE);
+        assert_eq!(entry.rc_adjustment, RETURN_RC_NONE);
+        assert_eq!(entry.ownership, Ownership::Borrowed);
+    }
+
+    #[test]
+    fn transferred_return_metadata_is_tracked() {
+        let _ = take_bridge_return_metadata();
+        note_transferred_return();
+        let entry = take_bridge_return_metadata()
+            .expect("transferred return metadata が記録されているはず");
+        assert_eq!(entry.status, RETURN_WRAP_AND_RELEASE_STATUS);
+        assert_eq!(entry.wrap, RETURN_WRAP_FN);
+        assert_eq!(entry.release_handler, RETURN_RELEASE_HANDLER_DEC_REF);
+        assert_eq!(entry.rc_adjustment, RETURN_RC_DEC_REF);
+        assert_eq!(entry.ownership, Ownership::Transferred);
     }
 }
 
