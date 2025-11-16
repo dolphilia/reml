@@ -137,6 +137,16 @@ impl Verifier {
         }
         let mut audit = AuditLog::new();
         audit.record("audit.source", format!("opt.verify {}", module.name));
+        audit.record("backend.triple", module.target.triple.to_string());
+        audit.record("backend.abi", module.target.backend_abi().to_string());
+        audit.record(
+            "backend.datalayout",
+            module.target.data_layout.description.clone(),
+        );
+        audit.record(
+            "backend.reloc_model",
+            format!("{:?}", module.target.reloc_model),
+        );
         audit.record("audit.target", module.target.describe());
         audit.record("audit.module", module.name.clone());
         for entry in target_report.audit {

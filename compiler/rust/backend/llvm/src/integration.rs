@@ -41,6 +41,7 @@ impl BackendFunctionRecord {
 pub struct BackendDiffSnapshot {
     pub module_name: String,
     pub target_triple: String,
+    pub backend_abi: String,
     pub data_layout: String,
     pub windows_toolchain: Option<String>,
     pub functions: Vec<BackendFunctionRecord>,
@@ -119,6 +120,9 @@ impl BackendDiffSnapshot {
         buf.push_str("\",\n");
         buf.push_str("  \"target_triple\": \"");
         buf.push_str(&Self::quote(&self.target_triple));
+        buf.push_str("\",\n");
+        buf.push_str("  \"backend_abi\": \"");
+        buf.push_str(&Self::quote(&self.backend_abi));
         buf.push_str("\",\n");
         buf.push_str("  \"data_layout\": \"");
         buf.push_str(&Self::quote(&self.data_layout));
@@ -299,6 +303,7 @@ pub fn generate_snapshot(
     BackendDiffSnapshot {
         module_name,
         target_triple: module.target.triple.to_string(),
+        backend_abi: module.target.backend_abi().to_string(),
         data_layout: module.target.data_layout.description.clone(),
         windows_toolchain: module
             .windows_toolchain
@@ -419,6 +424,7 @@ pub fn generate_w3_snapshot() -> BackendDiffSnapshot {
     BackendDiffSnapshot {
         module_name: module.name.clone(),
         target_triple: module.target.triple.to_string(),
+        backend_abi: module.target.backend_abi().to_string(),
         data_layout: module.target.data_layout.description.clone(),
         windows_toolchain: module
             .windows_toolchain

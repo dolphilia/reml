@@ -102,7 +102,6 @@ impl RunConfigTarget {
             os: os.to_string(),
             family: family.to_string(),
             arch: arch.to_string(),
-            abi: None,
             vendor: None,
             env: None,
             profile_id: None,
@@ -119,6 +118,7 @@ impl RunConfigTarget {
             runtime_revision: None,
             diagnostics: true,
             extra: HashMap::new(),
+            abi: Some(machine.backend_abi().to_string()),
         }
     }
 }

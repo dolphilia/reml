@@ -138,21 +138,23 @@ pub struct CodegenContext {
 }
 
 impl CodegenContext {
-    pub fn new(target_machine: TargetMachine, runtime_symbols: Vec<String>) -> Self {
-        let layout = target_machine.data_layout.clone();
-        Self {
-            type_mapping: TypeMappingContext::new(layout),
-            ffi_lowering: FfiLowering::new(
-                TypeMappingContext::new(target_machine.data_layout.clone()),
-                runtime_symbols,
-            ),
-            target_machine,
-            functions: Vec::new(),
-            module_metadata: Vec::new(),
-            target_context: TargetDiagnosticContext::from_target_machine(&target_machine),
-            bridge_metadata: BridgeMetadataContext::new(&target_machine),
-        }
+  pub fn new(target_machine: TargetMachine, runtime_symbols: Vec<String>) -> Self {
+    let layout = target_machine.data_layout.clone();
+    let target_context = TargetDiagnosticContext::from_target_machine(&target_machine);
+    let bridge_metadata = BridgeMetadataContext::new(&target_machine);
+    Self {
+      type_mapping: TypeMappingContext::new(layout),
+      ffi_lowering: FfiLowering::new(
+        TypeMappingContext::new(target_machine.data_layout.clone()),
+        runtime_symbols,
+      ),
+      target_machine,
+      functions: Vec::new(),
+      module_metadata: Vec::new(),
+      target_context,
+      bridge_metadata,
     }
+  }
 
     pub fn describe(&self) -> String {
         format!(
