@@ -16,6 +16,7 @@ use std::{
 mod audit;
 mod capability_handle;
 mod capability_metadata;
+mod env;
 mod ffi_contract;
 mod manifest_contract;
 mod registry;
@@ -28,6 +29,10 @@ pub use capability_handle::{
 };
 pub use capability_metadata::{
     CapabilityDescriptor, CapabilityId, CapabilityProvider, StageId, StageRequirement,
+};
+pub use env::{
+    get_env, remove_env, set_env, EnvAdapterError, EnvContext as RuntimeEnvContext, EnvError,
+    PlatformSnapshot,
 };
 pub use manifest_contract::{ConductorCapabilityContract, ConductorCapabilityRequirement};
 pub use registry::{CapabilityError, CapabilityRegistry};
