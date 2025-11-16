@@ -14,7 +14,7 @@
 
 | ID | 領域 | 状態 | 主な不足 | 参照 |
 | --- | --- | --- | --- | --- |
-| P2R-01 | Stage コンテキスト解決 | 未実装 | CLI／環境変数／`REML_RUNTIME_CAPABILITIES` JSON を統合して Stage trace を生成する `Runtime_capability_resolver` 相当の処理が Rust に存在しない。Stage trace 拡張や監査メタデータも CLI 入力の写経のみ。 | `runtime_capability_resolver.ml`, `main.ml`, `diagnostic.ml`, `poc_frontend.rs`, `diagnostic/effects.rs` |
+| ✅ P2R-01 | Stage コンテキスト解決 | 未実装 | CLI／環境変数／`REML_RUNTIME_CAPABILITIES` JSON を統合して Stage trace を生成する `Runtime_capability_resolver` 相当の処理が Rust に存在しない。Stage trace 拡張や監査メタデータも CLI 入力の写経のみ。 | `runtime_capability_resolver.ml`, `main.ml`, `diagnostic.ml`, `poc_frontend.rs`, `diagnostic/effects.rs` |
 | P2R-02 | ランタイム Bridge バックプレッシャ診断 | 未実装 | `bridge.stage.backpressure` / `effects.contract.stage_mismatch` を Streaming parser から発火する仕組みが Rust にはない。Stage mismatch を `Runtime_bridge_registry.stream_signal` で監査する経路も欠落。 | `parser_driver.ml`, `runtime_bridge_registry.ml`, `poc_frontend.rs`, `streaming/flow.rs` |
 | P2R-03 | FFI スタブ計画と Register Save Area | 未実装 | OCaml の `ffi_stub_builder.ml` が提供するターゲット別スタブ計画・Darwin 向け register save area メタデータが Rust `ffi_lowering.rs` では再現されていない。 | `codegen/ffi_stub_builder.ml`, `ffi_lowering.rs` |
 | P2R-04 | LLVM 生成物のリンク & ランタイム連携 | 未実装 | OCaml 版が `llc`→`clang` 連携で `runtime/native` をリンクするのに対し、Rust バックエンドは MIR → JSON スナップショット生成のみで実行ファイルを生成しない。 | `llvm_gen/runtime_link.ml`, `backend/llvm/src/integration.rs` |
