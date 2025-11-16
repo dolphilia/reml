@@ -39,6 +39,11 @@
 - CLI で `remlc --emit-audit` を実行した結果は `compiler/ocaml/tests/golden/audit/cli-ffi-bridge-*.jsonl.golden` に固定し、プラットフォーム別（`linux`, `windows`, `macos-arm64`）の成功ログを最低 1 件ずつ保持します。
 - CI では `tooling/ci/collect-iterator-audit-metrics.py` → `tooling/ci/sync-iterator-audit.sh` の流れで `ffi_bridge.audit_pass_rate` を収集します。macOS（`macos-arm64`）の pass_rate が 1.0 未満、もしくはログが欠落している場合はジョブを失敗させ、再取得を促してください。
 
+### 1.3 型付き `CapabilityHandle` の取り扱い
+
+- `CapabilityRegistry::verify_capability_stage` は型付きバリアント (`Gc`/`Io`/`Async` など) を返す設計になったため、FFI 境界では `match handle { CapabilityHandle::Gc(cap) => ... }` あるいは `handle.as_gc()` のようなヘルパを使って目的の API にアクセスしてください。型ごとに `descriptor()` で `stage`/`effect_scope` も利用でき、`docs/spec/3-8-core-runtime-capability.md` の契約と整合する監査ログを出しやすくなります。
+- `SecurityCapability` には `SecurityPolicy` を適用する `enforce` メソッドがあり、`AuditEnvelope` に `stage_requirement`/`effect_scope` 情報を追加したい場合は `SecurityCapability` を経由して `audit.log` へ送ってください。具体的な `CapabilityHandle` の分解例とライフサイクルは `docs/guides/reml-ffi-handbook.md#11-3-capability-handle` を参照し、DSL や Bridge 側での型安全な分岐を検証してください。
+
 ## 2. ホットリロード
 
 ```reml

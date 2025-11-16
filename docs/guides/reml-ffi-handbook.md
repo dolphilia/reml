@@ -157,6 +157,26 @@ fn call_db(cap: FfiCapability, handle: SymbolHandle, params: DbParams, audit: Au
 - **macOS**: `dlopen` (`NSAddImage`) を利用。コードサイン制約に注意。
 - **WASI/WASM**: 現在はホワイトリスト方式のみサポート。`call_with_capability` は `SecurityPolicy` に定義されたホスト関数へルーティングする。
 
+<a id="11-3-capability-handle"></a>
+### 11.3 CapabilityHandle の型付き API
+
+`CapabilityRegistry::verify_capability_stage` は型付きバリアント (`Gc`/`Io`/`Async`/`Security` 等) を返すため、FFI 呼び出しでは `match` で分岐して目的の API を直接呼べるようになりました。たとえば GC によるメモリ回収と Security ポリシー適用を同時に検証する場合:
+
+```reml
+let handle = capability_registry.verify_capability_stage(
+  "ffi.capability",
+  StageRequirement::Exact(StageId::Beta)
+)?;
+
+match handle {
+  CapabilityHandle::Gc(gc) => gc.collect(),
+  CapabilityHandle::Security(security) => security.enforce(&policy)?,
+  _ => audit.log("ffi.capability.unexpected", json!({ "id": handle.descriptor().id })),
+}
+```
+
+`CapabilityHandle::descriptor()` は監査用 `stage`/`effect_scope` を再利用できるので、`AuditEnvelope` を組み立てるときに再評価を避けられます。`handle.as_gc()` や `handle.as_security()` のようなヘルパも用意されており、`docs/guides/runtime-bridges.md#1.3` で紹介した Bridge の運用手順と合わせて型安全な分岐条件を記録してください。
+
 ## 12. 今後の拡張ロードマップ
 
 - フェーズ1（〜6ヶ月）: FFI ランタイムの最小構成（`encode_args`/`decode_result`, 監査テンプレ）を安定化。
@@ -208,4 +228,3 @@ pub fn with_foreign_stub(req: Request) -> Result<Response, FfiError> ! {} =
 ```
 
 監査ログに `stage` フィールドを常に含めることで、実験環境からの呼び出しが本番へ紛れ込んでいないかを監視できる。`effects.stage.promote_without_checks` 診断が発生した場合は、Capability とマニフェスト側の stage 設定を見直す。
-

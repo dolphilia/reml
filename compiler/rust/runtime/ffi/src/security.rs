@@ -1,6 +1,7 @@
 use crate::{
     audit::{AuditContext, AuditError, AuditSink},
-    registry::{CapabilityDescriptor, StageId, StageRequirement},
+    capability_handle::SecurityCapability,
+    capability_metadata::{CapabilityDescriptor, StageId, StageRequirement},
 };
 use serde_json::{json, Map, Value};
 use std::fmt;
@@ -47,17 +48,7 @@ impl SecurityPolicy {
     }
 }
 
-/// SecurityCapability は CapabilityDescriptor をラップした実装。
-#[derive(Debug, Clone)]
-pub struct SecurityCapability {
-    pub descriptor: CapabilityDescriptor,
-}
-
 impl SecurityCapability {
-    pub fn new(descriptor: CapabilityDescriptor) -> Self {
-        Self { descriptor }
-    }
-
     pub fn enforce(&self, policy: &SecurityPolicy) -> Result<(), SecurityError> {
         policy.verify(&self.descriptor)
     }
@@ -135,7 +126,7 @@ impl std::error::Error for SecurityError {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::registry::{CapabilityDescriptor, CapabilityProvider, StageId};
+    use crate::capability_metadata::{CapabilityDescriptor, CapabilityProvider, StageId};
 
     #[test]
     fn security_policy_effect_missing() {

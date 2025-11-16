@@ -10,15 +10,21 @@ use std::{
 };
 
 mod audit;
+mod capability_handle;
+mod capability_metadata;
 mod registry;
 mod security;
 
 pub use audit::{AuditContext, AuditEntry, AuditError, AuditSink};
-pub use registry::{
-    CapabilityDescriptor, CapabilityError, CapabilityHandle, CapabilityId, CapabilityProvider,
-    CapabilityRegistry, StageId, StageRequirement,
+pub use capability_handle::{
+    AsyncRuntimeCapability, AuditCapability, CapabilityHandle, GcCapability, IoCapability,
+    MetricsCapability, PluginCapability, SecurityCapability,
 };
-pub use security::{CallOptions, SecurityCapability, SecurityError, SecurityPolicy};
+pub use capability_metadata::{
+    CapabilityDescriptor, CapabilityId, CapabilityProvider, StageId, StageRequirement,
+};
+pub use registry::{CapabilityError, CapabilityRegistry};
+pub use security::{CallOptions, SecurityError, SecurityPolicy};
 
 /// Reml ランタイムの文字列表現（`{ ptr, i64 }`）。
 #[repr(C)]
