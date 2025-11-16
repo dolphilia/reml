@@ -1,3 +1,4 @@
+use crate::streaming::RuntimeBridgeSignal;
 use crate::typeck::{RuntimeCapability, StageContext, StageTraceStep};
 use serde_json::{json, Map, Value};
 
@@ -8,6 +9,7 @@ pub struct EffectAuditContext {
     actual_stage: Option<String>,
     runtime_capabilities: Vec<RuntimeCapability>,
     stage_trace: Vec<StageTraceStep>,
+    bridge_signal: Option<RuntimeBridgeSignal>,
 }
 
 impl EffectAuditContext {
@@ -17,12 +19,14 @@ impl EffectAuditContext {
         actual_stage: Option<String>,
         runtime_capabilities: Vec<RuntimeCapability>,
         stage_trace: Vec<StageTraceStep>,
+        bridge_signal: Option<RuntimeBridgeSignal>,
     ) -> Self {
         Self {
             required_stage,
             actual_stage,
             runtime_capabilities,
             stage_trace,
+            bridge_signal,
         }
     }
 
@@ -30,13 +34,19 @@ impl EffectAuditContext {
     pub fn from_stage_context(
         context: &StageContext,
         runtime_capabilities: &[RuntimeCapability],
+        bridge_signal: Option<RuntimeBridgeSignal>,
     ) -> Self {
         Self {
             required_stage: Some(context.capability.label()),
             actual_stage: Some(context.runtime.label()),
             runtime_capabilities: runtime_capabilities.to_vec(),
             stage_trace: context.stage_trace.clone(),
+            bridge_signal,
         }
+    }
+
+    pub fn bridge_signal(&self) -> Option<&RuntimeBridgeSignal> {
+        self.bridge_signal.as_ref()
     }
 
     pub fn primary_capability(&self) -> Option<&str> {
@@ -115,12 +125,14 @@ impl EffectAuditContext {
 pub fn apply_extensions(context: &EffectAuditContext, extensions: &mut Map<String, Value>) {
     apply_effects_extension(context, extensions);
     apply_bridge_extension(context, extensions);
+    apply_bridge_signal_extensions(context, extensions);
     apply_flattened_extension_keys(context, extensions);
     apply_contract_extensions(context, extensions);
 }
 
 pub fn apply_audit_metadata(context: &EffectAuditContext, metadata: &mut Map<String, Value>) {
     apply_effect_audit_metadata(context, metadata);
+    apply_bridge_signal_audit_metadata(context, metadata);
     apply_contract_audit_metadata(context, metadata);
 }
 
@@ -147,7 +159,10 @@ fn apply_effects_extension(context: &EffectAuditContext, extensions: &mut Map<St
         stage_obj.insert("actual".to_string(), json!(actual));
     }
     stage_obj.insert("required_capabilities".to_string(), ids_value.clone());
-    stage_obj.insert("actual_capabilities".to_string(), capability_details.clone());
+    stage_obj.insert(
+        "actual_capabilities".to_string(),
+        capability_details.clone(),
+    );
     if let Some(primary) = context.primary_capability() {
         stage_obj.insert("capability".to_string(), json!(primary));
     }
@@ -174,7 +189,10 @@ fn apply_bridge_extension(context: &EffectAuditContext, extensions: &mut Map<Str
         .or_insert_with(|| Value::Object(Map::new()));
     let stage_obj = ensure_object(stage_entry);
     stage_obj.insert("required_capabilities".to_string(), ids_value.clone());
-    stage_obj.insert("actual_capabilities".to_string(), capability_details.clone());
+    stage_obj.insert(
+        "actual_capabilities".to_string(),
+        capability_details.clone(),
+    );
     if let Some(required) = context.required_stage_str() {
         stage_obj.insert("required".to_string(), json!(required));
     }
@@ -189,12 +207,40 @@ fn apply_bridge_extension(context: &EffectAuditContext, extensions: &mut Map<Str
     }
 }
 
-fn apply_flattened_extension_keys(context: &EffectAuditContext, extensions: &mut Map<String, Value>) {
+fn apply_bridge_signal_extensions(
+    context: &EffectAuditContext,
+    extensions: &mut Map<String, Value>,
+) {
+    if let Some(signal) = context.bridge_signal() {
+        let signal_value = Value::Object(bridge_signal_payload(signal));
+        let bridge_entry = extensions
+            .entry("bridge".to_string())
+            .or_insert_with(|| Value::Object(Map::new()));
+        let bridge_obj = ensure_object(bridge_entry);
+        bridge_obj.insert("signal".to_string(), signal_value.clone());
+        let stage_entry = bridge_obj
+            .entry("stage".to_string())
+            .or_insert_with(|| Value::Object(Map::new()));
+        let stage_obj = ensure_object(stage_entry);
+        stage_obj.insert("signal".to_string(), signal_value);
+    }
+}
+
+fn apply_flattened_extension_keys(
+    context: &EffectAuditContext,
+    extensions: &mut Map<String, Value>,
+) {
     let ids_value = context.capability_ids();
     let capability_details = context.capability_details_value();
     extensions.insert("effect.capabilities".to_string(), ids_value.clone());
-    extensions.insert("effect.required_capabilities".to_string(), ids_value.clone());
-    extensions.insert("effect.stage.required_capabilities".to_string(), ids_value.clone());
+    extensions.insert(
+        "effect.required_capabilities".to_string(),
+        ids_value.clone(),
+    );
+    extensions.insert(
+        "effect.stage.required_capabilities".to_string(),
+        ids_value.clone(),
+    );
     extensions.insert(
         "effect.actual_capabilities".to_string(),
         capability_details.clone(),
@@ -204,10 +250,7 @@ fn apply_flattened_extension_keys(context: &EffectAuditContext, extensions: &mut
         capability_details.clone(),
     );
     if let Some(required) = context.required_stage_str() {
-        extensions.insert(
-            "effect.stage.required".to_string(),
-            json!(required),
-        );
+        extensions.insert("effect.stage.required".to_string(), json!(required));
     }
     if let Some(actual) = context.actual_stage_str() {
         extensions.insert("effect.stage.actual".to_string(), json!(actual));
@@ -234,7 +277,10 @@ fn apply_flattened_extension_keys(context: &EffectAuditContext, extensions: &mut
 
 fn apply_contract_extensions(context: &EffectAuditContext, extensions: &mut Map<String, Value>) {
     if let Some(required) = context.required_stage_str() {
-        extensions.insert("effects.contract.stage.required".to_string(), json!(required));
+        extensions.insert(
+            "effects.contract.stage.required".to_string(),
+            json!(required),
+        );
     }
     if let Some(actual) = context.actual_stage_str() {
         extensions.insert("effects.contract.stage.actual".to_string(), json!(actual));
@@ -251,6 +297,51 @@ fn apply_contract_extensions(context: &EffectAuditContext, extensions: &mut Map<
     }
 }
 
+fn apply_bridge_signal_audit_metadata(
+    context: &EffectAuditContext,
+    metadata: &mut Map<String, Value>,
+) {
+    if let Some(signal) = context.bridge_signal() {
+        metadata.insert(
+            "bridge.stage.signal".to_string(),
+            Value::Object(bridge_signal_payload(signal)),
+        );
+        metadata.insert(
+            "bridge.stage.reason".to_string(),
+            json!(signal.normalized_reason()),
+        );
+    }
+}
+
+fn bridge_signal_payload(signal: &RuntimeBridgeSignal) -> Map<String, Value> {
+    let mut payload = Map::new();
+    payload.insert("kind".to_string(), json!(signal.kind.as_str()));
+    if let Some(offset) = signal.parser_offset {
+        payload.insert("parser_offset".to_string(), json!(offset));
+    }
+    if let Some(sequence) = signal.stream_sequence {
+        payload.insert("stream_sequence".to_string(), json!(sequence));
+    }
+    if let Some(stage) = &signal.stage {
+        payload.insert("stage".to_string(), json!(stage));
+    }
+    if let Some(capability) = &signal.capability {
+        payload.insert("capability".to_string(), json!(capability));
+    }
+    if let Some(note) = &signal.note {
+        payload.insert("note".to_string(), json!(note));
+    }
+    if !signal.stage_trace.is_empty() {
+        let trace = signal
+            .stage_trace
+            .iter()
+            .map(|step| step.to_value())
+            .collect::<Vec<_>>();
+        payload.insert("stage_trace".to_string(), Value::Array(trace));
+    }
+    payload
+}
+
 fn apply_effect_audit_metadata(context: &EffectAuditContext, metadata: &mut Map<String, Value>) {
     if let Some(required) = context.required_stage_str() {
         metadata.insert("effect.stage.required".to_string(), json!(required));
@@ -261,9 +352,18 @@ fn apply_effect_audit_metadata(context: &EffectAuditContext, metadata: &mut Map<
     let ids_value = context.capability_ids();
     let capability_details = context.capability_details_value();
     metadata.insert("capability.ids".to_string(), ids_value.clone());
-    metadata.insert("effect.required_capabilities".to_string(), ids_value.clone());
-    metadata.insert("effect.stage.required_capabilities".to_string(), ids_value.clone());
-    metadata.insert("effect.actual_capabilities".to_string(), capability_details.clone());
+    metadata.insert(
+        "effect.required_capabilities".to_string(),
+        ids_value.clone(),
+    );
+    metadata.insert(
+        "effect.stage.required_capabilities".to_string(),
+        ids_value.clone(),
+    );
+    metadata.insert(
+        "effect.actual_capabilities".to_string(),
+        capability_details.clone(),
+    );
     metadata.insert(
         "effect.stage.actual_capabilities".to_string(),
         capability_details.clone(),
@@ -290,7 +390,10 @@ fn apply_effect_audit_metadata(context: &EffectAuditContext, metadata: &mut Map<
 
 fn apply_contract_audit_metadata(context: &EffectAuditContext, metadata: &mut Map<String, Value>) {
     if let Some(required) = context.required_stage_str() {
-        metadata.insert("effects.contract.stage.required".to_string(), json!(required));
+        metadata.insert(
+            "effects.contract.stage.required".to_string(),
+            json!(required),
+        );
     }
     if let Some(actual) = context.actual_stage_str() {
         metadata.insert("effects.contract.stage.actual".to_string(), json!(actual));

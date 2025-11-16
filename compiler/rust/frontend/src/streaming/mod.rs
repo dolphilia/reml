@@ -6,7 +6,10 @@
 //! で上限を設ける。
 
 pub mod flow;
-pub use flow::{StreamFlowConfig, StreamFlowMetrics, StreamFlowState};
+pub use flow::{
+    RuntimeBridgeSignal, RuntimeBridgeSignalKind, StreamFlowConfig, StreamFlowMetrics,
+    StreamFlowState,
+};
 
 use crate::span::Span;
 use indexmap::IndexMap;

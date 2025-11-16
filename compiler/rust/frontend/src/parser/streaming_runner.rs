@@ -1,13 +1,14 @@
 use crate::parser::api::{ParseResult, RunConfig};
 use crate::parser::ast::Module;
 use crate::parser::{ParserDriver, ParserOptions};
-use crate::streaming::{StreamFlowMetrics, StreamFlowState, StreamMetrics};
+use crate::streaming::{RuntimeBridgeSignal, StreamFlowMetrics, StreamFlowState, StreamMetrics};
 
 /// ストリーミング処理のメタ情報。
 #[derive(Debug, Clone)]
 pub struct StreamMeta {
     pub metrics: StreamMetrics,
     pub flow: StreamFlowMetrics,
+    pub bridge_signal: Option<RuntimeBridgeSignal>,
 }
 
 impl StreamMeta {
@@ -15,6 +16,7 @@ impl StreamMeta {
         Self {
             metrics: result.stream_metrics.clone(),
             flow: flow.metrics(),
+            bridge_signal: flow.latest_bridge_signal(),
         }
     }
 }
@@ -76,6 +78,10 @@ impl StreamingRunner {
 
     pub fn run_stream(self) -> StreamOutcome {
         run_stream_from_continuation(self.continuation)
+    }
+
+    pub fn record_bridge_signal(&self, signal: RuntimeBridgeSignal) {
+        self.continuation.stream_flow.record_bridge_signal(signal);
     }
 
     pub fn resume(mut self, more: &str) -> StreamOutcome {

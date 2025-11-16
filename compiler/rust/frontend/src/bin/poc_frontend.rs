@@ -24,13 +24,13 @@ use reml_frontend::parser::{
 use reml_frontend::semantics::typed;
 use reml_frontend::span::Span;
 use reml_frontend::streaming::{
-    StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig,
+    RuntimeBridgeSignal, StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig,
 };
 use reml_frontend::typeck::{
     self, Constraint, DualWriteGuards, InstallConfigError, RecoverConfig, RuntimeCapability,
-    StageContext, StageTraceStep, StageId, StageRequirement, TypeRowMode, TypecheckConfig,
-    TypecheckDriver, TypecheckMetrics, TypecheckReport, TypecheckViolation,
-    TypecheckViolationKind, TypedFunctionSummary,
+    StageContext, StageId, StageRequirement, StageTraceStep, TypeRowMode, TypecheckConfig,
+    TypecheckDriver, TypecheckMetrics, TypecheckReport, TypecheckViolation, TypecheckViolationKind,
+    TypedFunctionSummary,
 };
 use serde::Serialize;
 
@@ -106,14 +106,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let flow_metrics = result
         .stream_flow_state
         .as_ref()
-        .map(|state| state.metrics().checkpoints_closed)
-        .unwrap_or(0);
+        .map(|state| state.metrics())
+        .unwrap_or_default();
+    let bridge_signal = result
+        .stream_flow_state
+        .as_ref()
+        .and_then(|state| state.latest_bridge_signal());
     let stream_meta = serde_json::json!({
         "packrat": result.stream_metrics.packrat,
         "span_trace": result.stream_metrics.span_trace,
         "flow": {
-            "checkpoints_closed": flow_metrics,
+            "checkpoints_closed": flow_metrics.checkpoints_closed,
+            "await_count": flow_metrics.await_count,
+            "resume_count": flow_metrics.resume_count,
+            "backpressure_count": flow_metrics.backpressure_count,
         },
+        "bridge": bridge_signal.as_ref().map(|signal| json!(signal)),
+        "last_reason": bridge_signal
+            .as_ref()
+            .map(|signal| signal.normalized_reason()),
         "packrat_enabled": result.run_config.packrat,
     });
 
@@ -123,6 +134,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stage_payload = StageAuditPayload::new(
         &args.typecheck_config.effect_context,
         &args.runtime_capabilities,
+        bridge_signal.clone(),
     );
     let mut diagnostics_entries = build_parser_diagnostics(
         &result.diagnostics,
@@ -1135,6 +1147,9 @@ fn build_stream_extension(
                 "max_lag_bytes": flow_max_lag,
             },
             "checkpoints_closed": flow.checkpoints_closed,
+            "await_count": flow.await_count,
+            "resume_count": flow.resume_count,
+            "backpressure_count": flow.backpressure_count,
         }),
     );
     Value::Object(payload)
@@ -1206,15 +1221,25 @@ struct StageAuditPayload {
     actual_stage: Option<String>,
     runtime_capabilities: Vec<RuntimeCapability>,
     stage_trace: Vec<StageTraceStep>,
+    bridge_signal: Option<RuntimeBridgeSignal>,
 }
 
 impl StageAuditPayload {
-    fn new(context: &StageContext, capabilities: &[RuntimeCapability]) -> Self {
+    fn new(
+        context: &StageContext,
+        capabilities: &[RuntimeCapability],
+        bridge_signal: Option<RuntimeBridgeSignal>,
+    ) -> Self {
+        let mut trace = context.stage_trace.clone();
+        if let Some(signal) = &bridge_signal {
+            trace.extend(signal.stage_trace.clone());
+        }
         Self {
             required_stage: Some(stage_requirement_label(&context.capability)),
             actual_stage: Some(stage_requirement_label(&context.runtime)),
             runtime_capabilities: capabilities.to_vec(),
-            stage_trace: context.stage_trace.clone(),
+            stage_trace: trace,
+            bridge_signal,
         }
     }
 
@@ -1230,6 +1255,7 @@ impl StageAuditPayload {
             self.actual_stage.clone(),
             self.runtime_capabilities.clone(),
             self.stage_trace.clone(),
+            self.bridge_signal.clone(),
         )
     }
 
