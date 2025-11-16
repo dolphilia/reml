@@ -150,6 +150,9 @@ impl Verifier {
                 "fail"
             },
         );
+        for (key, value) in module.bridge_metadata.audit_entries() {
+            audit.record(key, value);
+        }
         if let Some(toolchain) = &module.windows_toolchain {
             audit.record("audit.toolchain", &toolchain.toolchain_name);
             audit.record("audit.llc_path", &toolchain.llc_path);

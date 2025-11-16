@@ -46,6 +46,7 @@ pub struct BackendDiffSnapshot {
     pub functions: Vec<BackendFunctionRecord>,
     pub diagnostics: Vec<String>,
     pub audit_entries: Vec<String>,
+    pub bridge_metadata: Vec<String>,
     pub passed: bool,
 }
 
@@ -142,6 +143,9 @@ impl BackendDiffSnapshot {
         buf.push_str(",\n");
         buf.push_str("  \"audit_entries\": ");
         buf.push_str(&Self::array_of_strings(&self.audit_entries, "  "));
+        buf.push_str(",\n");
+        buf.push_str("  \"bridge_metadata\": ");
+        buf.push_str(&Self::array_of_strings(&self.bridge_metadata, "  "));
         buf.push_str(",\n");
         buf.push_str("  \"passed\": ");
         buf.push_str(if self.passed { "true" } else { "false" });
@@ -316,6 +320,7 @@ pub fn generate_snapshot(
             .into_iter()
             .map(|entry| format!("{}={}", entry.key, entry.value))
             .collect(),
+        bridge_metadata: module.bridge_metadata.snapshot_entries(),
         passed: verification.passed,
     }
 }
@@ -435,6 +440,7 @@ pub fn generate_w3_snapshot() -> BackendDiffSnapshot {
             .into_iter()
             .map(|entry| format!("{}={}", entry.key, entry.value))
             .collect(),
+        bridge_metadata: module.bridge_metadata.snapshot_entries(),
         passed: verification.passed,
     }
 }

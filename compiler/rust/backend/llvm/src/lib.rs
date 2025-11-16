@@ -4,6 +4,7 @@
 //! W2 の「Rust LLVM ラッパ層構築」で定義したチェックリストに沿って
 //! 仕様と実装の差分を抑えるための出発点となる。
 
+pub mod bridge_metadata;
 pub mod codegen;
 pub mod ffi_lowering;
 pub mod integration;

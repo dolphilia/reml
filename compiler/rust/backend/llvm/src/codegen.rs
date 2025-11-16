@@ -1,5 +1,6 @@
 use std::fmt::Write;
 
+use crate::bridge_metadata::BridgeMetadataContext;
 use crate::ffi_lowering::{FfiCallSignature, FfiLowering, LoweredFfiCall};
 use crate::target_diagnostics::TargetDiagnosticContext;
 use crate::target_machine::{TargetMachine, WindowsToolchainConfig};
@@ -96,6 +97,7 @@ pub struct ModuleIr {
     pub metadata: Vec<String>,
     pub windows_toolchain: Option<WindowsToolchainConfig>,
     pub target_context: TargetDiagnosticContext,
+    pub bridge_metadata: BridgeMetadataContext,
 }
 
 impl ModuleIr {
@@ -110,6 +112,12 @@ impl ModuleIr {
             summary.push(format!("windows_toolchain({})", toolchain.toolchain_name));
         }
         summary.push(format!("functions: {}", self.functions.len()));
+        if self.bridge_metadata.has_stubs() {
+            summary.push(format!(
+                "bridge stubs: {}",
+                self.bridge_metadata.stub_count()
+            ));
+        }
         self.metadata
             .iter()
             .cloned()
@@ -126,6 +134,7 @@ pub struct CodegenContext {
     functions: Vec<GeneratedFunction>,
     module_metadata: Vec<String>,
     target_context: TargetDiagnosticContext,
+    bridge_metadata: BridgeMetadataContext,
 }
 
 impl CodegenContext {
@@ -141,6 +150,7 @@ impl CodegenContext {
             functions: Vec::new(),
             module_metadata: Vec::new(),
             target_context: TargetDiagnosticContext::from_target_machine(&target_machine),
+            bridge_metadata: BridgeMetadataContext::new(&target_machine),
         }
     }
 
@@ -179,6 +189,9 @@ impl CodegenContext {
             .iter()
             .map(|sig| self.ffi_lowering.lower_call(sig))
             .collect();
+        for call in &mir.ffi_calls {
+            self.bridge_metadata.record_stub(call);
+        }
         let generated = GeneratedFunction {
             name: mir.name.clone(),
             layout: ret_layout,
@@ -202,6 +215,7 @@ impl CodegenContext {
             metadata: self.module_metadata,
             windows_toolchain: self.target_machine.windows_toolchain.clone(),
             target_context: self.target_context.clone(),
+            bridge_metadata: self.bridge_metadata.clone(),
         }
     }
 }
