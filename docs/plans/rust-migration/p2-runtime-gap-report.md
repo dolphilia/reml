@@ -74,9 +74,10 @@
   - MIR → LLVM IR → オブジェクト → リンクまでを Rust 側でも自動化し、`runtime/native` の静的ライブラリを検出する処理を `runtime_link.ml` と同等に用意する。
   - `scripts/poc_dualwrite_compare.sh` から Rust バックエンドを呼び出した際に OCaml 版と同じ成果物（obj/exe）を比較できるよう CLI ゲートを整備する。
 
-## 4. 今後のタスク候補
+## 4. 具体的な計画
 
-1. Stage 解決モジュールの Rust 実装設計（入力ソース・`stage_trace` フォーマットの整理）。
-2. Streaming runtime から Bridge Stage 診断と監査ログを出力する PoC。
-3. FFI stub planner の Rust 版 API 設計と `bridge.*` 監査タグの JSON スキーマ確定。
-4. LLVM → リンクのエンドツーエンド実行（`runtime/native` 検出と Windows/MSVC CLI シナリオを含む）。
+### P2R-01
+
+1. OCaml 側の `Runtime_capability_resolver` および `effect_profile` に載っている Stage trace の構造を読み込み、CLI/環境変数/`REML_RUNTIME_CAPABILITIES` JSON の順で Stage context を再構築する仕組みを Rust に再現する。Stage trace の各ステップ（`cli_option`／`env_var`／`run_config`／`capability_json`／`runtime_candidate`）を `StageTraceStep` で表現し、標準的な StageRequirement を生成できるようにする。
+2. `poc_frontend` で新設した `StageContext::resolve` を呼び出し、`--effect-stage` など CLI オーバーライドと `target_inference` の Triple を含むコンテクストで `StageContext` を構築し、そのまま型推論設定と診断拡張に渡す。`StageAuditPayload`/`EffectAuditContext` は `stage_trace` を受け取った上で従来の `runtime`・`runtime_capability` ステップを追加するようにし、診断メタデータに CLI→環境→JSON の伝搬順を含める。
+3. 新たな Stage context が `collect-iterator-audit-metrics.py` などの監査指標と矛盾しないよう、`StageTraceStep` で記録されるフィールド名と順序を既存の `stage_trace` スキーマ（`effects.stage.trace`/`stage_trace`）に合わせ、必要に応じて `REML_RUNTIME_CAPABILITIES` ファイルを読み込んだ場合でも `runtime_capabilities` と `bridge` 拡張が補完されることを検証する。

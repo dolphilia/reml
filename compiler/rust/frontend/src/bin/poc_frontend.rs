@@ -28,9 +28,9 @@ use reml_frontend::streaming::{
 };
 use reml_frontend::typeck::{
     self, Constraint, DualWriteGuards, InstallConfigError, RecoverConfig, RuntimeCapability,
-    StageContext, StageId, StageRequirement, TypeRowMode, TypecheckConfig, TypecheckDriver,
-    TypecheckMetrics, TypecheckReport, TypecheckViolation, TypecheckViolationKind,
-    TypedFunctionSummary,
+    StageContext, StageTraceStep, StageId, StageRequirement, TypeRowMode, TypecheckConfig,
+    TypecheckDriver, TypecheckMetrics, TypecheckReport, TypecheckViolation,
+    TypecheckViolationKind, TypedFunctionSummary,
 };
 use serde::Serialize;
 
@@ -575,6 +575,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut row_mode = None;
     let mut runtime_stage = None;
     let mut capability_stage = None;
+    let mut cli_stage_override = None;
     let mut recover_expected_tokens = None;
     let mut recover_context = None;
     let mut recover_max_suggestions = None;
@@ -644,6 +645,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     .next()
                     .ok_or_else(|| "--effect-stage は stage 名を伴う必要があります")?;
                 let stage = StageId::from_str(&value)?;
+                cli_stage_override = Some(stage.clone());
                 let requirement = StageRequirement::Exact(stage);
                 runtime_stage = Some(requirement.clone());
                 capability_stage = Some(requirement);
@@ -875,25 +877,6 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         }
     }
 
-    let effect_context = StageContext {
-        runtime: runtime_stage.unwrap_or(StageRequirement::AtLeast(StageId::stable())),
-        capability: capability_stage.unwrap_or(StageRequirement::AtLeast(StageId::beta())),
-    };
-    let recover = RecoverConfig {
-        emit_expected_tokens: recover_expected_tokens.unwrap_or(true),
-        emit_context: recover_context.unwrap_or(true),
-        max_suggestions: recover_max_suggestions.unwrap_or(3),
-    };
-    let mut builder = TypecheckConfig::builder()
-        .effect_context(effect_context)
-        .recover(recover)
-        .experimental_effects(run_config.experimental_effects)
-        .runtime_capabilities(runtime_capabilities.clone())
-        .trace_enabled(run_config.trace);
-    if let Some(mode) = row_mode {
-        builder = builder.type_row_mode(mode);
-    }
-
     let dualwrite = dualwrite_run_label.map(|run_label| DualwriteCliOpts {
         run_label,
         case_label: dualwrite_case_label.expect("validated together"),
@@ -912,6 +895,28 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         .config
         .with_extension("target", |_| target_extension_value.clone());
     let target_cfg_extension = target_inference.cfg_extension(target_errors);
+
+    let stage_context = StageContext::resolve(
+        cli_stage_override.clone(),
+        runtime_stage.clone(),
+        capability_stage.clone(),
+        &runtime_capabilities,
+        target_inference.profile.triple.as_deref(),
+    );
+    let recover = RecoverConfig {
+        emit_expected_tokens: recover_expected_tokens.unwrap_or(true),
+        emit_context: recover_context.unwrap_or(true),
+        max_suggestions: recover_max_suggestions.unwrap_or(3),
+    };
+    let mut builder = TypecheckConfig::builder()
+        .effect_context(stage_context)
+        .recover(recover)
+        .experimental_effects(run_config.experimental_effects)
+        .runtime_capabilities(runtime_capabilities.clone())
+        .trace_enabled(run_config.trace);
+    if let Some(mode) = row_mode {
+        builder = builder.type_row_mode(mode);
+    }
 
     Ok(CliArgs {
         program_name,
@@ -1200,6 +1205,7 @@ struct StageAuditPayload {
     required_stage: Option<String>,
     actual_stage: Option<String>,
     runtime_capabilities: Vec<RuntimeCapability>,
+    stage_trace: Vec<StageTraceStep>,
 }
 
 impl StageAuditPayload {
@@ -1208,6 +1214,7 @@ impl StageAuditPayload {
             required_stage: Some(stage_requirement_label(&context.capability)),
             actual_stage: Some(stage_requirement_label(&context.runtime)),
             runtime_capabilities: capabilities.to_vec(),
+            stage_trace: context.stage_trace.clone(),
         }
     }
 
@@ -1222,6 +1229,7 @@ impl StageAuditPayload {
             self.required_stage.clone(),
             self.actual_stage.clone(),
             self.runtime_capabilities.clone(),
+            self.stage_trace.clone(),
         )
     }
 

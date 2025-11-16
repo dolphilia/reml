@@ -1,4 +1,4 @@
-use crate::typeck::{RuntimeCapability, StageContext};
+use crate::typeck::{RuntimeCapability, StageContext, StageTraceStep};
 use serde_json::{json, Map, Value};
 
 /// 効果ステージと Capability のメタ情報を JSON に焼き込むための文脈。
@@ -7,6 +7,7 @@ pub struct EffectAuditContext {
     required_stage: Option<String>,
     actual_stage: Option<String>,
     runtime_capabilities: Vec<RuntimeCapability>,
+    stage_trace: Vec<StageTraceStep>,
 }
 
 impl EffectAuditContext {
@@ -15,11 +16,13 @@ impl EffectAuditContext {
         required_stage: Option<String>,
         actual_stage: Option<String>,
         runtime_capabilities: Vec<RuntimeCapability>,
+        stage_trace: Vec<StageTraceStep>,
     ) -> Self {
         Self {
             required_stage,
             actual_stage,
             runtime_capabilities,
+            stage_trace,
         }
     }
 
@@ -32,6 +35,7 @@ impl EffectAuditContext {
             required_stage: Some(context.capability.label()),
             actual_stage: Some(context.runtime.label()),
             runtime_capabilities: runtime_capabilities.to_vec(),
+            stage_trace: context.stage_trace.clone(),
         }
     }
 
@@ -63,7 +67,11 @@ impl EffectAuditContext {
     }
 
     fn stage_trace(&self) -> Vec<Value> {
-        let mut trace = Vec::new();
+        let mut trace = self
+            .stage_trace
+            .iter()
+            .map(|step| step.to_value())
+            .collect::<Vec<_>>();
         if let Some(required) = &self.required_stage {
             trace.push(json!({
                 "source": "cli_option",

@@ -1,10 +1,13 @@
 //! 型推論モジュール全体で共有する設定やデュアルライト補助ツール。
 
 use std::collections::HashSet;
+use std::env;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+
+use serde_json::{Map, Value};
 
 use super::capability::RuntimeCapability;
 use super::scheme::Scheme;
@@ -137,11 +140,53 @@ pub enum InstallConfigError {
     AlreadyInstalled,
 }
 
+/// Stage トレースの各ステップ。
+#[derive(Debug, Clone, Serialize)]
+pub struct StageTraceStep {
+    pub source: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stage: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub capability: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
+}
+
+impl StageTraceStep {
+    pub fn to_value(&self) -> Value {
+        let mut metadata = Map::new();
+        metadata.insert("source".to_string(), Value::String(self.source.clone()));
+        if let Some(stage) = &self.stage {
+            metadata.insert("stage".to_string(), Value::String(stage.clone()));
+        }
+        if let Some(capability) = &self.capability {
+            metadata.insert("capability".to_string(), Value::String(capability.clone()));
+        }
+        if let Some(note) = &self.note {
+            metadata.insert("note".to_string(), Value::String(note.clone()));
+        }
+        if let Some(file) = &self.file {
+            metadata.insert("file".to_string(), Value::String(file.clone()));
+        }
+        if let Some(target) = &self.target {
+            metadata.insert("target".to_string(), Value::String(target.clone()));
+        }
+        Value::Object(metadata)
+    }
+}
+
+pub type StageTrace = Vec<StageTraceStep>;
+
 /// 効果ステージに関する最小限の文脈情報。
 #[derive(Debug, Clone, Serialize)]
 pub struct StageContext {
     pub runtime: StageRequirement,
     pub capability: StageRequirement,
+    pub stage_trace: StageTrace,
 }
 
 impl Default for StageContext {
@@ -149,6 +194,51 @@ impl Default for StageContext {
         Self {
             runtime: StageRequirement::AtLeast(StageId::stable()),
             capability: StageRequirement::AtLeast(StageId::beta()),
+            stage_trace: Vec::new(),
+        }
+    }
+}
+
+impl StageContext {
+    pub fn resolve(
+        cli_stage_override: Option<StageId>,
+        runtime_stage_override: Option<StageRequirement>,
+        capability_stage_override: Option<StageRequirement>,
+        runtime_capabilities: &[RuntimeCapability],
+        target_triple: Option<&str>,
+    ) -> Self {
+        let (registry, registry_path) = load_runtime_registry();
+        let env_stage = stage_from_env_var(ENV_STAGE_VAR);
+        let legacy_stage = stage_from_env_var(LEGACY_STAGE_VAR);
+        let default_stage = cli_stage_override
+            .clone()
+            .or_else(|| registry.stage.clone())
+            .or_else(|| env_stage.clone())
+            .or_else(|| legacy_stage.clone())
+            .unwrap_or_else(StageId::stable);
+        let capability_stages = build_capability_stage_map(
+            &registry,
+            target_triple,
+            &default_stage,
+            runtime_capabilities,
+        );
+        let required_caps = unique_required_capabilities(runtime_capabilities);
+        let stage_trace = build_stage_trace(
+            cli_stage_override.as_ref(),
+            env_stage.as_ref(),
+            registry_path.as_ref(),
+            &registry,
+            &capability_stages,
+            &required_caps,
+        );
+        let runtime = runtime_stage_override
+            .unwrap_or_else(|| StageRequirement::AtLeast(default_stage.clone()));
+        let capability = capability_stage_override
+            .unwrap_or_else(|| StageRequirement::AtLeast(StageId::beta()));
+        Self {
+            runtime,
+            capability,
+            stage_trace,
         }
     }
 }
@@ -268,6 +358,326 @@ impl StageRequirement {
         let max_stage = StageId::max(lhs.base_stage(), rhs.base_stage());
         StageRequirement::AtLeast(max_stage)
     }
+}
+
+const ENV_STAGE_VAR: &str = "REMLC_EFFECT_STAGE";
+const LEGACY_STAGE_VAR: &str = "REML_RUNTIME_STAGE";
+const REGISTRY_ENV_VAR: &str = "REML_RUNTIME_CAPABILITIES";
+const RUN_CONFIG_NOTE: &str = "run_config.effects.required_capabilities";
+
+#[derive(Debug, Clone)]
+struct CapabilityEntry {
+    name: String,
+    stage: Option<StageId>,
+}
+
+impl CapabilityEntry {
+    fn new(name: &str, stage: Option<StageId>) -> Option<Self> {
+        let trimmed = name.trim();
+        if trimmed.is_empty() {
+            return None;
+        }
+        Some(Self {
+            name: trimmed.to_ascii_lowercase(),
+            stage,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+struct RuntimeCapabilityRegistry {
+    stage: Option<StageId>,
+    capabilities: Vec<CapabilityEntry>,
+    overrides: Vec<(String, Vec<CapabilityEntry>)>,
+}
+
+impl RuntimeCapabilityRegistry {
+    fn empty() -> Self {
+        Self {
+            stage: None,
+            capabilities: Vec::new(),
+            overrides: Vec::new(),
+        }
+    }
+}
+
+fn load_runtime_registry() -> (RuntimeCapabilityRegistry, Option<PathBuf>) {
+    match env::var(REGISTRY_ENV_VAR) {
+        Ok(raw) => {
+            let path_string = raw.trim();
+            if path_string.is_empty() {
+                return (RuntimeCapabilityRegistry::empty(), None);
+            }
+            let path = PathBuf::from(path_string);
+            let registry = load_registry_from_file(&path);
+            (registry, Some(path))
+        }
+        Err(_) => (RuntimeCapabilityRegistry::empty(), None),
+    }
+}
+
+fn load_registry_from_file(path: &Path) -> RuntimeCapabilityRegistry {
+    let contents = match fs::read_to_string(path) {
+        Ok(value) => value,
+        Err(err) => {
+            eprintln!("[RUNTIME CAPABILITY] {} の読み込みに失敗しました: {err}", path.display());
+            return RuntimeCapabilityRegistry::empty();
+        }
+    };
+    match serde_json::from_str::<Value>(&contents) {
+        Ok(Value::Object(map)) => parse_registry_object(&map),
+        Ok(_) => RuntimeCapabilityRegistry::empty(),
+        Err(err) => {
+            eprintln!("[RUNTIME CAPABILITY] {} を JSON として解析できません: {err}", path.display());
+            RuntimeCapabilityRegistry::empty()
+        }
+    }
+}
+
+fn parse_registry_object(map: &Map<String, Value>) -> RuntimeCapabilityRegistry {
+    let stage = map.get("stage").and_then(parse_stage_opt);
+    let capabilities = map
+        .get("capabilities")
+        .map(|value| parse_capability_entries(value))
+        .unwrap_or_default();
+    let overrides = map
+        .get("overrides")
+        .and_then(|value| value.as_object())
+        .map(|entries| {
+            entries
+                .iter()
+                .filter_map(|(target, data)| {
+                    let normalized_target = normalize_key(target);
+                    let parsed = parse_override_section(data);
+                    if parsed.is_empty() {
+                        None
+                    } else {
+                        Some((normalized_target, parsed))
+                    }
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    RuntimeCapabilityRegistry {
+        stage,
+        capabilities,
+        overrides,
+    }
+}
+
+fn parse_capability_entries(value: &Value) -> Vec<CapabilityEntry> {
+    match value {
+        Value::String(name) => CapabilityEntry::new(name, None)
+            .into_iter()
+            .collect(),
+        Value::Array(items) => items
+            .iter()
+            .flat_map(|entry| parse_capability_entries(entry))
+            .collect(),
+        Value::Object(map) => {
+            if let Some(name) = map.get("name").and_then(|value| value.as_str()) {
+                CapabilityEntry::new(name, map.get("stage").and_then(parse_stage_opt))
+                    .into_iter()
+                    .collect()
+            } else {
+                map.iter()
+                    .filter_map(|(cap_name, data)| {
+                        CapabilityEntry::new(cap_name, parse_stage_opt(data))
+                    })
+                    .collect()
+            }
+        }
+        _ => Vec::new(),
+    }
+}
+
+fn parse_override_section(value: &Value) -> Vec<CapabilityEntry> {
+    match value {
+        Value::Object(map) => {
+            let stage_override = map.get("stage").and_then(parse_stage_opt);
+            let capabilities_value = map.get("capabilities").unwrap_or(value);
+            let mut entries = parse_capability_entries(capabilities_value);
+            if let Some(stage) = stage_override {
+                for entry in &mut entries {
+                    if entry.stage.is_none() {
+                        entry.stage = Some(stage.clone());
+                    }
+                }
+            }
+            entries
+        }
+        other => parse_capability_entries(other),
+    }
+}
+
+fn parse_stage_opt(value: &Value) -> Option<StageId> {
+    match value {
+        Value::String(stage) => StageId::from_str(stage).ok(),
+        Value::Object(map) => map
+            .get("stage")
+            .and_then(|inner| parse_stage_opt(inner)),
+        _ => None,
+    }
+}
+
+fn stage_from_env_var(key: &str) -> Option<StageId> {
+    env::var(key).ok().and_then(|value| StageId::from_str(&value).ok())
+}
+
+fn normalize_key(value: &str) -> String {
+    value.trim().to_ascii_lowercase()
+}
+
+fn unique_required_capabilities(capabilities: &[RuntimeCapability]) -> Vec<String> {
+    let mut seen = HashSet::new();
+    let mut result = Vec::new();
+    for capability in capabilities {
+        let normalized = normalize_key(capability.id());
+        if normalized.is_empty() || !seen.insert(normalized.clone()) {
+            continue;
+        }
+        result.push(normalized);
+    }
+    result
+}
+
+fn build_capability_stage_map(
+    registry: &RuntimeCapabilityRegistry,
+    target_triple: Option<&str>,
+    default_stage: &StageId,
+    runtime_capabilities: &[RuntimeCapability],
+) -> Vec<(String, StageId)> {
+    let mut entries = registry.capabilities.clone();
+    if let Some(triple) = target_triple {
+        let normalized_target = normalize_key(triple);
+        for (target_key, overrides) in &registry.overrides {
+            if target_key == &normalized_target {
+                entries.extend(overrides.clone());
+            }
+        }
+    }
+    for capability in runtime_capabilities {
+        if let Some(entry) = CapabilityEntry::new(capability.id().as_str(), None) {
+            entries.push(entry);
+        }
+    }
+    dedup_capability_entries(entries, default_stage)
+}
+
+fn dedup_capability_entries(entries: Vec<CapabilityEntry>, default_stage: &StageId) -> Vec<(String, StageId)> {
+    let mut accumulator = Vec::new();
+    for mut entry in entries {
+        let normalized = normalize_key(&entry.name);
+        if normalized.is_empty() {
+            continue;
+        }
+        accumulator.retain(|(existing, _)| existing != &normalized);
+        let stage = entry.stage.take().unwrap_or_else(|| default_stage.clone());
+        accumulator.push((normalized, stage));
+    }
+    accumulator
+}
+
+fn build_stage_trace(
+    cli_stage: Option<&StageId>,
+    env_stage: Option<&StageId>,
+    registry_path: Option<&PathBuf>,
+    registry: &RuntimeCapabilityRegistry,
+    capability_stages: &[(String, StageId)],
+    required_caps: &[String],
+) -> StageTrace {
+    let mut trace = Vec::new();
+    trace.push(stage_trace_cli_step(cli_stage));
+    trace.push(stage_trace_env_step(env_stage, ENV_STAGE_VAR));
+    let required_set: HashSet<String> = required_caps.iter().cloned().collect();
+    for (capability, stage) in capability_stages {
+        if required_set.contains(capability) {
+            trace.push(stage_trace_run_config(capability, stage));
+        }
+    }
+    if let Some(path) = registry_path {
+        trace.push(stage_trace_registry(path, registry.stage.as_ref()));
+    }
+    trace.extend(stage_trace_override_steps(registry, registry_path));
+    trace
+}
+
+fn stage_trace_cli_step(stage: Option<&StageId>) -> StageTraceStep {
+    let note = if let Some(stage) = stage {
+        Some(format!("--effect-stage {}", stage.as_str()))
+    } else {
+        Some("not provided".to_string())
+    };
+    StageTraceStep {
+        source: "cli_option".to_string(),
+        stage: stage.map(|value| value.as_str().to_string()),
+        capability: None,
+        note,
+        file: None,
+        target: None,
+    }
+}
+
+fn stage_trace_env_step(stage: Option<&StageId>, var_name: &str) -> StageTraceStep {
+    let note = if stage.is_some() {
+        Some(var_name.to_string())
+    } else {
+        Some(format!("{var_name} not set"))
+    };
+    StageTraceStep {
+        source: "env_var".to_string(),
+        stage: stage.map(|value| value.as_str().to_string()),
+        capability: None,
+        note,
+        file: None,
+        target: None,
+    }
+}
+
+fn stage_trace_run_config(capability: &str, stage: &StageId) -> StageTraceStep {
+    StageTraceStep {
+        source: "run_config".to_string(),
+        stage: Some(stage.as_str().to_string()),
+        capability: Some(capability.to_string()),
+        note: Some(RUN_CONFIG_NOTE.to_string()),
+        file: None,
+        target: None,
+    }
+}
+
+fn stage_trace_registry(path: &PathBuf, stage: Option<&StageId>) -> StageTraceStep {
+    StageTraceStep {
+        source: "capability_json".to_string(),
+        stage: stage.map(|value| value.as_str().to_string()),
+        capability: None,
+        note: None,
+        file: Some(path.display().to_string()),
+        target: None,
+    }
+}
+
+fn stage_trace_override_steps(
+    registry: &RuntimeCapabilityRegistry,
+    registry_path: Option<&PathBuf>,
+) -> StageTrace {
+    registry
+        .overrides
+        .iter()
+        .map(|(target_key, entries)| {
+            let stage_candidate = entries
+                .first()
+                .and_then(|entry| entry.stage.clone())
+                .or_else(|| registry.stage.clone());
+            StageTraceStep {
+                source: "runtime_candidate".to_string(),
+                stage: stage_candidate.map(|value| value.as_str().to_string()),
+                capability: None,
+                note: None,
+                file: registry_path.map(|path| path.display().to_string()),
+                target: Some(target_key.clone()),
+            }
+        })
+        .collect()
 }
 
 /// 型行の処理モードを表す列挙。
