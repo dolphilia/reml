@@ -12,6 +12,7 @@ use std::{
 mod audit;
 mod capability_handle;
 mod capability_metadata;
+mod manifest_contract;
 mod registry;
 mod security;
 
@@ -23,6 +24,7 @@ pub use capability_handle::{
 pub use capability_metadata::{
     CapabilityDescriptor, CapabilityId, CapabilityProvider, StageId, StageRequirement,
 };
+pub use manifest_contract::{ConductorCapabilityContract, ConductorCapabilityRequirement};
 pub use registry::{CapabilityError, CapabilityRegistry};
 pub use security::{CallOptions, SecurityError, SecurityPolicy};
 

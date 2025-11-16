@@ -1,4 +1,4 @@
-use std::{fmt, time::SystemTime};
+use std::{fmt, str::FromStr, time::SystemTime};
 
 /// Capability の識別子。
 pub type CapabilityId = String;
@@ -51,6 +51,41 @@ pub enum StageId {
     Stable,
 }
 
+/// Stage の解析が失敗した場合のエラー。
+#[derive(Debug, Clone)]
+pub struct StageParseError {
+    details: String,
+}
+
+impl StageParseError {
+    fn new(details: impl Into<String>) -> Self {
+        Self {
+            details: details.into(),
+        }
+    }
+}
+
+impl fmt::Display for StageParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "不正な Stage 値: {}", self.details)
+    }
+}
+
+impl std::error::Error for StageParseError {}
+
+impl FromStr for StageId {
+    type Err = StageParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "experimental" => Ok(StageId::Experimental),
+            "beta" => Ok(StageId::Beta),
+            "stable" => Ok(StageId::Stable),
+            other => Err(StageParseError::new(format!("未知の StageId '{}'", other))),
+        }
+    }
+}
+
 impl fmt::Display for StageId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let label = match self {
@@ -76,6 +111,26 @@ impl StageRequirement {
             StageRequirement::Exact(expected) => actual == expected,
             StageRequirement::AtLeast(minimum) => actual >= minimum,
         }
+    }
+}
+
+impl FromStr for StageRequirement {
+    type Err = StageParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let normalized = s.trim();
+        if let Some(value) = normalized.strip_prefix("exact:") {
+            let stage = StageId::from_str(value)?;
+            return Ok(StageRequirement::Exact(stage));
+        }
+        if let Some(value) = normalized.strip_prefix("at_least:") {
+            let stage = StageId::from_str(value)?;
+            return Ok(StageRequirement::AtLeast(stage));
+        }
+        if normalized.is_empty() {
+            return Err(StageParseError::new("空文字列"));
+        }
+        StageId::from_str(normalized).map(StageRequirement::Exact)
     }
 }
 
