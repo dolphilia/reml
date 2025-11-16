@@ -273,7 +273,7 @@ impl Drop for ForeignPtr {
     }
 }
 
-/// `reml_runtime` ライブラリへのリンク。
+// `reml_runtime` ライブラリへのリンク。
 #[link(name = "reml_runtime")]
 extern "C" {
     fn mem_alloc(size: usize) -> *mut c_void;
@@ -462,7 +462,7 @@ mod tests {
 }
 
 impl Display for ForeignPtr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "<ForeignPtr ptr={:?}>", self.ptr)
     }
 }

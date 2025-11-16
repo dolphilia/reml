@@ -1,15 +1,10 @@
-use std::{
-    collections::HashMap,
-    fmt,
-    sync::{Mutex, OnceLock},
-    time::SystemTime,
-};
+use std::{collections::HashMap, fmt, sync::Mutex, time::SystemTime};
+
+use once_cell::sync::OnceCell;
 
 use crate::{
     capability_handle::CapabilityHandle,
-    capability_metadata::{
-        CapabilityDescriptor, CapabilityId, CapabilityProvider, StageId, StageRequirement,
-    },
+    capability_metadata::{CapabilityDescriptor, CapabilityId, StageId, StageRequirement},
 };
 
 /// Registry 内の Capability を格納するシングルトン。
@@ -20,7 +15,7 @@ pub struct CapabilityRegistry {
 impl CapabilityRegistry {
     /// グローバルインスタンスを取得する。
     pub fn registry() -> &'static CapabilityRegistry {
-        static INSTANCE: OnceLock<CapabilityRegistry> = OnceLock::new();
+        static INSTANCE: OnceCell<CapabilityRegistry> = OnceCell::new();
         INSTANCE.get_or_init(|| CapabilityRegistry {
             handles: Mutex::new(HashMap::new()),
         })
@@ -57,7 +52,7 @@ impl CapabilityRegistry {
     /// Stage 要件と効果スコープを検証し、ハンドルを返す。
     pub fn verify_capability_stage(
         &self,
-        id: &CapabilityId,
+        id: impl AsRef<str>,
         requirement: StageRequirement,
     ) -> Result<CapabilityHandle, CapabilityError> {
         let mut lock = self
@@ -65,9 +60,13 @@ impl CapabilityRegistry {
             .lock()
             .expect("CapabilityRegistry mutex がロックできません");
 
+        let key = id.as_ref();
+        let requested_id = key.to_string();
         let handle = lock
-            .get_mut(id)
-            .ok_or_else(|| CapabilityError::MissingCapability { id: id.clone() })?;
+            .get_mut(key)
+            .ok_or_else(|| CapabilityError::MissingCapability {
+                id: requested_id.clone(),
+            })?;
 
         if !requirement.matches(handle.descriptor().stage) {
             return Err(CapabilityError::StageViolation {

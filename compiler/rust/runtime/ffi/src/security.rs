@@ -3,7 +3,7 @@ use crate::{
     capability_handle::SecurityCapability,
     capability_metadata::{CapabilityDescriptor, StageId, StageRequirement},
 };
-use serde_json::{json, Map, Value};
+use serde_json::json;
 use std::fmt;
 
 /// セキュリティポリシー。
@@ -157,7 +157,7 @@ mod tests {
             StageRequirement::AtLeast(StageId::Beta),
         );
         let ctx = options.new_context("symbol-name").unwrap();
-        assert_eq!(ctx.log("test", json!({"ok": true})), Ok(()));
+        assert!(ctx.log("test", json!({"ok": true})).is_ok());
         let entries = sink.entries();
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].metadata["stage_requirement"], "at_least(beta)");
