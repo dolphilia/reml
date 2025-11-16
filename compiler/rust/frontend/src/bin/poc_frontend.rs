@@ -8,6 +8,7 @@ use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use reml_adapter::target::{self, TargetInference};
 use reml_frontend::diagnostic::{
     effects,
     formatter::{self, FormatterContext},
@@ -245,6 +246,7 @@ struct CliArgs {
     show_stage_context: bool,
     #[allow(dead_code)]
     diagnostics_stream: bool,
+    target_cfg_extension: Value,
     run_config: RunSettings,
     stream_config: StreamSettings,
     runtime_capabilities: Vec<RuntimeCapability>,
@@ -603,7 +605,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                 let path = args
                     .next()
                     .ok_or_else(|| "--emit-parse-debug は出力パスを伴う必要があります")?;
-                    parse_debug = Some(PathBuf::from(path));
+                parse_debug = Some(PathBuf::from(path));
             }
             "--emit-effects" => emit_effects = true,
             "--emit-diagnostics" => emit_diagnostics = true,
@@ -898,6 +900,19 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         root: dualwrite_root,
     });
 
+    let (target_inference, target_errors) = match target::infer_target_from_env() {
+        Ok(inference) => (inference, 0),
+        Err(err) => {
+            eprintln!("[TARGET] 環境からのターゲット推論に失敗しました: {err}");
+            (TargetInference::host_default(), 1)
+        }
+    };
+    let target_extension_value = target_inference.inferred_payload();
+    run_config.config = run_config
+        .config
+        .with_extension("target", |_| target_extension_value.clone());
+    let target_cfg_extension = target_inference.cfg_extension(target_errors);
+
     Ok(CliArgs {
         program_name,
         raw_args: raw_cli_args,
@@ -917,6 +932,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         emit_audit,
         show_stage_context,
         diagnostics_stream,
+        target_cfg_extension,
         run_config,
         stream_config,
         runtime_capabilities,
@@ -983,6 +999,23 @@ fn build_runconfig_summary(
 ) -> Value {
     let flow_metrics = flow.metrics();
     let lex_extension = lex_extension_payload(run_config);
+    let mut extensions = Map::new();
+    extensions.insert("lex".to_string(), lex_extension.clone());
+    extensions.insert(
+        "recover".to_string(),
+        json!({ "sync_tokens": [], "notes": false }),
+    );
+    extensions.insert(
+        "stream".to_string(),
+        build_stream_extension(&args.stream_config, &flow_metrics, run_config.packrat),
+    );
+    extensions.insert(
+        "config".to_string(),
+        build_config_extension(run_config, args),
+    );
+    if let Some(target_extension) = run_config.extension("target") {
+        extensions.insert("target".to_string(), target_extension.clone());
+    }
     json!({
         "packrat": run_config.packrat,
         "left_recursion": left_recursion_label(run_config.left_recursion),
@@ -991,19 +1024,7 @@ fn build_runconfig_summary(
         "require_eof": run_config.require_eof,
         "legacy_result": run_config.legacy_result,
         "experimental_effects": args.run_config.experimental_effects,
-        "extensions": {
-            "lex": lex_extension.clone(),
-            "recover": {
-                "sync_tokens": [],
-                "notes": false,
-            },
-            "stream": build_stream_extension(
-                &args.stream_config,
-                &flow_metrics,
-                run_config.packrat,
-            ),
-            "config": build_config_extension(run_config, args),
-        },
+        "extensions": Value::Object(extensions),
     })
 }
 
@@ -1014,6 +1035,29 @@ fn build_runconfig_top_level(
 ) -> Value {
     let flow_metrics = flow.metrics();
     let lex_extension = lex_extension_payload(run_config);
+    let mut extensions = Map::new();
+    extensions.insert("lex".to_string(), lex_extension.clone());
+    extensions.insert(
+        "recover".to_string(),
+        json!({ "sync_tokens": [], "notes": false }),
+    );
+    extensions.insert(
+        "stream".to_string(),
+        build_stream_extension(&args.stream_config, &flow_metrics, run_config.packrat),
+    );
+    extensions.insert(
+        "effects".to_string(),
+        json!({
+            "type_row_mode": type_row_mode_label(args.typecheck_config.type_row_mode),
+        }),
+    );
+    extensions.insert(
+        "config".to_string(),
+        build_config_extension(run_config, args),
+    );
+    if let Some(target_extension) = run_config.extension("target") {
+        extensions.insert("target".to_string(), target_extension.clone());
+    }
     json!({
         "switches": {
             "packrat": run_config.packrat,
@@ -1024,22 +1068,7 @@ fn build_runconfig_top_level(
             "legacy_result": run_config.legacy_result,
             "experimental_effects": args.run_config.experimental_effects,
         },
-        "extensions": {
-            "lex": lex_extension.clone(),
-            "recover": {
-                "sync_tokens": [],
-                "notes": false,
-            },
-            "stream": build_stream_extension(
-                &args.stream_config,
-                &flow_metrics,
-                run_config.packrat,
-            ),
-            "effects": {
-                "type_row_mode": type_row_mode_label(args.typecheck_config.type_row_mode),
-            },
-            "config": build_config_extension(run_config, args),
-        },
+        "extensions": Value::Object(extensions),
         "runtime_capabilities": args
             .runtime_capabilities
             .iter()
@@ -1209,7 +1238,6 @@ fn stage_requirement_label(requirement: &StageRequirement) -> String {
     requirement.label()
 }
 
-
 fn build_parser_diagnostics(
     diagnostics: &[FrontendDiagnostic],
     args: &CliArgs,
@@ -1275,6 +1303,7 @@ fn build_parser_diagnostics(
             );
             stage_payload.apply_extensions(&mut extensions);
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
+            extensions.insert("cfg".to_string(), args.target_cfg_extension.clone());
 
             let domain_label = diag
                 .domain
@@ -1373,6 +1402,7 @@ fn build_type_diagnostics(
                 );
             }
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
+            extensions.insert("cfg".to_string(), args.target_cfg_extension.clone());
             let mut metadata = build_audit_metadata(
                 &timestamp,
                 args,
