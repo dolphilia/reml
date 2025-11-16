@@ -1,4 +1,4 @@
-use crate::streaming::RuntimeBridgeSignal;
+use crate::streaming::{RuntimeBridgeSignal, RuntimeBridgeSignalKind};
 use crate::typeck::{RuntimeCapability, StageContext, StageTraceStep};
 use serde_json::{json, Map, Value};
 
@@ -340,6 +340,93 @@ fn bridge_signal_payload(signal: &RuntimeBridgeSignal) -> Map<String, Value> {
         payload.insert("stage_trace".to_string(), Value::Array(trace));
     }
     payload
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::typeck::StageTraceStep;
+
+    fn sample_stage_trace_step() -> StageTraceStep {
+        StageTraceStep {
+            source: "runtime".to_string(),
+            stage: Some("beta".to_string()),
+            capability: Some("ffi.bridge".to_string()),
+            note: Some("test-span".to_string()),
+            file: None,
+            target: None,
+        }
+    }
+
+    #[test]
+    fn bridge_signal_extensions_emit_expected_metadata() {
+        let stage_step = sample_stage_trace_step();
+        let bridge_signal = RuntimeBridgeSignal {
+            kind: RuntimeBridgeSignalKind::Backpressure,
+            parser_offset: Some(42),
+            stream_sequence: Some(7),
+            stage: Some("beta".to_string()),
+            capability: Some("ffi.bridge".to_string()),
+            note: Some("overload".to_string()),
+            stage_trace: vec![stage_step.clone()],
+        };
+        let context = EffectAuditContext::new(
+            Some("beta".to_string()),
+            Some("stable".to_string()),
+            vec![],
+            vec![stage_step.clone()],
+            Some(bridge_signal.clone()),
+        );
+        let mut extensions = Map::new();
+        apply_extensions(&context, &mut extensions);
+
+        let bridge_ext = extensions
+            .get("bridge")
+            .and_then(Value::as_object)
+            .expect("bridge extension is present");
+        let signal_ext = bridge_ext
+            .get("signal")
+            .and_then(Value::as_object)
+            .expect("signal payload inserted");
+        assert_eq!(signal_ext.get("kind"), Some(&json!("backpressure")));
+        assert_eq!(
+            bridge_ext
+                .get("stage")
+                .and_then(Value::as_object)
+                .and_then(|entry| entry.get("signal"))
+                .and_then(Value::as_object)
+                .and_then(|entry| entry.get("parser_offset")),
+            Some(&json!(42))
+        );
+
+        let mut metadata = Map::new();
+        apply_audit_metadata(&context, &mut metadata);
+        let signal_meta = metadata
+            .get("bridge.stage.signal")
+            .and_then(Value::as_object)
+            .expect("bridge.stage.signal metadata");
+        assert_eq!(signal_meta.get("kind"), Some(&json!("backpressure")));
+        assert_eq!(signal_meta.get("parser_offset"), Some(&json!(42)));
+        assert_eq!(
+            signal_meta
+                .get("stage_trace")
+                .and_then(Value::as_array)
+                .and_then(|entries| entries.get(0))
+                .and_then(Value::as_object)
+                .and_then(|entry| entry.get("source")),
+            Some(&json!("runtime"))
+        );
+        assert_eq!(
+            metadata.get("bridge.stage.reason").and_then(Value::as_str),
+            Some("overload")
+        );
+        let contract_trace_len = metadata
+            .get("effects.contract.stage_trace")
+            .and_then(Value::as_array)
+            .map(|arr| arr.len())
+            .unwrap_or_default();
+        assert!(contract_trace_len > 0);
+    }
 }
 
 fn apply_effect_audit_metadata(context: &EffectAuditContext, metadata: &mut Map<String, Value>) {
