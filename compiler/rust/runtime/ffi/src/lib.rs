@@ -1,5 +1,8 @@
 //! Rust 側から Reml ランタイムへの FFI アクセスを提供する最小層。
 //! 手動定義の `extern` 宣言と安全なラッパーをまとめる。
+use crate::ffi_contract::{
+    check_contract, emit_contract_violation, maybe_log_stage_mismatch, ContractViolation,
+};
 use serde_json::{json, Value};
 use std::{
     ffi::CStr,
@@ -12,6 +15,7 @@ use std::{
 mod audit;
 mod capability_handle;
 mod capability_metadata;
+mod ffi_contract;
 mod manifest_contract;
 mod registry;
 mod security;
@@ -455,20 +459,37 @@ where
     F: FnOnce(&AuditContext, &CapabilityDescriptor) -> Result<R, BridgeError>,
 {
     let registry = CapabilityRegistry::registry();
-    let handle = registry
-        .verify_capability_stage(
-            capability_id,
-            options.stage_requirement,
-            &options.security_policy.required_effects,
-        )
-        .map_err(BridgeError::Capability)?;
+    let ctx = options.new_context(symbol).map_err(BridgeError::Audit)?;
+    let handle = match registry.verify_capability_stage(
+        capability_id,
+        options.stage_requirement,
+        &options.security_policy.required_effects,
+    ) {
+        Ok(handle) => handle,
+        Err(err) => {
+            maybe_log_stage_mismatch(
+                &ctx,
+                metadata,
+                registry,
+                capability_id,
+                options.stage_requirement,
+                &options.security_policy.required_effects,
+                &err,
+            )
+            .map_err(BridgeError::Audit)?;
+            return Err(BridgeError::Capability(err));
+        }
+    };
 
     options
         .security_policy
         .verify(handle.descriptor())
         .map_err(BridgeError::Security)?;
 
-    let ctx = options.new_context(symbol).map_err(BridgeError::Audit)?;
+    if let Some(violation) = check_contract(metadata) {
+        emit_contract_violation(&ctx, metadata, violation.clone()).map_err(BridgeError::Audit)?;
+        return Err(BridgeError::Contract(violation));
+    }
 
     let log_payload = json!({
         "capability": handle.descriptor().id,
@@ -518,6 +539,7 @@ pub enum BridgeError {
     Capability(CapabilityError),
     Security(SecurityError),
     Audit(AuditError),
+    Contract(ContractViolation),
 }
 
 impl From<CapabilityError> for BridgeError {
@@ -535,6 +557,12 @@ impl From<SecurityError> for BridgeError {
 impl From<AuditError> for BridgeError {
     fn from(err: AuditError) -> Self {
         BridgeError::Audit(err)
+    }
+}
+
+impl From<ContractViolation> for BridgeError {
+    fn from(err: ContractViolation) -> Self {
+        BridgeError::Contract(err)
     }
 }
 
