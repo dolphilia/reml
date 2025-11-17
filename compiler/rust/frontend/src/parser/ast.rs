@@ -4,6 +4,8 @@ use crate::span::Span;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Module {
+    pub header: Option<ModuleHeader>,
+    pub uses: Vec<UseDecl>,
     pub effects: Vec<EffectDecl>,
     pub functions: Vec<Function>,
     pub decls: Vec<Decl>,
@@ -12,6 +14,12 @@ pub struct Module {
 impl Module {
     pub fn render(&self) -> String {
         let mut rendered = Vec::new();
+        if let Some(header) = &self.header {
+            rendered.push(format!("module {}", header.path.render()));
+        }
+        for use_decl in &self.uses {
+            rendered.push(use_decl.render());
+        }
         for effect in &self.effects {
             rendered.push(format!("effect {}", effect.name.name));
         }
@@ -29,6 +37,105 @@ impl Module {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct ModuleHeader {
+    pub path: ModulePath,
+    pub visibility: Visibility,
+    pub attrs: Vec<Attribute>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct UseDecl {
+    pub is_pub: bool,
+    pub tree: UseTree,
+    pub span: Span,
+}
+
+impl UseDecl {
+    pub fn render(&self) -> String {
+        let mut text = String::new();
+        if self.is_pub {
+            text.push_str("pub ");
+        }
+        text.push_str("use ");
+        text.push_str(&self.tree.render());
+        text
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum UseTree {
+    Path {
+        path: ModulePath,
+        alias: Option<Ident>,
+    },
+    Brace {
+        path: ModulePath,
+        items: Vec<UseItem>,
+    },
+}
+
+impl UseTree {
+    pub fn render(&self) -> String {
+        match self {
+            UseTree::Path { path, alias } => {
+                let mut text = path.render();
+                if let Some(alias_ident) = alias {
+                    text.push_str(" as ");
+                    text.push_str(&alias_ident.name);
+                }
+                text
+            }
+            UseTree::Brace { path, items } => {
+                let rendered_items = items
+                    .iter()
+                    .map(UseItem::render)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{}.{{{rendered_items}}}", path.render())
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct UseItem {
+    pub name: Option<Ident>,
+    pub alias: Option<Ident>,
+    pub nested: Vec<UseItem>,
+    pub glob: bool,
+    pub span: Span,
+}
+
+impl UseItem {
+    pub fn render(&self) -> String {
+        if self.glob {
+            return "*".to_string();
+        }
+        let mut text = self
+            .name
+            .as_ref()
+            .map(|ident| ident.name.clone())
+            .unwrap_or_default();
+        if let Some(alias_ident) = &self.alias {
+            text.push_str(" as ");
+            text.push_str(&alias_ident.name);
+        }
+        if !self.nested.is_empty() {
+            let nested = self
+                .nested
+                .iter()
+                .map(UseItem::render)
+                .collect::<Vec<_>>()
+                .join(", ");
+            text.push_str(&format!(".{{{nested}}}"));
+        }
+        text
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct EffectDecl {
     pub name: Ident,
     pub span: Span,
@@ -38,6 +145,14 @@ pub struct EffectDecl {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct OperationDecl {
+    pub name: Ident,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature: Option<TypeAnnot>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct HandlerDecl {
     pub name: Ident,
     pub span: Span,
 }
@@ -65,7 +180,7 @@ impl Decl {
             DeclKind::Trait { name, .. } => format!("trait {}", name.name),
             DeclKind::Impl { name, .. } => format!("impl {}", name.name),
             DeclKind::Extern { name, .. } => format!("extern {}", name.name),
-            DeclKind::Handler { name, .. } => format!("handler {}", name.name),
+            DeclKind::Handler(handler) => format!("handler {}", handler.name.name),
             DeclKind::Conductor { name, .. } => format!("conductor {}", name.name),
         }
     }
@@ -105,10 +220,7 @@ pub enum DeclKind {
         span: Span,
     },
     Effect(EffectDecl),
-    Handler {
-        name: Ident,
-        span: Span,
-    },
+    Handler(HandlerDecl),
     Conductor {
         name: Ident,
         span: Span,
@@ -122,7 +234,7 @@ pub struct Attribute {
     pub span: Span,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Visibility {
     Public,
@@ -543,6 +655,30 @@ pub enum ModulePath {
     },
 }
 
+impl ModulePath {
+    pub fn render(&self) -> String {
+        match self {
+            ModulePath::Root { segments } => {
+                let mut parts = String::from("::");
+                parts.push_str(
+                    &segments
+                        .iter()
+                        .map(|segment| segment.name.clone())
+                        .collect::<Vec<_>>()
+                        .join("."),
+                );
+                parts
+            }
+            ModulePath::Relative { head, segments } => {
+                let mut parts = Vec::new();
+                parts.push(head.render());
+                parts.extend(segments.iter().map(|segment| segment.name.clone()));
+                parts.join(".")
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub enum RelativeHead {
     #[serde(rename = "self")]
@@ -551,6 +687,25 @@ pub enum RelativeHead {
     Super(u32),
     #[serde(rename = "plain_ident")]
     PlainIdent(Ident),
+}
+
+impl RelativeHead {
+    fn render(&self) -> String {
+        match self {
+            RelativeHead::Self_ => "self".to_string(),
+            RelativeHead::Super(depth) => {
+                if *depth <= 1 {
+                    "super".to_string()
+                } else {
+                    std::iter::repeat("super")
+                        .take(*depth as usize)
+                        .collect::<Vec<_>>()
+                        .join(".")
+                }
+            }
+            RelativeHead::PlainIdent(ident) => ident.name.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -609,6 +764,8 @@ impl Param {
 #[derive(Debug, Clone, Serialize)]
 pub struct TypeAnnot {
     pub kind: TypeKind,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub annotation_kind: Option<AnnotationKind>,
     pub span: Span,
 }
 
@@ -616,6 +773,14 @@ impl TypeAnnot {
     fn render(&self) -> String {
         self.kind.render()
     }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AnnotationKind {
+    Return,
+    HandlerResume,
+    Operation,
 }
 
 #[derive(Debug, Clone, Serialize)]

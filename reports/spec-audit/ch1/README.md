@@ -7,7 +7,7 @@
 
 ## 2025-11-17 実行済みサンプル
 
-- `docs/spec/1-1-syntax/examples/use_nested.reml` — 正準サンプル。`compiler/rust/frontend/target/debug/poc_frontend --emit-diagnostics` で **先頭 `module`/`use` が受理されず失敗**。ログは `reports/spec-audit/ch1/use_nested-20251117-diagnostics.json`（`rust-gap SYNTAX-002`）。仕様本文の脚注で `use_nested_rustcap.reml` をフォールバックとして案内する。
+- `docs/spec/1-1-syntax/examples/use_nested.reml` — 正準サンプル。`module`/`use` は受理され `TraceEvent::{ModuleHeaderAccepted,UseDeclAccepted}` が `reports/spec-audit/ch1/use_nested-20251117-trace.md` に出力されるが、ブロック本体（`fn ... { ... }`）の解析が未実装のため `reports/spec-audit/ch1/use_nested-20251117-diagnostics.json` では `let` 行で停止する（`rust-gap SYNTAX-002` 継続）。
 - `docs/spec/1-1-syntax/examples/use_nested_rustcap.reml` — Rust Frontend 制限を回避したフォールバック。ダミー関数→`use`→宣言の順で並べ、戻り値型を省略。診断 0 件で完了 (`reports/spec-audit/ch1/use_nested_rustcap-20251117-diagnostics.json`)。
 - `docs/spec/1-1-syntax/examples/effect_handler.reml` — 効果構文の PoC。`effect` 宣言で即時失敗し、`rust-gap SYNTAX-003` を継続。ログ: `reports/spec-audit/ch1/effect_handler-20251117-diagnostics.json`。
 

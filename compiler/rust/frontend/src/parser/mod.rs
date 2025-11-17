@@ -4,6 +4,7 @@ use chumsky::error::{Simple, SimpleReason};
 use chumsky::prelude::*;
 use chumsky::stream::Stream;
 use chumsky::Parser as ChumskyParser;
+use serde::Serialize;
 use smallvec::SmallVec;
 use smol_str::SmolStr;
 use std::ops::Range;
@@ -33,7 +34,10 @@ use crate::streaming::{
     StreamingStateConfig, TokenSample, TraceFrame,
 };
 use crate::token::{Token, TokenKind};
-use ast::{EffectDecl, Expr, Function, Ident, Module, Param};
+use ast::{
+    EffectDecl, Expr, Function, Ident, Module, ModuleHeader, ModulePath, Param, RelativeHead,
+    UseDecl, UseItem, UseTree, Visibility,
+};
 
 /// パース結果の簡易表現。
 #[derive(Debug, Default)]
@@ -48,11 +52,58 @@ pub struct ParsedModule {
     pub span_trace: Vec<TraceFrame>,
     pub packrat_cache: Option<Vec<PackratCacheEntry>>,
     pub stream_flow_state: Option<StreamFlowState>,
+    pub trace_events: Vec<ParserTraceEvent>,
 }
 
 impl ParsedModule {
     pub fn ast_render(&self) -> Option<String> {
         self.ast.as_ref().map(Module::render)
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ParserTraceEvent {
+    pub trace_id: SmolStr,
+    #[serde(rename = "event_kind")]
+    pub kind: ParserTraceEventKind,
+    pub span: Span,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+}
+
+impl ParserTraceEvent {
+    fn module_header(header: &ModuleHeader) -> Self {
+        Self {
+            trace_id: SmolStr::new_inline("syntax:module-header"),
+            kind: ParserTraceEventKind::ModuleHeaderAccepted,
+            span: header.span,
+            label: Some(header.path.render()),
+        }
+    }
+
+    fn use_decl(decl: &UseDecl) -> Self {
+        Self {
+            trace_id: SmolStr::new_inline("syntax:use"),
+            kind: ParserTraceEventKind::UseDeclAccepted,
+            span: decl.span,
+            label: Some(decl.tree.render()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ParserTraceEventKind {
+    ModuleHeaderAccepted,
+    UseDeclAccepted,
+}
+
+impl ParserTraceEventKind {
+    pub fn label(&self) -> &'static str {
+        match self {
+            ParserTraceEventKind::ModuleHeaderAccepted => "module_header_accepted",
+            ParserTraceEventKind::UseDeclAccepted => "use_decl_accepted",
+        }
     }
 }
 
@@ -169,7 +220,8 @@ impl ParserDriver {
         };
         diagnostics.extend(errors.into_iter().map(Self::error_to_diagnostic));
 
-        let (ast, parse_errors, legacy_error) = parse_tokens(&tokens, source, &streaming_state);
+        let (ast, parse_errors, legacy_error, trace_events) =
+            parse_tokens(&tokens, source, &streaming_state);
         let mut streaming_recover = StreamingRecoverController::new(streaming_enabled);
         streaming_recover.start_checkpoint();
         for (span, formatted) in parse_errors.into_iter() {
@@ -201,6 +253,7 @@ impl ParserDriver {
                 span_trace,
                 packrat_cache,
                 stream_flow_state,
+                trace_events,
             },
             legacy_error,
         )
@@ -262,11 +315,14 @@ fn parse_tokens(
     Option<Module>,
     Vec<(Option<Span>, FormattedSimpleError)>,
     Option<ParseError>,
+    Vec<ParserTraceEvent>,
 ) {
+    let prefix = parse_top_level_prefix(tokens);
     let token_pairs: Vec<_> = tokens
         .iter()
-        .filter(|token| token.kind != TokenKind::Whitespace)
-        .map(|token| {
+        .enumerate()
+        .filter(|(index, token)| *index >= prefix.consumed && token.kind != TokenKind::Whitespace)
+        .map(|(_, token)| {
             let span = token.span;
             (token.kind, (span.start as usize)..(span.end as usize))
         })
@@ -274,7 +330,8 @@ fn parse_tokens(
 
     let end = source.len();
     let parser = module_parser(source, streaming_state);
-    let (ast, errors) = parser.parse_recovery(Stream::from_iter(end..end, token_pairs.into_iter()));
+    let (mut ast, errors) =
+        parser.parse_recovery(Stream::from_iter(end..end, token_pairs.into_iter()));
 
     let mut legacy_error = None;
     let mapped_errors = errors
@@ -293,7 +350,12 @@ fn parse_tokens(
         })
         .collect();
 
-    (ast, mapped_errors, legacy_error)
+    if let Some(module) = ast.as_mut() {
+        module.header = prefix.header.clone();
+        module.uses = prefix.uses.clone();
+    }
+
+    (ast, mapped_errors, legacy_error, prefix.events)
 }
 
 fn convert_range(range: Range<usize>) -> Span {
@@ -316,6 +378,7 @@ fn parse_result_from_module(
         span_trace,
         packrat_cache,
         stream_flow_state,
+        trace_events,
     } = parsed;
 
     let farthest_error_offset = diagnostics
@@ -338,6 +401,7 @@ fn parse_result_from_module(
         span_trace,
         stream_flow_state,
         run_config,
+        trace_events,
     )
 }
 
@@ -734,11 +798,386 @@ fn module_parser<'src>(
                 }
             }
             Module {
+                header: None,
+                uses: Vec::new(),
                 effects: effects_vec,
                 functions: functions_vec,
                 decls: Vec::new(),
             }
         })
+}
+
+#[derive(Default)]
+struct TopLevelPrefix {
+    header: Option<ModuleHeader>,
+    uses: Vec<UseDecl>,
+    consumed: usize,
+    events: Vec<ParserTraceEvent>,
+}
+
+fn parse_top_level_prefix(tokens: &[Token]) -> TopLevelPrefix {
+    let mut prefix = TopLevelPrefix::default();
+    let mut index = 0usize;
+    if tokens.is_empty() {
+        return prefix;
+    }
+    if let Some((header, consumed)) = parse_module_header_tokens(tokens, index) {
+        prefix.events.push(ParserTraceEvent::module_header(&header));
+        prefix.header = Some(header);
+        index = consumed;
+    }
+    loop {
+        if index >= tokens.len() {
+            break;
+        }
+        if matches!(tokens[index].kind, TokenKind::EndOfFile) {
+            break;
+        }
+        if let Some((use_decl, event, consumed)) = parse_use_decl_tokens(tokens, index) {
+            prefix.events.push(event);
+            prefix.uses.push(use_decl);
+            index = consumed;
+        } else {
+            break;
+        }
+    }
+    prefix.consumed = index;
+    prefix
+}
+
+fn parse_module_header_tokens(tokens: &[Token], start: usize) -> Option<(ModuleHeader, usize)> {
+    let mut idx = start;
+    if idx >= tokens.len() {
+        return None;
+    }
+    let mut visibility = Visibility::Private;
+    if tokens[idx].kind == TokenKind::KeywordPub {
+        visibility = Visibility::Public;
+        idx += 1;
+    }
+    let module_token = tokens.get(idx)?;
+    if module_token.kind != TokenKind::KeywordModule {
+        return None;
+    }
+    let span_start = if visibility == Visibility::Public {
+        tokens[start].span
+    } else {
+        module_token.span
+    };
+    idx += 1;
+    let (path, path_span, next_idx) = parse_module_path(tokens, idx)?;
+    let header = ModuleHeader {
+        path,
+        visibility,
+        attrs: Vec::new(),
+        span: span_union(span_start, path_span),
+    };
+    Some((header, next_idx))
+}
+
+fn parse_use_decl_tokens(
+    tokens: &[Token],
+    start: usize,
+) -> Option<(UseDecl, ParserTraceEvent, usize)> {
+    let mut idx = start;
+    if idx >= tokens.len() {
+        return None;
+    }
+    let mut is_pub = false;
+    if tokens[idx].kind == TokenKind::KeywordPub {
+        if matches!(
+            tokens.get(idx + 1),
+            Some(token) if token.kind == TokenKind::KeywordUse
+        ) {
+            is_pub = true;
+            idx += 1;
+        } else {
+            return None;
+        }
+    }
+    let use_token = tokens.get(idx)?;
+    if use_token.kind != TokenKind::KeywordUse {
+        return None;
+    }
+    let span_start = if is_pub {
+        tokens[start].span
+    } else {
+        use_token.span
+    };
+    idx += 1;
+    let (path, mut span_end, next_idx) = parse_module_path(tokens, idx)?;
+    idx = next_idx;
+    let mut tree = UseTree::Path {
+        path: path.clone(),
+        alias: None,
+    };
+    if let Some(token) = tokens.get(idx) {
+        match token.kind {
+            TokenKind::KeywordAs => {
+                idx += 1;
+                let (alias, consumed_idx) = parse_ident_with_index(tokens, idx)?;
+                idx = consumed_idx;
+                span_end = span_union(span_end, alias.span);
+                if let UseTree::Path { alias: slot, .. } = &mut tree {
+                    *slot = Some(alias);
+                }
+            }
+            TokenKind::Dot => {
+                if let Some(next) = tokens.get(idx + 1) {
+                    match next.kind {
+                        TokenKind::LBrace => {
+                            idx += 1;
+                            let (items, brace_span, consumed_idx) = parse_use_items(tokens, idx)?;
+                            idx = consumed_idx;
+                            span_end = span_union(span_end, brace_span);
+                            tree = UseTree::Brace {
+                                path: path.clone(),
+                                items,
+                            };
+                        }
+                        TokenKind::Star => {
+                            idx += 2;
+                            let glob_item = UseItem {
+                                name: None,
+                                alias: None,
+                                nested: Vec::new(),
+                                glob: true,
+                                span: next.span,
+                            };
+                            span_end = span_union(span_end, next.span);
+                            tree = UseTree::Brace {
+                                path: path.clone(),
+                                items: vec![glob_item],
+                            };
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    if let Some(token) = tokens.get(idx) {
+        if token.kind == TokenKind::Semicolon {
+            idx += 1;
+        }
+    }
+    let span = span_union(span_start, span_end);
+    let decl = UseDecl { is_pub, tree, span };
+    let event = ParserTraceEvent::use_decl(&decl);
+    Some((decl, event, idx))
+}
+
+fn parse_module_path(tokens: &[Token], start: usize) -> Option<(ModulePath, Span, usize)> {
+    let mut idx = start;
+    if idx >= tokens.len() {
+        return None;
+    }
+    if matches!(
+        tokens.get(idx),
+        Some(token) if token.kind == TokenKind::Colon
+    ) && matches!(
+        tokens.get(idx + 1),
+        Some(token) if token.kind == TokenKind::Colon
+    ) {
+        idx += 2;
+        let (first_segment, consumed_idx) = parse_ident_with_index(tokens, idx)?;
+        idx = consumed_idx;
+        let mut segments = vec![first_segment];
+        let mut span_end = segments.last().map(|ident| ident.span).unwrap();
+        while let Some(token) = tokens.get(idx) {
+            if token.kind != TokenKind::Dot {
+                break;
+            }
+            if let Some(next) = tokens.get(idx + 1) {
+                match next.kind {
+                    TokenKind::Identifier | TokenKind::UpperIdentifier => {
+                        let (segment, consumed_idx) = parse_ident_with_index(tokens, idx + 1)?;
+                        span_end = span_union(span_end, segment.span);
+                        segments.push(segment);
+                        idx = consumed_idx;
+                    }
+                    TokenKind::LBrace | TokenKind::Star | TokenKind::KeywordAs => break,
+                    _ => break,
+                }
+            } else {
+                break;
+            }
+        }
+        let span_start = segments.first().map(|ident| ident.span).unwrap_or(span_end);
+        let span = Span::new(span_start.start, span_end.end);
+        return Some((ModulePath::Root { segments }, span, idx));
+    }
+
+    let token = tokens.get(idx)?;
+    let mut head_span = token.span;
+    let head = match token.kind {
+        TokenKind::KeywordSelf => {
+            idx += 1;
+            RelativeHead::Self_
+        }
+        TokenKind::KeywordSuper => {
+            idx += 1;
+            let mut depth = 1u32;
+            while let Some(dot) = tokens.get(idx) {
+                if dot.kind != TokenKind::Dot {
+                    break;
+                }
+                if let Some(next) = tokens.get(idx + 1) {
+                    if next.kind == TokenKind::KeywordSuper {
+                        head_span = span_union(head_span, next.span);
+                        idx += 2;
+                        depth = depth.saturating_add(1);
+                        continue;
+                    }
+                }
+                break;
+            }
+            RelativeHead::Super(depth)
+        }
+        TokenKind::Identifier | TokenKind::UpperIdentifier => {
+            let (ident, consumed_idx) = parse_ident_with_index(tokens, idx)?;
+            idx = consumed_idx;
+            head_span = ident.span;
+            RelativeHead::PlainIdent(ident)
+        }
+        _ => return None,
+    };
+    let mut segments = Vec::new();
+    let mut span_end = head_span;
+    while let Some(token) = tokens.get(idx) {
+        if token.kind != TokenKind::Dot {
+            break;
+        }
+        if let Some(next) = tokens.get(idx + 1) {
+            match next.kind {
+                TokenKind::Identifier | TokenKind::UpperIdentifier => {
+                    let (ident, consumed_idx) = parse_ident_with_index(tokens, idx + 1)?;
+                    span_end = span_union(span_end, ident.span);
+                    segments.push(ident);
+                    idx = consumed_idx;
+                }
+                TokenKind::LBrace | TokenKind::Star | TokenKind::KeywordAs => break,
+                _ => break,
+            }
+        } else {
+            break;
+        }
+    }
+    let span = Span::new(head_span.start, span_end.end);
+    Some((ModulePath::Relative { head, segments }, span, idx))
+}
+
+fn parse_use_items(tokens: &[Token], start: usize) -> Option<(Vec<UseItem>, Span, usize)> {
+    let mut idx = start;
+    let brace = tokens.get(idx)?;
+    if brace.kind != TokenKind::LBrace {
+        return None;
+    }
+    let mut span = brace.span;
+    idx += 1;
+    let mut items = Vec::new();
+    loop {
+        if idx >= tokens.len() {
+            return None;
+        }
+        if let Some(token) = tokens.get(idx) {
+            if token.kind == TokenKind::RBrace {
+                span = span_union(span, token.span);
+                idx += 1;
+                break;
+            }
+        }
+        let (item, item_span, consumed_idx) = parse_use_item(tokens, idx)?;
+        span = span_union(span, item_span);
+        idx = consumed_idx;
+        items.push(item);
+        if let Some(token) = tokens.get(idx) {
+            match token.kind {
+                TokenKind::Comma => idx += 1,
+                TokenKind::RBrace => {}
+                _ => {}
+            }
+        } else {
+            return None;
+        }
+    }
+    Some((items, span, idx))
+}
+
+fn parse_use_item(tokens: &[Token], start: usize) -> Option<(UseItem, Span, usize)> {
+    let mut idx = start;
+    let token = tokens.get(idx)?;
+    if token.kind == TokenKind::Star {
+        idx += 1;
+        return Some((
+            UseItem {
+                name: None,
+                alias: None,
+                nested: Vec::new(),
+                glob: true,
+                span: token.span,
+            },
+            token.span,
+            idx,
+        ));
+    }
+    let (ident, consumed_idx) = parse_ident_with_index(tokens, idx)?;
+    idx = consumed_idx;
+    let mut span = ident.span;
+    let mut alias = None;
+    if let Some(peek) = tokens.get(idx) {
+        if peek.kind == TokenKind::KeywordAs {
+            idx += 1;
+            let (alias_ident, consumed_idx) = parse_ident_with_index(tokens, idx)?;
+            span = span_union(span, alias_ident.span);
+            alias = Some(alias_ident.clone());
+            idx = consumed_idx;
+        }
+    }
+    let mut nested = Vec::new();
+    if let Some(dot) = tokens.get(idx) {
+        if dot.kind == TokenKind::Dot {
+            if let Some(next) = tokens.get(idx + 1) {
+                if next.kind == TokenKind::LBrace {
+                    idx += 1;
+                    let (items, brace_span, consumed_idx) = parse_use_items(tokens, idx)?;
+                    nested = items;
+                    span = span_union(span, brace_span);
+                    idx = consumed_idx;
+                }
+            }
+        }
+    }
+    let item = UseItem {
+        name: Some(ident),
+        alias,
+        nested,
+        glob: false,
+        span,
+    };
+    Some((item, span, idx))
+}
+
+fn parse_ident_with_index(tokens: &[Token], start: usize) -> Option<(Ident, usize)> {
+    let token = tokens.get(start)?;
+    match token.kind {
+        TokenKind::Identifier | TokenKind::UpperIdentifier => {
+            let name = token
+                .lexeme
+                .clone()
+                .or_else(|| token.kind.keyword_literal().map(|text| text.to_string()))
+                .unwrap_or_default();
+            Some((
+                Ident {
+                    name,
+                    span: token.span,
+                },
+                start + 1,
+            ))
+        }
+        _ => None,
+    }
 }
 
 fn span_union(left: Span, right: Span) -> Span {

@@ -81,7 +81,7 @@
 
   中括弧は 1 階層以上のネストに対応し、`use Core.Parse.{Lex, Op.{Infix, Prefix}}` のように部分展開できます。
 
-> 監査ノート: `docs/spec/1-1-syntax/examples/use_nested.reml` が本節の正準サンプルです。Rust Frontend は現状、ファイル冒頭の `module`/`use` を受理できず `rust-gap SYNTAX-002` として追跡しています。監査時はフォールバックの `use_nested_rustcap.reml` を `reports/spec-audit/ch1/use_nested_rustcap-*.json` と突き合わせて下さい（詳細は `docs/notes/spec-integrity-audit-checklist.md#rust-gap-トラッキング表`）。
+> 監査ノート: `docs/spec/1-1-syntax/examples/use_nested.reml` が本節の正準サンプルです。Rust Frontend は `module`/`use` の受理と `TraceEvent::{ModuleHeaderAccepted,UseDeclAccepted}` の記録に対応しましたが、`fn ... { ... }` ブロック構文が未実装なため `let` 行で停止します（`rust-gap SYNTAX-002`）。監査時はフォールバックの `use_nested_rustcap.reml` を `reports/spec-audit/ch1/use_nested_rustcap-*.json` と突き合わせて下さい（詳細は `docs/notes/spec-integrity-audit-checklist.md#rust-gap-トラッキング表`）。
 
 ### B.1.1 DSLエントリーポイント宣言 {#dsl-entry-declaration}
 

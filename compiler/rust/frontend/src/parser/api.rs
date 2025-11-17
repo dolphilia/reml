@@ -4,6 +4,7 @@
 //! Phase 2-5 では以下の型を実装することで、OCaml 実装の `parser_driver` に近い外部 API を提供し、
 //! `Parser<T>` / `RunConfig` / `ParseResult` による dual-write 連携を目指します。
 
+use super::ParserTraceEvent;
 use crate::diagnostic::{ExpectedToken, FrontendDiagnostic};
 use crate::span::Span;
 use crate::streaming::{
@@ -217,6 +218,7 @@ pub struct ParseResult<T> {
     pub span_trace: Vec<TraceFrame>,
     pub stream_flow_state: Option<StreamFlowState>,
     pub run_config: RunConfig,
+    pub trace_events: Vec<ParserTraceEvent>,
 }
 
 impl<T> ParseResult<T> {
@@ -235,6 +237,7 @@ impl<T> ParseResult<T> {
         span_trace: Vec<TraceFrame>,
         stream_flow_state: Option<StreamFlowState>,
         run_config: RunConfig,
+        trace_events: Vec<ParserTraceEvent>,
     ) -> Self {
         Self {
             value,
@@ -251,6 +254,7 @@ impl<T> ParseResult<T> {
             span_trace,
             stream_flow_state,
             run_config,
+            trace_events,
         }
     }
 }

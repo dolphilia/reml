@@ -18,8 +18,8 @@ use reml_frontend::error::Recoverability;
 use reml_frontend::lexer::{lex_source_with_options, IdentifierProfile, LexerOptions};
 use reml_frontend::parser::ast::Module;
 use reml_frontend::parser::{
-    LeftRecursionMode, ParseResult, ParserDriver, ParserOptions, RunConfig, StreamOutcome,
-    StreamingRunner,
+    LeftRecursionMode, ParseResult, ParserDriver, ParserOptions, ParserTraceEvent, RunConfig,
+    StreamOutcome, StreamingRunner,
 };
 use reml_frontend::semantics::typed;
 use reml_frontend::span::Span;
@@ -101,7 +101,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "packrat_cache": result.packrat_cache,
         "recovered": result.recovered,
         "farthest_error_offset": result.farthest_error_offset,
+        "trace_events": result.trace_events,
     });
+    if let Some(path) = &args.trace_output {
+        if let Err(error) = write_parser_trace_file(path, &result.trace_events) {
+            eprintln!("[TRACE] トレースイベントの出力に失敗しました: {error}");
+        }
+    }
 
     let flow_metrics = result
         .stream_flow_state
@@ -248,6 +254,7 @@ struct CliArgs {
     emit_effects_metrics: Option<PathBuf>,
     emit_impl_registry: Option<PathBuf>,
     emit_tokens: Option<PathBuf>,
+    trace_output: Option<PathBuf>,
     #[allow(dead_code)]
     emit_effects: bool,
     #[allow(dead_code)]
@@ -608,6 +615,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut emit_effects_metrics = None;
     let mut emit_impl_registry = None;
     let mut emit_tokens = None;
+    let mut trace_output = None;
     let mut emit_effects = false;
     let mut emit_diagnostics = false;
     let mut emit_audit = false;
@@ -742,6 +750,12 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                     .next()
                     .ok_or_else(|| "--emit-tokens は出力パスを伴う必要があります")?;
                 emit_tokens = Some(PathBuf::from(path));
+            }
+            "--trace-output" => {
+                let path = args
+                    .next()
+                    .ok_or_else(|| "--trace-output は出力パスを伴う必要があります")?;
+                trace_output = Some(PathBuf::from(path));
             }
             "--packrat" => run_config.packrat = true,
             "--no-packrat" => run_config.packrat = false,
@@ -951,6 +965,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         emit_effects_metrics,
         emit_impl_registry,
         emit_tokens,
+        trace_output,
         emit_effects,
         emit_diagnostics,
         emit_audit,
@@ -981,6 +996,7 @@ fn print_help(program_name: &str) {
   --emit-diagnostics             標準出力へ診断 JSON を出力
   --emit-audit                   Audit メタデータを出力
   --emit-tokens <PATH>           字句解析結果を JSON で保存
+  --trace-output <PATH>          Parser TraceEvent を Markdown で保存
   --lex-profile ascii|unicode    識別子プロファイルの切替
   --packrat / --no-packrat       Packrat キャッシュを有効/無効化
   --streaming / --no-streaming   Streaming Runner の有無を切替
@@ -1037,6 +1053,34 @@ fn write_dualwrite_parse_payload(
     });
     guards.write_json("parse/packrat_cache.json", &cache_payload)?;
     guards.write_json("parse/parser_run_config.rust.json", run_config_value)?;
+    Ok(())
+}
+
+fn write_parser_trace_file(
+    path: &Path,
+    events: &[ParserTraceEvent],
+) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)?;
+        }
+    }
+    let mut buffer = String::from("# Parser Trace Events\n\n");
+    buffer.push_str("| # | kind | trace_id | span | label |\n");
+    buffer.push_str("|---|------|----------|------|-------|\n");
+    for (index, event) in events.iter().enumerate() {
+        let label = event.label.as_deref().unwrap_or("-");
+        let span_label = format!("{}..{}", event.span.start, event.span.end);
+        buffer.push_str(&format!(
+            "| {} | {} | {} | {} | {} |\n",
+            index + 1,
+            event.kind.label(),
+            event.trace_id,
+            span_label,
+            label
+        ));
+    }
+    fs::write(path, buffer)?;
     Ok(())
 }
 

@@ -2,13 +2,15 @@
   "diagnostics": [
     {
       "audit": {
-        "audit_id": "cli/46571011T034546Z#0",
+        "audit_id": "cli/46571011T062902Z#0",
         "change_set": {
           "items": [
             {
               "args": [
                 "--emit-diagnostics",
-                "docs/spec/1-1-syntax/examples/use_nested.reml"
+                "docs/spec/1-1-syntax/examples/use_nested.reml",
+                "--trace-output",
+                "reports/spec-audit/ch1/use_nested-20251117-trace.md"
               ],
               "command": "compiler/rust/frontend/target/debug/poc_frontend",
               "kind": "cli-command"
@@ -24,29 +26,33 @@
           "source": {
             "args": [
               "--emit-diagnostics",
-              "docs/spec/1-1-syntax/examples/use_nested.reml"
+              "docs/spec/1-1-syntax/examples/use_nested.reml",
+              "--trace-output",
+              "reports/spec-audit/ch1/use_nested-20251117-trace.md"
             ],
             "command": "compiler/rust/frontend/target/debug/poc_frontend",
             "workspace": "."
           }
         },
         "metadata": {
-          "audit.build_id": "46571011T034546Z",
+          "audit.build_id": "46571011T062902Z",
           "audit.channel": "cli",
           "audit.policy.version": "rust.poc.audit.v1",
           "audit.sequence": 0,
           "audit.source.workspace": ".",
-          "audit.timestamp": "-4657-10-11T03:45:46Z",
+          "audit.timestamp": "-4657-10-11T06:29:02Z",
           "bridge.stage.actual_capabilities": [],
           "bridge.stage.required_capabilities": [],
           "capability.ids": [],
-          "cli.audit_id": "cli/46571011T034546Z#0",
+          "cli.audit_id": "cli/46571011T062902Z#0",
           "cli.change_set": {
             "items": [
               {
                 "args": [
                   "--emit-diagnostics",
-                  "docs/spec/1-1-syntax/examples/use_nested.reml"
+                  "docs/spec/1-1-syntax/examples/use_nested.reml",
+                  "--trace-output",
+                  "reports/spec-audit/ch1/use_nested-20251117-trace.md"
                 ],
                 "command": "compiler/rust/frontend/target/debug/poc_frontend",
                 "kind": "cli-command"
@@ -62,7 +68,9 @@
             "source": {
               "args": [
                 "--emit-diagnostics",
-                "docs/spec/1-1-syntax/examples/use_nested.reml"
+                "docs/spec/1-1-syntax/examples/use_nested.reml",
+                "--trace-output",
+                "reports/spec-audit/ch1/use_nested-20251117-trace.md"
               ],
               "command": "compiler/rust/frontend/target/debug/poc_frontend",
               "workspace": "."
@@ -297,22 +305,24 @@
         }
       },
       "audit_metadata": {
-        "audit.build_id": "46571011T034546Z",
+        "audit.build_id": "46571011T062902Z",
         "audit.channel": "cli",
         "audit.policy.version": "rust.poc.audit.v1",
         "audit.sequence": 0,
         "audit.source.workspace": ".",
-        "audit.timestamp": "-4657-10-11T03:45:46Z",
+        "audit.timestamp": "-4657-10-11T06:29:02Z",
         "bridge.stage.actual_capabilities": [],
         "bridge.stage.required_capabilities": [],
         "capability.ids": [],
-        "cli.audit_id": "cli/46571011T034546Z#0",
+        "cli.audit_id": "cli/46571011T062902Z#0",
         "cli.change_set": {
           "items": [
             {
               "args": [
                 "--emit-diagnostics",
-                "docs/spec/1-1-syntax/examples/use_nested.reml"
+                "docs/spec/1-1-syntax/examples/use_nested.reml",
+                "--trace-output",
+                "reports/spec-audit/ch1/use_nested-20251117-trace.md"
               ],
               "command": "compiler/rust/frontend/target/debug/poc_frontend",
               "kind": "cli-command"
@@ -328,7 +338,9 @@
           "source": {
             "args": [
               "--emit-diagnostics",
-              "docs/spec/1-1-syntax/examples/use_nested.reml"
+              "docs/spec/1-1-syntax/examples/use_nested.reml",
+              "--trace-output",
+              "reports/spec-audit/ch1/use_nested-20251117-trace.md"
             ],
             "command": "compiler/rust/frontend/target/debug/poc_frontend",
             "workspace": "."
@@ -569,22 +581,15 @@
       "expected": {
         "alternatives": [
           {
-            "hint": "keyword",
-            "kind": "keyword",
-            "label": "effect",
-            "token": "effect"
-          },
-          {
-            "hint": "keyword",
-            "kind": "keyword",
-            "label": "fn",
-            "token": "fn"
+            "hint": "token",
+            "kind": "token",
+            "label": "=",
+            "token": "="
           }
         ],
-        "humanized": "ここで`effect` または `fn`のいずれかが必要です",
+        "humanized": "ここで`=`が必要です",
         "locale_args": [
-          "effect",
-          "fn"
+          "="
         ],
         "message_key": "parse.expected"
       },
@@ -647,7 +652,7 @@
           }
         },
         "diagnostic.v2": {
-          "timestamp": "-4657-10-11T03:45:46Z"
+          "timestamp": "-4657-10-11T06:29:02Z"
         },
         "effect.actual_capabilities": [],
         "effect.capabilities": [],
@@ -736,19 +741,13 @@
         "recover": {
           "expected_tokens": [
             {
-              "hint": "keyword",
-              "kind": "keyword",
-              "label": "effect",
-              "token": "effect"
-            },
-            {
-              "hint": "keyword",
-              "kind": "keyword",
-              "label": "fn",
-              "token": "fn"
+              "hint": "token",
+              "kind": "token",
+              "label": "=",
+              "token": "="
             }
           ],
-          "message": "ここで`effect` または `fn`のいずれかが必要です"
+          "message": "ここで`=`が必要です"
         },
         "runconfig": {
           "experimental_effects": false,
@@ -829,95 +828,99 @@
       "fixits": [],
       "hints": [],
       "location": {
-        "column": 1,
-        "endColumn": 7,
-        "endLine": 1,
+        "column": 28,
+        "endColumn": 30,
+        "endLine": 8,
         "file": "docs/spec/1-1-syntax/examples/use_nested.reml",
-        "line": 1
+        "line": 8
       },
       "message": "構文エラー: 入力を解釈できません",
       "notes": [
         {
           "label": "recover.expected_tokens",
-          "message": "ここで`effect` または `fn`のいずれかが必要です",
+          "message": "ここで`=`が必要です",
           "span": null
         }
       ],
       "primary": {
-        "end_col": 7,
-        "end_line": 1,
+        "end_col": 30,
+        "end_line": 8,
         "file": "docs/spec/1-1-syntax/examples/use_nested.reml",
-        "start_col": 1,
-        "start_line": 1
+        "start_col": 28,
+        "start_line": 8
       },
       "recoverability": "recoverable",
       "schema_version": "2.0.0-draft",
       "secondary": [],
       "severity": "error",
       "severity_hint": null,
-      "timestamp": "-4657-10-11T03:45:46Z"
+      "timestamp": "-4657-10-11T06:29:02Z"
     }
   ],
   "input": "docs/spec/1-1-syntax/examples/use_nested.reml",
   "parse_result": {
-    "farthest_error_offset": 6,
+    "farthest_error_offset": 324,
     "packrat_cache": [
       {
         "entry": {
-          "approx_bytes": 371,
+          "approx_bytes": 356,
           "expectations": [
             {
-              "description": "effect"
-            },
-            {
-              "description": "fn"
+              "description": "="
             }
           ],
           "sample_tokens": [
             {
-              "kind": "KeywordModule",
-              "lexeme": "module"
-            },
-            {
               "kind": "Identifier",
-              "lexeme": "docs"
+              "lexeme": "highlight"
             },
             {
-              "kind": "Dot",
+              "kind": "LParen",
               "lexeme": ""
             },
             {
               "kind": "Identifier",
-              "lexeme": "spec"
+              "lexeme": "source"
             },
             {
-              "kind": "Dot",
+              "kind": "Colon",
               "lexeme": ""
             },
             {
-              "kind": "Identifier",
-              "lexeme": "syntax"
+              "kind": "UpperIdentifier",
+              "lexeme": "Text"
+            },
+            {
+              "kind": "RParen",
+              "lexeme": ""
+            },
+            {
+              "kind": "Arrow",
+              "lexeme": ""
+            },
+            {
+              "kind": "UpperIdentifier",
+              "lexeme": "Text"
             }
           ],
           "summary": {
             "alternatives": [
-              "effect",
-              "fn"
+              "="
             ],
-            "humanized": "ここで`effect` または `fn`のいずれかが必要です"
+            "humanized": "ここで`=`が必要です"
           }
         },
         "parser_id": 1,
-        "range_end": 6,
-        "range_start": 0
+        "range_end": 324,
+        "range_start": 322
       }
     ],
     "packrat_snapshot": {
-      "approx_bytes": 371,
+      "approx_bytes": 356,
       "entries": 1
     },
     "packrat_stats": {
-      "approx_bytes": 371,
+      "approx_bytes": 356,
       "budget_drops": 0,
       "entries": 1,
       "evictions": 0,
@@ -926,7 +929,45 @@
       "queries": 7
     },
     "recovered": false,
-    "span_trace": []
+    "span_trace": [],
+    "trace_events": [
+      {
+        "event_kind": "module_header_accepted",
+        "label": "docs.spec.syntax.examples",
+        "span": {
+          "end": 32,
+          "start": 0
+        },
+        "trace_id": "syntax:module-header"
+      },
+      {
+        "event_kind": "use_decl_accepted",
+        "label": "::Core.Parse.{Lex, Op.{Infix, Prefix as PrefixOp}}",
+        "span": {
+          "end": 88,
+          "start": 34
+        },
+        "trace_id": "syntax:use"
+      },
+      {
+        "event_kind": "use_decl_accepted",
+        "label": "::Core.Diagnostics.{Report as DiagnosticReport, Severity}",
+        "span": {
+          "end": 150,
+          "start": 89
+        },
+        "trace_id": "syntax:use"
+      },
+      {
+        "event_kind": "use_decl_accepted",
+        "label": "self.helpers.{TokenBuffer, build_pretty_trace}",
+        "span": {
+          "end": 201,
+          "start": 151
+        },
+        "trace_id": "syntax:use"
+      }
+    ]
   },
   "run_config": {
     "extensions": {
@@ -1019,7 +1060,7 @@
     },
     "last_reason": null,
     "packrat": {
-      "approx_bytes": 371,
+      "approx_bytes": 356,
       "budget_drops": 0,
       "entries": 1,
       "evictions": 0,

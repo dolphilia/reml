@@ -155,7 +155,7 @@
 - 複数のスタイル候補を比較する際は「推奨」「非推奨」を明確にラベル付けする。
 - 既存仕様と競合する新しいスタイルを提示する場合は、本ファイルへの追記とともに関連ドキュメントの更新を行う。
 - Chapter 1 のコード片は `docs/spec/1-1-syntax/examples/*.reml` へ配置し、`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics <sample>` で検証する。コマンドと結果は `reports/spec-audit/ch1/` と `reports/spec-audit/summary.md` に記録すること。
-- Rust Frontend がまだ受理できない構文は `*_rustcap.reml` のフォールバックを併記し、`docs/notes/spec-integrity-audit-checklist.md#rust-gap-トラッキング表` に `rust-gap` として登録する。フォールバックと正準サンプルの差分理由を脚注・README で説明し、制限解消後に統合する。
+- Rust Frontend がまだ受理できない構文は `*_rustcap.reml` のフォールバックを併記し、`docs/notes/spec-integrity-audit-checklist.md#rust-gap-トラッキング表` に `rust-gap` として登録する。`use_nested.reml` については `module`/`use` の受理と `TraceEvent::{ModuleHeaderAccepted,UseDeclAccepted}` の記録までは完了しているが、ブロック構文が未実装なため `use_nested_rustcap.reml` を併記している。フォールバックと正準サンプルの差分理由を脚注・README で説明し、制限解消後に統合する。
 
 ---
 
