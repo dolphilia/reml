@@ -3,7 +3,7 @@
 | サンプル | コマンド | 結果 | 備考 |
 |----------|----------|------|------|
 | use_nested.reml | `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/use_nested.reml --trace-output reports/spec-audit/ch1/use_nested-YYYYMMDD-trace.md` | ✅ 診断 0 件 | `module`/`use`/ブロック/`match` を Rust Frontend が受理し、`TraceEvent::{ModuleHeaderAccepted,UseDeclAccepted}` を保存できるようになった（2025-11-17 修正）。 |
-| use_nested_rustcap.reml | `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/use_nested_rustcap.reml` | ✅ 診断 0 件 | ダミー関数→`use` の順に配置し、戻り値注釈を省略。Rust Frontend の現状で再現できる最小構成。 |
+| use_nested_rustcap.reml | `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/use_nested_rustcap.reml` | ✅ 診断 0 件（参照目的のみ） | Phase 2-7 までのフォールバック。2025-11-21 以降は監査ベースラインから除外し、`docs/spec/1-1-syntax/examples/README.md` で履歴としてのみ参照。 |
 | effect_handler.reml | `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/effect_handler.reml` | ⚠️ `構文エラー: 入力を解釈できません` | `effect` 宣言をパーサが受理できず、`rust-gap SYNTAX-003` を継続。 |
 
 ## 保存ルール（Phase 2-8 W37 追補）
@@ -28,3 +28,13 @@
 | 監査チェックリスト更新 | N/A | ✅ `Closed` | `docs/notes/spec-integrity-audit-checklist.md` の `SYNTAX-002/module_parser` 行を `Closed (P2-8 W38)` に更新し、証跡リンクとして `module_parser-20251119-{parser-tests,dualwrite}.md` と 3 つの `*-20251119-diagnostics.json` を登録。 |
 
 - 追加証跡: `reports/spec-audit/ch1/use_nested-20251119-{diagnostics.json,trace.md}`, `block_scope-20251119-{diagnostics.json,trace.md}`, `effect_handler-20251119-{diagnostics.json,trace.md}` を保存し、各ファイル末尾に `git rev-parse HEAD = f9e10ae676bca22ed8a41e96d79f667310274990` をコメントで追記。TraceEvent の `trace_id` は `syntax:module-stage::<stage>` / `syntax:module-decl::<kind>` を採用。 |
+
+## 2025-11-21 Streaming 監査
+
+| サンプル | コマンド | 結果 | 備考 |
+|----------|----------|------|------|
+| streaming_metrics.rs | `cargo test --manifest-path compiler/rust/frontend/Cargo.toml streaming_metrics -- --nocapture` | ✅ 緑化 (`CI_RUN_ID=rust-frontend-streaming-20251121.1`) | `reports/spec-audit/ch1/streaming_metrics-20251121-log.md` に streaming サンプルのテストログを保存。`module_header_acceptance` / `effect_handler_acceptance` / `bridge_signal_roundtrip` を追加し、`StreamFlowState::latest_bridge_signal()` の戻り値が単一段 `Option` であることを検証。 |
+| streaming_use_nested.reml | `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/use_nested.reml --stream chunk=4096` | ✅ 診断 0 件 | `reports/spec-audit/ch1/streaming_use_nested-20251121-diagnostics.json` を作成し、同名ファイルを `reports/spec-audit/ch2/streaming/` に複製。`git rev-parse HEAD = 3c92026356502383863dee228220ecdf02c24fd8` をコメントで追記。 |
+| streaming_effect_handler.reml | `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/effect_handler.reml --stream chunk=<len-1>` | ✅ 診断 0 件 | `reports/spec-audit/ch1/streaming_effect_handler-20251121-diagnostics.json` を保存し、`bridge_signal_roundtrip` と照合。`docs/notes/spec-integrity-audit-checklist.md#期待集合err-001` の `parser.expected_summary_presence = 1.0` を更新。 |
+
+- Streaming ログは Chapter 2 側の `reports/spec-audit/ch2/streaming/` にも同名で複製し、`ERR-001` 監査と `collect-iterator-audit-metrics.py --section streaming` の参照点とする。

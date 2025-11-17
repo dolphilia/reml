@@ -1,12 +1,27 @@
 use reml_frontend::diagnostic::recover::streaming_expression_summary;
 use reml_frontend::diagnostic::FrontendDiagnostic;
+use reml_frontend::parser::{ParserOptions, RunConfig, StreamOutcome, StreamingRunner};
 use reml_frontend::span::Span;
 use reml_frontend::streaming::{
-    Expectation, ExpectationSummary, PackratEntry, StreamingState, StreamingStateConfig,
-    TokenSample,
+    Expectation, ExpectationSummary, PackratEntry, RuntimeBridgeSignal, RuntimeBridgeSignalKind,
+    StreamFlowConfig, StreamFlowState, StreamingState, StreamingStateConfig, TokenSample,
 };
+use serde_json::json;
 use smallvec::smallvec;
 use smol_str::SmolStr;
+
+macro_rules! assert_matches {
+    ($expression:expr, $pattern:pat $(if $guard:expr)? $(,)?) => {
+        match $expression {
+            $pattern $(if $guard)? => {}
+            value => panic!(
+                "assertion failed: `{:?}` does not match `{}`",
+                value,
+                stringify!($pattern)
+            ),
+        }
+    };
+}
 
 const EXPECTED_STREAMING_TOKENS: [&str; 27] = [
     "continue",
@@ -135,5 +150,182 @@ fn streaming_diagnostics_inject_expected_tokens() {
         diag.expected_message_key.as_deref(),
         Some("parse.expected"),
         "streaming diagnostics should emit the standard parse.expected key"
+    );
+}
+
+#[derive(Copy, Clone, Debug)]
+enum SampleCase {
+    UseNested,
+    EffectHandler,
+}
+
+impl SampleCase {
+    fn name(self) -> &'static str {
+        match self {
+            SampleCase::UseNested => "use_nested",
+            SampleCase::EffectHandler => "effect_handler",
+        }
+    }
+
+    fn source(self) -> &'static str {
+        match self {
+            SampleCase::UseNested => {
+                include_str!("../../../../docs/spec/1-1-syntax/examples/use_nested.reml")
+            }
+            SampleCase::EffectHandler => {
+                include_str!("../../../../docs/spec/1-1-syntax/examples/effect_handler.reml")
+            }
+        }
+    }
+}
+
+struct StreamingSampleResult {
+    outcome: StreamOutcome,
+    flow_state: StreamFlowState,
+}
+
+fn run_streaming_sample(case: SampleCase, chunk: Option<usize>) -> StreamingSampleResult {
+    let mut run_config = RunConfig::default();
+    if let Some(chunk_size) = chunk {
+        run_config = run_config.with_extension("stream", |_| {
+            json!({
+                "chunk_size": chunk_size,
+                "resume_hint": format!("sample:{}", case.name()),
+            })
+        });
+    }
+
+    let flow_config = StreamFlowConfig {
+        enabled: true,
+        demand_min_bytes: chunk.map(|size| size as u64),
+        demand_preferred_bytes: chunk.map(|size| size as u64),
+        resume_hint: Some(format!("sample:{}", case.name())),
+        ..StreamFlowConfig::default()
+    };
+    let flow_state = StreamFlowState::new(flow_config);
+
+    let parser_options = ParserOptions::from_run_config(&run_config)
+        .with_stream_flow(Some(flow_state.clone()))
+        .with_streaming_enabled(true);
+    let runner = StreamingRunner::new(
+        case.source().to_string(),
+        parser_options,
+        run_config,
+        flow_state.clone(),
+    );
+    let outcome = runner.run_stream();
+
+    StreamingSampleResult {
+        outcome,
+        flow_state,
+    }
+}
+
+#[test]
+fn module_header_acceptance_streaming_completes_once() {
+    let StreamingSampleResult { outcome, .. } = run_streaming_sample(SampleCase::UseNested, None);
+    let meta = match outcome {
+        StreamOutcome::Completed { meta, .. } => meta,
+        unexpected => panic!("expected completed outcome, got {unexpected:?}"),
+    };
+
+    assert_eq!(
+        meta.flow.checkpoints_closed, 1,
+        "streaming module header acceptance should close exactly one checkpoint"
+    );
+    assert!(
+        meta.bridge_signal.is_none(),
+        "module sample does not emit bridge signals"
+    );
+}
+
+#[test]
+fn effect_handler_acceptance_streaming_records_resume_signal() {
+    let chunk_size = SampleCase::EffectHandler
+        .source()
+        .len()
+        .saturating_sub(1);
+    let StreamingSampleResult {
+        outcome,
+        flow_state,
+    } = run_streaming_sample(SampleCase::EffectHandler, Some(chunk_size));
+    let continuation = match outcome {
+        StreamOutcome::Pending {
+            continuation,
+            demand,
+            meta,
+        } => {
+            assert_eq!(
+                demand.min_bytes, chunk_size,
+                "chunked streaming demand should mirror chunk size"
+            );
+            assert_eq!(
+                meta.flow.checkpoints_closed, 1,
+                "first streaming pass closes one checkpoint"
+            );
+            continuation
+        }
+        unexpected => panic!("expected pending outcome, got {unexpected:?}"),
+    };
+
+    let resumed_outcome = StreamingRunner::from_continuation(continuation).run_stream();
+    let completed_meta = match resumed_outcome {
+        StreamOutcome::Completed { meta, .. } => meta,
+        unexpected => panic!("expected completed outcome after resume, got {unexpected:?}"),
+    };
+    assert!(
+        completed_meta.flow.checkpoints_closed >= 2,
+        "resume pass should advance StreamFlow checkpoints"
+    );
+
+    flow_state.record_bridge_signal(RuntimeBridgeSignal {
+        kind: RuntimeBridgeSignalKind::Resume,
+        parser_offset: Some(0),
+        stream_sequence: Some(1),
+        stage: Some("effect.handler".to_string()),
+        capability: Some("runtime.bridge".to_string()),
+        note: Some("resume handler".to_string()),
+        stage_trace: Vec::new(),
+    });
+    assert_matches!(
+        flow_state.latest_bridge_signal(),
+        Some(signal) if signal.kind == RuntimeBridgeSignalKind::Resume
+    );
+}
+
+#[test]
+fn bridge_signal_roundtrip_keeps_latest_signal() {
+    let StreamingSampleResult {
+        outcome,
+        flow_state,
+    } = run_streaming_sample(SampleCase::UseNested, None);
+    match outcome {
+        StreamOutcome::Completed { .. } => {}
+        unexpected => panic!("expected completed outcome, got {unexpected:?}"),
+    }
+
+    flow_state.record_bridge_signal(RuntimeBridgeSignal {
+        kind: RuntimeBridgeSignalKind::Await,
+        parser_offset: Some(8),
+        stream_sequence: Some(1),
+        stage: Some("syntax.module".to_string()),
+        capability: None,
+        note: Some("await sample chunk".to_string()),
+        stage_trace: Vec::new(),
+    });
+    flow_state.record_bridge_signal(RuntimeBridgeSignal {
+        kind: RuntimeBridgeSignalKind::Resume,
+        parser_offset: Some(16),
+        stream_sequence: Some(2),
+        stage: Some("syntax.module".to_string()),
+        capability: Some("runtime.bridge".to_string()),
+        note: None,
+        stage_trace: Vec::new(),
+    });
+    assert_matches!(
+        flow_state.latest_bridge_signal(),
+        Some(signal)
+            if signal.kind == RuntimeBridgeSignalKind::Resume
+                && signal.parser_offset == Some(16)
     );
 }

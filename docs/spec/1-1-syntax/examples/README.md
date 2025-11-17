@@ -3,9 +3,16 @@
 Chapter 1 の仕様で参照している Reml コード例を `.reml` ファイルとして切り出し、`poc_frontend` で監査できるようにした。Phase 2-8 では次の方針でメンテナンスする。
 
 - `use_nested.reml` / `effect_handler.reml` などは仕様本文と 1:1 で対応する**正準サンプル**。脚注から直接リンクし、`reports/spec-audit/ch1/` のログと突き合わせて状態を記録する。
-- `*_rustcap.reml` は Rust Frontend の現状制限（`module` / 先頭 `use` / `fn` の戻り値シグネチャなど）を迂回するフォールバック。`rust-gap` ラベルを伴う診断ログとセットで管理し、制限が解消され次第削除する。
+- `*_rustcap.reml` は Phase 2-7 以前のフォールバックとして履歴保管のみを行う。Rust Frontend + Streaming ランナーで正準サンプルが受理できるため、監査ベースラインやチェックリストでは使用しない。
 - 検証は `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics <sample>` を基本とし、必要に応じて `--emit-ast` / `--emit-typeck-debug` を追加する。コマンドと結果は `reports/spec-audit/summary.md` に追記する。
 - 新しいコード片を仕様に追加する際は、ここへも `.reml` を追加し、`docs/spec/0-3-code-style-guide.md` §8 のチェックリストを更新する。
 - `module_parser` の再実装に関わるサンプル（`use_nested.reml`, `effect_handler.reml`, `block_scope.reml` など）は `cargo test --manifest-path compiler/rust/frontend/Cargo.toml parser::module -- --nocapture` の結果と紐付け、`reports/spec-audit/ch1/module_parser-YYYYMMDD-parser-tests.md` / `module_parser-YYYYMMDD-dualwrite.md` に保存する。`docs/notes/spec-integrity-audit-checklist.md#rust-gap-トラッキング表` の `SYNTAX-002/module_parser` 行とログ名を一致させること。
+
+## Streaming 経由での再検証（W38 追加）
+
+- Streaming Runner で再検証する際は `cargo test --manifest-path compiler/rust/frontend/Cargo.toml streaming_metrics -- --nocapture` を正規ルートとし、ログを `reports/spec-audit/ch1/streaming_metrics-YYYYMMDD-log.md` へ保存する。`CI_RUN_ID` と `git rev-parse HEAD` をヘッダに記載する。
+- `use_nested.reml` / `effect_handler.reml` については Streaming 実行後の診断結果を `reports/spec-audit/ch1/streaming_use_nested-YYYYMMDD-diagnostics.json`、`streaming_effect_handler-YYYYMMDD-diagnostics.json` に分けて格納し、同名ファイルを `reports/spec-audit/ch2/streaming/` に複製する。サンプルごとに `mode = streaming`、`ci_run_id`、`git_rev` を JSON に含める。
+- `docs/spec/1-1-syntax.md` の監査ノートと `docs/spec/0-3-code-style-guide.md` のチェックリストは Streaming 実行がグリーンであることを前提にし、フォールバック（`*_rustcap.reml`）の復帰条件は Streaming/Cargo 実行がいずれか失敗した場合のみとする。
+- CLI でストリーミング経路を検証する場合は `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/<sample>.reml --stream chunk=<bytes>` を用い、生成された `streaming_<sample>-YYYYMMDD-diagnostics.json` を `reports/spec-audit/ch1/2025-11-17-syntax-samples.md#2025-11-21-streaming-監査` に追記する。
 
 `rust-gap` の解消順序は `docs/notes/spec-integrity-audit-checklist.md#rust-gap-トラッキング表` に従う。

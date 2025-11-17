@@ -1,0 +1,8 @@
+{
+  "sample": "docs/spec/1-1-syntax/examples/use_nested.reml",
+  "mode": "streaming",
+  "ci_run_id": "rust-frontend-streaming-20251121.1",
+  "git_rev": "3c92026356502383863dee228220ecdf02c24fd8",
+  "diagnostics": []
+}
+// git rev-parse HEAD = 3c92026356502383863dee228220ecdf02c24fd8

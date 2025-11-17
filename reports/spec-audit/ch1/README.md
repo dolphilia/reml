@@ -17,3 +17,8 @@
 
 - `docs/spec/1-1-syntax/examples/block_scope.reml` — `let`/`var` によるブロックスコープと `return` を Rust Frontend が受理し、`reports/spec-audit/ch1/block_scope-20251118-diagnostics.json` に結果を保存。`BindingKind` と `TypeAnnot::Pending` の整合を確認。
 - `docs/spec/1-1-syntax/examples/effect_handler.reml` — dual-write 比較を `reports/spec-audit/ch1/effect_handler-20251118-dualwrite.md` に整理し、トレースは `effect_handler-20251118-trace.md` に記録済み。
+
+## 2025-11-21 Streaming 監査の追加物
+
+- `reports/spec-audit/ch1/streaming_metrics-20251121-log.md` — `cargo test --manifest-path compiler/rust/frontend/Cargo.toml streaming_metrics -- --nocapture` のログ。`module_header_acceptance` / `effect_handler_acceptance` / `bridge_signal_roundtrip` の 3 テストを Streaming Runner で固定した証跡。
+- `reports/spec-audit/ch1/streaming_use_nested-20251121-diagnostics.json` / `streaming_effect_handler-20251121-diagnostics.json` — Streaming 実行時の診断結果。`mode = streaming`、`ci_run_id = rust-frontend-streaming-20251121.1`、`git_rev` を JSON のメタ情報に含め、Chapter 2 側の `reports/spec-audit/ch2/streaming/` にも複製する。
