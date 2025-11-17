@@ -25,6 +25,12 @@
 - `compiler/rust/` : 仕様整合性を直接確認するための現行実装とテスト資産（Phase 3 以降の主対象）
 - `compiler/ocaml/` : 参考資料として参照するのみで、CI や dual-write では利用しない（差分調査時に限定的に参照）
 
+## Rust 実装の現状把握（2025-02 調査）
+- `cargo test --manifest-path compiler/rust/frontend/Cargo.toml` は `compiler/rust/frontend/src/streaming/flow.rs:160` の `StreamFlowState::latest_bridge_signal` が `Option<Option<RuntimeBridgeSignal>>` を返してしまい `E0308` で失敗。`poc_frontend` バイナリも同一実装に依存するため CLI 自体がビルド不能であり、`docs/spec/1-1-syntax.md` のサンプル検証や `docs/guides/core-parse-streaming.md` §3/§7 に記載された `RuntimeBridgeSignal` 診断ルールを Rust 版で確認できない。
+- `cargo test --manifest-path compiler/rust/adapter/Cargo.toml` は通常権限では `network::tests::tcp_connect_roundtrip` が `Operation not permitted` で失敗するが、ローカル TCP bind が許可された環境では 14 件すべて成功した。Phase 2-8 の監査では `docs/spec/3-10-core-env.md` で期待される監査メタデータを収集するために、ネットワーク権限の前提条件を明文化する必要がある。
+- `cargo test --manifest-path compiler/rust/runtime/ffi/Cargo.toml` は 18 件通過したが、`audit::BridgeAuditMetadata::as_json` が未使用のままで `docs/spec/3-8-core-runtime-capability.md` で定義された `bridge.*` メタデータとの結合が未完了。廃止するのか `audit.log` へ統合するのか Phase 2-8 中に判断する。
+- `reports/spec-audit/`（`ch1/`, `ch2/`, `summary.md` を含む）が未作成のため、本計画から参照している成果物リンクがすべて不在。Rust 版で取得したベースラインを格納するディレクトリ構成を Phase 2-8 の開始直後に用意する。
+
 ## 作業ブレークダウン
 
 ### 1. 監査準備とベースライン収集（36週目後半）
@@ -41,6 +47,11 @@
 1.3. **検証ツール整備**
 - `scripts/validate-diagnostic-json.sh`, `scripts/ci-detect-regression.sh`, `scripts/ci-validate-audit.sh` 等を監査モードで再実行し、ベースライン成果物を `reports/audit/phase2-final/` に集約。
 - `docs/notes/` に監査 TODO ノート（`docs/notes/spec-integrity-audit-checklist.md`）を新設し、レビュー項目を列挙。
+- `reports/spec-audit/` 以下に `ch0/`〜`ch3/`, `diffs/`, `summary.md` を事前作成し、Rust 版 CLI の実行ログ・JSON スナップショットを格納できるようにする（現状リンク切れの是正）。
+
+1.4. **Rust フロントエンドのベースライン復旧**
+- `compiler/rust/frontend/src/streaming/flow.rs` の `StreamFlowState::latest_bridge_signal` で発生している `Option<Option<RuntimeBridgeSignal>>` の型不整合を解消し、`RuntimeBridgeSignal` が `docs/spec/3-6-core-diagnostics-audit.md` に沿って単一のイベントとして取得できるようにする。
+- `cargo test --manifest-path compiler/rust/frontend/Cargo.toml` と `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --help` を通し、Rust CLI を Chapter 0〜3 の監査に利用できる状態へ戻す。失敗時は差分リストへ `rust-gap` ラベルで記録する。
 
 **成果物**: 統合差分リスト、監査スケジュール、検証ベースライン
 
@@ -57,6 +68,7 @@
 
 2.3. **サンプル検証**
 - Rust 版 Reml CLI (`compiler/rust/` ビルド成果) により Chapter 1 のサンプルコード全件をパース/型推論し、結果を `reports/spec-audit/ch1/` に保存。
+- CLI 実行手順（`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --input docs/spec/1-1-syntax/examples/*.reml` 等）を `reports/spec-audit/ch1/README.md` に記し、`docs/spec/1-1-syntax.md` のコード片と 1:1 で突き合わせる。
 - エラー発生時は差分リストに追記し、修正案を `docs/notes/spec-integrity-audit-checklist.md` に記録。OCaml 実装での再現確認は任意かつリファレンス使用のみに留める。
 
 **成果物**: 更新済み索引・用語集、Chapter 0〜1 修正案、サンプル検証ログ
@@ -66,6 +78,7 @@
 
 3.1. **API 記述の最終確認**
 - `Parser<T>` の型引数・エラー戦略記述を実装コード (`compiler/ocaml/src/parser/`) と照合。
+- Rust 版の `compiler/rust/frontend/parser` / `streaming` モジュールと `poc_frontend` 実行ログをベースラインとし、Phase 3 以降は Rust 実装を一次参照にする方針を `docs/plans/rust-migration/overview.md` と揃える。
 - `docs/guides/core-parse-streaming.md` の内容と Chapter 2 の記述を同時更新。
 
 3.2. **例外・診断との整合**
@@ -75,6 +88,10 @@
 3.3. **リンク・脚注検証**
 - Chapter 2 からのリンク（ガイド・ノート・計画書）を抽出し、リンク切れを修正。
 - BNF と API サンプルの脚注を更新し、`reports/spec-audit/ch2/` に差分レポートを保存。
+
+3.4. **Streaming ランタイムと期待トークンの監査**
+- `compiler/rust/frontend/tests/streaming_metrics.rs` で定義されている `streaming_expected_token_snapshot_matches` / `streaming_diagnostics_inject_expected_tokens` を Rust 版で実行し、`docs/spec/2-5-error.md` と `docs/guides/core-parse-streaming.md` の `parse.expected` 仕様に沿って `ExpectationSummary` が埋め込まれているか確認する。
+- ストリーミング関連のメトリクス（`packrat_stats`, `RuntimeBridgeSignal`）を `reports/spec-audit/ch2/streaming/` に JSON で保存し、Chapter 2 の脚注更新に引用できるよう整備する。
 
 **成果物**: Chapter 2 修正案、リンク検証レポート、更新済みガイド
 
@@ -131,11 +148,13 @@
 
 ## 成果物と検証
 - 仕様書 Chapter 0〜3 の差分が解消され、CI/手動検証でリンク切れ・スキーマ不整合がゼロであること。
-- Rust 実装で Chapter 0〜3 のサンプルと監査ツールがすべて実行され、結果が `reports/spec-audit/*` に保存されていること。
+- Rust 実装（`cargo test --manifest-path compiler/rust/frontend/Cargo.toml`、`--manifest-path compiler/rust/runtime/ffi/Cargo.toml`、`--manifest-path compiler/rust/adapter/Cargo.toml` および `cargo run --bin poc_frontend`）で Chapter 0〜3 のサンプルと監査ツールがすべて実行され、結果が `reports/spec-audit/*` に保存されていること。
 - 監査レポート (`reports/spec-audit/summary.md`) と差分ログが公開され、レビュー履歴が残っていること。
 - 用語集・索引が最新状態で、Phase 3 計画書から参照できること。
 
 ## リスクとフォローアップ
+- Rust フロントエンドのビルド失敗（`StreamFlowState::latest_bridge_signal` の型不整合）が長期化すると、Chapter 0〜3 のサンプル検証全体が停止する。`rust-gap` ラベルでトラッキングし、Phase 2-8 内で必ず解消する。
+- `reml_adapter` のネットワーク試験に必要なローカル TCP bind 権限が確保できない環境では `docs/spec/3-10-core-env.md` の監査証跡を取得できない。CI/ローカル双方で権限要件を明示し、許可が得られない環境向けにモック動作を定義する。
 - 監査範囲の広さによるスケジュール遅延: 優先順位付けを徹底し、Phase 3 に移送する基準を明示。
 - 記述更新によるガイド・ノートへの波及: クロスリンク管理を `docs/plans/repository-restructure-plan.md` で追跡し、一括更新スクリプトの導入を検討。
 - 外部公開向けチェック未整備: Phase 3 での公開を見据え、ライセンス・記法・翻訳関連の TODO を `docs/notes/spec-integrity-audit-checklist.md` に残す。
