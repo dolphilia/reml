@@ -175,12 +175,22 @@
 ## 0.3.4 レビュア体制
 | 領域 | 主担当 | 副担当 | レビュー頻度 |
 |------|--------|--------|--------------|
-| Parser/Core.Parse | TBD (Phase 1 決定) | TBD | 週次 |
-| Type/Effects | TBD | TBD | 週次 |
-| Runtime/Capability | TBD | TBD | 隔週 |
-| Toolchain/CI | TBD | TBD | 隔週 |
+| Parser/Core.Parse | Rust Parser WG（owner: #rust-frontend-parser） | Spec Core WG（owner: #spec-core） | 週次（Phase 2-8 W36〜W38 は毎週火曜） |
+| Type/Effects | Effects Taskforce（owner: #effects-runtime） | Typeclass WG（owner: #type-systems） | 週次（Phase 2-8 期間は木曜夕方） |
+| Runtime/Capability | Rust Runtime WG（owner: #rust-runtime） | Diagnostics WG（owner: #diagnostics-audit） | 隔週（Phase 2-8 中は W36/W38 に集中レビュー） |
+| Toolchain/CI | CI Platform WG（owner: #ci-tooling） | Docs Platform WG（owner: #docs-hub） | 隔週（Phase 2-8 W36 後半と W38 前半で臨時レビュー） |
 
 レビュアの割当が変更された場合は、この表と各 Phase 文書のレビュア欄を更新する。担当者が空欄の場合は `0-4-risk-handling.md` にリスクとして記録し、埋めるまでフェーズ進行を停止する。
+
+### 0.3.4a Phase 2-8 仕様監査スプリント（Rust フォーカス）
+| 週（ISO W） | 範囲 | 主担当（Slack Channel） | Rust 成果物 / 実行コマンド | 記録先 |
+|-------------|------|--------------------------|-----------------------------|--------|
+| W36 後半 | 差分リスト統合 + Chapter 0 索引用語 | Spec Core WG（#spec-core） × Docs Platform WG（#docs-hub） | `cargo test --manifest-path compiler/rust/frontend/Cargo.toml` ログの概要と `reports/spec-audit/ch0/links.md` でのリンク確認結果 | `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md#phase28-diff-class`, `reports/spec-audit/ch0/` |
+| W37 前半 | Chapter 1（構文・型・効果） | Rust Parser WG（#rust-frontend-parser） × Effects Taskforce（#effects-runtime） | `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics --input docs/spec/1-1-syntax/examples/*.reml` | `reports/spec-audit/ch1/`, `docs/notes/spec-integrity-audit-checklist.md#phase-2-8` |
+| W37 後半 | Chapter 2（Parser API / Streaming） | Parser API WG（#parser-api） × Diagnostics WG（#diagnostics-audit） | `compiler/rust/frontend/tests/streaming_runner.rs` の結果と Streaming JSON を `reports/spec-audit/ch2/streaming/*.json` へ保存 | `reports/spec-audit/ch2/`, `docs/notes/spec-integrity-audit-checklist.md#err-001` |
+| W38 前半 | Chapter 3（Diagnostics / Capability / Runtime） | Rust Runtime WG（#rust-runtime） × CI Platform WG（#ci-tooling） | `cargo test --manifest-path compiler/rust/runtime/ffi/Cargo.toml` / `compiler/rust/adapter/Cargo.toml` のログと `tooling/ci/collect-iterator-audit-metrics.py --section diagnostics --require-success` 出力 | `reports/spec-audit/ch3/`, `reports/spec-audit/summary.md`, `reports/spec-audit/diffs/` |
+
+> メモ: 各担当はレビュー終了後 24 時間以内に `reports/spec-audit/summary.md` へ抜粋を追記し、`docs/plans/bootstrap-roadmap/2-8-spec-integrity-audit.md` §1 のベースライン報告にリンクする。
 
 ## 0.3.5 仕様差分追跡
 - 仕様ファイルに変更が入った際は、以下の形式で記録する。

@@ -37,21 +37,21 @@
 **担当領域**: 準備・計画
 
 1.1. **差分リスト統合**
-- Phase 2-5 で作成した差分リストと Phase 2-7 の更新結果を統合し、章・カテゴリ別に並べ替える。
-- `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の「差分分類」を最新版に更新し、本計画書へ脚注として参照を追加。
+- Phase 2-5 で作成した差分リストと Phase 2-7 の更新結果を統合し、章・カテゴリ別に並べ替える。2025-11-17 時点で `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md#phase28-diff-class` に Chapter 別の差分分類を追加し、Rust 実装の `rust-gap` 管理へ流用する。[^phase28-diff-class-footnote]
+- `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md` の「差分分類」を Phase 2-8 起動週のベースラインとして固定し、以降の更新は `reports/spec-audit/diffs/` と `docs/notes/spec-integrity-audit-checklist.md` へログを残す。
 
 1.2. **レビューチーム編成**
-- Chapter 0〜3 の担当者を再割当し、レビューウィンドウ（36-38週）を設定。
-- `0-3-audit-and-metrics.md` に監査スケジュールと責任者を記録。
+- Chapter 0〜3 の担当者を再割当し、レビューウィンドウ（36-38週）を設定。`0-3-audit-and-metrics.md` §0.3.4 を更新し、各 WG の責任チャネル（`#spec-core` 等）とレビュー頻度を明文化。
+- `0-3-audit-and-metrics.md` に `0.3.4a Phase 2-8 仕様監査スプリント` 表を追加し、週次の担当範囲（W36: 差分統合/Chapter 0, W37: Chapter 1/2, W38: Chapter 3）と Rust 成果物（`reports/spec-audit/ch*/`）を紐付けた。
 
 1.3. **検証ツール整備**
-- `scripts/validate-diagnostic-json.sh`, `scripts/ci-detect-regression.sh`, `scripts/ci-validate-audit.sh` 等を監査モードで再実行し、ベースライン成果物を `reports/audit/phase2-final/` に集約。
-- `docs/notes/` に監査 TODO ノート（`docs/notes/spec-integrity-audit-checklist.md`）を新設し、レビュー項目を列挙。
-- `reports/spec-audit/` 以下に `ch0/`〜`ch3/`, `diffs/`, `summary.md` を事前作成し、Rust 版 CLI の実行ログ・JSON スナップショットを格納できるようにする（現状リンク切れの是正）。
+- `scripts/validate-diagnostic-json.sh`, `scripts/ci-detect-regression.sh`, `scripts/ci-validate-audit.sh` 等を監査モードで再実行し、ベースライン成果物を `reports/audit/phase2-final/` に集約。Rust 専用の集約先として `reports/spec-audit/`（`ch0/`〜`ch3/`, `diffs/`, `summary.md`）を新設した。
+- `docs/notes/spec-integrity-audit-checklist.md` を Phase 2-8 仕様で更新し、`Phase 2-8 初動チェック` と `rust-gap トラッキング表` を追加。`reports/spec-audit/summary.md` と相互参照し、Chapter ごとの TODO を可視化する。
+- `reports/spec-audit/README.md`・各 `ch*/README.md` を作成し、Rust 版 CLI/テストの保存形式を定義。Chapter 0 のリンク検証ログ（`reports/spec-audit/ch0/links.md`）を含め、現時点で参照先が存在しなかったリンクを解消した。
 
 1.4. **Rust フロントエンドのベースライン復旧**
-- `compiler/rust/frontend/src/streaming/flow.rs` の `StreamFlowState::latest_bridge_signal` で発生している `Option<Option<RuntimeBridgeSignal>>` の型不整合を解消し、`RuntimeBridgeSignal` が `docs/spec/3-6-core-diagnostics-audit.md` に沿って単一のイベントとして取得できるようにする。
-- `cargo test --manifest-path compiler/rust/frontend/Cargo.toml` と `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --help` を通し、Rust CLI を Chapter 0〜3 の監査に利用できる状態へ戻す。失敗時は差分リストへ `rust-gap` ラベルで記録する。
+- `compiler/rust/frontend/src/streaming/flow.rs` の `StreamFlowState::latest_bridge_signal` で発生している `Option<Option<RuntimeBridgeSignal>>` の型不整合を解消し、`RuntimeBridgeSignal` が `docs/spec/3-6-core-diagnostics-audit.md` に沿って単一のイベントとして取得できるようにする（2025-11-17 時点で `cargo test` が全件成功することを確認済み）。
+- `cargo test --manifest-path compiler/rust/frontend/Cargo.toml` と `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --help` を通し、Rust CLI を Chapter 0〜3 の監査に利用できる状態へ戻す。実行ログは `reports/spec-audit/summary.md` に追記し、失敗時は差分リストへ `rust-gap` ラベルで記録する。
 
 **成果物**: 統合差分リスト、監査スケジュール、検証ベースライン
 
@@ -175,6 +175,7 @@
 ### Rust 実装集中への補足
 - Phase 2-8 の監査完了をもって、dual-write や OCaml 実装ベースの回帰テストは停止する。必要な場合のみ `compiler/ocaml/` を参照し、差分や履歴を確認する。
 - Rust 実装で未着手の Chapter 3 機能は 2-8 の差分リストに `rust-gap` ラベルを付け、3-0 以降のタスクへ直接引き継ぐ。
-- 3-x 以降の成果物（Prelude/Collections/Diagnostics 等）を Rust 実装に合わせて更新する際は、2-8 で整理した脚注・索引・監査ロジックを共通の基盤として利用し、Phase 2 で確立した測定・リンク検証スクリプトを維持する。
+ - 3-x 以降の成果物（Prelude/Collections/Diagnostics 等）を Rust 実装に合わせて更新する際は、2-8 で整理した脚注・索引・監査ロジックを共通の基盤として利用し、Phase 2 で確立した測定・リンク検証スクリプトを維持する。
 
 [^phase27-handshake-2-8]: Phase 2-7 診断パイプライン残課題・技術的負債整理計画の最終成果。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §5、`docs/plans/bootstrap-roadmap/2-7-to-2-8-handover.md`、`reports/audit/dashboard/diagnostics.md` に記録された監査ベースラインと差分ログを参照する。
+[^phase28-diff-class-footnote]: `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md#phase28-diff-class`（2025-11-17 更新）に Chapter 別の差分分類と `rust-gap` 取扱いを整理。

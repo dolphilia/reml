@@ -266,6 +266,18 @@
 - Low（記述改善・冗長性の整理）:
   - 小見出しの文言統一、脚注整備、誤字脱字。差分リストに専用 ID を設け、ドキュメント更新時にまとめて反映する。
 
+#### 差分分類（Phase 2-8 連携・Chapter 別） {#phase28-diff-class}
+- **整理方針（2025-11-17 更新）**: Phase 2-5 で作成した差分 ID 群を Chapter/カテゴリ単位で再整理し、Phase 2-7 の進捗ログおよび Phase 2-8 の `rust-gap` 管理と連動させる。Chapter ごとに Rust 版 Reml コンパイラで検証する成果物（`reports/spec-audit/ch*/`）を明示し、`docs/plans/bootstrap-roadmap/2-8-spec-integrity-audit.md` §1 から参照できるよう脚注を付与した。
+
+| 章/カテゴリ | 差分 ID / 参照 | Phase 2-7 更新状況 | Phase 2-8 / `rust-gap` 取扱い |
+|-------------|----------------|--------------------|-------------------------------|
+| Chapter 0／索引・脚注・ガイド導線 | `INDEX-LINK`（`docs/spec/0-0-overview.md`, `docs/spec/README.md`, `docs/plans/repository-restructure-plan.md` 間のリンク整合タスク） | `2-7-deferred-remediation.md` §5 でリンクチェッカーと `scripts/ci-detect-regression.sh` の CI 統合を完了。Chapter 0 の脚注リストは Phase 2-7 Week43 時点で凍結済み。 | Rust 実装固有の監査パスを索引用語に追記するのは Phase 2-8 36週目の Chapter 0 担当が実施。`reports/spec-audit/ch0/` にリンク検査結果を格納し、OCaml 実装との差分は参考値として `reports/spec-audit/diffs/` に保存する。 |
+| Chapter 1／構文・型・効果 | `SYNTAX-001`〜`SYNTAX-003`, `TYPE-001`〜`TYPE-003`, `EFFECT-001`〜`EFFECT-003` | `2-7-deferred-remediation.md` §7（Unicode）と §8（効果構文 PoC）、`TYPE-002` ロードマップで暫定実装と PoC KPI を維持。OCaml 実装は脚注で制限事項を告知済み。 | Rust Frontend (`compiler/rust/frontend`) で Chapter 1 サンプルを実行し、`reports/spec-audit/ch1/` に CLI/JSON 出力を保存。`SYNTAX-002`/`SYNTAX-003`/`TYPE-002` は `rust-gap` として Phase 3 へ引き継ぐ前提で差分メモを `docs/notes/spec-integrity-audit-checklist.md` に記録する。 |
+| Chapter 2／Parser API・期待集合 | `PARSER-001`〜`PARSER-003`, `ERR-001`〜`ERR-002`, `EXEC-001` | `2-7-deferred-remediation.md` §6 で Streaming Runner と Recover 指標（`parser.stream.*`）を 1.0 に復旧。ERR-001 の再現手順を `docs/notes/spec-integrity-audit-checklist.md` に暫定記載。 | Rust Parser/Streaming 実装を唯一の監査対象とし、`reports/spec-audit/ch2/` に `cargo test --manifest-path compiler/rust/frontend/Cargo.toml` のログと streaming JSON を保存。Recover/期待集合（`ERR-001`/`ERR-002`）は `rust-gap` ラベルで管理。 |
+| Chapter 3／Diagnostics・Runtime・Capability | `DIAG-001`〜`DIAG-003`, `EFFECT-002`, `CAP-001`（RuntimeCapability 監査）、`EXEC-001` | `2-7-deferred-remediation.md` §5 で監査ゲート (`diagnostics.domain_coverage`, `iterator.stage.audit_pass_rate`) を 1.0 に回復。`reports/audit/dashboard/diagnostics.md` へ結果を保存済み。 | Rust Runtime/Adapter (`compiler/rust/runtime/ffi`, `compiler/rust/adapter`) のテストと `collect-iterator-audit-metrics.py` 出力を Chapter 3 ベースラインとして扱い、`reports/spec-audit/ch3/` に保存。`BridgeAuditMetadata::as_json` の活用方針は `rust-gap`（`CAP-001`）で引き続き追跡。 |
+
+- `rust-gap` ラベルの付与基準: Rust 実装でのみ再検証可能な差分（OCaml 側で凍結済み）に対し、Chapter 1〜3 で最低 1 件ずつ割り当てる。`reports/spec-audit/diffs/` に差分ノート、`docs/notes/spec-integrity-audit-checklist.md` にタスク起票情報を残す。
+
 5.2. **修正案の作成**
 - アウトプット形式: `docs/plans/bootstrap-roadmap/2-5-proposals/<ID>-proposal.md` に Markdown で整備し、以下の節を必須とする。
   1. **背景と症状**（関連仕様・実装ファイル・メトリクスへの参照を脚注で付与）
