@@ -4,6 +4,7 @@
 - 仕様 [3-7-core-config-data.md](../../spec/3-7-core-config-data.md) に準拠した `Core.Config`/`Core.Data` API を Reml 実装へ統合し、マニフェスト・スキーマ・差分管理の標準モデルを確立する。
 - `reml.toml` マニフェスト、DSL エクスポート情報、互換性プロファイル、データモデリング (`Schema`, `ChangeSet`) を実装し、監査・診断と連携する。
 - Config 互換性ポリシーとステージ管理を提供し、Phase 4 の移行計画へ滑らかに接続する。
+- すべての実装・テストは Rust 版 Reml コンパイラ（`compiler/rust/`）を対象とし、OCaml 実装は過去の仕様確認に限って参照する。
 
 ## スコープ
 - **含む**: Manifest ロード/検証、DSL エクスポート連携、Schema/Manifest API、ConfigCompatibility 設定、差分・監査 API、ドキュメント更新。

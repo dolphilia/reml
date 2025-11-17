@@ -4,6 +4,7 @@
 - 仕様 [3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md) に準拠した `Diagnostic`/`AuditEnvelope`/`Telemetry` API を Reml 実装へ統合し、Chapter 3 全体で共有できる診断・監査基盤を完成させる。
 - Parser/TypeChecker/Runtime から発生するエラー・イベントの情報粒度を統一し、監査ログポリシー・ステージ情報との整合を保証する。
 - LSP/CLI 用の出力整形とメトリクス報告を整備し、仕様・実装・ドキュメントの差分を解消する。
+- 本計画は Rust 版 Reml コンパイラ（`compiler/rust/`）を唯一の実装対象とし、OCaml 実装は具体例参照に留める。
 
 ## スコープ
 - **含む**: `Diagnostic` 構造・Severity/Domain、`AuditEnvelope` と `AuditEvent`、型制約可視化 (`TraitResolutionTelemetry`)、警告抑制ポリシー、`EffectDiagnostic` 等の実装とテスト、ドキュメント更新。

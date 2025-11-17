@@ -2,6 +2,7 @@
 
 ## 目的
 - Phase 2 の最終段として、仕様書（Chapter 0〜3）と実装の乖離を徹底的に洗い出し、残りの仕様差分・記述漏れを解消する。
+- Rust 版 Reml コンパイラ（`compiler/rust/`）を唯一のアクティブ実装として監査し、Phase 2 で積み上げた `docs/plans/rust-migration/` 系列の成果を Bootstrap Roadmap に再合流させる。
 - Phase 3 以降のセルフホスト移行に耐えうるドキュメント品質と参照体制を確立し、外部公開に備えた監査ログ・仕様索引を仕上げる。
 
 ## スコープ
@@ -11,6 +12,7 @@
   - Phase 2-5 で主要差分の補正案が承認済みであり、修正案のドラフトが揃っていること。
   - Phase 2-7 で診断・監査パイプラインの運用が安定していること（CI ゲート・LSP テスト完了）。[^phase27-handshake-2-8]
   - 技術的負債リストのうち Phase 2 内で解消できる項目が処理済みで、残項目が Phase 3 引き継ぎとして仕分け済みであること。
+  - `docs/plans/rust-migration/overview.md` と `docs/plans/rust-migration/unified-porting-principles.md` に記録された Rust 実装の要件と成果が参照でき、Phase 2-8 で追加の移植作業を行う必要がないこと。
 
 ## 作業ディレクトリ
 - `docs/spec/0-*` : 索引用資料、用語集、スタイルガイド
@@ -20,6 +22,8 @@
 - `docs/plans/` : 既存計画書との相互参照
 - `reports/` : 監査ログ・ダッシュボード・差分レポート
 - `scripts/` : リンクチェック・スキーマ検証用ツール
+- `compiler/rust/` : 仕様整合性を直接確認するための現行実装とテスト資産（Phase 3 以降の主対象）
+- `compiler/ocaml/` : 参考資料として参照するのみで、CI や dual-write では利用しない（差分調査時に限定的に参照）
 
 ## 作業ブレークダウン
 
@@ -52,8 +56,8 @@
 - 擬似コード・BNF の更新漏れをチェックし、`docs/spec/1-5-formal-grammar-bnf.md` を最新に更新。
 
 2.3. **サンプル検証**
-- Reml CLI により Chapter 1 のサンプルコード全件をパース/型推論し、結果を `reports/spec-audit/ch1/` に保存。
-- エラー発生時は差分リストに追記し、修正案を `docs/notes/spec-integrity-audit-checklist.md` に記録。
+- Rust 版 Reml CLI (`compiler/rust/` ビルド成果) により Chapter 1 のサンプルコード全件をパース/型推論し、結果を `reports/spec-audit/ch1/` に保存。
+- エラー発生時は差分リストに追記し、修正案を `docs/notes/spec-integrity-audit-checklist.md` に記録。OCaml 実装での再現確認は任意かつリファレンス使用のみに留める。
 
 **成果物**: 更新済み索引・用語集、Chapter 0〜1 修正案、サンプル検証ログ
 
@@ -89,7 +93,7 @@
 - `docs/guides/plugin-authoring.md`, `docs/guides/runtime-bridges.md` などを章更新内容に合わせて調整。
 - `docs/notes/dsl-plugin-roadmap.md`, `docs/notes/core-library-outline.md` に監査結果とフォローアップ TODO を記載。
 
-**成果物**: Chapter 3 修正案、更新済み図表、ガイド整合記録
+**成果物**: Chapter 3 修正案、更新済み図表、ガイド整合記録（Rust 実装で再現確認済み）
 
 ### 5. 修正反映とクロスチェック（38週目後半）
 **担当領域**: 最終更新
@@ -100,7 +104,7 @@
 
 5.2. **リンク・スキーマ検証**
 - `scripts/ci-detect-regression.sh` にリンクチェックと JSON Schema 検証を統合し、`spec-audit` モードで実行。
-- 結果を `reports/spec-audit/summary.md` にまとめ、CI での自動実行手順を `docs/plans/bootstrap-roadmap/IMPLEMENTATION-GUIDE.md` に追記。
+- Rust 実装のテスト (`cargo test -p compiler` 等) と同じステージで実行されるよう CI 手順を同期させ、結果を `reports/spec-audit/summary.md` にまとめる。CI での自動実行手順は `docs/plans/bootstrap-roadmap/IMPLEMENTATION-GUIDE.md` に追記。
 
 5.3. **用語・索引最終更新**
 - `docs/README.md`, `README.md` の目次・リンクを更新し、`docs/plans/repository-restructure-plan.md` の進捗を反映。
@@ -120,13 +124,14 @@
 - `reports/audit/dashboard/` に Phase 2 の最終スナップショットを保存し、Phase 3 の比較ベースとする。
 
 6.3. **ハンドオーバー**
-- Phase 3 リーダー向けに `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` から参照できるハンドオーバー節を作成。
-- 仕様更新履歴を `docs/notes/spec-update-log.md`（新設）にまとめ、外部公開時の変更点追跡を容易にする。
+- Phase 3 リーダー向けに `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` から参照できるハンドオーバー節を作成し、Rust 実装で達成済みの監査項目を一覧化する。
+- 仕様更新履歴を `docs/notes/spec-update-log.md`（新設）にまとめ、外部公開時の変更点追跡と Rust 実装への反映状況を容易にする。
 
 **成果物**: リスク登録、メトリクス更新、Phase 3 向けハンドオーバー資料
 
 ## 成果物と検証
 - 仕様書 Chapter 0〜3 の差分が解消され、CI/手動検証でリンク切れ・スキーマ不整合がゼロであること。
+- Rust 実装で Chapter 0〜3 のサンプルと監査ツールがすべて実行され、結果が `reports/spec-audit/*` に保存されていること。
 - 監査レポート (`reports/spec-audit/summary.md`) と差分ログが公開され、レビュー履歴が残っていること。
 - 用語集・索引が最新状態で、Phase 3 計画書から参照できること。
 
@@ -143,5 +148,14 @@
 - [docs/spec/0-0-overview.md](../../spec/0-0-overview.md)
 - [docs/spec/3-6-core-diagnostics-audit.md](../../spec/3-6-core-diagnostics-audit.md)
 - [docs/notes/repository-restructure-plan.md](../notes/repository-restructure-plan.md)
+- [docs/plans/rust-migration/overview.md](../rust-migration/overview.md)
+- [docs/plans/rust-migration/unified-porting-principles.md](../rust-migration/unified-porting-principles.md)
+
+---
+
+### Rust 実装集中への補足
+- Phase 2-8 の監査完了をもって、dual-write や OCaml 実装ベースの回帰テストは停止する。必要な場合のみ `compiler/ocaml/` を参照し、差分や履歴を確認する。
+- Rust 実装で未着手の Chapter 3 機能は 2-8 の差分リストに `rust-gap` ラベルを付け、3-0 以降のタスクへ直接引き継ぐ。
+- 3-x 以降の成果物（Prelude/Collections/Diagnostics 等）を Rust 実装に合わせて更新する際は、2-8 で整理した脚注・索引・監査ロジックを共通の基盤として利用し、Phase 2 で確立した測定・リンク検証スクリプトを維持する。
 
 [^phase27-handshake-2-8]: Phase 2-7 診断パイプライン残課題・技術的負債整理計画の最終成果。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §5、`docs/plans/bootstrap-roadmap/2-7-to-2-8-handover.md`、`reports/audit/dashboard/diagnostics.md` に記録された監査ベースラインと差分ログを参照する。

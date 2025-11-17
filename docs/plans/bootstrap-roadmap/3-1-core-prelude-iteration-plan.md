@@ -24,7 +24,7 @@
 
 2.1. `Option`/`Result`/`Never` 型と付随メソッド (`map`/`and_then`/`expect` など) を Reml で実装し、`@must_use` と効果タグを正しく付与する。
 2.2. `ensure`/`ensure_not_null` 等のユーティリティを組み込み、診断 (`Diagnostic`) への変換ヘルパと一緒に単体テストを整備する。
-2.3. 例外排除ポリシーを検証するため、OCaml 実装との比較テストを作成し、期待差分を `0-3-audit-and-metrics.md` へ記録する。
+2.3. 例外排除ポリシーを検証するため、Rust 実装で `panic`/`abort` を伴う経路を禁止するテストを作成し、期待差分を `0-3-audit-and-metrics.md` へ記録する。必要に応じて OCaml 実装の挙動を参考情報として添付するが、自動比較対象には含めない。
 
 ### 3. Iter コア構造と Collectors（36-37週目）
 **担当領域**: 遅延列基盤
@@ -38,7 +38,7 @@
 
 4.1. `map`/`filter`/`flat_map`/`zip`/`buffered` 等のアダプタを実装し、`effect {mem}` や `effect {mut}` の発生箇所を網羅的にテストする。
 4.2. `collect_list`/`collect_vec`/`fold`/`reduce`/`try_fold` など終端操作の実装を行い、`Collector` との連携とエラー伝播経路を検証する。
-4.3. パフォーマンス計測ベンチマークを作成し、OCaml 実装とのスループット比較 (±10% 目標) を収集して `0-3-audit-and-metrics.md` に反映する。
+4.3. パフォーマンス計測ベンチマークを作成し、Rust 実装の Phase 2 ベースライン（`docs/plans/rust-migration/3-2-benchmark-baseline.md`）と比較して ±10% 以内に収束するかを測定し、`0-3-audit-and-metrics.md` に反映する。
 
 ### 5. Diagnostics/Unicode 連携（38週目）
 **担当領域**: 他章との統合
@@ -63,7 +63,7 @@
 
 ## 成果物と検証
 - `Core.Prelude`/`Core.Iter` 実装および Collector 群が CI テストを通過し、効果タグ/属性が仕様と一致していること。
-- OCaml 実装とのベンチマーク比較が ±10% 以内に収まり、差分が存在する場合はメトリクスに記録されていること。
+- Rust 実装のベースライン（Phase 2 ベンチマーク）と比較した性能が ±10% 以内に収まり、差分が存在する場合はメトリクスに記録されていること。OCaml 実装のデータは参考値として付録に残す。
 - ドキュメント (仕様引用、ガイド、サンプル) が更新され、仕様と実装の相互参照が解決していること。
 
 ## リスクとフォローアップ

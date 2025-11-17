@@ -4,6 +4,7 @@
 - 仕様 [3-8-core-runtime-capability.md](../../spec/3-8-core-runtime-capability.md) に準拠した Capability Registry / Runtime API を実装し、Stage 判定・Capability 検証・監査統合を Reml 実装へ提供する。
 - GC/IO/Async/Audit 等の Capability ハンドル登録・検証・記述 (`CapabilityDescriptor`) を整備し、Chapter 3 の各モジュールが安全に利用できる基盤を構築する。
 - `verify_capability_stage` や `verify_conductor_contract` を通じたステージ管理を整備し、Manifest (3-7) や Diagnostics (3-6) と連携する。
+- 全ステップは Rust 版 Reml コンパイラ（`compiler/rust/`）を唯一の実装対象とし、OCaml 実装は歴史資料として参照する。
 
 ## スコープ
 - **含む**: CapabilityRegistry 構造、CapabilityHandle バリアント、登録・取得・検証 API、Stage 要件検証、Descriptor 表示、監査連携、ドキュメント更新。
