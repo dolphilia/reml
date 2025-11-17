@@ -35,9 +35,9 @@ use crate::streaming::{
 };
 use crate::token::{Token, TokenKind};
 use ast::{
-    Decl, DeclKind, EffectDecl, Expr, ExprKind, Function, Ident, MatchArm, Module, ModuleHeader,
-    ModulePath, Param, Pattern, PatternKind, RelativeHead, Stmt, StmtKind, TypeAnnot, TypeKind,
-    UseDecl, UseItem, UseTree, Visibility,
+    Decl, DeclKind, EffectDecl, Expr, ExprKind, Function, HandlerDecl, Ident, Literal, LiteralKind,
+    MatchArm, Module, ModuleHeader, ModulePath, Param, Pattern, PatternKind, RelativeHead, Stmt,
+    StmtKind, TypeAnnot, TypeKind, UseDecl, UseItem, UseTree, Visibility,
 };
 
 /// パース結果の簡易表現。
@@ -72,6 +72,26 @@ pub struct ParserTraceEvent {
     pub label: Option<String>,
 }
 
+fn trace_id(prefix: &str, kind: &str) -> SmolStr {
+    SmolStr::from(format!("{prefix}::{kind}"))
+}
+
+fn expr_trace_id(kind: &str) -> SmolStr {
+    trace_id("syntax:expr", kind)
+}
+
+fn effect_trace_id(kind: &str) -> SmolStr {
+    trace_id("syntax:effect", kind)
+}
+
+fn handler_trace_id(kind: &str) -> SmolStr {
+    trace_id("syntax:handler", kind)
+}
+
+fn operation_trace_id(kind: &str) -> SmolStr {
+    trace_id("syntax:operation", kind)
+}
+
 impl ParserTraceEvent {
     fn module_header(header: &ModuleHeader) -> Self {
         Self {
@@ -90,6 +110,60 @@ impl ParserTraceEvent {
             label: Some(decl.tree.render()),
         }
     }
+
+    fn expr_enter(kind: &str, span: Span) -> Self {
+        Self {
+            trace_id: expr_trace_id(kind),
+            kind: ParserTraceEventKind::ExprEnter,
+            span,
+            label: Some(kind.to_string()),
+        }
+    }
+
+    fn expr_leave(kind: &str, span: Span) -> Self {
+        Self {
+            trace_id: expr_trace_id(kind),
+            kind: ParserTraceEventKind::ExprLeave,
+            span,
+            label: Some(kind.to_string()),
+        }
+    }
+
+    fn effect_enter(kind: &str, span: Span, label: Option<String>) -> Self {
+        Self {
+            trace_id: effect_trace_id(kind),
+            kind: ParserTraceEventKind::EffectEnter,
+            span,
+            label,
+        }
+    }
+
+    fn effect_exit(kind: &str, span: Span, label: Option<String>) -> Self {
+        Self {
+            trace_id: effect_trace_id(kind),
+            kind: ParserTraceEventKind::EffectExit,
+            span,
+            label,
+        }
+    }
+
+    fn handler(handler: &HandlerDecl) -> Self {
+        Self {
+            trace_id: handler_trace_id(handler.name.name.as_str()),
+            kind: ParserTraceEventKind::HandlerAccepted,
+            span: handler.span,
+            label: Some(handler.name.name.clone()),
+        }
+    }
+
+    fn operation_resume(label: impl Into<String>, span: Span) -> Self {
+        Self {
+            trace_id: operation_trace_id("resume"),
+            kind: ParserTraceEventKind::OperationResume,
+            span,
+            label: Some(label.into()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -97,6 +171,12 @@ impl ParserTraceEvent {
 pub enum ParserTraceEventKind {
     ModuleHeaderAccepted,
     UseDeclAccepted,
+    ExprEnter,
+    ExprLeave,
+    EffectEnter,
+    EffectExit,
+    HandlerAccepted,
+    OperationResume,
 }
 
 impl ParserTraceEventKind {
@@ -104,6 +184,12 @@ impl ParserTraceEventKind {
         match self {
             ParserTraceEventKind::ModuleHeaderAccepted => "module_header_accepted",
             ParserTraceEventKind::UseDeclAccepted => "use_decl_accepted",
+            ParserTraceEventKind::ExprEnter => "expr_enter",
+            ParserTraceEventKind::ExprLeave => "expr_leave",
+            ParserTraceEventKind::EffectEnter => "effect_enter",
+            ParserTraceEventKind::EffectExit => "effect_exit",
+            ParserTraceEventKind::HandlerAccepted => "handler_accepted",
+            ParserTraceEventKind::OperationResume => "operation_resume",
         }
     }
 }
@@ -318,7 +404,7 @@ fn parse_tokens(
     Option<ParseError>,
     Vec<ParserTraceEvent>,
 ) {
-    let prefix = parse_top_level_prefix(tokens);
+    let mut prefix = parse_top_level_prefix(tokens);
     let token_pairs: Vec<_> = tokens
         .iter()
         .enumerate()
@@ -356,7 +442,12 @@ fn parse_tokens(
         module.uses = prefix.uses.clone();
     }
 
-    (ast, mapped_errors, legacy_error, prefix.events)
+    let mut trace_events = prefix.events;
+    if let Some(module) = ast.as_ref() {
+        append_module_trace_events(module, &mut trace_events);
+    }
+
+    (ast, mapped_errors, legacy_error, trace_events)
 }
 
 fn convert_range(range: Range<usize>) -> Span {
@@ -971,6 +1062,244 @@ fn parse_top_level_prefix(tokens: &[Token]) -> TopLevelPrefix {
     }
     prefix.consumed = index;
     prefix
+}
+
+fn append_module_trace_events(module: &Module, events: &mut Vec<ParserTraceEvent>) {
+    for effect in &module.effects {
+        record_effect_decl_trace_events(effect, events);
+    }
+    for decl in &module.decls {
+        record_decl_trace_events(decl, events);
+    }
+    for function in &module.functions {
+        record_function_trace_events(function, events);
+    }
+}
+
+fn record_function_trace_events(function: &Function, events: &mut Vec<ParserTraceEvent>) {
+    for param in &function.params {
+        if let Some(default) = &param.default {
+            record_expr_trace_events(default, events);
+        }
+    }
+    record_expr_trace_events(&function.body, events);
+}
+
+fn record_decl_trace_events(decl: &Decl, events: &mut Vec<ParserTraceEvent>) {
+    match &decl.kind {
+        DeclKind::Let { value, .. } => {
+            events.push(ParserTraceEvent::expr_enter("let", decl.span));
+            record_expr_trace_events(value, events);
+            events.push(ParserTraceEvent::expr_leave("let", decl.span));
+        }
+        DeclKind::Var { value, .. } => {
+            events.push(ParserTraceEvent::expr_enter("var", decl.span));
+            record_expr_trace_events(value, events);
+            events.push(ParserTraceEvent::expr_leave("var", decl.span));
+        }
+        DeclKind::Effect(effect) => record_effect_decl_trace_events(effect, events),
+        DeclKind::Handler(handler) => {
+            events.push(ParserTraceEvent::handler(handler));
+        }
+        DeclKind::Conductor { .. }
+        | DeclKind::Fn { .. }
+        | DeclKind::Type { .. }
+        | DeclKind::Trait { .. }
+        | DeclKind::Impl { .. }
+        | DeclKind::Extern { .. } => {}
+    }
+}
+
+fn record_effect_decl_trace_events(effect: &EffectDecl, events: &mut Vec<ParserTraceEvent>) {
+    let effect_label = Some(effect.name.name.clone());
+    events.push(ParserTraceEvent::effect_enter("decl", effect.span, effect_label.clone()));
+    for operation in &effect.operations {
+        let op_label = format!("{}::{}", effect.name.name, operation.name.name);
+        events.push(ParserTraceEvent::effect_enter(
+            "operation",
+            operation.span,
+            Some(op_label.clone()),
+        ));
+        events.push(ParserTraceEvent::effect_exit(
+            "operation",
+            operation.span,
+            Some(op_label),
+        ));
+    }
+    events.push(ParserTraceEvent::effect_exit("decl", effect.span, effect_label));
+}
+
+fn record_stmt_trace_events(stmt: &Stmt, events: &mut Vec<ParserTraceEvent>) {
+    match &stmt.kind {
+        StmtKind::Decl { decl } => record_decl_trace_events(decl, events),
+        StmtKind::Expr { expr } => record_expr_trace_events(expr, events),
+        StmtKind::Assign { target, value } => {
+            record_expr_trace_events(target, events);
+            record_expr_trace_events(value, events);
+        }
+        StmtKind::Defer { expr } => record_expr_trace_events(expr, events),
+    }
+}
+
+fn record_expr_trace_events(expr: &Expr, events: &mut Vec<ParserTraceEvent>) {
+    let kind = expr_trace_kind(expr);
+    events.push(ParserTraceEvent::expr_enter(kind, expr.span));
+    if let Some(label) = resume_call_label(expr) {
+        events.push(ParserTraceEvent::operation_resume(label, expr.span));
+    }
+    match &expr.kind {
+        ExprKind::Literal(literal) => record_literal_trace_events(literal, events),
+        ExprKind::Identifier(_) | ExprKind::ModulePath(_) => {}
+        ExprKind::Call { callee, args } => {
+            record_expr_trace_events(callee, events);
+            for arg in args {
+                record_expr_trace_events(arg, events);
+            }
+        }
+        ExprKind::PerformCall { call } => {
+            let label = Some(call.effect.name.clone());
+            events.push(ParserTraceEvent::effect_enter(
+                "perform",
+                expr.span,
+                label.clone(),
+            ));
+            record_expr_trace_events(&call.argument, events);
+            events.push(ParserTraceEvent::effect_exit("perform", expr.span, label));
+        }
+        ExprKind::Lambda { body, .. } => {
+            record_expr_trace_events(body, events);
+        }
+        ExprKind::Pipe { left, right } => {
+            record_expr_trace_events(left, events);
+            record_expr_trace_events(right, events);
+        }
+        ExprKind::Binary { left, right, .. } => {
+            record_expr_trace_events(left, events);
+            record_expr_trace_events(right, events);
+        }
+        ExprKind::Unary { expr: inner, .. } => record_expr_trace_events(inner, events),
+        ExprKind::FieldAccess { target, .. }
+        | ExprKind::TupleAccess { target, .. }
+        | ExprKind::Propagate { expr: target }
+        | ExprKind::Loop { body: target }
+        | ExprKind::Unsafe { body: target }
+        | ExprKind::Defer { body: target } => {
+            record_expr_trace_events(target, events);
+        }
+        ExprKind::Index { target, index } => {
+            record_expr_trace_events(target, events);
+            record_expr_trace_events(index, events);
+        }
+        ExprKind::IfElse {
+            condition,
+            then_branch,
+            else_branch,
+        } => {
+            record_expr_trace_events(condition, events);
+            record_expr_trace_events(then_branch, events);
+            if let Some(else_branch) = else_branch {
+                record_expr_trace_events(else_branch, events);
+            }
+        }
+        ExprKind::Match { target, arms } => {
+            record_expr_trace_events(target, events);
+            for arm in arms {
+                if let Some(guard) = &arm.guard {
+                    record_expr_trace_events(guard, events);
+                }
+                record_expr_trace_events(&arm.body, events);
+            }
+        }
+        ExprKind::While { condition, body } => {
+            record_expr_trace_events(condition, events);
+            record_expr_trace_events(body, events);
+        }
+        ExprKind::For { start, end, .. } => {
+            record_expr_trace_events(start, events);
+            record_expr_trace_events(end, events);
+        }
+        ExprKind::Handle { handle } => {
+            let handler = HandlerDecl {
+                name: handle.handler.clone(),
+                span: expr.span,
+            };
+            events.push(ParserTraceEvent::handler(&handler));
+            record_expr_trace_events(&handle.target, events);
+        }
+        ExprKind::Continue => {}
+        ExprKind::Block { statements } => {
+            for stmt in statements {
+                record_stmt_trace_events(stmt, events);
+            }
+        }
+        ExprKind::Return { value } => {
+            if let Some(expr) = value {
+                record_expr_trace_events(expr, events);
+            }
+        }
+        ExprKind::Assign { target, value } => {
+            record_expr_trace_events(target, events);
+            record_expr_trace_events(value, events);
+        }
+    }
+    events.push(ParserTraceEvent::expr_leave(kind, expr.span));
+}
+
+fn record_literal_trace_events(literal: &Literal, events: &mut Vec<ParserTraceEvent>) {
+    match &literal.value {
+        LiteralKind::Tuple { elements } | LiteralKind::Array { elements } => {
+            for element in elements {
+                record_expr_trace_events(element, events);
+            }
+        }
+        LiteralKind::Record { fields } => {
+            for field in fields {
+                record_expr_trace_events(&field.value, events);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn expr_trace_kind(expr: &Expr) -> &'static str {
+    match &expr.kind {
+        ExprKind::Literal(_) => "literal",
+        ExprKind::Identifier(_) => "identifier",
+        ExprKind::ModulePath(_) => "module-path",
+        ExprKind::Call { .. } => "call",
+        ExprKind::PerformCall { .. } => "perform",
+        ExprKind::Lambda { .. } => "lambda",
+        ExprKind::Pipe { .. } => "pipe",
+        ExprKind::Binary { .. } => "binary",
+        ExprKind::Unary { .. } => "unary",
+        ExprKind::FieldAccess { .. } => "field-access",
+        ExprKind::TupleAccess { .. } => "tuple-access",
+        ExprKind::Index { .. } => "index",
+        ExprKind::Propagate { .. } => "propagate",
+        ExprKind::IfElse { .. } => "if",
+        ExprKind::Match { .. } => "match",
+        ExprKind::While { .. } => "while",
+        ExprKind::For { .. } => "for",
+        ExprKind::Loop { .. } => "loop",
+        ExprKind::Handle { .. } => "handle",
+        ExprKind::Continue => "continue",
+        ExprKind::Block { .. } => "block",
+        ExprKind::Unsafe { .. } => "unsafe",
+        ExprKind::Return { .. } => "return",
+        ExprKind::Defer { .. } => "defer",
+        ExprKind::Assign { .. } => "assign",
+    }
+}
+
+fn resume_call_label(expr: &Expr) -> Option<String> {
+    if let ExprKind::Call { callee, .. } = &expr.kind {
+        if let ExprKind::Identifier(ident) = &callee.kind {
+            if ident.name == "resume" {
+                return Some(ident.name.clone());
+            }
+        }
+    }
+    None
 }
 
 fn parse_module_header_tokens(tokens: &[Token], start: usize) -> Option<(ModuleHeader, usize)> {

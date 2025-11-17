@@ -81,7 +81,7 @@
 - **観測基盤**:
   - `collect-iterator-audit-metrics.py` など既存スクリプトを Rust CLI に対応させる。
   - ログ/トレース ID/メトリクス/ダンプ形式を OCaml 実装と共有し、CI で自動収集。
-  - dual-write `diff-harness` に `syntax:expr-*` トレース（`reports/spec-audit/ch1/effect_handler-20251118-trace.md` 等）を取り込み、Module/Expr 両方の観測点を固定する。
+  - dual-write `diff-harness` に `syntax:expr::<kind>` / `syntax:effect::<kind>` / `syntax:handler::<name>` / `syntax:operation::resume` トレース（`reports/spec-audit/ch1/effect_handler-20251118-trace.md` 等）を取り込み、Module/Expr 両方の観測点を固定する。`FrontendDiagnostic.extensions.trace_ids` へ同じ ID を書き込み、`reports/spec-audit/ch1/trace-coverage-YYYYMMDD.md` で診断とトレースの突き合わせを行う。
 - **テスト配置**: ユニットテストは `#[cfg(test)]`、統合テストは `tests/` ディレクトリで管理。共通治具は `tests/common/`。
 
 ## 10. ビルド/CI/リリースフロー

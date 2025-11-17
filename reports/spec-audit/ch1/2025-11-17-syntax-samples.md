@@ -38,3 +38,11 @@
 | streaming_effect_handler.reml | `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/effect_handler.reml --stream chunk=<len-1>` | ✅ 診断 0 件 | `reports/spec-audit/ch1/streaming_effect_handler-20251121-diagnostics.json` を保存し、`bridge_signal_roundtrip` と照合。`docs/notes/spec-integrity-audit-checklist.md#期待集合err-001` の `parser.expected_summary_presence = 1.0` を更新。 |
 
 - Streaming ログは Chapter 2 側の `reports/spec-audit/ch2/streaming/` にも同名で複製し、`ERR-001` 監査と `collect-iterator-audit-metrics.py --section streaming` の参照点とする。
+
+## 2025-11-22 Trace coverage
+
+| サンプル | コマンド | 結果 | 備考 |
+|----------|----------|------|------|
+| effect_handler.reml | `scripts/poc_dualwrite_compare.sh effect_handler --trace --run-id rust-frontend-w39-20251122.1` | ✅ `Trace coverage >= 4`（handle / perform / resume / block） | `reports/spec-audit/ch1/trace-coverage-20251122.md` に `trace_ids` と診断 JSON の対応、`CI_RUN_ID=rust-frontend-w39-20251122.1`、`git rev-parse HEAD = f9e10ae676bca22ed8a41e96d79f667310274990` を保存。 |
+
+- `trace-coverage-20251122.md` は `FrontendDiagnostic.extensions.trace_ids` と `syntax:expr::<kind>` の突き合わせログ。`docs/notes/spec-integrity-audit-checklist.md#rust-gap-トラッキング表` (`SYNTAX-003`) と `docs/plans/bootstrap-roadmap/2-8-spec-integrity-audit.md` の Trace/Diagnostics 拡張ステップから参照する。

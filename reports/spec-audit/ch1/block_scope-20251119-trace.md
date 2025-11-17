@@ -10,5 +10,5 @@
 | 2 | `module_stage_entered(stage="DeclList")` | 22-278 | `syntax:module-stage::decl-list` | DeclList へ即遷移（UseList 無し）。 |
 | 3 | `module_decl_accepted(kind="function")` | 60-260 | `syntax:module-decl::function` | `Block`/`Let`/`Var` を含む `scoped_assignments` を受理。 |
 
-- `TraceEvent::ExprEnter(kind="block")` / `ExprLeave` は CLI `--trace-output` 側で出力され、`syntax:expr-block` のトレースと突き合わせ済み。  
+- `TraceEvent::ExprEnter(kind="block")` / `ExprLeave` は CLI `--trace-output` 側で出力され、`syntax:expr::block` のトレースと突き合わせ済み。  
 - 監査ログ: `reports/spec-audit/ch1/block_scope-20251119-diagnostics.json`、`block_scope-20251118-diagnostics.json` の両方を保存し、履歴比較を行う。  

@@ -31,6 +31,11 @@ cargo run --manifest-path compiler/rust/frontend/Cargo.toml \
 4. **dual-write 比較とログ**（Day 3）✅  
    - `scripts/poc_dualwrite_compare.sh effect_handler` を追加実行し、OCaml/Rust の診断 JSON が一致することを `reports/spec-audit/ch1/effect_handler-20251118-dualwrite.md` に記録。`reports/spec-audit/ch1/effect_handler-20251118-diagnostics.json` を保存し、`docs/notes/spec-integrity-audit-checklist.md#rust-gap-トラッキング表2025-11-17-更新` を更新。
 
+## W39 Trace Coverage 追加
+
+- `parser/mod.rs` に `ParserTraceEventKind::{ExprEnter,ExprLeave,EffectEnter,EffectExit,HandlerAccepted,OperationResume}` を追加し、`syntax:expr::<kind>` / `syntax:effect::<kind>` / `syntax:handler::<name>` / `syntax:operation::resume` で `trace_id` を固定。`FrontendDiagnostic.extensions.trace_ids` を `build_parser_diagnostics` で拡張し、診断とトレースを 1:多で紐付けられるようにした。
+- `reports/spec-audit/ch1/trace-coverage-20251122.md` に `scripts/poc_dualwrite_compare.sh effect_handler --trace` の実行コマンド、`CI_RUN_ID`、`git rev-parse HEAD`、および `Trace coverage >= 4`（handle / perform / resume / block）を満たす証跡をまとめた。`effect_handler-20251118-trace.md` / `block_scope-20251118-trace.md` の `syntax:expr::<kind>` が `trace_ids` 配列と一致していることを確認し、本メモへリンク。
+
 ## クローズ条件
 
 - `effect_handler.reml` が診断 0 件で通過し、`reports/spec-audit/ch1/effect_handler-YYYYMMDD-diagnostics.json` / `effect_handler-YYYYMMDD-dualwrite.md` を添付。✅

@@ -144,6 +144,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     let mut diagnostics_entries = build_parser_diagnostics(
         &result.diagnostics,
+        &result.trace_events,
         &args,
         &input_path,
         &source,
@@ -1357,6 +1358,7 @@ fn stage_requirement_label(requirement: &StageRequirement) -> String {
 
 fn build_parser_diagnostics(
     diagnostics: &[FrontendDiagnostic],
+    trace_events: &[ParserTraceEvent],
     args: &CliArgs,
     input_path: &Path,
     source: &str,
@@ -1398,6 +1400,7 @@ fn build_parser_diagnostics(
             }
             diag.timestamp = Some(timestamp.clone());
             let recover_extension = diag_json::build_recover_extension(&diag);
+            let trace_ids = trace_ids_for_diagnostic(&diag, trace_events);
             let mut extensions = serde_json::Map::new();
             extensions.insert(
                 "diagnostic.v2".to_string(),
@@ -1421,6 +1424,9 @@ fn build_parser_diagnostics(
             stage_payload.apply_extensions(&mut extensions);
             extensions.insert("runconfig".to_string(), runconfig_summary.clone());
             extensions.insert("cfg".to_string(), args.target_cfg_extension.clone());
+            if !trace_ids.is_empty() {
+                extensions.insert("trace_ids".to_string(), json!(trace_ids));
+            }
 
             let domain_label = diag
                 .domain
@@ -1479,6 +1485,29 @@ fn build_parser_diagnostics(
             })
         })
         .collect()
+}
+
+fn trace_ids_for_diagnostic(
+    diagnostic: &FrontendDiagnostic,
+    trace_events: &[ParserTraceEvent],
+) -> Vec<String> {
+    let span = match diagnostic.span {
+        Some(span) => span,
+        None => return Vec::new(),
+    };
+    trace_events
+        .iter()
+        .filter(|event| spans_overlap(event.span, span))
+        .map(|event| event.trace_id.to_string())
+        .collect()
+}
+
+fn spans_overlap(left: Span, right: Span) -> bool {
+    let left_start = left.start.min(left.end);
+    let left_end = left.end.max(left.start);
+    let right_start = right.start.min(right.end);
+    let right_end = right.end.max(right.start);
+    left_start < right_end && right_start < left_end
 }
 
 fn build_type_diagnostics(
