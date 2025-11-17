@@ -13,3 +13,9 @@
 | 15:33 | `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/use_nested.reml --trace-output reports/spec-audit/ch1/use_nested-20251117-trace.md` | ⚠️ `構文エラー`（`let` 行） | `module`/`use` は受理され `TraceEvent::*Accepted` を保存できたが、ブロック構文が未実装のため `use_nested.reml` 本体は継続して失敗。 |
 
 > 以降、各 Chapter レビュー完了後 24 時間以内に本表へ追記し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md#0.3.4a-phase-2-8-仕様監査スプリントrust-フォーカス` のスケジュールを満たすこと。
+
+## 2025-11-18 (W37 後半) ExprParser / 効果構文
+| JST 時刻 | コマンド | 結果 | 備考 |
+|----------|----------|------|------|
+| 09:35 | `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/block_scope.reml --trace-output reports/spec-audit/ch1/block_scope-20251118-trace.md` | ✅ 診断 0 件 | `ExprParser` へブロック/`let`/`var` を導入。ログ: `reports/spec-audit/ch1/block_scope-20251118-diagnostics.json`。 |
+| 10:12 | `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/effect_handler.reml --trace-output reports/spec-audit/ch1/effect_handler-20251118-trace.md` | ✅ 診断 0 件 | `perform`/`handle`/`operation` が Rust Frontend で受理。dual-write: `reports/spec-audit/ch1/effect_handler-20251118-dualwrite.md`。`rust-gap SYNTAX-003` をクローズ。 |

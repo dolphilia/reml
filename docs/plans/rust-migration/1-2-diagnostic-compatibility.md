@@ -60,6 +60,15 @@ Rust フロントエンド移植において、OCaml 実装と同一の診断 (`
 - **CLI/LSP 一貫性テスト**: `tooling/lsp/tests/client_compat` を Rust 実装で再利用できるよう、`remlc` CLI に Rust フロントエンド選択フラグを追加。LSP から得た診断 JSON を CLI 出力と diff。
 - **手動検証ノート**: 仕様変更や例外的な差分は `reports/diagnostic-format-regression.md` の指示に従って調査ノートを残し、`docs/notes/` に TODO 付きで記録する。
 
+### Phase 2-8 追補: effect_handler acceptance
+
+- `rust-gap SYNTAX-003` のクローズ条件として、`effect_handler.reml` を Rust Frontend で受理し dual-write 差分ゼロを証跡化する。  
+- コマンド: `scripts/poc_dualwrite_compare.sh effect_handler --ci-run rust-frontend-w37-20251118.2`。`reports/spec-audit/ch1/effect_handler-20251118-diagnostics.json` / `effect_handler-20251118-dualwrite.md` / `effect_handler-20251118-trace.md` を成果物として保存。  
+- 検証観点:
+  - `effects.resume.untyped` や `effects.contract.stage_*` のカウンタが OCaml/Rust で一致し、`ci_run_id` を監査ログに残す。
+  - `TraceEvent::{ExprEnter,ExprLeave}` が `syntax:expr-handle` を出力し、`perform` と `operation` の両方に `EffectScopeId` が付与されている。
+  - `docs/spec/1-1-syntax.md` §5 脚注を Rust Frontend ベースに更新し、`effect_handler_rustcap.reml` をフォールバックから外した状態でレビューに提出。
+
 ## 1.2.9 既知リスクと対策
 - **JSON 直列化の順序差**: Rust の `serde_json` はマップ順序を保証しないため、`IndexMap` を採用してフィールド順序を OCaml と揃える。`sort_keys` を行ってから比較することも必須。
 - **数値フォーマットの差分**: `f64` 等をそのまま直列化すると指数表記が変化する可能性がある。OCaml 版が文字列を保持している箇所（リテラル等）は Rust でも文字列として保存。

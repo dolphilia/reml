@@ -23,7 +23,7 @@
 ## 3. 影響範囲と検証
 - **コード**: `compiler/ocaml/src/parser_driver.ml`, `parser_diag_state.ml`, `parser_expectation.ml`、新設 `compiler/ocaml/src/parser_run_config.{ml,mli}`（予定）、`core_parse_lex`（LEXER-002）など。  
 - **ツール/クライアント**: `compiler/ocaml/src/main.ml`（CLI）、`tooling/lsp/` 系のパーサ呼び出し、`tooling/ci/collect-iterator-audit-metrics.py`、`scripts/validate-diagnostic-json.sh`。  
-- **ドキュメント**: `docs/spec/2-1-parser-type.md`・`docs/spec/2-6-execution-strategy.md` に移行脚注を追加/更新し、`docs/plans/bootstrap-roadmap/2-5-review-log.md`・`docs/notes/core-parser-migration.md`（未作成なら新規）へ進捗を記録する。  
+- **ドキュメント**: `docs/spec/2-1-parser-type.md`・`docs/spec/2-6-execution-strategy.md` に移行脚注を追加/更新し、`docs/plans/bootstrap-roadmap/2-5-review-log.md`・`docs/notes/core-parser-migration.md`（未作成なら新規）へ進捗を記録する。Phase 2-8 で作成した `reports/spec-audit/diffs/SYNTAX-003-ch1-rust-gap.md` を参照し、effect handler/operation の受理状況と RunConfig 共有の関係を脚注で追跡する。[^syntax003-gap]  
 - **テスト/メトリクス**: `compiler/ocaml/tests/run_config_tests.ml`（新設）、既存パーサー/診断テストの RunConfig 差し替え、`0-3-audit-and-metrics.md` への RunConfig 指標登録、`reports/diagnostic-format-regression.md` に RunConfig 切替シナリオを追加。  
 - **検証手段**: `dune runtest parser`、`scripts/validate-diagnostic-json.sh`、`tooling/ci/collect-iterator-audit-metrics.py --track parser.runconfig_*`、CLI/LSP 経路の手動確認と JSON フィクスチャ比較。
 
@@ -145,3 +145,5 @@
 - CLI/LSP に追加する RunConfig フラグの UX（名称・互換性）と設定ファイルへの保存形式を確定する。  
 - `extensions` に格納する値の型安全性（`ParserId` や `ConfigTriviaProfile` のシリアライズ方法）を決定し、誤設定時の診断をどう報告するか決める必要がある。  
 - 大規模入力での RunConfig 導入によるメモリ・性能影響を継続的に測定し、Phase 2-6 以降へフィードバックする。
+
+[^syntax003-gap]: `reports/spec-audit/diffs/SYNTAX-003-ch1-rust-gap.md`（2025-11-18 更新）。effect handler 受理と `TraceEvent::ExprEnter` 拡張の証跡を整理。

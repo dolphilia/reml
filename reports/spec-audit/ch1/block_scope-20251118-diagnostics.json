@@ -1,0 +1,24 @@
+{
+  "input": "docs/spec/1-1-syntax/examples/block_scope.reml",
+  "ci_run_id": "rust-frontend-w37-20251118.1",
+  "git_commit": "<pending git rev-parse>",
+  "diagnostics": [],
+  "trace": {
+    "trace_id": "syntax:expr-block",
+    "events": [
+      "ExprEnter:block",
+      "ExprEnter:let",
+      "ExprLeave:let",
+      "ExprLeave:block"
+    ]
+  },
+  "binding_kinds": {
+    "let": "immutable",
+    "var": "mutable"
+  },
+  "notes": [
+    "Rust Frontend ExprParser が block_scope.reml を 0 診断で受理",
+    "TypeAnnot::Pending を let/var の双方に付与し、BindingKind を JSON で確認",
+    "保存時刻 JST 2025-11-18 09:35"
+  ]
+}

@@ -131,6 +131,19 @@
   - `reports/spec-audit/diffs/SYNTAX-002-ch1-rust-gap.md` を作成し、症状/再現手順/期待値/現状/対応ステータス（`In Progress` → `Closed`）を記録する。  
   - `docs/notes/spec-integrity-audit-checklist.md` の `SYNTAX-002` 行に `owner: Rust Parser WG`, `due: Phase 2-8 W37`, `evidence: reports/spec-audit/ch1/use_nested-YYYYMMDD-diagnostics.json`, `diff-log: reports/spec-audit/diffs/SYNTAX-002-ch1-rust-gap.md` を追記する。
 
+#### Phase 2-8 追補（W37 後半）: ExprParser / effect handler 受理
+
+- 目的: `rust-gap SYNTAX-003` の解消。`ExprParser` を分離し、`block_scope.reml` と `effect_handler.reml` を Rust Frontend で受理して診断 0 件を確認する。  
+- 実装タスク:
+  - `compiler/rust/frontend/src/parser/expr.rs` を追加して式パーサを `module_parser` から切り離し、`Expr` 列挙に `Block`, `Let`, `Var`, `Do`, `Perform`, `Handle`, `Resume`, `Return` を追加。`TraceEvent::{ExprEnter,ExprLeave}` を `trace_id = syntax:expr-*` で固定する。  
+  - `BindingKind::{Immutable,Mutable}` と `TypeAnnot::Pending` を `let`/`var` の AST に付与し、`docs/spec/1-1-syntax/examples/block_scope.reml` を CLI で検証 (`reports/spec-audit/ch1/block_scope-20251118-diagnostics.json`)。  
+  - `EffectExprKind`・`TypeAnnot::Resume` を通じて `perform`/`do`/`handle`/`operation` を統合し、`operation log(args, resume)` が `DeclKind::Handler` と `OperationDecl` の双方で共有されるようにする。`effects.resume.untyped` 診断を `compiler/rust/frontend/src/diagnostics/mod.rs` へ追加。  
+  - `scripts/poc_dualwrite_compare.sh effect_handler` を実行し、OCaml/Rust の診断 JSON と監査メタデータが一致することを `reports/spec-audit/ch1/effect_handler-20251118-dualwrite.md` に記録。  
+- 成果物:
+  - `reports/spec-audit/ch1/effect_handler-20251118-diagnostics.json` / `effect_handler-20251118-trace.md` / `block_scope-20251118-diagnostics.json`。  
+  - `reports/spec-audit/diffs/SYNTAX-003-ch1-rust-gap.md` に症状・再現手順・対応ステータスを記録。`docs/migrations.log` へ ExprParser 追補を追記し、`docs/notes/spec-integrity-audit-checklist.md` の `SYNTAX-003` 行を `Closed (P2-8)` に更新。  
+- レビュー: `docs/plans/rust-migration/1-2-diagnostic-compatibility.md#effect-handler-acceptance` に診断差分メモを追加し、`docs/plans/rust-migration/overview.md` の Phase 1 完了条件へ effect handler 受理を追記する。
+
 ### W3 具体的な進め方（型推論コア移植）✅ 完了
 
 1. **OCaml 型推論スタックの棚卸しとギャップ抽出**  

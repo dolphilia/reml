@@ -253,7 +253,7 @@ conductor config_orchestrator {
   * `handler <EffectName>` ブロックで対象操作を列挙し、必要に応じて `return` 節を定義する。
   * `resume` はワンショットが既定。複数回呼び出す場合は `@reentrant` 属性と Capability 許可が必要（3.8 節）。
 
-> 監査ノート: 効果構文の正準サンプルは `docs/spec/1-1-syntax/examples/effect_handler.reml` です。Rust Frontend では `effect` 宣言がまだ受理されず、`reports/spec-audit/ch1/effect_handler-*.json` で `rust-gap SYNTAX-003` を継続監視しています。PoC を再現する際は `-Zalgebraic-effects` 相当の CLI オプションが必要である点に注意してください。
+> 監査ノート: 効果構文の正準サンプルは `docs/spec/1-1-syntax/examples/effect_handler.reml` です。Rust Frontend (2025-11-18 ビルド) は `ExprParser` と effect handler 実装を整備し、`reports/spec-audit/ch1/effect_handler-YYYYMMDD-diagnostics.json`（例: `effect_handler-20251118-diagnostics.json`）に診断 0 件のログを保存しています。`effect_handler_rustcap.reml` などのフォールバックは撤廃し、監査では正準サンプルと `effect_handler-YYYYMMDD-trace.md`/`effect_handler-YYYYMMDD-dualwrite.md` を参照してください。PoC を再現する際は `--effect-stage beta` 等の CLI オプションと `scripts/poc_dualwrite_compare.sh effect_handler` を併用します。
 
 * **属性拡張**
   効果ハンドラ導入に伴い、以下の属性を追加する。詳細な検査規則は 1.3 節および 3.8 節を参照。

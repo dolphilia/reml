@@ -1,0 +1,24 @@
+{
+  "input": "docs/spec/1-1-syntax/examples/effect_handler.reml",
+  "ci_run_id": "rust-frontend-w37-20251118.2",
+  "git_commit": "<pending git rev-parse>",
+  "diagnostics": [],
+  "effect_scope": {
+    "operations": ["log"],
+    "resume_annotation": "TypeAnnot::Resume"
+  },
+  "trace": {
+    "trace_id": "syntax:expr-handle",
+    "events": [
+      "ExprEnter:handle",
+      "ExprEnter:operation",
+      "ExprLeave:operation",
+      "ExprLeave:handle"
+    ]
+  },
+  "notes": [
+    "effects.resume.untyped 診断なし、Rust/OCaml dual-write で一致",
+    "ハンドラ decl は DeclKind::Handler と OperationDecl を共有",
+    "保存時刻 JST 2025-11-18 10:12"
+  ]
+}

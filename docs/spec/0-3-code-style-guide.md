@@ -155,7 +155,7 @@
 - 複数のスタイル候補を比較する際は「推奨」「非推奨」を明確にラベル付けする。
 - 既存仕様と競合する新しいスタイルを提示する場合は、本ファイルへの追記とともに関連ドキュメントの更新を行う。
 - Chapter 1 のコード片は `docs/spec/1-1-syntax/examples/*.reml` へ配置し、`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics <sample>` で検証する。コマンドと結果は `reports/spec-audit/ch1/` と `reports/spec-audit/summary.md` に記録すること。
-- Rust Frontend がまだ受理できない構文は `*_rustcap.reml` のフォールバックを併記し、`docs/notes/spec-integrity-audit-checklist.md#rust-gap-トラッキング表` に `rust-gap` として登録する。`use_nested.reml` については 2025-11-17 時点で `module`/`use`/ブロック/`match` まで解析できるようになり、`TraceEvent::{ModuleHeaderAccepted,UseDeclAccepted}` を `reports/spec-audit/ch1/use_nested-YYYYMMDD-trace.md` に保存している。フォールバック (`use_nested_rustcap.reml`) は参考資料として残しているが、監査では正準サンプルの結果を優先する。
+- Rust Frontend がまだ受理できない構文は `*_rustcap.reml` のフォールバックを併記し、`docs/notes/spec-integrity-audit-checklist.md#rust-gap-トラッキング表` に `rust-gap` として登録する。`use_nested.reml` については 2025-11-17 時点で `module`/`use`/ブロック/`match` まで解析できるようになり、`TraceEvent::{ModuleHeaderAccepted,UseDeclAccepted}` を `reports/spec-audit/ch1/use_nested-YYYYMMDD-trace.md` に保存している。`effect_handler.reml` も 2025-11-18 の更新で診断 0 件となり、`reports/spec-audit/ch1/effect_handler-YYYYMMDD-{diagnostics,trace,dualwrite}.md` を監査ログとして利用する。効果構文のフォールバック (`effect_handler_rustcap.reml`) は撤廃済みであり、監査ベースラインには正準サンプルを用いること。
 
 ---
 
