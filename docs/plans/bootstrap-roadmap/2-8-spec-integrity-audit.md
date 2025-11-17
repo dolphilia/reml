@@ -181,21 +181,35 @@
 
 ### Rust Frontend パーサ拡張のステップ
 
+Phase 2-8 W37（Chapter 1/2 フォーカス）の 2 週間で Rust Frontend の仕様整合を完了させ、W38 で Streaming メトリクスを CI へ昇格させる。スケジュールと成果物は下表の通り。[^frontend-plan-ref]
+
+| ステップ | 期間 (Sprint W37-38) | 主担当 | 主要成果物 |
+| --- | --- | --- | --- |
+| 1. AST トップレベル整備 | W37 前半 | Rust Parser WG | `ast.rs`/`module_parser.rs` の diff、`reports/spec-audit/ch1/use_nested-*.json` 更新 |
+| 2. 式・効果構文 | W37 後半 | Rust Parser WG + Effects WG | `effect_handler.reml` を受理する実装と診断ログ、`rust-gap SYNTAX-003` 終了メモ |
+| 3. module_parser 再実装 | W37→W38 | Parser QA | `tests/parser.rs` 追加、フェーズ別進捗メモ、`rust-gap` 行更新 |
+| 4. Streaming/CI 反映 | W38 前半 | Streaming WG | `tests/streaming_metrics.rs` 拡張、CI 実行結果、`docs/spec/0-3-code-style-guide.md` 更新 |
+
 1. **Rust Parser のトップレベル拡張**
-   - `compiler/rust/frontend/src/parser/ast.rs` に `ModuleHeader`/`UseDecl`/`OperationDecl`/`HandlerDecl` 等の構造体を追加し、`Function` へ戻り値注釈 (`TypeAnnot`) をぶら下げられるよう再設計する。
-   - `module_parser` の最初のフェーズでは `module` ヘッダと `use` 宣言を先に読み取り、正準サンプル `docs/spec/1-1-syntax/examples/use_nested.reml` が構文エラーなく AST 化できる状態を目指す。実装完了後に `cargo run --bin poc_frontend -- --emit-diagnostics use_nested.reml` を `reports/spec-audit/ch1/use_nested-YYYYMMDD-diagnostics.json` に保存し、`rust-gap SYNTAX-002` をクローズ候補として追記する。
+   - `compiler/rust/frontend/src/parser/ast.rs` へ `ModuleHeader`、`UseDecl`、`OperationDecl`、`HandlerDecl` を正式に追加し、`Function`/`Effect` から `TypeAnnot` を共有できるように `AnnotationKind` を導入する。`docs/plans/rust-migration/1-0-front-end-transition.md` の AST 対応表を同時に更新する。
+   - `module_parser` 序盤で `module` と `use` を確定させ、`docs/spec/1-1-syntax/examples/use_nested.reml` が構文エラーにならない状態を確認する。`cargo run --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/use_nested.reml` を実行し、`reports/spec-audit/ch1/use_nested-YYYYMMDD-diagnostics.json` を差し替えて `rust-gap SYNTAX-002` のステータスを `docs/notes/spec-integrity-audit-checklist.md` に反映する。
+   - AST 差分は `reports/spec-audit/diffs/SYNTAX-002-ch1-rust-gap.md` に追記し、`docs/spec/1-1-syntax.md` の脚注から暫定 `use_nested_rustcap.reml` を削除する条件を明示する。
 2. **式/ブロック/効果構文の段階的実装**
-   - `module_parser` 内の式パーサを置き換え、`{ ... }` ブロック・`let`/`var` 代入・`return`・`do`/`perform`・`handle ... with handler { ... }` を Chapter 1 の BNF に沿って構築する。
-   - ハンドラ構文では `operation log(args, resume) { ... }` のブロックを `DeclKind::Handler` と `OperationDecl` に分解し、`docs/spec/1-1-syntax/examples/effect_handler.reml` をエラーなく受理できることを確認する。
-   - `cargo run --bin poc_frontend -- --emit-diagnostics effect_handler.reml` のログを `reports/spec-audit/ch1/effect_handler-YYYYMMDD-diagnostics.json` に差し替え、`rust-gap SYNTAX-003` を `docs/notes/spec-integrity-audit-checklist.md` からクローズする。
+   - `module_parser` の式パーサを `ExprParser` として分離し、`{ ... }` ブロック、`let`/`var` 代入、`return`、`do`/`perform`、`handle ... with handler { ... }` を Chapter 1 BNF に沿って段階導入する。[^syntax-bnf]
+   - ハンドラ構文では `operation log(args, resume) { ... }` を `DeclKind::Handler` と `OperationDecl` に展開し、`resume` の型検証を `TypeAnnot` と共有する。`docs/spec/1-1-syntax/examples/effect_handler.reml` を受理できることを Rust Frontend CLI で再現し、`reports/spec-audit/ch1/effect_handler-YYYYMMDD-diagnostics.json` を保存する。
+   - 受理後に `docs/notes/spec-integrity-audit-checklist.md` の `rust-gap SYNTAX-003` をクローズし、`docs/plans/rust-migration/p1-rust-frontend-gap-report.md` へ差分結果を逆参照する。
 3. **module_parser の再実装マイルストーン**
-   - フェーズ順序: (a) module/use ヘッダ → (b) effect/fn 宣言（戻り値注釈含む）→ (c) block/let/do/handle 構文 → (d) `operation` ブロックと `resume` 取り扱い。
-   - 各フェーズごとに `compiler/rust/frontend/tests/parser.rs` に新規テストケースを追加し、Chumsky ベースの `module_parser` が後方互換性を保っているか確認する。
-   - 進捗は `reports/spec-audit/ch1/2025-11-17-syntax-samples.md` に日付別で追記し、`rust-gap` テーブルのステータスを更新する。
+   - フェーズ順序: (a) module/use ヘッダ → (b) effect/fn 宣言（戻り値注釈含む）→ (c) block/let/do/handle 構文 → (d) `operation` ブロック＋`resume`。各フェーズ完了時に `compiler/rust/frontend/tests/parser.rs` へテストを追記し、Chumsky ベースの `module_parser` が後方互換であることを証明する。
+   - 進捗は `reports/spec-audit/ch1/2025-11-17-syntax-samples.md` に日付別で追記し、`reports/spec-audit/diffs/` の `rust-gap` 表に同じ ID を二重記録する。テストシナリオには `use_nested`、`effect_handler`、および `docs/spec/1-1-syntax.md` サンプルの最小ケースを含める。
+   - 差分レビューは `docs/plans/rust-migration/3-0-ci-and-dual-write-strategy.md` の CI ブロッカー条件に沿って承認を得る。
 4. **Streaming テストと差分ログ更新**
-   - `compiler/rust/frontend/tests/streaming_metrics.rs` に `module_header_acceptance`、`effect_handler_acceptance` 等の統合テストを追加し、Spec コード例が streaming ハーネス経由でも期待通りに処理されるか検証する。
-   - `cargo test --manifest-path compiler/rust/frontend/Cargo.toml streaming_metrics` を Phase 2-8 の CI へ追加し、成功時には `reports/spec-audit/ch1/` の JSON を差し替えて `rust-gap SYNTAX-002/003` の終了ログを `reports/spec-audit/diffs/` に残す。
-   - 差分確定後、`docs/spec/1-1-syntax.md` の監査ノートからフォールバック (`*_rustcap.reml`) の記述を削除し、`docs/spec/0-3-code-style-guide.md` のサンプル手順を更新する。
+   - `compiler/rust/frontend/tests/streaming_metrics.rs` に `module_header_acceptance`、`effect_handler_acceptance` などの統合テストを追加し、`StreamFlowState::latest_bridge_signal` の二重 `Option` 問題を含む既知バグを回避する再現ケースを固定化する。[^streaming-guide]
+   - `cargo test --manifest-path compiler/rust/frontend/Cargo.toml streaming_metrics` を Phase 2-8 CI（`3-0-ci-and-dual-write-strategy.md` で定義）に登録し、成功ログを `reports/spec-audit/ch1/` に保存する。成功後は `reports/spec-audit/diffs/SYNTAX-002-ch1-rust-gap.md` / `SYNTAX-003-*.md` を `Closed` 扱いに更新する。
+   - Streaming 経路で Chapter 1 サンプルが通過したら `docs/spec/1-1-syntax.md` の監査ノートからフォールバック (`*_rustcap.reml`) を削除し、`docs/spec/0-3-code-style-guide.md` の実行手順を Rust Frontend ベースに書き換える。併せて `docs/plans/rust-migration/overview.md` の Phase 1 完了条件も更新する。
+
+[^frontend-plan-ref]: `docs/plans/rust-migration/1-0-front-end-transition.md` §2（Rust Parser WG の担当範囲）および `docs/plans/rust-migration/overview.md` の W37〜W38 スプリント配分。
+[^syntax-bnf]: `docs/spec/1-1-syntax.md` §2（Module/Use）、§4（Expressions）、§5（Effects）に記載された BNF。
+[^streaming-guide]: `docs/guides/core-parse-streaming.md` §3/§7（Streaming パーサの監査とメトリクス管理）。
 
 ---
 
