@@ -91,6 +91,12 @@
 - **キャッシュ**: Windows Runner では LLVM をローカルにインストールせず、Ubuntu 上の `audit-matrix` ジョブで `/usr/lib/llvm-18` をキャッシュしている。Rust 版のクロスビルドも同キー (`llvm-18-${{ runner.os }}`) を使い、OCaml 版とキャッシュを共有する。
 - **アーティファクト**: `windows-env-check-diagnostic` / `windows-env-check-audit`（ツールチェーン診断）、`windows-iterator-audit-summary`、`windows-iterator-audit-metrics` を既存のまま公開し、Rust 版の追加成果物はサフィックス（例: `*-rust`）で区別する。`reports/iterator-stage-summary-windows.md` と `tooling/ci/iterator-audit-metrics.json` のフォーマットは共通であるため、Rust ジョブでは出力を追記する形で管理する。
 
+## 3.0.10 CI ブロッカーとゲート
+- `Module Parser Acceptance`: `cargo test --manifest-path compiler/rust/frontend/Cargo.toml parser::module -- --nocapture` が `CI_RUN_ID` 付きで通過し、`reports/spec-audit/ch1/module_parser-YYYYMMDD-parser-tests.md` および `module_parser-YYYYMMDD-dualwrite.md` にログを保存していること。失敗時は `needs.module-parser` 依存で dual-write ジョブを停止し、`docs/notes/spec-integrity-audit-checklist.md` の `SYNTAX-002/module_parser` 行でステータスを追跡する。
+- `Syntax Sample Streaming`: `scripts/poc_dualwrite_compare.sh use_nested` / `effect_handler` が差分 0 を返し、`reports/spec-audit/ch1/2025-11-17-syntax-samples.md` の最新日付が更新されていること。`docs/plans/bootstrap-roadmap/2-8-spec-integrity-audit.md` の Rust Frontend パーサ拡張ステップと連携させる。
+- `Iterator Audit Consistency`: `collect-iterator-audit-metrics.py --section diagnostics --section streaming --require-success` が全プラットフォームで成功し、`reports/audit/index.json` に Rust 行が登録されていること。閾値を下回る場合は `CI_FAILURE_TYPE=audit-gap` で即エスカレーションする。
+- `Rollback Hook`: `bootstrap-{linux,macos,windows}.yml` の dual-write ジョブに `if: needs.module-parser.result == 'success'` を設け、モジュールパーサの証跡が取得できない状態で監査ジョブが走らないようにする。スキップ時は `reports/spec-audit/ch1/module_parser-YYYYMMDD-parser-tests.md` へ `SKIPPED` ログを追加し、次スプリントにフォローアップを記録する。
+
 ---
 
 本計画は P3 完了時に Rust CI をデフォルトへ昇格させるための前提条件を整理したものである。dual-write 成果物の取扱いと監査メトリクスの詳細は [3-1-observability-alignment.md](3-1-observability-alignment.md) へ引き渡す。

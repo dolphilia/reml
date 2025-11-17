@@ -18,3 +18,11 @@
 |----------|----------|------|------|
 | block_scope.reml | `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/block_scope.reml --trace-output reports/spec-audit/ch1/block_scope-20251118-trace.md` | ✅ 診断 0 件 | `ExprParser` で `let`/`var` バインディングと `{ ... }` ブロックを処理。ログ: `reports/spec-audit/ch1/block_scope-20251118-diagnostics.json`。 |
 | effect_handler.reml | `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/effect_handler.reml --trace-output reports/spec-audit/ch1/effect_handler-20251118-trace.md` | ✅ 診断 0 件 | `perform`/`do`/`handle`/`operation` を Rust Frontend で受理。dual-write 結果は `reports/spec-audit/ch1/effect_handler-20251118-dualwrite.md` に保存。 |
+
+## 2025-11-19 module_parser 再実装ログ
+
+| 項目 | コマンド | 結果 | 備考 |
+|------|----------|------|------|
+| parser::module テスト | `cargo test --manifest-path compiler/rust/frontend/Cargo.toml parser::module -- --nocapture` | ✅ 緑化 (`CI_RUN_ID=rust-frontend-w37-20251119.1`) | ログは `reports/spec-audit/ch1/module_parser-20251119-parser-tests.md`。`TraceEvent::ModuleStageEntered` を記録し、`use_nested`/`block_scope`/`effect_handler` の 6 ケースを収集。 |
+| dual-write 確認 | `scripts/poc_dualwrite_compare.sh use_nested` / `... effect_handler` | ✅ 差分 0 | `reports/spec-audit/ch1/module_parser-20251119-dualwrite.md` に結果を保存。`docs/plans/rust-migration/3-0-ci-and-dual-write-strategy.md` の CI ブロッカーへ module_parser チェックを追加。 |
+| 監査チェックリスト更新 | N/A | ✅ `In Review` | `docs/notes/spec-integrity-audit-checklist.md` の `SYNTAX-002/module_parser` 行で `owner=Parser QA`、`evidence(log)=module_parser-20251119-parser-tests.md` を記録。 |
