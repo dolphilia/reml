@@ -177,5 +177,27 @@
 - Rust 実装で未着手の Chapter 3 機能は 2-8 の差分リストに `rust-gap` ラベルを付け、3-0 以降のタスクへ直接引き継ぐ。
  - 3-x 以降の成果物（Prelude/Collections/Diagnostics 等）を Rust 実装に合わせて更新する際は、2-8 で整理した脚注・索引・監査ロジックを共通の基盤として利用し、Phase 2 で確立した測定・リンク検証スクリプトを維持する。
 
+## 具体的な計画
+
+### Rust Frontend パーサ拡張のステップ
+
+1. **Rust Parser のトップレベル拡張**
+   - `compiler/rust/frontend/src/parser/ast.rs` に `ModuleHeader`/`UseDecl`/`OperationDecl`/`HandlerDecl` 等の構造体を追加し、`Function` へ戻り値注釈 (`TypeAnnot`) をぶら下げられるよう再設計する。
+   - `module_parser` の最初のフェーズでは `module` ヘッダと `use` 宣言を先に読み取り、正準サンプル `docs/spec/1-1-syntax/examples/use_nested.reml` が構文エラーなく AST 化できる状態を目指す。実装完了後に `cargo run --bin poc_frontend -- --emit-diagnostics use_nested.reml` を `reports/spec-audit/ch1/use_nested-YYYYMMDD-diagnostics.json` に保存し、`rust-gap SYNTAX-002` をクローズ候補として追記する。
+2. **式/ブロック/効果構文の段階的実装**
+   - `module_parser` 内の式パーサを置き換え、`{ ... }` ブロック・`let`/`var` 代入・`return`・`do`/`perform`・`handle ... with handler { ... }` を Chapter 1 の BNF に沿って構築する。
+   - ハンドラ構文では `operation log(args, resume) { ... }` のブロックを `DeclKind::Handler` と `OperationDecl` に分解し、`docs/spec/1-1-syntax/examples/effect_handler.reml` をエラーなく受理できることを確認する。
+   - `cargo run --bin poc_frontend -- --emit-diagnostics effect_handler.reml` のログを `reports/spec-audit/ch1/effect_handler-YYYYMMDD-diagnostics.json` に差し替え、`rust-gap SYNTAX-003` を `docs/notes/spec-integrity-audit-checklist.md` からクローズする。
+3. **module_parser の再実装マイルストーン**
+   - フェーズ順序: (a) module/use ヘッダ → (b) effect/fn 宣言（戻り値注釈含む）→ (c) block/let/do/handle 構文 → (d) `operation` ブロックと `resume` 取り扱い。
+   - 各フェーズごとに `compiler/rust/frontend/tests/parser.rs` に新規テストケースを追加し、Chumsky ベースの `module_parser` が後方互換性を保っているか確認する。
+   - 進捗は `reports/spec-audit/ch1/2025-11-17-syntax-samples.md` に日付別で追記し、`rust-gap` テーブルのステータスを更新する。
+4. **Streaming テストと差分ログ更新**
+   - `compiler/rust/frontend/tests/streaming_metrics.rs` に `module_header_acceptance`、`effect_handler_acceptance` 等の統合テストを追加し、Spec コード例が streaming ハーネス経由でも期待通りに処理されるか検証する。
+   - `cargo test --manifest-path compiler/rust/frontend/Cargo.toml streaming_metrics` を Phase 2-8 の CI へ追加し、成功時には `reports/spec-audit/ch1/` の JSON を差し替えて `rust-gap SYNTAX-002/003` の終了ログを `reports/spec-audit/diffs/` に残す。
+   - 差分確定後、`docs/spec/1-1-syntax.md` の監査ノートからフォールバック (`*_rustcap.reml`) の記述を削除し、`docs/spec/0-3-code-style-guide.md` のサンプル手順を更新する。
+
+---
+
 [^phase27-handshake-2-8]: Phase 2-7 診断パイプライン残課題・技術的負債整理計画の最終成果。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §5、`docs/plans/bootstrap-roadmap/2-7-to-2-8-handover.md`、`reports/audit/dashboard/diagnostics.md` に記録された監査ベースラインと差分ログを参照する。
 [^phase28-diff-class-footnote]: `docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md#phase28-diff-class`（2025-11-17 更新）に Chapter 別の差分分類と `rust-gap` 取扱いを整理。
