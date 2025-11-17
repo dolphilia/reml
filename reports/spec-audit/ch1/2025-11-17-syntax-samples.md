@@ -25,4 +25,6 @@
 |------|----------|------|------|
 | parser::module テスト | `cargo test --manifest-path compiler/rust/frontend/Cargo.toml parser::module -- --nocapture` | ✅ 緑化 (`CI_RUN_ID=rust-frontend-w37-20251119.1`) | ログは `reports/spec-audit/ch1/module_parser-20251119-parser-tests.md`。`TraceEvent::ModuleStageEntered` を記録し、`use_nested`/`block_scope`/`effect_handler` の 6 ケースを収集。 |
 | dual-write 確認 | `scripts/poc_dualwrite_compare.sh use_nested` / `... effect_handler` | ✅ 差分 0 | `reports/spec-audit/ch1/module_parser-20251119-dualwrite.md` に結果を保存。`docs/plans/rust-migration/3-0-ci-and-dual-write-strategy.md` の CI ブロッカーへ module_parser チェックを追加。 |
-| 監査チェックリスト更新 | N/A | ✅ `In Review` | `docs/notes/spec-integrity-audit-checklist.md` の `SYNTAX-002/module_parser` 行で `owner=Parser QA`、`evidence(log)=module_parser-20251119-parser-tests.md` を記録。 |
+| 監査チェックリスト更新 | N/A | ✅ `Closed` | `docs/notes/spec-integrity-audit-checklist.md` の `SYNTAX-002/module_parser` 行を `Closed (P2-8 W38)` に更新し、証跡リンクとして `module_parser-20251119-{parser-tests,dualwrite}.md` と 3 つの `*-20251119-diagnostics.json` を登録。 |
+
+- 追加証跡: `reports/spec-audit/ch1/use_nested-20251119-{diagnostics.json,trace.md}`, `block_scope-20251119-{diagnostics.json,trace.md}`, `effect_handler-20251119-{diagnostics.json,trace.md}` を保存し、各ファイル末尾に `git rev-parse HEAD = f9e10ae676bca22ed8a41e96d79f667310274990` をコメントで追記。TraceEvent の `trace_id` は `syntax:module-stage::<stage>` / `syntax:module-decl::<kind>` を採用。 |

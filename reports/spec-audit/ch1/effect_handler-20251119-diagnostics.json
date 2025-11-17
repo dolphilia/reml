@@ -1,0 +1,67 @@
+{
+  "diagnostics": [],
+  "input": "docs/spec/1-1-syntax/examples/effect_handler.reml",
+  "run_config": {
+    "frontend": "rust",
+    "packrat": true,
+    "trace": true
+  },
+  "parse_result": {
+    "recovered": false,
+    "trace_events": [
+      {
+        "event_kind": "module_stage_entered",
+        "label": "Header",
+        "span": {
+          "start": 0,
+          "end": 30
+        },
+        "trace_id": "syntax:module-stage::header"
+      },
+      {
+        "event_kind": "module_stage_entered",
+        "label": "DeclList",
+        "span": {
+          "start": 32,
+          "end": 812
+        },
+        "trace_id": "syntax:module-stage::decl-list"
+      },
+      {
+        "event_kind": "module_decl_accepted",
+        "label": "effect log",
+        "span": {
+          "start": 60,
+          "end": 210
+        },
+        "trace_id": "syntax:module-decl::effect"
+      },
+      {
+        "event_kind": "module_decl_accepted",
+        "label": "handler logger",
+        "span": {
+          "start": 212,
+          "end": 602
+        },
+        "trace_id": "syntax:module-decl::handler"
+      },
+      {
+        "event_kind": "module_decl_accepted",
+        "label": "function main",
+        "span": {
+          "start": 604,
+          "end": 812
+        },
+        "trace_id": "syntax:module-decl::function"
+      }
+    ]
+  },
+  "_meta": {
+    "ci_run_id": "rust-frontend-w37-20251119.1",
+    "git_rev": "f9e10ae676bca22ed8a41e96d79f667310274990",
+    "notes": [
+      "EffectExprKind 経由で perform/do/handle/operation の Stage を共有",
+      "resume の型注釈は TypeAnnot::Resume を使い、effects.resume.untyped 再現テストを parser::module へ昇格"
+    ]
+  }
+}

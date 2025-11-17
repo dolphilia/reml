@@ -1,0 +1,58 @@
+{
+  "diagnostics": [],
+  "input": "docs/spec/1-1-syntax/examples/use_nested.reml",
+  "run_config": {
+    "frontend": "rust",
+    "packrat": true,
+    "trace": true
+  },
+  "parse_result": {
+    "recovered": false,
+    "trace_events": [
+      {
+        "event_kind": "module_stage_entered",
+        "label": "Header",
+        "span": {
+          "start": 0,
+          "end": 32
+        },
+        "trace_id": "syntax:module-stage::header"
+      },
+      {
+        "event_kind": "module_stage_entered",
+        "label": "UseList",
+        "span": {
+          "start": 34,
+          "end": 201
+        },
+        "trace_id": "syntax:module-stage::use-list"
+      },
+      {
+        "event_kind": "module_stage_entered",
+        "label": "DeclList",
+        "span": {
+          "start": 203,
+          "end": 688
+        },
+        "trace_id": "syntax:module-stage::decl-list"
+      },
+      {
+        "event_kind": "module_decl_accepted",
+        "label": "function match_nested",
+        "span": {
+          "start": 270,
+          "end": 647
+        },
+        "trace_id": "syntax:module-decl::function"
+      }
+    ]
+  },
+  "_meta": {
+    "ci_run_id": "rust-frontend-w37-20251119.1",
+    "git_rev": "f9e10ae676bca22ed8a41e96d79f667310274990",
+    "notes": [
+      "TraceEvent::ModuleStageEntered を syntax:module-stage::<stage> で固定",
+      "TraceEvent::ModuleDeclAccepted(kind=function) を DeclList 終了時に記録"
+    ]
+  }
+}

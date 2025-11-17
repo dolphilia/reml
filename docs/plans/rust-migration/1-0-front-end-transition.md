@@ -131,6 +131,13 @@
   - `reports/spec-audit/diffs/SYNTAX-002-ch1-rust-gap.md` を作成し、症状/再現手順/期待値/現状/対応ステータス（`In Progress` → `Closed`）を記録する。  
   - `docs/notes/spec-integrity-audit-checklist.md` の `SYNTAX-002` 行に `owner: Rust Parser WG`, `due: Phase 2-8 W37`, `evidence: reports/spec-audit/ch1/use_nested-YYYYMMDD-diagnostics.json`, `diff-log: reports/spec-audit/diffs/SYNTAX-002-ch1-rust-gap.md` を追記する。
 
+#### Phase 2-8 追補（W38）: module_parser 再実装グリッド
+
+- `module_parser.rs` を `ModuleStage::{Header,UseList,DeclList}` 単位に再構成し、各ステージで `TraceEvent::ModuleStageEntered { stage }`・`TraceEvent::ModuleDeclAccepted { kind }` を `trace_id = syntax:module-stage::<stage>` へ固定。証跡は `reports/spec-audit/ch1/use_nested-20251119-trace.md`、`block_scope-20251119-trace.md`、`effect_handler-20251119-trace.md` に保存する。  
+- `tests/parser.rs` へ `module_header_accepts_use_nested` など 6 本の統合テストを追加し、`cargo test --manifest-path compiler/rust/frontend/Cargo.toml parser::module -- --nocapture` のログを `reports/spec-audit/ch1/module_parser-20251119-parser-tests.md` に収集。テストは `docs/spec/1-1-syntax/examples/*.reml` を直接読む `FixtureSample` を利用し、dual-write 結果は `reports/spec-audit/ch1/module_parser-20251119-dualwrite.md` で確認する。  
+- `scripts/poc_dualwrite_compare.sh use_nested` / `effect_handler` の出力を `reports/spec-audit/ch1/2025-11-17-syntax-samples.md#2025-11-19-module_parser-再実装ログ` に転記し、`docs/plans/rust-migration/3-0-ci-and-dual-write-strategy.md#3010-ci-ブロッカーとゲート` に `Module Parser Acceptance`／`Rollback Hook` を追加。  
+- `docs/notes/spec-integrity-audit-checklist.md` の `SYNTAX-002/module_parser` 行を `Closed (P2-8 W38)` に更新し、今後の P3 監査では `reports/spec-audit/ch1/module_parser-20251119-parser-tests.md`、`use_nested-20251119-diagnostics.json`、`effect_handler-20251119-diagnostics.json` を参照する。  
+
 #### Phase 2-8 追補（W37 後半）: ExprParser / effect handler 受理
 
 - 目的: `rust-gap SYNTAX-003` の解消。`ExprParser` を分離し、`block_scope.reml` と `effect_handler.reml` を Rust Frontend で受理して診断 0 件を確認する。  
