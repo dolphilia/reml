@@ -159,6 +159,7 @@ impl StreamFlowState {
 
     pub fn latest_bridge_signal(&self) -> Option<RuntimeBridgeSignal> {
         self.with_inner(|inner| inner.bridge_signals.back().cloned())
+            .flatten()
     }
 
     fn with_inner<T>(&self, f: impl FnOnce(&StreamFlowInner) -> T) -> Option<T> {

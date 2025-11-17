@@ -581,6 +581,13 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let program_name = argv.next().unwrap_or_else(|| "poc_frontend".to_string());
     let remaining: Vec<String> = argv.collect();
     let raw_cli_args = remaining.clone();
+    if raw_cli_args
+        .iter()
+        .any(|arg| arg == "--help" || arg == "-h")
+    {
+        print_help(&program_name);
+        std::process::exit(0);
+    }
     let mut args = remaining.into_iter();
     let mut input = None;
     let mut parse_debug = None;
@@ -955,6 +962,38 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
         runtime_capabilities,
         config_path,
     })
+}
+
+fn print_help(program_name: &str) {
+    println!(
+        "\
+{prog} は Reml Rust フロントエンド PoC です。
+
+使用方法:
+  {prog} [OPTIONS] <input.reml>
+
+主なオプション:
+  --emit-ast <PATH>              解析結果 AST を JSON で保存
+  --emit-typed-ast <PATH>        型付き AST を JSON で保存
+  --emit-constraints <PATH>      Typecheck 制約を JSON で保存
+  --emit-typeck-debug <PATH>     型推論デバッグ情報を JSON で保存
+  --emit-effects-metrics <PATH>  効果メトリクスを JSON で保存
+  --emit-diagnostics             標準出力へ診断 JSON を出力
+  --emit-audit                   Audit メタデータを出力
+  --emit-tokens <PATH>           字句解析結果を JSON で保存
+  --lex-profile ascii|unicode    識別子プロファイルの切替
+  --packrat / --no-packrat       Packrat キャッシュを有効/無効化
+  --streaming / --no-streaming   Streaming Runner の有無を切替
+  --effect-stage <STAGE>         Stage 要件を指定
+  --dualwrite-run-label <NAME>   dual-write ラベル設定（case も必須）
+  --config <PATH>                追加設定ファイルを適用
+
+これら以外にも recover, runtime capability, streaming flow などの
+細かなオプションがあります。詳細は `docs/plans/rust-migration/` と
+`docs/spec/3-6-core-diagnostics-audit.md` を参照してください。
+",
+        prog = program_name
+    );
 }
 
 fn parse_on_off(value: &str) -> Result<bool, String> {
