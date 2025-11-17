@@ -47,6 +47,11 @@
 5. **監査メトリクス**: `collect-iterator-audit-metrics.py` を baseline/candidate モードで実行し、`iterator.stage.audit_pass_rate`、`diagnostics.effect_stage_consistency` 等の pass_rate を算出。閾値は [0-3-audit-and-metrics.md](../bootstrap-roadmap/0-3-audit-and-metrics.md) の値を継承する。
 6. **結果アップロード**: 差分とメトリクスを Artifact 化し、`reports/audit/index.json` に新規ログのメタデータ (`ci:linux:dual-write` 等) を追記。更新は `tooling/ci/create-audit-index.py` による。
 
+### 3.0.5.1 adapter.net ネットワーク権限
+- `cargo test --manifest-path compiler/rust/adapter/Cargo.toml` に含まれる `network::tests::tcp_connect_roundtrip` は `TcpListener::bind("127.0.0.1:0")` で Loopback ポートを予約し、`TcpStream::connect` で応答を検証する。CI Runner には 1024 以上の動的ポートへ `bind(2)`/`listen(2)` する権限を付与し、macOS の場合は `com.apple.security.network.server` / `client` 設定、Linux の場合は `iptables`/`firewalld` で 127.0.0.1:0 を許可する。
+- 権限が与えられない Runner は `REML_ADAPTER_SKIP_NETWORK_TESTS=1` を設定してネットワーク試験をスキップし、アーティファクトへ `reports/adapter/<platform>/SKIP_NETWORK.md`（テンプレ作成予定）のメモを保存する。スキップ実行時は `docs/plans/bootstrap-roadmap/2-8-spec-integrity-audit.md` の差分リストへ `rust-gap(adapter.net)` ラベルで欠落を記載する。
+- Self-hosted Runner など権限確保が可能な環境では `REML_ADAPTER_FORCE_NETWORK_TESTS=1` を指定し、スキップ設定を明示的に上書きする。本ジョブは週次およびリリースゲートの CI で必須とし、取得したメトリクスを `reports/audit/<platform>/adapter-net.json` に保存して `collect-iterator-audit-metrics.py` へ渡す。
+
 ## 3.0.6 エスカレーションとレビュー体制
 - **失敗分類**:
   - `CI_FAILURE_TYPE=rust-runtime`：Rust 実装のクラッシュ/パニック。`compiler/rust/` のオーナーへ即通知。

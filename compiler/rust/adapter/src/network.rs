@@ -40,6 +40,18 @@ mod tests {
         thread,
     };
 
+    fn should_skip_network_tests() -> bool {
+        std::env::var_os("REML_ADAPTER_SKIP_NETWORK_TESTS").is_some()
+            && std::env::var_os("REML_ADAPTER_FORCE_NETWORK_TESTS").is_none()
+    }
+
+    fn skip_message(test_name: &str) {
+        eprintln!(
+            "[adapter.net] {test_name} はネットワーク bind 権限が無いためスキップしました。\
+             REML_ADAPTER_SKIP_NETWORK_TESTS を解除するか REML_ADAPTER_FORCE_NETWORK_TESTS=1 で強制実行できます。"
+        );
+    }
+
     #[test]
     fn audit_metadata_contains_network_keys() {
         let metadata = audit_metadata("connect", "success");
@@ -49,6 +61,10 @@ mod tests {
 
     #[test]
     fn tcp_connect_roundtrip() {
+        if should_skip_network_tests() {
+            skip_message("tcp_connect_roundtrip");
+            return;
+        }
         let listener = listen("127.0.0.1:0").expect("bind");
         let addr = listener.local_addr().expect("addr");
         let handle = thread::spawn(move || {

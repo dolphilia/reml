@@ -61,4 +61,8 @@ opt --version
 - `REML_LLVM_PATH` や将来的な `REML_LLVM_DISTRIBUTION` を使う際は `docs/plans/bootstrap-roadmap/windows-llvm-build-investigation.md` を参考にし、macOS でも CLI のパス・`DataLayout` の記録を `reports/backend-ir-diff/macOS/` に残す。
 - `docs/plans/rust-migration/2-1-runtime-integration.md` に記載した FFI ケースや `reports/runtime-bridge/` に関連する検証を Rust 版で再現する観点を持ち、結果を `reports/runtime-bridge/macOS` に追記する（FFI ハーネスは今後整備）。
 
+### ネットワークテストとポート権限
+- `cargo test --manifest-path compiler/rust/adapter/Cargo.toml` では `network::tests::tcp_connect_roundtrip` が `127.0.0.1:0` での待ち受けと接続を行うため、ループバックアドレスへの TCP bind 権限が必要です。CI/ローカルともに BSD/macOS の Application Sandbox や企業向け Endpoint Security ツールで `bind(2)` が拒否される場合があるので、Runner に `network-outbound`/`network-server` 権限を付与してください。
+- どうしても権限を付与できない環境では `REML_ADAPTER_SKIP_NETWORK_TESTS=1 cargo test --manifest-path compiler/rust/adapter/Cargo.toml` としてネットワーク試験のみをスキップできます。監査目的で強制的に実行したい場合は `REML_ADAPTER_FORCE_NETWORK_TESTS=1` を併用し、スキップ設定を上書きしてください。
+- ネットワーク試験をスキップした場合は `reports/adapter/` に記録される監査ログから `adapter.net` 系メトリクスが欠落するため、週次の非サンドボックス Runner（例: self-hosted macOS/Linux）でフルテストを走らせ、`docs/plans/bootstrap-roadmap/2-8-spec-integrity-audit.md` の差分リストへ反映することを推奨します。
 このような手順を README に残し、macOS 開発者が `cargo build` で Rust 版をローカル再現できる状態を早めることで P2 以降の Windows/Linux 連携を支える土台とします。
