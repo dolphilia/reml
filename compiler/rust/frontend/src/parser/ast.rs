@@ -955,6 +955,23 @@ impl Expr {
         }
     }
 
+    pub fn block(statements: Vec<Stmt>, span: Span) -> Self {
+        Self {
+            span,
+            kind: ExprKind::Block { statements },
+        }
+    }
+
+    pub fn field_access(target: Expr, field: Ident, span: Span) -> Self {
+        Self {
+            span,
+            kind: ExprKind::FieldAccess {
+                target: Box::new(target),
+                field,
+            },
+        }
+    }
+
     pub fn span(&self) -> Span {
         self.span
     }
