@@ -81,6 +81,8 @@
 
   中括弧は 1 階層以上のネストに対応し、`use Core.Parse.{Lex, Op.{Infix, Prefix}}` のように部分展開できます。
 
+> 監査ノート: `docs/spec/1-1-syntax/examples/use_nested.reml` が本節の正準サンプルです。Rust Frontend は現状、ファイル冒頭の `module`/`use` を受理できず `rust-gap SYNTAX-002` として追跡しています。監査時はフォールバックの `use_nested_rustcap.reml` を `reports/spec-audit/ch1/use_nested_rustcap-*.json` と突き合わせて下さい（詳細は `docs/notes/spec-integrity-audit-checklist.md#rust-gap-トラッキング表`）。
+
 ### B.1.1 DSLエントリーポイント宣言 {#dsl-entry-declaration}
 
 `reml.toml` の `[dsl]` セクションで宣言された `entry` は、1 ファイル 1 モジュールの原則に従い、該当モジュールのトップレベル公開シンボルと一致しなければならない。`exports` 配列の各名前は、以下の要件を満たすトップレベル宣言を指す。
@@ -250,6 +252,8 @@ conductor config_orchestrator {
 
   * `handler <EffectName>` ブロックで対象操作を列挙し、必要に応じて `return` 節を定義する。
   * `resume` はワンショットが既定。複数回呼び出す場合は `@reentrant` 属性と Capability 許可が必要（3.8 節）。
+
+> 監査ノート: 効果構文の正準サンプルは `docs/spec/1-1-syntax/examples/effect_handler.reml` です。Rust Frontend では `effect` 宣言がまだ受理されず、`reports/spec-audit/ch1/effect_handler-*.json` で `rust-gap SYNTAX-003` を継続監視しています。PoC を再現する際は `-Zalgebraic-effects` 相当の CLI オプションが必要である点に注意してください。
 
 * **属性拡張**
   効果ハンドラ導入に伴い、以下の属性を追加する。詳細な検査規則は 1.3 節および 3.8 節を参照。

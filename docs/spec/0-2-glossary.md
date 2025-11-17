@@ -64,6 +64,11 @@ Reml 仕様書で繰り返し登場する専門用語と概念をまとめた。
 - **RunConfigTarget**: `RunConfig.extensions["target"]` に格納されるターゲットプロファイルで、OS/ABI/Capability 情報をまとめて `@cfg` 条件分岐へ渡す構造体。[2-6 実行戦略](2-6-execution-strategy.md#b-2-runconfig-のコアスイッチ) に項目一覧が記載される。
 - **PlatformInfo**: 実行中プラットフォームの OS・アーキテクチャ・利用可能能力を報告する構造体。`platform_info()` が返し、Capability Registry と整合させて最適化や制限判断を行う。[3-8 Core Runtime & Capability](3-8-core-runtime-capability.md#13-プラットフォーム情報と能力) 参照。
 
+## 監査・移行関連
+- **Rust Frontend / `poc_frontend`**: `compiler/rust/frontend` の Rust 版 Reml フロントエンド。`cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics <sample.reml>` を Phase 2-8 以降の標準検証コマンドとし、`docs/plans/rust-migration/overview.md` / `.../unified-porting-principles.md` で運用上の優先度と成功指標を定義する。OCaml 実装は参照用途に留める。
+- **spec-audit ディレクトリ**: `reports/spec-audit/` に配置した Chapter 別の監査ログ。`ch0`〜`ch3` で CLI 出力やリンクチェックを保存し、`diffs/` に `rust-gap` メモ、`summary.md` にコマンド履歴を記録する。[docs/plans/bootstrap-roadmap/2-8-spec-integrity-audit.md](../plans/bootstrap-roadmap/2-8-spec-integrity-audit.md) の作業ブレークダウンを参照。
+- **`rust-gap` ラベル**: Rust Frontend がまだ受理できない構文や API 差分を示す指標。`reports/spec-audit/ch1/use_nested-20251117-diagnostics.json` のようなログとセットで `docs/notes/spec-integrity-audit-checklist.md#rust-gap-トラッキング表` に登録し、Phase 3 引き継ぎタスクへ接続する。
+
 ## 所有権とリソース管理
 - **所有権 (Ownership)**: 値とそのメモリ資源を解放する責務を持つ主体。Core.Ffi では `Ownership::Borrowed` / `Owned` / `Transferred` を通じて移譲パターンを明示し、効果章では RC ポインタ操作と `Result` 伝播で責務を追跡する。[1-3 効果と安全性](1-3-effects-safety.md#m5-所有権とリソース管理), [3-9 Core Async / FFI / Unsafe](3-9-core-async-ffi-unsafe.md#26-メモリ管理と所有権境界)
 - **借用 (Borrow)**: 所有権を保持したまま参照を一時的に貸し出す操作。`Cell`/`Ref` API は `Borrow<T>` を返し、FFI では `Ownership::Borrowed` が呼び出し期間を限定する。[3-2 Core Collections](3-2-core-collections.md#32-cellt-ref), [3-9 Core Async / FFI / Unsafe](3-9-core-async-ffi-unsafe.md#26-メモリ管理と所有権境界)

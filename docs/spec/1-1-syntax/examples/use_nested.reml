@@ -1,0 +1,19 @@
+module docs.spec.syntax.examples
+
+use ::Core.Parse.{Lex, Op.{Infix, Prefix as PrefixOp}}
+use ::Core.Diagnostics.{Report as DiagnosticReport, Severity}
+use self.helpers.{TokenBuffer, build_pretty_trace}
+
+// ネストした use が module / self / alias を跨いで展開されるサンプル。
+fn highlight(source: Text) -> Text {
+  let tokens = Lex.tokenize(source)
+  let buffer = TokenBuffer::new(tokens)
+  build_pretty_trace(buffer)
+}
+
+fn summarize(report: DiagnosticReport) -> Text {
+  match report with
+  | DiagnosticReport::Error(message) -> "error: " + message
+  | DiagnosticReport::Warning(message) -> "warn: " + message
+  | _ -> "info"
+}

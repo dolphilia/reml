@@ -5,8 +5,8 @@
 ## Phase 2-8 初動チェック（W36 更新）
 - [x] `reports/spec-audit/` ディレクトリ構造（`ch0/`〜`ch3/`, `diffs/`, `summary.md`）を作成し、格納方針を `reports/spec-audit/README.md` に記載する。
 - [x] `cargo test --manifest-path compiler/rust/frontend/Cargo.toml`（2025-11-17 実行）と `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --help` の成功ログを `reports/spec-audit/summary.md` に記録し、Rust Frontend を監査ベースラインとして利用できることを確認する。
-- [ ] Chapter 0/索引レビュー: `reports/spec-audit/ch0/links.md` にリンク検証結果と `docs/spec/0-0-overview.md` の差分要約を記録する（担当: Spec Core WG @ W36）。
-- [ ] Chapter 1 サンプル実行: `cargo run ... --emit-diagnostics` の結果を `reports/spec-audit/ch1/` に保存し、`SYNTAX-002`/`SYNTAX-003` の `rust-gap` 状態を更新する（担当: Rust Parser WG @ W37 前半）。
+- [x] Chapter 0/索引レビュー: `reports/spec-audit/ch0/links.md` にリンク検証結果と `docs/spec/0-0-overview.md` の差分要約を記録する（担当: Spec Core WG @ W36、2025-11-17 12:39 JST 更新）。
+- [x] Chapter 1 サンプル実行: `cargo run ... --emit-diagnostics` の結果を `reports/spec-audit/ch1/` に保存し、`SYNTAX-002`/`SYNTAX-003` の `rust-gap` 状態を更新する（担当: Rust Parser WG @ W37 前半、2025-11-17 12:41 JST 実行ログを `reports/spec-audit/ch1/2025-11-17-syntax-samples.md` に集約）。
 - [ ] Chapter 2 Streaming/Recover: `reports/spec-audit/ch2/streaming/*.json` に streaming runner の JSON を追加し、`ERR-001`/`ERR-002` の再現ログを添付する（担当: Parser API WG @ W37 後半）。
 - [ ] Chapter 3 Diagnostics/Capability: `cargo test --manifest-path compiler/rust/runtime/ffi/Cargo.toml` と `compiler/rust/adapter/Cargo.toml` の結果、および `tooling/ci/collect-iterator-audit-metrics.py --section diagnostics --require-success` の出力を `reports/spec-audit/ch3/` に格納する（担当: Rust Runtime WG @ W38 前半）。
 - [ ] `reports/spec-audit/diffs/` に `rust-gap` 向け差分メモ （フォーマット: `<ID>-<chapter>-rust-gap.md`）を作成し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md#phase28-diff-class` と相互参照する。
@@ -22,8 +22,8 @@
 ### `rust-gap` トラッキング表（2025-11-17 更新）
 | 差分 ID | 章/カテゴリ | 症状 | Rust 監査手順 | 備考 |
 |---------|-------------|------|----------------|------|
-| `SYNTAX-002` | Chapter 1／モジュール `use` | 多段 `use` を Rust Parser で再現できるか未確認 | `cargo run --bin poc_frontend -- --emit-ast --input docs/spec/1-1-syntax/examples/use_nested.reml` を `reports/spec-audit/ch1/` へ保存 | OCaml 実装の暫定脚注を撤去する前提条件 |
-| `SYNTAX-003` | Chapter 1／効果構文 | `perform`/`handle` の PoC 動作 | `cargo run -- --emit-effects-metrics --config configs/effects-poc.toml` のJSONを記録 | KPI: `syntax.effect_construct_acceptance` が 1.0 であること |
+| `SYNTAX-002` | Chapter 1／モジュール `use` | 多段 `use` を Rust Parser で再現できるか未確認 | `cargo run --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/use_nested.reml`（失敗ログ: `reports/spec-audit/ch1/use_nested-20251117-diagnostics.json`）。制限回避用の `use_nested_rustcap.reml` も併せて保存する | OCaml 実装の暫定脚注を撤去する前提条件。Rust Frontend がファイル先頭の `module`/`use` を受理できるようにする |
+| `SYNTAX-003` | Chapter 1／効果構文 | `perform`/`handle` の PoC 動作 | `cargo run --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/effect_handler.reml` の JSON を `reports/spec-audit/ch1/effect_handler-20251117-diagnostics.json` に保存 | KPI: `syntax.effect_construct_acceptance` が 1.0 であること。`-Zalgebraic-effects` 相当の CLI オプション設計も要確認 |
 | `ERR-001` | Chapter 2／期待集合 | Streaming Recover で `ExpectedSummary` が欠落 | `tests/streaming_runner.rs` の `streaming_expected_token_snapshot_matches` を `reports/spec-audit/ch2/` へ転記 | `parser.expected_summary_presence` を 1.0 で維持 |
 | `ERR-002` | Chapter 2／Recover Fix-it | `recover`/`fixit` 情報の Rust 実装反映状況 | `cargo test --manifest-path compiler/rust/frontend/Cargo.toml parser::recover -- --nocapture` ログ | CLI/LSP JSON の `recover.fixit.*` 拡張を Chapter 2 へ反映 |
 | `CAP-001` | Chapter 3／Capability Stage | `BridgeAuditMetadata::as_json` が監査ログへ未接続 | `cargo test --manifest-path compiler/rust/runtime/ffi/Cargo.toml audit::tests::bridge_audit_metadata_as_json_serializes` の結果と `collect-iterator-audit-metrics.py --section diagnostics` | `reports/spec-audit/ch3/` に JSON を保存し、Stage 検査スクリプトと結合する |

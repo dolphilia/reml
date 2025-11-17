@@ -1,0 +1,18 @@
+fn __rustcap_guard__(unit: i64) = unit
+
+// Rust Frontend は先頭に `fn` / `effect` 以外を受け付けないため、
+// 構文検証時はダミー関数の直後に use を配置する。
+use ::Core.Parse.{Lex, Op.{Infix, Prefix as PrefixOp}}
+use ::Core.Diagnostics.{Report as DiagnosticReport, Severity}
+
+fn highlight(source: Text) =
+  let tokens = Lex.tokenize(source)
+  tokens
+    |> map(|token| token.lexeme)
+    |> join(", ")
+
+fn summarize(report: DiagnosticReport) =
+  match report with
+  | DiagnosticReport::Error(message) -> "error: " + message
+  | DiagnosticReport::Warning(message) -> "warn: " + message
+  | _ -> "info"
