@@ -116,6 +116,19 @@
    - `p1-front-end-checklists.csv` で完了判定できない項目は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に課題として登録し、`reports/dual-write/front-end/README.md` へ参照リンクを残す。  
    - 型/AST 名称の変更や JSON スキーマ更新が発生した場合は `README.md`（本章リスト）と `docs/spec/0-2-glossary.md` を更新する準備メモを `docs-migrations.log` に追加し、P2 へのハンドオーバー素材として整理する。
 
+#### Phase 2-8 追補（W37）: ModuleHeader / UseDecl トップレベル整備
+
+- 目的: Phase 2-8 `Rust Frontend パーサ拡張` ステップ 1 の要件に合わせ、`use_nested.reml` が Rust Frontend で通過することを保証し、`rust-gap SYNTAX-002` をクローズする。  
+- モデル更新タスク:
+  - `compiler/rust/frontend/src/parser/ast.rs` の `DeclKind` を `Module`/`Use`/`Function`/`Effect`/`Handler` に整理し、`ModuleHeader`（`ident`, `visibility`, `attributes`, `span`）と `UseDecl`（`path`, `alias`, `glob`, `span`）を新設する。`TypeAnnot` は `AnnotationKind::{Return, HandlerResume, Operation}` で共有し、`docs/spec/1-1-syntax.md` §2/§5 の BNF を直接参照するコメントを残す。  
+  - `OperationDecl`/`HandlerDecl` の `resume` 注釈にも `AnnotationKind` を適用し、`p1-front-end-checklists.csv` の AST 行へ `Phase2-8-W37: ModuleHeader/UseDecl/HandlerDecl align` を記入する。  
+- パーサ/トレース更新:
+  - `module_parser` を `parse_module_header` → `parse_use_list` → `parse_decl_list` の 3 ステージに分割し、各フェーズで `TraceEvent::{ModuleHeaderAccepted, UseDeclAccepted}` を記録する。トレースログ（`use_nested-YYYYMMDD-trace.md`）は `scripts/poc_dualwrite_compare.sh use_nested` から得た dual-write 結果を `reports/spec-audit/ch1/` へ保存し、`docs/plans/rust-migration/unified-porting-principles.md#同一観測点の再現` の要件を満たす証跡とする。  
+  - `cargo run --manifest-path compiler/rust/frontend/Cargo.toml --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/use_nested.reml` を 1 日 2 回（朝/夕）実行し、`reports/spec-audit/ch1/use_nested-YYYYMMDD-diagnostics.json` へ結果を上書き保存する。CI では `use_nested_rustcap.reml` との比較も残し、差分ゼロを確認できた時点で脚注削除の提案を `docs/spec/1-1-syntax.md` へ送る。  
+- 差分メモ連携:
+  - `reports/spec-audit/diffs/SYNTAX-002-ch1-rust-gap.md` を作成し、症状/再現手順/期待値/現状/対応ステータス（`In Progress` → `Closed`）を記録する。  
+  - `docs/notes/spec-integrity-audit-checklist.md` の `SYNTAX-002` 行に `owner: Rust Parser WG`, `due: Phase 2-8 W37`, `evidence: reports/spec-audit/ch1/use_nested-YYYYMMDD-diagnostics.json`, `diff-log: reports/spec-audit/diffs/SYNTAX-002-ch1-rust-gap.md` を追記する。
+
 ### W3 具体的な進め方（型推論コア移植）✅ 完了
 
 1. **OCaml 型推論スタックの棚卸しとギャップ抽出**  

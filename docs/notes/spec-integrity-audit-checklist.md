@@ -9,7 +9,7 @@
 - [x] Chapter 1 サンプル実行: `cargo run ... --emit-diagnostics` の結果を `reports/spec-audit/ch1/` に保存し、`SYNTAX-002`/`SYNTAX-003` の `rust-gap` 状態を更新する（担当: Rust Parser WG @ W37 前半、2025-11-17 12:41 JST 実行ログを `reports/spec-audit/ch1/2025-11-17-syntax-samples.md` に集約）。
 - [ ] Chapter 2 Streaming/Recover: `reports/spec-audit/ch2/streaming/*.json` に streaming runner の JSON を追加し、`ERR-001`/`ERR-002` の再現ログを添付する（担当: Parser API WG @ W37 後半）。
 - [ ] Chapter 3 Diagnostics/Capability: `cargo test --manifest-path compiler/rust/runtime/ffi/Cargo.toml` と `compiler/rust/adapter/Cargo.toml` の結果、および `tooling/ci/collect-iterator-audit-metrics.py --section diagnostics --require-success` の出力を `reports/spec-audit/ch3/` に格納する（担当: Rust Runtime WG @ W38 前半）。
-- [ ] `reports/spec-audit/diffs/` に `rust-gap` 向け差分メモ （フォーマット: `<ID>-<chapter>-rust-gap.md`）を作成し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md#phase28-diff-class` と相互参照する。
+- [ ] `reports/spec-audit/diffs/` に `rust-gap` 向け差分メモ （フォーマット: `<ID>-<chapter>-rust-gap.md`）を作成し、`docs/plans/bootstrap-roadmap/2-5-spec-drift-remediation.md#phase28-diff-class` と相互参照する。`SYNTAX-002-ch1-rust-gap.md` を 2025-11-17 に追加済み（他 ID も同形式で追従する）。
 
 ## 期待集合（ERR-001）
 - [ ] `parser.expected_summary_presence` が 1.0 を維持していることを `tooling/ci/collect-iterator-audit-metrics.py --require-success` で確認する。欠落した場合は `docs/plans/bootstrap-roadmap/2-5-review-log.md` 2025-11-16〜17 の手順を参照して検証をやり直す。
@@ -22,7 +22,7 @@
 ### `rust-gap` トラッキング表（2025-11-17 更新）
 | 差分 ID | 章/カテゴリ | 症状 | Rust 監査手順 | 備考 |
 |---------|-------------|------|----------------|------|
-| `SYNTAX-002` | Chapter 1／モジュール `use` | 多段 `use` を Rust Parser で再現できるか未確認 | `cargo run --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/use_nested.reml`（失敗ログ: `reports/spec-audit/ch1/use_nested-20251117-diagnostics.json`）。制限回避用の `use_nested_rustcap.reml` も併せて保存する | OCaml 実装の暫定脚注を撤去する前提条件。Rust Frontend がファイル先頭の `module`/`use` を受理できるようにする |
+| `SYNTAX-002` | Chapter 1／モジュール `use` | 多段 `use` を Rust Parser で再現できるか未確認 | `cargo run --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/use_nested.reml`（失敗ログ: `reports/spec-audit/ch1/use_nested-20251117-diagnostics.json`）。検証日は `YYYYMMDD` を付けて更新し、`reports/spec-audit/ch1/use_nested-YYYYMMDD-trace.md` に dual-write トレースを保存。詳細は `reports/spec-audit/diffs/SYNTAX-002-ch1-rust-gap.md` を参照 | OCaml 実装の暫定脚注を撤去する前提条件。Rust Frontend がファイル先頭の `module`/`use` を受理できるようにする（担当: Rust Parser WG / 期日: Phase 2-8 W37） |
 | `SYNTAX-003` | Chapter 1／効果構文 | `perform`/`handle` の PoC 動作 | `cargo run --bin poc_frontend -- --emit-diagnostics docs/spec/1-1-syntax/examples/effect_handler.reml` の JSON を `reports/spec-audit/ch1/effect_handler-20251117-diagnostics.json` に保存 | KPI: `syntax.effect_construct_acceptance` が 1.0 であること。`-Zalgebraic-effects` 相当の CLI オプション設計も要確認 |
 | `ERR-001` | Chapter 2／期待集合 | Streaming Recover で `ExpectedSummary` が欠落 | `tests/streaming_runner.rs` の `streaming_expected_token_snapshot_matches` を `reports/spec-audit/ch2/` へ転記 | `parser.expected_summary_presence` を 1.0 で維持 |
 | `ERR-002` | Chapter 2／Recover Fix-it | `recover`/`fixit` 情報の Rust 実装反映状況 | `cargo test --manifest-path compiler/rust/frontend/Cargo.toml parser::recover -- --nocapture` ログ | CLI/LSP JSON の `recover.fixit.*` 拡張を Chapter 2 へ反映 |

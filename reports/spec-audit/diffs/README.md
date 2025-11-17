@@ -4,3 +4,4 @@
 - ファイル命名: `<ID>-<chapter>-rust-gap.md`（例: `SYNTAX-003-ch1-rust-gap.md`）。
 - 記録内容: 症状, 再現手順（Rust コマンド）, 期待結果, 現状結果, 対応ステータス, リンク。
 - 完了したら `docs/notes/spec-integrity-audit-checklist.md#rust-gap` の表に `done` を記載し、差分メモに `Resolved:` セクションを設ける。
+- `SYNTAX-002-ch1-rust-gap.md`（2025-11-17 追加）はテンプレート例。Module/Use 受理や `TraceEvent` など、仕様で要求される観測点をどのように証跡化するかを記載している。
