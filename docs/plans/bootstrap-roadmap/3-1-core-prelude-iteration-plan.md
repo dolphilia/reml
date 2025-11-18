@@ -61,6 +61,96 @@
 7.2. ベンチマーク結果と API 完了状況を `0-3-audit-and-metrics.md`/`0-4-risk-handling.md` に記録し、リスク項目を更新する。
 7.3. レビュー資料 (API 差分一覧、ベンチマーク、リリースノート草案) を準備し、Phase 3-2 以降へ引き継ぐ。
 
+## 35週目: Step 1 実施結果
+
+- 標準仕様の根拠は `docs/spec/3-1-core-prelude-iteration.md:21-197` で示された `Option`/`Result`/`Iter`/`Collector` API であり、インポート規則と効果タグまで明文化されている。
+- OCaml 実装は `compiler/ocaml/src/constraint_solver.ml:371-477` で `Collector`/`Iterator` 辞書を自動生成し、`compiler/ocaml/tests/test_type_inference.ml:1799-1845` で Stage/Capability メタデータを診断へ転写するテストが存在するものの、Prelude/Iter の API 本体はまだ提供していない。
+- Rust 実装側は `compiler/rust/frontend/src/lib.rs:1-32` の通り `diagnostic`/`parser` 等の骨格モジュールのみ公開しており、`Core.Prelude` や `Core.Iter` を含むモジュール階層が存在しない。
+- 以下の表では `差分` を `新規`/`変更` の 2 値で記録し、`Rust` 列は `未実装` のみ、`OCaml` 列は `未実装`（完全に欠如）、`型推論のみ`（constraint solver で型名を扱うが API がない）、`診断メタデータ`（Stage 情報を diag に転写）を用いる。
+
+### 1.1 API インベントリ（仕様 vs 実装差分）
+
+#### Prelude (`Option`/`Result`/Guards)
+
+| カテゴリ | API | 効果 | 差分 | Rust | OCaml |
+| --- | --- | --- | --- | --- | --- |
+| Option | `Option.is_some` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| Option | `Option.map` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| Option | `Option.and_then` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| Option | `Option.ok_or` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| Option | `Option.unwrap_or` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| Option | `Option.expect` | `effect {debug}` | 新規 | 未実装 | 型推論のみ |
+| Result | `Result.map` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| Result | `Result.map_err` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| Result | `Result.and_then` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| Result | `Result.or_else` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| Result | `Result.unwrap_or` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| Result | `Result.expect` | `effect {debug}` | 新規 | 未実装 | 型推論のみ |
+| Result | `Result.to_option` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| Result | `Result.from_option` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| Guard | `ensure` | `@pure` | 新規 | 未実装 | 未実装 |
+| Guard | `ensure_not_null` | `@pure` | 新規 | 未実装 | 未実装 |
+
+`Option`/`Result` の型名自体は OCaml の制約解決で参照されており（`compiler/ocaml/src/constraint_solver.ml:384-390`）、`Collector` 自動実装にも利用されているが、仕様で定義された API 群や `@must_use` 属性はまだコード化されていない。
+
+#### Iter 生成・変換・終端・Collector
+
+| カテゴリ | API | 効果 | 差分 | Rust | OCaml |
+| --- | --- | --- | --- | --- | --- |
+| 生成 | `Iter.empty` | `@pure` | 新規 | 未実装 | 未実装 |
+| 生成 | `Iter.once` | `@pure` | 新規 | 未実装 | 未実装 |
+| 生成 | `Iter.repeat` | `@pure` | 新規 | 未実装 | 未実装 |
+| 生成 | `Iter.from_list` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| 生成 | `Iter.from_result` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| 生成 | `Iter.range` | `@pure` | 新規 | 未実装 | 未実装 |
+| 生成 | `Iter.unfold` | `@pure` | 新規 | 未実装 | 未実装 |
+| 生成 | `Iter.try_unfold` | `@pure` | 新規 | 未実装 | 未実装 |
+| 変換 | `Iter.map` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| 変換 | `Iter.filter` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| 変換 | `Iter.filter_map` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| 変換 | `Iter.flat_map` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| 変換 | `Iter.scan` | `@pure` | 新規 | 未実装 | 未実装 |
+| 変換 | `Iter.take` | `@pure` | 新規 | 未実装 | 未実装 |
+| 変換 | `Iter.drop` | `@pure` | 新規 | 未実装 | 未実装 |
+| 変換 | `Iter.enumerate` | `@pure` | 新規 | 未実装 | 未実装 |
+| 変換 | `Iter.zip` | `@pure` | 新規 | 未実装 | 未実装 |
+| 変換 | `Iter.buffered` | `effect {mem}` | 新規 | 未実装 | 未実装 |
+| 終端 | `Iter.collect_list` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| 終端 | `Iter.collect_vec` | `effect {mut}` | 新規 | 未実装 | 型推論のみ |
+| 終端 | `Iter.fold` | `@pure` | 新規 | 未実装 | 未実装 |
+| 終端 | `Iter.reduce` | `@pure` | 新規 | 未実装 | 未実装 |
+| 終端 | `Iter.all` | `@pure` | 新規 | 未実装 | 未実装 |
+| 終端 | `Iter.any` | `@pure` | 新規 | 未実装 | 未実装 |
+| 終端 | `Iter.find` | `@pure` | 新規 | 未実装 | 未実装 |
+| 終端 | `Iter.try_fold` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| 終端 | `Iter.try_collect` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| Collector | `Collector.new` | `@pure` | 新規 | 未実装 | 型推論のみ |
+| Collector | `Collector.with_capacity` | `effect {mem}` | 新規 | 未実装 | 未実装 |
+| Collector | `Collector.push` | `effect {mut}` | 新規 | 未実装 | 型推論のみ |
+| Collector | `Collector.reserve` | `effect {mut, mem}` | 新規 | 未実装 | 未実装 |
+| Collector | `Collector.finish` | `effect {mem}` | 新規 | 未実装 | 未実装 |
+| Collector | `Collector.into_inner` | `@pure` | 新規 | 未実装 | 未実装 |
+
+OCaml の `solve_collector`/`solve_iterator` は `Iter`/`Collector`/`Option`/`Result` の型を辞書解決に利用しているため（`compiler/ocaml/src/constraint_solver.ml:371-477`）、Rust 側の実装でも同一トレイト名と Stage 要件を露出させる必要がある。Rust / OCaml いずれも `Iter.buffered` や `Collector.reserve` のような `effect {mem}` 系 API をまだ持っていないため、Phase 3 の実装タスクで初出となる。
+
+### 1.2 効果タグ・属性と診断メタデータ整合
+
+| タグ/属性 | 仕様出典 | 要求メタデータ（`Diagnostic`/`AuditEnvelope`） | Phase 2 実装状況 |
+| --- | --- | --- | --- |
+| `@must_use` (`Option`/`Result`) | `docs/spec/3-1-core-prelude-iteration.md:23-67`, `docs/spec/1-3-effects-safety.md:92-113` | `Diagnostic` 本体に `code`/`domain`/`audit` を必ず添付する（`docs/spec/3-6-core-diagnostics-audit.md:1-74`）。未使用検知は Lint ドメインとして `change_set` を伴い警告化する。 | 実装なし（OCaml/Rust 共通）。Lint ルール定義を Phase 3-2 で追加する必要あり。 |
+| `@pure` 契約 | `docs/spec/3-1-core-prelude-iteration.md:19-75`, `docs/spec/1-3-effects-safety.md:70-125` | `Diagnostic.extensions["effects"]` に `before`/`handled`/`residual`/`stage` を出力し、`residual = ∅` を監査できるようにする（`docs/spec/3-6-core-diagnostics-audit.md:108-127`）。 | OCaml タイプエラー経路で `EffectsExtension` を生成済み（`compiler/ocaml/tests/test_type_inference.ml:1799-1845`）。Rust では未実装。 |
+| `effect {mut}` / `{mem}` | `docs/spec/3-1-core-prelude-iteration.md:100-155` | `AuditEnvelope.metadata["effect.stage.required"]`/`["effect.stage.actual"]` に加えて `effects.residual` を同期し、`collect-iterator-audit-metrics.py` が Stage 不整合を検知できるようにする（`docs/spec/3-6-core-diagnostics-audit.md:335-357`）。 | OCaml の診断 JSON で `effect.stage.iterator.*` を出力済み（`compiler/ocaml/tests/test_type_inference.ml:1799-1845`）。Rust でのメタデータ転写は未実装。 |
+| `effect {debug}` (`expect`) | `docs/spec/3-1-core-prelude-iteration.md:51-66` | Debug 用 API の診断は `effects.stage = Experimental` で発行し、`AuditEnvelope.metadata["effect.stage.required"] = "debug"` を記録する（`docs/spec/3-6-core-diagnostics-audit.md:335-346`）。 | 仕様のみ。フェールファスト系 API がまだ存在しないため、Phase 3 実装で `--deny-debug-effects` を追加予定。 |
+| `Collector`/`Iterator` Stage | `docs/spec/3-1-core-prelude-iteration.md:151-197`, `docs/spec/3-6-core-diagnostics-audit.md:335-357` | `effect.stage.iterator.*` と `typeclass.*` の両方に Stage/Capability/Kind/Source を書き出す（`docs/spec/3-6-core-diagnostics-audit.md:349-372`）。 | OCaml: `Type_error.trait_constraint_stage_extension` で `iterator_kind`/`capability` を出力済み（`compiler/ocaml/tests/test_type_inference.ml:1799-1845`）。Rust: Typeck 未移植。 |
+
+### 1.3 Option/Result 内部実装スタイル評価
+
+1. **データ表現**: Reml 仕様は `enum` 形で `Option`/`Result` を定義しており（`docs/spec/3-1-core-prelude-iteration.md:23-41`）、Rust 実装も `#[repr(u8)]` を付与した `enum` + `#[must_use]` で表現するのが最小。`Never` は `enum Never {}` ではなく `Result<Never, Never>` 型 alias で再現し、型推論と一致させる。
+2. **インライン戦略**: `map`/`and_then` 系 API は `#[inline(always)]`、`expect` 系は `#[cold] #[track_caller]` でコンパイル時の `panic!` をデバッグビルドに限定する。`effect {debug}` の契約に従い、リリースビルドでは `panic` 経路を feature flag で排除する。
+3. **型推論への適合**: OCaml の `solve_collector`/`solve_iterator` は `Iter`/`Collector` の Stage/Capability を辞書として吐き出している（`compiler/ocaml/src/constraint_solver.ml:371-477`）。Rust 実装では同じ `IteratorDictInfo` 相当を `typeck` 層に導入し、`Diagnostic.extensions["typeclass"]` に `stage_mismatch` を書き出す必要がある。
+4. **計測指標**: `docs/plans/rust-migration/3-2-benchmark-baseline.md:1-78` の ±10% 規準に沿って、`core_prelude_bench` を作成し `size_of::<Option<Result<(), ()>>>()` / `iter_pipeline_throughput` / `collector_heap_bytes` を `reports/benchmarks/*.json` へ記録する。`0-3-audit-and-metrics.md` 側では `effect_analysis.missing_tag` と `iterator.stage.audit_pass_rate` を更新し、`Iter.buffered` の `effect {mem}` コストを追跡する。
+5. **FFI/Diagnostic 連携**: `ensure_not_null` は FFI 入口で使用するため、`Result` → `Diagnostic` 変換ヘルパと併せて `compiler/rust/adapter` 層へ配置し、`AuditEnvelope.metadata["ffi.pointer.check"]` を残す（Phase 3-5 タスクと共有）。
+
 ## 成果物と検証
 - `Core.Prelude`/`Core.Iter` 実装および Collector 群が CI テストを通過し、効果タグ/属性が仕様と一致していること。
 - Rust 実装のベースライン（Phase 2 ベンチマーク）と比較した性能が ±10% 以内に収まり、差分が存在する場合はメトリクスに記録されていること。OCaml 実装のデータは参考値として付録に残す。
