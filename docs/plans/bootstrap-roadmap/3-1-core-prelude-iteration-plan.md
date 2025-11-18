@@ -77,9 +77,41 @@
 ### 3. Iter コア構造と Collectors（36-37週目）
 **担当領域**: 遅延列基盤
 
-3.1. `Iter<T>` の内部表現・所有権モデルを実装し、`IntoIter`/`FromIterator` の変換を整える。
-3.2. `Collector` トレイトと標準コレクタ (`ListCollector`/`VecCollector`/`MapCollector` 等) を実装し、失敗時エラー型と効果タグの伝播をテストする。
-3.3. `Iter::from_fn`/`Iter::once` など生成系ヘルパを実装し、`Iterator` 互換 API の命名・挙動差分を仕様と揃える。
+**成果物と出口条件**
+- `compiler/rust/runtime/src/prelude/iter/mod.rs`（以下 `Iter` モジュール）と `IterState`/`IterSeed`/`IterSource` の 3 層構造を実装し、`Iter<T>` が `IntoIter`/`FromIterator` トレイトと双方向に変換できる。同時に `compiler/rust/frontend/tests/core_iter_pipeline.rs` を追加して `Iter::from_list |> Iter.collect_list` の往復と `Iter::into_std_iter` の互換性を snapshot で固定する。
+- `Collector<T, C>` トレイトおよび標準コレクタ (`ListCollector`, `VecCollector`, `MapCollector`, `SetCollector`, `StringCollector`) を `compiler/rust/runtime/src/prelude/collectors/` 以下で提供し、`effect {mut}`/`effect {mem}` の転写を `tooling/ci/collect-iterator-audit-metrics.py` の `collector.effects` カラムで観測できる状態にする。
+- `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` を `Iter`/`Collector` 項目まで拡張し、`cargo xtask prelude-audit --section iter` を通じて 3-1 章の API を全件スキャン。結果を `reports/spec-audit/ch0/links.md` に貼り付け、`0-3-audit-and-metrics.md` の `iterator.stage.audit_pass_rate` を更新する。
+- `docs/notes/core-library-outline.md` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` に Iter/Collector 実装状況とリスクを記録し、Phase 3 の他タスク（Text/Collections）から参照できるリンクを設置する。
+
+**主な依存資料**
+- 仕様: `docs/spec/3-1-core-prelude-iteration.md`（Iter/Collector API）、`docs/spec/3-2-core-collections.md`（永続コレクション連携）、`docs/spec/3-6-core-diagnostics-audit.md`（Stage/監査キー）
+- 型推論: `docs/spec/1-2-types-Inference.md`, `compiler/ocaml/src/constraint_solver.ml`（`solve_iterator` 実装参照）
+- 観測: `docs/plans/rust-migration/3-1-observability-alignment.md`, `tooling/ci/collect-iterator-audit-metrics.py`
+- リスク/ログ: `docs/plans/bootstrap-roadmap/0-4-risk-handling.md`, `docs-migrations.log`
+
+3.1. `Iter<T>` の内部表現・所有権モデル（WBS 3.1a）
+- `compiler/rust/runtime/src/prelude/iter/mod.rs` を新設し、`Iter<T>` を `Arc<IterState<T>>` ベースの遅延列として定義。`IterState` では `poll_next(&mut self) -> IterStep<T>` を提供し、`IterStep` は `Ready`, `Pending`, `Finished` の 3 状態で `effect` 情報を保持する。
+- `Iter::from_iter` / `impl<T> FromIterator<T> for Iter<T>` を実装し、`std::iter::from_fn` 互換の `IterSeed` を `Iter::from_fn` で生成できるようにする。逆方向の `impl<T> IntoIterator for Iter<T>` では `IterIntoStd<T>` アダプタを提供して Rust 標準 `for` 構文と連携する。
+- `compiler/rust/frontend/src/typeck/constraint/iterator.rs`（新規）で `IteratorDictInfo` を導入し、`Iter` を要求する型クラス拘束に `stage`, `capability`, `kind` を埋める。辞書生成時に `Diagnostic.extensions["iterator.stage.required"]` へ書き込み、`collect-iterator-audit-metrics.py` が参照する JSON のキーを `effect.stage.iterator.*` で統一する。
+- `core_iter_pipeline.rs` テストでは `Iter::from_list |> Iter::map |> Iter.collect_list`/`Iter::try_fold` の 6 シナリオを snapshot 化し、`reports/diagnostic-format-regression.md` で差分監視。`compiler/ocaml/tests/test_type_inference.ml` の `iterator_kind` 出力と結果を比較し、差分は `docs/notes/core-library-outline.md` へ記録する。
+
+3.2. `Collector` トレイトと標準コレクタ（WBS 3.1b）
+- `compiler/rust/runtime/src/prelude/collectors/mod.rs` を作成し、仕様どおりの `Collector<T, C>` トレイトと `type Error: IntoDiagnostic` 制約を定義。`with_capacity`/`reserve` は `effect {mem}` を伴うため `#[cfg_attr]` で `EffectMarker` を付与する。
+- `ListCollector`/`VecCollector`/`MapCollector`/`SetCollector`/`StringCollector` をそれぞれ `@pure` / `effect {mut}` / `effect {mem}` の組み合わせに沿って実装。`VecCollector` では `Result<Vec<T>, CollectError>` を返し、`CollectError` は `MemoryError`/`DuplicateKey`/`InvalidEncoding` 等のバリアントを備える。
+- `compiler/rust/frontend/tests/core_iter_collectors.rs` を追加し、(1) 正常系で `Iter.try_collect` → `List`, `Vec`, `Map` を検証、(2) エラー系で `VecCollector::reserve` の `effect {mem}` が `Diagnostic` に転写されること、(3) `MapCollector` が重複キーを `CollectError::DuplicateKey` として報告すること、の 3 グループを snapshot で固定する。
+- `tooling/ci/collect-iterator-audit-metrics.py` に Collector 列を追加し、`collector.effect.mem`, `collector.effect.mut`, `collector.error.kind` を集計。結果を `0-3-audit-and-metrics.md` の KPI 表（`iterator.stage.audit_pass_rate`, `collector.error.duplicate_key_rate`）へ貼り付ける。
+
+3.3. 生成系ヘルパと `Iter` API 網羅（WBS 3.1c）
+- `Iter::empty`/`once`/`repeat`/`range`/`from_list`/`from_result`/`from_fn`/`unfold`/`try_unfold` を `iter/generators.rs`（新規モジュール）へ分割し、`@pure`/`effect {mem}` のタグを仕様表（本計画書の API マトリクス）と同期させる。`range` は `Int` 型専用、`try_unfold` は `Result` を伝播するフェイルファスト契約を記載する。
+- `Iter::buffered`/`Iter::enumerate`/`Iter::zip` など Chapter 3.1 の変換 API を `iter/adapters.rs` へ実装し、`effect` を `IterState` に保持する。`buffered` は内部バッファサイズを `usize` で管理し、`effect {mem}` の計測を `collect-iterator-audit` に報告する。
+- `compiler/rust/frontend/tests/core_iter_generators.rs` で生成系 API の黄金テストを追加し、`Iter.range` + `take` + `collect_vec` のような複合シナリオを 12 ケース固定。更に `compiler/rust/frontend/tests/core_iter_effects.rs` を用意して `effect {mem}`/`effect {mut}` の伝播を `Diagnostic` 拡張領域で確認する。
+- `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` に `module = "Iter"` エントリを追加し、`cargo xtask prelude-audit --section iter --baseline docs/spec/3-1-core-prelude-iteration.md` を nightly で実行。結果 JSON を `reports/spec-audit/ch1/iter.json`（新規）に保存し、`reports/spec-audit/ch0/links.md` から参照する。
+
+#### 3. Iter/Collector 完了条件
+- `Iter`/`Collector` API が `cargo xtask prelude-audit --section iter --strict` で欠落 0 件となり、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `last_updated` が 37 週目の日付に更新されている。
+- `collect-iterator-audit-metrics.py` で `iterator.stage.audit_pass_rate = 1.0`、`collector.effect.mem_leak = 0` を達成し、結果を `0-3-audit-and-metrics.md`/`reports/spec-audit/ch0/links.md` の両方に貼り付けたログが存在する。
+- `docs/notes/core-library-outline.md` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` が Iter/Collector 実装状況のサマリを持ち、`docs-migrations.log` に `Iter` モジュール追加・Collector 階層作成の記録が残っている。
+- `compiler/rust/frontend/tests/core_iter_pipeline.rs` `core_iter_collectors.rs` `core_iter_generators.rs` `core_iter_effects.rs` が CI へ追加され、`panic_forbidden.rs` と同じジョブで `RUSTFLAGS="-Zpanic-abort-tests"` を通過する。
 
 ### 4. Iter アダプタと終端操作（37-38週目）
 **担当領域**: 宣言的データフロー
