@@ -1,4 +1,4 @@
-//! logos × chumsky フロントエンド PoC。入力ファイルを解析し JSON を出力する。
+//! Rust Frontend CLI（`reml_frontend`）。入力ファイルを解析して JSON を出力する。
 
 use serde_json::{json, Map, Value};
 use std::collections::HashMap;
@@ -34,11 +34,11 @@ use reml_frontend::typeck::{
 };
 use serde::Serialize;
 
-const PARSER_NAMESPACE: &str = "rust.poc";
+const PARSER_NAMESPACE: &str = "rust.frontend";
 const PARSER_NAME: &str = "compilation_unit";
-const PARSER_ORIGIN: &str = "poc_frontend";
-const PARSER_FINGERPRINT: &str = "rust-poc-0001";
-const SCHEMA_VERSION: &str = "2.0.0-draft";
+const PARSER_ORIGIN: &str = "reml_frontend";
+const PARSER_FINGERPRINT: &str = "rust-frontend-0001";
+const SCHEMA_VERSION: &str = "3.0.0-alpha";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = parse_args()?;
@@ -86,14 +86,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ParserDriver::parse_with_options_and_run_config(&source, parser_options, run_config)
     };
     trace_log(&args, "parsing", "finish");
-    let typeck_report = result
-        .value
+    let typeck_report =
+        TypecheckDriver::infer_module(result.value.as_ref(), &args.typecheck_config);
+    let flow_metrics = result
+        .stream_flow_state
         .as_ref()
-        .map(|module| TypecheckDriver::infer_module(module, &args.typecheck_config))
-        .unwrap_or_else(|| {
-            TypecheckDriver::infer_fallback_from_source(&source, &args.typecheck_config)
-        });
-    let artifacts = TypeckArtifacts::new(&input_path, &typeck_report, &args.typecheck_config);
+        .map(|state| state.metrics())
+        .unwrap_or_default();
+    let bridge_signal = result
+        .stream_flow_state
+        .as_ref()
+        .and_then(|state| state.latest_bridge_signal());
+    let stage_payload = StageAuditPayload::new(
+        &args.typecheck_config.effect_context,
+        &args.runtime_capabilities,
+        bridge_signal.clone(),
+    );
+    let artifacts = TypeckArtifacts::new(
+        &input_path,
+        &typeck_report,
+        &args.typecheck_config,
+        &stage_payload,
+    );
     let parse_result = serde_json::json!({
         "packrat_stats": result.packrat_stats,
         "packrat_snapshot": result.packrat_snapshot,
@@ -109,15 +123,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let flow_metrics = result
-        .stream_flow_state
-        .as_ref()
-        .map(|state| state.metrics())
-        .unwrap_or_default();
-    let bridge_signal = result
-        .stream_flow_state
-        .as_ref()
-        .and_then(|state| state.latest_bridge_signal());
     let stream_meta = serde_json::json!({
         "packrat": result.stream_metrics.packrat,
         "span_trace": result.stream_metrics.span_trace,
@@ -137,11 +142,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let runconfig_summary = build_runconfig_summary(&result.run_config, &args, &stream_flow_state);
     let runconfig_top_level =
         build_runconfig_top_level(&result.run_config, &args, &stream_flow_state);
-    let stage_payload = StageAuditPayload::new(
-        &args.typecheck_config.effect_context,
-        &args.runtime_capabilities,
-        bridge_signal.clone(),
-    );
     let mut diagnostics_entries = build_parser_diagnostics(
         &result.diagnostics,
         &result.trace_events,
@@ -586,7 +586,7 @@ fn push_runtime_capability(target: &mut Vec<RuntimeCapability>, capability: Runt
 
 fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let mut argv = env::args();
-    let program_name = argv.next().unwrap_or_else(|| "poc_frontend".to_string());
+    let program_name = argv.next().unwrap_or_else(|| "reml_frontend".to_string());
     let remaining: Vec<String> = argv.collect();
     let raw_cli_args = remaining.clone();
     if raw_cli_args
@@ -887,7 +887,7 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
     let input = match input {
         Some(path) => path,
         None => {
-            eprintln!("使用方法: poc_frontend [options] <input.reml>");
+            eprintln!("使用方法: reml_frontend [options] <input.reml>");
             std::process::exit(1);
         }
     };
@@ -1341,6 +1341,10 @@ impl StageAuditPayload {
             self.stage_trace.clone(),
             self.bridge_signal.clone(),
         )
+    }
+
+    fn stage_trace(&self) -> &[StageTraceStep] {
+        &self.stage_trace
     }
 
     fn apply_extensions(&self, extensions: &mut serde_json::Map<String, Value>) {
@@ -2031,11 +2035,14 @@ struct FunctionConstraintSummary {
 
 #[derive(Clone, Serialize)]
 struct TypeckDebugFile {
+    schema_version: &'static str,
     effect_context: StageContext,
     type_row_mode: TypeRowMode,
     recover: RecoverConfig,
     runtime_capabilities: Vec<RuntimeCapability>,
     trace_enabled: bool,
+    stage_trace: Vec<StageTraceStep>,
+    used_impls: Vec<String>,
     metrics: TypecheckMetrics,
     violations: Vec<TypecheckViolation>,
 }
@@ -2092,7 +2099,12 @@ fn render_typed_module(module: &typed::TypedModule) -> String {
 }
 
 impl TypeckArtifacts {
-    fn new(input: &Path, report: &TypecheckReport, config: &TypecheckConfig) -> Self {
+    fn new(
+        input: &Path,
+        report: &TypecheckReport,
+        config: &TypecheckConfig,
+        stage_payload: &StageAuditPayload,
+    ) -> Self {
         let typed_module = report.typed_module.clone();
         let function_summaries = build_function_summaries(&typed_module, &report.functions);
         let rendered = render_typed_module(&typed_module);
@@ -2135,11 +2147,14 @@ impl TypeckArtifacts {
             used_impls: report.used_impls.clone(),
         };
         let debug = TypeckDebugFile {
+            schema_version: SCHEMA_VERSION,
             effect_context: config.effect_context.clone(),
             type_row_mode: config.type_row_mode,
             recover: config.recover.clone(),
             runtime_capabilities: config.runtime_capabilities.clone(),
             trace_enabled: config.trace_enabled,
+            stage_trace: stage_payload.stage_trace().to_vec(),
+            used_impls: report.used_impls.clone(),
             metrics: report.metrics.clone(),
             violations: report.violations.clone(),
         };

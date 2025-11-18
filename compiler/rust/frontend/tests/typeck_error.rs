@@ -19,7 +19,7 @@ fn parse_module(source: &str) -> Module {
 
 fn typecheck_with_config(source: &str, config: TypecheckConfig) -> TypecheckReport {
     let module = parse_module(source);
-    TypecheckDriver::infer_module(&module, &config)
+    TypecheckDriver::infer_module(Some(&module), &config)
 }
 
 fn typecheck_source(source: &str) -> TypecheckReport {

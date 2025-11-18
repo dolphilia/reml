@@ -20,7 +20,7 @@ fn parse_module(source: &str) -> Module {
 
 fn typecheck_source(source: &str) -> TypecheckReport {
     let module = parse_module(source);
-    TypecheckDriver::infer_module(&module, &TypecheckConfig::default())
+    TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default())
 }
 
 #[test]

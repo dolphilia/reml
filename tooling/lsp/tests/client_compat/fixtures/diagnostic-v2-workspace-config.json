@@ -18,7 +18,7 @@
               "tooling/lsp/tests/client_compat/fixtures/workspace-config.json",
               "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/lsp_workspace_config/input.reml"
             ],
-            "command": "target/debug/poc_frontend",
+            "command": "target/debug/reml_frontend",
             "kind": "cli-command"
           },
           {
@@ -43,7 +43,7 @@
             "tooling/lsp/tests/client_compat/fixtures/workspace-config.json",
             "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/lsp_workspace_config/input.reml"
           ],
-          "command": "target/debug/poc_frontend",
+          "command": "target/debug/reml_frontend",
           "workspace": "."
         }
       },
@@ -71,7 +71,7 @@
                 "tooling/lsp/tests/client_compat/fixtures/workspace-config.json",
                 "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/lsp_workspace_config/input.reml"
               ],
-              "command": "target/debug/poc_frontend",
+              "command": "target/debug/reml_frontend",
               "kind": "cli-command"
             },
             {
@@ -96,7 +96,7 @@
               "tooling/lsp/tests/client_compat/fixtures/workspace-config.json",
               "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/lsp_workspace_config/input.reml"
             ],
-            "command": "target/debug/poc_frontend",
+            "command": "target/debug/reml_frontend",
             "workspace": "."
           }
         },
@@ -122,12 +122,12 @@
         "fingerprint": "rust-poc-0001",
         "name": "compilation_unit",
         "namespace": "rust.poc",
-        "origin": "poc_frontend",
+        "origin": "reml_frontend",
         "parser.core.rule.fingerprint": "rust-poc-0001",
         "parser.core.rule.name": "compilation_unit",
         "parser.core.rule.namespace": "rust.poc",
         "parser.core.rule.ordinal": 0,
-        "parser.core.rule.origin": "poc_frontend",
+        "parser.core.rule.origin": "reml_frontend",
         "parser.runconfig": {
           "extensions": {
             "config": {
@@ -279,7 +279,7 @@
               "tooling/lsp/tests/client_compat/fixtures/workspace-config.json",
               "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/lsp_workspace_config/input.reml"
             ],
-            "command": "target/debug/poc_frontend",
+            "command": "target/debug/reml_frontend",
             "kind": "cli-command"
           },
           {
@@ -304,7 +304,7 @@
             "tooling/lsp/tests/client_compat/fixtures/workspace-config.json",
             "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/lsp_workspace_config/input.reml"
           ],
-          "command": "target/debug/poc_frontend",
+          "command": "target/debug/reml_frontend",
           "workspace": "."
         }
       },
@@ -330,12 +330,12 @@
       "fingerprint": "rust-poc-0001",
       "name": "compilation_unit",
       "namespace": "rust.poc",
-      "origin": "poc_frontend",
+      "origin": "reml_frontend",
       "parser.core.rule.fingerprint": "rust-poc-0001",
       "parser.core.rule.name": "compilation_unit",
       "parser.core.rule.namespace": "rust.poc",
       "parser.core.rule.ordinal": 0,
-      "parser.core.rule.origin": "poc_frontend",
+      "parser.core.rule.origin": "reml_frontend",
       "parser.runconfig": {
         "extensions": {
           "config": {
@@ -491,7 +491,7 @@
           "name": "compilation_unit",
           "namespace": "rust.poc",
           "ordinal": 0,
-          "origin": "poc_frontend"
+          "origin": "reml_frontend"
         }
       },
       "runconfig": {
@@ -586,7 +586,7 @@
               "tooling/lsp/tests/client_compat/fixtures/workspace-config.json",
               "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/lsp_workspace_config/input.reml"
             ],
-            "command": "target/debug/poc_frontend",
+            "command": "target/debug/reml_frontend",
             "kind": "cli-command"
           },
           {
@@ -611,7 +611,7 @@
             "tooling/lsp/tests/client_compat/fixtures/workspace-config.json",
             "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/lsp_workspace_config/input.reml"
           ],
-          "command": "target/debug/poc_frontend",
+          "command": "target/debug/reml_frontend",
           "workspace": "."
         }
       },
@@ -639,7 +639,7 @@
                 "tooling/lsp/tests/client_compat/fixtures/workspace-config.json",
                 "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/lsp_workspace_config/input.reml"
               ],
-              "command": "target/debug/poc_frontend",
+              "command": "target/debug/reml_frontend",
               "kind": "cli-command"
             },
             {
@@ -664,7 +664,7 @@
               "tooling/lsp/tests/client_compat/fixtures/workspace-config.json",
               "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/lsp_workspace_config/input.reml"
             ],
-            "command": "target/debug/poc_frontend",
+            "command": "target/debug/reml_frontend",
             "workspace": "."
           }
         },
@@ -690,12 +690,12 @@
         "fingerprint": "rust-poc-0001",
         "name": "compilation_unit",
         "namespace": "rust.poc",
-        "origin": "poc_frontend",
+        "origin": "reml_frontend",
         "parser.core.rule.fingerprint": "rust-poc-0001",
         "parser.core.rule.name": "compilation_unit",
         "parser.core.rule.namespace": "rust.poc",
         "parser.core.rule.ordinal": 0,
-        "parser.core.rule.origin": "poc_frontend",
+        "parser.core.rule.origin": "reml_frontend",
         "parser.runconfig": {
           "extensions": {
             "config": {
@@ -847,7 +847,7 @@
               "tooling/lsp/tests/client_compat/fixtures/workspace-config.json",
               "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/lsp_workspace_config/input.reml"
             ],
-            "command": "target/debug/poc_frontend",
+            "command": "target/debug/reml_frontend",
             "kind": "cli-command"
           },
           {
@@ -872,7 +872,7 @@
             "tooling/lsp/tests/client_compat/fixtures/workspace-config.json",
             "/Users/dolphilia/github/kestrel/reports/dual-write/front-end/w4-diagnostics/20280430-w4-diag-cli-lsp/lsp_workspace_config/input.reml"
           ],
-          "command": "target/debug/poc_frontend",
+          "command": "target/debug/reml_frontend",
           "workspace": "."
         }
       },
@@ -898,12 +898,12 @@
       "fingerprint": "rust-poc-0001",
       "name": "compilation_unit",
       "namespace": "rust.poc",
-      "origin": "poc_frontend",
+      "origin": "reml_frontend",
       "parser.core.rule.fingerprint": "rust-poc-0001",
       "parser.core.rule.name": "compilation_unit",
       "parser.core.rule.namespace": "rust.poc",
       "parser.core.rule.ordinal": 0,
-      "parser.core.rule.origin": "poc_frontend",
+      "parser.core.rule.origin": "reml_frontend",
       "parser.runconfig": {
         "extensions": {
           "config": {
@@ -1076,7 +1076,7 @@
           "name": "compilation_unit",
           "namespace": "rust.poc",
           "ordinal": 0,
-          "origin": "poc_frontend"
+          "origin": "reml_frontend"
         }
       },
       "recover": {

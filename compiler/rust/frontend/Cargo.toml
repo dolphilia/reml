@@ -10,6 +10,10 @@ publish = false
 name = "reml_frontend"
 path = "src/lib.rs"
 
+[[bin]]
+name = "reml_frontend"
+path = "src/bin/reml_frontend.rs"
+
 [features]
 default = []
 # lexer-backend と parser-backend は候補クレートの評価完了後に定義する

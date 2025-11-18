@@ -786,7 +786,7 @@ for idx, entry in enumerate(entries):
         "run",
         "--quiet",
         "--bin",
-        "poc_frontend",
+        "reml_frontend",
         "--",
         "--emit-tokens",
         str(rust_tokens_path),
@@ -1623,7 +1623,7 @@ for idx in "${!CASE_ENTRIES[@]}"; do
     run_in_dir "${OCAML_DIR}" "${ocaml_diag_cmd[@]}" > "${ocaml_diag_path}" 2> "${ocaml_stderr}" || true
 
     rust_diag_cmd=(
-      cargo run --quiet --bin poc_frontend --
+      cargo run --quiet --bin reml_frontend --
       --emit-parse-debug "${rust_parse_debug_path}"
       --dualwrite-root "${REPORT_DIR}"
       --dualwrite-run-label "${RUN_ID}"
@@ -2159,7 +2159,7 @@ PY
 
     (
       cd "${RUST_DIR}"
-      cargo run --quiet --bin poc_frontend -- \
+      cargo run --quiet --bin reml_frontend -- \
         --emit-parse-debug "${rust_parse_debug_path}" \
         --dualwrite-root "${REPORT_DIR}" \
         --dualwrite-run-label "${RUN_ID}" \

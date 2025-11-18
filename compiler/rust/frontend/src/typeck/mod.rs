@@ -19,7 +19,7 @@ pub use driver::{
 };
 pub use env::{
     config, install_config, Binding, DualWriteGuards, InstallConfigError, RecoverConfig,
-    StageContext, StageTraceStep, StageId, StageRequirement, TypeEnv, TypeRowMode, TypecheckConfig,
+    StageContext, StageId, StageRequirement, StageTraceStep, TypeEnv, TypeRowMode, TypecheckConfig,
     TypecheckConfigBuilder,
 };
 pub use metrics::TypecheckMetrics;

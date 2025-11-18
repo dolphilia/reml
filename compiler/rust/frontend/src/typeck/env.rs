@@ -233,8 +233,8 @@ impl StageContext {
         );
         let runtime = runtime_stage_override
             .unwrap_or_else(|| StageRequirement::AtLeast(default_stage.clone()));
-        let capability = capability_stage_override
-            .unwrap_or_else(|| StageRequirement::AtLeast(StageId::beta()));
+        let capability =
+            capability_stage_override.unwrap_or_else(|| StageRequirement::AtLeast(StageId::beta()));
         Self {
             runtime,
             capability,
@@ -420,7 +420,10 @@ fn load_registry_from_file(path: &Path) -> RuntimeCapabilityRegistry {
     let contents = match fs::read_to_string(path) {
         Ok(value) => value,
         Err(err) => {
-            eprintln!("[RUNTIME CAPABILITY] {} の読み込みに失敗しました: {err}", path.display());
+            eprintln!(
+                "[RUNTIME CAPABILITY] {} の読み込みに失敗しました: {err}",
+                path.display()
+            );
             return RuntimeCapabilityRegistry::empty();
         }
     };
@@ -428,7 +431,10 @@ fn load_registry_from_file(path: &Path) -> RuntimeCapabilityRegistry {
         Ok(Value::Object(map)) => parse_registry_object(&map),
         Ok(_) => RuntimeCapabilityRegistry::empty(),
         Err(err) => {
-            eprintln!("[RUNTIME CAPABILITY] {} を JSON として解析できません: {err}", path.display());
+            eprintln!(
+                "[RUNTIME CAPABILITY] {} を JSON として解析できません: {err}",
+                path.display()
+            );
             RuntimeCapabilityRegistry::empty()
         }
     }
@@ -467,9 +473,7 @@ fn parse_registry_object(map: &Map<String, Value>) -> RuntimeCapabilityRegistry 
 
 fn parse_capability_entries(value: &Value) -> Vec<CapabilityEntry> {
     match value {
-        Value::String(name) => CapabilityEntry::new(name, None)
-            .into_iter()
-            .collect(),
+        Value::String(name) => CapabilityEntry::new(name, None).into_iter().collect(),
         Value::Array(items) => items
             .iter()
             .flat_map(|entry| parse_capability_entries(entry))
@@ -513,15 +517,15 @@ fn parse_override_section(value: &Value) -> Vec<CapabilityEntry> {
 fn parse_stage_opt(value: &Value) -> Option<StageId> {
     match value {
         Value::String(stage) => StageId::from_str(stage).ok(),
-        Value::Object(map) => map
-            .get("stage")
-            .and_then(|inner| parse_stage_opt(inner)),
+        Value::Object(map) => map.get("stage").and_then(|inner| parse_stage_opt(inner)),
         _ => None,
     }
 }
 
 fn stage_from_env_var(key: &str) -> Option<StageId> {
-    env::var(key).ok().and_then(|value| StageId::from_str(&value).ok())
+    env::var(key)
+        .ok()
+        .and_then(|value| StageId::from_str(&value).ok())
 }
 
 fn normalize_key(value: &str) -> String {
@@ -564,7 +568,10 @@ fn build_capability_stage_map(
     dedup_capability_entries(entries, default_stage)
 }
 
-fn dedup_capability_entries(entries: Vec<CapabilityEntry>, default_stage: &StageId) -> Vec<(String, StageId)> {
+fn dedup_capability_entries(
+    entries: Vec<CapabilityEntry>,
+    default_stage: &StageId,
+) -> Vec<(String, StageId)> {
     let mut accumulator = Vec::new();
     for mut entry in entries {
         let normalized = normalize_key(&entry.name);

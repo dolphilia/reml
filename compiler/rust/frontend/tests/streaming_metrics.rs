@@ -241,10 +241,7 @@ fn module_header_acceptance_streaming_completes_once() {
 
 #[test]
 fn effect_handler_acceptance_streaming_records_resume_signal() {
-    let chunk_size = SampleCase::EffectHandler
-        .source()
-        .len()
-        .saturating_sub(1);
+    let chunk_size = SampleCase::EffectHandler.source().len().saturating_sub(1);
     let StreamingSampleResult {
         outcome,
         flow_state,

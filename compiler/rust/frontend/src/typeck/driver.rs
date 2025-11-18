@@ -4,7 +4,7 @@ use serde::Serialize;
 
 use super::capability::{CapabilityDescriptor, EffectUsage};
 use super::constraint::{Constraint, ConstraintSolver, Substitution};
-use super::env::{StageRequirement, TypeEnv, TypeRowMode, TypecheckConfig};
+use super::env::{StageRequirement, TypeEnv, TypecheckConfig};
 use super::metrics::TypecheckMetrics;
 use super::scheme::Scheme;
 use super::types::{BuiltinType, Type, TypeVarGen};
@@ -18,7 +18,20 @@ use crate::span::Span;
 pub struct TypecheckDriver;
 
 impl TypecheckDriver {
-    pub fn infer_module(module: &Module, config: &TypecheckConfig) -> TypecheckReport {
+    pub fn infer_module(module: Option<&Module>, config: &TypecheckConfig) -> TypecheckReport {
+        match module {
+            Some(module) => Self::infer_module_from_ast(module, config),
+            None => {
+                let mut report = TypecheckReport::default();
+                report
+                    .violations
+                    .push(TypecheckViolation::ast_unavailable());
+                report
+            }
+        }
+    }
+
+    fn infer_module_from_ast(module: &Module, config: &TypecheckConfig) -> TypecheckReport {
         let mut metrics = TypecheckMetrics::default();
         let mut functions = Vec::new();
         let mut violations = Vec::new();
@@ -158,102 +171,6 @@ impl TypecheckDriver {
             used_impls,
         }
     }
-
-    pub fn infer_fallback_from_source(source: &str, config: &TypecheckConfig) -> TypecheckReport {
-        let mut metrics = TypecheckMetrics::default();
-        let mut functions = Vec::new();
-
-        if config.trace_enabled {
-            eprintln!("[TRACE] typecheck.fallback");
-        }
-
-        for name in extract_top_level_functions(source) {
-            metrics.record_function();
-            metrics.record_expr();
-            functions.push(TypedFunctionSummary {
-                name,
-                param_types: Vec::new(),
-                return_type: Type::builtin(BuiltinType::Unknown).label(),
-                typed_exprs: 0,
-                constraints: 0,
-                unresolved_identifiers: 0,
-            });
-        }
-
-        let violations = detect_residual_leaks_from_source(source, config);
-        let violations = compress_typecheck_violations(violations);
-
-        TypecheckReport {
-            metrics,
-            functions,
-            violations,
-            typed_module: typed::TypedModule::default(),
-            constraints: Vec::new(),
-            used_impls: Vec::new(),
-        }
-    }
-}
-
-fn extract_top_level_functions(source: &str) -> Vec<String> {
-    let mut names = Vec::new();
-    let mut extern_depth: i32 = 0;
-    let mut pending_extern = false;
-
-    for line in source.lines() {
-        let trimmed = line.trim_start();
-        if trimmed.starts_with("extern") {
-            pending_extern = true;
-        }
-
-        if extern_depth == 0 && !pending_extern {
-            let mut candidate = trimmed;
-            if candidate.starts_with("pub ") {
-                candidate = candidate[4..].trim_start();
-            }
-            if let Some(rest) = candidate.strip_prefix("fn ") {
-                let mut name = String::new();
-                for ch in rest.chars() {
-                    if ch.is_alphanumeric() || ch == '_' {
-                        name.push(ch);
-                    } else {
-                        break;
-                    }
-                }
-                if !name.is_empty() {
-                    let remainder = &rest[name.len()..];
-                    let next_sig_char = remainder.chars().find(|c| !c.is_whitespace());
-                    if next_sig_char != Some(';') {
-                        names.push(name);
-                    }
-                }
-            }
-        }
-
-        for ch in trimmed.chars() {
-            match ch {
-                '{' => {
-                    if pending_extern {
-                        extern_depth += 1;
-                        pending_extern = false;
-                    }
-                }
-                '}' => {
-                    if extern_depth > 0 {
-                        extern_depth -= 1;
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        if pending_extern && !trimmed.contains('{') {
-            // keep pending flag until opening brace appears
-        } else {
-            pending_extern = false;
-        }
-    }
-
-    names
 }
 
 #[derive(Debug, Serialize, Default, Clone)]
@@ -292,6 +209,7 @@ pub struct TypecheckViolation {
 #[derive(Debug, Serialize, Clone)]
 pub enum TypecheckViolationKind {
     ConditionLiteralBool,
+    AstUnavailable,
     ResidualLeak,
     StageMismatch,
 }
@@ -381,9 +299,25 @@ impl TypecheckViolation {
         }
     }
 
+    fn ast_unavailable() -> Self {
+        Self {
+            kind: TypecheckViolationKind::AstUnavailable,
+            code: "typeck.aborted.ast_unavailable",
+            message: "AST 生成に失敗したため型推論を実行できませんでした".to_string(),
+            span: None,
+            notes: vec![ViolationNote::plain(
+                "パーサ診断を確認し、構文エラーを解消したうえで再実行してください",
+            )],
+            capability: None,
+            function: None,
+            expected: None,
+        }
+    }
+
     pub fn domain(&self) -> &'static str {
         match self.kind {
-            TypecheckViolationKind::ConditionLiteralBool => "type",
+            TypecheckViolationKind::ConditionLiteralBool
+            | TypecheckViolationKind::AstUnavailable => "type",
             TypecheckViolationKind::ResidualLeak | TypecheckViolationKind::StageMismatch => {
                 "effects"
             }
@@ -964,76 +898,6 @@ fn collect_perform_effects(expr: &Expr, usages: &mut Vec<EffectUsage>) {
         ExprKind::Literal(_) | ExprKind::Identifier(_) => {}
         _ => {}
     }
-}
-
-fn detect_residual_leaks_from_source(
-    source: &str,
-    config: &TypecheckConfig,
-) -> Vec<TypecheckViolation> {
-    if !matches!(config.type_row_mode, TypeRowMode::DualWrite) {
-        return Vec::new();
-    }
-    let mut leaks = Vec::new();
-    let mut seen_capabilities: HashSet<String> = HashSet::new();
-    let mut seen_generic = false;
-    let mut offset: u32 = 0;
-    for line in source.lines() {
-        let mut local_matches = find_perform_matches(line);
-        if local_matches.is_empty() {
-            offset = offset.saturating_add(line.len() as u32 + 1);
-            continue;
-        }
-        for (byte_index, capability) in local_matches.drain(..) {
-            if let Some(cap) = capability.clone() {
-                if !seen_capabilities.insert(cap.clone()) {
-                    continue;
-                }
-            } else if seen_generic {
-                continue;
-            } else {
-                seen_generic = true;
-            }
-            let span = Span::new(
-                offset.saturating_add(byte_index),
-                offset.saturating_add(byte_index + "perform".len() as u32),
-            );
-            leaks.push(TypecheckViolation::residual_leak(Some(span), capability));
-        }
-        offset = offset.saturating_add(line.len() as u32 + 1);
-    }
-    leaks
-}
-
-fn find_perform_matches(line: &str) -> Vec<(u32, Option<String>)> {
-    let mut matches = Vec::new();
-    let keyword = "perform";
-    let mut search_start = 0;
-    while let Some(idx) = line[search_start..].find(keyword) {
-        let absolute = search_start + idx;
-        let before = line[..absolute].chars().last();
-        let after_index = absolute + keyword.len();
-        let after_char = line[after_index..].chars().next();
-        let is_identifier_char = |ch: char| ch.is_ascii_alphanumeric() || ch == '_';
-        let boundary_before = before.map_or(true, |ch| !is_identifier_char(ch));
-        let boundary_after = after_char.map_or(true, |ch| !is_identifier_char(ch));
-        if boundary_before && boundary_after {
-            let rest = line[after_index..].trim_start();
-            let capability = rest
-                .split_whitespace()
-                .next()
-                .map(|token| {
-                    token.trim_matches(|c: char| c == '(' || c == ')' || c == ',' || c == ';')
-                })
-                .filter(|token| !token.is_empty())
-                .map(|token| token.to_string());
-            matches.push((absolute as u32, capability));
-        }
-        search_start = absolute + keyword.len();
-        if search_start >= line.len() {
-            break;
-        }
-    }
-    matches
 }
 
 fn compress_typecheck_violations(violations: Vec<TypecheckViolation>) -> Vec<TypecheckViolation> {

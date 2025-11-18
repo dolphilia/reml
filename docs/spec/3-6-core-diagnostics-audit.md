@@ -61,6 +61,12 @@ pub type AuditEnvelope = {
 - `capability` はランタイム機能（Core.Runtime）との整合に利用。
 - `metadata` は拡張用の自由領域で、プラグインが追加情報を埋め込む。
 
+### 1.2 Rust Frontend CLI 更新（Phase 2-8）
+
+- `reml_frontend` CLI は `schema_version = "3.0.0-alpha"` を `Diagnostic.audit_metadata["schema.version"]` と `typeck/typeck-debug.*.json` の双方で宣言し、Stage/Audit の記録形式を Phase 3 以降の監査基準へ合わせる。`StageAuditPayload` から収集した `stage_trace`・`runtime_capabilities`・`bridge` メタデータは `typeck-debug` にも同梱され、`reports/spec-audit/ch1/<sample>-YYYYMMDD-typeck.json` で直接参照できる。
+- AST 生成に失敗した際の型推論は `typeck.aborted.ast_unavailable`（domain: `type`, severity: `error`）として停止する。エンドユーザはこの診断を手掛かりに構文エラーや入力不備を解消し、再実行してから Stage/Audit の `used_impls`・`stage_trace` を確認する。Rust Frontend では `TypecheckDriver::infer_module(None, ..)` が常にこの診断を返し、Fallback による統計捏造を行わない。
+- `typeck/typeck-debug.rust.json` は `schema_version`、`stage_trace`、`used_impls` を必須項目とし、CLI 引数 `--emit-typeck-debug <path>` を経由して `reports/spec-audit/ch1/use_nested-YYYYMMDD-typeck.json` などに保存する。`collect-iterator-audit-metrics.py --section diagnostics` はこれらキーを前提に監査 KPI を抽出し、Phase 3 の Core Diagnostics 計画で再利用する。
+
 #### 1.1.1 監査イベント `AuditEvent`
 
 ```reml

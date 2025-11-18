@@ -1112,7 +1112,11 @@ fn record_decl_trace_events(decl: &Decl, events: &mut Vec<ParserTraceEvent>) {
 
 fn record_effect_decl_trace_events(effect: &EffectDecl, events: &mut Vec<ParserTraceEvent>) {
     let effect_label = Some(effect.name.name.clone());
-    events.push(ParserTraceEvent::effect_enter("decl", effect.span, effect_label.clone()));
+    events.push(ParserTraceEvent::effect_enter(
+        "decl",
+        effect.span,
+        effect_label.clone(),
+    ));
     for operation in &effect.operations {
         let op_label = format!("{}::{}", effect.name.name, operation.name.name);
         events.push(ParserTraceEvent::effect_enter(
@@ -1126,7 +1130,11 @@ fn record_effect_decl_trace_events(effect: &EffectDecl, events: &mut Vec<ParserT
             Some(op_label),
         ));
     }
-    events.push(ParserTraceEvent::effect_exit("decl", effect.span, effect_label));
+    events.push(ParserTraceEvent::effect_exit(
+        "decl",
+        effect.span,
+        effect_label,
+    ));
 }
 
 fn record_stmt_trace_events(stmt: &Stmt, events: &mut Vec<ParserTraceEvent>) {

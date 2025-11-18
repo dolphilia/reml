@@ -1,6 +1,8 @@
 use reml_frontend::parser::ast::Module;
 use reml_frontend::parser::ParserDriver;
-use reml_frontend::typeck::{Constraint, Type, TypecheckConfig, TypecheckDriver, TypecheckReport, TypecheckViolationKind};
+use reml_frontend::typeck::{
+    Constraint, Type, TypecheckConfig, TypecheckDriver, TypecheckReport, TypecheckViolationKind,
+};
 use serde_json;
 
 fn parse_module(source: &str) -> Module {
@@ -19,7 +21,7 @@ fn parse_module(source: &str) -> Module {
 
 fn typecheck_source(source: &str) -> TypecheckReport {
     let module = parse_module(source);
-    TypecheckDriver::infer_module(&module, &TypecheckConfig::default())
+    TypecheckDriver::infer_module(Some(&module), &TypecheckConfig::default())
 }
 
 #[test]
@@ -59,4 +61,20 @@ fn hindley_milner_constraints_json_roundtrip() {
     let serialized =
         serde_json::to_value(&report.constraints).expect("constraints should serialize");
     assert!(serialized.is_array());
+}
+
+#[test]
+fn reports_ast_unavailable_when_module_is_absent() {
+    let report = TypecheckDriver::infer_module(None, &TypecheckConfig::default());
+    assert!(
+        report
+            .violations
+            .iter()
+            .any(|violation| violation.code == "typeck.aborted.ast_unavailable"),
+        "AST 不在時の診断が出力される"
+    );
+    assert!(
+        report.typed_module.functions.is_empty(),
+        "AST 不在時は typed_module が空のまま"
+    );
 }
