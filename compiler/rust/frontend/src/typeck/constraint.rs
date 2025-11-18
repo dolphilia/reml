@@ -3,6 +3,8 @@ use serde::Serialize;
 use smol_str::SmolStr;
 use thiserror::Error;
 
+pub mod iterator;
+
 use super::types::{CapabilityContext, Type, TypeVariable};
 
 /// 型システムの制約。

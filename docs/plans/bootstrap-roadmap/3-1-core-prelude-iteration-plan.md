@@ -105,6 +105,7 @@
 | F3 スナップショット/KPI | 6 シナリオ snapshot と KPI 更新を行い、Chapter 3.1 の指標を Phase 3 帳票へ接続する | `compiler/rust/frontend/tests/core_iter_pipeline.rs/.snap`, `collect-iterator-audit` 吐き出し、`0-3-audit-and-metrics.md` の `iterator.stage.audit_pass_rate` 更新 | `reports/spec-audit/ch0/links.md` にテスト/監査ログ、`docs/notes/core-library-outline.md` 差分記録 | `cargo test core_iter_pipeline -- --nocapture`, `collect-iterator-audit-metrics.py --module iter` |
 
 - **F1 進捗メモ（2025-W36 着手）**: `compiler/rust/runtime/src/prelude/iter/mod.rs` を新設し、`Iter`/`IterState`/`IterSeed` と `IterStep` の骨格を `Arc<IterState<T>>` 共有モデルで実装。`EffectSet` と `IteratorStageProfile`（`StageRequirement::{Exact, AtLeast}` + Capability）を用意し、`iterator.effect.*`／`effect.stage.iterator.*` のダイアグノスティクス整合を確認できる API (`stage_snapshot`, `effect_labels`) を追加した。
+- **F2 着手メモ（2025-W36 後半）**: `compiler/rust/frontend/src/typeck/constraint/iterator.rs` を追加し、`IteratorDictInfo` が `IteratorStageProfile`/`IteratorStageSnapshot` を内蔵する形で Typeck 側の辞書と Stage/Capability 情報を接続。`solve_iterator` で `Array`/`Slice`/`Iter`/`IteratorState`/`Option`/`Result` に対応し、`iterator.stage.required`/`actual`/`capability`/`kind`/`source` が一元的に取得できる状態を整備した。
 
 - **進行順序**: F0→F1→F2→F3 を 36〜37 週目の 2 スプリントで完了し、フェーズ完了ごとに `docs-migrations.log` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` の `M1` セクションへステータスを記録する。
 - **効果タグ運用**: `IterStep` へ `bitflags` 化した `EffectSet` を保持させ、アダプタは `IterState::with_effects` を経由してタグを合成する。`collect-iterator-audit` で `iterator.effect.debug = 0` を維持することを KPI とする。
