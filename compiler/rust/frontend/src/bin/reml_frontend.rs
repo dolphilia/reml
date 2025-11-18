@@ -29,8 +29,8 @@ use reml_frontend::streaming::{
 use reml_frontend::typeck::{
     self, Constraint, DualWriteGuards, InstallConfigError, RecoverConfig, RuntimeCapability,
     StageContext, StageId, StageRequirement, StageTraceStep, TypeRowMode, TypecheckConfig,
-    TypecheckDriver, TypecheckMetrics, TypecheckReport, TypecheckViolation, TypecheckViolationKind,
-    TypedFunctionSummary,
+    TypecheckDriver, TypecheckMetrics, TypecheckReport, TypecheckViolation,
+    TypecheckViolationKind, TypedFunctionSummary, IteratorStageViolationInfo,
 };
 use serde::Serialize;
 
@@ -1561,6 +1561,9 @@ fn build_type_diagnostics(
                 flow,
                 violation.domain(),
             );
+            if let Some(info) = violation.iterator_stage.as_ref() {
+                apply_iterator_stage_metadata(&mut extensions, &mut metadata, info);
+            }
             let context = FormatterContext {
                 program_name: &args.program_name,
                 raw_args: &args.raw_args,
@@ -1943,6 +1946,62 @@ fn apply_residual_extension(
             "leaks": residuals,
             "count": residuals.len(),
         }),
+    );
+}
+
+fn apply_iterator_stage_metadata(
+    extensions: &mut serde_json::Map<String, Value>,
+    metadata: &mut serde_json::Map<String, Value>,
+    info: &IteratorStageViolationInfo,
+) {
+    let required_label = info.required.label();
+    let actual_label = info.actual.label();
+    let capability = info
+        .capability
+        .clone()
+        .unwrap_or_else(|| "core.iter.unknown".to_string());
+    let iterator_entry = json!({
+        "stage": {
+            "required": required_label,
+            "actual": actual_label,
+        },
+        "capability": capability,
+        "kind": info.kind,
+        "source": info.source,
+    });
+    extensions.insert("iterator.stage".to_string(), iterator_entry);
+
+    metadata.insert("iterator.stage.required".to_string(), json!(required_label));
+    metadata.insert("iterator.stage.actual".to_string(), json!(actual_label));
+    metadata.insert(
+        "iterator.stage.capability".to_string(),
+        json!(capability.clone()),
+    );
+    metadata.insert("iterator.stage.kind".to_string(), json!(info.kind.clone()));
+    metadata.insert(
+        "iterator.stage.source".to_string(),
+        json!(info.source.clone()),
+    );
+    metadata.insert(
+        "effect.stage.required".to_string(),
+        json!(required_label.clone()),
+    );
+    metadata.insert(
+        "effect.stage.actual".to_string(),
+        json!(actual_label.clone()),
+    );
+    metadata.insert("effect.capability".to_string(), json!(capability.clone()));
+    metadata.insert("capability.ids".to_string(), json!([capability.clone()]));
+    metadata.insert(
+        "effect.required_capabilities".to_string(),
+        json!([capability.clone()]),
+    );
+    metadata.insert(
+        "effect.stage.required_capabilities".to_string(),
+        json!([{
+            "id": capability,
+            "stage": required_label,
+        }]),
     );
 }
 

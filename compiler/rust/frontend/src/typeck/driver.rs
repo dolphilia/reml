@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use serde::Serialize;
 
 use super::capability::{CapabilityDescriptor, EffectUsage};
-use super::constraint::{Constraint, ConstraintSolver, Substitution};
+use super::constraint::{iterator, Constraint, ConstraintSolver, Substitution};
 use super::env::{StageRequirement, TypeEnv, TypecheckConfig};
 use super::metrics::TypecheckMetrics;
 use super::scheme::Scheme;
@@ -137,6 +137,10 @@ impl TypecheckDriver {
             eprintln!("[TRACE] typecheck.finish");
         }
 
+        let final_substitution = solver.substitution().clone();
+        let iterator_stage_violations =
+            detect_iterator_stage_mismatches(&dict_ref_drafts, &final_substitution, config);
+        violations.extend(iterator_stage_violations);
         violations.extend(detect_capability_violations(module, config));
         let violations = compress_typecheck_violations(violations);
 
@@ -147,8 +151,6 @@ impl TypecheckDriver {
                 _ => None,
             })
             .collect::<Vec<_>>();
-
-        let final_substitution = solver.substitution().clone();
         let dict_refs = dict_ref_drafts
             .into_iter()
             .enumerate()
@@ -204,6 +206,8 @@ pub struct TypecheckViolation {
     pub function: Option<String>,
     #[serde(skip_serializing)]
     expected: Option<ExpectedTokensSummary>,
+    #[serde(skip_serializing)]
+    pub iterator_stage: Option<IteratorStageViolationInfo>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -212,6 +216,16 @@ pub enum TypecheckViolationKind {
     AstUnavailable,
     ResidualLeak,
     StageMismatch,
+    IteratorStageMismatch,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct IteratorStageViolationInfo {
+    pub required: StageRequirement,
+    pub actual: StageRequirement,
+    pub capability: Option<String>,
+    pub kind: String,
+    pub source: String,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -251,6 +265,7 @@ impl TypecheckViolation {
             capability: None,
             function,
             expected: None,
+            iterator_stage: None,
         }
     }
 
@@ -268,6 +283,7 @@ impl TypecheckViolation {
             capability,
             function: None,
             expected: None,
+            iterator_stage: None,
         }
     }
 
@@ -296,6 +312,46 @@ impl TypecheckViolation {
             capability: Some(capability),
             function: None,
             expected: None,
+            iterator_stage: None,
+        }
+    }
+
+    fn iterator_stage_mismatch(
+        span: Option<Span>,
+        snapshot: iterator::IteratorStageSnapshot,
+        actual: StageRequirement,
+    ) -> Self {
+        let capability = snapshot
+            .capability
+            .clone()
+            .map(|cap| cap.to_string())
+            .unwrap_or_else(|| "core.iter.custom".to_string());
+        let required_label = snapshot.required.label();
+        let actual_label = actual.label();
+        let message = format!(
+            "Iterator `{}` はステージ `{}` を要求しますが、実行時ステージ `{}` では利用できません",
+            snapshot.source, required_label, actual_label
+        );
+        let note_message = format!(
+            "Iterator kind `{}` / capability `{}`",
+            snapshot.kind, capability
+        );
+        Self {
+            kind: TypecheckViolationKind::IteratorStageMismatch,
+            code: "typeclass.iterator.stage_mismatch",
+            message,
+            span,
+            notes: vec![ViolationNote::plain(note_message)],
+            capability: Some(capability.clone()),
+            function: None,
+            expected: None,
+            iterator_stage: Some(IteratorStageViolationInfo {
+                required: snapshot.required.clone(),
+                actual,
+                capability: Some(capability),
+                kind: snapshot.kind.clone(),
+                source: snapshot.source,
+            }),
         }
     }
 
@@ -311,6 +367,7 @@ impl TypecheckViolation {
             capability: None,
             function: None,
             expected: None,
+            iterator_stage: None,
         }
     }
 
@@ -318,9 +375,9 @@ impl TypecheckViolation {
         match self.kind {
             TypecheckViolationKind::ConditionLiteralBool
             | TypecheckViolationKind::AstUnavailable => "type",
-            TypecheckViolationKind::ResidualLeak | TypecheckViolationKind::StageMismatch => {
-                "effects"
-            }
+            TypecheckViolationKind::ResidualLeak
+            | TypecheckViolationKind::StageMismatch
+            | TypecheckViolationKind::IteratorStageMismatch => "effects",
         }
     }
 
@@ -861,6 +918,29 @@ fn detect_capability_violations(
                 Some(usage.span),
                 Some(descriptor.id().to_string()),
             ));
+        }
+    }
+    violations
+}
+
+fn detect_iterator_stage_mismatches(
+    dict_refs: &[DictRefDraft],
+    substitution: &Substitution,
+    config: &TypecheckConfig,
+) -> Vec<TypecheckViolation> {
+    let mut violations = Vec::new();
+    let runtime_stage = config.effect_context.runtime.clone();
+    for draft in dict_refs {
+        let ty = substitution.apply(&draft.ty);
+        if let Some(info) = iterator::solve_iterator(&ty) {
+            let snapshot = info.stage_snapshot();
+            if !runtime_stage.satisfies(&snapshot.required) {
+                violations.push(TypecheckViolation::iterator_stage_mismatch(
+                    Some(draft.span),
+                    snapshot,
+                    runtime_stage.clone(),
+                ));
+            }
         }
     }
     violations
