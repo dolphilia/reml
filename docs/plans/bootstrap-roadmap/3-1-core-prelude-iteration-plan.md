@@ -22,9 +22,30 @@
 ### 2. Option/Result 系 API 実装（35-36週目）
 **担当領域**: 失敗制御プリミティブ
 
+**成果物と出口条件**
+- `compiler/rust/runtime`（Prelude 用に新設する crate もしくは既存 crate の `core_prelude` モジュール）に `Option`/`Result`/`Never`/`Try` 相当の型とメソッド群を実装し、`compiler/rust/frontend/tests` へ追加するユニットテストで [docs/spec/3-1-core-prelude-iteration.md](../../spec/3-1-core-prelude-iteration.md) の挙動一覧を全件再現する。
+- `@must_use`、`effect {debug}` などの効果タグが [docs/spec/1-3-effects-safety.md](../../spec/1-3-effects-safety.md) の要件通りに宣言されていることを `scripts/validate-diagnostic-json.sh`・`tooling/ci/collect-iterator-audit-metrics.py` の静的検証で確認し、タグ漏れ 0 件を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に記録する。
+- panic 禁止テストと診断ハンドオフ結果を `reports/diagnostic-format-regression.md` へ差分なしで保存し、残課題がある場合は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ転記する。
+
+**主な依存資料**
+- 仕様・参照: `docs/spec/3-1-core-prelude-iteration.md`, `docs/spec/1-3-effects-safety.md`, `docs/spec/3-6-core-diagnostics-audit.md`
+- ベンチ/リスク: `docs/plans/rust-migration/3-2-benchmark-baseline.md`, `docs/plans/rust-migration/unified-porting-principles.md`, `docs/plans/bootstrap-roadmap/0-4-risk-handling.md`
+- 既存資産: `compiler/ocaml/src` 以下の Prelude 代替実装や `compiler/ocaml/tests` の `Result`/`Option` 利用箇所（`test_type_inference.ml`, `test_cli_diagnostics.ml` 等）
+
 2.1. `Option`/`Result`/`Never` 型と付随メソッド (`map`/`and_then`/`expect` など) を Reml で実装し、`@must_use` と効果タグを正しく付与する。
+- Rust 側では `#[must_use]` を型とメソッド戻り値に付与し、`expect`/`unwrap` 系は `effect {debug}` を `cfg(debug_assertions)` でラップする。`Never`（ZST）は `enum Never {}` で導入して `match` 展開を用いた発散伝播を確実にする。
+- 仕様の表形式を `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`（新規）へ機械可読に転記し、`cargo xtask prelude-audit`（仮称）で API 抜け漏れを検出する開発者タスクを追加。`Cargo.toml`/`build.rs` 更新内容は `docs-migrations.log` に併記する。
+- `compiler/rust/frontend/tests/core_prelude_option_result.rs` を作成し、`Some/None` × `Ok/Err` の16シナリオを snapshot で固定。旧 OCaml 実装（`compiler/ocaml/tests/test_type_inference.ml`）の挙動を比較用ログに保存し、差分理由を `docs/notes/core-library-outline.md` に追記する。
+
 2.2. `ensure`/`ensure_not_null` 等のユーティリティを組み込み、診断 (`Diagnostic`) への変換ヘルパと一緒に単体テストを整備する。
+- `ensure` は `Result<(), E>` を返す軽量 API として設計し、`Diagnostic` への `From`/`Into` 実装を同時に用意。`ensure_not_null` は `Option<T>` を即時 `Result<T, Diagnostic>` へ昇格させ、`docs/spec/3-6-core-diagnostics-audit.md` の `core.prelude.ensure_failed` キーを診断テーブルへ追加する。
+- `scripts/validate-diagnostic-json.sh` を Option/Result テストに組み込み、`compiler/rust/frontend/tests/diagnostics` の JSON と `reports/diagnostic-format-regression.md` を比較して差分をゼロ化。`tooling/ci/collect-iterator-audit-metrics.py` のメトリクスへ ensure 発火件数を追加する。
+- `examples/language-impl-comparison/` に `ensure` を利用した DSL サンプルを追加（別タスクでコード化）し、`docs/spec/3-0-core-library-overview.md`・`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` へ当該ユーティリティの有効化を脚注として記録する。
+
 2.3. 例外排除ポリシーを検証するため、Rust 実装で `panic`/`abort` を伴う経路を禁止するテストを作成し、期待差分を `0-3-audit-and-metrics.md` へ記録する。必要に応じて OCaml 実装の挙動を参考情報として添付するが、自動比較対象には含めない。
+- panic を許容するのは `effect {debug}` のみとし、CI で `cargo test --release -Z panic-abort-tests`（または `RUSTFLAGS="-C panic=abort"`）を追加。失敗時は `docs/plans/bootstrap-roadmap/4-5-backward-compat-checklist.md` に回帰として残す。
+- `compiler/rust/frontend/tests/panic_forbidden.rs`（`trybuild`/`ui` テスト想定）を追加し、`panic!` や `unwrap_unchecked` を利用した場合に `#[deny(panic_fmt)]` でコンパイルエラーを発生させる。例外的に `expect` を許容するルールはテストで明文化する。
+- 計測ログ（panic 経路検出・禁止件数）は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に KPI として追記し、集計コマンドと実行日時を `reports/spec-audit/ch0/links.md` フォーマットで参照可能にする。
 
 ### 3. Iter コア構造と Collectors（36-37週目）
 **担当領域**: 遅延列基盤
