@@ -66,3 +66,7 @@ opt --version
 - どうしても権限を付与できない環境では `REML_ADAPTER_SKIP_NETWORK_TESTS=1 cargo test --manifest-path compiler/rust/adapter/Cargo.toml` としてネットワーク試験のみをスキップできます。監査目的で強制的に実行したい場合は `REML_ADAPTER_FORCE_NETWORK_TESTS=1` を併用し、スキップ設定を上書きしてください。
 - ネットワーク試験をスキップした場合は `reports/adapter/` に記録される監査ログから `adapter.net` 系メトリクスが欠落するため、週次の非サンドボックス Runner（例: self-hosted macOS/Linux）でフルテストを走らせ、`docs/plans/bootstrap-roadmap/2-8-spec-integrity-audit.md` の差分リストへ反映することを推奨します。
 このような手順を README に残し、macOS 開発者が `cargo build` で Rust 版をローカル再現できる状態を早めることで P2 以降の Windows/Linux 連携を支える土台とします。
+
+## xtask コマンド
+- `.cargo/config.toml` で `cargo xtask prelude-audit` を `compiler/rust/xtask` に紐づけている。`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` を検証する場合は `cargo xtask prelude-audit --wbs 2.1b --strict --baseline docs/spec/3-1-core-prelude-iteration.md` を実行し、`reports/spec-audit/ch0/links.md` に結果を貼り付ける。
+- `--wbs` フィルタを変更すれば Phase 3 の他タスク（例: `2.2a`）に関する項目だけを抽出できる。未実装が存在する状態で `--strict` を付けた場合は非ゼロ終了となるため、CI やローカルゲートで利用する。

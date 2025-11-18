@@ -31,3 +31,4 @@
 2. Tier 1（3.4〜3.6）で共有語彙 (`Diagnostic`, `audit_id`, `Duration`, `Path` 等) の共通フォーマットを明文化し、ガイドからの参照を誘導する。
 3. Config/Data/Runtime の本文再配置時に差分追跡ルール（リネーム方針、旧リンク対応）を明記するためのドラフトテンプレートを作成する。
 4. Async/FFI/Unsafe（3.9）については、効果タグと安全境界の互換性調査メモを用意し、レビュー対象とする範囲を確定する。
+5. 2025-11-18 時点で `cargo xtask prelude-audit --wbs 2.1b --strict --baseline docs/spec/3-1-core-prelude-iteration.md` を実行し、`core_prelude_option_result.{rs,snap}` の 16 シナリオ結果と `prelude_api_inventory.toml` の `rust_status=implemented` を `reports/spec-audit/ch0/links.md` に記録した。WBS 2.2 以降の項目は `wbs` フィルタで未実装として追跡を継続する。

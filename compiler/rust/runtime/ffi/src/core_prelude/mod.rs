@@ -13,4 +13,4 @@ pub mod try_support;
 pub use never::Never;
 pub use option::Option;
 pub use result::Result;
-pub use try_support::{Try, TryContext};
+pub use try_support::{ControlFlow, Try, TryContext};

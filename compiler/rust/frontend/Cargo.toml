@@ -34,3 +34,4 @@ reml_adapter = { path = "../adapter" }
 
 [dev-dependencies]
 tempfile = "3.9"
+reml_runtime_ffi = { path = "../runtime/ffi", features = ["core_prelude"] }

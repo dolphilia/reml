@@ -2,6 +2,12 @@
 
 実行コマンド: `python3 - <<SCRIPT ...`（カスタムスクリプトで Markdown リンクの存在確認を実施）。
 
+## Prelude 実装ログ
+
+| コマンド | 結果 | 備考 |
+| --- | --- | --- |
+| `cargo xtask prelude-audit --wbs 2.1b --strict --baseline docs/spec/3-1-core-prelude-iteration.md` | ✅ | `prelude_api_inventory.toml` の Option/Result 16 API が `rust_status=implemented`。`compiler/rust/frontend/tests/core_prelude_option_result.snap` の 16 シナリオ参照とリンク |
+
 | ファイル | リンク | 存在 | 備考 |
 |---------|--------|------|------|
 | `docs/spec/0-0-overview.md` | `../../reports/diagnostic-format-regression.md` | ✅ | - |

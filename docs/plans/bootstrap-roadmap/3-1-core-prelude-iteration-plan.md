@@ -34,8 +34,8 @@
 
 2.1. `Option`/`Result`/`Never` 型と付随メソッド (`map`/`and_then`/`expect` など) を Reml で実装し、`@must_use` と効果タグを正しく付与する。
 - Rust 側では `#[must_use]` を型とメソッド戻り値に付与し、`expect`/`unwrap` 系は `effect {debug}` を `cfg(debug_assertions)` でラップする。`Never`（ZST）は `enum Never {}` で導入して `match` 展開を用いた発散伝播を確実にする。
-- 仕様の表形式を `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`（新規）へ機械可読に転記し、`cargo xtask prelude-audit`（仮称）で API 抜け漏れを検出する開発者タスクを追加。`Cargo.toml`/`build.rs` 更新内容は `docs-migrations.log` に併記する。
-- `compiler/rust/frontend/tests/core_prelude_option_result.rs` を作成し、`Some/None` × `Ok/Err` の16シナリオを snapshot で固定。旧 OCaml 実装（`compiler/ocaml/tests/test_type_inference.ml`）の挙動を比較用ログに保存し、差分理由を `docs/notes/core-library-outline.md` に追記する。
+- 仕様の表形式を `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`（新規）へ機械可読に転記し、`.cargo/config.toml` で `cargo xtask prelude-audit` を定義して API 抜け漏れを自動検出する。`--wbs 2.1b --strict` を既定フィルタとし、実行結果は `reports/spec-audit/ch0/links.md` にも記録する。
+- `compiler/rust/frontend/tests/core_prelude_option_result.rs` / `.snap` を作成し、`Some/None` × `Ok/Err` の 16 シナリオを snapshot で固定。旧 OCaml 実装（`compiler/ocaml/tests/test_type_inference.ml`）の挙動差分は `docs/notes/core-library-outline.md` に追記する。
 
 2.2. `ensure`/`ensure_not_null` 等のユーティリティを組み込み、診断 (`Diagnostic`) への変換ヘルパと一緒に単体テストを整備する。
 - `ensure` は `Result<(), E>` を返す軽量 API として設計し、`Diagnostic` への `From`/`Into` 実装を同時に用意。`ensure_not_null` は `Option<T>` を即時 `Result<T, Diagnostic>` へ昇格させ、`docs/spec/3-6-core-diagnostics-audit.md` の `core.prelude.ensure_failed` キーを診断テーブルへ追加する。
@@ -52,11 +52,13 @@
 | WBS | サブタスク | 入力/依存 | 成果物 | 検証/ログ | 担当 | 期限 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 2.1a | `compiler/rust/runtime` に Prelude 揮発モジュールを新設し、`Cargo.toml` へ feature `core_prelude` を追加 | `docs/spec/3-1-core-prelude-iteration.md`, `compiler/rust/frontend/src/lib.rs` | `core_prelude` module skeleton、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の雛形 | `cargo check`, `docs-migrations.log` へ追記 | Rust Impl チーム | 35週目末 |
-| 2.1b | `Option`/`Result`/`Never` API を実装し、16 シナリオ snapshot と `cargo xtask prelude-audit` プロトタイプを追加 | `docs/spec/3-1-core-prelude-iteration.md:21-120`, `compiler/ocaml/tests/test_type_inference.ml` | `core_prelude_option_result.rs`, `xtask/src/prelude_audit.rs` | `cargo test core_prelude_option_result`, `cargo xtask prelude-audit --strict` | Core Library チーム | 36週目前半 |
+| 2.1b | `Option`/`Result`/`Never` API を実装し、16 シナリオ snapshot と `cargo xtask prelude-audit` プロトタイプを追加 | `docs/spec/3-1-core-prelude-iteration.md:21-120`, `compiler/ocaml/tests/test_type_inference.ml` | `core_prelude_option_result.rs/.snap`, `xtask/src/main.rs` | `cargo test core_prelude_option_result`, `cargo xtask prelude-audit --wbs 2.1b --strict` | Core Library チーム | 36週目前半 |
 | 2.2a | `ensure`/`ensure_not_null` を実装し、`Diagnostic` 変換と `core.prelude.ensure_failed` キーを登録 | `docs/spec/3-6-core-diagnostics-audit.md:210-260`, `tooling/ci/collect-iterator-audit-metrics.py` | `compiler/rust/runtime/src/prelude/ensure.rs`, `docs/spec/3-6-core-diagnostics-audit.md` 脚注更新案 | `scripts/validate-diagnostic-json.sh`, `reports/diagnostic-format-regression.md` 比較 | Diagnostics チーム | 36週目前半 |
 | 2.2b | `examples/language-impl-comparison/` の DSL サンプルと `docs/spec/3-0-core-library-overview.md` の脚注を更新 | `docs/spec/3-0-core-library-overview.md`, `examples/language-impl-comparison/` | DSL サンプル、脚注リンク、`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` の更新案 | `cargo run --example ensure_dsl`, サンプルログ | Docs チーム | 36週目後半 |
 | 2.3a | panic 禁止 UI テストと `#[deny(panic_fmt)]` lint を導入 | `docs/spec/1-3-effects-safety.md`, `docs/plans/rust-migration/unified-porting-principles.md` | `compiler/rust/frontend/tests/panic_forbidden.rs`, `.cargo/config.toml` lint 設定案 | `cargo test panic_forbidden`, `RUSTFLAGS=\"-Dpanic_fmt\"` | Core Library チーム | 36週目後半 |
 | 2.3b | `0-3-audit-and-metrics.md`/`4-5-backward-compat-checklist.md` への KPI・回帰項目追加 | `reports/diagnostic-format-regression.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` | KPI 記録・回帰トラッキングチケット | KPI CSV 更新、監査ログ照合作業メモ | QA/PM | 36週目末 |
+
+> 実装補足: `compiler/rust/frontend/tests/core_prelude_option_result.{rs,snap}` で 16 シナリオ snapshot を維持し、`cargo xtask prelude-audit --wbs 2.1b --strict --baseline docs/spec/3-1-core-prelude-iteration.md` の出力を `reports/spec-audit/ch0/links.md` に貼り付ける運用とする。`prelude_api_inventory.toml` には `wbs` フィールドを追加しており、`2.2a` 以降の未実装項目は `--wbs` フィルタにより `strict` 判定から除外できる。
 
 #### 2. Option/Result 完了条件
 - 仕様由来の API 一覧が `prelude_api_inventory.toml` と `cargo xtask prelude-audit` で自動検証され、CI の nightly run で欠落が 0 件である（結果を `0-3-audit-and-metrics.md` に記録）。
