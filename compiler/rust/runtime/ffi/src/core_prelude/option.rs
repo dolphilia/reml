@@ -124,7 +124,7 @@ impl<T> Try for Option<T> {
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             Self::Some(value) => ControlFlow::Continue(value),
-            Self::None => ControlFlow::Break(None),
+            Self::None => ControlFlow::Break(Option::None),
         }
     }
 }

@@ -1,5 +1,10 @@
-use super::{option::Option, result::Result};
+use super::{
+    option::Option as RemlOption,
+    result::Result as RemlResult,
+};
 use serde_json::{Map, Value};
+
+type StdOption<T> = std::option::Option<T>;
 
 const GUARD_EXTENSION_KEY: &str = "prelude.guard";
 const GUARD_AUDIT_PREFIX: &str = "core.prelude.guard.";
@@ -29,9 +34,9 @@ impl PreludeGuardKind {
 pub struct PreludeGuardMetadata {
     kind: PreludeGuardKind,
     trigger: String,
-    pointer_class: Option<String>,
-    stage: Option<String>,
-    module_path: Option<String>,
+    pointer_class: StdOption<String>,
+    stage: StdOption<String>,
+    module_path: StdOption<String>,
 }
 
 impl PreludeGuardMetadata {
@@ -40,27 +45,27 @@ impl PreludeGuardMetadata {
         Self {
             kind,
             trigger: trigger.into(),
-            pointer_class: None,
-            stage: None,
-            module_path: None,
+            pointer_class: StdOption::None,
+            stage: StdOption::None,
+            module_path: StdOption::None,
         }
     }
 
     /// Guard を発火させた呼び出し元モジュール名を設定する。
     pub fn with_module_path(mut self, module_path: impl Into<String>) -> Self {
-        self.module_path = Some(module_path.into());
+        self.module_path = StdOption::Some(module_path.into());
         self
     }
 
     /// Guard が扱うポインタの種類を設定する（例: `ffi` / `plugin` / `core`）。
     pub fn with_pointer_class(mut self, class: impl Into<String>) -> Self {
-        self.pointer_class = Some(class.into());
+        self.pointer_class = StdOption::Some(class.into());
         self
     }
 
     /// Stage 要件を記録する。
     pub fn with_stage(mut self, stage: impl Into<String>) -> Self {
-        self.stage = Some(stage.into());
+        self.stage = StdOption::Some(stage.into());
         self
     }
 
@@ -77,7 +82,10 @@ impl PreludeGuardMetadata {
         );
         obj.insert(
             "stage".into(),
-            self.stage.clone().map(Value::String).unwrap_or(Value::Null),
+            self.stage
+                .clone()
+                .map(Value::String)
+                .unwrap_or(Value::Null),
         );
         obj.insert(
             "module".into(),
@@ -108,7 +116,10 @@ impl PreludeGuardMetadata {
         );
         metadata.insert(
             format!("{GUARD_AUDIT_PREFIX}stage"),
-            self.stage.clone().map(Value::String).unwrap_or(Value::Null),
+            self.stage
+                .clone()
+                .map(Value::String)
+                .unwrap_or(Value::Null),
         );
         metadata.insert(
             format!("{GUARD_AUDIT_PREFIX}module"),
@@ -230,7 +241,7 @@ impl IntoDiagnostic for EnsureError {
 #[derive(Debug, Clone)]
 pub struct EnsureErrorBuilder {
     metadata: PreludeGuardMetadata,
-    message: Option<String>,
+    message: StdOption<String>,
 }
 
 impl EnsureErrorBuilder {
@@ -238,13 +249,13 @@ impl EnsureErrorBuilder {
     pub fn new(kind: PreludeGuardKind, trigger: impl Into<String>) -> Self {
         Self {
             metadata: PreludeGuardMetadata::new(kind, trigger),
-            message: None,
+            message: StdOption::None,
         }
     }
 
     /// エラーメッセージを上書きする。
     pub fn message(mut self, message: impl Into<String>) -> Self {
-        self.message = Some(message.into());
+        self.message = StdOption::Some(message.into());
         self
     }
 
@@ -279,22 +290,22 @@ impl EnsureErrorBuilder {
 
 /// `ensure` ヘルパ。
 #[inline]
-pub fn ensure<E>(condition: bool, err: impl FnOnce() -> E) -> Result<(), E> {
+pub fn ensure<E>(condition: bool, err: impl FnOnce() -> E) -> RemlResult<(), E> {
     if condition {
-        Result::Ok(())
+        RemlResult::Ok(())
     } else {
-        Result::Err(err())
+        RemlResult::Err(err())
     }
 }
 
 /// `ensure_not_null` ヘルパ。
 #[inline]
 pub fn ensure_not_null<T, E>(
-    value: Option<T>,
+    value: RemlOption<T>,
     err: impl FnOnce() -> E,
-) -> Result<T, E> {
+) -> RemlResult<T, E> {
     match value {
-        Option::Some(value) => Result::Ok(value),
-        Option::None => Result::Err(err()),
+        RemlOption::Some(value) => RemlResult::Ok(value),
+        RemlOption::None => RemlResult::Err(err()),
     }
 }
