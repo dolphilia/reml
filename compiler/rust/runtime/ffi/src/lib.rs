@@ -16,6 +16,8 @@ use std::{
 mod audit;
 mod capability_handle;
 mod capability_metadata;
+#[cfg(feature = "core_prelude")]
+pub mod core_prelude;
 mod env;
 mod ffi_contract;
 mod manifest_contract;

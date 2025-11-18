@@ -1,0 +1,64 @@
+# Reml Core Prelude API インベントリ（雛形）
+# - 参照仕様: docs/spec/3-1-core-prelude-iteration.md
+# - 目的: Option/Result/Iter API の実装状況を機械可読に追跡する
+# - スキーマ: v0 (WBS 2.1a 時点の暫定)
+
+[meta]
+schema = "core_prelude_api_inventory/v0"
+spec = "docs/spec/3-1-core-prelude-iteration.md"
+last_updated = "WBS 2.1a"
+maintainer = "Core Library Team"
+
+[[api]]
+module = "Option"
+name = "map"
+effect = "@pure"
+stage = "draft"
+rust_status = "skeleton-only"
+ocaml_status = "not_applicable"
+notes = "WBS 2.1b で `effect {debug}` / `@must_use` を再確認する"
+
+[[api]]
+module = "Option"
+name = "and_then"
+effect = "@pure"
+stage = "draft"
+rust_status = "skeleton-only"
+ocaml_status = "not_applicable"
+notes = "チェイン演算子（`flat_map`）のサンプルコードを反映予定"
+
+[[api]]
+module = "Option"
+name = "expect"
+effect = "effect {debug}"
+stage = "draft"
+rust_status = "pending"
+ocaml_status = "runtime-only"
+notes = "panic 禁止ポリシーに合わせ `cfg(debug_assertions)` を付与予定"
+
+[[api]]
+module = "Result"
+name = "map"
+effect = "@pure"
+stage = "draft"
+rust_status = "skeleton-only"
+ocaml_status = "typeck-only"
+notes = "型推論の `Result.map` 呼び出しを Rust へ移行後に同期"
+
+[[api]]
+module = "Result"
+name = "map_err"
+effect = "@pure"
+stage = "draft"
+rust_status = "skeleton-only"
+ocaml_status = "typeck-only"
+notes = "`ensure_not_null` 系と併せてユニットテストを作成"
+
+[[api]]
+module = "Result"
+name = "ensure"
+effect = "@pure"
+stage = "draft"
+rust_status = "pending"
+ocaml_status = "not_available"
+notes = "`docs/spec/3-1-core-prelude-iteration.md` の Guard 節に基づき設計"

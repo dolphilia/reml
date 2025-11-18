@@ -9,6 +9,10 @@ build = "build.rs"
 name = "reml_runtime_ffi"
 path = "src/lib.rs"
 
+[features]
+default = []
+core_prelude = []
+
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
