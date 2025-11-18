@@ -95,6 +95,23 @@
 - `compiler/rust/frontend/src/typeck/constraint/iterator.rs`（新規）で `IteratorDictInfo` を導入し、`Iter` を要求する型クラス拘束に `stage`, `capability`, `kind` を埋める。辞書生成時に `Diagnostic.extensions["iterator.stage.required"]` へ書き込み、`collect-iterator-audit-metrics.py` が参照する JSON のキーを `effect.stage.iterator.*` で統一する。
 - `core_iter_pipeline.rs` テストでは `Iter::from_list |> Iter::map |> Iter.collect_list`/`Iter::try_fold` の 6 シナリオを snapshot 化し、`reports/diagnostic-format-regression.md` で差分監視。`compiler/ocaml/tests/test_type_inference.ml` の `iterator_kind` 出力と結果を比較し、差分は `docs/notes/core-library-outline.md` へ記録する。
 
+##### WBS 3.1a 実装指針とタスク詳細
+
+| フェーズ | 目的 | 主要作業 | 成果物 / 記録 | 検証手段 |
+| --- | --- | --- | --- | --- |
+| ✅ F0 仕様精査 | `Iter` の 3 層構造と `effect` 契約を仕様と型推論の両面で確認する | `docs/spec/3-1-core-prelude-iteration.md` および `compiler/ocaml/src/constraint_solver.ml`（`solve_iterator`）を突き合わせ、`IterStep` が保持する `effect`/`stage`/`capability` 情報を抽出する | `docs/notes/core-library-outline.md`（Iter セクション）へのメモ、`reports/spec-audit/ch0/links.md` の参照ログ | ドキュメントレビュー、`cargo doc -p core_prelude` |
+| ✅ F1 実装スキャフォールド | `compiler/rust/runtime/src/prelude/iter/mod.rs` に `Iter`, `IterState`, `IterSeed`, `IterSource`, `IterStep` を定義し、`EffectMarker` の付与点を明示する | `IterState` 骨格、`IterStep::effect_set`、`Iter::from_state`/`Iter::new_seed` API、`EffectMarker` コメント | `docs-migrations.log` への Prelude/Iter 追記、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` への `module = "Iter"` 追加 | `cargo check -p core_prelude`, `cargo fmt` |
+| F2 トレイト/Typeck 統合 | `FromIterator`/`IntoIterator` 実装と `IteratorDictInfo` を提供し、診断の `effect.stage.iterator.*` を Rust 実装で生成する | `IterIntoStd<T>`/`IterFromStd<T>` アダプタ、`compiler/rust/frontend/src/typeck/constraint/iterator.rs`（新規）、`collect-iterator-audit-metrics.py` の `iterator.dict` 列 | `reports/spec-audit/ch0/links.md` に `collect-iterator-audit --section iter` ログ、`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` M1 更新メモ | `cargo test core_iter_pipeline`, `scripts/validate-diagnostic-json.sh` |
+| F3 スナップショット/KPI | 6 シナリオ snapshot と KPI 更新を行い、Chapter 3.1 の指標を Phase 3 帳票へ接続する | `compiler/rust/frontend/tests/core_iter_pipeline.rs/.snap`, `collect-iterator-audit` 吐き出し、`0-3-audit-and-metrics.md` の `iterator.stage.audit_pass_rate` 更新 | `reports/spec-audit/ch0/links.md` にテスト/監査ログ、`docs/notes/core-library-outline.md` 差分記録 | `cargo test core_iter_pipeline -- --nocapture`, `collect-iterator-audit-metrics.py --module iter` |
+
+- **F1 進捗メモ（2025-W36 着手）**: `compiler/rust/runtime/src/prelude/iter/mod.rs` を新設し、`Iter`/`IterState`/`IterSeed` と `IterStep` の骨格を `Arc<IterState<T>>` 共有モデルで実装。`EffectSet` と `IteratorStageProfile`（`StageRequirement::{Exact, AtLeast}` + Capability）を用意し、`iterator.effect.*`／`effect.stage.iterator.*` のダイアグノスティクス整合を確認できる API (`stage_snapshot`, `effect_labels`) を追加した。
+
+- **進行順序**: F0→F1→F2→F3 を 36〜37 週目の 2 スプリントで完了し、フェーズ完了ごとに `docs-migrations.log` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` の `M1` セクションへステータスを記録する。
+- **効果タグ運用**: `IterStep` へ `bitflags` 化した `EffectSet` を保持させ、アダプタは `IterState::with_effects` を経由してタグを合成する。`collect-iterator-audit` で `iterator.effect.debug = 0` を維持することを KPI とする。
+- **型推論連携**: `IteratorDictInfo` は `stage`, `capability`, `kind`, `source` を JSON として `Diagnostic.extensions["iterator.stage.required"]` に書き出し、OCaml 版 `iterator_kind` と同一のログが得られるようにする。差分は `docs/notes/core-library-outline.md` に控え、必要なら `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へリンクする。
+- **テスト/監査ログ**: `core_iter_pipeline.rs` 実行と `collect-iterator-audit --section iter` の結果は `reports/spec-audit/ch0/links.md` へ貼り付け、`0-3-audit-and-metrics.md` の `iterator.stage.audit_pass_rate` を更新する。Snapshot 生成時は `scripts/validate-diagnostic-json.sh` を必須ステップにする。
+- **完了判定**: `cargo xtask prelude-audit --section iter --strict` が差分 0、`collect-iterator-audit-metrics.py` が `iterator.stage.audit_pass_rate = 1.0` を報告し、`core_iter_pipeline` 実行時間が `docs/plans/rust-migration/3-2-benchmark-baseline.md` の Phase 2 値 ±10% 以内である場合に WBS 3.1a をクローズする。
+
 3.2. `Collector` トレイトと標準コレクタ（WBS 3.1b）
 - `compiler/rust/runtime/src/prelude/collectors/mod.rs` を作成し、仕様どおりの `Collector<T, C>` トレイトと `type Error: IntoDiagnostic` 制約を定義。`with_capacity`/`reserve` は `effect {mem}` を伴うため `#[cfg_attr]` で `EffectMarker` を付与する。
 - `ListCollector`/`VecCollector`/`MapCollector`/`SetCollector`/`StringCollector` をそれぞれ `@pure` / `effect {mut}` / `effect {mem}` の組み合わせに沿って実装。`VecCollector` では `Result<Vec<T>, CollectError>` を返し、`CollectError` は `MemoryError`/`DuplicateKey`/`InvalidEncoding` 等のバリアントを備える。

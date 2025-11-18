@@ -8,6 +8,13 @@
 | --- | --- | --- |
 | `cargo xtask prelude-audit --wbs 2.1b --strict --baseline docs/spec/3-1-core-prelude-iteration.md` | ✅ | `prelude_api_inventory.toml` の Option/Result 16 API が `rust_status=implemented`。`compiler/rust/frontend/tests/core_prelude_option_result.snap` の 16 シナリオ参照とリンク |
 
+### Iter F0 整合ログ（WBS 3.1a）
+
+| コマンド | 結果 | 備考 |
+| --- | --- | --- |
+| `sed -n '200,360p' docs/spec/3-1-core-prelude-iteration.md` | ✅ | `IteratorDictInfo` が `StageRequirement`/`CapabilityId`/`effect.stage.iterator.*` を必須と定義していることを再確認（Iter F0）。 |
+| `sed -n '360,520p' compiler/ocaml/src/constraint_solver.ml` | ✅ | `solve_iterator` が `IteratorKind` ごとに `stage_requirement`/`stage_actual`/`capability` を埋める既存実装を確認。Rust 側 `IteratorDictInfo` の仕様化根拠として記録。 |
+
 | ファイル | リンク | 存在 | 備考 |
 |---------|--------|------|------|
 | `docs/spec/0-0-overview.md` | `../../reports/diagnostic-format-regression.md` | ✅ | - |
