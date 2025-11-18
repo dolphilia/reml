@@ -99,6 +99,12 @@
 - 差分の計算と ±5% 判定
 - 性能劣化箇所の特定
 
+3.5. **Core Prelude 回帰監視（WBS 2.3b）**
+- `cargo xtask prelude-audit --strict --wbs 2.1b --baseline docs/spec/3-1-core-prelude-iteration.md` を Cellf-host パイプラインに追加し、`core_prelude.missing_api` を 0 で固定する。実行ログは `reports/spec-audit/ch0/links.md#core_prelude` と `reports/spec-audit/ch0/core_prelude_kpi.csv` に保存し、`0-3-audit-and-metrics.md` の KPI 表と突き合わせる。
+- `RUSTFLAGS="-Dnon-fmt-panics -Z panic-abort-tests" cargo test core_prelude_option_result panic_forbidden` を Windows/macOS/Linux すべてで実行し、`core_prelude.panic_path` を 0 で維持する。`scripts/validate-diagnostic-json.sh` → `reports/diagnostic-format-regression.md` で差分が無いことを確認し、`effect {debug}` 経路以外の `panic!`/`unwrap_unchecked` を検出した場合は即ブロックする。
+- `tooling/ci/collect-iterator-audit-metrics.py --section prelude-guard --require-success --export-csv reports/spec-audit/ch0/core_prelude_kpi.csv` を Nightly CI に含め、`core_prelude.guard.failures` を 0 で維持する。計測値 > 0 または panic 経路検出時は `0-4-risk-handling.md#core-prelude-guard` と本書 §5 の改善タスクへ転記する。
+- 回帰が発生した場合は `reports/spec-audit/ch0/core_prelude_kpi.csv` へ失敗サンプルを残し、`WBS 2.3b` と同じフォーマットで `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` の進行状況欄へ即日フィードバックする。
+
 **成果物**: ターゲット別検証結果、IR一致率データ、診断比較データ、性能測定データ
 
 ### 4. レビュー会議と判定（86週目前半）

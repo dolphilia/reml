@@ -1,0 +1,2 @@
+timestamp,core_prelude.missing_api,core_prelude.guard.failures,core_prelude.panic_path,notes
+2027-01-19T09:00:00Z,0,0,0,"cargo xtask prelude-audit --strict --wbs 2.1b && cargo test core_prelude_option_result panic_forbidden"
