@@ -42,6 +42,7 @@
 12. **Basic言語インタープリタ** (`basic_interpreter.*`)
 13. **Pratt Parser実装** (`pratt_parser.*`)
 14. **Hindley-Milner型推論器** (`hindley_milner.*`)
+15. **Prelude Guard テンプレート DSL** (`prelude_guard_template.*`): `ensure` と `ensure_not_null` によるテンプレート検証と診断出力の例
 
 Reml 版は仕様記述に合わせて `reml` 言語タグのコードブロックを用いています。他言語のサンプルはコンパイル可能な構造を意識しつつも、比較のため読みやすさを優先した最小実装に留めています。
 
