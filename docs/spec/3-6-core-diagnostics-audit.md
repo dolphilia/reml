@@ -477,6 +477,40 @@ pub type RestartBudgetDigest = {
 - LSP/CLI は `SupervisorDiagnosticExtension.exhausted` を閾値判定の入力に利用し、`async.supervisor.restart` が一定回数以上発生した場合に自動で Quick Fix（再起動予算の見直し）を提示することが推奨される。
 - `async.supervisor.escalation` は 0-1 §1.2 の安全性を損なう潜在リスクとして扱い、`RunConfig.extensions["supervisor"].escalation_policy` が存在しない環境では `Severity::Error` に昇格させる。監査レポートでは `async.supervisor.strategy` と `CapabilityRegistry::stage_of` を突き合わせ、未承認の Stage へ再起動が波及していないかを確認する。
 
+### 2.6 Core Prelude ガード診断 {#diagnostic-core-prelude}
+
+`Core.Prelude` の `ensure` / `ensure_not_null`（[3-1-core-prelude-iteration.md](3-1-core-prelude-iteration.md) §2.2）の呼び出しが `Err` を返した場合、ランタイムは `core.prelude.ensure_failed` 診断を構築して監査へ報告する。これらの API は `@pure` な `Result` を返し、呼び出し側が `?` で早期復帰するだけで診断記録を残せるため、例外禁止ポリシー（0-1 §1.2）と監査要件（0-1 §2.2）を同時に満たすための標準パターンである。
+
+| `Diagnostic.code` | 既定 Severity | 発生条件 | 監査メタデータ | 推奨対応 |
+| --- | --- | --- | --- | --- |
+| `core.prelude.ensure_failed` | Error（`Stage=Experimental` の場合は Warning へダウングレード可） | `ensure` の条件式が偽、または `ensure_not_null` へ `None` が渡された | `core.prelude.guard.kind` / `core.prelude.guard.trigger` / `core.prelude.guard.pointer_class` / `core.prelude.guard.stage` / `core.prelude.guard.module` | 条件式を満たすよう入力を正す、もしくは guard 自体を Stage 要件に合わせて書き換える。FFI 由来の `None` は `RuntimeCapability::FfiBridge` の契約を再確認する。 |
+
+`core.prelude.ensure_failed` の診断は `Diagnostic.domain = DiagnosticDomain::Runtime` を既定とし、`Diagnostic.extensions["prelude.guard"]` に次の構造体を保存する。
+
+```reml
+type PreludeGuardExtension = {
+  kind: PreludeGuardKind,        // ensure | ensure_not_null
+  trigger: Str,                  // 失敗した条件式や識別子
+  pointer_class: Option<Str>,    // ffi | plugin | core など
+  stage: Option<Stage>,          // Stage Requirement が紐付く場合
+  module_path: Option<Str>,      // `Core.Prelude.ensure` の呼び出し元モジュール
+}
+
+enum PreludeGuardKind = Ensure | EnsureNotNull
+```
+
+監査ログでは同じ情報を `AuditEnvelope.metadata` の `core.prelude.guard.*` キーとして必須保存する。キーごとの規約は以下の通り。
+
+| 監査キー | 値の型 | 生成規則 |
+| --- | --- | --- |
+| `core.prelude.guard.kind` | `Json.String` | `PreludeGuardExtension.kind` を `snake_case` 化（`ensure`, `ensure_not_null`）。 |
+| `core.prelude.guard.trigger` | `Json.String` | 失敗した条件式・識別子・ポインタ名。`ensure(cond, ..)` は `cond` を文字列化し、`ensure_not_null(ptr, ..)` は `ptr` 名と呼び出し元を `::` で連結する。 |
+| `core.prelude.guard.pointer_class` | `Json.String` / `Json.Null` | `None` でなければ `ffi`/`plugin`/`core` などの分類を格納。FFI で取得したポインタの場合は `ffi` を必須化し、`tooling/ci/collect-iterator-audit-metrics.py --section prelude-guard` が統計に利用する。 |
+| `core.prelude.guard.stage` | `Json.String` / `Json.Null` | `ensure` が Stage 要件（例: `StageRequirement::AtLeast(Beta)`) と共に利用された場合、その Stage 名を記録。条件が Stage 非依存なら `Null`。 |
+| `core.prelude.guard.module` | `Json.String` | `ModulePath::display()` の結果。スクリプト／DSL で guard を使う場合は仮想モジュール名（例: `dsl.examples.ensure`）を与える。 |
+
+`scripts/validate-diagnostic-json.sh` は上記キーの存在を検証し、欠落時は CI を失敗させる。Nightly CI の `tooling/ci/collect-iterator-audit-metrics.py --section prelude-guard --require-success` は `core_prelude.guard.failures` と `core_prelude.guard.ensure_not_null` カウンタを集計し、`reports/spec-audit/ch0/links.md` に JSON 結果をリンクさせることで `Phase 3 M1` の KPI（`core_prelude.guard` セクション）を監査する。
+
 ## 3. 監査ログ出力
 
 ```reml

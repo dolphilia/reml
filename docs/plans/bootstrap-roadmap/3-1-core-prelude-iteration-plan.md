@@ -60,6 +60,12 @@
 
 > 実装補足: `compiler/rust/frontend/tests/core_prelude_option_result.{rs,snap}` で 16 シナリオ snapshot を維持し、`cargo xtask prelude-audit --wbs 2.1b --strict --baseline docs/spec/3-1-core-prelude-iteration.md` の出力を `reports/spec-audit/ch0/links.md` に貼り付ける運用とする。`prelude_api_inventory.toml` には `wbs` フィールドを追加しており、`2.2a` 以降の未実装項目は `--wbs` フィルタにより `strict` 判定から除外できる。
 
+##### WBS 2.2a 実装方針（`ensure` 系ユーティリティ）
+- **API と変換規約**: `compiler/rust/runtime/src/prelude/ensure.rs` に `ensure(cond: Bool, err: () -> E) -> Result<(), E>` と `ensure_not_null<T>(ptr: Option<T>, err: () -> E) -> Result<T, E>` をまとめ、`E: IntoDiagnostic` を必須化する。`EnsureGuard` のような軽量構造で `@must_use` を維持し、`Result<(), Diagnostic>` への昇格を `impl From<EnsureError> for Diagnostic` で吸収する。panic 禁止方針に合わせ、`effect {debug}` を伴う `expect` 系とは別レイヤで `?` オペレーターに接続する。
+- **診断キーとメタデータ**: `core.prelude.ensure_failed` を `docs/spec/3-6-core-diagnostics-audit.md` に追加し、`Diagnostic.domain = Runtime`・Severity=Error を既定とする。`Diagnostic.extensions["prelude.guard"]` と `AuditEnvelope.metadata["core.prelude.guard.*"]` に `kind`（`ensure`/`ensure_not_null`）、`trigger`（失敗した条件式や識別子）、`pointer_class`（`ffi`/`plugin`/`core` 等）、`stage`（Stage Requirement がある場合）を必須記録し、`scripts/validate-diagnostic-json.sh` で欠落を検知する。
+- **メトリクスと CI 連動**: `tooling/ci/collect-iterator-audit-metrics.py` を拡張し、`core.prelude.ensure_failed` を読み取って `core_prelude.guard.failures`／`core_prelude.guard.ensure_not_null` といったカウンタを JSON に書き出す。Nightly CI では `--require-success --section prelude-guard` を追加し、結果リンクを `reports/spec-audit/ch0/links.md` に追記する。
+- **ドキュメント／ログ更新**: 実装完了時に `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` の M1 脚注、`0-3-audit-and-metrics.md` の KPI、`docs-migrations.log` に `core.prelude.ensure_failed` 追加を記録し、仕様（3-1/3-6）やガイドから参照できるよう脚注を整備する。
+
 #### 2. Option/Result 完了条件
 - 仕様由来の API 一覧が `prelude_api_inventory.toml` と `cargo xtask prelude-audit` で自動検証され、CI の nightly run で欠落が 0 件である（結果を `0-3-audit-and-metrics.md` に記録）。
 - `Option`/`Result`/`Never` 実装が `#[must_use]` と効果タグを満たし、`scripts/validate-diagnostic-json.sh` のチェックを通過する。
