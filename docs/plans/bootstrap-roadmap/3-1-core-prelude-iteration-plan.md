@@ -47,6 +47,23 @@
 - `compiler/rust/frontend/tests/panic_forbidden.rs`（`trybuild`/`ui` テスト想定）を追加し、`panic!` や `unwrap_unchecked` を利用した場合に `#[deny(panic_fmt)]` でコンパイルエラーを発生させる。例外的に `expect` を許容するルールはテストで明文化する。
 - 計測ログ（panic 経路検出・禁止件数）は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に KPI として追記し、集計コマンドと実行日時を `reports/spec-audit/ch0/links.md` フォーマットで参照可能にする。
 
+#### 2. Option/Result 実施スケジュールと責務
+
+| WBS | サブタスク | 入力/依存 | 成果物 | 検証/ログ | 担当 | 期限 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2.1a | `compiler/rust/runtime` に Prelude 揮発モジュールを新設し、`Cargo.toml` へ feature `core_prelude` を追加 | `docs/spec/3-1-core-prelude-iteration.md`, `compiler/rust/frontend/src/lib.rs` | `core_prelude` module skeleton、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の雛形 | `cargo check`, `docs-migrations.log` へ追記 | Rust Impl チーム | 35週目末 |
+| 2.1b | `Option`/`Result`/`Never` API を実装し、16 シナリオ snapshot と `cargo xtask prelude-audit` プロトタイプを追加 | `docs/spec/3-1-core-prelude-iteration.md:21-120`, `compiler/ocaml/tests/test_type_inference.ml` | `core_prelude_option_result.rs`, `xtask/src/prelude_audit.rs` | `cargo test core_prelude_option_result`, `cargo xtask prelude-audit --strict` | Core Library チーム | 36週目前半 |
+| 2.2a | `ensure`/`ensure_not_null` を実装し、`Diagnostic` 変換と `core.prelude.ensure_failed` キーを登録 | `docs/spec/3-6-core-diagnostics-audit.md:210-260`, `tooling/ci/collect-iterator-audit-metrics.py` | `compiler/rust/runtime/src/prelude/ensure.rs`, `docs/spec/3-6-core-diagnostics-audit.md` 脚注更新案 | `scripts/validate-diagnostic-json.sh`, `reports/diagnostic-format-regression.md` 比較 | Diagnostics チーム | 36週目前半 |
+| 2.2b | `examples/language-impl-comparison/` の DSL サンプルと `docs/spec/3-0-core-library-overview.md` の脚注を更新 | `docs/spec/3-0-core-library-overview.md`, `examples/language-impl-comparison/` | DSL サンプル、脚注リンク、`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` の更新案 | `cargo run --example ensure_dsl`, サンプルログ | Docs チーム | 36週目後半 |
+| 2.3a | panic 禁止 UI テストと `#[deny(panic_fmt)]` lint を導入 | `docs/spec/1-3-effects-safety.md`, `docs/plans/rust-migration/unified-porting-principles.md` | `compiler/rust/frontend/tests/panic_forbidden.rs`, `.cargo/config.toml` lint 設定案 | `cargo test panic_forbidden`, `RUSTFLAGS=\"-Dpanic_fmt\"` | Core Library チーム | 36週目後半 |
+| 2.3b | `0-3-audit-and-metrics.md`/`4-5-backward-compat-checklist.md` への KPI・回帰項目追加 | `reports/diagnostic-format-regression.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` | KPI 記録・回帰トラッキングチケット | KPI CSV 更新、監査ログ照合作業メモ | QA/PM | 36週目末 |
+
+#### 2. Option/Result 完了条件
+- 仕様由来の API 一覧が `prelude_api_inventory.toml` と `cargo xtask prelude-audit` で自動検証され、CI の nightly run で欠落が 0 件である（結果を `0-3-audit-and-metrics.md` に記録）。
+- `Option`/`Result`/`Never` 実装が `#[must_use]` と効果タグを満たし、`scripts/validate-diagnostic-json.sh` のチェックを通過する。
+- `ensure` 系ユーティリティと panic 禁止テストが `reports/diagnostic-format-regression.md` に差分なしで反映され、想定された `effect {debug}` 以外の panic 経路が存在しないことを `cargo test --release -Z panic-abort-tests` で証明する。
+- 進行ログ（`docs-migrations.log`, `reports/spec-audit/ch0/links.md`）に API 追加と検証フローを追記し、Phase 3-1 の他タスクから参照できる状態にする。
+
 ### 3. Iter コア構造と Collectors（36-37週目）
 **担当領域**: 遅延列基盤
 
@@ -171,6 +188,26 @@ OCaml の `solve_collector`/`solve_iterator` は `Iter`/`Collector`/`Option`/`Re
 3. **型推論への適合**: OCaml の `solve_collector`/`solve_iterator` は `Iter`/`Collector` の Stage/Capability を辞書として吐き出している（`compiler/ocaml/src/constraint_solver.ml:371-477`）。Rust 実装では同じ `IteratorDictInfo` 相当を `typeck` 層に導入し、`Diagnostic.extensions["typeclass"]` に `stage_mismatch` を書き出す必要がある。
 4. **計測指標**: `docs/plans/rust-migration/3-2-benchmark-baseline.md:1-78` の ±10% 規準に沿って、`core_prelude_bench` を作成し `size_of::<Option<Result<(), ()>>>()` / `iter_pipeline_throughput` / `collector_heap_bytes` を `reports/benchmarks/*.json` へ記録する。`0-3-audit-and-metrics.md` 側では `effect_analysis.missing_tag` と `iterator.stage.audit_pass_rate` を更新し、`Iter.buffered` の `effect {mem}` コストを追跡する。
 5. **FFI/Diagnostic 連携**: `ensure_not_null` は FFI 入口で使用するため、`Result` → `Diagnostic` 変換ヘルパと併せて `compiler/rust/adapter` 層へ配置し、`AuditEnvelope.metadata["ffi.pointer.check"]` を残す（Phase 3-5 タスクと共有）。
+
+## 36週目: Step 2 実施計画（Option/Result）
+
+### 36週の到達目標
+- `compiler/rust/runtime` に Prelude モジュールを追加し、`Option`/`Result`/`Never` API の 16 シナリオ snapshot テストと `cargo xtask prelude-audit` プロトタイプを整備する。
+- `ensure`/`ensure_not_null` の診断連携と `core.prelude.ensure_failed` キーの定義を完了させ、`scripts/validate-diagnostic-json.sh` を通じて `reports/diagnostic-format-regression.md` への差分をゼロに保つ。
+- `panic` 排除テスト (`panic_forbidden.rs`) と `cargo test --release -Z panic-abort-tests` を CI チェックリストに追加し、`effect {debug}` 以外のパスで `panic!` が呼ばれていないことを `0-3-audit-and-metrics.md` の KPI に記録する。
+
+### 進行手順
+1. **Day 1-2**: `core_prelude` module scaffolding を作成し、`prelude_api_inventory.toml` を初期化。API 抜け漏れ検出用の `cargo xtask prelude-audit --baseline docs/spec/3-1-core-prelude-iteration.md` を走らせ、既存の差分を `docs/notes/core-library-outline.md` に記録する。
+2. **Day 2-3**: `Option`/`Result`/`Never` メソッド本体を実装し、`#[must_use]`/`effect {debug}` の実装を `cfg(debug_assertions)` 付きで確認。`core_prelude_option_result.rs` で 16 シナリオ snapshot を生成し、`compiler/ocaml/tests/test_type_inference.ml` の結果を比較ログとして添付する。
+3. **Day 3-4**: `ensure`/`ensure_not_null` 及び `Diagnostic` 変換を実装。`scripts/validate-diagnostic-json.sh` + `tooling/ci/collect-iterator-audit-metrics.py` を実行し、`core.prelude.ensure_failed` の発火数と Stage 情報を `reports/spec-audit/ch0/links.md` に追記する。
+4. **Day 4-5**: `panic_forbidden.rs` UI テストと `RUSTFLAGS="-Dpanic_fmt -Z panic-abort-tests"` 経路をセットアップ。`0-3-audit-and-metrics.md` へ KPI を書き込み、例外的に許容する `expect` の `effect {debug}` 契約を `docs/spec/3-1-core-prelude-iteration.md` の参照付きでリンクさせる。
+5. **Week end**: `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` `M1` セクション、`docs/spec/3-0-core-library-overview.md` 脚注、`docs-migrations.log`（Prelude モジュール追加）を更新し、`p0` からの移行ログを結線する。
+
+### 完了チェックリスト
+- [ ] `cargo xtask prelude-audit --strict` が `Option`/`Result` API で差分 0 を返し、結果 JSON を `reports/spec-audit/ch0/links.md` 形式で保存。
+- [ ] `cargo test core_prelude_option_result panic_forbidden` が成功し、`scripts/validate-diagnostic-json.sh` を通して `reports/diagnostic-format-regression.md` に再生成ファイルが発生しない。
+- [ ] `0-3-audit-and-metrics.md` に `core_prelude.missing_api = 0`、`core_prelude.panic_path = 0` を追加し、`4-5-backward-compat-checklist.md` に fallback プランを登録。
+- [ ] `docs/spec/3-0-core-library-overview.md` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` へ Option/Result 実装ステータスの脚注リンクを追加し、Phase 3-1 以降の参照経路を確立。
 
 ## 成果物と検証
 - `Core.Prelude`/`Core.Iter` 実装および Collector 群が CI テストを通過し、効果タグ/属性が仕様と一致していること。
