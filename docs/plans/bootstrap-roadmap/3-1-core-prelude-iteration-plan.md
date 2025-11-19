@@ -192,11 +192,19 @@
 
 | 手順 | 目的 | 主要ファイル / コマンド | 成果物・チェックポイント |
 | --- | --- | --- | --- |
-| F2-1 List/Vec 雛形 | 遅延列と Collector トレイトの往復を最小構成で確認 | `compiler/rust/runtime/src/prelude/collectors/{list,vec}.rs`, `compiler/rust/frontend/tests/core_iter_collectors.rs` | `collector.effect.* = ∅`（List）、`collector.effect.mem_reservation>0`（Vec）を `collect-iterator-audit` ログで確認。《Diag拡張: prelude.collector.kind=list/vec》 |
+| ✅ F2-1 List/Vec 雛形 | 遅延列と Collector トレイトの往復を最小構成で確認 | `compiler/rust/runtime/src/prelude/collectors/{list,vec}.rs`, `compiler/rust/frontend/tests/core_iter_collectors.rs` | `collector.effect.* = ∅`（List）、`collector.effect.mem_reservation>0`（Vec）を `collect-iterator-audit` ログで確認。《Diag拡張: prelude.collector.kind=list/vec》 |
 | F2-2 Map/Set Stage 宣言 | `CollectError::DuplicateKey` と Stage 要件を辞書・診断へ転写 | `.../map.rs`, `.../set.rs`, `tooling/ci/collect-iterator-audit-metrics.py --case collector-duplicate` | `AuditEnvelope.metadata.collector.error.key` に重複キーを記録、`iterator.stage.audit_pass_rate = 1.0` を維持。 |
 | F2-3 String/UTF-8 | `StringCollector` の UTF-8 正規化と `StringError::InvalidEncoding` を表現 | `.../string.rs`, `docs/spec/3-3-core-text-unicode.md`, `core_iter_collectors.rs` (string ケース) | `collector.error.invalid_encoding = 0` を KPI に設定、`collector.effect.mem` を `reports/iterator-collector-summary.md` で監視。 |
 | F2-4 API インベントリ更新 | Collector API の在庫・WBS・効果タグを機械管理 | `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`, `cargo xtask prelude-audit --section iter --filter collector` | `rust_status` を `planned→implemented` へ更新し、`last_updated = "2025-11-25 / WBS 3.1b F2"` を記録。 |
 | F2-5 監査ログ整備 | KPI とコマンド履歴を公開しクロスリファレンスを確立 | `reports/spec-audit/ch0/links.md`, `docs/notes/core-library-outline.md`, `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` | `Collector F2` セクションを追加し、タスク・スナップショット・ベンチ結果を相互参照。 |
+
+###### F2-1 List/Vec 雛形実装メモ（W37 前半）
+
+- `Compiler/rust/runtime/src/prelude/collectors/list.rs` / `vec.rs` を `Collector` トレイトの `new`/`with_capacity`/`push`/`finish` を実装するテンプレートとして設置し、`ListCollector` は `effect = @pure` の永続リスト構築、`VecCollector` は `effect {mem}` を `with_capacity`→`reserve` で記録する。
+- `ListCollector::finish` では `CollectOutcome::audit()` を呼び出し `collector.stage.actual = "stable"` を `Diagnostic.extensions["prelude.collector"]` に、`VecCollector` では `collector.effect.mem_reservation` を `EffectLabels` 経由で `collect-iterator-audit` ログに渡し、`CollectOutcome` 内に snapshot 用情報を埋め込む。
+- `compiler/rust/frontend/tests/core_iter_collectors.rs` に `collect_list_baseline`/`collect_vec_mem_error` ケースを追加し、`insta` snapshot で `List` は `collector.effect.* = ∅`、`Vec` では `collector.effect.mem_reservation>0` を再現。`prelude.collector.kind`/`collector.effect.mem` を `scripts/validate-diagnostic-json.sh` の `--pattern collector` で検出できるようにする。
+- `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` では `ListCollector`/`VecCollector` に `rust_status = "working"` 様式を導入し `notes` に F2-1 での `Diag` 拡張（`prelude.collector.kind=list/vec`）と KPI 参照 (`collect-iterator-audit --section collectors --case list,vec`) を追記する。
+- 成果物は `reports/spec-audit/ch0/links.md#collector-f2` へ `collect-iterator-audit` の出力と `core_iter_collectors.rs` 実行コマンドを記録し、`docs/notes/core-library-outline.md` に `Collector` 監査構造の要約を追加、Phase 3 自身の参照線を確保する。
 
 **Collector ごとの実装指針**
 1. **ListCollector**: `effect = @pure` を保証するベースライン。`List::cons` + `finish` で永続リストを構築し、`IteratorStageProfile::stable` を固定。`collector.stage.actual = "stable"` を `Diagnostic.extensions["prelude.collector"]` へ書き込む。

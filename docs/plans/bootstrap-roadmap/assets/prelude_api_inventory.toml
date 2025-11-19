@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2025-11-25 / WBS 3.1b F2"
+last_updated = "2025-11-30 / WBS 3.1b F2-1"
 maintainer = "Core Library Team"
 
 [[api]]
@@ -284,9 +284,9 @@ module = "Collector"
 name = "ListCollector.new"
 effect = "@pure"
 stage = "stable"
-rust_status = "pending"
+rust_status = "working"
 ocaml_status = "not_available"
-notes = "F2: `compiler/rust/runtime/src/prelude/collectors/list.rs` で永続 `List` を構築し、`core_iter_collectors.rs::collect_list_baseline` の snapshot に `effect = []` を記録"
+notes = "F2-1: `collectors/list.rs` で `Collector::new`/`finish` を雛形実装し、`core_iter_collectors.rs::collect_list_baseline` スナップショットで `prelude.collector.kind=list` と `collector.effect.* = []` を確認"
 wbs = "3.1b F2"
 
 [[api]]
@@ -294,9 +294,9 @@ module = "Collector"
 name = "VecCollector.with_capacity"
 effect = "effect {mem}"
 stage = "beta"
-rust_status = "pending"
+rust_status = "working"
 ocaml_status = "not_available"
-notes = "F2: `collect_vec_mem_error` シナリオで `CollectError::MemoryError` を発火させ、`collector.effect.mem` を `collect-iterator-audit` KPI に送る"
+notes = "F2-1: `collectors/vec.rs` で `with_capacity`+`reserve` を実装し `collector.effect.mem_reservation` を充足させ、`collect-iterator-audit --section collectors --case vec` の JSON に `collector.effect.mem_reservation>0` を出力"
 wbs = "3.1b F2"
 
 [[api]]
@@ -304,9 +304,9 @@ module = "Collector"
 name = "VecCollector.push"
 effect = "effect {mut}"
 stage = "beta"
-rust_status = "pending"
+rust_status = "working"
 ocaml_status = "not_available"
-notes = "F2: `VecCollector` の push が `collector.effect.mut` を増分し、`collect-iterator-audit` の `collector.effect.mut_total` に反映される"
+notes = "F2-1: `VecCollector::push` で `EffectLabels` に `mutating`/`mem` を記録し、`core_iter_collectors.rs::collect_vec_mem_error` の snapshot に `collector.effect.mem_reservation>0` を含める"
 wbs = "3.1b F2"
 
 [[api]]

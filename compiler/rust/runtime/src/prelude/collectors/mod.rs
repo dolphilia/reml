@@ -5,11 +5,17 @@
 //! - 仕様出典: `docs/spec/3-1-core-prelude-iteration.md` §3.4
 //! - WBS: 3.1b F1（Collector トレイト骨格 & EffectMarker）
 
+mod list;
+mod vec;
+
+pub use list::{List, ListCollector};
+pub use vec::VecCollector;
+
 use super::{
     ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic},
     iter::{EffectLabels, StageRequirement, StageRequirementDescriptor},
 };
-use serde_json::{Map, Value};
+use serde_json::{Map, Number, Value};
 
 /// `Collector::with_capacity` 用の EffectMarker。
 pub const EFFECT_MARKER_WITH_CAPACITY: &str = "collector.effect.mem_reservation";
@@ -116,21 +122,53 @@ pub struct CollectorStageSnapshot {
     pub source: String,
 }
 
+/// Collector の効果記録。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct CollectorEffectMarkers {
+    pub mem_reservation: usize,
+    pub reserve: usize,
+    pub finish: usize,
+}
+
+impl CollectorEffectMarkers {
+    /// `with_capacity` / `reserve` で追加したバイト数を記録する。
+    pub fn record_mem_reservation(&mut self, amount: usize) {
+        self.mem_reservation = self.mem_reservation.saturating_add(amount);
+    }
+
+    /// `reserve` で拡張したバイト数を記録する。
+    pub fn record_reserve(&mut self, amount: usize) {
+        self.reserve = self.reserve.saturating_add(amount);
+    }
+
+    /// `finish` の呼び出しを記録する。
+    pub fn record_finish(&mut self) {
+        self.finish = self.finish.saturating_add(1);
+    }
+}
+
 /// Collector 監査で保持する共通情報。
 #[derive(Debug, Clone)]
 pub struct CollectorAuditTrail {
     pub kind: CollectorKind,
     pub stage: CollectorStageSnapshot,
     pub effects: EffectLabels,
+    pub markers: CollectorEffectMarkers,
 }
 
 impl CollectorAuditTrail {
     /// 新しい監査情報を生成する。
-    pub fn new(kind: CollectorKind, stage: CollectorStageSnapshot, effects: EffectLabels) -> Self {
+    pub fn new(
+        kind: CollectorKind,
+        stage: CollectorStageSnapshot,
+        effects: EffectLabels,
+        markers: CollectorEffectMarkers,
+    ) -> Self {
         Self {
             kind,
             stage,
             effects,
+            markers,
         }
     }
 
@@ -167,6 +205,21 @@ impl CollectorAuditTrail {
             Value::Bool(self.effects.async_pending),
         );
         obj.insert("effects".into(), Value::Object(effects));
+
+        let mut markers = Map::new();
+        markers.insert(
+            "mem_reservation".into(),
+            Value::Number(Number::from(self.markers.mem_reservation as u64)),
+        );
+        markers.insert(
+            "reserve".into(),
+            Value::Number(Number::from(self.markers.reserve as u64)),
+        );
+        markers.insert(
+            "finish".into(),
+            Value::Number(Number::from(self.markers.finish as u64)),
+        );
+        obj.insert("markers".into(), Value::Object(markers));
         obj
     }
 
@@ -214,6 +267,18 @@ impl CollectorAuditTrail {
         metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}effect.async_pending"),
             Value::Bool(self.effects.async_pending),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.mem_reservation"),
+            Value::Number(Number::from(self.markers.mem_reservation as u64)),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.reserve"),
+            Value::Number(Number::from(self.markers.reserve as u64)),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.finish"),
+            Value::Number(Number::from(self.markers.finish as u64)),
         );
         metadata
     }
