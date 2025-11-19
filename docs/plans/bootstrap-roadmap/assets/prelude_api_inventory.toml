@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2025-11-20 / WBS 3.1b F0"
+last_updated = "2025-11-21 / WBS 3.1b F1"
 maintainer = "Core Library Team"
 
 [[api]]
@@ -226,7 +226,7 @@ effect = "@pure"
 stage = "beta"
 rust_status = "pending"
 ocaml_status = "not_available"
-notes = "F0: 仕様 §3.4 に基づき `EffectSet` を変更しない初期化（docs/spec/3-1-core-prelude-iteration.md†L156-L166）"
+notes = "F1: `compiler/rust/runtime/src/prelude/collectors/mod.rs` で `Collector::new` と `CollectorStageProfile`/`CollectOutcome` の土台を定義し、`core_prelude::Collector` としてエクスポート"
 wbs = "3.1b F0"
 
 [[api]]
@@ -236,7 +236,7 @@ effect = "effect {mem}"
 stage = "beta"
 rust_status = "pending"
 ocaml_status = "not_available"
-notes = "F0: `with_capacity` は先読み用バッファ確保として `collector.effect.mem` をログ化する（docs/spec/3-1-core-prelude-iteration.md†L156-L166）"
+notes = "F1: `Collector::with_capacity` に `collector.effect.mem_reservation` EffectMarker を導入し、`CollectorAuditTrail` へ Stage/Effect を書き込む骨格を追加"
 wbs = "3.1b F0"
 
 [[api]]
@@ -246,7 +246,7 @@ effect = "effect {mut}"
 stage = "beta"
 rust_status = "pending"
 ocaml_status = "not_available"
-notes = "F0: `push` は短絡可能な `Result<(), Error>` を返し `IntoDiagnostic` と連携（docs/spec/3-1-core-prelude-iteration.md†L156-L166）"
+notes = "F1: `Collector::push` が返す `Error: IntoDiagnostic` を `CollectError` へ向けられるよう `core_prelude::collectors` にひな形を設定"
 wbs = "3.1b F0"
 
 [[api]]
@@ -256,7 +256,7 @@ effect = "effect {mut, mem}"
 stage = "beta"
 rust_status = "pending"
 ocaml_status = "not_available"
-notes = "F0: `reserve` 追加分確保で `CapacityOverflow` を返す可能性（docs/spec/3-1-core-prelude-iteration.md†L156-L166）"
+notes = "F1: `Collector::reserve` に `collector.effect.reserve` EffectMarker を付与できるコメントと `CollectorAuditTrail` 連携を整備"
 wbs = "3.1b F0"
 
 [[api]]
@@ -266,7 +266,7 @@ effect = "effect {mem}"
 stage = "beta"
 rust_status = "pending"
 ocaml_status = "not_available"
-notes = "F0: 所有権を消費し結果を返す終端操作、監査ログ `collector.kind` を確定（docs/spec/3-1-core-prelude-iteration.md†L156-L166）"
+notes = "F1: `collector.effect.finish` を導入し `CollectOutcome` で `Diagnostic.extensions[\"prelude.collector\"]`/`AuditEnvelope.metadata.collector.*` を構築できる骨格を追加"
 wbs = "3.1b F0"
 
 [[api]]
@@ -276,7 +276,7 @@ effect = "@pure"
 stage = "beta"
 rust_status = "pending"
 ocaml_status = "not_available"
-notes = "F0: 型変換のみを行い `iterator.effect.*` を変化させない軽量経路（docs/spec/3-1-core-prelude-iteration.md†L156-L166）"
+notes = "F1: `Collector::into_inner` を `finish` の軽量版として `core_prelude::collectors` に実装し、`CollectOutcome` の監査情報を維持したまま値を返す設計を明文化"
 wbs = "3.1b F0"
 
 [[api]]
