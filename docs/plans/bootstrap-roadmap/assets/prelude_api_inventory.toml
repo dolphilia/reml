@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2025-11-18 / WBS 2.1b"
+last_updated = "2025-11-18 / WBS 3.1a F3"
 maintainer = "Core Library Team"
 
 [[api]]
@@ -158,3 +158,93 @@ rust_status = "pending"
 ocaml_status = "not_available"
 notes = "`docs/spec/3-1-core-prelude-iteration.md` の Guard 節に基づき設計"
 wbs = "2.2a"
+
+[[api]]
+module = "Iter"
+name = "from_list"
+effect = "@pure"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "typeck-only"
+notes = "WBS 3.1a F3 シナリオ `iter_from_list_roundtrip` で `ListCollector` との往復を検証予定"
+wbs = "3.1a"
+
+[[api]]
+module = "Iter"
+name = "map"
+effect = "@pure"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "typeck-only"
+notes = "`iter_map_utf8` シナリオで Stage/効果タグを snapshot 化する"
+wbs = "3.1a"
+
+[[api]]
+module = "Iter"
+name = "filter_map"
+effect = "@pure"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "typeck-only"
+notes = "`iterator.effect.debug = 0` を KPI として監視 (`iter_filter_map_cap`)"
+wbs = "3.1a"
+
+[[api]]
+module = "Iter"
+name = "flat_map"
+effect = "@pure"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "typeck-only"
+notes = "StageRequirement::AtLeast(\"beta\") を `IteratorDictInfo` へ転写する"
+wbs = "3.1a"
+
+[[api]]
+module = "Iter"
+name = "try_fold"
+effect = "@pure"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "typeck-only"
+notes = "`iter_try_fold_diag` で `typeclass.iterator.stage_mismatch` 無しを確認"
+wbs = "3.1a"
+
+[[api]]
+module = "Iter"
+name = "try_collect"
+effect = "@pure"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "typeck-only"
+notes = "`Iter::try_collect(SetCollector)` シナリオ（F3）で `collector.effect.mem` を監視"
+wbs = "3.1a"
+
+[[api]]
+module = "Collector"
+name = "ListCollector.new"
+effect = "@pure"
+stage = "stable"
+rust_status = "pending"
+ocaml_status = "not_available"
+notes = "F3 `iter_from_list_roundtrip` シナリオで使用、`collector.effect.mem = 0` を期待"
+wbs = "3.1a"
+
+[[api]]
+module = "Collector"
+name = "VecCollector.push"
+effect = "effect {mut}"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "not_available"
+notes = "`iter_map_utf8` や `iter_flat_map_stage` で `effect {mut}` を検証予定"
+wbs = "3.1a"
+
+[[api]]
+module = "Collector"
+name = "SetCollector.try_collect"
+effect = "effect {mem}"
+stage = "stable"
+rust_status = "pending"
+ocaml_status = "not_available"
+notes = "`iter_try_collect_set` で `collector.effect.mem`/`iterator.stage.audit_pass_rate` に寄与する"
+wbs = "3.1a"

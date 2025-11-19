@@ -15,6 +15,24 @@
 | `sed -n '200,360p' docs/spec/3-1-core-prelude-iteration.md` | ✅ | `IteratorDictInfo` が `StageRequirement`/`CapabilityId`/`effect.stage.iterator.*` を必須と定義していることを再確認（Iter F0）。 |
 | `sed -n '360,520p' compiler/ocaml/src/constraint_solver.ml` | ✅ | `solve_iterator` が `IteratorKind` ごとに `stage_requirement`/`stage_actual`/`capability` を埋める既存実装を確認。Rust 側 `IteratorDictInfo` の仕様化根拠として記録。 |
 
+### Iter F3 Snapshot/KPI（WBS 3.1a）
+
+| コマンド | 結果 | 備考 |
+| --- | --- | --- |
+| `cargo test core_iter_pipeline -- --nocapture` | ✅ / pending | `core_iter_pipeline.rs` へ 6 シナリオを追加し、`insta` snapshot (`.snap`) を生成する。F3 サイクルでは CI で `--nocapture` を使いステージ情報をログ化する。 |
+| `cargo insta review --review` | ✅ / pending | `core_iter_pipeline.snap` を確定し、`Iter.from_list`〜`Iter.try_collect` の往復を固定。`docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` のシナリオ表と対応付ける。 |
+| `tooling/ci/collect-iterator-audit-metrics.py --module iter --section collectors --output reports/iterator-stage-summary.md` | ✅ / pending | `iterator.stage.audit_pass_rate`・`collector.effect.mem` の集計結果を `reports/iterator-stage-summary.md` に保存し、`0-3-audit-and-metrics.md` KPI を更新する。 |
+| `python3 reports/spec-audit/scripts/attach_snapshot_links.py --plan docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md --output reports/spec-audit/ch0/iter-f3-links.md` | ✅ / pending | シナリオ毎の Snapshot/Diagnostic/Audit を Markdown 表へ展開し、本ファイルに貼り付ける補助スクリプト。 |
+
+| シナリオID | Snapshot | 診断 JSON | 監査ログ | 備考 |
+| --- | --- | --- | --- | --- |
+| `iter_from_list_roundtrip` | `compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_from_list_roundtrip.snap` | `reports/diagnostic-format-regression.md#iter-from-list` | `reports/iterator-stage-summary.md#iter_from_list_roundtrip` | `ListCollector` で `@pure` を確認。 |
+| `iter_map_utf8` | `compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_map_utf8.snap` | `reports/diagnostic-format-regression.md#iter-map` | `reports/iterator-stage-summary.md#iter_map_utf8` | UTF-8 map 変換、`effect {mem}` 非使用を確認。 |
+| `iter_filter_map_cap` | `compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_filter_map_cap.snap` | `reports/diagnostic-format-regression.md#iter-filter-map` | `reports/iterator-stage-summary.md#iter_filter_map_cap` | `iterator.effect.debug = 0` を保証。 |
+| `iter_flat_map_stage` | `compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_flat_map_stage.snap` | `reports/diagnostic-format-regression.md#iter-flat-map` | `reports/iterator-stage-summary.md#iter_flat_map_stage` | Stage 要件 `AtLeast(beta)` を確認。 |
+| `iter_try_fold_diag` | `compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_try_fold_diag.snap` | `reports/diagnostic-format-regression.md#iter-try-fold` | `reports/iterator-stage-summary.md#iter_try_fold_diag` | `typeclass.iterator.stage_mismatch` が出ないことを確認。 |
+| `iter_try_collect_set` | `compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_try_collect_set.snap` | `reports/diagnostic-format-regression.md#iter-try-collect` | `reports/iterator-stage-summary.md#iter_try_collect_set` | `collector.effect.mem` 集計対象。 |
+
 | ファイル | リンク | 存在 | 備考 |
 |---------|--------|------|------|
 | `docs/spec/0-0-overview.md` | `../../reports/diagnostic-format-regression.md` | ✅ | - |
