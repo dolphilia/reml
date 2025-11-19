@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2025-11-18 / WBS 3.1a F3"
+last_updated = "2025-11-20 / WBS 3.1b F0"
 maintainer = "Core Library Team"
 
 [[api]]
@@ -221,13 +221,83 @@ wbs = "3.1a"
 
 [[api]]
 module = "Collector"
+name = "trait.new"
+effect = "@pure"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "not_available"
+notes = "F0: 仕様 §3.4 に基づき `EffectSet` を変更しない初期化（docs/spec/3-1-core-prelude-iteration.md†L156-L166）"
+wbs = "3.1b F0"
+
+[[api]]
+module = "Collector"
+name = "trait.with_capacity"
+effect = "effect {mem}"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "not_available"
+notes = "F0: `with_capacity` は先読み用バッファ確保として `collector.effect.mem` をログ化する（docs/spec/3-1-core-prelude-iteration.md†L156-L166）"
+wbs = "3.1b F0"
+
+[[api]]
+module = "Collector"
+name = "trait.push"
+effect = "effect {mut}"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "not_available"
+notes = "F0: `push` は短絡可能な `Result<(), Error>` を返し `IntoDiagnostic` と連携（docs/spec/3-1-core-prelude-iteration.md†L156-L166）"
+wbs = "3.1b F0"
+
+[[api]]
+module = "Collector"
+name = "trait.reserve"
+effect = "effect {mut, mem}"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "not_available"
+notes = "F0: `reserve` 追加分確保で `CapacityOverflow` を返す可能性（docs/spec/3-1-core-prelude-iteration.md†L156-L166）"
+wbs = "3.1b F0"
+
+[[api]]
+module = "Collector"
+name = "trait.finish"
+effect = "effect {mem}"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "not_available"
+notes = "F0: 所有権を消費し結果を返す終端操作、監査ログ `collector.kind` を確定（docs/spec/3-1-core-prelude-iteration.md†L156-L166）"
+wbs = "3.1b F0"
+
+[[api]]
+module = "Collector"
+name = "trait.into_inner"
+effect = "@pure"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "not_available"
+notes = "F0: 型変換のみを行い `iterator.effect.*` を変化させない軽量経路（docs/spec/3-1-core-prelude-iteration.md†L156-L166）"
+wbs = "3.1b F0"
+
+[[api]]
+module = "Collector"
 name = "ListCollector.new"
 effect = "@pure"
 stage = "stable"
 rust_status = "pending"
 ocaml_status = "not_available"
-notes = "F3 `iter_from_list_roundtrip` シナリオで使用、`collector.effect.mem = 0` を期待"
-wbs = "3.1a"
+notes = "F0: 永続リスト構造共有（docs/spec/3-1-core-prelude-iteration.md†L237-L253, docs/spec/3-2-core-collections.md†L154-L166）"
+wbs = "3.1b F0"
+
+[[api]]
+module = "Collector"
+name = "VecCollector.with_capacity"
+effect = "effect {mem}"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "not_available"
+notes = "F0: 動的配列の先行確保で `CollectError::MemoryError`/`CapacityOverflow` を発生させうる（docs/spec/3-1-core-prelude-iteration.md†L237-L253, docs/spec/3-2-core-collections.md†L154-L166）"
+wbs = "3.1b F0"
 
 [[api]]
 module = "Collector"
@@ -236,15 +306,45 @@ effect = "effect {mut}"
 stage = "beta"
 rust_status = "pending"
 ocaml_status = "not_available"
-notes = "`iter_map_utf8` や `iter_flat_map_stage` で `effect {mut}` を検証予定"
-wbs = "3.1a"
+notes = "F0: `push` と `reserve` を `collect-iterator-audit` の `collector.effect.mut` で監視（docs/spec/3-1-core-prelude-iteration.md†L237-L253）"
+wbs = "3.1b F0"
 
 [[api]]
 module = "Collector"
-name = "SetCollector.try_collect"
-effect = "effect {mem}"
+name = "MapCollector.push"
+effect = "@pure"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "not_available"
+notes = "F0: キー昇順維持と `CollectError::DuplicateKey`（docs/spec/3-1-core-prelude-iteration.md†L188-L198, docs/spec/3-2-core-collections.md†L75-L88）"
+wbs = "3.1b F0"
+
+[[api]]
+module = "Collector"
+name = "SetCollector.push"
+effect = "@pure"
 stage = "stable"
 rust_status = "pending"
 ocaml_status = "not_available"
-notes = "`iter_try_collect_set` で `collector.effect.mem`/`iterator.stage.audit_pass_rate` に寄与する"
-wbs = "3.1a"
+notes = "F0: MapCollector と同一ロジックで重複検出（docs/spec/3-2-core-collections.md†L154-L166）"
+wbs = "3.1b F0"
+
+[[api]]
+module = "Collector"
+name = "StringCollector.finish"
+effect = "effect {mem}"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "not_available"
+notes = "F0: UTF-8 正規化と `StringError::InvalidEncoding` の転写（docs/spec/3-1-core-prelude-iteration.md†L237-L253）"
+wbs = "3.1b F0"
+
+[[api]]
+module = "Collector"
+name = "TableCollector.push"
+effect = "effect {mut}"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "not_available"
+notes = "F0: 挿入順維持・重複キー検知（docs/spec/3-2-core-collections.md†L154-L168）"
+wbs = "3.1b F0"

@@ -15,6 +15,15 @@
 | `sed -n '200,360p' docs/spec/3-1-core-prelude-iteration.md` | ✅ | `IteratorDictInfo` が `StageRequirement`/`CapabilityId`/`effect.stage.iterator.*` を必須と定義していることを再確認（Iter F0）。 |
 | `sed -n '360,520p' compiler/ocaml/src/constraint_solver.ml` | ✅ | `solve_iterator` が `IteratorKind` ごとに `stage_requirement`/`stage_actual`/`capability` を埋める既存実装を確認。Rust 側 `IteratorDictInfo` の仕様化根拠として記録。 |
 
+### Collector F0 効果タグ対照（WBS 3.1b）
+
+| コマンド | 結果 | 備考 |
+| --- | --- | --- |
+| `sed -n '150,210p' docs/spec/3-1-core-prelude-iteration.md` | ✅ | `Collector::new`〜`into_inner` の効果タグ/`IntoDiagnostic` 契約を引用し、F0 での効果セット整理に使用。 |
+| `sed -n '150,210p' docs/spec/3-2-core-collections.md` | ✅ | 標準コレクタ（List/Vec/Map/Set/Table）の効果/エラー表を引用し、`CollectError` バリアントの根拠を確認。 |
+| `grep -n 'module = \"Collector\"' docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` | ✅ | `module=\"Collector\"` ブロックに 12 エントリ（トレイト + 標準コレクタ）が登録されていることを確認。 |
+| `python3 tooling/ci/collect-iterator-audit-metrics.py --module iter --section collectors --case wbs-31b-f0 --dry-run` | ✅ / pending | まだ `--module`/`--section collectors` オプションが未実装のため、F0 では期待 CLI 形のみ記録（実行時は `argparse` エラー）。実装完了後に `collector.effect.*` を即時収集する計画。 |
+
 ### Iter F3 Snapshot/KPI（WBS 3.1a）
 
 | コマンド | 結果 | 備考 |
