@@ -183,6 +183,33 @@
 - `CollectError`/`CollectErrorKind` を実装し、`IntoDiagnostic` で `Diagnostic.extensions["prelude.collector"]` と `AuditEnvelope.metadata.collector.*` に `kind`/`stage`/`effects`/`error_kind` を書き込む。これにより `docs/plans/rust-migration/3-1-observability-alignment.md` で要求される `collector.effect.*` KPI を Rust 実装で観測できる足場を確保した。
 - `compiler/rust/runtime/ffi/src/core_prelude/mod.rs` に `iter`/`collectors` モジュールを `#[path = "../../../src/prelude/**"]` で取り込み、`Collector` まわりの型・EffectMarker 定数を再輸出。`cargo check --manifest-path compiler/rust/runtime/ffi/Cargo.toml` でビルドを確認し、F2 以降がこの骨格を再利用できる状態にした。
 
+###### F2 標準コレクタ実装サマリ（WBS 3.1b, 2025-W37 前半）
+
+- F2 のゴールは、`List`/`Vec`/`Map`/`Set`/`String` の 5 種コレクタを Rust 実装で完成させ、`Iter.try_collect`・`collect_*` 終端操作・監査メトリクスを連結させること。仕様根拠は `docs/spec/3-1-core-prelude-iteration.md†L188-L253` と `docs/spec/3-2-core-collections.md†L75-L168`。
+- 実装順序: **不変コレクタ**（List/Set/Map）→ **可変・メモリ要求**（Vec/String）→ **補助モジュール**（共通エラー、TableCollector）。`ListCollector` をテンプレートとして作り、以降の Collector では効果タグと `CollectError` 派生に集中できるようにする。
+- KPI は `collect-iterator-audit-metrics.py --module iter --section collectors --wbs 3.1b-F2` の JSON から `collector.effect.mem`, `collector.effect.mut`, `collector.error.duplicate_key_rate`, `iterator.stage.audit_pass_rate` を抽出し `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に追記。しきい値割れ時は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` にフォローアップチケットを登録する。
+- テストは `compiler/rust/frontend/tests/core_iter_collectors.rs` をベースに ①通常系（List/Vec/String）②重複キー（Map/Set）③メモリ/エンコーディング異常（Vec/String）を `insta` snapshot 化し、`reports/spec-audit/ch0/links.md#collector-f2` にコマンドと参照リンクを記録する。
+
+| 手順 | 目的 | 主要ファイル / コマンド | 成果物・チェックポイント |
+| --- | --- | --- | --- |
+| F2-1 List/Vec 雛形 | 遅延列と Collector トレイトの往復を最小構成で確認 | `compiler/rust/runtime/src/prelude/collectors/{list,vec}.rs`, `compiler/rust/frontend/tests/core_iter_collectors.rs` | `collector.effect.* = ∅`（List）、`collector.effect.mem_reservation>0`（Vec）を `collect-iterator-audit` ログで確認。《Diag拡張: prelude.collector.kind=list/vec》 |
+| F2-2 Map/Set Stage 宣言 | `CollectError::DuplicateKey` と Stage 要件を辞書・診断へ転写 | `.../map.rs`, `.../set.rs`, `tooling/ci/collect-iterator-audit-metrics.py --case collector-duplicate` | `AuditEnvelope.metadata.collector.error.key` に重複キーを記録、`iterator.stage.audit_pass_rate = 1.0` を維持。 |
+| F2-3 String/UTF-8 | `StringCollector` の UTF-8 正規化と `StringError::InvalidEncoding` を表現 | `.../string.rs`, `docs/spec/3-3-core-text-unicode.md`, `core_iter_collectors.rs` (string ケース) | `collector.error.invalid_encoding = 0` を KPI に設定、`collector.effect.mem` を `reports/iterator-collector-summary.md` で監視。 |
+| F2-4 API インベントリ更新 | Collector API の在庫・WBS・効果タグを機械管理 | `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`, `cargo xtask prelude-audit --section iter --filter collector` | `rust_status` を `planned→implemented` へ更新し、`last_updated = "2025-11-25 / WBS 3.1b F2"` を記録。 |
+| F2-5 監査ログ整備 | KPI とコマンド履歴を公開しクロスリファレンスを確立 | `reports/spec-audit/ch0/links.md`, `docs/notes/core-library-outline.md`, `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` | `Collector F2` セクションを追加し、タスク・スナップショット・ベンチ結果を相互参照。 |
+
+**Collector ごとの実装指針**
+1. **ListCollector**: `effect = @pure` を保証するベースライン。`List::cons` + `finish` で永続リストを構築し、`IteratorStageProfile::stable` を固定。`collector.stage.actual = "stable"` を `Diagnostic.extensions["prelude.collector"]` へ書き込む。
+2. **VecCollector**: `Vec<T>` 内部バッファと `EffectMarker::mem_reservation` を `with_capacity` で発火。確保失敗は `CollectError::MemoryError { attempted, collector: "Vec" }` を返し、`collector.effect.mem` にバイト数を記録。
+3. **MapCollector / SetCollector**: `collectors/common.rs` に `fn check_duplicate<K: Eq + Hash>` を用意し、重複キー検出時に `AuditEnvelope.metadata.collector.error.key = format!("{:?}", key)` を残す。`SetCollector` は `StageRequirement::Exact("stable")` を `IteratorDictInfo` へ転写。
+4. **StringCollector**: Core Text 章予定の `StringError` を `CollectError::InvalidEncoding(StringError)` 経由で再利用。`effect {mem}` により `collector.effect.mem_leak` KPI をモニタし、invalid case は `core_iter_collectors.rs::string_invalid` で snapshot 固定。
+5. すべての Collector で `finish` に `CollectOutcome::audit()` を呼び `Diagnostic.extensions["prelude.collector"]` の `kind`/`stage`/`effect`/`wbs` を埋める。Snapshot には `kind`, `effects`, `error_kind` を JSON で残し `reports/spec-audit/ch0/links.md` から逆引き可能にする。
+
+**テストと検証**
+- `cargo test core_iter_collectors -- --nocapture` を CI ジョブへ追加し、`RUSTFLAGS="-Zpanic-abort-tests"` を共有。`collect_list_baseline`/`collect_vec_mem_error`/`collect_map_duplicate`/`collect_set_stage`/`collect_string_invalid` の 5 ケースを `insta` で固定。
+- `scripts/validate-diagnostic-json.sh --pattern collector` を走らせ、`prelude.collector.*` キーが `reports/diagnostic-format-regression.md` に差分なしで反映されることを確認。
+- `tooling/ci/collect-iterator-audit-metrics.py --module iter --section collectors --output reports/iterator-collector-summary.md` を実行し、`collector.effect.mem = 0（List/Set/Map）`、`collector.error.duplicate_key_rate = 0`、`iterator.stage.audit_pass_rate = 1.0` を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI に転記する。
+
 | F4 Snapshot & ハンドオーバー | 予定（W37 後半） | Snapshot 試験・API 在庫更新・Phase 3 ハンドオーバー資料を完成 | `core_iter_collectors.rs` で `VecCollector::reserve`/`MapCollector` 重複キー/`StringCollector` 文字列化失敗などエラーケースを snapshot 化、`reports/spec-audit/ch0/links.md` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` M1 へリンク、`prelude_api_inventory.toml` の `last_updated` を更新 | `compiler/rust/frontend/tests/__snapshots__/core_iter_collectors.snap`, `collect-iterator-audit --section collector --output reports/spec-audit/ch0/collector-YYYYMMDD.json` | `cargo test core_iter_collectors -- --ignored`, `collect-iterator-audit --section collector` |
 
 - `CollectError` では `MemoryError`（`effect {mem}` 発生源を `Diagnostic.extensions["collector.effect.mem"]` へ書き込み）、`DuplicateKey`（`effect {mut}`）、`InvalidEncoding`（`Core.Text` と連携）、`CapacityOverflow`（`effect {mem}` + `effect {debug}`）を最低限のバリアントとして定義し、`docs/plans/bootstrap-roadmap/0-4-risk-handling.md` の `R-027 (Collector メモリ過剰確保)` に紐付ける。
