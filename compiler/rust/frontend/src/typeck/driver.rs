@@ -332,9 +332,10 @@ impl TypecheckViolation {
             "Iterator `{}` はステージ `{}` を要求しますが、実行時ステージ `{}` では利用できません",
             snapshot.source, required_label, actual_label
         );
+        let kind_label = snapshot.kind.clone().to_string();
         let note_message = format!(
             "Iterator kind `{}` / capability `{}`",
-            snapshot.kind, capability
+            kind_label, capability
         );
         Self {
             kind: TypecheckViolationKind::IteratorStageMismatch,
@@ -349,7 +350,7 @@ impl TypecheckViolation {
                 required: snapshot.required.clone(),
                 actual,
                 capability: Some(capability),
-                kind: snapshot.kind.clone(),
+                kind: kind_label.clone(),
                 source: snapshot.source,
             }),
         }

@@ -1,25 +1,25 @@
 collect_list_baseline: {
+  "effects": {
+    "async_pending": false,
+    "debug": false,
+    "mem": false,
+    "mutating": false
+  },
   "kind": "list",
+  "markers": {
+    "finish": 1,
+    "mem_reservation": 0,
+    "reserve": 0
+  },
   "stage": {
+    "actual": "stable",
+    "capability": "core.collector.list",
+    "kind": "list",
     "required": {
       "mode": "exact",
       "stage": "stable"
     },
-    "actual": "stable",
-    "capability": "core.collector.list",
-    "kind": "list",
     "source": "ListCollector::finish"
-  },
-  "effects": {
-    "mem": false,
-    "mutating": false,
-    "debug": false,
-    "async_pending": false
-  },
-  "markers": {
-    "mem_reservation": 0,
-    "reserve": 0,
-    "finish": 1
   },
   "value": [
     1,
@@ -28,27 +28,27 @@ collect_list_baseline: {
   ]
 }
 collect_vec_mem_reservation: {
+  "effects": {
+    "async_pending": false,
+    "debug": false,
+    "mem": true,
+    "mutating": true
+  },
   "kind": "vec",
+  "markers": {
+    "finish": 1,
+    "mem_reservation": 4,
+    "reserve": 2
+  },
   "stage": {
+    "actual": "beta",
+    "capability": "core.collector.vec",
+    "kind": "vec",
     "required": {
       "mode": "at_least",
       "stage": "beta"
     },
-    "actual": "beta",
-    "capability": "core.collector.vec",
-    "kind": "vec",
     "source": "VecCollector::finish"
-  },
-  "effects": {
-    "mem": true,
-    "mutating": true,
-    "debug": false,
-    "async_pending": false
-  },
-  "markers": {
-    "mem_reservation": 4,
-    "reserve": 2,
-    "finish": 1
   },
   "value": [
     10,

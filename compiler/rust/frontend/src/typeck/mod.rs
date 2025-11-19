@@ -12,10 +12,10 @@ mod scheme;
 pub mod types;
 
 pub use capability::RuntimeCapability;
-pub use constraint::{Constraint, ConstraintSolver, ConstraintSolverError, Substitution};
 pub use constraint::iterator::{
     solve_iterator, IteratorDictInfo, IteratorKind, IteratorStageProfile, IteratorStageSnapshot,
 };
+pub use constraint::{Constraint, ConstraintSolver, ConstraintSolverError, Substitution};
 pub use driver::{
     IteratorStageViolationInfo, TypecheckDriver, TypecheckReport, TypecheckViolation,
     TypecheckViolationKind, TypedFunctionSummary,

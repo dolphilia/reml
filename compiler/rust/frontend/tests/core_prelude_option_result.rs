@@ -68,32 +68,34 @@ fn option_result_snapshot() {
 
     let result_map = format!(
         "{:?} | {:?}",
-        RemlResult::Ok(5).map(|v| v * 2),
+        RemlResult::<i32, &str>::Ok(5).map(|v| v * 2),
         RemlResult::<i32, &str>::Err("boom").map(|v| v * 2)
     );
     push_case(&mut cases, "result_map", result_map);
 
-    let result_map_err =
-        format!("{:?}", RemlResult::<i32, &str>::Err("boom").map_err(|e| format!("{e}:converted")));
+    let result_map_err = format!(
+        "{:?}",
+        RemlResult::<i32, &str>::Err("boom").map_err(|e| format!("{e}:converted"))
+    );
     push_case(&mut cases, "result_map_err", result_map_err);
 
     let result_and_then = format!(
         "{:?} | {:?}",
-        RemlResult::Ok(3).and_then(|v| RemlResult::Ok(v * 5)),
-        RemlResult::<i32, &str>::Err("boom").and_then(|v| RemlResult::Ok(v * 5))
+        RemlResult::<i32, &str>::Ok(3).and_then(|v| RemlResult::<i32, &str>::Ok(v * 5)),
+        RemlResult::<i32, &str>::Err("boom").and_then(|v| RemlResult::<i32, &str>::Ok(v * 5))
     );
     push_case(&mut cases, "result_and_then", result_and_then);
 
     let result_or_else = format!(
         "{:?} | {:?}",
-        RemlResult::Ok(8).or_else(|_| RemlResult::Ok(0)),
-        RemlResult::<i32, &str>::Err("boom").or_else(|_| RemlResult::Ok(64))
+        RemlResult::<i32, &str>::Ok(8).or_else(|_| RemlResult::<i32, &str>::Ok(0)),
+        RemlResult::<i32, &str>::Err("boom").or_else(|_| RemlResult::<i32, &str>::Ok(64))
     );
     push_case(&mut cases, "result_or_else", result_or_else);
 
     let result_unwrap_or = format!(
         "{} | {}",
-        RemlResult::Ok(88).unwrap_or(0),
+        RemlResult::<i32, &str>::Ok(88).unwrap_or(0),
         RemlResult::<i32, &str>::Err("boom").unwrap_or(0)
     );
     push_case(&mut cases, "result_unwrap_or", result_unwrap_or);
@@ -101,12 +103,14 @@ fn option_result_snapshot() {
     push_case(
         &mut cases,
         "result_expect",
-        RemlResult::Ok(13).expect("value expected").to_string(),
+        RemlResult::<i32, &str>::Ok(13)
+            .expect("value expected")
+            .to_string(),
     );
 
     let result_to_option = format!(
         "{:?} | {:?}",
-        RemlResult::Ok(21).to_option(),
+        RemlResult::<i32, &str>::Ok(21).to_option(),
         RemlResult::<i32, &str>::Err("boom").to_option()
     );
     push_case(&mut cases, "result_to_option", result_to_option);
@@ -125,5 +129,8 @@ fn option_result_snapshot() {
         .join("\n");
     const SNAPSHOT: &str = include_str!("core_prelude_option_result.snap");
     let expected = SNAPSHOT.trim_end_matches('\n');
-    assert_eq!(actual, expected, "Core Prelude Option/Result snapshot が変化しました");
+    assert_eq!(
+        actual, expected,
+        "Core Prelude Option/Result snapshot が変化しました"
+    );
 }

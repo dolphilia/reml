@@ -27,10 +27,10 @@ use reml_frontend::streaming::{
     RuntimeBridgeSignal, StreamFlowConfig, StreamFlowMetrics, StreamFlowState, StreamingStateConfig,
 };
 use reml_frontend::typeck::{
-    self, Constraint, DualWriteGuards, InstallConfigError, RecoverConfig, RuntimeCapability,
-    StageContext, StageId, StageRequirement, StageTraceStep, TypeRowMode, TypecheckConfig,
-    TypecheckDriver, TypecheckMetrics, TypecheckReport, TypecheckViolation,
-    TypecheckViolationKind, TypedFunctionSummary, IteratorStageViolationInfo,
+    self, Constraint, DualWriteGuards, InstallConfigError, IteratorStageViolationInfo,
+    RecoverConfig, RuntimeCapability, StageContext, StageId, StageRequirement, StageTraceStep,
+    TypeRowMode, TypecheckConfig, TypecheckDriver, TypecheckMetrics, TypecheckReport,
+    TypecheckViolation, TypecheckViolationKind, TypedFunctionSummary,
 };
 use serde::Serialize;
 

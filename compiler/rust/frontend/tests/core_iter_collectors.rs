@@ -2,7 +2,8 @@
 
 use serde_json::json;
 
-use reml_runtime_ffi::core_prelude::collectors::{CollectOutcome, ListCollector, VecCollector};
+use reml_runtime_ffi::core_prelude::collectors::{ListCollector, VecCollector};
+use reml_runtime_ffi::core_prelude::{collectors::CollectOutcome, Collector};
 
 fn render_snapshot<T>(
     outcome: CollectOutcome<T>,

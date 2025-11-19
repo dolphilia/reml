@@ -63,17 +63,16 @@ fn find_unexpected_panics(repo_root: &Path, file: &Path, content: &str) -> Vec<S
         {
             continue;
         }
-        hits.push(format!(
-            "{}: {}",
-            relative(repo_root, file),
-            line.trim()
-        ));
+        hits.push(format!("{}: {}", relative(repo_root, file), line.trim()));
     }
     hits
 }
 
 fn current_line(content: &str, offset: usize) -> &str {
-    let start = content[..offset].rfind('\n').map(|idx| idx + 1).unwrap_or(0);
+    let start = content[..offset]
+        .rfind('\n')
+        .map(|idx| idx + 1)
+        .unwrap_or(0);
     let end = content[offset..]
         .find('\n')
         .map(|idx| idx + offset)
@@ -85,7 +84,9 @@ fn gather_rust_files(dir: &Path, acc: &mut Vec<PathBuf>) {
     if !dir.exists() {
         return;
     }
-    for entry in fs::read_dir(dir).unwrap_or_else(|err| panic!("ディレクトリ {dir:?} を走査できません: {err}")) {
+    for entry in fs::read_dir(dir)
+        .unwrap_or_else(|err| panic!("ディレクトリ {dir:?} を走査できません: {err}"))
+    {
         let entry = entry.expect("DirEntry の取得に失敗しました");
         let path = entry.path();
         if path.is_dir() {
