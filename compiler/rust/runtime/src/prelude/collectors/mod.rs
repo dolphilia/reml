@@ -6,16 +6,22 @@
 //! - WBS: 3.1b F1（Collector トレイト骨格 & EffectMarker）
 
 mod list;
+mod map;
+mod set;
+mod string;
 mod vec;
 
 pub use list::{List, ListCollector};
+pub use map::{Map, MapCollector};
+pub use set::{Set, SetCollector};
+pub use string::StringCollector;
 pub use vec::VecCollector;
 
 use super::{
     ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic},
     iter::{EffectLabels, StageRequirement, StageRequirementDescriptor},
 };
-use serde_json::{Map, Number, Value};
+use serde_json::{Map as JsonObject, Number, Value};
 
 /// `Collector::with_capacity` 用の EffectMarker。
 pub const EFFECT_MARKER_WITH_CAPACITY: &str = "collector.effect.mem_reservation";
@@ -172,8 +178,8 @@ impl CollectorAuditTrail {
         }
     }
 
-    fn extension_payload(&self) -> Map<String, Value> {
-        let mut obj = Map::new();
+    fn extension_payload(&self) -> JsonObject<String, Value> {
+        let mut obj = JsonObject::new();
         obj.insert("kind".into(), Value::String(self.kind.as_str().into()));
         obj.insert(
             "stage_required".into(),
@@ -196,7 +202,7 @@ impl CollectorAuditTrail {
         );
         obj.insert("source".into(), Value::String(self.stage.source.clone()));
 
-        let mut effects = Map::new();
+        let mut effects = JsonObject::new();
         effects.insert("mem".into(), Value::Bool(self.effects.mem));
         effects.insert("mut".into(), Value::Bool(self.effects.mutating));
         effects.insert("debug".into(), Value::Bool(self.effects.debug));
@@ -206,7 +212,7 @@ impl CollectorAuditTrail {
         );
         obj.insert("effects".into(), Value::Object(effects));
 
-        let mut markers = Map::new();
+        let mut markers = JsonObject::new();
         markers.insert(
             "mem_reservation".into(),
             Value::Number(Number::from(self.markers.mem_reservation as u64)),
@@ -223,8 +229,8 @@ impl CollectorAuditTrail {
         obj
     }
 
-    fn audit_metadata(&self) -> Map<String, Value> {
-        let mut metadata = Map::new();
+    fn audit_metadata(&self) -> JsonObject<String, Value> {
+        let mut metadata = JsonObject::new();
         metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}kind"),
             Value::String(self.kind.as_str().into()),
@@ -488,7 +494,7 @@ impl IntoDiagnostic for CollectError {
                 self.message
             ),
             extensions: {
-                let mut root = Map::new();
+                let mut root = JsonObject::new();
                 root.insert(COLLECTOR_EXTENSION_KEY.into(), Value::Object(extensions));
                 root
             },

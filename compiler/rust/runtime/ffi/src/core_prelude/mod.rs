@@ -18,8 +18,9 @@ pub mod try_support;
 
 pub use collectors::{
     CollectError, CollectErrorKind, CollectOutcome, Collector, CollectorAuditTrail, CollectorKind,
-    CollectorStageProfile, CollectorStageSnapshot, List, ListCollector, VecCollector,
-    EFFECT_MARKER_FINISH, EFFECT_MARKER_RESERVE, EFFECT_MARKER_WITH_CAPACITY,
+    CollectorStageProfile, CollectorStageSnapshot, List, ListCollector, Map, MapCollector, Set,
+    SetCollector, StringCollector, VecCollector, EFFECT_MARKER_FINISH, EFFECT_MARKER_RESERVE,
+    EFFECT_MARKER_WITH_CAPACITY,
 };
 pub use ensure::{
     ensure, ensure_not_null, DiagnosticSeverity, EnsureError, EnsureErrorBuilder, GuardDiagnostic,

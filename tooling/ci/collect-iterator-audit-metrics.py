@@ -2928,7 +2928,92 @@ def collect_capability_array_metric(
                 passed += 1
 
     if total == 0:
+    return None
+
+
+def collect_collector_effect_metrics(
+    paths: Sequence[Path],
+) -> Optional[Dict[str, Any]]:
+    total = 0
+    schema_versions: Set[str] = set()
+    stage_counts: Dict[str, int] = defaultdict(int)
+    kind_counts: Dict[str, int] = defaultdict(int)
+    effect_flags: Dict[str, int] = {name: 0 for name in ["mem", "mut", "debug", "async_pending"]}
+    marker_totals: Dict[str, int] = {
+        "mem_reservation": 0,
+        "reserve": 0,
+        "finish": 0,
+    }
+
+    for path in paths:
+        data = load_json(path)
+        try:
+            diagnostics_iter = iter_diagnostics(data)
+        except ValueError:
+            continue
+        for diag in diagnostics_iter:
+            extensions = _as_dict(diag.get("extensions"))
+            prelude = (
+                _as_dict(extensions.get("prelude.collector"))
+                if extensions
+                else None
+            )
+            if not prelude:
+                continue
+            total += 1
+            schema = extract_schema_version(diag)
+            if schema:
+                schema_versions.add(schema)
+
+            stage_actual = prelude.get("stage_actual")
+            stage_counts[stage_actual or "unknown"] += 1
+
+            kind = prelude.get("kind")
+            if kind:
+                kind_counts[kind] += 1
+
+            audit = _as_dict(diag.get("audit"))
+            metadata = (
+                _as_dict(audit.get("metadata")) if audit else None
+            )
+
+            for effect_name in effect_flags.keys():
+                value = None
+                if metadata:
+                    exists, value = _lookup_in_container(
+                        metadata, f"collector.effect.{effect_name}"
+                    )
+                if value is None:
+                    effects = _as_dict(prelude.get("effects"))
+                    value = effects.get(effect_name) if effects else None
+                if _coerce_bool(value):
+                    effect_flags[effect_name] += 1
+
+            for marker_name in marker_totals.keys():
+                value = None
+                if metadata:
+                    exists, value = _lookup_in_container(
+                        metadata, f"collector.effect.{marker_name}"
+                    )
+                if value is None:
+                    markers = _as_dict(prelude.get("markers"))
+                    value = markers.get(marker_name) if markers else None
+                if isinstance(value, (int, float)):
+                    marker_totals[marker_name] += int(value)
+
+    if total == 0:
         return None
+
+    return {
+        "metric": "collector.effect.audit_snapshot",
+        "total": total,
+        "effects": effect_flags,
+        "markers": marker_totals,
+        "stage_counts": dict(stage_counts),
+        "kind_counts": dict(kind_counts),
+        "schema_versions": sorted(schema_versions),
+        "sources": [str(path) for path in paths],
+    }
 
     pass_rate, pass_fraction = calculate_pass_rates(passed, total)
     status = "success" if pass_rate == 1.0 else "error"
@@ -4503,6 +4588,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "lexer",
             "streaming",
             "iterator",
+            "collectors",
             "effects",
             "diag",
             "type_inference",
@@ -4738,6 +4824,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "lexer",
         "streaming",
         "iterator",
+        "collectors",
         "effects",
         "type_inference",
         "typeclass",
@@ -4758,6 +4845,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     core_parser_metrics: List[Dict[str, Any]] = []
     orphan_parser_related_metrics: List[Dict[str, Any]] = []
     iterator_metrics: Optional[Dict[str, Any]] = None
+    collector_metrics: Optional[Dict[str, Any]] = None
     domain_metrics: Optional[Dict[str, Any]] = None
     effect_consistency_metric: Optional[Dict[str, Any]] = None
     capability_array_metric: Optional[Dict[str, Any]] = None
@@ -4812,6 +4900,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             ):
                 if metric:
                     related.append(metric)
+    if "collectors" in sections or "collector" in sections:
+        collector_metrics = collect_collector_effect_metrics(sources)
     if "effects" in sections:
         effects_metric = collect_effect_syntax_metrics(sources)
         (
@@ -4882,6 +4972,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         metrics_list.append(capability_array_metric)
     if iterator_metrics:
         metrics_list.append(iterator_metrics)
+    if collector_metrics:
+        metrics_list.append(collector_metrics)
     if effects_metric:
         metrics_list.append(effects_metric)
     if type_inference_metric:
@@ -4951,6 +5043,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         combined["lexer"] = {"metrics": lexer_metrics}
     if iterator_metrics:
         combined["iterator"] = iterator_metrics
+    if collector_metrics:
+        combined["collector"] = collector_metrics
     if streaming_metric:
         combined["streaming"] = streaming_metric
     if effects_metric:
