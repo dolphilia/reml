@@ -57,6 +57,7 @@ impl<T: Ord> SetCollector<T> {
             format!("duplicate element: {value:?}"),
             self.audit_trail("SetCollector::push"),
         )
+        .with_error_key(format!("{value:?}"))
     }
 }
 

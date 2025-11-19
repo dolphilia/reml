@@ -57,6 +57,7 @@ impl<K: Ord, V> MapCollector<K, V> {
             format!("duplicate key: {key:?}"),
             self.audit_trail("MapCollector::push"),
         )
+        .with_error_key(format!("{key:?}"))
     }
 }
 

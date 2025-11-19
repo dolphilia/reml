@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2025-11-30 / WBS 3.1b F2-1"
+last_updated = "2025-12-01 / WBS 3.1b F2-2"
 maintainer = "Core Library Team"
 
 [[api]]
@@ -311,13 +311,33 @@ wbs = "3.1b F2"
 
 [[api]]
 module = "Collector"
+name = "MapCollector.stage_requirement"
+effect = "@pure"
+stage = "beta"
+rust_status = "working"
+ocaml_status = "typeck-only"
+notes = "F2-2: `StageRequirement::AtLeast(\"beta\")` を `CollectOutcome::stage()` から `AuditEnvelope.metadata.collector.stage.required`/`actual` に転写し、`docs/spec/3-1-core-prelude-iteration.md:188-206` と `docs/spec/3-2-core-collections.md:75-120` に沿った `collector.stage.mismatch_rate` を `collect-iterator-audit` で検出"
+wbs = "3.1b F2-2"
+
+[[api]]
+module = "Collector"
 name = "MapCollector.push"
 effect = "@pure"
 stage = "beta"
 rust_status = "working"
 ocaml_status = "not_available"
-notes = "F2: `collect_map_duplicate` で `CollectError::DuplicateKey` を確認し、`collect-iterator-audit --section collectors` へ `collector.effect.mem_reservation` を送る"
-wbs = "3.1b F2"
+notes = "F2-2: `collect_map_duplicate` で `CollectError::DuplicateKey` を確認し、`AuditEnvelope.metadata.collector.stage.required = \"beta\"` / `collector.stage.actual` を記録した上で `collect-iterator-audit --section collectors --case collector-duplicate` へ `collector.effect.mem_reservation` と `collector.error.key` を送る"
+wbs = "3.1b F2-2"
+
+[[api]]
+module = "Collector"
+name = "CollectError::DuplicateKey"
+effect = "@pure"
+stage = "beta"
+rust_status = "working"
+ocaml_status = "typeck-only"
+notes = "F2-2: 重複キー検出で `AuditEnvelope.metadata.collector.error.kind = \"duplicate_key\"`、`error.key` に `format!(\"{:?}\", key)`、`Diagnostic.extensions[\"prelude.collector.error_key\"]` を書き込み、`docs/spec/3-2-core-collections.md:200-235` のメトリクス要件と整合させる"
+wbs = "3.1b F2-2"
 
 [[api]]
 module = "Collector"
@@ -326,8 +346,18 @@ effect = "@pure"
 stage = "stable"
 rust_status = "working"
 ocaml_status = "not_available"
-notes = "F2: `SetCollector` が `StageRequirement::Exact(\"stable\")` を守る `collect_set_stage` ケースで `collector.effect.finish` を監視"
-wbs = "3.1b F2"
+notes = "F2-2: `SetCollector` が `StageRequirement::Exact(\"stable\")` を守る `collect_set_stage` ケースで `collector.stage.actual = \"stable\"` を `Diagnostic.extensions[\"prelude.collector.stage\"]` と `AuditEnvelope.metadata.collector.stage.actual` に書き込み、`collector.effect.finish` まで `collector.stage.audit_pass_rate = 1.0` を維持"
+wbs = "3.1b F2-2"
+
+[[api]]
+module = "Collector"
+name = "SetCollector.stage_requirement"
+effect = "@pure"
+stage = "stable"
+rust_status = "working"
+ocaml_status = "typeck-only"
+notes = "F2-2: `StageRequirement::Exact(\"stable\")` を `collector.stage.required`/`actual` 双方へ定義し、`collect-iterator-audit` の `collector.stage.mismatch_rate` が 0 になることを `reports/iterator-collector-summary.md` で検証"
+wbs = "3.1b F2-2"
 
 [[api]]
 module = "Collector"

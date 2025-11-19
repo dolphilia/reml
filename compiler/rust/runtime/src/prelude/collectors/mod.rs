@@ -128,6 +128,26 @@ pub struct CollectorStageSnapshot {
     pub source: String,
 }
 
+impl CollectorStageSnapshot {
+    fn stage_mismatch(&self) -> bool {
+        match self.required.mode {
+            "exact" => self.actual != self.required.stage,
+            "at_least" => stage_rank(self.actual) < stage_rank(self.required.stage),
+            _ => false,
+        }
+    }
+}
+
+fn stage_rank(stage: &str) -> u8 {
+    match stage {
+        "stable" => 3,
+        "beta" => 2,
+        "alpha" => 1,
+        "experimental" => 0,
+        _ => 0,
+    }
+}
+
 /// Collector の効果記録。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct CollectorEffectMarkers {
@@ -194,6 +214,10 @@ impl CollectorAuditTrail {
             Value::String(self.stage.actual.into()),
         );
         obj.insert(
+            "stage_mismatch".into(),
+            Value::Bool(self.stage.stage_mismatch()),
+        );
+        obj.insert(
             "capability".into(),
             self.stage
                 .capability
@@ -246,6 +270,10 @@ impl CollectorAuditTrail {
         metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}stage.actual"),
             Value::String(self.stage.actual.into()),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}stage.mismatch"),
+            Value::Bool(self.stage.stage_mismatch()),
         );
         metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}stage.source"),
@@ -438,6 +466,7 @@ pub struct CollectError {
     message: String,
     detail: Option<String>,
     audit: CollectorAuditTrail,
+    error_key: Option<String>,
 }
 
 impl CollectError {
@@ -452,12 +481,19 @@ impl CollectError {
             message: message.into(),
             detail: None,
             audit,
+            error_key: None,
         }
     }
 
     /// 追加情報を付与する。
     pub fn with_detail(mut self, detail: impl Into<String>) -> Self {
         self.detail = Some(detail.into());
+        self
+    }
+
+    /// エラーキー（例: 重複キー）を追加する。
+    pub fn with_error_key(mut self, key: impl Into<String>) -> Self {
+        self.error_key = Some(key.into());
         self
     }
 
@@ -474,14 +510,30 @@ impl CollectError {
 
 impl IntoDiagnostic for CollectError {
     fn into_diagnostic(self) -> GuardDiagnostic {
-        let mut extensions = self.audit.extension_payload();
-        extensions.insert(
-            "error_kind".into(),
-            Value::String(self.kind.as_str().into()),
-        );
-        extensions.insert("message".into(), Value::String(self.message.clone()));
-        if let Some(detail) = self.detail.clone() {
+        let CollectError {
+            kind,
+            message,
+            detail,
+            audit,
+            error_key,
+        } = self;
+
+        let mut extensions = audit.extension_payload();
+        if let Some(key) = error_key.as_ref() {
+            extensions.insert("error_key".into(), Value::String(key.clone()));
+        }
+        extensions.insert("error_kind".into(), Value::String(kind.as_str().into()));
+        extensions.insert("message".into(), Value::String(message.clone()));
+        if let Some(detail) = detail.clone() {
             extensions.insert("detail".into(), Value::String(detail));
+        }
+
+        let mut metadata = audit.audit_metadata();
+        if let Some(key) = error_key {
+            metadata.insert(
+                format!("{COLLECTOR_AUDIT_PREFIX}error.key"),
+                Value::String(key),
+            );
         }
 
         GuardDiagnostic {
@@ -490,15 +542,15 @@ impl IntoDiagnostic for CollectError {
             severity: DiagnosticSeverity::Error,
             message: format!(
                 "{} failed: {}",
-                self.audit.kind.display_name(),
-                self.message
+                audit.kind.display_name(),
+                message
             ),
             extensions: {
                 let mut root = JsonObject::new();
                 root.insert(COLLECTOR_EXTENSION_KEY.into(), Value::Object(extensions));
                 root
             },
-            audit_metadata: self.audit.audit_metadata(),
+            audit_metadata: metadata,
         }
     }
 }
