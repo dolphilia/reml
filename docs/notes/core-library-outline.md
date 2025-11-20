@@ -31,7 +31,12 @@
 2. Tier 1（3.4〜3.6）で共有語彙 (`Diagnostic`, `audit_id`, `Duration`, `Path` 等) の共通フォーマットを明文化し、ガイドからの参照を誘導する。
 3. Config/Data/Runtime の本文再配置時に差分追跡ルール（リネーム方針、旧リンク対応）を明記するためのドラフトテンプレートを作成する。
 4. Async/FFI/Unsafe（3.9）については、効果タグと安全境界の互換性調査メモを用意し、レビュー対象とする範囲を確定する。
-5. 2025-11-18 時点で `cargo xtask prelude-audit --wbs 2.1b --strict --baseline docs/spec/3-1-core-prelude-iteration.md` を実行し、`core_prelude_option_result.{rs,snap}` の 16 シナリオ結果と `prelude_api_inventory.toml` の `rust_status=implemented` を `reports/spec-audit/ch0/links.md` に記録した。WBS 2.2 以降の項目は `wbs` フィルタで未実装として追跡を継続する。
+
+### Collector F2 監査ログ（WBS 3.1b）
+
+- `../../reports/spec-audit/ch0/links.md#collector-f2-監査ログ` に F2 で実行した 7 ケースの `cargo test`/`cargo insta review`/`collect-iterator-audit-metrics`/`scripts/validate-diagnostic-json.sh`/`cargo xtask prelude-audit` コマンド履歴と KPI 結果（`collector.effect.*`、`collector.error.*`、`iterator.stage.audit_pass_rate`）を列挙しており、`../../reports/iterator-collector-summary.md` への参照を含めてモジュール実装の一貫性を監査ログとして留めている。
+- `../../reports/iterator-collector-summary.md` では `collect_list_baseline` の `collector.effect.mem=0`、`collect_vec_mem_reservation>0`、`collect_map_duplicate` の `collector.error.duplicate_key_rate=1`、`collect_string_invalid` の `collector.error.invalid_encoding` などを KPI として JSON 形式で記録し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表にも同期している。
+- この監査ログは `../plans/bootstrap-roadmap/3-0-phase3-self-host.md#collector-f2-監査ログ` でも M1 レビューの根拠資料として参照され、`Collector F2` 実装完了判定のトレースとして機能している。
 
 ## 5. WBS 3.1a F0（Iter 構造と solve_iterator）の整合メモ（2025-W36）
 
