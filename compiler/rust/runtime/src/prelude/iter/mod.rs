@@ -14,6 +14,9 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+mod generators;
+pub use generators::*;
+
 /// 遅延列 `Iter<T>` の共有ハンドル。
 #[derive(Clone, Debug)]
 pub struct Iter<T> {
@@ -23,37 +26,6 @@ pub struct Iter<T> {
 #[derive(Debug)]
 struct IterCore<T> {
     state: Mutex<IterState<T>>,
-}
-
-impl<T> Iter<T> {
-    /// `IterState` を共有ハンドルへ包む。
-    pub fn from_state(state: IterState<T>) -> Self {
-        Self {
-            core: Arc::new(IterCore {
-                state: Mutex::new(state),
-            }),
-        }
-    }
-
-    /// Stage/Capability 情報のスナップショットを生成する。
-    pub fn stage_snapshot(&self, source_name: impl Into<String>) -> IteratorStageSnapshot {
-        let guard = self
-            .core
-            .state
-            .lock()
-            .expect("IterState poisoned during snapshot");
-        guard.stage_profile.snapshot(source_name.into())
-    }
-
-    /// 効果ラベル（`iterator.effect.*`）を取得する。
-    pub fn effect_labels(&self) -> EffectLabels {
-        let guard = self
-            .core
-            .state
-            .lock()
-            .expect("IterState poisoned during effect_labels()");
-        guard.effects.to_labels()
-    }
 }
 
 /// `Iter` が共有する内部状態。

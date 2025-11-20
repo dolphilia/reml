@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2025-11-27 / WBS 3.1b F2"
+last_updated = "2025-12-08 / WBS 3.1c-F1"
 maintainer = "Core Library Team"
 
 [[api]]
@@ -218,6 +218,16 @@ rust_status = "working"
 ocaml_status = "typeck-only"
 notes = "`Iter::try_collect(SetCollector)` と `collect-iterator-audit-metrics.py --module iter --section collectors --case iter-f3` による `collector.effect.mem`/`iterator.stage.audit_pass_rate` KPI を `reports/spec-audit/ch1/iter.json` に記録"
 wbs = "3.1a"
+
+[[api]]
+module = "Iter"
+name = "module.structure"
+effect = "@pure"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "F1-1: `compiler/rust/runtime/src/prelude/iter/generators.rs` に `Iter` の `from_state`/`stage_snapshot`/`effect_labels` を移管し `IterStepMetadata`/`attach_effects` を追加、`docs-migrations.log` + `module = \"Iter\"` の `prelude_api_inventory.toml` 行へ `WBS 3.1c-F1` 脚注を記録して進捗を可視化"
+wbs = "3.1c F1"
 
 # F2-4: `cargo xtask prelude-audit --section iter --filter collector` でコレクタ API 在庫を再検証し、Rust 実装側を `implemented` と判定
 
