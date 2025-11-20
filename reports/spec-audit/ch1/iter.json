@@ -2,7 +2,7 @@
   "metric": "iterator.api.coverage",
   "command": "cargo xtask prelude-audit --section iter --baseline docs/spec/3-1-core-prelude-iteration.md --wbs 3.1c-F1",
   "timestamp": "2025-12-12T07:30:00Z",
-  "total_entries": 9,
+  "total_entries": 13,
   "missing_entries": [],
   "pass_rate": 1.0,
   "kpi": {
@@ -11,7 +11,11 @@
     "collector.effect.mut": 2,
     "collector.error.duplicate_key_rate": 0,
     "collector.error.invalid_encoding": 0,
-    "iter.generators.coverage": 1.0
+    "iter.generators.coverage": 1.0,
+    "iterator.range.overflow_guard": 1,
+    "iterator.repeat.flagged": true,
+    "iterator.once.length": 1,
+    "iterator.empty.items": 0
   },
   "audit_cases": [
     {
@@ -51,6 +55,55 @@
         "compiler/rust/frontend/tests/snapshots/core_iter_generators__from_fn_counter.snap"
       ],
       "notes": "FnMut() -> Option<T> を IterSeed として包んだ際に Stage/Effect を @pure のまま維持できることを snapshot で固定。"
+    },
+    {
+      "id": "range",
+      "command": "collect-iterator-audit --section iter --case range --output reports/spec-audit/ch1/iter.json",
+      "kpi": {
+        "iterator.stage.audit_pass_rate": 1.0,
+        "iterator.range.overflow_guard": 1
+      },
+      "artifacts": [
+        "compiler/rust/frontend/tests/snapshots/core_iter_generators__range_basic.snap",
+        "compiler/rust/frontend/tests/snapshots/core_iter_generators__range_overflow_guard.snap"
+      ],
+      "notes": "Iter::range が `RangeState`/`IterRangeError` 経由でオーバーフロー検出を `IterStep::Error` として報告し、監査ログに `iterator.range.overflow_guard=1` を残すことを確認。"
+    },
+    {
+      "id": "repeat",
+      "command": "collect-iterator-audit --section iter --case repeat --output reports/spec-audit/ch1/iter.json",
+      "kpi": {
+        "iterator.stage.audit_pass_rate": 1.0,
+        "iterator.repeat.flagged": true
+      },
+      "artifacts": [
+        "compiler/rust/frontend/tests/snapshots/core_iter_generators__repeat_take.snap"
+      ],
+      "notes": "Iter::repeat が `diagnostic.extensions[\"iterator.repeat\"] = true` を出力し、効果タグを追加せずにフラグ付き無限列として記録されることを監査。"
+    },
+    {
+      "id": "once",
+      "command": "collect-iterator-audit --section iter --case once --output reports/spec-audit/ch1/iter.json",
+      "kpi": {
+        "iterator.stage.audit_pass_rate": 1.0,
+        "iterator.once.length": 1
+      },
+      "artifacts": [
+        "compiler/rust/frontend/tests/snapshots/core_iter_generators__once_collect.snap"
+      ],
+      "notes": "Iter::once が ZST 共有の種を使い、1 要素のみを供給して `iterator.once.length=1` を保証することを検証。"
+    },
+    {
+      "id": "empty",
+      "command": "collect-iterator-audit --section iter --case empty --output reports/spec-audit/ch1/iter.json",
+      "kpi": {
+        "iterator.stage.audit_pass_rate": 1.0,
+        "iterator.empty.items": 0
+      },
+      "artifacts": [
+        "compiler/rust/frontend/tests/snapshots/core_iter_generators__empty_collect.snap"
+      ],
+      "notes": "Iter::empty が追加アロケーション無しで完了し、`iterator.empty.items=0` を報告して `EffectLabels::residual=[]` を維持することを確認。"
     }
   ],
   "snapshots": [
@@ -107,9 +160,39 @@
       "effects": [
         "mem"
       ]
+    },
+    {
+      "id": "iter_range_basic",
+      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__range_basic.snap",
+      "stage": "beta",
+      "effects": []
+    },
+    {
+      "id": "iter_range_overflow_guard",
+      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__range_overflow_guard.snap",
+      "stage": "beta",
+      "effects": []
+    },
+    {
+      "id": "iter_repeat_take",
+      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__repeat_take.snap",
+      "stage": "beta",
+      "effects": []
+    },
+    {
+      "id": "iter_once_collect",
+      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__once_collect.snap",
+      "stage": "beta",
+      "effects": []
+    },
+    {
+      "id": "iter_empty_collect",
+      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__empty_collect.snap",
+      "stage": "beta",
+      "effects": []
     }
   ],
-  "notes": "core_iter_generators.rs（from_list/from_result/from_fn）と core_iter_pipeline.rs の 8 ケースを `cargo test core_iter_generators core_iter_pipeline -- --nocapture` で再現し、collect-iterator-audit --section iter --case from_* が `iterator.stage.audit_pass_rate=1.0` を維持することを確認。",
+  "notes": "core_iter_generators.rs（from_list/from_result/from_fn/empty/once/repeat/range）と core_iter_pipeline.rs の 12 ケースを `RUSTFLAGS=\"-Zpanic-abort-tests\" cargo test core_iter_generators core_iter_pipeline -- --nocapture` で再現し、collect-iterator-audit --section iter --case from_* / empty / once / repeat / range が `iterator.stage.audit_pass_rate=1.0` を維持することを確認。",
   "references": [
     "reports/iterator-stage-summary.md",
     "reports/spec-audit/ch0/links.md#iterator-f3",

@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2025-12-12 / WBS 3.1c-F1-2"
+last_updated = "2025-12-16 / WBS 3.1c-F1-3"
 maintainer = "Core Library Team"
 
 [[api]]
@@ -188,6 +188,46 @@ rust_status = "implemented"
 ocaml_status = "typeck-only"
 notes = "F1-2: `core_iter_generators.rs::from_fn_counter` で `FnMut() -> Option<T>` を `IterSeed` に包み `EffectLabels::residual = []` として `@pure` を維持し、`collect-iterator-audit --section iter --case from_fn` で `iterator.stage.audit_pass_rate=1.0`/`collector.effect.mem=0` の KPI を `reports/spec-audit/ch1/iter.json#audit_cases.from_fn` へ連携した。"
 wbs = "3.1c F1"
+
+[[api]]
+module = "Iter"
+name = "empty"
+effect = "@pure"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "F1-3: `Iter::empty` を ZST 共有で実装し、`core_iter_generators.rs::empty_collect` の snapshot で `iterator.stage.audit_pass_rate=1.0`・`EffectLabels::residual=[]` を確認。`collect-iterator-audit --section iter --case empty` の `iterator.empty.items=0` KPI を `reports/spec-audit/ch1/iter.json#audit_cases.empty` へ記録し、`reports/spec-audit/ch0/links.md#iter-generators` にコマンドを追記。"
+wbs = "3.1c F1-3"
+
+[[api]]
+module = "Iter"
+name = "once"
+effect = "@pure"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "F1-3: `Iter::once` を `IterSeed::singleton` で共通化し `core_iter_generators.rs::once_collect`（`repeat_take` 内包）で 1 要素のみを保証。`collect-iterator-audit --section iter --case once` が `iterator.stage.audit_pass_rate=1.0`・`iterator.once.length=1` を記録。"
+wbs = "3.1c F1-3"
+
+[[api]]
+module = "Iter"
+name = "repeat"
+effect = "@pure"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "F1-3: `Iter::repeat` で `diagnostic.extensions[\"iterator.repeat\"] = true` を注入し、`core_iter_generators.rs::repeat_take` が `collect-iterator-audit --section iter --case repeat` の `iterator.repeat.flagged=true` KPI を `reports/spec-audit/ch1/iter.json#audit_cases.repeat` へ残す構成を確立。"
+wbs = "3.1c F1-3"
+
+[[api]]
+module = "Iter"
+name = "range"
+effect = "@pure"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "F1-3: `RangeState`/`IterRangeError` を `iter/errors.rs` へ切り出し `Iter::range` を `effect=@pure` のまま実装。`core_iter_generators.rs::range_basic`/`range_overflow_guard` が `iterator.range.overflow_guard=1` を `collect-iterator-audit --section iter --case range` 経由で `reports/spec-audit/ch1/iter.json#audit_cases.range` に保存。"
+wbs = "3.1c F1-3"
 
 [[api]]
 module = "Iter"

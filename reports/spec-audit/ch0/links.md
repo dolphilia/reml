@@ -77,23 +77,32 @@
 
 ### Iter Generators
 
-（WBS 3.1c-F1 で `Iter::from_list`/`Iter::from_result`/`Iter::from_fn` を生成 API として実装し、`ListCollector` 相当の Stage・Effect を `CollectOutcome` と同期したログ）
+（WBS 3.1c-F1-3 で `Iter::from_list`/`Iter::from_result`/`Iter::from_fn`/`Iter::empty`/`Iter::once`/`Iter::repeat`/`Iter::range` を生成 API として実装し、`ListCollector` 相当の Stage・Effect を `CollectOutcome` と同期したログ）
 
 | コマンド | 結果 | 備考 |
 | --- | --- | --- |
-| `cargo test core_iter_generators -- --nocapture` | ✅ | `core_iter_generators.rs` に `from_list_roundtrip`/`from_result_passthrough`/`from_fn_counter` を追加し、`IterSeed` が `EffectLabels::residual = []` を維持したまま `Iter` を生成できることを `insta` スナップショットで検証。 |
+| `RUSTFLAGS="-Zpanic-abort-tests" cargo test core_iter_generators -- --nocapture` | ✅ | `core_iter_generators.rs` に `from_list_roundtrip`/`from_result_passthrough`/`from_fn_counter`/`range_basic`/`range_overflow_guard`/`repeat_take`/`empty_collect` を追加し、`IterSeed` が `EffectLabels::residual = []` を維持したまま `Iter` を生成できることを `insta` スナップショットで検証。 |
 | `cargo insta review --review core_iter_generators` | ✅ | `compiler/rust/frontend/tests/snapshots/core_iter_generators__*.snap` を承認し、`ListCollector`（Stage=stable）・`Result`/`FnMut` 変換時の差分をレビュー済み。 |
 | `collect-iterator-audit --section iter --case from_list` | ✅ | `collector.effect.mem=0` と `iterator.stage.audit_pass_rate=1.0` を `reports/spec-audit/ch1/iter.json#audit_cases.from_list` に保存し、`Iter::from_list` が `ListCollector` と同一 Stage を報告することを確認。 |
 | `collect-iterator-audit --section iter --case from_result` | ✅ | `reports/spec-audit/ch1/iter.json#audit_cases.from_result` で `iterator.error.* = 0` を確認し、`Result<T,E>` に潜在する `Err` が `Iter` へ伝播しないことを監査ログに記録。 |
 | `collect-iterator-audit --section iter --case from_fn` | ✅ | `reports/spec-audit/ch1/iter.json#audit_cases.from_fn` に `iterator.residual_effects = []` を保存し、クロージャ生成でも `@pure` を維持できることを可視化。 |
-| `cargo xtask prelude-audit --section iter --baseline docs/spec/3-1-core-prelude-iteration.md --wbs 3.1c-F1` | ✅ | 生成 API を `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` で `rust_status=implemented` と判定し、`meta.last_updated` を `2025-12-12 / WBS 3.1c-F1-2` に更新。 |
-- `reports/spec-audit/ch1/iter.json` では `audit_cases.from_list/from_result/from_fn` に `collect-iterator-audit --section iter --case from_*` の KPI を保存し、`snapshots` セクションで `core_iter_generators__from_list_roundtrip.snap` など 3 ケース分を `cargo insta review` と突き合わせられるようにした。`references` に `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md#33b-生成-api-実装ステップ（wbs-31c-f1）` を追記し、計画書 ↔ 監査ログの往復リンクを確保済み。 |
+| `collect-iterator-audit --section iter --case range` | ✅ | `reports/spec-audit/ch1/iter.json#audit_cases.range` で `iterator.range.overflow_guard=1` を確認し、`IterRangeError` が監査ログへ書き出されることを証跡化。 |
+| `collect-iterator-audit --section iter --case repeat` | ✅ | `reports/spec-audit/ch1/iter.json#audit_cases.repeat` に `iterator.repeat.flagged=true` が残り、`diagnostic.extensions["iterator.repeat"]` と同期できていることを確認。 |
+| `collect-iterator-audit --section iter --case once` | ✅ | `reports/spec-audit/ch1/iter.json#audit_cases.once` に `iterator.once.length=1` を保存し、単一要素ストリームの stage/effect が `@pure` であることを保証。 |
+| `collect-iterator-audit --section iter --case empty` | ✅ | `reports/spec-audit/ch1/iter.json#audit_cases.empty` に `iterator.empty.items=0` を記録し、ゼロ要素生成器でも `iterator.stage.audit_pass_rate=1.0` を維持していることを確認。 |
+| `cargo xtask prelude-audit --section iter --baseline docs/spec/3-1-core-prelude-iteration.md --wbs 3.1c-F1` | ✅ | 生成 API を `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` で `rust_status=implemented` と判定し、`meta.last_updated` を `2025-12-16 / WBS 3.1c-F1-3` に更新。 |
+- `reports/spec-audit/ch1/iter.json` では `audit_cases.from_list/from_result/from_fn/empty/once/repeat/range` に `collect-iterator-audit --section iter --case ...` の KPI を保存し、`snapshots` セクションで `core_iter_generators__*.snap` 7 ケース分を `cargo insta review` と突き合わせられるようにした。`references` に `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md#33b-生成-api-実装ステップ（wbs-31c-f1）` を追記し、計画書 ↔ 監査ログの往復リンクを確保済み。 |
 
 | シナリオID | Snapshot | KPI / 監査ログ | 備考 |
 | --- | --- | --- | --- |
 | `iter_from_list_roundtrip` | `compiler/rust/frontend/tests/snapshots/core_iter_generators__from_list_roundtrip.snap` | `reports/spec-audit/ch1/iter.json#audit_cases.from_list` | `ListCollector` ノード再利用と Stage=beta 確定 (`collector.effect.mem=0`)。 |
 | `iter_from_result_passthrough` | `compiler/rust/frontend/tests/snapshots/core_iter_generators__from_result_passthrough.snap` | `reports/spec-audit/ch1/iter.json#audit_cases.from_result` | `Result<T,E>` の `Ok` のみをストリーム化し residual effect を空集合で維持。 |
 | `iter_from_fn_counter` | `compiler/rust/frontend/tests/snapshots/core_iter_generators__from_fn_counter.snap` | `reports/spec-audit/ch1/iter.json#audit_cases.from_fn` | `FnMut() -> Option<T>` ベースの生成器を `IterSeed` で包み、`iterator.stage.audit_pass_rate=1.0` を確認。 |
+| `iter_range_basic` | `compiler/rust/frontend/tests/snapshots/core_iter_generators__range_basic.snap` | `reports/spec-audit/ch1/iter.json#audit_cases.range` | `RangeState` が `effect=@pure` のままインクリメントし、`iterator.range.overflow_guard=1` を監査。 |
+| `iter_range_overflow_guard` | `compiler/rust/frontend/tests/snapshots/core_iter_generators__range_overflow_guard.snap` | `reports/spec-audit/ch1/iter.json#audit_cases.range` | 上限超過時に `IterRangeError::Overflow` を `IterStep::Error` で返す経路を固定。 |
+| `iter_repeat_take` | `compiler/rust/frontend/tests/snapshots/core_iter_generators__repeat_take.snap` | `reports/spec-audit/ch1/iter.json#audit_cases.repeat` | 無限列を `take(3)` 相当で截断し、`diagnostic.extensions["iterator.repeat"]=true` が観測できることを確認。 |
+| `iter_once_collect` | `compiler/rust/frontend/tests/snapshots/core_iter_generators__once_collect.snap` | `reports/spec-audit/ch1/iter.json#audit_cases.once` | 単一要素の生成が `iterator.once.length=1` を維持し `@pure` であることを確認。 |
+| `iter_empty_collect` | `compiler/rust/frontend/tests/snapshots/core_iter_generators__empty_collect.snap` | `reports/spec-audit/ch1/iter.json#audit_cases.empty` | ゼロ要素ケースで `EffectLabels::residual = []` を保ちつつ `iterator.empty.items=0` を記録。 |
 
 | ファイル | リンク | 存在 | 備考 |
 |---------|--------|------|------|

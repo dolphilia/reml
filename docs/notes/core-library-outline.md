@@ -40,9 +40,9 @@
 
 ### Iter F1 生成 API 監査ログ（WBS 3.1c-F1）
 
-- `../../compiler/rust/runtime/src/prelude/iter/generators.rs` に `Iter::from_list`/`Iter::from_result`/`Iter::from_fn` を実装し、`ListCollector` ノード共有 + `IterSeed` で `EffectLabels::residual = []` を維持した。`cargo test core_iter_generators -- --nocapture` と `cargo insta review --review core_iter_generators` により `compiler/rust/frontend/tests/snapshots/core_iter_generators__from_list_roundtrip.snap` など 3 ケースを確定済み。
-- `collect-iterator-audit --section iter --case from_list|from_result|from_fn` の出力を `../../reports/spec-audit/ch1/iter.json#audit_cases.*` へ保存し、`iterator.stage.audit_pass_rate=1.0`/`collector.effect.mem=0`/`iterator.residual_effects=[]` を KPI として可視化。`../../reports/spec-audit/ch0/links.md#iter-generators` からコマンド履歴と JSON 参照を横断できる。
-- `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` では `module = "Iter"` を `rust_status=implemented` に更新し、`meta.last_updated = "2025-12-12 / WBS 3.1c-F1-2"` を記録。`../plans/bootstrap-roadmap/3-0-phase3-self-host.md#303a-m1-prelude--iteration-進行管理` にも同じ証跡を紐付け、M1 Go/No-Go の根拠として再利用できる状態を整えた。
+- `../../compiler/rust/runtime/src/prelude/iter/generators.rs` に `Iter::from_list`/`Iter::from_result`/`Iter::from_fn` を実装し、`ListCollector` ノード共有 + `IterSeed` で `EffectLabels::residual = []` を維持した。`cargo test core_iter_generators -- --nocapture` と `cargo insta review --review core_iter_generators` により `compiler/rust/frontend/tests/snapshots/core_iter_generators__from_list_roundtrip.snap` など 3 ケースを確定済み。2025-12-16 時点で `Iter::empty`/`Iter::once`/`Iter::repeat`/`Iter::range` を追加し、`RUSTFLAGS="-Zpanic-abort-tests" cargo test core_iter_generators -- --nocapture` のログと `collect-iterator-audit --section iter --case empty|once|repeat|range` の結果を追記した。
+- `collect-iterator-audit --section iter --case from_list|from_result|from_fn|empty|once|repeat|range` の出力を `../../reports/spec-audit/ch1/iter.json#audit_cases.*` へ保存し、`iterator.stage.audit_pass_rate=1.0`/`collector.effect.mem=0`/`iterator.residual_effects=[]`/`iterator.range.overflow_guard=1`/`iterator.repeat.flagged=true`/`iterator.once.length=1`/`iterator.empty.items=0` を KPI として可視化。`../../reports/spec-audit/ch0/links.md#iter-generators` からコマンド履歴と JSON 参照を横断できる。
+- `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` では `module = "Iter"` を `rust_status=implemented` に更新し、`meta.last_updated = "2025-12-16 / WBS 3.1c-F1-3"` を記録。`../plans/bootstrap-roadmap/3-0-phase3-self-host.md#303a-m1-prelude--iteration-進行管理` にも同じ証跡を紐付け、M1 Go/No-Go の根拠として再利用できる状態を整えた。
 
 ## 5. WBS 3.1a F0（Iter 構造と solve_iterator）の整合メモ（2025-W36）
 
