@@ -11,6 +11,7 @@
 use std::{
     borrow::Cow,
     collections::VecDeque,
+    fmt,
     marker::PhantomData,
     sync::{Arc, Mutex},
 };
@@ -27,6 +28,97 @@ pub struct Iter<T> {
 #[derive(Debug)]
 struct IterCore<T> {
     state: Mutex<IterState<T>>,
+}
+
+impl<T> Iter<T> {
+    /// `IterState` を共有ハンドルへ包む。
+    pub fn from_state(state: IterState<T>) -> Self {
+        Self {
+            core: Arc::new(IterCore {
+                state: Mutex::new(state),
+            }),
+        }
+    }
+
+    pub(crate) fn from_seed(mut seed: IterSeed<T>) -> Self {
+        let stage_profile = seed.stage_profile().clone();
+        let effects = seed.effects();
+        let driver = seed.take_driver();
+        let state = IterState::new(IterSource::Seed(seed), stage_profile)
+            .with_effects(effects)
+            .with_driver(driver);
+        Self::from_state(state)
+    }
+
+    pub(crate) fn with_source(
+        source: IterSource<T>,
+        stage_profile: IteratorStageProfile,
+        effects: EffectSet,
+        driver: IterDriver<T>,
+    ) -> Self {
+        let state = IterState::new(source, stage_profile)
+            .with_effects(effects)
+            .with_driver(driver);
+        Self::from_state(state)
+    }
+
+    /// 空の `Iter` を生成する。
+    pub fn empty() -> Self {
+        let stage_profile = IteratorStageProfile::for_kind(IteratorKind::CoreIter);
+        Self::with_source(
+            IterSource::Empty,
+            stage_profile,
+            EffectSet::PURE,
+            IterDriver::Empty,
+        )
+    }
+
+    /// Stage/Capability 情報のスナップショットを生成する。
+    pub fn stage_snapshot(&self, source_name: impl Into<String>) -> IteratorStageSnapshot {
+        let guard = self
+            .core
+            .state
+            .lock()
+            .expect("IterState poisoned during snapshot");
+        guard.stage_profile.snapshot(source_name.into())
+    }
+
+    /// 効果ラベル（`iterator.effect.*`）を取得する。
+    pub fn effect_labels(&self) -> EffectLabels {
+        let guard = self
+            .core
+            .state
+            .lock()
+            .expect("IterState poisoned during effect_labels()");
+        guard.effects.to_labels()
+    }
+
+    /// 次のステップを取得する。
+    pub fn next_step(&self) -> IterStep<T> {
+        let mut guard = self
+            .core
+            .state
+            .lock()
+            .expect("IterState poisoned during next_step()");
+        guard.next_step()
+    }
+
+    /// 次の値のみを取り出す。
+    pub fn next(&self) -> Option<T> {
+        match self.next_step() {
+            IterStep::Ready(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// すべての値を Vec に収集する（テスト向けユーティリティ）。
+    pub fn collect_vec(&self) -> Vec<T> {
+        let mut out = Vec::new();
+        while let IterStep::Ready(value) = self.next_step() {
+            out.push(value);
+        }
+        out
+    }
 }
 
 /// `Iter` が共有する内部状態。
@@ -56,7 +148,7 @@ impl<T> IterState<T> {
     }
 
     /// ドライバを設定する。
-    pub fn with_driver(mut self, driver: IterDriver<T>) -> Self {
+    pub(crate) fn with_driver(mut self, driver: IterDriver<T>) -> Self {
         self.driver = driver;
         self
     }
@@ -74,13 +166,6 @@ impl<T> IterState<T> {
     /// 効果タグを取得する。
     pub fn effects(&self) -> EffectSet {
         self.effects
-    }
-
-    fn metadata(&self) -> IterStepMetadata {
-        let snapshot = self
-            .stage_profile
-            .snapshot(self.source.label().into_owned());
-        IterStepMetadata::new(snapshot).with_effects(self.effects)
     }
 
     fn next_step(&mut self) -> IterStep<T> {
@@ -125,7 +210,7 @@ pub struct IterSeed<T> {
 
 impl<T> IterSeed<T> {
     /// 新しいシードを生成する。
-    pub fn new(
+    pub(crate) fn new(
         label: &'static str,
         stage: IteratorStageProfile,
         driver: IterDriver<T>,
@@ -367,15 +452,25 @@ impl EffectSet {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EffectLabels {
     pub mem: bool,
-   pub mutating: bool,
+    pub mutating: bool,
     pub debug: bool,
     pub async_pending: bool,
 }
 
-enum IterDriver<T> {
+pub(crate) enum IterDriver<T> {
     Static(VecDeque<T>),
     Stepper(Box<dyn FnMut() -> IterStep<T> + Send + 'static>),
     Empty,
+}
+
+impl<T> fmt::Debug for IterDriver<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Static(_) => f.write_str("IterDriver::Static(..)"),
+            Self::Stepper(_) => f.write_str("IterDriver::Stepper(..)"),
+            Self::Empty => f.write_str("IterDriver::Empty"),
+        }
+    }
 }
 
 impl<T> IterDriver<T> {

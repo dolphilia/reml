@@ -1,87 +1,154 @@
-#![allow(dead_code)]
+use super::{EffectSet, Iter, IterDriver, IterSeed, IterStep, IteratorKind, IteratorStageProfile};
 
-//! `Iter` の生成 API を分離して `Core.Iter` の公開インターフェイスを整理するモジュール。
-//! - WBS 3.1c-F1 に従い `IterState`/`IterSeed`/`IterSource` を crate 内部で共有しつつ、`Iter` 公開 API を
-//!   `generators.rs` へ集約する。
-
-use std::sync::{Arc, Mutex};
-
-use super::{
-    EffectLabels, EffectSet, Iter, IterCore, IterSeed, IterSource, IterState, IteratorKind,
-    IteratorStageProfile, IteratorStageSnapshot,
-};
-
-#[derive(Debug, Clone)]
-pub struct IterStepMetadata {
-    pub stage_snapshot: IteratorStageSnapshot,
-    pub effect_set: EffectSet,
-    pub effect_labels: Option<EffectLabels>,
-}
-
-impl IterStepMetadata {
-    pub fn new(stage_snapshot: IteratorStageSnapshot) -> Self {
-        Self {
-            stage_snapshot,
-            effect_set: EffectSet::PURE,
-            effect_labels: None,
-        }
-    }
-
-    pub fn with_effects(mut self, effects: EffectSet) -> Self {
-        self.effect_set = effects;
-        self
-    }
-}
-
-/// `IterStepMetadata` に `EffectLabels` を注入し、`collect-iterator-audit-metrics.py` で観測可能にする。
-pub fn attach_effects(step: &mut IterStepMetadata) {
-    step.effect_labels = Some(step.effect_set.to_labels());
+/// 内部ユーティリティ: ドライバと効果タグから `Iter` を構築する。
+fn build_iter<T>(
+    label: &'static str,
+    kind: IteratorKind,
+    effects: EffectSet,
+    driver: IterDriver<T>,
+) -> Iter<T> {
+    let stage = IteratorStageProfile::for_kind(kind);
+    let seed = IterSeed::new(label, stage.clone(), driver, effects);
+    Iter::from_seed(seed)
 }
 
 impl<T> Iter<T> {
-    /// `IterState` を共有ハンドルへ包む。
-    pub fn from_state(state: IterState<T>) -> Self {
-        Self {
-            core: Arc::new(IterCore {
-                state: Mutex::new(state),
-            }),
+    /// リストから `Iter` を作成する。
+    pub fn from_list(list: impl Into<Vec<T>>) -> Self {
+        build_iter(
+            "Iter::from_list",
+            IteratorKind::CoreIter,
+            EffectSet::PURE,
+            IterDriver::from_vec(list.into()),
+        )
+    }
+
+    /// `Result` から `Iter` を作成し、`Ok` のときのみ 1 要素を生成する。
+    pub fn from_result<E>(result: std::result::Result<T, E>) -> Self {
+        match result {
+            Ok(value) => Iter::once(value),
+            Err(_) => Iter::empty(),
         }
     }
 
-    /// Stage/Capability 情報のスナップショットを生成する。
-    pub fn stage_snapshot(&self, source_name: impl Into<String>) -> IteratorStageSnapshot {
-        let guard = self
-            .core
-            .state
-            .lock()
-            .expect("IterState poisoned during snapshot");
-        guard.stage_profile.snapshot(source_name.into())
+    /// `FnMut` ベースの生成器から `Iter` を構築する。
+    pub fn from_fn<F>(generator: F) -> Self
+    where
+        F: FnMut() -> Option<T> + Send + 'static,
+    {
+        let mut generator = generator;
+        let driver = IterDriver::stepper(move || match generator() {
+            Some(value) => IterStep::Ready(value),
+            None => IterStep::Finished,
+        });
+        build_iter(
+            "Iter::from_fn",
+            IteratorKind::CoreIter,
+            EffectSet::PURE,
+            driver,
+        )
     }
 
-    /// 効果ラベル（`iterator.effect.*`）を取得する。
-    pub fn effect_labels(&self) -> EffectLabels {
-        let guard = self
-            .core
-            .state
-            .lock()
-            .expect("IterState poisoned during effect_labels()");
-        guard.effects.to_labels()
+    /// 1 要素のみを返す `Iter`。
+    pub fn once(value: T) -> Self {
+        build_iter(
+            "Iter::once",
+            IteratorKind::CoreIter,
+            EffectSet::PURE,
+            IterDriver::from_vec(vec![value]),
+        )
     }
 
-    /// `IterSeed` を `Iter` に変換するヘルパ。
-    pub(crate) fn from_seed(seed: IterSeed<T>) -> Self {
-        let stage_profile = seed.stage_profile().clone();
-        Self::from_state(IterState::new(IterSource::Seed(seed), stage_profile))
+    /// `value` を無限に繰り返す `Iter`。
+    pub fn repeat(value: T) -> Self
+    where
+        T: Clone + Send + 'static,
+    {
+        let driver = IterDriver::stepper(move || IterStep::Ready(value.clone()));
+        build_iter(
+            "Iter::repeat",
+            IteratorKind::CoreIter,
+            EffectSet::PURE,
+            driver,
+        )
     }
 
-    /// 任意の `IterSource` を `Iter` に変換するための最小ヘルパ。
-    pub(crate) fn with_source(source: IterSource<T>, stage_profile: IteratorStageProfile) -> Self {
-        Self::from_state(IterState::new(source, stage_profile))
+    /// `Iterator::unfold` 相当の `Iter`。
+    pub fn unfold<S, F>(state: S, mut f: F) -> Self
+    where
+        S: Send + 'static,
+        F: FnMut(S) -> Option<(T, S)> + Send + 'static,
+    {
+        let mut slot = Some(state);
+        let driver = IterDriver::stepper(move || match slot.take() {
+            Some(state) => match f(state) {
+                Some((value, next_state)) => {
+                    slot = Some(next_state);
+                    IterStep::Ready(value)
+                }
+                None => IterStep::Finished,
+            },
+            None => IterStep::Finished,
+        });
+        build_iter(
+            "Iter::unfold",
+            IteratorKind::CoreIter,
+            EffectSet::PURE,
+            driver,
+        )
     }
 
-    /// 空の `Iter` を生成する（`IterSource::Empty`）。
-    pub fn empty() -> Self {
-        let stage_profile = IteratorStageProfile::for_kind(IteratorKind::CoreIter);
-        Self::with_source(IterSource::Empty, stage_profile)
+    /// `Result` を返す `unfold`。エラー発生時は `effect {debug}` を記録する。
+    pub fn try_unfold<S, E, F>(state: S, mut f: F) -> Self
+    where
+        S: Send + 'static,
+        E: Send + 'static,
+        F: FnMut(S) -> Result<Option<(T, S)>, E> + Send + 'static,
+    {
+        let mut slot = Some(state);
+        let driver = IterDriver::stepper(move || match slot.take() {
+            Some(state) => match f(state) {
+                Ok(Some((value, next_state))) => {
+                    slot = Some(next_state);
+                    IterStep::Ready(value)
+                }
+                Ok(None) => IterStep::Finished,
+                Err(_) => IterStep::Finished,
+            },
+            None => IterStep::Finished,
+        });
+        build_iter(
+            "Iter::try_unfold",
+            IteratorKind::CoreIter,
+            EffectSet::PURE.with_debug(),
+            driver,
+        )
+    }
+}
+
+impl Iter<i64> {
+    /// 整数範囲を生成する `Iter<i64>`。
+    pub fn range(start: i64, end: i64, step: i64) -> Self {
+        let step = if step == 0 { 1 } else { step };
+        let increasing = step > 0;
+        let mut current = start;
+        let driver = IterDriver::stepper(move || {
+            if increasing && current > end {
+                return IterStep::Finished;
+            }
+            if !increasing && current < end {
+                return IterStep::Finished;
+            }
+            let next = current.checked_add(step).unwrap_or(current);
+            let value = current;
+            current = next;
+            IterStep::Ready(value)
+        });
+        build_iter(
+            "Iter::range",
+            IteratorKind::CoreIter,
+            EffectSet::PURE,
+            driver,
+        )
     }
 }
