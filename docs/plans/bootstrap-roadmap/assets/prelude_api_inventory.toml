@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2025-12-08 / WBS 3.1c-F1"
+last_updated = "2025-12-12 / WBS 3.1c-F1-2"
 maintainer = "Core Library Team"
 
 [[api]]
@@ -166,7 +166,7 @@ effect = "@pure"
 stage = "beta"
 rust_status = "implemented"
 ocaml_status = "typeck-only"
-notes = "F1-2: `core_iter_generators.rs::from_list_roundtrip` で `ListCollector` ノードを再利用し `CollectOutcome` の Stage/Effect を転写しつつ `EffectLabels::residual = []` を維持して `@pure` を保証した。`collect-iterator-audit --section iter --case from_list` で `iterator.stage.audit_pass_rate=1.0`/`collector.effect.mem=0` を `reports/spec-audit/ch1/iter.json` に記録し `reports/spec-audit/ch0/links.md#iter-generators` に証跡を残した。"
+notes = "F1-2: `core_iter_generators.rs::from_list_roundtrip` で `ListCollector` ノードを再利用し `CollectOutcome` の Stage/Effect を転写しつつ `EffectLabels::residual = []` を維持して `@pure` を保証した。`collect-iterator-audit --section iter --case from_list` の KPI を `reports/spec-audit/ch1/iter.json#audit_cases.from_list` に記録し `reports/spec-audit/ch0/links.md#iter-generators` に証跡を残した。"
 wbs = "3.1c F1"
 
 [[api]]
@@ -176,7 +176,7 @@ effect = "@pure"
 stage = "beta"
 rust_status = "implemented"
 ocaml_status = "typeck-only"
-notes = "F1-2: `core_iter_generators.rs::from_result_passthrough` で `Result<T, E>` を `Iter<T>` に昇格させ `CollectOutcome` の `stage`/`effect` を `ListCollector` と一致させ、`collect-iterator-audit --section iter --case from_list` の KPI を `reports/spec-audit/ch1/iter.json` へ追加した。"
+notes = "F1-2: `core_iter_generators.rs::from_result_passthrough` で `Result<T, E>` を `Iter<T>` に昇格させ `CollectOutcome` の `stage`/`effect` を `ListCollector` と一致させ、`collect-iterator-audit --section iter --case from_result` の JSON を `reports/spec-audit/ch1/iter.json#audit_cases.from_result` へ追加した。"
 wbs = "3.1c F1"
 
 [[api]]
@@ -186,7 +186,7 @@ effect = "@pure"
 stage = "beta"
 rust_status = "implemented"
 ocaml_status = "typeck-only"
-notes = "F1-2: `core_iter_generators.rs::from_fn_counter` で `FnMut() -> Option<T>` を `IterSeed` に包み `EffectLabels::residual = []` として `@pure` を維持し、`reports/spec-audit/ch1/iter.json` に `collector.effect.mem=0`/`iterator.stage.audit_pass_rate=1.0` の KPI を連携した。"
+notes = "F1-2: `core_iter_generators.rs::from_fn_counter` で `FnMut() -> Option<T>` を `IterSeed` に包み `EffectLabels::residual = []` として `@pure` を維持し、`collect-iterator-audit --section iter --case from_fn` で `iterator.stage.audit_pass_rate=1.0`/`collector.effect.mem=0` の KPI を `reports/spec-audit/ch1/iter.json#audit_cases.from_fn` へ連携した。"
 wbs = "3.1c F1"
 
 [[api]]

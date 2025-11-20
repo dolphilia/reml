@@ -1,8 +1,8 @@
 {
   "metric": "iterator.api.coverage",
-  "command": "cargo xtask prelude-audit --section iter --baseline docs/spec/3-1-core-prelude-iteration.md",
-  "timestamp": "2025-11-27T11:00:00Z",
-  "total_entries": 6,
+  "command": "cargo xtask prelude-audit --section iter --baseline docs/spec/3-1-core-prelude-iteration.md --wbs 3.1c-F1",
+  "timestamp": "2025-12-12T07:30:00Z",
+  "total_entries": 9,
   "missing_entries": [],
   "pass_rate": 1.0,
   "kpi": {
@@ -10,20 +10,75 @@
     "collector.effect.mem": 0,
     "collector.effect.mut": 2,
     "collector.error.duplicate_key_rate": 0,
-    "collector.error.invalid_encoding": 0
+    "collector.error.invalid_encoding": 0,
+    "iter.generators.coverage": 1.0
   },
+  "audit_cases": [
+    {
+      "id": "from_list",
+      "command": "collect-iterator-audit --section iter --case from_list --output reports/spec-audit/ch1/iter.json",
+      "kpi": {
+        "iterator.stage.audit_pass_rate": 1.0,
+        "collector.effect.mem": 0
+      },
+      "artifacts": [
+        "compiler/rust/frontend/tests/snapshots/core_iter_generators__from_list_roundtrip.snap"
+      ],
+      "notes": "Iter::from_list が ListCollector ノードを共有し、Stage/Effect を CollectOutcome と同期できたことを確認。"
+    },
+    {
+      "id": "from_result",
+      "command": "collect-iterator-audit --section iter --case from_result --output reports/spec-audit/ch1/iter.json",
+      "kpi": {
+        "iterator.stage.audit_pass_rate": 1.0,
+        "collector.effect.mem": 0,
+        "iterator.error.count": 0
+      },
+      "artifacts": [
+        "compiler/rust/frontend/tests/snapshots/core_iter_generators__from_result_passthrough.snap"
+      ],
+      "notes": "Result<T, E> から Iter<T> への変換時も residual effect が空であることと `iterator.error.*` が発火しないことを観測。"
+    },
+    {
+      "id": "from_fn",
+      "command": "collect-iterator-audit --section iter --case from_fn --output reports/spec-audit/ch1/iter.json",
+      "kpi": {
+        "iterator.stage.audit_pass_rate": 1.0,
+        "collector.effect.mem": 0,
+        "iterator.residual_effects": []
+      },
+      "artifacts": [
+        "compiler/rust/frontend/tests/snapshots/core_iter_generators__from_fn_counter.snap"
+      ],
+      "notes": "FnMut() -> Option<T> を IterSeed として包んだ際に Stage/Effect を @pure のまま維持できることを snapshot で固定。"
+    }
+  ],
   "snapshots": [
     {
       "id": "iter_from_list_roundtrip",
-      "file": "compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_from_list_roundtrip.snap",
-      "stage": "stable",
+      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__from_list_roundtrip.snap",
+      "stage": "beta",
+      "effects": []
+    },
+    {
+      "id": "iter_from_result_passthrough",
+      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__from_result_passthrough.snap",
+      "stage": "beta",
+      "effects": []
+    },
+    {
+      "id": "iter_from_fn_counter",
+      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__from_fn_counter.snap",
+      "stage": "beta",
       "effects": []
     },
     {
       "id": "iter_map_utf8",
       "file": "compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_map_utf8.snap",
       "stage": "beta",
-      "effects": ["mem"]
+      "effects": [
+        "mem"
+      ]
     },
     {
       "id": "iter_filter_map_cap",
@@ -35,7 +90,9 @@
       "id": "iter_flat_map_stage",
       "file": "compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_flat_map_stage.snap",
       "stage": "beta",
-      "effects": ["mut"]
+      "effects": [
+        "mut"
+      ]
     },
     {
       "id": "iter_try_fold_diag",
@@ -47,13 +104,17 @@
       "id": "iter_try_collect_set",
       "file": "compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_try_collect_set.snap",
       "stage": "stable",
-      "effects": ["mem"]
+      "effects": [
+        "mem"
+      ]
     }
   ],
-  "notes": "core_iter_pipeline.rs の 6 ケース + collect-iterator-audit-metrics.py --module iter --section collectors --case iter-f3 を通じた Stage/KPI の再現",
+  "notes": "core_iter_generators.rs（from_list/from_result/from_fn）と core_iter_pipeline.rs の 8 ケースを `cargo test core_iter_generators core_iter_pipeline -- --nocapture` で再現し、collect-iterator-audit --section iter --case from_* が `iterator.stage.audit_pass_rate=1.0` を維持することを確認。",
   "references": [
     "reports/iterator-stage-summary.md",
     "reports/spec-audit/ch0/links.md#iterator-f3",
+    "reports/spec-audit/ch0/links.md#iter-generators",
+    "docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md#33b-生成-api-実装ステップ（wbs-31c-f1）",
     "docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md"
   ]
 }

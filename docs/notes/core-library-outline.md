@@ -38,6 +38,12 @@
 - `../../reports/iterator-collector-summary.md` では `collect_list_baseline` の `collector.effect.mem=0`、`collect_vec_mem_reservation>0`、`collect_map_duplicate` の `collector.error.duplicate_key_rate=1`、`collect_string_invalid` の `collector.error.invalid_encoding` などを KPI として JSON 形式で記録し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表にも同期している。
 - この監査ログは `../plans/bootstrap-roadmap/3-0-phase3-self-host.md#collector-f2-監査ログ` でも M1 レビューの根拠資料として参照され、`Collector F2` 実装完了判定のトレースとして機能している。
 
+### Iter F1 生成 API 監査ログ（WBS 3.1c-F1）
+
+- `../../compiler/rust/runtime/src/prelude/iter/generators.rs` に `Iter::from_list`/`Iter::from_result`/`Iter::from_fn` を実装し、`ListCollector` ノード共有 + `IterSeed` で `EffectLabels::residual = []` を維持した。`cargo test core_iter_generators -- --nocapture` と `cargo insta review --review core_iter_generators` により `compiler/rust/frontend/tests/snapshots/core_iter_generators__from_list_roundtrip.snap` など 3 ケースを確定済み。
+- `collect-iterator-audit --section iter --case from_list|from_result|from_fn` の出力を `../../reports/spec-audit/ch1/iter.json#audit_cases.*` へ保存し、`iterator.stage.audit_pass_rate=1.0`/`collector.effect.mem=0`/`iterator.residual_effects=[]` を KPI として可視化。`../../reports/spec-audit/ch0/links.md#iter-generators` からコマンド履歴と JSON 参照を横断できる。
+- `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` では `module = "Iter"` を `rust_status=implemented` に更新し、`meta.last_updated = "2025-12-12 / WBS 3.1c-F1-2"` を記録。`../plans/bootstrap-roadmap/3-0-phase3-self-host.md#303a-m1-prelude--iteration-進行管理` にも同じ証跡を紐付け、M1 Go/No-Go の根拠として再利用できる状態を整えた。
+
 ## 5. WBS 3.1a F0（Iter 構造と solve_iterator）の整合メモ（2025-W36）
 
 - 仕様 3-1 §3（`docs/spec/3-1-core-prelude-iteration.md`）では、`Iter`/`Collector` API に加えて `IteratorDictInfo` が保持すべきメタデータを列挙しており、`StageRequirement::{Exact, AtLeast}`、`CapabilityId`、`source` 型、`effect.stage.iterator.*` の JSON キーが必須とされている。【F:docs/spec/3-1-core-prelude-iteration.md†L200-L215】
