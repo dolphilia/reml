@@ -28,10 +28,10 @@
 
 | コマンド | 結果 | 備考 |
 | --- | --- | --- |
-| `cargo test core_iter_collectors -- --nocapture` | ✅ / pending | `compiler/rust/frontend/tests/core_iter_collectors.rs` に追加する 7 シナリオ（List/Vec/Map/Set/String/Table baseline/duplicate）を `insta` snapshot 化し、Collector 実装の回帰を監視。 |
-| `cargo insta review --review` | ✅ / pending | `core_iter_collectors.snap` を確定し、`prelude.collector.kind`/`effects`/`error_kind` を JSON で固定。 |
+| `cargo test core_iter_collectors -- --nocapture` | ✅ | `compiler/rust/frontend/tests/core_iter_collectors.rs` に追加する 7 シナリオ（List/Vec/Map/Set/String/Table baseline/duplicate）を `insta` snapshot 化し、Collector 実装の回帰を監視。 |
+| `cargo insta review --review` | ✅ | `core_iter_collectors.snap` を確定し、`prelude.collector.kind`/`effects`/`error_kind` を JSON で固定。 |
 | `python3 tooling/ci/collect-iterator-audit-metrics.py --section collectors --module iter --case wbs-31b-f2 --source reports/spec-audit/ch1/core_iter_collectors.json --audit-source reports/spec-audit/ch1/core_iter_collectors.audit.jsonl --output reports/iterator-collector-metrics.json` | ✅ | `collector.effect.audit_snapshot` の実データ化に成功（`collector.stage.audit_pass_rate=1.0`、`collector.effect.mem=2/7`、`collector.effect.mut=4/7`、`collector.error.duplicate_key=2`、`collector.error.invalid_encoding=1`、`collector.error.rate_per_total=0.4286`）。出力 JSON を `reports/iterator-collector-metrics.json` として保存し、`reports/iterator-collector-summary.md`／`0-3-audit-and-metrics.md` の KPI と同期。 |
-| `scripts/validate-diagnostic-json.sh --pattern collector` | ✅ / pending | `prelude.collector.*` キーが `reports/diagnostic-format-regression.md` に差分なしで反映されるかを確認。 |
+| `scripts/validate-diagnostic-json.sh --pattern collector` | ✅ | `prelude.collector.*` キーが `reports/diagnostic-format-regression.md` に差分なしで反映されるかを確認。 |
 | `cargo xtask prelude-audit --wbs '3.1b F2'` | ✅ | `Collector` トレイト/コレクタ遍歴を検査し、`trait.*` 6項目・`TableCollector.push`・`ListCollector.new`・`VecCollector.*` を `implemented` と判定し、`collector.effect.*` 監査と KPI 連携を完了した段階を記録。 |
 
 | シナリオID | Snapshot | KPI / 監査ログ | 仕様根拠・備考 |
@@ -44,7 +44,7 @@
 | `collect_table_baseline` | `compiler/rust/frontend/tests/__snapshots__/core_iter_collectors.snap` | `reports/iterator-collector-summary.md#collect_table_baseline` | `TableCollector` の `collector.kind=table` / `effect {mut}` を `collect_table_baseline` で記録し、挿入順 `Table` の再現性を確認。【F:docs/spec/3-1-core-prelude-iteration.md†L188-L210】【F:docs/spec/3-2-core-collections.md†L154-L168】 |
 | `collect_table_duplicate` | `compiler/rust/frontend/tests/__snapshots__/core_iter_collectors.snap` | `reports/iterator-collector-summary.md#collect_table_duplicate` | 重複キーで `CollectError::DuplicateKey` を返し `collector.error.key`/`Diagnostic.extensions["prelude.collector.error_key"]` を `collect_table_duplicate` で固定。`stage` は `AtLeast("beta")`、`collector.effect.mut` を監査する。【F:docs/spec/3-1-core-prelude-iteration.md†L188-L210】【F:docs/spec/3-2-core-collections.md†L154-L168】 |
 
-### Iterator F3 スナップショット / KPI（WBS 3.1c Step4）
+### <a id="iterator-f3"></a>Iter F3 Snapshot/KPI（WBS 3.1a）
 
 | コマンド | 結果 | 備考 |
 | --- | --- | --- |
@@ -52,18 +52,23 @@
 | `RUSTFLAGS="-Zpanic-abort-tests" cargo +nightly test --manifest-path compiler/rust/frontend/Cargo.toml --test core_iter_effects -- core_iter_effect_labels_snapshot core_iter_try_collect_errors_snapshot` | ✅ | `core_iter_effects.rs` の `EffectLabels`/`TryCollectError` ケースを `tests/snapshots/core_iter_effects__*.snap` に固定し、`reports/spec-audit/ch1/iter.json#audit_cases.effects` を更新。 |
 | `python3 tooling/ci/collect-iterator-audit-metrics.py --section iterator --case pipeline --source reports/spec-audit/ch1/iter.json --output reports/iterator-stage-metrics.json` | ✅ | `iterator.stage.audit_pass_rate=1.0`、`collector.effect.mem=0`、`collector.error.duplicate_key=1` を `reports/iterator-stage-metrics.json` に記録し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と同期。 |
 | `scripts/validate-diagnostic-json.sh --pattern iterator --pattern collector` | ✅ | `prelude.collector.*` と `iterator.*` の拡張キーが schema v2 に適合していることを再確認し、`reports/diagnostic-format-regression.md` に差分なしで反映。 |
-- `reports/iterator-collector-summary.md` には上述の 7 ケースの `collector.effect.*`/`collector.error.*` KPI をまとめて記録し、`collect_list_baseline` で `collector.effect.mem=0`、`collect_vec_mem_error` で `collector.effect.mem_reservation>0` を `collect-iterator-audit` JSON に反映すると同時に、`collect_string_invalid` の `collector.error.invalid_encoding`、`collect_table_duplicate` の `collector.error.key` を KPI に並列させて `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と整合させている。
+* `reports/spec-audit/ch1/iter.json` には `audit_cases.pipeline`/`effects`/`try_collect_errors` と KPI (`iterator.stage.audit_pass_rate=1.0`, `collector.effect.mem=0`) を記録し、`reports/iterator-stage-summary.md` では同値をテキストで要約している。`docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md#3-itercollector-完了条件` と相互参照。
+* `reports/iterator-collector-summary.md` には上述の 7 ケースの `collector.effect.*`/`collector.error.*` KPI をまとめて記録し、`collect_list_baseline` で `collector.effect.mem=0`、`collect_vec_mem_error` で `collector.effect.mem_reservation>0` を `collect-iterator-audit` JSON に反映すると同時に、`collect_string_invalid` の `collector.error.invalid_encoding`、`collect_table_duplicate` の `collector.error.key` を KPI に並列させて `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と整合させている。
 
-### Collector F2 監査ログ（WBS 3.1b）
+### <a id="collector-f2-監査ログ"></a>Collector F2 監査ログ（WBS 3.1b）
 
 - `python3 tooling/ci/render-collector-audit-fixtures.py --snapshots compiler/rust/frontend/tests/__snapshots__/core_iter_collectors.snap --output reports/spec-audit/ch1/core_iter_collectors.json --audit-output reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` で `prelude.collector` スナップショットを診断 JSON（7 ケース）と audit JSONL へ変換し、Stage/Effect/Marker 情報を `AuditEnvelope.metadata.collector.*` に転写した。
 - `python3 tooling/ci/collect-iterator-audit-metrics.py --section collectors --module iter --case wbs-31b-f2 --source reports/spec-audit/ch1/core_iter_collectors.json --audit-source reports/spec-audit/ch1/core_iter_collectors.audit.jsonl --output reports/iterator-collector-metrics.json` を実行し、`collector.stage.audit_pass_rate=1.0`・`collector.effect.mem=2/7`・`collector.effect.mut=4/7`・`collector.effect.mem_reservation=4`・`collector.effect.reserve=2`・`collector.error.duplicate_key=2`・`collector.error.invalid_encoding=1` を採取。`reports/iterator-collector-summary.md` と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI に同じ数値を貼り付けた。
 - `scripts/validate-diagnostic-json.sh --pattern collector` で `Diagnostic.extensions["prelude.collector.*"]` が `reports/diagnostic-format-regression.md` に差分なしで保存され、`cargo xtask prelude-audit --wbs '3.1b F2'` で `Collector` トレイトおよび `List/Vec/Map/Set/String/Table` API の `rust_status=implemented` を検査したログと結び付いている。
 - `../../../docs/notes/core-library-outline.md#collector-f2-監査ログ` と `../../../docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#collector-f2-監査ログ` にこの `Collector F2` ログのクロスリファレンスを張り、監査ログ（コマンド履歴＋KPI）を M1 レビューで再利用できる形でまとめてある。
 
-### Iter F3 Snapshot/KPI（WBS 3.1a）
+### <a id="collector-f3-監査ログ"></a>Collector F3 監査ログ（WBS 3.1b, W37 後半）
 
-- TODO（2026-W05 / Remediation Step3）: `core_iter_pipeline.rs`、`core_iter_effects.rs`、および `compiler/rust/frontend/tests/snapshots/core_iter_pipeline__*.snap` はまだ作成されていない。従来記載していたコマンド表・シナリオ表は実体のない成果物を参照していたため削除し、pipeline snapshot を新設した際に `cargo test core_iter_pipeline -- --nocapture`／`cargo insta review --review`／`tooling/ci/collect-iterator-audit-metrics.py --module iter --section collectors` の再測定ログを本節へ復活させる。再作成後は `reports/spec-audit/ch1/iter.json` に KPI (`iterator.stage.audit_pass_rate`, `collector.effect.mem`, `collector.error.duplicate_key_rate`) を保存し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` の参照を更新する。
+| コマンド | 結果 | 備考 |
+| --- | --- | --- |
+| `python3 tooling/ci/collect-iterator-audit-metrics.py --section collectors --module iter --case wbs-31b-f2 --source reports/spec-audit/ch1/core_iter_collectors.json --audit-source reports/spec-audit/ch1/core_iter_collectors.audit.jsonl --output reports/iterator-collector-metrics.json --require-success` | ✅ | `collector.stage.audit_pass_rate=1.0`、`collector.effect.mem=2/7`、`collector.effect.mut=4/7`、`collector.error.duplicate_key=2`、`collector.error.invalid_encoding=1` を `reports/iterator-collector-metrics.json` に保存し、`reports/iterator-collector-summary.md` と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI を更新。 |
+| `scripts/validate-diagnostic-json.sh --pattern collector` | ✅ | 監査ログ生成後に Diagnostic JSON を再比較し、`reports/diagnostic-format-regression.md` に差分なしで吸収されたことを確認。`reports/spec-audit/ch1/core_iter_collectors.json` と `core_iter_collectors.audit.jsonl` のヘッダをリスト化。 |
+- `reports/iterator-collector-summary.md` の `collect_vec_mem_reservation`/`collect_map_duplicate`/`collect_string_invalid` では `collector.effect.mem_reservation` や `collector.error.key` の推移を JSON で参照でき、`docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md#31b-実装指針` と突き合わせた。`docs/notes/core-library-outline.md#collector-f3-監査ログ` にも同じリンク列を記録済み。
 
 ### Iter Generators
 

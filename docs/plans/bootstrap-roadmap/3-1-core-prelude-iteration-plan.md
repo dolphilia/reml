@@ -150,8 +150,8 @@
 | --- | --- | --- | --- | --- | --- |
 | ✅ F0 仕様精査 | 予定（W36 前半） | Collector 契約とエラー体系を仕様/Chapter 3 横断で整理 | `docs/spec/3-1-core-prelude-iteration.md`・`docs/spec/3-2-core-collections.md`・`docs/notes/core-library-outline.md` の記述を比較し、`@pure`/`effect {mut}`/`effect {mem}` のタグ表と `CollectError` バリアント一覧を作る | `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `module = "Collector"` 節に effect/stage/wbs 情報を拡充、`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` M1 に脚注を追加 | ドキュメントレビュー、`tooling/ci/collect-iterator-audit-metrics.py --dry-run` |
 | ✅ F1 トレイト骨格 & EffectMarker | 完了（W36 後半） | `Collector<T, C>` トレイト本体と `EffectMarker` の付与点を定義し `Iter.try_collect` と連携 | `compiler/rust/runtime/src/prelude/collectors/mod.rs` を新設し、`CollectOutcome`/`CollectorStageProfile`/`CollectError`/`EffectMarker` 定数を整備。`Collector::with_capacity`/`reserve`/`finish` に `effect {mem}` 契約と監査キーをコメントとして埋め込み `core_prelude` へ再輸出した。 | `docs-migrations.log` へ Collector 階層追加、`docs/plans/rust-migration/3-1-observability-alignment.md` に Collector 監査イベント参照を追記 | `cargo doc -p core_prelude`、`scripts/validate-diagnostic-json.sh --module collector`（仮ルール） |
-| F2 標準コレクタ実装 | 予定（W37 前半） | List/Vec/Map/Set/String の Collector を実装し `Iter.try_collect` で使用 | `compiler/rust/runtime/src/prelude/collectors/{list,vec,map,set,string}.rs` を作成し `new`/`with_capacity`/`push`/`reserve`/`finish` を実装、`CollectError::MemoryError`/`DuplicateKey`/`InvalidEncoding` を返す | `compiler/rust/frontend/tests/core_iter_collectors.rs` 正常系 6 ケース、`docs/notes/core-library-outline.md` に Collector 実装メモ | `cargo test core_iter_collectors`, `collect-iterator-audit --section iter --filter collector` |
-| F3 エラー/監査経路 | 予定（W37 中盤） | `CollectError` と診断/監査ログの連携を固定し KPI を更新 | `compiler/rust/runtime/src/prelude/collectors/error.rs` で `CollectError`↔`Diagnostic` 変換ヘルパを実装、`collect-iterator-audit-metrics.py` に `collector.effect.*` 列を追加し `reports/spec-audit/ch0/links.md` に記録 | `0-3-audit-and-metrics.md` の KPI 表更新、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ残課題を登録 | `scripts/validate-diagnostic-json.sh`, `tooling/ci/collect-iterator-audit-metrics.py --require-success` |
+| ✅ F2 標準コレクタ実装 | 完了（2025-11-20） | List/Vec/Map/Set/String の Collector を実装し `Iter.try_collect` で使用 | `compiler/rust/runtime/src/prelude/collectors/{list,vec,map,set,string}.rs` を作成し `new`/`with_capacity`/`push`/`reserve`/`finish` を実装、`CollectError::MemoryError`/`DuplicateKey`/`InvalidEncoding` を返す | `compiler/rust/frontend/tests/core_iter_collectors.rs` 正常系 6 ケース、`docs/notes/core-library-outline.md` に Collector 実装メモ、`reports/spec-audit/ch0/links.md#collector-f2` のコマンドログ | `cargo test core_iter_collectors`, `collect-iterator-audit --section collectors --case wbs-31b-f2` |
+| ✅ F3 エラー/監査経路 | 完了（2025-11-20） | `CollectError` と診断/監査ログの連携を固定し KPI を更新 | `compiler/rust/runtime/src/prelude/collectors/error.rs` で `CollectError`↔`Diagnostic` 変換ヘルパを実装し、`reports/iterator-collector-metrics.json`/`reports/iterator-collector-summary.md` へ `collector.stage.audit_pass_rate`/`collector.effect.*`/`collector.error.*` を記録 | `0-3-audit-and-metrics.md` の KPI 表更新、`reports/spec-audit/ch0/links.md#collector-f3` に監査ログを追記 | `scripts/validate-diagnostic-json.sh --pattern collector`, `tooling/ci/collect-iterator-audit-metrics.py --section collectors --require-success` |
 ###### F0 仕様精査サマリ（WBS 3.1b, 2025-W37）
 
 **Collector トレイト API と効果タグ**
@@ -208,6 +208,11 @@
 | ✅ F2-5 監査ログ整備 | KPI とコマンド履歴を公開しクロスリファレンスを確立 | `reports/spec-audit/ch0/links.md`, `docs/notes/core-library-outline.md`, `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` | `Collector F2` セクションを追加し、タスク・スナップショット・ベンチ結果を相互参照。 |
 
 F2-5 で追加した `reports/spec-audit/ch0/links.md#collector-f2-監査ログ` セクションは `reports/iterator-collector-summary.md`・`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`・`docs/notes/core-library-outline.md#collector-f2-監査ログ` との三者クロスリファレンスを提供しており、`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#collector-f2-監査ログ` で M1 レビューの証跡として参照可能な構成に整備済み。
+
+###### F3 エラー/監査経路実装メモ（WBS 3.1b, 2025-11-20）
+- `python3 tooling/ci/collect-iterator-audit-metrics.py --section collectors --module iter --case wbs-31b-f2 --source reports/spec-audit/ch1/core_iter_collectors.json --audit-source reports/spec-audit/ch1/core_iter_collectors.audit.jsonl --output reports/iterator-collector-metrics.json --require-success` を実行し、`collector.stage.audit_pass_rate = 1.0`・`collector.effect.mem = 2/7`・`collector.effect.mut = 4/7`・`collector.error.duplicate_key = 2`・`collector.error.invalid_encoding = 1` を自動集計した。概要値は `reports/iterator-collector-summary.md` と `0-3-audit-and-metrics.md` に転記し、差分検証用の JSON を KPI 監視資産として保存している。
+- スナップショットに紐づく監査ログ（`reports/spec-audit/ch1/core_iter_collectors.audit.jsonl`）と診断 JSON（`reports/spec-audit/ch1/core_iter_collectors.json`）は `reports/spec-audit/ch0/links.md#collector-f3` のコマンド列から再生成できる。`collector.snapshot.v1` スキーマで `audit.effects.mem` や `audit.markers.reserve` に欠落がないことを `tooling/ci/collect-iterator-audit-metrics.py --section collectors --require-success` で検証済み。
+- `scripts/validate-diagnostic-json.sh --pattern collector` の出力ログを `reports/spec-audit/ch0/links.md#collector-f3` に貼り付け、`core.prelude.collector_failed`/`core.prelude.collector_snapshot` の JSON が `reports/diagnostic-format-regression.md` に差分なしで取り込まれたことを確認した。
 
 ###### F2-1 List/Vec 雛形実装メモ（W37 前半）
 
@@ -291,10 +296,10 @@ F2-5 で追加した `reports/spec-audit/ch0/links.md#collector-f2-監査ログ`
 - `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `module = "Iter"` エントリは `rust_status=implemented` を維持しており、各シナリオのスナップショットと `cargo xtask prelude-audit --section iter --baseline docs/spec/3-1-core-prelude-iteration.md` の出力をもって在庫更新を自動化している。更新結果は `reports/spec-audit/ch1/iter.json` に保存しつつ `reports/spec-audit/ch0/links.md` から参照できるようにする。
 
 #### 3. Iter/Collector 完了条件
-- `Iter`/`Collector` API が `cargo xtask prelude-audit --section iter --strict` で欠落 0 件となり、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `last_updated` が 37 週目の日付に更新されている。
-- `collect-iterator-audit-metrics.py` で `iterator.stage.audit_pass_rate = 1.0`、`collector.effect.mem_leak = 0` を達成し、結果を `0-3-audit-and-metrics.md`/`reports/spec-audit/ch0/links.md` の両方に貼り付けたログが存在する。
-- `docs/notes/core-library-outline.md` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` が Iter/Collector 実装状況のサマリを持ち、`docs-migrations.log` に `Iter` モジュール追加・Collector 階層作成の記録が残っている。
-- `compiler/rust/frontend/tests/core_iter_pipeline.rs` `core_iter_collectors.rs` `core_iter_generators.rs` `core_iter_effects.rs` が CI へ追加され、`.github/workflows/bootstrap-linux.yml` の `rust-prelude-tests` ジョブで `panic_forbidden.rs` と同じく `RUSTFLAGS="-Zpanic-abort-tests"` を通過する。
+- `cargo xtask prelude-audit --section iter --strict --baseline docs/spec/3-1-core-prelude-iteration.md` が欠落 0 件を返し、`reports/spec-audit/ch1/iter.json` では `iterator.api.coverage = 1.0`・`missing_entries = []` を記録した。`prelude_api_inventory.toml` の `last_updated` も同日に更新し、在庫照合ログを `reports/spec-audit/ch0/links.md#iter-f3` に保存している。
+- `tooling/ci/collect-iterator-audit-metrics.py --section iterator --case pipeline --source reports/spec-audit/ch1/iter.json --output reports/iterator-stage-metrics.json --require-success` により `iterator.stage.audit_pass_rate = 1.0` を測定し、`reports/iterator-stage-summary.md` と `0-3-audit-and-metrics.md` に転記した。Collector 版（`--section collectors`）でも `collector.stage.audit_pass_rate = 1.0`、`collector.effect.mem = 2/7`、`collector.error.invalid_encoding = 1` を `reports/iterator-collector-summary.md` に反映済み。
+- `docs/notes/core-library-outline.md` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` は Iter/Collector の KPI と参照手順をまとめ、`docs-migrations.log` に WBS 3.1a/3.1b 完了ログを残して Phase 3-0 からのたどり先を保証した。
+- `compiler/rust/frontend/tests/core_iter_pipeline.rs` `core_iter_collectors.rs` `core_iter_generators.rs` `core_iter_effects.rs` `panic_forbidden.rs` が `.github/workflows/bootstrap-linux.yml` の `rust-prelude-tests` ジョブに常駐し、`RUSTFLAGS="-Zpanic-abort-tests"` 環境で `cargo +nightly test` を通過した実績（`reports/spec-audit/ch0/links.md#iter-f3` / `#collector-f3`）を保持している。
 
 ### 4. Iter アダプタと終端操作（37-38週目）
 **担当領域**: 宣言的データフロー
@@ -429,10 +434,10 @@ OCaml の `solve_collector`/`solve_iterator` は `Iter`/`Collector`/`Option`/`Re
 5. **Week end**: `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` `M1` セクション、`docs/spec/3-0-core-library-overview.md` 脚注、`docs-migrations.log`（Prelude モジュール追加）を更新し、`p0` からの移行ログを結線する。
 
 ### 完了チェックリスト
-- [ ] `cargo xtask prelude-audit --strict` が `Option`/`Result` API で差分 0 を返し、結果 JSON を `reports/spec-audit/ch0/links.md` 形式で保存。
-- [ ] `cargo test core_prelude_option_result panic_forbidden` が成功し、`scripts/validate-diagnostic-json.sh` を通して `reports/diagnostic-format-regression.md` に再生成ファイルが発生しない。
-- [ ] `0-3-audit-and-metrics.md` に `core_prelude.missing_api = 0`、`core_prelude.panic_path = 0` を追加し、`4-5-backward-compat-checklist.md` に fallback プランを登録。
-- [ ] `docs/spec/3-0-core-library-overview.md` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` へ Option/Result 実装ステータスの脚注リンクを追加し、Phase 3-1 以降の参照経路を確立。
+- [x] `cargo xtask prelude-audit --strict` が `Option`/`Result` API で差分 0 を返し（`reports/spec-audit/ch0/links.md#prelude-実装ログ` 参照）、`core_prelude.missing_api = 0` の測定結果を保存した。
+- [x] `cargo test core_prelude_option_result panic_forbidden` が成功し、`scripts/validate-diagnostic-json.sh` の比較結果を `reports/diagnostic-format-regression.md` に差分なしで反映した。
+- [x] `0-3-audit-and-metrics.md` に `core_prelude.missing_api = 0`、`core_prelude.panic_path = 0` を追加し、`4-5-backward-compat-checklist.md` へ fallback プランを登録済み。
+- [x] `docs/spec/3-0-core-library-overview.md` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` に Option/Result 実装ステータスの脚注リンクを追記し、Phase 3-1 以降の参照経路を確立した。
 
 ## 成果物と検証
 - `Core.Prelude`/`Core.Iter` 実装および Collector 群が CI テストを通過し、効果タグ/属性が仕様と一致していること。

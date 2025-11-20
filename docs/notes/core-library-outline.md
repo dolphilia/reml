@@ -32,11 +32,17 @@
 3. Config/Data/Runtime の本文再配置時に差分追跡ルール（リネーム方針、旧リンク対応）を明記するためのドラフトテンプレートを作成する。
 4. Async/FFI/Unsafe（3.9）については、効果タグと安全境界の互換性調査メモを用意し、レビュー対象とする範囲を確定する。
 
-### Collector F2 監査ログ（WBS 3.1b）
+### <a id="collector-f2-監査ログ"></a>Collector F2 監査ログ（WBS 3.1b）
 
 - `../../reports/spec-audit/ch0/links.md#collector-f2-監査ログ` に F2 で実行した 7 ケースの `cargo test`/`cargo insta review`/`collect-iterator-audit-metrics`/`scripts/validate-diagnostic-json.sh`/`cargo xtask prelude-audit` コマンド履歴と KPI 結果（`collector.effect.*`、`collector.error.*`、`iterator.stage.audit_pass_rate`）を列挙しており、`../../reports/iterator-collector-summary.md` への参照を含めてモジュール実装の一貫性を監査ログとして留めている。
 - `../../reports/iterator-collector-summary.md` では `collect_list_baseline` の `collector.effect.mem=0`、`collect_vec_mem_reservation>0`、`collect_map_duplicate` の `collector.error.duplicate_key_rate=1`、`collect_string_invalid` の `collector.error.invalid_encoding` などを KPI として JSON 形式で記録し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表にも同期している。
 - この監査ログは `../plans/bootstrap-roadmap/3-0-phase3-self-host.md#collector-f2-監査ログ` でも M1 レビューの根拠資料として参照され、`Collector F2` 実装完了判定のトレースとして機能している。
+
+### <a id="collector-f3-監査ログ"></a>Collector F3 監査ログ（WBS 3.1b, 2025-11-20）
+
+- `../../reports/spec-audit/ch0/links.md#collector-f3-監査ログ` に `tooling/ci/collect-iterator-audit-metrics.py --section collectors --require-success` と `scripts/validate-diagnostic-json.sh --pattern collector` の実行結果をまとめ、`collector.stage.audit_pass_rate=1.0`・`collector.effect.mem=2/7`・`collector.effect.mut=4/7`・`collector.error.duplicate_key=2`・`collector.error.invalid_encoding=1` を `../../reports/iterator-collector-metrics.json` と `../../reports/iterator-collector-summary.md` へ同期した。
+- KPI リフレッシュ後は `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md#3-itercollector-完了条件`、`../plans/bootstrap-roadmap/3-0-phase3-self-host.md#collector-f2-監査ログ`（M1 KPI ケース）、`../plans/bootstrap-roadmap/0-3-audit-and-metrics.md`（`collector.stage.audit_pass_rate` 行）とクロスリンクし、Phase 3-1 判定に必要な証跡を共有している。
+- `collector.snapshot.v1` スキーマの JSON/LN（`reports/spec-audit/ch1/core_iter_collectors.json` / `.audit.jsonl`）は `--require-success` 実行時に検証済みで、逸脱が出た場合は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` で是正タスクを追跡する。
 
 ### Iter F1 生成 API 監査ログ（WBS 3.1c-F1）
 
@@ -76,7 +82,7 @@
 - `Collector<T, C>` トレイトの 6 API (`new`/`with_capacity`/`push`/`reserve`/`finish`/`into_inner`) はいずれも `docs/spec/3-1-core-prelude-iteration.md†L150-L170` に記載された効果タグをそのまま Rust 実装へ移植する。`new`/`into_inner` は `@pure`、`with_capacity`/`finish` は `effect {mem}`、`push` は `effect {mut}`、`reserve` は `effect {mut, mem}` を宣言し、`IterState` の `EffectSet` と `collect-iterator-audit` の `collector.effect.*` 列で追跡する。ステージは `IteratorKind` と同様に最低 `beta`（`StageRequirement::AtLeast("beta")`）扱いとし、`IteratorDictInfo` へ `iterator.stage.iterator.*` を転写する設計を Rust 版 F1 で保持する。
 - 標準コレクタの効果タグとエラー: `ListCollector`/`SetCollector` は `@pure` で `Exact("stable")`、`VecCollector`/`MapCollector`/`TableCollector`/`StringCollector` は `AtLeast("beta")` とし、`CollectError::MemoryError`/`CapacityOverflow`（Vec 系）、`CollectError::DuplicateKey`（Map/Set/Table）、`StringError::InvalidEncoding`（StringCollector）を起点に `Diagnostic.extensions["collector.error.*"]` と `AuditEnvelope.metadata.collector.error.*` へ書き出す。【F:docs/spec/3-1-core-prelude-iteration.md†L188-L253】【F:docs/spec/3-2-core-collections.md†L75-L168】
 - `CollectError` と監査の対応: `docs/spec/3-6-core-diagnostics-audit.md†L40-L120` で要求される `change_set`/`audit_id` へのキー情報転写に合わせ、`CollectError::DuplicateKey` は衝突キー、`MemoryError`/`CapacityOverflow` は要求容量、`InvalidEncoding` は `StringCollector` が受信したペイロード断片を `Diagnostic` へ含める。`R-027 (Collector メモリ過剰確保)` の緩和策として、`reserve` 呼び出し前に `EffectMarker::mem_reservation` を付与し `collect-iterator-audit` で `collector.effect.mem_reservation_hits` を計測する設計メモを残した。【F:docs/plans/bootstrap-roadmap/0-4-risk-handling.md†L210-L230】
-- `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` は `module="Collector"` にトレイト/標準コレクタ 12 エントリを登録済み（F0 時点）。F2 で `last_updated = "2025-11-25 / WBS 3.1b F2"` へ更新し、テスト/KPI 参照先を備考へ追記した。`reports/spec-audit/ch0/links.md#collector-f0` には F0 の仕様根拠、`#collector-f2` には最新コマンドログを記録して Phase 3 `M1` から参照できるようにした。
+- `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` は `module="Collector"` にトレイト/標準コレクタ 12 エントリを登録済み（F0 時点）。F2/F3 で `last_updated = "2025-11-20 / WBS 3.1b-F3 + 3.1c-F2 (iterator.api.coverage=1.0)"` へ更新し、テスト/KPI 参照先を備考へ追記した。`reports/spec-audit/ch0/links.md#collector-f0` には F0 の仕様根拠、`#collector-f2-監査ログ`/`#collector-f3-監査ログ` には最新コマンドログを記録して Phase 3 `M1` から参照できるようにした。
 - `tooling/ci/collect-iterator-audit-metrics.py --module iter --section collectors --case wbs-31b-f0 --dry-run` を想定パラメータとし、F1 で Rust 実装が揃い次第 `collector.effect.mem`/`collector.effect.mut`/`collector.error.kind` の KPI を即時収集できるよう CLI ノートを `reports/spec-audit/ch0/links.md` へ追記した。
 
 ## 8. WBS 3.1b F2（標準コレクタ実装の進行メモ, 2025-W37）

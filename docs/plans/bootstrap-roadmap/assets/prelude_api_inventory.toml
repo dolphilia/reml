@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2025-11-20 / Remediation Step4"
+last_updated = "2025-11-20 / WBS 3.1b-F3 + 3.1c-F2 (iterator.api.coverage=1.0)"
 maintainer = "Core Library Team"
 
 [[api]]
