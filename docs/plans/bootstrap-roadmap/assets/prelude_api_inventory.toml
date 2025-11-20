@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2025-12-22 / WBS 3.1c-F1-4/5"
+last_updated = "2025-12-24 / WBS 3.1c-F2"
 maintainer = "Core Library Team"
 
 [[api]]
@@ -254,30 +254,100 @@ module = "Iter"
 name = "map"
 effect = "@pure"
 stage = "beta"
-rust_status = "working"
+rust_status = "implemented"
 ocaml_status = "typeck-only"
-notes = "`core_iter_pipeline.rs` の `iter_map_utf8` + `iter_filter_map_cap` の `collect-iterator-audit-metrics.py --module iter --section collectors` で `collector.effect.mem=0`/`iterator.stage.audit_pass_rate=1.0` を観測"
-wbs = "3.1a"
+notes = "F2: `compiler/rust/runtime/src/prelude/iter/adapters.rs` に `Iter::map` を追加し、`compiler/rust/frontend/tests/core_iter_adapters.rs::iter_map_filter_pipeline` で `ListCollector` ブリッジを通さずに @pure パイプラインを固定。`iter_buffered_sets_mem_effects` 実行ログは `reports/spec-audit/ch1/iter.json#audit_cases.map` へ転記。"
+wbs = "3.1c F2"
 
 [[api]]
 module = "Iter"
 name = "filter_map"
 effect = "@pure"
 stage = "beta"
-rust_status = "working"
+rust_status = "implemented"
 ocaml_status = "typeck-only"
-notes = "effect={mut} の伝播検証を `core_iter_pipeline.rs` の `iter_filter_map_cap` テストで固定し、`reports/spec-audit/ch1/iter.json` に `iterator.stage.audit_pass_rate=1.0` を記録"
-wbs = "3.1a"
+notes = "F2: `filter_map` を `iter/adapters.rs` に実装し、`core_iter_adapters.rs::iter_filter_map_skips_invalid` が JSON 変換の成功/失敗を snapshot で再現。`collect-iterator-audit --section iter --case filter_map` の結果を `reports/spec-audit/ch1/iter.json#audit_cases.filter_map` に追加。"
+wbs = "3.1c F2"
 
 [[api]]
 module = "Iter"
 name = "flat_map"
 effect = "@pure"
 stage = "beta"
-rust_status = "working"
+rust_status = "implemented"
 ocaml_status = "typeck-only"
-notes = "`iter_flat_map_stage` テストで `IteratorDictInfo` が `StageRequirement::AtLeast(\"beta\")` を出力し、`reports/iterator-stage-summary.md` と `reports/spec-audit/ch1/iter.json` に履歴を残す"
-wbs = "3.1a"
+notes = "F2: `core_iter_adapters.rs::iter_flat_map_expands_sequences` で `Iter::flat_map` の Stage/効果タグを固定し、`reports/spec-audit/ch1/iter.json` 内の `iterator.stage.audit_pass_rate` を更新。Rust 実装は `iter/adapters.rs` に格納。"
+wbs = "3.1c F2"
+
+[[api]]
+module = "Iter"
+name = "filter"
+effect = "@pure"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "F2: `Iter::filter` を `iter/adapters.rs` に追加し、`core_iter_adapters.rs::iter_map_filter_pipeline` で `map→filter` のパイプラインを固定。`collect-iterator-audit --section iter --case filter` を `reports/spec-audit/ch1/iter.json#audit_cases.filter` へ保存。"
+wbs = "3.1c F2"
+
+[[api]]
+module = "Iter"
+name = "scan"
+effect = "@pure"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "F2: `iter_scan_tracks_running_totals` で `Iter::scan` の状態遷移と Stage を監視し、`docs/notes/core-library-outline.md` へ実装ログを追記。Rust 実装は `iter/adapters.rs::scan`。"
+wbs = "3.1c F2"
+
+[[api]]
+module = "Iter"
+name = "take"
+effect = "@pure"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "F2: `iter_take_drop_enumerate` テストで `drop→take` の組合せ利用を固定し、`collect-iterator-audit --section iter --case take` の結果を `reports/spec-audit/ch1/iter.json#audit_cases.take` へ追加。"
+wbs = "3.1c F2"
+
+[[api]]
+module = "Iter"
+name = "drop"
+effect = "@pure"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "F2: `iter_take_drop_enumerate` で `Iter::drop` のスキップ挙動を検証し、`iter/adapters.rs` の `drop` 実装を Stage 監査ログに紐付け。"
+wbs = "3.1c F2"
+
+[[api]]
+module = "Iter"
+name = "enumerate"
+effect = "@pure"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "F2: `iter_take_drop_enumerate` で `enumerate` のインデックス付けを固定し、`reports/spec-audit/ch1/iter.json#audit_cases.enumerate` へ KPI を追記。"
+wbs = "3.1c F2"
+
+[[api]]
+module = "Iter"
+name = "zip"
+effect = "@pure"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "F2: `core_iter_adapters.rs::iter_zip_pairs_sequences` で 2 つの `Iter` を同期結合し、効果タグの論理和を `EffectSet::union` で記録。`reports/spec-audit/ch1/iter.json#audit_cases.zip` に結果を保存。"
+wbs = "3.1c F2"
+
+[[api]]
+module = "Iter"
+name = "buffered"
+effect = "effect {mem}"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "F2: `BufferStrategy::{DropOldest,Grow}` を `iter/adapters.rs::buffered` に実装し、`IterStep::Error(IterError::Buffer)` で容量超過を保護。`core_iter_adapters.rs::iter_buffered_sets_mem_effects` が `effect_labels.mem=true` と `mem_bytes=capacity` を監視し、`reports/spec-audit/ch1/iter.json#audit_cases.buffered`/`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に KPI を追記。"
+wbs = "3.1c F2"
 
 [[api]]
 module = "Iter"

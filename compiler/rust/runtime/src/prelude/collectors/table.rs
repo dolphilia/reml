@@ -13,6 +13,7 @@ const MUTATING_EFFECTS: EffectLabels = EffectLabels {
     mutating: true,
     debug: false,
     async_pending: false,
+    mem_bytes: 0,
 };
 
 /// 挿入順を保持する簡易 `Table` 型。

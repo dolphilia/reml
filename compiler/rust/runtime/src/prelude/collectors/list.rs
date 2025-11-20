@@ -12,6 +12,7 @@ const PURE_EFFECTS: EffectLabels = EffectLabels {
     mutating: false,
     debug: false,
     async_pending: false,
+    mem_bytes: 0,
 };
 
 /// 永続 `List` 型の雛形。

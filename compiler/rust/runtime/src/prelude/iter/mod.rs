@@ -18,6 +18,7 @@ use std::{
 
 mod generators;
 pub use generators::*;
+mod adapters;
 
 /// 遅延列 `Iter<T>` の共有ハンドル。
 #[derive(Clone, Debug)]
@@ -91,6 +92,15 @@ impl<T> Iter<T> {
             .lock()
             .expect("IterState poisoned during effect_labels()");
         guard.effects.to_labels()
+    }
+
+    fn metadata_for_adapter(&self) -> (IteratorStageProfile, EffectSet) {
+        let guard = self
+            .core
+            .state
+            .lock()
+            .expect("IterState poisoned during adapter metadata snapshot");
+        (guard.stage_profile.clone(), guard.effects)
     }
 
     /// 次のステップを取得する。
@@ -243,12 +253,45 @@ impl<T> IterSeed<T> {
     }
 }
 
+/// バッファリング戦略。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BufferStrategy {
+    DropOldest,
+    Grow,
+}
+
+/// `Iter::buffered` で発生しうるエラー。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct IterBufferError {
+    pub capacity: usize,
+    pub strategy: BufferStrategy,
+}
+
+impl IterBufferError {
+    pub fn capacity_overflow(capacity: usize, strategy: BufferStrategy) -> Self {
+        Self { capacity, strategy }
+    }
+}
+
+/// イテレータ操作全般のエラー。
+#[derive(Debug)]
+pub enum IterError {
+    Buffer(IterBufferError),
+}
+
+impl IterError {
+    pub fn buffer_overflow(capacity: usize, strategy: BufferStrategy) -> Self {
+        Self::Buffer(IterBufferError::capacity_overflow(capacity, strategy))
+    }
+}
+
 /// `Iter` のステップ種別。
 #[derive(Debug)]
 pub enum IterStep<T> {
     Ready(T),
     Pending,
     Finished,
+    Error(IterError),
 }
 
 impl<T> IterStep<T> {
@@ -260,6 +303,11 @@ impl<T> IterStep<T> {
     /// `Finished` であるかを判定する。
     pub fn is_finished(&self) -> bool {
         matches!(self, Self::Finished)
+    }
+
+    /// `Error` であるかを判定する。
+    pub fn is_error(&self) -> bool {
+        matches!(self, Self::Error(_))
     }
 }
 
@@ -388,6 +436,7 @@ pub struct IteratorStageSnapshot {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EffectSet {
     bits: u8,
+    mem_bytes: usize,
 }
 
 impl EffectSet {
@@ -396,29 +445,52 @@ impl EffectSet {
     const DEBUG_BIT: u8 = 0b0100;
     const PENDING_BIT: u8 = 0b1000;
 
-    pub const PURE: Self = Self { bits: 0 };
+    pub const PURE: Self = Self {
+        bits: 0,
+        mem_bytes: 0,
+    };
 
     pub fn with_mut(self) -> Self {
         Self {
             bits: self.bits | Self::MUT_BIT,
+            mem_bytes: self.mem_bytes,
         }
     }
 
     pub fn with_mem(self) -> Self {
         Self {
             bits: self.bits | Self::MEM_BIT,
+            mem_bytes: self.mem_bytes,
         }
     }
 
     pub fn with_debug(self) -> Self {
         Self {
             bits: self.bits | Self::DEBUG_BIT,
+            mem_bytes: self.mem_bytes,
         }
     }
 
     pub fn with_pending(self) -> Self {
         Self {
             bits: self.bits | Self::PENDING_BIT,
+            mem_bytes: self.mem_bytes,
+        }
+    }
+
+    pub fn with_mem_bytes(mut self, bytes: usize) -> Self {
+        self.mem_bytes = self.mem_bytes.saturating_add(bytes);
+        self
+    }
+
+    pub fn mem_bytes(self) -> usize {
+        self.mem_bytes
+    }
+
+    pub fn union(self, other: Self) -> Self {
+        Self {
+            bits: self.bits | other.bits,
+            mem_bytes: self.mem_bytes.saturating_add(other.mem_bytes),
         }
     }
 
@@ -444,6 +516,7 @@ impl EffectSet {
             mutating: self.contains_mut(),
             debug: self.contains_debug(),
             async_pending: self.contains_pending(),
+            mem_bytes: self.mem_bytes,
         }
     }
 }
@@ -455,6 +528,7 @@ pub struct EffectLabels {
     pub mutating: bool,
     pub debug: bool,
     pub async_pending: bool,
+    pub mem_bytes: usize,
 }
 
 pub(crate) enum IterDriver<T> {
