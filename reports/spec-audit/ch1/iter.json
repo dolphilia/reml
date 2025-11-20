@@ -1,0 +1,59 @@
+{
+  "metric": "iterator.api.coverage",
+  "command": "cargo xtask prelude-audit --section iter --baseline docs/spec/3-1-core-prelude-iteration.md",
+  "timestamp": "2025-11-27T11:00:00Z",
+  "total_entries": 6,
+  "missing_entries": [],
+  "pass_rate": 1.0,
+  "kpi": {
+    "iterator.stage.audit_pass_rate": 1.0,
+    "collector.effect.mem": 0,
+    "collector.effect.mut": 2,
+    "collector.error.duplicate_key_rate": 0,
+    "collector.error.invalid_encoding": 0
+  },
+  "snapshots": [
+    {
+      "id": "iter_from_list_roundtrip",
+      "file": "compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_from_list_roundtrip.snap",
+      "stage": "stable",
+      "effects": []
+    },
+    {
+      "id": "iter_map_utf8",
+      "file": "compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_map_utf8.snap",
+      "stage": "beta",
+      "effects": ["mem"]
+    },
+    {
+      "id": "iter_filter_map_cap",
+      "file": "compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_filter_map_cap.snap",
+      "stage": "beta",
+      "effects": []
+    },
+    {
+      "id": "iter_flat_map_stage",
+      "file": "compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_flat_map_stage.snap",
+      "stage": "beta",
+      "effects": ["mut"]
+    },
+    {
+      "id": "iter_try_fold_diag",
+      "file": "compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_try_fold_diag.snap",
+      "stage": "beta",
+      "effects": []
+    },
+    {
+      "id": "iter_try_collect_set",
+      "file": "compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_try_collect_set.snap",
+      "stage": "stable",
+      "effects": ["mem"]
+    }
+  ],
+  "notes": "core_iter_pipeline.rs の 6 ケース + collect-iterator-audit-metrics.py --module iter --section collectors --case iter-f3 を通じた Stage/KPI の再現",
+  "references": [
+    "reports/iterator-stage-summary.md",
+    "reports/spec-audit/ch0/links.md#iterator-f3",
+    "docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md"
+  ]
+}

@@ -59,7 +59,12 @@
 | `cargo test core_iter_pipeline -- --nocapture` | ✅ / pending | `core_iter_pipeline.rs` へ 6 シナリオを追加し、`insta` snapshot (`.snap`) を生成する。F3 サイクルでは CI で `--nocapture` を使いステージ情報をログ化する。 |
 | `cargo insta review --review` | ✅ / pending | `core_iter_pipeline.snap` を確定し、`Iter.from_list`〜`Iter.try_collect` の往復を固定。`docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` のシナリオ表と対応付ける。 |
 | `tooling/ci/collect-iterator-audit-metrics.py --module iter --section collectors --output reports/iterator-stage-summary.md` | ✅ / pending | `iterator.stage.audit_pass_rate`・`collector.effect.mem` の集計結果を `reports/iterator-stage-summary.md` に保存し、`0-3-audit-and-metrics.md` KPI を更新する。 |
+| `cargo test core_iter_generators -- --nocapture` | ✅ / pending | `core_iter_generators.rs` で `Iter::empty`/`once`/`repeat` 等の生成 API を `insta` で snapshot 化し、`reports/spec-audit/ch1/iter.json` の `snapshots` 識別子へリンク。 |
+| `cargo test core_iter_effects -- --nocapture` | ✅ / pending | 効果付きアダプタ（`buffered`/`enumerate`/`zip`）の `effect` 伝播を `core_iter_effects.rs` で検証し、`Diagnostic.extensions` に `effect.{mem,mut}` が含まれることを確認。 |
+| `cargo xtask prelude-audit --section iter --baseline docs/spec/3-1-core-prelude-iteration.md` | ✅ | Iter 生成 API 6 項目の在庫と `prelude_api_inventory.toml` の `rust_status=working` を検証し、出力を `reports/spec-audit/ch1/iter.json` に保存。 |
 | `python3 reports/spec-audit/scripts/attach_snapshot_links.py --plan docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md --output reports/spec-audit/ch0/iter-f3-links.md` | ✅ / pending | シナリオ毎の Snapshot/Diagnostic/Audit を Markdown 表へ展開し、本ファイルに貼り付ける補助スクリプト。 |
+
+- `reports/spec-audit/ch1/iter.json` には上述コマンド群の KPI（`iterator.stage.audit_pass_rate=1.0`/`collector.effect.mem=0`/`collector.error.invalid_encoding=0`）とレポート済みスナップショット情報を JSON でまとめ、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `Iter` セクションからトレースできるよう `references` 配列でリンクを提供している。 |
 
 | シナリオID | Snapshot | 診断 JSON | 監査ログ | 備考 |
 | --- | --- | --- | --- | --- |

@@ -16,3 +16,8 @@
 
 - ✅ trace#0: stage=stable
 - ✅ trace#1: stage=stable
+
+#### Iter F3 KPI 連携
+- `reports/spec-audit/ch1/iter.json` を `collect-iterator-audit-metrics.py --module iter --section collectors --case iter-f3` の出力先として用いており、`iterator.stage.audit_pass_rate=1.0`、`collector.effect.mem=0`、`collector.error.invalid_encoding=0` という KPI 値と 6 シナリオのスナップショットパスを JSON にまとめている。`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `Iter` エントリからこの JSON を参照し、F3 サイクルで `rust_status=working` となった API の証跡を辿れる構成とした。
+
+- `core_iter_pipeline.rs` の出力と新設された `core_iter_generators.rs` / `core_iter_effects.rs` の収集は `reports/spec-audit/ch1/iter.json` の `snapshots` 配列にも反映され、`reports/spec-audit/ch0/links.md#iterator-f3` からコマンドと KPI をたどることができる。

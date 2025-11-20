@@ -83,6 +83,13 @@
 - `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` を `Iter`/`Collector` 項目まで拡張し、`cargo xtask prelude-audit --section iter` を通じて 3-1 章の API を全件スキャン。結果を `reports/spec-audit/ch0/links.md` に貼り付け、`0-3-audit-and-metrics.md` の `iterator.stage.audit_pass_rate` を更新する。
 - `docs/notes/core-library-outline.md` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` に Iter/Collector 実装状況とリスクを記録し、Phase 3 の他タスク（Text/Collections）から参照できるリンクを設置する。
 
+#### 3.a Collector 実装トレース（W37 現在）
+- `compiler/rust/runtime/src/prelude/iter/mod.rs` には `IterState`/`IterStep`/`EffectSet`/`IteratorStageProfile` が定義され、`Iter` が `EffectLabels` を公開して `collect-iterator-audit-metrics.py` の `collector` セクションと直結する設計になっている。標準コレクタは `compiler/rust/runtime/src/prelude/collectors/{list,map,set,string,table,vec}.rs` に分散し、`CollectOutcome::audit()` で `Diagnostic.extensions["prelude.collector"]` に `kind`/`stage`/`effect`/`markers` を書き出す。
+- `compiler/rust/frontend/tests/core_iter_collectors.rs` と `__snapshots__/core_iter_collectors.snap` で `List/Vec/Map/Set/String/Table` の正常系・異常系を固定し、`collector.effect.*`/`collector.error.*`/`collector.stage.*` の JSON が `reports/iterator-collector-summary.md` に記録されている。`reports/spec-audit/ch0/links.md#collector-f2` には `cargo test core_iter_collectors -- --nocapture` や `cargo insta review --review`、`collect-iterator-audit-metrics.py --module iter --section collectors --wbs 3.1b-F2` などのコマンドと出力を時系列で列挙している。
+- `tooling/ci/collect-iterator-audit-metrics.py` の `collect_collector_effect_metrics` で `collector.effect.{mem,mut,debug,async_pending}` と `collector.effect.{mem_reservation,reserve,finish}` を集計し、`reports/iterator-collector-summary.md` および `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` で `collector.effect.mem=0`/`collector.stage.audit_pass_rate=1.0` を KPI として追跡している。
+- `scripts/validate-diagnostic-json.sh --pattern collector` を定期実行することで `prelude.collector.*` 拡張がすべて出力されていることを確認し、`reports/diagnostic-format-regression.md` に差分が出ない状態を M1 レビュー基準とする。
+- 実装の証跡は `docs/notes/core-library-outline.md#collector-f2-監査ログ`、`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#collector-f2-監査ログ`、`reports/spec-audit/ch0/links.md#collector-f2` の三者クロスリファレンスで参照可能な構成を維持している。
+
 **主な依存資料**
 - 仕様: `docs/spec/3-1-core-prelude-iteration.md`（Iter/Collector API）、`docs/spec/3-2-core-collections.md`（永続コレクション連携）、`docs/spec/3-6-core-diagnostics-audit.md`（Stage/監査キー）
 - 型推論: `docs/spec/1-2-types-Inference.md`, `compiler/ocaml/src/constraint_solver.ml`（`solve_iterator` 実装参照）
@@ -243,6 +250,12 @@ F2-5 で追加した `reports/spec-audit/ch0/links.md#collector-f2-監査ログ`
 - `Iter::buffered`/`Iter::enumerate`/`Iter::zip` など Chapter 3.1 の変換 API を `iter/adapters.rs` へ実装し、`effect` を `IterState` に保持する。`buffered` は内部バッファサイズを `usize` で管理し、`effect {mem}` の計測を `collect-iterator-audit` に報告する。
 - `compiler/rust/frontend/tests/core_iter_generators.rs` で生成系 API の黄金テストを追加し、`Iter.range` + `take` + `collect_vec` のような複合シナリオを 12 ケース固定。更に `compiler/rust/frontend/tests/core_iter_effects.rs` を用意して `effect {mem}`/`effect {mut}` の伝播を `Diagnostic` 拡張領域で確認する。
 - `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` に `module = "Iter"` エントリを追加し、`cargo xtask prelude-audit --section iter --baseline docs/spec/3-1-core-prelude-iteration.md` を nightly で実行。結果 JSON を `reports/spec-audit/ch1/iter.json`（新規）に保存し、`reports/spec-audit/ch0/links.md` から参照する。
+
+#### 3.3a 生成 API カバレッジのトレース（WBS 3.1c）
+- `docs/notes/core-library-outline.md` の `iter_from_list_roundtrip`〜`iter_try_collect_set` の 6 シナリオ表は `Iter` 生成系／Collector 終端の交差点を網羅する証跡であり、現在の進捗と残作業を比較するベースラインとして取り込む。各行は `core_iter_pipeline` テスト→スナップショット→`reports/iterator-stage-summary.md` の KPI →`reports/spec-audit/ch0/links.md` のコマンドログという流れを想定している。
+- `compiler/rust/frontend/tests/core_iter_pipeline.rs`（および将来的な `__snapshots__/core_iter_pipeline.snap`）で各パイプラインを生成し、`reports/diagnostic-format-regression.md` に記載された手順で `effect.*`/`collector` 拡張の差分を検出できないことを確認しながら `Iter::from_list` や `Iter::try_fold` の Stage/効果値を固定する。
+- `tooling/ci/collect-iterator-audit-metrics.py --module iter --section collectors`（および `collect_metrics` 系の CLI）を nightly に組み込み、`iterator.stage.audit_pass_rate` `collector.effect.mem` `collector.effect.mem_reservation` を `reports/iterator-stage-summary.md` に出力して `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI セクションと同期させる。`reports/spec-audit/ch0/links.md` の `#collector-f2-監査ログ` に加えて `#iterator-f3` 相当の新セクションを設け、`cargo test core_iter_pipeline -- --nocapture` や `collect-iterator-audit-metrics.py --module iter --section collectors --case iter-f3` のコマンド履歴と JSON を並べて記録する。
+- `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `module = "Iter"` エントリは現状 `rust_status = "pending"` のままなので、各シナリオのスナップショットと `cargo xtask prelude-audit --section iter --baseline docs/spec/3-1-core-prelude-iteration.md` の出力をもって `implemented`/`working` に段階的に切り替え、`reports/spec-audit/ch1/iter.json` に監査結果を保存しつつ `reports/spec-audit/ch0/links.md` で参照できるようにする。
 
 #### 3. Iter/Collector 完了条件
 - `Iter`/`Collector` API が `cargo xtask prelude-audit --section iter --strict` で欠落 0 件となり、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `last_updated` が 37 週目の日付に更新されている。
