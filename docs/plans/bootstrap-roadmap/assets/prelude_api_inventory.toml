@@ -164,10 +164,30 @@ module = "Iter"
 name = "from_list"
 effect = "@pure"
 stage = "beta"
-rust_status = "working"
+rust_status = "implemented"
 ocaml_status = "typeck-only"
-notes = "F3 サイクル: `core_iter_pipeline.rs` の `iter_from_list_roundtrip` スナップショットと `reports/spec-audit/ch1/iter.json` の `iterator.stage.audit_pass_rate` 1.0 を根拠に進捗を記録"
-wbs = "3.1a"
+notes = "F1-2: `core_iter_generators.rs::from_list_roundtrip` で `ListCollector` ノードを再利用し `CollectOutcome` の Stage/Effect を転写しつつ `EffectLabels::residual = []` を維持して `@pure` を保証した。`collect-iterator-audit --section iter --case from_list` で `iterator.stage.audit_pass_rate=1.0`/`collector.effect.mem=0` を `reports/spec-audit/ch1/iter.json` に記録し `reports/spec-audit/ch0/links.md#iter-generators` に証跡を残した。"
+wbs = "3.1c F1"
+
+[[api]]
+module = "Iter"
+name = "from_result"
+effect = "@pure"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "F1-2: `core_iter_generators.rs::from_result_passthrough` で `Result<T, E>` を `Iter<T>` に昇格させ `CollectOutcome` の `stage`/`effect` を `ListCollector` と一致させ、`collect-iterator-audit --section iter --case from_list` の KPI を `reports/spec-audit/ch1/iter.json` へ追加した。"
+wbs = "3.1c F1"
+
+[[api]]
+module = "Iter"
+name = "from_fn"
+effect = "@pure"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "F1-2: `core_iter_generators.rs::from_fn_counter` で `FnMut() -> Option<T>` を `IterSeed` に包み `EffectLabels::residual = []` として `@pure` を維持し、`reports/spec-audit/ch1/iter.json` に `collector.effect.mem=0`/`iterator.stage.audit_pass_rate=1.0` の KPI を連携した。"
+wbs = "3.1c F1"
 
 [[api]]
 module = "Iter"

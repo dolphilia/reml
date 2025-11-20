@@ -75,6 +75,17 @@
 | `iter_try_fold_diag` | `compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_try_fold_diag.snap` | `reports/diagnostic-format-regression.md#iter-try-fold` | `reports/iterator-stage-summary.md#iter_try_fold_diag` | `typeclass.iterator.stage_mismatch` が出ないことを確認。 |
 | `iter_try_collect_set` | `compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_try_collect_set.snap` | `reports/diagnostic-format-regression.md#iter-try-collect` | `reports/iterator-stage-summary.md#iter_try_collect_set` | `collector.effect.mem` 集計対象。 |
 
+### Iter Generators
+
+（WBS 3.1c-F1 で `Iter::from_list`/`Iter::from_result`/`Iter::from_fn` を生成 API として実装し、`ListCollector` との Stage・Effect 整合を取ったログ）
+
+| コマンド | 結果 | 備考 |
+| --- | --- | --- |
+| `cargo test core_iter_generators -- --nocapture` | ✅ / pending | `core_iter_generators.rs` に `from_list_roundtrip`/`from_result_passthrough`/`from_fn_counter` を追加し、`Iter::from_list` が `ListCollector` ノードを再利用しつつ `Iter::from_result`/`Iter::from_fn` が `IterSeed` へ `EffectLabels::residual = []` を保持することを `insta` スナップショットで検証。 |
+| `collect-iterator-audit --section iter --case from_list` | ✅ / pending | `collector.effect.mem=0`/`iterator.stage.audit_pass_rate=1.0` を `reports/spec-audit/ch1/iter.json` に記録し、`Iter::from_list` と `ListCollector` の Stage/Effect が `CollectOutcome` に一致することを確認。 |
+| `cargo xtask prelude-audit --section iter --baseline docs/spec/3-1-core-prelude-iteration.md --wbs 3.1c-F1` | ✅ | 生成 API (`from_list`/`from_result`/`from_fn`) を `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` で `rust_status=implemented` と判定し、`reports/spec-audit/ch1/iter.json` の `references` に `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md#3-3b` を含めた。 |
+- `reports/spec-audit/ch1/iter.json` には上述の `core_iter_generators.rs`/`collect-iterator-audit`/`cargo xtask prelude-audit` の KPI (`iterator.stage.audit_pass_rate=1.0`/`collector.effect.mem=0`/`Iter::from_result`/`Iter::from_fn` の `effect={}`) と Snapshot パスを JSON で記録し、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `Iter` セクションからトレースできるよう `references` 配列で `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md#3-3b` を追加してある。 |
+
 | ファイル | リンク | 存在 | 備考 |
 |---------|--------|------|------|
 | `docs/spec/0-0-overview.md` | `../../reports/diagnostic-format-regression.md` | ✅ | - |
