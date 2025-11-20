@@ -1,246 +1,28 @@
 {
   "metric": "iterator.api.coverage",
-  "command": "cargo xtask prelude-audit --section iter --baseline docs/spec/3-1-core-prelude-iteration.md --wbs 3.1c-F1-5",
-  "timestamp": "2025-12-20T08:05:00Z",
-  "total_entries": 15,
-  "missing_entries": [],
-  "pass_rate": 1.0,
+  "command": "cargo xtask prelude-audit --section iter --strict --baseline docs/spec/3-1-core-prelude-iteration.md",
+  "timestamp": "2025-11-20T05:42:44Z",
+  "section": "Iter + Collector",
+  "total_entries": 38,
+  "implemented_entries": 36,
+  "missing_entries": [
+    {
+      "module": "Iter",
+      "name": "try_fold",
+      "status": "pending",
+      "notes": "Rust 実装とテストケースが未着手"
+    },
+    {
+      "module": "Iter",
+      "name": "try_collect",
+      "status": "pending",
+      "notes": "Collector 連携の Result 版が未実装"
+    }
+  ],
   "kpi": {
-    "iterator.api.coverage": 1.0,
-    "iterator.stage.audit_pass_rate": 1.0,
-    "collector.effect.mem": 0,
-    "collector.effect.mut": 2,
-    "collector.error.duplicate_key_rate": 0,
-    "collector.error.invalid_encoding": 0,
-    "iter.generators.coverage": 1.0,
-    "iter.generators.entries": 15,
-    "iterator.range.overflow_guard": 1,
-    "iterator.repeat.flagged": true,
-    "iterator.once.length": 1,
-    "iterator.empty.items": 0,
-    "iterator.unfold.depth": 8,
-    "iterator.try_unfold.error_kind": "try_unfold"
+    "core_prelude.missing_api": 2,
+    "iterator.api.coverage": 0.9473684210526315
   },
-  "audit_cases": [
-    {
-      "id": "from_list",
-      "command": "collect-iterator-audit --section iter --case from_list --output reports/spec-audit/ch1/iter.json",
-      "kpi": {
-        "iterator.stage.audit_pass_rate": 1.0,
-        "collector.effect.mem": 0
-      },
-      "artifacts": [
-        "compiler/rust/frontend/tests/snapshots/core_iter_generators__from_list_roundtrip.snap"
-      ],
-      "notes": "Iter::from_list が ListCollector ノードを共有し、Stage/Effect を CollectOutcome と同期できたことを確認。"
-    },
-    {
-      "id": "from_result",
-      "command": "collect-iterator-audit --section iter --case from_result --output reports/spec-audit/ch1/iter.json",
-      "kpi": {
-        "iterator.stage.audit_pass_rate": 1.0,
-        "collector.effect.mem": 0,
-        "iterator.error.count": 0
-      },
-      "artifacts": [
-        "compiler/rust/frontend/tests/snapshots/core_iter_generators__from_result_passthrough.snap"
-      ],
-      "notes": "Result<T, E> から Iter<T> への変換時も residual effect が空であることと `iterator.error.*` が発火しないことを観測。"
-    },
-    {
-      "id": "from_fn",
-      "command": "collect-iterator-audit --section iter --case from_fn --output reports/spec-audit/ch1/iter.json",
-      "kpi": {
-        "iterator.stage.audit_pass_rate": 1.0,
-        "collector.effect.mem": 0,
-        "iterator.residual_effects": []
-      },
-      "artifacts": [
-        "compiler/rust/frontend/tests/snapshots/core_iter_generators__from_fn_counter.snap"
-      ],
-      "notes": "FnMut() -> Option<T> を IterSeed として包んだ際に Stage/Effect を @pure のまま維持できることを snapshot で固定。"
-    },
-    {
-      "id": "range",
-      "command": "collect-iterator-audit --section iter --case range --output reports/spec-audit/ch1/iter.json",
-      "kpi": {
-        "iterator.stage.audit_pass_rate": 1.0,
-        "iterator.range.overflow_guard": 1
-      },
-      "artifacts": [
-        "compiler/rust/frontend/tests/snapshots/core_iter_generators__range_basic.snap",
-        "compiler/rust/frontend/tests/snapshots/core_iter_generators__range_overflow_guard.snap"
-      ],
-      "notes": "Iter::range が `RangeState`/`IterRangeError` 経由でオーバーフロー検出を `IterStep::Error` として報告し、監査ログに `iterator.range.overflow_guard=1` を残すことを確認。"
-    },
-    {
-      "id": "repeat",
-      "command": "collect-iterator-audit --section iter --case repeat --output reports/spec-audit/ch1/iter.json",
-      "kpi": {
-        "iterator.stage.audit_pass_rate": 1.0,
-        "iterator.repeat.flagged": true
-      },
-      "artifacts": [
-        "compiler/rust/frontend/tests/snapshots/core_iter_generators__repeat_take.snap"
-      ],
-      "notes": "Iter::repeat が `diagnostic.extensions[\"iterator.repeat\"] = true` を出力し、効果タグを追加せずにフラグ付き無限列として記録されることを監査。"
-    },
-    {
-      "id": "once",
-      "command": "collect-iterator-audit --section iter --case once --output reports/spec-audit/ch1/iter.json",
-      "kpi": {
-        "iterator.stage.audit_pass_rate": 1.0,
-        "iterator.once.length": 1
-      },
-      "artifacts": [
-        "compiler/rust/frontend/tests/snapshots/core_iter_generators__once_collect.snap"
-      ],
-      "notes": "Iter::once が ZST 共有の種を使い、1 要素のみを供給して `iterator.once.length=1` を保証することを検証。"
-    },
-    {
-      "id": "empty",
-      "command": "collect-iterator-audit --section iter --case empty --output reports/spec-audit/ch1/iter.json",
-      "kpi": {
-        "iterator.stage.audit_pass_rate": 1.0,
-        "iterator.empty.items": 0
-      },
-      "artifacts": [
-        "compiler/rust/frontend/tests/snapshots/core_iter_generators__empty_collect.snap"
-      ],
-      "notes": "Iter::empty が追加アロケーション無しで完了し、`iterator.empty.items=0` を報告して `EffectLabels::residual=[]` を維持することを確認。"
-    },
-    {
-      "id": "unfold",
-      "command": "collect-iterator-audit --section iter --case unfold --output reports/spec-audit/ch1/iter.json",
-      "kpi": {
-        "iterator.stage.audit_pass_rate": 1.0,
-        "iterator.unfold.depth": 8
-      },
-      "artifacts": [
-        "compiler/rust/frontend/tests/snapshots/core_iter_generators__unfold_fibonacci_pipeline.snap"
-      ],
-      "notes": "Iter::unfold が `EffectLabels::residual=[]` のまま `ListCollector` へ往復し、`iterator.unfold.depth=8` を監査ログへ出力できたことを確認。"
-    },
-    {
-      "id": "try_unfold",
-      "command": "collect-iterator-audit --section iter --case try_unfold --output reports/spec-audit/ch1/iter.json",
-      "kpi": {
-        "iterator.stage.audit_pass_rate": 1.0,
-        "iterator.try_unfold.error_kind": "try_unfold"
-      },
-      "artifacts": [
-        "compiler/rust/frontend/tests/snapshots/core_iter_generators__try_unfold_error_passthrough.snap"
-      ],
-      "notes": "`Result<Option<(T, State)>, E>` で `Err(E)` を返した際に `EffectLabels::debug=true` と `iterator.error.kind=\"try_unfold\"` を同時に記録できることを snapshot で固定。"
-    }
-  ],
-  "snapshots": [
-    {
-      "id": "iter_from_list_roundtrip",
-      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__from_list_roundtrip.snap",
-      "stage": "beta",
-      "effects": []
-    },
-    {
-      "id": "iter_from_result_passthrough",
-      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__from_result_passthrough.snap",
-      "stage": "beta",
-      "effects": []
-    },
-    {
-      "id": "iter_from_fn_counter",
-      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__from_fn_counter.snap",
-      "stage": "beta",
-      "effects": []
-    },
-    {
-      "id": "iter_map_utf8",
-      "file": "compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_map_utf8.snap",
-      "stage": "beta",
-      "effects": [
-        "mem"
-      ]
-    },
-    {
-      "id": "iter_filter_map_cap",
-      "file": "compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_filter_map_cap.snap",
-      "stage": "beta",
-      "effects": []
-    },
-    {
-      "id": "iter_flat_map_stage",
-      "file": "compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_flat_map_stage.snap",
-      "stage": "beta",
-      "effects": [
-        "mut"
-      ]
-    },
-    {
-      "id": "iter_try_fold_diag",
-      "file": "compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_try_fold_diag.snap",
-      "stage": "beta",
-      "effects": []
-    },
-    {
-      "id": "iter_try_collect_set",
-      "file": "compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_try_collect_set.snap",
-      "stage": "stable",
-      "effects": [
-        "mem"
-      ]
-    },
-    {
-      "id": "iter_range_basic",
-      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__range_basic.snap",
-      "stage": "beta",
-      "effects": []
-    },
-    {
-      "id": "iter_range_overflow_guard",
-      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__range_overflow_guard.snap",
-      "stage": "beta",
-      "effects": []
-    },
-    {
-      "id": "iter_repeat_take",
-      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__repeat_take.snap",
-      "stage": "beta",
-      "effects": []
-    },
-    {
-      "id": "iter_once_collect",
-      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__once_collect.snap",
-      "stage": "beta",
-      "effects": []
-    },
-    {
-      "id": "iter_empty_collect",
-      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__empty_collect.snap",
-      "stage": "beta",
-      "effects": []
-    },
-    {
-      "id": "iter_unfold_fibonacci_pipeline",
-      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__unfold_fibonacci_pipeline.snap",
-      "stage": "beta",
-      "effects": []
-    },
-    {
-      "id": "iter_try_unfold_error_passthrough",
-      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__try_unfold_error_passthrough.snap",
-      "stage": "beta",
-      "effects": [
-        "debug"
-      ]
-    }
-  ],
-  "notes": "core_iter_generators.rs（from_list/from_result/from_fn/empty/once/repeat/range/unfold/try_unfold）と core_iter_pipeline.rs の 15 ケースを `RUSTFLAGS=\"-Zpanic-abort-tests\" cargo test core_iter_generators core_iter_pipeline -- --nocapture` で再現し、`cargo xtask prelude-audit --section iter --baseline docs/spec/3-1-core-prelude-iteration.md --wbs 3.1c-F1-5` の出力を本ファイルに保存。`prelude_api_inventory.toml`（`last_updated = \"2025-12-22 / WBS 3.1c-F1-4/5\"`）と連動させ、生成 API 15 件すべてが `iterator.api.coverage=1.0` となり `pending_entries` が解消された状態を維持している。",
-  "references": [
-    "reports/iterator-stage-summary.md",
-    "reports/spec-audit/ch0/links.md#iterator-f3",
-    "reports/spec-audit/ch0/links.md#iter-generators",
-    "docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md#33b-生成-api-実装ステップ（wbs-31c-f1）",
-    "docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md",
-    "docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml"
-  ]
+  "strict_exit_code": 1,
+  "notes": "Collector 系 API は 100% 実装済み。Iter 側の try_fold/try_collect のみ未実装で Strict 失敗。ログは reports/spec-audit/ch0/links.md#iter-collector-remediation に追記。"
 }

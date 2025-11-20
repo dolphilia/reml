@@ -348,3 +348,9 @@
 | `docs/spec/README.md` | `5-6-risk-governance.md` | ✅ | - |
 
 - 差分サマリ: `docs/spec/0-0-overview.md` に Phase 2-8 の監査リソース節を追加し、`reports/diagnostic-format-regression.md` への相対パスを `../../reports/...` に修正した。`docs/spec/0-3-code-style-guide.md` ではコメント中の参照記法を明文化し、`docs/spec/1-1-syntax/examples/*.reml` と Rust Frontend 検証手順を追記している。
+
+### Iter/Collector Remediation (2025-11-20)
+
+| コマンド | 結果 | 備考 |
+| --- | --- | --- |
+| `cargo xtask prelude-audit --section iter --strict --baseline docs/spec/3-1-core-prelude-iteration.md` | ⚠️（未実装 2 件） | `Iter::try_fold` / `Iter::try_collect` が `rust_status=pending` のため Strict 失敗。`reports/spec-audit/ch1/iter.json` に 38 件中 36 件完了・2 件 pending のサマリを保存し、Collector 領域は 100% 実装済みと確認。 |

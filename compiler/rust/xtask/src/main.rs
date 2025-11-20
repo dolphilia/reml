@@ -32,7 +32,10 @@ fn run() -> Result<(), Box<dyn Error>> {
 
 fn print_usage() {
     eprintln!("usage: cargo xtask <subcommand>");
-    eprintln!("  prelude-audit [--inventory <path>] [--wbs <id>] [--baseline <path>] [--strict]");
+    eprintln!(
+        "  prelude-audit [--inventory <path>] [--wbs <id>] [--baseline <path>] \
+         [--section <Option|Result|Iter|Collector>] [--module <name>] [--strict]"
+    );
 }
 
 fn run_prelude_audit<I>(args: I) -> Result<(), Box<dyn Error>>
@@ -44,6 +47,8 @@ where
     let mut strict = false;
     let mut wbs_filter: Option<String> = None;
     let mut baseline: Option<String> = None;
+    let mut section_filter: Option<SectionFilter> = None;
+    let mut module_filters: Vec<String> = Vec::new();
 
     let mut iter = args.peekable();
     while let Some(arg) = iter.next() {
@@ -66,6 +71,21 @@ where
                 };
                 baseline = Some(value);
             }
+            "--section" => {
+                let Some(value) = iter.next() else {
+                    return Err("`--section` に値が指定されていません".into());
+                };
+                section_filter = Some(
+                    SectionFilter::parse(&value)
+                        .map_err(|msg| format!("`--section` の値が不正です: {msg}"))?,
+                );
+            }
+            "--module" => {
+                let Some(value) = iter.next() else {
+                    return Err("`--module` に値が指定されていません".into());
+                };
+                module_filters.push(value);
+            }
             "--strict" => strict = true,
             other => {
                 return Err(format!("未対応の引数: {other}").into());
@@ -79,11 +99,28 @@ where
     if let Some(filter) = &wbs_filter {
         entries.retain(|entry| entry.wbs.as_deref() == Some(filter.as_str()));
     }
+    if let Some(section) = &section_filter {
+        entries.retain(|entry| section.matches(&entry.module));
+    }
+    if !module_filters.is_empty() {
+        entries.retain(|entry| {
+            let module_name = entry.module.to_ascii_lowercase();
+            module_filters
+                .iter()
+                .any(|filter| module_name == filter.to_ascii_lowercase())
+        });
+    }
 
     println!("== Core Prelude API Audit ==");
     println!("inventory : {}", display_rel(&inventory_path));
     if let Some(baseline_path) = &baseline {
         println!("baseline  : {baseline_path}");
+    }
+    if let Some(section) = &section_filter {
+        println!("section   : {}", section.label());
+    }
+    if !module_filters.is_empty() {
+        println!("modules   : {}", module_filters.join(", "));
     }
     if let Some(filter) = &wbs_filter {
         println!("wbs filter: {filter}");
@@ -113,7 +150,9 @@ where
     let completed = total.saturating_sub(missing.len());
     println!(
         "対象 {} 件 / 実装済み {} 件 / 未完 {} 件",
-        total, completed, missing.len()
+        total,
+        completed,
+        missing.len()
     );
 
     if strict && !missing.is_empty() {
@@ -156,4 +195,52 @@ struct ApiEntry {
     wbs: Option<String>,
     #[allow(dead_code)]
     notes: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum SectionFilter {
+    Option,
+    Result,
+    Iter,
+    Collector,
+}
+
+impl SectionFilter {
+    fn parse(value: &str) -> Result<Self, String> {
+        let normalized = value.to_ascii_lowercase();
+        match normalized.as_str() {
+            "option" | "options" => Ok(Self::Option),
+            "result" | "results" => Ok(Self::Result),
+            "iter" | "iters" | "iterator" | "iteration" => Ok(Self::Iter),
+            "collector" | "collectors" => Ok(Self::Collector),
+            other => Err(format!(
+                "{other}（許可されている値: Option, Result, Iter, Collector）"
+            )),
+        }
+    }
+
+    fn matches(&self, module: &str) -> bool {
+        let module_lower = module.to_ascii_lowercase();
+        self.modules()
+            .iter()
+            .any(|candidate| module_lower == candidate.to_ascii_lowercase())
+    }
+
+    fn modules(&self) -> &'static [&'static str] {
+        match self {
+            SectionFilter::Option => &["Option"],
+            SectionFilter::Result => &["Result"],
+            SectionFilter::Iter => &["Iter", "Collector"],
+            SectionFilter::Collector => &["Collector"],
+        }
+    }
+
+    fn label(&self) -> &'static str {
+        match self {
+            SectionFilter::Option => "Option",
+            SectionFilter::Result => "Result",
+            SectionFilter::Iter => "Iter (Iter + Collector)",
+            SectionFilter::Collector => "Collector",
+        }
+    }
 }
