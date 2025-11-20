@@ -1,21 +1,25 @@
 {
   "metric": "iterator.api.coverage",
-  "command": "cargo xtask prelude-audit --section iter --baseline docs/spec/3-1-core-prelude-iteration.md --wbs 3.1c-F1",
-  "timestamp": "2025-12-12T07:30:00Z",
-  "total_entries": 13,
+  "command": "cargo xtask prelude-audit --section iter --baseline docs/spec/3-1-core-prelude-iteration.md --wbs 3.1c-F1-5",
+  "timestamp": "2025-12-20T08:05:00Z",
+  "total_entries": 15,
   "missing_entries": [],
   "pass_rate": 1.0,
   "kpi": {
+    "iterator.api.coverage": 1.0,
     "iterator.stage.audit_pass_rate": 1.0,
     "collector.effect.mem": 0,
     "collector.effect.mut": 2,
     "collector.error.duplicate_key_rate": 0,
     "collector.error.invalid_encoding": 0,
     "iter.generators.coverage": 1.0,
+    "iter.generators.entries": 15,
     "iterator.range.overflow_guard": 1,
     "iterator.repeat.flagged": true,
     "iterator.once.length": 1,
-    "iterator.empty.items": 0
+    "iterator.empty.items": 0,
+    "iterator.unfold.depth": 8,
+    "iterator.try_unfold.error_kind": "try_unfold"
   },
   "audit_cases": [
     {
@@ -104,6 +108,30 @@
         "compiler/rust/frontend/tests/snapshots/core_iter_generators__empty_collect.snap"
       ],
       "notes": "Iter::empty が追加アロケーション無しで完了し、`iterator.empty.items=0` を報告して `EffectLabels::residual=[]` を維持することを確認。"
+    },
+    {
+      "id": "unfold",
+      "command": "collect-iterator-audit --section iter --case unfold --output reports/spec-audit/ch1/iter.json",
+      "kpi": {
+        "iterator.stage.audit_pass_rate": 1.0,
+        "iterator.unfold.depth": 8
+      },
+      "artifacts": [
+        "compiler/rust/frontend/tests/snapshots/core_iter_generators__unfold_fibonacci_pipeline.snap"
+      ],
+      "notes": "Iter::unfold が `EffectLabels::residual=[]` のまま `ListCollector` へ往復し、`iterator.unfold.depth=8` を監査ログへ出力できたことを確認。"
+    },
+    {
+      "id": "try_unfold",
+      "command": "collect-iterator-audit --section iter --case try_unfold --output reports/spec-audit/ch1/iter.json",
+      "kpi": {
+        "iterator.stage.audit_pass_rate": 1.0,
+        "iterator.try_unfold.error_kind": "try_unfold"
+      },
+      "artifacts": [
+        "compiler/rust/frontend/tests/snapshots/core_iter_generators__try_unfold_error_passthrough.snap"
+      ],
+      "notes": "`Result<Option<(T, State)>, E>` で `Err(E)` を返した際に `EffectLabels::debug=true` と `iterator.error.kind=\"try_unfold\"` を同時に記録できることを snapshot で固定。"
     }
   ],
   "snapshots": [
@@ -190,14 +218,29 @@
       "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__empty_collect.snap",
       "stage": "beta",
       "effects": []
+    },
+    {
+      "id": "iter_unfold_fibonacci_pipeline",
+      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__unfold_fibonacci_pipeline.snap",
+      "stage": "beta",
+      "effects": []
+    },
+    {
+      "id": "iter_try_unfold_error_passthrough",
+      "file": "compiler/rust/frontend/tests/snapshots/core_iter_generators__try_unfold_error_passthrough.snap",
+      "stage": "beta",
+      "effects": [
+        "debug"
+      ]
     }
   ],
-  "notes": "core_iter_generators.rs（from_list/from_result/from_fn/empty/once/repeat/range）と core_iter_pipeline.rs の 12 ケースを `RUSTFLAGS=\"-Zpanic-abort-tests\" cargo test core_iter_generators core_iter_pipeline -- --nocapture` で再現し、collect-iterator-audit --section iter --case from_* / empty / once / repeat / range が `iterator.stage.audit_pass_rate=1.0` を維持することを確認。",
+  "notes": "core_iter_generators.rs（from_list/from_result/from_fn/empty/once/repeat/range/unfold/try_unfold）と core_iter_pipeline.rs の 15 ケースを `RUSTFLAGS=\"-Zpanic-abort-tests\" cargo test core_iter_generators core_iter_pipeline -- --nocapture` で再現し、`cargo xtask prelude-audit --section iter --baseline docs/spec/3-1-core-prelude-iteration.md --wbs 3.1c-F1-5` の出力を本ファイルに保存。`prelude_api_inventory.toml`（`last_updated = \"2025-12-22 / WBS 3.1c-F1-4/5\"`）と連動させ、生成 API 15 件すべてが `iterator.api.coverage=1.0` となり `pending_entries` が解消された状態を維持している。",
   "references": [
     "reports/iterator-stage-summary.md",
     "reports/spec-audit/ch0/links.md#iterator-f3",
     "reports/spec-audit/ch0/links.md#iter-generators",
     "docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md#33b-生成-api-実装ステップ（wbs-31c-f1）",
-    "docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md"
+    "docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md",
+    "docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml"
   ]
 }
