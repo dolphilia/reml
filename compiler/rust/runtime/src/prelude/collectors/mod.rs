@@ -9,12 +9,14 @@ mod list;
 mod map;
 mod set;
 mod string;
+mod table;
 mod vec;
 
 pub use list::{List, ListCollector};
 pub use map::{Map, MapCollector};
 pub use set::{Set, SetCollector};
 pub use string::{StringCollector, StringError};
+pub use table::{Table, TableCollector};
 pub use vec::VecCollector;
 
 use super::{

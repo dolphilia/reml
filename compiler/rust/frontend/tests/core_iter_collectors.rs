@@ -4,9 +4,10 @@ use serde_json::json;
 
 use reml_runtime_ffi::core_prelude::{
     collectors::{
-        CollectOutcome, ListCollector, MapCollector, SetCollector, StringCollector, VecCollector,
+        CollectOutcome, ListCollector, MapCollector, SetCollector, StringCollector, TableCollector,
+        VecCollector,
     },
-    Collector, GuardDiagnostic,
+    Collector, GuardDiagnostic, IntoDiagnostic,
 };
 
 fn render_snapshot<T>(
@@ -94,6 +95,22 @@ fn collect_string_invalid() -> String {
     serde_json::to_string_pretty(&render_error_snapshot(diag)).unwrap()
 }
 
+fn collect_table_baseline() -> String {
+    let mut collector = TableCollector::new();
+    collector.push(("first".to_string(), 10)).unwrap();
+    collector.push(("second".to_string(), 20)).unwrap();
+    let snapshot = render_snapshot(collector.finish(), |table| json!(table.into_entries()));
+    serde_json::to_string_pretty(&snapshot).unwrap()
+}
+
+fn collect_table_duplicate() -> String {
+    let mut collector = TableCollector::new();
+    collector.push(("dup".to_string(), 1)).unwrap();
+    let err = collector.push(("dup".to_string(), 2)).unwrap_err();
+    let diag = err.into_diagnostic();
+    serde_json::to_string_pretty(&render_error_snapshot(diag)).unwrap()
+}
+
 #[test]
 fn core_iter_collectors_snapshot() {
     let cases = vec![
@@ -102,6 +119,8 @@ fn core_iter_collectors_snapshot() {
         ("collect_map_duplicate", collect_map_duplicate()),
         ("collect_set_stage", collect_set_stage()),
         ("collect_string_invalid", collect_string_invalid()),
+        ("collect_table_baseline", collect_table_baseline()),
+        ("collect_table_duplicate", collect_table_duplicate()),
     ];
     let actual = cases
         .into_iter()

@@ -1,7 +1,4 @@
-use super::{
-    option::Option as RemlOption,
-    result::Result as RemlResult,
-};
+use super::{option::Option as RemlOption, result::Result as RemlResult};
 use serde_json::{Map, Value};
 
 type StdOption<T> = std::option::Option<T>;
@@ -82,10 +79,7 @@ impl PreludeGuardMetadata {
         );
         obj.insert(
             "stage".into(),
-            self.stage
-                .clone()
-                .map(Value::String)
-                .unwrap_or(Value::Null),
+            self.stage.clone().map(Value::String).unwrap_or(Value::Null),
         );
         obj.insert(
             "module".into(),
@@ -116,10 +110,7 @@ impl PreludeGuardMetadata {
         );
         metadata.insert(
             format!("{GUARD_AUDIT_PREFIX}stage"),
-            self.stage
-                .clone()
-                .map(Value::String)
-                .unwrap_or(Value::Null),
+            self.stage.clone().map(Value::String).unwrap_or(Value::Null),
         );
         metadata.insert(
             format!("{GUARD_AUDIT_PREFIX}module"),
@@ -300,10 +291,7 @@ pub fn ensure<E>(condition: bool, err: impl FnOnce() -> E) -> RemlResult<(), E> 
 
 /// `ensure_not_null` ヘルパ。
 #[inline]
-pub fn ensure_not_null<T, E>(
-    value: RemlOption<T>,
-    err: impl FnOnce() -> E,
-) -> RemlResult<T, E> {
+pub fn ensure_not_null<T, E>(value: RemlOption<T>, err: impl FnOnce() -> E) -> RemlResult<T, E> {
     match value {
         RemlOption::Some(value) => RemlResult::Ok(value),
         RemlOption::None => RemlResult::Err(err()),

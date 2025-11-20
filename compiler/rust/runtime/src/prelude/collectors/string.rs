@@ -74,7 +74,7 @@ impl Collector<u8, CollectOutcome<String>> for StringCollector {
         let offset = self.buffer.len();
         self.validator
             .push_byte(value)
-            .map_err(|error| self.invalid_encoding(offset, value, error))?;
+            .map_err(|error| self.invalid_encoding(offset, value, error.to_string()))?;
 
         self.buffer.push(value);
         self.effects.mem = true;
@@ -102,8 +102,8 @@ impl Collector<u8, CollectOutcome<String>> for StringCollector {
         );
         self.markers.record_finish();
         self.effects.mem = true;
-        let string = String::from_utf8(self.buffer).expect("UTF-8 validity was enforced");
         let audit = self.audit_trail("StringCollector::finish");
+        let string = String::from_utf8(self.buffer).expect("UTF-8 validity was enforced");
         CollectOutcome::new(string, audit)
     }
 }
@@ -207,8 +207,8 @@ impl fmt::Display for StringError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "invalid UTF-8 byte 0x{:02X} at offset {offset} ({})",
-            self.byte, self.detail
+            "invalid UTF-8 byte 0x{:02X} at offset {} ({})",
+            self.byte, self.offset, self.detail
         )
     }
 }

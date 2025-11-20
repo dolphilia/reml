@@ -57,52 +57,52 @@ collect_vec_mem_reservation: {
   ]
 }
 collect_map_duplicate: {
-  "code": "core.prelude.collector_failed",
-  "domain": "runtime",
-  "severity": "error",
-  "message": "MapCollector failed: duplicate key: \"dup\"",
-  "extensions": {
-    "prelude.collector": {
-      "kind": "map",
-      "stage_required": "beta",
-      "stage_mode": "at_least",
-      "stage_actual": "beta",
-      "stage_mismatch": false,
-      "capability": "core.collector.map",
-      "source": "MapCollector::push",
-      "effects": {
-        "mem": false,
-        "mut": false,
-        "debug": false,
-        "async_pending": false
-      },
-      "markers": {
-        "mem_reservation": 0,
-        "reserve": 0,
-        "finish": 0
-      }
-    },
-    "error_key": "\"dup\"",
-    "error_kind": "duplicate_key",
-    "message": "duplicate key: \"dup\""
-  },
   "audit": {
+    "collector.capability": "core.collector.map",
+    "collector.effect.async_pending": false,
+    "collector.effect.debug": false,
+    "collector.effect.finish": 0,
+    "collector.effect.mem": false,
+    "collector.effect.mem_reservation": 0,
+    "collector.effect.mut": false,
+    "collector.effect.reserve": 0,
+    "collector.error.key": "\"dup\"",
     "collector.kind": "map",
-    "collector.stage.required": "beta",
-    "collector.stage.mode": "at_least",
     "collector.stage.actual": "beta",
     "collector.stage.mismatch": false,
-    "collector.stage.source": "MapCollector::push",
-    "collector.capability": "core.collector.map",
-    "collector.effect.mem": false,
-    "collector.effect.mut": false,
-    "collector.effect.debug": false,
-    "collector.effect.async_pending": false,
-    "collector.effect.mem_reservation": 0,
-    "collector.effect.reserve": 0,
-    "collector.effect.finish": 0,
-    "collector.error.key": "\"dup\""
-  }
+    "collector.stage.mode": "at_least",
+    "collector.stage.required": "beta",
+    "collector.stage.source": "MapCollector::push"
+  },
+  "code": "core.prelude.collector_failed",
+  "domain": "runtime",
+  "extensions": {
+    "prelude.collector": {
+      "capability": "core.collector.map",
+      "effects": {
+        "async_pending": false,
+        "debug": false,
+        "mem": false,
+        "mut": false
+      },
+      "error_key": "\"dup\"",
+      "error_kind": "duplicate_key",
+      "kind": "map",
+      "markers": {
+        "finish": 0,
+        "mem_reservation": 0,
+        "reserve": 0
+      },
+      "message": "duplicate key: \"dup\"",
+      "source": "MapCollector::push",
+      "stage_actual": "beta",
+      "stage_mismatch": false,
+      "stage_mode": "at_least",
+      "stage_required": "beta"
+    }
+  },
+  "message": "MapCollector failed: duplicate key: \"dup\"",
+  "severity": "error"
 }
 collect_set_stage: {
   "effects": {
@@ -134,49 +134,131 @@ collect_set_stage: {
   ]
 }
 collect_string_invalid: {
-  "code": "core.prelude.collector_failed",
-  "domain": "runtime",
-  "severity": "error",
-  "message": "StringCollector failed: invalid UTF-8 byte 0x28 at offset 1 (expected continuation byte in 0x80..=0xBF)",
-  "extensions": {
-    "prelude.collector": {
-      "kind": "string",
-      "stage_required": "beta",
-      "stage_mode": "at_least",
-      "stage_actual": "beta",
-      "stage_mismatch": false,
-      "capability": "core.collector.string",
-      "source": "StringCollector::push",
-      "effects": {
-        "mem": true,
-        "mut": true,
-        "debug": false,
-        "async_pending": false
-      },
-      "markers": {
-        "mem_reservation": 0,
-        "reserve": 0,
-        "finish": 0
-      }
-    },
-    "error_kind": "invalid_encoding",
-    "message": "invalid UTF-8 byte 0x28 at offset 1 (expected continuation byte in 0x80..=0xBF)",
-    "detail": "byte=0x28; offset=1"
-  },
   "audit": {
+    "collector.capability": "core.collector.string",
+    "collector.effect.async_pending": false,
+    "collector.effect.debug": false,
+    "collector.effect.finish": 0,
+    "collector.effect.mem": true,
+    "collector.effect.mem_reservation": 0,
+    "collector.effect.mut": true,
+    "collector.effect.reserve": 0,
     "collector.kind": "string",
-    "collector.stage.required": "beta",
-    "collector.stage.mode": "at_least",
     "collector.stage.actual": "beta",
     "collector.stage.mismatch": false,
-    "collector.stage.source": "StringCollector::push",
-    "collector.capability": "core.collector.string",
-    "collector.effect.mem": true,
-    "collector.effect.mut": true,
-    "collector.effect.debug": false,
+    "collector.stage.mode": "at_least",
+    "collector.stage.required": "beta",
+    "collector.stage.source": "StringCollector::push"
+  },
+  "code": "core.prelude.collector_failed",
+  "domain": "runtime",
+  "extensions": {
+    "prelude.collector": {
+      "capability": "core.collector.string",
+      "detail": "byte=0x28; offset=1",
+      "effects": {
+        "async_pending": false,
+        "debug": false,
+        "mem": true,
+        "mut": true
+      },
+      "error_kind": "invalid_encoding",
+      "kind": "string",
+      "markers": {
+        "finish": 0,
+        "mem_reservation": 0,
+        "reserve": 0
+      },
+      "message": "invalid UTF-8 byte 0x28 at offset 1 (expected continuation byte in 0x80..=0xBF)",
+      "source": "StringCollector::push",
+      "stage_actual": "beta",
+      "stage_mismatch": false,
+      "stage_mode": "at_least",
+      "stage_required": "beta"
+    }
+  },
+  "message": "StringCollector failed: invalid UTF-8 byte 0x28 at offset 1 (expected continuation byte in 0x80..=0xBF)",
+  "severity": "error"
+}
+collect_table_baseline: {
+  "effects": {
+    "async_pending": false,
+    "debug": false,
+    "mem": false,
+    "mutating": true
+  },
+  "kind": "table",
+  "markers": {
+    "finish": 1,
+    "mem_reservation": 0,
+    "reserve": 0
+  },
+  "stage": {
+    "actual": "beta",
+    "capability": "core.collector.table",
+    "kind": "table",
+    "required": {
+      "mode": "at_least",
+      "stage": "beta"
+    },
+    "source": "TableCollector::finish"
+  },
+  "value": [
+    [
+      "first",
+      10
+    ],
+    [
+      "second",
+      20
+    ]
+  ]
+}
+collect_table_duplicate: {
+  "audit": {
+    "collector.capability": "core.collector.table",
     "collector.effect.async_pending": false,
+    "collector.effect.debug": false,
+    "collector.effect.finish": 0,
+    "collector.effect.mem": false,
     "collector.effect.mem_reservation": 0,
+    "collector.effect.mut": true,
     "collector.effect.reserve": 0,
-    "collector.effect.finish": 0
-  }
+    "collector.error.key": "\"dup\"",
+    "collector.kind": "table",
+    "collector.stage.actual": "beta",
+    "collector.stage.mismatch": false,
+    "collector.stage.mode": "at_least",
+    "collector.stage.required": "beta",
+    "collector.stage.source": "TableCollector::push"
+  },
+  "code": "core.prelude.collector_failed",
+  "domain": "runtime",
+  "extensions": {
+    "prelude.collector": {
+      "capability": "core.collector.table",
+      "effects": {
+        "async_pending": false,
+        "debug": false,
+        "mem": false,
+        "mut": true
+      },
+      "error_key": "\"dup\"",
+      "error_kind": "duplicate_key",
+      "kind": "table",
+      "markers": {
+        "finish": 0,
+        "mem_reservation": 0,
+        "reserve": 0
+      },
+      "message": "duplicate key: \"dup\"",
+      "source": "TableCollector::push",
+      "stage_actual": "beta",
+      "stage_mismatch": false,
+      "stage_mode": "at_least",
+      "stage_required": "beta"
+    }
+  },
+  "message": "TableCollector failed: duplicate key: \"dup\"",
+  "severity": "error"
 }

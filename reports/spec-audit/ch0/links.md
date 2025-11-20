@@ -28,10 +28,11 @@
 
 | コマンド | 結果 | 備考 |
 | --- | --- | --- |
-| `cargo test core_iter_collectors -- --nocapture` | ✅ / pending | `compiler/rust/frontend/tests/core_iter_collectors.rs` に追加する 5 シナリオ（List/Vec/Map/Set/String）を `insta` snapshot 化し、Collector 実装の回帰を監視。 |
+| `cargo test core_iter_collectors -- --nocapture` | ✅ / pending | `compiler/rust/frontend/tests/core_iter_collectors.rs` に追加する 7 シナリオ（List/Vec/Map/Set/String/Table baseline/duplicate）を `insta` snapshot 化し、Collector 実装の回帰を監視。 |
 | `cargo insta review --review` | ✅ / pending | `core_iter_collectors.snap` を確定し、`prelude.collector.kind`/`effects`/`error_kind` を JSON で固定。 |
 | `tooling/ci/collect-iterator-audit-metrics.py --module iter --section collectors --wbs 3.1b-F2 --output reports/iterator-collector-summary.md` | ✅ / pending | `collector.effect.mem`, `collector.effect.mut`, `collector.error.duplicate_key_rate`, `iterator.stage.audit_pass_rate` を出力し `0-3-audit-and-metrics.md` の KPI へ転記。 |
 | `scripts/validate-diagnostic-json.sh --pattern collector` | ✅ / pending | `prelude.collector.*` キーが `reports/diagnostic-format-regression.md` に差分なしで反映されるかを確認。 |
+| `cargo xtask prelude-audit --wbs '3.1b F2'` | ✅ | `Collector` トレイト/コレクタ遍歴を検査し、`trait.*` 6項目と `TableCollector.push` を `implemented`、`ListCollector.new`/`VecCollector.*` は `working` のままという状態（`collector.effect.*` 監査と KPI 連携準備）を記録。 |
 
 | シナリオID | Snapshot | KPI / 監査ログ | 仕様根拠・備考 |
 | --- | --- | --- | --- |
@@ -40,8 +41,10 @@
 | `collect_map_duplicate` | `compiler/rust/frontend/tests/snapshots/core_iter_collectors__collect_map_duplicate.snap` | `reports/iterator-collector-summary.md#collect_map_duplicate` | `CollectError::DuplicateKey` と `AuditEnvelope.metadata.collector.error.key` を確認。【F:docs/spec/3-2-core-collections.md†L75-L88】 |
 | `collect_set_stage` | `compiler/rust/frontend/tests/snapshots/core_iter_collectors__collect_set_stage.snap` | `reports/iterator-collector-summary.md#collect_set_stage` | `SetCollector` の `StageRequirement::Exact("stable")` を診断へ転写。 |
 | `collect_string_invalid` | `compiler/rust/frontend/tests/snapshots/core_iter_collectors__collect_string_invalid.snap` | `reports/iterator-collector-summary.md#collect_string_invalid` | `StringCollector` の UTF-8 正規化と `CollectError::InvalidEncoding(StringError)` を検証。【F:docs/spec/3-3-core-text-unicode.md†L90-L150】 |
+| `collect_table_baseline` | `compiler/rust/frontend/tests/__snapshots__/core_iter_collectors.snap` | `reports/iterator-collector-summary.md#collect_table_baseline` | `TableCollector` の `collector.kind=table` / `effect {mut}` を `collect_table_baseline` で記録し、挿入順 `Table` の再現性を確認。【F:docs/spec/3-1-core-prelude-iteration.md†L188-L210】【F:docs/spec/3-2-core-collections.md†L154-L168】 |
+| `collect_table_duplicate` | `compiler/rust/frontend/tests/__snapshots__/core_iter_collectors.snap` | `reports/iterator-collector-summary.md#collect_table_duplicate` | 重複キーで `CollectError::DuplicateKey` を返し `collector.error.key`/`Diagnostic.extensions["prelude.collector.error_key"]` を `collect_table_duplicate` で固定。`stage` は `AtLeast("beta")`、`collector.effect.mut` を監査する。【F:docs/spec/3-1-core-prelude-iteration.md†L188-L210】【F:docs/spec/3-2-core-collections.md†L154-L168】 |
 
-- `reports/iterator-collector-summary.md` には上述の 5 ケースの `collector.effect.*`/`collector.error.*` KPI をまとめて記録し、`collect_string_invalid` で `collector.error.invalid_encoding` と `collector.effect.mem` の出力を握りながら `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI セクションとリンクで整合させている。
+- `reports/iterator-collector-summary.md` には上述の 7 ケースの `collector.effect.*`/`collector.error.*` KPI をまとめて記録し、`collect_string_invalid` で `collector.error.invalid_encoding` と `collector.effect.mem`、`collect_table_duplicate` で `collector.error.key` を握りながら `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI セクションとリンクで整合させている。
 
 ### Iter F3 Snapshot/KPI（WBS 3.1a）
 
