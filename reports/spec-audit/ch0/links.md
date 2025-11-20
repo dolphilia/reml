@@ -104,6 +104,24 @@
 | `iter_once_collect` | `compiler/rust/frontend/tests/snapshots/core_iter_generators__once_collect.snap` | `reports/spec-audit/ch1/iter.json#audit_cases.once` | 単一要素の生成が `iterator.once.length=1` を維持し `@pure` であることを確認。 |
 | `iter_empty_collect` | `compiler/rust/frontend/tests/snapshots/core_iter_generators__empty_collect.snap` | `reports/spec-audit/ch1/iter.json#audit_cases.empty` | ゼロ要素ケースで `EffectLabels::residual = []` を保ちつつ `iterator.empty.items=0` を記録。 |
 
+### Iter F1-4 `unfold`/`try_unfold` 追加ログ（WBS 3.1c-F1-4） {#iter-f1-4}
+
+| コマンド | 結果 | 備考 |
+| --- | --- | --- |
+| `cargo test core_iter_generators::unfold_fibonacci_pipeline -- --nocapture` | ✅ / pending | `Iter::unfold` が `EffectSet::PURE` を維持し `ListCollector` へ往復できることを確認。`reports/spec-audit/ch1/iter.json#audit_cases.unfold` に `iterator.stage.audit_pass_rate=1.0` を記録予定。 |
+| `cargo test core_iter_generators::try_unfold_error_passthrough -- --nocapture` | ✅ / pending | `Err(E)` の発生が `iterator.error.kind="try_unfold"` として `Diagnostic.extensions` および `AuditEnvelope.metadata.iterator.error.kind` に現れることを Snapshot 確認。 |
+| `cargo insta review --review core_iter_generators --filter unfold` | ✅ / pending | `compiler/rust/frontend/tests/snapshots/core_iter_generators__unfold_fibonacci_pipeline.snap` / `__try_unfold_error_passthrough.snap` を承認し、生成 API 追加分の差分を固定。 |
+| `collect-iterator-audit --section iter --case unfold|try_unfold --output reports/spec-audit/ch1/iter.json` | ✅ / pending | `unfold` は `EffectLabels::residual = []`、`try_unfold` は `EffectLabels::debug=true` と `AuditEnvelope.metadata.iterator.error.kind` を JSON KPI に追加し、`audit_cases.unfold/try_unfold` に保存する。 |
+| `scripts/validate-diagnostic-json.sh --pattern iterator --module try_unfold` | ✅ / pending | `iterator.error.kind` が `reports/diagnostic-format-regression.md` に差分なしで反映されることを確認。 |
+| `cargo xtask prelude-audit --section iter --wbs '3.1c F1-4' --baseline docs/spec/3-1-core-prelude-iteration.md` | ✅ / pending | `Iter::unfold`/`Iter::try_unfold` の仕様差分と `prelude_api_inventory.toml`（`wbs = "3.1c F1-4"`、`rust_status=pending`）の整合を自動で検証。 |
+
+| シナリオID | Snapshot | KPI / 監査ログ | 仕様根拠・備考 |
+| --- | --- | --- | --- |
+| `unfold_fibonacci_pipeline` | `compiler/rust/frontend/tests/snapshots/core_iter_generators__unfold_fibonacci_pipeline.snap` | `reports/spec-audit/ch1/iter.json#audit_cases.unfold` | `Iter::unfold` の `@pure` 生成器が `ListCollector` へ往復し `iterator.stage.audit_pass_rate=1.0` を維持することを証跡化。【F:docs/spec/3-1-core-prelude-iteration.md†L176-L200】 |
+| `try_unfold_error_passthrough` | `compiler/rust/frontend/tests/snapshots/core_iter_generators__try_unfold_error_passthrough.snap` | `reports/spec-audit/ch1/iter.json#audit_cases.try_unfold` | `Result<Option<(T, State)>, E>` の `Err(E)` が `EffectLabels::debug=true` と共に監査ログへ記録される経路を固定。【F:docs/spec/3-1-core-prelude-iteration.md†L200-L221】 |
+
+- `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` では `module = "Iter"` に `unfold`/`try_unfold` エントリ（`rust_status=pending`, `wbs = "3.1c F1-4"`, `last_updated = "2025-12-19 / WBS 3.1c-F1-4"`）を追加し、`docs/notes/core-library-outline.md#iter-generators-f1-4-設計メモwbs-31c-f1-4` でタスク内容や `collect-iterator-audit` コマンドを共有する。Phase 3 M1 判定では本節と計画書の両方を根拠資料として参照する。
+
 | ファイル | リンク | 存在 | 備考 |
 |---------|--------|------|------|
 | `docs/spec/0-0-overview.md` | `../../reports/diagnostic-format-regression.md` | ✅ | - |

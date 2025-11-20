@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2025-12-16 / WBS 3.1c-F1-3"
+last_updated = "2025-12-19 / WBS 3.1c-F1-4"
 maintainer = "Core Library Team"
 
 [[api]]
@@ -228,6 +228,26 @@ rust_status = "implemented"
 ocaml_status = "typeck-only"
 notes = "F1-3: `RangeState`/`IterRangeError` を `iter/errors.rs` へ切り出し `Iter::range` を `effect=@pure` のまま実装。`core_iter_generators.rs::range_basic`/`range_overflow_guard` が `iterator.range.overflow_guard=1` を `collect-iterator-audit --section iter --case range` 経由で `reports/spec-audit/ch1/iter.json#audit_cases.range` に保存。"
 wbs = "3.1c F1-3"
+
+[[api]]
+module = "Iter"
+name = "unfold"
+effect = "@pure"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "typeck-only"
+notes = "F1-4: `IterSeed`/`IterSource::Seed` へ状態クロージャを格納し、`collect-iterator-audit --section iter --case unfold` で `iterator.stage.audit_pass_rate=1.0` を観測する計画。`core_iter_generators.rs::unfold_fibonacci_pipeline`（新設予定）で `ListCollector` へ往復させ、`reports/spec-audit/ch1/iter.json#audit_cases.unfold` と `reports/spec-audit/ch0/links.md#iter-f1-4` にコマンドと KPI を連携する。"
+wbs = "3.1c F1-4"
+
+[[api]]
+module = "Iter"
+name = "try_unfold"
+effect = "effect {debug}"
+stage = "beta"
+rust_status = "pending"
+ocaml_status = "typeck-only"
+notes = "F1-4: `Result<Option<(T, State)>, E>` を返すクロージャを `IterSeed` に保持し、`Err(E)` で `EffectLabels::debug = true` を `attach_effects` へ伝搬、`AuditEnvelope.metadata.iterator.error.kind = \"try_unfold\"` を出力する実装を計画。`core_iter_generators.rs::try_unfold_error_passthrough` で `scripts/validate-diagnostic-json.sh --pattern iterator` と `collect-iterator-audit --section iter --case try_unfold` の両方を検証する。"
+wbs = "3.1c F1-4"
 
 [[api]]
 module = "Iter"
