@@ -10,6 +10,7 @@
 
 use std::{
     borrow::Cow,
+    collections::VecDeque,
     marker::PhantomData,
     sync::{Arc, Mutex},
 };
@@ -34,6 +35,7 @@ pub struct IterState<T> {
     source: IterSource<T>,
     stage_profile: IteratorStageProfile,
     effects: EffectSet,
+    driver: IterDriver<T>,
 }
 
 impl<T> IterState<T> {
@@ -43,12 +45,19 @@ impl<T> IterState<T> {
             source,
             stage_profile,
             effects: EffectSet::PURE,
+            driver: IterDriver::Empty,
         }
     }
 
     /// 効果タグを上書きする（アダプタ連結時に使用）。
     pub fn with_effects(mut self, effects: EffectSet) -> Self {
         self.effects = effects;
+        self
+    }
+
+    /// ドライバを設定する。
+    pub fn with_driver(mut self, driver: IterDriver<T>) -> Self {
+        self.driver = driver;
         self
     }
 
@@ -65,6 +74,17 @@ impl<T> IterState<T> {
     /// 効果タグを取得する。
     pub fn effects(&self) -> EffectSet {
         self.effects
+    }
+
+    fn metadata(&self) -> IterStepMetadata {
+        let snapshot = self
+            .stage_profile
+            .snapshot(self.source.label().into_owned());
+        IterStepMetadata::new(snapshot).with_effects(self.effects)
+    }
+
+    fn next_step(&mut self) -> IterStep<T> {
+        self.driver.next_step()
     }
 }
 
@@ -87,7 +107,7 @@ impl<T> IterSource<T> {
     /// 表示用ラベルを返す。
     pub fn label(&self) -> Cow<'_, str> {
         match self {
-            Self::Seed(seed) => Cow::Borrowed(seed.label),
+            Self::Seed(seed) => Cow::Borrowed(seed.label()),
             Self::Adapter { label, .. } => Cow::Borrowed(label),
             Self::Empty => Cow::Borrowed("Iter::empty"),
         }
@@ -95,20 +115,27 @@ impl<T> IterSource<T> {
 }
 
 /// シードベースの `Iter` を表す型。
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct IterSeed<T> {
     label: &'static str,
     stage: IteratorStageProfile,
-    _marker: PhantomData<T>,
+    driver: IterDriver<T>,
+    effects: EffectSet,
 }
 
 impl<T> IterSeed<T> {
     /// 新しいシードを生成する。
-    pub fn new(label: &'static str, stage: IteratorStageProfile) -> Self {
+    pub fn new(
+        label: &'static str,
+        stage: IteratorStageProfile,
+        driver: IterDriver<T>,
+        effects: EffectSet,
+    ) -> Self {
         Self {
             label,
             stage,
-            _marker: PhantomData,
+            driver,
+            effects,
         }
     }
 
@@ -120,6 +147,14 @@ impl<T> IterSeed<T> {
     /// Stage プロファイルを返す。
     pub fn stage_profile(&self) -> &IteratorStageProfile {
         &self.stage
+    }
+
+    fn effects(&self) -> EffectSet {
+        self.effects
+    }
+
+    fn take_driver(&mut self) -> IterDriver<T> {
+        std::mem::replace(&mut self.driver, IterDriver::Empty)
     }
 }
 
@@ -332,7 +367,37 @@ impl EffectSet {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EffectLabels {
     pub mem: bool,
-    pub mutating: bool,
+   pub mutating: bool,
     pub debug: bool,
     pub async_pending: bool,
+}
+
+enum IterDriver<T> {
+    Static(VecDeque<T>),
+    Stepper(Box<dyn FnMut() -> IterStep<T> + Send + 'static>),
+    Empty,
+}
+
+impl<T> IterDriver<T> {
+    fn from_vec(vec: Vec<T>) -> Self {
+        Self::Static(VecDeque::from(vec))
+    }
+
+    fn stepper<F>(f: F) -> Self
+    where
+        F: FnMut() -> IterStep<T> + Send + 'static,
+    {
+        Self::Stepper(Box::new(f))
+    }
+
+    fn next_step(&mut self) -> IterStep<T> {
+        match self {
+            IterDriver::Static(buffer) => buffer
+                .pop_front()
+                .map(IterStep::Ready)
+                .unwrap_or(IterStep::Finished),
+            IterDriver::Stepper(stepper) => (stepper)(),
+            IterDriver::Empty => IterStep::Finished,
+        }
+    }
 }
