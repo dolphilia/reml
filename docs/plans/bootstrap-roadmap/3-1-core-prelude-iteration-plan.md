@@ -308,6 +308,55 @@ F2-5 で追加した `reports/spec-audit/ch0/links.md#collector-f2-監査ログ`
 4.2. `collect_list`/`collect_vec`/`fold`/`reduce`/`try_fold` など終端操作の実装を行い、`Collector` との連携とエラー伝播経路を検証する。
 4.3. パフォーマンス計測ベンチマークを作成し、Rust 実装の Phase 2 ベースライン（`docs/plans/rust-migration/3-2-benchmark-baseline.md`）と比較して ±10% 以内に収束するかを測定し、`0-3-audit-and-metrics.md` に反映する。
 
+#### 4.a アダプタ実装ロードマップ（W37 後半）
+- `compiler/rust/runtime/src/prelude/iter/adapters/` を新設し、各アダプタごとに `AdapterPlan`（効果・Stage・依存 Collector）をコメントブロックで明記する。`Iter<T>` 本体 (`iter/mod.rs`) の `impl` には `#[must_use]` と `EffectLabels` 連携を追加し、`collect-iterator-audit-metrics.py` が `iterator.effect.*` を収集できるようにする。
+- `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `Iter` セクションに `adapter` カテゴリを追加し、`rust_status`/`kpi`/`tests` を記録。`cargo xtask prelude-audit --section iter --filter adapter` が `planned→working` を検知できることを確認する。
+- `compiler/rust/frontend/tests/core_iter_adapters.rs` を作成し、`map`/`filter`/`flat_map`/`zip`/`buffered` の 5 ケースを `insta` snapshot 化。各ケースで `Diagnostic.extensions["iterator.effect"]` を比較し、`reports/spec-audit/ch1/core_iter_adapters.json` とリンクさせる。
+
+| アダプタ | 効果タグ | Stage 要件 | 主なファイル / コマンド | KPI / 検証 |
+| --- | --- | --- | --- | --- |
+| `map` | `@pure` | `Stage::Stable` | `iter/adapters/map.rs`, `core_iter_adapters.rs::map_pipeline` | `iterator.effect.residual = ∅` を `collect-iterator-audit --section iterator --case map` で確認 |
+| `filter` | `effect {mut}` (`EffectLabels::predicate_calls`) | `Stage::Stable` | `iter/adapters/filter.rs`, `core_iter_effects.rs::filter_effect` | `iterator.effect.mut = predicate_count` を KPI に記録 |
+| `flat_map` | `effect {mem}`（中間バッファ） | `Stage::Beta` | `iter/adapters/flat_map.rs`, `core_iter_adapters.rs::flat_map_vec` | `iterator.effect.mem_reservation` を `reports/iterator-stage-summary.md` に反映 |
+| `zip` | `@pure` / `effect {mut}`（長さ調整） | `Stage::Stable` | `iter/adapters/zip.rs`, `core_iter_adapters.rs::zip_mismatch` | `collect-iterator-audit` で `iterator.error.zip_shorter` が 0 件 |
+| `buffered` | `effect {mem}`（リングバッファ） | `Stage::Experimental` | `iter/adapters/buffered.rs`, `core_iter_adapters.rs::buffered_window` | `iterator.effect.mem_bytes` を `0-3-audit-and-metrics.md` の `iterator.mem.window` に反映 |
+
+###### G1: map/filter 立ち上げ（W37 後半）
+- `map`/`filter` を `IterState::adapter` でチェーン可能にし、`Iter::map` が `FnMut` を、`Iter::filter` が `Predicate` を受け取るトレイト束縛を実装する。
+- `core_iter_adapters.rs` に `map_pipeline` と `filter_effect` ケースを追加し、`insta` snapshot で `iterator.steps` と `iterator.effect` が Specification 表と一致するか検証。`scripts/validate-diagnostic-json.sh --pattern iterator.map` を `reports/diagnostic-format-regression.md` へリンクさせ、差分がないことを確認する。
+- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `iterator.map.latency` と `iterator.filter.predicate_calls` を KPI として追記し、`collect-iterator-audit-metrics.py --section iterator --case adapter-g1` の結果を転記する。
+
+###### G2: flat_map/zip/buffered の効果監査（W38 前半）
+- `flat_map` ではネストした `Iter` を受け取る `FnMut<Item, Iter<U>>` を実装し、`EffectLabels` に `mem` と `mut` 両方を記録。`core_iter_adapters.rs::flat_map_vec` でネストスコープの `collector.effect.mem` を snapshot に追加する。
+- `zip` は `IterZipState` を導入し、短絡終了時に `CollectError::ZipLengthMismatch` を返す。`iterator.error.zip_shorter` を `AuditEnvelope.metadata` へ書き込み、`reports/iterator-stage-summary.md` に `zip.shortfall` KPI を追加。
+- `buffered` は `IterBufferedState` + `RingBuffer` を `effect {mem}` で実装し、`buffer_size` を `EffectLabels` へ残す。`core_iter_adapters.rs::buffered_window` で `buffer=3` のシナリオを固定し、`reports/spec-audit/ch1/core_iter_adapters.json` に `mem_bytes` を記録する。
+
+#### 4.b 終端操作と Collector 連携（W38 前半）
+- `Iter::collect_list`/`collect_vec`/`collect_string` と `Iter::fold`/`reduce`/`try_fold` を `compiler/rust/runtime/src/prelude/iter/terminators.rs`（新設）に集約し、`Collector` 実装を内部的に再利用する。`try_*` 系は `Result` を返し、`CollectError` を `Diagnostic` へ昇格させるヘルパを追加。
+- `compiler/rust/frontend/tests/core_iter_terminators.rs` を追加し、Collector 経由と直接終端 API の整合を `insta` snapshot で記録。`reports/spec-audit/ch1/core_iter_terminators.json` を生成し、`reports/spec-audit/ch0/links.md#iter-terminators` にコマンドを追記。
+
+| 終端操作 | 効果 | Collector 依存 | 主なテスト | 診断/KPI |
+| --- | --- | --- | --- | --- |
+| `collect_list` | `@pure` | `ListCollector` | `core_iter_terminators.rs::collect_list_pipeline` | `collector.stage.actual = "stable"` を確認 |
+| `collect_vec` | `effect {mem}` | `VecCollector` | `core_iter_terminators.rs::collect_vec_reserve` | `iterator.effect.mem_reservation` を KPI 化 |
+| `collect_string` | `effect {mem}`/`effect {text}` | `StringCollector` | `core_iter_terminators.rs::collect_string_invalid` | `collector.error.invalid_encoding` を `reports/iterator-collector-summary.md` に記録 |
+| `fold` | `@pure` | なし | `core_iter_terminators.rs::fold_sum` | `iterator.effect.residual = ∅` を監査 |
+| `reduce` | `@pure` | なし | `core_iter_terminators.rs::reduce_empty` | `IteratorReduceError::Empty` を `Diagnostic` に反映 |
+| `try_fold` | `effect {mut}`（Acc 更新） | 任意 Collector | `core_iter_terminators.rs::try_fold_error` | `Result` 経路が `reports/diagnostic-format-regression.md` と一致 |
+
+###### H1: collect_* の Collector 連携確認
+- `Iter::collect_*` で `Collector` を内部的に生成する補助関数 (`fn collect_with<C: Collector>(...)`) を実装し、`CollectOutcome::audit()` を `Diagnostic.extensions["prelude.collector"]` へ転写。`collect_vec_reserve` で `collector.effect.mem_reservation` が期待通り出力されるか `scripts/validate-diagnostic-json.sh --pattern iterator.collect` で検証する。
+- `docs/notes/core-library-outline.md#collector-f2-監査ログ` に `Iter::collect_*` 経由の監査手順を追記し、`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#collector-f2-監査ログ` にもリンクを追加する。
+
+###### H2: fold/reduce/try_fold の診断整備
+- `fold`/`reduce` に `IteratorEmptyError` を導入し、`Diagnostic` の `effects.residual` を `∅` に固定。`reduce_empty` ケースで `core_iter_terminators.snap` に `iterator.error.reduce_empty` を記録。
+- `try_fold` は `Result` ベースの早期終了を提供し、`effect {mut}` を `EffectLabels` に転写。`try_fold_error` テストで `Result::Err` がそのまま `CollectError` に昇格しないことを確認し、`reports/spec-audit/ch1/core_iter_terminators.json` に早期終了経路を残す。
+
+#### 4.c ベンチマークと KPI 更新（W38 後半）
+- `compiler/rust/benchmarks/core_iter_adapters.rs` を追加し、`map`/`filter`/`flat_map`/`buffered` + `collect_*` の 5 コンボを `criterion` で測定。`baseline = reports/benchmarks/phase2/core_iter_adapters.json` と比較し、±10% を越えた場合は `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` の `iterator.performance` リスクを更新する。
+- `tooling/ci/collect-iterator-audit-metrics.py --section iterator --case adapters --require-success --source reports/spec-audit/ch1/core_iter_adapters.json` を nightly へ登録し、`reports/iterator-stage-summary.md` に `iterator.effect.mem_bytes`, `iterator.effect.mut`, `iterator.error.*` を自動書き込み。`0-3-audit-and-metrics.md` の `iterator.stage.audit_pass_rate`/`iterator.perf.delta` を更新し、`docs-migrations.log` にベンチ計測の記録を残す。
+- パフォーマンス比較結果を `docs/plans/rust-migration/3-2-benchmark-baseline.md#iter-adapters` へ脚注として追記し、Phase 3-2 の観測ラインと同期させる。
+
 ### 5. Diagnostics/Unicode 連携（38週目）
 **担当領域**: 他章との統合
 
