@@ -29,19 +29,47 @@ EOF
 }
 
 SUITE=""
-if [[ "${1:-}" == "--suite" ]]; then
-  if [[ "$#" -lt 2 ]]; then
-    echo "[validate-diagnostic-json] error: --suite オプションには値が必要です" >&2
-    exit 1
-  fi
-  SUITE="$2"
-  shift 2
-fi
+declare -a PATTERNS=()
+declare -a TARGET_ARGS=()
 
-if [[ "${1:-}" == "--help" ]]; then
-  print_usage
-  exit 0
-fi
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+    --suite)
+      shift
+      if [[ "$#" -eq 0 ]]; then
+        echo "[validate-diagnostic-json] error: --suite オプションには値が必要です" >&2
+        exit 1
+      fi
+      SUITE="$1"
+      shift
+      ;;
+    --pattern)
+      shift
+      if [[ "$#" -eq 0 ]]; then
+        echo "[validate-diagnostic-json] error: --pattern オプションには値が必要です" >&2
+        exit 1
+      fi
+      PATTERNS+=("$1")
+      shift
+      ;;
+    --help|-h)
+      print_usage
+      exit 0
+      ;;
+    --)
+      shift
+      while [[ "$#" -gt 0 ]]; do
+        TARGET_ARGS+=("$1")
+        shift
+      done
+      break
+      ;;
+    *)
+      TARGET_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
 
 if ! command -v node >/dev/null 2>&1; then
   echo "[validate-diagnostic-json] error: Node.js が見つかりません" >&2
@@ -55,7 +83,7 @@ if [[ ! -d "$NODE_PROJECT/node_modules" ]]; then
 fi
 
 declare -a TARGETS=()
-if [[ "$#" -eq 0 ]]; then
+if [[ "${#TARGET_ARGS[@]}" -eq 0 ]]; then
   if [[ "$SUITE" == "streaming" ]]; then
     TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden")
   else
@@ -63,7 +91,7 @@ if [[ "$#" -eq 0 ]]; then
     TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/audit")
   fi
 else
-  for arg in "$@"; do
+  for arg in "${TARGET_ARGS[@]}"; do
     TARGETS+=("$arg")
   done
 fi
@@ -77,10 +105,30 @@ expand_targets() {
   fi
 }
 
+matches_patterns() {
+  if [[ "${#PATTERNS[@]}" -eq 0 ]]; then
+    return 0
+  fi
+  local path_lower
+  path_lower="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  for raw in "${PATTERNS[@]}"; do
+    local pattern_lower
+    pattern_lower="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')"
+    if [[ "$path_lower" == *"$pattern_lower"* ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 declare -a FILES=()
 for target in "${TARGETS[@]}"; do
   while IFS= read -r path; do
-    [[ -n "$path" ]] && FILES+=("$path")
+    if [[ -n "$path" ]]; then
+      if matches_patterns "$path"; then
+        FILES+=("$path")
+      fi
+    fi
   done < <(expand_targets "$target")
 done
 

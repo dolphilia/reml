@@ -1,0 +1,49 @@
+---
+source: tests/core_iter_effects.rs
+expression: cases
+---
+- case: pure_effects
+  effects:
+    async_pending: false
+    debug: false
+    mem: false
+    mem_bytes: 0
+    mutating: false
+  stage:
+    actual: beta
+    capability: core.iter.core
+    kind: core_iter
+    required:
+      mode: at_least
+      stage: beta
+    source: "core_iter_effects::pure_effects"
+- case: buffered_effects
+  effects:
+    async_pending: false
+    debug: false
+    mem: true
+    mem_bytes: 3
+    mutating: false
+  stage:
+    actual: beta
+    capability: core.iter.core
+    kind: core_iter
+    required:
+      mode: at_least
+      stage: beta
+    source: "core_iter_effects::buffered_effects"
+- case: try_unfold_effects
+  effects:
+    async_pending: false
+    debug: true
+    mem: false
+    mem_bytes: 0
+    mutating: false
+  stage:
+    actual: beta
+    capability: core.iter.core
+    kind: core_iter
+    required:
+      mode: at_least
+      stage: beta
+    source: "core_iter_effects::try_unfold_effects"

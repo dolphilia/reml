@@ -78,7 +78,7 @@
 **担当領域**: 遅延列基盤
 
 **成果物と出口条件**
-- `compiler/rust/runtime/src/prelude/iter/mod.rs`（以下 `Iter` モジュール）と `IterState`/`IterSeed`/`IterSource` の 3 層構造を実装し、`Iter<T>` が `IntoIter`/`FromIterator` トレイトと双方向に変換できる。同時に `compiler/rust/frontend/tests/core_iter_pipeline.rs` を追加して `Iter::from_list |> Iter.collect_list` の往復と `Iter::into_std_iter` の互換性を snapshot で固定する。
+- `compiler/rust/runtime/src/prelude/iter/mod.rs`（以下 `Iter` モジュール）と `IterState`/`IterSeed`/`IterSource` の 3 層構造を実装し、`Iter<T>` が `IntoIter`/`FromIterator` トレイトと双方向に変換できる。同時に `compiler/rust/frontend/tests/core_iter_pipeline.rs` を追加して `Iter::from_list |> Iter.collect_list`、`Iter::map`/`Iter::zip`/`Iter::buffered`、`Iter::from_iter`→`IntoIterator`、`Iter::try_collect(VecCollector)` の往復を snapshot で固定する。
 - `Collector<T, C>` トレイトおよび標準コレクタ (`ListCollector`, `VecCollector`, `MapCollector`, `SetCollector`, `StringCollector`) を `compiler/rust/runtime/src/prelude/collectors/` 以下で提供し、`effect {mut}`/`effect {mem}` の転写を `tooling/ci/collect-iterator-audit-metrics.py` の `collector.effects` カラムで観測できる状態にする。
 - `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` を `Iter`/`Collector` 項目まで拡張し、`cargo xtask prelude-audit --section iter` を通じて 3-1 章の API を全件スキャン。結果を `reports/spec-audit/ch0/links.md` に貼り付け、`0-3-audit-and-metrics.md` の `iterator.stage.audit_pass_rate` を更新する。
 - `docs/notes/core-library-outline.md` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` に Iter/Collector 実装状況とリスクを記録し、Phase 3 の他タスク（Text/Collections）から参照できるリンクを設置する。
@@ -87,7 +87,7 @@
 - `compiler/rust/runtime/src/prelude/iter/mod.rs` には `IterState`/`IterStep`/`EffectSet`/`IteratorStageProfile` が定義され、`Iter` が `EffectLabels` を公開して `collect-iterator-audit-metrics.py` の `collector` セクションと直結する設計になっている。標準コレクタは `compiler/rust/runtime/src/prelude/collectors/{list,map,set,string,table,vec}.rs` に分散し、`CollectOutcome::audit()` で `Diagnostic.extensions["prelude.collector"]` に `kind`/`stage`/`effect`/`markers` を書き出す。
 - `compiler/rust/frontend/tests/core_iter_collectors.rs` と `__snapshots__/core_iter_collectors.snap` で `List/Vec/Map/Set/String/Table` の正常系・異常系を固定し、`collector.effect.*`/`collector.error.*`/`collector.stage.*` の JSON が `reports/iterator-collector-summary.md` に記録されている。`reports/spec-audit/ch0/links.md#collector-f2` には `cargo test core_iter_collectors -- --nocapture` や `cargo insta review --review`、`collect-iterator-audit-metrics.py --module iter --section collectors --wbs 3.1b-F2` などのコマンドと出力を時系列で列挙している。
 - `tooling/ci/collect-iterator-audit-metrics.py` の `collect_collector_effect_metrics` で `collector.effect.{mem,mut,debug,async_pending}` と `collector.effect.{mem_reservation,reserve,finish}` を集計し、`reports/iterator-collector-summary.md` および `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` で `collector.effect.mem=0`/`collector.stage.audit_pass_rate=1.0` を KPI として追跡している。
-- `scripts/validate-diagnostic-json.sh --pattern collector` を定期実行することで `prelude.collector.*` 拡張がすべて出力されていることを確認し、`reports/diagnostic-format-regression.md` に差分が出ない状態を M1 レビュー基準とする。
+- `scripts/validate-diagnostic-json.sh --pattern collector --pattern iterator` を定期実行することで `prelude.collector.*`/`iterator.*` 拡張がすべて出力されていることを確認し、`reports/diagnostic-format-regression.md` に差分が出ない状態を M1 レビュー基準とする。
 - 実装の証跡は `docs/notes/core-library-outline.md#collector-f2-監査ログ`、`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#collector-f2-監査ログ`、`reports/spec-audit/ch0/links.md#collector-f2` の三者クロスリファレンスで参照可能な構成を維持している。
 
 **主な依存資料**
@@ -100,9 +100,9 @@
 - `compiler/rust/runtime/src/prelude/iter/mod.rs` を新設し、`Iter<T>` を `Arc<IterState<T>>` ベースの遅延列として定義。`IterState` では `poll_next(&mut self) -> IterStep<T>` を提供し、`IterStep` は `Ready`, `Pending`, `Finished` の 3 状態で `effect` 情報を保持する。
 - `Iter::from_iter` / `impl<T> FromIterator<T> for Iter<T>` を実装し、`std::iter::from_fn` 互換の `IterSeed` を `Iter::from_fn` で生成できるようにする。逆方向の `impl<T> IntoIterator for Iter<T>` では `IterIntoStd<T>` アダプタを提供して Rust 標準 `for` 構文と連携する。
 - `compiler/rust/frontend/src/typeck/constraint/iterator.rs`（新規）で `IteratorDictInfo` を導入し、`Iter` を要求する型クラス拘束に `stage`, `capability`, `kind` を埋める。辞書生成時に `Diagnostic.extensions["iterator.stage.required"]` へ書き込み、`collect-iterator-audit-metrics.py` が参照する JSON のキーを `effect.stage.iterator.*` で統一する。
-- `core_iter_pipeline.rs` テストでは `Iter::from_list |> Iter::map |> Iter.collect_list`/`Iter::try_fold` の 6 シナリオを snapshot 化し、`reports/diagnostic-format-regression.md` で差分監視。`compiler/ocaml/tests/test_type_inference.ml` の `iterator_kind` 出力と結果を比較し、差分は `docs/notes/core-library-outline.md` へ記録する。
+- `core_iter_pipeline.rs` テストでは `list_roundtrip`/`map_filter_vec`/`zip_collect_list`/`buffered_mem_case`/`from_iter_and_into_iter`/`try_collect_success` の 6 シナリオを snapshot (`compiler/rust/frontend/tests/snapshots/core_iter_pipeline__core_iter_pipeline.snap`) 化し、`reports/diagnostic-format-regression.md` で差分監視。`core_iter_effects.rs` は `effect_labels` と `TryCollectError` を snapshot (`core_iter_effects__core_iter_effect_labels.snap`/`core_iter_effects__core_iter_try_collect_errors.snap`) 化し、`docs/notes/core-library-outline.md` へ根拠を記録する。
 
-> 2026-W05 更新（Remediation Step3）: `core_iter_pipeline.rs` と `compiler/rust/frontend/tests/snapshots/core_iter_pipeline__*.snap` は未整備のままであるため、F3 スナップショット/KPI は pending 扱いに変更した。`docs/notes/core-library-outline.md` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` から該当リンクを一時削除し、`reports/spec-audit/ch1/iter.json` は CLI 未実装・snapshot 不在を理由に `status = "pending"` として再記録した。再実装完了後に KPI の `iterator.stage.audit_pass_rate`／`collector.effect.mem` を復活させる。
+> 2025-11-20 更新（Remediation Step4）: `core_iter_pipeline.rs`/`core_iter_effects.rs` の snapshot と `reports/spec-audit/ch1/iter.json` を整備し、`iterator.stage.audit_pass_rate=1.0`・`collector.effect.mem=0` を `reports/iterator-stage-summary.md` に実測値として反映した。`docs/notes/core-library-outline.md` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` のリンクも復活済みで、`reports/spec-audit/ch0/links.md#iterator-f3` に `cargo +nightly test --manifest-path compiler/rust/frontend/Cargo.toml --test core_iter_pipeline|core_iter_effects`、`python3 tooling/ci/collect-iterator-audit-metrics.py --section iterator --case pipeline --source reports/spec-audit/ch1/iter.json`、`scripts/validate-diagnostic-json.sh --pattern iterator --pattern collector` の実行ログを追加した。CI では `.github/workflows/bootstrap-linux.yml` に `rust-prelude-tests` ジョブを新設し、`RUSTFLAGS="-Zpanic-abort-tests"` で `core_iter_pipeline`/`core_iter_effects`/`panic_forbidden` を nightly Rust で実行する。
 
 ##### WBS 3.1a 実装指針とタスク詳細
 
@@ -294,7 +294,7 @@ F2-5 で追加した `reports/spec-audit/ch0/links.md#collector-f2-監査ログ`
 - `Iter`/`Collector` API が `cargo xtask prelude-audit --section iter --strict` で欠落 0 件となり、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `last_updated` が 37 週目の日付に更新されている。
 - `collect-iterator-audit-metrics.py` で `iterator.stage.audit_pass_rate = 1.0`、`collector.effect.mem_leak = 0` を達成し、結果を `0-3-audit-and-metrics.md`/`reports/spec-audit/ch0/links.md` の両方に貼り付けたログが存在する。
 - `docs/notes/core-library-outline.md` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` が Iter/Collector 実装状況のサマリを持ち、`docs-migrations.log` に `Iter` モジュール追加・Collector 階層作成の記録が残っている。
-- `compiler/rust/frontend/tests/core_iter_pipeline.rs` `core_iter_collectors.rs` `core_iter_generators.rs` `core_iter_effects.rs` が CI へ追加され、`panic_forbidden.rs` と同じジョブで `RUSTFLAGS="-Zpanic-abort-tests"` を通過する。
+- `compiler/rust/frontend/tests/core_iter_pipeline.rs` `core_iter_collectors.rs` `core_iter_generators.rs` `core_iter_effects.rs` が CI へ追加され、`.github/workflows/bootstrap-linux.yml` の `rust-prelude-tests` ジョブで `panic_forbidden.rs` と同じく `RUSTFLAGS="-Zpanic-abort-tests"` を通過する。
 
 ### 4. Iter アダプタと終端操作（37-38週目）
 **担当領域**: 宣言的データフロー

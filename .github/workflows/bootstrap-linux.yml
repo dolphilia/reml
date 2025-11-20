@@ -86,12 +86,44 @@ jobs:
       - name: Validate diagnostic JSON (Linux)
         run: bash scripts/validate-diagnostic-json.sh
 
+  rust-prelude-tests:
+    name: Rust Prelude Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    env:
+      RUSTFLAGS: "-Zpanic-abort-tests"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install validation dependencies
+        run: npm ci --prefix tooling/lsp/tests/client_compat
+
+      - name: Set up Rust (nightly)
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Run Iter/Collector tests
+        run: |
+          cargo +nightly test --manifest-path compiler/rust/frontend/Cargo.toml --test core_iter_pipeline -- core_iter_pipeline_snapshot
+          cargo +nightly test --manifest-path compiler/rust/frontend/Cargo.toml --test core_iter_effects -- core_iter_effect_labels_snapshot core_iter_try_collect_errors_snapshot
+          cargo +nightly test --manifest-path compiler/rust/frontend/Cargo.toml --test panic_forbidden -- panic_invocations_are_restricted
+
+      - name: Validate iterator diagnostics
+        run: bash scripts/validate-diagnostic-json.sh --pattern iterator --pattern collector
+
   build:
     name: Build
     runs-on: ubuntu-latest
     needs:
       - lint
       - diagnostic-json
+      - rust-prelude-tests
     env:
       LLVM_CONFIG: /usr/bin/llvm-config-19
 

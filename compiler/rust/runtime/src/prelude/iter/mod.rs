@@ -12,8 +12,13 @@ use std::{
     borrow::Cow,
     collections::VecDeque,
     fmt,
+    iter::FromIterator,
     marker::PhantomData,
     sync::{Arc, Mutex},
+};
+
+use super::collectors::{
+    CollectError, CollectOutcome, Collector, List, ListCollector, VecCollector,
 };
 
 mod generators;
@@ -24,6 +29,12 @@ mod adapters;
 #[derive(Clone, Debug)]
 pub struct Iter<T> {
     core: Arc<IterCore<T>>,
+}
+
+/// `IntoIterator` 経由で `Iter` を走査するためのアダプタ。
+#[derive(Clone, Debug)]
+pub struct IterIntoIterator<T> {
+    iter: Iter<T>,
 }
 
 #[derive(Debug)]
@@ -121,13 +132,86 @@ impl<T> Iter<T> {
         }
     }
 
-    /// すべての値を Vec に収集する（テスト向けユーティリティ）。
-    pub fn collect_vec(&self) -> Vec<T> {
-        let mut out = Vec::new();
-        while let IterStep::Ready(value) = self.next_step() {
-            out.push(value);
+    /// `ListCollector` を利用して永続リストへ収集する。
+    pub fn collect_list(self) -> Result<CollectOutcome<List<T>>, CollectError> {
+        self.collect_into_collector(ListCollector::new())
+    }
+
+    /// `VecCollector` を利用して可変ベクタへ収集する。
+    pub fn collect_vec(self) -> Result<CollectOutcome<Vec<T>>, CollectError> {
+        self.collect_into_collector(VecCollector::new())
+    }
+
+    fn collect_into_collector<C, Output>(self, collector: C) -> Result<Output, C::Error>
+    where
+        C: Collector<T, Output>,
+    {
+        self.drain_into_collector(collector)
+    }
+
+    fn drain_into_collector<C, Output>(self, mut collector: C) -> Result<Output, C::Error>
+    where
+        C: Collector<T, Output>,
+    {
+        let iter = self;
+        loop {
+            match iter.next_step() {
+                IterStep::Ready(value) => collector.push(value)?,
+                IterStep::Pending => continue,
+                IterStep::Finished => return Ok(collector.finish()),
+                IterStep::Error(_) => {
+                    // TODO: CollectError と連携する伝播経路を整備する。
+                    return Ok(collector.finish());
+                }
+            }
         }
-        out
+    }
+}
+
+impl<T> IntoIterator for Iter<T> {
+    type Item = T;
+    type IntoIter = IterIntoIterator<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        IterIntoIterator { iter: self }
+    }
+}
+
+impl<T> Iterator for IterIntoIterator<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
+impl<T> FromIterator<T> for Iter<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iterable: I) -> Self {
+        Self::from_list(iterable.into_iter().collect::<Vec<T>>())
+    }
+}
+
+impl<T, E> Iter<Result<T, E>> {
+    /// `Result` を要素に含む `Iter` を Collector へ短絡収集する。
+    pub fn try_collect<C, Output>(
+        self,
+        mut collector: C,
+    ) -> Result<Output, TryCollectError<E, C::Error>>
+    where
+        C: Collector<T, Output>,
+    {
+        let iter = self;
+        loop {
+            match iter.next_step() {
+                IterStep::Ready(result) => match result {
+                    Ok(value) => collector.push(value).map_err(TryCollectError::Collector)?,
+                    Err(err) => return Err(TryCollectError::Item(err)),
+                },
+                IterStep::Pending => continue,
+                IterStep::Finished => return Ok(collector.finish()),
+                IterStep::Error(err) => return Err(TryCollectError::Iter(err)),
+            }
+        }
     }
 }
 
@@ -283,6 +367,14 @@ impl IterError {
     pub fn buffer_overflow(capacity: usize, strategy: BufferStrategy) -> Self {
         Self::Buffer(IterBufferError::capacity_overflow(capacity, strategy))
     }
+}
+
+/// `Iter::try_collect` で伝播するエラー。
+#[derive(Debug)]
+pub enum TryCollectError<ItemError, CollectorError> {
+    Item(ItemError),
+    Collector(CollectorError),
+    Iter(IterError),
 }
 
 /// `Iter` のステップ種別。

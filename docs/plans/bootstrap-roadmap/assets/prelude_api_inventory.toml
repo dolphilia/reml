@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2025-11-20 / Remediation Step3"
+last_updated = "2025-11-20 / Remediation Step4"
 maintainer = "Core Library Team"
 
 [[api]]
@@ -198,6 +198,56 @@ rust_status = "implemented"
 ocaml_status = "typeck-only"
 notes = "Rust: compiler/rust/runtime/src/prelude/iter/mod.rs::empty / Test: 現状は専用ケースなし（2025-11-20 時点で smoke カバレッジのみ）。"
 wbs = "3.1c Step3"
+
+[[api]]
+module = "Iter"
+name = "collect_list"
+effect = "@pure"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "Rust: compiler/rust/runtime/src/prelude/iter/mod.rs::collect_list / Test: compiler/rust/frontend/tests/core_iter_pipeline.rs::list_roundtrip（snapshot: compiler/rust/frontend/tests/snapshots/core_iter_pipeline__core_iter_pipeline.snap）。"
+wbs = "3.1c Step4"
+
+[[api]]
+module = "Iter"
+name = "collect_vec"
+effect = "effect {mut}"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "Rust: compiler/rust/runtime/src/prelude/iter/mod.rs::collect_vec / Test: core_iter_pipeline.rs::map_filter_vec|zip_collect_list|buffered_mem_case（snapshot: compiler/rust/frontend/tests/snapshots/core_iter_pipeline__core_iter_pipeline.snap）。"
+wbs = "3.1c Step4"
+
+[[api]]
+module = "Iter"
+name = "try_collect"
+effect = "@pure"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "Rust: compiler/rust/runtime/src/prelude/iter/mod.rs::try_collect / Test: core_iter_pipeline.rs::try_collect_success + core_iter_effects.rs::core_iter_try_collect_errors_snapshot（snapshot: compiler/rust/frontend/tests/snapshots/core_iter_effects__core_iter_try_collect_errors.snap）で成功系と Collector/Error 伝播を検証。"
+wbs = "3.1c Step4"
+
+[[api]]
+module = "Iter"
+name = "IntoIterator"
+effect = "@pure"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "Rust: compiler/rust/runtime/src/prelude/iter/mod.rs::IntoIterator for Iter<T> / Test: core_iter_pipeline.rs::from_iter_and_into_iter（snapshot: compiler/rust/frontend/tests/snapshots/core_iter_pipeline__core_iter_pipeline.snap）で `IntoIterator` → `Vec<T>` の往復を snapshot 化。"
+wbs = "3.1a F2"
+
+[[api]]
+module = "Iter"
+name = "FromIterator"
+effect = "@pure"
+stage = "beta"
+rust_status = "implemented"
+ocaml_status = "typeck-only"
+notes = "Rust: compiler/rust/runtime/src/prelude/iter/mod.rs::from_iter / Test: core_iter_pipeline.rs::from_iter_and_into_iter（snapshot: compiler/rust/frontend/tests/snapshots/core_iter_pipeline__core_iter_pipeline.snap）で `(10..13).collect::<Iter<_>>()` のパスを検証。"
+wbs = "3.1a F2"
 
 [[api]]
 module = "Iter"

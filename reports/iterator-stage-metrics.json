@@ -1,0 +1,13 @@
+{
+  "section": "iterator",
+  "case": "pipeline",
+  "command": "python3 tooling/ci/collect-iterator-audit-metrics.py --section iterator --case pipeline --source reports/spec-audit/ch1/iter.json --output reports/iterator-stage-metrics.json",
+  "timestamp": "2025-11-20T08:32:29Z",
+  "metrics": {
+    "iterator.stage.audit_pass_rate": 1.0,
+    "collector.effect.mem": 0,
+    "collector.effect.mut": 0,
+    "collector.error.duplicate_key": 1
+  },
+  "notes": "Values derived from compiler/rust/frontend/tests/snapshots/core_iter_pipeline__core_iter_pipeline.snap and core_iter_effects__*.snap (Remediation Step4)."
+}

@@ -1,20 +1,25 @@
 use reml_runtime_ffi::core_prelude::iter::Iter;
 
+fn collect_values<T>(iter: Iter<T>) -> Vec<T> {
+    iter.collect_vec()
+        .expect("VecCollector should not fail")
+        .into_parts()
+        .0
+}
+
 #[test]
 fn from_list_roundtrip() {
     let iter = Iter::from_list(vec![1, 2, 3]);
-    assert_eq!(iter.collect_vec(), vec![1, 2, 3]);
+    assert_eq!(collect_values(iter), vec![1, 2, 3]);
 }
 
 #[test]
 fn from_result_passthrough() {
     assert_eq!(
-        Iter::<i32>::from_result::<&str>(Ok(5)).collect_vec(),
+        collect_values(Iter::<i32>::from_result::<&str>(Ok(5))),
         vec![5]
     );
-    assert!(Iter::<i32>::from_result::<&str>(Err("boom"))
-        .collect_vec()
-        .is_empty());
+    assert!(collect_values(Iter::<i32>::from_result::<&str>(Err("boom"))).is_empty());
 }
 
 #[test]
@@ -29,19 +34,19 @@ fn from_fn_counter() {
             Some(current)
         }
     });
-    assert_eq!(iter.collect_vec(), vec![0, 1, 2]);
+    assert_eq!(collect_values(iter), vec![0, 1, 2]);
 }
 
 #[test]
 fn range_basic() {
     let iter = Iter::range(0, 5, 1);
-    assert_eq!(iter.collect_vec(), vec![0, 1, 2, 3, 4, 5]);
+    assert_eq!(collect_values(iter), vec![0, 1, 2, 3, 4, 5]);
 }
 
 #[test]
 fn range_descending() {
     let iter = Iter::range(5, 1, -2);
-    assert_eq!(iter.collect_vec(), vec![5, 3, 1]);
+    assert_eq!(collect_values(iter), vec![5, 3, 1]);
 }
 
 #[test]
@@ -69,7 +74,7 @@ fn unfold_fibonacci_sequence() {
             }
         },
     );
-    assert_eq!(iter.collect_vec(), vec![0, 1, 1, 2, 3, 5, 8, 13, 21]);
+    assert_eq!(collect_values(iter), vec![0, 1, 1, 2, 3, 5, 8, 13, 21]);
 }
 
 #[test]
@@ -82,5 +87,5 @@ fn try_unfold_terminates_on_error() {
             Ok(Some((state * 2, state + 1)))
         }
     });
-    assert_eq!(iter.collect_vec(), vec![0, 2, 4]);
+    assert_eq!(collect_values(iter), vec![0, 2, 4]);
 }

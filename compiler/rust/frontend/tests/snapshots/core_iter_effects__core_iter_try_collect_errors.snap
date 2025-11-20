@@ -1,0 +1,51 @@
+---
+source: tests/core_iter_effects.rs
+expression: cases
+---
+- case: item_error
+  error:
+    kind: item
+    value: boom
+- case: collector_error
+  error:
+    audit:
+      collector.capability: core.collector.map
+      collector.effect.async_pending: false
+      collector.effect.debug: false
+      collector.effect.finish: 0
+      collector.effect.mem: false
+      collector.effect.mem_reservation: 0
+      collector.effect.mut: false
+      collector.effect.reserve: 0
+      collector.error.key: "\"dup\""
+      collector.kind: map
+      collector.stage.actual: beta
+      collector.stage.mismatch: false
+      collector.stage.mode: at_least
+      collector.stage.required: beta
+      collector.stage.source: "MapCollector::push"
+    code: core.prelude.collector_failed
+    domain: runtime
+    extensions:
+      prelude.collector:
+        capability: core.collector.map
+        effects:
+          async_pending: false
+          debug: false
+          mem: false
+          mut: false
+        error_key: "\"dup\""
+        error_kind: duplicate_key
+        kind: map
+        markers:
+          finish: 0
+          mem_reservation: 0
+          reserve: 0
+        message: "duplicate key: \"dup\""
+        source: "MapCollector::push"
+        stage_actual: beta
+        stage_mismatch: false
+        stage_mode: at_least
+        stage_required: beta
+    message: "MapCollector failed: duplicate key: \"dup\""
+    severity: error
