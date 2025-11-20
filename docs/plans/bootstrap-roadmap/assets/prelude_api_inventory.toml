@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2025-12-01 / WBS 3.1b F2-2"
+last_updated = "2025-11-19 / WBS 3.1b F2-3"
 maintainer = "Core Library Team"
 
 [[api]]
@@ -366,8 +366,8 @@ effect = "effect {mem}"
 stage = "beta"
 rust_status = "working"
 ocaml_status = "not_available"
-notes = "F2: UTF-8 バッファの `collector.effect.mem`/`collector.effect.mem_reservation` を `collect-iterator-audit --section collectors` で追跡し、`collector.effect.finish` を記録"
-wbs = "3.1b F2"
+notes = "F2-3: `StringError::InvalidEncoding` を `CollectError` で再利用し、`collect_string_invalid` の `collector.error.invalid_encoding`/`collector.effect.mem` を `reports/iterator-collector-summary.md` で監視"
+wbs = "3.1b F2-3"
 
 [[api]]
 module = "Collector"

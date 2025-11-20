@@ -74,7 +74,8 @@
 - `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §3.2 に F2 のスコープ（List/Vec/Map/Set/String Collector 実装、`core_iter_collectors.rs` テスト、`collect-iterator-audit` KPI）が定義された。`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` も `last_updated = "2025-11-25 / WBS 3.1b F2"` へ更新し、Collector 系エントリの `notes` にテスト/監査の参照先を追記済み。
 - 各 Collector の実装ポイント:
   - `ListCollector` は `effect = @pure` を維持し `IteratorStageProfile::stable` を固定。`finish` で `CollectOutcome::audit()` を呼び、`prelude.collector.kind = "list"`/`stage.actual = "stable"` を `Diagnostic` 拡張へ記録する。
-  - `VecCollector` と `StringCollector` は `EffectMarker::mem_reservation`/`collector.effect.mem` を増分し、`CollectError::MemoryError` および `CollectError::InvalidEncoding(StringError)` を `AuditEnvelope.metadata.collector.error.*` に書き出す。`docs/spec/3-3-core-text-unicode.md†L90-L150` を参照して UTF-8 エラーメッセージ仕様と整合させる。
+- `VecCollector` と `StringCollector` は `EffectMarker::mem_reservation`/`collector.effect.mem` を増分し、`CollectError::MemoryError` および `CollectError::InvalidEncoding(StringError)` を `AuditEnvelope.metadata.collector.error.*` に書き出す。`docs/spec/3-3-core-text-unicode.md†L90-L150` を参照して UTF-8 エラーメッセージ仕様と整合させる。
+- `reports/iterator-collector-summary.md` に `collect_list_baseline`/`collect_vec_mem_reservation`/`collect_map_duplicate`/`collect_set_stage`/`collect_string_invalid` の KPI/ステージ/エラー別トレースをまとめ、`collector.error.invalid_encoding` の監視ロジックをテストスナップショット（`core_iter_collectors__collect_string_invalid.snap`）と同期させている。
   - `MapCollector`/`SetCollector` は `StageRequirement::AtLeast("beta")` / `Exact("stable")` を `IteratorDictInfo` へ転写し、重複キーを `AuditEnvelope.metadata.collector.error.key` に残す共通ヘルパ（`collectors/common.rs::check_duplicate`) を利用する。
 - Snapshot & KPI 計画:
 

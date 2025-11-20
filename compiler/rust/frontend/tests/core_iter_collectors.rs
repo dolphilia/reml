@@ -2,8 +2,12 @@
 
 use serde_json::json;
 
-use reml_runtime_ffi::core_prelude::collectors::{ListCollector, VecCollector};
-use reml_runtime_ffi::core_prelude::{collectors::CollectOutcome, Collector};
+use reml_runtime_ffi::core_prelude::{
+    collectors::{
+        CollectOutcome, ListCollector, MapCollector, SetCollector, StringCollector, VecCollector,
+    },
+    Collector, GuardDiagnostic,
+};
 
 fn render_snapshot<T>(
     outcome: CollectOutcome<T>,
@@ -59,11 +63,45 @@ fn collect_vec_mem_reservation() -> String {
     serde_json::to_string_pretty(&snapshot).unwrap()
 }
 
+fn render_error_snapshot(diag: GuardDiagnostic) -> serde_json::Value {
+    diag.into_json()
+}
+
+fn collect_map_duplicate() -> String {
+    let mut collector = MapCollector::new();
+    collector.push(("dup".to_string(), 1)).unwrap();
+    let err = collector.push(("dup".to_string(), 2)).unwrap_err();
+    let diag = err.into_diagnostic();
+    serde_json::to_string_pretty(&render_error_snapshot(diag)).unwrap()
+}
+
+fn collect_set_stage() -> String {
+    let mut collector = SetCollector::new();
+    collector.push(5).unwrap();
+    collector.push(1).unwrap();
+    collector.push(3).unwrap();
+    let snapshot = render_snapshot(collector.finish(), |set| {
+        json!(set.into_set().into_iter().collect::<Vec<_>>())
+    });
+    serde_json::to_string_pretty(&snapshot).unwrap()
+}
+
+fn collect_string_invalid() -> String {
+    let mut collector = StringCollector::new();
+    collector.push(0xC3).unwrap();
+    let err = collector.push(0x28).unwrap_err();
+    let diag = err.into_diagnostic();
+    serde_json::to_string_pretty(&render_error_snapshot(diag)).unwrap()
+}
+
 #[test]
 fn core_iter_collectors_snapshot() {
     let cases = vec![
         ("collect_list_baseline", collect_list_baseline()),
         ("collect_vec_mem_reservation", collect_vec_mem_reservation()),
+        ("collect_map_duplicate", collect_map_duplicate()),
+        ("collect_set_stage", collect_set_stage()),
+        ("collect_string_invalid", collect_string_invalid()),
     ];
     let actual = cases
         .into_iter()

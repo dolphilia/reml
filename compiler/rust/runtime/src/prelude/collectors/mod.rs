@@ -14,7 +14,7 @@ mod vec;
 pub use list::{List, ListCollector};
 pub use map::{Map, MapCollector};
 pub use set::{Set, SetCollector};
-pub use string::StringCollector;
+pub use string::{StringCollector, StringError};
 pub use vec::VecCollector;
 
 use super::{
@@ -540,11 +540,7 @@ impl IntoDiagnostic for CollectError {
             code: COLLECTOR_DIAGNOSTIC_CODE,
             domain: COLLECTOR_DIAGNOSTIC_DOMAIN,
             severity: DiagnosticSeverity::Error,
-            message: format!(
-                "{} failed: {}",
-                audit.kind.display_name(),
-                message
-            ),
+            message: format!("{} failed: {}", audit.kind.display_name(), message),
             extensions: {
                 let mut root = JsonObject::new();
                 root.insert(COLLECTOR_EXTENSION_KEY.into(), Value::Object(extensions));

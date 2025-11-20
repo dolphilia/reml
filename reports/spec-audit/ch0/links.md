@@ -41,6 +41,8 @@
 | `collect_set_stage` | `compiler/rust/frontend/tests/snapshots/core_iter_collectors__collect_set_stage.snap` | `reports/iterator-collector-summary.md#collect_set_stage` | `SetCollector` の `StageRequirement::Exact("stable")` を診断へ転写。 |
 | `collect_string_invalid` | `compiler/rust/frontend/tests/snapshots/core_iter_collectors__collect_string_invalid.snap` | `reports/iterator-collector-summary.md#collect_string_invalid` | `StringCollector` の UTF-8 正規化と `CollectError::InvalidEncoding(StringError)` を検証。【F:docs/spec/3-3-core-text-unicode.md†L90-L150】 |
 
+- `reports/iterator-collector-summary.md` には上述の 5 ケースの `collector.effect.*`/`collector.error.*` KPI をまとめて記録し、`collect_string_invalid` で `collector.error.invalid_encoding` と `collector.effect.mem` の出力を握りながら `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI セクションとリンクで整合させている。
+
 ### Iter F3 Snapshot/KPI（WBS 3.1a）
 
 | コマンド | 結果 | 備考 |
