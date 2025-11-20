@@ -102,6 +102,8 @@
 - `compiler/rust/frontend/src/typeck/constraint/iterator.rs`（新規）で `IteratorDictInfo` を導入し、`Iter` を要求する型クラス拘束に `stage`, `capability`, `kind` を埋める。辞書生成時に `Diagnostic.extensions["iterator.stage.required"]` へ書き込み、`collect-iterator-audit-metrics.py` が参照する JSON のキーを `effect.stage.iterator.*` で統一する。
 - `core_iter_pipeline.rs` テストでは `Iter::from_list |> Iter::map |> Iter.collect_list`/`Iter::try_fold` の 6 シナリオを snapshot 化し、`reports/diagnostic-format-regression.md` で差分監視。`compiler/ocaml/tests/test_type_inference.ml` の `iterator_kind` 出力と結果を比較し、差分は `docs/notes/core-library-outline.md` へ記録する。
 
+> 2026-W05 更新（Remediation Step3）: `core_iter_pipeline.rs` と `compiler/rust/frontend/tests/snapshots/core_iter_pipeline__*.snap` は未整備のままであるため、F3 スナップショット/KPI は pending 扱いに変更した。`docs/notes/core-library-outline.md` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` から該当リンクを一時削除し、`reports/spec-audit/ch1/iter.json` は CLI 未実装・snapshot 不在を理由に `status = "pending"` として再記録した。再実装完了後に KPI の `iterator.stage.audit_pass_rate`／`collector.effect.mem` を復活させる。
+
 ##### WBS 3.1a 実装指針とタスク詳細
 
 | フェーズ | 目的 | 主要作業 | 成果物 / 記録 | 検証手段 |

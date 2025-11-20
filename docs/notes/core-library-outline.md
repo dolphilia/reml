@@ -67,18 +67,8 @@
 
 ## 6. WBS 3.1a F3 Snapshot/KPI（2025-W37）
 - 目的: `core_iter_pipeline` の 6 シナリオを snapshot で固定し、`collect-iterator-audit-metrics.py --module iter --section collectors` の KPI (`iterator.stage.audit_pass_rate = 1.0`, `collector.effect.mem = 0`, `collector.effect.mut = 0`, `collector.error.duplicate_key_rate = 0`) を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ転記する。【F:docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md†L95-L150】
-- テスト手順: `cargo test core_iter_pipeline -- --nocapture` → `cargo insta review` で Snapshot (`compiler/rust/frontend/tests/snapshots/core_iter_pipeline__*.snap`) を確定し、`reports/spec-audit/ch0/links.md#iter-f3-snapshotkpi` に結果を貼り付ける。診断ログは `reports/diagnostic-format-regression.md`、監査ログは `reports/iterator-stage-summary.md` に格納。
-- KPI 反映: `tooling/ci/collect-iterator-audit-metrics.py --module iter --output reports/iterator-stage-summary.md` を WBS 3.1a F3 の exit 条件に設定。値が 1.0 未満の場合は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ是正タスクを追加し、`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#303a-m1-prelude--iteration-進行管理` で Go/No-Go を再確認する。
-- Collector 実装: `Iter::try_collect(SetCollector)` など `effect {mem}` が絡むシナリオは未実装のため、現時点では KPI の監視ルーチンのみ。Collector 実装完了後に `core_iter_collectors.rs` へ移し、`core_iter_pipeline` では Stage/KPI 確認を担う。
-
-| シナリオ | Pipeline | Collector / Stage | Snapshot | 監査ログ |
-| --- | --- | --- | --- | --- |
-| `iter_from_list_roundtrip` | `Iter::from_list |> Iter.collect_list` | `ListCollector` / `Exact("stable")` | `compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_from_list_roundtrip.snap` | `reports/iterator-stage-summary.md#iter_from_list_roundtrip` |
-| `iter_map_utf8` | `Iter::from_list |> Iter::map |> Iter.collect_list` | `VecCollector` / `AtLeast("beta")` | `compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_map_utf8.snap` | `reports/iterator-stage-summary.md#iter_map_utf8` |
-| `iter_filter_map_cap` | `Iter::filter_map` | `ListCollector` / `AtLeast("beta")` | `compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_filter_map_cap.snap` | `reports/iterator-stage-summary.md#iter_filter_map_cap` |
-| `iter_flat_map_stage` | `Iter::flat_map` | `VecCollector` / `AtLeast("beta")` | `compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_flat_map_stage.snap` | `reports/iterator-stage-summary.md#iter_flat_map_stage` |
-| `iter_try_fold_diag` | `Iter::map |> Iter::try_fold` | Result 返却 / `AtLeast("beta")` | `compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_try_fold_diag.snap` | `reports/iterator-stage-summary.md#iter_try_fold_diag` |
-| `iter_try_collect_set` | `Iter::try_collect(SetCollector)` | `SetCollector` / `Exact("stable")` | `compiler/rust/frontend/tests/snapshots/core_iter_pipeline__iter_try_collect_set.snap` | `reports/iterator-stage-summary.md#iter_try_collect_set` |
+- 現状 (2026-W05 / Remediation Step3): `compiler/rust/frontend/tests/core_iter_pipeline.rs` と `core_iter_pipeline__*.snap` はまだ作成されておらず、従来の参照先は全て無効。`Iter::try_collect(SetCollector)` も `core_iter_collectors.rs` での個別検証のみが存在する。
+- TODO: pipeline snapshot 作成後にテスト手順・シナリオ表・`reports/spec-audit/ch0/links.md#iter-f3-snapshotkpi` へのリンクを復活させること。再作成時は `reports/iterator-stage-summary.md`／`reports/spec-audit/ch1/iter.json` へ実データを保存し、KPI を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に同期する。
 
 - Snapshot/KPI の更新結果は `docs-migrations.log` に「Iter F3 Snapshot/KPI テンプレート追記」として残し、Phase 3-0 `M1` レビューで参照できるようにする。
 

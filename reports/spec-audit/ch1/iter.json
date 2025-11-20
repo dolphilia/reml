@@ -1,28 +1,122 @@
 {
   "metric": "iterator.api.coverage",
-  "command": "cargo xtask prelude-audit --section iter --strict --baseline docs/spec/3-1-core-prelude-iteration.md",
-  "timestamp": "2025-11-20T05:42:44Z",
+  "command": "cargo xtask prelude-audit --section iter --strict --baseline docs/spec/3-1-core-prelude-iteration.md （CLI未実装のため実行不可）",
+  "timestamp": "2025-11-20T06:55:02Z",
   "section": "Iter + Collector",
-  "total_entries": 38,
-  "implemented_entries": 36,
+  "status": "pending",
+  "reason": "prelude-audit に --section iter が未実装で、core_iter_pipeline の snapshot も存在しないため。",
+  "total_entries": null,
+  "implemented_entries": null,
   "missing_entries": [
     {
       "module": "Iter",
-      "name": "try_fold",
+      "name": "core_iter_pipeline snapshots",
       "status": "pending",
-      "notes": "Rust 実装とテストケースが未着手"
+      "notes": "compiler/rust/frontend/tests/core_iter_pipeline.rs と core_iter_pipeline__*.snap が未作成。"
     },
     {
       "module": "Iter",
-      "name": "try_collect",
+      "name": "try_fold / try_collect strict log",
       "status": "pending",
-      "notes": "Collector 連携の Result 版が未実装"
+      "notes": "--section iter --strict 実行ログが取得できず、KPI 集計が停止中。"
     }
   ],
-  "kpi": {
-    "core_prelude.missing_api": 2,
-    "iterator.api.coverage": 0.9473684210526315
+  "audit_cases": {
+    "from_list": {
+      "status": "exists",
+      "test": "compiler/rust/frontend/tests/core_iter_generators.rs::from_list_roundtrip",
+      "snapshot": "compiler/rust/frontend/tests/snapshots/core_iter_generators__from_list_roundtrip.snap",
+      "kpi": {
+        "iterator.stage.audit_pass_rate": 1.0,
+        "collector.effect.mem": 0
+      },
+      "notes": "`Iter::from_list` が `ListCollector` と同一 Stage を報告し、`collect-iterator-audit --section iter --case from_list` で検証済み。"
+    },
+    "from_result": {
+      "status": "exists",
+      "test": "compiler/rust/frontend/tests/core_iter_generators.rs::from_result_passthrough",
+      "snapshot": "compiler/rust/frontend/tests/snapshots/core_iter_generators__from_result_passthrough.snap",
+      "kpi": {
+        "iterator.error.total": 0
+      },
+      "notes": "`Result<T,E>` 由来の `Err` がストリームへ混入しないことを `collect-iterator-audit --section iter --case from_result` で確認。"
+    },
+    "from_fn": {
+      "status": "exists",
+      "test": "compiler/rust/frontend/tests/core_iter_generators.rs::from_fn_counter",
+      "snapshot": "compiler/rust/frontend/tests/snapshots/core_iter_generators__from_fn_counter.snap",
+      "kpi": {
+        "iterator.residual_effects": []
+      },
+      "notes": "クロージャ生成でも `EffectLabels::residual=[]` を維持し、`iterator.stage.audit_pass_rate=1.0` を報告。"
+    },
+    "range": {
+      "status": "exists",
+      "test": "compiler/rust/frontend/tests/core_iter_generators.rs::range_basic",
+      "snapshot": "compiler/rust/frontend/tests/snapshots/core_iter_generators__range_basic.snap",
+      "kpi": {
+        "iterator.range.overflow_guard": 1
+      },
+      "notes": "`IterRangeError` を `collect-iterator-audit --section iter --case range` で監査し、溢れ検知を固定。"
+    },
+    "repeat": {
+      "status": "exists",
+      "test": "compiler/rust/frontend/tests/core_iter_generators.rs::repeat_take",
+      "snapshot": "compiler/rust/frontend/tests/snapshots/core_iter_generators__repeat_take.snap",
+      "kpi": {
+        "iterator.repeat.flagged": true
+      },
+      "notes": "無限列を `take` で截断した際に `diagnostic.extensions[\"iterator.repeat\"]` が生成されることを確認。"
+    },
+    "once": {
+      "status": "exists",
+      "test": "compiler/rust/frontend/tests/core_iter_generators.rs::once_collect",
+      "snapshot": "compiler/rust/frontend/tests/snapshots/core_iter_generators__once_collect.snap",
+      "kpi": {
+        "iterator.once.length": 1
+      },
+      "notes": "単一要素ストリームが `@pure` のまま Collector へ渡ることを固定。"
+    },
+    "empty": {
+      "status": "exists",
+      "test": "compiler/rust/frontend/tests/core_iter_generators.rs::empty_collect",
+      "snapshot": "compiler/rust/frontend/tests/snapshots/core_iter_generators__empty_collect.snap",
+      "kpi": {
+        "iterator.empty.items": 0
+      },
+      "notes": "ゼロ要素生成器の KPI を `collect-iterator-audit --section iter --case empty` で保存。"
+    },
+    "unfold": {
+      "status": "exists",
+      "test": "compiler/rust/frontend/tests/core_iter_generators.rs::unfold_fibonacci_pipeline",
+      "snapshot": "compiler/rust/frontend/tests/snapshots/core_iter_generators__unfold_fibonacci_pipeline.snap",
+      "kpi": {
+        "iterator.unfold.depth": 8
+      },
+      "notes": "`EffectLabels::residual=[]` を維持したまま Stage=beta を確認。"
+    },
+    "try_unfold": {
+      "status": "exists",
+      "test": "compiler/rust/frontend/tests/core_iter_generators.rs::try_unfold_error_passthrough",
+      "snapshot": "compiler/rust/frontend/tests/snapshots/core_iter_generators__try_unfold_error_passthrough.snap",
+      "kpi": {
+        "iterator.try_unfold.error_kind": "try_unfold",
+        "iterator.effect.debug": true
+      },
+      "notes": "診断と監査ログの両方で `EffectLabels::debug=true` を観測。"
+    },
+    "pipeline_roundtrip": {
+      "status": "pending",
+      "test": "compiler/rust/frontend/tests/core_iter_pipeline.rs::iter_from_list_roundtrip ほか 5 ケース",
+      "snapshot": null,
+      "kpi": null,
+      "notes": "ファイルと snapshot が未作成。`core_iter_pipeline` 完成後に `iterator.stage.audit_pass_rate` / `collector.effect.mem` を採取する。"
+    }
   },
-  "strict_exit_code": 1,
-  "notes": "Collector 系 API は 100% 実装済み。Iter 側の try_fold/try_collect のみ未実装で Strict 失敗。ログは reports/spec-audit/ch0/links.md#iter-collector-remediation に追記。"
+  "kpi": {
+    "core_prelude.missing_api": null,
+    "iterator.api.coverage": null
+  },
+  "strict_exit_code": null,
+  "notes": "2026-W05 時点では `core_iter_pipeline` 系のテスト／snapshot が存在しないため、本ファイルは pending 状態で保留している。既存の生成 API スナップショットは `audit_cases.*` に列挙しつつ、再実行できるようになったら `total_entries`・`implemented_entries`・`kpi` を実測値で上書きすること。"
 }
