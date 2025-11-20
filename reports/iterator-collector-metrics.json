@@ -1,0 +1,827 @@
+{
+  "metrics": [
+    {
+      "metric": "diagnostic.audit_presence_rate",
+      "total": 7,
+      "passed": 0,
+      "failed": 7,
+      "pass_rate": 0.0,
+      "pass_fraction": 0.0,
+      "required_audit_keys": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "sources": [
+        "reports/spec-audit/ch1/core_iter_collectors.json"
+      ],
+      "failures": [
+        {
+          "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+          "index": 0,
+          "missing": [
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "core.prelude.collector_snapshot"
+        },
+        {
+          "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+          "index": 1,
+          "missing": [
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "core.prelude.collector_snapshot"
+        },
+        {
+          "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+          "index": 2,
+          "missing": [
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "core.prelude.collector_failed"
+        },
+        {
+          "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+          "index": 3,
+          "missing": [
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "core.prelude.collector_snapshot"
+        },
+        {
+          "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+          "index": 4,
+          "missing": [
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "core.prelude.collector_failed"
+        },
+        {
+          "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+          "index": 5,
+          "missing": [
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "core.prelude.collector_snapshot"
+        },
+        {
+          "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+          "index": 6,
+          "missing": [
+            "cli.audit_id",
+            "cli.change_set",
+            "schema.version",
+            "timestamp"
+          ],
+          "code": "core.prelude.collector_failed"
+        }
+      ]
+    },
+    {
+      "metric": "collector.effect.audit_snapshot",
+      "total": 7,
+      "passed": 7,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "stage": {
+        "actual_counts": {
+          "stable": 2,
+          "beta": 5
+        },
+        "required_counts": {
+          "stable": 2,
+          "beta": 5
+        },
+        "mode_counts": {
+          "exact": 2,
+          "at_least": 5
+        },
+        "source_counts": {
+          "ListCollector::finish": 1,
+          "VecCollector::finish": 1,
+          "MapCollector::push": 1,
+          "SetCollector::finish": 1,
+          "StringCollector::push": 1,
+          "TableCollector::finish": 1,
+          "TableCollector::push": 1
+        },
+        "capability_counts": {
+          "core.collector.list": 1,
+          "core.collector.vec": 1,
+          "core.collector.map": 1,
+          "core.collector.set": 1,
+          "core.collector.string": 1,
+          "core.collector.table": 2
+        },
+        "kind_counts": {
+          "list": 1,
+          "vec": 1,
+          "map": 1,
+          "set": 1,
+          "string": 1,
+          "table": 2
+        },
+        "mismatch": 0,
+        "mismatch_rate": 0.0,
+        "audit_pass_rate": 1.0
+      },
+      "effects": {
+        "counts": {
+          "mem": 2,
+          "mut": 4,
+          "debug": 0,
+          "async_pending": 0
+        },
+        "rates": {
+          "mem": 0.2857142857142857,
+          "mut": 0.5714285714285714,
+          "debug": 0.0,
+          "async_pending": 0.0
+        },
+        "markers": {
+          "mem_reservation": 4,
+          "reserve": 2,
+          "finish": 4
+        }
+      },
+      "errors": {
+        "total": 3,
+        "rate_per_total": 0.42857142857142855,
+        "counts": {
+          "duplicate_key": 2,
+          "invalid_encoding": 1
+        },
+        "rate_per_total_by_kind": {
+          "duplicate_key": 0.2857142857142857,
+          "invalid_encoding": 0.14285714285714285
+        },
+        "rate_within_errors": {
+          "duplicate_key": 0.6666666666666666,
+          "invalid_encoding": 0.3333333333333333
+        },
+        "details": [
+          {
+            "case": "collect_map_duplicate",
+            "kind": "duplicate_key",
+            "key": "\"dup\""
+          },
+          {
+            "case": "collect_string_invalid",
+            "kind": "invalid_encoding",
+            "key": null
+          },
+          {
+            "case": "collect_table_duplicate",
+            "kind": "duplicate_key",
+            "key": "\"dup\""
+          }
+        ]
+      },
+      "cases": [
+        {
+          "id": "collect_list_baseline",
+          "kind": "list",
+          "capability": "core.collector.list",
+          "stage_actual": "stable",
+          "stage_required": "stable",
+          "stage_mode": "exact",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": false,
+            "mut": false,
+            "debug": false,
+            "async_pending": false
+          },
+          "markers": {
+            "mem_reservation": 0,
+            "reserve": 0,
+            "finish": 1
+          }
+        },
+        {
+          "id": "collect_vec_mem_reservation",
+          "kind": "vec",
+          "capability": "core.collector.vec",
+          "stage_actual": "beta",
+          "stage_required": "beta",
+          "stage_mode": "at_least",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": true,
+            "mut": true,
+            "debug": false,
+            "async_pending": false
+          },
+          "markers": {
+            "mem_reservation": 4,
+            "reserve": 2,
+            "finish": 1
+          }
+        },
+        {
+          "id": "collect_map_duplicate",
+          "kind": "map",
+          "capability": "core.collector.map",
+          "stage_actual": "beta",
+          "stage_required": "beta",
+          "stage_mode": "at_least",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": false,
+            "mut": false,
+            "debug": false,
+            "async_pending": false
+          },
+          "markers": {
+            "mem_reservation": 0,
+            "reserve": 0,
+            "finish": 0
+          },
+          "error_kind": "duplicate_key",
+          "error_key": "\"dup\""
+        },
+        {
+          "id": "collect_set_stage",
+          "kind": "set",
+          "capability": "core.collector.set",
+          "stage_actual": "stable",
+          "stage_required": "stable",
+          "stage_mode": "exact",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": false,
+            "mut": false,
+            "debug": false,
+            "async_pending": false
+          },
+          "markers": {
+            "mem_reservation": 0,
+            "reserve": 0,
+            "finish": 1
+          }
+        },
+        {
+          "id": "collect_string_invalid",
+          "kind": "string",
+          "capability": "core.collector.string",
+          "stage_actual": "beta",
+          "stage_required": "beta",
+          "stage_mode": "at_least",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": true,
+            "mut": true,
+            "debug": false,
+            "async_pending": false
+          },
+          "markers": {
+            "mem_reservation": 0,
+            "reserve": 0,
+            "finish": 0
+          },
+          "error_kind": "invalid_encoding"
+        },
+        {
+          "id": "collect_table_baseline",
+          "kind": "table",
+          "capability": "core.collector.table",
+          "stage_actual": "beta",
+          "stage_required": "beta",
+          "stage_mode": "at_least",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": false,
+            "mut": true,
+            "debug": false,
+            "async_pending": false
+          },
+          "markers": {
+            "mem_reservation": 0,
+            "reserve": 0,
+            "finish": 1
+          }
+        },
+        {
+          "id": "collect_table_duplicate",
+          "kind": "table",
+          "capability": "core.collector.table",
+          "stage_actual": "beta",
+          "stage_required": "beta",
+          "stage_mode": "at_least",
+          "stage_mismatch": false,
+          "effects": {
+            "mem": false,
+            "mut": true,
+            "debug": false,
+            "async_pending": false
+          },
+          "markers": {
+            "mem_reservation": 0,
+            "reserve": 0,
+            "finish": 0
+          },
+          "error_kind": "duplicate_key",
+          "error_key": "\"dup\""
+        }
+      ],
+      "schema_versions": [
+        "collector.snapshot.v1"
+      ],
+      "sources": [
+        "reports/spec-audit/ch1/core_iter_collectors.json"
+      ],
+      "status": "success"
+    }
+  ],
+  "modules": [
+    "iter"
+  ],
+  "case": "wbs-31b-f2",
+  "metric": "diagnostic.audit_presence_rate",
+  "total": 7,
+  "passed": 0,
+  "failed": 7,
+  "pass_rate": 0.0,
+  "pass_fraction": 0.0,
+  "required_audit_keys": [
+    "cli.audit_id",
+    "cli.change_set",
+    "schema.version",
+    "timestamp"
+  ],
+  "sources": [
+    "reports/spec-audit/ch1/core_iter_collectors.json"
+  ],
+  "failures": [
+    {
+      "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+      "index": 0,
+      "missing": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "core.prelude.collector_snapshot"
+    },
+    {
+      "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+      "index": 1,
+      "missing": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "core.prelude.collector_snapshot"
+    },
+    {
+      "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+      "index": 2,
+      "missing": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "core.prelude.collector_failed"
+    },
+    {
+      "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+      "index": 3,
+      "missing": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "core.prelude.collector_snapshot"
+    },
+    {
+      "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+      "index": 4,
+      "missing": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "core.prelude.collector_failed"
+    },
+    {
+      "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+      "index": 5,
+      "missing": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "core.prelude.collector_snapshot"
+    },
+    {
+      "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+      "index": 6,
+      "missing": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "code": "core.prelude.collector_failed"
+    }
+  ],
+  "diagnostic_audit": {
+    "metric": "diagnostic.audit_presence_rate",
+    "total": 7,
+    "passed": 0,
+    "failed": 7,
+    "pass_rate": 0.0,
+    "pass_fraction": 0.0,
+    "required_audit_keys": [
+      "cli.audit_id",
+      "cli.change_set",
+      "schema.version",
+      "timestamp"
+    ],
+    "sources": [
+      "reports/spec-audit/ch1/core_iter_collectors.json"
+    ],
+    "failures": [
+      {
+        "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+        "index": 0,
+        "missing": [
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "core.prelude.collector_snapshot"
+      },
+      {
+        "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+        "index": 1,
+        "missing": [
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "core.prelude.collector_snapshot"
+      },
+      {
+        "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+        "index": 2,
+        "missing": [
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "core.prelude.collector_failed"
+      },
+      {
+        "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+        "index": 3,
+        "missing": [
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "core.prelude.collector_snapshot"
+      },
+      {
+        "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+        "index": 4,
+        "missing": [
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "core.prelude.collector_failed"
+      },
+      {
+        "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+        "index": 5,
+        "missing": [
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "core.prelude.collector_snapshot"
+      },
+      {
+        "file": "reports/spec-audit/ch1/core_iter_collectors.json",
+        "index": 6,
+        "missing": [
+          "cli.audit_id",
+          "cli.change_set",
+          "schema.version",
+          "timestamp"
+        ],
+        "code": "core.prelude.collector_failed"
+      }
+    ]
+  },
+  "collector": {
+    "metric": "collector.effect.audit_snapshot",
+    "total": 7,
+    "passed": 7,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
+    "stage": {
+      "actual_counts": {
+        "stable": 2,
+        "beta": 5
+      },
+      "required_counts": {
+        "stable": 2,
+        "beta": 5
+      },
+      "mode_counts": {
+        "exact": 2,
+        "at_least": 5
+      },
+      "source_counts": {
+        "ListCollector::finish": 1,
+        "VecCollector::finish": 1,
+        "MapCollector::push": 1,
+        "SetCollector::finish": 1,
+        "StringCollector::push": 1,
+        "TableCollector::finish": 1,
+        "TableCollector::push": 1
+      },
+      "capability_counts": {
+        "core.collector.list": 1,
+        "core.collector.vec": 1,
+        "core.collector.map": 1,
+        "core.collector.set": 1,
+        "core.collector.string": 1,
+        "core.collector.table": 2
+      },
+      "kind_counts": {
+        "list": 1,
+        "vec": 1,
+        "map": 1,
+        "set": 1,
+        "string": 1,
+        "table": 2
+      },
+      "mismatch": 0,
+      "mismatch_rate": 0.0,
+      "audit_pass_rate": 1.0
+    },
+    "effects": {
+      "counts": {
+        "mem": 2,
+        "mut": 4,
+        "debug": 0,
+        "async_pending": 0
+      },
+      "rates": {
+        "mem": 0.2857142857142857,
+        "mut": 0.5714285714285714,
+        "debug": 0.0,
+        "async_pending": 0.0
+      },
+      "markers": {
+        "mem_reservation": 4,
+        "reserve": 2,
+        "finish": 4
+      }
+    },
+    "errors": {
+      "total": 3,
+      "rate_per_total": 0.42857142857142855,
+      "counts": {
+        "duplicate_key": 2,
+        "invalid_encoding": 1
+      },
+      "rate_per_total_by_kind": {
+        "duplicate_key": 0.2857142857142857,
+        "invalid_encoding": 0.14285714285714285
+      },
+      "rate_within_errors": {
+        "duplicate_key": 0.6666666666666666,
+        "invalid_encoding": 0.3333333333333333
+      },
+      "details": [
+        {
+          "case": "collect_map_duplicate",
+          "kind": "duplicate_key",
+          "key": "\"dup\""
+        },
+        {
+          "case": "collect_string_invalid",
+          "kind": "invalid_encoding",
+          "key": null
+        },
+        {
+          "case": "collect_table_duplicate",
+          "kind": "duplicate_key",
+          "key": "\"dup\""
+        }
+      ]
+    },
+    "cases": [
+      {
+        "id": "collect_list_baseline",
+        "kind": "list",
+        "capability": "core.collector.list",
+        "stage_actual": "stable",
+        "stage_required": "stable",
+        "stage_mode": "exact",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": false,
+          "mut": false,
+          "debug": false,
+          "async_pending": false
+        },
+        "markers": {
+          "mem_reservation": 0,
+          "reserve": 0,
+          "finish": 1
+        }
+      },
+      {
+        "id": "collect_vec_mem_reservation",
+        "kind": "vec",
+        "capability": "core.collector.vec",
+        "stage_actual": "beta",
+        "stage_required": "beta",
+        "stage_mode": "at_least",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": true,
+          "mut": true,
+          "debug": false,
+          "async_pending": false
+        },
+        "markers": {
+          "mem_reservation": 4,
+          "reserve": 2,
+          "finish": 1
+        }
+      },
+      {
+        "id": "collect_map_duplicate",
+        "kind": "map",
+        "capability": "core.collector.map",
+        "stage_actual": "beta",
+        "stage_required": "beta",
+        "stage_mode": "at_least",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": false,
+          "mut": false,
+          "debug": false,
+          "async_pending": false
+        },
+        "markers": {
+          "mem_reservation": 0,
+          "reserve": 0,
+          "finish": 0
+        },
+        "error_kind": "duplicate_key",
+        "error_key": "\"dup\""
+      },
+      {
+        "id": "collect_set_stage",
+        "kind": "set",
+        "capability": "core.collector.set",
+        "stage_actual": "stable",
+        "stage_required": "stable",
+        "stage_mode": "exact",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": false,
+          "mut": false,
+          "debug": false,
+          "async_pending": false
+        },
+        "markers": {
+          "mem_reservation": 0,
+          "reserve": 0,
+          "finish": 1
+        }
+      },
+      {
+        "id": "collect_string_invalid",
+        "kind": "string",
+        "capability": "core.collector.string",
+        "stage_actual": "beta",
+        "stage_required": "beta",
+        "stage_mode": "at_least",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": true,
+          "mut": true,
+          "debug": false,
+          "async_pending": false
+        },
+        "markers": {
+          "mem_reservation": 0,
+          "reserve": 0,
+          "finish": 0
+        },
+        "error_kind": "invalid_encoding"
+      },
+      {
+        "id": "collect_table_baseline",
+        "kind": "table",
+        "capability": "core.collector.table",
+        "stage_actual": "beta",
+        "stage_required": "beta",
+        "stage_mode": "at_least",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": false,
+          "mut": true,
+          "debug": false,
+          "async_pending": false
+        },
+        "markers": {
+          "mem_reservation": 0,
+          "reserve": 0,
+          "finish": 1
+        }
+      },
+      {
+        "id": "collect_table_duplicate",
+        "kind": "table",
+        "capability": "core.collector.table",
+        "stage_actual": "beta",
+        "stage_required": "beta",
+        "stage_mode": "at_least",
+        "stage_mismatch": false,
+        "effects": {
+          "mem": false,
+          "mut": true,
+          "debug": false,
+          "async_pending": false
+        },
+        "markers": {
+          "mem_reservation": 0,
+          "reserve": 0,
+          "finish": 0
+        },
+        "error_kind": "duplicate_key",
+        "error_key": "\"dup\""
+      }
+    ],
+    "schema_versions": [
+      "collector.snapshot.v1"
+    ],
+    "sources": [
+      "reports/spec-audit/ch1/core_iter_collectors.json"
+    ],
+    "status": "success"
+  },
+  "schema_versions": [
+    "collector.snapshot.v1"
+  ],
+  "diagnostics": {
+    "total": 7,
+    "error": 3,
+    "warning": 0,
+    "info": 4,
+    "hint": 0,
+    "other": 0,
+    "sources": [
+      "reports/spec-audit/ch1/core_iter_collectors.json"
+    ],
+    "info_fraction": 0.5714285714285714,
+    "hint_fraction": 0.0,
+    "info_hint_ratio": 0.5714285714285714,
+    "parser_total": 0,
+    "parser_expected": 0,
+    "parser_expected_ratio": 0.0,
+    "parser_expected_tokens_avg": 0.0
+  }
+}

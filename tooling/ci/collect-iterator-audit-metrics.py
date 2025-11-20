@@ -2928,7 +2928,7 @@ def collect_capability_array_metric(
                 passed += 1
 
     if total == 0:
-    return None
+        return None
 
 
 def collect_collector_effect_metrics(
@@ -2937,21 +2937,42 @@ def collect_collector_effect_metrics(
     total = 0
     schema_versions: Set[str] = set()
     stage_counts: Dict[str, int] = defaultdict(int)
+    stage_required_counts: Dict[str, int] = defaultdict(int)
+    stage_mode_counts: Dict[str, int] = defaultdict(int)
+    stage_source_counts: Dict[str, int] = defaultdict(int)
+    capability_counts: Dict[str, int] = defaultdict(int)
     kind_counts: Dict[str, int] = defaultdict(int)
-    effect_flags: Dict[str, int] = {name: 0 for name in ["mem", "mut", "debug", "async_pending"]}
+    effect_flags: Dict[str, int] = {
+        name: 0 for name in ["mem", "mut", "debug", "async_pending"]
+    }
     marker_totals: Dict[str, int] = {
         "mem_reservation": 0,
         "reserve": 0,
         "finish": 0,
     }
+    stage_mismatch = 0
+    error_counts: Dict[str, int] = defaultdict(int)
+    error_details: List[Dict[str, Any]] = []
+    cases: List[Dict[str, Any]] = []
+
+    def _coerce_int(value: Any) -> int:
+        if isinstance(value, bool):
+            return int(value)
+        if isinstance(value, (int, float)):
+            return int(value)
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped.isdigit():
+                return int(stripped)
+        return 0
 
     for path in paths:
         data = load_json(path)
         try:
-            diagnostics_iter = iter_diagnostics(data)
+            diagnostics_iter = list(iter_diagnostics(data))
         except ValueError:
             continue
-        for diag in diagnostics_iter:
+        for index, diag in enumerate(diagnostics_iter):
             extensions = _as_dict(diag.get("extensions"))
             prelude = (
                 _as_dict(extensions.get("prelude.collector"))
@@ -2960,59 +2981,184 @@ def collect_collector_effect_metrics(
             )
             if not prelude:
                 continue
+
+            audit = _as_dict(diag.get("audit"))
+            metadata = _as_dict(audit.get("metadata")) if audit else None
+
             total += 1
             schema = extract_schema_version(diag)
             if schema:
                 schema_versions.add(schema)
 
-            stage_actual = prelude.get("stage_actual")
-            stage_counts[stage_actual or "unknown"] += 1
+            case_id = (
+                diag.get("snapshot_id")
+                or prelude.get("snapshot_id")
+                or diag.get("case_id")
+                or f"{path.name}#{index}"
+            )
 
+            actual_stage = prelude.get("stage_actual") or prelude.get("stage")
+            required_stage = prelude.get("stage_required")
+            stage_mode = prelude.get("stage_mode")
             kind = prelude.get("kind")
+            capability = prelude.get("capability")
+            stage_source = prelude.get("source")
+            stage_counts[(actual_stage or "unknown")] += 1
+            if required_stage:
+                stage_required_counts[required_stage] += 1
+            if stage_mode:
+                stage_mode_counts[stage_mode] += 1
+            if stage_source:
+                stage_source_counts[stage_source] += 1
+            if capability:
+                capability_counts[capability] += 1
             if kind:
                 kind_counts[kind] += 1
 
-            audit = _as_dict(diag.get("audit"))
-            metadata = (
-                _as_dict(audit.get("metadata")) if audit else None
-            )
+            mismatch_flag = bool(prelude.get("stage_mismatch"))
+            if metadata:
+                exists, meta_value = _lookup_in_container(
+                    metadata, "collector.stage.mismatch"
+                )
+                if exists:
+                    mismatch_flag = _coerce_bool(meta_value)
+            if mismatch_flag:
+                stage_mismatch += 1
 
+            case_entry: Dict[str, Any] = {
+                "id": case_id,
+                "kind": kind,
+                "capability": capability,
+                "stage_actual": actual_stage,
+                "stage_required": required_stage,
+                "stage_mode": stage_mode,
+                "stage_mismatch": mismatch_flag,
+                "effects": {},
+                "markers": {},
+            }
+
+            effects = _as_dict(prelude.get("effects"))
             for effect_name in effect_flags.keys():
-                value = None
+                value: Any = None
                 if metadata:
-                    exists, value = _lookup_in_container(
+                    exists, meta_value = _lookup_in_container(
                         metadata, f"collector.effect.{effect_name}"
                     )
-                if value is None:
-                    effects = _as_dict(prelude.get("effects"))
-                    value = effects.get(effect_name) if effects else None
-                if _coerce_bool(value):
+                    if exists:
+                        value = meta_value
+                if value is None and effects:
+                    value = effects.get(effect_name)
+                present = _coerce_bool(value)
+                case_entry["effects"][effect_name] = present
+                if present:
                     effect_flags[effect_name] += 1
 
+            markers = _as_dict(prelude.get("markers"))
             for marker_name in marker_totals.keys():
-                value = None
+                marker_value: Any = None
                 if metadata:
-                    exists, value = _lookup_in_container(
+                    exists, meta_value = _lookup_in_container(
                         metadata, f"collector.effect.{marker_name}"
                     )
-                if value is None:
-                    markers = _as_dict(prelude.get("markers"))
-                    value = markers.get(marker_name) if markers else None
-                if isinstance(value, (int, float)):
-                    marker_totals[marker_name] += int(value)
+                    if exists:
+                        marker_value = meta_value
+                if marker_value is None and markers:
+                    marker_value = markers.get(marker_name)
+                numeric_value = _coerce_int(marker_value)
+                case_entry["markers"][marker_name] = numeric_value
+                marker_totals[marker_name] += numeric_value
+
+            error_kind = prelude.get("error_kind")
+            if not error_kind and metadata:
+                exists, meta_value = _lookup_in_container(
+                    metadata, "collector.error.kind"
+                )
+                if exists and isinstance(meta_value, str):
+                    error_kind = meta_value
+            error_key = prelude.get("error_key")
+            if not error_key and metadata:
+                exists, meta_value = _lookup_in_container(
+                    metadata, "collector.error.key"
+                )
+                if exists and isinstance(meta_value, str):
+                    error_key = meta_value
+            if error_kind:
+                error_counts[error_kind] += 1
+                error_details.append(
+                    {
+                        "case": case_id,
+                        "kind": error_kind,
+                        "key": error_key,
+                    }
+                )
+                case_entry["error_kind"] = error_kind
+                if error_key:
+                    case_entry["error_key"] = error_key
+            cases.append(case_entry)
 
     if total == 0:
         return None
 
+    passed = total - stage_mismatch
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+    error_total = sum(error_counts.values())
+    error_rate_total = (error_total / total) if total else None
+    effect_rates = {
+        key: (value / total) if total else None
+        for key, value in effect_flags.items()
+    }
+    error_rate_by_kind: Dict[str, float] = {}
+    if total:
+        error_rate_by_kind = {
+            key: value / total for key, value in error_counts.items()
+        }
+    error_rate_within_errors: Dict[str, float] = {}
+    if error_total:
+        error_rate_within_errors = {
+            key: value / error_total for key, value in error_counts.items()
+        }
+
+    stage_summary: Dict[str, Any] = {
+        "actual_counts": dict(stage_counts),
+        "required_counts": dict(stage_required_counts),
+        "mode_counts": dict(stage_mode_counts),
+        "source_counts": dict(stage_source_counts),
+        "capability_counts": dict(capability_counts),
+        "kind_counts": dict(kind_counts),
+        "mismatch": stage_mismatch,
+        "mismatch_rate": (stage_mismatch / total) if total else None,
+        "audit_pass_rate": pass_rate,
+    }
+
+    effects_summary: Dict[str, Any] = {
+        "counts": dict(effect_flags),
+        "rates": effect_rates,
+        "markers": dict(marker_totals),
+    }
+
+    errors_summary: Dict[str, Any] = {
+        "total": error_total,
+        "rate_per_total": error_rate_total,
+        "counts": dict(error_counts),
+        "rate_per_total_by_kind": error_rate_by_kind,
+        "rate_within_errors": error_rate_within_errors,
+        "details": error_details,
+    }
+
     return {
         "metric": "collector.effect.audit_snapshot",
         "total": total,
-        "effects": effect_flags,
-        "markers": marker_totals,
-        "stage_counts": dict(stage_counts),
-        "kind_counts": dict(kind_counts),
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "stage": stage_summary,
+        "effects": effects_summary,
+        "errors": errors_summary,
+        "cases": cases,
         "schema_versions": sorted(schema_versions),
         "sources": [str(path) for path in paths],
+        "status": "success" if pass_rate == 1.0 else "warning",
     }
 
     pass_rate, pass_fraction = calculate_pass_rates(passed, total)
@@ -4600,6 +4746,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Collect metrics for a specific section (default: all).",
     )
     parser.add_argument(
+        "--module",
+        action="append",
+        dest="modules",
+        help="監査対象のモジュール（例: iter, collector）をメタデータとして記録（繰り返し指定可）。",
+    )
+    parser.add_argument(
         "--case",
         help="Associate the collected metrics with a named case (metadata-only).",
     )
@@ -4683,6 +4835,18 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.prune and not args.summary:
         sys.stderr.write("--prune を使用する場合は --summary でインデックスを指定してください。\n")
         return 2
+
+    module_filters: Optional[List[str]] = None
+    if getattr(args, "modules", None):
+        normalized: Set[str] = set()
+        for value in args.modules:
+            if not value:
+                continue
+            normalized_value = value.strip().lower()
+            if normalized_value:
+                normalized.add(normalized_value)
+        if normalized:
+            module_filters = sorted(normalized)
 
     if args.summary:
         index_path = Path(args.summary)
@@ -5009,6 +5173,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         combined["extra_metrics"] = append_metrics
     if append_sources:
         combined["extra_metrics_sources"] = append_sources
+    if module_filters:
+        combined["modules"] = module_filters
     if platform_filters:
         combined["platform_filters"] = sorted(platform_filters)
     if getattr(args, "case", None):

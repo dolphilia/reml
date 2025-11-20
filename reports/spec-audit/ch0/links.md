@@ -22,7 +22,7 @@
 | `sed -n '150,210p' docs/spec/3-1-core-prelude-iteration.md` | ✅ | `Collector::new`〜`into_inner` の効果タグ/`IntoDiagnostic` 契約を引用し、F0 での効果セット整理に使用。 |
 | `sed -n '150,210p' docs/spec/3-2-core-collections.md` | ✅ | 標準コレクタ（List/Vec/Map/Set/Table）の効果/エラー表を引用し、`CollectError` バリアントの根拠を確認。 |
 | `grep -n 'module = \"Collector\"' docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` | ✅ | `module=\"Collector\"` ブロックに 12 エントリ（トレイト + 標準コレクタ）が登録されていることを確認。 |
-| `python3 tooling/ci/collect-iterator-audit-metrics.py --module iter --section collectors --case wbs-31b-f0 --dry-run` | ✅ / pending | まだ `--module`/`--section collectors` オプションが未実装のため、F0 では期待 CLI 形のみ記録（実行時は `argparse` エラー）。実装完了後に `collector.effect.*` を即時収集する計画。 |
+| `python3 tooling/ci/render-collector-audit-fixtures.py --snapshots compiler/rust/frontend/tests/__snapshots__/core_iter_collectors.snap --output reports/spec-audit/ch1/core_iter_collectors.json --audit-output reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` | ✅ | `core_iter_collectors.snap` から `diagnostics`/監査ログを生成。`collector.effect.*`/`collector.stage.*` を F0 の仕様確認項目と結び付け、`reports/spec-audit/ch1/core_iter_collectors.json` をソース・オブ・トゥルースとして固定。 |
 
 ### Collector F2 実装ログ（WBS 3.1b, W37 前半）
 
@@ -30,7 +30,7 @@
 | --- | --- | --- |
 | `cargo test core_iter_collectors -- --nocapture` | ✅ / pending | `compiler/rust/frontend/tests/core_iter_collectors.rs` に追加する 7 シナリオ（List/Vec/Map/Set/String/Table baseline/duplicate）を `insta` snapshot 化し、Collector 実装の回帰を監視。 |
 | `cargo insta review --review` | ✅ / pending | `core_iter_collectors.snap` を確定し、`prelude.collector.kind`/`effects`/`error_kind` を JSON で固定。 |
-| `tooling/ci/collect-iterator-audit-metrics.py --module iter --section collectors --wbs 3.1b-F2 --output reports/iterator-collector-summary.md` | ✅ / pending | `collector.effect.mem`, `collector.effect.mut`, `collector.error.duplicate_key_rate`, `iterator.stage.audit_pass_rate` を出力。`collect_list_baseline` と `collect_vec_mem_error` の `collector.effect.*` をベースラインとし、`reports/iterator-collector-summary.md` の JSON で `collector.effect.mem=0`/`collector.effect.mem_reservation>0` を検証した上で `0-3-audit-and-metrics.md` に転記。 |
+| `python3 tooling/ci/collect-iterator-audit-metrics.py --section collectors --module iter --case wbs-31b-f2 --source reports/spec-audit/ch1/core_iter_collectors.json --audit-source reports/spec-audit/ch1/core_iter_collectors.audit.jsonl --output reports/iterator-collector-metrics.json` | ✅ | `collector.effect.audit_snapshot` の実データ化に成功（`collector.stage.audit_pass_rate=1.0`、`collector.effect.mem=2/7`、`collector.effect.mut=4/7`、`collector.error.duplicate_key=2`、`collector.error.invalid_encoding=1`、`collector.error.rate_per_total=0.4286`）。出力 JSON を `reports/iterator-collector-metrics.json` として保存し、`reports/iterator-collector-summary.md`／`0-3-audit-and-metrics.md` の KPI と同期。 |
 | `scripts/validate-diagnostic-json.sh --pattern collector` | ✅ / pending | `prelude.collector.*` キーが `reports/diagnostic-format-regression.md` に差分なしで反映されるかを確認。 |
 | `cargo xtask prelude-audit --wbs '3.1b F2'` | ✅ | `Collector` トレイト/コレクタ遍歴を検査し、`trait.*` 6項目・`TableCollector.push`・`ListCollector.new`・`VecCollector.*` を `implemented` と判定し、`collector.effect.*` 監査と KPI 連携を完了した段階を記録。 |
 
@@ -48,7 +48,8 @@
 
 ### Collector F2 監査ログ（WBS 3.1b）
 
-- `tooling/ci/collect-iterator-audit-metrics.py --module iter --section collectors --wbs 3.1b-F2 --output reports/iterator-collector-summary.md` で `collector.effect.mem`/`collector.effect.mut`/`collector.effect.mem_reservation`/`collector.effect.reserve`/`collector.error.*`/`iterator.stage.audit_pass_rate` を収集し、`reports/iterator-collector-summary.md` に `collect_list_baseline` など 7 シナリオの KPI とスナップショットパスを並べて記録した。コマンド出力は `0-3-audit-and-metrics.md` の KPI 表にも同期され、`collector.effect.mem=0`／`collector.stage.audit_pass_rate=1.0`／`collector.error.invalid_encoding=0`（正常系）の目標が満たされていることを確認した。
+- `python3 tooling/ci/render-collector-audit-fixtures.py --snapshots compiler/rust/frontend/tests/__snapshots__/core_iter_collectors.snap --output reports/spec-audit/ch1/core_iter_collectors.json --audit-output reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` で `prelude.collector` スナップショットを診断 JSON（7 ケース）と audit JSONL へ変換し、Stage/Effect/Marker 情報を `AuditEnvelope.metadata.collector.*` に転写した。
+- `python3 tooling/ci/collect-iterator-audit-metrics.py --section collectors --module iter --case wbs-31b-f2 --source reports/spec-audit/ch1/core_iter_collectors.json --audit-source reports/spec-audit/ch1/core_iter_collectors.audit.jsonl --output reports/iterator-collector-metrics.json` を実行し、`collector.stage.audit_pass_rate=1.0`・`collector.effect.mem=2/7`・`collector.effect.mut=4/7`・`collector.effect.mem_reservation=4`・`collector.effect.reserve=2`・`collector.error.duplicate_key=2`・`collector.error.invalid_encoding=1` を採取。`reports/iterator-collector-summary.md` と `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI に同じ数値を貼り付けた。
 - `scripts/validate-diagnostic-json.sh --pattern collector` で `Diagnostic.extensions["prelude.collector.*"]` が `reports/diagnostic-format-regression.md` に差分なしで保存され、`cargo xtask prelude-audit --wbs '3.1b F2'` で `Collector` トレイトおよび `List/Vec/Map/Set/String/Table` API の `rust_status=implemented` を検査したログと結び付いている。
 - `../../../docs/notes/core-library-outline.md#collector-f2-監査ログ` と `../../../docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#collector-f2-監査ログ` にこの `Collector F2` ログのクロスリファレンスを張り、監査ログ（コマンド履歴＋KPI）を M1 レビューで再利用できる形でまとめてある。
 

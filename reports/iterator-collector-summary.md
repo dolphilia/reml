@@ -1,8 +1,16 @@
-# Iterator Collector Summary (2025-11-19)
+# Iterator Collector Summary (2025-11-20)
 
-- **Diagnostics source**: `compiler/rust/frontend/tests/core_iter_collectors.rs` + `collect-iterator-audit-metrics.py --module iter --section collectors`.
-- **Monitored KPI**: `collector.effect.mem`, `collector.effect.mut`, `collector.effect.mem_reservation`, `collector.effect.reserve`, `collector.error.duplicate_key_rate`, `collector.error.invalid_encoding`, `iterator.stage.audit_pass_rate`.
-- **Audit log**: `reports/spec-audit/ch0/collector-YYYYMMDD.json`（F2 snapshot set）までの `prelude.collector` 拡張の値を `reports/spec-audit/ch0/links.md#collector-f2` から参照。
+- **Diagnostics source**: `reports/spec-audit/ch1/core_iter_collectors.json`（`python3 tooling/ci/render-collector-audit-fixtures.py --snapshots compiler/rust/frontend/tests/__snapshots__/core_iter_collectors.snap --output reports/spec-audit/ch1/core_iter_collectors.json --audit-output reports/spec-audit/ch1/core_iter_collectors.audit.jsonl`）。
+- **Metrics command**: `python3 tooling/ci/collect-iterator-audit-metrics.py --section collectors --module iter --case wbs-31b-f2 --source reports/spec-audit/ch1/core_iter_collectors.json --audit-source reports/spec-audit/ch1/core_iter_collectors.audit.jsonl --output reports/iterator-collector-metrics.json`。
+- **Monitored KPI**: `collector.stage.audit_pass_rate`, `collector.effect.mem`, `collector.effect.mut`, `collector.effect.mem_reservation`, `collector.effect.reserve`, `collector.error.duplicate_key`, `collector.error.invalid_encoding`。
+- **Audit log**: `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl`（JSON Lines）と `reports/spec-audit/ch0/links.md#collector-f2` の手順ログを参照。
+- **Metrics artifact**: `reports/iterator-collector-metrics.json` に `collector.effect.audit_snapshot` の集計結果を保存。
+
+## 集計結果（wbs-31b-f2）
+- Stage: `collector.stage.audit_pass_rate = 1.0`（`stage_actual {stable:2, beta:5}`, mismatch 0）。
+- Effects: `collector.effect.mem = 2/7`, `collector.effect.mut = 4/7`, `collector.effect.mem_reservation = 4`, `collector.effect.reserve = 2`, `collector.effect.finish = 4`.
+- Errors: `collector.error.duplicate_key = 2`、`collector.error.invalid_encoding = 1`、`collector.error.rate_per_total = 0.4286`。
+- Schema: `collector.snapshot.v1`。すべてのケースで `AuditEnvelope.metadata.collector.*` を記録。
 
 ### collect_list_baseline
 - Stage: `stable` (`CollectorKind::List` / `IteratorStageProfile::stable`), `collector.stage.audit_pass_rate` target は `1.0`.
