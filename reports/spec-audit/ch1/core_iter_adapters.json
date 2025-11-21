@@ -1,0 +1,50 @@
+{
+  "run_id": "2026-02-21-iter-adapter-g2",
+  "timestamp": "2026-02-21T08:30:00Z",
+  "section": "Iter adapters",
+  "cases": {
+    "flat_map_vec": {
+      "snapshot": "compiler/rust/frontend/tests/snapshots/core_iter_adapters__core_iter_adapters.snap",
+      "diagnostic": "core.iterator.collect",
+      "stage": {
+        "required": "Exact(beta)",
+        "actual": "beta"
+      },
+      "effects": {
+        "mem": true,
+        "mem_reservation_bytes": 3
+      }
+    },
+    "zip_mismatch": {
+      "snapshot": "compiler/rust/frontend/tests/snapshots/core_iter_adapters__core_iter_adapters.snap",
+      "diagnostic": "iterator.error.zip_shorter",
+      "stage": {
+        "required": "Exact(stable)",
+        "actual": "stable"
+      },
+      "effects": {
+        "mut": true,
+        "mem": false
+      }
+    }
+  },
+  "diagnostics": [
+    {
+      "case": "flat_map_vec",
+      "file": "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json",
+      "audit_id": "core.iterator.collect",
+      "effect_labels": {
+        "mem": true,
+        "mem_reservation_bytes": 3
+      }
+    },
+    {
+      "case": "zip_mismatch",
+      "file": "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json",
+      "audit_id": "core.iterator.zip",
+      "extensions": {
+        "iterator.error.zip_shorter": 1
+      }
+    }
+  ]
+}

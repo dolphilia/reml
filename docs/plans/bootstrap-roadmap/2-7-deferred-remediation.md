@@ -463,6 +463,10 @@ Rust 移植計画（P3/P4）で要求される事前準備のうち、Phase 2-7 
 - PARSER-003 Step6 連携: `Core_parse` モジュールのテレメトリ統合と Menhir 完全置換の是非を評価し、`parser.core_comb_rule_coverage` / `parser.packrat_cache_hit_ratio` を利用した監査ダッシュボード拡張を決定する。仕様更新時は `docs/spec/2-2-core-combinator.md` 脚注と `docs/guides/plugin-authoring.md` / `core-parse-streaming.md` の共有手順を再検証する。
 - 効果構文の Stage 遷移: `syntax.effect_construct_acceptance` が 1.0 未満、または CLI/LSP で `-Zalgebraic-effects` の挙動が不一致になった場合は Phase 2-7 のクリティカルリスクとして即時エスカレーションする。Stage 遷移が遅延する場合、Phase 2-8 の仕様凍結に影響するため優先度を再評価する。
 
+### <a id="iterator-adapter-esc"></a>Iter Adapter ESC テンプレート
+- **flat_map メモリ逸脱**: `reports/iterator-flatmap-metrics.json` の `adapter_metrics.flat_map_vec.effects.mem_reservation_bytes` が Phase 3 ベースライン（3 byte）を超過、または `EffectLabels.mem=false` になった場合は `collect-iterator-audit-metrics.py --section iterator --case flat_map --output … --require-success` の再実行で Run-ID を採取し、`docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a / `docs/notes/core-library-outline.md#iter-g2-flat-zip` に逸脱理由と暫定措置を追記する。CI では `cargo test core_iter_adapters -- --include-ignored flat_map_vec` を追加実行し、`prelude_api_inventory.toml` の `Iter.flat_map` 行に `rust_status=pending` を一時設定して管理する。
+- **zip 長さ差診断欠落**: `reports/iterator-zip-metrics.json` の `adapter_metrics.zip_mismatch.iterator.error.zip_shorter` が 0 または `iterator.stage.audit_pass_rate < 1.0` の場合は `scripts/validate-diagnostic-json.sh --pattern iterator.zip reports/spec-audit/ch1/core_iter_adapters.json` を即時実行し、`reports/diagnostic-format-regression.md#iterator.zip_mismatch` に差分を貼り付けて triage。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `iterator.zip.shorter_error_rate` を `ESCALATED` へマークし、修正完了まで `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#iter-adapter` に状態を共有する。
+
 ## 参考資料
 - [2-4-diagnostics-audit-pipeline.md](2-4-diagnostics-audit-pipeline.md)
 - [2-3-to-2-4-handover.md](2-3-to-2-4-handover.md)

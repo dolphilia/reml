@@ -362,3 +362,15 @@
 
 - KPI: `reports/iterator-map-filter-metrics.json` の `adapter_metrics` には `iterator.map.latency_ns = 16750`、`iterator.filter.latency_ns = 2875`、`iterator.filter.predicate_calls = 4` を保存。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `iterator.map.latency` / `iterator.filter.predicate_count` と同期済み。
 - 関連資料: `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a、`docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md` §5、`docs/notes/core-library-outline.md#iter-g1-map-filter`、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`（`Iter.map`/`Iter.filter` 行）。
+
+### <a id="iter-adapters"></a>Iter Adapter G2 flat_map / zip ログ（WBS 3.1c-G2）
+
+| コマンド | 結果 | 備考 |
+| --- | --- | --- |
+| `cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_adapters -- --include-ignored flat_map_vec zip_mismatch` | ✅ | `flat_map_vec`（`EffectLabels::mem_reservation`）と `zip_mismatch`（`iterator.error.zip_shorter`）の 2 ケースを `insta` snapshot（`tests/snapshots/core_iter_adapters__core_iter_adapters.snap`）で再記録。 |
+| `python3 tooling/ci/collect-iterator-audit-metrics.py --section iterator --case flat_map --case zip --output reports/iterator-flatmap-metrics.json --secondary-output reports/iterator-zip-metrics.json --require-success` | ✅ | `iterator.flat_map.mem_reservation` と `iterator.zip.shorter_error_rate` を JSON へ採取。`adapter_metrics.flat_map_vec.effects.mem=true` / `mem_reservation_bytes=3`、`adapter_metrics.zip_mismatch.iterator.error.zip_shorter=1` を記録。 |
+| `scripts/validate-diagnostic-json.sh --pattern iterator.zip --pattern iterator.flat_map reports/spec-audit/ch1/core_iter_adapters.json` | ✅ | `StageRequirement`・`EffectLabels`・`iterator.error.zip_shorter` の拡張フィールドが schema v2.0.0-draft に適合することを再確認。 |
+| `cargo xtask prelude-audit --section iter --filter adapter --strict --baseline docs/spec/3-1-core-prelude-iteration.md --wbs 3.1c-G2` | ✅ | `Iter.flat_map`/`Iter.zip` を含む adapter セクション 12 件を `rust_status=implemented` で通過させ、`reports/spec-audit/ch1/core_iter_adapters.json` の `iterator.adapter.coverage = 1.0` を更新。 |
+
+- KPI: `reports/iterator-flatmap-metrics.json` と `reports/iterator-zip-metrics.json` を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `iterator.flat_map.mem_reservation` / `iterator.zip.shorter_error_rate` に転記。`reports/diagnostic-format-regression.md#iterator.zip_mismatch` と `reports/iterator-stage-summary.md#iter-adapters` に同じ Run-ID（WBS 3.1c-G2）を追記した。
+- 関連資料: `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a G2、`docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md` §6、`docs/notes/core-library-outline.md#iter-g2-flat-zip`、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`（`Iter.flat_map` / `Iter.zip` 行）、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#iterator-adapter-esc`。

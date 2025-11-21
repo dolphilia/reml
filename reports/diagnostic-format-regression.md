@@ -55,3 +55,8 @@
 - `reports/audit/index.json` に Windows/macOS 監査ログ（`reports/audit/phase2-7/*.audit.jsonl`）を登録し、`tooling/ci/verify-audit-metadata.py --index reports/audit/index.json --strict` のローカル実行で `audit`/`timestamp` 欠落が再発しないことを確認した。`tooling/ci/create-audit-index.py` のテスト (`tooling/ci/tests/test_create_audit_index.py`) では index 生成時の `size_bytes`・`pass_rate` を検証している。
 - CLI/LSP/Streaming ゴールデンは `tooling/ci/collect-iterator-audit-metrics.py --require-success` と `scripts/validate-diagnostic-json.sh` の組み合わせで再実行し、`effects.*` / `bridge.*` 拡張に差分が無いことを確認した。結果は `compiler/ocaml/tests/golden/diagnostics/` と `tooling/lsp/tests/client_compat/fixtures/` の再生成ログ、および本ドキュメントのチェックリストに記録した。
 - 監査レポートの参照元を `reports/ffi-bridge-summary.md` / `reports/iterator-stage-summary*.md` から横断できるよう脚注を整理し、H3（ゴールデン拡充）の進捗レビュー結果を `compiler/ocaml/docs/technical-debt.md` に反映した。
+
+### `iterator.zip_mismatch` 差分ログ（WBS 3.1c-G2）
+- コマンド: `cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_adapters -- --include-ignored zip_mismatch` → `scripts/validate-diagnostic-json.sh --pattern iterator.zip reports/spec-audit/ch1/core_iter_adapters.json`。
+- 出力: `reports/spec-audit/ch1/core_iter_adapters.json` の `zip_mismatch` 診断に `extensions.iterator.error.zip_shorter = 1`、`effect.stage.iterator.required = "Exact(stable)"`、`effect.stage.iterator.actual = "stable"` が含まれていることを確認し、`reports/iterator-zip-metrics.json` の `adapter_metrics.zip_mismatch.iterator.error.zip_shorter = 1` と一致させる。
+- レビュー: `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a、`docs/notes/core-library-outline.md#iter-g2-flat-zip`、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#iterator-adapter-esc` に参照ログを残し、zip の長さ差が診断・監査の両面で報告されているか二重チェックする。

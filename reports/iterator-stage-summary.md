@@ -26,3 +26,12 @@
 #### Iter F3 KPI 連携
 - `reports/spec-audit/ch1/iter.json` には `pipeline`/`effects` ケース配列と snapshot パス、`iterator.stage.audit_pass_rate`/`collector.effect.mem` 等の KPI 値を保持。`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `Iter` エントリと連携済み。
 - `reports/spec-audit/ch0/links.md#iterator-f3` に今回の `cargo test` / `collect-iterator-audit-metrics.py` 実行ログを追記し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 記載と同期した。
+
+#### <a id="iter-adapters"></a><a id="flat-map"></a>Iter Adapter G2 (flat_map / zip)
+- 実行コマンド:
+  - `cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_adapters -- --include-ignored flat_map_vec zip_mismatch`
+  - `python3 tooling/ci/collect-iterator-audit-metrics.py --section iterator --case flat_map --case zip --output reports/iterator-flatmap-metrics.json --secondary-output reports/iterator-zip-metrics.json --require-success`
+  - `scripts/validate-diagnostic-json.sh --pattern iterator.flat_map --pattern iterator.zip reports/spec-audit/ch1/core_iter_adapters.json`
+- KPI: `iterator.flat_map.mem_reservation = 3 byte`（`EffectLabels.mem=true`）、`iterator.zip.shorter_error_rate = 1.0`（`iterator.error.zip_shorter = 1/1`）。いずれも Stage 要件 (`Exact(beta)` / `Exact(stable)`) を満たし、`iterator.stage.audit_pass_rate = 1.0` を維持。
+- Snapshots: `compiler/rust/frontend/tests/snapshots/core_iter_adapters__core_iter_adapters.snap`（`flat_map_vec` / `zip_mismatch`）。
+- 連携資料: `reports/spec-audit/ch0/links.md#iter-adapters`, `reports/iterator-flatmap-metrics.json`, `reports/iterator-zip-metrics.json`, `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a, `docs/notes/core-library-outline.md#iter-g2-flat-zip`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#iterator-adapter-esc`.

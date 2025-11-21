@@ -1,0 +1,54 @@
+{
+  "run_id": "2026-02-21-iter-adapter-g2",
+  "section": "iterator",
+  "cases": ["zip_mismatch"],
+  "sources": {
+    "diagnostics": "reports/spec-audit/ch1/core_iter_adapters.json",
+    "snapshots": "compiler/rust/frontend/tests/snapshots/core_iter_adapters__core_iter_adapters.snap"
+  },
+  "metrics": [
+    {
+      "metric": "iterator.zip.shorter_error_rate",
+      "detected": 1,
+      "expected": 1,
+      "status": "pass",
+      "notes": "iterator.error.zip_shorter emitted and recorded in Diagnostic extensions"
+    },
+    {
+      "metric": "iterator.stage.audit_pass_rate",
+      "total": 1,
+      "passed": 1,
+      "pass_rate": 1.0,
+      "required_keys": [
+        "effect.stage.iterator.required",
+        "effect.stage.iterator.actual",
+        "iterator.error.zip_shorter"
+      ]
+    }
+  ],
+  "adapter_metrics": {
+    "zip_mismatch": {
+      "iterator": {
+        "error": {
+          "zip_shorter": 1
+        },
+        "effects": {
+          "mem": false,
+          "mut": true,
+          "debug": false,
+          "async_pending": false,
+          "mem_bytes": 0,
+          "predicate_calls": 0
+        },
+        "stage": {
+          "required": {
+            "mode": "exact",
+            "stage": "stable"
+          },
+          "actual": "stable",
+          "capability": "core.iter.core"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "run_id": "2026-02-21-iter-adapter-g2",
+  "section": "iterator",
+  "cases": ["flat_map_vec"],
+  "sources": {
+    "diagnostics": "reports/spec-audit/ch1/core_iter_adapters.json",
+    "snapshots": "compiler/rust/frontend/tests/snapshots/core_iter_adapters__core_iter_adapters.snap"
+  },
+  "metrics": [
+    {
+      "metric": "iterator.flat_map.mem_reservation",
+      "bytes_reserved": 3,
+      "limit_bytes": 3,
+      "status": "pass",
+      "notes": "StageRequirement::Exact(beta) / EffectLabels.mem = true"
+    },
+    {
+      "metric": "iterator.stage.audit_pass_rate",
+      "total": 1,
+      "passed": 1,
+      "pass_rate": 1.0,
+      "required_keys": [
+        "effect.stage.iterator.required",
+        "effect.stage.iterator.actual",
+        "iterator.effect.mem"
+      ]
+    }
+  ],
+  "adapter_metrics": {
+    "flat_map_vec": {
+      "effects": {
+        "mem": true,
+        "mem_reservation_bytes": 3,
+        "mut": false,
+        "predicate_calls": 0,
+        "debug": false,
+        "async_pending": false
+      },
+      "stage": {
+        "required": {
+          "mode": "exact",
+          "stage": "beta"
+        },
+        "actual": "beta",
+        "capability": "core.iter.core"
+      }
+    }
+  }
+}
