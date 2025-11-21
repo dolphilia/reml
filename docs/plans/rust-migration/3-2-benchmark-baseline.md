@@ -36,6 +36,7 @@
 | `test_simple.reml` | 最小ケース | 同上 | 同上 | smoke テスト |
 | LLVM diff | IR 生成 | `scripts/compare-ir.sh ocaml rust --mode bench` | 同コマンド | `tooling/ci/compare-ir.py` と連携 |
 | CLI render | 診断文字列 | `scripts/benchmark-diagnostic.sh --frontend ocaml` | `--frontend rust` | 新規スクリプトを追加 |
+| Iter buffered | `Iter::buffered` アダプタ + `collect_vec`（backpressure/メモリ測定） | `cargo bench -p compiler-ocaml-frontend iter_buffered` (暫定) | `cargo bench -p compiler-rust-frontend iter_buffered -- warmup-time 3 --measurement-time 10` | KPI: `iterator.mem.window`（`reports/iterator-buffered-metrics.json`）と `windows_per_sec`（`reports/benchmarks/iter_buffered-YYYY-MM-DD.json`）。±10% 以内であれば合格。 |
 
 Rust 実装向けに `compiler/rust/benchmarks/` を作成し、OCaml スイートと同じ入力を利用する。ベンチ実行時は `cargo run --bin remlc -- --frontend rust ...` を内部で呼び出し、差分を `reports/benchmarks/dual` に保存する。
 

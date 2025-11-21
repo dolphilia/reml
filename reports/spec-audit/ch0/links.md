@@ -374,3 +374,15 @@
 
 - KPI: `reports/iterator-flatmap-metrics.json` と `reports/iterator-zip-metrics.json` を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `iterator.flat_map.mem_reservation` / `iterator.zip.shorter_error_rate` に転記。`reports/diagnostic-format-regression.md#iterator.zip_mismatch` と `reports/iterator-stage-summary.md#iter-adapters` に同じ Run-ID（WBS 3.1c-G2）を追記した。
 - 関連資料: `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a G2、`docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md` §6、`docs/notes/core-library-outline.md#iter-g2-flat-zip`、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`（`Iter.flat_map` / `Iter.zip` 行）、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#iterator-adapter-esc`。
+
+### <a id="iter-buffered"></a>Iter Adapter G3 buffered/backpressure ログ（WBS 3.1c-G3）
+
+| コマンド | 結果 | 備考 |
+| --- | --- | --- |
+| `cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_adapters -- --include-ignored buffered_window` | ✅ | `buffered_window` ケースを `insta` snapshot（`tests/snapshots/core_iter_adapters__core_iter_adapters.snap`）で再取得。`EffectLabels.mem_bytes = 2` / `IteratorStageProfile.required = Exact("experimental")` を確認。 |
+| `cargo bench -p compiler-rust-frontend iter_buffered -- warmup-time 3 --measurement-time 10 --bench iter_buffered` | ✅ | Criterion ベンチを実行し、`reports/benchmarks/iter_buffered-2027-02-22.json` に `windows_per_sec = 1.89e6` / `delta_pct = +0.038`（±10% 以内）を記録。 |
+| `python3 tooling/ci/collect-iterator-audit-metrics.py --section iterator --case buffered --output reports/iterator-buffered-metrics.json --require-success` | ✅ | `iterator.mem.window.bytes = 2`、`iterator.mem.window.backpressure = 0.33`、`adapter_metrics.buffered_window.effects.mem_bytes = 2`、`backpressure = {produced: 6, consumed: 4, dropped: 2}` を採取。 |
+| `scripts/validate-diagnostic-json.sh --pattern iterator.buffered reports/spec-audit/ch1/core_iter_adapters.json` | ✅ | `EffectLabels.mem_bytes` / `iterator.backpressure.*` の拡張が schema v2.0.0-draft と整合していることを確認。 |
+
+- KPI: `reports/iterator-buffered-metrics.json` と `reports/benchmarks/iter_buffered-2027-02-22.json` を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `iterator.mem.window` に転記し、`iterator.mem.window.bytes = 2` / `iterator.mem.window.backpressure = 0.33` / `delta_pct = +0.038` を記録。`reports/iterator-stage-summary.md#iter-buffered` と `reports/spec-audit/ch1/iter.json` の KPI に同じ Run-ID (`2027-02-22-iter-adapter-g3`) を付与した。
+- 関連資料: `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a G3、`docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md` §5、`docs/notes/core-library-outline.md#iter-g3-buffered-backpressure`、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`（`Iter.buffered` 行）、`docs/plans/rust-migration/3-2-benchmark-baseline.md` §3.2.4。

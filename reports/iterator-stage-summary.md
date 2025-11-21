@@ -35,3 +35,13 @@
 - KPI: `iterator.flat_map.mem_reservation = 3 byte`（`EffectLabels.mem=true`）、`iterator.zip.shorter_error_rate = 1.0`（`iterator.error.zip_shorter = 1/1`）。いずれも Stage 要件 (`Exact(beta)` / `Exact(stable)`) を満たし、`iterator.stage.audit_pass_rate = 1.0` を維持。
 - Snapshots: `compiler/rust/frontend/tests/snapshots/core_iter_adapters__core_iter_adapters.snap`（`flat_map_vec` / `zip_mismatch`）。
 - 連携資料: `reports/spec-audit/ch0/links.md#iter-adapters`, `reports/iterator-flatmap-metrics.json`, `reports/iterator-zip-metrics.json`, `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a, `docs/notes/core-library-outline.md#iter-g2-flat-zip`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#iterator-adapter-esc`.
+
+#### <a id="iter-buffered"></a>Iter Adapter G3 (buffered/backpressure)
+- 実行コマンド:
+  - `cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_adapters -- --include-ignored buffered_window`
+  - `cargo bench -p compiler-rust-frontend iter_buffered -- warmup-time 3 --measurement-time 10`
+  - `python3 tooling/ci/collect-iterator-audit-metrics.py --section iterator --case buffered --output reports/iterator-buffered-metrics.json --require-success`
+  - `scripts/validate-diagnostic-json.sh --pattern iterator.buffered reports/spec-audit/ch1/core_iter_adapters.json`
+- KPI: `iterator.mem.window.bytes = 2`、`iterator.mem.window.backpressure = 0.33`（`reports/iterator-buffered-metrics.json`）、`windows_per_sec = 1.89e6` / `delta_pct = +0.038`（`reports/benchmarks/iter_buffered-2027-02-22.json`）。`StageRequirement = Exact("experimental")` を満たし、`iterator.stage.audit_pass_rate = 1.0` を維持。
+- Snapshots: `compiler/rust/frontend/tests/snapshots/core_iter_adapters__core_iter_adapters.snap`（`buffered_window`） / `reports/spec-audit/ch1/iterator.buffered.diagnostics.json`。
+- 連携資料: `reports/spec-audit/ch0/links.md#iter-buffered`, `reports/iterator-buffered-metrics.json`, `reports/benchmarks/iter_buffered-2027-02-22.json`, `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a, `docs/notes/core-library-outline.md#iter-g3-buffered-backpressure`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`, `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md#iterator-adapter-esc`.

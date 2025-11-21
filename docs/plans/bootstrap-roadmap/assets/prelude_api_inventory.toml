@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2026-02-21 / WBS 3.1c-G2 (flat_map/zip stage)"
+last_updated = "2027-02-22 / WBS 3.1c-G3 (buffered/backpressure)"
 maintainer = "Core Library Team"
 
 [[api]]
@@ -393,10 +393,10 @@ wbs = "3.1c Step3"
 module = "Iter"
 name = "buffered"
 effect = "effect {mem}"
-stage = "beta"
+stage = "experimental"
 rust_status = "implemented"
 ocaml_status = "typeck-only"
-notes = "Rust: iter/adapters.rs::buffered / Test: core_iter_adapters.rs::iter_buffered_sets_mem_effects がメモリ効果ラベルと容量を監視。"
+notes = "Rust: compiler/rust/runtime/src/prelude/iter/adapters/buffered.rs（リングバッファ + backpressure 計測） / Test: compiler/rust/frontend/tests/core_iter_adapters.rs::buffered_window（snapshot: tests/snapshots/core_iter_adapters__core_iter_adapters.snap）。KPI: reports/iterator-buffered-metrics.json（iterator.mem.window.bytes = 2, backpressure = 0.33）・reports/benchmarks/iter_buffered-2027-02-22.json（+3.8% で ±10% 以内）。"
 wbs = "3.1c Step3"
 
 [[api]]

@@ -24,7 +24,12 @@
             "mem_bytes": 0,
             "predicate_calls": 0
           },
-          "value_example": [1, 2, 3, 4]
+          "value_example": [
+            1,
+            2,
+            3,
+            4
+          ]
         },
         {
           "name": "map_filter_vec",
@@ -39,7 +44,11 @@
             "mem_bytes": 0,
             "predicate_calls": 1
           },
-          "value_example": [20, 30, 40]
+          "value_example": [
+            20,
+            30,
+            40
+          ]
         },
         {
           "name": "zip_collect_list",
@@ -55,9 +64,18 @@
             "predicate_calls": 0
           },
           "value_example": [
-            [1, "red"],
-            [2, "green"],
-            [3, "blue"]
+            [
+              1,
+              "red"
+            ],
+            [
+              2,
+              "green"
+            ],
+            [
+              3,
+              "blue"
+            ]
           ]
         },
         {
@@ -73,7 +91,13 @@
             "mem_bytes": 2,
             "predicate_calls": 0
           },
-          "value_example": [0, 1, 2, 3, 4]
+          "value_example": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
         },
         {
           "name": "from_iter_and_into_iter",
@@ -88,7 +112,11 @@
             "mem_bytes": 0,
             "predicate_calls": 0
           },
-          "std_into_iter": [20, 21, 22]
+          "std_into_iter": [
+            20,
+            21,
+            22
+          ]
         },
         {
           "name": "try_collect_success",
@@ -103,7 +131,12 @@
             "mem_bytes": 0,
             "predicate_calls": 0
           },
-          "value_example": [1, 2, 3, 4]
+          "value_example": [
+            1,
+            2,
+            3,
+            4
+          ]
         }
       ]
     },
@@ -171,8 +204,11 @@
     "iterator.stage.audit_pass_rate": 1.0,
     "collector.effect.mem": 0,
     "collector.error.invalid_encoding": 0,
-    "collector.error.duplicate_key": 1
+    "collector.error.duplicate_key": 1,
+    "iterator.mem.window.bytes": 2,
+    "iterator.mem.window.backpressure": 0.33,
+    "iterator.mem.window.delta_pct": 0.038
   },
   "strict_exit_code": 0,
-  "notes": "Snapshots: compiler/rust/frontend/tests/snapshots/core_iter_pipeline__core_iter_pipeline.snap および core_iter_effects__*.snap。KPI は reports/iterator-stage-summary.md / reports/iterator-stage-metrics.json / docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md に転記。"
+  "notes": "Snapshots: compiler/rust/frontend/tests/snapshots/core_iter_pipeline__core_iter_pipeline.snap および core_iter_effects__*.snap。KPI は reports/iterator-stage-summary.md / reports/iterator-stage-metrics.json / docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md に転記。 Run-ID 2027-02-22-iter-adapter-g3: iterator.mem.window bytes/backpressure recorded in reports/iterator-buffered-metrics.json and reports/benchmarks/iter_buffered-2027-02-22.json."
 }

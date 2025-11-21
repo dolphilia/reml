@@ -1,0 +1,64 @@
+{
+  "run_id": "2027-02-22-iter-adapter-g3",
+  "section": "iterator",
+  "cases": ["buffered_window"],
+  "sources": {
+    "diagnostics": "reports/spec-audit/ch1/iterator.buffered.diagnostics.json",
+    "snapshots": "compiler/rust/frontend/tests/snapshots/core_iter_adapters__core_iter_adapters.snap",
+    "benchmark": "reports/benchmarks/iter_buffered-2027-02-22.json"
+  },
+  "metrics": [
+    {
+      "metric": "iterator.mem.window.bytes",
+      "value": 2,
+      "status": "pass",
+      "notes": "EffectLabels.mem_bytes from buffered_window snapshot"
+    },
+    {
+      "metric": "iterator.mem.window.backpressure",
+      "produced": 6,
+      "consumed": 4,
+      "dropped": 2,
+      "ratio": 0.33,
+      "threshold": 0.5,
+      "status": "pass"
+    },
+    {
+      "metric": "iterator.stage.audit_pass_rate",
+      "total": 1,
+      "passed": 1,
+      "pass_rate": 1.0,
+      "required_keys": [
+        "effect.stage.iterator.required",
+        "effect.stage.iterator.actual",
+        "iterator.backpressure"
+      ]
+    }
+  ],
+  "adapter_metrics": {
+    "buffered_window": {
+      "effects": {
+        "mem": true,
+        "mem_bytes": 2,
+        "mut": false,
+        "predicate_calls": 0,
+        "debug": false,
+        "async_pending": false
+      },
+      "stage": {
+        "required": {
+          "mode": "exact",
+          "stage": "experimental"
+        },
+        "actual": "experimental",
+        "capability": "core.iter.core"
+      },
+      "backpressure": {
+        "produced": 6,
+        "consumed": 4,
+        "dropped": 2,
+        "ratio": 0.33
+      }
+    }
+  }
+}

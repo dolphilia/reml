@@ -1,0 +1,20 @@
+{
+  "suite": "iter_buffered",
+  "timestamp": "2027-02-22T08:50:00Z",
+  "benchmark": "iter_buffered_window",
+  "baseline": {
+    "source": "reports/benchmarks/history/phase2/iter_buffered-2026-12-15.json",
+    "windows_per_sec": 1820000.0,
+    "mem_bytes_per_window": 2
+  },
+  "candidate": {
+    "source": "cargo bench -p compiler-rust-frontend iter_buffered",
+    "windows_per_sec": 1890000.0,
+    "mem_bytes_per_window": 2,
+    "backpressure_ratio": 0.33
+  },
+  "delta": 70000.0,
+  "delta_pct": 0.038,
+  "status": "pass",
+  "notes": "G3 buffered/backpressure KPI。delta_pct ±0.10 以内かつ mem_bytes_per_window に変化なし。"
+}

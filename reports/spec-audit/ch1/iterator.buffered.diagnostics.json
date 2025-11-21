@@ -1,0 +1,57 @@
+{
+  "diagnostics": [
+    {
+      "severity": "info",
+      "message": "Iterator stage snapshot (buffered_window)",
+      "schema_version": "2.0.0-draft",
+      "location": {
+        "file": "iter_buffered.reml",
+        "line": 5,
+        "column": 3,
+        "endLine": 8,
+        "endColumn": 20
+      },
+      "code": "typeclass.iterator.stage_mismatch",
+      "codes": [
+        "typeclass.iterator.stage_mismatch"
+      ],
+      "domain": "type",
+      "timestamp": "2027-02-22T08:40:00Z",
+      "notes": [
+        "case=buffered_window",
+        "stage.required=exact:experimental",
+        "stage.actual=experimental",
+        "capability=core.iter.core"
+      ],
+      "extensions": {
+        "diagnostic.v2": {
+          "timestamp": "2027-02-22T08:40:00Z",
+          "codes": [
+            "typeclass.iterator.stage_mismatch"
+          ]
+        },
+        "effect_labels": {
+          "mem": true,
+          "mem_bytes": 2,
+          "async_pending": false,
+          "debug": false,
+          "mut": false
+        },
+        "iterator": {
+          "name": "buffered_window",
+          "backpressure": {
+            "produced": 6,
+            "consumed": 4,
+            "dropped": 2,
+            "ratio": 0.33
+          },
+          "stage": {
+            "required": "Exact(experimental)",
+            "actual": "experimental",
+            "capability": "core.iter.core"
+          }
+        }
+      }
+    }
+  ]
+}
