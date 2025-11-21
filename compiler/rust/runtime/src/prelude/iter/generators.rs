@@ -37,7 +37,7 @@ impl<T> Iter<T> {
         F: FnMut() -> Option<T> + Send + 'static,
     {
         let mut generator = generator;
-        let driver = IterDriver::stepper(move || match generator() {
+        let driver = IterDriver::stepper(move |_effects| match generator() {
             Some(value) => IterStep::Ready(value),
             None => IterStep::Finished,
         });
@@ -64,7 +64,7 @@ impl<T> Iter<T> {
     where
         T: Clone + Send + 'static,
     {
-        let driver = IterDriver::stepper(move || IterStep::Ready(value.clone()));
+        let driver = IterDriver::stepper(move |_effects| IterStep::Ready(value.clone()));
         build_iter(
             "Iter::repeat",
             IteratorKind::CoreIter,
@@ -80,7 +80,7 @@ impl<T> Iter<T> {
         F: FnMut(S) -> Option<(T, S)> + Send + 'static,
     {
         let mut slot = Some(state);
-        let driver = IterDriver::stepper(move || match slot.take() {
+        let driver = IterDriver::stepper(move |_effects| match slot.take() {
             Some(state) => match f(state) {
                 Some((value, next_state)) => {
                     slot = Some(next_state);
@@ -106,7 +106,7 @@ impl<T> Iter<T> {
         F: FnMut(S) -> Result<Option<(T, S)>, E> + Send + 'static,
     {
         let mut slot = Some(state);
-        let driver = IterDriver::stepper(move || match slot.take() {
+        let driver = IterDriver::stepper(move |_effects| match slot.take() {
             Some(state) => match f(state) {
                 Ok(Some((value, next_state))) => {
                     slot = Some(next_state);
@@ -132,7 +132,7 @@ impl Iter<i64> {
         let step = if step == 0 { 1 } else { step };
         let increasing = step > 0;
         let mut current = start;
-        let driver = IterDriver::stepper(move || {
+        let driver = IterDriver::stepper(move |_effects| {
             if increasing && current > end {
                 return IterStep::Finished;
             }

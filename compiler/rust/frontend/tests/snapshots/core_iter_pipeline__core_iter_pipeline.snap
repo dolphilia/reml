@@ -1,6 +1,6 @@
 ---
 source: tests/core_iter_pipeline.rs
-assertion_line: 162
+assertion_line: 168
 expression: cases
 ---
 - case: list_roundtrip
@@ -69,14 +69,14 @@ expression: cases
     mem: false
     mem_bytes: 0
     mutating: true
-    predicate_calls: 1
+    predicate_calls: 4
   stage:
-    actual: beta
+    actual: stable
     capability: core.iter.core
     kind: core_iter
     required:
-      mode: at_least
-      stage: beta
+      mode: exact
+      stage: stable
     source: "core_iter_pipeline::map_filter_vec"
   value:
     - 20

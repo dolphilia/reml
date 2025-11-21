@@ -59,9 +59,12 @@ fn render_collector(audit: &CollectorAuditTrail) -> serde_json::Value {
 }
 
 fn render_list_case(case: &str, iter: Iter<i64>) -> serde_json::Value {
+    let outcome = iter
+        .clone()
+        .collect_list()
+        .expect("ListCollector should not fail");
     let stage = iter.stage_snapshot(format!("core_iter_pipeline::{case}"));
     let effects = iter.effect_labels();
-    let outcome = iter.collect_list().expect("ListCollector should not fail");
     let (list, audit) = outcome.into_parts();
     json!({
         "case": case,
@@ -77,9 +80,12 @@ fn render_vec_case<T>(
     iter: Iter<T>,
     mut value_renderer: impl FnMut(Vec<T>) -> serde_json::Value,
 ) -> serde_json::Value {
+    let outcome = iter
+        .clone()
+        .collect_vec()
+        .expect("VecCollector should not fail");
     let stage = iter.stage_snapshot(format!("core_iter_pipeline::{case}"));
     let effects = iter.effect_labels();
-    let outcome = iter.collect_vec().expect("VecCollector should not fail");
     let (vec, audit) = outcome.into_parts();
     json!({
         "case": case,

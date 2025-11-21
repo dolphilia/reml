@@ -46,13 +46,13 @@
 
 ### <a id="iter-g1-map-filter"></a>Iter G1 map/filter 監査ログ（WBS 3.1c-G1）
 
-- 目的: `IterState::adapter` を介した `map`/`filter` の再実装を Stage/Effect 計測と合わせて立ち上げ、`collect-iterator-audit-metrics.py` から `EffectLabels::predicate_calls`・`EffectLabels::residual` を収集できるようにする（参照: `../plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a G1）。
+- 目的: `IterState::adapter` を介した `map`/`filter` の再実装を Stage/Effect 計測と合わせて立ち上げ、`collect-iterator-audit-metrics.py` から `EffectLabels::predicate_calls` を収集できるようにする（参照: `../plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a G1）。
 - コマンド手順:
   1. `cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_adapters -- --nocapture map_pipeline filter_effect map_filter_chain_panic_guard`
   2. `python3 tooling/ci/collect-iterator-audit-metrics.py --section iterator --case map --case filter --output reports/iterator-map-filter-metrics.json --require-success`
   3. `scripts/validate-diagnostic-json.sh --pattern iterator.map --pattern iterator.filter` を同じジョブで実行し、`reports/diagnostic-format-regression.md` へ差分が無いまま保存する。
   4. `cargo xtask prelude-audit --section iter --filter adapter --strict --baseline docs/spec/3-1-core-prelude-iteration.md` で `Iter.map`/`Iter.filter` の `rust_status` を検証する。
-- 証跡の保存先: `../../reports/spec-audit/ch0/links.md#iter-g1-map-filter`（コマンド＆KPI ログ）、`../../reports/iterator-map-filter-metrics.json`（`adapter_metrics.map_pipeline.latency_ns=16750`、`adapter_metrics.filter_effect.effects.predicate_calls=1`）、`../../reports/spec-audit/ch1/iterator.map-filter.diagnostics.json`（map/filter 専用診断スナップショット）。
+- 証跡の保存先: `../../reports/spec-audit/ch0/links.md#iter-g1-map-filter`（コマンド＆KPI ログ）、`../../reports/iterator-map-filter-metrics.json`（`adapter_metrics.map_pipeline.latency_ns=16750`、`adapter_metrics.filter_effect.effects.predicate_calls=4` / `stage.actual = "stable"`）、`../../reports/spec-audit/ch1/iterator.map-filter.diagnostics.json`（map/filter 専用診断スナップショット）。
 - 文書更新: `../plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `Iter.map`/`Iter.filter` 行へ KPI とテスト名を追記し、`../plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `iterator.map.latency` / `iterator.filter.predicate_count` を追加。`../plans/bootstrap-roadmap/3-0-phase3-self-host.md` §3.0.3a から本節へリンクして Phase 3 M1 判定資料を共有する。
 
 ### Iter F1 生成 API 監査ログ（WBS 3.1c-F1）

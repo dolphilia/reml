@@ -89,6 +89,7 @@
 - `compiler/rust/frontend/tests/core_iter_pipeline.rs` と `core_iter_effects.rs` を新設し、`Iter::from_list |> Iter::map |> Iter.collect_list`、`Iter::from_result |> Iter::try_collect`、`Iter::buffered` の効果タグを `insta` snapshot で固定。`scripts/validate-diagnostic-json.sh --pattern iterator` をテストと同じジョブで実行する。
 - 生成した snapshot / JSON / CLI ログを `reports/spec-audit/ch0/links.md#iter-f3` に追記し、`collect-iterator-audit-metrics.py --section iterator --case pipeline` のコマンド列を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI セクションへ引用する。
 - `docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md` で定義した Remediation Step3 の「Iter/Collector 実装」チェックリストを転記し、後工程（Collector/Adapter）で参照できるようアップデートする。
+- 2026-02-18 更新: `IterDriver::stepper` が `EffectSet` を受け取るよう拡張し、`AdapterPlan`（`compiler/rust/runtime/src/prelude/iter/adapters/{mod,map,filter}.rs`）を導入。これにより `EffectLabels::predicate_calls` や `effect {pending}` を実行時に加算できるようになり、`core_iter_pipeline.rs` と `core_iter_adapters.rs` の snapshot（`tests/snapshots/core_iter_pipeline__core_iter_pipeline.snap` / `core_iter_adapters__core_iter_adapters.snap`）で Stage/Effect の結果を固定済み。
 
 #### 3.b Collector 実装ロードマップ（W36 後半〜W37）
 `docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md` の手順 1〜3 を本節に織り込み、Collector 実装と監査ログを同時進行で整備する。WBS/F タスクは次表の通り。
@@ -135,11 +136,12 @@
 - `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `Iter.map`/`Iter.filter` 行へ `rust_status = "working"` とテスト名を追記し、完了時に `implemented` へ遷移させる。
 
 ###### G1 実施タスクリストと成果物
-- `compiler/rust/runtime/src/prelude/iter/adapters/map.rs` / `filter.rs` を追加し、`IterState::adapter` から `AdapterPlan` を経由して `IteratorStageProfile` を更新する。`EffectLabels::predicate_calls`・`EffectLabels::residual` を `collect-iterator-audit-metrics.py --section iterator --case map|filter --output reports/iterator-map-filter-metrics.json` で採取し、`reports/spec-audit/ch0/links.md#iter-g1-map-filter` へリンクする。
+- `compiler/rust/runtime/src/prelude/iter/adapters/map.rs` / `filter.rs` を追加し、`IterState::adapter` から `AdapterPlan` を経由して `IteratorStageProfile` を更新する。`EffectLabels::predicate_calls` を `collect-iterator-audit-metrics.py --section iterator --case map|filter --output reports/iterator-map-filter-metrics.json` で採取し、`reports/spec-audit/ch0/links.md#iter-g1-map-filter` へリンクする。
 - `compiler/rust/frontend/tests/core_iter_adapters.rs` に `map_pipeline` / `filter_effect` / `map_filter_chain_panic_guard` を追加し、`cargo test core_iter_adapters -- --nocapture` と `cargo insta review` のログを `reports/spec-audit/ch1/core_iter_adapters.json` へ保存する。同ジョブで `scripts/validate-diagnostic-json.sh --pattern iterator.map --pattern iterator.filter` を実行し、`reports/diagnostic-format-regression.md` に差分なしで反映する。
 - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `iterator.map.latency`（`Iter::from_list |> map |> collect_vec`）と `iterator.filter.predicate_count`（`filter` の `predicate_calls` 期待値）を KPI として追記し、Nightly 実行の集計結果を貼り付ける。逸脱が発生した場合は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へフォローアップを記載する。
 - `docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md` §4 と `docs/notes/core-library-outline.md#iter-g1-map-filter` に G1 手順・スナップショットファイル・コマンド履歴をまとめ、Phase 3-2 の Adapter 拡張作業から参照できるようにする。
 - `prelude_api_inventory.toml` の `Iter.map`/`Iter.filter` へ KPI・テスト名・効果タグの記録方法を追加し、更新内容を `docs-migrations.log` に「WBS 3.1c-G1 map/filter 立ち上げ」として残して監査証跡を確保する。
+- 2026-02-18 更新: 上記タスクリストは `compiler/rust/runtime/src/prelude/iter/adapters/{map,filter}.rs`・`compiler/rust/frontend/tests/snapshots/core_iter_adapters__core_iter_adapters.snap`・`reports/iterator-map-filter-metrics.json` で完了済み。`iterator.filter.predicate_count` は `filter_effect` ケースで 4 を記録し、Stage は `Exact(\"stable\")` へ移行した。
 
 ###### G2: flat_map / zip Stage 適用（W38 前半）
 - `flat_map` 用にネストした `IterSeed` を `iter/adapters/flat_map.rs` へ実装し、中間バッファの確保時に `EffectLabels::mem_reservation` を積算する。`core_iter_adapters.rs::flat_map_vec` で `iterator.effect.mem` スナップショットを取得する。

@@ -26,7 +26,7 @@ pub use generators::*;
 mod adapters;
 
 /// 遅延列 `Iter<T>` の共有ハンドル。
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 #[must_use = "Iter は遅延列のため、終端操作を呼び出して結果を利用してください"]
 pub struct Iter<T> {
     core: Arc<IterCore<T>>,
@@ -41,6 +41,14 @@ pub struct IterIntoIterator<T> {
 #[derive(Debug)]
 struct IterCore<T> {
     state: Mutex<IterState<T>>,
+}
+
+impl<T> Clone for Iter<T> {
+    fn clone(&self) -> Self {
+        Self {
+            core: Arc::clone(&self.core),
+        }
+    }
 }
 
 impl<T> Iter<T> {
@@ -396,7 +404,7 @@ impl<T> IterState<T> {
     }
 
     fn next_step(&mut self) -> IterStep<T> {
-        self.driver.next_step()
+        self.driver.next_step(&mut self.effects)
     }
 }
 
@@ -635,6 +643,18 @@ impl IteratorStageProfile {
         }
     }
 
+    /// Stage 要件を上書きする。
+    pub fn with_requirement(mut self, requirement: StageRequirement) -> Self {
+        self.requirement = requirement;
+        self
+    }
+
+    /// 実際の Stage を指定する。
+    pub fn with_actual(mut self, actual: &'static str) -> Self {
+        self.actual = actual;
+        self
+    }
+
     /// 診断/監査向けのキーを生成する。
     pub fn snapshot(&self, source: impl Into<String>) -> IteratorStageSnapshot {
         IteratorStageSnapshot {
@@ -676,6 +696,30 @@ impl EffectSet {
         mem_bytes: 0,
         predicate_calls: 0,
     };
+
+    pub fn mark_mut(&mut self) {
+        self.bits |= Self::MUT_BIT;
+    }
+
+    pub fn mark_mem(&mut self) {
+        self.bits |= Self::MEM_BIT;
+    }
+
+    pub fn mark_debug(&mut self) {
+        self.bits |= Self::DEBUG_BIT;
+    }
+
+    pub fn mark_pending(&mut self) {
+        self.bits |= Self::PENDING_BIT;
+    }
+
+    pub fn record_predicate_call(&mut self) {
+        self.predicate_calls = self.predicate_calls.saturating_add(1);
+    }
+
+    pub fn record_mem_bytes(&mut self, bytes: usize) {
+        self.mem_bytes = self.mem_bytes.saturating_add(bytes);
+    }
 
     pub fn with_mut(self) -> Self {
         Self {
@@ -778,7 +822,7 @@ pub struct EffectLabels {
 
 pub(crate) enum IterDriver<T> {
     Static(VecDeque<T>),
-    Stepper(Box<dyn FnMut() -> IterStep<T> + Send + 'static>),
+    Stepper(Box<dyn FnMut(&mut EffectSet) -> IterStep<T> + Send + 'static>),
     Empty,
 }
 
@@ -799,18 +843,18 @@ impl<T> IterDriver<T> {
 
     fn stepper<F>(f: F) -> Self
     where
-        F: FnMut() -> IterStep<T> + Send + 'static,
+        F: FnMut(&mut EffectSet) -> IterStep<T> + Send + 'static,
     {
         Self::Stepper(Box::new(f))
     }
 
-    fn next_step(&mut self) -> IterStep<T> {
+    fn next_step(&mut self, effects: &mut EffectSet) -> IterStep<T> {
         match self {
             IterDriver::Static(buffer) => buffer
                 .pop_front()
                 .map(IterStep::Ready)
                 .unwrap_or(IterStep::Finished),
-            IterDriver::Stepper(stepper) => (stepper)(),
+            IterDriver::Stepper(stepper) => (stepper)(effects),
             IterDriver::Empty => IterStep::Finished,
         }
     }

@@ -390,16 +390,16 @@
         "mem": false,
         "mem_bytes": 0,
         "mutating": true,
-        "predicate_calls": 1
+        "predicate_calls": 4
       },
       "latency_ns": 2625,
       "stage": {
-        "actual": "beta",
+        "actual": "stable",
         "capability": "core.iter.core",
         "kind": "core_iter",
         "required": {
-          "mode": "at_least",
-          "stage": "beta"
+          "mode": "exact",
+          "stage": "stable"
         },
         "source": "iter.filter_effect"
       }
@@ -410,17 +410,17 @@
         "debug": false,
         "mem": false,
         "mem_bytes": 0,
-        "mutating": true,
+        "mutating": false,
         "predicate_calls": 0
       },
       "latency_ns": 15500,
       "stage": {
-        "actual": "beta",
+        "actual": "stable",
         "capability": "core.iter.core",
         "kind": "core_iter",
         "required": {
-          "mode": "at_least",
-          "stage": "beta"
+          "mode": "exact",
+          "stage": "stable"
         },
         "source": "iter.map_pipeline"
       }

@@ -1,18 +1,21 @@
 use std::collections::VecDeque;
 
+mod filter;
+mod map;
+
 use super::{
     BufferStrategy, EffectSet, Iter, IterDriver, IterError, IterSource, IterStep,
     IteratorStageProfile,
 };
 
-pub(crate) struct IteratorAdapter<T> {
+pub(super) struct AdapterPlan<T> {
     label: &'static str,
     stage: IteratorStageProfile,
     effects: EffectSet,
     driver: IterDriver<T>,
 }
 
-impl<T> IteratorAdapter<T> {
+impl<T> AdapterPlan<T> {
     pub(crate) fn new(
         label: &'static str,
         stage: IteratorStageProfile,
@@ -28,7 +31,7 @@ impl<T> IteratorAdapter<T> {
     }
 
     pub(crate) fn build(self) -> Iter<T> {
-        let IteratorAdapter {
+        let AdapterPlan {
             label,
             stage,
             effects,
@@ -44,47 +47,6 @@ impl<T> IteratorAdapter<T> {
 }
 
 impl<T> Iter<T> {
-    pub fn map<U, F>(self, mut f: F) -> Iter<U>
-    where
-        F: FnMut(T) -> U + Send + 'static,
-        T: Send + 'static,
-        U: Send + 'static,
-    {
-        let (stage_profile, effects) = self.metadata_for_adapter();
-        let effects = effects.with_mut();
-        let source = self;
-        let driver = IterDriver::stepper(move || match source.next_step() {
-            IterStep::Ready(value) => IterStep::Ready(f(value)),
-            IterStep::Pending => IterStep::Pending,
-            IterStep::Finished => IterStep::Finished,
-            IterStep::Error(err) => IterStep::Error(err),
-        });
-        IteratorAdapter::new("Iter::map", stage_profile, effects, driver).build()
-    }
-
-    pub fn filter<F>(self, mut predicate: F) -> Iter<T>
-    where
-        F: FnMut(&T) -> bool + Send + 'static,
-        T: Send + 'static,
-    {
-        let (stage_profile, effects) = self.metadata_for_adapter();
-        let effects = effects.with_mut().with_predicate_calls(1);
-        let source = self;
-        let driver = IterDriver::stepper(move || loop {
-            match source.next_step() {
-                IterStep::Ready(value) => {
-                    if predicate(&value) {
-                        return IterStep::Ready(value);
-                    }
-                }
-                IterStep::Pending => return IterStep::Pending,
-                IterStep::Finished => return IterStep::Finished,
-                IterStep::Error(err) => return IterStep::Error(err),
-            }
-        });
-        IteratorAdapter::new("Iter::filter", stage_profile, effects, driver).build()
-    }
-
     pub fn filter_map<U, F>(self, mut f: F) -> Iter<U>
     where
         F: FnMut(T) -> Option<U> + Send + 'static,
@@ -94,7 +56,7 @@ impl<T> Iter<T> {
         let (stage_profile, effects) = self.metadata_for_adapter();
         let effects = effects.with_mut().with_predicate_calls(1);
         let source = self;
-        let driver = IterDriver::stepper(move || loop {
+        let driver = IterDriver::stepper(move |_effects| loop {
             match source.next_step() {
                 IterStep::Ready(value) => {
                     if let Some(mapped) = f(value) {
@@ -106,7 +68,7 @@ impl<T> Iter<T> {
                 IterStep::Error(err) => return IterStep::Error(err),
             }
         });
-        IteratorAdapter::new("Iter::filter_map", stage_profile, effects, driver).build()
+        AdapterPlan::new("Iter::filter_map", stage_profile, effects, driver).build()
     }
 
     pub fn flat_map<U, F>(self, mut f: F) -> Iter<U>
@@ -119,7 +81,7 @@ impl<T> Iter<T> {
         let effects = effects.with_mem();
         let source = self;
         let mut current: Option<Iter<U>> = None;
-        let driver = IterDriver::stepper(move || loop {
+        let driver = IterDriver::stepper(move |_effects| loop {
             if let Some(inner) = current.as_mut() {
                 match inner.next_step() {
                     IterStep::Ready(value) => return IterStep::Ready(value),
@@ -144,7 +106,7 @@ impl<T> Iter<T> {
                 IterStep::Error(err) => return IterStep::Error(err),
             }
         });
-        IteratorAdapter::new("Iter::flat_map", stage_profile, effects, driver).build()
+        AdapterPlan::new("Iter::flat_map", stage_profile, effects, driver).build()
     }
 
     pub fn scan<S, U, F>(self, state: S, mut f: F) -> Iter<U>
@@ -157,7 +119,7 @@ impl<T> Iter<T> {
         let (stage_profile, effects) = self.metadata_for_adapter();
         let source = self;
         let mut state = state;
-        let driver = IterDriver::stepper(move || loop {
+        let driver = IterDriver::stepper(move |_effects| loop {
             match source.next_step() {
                 IterStep::Ready(value) => {
                     if let Some(mapped) = f(&mut state, value) {
@@ -169,7 +131,7 @@ impl<T> Iter<T> {
                 IterStep::Error(err) => return IterStep::Error(err),
             }
         });
-        IteratorAdapter::new("Iter::scan", stage_profile, effects, driver).build()
+        AdapterPlan::new("Iter::scan", stage_profile, effects, driver).build()
     }
 
     pub fn take(self, count: usize) -> Iter<T>
@@ -179,7 +141,7 @@ impl<T> Iter<T> {
         let (stage_profile, effects) = self.metadata_for_adapter();
         let source = self;
         let mut remaining = count;
-        let driver = IterDriver::stepper(move || {
+        let driver = IterDriver::stepper(move |_effects| {
             if remaining == 0 {
                 return IterStep::Finished;
             }
@@ -193,7 +155,7 @@ impl<T> Iter<T> {
                 IterStep::Error(err) => IterStep::Error(err),
             }
         });
-        IteratorAdapter::new("Iter::take", stage_profile, effects, driver).build()
+        AdapterPlan::new("Iter::take", stage_profile, effects, driver).build()
     }
 
     pub fn drop(self, count: usize) -> Iter<T>
@@ -203,7 +165,7 @@ impl<T> Iter<T> {
         let (stage_profile, effects) = self.metadata_for_adapter();
         let source = self;
         let mut to_skip = count;
-        let driver = IterDriver::stepper(move || loop {
+        let driver = IterDriver::stepper(move |_effects| loop {
             if to_skip > 0 {
                 match source.next_step() {
                     IterStep::Ready(_) => {
@@ -218,7 +180,7 @@ impl<T> Iter<T> {
                 return source.next_step();
             }
         });
-        IteratorAdapter::new("Iter::drop", stage_profile, effects, driver).build()
+        AdapterPlan::new("Iter::drop", stage_profile, effects, driver).build()
     }
 
     pub fn enumerate(self) -> Iter<(usize, T)>
@@ -228,7 +190,7 @@ impl<T> Iter<T> {
         let (stage_profile, effects) = self.metadata_for_adapter();
         let source = self;
         let mut index: usize = 0;
-        let driver = IterDriver::stepper(move || match source.next_step() {
+        let driver = IterDriver::stepper(move |_effects| match source.next_step() {
             IterStep::Ready(value) => {
                 let current = index;
                 index = index.wrapping_add(1);
@@ -238,7 +200,7 @@ impl<T> Iter<T> {
             IterStep::Finished => IterStep::Finished,
             IterStep::Error(err) => IterStep::Error(err),
         });
-        IteratorAdapter::new("Iter::enumerate", stage_profile, effects, driver).build()
+        AdapterPlan::new("Iter::enumerate", stage_profile, effects, driver).build()
     }
 
     pub fn zip<U>(self, other: Iter<U>) -> Iter<(T, U)>
@@ -254,7 +216,7 @@ impl<T> Iter<T> {
         let right_iter = other;
         let mut left_cache: Option<T> = None;
         let mut right_cache: Option<U> = None;
-        let driver = IterDriver::stepper(move || loop {
+        let driver = IterDriver::stepper(move |_effects| loop {
             if left_cache.is_none() {
                 match left_iter.next_step() {
                     IterStep::Ready(value) => {
@@ -282,7 +244,7 @@ impl<T> Iter<T> {
             }
         });
 
-        IteratorAdapter::new("Iter::zip", stage_profile, combined_effects, driver).build()
+        AdapterPlan::new("Iter::zip", stage_profile, combined_effects, driver).build()
     }
 
     pub fn buffered(self, capacity: usize, strategy: BufferStrategy) -> Iter<T>
@@ -295,7 +257,7 @@ impl<T> Iter<T> {
         let source = self;
         let mut buffer = VecDeque::with_capacity(requested_capacity);
         let mut current_capacity = requested_capacity;
-        let driver = IterDriver::stepper(move || loop {
+        let driver = IterDriver::stepper(move |_effects| loop {
             if let Some(value) = buffer.pop_front() {
                 return IterStep::Ready(value);
             }
@@ -331,6 +293,6 @@ impl<T> Iter<T> {
             }
         });
 
-        IteratorAdapter::new("Iter::buffered", stage_profile, effects, driver).build()
+        AdapterPlan::new("Iter::buffered", stage_profile, effects, driver).build()
     }
 }
