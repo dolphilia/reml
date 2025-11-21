@@ -38,6 +38,13 @@
 3. CI 設定（`.github/workflows/` または `tooling/ci/record-metrics.sh`）に `cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_pipeline core_iter_effects` を追加し、`scripts/validate-diagnostic-json.sh --pattern iterator --pattern collector` を同じジョブで走らせる。
 4. テスト追加後、`collect-iterator-audit-metrics.py --section iterator --case pipeline` を実行して KPI を採取し、`reports/iterator-stage-summary.md`・`reports/spec-audit/ch1/iter.json` に追記。`docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` の完了条件チェックを更新する。
 
+### 5. G1 map/filter 立ち上げ手順（W37 後半）
+- `compiler/rust/runtime/src/prelude/iter/adapters/map.rs` / `filter.rs` を追加し、`IterState::adapter` → `AdapterPlan` → `IteratorStageProfile` のチェーンを再計算できるようにする。`EffectLabels::predicate_calls`／`EffectLabels::residual` を `collect-iterator-audit-metrics.py --section iterator --case map|filter --output reports/iterator-map-filter-metrics.json` で取得し、`reports/spec-audit/ch0/links.md#iter-g1-map-filter` にコマンドログを貼り付ける。
+- `compiler/rust/frontend/tests/core_iter_adapters.rs` へ `map_pipeline` / `filter_effect` / `map_filter_chain_panic_guard` を追加し、`cargo test core_iter_adapters -- --nocapture` と `cargo insta review` を CI に組み込む。同ジョブで `scripts/validate-diagnostic-json.sh --pattern iterator.map --pattern iterator.filter` を実行して `reports/diagnostic-format-regression.md` に差分なしで反映する。
+- `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `Iter.map` / `Iter.filter` 行に KPI・テスト名・効果タグの取り扱いを追記し、`rust_status = "working"` → `implemented` への遷移条件を明示する。更新後は `docs-migrations.log` に「WBS 3.1c-G1 map/filter 立ち上げ」を追記する。
+- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ `iterator.map.latency` と `iterator.filter.predicate_count` を KPI として追加し、Nightly 実行で集めた値を記録する。閾値を超えた場合は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` にエスカレーションする。
+- `docs/notes/core-library-outline.md#iter-g1-map-filter` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` §3.0.3a に G1 実行ログをリンクし、Phase 3-2 以降の Adapter/Collections 計画から参照できるようにする。
+
 ## 成果物
 - 更新済み `cargo xtask prelude-audit` ソースと CLI ドキュメント
 - 最新 `prelude_api_inventory.toml`・`reports/spec-audit/ch1/iter.json`・`reports/spec-audit/ch0/links.md`・`reports/iterator-{stage,collector}-summary.md`

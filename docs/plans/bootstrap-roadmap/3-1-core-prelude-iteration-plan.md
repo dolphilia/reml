@@ -105,6 +105,9 @@
 - `python3 tooling/ci/collect-iterator-audit-metrics.py --section collectors --source reports/spec-audit/ch1/core_iter_collectors.json --audit-source reports/spec-audit/ch1/core_iter_collectors.audit.jsonl --output reports/iterator-collector-metrics.json --require-success` を週次で実行し、`collector.stage.audit_pass_rate`、`collector.effect.mem`、`collector.error.duplicate_key` を `0-3-audit-and-metrics.md` の KPI テーブルに転記する。
 - `scripts/validate-diagnostic-json.sh --pattern collector --pattern iterator` の出力を `reports/spec-audit/ch0/links.md#collector-f2`／`#collector-f3` に貼り付け、診断フォーマットの差分を `reports/diagnostic-format-regression.md` へ共有する。
 - `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へ KPI 逸脱時のフォローアップチケットを登録し、`docs/notes/core-library-outline.md#collector-f2-監査ログ` に根拠ファイルを列挙する。
+- `IterState`/`IterSeed` の 3 層構造と `IteratorStageProfile` を Rust 実装へ落とし込む際は、`compiler/rust/runtime/src/prelude/iter/mod.rs` に `EffectLabels::from_iter_step` を追加し、`collect-iterator-audit --section iter --case seed-stage-profile --output reports/spec-audit/ch1/iter_seed_profile.json` を実行して Stage/Effect の測定結果を `reports/spec-audit/ch0/links.md#iter-core-structure` に記録する。
+- `cargo xtask prelude-audit --section iter --filter collector --strict --baseline docs/spec/3-1-core-prelude-iteration.md` を nightly ジョブへ組み込み、成功ログを `reports/spec-audit/ch0/links.md#collector-f2-監査ログ` に追記する。Run-ID・日付・担当者を `docs-migrations.log` に転記し、証跡を維持する。
+- `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `module = "Iter"` / `"Collector"` エントリにテスト名・KPI・効果タグを追記し、`0-3-audit-and-metrics.md` から参照できるようにする。更新後は `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` §3.0.3a へリンクを追加して Phase 3 判定資料へ反映する。
 
 ### 4. Iter アダプタと終端操作（37-38週目）
 **担当領域**: 宣言的データフロー
@@ -130,6 +133,13 @@
 - `IterState::adapter` で `map`/`filter` がチェーンできるよう `FnMut`/`Predicate` のトレイト束縛を導入し、`EffectLabels::predicate_calls` を `collect-iterator-audit` へ露出させる。
 - `core_iter_adapters.rs::map_pipeline` と `core_iter_effects.rs::filter_effect` を追加し、`scripts/validate-diagnostic-json.sh --pattern iterator.map --pattern iterator.filter` の出力を `reports/diagnostic-format-regression.md` へ連携。KPI は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `iterator.map.latency` / `iterator.filter.predicate_count` 欄に記録する。
 - `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `Iter.map`/`Iter.filter` 行へ `rust_status = "working"` とテスト名を追記し、完了時に `implemented` へ遷移させる。
+
+###### G1 実施タスクリストと成果物
+- `compiler/rust/runtime/src/prelude/iter/adapters/map.rs` / `filter.rs` を追加し、`IterState::adapter` から `AdapterPlan` を経由して `IteratorStageProfile` を更新する。`EffectLabels::predicate_calls`・`EffectLabels::residual` を `collect-iterator-audit-metrics.py --section iterator --case map|filter --output reports/iterator-map-filter-metrics.json` で採取し、`reports/spec-audit/ch0/links.md#iter-g1-map-filter` へリンクする。
+- `compiler/rust/frontend/tests/core_iter_adapters.rs` に `map_pipeline` / `filter_effect` / `map_filter_chain_panic_guard` を追加し、`cargo test core_iter_adapters -- --nocapture` と `cargo insta review` のログを `reports/spec-audit/ch1/core_iter_adapters.json` へ保存する。同ジョブで `scripts/validate-diagnostic-json.sh --pattern iterator.map --pattern iterator.filter` を実行し、`reports/diagnostic-format-regression.md` に差分なしで反映する。
+- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `iterator.map.latency`（`Iter::from_list |> map |> collect_vec`）と `iterator.filter.predicate_count`（`filter` の `predicate_calls` 期待値）を KPI として追記し、Nightly 実行の集計結果を貼り付ける。逸脱が発生した場合は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` へフォローアップを記載する。
+- `docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md` §4 と `docs/notes/core-library-outline.md#iter-g1-map-filter` に G1 手順・スナップショットファイル・コマンド履歴をまとめ、Phase 3-2 の Adapter 拡張作業から参照できるようにする。
+- `prelude_api_inventory.toml` の `Iter.map`/`Iter.filter` へ KPI・テスト名・効果タグの記録方法を追加し、更新内容を `docs-migrations.log` に「WBS 3.1c-G1 map/filter 立ち上げ」として残して監査証跡を確保する。
 
 ###### G2: flat_map / zip Stage 適用（W38 前半）
 - `flat_map` 用にネストした `IterSeed` を `iter/adapters/flat_map.rs` へ実装し、中間バッファの確保時に `EffectLabels::mem_reservation` を積算する。`core_iter_adapters.rs::flat_map_vec` で `iterator.effect.mem` スナップショットを取得する。

@@ -44,6 +44,17 @@
 - KPI リフレッシュ後は `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md#3-itercollector-完了条件`、`../plans/bootstrap-roadmap/3-0-phase3-self-host.md#collector-f2-監査ログ`（M1 KPI ケース）、`../plans/bootstrap-roadmap/0-3-audit-and-metrics.md`（`collector.stage.audit_pass_rate` 行）とクロスリンクし、Phase 3-1 判定に必要な証跡を共有している。
 - `collector.snapshot.v1` スキーマの JSON/LN（`reports/spec-audit/ch1/core_iter_collectors.json` / `.audit.jsonl`）は `--require-success` 実行時に検証済みで、逸脱が出た場合は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` で是正タスクを追跡する。
 
+### <a id="iter-g1-map-filter"></a>Iter G1 map/filter 監査ログ（WBS 3.1c-G1）
+
+- 目的: `IterState::adapter` を介した `map`/`filter` の再実装を Stage/Effect 計測と合わせて立ち上げ、`collect-iterator-audit-metrics.py` から `EffectLabels::predicate_calls`・`EffectLabels::residual` を収集できるようにする（参照: `../plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a G1）。
+- コマンド手順:
+  1. `cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_adapters -- --nocapture map_pipeline filter_effect map_filter_chain_panic_guard`
+  2. `python3 tooling/ci/collect-iterator-audit-metrics.py --section iterator --case map --case filter --output reports/iterator-map-filter-metrics.json --require-success`
+  3. `scripts/validate-diagnostic-json.sh --pattern iterator.map --pattern iterator.filter` を同じジョブで実行し、`reports/diagnostic-format-regression.md` へ差分が無いまま保存する。
+  4. `cargo xtask prelude-audit --section iter --filter adapter --strict --baseline docs/spec/3-1-core-prelude-iteration.md` で `Iter.map`/`Iter.filter` の `rust_status` を検証する。
+- 証跡の保存先: `../../reports/spec-audit/ch0/links.md#iter-g1-map-filter`（コマンド＆KPI ログ）、`../../reports/iterator-map-filter-metrics.json`（`adapter_metrics.map_pipeline.latency_ns=16750`、`adapter_metrics.filter_effect.effects.predicate_calls=1`）、`../../reports/spec-audit/ch1/iterator.map-filter.diagnostics.json`（map/filter 専用診断スナップショット）。
+- 文書更新: `../plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `Iter.map`/`Iter.filter` 行へ KPI とテスト名を追記し、`../plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `iterator.map.latency` / `iterator.filter.predicate_count` を追加。`../plans/bootstrap-roadmap/3-0-phase3-self-host.md` §3.0.3a から本節へリンクして Phase 3 M1 判定資料を共有する。
+
 ### Iter F1 生成 API 監査ログ（WBS 3.1c-F1）
 
 - `../../compiler/rust/runtime/src/prelude/iter/generators.rs` に `Iter::from_list`/`Iter::from_result`/`Iter::from_fn` を実装し、`ListCollector` ノード共有 + `IterSeed` で `EffectLabels::residual = []` を維持した。`cargo test core_iter_generators -- --nocapture` と `cargo insta review --review core_iter_generators` により `compiler/rust/frontend/tests/snapshots/core_iter_generators__from_list_roundtrip.snap` など 3 ケースを確定済み。2025-12-16 時点で `Iter::empty`/`Iter::once`/`Iter::repeat`/`Iter::range` を追加し、`RUSTFLAGS="-Zpanic-abort-tests" cargo test core_iter_generators -- --nocapture` のログと `collect-iterator-audit --section iter --case empty|once|repeat|range` の結果を追記した。

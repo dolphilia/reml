@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2025-11-21 / WBS 3.1c-Step3 (try_fold/try_collect実装, iterator.effect.predicate_calls 追記)"
+last_updated = "2026-02-18 / WBS 3.1c-G1 (map/filter instrumentation)"
 maintainer = "Core Library Team"
 
 [[api]]
@@ -304,9 +304,9 @@ module = "Iter"
 name = "map"
 effect = "@pure"
 stage = "beta"
-rust_status = "implemented"
+rust_status = "working"
 ocaml_status = "typeck-only"
-notes = "Rust: compiler/rust/runtime/src/prelude/iter/adapters.rs::map / Test: core_iter_adapters.rs::iter_map_filter_pipeline が map → filter 連結を固定。"
+notes = "G1 map/filter 立ち上げ対象。Rust: compiler/rust/runtime/src/prelude/iter/adapters/map.rs を設置し、`IterState::adapter` 経由で `IteratorStageProfile` を再計算。テスト: compiler/rust/frontend/tests/core_iter_adapters.rs::map_pipeline。KPI: `iterator.map.latency`（reports/iterator-map-filter-metrics.json）を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ記録し、`scripts/validate-diagnostic-json.sh --pattern iterator.map` を同ジョブで走らせる。完了後 `rust_status=implemented` へ更新。"
 wbs = "3.1c Step3"
 
 [[api]]
@@ -334,9 +334,9 @@ module = "Iter"
 name = "filter"
 effect = "@pure"
 stage = "beta"
-rust_status = "implemented"
+rust_status = "working"
 ocaml_status = "typeck-only"
-notes = "Rust: iter/adapters.rs::filter / Test: core_iter_adapters.rs::iter_map_filter_pipeline が predicate の bool 判定を固定。"
+notes = "G1 map/filter 立ち上げ対象。Rust: compiler/rust/runtime/src/prelude/iter/adapters/filter.rs で `FnMut` predicate を受け取り、`EffectLabels::predicate_calls` と `EffectLabels::residual` を `collect-iterator-audit-metrics.py --section iterator --case filter` から収集する。テスト: compiler/rust/frontend/tests/core_iter_effects.rs::filter_effect / core_iter_adapters.rs::map_filter_chain_panic_guard。KPI: `iterator.filter.predicate_count`（reports/iterator-map-filter-metrics.json）を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ同期し、`scripts/validate-diagnostic-json.sh --pattern iterator.filter` の結果と連携する。完了後 `rust_status=implemented` に遷移。"
 wbs = "3.1c Step3"
 
 [[api]]

@@ -1,0 +1,1472 @@
+{
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Iterator stage snapshot (filter_effect)",
+      "schema_version": "2.0.0-draft",
+      "location": {
+        "file": "iter.reml",
+        "line": 4,
+        "column": 3,
+        "endLine": 4,
+        "endColumn": 18
+      },
+      "code": "typeclass.iterator.stage_mismatch",
+      "codes": [
+        "typeclass.iterator.stage_mismatch"
+      ],
+      "domain": "type",
+      "timestamp": "2025-11-21T03:43:27Z",
+      "notes": [
+        "case=filter_effect",
+        "stage.required=at_least:beta",
+        "stage.actual=beta",
+        "capability=core.iter.core"
+      ],
+      "extensions": {
+        "diagnostic.v2": {
+          "timestamp": "1970-01-01T00:00:00Z",
+          "codes": [
+            "typeclass.iterator.stage_mismatch"
+          ]
+        },
+        "capability": {
+          "detail": [
+            {
+              "capability": "core.iter.core",
+              "stage": "beta"
+            }
+          ],
+          "ids": [
+            "core.iter.core"
+          ],
+          "stage": {
+            "required": "beta",
+            "actual": "beta"
+          },
+          "primary": "core.iter.core",
+          "required": [
+            "core.iter.core"
+          ],
+          "actual": [
+            {
+              "capability": "core.iter.core",
+              "stage": "beta"
+            }
+          ]
+        },
+        "effect.capabilities": [
+          "core.iterator.collect",
+          "core.iterator.reduce"
+        ],
+        "effect.required_capabilities": [
+          "core.iterator.collect",
+          "core.iterator.reduce"
+        ],
+        "effect.actual_capabilities": [
+          {
+            "capability": "core.iterator.collect",
+            "stage": "experimental"
+          },
+          {
+            "capability": "core.iterator.reduce",
+            "stage": "stable"
+          }
+        ],
+        "effect.stage.required_capabilities": [
+          "core.iterator.collect",
+          "core.iterator.reduce"
+        ],
+        "effect.stage.actual_capabilities": [
+          {
+            "capability": "core.iterator.collect",
+            "stage": "experimental"
+          },
+          {
+            "capability": "core.iterator.reduce",
+            "stage": "stable"
+          }
+        ],
+        "effect.stage.capabilities": [
+          {
+            "capability": "core.iterator.collect",
+            "stage": "experimental"
+          },
+          {
+            "capability": "core.iterator.reduce",
+            "stage": "stable"
+          }
+        ],
+        "effect.stage.required": "beta",
+        "effect.stage.actual": "experimental",
+        "effect.stage.capability": "core.iterator.collect",
+        "typeclass.trait": "Iterator",
+        "typeclass.type_args": [
+          "SampleStream",
+          "SampleItem"
+        ],
+        "typeclass.constraint": "Iterator<SampleStream, SampleItem>",
+        "typeclass.resolution_state": "stage_mismatch",
+        "typeclass.graph.export_dot": null,
+        "typeclass.span.start": 42,
+        "typeclass.span.end": 57,
+        "typeclass.dictionary.kind": "none",
+        "typeclass.dictionary.identifier": null,
+        "typeclass.dictionary.trait": null,
+        "typeclass.dictionary.type_args": [],
+        "typeclass.dictionary.repr": null,
+        "effects": {
+          "actual_capabilities": [
+            {
+              "capability": "core.iter.core",
+              "stage": "beta"
+            }
+          ],
+          "required_capabilities": [
+            "core.iter.core"
+          ],
+          "capabilities": [
+            "core.iter.core"
+          ],
+          "capability": "core.iter.core",
+          "stage": {
+            "required": "beta",
+            "actual": "beta"
+          },
+          "capabilities_detail": [
+            {
+              "capability": "core.iter.core",
+              "stage": "beta"
+            }
+          ],
+          "residual": {
+            "missing_ops": []
+          },
+          "provider": "core.iter",
+          "manifest_path": "docs/spec/3-1-core-prelude-iteration.md",
+          "metadata": {
+            "provider": "core.iter",
+            "last_verified_at": "2025-11-21T03:43:27Z"
+          },
+          "iterator": {
+            "required": "at_least:beta",
+            "actual": "beta",
+            "kind": "core_iter",
+            "capability": "core.iter.core",
+            "source": "iter.filter_effect"
+          },
+          "handler_stack": [
+            "core.iter"
+          ],
+          "unhandled_operations": [
+            "iterator.filter"
+          ]
+        },
+        "parse": {
+          "input_name": "iter.reml",
+          "stage_trace": []
+        },
+        "typeclass": {
+          "trait": "Iterator",
+          "type_args": [
+            "SampleStream",
+            "SampleItem"
+          ],
+          "constraint": "Iterator<SampleStream, SampleItem>",
+          "resolution_state": "stage_mismatch",
+          "dictionary": {
+            "kind": "diagnostic-sample",
+            "identifier": "Iterator.collect#stage_mismatch",
+            "trait": "Iterator",
+            "type_args": [
+              "SampleStream",
+              "SampleItem"
+            ],
+            "repr": "{}"
+          },
+          "candidates": [
+            "Iterator.collect"
+          ],
+          "pending": [
+            "Iterator.size_hint"
+          ],
+          "generalized_typevars": [
+            "T"
+          ],
+          "graph": {
+            "export_dot": null
+          },
+          "stage": null
+        },
+        "typeclass.dictionary": {
+          "kind": "diagnostic-sample",
+          "identifier": "Iterator.collect#stage_mismatch",
+          "trait": "Iterator",
+          "type_args": [
+            "SampleStream",
+            "SampleItem"
+          ],
+          "repr": "{}"
+        },
+        "typeclass.candidates": [
+          "Iterator.collect"
+        ],
+        "typeclass.pending": [
+          "Iterator.size_hint"
+        ],
+        "typeclass.generalized_typevars": [
+          "T"
+        ],
+        "runconfig": {
+          "flags": [
+            "--iter-adapters"
+          ]
+        }
+      },
+      "audit_metadata": {
+        "event.kind": "typeclass.iterator.stage_mismatch",
+        "event.domain": "type",
+        "effect.stage.required": "beta",
+        "effect.stage.actual": "experimental",
+        "effect.capability": "core.iterator.collect",
+        "effect.required_capabilities": [
+          "core.iterator.collect",
+          "core.iterator.reduce"
+        ],
+        "effect.stage.required_capabilities": [
+          "core.iterator.collect",
+          "core.iterator.reduce"
+        ],
+        "effect.actual_capabilities": [
+          {
+            "capability": "core.iterator.collect",
+            "stage": "experimental"
+          },
+          {
+            "capability": "core.iterator.reduce",
+            "stage": "stable"
+          }
+        ],
+        "effect.stage.actual_capabilities": [
+          {
+            "capability": "core.iterator.collect",
+            "stage": "experimental"
+          },
+          {
+            "capability": "core.iterator.reduce",
+            "stage": "stable"
+          }
+        ],
+        "capability.primary": "core.iterator.collect",
+        "capability.ids": [
+          "core.iterator.collect",
+          "core.iterator.reduce"
+        ],
+        "effect.capabilities": [
+          "core.iterator.collect",
+          "core.iterator.reduce"
+        ],
+        "effect.stage.capabilities": [
+          {
+            "capability": "core.iterator.collect",
+            "stage": "experimental"
+          },
+          {
+            "capability": "core.iterator.reduce",
+            "stage": "stable"
+          }
+        ],
+        "effect.residual": {
+          "missing_ops": [
+            "Iterator::next",
+            "Iterator::size_hint"
+          ]
+        },
+        "effect.provider": "Core.Iter",
+        "effect.manifest_path": "dsl/core.iter.toml",
+        "effect.capability_metadata": {
+          "provider": "core.iter",
+          "last_verified_at": "2025-10-21T03:15:00Z"
+        },
+        "effect.stage.iterator.required": "at_least:beta",
+        "effect.stage.iterator.actual": "experimental",
+        "effect.stage.iterator.kind": "custom:iterator.snapshot",
+        "effect.stage.iterator.capability": "core.iterator.collect",
+        "effect.stage.iterator.source": "dsl/core.iter.toml",
+        "typeclass.trait": "Iterator",
+        "typeclass.type_args": [
+          "SampleStream",
+          "SampleItem"
+        ],
+        "typeclass.constraint": "Iterator<SampleStream, SampleItem>",
+        "typeclass.resolution_state": "stage_mismatch",
+        "typeclass.dictionary": {
+          "kind": "none",
+          "identifier": null,
+          "trait": null,
+          "type_args": [],
+          "repr": null
+        },
+        "typeclass.graph.export_dot": null,
+        "typeclass.span.start": 42,
+        "typeclass.span.end": 57,
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "19700101T000000Z",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "cli.audit_id": "cli/19700101T000000Z#0",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [
+            {
+              "kind": "cli-command",
+              "command": "stage-diagnostic-test"
+            },
+            {
+              "kind": "input",
+              "path": "iter.reml"
+            }
+          ]
+        },
+        "effect.handler_stack": [
+          "core.iter.collect"
+        ],
+        "effect.unhandled_operations": [
+          "Iterator::size_hint"
+        ],
+        "bridge.audit_pass_rate": 1.0,
+        "bridge.status": "ok",
+        "cli": {
+          "audit_id": "cli/19700101T000000Z#0",
+          "change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "19700101T000000Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [
+              {
+                "kind": "cli-command",
+                "command": "stage-diagnostic-test"
+              },
+              {
+                "kind": "input",
+                "path": "iter.reml"
+              }
+            ]
+          }
+        },
+        "schema": {
+          "version": "1.1"
+        },
+        "typeclass.dictionary.kind": "diagnostic-sample",
+        "typeclass.dictionary.identifier": "Iterator.collect#stage_mismatch",
+        "typeclass.dictionary.trait": "Iterator",
+        "typeclass.dictionary.type_args": [
+          "SampleStream",
+          "SampleItem"
+        ],
+        "typeclass.dictionary.repr": "{}",
+        "typeclass.candidates": [
+          "Iterator.collect"
+        ],
+        "typeclass.pending": [
+          "Iterator.size_hint"
+        ],
+        "typeclass.generalized_typevars": [
+          "T"
+        ],
+        "schema.version": "1.1",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.packrat_enabled": false,
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream": {
+          "enabled": false,
+          "packrat_enabled": false,
+          "checkpoint": "unspecified",
+          "resume_hint": "unspecified",
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "chunk_size": 0,
+          "flow": {
+            "policy": "auto",
+            "checkpoints_closed": 0,
+            "backpressure": {
+              "max_lag_bytes": 0
+            }
+          }
+        },
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover": {
+          "sync_tokens": [],
+          "notes": false
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.lex": {
+          "profile": "strict_json",
+          "identifier_profile": "unicode"
+        },
+        "parser.runconfig.experimental_effects": false,
+        "parser.runconfig.legacy_result": false,
+        "parser.runconfig.require_eof": false,
+        "parser.runconfig.merge_warnings": true,
+        "parser.runconfig.trace": false,
+        "parser.runconfig.left_recursion": "auto",
+        "parser.runconfig.packrat": false,
+        "parser.runconfig": {
+          "packrat": false,
+          "left_recursion": "auto",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": false,
+          "experimental_effects": false,
+          "extensions": {
+            "stream": {
+              "enabled": false,
+              "packrat_enabled": false,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "checkpoints_closed": 0,
+                "backpressure": {
+                  "max_lag_bytes": 0
+                }
+              }
+            },
+            "recover": {
+              "sync_tokens": [],
+              "notes": false
+            },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        },
+        "iterator.case": "filter_effect"
+      },
+      "audit": {
+        "metadata": {
+          "parser.runconfig": {
+            "packrat": false,
+            "left_recursion": "auto",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": false,
+            "experimental_effects": false,
+            "extensions": {
+              "stream": {
+                "enabled": false,
+                "packrat_enabled": false,
+                "checkpoint": "unspecified",
+                "resume_hint": "unspecified",
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "chunk_size": 0,
+                "flow": {
+                  "policy": "auto",
+                  "checkpoints_closed": 0,
+                  "backpressure": {
+                    "max_lag_bytes": 0
+                  }
+                }
+              },
+              "recover": {
+                "sync_tokens": [],
+                "notes": false
+              },
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              }
+            }
+          },
+          "parser.runconfig.packrat": false,
+          "parser.runconfig.left_recursion": "auto",
+          "parser.runconfig.trace": false,
+          "parser.runconfig.merge_warnings": true,
+          "parser.runconfig.require_eof": false,
+          "parser.runconfig.legacy_result": false,
+          "parser.runconfig.experimental_effects": false,
+          "parser.runconfig.extensions.lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.recover": {
+            "sync_tokens": [],
+            "notes": false
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "enabled": false,
+            "packrat_enabled": false,
+            "checkpoint": "unspecified",
+            "resume_hint": "unspecified",
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "chunk_size": 0,
+            "flow": {
+              "policy": "auto",
+              "checkpoints_closed": 0,
+              "backpressure": {
+                "max_lag_bytes": 0
+              }
+            }
+          },
+          "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.packrat_enabled": false,
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "typeclass.generalized_typevars": [
+            "T"
+          ],
+          "typeclass.pending": [
+            "Iterator.size_hint"
+          ],
+          "typeclass.candidates": [
+            "Iterator.collect"
+          ],
+          "typeclass.dictionary.repr": "{}",
+          "typeclass.dictionary.type_args": [
+            "SampleStream",
+            "SampleItem"
+          ],
+          "typeclass.dictionary.trait": "Iterator",
+          "typeclass.dictionary.identifier": "Iterator.collect#stage_mismatch",
+          "typeclass.dictionary.kind": "diagnostic-sample",
+          "schema": {
+            "version": "1.1"
+          },
+          "cli": {
+            "audit_id": "cli/19700101T000000Z#0",
+            "change_set": {
+              "policy": "phase2.5.audit.v1",
+              "origin": "cli",
+              "source": {
+                "build_id": "19700101T000000Z",
+                "workspace": ".",
+                "sequence": 0
+              },
+              "items": [
+                {
+                  "kind": "cli-command",
+                  "command": "stage-diagnostic-test"
+                },
+                {
+                  "kind": "input",
+                  "path": "iter.reml"
+                }
+              ]
+            }
+          },
+          "bridge.status": "ok",
+          "bridge.audit_pass_rate": 1.0,
+          "effect.unhandled_operations": [
+            "Iterator::size_hint"
+          ],
+          "effect.handler_stack": [
+            "core.iter.collect"
+          ],
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "19700101T000000Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [
+              {
+                "kind": "cli-command",
+                "command": "stage-diagnostic-test"
+              },
+              {
+                "kind": "input",
+                "path": "iter.reml"
+              }
+            ]
+          },
+          "cli.audit_id": "cli/19700101T000000Z#0",
+          "audit.source.workspace": ".",
+          "audit.sequence": 0,
+          "audit.build_id": "19700101T000000Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "typeclass.span.end": 57,
+          "typeclass.span.start": 42,
+          "typeclass.graph.export_dot": null,
+          "typeclass.dictionary": {
+            "kind": "none",
+            "identifier": null,
+            "trait": null,
+            "type_args": [],
+            "repr": null
+          },
+          "typeclass.resolution_state": "stage_mismatch",
+          "typeclass.constraint": "Iterator<SampleStream, SampleItem>",
+          "typeclass.type_args": [
+            "SampleStream",
+            "SampleItem"
+          ],
+          "typeclass.trait": "Iterator",
+          "effect.stage.iterator.source": "dsl/core.iter.toml",
+          "effect.stage.iterator.capability": "core.iterator.collect",
+          "effect.stage.iterator.kind": "custom:iterator.snapshot",
+          "effect.stage.iterator.actual": "experimental",
+          "effect.stage.iterator.required": "at_least:beta",
+          "effect.capability_metadata": {
+            "provider": "core.iter",
+            "last_verified_at": "2025-10-21T03:15:00Z"
+          },
+          "effect.manifest_path": "dsl/core.iter.toml",
+          "effect.provider": "Core.Iter",
+          "effect.residual": {
+            "missing_ops": [
+              "Iterator::next",
+              "Iterator::size_hint"
+            ]
+          },
+          "effect.stage.capabilities": [
+            {
+              "capability": "core.iterator.collect",
+              "stage": "experimental"
+            },
+            {
+              "capability": "core.iterator.reduce",
+              "stage": "stable"
+            }
+          ],
+          "effect.capabilities": [
+            "core.iterator.collect",
+            "core.iterator.reduce"
+          ],
+          "capability.ids": [
+            "core.iterator.collect",
+            "core.iterator.reduce"
+          ],
+          "capability.primary": "core.iterator.collect",
+          "effect.stage.actual_capabilities": [
+            {
+              "capability": "core.iterator.collect",
+              "stage": "experimental"
+            },
+            {
+              "capability": "core.iterator.reduce",
+              "stage": "stable"
+            }
+          ],
+          "effect.actual_capabilities": [
+            {
+              "capability": "core.iterator.collect",
+              "stage": "experimental"
+            },
+            {
+              "capability": "core.iterator.reduce",
+              "stage": "stable"
+            }
+          ],
+          "effect.stage.required_capabilities": [
+            "core.iterator.collect",
+            "core.iterator.reduce"
+          ],
+          "effect.required_capabilities": [
+            "core.iterator.collect",
+            "core.iterator.reduce"
+          ],
+          "effect.capability": "core.iterator.collect",
+          "effect.stage.actual": "experimental",
+          "effect.stage.required": "beta",
+          "event.domain": "type",
+          "event.kind": "typeclass.iterator.stage_mismatch",
+          "audit.timestamp": "1970-01-01T00:00:00Z",
+          "schema.version": "1.1",
+          "iterator.case": "filter_effect",
+          "iterator.latency_ns": 2625,
+          "iterator.predicate_calls": 1
+        },
+        "audit_id": "cli/19700101T000000Z#0",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [
+            {
+              "kind": "cli-command",
+              "command": "stage-diagnostic-test"
+            },
+            {
+              "kind": "input",
+              "path": "iter.reml"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "severity": "error",
+      "message": "Iterator stage snapshot (map_pipeline)",
+      "schema_version": "2.0.0-draft",
+      "location": {
+        "file": "iter.reml",
+        "line": 4,
+        "column": 3,
+        "endLine": 4,
+        "endColumn": 18
+      },
+      "code": "typeclass.iterator.stage_mismatch",
+      "codes": [
+        "typeclass.iterator.stage_mismatch"
+      ],
+      "domain": "type",
+      "timestamp": "2025-11-21T03:43:27Z",
+      "notes": [
+        "case=map_pipeline",
+        "stage.required=at_least:beta",
+        "stage.actual=beta",
+        "capability=core.iter.core"
+      ],
+      "extensions": {
+        "diagnostic.v2": {
+          "timestamp": "1970-01-01T00:00:00Z",
+          "codes": [
+            "typeclass.iterator.stage_mismatch"
+          ]
+        },
+        "capability": {
+          "detail": [
+            {
+              "capability": "core.iter.core",
+              "stage": "beta"
+            }
+          ],
+          "ids": [
+            "core.iter.core"
+          ],
+          "stage": {
+            "required": "beta",
+            "actual": "beta"
+          },
+          "primary": "core.iter.core",
+          "required": [
+            "core.iter.core"
+          ],
+          "actual": [
+            {
+              "capability": "core.iter.core",
+              "stage": "beta"
+            }
+          ]
+        },
+        "effect.capabilities": [
+          "core.iterator.collect",
+          "core.iterator.reduce"
+        ],
+        "effect.required_capabilities": [
+          "core.iterator.collect",
+          "core.iterator.reduce"
+        ],
+        "effect.actual_capabilities": [
+          {
+            "capability": "core.iterator.collect",
+            "stage": "experimental"
+          },
+          {
+            "capability": "core.iterator.reduce",
+            "stage": "stable"
+          }
+        ],
+        "effect.stage.required_capabilities": [
+          "core.iterator.collect",
+          "core.iterator.reduce"
+        ],
+        "effect.stage.actual_capabilities": [
+          {
+            "capability": "core.iterator.collect",
+            "stage": "experimental"
+          },
+          {
+            "capability": "core.iterator.reduce",
+            "stage": "stable"
+          }
+        ],
+        "effect.stage.capabilities": [
+          {
+            "capability": "core.iterator.collect",
+            "stage": "experimental"
+          },
+          {
+            "capability": "core.iterator.reduce",
+            "stage": "stable"
+          }
+        ],
+        "effect.stage.required": "beta",
+        "effect.stage.actual": "experimental",
+        "effect.stage.capability": "core.iterator.collect",
+        "typeclass.trait": "Iterator",
+        "typeclass.type_args": [
+          "SampleStream",
+          "SampleItem"
+        ],
+        "typeclass.constraint": "Iterator<SampleStream, SampleItem>",
+        "typeclass.resolution_state": "stage_mismatch",
+        "typeclass.graph.export_dot": null,
+        "typeclass.span.start": 42,
+        "typeclass.span.end": 57,
+        "typeclass.dictionary.kind": "none",
+        "typeclass.dictionary.identifier": null,
+        "typeclass.dictionary.trait": null,
+        "typeclass.dictionary.type_args": [],
+        "typeclass.dictionary.repr": null,
+        "effects": {
+          "actual_capabilities": [
+            {
+              "capability": "core.iter.core",
+              "stage": "beta"
+            }
+          ],
+          "required_capabilities": [
+            "core.iter.core"
+          ],
+          "capabilities": [
+            "core.iter.core"
+          ],
+          "capability": "core.iter.core",
+          "stage": {
+            "required": "beta",
+            "actual": "beta"
+          },
+          "capabilities_detail": [
+            {
+              "capability": "core.iter.core",
+              "stage": "beta"
+            }
+          ],
+          "residual": {
+            "missing_ops": []
+          },
+          "provider": "core.iter",
+          "manifest_path": "docs/spec/3-1-core-prelude-iteration.md",
+          "metadata": {
+            "provider": "core.iter",
+            "last_verified_at": "2025-11-21T03:43:27Z"
+          },
+          "iterator": {
+            "required": "at_least:beta",
+            "actual": "beta",
+            "kind": "core_iter",
+            "capability": "core.iter.core",
+            "source": "iter.map_pipeline"
+          },
+          "handler_stack": [
+            "core.iter"
+          ],
+          "unhandled_operations": [
+            "iterator.map"
+          ]
+        },
+        "parse": {
+          "input_name": "iter.reml",
+          "stage_trace": []
+        },
+        "typeclass": {
+          "trait": "Iterator",
+          "type_args": [
+            "SampleStream",
+            "SampleItem"
+          ],
+          "constraint": "Iterator<SampleStream, SampleItem>",
+          "resolution_state": "stage_mismatch",
+          "dictionary": {
+            "kind": "diagnostic-sample",
+            "identifier": "Iterator.collect#stage_mismatch",
+            "trait": "Iterator",
+            "type_args": [
+              "SampleStream",
+              "SampleItem"
+            ],
+            "repr": "{}"
+          },
+          "candidates": [
+            "Iterator.collect"
+          ],
+          "pending": [
+            "Iterator.size_hint"
+          ],
+          "generalized_typevars": [
+            "T"
+          ],
+          "graph": {
+            "export_dot": null
+          },
+          "stage": null
+        },
+        "typeclass.dictionary": {
+          "kind": "diagnostic-sample",
+          "identifier": "Iterator.collect#stage_mismatch",
+          "trait": "Iterator",
+          "type_args": [
+            "SampleStream",
+            "SampleItem"
+          ],
+          "repr": "{}"
+        },
+        "typeclass.candidates": [
+          "Iterator.collect"
+        ],
+        "typeclass.pending": [
+          "Iterator.size_hint"
+        ],
+        "typeclass.generalized_typevars": [
+          "T"
+        ],
+        "runconfig": {
+          "flags": [
+            "--iter-adapters"
+          ]
+        }
+      },
+      "audit_metadata": {
+        "event.kind": "typeclass.iterator.stage_mismatch",
+        "event.domain": "type",
+        "effect.stage.required": "beta",
+        "effect.stage.actual": "experimental",
+        "effect.capability": "core.iterator.collect",
+        "effect.required_capabilities": [
+          "core.iterator.collect",
+          "core.iterator.reduce"
+        ],
+        "effect.stage.required_capabilities": [
+          "core.iterator.collect",
+          "core.iterator.reduce"
+        ],
+        "effect.actual_capabilities": [
+          {
+            "capability": "core.iterator.collect",
+            "stage": "experimental"
+          },
+          {
+            "capability": "core.iterator.reduce",
+            "stage": "stable"
+          }
+        ],
+        "effect.stage.actual_capabilities": [
+          {
+            "capability": "core.iterator.collect",
+            "stage": "experimental"
+          },
+          {
+            "capability": "core.iterator.reduce",
+            "stage": "stable"
+          }
+        ],
+        "capability.primary": "core.iterator.collect",
+        "capability.ids": [
+          "core.iterator.collect",
+          "core.iterator.reduce"
+        ],
+        "effect.capabilities": [
+          "core.iterator.collect",
+          "core.iterator.reduce"
+        ],
+        "effect.stage.capabilities": [
+          {
+            "capability": "core.iterator.collect",
+            "stage": "experimental"
+          },
+          {
+            "capability": "core.iterator.reduce",
+            "stage": "stable"
+          }
+        ],
+        "effect.residual": {
+          "missing_ops": [
+            "Iterator::next",
+            "Iterator::size_hint"
+          ]
+        },
+        "effect.provider": "Core.Iter",
+        "effect.manifest_path": "dsl/core.iter.toml",
+        "effect.capability_metadata": {
+          "provider": "core.iter",
+          "last_verified_at": "2025-10-21T03:15:00Z"
+        },
+        "effect.stage.iterator.required": "at_least:beta",
+        "effect.stage.iterator.actual": "experimental",
+        "effect.stage.iterator.kind": "custom:iterator.snapshot",
+        "effect.stage.iterator.capability": "core.iterator.collect",
+        "effect.stage.iterator.source": "dsl/core.iter.toml",
+        "typeclass.trait": "Iterator",
+        "typeclass.type_args": [
+          "SampleStream",
+          "SampleItem"
+        ],
+        "typeclass.constraint": "Iterator<SampleStream, SampleItem>",
+        "typeclass.resolution_state": "stage_mismatch",
+        "typeclass.dictionary": {
+          "kind": "none",
+          "identifier": null,
+          "trait": null,
+          "type_args": [],
+          "repr": null
+        },
+        "typeclass.graph.export_dot": null,
+        "typeclass.span.start": 42,
+        "typeclass.span.end": 57,
+        "audit.policy.version": "phase2.5.audit.v1",
+        "audit.channel": "cli",
+        "audit.build_id": "19700101T000000Z",
+        "audit.sequence": 0,
+        "audit.source.workspace": ".",
+        "cli.audit_id": "cli/19700101T000000Z#0",
+        "cli.change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [
+            {
+              "kind": "cli-command",
+              "command": "stage-diagnostic-test"
+            },
+            {
+              "kind": "input",
+              "path": "iter.reml"
+            }
+          ]
+        },
+        "effect.handler_stack": [
+          "core.iter.collect"
+        ],
+        "effect.unhandled_operations": [
+          "Iterator::size_hint"
+        ],
+        "bridge.audit_pass_rate": 1.0,
+        "bridge.status": "ok",
+        "cli": {
+          "audit_id": "cli/19700101T000000Z#0",
+          "change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "19700101T000000Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [
+              {
+                "kind": "cli-command",
+                "command": "stage-diagnostic-test"
+              },
+              {
+                "kind": "input",
+                "path": "iter.reml"
+              }
+            ]
+          }
+        },
+        "schema": {
+          "version": "1.1"
+        },
+        "typeclass.dictionary.kind": "diagnostic-sample",
+        "typeclass.dictionary.identifier": "Iterator.collect#stage_mismatch",
+        "typeclass.dictionary.trait": "Iterator",
+        "typeclass.dictionary.type_args": [
+          "SampleStream",
+          "SampleItem"
+        ],
+        "typeclass.dictionary.repr": "{}",
+        "typeclass.candidates": [
+          "Iterator.collect"
+        ],
+        "typeclass.pending": [
+          "Iterator.size_hint"
+        ],
+        "typeclass.generalized_typevars": [
+          "T"
+        ],
+        "schema.version": "1.1",
+        "audit.timestamp": "1970-01-01T00:00:00Z",
+        "parser.runconfig.extensions.stream.chunk_size": 0,
+        "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+        "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+        "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+        "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+        "parser.runconfig.extensions.stream.packrat_enabled": false,
+        "parser.runconfig.extensions.stream.enabled": false,
+        "parser.runconfig.extensions.stream": {
+          "enabled": false,
+          "packrat_enabled": false,
+          "checkpoint": "unspecified",
+          "resume_hint": "unspecified",
+          "demand_min_bytes": 0,
+          "demand_preferred_bytes": 0,
+          "chunk_size": 0,
+          "flow": {
+            "policy": "auto",
+            "checkpoints_closed": 0,
+            "backpressure": {
+              "max_lag_bytes": 0
+            }
+          }
+        },
+        "parser.runconfig.extensions.recover.sync_tokens": [],
+        "parser.runconfig.extensions.recover.notes": false,
+        "parser.runconfig.extensions.recover": {
+          "sync_tokens": [],
+          "notes": false
+        },
+        "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+        "parser.runconfig.extensions.lex.profile": "strict_json",
+        "parser.runconfig.extensions.lex": {
+          "profile": "strict_json",
+          "identifier_profile": "unicode"
+        },
+        "parser.runconfig.experimental_effects": false,
+        "parser.runconfig.legacy_result": false,
+        "parser.runconfig.require_eof": false,
+        "parser.runconfig.merge_warnings": true,
+        "parser.runconfig.trace": false,
+        "parser.runconfig.left_recursion": "auto",
+        "parser.runconfig.packrat": false,
+        "parser.runconfig": {
+          "packrat": false,
+          "left_recursion": "auto",
+          "trace": false,
+          "merge_warnings": true,
+          "require_eof": false,
+          "legacy_result": false,
+          "experimental_effects": false,
+          "extensions": {
+            "stream": {
+              "enabled": false,
+              "packrat_enabled": false,
+              "checkpoint": "unspecified",
+              "resume_hint": "unspecified",
+              "demand_min_bytes": 0,
+              "demand_preferred_bytes": 0,
+              "chunk_size": 0,
+              "flow": {
+                "policy": "auto",
+                "checkpoints_closed": 0,
+                "backpressure": {
+                  "max_lag_bytes": 0
+                }
+              }
+            },
+            "recover": {
+              "sync_tokens": [],
+              "notes": false
+            },
+            "lex": {
+              "profile": "strict_json",
+              "identifier_profile": "unicode"
+            }
+          }
+        },
+        "iterator.case": "map_pipeline"
+      },
+      "audit": {
+        "metadata": {
+          "parser.runconfig": {
+            "packrat": false,
+            "left_recursion": "auto",
+            "trace": false,
+            "merge_warnings": true,
+            "require_eof": false,
+            "legacy_result": false,
+            "experimental_effects": false,
+            "extensions": {
+              "stream": {
+                "enabled": false,
+                "packrat_enabled": false,
+                "checkpoint": "unspecified",
+                "resume_hint": "unspecified",
+                "demand_min_bytes": 0,
+                "demand_preferred_bytes": 0,
+                "chunk_size": 0,
+                "flow": {
+                  "policy": "auto",
+                  "checkpoints_closed": 0,
+                  "backpressure": {
+                    "max_lag_bytes": 0
+                  }
+                }
+              },
+              "recover": {
+                "sync_tokens": [],
+                "notes": false
+              },
+              "lex": {
+                "profile": "strict_json",
+                "identifier_profile": "unicode"
+              }
+            }
+          },
+          "parser.runconfig.packrat": false,
+          "parser.runconfig.left_recursion": "auto",
+          "parser.runconfig.trace": false,
+          "parser.runconfig.merge_warnings": true,
+          "parser.runconfig.require_eof": false,
+          "parser.runconfig.legacy_result": false,
+          "parser.runconfig.experimental_effects": false,
+          "parser.runconfig.extensions.lex": {
+            "profile": "strict_json",
+            "identifier_profile": "unicode"
+          },
+          "parser.runconfig.extensions.lex.profile": "strict_json",
+          "parser.runconfig.extensions.lex.identifier_profile": "unicode",
+          "parser.runconfig.extensions.recover": {
+            "sync_tokens": [],
+            "notes": false
+          },
+          "parser.runconfig.extensions.recover.notes": false,
+          "parser.runconfig.extensions.recover.sync_tokens": [],
+          "parser.runconfig.extensions.stream": {
+            "enabled": false,
+            "packrat_enabled": false,
+            "checkpoint": "unspecified",
+            "resume_hint": "unspecified",
+            "demand_min_bytes": 0,
+            "demand_preferred_bytes": 0,
+            "chunk_size": 0,
+            "flow": {
+              "policy": "auto",
+              "checkpoints_closed": 0,
+              "backpressure": {
+                "max_lag_bytes": 0
+              }
+            }
+          },
+          "parser.runconfig.extensions.stream.enabled": false,
+          "parser.runconfig.extensions.stream.packrat_enabled": false,
+          "parser.runconfig.extensions.stream.checkpoint": "unspecified",
+          "parser.runconfig.extensions.stream.resume_hint": "unspecified",
+          "parser.runconfig.extensions.stream.demand_min_bytes": 0,
+          "parser.runconfig.extensions.stream.demand_preferred_bytes": 0,
+          "parser.runconfig.extensions.stream.chunk_size": 0,
+          "typeclass.generalized_typevars": [
+            "T"
+          ],
+          "typeclass.pending": [
+            "Iterator.size_hint"
+          ],
+          "typeclass.candidates": [
+            "Iterator.collect"
+          ],
+          "typeclass.dictionary.repr": "{}",
+          "typeclass.dictionary.type_args": [
+            "SampleStream",
+            "SampleItem"
+          ],
+          "typeclass.dictionary.trait": "Iterator",
+          "typeclass.dictionary.identifier": "Iterator.collect#stage_mismatch",
+          "typeclass.dictionary.kind": "diagnostic-sample",
+          "schema": {
+            "version": "1.1"
+          },
+          "cli": {
+            "audit_id": "cli/19700101T000000Z#0",
+            "change_set": {
+              "policy": "phase2.5.audit.v1",
+              "origin": "cli",
+              "source": {
+                "build_id": "19700101T000000Z",
+                "workspace": ".",
+                "sequence": 0
+              },
+              "items": [
+                {
+                  "kind": "cli-command",
+                  "command": "stage-diagnostic-test"
+                },
+                {
+                  "kind": "input",
+                  "path": "iter.reml"
+                }
+              ]
+            }
+          },
+          "bridge.status": "ok",
+          "bridge.audit_pass_rate": 1.0,
+          "effect.unhandled_operations": [
+            "Iterator::size_hint"
+          ],
+          "effect.handler_stack": [
+            "core.iter.collect"
+          ],
+          "cli.change_set": {
+            "policy": "phase2.5.audit.v1",
+            "origin": "cli",
+            "source": {
+              "build_id": "19700101T000000Z",
+              "workspace": ".",
+              "sequence": 0
+            },
+            "items": [
+              {
+                "kind": "cli-command",
+                "command": "stage-diagnostic-test"
+              },
+              {
+                "kind": "input",
+                "path": "iter.reml"
+              }
+            ]
+          },
+          "cli.audit_id": "cli/19700101T000000Z#0",
+          "audit.source.workspace": ".",
+          "audit.sequence": 0,
+          "audit.build_id": "19700101T000000Z",
+          "audit.channel": "cli",
+          "audit.policy.version": "phase2.5.audit.v1",
+          "typeclass.span.end": 57,
+          "typeclass.span.start": 42,
+          "typeclass.graph.export_dot": null,
+          "typeclass.dictionary": {
+            "kind": "none",
+            "identifier": null,
+            "trait": null,
+            "type_args": [],
+            "repr": null
+          },
+          "typeclass.resolution_state": "stage_mismatch",
+          "typeclass.constraint": "Iterator<SampleStream, SampleItem>",
+          "typeclass.type_args": [
+            "SampleStream",
+            "SampleItem"
+          ],
+          "typeclass.trait": "Iterator",
+          "effect.stage.iterator.source": "dsl/core.iter.toml",
+          "effect.stage.iterator.capability": "core.iterator.collect",
+          "effect.stage.iterator.kind": "custom:iterator.snapshot",
+          "effect.stage.iterator.actual": "experimental",
+          "effect.stage.iterator.required": "at_least:beta",
+          "effect.capability_metadata": {
+            "provider": "core.iter",
+            "last_verified_at": "2025-10-21T03:15:00Z"
+          },
+          "effect.manifest_path": "dsl/core.iter.toml",
+          "effect.provider": "Core.Iter",
+          "effect.residual": {
+            "missing_ops": [
+              "Iterator::next",
+              "Iterator::size_hint"
+            ]
+          },
+          "effect.stage.capabilities": [
+            {
+              "capability": "core.iterator.collect",
+              "stage": "experimental"
+            },
+            {
+              "capability": "core.iterator.reduce",
+              "stage": "stable"
+            }
+          ],
+          "effect.capabilities": [
+            "core.iterator.collect",
+            "core.iterator.reduce"
+          ],
+          "capability.ids": [
+            "core.iterator.collect",
+            "core.iterator.reduce"
+          ],
+          "capability.primary": "core.iterator.collect",
+          "effect.stage.actual_capabilities": [
+            {
+              "capability": "core.iterator.collect",
+              "stage": "experimental"
+            },
+            {
+              "capability": "core.iterator.reduce",
+              "stage": "stable"
+            }
+          ],
+          "effect.actual_capabilities": [
+            {
+              "capability": "core.iterator.collect",
+              "stage": "experimental"
+            },
+            {
+              "capability": "core.iterator.reduce",
+              "stage": "stable"
+            }
+          ],
+          "effect.stage.required_capabilities": [
+            "core.iterator.collect",
+            "core.iterator.reduce"
+          ],
+          "effect.required_capabilities": [
+            "core.iterator.collect",
+            "core.iterator.reduce"
+          ],
+          "effect.capability": "core.iterator.collect",
+          "effect.stage.actual": "experimental",
+          "effect.stage.required": "beta",
+          "event.domain": "type",
+          "event.kind": "typeclass.iterator.stage_mismatch",
+          "audit.timestamp": "1970-01-01T00:00:00Z",
+          "schema.version": "1.1",
+          "iterator.case": "map_pipeline",
+          "iterator.latency_ns": 15500,
+          "iterator.predicate_calls": 0
+        },
+        "audit_id": "cli/19700101T000000Z#0",
+        "change_set": {
+          "policy": "phase2.5.audit.v1",
+          "origin": "cli",
+          "source": {
+            "build_id": "19700101T000000Z",
+            "workspace": ".",
+            "sequence": 0
+          },
+          "items": [
+            {
+              "kind": "cli-command",
+              "command": "stage-diagnostic-test"
+            },
+            {
+              "kind": "input",
+              "path": "iter.reml"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

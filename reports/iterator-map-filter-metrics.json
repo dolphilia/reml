@@ -1,0 +1,429 @@
+{
+  "metrics": [
+    {
+      "metric": "diagnostic.audit_presence_rate",
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "required_audit_keys": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "sources": [
+        "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "iterator.stage.audit_pass_rate",
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "required_audit_keys": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "event.domain",
+        "event.kind",
+        "effect.stage.required",
+        "effect.stage.actual",
+        "effect.capability",
+        "capability.ids",
+        "effect.required_capabilities",
+        "effect.stage.required_capabilities",
+        "effect.actual_capabilities",
+        "effect.stage.actual_capabilities",
+        "effect.capability_descriptor",
+        "effect.handler_stack",
+        "effect.unhandled_operations",
+        "effect.stage.iterator.required",
+        "effect.stage.iterator.actual",
+        "effect.stage.iterator.kind",
+        "effect.stage.iterator.capability",
+        "effect.stage.iterator.source",
+        "bridge.audit_pass_rate"
+      ],
+      "sources": [
+        "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json"
+      ],
+      "failures": [],
+      "schema_versions": [
+        "2.0.0-draft"
+      ],
+      "related_metrics": [
+        {
+          "metric": "diagnostics.domain_coverage",
+          "total": 2,
+          "passed": 2,
+          "failed": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json"
+          ],
+          "failures": [],
+          "schema_versions": [
+            "2.0.0-draft"
+          ]
+        },
+        {
+          "metric": "diagnostics.effect_stage_consistency",
+          "total": 2,
+          "passed": 0,
+          "failed": 2,
+          "pass_rate": 0.0,
+          "pass_fraction": 0.0,
+          "status": "error",
+          "sources": [
+            "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json"
+          ],
+          "failures": [
+            {
+              "file": "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json",
+              "index": 0,
+              "reasons": [
+                "capability.audit_metadata.mismatch",
+                "capability.audit_envelope.mismatch"
+              ],
+              "extension_ids": [
+                "core.iter.core"
+              ],
+              "audit_ids": [
+                "core.iterator.collect",
+                "core.iterator.reduce"
+              ],
+              "envelope_ids": [
+                "core.iterator.collect",
+                "core.iterator.reduce"
+              ]
+            },
+            {
+              "file": "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json",
+              "index": 1,
+              "reasons": [
+                "capability.audit_metadata.mismatch",
+                "capability.audit_envelope.mismatch"
+              ],
+              "extension_ids": [
+                "core.iter.core"
+              ],
+              "audit_ids": [
+                "core.iterator.collect",
+                "core.iterator.reduce"
+              ],
+              "envelope_ids": [
+                "core.iterator.collect",
+                "core.iterator.reduce"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "metric": "diagnostics.domain_coverage",
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json"
+      ],
+      "failures": [],
+      "schema_versions": [
+        "2.0.0-draft"
+      ]
+    },
+    {
+      "metric": "diagnostics.effect_stage_consistency",
+      "total": 2,
+      "passed": 0,
+      "failed": 2,
+      "pass_rate": 0.0,
+      "pass_fraction": 0.0,
+      "status": "error",
+      "sources": [
+        "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json"
+      ],
+      "failures": [
+        {
+          "file": "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json",
+          "index": 0,
+          "reasons": [
+            "capability.audit_metadata.mismatch",
+            "capability.audit_envelope.mismatch"
+          ],
+          "extension_ids": [
+            "core.iter.core"
+          ],
+          "audit_ids": [
+            "core.iterator.collect",
+            "core.iterator.reduce"
+          ],
+          "envelope_ids": [
+            "core.iterator.collect",
+            "core.iterator.reduce"
+          ]
+        },
+        {
+          "file": "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json",
+          "index": 1,
+          "reasons": [
+            "capability.audit_metadata.mismatch",
+            "capability.audit_envelope.mismatch"
+          ],
+          "extension_ids": [
+            "core.iter.core"
+          ],
+          "audit_ids": [
+            "core.iterator.collect",
+            "core.iterator.reduce"
+          ],
+          "envelope_ids": [
+            "core.iterator.collect",
+            "core.iterator.reduce"
+          ]
+        }
+      ]
+    }
+  ],
+  "case": "filter",
+  "metric": "iterator.stage.audit_pass_rate",
+  "total": 2,
+  "passed": 2,
+  "failed": 0,
+  "pass_rate": 1.0,
+  "pass_fraction": 1.0,
+  "required_audit_keys": [
+    "cli.audit_id",
+    "cli.change_set",
+    "schema.version",
+    "event.domain",
+    "event.kind",
+    "effect.stage.required",
+    "effect.stage.actual",
+    "effect.capability",
+    "capability.ids",
+    "effect.required_capabilities",
+    "effect.stage.required_capabilities",
+    "effect.actual_capabilities",
+    "effect.stage.actual_capabilities",
+    "effect.capability_descriptor",
+    "effect.handler_stack",
+    "effect.unhandled_operations",
+    "effect.stage.iterator.required",
+    "effect.stage.iterator.actual",
+    "effect.stage.iterator.kind",
+    "effect.stage.iterator.capability",
+    "effect.stage.iterator.source",
+    "bridge.audit_pass_rate"
+  ],
+  "sources": [
+    "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json"
+  ],
+  "failures": [],
+  "diagnostic_audit": {
+    "metric": "diagnostic.audit_presence_rate",
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
+    "required_audit_keys": [
+      "cli.audit_id",
+      "cli.change_set",
+      "schema.version",
+      "timestamp"
+    ],
+    "sources": [
+      "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json"
+    ],
+    "failures": []
+  },
+  "iterator": {
+    "metric": "iterator.stage.audit_pass_rate",
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
+    "required_audit_keys": [
+      "cli.audit_id",
+      "cli.change_set",
+      "schema.version",
+      "event.domain",
+      "event.kind",
+      "effect.stage.required",
+      "effect.stage.actual",
+      "effect.capability",
+      "capability.ids",
+      "effect.required_capabilities",
+      "effect.stage.required_capabilities",
+      "effect.actual_capabilities",
+      "effect.stage.actual_capabilities",
+      "effect.capability_descriptor",
+      "effect.handler_stack",
+      "effect.unhandled_operations",
+      "effect.stage.iterator.required",
+      "effect.stage.iterator.actual",
+      "effect.stage.iterator.kind",
+      "effect.stage.iterator.capability",
+      "effect.stage.iterator.source",
+      "bridge.audit_pass_rate"
+    ],
+    "sources": [
+      "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json"
+    ],
+    "failures": [],
+    "schema_versions": [
+      "2.0.0-draft"
+    ],
+    "related_metrics": [
+      {
+        "metric": "diagnostics.domain_coverage",
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "status": "success",
+        "sources": [
+          "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json"
+        ],
+        "failures": [],
+        "schema_versions": [
+          "2.0.0-draft"
+        ]
+      },
+      {
+        "metric": "diagnostics.effect_stage_consistency",
+        "total": 2,
+        "passed": 0,
+        "failed": 2,
+        "pass_rate": 0.0,
+        "pass_fraction": 0.0,
+        "status": "error",
+        "sources": [
+          "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json"
+        ],
+        "failures": [
+          {
+            "file": "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json",
+            "index": 0,
+            "reasons": [
+              "capability.audit_metadata.mismatch",
+              "capability.audit_envelope.mismatch"
+            ],
+            "extension_ids": [
+              "core.iter.core"
+            ],
+            "audit_ids": [
+              "core.iterator.collect",
+              "core.iterator.reduce"
+            ],
+            "envelope_ids": [
+              "core.iterator.collect",
+              "core.iterator.reduce"
+            ]
+          },
+          {
+            "file": "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json",
+            "index": 1,
+            "reasons": [
+              "capability.audit_metadata.mismatch",
+              "capability.audit_envelope.mismatch"
+            ],
+            "extension_ids": [
+              "core.iter.core"
+            ],
+            "audit_ids": [
+              "core.iterator.collect",
+              "core.iterator.reduce"
+            ],
+            "envelope_ids": [
+              "core.iterator.collect",
+              "core.iterator.reduce"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "schema_versions": [
+    "2.0.0-draft"
+  ],
+  "diagnostics": {
+    "total": 2,
+    "error": 2,
+    "warning": 0,
+    "info": 0,
+    "hint": 0,
+    "other": 0,
+    "sources": [
+      "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json"
+    ],
+    "info_fraction": 0.0,
+    "hint_fraction": 0.0,
+    "info_hint_ratio": 0.0,
+    "parser_total": 0,
+    "parser_expected": 0,
+    "parser_expected_ratio": 0.0,
+    "parser_expected_tokens_avg": 0.0
+  },
+  "enforcement": {
+    "require_success": true
+  },
+  "adapter_metrics": {
+    "filter_effect": {
+      "effects": {
+        "async_pending": false,
+        "debug": false,
+        "mem": false,
+        "mem_bytes": 0,
+        "mutating": true,
+        "predicate_calls": 1
+      },
+      "latency_ns": 2625,
+      "stage": {
+        "actual": "beta",
+        "capability": "core.iter.core",
+        "kind": "core_iter",
+        "required": {
+          "mode": "at_least",
+          "stage": "beta"
+        },
+        "source": "iter.filter_effect"
+      }
+    },
+    "map_pipeline": {
+      "effects": {
+        "async_pending": false,
+        "debug": false,
+        "mem": false,
+        "mem_bytes": 0,
+        "mutating": true,
+        "predicate_calls": 0
+      },
+      "latency_ns": 15500,
+      "stage": {
+        "actual": "beta",
+        "capability": "core.iter.core",
+        "kind": "core_iter",
+        "required": {
+          "mode": "at_least",
+          "stage": "beta"
+        },
+        "source": "iter.map_pipeline"
+      }
+    }
+  }
+}
