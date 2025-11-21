@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2026-02-18 / WBS 3.1c-G1 (map/filter instrumentation)"
+last_updated = "2026-02-19 / WBS 3.1c-G2 (flat_map/zip stage)"
 maintainer = "Core Library Team"
 
 [[api]]
@@ -322,11 +322,11 @@ wbs = "3.1c Step3"
 [[api]]
 module = "Iter"
 name = "flat_map"
-effect = "@pure"
+effect = "effect {mem}"
 stage = "beta"
 rust_status = "implemented"
 ocaml_status = "typeck-only"
-notes = "Rust: iter/adapters.rs::flat_map / Test: core_iter_adapters.rs::iter_flat_map_expands_sequences でネストした Iter を平坦化。"
+notes = "Rust: compiler/rust/runtime/src/prelude/iter/adapters/flat_map.rs が `IterSeed::FlatMap` を採用し、`EffectLabels::mem_reservation` を増分。テスト: compiler/rust/frontend/tests/core_iter_adapters.rs::flat_map_vec と `tests/snapshots/core_iter_adapters__core_iter_adapters.snap`。KPI: `collect-iterator-audit-metrics.py --section iterator --case flat_map --output reports/iterator-flatmap-metrics.json` を `reports/spec-audit/ch0/links.md#iter-adapters` へ記録。"
 wbs = "3.1c Step3"
 
 [[api]]
@@ -382,11 +382,11 @@ wbs = "3.1c Step3"
 [[api]]
 module = "Iter"
 name = "zip"
-effect = "@pure"
-stage = "beta"
+effect = "@pure / effect {mut}"
+stage = "stable"
 rust_status = "implemented"
 ocaml_status = "typeck-only"
-notes = "Rust: iter/adapters.rs::zip / Test: core_iter_adapters.rs::iter_zip_pairs_sequences が 2 つの Iter を同期。"
+notes = "Rust: compiler/rust/runtime/src/prelude/iter/adapters/zip.rs が `ZipState::remaining_*` で長さ差を検知し、`iterator.error.zip_shorter` を `Diagnostic.extensions` に追加。テスト: compiler/rust/frontend/tests/core_iter_adapters.rs::zip_mismatch（`tests/snapshots/core_iter_adapters__core_iter_adapters.snap`）、KPI: `collect-iterator-audit-metrics.py --section iterator --case zip --output reports/iterator-zip-metrics.json` の結果を `reports/spec-audit/ch0/links.md#iter-adapters` および `reports/diagnostic-format-regression.md#iterator.zip_mismatch` に記録。"
 wbs = "3.1c Step3"
 
 [[api]]

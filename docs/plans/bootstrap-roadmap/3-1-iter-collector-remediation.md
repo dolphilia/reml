@@ -45,6 +45,13 @@
 - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ `iterator.map.latency` と `iterator.filter.predicate_count` を KPI として追加し、Nightly 実行で集めた値を記録する。閾値を超えた場合は `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` にエスカレーションする。
 - `docs/notes/core-library-outline.md#iter-g1-map-filter` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` §3.0.3a に G1 実行ログをリンクし、Phase 3-2 以降の Adapter/Collections 計画から参照できるようにする。
 
+### 6. G2 flat_map / zip Stage 適用（W38 前半）
+1. `compiler/rust/runtime/src/prelude/iter/adapters/flat_map.rs` を `IterSeed::FlatMap` ベースへ再設計し、ネストされた `Iter` を消費するときに `IteratorStageProfile::request_stage(Stage::Beta)` と `EffectLabels::mem_reservation` を増分更新する。`collect-iterator-audit-metrics.py --section iterator --case flat_map --output reports/iterator-flatmap-metrics.json --require-success` を実行し、`reports/spec-audit/ch0/links.md#iter-adapters` にコマンド履歴と KPI を追記する。
+2. `iter/adapters/zip.rs` に長さ差検知ロジック (`ZipState::remaining_left/right`) を導入し、短い入力が検出された場合は `iterator.error.zip_shorter` を `Diagnostic.extensions["iterator.zip"]` に記録する。`compiler/rust/frontend/tests/core_iter_adapters.rs::zip_mismatch` を `insta` で更新し、`scripts/validate-diagnostic-json.sh --pattern iterator.zip` の出力を `reports/diagnostic-format-regression.md#iterator.zip_mismatch` に保存する。
+3. `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `Iter.flat_map` 行に `effect = "effect {mem}"`、`Iter.zip` 行に `effect = "@pure / effect {mut}"` と `notes = "flat_map_vec / zip_mismatch snapshot, reports/iterator-flatmap-metrics.json"` 等を追記し、`cargo xtask prelude-audit --section iter --filter adapter --strict` の再実行結果を `reports/spec-audit/ch1/core_iter_adapters.json` に反映する。更新日は `meta.last_updated = "2026-02-XX / WBS 3.1c-G2"` へ繰り上げ、`docs-migrations.log` に記録する。
+4. `docs/notes/core-library-outline.md#iter-g2-flat-zip` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#iter-adapter` へ Stage/Effect の判断基準、KPI 連携（`reports/iterator-stage-summary.md`, `reports/iterator-flatmap-metrics.json`, `reports/diagnostic-format-regression.md#iterator.zip_mismatch`）を記述する。
+5. `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` に「zip 長さ差 / flat_map mem 逸脱」用のテンプレート項目を追加し、Nightly で `collect-iterator-audit-metrics.py --section iterator --case zip` または `flat_map` が失敗した際のエスカレーション経路を確立する。
+
 ## 成果物
 - 更新済み `cargo xtask prelude-audit` ソースと CLI ドキュメント
 - 最新 `prelude_api_inventory.toml`・`reports/spec-audit/ch1/iter.json`・`reports/spec-audit/ch0/links.md`・`reports/iterator-{stage,collector}-summary.md`

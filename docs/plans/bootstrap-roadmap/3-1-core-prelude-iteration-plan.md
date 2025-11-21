@@ -109,6 +109,7 @@
 - `IterState`/`IterSeed` の 3 層構造と `IteratorStageProfile` を Rust 実装へ落とし込む際は、`compiler/rust/runtime/src/prelude/iter/mod.rs` に `EffectLabels::from_iter_step` を追加し、`collect-iterator-audit --section iter --case seed-stage-profile --output reports/spec-audit/ch1/iter_seed_profile.json` を実行して Stage/Effect の測定結果を `reports/spec-audit/ch0/links.md#iter-core-structure` に記録する。
 - `cargo xtask prelude-audit --section iter --filter collector --strict --baseline docs/spec/3-1-core-prelude-iteration.md` を nightly ジョブへ組み込み、成功ログを `reports/spec-audit/ch0/links.md#collector-f2-監査ログ` に追記する。Run-ID・日付・担当者を `docs-migrations.log` に転記し、証跡を維持する。
 - `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `module = "Iter"` / `"Collector"` エントリにテスト名・KPI・効果タグを追記し、`0-3-audit-and-metrics.md` から参照できるようにする。更新後は `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` §3.0.3a へリンクを追加して Phase 3 判定資料へ反映する。
+- G2 以降のアダプタ実装へ接続するため、`flat_map`/`zip` の Stage 要件と `EffectLabels::mem_reservation`/`iterator.error.zip_shorter` を `reports/spec-audit/ch1/core_iter_adapters.json` に追加出力し、`docs/notes/core-library-outline.md#iter-g2-flat-zip` と `docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md` へ更新ログを残す。Stage や effect の差異は `prelude_api_inventory.toml` の各行にも記録し、G2 手順開始時点のベースラインを確定させる。
 
 ### 4. Iter アダプタと終端操作（37-38週目）
 **担当領域**: 宣言的データフロー
@@ -147,6 +148,17 @@
 - `flat_map` 用にネストした `IterSeed` を `iter/adapters/flat_map.rs` へ実装し、中間バッファの確保時に `EffectLabels::mem_reservation` を積算する。`core_iter_adapters.rs::flat_map_vec` で `iterator.effect.mem` スナップショットを取得する。
 - `zip` は入力の長さ差を `iterator.error.zip_shorter` で表現し、`EffectLabels::stage.required = Stage::Stable` を `collect-iterator-audit --case zip` の JSON に含める。`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` には長さ不一致時のフォローアップルールを記述する。
 - `reports/spec-audit/ch0/links.md#iter-adapters` に `cargo test core_iter_adapters -- --include-ignored zip_mismatch` などのコマンド列を追加し、`reports/iterator-stage-summary.md` の `iterator.effect.mem_reservation` を更新する。
+- **G2 実施タスクリスト**
+  1. `compiler/rust/runtime/src/prelude/iter/adapters/flat_map.rs` を再編し、`IterSeed::FlatMap` が `IteratorStageProfile::request_stage(Stage::Beta)` と `EffectLabels::mem_reservation` を更新するフックを実装する。`collect-iterator-audit-metrics.py --section iterator --case flat_map --output reports/iterator-flatmap-metrics.json` の結果を `reports/spec-audit/ch0/links.md#iter-adapters` にリンクし、`docs-migrations.log` へジョブ ID を追記する。
+  2. `iter/adapters/zip.rs` に長さ差検知用の `ZipState::Remaining` を追加し、短い入力が検出されたら `iterator.error.zip_shorter` を `Diagnostic.extensions` に書き出す。`core_iter_adapters.rs::zip_mismatch` の snapshot を更新し、`scripts/validate-diagnostic-json.sh --pattern iterator.zip` の結果を `reports/diagnostic-format-regression.md` に反映する。
+  3. `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` で `Iter.flat_map` の `effect` を `effect {mem}`、`Iter.zip` の `effect` を `@pure / effect {mut}` の複合に書き換え、`stage` と `rust_status` を `implemented` に保ちつつ `notes` 欄へ `flat_map_vec`/`zip_mismatch` テスト参照と KPI ファイル名を追記する。更新履歴を `reports/spec-audit/ch1/core_iter_adapters.json` と `reports/spec-audit/ch0/links.md#iter-adapters` に反映。
+  4. `docs/notes/core-library-outline.md#iter-g2-flat-zip` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#iter-adapter` に Stage 設計・KPI 連携の要点を記述し、Phase 3 内での参照先を一本化する。
+
+| 検証項目 | 成果物 | 依存ファイル/コマンド |
+| --- | --- | --- |
+| `flat_map` の `effect {mem}` 計測 | `reports/iterator-flatmap-metrics.json`, `tests/snapshots/core_iter_adapters__core_iter_adapters.snap` | `collect-iterator-audit-metrics.py --section iterator --case flat_map`, `cargo test core_iter_adapters -- --include-ignored flat_map_vec` |
+| `zip` 長さ差検出 | `tests/snapshots/core_iter_adapters__core_iter_adapters.snap`, `reports/diagnostic-format-regression.md#iterator.zip_mismatch` | `cargo test core_iter_adapters -- --include-ignored zip_mismatch`, `scripts/validate-diagnostic-json.sh --pattern iterator.zip` |
+| Stage/KPI 反映 | `prelude_api_inventory.toml`, `reports/spec-audit/ch1/core_iter_adapters.json`, `docs-migrations.log` | `cargo xtask prelude-audit --section iter --filter adapter --strict`, `python3 tooling/ci/collect-iterator-audit-metrics.py --section iterator --case zip` |
 
 ###### G3: buffered と backpressure（W38 中盤）
 - `iter/adapters/buffered.rs` にリングバッファ実装を追加し、`EffectLabels::mem_bytes` を `IteratorStageProfile` で記録する。`core_iter_adapters.rs::buffered_window` で空間効率とバックプレッシャを可視化する。
