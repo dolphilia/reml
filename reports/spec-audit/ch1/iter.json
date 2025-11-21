@@ -1,7 +1,7 @@
 {
   "metric": "iterator.api.coverage",
-  "command": "RUSTFLAGS=\"-Zpanic-abort-tests\" cargo +nightly test --manifest-path compiler/rust/frontend/Cargo.toml --test core_iter_pipeline -- core_iter_pipeline_snapshot && RUSTFLAGS=\"-Zpanic-abort-tests\" cargo +nightly test --manifest-path compiler/rust/frontend/Cargo.toml --test core_iter_effects -- core_iter_effect_labels_snapshot core_iter_try_collect_errors_snapshot",
-  "timestamp": "2025-11-20T08:32:29Z",
+  "command": "cargo test --manifest-path compiler/rust/frontend/Cargo.toml --test core_iter_pipeline && cargo test --manifest-path compiler/rust/frontend/Cargo.toml --test core_iter_effects",
+  "timestamp": "2025-11-21T01:51:09Z",
   "section": "Iter + Collector",
   "status": "collected",
   "total_entries": 6,
@@ -19,7 +19,10 @@
           "effects": {
             "mem": false,
             "mut": false,
-            "mem_bytes": 0
+            "debug": false,
+            "async_pending": false,
+            "mem_bytes": 0,
+            "predicate_calls": 0
           },
           "value_example": [1, 2, 3, 4]
         },
@@ -30,8 +33,11 @@
           "stage": "beta",
           "effects": {
             "mem": false,
-            "mut": false,
-            "mem_bytes": 0
+            "mut": true,
+            "debug": false,
+            "async_pending": false,
+            "mem_bytes": 0,
+            "predicate_calls": 1
           },
           "value_example": [20, 30, 40]
         },
@@ -42,8 +48,11 @@
           "stage": "beta",
           "effects": {
             "mem": false,
-            "mut": false,
-            "mem_bytes": 0
+            "mut": true,
+            "debug": false,
+            "async_pending": false,
+            "mem_bytes": 0,
+            "predicate_calls": 0
           },
           "value_example": [
             [1, "red"],
@@ -59,7 +68,10 @@
           "effects": {
             "mem": true,
             "mut": false,
-            "mem_bytes": 2
+            "debug": false,
+            "async_pending": false,
+            "mem_bytes": 2,
+            "predicate_calls": 0
           },
           "value_example": [0, 1, 2, 3, 4]
         },
@@ -71,7 +83,10 @@
           "effects": {
             "mem": false,
             "mut": false,
-            "mem_bytes": 0
+            "debug": false,
+            "async_pending": false,
+            "mem_bytes": 0,
+            "predicate_calls": 0
           },
           "std_into_iter": [20, 21, 22]
         },
@@ -83,7 +98,10 @@
           "effects": {
             "mem": false,
             "mut": false,
-            "mem_bytes": 0
+            "debug": false,
+            "async_pending": false,
+            "mem_bytes": 0,
+            "predicate_calls": 0
           },
           "value_example": [1, 2, 3, 4]
         }
@@ -98,8 +116,11 @@
           "stage": "beta",
           "effects": {
             "mem": false,
+            "mut": false,
             "debug": false,
-            "mem_bytes": 0
+            "async_pending": false,
+            "mem_bytes": 0,
+            "predicate_calls": 0
           }
         },
         {
@@ -108,8 +129,11 @@
           "stage": "beta",
           "effects": {
             "mem": true,
+            "mut": false,
             "debug": false,
-            "mem_bytes": 3
+            "async_pending": false,
+            "mem_bytes": 3,
+            "predicate_calls": 0
           }
         },
         {
@@ -118,8 +142,11 @@
           "stage": "beta",
           "effects": {
             "mem": false,
+            "mut": false,
             "debug": true,
-            "mem_bytes": 0
+            "async_pending": false,
+            "mem_bytes": 0,
+            "predicate_calls": 0
           }
         }
       ]

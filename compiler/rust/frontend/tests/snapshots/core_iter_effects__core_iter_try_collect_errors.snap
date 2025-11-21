@@ -1,5 +1,6 @@
 ---
 source: tests/core_iter_effects.rs
+assertion_line: 112
 expression: cases
 ---
 - case: item_error
@@ -16,6 +17,7 @@ expression: cases
       collector.effect.mem: false
       collector.effect.mem_reservation: 0
       collector.effect.mut: false
+      collector.effect.predicate_calls: 0
       collector.effect.reserve: 0
       collector.error.key: "\"dup\""
       collector.kind: map
@@ -33,7 +35,9 @@ expression: cases
           async_pending: false
           debug: false
           mem: false
+          mem_bytes: 0
           mut: false
+          predicate_calls: 0
         error_key: "\"dup\""
         error_kind: duplicate_key
         kind: map

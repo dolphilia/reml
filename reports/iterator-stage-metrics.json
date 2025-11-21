@@ -1,13 +1,268 @@
 {
-  "section": "iterator",
+  "metrics": [
+    {
+      "metric": "diagnostic.audit_presence_rate",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "required_audit_keys": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "timestamp"
+      ],
+      "sources": [
+        "compiler/ocaml/tests/golden/_actual/typeclass_iterator_stage_mismatch.actual.json"
+      ],
+      "failures": []
+    },
+    {
+      "metric": "iterator.stage.audit_pass_rate",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "required_audit_keys": [
+        "cli.audit_id",
+        "cli.change_set",
+        "schema.version",
+        "event.domain",
+        "event.kind",
+        "effect.stage.required",
+        "effect.stage.actual",
+        "effect.capability",
+        "capability.ids",
+        "effect.required_capabilities",
+        "effect.stage.required_capabilities",
+        "effect.actual_capabilities",
+        "effect.stage.actual_capabilities",
+        "effect.capability_descriptor",
+        "effect.handler_stack",
+        "effect.unhandled_operations",
+        "effect.stage.iterator.required",
+        "effect.stage.iterator.actual",
+        "effect.stage.iterator.kind",
+        "effect.stage.iterator.capability",
+        "effect.stage.iterator.source",
+        "bridge.audit_pass_rate"
+      ],
+      "sources": [
+        "compiler/ocaml/tests/golden/_actual/typeclass_iterator_stage_mismatch.actual.json"
+      ],
+      "failures": [],
+      "schema_versions": [
+        "2.0.0-draft"
+      ],
+      "related_metrics": [
+        {
+          "metric": "diagnostics.domain_coverage",
+          "total": 1,
+          "passed": 1,
+          "failed": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "compiler/ocaml/tests/golden/_actual/typeclass_iterator_stage_mismatch.actual.json"
+          ],
+          "failures": [],
+          "schema_versions": [
+            "2.0.0-draft"
+          ]
+        },
+        {
+          "metric": "diagnostics.effect_stage_consistency",
+          "total": 1,
+          "passed": 1,
+          "failed": 0,
+          "pass_rate": 1.0,
+          "pass_fraction": 1.0,
+          "status": "success",
+          "sources": [
+            "compiler/ocaml/tests/golden/_actual/typeclass_iterator_stage_mismatch.actual.json"
+          ],
+          "failures": []
+        }
+      ]
+    },
+    {
+      "metric": "diagnostics.domain_coverage",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "compiler/ocaml/tests/golden/_actual/typeclass_iterator_stage_mismatch.actual.json"
+      ],
+      "failures": [],
+      "schema_versions": [
+        "2.0.0-draft"
+      ]
+    },
+    {
+      "metric": "diagnostics.effect_stage_consistency",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "pass_fraction": 1.0,
+      "status": "success",
+      "sources": [
+        "compiler/ocaml/tests/golden/_actual/typeclass_iterator_stage_mismatch.actual.json"
+      ],
+      "failures": []
+    }
+  ],
   "case": "pipeline",
-  "command": "python3 tooling/ci/collect-iterator-audit-metrics.py --section iterator --case pipeline --source reports/spec-audit/ch1/iter.json --output reports/iterator-stage-metrics.json",
-  "timestamp": "2025-11-20T08:32:29Z",
-  "metrics": {
-    "iterator.stage.audit_pass_rate": 1.0,
-    "collector.effect.mem": 0,
-    "collector.effect.mut": 0,
-    "collector.error.duplicate_key": 1
+  "metric": "iterator.stage.audit_pass_rate",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "pass_rate": 1.0,
+  "pass_fraction": 1.0,
+  "required_audit_keys": [
+    "cli.audit_id",
+    "cli.change_set",
+    "schema.version",
+    "event.domain",
+    "event.kind",
+    "effect.stage.required",
+    "effect.stage.actual",
+    "effect.capability",
+    "capability.ids",
+    "effect.required_capabilities",
+    "effect.stage.required_capabilities",
+    "effect.actual_capabilities",
+    "effect.stage.actual_capabilities",
+    "effect.capability_descriptor",
+    "effect.handler_stack",
+    "effect.unhandled_operations",
+    "effect.stage.iterator.required",
+    "effect.stage.iterator.actual",
+    "effect.stage.iterator.kind",
+    "effect.stage.iterator.capability",
+    "effect.stage.iterator.source",
+    "bridge.audit_pass_rate"
+  ],
+  "sources": [
+    "compiler/ocaml/tests/golden/_actual/typeclass_iterator_stage_mismatch.actual.json"
+  ],
+  "failures": [],
+  "diagnostic_audit": {
+    "metric": "diagnostic.audit_presence_rate",
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
+    "required_audit_keys": [
+      "cli.audit_id",
+      "cli.change_set",
+      "schema.version",
+      "timestamp"
+    ],
+    "sources": [
+      "compiler/ocaml/tests/golden/_actual/typeclass_iterator_stage_mismatch.actual.json"
+    ],
+    "failures": []
   },
-  "notes": "Values derived from compiler/rust/frontend/tests/snapshots/core_iter_pipeline__core_iter_pipeline.snap and core_iter_effects__*.snap (Remediation Step4)."
+  "iterator": {
+    "metric": "iterator.stage.audit_pass_rate",
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "pass_fraction": 1.0,
+    "required_audit_keys": [
+      "cli.audit_id",
+      "cli.change_set",
+      "schema.version",
+      "event.domain",
+      "event.kind",
+      "effect.stage.required",
+      "effect.stage.actual",
+      "effect.capability",
+      "capability.ids",
+      "effect.required_capabilities",
+      "effect.stage.required_capabilities",
+      "effect.actual_capabilities",
+      "effect.stage.actual_capabilities",
+      "effect.capability_descriptor",
+      "effect.handler_stack",
+      "effect.unhandled_operations",
+      "effect.stage.iterator.required",
+      "effect.stage.iterator.actual",
+      "effect.stage.iterator.kind",
+      "effect.stage.iterator.capability",
+      "effect.stage.iterator.source",
+      "bridge.audit_pass_rate"
+    ],
+    "sources": [
+      "compiler/ocaml/tests/golden/_actual/typeclass_iterator_stage_mismatch.actual.json"
+    ],
+    "failures": [],
+    "schema_versions": [
+      "2.0.0-draft"
+    ],
+    "related_metrics": [
+      {
+        "metric": "diagnostics.domain_coverage",
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "status": "success",
+        "sources": [
+          "compiler/ocaml/tests/golden/_actual/typeclass_iterator_stage_mismatch.actual.json"
+        ],
+        "failures": [],
+        "schema_versions": [
+          "2.0.0-draft"
+        ]
+      },
+      {
+        "metric": "diagnostics.effect_stage_consistency",
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "pass_rate": 1.0,
+        "pass_fraction": 1.0,
+        "status": "success",
+        "sources": [
+          "compiler/ocaml/tests/golden/_actual/typeclass_iterator_stage_mismatch.actual.json"
+        ],
+        "failures": []
+      }
+    ]
+  },
+  "schema_versions": [
+    "2.0.0-draft"
+  ],
+  "diagnostics": {
+    "total": 1,
+    "error": 1,
+    "warning": 0,
+    "info": 0,
+    "hint": 0,
+    "other": 0,
+    "sources": [
+      "compiler/ocaml/tests/golden/_actual/typeclass_iterator_stage_mismatch.actual.json"
+    ],
+    "info_fraction": 0.0,
+    "hint_fraction": 0.0,
+    "info_hint_ratio": 0.0,
+    "parser_total": 0,
+    "parser_expected": 0,
+    "parser_expected_ratio": 0.0,
+    "parser_expected_tokens_avg": 0.0
+  },
+  "enforcement": {
+    "require_success": true
+  }
 }

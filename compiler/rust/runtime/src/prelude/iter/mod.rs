@@ -27,6 +27,7 @@ mod adapters;
 
 /// 遅延列 `Iter<T>` の共有ハンドル。
 #[derive(Clone, Debug)]
+#[must_use = "Iter は遅延列のため、終端操作を呼び出して結果を利用してください"]
 pub struct Iter<T> {
     core: Arc<IterCore<T>>,
 }
@@ -140,6 +141,138 @@ impl<T> Iter<T> {
     /// `VecCollector` を利用して可変ベクタへ収集する。
     pub fn collect_vec(self) -> Result<CollectOutcome<Vec<T>>, CollectError> {
         self.collect_into_collector(VecCollector::new())
+    }
+
+    /// `Iterator::fold` 相当の終端操作。
+    pub fn fold<U, F>(self, init: U, mut f: F) -> U
+    where
+        F: FnMut(U, T) -> U,
+    {
+        let iter = self;
+        let mut acc = init;
+        loop {
+            match iter.next_step() {
+                IterStep::Ready(value) => {
+                    acc = f(acc, value);
+                }
+                IterStep::Pending => continue,
+                IterStep::Finished => return acc,
+                IterStep::Error(err) => {
+                    panic!("Iter::fold encountered iterator error: {err:?}");
+                }
+            }
+        }
+    }
+
+    /// `Iterator::reduce` 相当の終端操作。
+    pub fn reduce<F>(self, mut f: F) -> Option<T>
+    where
+        F: FnMut(T, T) -> T,
+    {
+        let iter = self;
+        let mut accumulator: Option<T> = None;
+        loop {
+            match iter.next_step() {
+                IterStep::Ready(value) => {
+                    accumulator = Some(match accumulator.take() {
+                        Some(current) => f(current, value),
+                        None => value,
+                    });
+                }
+                IterStep::Pending => continue,
+                IterStep::Finished => return accumulator,
+                IterStep::Error(err) => {
+                    panic!("Iter::reduce encountered iterator error: {err:?}");
+                }
+            }
+        }
+    }
+
+    /// すべての要素が述語を満たすかを判定する。
+    pub fn all<F>(self, mut predicate: F) -> bool
+    where
+        F: FnMut(&T) -> bool,
+    {
+        let iter = self;
+        loop {
+            match iter.next_step() {
+                IterStep::Ready(value) => {
+                    if !predicate(&value) {
+                        return false;
+                    }
+                }
+                IterStep::Pending => continue,
+                IterStep::Finished => return true,
+                IterStep::Error(err) => {
+                    panic!("Iter::all encountered iterator error: {err:?}");
+                }
+            }
+        }
+    }
+
+    /// 少なくとも 1 つの要素が述語を満たすかを判定する。
+    pub fn any<F>(self, mut predicate: F) -> bool
+    where
+        F: FnMut(&T) -> bool,
+    {
+        let iter = self;
+        loop {
+            match iter.next_step() {
+                IterStep::Ready(value) => {
+                    if predicate(&value) {
+                        return true;
+                    }
+                }
+                IterStep::Pending => continue,
+                IterStep::Finished => return false,
+                IterStep::Error(err) => {
+                    panic!("Iter::any encountered iterator error: {err:?}");
+                }
+            }
+        }
+    }
+
+    /// 述語を満たす最初の要素を返す。
+    pub fn find<F>(self, mut predicate: F) -> Option<T>
+    where
+        F: FnMut(&T) -> bool,
+    {
+        let iter = self;
+        loop {
+            match iter.next_step() {
+                IterStep::Ready(value) => {
+                    if predicate(&value) {
+                        return Some(value);
+                    }
+                }
+                IterStep::Pending => continue,
+                IterStep::Finished => return None,
+                IterStep::Error(err) => {
+                    panic!("Iter::find encountered iterator error: {err:?}");
+                }
+            }
+        }
+    }
+
+    /// `Result` で短絡する `fold`。
+    pub fn try_fold<U, E, F>(self, init: U, mut f: F) -> Result<U, E>
+    where
+        F: FnMut(U, T) -> Result<U, E>,
+    {
+        let iter = self;
+        let mut acc = init;
+        loop {
+            match iter.next_step() {
+                IterStep::Ready(value) => {
+                    acc = f(acc, value)?;
+                }
+                IterStep::Pending => continue,
+                IterStep::Finished => return Ok(acc),
+                IterStep::Error(err) => {
+                    panic!("Iter::try_fold encountered iterator error: {err:?}");
+                }
+            }
+        }
     }
 
     fn collect_into_collector<C, Output>(self, collector: C) -> Result<Output, C::Error>
@@ -529,6 +662,7 @@ pub struct IteratorStageSnapshot {
 pub struct EffectSet {
     bits: u8,
     mem_bytes: usize,
+    predicate_calls: usize,
 }
 
 impl EffectSet {
@@ -540,12 +674,14 @@ impl EffectSet {
     pub const PURE: Self = Self {
         bits: 0,
         mem_bytes: 0,
+        predicate_calls: 0,
     };
 
     pub fn with_mut(self) -> Self {
         Self {
             bits: self.bits | Self::MUT_BIT,
             mem_bytes: self.mem_bytes,
+            predicate_calls: self.predicate_calls,
         }
     }
 
@@ -553,6 +689,7 @@ impl EffectSet {
         Self {
             bits: self.bits | Self::MEM_BIT,
             mem_bytes: self.mem_bytes,
+            predicate_calls: self.predicate_calls,
         }
     }
 
@@ -560,6 +697,7 @@ impl EffectSet {
         Self {
             bits: self.bits | Self::DEBUG_BIT,
             mem_bytes: self.mem_bytes,
+            predicate_calls: self.predicate_calls,
         }
     }
 
@@ -567,7 +705,17 @@ impl EffectSet {
         Self {
             bits: self.bits | Self::PENDING_BIT,
             mem_bytes: self.mem_bytes,
+            predicate_calls: self.predicate_calls,
         }
+    }
+
+    pub fn with_predicate_calls(mut self, calls: usize) -> Self {
+        self.predicate_calls = self.predicate_calls.saturating_add(calls);
+        self
+    }
+
+    pub fn predicate_calls(self) -> usize {
+        self.predicate_calls
     }
 
     pub fn with_mem_bytes(mut self, bytes: usize) -> Self {
@@ -583,6 +731,9 @@ impl EffectSet {
         Self {
             bits: self.bits | other.bits,
             mem_bytes: self.mem_bytes.saturating_add(other.mem_bytes),
+            predicate_calls: self
+                .predicate_calls
+                .saturating_add(other.predicate_calls),
         }
     }
 
@@ -609,6 +760,7 @@ impl EffectSet {
             debug: self.contains_debug(),
             async_pending: self.contains_pending(),
             mem_bytes: self.mem_bytes,
+            predicate_calls: self.predicate_calls,
         }
     }
 }
@@ -621,6 +773,7 @@ pub struct EffectLabels {
     pub debug: bool,
     pub async_pending: bool,
     pub mem_bytes: usize,
+    pub predicate_calls: usize,
 }
 
 pub(crate) enum IterDriver<T> {

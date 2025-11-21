@@ -16,6 +16,14 @@ fn iter_map_filter_pipeline() {
 }
 
 #[test]
+fn iter_filter_records_predicate_effect() {
+    let iter = Iter::from_list(vec![1, 2, 3]).filter(|value| *value > 1);
+    let labels = iter.effect_labels();
+    assert!(labels.mutating, "filter should mark mutating effect");
+    assert_eq!(labels.predicate_calls, 1);
+}
+
+#[test]
 fn iter_filter_map_skips_invalid() {
     let iter = Iter::from_list(vec!["1", "x", "3"]).filter_map(|value| value.parse::<i32>().ok());
     assert_eq!(collect_values(iter), vec![1, 3]);

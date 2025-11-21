@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2025-11-20 / WBS 3.1b-F3 + 3.1c-F2 (iterator.api.coverage=1.0)"
+last_updated = "2025-11-21 / WBS 3.1c-Step3 (try_fold/try_collect実装, iterator.effect.predicate_calls 追記)"
 maintainer = "Core Library Team"
 
 [[api]]
@@ -404,9 +404,9 @@ module = "Iter"
 name = "try_fold"
 effect = "@pure"
 stage = "beta"
-rust_status = "pending"
+rust_status = "implemented"
 ocaml_status = "typeck-only"
-notes = "Rust 実装未着手。`Iter::next_step` 連携と `Result` 伝播ルールを設計中（2025-11-20 時点）。"
+notes = "`Iter::try_fold` を `compiler/rust/runtime/src/prelude/iter/mod.rs` に実装し、`core_iter_terminators.rs::iter_try_fold_*` で成功・失敗パスを検証。"
 wbs = "3.1c Step3"
 
 [[api]]
@@ -414,9 +414,9 @@ module = "Iter"
 name = "try_collect"
 effect = "@pure"
 stage = "beta"
-rust_status = "pending"
+rust_status = "implemented"
 ocaml_status = "typeck-only"
-notes = "Rust 実装未着手。Collector との `Result` 連携を `compiler/rust/runtime/src/prelude/iter` へ追加するタスクが残存。"
+notes = "`core_iter_pipeline.rs::try_collect_success` と `core_iter_effects.rs::core_iter_try_collect_errors` で Collector 失敗パスまで snapshot 化済み。"
 wbs = "3.1c Step3"
 
 [[api]]

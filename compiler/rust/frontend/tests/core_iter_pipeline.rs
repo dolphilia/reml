@@ -27,6 +27,7 @@ fn render_effects(labels: EffectLabels) -> serde_json::Value {
         "debug": labels.debug,
         "async_pending": labels.async_pending,
         "mem_bytes": labels.mem_bytes,
+        "predicate_calls": labels.predicate_calls,
     })
 }
 

@@ -51,6 +51,7 @@ impl<T> Iter<T> {
         U: Send + 'static,
     {
         let (stage_profile, effects) = self.metadata_for_adapter();
+        let effects = effects.with_mut();
         let source = self;
         let driver = IterDriver::stepper(move || match source.next_step() {
             IterStep::Ready(value) => IterStep::Ready(f(value)),
@@ -67,6 +68,7 @@ impl<T> Iter<T> {
         T: Send + 'static,
     {
         let (stage_profile, effects) = self.metadata_for_adapter();
+        let effects = effects.with_mut().with_predicate_calls(1);
         let source = self;
         let driver = IterDriver::stepper(move || loop {
             match source.next_step() {
@@ -90,6 +92,7 @@ impl<T> Iter<T> {
         U: Send + 'static,
     {
         let (stage_profile, effects) = self.metadata_for_adapter();
+        let effects = effects.with_mut().with_predicate_calls(1);
         let source = self;
         let driver = IterDriver::stepper(move || loop {
             match source.next_step() {
@@ -113,6 +116,7 @@ impl<T> Iter<T> {
         U: Send + 'static,
     {
         let (stage_profile, effects) = self.metadata_for_adapter();
+        let effects = effects.with_mem();
         let source = self;
         let mut current: Option<Iter<U>> = None;
         let driver = IterDriver::stepper(move || loop {
@@ -244,7 +248,7 @@ impl<T> Iter<T> {
     {
         let (stage_profile, left_effects) = self.metadata_for_adapter();
         let (_, right_effects) = other.metadata_for_adapter();
-        let combined_effects = left_effects.union(right_effects);
+        let combined_effects = left_effects.union(right_effects).with_mut();
 
         let left_iter = self;
         let right_iter = other;

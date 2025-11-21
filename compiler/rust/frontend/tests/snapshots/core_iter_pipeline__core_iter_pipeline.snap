@@ -1,5 +1,6 @@
 ---
 source: tests/core_iter_pipeline.rs
+assertion_line: 162
 expression: cases
 ---
 - case: list_roundtrip
@@ -28,6 +29,7 @@ expression: cases
     mem: false
     mem_bytes: 0
     mutating: false
+    predicate_calls: 0
   stage:
     actual: beta
     capability: core.iter.core
@@ -66,7 +68,8 @@ expression: cases
     debug: false
     mem: false
     mem_bytes: 0
-    mutating: false
+    mutating: true
+    predicate_calls: 1
   stage:
     actual: beta
     capability: core.iter.core
@@ -104,7 +107,8 @@ expression: cases
     debug: false
     mem: false
     mem_bytes: 0
-    mutating: false
+    mutating: true
+    predicate_calls: 0
   stage:
     actual: beta
     capability: core.iter.core
@@ -146,6 +150,7 @@ expression: cases
     mem: true
     mem_bytes: 2
     mutating: false
+    predicate_calls: 0
   stage:
     actual: beta
     capability: core.iter.core
@@ -186,6 +191,7 @@ expression: cases
     mem: false
     mem_bytes: 0
     mutating: false
+    predicate_calls: 0
   stage:
     actual: beta
     capability: core.iter.core
@@ -228,6 +234,7 @@ expression: cases
     mem: false
     mem_bytes: 0
     mutating: false
+    predicate_calls: 0
   stage:
     actual: beta
     capability: core.iter.core

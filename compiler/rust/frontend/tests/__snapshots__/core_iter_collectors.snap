@@ -3,7 +3,9 @@ collect_list_baseline: {
     "async_pending": false,
     "debug": false,
     "mem": false,
-    "mutating": false
+    "mem_bytes": 0,
+    "mutating": false,
+    "predicate_calls": 0
   },
   "kind": "list",
   "markers": {
@@ -32,7 +34,9 @@ collect_vec_mem_reservation: {
     "async_pending": false,
     "debug": false,
     "mem": true,
-    "mutating": true
+    "mem_bytes": 0,
+    "mutating": true,
+    "predicate_calls": 0
   },
   "kind": "vec",
   "markers": {
@@ -65,6 +69,7 @@ collect_map_duplicate: {
     "collector.effect.mem": false,
     "collector.effect.mem_reservation": 0,
     "collector.effect.mut": false,
+    "collector.effect.predicate_calls": 0,
     "collector.effect.reserve": 0,
     "collector.error.key": "\"dup\"",
     "collector.kind": "map",
@@ -83,7 +88,9 @@ collect_map_duplicate: {
         "async_pending": false,
         "debug": false,
         "mem": false,
-        "mut": false
+        "mem_bytes": 0,
+        "mut": false,
+        "predicate_calls": 0
       },
       "error_key": "\"dup\"",
       "error_kind": "duplicate_key",
@@ -109,7 +116,9 @@ collect_set_stage: {
     "async_pending": false,
     "debug": false,
     "mem": false,
-    "mutating": false
+    "mem_bytes": 0,
+    "mutating": false,
+    "predicate_calls": 0
   },
   "kind": "set",
   "markers": {
@@ -142,6 +151,7 @@ collect_string_invalid: {
     "collector.effect.mem": true,
     "collector.effect.mem_reservation": 0,
     "collector.effect.mut": true,
+    "collector.effect.predicate_calls": 0,
     "collector.effect.reserve": 0,
     "collector.kind": "string",
     "collector.stage.actual": "beta",
@@ -160,7 +170,9 @@ collect_string_invalid: {
         "async_pending": false,
         "debug": false,
         "mem": true,
-        "mut": true
+        "mem_bytes": 0,
+        "mut": true,
+        "predicate_calls": 0
       },
       "error_kind": "invalid_encoding",
       "kind": "string",
@@ -185,7 +197,9 @@ collect_table_baseline: {
     "async_pending": false,
     "debug": false,
     "mem": false,
-    "mutating": true
+    "mem_bytes": 0,
+    "mutating": true,
+    "predicate_calls": 0
   },
   "kind": "table",
   "markers": {
@@ -223,6 +237,7 @@ collect_table_duplicate: {
     "collector.effect.mem": false,
     "collector.effect.mem_reservation": 0,
     "collector.effect.mut": true,
+    "collector.effect.predicate_calls": 0,
     "collector.effect.reserve": 0,
     "collector.error.key": "\"dup\"",
     "collector.kind": "table",
@@ -241,7 +256,9 @@ collect_table_duplicate: {
         "async_pending": false,
         "debug": false,
         "mem": false,
-        "mut": true
+        "mem_bytes": 0,
+        "mut": true,
+        "predicate_calls": 0
       },
       "error_key": "\"dup\"",
       "error_kind": "duplicate_key",

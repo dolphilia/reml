@@ -236,6 +236,14 @@ impl CollectorAuditTrail {
             "async_pending".into(),
             Value::Bool(self.effects.async_pending),
         );
+        effects.insert(
+            "predicate_calls".into(),
+            Value::Number(Number::from(self.effects.predicate_calls as u64)),
+        );
+        effects.insert(
+            "mem_bytes".into(),
+            Value::Number(Number::from(self.effects.mem_bytes as u64)),
+        );
         obj.insert("effects".into(), Value::Object(effects));
 
         let mut markers = JsonObject::new();
@@ -303,6 +311,10 @@ impl CollectorAuditTrail {
         metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}effect.async_pending"),
             Value::Bool(self.effects.async_pending),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.predicate_calls"),
+            Value::Number(Number::from(self.effects.predicate_calls as u64)),
         );
         metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}effect.mem_reservation"),
