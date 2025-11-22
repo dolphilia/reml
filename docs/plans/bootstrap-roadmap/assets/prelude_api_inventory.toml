@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2027-03-06 / WBS 3.1c-H1 (terminator collector連携)"
+last_updated = "2027-03-19 / WBS 3.1c-Fix-B (inventory sync)"
 maintainer = "Core Library Team"
 
 [[api]]
@@ -154,9 +154,9 @@ module = "Result"
 name = "ensure"
 effect = "@pure"
 stage = "draft"
-rust_status = "pending"
+rust_status = "implemented"
 ocaml_status = "not_available"
-notes = "`docs/spec/3-1-core-prelude-iteration.md` の Guard 節に基づき設計"
+notes = "Rust: compiler/rust/runtime/src/prelude/ensure.rs::{ensure,ensure_not_null} / Test: scripts/validate-diagnostic-json.sh --pattern prelude.guard + compiler/rust/frontend/tests/core_iter_effects.rs::core_iter_try_collect_errors_snapshot で Guard 診断の JSON を監視。"
 wbs = "2.2a"
 
 [[api]]
@@ -206,7 +206,7 @@ effect = "@pure"
 stage = "beta"
 rust_status = "implemented"
 ocaml_status = "typeck-only"
-notes = "Rust: compiler/rust/runtime/src/prelude/iter/terminators.rs::collect_list（`collect_with` 経由で Collector を生成） / Test: compiler/rust/frontend/tests/core_iter_terminators.rs::collect_list_pipeline（snapshot: tests/snapshots/core_iter_terminators__collect_list_pipeline.snap）。Collector 監査 (`Diagnostic.extensions[\"prelude.collector\"]`) と `reports/spec-audit/ch1/core_iter_terminators.json#collect_list_pipeline` の KPI（`collector.stage.audit_pass_rate = 1.0`）を同期。"
+notes = "Rust: compiler/rust/runtime/src/prelude/iter/mod.rs::collect_list（`ListCollector` を利用） / Test: compiler/rust/frontend/tests/core_iter_pipeline.rs::list_roundtrip（snapshot: tests/snapshots/core_iter_pipeline__core_iter_pipeline.snap）で Collector 監査と `reports/spec-audit/ch1/core_iter_pipeline.json#list_roundtrip` の KPI を同期。"
 wbs = "3.1c-H1"
 
 [[api]]
@@ -216,7 +216,7 @@ effect = "effect {mut, mem}"
 stage = "beta"
 rust_status = "implemented"
 ocaml_status = "typeck-only"
-notes = "Rust: compiler/rust/runtime/src/prelude/iter/terminators.rs::collect_vec（`collect_with` + `CollectOutcome::audit`） / Test: compiler/rust/frontend/tests/core_iter_terminators.rs::collect_vec_reserve（snapshot: tests/snapshots/core_iter_terminators__collect_vec_reserve.snap）。`reports/spec-audit/ch1/core_iter_terminators.json#collect_vec_reserve` と `reports/iterator-collector-summary.md#collect_vec_reserve-h1` で `collector.effect.mem_reservation = 4` を確認し、`scripts/validate-diagnostic-json.sh --pattern iterator.collect --pattern prelude.collector` の pass 結果を `reports/spec-audit/ch0/links.md#iter-terminators-h1` に記録。"
+notes = "Rust: compiler/rust/runtime/src/prelude/iter/mod.rs::collect_vec（`VecCollector` を利用） / Test: compiler/rust/frontend/tests/core_iter_pipeline.rs::{map_filter_vec,buffered_mem_case,try_collect_success}（snapshot: tests/snapshots/core_iter_pipeline__core_iter_pipeline.snap）および reports/iterator-collector-summary.md で `collector.effect.mem_reservation` を監視。"
 wbs = "3.1c-H1"
 
 [[api]]
@@ -226,7 +226,7 @@ effect = "effect {mem, text}"
 stage = "beta"
 rust_status = "implemented"
 ocaml_status = "typeck-only"
-notes = "Rust: compiler/rust/runtime/src/prelude/iter/terminators.rs::collect_string（`StringCollector` を `collect_with` で生成し UTF-8 監査を転写） / Test: compiler/rust/frontend/tests/core_iter_terminators.rs::collect_string_invalid（snapshot: tests/snapshots/core_iter_terminators__collect_string_invalid.snap）。`reports/spec-audit/ch1/core_iter_terminators.json#collect_string_invalid` で `collector.error.invalid_encoding=1` を確認し、`Diagnostic.extensions[\"prelude.collector.error_key\"]` を `reports/diagnostic-format-regression.md#iterator.collect_string_invalid` に同期。"
+notes = "Rust: compiler/rust/runtime/src/prelude/collectors/string.rs（`StringCollector` 実装） / Test: compiler/rust/frontend/tests/core_iter_collectors.rs::collect_string_invalid（snapshot: tests/snapshots/core_iter_collectors.snap）。`reports/spec-audit/ch1/core_iter_collectors.json#collect_string_invalid` で `collector.error.invalid_encoding=1` を確認し、`reports/diagnostic-format-regression.md#iterator.collect_string_invalid` と同期。"
 wbs = "3.1c-H1"
 
 [[api]]

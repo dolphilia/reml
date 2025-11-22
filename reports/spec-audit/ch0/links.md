@@ -7,6 +7,7 @@
 | コマンド | 結果 | 備考 |
 | --- | --- | --- |
 | `cargo xtask prelude-audit --wbs 2.1b --strict --baseline docs/spec/3-1-core-prelude-iteration.md` | ✅ | `prelude_api_inventory.toml` の Option/Result 16 API が `rust_status=implemented`。`compiler/rust/frontend/tests/core_prelude_option_result.snap` の 16 シナリオ参照とリンク |
+| `cargo run --manifest-path compiler/rust/xtask/Cargo.toml -- prelude-audit --section Result --strict` | ✅ | 2027-03-19 時点の Result API インベントリ（特に `Result.ensure`）が `rust_status=implemented` で揃っていることを確認し、`3-1-core-prelude-remediation.md` 課題Bの検証として記録 |
 
 ### Iter F0 整合ログ（WBS 3.1a）
 

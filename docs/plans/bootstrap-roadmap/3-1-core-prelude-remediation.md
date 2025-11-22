@@ -32,6 +32,8 @@
   3. インベントリ更新後に `scripts/validate-diagnostic-json.sh` と `cargo xtask prelude-audit --strict` を実行し、`core_prelude.missing_api = 0` を `reports/spec-audit/ch0/links.md` に追記。
 - **出口条件**: `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の `last_updated` をリフレッシュし、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI が最新ステータスを参照。
 
+**対応状況（2027-03-19）**: `prelude_api_inventory.toml` を更新し、`Result.ensure` を `rust_status=implemented`、`collect_*` 系のソース/テスト参照を `iter/mod.rs`・`collectors/string.rs`・`core_iter_pipeline.rs`・`core_iter_collectors.rs` へ刷新。`cargo run --manifest-path compiler/rust/xtask/Cargo.toml -- prelude-audit --section Result --strict` のログを `reports/spec-audit/ch0/links.md` に記録済み。
+
 ### 課題C: `Iter::empty`/`Iter::once` など基本 API のテストカバレッジ不足
 - **現状**: `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml:192-200` にも記載のとおり、`Iter::empty`/`once` は Rust 実装済みだが専用テストが存在しない。`core_iter_generators.rs` では間接利用のみ。
 - **影響**: 将来の最適化で `Iter::empty` が Stage/Effect 情報を落とした場合に検知できない。`WBS 3.1` のベンチ/KPI でギャップが残る。
