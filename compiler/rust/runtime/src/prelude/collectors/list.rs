@@ -1,11 +1,13 @@
-//! `ListCollector` と `List` の最小実装。
-//! `effect = @pure` の再現と Stage/Marker の出力を担保する雛形。
+//! `ListCollector` と 永続 `List` 実装の結合ポイント。
+//! `effect = @pure` の再現と Stage/Marker の出力を担保しつつ、
+//! `runtime/src/collections` 配下の finger tree ベース実装を差し込む。
 
 use super::super::iter::{EffectLabels, IterError};
 use super::{
     CollectError, CollectErrorKind, CollectOutcome, Collector, CollectorAuditTrail,
     CollectorEffectMarkers, CollectorKind, CollectorStageProfile,
 };
+pub use crate::collections::persistent::list::List;
 
 const PURE_EFFECTS: EffectLabels = EffectLabels {
     mem: false,
@@ -15,26 +17,6 @@ const PURE_EFFECTS: EffectLabels = EffectLabels {
     mem_bytes: 0,
     predicate_calls: 0,
 };
-
-/// 永続 `List` 型の雛形。
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct List<T> {
-    elements: Vec<T>,
-}
-
-impl<T> List<T> {
-    fn from_vec(elements: Vec<T>) -> Self {
-        Self { elements }
-    }
-
-    pub fn into_vec(self) -> Vec<T> {
-        self.elements
-    }
-
-    pub fn as_slice(&self) -> &[T] {
-        &self.elements
-    }
-}
 
 /// `ListCollector` は `@pure` に従い、Stage 実装を `stable` に固定する。
 pub struct ListCollector<T> {
