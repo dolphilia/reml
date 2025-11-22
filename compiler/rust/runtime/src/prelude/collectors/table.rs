@@ -2,7 +2,7 @@
 
 use std::{collections::BTreeSet, fmt::Debug};
 
-use super::super::iter::EffectLabels;
+use super::super::iter::{EffectLabels, IterError};
 use super::{
     CollectError, CollectErrorKind, CollectOutcome, Collector, CollectorAuditTrail,
     CollectorEffectMarkers, CollectorKind, CollectorStageProfile,
@@ -108,5 +108,18 @@ where
         let audit = self.audit_trail("TableCollector::finish");
         let table = Table::from_entries(self.entries);
         CollectOutcome::new(table, audit)
+    }
+
+    fn iter_error(self, error: IterError) -> Self::Error
+    where
+        Self: Sized,
+    {
+        let audit = self.audit_trail("TableCollector::iter_error");
+        CollectError::new(
+            CollectErrorKind::IteratorFailure,
+            "iterator source reported an error during TableCollector::collect",
+            audit,
+        )
+        .with_detail(format!("{error:?}"))
     }
 }

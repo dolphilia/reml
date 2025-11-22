@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use super::super::iter::EffectLabels;
+use super::super::iter::{EffectLabels, IterError};
 use super::{
     CollectError, CollectErrorKind, CollectOutcome, Collector, CollectorAuditTrail,
     CollectorEffectMarkers, CollectorKind, CollectorStageProfile,
@@ -107,6 +107,19 @@ impl Collector<u8, CollectOutcome<String>> for StringCollector {
         let audit = self.audit_trail("StringCollector::finish");
         let string = String::from_utf8(self.buffer).expect("UTF-8 validity was enforced");
         CollectOutcome::new(string, audit)
+    }
+
+    fn iter_error(self, error: IterError) -> Self::Error
+    where
+        Self: Sized,
+    {
+        let audit = self.audit_trail("StringCollector::iter_error");
+        CollectError::new(
+            CollectErrorKind::IteratorFailure,
+            "iterator source reported an error during StringCollector::collect",
+            audit,
+        )
+        .with_detail(format!("{error:?}"))
     }
 }
 

@@ -300,10 +300,7 @@ impl<T> Iter<T> {
                 IterStep::Ready(value) => collector.push(value)?,
                 IterStep::Pending => continue,
                 IterStep::Finished => return Ok(collector.finish()),
-                IterStep::Error(_) => {
-                    // TODO: CollectError と連携する伝播経路を整備する。
-                    return Ok(collector.finish());
-                }
+                IterStep::Error(err) => return Err(collector.iter_error(err)),
             }
         }
     }
@@ -857,5 +854,36 @@ impl<T> IterDriver<T> {
             IterDriver::Stepper(stepper) => (stepper)(effects),
             IterDriver::Empty => IterStep::Finished,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::collectors::CollectErrorKind;
+    use super::*;
+
+    fn iterator_error_iter() -> Iter<i64> {
+        let stage = IteratorStageProfile::for_kind(IteratorKind::CoreIter);
+        let driver = IterDriver::stepper(|_effects| {
+            IterStep::Error(IterError::buffer_overflow(
+                4,
+                BufferStrategy::DropOldest,
+            ))
+        });
+        let seed = IterSeed::new("iter.tests.iterator_error", stage.clone(), driver, EffectSet::PURE);
+        Iter::from_seed(seed)
+    }
+
+    #[test]
+    fn collect_vec_propagates_iterator_errors() {
+        let iter = iterator_error_iter();
+        let err = iter
+            .collect_vec()
+            .expect_err("iterator error should propagate to collector");
+        assert!(
+            matches!(err.kind(), CollectErrorKind::IteratorFailure),
+            "expected iterator failure, got {:?}",
+            err.kind()
+        );
     }
 }

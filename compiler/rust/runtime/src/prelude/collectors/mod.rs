@@ -21,7 +21,7 @@ pub use vec::VecCollector;
 
 use super::{
     ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic},
-    iter::{EffectLabels, StageRequirement, StageRequirementDescriptor},
+    iter::{EffectLabels, IterError, StageRequirement, StageRequirementDescriptor},
 };
 use serde_json::{Map as JsonObject, Number, Value};
 
@@ -448,6 +448,11 @@ pub trait Collector<T, C> {
     {
         self.finish()
     }
+
+    /// `Iter` 側のエラーを Collector 側のエラー型へ写像する。
+    fn iter_error(self, error: IterError) -> Self::Error
+    where
+        Self: Sized;
 }
 
 /// Collector エラー種別。
@@ -457,6 +462,7 @@ pub enum CollectErrorKind {
     CapacityOverflow,
     DuplicateKey,
     InvalidEncoding,
+    IteratorFailure,
     Custom(&'static str),
 }
 
@@ -468,6 +474,7 @@ impl CollectErrorKind {
             CollectErrorKind::CapacityOverflow => "capacity_overflow",
             CollectErrorKind::DuplicateKey => "duplicate_key",
             CollectErrorKind::InvalidEncoding => "invalid_encoding",
+            CollectErrorKind::IteratorFailure => "iterator_failure",
             CollectErrorKind::Custom(label) => label,
         }
     }

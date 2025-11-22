@@ -1,9 +1,9 @@
 //! `VecCollector` の雛形実装。`effect {mut, mem}` と Stage 実装を担保する。
 
-use super::super::iter::EffectLabels;
+use super::super::iter::{EffectLabels, IterError};
 use super::{
-    CollectError, CollectOutcome, Collector, CollectorAuditTrail, CollectorEffectMarkers,
-    CollectorKind, CollectorStageProfile,
+    CollectError, CollectErrorKind, CollectOutcome, Collector, CollectorAuditTrail,
+    CollectorEffectMarkers, CollectorKind, CollectorStageProfile,
 };
 
 const PURE_EFFECTS: EffectLabels = EffectLabels {
@@ -85,5 +85,18 @@ impl<T> Collector<T, CollectOutcome<Vec<T>>> for VecCollector<T> {
         self.effects.mem = true;
         let audit = self.audit_trail("VecCollector::finish");
         CollectOutcome::new(self.buffer, audit)
+    }
+
+    fn iter_error(self, error: IterError) -> Self::Error
+    where
+        Self: Sized,
+    {
+        let audit = self.audit_trail("VecCollector::iter_error");
+        CollectError::new(
+            CollectErrorKind::IteratorFailure,
+            "iterator source reported an error during VecCollector::collect",
+            audit,
+        )
+        .with_detail(format!("{error:?}"))
     }
 }

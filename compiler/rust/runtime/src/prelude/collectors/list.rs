@@ -1,10 +1,10 @@
 //! `ListCollector` と `List` の最小実装。
 //! `effect = @pure` の再現と Stage/Marker の出力を担保する雛形。
 
-use super::super::iter::EffectLabels;
+use super::super::iter::{EffectLabels, IterError};
 use super::{
-    CollectError, CollectOutcome, Collector, CollectorAuditTrail, CollectorEffectMarkers,
-    CollectorKind, CollectorStageProfile,
+    CollectError, CollectErrorKind, CollectOutcome, Collector, CollectorAuditTrail,
+    CollectorEffectMarkers, CollectorKind, CollectorStageProfile,
 };
 
 const PURE_EFFECTS: EffectLabels = EffectLabels {
@@ -92,5 +92,18 @@ impl<T> Collector<T, CollectOutcome<List<T>>> for ListCollector<T> {
         let audit = self.audit_trail("ListCollector::finish");
         let list = List::from_vec(self.buffer);
         CollectOutcome::new(list, audit)
+    }
+
+    fn iter_error(self, error: IterError) -> Self::Error
+    where
+        Self: Sized,
+    {
+        let audit = self.audit_trail("ListCollector::iter_error");
+        CollectError::new(
+            CollectErrorKind::IteratorFailure,
+            "iterator source reported an error during ListCollector::collect",
+            audit,
+        )
+        .with_detail(format!("{error:?}"))
     }
 }
