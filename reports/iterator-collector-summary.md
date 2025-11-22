@@ -37,3 +37,17 @@
 - Diagnostics detail: `extensions.detail = "byte=0x28; offset=1"`.
 - Effects: `collector.effect.mem = true`, `collector.effect.mut = true`, `collector.effect.mem_reservation = 0`.
 - KPI: `collector.error.invalid_encoding` は意図的な失敗として記録しつつ、正常系では `0` であることを `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` で追跡。
+
+## Iter Terminator 経由の Collector 監査（WBS 3.1c-H1, 2027-03-06）
+- **目的**: `Iter::collect_*` が `Collector` 実装と同一の監査メタデータ（`collector.effect.*`, `collector.stage.*`, `Diagnostic.extensions["prelude.collector.*"]`）を出力することを確認し、`collect_with` ヘルパと `CollectOutcome::audit` により `reports/spec-audit/ch1/core_iter_terminators.json` → `reports/iterator-collector-metrics.json` のパイプを定着させる。
+- **Run ID**: `2027-03-06-iter-terminators-h1`（`cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_terminators` → `python3 tooling/ci/collect-iterator-audit-metrics.py --section iterator --case terminators --source reports/spec-audit/ch1/core_iter_terminators.json --output reports/iterator-collector-metrics.json --require-success` → `scripts/validate-diagnostic-json.sh --pattern iterator.collect --pattern prelude.collector reports/spec-audit/ch1/core_iter_terminators.json`）。`reports/spec-audit/ch0/links.md#iter-terminators-h1` にコマンドと成果物を集約。
+- **共通結果**: `iterator.stage.audit_pass_rate = 1.0`、`collector.effect.mem_reservation` / `collector.error.*` / `collector.stage.*` が Collector 直接呼びと一致、`AuditEnvelope.metadata["prelude.collector.kind"]` が List/Vec/String で漏れなく出力された。
+
+### collect_list_pipeline-h1
+- `Iter::from_list([1,2,3]).map(|x| x * 2).collect_list()` の snapshot。`collector.stage.actual = "stable"`、`collector.effect.mem = false` を維持し、`prelude.collector.kind = "list"` が `Diagnostic.extensions` と `AuditEnvelope.metadata` の両方で一致。
+
+### collect_vec_reserve-h1
+- `Iter::range(0,4).collect_vec()` に `reserve` 呼び出しを挟み、`collector.effect.mem_reservation = 4` / `collector.effect.mem = true` / `collector.effect.mut = true` を `reports/spec-audit/ch1/core_iter_terminators.json#collect_vec_reserve` に記録。`Diagnostic.extensions["prelude.collector.mem_reservation_bytes"] = 4` が `collect_vec_mem_reservation` ケースと同一値であることを確認。
+
+### collect_string_invalid-h1
+- `Iter::from_list([0x61u8, 0x28, 0x80])` を `collect_string` で終端させ、`collector.error.invalid_encoding = 1` が `Collector` 直接呼びケースと一致することを確認。`Diagnostic.extensions["prelude.collector.error_key"] = "offset=1"`、`effect {text}` タグが `reports/diagnostic-format-regression.md#iterator.collect_string_invalid` と同期。

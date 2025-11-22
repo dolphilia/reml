@@ -71,6 +71,21 @@
 | `scripts/validate-diagnostic-json.sh --pattern collector` | ✅ | 監査ログ生成後に Diagnostic JSON を再比較し、`reports/diagnostic-format-regression.md` に差分なしで吸収されたことを確認。`reports/spec-audit/ch1/core_iter_collectors.json` と `core_iter_collectors.audit.jsonl` のヘッダをリスト化。 |
 - `reports/iterator-collector-summary.md` の `collect_vec_mem_reservation`/`collect_map_duplicate`/`collect_string_invalid` では `collector.effect.mem_reservation` や `collector.error.key` の推移を JSON で参照でき、`docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md#31b-実装指針` と突き合わせた。`docs/notes/core-library-outline.md#collector-f3-監査ログ` にも同じリンク列を記録済み。
 
+### <a id="iter-terminators-h1"></a>Iter Terminators H1（WBS 3.1c-H1, 2027-03-06）
+
+| コマンド | 結果 | 備考 |
+| --- | --- | --- |
+| `python3 tooling/ci/render-collector-audit-fixtures.py --snapshots compiler/rust/frontend/tests/snapshots/core_iter_terminators__*.snap --output reports/spec-audit/ch1/core_iter_terminators.json --audit-output reports/spec-audit/ch1/core_iter_terminators.audit.jsonl` | ✅ | `Iter::collect_list`/`collect_vec`/`collect_string` の snapshot から診断 JSON と Audit JSONL を生成し、`CollectOutcome::audit` の `prelude.collector.*` 拡張を可視化。 |
+| `cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_terminators -- --nocapture` | ✅ | `collect_list_pipeline`/`collect_vec_reserve`/`collect_string_invalid` の 3 ケースを収集し、`CollectOutcome::audit` が `Diagnostic.extensions["prelude.collector"]` と `AuditEnvelope.metadata["prelude.collector.kind"]` を出力することを確認。 |
+| `python3 tooling/ci/collect-iterator-audit-metrics.py --section iterator --case terminators --source reports/spec-audit/ch1/core_iter_terminators.json --output reports/iterator-collector-metrics.json --require-success` | ✅ | `iterator.stage.audit_pass_rate = 1.0`、`collector.effect.mem_reservation = 4`（Vec ケース）、`collector.error.invalid_encoding = 1`（String ケース）を `reports/iterator-collector-summary.md` と KPI 表へ転記。 |
+| `scripts/validate-diagnostic-json.sh --pattern iterator.collect --pattern prelude.collector reports/spec-audit/ch1/core_iter_terminators.json` | ✅ | `prelude.collector.kind`/`prelude.collector.mem_reservation_bytes`/`prelude.collector.error_key` が CLI/LSP/監査ログすべてで一致することを検証。 |
+
+| シナリオID | Snapshot | KPI / 監査ログ | 備考 |
+| --- | --- | --- | --- |
+| `collect_list_pipeline` | `compiler/rust/frontend/tests/snapshots/core_iter_terminators__collect_list_pipeline.snap` | `reports/spec-audit/ch1/core_iter_terminators.json#collect_list_pipeline` | `collector.stage.actual = "stable"`、`Diagnostic.extensions["prelude.collector.kind"]="list"` を記録。 |
+| `collect_vec_reserve` | `compiler/rust/frontend/tests/snapshots/core_iter_terminators__collect_vec_reserve.snap` | `reports/spec-audit/ch1/core_iter_terminators.json#collect_vec_reserve` / `reports/iterator-collector-summary.md#collect_vec_reserve-h1` | `collector.effect.mem_reservation = 4`、`AuditEnvelope.metadata["prelude.collector.reserve_calls"]=2` を確認。 |
+| `collect_string_invalid` | `compiler/rust/frontend/tests/snapshots/core_iter_terminators__collect_string_invalid.snap` | `reports/spec-audit/ch1/core_iter_terminators.json#collect_string_invalid` / `reports/diagnostic-format-regression.md#iterator.collect_string_invalid` | `collector.error.invalid_encoding = 1` と `Diagnostic.extensions["prelude.collector.error_key"]="offset=1"` を記録。 |
+
 ### Iter Generators
 
 （WBS 3.1c-F1-3 で `Iter::from_list`/`Iter::from_result`/`Iter::from_fn`/`Iter::empty`/`Iter::once`/`Iter::repeat`/`Iter::range` を生成 API として実装し、`ListCollector` 相当の Stage・Effect を `CollectOutcome` と同期したログ）
