@@ -2,6 +2,8 @@
 
 use std::fmt::Debug;
 
+use serde::Serialize;
+
 use super::super::iter::{EffectLabels, IterError};
 use super::{
     CollectError, CollectErrorKind, CollectOutcome, Collector, CollectorAuditTrail,
@@ -54,7 +56,7 @@ impl<T: Ord> SetCollector<T> {
 
 impl<T> Collector<T, CollectOutcome<Set<T>>> for SetCollector<T>
 where
-    T: Ord + Debug,
+    T: Ord + Clone + Debug + Serialize,
 {
     type Error = CollectError;
 
@@ -90,8 +92,13 @@ where
         Self: Sized,
     {
         self.markers.record_finish();
+        let change_set = Set::new().diff_change_set(&self.storage).ok();
         let audit = self.audit_trail("SetCollector::finish");
-        CollectOutcome::new(self.storage, audit)
+        let mut outcome = CollectOutcome::new(self.storage, audit);
+        if let Some(change_set) = change_set.as_ref() {
+            outcome = outcome.record_change_set(change_set);
+        }
+        outcome
     }
 
     fn iter_error(self, error: IterError) -> Self::Error

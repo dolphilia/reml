@@ -214,9 +214,9 @@
             "mut": false,
             "debug": false,
             "async_pending": false,
-            "audit": false,
+            "audit": true,
             "predicate_calls": 0,
-            "mem_bytes": 0
+            "mem_bytes": 3
           },
           "markers": {
             "finish": 1,
@@ -244,9 +244,9 @@
           "collector.effect.mut": false,
           "collector.effect.debug": false,
           "collector.effect.async_pending": false,
-          "collector.effect.audit": false,
+          "collector.effect.audit": true,
           "collector.effect.predicate_calls": 0,
-          "collector.effect.mem_bytes": 0,
+          "collector.effect.mem_bytes": 3,
           "collector.effect.finish": 1,
           "collector.effect.mem_reservation": 0,
           "collector.effect.reserve": 0

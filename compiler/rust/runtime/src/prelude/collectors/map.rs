@@ -2,6 +2,8 @@
 
 use std::fmt::Debug;
 
+use serde::Serialize;
+
 use super::super::iter::{EffectLabels, IterError};
 use super::{
     CollectError, CollectErrorKind, CollectOutcome, Collector, CollectorAuditTrail,
@@ -54,7 +56,8 @@ impl<K: Ord, V> MapCollector<K, V> {
 
 impl<K, V> Collector<(K, V), CollectOutcome<Map<K, V>>> for MapCollector<K, V>
 where
-    K: Ord + Debug,
+    K: Ord + Clone + Debug + Serialize,
+    V: Clone + Serialize,
 {
     type Error = CollectError;
 
@@ -91,8 +94,13 @@ where
         Self: Sized,
     {
         self.markers.record_finish();
+        let change_set = Map::new().diff_change_set(&self.storage).ok();
         let audit = self.audit_trail("MapCollector::finish");
-        CollectOutcome::new(self.storage, audit)
+        let mut outcome = CollectOutcome::new(self.storage, audit);
+        if let Some(change_set) = change_set.as_ref() {
+            outcome = outcome.record_change_set(change_set);
+        }
+        outcome
     }
 
     fn iter_error(self, error: IterError) -> Self::Error
