@@ -9,6 +9,10 @@ use std::{
     sync::Arc,
 };
 
+use serde::Serialize;
+
+use crate::collections::audit_bridge::{self, AuditBridgeError, ChangeSet};
+
 use super::arena::{ArenaPtr, PersistentArena};
 
 /// 永続マップ（`@pure`）。操作は O(log n) で構造共有を維持する。
@@ -118,6 +122,53 @@ impl<K: Ord, V> PersistentMap<K, V> {
 
         traverse(self.root.as_ref(), &mut visit);
     }
+
+    /// `self` と `other` の差分を `ChangeSet` として取得する。
+    pub fn diff_change_set(
+        &self,
+        other: &Self,
+    ) -> Result<ChangeSet, AuditBridgeError>
+    where
+        K: Ord + Clone + Serialize,
+        V: Clone + Serialize,
+    {
+        audit_bridge::map_diff_to_changes(self, other)
+    }
+
+    /// `delta` の要素を取り込みつつ、競合時は `resolver` で値を決定する。
+    pub fn merge_with<F>(&self, delta: &Self, mut resolver: F) -> Self
+    where
+        K: Ord + Clone,
+        V: Clone,
+        F: FnMut(&K, &V, &V) -> V,
+    {
+        let mut result = self.clone();
+        delta.for_each_entry(|key, value| {
+            if let Some(existing) = result.get(key) {
+                let merged = resolver(key, existing, value);
+                result = result.insert(key.clone(), merged);
+            } else {
+                result = result.insert(key.clone(), value.clone());
+            }
+        });
+        result
+    }
+
+    /// `merge_with` の結果と差分情報を同時に取得する。
+    pub fn merge_with_change_set<F>(
+        &self,
+        delta: &Self,
+        mut resolver: F,
+    ) -> Result<(Self, ChangeSet), AuditBridgeError>
+    where
+        K: Ord + Clone + Serialize,
+        V: Clone + Serialize,
+        F: FnMut(&K, &V, &V) -> V,
+    {
+        let merged = self.merge_with(delta, |key, left, right| resolver(key, left, right));
+        let change_set = self.diff_change_set(&merged)?;
+        Ok((merged, change_set))
+    }
 }
 
 impl<K: Ord, V> FromIterator<(K, V)> for PersistentMap<K, V> {
@@ -184,6 +235,31 @@ impl<T: Ord> PersistentSet<T> {
             set.insert(key.clone());
         });
         set
+    }
+
+    /// 差集合 (`self` - `other`) を返す。
+    pub fn diff(&self, other: &Self) -> Self
+    where
+        T: Ord + Clone,
+    {
+        let mut result = Self::new();
+        self.map.for_each_entry(|key, _| {
+            if !other.contains(key) {
+                result = result.insert(key.clone());
+            }
+        });
+        result
+    }
+
+    /// 差分を `ChangeSet` として取得する。
+    pub fn diff_change_set(
+        &self,
+        other: &Self,
+    ) -> Result<ChangeSet, AuditBridgeError>
+    where
+        T: Ord + Clone + Serialize,
+    {
+        audit_bridge::set_diff_to_changes(self, other)
     }
 }
 

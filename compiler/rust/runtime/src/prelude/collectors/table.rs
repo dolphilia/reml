@@ -13,6 +13,7 @@ const MUTATING_EFFECTS: EffectLabels = EffectLabels {
     mutating: true,
     debug: false,
     async_pending: false,
+    audit: false,
     mem_bytes: 0,
     predicate_calls: 0,
 };

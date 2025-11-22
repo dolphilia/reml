@@ -11,10 +11,12 @@ expression: cases
   error:
     audit:
       collector.capability: core.collector.map
+      collector.effect.audit: false
       collector.effect.async_pending: false
       collector.effect.debug: false
       collector.effect.finish: 0
       collector.effect.mem: false
+      collector.effect.mem_bytes: 0
       collector.effect.mem_reservation: 0
       collector.effect.mut: false
       collector.effect.predicate_calls: 0
@@ -32,11 +34,12 @@ expression: cases
       prelude.collector:
         capability: core.collector.map
         effects:
-          async_pending: false
-          debug: false
           mem: false
-          mem_bytes: 0
           mut: false
+          debug: false
+          async_pending: false
+          audit: false
+          mem_bytes: 0
           predicate_calls: 0
         error_key: "\"dup\""
         error_kind: duplicate_key

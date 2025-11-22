@@ -1,11 +1,12 @@
 collect_list_baseline: {
   "effects": {
-    "async_pending": false,
-    "debug": false,
     "mem": true,
-    "mem_bytes": 12,
     "mutating": false,
-    "predicate_calls": 0
+    "debug": false,
+    "async_pending": false,
+    "audit": false,
+    "predicate_calls": 0,
+    "mem_bytes": 12
   },
   "kind": "list",
   "markers": {
@@ -31,12 +32,13 @@ collect_list_baseline: {
 }
 collect_vec_mem_reservation: {
   "effects": {
-    "async_pending": false,
-    "debug": false,
     "mem": true,
-    "mem_bytes": 0,
     "mutating": true,
-    "predicate_calls": 0
+    "debug": false,
+    "async_pending": false,
+    "audit": false,
+    "predicate_calls": 0,
+    "mem_bytes": 0
   },
   "kind": "vec",
   "markers": {
@@ -85,12 +87,13 @@ collect_map_duplicate: {
     "prelude.collector": {
       "capability": "core.collector.map",
       "effects": {
-        "async_pending": false,
-        "debug": false,
         "mem": false,
-        "mem_bytes": 0,
         "mut": false,
-        "predicate_calls": 0
+        "debug": false,
+        "async_pending": false,
+        "audit": false,
+        "predicate_calls": 0,
+        "mem_bytes": 0
       },
       "error_key": "\"dup\"",
       "error_kind": "duplicate_key",
@@ -113,12 +116,13 @@ collect_map_duplicate: {
 }
 collect_set_stage: {
   "effects": {
-    "async_pending": false,
-    "debug": false,
     "mem": false,
-    "mem_bytes": 0,
     "mutating": false,
-    "predicate_calls": 0
+    "debug": false,
+    "async_pending": false,
+    "audit": false,
+    "predicate_calls": 0,
+    "mem_bytes": 0
   },
   "kind": "set",
   "markers": {
@@ -167,12 +171,13 @@ collect_string_invalid: {
       "capability": "core.collector.string",
       "detail": "byte=0x28; offset=1",
       "effects": {
-        "async_pending": false,
-        "debug": false,
         "mem": true,
-        "mem_bytes": 0,
         "mut": true,
-        "predicate_calls": 0
+        "debug": false,
+        "async_pending": false,
+        "audit": false,
+        "predicate_calls": 0,
+        "mem_bytes": 0
       },
       "error_kind": "invalid_encoding",
       "kind": "string",
@@ -194,12 +199,13 @@ collect_string_invalid: {
 }
 collect_table_baseline: {
   "effects": {
-    "async_pending": false,
-    "debug": false,
     "mem": false,
-    "mem_bytes": 0,
     "mutating": true,
-    "predicate_calls": 0
+    "debug": false,
+    "async_pending": false,
+    "audit": false,
+    "predicate_calls": 0,
+    "mem_bytes": 0
   },
   "kind": "table",
   "markers": {
@@ -253,12 +259,13 @@ collect_table_duplicate: {
     "prelude.collector": {
       "capability": "core.collector.table",
       "effects": {
-        "async_pending": false,
-        "debug": false,
         "mem": false,
-        "mem_bytes": 0,
         "mut": true,
-        "predicate_calls": 0
+        "debug": false,
+        "async_pending": false,
+        "audit": false,
+        "predicate_calls": 0,
+        "mem_bytes": 0
       },
       "error_key": "\"dup\"",
       "error_kind": "duplicate_key",

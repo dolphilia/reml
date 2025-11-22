@@ -35,6 +35,7 @@ fn render_snapshot<T>(
             "mutating": audit.effects.mutating,
             "debug": audit.effects.debug,
             "async_pending": audit.effects.async_pending,
+            "audit": audit.effects.audit,
             "predicate_calls": audit.effects.predicate_calls,
             "mem_bytes": audit.effects.mem_bytes,
         },

@@ -23,6 +23,7 @@ use super::{
     ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic},
     iter::{EffectLabels, IterError, StageRequirement, StageRequirementDescriptor},
 };
+use crate::collections::audit_bridge::ChangeSet;
 use serde_json::{Map as JsonObject, Number, Value};
 
 /// `Collector::with_capacity` 用の EffectMarker。
@@ -72,6 +73,17 @@ impl<C> CollectOutcome<C> {
             value: f(value),
             audit,
         }
+    }
+
+    /// 監査情報への可変参照を取得する。
+    pub fn audit_mut(&mut self) -> &mut CollectorAuditTrail {
+        &mut self.audit
+    }
+
+    /// ChangeSet を記録し effect 情報を更新する。
+    pub fn record_change_set(mut self, change_set: &ChangeSet) -> Self {
+        self.audit.record_change_set(change_set);
+        self
     }
 }
 
@@ -236,6 +248,7 @@ impl CollectorAuditTrail {
             "async_pending".into(),
             Value::Bool(self.effects.async_pending),
         );
+        effects.insert("audit".into(), Value::Bool(self.effects.audit));
         effects.insert(
             "predicate_calls".into(),
             Value::Number(Number::from(self.effects.predicate_calls as u64)),
@@ -313,8 +326,16 @@ impl CollectorAuditTrail {
             Value::Bool(self.effects.async_pending),
         );
         metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.audit"),
+            Value::Bool(self.effects.audit),
+        );
+        metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}effect.predicate_calls"),
             Value::Number(Number::from(self.effects.predicate_calls as u64)),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.mem_bytes"),
+            Value::Number(Number::from(self.effects.mem_bytes as u64)),
         );
         metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}effect.mem_reservation"),
@@ -329,6 +350,18 @@ impl CollectorAuditTrail {
             Value::Number(Number::from(self.markers.finish as u64)),
         );
         metadata
+    }
+
+    /// 差分結果を effect メタデータへ反映する。
+    pub fn record_change_set(&mut self, change_set: &ChangeSet) {
+        let total = change_set.summary().total();
+        if total > 0 {
+            self.effects.audit = true;
+        }
+        self.effects.mem_bytes = self
+            .effects
+            .mem_bytes
+            .saturating_add(total);
     }
 }
 

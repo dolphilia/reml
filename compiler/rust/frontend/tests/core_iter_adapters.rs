@@ -22,6 +22,7 @@ fn render_effects(labels: reml_runtime_ffi::core_prelude::iter::EffectLabels) ->
         "mutating": labels.mutating,
         "debug": labels.debug,
         "async_pending": labels.async_pending,
+        "audit": labels.audit,
         "mem_bytes": labels.mem_bytes,
         "predicate_calls": labels.predicate_calls,
     })

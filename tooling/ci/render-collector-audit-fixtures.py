@@ -94,12 +94,20 @@ def parse_snapshot_entries(path: Path) -> List[Tuple[str, Any]]:
     return entries
 
 
-def _normalize_effects(raw: Any) -> Dict[str, bool]:
-    result = {"mem": False, "mut": False, "debug": False, "async_pending": False}
+def _normalize_effects(raw: Any) -> Dict[str, Any]:
+    result: Dict[str, Any] = {
+        "mem": False,
+        "mut": False,
+        "debug": False,
+        "async_pending": False,
+        "audit": False,
+        "predicate_calls": 0,
+        "mem_bytes": 0,
+    }
     data = _as_dict(raw)
     if not data:
         return result
-    for key in ("mem", "mut", "mutating", "debug", "async_pending"):
+    for key in ("mem", "mut", "mutating", "debug", "async_pending", "audit"):
         if key not in data:
             continue
         value = data.get(key)
@@ -108,6 +116,10 @@ def _normalize_effects(raw: Any) -> Dict[str, bool]:
             result["mut"] = normalized
         elif key in result:
             result[key] = normalized
+    if "predicate_calls" in data:
+        result["predicate_calls"] = _as_int(data.get("predicate_calls"))
+    if "mem_bytes" in data:
+        result["mem_bytes"] = _as_int(data.get("mem_bytes"))
     return result
 
 

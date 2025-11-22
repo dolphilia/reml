@@ -5,11 +5,12 @@ expression: cases
 ---
 - case: map_pipeline
   effects:
-    async_pending: false
-    debug: false
     mem: false
-    mem_bytes: 0
     mutating: false
+    debug: false
+    async_pending: false
+    audit: false
+    mem_bytes: 0
     predicate_calls: 0
   stage:
     actual: stable
@@ -26,11 +27,12 @@ expression: cases
     - 40
 - case: filter_effect
   effects:
-    async_pending: false
-    debug: false
     mem: false
-    mem_bytes: 0
     mutating: true
+    debug: false
+    async_pending: false
+    audit: false
+    mem_bytes: 0
     predicate_calls: 4
   stage:
     actual: stable
@@ -45,11 +47,12 @@ expression: cases
     - 4
 - case: map_filter_chain_panic_guard
   effects:
-    async_pending: false
-    debug: false
     mem: false
-    mem_bytes: 0
     mutating: true
+    debug: false
+    async_pending: false
+    audit: false
+    mem_bytes: 0
     predicate_calls: 0
   stage:
     actual: stable

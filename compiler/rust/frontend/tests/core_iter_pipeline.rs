@@ -26,6 +26,7 @@ fn render_effects(labels: EffectLabels) -> serde_json::Value {
         "mutating": labels.mutating,
         "debug": labels.debug,
         "async_pending": labels.async_pending,
+        "audit": labels.audit,
         "mem_bytes": labels.mem_bytes,
         "predicate_calls": labels.predicate_calls,
     })
@@ -49,6 +50,9 @@ fn render_collector(audit: &CollectorAuditTrail) -> serde_json::Value {
             "mutating": audit.effects.mutating,
             "debug": audit.effects.debug,
             "async_pending": audit.effects.async_pending,
+            "audit": audit.effects.audit,
+            "predicate_calls": audit.effects.predicate_calls,
+            "mem_bytes": audit.effects.mem_bytes,
         },
         "markers": {
             "mem_reservation": audit.markers.mem_reservation,
