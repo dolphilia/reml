@@ -1,4 +1,5 @@
 use std::fmt;
+use std::iter::FromIterator;
 
 use super::arena::{ArenaPtr, PersistentArena};
 
@@ -24,6 +25,24 @@ impl<T> List<T> {
     /// 空リストを返す。
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// 仕様上の `List.empty` に対応する別名。
+    pub fn empty() -> Self {
+        Self::new()
+    }
+
+    /// 単一要素のリストを生成する。
+    pub fn singleton(value: T) -> Self {
+        Self::from_vec(vec![value])
+    }
+
+    /// 任意のイテレータからリストを生成する。
+    pub fn of_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
+        Self::from_vec(iter.into_iter().collect())
     }
 
     /// ベクタから永続リストを構築する。
@@ -97,6 +116,11 @@ impl<T> List<T> {
         ListIter::new(self.root.clone())
     }
 
+    /// `Iter` 互換インタフェースを指すエイリアス。`List.iter()` と同義。
+    pub fn to_iter(&self) -> ListIter<T> {
+        self.iter()
+    }
+
     /// `Vec` へ変換する。要素はクローンされる。
     pub fn to_vec(&self) -> Vec<T>
     where
@@ -111,6 +135,35 @@ impl<T> List<T> {
         T: Clone,
     {
         self.to_vec()
+    }
+}
+
+impl<T: Clone> List<T> {
+    /// `map` を適用した新しいリストを返す。
+    pub fn map<U, F>(&self, mut f: F) -> List<U>
+    where
+        F: FnMut(T) -> U,
+    {
+        let mapped: Vec<U> = self.iter().map(|value| f(value)).collect();
+        List::from_vec(mapped)
+    }
+
+    /// 左畳み込みを行う。
+    pub fn fold<U, F>(&self, init: U, mut f: F) -> U
+    where
+        F: FnMut(U, T) -> U,
+    {
+        let mut acc = init;
+        for value in self.iter() {
+            acc = f(acc, value);
+        }
+        acc
+    }
+}
+
+impl<T> FromIterator<T> for List<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        List::of_iter(iter)
     }
 }
 
@@ -231,5 +284,28 @@ impl<T: Clone> Iterator for ListIter<T> {
             }
         }
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::List;
+
+    #[test]
+    fn list_map_and_fold() {
+        let list = List::from_vec(vec![1, 2, 3, 4]);
+        let doubled = list.map(|value| value * 2);
+        assert_eq!(doubled.to_vec(), vec![2, 4, 6, 8]);
+        let sum = doubled.fold(0, |acc, value| acc + value);
+        assert_eq!(sum, 20);
+    }
+
+    #[test]
+    fn list_from_iter_and_concat() {
+        let list_a: List<_> = (0..3).collect();
+        let list_b = List::singleton(99);
+        let joined = list_a.concat(&list_b);
+        assert_eq!(joined.len(), 4);
+        assert_eq!(joined.to_vec(), vec![0, 1, 2, 99]);
     }
 }

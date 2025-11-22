@@ -89,3 +89,40 @@ impl<T> Collector<T, CollectOutcome<List<T>>> for ListCollector<T> {
         .with_detail(format!("{error:?}"))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::vec::VecCollector;
+    use super::*;
+
+    #[test]
+    fn list_collector_roundtrip_and_vec_interop() {
+        let mut list_collector = ListCollector::new();
+        list_collector.push(1).unwrap();
+        list_collector.push(2).unwrap();
+        list_collector.push(3).unwrap();
+
+        let (list, _) = list_collector.finish().into_parts();
+        assert_eq!(list.to_vec(), vec![1, 2, 3]);
+
+        let mut vec_collector = VecCollector::new();
+        for value in list.iter() {
+            vec_collector.push(value).unwrap();
+        }
+        let (vec, _) = vec_collector.finish().into_parts();
+        assert_eq!(vec, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn list_map_works_with_collector_output() {
+        let mut collector = ListCollector::new();
+        for value in 0..5 {
+            collector.push(value).unwrap();
+        }
+        let (list, _) = collector.finish().into_parts();
+        let squared = list.map(|value| value * value);
+        assert_eq!(squared.to_vec(), vec![0, 1, 4, 9, 16]);
+        let sum = squared.fold(0, |acc, value| acc + value);
+        assert_eq!(sum, 30);
+    }
+}
