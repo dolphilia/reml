@@ -9,7 +9,6 @@ use reml_runtime_ffi::core_prelude::{
     },
     Collector, GuardDiagnostic, IntoDiagnostic,
 };
-use reml_runtime_ffi::core_prelude::iter::EffectSet;
 
 fn render_snapshot<T>(
     outcome: CollectOutcome<T>,
@@ -53,10 +52,7 @@ fn collect_list_baseline() -> String {
     collector.push(1).unwrap();
     collector.push(2).unwrap();
     collector.push(3).unwrap();
-    let snapshot = render_snapshot(collector.finish(), |list| {
-        let mut effects = EffectSet::PURE;
-        json!(list.into_vec(&mut effects))
-    });
+    let snapshot = render_snapshot(collector.finish(), |list| json!(list.into_vec()));
     serde_json::to_string_pretty(&snapshot).unwrap()
 }
 

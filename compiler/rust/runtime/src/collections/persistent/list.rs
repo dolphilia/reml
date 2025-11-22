@@ -1,9 +1,7 @@
 use std::fmt;
 use std::iter::FromIterator;
-use std::mem;
 
 use super::arena::{ArenaPtr, PersistentArena};
-use crate::prelude::iter::EffectSet;
 
 /// Finger tree 風のノードを使った永続リスト。
 #[derive(Clone)]
@@ -123,26 +121,20 @@ impl<T> List<T> {
         self.iter()
     }
 
-    /// `Vec` へ変換する。要素はクローンされる。`effects` に `effect {mem}` を記録する。
-    pub fn to_vec(&self, effects: &mut EffectSet) -> Vec<T>
+    /// `Vec` へ変換する。要素はクローンされる。
+    pub fn to_vec(&self) -> Vec<T>
     where
         T: Clone,
     {
-        let vec: Vec<T> = self.iter().collect();
-        effects.mark_mem();
-        let bytes = self
-            .len()
-            .saturating_mul(mem::size_of::<T>());
-        effects.record_mem_bytes(bytes);
-        vec
+        self.iter().collect()
     }
 
     /// 所有権を `Vec` へ移す。値のクローンを回避できない場合はコピーされる。
-    pub fn into_vec(self, effects: &mut EffectSet) -> Vec<T>
+    pub fn into_vec(self) -> Vec<T>
     where
         T: Clone,
     {
-        self.to_vec(effects)
+        self.to_vec()
     }
 }
 

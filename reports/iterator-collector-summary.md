@@ -2,7 +2,7 @@
 
 - **Diagnostics source**: `reports/spec-audit/ch1/core_iter_collectors.json`（`python3 tooling/ci/render-collector-audit-fixtures.py --snapshots compiler/rust/frontend/tests/__snapshots__/core_iter_collectors.snap --output reports/spec-audit/ch1/core_iter_collectors.json --audit-output reports/spec-audit/ch1/core_iter_collectors.audit.jsonl`）。
 - **Metrics command**: `python3 tooling/ci/collect-iterator-audit-metrics.py --section collectors --module iter --case wbs-31b-f2 --source reports/spec-audit/ch1/core_iter_collectors.json --audit-source reports/spec-audit/ch1/core_iter_collectors.audit.jsonl --output reports/iterator-collector-metrics.json`。
-- **Monitored KPI**: `collector.stage.audit_pass_rate`, `collector.effect.mem`, `collector.effect.mut`, `collector.effect.mem_reservation`, `collector.effect.reserve`, `collector.error.duplicate_key`, `collector.error.invalid_encoding`。
+- **Monitored KPI**: `collector.stage.audit_pass_rate`, `collector.effect.mem`, `collector.effect.mut`, `collector.effect.mem_reservation`, `collector.effect.mem_bytes`, `collector.effect.reserve`, `collector.error.duplicate_key`, `collector.error.invalid_encoding`。
 - **Audit log**: `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl`（JSON Lines）と `reports/spec-audit/ch0/links.md#collector-f2` の手順ログを参照。
 - **Metrics artifact**: `reports/iterator-collector-metrics.json` に `collector.effect.audit_snapshot` の集計結果を保存。
 
@@ -14,8 +14,9 @@
 
 ### collect_list_baseline
 - Stage: `stable` (`CollectorKind::List` / `IteratorStageProfile::stable`), `collector.stage.audit_pass_rate` target は `1.0`.
-- Effects: `collector.effect.mem = false`, `collector.effect.mut = false`, `collector.effect.finish = 1`.
+- Effects: `collector.effect.mem = true`, `collector.effect.mut = false`, `collector.effect.mem_bytes = 12`, `collector.effect.mem_reservation = 12`, `collector.effect.finish = 1`.
 - Value: `[1, 2, 3]` (`List` の固定順序)。
+- KPI: `list_as_vec_mem_bytes` を `collect-iterator-audit-metrics.py --section collectors --module iter --case wbs-31b-f2` の集計に追加し、`scripts/validate-diagnostic-json.sh --pattern collector.effect.mem_bytes reports/spec-audit/ch1/core_iter_collectors.json` で検証する。
 
 ### collect_vec_mem_reservation
 - Stage: `beta`, capability `core.collector.vec`.
@@ -44,7 +45,7 @@
 - **共通結果**: `iterator.stage.audit_pass_rate = 1.0`、`collector.effect.mem_reservation` / `collector.error.*` / `collector.stage.*` が Collector 直接呼びと一致、`AuditEnvelope.metadata["prelude.collector.kind"]` が List/Vec/String で漏れなく出力された。
 
 ### collect_list_pipeline-h1
-- `Iter::from_list([1,2,3]).map(|x| x * 2).collect_list()` の snapshot。`collector.stage.actual = "stable"`、`collector.effect.mem = false` を維持し、`prelude.collector.kind = "list"` が `Diagnostic.extensions` と `AuditEnvelope.metadata` の両方で一致。
+- `Iter::from_list([1,2,3]).map(|x| x * 2).collect_list()` の snapshot。`collector.stage.actual = "stable"`、`collector.effect.mem = true` となり `collector.effect.mem_bytes` にコピーコストが記録されつつ、`prelude.collector.kind = "list"` が `Diagnostic.extensions` と `AuditEnvelope.metadata` の両方で一致。
 
 ### collect_vec_reserve-h1
 - `Iter::range(0,4).collect_vec()` に `reserve` 呼び出しを挟み、`collector.effect.mem_reservation = 4` / `collector.effect.mem = true` / `collector.effect.mut = true` を `reports/spec-audit/ch1/core_iter_terminators.json#collect_vec_reserve` に記録。`Diagnostic.extensions["prelude.collector.mem_reservation_bytes"] = 4` が `collect_vec_mem_reservation` ケースと同一値であることを確認。

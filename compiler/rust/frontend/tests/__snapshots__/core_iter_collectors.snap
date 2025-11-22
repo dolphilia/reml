@@ -2,15 +2,15 @@ collect_list_baseline: {
   "effects": {
     "async_pending": false,
     "debug": false,
-    "mem": false,
-    "mem_bytes": 0,
+    "mem": true,
+    "mem_bytes": 12,
     "mutating": false,
     "predicate_calls": 0
   },
   "kind": "list",
   "markers": {
     "finish": 1,
-    "mem_reservation": 0,
+    "mem_reservation": 12,
     "reserve": 0
   },
   "stage": {

@@ -2,7 +2,9 @@
 //! `effect = @pure` の再現と Stage/Marker の出力を担保しつつ、
 //! `runtime/src/collections` 配下の finger tree ベース実装を差し込む。
 
-use super::super::iter::{EffectLabels, EffectSet, IterError};
+use std::mem;
+
+use super::super::iter::{EffectLabels, IterError};
 use super::{
     CollectError, CollectErrorKind, CollectOutcome, Collector, CollectorAuditTrail,
     CollectorEffectMarkers, CollectorKind, CollectorStageProfile,
@@ -70,6 +72,15 @@ impl<T> Collector<T, CollectOutcome<List<T>>> for ListCollector<T> {
         Self: Sized,
     {
         self.markers.record_finish();
+        let bytes = self
+            .list
+            .len()
+            .saturating_mul(mem::size_of::<T>());
+        if bytes > 0 {
+            self.effects.mem = true;
+            self.effects.mem_bytes = self.effects.mem_bytes.saturating_add(bytes);
+            self.markers.record_mem_reservation(bytes);
+        }
         let audit = self.audit_trail("ListCollector::finish");
         CollectOutcome::new(self.list, audit)
     }
@@ -101,8 +112,7 @@ mod tests {
         list_collector.push(3).unwrap();
 
         let (list, _) = list_collector.finish().into_parts();
-        let mut effects = EffectSet::PURE;
-        assert_eq!(list.to_vec(&mut effects), vec![1, 2, 3]);
+        assert_eq!(list.to_vec(), vec![1, 2, 3]);
 
         let mut vec_collector = VecCollector::new();
         for value in list.iter() {
@@ -120,8 +130,7 @@ mod tests {
         }
         let (list, _) = collector.finish().into_parts();
         let squared = list.map(|value| value * value);
-        let mut effects = EffectSet::PURE;
-        assert_eq!(squared.to_vec(&mut effects), vec![0, 1, 4, 9, 16]);
+        assert_eq!(squared.to_vec(), vec![0, 1, 4, 9, 16]);
         let sum = squared.fold(0, |acc, value| acc + value);
         assert_eq!(sum, 30);
     }
