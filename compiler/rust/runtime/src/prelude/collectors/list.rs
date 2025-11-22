@@ -2,7 +2,7 @@
 //! `effect = @pure` の再現と Stage/Marker の出力を担保しつつ、
 //! `runtime/src/collections` 配下の finger tree ベース実装を差し込む。
 
-use super::super::iter::{EffectLabels, IterError};
+use super::super::iter::{EffectLabels, EffectSet, IterError};
 use super::{
     CollectError, CollectErrorKind, CollectOutcome, Collector, CollectorAuditTrail,
     CollectorEffectMarkers, CollectorKind, CollectorStageProfile,
@@ -20,7 +20,7 @@ const PURE_EFFECTS: EffectLabels = EffectLabels {
 
 /// `ListCollector` は `@pure` に従い、Stage 実装を `stable` に固定する。
 pub struct ListCollector<T> {
-    buffer: Vec<T>,
+    list: List<T>,
     stage_profile: CollectorStageProfile,
     effects: EffectLabels,
     markers: CollectorEffectMarkers,
@@ -45,7 +45,7 @@ impl<T> Collector<T, CollectOutcome<List<T>>> for ListCollector<T> {
         Self: Sized,
     {
         Self {
-            buffer: Vec::new(),
+            list: List::empty(),
             stage_profile: CollectorStageProfile::for_kind(CollectorKind::List),
             effects: PURE_EFFECTS,
             markers: CollectorEffectMarkers::default(),
@@ -56,13 +56,12 @@ impl<T> Collector<T, CollectOutcome<List<T>>> for ListCollector<T> {
     where
         Self: Sized,
     {
-        let mut collector = Self::new();
-        collector.buffer.reserve(capacity);
-        collector
+        let _ = capacity;
+        Self::new()
     }
 
     fn push(&mut self, value: T) -> Result<(), Self::Error> {
-        self.buffer.push(value);
+        self.list = self.list.push_back(value);
         Ok(())
     }
 
@@ -72,8 +71,7 @@ impl<T> Collector<T, CollectOutcome<List<T>>> for ListCollector<T> {
     {
         self.markers.record_finish();
         let audit = self.audit_trail("ListCollector::finish");
-        let list = List::from_vec(self.buffer);
-        CollectOutcome::new(list, audit)
+        CollectOutcome::new(self.list, audit)
     }
 
     fn iter_error(self, error: IterError) -> Self::Error
@@ -103,7 +101,8 @@ mod tests {
         list_collector.push(3).unwrap();
 
         let (list, _) = list_collector.finish().into_parts();
-        assert_eq!(list.to_vec(), vec![1, 2, 3]);
+        let mut effects = EffectSet::PURE;
+        assert_eq!(list.to_vec(&mut effects), vec![1, 2, 3]);
 
         let mut vec_collector = VecCollector::new();
         for value in list.iter() {
@@ -121,7 +120,8 @@ mod tests {
         }
         let (list, _) = collector.finish().into_parts();
         let squared = list.map(|value| value * value);
-        assert_eq!(squared.to_vec(), vec![0, 1, 4, 9, 16]);
+        let mut effects = EffectSet::PURE;
+        assert_eq!(squared.to_vec(&mut effects), vec![0, 1, 4, 9, 16]);
         let sum = squared.fold(0, |acc, value| acc + value);
         assert_eq!(sum, 30);
     }

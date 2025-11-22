@@ -3,7 +3,7 @@ use serde_json::json;
 
 use reml_runtime_ffi::core_prelude::{
     collectors::{CollectorAuditTrail, VecCollector},
-    iter::{BufferStrategy, EffectLabels, Iter, IteratorStageSnapshot},
+    iter::{BufferStrategy, EffectLabels, EffectSet, Iter, IteratorStageSnapshot},
     Collector,
 };
 
@@ -66,12 +66,13 @@ fn render_list_case(case: &str, iter: Iter<i64>) -> serde_json::Value {
     let stage = iter.stage_snapshot(format!("core_iter_pipeline::{case}"));
     let effects = iter.effect_labels();
     let (list, audit) = outcome.into_parts();
+    let mut list_effects = EffectSet::PURE;
     json!({
         "case": case,
         "stage": render_stage(stage),
         "effects": render_effects(effects),
         "collector": render_collector(&audit),
-        "value": list.into_vec(),
+        "value": list.into_vec(&mut list_effects),
     })
 }
 
@@ -124,6 +125,7 @@ fn from_iter_and_into_iter() -> serde_json::Value {
     let effects = iter.effect_labels();
     let outcome = iter.collect_list().expect("ListCollector should not fail");
     let (list, audit) = outcome.into_parts();
+    let mut list_effects = EffectSet::PURE;
 
     let iter_into: Iter<i64> = (20..23).collect();
     let std_values: Vec<i64> = iter_into.into_iter().collect();
@@ -133,7 +135,7 @@ fn from_iter_and_into_iter() -> serde_json::Value {
         "stage": render_stage(stage),
         "effects": render_effects(effects),
         "collector": render_collector(&audit),
-        "value": list.into_vec(),
+        "value": list.into_vec(&mut list_effects),
         "std_into_iter": std_values,
     })
 }
