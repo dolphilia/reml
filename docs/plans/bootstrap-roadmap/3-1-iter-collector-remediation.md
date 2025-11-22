@@ -21,6 +21,7 @@
 2. `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` を棚卸しし、`Iter`/`Collector` 各 API の `rust_status`・`notes`・`wbs` を現状へ更新、`meta.last_updated` を実施日（例: `2026-02-XX / Remediation Step3`）へ書き換える。
 3. `cargo xtask prelude-audit --section iter --strict --baseline docs/spec/3-1-core-prelude-iteration.md` を実行し、出力を `reports/spec-audit/ch1/iter.json` に JSON 形式で保存。`reports/spec-audit/ch0/links.md` と `docs-migrations.log` にコマンドライン・日付・成果を追記する。
 4. `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `core_prelude.missing_api` セクションへ最新の pass/fail 値を反映し、必要に応じ `iterator.api.coverage` KPI を追加。
+- 2027-02-24 更新: `cargo xtask prelude-audit --section iter --filter adapter --strict --output reports/spec-audit/ch1/core_iter_adapters.json` を実行し、adapter 12 API の `missing_entries = []` を `run_id = 2027-02-24-iter-adapter-g4` として保存。`reports/spec-audit/ch1/core_iter_adapters.json` へ `inventory_snapshot` を追加し、`iterator.adapter.coverage = 1.0` を `reports/iterator-adapter-metrics.json`・`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`（KPI 表）・`docs/notes/core-library-outline.md#iter-adapter` に連携した。CLI ログとスナップショット参照は `reports/spec-audit/ch0/links.md#iter-adapters-g4`、更新履歴は `docs-migrations.log` に記録済み。
 
 ### 2. collect-iterator-audit メトリクスの実データ化
 1. `tooling/ci/collect-iterator-audit-metrics.py` に `--section collectors` を実装し、`collector.effect.*`・`collector.stage.*`・`collector.error.*` を集計する専用ルーチンを追加。`--module iter` など既存の「placeholder」引数は削除せず挙動を定義する。

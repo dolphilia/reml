@@ -386,3 +386,14 @@
 
 - KPI: `reports/iterator-buffered-metrics.json` と `reports/benchmarks/iter_buffered-2027-02-22.json` を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `iterator.mem.window` に転記し、`iterator.mem.window.bytes = 2` / `iterator.mem.window.backpressure = 0.33` / `delta_pct = +0.038` を記録。`reports/iterator-stage-summary.md#iter-buffered` と `reports/spec-audit/ch1/iter.json` の KPI に同じ Run-ID (`2027-02-22-iter-adapter-g3`) を付与した。
 - 関連資料: `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a G3、`docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md` §5、`docs/notes/core-library-outline.md#iter-g3-buffered-backpressure`、`docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`（`Iter.buffered` 行）、`docs/plans/rust-migration/3-2-benchmark-baseline.md` §3.2.4。
+
+### <a id="iter-adapters-g4"></a>Iter Adapter G4 KPI / 文書同期ログ（WBS 3.1c-G4）
+
+| コマンド | 結果 | 備考 |
+| --- | --- | --- |
+| `cargo xtask prelude-audit --section iter --filter adapter --strict --output reports/spec-audit/ch1/core_iter_adapters.json` | ✅ | Adapter 12 API の `missing_entries = []` / `implemented_entries = 12` を確認し、`inventory_snapshot` に `run_id = 2027-02-24-iter-adapter-g4` を記録。 |
+| `python3 tooling/ci/collect-iterator-audit-metrics.py --section iterator --case adapters --source reports/spec-audit/ch1/core_iter_adapters.json --output reports/iterator-adapter-metrics.json --require-success` | ✅ | `iterator.adapter.coverage = 1.0`、`diagnostic.audit_presence_rate = 1.0`、`iterator.stage.audit_pass_rate = 1.0` を採取し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表に追記。 |
+| `scripts/validate-diagnostic-json.sh --pattern iterator.map --pattern iterator.zip reports/spec-audit/ch1/core_iter_adapters.json` | ✅ | Adapter 診断 JSON が schema v2.0.0-draft の `audit_id`/`stage.required`/`effects.*` を完全に保持していることを確認。 |
+
+- KPI: `reports/iterator-adapter-metrics.json` に `iterator.adapter.coverage = 1.0`、`diagnostic.audit_presence_rate = 1.0`、`iterator.stage.audit_pass_rate = 1.0` を記録し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表と `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml`（`meta.last_updated = "2027-02-24 / WBS 3.1c-G4"`）へ反映した。
+- 関連資料: `docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` §4.a G4、`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md#iter-adapter`、`docs/plans/bootstrap-roadmap/3-1-iter-collector-remediation.md`、`docs/notes/core-library-outline.md#iter-adapter`、`docs-migrations.log`（2027-02-24-iter-adapter-g4）。

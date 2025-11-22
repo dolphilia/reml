@@ -1,7 +1,20 @@
 {
-  "run_id": "2027-02-22-iter-adapter-g3",
-  "timestamp": "2027-02-22T08:45:00Z",
+  "run_id": "2027-02-24-iter-adapter-g4",
+  "timestamp": "2027-02-24T09:10:00Z",
   "section": "Iter adapters",
+  "inventory_snapshot": {
+    "command": "cargo xtask prelude-audit --section iter --filter adapter --strict --output reports/spec-audit/ch1/core_iter_adapters.json",
+    "baseline": "docs/spec/3-1-core-prelude-iteration.md",
+    "implemented_entries": 12,
+    "total_entries": 12,
+    "missing_entries": [],
+    "notes": "Adapter API 群 (map/filter/flat_map/zip/buffered 等) の `rust_status=implemented` を確認し、`iterator.adapter.coverage` KPI を生成。"
+  },
+  "metrics": {
+    "iterator.adapter.coverage": 1.0,
+    "diagnostic.audit_presence_rate": 1.0,
+    "iterator.stage.audit_pass_rate": 1.0
+  },
   "cases": {
     "flat_map_vec": {
       "snapshot": "compiler/rust/frontend/tests/snapshots/core_iter_adapters__core_iter_adapters.snap",

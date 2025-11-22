@@ -1,0 +1,21 @@
+{
+  "run_id": "2027-02-24-iter-adapter-g4",
+  "commands": [
+    "cargo xtask prelude-audit --section iter --filter adapter --strict --output reports/spec-audit/ch1/core_iter_adapters.json",
+    "python3 tooling/ci/collect-iterator-audit-metrics.py --section iterator --case adapters --source reports/spec-audit/ch1/core_iter_adapters.json --output reports/iterator-adapter-metrics.json --require-success"
+  ],
+  "kpi": {
+    "iterator.adapter.coverage": 1.0,
+    "diagnostic.audit_presence_rate": 1.0,
+    "iterator.stage.audit_pass_rate": 1.0
+  },
+  "sources": {
+    "inventory": "reports/spec-audit/ch1/core_iter_adapters.json",
+    "snapshots": "compiler/rust/frontend/tests/snapshots/core_iter_adapters__core_iter_adapters.snap",
+    "diagnostics": [
+      "reports/spec-audit/ch1/iterator.map-filter.diagnostics.json",
+      "reports/spec-audit/ch1/iterator.buffered.diagnostics.json"
+    ]
+  },
+  "notes": "Adapter KPI セット（map/filter/flat_map/zip/buffered）の Stage/Audit パス率を `collect-iterator-audit-metrics.py --case adapters` で採取。"
+}

@@ -6,7 +6,7 @@
 [meta]
 schema = "core_prelude_api_inventory/v0"
 spec = "docs/spec/3-1-core-prelude-iteration.md"
-last_updated = "2027-02-22 / WBS 3.1c-G3 (buffered/backpressure)"
+last_updated = "2027-02-24 / WBS 3.1c-G4 (adapter KPI sync)"
 maintainer = "Core Library Team"
 
 [[api]]
