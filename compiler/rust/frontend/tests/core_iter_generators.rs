@@ -89,3 +89,37 @@ fn try_unfold_terminates_on_error() {
     });
     assert_eq!(collect_values(iter), vec![0, 2, 4]);
 }
+
+#[test]
+fn empty_iter_reports_pure_stage() {
+    let iter = Iter::<i64>::empty();
+    assert_eq!(iter.next(), None);
+    let stage = iter.stage_snapshot("core_iter_generators::empty_iter_reports_pure_stage");
+    assert_eq!(stage.actual, "beta");
+    assert_eq!(stage.required.mode, "at_least");
+    assert_eq!(stage.required.stage, "beta");
+    assert_eq!(stage.kind, "core_iter");
+    let effects = iter.effect_labels();
+    assert!(!effects.mem);
+    assert!(!effects.mutating);
+    assert!(!effects.debug);
+    assert!(!effects.async_pending);
+    assert_eq!(effects.mem_bytes, 0);
+    assert_eq!(effects.predicate_calls, 0);
+}
+
+#[test]
+fn once_iter_emits_single_value_and_stage() {
+    let iter = Iter::once(42_i64);
+    let stage = iter.stage_snapshot("core_iter_generators::once_iter_emits_single_value_and_stage");
+    assert_eq!(stage.actual, "beta");
+    assert_eq!(stage.required.mode, "at_least");
+    assert_eq!(stage.required.stage, "beta");
+    assert_eq!(stage.kind, "core_iter");
+    let effects = iter.effect_labels();
+    assert!(!effects.mem);
+    assert!(!effects.mutating);
+    assert!(!effects.debug);
+    assert!(!effects.async_pending);
+    assert_eq!(collect_values(iter), vec![42]);
+}

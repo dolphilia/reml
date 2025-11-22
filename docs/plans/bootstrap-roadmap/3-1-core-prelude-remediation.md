@@ -43,6 +43,8 @@
   3. `docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` の該当 `notes` を更新し、テスト参照を「直接検証あり」と明記。
 - **出口条件**: `core_iter_generators` snapshot 更新が `reports/spec-audit/diffs/README.md` に記録され、`iterator.effect.mem_bytes` 等の KPI が `0`（空）/`PURE` と一致する。
 
+**対応状況（2027-03-19）**: `compiler/rust/frontend/tests/core_iter_generators.rs` に `empty_iter_reports_pure_stage` / `once_iter_emits_single_value_and_stage` を追加し、`cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_generators` で通過を確認。`prelude_api_inventory.toml` の `collect_*` ノート更新により新テストを参照済み。`reports/spec-audit/ch1/` 側の追加登録は Phase 3-2 KPI 更新タスクで実施予定。
+
 ## マイルストーンと責任
 | WBS | タスク | 担当 | 期日 | 依存 |
 | --- | --- | --- | --- | --- |
