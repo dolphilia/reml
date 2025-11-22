@@ -4,7 +4,6 @@ use std::iter::FromIterator;
 use super::arena::{ArenaPtr, PersistentArena};
 
 /// Finger tree 風のノードを使った永続リスト。
-#[derive(Clone)]
 pub struct List<T> {
     arena: PersistentArena<FingerTreeNode<T>>,
     root: Option<ArenaPtr<FingerTreeNode<T>>>,
@@ -17,6 +16,16 @@ impl<T> Default for List<T> {
             arena: PersistentArena::new(),
             root: None,
             len: 0,
+        }
+    }
+}
+
+impl<T> Clone for List<T> {
+    fn clone(&self) -> Self {
+        Self {
+            arena: self.arena.clone(),
+            root: self.root.clone(),
+            len: self.len,
         }
     }
 }
@@ -182,7 +191,6 @@ impl<T: PartialEq + Clone> PartialEq for List<T> {
 impl<T: Eq + Clone> Eq for List<T> {}
 
 /// Finger tree ノード。
-#[derive(Clone)]
 enum FingerTreeNode<T> {
     Leaf(T),
     Branch {

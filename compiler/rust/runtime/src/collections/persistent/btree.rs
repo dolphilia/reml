@@ -1,0 +1,443 @@
+//! 永続 `Map` / `Set` 実装。赤黒木（Left-Leaning Red-Black Tree）を簡易移植し、
+//! `PersistentArena` 上でノードを共有する。
+
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, BTreeSet},
+    fmt,
+    iter::FromIterator,
+    sync::Arc,
+};
+
+use super::arena::{ArenaPtr, PersistentArena};
+
+/// 永続マップ（`@pure`）。操作は O(log n) で構造共有を維持する。
+#[derive(Clone)]
+pub struct PersistentMap<K, V> {
+    arena: PersistentArena<Node<K, V>>,
+    root: Option<ArenaPtr<Node<K, V>>>,
+    len: usize,
+}
+
+impl<K: Ord, V> Default for PersistentMap<K, V> {
+    fn default() -> Self {
+        Self {
+            arena: PersistentArena::new(),
+            root: None,
+            len: 0,
+        }
+    }
+}
+
+impl<K: Ord, V> PersistentMap<K, V> {
+    /// 空のマップを生成する。
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// 要素数を返す。
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    /// 空かどうか。
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    /// キーに対応する値を取得する。
+    pub fn get(&self, key: &K) -> Option<&V> {
+        let mut cursor = self.root.as_ref();
+        while let Some(ptr) = cursor {
+            let node = &**ptr;
+            match key.cmp(node.key()) {
+                Ordering::Less => {
+                    cursor = node.left.as_ref();
+                }
+                Ordering::Greater => {
+                    cursor = node.right.as_ref();
+                }
+                Ordering::Equal => return Some(node.value()),
+            }
+        }
+        None
+    }
+
+    /// キーの存在可否を返す。
+    pub fn contains_key(&self, key: &K) -> bool {
+        self.get(key).is_some()
+    }
+
+    /// 値を挿入する（既存キーは上書き）。
+    pub fn insert(&self, key: K, value: V) -> Self {
+        let arena = self.arena.clone();
+        let (root, _) = insert_node(&arena, self.root.clone(), key, value);
+        let root = make_black(&arena, root);
+        let len = subtree_size(Some(&root));
+        Self {
+            arena,
+            root: Some(root),
+            len,
+        }
+    }
+
+    /// 既存の `BTreeMap` から永続マップを構築する。
+    pub fn from_map(map: BTreeMap<K, V>) -> Self {
+        map.into_iter().fold(Self::new(), |acc, (k, v)| acc.insert(k, v))
+    }
+
+    /// `BTreeMap` へ変換する（コピー）。
+    pub fn into_map(self) -> BTreeMap<K, V>
+    where
+        K: Ord + Clone,
+        V: Clone,
+    {
+        let mut map = BTreeMap::new();
+        self.for_each_entry(|k, v| {
+            map.insert(k.clone(), v.clone());
+        });
+        map
+    }
+
+    /// 内部ノードを昇順で走査するユーティリティ。
+    fn for_each_entry<'a, F>(&'a self, mut visit: F)
+    where
+        F: FnMut(&'a K, &'a V),
+    {
+        fn traverse<'a, K: Ord, V, F: FnMut(&'a K, &'a V)>(
+            node: Option<&'a ArenaPtr<Node<K, V>>>,
+            visit: &mut F,
+        ) {
+            if let Some(ptr) = node {
+                let node_ref = &**ptr;
+                traverse(node_ref.left.as_ref(), visit);
+                visit(node_ref.key(), node_ref.value());
+                traverse(node_ref.right.as_ref(), visit);
+            }
+        }
+
+        traverse(self.root.as_ref(), &mut visit);
+    }
+}
+
+impl<K: Ord, V> FromIterator<(K, V)> for PersistentMap<K, V> {
+    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
+        iter.into_iter().fold(Self::new(), |acc, (k, v)| acc.insert(k, v))
+    }
+}
+
+impl<K: Ord + fmt::Debug, V: fmt::Debug> fmt::Debug for PersistentMap<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut entries = Vec::new();
+        self.for_each_entry(|k, v| entries.push((k, v)));
+        f.debug_map().entries(entries).finish()
+    }
+}
+
+/// 永続 Set。内部的には `PersistentMap<T, ()>` を利用する。
+#[derive(Clone)]
+pub struct PersistentSet<T> {
+    map: PersistentMap<T, ()>,
+}
+
+impl<T: Ord> Default for PersistentSet<T> {
+    fn default() -> Self {
+        Self {
+            map: PersistentMap::new(),
+        }
+    }
+}
+
+impl<T: Ord> PersistentSet<T> {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
+
+    pub fn contains(&self, value: &T) -> bool {
+        self.map.contains_key(value)
+    }
+
+    pub fn insert(&self, value: T) -> Self {
+        Self {
+            map: self.map.insert(value, ()),
+        }
+    }
+
+    pub fn from_set(set: BTreeSet<T>) -> Self {
+        set.into_iter().fold(Self::new(), |acc, v| acc.insert(v))
+    }
+
+    pub fn into_set(self) -> BTreeSet<T>
+    where
+        T: Ord + Clone,
+    {
+        let mut set = BTreeSet::new();
+        self.map.for_each_entry(|key, _| {
+            set.insert(key.clone());
+        });
+        set
+    }
+}
+
+impl<T: Ord + fmt::Debug> fmt::Debug for PersistentSet<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut entries = Vec::new();
+        self.map.for_each_entry(|key, _| entries.push(key));
+        f.debug_set().entries(entries).finish()
+    }
+}
+
+/// LLRB ノードの色。
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Color {
+    Red,
+    Black,
+}
+
+impl Color {
+    fn is_red(self) -> bool {
+        matches!(self, Color::Red)
+    }
+
+    fn flip(self) -> Self {
+        match self {
+            Color::Red => Color::Black,
+            Color::Black => Color::Red,
+        }
+    }
+}
+
+#[derive(Clone)]
+struct Entry<K, V> {
+    key: K,
+    value: V,
+}
+
+/// 木ノード。`entry` を `Arc` で保持して構造共有する。
+#[derive(Clone)]
+struct Node<K, V> {
+    entry: Arc<Entry<K, V>>,
+    left: Option<ArenaPtr<Node<K, V>>>,
+    right: Option<ArenaPtr<Node<K, V>>>,
+    color: Color,
+    size: usize,
+}
+
+impl<K, V> Node<K, V> {
+    fn key(&self) -> &K {
+        &self.entry.key
+    }
+
+    fn value(&self) -> &V {
+        &self.entry.value
+    }
+}
+
+fn insert_node<K: Ord, V>(
+    arena: &PersistentArena<Node<K, V>>,
+    node: Option<ArenaPtr<Node<K, V>>>,
+    key: K,
+    value: V,
+) -> (ArenaPtr<Node<K, V>>, bool) {
+    match node {
+        None => {
+            let entry = Arc::new(Entry { key, value });
+            let new_node = build_node(arena, entry, None, None, Color::Red);
+            (new_node, true)
+        }
+        Some(ptr) => {
+            let node_ref = &*ptr;
+            let (next_ptr, inserted) = match key.cmp(node_ref.key()) {
+                Ordering::Less => {
+                    let (left, inserted) = insert_node(arena, node_ref.left.clone(), key, value);
+                    (
+                        build_node(
+                            arena,
+                            Arc::clone(&node_ref.entry),
+                            Some(left),
+                            node_ref.right.clone(),
+                            node_ref.color,
+                        ),
+                        inserted,
+                    )
+                }
+                Ordering::Greater => {
+                    let (right, inserted) = insert_node(arena, node_ref.right.clone(), key, value);
+                    (
+                        build_node(
+                            arena,
+                            Arc::clone(&node_ref.entry),
+                            node_ref.left.clone(),
+                            Some(right),
+                            node_ref.color,
+                        ),
+                        inserted,
+                    )
+                }
+                Ordering::Equal => {
+                    let entry = Arc::new(Entry { key, value });
+                    (
+                        build_node(
+                            arena,
+                            entry,
+                            node_ref.left.clone(),
+                            node_ref.right.clone(),
+                            node_ref.color,
+                        ),
+                        false,
+                    )
+                }
+            };
+            (fix_up(arena, next_ptr), inserted)
+        }
+    }
+}
+
+fn fix_up<K: Ord, V>(
+    arena: &PersistentArena<Node<K, V>>,
+    node: ArenaPtr<Node<K, V>>,
+) -> ArenaPtr<Node<K, V>> {
+    let mut current = node;
+
+    if is_red(current.right.as_ref()) && !is_red(current.left.as_ref()) {
+        current = rotate_left(arena, current);
+    }
+    if is_red(current.left.as_ref())
+        && current.left.as_ref().map(|left| is_red(left.left.as_ref())).unwrap_or(false)
+    {
+        current = rotate_right(arena, current);
+    }
+    if is_red(current.left.as_ref()) && is_red(current.right.as_ref()) {
+        current = flip_colors(arena, current);
+    }
+    current
+}
+
+fn rotate_left<K: Ord, V>(
+    arena: &PersistentArena<Node<K, V>>,
+    node: ArenaPtr<Node<K, V>>,
+) -> ArenaPtr<Node<K, V>> {
+    let node_ref = &*node;
+    let right = node_ref
+        .right
+        .clone()
+        .expect("rotate_left requires right child");
+    let right_ref = &*right;
+
+    let left_child = build_node(
+        arena,
+        Arc::clone(&node_ref.entry),
+        node_ref.left.clone(),
+        right_ref.left.clone(),
+        Color::Red,
+    );
+    build_node(
+        arena,
+        Arc::clone(&right_ref.entry),
+        Some(left_child),
+        right_ref.right.clone(),
+        node_ref.color,
+    )
+}
+
+fn rotate_right<K: Ord, V>(
+    arena: &PersistentArena<Node<K, V>>,
+    node: ArenaPtr<Node<K, V>>,
+) -> ArenaPtr<Node<K, V>> {
+    let node_ref = &*node;
+    let left = node_ref.left.clone().expect("rotate_right requires left child");
+    let left_ref = &*left;
+
+    let right_child = build_node(
+        arena,
+        Arc::clone(&node_ref.entry),
+        left_ref.right.clone(),
+        node_ref.right.clone(),
+        Color::Red,
+    );
+
+    build_node(
+        arena,
+        Arc::clone(&left_ref.entry),
+        left_ref.left.clone(),
+        Some(right_child),
+        node_ref.color,
+    )
+}
+
+fn flip_colors<K: Ord, V>(
+    arena: &PersistentArena<Node<K, V>>,
+    node: ArenaPtr<Node<K, V>>,
+) -> ArenaPtr<Node<K, V>> {
+    let node_ref = &*node;
+    let left = node_ref.left.clone().map(|left| {
+        let color = left.color;
+        set_color(arena, left, color.flip())
+    });
+    let right = node_ref.right.clone().map(|right| {
+        let color = right.color;
+        set_color(arena, right, color.flip())
+    });
+    build_node(
+        arena,
+        Arc::clone(&node_ref.entry),
+        left,
+        right,
+        node_ref.color.flip(),
+    )
+}
+
+fn set_color<K, V>(
+    arena: &PersistentArena<Node<K, V>>,
+    node: ArenaPtr<Node<K, V>>,
+    color: Color,
+) -> ArenaPtr<Node<K, V>> {
+    let node_ref = &*node;
+    build_node(
+        arena,
+        Arc::clone(&node_ref.entry),
+        node_ref.left.clone(),
+        node_ref.right.clone(),
+        color,
+    )
+}
+
+fn make_black<K, V>(
+    arena: &PersistentArena<Node<K, V>>,
+    node: ArenaPtr<Node<K, V>>,
+) -> ArenaPtr<Node<K, V>> {
+    set_color(arena, node, Color::Black)
+}
+
+fn build_node<K, V>(
+    arena: &PersistentArena<Node<K, V>>,
+    entry: Arc<Entry<K, V>>,
+    left: Option<ArenaPtr<Node<K, V>>>,
+    right: Option<ArenaPtr<Node<K, V>>>,
+    color: Color,
+) -> ArenaPtr<Node<K, V>> {
+    let size = 1 + subtree_size(left.as_ref()) + subtree_size(right.as_ref());
+    arena.alloc(Node {
+        entry,
+        left,
+        right,
+        color,
+        size,
+    })
+}
+
+fn subtree_size<K, V>(node: Option<&ArenaPtr<Node<K, V>>>) -> usize {
+    node.map(|ptr| ptr.size).unwrap_or(0)
+}
+
+fn is_red<K, V>(node: Option<&ArenaPtr<Node<K, V>>>) -> bool {
+    node.map(|ptr| ptr.color.is_red()).unwrap_or(false)
+}

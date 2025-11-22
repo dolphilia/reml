@@ -4,7 +4,6 @@ use std::sync::{Arc, Mutex};
 
 /// 永続構造で共有されるノードをアロケートする簡易アリーナ。
 /// `Arc` に包んだ値を保持し、呼び出し側からは `ArenaPtr` を通じて参照する。
-#[derive(Clone, Default)]
 pub struct PersistentArena<T> {
     storage: Arc<ArenaStorage<T>>,
 }
@@ -34,12 +33,12 @@ impl<T> PersistentArena<T> {
     }
 }
 
+#[derive(Default)]
 struct ArenaStorage<T> {
     nodes: Mutex<Vec<Arc<T>>>,
 }
 
 /// アリーナが管理するノードの共有ポインタ。
-#[derive(Clone)]
 pub struct ArenaPtr<T> {
     inner: Arc<T>,
 }
@@ -62,5 +61,33 @@ impl<T> Deref for ArenaPtr<T> {
 impl<T: fmt::Debug> fmt::Debug for ArenaPtr<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.fmt(f)
+    }
+}
+
+impl<T> AsRef<T> for ArenaPtr<T> {
+    fn as_ref(&self) -> &T {
+        &self.inner
+    }
+}
+
+impl<T> Clone for PersistentArena<T> {
+    fn clone(&self) -> Self {
+        Self {
+            storage: Arc::clone(&self.storage),
+        }
+    }
+}
+
+impl<T> Default for PersistentArena<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T> Clone for ArenaPtr<T> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: Arc::clone(&self.inner),
+        }
     }
 }

@@ -1,12 +1,13 @@
-//! `MapCollector` の雛形実装。キー重複検出と Stage 記録を担保する。
+//! `MapCollector` の実装。永続 `Map` を `Collector` へ接続する。
 
-use std::{collections::BTreeMap, fmt::Debug};
+use std::fmt::Debug;
 
 use super::super::iter::{EffectLabels, IterError};
 use super::{
     CollectError, CollectErrorKind, CollectOutcome, Collector, CollectorAuditTrail,
     CollectorEffectMarkers, CollectorKind, CollectorStageProfile,
 };
+use crate::collections::persistent::btree::PersistentMap;
 
 const PURE_EFFECTS: EffectLabels = EffectLabels {
     mem: false,
@@ -17,24 +18,11 @@ const PURE_EFFECTS: EffectLabels = EffectLabels {
     predicate_calls: 0,
 };
 
-/// 永続 `Map` の雛形。
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Map<K, V> {
-    entries: BTreeMap<K, V>,
-}
-
-impl<K, V> Map<K, V> {
-    fn from_map(entries: BTreeMap<K, V>) -> Self {
-        Self { entries }
-    }
-
-    pub fn into_map(self) -> BTreeMap<K, V> {
-        self.entries
-    }
-}
+/// Collector から公開する `Map` 型。
+pub type Map<K, V> = PersistentMap<K, V>;
 
 pub struct MapCollector<K, V> {
-    storage: BTreeMap<K, V>,
+    storage: Map<K, V>,
     stage_profile: CollectorStageProfile,
     effects: EffectLabels,
     markers: CollectorEffectMarkers,
@@ -74,7 +62,7 @@ where
         Self: Sized,
     {
         Self {
-            storage: BTreeMap::new(),
+            storage: Map::new(),
             stage_profile: CollectorStageProfile::for_kind(CollectorKind::Map),
             effects: PURE_EFFECTS,
             markers: CollectorEffectMarkers::default(),
@@ -89,10 +77,11 @@ where
     }
 
     fn push(&mut self, value: (K, V)) -> Result<(), Self::Error> {
-        if self.storage.contains_key(&value.0) {
-            return Err(self.duplicate_error(&value.0));
+        let (key, value) = value;
+        if self.storage.contains_key(&key) {
+            return Err(self.duplicate_error(&key));
         }
-        self.storage.insert(value.0, value.1);
+        self.storage = self.storage.insert(key, value);
         Ok(())
     }
 
@@ -102,8 +91,7 @@ where
     {
         self.markers.record_finish();
         let audit = self.audit_trail("MapCollector::finish");
-        let map = Map::from_map(self.storage);
-        CollectOutcome::new(map, audit)
+        CollectOutcome::new(self.storage, audit)
     }
 
     fn iter_error(self, error: IterError) -> Self::Error

@@ -1,12 +1,13 @@
-//! `SetCollector` の雛形実装。重複検出と Stage 監査をシンプルにまとめる。
+//! `SetCollector` と永続 `Set` の連携実装。
 
-use std::{collections::BTreeSet, fmt::Debug};
+use std::fmt::Debug;
 
 use super::super::iter::{EffectLabels, IterError};
 use super::{
     CollectError, CollectErrorKind, CollectOutcome, Collector, CollectorAuditTrail,
     CollectorEffectMarkers, CollectorKind, CollectorStageProfile,
 };
+use crate::collections::persistent::btree::PersistentSet;
 
 const PURE_EFFECTS: EffectLabels = EffectLabels {
     mem: false,
@@ -17,24 +18,11 @@ const PURE_EFFECTS: EffectLabels = EffectLabels {
     predicate_calls: 0,
 };
 
-/// `Set` の最小型。
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Set<T> {
-    entries: BTreeSet<T>,
-}
-
-impl<T> Set<T> {
-    fn from_set(entries: BTreeSet<T>) -> Self {
-        Self { entries }
-    }
-
-    pub fn into_set(self) -> BTreeSet<T> {
-        self.entries
-    }
-}
+/// Collector から公開する `Set` 型。
+pub type Set<T> = PersistentSet<T>;
 
 pub struct SetCollector<T> {
-    storage: BTreeSet<T>,
+    storage: Set<T>,
     stage_profile: CollectorStageProfile,
     effects: EffectLabels,
     markers: CollectorEffectMarkers,
@@ -65,7 +53,7 @@ impl<T: Ord> SetCollector<T> {
 
 impl<T> Collector<T, CollectOutcome<Set<T>>> for SetCollector<T>
 where
-    T: Ord + Debug + Clone,
+    T: Ord + Debug,
 {
     type Error = CollectError;
 
@@ -74,7 +62,7 @@ where
         Self: Sized,
     {
         Self {
-            storage: BTreeSet::new(),
+            storage: Set::new(),
             stage_profile: CollectorStageProfile::for_kind(CollectorKind::Set),
             effects: PURE_EFFECTS,
             markers: CollectorEffectMarkers::default(),
@@ -89,9 +77,10 @@ where
     }
 
     fn push(&mut self, value: T) -> Result<(), Self::Error> {
-        if !self.storage.insert(value.clone()) {
+        if self.storage.contains(&value) {
             return Err(self.duplicate_error(&value));
         }
+        self.storage = self.storage.insert(value);
         Ok(())
     }
 
@@ -101,8 +90,7 @@ where
     {
         self.markers.record_finish();
         let audit = self.audit_trail("SetCollector::finish");
-        let set = Set::from_set(self.storage);
-        CollectOutcome::new(set, audit)
+        CollectOutcome::new(self.storage, audit)
     }
 
     fn iter_error(self, error: IterError) -> Self::Error
