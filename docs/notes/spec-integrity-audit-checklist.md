@@ -19,6 +19,9 @@
 ## ドキュメント整合
 - [ ] `docs/spec/2-5-error.md` と `docs/spec/3-6-core-diagnostics-audit.md` の脚注 `[^err001-phase25]` / `[^err001-phase25-core]` をレビューし、将来の仕様改訂で状態が変わった場合は脚注内容とリンクを更新する。
 
+## Core.Collections 監査 TODO（W39 追加）
+- [ ] `Collections.audit_bridge` の JSON 生成結果を `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` に 3 ケース（`map_diff`, `set_partition`, `table_merge`）で残し、`tooling/ci/collect-iterator-audit-metrics.py --section collectors --scenario map_set_persistent --require-audit` を通過することを確認する。監査メタデータ (`AuditEnvelope.change_set.collections.diff.*`) に `collector.effect.audit` / `collector.effect.mem_bytes` が揃っているかチェックリストへ追記する。【参照: docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md §2.2】
+
 ### `rust-gap` トラッキング表（2025-11-17 更新）
 | 差分 ID | 章/カテゴリ | 症状 | Rust 監査手順 | 備考 |
 |---------|-------------|------|----------------|------|

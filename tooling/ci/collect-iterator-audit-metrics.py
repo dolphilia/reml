@@ -363,6 +363,22 @@ def _coerce_bool(value: Optional[object]) -> bool:
     return False
 
 
+def _coerce_int_value(value: Optional[object]) -> Optional[int]:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return None
+        try:
+            return int(float(stripped))
+        except ValueError:
+            return None
+    return None
+
+
 def _extract_stream_extension(
     run_config: Optional[Dict[str, Any]]
 ) -> Optional[Dict[str, Any]]:
@@ -2943,12 +2959,13 @@ def collect_collector_effect_metrics(
     capability_counts: Dict[str, int] = defaultdict(int)
     kind_counts: Dict[str, int] = defaultdict(int)
     effect_flags: Dict[str, int] = {
-        name: 0 for name in ["mem", "mut", "debug", "async_pending"]
+        name: 0 for name in ["mem", "mut", "debug", "async_pending", "audit"]
     }
     marker_totals: Dict[str, int] = {
         "mem_reservation": 0,
         "reserve": 0,
         "finish": 0,
+        "mem_bytes": 0,
     }
     stage_mismatch = 0
     error_counts: Dict[str, int] = defaultdict(int)
@@ -3160,6 +3177,230 @@ def collect_collector_effect_metrics(
         "sources": [str(path) for path in paths],
         "status": "success" if pass_rate == 1.0 else "warning",
     }
+
+
+def _change_set_contains_collections(change_set: Dict[str, Any]) -> bool:
+    def _match(value: Optional[object]) -> bool:
+        return isinstance(value, str) and "collections.diff" in value
+
+    if _match(change_set.get("kind")) or _match(change_set.get("category")):
+        return True
+    metadata = _as_dict(change_set.get("metadata"))
+    if metadata:
+        for key, value in metadata.items():
+            if isinstance(key, str) and key.startswith("collections.diff"):
+                return True
+            if _match(value):
+                return True
+    items = change_set.get("items")
+    if isinstance(items, list):
+        for item in items:
+            if isinstance(item, dict) and _match(item.get("kind")):
+                return True
+    return False
+
+
+def collect_collections_audit_bridge_metrics(
+    paths: Sequence[Path], *, kinds: Optional[Set[str]] = None
+) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    if kinds is None:
+        monitored_kinds: Optional[Set[str]] = None
+    else:
+        monitored_kinds = {kind.lower() for kind in kinds}
+
+    schema_versions: Set[str] = set()
+    bridge_total = 0
+    bridge_passed = 0
+    bridge_failures: List[Dict[str, Any]] = []
+
+    effect_total = 0
+    effect_passed = 0
+    effect_failures: List[Dict[str, Any]] = []
+
+    for path in paths:
+        data = load_json(path)
+        try:
+            diagnostics_iter = list(iter_diagnostics(data))
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
+            extensions = _as_dict(diag.get("extensions"))
+            prelude = (
+                _as_dict(extensions.get("prelude.collector"))
+                if extensions
+                else None
+            )
+            if not prelude:
+                continue
+            kind_value = prelude.get("kind")
+            if monitored_kinds and str(kind_value).lower() not in monitored_kinds:
+                continue
+            audit_entry = _as_dict(diag.get("audit"))
+            if not audit_entry:
+                continue
+            schema = extract_schema_version(diag)
+            if schema:
+                schema_versions.add(schema)
+            case_id = (
+                diag.get("snapshot_id")
+                or prelude.get("snapshot_id")
+                or f"{path.name}#{index}"
+            )
+            metadata = _as_dict(audit_entry.get("metadata"))
+            change_set = (
+                audit_entry.get("change_set")
+                if isinstance(audit_entry, dict)
+                else None
+            )
+            change_dict = change_set if isinstance(change_set, dict) else None
+
+            bridge_total += 1
+            bridge_reasons: List[str] = []
+            has_collections = False
+            change_total_value: Optional[int] = None
+
+            if change_dict is None:
+                bridge_reasons.append("change_set.missing")
+            else:
+                has_collections = _change_set_contains_collections(change_dict)
+                if not has_collections:
+                    bridge_reasons.append("change_set.kind")
+                total_value = _coerce_int_value(change_dict.get("total"))
+                if total_value is None:
+                    bridge_reasons.append("change_set.total")
+                else:
+                    change_total_value = total_value
+                items = change_dict.get("items")
+                if not isinstance(items, list):
+                    bridge_reasons.append("change_set.items")
+
+            if bridge_reasons:
+                bridge_failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "case": case_id,
+                        "kind": kind_value,
+                        "reasons": sorted(set(bridge_reasons)),
+                    }
+                )
+            else:
+                bridge_passed += 1
+
+            effect_applicable = change_dict is not None and has_collections
+            if not effect_applicable:
+                continue
+
+            effect_total += 1
+            effect_reasons: List[str] = []
+            expected_total = change_total_value
+            effect_flag: Optional[bool] = None
+            mem_bytes_value: Optional[int] = None
+
+            if metadata:
+                exists, value = _lookup_in_container(
+                    metadata, "collector.effect.audit"
+                )
+                if exists:
+                    effect_flag = _coerce_bool(value)
+                exists, mem_value = _lookup_in_container(
+                    metadata, "collector.effect.mem_bytes"
+                )
+                if exists:
+                    mem_bytes_value = _coerce_int_value(mem_value)
+
+            if expected_total is None and change_dict is not None:
+                expected_total = _coerce_int_value(change_dict.get("total"))
+
+            if effect_flag is None:
+                effect_reasons.append("collector.effect.audit")
+            if mem_bytes_value is None:
+                effect_reasons.append("collector.effect.mem_bytes")
+
+            expected_audit = (expected_total or 0) > 0
+            if effect_flag is not None:
+                if expected_audit and not effect_flag:
+                    effect_reasons.append("collector.effect.audit.expected_true")
+                if not expected_audit and effect_flag:
+                    effect_reasons.append("collector.effect.audit.expected_false")
+            if mem_bytes_value is not None:
+                if expected_audit and mem_bytes_value <= 0:
+                    effect_reasons.append("collector.effect.mem_bytes.positive")
+                if not expected_audit and mem_bytes_value not in (0,):
+                    effect_reasons.append("collector.effect.mem_bytes.zero")
+
+            if effect_reasons:
+                effect_failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "case": case_id,
+                        "kind": kind_value,
+                        "expected_total": expected_total,
+                        "audit_flag": effect_flag,
+                        "mem_bytes": mem_bytes_value,
+                        "reasons": sorted(set(effect_reasons)),
+                    }
+                )
+            else:
+                effect_passed += 1
+
+    def _build_metric(
+        metric_name: str,
+        total: int,
+        passed: int,
+        failures: List[Dict[str, Any]],
+    ) -> Optional[Dict[str, Any]]:
+        status = "success" if total > 0 and passed == total else "error"
+        pass_rate: Optional[float]
+        pass_fraction: Optional[float]
+        if total > 0:
+            pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+        else:
+            pass_rate = None
+            pass_fraction = None
+            if not failures:
+                failures.append(
+                    {
+                        "file": None,
+                        "index": None,
+                        "case": None,
+                        "reasons": ["no_applicable_cases"],
+                    }
+                )
+        if total == 0 and not failures:
+            return None
+        return {
+            "metric": metric_name,
+            "scenario": "map_set_persistent",
+            "total": total,
+            "passed": passed,
+            "failed": total - passed,
+            "pass_rate": pass_rate,
+            "pass_fraction": pass_fraction,
+            "failures": failures,
+            "sources": [str(path) for path in paths],
+            "schema_versions": sorted(schema_versions),
+            "status": status,
+        }
+
+    bridge_metric = _build_metric(
+        "collections.audit_bridge_pass_rate", bridge_total, bridge_passed, bridge_failures
+    )
+    if bridge_metric:
+        bridge_metric["required_audit_keys"] = ["audit.change_set"]
+        bridge_metric["kinds"] = sorted(monitored_kinds) if monitored_kinds else None
+
+    effect_metric = _build_metric(
+        "collector.effect.audit_presence", effect_total, effect_passed, effect_failures
+    )
+    if effect_metric:
+        effect_metric["required_audit_keys"] = [
+            "collector.effect.audit",
+            "collector.effect.mem_bytes",
+        ]
+
+    return bridge_metric, effect_metric
 
     pass_rate, pass_fraction = calculate_pass_rates(passed, total)
     status = "success" if pass_rate == 1.0 else "error"
@@ -4805,6 +5046,13 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Path to generated dashboard artifact (HTML/Markdown).",
     )
     parser.add_argument(
+        "--scenario",
+        action="append",
+        dest="scenarios",
+        choices=["map_set_persistent"],
+        help="Scenario-specific validation (repeatable).",
+    )
+    parser.add_argument(
         "--ci-duration-seconds",
         type=float,
         default=None,
@@ -4835,6 +5083,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.prune and not args.summary:
         sys.stderr.write("--prune を使用する場合は --summary でインデックスを指定してください。\n")
         return 2
+
+    scenario_filters: Set[str] = set()
+    if getattr(args, "scenarios", None):
+        for scenario in args.scenarios:
+            if not scenario:
+                continue
+            scenario_filters.add(scenario)
 
     module_filters: Optional[List[str]] = None
     if getattr(args, "modules", None):
@@ -5010,6 +5265,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     orphan_parser_related_metrics: List[Dict[str, Any]] = []
     iterator_metrics: Optional[Dict[str, Any]] = None
     collector_metrics: Optional[Dict[str, Any]] = None
+    collections_audit_metric: Optional[Dict[str, Any]] = None
+    collector_effect_audit_metric: Optional[Dict[str, Any]] = None
     domain_metrics: Optional[Dict[str, Any]] = None
     effect_consistency_metric: Optional[Dict[str, Any]] = None
     capability_array_metric: Optional[Dict[str, Any]] = None
@@ -5066,6 +5323,14 @@ def main(argv: Optional[List[str]] = None) -> int:
                     related.append(metric)
     if "collectors" in sections or "collector" in sections:
         collector_metrics = collect_collector_effect_metrics(sources)
+    if "map_set_persistent" in scenario_filters:
+        (
+            collections_audit_metric,
+            collector_effect_audit_metric,
+        ) = collect_collections_audit_bridge_metrics(sources, kinds={"map", "set"})
+        for metric in (collections_audit_metric, collector_effect_audit_metric):
+            if metric:
+                append_metrics.append(metric)
     if "effects" in sections:
         effects_metric = collect_effect_syntax_metrics(sources)
         (
@@ -5175,6 +5440,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         combined["extra_metrics_sources"] = append_sources
     if module_filters:
         combined["modules"] = module_filters
+    if scenario_filters:
+        combined["scenarios"] = sorted(scenario_filters)
     if platform_filters:
         combined["platform_filters"] = sorted(platform_filters)
     if getattr(args, "case", None):
@@ -5300,6 +5567,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         if isinstance(typeclass_metrics, dict):
             _enforce(typeclass_metrics.get("dictionary_metric"), "typeclass.dictionary_pass_rate")
         _enforce(bridge_metrics, "ffi_bridge.audit_pass_rate")
+        _enforce(collections_audit_metric, "collections.audit_bridge_pass_rate")
+        _enforce(
+            collector_effect_audit_metric, "collector.effect.audit_presence"
+        )
         _enforce(diag_metric, "effects-contract")
         for metric in append_metrics:
             if not isinstance(metric, dict):
