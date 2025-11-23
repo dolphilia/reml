@@ -38,7 +38,7 @@ collect_vec_mem_reservation: {
     "async_pending": false,
     "audit": false,
     "predicate_calls": 0,
-    "mem_bytes": 0
+    "mem_bytes": 36
   },
   "kind": "vec",
   "markers": {

@@ -3,7 +3,9 @@ use serde_json::json;
 
 use reml_runtime_ffi::core_prelude::iter::Iter;
 
-fn render_stage(stage: reml_runtime_ffi::core_prelude::iter::IteratorStageSnapshot) -> serde_json::Value {
+fn render_stage(
+    stage: reml_runtime_ffi::core_prelude::iter::IteratorStageSnapshot,
+) -> serde_json::Value {
     json!({
         "required": {
             "mode": stage.required.mode,
@@ -30,11 +32,12 @@ fn render_effects(labels: reml_runtime_ffi::core_prelude::iter::EffectLabels) ->
 
 fn map_pipeline_case() -> serde_json::Value {
     let iter = Iter::from_list(vec![1, 2, 3, 4]).map(|value| value * 10);
-    let (values, _) = iter
+    let (core_vec, _) = iter
         .clone()
         .collect_vec()
         .expect("VecCollector should not fail")
         .into_parts();
+    let values = core_vec.into_inner();
     let stage = iter.stage_snapshot("iter.map_pipeline");
     let effects = iter.effect_labels();
     json!({
@@ -47,11 +50,12 @@ fn map_pipeline_case() -> serde_json::Value {
 
 fn filter_effect_case() -> serde_json::Value {
     let iter = Iter::from_list(vec![1, 2, 3, 4]).filter(|value| *value % 2 == 0);
-    let (values, _) = iter
+    let (core_vec, _) = iter
         .clone()
         .collect_vec()
         .expect("VecCollector should not fail")
         .into_parts();
+    let values = core_vec.into_inner();
     let stage = iter.stage_snapshot("iter.filter_effect");
     let effects = iter.effect_labels();
     json!({
@@ -67,11 +71,12 @@ fn map_filter_chain_panic_guard_case() -> serde_json::Value {
         .map(|value| value.checked_sub(1).ok_or("underflow"))
         .filter(|result| result.is_ok())
         .map(|result| result.unwrap_or_default());
-    let (values, _) = iter
+    let (core_vec, _) = iter
         .clone()
         .collect_vec()
         .expect("VecCollector should not fail")
         .into_parts();
+    let values = core_vec.into_inner();
     let stage = iter.stage_snapshot("iter.map_filter_chain_panic_guard");
     let effects = iter.effect_labels();
     json!({

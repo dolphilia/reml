@@ -1,10 +1,12 @@
-use std::{cmp, iter::FromIterator, mem, slice};
+use std::{alloc::TryReserveError, cmp, iter::FromIterator, mem, slice};
 
 use crate::collections::persistent::list::List;
 #[cfg(feature = "core_prelude")]
 use crate::core_prelude::iter::{EffectLabels, EffectSet};
 #[cfg(not(feature = "core_prelude"))]
 use crate::prelude::iter::{EffectLabels, EffectSet};
+
+pub mod error;
 
 /// ランタイムが公開する標準 `Vec` 型。
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -23,6 +25,15 @@ impl<T> CoreVec<T> {
         Self {
             inner: Vec::with_capacity(capacity),
         }
+    }
+
+    pub(crate) fn bytes_for(len: usize) -> usize {
+        let single = cmp::max(mem::size_of::<T>(), 1);
+        single.saturating_mul(len)
+    }
+
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
+        self.inner.try_reserve(additional)
     }
 
     /// 要素数を返す。
@@ -131,7 +142,7 @@ impl<T> EffectfulVec<T> {
         if capacity > 0 {
             effects.mark_mut();
             effects.mark_mem();
-            effects.record_mem_bytes(Self::bytes_for::<T>(capacity));
+            effects.record_mem_bytes(CoreVec::<T>::bytes_for(capacity));
         }
         Self {
             core: CoreVec::with_capacity(capacity),
@@ -145,7 +156,7 @@ impl<T> EffectfulVec<T> {
         if !core.is_empty() {
             effects.mark_mut();
             effects.mark_mem();
-            effects.record_mem_bytes(Self::bytes_for::<T>(core.len()));
+            effects.record_mem_bytes(CoreVec::<T>::bytes_for(core.len()));
         }
         Self { core, effects }
     }
@@ -163,15 +174,10 @@ impl<T> EffectfulVec<T> {
         self.effects.to_labels()
     }
 
-    fn bytes_for<U>(len: usize) -> usize {
-        let single = cmp::max(mem::size_of::<U>(), 1);
-        single.saturating_mul(len)
-    }
-
     fn mark_mem_for_len(&mut self) {
         self.effects.mark_mem();
         self.effects
-            .record_mem_bytes(Self::bytes_for::<T>(self.core.len()));
+            .record_mem_bytes(CoreVec::<T>::bytes_for(self.core.len()));
     }
 
     /// 要素を追加する。

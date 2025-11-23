@@ -5,6 +5,8 @@ use super::{
     CollectError, CollectErrorKind, CollectOutcome, Collector, CollectorAuditTrail,
     CollectorEffectMarkers, CollectorKind, CollectorStageProfile,
 };
+use crate::collections::mutable::vec::error::map_try_reserve_error;
+use crate::collections::mutable::CoreVec;
 
 const PURE_EFFECTS: EffectLabels = EffectLabels {
     mem: false,
@@ -18,7 +20,7 @@ const PURE_EFFECTS: EffectLabels = EffectLabels {
 
 /// 可変バッファを返す `VecCollector`。
 pub struct VecCollector<T> {
-    buffer: Vec<T>,
+    buffer: CoreVec<T>,
     stage_profile: CollectorStageProfile,
     effects: EffectLabels,
     markers: CollectorEffectMarkers,
@@ -33,9 +35,20 @@ impl<T> VecCollector<T> {
             self.markers,
         )
     }
+
+    fn record_mem_bytes(&mut self, count: usize) {
+        if count == 0 {
+            return;
+        }
+        self.effects.mem = true;
+        self.effects.mem_bytes = self
+            .effects
+            .mem_bytes
+            .saturating_add(CoreVec::<T>::bytes_for(count));
+    }
 }
 
-impl<T> Collector<T, CollectOutcome<Vec<T>>> for VecCollector<T> {
+impl<T> Collector<T, CollectOutcome<CoreVec<T>>> for VecCollector<T> {
     type Error = CollectError;
 
     fn new() -> Self
@@ -43,7 +56,7 @@ impl<T> Collector<T, CollectOutcome<Vec<T>>> for VecCollector<T> {
         Self: Sized,
     {
         Self {
-            buffer: Vec::new(),
+            buffer: CoreVec::new(),
             stage_profile: CollectorStageProfile::for_kind(CollectorKind::Vec),
             effects: PURE_EFFECTS,
             markers: CollectorEffectMarkers::default(),
@@ -55,30 +68,37 @@ impl<T> Collector<T, CollectOutcome<Vec<T>>> for VecCollector<T> {
         Self: Sized,
     {
         let mut collector = Self::new();
-        collector.buffer.reserve(capacity);
+        collector.buffer = CoreVec::with_capacity(capacity);
         collector.effects.mem = true;
-        collector.markers.record_mem_reservation(capacity);
+        collector.record_mem_bytes(capacity);
+        if capacity > 0 {
+            collector.markers.record_mem_reservation(capacity);
+        }
         collector
     }
 
     fn push(&mut self, value: T) -> Result<(), Self::Error> {
         self.buffer.push(value);
         self.effects.mutating = true;
-        self.effects.mem = true;
+        self.record_mem_bytes(1);
         Ok(())
     }
 
     fn reserve(&mut self, additional: usize) -> Result<(), Self::Error> {
-        if additional > 0 {
-            self.markers.record_reserve(additional);
+        if additional == 0 {
+            return Ok(());
         }
-        self.buffer.reserve(additional);
-        self.effects.mem = true;
+        self.buffer.try_reserve(additional).map_err(|err| {
+            let audit = self.audit_trail("VecCollector::reserve");
+            map_try_reserve_error(audit, "VecCollector::reserve", err)
+        })?;
         self.effects.mutating = true;
+        self.record_mem_bytes(additional);
+        self.markers.record_reserve(additional);
         Ok(())
     }
 
-    fn finish(mut self) -> CollectOutcome<Vec<T>>
+    fn finish(mut self) -> CollectOutcome<CoreVec<T>>
     where
         Self: Sized,
     {

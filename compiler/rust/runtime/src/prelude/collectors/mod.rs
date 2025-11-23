@@ -358,10 +358,7 @@ impl CollectorAuditTrail {
         if total > 0 {
             self.effects.audit = true;
         }
-        self.effects.mem_bytes = self
-            .effects
-            .mem_bytes
-            .saturating_add(total);
+        self.effects.mem_bytes = self.effects.mem_bytes.saturating_add(total);
     }
 }
 

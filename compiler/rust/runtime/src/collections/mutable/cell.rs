@@ -56,9 +56,7 @@ where
     T: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Cell")
-            .field("value", &self.get())
-            .finish()
+        f.debug_struct("Cell").field("value", &self.get()).finish()
     }
 }
 

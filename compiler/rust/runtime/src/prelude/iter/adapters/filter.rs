@@ -1,5 +1,5 @@
-use super::AdapterPlan;
 use super::super::{Iter, IterDriver, IterStep, StageRequirement};
+use super::AdapterPlan;
 
 impl<T> Iter<T> {
     pub fn filter<F>(self, mut predicate: F) -> Iter<T>

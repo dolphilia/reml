@@ -23,9 +23,9 @@ pub mod collections;
 #[path = "../../src/config/mod.rs"]
 pub mod config;
 #[cfg(feature = "core_prelude")]
-pub mod core_prelude;
-#[cfg(feature = "core_prelude")]
 pub mod core_collections_metrics;
+#[cfg(feature = "core_prelude")]
+pub mod core_prelude;
 mod env;
 mod ffi_contract;
 mod manifest_contract;

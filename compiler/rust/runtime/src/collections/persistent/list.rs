@@ -192,7 +192,8 @@ impl<T> List<T> {
 
         let shared_adjusted = (shared_nodes * NODE_SHELL_BYTES) / 2;
         let unique_nodes = total_nodes.saturating_sub(shared_nodes);
-        let estimated_heap_bytes = unique_nodes * NODE_SHELL_BYTES + shared_adjusted + payload_bytes;
+        let estimated_heap_bytes =
+            unique_nodes * NODE_SHELL_BYTES + shared_adjusted + payload_bytes;
         ListSharingStats {
             len: self.len,
             total_nodes,
@@ -297,10 +298,7 @@ impl<T> FingerTreeNode<T> {
         FingerTreeNode::Leaf(value)
     }
 
-    fn branch(
-        left: ArenaPtr<FingerTreeNode<T>>,
-        right: ArenaPtr<FingerTreeNode<T>>,
-    ) -> Self {
+    fn branch(left: ArenaPtr<FingerTreeNode<T>>, right: ArenaPtr<FingerTreeNode<T>>) -> Self {
         let len = left.len() + right.len();
         FingerTreeNode::Branch { len, left, right }
     }
@@ -340,9 +338,7 @@ fn build_subtree<T>(
     match values.len() {
         0 => unreachable!("caller guarantees non-empty vector"),
         1 => {
-            let value = values
-                .pop()
-                .expect("length checked");
+            let value = values.pop().expect("length checked");
             arena.alloc(FingerTreeNode::leaf(value))
         }
         _ => {

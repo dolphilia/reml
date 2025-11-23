@@ -1,9 +1,9 @@
 use crate::diagnostic::{AuditEnvelope, FrontendDiagnostic};
 use serde_json::{json, Map, Value};
-use std::{env, fs};
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{env, fs};
 
 pub const AUDIT_POLICY_VERSION: &str = "rust.poc.audit.v1";
 
@@ -289,10 +289,10 @@ fn unix_days_to_date(days: i64) -> (i32, u32, u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use once_cell::sync::Lazy;
     use std::path::PathBuf;
     use std::sync::Mutex;
     use tempfile::NamedTempFile;
-    use once_cell::sync::Lazy;
 
     static ENV_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 

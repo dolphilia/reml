@@ -150,6 +150,12 @@
 3. `TryReserveError` と `CollectError::OutOfMemory` の写像レイヤは `runtime/src/collections/mutable/vec/error.rs` に切り出し、`Iter.collect_vec` や `Vec.collect_from` が `Result<CoreVec<T>, CollectError>` で統一されるよう整理する。OCaml 版との差分は `docs/plans/rust-migration/p1-spec-compliance-gap.md` / `p1-rust-frontend-gap-report.md` と同期する。
 4. ベンチマークは `compiler/rust/runtime/ffi/benches/core_collections_mutable.rs`（既存 persistent ベンチの隣）で `VecMutOpsPerSec` を計測し、結果を `docs/plans/bootstrap-roadmap/assets/metrics/core_collections_persistent.csv` に列追加して `0-3-audit-and-metrics.md` へ引用する。
 
+###### 3.1.1 Vec API 実装ステップ詳細
+1. `CoreVec<T>` の型設計・公開 API を `runtime/src/collections/mutable/vec.rs` へ置き、`docs/spec/3-2-core-collections.md` §2 の API リスト (`new`/`push`/`pop` 等) に合わせて `core::collections::mutable` から再エクスポートする。`docs/plans/rust-migration/p1-spec-compliance-gap.md` の `Core.Collections` 節に Rust 側の未実装項目を記録し、後続レビューで OCaml 実装との差異が追跡できるようにする。
+2. `EffectSet::mark_mut()` / `mark_mem(bytes)` を `Vec::push`/`pop`/`reserve`/`shrink_to_fit`/`to_list`/`collect_from` に組み込み、`CollectorAuditTrail::record_vec_op` へ `collector.effect.mut`/`collector.effect.mem_bytes` を載せる。`docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` の `Iter`→`Collector` effect 伝播要件と矛盾しないことを CI（`scripts/validate-diagnostic-json.sh`）で確認する。
+3. `TryReserveError` を `CollectError::OutOfMemory` に写像する `runtime/src/collections/mutable/vec/error.rs` を整備し、`Iter.collect_vec`／`Vec.collect_from` で共通の `Result<CoreVec<T>, CollectError>` を返すように統一する。エラーシナリオは `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` の `vec_mem_exhaustion` ケースに追加して `tooling/ci/collect-iterator-audit-metrics.py --section collectors --scenario vec_mem_exhaustion` で `effect {mem}` の継続性を確認する。
+4. `VecMutOpsPerSec` ベンチを `compiler/rust/runtime/ffi/benches/core_collections_mutable.rs` に追加し、`docs/plans/bootstrap-roadmap/assets/metrics/core_collections_persistent.csv` の `vec_mut_ops_per_sec` 列へ出力する。結果は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の Phase3 指標表へ引用し、Phase2 比 ±15% 以内の基準を明記する。
+
 ##### 検証タスク
 - `cargo test core_collections_vec core_iter_collectors` を Phase3 CI 必須項目として登録し、`tooling/ci/collect-iterator-audit-metrics.py --run-tests --scenario vec_mem_exhaustion` から自動実行する。
 - `scripts/validate-diagnostic-json.sh --pattern collector.effect.mut collector.effect.mem reports/spec-audit/ch1/core_iter_collectors.json` を `Go/No-Go` 条件化し、失敗時は `reports/iterator-collector-summary.md` の KPI 列へ「Vec effect drift」を追記する。

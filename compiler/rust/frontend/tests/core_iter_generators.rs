@@ -1,10 +1,11 @@
 use reml_runtime_ffi::core_prelude::iter::Iter;
 
 fn collect_values<T>(iter: Iter<T>) -> Vec<T> {
-    iter.collect_vec()
+    let (core_vec, _) = iter
+        .collect_vec()
         .expect("VecCollector should not fail")
-        .into_parts()
-        .0
+        .into_parts();
+    core_vec.into_inner()
 }
 
 #[test]

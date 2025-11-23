@@ -139,8 +139,14 @@ impl ChangeSummary {
 /// 差分エントリ。
 #[derive(Debug, Clone)]
 pub enum ChangeItem {
-    Added { key: Value, value: Value },
-    Removed { key: Value, value: Value },
+    Added {
+        key: Value,
+        value: Value,
+    },
+    Removed {
+        key: Value,
+        value: Value,
+    },
     Updated {
         key: Value,
         previous: Value,
@@ -238,26 +244,16 @@ where
                 let previous = to_value(value)?;
                 let current = to_value(next_value)?;
                 if previous != current {
-                    items.push(ChangeItem::updated(
-                        to_value(key)?,
-                        previous,
-                        current,
-                    ));
+                    items.push(ChangeItem::updated(to_value(key)?, previous, current));
                 }
             }
-            None => items.push(ChangeItem::removed(
-                to_value(key)?,
-                to_value(value)?,
-            )),
+            None => items.push(ChangeItem::removed(to_value(key)?, to_value(value)?)),
         }
     }
 
     for (key, value) in delta_map.iter() {
         if !base_map.contains_key(key) {
-            items.push(ChangeItem::added(
-                to_value(key)?,
-                to_value(value)?,
-            ));
+            items.push(ChangeItem::added(to_value(key)?, to_value(value)?));
         }
     }
 
@@ -278,19 +274,13 @@ where
 
     for value in base_set.iter() {
         if !delta_set.contains(value) {
-            items.push(ChangeItem::removed(
-                to_value(value)?,
-                json!(true),
-            ));
+            items.push(ChangeItem::removed(to_value(value)?, json!(true)));
         }
     }
 
     for value in delta_set.iter() {
         if !base_set.contains(value) {
-            items.push(ChangeItem::added(
-                to_value(value)?,
-                json!(true),
-            ));
+            items.push(ChangeItem::added(to_value(value)?, json!(true)));
         }
     }
 
@@ -308,12 +298,8 @@ mod tests {
 
     #[test]
     fn map_diff_detects_changes() {
-        let base = PersistentMap::new()
-            .insert("alpha", 1)
-            .insert("beta", 2);
-        let updated = base
-            .insert("beta", 3)
-            .insert("gamma", 4);
+        let base = PersistentMap::new().insert("alpha", 1).insert("beta", 2);
+        let updated = base.insert("beta", 3).insert("gamma", 4);
 
         let change_set = map_diff_to_changes(&base, &updated).expect("diff");
         let summary = change_set.summary();

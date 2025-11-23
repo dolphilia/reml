@@ -1,9 +1,4 @@
-use std::{
-    cell::Cell as EffectCell,
-    collections::BTreeMap,
-    fmt,
-    iter::FromIterator,
-};
+use std::{cell::Cell as EffectCell, collections::BTreeMap, fmt, iter::FromIterator};
 
 #[cfg(feature = "core_prelude")]
 use crate::core_prelude::iter::{EffectLabels, EffectSet};
@@ -58,9 +53,7 @@ where
 
     /// 値を取得する。
     pub fn get(&self, key: &K) -> Option<&V> {
-        self.index
-            .get(key)
-            .map(|idx| &self.entries[*idx].1)
+        self.index.get(key).map(|idx| &self.entries[*idx].1)
     }
 
     /// キーと値のペアを順序付きで参照する。
@@ -113,10 +106,7 @@ where
     where
         V: Clone,
     {
-        self.entries
-            .iter()
-            .cloned()
-            .collect()
+        self.entries.iter().cloned().collect()
     }
 }
 

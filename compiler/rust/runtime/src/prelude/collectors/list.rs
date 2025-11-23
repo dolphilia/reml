@@ -73,10 +73,7 @@ impl<T> Collector<T, CollectOutcome<List<T>>> for ListCollector<T> {
         Self: Sized,
     {
         self.markers.record_finish();
-        let bytes = self
-            .list
-            .len()
-            .saturating_mul(mem::size_of::<T>());
+        let bytes = self.list.len().saturating_mul(mem::size_of::<T>());
         if bytes > 0 {
             self.effects.mem = true;
             self.effects.mem_bytes = self.effects.mem_bytes.saturating_add(bytes);
@@ -119,8 +116,8 @@ mod tests {
         for value in list.iter() {
             vec_collector.push(value).unwrap();
         }
-        let (vec, _) = vec_collector.finish().into_parts();
-        assert_eq!(vec, vec![1, 2, 3]);
+        let (core_vec, _) = vec_collector.finish().into_parts();
+        assert_eq!(core_vec.into_inner(), vec![1, 2, 3]);
     }
 
     #[test]

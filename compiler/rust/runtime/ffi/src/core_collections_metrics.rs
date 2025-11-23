@@ -55,7 +55,10 @@ pub fn render_metrics_csv(metrics: &[ScenarioMetrics]) -> String {
 }
 
 /// CSV ファイルに書き出す。
-pub fn write_metrics_csv(path: impl AsRef<Path>, metrics: &[ScenarioMetrics]) -> std::io::Result<()> {
+pub fn write_metrics_csv(
+    path: impl AsRef<Path>,
+    metrics: &[ScenarioMetrics],
+) -> std::io::Result<()> {
     let path = path.as_ref();
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
@@ -70,10 +73,7 @@ fn analyze_list_scenario() -> ScenarioMetrics {
         .iter()
         .map(|list| list.sharing_stats_with(DslRecord::heap_bytes))
         .collect();
-    let input_bytes = records
-        .iter()
-        .map(DslRecord::heap_bytes)
-        .sum::<usize>();
+    let input_bytes = records.iter().map(DslRecord::heap_bytes).sum::<usize>();
     summarize_list_stats("ListPersistentPatch", LIST_SAMPLE_SIZE, input_bytes, &stats)
 }
 
@@ -278,7 +278,9 @@ fn build_list_versions(records: &[DslRecord]) -> Vec<List<DslRecord>> {
     versions
 }
 
-fn build_map_versions(entries: &[(String, ConfigEntry)]) -> Vec<PersistentMap<String, ConfigEntry>> {
+fn build_map_versions(
+    entries: &[(String, ConfigEntry)],
+) -> Vec<PersistentMap<String, ConfigEntry>> {
     let mut base = PersistentMap::new();
     for (key, value) in entries.iter().cloned() {
         base = base.insert(key, value);

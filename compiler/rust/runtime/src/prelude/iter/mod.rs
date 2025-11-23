@@ -20,6 +20,7 @@ use std::{
 use super::collectors::{
     CollectError, CollectOutcome, Collector, List, ListCollector, VecCollector,
 };
+use crate::collections::mutable::CoreVec;
 
 mod generators;
 pub use generators::*;
@@ -147,7 +148,7 @@ impl<T> Iter<T> {
     }
 
     /// `VecCollector` を利用して可変ベクタへ収集する。
-    pub fn collect_vec(self) -> Result<CollectOutcome<Vec<T>>, CollectError> {
+    pub fn collect_vec(self) -> Result<CollectOutcome<CoreVec<T>>, CollectError> {
         self.collect_into_collector(VecCollector::new())
     }
 
@@ -777,9 +778,7 @@ impl EffectSet {
         Self {
             bits: self.bits | other.bits,
             mem_bytes: self.mem_bytes.saturating_add(other.mem_bytes),
-            predicate_calls: self
-                .predicate_calls
-                .saturating_add(other.predicate_calls),
+            predicate_calls: self.predicate_calls.saturating_add(other.predicate_calls),
         }
     }
 
@@ -876,12 +875,14 @@ mod tests {
     fn iterator_error_iter() -> Iter<i64> {
         let stage = IteratorStageProfile::for_kind(IteratorKind::CoreIter);
         let driver = IterDriver::stepper(|_effects| {
-            IterStep::Error(IterError::buffer_overflow(
-                4,
-                BufferStrategy::DropOldest,
-            ))
+            IterStep::Error(IterError::buffer_overflow(4, BufferStrategy::DropOldest))
         });
-        let seed = IterSeed::new("iter.tests.iterator_error", stage.clone(), driver, EffectSet::PURE);
+        let seed = IterSeed::new(
+            "iter.tests.iterator_error",
+            stage.clone(),
+            driver,
+            EffectSet::PURE,
+        );
         Iter::from_seed(seed)
     }
 

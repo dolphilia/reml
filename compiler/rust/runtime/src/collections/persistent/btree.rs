@@ -88,7 +88,8 @@ impl<K: Ord, V> PersistentMap<K, V> {
 
     /// 既存の `BTreeMap` から永続マップを構築する。
     pub fn from_map(map: BTreeMap<K, V>) -> Self {
-        map.into_iter().fold(Self::new(), |acc, (k, v)| acc.insert(k, v))
+        map.into_iter()
+            .fold(Self::new(), |acc, (k, v)| acc.insert(k, v))
     }
 
     /// `BTreeMap` へ変換する（コピー）。
@@ -125,10 +126,7 @@ impl<K: Ord, V> PersistentMap<K, V> {
     }
 
     /// `self` と `other` の差分を `ChangeSet` として取得する。
-    pub fn diff_change_set(
-        &self,
-        other: &Self,
-    ) -> Result<ChangeSet, AuditBridgeError>
+    pub fn diff_change_set(&self, other: &Self) -> Result<ChangeSet, AuditBridgeError>
     where
         K: Ord + Clone + Serialize,
         V: Clone + Serialize,
@@ -174,7 +172,8 @@ impl<K: Ord, V> PersistentMap<K, V> {
 
 impl<K: Ord, V> FromIterator<(K, V)> for PersistentMap<K, V> {
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
-        iter.into_iter().fold(Self::new(), |acc, (k, v)| acc.insert(k, v))
+        iter.into_iter()
+            .fold(Self::new(), |acc, (k, v)| acc.insert(k, v))
     }
 }
 
@@ -227,7 +226,8 @@ impl<K: Ord, V> PersistentMap<K, V> {
 
         let shared_adjusted = (shared_nodes * NODE_SHELL_BYTES) / 2;
         let unique_nodes = total_nodes.saturating_sub(shared_nodes);
-        let estimated_heap_bytes = unique_nodes * NODE_SHELL_BYTES + shared_adjusted + payload_bytes;
+        let estimated_heap_bytes =
+            unique_nodes * NODE_SHELL_BYTES + shared_adjusted + payload_bytes;
         PersistentMapSharingStats {
             len: self.len,
             total_nodes,
@@ -334,10 +334,7 @@ impl<T: Ord> PersistentSet<T> {
     }
 
     /// 差分を `ChangeSet` として取得する。
-    pub fn diff_change_set(
-        &self,
-        other: &Self,
-    ) -> Result<ChangeSet, AuditBridgeError>
+    pub fn diff_change_set(&self, other: &Self) -> Result<ChangeSet, AuditBridgeError>
     where
         T: Ord + Clone + Serialize,
     {
@@ -469,7 +466,11 @@ fn fix_up<K: Ord, V>(
         current = rotate_left(arena, current);
     }
     if is_red(current.left.as_ref())
-        && current.left.as_ref().map(|left| is_red(left.left.as_ref())).unwrap_or(false)
+        && current
+            .left
+            .as_ref()
+            .map(|left| is_red(left.left.as_ref()))
+            .unwrap_or(false)
     {
         current = rotate_right(arena, current);
     }
@@ -511,7 +512,10 @@ fn rotate_right<K: Ord, V>(
     node: ArenaPtr<Node<K, V>>,
 ) -> ArenaPtr<Node<K, V>> {
     let node_ref = &*node;
-    let left = node_ref.left.clone().expect("rotate_right requires left child");
+    let left = node_ref
+        .left
+        .clone()
+        .expect("rotate_right requires left child");
     let left_ref = &*left;
 
     let right_child = build_node(

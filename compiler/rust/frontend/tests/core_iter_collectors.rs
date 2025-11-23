@@ -63,7 +63,7 @@ fn collect_vec_mem_reservation() -> String {
     collector.push(20).unwrap();
     collector.reserve(2).unwrap();
     collector.push(30).unwrap();
-    let snapshot = render_snapshot(collector.finish(), |vec| json!(vec));
+    let snapshot = render_snapshot(collector.finish(), |vec| json!(vec.into_inner()));
     serde_json::to_string_pretty(&snapshot).unwrap()
 }
 

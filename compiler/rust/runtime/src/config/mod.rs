@@ -3,8 +3,7 @@
 //! `ChangeSet` を取り込む手続きを補助する。
 
 use std::{
-    fs,
-    io,
+    fs, io,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -52,10 +51,7 @@ where
 }
 
 /// `ChangeSet` を JSON として保存し、保存先パスを返す。
-pub fn write_change_set_to_path(
-    change_set: &ChangeSet,
-    path: impl AsRef<Path>,
-) -> io::Result<()> {
+pub fn write_change_set_to_path(change_set: &ChangeSet, path: impl AsRef<Path>) -> io::Result<()> {
     let value = change_set.to_value();
     // replaced to_value?
     let body = serde_json::to_string_pretty(&value)
@@ -97,8 +93,8 @@ mod tests {
         let mut delta = PersistentMap::new();
         delta = delta.insert("beta".into(), 3);
         delta = delta.insert("gamma".into(), 4);
-        let outcome = merge_maps_with_audit(&base, &delta, |_, _left, right| right.clone())
-            .expect("merge");
+        let outcome =
+            merge_maps_with_audit(&base, &delta, |_, _left, right| right.clone()).expect("merge");
         let summary = outcome.change_set.summary();
         assert_eq!(summary.added, 1);
         assert_eq!(summary.updated, 1);

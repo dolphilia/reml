@@ -91,12 +91,13 @@ fn render_vec_case<T>(
     let stage = iter.stage_snapshot(format!("core_iter_pipeline::{case}"));
     let effects = iter.effect_labels();
     let (vec, audit) = outcome.into_parts();
+    let values = vec.into_inner();
     json!({
         "case": case,
         "stage": render_stage(stage),
         "effects": render_effects(effects),
         "collector": render_collector(&audit),
-        "value": value_renderer(vec),
+        "value": value_renderer(values),
     })
 }
 
@@ -150,12 +151,13 @@ fn try_collect_success() -> serde_json::Value {
         .try_collect(VecCollector::new())
         .expect("try_collect should succeed");
     let (vec, audit) = outcome.into_parts();
+    let values = vec.into_inner();
     json!({
         "case": "try_collect_success",
         "stage": render_stage(stage),
         "effects": render_effects(effects),
         "collector": render_collector(&audit),
-        "value": vec,
+        "value": values,
     })
 }
 

@@ -12,9 +12,5 @@ fn main() {
     let metrics = collect_persistent_metrics();
     let elapsed = started.elapsed();
 
-    println!(
-        "collected {} scenarios in {:.2?}",
-        metrics.len(),
-        elapsed
-    );
+    println!("collected {} scenarios in {:.2?}", metrics.len(), elapsed);
 }
