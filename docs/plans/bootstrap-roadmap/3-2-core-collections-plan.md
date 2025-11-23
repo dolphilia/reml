@@ -155,6 +155,12 @@
 - `scripts/validate-diagnostic-json.sh --pattern collector.effect.mut collector.effect.mem reports/spec-audit/ch1/core_iter_collectors.json` を `Go/No-Go` 条件化し、失敗時は `reports/iterator-collector-summary.md` の KPI 列へ「Vec effect drift」を追記する。
 - `docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md` と `docs/plans/rust-migration/3-2-benchmark-baseline.md` に `Vec` 仕様反映済みであることを脚注し、監査チーム・Rust 移植チームの両方に合図を送る。
 
+##### 実施タスクリスト（39週目前半）
+1. **API 実装と Collector 連携**: `runtime/src/collections/mutable/vec.rs` と `compiler/rust/runtime/src/prelude/collectors/vec.rs` を同時更新し、`CoreVec<T>`／`EffectfulVec<T>` の切り替えを実装。所要 2 日、担当 = Runtime チーム (`@runtime-rs`)、レビュー = `@prelude-core`。【F:../../compiler/rust/runtime/src/collections/mutable/vec.rs†L1-L200】
+2. **効果トレースと監査ログ**: `CollectorAuditTrail` と `AuditEnvelope.metadata` に `collector.effect.mut`/`mem` を載せる。`reports/spec-audit/ch1/core_iter_collectors.json` の snapshot 更新と `scripts/validate-diagnostic-json.sh` へのキー追加を同じコミットで実施。所要 1 日、担当 = Diagnostics (`@diag-core`)。【F:../../reports/spec-audit/ch1/core_iter_collectors.json†L1-L120】
+3. **KPI・ベンチ反映**: `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ `vec_mut_ops_per_sec` を追記し、`assets/metrics/core_collections_persistent.csv` の列追加を行う。`reports/iterator-collector-summary.md` に KPI を写経。所要 0.5 日、担当 = Metrics (`@audit-metrics`)。【F:0-3-audit-and-metrics.md†L1-L150】
+4. **CI 統合**: `tooling/ci/collect-iterator-audit-metrics.py` と `scripts/validate-diagnostic-json.sh` に Vec シナリオを組み込み、`cargo test core_collections_vec` を `ci.yml` へ追加。所要 0.5 日、担当 = Tooling (`@tooling-ci`)。【F:../../tooling/ci/collect-iterator-audit-metrics.py†L1-L160】【F:../../scripts/validate-diagnostic-json.sh†L1-L140】
+
 #### 3.2 `Cell<T>` / `Ref<T>` 内部可変性モデル
 - `Cell<T>` は `Copy` 制約付きの軽量内部可変性として `runtime/src/collections/mutable/cell.rs` に実装し、`EffectSet::mark_cell()` を `new_cell`/`set` で呼び出す。`Core.Diagnostics.ChangeTrace` の `collector.effect.cell` を `AuditEnvelope.metadata` に書き出し、`reports/iterator-collector-summary.md` の KPI テーブルへ `cell_mutations_total` を追加する。【F:../../spec/3-2-core-collections.md†L118-L135】
 - `Ref<T>` は `Arc<RefInner<T>>` + `parking_lot::RwLock` で実装し、`clone_ref`/`borrow_mut` 時に `EffectSet::mark_rc()` および `mark_mut()` を付与する。`Core.Async/FFI` 章で要求される参照カウント契約（`docs/spec/3-9-core-async-ffi-unsafe.md` §4）と整合するよう、`runtime/src/collections/mutable/ref.rs` で `RuntimeBridge` 用の `RefHandle` を定義し、`poc_dualwrite_compare.sh` の `--section ref_count` で OCaml 版との差分を計測する。【F:../../spec/3-2-core-collections.md†L96-L136】
@@ -172,6 +178,12 @@
 - `scripts/poc_dualwrite_compare.sh --section ref_count` の出力ログを `reports/spec-audit/diffs/README.md` に保存し、Rust/OCaml の borrow 契約差分を追跡。
 - `docs-migrations.log` に `Cell/Ref effect trace` 追記を残し、`docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md` での監査項目追加とリンクさせる。
 
+##### 実施タスクリスト（39週目中盤）
+1. **`Cell` 実装と effect 追跡**: `runtime/src/collections/mutable/cell.rs` に `Cell<T>` API を移植し、`EffectSet::mark_cell()` を装着。`docs/spec/1-3-effects-safety.md` の `cell` 節へ参照を追加。担当 = Runtime (`@runtime-rs`)、所要 1 日。【F:../../compiler/rust/runtime/src/collections/mutable/cell.rs†L1-L160】
+2. **`Ref`/`RefHandle` パイプライン**: `runtime/src/collections/mutable/ref.rs` と `runtime/ffi/src/handles/ref_handle.rs` を同時実装し、`Arc<RefInner<T>>` + `RwLock` + effect 計測を整備。`Core.Async/FFI` 仕様 (`docs/spec/3-9-core-async-ffi-unsafe.md`) へのリンク注記を追加。担当 = Runtime + FFI (`@runtime-rs`, `@ffi-bridge`)、所要 2 日。【F:../../compiler/rust/runtime/src/collections/mutable/ref.rs†L1-L220】
+3. **テストと dual-write**: `compiler/rust/runtime/tests/core_collections_cell_ref.rs` で効果と Borrow 再現を検証し、`scripts/poc_dualwrite_compare.sh --section ref_count` で OCaml 版と比較。担当 = Testing (`@prelude-core`)、所要 1 日。【F:../../compiler/rust/runtime/tests/core_collections_cell_ref.rs†L1-L200】
+4. **監査・ドキュメント同期**: `reports/iterator-collector-summary.md` に KPI を追加し、`docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md`/`docs-migrations.log` に effect メタデータ導入を記録。担当 = Diagnostics (`@diag-core`)、所要 0.5 日。【F:../../reports/iterator-collector-summary.md†L1-L80】
+
 #### 3.3 `Table<K,V>` の順序保持と IO 連携
 - `Table` の挿入順序保持要件に従い、`runtime/src/collections/mutable/table.rs` で `VecDeque<(K,V)>` + `DeterministicHasher` を組み合わせたロジックを実装する。`insert`/`remove` は `EffectSet::mark_mut()` を必ずセットし、`map_to_table`/`table_to_map` 変換では `effect {mem}` を `EffectLabels` に記録する。【F:../../spec/3-2-core-collections.md†L138-L200】
 - `TableCollector`（`compiler/rust/runtime/src/prelude/collectors/table.rs`）を拡張し、`CollectError::DuplicateKey` と `CollectError::UnstableOrder` を追加で返せるようにする。`Iter.collect_table`（新設）では重複キーを `Diagnostic::collector_duplicate_key` へ変換し、`reports/spec-audit/ch1/core_iter_collectors.json` に期待される effect/diagnostic を追記する。
@@ -188,6 +200,12 @@
 - `cargo test core_collections_table core_iter_try_collect` を Phase3 self-host 判定基準へ加え、`tooling/ci/collect-iterator-audit-metrics.py --scenario table_csv_import --require-audit` で自動検証する。
 - `scripts/validate-diagnostic-json.sh --section core_collections_table` を整備し、`reports/spec-audit/ch1/core_iter_collectors.json` / `.audit.jsonl` に `collector.effect.mut=true` `collector.effect.mem=true` `collector.effect.audit=true` が揃っているかチェックする。
 - `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` と `reports/spec-audit/ch3/README.md` に `Table.load_csv` の依存・成果をリンクし、IO/Diagnostics/Collections 三者でリスク共有する。
+
+##### 実施タスクリスト（39週目後半）
+1. **`Table` コア実装**: `runtime/src/collections/mutable/table.rs` に `TableInner` を実装し、`VecDeque<EntryId>` + `IndexMap` で順序保持を実現。`EffectSet::mark_mut()`/`mark_mem()`/`mark_audit()` を各操作に付与。担当 = Runtime (`@runtime-rs`)、所要 2 日。【F:../../compiler/rust/runtime/src/collections/mutable/table.rs†L1-L260】
+2. **Collector/Iter/Diagnostics 更新**: `compiler/rust/runtime/src/prelude/collectors/table.rs` と `prelude/iter/mod.rs` を更新し、`CollectError::UnstableOrder`、`Iter.collect_table`、`iter.collector.effect.*` を整備。`reports/spec-audit/ch1/core_iter_collectors.json` / `.audit.jsonl` の snapshot で effect/diagnostic を記録。担当 = Prelude + Diagnostics (`@prelude-core`, `@diag-core`)、所要 1.5 日。 
+3. **CSV 連携・Capability**: `Core.IO.CsvReader` fixture（`docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md`）を利用し `Table.load_csv` を実装。`CapabilityRegistry` に `core.collections.table.csv_load` を登録し、`docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` と同期。担当 = IO + Runtime (`@io-path`, `@runtime-rs`)、所要 1 日。【F:../../docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md†L80-L210】
+4. **CI/メトリクス統合**: `tooling/ci/collect-iterator-audit-metrics.py --scenario table_csv_import`、`scripts/validate-diagnostic-json.sh --section core_collections_table` を追加し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `table_insert_throughput`/`csv_load_latency` を登録。担当 = Tooling + Metrics (`@tooling-ci`, `@audit-metrics`)、所要 0.5 日。【F:../../tooling/ci/collect-iterator-audit-metrics.py†L160-L260】【F:0-3-audit-and-metrics.md†L150-L260】
 
 ### 4. Iter/Collector 相互運用（39-40週目）
 **担当領域**: 遅延列との結合
