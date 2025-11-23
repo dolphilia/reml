@@ -21,7 +21,13 @@
 ### collect_vec_mem_reservation
 - Stage: `beta`, capability `core.collector.vec`.
 - Effects: `collector.effect.mem = true`, `collector.effect.mut = true`, `collector.effect.mem_reservation = 4`, `collector.effect.reserve = 2`.
+- KPI: `collector.effect.mem_bytes = 36` を維持すること（`CoreVec` の実メモリアクセスが記録されていること）。`vec_mem_exhaustion` シナリオと `vec.effect.mem_bytes` 指標で `collector.effect.mem_bytes > 0`/`collector.effect.mut = true` を Ci で保証する。
 - Purpose: `effect {mem}` を出す `VecCollector` の `reserve` 呼び出しを `reports/iterator-collector-summary.md#collect_vec_mem_reservation` で掬い、`collect-iterator-audit-metrics.py` の `collector.effect.mem_leak` KPI へ接続。
+
+### vec_effect_metrics (vec_mem_exhaustion)
+- 目的: `collect_vec_mem_reservation` が `collector.effect.mut=true` と `collector.effect.mem_bytes > 0` を `AuditEnvelope.metadata`/`Diagnostic.extensions["prelude.collector"]` 双方向で報告することを検証する。
+- 手順: `python3 tooling/ci/collect-iterator-audit-metrics.py --section collectors --scenario vec_mem_exhaustion --source reports/spec-audit/ch1/core_iter_collectors.json --audit-source reports/spec-audit/ch1/core_iter_collectors.audit.jsonl --require-success` を実行し、`scripts/validate-diagnostic-json.sh --pattern collector.effect.mem_bytes reports/spec-audit/ch1/core_iter_collectors.json` で mem_bytes キーの欠落を防ぐ。`vec.effect.mem_bytes` metric は `collector.effect.mem_bytes` を正の値に保ったうえで `collector.effect.mut` を期待される通り `true` にすることが合格条件。
+- 成果: `reports/spec-audit/ch1/core_iter_collectors.json`/`.audit.jsonl` に `collector.effect.mem_bytes = 36` を記録し、`reports/iterator-collector-metrics.json` の `vec.effect.mem_bytes` に `status = success` が格納されていることを確認する。
 
 ### collect_map_duplicate
 - Error: `CollectError::DuplicateKey`, `collector.error.key = "\"dup\""`, `Diagnostic.extensions["prelude.collector.error_key"]` 経由でキー情報を保持。

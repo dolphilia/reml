@@ -24,6 +24,7 @@
 | LLVM | `llvm_codegen_time` | MIR→LLVM IR 変換時間 | Rust ≤ 1.1 × OCaml | `2-0-llvm-backend-plan.md` |
 | CLI | `diagnostic_render_time` | `remlc` CLI で診断テキスト生成に要する時間 | Rust ≤ 1.1 × OCaml | `diagnostic_formatter.ml`, `diagnostic_formatter.rs` (予定) |
 | メモリ | `memory_peak_ratio` | ピークメモリ / 入力サイズ | Rust ≤ 1.0 × OCaml | `0-1-project-purpose.md` §1.1 |
+| コレクション | `vec.effect.mem_bytes` | `collect_vec_mem_reservation` が `collector.effect.mut=true` かつ `collector.effect.mem_bytes > 0` を `AuditEnvelope.metadata`/`Diagnostic.extensions` で出力しているか検証する | `python3 tooling/ci/collect-iterator-audit-metrics.py --section collectors --scenario vec_mem_exhaustion --require-success`（`collector.effect.mem_bytes` が欠落しないことを保証） | [3-2-core-collections-plan.md](./3-2-core-collections-plan.md) §3.1.2 |
 
 各指標は `reports/benchmarks/benchmark-<date>.json` に `{ "baseline": "...", "candidate": "...", "delta": "...", "delta_pct": ... }` の形式で保存し、`delta_pct` が ±10% を超えた場合は CI を失敗扱いとする。
 

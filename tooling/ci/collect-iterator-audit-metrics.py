@@ -3179,6 +3179,117 @@ def collect_collector_effect_metrics(
     }
 
 
+def collect_vec_effect_metrics(
+    paths: Sequence[Path],
+) -> Optional[Dict[str, Any]]:
+    total = 0
+    passed = 0
+    failures: List[Dict[str, Any]] = []
+    schema_versions: Set[str] = set()
+
+    for path in paths:
+        data = load_json(path)
+        try:
+            diagnostics_iter = list(iter_diagnostics(data))
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
+            extensions = _as_dict(diag.get("extensions"))
+            prelude = (
+                _as_dict(extensions.get("prelude.collector"))
+                if extensions
+                else None
+            )
+            if not prelude:
+                continue
+            if prelude.get("kind") != "vec":
+                continue
+            snapshot_id = prelude.get("snapshot_id")
+            if snapshot_id not in {
+                "collect_vec_mem_reservation",
+                "collect_vec_mem_exhaustion",
+            }:
+                continue
+
+            audit_entry = _as_dict(diag.get("audit"))
+            metadata = (
+                _as_dict(audit_entry.get("metadata")) if audit_entry else None
+            )
+            effects = _as_dict(prelude.get("effects"))
+
+            total += 1
+            schema = extract_schema_version(diag)
+            if schema:
+                schema_versions.add(schema)
+            case_id = snapshot_id or f"{path.name}#{index}"
+
+            mem_bytes_value: Optional[int] = None
+            if metadata:
+                exists, raw_mem_bytes = _lookup_in_container(
+                    metadata, "collector.effect.mem_bytes"
+                )
+                if exists:
+                    mem_bytes_value = _coerce_int_value(raw_mem_bytes)
+            if mem_bytes_value is None and effects:
+                mem_bytes_value = _coerce_int_value(effects.get("mem_bytes"))
+
+            effect_mut = False
+            if metadata:
+                exists, raw_mut = _lookup_in_container(
+                    metadata, "collector.effect.mut"
+                )
+                if exists:
+                    effect_mut = _coerce_bool(raw_mut)
+                elif effects:
+                    effect_mut = _coerce_bool(effects.get("mut"))
+            elif effects:
+                effect_mut = _coerce_bool(effects.get("mut"))
+
+            reasons: List[str] = []
+            if not effect_mut:
+                reasons.append("collector.effect.mut")
+            if mem_bytes_value is None:
+                reasons.append("collector.effect.mem_bytes.missing")
+            elif mem_bytes_value <= 0:
+                reasons.append("collector.effect.mem_bytes.non_positive")
+
+            if reasons:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "case": case_id,
+                        "snapshot": snapshot_id,
+                        "mut": effect_mut,
+                        "mem_bytes": mem_bytes_value,
+                        "reasons": sorted(set(reasons)),
+                    }
+                )
+            else:
+                passed += 1
+
+    if total == 0:
+        return None
+
+    status = "success" if passed == total else "error"
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+
+    return {
+        "metric": "vec.effect.mem_bytes",
+        "scenario": "vec_mem_exhaustion",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "status": status,
+        "failures": failures,
+        "sources": [str(path) for path in paths],
+        "schema_versions": sorted(schema_versions),
+        "required_audit_keys": ["collector.effect.mut", "collector.effect.mem_bytes"],
+    }
+
+
 def _change_set_contains_collections(change_set: Dict[str, Any]) -> bool:
     def _match(value: Optional[object]) -> bool:
         return isinstance(value, str) and "collections.diff" in value
@@ -5049,7 +5160,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--scenario",
         action="append",
         dest="scenarios",
-        choices=["map_set_persistent"],
+        choices=["map_set_persistent", "vec_mem_exhaustion"],
         help="Scenario-specific validation (repeatable).",
     )
     parser.add_argument(
@@ -5331,6 +5442,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         for metric in (collections_audit_metric, collector_effect_audit_metric):
             if metric:
                 append_metrics.append(metric)
+    if "vec_mem_exhaustion" in scenario_filters:
+        vec_metric = collect_vec_effect_metrics(sources)
+        if vec_metric:
+            append_metrics.append(vec_metric)
     if "effects" in sections:
         effects_metric = collect_effect_syntax_metrics(sources)
         (

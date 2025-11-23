@@ -81,7 +81,7 @@
             "async_pending": false,
             "audit": false,
             "predicate_calls": 0,
-            "mem_bytes": 0
+            "mem_bytes": 36
           },
           "markers": {
             "finish": 1,
@@ -111,7 +111,7 @@
           "collector.effect.async_pending": false,
           "collector.effect.audit": false,
           "collector.effect.predicate_calls": 0,
-          "collector.effect.mem_bytes": 0,
+          "collector.effect.mem_bytes": 36,
           "collector.effect.finish": 1,
           "collector.effect.mem_reservation": 4,
           "collector.effect.reserve": 2

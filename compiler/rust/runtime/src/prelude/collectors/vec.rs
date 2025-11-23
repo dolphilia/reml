@@ -46,6 +46,17 @@ impl<T> VecCollector<T> {
             .mem_bytes
             .saturating_add(CoreVec::<T>::bytes_for(count));
     }
+
+    fn ensure_buffer_mem_bytes(&mut self) {
+        let len = self.buffer.len();
+        if len == 0 {
+            return;
+        }
+        let required = CoreVec::<T>::bytes_for(len);
+        if self.effects.mem_bytes < required {
+            self.effects.mem_bytes = required;
+        }
+    }
 }
 
 impl<T> Collector<T, CollectOutcome<CoreVec<T>>> for VecCollector<T> {
@@ -104,6 +115,7 @@ impl<T> Collector<T, CollectOutcome<CoreVec<T>>> for VecCollector<T> {
     {
         self.markers.record_finish();
         self.effects.mem = true;
+        self.ensure_buffer_mem_bytes();
         let audit = self.audit_trail("VecCollector::finish");
         CollectOutcome::new(self.buffer, audit)
     }
