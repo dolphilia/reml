@@ -5,6 +5,10 @@ use std::fmt;
 use crate::core_prelude::iter::{EffectLabels, EffectSet};
 #[cfg(not(feature = "core_prelude"))]
 use crate::prelude::iter::{EffectLabels, EffectSet};
+#[cfg(feature = "core_prelude")]
+use crate::core_prelude::collectors::CollectorEffectMarkers;
+#[cfg(not(feature = "core_prelude"))]
+use crate::prelude::collectors::CollectorEffectMarkers;
 
 /// 内部可変性を提供する軽量コンテナ。
 pub struct Cell<T: Copy> {
@@ -83,27 +87,34 @@ impl<T: Copy> EffectfulCell<T> {
         self.cell.get()
     }
 
-    fn record_mut(&self) {
+    fn record_cell_effect(&self) {
         let mut effects = self.effects.get();
         effects.mark_mut();
+        effects.mark_cell();
         self.effects.set(effects);
     }
 
     /// 値を設定し effect を記録する。
     pub fn set(&self, value: T) {
-        self.record_mut();
+        self.record_cell_effect();
         self.cell.set(value);
     }
 
     /// 値を置き換え effect を記録する。
     pub fn replace(&self, value: T) -> T {
-        self.record_mut();
+        self.record_cell_effect();
         self.cell.replace(value)
     }
 
     /// 効果ラベルを取得する。
     pub fn effect_labels(&self) -> EffectLabels {
         self.effects.get().to_labels()
+    }
+
+    /// Collector 監査で `Cell` 操作が行われたことを記録する。
+    pub fn record_cell_op(&self, markers: &mut CollectorEffectMarkers) {
+        self.record_cell_effect();
+        markers.record_cell_op();
     }
 
     /// 内部の `Cell` を取り出す。
