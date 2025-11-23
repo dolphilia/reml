@@ -1,16 +1,16 @@
 ---
 source: tests/core_iter_adapters.rs
-assertion_line: 91
+assertion_line: 92
 expression: cases
 ---
 - case: map_pipeline
   effects:
-    mem: false
-    mutating: false
-    debug: false
     async_pending: false
     audit: false
+    debug: false
+    mem: false
     mem_bytes: 0
+    mutating: false
     predicate_calls: 0
   stage:
     actual: stable
@@ -27,12 +27,12 @@ expression: cases
     - 40
 - case: filter_effect
   effects:
-    mem: false
-    mutating: true
-    debug: false
     async_pending: false
     audit: false
+    debug: false
+    mem: false
     mem_bytes: 0
+    mutating: true
     predicate_calls: 4
   stage:
     actual: stable
@@ -47,12 +47,12 @@ expression: cases
     - 4
 - case: map_filter_chain_panic_guard
   effects:
-    mem: false
-    mutating: true
-    debug: false
     async_pending: false
     audit: false
+    debug: false
+    mem: false
     mem_bytes: 0
+    mutating: true
     predicate_calls: 0
   stage:
     actual: stable

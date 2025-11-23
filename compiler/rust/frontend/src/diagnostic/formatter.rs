@@ -290,7 +290,11 @@ fn unix_days_to_date(days: i64) -> (i32, u32, u32) {
 mod tests {
     use super::*;
     use std::path::PathBuf;
+    use std::sync::Mutex;
     use tempfile::NamedTempFile;
+    use once_cell::sync::Lazy;
+
+    static ENV_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
     fn dummy_context<'a>(args: &'a [String], input: &'a Path) -> FormatterContext<'a> {
         FormatterContext {
@@ -302,6 +306,7 @@ mod tests {
 
     #[test]
     fn change_set_includes_inline_collections_payload() {
+        let _guard = ENV_LOCK.lock().expect("env lock");
         let args = vec!["reml_frontend".into(), "input.reml".into()];
         let input = PathBuf::from("input.reml");
         env::set_var(
@@ -319,6 +324,7 @@ mod tests {
 
     #[test]
     fn change_set_reads_payload_from_file() {
+        let _guard = ENV_LOCK.lock().expect("env lock");
         let args = vec!["reml_frontend".into(), "input.reml".into()];
         let input = PathBuf::from("input.reml");
         let file = NamedTempFile::new().expect("temp file");

@@ -2,4 +2,5 @@
 //! 現時点では永続構造用モジュールと監査ブリッジを提供する。
 
 pub mod audit_bridge;
+pub mod mutable;
 pub mod persistent;
