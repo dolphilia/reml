@@ -159,21 +159,37 @@ impl<T> EffectfulRef<T> {
         }
     }
 
-    fn record_clone(&self) {
+    fn with_effects(&self, update: impl FnOnce(&mut EffectSet)) {
         let mut effects = self.effects.get();
-        effects.mark_mem();
+        update(&mut effects);
         self.effects.set(effects);
     }
 
+    fn record_clone(&self) {
+        self.with_effects(|effects| {
+            effects.mark_mem();
+            effects.mark_rc();
+        });
+    }
+
+    fn record_rc(&self) {
+        self.with_effects(|effects| {
+            effects.mark_rc();
+        });
+    }
+
     fn record_mut(&self) {
-        let mut effects = self.effects.get();
-        effects.mark_mut();
-        self.effects.set(effects);
+        self.with_effects(|effects| {
+            effects.mark_mut();
+            effects.mark_rc();
+        });
     }
 
     /// 読み取りガードを取得する。
     pub fn borrow(&self) -> Result<RefGuard<'_, T>, BorrowError> {
-        self.handle.borrow()
+        let guard = self.handle.borrow()?;
+        self.record_rc();
+        Ok(guard)
     }
 
     /// 排他的ガードを取得する（effect を記録）。
@@ -212,5 +228,11 @@ impl<T> Clone for EffectfulRef<T> {
             handle: self.handle.clone(),
             effects: EffectCell::new(self.effects.get()),
         }
+    }
+}
+
+impl<T> Drop for EffectfulRef<T> {
+    fn drop(&mut self) {
+        self.with_effects(|effects| effects.release_rc());
     }
 }

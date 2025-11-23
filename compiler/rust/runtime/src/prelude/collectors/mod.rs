@@ -255,6 +255,12 @@ impl CollectorAuditTrail {
             Value::Bool(self.effects.async_pending),
         );
         effects.insert("audit".into(), Value::Bool(self.effects.audit));
+        effects.insert("cell".into(), Value::Bool(self.effects.cell));
+        effects.insert("rc".into(), Value::Bool(self.effects.rc));
+        effects.insert(
+            "rc_ops".into(),
+            Value::Number(Number::from(self.effects.rc_ops as u64)),
+        );
         effects.insert(
             "predicate_calls".into(),
             Value::Number(Number::from(self.effects.predicate_calls as u64)),
@@ -342,6 +348,10 @@ impl CollectorAuditTrail {
         metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}effect.rc"),
             Value::Bool(self.effects.rc),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.rc_ops"),
+            Value::Number(Number::from(self.effects.rc_ops as u64)),
         );
         metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}effect.predicate_calls"),

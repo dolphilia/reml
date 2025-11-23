@@ -681,6 +681,7 @@ pub struct EffectSet {
     bits: u8,
     mem_bytes: usize,
     predicate_calls: usize,
+    rc_ops: usize,
 }
 
 impl EffectSet {
@@ -696,6 +697,7 @@ impl EffectSet {
         bits: 0,
         mem_bytes: 0,
         predicate_calls: 0,
+        rc_ops: 0,
     };
 
     pub fn mark_mut(&mut self) {
@@ -708,6 +710,7 @@ impl EffectSet {
 
     pub fn mark_rc(&mut self) {
         self.bits |= Self::RC_BIT;
+        self.rc_ops = self.rc_ops.saturating_add(1);
     }
 
     pub fn release_rc(&mut self) {
@@ -743,6 +746,7 @@ impl EffectSet {
             bits: self.bits | Self::MUT_BIT,
             mem_bytes: self.mem_bytes,
             predicate_calls: self.predicate_calls,
+            rc_ops: self.rc_ops,
         }
     }
 
@@ -751,6 +755,7 @@ impl EffectSet {
             bits: self.bits | Self::MEM_BIT,
             mem_bytes: self.mem_bytes,
             predicate_calls: self.predicate_calls,
+            rc_ops: self.rc_ops,
         }
     }
 
@@ -759,6 +764,7 @@ impl EffectSet {
             bits: self.bits | Self::DEBUG_BIT,
             mem_bytes: self.mem_bytes,
             predicate_calls: self.predicate_calls,
+            rc_ops: self.rc_ops,
         }
     }
 
@@ -767,6 +773,7 @@ impl EffectSet {
             bits: self.bits | Self::PENDING_BIT,
             mem_bytes: self.mem_bytes,
             predicate_calls: self.predicate_calls,
+            rc_ops: self.rc_ops,
         }
     }
 
@@ -793,6 +800,7 @@ impl EffectSet {
             bits: self.bits | other.bits,
             mem_bytes: self.mem_bytes.saturating_add(other.mem_bytes),
             predicate_calls: self.predicate_calls.saturating_add(other.predicate_calls),
+            rc_ops: self.rc_ops.saturating_add(other.rc_ops),
         }
     }
 
@@ -835,6 +843,7 @@ impl EffectSet {
             rc: self.contains_rc(),
             mem_bytes: self.mem_bytes,
             predicate_calls: self.predicate_calls,
+            rc_ops: self.rc_ops,
         }
     }
 }
@@ -851,6 +860,7 @@ pub struct EffectLabels {
     pub rc: bool,
     pub mem_bytes: usize,
     pub predicate_calls: usize,
+    pub rc_ops: usize,
 }
 
 pub(crate) enum IterDriver<T> {

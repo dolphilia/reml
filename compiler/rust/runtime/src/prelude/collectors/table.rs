@@ -18,6 +18,7 @@ const MUTATING_EFFECTS: EffectLabels = EffectLabels {
     rc: false,
     mem_bytes: 0,
     predicate_calls: 0,
+    rc_ops: 0,
 };
 
 /// 挿入順を保持する簡易 `Table` 型。

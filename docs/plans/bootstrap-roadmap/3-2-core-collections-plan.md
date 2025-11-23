@@ -219,12 +219,17 @@
 - `cargo test core_collections_cell_ref` を CI に組み込み、`tooling/ci/collect-iterator-audit-metrics.py --scenario ref_internal_mutation --require-cell` で effect を監視。
 - `scripts/poc_dualwrite_compare.sh --section ref_count` の出力ログを `reports/spec-audit/diffs/README.md` に保存し、Rust/OCaml の borrow 契約差分を追跡。
 - `docs-migrations.log` に `Cell/Ref effect trace` 追記を残し、`docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md` での監査項目追加とリンクさせる。
+- `reports/spec-audit/ch1/core_iter_collectors.json`/`.audit.jsonl` に `collector.effect.rc_ops` を含め、`scripts/validate-diagnostic-json.sh --suite collectors --pattern collector.effect.rc_ops` で `Ref` 操作の `collector.effect.rc`/`rc_ops` を確認するルートを整備する。
 
 ##### 実施タスクリスト（39週目中盤）
 1. **`Cell` 実装と effect 追跡**: `runtime/src/collections/mutable/cell.rs` に `Cell<T>` API を移植し、`EffectSet::mark_cell()` を装着。`docs/spec/1-3-effects-safety.md` の `cell` 節へ参照を追加。担当 = Runtime (`@runtime-rs`)、所要 1 日。【F:../../compiler/rust/runtime/src/collections/mutable/cell.rs†L1-L160】
 2. **`Ref`/`RefHandle` パイプライン**: `runtime/src/collections/mutable/ref.rs` と `runtime/ffi/src/handles/ref_handle.rs` を同時実装し、`Arc<RefInner<T>>` + `RwLock` + effect 計測を整備。`Core.Async/FFI` 仕様 (`docs/spec/3-9-core-async-ffi-unsafe.md`) へのリンク注記を追加。担当 = Runtime + FFI (`@runtime-rs`, `@ffi-bridge`)、所要 2 日。【F:../../compiler/rust/runtime/src/collections/mutable/ref.rs†L1-L220】
 3. **テストと dual-write**: `compiler/rust/runtime/tests/core_collections_cell_ref.rs` で効果と Borrow 再現を検証し、`scripts/poc_dualwrite_compare.sh --section ref_count` で OCaml 版と比較。担当 = Testing (`@prelude-core`)、所要 1 日。【F:../../compiler/rust/runtime/tests/core_collections_cell_ref.rs†L1-L200】
 4. **監査・ドキュメント同期**: `reports/iterator-collector-summary.md` に KPI を追加し、`docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md`/`docs-migrations.log` に effect メタデータ導入を記録。担当 = Diagnostics (`@diag-core`)、所要 0.5 日。【F:../../reports/iterator-collector-summary.md†L1-L80】
+
+##### 実施ログ（2027-04-23）
+- `EffectSet` に `rc_ops` を追加して `EffectLabels` を拡張し、`CollectorAuditTrail` の `extension_payload`/`audit_metadata` から `collector.effect.rc_ops` を出力するように整備した。これで `collector.effect.cell`/`collector.effect.rc` も JSON/Audit に残るようになった。【F:../../compiler/rust/runtime/src/prelude/iter/mod.rs†L678-L847】【F:../../compiler/rust/runtime/src/prelude/collectors/mod.rs†L221-L380】
+- `EffectfulRef` に `with_effects` ヘルパーを導入し、clone/borrow/borrow_mut/drop の各経路で `EffectSet::mark_rc()`（必要に応じて `mark_mut()`）を打刻することで `collector.effect.rc_ops`/`collector.effect.rc` を `Ref` 操作が一貫して記録するようにした。【F:../../compiler/rust/runtime/src/collections/mutable/ref.rs†L156-L220】
 
 #### 3.3 `Table<K,V>` の順序保持と IO 連携
 - `Table` の挿入順序保持要件に従い、`runtime/src/collections/mutable/table.rs` で `VecDeque<(K,V)>` + `DeterministicHasher` を組み合わせたロジックを実装する。`insert`/`remove` は `EffectSet::mark_mut()` を必ずセットし、`map_to_table`/`table_to_map` 変換では `effect {mem}` を `EffectLabels` に記録する。【F:../../spec/3-2-core-collections.md†L138-L200】
