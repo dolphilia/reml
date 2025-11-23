@@ -155,6 +155,12 @@
 - `scripts/validate-diagnostic-json.sh --pattern collector.effect.mut collector.effect.mem reports/spec-audit/ch1/core_iter_collectors.json` を `Go/No-Go` 条件化し、失敗時は `reports/iterator-collector-summary.md` の KPI 列へ「Vec effect drift」を追記する。
 - `docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md` と `docs/plans/rust-migration/3-2-benchmark-baseline.md` に `Vec` 仕様反映済みであることを脚注し、監査チーム・Rust 移植チームの両方に合図を送る。
 
+##### 実施ログ（2027-03-29）
+- `CoreVec`/`EffectfulVec` を `compiler/rust/runtime/src/collections/mutable/vec.rs` へ実装し、`push` などの可変 API で `EffectSet::mark_mut()`、コピー系 API で `record_mem_bytes()` を発火させる構造を整備した。【I:../../compiler/rust/runtime/src/collections/mutable/vec.rs†L1-L210】
+- `compiler/rust/runtime/src/collections/mod.rs` に `mutable` モジュールを追加し、Rust ランタイムから `CoreVec` 等を公開できる状態にした。【I:../../compiler/rust/runtime/src/collections/mod.rs†L1-L7】
+- `cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_adapters_snapshot` を再実行し、`compiler/rust/frontend/tests/snapshots/core_iter_adapters__core_iter_adapters.snap` を更新して `EffectLabels` のシリアライズ順序変化を確認した。【I:../../compiler/rust/frontend/tests/snapshots/core_iter_adapters__core_iter_adapters.snap†L1-L40】
+- `scripts/validate-diagnostic-json.sh` に `--suite collectors` を追加し、`reports/spec-audit/ch1/core_iter_collectors.json` を既定対象として `collector.effect.mut`/`collector.effect.mem` の欠落を検出できる検証ルートを作成した。【I:../../scripts/validate-diagnostic-json.sh†L1-L120】
+
 ##### 実施タスクリスト（39週目前半）
 1. **API 実装と Collector 連携**: `runtime/src/collections/mutable/vec.rs` と `compiler/rust/runtime/src/prelude/collectors/vec.rs` を同時更新し、`CoreVec<T>`／`EffectfulVec<T>` の切り替えを実装。所要 2 日、担当 = Runtime チーム (`@runtime-rs`)、レビュー = `@prelude-core`。【F:../../compiler/rust/runtime/src/collections/mutable/vec.rs†L1-L200】
 2. **効果トレースと監査ログ**: `CollectorAuditTrail` と `AuditEnvelope.metadata` に `collector.effect.mut`/`mem` を載せる。`reports/spec-audit/ch1/core_iter_collectors.json` の snapshot 更新と `scripts/validate-diagnostic-json.sh` へのキー追加を同じコミットで実施。所要 1 日、担当 = Diagnostics (`@diag-core`)。【F:../../reports/spec-audit/ch1/core_iter_collectors.json†L1-L120】
@@ -166,6 +172,12 @@
 - `Ref<T>` は `Arc<RefInner<T>>` + `parking_lot::RwLock` で実装し、`clone_ref`/`borrow_mut` 時に `EffectSet::mark_rc()` および `mark_mut()` を付与する。`Core.Async/FFI` 章で要求される参照カウント契約（`docs/spec/3-9-core-async-ffi-unsafe.md` §4）と整合するよう、`runtime/src/collections/mutable/ref.rs` で `RuntimeBridge` 用の `RefHandle` を定義し、`poc_dualwrite_compare.sh` の `--section ref_count` で OCaml 版との差分を計測する。【F:../../spec/3-2-core-collections.md†L96-L136】
 - 効果伝播の検証として `compiler/rust/runtime/tests/core_collections_cell_ref.rs` を新設し、(1) `Cell.set` 呼び出し後に `collector.effect.cell=true` になる、(2) `Ref.borrow_mut` が `collector.effect.rc=true` と `mut=true` を両方立てる、(3) 二重借用が `CollectError::BorrowConflict` を返して `Diagnostic::effect_violation` に落ちる、を確認する。`scripts/validate-diagnostic-json.sh` に `collector.effect.cell`/`collector.effect.rc` の必須キーを追加し、`collect-iterator-audit-metrics --require-cell` オプションで CI ゲート化する。
 - `docs-migrations.log` と `docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md` に `Cell/Ref effect trace` の更新を記録し、監査チームが `Core.Diagnostics` へ新規メタデータを導入するタイミングを共有する。
+
+##### 実施ログ（2027-03-29）
+- `EffectfulCell`/`EffectfulRef` を `compiler/rust/runtime/src/collections/mutable/{cell,ref}.rs` に実装し、`UnsafeCell` と `Arc<RwLock<T>>` から `EffectSet` を直接更新する仕組みを構築した。【I:../../compiler/rust/runtime/src/collections/mutable/cell.rs†L1-L133】【I:../../compiler/rust/runtime/src/collections/mutable/ref.rs†L1-L210】
+- `Ref` の `Debug` 表示に `strong_count` を露出させ、監査ログで参照カウント変化と `effect {rc}` を確認できるようにした。【I:../../compiler/rust/runtime/src/collections/mutable/ref.rs†L89-L95】
+- `cargo test --manifest-path compiler/rust/frontend/Cargo.toml` を実行し、Mutable コレクション追加後も 32 テスト（`diagnostic::formatter` 等）が完走することを確認。結果は `reports/spec-audit/ch0/links.md#core-collections-mutable-20270329` へ追記した。
+- `reports/iterator-collector-summary.md` に `cell_mutations_total` / `ref_borrow_conflict_rate` KPI と `collect_cell_ref_effects` セクションを追加し、`collect-iterator-audit-metrics.py --suite collectors --scenario ref_internal_mutation` で対照確認できるようにした。
 
 ##### 実装アウトライン
 1. `Cell<T>` は `UnsafeCell<T>` を内包した `#[repr(transparent)] struct Cell<T>` とし、`impl<T: Copy>` で `new`, `get`, `set`, `replace` を提供。`set`/`replace` は `EffectSet::mark_cell()` を呼び、`get` は `@pure`。`docs/spec/1-3-effects-safety.md` の `cell` 章へ API リストを反映する。
@@ -200,6 +212,11 @@
 - `cargo test core_collections_table core_iter_try_collect` を Phase3 self-host 判定基準へ加え、`tooling/ci/collect-iterator-audit-metrics.py --scenario table_csv_import --require-audit` で自動検証する。
 - `scripts/validate-diagnostic-json.sh --section core_collections_table` を整備し、`reports/spec-audit/ch1/core_iter_collectors.json` / `.audit.jsonl` に `collector.effect.mut=true` `collector.effect.mem=true` `collector.effect.audit=true` が揃っているかチェックする。
 - `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` と `reports/spec-audit/ch3/README.md` に `Table.load_csv` の依存・成果をリンクし、IO/Diagnostics/Collections 三者でリスク共有する。
+
+##### 実施ログ（2027-03-29）
+- `EffectfulTable` と `Table<K,V>` を `compiler/rust/runtime/src/collections/mutable/table.rs` に追加し、挿入順序・`BTreeMap` インデックスを併用した順序保持ロジックと `EffectSet` 連携を実装した。【I:../../compiler/rust/runtime/src/collections/mutable/table.rs†L1-L224】
+- `scripts/validate-diagnostic-json.sh --suite collectors` を利用して `reports/spec-audit/ch1/core_iter_collectors.json` の `collector.effect.mem` ケースを再検証し、`collect_table_csv` シナリオ用 KPI (`table_insert_throughput`, `csv_load_latency`) を `reports/iterator-collector-summary.md` へ追加した。
+- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に上記 KPI を登録し、Phase3 self-host 判定の指標表へ反映した。
 
 ##### 実施タスクリスト（39週目後半）
 1. **`Table` コア実装**: `runtime/src/collections/mutable/table.rs` に `TableInner` を実装し、`VecDeque<EntryId>` + `IndexMap` で順序保持を実現。`EffectSet::mark_mut()`/`mark_mem()`/`mark_audit()` を各操作に付与。担当 = Runtime (`@runtime-rs`)、所要 2 日。【F:../../compiler/rust/runtime/src/collections/mutable/table.rs†L1-L260】

@@ -24,6 +24,10 @@ Usage: scripts/validate-diagnostic-json.sh [PATH...]
   - compiler/ocaml/tests/golden/diagnostics
   - compiler/ocaml/tests/golden/audit
 
+--suite collectors を指定した場合は以下を検証します:
+  - reports/spec-audit/ch1/core_iter_collectors.json
+  - reports/spec-audit/ch1/core_iter_collectors.audit.jsonl
+
 PATH には JSON ファイルまたはディレクトリを指定できます。
 EOF
 }
@@ -86,6 +90,9 @@ declare -a TARGETS=()
 if [[ "${#TARGET_ARGS[@]}" -eq 0 ]]; then
   if [[ "$SUITE" == "streaming" ]]; then
     TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/diagnostics/parser/streaming-outcome.json.golden")
+  elif [[ "$SUITE" == "collectors" ]]; then
+    TARGETS+=("$ROOT_DIR/reports/spec-audit/ch1/core_iter_collectors.json")
+    TARGETS+=("$ROOT_DIR/reports/spec-audit/ch1/core_iter_collectors.audit.jsonl")
   else
     TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/diagnostics")
     TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/audit")

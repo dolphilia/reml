@@ -62,6 +62,12 @@
 7.2. 監査ログ出力のスナップショットテストと GDPR/Privacy フラグの検証を行う。
 7.3. CI に診断差分検出タスクを追加し、回帰時に `0-4-risk-handling.md` へ自動記録する仕組みを構築する。
 
+### 8. Core Collections effect 連携（39週目）
+**担当領域**: `collector.effect.cell` / `collector.effect.rc` / `collector.effect.mem` / `collector.effect.audit`
+
+8.1. `compiler/rust/runtime/src/collections/mutable/{cell,ref,table,vec}.rs` で追加された Effectful コンテナを `reports/spec-audit/ch1/core_iter_collectors.json` へ流し込み、`collector.effect.cell` / `collector.effect.rc` / `collector.effect.mem` / `collector.effect.audit` の必須フィールドを `scripts/validate-diagnostic-json.sh --suite collectors` で検証する。
+8.2. `collect-iterator-audit-metrics.py --suite collectors --scenario ref_internal_mutation` / `--scenario table_csv_import` を CI に組み込み、`cell_mutations_total`・`ref_borrow_conflict_rate`・`table_insert_throughput`・`csv_load_latency` の KPI を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` / `reports/iterator-collector-summary.md` へ同期させる。
+
 ## 成果物と検証
 - `Diagnostic`/`AuditEnvelope` API が仕様通りに実装され、効果タグ・ステージ情報が正しく扱われること。
 - TypeChecker/Runtime/IO からのイベントが統一された監査ログとして出力され、差分が記録されていること。

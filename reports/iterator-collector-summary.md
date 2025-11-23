@@ -39,6 +39,17 @@
 - Effects: `collector.effect.mem = true`, `collector.effect.mut = true`, `collector.effect.mem_reservation = 0`.
 - KPI: `collector.error.invalid_encoding` は意図的な失敗として記録しつつ、正常系では `0` であることを `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` で追跡。
 
+### collect_cell_ref_effects
+- **目的**: `EffectfulCell`/`EffectfulRef` 実装で `collector.effect.cell` と `collector.effect.rc` が欠落なく記録されるか監視する。
+- **Procedure**: `python3 tooling/ci/collect-iterator-audit-metrics.py --suite collectors --scenario ref_internal_mutation --output reports/iterator-collector-metrics.json --require-success` を実行。`--suite collectors` は `reports/spec-audit/ch1/core_iter_collectors.json` / `.audit.jsonl` を既定対象にするため追加された（2027-03-29）。
+- **KPI**: `cell_mutations_total` は `collector.effect.cell=true` が現れた回数、`ref_borrow_conflict_rate` は `collector.error.borrow_conflict / borrow_mut_total`。両指標は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に登録済み。
+- **Validation**: `scripts/validate-diagnostic-json.sh --suite collectors --pattern core_iter_collectors` を併用し、`collector.effect.cell` / `collector.effect.rc` キーが欠落した JSON を拒否する。
+
+### collect_table_csv
+- **目的**: `EffectfulTable`/`TableCollector` の順序保持と `effect {mut,mem,audit}` を同時に検査し、CSV ロードの性能 KPI (`table_insert_throughput`, `csv_load_latency`) を更新する。
+- **Procedure**: `python3 tooling/ci/collect-iterator-audit-metrics.py --scenario table_csv_import --suite collectors --output reports/iterator-collector-metrics.json --require-audit` を実行し、`scripts/validate-diagnostic-json.sh --suite collectors --pattern table` で `collector.effect.mem=true` / `collector.effect.audit=true` を確認する。
+- **Artifacts**: `reports/spec-audit/ch1/core_iter_collectors.json#table_csv_import` と `.audit.jsonl` に `collector.effect.mem_bytes`, `collector.effect.audit` が記録される。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` 行の KPI へ数値を転記する。
+
 ## Iter Terminator 経由の Collector 監査（WBS 3.1c-H1, 2027-03-06）
 - **目的**: `Iter::collect_*` が `Collector` 実装と同一の監査メタデータ（`collector.effect.*`, `collector.stage.*`, `Diagnostic.extensions["prelude.collector.*"]`）を出力することを確認し、`collect_with` ヘルパと `CollectOutcome::audit` により `reports/spec-audit/ch1/core_iter_terminators.json` → `reports/iterator-collector-metrics.json` のパイプを定着させる。
 - **Run ID**: `2027-03-06-iter-terminators-h1`（`cargo test --manifest-path compiler/rust/frontend/Cargo.toml core_iter_terminators` → `python3 tooling/ci/collect-iterator-audit-metrics.py --section iterator --case terminators --source reports/spec-audit/ch1/core_iter_terminators.json --output reports/iterator-collector-metrics.json --require-success` → `scripts/validate-diagnostic-json.sh --pattern iterator.collect --pattern prelude.collector reports/spec-audit/ch1/core_iter_terminators.json`）。`reports/spec-audit/ch0/links.md#iter-terminators-h1` にコマンドと成果物を集約。

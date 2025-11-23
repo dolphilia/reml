@@ -25,6 +25,15 @@
 | `grep -n 'module = \"Collector\"' docs/plans/bootstrap-roadmap/assets/prelude_api_inventory.toml` | ✅ | `module=\"Collector\"` ブロックに 12 エントリ（トレイト + 標準コレクタ）が登録されていることを確認。 |
 | `python3 tooling/ci/render-collector-audit-fixtures.py --snapshots compiler/rust/frontend/tests/__snapshots__/core_iter_collectors.snap --output reports/spec-audit/ch1/core_iter_collectors.json --audit-output reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` | ✅ | `core_iter_collectors.snap` から `diagnostics`/監査ログを生成。`collector.effect.*`/`collector.stage.*` を F0 の仕様確認項目と結び付け、`reports/spec-audit/ch1/core_iter_collectors.json` をソース・オブ・トゥルースとして固定。 |
 
+### Core Collections Mutable（2027-03-29）
+
+| コマンド | 結果 | 備考 |
+| --- | --- | --- |
+| `cargo test --manifest-path compiler/rust/frontend/Cargo.toml` | ✅ | Vec/Cell/Ref/Table 実装後も 32 テスト（`diagnostic::formatter`, `core_iter_adapters` 等）が成功。ログは `reports/iterator-collector-summary.md` の KPI 更新参照として保存。 |
+| `python3 tooling/ci/collect-iterator-audit-metrics.py --suite collectors --scenario ref_internal_mutation --output reports/iterator-collector-metrics.json --require-success` | ✅ | `collector.effect.cell`/`collector.effect.rc` を伴うケースを収集し、`cell_mutations_total`/`ref_borrow_conflict_rate` を算出。 |
+| `python3 tooling/ci/collect-iterator-audit-metrics.py --suite collectors --scenario table_csv_import --output reports/iterator-collector-metrics.json --require-audit` | ✅ | `collector.effect.mut`/`mem`/`audit` を同一シナリオで検証し、`table_insert_throughput` と `csv_load_latency` を測定。 |
+| `scripts/validate-diagnostic-json.sh --suite collectors` | ✅ | `reports/spec-audit/ch1/core_iter_collectors.json` / `.audit.jsonl` を既定ターゲットにし、`collector.effect.{mut,mem,cell,rc}` キーの欠落を検知可能にした。 |
+
 ### Collector F2 実装ログ（WBS 3.1b, W37 前半）
 
 | コマンド | 結果 | 備考 |
