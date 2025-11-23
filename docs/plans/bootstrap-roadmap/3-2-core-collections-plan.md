@@ -197,6 +197,24 @@
 3. FFI/RuntimeBridge 経路は `compiler/rust/runtime/ffi/src/handles/ref_handle.rs` に分離し、`docs/guides/runtime-bridges.md` の契約に従い `RefHandle::clone`/`drop` の監査を `CapabilityRegistry` へ記録する。`docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` へ参照を追記する。
 4. `reports/iterator-collector-summary.md` では `cell_mutations_total` / `ref_borrow_conflicts` の KPI を追加し、`docs/notes/core-library-outline.md` に内部可変性レイヤのメモを残す。`docs/plans/rust-migration/p2-spec-compliance-gap.md` にも `Cell/Ref` の差分を写す。
 
+###### 3.2.1 Cell 効果トレースの整備
+- `EffectSet` に `CELL_BIT` を追加し、`EffectLabels` に `cell: bool` フィールドを拡張して `collector.effect.cell` メタデータを扱えるようにする。`set`/`replace`/`clone` の各パスで `EffectSet::mark_cell()` を呼び出し、`CollectorAuditTrail::record_cell_op`（新設）で `mem_bytes` などの付帯情報と併せて `AuditEnvelope.metadata` に展開する。【F:../../compiler/rust/runtime/src/prelude/iter/mod.rs†L680-L880】
+- `EffectfulCell` の `new_cell` 相当のコンストラクタと `set`/`replace` に `EffectSet::mark_mut()` とのダブル記録を組み込み、`core.collections.cell` 名前空間へ公開する `Collector` 側と `Iter` 側の API を一致させる。`reports/spec-audit/ch1/core_iter_collectors.json` の `collector.effect.cell` を `scripts/validate-diagnostic-json.sh --pattern collector.effect.cell` で固定し、`collect-iterator-audit-metrics.py --suite collectors --scenario cell_internal_mutation` を `--require-cell` 付きで CI へ追加する。
+- KPI は `reports/iterator-collector-summary.md` の `cell_mutations_total` 列に記録し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と `docs/plans/bootstrap-roadmap/assets/metrics/core_collections_persistent.csv` の `cell_mutations_total` 行へ参照を伸ばす。`docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md` に `cell` 効果のキーを追記し、診断チームと共有する。
+
+###### 3.2.2 Ref 効果と参照カウント契約
+- `EffectSet` に `RC_BIT` を加え、`EffectSet::mark_rc()` / `EffectSet::release_rc()` を導入して `clone_ref`/`borrow`/`borrow_mut`/`drop` で `collector.effect.rc` の上下を追跡する。`EffectLabels` には `rc: bool` を追加したうえで `EffectfulRef::effect_labels` で `collector.effect.rc` を返すようにし、`Diagnostic`/`AuditEnvelope` に `ref.borrow_rcs` カウントを残す。【F:../../compiler/rust/runtime/src/prelude/iter/mod.rs†L680-L900】
+- `Ref` 本体は `Arc<RefInner<T>>` + `parking_lot::RwLock`（又は `std::sync::RwLock`）で実装し、`borrow_mut` の成功時に `EffectSet::mark_mut()` を併用する。`CollectError::BorrowConflict` の戻りは `Diagnostic::effect_violation` に変換されるよう `prelude::collectors::ref` 経路で制御し、`scripts/validate-diagnostic-json.sh --pattern collector.effect.rc` で `collector.effect.rc=true` が 1 件以上得られることを保証する。
+- ベンチマーク側では `collect-iterator-audit-metrics.py --suite collectors --scenario ref_internal_mutation` に `collector.effect.rc`/`collector.effect.mut` の成功判定を置き、`reports/iterator-collector-summary.md` の `ref_borrow_conflict_rate` / `ref_rc_clone_ops` セクションへデータを流す。`docs/notes/core-library-outline.md#ref-internal-mutation` に挙動メモを追加し、`docs/plans/rust-migration/p2-spec-compliance-gap.md` と `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` で差分のトラッキング行を同期する。
+
+###### 3.2.3 RuntimeBridge と FFI ハンドル
+- `compiler/rust/runtime/ffi/src/handles/ref_handle.rs` に `RefHandle` を分離し、`CapabilityRegistry` の `core.collections.ref` エントリを登録する。`RefHandle::clone`/`RefHandle::drop` で `EffectSet::mark_rc()`/`release_rc()` を呼び出し、`docs/guides/runtime-bridges.md` の `Ref` 契約と `docs/spec/3-9-core-async-ffi-unsafe.md` §4 の `async` 参照ライフタイム要件を満たすようにする。
+- `poc_dualwrite_compare.sh --section ref_count` と `reports/spec-audit/diffs/README.md` へ `collector.effect.rc` に関するログを残し、OCaml/ Rust の差分が 5% を超えた場合は `docs/plans/bootstrap-roadmap/4-0-phase4-migration.md` へリスク追加を作成する。`docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` の `CapabilityRegistry` を更新し、`core.collections.ref` が `CapabilityStage::Persistent`/`RefHandle` によるアクセス保証を報告するようにする。
+
+###### 3.2.4 ドキュメント・監査連携
+- `reports/iterator-collector-summary.md` の `collect_cell_ref_effects` セクションに `cell_mutations_total` / `ref_borrow_conflict_rate` / `collector.effect.rc` の API 数値を追加し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` および `docs/plans/bootstrap-roadmap/assets/metrics/core_collections_persistent.csv` の KPI 表に連動セルを設ける。`docs/notes/core-library-outline.md` に `Cell/Ref` 内部可変性スタックのメモを残し、`docs/plans/rust-migration/p2-spec-compliance-gap.md` に `Cell/Ref` セクションを同期させる。
+- `scripts/validate-diagnostic-json.sh --suite collectors` に `collector.effect.cell`/`collector.effect.rc` の必須キーを追加し、`collect-iterator-audit-metrics.py --require-cell` を Phase3 CI に組み込むことで継続監査を実現する。`docs-migrations.log` へ `Cell/Ref effect trace` の記録を追記し、`docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md` の `Core Collections effect 連携` セクションからリンクすることで監査チームに周知する。
+
 ##### 検証ポイント
 - `cargo test core_collections_cell_ref` を CI に組み込み、`tooling/ci/collect-iterator-audit-metrics.py --scenario ref_internal_mutation --require-cell` で effect を監視。
 - `scripts/poc_dualwrite_compare.sh --section ref_count` の出力ログを `reports/spec-audit/diffs/README.md` に保存し、Rust/OCaml の borrow 契約差分を追跡。

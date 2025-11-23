@@ -67,6 +67,7 @@
 
 8.1. `compiler/rust/runtime/src/collections/mutable/{cell,ref,table,vec}.rs` で追加された Effectful コンテナを `reports/spec-audit/ch1/core_iter_collectors.json` へ流し込み、`collector.effect.cell` / `collector.effect.rc` / `collector.effect.mem` / `collector.effect.audit` の必須フィールドを `scripts/validate-diagnostic-json.sh --suite collectors` で検証する。
 8.2. `collect-iterator-audit-metrics.py --suite collectors --scenario ref_internal_mutation` / `--scenario table_csv_import` を CI に組み込み、`cell_mutations_total`・`ref_borrow_conflict_rate`・`table_insert_throughput`・`csv_load_latency` の KPI を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` / `reports/iterator-collector-summary.md` へ同期させる。
+8.3. `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` の `Cell<T>`/`Ref<T>` 内部可変性セクションと `docs-migrations.log` に記録された `Cell/Ref effect trace` を相互にリンクし、`scripts/validate-diagnostic-json.sh` の `collector.effect.cell` / `collector.effect.rc` キーと `collect-iterator-audit-metrics.py --require-cell` を監査 CI の必須ルートに組み込むことで、Effectful コンテナの診断情報導入タイミングを明示する。
 
 ## 成果物と検証
 - `Diagnostic`/`AuditEnvelope` API が仕様通りに実装され、効果タグ・ステージ情報が正しく扱われること。
