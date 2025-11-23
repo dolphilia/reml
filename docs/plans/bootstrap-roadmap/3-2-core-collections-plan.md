@@ -144,17 +144,50 @@
 - `try_reserve` の `TryReserveError` は `CollectError::OutOfMemory` に写像し、`Iter.collect_vec` と `Vec.collect_from` で共通の `Result<Vec<T>, CollectError>` を返す。失敗例は `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` にサンプルを追記し、`tooling/ci/collect-iterator-audit-metrics.py --section collectors --scenario vec_mem_exhaustion` で `effect {mem}` の計測が崩れないか検証する。【F:../../spec/3-2-core-collections.md†L115-L117】
 - テスト計画: `compiler/rust/runtime/tests/core_collections_vec.rs` を追加し、(1) `collect_vec` が `CollectError::DuplicateKey` を返さないこと、(2) `reserve` が `EffectLabels` に `mem=true` をセットすること、(3) `Vec.to_list` が構造共有を壊しつつ `effect {mem}` を記録すること、を snapshot + property テストで確認する。ベンチ計測値は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ `vec_mut_ops_per_sec` として反映し、Phase 2 ベースライン比 ±15% を目標にする。
 
+##### 実装アウトライン
+1. `runtime/src/collections/mutable/vec.rs` へ `CoreVec<T>` の公開 API を集約し、`compiler/rust/runtime/src/prelude/mod.rs` で `pub use`。`VecCollector` は `CoreVec<T>` を返しつつ `EffectLabels` を `CollectOutcome` の `effects` フィールドに格納し、`docs/plans/bootstrap-roadmap/3-1-core-prelude-iteration-plan.md` で合意した `Iter`→`Collector` の effect 伝播要件に揃える。
+2. `Vec::iter`/`as_slice` は `effect {pure}`、`Vec::push`/`pop`/`collect_from` は `effect {mut}`、`Vec::reserve`/`shrink_to_fit`/`to_list` は `effect {mut, mem}` になるよう `EffectSet::mark_mut()` / `mark_mem(bytes)` を必ず呼ぶ。Effect 情報は `CollectorAuditTrail::record_vec_op`（新設）のペイロードへ保持し、`reports/spec-audit/ch1/core_iter_collectors.json` の `collector.effect.mem_bytes` に直結させる。
+3. `TryReserveError` と `CollectError::OutOfMemory` の写像レイヤは `runtime/src/collections/mutable/vec/error.rs` に切り出し、`Iter.collect_vec` や `Vec.collect_from` が `Result<CoreVec<T>, CollectError>` で統一されるよう整理する。OCaml 版との差分は `docs/plans/rust-migration/p1-spec-compliance-gap.md` / `p1-rust-frontend-gap-report.md` と同期する。
+4. ベンチマークは `compiler/rust/runtime/ffi/benches/core_collections_mutable.rs`（既存 persistent ベンチの隣）で `VecMutOpsPerSec` を計測し、結果を `docs/plans/bootstrap-roadmap/assets/metrics/core_collections_persistent.csv` に列追加して `0-3-audit-and-metrics.md` へ引用する。
+
+##### 検証タスク
+- `cargo test core_collections_vec core_iter_collectors` を Phase3 CI 必須項目として登録し、`tooling/ci/collect-iterator-audit-metrics.py --run-tests --scenario vec_mem_exhaustion` から自動実行する。
+- `scripts/validate-diagnostic-json.sh --pattern collector.effect.mut collector.effect.mem reports/spec-audit/ch1/core_iter_collectors.json` を `Go/No-Go` 条件化し、失敗時は `reports/iterator-collector-summary.md` の KPI 列へ「Vec effect drift」を追記する。
+- `docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md` と `docs/plans/rust-migration/3-2-benchmark-baseline.md` に `Vec` 仕様反映済みであることを脚注し、監査チーム・Rust 移植チームの両方に合図を送る。
+
 #### 3.2 `Cell<T>` / `Ref<T>` 内部可変性モデル
 - `Cell<T>` は `Copy` 制約付きの軽量内部可変性として `runtime/src/collections/mutable/cell.rs` に実装し、`EffectSet::mark_cell()` を `new_cell`/`set` で呼び出す。`Core.Diagnostics.ChangeTrace` の `collector.effect.cell` を `AuditEnvelope.metadata` に書き出し、`reports/iterator-collector-summary.md` の KPI テーブルへ `cell_mutations_total` を追加する。【F:../../spec/3-2-core-collections.md†L118-L135】
 - `Ref<T>` は `Arc<RefInner<T>>` + `parking_lot::RwLock` で実装し、`clone_ref`/`borrow_mut` 時に `EffectSet::mark_rc()` および `mark_mut()` を付与する。`Core.Async/FFI` 章で要求される参照カウント契約（`docs/spec/3-9-core-async-ffi-unsafe.md` §4）と整合するよう、`runtime/src/collections/mutable/ref.rs` で `RuntimeBridge` 用の `RefHandle` を定義し、`poc_dualwrite_compare.sh` の `--section ref_count` で OCaml 版との差分を計測する。【F:../../spec/3-2-core-collections.md†L96-L136】
 - 効果伝播の検証として `compiler/rust/runtime/tests/core_collections_cell_ref.rs` を新設し、(1) `Cell.set` 呼び出し後に `collector.effect.cell=true` になる、(2) `Ref.borrow_mut` が `collector.effect.rc=true` と `mut=true` を両方立てる、(3) 二重借用が `CollectError::BorrowConflict` を返して `Diagnostic::effect_violation` に落ちる、を確認する。`scripts/validate-diagnostic-json.sh` に `collector.effect.cell`/`collector.effect.rc` の必須キーを追加し、`collect-iterator-audit-metrics --require-cell` オプションで CI ゲート化する。
 - `docs-migrations.log` と `docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md` に `Cell/Ref effect trace` の更新を記録し、監査チームが `Core.Diagnostics` へ新規メタデータを導入するタイミングを共有する。
 
+##### 実装アウトライン
+1. `Cell<T>` は `UnsafeCell<T>` を内包した `#[repr(transparent)] struct Cell<T>` とし、`impl<T: Copy>` で `new`, `get`, `set`, `replace` を提供。`set`/`replace` は `EffectSet::mark_cell()` を呼び、`get` は `@pure`。`docs/spec/1-3-effects-safety.md` の `cell` 章へ API リストを反映する。
+2. `Ref<T>` は `Arc<RefInner<T>>` に `RwLock<T>`・`AtomicUsize active_mut_borrows`・`EffectLabels` を持たせる。`borrow_mut` は `EffectSet::mark_rc()` + `mark_mut()`、`borrow` は `mark_rc()` のみ。`clone_ref` は `EffectSet::mark_rc()` を呼び、`Drop` 時に `EffectSet::release_rc()`（新設）で監査ログへ `rc.dec` を送る。
+3. FFI/RuntimeBridge 経路は `compiler/rust/runtime/ffi/src/handles/ref_handle.rs` に分離し、`docs/guides/runtime-bridges.md` の契約に従い `RefHandle::clone`/`drop` の監査を `CapabilityRegistry` へ記録する。`docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` へ参照を追記する。
+4. `reports/iterator-collector-summary.md` では `cell_mutations_total` / `ref_borrow_conflicts` の KPI を追加し、`docs/notes/core-library-outline.md` に内部可変性レイヤのメモを残す。`docs/plans/rust-migration/p2-spec-compliance-gap.md` にも `Cell/Ref` の差分を写す。
+
+##### 検証ポイント
+- `cargo test core_collections_cell_ref` を CI に組み込み、`tooling/ci/collect-iterator-audit-metrics.py --scenario ref_internal_mutation --require-cell` で effect を監視。
+- `scripts/poc_dualwrite_compare.sh --section ref_count` の出力ログを `reports/spec-audit/diffs/README.md` に保存し、Rust/OCaml の borrow 契約差分を追跡。
+- `docs-migrations.log` に `Cell/Ref effect trace` 追記を残し、`docs/plans/bootstrap-roadmap/3-6-core-diagnostics-audit-plan.md` での監査項目追加とリンクさせる。
+
 #### 3.3 `Table<K,V>` の順序保持と IO 連携
 - `Table` の挿入順序保持要件に従い、`runtime/src/collections/mutable/table.rs` で `VecDeque<(K,V)>` + `DeterministicHasher` を組み合わせたロジックを実装する。`insert`/`remove` は `EffectSet::mark_mut()` を必ずセットし、`map_to_table`/`table_to_map` 変換では `effect {mem}` を `EffectLabels` に記録する。【F:../../spec/3-2-core-collections.md†L138-L200】
 - `TableCollector`（`compiler/rust/runtime/src/prelude/collectors/table.rs`）を拡張し、`CollectError::DuplicateKey` と `CollectError::UnstableOrder` を追加で返せるようにする。`Iter.collect_table`（新設）では重複キーを `Diagnostic::collector_duplicate_key` へ変換し、`reports/spec-audit/ch1/core_iter_collectors.json` に期待される effect/diagnostic を追記する。
 - `Table.load_csv` は `Core.IO`/`Core.Text` と結合し、`docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` で定義されている CSV リーダ (`Core.IO.CsvReader`) を再利用する。`effect {io}` と `effect {mut}` の複合を `EffectSet::mark_io()` + `mark_mut()` で記録し、`RuntimeBridge` から `Capability Stage` チェック（`docs/spec/3-8-core-runtime-capability.md` §10）を通過するよう `CapabilityRegistry` へ `core.collections.table.csv_load` を登録する。
 - テスト計画: `compiler/rust/runtime/tests/core_collections_table.rs` に (1) 挿入順が保持される property テスト、(2) `table_to_map` がキー昇順へソートされること、(3) `load_csv` が `Core.Diagnostics.ChangeTrace` にファイルパスと effect 情報を記録すること、を追加。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ `table_insert_throughput` と `csv_load_latency` のメトリクスを記載し、Phase 3 の `Go/No-Go` ゲートで比較する。
+
+##### 実装アウトライン
+1. `runtime/src/collections/mutable/table.rs` に `struct TableInner<K,V>` を作り、`VecDeque<EntryId>` と `IndexMap<K, (EntryId, V)>` を併用する。`EntryId(u64)` は挿入順序を保持し、`insert` 時に `EffectSet::mark_mut()` を、`map_to_table`/`table_to_map` 時に `EffectSet::mark_mem(bytes)` を呼ぶ。
+2. `TableCollector` は `CollectOutcome` の `effects` に `collector.effect.mut`/`collector.effect.mem`/`collector.effect.audit` を書き込み、`Iter.collect_table` / `Iter.try_collect(TableCollector)` のパスで `EffectSet::merge_from_collector` を実行する。`CollectError::UnstableOrder` は `Docker` ベースの CSV fixture で再現し、`Diagnostic::collector_unstable_order` として `docs/spec/3-6-core-diagnostics-audit.md` に追加する。
+3. CSV 連携は `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` の `Core.IO.CsvReader` を呼び出して `Vec<Column>` を生成し、UTF-8/BOM/CRLF 検証を `docs/spec/3-3-core-text-unicode.md` の `GraphemeCursor` 実装へ委譲する。`CapabilityRegistry` の `core.collections.table.csv_load` エントリは `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` に記す。
+4. `docs/notes/core-library-outline.md` と `docs/plans/rust-migration/3-2-benchmark-baseline.md` へ `table_ordered_insert_ps` / `csv_load_latency` の KPI を追加し、IO チームと共有する。`docs-migrations.log` へ `Table.load_csv` 追加を追記し、再編履歴を残す。
+
+##### 検証・フォローアップ
+- `cargo test core_collections_table core_iter_try_collect` を Phase3 self-host 判定基準へ加え、`tooling/ci/collect-iterator-audit-metrics.py --scenario table_csv_import --require-audit` で自動検証する。
+- `scripts/validate-diagnostic-json.sh --section core_collections_table` を整備し、`reports/spec-audit/ch1/core_iter_collectors.json` / `.audit.jsonl` に `collector.effect.mut=true` `collector.effect.mem=true` `collector.effect.audit=true` が揃っているかチェックする。
+- `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` と `reports/spec-audit/ch3/README.md` に `Table.load_csv` の依存・成果をリンクし、IO/Diagnostics/Collections 三者でリスク共有する。
 
 ### 4. Iter/Collector 相互運用（39-40週目）
 **担当領域**: 遅延列との結合
