@@ -689,6 +689,8 @@ impl EffectSet {
     const DEBUG_BIT: u8 = 0b0100;
     const PENDING_BIT: u8 = 0b1000;
     const AUDIT_BIT: u8 = 0b1_0000;
+    const CELL_BIT: u8 = 0b10_0000;
+    const RC_BIT: u8 = 0b100_0000;
 
     pub const PURE: Self = Self {
         bits: 0,
@@ -698,6 +700,18 @@ impl EffectSet {
 
     pub fn mark_mut(&mut self) {
         self.bits |= Self::MUT_BIT;
+    }
+
+    pub fn mark_cell(&mut self) {
+        self.bits |= Self::CELL_BIT;
+    }
+
+    pub fn mark_rc(&mut self) {
+        self.bits |= Self::RC_BIT;
+    }
+
+    pub fn release_rc(&mut self) {
+        self.bits |= Self::RC_BIT;
     }
 
     pub fn mark_mem(&mut self) {
@@ -802,6 +816,14 @@ impl EffectSet {
         self.bits & Self::AUDIT_BIT != 0
     }
 
+    pub fn contains_cell(self) -> bool {
+        self.bits & Self::CELL_BIT != 0
+    }
+
+    pub fn contains_rc(self) -> bool {
+        self.bits & Self::RC_BIT != 0
+    }
+
     pub fn to_labels(self) -> EffectLabels {
         EffectLabels {
             mem: self.contains_mem(),
@@ -809,6 +831,8 @@ impl EffectSet {
             debug: self.contains_debug(),
             async_pending: self.contains_pending(),
             audit: self.contains_audit(),
+            cell: self.contains_cell(),
+            rc: self.contains_rc(),
             mem_bytes: self.mem_bytes,
             predicate_calls: self.predicate_calls,
         }
@@ -823,6 +847,8 @@ pub struct EffectLabels {
     pub debug: bool,
     pub async_pending: bool,
     pub audit: bool,
+    pub cell: bool,
+    pub rc: bool,
     pub mem_bytes: usize,
     pub predicate_calls: usize,
 }

@@ -14,6 +14,8 @@ const PURE_EFFECTS: EffectLabels = EffectLabels {
     debug: false,
     async_pending: false,
     audit: false,
+    cell: false,
+    rc: false,
     mem_bytes: 0,
     predicate_calls: 0,
 };

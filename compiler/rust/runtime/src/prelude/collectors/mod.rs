@@ -168,6 +168,7 @@ pub struct CollectorEffectMarkers {
     pub mem_reservation: usize,
     pub reserve: usize,
     pub finish: usize,
+    pub cell_mutations: usize,
 }
 
 impl CollectorEffectMarkers {
@@ -184,6 +185,11 @@ impl CollectorEffectMarkers {
     /// `finish` の呼び出しを記録する。
     pub fn record_finish(&mut self) {
         self.finish = self.finish.saturating_add(1);
+    }
+
+    /// `Cell` の内部可変性操作を記録する。
+    pub fn record_cell_op(&mut self) {
+        self.cell_mutations = self.cell_mutations.saturating_add(1);
     }
 }
 
@@ -330,6 +336,14 @@ impl CollectorAuditTrail {
             Value::Bool(self.effects.audit),
         );
         metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.cell"),
+            Value::Bool(self.effects.cell),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.rc"),
+            Value::Bool(self.effects.rc),
+        );
+        metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}effect.predicate_calls"),
             Value::Number(Number::from(self.effects.predicate_calls as u64)),
         );
@@ -348,6 +362,10 @@ impl CollectorAuditTrail {
         metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}effect.finish"),
             Value::Number(Number::from(self.markers.finish as u64)),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.cell_mutations"),
+            Value::Number(Number::from(self.markers.cell_mutations as u64)),
         );
         metadata
     }
