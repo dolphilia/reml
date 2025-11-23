@@ -1,6 +1,6 @@
 use crate::diagnostic::{AuditEnvelope, FrontendDiagnostic};
 use serde_json::{json, Map, Value};
-use std::env;
+use std::{env, fs};
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -17,7 +17,7 @@ pub struct FormatterContext<'a> {
 
 impl<'a> FormatterContext<'a> {
     fn change_set(&self) -> Value {
-        json!({
+        let mut change_set = json!({
             "policy": AUDIT_POLICY_VERSION,
             "origin": "cli",
             "source": {
@@ -38,6 +38,15 @@ impl<'a> FormatterContext<'a> {
                 }
             ],
         })
+        .as_object()
+        .cloned()
+        .unwrap_or_default();
+
+        if let Some(extra) = load_collections_change_set_from_env() {
+            change_set.insert("collections".to_string(), extra);
+        }
+
+        Value::Object(change_set)
     }
 }
 
@@ -220,6 +229,33 @@ fn metadata_string(metadata: &Map<String, Value>, key: &str) -> Option<String> {
         .map(|value| value.to_string())
 }
 
+fn load_collections_change_set_from_env() -> Option<Value> {
+    if let Ok(inline) = env::var("REML_COLLECTIONS_CHANGE_SET") {
+        if let Some(value) = parse_change_set_json(inline.trim()) {
+            return Some(value);
+        }
+    }
+    if let Ok(path) = env::var("REML_COLLECTIONS_CHANGE_SET_PATH") {
+        let trimmed = path.trim();
+        if trimmed.is_empty() {
+            return None;
+        }
+        if let Ok(body) = fs::read_to_string(trimmed) {
+            if let Some(value) = parse_change_set_json(body.trim()) {
+                return Some(value);
+            }
+        }
+    }
+    None
+}
+
+fn parse_change_set_json(body: &str) -> Option<Value> {
+    if body.is_empty() {
+        return None;
+    }
+    serde_json::from_str(body).ok()
+}
+
 fn unix_seconds_to_components(seconds: i64) -> (i32, u32, u32, u32, u32, u32) {
     const SECONDS_PER_DAY: i64 = 86_400;
     let days = seconds.div_euclid(SECONDS_PER_DAY);
@@ -248,4 +284,59 @@ fn unix_days_to_date(days: i64) -> (i32, u32, u32) {
     let month = f + 2 - 12 * g;
     let year = 100 * (b - 49) + d + g;
     (year as i32, month as u32, day as u32)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+    use tempfile::NamedTempFile;
+
+    fn dummy_context<'a>(args: &'a [String], input: &'a Path) -> FormatterContext<'a> {
+        FormatterContext {
+            program_name: "reml_frontend",
+            raw_args: args,
+            input_path: input,
+        }
+    }
+
+    #[test]
+    fn change_set_includes_inline_collections_payload() {
+        let args = vec!["reml_frontend".into(), "input.reml".into()];
+        let input = PathBuf::from("input.reml");
+        env::set_var(
+            "REML_COLLECTIONS_CHANGE_SET",
+            r#"{"kind":"collections.diff.map","items":[]}"#,
+        );
+        let context = dummy_context(&args, &input);
+        let payload = context.change_set();
+        env::remove_var("REML_COLLECTIONS_CHANGE_SET");
+        assert_eq!(
+            payload["collections"]["kind"],
+            Value::String("collections.diff.map".into())
+        );
+    }
+
+    #[test]
+    fn change_set_reads_payload_from_file() {
+        let args = vec!["reml_frontend".into(), "input.reml".into()];
+        let input = PathBuf::from("input.reml");
+        let file = NamedTempFile::new().expect("temp file");
+        fs::write(
+            file.path(),
+            r#"{"kind":"collections.diff.set","items":[{"kind":"collections.diff.removed"}]}"#,
+        )
+        .expect("write payload");
+        env::set_var(
+            "REML_COLLECTIONS_CHANGE_SET_PATH",
+            file.path().display().to_string(),
+        );
+        let context = dummy_context(&args, &input);
+        let payload = context.change_set();
+        env::remove_var("REML_COLLECTIONS_CHANGE_SET_PATH");
+        assert_eq!(
+            payload["collections"]["kind"],
+            Value::String("collections.diff.set".into())
+        );
+    }
 }

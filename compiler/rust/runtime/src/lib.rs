@@ -3,4 +3,5 @@
 //! 将来のフロントエンド／ランタイム統合で利用する。
 
 pub mod collections;
+pub mod config;
 pub mod prelude;

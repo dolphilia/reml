@@ -20,6 +20,9 @@ mod capability_metadata;
 #[path = "../../src/collections/mod.rs"]
 pub mod collections;
 #[cfg(feature = "core_prelude")]
+#[path = "../../src/config/mod.rs"]
+pub mod config;
+#[cfg(feature = "core_prelude")]
 pub mod core_prelude;
 mod env;
 mod ffi_contract;

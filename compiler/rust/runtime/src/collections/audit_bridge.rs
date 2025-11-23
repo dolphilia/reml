@@ -54,6 +54,11 @@ impl ChangeSet {
         self.items.len()
     }
 
+    /// 監査ログ向け JSON を値として取得する。
+    pub fn to_value(&self) -> Value {
+        self.clone().into_value()
+    }
+
     /// 監査ログへ埋め込む JSON を生成する。
     pub fn into_value(self) -> Value {
         let summary = self.summary();
