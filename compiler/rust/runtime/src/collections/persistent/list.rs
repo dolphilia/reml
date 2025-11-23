@@ -1,5 +1,7 @@
+use std::collections::HashSet;
 use std::fmt;
 use std::iter::FromIterator;
+use std::mem;
 
 use super::arena::{ArenaPtr, PersistentArena};
 
@@ -145,6 +147,62 @@ impl<T> List<T> {
     {
         self.to_vec()
     }
+
+    /// Finger tree ノードの共有状況を集計する。
+    pub fn sharing_stats_with<F>(&self, mut payload_size: F) -> ListSharingStats
+    where
+        F: FnMut(&T) -> usize,
+    {
+        const NODE_SHELL_BYTES: usize = mem::size_of::<FingerTreeNode<()>>();
+        if self.root.is_none() {
+            return ListSharingStats::empty();
+        }
+        let mut visited = HashSet::new();
+        let mut stack = Vec::new();
+        if let Some(root) = self.root.clone() {
+            stack.push(root);
+        }
+
+        let mut payload_bytes = 0usize;
+        let mut branch_nodes = 0usize;
+        let mut leaf_nodes = 0usize;
+        let mut shared_nodes = 0usize;
+        let mut total_nodes = 0usize;
+
+        while let Some(node_ptr) = stack.pop() {
+            if !visited.insert(node_ptr.ptr_id()) {
+                continue;
+            }
+            total_nodes += 1;
+            if node_ptr.strong_count() > 1 {
+                shared_nodes += 1;
+            }
+            match node_ptr.as_ref() {
+                FingerTreeNode::Leaf(value) => {
+                    leaf_nodes += 1;
+                    payload_bytes += payload_size(value);
+                }
+                FingerTreeNode::Branch { left, right, .. } => {
+                    branch_nodes += 1;
+                    stack.push(left.clone());
+                    stack.push(right.clone());
+                }
+            }
+        }
+
+        let shared_adjusted = (shared_nodes * NODE_SHELL_BYTES) / 2;
+        let unique_nodes = total_nodes.saturating_sub(shared_nodes);
+        let estimated_heap_bytes = unique_nodes * NODE_SHELL_BYTES + shared_adjusted + payload_bytes;
+        ListSharingStats {
+            len: self.len,
+            total_nodes,
+            branch_nodes,
+            leaf_nodes,
+            shared_nodes,
+            payload_bytes,
+            estimated_heap_bytes,
+        }
+    }
 }
 
 impl<T: Clone> List<T> {
@@ -189,6 +247,40 @@ impl<T: PartialEq + Clone> PartialEq for List<T> {
 }
 
 impl<T: Eq + Clone> Eq for List<T> {}
+
+/// `List` 内部の構造共有メトリクス。
+#[derive(Debug, Clone, Copy)]
+pub struct ListSharingStats {
+    pub len: usize,
+    pub total_nodes: usize,
+    pub branch_nodes: usize,
+    pub leaf_nodes: usize,
+    pub shared_nodes: usize,
+    pub payload_bytes: usize,
+    pub estimated_heap_bytes: usize,
+}
+
+impl ListSharingStats {
+    fn empty() -> Self {
+        Self {
+            len: 0,
+            total_nodes: 0,
+            branch_nodes: 0,
+            leaf_nodes: 0,
+            shared_nodes: 0,
+            payload_bytes: 0,
+            estimated_heap_bytes: 0,
+        }
+    }
+
+    /// ノード共有率（0.0〜1.0）を返す。
+    pub fn reuse_ratio(&self) -> f64 {
+        if self.total_nodes == 0 {
+            return 0.0;
+        }
+        self.shared_nodes as f64 / self.total_nodes as f64
+    }
+}
 
 /// Finger tree ノード。
 enum FingerTreeNode<T> {

@@ -3,9 +3,10 @@
 
 use std::{
     cmp::Ordering,
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, HashSet},
     fmt,
     iter::FromIterator,
+    mem,
     sync::Arc,
 };
 
@@ -182,6 +183,87 @@ impl<K: Ord + fmt::Debug, V: fmt::Debug> fmt::Debug for PersistentMap<K, V> {
         let mut entries = Vec::new();
         self.for_each_entry(|k, v| entries.push((k, v)));
         f.debug_map().entries(entries).finish()
+    }
+}
+
+impl<K: Ord, V> PersistentMap<K, V> {
+    /// 赤黒木ノードの構造共有状況を返す。
+    pub fn sharing_stats_with<F>(&self, mut payload_size: F) -> PersistentMapSharingStats
+    where
+        F: FnMut(&K, &V) -> usize,
+    {
+        const NODE_SHELL_BYTES: usize = mem::size_of::<Node<(), ()>>();
+        if self.root.is_none() {
+            return PersistentMapSharingStats::empty(self.len);
+        }
+
+        let mut visited = HashSet::new();
+        let mut stack = Vec::new();
+        if let Some(root) = self.root.clone() {
+            stack.push(root);
+        }
+
+        let mut total_nodes = 0usize;
+        let mut shared_nodes = 0usize;
+        let mut payload_bytes = 0usize;
+
+        while let Some(node_ptr) = stack.pop() {
+            if !visited.insert(node_ptr.ptr_id()) {
+                continue;
+            }
+            total_nodes += 1;
+            if node_ptr.strong_count() > 1 {
+                shared_nodes += 1;
+            }
+            let node_ref = node_ptr.as_ref();
+            payload_bytes += payload_size(node_ref.key(), node_ref.value());
+            if let Some(left) = node_ref.left.clone() {
+                stack.push(left);
+            }
+            if let Some(right) = node_ref.right.clone() {
+                stack.push(right);
+            }
+        }
+
+        let shared_adjusted = (shared_nodes * NODE_SHELL_BYTES) / 2;
+        let unique_nodes = total_nodes.saturating_sub(shared_nodes);
+        let estimated_heap_bytes = unique_nodes * NODE_SHELL_BYTES + shared_adjusted + payload_bytes;
+        PersistentMapSharingStats {
+            len: self.len,
+            total_nodes,
+            shared_nodes,
+            payload_bytes,
+            estimated_heap_bytes,
+        }
+    }
+}
+
+/// `PersistentMap` の共有メトリクス。
+#[derive(Debug, Clone, Copy)]
+pub struct PersistentMapSharingStats {
+    pub len: usize,
+    pub total_nodes: usize,
+    pub shared_nodes: usize,
+    pub payload_bytes: usize,
+    pub estimated_heap_bytes: usize,
+}
+
+impl PersistentMapSharingStats {
+    fn empty(len: usize) -> Self {
+        Self {
+            len,
+            total_nodes: 0,
+            shared_nodes: 0,
+            payload_bytes: 0,
+            estimated_heap_bytes: 0,
+        }
+    }
+
+    pub fn reuse_ratio(&self) -> f64 {
+        if self.total_nodes == 0 {
+            return 0.0;
+        }
+        self.shared_nodes as f64 / self.total_nodes as f64
     }
 }
 

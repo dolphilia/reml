@@ -1,0 +1,3 @@
+scenario,items,input_bytes,peak_effect_mem_bytes,peak_mem_ratio,avg_reuse_ratio,shared_nodes,allocations
+ListPersistentPatch,100000,26138098,44846556,1.7158,1.0000,314289,314289
+MapPersistentMerge,50000,3350396,4657956,1.3903,1.0000,53205,53205

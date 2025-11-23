@@ -122,9 +122,14 @@
 - `scripts/poc_dualwrite_compare.sh --target map_set` を更新し、OCaml 実装との dual-write を自動化する。差分が 5% を超えた場合は `docs/plans/bootstrap-roadmap/4-0-phase4-migration.md` へフォローアップを追加し、`reports/spec-audit/diffs/README.md` に結果を添付する。
 
 #### 2.3 構造共有メトリクスとレポート化
-- `runtime/benches/core_collections_persistent.rs` を追加し、`List` と `Map` の構造共有率・再利用率を計測するベンチマークを実装する。テスト入力は `reports/spec-audit/ch0/links.md` で参照されているサンプル DSL プロジェクトを再生産し、`List` 10^5 要素・`Map` 5×10^4 キーのケースで GC 不要のままピークメモリが入力サイズの 1.8 倍以内に収まることを確認する。
-- ベンチ結果（共有率、割当回数、`effect {mem}` バイト数）を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` Phase3→Phase4 ブリッジ表に追記し、`metrics/core_collections_persistent.csv`（新規、`docs/plans/bootstrap-roadmap/assets/` 配下）に数値を保存する。`docs-migrations.log` に「3-2-core-collections 永続ベンチ」エントリを追加して参照箇所を明示する。
-- 成果のレビューでは `reports/spec-audit/README.md` の `Core Collections` セクションへベンチスクリーンショット URL と `git` ハッシュを添付し、Phase 3 Go/No-Go 判定の資料として `3-0-phase3-self-host.md` に「永続コレクション測定済み」のチェックリストを追加するフォローアップを記録する。
+- `compiler/rust/runtime/ffi/src/core_collections_metrics.rs` と `compiler/rust/runtime/ffi/benches/core_collections_persistent.rs` を追加し、`List`/`PersistentMap` の構造共有率とメモリ推定値を生成する計測コードを整備する。入力データは `reports/spec-audit/ch0/links.md` に記録された DSL サンプルプロジェクトの構成を再現し、`List` 10^5 要素・`Map` 5×10^4 キーで GC 無しにピークメモリが入力サイズの 1.8 倍以内に収まることを確認する。
+- ベンチ結果（共有率、割当回数、`effect {mem}` バイト数）を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` Phase3→Phase4 ブリッジ表に追記し、`docs/plans/bootstrap-roadmap/assets/metrics/core_collections_persistent.csv` に数値を保存する。`cargo run --manifest-path compiler/rust/runtime/ffi/Cargo.toml --features core_prelude --example core_collections_metrics -- docs/plans/bootstrap-roadmap/assets/metrics/core_collections_persistent.csv` を実行すると CSV が再生成できる。
+- 成果のレビューでは `reports/spec-audit/README.md` の `Core Collections` セクションへベンチ出力ログと `git` ハッシュを添付し、Phase 3 Go/No-Go 判定の資料として `3-0-phase3-self-host.md` に「永続コレクション測定済み」のチェック項目を記録する。
+
+- **実施ログ（2027-03-24）**
+- `List`/`PersistentMap` それぞれの内部ノードを巡回して `Arc::strong_count` と `payload_bytes` を集計するメトリクス API（`List::sharing_stats_with`、`PersistentMap::sharing_stats_with`）を実装し、共有ノードは 50% コストとして計上する推定式を `compiler/rust/runtime/src/collections/persistent/list.rs:151` と `compiler/rust/runtime/src/collections/persistent/btree.rs:189` に追加した。
+- ベンチマークの本体は `compiler/rust/runtime/ffi/src/core_collections_metrics.rs:9` にまとめ、DSL 由来の文字列と Config エントリを生成して `collect_persistent_metrics()` が `ScenarioMetrics` を返す構成にした。`compiler/rust/runtime/ffi/benches/core_collections_persistent.rs:1` では `harness = false` のベンチを用意し、`examples/core_collections_metrics.rs:1` から CSV を書き出せるようにしている。
+- 最新の測定値は `docs/plans/bootstrap-roadmap/assets/metrics/core_collections_persistent.csv` に保存し、`ListPersistentPatch`（入力 25.1MB, peak ratio 1.7158）と `MapPersistentMerge`（入力 3.3MB, peak ratio 1.3903）で目標（1.8 倍以内）を満たした。これらの値は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と `reports/spec-audit/README.md` の Core Collections 節から辿れる。
 
 ### 3. 可変コレクションと内部可変性（39週目）
 **担当領域**: `Vec`/`Cell`/`Ref`/`Table`

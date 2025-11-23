@@ -24,6 +24,8 @@ pub mod collections;
 pub mod config;
 #[cfg(feature = "core_prelude")]
 pub mod core_prelude;
+#[cfg(feature = "core_prelude")]
+pub mod core_collections_metrics;
 mod env;
 mod ffi_contract;
 mod manifest_contract;

@@ -48,6 +48,11 @@ impl<T> ArenaPtr<T> {
     pub fn strong_count(&self) -> usize {
         Arc::strong_count(&self.inner)
     }
+
+    /// `Arc` の生ポインタ値を ID として返す（メトリクス用）。
+    pub fn ptr_id(&self) -> usize {
+        Arc::as_ptr(&self.inner) as usize
+    }
 }
 
 impl<T> Deref for ArenaPtr<T> {

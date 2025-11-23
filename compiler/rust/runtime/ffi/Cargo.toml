@@ -22,3 +22,7 @@ reml_adapter = { path = "../../adapter" }
 
 [dev-dependencies]
 tempfile = "3.9"
+
+[[bench]]
+name = "core_collections_persistent"
+harness = false
