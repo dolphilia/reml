@@ -19,8 +19,18 @@
    - 同ファイルは `tooling/ci/collect-iterator-audit-metrics.py --scenario map_set_persistent --require-audit` の差分チェック対象に含める。
 
 4. **検証用テスト**  
-   - `compiler/rust/runtime/tests/core_collections_audit_bridge.rs` を新設し、`PersistentMap::merge_with_change_set`/`PersistentSet::diff_change_set`/`Table` 操作で `AuditBridge` の `ChangeSet` が期待どおり JSON に変換されることを確認する。
-   - `scripts/poc_dualwrite_compare.sh --target map_diff` に `collections.audit_bridge` ファイル比較機能を組み込み、OCaml 実装との diff をレポートする。
+   - `compiler/rust/runtime/tests/core_collections_audit_bridge.rs` を新設し、`PersistentMap::merge_with_change_set`/`PersistentSet::diff_change_set`/`Table` 操作で `AuditBridge` の `ChangeSet` が期待どおり JSON に変換されることを確認する。  
+   - `scripts/poc_dualwrite_compare.sh --target map_diff` に `collections.audit_bridge` ファイル比較機能を組み込み、OCaml 実装との diff をレポートする。  
+
+5. **CapabilityRegistry 連携（5.3.1）**  
+   - `CollectOutcome` の `collector.effect.audit` を検出する箇所で `crate::registry::CapabilityRegistry::verify_capability_stage("core.collections.audit", StageRequirement::Exact(StageId::Stable), &["audit","mem"])` を呼び出し、Stage/Effect 要件を満たさない場合は `CollectError::CapabilityDenied` を返すユーティリティを `compiler/rust/runtime/src/prelude/collectors/mod.rs` に追加する。  
+   - `CollectOutcome::audit` を実装して `ChangeSet` を `crate::config::set_collections_change_set_env` 経由で `REML_COLLECTIONS_CHANGE_SET_PATH` に書き出し、`FormatterContext` が読み取れるように `CollectionsChangeSetEnv` を握る構造を整備する。  
+   - `scripts/validate-diagnostic-json.sh --pattern collector.effect.audit` と `tooling/ci/collect-iterator-audit-metrics.py --scenario audit_cap` で `collector.effect.audit=true` の存在を必須化し、`reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` の `collections` セクションを検証する。  
+
+6. **CollectError::CapabilityDenied のパス（5.3.2）**  
+   - `ListCollector`/`MapCollector`/`TableCollector` の `finish` で `CapabilityRegistry::require("core.collections.audit")` を呼び出し、チェック失敗時に `CollectErrorKind::CapabilityDenied` を返す扱いを `CollectError::with_detail` で拡張する。  
+   - `Diagnostic.extensions["collector.capability"]` と `collector.effect.audit` を `GuardDiagnostic` に書き込み、`scripts/poc_dualwrite_compare.sh --target audit_bridge` の `collector.capability` フィールドに入る JSON を確保する。  
+   - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` Phase3 Capability 行・`reports/iterator-collector-summary.md` `status` カラム・`reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` の `capability` ケースに `collector.capability`/`collector.effect.audit` の成功と `CollectError::CapabilityDenied` の検出結果を記録するルーチンを `tooling/ci/collect-iterator-audit-metrics.py --scenario audit_cap` へ組み込む。
 
 ## 参照
 - `docs/spec/3-6-core-diagnostics-audit.md` § `ChangeSet` / `SchemaDiff` 説明

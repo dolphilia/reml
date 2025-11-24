@@ -21,9 +21,14 @@ pub use vec::VecCollector;
 
 use super::{
     ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic},
-    iter::{EffectLabels, IterError, StageRequirement, StageRequirementDescriptor},
+    iter::{EffectLabels, IterError, StageRequirement as IteratorStageRequirement, StageRequirementDescriptor},
 };
-use crate::collections::audit_bridge::ChangeSet;
+use crate::{
+    collections::audit_bridge::ChangeSet,
+    registry::{CapabilityError, CapabilityRegistry},
+    StageId,
+    StageRequirement as RegistryStageRequirement,
+};
 use serde_json::{Map as JsonObject, Number, Value};
 
 /// `Collector::with_capacity` 用の EffectMarker。
@@ -37,6 +42,8 @@ const COLLECTOR_EXTENSION_KEY: &str = "prelude.collector";
 const COLLECTOR_AUDIT_PREFIX: &str = "collector.";
 const COLLECTOR_DIAGNOSTIC_CODE: &str = "core.prelude.collector_failed";
 const COLLECTOR_DIAGNOSTIC_DOMAIN: &str = "runtime";
+const CORE_COLLECTIONS_AUDIT_CAPABILITY: &str = "core.collections.audit";
+const CORE_COLLECTIONS_AUDIT_EFFECTS: [&str; 2] = ["audit", "mem"];
 
 /// Collector 実装が返す監査済みの結果。
 #[derive(Debug, Clone)]
@@ -85,12 +92,19 @@ impl<C> CollectOutcome<C> {
         self.audit.record_change_set(change_set);
         self
     }
+
+    pub fn ensure_audit_capability(self) -> Result<Self, CollectError> {
+        if self.audit.effects.audit {
+            ensure_core_collections_audit(&self.audit)?;
+        }
+        Ok(self)
+    }
 }
 
 /// Collector が保持するステージ情報。
 #[derive(Debug, Clone)]
 pub struct CollectorStageProfile {
-    requirement: StageRequirement,
+    requirement: IteratorStageRequirement,
     actual: &'static str,
     capability: Option<&'static str>,
     kind: CollectorKind,
@@ -122,7 +136,7 @@ impl CollectorStageProfile {
     }
 
     /// Stage 要件を取得する。
-    pub fn requirement(&self) -> StageRequirement {
+    pub fn requirement(&self) -> IteratorStageRequirement {
         self.requirement
     }
 
@@ -390,6 +404,27 @@ impl CollectorAuditTrail {
     }
 }
 
+fn ensure_core_collections_audit(audit: &CollectorAuditTrail) -> Result<(), CollectError> {
+    let required_effects: Vec<String> = CORE_COLLECTIONS_AUDIT_EFFECTS
+        .iter()
+        .map(|value| value.to_string())
+        .collect();
+    CapabilityRegistry::registry()
+        .verify_capability_stage(
+            CORE_COLLECTIONS_AUDIT_CAPABILITY,
+            RegistryStageRequirement::Exact(StageId::Stable),
+            &required_effects,
+        )
+        .map(|_| ())
+        .map_err(|err| {
+            CollectError::capability_denied(
+                CORE_COLLECTIONS_AUDIT_CAPABILITY,
+                audit.clone(),
+                err,
+            )
+        })
+}
+
 /// Collector 種別。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CollectorKind {
@@ -405,11 +440,11 @@ pub enum CollectorKind {
 
 impl CollectorKind {
     /// Stage 要件を取得する。
-    pub fn default_requirement(&self) -> StageRequirement {
+    pub fn default_requirement(&self) -> IteratorStageRequirement {
         match self {
-            CollectorKind::List | CollectorKind::Set => StageRequirement::Exact("stable"),
-            CollectorKind::Custom(_) => StageRequirement::AtLeast("beta"),
-            _ => StageRequirement::AtLeast("beta"),
+            CollectorKind::List | CollectorKind::Set => IteratorStageRequirement::Exact("stable"),
+            CollectorKind::Custom(_) => IteratorStageRequirement::AtLeast("beta"),
+            _ => IteratorStageRequirement::AtLeast("beta"),
         }
     }
 
@@ -522,6 +557,7 @@ pub enum CollectErrorKind {
     InvalidEncoding,
     IteratorFailure,
     UnstableOrder,
+    CapabilityDenied,
     Custom(&'static str),
 }
 
@@ -535,6 +571,7 @@ impl CollectErrorKind {
             CollectErrorKind::InvalidEncoding => "invalid_encoding",
             CollectErrorKind::IteratorFailure => "iterator_failure",
             CollectErrorKind::UnstableOrder => "unstable_order",
+            CollectErrorKind::CapabilityDenied => "capability_denied",
             CollectErrorKind::Custom(label) => label,
         }
     }
@@ -548,6 +585,7 @@ pub struct CollectError {
     detail: Option<String>,
     audit: CollectorAuditTrail,
     error_key: Option<String>,
+    capability: Option<String>,
 }
 
 impl CollectError {
@@ -563,6 +601,7 @@ impl CollectError {
             detail: None,
             audit,
             error_key: None,
+            capability: None,
         }
     }
 
@@ -576,6 +615,27 @@ impl CollectError {
     pub fn with_error_key(mut self, key: impl Into<String>) -> Self {
         self.error_key = Some(key.into());
         self
+    }
+
+    pub fn with_capability(mut self, capability: impl Into<String>) -> Self {
+        self.capability = Some(capability.into());
+        self
+    }
+
+    pub fn capability_denied(
+        capability: impl Into<String>,
+        audit: CollectorAuditTrail,
+        source: CapabilityError,
+    ) -> Self {
+        let capability = capability.into();
+        CollectError {
+            kind: CollectErrorKind::CapabilityDenied,
+            message: format!("Capability '{capability}' denied: {source}"),
+            detail: Some(source.to_string()),
+            audit,
+            error_key: None,
+            capability: Some(capability),
+        }
     }
 
     /// エラー種別を取得する。
@@ -597,11 +657,15 @@ impl IntoDiagnostic for CollectError {
             detail,
             audit,
             error_key,
+            capability,
         } = self;
 
         let mut extensions = audit.extension_payload();
         if let Some(key) = error_key.as_ref() {
             extensions.insert("error_key".into(), Value::String(key.clone()));
+        }
+        if let Some(cap) = capability.as_ref() {
+            extensions.insert("collector.capability".into(), Value::String(cap.clone()));
         }
         extensions.insert("error_kind".into(), Value::String(kind.as_str().into()));
         extensions.insert("message".into(), Value::String(message.clone()));
@@ -614,6 +678,12 @@ impl IntoDiagnostic for CollectError {
             metadata.insert(
                 format!("{COLLECTOR_AUDIT_PREFIX}error.key"),
                 Value::String(key),
+            );
+        }
+        if let Some(cap) = capability {
+            metadata.insert(
+                format!("{COLLECTOR_AUDIT_PREFIX}capability"),
+                Value::String(cap),
             );
         }
 
