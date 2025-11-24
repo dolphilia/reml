@@ -107,6 +107,16 @@ impl<K: Ord, V> PersistentMap<K, V> {
         map
     }
 
+    /// キー一覧を取得する。
+    pub fn keys(&self) -> Vec<K>
+    where
+        K: Clone,
+    {
+        let mut keys = Vec::with_capacity(self.len());
+        self.for_each_entry(|key, _| keys.push(key.clone()));
+        keys
+    }
+
     /// 内部ノードを昇順で走査するユーティリティ。
     fn for_each_entry<'a, F>(&'a self, mut visit: F)
     where
@@ -343,6 +353,24 @@ impl<T: Ord> PersistentSet<T> {
             }
         });
         result
+    }
+
+    /// 集合を predicate で 2 つに分割する。
+    pub fn partition<F>(&self, mut pred: F) -> (Self, Self)
+    where
+        T: Ord + Clone,
+        F: FnMut(&T) -> bool,
+    {
+        let mut left = Self::new();
+        let mut right = Self::new();
+        self.map.for_each_entry(|key, _| {
+            if pred(key) {
+                left = left.insert(key.clone());
+            } else {
+                right = right.insert(key.clone());
+            }
+        });
+        (left, right)
     }
 
     /// 差分を `ChangeSet` として取得する。

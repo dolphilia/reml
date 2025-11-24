@@ -141,6 +141,14 @@ impl<T> List<T> {
         self.iter().collect()
     }
 
+    /// 仕様名 `List.as_vec` に対応するエイリアス。
+    pub fn as_vec(&self) -> Vec<T>
+    where
+        T: Clone,
+    {
+        self.to_vec()
+    }
+
     /// 所有権を `Vec` へ移す。値のクローンを回避できない場合はコピーされる。
     pub fn into_vec(self) -> Vec<T>
     where
