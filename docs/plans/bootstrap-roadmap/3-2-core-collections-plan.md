@@ -332,6 +332,12 @@
 3. `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` に `map_diff`/`set_partition`/`table_merge` などの `collections` ケースを追加・スナップショット化し、`reports/iterator-collector-summary.md` の `audit_bridge` セクションと `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表に `collections.audit_bridge_pass_rate`/`collector.effect.audit_presence` の最新値を写す。
 4. `compiler/rust/runtime/tests/core_collections_audit_bridge.rs`（新設）で `PersistentMap::merge_with_change_set`/`Set`/`Table` の差分 JSON を検証し、`collect-iterator-audit-metrics.py --scenario map_set_persistent --require-audit` が `collector.effect.audit` を 0 でなく 1 にセットすることを確認するテストを追加する。`scripts/poc_dualwrite_compare.sh --target map_diff` にも `collections.audit_bridge` 出力比較ルートを組み込み、OCaml 実装との差分を監査結果として報告する。
 
+   ##### 現状ログとフォローアップ
+
+   - `ConfigMergeOutcome` の JSON 出力を `write_change_set_to_temp_dir` で一時ファイル化し、CLI 実行前に `REML_COLLECTIONS_CHANGE_SET_PATH` を注入するランタイム経路の設計を `docs/notes/collections-audit-bridge-todo.md` に記録した。`collect-iterator-audit-metrics.py` の `map_set_persistent` シナリオが期待する `collections.diff.total/items` を満たすテンプレートも同ノートで追跡しており、次のコード実装ではこのテンプレートを具現化する予定である。
+   - `FormatterContext::change_set` から読み出した `collections.diff` ペイロードを `AuditEnvelope.metadata` と `Diagnostic.extensions["collections.diff.*"]` に複写し、`scripts/validate-diagnostic-json.sh --pattern collections.diff` / `tooling/ci/collect-iterator-audit-metrics.py --scenario map_set_persistent` が同一JSONを検証できるように構成変更するルートもノートでフォローアップしている。
+   - `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` の `collections.diff` ケースを段階的に追加し、`reports/iterator-collector-summary.md` の `audit_bridge` セクションや `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表に `collections.audit_bridge_pass_rate`/`collector.effect.audit_presence` を写す作業を「KPI同期」タスクとして位置づけた。
+
 #### 5.2 Config/Data 差分 API との互換アダプタ
 - `SchemaDiff`/`Change` に対応する構造体を `compiler/rust/runtime/src/config/collection_diff.rs` に定義し、`Map`/`Table`/`List` の差分を `Config.Data` で消費できる形式に直列化する。`docs/spec/3-7-core-config-data.md` の `schema_diff_to_change_set` サブセクションを参考に、キー順保証・type tag・`EffectLabels` の `mem_bytes` を維持した上で `Change` エントリを生成する。
 - `Core.Collections` 側では `Core.Collections.Map.diff`/`Table.to_map` などの公開 API から新規アダプタ（例: `collections::config::MapDiffAdapter`）を提供し、`ChangeConfig::apply` に `AuditEnvelope.change_set` を直接流せるようにする。`docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md` に追記し、Config チームとのダブルチェックを記録する。

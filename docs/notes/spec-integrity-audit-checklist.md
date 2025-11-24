@@ -21,6 +21,7 @@
 
 ## Core.Collections 監査 TODO（W39 追加）
 - [ ] `Collections.audit_bridge` の JSON 生成結果を `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` に 3 ケース（`map_diff`, `set_partition`, `table_merge`）で残し、`tooling/ci/collect-iterator-audit-metrics.py --section collectors --scenario map_set_persistent --require-audit` を通過することを確認する。監査メタデータ (`AuditEnvelope.change_set.collections.diff.*`) に `collector.effect.audit` / `collector.effect.mem_bytes` が揃っているかチェックリストへ追記する。【参照: docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md §2.2】
+- [ ] `docs/notes/collections-audit-bridge-todo.md` に 5.1.2 手順の追跡ログと KPI 同期予定を追加し、`ConfigMergeOutcome` → `REML_COLLECTIONS_CHANGE_SET_PATH` → `FormatterContext::change_set` の全パスがドキュメント化されていることを確認する。現状の TODO は `Core.Collections 棟` の audit_bridge 項でフォローする。
 
 ### `rust-gap` トラッキング表（2025-11-17 更新）
 | 差分 ID | 章/カテゴリ | 症状 | Rust 監査手順 | 備考 |
