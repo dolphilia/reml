@@ -80,6 +80,8 @@ fn partition<T: Ord>(set: Set<T>, pred: (T) -> Bool) -> (Set<T>, Set<T>)
 
 `Map.from_pairs` は DSL の標準環境やテーブル初期値を記述するためのユーティリティで、`List` など永続構造からの変換時に重複キーを `CollectError::DuplicateKey` として検出する。初期化コードでの `Map.insert` 連鎖を排除し、Lisp サンプルの `default_env` のような定数マップを構造的に宣言できる。【F:../examples/language-impl-comparison/reml/mini_lisp_combinator.reml†L118-L138】
 
+> **NOTE**: `examples/core-collections/usage.reml` は永続リスト → `Map.from_pairs` → `Vec.collect_from` → `Table.to_map` → `Cell`/`Ref` のパイプラインを手本として示し、`CollectError::DuplicateKey`・`effect {mem}`・`effect {mut}`・`effect {cell}`・`effect {rc}` の発火点と手動実行手順 (`cargo run --bin reml -- examples/core-collections/usage.reml`) を補足するドキュメント上の証跡です。【F:../examples/core-collections/usage.reml†L1-L52】
+
 ### 2.4 順序保証とイミュータブル更新契約
 
 - `List`/`Map`/`Set` はいずれも永続データ構造であり、`insert`/`update` などの操作は既存構造を破壊せず新しいバージョンを返す。内部では構造共有を利用して `O(1)`（`List.push_front`）〜`O(log n)`（`Map.insert`/`Set.insert`）以内に抑え、Chapter 0-1 が定義する性能基準を満たす。【F:0-1-project-purpose.md†L11-L37】

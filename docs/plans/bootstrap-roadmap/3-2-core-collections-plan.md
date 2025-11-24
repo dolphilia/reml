@@ -387,8 +387,15 @@
 **担当領域**: 情報更新
 
 6.1. 仕様書内サンプルの動作確認と更新、必要に応じて `NOTE` や脚注で制約事項を明記する。
+- `docs/spec/3-2-core-collections.md` §2.3 の `Map.from_pairs` には `examples/core-collections/usage.reml` を参照する NOTE を追加し、`List` → `Vec.collect_from` → `Table.to_map` と進むパスで `CollectError::DuplicateKey`/`effect {mem}`/`effect {mut}`/`effect {cell}`/`effect {rc}` の発火点をコメントで解説した。
 6.2. `README.md`/`3-0-phase3-self-host.md` に Core.Collections 実装状況と API ハイライトを追記する。
+- `README.md` に Core.Collections の進捗ブロックと新サンプルへのリンクを追加し、Phase3 概要 (`3-0-phase3-self-host.md`) では §3.0.5 に Doc + サンプル更新の項目を挿入して正規 API ハイライトを強調した。
 6.3. `examples/` ディレクトリに永続コレクション利用例を追加し、CI で自動実行するテストを用意する。
+- `examples/core-collections` を新設し、`usage.reml` で `List.push_front`/`Vec.collect_from`/`Table.insert`/`Cell`/`Ref` を順に使うパイプラインを示すサンプルと README を用意。CI は `collect-iterator-audit-metrics.py --scenario core_collections_example`（将来的な機能）を想定しつつ、現時点では `cargo run --bin reml` での手動実行手順を記述。
+
+- `docs/spec/3-2-core-collections.md` §2.3 に `examples/core-collections/usage.reml†L1-L52` への NOTE を追加し、ドキュメント内サンプルとして `CollectError` の取り回し・効果タグを明示。
+- `README.md`/`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` を更新し、Core.Collections 実装状況と API ハイライト（`List.push_front`/`Map.from_pairs`/`Vec.collect_from`/`Table.insert`/`Cell`/`Ref`）を Phase 3 の導線で紹介。
+- `examples/core-collections/README.md` および `usage.reml` を追加し、永続リスト → Map → Vec → Table → Cell/Ref を一貫して動かすサンプルを提供。README では将来の CI 連携と実行コマンドを明記し、`docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` §6.3 に対応する証跡を残した。
 
 ### 7. テスト・ベンチマーク統合（41週目）
 **担当領域**: 品質保証
