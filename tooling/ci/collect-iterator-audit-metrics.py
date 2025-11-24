@@ -3464,6 +3464,41 @@ def _change_set_contains_collections(change_set: Dict[str, Any]) -> bool:
     return False
 
 
+def _validate_collections_diff_extensions(
+    extensions: Optional[Dict[str, Any]],
+    change_dict: Dict[str, Any],
+) -> List[str]:
+    if extensions is None:
+        return ["extensions.collections.diff (missing)"]
+
+    collections = _as_dict(change_dict.get("collections"))
+    if not collections:
+        return []
+
+    reasons: List[str] = []
+
+    def _expect(key: str, expected: Optional[object]) -> None:
+        if expected is None:
+            return
+        exists, value = _lookup_in_container(extensions, key)
+        if not exists:
+            reasons.append(key)
+        elif value != expected:
+            reasons.append(f"{key}.mismatch")
+
+    _expect("collections.diff.kind", collections.get("kind"))
+    _expect("collections.diff.total", change_dict.get("total"))
+    summary = _as_dict(collections.get("summary"))
+    if summary:
+        _expect("collections.diff.summary.total", summary.get("total"))
+    metadata = _as_dict(collections.get("metadata"))
+    if metadata:
+        _expect(
+            "collections.diff.metadata.stage", metadata.get("stage")
+        )
+    return reasons
+
+
 def collect_collections_audit_bridge_metrics(
     paths: Sequence[Path], *, kinds: Optional[Set[str]] = None
 ) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
@@ -3537,6 +3572,11 @@ def collect_collections_audit_bridge_metrics(
                 items = change_dict.get("items")
                 if not isinstance(items, list):
                     bridge_reasons.append("change_set.items")
+
+                if has_collections:
+                    bridge_reasons.extend(
+                        _validate_collections_diff_extensions(extensions, change_dict)
+                    )
 
             if bridge_reasons:
                 bridge_failures.append(

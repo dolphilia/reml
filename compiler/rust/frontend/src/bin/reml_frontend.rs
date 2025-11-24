@@ -1458,6 +1458,10 @@ fn build_parser_diagnostics(
                 stage_payload.primary_capability(),
             );
             let payload_metadata = metadata.clone();
+            formatter::propagate_collections_diff_extensions(
+                &mut extensions,
+                audit_envelope.change_set.as_ref(),
+            );
             let mut audit_object = serde_json::Map::new();
             audit_object.insert(
                 "metadata".to_string(),
@@ -1576,6 +1580,10 @@ fn build_type_diagnostics(
                 stage_payload.primary_capability(),
             );
             let payload_metadata = metadata.clone();
+            formatter::propagate_collections_diff_extensions(
+                &mut extensions,
+                audit_envelope.change_set.as_ref(),
+            );
             let mut audit_object = serde_json::Map::new();
             audit_object.insert(
                 "metadata".to_string(),

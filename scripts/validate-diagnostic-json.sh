@@ -464,6 +464,39 @@ def validate_core_parser_fields(diag: dict) -> List[str]:
 
     return errors
 
+def validate_collections_diff_extensions(diag: dict) -> List[str]:
+    errors: List[str] = []
+    audit_block = diag.get("audit")
+    if not isinstance(audit_block, dict):
+        return errors
+    change_set = audit_block.get("change_set")
+    if not isinstance(change_set, dict):
+        return errors
+    collections = change_set.get("collections")
+    if not isinstance(collections, dict):
+        return errors
+    extensions = diag.get("extensions")
+    if not isinstance(extensions, dict):
+        errors.append("collections.diff")
+        return errors
+
+    def expect(key: str, expected: Optional[object]) -> None:
+        if expected is None:
+            return
+        actual = extensions.get(key)
+        if actual != expected:
+            errors.append(f"{key}.mismatch")
+
+    expect("collections.diff.kind", collections.get("kind"))
+    expect("collections.diff.total", change_set.get("total"))
+    summary = collections.get("summary")
+    if isinstance(summary, dict):
+        expect("collections.diff.summary.total", summary.get("total"))
+    metadata = collections.get("metadata")
+    if isinstance(metadata, dict):
+        expect("collections.diff.metadata.stage", metadata.get("stage"))
+    return errors
+
 for path_str in files:
     path = pathlib.Path(path_str)
     if not path.exists():
@@ -588,6 +621,15 @@ for path_str in files:
                                 file=sys.stderr,
                             )
                             error = True
+                    coll_ext_errors = validate_collections_diff_extensions(diag)
+                    if coll_ext_errors:
+                        for field in coll_ext_errors:
+                            print(
+                                "[validate-diagnostic-json] collections diff extension missing or mismatched: "
+                                f"{path}: diagnostics[{diag_index}].extensions.{field}",
+                                file=sys.stderr,
+                            )
+                        error = True
         stream_meta = entry.get("stream_meta")
         if stream_meta is not None:
             if not isinstance(stream_meta, dict):

@@ -86,6 +86,7 @@ pub fn complete_audit_metadata(
     );
     let change_set = context.change_set();
     metadata.insert("cli.change_set".to_string(), change_set.clone());
+    propagate_collections_diff_metadata(metadata, &change_set);
     let audit_id = ensure_audit_id(metadata, &normalized_timestamp, "auto");
     AuditEnvelope::from_parts(
         metadata.clone(),
@@ -254,6 +255,39 @@ fn parse_change_set_json(body: &str) -> Option<Value> {
         return None;
     }
     serde_json::from_str(body).ok()
+}
+
+fn propagate_collections_diff_metadata(metadata: &mut Map<String, Value>, change_set: &Value) {
+    populate_collections_diff(metadata, change_set);
+}
+
+pub(crate) fn propagate_collections_diff_extensions(
+    extensions: &mut Map<String, Value>,
+    change_set: Option<&Value>,
+) {
+    if let Some(change_set) = change_set {
+        populate_collections_diff(extensions, change_set);
+    }
+}
+
+fn populate_collections_diff(target: &mut Map<String, Value>, change_set: &Value) {
+    let collections = match change_set.get("collections") {
+        Some(Value::Object(obj)) => obj,
+        _ => return,
+    };
+    append_fields(target, "collections.diff", collections);
+    if let Some(Value::Object(summary)) = collections.get("summary") {
+        append_fields(target, "collections.diff.summary", summary);
+    }
+    if let Some(Value::Object(metadata)) = collections.get("metadata") {
+        append_fields(target, "collections.diff.metadata", metadata);
+    }
+}
+
+fn append_fields(target: &mut Map<String, Value>, prefix: &str, source: &Map<String, Value>) {
+    for (key, value) in source {
+        target.insert(format!("{prefix}.{key}"), value.clone());
+    }
 }
 
 fn unix_seconds_to_components(seconds: i64) -> (i32, u32, u32, u32, u32, u32) {
