@@ -300,6 +300,16 @@
 2. 各 `Collector` の `try_collect` UI を `compiler/rust/runtime/src/prelude/collectors` 側で拡張してエラーの `effect` ラベルと `GrowthBudget` を `CollectOutcome` へ書き出す。`CollectOutcome::audit` を `Core.Diagnostics` へ橋渡す `AuditChangeBridge` の雛形を `docs/plans/bootstrap-roadmap/5-core-diagnostics-config-plan.md` にメモしておき、メタデータの一貫性を保つ。
 3. `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` へ `try_collect` の成功/失敗ケースを追加し、`scripts/validate-diagnostic-json.sh --section iter` で `iter.try_collect.diagnostic` をチェック。`docs/notes/core-library-outline.md` に `Collector` 失敗ケースのリストを TODO 頭で残し、追跡用の検証手順を示す。
 
+##### 実施ログ（2027-06-10 Update）
+- `compiler/rust/runtime/src/prelude/iter/try_collect.rs` を草案として作成し、`CollectorBridge` に `CollectOutcome` の `EffectLabels` を `EffectSet` にマージするパスと `AuditEnvelope.metadata["collector.effect.*"]` の付与処理を記述した。`CollectError` から `Diagnostic` への変換は `docs/spec/3-6-core-diagnostics-audit.md` の `DiagnosticKind` 定義を参照してテーブル化し、必要な拡張ポイントを TODO として注記した。【F:../../compiler/rust/runtime/src/prelude/iter/try_collect.rs†L1-L120】【F:../../docs/spec/3-6-core-diagnostics-audit.md†L42-L120】
+- `MapCollector`/`VecCollector`/`TableCollector` の `CollectOutcome` 側で `growth_budget.mut_bytes` や `collector.effect.audit` を設定し、`reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` の `try_collect_collectors` シナリオで `collector.effect.mut`/`collector.effect.mem` を期待値に追加。`scripts/validate-diagnostic-json.sh --section iter` では `iter.try_collect.diagnostic` のキーを必須にし、失敗ケースを即座に検出できるようにした。【F:../../reports/spec-audit/ch1/core_iter_collectors.audit.jsonl†L1-L120】【F:../../scripts/validate-diagnostic-json.sh†L1-L160】
+- `docs/notes/core-library-outline.md` に `Iter.try_collect` の失敗パターン一覧を TODO として残し、OCaml 実装との dual-write 比較手順（`scripts/poc_dualwrite_compare.sh --target iter_try_collect`）と、`reports/iterator-collector-summary.md` の `Iter.collectors` 表に記録する `status` カラム更新ルールをメモした。【F:../../docs/notes/core-library-outline.md†L1-L120】【F:../../reports/iterator-collector-summary.md†L15-L34】
+
+##### 実施タスクリスト
+1. `Collector` 側で `push`/`reserve`/`finish` 項目に `collector.effect.*` フラグと `growth_budget` 情報を書き込む。`compiler/rust/runtime/src/prelude/collectors/{list,vec,map,set,table}.rs` を更新し、`CollectOutcome::audit` に必要なメタデータを詰め込む。【F:../../compiler/rust/runtime/src/prelude/collectors/list.rs†L1-L160】【F:../../compiler/rust/runtime/src/prelude/collectors/vec.rs†L1-L120】
+2. `CollectorBridge` を `Iter.try_collect` へ接続し、`CollectError` を `Diagnostic::collector_*` に写像するマッピング表を `docs/spec/3-6-core-diagnostics-audit.md` へ付記。`CollectOutcome` から `AuditEnvelope` へ `collector.effect.audit` を伝搬し、`Diagnostic.extensions["collector.error.kind"]` に値を保持する変換パイプラインを整備する。【F:../../docs/spec/3-6-core-diagnostics-audit.md†L42-L120】
+3. `scripts/validate-diagnostic-json.sh --section iter` と `tooling/ci/collect-iterator-audit-metrics.py --section collectors` に `iter.try_collect` の成功/失敗ケースを追加し、`reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` で `collector.effect.*` を検証。CI 失敗時は `reports/iterator-collector-summary.md` の `status` カラムを更新するルールも同時に定義する。【F:../../tooling/ci/collect-iterator-audit-metrics.py†L1-L260】【F:../../reports/spec-audit/ch1/core_iter_collectors.audit.jsonl†L1-L120】
+
 ### 5. Diagnostics / Config / Audit 連携（40週目）
 **担当領域**: 他章との統合
 

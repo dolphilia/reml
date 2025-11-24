@@ -18,8 +18,8 @@ use std::{
 };
 
 use super::collectors::{
-    CollectError, CollectOutcome, Collector, List, ListCollector, Map, MapCollector, Set,
-    SetCollector, Table, TableCollector, VecCollector,
+    CollectError, CollectOutcome, Collector, CollectorAuditTrail, List, ListCollector, Map,
+    MapCollector, Set, SetCollector, Table, TableCollector, VecCollector,
 };
 use crate::collections::mutable::CoreVec;
 use serde::Serialize;
@@ -27,6 +27,9 @@ use serde::Serialize;
 mod generators;
 pub use generators::*;
 mod adapters;
+mod try_collect;
+
+use try_collect::CollectorBridge;
 
 /// 遅延列 `Iter<T>` の共有ハンドル。
 #[derive(Debug)]
@@ -361,24 +364,46 @@ where
     }
 }
 
+impl<T> Iter<T> {
+    /// `CollectorAuditTrail` 由来の効果ラベルを `EffectSet` へ反映する。
+    fn merge_collector_audit(&self, audit: &CollectorAuditTrail) {
+        let mut guard = self
+            .core
+            .state
+            .lock()
+            .expect("IterState poisoned while merging collector audit");
+        guard.effects.merge_labels(audit.effects);
+    }
+}
+
 impl<T, E> Iter<Result<T, E>> {
     /// `Result` を要素に含む `Iter` を Collector へ短絡収集する。
     pub fn try_collect<C, Output>(
         self,
-        mut collector: C,
+        collector: C,
     ) -> Result<Output, TryCollectError<E, C::Error>>
     where
         C: Collector<T, Output>,
     {
         let iter = self;
+        let mut bridge = CollectorBridge::new(&iter, collector);
         loop {
             match iter.next_step() {
                 IterStep::Ready(result) => match result {
-                    Ok(value) => collector.push(value).map_err(TryCollectError::Collector)?,
+                    Ok(value) => {
+                        if let Err(err) = bridge.push(value) {
+                            bridge.record_error(&err);
+                            return Err(TryCollectError::Collector(err));
+                        }
+                    }
                     Err(err) => return Err(TryCollectError::Item(err)),
                 },
                 IterStep::Pending => continue,
-                IterStep::Finished => return Ok(collector.finish()),
+                IterStep::Finished => {
+                    let (value, audit) = bridge.finalize();
+                    iter.merge_collector_audit(&audit);
+                    return Ok(value);
+                }
                 IterStep::Error(err) => return Err(TryCollectError::Iter(err)),
             }
         }
@@ -777,6 +802,16 @@ impl EffectSet {
         self.mem_bytes = self.mem_bytes.saturating_add(bytes);
     }
 
+    /// 複数回の述語呼び出しをまとめて追加する。
+    pub fn record_predicate_calls(&mut self, calls: usize) {
+        self.predicate_calls = self.predicate_calls.saturating_add(calls);
+    }
+
+    /// 複数の参照カウント操作を記録する。
+    pub fn record_rc_ops(&mut self, ops: usize) {
+        self.rc_ops = self.rc_ops.saturating_add(ops);
+    }
+
     pub fn with_mut(self) -> Self {
         Self {
             bits: self.bits | Self::MUT_BIT,
@@ -838,6 +873,35 @@ impl EffectSet {
             predicate_calls: self.predicate_calls.saturating_add(other.predicate_calls),
             rc_ops: self.rc_ops.saturating_add(other.rc_ops),
         }
+    }
+
+    /// `EffectLabels` を `EffectSet` に反映する。
+    pub fn merge_labels(&mut self, labels: EffectLabels) {
+        if labels.mem {
+            self.mark_mem();
+        }
+        if labels.mutating {
+            self.mark_mut();
+        }
+        if labels.debug {
+            self.mark_debug();
+        }
+        if labels.async_pending {
+            self.mark_pending();
+        }
+        if labels.audit {
+            self.mark_audit();
+        }
+        if labels.cell {
+            self.mark_cell();
+        }
+        if labels.rc || labels.rc_ops > 0 {
+            self.bits |= Self::RC_BIT;
+        }
+
+        self.record_mem_bytes(labels.mem_bytes);
+        self.record_predicate_calls(labels.predicate_calls);
+        self.record_rc_ops(labels.rc_ops);
     }
 
     pub fn contains_mut(self) -> bool {
