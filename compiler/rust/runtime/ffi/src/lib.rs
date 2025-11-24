@@ -28,6 +28,8 @@ pub mod core_collections_metrics;
 pub mod core_prelude;
 mod env;
 mod ffi_contract;
+#[cfg(feature = "core_prelude")]
+mod handles;
 mod manifest_contract;
 mod registry;
 mod security;
@@ -44,6 +46,8 @@ pub use env::{
     get_env, remove_env, set_env, EnvAdapterError, EnvContext as RuntimeEnvContext, EnvError,
     PlatformSnapshot,
 };
+#[cfg(feature = "core_prelude")]
+pub use handles::{register_ref_capability, RefHandle};
 pub use manifest_contract::{ConductorCapabilityContract, ConductorCapabilityRequirement};
 pub use registry::{
     BridgeIntent, BridgeStageTraceStep, CapabilityError, CapabilityRegistry, RuntimeBridgeRegistry,

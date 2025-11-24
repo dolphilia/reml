@@ -44,6 +44,10 @@
 - `CapabilityRegistry::verify_capability_stage` は型付きバリアント (`Gc`/`Io`/`Async` など) を返す設計になったため、FFI 境界では `match handle { CapabilityHandle::Gc(cap) => ... }` あるいは `handle.as_gc()` のようなヘルパを使って目的の API にアクセスしてください。型ごとに `descriptor()` で `stage`/`effect_scope` も利用でき、`docs/spec/3-8-core-runtime-capability.md` の契約と整合する監査ログを出しやすくなります。
 - `SecurityCapability` には `SecurityPolicy` を適用する `enforce` メソッドがあり、`AuditEnvelope` に `stage_requirement`/`effect_scope` 情報を追加したい場合は `SecurityCapability` を経由して `audit.log` へ送ってください。具体的な `CapabilityHandle` の分解例とライフサイクルは `docs/guides/reml-ffi-handbook.md#11-3-capability-handle` を参照し、DSL や Bridge 側での型安全な分岐を検証してください。
 
+### 1.4 `Ref` ハンドルと CapabilityRegistry の橋渡し
+- `Ref` システムは `core.collections.ref` capability（Stage=Stable、effect_scope=`["mut","rc","mem"]`）として `CapabilityRegistry` に登録され、FFI 経路ではこのエントリを取得できないと `effects.contract.stage_mismatch` が発火します。`RefHandle` は `compiler/rust/runtime/ffi` が `register_ref_capability()` を動かすことでこの登録を自動化し、`Ref` の Clone/Drop で `EffectSet::mark_rc()`/`release_rc()` を呼び出すことによって `collector.effect.rc` 情報と `effect {rc}` タグが `AuditEnvelope` に添付されます（`docs/spec/3-9-core-async-ffi-unsafe.md` §4 の参照制約にも整合）。
+- FFI から `RefHandle` を渡すときは `core.collections.ref` capability を明示的に要求し、`register_ref_capability()` で Stage/Effect の検証とメタデータ生成を済ませた状態にしておくと `RuntimeBridge` の `collector.effect.rc`/`collector.effect.mut` ログと `poc_dualwrite_compare.sh --section ref_count` の監査出力が一致します（計画の詳細は `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` の 3.2 セクションおよび `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` のステージ連携節を参照）。
+
 ## 2. ホットリロード
 
 ```reml

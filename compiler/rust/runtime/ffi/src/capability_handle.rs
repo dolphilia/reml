@@ -145,6 +145,26 @@ impl SecurityCapability {
     }
 }
 
+/// 可変参照用の capability。
+#[derive(Debug, Clone)]
+pub struct RefCapability {
+    descriptor: CapabilityDescriptor,
+}
+
+impl RefCapability {
+    pub fn new(descriptor: CapabilityDescriptor) -> Self {
+        Self { descriptor }
+    }
+
+    pub fn descriptor(&self) -> &CapabilityDescriptor {
+        &self.descriptor
+    }
+
+    pub fn descriptor_mut(&mut self) -> &mut CapabilityDescriptor {
+        &mut self.descriptor
+    }
+}
+
 /// 型付き CapabilityHandle。
 #[derive(Debug, Clone)]
 pub enum CapabilityHandle {
@@ -155,6 +175,7 @@ pub enum CapabilityHandle {
     Metrics(MetricsCapability),
     Plugin(PluginCapability),
     Security(SecurityCapability),
+    Ref(RefCapability),
 }
 
 impl CapabilityHandle {
@@ -183,6 +204,10 @@ impl CapabilityHandle {
         CapabilityHandle::Plugin(PluginCapability::new(descriptor))
     }
 
+    pub fn reference(descriptor: CapabilityDescriptor) -> Self {
+        CapabilityHandle::Ref(RefCapability::new(descriptor))
+    }
+
     pub fn security(descriptor: CapabilityDescriptor) -> Self {
         CapabilityHandle::Security(SecurityCapability::new(descriptor))
     }
@@ -197,6 +222,7 @@ impl CapabilityHandle {
             CapabilityHandle::Metrics(cap) => cap.descriptor(),
             CapabilityHandle::Plugin(cap) => cap.descriptor(),
             CapabilityHandle::Security(cap) => cap.descriptor(),
+            CapabilityHandle::Ref(cap) => cap.descriptor(),
         }
     }
 
@@ -210,6 +236,7 @@ impl CapabilityHandle {
             CapabilityHandle::Metrics(cap) => cap.descriptor_mut(),
             CapabilityHandle::Plugin(cap) => cap.descriptor_mut(),
             CapabilityHandle::Security(cap) => cap.descriptor_mut(),
+            CapabilityHandle::Ref(cap) => cap.descriptor_mut(),
         }
     }
 
@@ -241,6 +268,14 @@ impl CapabilityHandle {
     pub fn as_async(&self) -> Option<&AsyncRuntimeCapability> {
         match self {
             CapabilityHandle::Async(cap) => Some(cap),
+            _ => None,
+        }
+    }
+
+    /// RefCapability かどうかチェック。
+    pub fn as_reference(&self) -> Option<&RefCapability> {
+        match self {
+            CapabilityHandle::Ref(cap) => Some(cap),
             _ => None,
         }
     }

@@ -47,6 +47,7 @@
 5.1. `Core.Runtime` API から Capability チェックを呼び出し、IO/Time/Async 操作前に検証が行われることを確認する。
 5.2. Diagnostics (3-6) の Stage 診断と連携し、Capability 情報が診断出力に含まれることをテストする。
 5.3. Config Manifest (3-7) との連携を確認し、マニフェストに記載された Capability 要件が契約検証へ渡ることを確かめる。
+5.4. `core.collections.ref` capability を `CapabilityRegistry` に登録し、`RefHandle` を介した `collector.effect.rc`/`collector.effect.mut` の監査を `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` の 3.2.3 セクションと `docs/guides/runtime-bridges.md` の橋渡し解説に記録することで、Core.Collections と RuntimeBridge の契約整合性を担保する。
 
 ### 6. ドキュメント・サンプル更新（58-59週目）
 **担当領域**: 情報整備

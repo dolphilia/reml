@@ -2,13 +2,13 @@ use std::cell::{Cell as EffectCell, UnsafeCell};
 use std::fmt;
 
 #[cfg(feature = "core_prelude")]
+use crate::core_prelude::collectors::CollectorEffectMarkers;
+#[cfg(feature = "core_prelude")]
 use crate::core_prelude::iter::{EffectLabels, EffectSet};
 #[cfg(not(feature = "core_prelude"))]
-use crate::prelude::iter::{EffectLabels, EffectSet};
-#[cfg(feature = "core_prelude")]
-use crate::core_prelude::collectors::CollectorEffectMarkers;
-#[cfg(not(feature = "core_prelude"))]
 use crate::prelude::collectors::CollectorEffectMarkers;
+#[cfg(not(feature = "core_prelude"))]
+use crate::prelude::iter::{EffectLabels, EffectSet};
 
 /// 内部可変性を提供する軽量コンテナ。
 pub struct Cell<T: Copy> {
