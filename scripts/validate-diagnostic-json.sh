@@ -27,12 +27,14 @@ Usage: scripts/validate-diagnostic-json.sh [PATH...]
 --suite collectors を指定した場合は以下を検証します:
   - reports/spec-audit/ch1/core_iter_collectors.json
   - reports/spec-audit/ch1/core_iter_collectors.audit.jsonl
+--section config を指定した場合は `schema_diff.*` キーの存在をチェックします。
 
 PATH には JSON ファイルまたはディレクトリを指定できます。
 EOF
 }
 
 SUITE=""
+SECTION=""
 declare -a PATTERNS=()
 declare -a TARGET_ARGS=()
 
@@ -45,6 +47,15 @@ while [[ "$#" -gt 0 ]]; do
         exit 1
       fi
       SUITE="$1"
+      shift
+      ;;
+    --section)
+      shift
+      if [[ "$#" -eq 0 ]]; then
+        echo "[validate-diagnostic-json] error: --section オプションには値が必要です" >&2
+        exit 1
+      fi
+      SECTION="$1"
       shift
       ;;
     --pattern)
@@ -845,6 +856,65 @@ if not found_rc:
     print("[validate-diagnostic-json] collectors audit に collector.effect.rc がありません", file=sys.stderr)
 if not found_cell or not found_rc:
     sys.exit(1)
+PY
+    then
+      EXIT_CODE=1
+    fi
+  fi
+fi
+
+if [[ "$SECTION" == "config" ]]; then
+  if [[ "${#FILES[@]}" -eq 0 ]]; then
+    echo "[validate-diagnostic-json] error: --section config で対象ファイルがありません" >&2
+    EXIT_CODE=1
+  else
+    if ! python3 - "${FILES[@]}" <<'PY'; then
+import json
+import pathlib
+import sys
+
+def parse_entries(content: str, file_name: str):
+    text = content.strip()
+    if not text:
+        return []
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        entries = []
+        for line_no, line in enumerate(content.splitlines(), start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                entries.append(json.loads(stripped))
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(f"JSONL parse error {file_name}:{line_no}: {exc}") from exc
+        return entries
+    else:
+        return data if isinstance(data, list) else [data]
+
+
+def contains_schema_diff(node) -> bool:
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if isinstance(key, str) and key.startswith("schema_diff"):
+                return True
+            if contains_schema_diff(value):
+                return True
+        return False
+    if isinstance(node, list):
+        return any(contains_schema_diff(item) for item in node)
+    return False
+
+
+paths = [pathlib.Path(item) for item in sys.argv[1:] if item]
+
+for path in paths:
+    if not path.exists():
+        continue
+    entries = parse_entries(path.read_text(encoding="utf-8"), str(path))
+    if not any(contains_schema_diff(entry) for entry in entries):
+        raise RuntimeError(f"{path}: schema_diff metadata が見つかりません")
 PY
     then
       EXIT_CODE=1

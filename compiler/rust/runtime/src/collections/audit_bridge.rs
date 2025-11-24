@@ -40,6 +40,26 @@ impl ChangeSet {
         }
     }
 
+    pub fn kind(&self) -> ChangeSetKind {
+        self.kind
+    }
+
+    pub fn from_value(value: Value) -> Result<Self, AuditBridgeError> {
+        let kind = value
+            .get("kind")
+            .and_then(Value::as_str)
+            .and_then(ChangeSetKind::from_label)
+            .ok_or_else(|| AuditBridgeError::new("change set missing valid kind"))?;
+        let items = value
+            .get("items")
+            .and_then(Value::as_array)
+            .ok_or_else(|| AuditBridgeError::new("change set missing items array"))?
+            .iter()
+            .map(ChangeItem::from_value)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(ChangeSet::new(kind, items))
+    }
+
     /// 差分の内訳を返す。
     pub fn summary(&self) -> ChangeSummary {
         let mut summary = ChangeSummary::default();
@@ -106,10 +126,18 @@ pub enum ChangeSetKind {
 }
 
 impl ChangeSetKind {
-    fn label(self) -> &'static str {
+    pub fn label(self) -> &'static str {
         match self {
             Self::MapDiff => "collections.diff.map",
             Self::SetDiff => "collections.diff.set",
+        }
+    }
+
+    pub fn from_label(label: &str) -> Option<Self> {
+        match label {
+            "collections.diff.map" => Some(Self::MapDiff),
+            "collections.diff.set" => Some(Self::SetDiff),
+            _ => None,
         }
     }
 }
@@ -193,6 +221,47 @@ impl ChangeItem {
                 "previous": previous,
                 "current": current,
             }),
+        }
+    }
+
+    fn from_value(value: &Value) -> Result<Self, AuditBridgeError> {
+        let kind = value
+            .get("kind")
+            .and_then(Value::as_str)
+            .ok_or_else(|| AuditBridgeError::new("change item missing kind"))?;
+        let key = value
+            .get("key")
+            .cloned()
+            .ok_or_else(|| AuditBridgeError::new("change item missing key"))?;
+        match kind {
+            "collections.diff.added" => {
+                let current = value
+                    .get("current")
+                    .cloned()
+                    .ok_or_else(|| AuditBridgeError::new("added item missing current value"))?;
+                Ok(Self::added(key, current))
+            }
+            "collections.diff.removed" => {
+                let previous = value
+                    .get("previous")
+                    .cloned()
+                    .ok_or_else(|| AuditBridgeError::new("removed item missing previous value"))?;
+                Ok(Self::removed(key, previous))
+            }
+            "collections.diff.updated" => {
+                let previous = value
+                    .get("previous")
+                    .cloned()
+                    .ok_or_else(|| AuditBridgeError::new("updated item missing previous value"))?;
+                let current = value
+                    .get("current")
+                    .cloned()
+                    .ok_or_else(|| AuditBridgeError::new("updated item missing current value"))?;
+                Ok(Self::updated(key, previous, current))
+            }
+            other => Err(AuditBridgeError::new(format!(
+                "unknown change item kind: {other}"
+            ))),
         }
     }
 }

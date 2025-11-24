@@ -1,6 +1,9 @@
 //! Config/Data 章で利用する差分マージユーティリティ。
 //! `PersistentMap::merge_with_change_set` を公開し、監査ログへ
 //! `ChangeSet` を取り込む手続きを補助する。
+pub mod collection_diff;
+
+pub use collection_diff::{ChangeKind, ConfigChange, SchemaDiff, SchemaDiffMetadata};
 
 use std::{
     fs, io, mem,
@@ -81,7 +84,9 @@ pub fn write_change_set_to_temp_dir(change_set: &ChangeSet) -> io::Result<PathBu
 /// 返却値の `CollectionsChangeSetEnv` は `Drop` で `REML_COLLECTIONS_CHANGE_SET_PATH`
 /// をクリアし、生成された一時ファイルの削除も試みる。CLI を起動する間この値を保持し、
 /// 終了後に `drop` することでクリーンアップできる。
-pub fn set_collections_change_set_env(change_set: &ChangeSet) -> io::Result<CollectionsChangeSetEnv> {
+pub fn set_collections_change_set_env(
+    change_set: &ChangeSet,
+) -> io::Result<CollectionsChangeSetEnv> {
     CollectionsChangeSetEnv::new(change_set)
 }
 

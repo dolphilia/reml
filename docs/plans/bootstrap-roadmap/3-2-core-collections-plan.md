@@ -340,9 +340,20 @@
    - `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` の `collections.diff` ケースを段階的に追加し、`reports/iterator-collector-summary.md` の `audit_bridge` セクションや `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表に `collections.audit_bridge_pass_rate`/`collector.effect.audit_presence` を写す作業を「KPI同期」タスクとして位置づけた。
 
 #### 5.2 Config/Data 差分 API との互換アダプタ
-- `SchemaDiff`/`Change` に対応する構造体を `compiler/rust/runtime/src/config/collection_diff.rs` に定義し、`Map`/`Table`/`List` の差分を `Config.Data` で消費できる形式に直列化する。`docs/spec/3-7-core-config-data.md` の `schema_diff_to_change_set` サブセクションを参考に、キー順保証・type tag・`EffectLabels` の `mem_bytes` を維持した上で `Change` エントリを生成する。
-- `Core.Collections` 側では `Core.Collections.Map.diff`/`Table.to_map` などの公開 API から新規アダプタ（例: `collections::config::MapDiffAdapter`）を提供し、`ChangeConfig::apply` に `AuditEnvelope.change_set` を直接流せるようにする。`docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md` に追記し、Config チームとのダブルチェックを記録する。
-- 双方向テストとして `compiler/rust/runtime/tests/config/collection_diff_roundtrip.rs` を用意し、(1) `Map` 差分→`SchemaDiff`→`ChangeSet`、(2) `ChangeSet` JSON→`Map` の再構築、(3) `Table` の `insert`/`load_csv` 操作に `collector.effect.audit=true` が付いて `ChangeSet` の `audit` フラグへ伝播することを確認する。`scripts/validate-diagnostic-json.sh --section config` で `schema_diff.*` のキーをチェックし、`docs/notes/spec-integrity-audit-checklist.md` に `config.diff.bridge` の TODO を記録する。
+- `SchemaDiff`/`Change` 形式へ差分を射影するアダプタを `compiler/rust/runtime/src/config/collection_diff.rs` に実装し、`Map`/`Table`/`List` の `ChangeSet` を Config.Data が期待する JSON へ変換する。`schema_diff_to_change_set` の仕様を参考にしつつ、キー順の保持、`type_tag`、`EffectLabels.mem_bytes` を `ConfigChange` のメタ情報として保持することで `Core.Collections` の `collector.effect.*` と `Core.Config` の `audit` フィールドの整合性を担保する。
+- `Core.Collections` の `CollectorAuditTrail` 側では `CollectOutcome::record_change_set` で `collector.effect.audit` を更新し、`SchemaDiff` の `to_change_set` / `from_change_set` を通じて同じ JSON を `ChangeSet` ↔ `Core.Config` で共通利用できるようにする。`docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md` へ反映し、Config チームとの差分レビューを記録する。
+
+##### 5.2.1 SchemaDiff ↔ ChangeSet アダプタ
+- `collection_diff.rs` に `SchemaDiff`/`ConfigChange`/`ChangeKind` を定義し、`ChangeSet` の `items` を再構築する `SchemaDiff::to_change_set`、`EffectLabels.mem_bytes` を注入した `SchemaDiff::from_change_set` といった API を公開した。`ChangeKind` の `label`/`from_label` は `collections.diff.*` 文字列と双方向変換できるようにし、`type_tag` は `serde_json::Value` の型を元に付番することで Config.Data の `Field` タイプ指定と整合させている。
+- 同じファイルに組み込んだ `#[cfg(test)]` では `PersistentMap::diff_change_set` から `SchemaDiff` を生成し、`to_change_set` で round-trip を確認するテスト（`schema_diff_roundtrips_change_set`）と `EffectLabels.mem_bytes` が `ConfigChange` に伝搬することを確認するテスト（`mem_bytes_propagate_into_schema_diff`）を新設した。
+
+##### 実装ログ
+- `compiler/rust/runtime/src/config/mod.rs` で `collection_diff` モジュールを再エクスポートし、`ConfigMergeOutcome` から生成した `ChangeSet` を `SchemaDiff` 経由で Config.Data に引き渡せるようにした。`Set`/`Table` などの差分 API は `CollectOutcome::record_change_set` で `collector.effect.audit` を `true` にしつつ `CollectionChangeSet` を `SchemaDiff` へ渡すルートで `effect {audit}` のトレーサビリティを維持しており、`change_set_to_value`/`from_value` による JSON 両方向変換で `configs.diff.bridge` との互換性を担保している。
+- テストは `collection_diff.rs` 内部の `tests` モジュール（`PersistentMap`, `EffectLabels` 依存）として `cargo test --all -- --test-threads=1` で実行可能な状態に整備し、`schema_diff_roundtrips_change_set` が `ChangeSet::to_value()` の等価性を検証、`mem_bytes_propagate_into_schema_diff` が `type_tag` と `mem_bytes` の付与方針を確認する。
+
+##### 5.2.2 `schema_diff.*` キーの CI ゲート
+- `scripts/validate-diagnostic-json.sh` に `--section config` オプションを追加し、`schema_diff` または `schema_diff.*` を含む JSON を必須とするバリデーションブロックを導入した。`reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` などを対象に `schema_diff` が存在しないとエラーを返すことで、`collect-iterator-audit-metrics.py --scenario map_set_persistent` で生成された差分 JSON が監査ログへ流れていることを検証できる。
+- `docs/notes/spec-integrity-audit-checklist.md` の `Core.Collections 監査 TODO` セクションに `config.diff.bridge` 項目を追加し、`collection_diff` の導入・`schemas_diff` チェック・`scripts/validate... --section config` の順で追跡できるようにした。今後 `schema_diff` フィールドの追加ステップが発生した場合はこの TODO を更新する。
 
 #### 5.3 `effect {audit}` による Capability チェックと運用ガード
 - `tables`, `maps`, `collections` が `effect {audit}` を発行する API（`emit_metric`, `collect_table` の `audit` モードなど）では `CapabilityRegistry` に `core.collections.audit` を登録し、`docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` との同期を記録する。`scripts/poc_dualwrite_compare.sh --target audit_bridge` を実行し、`CapabilityRegistry::check("core.collections.audit")` が `false` のときに `CollectError::CapabilityDenied` を返すパスを検証する。
