@@ -2,7 +2,11 @@ use std::{cmp, collections::TryReserveError, iter::FromIterator, mem, slice};
 
 use crate::collections::persistent::list::List;
 #[cfg(feature = "core_prelude")]
+use crate::core_prelude::collectors::{CollectError, VecCollector};
+#[cfg(feature = "core_prelude")]
 use crate::core_prelude::iter::{EffectLabels, EffectSet};
+#[cfg(not(feature = "core_prelude"))]
+use crate::prelude::collectors::{CollectError, VecCollector};
 #[cfg(not(feature = "core_prelude"))]
 use crate::prelude::iter::{EffectLabels, EffectSet};
 
@@ -91,14 +95,18 @@ impl<T> CoreVec<T> {
         self.inner
     }
 
-    /// 任意のイテレータから構築する。
-    pub fn collect_from<I>(iter: I) -> Self
+    /// 任意のイテレータから構築する。`CollectError::OutOfMemory` を
+    /// `VecCollector::reserve` から取り込み、`Result` で返す。
+    pub fn collect_from<I>(iter: I) -> Result<Self, CollectError>
     where
         I: IntoIterator<Item = T>,
     {
-        Self {
-            inner: iter.into_iter().collect(),
+        let mut collector = VecCollector::new();
+        for value in iter {
+            collector.push(value)?;
         }
+        let (core_vec, _) = collector.finish().into_parts();
+        Ok(core_vec)
     }
 }
 
@@ -116,7 +124,9 @@ impl<T> From<CoreVec<T>> for Vec<T> {
 
 impl<T> FromIterator<T> for CoreVec<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        Self::collect_from(iter)
+        Self::collect_from(iter).unwrap_or_else(|err| {
+            panic!("CoreVec::collect_from unexpectedly failed: {err:?}")
+        })
     }
 }
 
@@ -162,11 +172,11 @@ impl<T> EffectfulVec<T> {
     }
 
     /// イテレータ収集から生成する。
-    pub fn collect_from<I>(iter: I) -> Self
+    pub fn collect_from<I>(iter: I) -> Result<Self, CollectError>
     where
         I: IntoIterator<Item = T>,
     {
-        Self::from_core(CoreVec::collect_from(iter))
+        Ok(Self::from_core(CoreVec::collect_from(iter)?))
     }
 
     /// 現在の効果ラベルを取得する。

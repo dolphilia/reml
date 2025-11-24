@@ -14,7 +14,7 @@
    - これら変更を `docs/spec/3-2-core-collections.md:48-80` のバッチヘルパ一覧と合わせて再確認し、`examples/core-collections/usage.reml` の手順と `reports/iterator-collector-summary.md` の KPI 記述を突き合わせておく。必要であれば `scripts/validate-diagnostic-json.sh` への `collector.effect.*` チェック追加も併記。
 
 2. **Mutable 系 API の effect 完結**
-   - `Vec.collect_from` と `Iter.collect_vec` を共通 `Result<CoreVec<T>, CollectError>` 経路に統一し、`CollectError::OutOfMemory` が `map_try_reserve_error` (`compiler/rust/runtime/src/collections/mutable/vec/error.rs:1-17`) から伝搬されるようにする。`docs/spec/3-2-core-collections.md:104-117` の `CollectError` 仕様に対応し、`reports/iterator-collector-summary.md` の `collect_vec_mem_reservation` KPI を更新。
+   - `Vec.collect_from`（`CoreVec::collect_from`/`EffectfulVec::collect_from`）を `VecCollector` 経路で `Result<CoreVec<T>, CollectError>` にし、`CollectError::OutOfMemory` を `map_try_reserve_error` (`compiler/rust/runtime/src/collections/mutable/vec/error.rs:1-17`) から流し込む。`docs/spec/3-2-core-collections.md:104-117` の `CollectError` 仕様に照らして `collect_vec_mem_reservation` KPI との整合を確認し、`FromIterator` 実装では失敗時に panic する形で従来の `collect()` を再現する。
    - `Cell`/`Ref` API の名前と効果タグ (`effect {cell}`/`effect {rc}`) をドキュメントに揃える。`EffectfulCell::set` で `mark_cell()`/`mark_mut()`、`EffectfulRef::borrow_mut` で `mark_rc()`/`mark_mut()` を保証し、`CollectorEffectMarkers::cell_mutations` を `CollectorAuditTrail` に出力する (`compiler/rust/runtime/src/prelude/collectors/mod.rs:188-405`)。
    - `EffectfulTable` の `insert`/`remove`/`to_map` に `EffectSet` を反映し、`TableCollector` の `push` で `CollectError::DuplicateKey` に加えて `CollectError::UnstableOrder` を `Diagnostic::collector_unstable_order` として返せるようにする。
 
