@@ -3,7 +3,7 @@
 //! `ChangeSet` を取り込む手続きを補助する。
 
 use std::{
-    fs, io,
+    fs, io, mem,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -76,6 +76,48 @@ pub fn write_change_set_to_temp_dir(change_set: &ChangeSet) -> io::Result<PathBu
     Ok(path)
 }
 
+/// `ChangeSet` を一時ファイルへ書き出し、CLI に読み込ませるための環境変数を設定する。
+///
+/// 返却値の `CollectionsChangeSetEnv` は `Drop` で `REML_COLLECTIONS_CHANGE_SET_PATH`
+/// をクリアし、生成された一時ファイルの削除も試みる。CLI を起動する間この値を保持し、
+/// 終了後に `drop` することでクリーンアップできる。
+pub fn set_collections_change_set_env(change_set: &ChangeSet) -> io::Result<CollectionsChangeSetEnv> {
+    CollectionsChangeSetEnv::new(change_set)
+}
+
+/// `REML_COLLECTIONS_CHANGE_SET_PATH` を管理するハンドル。
+pub struct CollectionsChangeSetEnv {
+    path: PathBuf,
+}
+
+impl CollectionsChangeSetEnv {
+    fn new(change_set: &ChangeSet) -> io::Result<Self> {
+        let path = write_change_set_to_temp_dir(change_set)?;
+        let path_str = path.display().to_string();
+        std::env::set_var("REML_COLLECTIONS_CHANGE_SET_PATH", &path_str);
+        Ok(Self { path })
+    }
+
+    /// 書き出された JSON ファイルのパスを返す。
+    pub fn path(&self) -> &PathBuf {
+        &self.path
+    }
+
+    /// 内部で設定した環境変数を取り除き、パスだけを取得する。
+    pub fn into_path(self) -> PathBuf {
+        let path = self.path;
+        std::mem::forget(self);
+        path
+    }
+}
+
+impl Drop for CollectionsChangeSetEnv {
+    fn drop(&mut self) {
+        let _ = std::env::remove_var("REML_COLLECTIONS_CHANGE_SET_PATH");
+        let _ = fs::remove_file(&self.path);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -116,5 +158,20 @@ mod tests {
             "expected JSON to include diff metadata: {body}"
         );
         let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn collections_change_set_env_sets_variable() {
+        let base = sample_map();
+        let mut delta = PersistentMap::new();
+        delta = delta.insert("gamma".into(), 7);
+        let outcome =
+            merge_maps_with_audit(&base, &delta, |_, _left, right| right.clone()).expect("merge");
+        let env_key = "REML_COLLECTIONS_CHANGE_SET_PATH";
+        let guard = set_collections_change_set_env(&outcome.change_set).expect("set env");
+        let env_value = std::env::var(env_key).expect("env set");
+        assert_eq!(env_value, guard.path().display().to_string());
+        drop(guard);
+        assert!(std::env::var(env_key).is_err());
     }
 }

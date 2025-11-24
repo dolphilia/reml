@@ -8,6 +8,7 @@
 1. **ChangeSet の JSON 出力**  
    - `compiler/rust/runtime/src/config/mod.rs` の `ConfigMergeOutcome::change_set_json` を呼び出し、`write_change_set_to_temp_dir` で出力パスを得る。将来的には `MapCollector`/`TableCollector` の `CollectOutcome` から `ChangeSet` を生成するヘルパを追加して、実行時に差分が出るたびに JSON を更新する。
    - 出力された一時ファイルへのパスを `REML_COLLECTIONS_CHANGE_SET_PATH` で共有できるよう、`scripts/poc_dualwrite_compare.sh` や `examples/` のランチャーにラッパーを入れる想定。
+   - `set_collections_change_set_env` ヘルパーをこのパス構築と環境変数の注入処理として利用する。CLI 起動中は `CollectionsChangeSetEnv` を保持し、完了後に `Drop` で変数とファイルをクリアすることでランタイムフローを制御する。
 
 2. **CLI 側での取り込みと検証**  
    - `compiler/rust/frontend/src/diagnostic/formatter.rs` の `FormatterContext::change_set` で `load_collections_change_set_from_env` を介して JSON を読み込み、`AuditEnvelope.change_set` の `collections` ブロックに展開する。
