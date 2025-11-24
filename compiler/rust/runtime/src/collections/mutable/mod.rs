@@ -8,5 +8,5 @@ pub mod vec;
 
 pub use cell::{Cell, EffectfulCell};
 pub use r#ref::{BorrowError, EffectfulRef, Ref, RefGuard, RefMutGuard};
-pub use table::{EffectfulTable, Table};
+pub use table::{EffectfulTable, Table, TableIter};
 pub use vec::{CoreVec, EffectfulVec};

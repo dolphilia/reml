@@ -521,6 +521,7 @@ pub enum CollectErrorKind {
     DuplicateKey,
     InvalidEncoding,
     IteratorFailure,
+    UnstableOrder,
     Custom(&'static str),
 }
 
@@ -533,6 +534,7 @@ impl CollectErrorKind {
             CollectErrorKind::DuplicateKey => "duplicate_key",
             CollectErrorKind::InvalidEncoding => "invalid_encoding",
             CollectErrorKind::IteratorFailure => "iterator_failure",
+            CollectErrorKind::UnstableOrder => "unstable_order",
             CollectErrorKind::Custom(label) => label,
         }
     }

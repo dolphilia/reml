@@ -1,14 +1,15 @@
 //! `TableCollector` の実装。挿入順と重複検出を保証する。
 
-use std::{collections::BTreeSet, fmt::Debug};
+use std::{fmt::Debug, mem};
 
+use crate::collections::mutable::Table;
 use super::super::iter::{EffectLabels, IterError};
 use super::{
     CollectError, CollectErrorKind, CollectOutcome, Collector, CollectorAuditTrail,
     CollectorEffectMarkers, CollectorKind, CollectorStageProfile,
 };
 
-const MUTATING_EFFECTS: EffectLabels = EffectLabels {
+const TABLE_EFFECTS: EffectLabels = EffectLabels {
     mem: false,
     mutating: true,
     debug: false,
@@ -21,31 +22,17 @@ const MUTATING_EFFECTS: EffectLabels = EffectLabels {
     rc_ops: 0,
 };
 
-/// 挿入順を保持する簡易 `Table` 型。
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Table<K, V> {
-    entries: Vec<(K, V)>,
-}
-
-impl<K, V> Table<K, V> {
-    fn from_entries(entries: Vec<(K, V)>) -> Self {
-        Self { entries }
-    }
-
-    pub fn into_entries(self) -> Vec<(K, V)> {
-        self.entries
-    }
-}
-
 pub struct TableCollector<K, V> {
-    entries: Vec<(K, V)>,
-    seen: BTreeSet<K>,
+    table: Table<K, V>,
     stage_profile: CollectorStageProfile,
     effects: EffectLabels,
     markers: CollectorEffectMarkers,
 }
 
-impl<K: Ord, V> TableCollector<K, V> {
+impl<K, V> TableCollector<K, V>
+where
+    K: Eq + std::hash::Hash + Clone + Debug,
+{
     fn audit_trail(&self, source: &'static str) -> CollectorAuditTrail {
         CollectorAuditTrail::new(
             CollectorKind::Table,
@@ -55,10 +42,7 @@ impl<K: Ord, V> TableCollector<K, V> {
         )
     }
 
-    fn duplicate_error(&self, key: &K) -> CollectError
-    where
-        K: Debug,
-    {
+    fn duplicate_error(&self, key: &K) -> CollectError {
         CollectError::new(
             CollectErrorKind::DuplicateKey,
             format!("duplicate key: {key:?}"),
@@ -70,7 +54,7 @@ impl<K: Ord, V> TableCollector<K, V> {
 
 impl<K, V> Collector<(K, V), CollectOutcome<Table<K, V>>> for TableCollector<K, V>
 where
-    K: Ord + Debug + Clone,
+    K: Eq + std::hash::Hash + Clone + Debug,
 {
     type Error = CollectError;
 
@@ -79,10 +63,9 @@ where
         Self: Sized,
     {
         Self {
-            entries: Vec::new(),
-            seen: BTreeSet::new(),
+            table: Table::new(),
             stage_profile: CollectorStageProfile::for_kind(CollectorKind::Table),
-            effects: MUTATING_EFFECTS,
+            effects: TABLE_EFFECTS,
             markers: CollectorEffectMarkers::default(),
         }
     }
@@ -92,15 +75,18 @@ where
         Self: Sized,
     {
         let mut collector = Self::new();
-        collector.entries.reserve(capacity);
+        let _ = capacity;
         collector
     }
 
     fn push(&mut self, value: (K, V)) -> Result<(), Self::Error> {
-        if !self.seen.insert(value.0.clone()) {
+        if self.table.contains_key(&value.0) {
             return Err(self.duplicate_error(&value.0));
         }
-        self.entries.push(value);
+        let entry_bytes = mem::size_of::<K>() + mem::size_of::<V>();
+        self.effects.mem = true;
+        self.effects.mem_bytes = self.effects.mem_bytes.saturating_add(entry_bytes);
+        self.table.insert(value.0, value.1);
         Ok(())
     }
 
@@ -110,8 +96,7 @@ where
     {
         self.markers.record_finish();
         let audit = self.audit_trail("TableCollector::finish");
-        let table = Table::from_entries(self.entries);
-        CollectOutcome::new(table, audit)
+        CollectOutcome::new(self.table, audit)
     }
 
     fn iter_error(self, error: IterError) -> Self::Error

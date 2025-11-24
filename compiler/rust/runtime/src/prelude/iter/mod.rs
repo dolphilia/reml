@@ -18,9 +18,9 @@ use std::{
 };
 
 use super::collectors::{
-    CollectError, CollectOutcome, Collector, List, ListCollector, VecCollector,
+    CollectError, CollectOutcome, Collector, List, ListCollector, TableCollector, VecCollector,
 };
-use crate::collections::mutable::CoreVec;
+use crate::collections::mutable::{CoreVec, Table};
 
 mod generators;
 pub use generators::*;
@@ -327,6 +327,13 @@ impl<T> Iterator for IterIntoIterator<T> {
 impl<T> FromIterator<T> for Iter<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iterable: I) -> Self {
         Self::from_list(iterable.into_iter().collect::<Vec<T>>())
+    }
+}
+
+impl<K, V> Iter<(K, V)> {
+    /// `TableCollector` を利用して挿入順序付きテーブルへ収集する。
+    pub fn collect_table(self) -> Result<CollectOutcome<Table<K, V>>, CollectError> {
+        self.collect_into_collector(TableCollector::new())
     }
 }
 
