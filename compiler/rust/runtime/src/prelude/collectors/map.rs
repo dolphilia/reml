@@ -1,6 +1,6 @@
 //! `MapCollector` の実装。永続 `Map` を `Collector` へ接続する。
 
-use std::fmt::Debug;
+use std::{fmt::Debug, mem};
 
 use serde::Serialize;
 
@@ -88,6 +88,12 @@ where
         if self.storage.contains_key(&key) {
             return Err(self.duplicate_error(&key));
         }
+        let entry_bytes = mem::size_of::<K>().saturating_add(mem::size_of::<V>());
+        self.effects.mem = true;
+        if entry_bytes > 0 {
+            self.effects.mem_bytes = self.effects.mem_bytes.saturating_add(entry_bytes);
+        }
+        self.effects.mutating = true;
         self.storage = self.storage.insert(key, value);
         Ok(())
     }

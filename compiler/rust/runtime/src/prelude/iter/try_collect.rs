@@ -4,7 +4,7 @@ use crate::prelude::collectors::{CollectError, Collector, CollectorAuditTrail};
 /// `Iter.try_collect` で使う Collector と効果伝播のための橋渡し。
 pub(crate) struct CollectorBridge<'a, Item, ItemError, Col, Output>
 where
-    Col: Collector<Item, Output>,
+    Col: Collector<Item, Output, Error = CollectError>,
 {
     iter: &'a Iter<Result<Item, ItemError>>,
     collector: Col,
@@ -12,7 +12,7 @@ where
 
 impl<'a, Item, ItemError, Col, Output> CollectorBridge<'a, Item, ItemError, Col, Output>
 where
-    Col: Collector<Item, Output>,
+    Col: Collector<Item, Output, Error = CollectError>,
 {
     /// 橋渡しを初期化する。
     pub fn new(iter: &'a Iter<Result<Item, ItemError>>, collector: Col) -> Self {
@@ -20,7 +20,7 @@ where
     }
 
     /// Collector へ値を渡す。
-    pub fn push(&mut self, value: Item) -> Result<(), Col::Error> {
+    pub fn push(&mut self, value: Item) -> Result<(), CollectError> {
         self.collector.push(value)
     }
 

@@ -383,7 +383,7 @@ impl<T, E> Iter<Result<T, E>> {
         collector: C,
     ) -> Result<Output, TryCollectError<E, C::Error>>
     where
-        C: Collector<T, Output>,
+        C: Collector<T, Output, Error = CollectError>,
     {
         let iter = self;
         let mut bridge = CollectorBridge::new(&iter, collector);

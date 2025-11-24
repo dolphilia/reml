@@ -1,6 +1,6 @@
 //! `SetCollector` と永続 `Set` の連携実装。
 
-use std::fmt::Debug;
+use std::{fmt::Debug, mem};
 
 use serde::Serialize;
 
@@ -85,6 +85,12 @@ where
     fn push(&mut self, value: T) -> Result<(), Self::Error> {
         if self.storage.contains(&value) {
             return Err(self.duplicate_error(&value));
+        }
+        let entry_bytes = mem::size_of::<T>();
+        self.effects.mutating = true;
+        self.effects.mem = true;
+        if entry_bytes > 0 {
+            self.effects.mem_bytes = self.effects.mem_bytes.saturating_add(entry_bytes);
         }
         self.storage = self.storage.insert(value);
         Ok(())
