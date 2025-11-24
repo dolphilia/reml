@@ -275,15 +275,30 @@
 - CI フロー: `tooling/ci/collect-iterator-audit-metrics.py --section collectors --scenario iter_collectors` を新設し、`collect_list`（`@pure`）と `collect_vec`（`effect {mut,mem}`）が正しいタグを出力しているか比較する。`reports/iterator-collector-summary.md` の `Iter.collectors` テーブルへ `effect_check` 列を追加し、`scripts/validate-diagnostic-json.sh` の `ITER_COLLECTOR_REQUIRED_KEYS` に `iter.collector.kind`/`iter.collector.effect.*` を追記する。
 - テスト: `compiler/rust/runtime/tests/core_iter_collectors.rs` を拡張して (1) `collect_map` が重複キーに対して `CollectError::DuplicateKey` を返す、(2) `collect_table` が `collector.effect.mut=true` を報告する、(3) `collect_list` が stage `IterStage::Stable` を保持する、の 3 ケースを snapshot。OCaml 版との dual-write 比較は `scripts/poc_dualwrite_compare.sh --target iter_collectors` で自動実行し、`reports/spec-audit/ch1/core_iter_collectors.json` に結果を格納する。
 
+##### 実施ステップ
+1. `CollectorKind` と関連 `EffectLabels` の拡張を `Iter`/`Collector` モジュールに導入し、各 `collect_*` パスから `AuditEnvelope.metadata` に `collector.effect.*` を書き込む仕組みを入れる。`Iter.collect_map`/`collect_set` では `@pure` を維持しつつ `TryCollectError` との整合性を確認する。
+2. `Iterator::collect_vec`/`collect_table` で `effect {mut}` と `effect {mem}` を記録するため、Collector 側で `GrowthBudget` を参照し `mem_bytes` を `CollectOutcome` に転写。`list_as_vec_mem_bytes` の KPI との整合性を保つため `reports/iterator-collector-summary.md` の `Collectors` セクションに新規行を追加する。
+3. CI スクリプト（`collect-iterator-audit-metrics.py`、`validate-diagnostic-json.sh`）に `iter.collector.effect.*` チェックを組み込み、`reports/spec-audit/ch1/core_iter_collectors.json` に snapshot を追記する。`docs/notes/core-library-outline.md` に dual-write プロセスの結果を記録し、検証ログの再現手順を残す。
+
 #### 4.2 永続コレクションの `IntoIter` と Stage 監査
 - `runtime/src/collections/persistent/list.rs` / `btree.rs` に `impl IntoIterator for List/Map/Set` を実装し、`IntoIter` が `IterStage::Stable` を携えた `Iter` を返すよう `Iter::from_persistent`（新設）を介して統一する。`map_to_iter` など従来の ad-hoc 実装は `IntoIter` ベースに置き換え、所有権移動時に `Arc`/`PersistentArena` の参照カウントが正しく減少するか追跡する。【F:../../spec/3-2-core-collections.md†L21-L89】
 - `Effect` 的には `IntoIter` は `@pure` のままにし、`CollectorKind` 情報を `IteratorDictInfo.stage` と `AuditEnvelope.metadata["iter.stage.kind"]` へ記録する。`compiler/rust/runtime/tests/core_collections_into_iter.rs` を新設し、`List::into_iter`→`collect_vec` の往復で参照が再利用されること、`Map::into_iter` がキー昇順を保つこと、`Set::into_iter` が `effect.stage.iterator.exact=Stable` を出力することを検証する。
 - CI 側では `tooling/ci/sync-iterator-audit.sh` に `--verify-stage CoreCollections` パラメータを追加し、`reports/spec-audit/ch0/links.md` 内の DSL サンプルを再生して Stage メタデータが `effect.stage.iterator.*` に現れているか自動確認する。結果サマリは `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の Stage 行へ追記する。
 
+##### 実施ステップ
+1. `List`/`Map`/`Set` の `IntoIterator` 実装を `runtime/src/collections/persistent` に統合し、`Iter::from_persistent` を介して `Iter` stage 情報を伴わせた `AuditEnvelope` を返すよう統一する。各 `IntoIter` は `PersistentArena` の `Arc` を適切に解放するユニットテストを含む。
+2. `IteratorDictInfo.stage` を更新するアダプタを `compiler/rust/runtime/src/prelude/iter/stage.rs` へ追加し、`Map`/`Set` の `IntoIter` で `IterStage::Stable` を保つことを検証する。`reports/iterator-collector-summary.md` では `IntoIter` 周りは `Collectors` より `IterStages` セクションへ分離し、Stage メタデータの KPI を記載する。
+3. `tooling/ci/sync-iterator-audit.sh --verify-stage CoreCollections` を `reports/iterator-collector-summary.md` の Stage 検証フローに追加し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の Stage チェックリストに `iter.stage.kind` の期待値を列挙する。
+
 #### 4.3 `Collector` × `Iter.try_collect` の診断統合
 - `Iter.try_collect` の `Result` 伝播と `Collector::Error` を接続するため、`compiler/rust/runtime/src/prelude/iter/try_collect.rs`（新設）で `CollectorBridge<E>` を実装する。`CollectError` から `Diagnostic` へのマッピングは `Core.Diagnostics` で既に使用している `IntoDiagnostic` トレイトを利用し、`EffectSet` に `collector.effect.audit` を転写して監査ログと整合させる。【F:../../spec/3-1-core-prelude-iteration.md†L149-L190】【F:../../spec/3-6-core-diagnostics-audit.md†L42-L120】
 - `Collector` 実装ごとに `push`/`reserve`/`finish` の `effect` ラベルを列挙し、`Iter.try_collect` が `collector.effect.*` を `AuditEnvelope.metadata` に書き込む。`reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` へ `try_collect` 由来のサンプル（成功・失敗）を追加し、`scripts/validate-diagnostic-json.sh --section iter` 実行時に `iter.try_collect.diagnostic` を検証する。
 - テスト: `compiler/rust/runtime/tests/core_iter_try_collect.rs` を追加し、(1) `Iter<Result<T, Diagnostic>>.try_collect(VecCollector)` が最初の `Err` で短絡し effect を保持する、(2) `Iter.try_collect(MapCollector)` が `CollectError::DuplicateKey` を `Diagnostic::collector_duplicate_key` に変換する、(3) `Iter.try_collect(TableCollector)` が `collector.effect.mut=true`/`collector.effect.mem=true` を記録する、の 3 ケースを確認する。CI では `cargo test core_iter_try_collect` を `tooling/ci/collect-iterator-audit-metrics.py --run-tests` から呼び出し、失敗時に `reports/iterator-collector-summary.md` の `status` カラムを更新する。
+
+##### 実施ステップ
+1. `CollectorBridge` を `iter/try_collect.rs` に定義し、`Collector::finish` で得られる `CollectOutcome` を `EffectSet` に反映させて `AuditEnvelope` へ渡す。`CollectError` 別の `Diagnostic` 変換マッピング表を `docs/spec/3-6-core-diagnostics-audit.md` に準拠して記録し、`Diagnostic.extensions["collector.error.kind"]` を追加する。
+2. 各 `Collector` の `try_collect` UI を `compiler/rust/runtime/src/prelude/collectors` 側で拡張してエラーの `effect` ラベルと `GrowthBudget` を `CollectOutcome` へ書き出す。`CollectOutcome::audit` を `Core.Diagnostics` へ橋渡す `AuditChangeBridge` の雛形を `docs/plans/bootstrap-roadmap/5-core-diagnostics-config-plan.md` にメモしておき、メタデータの一貫性を保つ。
+3. `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` へ `try_collect` の成功/失敗ケースを追加し、`scripts/validate-diagnostic-json.sh --section iter` で `iter.try_collect.diagnostic` をチェック。`docs/notes/core-library-outline.md` に `Collector` 失敗ケースのリストを TODO 頭で残し、追跡用の検証手順を示す。
 
 ### 5. Diagnostics / Config / Audit 連携（40週目）
 **担当領域**: 他章との統合
