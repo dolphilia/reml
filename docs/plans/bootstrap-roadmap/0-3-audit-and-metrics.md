@@ -77,6 +77,8 @@
 | DX | `audit_query.coverage` | DSL プリセット（Stage/FFI/型クラス）でヒットした監査ログ数 / 全監査ログ数 | PR ごと | `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` §5.3 |
 | DX | `error_resolution_latency` | 重大バグの修正までの日数 | 月次 | [0-1-project-purpose.md](../../spec/0-1-project-purpose.md) §2.2 |
 
+- `collections.audit_bridge_pass_rate` および `collector.effect.audit_presence` は `REML_COLLECTIONS_CHANGE_SET[_PATH]` を介して `ChangeSet` JSON を CLI に注入し、`reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` の `collections.diff.*` を生成することが前提である。`collect-iterator-audit-metrics.py --section collectors --scenario map_set_persistent --require-audit` が `collections.diff.items` や `collector.effect.audit`/`collector.effect.mem_bytes` の整合性をチェックし、`scripts/validate-diagnostic-json.sh --pattern collections.diff --pattern collector.effect.audit --pattern collector.effect.mem_bytes reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` で `kind`/`key`/`value` とメタデータが揃っていることを検証する工程を設ける必要がある【F:../docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md†L316-L333】【F:../scripts/validate-diagnostic-json.sh†L1-L200】。
+
 - CI 集計スクリプト: `tooling/ci/collect-iterator-audit-metrics.py` を用いて診断 JSON を検査し、結果を `tooling/ci/iterator-audit-metrics.json` に書き出す。`metrics[]` 配列には `diagnostic.audit_presence_rate`・iterator・FFI ブリッジ指標に加えて `review` セクション（`audit_diff.regressions`, `audit_query.coverage`）が含まれ、`diagnostics.summary` では `info_fraction` / `hint_fraction` / `info_hint_ratio` を併記する。必須フィールド欠落時は `pass_rate = 0.0` に丸める。Linux / macOS / Windows いずれの CI ワークフローでも `--require-success` オプションを有効化し、`pass_rate` が 1.0 未満または DX 指標が閾値を超えた場合にジョブ全体を失敗させる。
 
 ### 0.3.1a レビュー支援ツール連携
