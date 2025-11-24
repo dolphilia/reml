@@ -23,6 +23,7 @@ struct TableEntry<V> {
     value: V,
 }
 
+#[derive(Clone, Debug)]
 struct TableInner<K, V>
 where
     K: Eq + std::hash::Hash + Clone,

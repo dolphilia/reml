@@ -2,7 +2,9 @@ use std::{
     cell::Cell as EffectCell,
     error::Error,
     fmt,
+    mem::ManuallyDrop,
     ops::{Deref, DerefMut},
+    ptr,
     sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockError},
 };
 
@@ -217,7 +219,17 @@ impl<T> EffectfulRef<T> {
 
     /// 内部 `Ref` を取得する。
     pub fn into_parts(self) -> (Ref<T>, EffectSet) {
-        (self.handle, self.effects.into_inner())
+        let this = ManuallyDrop::new(self);
+        let handle = unsafe { ptr::read(&this.handle) };
+        let effects = unsafe { ptr::read(&this.effects) };
+        (handle, effects.into_inner())
+    }
+
+    /// 内包値を単独所有で取得する。
+    pub fn into_inner(self) -> Result<T, BorrowError> {
+        let this = ManuallyDrop::new(self);
+        let handle = unsafe { ptr::read(&this.handle) };
+        handle.into_inner()
     }
 }
 

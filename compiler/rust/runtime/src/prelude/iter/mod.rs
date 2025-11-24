@@ -332,7 +332,10 @@ impl<T> FromIterator<T> for Iter<T> {
 
 impl<K, V> Iter<(K, V)> {
     /// `TableCollector` を利用して挿入順序付きテーブルへ収集する。
-    pub fn collect_table(self) -> Result<CollectOutcome<Table<K, V>>, CollectError> {
+    pub fn collect_table(self) -> Result<CollectOutcome<Table<K, V>>, CollectError>
+    where
+        K: std::cmp::Eq + std::hash::Hash + Clone + std::fmt::Debug,
+    {
         self.collect_into_collector(TableCollector::new())
     }
 }

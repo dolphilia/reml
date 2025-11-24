@@ -1,8 +1,8 @@
 //! `TableCollector` の実装。挿入順と重複検出を保証する。
 
-use std::{fmt::Debug, mem};
+use std::{fmt::Debug, hash::Hash, mem};
 
-use crate::collections::mutable::Table;
+pub use crate::collections::mutable::Table;
 use super::super::iter::{EffectLabels, IterError};
 use super::{
     CollectError, CollectErrorKind, CollectOutcome, Collector, CollectorAuditTrail,
@@ -22,7 +22,10 @@ const TABLE_EFFECTS: EffectLabels = EffectLabels {
     rc_ops: 0,
 };
 
-pub struct TableCollector<K, V> {
+pub struct TableCollector<K, V>
+where
+    K: Eq + Hash + Clone,
+{
     table: Table<K, V>,
     stage_profile: CollectorStageProfile,
     effects: EffectLabels,
@@ -31,7 +34,7 @@ pub struct TableCollector<K, V> {
 
 impl<K, V> TableCollector<K, V>
 where
-    K: Eq + std::hash::Hash + Clone + Debug,
+    K: Eq + Hash + Clone + Debug,
 {
     fn audit_trail(&self, source: &'static str) -> CollectorAuditTrail {
         CollectorAuditTrail::new(
@@ -54,7 +57,7 @@ where
 
 impl<K, V> Collector<(K, V), CollectOutcome<Table<K, V>>> for TableCollector<K, V>
 where
-    K: Eq + std::hash::Hash + Clone + Debug,
+    K: Eq + Hash + Clone + Debug,
 {
     type Error = CollectError;
 

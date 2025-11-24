@@ -3,10 +3,10 @@
 use std::sync::Once;
 
 use crate::{
-    capability_handle::{CapabilityHandle, RefCapability},
+    capability_handle::CapabilityHandle,
     capability_metadata::{CapabilityDescriptor, CapabilityProvider, StageId},
     collections::mutable::{BorrowError, EffectfulRef, Ref, RefGuard, RefMutGuard},
-    prelude::iter::{EffectLabels, EffectSet},
+    core_prelude::iter::{EffectLabels, EffectSet},
     registry::CapabilityRegistry,
 };
 

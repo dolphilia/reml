@@ -1,5 +1,8 @@
+#[cfg(feature = "core_prelude")]
+use crate::core_prelude::collectors::{CollectError, CollectErrorKind, CollectorAuditTrail};
+#[cfg(not(feature = "core_prelude"))]
 use crate::prelude::collectors::{CollectError, CollectErrorKind, CollectorAuditTrail};
-use std::alloc::TryReserveError;
+use std::collections::TryReserveError;
 
 /// VecCollector の `try_reserve` や `with_capacity` で発生する予約エラーを
 /// `CollectError` に変換する。
@@ -9,10 +12,7 @@ pub fn map_try_reserve_error(
     err: TryReserveError,
 ) -> CollectError {
     let detail = format!("{err:?}");
-    let kind = match err {
-        TryReserveError::CapacityOverflow => CollectErrorKind::CapacityOverflow,
-        TryReserveError::AllocError { .. } => CollectErrorKind::MemoryError,
-    };
+    let kind = CollectErrorKind::MemoryError;
     CollectError::new(
         kind,
         format!("{source} failed during memory reservation"),

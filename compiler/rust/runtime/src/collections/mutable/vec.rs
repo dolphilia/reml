@@ -1,4 +1,4 @@
-use std::{alloc::TryReserveError, cmp, iter::FromIterator, mem, slice};
+use std::{collections::TryReserveError, cmp, iter::FromIterator, mem, slice};
 
 use crate::collections::persistent::list::List;
 #[cfg(feature = "core_prelude")]
@@ -205,7 +205,7 @@ impl<T> EffectfulVec<T> {
         self.effects.mark_mut();
         self.effects.mark_mem();
         self.effects
-            .record_mem_bytes(Self::bytes_for::<T>(additional));
+            .record_mem_bytes(CoreVec::<T>::bytes_for(additional));
     }
 
     /// バッファを縮小する。
@@ -231,7 +231,7 @@ impl<T> EffectfulVec<T> {
     {
         self.effects.mark_mem();
         self.effects
-            .record_mem_bytes(Self::bytes_for::<T>(self.core.len()));
+            .record_mem_bytes(CoreVec::<T>::bytes_for(self.core.len()));
         List::of_iter(self.core.iter().cloned())
     }
 

@@ -326,6 +326,7 @@ dependencies = [
 name = "reml_runtime_ffi"
 version = "0.1.0"
 dependencies = [
+ "indexmap",
  "once_cell",
  "reml_adapter",
  "serde",
