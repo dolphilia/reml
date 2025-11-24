@@ -2,12 +2,12 @@
 
 use std::{fmt::Debug, hash::Hash, mem};
 
-pub use crate::collections::mutable::Table;
 use super::super::iter::{EffectLabels, IterError};
 use super::{
     CollectError, CollectErrorKind, CollectOutcome, Collector, CollectorAuditTrail,
     CollectorEffectMarkers, CollectorKind, CollectorStageProfile,
 };
+pub use crate::collections::mutable::Table;
 
 const TABLE_EFFECTS: EffectLabels = EffectLabels {
     mem: false,

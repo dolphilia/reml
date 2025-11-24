@@ -56,9 +56,8 @@ where
     }
 
     fn remove_order(&mut self, key: &K, id: EntryId) {
-        self.order.retain(|(entry_id, stored_key)| {
-            !(entry_id == &id && stored_key == key)
-        });
+        self.order
+            .retain(|(entry_id, stored_key)| !(entry_id == &id && stored_key == key));
     }
 }
 
@@ -158,13 +157,7 @@ where
         }
         let id = self.inner.allocate();
         self.inner.push_order(id, key.clone());
-        self.inner.storage.insert(
-            key,
-            TableEntry {
-                id,
-                value,
-            },
-        );
+        self.inner.storage.insert(key, TableEntry { id, value });
         None
     }
 
@@ -206,9 +199,7 @@ where
         K: Clone,
         V: Clone,
     {
-        self.iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect()
+        self.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
     }
 
     /// `BTreeMap` へ変換する（キー昇順）。
@@ -281,10 +272,7 @@ impl<'a, K, V> TableIter<'a, K, V>
 where
     K: Eq + std::hash::Hash + Clone,
 {
-    fn new(
-        order: &'a VecDeque<(EntryId, K)>,
-        storage: &'a TableMap<K, V>,
-    ) -> Self {
+    fn new(order: &'a VecDeque<(EntryId, K)>, storage: &'a TableMap<K, V>) -> Self {
         Self {
             order_iter: order.iter(),
             storage,

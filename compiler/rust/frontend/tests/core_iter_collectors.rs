@@ -1,12 +1,14 @@
 //! `ListCollector`/`VecCollector` の効果ログを固定するスナップショットテスト。
 
 use serde_json::json;
+use std::collections::{BTreeMap, BTreeSet};
 
 use reml_runtime_ffi::core_prelude::{
     collectors::{
-        CollectOutcome, ListCollector, MapCollector, SetCollector, StringCollector, TableCollector,
-        VecCollector,
+        CollectErrorKind, CollectOutcome, ListCollector, MapCollector, SetCollector,
+        StringCollector, TableCollector, VecCollector,
     },
+    iter::Iter,
     Collector, GuardDiagnostic, IntoDiagnostic,
 };
 
@@ -137,4 +139,37 @@ fn core_iter_collectors_snapshot() {
         actual, expected,
         "core_iter_collectors snap が変更されました"
     );
+}
+
+#[test]
+fn iter_collect_map_round_trip() {
+    let iter = Iter::from_list(vec![("alpha".to_string(), 10), ("beta".to_string(), 20)]);
+    let (map, _) = iter.collect_map().unwrap().into_parts();
+    let converted: BTreeMap<String, i32> = map.into_map();
+    assert_eq!(converted.get("alpha"), Some(&10));
+    assert_eq!(converted.get("beta"), Some(&20));
+}
+
+#[test]
+fn iter_collect_map_duplicate_key() {
+    let iter = Iter::from_list(vec![("dup".to_string(), 1), ("dup".to_string(), 2)]);
+    let err = iter.collect_map().unwrap_err();
+    assert_eq!(err.kind(), &CollectErrorKind::DuplicateKey);
+}
+
+#[test]
+fn iter_collect_set_round_trip() {
+    let iter = Iter::from_list(vec![5, 1, 3]);
+    let (set, _) = iter.collect_set().unwrap().into_parts();
+    let converted: BTreeSet<i32> = set.into_set();
+    assert_eq!(converted.len(), 3);
+    assert!(converted.contains(&1));
+    assert!(converted.contains(&5));
+}
+
+#[test]
+fn iter_collect_set_duplicate_value() {
+    let iter = Iter::from_list(vec![2, 2]);
+    let err = iter.collect_set().unwrap_err();
+    assert_eq!(err.kind(), &CollectErrorKind::DuplicateKey);
 }

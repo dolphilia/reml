@@ -1,4 +1,4 @@
-use std::{collections::TryReserveError, cmp, iter::FromIterator, mem, slice};
+use std::{cmp, collections::TryReserveError, iter::FromIterator, mem, slice};
 
 use crate::collections::persistent::list::List;
 #[cfg(feature = "core_prelude")]

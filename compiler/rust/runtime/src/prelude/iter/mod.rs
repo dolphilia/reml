@@ -18,9 +18,11 @@ use std::{
 };
 
 use super::collectors::{
-    CollectError, CollectOutcome, Collector, List, ListCollector, TableCollector, VecCollector,
+    CollectError, CollectOutcome, Collector, List, ListCollector, Map, MapCollector, Set,
+    SetCollector, Table, TableCollector, VecCollector,
 };
-use crate::collections::mutable::{CoreVec, Table};
+use crate::collections::mutable::CoreVec;
+use serde::Serialize;
 
 mod generators;
 pub use generators::*;
@@ -331,12 +333,31 @@ impl<T> FromIterator<T> for Iter<T> {
 }
 
 impl<K, V> Iter<(K, V)> {
+    /// `MapCollector` を利用してキー付きデータを永続マップへ収集する。
+    pub fn collect_map(self) -> Result<CollectOutcome<Map<K, V>>, CollectError>
+    where
+        K: Ord + Clone + fmt::Debug + Serialize,
+        V: Clone + Serialize,
+    {
+        self.collect_into_collector(MapCollector::new())
+    }
+
     /// `TableCollector` を利用して挿入順序付きテーブルへ収集する。
     pub fn collect_table(self) -> Result<CollectOutcome<Table<K, V>>, CollectError>
     where
         K: std::cmp::Eq + std::hash::Hash + Clone + std::fmt::Debug,
     {
         self.collect_into_collector(TableCollector::new())
+    }
+}
+
+impl<T> Iter<T>
+where
+    T: Ord + Clone + fmt::Debug + Serialize,
+{
+    /// `SetCollector` を利用して重複排除された集合へ収集する。
+    pub fn collect_set(self) -> Result<CollectOutcome<Set<T>>, CollectError> {
+        self.collect_into_collector(SetCollector::new())
     }
 }
 
