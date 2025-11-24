@@ -3706,6 +3706,120 @@ def collect_collections_audit_bridge_metrics(
 
     return bridge_metric, effect_metric
 
+
+def collect_audit_capability_metric(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
+    total = 0
+    passed = 0
+    failures: List[Dict[str, Any]] = []
+    schema_versions: Set[str] = set()
+    for path in paths:
+        data = load_json(path)
+        try:
+            diagnostics_iter = list(iter_diagnostics(data))
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
+            snapshot_id = diag.get("snapshot_id")
+            if snapshot_id != "audit_cap":
+                continue
+            audit_entry = _as_dict(diag.get("audit"))
+            extensions = _as_dict(diag.get("extensions"))
+            metadata = _as_dict(audit_entry.get("metadata")) if audit_entry else None
+            change_set = (
+                audit_entry.get("change_set")
+                if isinstance(audit_entry, dict)
+                else None
+            )
+            change_dict = change_set if isinstance(change_set, dict) else None
+            if metadata:
+                schema = extract_schema_version(diag)
+                if schema:
+                    schema_versions.add(schema)
+            reasons: List[str] = []
+            capability_value = metadata.get("collector.capability") if metadata else None
+            if not capability_value:
+                reasons.append("collector.capability.missing")
+            elif capability_value != "core.collections.audit":
+                reasons.append("collector.capability.mismatch")
+            effect_flag = None
+            mem_bytes_value = None
+            if metadata:
+                exists, raw_effect = _lookup_in_container(
+                    metadata, "collector.effect.audit"
+                )
+                if exists:
+                    effect_flag = _coerce_bool(raw_effect)
+                exists, raw_mem_bytes = _lookup_in_container(
+                    metadata, "collector.effect.mem_bytes"
+                )
+                if exists:
+                    mem_bytes_value = _coerce_int_value(raw_mem_bytes)
+            if effect_flag is not True:
+                reasons.append("collector.effect.audit.false")
+            if mem_bytes_value is None or mem_bytes_value <= 0:
+                reasons.append("collector.effect.mem_bytes.positive")
+
+            has_collections = False
+            change_total = None
+            if change_dict is None:
+                reasons.append("change_set.missing")
+            else:
+                has_collections = _change_set_contains_collections(change_dict)
+                if not has_collections:
+                    reasons.append("change_set.collections")
+                change_total = _coerce_int_value(change_dict.get("total"))
+                if change_total is None:
+                    reasons.append("collections.change_set.total")
+                elif change_total <= 0:
+                    reasons.append("collections.change_set.total_positive")
+                items = change_dict.get("items")
+                if not isinstance(items, list):
+                    reasons.append("change_set.items")
+                if has_collections:
+                    reasons.extend(
+                        _validate_collections_diff_extensions(extensions, change_dict)
+                    )
+            if reasons:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "case": snapshot_id,
+                        "reasons": sorted(set(reasons)),
+                        "collector.capability": capability_value,
+                        "collector.effect.audit": effect_flag,
+                        "collections.change_set.total": change_total,
+                    }
+                )
+            else:
+                passed += 1
+            total += 1
+
+    if total == 0:
+        return None
+    status = "success" if passed == total else "error"
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+    return {
+        "metric": "collector.capability.audit_pass_rate",
+        "scenario": "audit_cap",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "status": status,
+        "failures": failures,
+        "sources": [str(path) for path in paths],
+        "schema_versions": sorted(schema_versions),
+        "required_audit_keys": [
+            "collector.capability",
+            "collector.effect.audit",
+            "collector.effect.mem_bytes",
+            "collections.diff.kind",
+            "collections.diff.total",
+        ],
+    }
+
     pass_rate, pass_fraction = calculate_pass_rates(passed, total)
     status = "success" if pass_rate == 1.0 else "error"
 
@@ -5353,7 +5467,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--scenario",
         action="append",
         dest="scenarios",
-        choices=["map_set_persistent", "vec_mem_exhaustion", "ref_internal_mutation"],
+        choices=[
+            "map_set_persistent",
+            "vec_mem_exhaustion",
+            "ref_internal_mutation",
+            "audit_cap",
+        ],
         help="Scenario-specific validation (repeatable).",
     )
     parser.add_argument(
@@ -5648,6 +5767,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         cell_ref_metric = collect_cell_ref_effect_metrics(sources)
         if cell_ref_metric:
             append_metrics.append(cell_ref_metric)
+    if "audit_cap" in scenario_filters:
+        audit_cap_metric = collect_audit_capability_metric(sources)
+        if audit_cap_metric:
+            append_metrics.append(audit_cap_metric)
     if "effects" in sections:
         effects_metric = collect_effect_syntax_metrics(sources)
         (

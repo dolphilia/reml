@@ -466,6 +466,90 @@
       "severity": "error",
       "snapshot_id": "collect_table_duplicate",
       "schema_version": "collector.snapshot.v1"
+    },
+    {
+      "snapshot_id": "audit_cap",
+      "code": "core.prelude.collector_snapshot",
+      "severity": "info",
+      "message": "Collector snapshot: audit_cap (core.collections.audit)",
+      "extensions": {
+        "prelude.collector": {
+          "snapshot_id": "audit_cap",
+          "kind": "map",
+          "capability": "core.collections.audit",
+          "stage_actual": "stable",
+          "stage_required": "stable",
+          "stage_mode": "exact",
+          "stage_mismatch": false,
+          "source": "AuditChangeBridge::record",
+          "effects": {
+            "mem": true,
+            "mut": true,
+            "debug": false,
+            "async_pending": false,
+            "audit": true,
+            "predicate_calls": 0,
+            "mem_bytes": 16
+          },
+          "markers": {
+            "finish": 1,
+            "mem_reservation": 0,
+            "reserve": 0
+          },
+          "value": {
+            "diff": "audit_cap"
+          }
+        }
+      },
+      "schema_version": "collector.snapshot.v1",
+      "audit": {
+        "metadata": {
+          "collector.kind": "map",
+          "collector.capability": "core.collections.audit",
+          "collector.stage.actual": "stable",
+          "collector.stage.required": "stable",
+          "collector.stage.mode": "exact",
+          "collector.stage.source": "AuditChangeBridge::record",
+          "collector.stage.mismatch": false,
+          "collector.effect.mem": true,
+          "collector.effect.mut": true,
+          "collector.effect.debug": false,
+          "collector.effect.async_pending": false,
+          "collector.effect.audit": true,
+          "collector.effect.predicate_calls": 0,
+          "collector.effect.mem_bytes": 16,
+          "collector.effect.finish": 1,
+          "collector.effect.mem_reservation": 0,
+          "collector.effect.reserve": 0
+        },
+        "change_set": {
+          "origin": "core.collections",
+          "policy": "core.collections.audit.v1",
+          "category": "collections.diff",
+          "stage": "stable",
+          "kind": "collections.diff.map",
+          "summary": {
+            "added": 1,
+            "removed": 0,
+            "updated": 0,
+            "total": 1
+          },
+          "metadata": {
+            "stage": "stable",
+            "category": "collections.diff",
+            "kind": "collections.diff.map",
+            "origin": "core.collections"
+          },
+          "items": [
+            {
+              "kind": "collections.diff.added",
+              "key": "audit_key",
+              "current": "audit_value"
+            }
+          ],
+          "total": 1
+        }
+      }
     }
   ]
 }
