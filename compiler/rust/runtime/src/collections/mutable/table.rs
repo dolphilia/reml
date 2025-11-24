@@ -1,8 +1,11 @@
 use std::{
     cell::Cell as EffectCell,
     collections::{BTreeMap, VecDeque},
+    fs::File,
     hash::{BuildHasher, Hasher},
+    io::{self, BufRead, BufReader},
     mem,
+    path::Path,
 };
 
 use indexmap::IndexMap;
@@ -11,6 +14,9 @@ use indexmap::IndexMap;
 use crate::core_prelude::iter::{EffectLabels, EffectSet};
 #[cfg(not(feature = "core_prelude"))]
 use crate::prelude::iter::{EffectLabels, EffectSet};
+
+#[cfg(feature = "core_prelude")]
+use crate::register_table_csv_capability;
 
 const DETERMINISTIC_SEED: u64 = 0x9E377_9B97_F4A7_C15;
 
@@ -333,6 +339,12 @@ where
         self.effects.set(effects);
     }
 
+    fn record_io(&self) {
+        let mut effects = self.effects.get();
+        effects.mark_io();
+        self.effects.set(effects);
+    }
+
     /// 要素を挿入する。
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
         self.record_mut();
@@ -393,5 +405,33 @@ where
         let total = self.table.len() * (key_bytes + value_bytes);
         self.record_mem_bytes(total);
         map
+    }
+}
+
+impl Table<String, String> {
+    /// CSV ファイルを読み込み、キー-値ペアを挿入する。
+    pub fn load_csv<P>(path: P) -> io::Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        #[cfg(feature = "core_prelude")]
+        register_table_csv_capability();
+
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+        let mut effectful = EffectfulTable::new();
+        effectful.record_io();
+        for line in reader.lines() {
+            let line = line?;
+            if line.trim().is_empty() {
+                continue;
+            }
+            let mut parts = line.splitn(2, ',');
+            let key = parts.next().unwrap_or("").trim().to_string();
+            let value = parts.next().unwrap_or("").trim().to_string();
+            effectful.insert(key, value);
+        }
+        let (table, _) = effectful.into_parts();
+        Ok(table)
     }
 }

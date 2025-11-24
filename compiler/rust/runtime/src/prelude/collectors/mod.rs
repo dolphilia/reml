@@ -283,6 +283,7 @@ impl CollectorAuditTrail {
             "mem_bytes".into(),
             Value::Number(Number::from(self.effects.mem_bytes as u64)),
         );
+        effects.insert("io".into(), Value::Bool(self.effects.io));
         obj.insert("effects".into(), Value::Object(effects));
 
         let mut markers = JsonObject::new();
@@ -374,6 +375,10 @@ impl CollectorAuditTrail {
         metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}effect.mem_bytes"),
             Value::Number(Number::from(self.effects.mem_bytes as u64)),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.io"),
+            Value::Bool(self.effects.io),
         );
         metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}effect.mem_reservation"),

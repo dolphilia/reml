@@ -753,6 +753,7 @@ impl EffectSet {
     const AUDIT_BIT: u8 = 0b1_0000;
     const CELL_BIT: u8 = 0b10_0000;
     const RC_BIT: u8 = 0b100_0000;
+    const IO_BIT: u8 = 0b1000_0000;
 
     pub const PURE: Self = Self {
         bits: 0,
@@ -792,6 +793,10 @@ impl EffectSet {
 
     pub fn mark_audit(&mut self) {
         self.bits |= Self::AUDIT_BIT;
+    }
+
+    pub fn mark_io(&mut self) {
+        self.bits |= Self::IO_BIT;
     }
 
     pub fn record_predicate_call(&mut self) {
@@ -898,6 +903,9 @@ impl EffectSet {
         if labels.rc || labels.rc_ops > 0 {
             self.bits |= Self::RC_BIT;
         }
+        if labels.io {
+            self.mark_io();
+        }
 
         self.record_mem_bytes(labels.mem_bytes);
         self.record_predicate_calls(labels.predicate_calls);
@@ -932,6 +940,10 @@ impl EffectSet {
         self.bits & Self::RC_BIT != 0
     }
 
+    pub fn contains_io(self) -> bool {
+        self.bits & Self::IO_BIT != 0
+    }
+
     pub fn to_labels(self) -> EffectLabels {
         EffectLabels {
             mem: self.contains_mem(),
@@ -941,6 +953,7 @@ impl EffectSet {
             audit: self.contains_audit(),
             cell: self.contains_cell(),
             rc: self.contains_rc(),
+            io: self.contains_io(),
             mem_bytes: self.mem_bytes,
             predicate_calls: self.predicate_calls,
             rc_ops: self.rc_ops,
@@ -958,6 +971,7 @@ pub struct EffectLabels {
     pub audit: bool,
     pub cell: bool,
     pub rc: bool,
+    pub io: bool,
     pub mem_bytes: usize,
     pub predicate_calls: usize,
     pub rc_ops: usize,

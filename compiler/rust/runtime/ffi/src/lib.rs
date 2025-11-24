@@ -49,7 +49,7 @@ pub use env::{
     PlatformSnapshot,
 };
 #[cfg(feature = "core_prelude")]
-pub use handles::{register_ref_capability, RefHandle};
+pub use handles::{register_ref_capability, register_table_csv_capability, RefHandle};
 pub use manifest_contract::{ConductorCapabilityContract, ConductorCapabilityRequirement};
 pub use registry::{
     BridgeIntent, BridgeStageTraceStep, CapabilityError, CapabilityRegistry, RuntimeBridgeRegistry,

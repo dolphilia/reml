@@ -17,6 +17,7 @@ const TABLE_EFFECTS: EffectLabels = EffectLabels {
     audit: false,
     cell: false,
     rc: false,
+    io: false,
     mem_bytes: 0,
     predicate_calls: 0,
     rc_ops: 0,
