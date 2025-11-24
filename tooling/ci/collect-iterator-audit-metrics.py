@@ -3290,6 +3290,159 @@ def collect_vec_effect_metrics(
     }
 
 
+def collect_cell_ref_effect_metrics(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
+    total = 0
+    passed = 0
+    cell_mutations_total = 0
+    rc_ops_total = 0
+    borrow_conflicts = 0
+    schema_versions: Set[str] = set()
+    failures: List[Dict[str, Any]] = []
+    scenario_ids = {"collect_cell_ref_effects", "ref_internal_mutation"}
+
+    for path in paths:
+        data = load_json(path)
+        try:
+            diagnostics_iter = list(iter_diagnostics(data))
+        except ValueError:
+            continue
+        for index, diag in enumerate(diagnostics_iter):
+            extensions = _as_dict(diag.get("extensions"))
+            prelude = (
+                _as_dict(extensions.get("prelude.collector"))
+                if extensions
+                else None
+            )
+            if not prelude:
+                continue
+            snapshot_id = prelude.get("snapshot_id")
+            if not snapshot_id or snapshot_id not in scenario_ids:
+                continue
+
+            total += 1
+            schema = extract_schema_version(diag)
+            if schema:
+                schema_versions.add(schema)
+
+            audit_entry = _as_dict(diag.get("audit"))
+            metadata = _as_dict(audit_entry.get("metadata")) if audit_entry else None
+            effects = _as_dict(prelude.get("effects"))
+            markers = _as_dict(prelude.get("markers"))
+
+            cell_value = False
+            exists, raw_cell = (False, None)
+            if metadata:
+                exists, raw_cell = _lookup_in_container(
+                    metadata, "collector.effect.cell"
+                )
+            if exists:
+                cell_value = _coerce_bool(raw_cell)
+            elif effects:
+                cell_value = _coerce_bool(effects.get("cell"))
+            elif markers:
+                cell_value = _coerce_bool(markers.get("cell"))
+
+            cell_count = 0
+            if metadata:
+                exists, raw_cell_count = _lookup_in_container(
+                    metadata, "collector.metrics.cell_mutations_total"
+                )
+                if exists:
+                    converted = _coerce_int_value(raw_cell_count)
+                    if converted is not None:
+                        cell_count = converted
+            if cell_count == 0:
+                cell_count = 1 if cell_value else 0
+            cell_mutations_total += cell_count
+
+            rc_value = False
+            exists, raw_rc = (False, None)
+            if metadata:
+                exists, raw_rc = _lookup_in_container(metadata, "collector.effect.rc")
+            if exists:
+                rc_value = _coerce_bool(raw_rc)
+            elif effects:
+                rc_value = _coerce_bool(effects.get("rc"))
+            elif markers:
+                rc_value = _coerce_bool(markers.get("rc"))
+
+            rc_ops_value = 0
+            if metadata:
+                exists, raw_rc_ops = _lookup_in_container(
+                    metadata, "collector.effect.rc_ops"
+                )
+                if exists:
+                    converted = _coerce_int_value(raw_rc_ops)
+                    if converted is not None:
+                        rc_ops_value = converted
+            if rc_ops_value == 0 and markers:
+                candidate = _coerce_int_value(markers.get("rc_ops"))
+                if candidate is not None:
+                    rc_ops_value = candidate
+            rc_ops_total += rc_ops_value
+
+            conflict_count = 0
+            if metadata:
+                exists, raw_conflict = _lookup_in_container(
+                    metadata, "collector.error.borrow_conflict"
+                )
+                if exists:
+                    converted = _coerce_int_value(raw_conflict)
+                    if converted is not None:
+                        conflict_count += converted
+            error_kind = prelude.get("error_kind")
+            if isinstance(error_kind, str) and error_kind == "borrow_conflict":
+                conflict_count += 1
+            borrow_conflicts += conflict_count
+
+            reasons: List[str] = []
+            if cell_count == 0:
+                reasons.append("collector.effect.cell")
+            if rc_ops_value <= 0:
+                reasons.append("collector.effect.rc_ops")
+
+            case_id = snapshot_id or f"{path.name}#{index}"
+            if reasons:
+                failures.append(
+                    {
+                        "file": str(path),
+                        "index": index,
+                        "case": case_id,
+                        "snapshot": snapshot_id,
+                        "cell": cell_value,
+                        "rc_ops": rc_ops_value,
+                        "reasons": sorted(set(reasons)),
+                    }
+                )
+            else:
+                passed += 1
+
+    if total == 0:
+        return None
+
+    pass_rate, pass_fraction = calculate_pass_rates(passed, total)
+    ref_rate = float(borrow_conflicts) / rc_ops_total if rc_ops_total else 0.0
+    status = "success" if passed == total and cell_mutations_total > 0 else "warning"
+
+    return {
+        "metric": "collector.effect.cell_rc",
+        "scenario": "ref_internal_mutation",
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "status": status,
+        "cell_mutations_total": cell_mutations_total,
+        "rc_ops_total": rc_ops_total,
+        "borrow_conflicts": borrow_conflicts,
+        "ref_borrow_conflict_rate": ref_rate,
+        "failures": failures,
+        "sources": [str(path) for path in paths],
+        "schema_versions": sorted(schema_versions),
+        "required_audit_keys": ["collector.effect.cell", "collector.effect.rc"],
+    }
+
 def _change_set_contains_collections(change_set: Dict[str, Any]) -> bool:
     def _match(value: Optional[object]) -> bool:
         return isinstance(value, str) and "collections.diff" in value
@@ -5160,7 +5313,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--scenario",
         action="append",
         dest="scenarios",
-        choices=["map_set_persistent", "vec_mem_exhaustion"],
+        choices=["map_set_persistent", "vec_mem_exhaustion", "ref_internal_mutation"],
         help="Scenario-specific validation (repeatable).",
     )
     parser.add_argument(
@@ -5185,6 +5338,11 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--require-success",
         action="store_true",
         help="主要メトリクスが失敗した場合に非ゼロ終了コードを返す。",
+    )
+    parser.add_argument(
+        "--require-cell",
+        action="store_true",
+        help="ref_internal_mutation シナリオの cell/ref KPI が success であることを保証する。",
     )
     return parser.parse_args(argv)
 
@@ -5446,6 +5604,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         vec_metric = collect_vec_effect_metrics(sources)
         if vec_metric:
             append_metrics.append(vec_metric)
+    if "ref_internal_mutation" in scenario_filters:
+        cell_ref_metric = collect_cell_ref_effect_metrics(sources)
+        if cell_ref_metric:
+            append_metrics.append(cell_ref_metric)
     if "effects" in sections:
         effects_metric = collect_effect_syntax_metrics(sources)
         (
@@ -5715,6 +5877,29 @@ def main(argv: Optional[List[str]] = None) -> int:
         with args.output.open("w", encoding="utf-8") as handle:
             handle.write(json_output)
             handle.write("\n")
+
+    if getattr(args, "require_cell", False):
+        ref_metric: Optional[Dict[str, Any]] = next(
+            (
+                metric
+                for metric in append_metrics
+                if isinstance(metric, dict)
+                and metric.get("scenario") == "ref_internal_mutation"
+            ),
+            None,
+        )
+        if ref_metric is None:
+            sys.stderr.write(
+                "[collect-iterator-audit-metrics] ref_internal_mutation metric is missing\n"
+            )
+            return 1
+        status = str(ref_metric.get("status", "")).strip().lower()
+
+        if status not in ("success", "ok", "passed"):
+            sys.stderr.write(
+                f"[collect-iterator-audit-metrics] ref_internal_mutation: status={ref_metric.get('status')}\n"
+            )
+            return 1
 
     # When --require-success is specified, fail if critical metrics did not pass.
     if getattr(args, "require_success", False) and failure_reasons:

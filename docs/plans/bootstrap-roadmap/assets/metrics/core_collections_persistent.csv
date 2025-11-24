@@ -1,3 +1,4 @@
-scenario,items,input_bytes,peak_effect_mem_bytes,peak_mem_ratio,avg_reuse_ratio,shared_nodes,allocations
-ListPersistentPatch,100000,26138098,44846556,1.7158,1.0000,314289,314289
-MapPersistentMerge,50000,3350396,4657956,1.3903,1.0000,53205,53205
+scenario,items,input_bytes,peak_effect_mem_bytes,peak_mem_ratio,avg_reuse_ratio,shared_nodes,allocations,notes
+ListPersistentPatch,100000,26138098,44846556,1.7158,1.0000,314289,314289,
+MapPersistentMerge,50000,3350396,4657956,1.3903,1.0000,53205,53205,
+RefInternalMutation,0,0,0,0,0,0,0,"cell_mutations_total / ref_borrow_conflict_rate を `collect-iterator-audit-metrics.py --suite collectors --scenario ref_internal_mutation --require-cell` で測定し、docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md へ連動"

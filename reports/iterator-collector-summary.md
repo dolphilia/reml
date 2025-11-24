@@ -46,10 +46,10 @@
 - KPI: `collector.error.invalid_encoding` は意図的な失敗として記録しつつ、正常系では `0` であることを `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` で追跡。
 
 ### collect_cell_ref_effects
-- **目的**: `EffectfulCell`/`EffectfulRef` 実装で `collector.effect.cell` と `collector.effect.rc` が欠落なく記録されるか監視する。
-- **Procedure**: `python3 tooling/ci/collect-iterator-audit-metrics.py --suite collectors --scenario ref_internal_mutation --output reports/iterator-collector-metrics.json --require-success` を実行。`--suite collectors` は `reports/spec-audit/ch1/core_iter_collectors.json` / `.audit.jsonl` を既定対象にするため追加された（2027-03-29）。
-- **KPI**: `cell_mutations_total` は `collector.effect.cell=true` が現れた回数、`ref_borrow_conflict_rate` は `collector.error.borrow_conflict / borrow_mut_total`。両指標は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に登録済み。
-- **Validation**: `scripts/validate-diagnostic-json.sh --suite collectors --pattern core_iter_collectors` を併用し、`collector.effect.cell` / `collector.effect.rc` キーが欠落した JSON を拒否する。
+- **目的**: `EffectfulCell`/`EffectfulRef` の内部可変性が `collector.effect.cell`/`collector.effect.rc` として監査ログへ収まり、`docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` §3.2.4 で定義した `Cell/Ref effect trace` の KPI と一致することを確認する。
+- **Procedure**: `python3 tooling/ci/collect-iterator-audit-metrics.py --suite collectors --scenario ref_internal_mutation --output reports/iterator-collector-metrics.json --require-success --require-cell` を実行し、`collect_cell_ref_effects` ケースから `collector.effect.cell`/`collector.effect.rc` を含むメタデータを収集する。`--suite collectors` で `reports/spec-audit/ch1/core_iter_collectors.json`/`.audit.jsonl` を枢要対象とし、追加 KPI は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と `docs/plans/bootstrap-roadmap/assets/metrics/core_collections_persistent.csv`（`RefInternalMutation` 行）に記録される。
+- **KPI**: `cell_mutations_total` は `collector.effect.cell=true` になった回数、`ref_borrow_conflict_rate` は `collector.error.borrow_conflict`／`collector.effect.rc_ops` を比率化したもの。結果は `reports/iterator-collector-metrics.json` に保存し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表と `docs/plans/bootstrap-roadmap/assets/metrics/core_collections_persistent.csv` の新規行で追跡される。
+- **Validation**: `scripts/validate-diagnostic-json.sh --suite collectors --pattern collector.effect.cell --pattern collector.effect.rc reports/spec-audit/ch1/core_iter_collectors.json` を走らせ、監査 JSON に両キーが存在しない場合は gate が fail するようにする。
 
 ### collect_table_csv
 - **目的**: `EffectfulTable`/`TableCollector` の順序保持と `effect {mut,mem,audit}` を同時に検査し、CSV ロードの性能 KPI (`table_insert_throughput`, `csv_load_latency`) を更新する。

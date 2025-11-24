@@ -760,4 +760,54 @@ PY
   fi
 fi
 
+if [[ "$SUITE" == "collectors" ]]; then
+  if [[ "${#AUDIT_FILES[@]}" -eq 0 ]]; then
+    echo "[validate-diagnostic-json] error: collectors スイート向けの監査ファイルが見つかりません" >&2
+    EXIT_CODE=1
+  else
+    if ! python3 - "${AUDIT_FILES[@]}" <<'PY'; then
+import json
+import pathlib
+import sys
+
+paths = [pathlib.Path(item) for item in sys.argv[1:] if item]
+found_cell = False
+found_rc = False
+
+for path in paths:
+    if not path.exists():
+        continue
+    text = path.read_text(encoding="utf-8")
+    for line in text.splitlines():
+        entry = line.strip()
+        if not entry:
+            continue
+        try:
+            data = json.loads(entry)
+        except json.JSONDecodeError:
+            continue
+        metadata = data.get("metadata")
+        if isinstance(metadata, dict):
+            if "collector.effect.cell" in metadata:
+                found_cell = True
+            if "collector.effect.rc" in metadata:
+                found_rc = True
+        if found_cell and found_rc:
+            break
+    if found_cell and found_rc:
+        break
+
+if not found_cell:
+    print("[validate-diagnostic-json] collectors audit に collector.effect.cell がありません", file=sys.stderr)
+if not found_rc:
+    print("[validate-diagnostic-json] collectors audit に collector.effect.rc がありません", file=sys.stderr)
+if not found_cell or not found_rc:
+    sys.exit(1)
+PY
+    then
+      EXIT_CODE=1
+    fi
+  fi
+fi
+
 exit $EXIT_CODE
