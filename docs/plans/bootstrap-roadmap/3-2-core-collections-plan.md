@@ -317,6 +317,21 @@
 5.2. Config/Data 章 (3-7) で利用する差分 API (`SchemaDiff`, `Change`) との互換アダプタを用意し、双方向変換テストを実施する。
 5.3. `effect {audit}` を伴う操作 (`emit_metric` 等) の前提条件を確認し、Capability チェックのフックを追加する。
 
+#### 5.1 `AuditEnvelope.change_set` とコレクションの JSON 差分
+- `compiler/rust/runtime/src/collections/audit_change_bridge.rs` などに `AuditChangeBridge` モジュールを追加し、`CollectOutcome::collector.effect.audit=true` の際に `Map`/`Table` の差分を `AuditEnvelope.change_set` に構築するロジックを実装する。差分は `docs/spec/3-6-core-diagnostics-audit.md` の `ChangeSet`/`SchemaDiff` フォーマットを再利用し、Collector 側で算出した `added`/`removed`/`updated` エントリを JSON 変換する。
+- JSON 出力は `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` の `collections.diff` セクションと整合させ、`scripts/validate-diagnostic-json.sh --section core_iter_collectors.audit --pattern collections.diff` で `key`/`kind`/`value` が揃っていることを確認する。単体テストは `compiler/rust/runtime/tests/core_collections_audit_bridge.rs` で `PersistentMap` の `merge`/`diff` と `Table` の `insert`/`remove` を再現し、`AuditEnvelope.change_set.total` が仕様通り出力されることと `effect {audit}` のフラグが `true` になることを検証する。
+- `reports/iterator-collector-summary.md` に `audit_bridge` の計測欄を追加し、`CollectorAuditTrail.metadata["collector.effect.audit"]`/`"collections.change_set.total"` を KPI として記録する。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の Phase3 表にはこの KPI の許容値（`effect {audit}` 付き ops の応答時間 < 150ms）を記載し、CI で `tooling/ci/collect-iterator-audit-metrics.py --scenario audit_bridge` を呼び出すようにする。
+
+#### 5.2 Config/Data 差分 API との互換アダプタ
+- `SchemaDiff`/`Change` に対応する構造体を `compiler/rust/runtime/src/config/collection_diff.rs` に定義し、`Map`/`Table`/`List` の差分を `Config.Data` で消費できる形式に直列化する。`docs/spec/3-7-core-config-data.md` の `schema_diff_to_change_set` サブセクションを参考に、キー順保証・type tag・`EffectLabels` の `mem_bytes` を維持した上で `Change` エントリを生成する。
+- `Core.Collections` 側では `Core.Collections.Map.diff`/`Table.to_map` などの公開 API から新規アダプタ（例: `collections::config::MapDiffAdapter`）を提供し、`ChangeConfig::apply` に `AuditEnvelope.change_set` を直接流せるようにする。`docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md` に追記し、Config チームとのダブルチェックを記録する。
+- 双方向テストとして `compiler/rust/runtime/tests/config/collection_diff_roundtrip.rs` を用意し、(1) `Map` 差分→`SchemaDiff`→`ChangeSet`、(2) `ChangeSet` JSON→`Map` の再構築、(3) `Table` の `insert`/`load_csv` 操作に `collector.effect.audit=true` が付いて `ChangeSet` の `audit` フラグへ伝播することを確認する。`scripts/validate-diagnostic-json.sh --section config` で `schema_diff.*` のキーをチェックし、`docs/notes/spec-integrity-audit-checklist.md` に `config.diff.bridge` の TODO を記録する。
+
+#### 5.3 `effect {audit}` による Capability チェックと運用ガード
+- `tables`, `maps`, `collections` が `effect {audit}` を発行する API（`emit_metric`, `collect_table` の `audit` モードなど）では `CapabilityRegistry` に `core.collections.audit` を登録し、`docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` との同期を記録する。`scripts/poc_dualwrite_compare.sh --target audit_bridge` を実行し、`CapabilityRegistry::check("core.collections.audit")` が `false` のときに `CollectError::CapabilityDenied` を返すパスを検証する。
+- `effect {audit}` を伴うテスト/CI は `tooling/ci/collect-iterator-audit-metrics.py --section collectors --scenario audit_cap` で `collector.effect.audit=true` を求め、`scripts/validate-diagnostic-json.sh --pattern collector.effect.audit` で `reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` を検証する。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の Phase3 `Capabilty` 列に `core.collections.audit` を追加し、`reports/iterator-collector-summary.md` の `status` カラムで `audit_cap` ケースの結果を追跡する。
+- Capability 側のドキュメント更新として `docs/guides/runtime-bridges.md` に `Core.Collections` の `audit` フラグを記載し、`docs/plans/rust-migration/unified-porting-principles.md` の「同一性優先」セクションへ `effect {audit}` 含む操作の制限を注記する。
+
 ### 6. ドキュメント整備とサンプル検証（40-41週目）
 **担当領域**: 情報更新
 
