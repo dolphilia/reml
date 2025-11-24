@@ -4,6 +4,7 @@ use std::iter::FromIterator;
 use std::mem;
 
 use super::arena::{ArenaPtr, PersistentArena};
+use crate::prelude::iter::{Iter, IterIntoIterator};
 
 /// Finger tree 風のノードを使った永続リスト。
 pub struct List<T> {
@@ -226,6 +227,15 @@ impl<T: Clone> List<T> {
             acc = f(acc, value);
         }
         acc
+    }
+}
+
+impl<T: Clone> IntoIterator for List<T> {
+    type Item = T;
+    type IntoIter = IterIntoIterator<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Iter::from_persistent("List::into_iter", self.into_vec()).into_iter()
     }
 }
 

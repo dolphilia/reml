@@ -12,6 +12,8 @@ use std::{
 
 use serde::Serialize;
 
+use crate::prelude::iter::{Iter, IterIntoIterator};
+
 use crate::collections::audit_bridge::{self, AuditBridgeError, ChangeSet};
 
 use super::arena::{ArenaPtr, PersistentArena};
@@ -167,6 +169,16 @@ impl<K: Ord, V> PersistentMap<K, V> {
         let merged = self.merge_with(delta, |key, left, right| resolver(key, left, right));
         let change_set = self.diff_change_set(&merged)?;
         Ok((merged, change_set))
+    }
+}
+
+impl<K: Ord + Clone, V: Clone> IntoIterator for PersistentMap<K, V> {
+    type Item = (K, V);
+    type IntoIter = IterIntoIterator<(K, V)>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let entries = self.into_map().into_iter().collect();
+        Iter::from_persistent("PersistentMap::into_iter", entries).into_iter()
     }
 }
 
@@ -339,6 +351,16 @@ impl<T: Ord> PersistentSet<T> {
         T: Ord + Clone + Serialize,
     {
         audit_bridge::set_diff_to_changes(self, other)
+    }
+}
+
+impl<T: Ord + Clone> IntoIterator for PersistentSet<T> {
+    type Item = T;
+    type IntoIter = IterIntoIterator<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let entries = self.into_set().into_iter().collect();
+        Iter::from_persistent("PersistentSet::into_iter", entries).into_iter()
     }
 }
 

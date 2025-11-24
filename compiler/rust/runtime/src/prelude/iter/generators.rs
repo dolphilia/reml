@@ -23,6 +23,16 @@ impl<T> Iter<T> {
         )
     }
 
+    /// 永続コレクションから Stage = stable の `Iter` を生成する。
+    pub fn from_persistent(label: &'static str, values: Vec<T>) -> Self {
+        build_iter(
+            label,
+            IteratorKind::PersistentCollection,
+            EffectSet::PURE,
+            IterDriver::from_vec(values),
+        )
+    }
+
     /// `Result` から `Iter` を作成し、`Ok` のときのみ 1 要素を生成する。
     pub fn from_result<E>(result: std::result::Result<T, E>) -> Self {
         match result {

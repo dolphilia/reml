@@ -26,6 +26,8 @@ pub mod config;
 pub mod core_collections_metrics;
 #[cfg(feature = "core_prelude")]
 pub mod core_prelude;
+#[cfg(feature = "core_prelude")]
+pub use core_prelude as prelude;
 mod env;
 mod ffi_contract;
 #[cfg(feature = "core_prelude")]

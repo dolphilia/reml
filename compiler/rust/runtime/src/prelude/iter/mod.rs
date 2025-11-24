@@ -609,6 +609,7 @@ pub enum IteratorKind {
     CoreIter,
     OptionLike,
     ResultLike,
+    PersistentCollection,
     Custom(String),
 }
 
@@ -619,6 +620,7 @@ impl IteratorKind {
             IteratorKind::CoreIter => Some("core.iter.core"),
             IteratorKind::OptionLike => Some("core.iter.option"),
             IteratorKind::ResultLike => Some("core.iter.result"),
+            IteratorKind::PersistentCollection => Some("core.iter.persistent_collection"),
             IteratorKind::Custom(_) => None,
         }
     }
@@ -626,6 +628,7 @@ impl IteratorKind {
     pub fn default_requirement(&self) -> StageRequirement {
         match self {
             IteratorKind::ArrayLike => StageRequirement::Exact("stable"),
+            IteratorKind::PersistentCollection => StageRequirement::Exact("stable"),
             _ => StageRequirement::AtLeast("beta"),
         }
     }
@@ -634,6 +637,7 @@ impl IteratorKind {
         match self {
             IteratorKind::ArrayLike => "stable",
             IteratorKind::CoreIter | IteratorKind::OptionLike | IteratorKind::ResultLike => "beta",
+            IteratorKind::PersistentCollection => "stable",
             IteratorKind::Custom(_) => "unknown",
         }
     }
@@ -645,6 +649,7 @@ impl IteratorKind {
             IteratorKind::OptionLike => Cow::Borrowed("option_like"),
             IteratorKind::ResultLike => Cow::Borrowed("result_like"),
             IteratorKind::Custom(label) => Cow::Owned(format!("custom:{label}")),
+            IteratorKind::PersistentCollection => Cow::Borrowed("persistent_collection"),
         }
     }
 }
