@@ -2,7 +2,13 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{fs};
 
-use reml_runtime::text::{log_grapheme_stats, TextBuilder, Str};
+use reml_runtime::text::{
+  clear_grapheme_cache_for_tests,
+  log_grapheme_stats,
+  GraphemeStats,
+  Str,
+  TextBuilder,
+};
 use serde::Serialize;
 
 #[derive(Clone, Copy)]
@@ -135,15 +141,12 @@ fn gather_all_metrics() -> Vec<CaseMetrics> {
 fn run_case(spec: &CaseSpec) -> CaseMetrics {
   let text = build_text(spec);
   let actual_bytes = text.len();
+  clear_grapheme_cache_for_tests();
   let str_ref = Str::from(text.as_str());
-  let stats = log_grapheme_stats(&str_ref).expect("grapheme stats");
-
-  let (cache_hits, cache_miss, cache_generation) = match spec.profile {
-    LocaleProfile::Single => (0, stats.grapheme_count, 0),
-    LocaleProfile::Mixed => (stats.grapheme_count, 0, 1),
-    LocaleProfile::Streaming => (stats.grapheme_count, 0, 1),
-  };
-
+  let stats = gather_stats_for_profile(spec.profile, &str_ref);
+  let cache_hits = stats.cache_hits;
+  let cache_miss = stats.cache_miss;
+  let cache_generation = stats.cache_generation;
   let cache_denominator = (cache_hits + cache_miss).max(1) as f64;
   CaseMetrics {
     case_id: spec.case_id,
@@ -160,6 +163,16 @@ fn run_case(spec: &CaseSpec) -> CaseMetrics {
     avg_generation: cache_generation as f64,
     cache_hit_ratio: cache_hits as f64 / cache_denominator,
     notes: spec.notes,
+  }
+}
+
+fn gather_stats_for_profile(profile: LocaleProfile, str_ref: &Str<'_>) -> GraphemeStats {
+  match profile {
+    LocaleProfile::Single => log_grapheme_stats(str_ref).expect("stats"),
+    LocaleProfile::Mixed | LocaleProfile::Streaming => {
+      let _ = log_grapheme_stats(str_ref).expect("warm cache");
+      log_grapheme_stats(str_ref).expect("stats (cached)")
+    }
   }
 }
 

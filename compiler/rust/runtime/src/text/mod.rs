@@ -15,6 +15,7 @@ pub use bytes::Bytes;
 pub use builder::{builder, TextBuilder};
 pub use error::{UnicodeEffectInfo, UnicodeError, UnicodeErrorKind, UnicodeResult};
 pub use grapheme::{
+  clear_grapheme_cache_for_tests,
   grapheme_stats,
   log_grapheme_stats,
   segment_graphemes,
