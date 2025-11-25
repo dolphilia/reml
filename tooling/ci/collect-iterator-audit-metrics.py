@@ -218,6 +218,7 @@ DEFAULT_RETENTION_POLICY: Dict[str, int] = {
 }
 
 TEXT_DEFAULT_METRICS_PATH = Path("reports/spec-audit/ch1/core_text_grapheme_stats.json")
+TEXT_MEM_DEFAULT_METRICS_PATH = Path("reports/text-mem-metrics.json")
 TEXT_CACHE_HIT_TARGET = 0.8
 TEXT_CASE_RULES: Dict[str, Dict[str, float]] = {
     "UC-01": {
@@ -3865,6 +3866,169 @@ def collect_text_grapheme_metrics(paths: Sequence[Path]) -> Optional[Dict[str, A
     return metric
 
 
+def collect_text_bytes_clone_metrics(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
+    sources: List[str] = []
+    structural_failures: List[Dict[str, Any]] = []
+    case_results: List[Dict[str, Any]] = []
+    total_cases = 0
+    passed_cases = 0
+    zero_copy_bytes = 0
+    total_mem_bytes = 0
+    copy_mem_bytes = 0
+    copy_input_bytes = 0
+    mem_input_bytes = 0
+    out_of_memory_cases = 0
+    handled_out_of_memory = 0
+    failures: List[Dict[str, Any]] = []
+
+    for path in paths:
+        data = _load_json_with_failure(path, structural_failures)
+        if data is None:
+            continue
+        sources.append(str(path))
+        cases = data.get("cases")
+        if not isinstance(cases, list):
+            structural_failures.append(
+                {"file": str(path), "reason": "cases_missing"}
+            )
+            continue
+        for raw_case in cases:
+            if not isinstance(raw_case, dict):
+                continue
+            expectations = _as_dict(raw_case.get("expectations"))
+            if expectations is None:
+                continue
+            case_id = str(
+                raw_case.get("case") or raw_case.get("name") or "<unknown>"
+            )
+            total_cases += 1
+
+            transfer_value = _coerce_bool(raw_case.get("transfer"))
+            mem_bytes_value = _coerce_int_value(raw_case.get("mem_bytes"))
+            input_bytes_value = _coerce_int_value(raw_case.get("input_bytes")) or 0
+            error_kind_value = (
+                str(raw_case.get("error_kind")).strip()
+                if raw_case.get("error_kind") is not None
+                else ""
+            )
+            handled_flag = _coerce_bool(raw_case.get("handled"))
+
+            reasons: List[str] = []
+            if "transfer" in expectations:
+                expected_transfer = _coerce_bool(expectations.get("transfer"))
+                if transfer_value != expected_transfer:
+                    reasons.append("transfer")
+            if "mem_bytes" in expectations:
+                expected_mem_bytes = _coerce_int_value(expectations.get("mem_bytes"))
+                if expected_mem_bytes is None or mem_bytes_value != expected_mem_bytes:
+                    reasons.append("mem_bytes")
+            if "min_mem_bytes" in expectations:
+                min_mem = _coerce_int_value(expectations.get("min_mem_bytes")) or 0
+                if mem_bytes_value is None or mem_bytes_value < min_mem:
+                    reasons.append("mem_bytes.min")
+            if "max_mem_bytes" in expectations:
+                max_mem = _coerce_int_value(expectations.get("max_mem_bytes"))
+                if (
+                    max_mem is not None
+                    and mem_bytes_value is not None
+                    and mem_bytes_value > max_mem
+                ):
+                    reasons.append("mem_bytes.max")
+            if "error_kind" in expectations:
+                expected_error = str(expectations.get("error_kind") or "").strip()
+                if error_kind_value != expected_error:
+                    reasons.append("error_kind")
+            if "handled" in expectations:
+                expected_handled = _coerce_bool(expectations.get("handled"))
+                if handled_flag != expected_handled:
+                    reasons.append("handled")
+
+            if mem_bytes_value is not None:
+                mem_input_bytes += max(input_bytes_value, 0)
+                if transfer_value and mem_bytes_value == 0:
+                    zero_copy_bytes += max(input_bytes_value, 0)
+                if mem_bytes_value > 0:
+                    copy_mem_bytes += mem_bytes_value
+                    copy_input_bytes += max(input_bytes_value, 1)
+                total_mem_bytes += max(mem_bytes_value, 0)
+
+            expects_oom = False
+            if "out_of_memory" in expectations:
+                expects_oom = _coerce_bool(expectations.get("out_of_memory"))
+            if "error_kind" in expectations:
+                expected_error = str(expectations.get("error_kind") or "").strip()
+                if expected_error.endswith("OutOfMemory"):
+                    expects_oom = True
+            if expects_oom:
+                out_of_memory_cases += 1
+                if not reasons:
+                    handled_out_of_memory += 1
+
+            if reasons:
+                failures.append(
+                    {
+                        "case": case_id,
+                        "reasons": reasons,
+                        "file": str(path),
+                    }
+                )
+            else:
+                passed_cases += 1
+
+            case_results.append(
+                {
+                    "case": case_id,
+                    "transfer": transfer_value,
+                    "mem_bytes": mem_bytes_value,
+                    "input_bytes": input_bytes_value or None,
+                    "error_kind": error_kind_value or None,
+                    "handled": handled_flag,
+                    "status": "passed" if not reasons else "failed",
+                    "reasons": reasons or None,
+                }
+            )
+
+    if total_cases == 0 and not structural_failures:
+        return None
+
+    pass_rate, pass_fraction = calculate_pass_rates(passed_cases, total_cases)
+    total_bytes = mem_input_bytes if mem_input_bytes > 0 else None
+    zero_copy_ratio = (
+        (zero_copy_bytes / mem_input_bytes) if mem_input_bytes > 0 else None
+    )
+    copy_penalty = None
+    if copy_input_bytes > 0:
+        copy_penalty = (copy_mem_bytes / copy_input_bytes) * 1024
+
+    status = "success"
+    if failures or structural_failures:
+        status = "error"
+
+    metric: Dict[str, Any] = {
+        "metric": "text.mem.bytes_clone",
+        "scenario": "bytes_clone",
+        "status": status,
+        "total": total_cases,
+        "passed": passed_cases,
+        "failed": total_cases - passed_cases,
+        "pass_rate": pass_rate,
+        "pass_fraction": pass_fraction,
+        "zero_copy_ratio": zero_copy_ratio,
+        "copy_penalty_bytes_per_kb": copy_penalty,
+        "total_mem_bytes": total_mem_bytes,
+        "out_of_memory_cases": out_of_memory_cases,
+        "handled_out_of_memory": handled_out_of_memory,
+        "cases": case_results,
+        "sources": sources,
+    }
+    if total_bytes is not None:
+        metric["monitored_input_bytes"] = total_bytes
+    all_failures = structural_failures + failures
+    if all_failures:
+        metric["failures"] = all_failures
+    return metric
+
+
 def collect_audit_capability_metric(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
     total = 0
     passed = 0
@@ -5539,6 +5703,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Path to Core.Text metrics JSON (repeatable).省略時は reports/spec-audit/ch1/core_text_grapheme_stats.json を参照します。",
     )
     parser.add_argument(
+        "--text-mem-source",
+        action="append",
+        dest="text_mem_sources",
+        help="Path to Core.Text memory metrics JSON (repeatable).省略時は reports/text-mem-metrics.json を参照します。",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         help="Destination for collected metrics (JSON).",
@@ -5638,6 +5808,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "ref_internal_mutation",
             "audit_cap",
             "grapheme_stats",
+            "bytes_clone",
         ],
         help="Scenario-specific validation (repeatable).",
     )
@@ -5809,6 +5980,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     text_source_paths: List[Path] = _ensure_path_list(
         getattr(args, "text_sources", None)
     )
+    text_mem_source_paths: List[Path] = _ensure_path_list(
+        getattr(args, "text_mem_sources", None)
+    )
     if not text_source_paths and TEXT_DEFAULT_METRICS_PATH.is_file():
         text_source_paths = [TEXT_DEFAULT_METRICS_PATH]
 
@@ -5975,9 +6149,38 @@ def main(argv: Optional[List[str]] = None) -> int:
         audit_cap_metric = collect_audit_capability_metric(sources)
         if audit_cap_metric:
             append_metrics.append(audit_cap_metric)
+    if "bytes_clone" in scenario_filters:
+        if not text_mem_source_paths and TEXT_MEM_DEFAULT_METRICS_PATH.is_file():
+            text_mem_source_paths = [TEXT_MEM_DEFAULT_METRICS_PATH]
+        if not text_mem_source_paths:
+            sys.stderr.write(
+                "Text memory metrics source not found. --text-mem-source で JSON を指定するか "
+                f"{TEXT_MEM_DEFAULT_METRICS_PATH} を生成してください。\n"
+            )
+            return 2
+        missing_mem_sources = [
+            str(path) for path in text_mem_source_paths if not path.is_file()
+        ]
+        if missing_mem_sources:
+            sys.stderr.write(
+                "Missing text memory metrics files: "
+                + ", ".join(missing_mem_sources)
+                + "\n"
+            )
+            return 2
+        bytes_clone_metric = collect_text_bytes_clone_metrics(text_mem_source_paths)
+        if bytes_clone_metric is None:
+            sys.stderr.write(
+                "Text memory metrics file did not contain any expectation cases.\n"
+            )
+            return 2
+        append_metrics.append(bytes_clone_metric)
 
     text_metric: Optional[Dict[str, Any]] = None
-    text_section_requested = "text" in sections or "grapheme_stats" in scenario_filters
+    text_section_requested = (
+        "text" in sections
+        or "grapheme_stats" in scenario_filters
+    )
     if text_section_requested:
         if not text_source_paths:
             sys.stderr.write(

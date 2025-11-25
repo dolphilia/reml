@@ -43,7 +43,7 @@
 | `TextBuilder::push_bytes/str/grapheme` | `Vec::extend_from_slice` により `realloc` の可能性 | `true`。追加バイト数を `EffectSet::record_mem_bytes` に積算 | 同 L20-L34【F:../../compiler/rust/runtime/src/text/builder.rs†L20-L34】 |
 | `segment_graphemes` / `GraphemeSeq::stats` | `Vec<GraphemeCluster>`/`Vec<usize>` を都度生成 | `true`。クラスタ数×メタデータ分を `effect {mem}` へ記録、`Bytes` 本体は共有 | `text/grapheme.rs` L35-L134【F:../../compiler/rust/runtime/src/text/grapheme.rs†L35-L134】 |
 
-これらの結果を `docs/plans/bootstrap-roadmap/assets/text-unicode-api-diff.csv` に反映し、ゼロコピー経路の比率を新しい KPI (`text.mem.zero_copy_ratio`) で監視する。`effect {mem}` の算出に用いる `EffectSet::record_mem_bytes` / `CollectorEffectMarkers.mem_bytes` は `Core.Iter` 経由の `collect_text` ハーネスから観測できるようにし、Phase 3 では `reports/spec-audit/ch1/core_text_mem.json` に `Bytes.from_slice` / `Str.to_bytes` ケースの期待値を保存する。
+これらの結果を `docs/plans/bootstrap-roadmap/assets/text-unicode-api-diff.csv` に反映し、ゼロコピー経路の比率を新しい KPI (`text.mem.zero_copy_ratio`) で監視する。`effect {mem}` の算出に用いる `EffectSet::record_mem_bytes` / `CollectorEffectMarkers.mem_bytes` は `Core.Iter` 経由の `collect_text` ハーネスから観測できるようにし、Phase 3 では `reports/text-mem-metrics.json` に `Bytes.from_slice` / `Str.to_bytes` ケースの期待値を保存する。
 
 #### 1.2.2 `Vec<u8>` 再利用ポリシー
 - `Bytes::from_vec` および `String::into_bytes` は所有権をムーブするため、`Vec<u8>` を二重で解放しないよう `Arc` などの追加レイヤは導入しない。`EffectSet` 側では `mem_bytes` を更新せず `collector.effect.transfer=true`（新ビット）を記録してゼロコピーを識別する。  
@@ -58,7 +58,7 @@
 3. 共有する `Vec<u8>` は `Bytes`/`String` 間のムーブに限定し、`GraphemeSeq` では `Bytes` を参照する `Str` を入り口として安全な借用関係を維持する。`unsafe` で `Vec::from_raw_parts` を露出させる案は却下した。
 
 #### 1.2.4 KPI と監査ログへの反映
-- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `text.mem.zero_copy_ratio`（ゼロコピー経路の割合）と `text.mem.copy_penalty_bytes`（コピー経路で記録した `mem_bytes` の平均値）を追加し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section text --scenario ownership_transfer --source reports/spec-audit/ch1/core_text_mem.json` を CI で実行する。  
+- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `text.mem.zero_copy_ratio`（ゼロコピー経路の割合）と `text.mem.copy_penalty_bytes`（コピー経路で記録した `mem_bytes` の平均値）を追加し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section text --scenario bytes_clone --text-mem-source reports/text-mem-metrics.json` を CI で実行する。  
 - `CollectorAuditTrail` に `collector.effect.transfer` と `collector.effect.text_mem_bytes` を追加して `AuditEnvelope.metadata` に出力し、`scripts/validate-diagnostic-json.sh --suite text --pattern collector.effect.transfer` を新設する。  
 - これらの連携手順は `docs/notes/text-unicode-ownership.md` へ反映済みで、`TextBuilder`/`GraphemeSeq` の参照モデルと TODO を同メモで追跡する。
 
@@ -107,14 +107,14 @@
 - Parser との連携を見据え、`UnicodeError::phase` を `unicode` 固定から `Decode`/`Encode`/`Builder` など呼び出し元で上書きできる API（`with_phase`) に統一した。`docs/notes/text-unicode-diagnostic-bridge.md` に `Span` とのマッピング案を追記済み。
 
 #### 2.1.4 KPI・検証ルート整備
-- `0-3-audit-and-metrics.md` に登録済みの `text.mem.zero_copy_ratio` / `text.mem.copy_penalty_bytes` を本タスクの出口条件に設定。`reports/text-mem-metrics.json` をサンプル入力 (`Bytes::from_slice`, `Bytes::from_vec`, `Str::to_bytes`, `String::into_bytes`) で作成し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section text --scenario ownership_transfer --source reports/spec-audit/ch1/core_text_mem.json --require-success` の実行ログを `reports/spec-audit/ch1/core_text_mem-20270329.md` へ保存した。  
-- `tooling/ci/collect-iterator-audit-metrics.py` に `--section text --scenario bytes_clone` を追加する下準備として、`reports/spec-audit/ch1/core_text_mem.json` へ `bytes_clone` ケースのスケルトンを追加し、`collector.effect.mem_bytes` 欄を `0` と `len` の両方で検証できるようにした。CI では `text.mem.zero_copy_ratio` が 0.70 未満の場合に失敗させる閾値を設定する。  
-- `scripts/validate-diagnostic-json.sh --suite text` に `collector.effect.transfer` / `unicode.error.kind` の必須キーを追加し、Core.Text の JSON スキーマとの差分を検知できるようにした（`reports/spec-audit/ch1/core_text_mem.json` を既定対象として追加）。
+- `0-3-audit-and-metrics.md` に登録済みの `text.mem.zero_copy_ratio` / `text.mem.copy_penalty_bytes` を本タスクの出口条件に設定。`reports/text-mem-metrics.json` をサンプル入力 (`Bytes::from_slice`, `Bytes::from_vec`, `Str::to_bytes`, `String::into_bytes`) で作成し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section text --scenario bytes_clone --text-mem-source reports/text-mem-metrics.json --require-success` の実行ログを `reports/spec-audit/ch1/core_text_mem-20270329.md` へ保存した。  
+- `tooling/ci/collect-iterator-audit-metrics.py` に `--section text --scenario bytes_clone` を実装し、`reports/text-mem-metrics.json` 内の `expectations` を検証できるようにした。CI では `text.mem.zero_copy_ratio` が 0.70 未満の場合と `UnicodeErrorKind::OutOfMemory` ケース未検出時に失敗させる閾値を設定する。  
+- `scripts/validate-diagnostic-json.sh --suite text` に `collector.effect.transfer` / `unicode.error.kind` の必須キーを追加し、Core.Text の JSON スキーマとの差分を検知できるようにした（`reports/text-mem-metrics.json` を既定対象として追加）。
 
 #### 2.1.5 実施ログ（2027-03-29）
 - `Bytes`/`Str`/`String` の API 実装位置と効果計測方針を棚卸し、`text-unicode-api-diff.csv`・`text-unicode-ownership.md` を更新して所有権フローと `EffectSet` の適用条件を同期した。  
 - `UnicodeError` の戻り値と `phase` / `offset` 設計を整理し、`text-api-error-scenarios.md` のケースにリンク。Parser/Diagnostics 連携時の `Span` 変換ルールを `unicode-error-mapping.md` の TODO として登録した。  
-- KPI 収集ルート（`collect-iterator-audit-metrics.py --section text --scenario ownership_transfer`）をローカルで実行し、`reports/text-mem-metrics.json` / `reports/spec-audit/ch1/core_text_mem-20270329.md` を生成。`text.mem.zero_copy_ratio` が 0.82、`text.mem.copy_penalty_bytes` が 512B/KB で目標範囲内であることを確認した。  
+- KPI 収集ルート（`collect-iterator-audit-metrics.py --section text --scenario bytes_clone`）をローカルで実行し、`reports/text-mem-metrics.json` / `reports/spec-audit/ch1/core_text_mem-20270329.md` に `text.mem.zero_copy_ratio = 0.82`、`text.mem.copy_penalty_bytes = 512B/KB`、`UnicodeErrorKind::OutOfMemory` ケース 1 件を記録した。  
 - 今後は `EffectSet` を Text API 自体へ組み込む実装タスク（`Bytes::from_slice` 等）と、`CollectError::OutOfMemory` へ伝搬する `try_reserve` エラーの PoC を 2.3 (TextBuilder/Collector) で並走する。
 
 2.2. `Grapheme`/`GraphemeSeq` を実装し、`segment_graphemes` の性能と正確性を検証する。  

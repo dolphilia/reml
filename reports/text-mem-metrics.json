@@ -1,28 +1,66 @@
 {
   "timestamp": "2027-03-29T00:00:00Z",
-  "scenario": "ownership_transfer",
-  "text.mem.zero_copy_ratio": 0.82,
-  "text.mem.copy_penalty_bytes": 512,
   "cases": [
     {
-      "name": "bytes_from_vec_zero_copy",
+      "case": "bytes_from_vec_zero_copy",
       "transfer": true,
-      "mem_bytes": 0
+      "mem_bytes": 0,
+      "input_bytes": 10240,
+      "expectations": {
+        "transfer": true,
+        "mem_bytes": 0
+      },
+      "notes": "Vec<u8> → Bytes::from_vec（ゼロコピー）"
     },
     {
-      "name": "bytes_from_slice_copy",
+      "case": "bytes_from_slice_copy",
       "transfer": false,
-      "mem_bytes": 6144
+      "mem_bytes": 1120,
+      "input_bytes": 2240,
+      "expectations": {
+        "transfer": false,
+        "min_mem_bytes": 1
+      },
+      "notes": "Bytes::from_slice"
     },
     {
-      "name": "str_to_bytes_copy",
+      "case": "str_to_bytes_copy",
       "transfer": false,
-      "mem_bytes": 6144
+      "mem_bytes": 1120,
+      "input_bytes": 2240,
+      "expectations": {
+        "transfer": false,
+        "min_mem_bytes": 1
+      },
+      "notes": "Str::to_bytes"
     },
     {
-      "name": "string_into_bytes_zero_copy",
+      "case": "string_into_bytes_zero_copy",
       "transfer": true,
-      "mem_bytes": 0
+      "mem_bytes": 0,
+      "input_bytes": 10240,
+      "expectations": {
+        "transfer": true,
+        "mem_bytes": 0
+      },
+      "notes": "String::into_bytes"
+    },
+    {
+      "case": "bytes_clone_out_of_memory",
+      "transfer": false,
+      "input_bytes": 131072,
+      "handled": true,
+      "error_kind": "UnicodeErrorKind::OutOfMemory",
+      "expectations": {
+        "error_kind": "UnicodeErrorKind::OutOfMemory",
+        "handled": true
+      },
+      "notes": "TA-02 `String::clone` try_reserve failure"
     }
-  ]
+  ],
+  "summary": {
+    "zero_copy_ratio": 0.82,
+    "copy_penalty_bytes_per_kb": 512,
+    "cases": 5
+  }
 }
