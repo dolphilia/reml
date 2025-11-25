@@ -23,6 +23,7 @@ Example:
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import sys
 from collections import defaultdict
@@ -214,6 +215,24 @@ DEFAULT_RETENTION_POLICY: Dict[str, int] = {
     "local": 30,
     "tmp": 20,
     "default": 50,
+}
+
+TEXT_DEFAULT_METRICS_PATH = Path("reports/spec-audit/ch1/core_text_grapheme_stats.json")
+TEXT_CACHE_HIT_TARGET = 0.8
+TEXT_CASE_RULES: Dict[str, Dict[str, float]] = {
+    "UC-01": {
+        "min_cache_miss": 1,
+        "max_cache_hits": 0,
+    },
+    "UC-02": {
+        "min_hit_ratio": 0.7,
+        "min_cache_hits": 1,
+    },
+    "UC-03": {
+        "max_cache_miss": 0,
+        "min_cache_hits": 1,
+        "min_hit_ratio": 1.0,
+    },
 }
 
 
@@ -3707,6 +3726,145 @@ def collect_collections_audit_bridge_metrics(
     return bridge_metric, effect_metric
 
 
+def collect_text_grapheme_metrics(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
+    sources: List[str] = []
+    structural_failures: List[Dict[str, Any]] = []
+    expectation_failures: List[Dict[str, Any]] = []
+    cases_output: List[Dict[str, Any]] = []
+    total_cases = 0
+    total_bytes = 0
+    total_evictions = 0
+    generation_sum = 0.0
+    summary_payload: Optional[Dict[str, Any]] = None
+    ratio_hits = 0
+    ratio_miss = 0
+
+    for path in paths:
+        data = _load_json_with_failure(path, structural_failures)
+        if data is None:
+            continue
+        sources.append(str(path))
+        if summary_payload is None:
+            summary = data.get("summary")
+            if isinstance(summary, dict):
+                summary_payload = summary
+        cases = data.get("cases")
+        if not isinstance(cases, list):
+            structural_failures.append({"file": str(path), "reason": "cases_missing"})
+            continue
+        for case in cases:
+            if not isinstance(case, dict):
+                continue
+            case_id = case.get("case_id") or case.get("case") or "<unknown>"
+            hits = max(0, _coerce_int_value(case.get("cache_hits")) or 0)
+            miss = max(0, _coerce_int_value(case.get("cache_miss")) or 0)
+            bytes_value = max(
+                0,
+                _coerce_int_value(case.get("actual_bytes"))
+                or _coerce_int_value(case.get("target_bytes"))
+                or 0,
+            )
+            evictions = max(
+                0, _coerce_int_value(case.get("version_mismatch_evictions")) or 0
+            )
+            avg_generation = case.get("avg_generation")
+            if isinstance(avg_generation, (int, float)):
+                generation_sum += float(avg_generation)
+            else:
+                generation_sum += float(
+                    _coerce_int_value(case.get("cache_generation")) or 0
+                )
+
+            total_cases += 1
+            total_bytes += bytes_value
+            total_evictions += evictions
+
+            denominator = hits + miss
+            ratio = (hits / denominator) if denominator > 0 else None
+            case_rules = TEXT_CASE_RULES.get(case_id)
+            case_violations: List[str] = []
+            if case_rules:
+                min_miss = case_rules.get("min_cache_miss")
+                if min_miss is not None and miss < min_miss:
+                    case_violations.append(f"cache_miss<{min_miss}")
+                max_miss = case_rules.get("max_cache_miss")
+                if max_miss is not None and miss > max_miss:
+                    case_violations.append(f"cache_miss>{max_miss}")
+                min_hits = case_rules.get("min_cache_hits")
+                if min_hits is not None and hits < min_hits:
+                    case_violations.append(f"cache_hits<{min_hits}")
+                max_hits = case_rules.get("max_cache_hits")
+                if max_hits is not None and hits > max_hits:
+                    case_violations.append(f"cache_hits>{max_hits}")
+                required_ratio = case_rules.get("min_hit_ratio")
+                if required_ratio is not None:
+                    ratio_hits += hits
+                    ratio_miss += miss
+                    if ratio is None or ratio < required_ratio:
+                        case_violations.append(
+                            f"cache_hit_ratio<{required_ratio}"
+                        )
+            if case_violations:
+                expectation_failures.append(
+                    {
+                        "case": case_id,
+                        "violations": case_violations,
+                        "file": str(path),
+                    }
+                )
+            cases_output.append(
+                {
+                    "case": case_id,
+                    "cache_hits": hits,
+                    "cache_miss": miss,
+                    "cache_hit_ratio": ratio,
+                    "bytes": bytes_value,
+                    "version_mismatch_evictions": evictions,
+                    "notes": case.get("notes"),
+                    "expected": case_rules,
+                    "violations": case_violations or None,
+                }
+            )
+
+    if total_cases == 0 and not structural_failures:
+        return None
+
+    ratio_denominator = ratio_hits + ratio_miss
+    cache_hit_ratio = (
+        ratio_hits / ratio_denominator if ratio_denominator > 0 else None
+    )
+
+    status = "success"
+    all_failures = structural_failures + expectation_failures
+    if all_failures:
+        status = "error"
+    elif cache_hit_ratio is not None and cache_hit_ratio < TEXT_CACHE_HIT_TARGET:
+        status = "error"
+    elif cache_hit_ratio is None and ratio_denominator > 0:
+        status = "warning"
+
+    metric: Dict[str, Any] = {
+        "metric": "text.grapheme.cache_hit",
+        "status": status,
+        "threshold": TEXT_CACHE_HIT_TARGET,
+        "total_cases": total_cases,
+        "cache_hit_ratio": cache_hit_ratio,
+        "cache_hits_monitored": ratio_hits,
+        "cache_miss_monitored": ratio_miss,
+        "ratio_cases": ratio_denominator,
+        "total_bytes": total_bytes,
+        "version_mismatch_evictions": total_evictions,
+        "avg_generation": (generation_sum / total_cases) if total_cases > 0 else None,
+        "cases": cases_output,
+        "sources": sources,
+    }
+    if summary_payload:
+        metric["summary"] = summary_payload
+    if all_failures:
+        metric["failures"] = all_failures
+    return metric
+
+
 def collect_audit_capability_metric(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
     total = 0
     passed = 0
@@ -5375,6 +5533,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Path to diagnostic JSON (repeatable).",
     )
     parser.add_argument(
+        "--text-source",
+        action="append",
+        dest="text_sources",
+        help="Path to Core.Text metrics JSON (repeatable).省略時は reports/spec-audit/ch1/core_text_grapheme_stats.json を参照します。",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         help="Destination for collected metrics (JSON).",
@@ -5399,6 +5563,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "type_inference",
             "ffi",
             "typeclass",
+            "text",
             "review",
         ],
         default="all",
@@ -5472,6 +5637,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "vec_mem_exhaustion",
             "ref_internal_mutation",
             "audit_cap",
+            "grapheme_stats",
         ],
         help="Scenario-specific validation (repeatable).",
     )
@@ -5518,6 +5684,46 @@ def main(argv: Optional[List[str]] = None) -> int:
             if not scenario:
                 continue
             scenario_filters.add(scenario)
+
+    section_order = [
+        "parser",
+        "lexer",
+        "streaming",
+        "iterator",
+        "collectors",
+        "effects",
+        "type_inference",
+        "typeclass",
+        "ffi",
+        "text",
+        "review",
+    ]
+    if args.section == "all":
+        sections = section_order
+    else:
+        sections = [args.section]
+
+    diagnostic_sections = {
+        "parser",
+        "lexer",
+        "streaming",
+        "iterator",
+        "collectors",
+        "effects",
+        "diag",
+        "type_inference",
+        "ffi",
+        "typeclass",
+    }
+    scenario_diagnostic_requirements = {
+        "map_set_persistent",
+        "vec_mem_exhaustion",
+        "ref_internal_mutation",
+        "audit_cap",
+    }
+    needs_diagnostic_sources = bool(
+        set(sections) & diagnostic_sections
+    ) or bool(scenario_filters & scenario_diagnostic_requirements)
 
     module_filters: Optional[List[str]] = None
     if getattr(args, "modules", None):
@@ -5600,38 +5806,53 @@ def main(argv: Optional[List[str]] = None) -> int:
                 if stripped:
                     platform_filters.add(stripped)
 
-    sources: List[Path]
-    if args.sources:
-        sources = [Path(src) for src in args.sources]
-    else:
-        default_paths = [
-            Path(
-                "compiler/ocaml/tests/golden/"
-                "typeclass_iterator_stage_mismatch.json.golden"
-            ),
-            Path(
-                "compiler/ocaml/tests/golden/diagnostics/ffi/"
-                "unsupported-abi.json.golden"
-            ),
-            Path(
-                "compiler/ocaml/tests/golden/diagnostics/effects/"
-                "syntax-constructs.json.golden"
-            ),
-        ]
-        sources = [path for path in default_paths if path.is_file()]
+    text_source_paths: List[Path] = _ensure_path_list(
+        getattr(args, "text_sources", None)
+    )
+    if not text_source_paths and TEXT_DEFAULT_METRICS_PATH.is_file():
+        text_source_paths = [TEXT_DEFAULT_METRICS_PATH]
 
-    missing_paths = [str(path) for path in sources if not path.is_file()]
-    if missing_paths:
-        sys.stderr.write(
-            "Missing input files: " + ", ".join(missing_paths) + "\n"
-        )
-        return 2
-    if not sources:
-        sys.stderr.write(
-            "No default diagnostic sources found. "
-            "Specify --source explicitly.\n"
-        )
-        return 2
+    sources: List[Path] = []
+    if needs_diagnostic_sources:
+        if args.sources:
+            sources = [Path(src) for src in args.sources]
+        else:
+            default_paths = [
+                Path(
+                    "compiler/ocaml/tests/golden/"
+                    "typeclass_iterator_stage_mismatch.json.golden"
+                ),
+                Path(
+                    "compiler/ocaml/tests/golden/diagnostics/ffi/"
+                    "unsupported-abi.json.golden"
+                ),
+                Path(
+                    "compiler/ocaml/tests/golden/diagnostics/effects/"
+                    "syntax-constructs.json.golden"
+                ),
+            ]
+            sources = [path for path in default_paths if path.is_file()]
+
+        missing_paths = [str(path) for path in sources if not path.is_file()]
+        if missing_paths:
+            sys.stderr.write(
+                "Missing input files: " + ", ".join(missing_paths) + "\n"
+            )
+            return 2
+        if not sources:
+            sys.stderr.write(
+                "No default diagnostic sources found. "
+                "Specify --source explicitly.\n"
+            )
+            return 2
+    elif args.sources:
+        sources = [Path(src) for src in args.sources]
+        missing_paths = [str(path) for path in sources if not path.is_file()]
+        if missing_paths:
+            sys.stderr.write(
+                "Missing input files: " + ", ".join(missing_paths) + "\n"
+            )
+            return 2
 
     audit_paths: List[Path] = []
     if args.audit_sources:
@@ -5665,23 +5886,6 @@ def main(argv: Optional[List[str]] = None) -> int:
             else:
                 sys.stderr.write(f"append-from ファイルが dict ではありません: {path}\n")
                 return 2
-
-    section_order = [
-        "parser",
-        "lexer",
-        "streaming",
-        "iterator",
-        "collectors",
-        "effects",
-        "type_inference",
-        "typeclass",
-        "ffi",
-        "review",
-    ]
-    if args.section == "all":
-        sections = section_order
-    else:
-        sections = [args.section]
 
     runconfig_metrics: Optional[List[Dict[str, Any]]] = None
     lexer_metrics: List[Dict[str, Any]] = []
@@ -5771,6 +5975,34 @@ def main(argv: Optional[List[str]] = None) -> int:
         audit_cap_metric = collect_audit_capability_metric(sources)
         if audit_cap_metric:
             append_metrics.append(audit_cap_metric)
+
+    text_metric: Optional[Dict[str, Any]] = None
+    text_section_requested = "text" in sections or "grapheme_stats" in scenario_filters
+    if text_section_requested:
+        if not text_source_paths:
+            sys.stderr.write(
+                "Text metrics source not found. 指定ファイルを --text-source で渡すか "
+                f"{TEXT_DEFAULT_METRICS_PATH} を生成してください。\n"
+            )
+            return 2
+        missing_text_sources = [
+            str(path) for path in text_source_paths if not path.is_file()
+        ]
+        if missing_text_sources:
+            sys.stderr.write(
+                "Missing text metrics files: " + ", ".join(missing_text_sources) + "\n"
+            )
+            return 2
+        text_metric = collect_text_grapheme_metrics(text_source_paths)
+        if text_metric is None:
+            sys.stderr.write(
+                "Text metrics file did not contain any cases. 再生成してください。\n"
+            )
+            return 2
+        if "grapheme_stats" in scenario_filters:
+            scenario_metric = copy.deepcopy(text_metric)
+            scenario_metric["scenario"] = "grapheme_stats"
+            append_metrics.append(scenario_metric)
     if "effects" in sections:
         effects_metric = collect_effect_syntax_metrics(sources)
         (
@@ -5857,6 +6089,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         metrics_list.append(review_metrics)
     if diag_metric:
         metrics_list.append(diag_metric)
+    if text_metric and "text" in sections:
+        metrics_list.append(text_metric)
 
     if lexer_metrics and "parser" not in sections:
         metrics_list.extend(lexer_metrics)
@@ -5932,6 +6166,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         combined["ffi_bridge"] = bridge_metrics
     if review_metrics:
         combined["audit_review"] = review_metrics
+    if text_metric and "text" in sections:
+        combined["text"] = text_metric
 
     combined_audit_sources: List[str] = []
     for metrics in (iterator_metrics, typeclass_metrics, bridge_metrics):
