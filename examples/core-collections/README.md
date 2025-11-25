@@ -16,8 +16,9 @@ cargo run --bin reml -- examples/core-collections/usage.reml
 
 上記コマンドは Phase 3 の `reml` CLI が稼働している前提です。`docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` §6 で定義した CI パイプライン (例: `collect-iterator-audit-metrics.py --scenario core_collections_example`) が整った段階で自動実行を追加する予定です。
 
+このサンプルは `Table.load_csv` / `collect_table_csv` シナリオの効果タグ（`effect {io}`/`effect {mut}`）とも連携する想定で、`reports/spec-audit/ch1/core_iter_collectors.audit.jsonl` の KPI `collector.effect.io` の検証路線と結びつけられます。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `csv_load_latency` 目標にも整合するように更新しました。
+
 ## 合致するドキュメント
 
 - `docs/spec/3-2-core-collections.md` §2.3 にある `Map.from_pairs` の説明
 - `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` §6 で計画されたサンプル検証の成果
-

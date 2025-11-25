@@ -87,8 +87,10 @@ fn partition<T: Ord>(set: Set<T>, pred: (T) -> Bool) -> (Set<T>, Set<T>)
 - `List`/`Map`/`Set` はいずれも永続データ構造であり、`insert`/`update` などの操作は既存構造を破壊せず新しいバージョンを返す。内部では構造共有を利用して `O(1)`（`List.push_front`）〜`O(log n)`（`Map.insert`/`Set.insert`）以内に抑え、Chapter 0-1 が定義する性能基準を満たす。【F:0-1-project-purpose.md†L11-L37】
 - `List.fold` と `Iter.fold` はどちらも入力の左端から右端へ評価し、`List` の再帰実装も末尾再帰最適化済みである。DSL 作者は `List` 基盤と `Iter` 基盤を同じ計算モデルとして把握でき、学習コストを抑えられる。【F:0-1-project-purpose.md†L29-L44】
 - `Map.to_iter`/`Map.keys`/`Map.values` は常にキー昇順で結果を生成する。`MapCollector` や `Map.from_iter` は挿入段階でキー比較を行い、同一キーが観測された場合は `CollectError::DuplicateKey` を返す設計を共有する。監査ログや差分出力が安定した順序で得られ、`Diagnostic` の行番号が再現しやすくなる。【F:3-6-core-diagnostics-audit.md†L42-L88】
-- `Table` は挿入順を保持し、`TableCollector` や `table_to_map` で `Map` に変換する際に `Ord` に基づく再ソートが入る。挿入順での検証が必要な DSL では `Table` を終端型として選択し、安定表示が必要な箇所だけを `Map` へ昇格させる運用を推奨する。
+- `Table` は挿入順を保持し、`TableCollector` や `table_to_map` で `Map` に変換する際に `Ord` に基づく再ソートが入る。挿入順での検証が必要な DSL では `Table` を終端型として選択し、安定表示が必要な箇所だけを `Map` へ昇格させる運用を推奨する。 
 - 差分適用（`Map.merge`/`Set.diff`）は各入力を昇順で走査し、`Iter.try_collect` 経由で `Map` に再収集する場合も計算量は `O(m log(n/m+1))` に収束する。構成ファイル数万キー規模の変更検知でも線形スケーリングを維持できるようここに明記する。【F:0-1-project-purpose.md†L11-L37】
+
+> **NOTE**: `Table.load_csv` は `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` の `Core.IO.CsvReader` を呼び出して UTF-8/BOM/CRLF を検証しつつ `EffectSet::mark_io()` を記録する設計で、`docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` §3.3 にある `collect_table_csv` KPI を補完します。`examples/core-collections/README.md`/`usage.reml` のパイプライン説明は `Table.insert` から `Table.to_map` への流れと、`collect_table_csv` シナリオを含む監査メトリクスの手順を示しています。
 
 ## 3. 可変コレクション（`effect {mut}`）
 

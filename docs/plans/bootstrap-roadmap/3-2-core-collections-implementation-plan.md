@@ -25,9 +25,8 @@
    - `CollectOutcome::audit` 側の `core.collections.audit` チェック (`compiler/rust/runtime/src/prelude/collectors/mod.rs:397`) や `scripts/validate-diagnostic-json.sh --suite collectors`/`tooling/ci/collect-iterator-audit-metrics.py --scenario audit_cap` gate への組み込みは次フェーズへ継続とし、`docs/notes/collections-audit-bridge-todo.md` から引き継ぐ。
 
 4. **ドキュメントとサンプルの同期**
-   - `docs/spec/3-2-core-collections.md` §2.3 に `examples/core-collections/usage.reml` への NOTE を追記し、`List → Map → Vec → Table → Cell/Ref` のパイプラインと `CollectError`・`effect` 発火点を解説 (`docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md:389-398`)。
-   - `examples/core-collections/README.md` で手動実行手順と KPI シナリオ（`collect-iterator-audit-metrics.py --scenario core_collections_example`）を整備し、`README.md` と `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` に Core.Collections の進捗ブロックを追加。
-   - `docs/plans/bootstrap-roadmap/assets/metrics/core_collections_persistent.csv` / `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表に `vec_mut_ops_per_sec`/`list_as_vec_mem_bytes`/`cell_mutations_total`/`ref_borrow_conflict_rate` を追記し、`reports/iterator-collector-metrics.json` とのリンクを明示。
+   - `docs/spec/3-2-core-collections.md` §3.3 に `Table.load_csv`/`collect_table_csv` の注釈を加え、`examples/core-collections/README.md`/`usage.reml` を指して `effect {io}` や `CollectError` の発火点を示した。
+   - `examples/core-collections/README.md` に CLI 実行手順と `collect_table_csv` シナリオを補足し、`README.md` および `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` に Core.Collections の進捗ブロックを維持する予定を追記した。
 
 ## 検証と CI 統合
 - `cargo test core_collections_vec core_collections_cell_ref core_collections_table` を Phase3 CI に組み込み、`CollectError` や `collector.effect.*` 出力を `scripts/validate-diagnostic-json.sh --suite collectors` で gate。
