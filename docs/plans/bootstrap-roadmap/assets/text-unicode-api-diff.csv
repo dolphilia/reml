@@ -1,0 +1,6 @@
+module,api,signature,effects,spec_ref,impl_status,notes
+Bytes,from_vec,"Result<Bytes, UnicodeError> from Vec<u8>","effect {mem}?" ,docs/spec/3-3-core-text-unicode.md#bytes,Pending,"ゼロコピー条件・UTF-8検証ルールを要確認"
+String,to_bytes,"Result<Bytes, UnicodeError> to_bytes(&self)","effect {mem}" ,docs/spec/3-3-core-text-unicode.md#string,Missing,"Rust 実装は clone 前提、所有権移譲 API を追加する"
+GraphemeSeq,segment_graphemes,"Iterator<Grapheme> segment_graphemes(&self)","effect {cpu}",docs/spec/3-3-core-text-unicode.md#grapheme,Partial,"テストケース未整備(UAX #29)"
+TextBuilder,push_grapheme,"Result<(), UnicodeError> push_grapheme(&mut self, Grapheme)","effect {mut} {mem}",docs/spec/3-3-core-text-unicode.md#textbuilder,Missing,"IterStage::Streaming 連携の検証が未着手"
+Core.Iter,collect_text,"Result<Text, UnicodeError> collect_text(Iter<Grapheme>)","effect {mem}",docs/spec/3-1-core-prelude-iteration.md#collectors,Missing,"Core.Iter 側 API 未定義。3-1 計画と同期する"
