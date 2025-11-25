@@ -1,0 +1,28 @@
+{
+  "timestamp": "2027-03-29T00:00:00Z",
+  "scenario": "ownership_transfer",
+  "text.mem.zero_copy_ratio": 0.82,
+  "text.mem.copy_penalty_bytes": 512,
+  "cases": [
+    {
+      "name": "bytes_from_vec_zero_copy",
+      "transfer": true,
+      "mem_bytes": 0
+    },
+    {
+      "name": "bytes_from_slice_copy",
+      "transfer": false,
+      "mem_bytes": 6144
+    },
+    {
+      "name": "str_to_bytes_copy",
+      "transfer": false,
+      "mem_bytes": 6144
+    },
+    {
+      "name": "string_into_bytes_zero_copy",
+      "transfer": true,
+      "mem_bytes": 0
+    }
+  ]
+}

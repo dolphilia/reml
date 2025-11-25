@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use super::{Str, String as TextString, UnicodeError, UnicodeErrorKind, UnicodeResult};
+use super::{effects, Str, String as TextString, UnicodeError, UnicodeErrorKind, UnicodeResult};
 
 /// UTF-8 バイト列の所有権ラッパー。
 /// 仕様では IO/圧縮との境界を担うため、ここでは `Vec<u8>` を薄く包む。
@@ -18,7 +18,12 @@ impl Bytes {
 
   /// バイト列をコピーして構築するヘルパ。IO 層以外でも手軽に使える。
   pub fn from_slice(slice: &[u8]) -> Self {
-    Self { data: slice.to_vec() }
+    Self::from_slice_internal(slice, true)
+  }
+
+  /// 効果計測を省略した `from_slice`。内部利用専用。
+  pub(crate) fn from_slice_untracked(slice: &[u8]) -> Self {
+    Self::from_slice_internal(slice, false)
   }
 
   /// 所有権ごと `Vec<u8>` を取り出す。
@@ -47,9 +52,8 @@ impl Bytes {
         "bytes slice out of bounds",
       ));
     }
-    Ok(Self {
-      data: self.data[range].to_vec(),
-    })
+    let view = &self.data[range.start..range.end];
+    Ok(Self::from_slice_internal(view, true))
   }
 
   /// UTF-8 として解釈した `Str` を返す。仕様準拠の `DecodeError` へ繋ぐ予定。
@@ -71,5 +75,38 @@ impl Bytes {
   /// 所有権を `Core.Text::String` に移すショートカット。
   pub fn into_string(self) -> UnicodeResult<TextString> {
     self.into_utf8().map(|s| s.into_owned())
+  }
+
+  fn from_slice_internal(slice: &[u8], track_effects: bool) -> Self {
+    if track_effects {
+      effects::record_mem_copy(slice.len());
+    }
+    Self { data: slice.to_vec() }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::text::effects;
+
+  #[test]
+  fn from_slice_records_mem_effects() {
+    effects::take_recorded_effects();
+    let _ = Bytes::from_slice(b"hello");
+    let effects = effects::take_recorded_effects();
+    assert!(effects.contains_mem());
+    assert_eq!(effects.mem_bytes(), 5);
+  }
+
+  #[test]
+  fn slice_records_mem_effects() {
+    effects::take_recorded_effects();
+    let bytes = Bytes::from_slice(b"abcdef");
+    effects::take_recorded_effects();
+    let _ = bytes.slice(1..4).expect("slice ok");
+    let effects = effects::take_recorded_effects();
+    assert!(effects.contains_mem());
+    assert_eq!(effects.mem_bytes(), 3);
   }
 }

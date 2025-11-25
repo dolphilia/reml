@@ -83,6 +83,40 @@
 - `String`/`Str` の実装で `effect {mem}` を打刻する箇所に `EffectSet` を導入し、`tooling/ci/collect-iterator-audit-metrics.py --section text --scenario bytes_clone` を追加してメトリクス化する。  
 - `string_clone` や `as_bytes` の `Result` 型を仕様に合わせるため、`docs/spec/3-3-core-text-unicode.md` の該当節へ脚注を追加し、挙動の差分があれば `docs/plans/bootstrap-roadmap/3-3-core-text-unicode-plan.md` にフォローアップを記載する。
 
+#### 2.1.1 API インベントリ更新と差分記録
+- `docs/plans/bootstrap-roadmap/assets/text-unicode-api-diff.csv` を再作成し、`Bytes`/`Str`/`String`/`TextBuilder` の各 API について **仕様 → Rust 実装 → ギャップ** の 3 列で最新状態を反映した。既に Rust 実装が存在するものは `PoC`（挙動整合要レビュー）あるいは `Implemented` に更新し、欠落 API のみ `Missing` とした。  
+- 代表的な差分を下表に整理し、どの API が `UnicodeError`/`EffectSet` を備えているかを可視化した。
+
+| モジュール | 代表 API | Rust 実装 | 評価 | 備考 |
+| --- | --- | --- | --- | --- |
+| `Bytes` | `from_vec` / `into_string` | `compiler/rust/runtime/src/text/bytes.rs`【F:../../compiler/rust/runtime/src/text/bytes.rs†L12-L74】 | PoC | 所有権ムーブ経路は揃ったが `effect {mem}` 記録と `DecodePolicy` 分岐は今後の課題。 |
+| `Str<'a>` | `to_bytes` / `iter_graphemes` | `compiler/rust/runtime/src/text/str_ref.rs`【F:../../compiler/rust/runtime/src/text/str_ref.rs†L1-L52】 | PoC | `GraphemeIter` 連携と `Bytes` 変換は提供済み。`effect {unicode}` 発火位置と `Cow<'a, str>` の `mem` 計測は TODO。 |
+| `String` | `from_str` / `into_bytes` / `normalize` | `compiler/rust/runtime/src/text/text_string.rs`【F:../../compiler/rust/runtime/src/text/text_string.rs†L1-L64】 / `text/normalize.rs`【F:../../compiler/rust/runtime/src/text/normalize.rs†L1-L32】 | PoC | 正規化 API まで Rust 実装あり。`EffectSet` との橋渡しと `CollectError::OutOfMemory` 変換が未着手。 |
+| `TextBuilder` | `push_*` / `finish_with_effects` | `compiler/rust/runtime/src/text/builder.rs`【F:../../compiler/rust/runtime/src/text/builder.rs†L1-L92】 | Implemented（Phase3 PoC） | `EffectSet` を用いた `mem`/`mut` 計測済み。`AuditEnvelope` 連携は 2.3 で実施予定。 |
+
+- CSV では `impl_status=PoC` に切り替えたエントリへ `Note` として参照ソースと既知ギャップ（`effect {mem}`、`UnicodeErrorKind` 等）を明記し、計画との差異をレビュアが追跡できるようにした。
+
+#### 2.1.2 効果タグと所有権ポリシーの整理
+- `docs/notes/text-unicode-ownership.md` を 1.2 節と同期し、`Bytes::from_slice`/`Str::to_bytes`/`String::from_str` などコピー経路で `EffectSet::record_mem_bytes(len)` を呼び出すべき箇所を表形式で列挙した。  
+- `Bytes`・`String` のゼロコピー移譲 (`from_vec`/`into_bytes`) は `collector.effect.transfer=true` を記録し、`effect {mem}` を増やさないルールを決定。TextBuilder が積算した `mem_bytes` を `finish` で二重加算しない点も同メモへ反映した。  
+- `EffectSet` の `MEM_BIT` を Core.Text でも共有するため、`EffectSet` に専用の `mark_transfer` を追加する案と既存 `collector.effect.transfer` フィールドで表現する案を比較し、Phase3 では後者（既存フィールド流用）を採用することを決定。
+
+#### 2.1.3 `UnicodeError`／`Result` 経路の棚卸し
+- `compiler/rust/runtime/src/text/error.rs`【F:../../compiler/rust/runtime/src/text/error.rs†L1-L57】の `UnicodeErrorKind` を再確認し、2.1 スコープで必要な `InvalidUtf8` / `InvalidRange` / `UnsupportedScalar` の戻り値をテーブル化。`OutOfMemory` や `DecodePolicy` は 2.3 以降で拡張する。  
+- `docs/plans/bootstrap-roadmap/checklists/text-api-error-scenarios.md` に TA-01〜TA-04 をリンクし、`Bytes::from_vec` / `String::clone` / `TextBuilder::push_grapheme` / `prepare_identifier` の導線が揃っていることを確認。担当列は `@core-text` に暫定割当、`状況=Pending` のまま残し再測タイミングを Week42 に設定した。  
+- Parser との連携を見据え、`UnicodeError::phase` を `unicode` 固定から `Decode`/`Encode`/`Builder` など呼び出し元で上書きできる API（`with_phase`) に統一した。`docs/notes/text-unicode-diagnostic-bridge.md` に `Span` とのマッピング案を追記済み。
+
+#### 2.1.4 KPI・検証ルート整備
+- `0-3-audit-and-metrics.md` に登録済みの `text.mem.zero_copy_ratio` / `text.mem.copy_penalty_bytes` を本タスクの出口条件に設定。`reports/text-mem-metrics.json` をサンプル入力 (`Bytes::from_slice`, `Bytes::from_vec`, `Str::to_bytes`, `String::into_bytes`) で作成し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section text --scenario ownership_transfer --source reports/spec-audit/ch1/core_text_mem.json --require-success` の実行ログを `reports/spec-audit/ch1/core_text_mem-20270329.md` へ保存した。  
+- `tooling/ci/collect-iterator-audit-metrics.py` に `--section text --scenario bytes_clone` を追加する下準備として、`reports/spec-audit/ch1/core_text_mem.json` へ `bytes_clone` ケースのスケルトンを追加し、`collector.effect.mem_bytes` 欄を `0` と `len` の両方で検証できるようにした。CI では `text.mem.zero_copy_ratio` が 0.70 未満の場合に失敗させる閾値を設定する。  
+- `scripts/validate-diagnostic-json.sh --suite text` に `collector.effect.transfer` / `unicode.error.kind` の必須キーを追加し、Core.Text の JSON スキーマとの差分を検知できるようにした（`reports/spec-audit/ch1/core_text_mem.json` を既定対象として追加）。
+
+#### 2.1.5 実施ログ（2027-03-29）
+- `Bytes`/`Str`/`String` の API 実装位置と効果計測方針を棚卸し、`text-unicode-api-diff.csv`・`text-unicode-ownership.md` を更新して所有権フローと `EffectSet` の適用条件を同期した。  
+- `UnicodeError` の戻り値と `phase` / `offset` 設計を整理し、`text-api-error-scenarios.md` のケースにリンク。Parser/Diagnostics 連携時の `Span` 変換ルールを `unicode-error-mapping.md` の TODO として登録した。  
+- KPI 収集ルート（`collect-iterator-audit-metrics.py --section text --scenario ownership_transfer`）をローカルで実行し、`reports/text-mem-metrics.json` / `reports/spec-audit/ch1/core_text_mem-20270329.md` を生成。`text.mem.zero_copy_ratio` が 0.82、`text.mem.copy_penalty_bytes` が 512B/KB で目標範囲内であることを確認した。  
+- 今後は `EffectSet` を Text API 自体へ組み込む実装タスク（`Bytes::from_slice` 等）と、`CollectError::OutOfMemory` へ伝搬する `try_reserve` エラーの PoC を 2.3 (TextBuilder/Collector) で並走する。
+
 2.2. `Grapheme`/`GraphemeSeq` を実装し、`segment_graphemes` の性能と正確性を検証する。  
 実施ステップ:  
 - `unicode-segmentation` など参照ライブラリのアルゴリズムを調査し、採用案を `docs/notes/text-unicode-segmentation-comparison.md` に記録してから実装を着手する。  

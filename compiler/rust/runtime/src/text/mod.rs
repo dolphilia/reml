@@ -4,6 +4,7 @@
 
 mod bytes;
 mod builder;
+mod effects;
 mod error;
 mod grapheme;
 mod str_ref;

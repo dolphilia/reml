@@ -1,4 +1,4 @@
-use super::{Bytes, Str, UnicodeResult};
+use super::{effects, Bytes, Str, UnicodeResult};
 
 /// 所有文字列。仕様上の `String` 名に揃える。
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -22,6 +22,7 @@ impl String {
   }
 
   pub fn from_str(value: &str) -> Self {
+    effects::record_mem_copy(value.len());
     Self::from_std(value.to_owned())
   }
 
@@ -65,5 +66,20 @@ impl From<&str> for String {
 impl From<Str<'_>> for String {
   fn from(value: Str<'_>) -> Self {
     value.into_owned()
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::text::effects;
+
+  #[test]
+  fn from_str_records_mem_effects() {
+    effects::take_recorded_effects();
+    let _ = String::from_str("text");
+    let effects = effects::take_recorded_effects();
+    assert!(effects.contains_mem());
+    assert_eq!(effects.mem_bytes(), 4);
   }
 }

@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use super::{Bytes, GraphemeIter, UnicodeResult};
+use super::{effects, Bytes, GraphemeIter, UnicodeResult};
 
 /// UTF-8 スライスを表す参照型。仕様上の `Str` に相当する。
 #[derive(Clone, Debug)]
@@ -22,7 +22,8 @@ impl<'a> Str<'a> {
   }
 
   pub fn to_bytes(&self) -> Bytes {
-    Bytes::from_slice(self.inner.as_bytes())
+    effects::record_mem_copy(self.len_bytes());
+    Bytes::from_slice_untracked(self.inner.as_bytes())
   }
 
   pub fn into_owned(self) -> super::String {
@@ -54,5 +55,21 @@ impl Str<'static> {
 impl From<std::string::String> for Str<'static> {
   fn from(value: std::string::String) -> Self {
     Str::owned(value)
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::text::effects;
+
+  #[test]
+  fn to_bytes_records_mem_effects_once() {
+    effects::take_recorded_effects();
+    let s = Str::from("abc");
+    let _ = s.to_bytes();
+    let effects = effects::take_recorded_effects();
+    assert!(effects.contains_mem());
+    assert_eq!(effects.mem_bytes(), 3);
   }
 }
