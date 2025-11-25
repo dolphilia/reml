@@ -53,3 +53,8 @@
 - [ ] `unicode-width` の emoji 幅差分を `docs/notes/text-case-width-gap.md` に一覧化し、`width_map` の補正テーブル要否を判断。
 - [ ] ICU4X PoC を `examples/text/icux_grapheme.rs` に整理し、データパックのサイズ/ビルド時間を測定。
 - [ ] 自前 DFA 生成ツールの仕様を `tools/unicode-table-gen/README.md` にまとめ、UAX #29 参照元とライセンス表記を追記。
+
+## 5. Phase3 W41 実装サマリ
+- `compiler/rust/runtime/src/text/grapheme.rs` に `ScriptCategory`/`TextDirection` のヒューリスティクスを導入し、Latin/Han/Kana/Arabic/Emoji/Other の 6 バケットで script mix ratio と `rtl_ratio` を算出。`GraphemeSeq::stats` が `log_grapheme_stats` と `reports/spec-audit/ch1/core_text_grapheme_stats.json` に `primary_script` を書き出す。
+- `GraphemeSeq` が `IntoIterator`（`DoubleEndedIterator`/`ExactSizeIterator`）とランダムアクセス API (`byte_offset_at`, `grapheme_at_byte_offset`) を備えたため、Diagnostics 側の幅計算と `width_map` が再走査なしで同期できる。
+- UAX #29 rev.40 の GraphemeBreakTest 抜粋を `tests/data/unicode/segment/grapheme_break_test.txt` に追加し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml grapheme_conformance -- --ignored` でセグメンテーション互換性を確認。データ投入は `docs/notes/unicode-upgrade-log.md` に記録済み。

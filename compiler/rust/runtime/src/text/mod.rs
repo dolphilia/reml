@@ -20,10 +20,14 @@ pub use grapheme::{
   grapheme_stats,
   log_grapheme_stats,
   segment_graphemes,
-  GraphemeCluster,
+  DirectionStats,
+  Grapheme,
   GraphemeIter,
   GraphemeSeq,
   GraphemeStats,
+  ScriptCategory,
+  ScriptStats,
+  TextDirection,
 };
 pub use str_ref::Str;
 pub use text_string::String;

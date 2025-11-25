@@ -123,6 +123,11 @@
 - `segment_graphemes` の双方向イテレータ・ランダムアクセス API を揃え、UAX #29 の公式テストデータを `tests/data/unicode/segment/*` に配置して `cargo test grapheme_conformance` を追加する。  
 - Grapheme ごとの `display_width`/`script` 情報を `Grapheme` 型へ格納し、`log_grapheme_stats` で多言語混在ケースの割合を出力して `reports/spec-audit/ch1/core_text_grapheme_stats.json` に保存する。
 
+#### 2.2.1 実施ログ（2027-03-30）
+- `compiler/rust/runtime/src/text/grapheme.rs` に `ScriptCategory`・`TextDirection`・`ScriptStats` を導入し、`Grapheme` が `script_mix_ratio`/`rtl_ratio`/`primary_script` を計測できるようにした。`GraphemeSeq` は `IntoIterator`（`DoubleEndedIterator`）と `byte_offset_at`/`grapheme_at_byte_offset` を公開し、Diagnostics が書記素境界をランダムアクセス可能になった。
+- UAX #29 rev.40 の GraphemeBreakTest 抜粋を `tests/data/unicode/segment/grapheme_break_test.txt` に追加し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml grapheme_conformance -- --ignored` で互換性をチェックする回帰テストを新設。投入履歴を `docs/notes/unicode-upgrade-log.md` に記録した。
+- `text_internal_cache` テストを再実行し、`reports/spec-audit/ch1/core_text_grapheme_stats.json` に `primary_script`・`script_mix_ratio`・`rtl_ratio` を追記。KPI `text.grapheme.script_mix_ratio` を `0-3-audit-and-metrics.md` へ登録し、UC-02 ケースで 0.56/0.43 を達成したことをログ化した。
+
 2.3. `TextBuilder` の構築 API を実装し、`Iter<Grapheme>` との連携をテストする。  
 実施ステップ:  
 - `TextBuilder::push_bytes`/`push_grapheme`/`finish` を `Iter<Grapheme>` の stage 情報（`IterStage::Streaming`）と共有できるようにし、`Core.Iter` からの `collect_text` API を追加する。  

@@ -9,11 +9,14 @@
       "grapheme_count": 1747630,
       "avg_cluster_width": 2.0,
       "emoji_ratio": 0.0,
+      "primary_script": "kana",
+      "script_mix_ratio": 0.4,
+      "rtl_ratio": 0.0,
       "cache_hits": 0,
       "cache_miss": 1747630,
       "version_mismatch_evictions": 0,
-      "cache_generation": 2,
-      "avg_generation": 2.0,
+      "cache_generation": 3,
+      "avg_generation": 3.0,
       "cache_hit_ratio": 0.0,
       "notes": "初回生成。IndexCache が存在せず cache_miss を強制する。"
     },
@@ -25,6 +28,9 @@
       "grapheme_count": 182047,
       "avg_cluster_width": 1.2499958801847875,
       "emoji_ratio": 0.06250034331793437,
+      "primary_script": "arabic",
+      "script_mix_ratio": 0.5624975967744593,
+      "rtl_ratio": 0.4375024032255407,
       "cache_hits": 182047,
       "cache_miss": 0,
       "version_mismatch_evictions": 0,
@@ -41,6 +47,9 @@
       "grapheme_count": 102405,
       "avg_cluster_width": 1.363615057858503,
       "emoji_ratio": 0.1818075289292515,
+      "primary_script": "latin",
+      "script_mix_ratio": 0.4545188223231288,
+      "rtl_ratio": 0.0,
       "cache_hits": 102405,
       "cache_miss": 0,
       "version_mismatch_evictions": 0,
@@ -54,6 +63,6 @@
     "total_cases": 3,
     "total_bytes": 5959698,
     "avg_cache_hit_ratio": 0.6666666666666666,
-    "generated_unix_secs": 1764076828
+    "generated_unix_secs": 1764079071
   }
 }
