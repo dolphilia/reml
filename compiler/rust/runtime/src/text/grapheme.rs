@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 use unicode_width::UnicodeWidthStr;
 
-use super::{Str, UnicodeResult};
+use super::{Str, UnicodeError, UnicodeResult};
 
 /// Grapheme 単位の情報を保持する簡易クラスタ。
 #[derive(Debug, Clone)]

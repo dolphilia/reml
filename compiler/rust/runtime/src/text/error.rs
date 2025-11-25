@@ -4,6 +4,7 @@ pub struct UnicodeError {
   kind: UnicodeErrorKind,
   message: String,
   offset: Option<usize>,
+  phase: &'static str,
 }
 
 impl UnicodeError {
@@ -12,6 +13,7 @@ impl UnicodeError {
       kind,
       message: message.into(),
       offset: None,
+      phase: "unicode",
     }
   }
 
@@ -28,6 +30,11 @@ impl UnicodeError {
     .with_offset(offset)
   }
 
+  pub fn with_phase(mut self, phase: &'static str) -> Self {
+    self.phase = phase;
+    self
+  }
+
   pub fn kind(&self) -> UnicodeErrorKind {
     self.kind
   }
@@ -39,6 +46,10 @@ impl UnicodeError {
   pub fn offset(&self) -> Option<usize> {
     self.offset
   }
+
+  pub fn phase(&self) -> &'static str {
+    self.phase
+  }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -49,6 +60,12 @@ pub enum UnicodeErrorKind {
   InvalidRange,
   DecodeFailure,
   EncodeFailure,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct UnicodeEffectInfo {
+  pub effect_mem: bool,
+  pub effect_unicode: bool,
 }
 
 pub type UnicodeResult<T> = Result<T, UnicodeError>;

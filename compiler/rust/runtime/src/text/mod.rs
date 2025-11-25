@@ -10,7 +10,7 @@ mod text_string;
 mod width;
 
 pub use bytes::Bytes;
-pub use error::{UnicodeError, UnicodeErrorKind, UnicodeResult};
+pub use error::{UnicodeEffectInfo, UnicodeError, UnicodeErrorKind, UnicodeResult};
 pub use grapheme::{
   grapheme_stats,
   log_grapheme_stats,

@@ -54,6 +54,26 @@
 - `TextBuilder` のメモリ増減を `EffectSet::mark_mem` で追跡し、`tooling/ci/collect-iterator-audit-metrics.py --section text --scenario text_builder_streaming` を追加して大規模入力での `effect {mem}`/`effect {mut}` を確認する。  
 - `TextBuilder` が `Result<Text, UnicodeError>` を返す際のエラーを `UnicodeErrorKind::Decode`/`Encode` 等に分類し、`docs/spec/3-3-core-text-unicode.md` の例と一致しているかを `docs/plans/bootstrap-roadmap/checklists/unicode-error-mapping.md` でクロスチェックする。
 
+**API ドラフトと効果設計**  
+- `TextBuilder`（`compiler/rust/runtime/src/text/builder.rs` を追加予定）  
+  - フィールド: `buffer: Vec<u8>`, `effects: EffectSet`, `audit: CollectorAuditTrail`。  
+  - API:  
+    - `TextBuilder::new() -> Self` (`effect {mem}` 初期値ゼロ)  
+    - `push_bytes(&mut self, Bytes) -> Result<(), UnicodeError>` (`effect {mem, mut}` + `EffectSet::record_mem_bytes`)  
+    - `push_grapheme(&mut self, &str) -> Result<(), UnicodeError>` (`effect {unicode}`。`log_grapheme_stats` に渡す cluster 情報をバッファリング)  
+    - `finish(self) -> Result<String, UnicodeError>` (`effect {mem}`、`String::from_utf8` 失敗時は `UnicodeErrorKind::InvalidUtf8`)  
+    - `into_bytes(self) -> Bytes` (`@pure` 経路で `Vec<u8>` を譲渡)  
+- `Core.Iter.collect_text(iter: Iter<Grapheme>) -> Result<CollectOutcome<String>, CollectError>`  
+  - `CollectorBridge` を `TextBuilderCollector` で再利用し、`CollectorEffectMarkers` の `mem_reservation`/`finish` を `TextBuilder` に伝搬。  
+  - `IterStage::Streaming` から `TextBuilder` の `EffectSet` へ `effect {unicode}` を引き継ぎ、`log_grapheme_stats` の `cache_hits` を Collector 監査へ記録。  
+- 監査/Effect 連携  
+  - `TextBuilder` が `EffectSet::mark_unicode()` を呼び出す箇所を定義し、`collector.effect.unicode` を `Core.Iter` の `EffectLabels` に反映する。  
+  - `AuditEnvelope.metadata["text.builder"]` に `{ bytes_written, graphemes, cache_hits }` を記録し、`CollectorAuditTrail::record_change_set` と同じフォーマットで `effect.mem_bytes` を更新する。  
+- 準備タスク  
+  1. `TextBuilder` API の Rust ドラフトを `docs/plans/bootstrap-roadmap/checklists/textbuilder-api-draft.md` に切り出し、フェーズ 2/3 でレビュー可能にする。  
+  2. `core_text_builder_effects.md`（`docs/notes/` 追加）で `EffectSet`・`CollectorEffectMarkers` の更新箇所と KPI を表形式に整理。  
+  3. `Core.Iter.collect_text` のテスト計画を `compiler/rust/runtime/src/prelude/iter/tests/collect_text.rs` と `reports/spec-audit/ch1/text_builder-*.md` で管理し、`effect {mem}`/`effect {unicode}` の二重打刻が無いか `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario collect_text` を追加する。
+
 ### 3. Unicode 正規化・ケース変換（42週目）
 **担当領域**: 文字処理
 
