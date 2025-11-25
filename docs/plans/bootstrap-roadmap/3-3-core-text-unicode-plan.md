@@ -68,6 +68,12 @@
 - キャッシュ命中率を収集するため `log_grapheme_stats` に `cache_hits`/`cache_miss` を追加し、`tooling/ci/collect-iterator-audit-metrics.py --section text` で KPI 化する。  
 - `cargo test text_internal_cache -- --ignored` を追加して大規模入力・キャッシュ無効化・多言語ケースを検証し、テストケースごとに `docs/plans/bootstrap-roadmap/checklists/unicode-cache-cases.md` を更新する。
 
+> 進行ログ（Phase3 W41）  
+> - `docs/notes/core-library-outline.md#runtimecachespeccoretext-キャッシュモデル` に `RuntimeCacheSpec` を追加し、`IndexCache` の世代管理と `Unicode::VERSION` 不一致時の無効化条件を図示した。  
+> - `docs/spec/3-3-core-text-unicode.md` §4.1.1 / §5 へ `cache_hits`/`cache_miss`/`generation` を含む `log_grapheme_stats` 仕様を追記し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に KPI `text.grapheme.cache_hit` を登録した。  
+> - `docs/plans/bootstrap-roadmap/checklists/unicode-cache-cases.md` に UC-01〜03 の手順 (`cargo test --manifest-path compiler/rust/runtime/Cargo.toml text_internal_cache -- --ignored UC_0X`, `scripts/ci/run_core_text_regressions.sh --case streaming`, `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats`) を明文化し、`reports/spec-audit/ch1/core_text_grapheme_stats.json` への転記要件を定義した。  
+> - KPI 収集スクリプト `python3 tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --output reports/text-grapheme-metrics.json --require-success` を Phase3 `phase3-core-text` ジョブへ追加するタスクを登録（`docs/notes/text-unicode-known-issues.md` TUI-003 を参照）。
+
 ### 2. 文字列三層モデル実装（41-42週目）
 **担当領域**: 基盤 API
 

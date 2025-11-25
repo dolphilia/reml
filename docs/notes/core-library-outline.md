@@ -32,6 +32,38 @@
 3. Config/Data/Runtime の本文再配置時に差分追跡ルール（リネーム方針、旧リンク対応）を明記するためのドラフトテンプレートを作成する。
 4. Async/FFI/Unsafe（3.9）については、効果タグと安全境界の互換性調査メモを用意し、レビュー対象とする範囲を確定する。
 
+## RuntimeCacheSpec（Core.Text キャッシュモデル）
+
+Phase 3.3 で導入する文字列キャッシュの基本契約を Runtime 章側で明示する。`IndexCache` を含む各キャッシュは **(a) 所有主体**, **(b) 更新トリガ**, **(c) 監査キー**, **(d) KPI** を必ず定義し、`docs/plans/bootstrap-roadmap/3-3-core-text-unicode-plan.md` §1.3 と相互参照する。
+
+### キャッシュ一覧と責務
+| Cache Id | 所在 | 内容 | 更新/無効化トリガ | Audit/KPI |
+| --- | --- | --- | --- | --- |
+| `Text.IndexCache` | `Core.Text::GraphemeSeq` | コードポイント → 書記素クラスタ開始バイトを格納する `Vec<u32>` と `cache_generation`。 | 1. 入力 `Bytes`/`Str` のバイト列が変化した場合。<br>2. `Unicode::VERSION` が `cache.version` と不一致。<br>3. `TextBuilder` が `finish` 後に `Str` を再借用する際、`Vec<u8>` の所有者が別に遷移した場合。 | `log_grapheme_stats` → `metadata["text.grapheme_stats.cache_hits|cache_miss|generation"]`。KPI: `text.grapheme.cache_hit`。 |
+| `Text.GraphemeMetrics` | `log_grapheme_stats` | `avg_width`, `scripts{}`、`directionality`、`cache_hits/miss`。 | `IndexCache` が無効になったタイミングで再計測し、`cache_miss += 1`。 | `reports/spec-audit/ch1/core_text_grapheme_stats.json`。 |
+| `Iter.Collector.Text` | `Core.Iter.collect_text` | `EffectSet::unicode_cache`・`mem_bytes` などキャッシュ利用時の効果。 | `TextBuilder` が `reserve/push_*` を呼び `cache_generation` を進めたとき。 | `collector.effect.text_cache_hits`（`tooling/ci/collect-iterator-audit-metrics.py --section text`）。 |
+
+### 無効化条件の図示（IndexCache）
+```
+Bytes/Str (generation = g) ──borrow──▶ GraphemeSeq { index_cache(g) }
+      ▲                                    │
+      │ (TextBuilder::finish で ownership move)
+      ▼                                    ▼
+   TextBuilder (generation += 1)     log_grapheme_stats(cache_hits/miss)
+```
+- `GraphemeSeq` は `Str` のライフタイム `'a` を保持し、`IndexCache` の `generation` が `Str` の `Bytes` バッファに付与された世代と一致しない場合は自動無効化する。  
+- `TextBuilder::finish_with_effects` で `Vec<u8>` をムーブした後、`Bytes`→`String`→`Str` と再度借用するたびに `cache_generation` を 1 ずつ増やし、`GraphemeSeq` 側は `cache_generation` の比較でキャッシュ再構築を判断する。  
+- `Unicode::VERSION` 変更時は `docs/notes/unicode-upgrade-log.md` に記録し、`IndexCache.version` と一致しない全キャッシュを即座に破棄する。`tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --require-success` で `version_mismatch_evictions` を監査ログに記録する。
+
+### 実装・テスト連携
+- 参照モデルは `docs/notes/text-unicode-ownership.md`（所有権）と `docs/notes/text-unicode-segmentation-comparison.md`（セグメンテーション戦略）に追記済み。`IndexCache` は `Vec<usize>` のみを保持し、`Bytes` と共有しないことを仕様化した。  
+- テストカバレッジは `docs/plans/bootstrap-roadmap/checklists/unicode-cache-cases.md` で管理し、`UC-01`〜`UC-03` を `cargo test text_internal_cache -- --ignored <CASE>`・`scripts/ci/run_core_text_regressions.sh --case streaming` で再現する。  
+- KPI は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の `text.grapheme.cache_hit` 行を参照し、`reports/spec-audit/ch1/core_text_grapheme_stats.json` に `cache_hits`, `cache_miss`, `version_mismatch_evictions`, `avg_generation` を保存する。
+
+### TODO
+- `RuntimeCacheSpec` セクションは Phase 3 完了時に `docs/spec/3-3-core-text-unicode.md` へ昇格させ、`IndexCache`/`TextBuilder`/`log_grapheme_stats` を仕様本文へ反映する。
+- `IndexCache` の `serde`/`AuditEnvelope` 出力は `docs/spec/3-6-core-diagnostics-audit.md` 付録のメタデータテーブルへキー (`text.index_cache.generation`, `text.index_cache.len`) を追加して追跡する。
+
 ### <a id="collector-f2-監査ログ"></a>Collector F2 監査ログ（WBS 3.1b）
 
 - `../../reports/spec-audit/ch0/links.md#collector-f2-監査ログ` に F2 で実行した 7 ケースの `cargo test`/`cargo insta review`/`collect-iterator-audit-metrics`/`scripts/validate-diagnostic-json.sh`/`cargo xtask prelude-audit` コマンド履歴と KPI 結果（`collector.effect.*`、`collector.error.*`、`iterator.stage.audit_pass_rate`）を列挙しており、`../../reports/iterator-collector-summary.md` への参照を含めてモジュール実装の一貫性を監査ログとして留めている。

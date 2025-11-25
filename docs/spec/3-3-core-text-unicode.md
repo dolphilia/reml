@@ -111,6 +111,24 @@ fn grapheme_width(gr: Grapheme) -> usize                     // `@pure`
 - `segment_graphemes` は ICU ベースの規則に準拠し、`Iter` とシームレスに連携する。
 - Lex レイヤではコメントや文字列リテラル判定に `segment_graphemes` を利用し、結合文字の誤判定を防ぐ。【F:2-3-lexer.md†L40-L88】
 
+#### 4.1.1 IndexCache と GraphemeSeq の内部構造
+
+`GraphemeSeq` は `index_cache: IndexCache` を保持し、コードポイント位置から書記素クラスタ先頭バイトへの写像を O(1) で提供する。
+
+```reml
+type IndexCache = {
+  offsets: Vec<u32>,          // コードポイント単位
+  version: UnicodeVersion,    // 例: "15.0"
+  generation: u32,            // Bytes/Str の世代識別子
+}
+```
+
+- `TextBuilder` / `String` / `Bytes` の所有者は `cache_generation` を管理し、`finish` や `into_bytes` で `Vec<u8>` の所有権が移るたびに `generation += 1` する。`GraphemeSeq` は `Str` から借用したときの世代を記録し、一致しない場合は `IndexCache` を破棄して再構築する。  
+- `Unicode::VERSION` が変わった場合、`version_mismatch_evictions += 1` を `log_grapheme_stats` に記録し、すべての `IndexCache` を再計算する。  
+- `IndexCache` は `Vec<u32>` のみを保持し、元 `Vec<u8>` と共有しないため `unsafe` を必要としない。`GraphemeSeq::stats` では `cache_hits`（`generation`/`version` が一致した場合）と `cache_miss`（再計算時）をカウントし、`collector.effect.text_cache_hits` への転写を許可する。
+
+キャッシュ仕様の詳細は `docs/notes/core-library-outline.md#runtimecachespeccoretext-キャッシュモデル` および `docs/notes/text-unicode-ownership.md` を参照する。
+
 ### 4.2 部分一致と検索
 
 ```reml
@@ -132,10 +150,10 @@ fn replace(str: Str, pattern: TextPattern, with: Str) -> Result<String, UnicodeE
 | --- | --- | --- | --- |
 | `decode_stream` | `fn decode_stream(reader: IO.Reader, options: TextDecodeOptions) -> Result<String, Diagnostic>` | `effect {io, unicode}` | ストリーミング decode。BOM 処理を Options で制御。 |
 | `encode_stream` | `fn encode_stream(writer: IO.Writer, text: Str, options: TextEncodeOptions) -> Result<(), Diagnostic>` | `effect {io, unicode}` | 書き出し時のエンコーディング制御。 |
-| `log_grapheme_stats` | `fn log_grapheme_stats(text: Str, audit: AuditSink) -> Result<(), Diagnostic>` | `effect {audit, unicode}` | 監査ログへ文字幅や方向性を記録。 |
+| `log_grapheme_stats` | `fn log_grapheme_stats(text: Str, audit: AuditSink) -> Result<(), Diagnostic>` | `effect {audit, unicode}` | 監査ログへ文字幅・脚色率・`cache_hits/cache_miss`・`index_cache.generation` を記録。 |
 
 - `TextDecodeOptions` にはバッファサイズ・BOM 要否・不正バイトハンドリング（`Replace`/`Error`）を定義する。
-- `log_grapheme_stats` は `audit_id` と `change_set` を共通語彙として持ち、Chapter 3.6 で定義する監査モデルに合流する想定。
+- `log_grapheme_stats` は `audit_id` と `change_set` を共通語彙として持ち、Chapter 3.6 で定義する監査モデルに合流する想定。出力キーは `text.grapheme_stats = { length, avg_width, scripts, directionality, cache_hits, cache_miss, generation, version }`。`tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats` が `text.grapheme.cache_hit = cache_hits / (cache_hits + cache_miss)` を算出する。
 
 ### 5.1 Diagnostic ハイライト統合
 
