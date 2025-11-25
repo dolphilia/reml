@@ -139,6 +139,16 @@
 - `reports/spec-audit/ch1/unicode_diagnostics-*.json` を作成し、`scripts/validate-diagnostic-json.sh --pattern unicode.display_width` を CI に組み込み `0-3-audit-and-metrics.md` の診断 KPI とリンクする。  
 - `unicode_error_to_parse_error` の変換表を `docs/plans/bootstrap-roadmap/checklists/unicode-error-mapping.md` に追記し、Parser/Diagnostics の両方で差分レビューを行う。
 
+#### 4.1.4 Diagnostic/ParseError スキーマ統合
+- `FrontendDiagnostic` が保持する `Span`/`AuditEnvelope`/`ExpectedToken` 情報【F:../../compiler/rust/frontend/src/diagnostic/mod.rs†L14-L129】と、`ParseError` 構造体が保持する `Span`/`ExpectedToken` 群【F:../../compiler/rust/frontend/src/parser/api.rs†L104-L152】の項目を 1:1 で棚卸しし、欠落項目（`context`, `notes`, `unicode_error` 等）を `diagnostic-schema.md`（今後追加予定）にまとめる。  
+- `Span` は `start`/`end` の半開区間で表現されているため【F:../../compiler/rust/frontend/src/span.rs†L7-L45】、`UnicodeError::offset`（バイト位置）から `Span` へ写像する際に `len` を確定するルール（例: 単一書記素→`offset..offset+cluster_len`）を `unicode-error-mapping.md` の列として管理する。  
+- `AuditEnvelope`（`metadata` と `capability` を持つラッパ）【F:../../compiler/rust/frontend/src/diagnostic/mod.rs†L22-L57】に `unicode.*` 名前空間のキー（`unicode.error.kind`, `unicode.error.offset`, `unicode.error.phase`）を予約し、Parser で `ParseError` を Diagnostic に変換する際に埋め込む。Diagnostic JSON 出力では `audit_metadata` に同じキーを複写し、`AuditEnvelope.change_set` と一貫したフォーマットを維持する。詳細は `docs/notes/text-unicode-diagnostic-bridge.md` を参照。
+
+#### 4.1.5 データ構造の導入方針
+- `ParseError` に `unicode: Option<UnicodeError>` と `span_trace: Vec<Span>` を追加し、`UnicodeError` から得た `offset`・`kind` を直接保持できるようにする。`state.record_diagnostics`（`parser/api.rs`）と `DiagnosticBuilder` の双方に `Span`/`AuditEnvelope` の参照を渡し、差分が発生した場合は `docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` へフォローアップを記録する。  
+- `TextBuilder`/`decode_stream` 経路で発生した `UnicodeError` は `EffectSet` の `mark_mem`/`mark_io` と同時に `AuditEnvelope.metadata["unicode.effect.mem_bytes"]` を更新し、`reports/spec-audit/ch1/unicode_diagnostics-*.json` に追加される KPI（`unicode.audit_presence_rate`）の下地を用意する。  
+- スキーマレベルでは `Span` と `AuditEnvelope` を JSON Schema に取り込む必要があるため、`docs/spec/3-6-core-diagnostics-audit.md` の付録に「unicode.* キー一覧」「span_trace フィールド」「parse.expected` との依存関係」を追加し、`collect-iterator-audit-metrics.py --section text` による検証対象を拡張する。
+
 4.2. `decode_stream`/`encode_stream` を実装し、`Core.IO` の Reader/Writer とストリーミング decode の整合性を確認する。  
 実施ステップ:  
 - `docs/spec/3-5-core-io-path.md` の `StreamDecoder` 仕様を参照して API を整備し、`compiler/rust/runtime/src/io/text_stream.rs` に実装を追加する。  

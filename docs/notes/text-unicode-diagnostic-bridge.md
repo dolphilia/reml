@@ -1,0 +1,31 @@
+# Text/Unicode Diagnostics ブリッジメモ
+
+## 目的
+- `UnicodeError` → `ParseError` → `FrontendDiagnostic` → JSON/Audit のパイプラインで欠落しているメタデータ（Span/AuditEnvelope/効果タグ）を補完する。
+- `docs/plans/bootstrap-roadmap/3-3-core-text-unicode-plan.md` §4.1 で定義したタスクを実装フェーズと連携させ、`unicode_error_to_parse_error` の変換規約を可視化する。
+
+## 主要データ構造
+| 型 | 定義箇所 | 利用箇所 | メモ |
+| --- | --- | --- | --- |
+| `Span` | `compiler/rust/frontend/src/span.rs`【F:../../compiler/rust/frontend/src/span.rs†L7-L45】 | `ParseError`, `DiagnosticSpanLabel`, `DiagnosticFixIt` | 半開区間 `[start, end)`。`UnicodeError::offset` から `Span::new(offset, offset+len)` を生成する。 |
+| `SpanTagged<T>` | 同上【F:../../compiler/rust/frontend/src/span.rs†L47-L70】 | `ExpectedToken`, `StreamTrace` | `TextBuilder`/Streaming decode で `Grapheme` と `Span` を同時に保持する。 |
+| `ParseError` | `compiler/rust/frontend/src/parser/api.rs`【F:../../compiler/rust/frontend/src/parser/api.rs†L104-L152】 | Parser → Diagnostic 変換 | `unicode: Option<UnicodeError>` / `span_trace: Vec<Span>` を追加予定。 |
+| `AuditEnvelope` | `compiler/rust/frontend/src/diagnostic/mod.rs`【F:../../compiler/rust/frontend/src/diagnostic/mod.rs†L22-L57】 | `FrontendDiagnostic` JSON 出力 | `metadata` に `unicode.error.*` を記録し、`audit_id`/`change_set` と突合する。 |
+| `FrontendDiagnostic` | `compiler/rust/frontend/src/diagnostic/mod.rs`（下部） | CLI/LSP JSON | `expected`, `notes`, `extensions` に Unicode 情報を展開。 |
+| `UnicodeError` | `compiler/rust/runtime/src/text/error.rs`【F:../../compiler/rust/runtime/src/text/error.rs†L1-L54】 | Text API, Parser, IO | `kind`, `message`, `offset`, `phase` を提供。`with_phase` で `parser`, `io`, `builder` を識別する。 |
+
+## スキーマ連携
+1. **UnicodeError → ParseError**
+   - `UnicodeError::offset` を `Span` に変換し、`ParseError.at` または `span_trace` に格納する。
+   - `UnicodeErrorKind` を `ParseError.notes` に `unicode.error.kind` プレフィックスで記録し、後段が `DiagnosticNote` に昇格できるようにする。
+2. **ParseError → Diagnostic**
+   - `ExpectedToken` / `ExpectedTokensSummary` を `expected` フィールドにマップする（既存実装）。`unicode_error_to_parse_error` では `context`/`notes` に Unicode 情報を追加し、`FrontendDiagnostic.extensions["unicode"]` に同じ JSON を複写する。
+   - `AuditEnvelope.metadata` に `unicode.error.kind`, `unicode.error.offset`, `unicode.error.phase`, `unicode.effect.mem_bytes`, `unicode.locale.*` を同時に書き込み、`collect-iterator-audit-metrics.py --section text` の KPI で検証する。
+3. **Diagnostic → JSON/LSP**
+   - `LineIndex`（`diagnostic/json.rs`）を使って `Span` から `line`/`column` を算出し、`unicode.display_width` などの属性を `extensions` に配置する。
+   - JSON Schema 更新時は `docs/spec/3-6-core-diagnostics-audit.md` の付録に `unicode.*` キーの説明を追加し、`schema.version` をインクリメントする。
+
+## TODO
+- [ ] `ParseError` へ `unicode: Option<UnicodeError>` を追加し、`parser::State` が `UnicodeError` を受け取れるようにする。
+- [ ] `FrontendDiagnostic` から `AuditEnvelope` へのコピーで `unicode.*` を標準化する。
+- [ ] `scripts/validate-diagnostic-json.sh --pattern unicode.error.kind` を追加し、CI での欠落検知を自動化。
