@@ -7,6 +7,7 @@ mod error;
 mod grapheme;
 mod str_ref;
 mod text_string;
+mod width;
 
 pub use bytes::Bytes;
 pub use error::{UnicodeError, UnicodeErrorKind, UnicodeResult};
@@ -21,3 +22,4 @@ pub use grapheme::{
 };
 pub use str_ref::Str;
 pub use text_string::String;
+pub use width::{width_map, width_map_with_stats, WidthMapStats, WidthMode};

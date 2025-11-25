@@ -21,6 +21,10 @@ impl String {
     &self.inner
   }
 
+  pub fn from_str(value: &str) -> Self {
+    Self::from_std(value.to_owned())
+  }
+
   pub fn push_str(&mut self, value: &str) {
     self.inner.push_str(value);
   }
@@ -46,6 +50,12 @@ impl String {
 impl From<std::string::String> for String {
   fn from(value: std::string::String) -> Self {
     Self::from_std(value)
+  }
+}
+
+impl From<&str> for String {
+  fn from(value: &str) -> Self {
+    Self::from_str(value)
   }
 }
 
