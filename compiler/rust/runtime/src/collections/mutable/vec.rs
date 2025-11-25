@@ -2,11 +2,11 @@ use std::{cmp, collections::TryReserveError, iter::FromIterator, mem, slice};
 
 use crate::collections::persistent::list::List;
 #[cfg(feature = "core_prelude")]
-use crate::core_prelude::collectors::{CollectError, VecCollector};
+use crate::core_prelude::collectors::{CollectError, Collector, VecCollector};
 #[cfg(feature = "core_prelude")]
 use crate::core_prelude::iter::{EffectLabels, EffectSet};
 #[cfg(not(feature = "core_prelude"))]
-use crate::prelude::collectors::{CollectError, VecCollector};
+use crate::prelude::collectors::{CollectError, Collector, VecCollector};
 #[cfg(not(feature = "core_prelude"))]
 use crate::prelude::iter::{EffectLabels, EffectSet};
 

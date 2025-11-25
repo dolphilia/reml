@@ -378,12 +378,12 @@ impl<T> Iter<T> {
 
 impl<T, E> Iter<Result<T, E>> {
     /// `Result` を要素に含む `Iter` を Collector へ短絡収集する。
-    pub fn try_collect<C, Output>(
+    pub fn try_collect<C, Value>(
         self,
         collector: C,
-    ) -> Result<Output, TryCollectError<E, C::Error>>
+    ) -> Result<Value, TryCollectError<E, C::Error>>
     where
-        C: Collector<T, Output, Error = CollectError>,
+        C: Collector<T, CollectOutcome<Value>, Error = CollectError>,
     {
         let iter = self;
         let mut bridge = CollectorBridge::new(&iter, collector);

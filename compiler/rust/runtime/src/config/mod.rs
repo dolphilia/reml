@@ -110,7 +110,7 @@ impl CollectionsChangeSetEnv {
 
     /// 内部で設定した環境変数を取り除き、パスだけを取得する。
     pub fn into_path(self) -> PathBuf {
-        let path = self.path;
+        let path = self.path.clone();
         std::mem::forget(self);
         path
     }

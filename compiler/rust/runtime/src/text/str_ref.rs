@@ -13,10 +13,6 @@ impl<'a> Str<'a> {
     Self { inner }
   }
 
-  pub fn owned(value: std::string::String) -> Str<'static> {
-    Self::from_cow(Cow::Owned(value))
-  }
-
   pub fn as_str(&self) -> &str {
     &self.inner
   }
@@ -44,8 +40,14 @@ impl<'a> From<&'a str> for Str<'a> {
   }
 }
 
+impl Str<'static> {
+  pub fn owned(value: std::string::String) -> Self {
+    Str::from_cow(Cow::Owned(value))
+  }
+}
+
 impl From<std::string::String> for Str<'static> {
   fn from(value: std::string::String) -> Self {
-    Self::owned(value)
+    Str::owned(value)
   }
 }

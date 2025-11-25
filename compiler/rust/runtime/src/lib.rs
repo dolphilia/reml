@@ -5,4 +5,8 @@
 pub mod collections;
 pub mod config;
 pub mod prelude;
+pub mod registry;
+pub mod stage;
 pub mod text;
+
+pub use stage::{StageId, StageRequirement};

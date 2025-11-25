@@ -119,7 +119,7 @@ impl ChangeSet {
 }
 
 /// 差分の種類。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum ChangeSetKind {
     MapDiff,
     SetDiff,
@@ -273,7 +273,7 @@ pub struct AuditBridgeError {
 }
 
 impl AuditBridgeError {
-    fn new(message: impl Into<String>) -> Self {
+    pub fn new(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
         }
