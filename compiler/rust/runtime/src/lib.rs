@@ -5,3 +5,4 @@
 pub mod collections;
 pub mod config;
 pub mod prelude;
+pub mod text;

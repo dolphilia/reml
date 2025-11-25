@@ -1,0 +1,51 @@
+use std::borrow::Cow;
+
+use super::{Bytes, UnicodeResult};
+
+/// UTF-8 スライスを表す参照型。仕様上の `Str` に相当する。
+#[derive(Clone, Debug)]
+pub struct Str<'a> {
+  inner: Cow<'a, str>,
+}
+
+impl<'a> Str<'a> {
+  pub fn from_cow(inner: Cow<'a, str>) -> Self {
+    Self { inner }
+  }
+
+  pub fn owned(value: std::string::String) -> Str<'static> {
+    Self::from_cow(Cow::Owned(value))
+  }
+
+  pub fn as_str(&self) -> &str {
+    &self.inner
+  }
+
+  pub fn len_bytes(&self) -> usize {
+    self.inner.as_bytes().len()
+  }
+
+  pub fn to_bytes(&self) -> Bytes {
+    Bytes::from_slice(self.inner.as_bytes())
+  }
+
+  pub fn into_owned(self) -> super::String {
+    super::String::from_std(self.inner.into_owned())
+  }
+
+  pub fn from_bytes(bytes: Bytes) -> UnicodeResult<Str<'static>> {
+    bytes.into_utf8()
+  }
+}
+
+impl<'a> From<&'a str> for Str<'a> {
+  fn from(value: &'a str) -> Self {
+    Self::from_cow(Cow::Borrowed(value))
+  }
+}
+
+impl From<std::string::String> for Str<'static> {
+  fn from(value: std::string::String) -> Self {
+    Self::owned(value)
+  }
+}

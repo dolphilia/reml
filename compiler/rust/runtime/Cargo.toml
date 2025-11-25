@@ -1,0 +1,12 @@
+[package]
+name = "reml_runtime"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+unicode-segmentation = "1.11"
+unicode-width = "0.1"

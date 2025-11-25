@@ -1,0 +1,56 @@
+use super::{Bytes, Str, UnicodeResult};
+
+/// 所有文字列。仕様上の `String` 名に揃える。
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct String {
+  inner: std::string::String,
+}
+
+impl String {
+  pub fn new() -> Self {
+    Self {
+      inner: std::string::String::new(),
+    }
+  }
+
+  pub fn from_std(inner: std::string::String) -> Self {
+    Self { inner }
+  }
+
+  pub fn as_str(&self) -> &str {
+    &self.inner
+  }
+
+  pub fn push_str(&mut self, value: &str) {
+    self.inner.push_str(value);
+  }
+
+  pub fn into_std(self) -> std::string::String {
+    self.inner
+  }
+
+  pub fn to_bytes(&self) -> Bytes {
+    Bytes::from_slice(self.inner.as_bytes())
+  }
+
+  pub fn into_bytes(self) -> UnicodeResult<Bytes> {
+    Bytes::from_vec(self.inner.into_bytes())
+  }
+
+  pub fn from_bytes(bytes: Bytes) -> UnicodeResult<Self> {
+    bytes.into_utf8().map(|s| s.into_owned())
+  }
+
+}
+
+impl From<std::string::String> for String {
+  fn from(value: std::string::String) -> Self {
+    Self::from_std(value)
+  }
+}
+
+impl From<Str<'_>> for String {
+  fn from(value: Str<'_>) -> Self {
+    value.into_owned()
+  }
+}
