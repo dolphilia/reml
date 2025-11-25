@@ -27,6 +27,41 @@
 - `Bytes::from_vec` `String::into_bytes` などのゼロコピー経路を列挙し、`Vec<u8>` を移譲するパスで `effect {mem}` を打刻しない条件を `docs/spec/0-1-project-purpose.md` の性能指標と照合する。  
 - `TextBuilder`/`GraphemeSeq` が `Vec<u8>` を共有する場合の `unsafe` 有無を決定し、`docs/notes/text-unicode-ownership.md` に参照カウント方針と `Result` のエラー遷移を図示する。
 
+#### 1.2.1 所有権遷移と `effect {mem}` 判定
+`Bytes`/`Str`/`String`/`TextBuilder`/`GraphemeSeq` が利用している所有権パスを洗い出し、`effect {mem}` の記録条件を以下の表に整理した。Rust 実装のコード参照を併記し、ゼロコピー経路であるかどうかを明示する。
+
+| 経路 | アロケーション | `effect {mem}` 判定 | 根拠 |
+| --- | --- | --- | --- |
+| `Vec<u8> → Bytes::from_vec` | なし（`Vec` ムーブ） | `false`。所有権移譲のみで追加確保なし | `compiler/rust/runtime/src/text/bytes.rs` L12-L27【F:../../compiler/rust/runtime/src/text/bytes.rs†L12-L27】 |
+| `slice → Bytes::from_slice` / `Bytes::slice` | `slice.to_vec()` で新規確保 | `true`。コピーで確保したサイズを `EffectSet::record_mem_bytes(bytes.len())` へ送る | 同 L19-L52【F:../../compiler/rust/runtime/src/text/bytes.rs†L19-L52】 |
+| `Bytes::decode_utf8` / `Str::from(&str)` | ゼロコピー参照 (`&str`/`Cow::Borrowed`) | `false`。UTF-8 検証のみで `mem` 増加なし | `bytes.rs` L55-L63, `str_ref.rs` L11-L35【F:../../compiler/rust/runtime/src/text/bytes.rs†L55-L63】【F:../../compiler/rust/runtime/src/text/str_ref.rs†L11-L35】 |
+| `Bytes::into_utf8` / `Bytes::into_string` | `String::from_utf8` によるムーブ | `false`。`Vec<u8>` を `String` へ移譲するだけで追加確保なし | `bytes.rs` L63-L74【F:../../compiler/rust/runtime/src/text/bytes.rs†L63-L74】 |
+| `Str::to_bytes` / `String::to_bytes` | `Bytes::from_slice` でコピー | `true`。`Str`/`String` から `Vec<u8>` を生成するたびに `mem_bytes += len` | `str_ref.rs` L20-L30, `text_string.rs` L20-L38【F:../../compiler/rust/runtime/src/text/str_ref.rs†L20-L30】【F:../../compiler/rust/runtime/src/text/text_string.rs†L20-L38】 |
+| `Str::into_owned` / `String::from_str` | `String::from_std` が `to_owned` を呼ぶ | `true`。UTF-8 検証後に `String` へコピーしたサイズを `EffectSet` に書く | `text_string.rs` L16-L30【F:../../compiler/rust/runtime/src/text/text_string.rs†L16-L30】 |
+| `String::into_bytes` | `String::into_bytes` → `Bytes::from_vec` (ムーブ) | `false`。所有権移譲のみ | `text_string.rs` L36-L45【F:../../compiler/rust/runtime/src/text/text_string.rs†L36-L45】 |
+| `TextBuilder::finish` | `Bytes::from_vec` 経由で `Vec` を移譲 | `false`。`finish` では `effect {mut}`→`effect {mem}` の順で `TextBuilder` 側が計測するのみ | `text/builder.rs` L3-L38【F:../../compiler/rust/runtime/src/text/builder.rs†L3-L38】 |
+| `TextBuilder::push_bytes/str/grapheme` | `Vec::extend_from_slice` により `realloc` の可能性 | `true`。追加バイト数を `EffectSet::record_mem_bytes` に積算 | 同 L20-L34【F:../../compiler/rust/runtime/src/text/builder.rs†L20-L34】 |
+| `segment_graphemes` / `GraphemeSeq::stats` | `Vec<GraphemeCluster>`/`Vec<usize>` を都度生成 | `true`。クラスタ数×メタデータ分を `effect {mem}` へ記録、`Bytes` 本体は共有 | `text/grapheme.rs` L35-L134【F:../../compiler/rust/runtime/src/text/grapheme.rs†L35-L134】 |
+
+これらの結果を `docs/plans/bootstrap-roadmap/assets/text-unicode-api-diff.csv` に反映し、ゼロコピー経路の比率を新しい KPI (`text.mem.zero_copy_ratio`) で監視する。`effect {mem}` の算出に用いる `EffectSet::record_mem_bytes` / `CollectorEffectMarkers.mem_bytes` は `Core.Iter` 経由の `collect_text` ハーネスから観測できるようにし、Phase 3 では `reports/spec-audit/ch1/core_text_mem.json` に `Bytes.from_slice` / `Str.to_bytes` ケースの期待値を保存する。
+
+#### 1.2.2 `Vec<u8>` 再利用ポリシー
+- `Bytes::from_vec` および `String::into_bytes` は所有権をムーブするため、`Vec<u8>` を二重で解放しないよう `Arc` などの追加レイヤは導入しない。`EffectSet` 側では `mem_bytes` を更新せず `collector.effect.transfer=true`（新ビット）を記録してゼロコピーを識別する。  
+- `TextBuilder::finish` は内部 `Vec` を `Bytes::from_vec` に渡すだけであり、新規アロケーションなしで `String` へ渡る。`finish` の前段で `reserve`/`push_*` が `mem_bytes` を記録し、`finish` 呼び出し時は `effect {mem}` の追加打刻を禁止することで二重計上を防ぐ。  
+- `Bytes::into_utf8` → `Str::owned` は `String` を一度生成してから `Str`（`Cow::Owned`）へ包むため、`Vec` の再利用を維持しつつ `Str` が `'static` を要求する場合のみバッファを複製する方針を `docs/notes/text-unicode-ownership.md` に明記した。
+
+#### 1.2.3 TextBuilder / GraphemeSeq の共有戦略
+`TextBuilder` は `Vec<u8>` を直接保持し、`finish` 時も `Bytes::from_vec` を経由するだけで `unsafe` を使っていない【F:../../compiler/rust/runtime/src/text/builder.rs†L3-L38】。一方 `GraphemeSeq` は `Cow<'a, str>` で元文字列を参照しつつ、インデックスと統計情報を `Vec` にコピーしている【F:../../compiler/rust/runtime/src/text/grapheme.rs†L35-L134】。したがって共有戦略は次のとおりとする。
+
+1. `TextBuilder` 完了後に `String` → `Str<'static>` を経由して `GraphemeSeq` を構築する場合、`GraphemeCluster` は `Cow::Borrowed` で原文を参照するため `unsafe` は不要。  
+2. `GraphemeSeq` のキャッシュ（`byte_offsets`）は `TextBuilder` のバッファとは切り離して管理し、`log_grapheme_stats` のキャッシュヒット率を集計する KPI (`text.grapheme.cache_hit`) を Phase 3 Week42 で導入する。  
+3. 共有する `Vec<u8>` は `Bytes`/`String` 間のムーブに限定し、`GraphemeSeq` では `Bytes` を参照する `Str` を入り口として安全な借用関係を維持する。`unsafe` で `Vec::from_raw_parts` を露出させる案は却下した。
+
+#### 1.2.4 KPI と監査ログへの反映
+- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `text.mem.zero_copy_ratio`（ゼロコピー経路の割合）と `text.mem.copy_penalty_bytes`（コピー経路で記録した `mem_bytes` の平均値）を追加し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section text --scenario ownership_transfer --source reports/spec-audit/ch1/core_text_mem.json` を CI で実行する。  
+- `CollectorAuditTrail` に `collector.effect.transfer` と `collector.effect.text_mem_bytes` を追加して `AuditEnvelope.metadata` に出力し、`scripts/validate-diagnostic-json.sh --suite text --pattern collector.effect.transfer` を新設する。  
+- これらの連携手順は `docs/notes/text-unicode-ownership.md` へ反映済みで、`TextBuilder`/`GraphemeSeq` の参照モデルと TODO を同メモで追跡する。
+
 1.3. 内部キャッシュ (コードポイント/グラフェムインデックス) の設計とテスト戦略を定義する。  
 実施ステップ:  
 - `GraphemeSeq` 用の `IndexCache`（コードポイント→書記素クラスタ開始位置）を `RuntimeCacheSpec`（`docs/notes/core-library-outline.md`）と整合させ、キャッシュ無効化条件を図示する。  
