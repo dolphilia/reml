@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 
 use reml_runtime::text::{segment_graphemes, Str};
 
+const GRAPHEME_TEST_PATH: &str = "third_party/unicode/UAX29/GraphemeBreakTest-15.1.0.txt";
+
 #[derive(Debug)]
 struct GraphemeBreakCase {
   scalars: Vec<char>,
@@ -12,7 +14,12 @@ struct GraphemeBreakCase {
 #[test]
 #[ignore]
 fn grapheme_conformance() {
-  let data_path = repo_root().join("tests/data/unicode/segment/grapheme_break_test.txt");
+  let data_path = repo_root().join(GRAPHEME_TEST_PATH);
+  assert!(
+    data_path.is_file(),
+    "Unicode GraphemeBreakTest data not found at {}",
+    data_path.display()
+  );
   let contents = fs::read_to_string(&data_path).expect("read grapheme test data");
   let mut executed = 0usize;
   for (line_idx, line) in contents.lines().enumerate() {
