@@ -12,8 +12,10 @@ pub use bytes::Bytes;
 pub use error::{UnicodeError, UnicodeErrorKind, UnicodeResult};
 pub use grapheme::{
   grapheme_stats,
+  log_grapheme_stats,
   segment_graphemes,
   GraphemeCluster,
+  GraphemeIter,
   GraphemeSeq,
   GraphemeStats,
 };

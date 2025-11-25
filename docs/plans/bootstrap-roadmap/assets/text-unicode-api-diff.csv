@@ -6,7 +6,7 @@ Bytes,slice,"Result<Bytes, UnicodeError> slice(&Bytes, Range<usize>)","@pure",do
 Str,as_bytes,"Bytes as_bytes(Str)","@pure",docs/spec/3-3-core-text-unicode.md#2-文字列型の層構造,Stub,"`Str::to_bytes` がコピー経路を提供。ゼロコピー共有は引き続き調整が必要"
 Str,str_from_slice,"Result<Str, UnicodeError> from_slice(Bytes)","@pure",docs/spec/3-3-core-text-unicode.md#2-文字列型の層構造,Stub,"`Str::from_bytes` が `Bytes::into_utf8` を呼び出す。DecodeError の粒度は後日"
 Str,grapheme_seq,"Result<GraphemeSeq, UnicodeError> grapheme_seq(Str)","effect {unicode}",docs/spec/3-3-core-text-unicode.md#2-文字列型の層構造,PoC,"`segment_graphemes(Str)` を `compiler/rust/runtime/src/text/grapheme.rs` に追加。Result 型や effect {unicode} は今後整備"
-Str,iter_graphemes,"Iter<Grapheme> iter_graphemes(Str)","effect {unicode}",docs/spec/3-3-core-text-unicode.md#41-grapheme--word--sentence-境界,Missing,"Vec ベースの PoC から `Iter<Grapheme>` を生成するラッパは未実装"
+Str,iter_graphemes,"Iter<Grapheme> iter_graphemes(Str)","effect {unicode}",docs/spec/3-3-core-text-unicode.md#41-grapheme--word--sentence-境界,PoC,"`Str::iter_graphemes` を実装し unicode-segmentation のラッパを返す（`compiler/rust/runtime/src/text/str_ref.rs`）"
 Str,len_bytes,"usize len_bytes(Str)","@pure",docs/spec/3-3-core-text-unicode.md#2-文字列型の層構造,Stub,"`Str::len_bytes` 実装済み。`grapheme_len` 等は未提供"
 String,to_bytes,"Result<Bytes, UnicodeError> to_bytes(&String)","effect {mem}",docs/spec/3-3-core-text-unicode.md#2-文字列型の層構造,Stub,"`String::to_bytes`/`into_bytes` を追加。effect 計測は今後"
 String,string_clone,"String string_clone(Str)","effect {mem}",docs/spec/3-3-core-text-unicode.md#2-文字列型の層構造,Stub,"`impl From<Str> for text::String` で `Str` からの複製を提供"

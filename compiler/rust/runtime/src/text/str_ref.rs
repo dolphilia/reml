@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use super::{Bytes, UnicodeResult};
+use super::{Bytes, GraphemeIter, UnicodeResult};
 
 /// UTF-8 スライスを表す参照型。仕様上の `Str` に相当する。
 #[derive(Clone, Debug)]
@@ -27,6 +27,11 @@ impl<'a> Str<'a> {
 
   pub fn into_owned(self) -> super::String {
     super::String::from_std(self.inner.into_owned())
+  }
+
+  /// Unicode 拡張書記素クラスター単位でのイテレータを返す。
+  pub fn iter_graphemes(&self) -> GraphemeIter<'_> {
+    GraphemeIter::new(self.as_str())
   }
 
   pub fn from_bytes(bytes: Bytes) -> UnicodeResult<Str<'static>> {

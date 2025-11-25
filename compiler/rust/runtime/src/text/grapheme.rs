@@ -1,27 +1,47 @@
-use unicode_segmentation::UnicodeSegmentation;
+use std::borrow::Cow;
+
+use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 use unicode_width::UnicodeWidthStr;
 
-use super::Str;
+use super::{Str, UnicodeResult};
 
 /// Grapheme 単位の情報を保持する簡易クラスタ。
 #[derive(Debug, Clone)]
-pub struct GraphemeCluster {
-  pub cluster: String,
-  pub display_width: usize,
-  pub byte_len: usize,
-  pub is_emoji: bool,
+pub struct GraphemeCluster<'a> {
+  cluster: Cow<'a, str>,
+  display_width: usize,
+  byte_len: usize,
+  is_emoji: bool,
 }
 
-/// `GraphemeCluster` 列とオフセットキャッシュを保持する PoC 用シーケンス。
+impl<'a> GraphemeCluster<'a> {
+  pub fn as_str(&self) -> &str {
+    &self.cluster
+  }
+
+  pub fn display_width(&self) -> usize {
+    self.display_width
+  }
+
+  pub fn is_emoji(&self) -> bool {
+    self.is_emoji
+  }
+
+  pub fn byte_len(&self) -> usize {
+    self.byte_len
+  }
+}
+
+/// `GraphemeCluster` 列とオフセットキャッシュを保持するシーケンス。
 #[derive(Debug, Clone)]
-pub struct GraphemeSeq {
-  clusters: Vec<GraphemeCluster>,
+pub struct GraphemeSeq<'a> {
+  clusters: Vec<GraphemeCluster<'a>>,
   byte_offsets: Vec<usize>,
   total_bytes: usize,
 }
 
-impl GraphemeSeq {
-  pub fn clusters(&self) -> &[GraphemeCluster] {
+impl<'a> GraphemeSeq<'a> {
+  pub fn clusters(&self) -> &[GraphemeCluster<'a>] {
     &self.clusters
   }
 
@@ -30,12 +50,12 @@ impl GraphemeSeq {
   }
 
   pub fn total_display_width(&self) -> usize {
-    self.clusters.iter().map(|g| g.display_width).sum()
+    self.clusters.iter().map(|g| g.display_width()).sum()
   }
 
   pub fn stats(&self) -> GraphemeStats {
     let total_display_width = self.total_display_width();
-    let emoji_clusters = self.clusters.iter().filter(|g| g.is_emoji).count();
+    let emoji_clusters = self.clusters.iter().filter(|g| g.is_emoji()).count();
     GraphemeStats {
       grapheme_count: self.clusters.len(),
       total_bytes: self.total_bytes,
@@ -68,8 +88,8 @@ pub struct GraphemeStats {
   pub cache_miss: usize,
 }
 
-/// unicode-segmentation + unicode-width を利用した PoC 実装。
-pub fn segment_graphemes(str_ref: &Str<'_>) -> GraphemeSeq {
+/// unicode-segmentation + unicode-width を利用した実装。
+pub fn segment_graphemes<'a>(str_ref: &'a Str<'a>) -> UnicodeResult<GraphemeSeq<'a>> {
   let source = str_ref.as_str();
   let mut clusters = Vec::new();
   let mut offsets = Vec::new();
@@ -79,18 +99,18 @@ pub fn segment_graphemes(str_ref: &Str<'_>) -> GraphemeSeq {
     let display_width = UnicodeWidthStr::width(cluster).max(1);
     let is_emoji = contains_emoji(cluster);
     clusters.push(GraphemeCluster {
-      cluster: cluster.to_string(),
+      cluster: Cow::Borrowed(cluster),
       display_width,
       byte_len: cluster.len(),
       is_emoji,
     });
   }
 
-  GraphemeSeq {
+  Ok(GraphemeSeq {
     clusters,
     byte_offsets: offsets,
     total_bytes: source.len(),
-  }
+  })
 }
 
 fn contains_emoji(cluster: &str) -> bool {
@@ -103,6 +123,32 @@ fn contains_emoji(cluster: &str) -> bool {
 }
 
 /// `Str` から直接 `GraphemeSeq` を構築し統計を取得するヘルパ。
-pub fn grapheme_stats(str_ref: &Str<'_>) -> GraphemeStats {
-  segment_graphemes(str_ref).stats()
+pub fn grapheme_stats(str_ref: &Str<'_>) -> UnicodeResult<GraphemeStats> {
+  segment_graphemes(str_ref).map(|seq| seq.stats())
+}
+
+/// 監査ログへの配線を見据えた計測 API。現状は `GraphemeStats` を返すのみ。
+pub fn log_grapheme_stats(str_ref: &Str<'_>) -> UnicodeResult<GraphemeStats> {
+  grapheme_stats(str_ref)
+}
+
+/// `Str` から書記素列を反復するためのラッパ。
+pub struct GraphemeIter<'a> {
+  inner: Graphemes<'a>,
+}
+
+impl<'a> GraphemeIter<'a> {
+  pub(crate) fn new(source: &'a str) -> Self {
+    Self {
+      inner: source.graphemes(true),
+    }
+  }
+}
+
+impl<'a> Iterator for GraphemeIter<'a> {
+  type Item = &'a str;
+
+  fn next(&mut self) -> Option<Self::Item> {
+    self.inner.next()
+  }
 }
