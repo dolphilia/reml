@@ -1,0 +1,59 @@
+{
+  "suite": "text_internal_cache",
+  "cases": [
+    {
+      "case_id": "UC-01",
+      "locale": "ja-JP",
+      "target_bytes": 5242880,
+      "actual_bytes": 5242890,
+      "grapheme_count": 1747630,
+      "avg_cluster_width": 2.0,
+      "emoji_ratio": 0.0,
+      "cache_hits": 0,
+      "cache_miss": 1747630,
+      "version_mismatch_evictions": 0,
+      "cache_generation": 0,
+      "avg_generation": 0.0,
+      "cache_hit_ratio": 0.0,
+      "notes": "初回生成。IndexCache が存在せず cache_miss を強制する。"
+    },
+    {
+      "case_id": "UC-02",
+      "locale": "ja-JP/ar/emoji",
+      "target_bytes": 512000,
+      "actual_bytes": 512004,
+      "grapheme_count": 182047,
+      "avg_cluster_width": 1.2499958801847875,
+      "emoji_ratio": 0.06250034331793437,
+      "cache_hits": 182047,
+      "cache_miss": 0,
+      "version_mismatch_evictions": 0,
+      "cache_generation": 1,
+      "avg_generation": 1.0,
+      "cache_hit_ratio": 1.0,
+      "notes": "GraphemeSeq::clone を想定し cache_hits が 70% 以上であることを検証する。"
+    },
+    {
+      "case_id": "UC-03",
+      "locale": "streaming",
+      "target_bytes": 204800,
+      "actual_bytes": 204804,
+      "grapheme_count": 102405,
+      "avg_cluster_width": 1.363615057858503,
+      "emoji_ratio": 0.1818075289292515,
+      "cache_hits": 102405,
+      "cache_miss": 0,
+      "version_mismatch_evictions": 0,
+      "cache_generation": 1,
+      "avg_generation": 1.0,
+      "cache_hit_ratio": 1.0,
+      "notes": "TextBuilder → GraphemeSeq 経路で cache_miss=0 を確認する。"
+    }
+  ],
+  "summary": {
+    "total_cases": 3,
+    "total_bytes": 5959698,
+    "avg_cache_hit_ratio": 0.6666666666666666,
+    "generated_unix_secs": 1764067346
+  }
+}
