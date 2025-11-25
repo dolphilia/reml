@@ -3,13 +3,16 @@
 //! フェーズ 3 の実装タスク着手に必要な足場を整える。
 
 mod bytes;
+mod builder;
 mod error;
 mod grapheme;
 mod str_ref;
 mod text_string;
+mod normalize;
 mod width;
 
 pub use bytes::Bytes;
+pub use builder::{builder, TextBuilder};
 pub use error::{UnicodeEffectInfo, UnicodeError, UnicodeErrorKind, UnicodeResult};
 pub use grapheme::{
   grapheme_stats,
@@ -22,4 +25,5 @@ pub use grapheme::{
 };
 pub use str_ref::Str;
 pub use text_string::String;
+pub use normalize::{is_normalized, normalize, NormalizationForm};
 pub use width::{width_map, width_map_with_stats, WidthMapStats, WidthMode};

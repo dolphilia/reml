@@ -45,6 +45,9 @@ impl String {
     bytes.into_utf8().map(|s| s.into_owned())
   }
 
+  pub fn normalize(self, form: super::NormalizationForm) -> UnicodeResult<Self> {
+    super::normalize(self, form)
+  }
 }
 
 impl From<std::string::String> for String {

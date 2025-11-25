@@ -11,7 +11,7 @@ Str,len_bytes,"usize len_bytes(Str)","@pure",docs/spec/3-3-core-text-unicode.md#
 String,to_bytes,"Result<Bytes, UnicodeError> to_bytes(&String)","effect {mem}",docs/spec/3-3-core-text-unicode.md#2-文字列型の層構造,Stub,"`String::to_bytes`/`into_bytes` を追加。effect 計測は今後"
 String,string_clone,"String string_clone(Str)","effect {mem}",docs/spec/3-3-core-text-unicode.md#2-文字列型の層構造,Stub,"`impl From<Str> for text::String` で `Str` からの複製を提供"
 String,push_str,"Result<(), UnicodeError> push_str(&mut String, Str)","effect {mem} {unicode}",docs/spec/3-3-core-text-unicode.md#2-文字列型の層構造,Stub,"`String::push_str` を公開。`Str` 引数専用ヘルパは未追加"
-String,normalize,"Result<String, UnicodeError> normalize(String, NormalizationForm)","effect {unicode}",docs/spec/3-3-core-text-unicode.md#31-正規化-api,Missing,"NormalizationForm を受け取る API が runtime に無いため Phase3 KPI を満たせない"
+String,normalize,"Result<String, UnicodeError> normalize(String, NormalizationForm)","effect {unicode}",docs/spec/3-3-core-text-unicode.md#31-正規化-api,Stub,"`unicode-normalization` を利用し `text/normalize.rs` に実装。`String::normalize` から呼び出す"
 GraphemeSeq,segment_graphemes,"GraphemeSeq segment_graphemes(Str)","effect {unicode}",docs/spec/3-3-core-text-unicode.md#41-grapheme--word--sentence-境界,PoC,"`unicode-segmentation` + `unicode-width` を利用した Segmentation/Width PoC を `text/grapheme.rs` に実装"
 GraphemeSeq,width,"usize width(&GraphemeSeq)","@pure",docs/spec/3-3-core-text-unicode.md#41-grapheme--word--sentence-境界,PoC,"`GraphemeSeq::total_display_width`/`stats` を追加。Diagnostics/width_map との連携は今後"
 TextBuilder,builder,"TextBuilder builder()","effect {mem}",docs/spec/3-3-core-text-unicode.md#6-テキスト構築とビルダー,Missing,"TextBuilder 型が存在せず構築フロー開始 API が未実装"
