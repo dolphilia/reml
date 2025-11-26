@@ -4,6 +4,7 @@ use chumsky::error::{Simple, SimpleReason};
 use chumsky::prelude::*;
 use chumsky::stream::Stream;
 use chumsky::Parser as ChumskyParser;
+use reml_runtime::text::LocaleId;
 use serde::Serialize;
 use smallvec::SmallVec;
 use smol_str::SmolStr;
@@ -201,6 +202,7 @@ pub struct ParserOptions {
     pub streaming_enabled: bool,
     pub stream_flow: Option<StreamFlowState>,
     pub lex_identifier_profile: IdentifierProfile,
+    pub lex_identifier_locale: Option<LocaleId>,
 }
 
 impl Default for ParserOptions {
@@ -211,6 +213,7 @@ impl Default for ParserOptions {
             streaming_enabled: false,
             stream_flow: None,
             lex_identifier_profile: IdentifierProfile::Unicode,
+            lex_identifier_locale: None,
         }
     }
 }
@@ -226,6 +229,7 @@ impl ParserOptions {
             streaming_enabled: run_config.trace,
             stream_flow: None,
             lex_identifier_profile: lex_identifier_profile_from_run_config(run_config),
+            lex_identifier_locale: lex_identifier_locale_from_run_config(run_config),
         }
     }
 
@@ -243,6 +247,11 @@ impl ParserOptions {
         self.lex_identifier_profile = profile;
         self
     }
+
+    pub fn with_lex_identifier_locale(mut self, locale: Option<LocaleId>) -> Self {
+        self.lex_identifier_locale = locale;
+        self
+    }
 }
 
 fn lex_identifier_profile_from_run_config(run_config: &RunConfig) -> IdentifierProfile {
@@ -253,6 +262,15 @@ fn lex_identifier_profile_from_run_config(run_config: &RunConfig) -> IdentifierP
         .and_then(|value| value.as_str())
         .and_then(|text| text.parse::<IdentifierProfile>().ok())
         .unwrap_or_default()
+}
+
+fn lex_identifier_locale_from_run_config(run_config: &RunConfig) -> Option<LocaleId> {
+    run_config
+        .extension("lex")
+        .and_then(|value| value.as_object())
+        .and_then(|map| map.get("identifier_locale"))
+        .and_then(|value| value.as_str())
+        .and_then(|text| LocaleId::parse(text).ok())
 }
 
 /// Rust フロントエンドのパーサドライバ。
@@ -290,6 +308,7 @@ impl ParserDriver {
     ) -> (ParsedModule, Option<ParseError>) {
         let lexer_options = LexerOptions {
             identifier_profile: options.lex_identifier_profile,
+            identifier_locale: options.lex_identifier_locale.clone(),
         };
         let LexOutput { tokens, errors } = lex_source_with_options(source, lexer_options);
         let streaming_state = StreamingState::new(options.streaming.clone());

@@ -8,6 +8,7 @@ use reml_frontend::{
 fn collect_tokens(source: &str, profile: IdentifierProfile) -> LexOutput {
     let options = LexerOptions {
         identifier_profile: profile,
+        identifier_locale: None,
     };
     lex_source_with_options(source, options)
 }

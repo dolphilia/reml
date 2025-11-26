@@ -32,6 +32,7 @@ use reml_frontend::typeck::{
     TypeRowMode, TypecheckConfig, TypecheckDriver, TypecheckMetrics, TypecheckReport,
     TypecheckViolation, TypecheckViolationKind, TypedFunctionSummary,
 };
+use reml_runtime::text::LocaleId;
 use serde::Serialize;
 
 const PARSER_NAMESPACE: &str = "rust.frontend";
@@ -48,6 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(path) = &args.emit_tokens {
         let options = LexerOptions {
             identifier_profile: args.run_config.lex_identifier_profile,
+            identifier_locale: args.run_config.lex_identifier_locale.clone(),
         };
         let lex_output = lex_source_with_options(&source, options);
         write_json_file(path, &lex_output.tokens)?;
@@ -285,6 +287,7 @@ struct RunSettings {
     config: RunConfig,
     experimental_effects: bool,
     lex_identifier_profile: IdentifierProfile,
+    lex_identifier_locale: Option<LocaleId>,
 }
 
 impl Default for RunSettings {
@@ -297,6 +300,7 @@ impl Default for RunSettings {
             config,
             experimental_effects: false,
             lex_identifier_profile: IdentifierProfile::Unicode,
+            lex_identifier_locale: None,
         }
     }
 }
@@ -339,6 +343,9 @@ impl RunSettings {
             "identifier_profile".to_string(),
             json!(self.lex_identifier_profile.as_str()),
         );
+        if let Some(locale) = &self.lex_identifier_locale {
+            payload.insert("identifier_locale".to_string(), json!(locale.canonical()));
+        }
         payload
             .entry("profile".to_string())
             .or_insert_with(|| json!("strict_json"));
@@ -470,6 +477,14 @@ fn apply_workspace_config(
                         Ok(parsed) => run_config.lex_identifier_profile = parsed,
                         Err(_) => eprintln!(
                             "[CONFIG] lex.identifier_profile `{profile}` は ascii/unicode 以外の値なので無視されました"
+                        ),
+                    }
+                }
+                if let Some(locale) = lex.get("identifier_locale").and_then(|v| v.as_str()) {
+                    match LocaleId::parse(locale) {
+                        Ok(parsed) => run_config.lex_identifier_locale = Some(parsed),
+                        Err(_) => eprintln!(
+                            "[CONFIG] lex.identifier_locale `{locale}` は無効なロケールなので無視されました"
                         ),
                     }
                 }
@@ -801,6 +816,17 @@ fn parse_args() -> Result<CliArgs, Box<dyn std::error::Error>> {
                         )
                     })?;
             }
+            "--lex-locale" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--lex-locale はロケール ID を伴う必要があります")?;
+                match LocaleId::parse(&value) {
+                    Ok(locale) => run_config.lex_identifier_locale = Some(locale),
+                    Err(_) => eprintln!(
+                        "[CLI] --lex-locale の値 `{value}` は無効なロケールなので無視されました"
+                    ),
+                }
+            }
             "--streaming" => stream_config.enabled = true,
             "--no-streaming" => stream_config.enabled = false,
             "--stream-resume-hint" => {
@@ -999,6 +1025,7 @@ fn print_help(program_name: &str) {
   --emit-tokens <PATH>           字句解析結果を JSON で保存
   --trace-output <PATH>          Parser TraceEvent を Markdown で保存
   --lex-profile ascii|unicode    識別子プロファイルの切替
+  --lex-locale <Bcp47>          識別子正規化で使用するロケール ID
   --packrat / --no-packrat       Packrat キャッシュを有効/無効化
   --streaming / --no-streaming   Streaming Runner の有無を切替
   --effect-stage <STAGE>         Stage 要件を指定

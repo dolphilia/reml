@@ -57,6 +57,7 @@ pub enum UnicodeErrorKind {
     InvalidUtf8,
     UnsupportedScalar,
     UnsupportedLocale,
+    InvalidIdentifier,
     InvalidRange,
     DecodeFailure,
     EncodeFailure,

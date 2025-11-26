@@ -55,9 +55,10 @@ fn diagnostic_code(kind: UnicodeErrorKind) -> &'static str {
     UnicodeErrorKind::InvalidUtf8 => "U1001",
     UnicodeErrorKind::UnsupportedScalar => "U1002",
     UnicodeErrorKind::UnsupportedLocale => "U1003",
-    UnicodeErrorKind::InvalidRange => "U1004",
-    UnicodeErrorKind::DecodeFailure => "U1005",
-    UnicodeErrorKind::EncodeFailure => "U1006",
+    UnicodeErrorKind::InvalidIdentifier => "U1004",
+    UnicodeErrorKind::InvalidRange => "U1005",
+    UnicodeErrorKind::DecodeFailure => "U1006",
+    UnicodeErrorKind::EncodeFailure => "U1007",
   }
 }
 
@@ -65,6 +66,7 @@ fn diagnostic_domain(kind: UnicodeErrorKind) -> &'static str {
   match kind {
     UnicodeErrorKind::InvalidUtf8 => "parser",
     UnicodeErrorKind::UnsupportedLocale => "text",
+    UnicodeErrorKind::InvalidIdentifier => "parser",
     _ => "unicode",
   }
 }

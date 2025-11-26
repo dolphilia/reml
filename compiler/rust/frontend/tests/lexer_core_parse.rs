@@ -35,6 +35,7 @@ fn run_case(case: &CoreParseCase) -> Result<(), Box<dyn std::error::Error>> {
     })?;
     let options = LexerOptions {
         identifier_profile: profile,
+        identifier_locale: None,
     };
     let output = lex_source_with_options(&case.source, options);
     if !output.errors.is_empty() {

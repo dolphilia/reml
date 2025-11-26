@@ -8,6 +8,7 @@ mod case;
 mod effects;
 mod error;
 mod grapheme;
+mod identifier;
 mod locale;
 mod normalize;
 mod str_ref;
@@ -23,6 +24,7 @@ pub use grapheme::{
     DirectionStats, Grapheme, GraphemeIter, GraphemeSeq, GraphemeStats, ScriptCategory,
     ScriptStats, TextDirection,
 };
+pub use identifier::{prepare_identifier, prepare_identifier_with_locale};
 pub use locale::LocaleId;
 pub use normalize::{is_normalized, normalize, NormalizationForm};
 pub use str_ref::Str;

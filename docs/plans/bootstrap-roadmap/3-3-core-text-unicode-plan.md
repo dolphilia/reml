@@ -186,6 +186,11 @@
 - Emoji 補正 (`👨‍👩‍👧‍👦`/`🇯🇵`) は `EMOJI_CORRECTIONS` で追跡し、`WidthMode::EmojiCompat` で 4 カラム幅を強制。`compiler/rust/runtime/tests/unicode_case_width.rs` と `width.rs` 内のユニットテストで ASCII/KANA ラウンドトリップと統計値を検証した。【F:../../compiler/rust/runtime/tests/unicode_case_width.rs†L22-L32】【F:../../compiler/rust/runtime/src/text/width.rs†L329-L416】
 - `docs/notes/text-case-width-gap.md` の `ja-JP` 行を `Closed` に更新し、Emoji/Grapheme の調整は今後も `width_corrections.csv` で追跡する旨を追記。`az-Latn` など `Planned` ロケールは `UnsupportedLocale` で警告し、`unicode.locale.requested` KPI の検証対象に追加した。
 
+#### 3.2.3 Parser 連携テストと UnsupportedLocale 診断（2027-03-30）
+- `compiler/rust/runtime/src/text/identifier.rs` を追加し、`prepare_identifier`/`prepare_identifier_with_locale` が NFC 要求・Bidi 制御拒否・`LocaleScope::Case` のサポートチェックを行うよう実装。`UnicodeErrorKind::InvalidIdentifier` を `UnicodeErrorKind` に追加し、`diagnostics.rs` のコード割り当てを更新した。【F:../../compiler/rust/runtime/src/text/identifier.rs†L1-L93】
+- Lexer 側では `LexerOptions` に `identifier_locale: Option<LocaleId>` を追加し、`lex_source_with_options` が Core.Text の `prepare_identifier` を呼び出すように再設計。`unicode_error_to_frontend` ヘルパを導入して `FrontendErrorKind::UnexpectedStructure` へ橋渡しし、`lex.identifier_locale` で指定されたロケールが `UnsupportedLocale` の場合は CLI/RunConfig 両方で警告を出すようにした。【F:../../compiler/rust/frontend/src/lexer/mod.rs†L1-L210】【F:../../compiler/rust/frontend/src/bin/reml_frontend.rs†L1-L370】
+- `compiler/rust/frontend/tests/lexer_unicode_identifier.rs` を新設し、(1) NFC でない識別子、(2) Bidi 制御文字を含む識別子、(3) `lex.identifier_locale = az-Latn` による `UnsupportedLocale` の 3 ケースをカバー。`docs/plans/bootstrap-roadmap/checklists/unicode-error-mapping.md`・`text-api-error-scenarios.md` の `InvalidIdentifier`/TA-04 を `Green` に更新した。
+
 3.3. `prepare_identifier` を Parser 仕様 (2-3) と結合するテストを実装し、`UnicodeError` → `ParseError` 変換を確認する。  
 実施ステップ:  
 - Parser の識別子前処理 (`docs/spec/2-3-lexer.md`) を読み、`prepare_identifier` が `UnicodeErrorKind::InvalidIdentifier` を `ParseErrorKind::InvalidToken` へ写像するルールを表にまとめる。  

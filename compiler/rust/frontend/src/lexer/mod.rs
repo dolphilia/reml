@@ -5,8 +5,8 @@
 //! できるようにし、RunConfig (`extensions.lex.identifier_profile`) から渡せる経路もここで確保する。
 
 use logos::{Lexer as LogosLexer, Logos};
+use reml_runtime::text::{self as unicode_text, LocaleId, Str as UnicodeStr, UnicodeErrorKind};
 use std::str::FromStr;
-use unicode_normalization::UnicodeNormalization;
 
 use crate::error::{FrontendError, FrontendErrorKind, Recoverability};
 use crate::span::Span;
@@ -64,15 +64,17 @@ impl FromStr for IdentifierProfile {
 }
 
 /// Lexer のオプション。
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct LexerOptions {
     pub identifier_profile: IdentifierProfile,
+    pub identifier_locale: Option<LocaleId>,
 }
 
 impl Default for LexerOptions {
     fn default() -> Self {
         Self {
             identifier_profile: IdentifierProfile::Unicode,
+            identifier_locale: None,
         }
     }
 }
@@ -529,8 +531,15 @@ pub fn lex_source_with_options(text: &str, options: LexerOptions) -> LexOutput {
                 } else {
                     TokenKind::Identifier
                 };
-                let lexeme = normalize_identifier(slice);
-                tokens.push(Token::with_lexeme(kind, span, lexeme));
+                match prepare_identifier_token(slice, span, &options) {
+                    Ok(lexeme) => {
+                        tokens.push(Token::with_lexeme(kind, span, lexeme));
+                    }
+                    Err(err) => {
+                        errors.push(err);
+                        tokens.push(Token::with_lexeme(TokenKind::Unknown, span, slice));
+                    }
+                }
             }
             Ok(RawToken::IntLiteral) => {
                 let lexeme = lexer.slice();
@@ -638,8 +647,55 @@ fn collect_string_lexeme(text: &str, range: std::ops::Range<usize>) -> String {
     text[range.start..range.end].to_string()
 }
 
-fn normalize_identifier(value: &str) -> String {
-    value.nfc().collect()
+fn prepare_identifier_token(
+    slice: &str,
+    span: Span,
+    options: &LexerOptions,
+) -> Result<String, FrontendError> {
+    let unicode = UnicodeStr::from(slice);
+    let result = match options.identifier_locale.as_ref() {
+        Some(locale) => unicode_text::prepare_identifier_with_locale(&unicode, Some(locale)),
+        None => unicode_text::prepare_identifier(&unicode),
+    };
+    result
+        .map(|text| text.into_std())
+        .map_err(|err| unicode_error_to_frontend(span, err, options.identifier_locale.as_ref()))
+}
+
+fn unicode_error_to_frontend(
+    span: Span,
+    err: unicode_text::UnicodeError,
+    locale: Option<&LocaleId>,
+) -> FrontendError {
+    let mut message = match err.kind() {
+        UnicodeErrorKind::InvalidIdentifier => {
+            format!("Unicode 識別子の正規化に失敗しました: {}", err.message())
+        }
+        UnicodeErrorKind::UnsupportedLocale => {
+            let requested = locale
+                .map(|locale| locale.canonical().to_string())
+                .unwrap_or_else(|| "und".to_string());
+            format!(
+                "lex.identifier_locale `{}` は未サポートです: {}",
+                requested,
+                err.message()
+            )
+        }
+        other => format!(
+            "Unicode 識別子処理で予期しないエラー ({other:?}): {}",
+            err.message()
+        ),
+    };
+    if let Some(offset) = err.offset() {
+        message.push_str(&format!(" (offset {offset})"));
+    }
+    FrontendError::new(
+        FrontendErrorKind::UnexpectedStructure {
+            message,
+            span: Some(span),
+        },
+        Recoverability::Recoverable,
+    )
 }
 
 fn push_keyword(tokens: &mut Vec<Token>, span: Span, kind: TokenKind, text: &'static str) {
