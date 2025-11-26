@@ -1,6 +1,6 @@
 //! フロントエンドで発生するエラー種別の雛形。
 
-use crate::span::Span;
+use crate::{span::Span, unicode::UnicodeDetail};
 
 /// エラーの復旧可否を示す分類。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,7 +19,11 @@ pub enum FrontendErrorKind {
     /// パーサで期待したトークンが不足。
     MissingToken { expected: String, span: Span },
     /// 構文が不正で復旧不能。
-    UnexpectedStructure { message: String, span: Option<Span> },
+    UnexpectedStructure {
+        message: String,
+        span: Option<Span>,
+        unicode: Option<UnicodeDetail>,
+    },
     /// Packrat キャッシュの内部矛盾など実装バグが疑われるケース。
     InternalState { message: String },
 }

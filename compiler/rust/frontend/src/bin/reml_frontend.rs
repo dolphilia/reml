@@ -12,7 +12,9 @@ use reml_adapter::target::{self, TargetInference};
 use reml_frontend::diagnostic::{
     effects,
     formatter::{self, FormatterContext},
-    json as diag_json, DiagnosticDomain, FrontendDiagnostic,
+    json as diag_json,
+    unicode,
+    DiagnosticDomain, FrontendDiagnostic,
 };
 use reml_frontend::error::Recoverability;
 use reml_frontend::lexer::{lex_source_with_options, IdentifierProfile, LexerOptions};
@@ -1472,6 +1474,14 @@ fn build_parser_diagnostics(
                 flow,
                 domain_label.as_str(),
             );
+            if diag.unicode.is_some() {
+                unicode::integrate_unicode_metadata(
+                    &mut diag,
+                    source,
+                    &mut extensions,
+                    &mut metadata,
+                );
+            }
             let context = FormatterContext {
                 program_name: &args.program_name,
                 raw_args: &args.raw_args,

@@ -7,6 +7,7 @@
 use super::ParserTraceEvent;
 use crate::diagnostic::{ExpectedToken, FrontendDiagnostic};
 use crate::span::Span;
+use crate::unicode::UnicodeDetail;
 use crate::streaming::{
     PackratCacheEntry, PackratSnapshot, PackratStats, StreamFlowState, StreamMetrics, TraceFrame,
 };
@@ -143,6 +144,8 @@ pub struct ParseError {
     pub context: Vec<String>,
     pub committed: bool,
     pub notes: Vec<String>,
+    pub unicode: Option<UnicodeDetail>,
+    pub span_trace: Vec<Span>,
 }
 
 impl ParseError {
@@ -153,6 +156,8 @@ impl ParseError {
             context: Vec::new(),
             committed: false,
             notes: Vec::new(),
+            unicode: None,
+            span_trace: Vec::new(),
         }
     }
 }

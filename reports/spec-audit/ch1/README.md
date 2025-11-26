@@ -22,3 +22,8 @@
 
 - `reports/spec-audit/ch1/streaming_metrics-20251121-log.md` — `cargo test --manifest-path compiler/rust/frontend/Cargo.toml streaming_metrics -- --nocapture` のログ。`module_header_acceptance` / `effect_handler_acceptance` / `bridge_signal_roundtrip` の 3 テストを Streaming Runner で固定した証跡。
 - `reports/spec-audit/ch1/streaming_use_nested-20251121-diagnostics.json` / `streaming_effect_handler-20251121-diagnostics.json` — Streaming 実行時の診断結果。`mode = streaming`、`ci_run_id = rust-frontend-streaming-20251121.1`、`git_rev` を JSON のメタ情報に含め、Chapter 2 側の `reports/spec-audit/ch2/streaming/` にも複製する。
+
+## 2027-03-30 Unicode Diagnostics の指標
+
+- `reports/spec-audit/ch1/unicode_diagnostics-20270330.json` — `cargo test --manifest-path compiler/rust/frontend/Cargo.toml lexer_unicode_identifier -- --nocapture` 由来の Unicode エラー診断サマリ。`diagnostic.extensions["unicode"]` と `AuditEnvelope.metadata["unicode.*"]` が揃っていること、および `unicode.display_width` が書き出されることを `scripts/validate-diagnostic-json.sh --pattern unicode.display_width reports/spec-audit/ch1/unicode_diagnostics-20270330.json` で検証する。
+- KPI `unicode.diagnostic.display_span` / `unicode.display_width` の達成状況を記録し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ転記する。

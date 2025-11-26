@@ -12,6 +12,7 @@ pub mod span;
 pub mod streaming;
 pub mod token;
 pub mod typeck;
+pub mod unicode;
 
 pub use error::{FrontendError, FrontendErrorKind, Recoverability};
 pub use span::{Span, SpanTagged};

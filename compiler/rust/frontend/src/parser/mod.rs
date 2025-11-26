@@ -4,7 +4,7 @@ use chumsky::error::{Simple, SimpleReason};
 use chumsky::prelude::*;
 use chumsky::stream::Stream;
 use chumsky::Parser as ChumskyParser;
-use reml_runtime::text::LocaleId;
+use reml_runtime::text::{LocaleId, UnicodeError};
 use serde::Serialize;
 use smallvec::SmallVec;
 use smol_str::SmolStr;
@@ -35,6 +35,7 @@ use crate::streaming::{
     StreamingStateConfig, TokenSample, TraceFrame,
 };
 use crate::token::{Token, TokenKind};
+use crate::unicode::{unicode_diagnostic_code, UnicodeDetail};
 use ast::{
     Decl, DeclKind, EffectDecl, Expr, ExprKind, Function, HandlerDecl, Ident, Literal, LiteralKind,
     MatchArm, Module, ModuleHeader, ModulePath, Param, Pattern, PatternKind, RelativeHead, Stmt,
@@ -386,9 +387,13 @@ impl ParserDriver {
             crate::error::FrontendErrorKind::MissingToken { span, .. } => {
                 diagnostic = diagnostic.with_span(span);
             }
-            crate::error::FrontendErrorKind::UnexpectedStructure { span, .. } => {
+            crate::error::FrontendErrorKind::UnexpectedStructure { span, unicode, .. } => {
                 if let Some(span) = span {
                     diagnostic = diagnostic.with_span(span);
+                }
+                if let Some(detail) = unicode.clone() {
+                    diagnostic = diagnostic.with_unicode_detail(detail.clone());
+                    diagnostic.push_code(unicode_diagnostic_code(detail.kind()));
                 }
             }
             crate::error::FrontendErrorKind::InternalState { .. } => {}
@@ -610,6 +615,23 @@ fn build_parse_error(span: Span, summary: &ExpectedTokensSummary) -> ParseError 
     }
     let mut error = ParseError::new(span, summary.alternatives.clone());
     error.context = context;
+    error
+}
+
+/// UnicodeError を ParseError へ正規化する。
+pub fn unicode_error_to_parse_error(
+    span: Span,
+    unicode_error: &UnicodeError,
+    phase: &str,
+) -> ParseError {
+    let mut error = ParseError::new(span, Vec::new());
+    error.notes.push(unicode_error.message().to_string());
+    error
+        .context
+        .push(format!("unicode.{:?}", unicode_error.kind()).to_lowercase());
+    error.unicode = Some(
+        UnicodeDetail::from_error(unicode_error).with_phase(phase.to_string()),
+    );
     error
 }
 

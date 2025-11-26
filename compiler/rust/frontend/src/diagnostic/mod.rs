@@ -2,12 +2,14 @@
 
 use crate::error::Recoverability;
 use crate::span::Span;
+use crate::unicode::UnicodeDetail;
 use serde_json::{Map, Value};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 pub mod json;
 pub mod recover;
+pub mod unicode;
 
 pub use recover::{ExpectedToken, ExpectedTokenCollector, ExpectedTokensSummary};
 
@@ -247,6 +249,7 @@ pub struct FrontendDiagnostic {
     pub expected_summary: Option<ExpectedTokensSummary>,
     pub audit_metadata: Map<String, Value>,
     pub audit: AuditEnvelope,
+    pub unicode: Option<UnicodeDetail>,
 }
 
 impl FrontendDiagnostic {
@@ -273,6 +276,7 @@ impl FrontendDiagnostic {
             timestamp: None,
             audit_metadata: Map::new(),
             audit: AuditEnvelope::new(),
+            unicode: None,
         }
     }
 
@@ -338,6 +342,15 @@ impl FrontendDiagnostic {
 
     pub fn add_fixit(&mut self, fixit: DiagnosticFixIt) {
         self.fixits.push(fixit);
+    }
+
+    pub fn set_unicode_detail(&mut self, detail: UnicodeDetail) {
+        self.unicode = Some(detail);
+    }
+
+    pub fn with_unicode_detail(mut self, detail: UnicodeDetail) -> Self {
+        self.set_unicode_detail(detail);
+        self
     }
 
     pub fn set_expected_tokens(mut self, tokens: Vec<String>, humanized: Option<String>) -> Self {

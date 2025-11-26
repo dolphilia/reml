@@ -30,7 +30,12 @@
 - KPI `unicode.diagnostic.display_span` を `0-3-audit-and-metrics.md` に登録し、`scripts/validate-diagnostic-json.sh --pattern unicode.error.kind --pattern unicode.identifier.raw` を通じて `ParseError`→`Diagnostic` の橋渡しを自動チェックする運用を開始。
 - `display_width` は `Diagnostic.pretty` 再実装（`docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` §1.4/§2.3）で扱うため、本メモでは `Span`/列オフセットの変換規約のみ確定とし、幅計算は `TODO` として残す。
 
+### 進捗ログ（2027-03-30）
+- `FrontendDiagnostic`/`ParseError` に `UnicodeDetail` を追加し、Lexer で検出した `UnicodeError` が raw/locale/profile 付きで伝搬できるようになった。【F:../../compiler/rust/frontend/src/diagnostic/mod.rs†L244-L276】【F:../../compiler/rust/frontend/src/parser/api.rs†L104-L159】
+- `diagnostic/unicode.rs` の `integrate_unicode_metadata` が `extensions["unicode"]` と `AuditEnvelope.metadata["unicode.*"]` を同時更新し、`unicode.display_width`・`unicode.grapheme.start/end` を含めて JSON/Audit 双方に出力する仕組みを実装した。【F:../../compiler/rust/frontend/src/diagnostic/unicode.rs†L1-L223】
+- `reports/spec-audit/ch1/unicode_diagnostics-20270330.json` を追加し、`scripts/validate-diagnostic-json.sh --pattern unicode.display_width reports/spec-audit/ch1/unicode_diagnostics-20270330.json` で display_width/GraphemeSpan の書き出しを検証できるようにした。
+
 ## TODO
-- [ ] `ParseError` へ `unicode: Option<UnicodeError>` を追加し、`parser::State` が `UnicodeError` を受け取れるようにする。
-- [ ] `FrontendDiagnostic` から `AuditEnvelope` へのコピーで `unicode.*` を標準化する。
+- ~~[ ] `ParseError` へ `unicode: Option<UnicodeError>` を追加し、`parser::State` が `UnicodeError` を受け取れるようにする。~~（2027-03-30 完了）
+- ~~[ ] `FrontendDiagnostic` から `AuditEnvelope` へのコピーで `unicode.*` を標準化する。~~（`integrate_unicode_metadata` で対応）
 - [ ] `scripts/validate-diagnostic-json.sh --pattern unicode.error.kind` を追加し、CI での欠落検知を自動化。

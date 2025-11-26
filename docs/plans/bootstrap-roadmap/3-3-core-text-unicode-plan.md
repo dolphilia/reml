@@ -215,6 +215,11 @@
 - `reports/spec-audit/ch1/unicode_diagnostics-*.json` を作成し、`scripts/validate-diagnostic-json.sh --pattern unicode.display_width` を CI に組み込み `0-3-audit-and-metrics.md` の診断 KPI とリンクする。  
 - `unicode_error_to_parse_error` の変換表を `docs/plans/bootstrap-roadmap/checklists/unicode-error-mapping.md` に追記し、Parser/Diagnostics の両方で差分レビューを行う。
 
+> 実施ログ（2027-03-30）  
+> - `FrontendDiagnostic` と `ParseError` に `UnicodeDetail` を追加し、`lexer` で発生した `UnicodeError` が span・locale・raw 付きで保持されるようにした。【F:../../compiler/rust/frontend/src/diagnostic/mod.rs†L244-L276】【F:../../compiler/rust/frontend/src/parser/api.rs†L104-L159】  
+> - `parser::unicode_error_to_parse_error` を実装し、`FrontendErrorKind::UnexpectedStructure` から Unicode コード (`unicode.invalid_identifier` 等) を自動付与する経路を整備した。【F:../../compiler/rust/frontend/src/parser/mod.rs†L608-L633】  
+> - `diagnostic/unicode.rs` を新設して `integrate_unicode_metadata` を導入し、`extensions["unicode"]` と `AuditEnvelope.metadata["unicode.*"]` に `display_width`・`grapheme_span`・`unicode.identifier.raw` を同時出力する仕組みを実装した。`reports/spec-audit/ch1/unicode_diagnostics-20270330.json` で `scripts/validate-diagnostic-json.sh --pattern unicode.display_width ...` の検証対象を追加済み。【F:../../compiler/rust/frontend/src/diagnostic/unicode.rs†L1-L223】
+
 #### 4.1.4 Diagnostic/ParseError スキーマ統合
 - `FrontendDiagnostic` が保持する `Span`/`AuditEnvelope`/`ExpectedToken` 情報【F:../../compiler/rust/frontend/src/diagnostic/mod.rs†L14-L129】と、`ParseError` 構造体が保持する `Span`/`ExpectedToken` 群【F:../../compiler/rust/frontend/src/parser/api.rs†L104-L152】の項目を 1:1 で棚卸しし、欠落項目（`context`, `notes`, `unicode_error` 等）を `diagnostic-schema.md`（今後追加予定）にまとめる。  
 - `Span` は `start`/`end` の半開区間で表現されているため【F:../../compiler/rust/frontend/src/span.rs†L7-L45】、`UnicodeError::offset`（バイト位置）から `Span` へ写像する際に `len` を確定するルール（例: 単一書記素→`offset..offset+cluster_len`）を `unicode-error-mapping.md` の列として管理する。  

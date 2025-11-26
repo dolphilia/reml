@@ -143,6 +143,7 @@ fn ascii_profile_reports_unicode_rejection() {
     if let FrontendErrorKind::UnexpectedStructure {
         message,
         span: Some(span),
+        ..
     } = &error.kind
     {
         assert!(

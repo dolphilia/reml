@@ -1,0 +1,65 @@
+{
+  "ci_run_id": "phase3-core-text-local-20270330",
+  "git_commit": "<pending git rev-parse>",
+  "suite": "unicode diagnostics smoke",
+  "command": "cargo test --manifest-path compiler/rust/frontend/Cargo.toml lexer_unicode_identifier -- --nocapture",
+  "cases": [
+    {
+      "name": "bidi_rlo_highlight",
+      "source": "let foo\u202ebar = 1",
+      "span_bytes": [4, 13],
+      "unicode_extension": {
+        "kind": "invalid_identifier",
+        "phase": "lex.identifier",
+        "offset": 7,
+        "relative_offset": 3,
+        "span": {"start": 7, "end": 10},
+        "grapheme_span": {"start": 7, "end": 8},
+        "display_width": 1,
+        "raw": "foo\u202ebar"
+      },
+      "metadata_keys": [
+        "unicode.error.kind",
+        "unicode.error.offset",
+        "unicode.display_width",
+        "unicode.identifier.raw"
+      ]
+    },
+    {
+      "name": "non_nfc_identifier_full_span",
+      "source": "let cafe\u0301 = 1",
+      "span_bytes": [4, 10],
+      "unicode_extension": {
+        "kind": "invalid_identifier",
+        "phase": "lex.identifier",
+        "offset": 4,
+        "relative_offset": null,
+        "span": {"start": 4, "end": 10},
+        "grapheme_span": {"start": 4, "end": 9},
+        "display_width": 5,
+        "raw": "cafe\u0301"
+      },
+      "metadata_keys": [
+        "unicode.error.kind",
+        "unicode.display_width",
+        "unicode.span.start",
+        "unicode.span.original_start"
+      ]
+    }
+  ],
+  "summary": {
+    "unicode_metadata": [
+      "unicode.error.kind",
+      "unicode.error.phase",
+      "unicode.error.offset",
+      "unicode.display_width",
+      "unicode.identifier.raw",
+      "unicode.locale.requested"
+    ],
+    "kpi": "unicode.display_width"
+  },
+  "notes": [
+    "`diagnostic.extensions[\"unicode\"]` と `AuditEnvelope.metadata` で display_width / grapheme_span / raw / locale 情報を同時出力し、`scripts/validate-diagnostic-json.sh --pattern unicode.display_width` で検証可能にした。",
+    "`unicode_error_to_parse_error` / `FrontendDiagnostic::with_unicode_detail` を介して Parser/Diagnostics のどちらからでも同じメタデータを生成できる。"
+  ]
+}

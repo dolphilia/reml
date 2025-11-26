@@ -321,6 +321,7 @@ dependencies = [
  "thiserror",
  "unicode-ident",
  "unicode-normalization",
+ "unicode-width",
 ]
 
 [[package]]

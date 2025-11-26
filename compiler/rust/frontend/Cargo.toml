@@ -30,6 +30,7 @@ once_cell = "1.19"
 thiserror = "1.0"
 unicode-ident = "1.0"
 unicode-normalization = "0.1"
+unicode-width = "0.1"
 reml_adapter = { path = "../adapter" }
 reml_runtime = { path = "../runtime" }
 

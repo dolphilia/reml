@@ -11,6 +11,7 @@ use std::str::FromStr;
 use crate::error::{FrontendError, FrontendErrorKind, Recoverability};
 use crate::span::Span;
 use crate::token::{IntBase, LiteralMetadata, StringKind, Token, TokenKind};
+use crate::unicode::UnicodeDetail;
 
 /// 字句解析に利用する入力ソースの抽象化。
 pub trait SourceBuffer {
@@ -657,16 +658,31 @@ fn prepare_identifier_token(
         Some(locale) => unicode_text::prepare_identifier_with_locale(&unicode, Some(locale)),
         None => unicode_text::prepare_identifier(&unicode),
     };
-    result
-        .map(|text| text.into_std())
-        .map_err(|err| unicode_error_to_frontend(span, err, options.identifier_locale.as_ref()))
+    result.map(|text| text.into_std()).map_err(|err| {
+        unicode_error_to_frontend(
+            span,
+            err,
+            slice,
+            options.identifier_locale.as_ref(),
+            options.identifier_profile,
+        )
+    })
 }
 
 fn unicode_error_to_frontend(
     span: Span,
     err: unicode_text::UnicodeError,
+    raw: &str,
     locale: Option<&LocaleId>,
+    profile: IdentifierProfile,
 ) -> FrontendError {
+    let mut detail = UnicodeDetail::from_error(&err)
+        .with_phase("lex.identifier".to_string())
+        .with_raw(raw.to_string())
+        .with_profile(profile.as_str().to_string());
+    if let Some(locale) = locale {
+        detail = detail.with_locale(locale.canonical().to_string());
+    }
     let mut message = match err.kind() {
         UnicodeErrorKind::InvalidIdentifier => {
             format!("Unicode 識別子の正規化に失敗しました: {}", err.message())
@@ -693,6 +709,7 @@ fn unicode_error_to_frontend(
         FrontendErrorKind::UnexpectedStructure {
             message,
             span: Some(span),
+            unicode: Some(detail),
         },
         Recoverability::Recoverable,
     )
@@ -744,6 +761,7 @@ fn push_ascii_error(
         FrontendErrorKind::UnexpectedStructure {
             message,
             span: Some(span),
+            unicode: None,
         },
         Recoverability::Recoverable,
     ));

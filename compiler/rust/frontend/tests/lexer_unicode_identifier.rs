@@ -187,6 +187,7 @@ fn unicode_identifier_error_matrix() {
             FrontendErrorKind::UnexpectedStructure {
                 message,
                 span: Some(span),
+                ..
             } => (message.clone(), *span),
             other => panic!(
                 "ケース `{}` が UnexpectedStructure 以外のエラーを返しました: {other:?}",
