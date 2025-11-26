@@ -17,6 +17,10 @@ mod width;
 
 pub use builder::{builder, TextBuilder};
 pub use bytes::Bytes;
+pub use crate::io::{
+    decode_stream, encode_stream, BomHandling, InvalidSequenceStrategy, TextDecodeOptions,
+    TextEncodeOptions,
+};
 pub use case::{to_lower, to_upper};
 pub use error::{UnicodeEffectInfo, UnicodeError, UnicodeErrorKind, UnicodeResult};
 pub use grapheme::{

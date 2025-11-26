@@ -236,6 +236,14 @@
 - `examples/io/text_stream_decode.rs` を作成し、`CI (rust-frontend-streaming)` ジョブで `cargo run --bin text_stream_decode <fixtures>` を実行して `reports/spec-audit/ch1/unicode_streaming_decode.log` を生成・検証する。  
 - ストリーミング decode の backpressure と `effect {audit}` 連携が競合しないよう、`docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の該当 TODO にテスト結果をリンクする。
 
+#### 4.2.1 ストリーミング decode/encode 実施ログ（2027-03-31）
+- `compiler/rust/runtime/src/io/` を新設し、`IoError`/`IoContext`・`Reader`・`Writer`・`effects.rs` を通じて `effect {io}` をトラックできるようにした。`std::io::{Read,Write}` を自動実装対象とし、`IoErrorKind` は 3-5 仕様の列挙に合わせて `UnexpectedEof`/`UnsupportedPlatform` 等へマッピングしている。  
+- `TextDecodeOptions`（`BomHandling::{Auto,Require,Ignore}`・`InvalidSequenceStrategy::{Error,Replace}`・バッファサイズ）と `TextEncodeOptions`（chunk サイズと BOM 出力）を `compiler/rust/runtime/src/io/text_stream.rs` に定義し、`decode_stream`/`encode_stream` 双方で `UnicodeErrorKind::{DecodeFailure,EncodeFailure}` を返す経路を統一した。`IoErrorKind::UnexpectedEof` の場合は `phase=io.decode.eof` を付与し `TA-05` チェックリストと接続済み。  
+- `compiler/rust/runtime/tests/text_stream.rs` で BOM 処理・不正バイト置換・I/O 障害の 5 ケースを追加し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml text_stream` で自動検証する。テストでは `Cursor<Vec<u8>>` を `Reader`/`Writer` として扱い、`InvalidSequenceStrategy::Replace` と `BomHandling::Require` の両方を明示的に Exercize した。  
+- ストリーミング decode サンプルとして `compiler/rust/runtime/examples/io/text_stream_decode.rs`（`cargo run --manifest-path compiler/rust/runtime/Cargo.toml --bin text_stream_decode -- --input tests/data/unicode/streaming/sample_input.txt --output reports/spec-audit/ch1/unicode_streaming_decode.json`）を用意し、入力パス・BOM ポリシー・置換ポリシーを CLI 引数で切り替え可能にした。出力 JSON には `grapheme_count`・`avg_width`・`preview` を含め、`docs/plans/bootstrap-roadmap/checklists/doc-sync-text.md#DOC-03` のガイド更新タスクに添える実行ログ（`reports/spec-audit/ch1/unicode_streaming_decode.json`）を生成できる。  
+- フィクスチャ `tests/data/unicode/streaming/sample_input.txt` を追加し、多言語混在テキストで `decode_stream` → `grapheme_stats` までのパイプラインを再現。`io::effects::take_recorded_effects()` により `effect {io}` が記録されることを `TA-05` の備考で確認した。  
+- `TextEncodeOptions`/`encode_stream` の導入に伴い、`Str` から chunk 書き出し→`Writer::flush` までを `UnicodeErrorKind::EncodeFailure` で監視するテスト（`encode_stream_reports_write_failures`）を追加し、将来的な `log_grapheme_stats` / `Core.Diagnostics` 連携にも使い回せるようにした。
+
 4.3. `log_grapheme_stats` を実装し、監査ログ (`AuditEnvelope`) と `effect {audit}` の整合をテストする。  
 実施ステップ:  
 - `Core.Diagnostics` の `AuditEnvelope.metadata["text.grapheme_stats"]` に `length`, `avg_width`, `cache_hits` を記録し、`tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats` で監査ログを自動検証する。  

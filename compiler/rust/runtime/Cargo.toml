@@ -7,6 +7,10 @@ publish = false
 [lib]
 path = "src/lib.rs"
 
+[[bin]]
+name = "text_stream_decode"
+path = "examples/io/text_stream_decode.rs"
+
 [dependencies]
 unicode-segmentation = "1.11"
 unicode-width = "0.1"
