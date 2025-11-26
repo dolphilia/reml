@@ -1,0 +1,30 @@
+{
+  "ci_run_id": "phase3-core-text-local-20270329",
+  "git_commit": "<pending git rev-parse>",
+  "suite": "compiler/rust/frontend/tests/lexer_unicode_identifier.rs",
+  "command": "cargo test --manifest-path compiler/rust/frontend/Cargo.toml lexer_unicode_identifier -- --nocapture",
+  "cases": [
+    {"name": "normalized_latin", "identifier": "caf\u00e9", "result": "ok", "token_kind": "Identifier", "locale": null},
+    {"name": "cjk_fullwidth", "identifier": "\u89e3\u6790\u5668\u5165\u529b", "result": "ok", "token_kind": "Identifier", "locale": null},
+    {"name": "emoji_joiner_cluster", "identifier": "foo\ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67\u200d\ud83d\udc66bar", "result": "ok", "token_kind": "Identifier", "locale": null},
+    {"name": "zwj_arabic", "identifier": "\u0645\u062b\u0627\u0644\u200d\u0627\u062e\u062a\u0628\u0627\u0631", "result": "ok", "token_kind": "Identifier", "locale": null},
+    {"name": "uppercase_greek", "identifier": "\u0394\u03bf\u03ba\u03b9\u03bc\u03ae", "result": "ok", "token_kind": "UpperIdentifier", "locale": null},
+    {"name": "locale_tr_supported", "identifier": "k\u0131demli", "result": "ok", "token_kind": "Identifier", "locale": "tr-TR"},
+    {"name": "non_nfc_combining", "identifier": "cafe\u0301", "result": "error", "unicode_error_kind": "InvalidIdentifier", "message_fragments": ["NFC"], "locale": null},
+    {"name": "bidi_rlo", "identifier": "foo\u202ebar", "result": "error", "unicode_error_kind": "InvalidIdentifier", "message_fragments": ["U+202E"], "locale": null},
+    {"name": "bidi_lri", "identifier": "foo\u2066bar", "result": "error", "unicode_error_kind": "InvalidIdentifier", "message_fragments": ["U+2066"], "locale": null},
+    {"name": "bidi_rli", "identifier": "foo\u2067bar", "result": "error", "unicode_error_kind": "InvalidIdentifier", "message_fragments": ["U+2067"], "locale": null},
+    {"name": "bidi_lre", "identifier": "foo\u202abar", "result": "error", "unicode_error_kind": "InvalidIdentifier", "message_fragments": ["U+202A"], "locale": null},
+    {"name": "unsupported_locale", "identifier": "foo", "result": "error", "unicode_error_kind": "UnsupportedLocale", "message_fragments": ["lex.identifier_locale", "az-Latn"], "locale": "az-Latn"}
+  ],
+  "summary": {
+    "success_total": 6,
+    "error_total": 6,
+    "kpi": "unicode.diagnostic.display_span"
+  },
+  "notes": [
+    "Lexer の Unicode 識別子処理を 12 ケースで網羅し、`TokenKind::Unknown` の span が `FrontendError` と一致することを確認した。",
+    "`unicode.error.kind`/`unicode.error.offset` は `parser` → `diagnostic` へ伝搬しており、`scripts/validate-diagnostic-json.sh --pattern unicode.error.kind --pattern unicode.identifier.raw` の検証対象として利用できる。",
+    "`display_width` の算出は Diagnostics 改修タスクへ継続引き継ぎ。"
+  ]
+}

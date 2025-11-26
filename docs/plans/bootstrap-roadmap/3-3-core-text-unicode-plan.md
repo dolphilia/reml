@@ -201,6 +201,11 @@
 - `compiler/rust/frontend/tests/lexer_unicode_identifier.rs` に `prepare_identifier` 経由の成功・失敗ケースを 10 件以上追加し、`reports/spec-audit/ch1/lexer_unicode_identifier-*.json` をゴールデンとして保存する。  
 - `UnicodeError` から `Diagnostic` への変換で `highlight.display_width` が正しく反映されるかを `Core.Diagnostics` のスナップショットテストに加え、`docs/plans/bootstrap-roadmap/2-4-diagnostics-audit-pipeline.md` と KPI を同期する。
 
+> 実施ログ（2027-03-29）  
+> - `compiler/rust/frontend/tests/lexer_unicode_identifier.rs` を 12 ケース（成功 6 / 失敗 6）で更新し、`prepare_identifier` が `UnicodeErrorKind::{InvalidIdentifier,UnsupportedLocale}` を返す経路と、`TokenKind::Unknown` へのフォールバックが一致することを確認。  
+> - `reports/spec-audit/ch1/lexer_unicode_identifier-20270329.json` を作成し、各ケースの `unicode.error.kind`・`unicode.error.offset`・`parse.expected` の実測値と `lex.identifier_locale` 設定を記録。`docs/plans/bootstrap-roadmap/checklists/unicode-error-mapping.md` / `text-api-error-scenarios.md` へ参照リンクを追記した。  
+> - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に KPI `unicode.diagnostic.display_span` を新設し、`scripts/validate-diagnostic-json.sh --pattern unicode.error.kind` および本レポートで `Span`/列情報を検証する手順を登録。`docs/notes/text-unicode-diagnostic-bridge.md` では `ParseError` への写像ルールを更新し、`display_width` は Diagnostics 実装タスクに残課題として引き継いだ。
+
 ### 4. Diagnostics / IO 連携（42-43週目）
 **担当領域**: 統合
 
