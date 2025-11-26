@@ -6,6 +6,7 @@
 | ファイル | バージョン | 出典 | 用途 |
 | --- | --- | --- | --- |
 | `UAX29/GraphemeBreakTest-15.1.0.txt` | Unicode 15.1.0 | https://www.unicode.org/Public/15.1.0/ucd/auxiliary/GraphemeBreakTest.txt | `compiler/rust/runtime/tests/grapheme_conformance.rs` が参照する Grapheme Cluster Break の完全テストベクタ |
+| `UCD/NormalizationTest-15.1.0.txt` | Unicode 15.1.0 | https://www.unicode.org/Public/15.1.0/ucd/NormalizationTest.txt | `compiler/rust/runtime/tests/normalization_conformance.rs` が参照する UAX #15 Normalization Test Suite |
 
 - ライセンス: [Unicode License Agreement - Data Files and Software](https://www.unicode.org/license.txt)
 - 取得日: 2027-03-30 (UTC)

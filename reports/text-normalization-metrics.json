@@ -1,0 +1,58 @@
+{
+  "timestamp": "2025-11-26T01:24:50.041866000Z",
+  "unicode_version": "15.1.0",
+  "dataset": "NormalizationTest-15.1.0.txt",
+  "rows": 19074,
+  "cases": [
+    {
+      "case": "NFC",
+      "form": "NFC",
+      "bytes": 506492,
+      "duration_ms": 140.82541700000002,
+      "throughput_mb_s": 3.4299803412990024,
+      "iterations": 95370,
+      "expectations": {
+        "min_mb_s": 2.0
+      }
+    },
+    {
+      "case": "NFD",
+      "form": "NFD",
+      "bytes": 506492,
+      "duration_ms": 116.32287500000001,
+      "throughput_mb_s": 4.152479999013387,
+      "iterations": 95370,
+      "expectations": {
+        "min_mb_s": 2.0
+      }
+    },
+    {
+      "case": "NFKC",
+      "form": "NFKC",
+      "bytes": 506492,
+      "duration_ms": 193.495333,
+      "throughput_mb_s": 2.49633107101986,
+      "iterations": 95370,
+      "expectations": {
+        "min_mb_s": 2.0
+      }
+    },
+    {
+      "case": "NFKD",
+      "form": "NFKD",
+      "bytes": 506492,
+      "duration_ms": 160.61175,
+      "throughput_mb_s": 3.0074288578838995,
+      "iterations": 95370,
+      "expectations": {
+        "min_mb_s": 2.0
+      }
+    }
+  ],
+  "summary": {
+    "avg_mb_s": 3.2715550673040372,
+    "total_bytes": 2025968,
+    "iterations": 381480,
+    "forms": 4
+  }
+}

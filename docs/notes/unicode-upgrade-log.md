@@ -13,6 +13,7 @@ Unicode テーブルやテストデータ (`NormalizationTest.txt`, `CaseFolding
 | 日付 | バージョン | 対象ファイル | 対応コミット | 備考 |
 | --- | --- | --- | --- | --- |
 | 2027-03-30 | Unicode 15.1 | `third_party/unicode/UAX29/GraphemeBreakTest-15.1.0.txt` | (pending) | UAX #29 GraphemeBreakTest 正式データ（Unicode License）を追加し、`cargo test grapheme_conformance -- --ignored` のゴールデンとして利用 |
+| 2025-11-26 | Unicode 15.1 | `third_party/unicode/UCD/NormalizationTest-15.1.0.txt` | (pending) | UAX #15 NormalizationTest データを追加し、`cargo test normalization_conformance -- --ignored` の基準データとして使用 |
 
 ## TODO
 - [ ] 既存の `third_party/unicode/` 更新履歴を洗い出し、この表へ移行する。

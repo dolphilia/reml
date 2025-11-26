@@ -164,6 +164,12 @@
 - 正規化 API ごとに `Result<Text, UnicodeError>` の戻り値を固定し、`cargo test normalization_conformance -- --ignored` で大規模データを検証するジョブを CI に追加する。  
 - 正規化過程で `effect {mem}` が発生する箇所にメトリクスを埋め込み、`0-3-audit-and-metrics.md` へ「正規化コスト (MB/s)」を新規 KPI として追記する。
 
+#### 3.1.1 実施ログ（2025-11-26）
+- `third_party/unicode/UCD/NormalizationTest-15.1.0.txt` を追加し、`docs/notes/unicode-upgrade-log.md#履歴` に同期。`docs/plans/bootstrap-roadmap/checklists/unicode-conformance-checklist.md` ではデータソースと実行手順（`cargo test --manifest-path compiler/rust/runtime/Cargo.toml normalization_conformance -- --ignored`）を更新し、Nightly で全ベクタを検証する体制を整えた。  
+- `compiler/rust/runtime/tests/normalization_conformance.rs` を実装し、UAX #15 に記載された c1〜c5 の等式（NFC/NFD/NFKC/NFKD）をすべて検証できるようにした。テストは 1 行ごとに 20 件の変換を行い、失敗時は行番号と違反した式を報告する。  
+- `compiler/rust/runtime/src/text/normalize.rs` の `normalize` API を `effects::record_mem_copy(len)` 付きで再実装し、既に正規化済みの入力はゼロコピーで即返却、未正規化の入力はフォーム別イテレータで変換した上で `effect {mem}` を打刻するようにした。  
+- 新しいメトリクス `text.normalize.mb_per_s` を `reports/text-normalization-metrics.json` に記録する前提で `0-3-audit-and-metrics.md` を更新し、`cargo run --manifest-path compiler/rust/runtime/Cargo.toml --example text_normalization_metrics -- --output reports/text-normalization-metrics.json` → `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario normalization_conformance --text-normalization-source reports/text-normalization-metrics.json --require-success` の流れを Phase3 `phase3-core-text` ジョブに組み込む計画を追記した。
+
 3.2. ケース変換 (`to_upper`/`to_lower`) と幅変換 (`width_map`) を実装し、ロケール依存エラー (`UnicodeErrorKind::UnsupportedLocale`) をハンドリングする。  
 実施ステップ:  
 - ロケール付き API の入力 (`LocaleId`) 検証ルールを `docs/spec/3-3-core-text-unicode.md` と `docs/spec/3-5-core-io-path.md` の記述で統一し、サポートロケール表を `docs/plans/bootstrap-roadmap/assets/text-locale-support.csv` に整備する。  

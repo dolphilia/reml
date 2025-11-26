@@ -219,6 +219,7 @@ DEFAULT_RETENTION_POLICY: Dict[str, int] = {
 
 TEXT_DEFAULT_METRICS_PATH = Path("reports/spec-audit/ch1/core_text_grapheme_stats.json")
 TEXT_MEM_DEFAULT_METRICS_PATH = Path("reports/text-mem-metrics.json")
+TEXT_NORMALIZATION_DEFAULT_METRICS_PATH = Path("reports/text-normalization-metrics.json")
 TEXT_CACHE_HIT_TARGET = 0.8
 TEXT_SCRIPT_MIX_CASE = "UC-02"
 TEXT_SCRIPT_MIX_MIN_RATIO = 0.55
@@ -4106,6 +4107,137 @@ def collect_text_bytes_clone_metrics(paths: Sequence[Path]) -> Optional[Dict[str
     return metric
 
 
+def collect_text_normalization_metrics(
+    paths: Sequence[Path],
+) -> Optional[Dict[str, Any]]:
+    sources: List[str] = []
+    structural_failures: List[Dict[str, Any]] = []
+    expectation_failures: List[Dict[str, Any]] = []
+    cases_output: List[Dict[str, Any]] = []
+    total_cases = 0
+    throughput_sum = 0.0
+    throughput_count = 0
+    total_bytes = 0
+    dataset_name: Optional[str] = None
+    unicode_version: Optional[str] = None
+    timestamp: Optional[str] = None
+    summary_payload: Optional[Dict[str, Any]] = None
+
+    for path in paths:
+        data = _load_json_with_failure(path, structural_failures)
+        if data is None:
+            continue
+        sources.append(str(path))
+        if isinstance(data.get("dataset"), str) and not dataset_name:
+            dataset_name = str(data["dataset"])
+        if isinstance(data.get("unicode_version"), str) and not unicode_version:
+            unicode_version = str(data["unicode_version"])
+        if isinstance(data.get("timestamp"), str) and not timestamp:
+            timestamp = str(data["timestamp"])
+        if summary_payload is None:
+            summary_payload = _as_dict(data.get("summary"))
+        cases = data.get("cases")
+        if not isinstance(cases, list):
+            structural_failures.append(
+                {"file": str(path), "reason": "cases_missing"}
+            )
+            continue
+        for raw_case in cases:
+            if not isinstance(raw_case, dict):
+                continue
+            total_cases += 1
+            case_id = str(
+                raw_case.get("case")
+                or raw_case.get("form")
+                or f"case_{total_cases}"
+            )
+            bytes_value = _coerce_int_value(raw_case.get("bytes"))
+            duration_ms = _coerce_float_value(raw_case.get("duration_ms"))
+            throughput_value = _coerce_float_value(
+                raw_case.get("throughput_mb_s")
+            )
+            if (
+                throughput_value is None
+                and bytes_value is not None
+                and duration_ms is not None
+                and duration_ms > 0
+            ):
+                throughput_value = (
+                    (bytes_value / 1_048_576.0)
+                    / (duration_ms / 1000.0)
+                )
+            iterations_value = _coerce_int_value(raw_case.get("iterations"))
+            expectations = _as_dict(raw_case.get("expectations"))
+            reasons: List[str] = []
+            if expectations:
+                min_mb_s = _coerce_float_value(expectations.get("min_mb_s"))
+                if min_mb_s is not None and (
+                    throughput_value is None or throughput_value < min_mb_s
+                ):
+                    reasons.append(f"throughput<{min_mb_s}")
+                max_mb_s = _coerce_float_value(expectations.get("max_mb_s"))
+                if (
+                    max_mb_s is not None
+                    and throughput_value is not None
+                    and throughput_value > max_mb_s
+                ):
+                    reasons.append(f"throughput>{max_mb_s}")
+            if reasons:
+                expectation_failures.append(
+                    {"case": case_id, "reasons": reasons, "file": str(path)}
+                )
+            if throughput_value is not None:
+                throughput_sum += throughput_value
+                throughput_count += 1
+            if bytes_value is not None:
+                total_bytes += max(bytes_value, 0)
+            cases_output.append(
+                {
+                    "case": case_id,
+                    "bytes": bytes_value,
+                    "duration_ms": duration_ms,
+                    "throughput_mb_s": throughput_value,
+                    "iterations": iterations_value,
+                    "status": "failed" if reasons else "passed",
+                    "reasons": reasons or None,
+                    "expectations": expectations,
+                }
+            )
+
+    if total_cases == 0 and not structural_failures:
+        return None
+
+    avg_throughput = (
+        throughput_sum / throughput_count if throughput_count > 0 else None
+    )
+
+    status = "success"
+    if structural_failures or expectation_failures:
+        status = "error"
+
+    metric: Dict[str, Any] = {
+        "metric": "text.normalize.mb_per_s",
+        "status": status,
+        "total_cases": total_cases,
+        "avg_mb_per_s": avg_throughput,
+        "total_bytes": total_bytes,
+        "cases": cases_output,
+        "sources": sources,
+    }
+    if dataset_name:
+        metric["dataset"] = dataset_name
+    if unicode_version:
+        metric["unicode_version"] = unicode_version
+    if timestamp:
+        metric["timestamp"] = timestamp
+    if summary_payload:
+        metric["summary"] = summary_payload
+    all_failures = structural_failures + expectation_failures
+    if all_failures:
+        metric["failures"] = all_failures
+    return metric
+
+
 def collect_audit_capability_metric(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
     total = 0
     passed = 0
@@ -5786,6 +5918,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Path to Core.Text memory metrics JSON (repeatable).省略時は reports/text-mem-metrics.json を参照します。",
     )
     parser.add_argument(
+        "--text-normalization-source",
+        action="append",
+        dest="text_normalization_sources",
+        help="Path to Core.Text normalization metrics JSON (repeatable).省略時は reports/text-normalization-metrics.json を参照します。",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         help="Destination for collected metrics (JSON).",
@@ -5886,6 +6024,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "audit_cap",
             "grapheme_stats",
             "bytes_clone",
+            "normalization_conformance",
         ],
         help="Scenario-specific validation (repeatable).",
     )
@@ -6072,8 +6211,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     text_mem_source_paths: List[Path] = _ensure_path_list(
         getattr(args, "text_mem_sources", None)
     )
+    text_normalization_source_paths: List[Path] = _ensure_path_list(
+        getattr(args, "text_normalization_sources", None)
+    )
     if not text_source_paths and TEXT_DEFAULT_METRICS_PATH.is_file():
         text_source_paths = [TEXT_DEFAULT_METRICS_PATH]
+    if (
+        not text_normalization_source_paths
+        and TEXT_NORMALIZATION_DEFAULT_METRICS_PATH.is_file()
+    ):
+        text_normalization_source_paths = [TEXT_NORMALIZATION_DEFAULT_METRICS_PATH]
 
     sources: List[Path] = []
     if needs_diagnostic_sources:
@@ -6264,6 +6411,42 @@ def main(argv: Optional[List[str]] = None) -> int:
             )
             return 2
         append_metrics.append(bytes_clone_metric)
+
+    if "normalization_conformance" in scenario_filters:
+        if (
+            not text_normalization_source_paths
+            and TEXT_NORMALIZATION_DEFAULT_METRICS_PATH.is_file()
+        ):
+            text_normalization_source_paths = [
+                TEXT_NORMALIZATION_DEFAULT_METRICS_PATH
+            ]
+        if not text_normalization_source_paths:
+            sys.stderr.write(
+                "Normalization metrics source not found. --text-normalization-source で JSON を指定するか "
+                f"{TEXT_NORMALIZATION_DEFAULT_METRICS_PATH} を生成してください。\n"
+            )
+            return 2
+        missing_norm_sources = [
+            str(path) for path in text_normalization_source_paths if not path.is_file()
+        ]
+        if missing_norm_sources:
+            sys.stderr.write(
+                "Missing normalization metrics files: "
+                + ", ".join(missing_norm_sources)
+                + "\n"
+            )
+            return 2
+        normalization_metric = collect_text_normalization_metrics(
+            text_normalization_source_paths
+        )
+        if normalization_metric is None:
+            sys.stderr.write(
+                "Normalization metrics file did not contain any cases. 再生成してください。\n"
+            )
+            return 2
+        scenario_metric = copy.deepcopy(normalization_metric)
+        scenario_metric["scenario"] = "normalization_conformance"
+        append_metrics.append(scenario_metric)
 
     text_metric: Optional[Dict[str, Any]] = None
     text_section_requested = (
