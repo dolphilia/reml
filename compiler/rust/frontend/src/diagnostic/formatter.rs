@@ -261,7 +261,7 @@ fn propagate_collections_diff_metadata(metadata: &mut Map<String, Value>, change
     populate_collections_diff(metadata, change_set);
 }
 
-pub(crate) fn propagate_collections_diff_extensions(
+pub fn propagate_collections_diff_extensions(
     extensions: &mut Map<String, Value>,
     change_set: Option<&Value>,
 ) {

@@ -147,11 +147,16 @@ fn try_collect_success() -> serde_json::Value {
     let iter: Iter<Result<i64, &'static str>> = Iter::from_list(vec![Ok(1), Ok(2), Ok(3), Ok(4)]);
     let stage = iter.stage_snapshot("core_iter_pipeline::try_collect_success".to_string());
     let effects = iter.effect_labels();
-    let outcome = iter
+    let audit_outcome = iter
+        .clone()
+        .map(|result| result.expect("試験用 clone は成功結果のみを想定"))
+        .collect_vec()
+        .expect("VecCollector should not fail for audit collection");
+    let (_audit_vec, audit) = audit_outcome.into_parts();
+    let values = iter
         .try_collect(VecCollector::new())
-        .expect("try_collect should succeed");
-    let (vec, audit) = outcome.into_parts();
-    let values = vec.into_inner();
+        .expect("try_collect should succeed")
+        .into_inner();
     json!({
         "case": "try_collect_success",
         "stage": render_stage(stage),
