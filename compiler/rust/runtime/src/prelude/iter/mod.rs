@@ -378,10 +378,7 @@ impl<T> Iter<T> {
 
 impl<T, E> Iter<Result<T, E>> {
     /// `Result` を要素に含む `Iter` を Collector へ短絡収集する。
-    pub fn try_collect<C, Value>(
-        self,
-        collector: C,
-    ) -> Result<Value, TryCollectError<E, C::Error>>
+    pub fn try_collect<C, Value>(self, collector: C) -> Result<Value, TryCollectError<E, C::Error>>
     where
         C: Collector<T, CollectOutcome<Value>, Error = CollectError>,
     {

@@ -1,7 +1,5 @@
 use super::Iter;
-use crate::prelude::collectors::{
-    CollectError, CollectOutcome, Collector, CollectorAuditTrail,
-};
+use crate::prelude::collectors::{CollectError, CollectOutcome, Collector, CollectorAuditTrail};
 use std::marker::PhantomData;
 
 /// `Iter.try_collect` で使う Collector と効果伝播のための橋渡し。

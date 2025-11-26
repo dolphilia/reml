@@ -21,13 +21,15 @@ pub use vec::VecCollector;
 
 use super::{
     ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic},
-    iter::{EffectLabels, IterError, StageRequirement as IteratorStageRequirement, StageRequirementDescriptor},
+    iter::{
+        EffectLabels, IterError, StageRequirement as IteratorStageRequirement,
+        StageRequirementDescriptor,
+    },
 };
 use crate::{
     collections::audit_bridge::ChangeSet,
     registry::{CapabilityError, CapabilityRegistry},
-    StageId,
-    StageRequirement as RegistryStageRequirement,
+    StageId, StageRequirement as RegistryStageRequirement,
 };
 use serde_json::{Map as JsonObject, Number, Value};
 
@@ -422,11 +424,7 @@ fn ensure_core_collections_audit(audit: &CollectorAuditTrail) -> Result<(), Coll
         )
         .map(|_| ())
         .map_err(|err| {
-            CollectError::capability_denied(
-                CORE_COLLECTIONS_AUDIT_CAPABILITY,
-                audit.clone(),
-                err,
-            )
+            CollectError::capability_denied(CORE_COLLECTIONS_AUDIT_CAPABILITY, audit.clone(), err)
         })
 }
 

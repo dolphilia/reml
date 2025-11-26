@@ -124,9 +124,8 @@ impl<T> From<CoreVec<T>> for Vec<T> {
 
 impl<T> FromIterator<T> for CoreVec<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        Self::collect_from(iter).unwrap_or_else(|err| {
-            panic!("CoreVec::collect_from unexpectedly failed: {err:?}")
-        })
+        Self::collect_from(iter)
+            .unwrap_or_else(|err| panic!("CoreVec::collect_from unexpectedly failed: {err:?}"))
     }
 }
 

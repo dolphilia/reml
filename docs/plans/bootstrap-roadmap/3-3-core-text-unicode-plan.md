@@ -176,6 +176,16 @@
 - ケース変換・幅変換のアルゴリズム差分（ICU との互換度）を `docs/notes/text-case-width-gap.md` にまとめ、逸脱がある箇所は `UnicodeErrorKind::UnsupportedLocale` または `UnsupportedWidth` で確実に通知する。  
 - 変換結果を Parser/Diagnostics が使用するテキストと突き合わせるため、`compiler/rust/parser/tests/unicode_identifier.rs` にケース変換→識別子検証の統合テストを追加し、`scripts/validate-diagnostic-json.sh --pattern unicode.case` で CI ゲートに組み込む。
 
+#### 3.2.1 ロケール検証とケース変換実装（2027-03-29）
+- Core.Text に `LocaleId` と `LocaleScope` を実装し、BCP47 形式のロケール入力を `LocaleId::parse` で正規化できるようにした。`LocaleSupportStatus` と fallback 情報を `compiler/rust/runtime/src/text/locale.rs` へ常駐させ、`ensure_locale_supported` が `UnicodeErrorKind::UnsupportedLocale` を返す経路を統一した。【F:../../compiler/rust/runtime/src/text/locale.rs†L1-L181】
+- `to_upper`/`to_lower` を `compiler/rust/runtime/src/text/case.rs` へ追加し、`width_map` と同じ `EffectSet` で `effect {mem}` を記録。`tr-TR` 用に i/İ・ı/I の特別大小文字を実装し、`LocaleId::parse("tr-TR")` → `to_upper` のテストを `compiler/rust/runtime/tests/unicode_case_width.rs` に追加した。【F:../../compiler/rust/runtime/src/text/case.rs†L1-L96】【F:../../compiler/rust/runtime/tests/unicode_case_width.rs†L1-L20】
+- `docs/plans/bootstrap-roadmap/assets/text-locale-support.csv` の `tr-TR` を `Supported` へ更新し、`az-Latn` 行を追加。`docs/notes/text-case-width-gap.md` では `tr-TR` を `Closed`、`az-Latn` を `Planned` と記録して Parser/Diagnostics 連携の TODO を明示した。
+
+#### 3.2.2 幅変換の双方向化と統計（2027-03-29）
+- `compiler/rust/runtime/src/text/width.rs` を刷新し、ASCII/半角カナ/句読点の双方向マッピングと `KANA_TABLE` を導入。`WidthMode::{Narrow,Wide,EmojiCompat}` ごとに `Cow<str>` で変換有無を判断し、変換発生時は `stats.corrections_applied` と `effect {mem}` を記録するようにした。【F:../../compiler/rust/runtime/src/text/width.rs†L1-L416】
+- Emoji 補正 (`👨‍👩‍👧‍👦`/`🇯🇵`) は `EMOJI_CORRECTIONS` で追跡し、`WidthMode::EmojiCompat` で 4 カラム幅を強制。`compiler/rust/runtime/tests/unicode_case_width.rs` と `width.rs` 内のユニットテストで ASCII/KANA ラウンドトリップと統計値を検証した。【F:../../compiler/rust/runtime/tests/unicode_case_width.rs†L22-L32】【F:../../compiler/rust/runtime/src/text/width.rs†L329-L416】
+- `docs/notes/text-case-width-gap.md` の `ja-JP` 行を `Closed` に更新し、Emoji/Grapheme の調整は今後も `width_corrections.csv` で追跡する旨を追記。`az-Latn` など `Planned` ロケールは `UnsupportedLocale` で警告し、`unicode.locale.requested` KPI の検証対象に追加した。
+
 3.3. `prepare_identifier` を Parser 仕様 (2-3) と結合するテストを実装し、`UnicodeError` → `ParseError` 変換を確認する。  
 実施ステップ:  
 - Parser の識別子前処理 (`docs/spec/2-3-lexer.md`) を読み、`prepare_identifier` が `UnicodeErrorKind::InvalidIdentifier` を `ParseErrorKind::InvalidToken` へ写像するルールを表にまとめる。  

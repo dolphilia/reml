@@ -1,5 +1,5 @@
-use std::{option::Option as RemlOption, result::Result as RemlResult};
 use serde_json::{Map, Value};
+use std::{option::Option as RemlOption, result::Result as RemlResult};
 
 type StdOption<T> = std::option::Option<T>;
 

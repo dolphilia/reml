@@ -8,15 +8,15 @@ thread_local! {
 
 /// メモリコピー系の処理で発生した `effect {mem}` を記録する。
 pub(crate) fn record_mem_copy(bytes: usize) {
-  if bytes == 0 {
-    return;
-  }
-  TEXT_EFFECTS.with(|slot| {
-    let mut current = slot.get();
-    current.mark_mem();
-    current.record_mem_bytes(bytes);
-    slot.set(current);
-  });
+    if bytes == 0 {
+        return;
+    }
+    TEXT_EFFECTS.with(|slot| {
+        let mut current = slot.get();
+        current.mark_mem();
+        current.record_mem_bytes(bytes);
+        slot.set(current);
+    });
 }
 
 /// 記録済みの効果を取得してリセットする。テストおよび将来の監査ブリッジ向け。
