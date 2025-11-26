@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, cmp::Ordering};
 use std::str::FromStr;
 
 use super::{effects, Str, UnicodeResult};
@@ -44,6 +44,16 @@ struct WidthCorrection {
 
 static WIDTH_CORRECTIONS: Lazy<Vec<WidthCorrection>> = Lazy::new(parse_width_corrections);
 const WIDTH_CORRECTIONS_CSV: &str = include_str!("data/width_corrections.csv");
+const EAST_ASIAN_WIDTH_DATA: &str =
+    include_str!("../../../../../third_party/unicode/UCD/EastAsianWidth-15.1.0.txt");
+#[derive(Debug)]
+struct EastAsianWidthOverride {
+    start: u32,
+    end: u32,
+    width: usize,
+}
+static EAST_ASIAN_WIDTH_OVERRIDES: Lazy<Vec<EastAsianWidthOverride>> =
+    Lazy::new(parse_east_asian_overrides);
 
 /// `width_map` の基本実装。
 pub fn width_map(str_ref: &Str<'_>, mode: WidthMode) -> UnicodeResult<super::String> {
@@ -60,13 +70,20 @@ pub fn width_map_with_stats(str_ref: &Str<'_>, mode: WidthMode) -> (super::Strin
         let original_width = UnicodeWidthStr::width(grapheme).max(1);
         stats.original_width += original_width;
         let mapped = map_grapheme(grapheme, mode);
-        if let Cow::Owned(ref owned) = mapped {
+        let mut _mapped_storage: Option<String> = None;
+        let (mapped_str, grapheme_changed) = match mapped {
+            Cow::Owned(owned) => {
+                _mapped_storage = Some(owned);
+                (_mapped_storage.as_ref().unwrap().as_str(), true)
+            }
+            Cow::Borrowed(borrowed) => (borrowed, false),
+        };
+        if grapheme_changed {
             changed = true;
-            buffer.push_str(owned);
-        } else {
-            buffer.push_str(grapheme);
+            stats.corrections_applied += 1;
         }
-        let corrected = corrected_width(mapped.as_ref(), mode, &mut stats);
+        buffer.push_str(mapped_str);
+        let corrected = corrected_width(mapped_str, mode, &mut stats);
         stats.corrected_width += corrected;
     }
     if !changed {
@@ -173,6 +190,19 @@ fn corrected_width(grapheme: &str, mode: WidthMode, stats: &mut WidthMapStats) -
         WidthMode::Narrow => UnicodeWidthStr::width(grapheme).max(1),
         WidthMode::Wide | WidthMode::EmojiCompat => UnicodeWidthStr::width_cjk(grapheme).max(1),
     };
+    if matches!(mode, WidthMode::Wide | WidthMode::EmojiCompat) {
+        let mut chars = grapheme.chars();
+        if let Some(ch) = chars.next() {
+            if chars.next().is_none() {
+                if let Some(override_width) = east_asian_override(ch) {
+                    if width != override_width {
+                        stats.corrections_applied += 1;
+                        width = override_width;
+                    }
+                }
+            }
+        }
+    }
     if let Some(value) = find_width_correction(grapheme, mode) {
         stats.corrections_applied += 1;
         width = value;
@@ -224,6 +254,54 @@ fn fullwidth_punct_to_half(ch: char) -> Option<&'static str> {
         'ー' => Some("ｰ"),
         _ => None,
     }
+}
+
+fn parse_east_asian_overrides() -> Vec<EastAsianWidthOverride> {
+    let mut ranges = Vec::new();
+    for line in EAST_ASIAN_WIDTH_DATA.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        let Some((range, class)) = trimmed.split_once(';') else {
+            continue;
+        };
+        let class = class.trim();
+        let width = match class {
+            "W" | "F" | "A" => 2,
+            _ => continue,
+        };
+        let (start, end) = parse_codepoint_range(range.trim());
+        ranges.push(EastAsianWidthOverride { start, end, width });
+    }
+    ranges.sort_by_key(|entry| entry.start);
+    ranges
+}
+
+fn parse_codepoint_range(range: &str) -> (u32, u32) {
+    if let Some((start, end)) = range.split_once("..") {
+        (
+            u32::from_str_radix(start, 16).expect("invalid start"),
+            u32::from_str_radix(end, 16).expect("invalid end"),
+        )
+    } else {
+        let value = u32::from_str_radix(range, 16).expect("invalid value");
+        (value, value)
+    }
+}
+
+fn east_asian_override(ch: char) -> Option<usize> {
+    let code = ch as u32;
+    let result = EAST_ASIAN_WIDTH_OVERRIDES.binary_search_by(|entry| {
+        if code < entry.start {
+            Ordering::Greater
+        } else if code > entry.end {
+            Ordering::Less
+        } else {
+            Ordering::Equal
+        }
+    });
+    result.ok().map(|index| EAST_ASIAN_WIDTH_OVERRIDES[index].width)
 }
 
 struct KanaMapping {

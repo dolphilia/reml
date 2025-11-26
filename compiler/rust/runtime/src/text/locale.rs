@@ -70,7 +70,7 @@ pub(crate) fn ensure_locale_supported(locale: &LocaleId, scope: LocaleScope) -> 
     if entry.status != LocaleSupportStatus::Supported {
         return Err(unsupported_locale(
             &format!(
-                "locale `{}` is only {:?} for {} operations",
+                "locale `{}` is only {} for {} operations",
                 locale.canonical(),
                 entry.status,
                 scope.as_str()

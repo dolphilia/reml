@@ -7,10 +7,10 @@ fn turkish_locale_converts_identifiers() {
     let locale = LocaleId::parse("tr-TR").expect("locale");
     let input = TextString::from_str("identifier iıIİ");
     let upper = to_upper(input, &locale).expect("upper");
-    assert_eq!(upper.as_str(), "IDENTIFIER İIİ");
+    assert_eq!(upper.as_str(), "İDENTİFİER İIIİ");
 
     let lowered = to_lower(TextString::from_str("IDENTIFIER Iİ"), &locale).expect("lower");
-    assert_eq!(lowered.as_str(), "identifier ıi");
+    assert_eq!(lowered.as_str(), "ıdentıfıer ıi");
 }
 
 #[test]

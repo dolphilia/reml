@@ -8,6 +8,7 @@ pub use collection_diff::{ChangeKind, ConfigChange, SchemaDiff, SchemaDiffMetada
 use std::{
     fs, io, mem,
     path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -18,6 +19,8 @@ use crate::collections::{
     audit_bridge::{AuditBridgeError, ChangeSet},
     persistent::btree::PersistentMap,
 };
+
+static CHANGE_SET_SEQ: AtomicU64 = AtomicU64::new(0);
 
 /// Config マージの結果。新しい `PersistentMap` と `ChangeSet` を保持する。
 pub struct ConfigMergeOutcome<K, V> {
@@ -64,7 +67,8 @@ pub fn write_change_set_to_path(change_set: &ChangeSet, path: impl AsRef<Path>) 
             fs::create_dir_all(parent)?;
         }
     }
-    fs::write(path, body)
+    fs::write(path, body)?;
+    Ok(())
 }
 
 /// `ChangeSet` をテンポラリファイルへ保存し、パスを返す。
@@ -74,7 +78,8 @@ pub fn write_change_set_to_temp_dir(change_set: &ChangeSet) -> io::Result<PathBu
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_millis();
-    path.push(format!("reml-config-change-set-{timestamp}.json"));
+    let seq = CHANGE_SET_SEQ.fetch_add(1, Ordering::Relaxed);
+    path.push(format!("reml-config-change-set-{timestamp}-{seq}.json"));
     write_change_set_to_path(change_set, &path)?;
     Ok(path)
 }

@@ -560,7 +560,8 @@ mod tests {
         let text = Str::from("かなA🙂ا");
         let seq = segment_graphemes(&text).expect("segment");
         let stats = seq.stats();
-        assert_eq!(stats.grapheme_count, 4);
+        // "かなA🙂ا" consists of 5 Unicode grapheme clusters (two Hiragana, A, emoji, Arabic).
+        assert_eq!(stats.grapheme_count, 5);
         assert_eq!(stats.scripts.primary, ScriptCategory::Kana);
         assert!(stats.scripts.mix_ratio > 0.0);
         assert!(stats.direction.rtl_ratio > 0.0);

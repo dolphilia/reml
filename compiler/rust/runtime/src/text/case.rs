@@ -96,7 +96,7 @@ mod tests {
         let locale = LocaleId::parse("tr-TR").expect("locale");
         let mut input = TextString::from_str("iıIİ");
         let upper = to_upper(input.clone(), &locale).expect("upper");
-        assert_eq!(upper.as_str(), "İIİ");
+        assert_eq!(upper.as_str(), "İIIİ");
         input = TextString::from_str("Iİ");
         let lower = to_lower(input, &locale).expect("lower");
         assert_eq!(lower.as_str(), "ıi");
