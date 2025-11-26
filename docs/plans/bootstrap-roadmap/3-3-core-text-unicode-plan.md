@@ -191,6 +191,10 @@
 - Lexer 側では `LexerOptions` に `identifier_locale: Option<LocaleId>` を追加し、`lex_source_with_options` が Core.Text の `prepare_identifier` を呼び出すように再設計。`unicode_error_to_frontend` ヘルパを導入して `FrontendErrorKind::UnexpectedStructure` へ橋渡しし、`lex.identifier_locale` で指定されたロケールが `UnsupportedLocale` の場合は CLI/RunConfig 両方で警告を出すようにした。【F:../../compiler/rust/frontend/src/lexer/mod.rs†L1-L210】【F:../../compiler/rust/frontend/src/bin/reml_frontend.rs†L1-L370】
 - `compiler/rust/frontend/tests/lexer_unicode_identifier.rs` を新設し、(1) NFC でない識別子、(2) Bidi 制御文字を含む識別子、(3) `lex.identifier_locale = az-Latn` による `UnsupportedLocale` の 3 ケースをカバー。`docs/plans/bootstrap-roadmap/checklists/unicode-error-mapping.md`・`text-api-error-scenarios.md` の `InvalidIdentifier`/TA-04 を `Green` に更新した。
 
+#### 3.2.4 East Asian Width 補正と検証（2027-03-30）
+- Emoji/Regional 指標の幅を CSV で管理するため `compiler/rust/runtime/src/text/data/width_corrections.csv` を追加し、`once_cell::sync::Lazy` で読み込んだ値を `WidthMode::EmojiCompat` の補正に利用。`width_map` が `UnicodeWidthStr::width_cjk` ベースで `WidthCorrection` を参照するよう再設計し、`docs/notes/text-case-width-gap.md` の Emoji 行を `Closed` に更新した。【F:../../compiler/rust/runtime/src/text/width.rs†L1-L220】
+- Python `unicodedata.east_asian_width` から生成した `third_party/unicode/UCD/EastAsianWidth-15.1.0.txt` をバンドルし、`compiler/rust/runtime/tests/unicode_width_mapping.rs` で W/F/A クラスをフルスキャンするテストを追加。`cargo test --manifest-path compiler/rust/runtime/Cargo.toml unicode_width_mapping` を `UCNF-Width` の検証手段に採用し、`docs/plans/bootstrap-roadmap/checklists/unicode-conformance-checklist.md` を更新した。
+
 3.3. `prepare_identifier` を Parser 仕様 (2-3) と結合するテストを実装し、`UnicodeError` → `ParseError` 変換を確認する。  
 実施ステップ:  
 - Parser の識別子前処理 (`docs/spec/2-3-lexer.md`) を読み、`prepare_identifier` が `UnicodeErrorKind::InvalidIdentifier` を `ParseErrorKind::InvalidToken` へ写像するルールを表にまとめる。  

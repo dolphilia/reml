@@ -1,6 +1,8 @@
 use std::borrow::Cow;
+use std::str::FromStr;
 
 use super::{effects, Str, UnicodeResult};
+use once_cell::sync::Lazy;
 use unicode_width::UnicodeWidthStr;
 
 /// 書記素幅変換のモード。
@@ -9,6 +11,19 @@ pub enum WidthMode {
     Narrow,
     Wide,
     EmojiCompat,
+}
+
+impl FromStr for WidthMode {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim() {
+            "Narrow" => Ok(WidthMode::Narrow),
+            "Wide" => Ok(WidthMode::Wide),
+            "EmojiCompat" => Ok(WidthMode::EmojiCompat),
+            _ => Err(()),
+        }
+    }
 }
 
 /// width_map の観測値。
@@ -20,21 +35,15 @@ pub struct WidthMapStats {
     pub corrections_applied: usize,
 }
 
+#[derive(Clone)]
 struct WidthCorrection {
-    sequence: &'static str,
+    sequence: String,
+    mode: WidthMode,
     corrected_width: usize,
 }
 
-const EMOJI_CORRECTIONS: &[WidthCorrection] = &[
-    WidthCorrection {
-        sequence: "👨‍👩‍👧‍👦",
-        corrected_width: 4,
-    },
-    WidthCorrection {
-        sequence: "🇯🇵",
-        corrected_width: 4,
-    },
-];
+static WIDTH_CORRECTIONS: Lazy<Vec<WidthCorrection>> = Lazy::new(parse_width_corrections);
+const WIDTH_CORRECTIONS_CSV: &str = include_str!("data/width_corrections.csv");
 
 /// `width_map` の基本実装。
 pub fn width_map(str_ref: &Str<'_>, mode: WidthMode) -> UnicodeResult<super::String> {
@@ -53,7 +62,6 @@ pub fn width_map_with_stats(str_ref: &Str<'_>, mode: WidthMode) -> (super::Strin
         let mapped = map_grapheme(grapheme, mode);
         if let Cow::Owned(ref owned) = mapped {
             changed = true;
-            stats.corrections_applied += 1;
             buffer.push_str(owned);
         } else {
             buffer.push_str(grapheme);
@@ -161,20 +169,13 @@ fn narrow_grapheme(grapheme: &str) -> Cow<'_, str> {
 }
 
 fn corrected_width(grapheme: &str, mode: WidthMode, stats: &mut WidthMapStats) -> usize {
-    let mut width = UnicodeWidthStr::width(grapheme).max(1);
-    if matches!(mode, WidthMode::Wide | WidthMode::EmojiCompat)
-        && grapheme.chars().all(|ch| ch.is_ascii_graphic())
-    {
-        width = width.max(2);
-    }
-    if matches!(mode, WidthMode::EmojiCompat) {
-        if let Some(entry) = EMOJI_CORRECTIONS
-            .iter()
-            .find(|correction| correction.sequence == grapheme)
-        {
-            stats.corrections_applied += 1;
-            return entry.corrected_width;
-        }
+    let mut width = match mode {
+        WidthMode::Narrow => UnicodeWidthStr::width(grapheme).max(1),
+        WidthMode::Wide | WidthMode::EmojiCompat => UnicodeWidthStr::width_cjk(grapheme).max(1),
+    };
+    if let Some(value) = find_width_correction(grapheme, mode) {
+        stats.corrections_applied += 1;
+        width = value;
     }
     width
 }
@@ -592,6 +593,39 @@ fn find_kana_by_full(ch: char) -> Option<(&'static KanaMapping, Option<char>)> {
         }
     }
     None
+}
+
+fn find_width_correction(grapheme: &str, mode: WidthMode) -> Option<usize> {
+    WIDTH_CORRECTIONS
+        .iter()
+        .find(|entry| entry.mode == mode && entry.sequence == grapheme)
+        .map(|entry| entry.corrected_width)
+}
+
+fn parse_width_corrections() -> Vec<WidthCorrection> {
+    WIDTH_CORRECTIONS_CSV
+        .lines()
+        .filter_map(|line| {
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                return None;
+            }
+            let mut parts = trimmed.split(',');
+            let sequence = parts.next()?.trim();
+            let mode_str = parts.next()?.trim();
+            let width_str = parts.next()?.trim();
+            let mode =
+                WidthMode::from_str(mode_str).expect("invalid mode in width_corrections.csv");
+            let corrected_width = width_str
+                .parse::<usize>()
+                .expect("invalid width in width_corrections.csv");
+            Some(WidthCorrection {
+                sequence: sequence.to_string(),
+                mode,
+                corrected_width,
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]

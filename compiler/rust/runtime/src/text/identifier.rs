@@ -33,16 +33,14 @@ pub fn prepare_identifier_with_locale(
         .with_phase("lex"));
     }
     if let Some((offset, ch)) = value.char_indices().find(|(_, ch)| is_forbidden_bidi(*ch)) {
-        return Err(
-            UnicodeError::new(
-                UnicodeErrorKind::InvalidIdentifier,
-                format!(
-                    "identifier contains forbidden bidi control U+{:04X}",
-                    ch as u32
-                ),
-            )
-            .with_offset(offset),
-        );
+        return Err(UnicodeError::new(
+            UnicodeErrorKind::InvalidIdentifier,
+            format!(
+                "identifier contains forbidden bidi control U+{:04X}",
+                ch as u32
+            ),
+        )
+        .with_offset(offset));
     }
     Ok(TextString::from_str(value))
 }
