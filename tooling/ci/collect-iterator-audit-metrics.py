@@ -220,6 +220,9 @@ DEFAULT_RETENTION_POLICY: Dict[str, int] = {
 TEXT_DEFAULT_METRICS_PATH = Path("reports/spec-audit/ch1/core_text_grapheme_stats.json")
 TEXT_MEM_DEFAULT_METRICS_PATH = Path("reports/text-mem-metrics.json")
 TEXT_CACHE_HIT_TARGET = 0.8
+TEXT_SCRIPT_MIX_CASE = "UC-02"
+TEXT_SCRIPT_MIX_MIN_RATIO = 0.55
+TEXT_SCRIPT_MIX_MIN_RTL_RATIO = 0.4
 TEXT_CASE_RULES: Dict[str, Dict[str, float]] = {
     "UC-01": {
         "min_cache_miss": 1,
@@ -394,6 +397,22 @@ def _coerce_int_value(value: Optional[object]) -> Optional[int]:
             return None
         try:
             return int(float(stripped))
+        except ValueError:
+            return None
+    return None
+
+
+def _coerce_float_value(value: Optional[object]) -> Optional[float]:
+    if isinstance(value, bool):
+        return float(value)
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return None
+        try:
+            return float(stripped)
         except ValueError:
             return None
     return None
@@ -3757,6 +3776,11 @@ def collect_text_grapheme_metrics(paths: Sequence[Path]) -> Optional[Dict[str, A
             if not isinstance(case, dict):
                 continue
             case_id = case.get("case_id") or case.get("case") or "<unknown>"
+            primary_script = _normalize_nonempty_string(case.get("primary_script"))
+            script_mix_ratio_value = _coerce_float_value(
+                case.get("script_mix_ratio")
+            )
+            rtl_ratio_value = _coerce_float_value(case.get("rtl_ratio"))
             hits = max(0, _coerce_int_value(case.get("cache_hits")) or 0)
             miss = max(0, _coerce_int_value(case.get("cache_miss")) or 0)
             bytes_value = max(
@@ -3819,6 +3843,9 @@ def collect_text_grapheme_metrics(paths: Sequence[Path]) -> Optional[Dict[str, A
                     "cache_hits": hits,
                     "cache_miss": miss,
                     "cache_hit_ratio": ratio,
+                    "primary_script": primary_script,
+                    "script_mix_ratio": script_mix_ratio_value,
+                    "rtl_ratio": rtl_ratio_value,
                     "bytes": bytes_value,
                     "version_mismatch_evictions": evictions,
                     "notes": case.get("notes"),
@@ -3864,6 +3891,56 @@ def collect_text_grapheme_metrics(paths: Sequence[Path]) -> Optional[Dict[str, A
     if all_failures:
         metric["failures"] = all_failures
     return metric
+
+
+def check_text_script_mix_metric(metric: Optional[Dict[str, Any]]) -> Optional[str]:
+    if not isinstance(metric, dict):
+        return "script_mix: text metric is unavailable"
+    cases = metric.get("cases")
+    if not isinstance(cases, list):
+        return "script_mix: cases payload missing"
+    target_case: Optional[Dict[str, Any]] = None
+    for case in cases:
+        if not isinstance(case, dict):
+            continue
+        identifier = (
+            case.get("case")
+            or case.get("case_id")
+            or case.get("name")
+            or ""
+        )
+        identifier_str = str(identifier).strip()
+        if identifier_str.upper() == TEXT_SCRIPT_MIX_CASE:
+            target_case = case
+            break
+    if target_case is None:
+        return f"script_mix: case {TEXT_SCRIPT_MIX_CASE} not found"
+    script_mix_ratio = target_case.get("script_mix_ratio")
+    rtl_ratio = target_case.get("rtl_ratio")
+    mix_value = (
+        script_mix_ratio
+        if isinstance(script_mix_ratio, (int, float))
+        else _coerce_float_value(script_mix_ratio)
+    )
+    rtl_value = (
+        rtl_ratio
+        if isinstance(rtl_ratio, (int, float))
+        else _coerce_float_value(rtl_ratio)
+    )
+    issues: List[str] = []
+    if mix_value is None or mix_value < TEXT_SCRIPT_MIX_MIN_RATIO:
+        issues.append(f"script_mix_ratio<{TEXT_SCRIPT_MIX_MIN_RATIO}")
+    if rtl_value is None or rtl_value < TEXT_SCRIPT_MIX_MIN_RTL_RATIO:
+        issues.append(f"rtl_ratio<{TEXT_SCRIPT_MIX_MIN_RTL_RATIO}")
+    if issues:
+        mix_repr = f"{mix_value:.3f}" if isinstance(mix_value, float) else "null"
+        rtl_repr = f"{rtl_value:.3f}" if isinstance(rtl_value, float) else "null"
+        return (
+            f"script_mix: {TEXT_SCRIPT_MIX_CASE} "
+            + ", ".join(issues)
+            + f" (script_mix_ratio={mix_repr}, rtl_ratio={rtl_repr})"
+        )
+    return None
 
 
 def collect_text_bytes_clone_metrics(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
@@ -5840,6 +5917,13 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         action="store_true",
         help="ref_internal_mutation シナリオの cell/ref KPI が success であることを保証する。",
     )
+    parser.add_argument(
+        "--check",
+        action="append",
+        dest="checks",
+        choices=["script_mix"],
+        help="追加の KPI チェックを有効化します（例: --check script_mix で UC-02 の script_mix_ratio/rtl_ratio を検証）。",
+    )
     return parser.parse_args(argv)
 
 
@@ -5855,6 +5939,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             if not scenario:
                 continue
             scenario_filters.add(scenario)
+    requested_checks: Set[str] = set()
+    if getattr(args, "checks", None):
+        for check in args.checks:
+            if check:
+                requested_checks.add(check)
 
     section_order = [
         "parser",
@@ -6180,7 +6269,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     text_section_requested = (
         "text" in sections
         or "grapheme_stats" in scenario_filters
+        or ("script_mix" in requested_checks)
     )
+    check_failures: List[str] = []
     if text_section_requested:
         if not text_source_paths:
             sys.stderr.write(
@@ -6206,6 +6297,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             scenario_metric = copy.deepcopy(text_metric)
             scenario_metric["scenario"] = "grapheme_stats"
             append_metrics.append(scenario_metric)
+    if "script_mix" in requested_checks:
+        failure_reason = check_text_script_mix_metric(text_metric)
+        if failure_reason:
+            check_failures.append(failure_reason)
     if "effects" in sections:
         effects_metric = collect_effect_syntax_metrics(sources)
         (
@@ -6469,6 +6564,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             combined.setdefault("enforcement", {})
             combined["enforcement"]["require_success"] = True
+    if requested_checks:
+        enforcement = combined.setdefault("enforcement", {})
+        check_block = {
+            "requested": sorted(requested_checks),
+        }
+        if check_failures:
+            check_block["failures"] = check_failures
+        enforcement["checks"] = check_block
 
     json_output = json.dumps(combined, indent=2, ensure_ascii=False)
 
@@ -6502,6 +6605,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                 f"[collect-iterator-audit-metrics] ref_internal_mutation: status={ref_metric.get('status')}\n"
             )
             return 1
+
+    if check_failures:
+        for reason in check_failures:
+            sys.stderr.write(f"[collect-iterator-audit-metrics] {reason}\n")
+        return 1
 
     # When --require-success is specified, fail if critical metrics did not pass.
     if getattr(args, "require_success", False) and failure_reasons:

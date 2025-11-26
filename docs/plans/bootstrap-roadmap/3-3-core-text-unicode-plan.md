@@ -127,6 +127,7 @@
 - `compiler/rust/runtime/src/text/grapheme.rs` に `ScriptCategory`・`TextDirection`・`ScriptStats` を導入し、`Grapheme` が `script_mix_ratio`/`rtl_ratio`/`primary_script` を計測できるようにした。`GraphemeSeq` は `IntoIterator`（`DoubleEndedIterator`）と `byte_offset_at`/`grapheme_at_byte_offset` を公開し、Diagnostics が書記素境界をランダムアクセス可能になった。
 - UAX #29 rev.40 の GraphemeBreakTest データを `third_party/unicode/UAX29/GraphemeBreakTest-15.1.0.txt` として同梱し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml grapheme_conformance -- --ignored` で互換性をチェックする回帰テストを新設。投入履歴を `docs/notes/unicode-upgrade-log.md` に記録した。
 - `text_internal_cache` テストを再実行し、`reports/spec-audit/ch1/core_text_grapheme_stats.json` に `primary_script`・`script_mix_ratio`・`rtl_ratio` を追記。KPI `text.grapheme.script_mix_ratio` を `0-3-audit-and-metrics.md` へ登録し、UC-02 ケースで 0.56/0.43 を達成したことをログ化した。
+- `tooling/ci/collect-iterator-audit-metrics.py` に `--check script_mix` オプションを追加し、CI で UC-02 の `script_mix_ratio >= 0.55` / `rtl_ratio >= 0.4` を自動ゲートできるようにした。
 
 2.3. `TextBuilder` の構築 API を実装し、`Iter<Grapheme>` との連携をテストする。  
 実施ステップ:  
