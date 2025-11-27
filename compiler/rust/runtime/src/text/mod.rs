@@ -16,6 +16,8 @@ mod str_ref;
 mod text_string;
 mod width;
 
+use crate::prelude::iter::{EffectLabels, EffectSet};
+
 pub use builder::{builder, TextBuilder};
 pub use bytes::Bytes;
 pub use crate::io::{
@@ -36,3 +38,20 @@ pub use normalize::{is_normalized, normalize, NormalizationForm};
 pub use str_ref::Str;
 pub use text_string::String;
 pub use width::{width_map, width_map_with_stats, WidthMapStats, WidthMode};
+
+/// Text API が記録した効果を取得し、観測用にリセットする。
+pub fn take_text_effects_snapshot() -> EffectLabels {
+    effects::take_recorded_effects().to_labels()
+}
+
+pub(crate) fn record_text_mem_copy(bytes: usize) {
+    effects::record_mem_copy(bytes);
+}
+
+pub(crate) fn record_text_unicode_event(bytes: usize) {
+    effects::record_unicode_event(bytes);
+}
+
+pub(crate) fn merge_text_effects(effects: EffectSet) {
+    effects::merge_effects(effects);
+}

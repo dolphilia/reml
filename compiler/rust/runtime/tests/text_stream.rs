@@ -1,8 +1,8 @@
 use std::io::{Cursor, Read, Write};
 
 use reml_runtime::text::{
-    decode_stream, encode_stream, BomHandling, InvalidSequenceStrategy, Str, TextDecodeOptions,
-    TextEncodeOptions, UnicodeErrorKind,
+    decode_stream, encode_stream, take_text_effects_snapshot, BomHandling,
+    InvalidSequenceStrategy, Str, TextDecodeOptions, TextEncodeOptions, UnicodeErrorKind,
 };
 
 #[test]
@@ -46,6 +46,7 @@ fn decode_stream_propagates_io_errors() {
     let mut reader = FailingReader;
     let err = decode_stream(&mut reader, TextDecodeOptions::default()).expect_err("should fail");
     assert_eq!(err.kind(), UnicodeErrorKind::DecodeFailure);
+    assert_eq!(err.phase(), "io.decode.eof");
 }
 
 #[test]
@@ -79,4 +80,41 @@ fn encode_stream_reports_write_failures() {
     let err = encode_stream(&mut writer, Str::from("data"), TextEncodeOptions::default())
         .expect_err("write failure");
     assert_eq!(err.kind(), UnicodeErrorKind::EncodeFailure);
+}
+
+#[test]
+fn decode_stream_handles_chunk_boundaries() {
+    let data = "あいうえお".as_bytes().to_vec();
+    let mut reader = Cursor::new(data);
+    let options = TextDecodeOptions::default().with_buffer_size(2);
+    let text = decode_stream(&mut reader, options).expect("decode");
+    assert_eq!(text.as_str(), "あいうえお");
+}
+
+#[test]
+fn decode_stream_records_effects() {
+    take_text_effects_snapshot();
+    let mut reader = Cursor::new(b"chunked".to_vec());
+    let options = TextDecodeOptions::default().with_buffer_size(3);
+    let text = decode_stream(&mut reader, options).expect("decode");
+    assert_eq!(text.as_str(), "chunked");
+    let effects = take_text_effects_snapshot();
+    assert!(effects.io, "io effect should be recorded");
+    assert!(effects.mem, "mem effect should be recorded");
+    assert!(!effects.unicode, "unicode effect should be absent");
+    assert_eq!(effects.mem_bytes, 7);
+}
+
+#[test]
+fn decode_stream_replacement_marks_unicode_effect() {
+    take_text_effects_snapshot();
+    let bytes = vec![0xe3, 0x81, 0x82, 0xff, 0xe3, 0x81, 0x84];
+    let mut reader = Cursor::new(bytes);
+    let options = TextDecodeOptions::default()
+        .with_invalid_sequence(InvalidSequenceStrategy::Replace)
+        .with_buffer_size(4);
+    let text = decode_stream(&mut reader, options).expect("decode with replace");
+    assert_eq!(text.as_str(), "あ�い");
+    let effects = take_text_effects_snapshot();
+    assert!(effects.unicode, "unicode effect should be recorded");
 }

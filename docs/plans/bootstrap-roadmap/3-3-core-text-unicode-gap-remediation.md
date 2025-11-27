@@ -37,6 +37,11 @@
    - `compiler/rust/runtime/tests/text_stream.rs` を拡張し、(i) 巨大入力の逐次 decode、(ii) `replace` モードでの `%FF` 分割、(iii) `EffectSet` に `io`/`mem`/`transfer` が適切に記録されることを検証。  
    - `compiler/rust/runtime/examples/io/text_stream_decode.rs` の CLI に `--chunk-size`/`--replace` を追加し、`tests/data/unicode/streaming/sample_input.txt` から生成する `reports/spec-audit/ch1/unicode_streaming_decode.json` に `effect` サマリを追記。`docs/plans/bootstrap-roadmap/checklists/text-api-error-scenarios.md` の TA-05/06 ケースを更新。
 
+> 実施ログ（2027-04-02）  
+> - `compiler/rust/runtime/src/io/text_stream.rs` にスライディングウィンドウ型の UTF-8 デコーダと BOM ポリシー適用ヘルパを追加し、`InvalidSequenceStrategy::Replace` が逐次的に `�` を挿入する実装へ移行した。`UnicodeError` には `IoError` ソースを保持させ、`IoErrorKind::UnexpectedEof` を `phase="io.decode.eof"` へ強制することで TA-05 の要件を満たしている。  
+> - Text/IO 効果連携として `EffectSet` に `unicode` ビットを導入し、`text::take_text_effects_snapshot()` で観測できるよう `merge_text_effects`/`record_text_unicode_event` を追加した。`compiler/rust/runtime/tests/text_stream.rs` ではチャンク境界・`Replace` 分割・`EffectLabels` の 3 ケースを追加し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml text_stream` で回帰確認済み。  
+> - `compiler/rust/runtime/examples/io/text_stream_decode.rs` に `--chunk-size`/`--replace`/`effects` 出力を実装し、`tests/data/unicode/streaming/sample_input.txt` を使った JSON には `EffectSnapshot` を同梱。CLI では `take_text_effects_snapshot` で単回実行の効果を収集し、`docs/plans/bootstrap-roadmap/checklists/text-api-error-scenarios.md` TA-05/06 / `docs/notes/text-unicode-gap-log.md` に反映した。
+
 ### C. Grapheme キャッシュと監査パイプライン統合
 1. キャッシュ管理  
    - `compiler/rust/runtime/src/text/grapheme.rs` に `IndexCacheGeneration` 構造を追加し、`Unicode::VERSION`（`unicode_segmentation` のバージョン値）と `CACHE_VERSION` を結合した世代 ID を持たせる。`STORE` には `version` を保存し、異なるバージョンを検出した場合に `cache_miss += len` で再構築する。

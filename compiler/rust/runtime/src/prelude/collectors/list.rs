@@ -19,6 +19,7 @@ const PURE_EFFECTS: EffectLabels = EffectLabels {
     audit: false,
     cell: false,
     rc: false,
+    unicode: false,
     io: false,
     transfer: false,
     mem_bytes: 0,

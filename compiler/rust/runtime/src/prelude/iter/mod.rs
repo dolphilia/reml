@@ -752,6 +752,7 @@ impl EffectSet {
     const RC_BIT: u16 = 0b0100_0000;
     const IO_BIT: u16 = 0b1000_0000;
     const TRANSFER_BIT: u16 = 0b1_0000_0000;
+    const UNICODE_BIT: u16 = 0b10_0000_0000;
 
     pub const PURE: Self = Self {
         bits: 0,
@@ -799,6 +800,10 @@ impl EffectSet {
 
     pub fn mark_transfer(&mut self) {
         self.bits |= Self::TRANSFER_BIT;
+    }
+
+    pub fn mark_unicode(&mut self) {
+        self.bits |= Self::UNICODE_BIT;
     }
 
     pub fn record_predicate_call(&mut self) {
@@ -911,6 +916,9 @@ impl EffectSet {
         if labels.transfer {
             self.mark_transfer();
         }
+        if labels.unicode {
+            self.mark_unicode();
+        }
 
         self.record_mem_bytes(labels.mem_bytes);
         self.record_predicate_calls(labels.predicate_calls);
@@ -953,6 +961,10 @@ impl EffectSet {
         self.bits & Self::TRANSFER_BIT != 0
     }
 
+    pub fn contains_unicode(self) -> bool {
+        self.bits & Self::UNICODE_BIT != 0
+    }
+
     pub fn to_labels(self) -> EffectLabels {
         EffectLabels {
             mem: self.contains_mem(),
@@ -962,6 +974,7 @@ impl EffectSet {
             audit: self.contains_audit(),
             cell: self.contains_cell(),
             rc: self.contains_rc(),
+            unicode: self.contains_unicode(),
             io: self.contains_io(),
             transfer: self.contains_transfer(),
             mem_bytes: self.mem_bytes,
@@ -981,6 +994,7 @@ pub struct EffectLabels {
     pub audit: bool,
     pub cell: bool,
     pub rc: bool,
+    pub unicode: bool,
     pub io: bool,
     pub transfer: bool,
     pub mem_bytes: usize,

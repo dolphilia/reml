@@ -1,3 +1,5 @@
+use crate::io::IoError;
+
 /// Unicode 関連エラー。仕様の `UnicodeError` 相当。
 #[derive(Debug, Clone)]
 pub struct UnicodeError {
@@ -5,6 +7,7 @@ pub struct UnicodeError {
     message: String,
     offset: Option<usize>,
     phase: &'static str,
+    source: Option<IoError>,
 }
 
 impl UnicodeError {
@@ -14,6 +17,7 @@ impl UnicodeError {
             message: message.into(),
             offset: None,
             phase: "unicode",
+            source: None,
         }
     }
 
@@ -35,6 +39,11 @@ impl UnicodeError {
         self
     }
 
+    pub fn with_source(mut self, source: IoError) -> Self {
+        self.source = Some(source);
+        self
+    }
+
     pub fn kind(&self) -> UnicodeErrorKind {
         self.kind
     }
@@ -49,6 +58,10 @@ impl UnicodeError {
 
     pub fn phase(&self) -> &'static str {
         self.phase
+    }
+
+    pub fn source(&self) -> Option<&IoError> {
+        self.source.as_ref()
     }
 }
 

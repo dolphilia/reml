@@ -277,6 +277,7 @@ impl CollectorAuditTrail {
             "rc_ops".into(),
             Value::Number(Number::from(self.effects.rc_ops as u64)),
         );
+        effects.insert("unicode".into(), Value::Bool(self.effects.unicode));
         effects.insert(
             "transfer".into(),
             Value::Bool(self.effects.transfer),

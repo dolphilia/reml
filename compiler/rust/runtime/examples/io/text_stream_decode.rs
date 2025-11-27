@@ -1,5 +1,6 @@
 use reml_runtime::text::{
-    decode_stream, grapheme_stats, BomHandling, InvalidSequenceStrategy, Str, TextDecodeOptions,
+    decode_stream, grapheme_stats, take_text_effects_snapshot, BomHandling,
+    InvalidSequenceStrategy, Str, TextDecodeOptions,
 };
 use serde::Serialize;
 use std::env;
@@ -14,6 +15,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut bom = BomHandling::Auto;
     let mut invalid = InvalidSequenceStrategy::Error;
     let mut output: Option<PathBuf> = None;
+    let mut chunk_size: Option<usize> = None;
 
     let mut args = env::args().skip(1);
     while let Some(arg) = args.next() {
@@ -30,9 +32,19 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let value = args.next().ok_or("--invalid requires a value")?;
                 invalid = parse_invalid(&value)?;
             }
+            "--replace" => {
+                invalid = InvalidSequenceStrategy::Replace;
+            }
             "--output" => {
                 let value = args.next().ok_or("--output requires a path")?;
                 output = Some(PathBuf::from(value));
+            }
+            "--chunk-size" => {
+                let value = args.next().ok_or("--chunk-size requires a value")?;
+                let size = value
+                    .parse::<usize>()
+                    .map_err(|_| format!("chunk-size must be an integer: {value}"))?;
+                chunk_size = Some(size);
             }
             "--help" => {
                 print_help();
@@ -49,14 +61,19 @@ fn main() -> Result<(), Box<dyn Error>> {
     let file_size = file.metadata().ok().map(|meta| meta.len());
     let mut reader = BufReader::new(file);
 
-    let options = TextDecodeOptions::default()
+    let mut options = TextDecodeOptions::default()
         .with_bom_handling(bom)
         .with_invalid_sequence(invalid);
+    if let Some(size) = chunk_size {
+        options = options.with_buffer_size(size);
+    }
+    take_text_effects_snapshot();
     let text = decode_stream(&mut reader, options)
         .map_err(|err| format!("decode_stream failed: {}", err.message()))?;
     let str_ref = Str::from(text.as_str());
     let stats = grapheme_stats(&str_ref)
         .map_err(|err| format!("grapheme_stats failed: {}", err.message()))?;
+    let effects = EffectSnapshot::from(take_text_effects_snapshot());
 
     let report = DecodeReport {
         input: input_path.display().to_string(),
@@ -67,6 +84,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         bom_policy: bom_label(bom),
         invalid_policy: invalid_label(invalid),
         preview: preview(text.as_str()),
+        effects,
     };
 
     let payload = serde_json::to_string_pretty(&report)?;
@@ -127,9 +145,9 @@ fn preview(source: &str) -> String {
 
 fn print_help() {
     eprintln!(
-        "Usage: cargo run --bin text_stream_decode -- --input <file> [--bom auto|require|ignore] [--invalid error|replace] [--output <file>]"
+        "Usage: cargo run --bin text_stream_decode -- --input <file> [--bom auto|require|ignore] [--invalid error|replace|--replace] [--chunk-size <bytes>] [--output <file>]"
     );
-    eprintln!("Reads a UTF-8 stream via Core.Text decode_stream and prints grapheme metrics as JSON.");
+    eprintln!("Reads a UTF-8 stream via Core.Text decode_stream and prints grapheme/effect metrics as JSON.");
 }
 
 #[derive(Serialize)]
@@ -142,4 +160,42 @@ struct DecodeReport {
     bom_policy: &'static str,
     invalid_policy: &'static str,
     preview: String,
+    effects: EffectSnapshot,
+}
+
+#[derive(Serialize)]
+struct EffectSnapshot {
+    mem: bool,
+    mutating: bool,
+    debug: bool,
+    async_pending: bool,
+    audit: bool,
+    cell: bool,
+    rc: bool,
+    unicode: bool,
+    io: bool,
+    transfer: bool,
+    mem_bytes: usize,
+    predicate_calls: usize,
+    rc_ops: usize,
+}
+
+impl From<reml_runtime::prelude::iter::EffectLabels> for EffectSnapshot {
+    fn from(labels: reml_runtime::prelude::iter::EffectLabels) -> Self {
+        Self {
+            mem: labels.mem,
+            mutating: labels.mutating,
+            debug: labels.debug,
+            async_pending: labels.async_pending,
+            audit: labels.audit,
+            cell: labels.cell,
+            rc: labels.rc,
+            unicode: labels.unicode,
+            io: labels.io,
+            transfer: labels.transfer,
+            mem_bytes: labels.mem_bytes,
+            predicate_calls: labels.predicate_calls,
+            rc_ops: labels.rc_ops,
+        }
+    }
 }

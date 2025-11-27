@@ -29,11 +29,33 @@ pub(crate) fn take_recorded_effects() -> EffectSet {
     })
 }
 
+/// IO モジュールなど別 ThreadLocal の計測結果を統合する。
+pub(crate) fn merge_effects(extra: EffectSet) {
+    if extra == EffectSet::PURE {
+        return;
+    }
+    TEXT_EFFECTS.with(|slot| {
+        let mut current = slot.get();
+        current = current.union(extra);
+        slot.set(current);
+    });
+}
+
 /// ゼロコピー転送が発生したことを記録する。
 pub(crate) fn record_transfer() {
     TEXT_EFFECTS.with(|slot| {
         let mut current = slot.get();
         current.mark_transfer();
+        slot.set(current);
+    });
+}
+
+/// Unicode 変換イベントを記録する。
+pub(crate) fn record_unicode_event(bytes: usize) {
+    let _ = bytes;
+    TEXT_EFFECTS.with(|slot| {
+        let mut current = slot.get();
+        current.mark_unicode();
         slot.set(current);
     });
 }
