@@ -75,6 +75,11 @@
 - `docs/spec/1-2-types-Inference.md` の `Numeric<T>` 制約と照合し、型推論テスト (`compiler/rust/frontend/tests/type_numeric.rs`) 追加計画を `docs/plans/rust-migration/1-1-ast-and-ir-alignment.md` にリンクする。
 - `cargo test --manifest-path compiler/rust/runtime/Cargo.toml numeric_basic --features core-numeric` で `mean/variance/percentile` のゴールデンを検証し、結果を `reports/spec-audit/ch3/numeric_basic-*.json` に保存する。
 
+> 進行ログ（Phase3 W44, 2.1）  
+> - `core_numeric` feature を追加し、`compiler/rust/runtime/src/numeric/mod.rs` に `Numeric`/`OrderedFloat`/`Floating`/`IterNumericExt`・`lerp`/`mean`/`variance`/`percentile` を PoC 実装。`Iter.try_fold` ベースで Welford 法を採用し、`percentile` は nearest-rank + 線形補間を利用。  
+> - `docs/plans/bootstrap-roadmap/assets/core-numeric-time-api-diff.csv` と `docs/notes/core-numeric-time-gap-log.md` を更新し、`Numeric` 制約テスト計画（`compiler/rust/frontend/tests/type_numeric.rs`）を `docs/plans/rust-migration/1-1-ast-and-ir-alignment.md` に追記。  
+> - `cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core-numeric` を実行して `numeric::tests::*` を追加検証。`reports/spec-audit/ch3/numeric_basic-*` の自動化は別途スクリプト化する。
+
 2.2. `HistogramBucket`/`HistogramBucketState` の実装と検証を行い、不正パラメータ時の `StatisticsError` 処理を整備する。  
 実施ステップ:
 - `docs/spec/3-7-core-config-data.md` の `ColumnStats` 記述からバケット検証ルールを抽出し、`docs/plans/bootstrap-roadmap/assets/histogram-error-matrix.md` に `StatisticsErrorKind` 対応表を作る。

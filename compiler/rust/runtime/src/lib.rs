@@ -5,6 +5,8 @@
 pub mod collections;
 pub mod config;
 pub mod io;
+#[cfg(feature = "core_numeric")]
+pub mod numeric;
 pub mod prelude;
 pub mod registry;
 pub mod stage;

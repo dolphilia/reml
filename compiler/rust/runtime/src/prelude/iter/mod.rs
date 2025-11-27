@@ -849,6 +849,7 @@ impl EffectSet {
             mem_bytes: self.mem_bytes,
             predicate_calls: self.predicate_calls,
             rc_ops: self.rc_ops,
+            time_calls: self.time_calls,
         }
     }
 
@@ -858,6 +859,7 @@ impl EffectSet {
             mem_bytes: self.mem_bytes,
             predicate_calls: self.predicate_calls,
             rc_ops: self.rc_ops,
+            time_calls: self.time_calls,
         }
     }
 
@@ -867,6 +869,7 @@ impl EffectSet {
             mem_bytes: self.mem_bytes,
             predicate_calls: self.predicate_calls,
             rc_ops: self.rc_ops,
+            time_calls: self.time_calls,
         }
     }
 
@@ -876,6 +879,7 @@ impl EffectSet {
             mem_bytes: self.mem_bytes,
             predicate_calls: self.predicate_calls,
             rc_ops: self.rc_ops,
+            time_calls: self.time_calls,
         }
     }
 
