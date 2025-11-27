@@ -324,6 +324,11 @@
 - 測定指標（MB/s、ns/char、キャッシュ命中率）を `reports/benchmarks/core_text/*.md` にまとめ、`0-3-audit-and-metrics.md` の性能表へ転載する。  
 - ベンチ結果が目標を外れた場合のフォローアップ（アルゴリズム変更、SIMD 導入等）を `docs/notes/text-unicode-performance-investigation.md` に記録し、リスク登録する。
 
+> 実施ログ（2027-03-31）  
+> - `benchmarks/Cargo.toml` を作成して `criterion` 依存を追加し、`text/normalization.rs` / `text/grapheme.rs` / `text/builder.rs` で Core.Text API を直接計測できるようにした。テストデータは `benchmarks/text/data/multilingual.txt` に集約し、`cargo bench --manifest-path benchmarks/Cargo.toml text::* -- --save-baseline phase3-core-text` を共通コマンドとして定義。  
+> - グラフェムベンチでは `clear_grapheme_cache_for_tests` を利用して cold / cached それぞれの指標を分離し、TextBuilder ベンチでは `take_text_effects_snapshot()` を組み合わせて `effect.mem_bytes` を観測可能にした。  
+> - 計測結果の記録先として `reports/benchmarks/core_text/README.md` と `phase3-baseline.md` を追加し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 表へ `text.bench.*` 指標を登録。ベンチ回帰時の調査ノートは `docs/notes/text-unicode-performance-investigation.md` にリンクする方針を追記した。
+
 6.3. CI に文字列結合の回帰テストを組み込み、大規模入力でのメモリ/性能指標を `0-3-audit-and-metrics.md` に記録する。  
 実施ステップ:  
 - `scripts/ci/run_core_text_regressions.sh` を追加し、`cargo test text_builder_regression` と `cargo bench text::builder --quick` を GitHub Actions の `phase3-core-text` ジョブに組み込む。  
