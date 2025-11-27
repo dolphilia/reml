@@ -13,6 +13,7 @@ impl Bytes {
     /// `Vec<u8>` をそのまま受け取りラップする。
     /// 将来的には effect {mem} と UTF-8 バリデーションを組み込む。
     pub fn from_vec(vec: Vec<u8>) -> UnicodeResult<Self> {
+        effects::record_transfer();
         Ok(Self { data: vec })
     }
 
@@ -110,5 +111,13 @@ mod tests {
         let effects = effects::take_recorded_effects();
         assert!(effects.contains_mem());
         assert_eq!(effects.mem_bytes(), 3);
+    }
+
+    #[test]
+    fn from_vec_records_transfer_effect() {
+        effects::take_recorded_effects();
+        let _ = Bytes::from_vec(vec![1, 2, 3]).expect("from_vec ok");
+        let effects = effects::take_recorded_effects();
+        assert!(effects.contains_transfer());
     }
 }

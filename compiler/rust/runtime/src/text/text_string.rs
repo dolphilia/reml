@@ -39,6 +39,7 @@ impl String {
     }
 
     pub fn into_bytes(self) -> UnicodeResult<Bytes> {
+        effects::record_transfer();
         Bytes::from_vec(self.inner.into_bytes())
     }
 
@@ -81,5 +82,14 @@ mod tests {
         let effects = effects::take_recorded_effects();
         assert!(effects.contains_mem());
         assert_eq!(effects.mem_bytes(), 4);
+    }
+
+    #[test]
+    fn into_bytes_records_transfer() {
+        let string = String::from_str("text");
+        effects::take_recorded_effects();
+        let _ = string.into_bytes().expect("into_bytes ok");
+        let effects = effects::take_recorded_effects();
+        assert!(effects.contains_transfer());
     }
 }

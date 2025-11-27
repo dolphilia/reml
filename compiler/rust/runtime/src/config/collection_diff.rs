@@ -291,6 +291,7 @@ mod tests {
             cell: false,
             rc: false,
             io: false,
+            transfer: false,
             mem_bytes: 123,
             predicate_calls: 0,
             rc_ops: 0,

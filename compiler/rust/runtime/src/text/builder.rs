@@ -56,7 +56,8 @@ impl TextBuilder {
     pub fn finish_with_effects(self) -> UnicodeResult<(TextString, EffectSet)> {
         #[cfg(debug_assertions)]
         let ptr = self.buffer.as_ptr();
-        let effects = self.effects;
+        let mut effects = self.effects;
+        effects.mark_transfer();
         let string = Bytes::from_vec(self.buffer)?.into_string()?;
         #[cfg(debug_assertions)]
         {
@@ -124,5 +125,6 @@ mod tests {
         assert_eq!(string.as_str(), "test");
         assert!(effects.mem_bytes() >= len);
         assert_eq!(string.as_str().as_ptr(), ptr);
+        assert!(effects.contains_transfer());
     }
 }

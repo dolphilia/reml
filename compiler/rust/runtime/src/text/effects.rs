@@ -29,6 +29,15 @@ pub(crate) fn take_recorded_effects() -> EffectSet {
     })
 }
 
+/// ゼロコピー転送が発生したことを記録する。
+pub(crate) fn record_transfer() {
+    TEXT_EFFECTS.with(|slot| {
+        let mut current = slot.get();
+        current.mark_transfer();
+        slot.set(current);
+    });
+}
+
 /// 監査ログ連携を行ったことを記録する。`log_grapheme_stats` などで利用する。
 pub(crate) fn record_audit_event() {
     TEXT_EFFECTS.with(|slot| {

@@ -23,6 +23,11 @@
 3. KPI/ドキュメント更新  
    - `docs/plans/bootstrap-roadmap/assets/text-unicode-api-diff.csv` に `effect.transfer` 列を追加。`tooling/ci/collect-iterator-audit-metrics.py --section text --scenario bytes_clone` で `text.mem.zero_copy_ratio` を算出し、`reports/text-mem-metrics.json` にサンプル値を登録。`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI 解説を補強。
 
+> 実施ログ（2027-03-31）  
+> - `compiler/rust/runtime/src/prelude/iter/mod.rs` に `EffectSet::mark_transfer` / `contains_transfer` を追加し、`EffectLabels` へ `transfer` フィールドを拡張。`CollectorAuditTrail`（`prelude/collectors/mod.rs`）の JSON/Audit 出力にも `collector.effect.transfer` を含めた。  
+> - `Bytes::from_vec`・`String::into_bytes`・`TextBuilder::finish_with_effects` でゼロコピー時に `transfer` を計測し、`text/effects.rs` に `record_transfer` を実装。`text/builder.rs` / `text/text_string.rs` / `text/bytes.rs` のテストへ `transfer` 断言を追加し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml` で検証した。  
+> - `docs/plans/bootstrap-roadmap/assets/text-unicode-api-diff.csv` に `effect.transfer` 列を追加し、`Bytes::from_vec`・`String::into_bytes`・`TextBuilder::finish` のゼロコピー経路を明示。`text.mem.zero_copy_ratio` の収集根拠として `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の記述を参照できる状態を確認した。
+
 ### B. ストリーミング decode/encode 再設計
 1. ランタイム実装  
    - `compiler/rust/runtime/src/io/text_stream.rs` をチャンク単位の逐次 decode へ改修。`UTF-8` 検証を `std::str::from_utf8` ベースのスライディングウィンドウに変更し、`InvalidSequenceStrategy::Replace` 時は `�` を随時書き込む。`effects::record_io_operation` で得たバイト数を `EffectSet::mark_io` に転写する。

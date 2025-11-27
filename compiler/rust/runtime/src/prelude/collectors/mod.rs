@@ -278,6 +278,10 @@ impl CollectorAuditTrail {
             Value::Number(Number::from(self.effects.rc_ops as u64)),
         );
         effects.insert(
+            "transfer".into(),
+            Value::Bool(self.effects.transfer),
+        );
+        effects.insert(
             "predicate_calls".into(),
             Value::Number(Number::from(self.effects.predicate_calls as u64)),
         );
@@ -369,6 +373,10 @@ impl CollectorAuditTrail {
         metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}effect.rc_ops"),
             Value::Number(Number::from(self.effects.rc_ops as u64)),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.transfer"),
+            Value::Bool(self.effects.transfer),
         );
         metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}effect.predicate_calls"),

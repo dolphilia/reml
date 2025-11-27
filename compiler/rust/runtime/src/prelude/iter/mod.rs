@@ -736,21 +736,22 @@ pub struct IteratorStageSnapshot {
 /// 効果ビット集合。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EffectSet {
-    bits: u8,
+    bits: u16,
     mem_bytes: usize,
     predicate_calls: usize,
     rc_ops: usize,
 }
 
 impl EffectSet {
-    const MUT_BIT: u8 = 0b0001;
-    const MEM_BIT: u8 = 0b0010;
-    const DEBUG_BIT: u8 = 0b0100;
-    const PENDING_BIT: u8 = 0b1000;
-    const AUDIT_BIT: u8 = 0b1_0000;
-    const CELL_BIT: u8 = 0b10_0000;
-    const RC_BIT: u8 = 0b100_0000;
-    const IO_BIT: u8 = 0b1000_0000;
+    const MUT_BIT: u16 = 0b0000_0001;
+    const MEM_BIT: u16 = 0b0000_0010;
+    const DEBUG_BIT: u16 = 0b0000_0100;
+    const PENDING_BIT: u16 = 0b0000_1000;
+    const AUDIT_BIT: u16 = 0b0001_0000;
+    const CELL_BIT: u16 = 0b0010_0000;
+    const RC_BIT: u16 = 0b0100_0000;
+    const IO_BIT: u16 = 0b1000_0000;
+    const TRANSFER_BIT: u16 = 0b1_0000_0000;
 
     pub const PURE: Self = Self {
         bits: 0,
@@ -794,6 +795,10 @@ impl EffectSet {
 
     pub fn mark_io(&mut self) {
         self.bits |= Self::IO_BIT;
+    }
+
+    pub fn mark_transfer(&mut self) {
+        self.bits |= Self::TRANSFER_BIT;
     }
 
     pub fn record_predicate_call(&mut self) {
@@ -903,6 +908,9 @@ impl EffectSet {
         if labels.io {
             self.mark_io();
         }
+        if labels.transfer {
+            self.mark_transfer();
+        }
 
         self.record_mem_bytes(labels.mem_bytes);
         self.record_predicate_calls(labels.predicate_calls);
@@ -941,6 +949,10 @@ impl EffectSet {
         self.bits & Self::IO_BIT != 0
     }
 
+    pub fn contains_transfer(self) -> bool {
+        self.bits & Self::TRANSFER_BIT != 0
+    }
+
     pub fn to_labels(self) -> EffectLabels {
         EffectLabels {
             mem: self.contains_mem(),
@@ -951,6 +963,7 @@ impl EffectSet {
             cell: self.contains_cell(),
             rc: self.contains_rc(),
             io: self.contains_io(),
+            transfer: self.contains_transfer(),
             mem_bytes: self.mem_bytes,
             predicate_calls: self.predicate_calls,
             rc_ops: self.rc_ops,
@@ -969,6 +982,7 @@ pub struct EffectLabels {
     pub cell: bool,
     pub rc: bool,
     pub io: bool,
+    pub transfer: bool,
     pub mem_bytes: usize,
     pub predicate_calls: usize,
     pub rc_ops: usize,
