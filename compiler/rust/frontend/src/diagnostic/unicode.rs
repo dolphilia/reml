@@ -1,7 +1,9 @@
 use crate::diagnostic::FrontendDiagnostic;
 use crate::span::Span;
 use crate::unicode::UnicodeDetail;
-use reml_runtime::text::Str as UnicodeStr;
+use reml_runtime::text::{
+    insert_grapheme_stats_metadata, log_grapheme_stats, Str as UnicodeStr,
+};
 use serde_json::{json, Map, Value};
 use unicode_width::UnicodeWidthStr;
 
@@ -135,6 +137,7 @@ pub fn integrate_unicode_metadata(
         build_unicode_extension(&detail, &metrics),
     );
     apply_unicode_metadata(&detail, &metrics, metadata);
+    attach_grapheme_stats(metadata, source);
 }
 
 fn build_unicode_extension(detail: &UnicodeDetail, metrics: &UnicodeSpanMetrics) -> Value {
@@ -217,7 +220,7 @@ fn apply_unicode_metadata(
         );
     }
     if let Some((start, end)) = metrics.grapheme_span() {
-        metadata.insert("unicode.grapheme.start".to_string(), json!(start));
+    metadata.insert("unicode.grapheme.start".to_string(), json!(start));
         metadata.insert("unicode.grapheme.end".to_string(), json!(end));
     }
     if let Some(width) = metrics.display_width {
@@ -240,6 +243,16 @@ fn apply_unicode_metadata(
             "unicode.identifier.profile".to_string(),
             json!(profile),
         );
+    }
+}
+
+fn attach_grapheme_stats(metadata: &mut Map<String, Value>, source: &str) {
+    if source.is_empty() {
+        return;
+    }
+    let str_ref = UnicodeStr::from(source);
+    if let Ok(stats) = log_grapheme_stats(&str_ref) {
+        insert_grapheme_stats_metadata(metadata, &stats);
     }
 }
 

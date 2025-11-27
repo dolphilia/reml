@@ -1,76 +1,43 @@
 use serde_json::{json, Map as JsonMap, Value};
 
-use super::{UnicodeError, UnicodeErrorKind};
-use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, PreludeGuardMetadata};
+use super::GraphemeStats;
 
-/// Unicode エラーを Diagnostics へ変換する補助。
-pub struct UnicodeDiagnosticBuilder<'a> {
-  span_label: &'a str,
-}
-
-impl<'a> UnicodeDiagnosticBuilder<'a> {
-  pub fn new(span_label: &'a str) -> Self {
-    Self { span_label }
-  }
-
-  pub fn to_guard_diagnostic(&self, error: &UnicodeError) -> GuardDiagnostic {
-    let metadata = PreludeGuardMetadata::new(super::prelude_guard_kind(), error.phase());
-    GuardDiagnostic {
-      code: diagnostic_code(error.kind()),
-      domain: diagnostic_domain(error.kind()),
-      severity: DiagnosticSeverity::Error,
-      message: error.message().into(),
-      extensions: self.extensions(error),
-      audit_metadata: self.audit_metadata(error),
-    }
-    .with_metadata(metadata)
-  }
-
-  fn extensions(&self, error: &UnicodeError) -> JsonMap<String, Value> {
-    let mut map = JsonMap::new();
-    map.insert("phase".into(), Value::String(error.phase().into()));
-    map.insert("span_label".into(), Value::String(self.span_label.into()));
-    if let Some(offset) = error.offset() {
-      map.insert("offset".into(), Value::Number(offset.into()));
-    }
-    map
-  }
-
-  fn audit_metadata(&self, error: &UnicodeError) -> JsonMap<String, Value> {
-    let mut metadata = JsonMap::new();
-    metadata.insert(
-      "text.unicode.kind".into(),
-      Value::String(format!("{:?}", error.kind())),
+/// `text.grapheme_stats` メタデータオブジェクトを生成する。
+pub fn grapheme_stats_metadata(stats: &GraphemeStats) -> JsonMap<String, Value> {
+    let mut info = JsonMap::new();
+    info.insert("length".into(), json!(stats.grapheme_count));
+    info.insert("bytes".into(), json!(stats.total_bytes));
+    info.insert("total_display_width".into(), json!(stats.total_display_width));
+    info.insert("avg_width".into(), json!(stats.avg_width));
+    info.insert("emoji_ratio".into(), json!(stats.emoji_ratio));
+    info.insert(
+        "primary_script".into(),
+        Value::String(stats.scripts.primary.label().into()),
     );
+    info.insert("primary_ratio".into(), json!(stats.scripts.primary_ratio));
+    info.insert("script_mix_ratio".into(), json!(stats.scripts.mix_ratio));
+    info.insert("rtl_ratio".into(), json!(stats.direction.rtl_ratio));
+    info.insert("cache_hits".into(), json!(stats.cache_hits));
+    info.insert("cache_miss".into(), json!(stats.cache_miss));
+    info.insert("cache_generation".into(), json!(stats.cache_generation));
+    info.insert("cache_version".into(), json!(stats.cache_version));
+    let denominator = (stats.cache_hits + stats.cache_miss) as f64;
+    if denominator > 0.0 {
+        info.insert(
+            "cache_hit_ratio".into(),
+            json!(stats.cache_hits as f64 / denominator),
+        );
+    }
+    info
+}
+
+/// `AuditEnvelope.metadata["text.grapheme_stats"]` に統計情報を埋め込む。
+pub fn insert_grapheme_stats_metadata(
+    metadata: &mut JsonMap<String, Value>,
+    stats: &GraphemeStats,
+) {
     metadata.insert(
-      "text.unicode.phase".into(),
-      Value::String(error.phase().into()),
+        "text.grapheme_stats".into(),
+        Value::Object(grapheme_stats_metadata(stats)),
     );
-    metadata
-  }
-}
-
-fn diagnostic_code(kind: UnicodeErrorKind) -> &'static str {
-  match kind {
-    UnicodeErrorKind::InvalidUtf8 => "U1001",
-    UnicodeErrorKind::UnsupportedScalar => "U1002",
-    UnicodeErrorKind::UnsupportedLocale => "U1003",
-    UnicodeErrorKind::InvalidIdentifier => "U1004",
-    UnicodeErrorKind::InvalidRange => "U1005",
-    UnicodeErrorKind::DecodeFailure => "U1006",
-    UnicodeErrorKind::EncodeFailure => "U1007",
-  }
-}
-
-fn diagnostic_domain(kind: UnicodeErrorKind) -> &'static str {
-  match kind {
-    UnicodeErrorKind::InvalidUtf8 => "parser",
-    UnicodeErrorKind::UnsupportedLocale => "text",
-    UnicodeErrorKind::InvalidIdentifier => "parser",
-    _ => "unicode",
-  }
-}
-
-pub fn unicode_error_to_parse_error(error: UnicodeError) -> UnicodeError {
-  error
 }

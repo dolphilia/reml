@@ -3,9 +3,11 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use reml_runtime::text::{
-    clear_grapheme_cache_for_tests, log_grapheme_stats, GraphemeStats, Str, TextBuilder,
+    clear_grapheme_cache_for_tests, grapheme_stats_metadata, log_grapheme_stats, GraphemeStats,
+    Str, TextBuilder,
 };
 use serde::Serialize;
+use serde_json::{json, Map as JsonMap, Value};
 
 #[derive(Clone, Copy)]
 enum LocaleProfile {
@@ -41,6 +43,8 @@ struct CaseMetrics {
     avg_generation: f64,
     cache_hit_ratio: f64,
     notes: &'static str,
+    #[serde(skip_serializing)]
+    audit_metadata: Value,
 }
 
 #[derive(Serialize)]
@@ -127,6 +131,7 @@ fn UC_03_streaming_builder_zero_miss() {
 fn ensure_report_for_case(case_id: &str) -> CaseMetrics {
     let metrics = gather_all_metrics();
     persist_report(&metrics);
+    persist_audit(&metrics);
     metrics
         .into_iter()
         .find(|case| case.case_id == case_id)
@@ -147,6 +152,7 @@ fn run_case(spec: &CaseSpec) -> CaseMetrics {
     let cache_miss = stats.cache_miss;
     let cache_generation = stats.cache_generation;
     let cache_denominator = (cache_hits + cache_miss).max(1) as f64;
+    let audit_metadata = build_audit_metadata(&stats);
     CaseMetrics {
         case_id: spec.case_id,
         locale: spec.locale,
@@ -165,6 +171,7 @@ fn run_case(spec: &CaseSpec) -> CaseMetrics {
         avg_generation: cache_generation as f64,
         cache_hit_ratio: cache_hits as f64 / cache_denominator,
         notes: spec.notes,
+        audit_metadata,
     }
 }
 
@@ -200,6 +207,23 @@ fn persist_report(cases: &[CaseMetrics]) {
     };
     let json = serde_json::to_string_pretty(&report).expect("serialize report");
     fs::write(output_path, json).expect("write report file");
+}
+
+fn persist_audit(cases: &[CaseMetrics]) {
+    let output_path =
+        repo_root().join("reports/spec-audit/ch1/text_grapheme_stats.audit.jsonl");
+    if let Some(parent) = output_path.parent() {
+        fs::create_dir_all(parent).expect("create audit reports directory");
+    }
+    let mut lines = Vec::new();
+    for case in cases {
+        let entry = json!({
+            "case": case.case_id,
+            "metadata": case.audit_metadata,
+        });
+        lines.push(entry.to_string());
+    }
+    fs::write(output_path, lines.join("\n")).expect("write audit report");
 }
 
 fn repo_root() -> PathBuf {
@@ -253,4 +277,14 @@ fn build_repeated_text(target_bytes: usize, samples: &[&str]) -> String {
         idx += 1;
     }
     text
+}
+
+fn build_audit_metadata(stats: &GraphemeStats) -> Value {
+    let mut metadata = JsonMap::new();
+    metadata.insert(
+        "text.grapheme_stats".into(),
+        Value::Object(grapheme_stats_metadata(stats)),
+    );
+    metadata.insert("collector.effect.audit".into(), Value::Bool(true));
+    Value::Object(metadata)
 }

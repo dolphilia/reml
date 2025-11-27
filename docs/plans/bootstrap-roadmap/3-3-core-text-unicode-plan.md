@@ -250,6 +250,13 @@
 - `effect {audit}` を扱うため `core.text.audit` Capability を `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` と同期し、`CapabilityRegistry` の登録・テスト (`cargo test capability_text_audit`) を追加する。  
 - `reports/spec-audit/ch1/text_grapheme_stats.audit.jsonl` を整備し、`scripts/validate-diagnostic-json.sh --pattern text.grapheme_stats` を CI ゲートとして設定する。
 
+> 実施ログ（2027-03-31）  
+> - `compiler/rust/runtime/src/text/grapheme.rs` に `effects::record_audit_event` 呼び出しを追加し、`log_grapheme_stats` 実行時に `effect {audit}` が記録されることを確認 (`log_grapheme_stats_marks_audit_effect` テストを追加)。  
+> - `text/diagnostics.rs` に `grapheme_stats_metadata`／`insert_grapheme_stats_metadata` を実装し、`compiler/rust/frontend/src/diagnostic/unicode.rs` から呼び出して `AuditEnvelope.metadata["text.grapheme_stats"]` を自動生成。UTF-8 ソース全体を対象に `cache_hits`/`avg_width`/`script_mix_ratio` 等を記録するようになった。  
+> - `compiler/rust/runtime/tests/text_internal_cache.rs` のレポート生成を拡張し、ケースごとの監査メタデータを `reports/spec-audit/ch1/text_grapheme_stats.audit.jsonl` に JSONL 形式で書き出す。`scripts/validate-diagnostic-json.sh` は `--pattern text.grapheme_stats` 指定時に当該ファイルを自動検証する。  
+> - `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` に `core.text.audit` の Stage 前提を追記し、`cargo test capability_text_audit`（`compiler/rust/runtime/tests/capability_text_audit.rs`）でレジストリの受理を確認した。  
+> - KPI 収集ルート `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats` は `text.grapheme_stats.audit.jsonl` をインプットに利用し、`text.grapheme.cache_hit` の算出に `collector.effect.audit` / `text.grapheme_stats.cache_*` を利用できるようになった。
+
 ### 5. サンプルコード・ドキュメント更新（43週目）
 **担当領域**: 情報整備
 

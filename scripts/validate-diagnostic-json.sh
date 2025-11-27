@@ -114,6 +114,15 @@ else
   done
 fi
 
+if [[ "${#TARGET_ARGS[@]}" -eq 0 && "${#PATTERNS[@]}" -gt 0 ]]; then
+  for raw_pattern in "${PATTERNS[@]}"; do
+    pattern_lower="$(printf '%s' "$raw_pattern" | tr '[:upper:]' '[:lower:]')"
+    if [[ "$pattern_lower" == *"text.grapheme_stats"* ]]; then
+      TARGETS+=("$ROOT_DIR/reports/spec-audit/ch1/text_grapheme_stats.audit.jsonl")
+    fi
+  done
+fi
+
 expand_targets() {
   local target="$1"
   if [[ -d "$target" ]]; then

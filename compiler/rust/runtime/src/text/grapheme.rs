@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex, Once};
 use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 use unicode_width::UnicodeWidthStr;
 
-use super::{Str, UnicodeResult};
+use super::{effects, Str, UnicodeResult};
 
 const CACHE_VERSION: u32 = 1;
 const SCRIPT_BUCKETS: usize = 6;
@@ -441,7 +441,9 @@ pub fn grapheme_stats(str_ref: &Str<'_>) -> UnicodeResult<GraphemeStats> {
 
 /// 監査ログへの配線を見据えた計測 API。現状は `GraphemeStats` を返すのみ。
 pub fn log_grapheme_stats(str_ref: &Str<'_>) -> UnicodeResult<GraphemeStats> {
-    grapheme_stats(str_ref)
+    let stats = grapheme_stats(str_ref)?;
+    effects::record_audit_event();
+    Ok(stats)
 }
 
 /// `Str` から書記素列を反復するためのラッパ。
@@ -552,7 +554,7 @@ pub fn clear_grapheme_cache_for_tests() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::text::Str;
+    use crate::text::{effects, Str};
 
     #[test]
     fn reports_script_mix_and_direction() {
@@ -574,5 +576,17 @@ mod tests {
         let mut iter = seq.iter();
         assert_eq!(iter.next().map(|g| g.as_str()), Some("a"));
         assert_eq!(iter.next_back().map(|g| g.as_str()), Some("b"));
+    }
+
+    #[test]
+    fn log_grapheme_stats_marks_audit_effect() {
+        effects::take_recorded_effects();
+        let text = Str::from("Audit");
+        let _ = log_grapheme_stats(&text).expect("stats ok");
+        let labels = effects::take_recorded_effects();
+        assert!(
+            labels.contains_audit(),
+            "log_grapheme_stats should mark audit effect"
+        );
     }
 }

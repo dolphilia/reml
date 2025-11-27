@@ -5,6 +5,7 @@
 mod builder;
 mod bytes;
 mod case;
+mod diagnostics;
 mod effects;
 mod error;
 mod grapheme;
@@ -22,6 +23,7 @@ pub use crate::io::{
     TextEncodeOptions,
 };
 pub use case::{to_lower, to_upper};
+pub use diagnostics::{grapheme_stats_metadata, insert_grapheme_stats_metadata};
 pub use error::{UnicodeEffectInfo, UnicodeError, UnicodeErrorKind, UnicodeResult};
 pub use grapheme::{
     clear_grapheme_cache_for_tests, grapheme_stats, log_grapheme_stats, segment_graphemes,

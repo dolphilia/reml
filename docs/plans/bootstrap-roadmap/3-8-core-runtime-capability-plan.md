@@ -49,6 +49,8 @@
 5.3. Config Manifest (3-7) との連携を確認し、マニフェストに記載された Capability 要件が契約検証へ渡ることを確かめる。
 5.4. `core.collections.ref` capability を `CapabilityRegistry` に登録し、`RefHandle` を介した `collector.effect.rc`/`collector.effect.mut` の監査を `docs/plans/bootstrap-roadmap/3-2-core-collections-plan.md` の 3.2.3 セクションと `docs/guides/runtime-bridges.md` の橋渡し解説に記録することで、Core.Collections と RuntimeBridge の契約整合性を担保する。
 
+> メモ（2027-03-31）: `core.text.audit` Capability を仮登録し、`StageRequirement::Exact(StageId::Stable)` で `effect {audit}` を要求する API（`log_grapheme_stats` 等）を守る体制を整備した。`compiler/rust/runtime/tests/capability_text_audit.rs` の `cargo test capability_text_audit` で検証ルートを固定し、`docs/plans/bootstrap-roadmap/3-3-core-text-unicode-plan.md#43-diagnostics-io-連携42-43週目` から参照している。
+
 ### 6. ドキュメント・サンプル更新（58-59週目）
 **担当領域**: 情報整備
 

@@ -28,3 +28,12 @@ pub(crate) fn take_recorded_effects() -> EffectSet {
         effects
     })
 }
+
+/// 監査ログ連携を行ったことを記録する。`log_grapheme_stats` などで利用する。
+pub(crate) fn record_audit_event() {
+    TEXT_EFFECTS.with(|slot| {
+        let mut current = slot.get();
+        current.mark_audit();
+        slot.set(current);
+    });
+}
