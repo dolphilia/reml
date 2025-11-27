@@ -1,7 +1,7 @@
 use reml_runtime::text::{width_map_with_stats, Str, WidthMode};
 
 const EAST_ASIAN_WIDTH_DATA: &str =
-    include_str!("../../../../third_party/unicode/UCD/EastAsianWidth-15.1.0.txt");
+    include_str!("../../../../tests/data/unicode/UCD/EastAsianWidth-15.1.0.txt");
 
 #[test]
 fn east_asian_width_classes_are_respected() {

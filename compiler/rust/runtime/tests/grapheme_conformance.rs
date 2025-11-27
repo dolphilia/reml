@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use reml_runtime::text::{segment_graphemes, Str};
 
-const GRAPHEME_TEST_PATH: &str = "third_party/unicode/UAX29/GraphemeBreakTest-15.1.0.txt";
+const GRAPHEME_TEST_PATH: &str = "tests/data/unicode/UAX29/GraphemeBreakTest-15.1.0.txt";
 
 #[derive(Debug)]
 struct GraphemeBreakCase {
@@ -12,8 +12,8 @@ struct GraphemeBreakCase {
 }
 
 #[test]
-#[ignore]
-fn grapheme_conformance() {
+#[cfg_attr(not(feature = "unicode_full"), ignore)]
+fn unicode_conformance_grapheme() {
     let data_path = repo_root().join(GRAPHEME_TEST_PATH);
     assert!(
         data_path.is_file(),

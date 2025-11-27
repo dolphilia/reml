@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use reml_runtime::text::{NormalizationForm, String as TextString};
 
-const NORMALIZATION_TEST_PATH: &str = "third_party/unicode/UCD/NormalizationTest-15.1.0.txt";
+const NORMALIZATION_TEST_PATH: &str = "tests/data/unicode/UAX15/NormalizationTest-15.1.0.txt";
 
 #[derive(Debug)]
 struct NormalizationRow {
@@ -15,8 +15,8 @@ struct NormalizationRow {
 }
 
 #[test]
-#[ignore]
-fn normalization_conformance() {
+#[cfg_attr(not(feature = "unicode_full"), ignore)]
+fn unicode_conformance_normalization() {
     let data_path = repo_root().join(NORMALIZATION_TEST_PATH);
     assert!(
         data_path.is_file(),

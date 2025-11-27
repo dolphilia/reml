@@ -45,7 +45,7 @@ struct WidthCorrection {
 static WIDTH_CORRECTIONS: Lazy<Vec<WidthCorrection>> = Lazy::new(parse_width_corrections);
 const WIDTH_CORRECTIONS_CSV: &str = include_str!("data/width_corrections.csv");
 const EAST_ASIAN_WIDTH_DATA: &str =
-    include_str!("../../../../../third_party/unicode/UCD/EastAsianWidth-15.1.0.txt");
+    include_str!("../../../../../tests/data/unicode/UCD/EastAsianWidth-15.1.0.txt");
 #[derive(Debug)]
 struct EastAsianWidthOverride {
     start: u32,

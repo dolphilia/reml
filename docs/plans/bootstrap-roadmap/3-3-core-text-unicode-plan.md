@@ -126,12 +126,12 @@
 2.2. `Grapheme`/`GraphemeSeq` を実装し、`segment_graphemes` の性能と正確性を検証する。  
 実施ステップ:  
 - `unicode-segmentation` など参照ライブラリのアルゴリズムを調査し、採用案を `docs/notes/text-unicode-segmentation-comparison.md` に記録してから実装を着手する。  
-- `segment_graphemes` の双方向イテレータ・ランダムアクセス API を揃え、UAX #29 の公式テストデータを `tests/data/unicode/segment/*` に配置して `cargo test grapheme_conformance` を追加する。  
+- `segment_graphemes` の双方向イテレータ・ランダムアクセス API を揃え、UAX #29 の公式テストデータを `tests/data/unicode/UAX29/` に配置して `cargo test unicode_conformance --features unicode_full` を追加する。  
 - Grapheme ごとの `display_width`/`script` 情報を `Grapheme` 型へ格納し、`log_grapheme_stats` で多言語混在ケースの割合を出力して `reports/spec-audit/ch1/core_text_grapheme_stats.json` に保存する。
 
 #### 2.2.1 実施ログ（2027-03-30）
 - `compiler/rust/runtime/src/text/grapheme.rs` に `ScriptCategory`・`TextDirection`・`ScriptStats` を導入し、`Grapheme` が `script_mix_ratio`/`rtl_ratio`/`primary_script` を計測できるようにした。`GraphemeSeq` は `IntoIterator`（`DoubleEndedIterator`）と `byte_offset_at`/`grapheme_at_byte_offset` を公開し、Diagnostics が書記素境界をランダムアクセス可能になった。
-- UAX #29 rev.40 の GraphemeBreakTest データを `third_party/unicode/UAX29/GraphemeBreakTest-15.1.0.txt` として同梱し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml grapheme_conformance -- --ignored` で互換性をチェックする回帰テストを新設。投入履歴を `docs/notes/unicode-upgrade-log.md` に記録した。
+- UAX #29 rev.40 の GraphemeBreakTest データを `tests/data/unicode/UAX29/GraphemeBreakTest-15.1.0.txt` として同梱し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml unicode_conformance --features unicode_full` で互換性をチェックする回帰テストを新設。投入履歴を `docs/notes/unicode-upgrade-log.md` に記録した。
 - `text_internal_cache` テストを再実行し、`reports/spec-audit/ch1/core_text_grapheme_stats.json` に `primary_script`・`script_mix_ratio`・`rtl_ratio` を追記。KPI `text.grapheme.script_mix_ratio` を `0-3-audit-and-metrics.md` へ登録し、UC-02 ケースで 0.56/0.43 を達成したことをログ化した。
 - `tooling/ci/collect-iterator-audit-metrics.py` に `--check script_mix` オプションを追加し、CI で UC-02 の `script_mix_ratio >= 0.55` / `rtl_ratio >= 0.4` を自動ゲートできるようにした。
 
@@ -171,13 +171,13 @@
 
 3.1. NFC/NFD/NFKC/NFKD 正規化 API を実装し、ICU 互換テストベクトルで検証する。  
 実施ステップ:  
-- Unicode コンソーシアム提供のテストデータ (`NormalizationTest.txt`) を `third_party/unicode/` に同期し、バージョン番号を `docs/notes/unicode-upgrade-log.md` に記録する。  
-- 正規化 API ごとに `Result<Text, UnicodeError>` の戻り値を固定し、`cargo test normalization_conformance -- --ignored` で大規模データを検証するジョブを CI に追加する。  
+- Unicode コンソーシアム提供のテストデータ (`NormalizationTest.txt`) を `tests/data/unicode/UAX15/` に同期し、バージョン番号を `docs/notes/unicode-upgrade-log.md` に記録する。  
+- 正規化 API ごとに `Result<Text, UnicodeError>` の戻り値を固定し、`cargo test unicode_conformance --features unicode_full` で大規模データを検証するジョブを CI に追加する。  
 - 正規化過程で `effect {mem}` が発生する箇所にメトリクスを埋め込み、`0-3-audit-and-metrics.md` へ「正規化コスト (MB/s)」を新規 KPI として追記する。
 
 #### 3.1.1 実施ログ（2025-11-26）
-- `third_party/unicode/UCD/NormalizationTest-15.1.0.txt` を追加し、`docs/notes/unicode-upgrade-log.md#履歴` に同期。`docs/plans/bootstrap-roadmap/checklists/unicode-conformance-checklist.md` ではデータソースと実行手順（`cargo test --manifest-path compiler/rust/runtime/Cargo.toml normalization_conformance -- --ignored`）を更新し、Nightly で全ベクタを検証する体制を整えた。  
-- `compiler/rust/runtime/tests/normalization_conformance.rs` を実装し、UAX #15 に記載された c1〜c5 の等式（NFC/NFD/NFKC/NFKD）をすべて検証できるようにした。テストは 1 行ごとに 20 件の変換を行い、失敗時は行番号と違反した式を報告する。  
+- `tests/data/unicode/UAX15/NormalizationTest-15.1.0.txt` を追加し、`docs/notes/unicode-upgrade-log.md#履歴` に同期。`docs/plans/bootstrap-roadmap/checklists/unicode-conformance-checklist.md` ではデータソースと実行手順（`cargo test --manifest-path compiler/rust/runtime/Cargo.toml unicode_conformance --features unicode_full`）を更新し、Nightly で全ベクタを検証する体制を整えた。  
+- `compiler/rust/runtime/tests/normalization_conformance.rs` を実装し、UAX #15 に記載された c1〜c5 の等式（NFC/NFD/NFKC/NFKD）をすべて検証できるようにした。テストは 1 行ごとに 20 件の変換を行い、失敗時は行番号と違反した式を報告する（`unicode_conformance_normalization`）。  
 - `compiler/rust/runtime/src/text/normalize.rs` の `normalize` API を `effects::record_mem_copy(len)` 付きで再実装し、既に正規化済みの入力はゼロコピーで即返却、未正規化の入力はフォーム別イテレータで変換した上で `effect {mem}` を打刻するようにした。  
 - 新しいメトリクス `text.normalize.mb_per_s` を `reports/text-normalization-metrics.json` に記録する前提で `0-3-audit-and-metrics.md` を更新し、`cargo run --manifest-path compiler/rust/runtime/Cargo.toml --example text_normalization_metrics -- --output reports/text-normalization-metrics.json` → `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario normalization_conformance --text-normalization-source reports/text-normalization-metrics.json --require-success` の流れを Phase3 `phase3-core-text` ジョブに組み込む計画を追記した。
 
@@ -204,7 +204,7 @@
 
 #### 3.2.4 East Asian Width 補正と検証（2027-03-30）
 - Emoji/Regional 指標の幅を CSV で管理するため `compiler/rust/runtime/src/text/data/width_corrections.csv` を追加し、`once_cell::sync::Lazy` で読み込んだ値を `WidthMode::EmojiCompat` の補正に利用。`width_map` が `UnicodeWidthStr::width_cjk` ベースで `WidthCorrection` を参照するよう再設計し、`docs/notes/text-case-width-gap.md` の Emoji 行を `Closed` に更新した。【F:../../compiler/rust/runtime/src/text/width.rs†L1-L220】
-- Python `unicodedata.east_asian_width` から生成した `third_party/unicode/UCD/EastAsianWidth-15.1.0.txt` をバンドルし、`compiler/rust/runtime/tests/unicode_width_mapping.rs` で W/F/A クラスをフルスキャンするテストを追加。`cargo test --manifest-path compiler/rust/runtime/Cargo.toml unicode_width_mapping` を `UCNF-Width` の検証手段に採用し、`docs/plans/bootstrap-roadmap/checklists/unicode-conformance-checklist.md` を更新した。
+- Python `unicodedata.east_asian_width` から生成した `tests/data/unicode/UCD/EastAsianWidth-15.1.0.txt` をバンドルし、`compiler/rust/runtime/tests/unicode_width_mapping.rs` で W/F/A クラスをフルスキャンするテストを追加。`cargo test --manifest-path compiler/rust/runtime/Cargo.toml unicode_width_mapping` を `UCNF-Width` の検証手段に採用し、`docs/plans/bootstrap-roadmap/checklists/unicode-conformance-checklist.md` を更新した。
 
 3.3. `prepare_identifier` を Parser 仕様 (2-3) と結合するテストを実装し、`UnicodeError` → `ParseError` 変換を確認する。  
 実施ステップ:  
@@ -312,6 +312,11 @@
 - `tests/data/unicode/UAX29` `UAX15` を取得して `THIRD_PARTY_LICENSES.md` にライセンス表を追記し、`cargo test unicode_conformance --features unicode_full` を追加する。  
 - Conformance 失敗時の再現ログを `reports/spec-audit/ch1/unicode_conformance_failures.md` にまとめ、`docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に暫定措置を登録する。  
 - テスト実行結果を `docs/plans/bootstrap-roadmap/checklists/unicode-conformance-checklist.md` に反映し、達成率を `0-3-audit-and-metrics.md` の品質 KPI に追記する。
+
+> 実施ログ（2027-03-31）  
+> - `third_party/unicode/` から UAX #29 / UAX #15 / EastAsianWidth データを `tests/data/unicode/` 配下へ移設し、`tests/data/unicode/README.md` と `THIRD_PARTY_LICENSES.md` に取得元・ライセンスを整理。`docs/THIRD_PARTY_NOTICES.md` の記述も同期した。  
+> - `compiler/rust/runtime/Cargo.toml` に `unicode_full` フィーチャを追加し、`grapheme_conformance` / `normalization_conformance` テストを `unicode_conformance_*` へ改名。`#[cfg_attr(not(feature = "unicode_full"), ignore)]` で通常ビルド負荷を抑えつつ `cargo test unicode_conformance --features unicode_full` で両テストをまとめて実行できるようにした。  
+> - `reports/spec-audit/ch1/unicode_conformance_failures.md` を新設し、2027-03-31 時点のテスト結果（両方 100% 合格）と再現手順を記録。`docs/plans/bootstrap-roadmap/checklists/unicode-conformance-checklist.md`・`0-3-audit-and-metrics.md`・`docs/notes/unicode-upgrade-log.md` を新パス／コマンドで更新した。
 
 6.2. ベンチマーク (正規化・セグメンテーション・TextBuilder) を追加し、Rust 実装の Phase 2 ベンチマーク比 ±15% 以内を目指す。OCaml 実装は設計比較材料として参照するのみとする。  
 実施ステップ:  

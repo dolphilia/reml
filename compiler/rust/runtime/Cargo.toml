@@ -7,6 +7,10 @@ publish = false
 [lib]
 path = "src/lib.rs"
 
+[features]
+default = []
+unicode_full = []
+
 [[bin]]
 name = "text_stream_decode"
 path = "examples/io/text_stream_decode.rs"

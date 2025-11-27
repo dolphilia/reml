@@ -7,7 +7,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{Instant, SystemTime};
 
-const NORMALIZATION_DATASET: &str = "third_party/unicode/UCD/NormalizationTest-15.1.0.txt";
+const NORMALIZATION_DATASET: &str = "tests/data/unicode/UAX15/NormalizationTest-15.1.0.txt";
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut output_path: Option<PathBuf> = None;
