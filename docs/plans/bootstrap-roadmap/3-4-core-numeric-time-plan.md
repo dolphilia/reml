@@ -33,6 +33,39 @@
 - `MetricPoint` → `AuditSink`、`StatisticsError` → `Diagnostic`、`Timestamp` → `IO` の3経路について、参照元ドキュメント（README・Phase3計画・spec脚注）を洗い出し、更新タスクを backlog に分解する。
 - 依存図を `README.md` Phase3 表へリンクさせ、進捗報告フォーマットを `docs/plans/bootstrap-roadmap/3-3-core-text-unicode-plan.md` と合わせる。
 
+#### 1.3.1 依存関係ダイアグラムと参照
+- `docs/plans/bootstrap-roadmap/assets/core-numeric-time-dependency-map.drawio` に `Core.Numeric`/`Core.Time` と `Core.Collections`/`Core.Iter`/`Core.Diagnostics`/`Core.Runtime`/`Core.IO`/`MetricPoint` の依存関係を図示し、API の実装予定ディレクトリと仕様セクションをまとめた。Phase3 `M4`（Numeric / IO & Path）が参照する仕様と Rust 実装パスを視覚的に把握できる。
+- 主要モジュールの対応表:
+
+| モジュール | 仕様参照 | Rust 実装/予定 | Numeric/Time での役割 |
+| --- | --- | --- | --- |
+| Core.Collections | `docs/spec/3-2-core-collections.md` | `compiler/rust/runtime/src/collections/` | List/Map/Vec を通じて統計 API の入力源・結果コンテナを提供 |
+| Core.Iter | `docs/spec/3-1-core-prelude-iteration.md` | `compiler/rust/runtime/src/prelude/iter/` | `IterNumericExt`/`NumericCollector` の土台となり効果タグを共有 |
+| Core.Diagnostics | `docs/spec/3-6-core-diagnostics-audit.md` | `compiler/rust/runtime/src/prelude/ensure.rs` + `diagnostics/metric_point.rs`（予定） | `StatisticsError`/`TimeError` を `Diagnostic`・`AuditEnvelope` へ変換 |
+| Core.Runtime Capability | `docs/spec/3-8-core-runtime-capability.md` | `compiler/rust/runtime/src/registry.rs`, `stage.rs` | `Numeric`/`Time` API の `StageRequirement`・Capability 検証 (`time.*`, `metrics.emit`) |
+| MetricPoint/AuditSink | `docs/spec/3-6-core-diagnostics-audit.md` §4 | `compiler/rust/runtime/src/diagnostics/metric_point.rs`（予定） | `effect {audit}` を打刻し `AuditEnvelope` へメトリクスを送出 |
+| Core.IO / Env | `docs/spec/3-5-core-io-path.md` | `compiler/rust/runtime/src/io/` + adapter | `Timestamp`/`Duration`/`Timezone` が利用するクロック・ロケール情報 |
+
+#### 1.3.2 MetricPoint → AuditSink 連携バックログ
+- 仕様 `docs/spec/3-4-core-numeric-time.md` §4 と `docs/spec/3-6-core-diagnostics-audit.md` §4 を突き合わせ、`MetricPoint`/`IntoMetricValue`/`emit_metric` が `effect {audit}` を記録した上で `AuditSink` (`AuditEnvelope.metadata.metric_point.*`) に連携する経路を確立する必要がある。
+- KPI と監査ログの観測位置は `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の Phase3 指標へ `numeric.metrics.emit_success_rate` / `numeric.metrics.audit_ingest_latency_ns` を追加する形で追跡する。
+- `README.md#core-numeric--time-進捗` と `docs/notes/core-numeric-time-gap-log.md`（2025-12-01「監査連携」行）にタスクを登録済み。対応内容: `MetricPoint` 実装、`collect-iterator-audit-metrics.py --section numeric_time --scenario emit_metric` の CI 化、Phase3 Self-Host (`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` M4 行) からの参照更新。
+
+#### 1.3.3 StatisticsError → Diagnostic 連携バックログ
+- `docs/spec/3-4-core-numeric-time.md` §2（統計・データ品質）と `docs/spec/3-7-core-config-data.md` §2 のサンプルでは `StatisticsError`/`NumericError` が `Diagnostic` に昇格し、`column`/`aggregation`/`audit_id` メタデータを必須とする。現状 Rust 実装には `StatisticsErrorKind` も `IntoDiagnostic` も存在せず、Config 章・Diagnostics 章とリンクしていない。
+- 今後実装する `compiler/rust/runtime/src/numeric/error.rs` → `Core.Diagnostics` ブリッジでは、`EffectSet`/`CollectorEffectMarkers` の記録順序と `AuditEnvelope.metadata.numeric.*` のフィールド設計をまとめる必要がある。
+- `docs/notes/core-numeric-time-gap-log.md`（2025-12-01「診断連携」行）でバックログを管理し、`README.md#core-numeric--time-進捗` および `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` M4 行から参照できるようにした。`scripts/validate-diagnostic-json.sh --suite numeric` の追加もこのタスクに含まれる。
+
+#### 1.3.4 Timestamp → IO 連携バックログ
+- 時間 API (`docs/spec/3-4-core-numeric-time.md` §3) は `Core.IO` (`docs/spec/3-5-core-io-path.md`) と `Core.Runtime` Capability (`time.now`, `time.sleep`, `timezone.resolve`) に依存する。Rust 実装では `compiler/rust/runtime/src/io/` の `Env` アダプタと `runtime/src/registry.rs` を跨ぐ Stage 検証が未定義で、`Timestamp`/`Duration`/`Timezone` が `effect {time}` や `CapabilityStage::{Exact,AtLeast}` を記録できていない。
+- `docs/notes/core-numeric-time-gap-log.md`（2025-12-01「IO 連携」行）で `Core.Time` ↔ `Core.IO` の作業と `timezone`/`Env::platform()` 参照を追跡する。`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` の `M4: Numeric / IO & Path` 行へ依存図リンクを張り、IO 章と Time 章の更新が同期できるよう README と本計画書の両方で参照ポイントを明示した。
+- `tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario clock_accuracy`（新設予定）と `reports/spec-audit/ch3/time_clock-*.json` を使い、`Timestamp → IO` 経路の KPI (`time.syscall.latency_ns`, `time.timezone.lookup_success_rate`) を `0-3-audit-and-metrics.md` に登録する。
+
+> 進行ログ（Phase3 W44）  
+> - `docs/plans/bootstrap-roadmap/assets/core-numeric-time-dependency-map.drawio` を追加し、`Core.Collections/Core.Iter/Core.Diagnostics/Core.Runtime/Core.IO` と `Core.Numeric/Core.Time` の依存関係・仕様参照・実装パスを一覧化した。README（`README.md#core-numeric--time-進捗`）と Phase3 Self-Host (`docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` M4 行) から参照できるようリンク付け済み。  
+> - `MetricPoint → AuditSink`、`StatisticsError → Diagnostic`、`Timestamp → IO` の 3 経路について `docs/notes/core-numeric-time-gap-log.md` に 2025-12-01 付けでバックログを登録し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と README から追跡できるよう整理した。  
+> - `README.md#core-numeric--time-進捗` セクションを新設し、本計画書 §1.3 の進捗と依存図を Phase3 全体のロードマップへ共有（`Core.Collections`/`Core.Text` セクションと同一フォーマット）した。
+
 ### 2. 数値トレイト・ユーティリティ実装（44-45週目）
 **担当領域**: 基本演算
 
