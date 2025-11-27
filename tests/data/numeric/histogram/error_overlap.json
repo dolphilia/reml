@@ -1,0 +1,63 @@
+{
+  "diagnostics": [
+    {
+      "schema_version": "2.0.0-draft",
+      "message": "Histogram bucket `latency.p95` overlaps with `latency.p50`",
+      "severity": "error",
+      "domain": "runtime",
+      "timestamp": "1970-01-01T00:00:00Z",
+      "code": "data.stats.invalid_bucket",
+      "codes": [
+        "data.stats.invalid_bucket",
+        "core.numeric.statistics.invalid_parameter"
+      ],
+      "primary": {
+        "file": "tests/data/numeric/histogram/sample.reml",
+        "start_line": 12,
+        "start_col": 2,
+        "end_line": 12,
+        "end_col": 18
+      },
+      "audit_metadata": {
+        "numeric.statistics.kind": "invalid_parameter",
+        "numeric.statistics.bucket_index": 1,
+        "numeric.statistics.bucket_label": "latency.p95",
+        "numeric.statistics.rule": "H-03",
+        "effect.required_capabilities": [],
+        "effect.actual_capabilities": []
+      },
+      "audit": {
+        "metadata": {
+          "numeric.statistics.kind": "invalid_parameter",
+          "numeric.statistics.bucket_index": 1,
+          "numeric.statistics.bucket_label": "latency.p95",
+          "numeric.statistics.rule": "H-03",
+          "effect.required_capabilities": [],
+          "effect.actual_capabilities": []
+        },
+        "audit_id": null,
+        "change_set": null,
+        "capability": null
+      },
+      "extensions": {
+        "numeric.statistics": {
+          "kind": "invalid_parameter",
+          "bucket_index": 1,
+          "bucket_label": "latency.p95",
+          "violated_rule": "H-03"
+        },
+        "effects": {
+          "required_capabilities": [],
+          "actual_capabilities": []
+        },
+        "diagnostic.v2": {
+          "timestamp": "1970-01-01T00:00:00Z",
+          "codes": [
+            "data.stats.invalid_bucket",
+            "core.numeric.statistics.invalid_parameter"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -86,6 +86,12 @@
 - `compiler/rust/runtime/src/numeric/histogram.rs` を追加し、`Result<List<HistogramBucketState>, Diagnostic>` を返す実装と `IntoDiagnostic` 変換を定義する。
 - `tests/data/numeric/histogram/*.json` に正常/異常ケースを揃え、`scripts/validate-diagnostic-json.sh --pattern numeric.histogram` を CI ゲートへ追加する。
 
+> 進行ログ（Phase3 W45, 2.2）  
+> - `docs/plans/bootstrap-roadmap/assets/histogram-error-matrix.md` を新設し、`H-01`〜`H-07` の検証ルールを `StatisticsErrorKind`/診断コードにマッピング。`Core.Config` §4.8 との整合を表で追跡できるようにした。  
+> - `compiler/rust/runtime/src/numeric/error.rs` と `compiler/rust/runtime/src/numeric/histogram.rs` を追加し、`StatisticsError`→`GuardDiagnostic` 変換・`HistogramBucket`/`HistogramBucketState`・`histogram` 本体・単体テストを PoC 実装。`cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core-numeric` で検証済み。  
+> - `tests/data/numeric/histogram/{success_basic,error_overlap}.json` を追加し、`scripts/validate-diagnostic-json.sh --pattern numeric.histogram` で `diagnostic-v2` スキーマとメタデータ拡張（`numeric.statistics.*`, `effects.*`）をバリデートできるようにした。  
+> - `docs/plans/bootstrap-roadmap/assets/core-numeric-time-api-diff.csv` の `HistogramBucketState`/`histogram`/`StatisticsError*` 行を `PoC` へ更新し、`README.md#core-numeric--time-進捗` と `docs/notes/core-numeric-time-gap-log.md` に進行状況をリンクさせた。
+
 2.3. 統計関数の数値安定性を確認し、再現性のあるベンチマークを追加する。  
 実施ステップ:
 - `docs/notes/core-numeric-stability.md` を作成し、`Kahan summation`・`Welford` 法・`Horvitz-Thompson` (回帰) の採用理由と代替案を明記する。

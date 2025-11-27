@@ -119,6 +119,8 @@ if [[ "${#TARGET_ARGS[@]}" -eq 0 && "${#PATTERNS[@]}" -gt 0 ]]; then
     pattern_lower="$(printf '%s' "$raw_pattern" | tr '[:upper:]' '[:lower:]')"
     if [[ "$pattern_lower" == *"text.grapheme_stats"* ]]; then
       TARGETS+=("$ROOT_DIR/reports/spec-audit/ch1/text_grapheme_stats.audit.jsonl")
+    elif [[ "$pattern_lower" == *"numeric.histogram"* ]]; then
+      TARGETS+=("$ROOT_DIR/tests/data/numeric/histogram")
     fi
   done
 fi
@@ -141,7 +143,9 @@ matches_patterns() {
   for raw in "${PATTERNS[@]}"; do
     local pattern_lower
     pattern_lower="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')"
-    if [[ "$path_lower" == *"$pattern_lower"* ]]; then
+    local normalized_pattern="${pattern_lower//./\\/}"
+    normalized_pattern="${normalized_pattern//\\/}"
+    if [[ "$path_lower" == *"$pattern_lower"* || "$path_lower" == *"$normalized_pattern"* ]]; then
       return 0
     fi
   done
@@ -866,7 +870,6 @@ if not found_rc:
 if not found_cell or not found_rc:
     sys.exit(1)
 PY
-    then
       EXIT_CODE=1
     fi
   fi
@@ -925,7 +928,6 @@ for path in paths:
     if not any(contains_schema_diff(entry) for entry in entries):
         raise RuntimeError(f"{path}: schema_diff metadata が見つかりません")
 PY
-    then
       EXIT_CODE=1
     fi
   fi

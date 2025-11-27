@@ -2,10 +2,16 @@
 //! トレイトと基本統計ユーティリティ。
 //! 仕様との整合が最優先であり、現時点では浮動小数点型を中心に提供する。
 
+pub mod error;
+pub mod histogram;
+
 use std::cmp::Ordering;
 use std::ops::{Add, Div, Mul, Sub};
 
 use crate::prelude::iter::Iter;
+
+pub use error::{StatisticsError, StatisticsErrorKind};
+pub use histogram::{histogram, HistogramBucket, HistogramBucketState};
 
 /// Core.Numeric の基礎トレイト。
 pub trait Numeric: Copy + PartialOrd {
