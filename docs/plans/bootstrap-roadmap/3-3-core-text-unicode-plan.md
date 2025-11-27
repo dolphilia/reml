@@ -278,6 +278,21 @@
 - ガイド更新時に `README.md` と `docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md` のリンクを見直し、相互参照が切れていないか `rg "../"` で検証する。  
 - 更新結果を `docs/notes/docs-update-log.md` に記載し、レビュー観点（エンコード別注意点）を `docs/plans/bootstrap-roadmap/checklists/doc-sync-text.md` で追跡する。
 
+#### 5.1 実施ログ（2027-03-30）
+- `examples/core-text/text_unicode.reml` を追加し、Bytes→Str→String 正規化・`GraphemeSeq`・`TextBuilder`・`log_grapheme_stats`・`decode_stream` の各 API を 1 つのファイルに集約。`expected/text_unicode.{tokens,grapheme_stats,stream_decode}.golden` を生成して、Phase 3 後続タスクが CLI 未整備でも期待挙動を参照できるようにした。  
+- `cargo run --manifest-path compiler/rust/runtime/Cargo.toml --bin text_stream_decode -- --input tests/data/unicode/streaming/sample_input.txt --output examples/core-text/expected/text_unicode.stream_decode.golden` を記録し、`tests/data/unicode/streaming/sample_input.txt` によるストリーミング decode の JSON をゴールデン化。  
+- 仕様本文 §9 に `examples/core-text/text_unicode.reml` を参照する脚注を追記し、`README.md`（ルート／examples）から新サンプルへリンクした。差分は `docs-migrations.log`（2027-03-30 Core Text サンプル）に追記済み。
+
+#### 5.2 実施ログ（2027-03-30）
+- ルート `README.md`・`docs/plans/bootstrap-roadmap/README.md`・`3-0-phase3-self-host.md` に Core.Text 三層モデル完了の記述とハイライトを追加し、`examples/core-text` への導線を整備。  
+- `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に `R-041 Unicode Data Drift` を登録し、`docs/notes/text-unicode-known-issues.md` (TUI-004) へユーザー向け FAQ を追記した。  
+- `docs/plans/bootstrap-roadmap/checklists/doc-sync-text.md` を更新し、DOC-01〜04 のリンク確認と完了状況を `Y / Done` でマーク。更新結果は `docs/notes/docs-update-log.md` に記録。
+
+#### 5.3 実施ログ（2027-03-30）
+- `docs/guides/core-parse-streaming.md` に §10「decode_stream と TextBuilder の連携」を追加し、`TextDecodeOptions` や `log_grapheme_stats` を Streaming Runner から呼び出す手順・CI コマンドを共有。  
+- `docs/guides/ai-integration.md` §6 を拡張し、AI 入出力で `Unicode.normalize`/`prepare_identifier` を必須ステップとして扱う注意事項と `examples/core-text` のゴールデン参照手順を追加。  
+- ガイド改訂に合わせて `docs/plans/bootstrap-roadmap/3-7-core-config-data-plan.md` §6（ドキュメント更新）へ Text/AI ガイドの依存関係を明記し、ルート README のサンプル一覧を再確認した。
+
 ### 6. テスト・ベンチマーク統合（43-44週目）
 **担当領域**: 品質保証
 

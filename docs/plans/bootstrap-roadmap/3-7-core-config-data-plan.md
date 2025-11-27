@@ -51,8 +51,8 @@
 ### 6. ドキュメント・サンプル更新（55-56週目）
 **担当領域**: 情報整備
 
-6.1. 仕様書内の表・サンプルを実装に合わせて更新し、`examples/` に Manifest/Schema 例を追加する。
-6.2. `README.md`/`3-0-phase3-self-host.md` に Config/Data 実装状況を記載し、Phase 4 への連携点をまとめる。
+6.1. 仕様書内の表・サンプルを実装に合わせて更新し、`examples/` に Manifest/Schema 例を追加する（Core.Text ガイド更新時は `docs/guides/core-parse-streaming.md` §10 と整合させる）。
+6.2. `README.md`/`3-0-phase3-self-host.md` に Config/Data 実装状況を記載し、Phase 4 への連携点をまとめる（AI 入力ポリシーの共有は `docs/guides/ai-integration.md` §6 と同期）。
 6.3. `docs/guides/runtime-bridges.md`/`docs/guides/plugin-authoring.md` 等で設定連携の記述を更新する。
 
 ### 7. テスト・CI 統合（56週目）

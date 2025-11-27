@@ -27,3 +27,8 @@
 
 - `reports/spec-audit/ch1/unicode_diagnostics-20270330.json` — `cargo test --manifest-path compiler/rust/frontend/Cargo.toml lexer_unicode_identifier -- --nocapture` 由来の Unicode エラー診断サマリ。`diagnostic.extensions["unicode"]` と `AuditEnvelope.metadata["unicode.*"]` が揃っていること、および `unicode.display_width` が書き出されることを `scripts/validate-diagnostic-json.sh --pattern unicode.display_width reports/spec-audit/ch1/unicode_diagnostics-20270330.json` で検証する。
 - KPI `unicode.diagnostic.display_span` / `unicode.display_width` の達成状況を記録し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` へ転記する。
+
+## 2027-03-30 Core Text Samples
+
+- `reports/spec-audit/ch1/core_text_examples-20270330.md` — `examples/core-text/text_unicode.reml` のゴールデン更新ログ (`text_unicode.tokens`/`text_unicode.grapheme_stats`/`text_unicode.stream_decode`) とコマンド履歴。
+- サンプルは `cargo run --manifest-path compiler/rust/runtime/Cargo.toml --bin text_stream_decode -- --input tests/data/unicode/streaming/sample_input.txt --output examples/core-text/expected/text_unicode.stream_decode.golden` で再現できる。`docs/spec/3-3-core-text-unicode.md` §9 と `docs/plans/bootstrap-roadmap/3-3-core-text-unicode-plan.md` §5 の参照先として利用する。

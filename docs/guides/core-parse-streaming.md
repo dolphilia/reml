@@ -267,3 +267,9 @@ let outcome =
 
 [^exec001-limit]:
     `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` の `EXEC-001` 引き継ぎ項目を参照。Packrat キャッシュ共有、バックプレッシャ自動化、監査ログの Pending/Error 伝送は Phase 2-7 での改善対象。
+
+## 11. `decode_stream` と Grapheme 監査の連携
+
+- `Core.Text.decode_stream` は Phase 3 で `TextDecodeOptions` を通じて BOM/不正シーケンス処理を指定できる。Streaming Runner の `on_chunk` で UTF-8 検証が必要になった場合は `decode_stream` を呼び、戻り値の `String`/`Str` をそのまま `Unicode.segment_graphemes` へ渡す。`log_grapheme_stats` の値は `AuditEnvelope.metadata["text.grapheme_stats"]` と CLI/LSP 診断 (`Diagnostic.extensions["text.grapheme_stats"]`) へ転写し、`text.grapheme.cache_hit` KPI を `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --require-success` で監視する。  
+- Rust runtime には `compiler/rust/runtime/examples/io/text_stream_decode.rs` があり、`cargo run --manifest-path compiler/rust/runtime/Cargo.toml --bin text_stream_decode -- --input tests/data/unicode/streaming/sample_input.txt --output examples/core-text/expected/text_unicode.stream_decode.golden` でストリーミング decode + Grapheme 統計を JSON へ保存できる。CI ではこのゴールデンを `scripts/validate-diagnostic-json.sh --pattern text_stream_decode` の参照として利用する。  
+- `examples/core-text/text_unicode.reml` は `Bytes`→`Str`→`String` の三層モデル、`TextBuilder`, `Unicode.prepare_identifier`, `log_grapheme_stats` を 1 つのシナリオに統合したサンプルであり、`expected/text_unicode.{tokens,grapheme_stats}.golden` に CLI 出力と監査メタデータを保持している。Streaming Runner で `decode_stream` を導入する場合はこのサンプルをベースに自動テストを構築し、`reports/spec-audit/ch1/core_text_examples-YYYYMMDD.md` に実行ログを追加する。

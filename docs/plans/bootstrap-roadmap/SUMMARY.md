@@ -106,6 +106,7 @@ Phase 3 では Rust 版 Reml コンパイラを唯一の実装として標準ラ
 - 仕様に沿った効果タグ・Stage 情報の統合
 - Unicode/IO/Config などプラットフォーム横断 API の整備
 - Diagnostics/Audit/Capability を貫通させた監査トレーサビリティ構築
+- Core.Text サンプル (`examples/core-text/text_unicode.reml` + `expected/text_unicode.*.golden`) が稼働し、`reports/spec-audit/ch1/core_text_examples-YYYYMMDD.md` にストリーミング decode/KPI ログを保存済み
 
 ## Phase 4: 移行完了と運用体制
 

@@ -24,7 +24,12 @@
 - AI 推論へ診断コンテキストを渡す際は `reml diagnose --format json` で `SerializedDiagnostic` JSON を取得し、CI 連携やログ連携で人間可読性を優先する場合は `--format text --no-snippet` を利用する。
 - ストリーミング解析を含むログでは、`stream_meta.*`（`bytes_consumed`, `await_count`, `resume_count`, `backpressure_events` など）を必須フィールドとして収集し、CLI/LSP 双方で同じ RunConfig (`extensions["stream"].stats=true`) を共有する。これにより `collect-iterator-audit-metrics.py --section streaming` の閾値と AI モデルの信頼度判定が一致する。
 
-## 6. 今後のタスク
+## 6. Unicode 正規化ポリシー
+- AI への入力は **常に** `Unicode.normalize(str, NormalizationForm::NFC)` を通過させ、識別子候補は `Unicode.prepare_identifier` を併用する。`examples/core-text/text_unicode.reml` では Bytes→Str→String 正規化、`TextBuilder`、`log_grapheme_stats` をまとめており、`expected/text_unicode.tokens.golden` を差分比較に利用できる。  
+- 文字幅や Grapheme 統計を AI 提案に付与する際は `examples/core-text/expected/text_unicode.grapheme_stats.golden` 相当の JSON を埋め込み、`text.grapheme_stats.cache_hits` が 0 の場合は AI に渡す前段でキャッシュを温める。  
+- ストリーミング decode の AI 前処理は `cargo run --manifest-path compiler/rust/runtime/Cargo.toml --bin text_stream_decode -- --input <file>` を利用し、BOM/Invalid ポリシーをログ化した JSON（`text_unicode.stream_decode.golden`）を LLM へ共有する。`docs/plans/bootstrap-roadmap/3-3-core-text-unicode-plan.md` §5 との整合を保ち、正規化ポリシー逸脱時は `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` の `R-041 Unicode Data Drift` を参照する。
+
+## 7. 今後のタスク
 - セーフティ評価・ログ収集テンプレートの整備。
 - モデル更新時の検証手順。
 

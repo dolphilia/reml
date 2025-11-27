@@ -345,6 +345,8 @@ fn tokenize_doc_comment() -> Parser<Token> =
 - `tokenize_emoji` は `segment_graphemes` と `category().is_emoji()` を利用し、絵文字トークンを抽出。`Option.to_result` により `Diagnostic` へ変換する点で 4.2 の失敗制御と整合。
 - `tokenize_doc_comment` はブロックコメント本文を `GraphemeSeq`→`TextBuilder` で再構築し、幅変換を適用して CLI / LSP 表示に適した文字列へ変換する例。
 
+> **実装サンプル**: `examples/core-text/text_unicode.reml` に上記ロジックをまとめ、`expected/text_unicode.*.golden` で `Token` 列・`log_grapheme_stats`・`decode_stream` の結果を追跡できるようにした。`reports/spec-audit/ch1/core_text_examples-20270330.md` から実行ログを参照できる。
+
 ### 9.1 エンコーディング変換ヘルパ
 
 ```reml

@@ -1,0 +1,90 @@
+use Core;
+use Core.Text;
+use Core.Unicode;
+use Core.Diagnostics;
+use Core.IO;
+
+// Core.Text & Unicode 統合サンプル。
+// docs/spec/3-3-core-text-unicode.md §9「使用例」で紹介している
+// tokenize / Grapheme / TextBuilder の流れを 1 つのモジュールにまとめる。
+
+type Token =
+  | Identifier(name: String)
+  | Number(value: Str)
+  | Emoji(grapheme: Grapheme)
+  | DocComment(text: String);
+
+fn normalize_identifier(bytes: Bytes) -> Result<String, UnicodeError> =
+  // Bytes -> Str -> String の三層変換。NFC で正規化してから返却する。
+  let utf8 = match Bytes.decode_utf8(bytes) {
+    Ok(slice) -> slice,
+    Err(err) -> return Err(err)
+  };
+  Unicode.prepare_identifier(utf8);
+
+fn emoji_token(grapheme: Str) -> Result<Token, UnicodeError> =
+  // GraphemeSeq から最初の絵文字クラスタを抽出する。
+  let seq = GraphemeSeq.new(grapheme);
+  let candidate = Iter.from(seq).find(|g| g.category().is_emoji());
+  match candidate {
+    Some(g) -> Ok(Token::Emoji(g)),
+    None -> Err(UnicodeError::new(UnicodeErrorKind::UnsupportedScalar, grapheme))
+  };
+
+fn doc_comment(body: Str) -> Result<Token, UnicodeError> =
+  // コメント本文を GraphemeSeq -> width_map -> TextBuilder で整形する。
+  let seq = GraphemeSeq.new(body);
+  let mut builder = TextBuilder::builder();
+  for grapheme in Iter.from(seq) {
+    let narrow = Unicode.width_map(grapheme.as_str(), WidthMode::Narrow)?;
+    TextBuilder::push_str(&mut builder, narrow.as_str())?;
+  };
+  let normalized = Unicode.normalize(TextBuilder::finish(builder)?, NormalizationForm::NFC)?;
+  Ok(Token::DocComment(normalized));
+
+fn tokenize_identifier() -> Result<Token, UnicodeError> =
+  let raw = Bytes.from_slice("prep_work_𝑒👩‍💻");
+  normalize_identifier(raw).map(|name| Token::Identifier(name));
+
+fn tokenize_number() -> Token =
+  Token::Number("42.0");
+
+fn tokenize_comment() -> Result<Token, UnicodeError> =
+  doc_comment("/** 設定 : ＡＩ補助 */");
+
+fn unicode_pipeline() -> Result<List<Token>, UnicodeError> =
+  let mut tokens = List.empty();
+  tokens = List.push_back(tokens, tokenize_identifier()?);
+  tokens = List.push_back(tokens, tokenize_number());
+  tokens = List.push_back(tokens, emoji_token("👩‍💻")?);
+  tokens = List.push_back(tokens, tokenize_comment()?);
+  Ok(tokens);
+
+fn emit_stats(tokens: List<Token>) -> Result<(), UnicodeError> =
+  let summary = List.map(tokens, |token|
+    match token {
+      Token::Identifier(name) -> name.as_str(),
+      Token::Number(value) -> value,
+      Token::Emoji(grapheme) -> grapheme.as_str(),
+      Token::DocComment(text) -> text.as_str()
+    }
+  );
+  let joined = Iter.from(summary).join_with(" ");
+  // Grapheme 監査ログを記録し、reports/spec-audit/ch1/core_text_examples-*.md から参照する。
+  Diagnostics.log_grapheme_stats(joined)?;
+  Ok(());
+
+fn sample_decode(path: Str) -> Result<String, UnicodeError> =
+  // TextDecodeOptions を使ったストリーミング decode。
+  let reader = IO.Reader::open(path)?;
+  let options = TextDecodeOptions {
+    bom: BomHandling::Auto,
+    invalid: InvalidSequenceStrategy::Replace,
+    buffer_size: 4096
+  };
+  IO.Text.decode_stream(reader, options);
+
+fn main() -> Result<List<Token>, UnicodeError> =
+  let tokens = unicode_pipeline()?;
+  emit_stats(tokens)?;
+  Ok(tokens);

@@ -90,6 +90,16 @@
 - 関連フェーズ: Phase 2 (2-7, 2-8)
 - 参照: `docs/plans/bootstrap-roadmap/2-7-deferred-remediation.md` §5、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md#0-3-7c-診断ドメイン可視化メトリクス運用2026-12-21-更新`、`reports/audit/dashboard/diagnostics.md`, `reports/audit/phase2-7/diagnostics-domain-20261221.json`
 - 担当: Phase 2-8 Diagnostics/Plugin チーム
+- 登録日: 2027-03-30
+- タイトル: Unicode Data Drift（R-041）
+- カテゴリ: 互換性
+- 詳細: Core.Text/Unicode のサンプル（`examples/core-text/text_unicode.reml`）と `docs/spec/3-3-core-text-unicode.md` のコード例が更新されないまま Unicode データを入れ替えると、AI 連携や Streaming decode で CLI/LSP と異なる正規化結果が生成される。`expected/text_unicode.*.golden` や `reports/spec-audit/ch1/core_text_examples-YYYYMMDD.md` が古い場合、`text.grapheme.cache_hit` KPI と `Unicode::VERSION` が乖離し、`InvalidUtf8` や幅計算の差分が検知できなくなる。
+- 対応案: Unicode バージョン更新時は必ず `cargo run --manifest-path compiler/rust/runtime/Cargo.toml --bin text_stream_decode -- --input tests/data/unicode/streaming/sample_input.txt --output examples/core-text/expected/text_unicode.stream_decode.golden` を再実行し、`examples/core-text/expected/text_unicode.{tokens,grapheme_stats}.golden` を同じコミットで更新する。CI では `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --source examples/core-text/expected/text_unicode.grapheme_stats.golden --require-success` を追加し、逸脱時は `docs/notes/text-unicode-known-issues.md` (TUI-004) に記録する。
+- 期限: 2027-06-30
+- 状態: Monitoring
+- 関連フェーズ: Phase 3 (3-3)
+- 参照: `examples/core-text/README.md`, `docs/guides/core-parse-streaming.md` §11, `docs/guides/ai-integration.md` §6, `reports/spec-audit/ch1/core_text_examples-20270330.md`
+- 担当: Phase 3 Core.Text チーム
 - 登録日: 2025-10-10
 - タイトル: Debian sysroot アーカイブのハッシュ未確定
 - カテゴリ: 互換性
