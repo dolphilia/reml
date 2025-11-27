@@ -25,6 +25,8 @@ const PURE_EFFECTS: EffectLabels = EffectLabels {
     mem_bytes: 0,
     predicate_calls: 0,
     rc_ops: 0,
+    time: false,
+    time_calls: 0,
 };
 
 /// Collector から公開する `Map` 型。

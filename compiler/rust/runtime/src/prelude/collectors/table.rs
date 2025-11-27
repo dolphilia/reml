@@ -23,6 +23,8 @@ const TABLE_EFFECTS: EffectLabels = EffectLabels {
     mem_bytes: 0,
     predicate_calls: 0,
     rc_ops: 0,
+    time: false,
+    time_calls: 0,
 };
 
 pub struct TableCollector<K, V>

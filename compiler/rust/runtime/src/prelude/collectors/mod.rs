@@ -185,6 +185,7 @@ pub struct CollectorEffectMarkers {
     pub reserve: usize,
     pub finish: usize,
     pub cell_mutations: usize,
+    pub time_calls: usize,
 }
 
 impl CollectorEffectMarkers {
@@ -206,6 +207,14 @@ impl CollectorEffectMarkers {
     /// `Cell` の内部可変性操作を記録する。
     pub fn record_cell_op(&mut self) {
         self.cell_mutations = self.cell_mutations.saturating_add(1);
+    }
+
+    /// 時刻取得系 API の呼び出し回数を記録する。
+    pub fn record_time_call(&mut self, calls: usize) {
+        if calls == 0 {
+            return;
+        }
+        self.time_calls = self.time_calls.saturating_add(calls);
     }
 }
 
@@ -282,6 +291,7 @@ impl CollectorAuditTrail {
             "transfer".into(),
             Value::Bool(self.effects.transfer),
         );
+        effects.insert("time".into(), Value::Bool(self.effects.time));
         effects.insert(
             "predicate_calls".into(),
             Value::Number(Number::from(self.effects.predicate_calls as u64)),
@@ -291,6 +301,10 @@ impl CollectorAuditTrail {
             Value::Number(Number::from(self.effects.mem_bytes as u64)),
         );
         effects.insert("io".into(), Value::Bool(self.effects.io));
+        effects.insert(
+            "time_calls".into(),
+            Value::Number(Number::from(self.effects.time_calls as u64)),
+        );
         obj.insert("effects".into(), Value::Object(effects));
 
         let mut markers = JsonObject::new();
@@ -305,6 +319,10 @@ impl CollectorAuditTrail {
         markers.insert(
             "finish".into(),
             Value::Number(Number::from(self.markers.finish as u64)),
+        );
+        markers.insert(
+            "time_calls".into(),
+            Value::Number(Number::from(self.effects.time_calls as u64)),
         );
         obj.insert("markers".into(), Value::Object(markers));
         obj
@@ -392,6 +410,10 @@ impl CollectorAuditTrail {
             Value::Bool(self.effects.io),
         );
         metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.time"),
+            Value::Bool(self.effects.time),
+        );
+        metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}effect.mem_reservation"),
             Value::Number(Number::from(self.markers.mem_reservation as u64)),
         );
@@ -406,6 +428,10 @@ impl CollectorAuditTrail {
         metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}effect.cell_mutations"),
             Value::Number(Number::from(self.markers.cell_mutations as u64)),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.time_calls"),
+            Value::Number(Number::from(self.effects.time_calls as u64)),
         );
         append_text_metadata(&mut metadata);
         metadata

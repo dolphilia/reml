@@ -740,6 +740,7 @@ pub struct EffectSet {
     mem_bytes: usize,
     predicate_calls: usize,
     rc_ops: usize,
+    time_calls: usize,
 }
 
 impl EffectSet {
@@ -753,12 +754,14 @@ impl EffectSet {
     const IO_BIT: u16 = 0b1000_0000;
     const TRANSFER_BIT: u16 = 0b1_0000_0000;
     const UNICODE_BIT: u16 = 0b10_0000_0000;
+    const TIME_BIT: u16 = 0b100_0000_0000;
 
     pub const PURE: Self = Self {
         bits: 0,
         mem_bytes: 0,
         predicate_calls: 0,
         rc_ops: 0,
+        time_calls: 0,
     };
 
     pub fn mark_mut(&mut self) {
@@ -806,6 +809,10 @@ impl EffectSet {
         self.bits |= Self::UNICODE_BIT;
     }
 
+    pub fn mark_time(&mut self) {
+        self.bits |= Self::TIME_BIT;
+    }
+
     pub fn record_predicate_call(&mut self) {
         self.predicate_calls = self.predicate_calls.saturating_add(1);
     }
@@ -822,6 +829,18 @@ impl EffectSet {
     /// 複数の参照カウント操作を記録する。
     pub fn record_rc_ops(&mut self, ops: usize) {
         self.rc_ops = self.rc_ops.saturating_add(ops);
+    }
+
+    pub fn record_time_calls(&mut self, calls: usize) {
+        if calls == 0 {
+            return;
+        }
+        self.time_calls = self.time_calls.saturating_add(calls);
+        self.mark_time();
+    }
+
+    pub fn record_time_call(&mut self) {
+        self.record_time_calls(1);
     }
 
     pub fn with_mut(self) -> Self {
@@ -884,6 +903,7 @@ impl EffectSet {
             mem_bytes: self.mem_bytes.saturating_add(other.mem_bytes),
             predicate_calls: self.predicate_calls.saturating_add(other.predicate_calls),
             rc_ops: self.rc_ops.saturating_add(other.rc_ops),
+            time_calls: self.time_calls.saturating_add(other.time_calls),
         }
     }
 
@@ -919,10 +939,14 @@ impl EffectSet {
         if labels.unicode {
             self.mark_unicode();
         }
+        if labels.time {
+            self.mark_time();
+        }
 
         self.record_mem_bytes(labels.mem_bytes);
         self.record_predicate_calls(labels.predicate_calls);
         self.record_rc_ops(labels.rc_ops);
+        self.record_time_calls(labels.time_calls);
     }
 
     pub fn contains_mut(self) -> bool {
@@ -965,6 +989,10 @@ impl EffectSet {
         self.bits & Self::UNICODE_BIT != 0
     }
 
+    pub fn contains_time(self) -> bool {
+        self.bits & Self::TIME_BIT != 0
+    }
+
     pub fn to_labels(self) -> EffectLabels {
         EffectLabels {
             mem: self.contains_mem(),
@@ -977,9 +1005,11 @@ impl EffectSet {
             unicode: self.contains_unicode(),
             io: self.contains_io(),
             transfer: self.contains_transfer(),
+            time: self.contains_time(),
             mem_bytes: self.mem_bytes,
             predicate_calls: self.predicate_calls,
             rc_ops: self.rc_ops,
+            time_calls: self.time_calls,
         }
     }
 }
@@ -1000,6 +1030,8 @@ pub struct EffectLabels {
     pub mem_bytes: usize,
     pub predicate_calls: usize,
     pub rc_ops: usize,
+    pub time: bool,
+    pub time_calls: usize,
 }
 
 pub(crate) enum IterDriver<T> {

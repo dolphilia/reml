@@ -2999,13 +2999,14 @@ def collect_collector_effect_metrics(
     capability_counts: Dict[str, int] = defaultdict(int)
     kind_counts: Dict[str, int] = defaultdict(int)
     effect_flags: Dict[str, int] = {
-        name: 0 for name in ["mem", "mut", "debug", "async_pending", "audit"]
+        name: 0 for name in ["mem", "mut", "debug", "async_pending", "audit", "time"]
     }
     marker_totals: Dict[str, int] = {
         "mem_reservation": 0,
         "reserve": 0,
         "finish": 0,
         "mem_bytes": 0,
+        "time_calls": 0,
     }
     stage_mismatch = 0
     error_counts: Dict[str, int] = defaultdict(int)

@@ -296,6 +296,8 @@ mod tests {
             mem_bytes: 123,
             predicate_calls: 0,
             rc_ops: 0,
+            time: false,
+            time_calls: 0,
         };
         let schema_diff = SchemaDiff::from_change_set(&change_set, Some(labels));
         assert_eq!(schema_diff.metadata.mem_bytes, 123);

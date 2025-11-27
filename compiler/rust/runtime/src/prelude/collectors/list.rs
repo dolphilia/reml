@@ -25,6 +25,8 @@ const PURE_EFFECTS: EffectLabels = EffectLabels {
     mem_bytes: 0,
     predicate_calls: 0,
     rc_ops: 0,
+    time: false,
+    time_calls: 0,
 };
 
 /// `ListCollector` は `@pure` に従い、Stage 実装を `stable` に固定する。
