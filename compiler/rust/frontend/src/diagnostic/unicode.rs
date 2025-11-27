@@ -247,7 +247,7 @@ fn apply_unicode_metadata(
 }
 
 fn attach_grapheme_stats(metadata: &mut Map<String, Value>, source: &str) {
-    if source.is_empty() {
+    if source.is_empty() || metadata.contains_key("text.grapheme_stats") {
         return;
     }
     let str_ref = UnicodeStr::from(source);

@@ -125,6 +125,7 @@ type IndexCache = {
 
 - `TextBuilder` / `String` / `Bytes` の所有者は `cache_generation` を管理し、`finish` や `into_bytes` で `Vec<u8>` の所有権が移るたびに `generation += 1` する。`GraphemeSeq` は `Str` から借用したときの世代を記録し、一致しない場合は `IndexCache` を破棄して再構築する。  
 - `Unicode::VERSION` が変わった場合、`version_mismatch_evictions += 1` を `log_grapheme_stats` に記録し、すべての `IndexCache` を再計算する。  
+- `GraphemeSeq::stats` は `cache_generation`/`cache_version`/`unicode_version`（`UNICODE_VERSION` を `major.minor.patch` へ整形した文字列）を報告し、`version_mismatch_evictions` とともに `text.grapheme_stats` へ出力する。  
 - `IndexCache` は `Vec<u32>` のみを保持し、元 `Vec<u8>` と共有しないため `unsafe` を必要としない。`GraphemeSeq::stats` では `cache_hits`（`generation`/`version` が一致した場合）と `cache_miss`（再計算時）をカウントし、`collector.effect.text_cache_hits` への転写を許可する。
 
 キャッシュ仕様の詳細は `docs/notes/core-library-outline.md#runtimecachespeccoretext-キャッシュモデル` および `docs/notes/text-unicode-ownership.md` を参照する。
@@ -153,7 +154,7 @@ fn replace(str: Str, pattern: TextPattern, with: Str) -> Result<String, UnicodeE
 | `log_grapheme_stats` | `fn log_grapheme_stats(text: Str, audit: AuditSink) -> Result<(), Diagnostic>` | `effect {audit, unicode}` | 監査ログへ文字幅・脚色率・`cache_hits/cache_miss`・`index_cache.generation` を記録。 |
 
 - `TextDecodeOptions` にはバッファサイズ・BOM 要否・不正バイトハンドリング（`Replace`/`Error`）を定義する。
-- `log_grapheme_stats` は `audit_id` と `change_set` を共通語彙として持ち、Chapter 3.6 で定義する監査モデルに合流する想定。出力キーは `text.grapheme_stats = { length, avg_width, scripts, directionality, cache_hits, cache_miss, generation, version }`。`tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats` が `text.grapheme.cache_hit = cache_hits / (cache_hits + cache_miss)` を算出する。
+- `log_grapheme_stats` は `audit_id` と `change_set` を共通語彙として持ち、Chapter 3.6 で定義する監査モデルに合流する想定。出力キーは `text.grapheme_stats = { length, bytes, total_display_width, avg_width, scripts, directionality, cache_hits, cache_miss, cache_generation, cache_version, unicode_version, version_mismatch_evictions }`。`effects::record_audit_event_with_metadata` を通じて `CollectorAuditTrail` へ自動的に挿入され、Diagnostics/UI が独自に重複計測する必要はない。`tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats` が `text.grapheme.cache_hit = cache_hits / (cache_hits + cache_miss)` を算出する。
 
 ### 5.1 Diagnostic ハイライト統合
 

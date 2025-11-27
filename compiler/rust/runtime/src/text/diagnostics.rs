@@ -21,6 +21,18 @@ pub fn grapheme_stats_metadata(stats: &GraphemeStats) -> JsonMap<String, Value> 
     info.insert("cache_miss".into(), json!(stats.cache_miss));
     info.insert("cache_generation".into(), json!(stats.cache_generation));
     info.insert("cache_version".into(), json!(stats.cache_version));
+    info.insert(
+        "version_mismatch_evictions".into(),
+        json!(stats.version_mismatch_evictions),
+    );
+    info.insert(
+        "unicode_version".into(),
+        Value::String(stats.unicode_version.clone()),
+    );
+    info.insert(
+        "version".into(),
+        Value::String(stats.unicode_version.clone()),
+    );
     let denominator = (stats.cache_hits + stats.cache_miss) as f64;
     if denominator > 0.0 {
         info.insert(

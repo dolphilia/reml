@@ -7,7 +7,10 @@
     "rtl_ratio": 0.0,
     "cache_hits": 1,
     "cache_miss": 0,
-    "generation": 3,
-    "version": "15.1"
+    "cache_generation": 3,
+    "cache_version": 1,
+    "unicode_version": "16.0.0",
+    "version": "16.0.0",
+    "version_mismatch_evictions": 0
   }
 }

@@ -51,6 +51,12 @@
    - `compiler/rust/runtime/tests/text_internal_cache.rs` の UC-01〜03 を `#[ignore]` から段階的に有効化し、生成する `reports/spec-audit/ch1/core_text_grapheme_stats.json` を `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --require-success` で検証。  
    - `docs/spec/3-3-core-text-unicode.md` §4.1 / `docs/notes/text-unicode-ownership.md` にキャッシュ世代と監査ログの相互関係を脚注追加。`docs/plans/bootstrap-roadmap/checklists/unicode-cache-cases.md` をアップデート。
 
+> 実施ログ（2024-04-15）  
+> - `compiler/rust/runtime/src/text/grapheme.rs` に `IndexCacheGeneration` / `IndexCacheVersion` を導入し、`unicode_segmentation::UNICODE_VERSION` と `CACHE_VERSION` の不一致を検出して `version_mismatch_evictions` を計測。`GraphemeStats` へ `cache_generation`/`cache_version`/`unicode_version` を追加し、`reports/spec-audit/ch1/core_text_grapheme_stats.json`・`text_grapheme_stats.audit.jsonl` 双方に保存した。  
+> - `log_grapheme_stats` では `effects::record_audit_event_with_metadata` を通じて `collector.effect.audit` と `text.grapheme_stats.*` を `CollectorAuditTrail` へ直接転写。`compiler/rust/frontend/src/diagnostic/unicode.rs` は既にメタデータが存在する場合に再計測しないよう更新し、監査ログと CLI/LSP 拡張の重複を排除した。  
+> - `compiler/rust/runtime/tests/text_internal_cache.rs` の UC-01/02/03 を常時実行へ切り替え、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml UC_` で 3 ケースが緑化することを確認。実行結果から `reports/spec-audit/ch1/core_text_grapheme_stats.json` / `text_grapheme_stats.audit.jsonl` を再生成し、`tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --text-source reports/spec-audit/ch1/core_text_grapheme_stats.json --require-success --check script_mix` がローカルでゼロ終了することを確認した。  
+> - `docs/plans/bootstrap-roadmap/checklists/unicode-cache-cases.md` を更新し、再現手順の `--ignored` フラグを撤廃して `Status=Green (2024-04-15)` を登録。`docs/spec/3-3-core-text-unicode.md` および `docs/notes/text-unicode-ownership.md` に `unicode_version`/`version_mismatch_evictions` の仕様と監査メタデータの出力形式を追記した。
+
 ## 成果物と受付条件
 - EffectSet/Collector が `transfer` ビットと `text.mem.*` KPI を自動集計できること (`reports/text-mem-metrics.json` の閾値更新)。
 - `decode_stream` が逐次処理＋IO効果を備え、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml text_stream` が改修後仕様をカバーすること。

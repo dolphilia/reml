@@ -4,13 +4,62 @@ use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex, Once};
 
-use unicode_segmentation::{Graphemes, UnicodeSegmentation};
+use unicode_segmentation::{Graphemes, UnicodeSegmentation, UNICODE_VERSION};
 use unicode_width::UnicodeWidthStr;
 
 use super::{effects, Str, UnicodeResult};
 
 const CACHE_VERSION: u32 = 1;
+const UNICODE_VERSION_TUPLE: (u8, u8, u8) = (
+    UNICODE_VERSION.0 as u8,
+    UNICODE_VERSION.1 as u8,
+    UNICODE_VERSION.2 as u8,
+);
 const SCRIPT_BUCKETS: usize = 6;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct IndexCacheVersion {
+    cache_version: u32,
+    unicode_version: (u8, u8, u8),
+}
+
+impl IndexCacheVersion {
+    fn current() -> Self {
+        Self {
+            cache_version: CACHE_VERSION,
+            unicode_version: UNICODE_VERSION_TUPLE,
+        }
+    }
+
+    fn matches(&self) -> bool {
+        self.cache_version == CACHE_VERSION && self.unicode_version == UNICODE_VERSION_TUPLE
+    }
+
+}
+
+#[derive(Debug, Clone, Copy)]
+struct IndexCacheGeneration {
+    id: u32,
+    version: IndexCacheVersion,
+}
+
+impl IndexCacheGeneration {
+    fn new(id: u32) -> Self {
+        Self {
+            id,
+            version: IndexCacheVersion::current(),
+        }
+    }
+}
+
+enum CacheLookup {
+    Hit {
+        offsets: Arc<Vec<usize>>,
+        generation: IndexCacheGeneration,
+    },
+    VersionMismatch,
+    Miss,
+}
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -137,7 +186,7 @@ struct CacheEntry {
     len: usize,
     hash: u64,
     offsets: Arc<Vec<usize>>,
-    generation: u32,
+    generation: IndexCacheGeneration,
 }
 
 static CACHE_INIT: Once = Once::new();
@@ -201,6 +250,9 @@ pub struct GraphemeSeq<'a> {
     cache_hits: usize,
     cache_miss: usize,
     cache_generation: u32,
+    cache_version: u32,
+    unicode_version: (u8, u8, u8),
+    version_mismatch_evictions: usize,
 }
 
 impl<'a> GraphemeSeq<'a> {
@@ -304,7 +356,9 @@ impl<'a> GraphemeSeq<'a> {
             cache_hits: self.cache_hits,
             cache_miss: self.cache_miss,
             cache_generation: self.cache_generation,
-            cache_version: CACHE_VERSION,
+            cache_version: self.cache_version,
+            unicode_version: format_unicode_version(self.unicode_version),
+            version_mismatch_evictions: self.version_mismatch_evictions,
         }
     }
 }
@@ -328,7 +382,7 @@ impl<'a, 'b> IntoIterator for &'b GraphemeSeq<'a> {
 }
 
 /// `log_grapheme_stats` の将来要件を見据えた簡易統計。
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct GraphemeStats {
     pub grapheme_count: usize,
     pub total_bytes: usize,
@@ -341,6 +395,8 @@ pub struct GraphemeStats {
     pub cache_miss: usize,
     pub cache_generation: u32,
     pub cache_version: u32,
+    pub unicode_version: String,
+    pub version_mismatch_evictions: usize,
 }
 
 /// unicode-segmentation + unicode-width を利用した実装。
@@ -348,17 +404,25 @@ pub fn segment_graphemes<'a>(str_ref: &'a Str<'a>) -> UnicodeResult<GraphemeSeq<
     let source = str_ref.as_str();
     let bytes = source.as_bytes();
 
+    let mut version_mismatch_evictions = 0usize;
     let (clusters, offsets, cache_hits, cache_miss, cache_generation) =
-        if let Some((offsets, generation)) = fetch_cached_offsets(bytes) {
-            let clusters = build_clusters_from_offsets(source, offsets.as_ref());
-            let hit_count = offsets.len();
-            (clusters, offsets, hit_count, 0, generation)
-        } else {
-            let (clusters, offsets_vec) = build_clusters_with_offsets(source);
-            let offsets_arc = Arc::new(offsets_vec);
-            let generation = store_cached_offsets(bytes, offsets_arc.clone());
-            let cache_miss = clusters.len();
-            (clusters, offsets_arc, 0, cache_miss, generation)
+        match fetch_cached_offsets(bytes) {
+            CacheLookup::Hit { offsets, generation } => {
+                let clusters = build_clusters_from_offsets(source, offsets.as_ref());
+                let hit_count = offsets.len();
+                (clusters, offsets, hit_count, 0, generation)
+            }
+            CacheLookup::VersionMismatch => {
+                version_mismatch_evictions = 1;
+                let (clusters, offsets, generation) = build_and_store_offsets(source, bytes);
+                let cache_miss = clusters.len();
+                (clusters, offsets, 0, cache_miss, generation)
+            }
+            CacheLookup::Miss => {
+                let (clusters, offsets, generation) = build_and_store_offsets(source, bytes);
+                let cache_miss = clusters.len();
+                (clusters, offsets, 0, cache_miss, generation)
+            }
         };
 
     Ok(GraphemeSeq {
@@ -367,7 +431,10 @@ pub fn segment_graphemes<'a>(str_ref: &'a Str<'a>) -> UnicodeResult<GraphemeSeq<
         total_bytes: source.len(),
         cache_hits,
         cache_miss,
-        cache_generation,
+        cache_generation: cache_generation.id,
+        cache_version: cache_generation.version.cache_version,
+        unicode_version: cache_generation.version.unicode_version,
+        version_mismatch_evictions,
     })
 }
 
@@ -442,7 +509,7 @@ pub fn grapheme_stats(str_ref: &Str<'_>) -> UnicodeResult<GraphemeStats> {
 /// 監査ログへの配線を見据えた計測 API。現状は `GraphemeStats` を返すのみ。
 pub fn log_grapheme_stats(str_ref: &Str<'_>) -> UnicodeResult<GraphemeStats> {
     let stats = grapheme_stats(str_ref)?;
-    effects::record_audit_event();
+    effects::record_audit_event_with_metadata(&stats);
     Ok(stats)
 }
 
@@ -493,6 +560,16 @@ fn build_clusters_from_offsets<'a>(source: &'a str, offsets: &[usize]) -> Vec<Gr
     clusters
 }
 
+fn build_and_store_offsets<'a>(
+    source: &'a str,
+    bytes: &[u8],
+) -> (Vec<Grapheme<'a>>, Arc<Vec<usize>>, IndexCacheGeneration) {
+    let (clusters, offsets_vec) = build_clusters_with_offsets(source);
+    let offsets_arc = Arc::new(offsets_vec);
+    let generation = store_cached_offsets(bytes, offsets_arc.clone());
+    (clusters, offsets_arc, generation)
+}
+
 fn make_grapheme(cluster: &str) -> Grapheme<'_> {
     let display_width = UnicodeWidthStr::width(cluster).max(1);
     let is_emoji = contains_emoji(cluster);
@@ -507,21 +584,34 @@ fn make_grapheme(cluster: &str) -> Grapheme<'_> {
     }
 }
 
-fn fetch_cached_offsets(bytes: &[u8]) -> Option<(Arc<Vec<usize>>, u32)> {
-    let hash = hash_bytes(bytes);
-    let cache = cache_handle();
-    cache
-        .lock()
-        .ok()?
-        .entries
-        .get(&hash)
-        .filter(|entry| entry.len == bytes.len() && entry.hash == hash)
-        .map(|entry| (entry.offsets.clone(), entry.generation))
+fn format_unicode_version(version: (u8, u8, u8)) -> String {
+    format!("{}.{}.{}", version.0, version.1, version.2)
 }
 
-fn store_cached_offsets(bytes: &[u8], offsets: Arc<Vec<usize>>) -> u32 {
+fn fetch_cached_offsets(bytes: &[u8]) -> CacheLookup {
     let hash = hash_bytes(bytes);
-    let generation = CACHE_GENERATION.fetch_add(1, Ordering::Relaxed) + 1;
+    let cache = cache_handle();
+    if let Ok(store) = cache.lock() {
+        if let Some(entry) = store.entries.get(&hash) {
+            if entry.len == bytes.len() && entry.hash == hash {
+                if entry.generation.version.matches() {
+                    return CacheLookup::Hit {
+                        offsets: entry.offsets.clone(),
+                        generation: entry.generation,
+                    };
+                } else {
+                    return CacheLookup::VersionMismatch;
+                }
+            }
+        }
+    }
+    CacheLookup::Miss
+}
+
+fn store_cached_offsets(bytes: &[u8], offsets: Arc<Vec<usize>>) -> IndexCacheGeneration {
+    let hash = hash_bytes(bytes);
+    let next_id = CACHE_GENERATION.fetch_add(1, Ordering::Relaxed) + 1;
+    let generation = IndexCacheGeneration::new(next_id);
     let entry = CacheEntry {
         len: bytes.len(),
         hash,
@@ -587,6 +677,12 @@ mod tests {
         assert!(
             labels.contains_audit(),
             "log_grapheme_stats should mark audit effect"
+        );
+        let metadata = effects::take_audit_metadata_payload()
+            .expect("metadata should exist after log_grapheme_stats");
+        assert!(
+            metadata.contains_key("text.grapheme_stats"),
+            "metadata should contain text.grapheme_stats"
         );
     }
 }

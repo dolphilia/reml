@@ -407,6 +407,7 @@ impl CollectorAuditTrail {
             format!("{COLLECTOR_AUDIT_PREFIX}effect.cell_mutations"),
             Value::Number(Number::from(self.markers.cell_mutations as u64)),
         );
+        append_text_metadata(&mut metadata);
         metadata
     }
 
@@ -710,6 +711,14 @@ impl IntoDiagnostic for CollectError {
                 root
             },
             audit_metadata: metadata,
+        }
+    }
+}
+
+fn append_text_metadata(metadata: &mut JsonObject<String, Value>) {
+    if let Some(extra) = crate::text::take_text_audit_metadata() {
+        for (key, value) in extra {
+            metadata.insert(key, value);
         }
     }
 }

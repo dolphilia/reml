@@ -17,6 +17,7 @@ mod text_string;
 mod width;
 
 use crate::prelude::iter::{EffectLabels, EffectSet};
+use serde_json::{Map as JsonMap, Value};
 
 pub use builder::{builder, TextBuilder};
 pub use bytes::Bytes;
@@ -54,4 +55,14 @@ pub(crate) fn record_text_unicode_event(bytes: usize) {
 
 pub(crate) fn merge_text_effects(effects: EffectSet) {
     effects::merge_effects(effects);
+}
+
+pub(crate) fn take_text_audit_metadata(
+) -> Option<JsonMap<std::string::String, Value>> {
+    effects::take_audit_metadata_payload()
+}
+
+#[doc(hidden)]
+pub fn take_text_audit_metadata_for_tests() {
+    effects::drain_audit_metadata_for_tests();
 }

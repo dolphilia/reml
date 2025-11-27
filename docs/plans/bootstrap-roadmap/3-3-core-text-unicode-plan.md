@@ -66,12 +66,12 @@
 実施ステップ:  
 - `GraphemeSeq` 用の `IndexCache`（コードポイント→書記素クラスタ開始位置）を `RuntimeCacheSpec`（`docs/notes/core-library-outline.md`）と整合させ、キャッシュ無効化条件を図示する。  
 - キャッシュ命中率を収集するため `log_grapheme_stats` に `cache_hits`/`cache_miss` を追加し、`tooling/ci/collect-iterator-audit-metrics.py --section text` で KPI 化する。  
-- `cargo test text_internal_cache -- --ignored` を追加して大規模入力・キャッシュ無効化・多言語ケースを検証し、テストケースごとに `docs/plans/bootstrap-roadmap/checklists/unicode-cache-cases.md` を更新する。
+- `cargo test --manifest-path compiler/rust/runtime/Cargo.toml UC_` 系のケースを追加し、大規模入力・キャッシュ無効化・多言語ケースを検証し、テストケースごとに `docs/plans/bootstrap-roadmap/checklists/unicode-cache-cases.md` を更新する。
 
 > 進行ログ（Phase3 W41）  
 > - `docs/notes/core-library-outline.md#runtimecachespeccoretext-キャッシュモデル` に `RuntimeCacheSpec` を追加し、`IndexCache` の世代管理と `Unicode::VERSION` 不一致時の無効化条件を図示した。  
 > - `docs/spec/3-3-core-text-unicode.md` §4.1.1 / §5 へ `cache_hits`/`cache_miss`/`generation` を含む `log_grapheme_stats` 仕様を追記し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に KPI `text.grapheme.cache_hit` を登録した。  
-> - `docs/plans/bootstrap-roadmap/checklists/unicode-cache-cases.md` に UC-01〜03 の手順 (`cargo test --manifest-path compiler/rust/runtime/Cargo.toml text_internal_cache -- --ignored UC_0X`, `scripts/ci/run_core_text_regressions.sh --case streaming`, `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats`) を明文化し、`reports/spec-audit/ch1/core_text_grapheme_stats.json` への転記要件を定義した。  
+> - `docs/plans/bootstrap-roadmap/checklists/unicode-cache-cases.md` に UC-01〜03 の手順 (`cargo test --manifest-path compiler/rust/runtime/Cargo.toml UC_0X`, `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats`) を明文化し、`reports/spec-audit/ch1/core_text_grapheme_stats.json` への転記要件を定義した。  
 > - KPI 収集スクリプト `python3 tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --text-source reports/spec-audit/ch1/core_text_grapheme_stats.json --output reports/text-grapheme-metrics.json --require-success` を Phase3 `phase3-core-text` ジョブへ組み込み、ローカルでも同コマンドが成功することを確認（`docs/notes/text-unicode-known-issues.md` TUI-003 を参照）。
 
 ### 2. 文字列三層モデル実装（41-42週目）
@@ -95,6 +95,12 @@
 | `TextBuilder` | `push_*` / `finish_with_effects` | `compiler/rust/runtime/src/text/builder.rs`【F:../../compiler/rust/runtime/src/text/builder.rs†L1-L92】 | Implemented（Phase3 PoC） | `EffectSet` を用いた `mem`/`mut` 計測済み。`AuditEnvelope` 連携は 2.3 で実施予定。 |
 
 - CSV では `impl_status=PoC` に切り替えたエントリへ `Note` として参照ソースと既知ギャップ（`effect {mem}`、`UnicodeErrorKind` 等）を明記し、計画との差異をレビュアが追跡できるようにした。
+
+> 進行ログ（Phase3 W42）  
+> - `IndexCacheGeneration` / `IndexCacheVersion` を `compiler/rust/runtime/src/text/grapheme.rs` に追加し、`unicode_segmentation::UNICODE_VERSION` と `CACHE_VERSION` の不一致を検出して `version_mismatch_evictions` をログ化。`text.grapheme_stats` へ `cache_generation`/`cache_version`/`unicode_version` を出力することで `reports/spec-audit/ch1/core_text_grapheme_stats.json` と `text_grapheme_stats.audit.jsonl` の再解析が容易になった。  
+> - `effects::record_audit_event_with_metadata` を導入し、`log_grapheme_stats` が `CollectorAuditTrail` へ `text.grapheme_stats.*` を直接埋め込むよう更新。Diagnostics 側では既にメタデータを受け取っている場合は再計測を省略する分岐を追加した。  
+> - `compiler/rust/runtime/tests/text_internal_cache.rs` の UC-01〜03 を常時実行へ移行し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml UC_` → `tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --text-source reports/spec-audit/ch1/core_text_grapheme_stats.json --require-success --check script_mix` の流れで KPI を判定。`docs/plans/bootstrap-roadmap/checklists/unicode-cache-cases.md` を `Status=Green` に更新した。  
+> - `examples/core-text/expected/text_unicode.grapheme_stats.golden` に `cache_generation`/`cache_version`/`unicode_version`/`version_mismatch_evictions` を追記し、`docs/spec/3-3-core-text-unicode.md` と `docs/notes/text-unicode-ownership.md` に同項目の仕様を明文化した。
 
 #### 2.1.2 効果タグと所有権ポリシーの整理
 - `docs/notes/text-unicode-ownership.md` を 1.2 節と同期し、`Bytes::from_slice`/`Str::to_bytes`/`String::from_str` などコピー経路で `EffectSet::record_mem_bytes(len)` を呼び出すべき箇所を表形式で列挙した。  
@@ -128,6 +134,11 @@
 - UAX #29 rev.40 の GraphemeBreakTest データを `third_party/unicode/UAX29/GraphemeBreakTest-15.1.0.txt` として同梱し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml grapheme_conformance -- --ignored` で互換性をチェックする回帰テストを新設。投入履歴を `docs/notes/unicode-upgrade-log.md` に記録した。
 - `text_internal_cache` テストを再実行し、`reports/spec-audit/ch1/core_text_grapheme_stats.json` に `primary_script`・`script_mix_ratio`・`rtl_ratio` を追記。KPI `text.grapheme.script_mix_ratio` を `0-3-audit-and-metrics.md` へ登録し、UC-02 ケースで 0.56/0.43 を達成したことをログ化した。
 - `tooling/ci/collect-iterator-audit-metrics.py` に `--check script_mix` オプションを追加し、CI で UC-02 の `script_mix_ratio >= 0.55` / `rtl_ratio >= 0.4` を自動ゲートできるようにした。
+
+#### 2.2.2 実施ログ（2024-04-15）
+- `IndexCacheGeneration`/`IndexCacheVersion` を導入し、`log_grapheme_stats` の `GraphemeStats` に `cache_generation`/`cache_version`/`unicode_version`/`version_mismatch_evictions` を追加。`effects::record_audit_event_with_metadata` により `CollectorAuditTrail` へ `text.grapheme_stats.*` が自動出力されるようにした。  
+- `compiler/rust/runtime/tests/text_internal_cache.rs` の UC-01〜03 を通常テストに昇格し、`reports/spec-audit/ch1/core_text_grapheme_stats.json` / `text_grapheme_stats.audit.jsonl` を `cargo test --manifest-path compiler/rust/runtime/Cargo.toml UC_` 実行時に更新。`tooling/ci/collect-iterator-audit-metrics.py --section text --scenario grapheme_stats --require-success --text-source reports/spec-audit/ch1/core_text_grapheme_stats.json --check script_mix` の緑化を確認した。  
+- `examples/core-text/expected/text_unicode.grapheme_stats.golden` を更新し、`collector.effect.audit` と `text.grapheme_stats.unicode_version` / `version_mismatch_evictions` を例示するゴールデンとして Phase3 以降の参照に利用できるようにした。
 
 2.3. `TextBuilder` の構築 API を実装し、`Iter<Grapheme>` との連携をテストする。  
 実施ステップ:  

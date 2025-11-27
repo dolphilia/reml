@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use reml_runtime::text::{
-    clear_grapheme_cache_for_tests, grapheme_stats_metadata, log_grapheme_stats, GraphemeStats,
-    Str, TextBuilder,
+    clear_grapheme_cache_for_tests, grapheme_stats_metadata, log_grapheme_stats,
+    take_text_audit_metadata_for_tests, GraphemeStats, Str, TextBuilder, UnicodeResult,
 };
 use serde::Serialize;
 use serde_json::{json, Map as JsonMap, Value};
@@ -34,6 +34,7 @@ struct CaseMetrics {
     avg_cluster_width: f64,
     emoji_ratio: f64,
     primary_script: &'static str,
+    unicode_version: String,
     script_mix_ratio: f64,
     rtl_ratio: f64,
     cache_hits: usize,
@@ -88,7 +89,6 @@ const CASE_SPECS: &[CaseSpec] = &[
 
 #[allow(non_snake_case)]
 #[test]
-#[ignore]
 fn UC_01_single_locale_initial_generation() {
     let metrics = ensure_report_for_case("UC-01");
     assert_eq!(metrics.cache_hits, 0, "初回生成で cache_hits は 0 のはず");
@@ -101,7 +101,6 @@ fn UC_01_single_locale_initial_generation() {
 
 #[allow(non_snake_case)]
 #[test]
-#[ignore]
 fn UC_02_mixed_locale_cache_hits() {
     let metrics = ensure_report_for_case("UC-02");
     let denominator = (metrics.cache_hits + metrics.cache_miss).max(1) as f64;
@@ -115,7 +114,6 @@ fn UC_02_mixed_locale_cache_hits() {
 
 #[allow(non_snake_case)]
 #[test]
-#[ignore]
 fn UC_03_streaming_builder_zero_miss() {
     let metrics = ensure_report_for_case("UC-03");
     assert_eq!(
@@ -162,11 +160,12 @@ fn run_case(spec: &CaseSpec) -> CaseMetrics {
         avg_cluster_width: stats.avg_width,
         emoji_ratio: stats.emoji_ratio,
         primary_script: stats.scripts.primary.label(),
+        unicode_version: stats.unicode_version.clone(),
         script_mix_ratio: stats.scripts.mix_ratio,
         rtl_ratio: stats.direction.rtl_ratio,
         cache_hits,
         cache_miss,
-        version_mismatch_evictions: 0,
+        version_mismatch_evictions: stats.version_mismatch_evictions,
         cache_generation,
         avg_generation: cache_generation as f64,
         cache_hit_ratio: cache_hits as f64 / cache_denominator,
@@ -177,12 +176,19 @@ fn run_case(spec: &CaseSpec) -> CaseMetrics {
 
 fn gather_stats_for_profile(profile: LocaleProfile, str_ref: &Str<'_>) -> GraphemeStats {
     match profile {
-        LocaleProfile::Single => log_grapheme_stats(str_ref).expect("stats"),
+        LocaleProfile::Single => consume_stats(log_grapheme_stats(str_ref)),
         LocaleProfile::Mixed | LocaleProfile::Streaming => {
             let _ = log_grapheme_stats(str_ref).expect("warm cache");
-            log_grapheme_stats(str_ref).expect("stats (cached)")
+            take_text_audit_metadata_for_tests();
+            consume_stats(log_grapheme_stats(str_ref))
         }
     }
+}
+
+fn consume_stats(result: UnicodeResult<GraphemeStats>) -> GraphemeStats {
+    let stats = result.expect("stats");
+    take_text_audit_metadata_for_tests();
+    stats
 }
 
 fn persist_report(cases: &[CaseMetrics]) {
