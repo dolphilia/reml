@@ -134,6 +134,11 @@
 - `compiler/rust/runtime/tests/iter_numeric_props.rs` で `Iter` + 遅延計算の QuickCheck を実施し、リークや `effect {mem}` の過剰記録がないか検証する。
 - `docs/plans/bootstrap-roadmap/checklists/core-iter-numeric.md` にテストケース・依存条件・責任者を記載し、`Core.Iter` 章との整合を維持する。
 
+> 進行ログ（Phase3 W45, 3.3）  
+- `numeric/iter.rs` を新設し、`rolling_average`（VecDeque ベースの遅延計算）と `z_score` を実装。`numeric/effects.rs` で `effect {mem}` を記録しつつ、`Iter::scan` + `filter_map` で `Iter` 互換の API を提供した。  
+- `NumericCollector` と `Iter::collect_numeric` を追加し、Stage/Audit 情報を `CollectorAuditTrail` へ記録できるようにした。`CollectorKind` に `numeric` を拡張し、Capability ID `core.numeric.collector` を割り当てた。  
+- `compiler/rust/runtime/tests/iter_numeric_props.rs` では固定乱数シーケンスを用いた擬似 property テストでロール平均/ Z スコアを検証し、`take_numeric_effects_snapshot()` によるメモリ効果の記録も固定。`docs/plans/bootstrap-roadmap/checklists/core-iter-numeric.md` にテストケース一覧と再実行コマンドを登録し、`docs/notes/core-numeric-time-gap-log.md`/`core-numeric-time-api-diff.csv` と同期した。
+
 ### 4. 時間・期間 API 実装（45-46週目）
 **担当領域**: 時刻処理
 

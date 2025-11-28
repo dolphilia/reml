@@ -5,6 +5,7 @@
 mod effects;
 pub mod error;
 pub mod histogram;
+mod iter;
 pub mod statistics;
 
 use std::cmp::Ordering;
@@ -14,6 +15,7 @@ use crate::prelude::iter::{EffectLabels, Iter};
 
 pub use error::{StatisticsError, StatisticsErrorKind};
 pub use histogram::{histogram, HistogramBucket, HistogramBucketState};
+pub use iter::{rolling_average, z_score};
 pub use statistics::{correlation, linear_regression, quantiles, LinearModel, QuantilePoint};
 
 /// Core.Numeric の基礎トレイト。

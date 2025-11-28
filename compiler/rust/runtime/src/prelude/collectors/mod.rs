@@ -7,6 +7,7 @@
 
 mod list;
 mod map;
+mod numeric;
 mod set;
 mod string;
 mod table;
@@ -14,6 +15,7 @@ mod vec;
 
 pub use list::{List, ListCollector};
 pub use map::{Map, MapCollector};
+pub use numeric::NumericCollector;
 pub use set::{Set, SetCollector};
 pub use string::{StringCollector, StringError};
 pub use table::{Table, TableCollector};
@@ -471,6 +473,7 @@ pub enum CollectorKind {
     String,
     Table,
     Histogram,
+    Numeric,
     Custom(&'static str),
 }
 
@@ -479,6 +482,7 @@ impl CollectorKind {
     pub fn default_requirement(&self) -> IteratorStageRequirement {
         match self {
             CollectorKind::List | CollectorKind::Set => IteratorStageRequirement::Exact("stable"),
+            CollectorKind::Numeric => IteratorStageRequirement::AtLeast("beta"),
             CollectorKind::Custom(_) => IteratorStageRequirement::AtLeast("beta"),
             _ => IteratorStageRequirement::AtLeast("beta"),
         }
@@ -489,6 +493,7 @@ impl CollectorKind {
         match self {
             CollectorKind::List | CollectorKind::Set => "stable",
             CollectorKind::Histogram => "experimental",
+            CollectorKind::Numeric => "beta",
             CollectorKind::Custom(_) => "unknown",
             _ => "beta",
         }
@@ -504,6 +509,7 @@ impl CollectorKind {
             CollectorKind::String => Some("core.collector.string"),
             CollectorKind::Table => Some("core.collector.table"),
             CollectorKind::Histogram => Some("core.collector.histogram"),
+            CollectorKind::Numeric => Some("core.numeric.collector"),
             CollectorKind::Custom(_) => None,
         }
     }
@@ -518,6 +524,7 @@ impl CollectorKind {
             CollectorKind::String => "string",
             CollectorKind::Table => "table",
             CollectorKind::Histogram => "histogram",
+            CollectorKind::Numeric => "numeric",
             CollectorKind::Custom(_) => "custom",
         }
     }
@@ -532,6 +539,7 @@ impl CollectorKind {
             CollectorKind::String => "StringCollector",
             CollectorKind::Table => "TableCollector",
             CollectorKind::Histogram => "HistogramCollector",
+            CollectorKind::Numeric => "NumericCollector",
             CollectorKind::Custom(name) => name,
         }
     }

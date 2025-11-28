@@ -19,7 +19,7 @@ use std::{
 
 use super::collectors::{
     CollectError, CollectOutcome, Collector, CollectorAuditTrail, List, ListCollector, Map,
-    MapCollector, Set, SetCollector, Table, TableCollector, VecCollector,
+    MapCollector, NumericCollector, Set, SetCollector, Table, TableCollector, VecCollector,
 };
 use crate::collections::mutable::CoreVec;
 use serde::Serialize;
@@ -332,6 +332,14 @@ impl<T> Iterator for IterIntoIterator<T> {
 impl<T> FromIterator<T> for Iter<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iterable: I) -> Self {
         Self::from_list(iterable.into_iter().collect::<Vec<T>>())
+    }
+}
+
+#[cfg(feature = "core_numeric")]
+impl Iter<f64> {
+    /// 数値列を `NumericCollector` で収集するヘルパ。
+    pub fn collect_numeric(self) -> Result<CollectOutcome<CoreVec<f64>>, CollectError> {
+        self.collect_into_collector(NumericCollector::new())
     }
 }
 

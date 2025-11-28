@@ -267,7 +267,7 @@ mod tests {
         assert!((median - 30.0).abs() < 1e-9);
 
         let effects = take_numeric_effects_snapshot();
-        assert!(effects.mem, "quantiles should record effect {mem}");
+        assert!(effects.mem, "quantiles should record effect {{mem}}");
         assert!(
             effects.mem_bytes >= 5 * mem::size_of::<f64>(),
             "mem_bytes should reflect sample allocation"
