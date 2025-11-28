@@ -12,6 +12,8 @@ default = []
 unicode_full = []
 core_numeric = []
 "core-numeric" = ["core_numeric"]
+core_time = []
+"core-time" = ["core_time"]
 
 [[bin]]
 name = "text_stream_decode"

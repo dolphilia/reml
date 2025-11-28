@@ -25,9 +25,7 @@ fn sample_sequence(seed: u64, len: usize) -> Vec<f64> {
     let mut state = seed;
     let mut output = Vec::with_capacity(len);
     for _ in 0..len {
-        state = state
-            .wrapping_mul(1_664_525)
-            .wrapping_add(1_013_904_223);
+        state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
         let fraction = ((state >> 12) & ((1u64 << 52) - 1)) as f64 / (1u64 << 52) as f64;
         output.push(fraction * 20_000.0 - 10_000.0);
     }
@@ -45,7 +43,11 @@ fn rolling_average_matches_manual_samples() {
             let iter = Iter::from_list(values.clone());
             let derived = collect_values(rolling_average(window, iter));
             let expected = manual_rolling_average(&values, window);
-            assert_eq!(derived.len(), expected.len(), "seed={seed}, window={window}");
+            assert_eq!(
+                derived.len(),
+                expected.len(),
+                "seed={seed}, window={window}"
+            );
             for (a, b) in derived.iter().zip(expected.iter()) {
                 assert!(
                     (a - b).abs() < 1e-8,

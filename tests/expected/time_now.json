@@ -1,0 +1,11 @@
+{
+  "scenario": "clock_accuracy",
+  "api": "now",
+  "iterations": 8,
+  "tolerance_ns": 1000000,
+  "notes": [
+    "Used by tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario clock_accuracy",
+    "Each iteration calls Core.Time.now() and records time.syscall.latency_ns for KPI tracking.",
+    "Maintains a deterministic input for verifying effect {time} tags and syscall count aggregation."
+  ]
+}

@@ -148,6 +148,11 @@
 - `EffectSet` に `record_time_call` を追加し、`now`/`monotonic_now`/`sleep` 呼び出し時のシステムコール遅延を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI (`time.syscall.latency_ns`) へ送る。
 - `tests/expected/time_now.json`・`time_sleep.json` を作成し、`tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario clock_accuracy` を実行して再現性を計測する。
 
+> 進行ログ（Phase3 W46, 4.1）  
+> - `compiler/rust/runtime/src/time/{mod.rs,effects.rs,error.rs}` を新設し、`Timestamp`/`Duration`/`SystemClockAdapter`/`TimeError` を Rust Runtime へ追加。`std::time::{SystemTime, Instant}` との変換、`Duration` 正規化、`TimeSyscallMetrics` 集計を実装し `take_time_effects_snapshot()` / `take_time_syscall_metrics()` で `effect {time}` と KPI を観測できるようにした。  
+> - `now`/`monotonic_now`/`sleep` を公開し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core_time` で基本挙動と `effect {time}` 計測テスト（`time::tests::*`）を追加検証した。  
+> - `tests/expected/time_now.json`・`tests/expected/time_sleep.json` に `clock_accuracy` シナリオ用の基準入力を登録。`collect-iterator-audit-metrics.py --section numeric_time --scenario clock_accuracy` はまだ未実装だが、将来の収集スクリプトが KPI (`time.syscall.latency_ns`) を読み取れるようフォーマットと許容誤差を先行で固定した。
+
 4.2. `TimeError`/`TimeFormat`/`Timezone` API を実装し、OS 依存情報を `Capability`/`Env` と連携するテストを作成する。  
 実施ステップ:
 - `compiler/rust/runtime/src/time/error.rs` に `TimeErrorKind` と `IntoDiagnostic` 実装を追加し、`Env::platform()` の情報を `metadata.time.platform` に記録する。

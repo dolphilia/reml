@@ -11,5 +11,7 @@ pub mod prelude;
 pub mod registry;
 pub mod stage;
 pub mod text;
+#[cfg(feature = "core_time")]
+pub mod time;
 
 pub use stage::{StageId, StageRequirement};
