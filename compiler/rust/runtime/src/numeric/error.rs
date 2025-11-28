@@ -4,6 +4,7 @@ use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic
 
 const NUMERIC_DIAGNOSTIC_DOMAIN: &str = "runtime";
 const NUMERIC_DIAGNOSTIC_CODE_BASE: &str = "core.numeric.statistics";
+const NUMERIC_PRECISION_CODE_BASE: &str = "core.numeric.precision";
 
 /// Core.Numeric 統計 API で利用するエラー。
 #[derive(Debug, Clone)]
@@ -247,6 +248,171 @@ impl IntoDiagnostic for StatisticsError {
     }
 }
 
+/// Core.Numeric 精度 API で利用するエラー。
+#[derive(Debug, Clone)]
+pub struct NumericError {
+    pub kind: NumericErrorKind,
+    pub message: String,
+    pub precision_kind: Option<String>,
+    pub precision_scale: Option<u8>,
+    pub precision_digits: Option<u8>,
+    pub value_repr: Option<String>,
+    pub context_code: Option<&'static str>,
+    pub currency_code: Option<String>,
+    pub currency_scale: Option<u8>,
+}
+
+impl NumericError {
+    pub fn invalid_precision(message: impl Into<String>) -> Self {
+        Self::new(NumericErrorKind::InvalidPrecision, message)
+    }
+
+    pub fn unsupported_precision(message: impl Into<String>) -> Self {
+        Self::new(NumericErrorKind::UnsupportedPrecision, message)
+    }
+
+    pub fn conversion_failed(message: impl Into<String>) -> Self {
+        Self::new(NumericErrorKind::ConversionFailed, message)
+    }
+
+    pub fn precision_overflow(message: impl Into<String>) -> Self {
+        Self::new(NumericErrorKind::PrecisionOverflow, message)
+    }
+
+    pub fn unsupported_currency(message: impl Into<String>) -> Self {
+        Self::new(NumericErrorKind::UnsupportedCurrency, message)
+    }
+
+    fn new(kind: NumericErrorKind, message: impl Into<String>) -> Self {
+        Self {
+            kind,
+            message: message.into(),
+            precision_kind: None,
+            precision_scale: None,
+            precision_digits: None,
+            value_repr: None,
+            context_code: None,
+            currency_code: None,
+            currency_scale: None,
+        }
+    }
+
+    pub fn with_precision_kind(mut self, kind: impl Into<String>) -> Self {
+        self.precision_kind = Some(kind.into());
+        self
+    }
+
+    pub fn with_precision_scale(mut self, scale: u8) -> Self {
+        self.precision_scale = Some(scale);
+        self
+    }
+
+    pub fn with_precision_digits(mut self, digits: u8) -> Self {
+        self.precision_digits = Some(digits);
+        self
+    }
+
+    pub fn with_value_repr(mut self, value: impl Into<String>) -> Self {
+        self.value_repr = Some(value.into());
+        self
+    }
+
+    pub fn with_context_code(mut self, code: &'static str) -> Self {
+        self.context_code = Some(code);
+        self
+    }
+
+    pub fn with_currency_code(mut self, code: impl Into<String>) -> Self {
+        self.currency_code = Some(code.into());
+        self
+    }
+
+    pub fn with_currency_scale(mut self, scale: u8) -> Self {
+        self.currency_scale = Some(scale);
+        self
+    }
+}
+
+impl IntoDiagnostic for NumericError {
+    fn into_diagnostic(self) -> GuardDiagnostic {
+        let NumericError {
+            kind,
+            message,
+            precision_kind,
+            precision_scale,
+            precision_digits,
+            value_repr,
+            context_code,
+            currency_code,
+            currency_scale,
+        } = self;
+
+        let code = context_code.unwrap_or_else(|| kind.default_code());
+
+        let mut precision_extensions = Map::new();
+        precision_extensions.insert(
+            "error_kind".into(),
+            Value::String(kind.as_str().into()),
+        );
+        if let Some(kind_label) = precision_kind.as_ref() {
+            precision_extensions.insert(
+                "precision_kind".into(),
+                Value::String(kind_label.clone()),
+            );
+        }
+        if let Some(scale) = precision_scale {
+            precision_extensions.insert("scale".into(), Value::Number(Number::from(scale)));
+        }
+        if let Some(digits) = precision_digits {
+            precision_extensions.insert("precision".into(), Value::Number(Number::from(digits)));
+        }
+        if let Some(value) = value_repr.as_ref() {
+            precision_extensions.insert("value".into(), Value::String(value.clone()));
+        }
+
+        let mut extensions = Map::new();
+        let mut audit_metadata = Map::new();
+        extensions.insert(
+            "numeric.precision".into(),
+            Value::Object(precision_extensions.clone()),
+        );
+        extensions.insert("message".into(), Value::String(message.clone()));
+
+        if currency_code.is_some() || currency_scale.is_some() {
+            let mut finance_extensions = Map::new();
+            if let Some(code) = currency_code.as_ref() {
+                finance_extensions.insert("currency_code".into(), Value::String(code.clone()));
+            }
+            if let Some(scale) = currency_scale {
+                finance_extensions.insert("scale".into(), Value::Number(Number::from(scale)));
+            }
+            extensions.insert(
+                "numeric.finance".into(),
+                Value::Object(finance_extensions.clone()),
+            );
+            for (key, value) in finance_extensions.iter() {
+                audit_metadata.insert(format!("numeric.finance.{key}"), value.clone());
+            }
+        }
+
+        for (key, value) in precision_extensions.iter() {
+            audit_metadata.insert(
+                format!("numeric.precision.{key}"),
+                value.clone(),
+            );
+        }
+
+        GuardDiagnostic {
+            code,
+            domain: NUMERIC_DIAGNOSTIC_DOMAIN,
+            severity: DiagnosticSeverity::Error,
+            message: format!("{NUMERIC_PRECISION_CODE_BASE}: {message}"),
+            extensions,
+            audit_metadata,
+        }
+    }
+}
+
 fn encode_sample_value(value: f64) -> Value {
     if let Some(number) = Number::from_f64(value) {
         Value::Number(number)
@@ -287,6 +453,40 @@ impl StatisticsErrorKind {
             StatisticsErrorKind::NumericalInstability => {
                 "core.numeric.statistics.numerical_instability"
             }
+        }
+    }
+}
+
+/// 精度エラー種別。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NumericErrorKind {
+    InvalidPrecision,
+    UnsupportedPrecision,
+    ConversionFailed,
+    PrecisionOverflow,
+    UnsupportedCurrency,
+}
+
+impl NumericErrorKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            NumericErrorKind::InvalidPrecision => "invalid_precision",
+            NumericErrorKind::UnsupportedPrecision => "unsupported_precision",
+            NumericErrorKind::ConversionFailed => "conversion_failed",
+            NumericErrorKind::PrecisionOverflow => "precision_overflow",
+            NumericErrorKind::UnsupportedCurrency => "unsupported_currency",
+        }
+    }
+
+    fn default_code(&self) -> &'static str {
+        match self {
+            NumericErrorKind::InvalidPrecision => "core.numeric.precision.invalid_precision",
+            NumericErrorKind::UnsupportedPrecision => {
+                "core.numeric.precision.unsupported_precision"
+            }
+            NumericErrorKind::ConversionFailed => "core.numeric.precision.conversion_failed",
+            NumericErrorKind::PrecisionOverflow => "core.numeric.precision.precision_overflow",
+            NumericErrorKind::UnsupportedCurrency => "core.numeric.precision.unsupported_currency",
         }
     }
 }
@@ -385,6 +585,61 @@ mod tests {
                 .get("numeric.statistics.sample_value")
                 .and_then(Value::as_str),
             Some("NaN")
+        );
+    }
+
+    #[test]
+    fn numeric_error_includes_precision_metadata() {
+        let diag = NumericError::invalid_precision("scale cannot exceed precision")
+            .with_precision_kind("decimal")
+            .with_precision_scale(12)
+            .with_precision_digits(8)
+            .with_value_repr("1234.56789")
+            .into_diagnostic();
+
+        let precision_meta = diag
+            .extensions
+            .get("numeric.precision")
+            .and_then(Value::as_object)
+            .expect("precision metadata");
+        assert_eq!(
+            precision_meta.get("precision_kind").and_then(Value::as_str),
+            Some("decimal")
+        );
+        assert_eq!(
+            precision_meta.get("scale").and_then(Value::as_u64),
+            Some(12)
+        );
+        assert_eq!(
+            precision_meta.get("precision").and_then(Value::as_u64),
+            Some(8)
+        );
+        assert_eq!(
+            precision_meta.get("value").and_then(Value::as_str),
+            Some("1234.56789")
+        );
+        assert_eq!(diag.code, "core.numeric.precision.invalid_precision");
+    }
+
+    #[test]
+    fn numeric_error_records_currency_metadata() {
+        let diag = NumericError::unsupported_currency("currency not supported")
+            .with_currency_code("USD")
+            .with_currency_scale(2)
+            .into_diagnostic();
+
+        let finance_meta = diag
+            .extensions
+            .get("numeric.finance")
+            .and_then(Value::as_object)
+            .expect("finance metadata");
+        assert_eq!(
+            finance_meta.get("currency_code").and_then(Value::as_str),
+            Some("USD")
+        );
+        assert_eq!(
+            finance_meta.get("scale").and_then(Value::as_u64),
+            Some(2)
         );
     }
 }

@@ -1,0 +1,38 @@
+{
+  "diagnostics": [
+    {
+      "schema_version": "2.0.0-draft",
+      "message": "unsupported currency code",
+      "severity": "error",
+      "domain": "runtime",
+      "timestamp": "1970-01-01T00:00:00Z",
+      "code": "core.numeric.precision.unsupported_currency",
+      "codes": [
+        "core.numeric.precision.unsupported_currency"
+      ],
+      "primary": {
+        "file": "tests/data/numeric/finance/finance_samples.reml",
+        "start_line": 10,
+        "start_col": 0,
+        "end_line": 12,
+        "end_col": 18
+      },
+      "audit_metadata": {
+        "numeric.precision.error_kind": "unsupported_currency",
+        "numeric.finance.currency_code": "XYZ"
+      },
+      "extensions": {
+        "numeric.precision": {
+          "error_kind": "unsupported_currency"
+        },
+        "numeric.finance": {
+          "currency_code": "XYZ"
+        },
+        "effects": {
+          "required_capabilities": [],
+          "actual_capabilities": []
+        }
+      }
+    }
+  ]
+}

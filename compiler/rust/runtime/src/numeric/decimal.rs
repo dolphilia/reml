@@ -7,7 +7,9 @@
 pub use rust_decimal::Decimal;
 
 #[cfg(feature = "decimal")]
-use super::Numeric;
+use super::{Floating, Numeric};
+#[cfg(feature = "decimal")]
+use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
 
 #[cfg(feature = "decimal")]
 impl Numeric for Decimal {
@@ -36,5 +38,38 @@ impl Numeric for Decimal {
         } else {
             self
         }
+    }
+}
+
+#[cfg(feature = "decimal")]
+impl Floating for Decimal {
+    fn from_usize(value: usize) -> Self {
+        Decimal::from(value as u64)
+    }
+
+    fn try_from_f64(value: f64) -> Option<Self> {
+        Decimal::from_f64(value)
+    }
+
+    fn to_f64(&self) -> f64 {
+        ToPrimitive::to_f64(self).unwrap_or_else(|| {
+            if self.is_sign_negative() {
+                f64::NEG_INFINITY
+            } else {
+                f64::INFINITY
+            }
+        })
+    }
+
+    fn is_nan(&self) -> bool {
+        false
+    }
+
+    fn is_infinite(&self) -> bool {
+        false
+    }
+
+    fn total_cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.cmp(other)
     }
 }

@@ -24,11 +24,17 @@
 | N-1 | `median`/`mode`/`range` の実装 | `compiler/rust/runtime/src/numeric/mod.rs` に API 追加、`Iter` 拡張を更新、`docs/spec/3-4-core-numeric-time.md` §1 の引用を README に反映 | `numeric::tests::median_mode_range`, `reports/spec-audit/ch3/numeric_basic-extended.md` |
 | N-2 | `Decimal`/`BigInt`/`Ratio` 対応 | `Numeric` トレイトを `feature = "decimal"` 等で拡張、`ordered-float` 以外の比較実装を追加、`docs/plans/rust-migration/1-1-ast-and-ir-alignment.md` の Numeric 制約テーブルを更新 | `compiler/rust/runtime/src/numeric/decimal.rs`, `tests/data/numeric/decimal_cases.json` |
 | N-3 | `StatisticsError` の Diagnostics 連携強化 | `StatisticsError::with_tags` と `StatisticsTags` を実装し、`data.stats.*` メタデータを一括付与。`scripts/validate-diagnostic-json.sh --suite numeric` に `tests/data/numeric/decimal_cases.json` を追加してタグ付き診断を検証 | `compiler/rust/runtime/src/numeric/error.rs`, `tests/data/numeric/decimal_cases.json` |
+| N-4 | `Precision`/`NumericError`/丸め API | `compiler/rust/runtime/src/numeric/precision.rs` を新設し、`Precision` 列挙と `with_precision`/`round_to`/`truncate_to` を実装。`NumericError` の `IntoDiagnostic`/`AuditMetadata` を定義し、`scripts/validate-diagnostic-json.sh --suite numeric` に `tests/data/numeric/precision/*.json` を追加する | `compiler/rust/runtime/src/numeric/precision.rs`, `tests/data/numeric/precision/*.json`, `reports/spec-audit/ch3/numeric_precision-*.json` |
+| N-5 | 多倍長型の Iter 連携 | `IterNumericExt` が `Decimal`/`BigRational` で `mean`/`variance` を計算できるよう、`Floating` 依存を見直して代替演算経路を実装。`numeric/effects.rs` で Decimal/Ratio の `effect {mem}` を記録し、`iter_numeric_props.rs` に Decimal ケースを追加 | `compiler/rust/runtime/src/numeric/{mod.rs,effects.rs}`, `compiler/rust/runtime/tests/iter_numeric_props.rs`, `docs/plans/bootstrap-roadmap/assets/core-numeric-time-effects-matrix.md` 更新 |
+| N-6 | 金融 API (`currency_add` 等) | `compiler/rust/runtime/src/numeric/finance.rs` を追加し、`currency_add`/`compound_interest`/`net_present_value` を `Decimal` ベースで実装。`CurrencyCode` 検証と `NumericErrorKind::UnsupportedCurrency` 診断を用意し、`reports/spec-audit/ch3/numeric_finance-*.json` を作成 | `compiler/rust/runtime/src/numeric/finance.rs`, `tests/data/numeric/finance/*.json`, `reports/spec-audit/ch3/numeric_finance-*.json`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` KPI 行 |
 
 ### チェックリスト
 - [x] `IterNumericExt` に `median`/`mode`/`range` を追加し、`core-numeric` feature でビルド。
 - [x] `Decimal` 型（`rust_decimal` 予定）を `Cargo.toml` に追加し、`Numeric` を実装。
 - [x] `scripts/validate-diagnostic-json.sh --suite numeric` が新規 JSON を含めて成功。
+- [x] `Precision`/`NumericError`/丸め API を `numeric/precision.rs` に実装し、`tests/data/numeric/precision/*.json` をゴールデンに追加。
+- [x] `IterNumericExt` の Decimal/Ratio 経路を実装し、`iter_numeric_props.rs` に Decimal ケースを追加。
+- [x] `numeric/finance.rs` と `CurrencyCode` 検証を実装し、`numeric_finance-*.json` を `reports/spec-audit/ch3/` に収集。
 
 ---
 

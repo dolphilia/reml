@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0.0",
+  "cases": [
+    {
+      "name": "unsupported_currency",
+      "audit_pass": true,
+      "source": "tests/data/numeric/finance/unsupported_currency.json",
+      "missing_keys": []
+    }
+  ]
+}

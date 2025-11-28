@@ -9,12 +9,16 @@ pub mod error;
 pub mod histogram;
 mod iter;
 pub mod statistics;
+pub mod precision;
+#[cfg(feature = "decimal")]
+pub mod finance;
 #[cfg(feature = "decimal")]
 pub use decimal::Decimal;
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::mem;
 use std::ops::{Add, Div, Mul, Sub};
 
 #[cfg(feature = "bigint")]
@@ -24,10 +28,13 @@ use num_rational::BigRational;
 
 use crate::prelude::iter::{EffectLabels, Iter};
 
-pub use error::{StatisticsError, StatisticsErrorKind};
+pub use error::{NumericError, NumericErrorKind, StatisticsError, StatisticsErrorKind};
 pub use histogram::{histogram, HistogramBucket, HistogramBucketState};
 pub use iter::{rolling_average, z_score};
 pub use statistics::{correlation, linear_regression, quantiles, LinearModel, QuantilePoint};
+pub use precision::{with_precision, round_to, truncate_to, Precision};
+#[cfg(feature = "decimal")]
+pub use finance::{compound_interest, currency_add, net_present_value, CurrencyCode};
 
 /// Core.Numeric の基礎トレイト。
 pub trait Numeric: PartialOrd + Clone {
@@ -42,23 +49,22 @@ pub trait Numeric: PartialOrd + Clone {
 }
 
 /// `NaN` を含む全順序比較ヘルパ。
-pub trait OrderedFloat: Copy {
-    fn is_nan(self) -> bool;
-    fn is_infinite(self) -> bool;
-    fn total_cmp(self, other: Self) -> Ordering;
-}
-
-/// Core.Numeric のうち、浮動小数点演算を提供する型。
+/// Core.Numeric のうち、統計演算を提供する型。
 pub trait Floating:
     Numeric
-    + OrderedFloat
+    + Clone
+    + PartialOrd
     + Add<Output = Self>
     + Sub<Output = Self>
     + Mul<Output = Self>
     + Div<Output = Self>
 {
-    fn from_f64(value: f64) -> Self;
-    fn to_f64(self) -> f64;
+    fn from_usize(value: usize) -> Self;
+    fn try_from_f64(value: f64) -> Option<Self>;
+    fn to_f64(&self) -> f64;
+    fn is_nan(&self) -> bool;
+    fn is_infinite(&self) -> bool;
+    fn total_cmp(&self, other: &Self) -> Ordering;
 }
 
 /// 線形補間。
@@ -66,7 +72,7 @@ pub fn lerp<T>(start: T, end: T, t: T) -> T
 where
     T: Floating,
 {
-    let span = end - start;
+    let span = end - start.clone();
     start + span * t
 }
 
@@ -80,8 +86,8 @@ where
             (0usize, T::zero()),
             |(count, mean), value| -> Result<_, ()> {
                 let new_count = count + 1;
-                let count_t = T::from_f64(new_count as f64);
-                let delta = value - mean;
+                let count_t = T::from_usize(new_count);
+                let delta = value - mean.clone();
                 let next_mean = mean + delta / count_t;
                 Ok((new_count, next_mean))
             },
@@ -99,15 +105,15 @@ pub fn variance<T>(iter: Iter<T>) -> Option<T>
 where
     T: Floating,
 {
-    let (count, mean, m2) = iter
+    let (count, _mean, m2) = iter
         .try_fold(
             (0usize, T::zero(), T::zero()),
             |(count, mean, m2), value| -> Result<_, ()> {
                 let new_count = count + 1;
-                let count_t = T::from_f64(new_count as f64);
-                let delta = value - mean;
-                let updated_mean = mean + delta / count_t;
-                let delta2 = value - updated_mean;
+                let count_t = T::from_usize(new_count);
+                let delta = value.clone() - mean.clone();
+                let updated_mean = mean + delta.clone() / count_t;
+                let delta2 = value - updated_mean.clone();
                 let updated_m2 = m2 + delta * delta2;
                 Ok((new_count, updated_mean, updated_m2))
             },
@@ -116,7 +122,7 @@ where
     if count < 2 {
         return None;
     }
-    let denom = T::from_f64(count as f64);
+    let denom = T::from_usize(count);
     Some(m2 / denom)
 }
 
@@ -133,33 +139,36 @@ where
         return None;
     }
     if values.len() == 1 {
-        return values.first().copied();
+        return values.first().cloned();
     }
-    values.sort_by(|a, b| (*a).total_cmp(*b));
+    effects::record_mem_copy(values.len().saturating_mul(mem::size_of::<T>()));
+    values.sort_by(|a, b| a.total_cmp(b));
     let p = percentile.clamp(T::zero(), T::one()).to_f64();
     let steps = (values.len() - 1) as f64;
     let rank = p * steps;
     let lower = rank.floor();
     let upper = rank.ceil();
     if lower == upper {
-        return values.get(lower as usize).copied();
+        return values.get(lower as usize).cloned();
     }
-    let lower_value = values[lower as usize];
-    let upper_value = values[upper as usize];
-    let weight = T::from_f64(rank - lower);
-    Some(lower_value + (upper_value - lower_value) * weight)
+    let lower_value = values[lower as usize].clone();
+    let upper_value = values[upper as usize].clone();
+    let weight = T::try_from_f64(rank - lower)?;
+    let span = upper_value.clone() - lower_value.clone();
+    Some(lower_value + span * weight)
 }
 
 /// 中央値（偶数個は lower median）。
 pub fn median<T>(iter: Iter<T>) -> Option<T>
 where
-    T: Numeric + Ord + Clone,
+    T: Numeric + PartialOrd + Clone,
 {
     let mut values: Vec<T> = iter.into_iter().collect();
     if values.is_empty() {
         return None;
     }
-    values.sort();
+    effects::record_mem_copy(values.len().saturating_mul(mem::size_of::<T>()));
+    values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
     let mid = values.len() / 2;
     if values.len() % 2 == 0 {
         values.get(mid - 1).cloned()
@@ -226,7 +235,7 @@ pub trait IterNumericExt<T>: Sized {
         T: Floating;
     fn median(self) -> Option<T>
     where
-        T: Numeric + Ord + Clone;
+        T: Numeric + PartialOrd + Clone;
     fn mode(self) -> Option<T>
     where
         T: Numeric + Eq + Hash + Clone;
@@ -259,7 +268,7 @@ impl<T> IterNumericExt<T> for Iter<T> {
 
     fn median(self) -> Option<T>
     where
-        T: Numeric + Ord + Clone,
+        T: Numeric + PartialOrd + Clone,
     {
         crate::numeric::median(self)
     }
@@ -362,27 +371,33 @@ macro_rules! impl_numeric_for_float {
                 }
             }
 
-            impl OrderedFloat for $ty {
-                fn is_nan(self) -> bool {
-                    <$ty>::is_nan(self)
-                }
-
-                fn is_infinite(self) -> bool {
-                    <$ty>::is_infinite(self)
-                }
-
-                fn total_cmp(self, other: Self) -> Ordering {
-                    <$ty>::total_cmp(&self, &other)
-                }
-            }
-
             impl Floating for $ty {
-                fn from_f64(value: f64) -> Self {
+                fn from_usize(value: usize) -> Self {
                     value as $ty
                 }
 
-                fn to_f64(self) -> f64 {
-                    self as f64
+                fn try_from_f64(value: f64) -> Option<Self> {
+                    if value.is_finite() {
+                        Some(value as $ty)
+                    } else {
+                        None
+                    }
+                }
+
+                fn to_f64(&self) -> f64 {
+                    *self as f64
+                }
+
+                fn is_nan(&self) -> bool {
+                    <$ty>::is_nan(*self)
+                }
+
+                fn is_infinite(&self) -> bool {
+                    <$ty>::is_infinite(*self)
+                }
+
+                fn total_cmp(&self, other: &Self) -> Ordering {
+                    <$ty>::total_cmp(self, other)
                 }
             }
         )*
@@ -487,6 +502,10 @@ pub fn take_numeric_effects_snapshot() -> EffectLabels {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "decimal")]
+    use super::Decimal;
+    #[cfg(feature = "decimal")]
+    use rust_decimal::prelude::FromPrimitive;
 
     fn iter_from_slice(values: &[f64]) -> Iter<f64> {
         Iter::from_list(values.to_vec())
@@ -587,5 +606,54 @@ mod tests {
             <BigRational as Numeric>::clamp(four, half.clone(), two.clone()),
             two
         );
+    }
+
+    #[cfg(feature = "decimal")]
+    #[test]
+    fn decimal_mean_and_variance_support_precision_ops() {
+        let samples = vec![
+            Decimal::new(10, 1),
+            Decimal::new(30, 1),
+            Decimal::new(50, 1),
+            Decimal::new(70, 1),
+        ];
+        let mean_value = mean(Iter::from_list(samples.clone())).expect("mean");
+        assert_eq!(mean_value, Decimal::from(4));
+
+        let variance_value = variance(Iter::from_list(samples)).expect("variance");
+        assert_eq!(variance_value, Decimal::from(5));
+    }
+
+    #[cfg(feature = "decimal")]
+    #[test]
+    fn currency_add_respects_scale_and_validates_code() {
+        let usd = CurrencyCode::from("usd");
+        let amount = currency_add(Decimal::new(12345, 3), Decimal::new(5005, 2), usd).unwrap();
+        assert_eq!(amount, Decimal::new(6240, 2));
+
+        let err = currency_add(
+            Decimal::new(10, 0),
+            Decimal::new(5, 0),
+            CurrencyCode::from("zzz"),
+        )
+        .expect_err("unknown currency");
+        assert_eq!(err.kind, NumericErrorKind::UnsupportedCurrency);
+    }
+
+    #[cfg(feature = "decimal")]
+    #[test]
+    fn compound_interest_and_npv_return_expected_values() {
+        let principal = Decimal::new(1000, 0);
+        let amount = compound_interest(principal, 0.05, 2).expect("compound interest");
+        assert_eq!(amount.round_dp(2), Decimal::from_f64(1102.5).unwrap());
+
+        let cashflows = Iter::from_list(vec![
+            Decimal::new(-1000, 0),
+            Decimal::new(400, 0),
+            Decimal::new(400, 0),
+            Decimal::new(400, 0),
+        ]);
+        let npv = net_present_value(cashflows, 0.1).expect("npv");
+        assert!(npv < Decimal::ZERO);
     }
 }

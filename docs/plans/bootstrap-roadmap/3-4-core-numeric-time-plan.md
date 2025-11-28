@@ -108,6 +108,33 @@
 > - `compiler/rust/runtime/benches/bench_numeric_statistics.rs` を追加し、`cargo bench --manifest-path compiler/rust/runtime/Cargo.toml --features core-numeric --bench bench_numeric_statistics -- --noplot` で実行。`reports/benchmarks/numeric-phase3/phase3-baseline-2025-12-04.json` に平均/分散/百分位の初回ベースラインを保存し、`docs/plans/rust-migration/3-2-benchmark-baseline.md` へスイート行を追記した。  
 > - `tests/data/numeric/instability/histogram_non_finite.json` を登録し、`StatisticsErrorKind::NumericalInstability` (`rule = H-05`) を再現する診断サンプルを `docs/notes/core-numeric-time-gap-log.md` へリンク。JSON には `numeric.statistics.kind = numerical_instability` と `sample_value = NaN` を含み、監査メタデータの確認指針を記載した。
 
+### 2.4. 精度制御・多倍長型・金融 API のフォローアップ（48週目以降）
+**担当領域**: 非浮動小数点サポート拡張
+
+Rust 実装は `Numeric`/`IterNumericExt` を用意したものの、`mean`/`variance`/`percentile` などが `Floating` 制約に依存しており `compiler/rust/runtime/src/numeric/mod.rs` のコメント通り「現時点では浮動小数点型を中心」に留まっている。仕様 §1 および §6 で必須とされる `Decimal`/`Ratio`/`BigInt`、`Precision` 列挙、金融 API をカバーするため、以下のフォローアップを本計画書に組み込む。
+
+1. **Precision/丸め API（仕様 §6.1）**
+   - `Precision`、`NumericError`、`with_precision`、`round_to`、`truncate_to` を `compiler/rust/runtime/src/numeric/precision.rs`（新規）に実装し、`docs/plans/bootstrap-roadmap/assets/core-numeric-time-api-diff.csv` の Missing 行を解消する。
+   - `NumericError` は `StatisticsError` と同じく `IntoDiagnostic`/`AuditMetadata` を実装し、`scripts/validate-diagnostic-json.sh --suite numeric` に `tests/data/numeric/precision/*.json` を追加して丸め失敗のメタデータ (`numeric.precision.*`) を検証する。
+   - 型推論への影響は `docs/plans/rust-migration/1-1-ast-and-ir-alignment.md` の Numeric 制約表へ追記し、`Precision` 属性を `compiler/rust/frontend/tests/type_numeric.rs` のテストケースと同期する。
+
+2. **多倍長型の Iter 連携**
+   - `Decimal`/`BigInt`/`BigRational` で `IterNumericExt::mean` 等を利用できるよう、`Floating` を前提とする演算を `Decimal`（`rust_decimal`）、`BigRational`（`num_rational`）の演算へ切り替えるプランを `docs/plans/bootstrap-roadmap/assets/core-numeric-time-effects-matrix.md` に追記する。
+   - `take_numeric_effects_snapshot()` が Decimal/Ratio でも `effect {mem}` を記録できるよう `numeric/effects.rs` を拡張し、`compiler/rust/runtime/tests/iter_numeric_props.rs` に Decimal 版 property テストを追加する。
+   - `docs/notes/core-numeric-time-gap-log.md` 2025-11-27「精度/金融」エントリを更新し、`IterNumericExt` の適用範囲と KPI (`numeric.precision.round_trip_diff`) を明文化する。
+
+3. **金融 API（仕様 §6.2）**
+   - `compiler/rust/runtime/src/numeric/finance.rs` を新設し、`currency_add`/`compound_interest`/`net_present_value` を `Decimal` ベースで実装する。`CurrencyCode` 検証は `docs/spec/3-7-core-config-data.md` の通貨表に合わせ、`README.md#core-numeric--time-進捗` へ相互参照を追加する。
+   - `NumericErrorKind::UnsupportedCurrency` など金融固有エラーを `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の KPI（`numeric.finance.audit_success_rate` 等）と結び付け、`reports/spec-audit/ch3/numeric_finance-*.json` をゴールデン化する。
+   - `cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features "core-numeric decimal"` と `cargo bench --bench bench_numeric_finance`（新設）を追加し、`reports/benchmarks/numeric-time/` へ金融ユースケースのベースラインを記録する。
+
+> 進行ログ（フォローアップ登録）  
+> - `docs/notes/core-numeric-time-gap-log.md` 2025-11-27 エントリ（精度/金融）を本節のタスクと結び付け、`numeric/precision.rs`・`numeric/finance.rs`・`tests/data/numeric/precision/*.json` を成果物として登録した。  
+> - `docs/plans/bootstrap-roadmap/3-4-core-numeric-time-gap-plan.md` の `N-4`/`N-5` に個別タスクを追記し、`README.md#core-numeric--time-進捗` に decimal/Precision/金融 API の進行を共有する予定。
+> - 2025-12-13: `compiler/rust/runtime/src/numeric/precision.rs` を追加し、`Precision` 列挙・`with_precision`・`round_to`・`truncate_to` を実装。`NumericError`/`NumericErrorKind` を新設し、診断メタデータ `numeric.precision.*` を `tests/data/numeric/precision/*.json` で検証。`cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core-numeric` で precision/rounding の単体テスト (`numeric::precision::tests::*`) を実行済み。  
+> - 2025-12-13: `Floating` トレイトを `Clone`/`PartialOrd` ベースへ再設計し、`Decimal`/`f64` 双方で `mean`/`variance`/`percentile` が動作するよう更新。`effects::record_mem_copy` を `median`/`percentile` へ追加し、`iter_numeric_props.rs` に Decimal ケース (`decimal_median_records_mem_effect`) を挿入。`cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core-numeric` で `IterNumericExt` の Decimal ルートを再検証。
+> - 2025-12-13: `compiler/rust/runtime/src/numeric/finance.rs` を新設し、`CurrencyCode`/`currency_add`/`compound_interest`/`net_present_value` を `Decimal` ベースで実装。`NumericErrorKind::UnsupportedCurrency` を追加し、`tests/data/numeric/finance/unsupported_currency.json` を `scripts/validate-diagnostic-json.sh --suite numeric` に含めて `numeric.finance.*` メタデータを検証。`numeric::tests::currency_add_respects_scale_and_validates_code` および `compound_interest_and_npv_return_expected_values` を追加し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core-numeric` で金融 API を回帰テスト済み。
+
 ### 3. 統計・データ品質 API 拡充（45週目）
 **担当領域**: コレクション連携
 
