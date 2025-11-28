@@ -27,6 +27,9 @@ Usage: scripts/validate-diagnostic-json.sh [PATH...]
 --suite collectors を指定した場合は以下を検証します:
   - reports/spec-audit/ch1/core_iter_collectors.json
   - reports/spec-audit/ch1/core_iter_collectors.audit.jsonl
+--suite numeric を指定した場合は以下を検証します:
+  - tests/data/numeric 配下の JSON/JSONL
+  - tests/expected/numeric_*.json
 --section config を指定した場合は `schema_diff.*` キーの存在をチェックします。
 
 PATH には JSON ファイルまたはディレクトリを指定できます。
@@ -104,6 +107,10 @@ if [[ "${#TARGET_ARGS[@]}" -eq 0 ]]; then
   elif [[ "$SUITE" == "collectors" ]]; then
     TARGETS+=("$ROOT_DIR/reports/spec-audit/ch1/core_iter_collectors.json")
     TARGETS+=("$ROOT_DIR/reports/spec-audit/ch1/core_iter_collectors.audit.jsonl")
+  elif [[ "$SUITE" == "numeric" ]]; then
+    TARGETS+=("$ROOT_DIR/tests/data/numeric")
+    TARGETS+=("$ROOT_DIR/tests/expected/numeric_quantiles.json")
+    TARGETS+=("$ROOT_DIR/tests/expected/numeric_regression.json")
   else
     TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/diagnostics")
     TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/audit")

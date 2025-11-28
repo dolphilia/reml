@@ -123,6 +123,11 @@
 - `docs/spec/3-7-core-config-data.md` §2 の例や `reports/spec-audit/ch3/config-data-statistics.json` を参照し、`column`, `aggregation`, `audit_id` など必須キーを確認する。
 - `scripts/validate-diagnostic-json.sh --suite numeric` を追加し、CLI/LSP/Runtime の JSON が同一 schema を満たすことをチェックする。
 
+> 進行ログ（Phase3 W45, 3.2）  
+- `compiler/rust/runtime/src/numeric/error.rs` で `StatisticsError` のメタデータ領域を拡張し、`column`/`aggregation`/`audit_id` と Config/Data 由来の `data.stats.*` キーを `extensions`/`audit_metadata` 両方に書き込むよう修正。`encode_sample_value` を導入し、`NaN`/`Infinity` など非有限値を JSON 文字列表現として保持できるようにした。`#[cfg(test)]` の単体テストで `data.stats.invalid_bucket` コードや `numeric.statistics.sample_value = "NaN"` が出力されることを固定。  
+- `scripts/validate-diagnostic-json.sh --suite numeric` を追加し、`tests/data/numeric/` と `tests/expected/numeric_*.json` を `diagnostic-v2` スキーマで一括検証できるようにした。`numeric.histogram` パターンの個別指定に加えて、統計エラーのサンプルを CI から直接チェックできる。  
+- `docs/plans/bootstrap-roadmap/assets/core-numeric-time-api-diff.csv` の `StatisticsError` 行と `docs/notes/core-numeric-time-gap-log.md`（2025-12-01 診断連携）を更新し、Config/Data 章へのブリッジが Phase3 §3.2 と連動したこと、`README.md#core-numeric--time-進捗` でバックログ扱いだった項目が進捗中に変わったことを共有した。
+
 3.3. `rolling_average`/`z_score` 等の遅延計算が `Iter` と安全に連携することを確認する。  
 実施ステップ:
 - `compiler/rust/runtime/src/prelude/iter/collectors/mod.rs` に `NumericCollector` を追加し、`rolling_average` が `IterStage::Streaming` と互換であるか `StageRequirement` テストを整備する。

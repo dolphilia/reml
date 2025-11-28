@@ -15,6 +15,9 @@ pub struct StatisticsError {
     pub violated_rule: Option<String>,
     pub value: Option<f64>,
     pub context_code: Option<&'static str>,
+    pub column: Option<String>,
+    pub aggregation: Option<String>,
+    pub audit_id: Option<String>,
 }
 
 impl StatisticsError {
@@ -39,6 +42,9 @@ impl StatisticsError {
             violated_rule: None,
             value: None,
             context_code: None,
+            column: None,
+            aggregation: None,
+            audit_id: None,
         }
     }
 
@@ -62,6 +68,21 @@ impl StatisticsError {
         self.context_code = Some(code);
         self
     }
+
+    pub fn with_column(mut self, column: impl Into<String>) -> Self {
+        self.column = Some(column.into());
+        self
+    }
+
+    pub fn with_aggregation(mut self, aggregation: impl Into<String>) -> Self {
+        self.aggregation = Some(aggregation.into());
+        self
+    }
+
+    pub fn with_audit_id(mut self, audit_id: impl Into<String>) -> Self {
+        self.audit_id = Some(audit_id.into());
+        self
+    }
 }
 
 impl IntoDiagnostic for StatisticsError {
@@ -74,6 +95,9 @@ impl IntoDiagnostic for StatisticsError {
             violated_rule,
             value,
             context_code,
+            column,
+            aggregation,
+            audit_id,
         } = self;
 
         let code = context_code.unwrap_or_else(|| kind.default_code());
@@ -90,10 +114,28 @@ impl IntoDiagnostic for StatisticsError {
             numeric_extensions.insert("violated_rule".into(), Value::String(rule.clone()));
         }
         if let Some(value) = value {
-            numeric_extensions.insert(
-                "sample_value".into(),
-                Value::Number(Number::from_f64(value).unwrap_or(Number::from(0))),
-            );
+            let encoded_value = encode_sample_value(value);
+            numeric_extensions.insert("sample_value".into(), encoded_value.clone());
+        }
+        if let Some(column) = column.as_ref() {
+            numeric_extensions.insert("column".into(), Value::String(column.clone()));
+        }
+        if let Some(aggregation) = aggregation.as_ref() {
+            numeric_extensions.insert("aggregation".into(), Value::String(aggregation.clone()));
+        }
+        if let Some(audit_id) = audit_id.as_ref() {
+            numeric_extensions.insert("audit_id".into(), Value::String(audit_id.clone()));
+        }
+
+        let mut data_stats_extensions = Map::new();
+        if let Some(column) = column.as_ref() {
+            data_stats_extensions.insert("column".into(), Value::String(column.clone()));
+        }
+        if let Some(aggregation) = aggregation.as_ref() {
+            data_stats_extensions.insert("aggregation".into(), Value::String(aggregation.clone()));
+        }
+        if let Some(audit_id) = audit_id.as_ref() {
+            data_stats_extensions.insert("audit_id".into(), Value::String(audit_id.clone()));
         }
 
         let mut extensions = Map::new();
@@ -102,6 +144,9 @@ impl IntoDiagnostic for StatisticsError {
             Value::Object(numeric_extensions.clone()),
         );
         extensions.insert("message".into(), Value::String(message.clone()));
+        if !data_stats_extensions.is_empty() {
+            extensions.insert("data.stats".into(), Value::Object(data_stats_extensions));
+        }
 
         let mut audit_metadata = Map::new();
         audit_metadata.insert(
@@ -126,6 +171,28 @@ impl IntoDiagnostic for StatisticsError {
                 Value::String(rule.clone()),
             );
         }
+        if let Some(value) = value {
+            let encoded_value = encode_sample_value(value);
+            audit_metadata.insert("numeric.statistics.sample_value".into(), encoded_value);
+        }
+        if let Some(column) = column.as_ref() {
+            let column_value = Value::String(column.clone());
+            audit_metadata.insert("numeric.statistics.column".into(), column_value.clone());
+            audit_metadata.insert("data.stats.column".into(), column_value);
+        }
+        if let Some(aggregation) = aggregation.as_ref() {
+            let aggregation_value = Value::String(aggregation.clone());
+            audit_metadata.insert(
+                "numeric.statistics.aggregation".into(),
+                aggregation_value.clone(),
+            );
+            audit_metadata.insert("data.stats.aggregation".into(), aggregation_value);
+        }
+        if let Some(audit_id) = audit_id.as_ref() {
+            let audit_value = Value::String(audit_id.clone());
+            audit_metadata.insert("numeric.statistics.audit_id".into(), audit_value.clone());
+            audit_metadata.insert("data.stats.audit_id".into(), audit_value);
+        }
 
         GuardDiagnostic {
             code,
@@ -135,6 +202,22 @@ impl IntoDiagnostic for StatisticsError {
             extensions,
             audit_metadata,
         }
+    }
+}
+
+fn encode_sample_value(value: f64) -> Value {
+    if let Some(number) = Number::from_f64(value) {
+        Value::Number(number)
+    } else if value.is_nan() {
+        Value::String("NaN".into())
+    } else if value.is_infinite() {
+        if value.is_sign_positive() {
+            Value::String("Infinity".into())
+        } else {
+            Value::String("-Infinity".into())
+        }
+    } else {
+        Value::String(value.to_string())
     }
 }
 
@@ -163,5 +246,101 @@ impl StatisticsErrorKind {
                 "core.numeric.statistics.numerical_instability"
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::Value;
+
+    #[test]
+    fn statistics_error_carries_data_quality_context() {
+        let diag = StatisticsError::invalid_parameter("invalid bucket")
+            .with_column("latency_ms")
+            .with_aggregation("histogram")
+            .with_audit_id("audit-1234")
+            .with_rule("H-04")
+            .with_context_code("data.stats.invalid_bucket")
+            .into_diagnostic();
+
+        let numeric_meta = diag
+            .extensions
+            .get("numeric.statistics")
+            .and_then(Value::as_object)
+            .expect("numeric statistics metadata");
+        assert_eq!(
+            numeric_meta.get("column").and_then(Value::as_str),
+            Some("latency_ms")
+        );
+        assert_eq!(
+            numeric_meta.get("aggregation").and_then(Value::as_str),
+            Some("histogram")
+        );
+        assert_eq!(
+            numeric_meta.get("audit_id").and_then(Value::as_str),
+            Some("audit-1234")
+        );
+
+        let data_stats = diag
+            .extensions
+            .get("data.stats")
+            .and_then(Value::as_object)
+            .expect("data.stats extension");
+        assert_eq!(
+            data_stats.get("column").and_then(Value::as_str),
+            Some("latency_ms")
+        );
+        assert_eq!(
+            data_stats.get("aggregation").and_then(Value::as_str),
+            Some("histogram")
+        );
+        assert_eq!(
+            data_stats.get("audit_id").and_then(Value::as_str),
+            Some("audit-1234")
+        );
+
+        assert_eq!(
+            diag.audit_metadata
+                .get("data.stats.column")
+                .and_then(Value::as_str),
+            Some("latency_ms")
+        );
+        assert_eq!(
+            diag.audit_metadata
+                .get("data.stats.aggregation")
+                .and_then(Value::as_str),
+            Some("histogram")
+        );
+        assert_eq!(
+            diag.audit_metadata
+                .get("data.stats.audit_id")
+                .and_then(Value::as_str),
+            Some("audit-1234")
+        );
+        assert_eq!(diag.code, "data.stats.invalid_bucket");
+    }
+
+    #[test]
+    fn statistics_error_preserves_non_finite_samples() {
+        let diag = StatisticsError::numerical_instability("non finite value")
+            .with_value(f64::NAN)
+            .into_diagnostic();
+
+        let numeric_meta = diag
+            .extensions
+            .get("numeric.statistics")
+            .and_then(Value::as_object)
+            .expect("numeric statistics metadata");
+        assert_eq!(
+            numeric_meta.get("sample_value").and_then(Value::as_str),
+            Some("NaN")
+        );
+        assert_eq!(
+            diag.audit_metadata
+                .get("numeric.statistics.sample_value")
+                .and_then(Value::as_str),
+            Some("NaN")
+        );
     }
 }
