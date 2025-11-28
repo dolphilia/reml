@@ -1,0 +1,53 @@
+{
+  "suite": "numeric_statistics",
+  "status": "baseline",
+  "timestamp": "2025-12-04T09:00:00Z",
+  "command": "cargo bench --manifest-path compiler/rust/runtime/Cargo.toml --features core-numeric --bench bench_numeric_statistics -- --noplot",
+  "toolchain": {
+    "rustc": "1.69.0",
+    "criterion": "0.3.6"
+  },
+  "scenarios": [
+    {
+      "name": "mean_large_drift",
+      "sample_size": 1000,
+      "mean_time_us": 9.573,
+      "notes": "Kahan/Welford 平均、1e12 桁と 1e-3 桁を混在させたデータセット"
+    },
+    {
+      "name": "mean_large_drift",
+      "sample_size": 50000,
+      "mean_time_us": 462.15,
+      "notes": "大型データセット、効果タグは PURE のまま"
+    },
+    {
+      "name": "variance_random_walk",
+      "sample_size": 1000,
+      "mean_time_us": 9.226,
+      "notes": "Welford 法で擬似 random walk の分散を 1 パス集計"
+    },
+    {
+      "name": "variance_random_walk",
+      "sample_size": 50000,
+      "mean_time_us": 462.26,
+      "notes": "Welford 法、長尺 random walk"
+    },
+    {
+      "name": "percentile_heavy_tail",
+      "sample_size": 1000,
+      "mean_time_us": 61.472,
+      "notes": "ヘビーテール分布の 50/95 パーセンタイル（ソートを内部実行）"
+    },
+    {
+      "name": "percentile_heavy_tail",
+      "sample_size": 50000,
+      "mean_time_us": 4172.2,
+      "notes": "ヘビーテール 50k 件、線形補間"
+    }
+  ],
+  "report_dir": "compiler/rust/runtime/target/criterion",
+  "next_steps": [
+    "CI へ numeric_statistics ベンチを追加し、±15% を逸脱した場合に警告を出す",
+    "`collect-iterator-audit-metrics.py --section numeric_time --scenario statistics_stability` で数値的不安定性を計測する"
+  ]
+}

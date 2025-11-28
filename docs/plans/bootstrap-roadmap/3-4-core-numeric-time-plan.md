@@ -98,6 +98,11 @@
 - `compiler/rust/runtime/benches/bench_numeric_statistics.rs` を `criterion` で実装し、`reports/benchmarks/numeric-phase3/*.json` に結果を記録して `docs/plans/rust-migration/3-2-benchmark-baseline.md` と同期する。
 - `StatisticsErrorKind::NumericalInstability` を返した際の診断例を `docs/notes/core-numeric-time-gap-log.md` に残し、再現入力を `tests/data/numeric/instability/*.json` へ追加する。
 
+> 進行ログ（Phase3 W45, 2.3）  
+> - `docs/notes/core-numeric-stability.md` を新設し、`Numeric`/`Iter` における Kahan summation・Welford 法の採用理由、および将来の Horvitz-Thompson 適用方針を整理した。仕様 §2.3 の「数値的不安定性検出」要件を満たすための根拠・TODO を記録。  
+> - `compiler/rust/runtime/benches/bench_numeric_statistics.rs` を追加し、`cargo bench --manifest-path compiler/rust/runtime/Cargo.toml --features core-numeric --bench bench_numeric_statistics -- --noplot` で実行。`reports/benchmarks/numeric-phase3/phase3-baseline-2025-12-04.json` に平均/分散/百分位の初回ベースラインを保存し、`docs/plans/rust-migration/3-2-benchmark-baseline.md` へスイート行を追記した。  
+> - `tests/data/numeric/instability/histogram_non_finite.json` を登録し、`StatisticsErrorKind::NumericalInstability` (`rule = H-05`) を再現する診断サンプルを `docs/notes/core-numeric-time-gap-log.md` へリンク。JSON には `numeric.statistics.kind = numerical_instability` と `sample_value = NaN` を含み、監査メタデータの確認指針を記載した。
+
 ### 3. 統計・データ品質 API 拡充（45週目）
 **担当領域**: コレクション連携
 

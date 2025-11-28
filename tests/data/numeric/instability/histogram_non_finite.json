@@ -1,0 +1,58 @@
+{
+  "diagnostics": [
+    {
+      "schema_version": "2.0.0-draft",
+      "message": "core.numeric.statistics: encountered non-finite value NaN in histogram input",
+      "severity": "error",
+      "domain": "runtime",
+      "timestamp": "1970-01-01T00:00:00Z",
+      "code": "core.numeric.statistics.numerical_instability",
+      "codes": [
+        "core.numeric.statistics.numerical_instability"
+      ],
+      "primary": {
+        "file": "tests/data/numeric/instability/sample.reml",
+        "start_line": 8,
+        "start_col": 4,
+        "end_line": 8,
+        "end_col": 20
+      },
+      "audit_metadata": {
+        "numeric.statistics.kind": "numerical_instability",
+        "numeric.statistics.rule": "H-05",
+        "numeric.statistics.sample_value": "NaN",
+        "effect.required_capabilities": [],
+        "effect.actual_capabilities": []
+      },
+      "audit": {
+        "metadata": {
+          "numeric.statistics.kind": "numerical_instability",
+          "numeric.statistics.rule": "H-05",
+          "numeric.statistics.sample_value": "NaN",
+          "effect.required_capabilities": [],
+          "effect.actual_capabilities": []
+        },
+        "audit_id": null,
+        "change_set": null,
+        "capability": null
+      },
+      "extensions": {
+        "numeric.statistics": {
+          "kind": "numerical_instability",
+          "violated_rule": "H-05",
+          "sample_value": "NaN"
+        },
+        "effects": {
+          "required_capabilities": [],
+          "actual_capabilities": []
+        },
+        "diagnostic.v2": {
+          "timestamp": "1970-01-01T00:00:00Z",
+          "codes": [
+            "core.numeric.statistics.numerical_instability"
+          ]
+        }
+      }
+    }
+  ]
+}
