@@ -68,12 +68,10 @@ pub fn histogram(
 ) -> Result<List<HistogramBucketState>, GuardDiagnostic> {
     if buckets.is_empty() {
         return Err(
-            StatisticsError::invalid_parameter(
-                "histogram requires at least one bucket",
-            )
-            .with_rule("H-01")
-            .with_context_code(INVALID_BUCKET_CODE)
-            .into_diagnostic(),
+            StatisticsError::invalid_parameter("histogram requires at least one bucket")
+                .with_rule("H-01")
+                .with_context_code(INVALID_BUCKET_CODE)
+                .into_diagnostic(),
         );
     }
 
@@ -90,14 +88,12 @@ pub fn histogram(
     for value in values.into_iter() {
         sample_count += 1;
         if !value.is_finite() {
-            return Err(
-                StatisticsError::numerical_instability(format!(
-                    "encountered non-finite value {value} in histogram input"
-                ))
-                .with_rule("H-05")
-                .with_value(value)
-                .into_diagnostic(),
-            );
+            return Err(StatisticsError::numerical_instability(format!(
+                "encountered non-finite value {value} in histogram input"
+            ))
+            .with_rule("H-05")
+            .with_value(value)
+            .into_diagnostic());
         }
 
         let len = states.len();
@@ -111,99 +107,83 @@ pub fn histogram(
             }
         }
         if !matched {
-            return Err(
-                StatisticsError::invalid_parameter(format!(
-                    "value {value} does not fit any histogram bucket"
-                ))
-                .with_rule("H-06")
-                .with_context_code(OUT_OF_RANGE_CODE)
-                .with_value(value)
-                .into_diagnostic(),
-            );
+            return Err(StatisticsError::invalid_parameter(format!(
+                "value {value} does not fit any histogram bucket"
+            ))
+            .with_rule("H-06")
+            .with_context_code(OUT_OF_RANGE_CODE)
+            .with_value(value)
+            .into_diagnostic());
         }
     }
 
     if sample_count == 0 {
-        return Err(
-            StatisticsError::insufficient_data(
-                "histogram requires at least one sample value",
-            )
-            .with_rule("H-07")
-            .into_diagnostic(),
-        );
+        return Err(StatisticsError::insufficient_data(
+            "histogram requires at least one sample value",
+        )
+        .with_rule("H-07")
+        .into_diagnostic());
     }
 
     Ok(List::from_vec(states))
 }
 
-fn validate_buckets(
-    buckets: &[HistogramBucket],
-) -> Result<(), GuardDiagnostic> {
+fn validate_buckets(buckets: &[HistogramBucket]) -> Result<(), GuardDiagnostic> {
     let mut last_max = f64::NEG_INFINITY;
     let mut label_set: HashSet<String> = HashSet::new();
     let mut range_set: HashSet<(u64, u64)> = HashSet::new();
 
     for (index, bucket) in buckets.iter().enumerate() {
         if !bucket.min.is_finite() || !bucket.max.is_finite() {
-            return Err(
-                StatisticsError::invalid_parameter(format!(
-                    "bucket `{}` contains non-finite bounds ({}, {})",
-                    bucket.label, bucket.min, bucket.max
-                ))
-                .with_bucket_context(index, bucket.label.clone())
-                .with_rule("H-02")
-                .with_context_code(INVALID_BUCKET_CODE)
-                .into_diagnostic(),
-            );
+            return Err(StatisticsError::invalid_parameter(format!(
+                "bucket `{}` contains non-finite bounds ({}, {})",
+                bucket.label, bucket.min, bucket.max
+            ))
+            .with_bucket_context(index, bucket.label.clone())
+            .with_rule("H-02")
+            .with_context_code(INVALID_BUCKET_CODE)
+            .into_diagnostic());
         }
         if bucket.min >= bucket.max {
-            return Err(
-                StatisticsError::invalid_parameter(format!(
-                    "bucket `{}` must satisfy min < max (found {} >= {})",
-                    bucket.label, bucket.min, bucket.max
-                ))
-                .with_bucket_context(index, bucket.label.clone())
-                .with_rule("H-02")
-                .with_context_code(INVALID_BUCKET_CODE)
-                .into_diagnostic(),
-            );
+            return Err(StatisticsError::invalid_parameter(format!(
+                "bucket `{}` must satisfy min < max (found {} >= {})",
+                bucket.label, bucket.min, bucket.max
+            ))
+            .with_bucket_context(index, bucket.label.clone())
+            .with_rule("H-02")
+            .with_context_code(INVALID_BUCKET_CODE)
+            .into_diagnostic());
         }
         if index > 0 && bucket.min < last_max {
-            return Err(
-                StatisticsError::invalid_parameter(format!(
-                    "bucket `{}` overlaps with previous bucket ({} < previous max {})",
-                    bucket.label, bucket.min, last_max
-                ))
-                .with_bucket_context(index, bucket.label.clone())
-                .with_rule("H-03")
-                .with_context_code(INVALID_BUCKET_CODE)
-                .into_diagnostic(),
-            );
+            return Err(StatisticsError::invalid_parameter(format!(
+                "bucket `{}` overlaps with previous bucket ({} < previous max {})",
+                bucket.label, bucket.min, last_max
+            ))
+            .with_bucket_context(index, bucket.label.clone())
+            .with_rule("H-03")
+            .with_context_code(INVALID_BUCKET_CODE)
+            .into_diagnostic());
         }
         if !label_set.insert(bucket.label.clone()) {
-            return Err(
-                StatisticsError::invalid_parameter(format!(
-                    "bucket label `{}` is duplicated",
-                    bucket.label
-                ))
-                .with_bucket_context(index, bucket.label.clone())
-                .with_rule("H-04")
-                .with_context_code(INVALID_BUCKET_CODE)
-                .into_diagnostic(),
-            );
+            return Err(StatisticsError::invalid_parameter(format!(
+                "bucket label `{}` is duplicated",
+                bucket.label
+            ))
+            .with_bucket_context(index, bucket.label.clone())
+            .with_rule("H-04")
+            .with_context_code(INVALID_BUCKET_CODE)
+            .into_diagnostic());
         }
         let key = (bucket.min.to_bits(), bucket.max.to_bits());
         if !range_set.insert(key) {
-            return Err(
-                StatisticsError::invalid_parameter(format!(
-                    "bucket range [{}, {}) is duplicated",
-                    bucket.min, bucket.max
-                ))
-                .with_bucket_context(index, bucket.label.clone())
-                .with_rule("H-04")
-                .with_context_code(INVALID_BUCKET_CODE)
-                .into_diagnostic(),
-            );
+            return Err(StatisticsError::invalid_parameter(format!(
+                "bucket range [{}, {}) is duplicated",
+                bucket.min, bucket.max
+            ))
+            .with_bucket_context(index, bucket.label.clone())
+            .with_rule("H-04")
+            .with_context_code(INVALID_BUCKET_CODE)
+            .into_diagnostic());
         }
 
         last_max = bucket.max;
@@ -259,9 +239,6 @@ mod tests {
     fn histogram_requires_sample_values() {
         let buckets = List::from_vec(vec![HistogramBucket::new("single", 0.0, 5.0)]);
         let diag = histogram(iter_from(&[]), buckets).unwrap_err();
-        assert_eq!(
-            diag.code,
-            "core.numeric.statistics.insufficient_data"
-        );
+        assert_eq!(diag.code, "core.numeric.statistics.insufficient_data");
     }
 }

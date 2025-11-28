@@ -34,7 +34,6 @@ impl IndexCacheVersion {
     fn matches(&self) -> bool {
         self.cache_version == CACHE_VERSION && self.unicode_version == UNICODE_VERSION_TUPLE
     }
-
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -407,7 +406,10 @@ pub fn segment_graphemes<'a>(str_ref: &'a Str<'a>) -> UnicodeResult<GraphemeSeq<
     let mut version_mismatch_evictions = 0usize;
     let (clusters, offsets, cache_hits, cache_miss, cache_generation) =
         match fetch_cached_offsets(bytes) {
-            CacheLookup::Hit { offsets, generation } => {
+            CacheLookup::Hit {
+                offsets,
+                generation,
+            } => {
                 let clusters = build_clusters_from_offsets(source, offsets.as_ref());
                 let hit_count = offsets.len();
                 (clusters, offsets, hit_count, 0, generation)

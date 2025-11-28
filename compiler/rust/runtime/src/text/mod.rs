@@ -19,12 +19,12 @@ mod width;
 use crate::prelude::iter::{EffectLabels, EffectSet};
 use serde_json::{Map as JsonMap, Value};
 
-pub use builder::{builder, TextBuilder};
-pub use bytes::Bytes;
 pub use crate::io::{
     decode_stream, encode_stream, BomHandling, InvalidSequenceStrategy, TextDecodeOptions,
     TextEncodeOptions,
 };
+pub use builder::{builder, TextBuilder};
+pub use bytes::Bytes;
 pub use case::{to_lower, to_upper};
 pub use diagnostics::{grapheme_stats_metadata, insert_grapheme_stats_metadata};
 pub use error::{UnicodeEffectInfo, UnicodeError, UnicodeErrorKind, UnicodeResult};
@@ -57,8 +57,7 @@ pub(crate) fn merge_text_effects(effects: EffectSet) {
     effects::merge_effects(effects);
 }
 
-pub(crate) fn take_text_audit_metadata(
-) -> Option<JsonMap<std::string::String, Value>> {
+pub(crate) fn take_text_audit_metadata() -> Option<JsonMap<std::string::String, Value>> {
     effects::take_audit_metadata_payload()
 }
 

@@ -2,16 +2,19 @@
 //! トレイトと基本統計ユーティリティ。
 //! 仕様との整合が最優先であり、現時点では浮動小数点型を中心に提供する。
 
+mod effects;
 pub mod error;
 pub mod histogram;
+pub mod statistics;
 
 use std::cmp::Ordering;
 use std::ops::{Add, Div, Mul, Sub};
 
-use crate::prelude::iter::Iter;
+use crate::prelude::iter::{EffectLabels, Iter};
 
 pub use error::{StatisticsError, StatisticsErrorKind};
 pub use histogram::{histogram, HistogramBucket, HistogramBucketState};
+pub use statistics::{correlation, linear_regression, quantiles, LinearModel, QuantilePoint};
 
 /// Core.Numeric の基礎トレイト。
 pub trait Numeric: Copy + PartialOrd {
@@ -34,7 +37,12 @@ pub trait OrderedFloat: Copy {
 
 /// Core.Numeric のうち、浮動小数点演算を提供する型。
 pub trait Floating:
-    Numeric + OrderedFloat + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Div<Output = Self>
+    Numeric
+    + OrderedFloat
+    + Add<Output = Self>
+    + Sub<Output = Self>
+    + Mul<Output = Self>
+    + Div<Output = Self>
 {
     fn from_f64(value: f64) -> Self;
     fn to_f64(self) -> f64;
@@ -55,13 +63,16 @@ where
     T: Floating,
 {
     let (count, mean) = iter
-        .try_fold((0usize, T::zero()), |(count, mean), value| -> Result<_, ()> {
-            let new_count = count + 1;
-            let count_t = T::from_f64(new_count as f64);
-            let delta = value - mean;
-            let next_mean = mean + delta / count_t;
-            Ok((new_count, next_mean))
-        })
+        .try_fold(
+            (0usize, T::zero()),
+            |(count, mean), value| -> Result<_, ()> {
+                let new_count = count + 1;
+                let count_t = T::from_f64(new_count as f64);
+                let delta = value - mean;
+                let next_mean = mean + delta / count_t;
+                Ok((new_count, next_mean))
+            },
+        )
         .ok()?;
     if count == 0 {
         None
@@ -76,15 +87,18 @@ where
     T: Floating,
 {
     let (count, mean, m2) = iter
-        .try_fold((0usize, T::zero(), T::zero()), |(count, mean, m2), value| -> Result<_, ()> {
-            let new_count = count + 1;
-            let count_t = T::from_f64(new_count as f64);
-            let delta = value - mean;
-            let updated_mean = mean + delta / count_t;
-            let delta2 = value - updated_mean;
-            let updated_m2 = m2 + delta * delta2;
-            Ok((new_count, updated_mean, updated_m2))
-        })
+        .try_fold(
+            (0usize, T::zero(), T::zero()),
+            |(count, mean, m2), value| -> Result<_, ()> {
+                let new_count = count + 1;
+                let count_t = T::from_f64(new_count as f64);
+                let delta = value - mean;
+                let updated_mean = mean + delta / count_t;
+                let delta2 = value - updated_mean;
+                let updated_m2 = m2 + delta * delta2;
+                Ok((new_count, updated_mean, updated_m2))
+            },
+        )
         .ok()?;
     if count < 2 {
         return None;
@@ -263,6 +277,11 @@ macro_rules! impl_numeric_for_float {
 impl_numeric_for_signed!(i8, i16, i32, i64, i128, isize);
 impl_numeric_for_unsigned!(u8, u16, u32, u64, u128, usize);
 impl_numeric_for_float!(f32, f64);
+
+/// Numeric API が記録した効果を取得する。
+pub fn take_numeric_effects_snapshot() -> EffectLabels {
+    effects::take_recorded_effects().to_labels()
+}
 
 #[cfg(test)]
 mod tests {

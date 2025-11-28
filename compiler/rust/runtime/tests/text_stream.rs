@@ -1,8 +1,8 @@
 use std::io::{Cursor, Read, Write};
 
 use reml_runtime::text::{
-    decode_stream, encode_stream, take_text_effects_snapshot, BomHandling,
-    InvalidSequenceStrategy, Str, TextDecodeOptions, TextEncodeOptions, UnicodeErrorKind,
+    decode_stream, encode_stream, take_text_effects_snapshot, BomHandling, InvalidSequenceStrategy,
+    Str, TextDecodeOptions, TextEncodeOptions, UnicodeErrorKind,
 };
 
 #[test]
@@ -40,7 +40,10 @@ fn decode_stream_propagates_io_errors() {
     struct FailingReader;
     impl Read for FailingReader {
         fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
-            Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "boom"))
+            Err(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                "boom",
+            ))
         }
     }
     let mut reader = FailingReader;
@@ -56,7 +59,9 @@ fn encode_stream_writes_data_including_bom() {
     encode_stream(
         &mut writer,
         text,
-        TextEncodeOptions::default().with_bom(true).with_buffer_size(2),
+        TextEncodeOptions::default()
+            .with_bom(true)
+            .with_buffer_size(2),
     )
     .expect("encode");
     let buffer = writer.into_inner();

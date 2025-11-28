@@ -112,6 +112,11 @@
 - `quantiles` の `points` 前処理で `effect {mem}` を記録するため `EffectSet::record_mem_bytes` を導入し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `numeric.quantiles.mem_bytes` KPI を追加する。
 - `tests/expected/numeric_quantiles.json`・`numeric_regression.json` を作成し、`tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario statistics_accuracy` で自動検証する。
 
+> 進行ログ（Phase3 W45, 3.1）  
+> - `compiler/rust/runtime/src/numeric/statistics.rs` を追加し、`quantiles`/`correlation`/`linear_regression` を 1 パス実装。`LinearModel { slope, intercept, r_squared }` を導入し、`ordered-float` による `Map<QuantilePoint, f64>` を返す設計を採用した。  
+> - ThreadLocal `compiler/rust/runtime/src/numeric/effects.rs` と `take_numeric_effects_snapshot()` を実装し、`quantiles` のポイント・サンプル確保時に `effect {mem}` / `mem_bytes` を記録できるようにした。  
+> - `tests/expected/{numeric_quantiles.json,numeric_regression.json}` を作成して `statistics_accuracy` 入力を共有し、`numeric/statistics.rs` の単体テストで `OrderedFloat` キー／`StatisticsError` 分岐／効果計測を検証した。`docs/plans/bootstrap-roadmap/assets/core-numeric-time-api-diff.csv` と `0-3-audit-and-metrics.md` の KPI 行も同期済み。
+
 3.2. `StatisticsError` → `Diagnostic` 変換を実装し、Config/Data 章で要求されるメッセージ整形を確認する。  
 実施ステップ:
 - `compiler/rust/runtime/src/numeric/error.rs` に `StatisticsErrorKind` 毎の `code`/`metadata`/`hints` を定義し、`IntoDiagnostic` 実装を `Core.Diagnostics` の `DiagnosticBuilder` と連携させる。

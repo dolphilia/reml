@@ -1,7 +1,7 @@
 use std::cmp;
 
 use crate::text::{
-    merge_text_effects, record_text_mem_copy, record_text_unicode_event, String as TextString, Str,
+    merge_text_effects, record_text_mem_copy, record_text_unicode_event, Str, String as TextString,
     UnicodeError, UnicodeErrorKind, UnicodeResult,
 };
 
@@ -127,9 +127,12 @@ where
         }
 
         if !bom_checked {
-            if let Err(err) =
-                handle_bom(&mut buffer, options.bom_handling, &mut bom_checked, reached_eof)
-            {
+            if let Err(err) = handle_bom(
+                &mut buffer,
+                options.bom_handling,
+                &mut bom_checked,
+                reached_eof,
+            ) {
                 merge_pending_io_effects();
                 return Err(err);
             }
@@ -148,12 +151,7 @@ where
             continue;
         }
 
-        match consume_utf8_buffer(
-            &buffer,
-            &mut text,
-            options.invalid_sequence,
-            total_consumed,
-        ) {
+        match consume_utf8_buffer(&buffer, &mut text, options.invalid_sequence, total_consumed) {
             Ok((consumed, needs_more)) => {
                 if consumed > 0 {
                     buffer.drain(..consumed);
@@ -167,10 +165,8 @@ where
                             match options.invalid_sequence {
                                 InvalidSequenceStrategy::Error => {
                                     merge_pending_io_effects();
-                                    return Err(
-                                        UnicodeError::invalid_utf8(total_consumed)
-                                            .with_phase(DECODE_PHASE),
-                                    );
+                                    return Err(UnicodeError::invalid_utf8(total_consumed)
+                                        .with_phase(DECODE_PHASE));
                                 }
                                 InvalidSequenceStrategy::Replace => {
                                     text.push(REPLACEMENT_CHAR);
@@ -199,7 +195,11 @@ where
     Ok(TextString::from_std(text))
 }
 
-pub fn encode_stream<W>(writer: &mut W, text: Str<'_>, options: TextEncodeOptions) -> UnicodeResult<()>
+pub fn encode_stream<W>(
+    writer: &mut W,
+    text: Str<'_>,
+    options: TextEncodeOptions,
+) -> UnicodeResult<()>
 where
     W: Writer + ?Sized,
 {
@@ -304,10 +304,8 @@ fn consume_utf8_buffer(
                     record_text_unicode_event(error_len);
                     match strategy {
                         InvalidSequenceStrategy::Error => {
-                            return Err(
-                                UnicodeError::invalid_utf8(total_consumed + consumed)
-                                    .with_phase(DECODE_PHASE),
-                            );
+                            return Err(UnicodeError::invalid_utf8(total_consumed + consumed)
+                                .with_phase(DECODE_PHASE));
                         }
                         InvalidSequenceStrategy::Replace => {
                             output.push(REPLACEMENT_CHAR);

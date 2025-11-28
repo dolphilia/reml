@@ -106,10 +106,9 @@ fn bench_percentile(c: &mut Criterion) {
             &data,
             |b, samples| {
                 b.iter(|| {
-                    let median = percentile(iter_from_vec(samples.clone()), 0.5)
-                        .expect("median exists");
-                    let p95 = percentile(iter_from_vec(samples.clone()), 0.95)
-                        .expect("p95 exists");
+                    let median =
+                        percentile(iter_from_vec(samples.clone()), 0.5).expect("median exists");
+                    let p95 = percentile(iter_from_vec(samples.clone()), 0.95).expect("p95 exists");
                     black_box((median, p95));
                 });
             },

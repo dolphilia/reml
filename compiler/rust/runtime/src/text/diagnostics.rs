@@ -7,7 +7,10 @@ pub fn grapheme_stats_metadata(stats: &GraphemeStats) -> JsonMap<String, Value> 
     let mut info = JsonMap::new();
     info.insert("length".into(), json!(stats.grapheme_count));
     info.insert("bytes".into(), json!(stats.total_bytes));
-    info.insert("total_display_width".into(), json!(stats.total_display_width));
+    info.insert(
+        "total_display_width".into(),
+        json!(stats.total_display_width),
+    );
     info.insert("avg_width".into(), json!(stats.avg_width));
     info.insert("emoji_ratio".into(), json!(stats.emoji_ratio));
     info.insert(

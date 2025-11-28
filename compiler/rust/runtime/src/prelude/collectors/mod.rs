@@ -287,10 +287,7 @@ impl CollectorAuditTrail {
             Value::Number(Number::from(self.effects.rc_ops as u64)),
         );
         effects.insert("unicode".into(), Value::Bool(self.effects.unicode));
-        effects.insert(
-            "transfer".into(),
-            Value::Bool(self.effects.transfer),
-        );
+        effects.insert("transfer".into(), Value::Bool(self.effects.transfer));
         effects.insert("time".into(), Value::Bool(self.effects.time));
         effects.insert(
             "predicate_calls".into(),

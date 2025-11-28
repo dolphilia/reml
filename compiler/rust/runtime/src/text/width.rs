@@ -1,5 +1,5 @@
-use std::{borrow::Cow, cmp::Ordering};
 use std::str::FromStr;
+use std::{borrow::Cow, cmp::Ordering};
 
 use super::{effects, Str, UnicodeResult};
 use once_cell::sync::Lazy;
@@ -301,7 +301,9 @@ fn east_asian_override(ch: char) -> Option<usize> {
             Ordering::Equal
         }
     });
-    result.ok().map(|index| EAST_ASIAN_WIDTH_OVERRIDES[index].width)
+    result
+        .ok()
+        .map(|index| EAST_ASIAN_WIDTH_OVERRIDES[index].width)
 }
 
 struct KanaMapping {

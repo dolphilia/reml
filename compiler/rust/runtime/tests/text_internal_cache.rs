@@ -216,8 +216,7 @@ fn persist_report(cases: &[CaseMetrics]) {
 }
 
 fn persist_audit(cases: &[CaseMetrics]) {
-    let output_path =
-        repo_root().join("reports/spec-audit/ch1/text_grapheme_stats.audit.jsonl");
+    let output_path = repo_root().join("reports/spec-audit/ch1/text_grapheme_stats.audit.jsonl");
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent).expect("create audit reports directory");
     }

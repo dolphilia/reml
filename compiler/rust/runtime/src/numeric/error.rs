@@ -42,11 +42,7 @@ impl StatisticsError {
         }
     }
 
-    pub fn with_bucket_context(
-        mut self,
-        index: usize,
-        label: impl Into<String>,
-    ) -> Self {
+    pub fn with_bucket_context(mut self, index: usize, label: impl Into<String>) -> Self {
         self.bucket_index = Some(index);
         self.bucket_label = Some(label.into());
         self
@@ -83,25 +79,15 @@ impl IntoDiagnostic for StatisticsError {
         let code = context_code.unwrap_or_else(|| kind.default_code());
 
         let mut numeric_extensions = Map::new();
-        numeric_extensions.insert(
-            "kind".into(),
-            Value::String(kind.as_str().into()),
-        );
+        numeric_extensions.insert("kind".into(), Value::String(kind.as_str().into()));
         if let Some(index) = bucket_index {
-            numeric_extensions.insert(
-                "bucket_index".into(),
-                Value::Number(Number::from(index)),
-            );
+            numeric_extensions.insert("bucket_index".into(), Value::Number(Number::from(index)));
         }
         if let Some(label) = bucket_label.as_ref() {
-            numeric_extensions
-                .insert("bucket_label".into(), Value::String(label.clone()));
+            numeric_extensions.insert("bucket_label".into(), Value::String(label.clone()));
         }
         if let Some(rule) = violated_rule.as_ref() {
-            numeric_extensions.insert(
-                "violated_rule".into(),
-                Value::String(rule.clone()),
-            );
+            numeric_extensions.insert("violated_rule".into(), Value::String(rule.clone()));
         }
         if let Some(value) = value {
             numeric_extensions.insert(
@@ -171,12 +157,8 @@ impl StatisticsErrorKind {
 
     fn default_code(&self) -> &'static str {
         match self {
-            StatisticsErrorKind::InsufficientData => {
-                "core.numeric.statistics.insufficient_data"
-            }
-            StatisticsErrorKind::InvalidParameter => {
-                "core.numeric.statistics.invalid_parameter"
-            }
+            StatisticsErrorKind::InsufficientData => "core.numeric.statistics.insufficient_data",
+            StatisticsErrorKind::InvalidParameter => "core.numeric.statistics.invalid_parameter",
             StatisticsErrorKind::NumericalInstability => {
                 "core.numeric.statistics.numerical_instability"
             }
