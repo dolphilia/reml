@@ -157,6 +157,7 @@
 > - `compiler/rust/runtime/src/time/{mod.rs,effects.rs,error.rs}` を新設し、`Timestamp`/`Duration`/`SystemClockAdapter`/`TimeError` を Rust Runtime へ追加。`std::time::{SystemTime, Instant}` との変換、`Duration` 正規化、`TimeSyscallMetrics` 集計を実装し `take_time_effects_snapshot()` / `take_time_syscall_metrics()` で `effect {time}` と KPI を観測できるようにした。  
 > - `now`/`monotonic_now`/`sleep` を公開し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core_time` で基本挙動と `effect {time}` 計測テスト（`time::tests::*`）を追加検証した。  
 > - `tests/expected/time_now.json`・`tests/expected/time_sleep.json` に `clock_accuracy` シナリオ用の基準入力を登録。`collect-iterator-audit-metrics.py --section numeric_time --scenario clock_accuracy` はまだ未実装だが、将来の収集スクリプトが KPI (`time.syscall.latency_ns`) を読み取れるようフォーマットと許容誤差を先行で固定した。
+> - `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に `time.syscall.latency_ns` KPI を追加し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario clock_accuracy --time-source tests/expected/time_now.json --time-source tests/expected/time_sleep.json --output reports/spec-audit/ch3/time_clock_accuracy.json --require-success` で平均/最大レイテンシと `time.env.*` メタデータを収集するフローを整備した。結果は `reports/spec-audit/ch3/time_env-bridge.md` にも転記し、`now`/`sleep` の遅延を 1ms 以内で監視できるようにした。
 
 4.2. `TimeError`/`TimeFormat`/`Timezone` API を実装し、OS 依存情報を `Capability`/`Env` と連携するテストを作成する。  
 実施ステップ:
