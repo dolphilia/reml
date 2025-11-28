@@ -1,0 +1,51 @@
+{
+  "scenario": "metrics-stage-mismatch",
+  "captured_at": "2025-12-11T09:30:00Z",
+  "command": [
+    "remlc",
+    "metrics",
+    "emit",
+    "--required-stage",
+    "beta",
+    "--metric",
+    "metrics.latency.mean=42.0",
+    "--tag",
+    "component=cli"
+  ],
+  "diagnostics": [
+    {
+      "code": "effects.contract.stage_mismatch",
+      "domain": "runtime",
+      "severity": "error",
+      "message": "metrics capability 'metrics.emit' denied: required StageRequirement::Exact(Beta) but runtime is StageId::Stable",
+      "extensions": {
+        "effects.contract.capability": "metrics.emit",
+        "effects.contract.stage.required": "beta",
+        "effects.contract.stage.actual": "stable",
+        "effects.contract.required_effects": ["audit"],
+        "effects.contract.detail": "required StageRequirement::Exact(Beta) but runtime is StageId::Stable"
+      },
+      "audit_metadata": {
+        "metric_point.name": "metrics.latency.mean",
+        "metric_point.kind": "float",
+        "metric_point.value": 42.0,
+        "metric_point.timestamp.seconds": 1,
+        "metric_point.timestamp.nanos": 250000000,
+        "metric_point.tag.unit": "ms",
+        "metric_point.tag.component": "cli",
+        "metric_point.tags": {
+          "unit": "ms",
+          "component": "cli"
+        },
+        "effect.capability": "metrics.emit",
+        "effect.stage.required": "beta",
+        "effect.stage.actual": "stable",
+        "effect.required_capabilities": ["metrics.emit"],
+        "effect.actual_capabilities": ["metrics.emit"],
+        "effect.required_effects": ["audit"],
+        "effects.contract.detail": "required StageRequirement::Exact(Beta) but runtime is StageId::Stable"
+      }
+    }
+  ],
+  "notes": "StageRequirement を beta に強制したときの想定失敗ログ。監査メタデータと LSP Fixture (tooling/lsp/tests/client_compat/fixtures/metrics-stage.json) を同期させている。"
+}

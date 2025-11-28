@@ -6,5 +6,4 @@
 mod audit_bridge;
 mod metric_point;
 
-pub use audit_bridge::{attach_audit, with_metric_tags};
 pub use metric_point::*;

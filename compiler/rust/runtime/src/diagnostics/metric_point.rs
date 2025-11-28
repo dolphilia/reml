@@ -5,10 +5,15 @@ use serde_json::{json, Map, Number, Value};
 
 use crate::{
     prelude::ensure::{DiagnosticSeverity, GuardDiagnostic},
+    registry::{CapabilityError, CapabilityRegistry},
+    stage::{StageId, StageRequirement},
     time::{self, Duration, Timestamp},
 };
 
-use super::audit_bridge::metric_audit_metadata;
+use super::audit_bridge::{metric_audit_metadata, stage_requirement_label, METRIC_CAPABILITY_ID};
+
+const METRIC_STAGE_REQUIREMENT: StageRequirement = StageRequirement::Exact(StageId::Stable);
+const METRIC_REQUIRED_EFFECTS: [&str; 1] = ["audit"];
 
 const METRIC_DOMAIN: &str = "runtime";
 const METRIC_EMIT_DIAGNOSTIC_CODE: &str = "core.diagnostics.metric_emit_failed";
@@ -64,8 +69,13 @@ impl MetricPoint {
         self
     }
 
-    fn into_record(self) -> MetricAuditRecord {
-        let metadata = metric_audit_metadata(&self);
+    fn into_record(
+        self,
+        stage_requirement: StageRequirement,
+        actual_stage: StageId,
+        required_effects: &[String],
+    ) -> MetricAuditRecord {
+        let metadata = metric_audit_metadata(&self, stage_requirement, actual_stage, required_effects);
         MetricAuditRecord {
             metric: self,
             metadata,
@@ -184,7 +194,23 @@ pub fn emit_metric<S>(metric: MetricPoint, sink: &mut S) -> Result<(), GuardDiag
 where
     S: MetricAuditSink,
 {
-    let record = metric.into_record();
+    let required_effects = metric_required_effects();
+    let actual_stage = match verify_metrics_capability(METRIC_STAGE_REQUIREMENT, &required_effects) {
+        Ok(stage) => stage,
+        Err(err) => {
+            return Err(stage_mismatch_diagnostic(
+                &metric,
+                METRIC_STAGE_REQUIREMENT,
+                &required_effects,
+                err,
+            ))
+        }
+    };
+    let record = metric.into_record(
+        METRIC_STAGE_REQUIREMENT,
+        actual_stage,
+        &required_effects,
+    );
     sink.emit_metric(&record)
 }
 
@@ -222,6 +248,82 @@ pub fn default_emit_sink(record: &MetricAuditRecord) -> Result<(), GuardDiagnost
         extensions,
         audit_metadata: record.metadata().clone(),
     })
+}
+
+fn metric_required_effects() -> Vec<String> {
+    METRIC_REQUIRED_EFFECTS
+        .iter()
+        .map(|value| value.to_string())
+        .collect()
+}
+
+fn verify_metrics_capability(
+    requirement: StageRequirement,
+    required_effects: &[String],
+) -> Result<StageId, CapabilityError> {
+    CapabilityRegistry::registry().verify_capability_stage(
+        METRIC_CAPABILITY_ID,
+        requirement,
+        required_effects,
+    )
+}
+
+fn stage_mismatch_diagnostic(
+    metric: &MetricPoint,
+    requirement: StageRequirement,
+    required_effects: &[String],
+    err: CapabilityError,
+) -> GuardDiagnostic {
+    let actual_stage = err.actual_stage().unwrap_or(StageId::Experimental);
+    let mut extensions = Map::new();
+    extensions.insert(
+        "effects.contract.capability".into(),
+        Value::String(METRIC_CAPABILITY_ID.into()),
+    );
+    extensions.insert(
+        "effects.contract.stage.required".into(),
+        Value::String(stage_requirement_label(requirement)),
+    );
+    extensions.insert(
+        "effects.contract.stage.actual".into(),
+        Value::String(actual_stage.as_str().into()),
+    );
+    if !required_effects.is_empty() {
+        extensions.insert(
+            "effects.contract.required_effects".into(),
+            Value::Array(
+                required_effects
+                    .iter()
+                    .cloned()
+                    .map(Value::String)
+                    .collect(),
+            ),
+        );
+    }
+    extensions.insert(
+        "effects.contract.detail".into(),
+        Value::String(err.detail().to_string()),
+    );
+
+    let mut audit_metadata =
+        metric_audit_metadata(metric, requirement, actual_stage, required_effects);
+    audit_metadata.insert(
+        "effects.contract.detail".into(),
+        Value::String(err.detail().to_string()),
+    );
+
+    GuardDiagnostic {
+        code: "effects.contract.stage_mismatch",
+        domain: METRIC_DOMAIN,
+        severity: DiagnosticSeverity::Error,
+        message: format!(
+            "metrics capability '{}' denied: {}",
+            METRIC_CAPABILITY_ID,
+            err.detail()
+        ),
+        extensions,
+        audit_metadata,
+    }
 }
 
 #[cfg(test)]
@@ -263,12 +365,36 @@ mod tests {
         emit_metric(metric, &mut sink).expect("emit");
         let record = captured.expect("metric captured");
         assert_eq!(record.metric.name, "latency.mean");
+        let required_stage = stage_requirement_label(METRIC_STAGE_REQUIREMENT);
         assert_eq!(
             record
                 .metadata()
                 .get("effect.capability")
                 .and_then(Value::as_str),
             Some(METRIC_CAPABILITY_ID)
+        );
+        assert_eq!(
+            record
+                .metadata()
+                .get("effect.stage.required")
+                .and_then(Value::as_str),
+            Some(required_stage.as_str())
+        );
+        assert_eq!(
+            record
+                .metadata()
+                .get("effect.stage.actual")
+                .and_then(Value::as_str),
+            Some("stable")
+        );
+        assert!(
+            record
+                .metadata()
+                .get("effect.required_effects")
+                .and_then(Value::as_array)
+                .map(|array| array.iter().any(|value| value == "audit"))
+                .unwrap_or(false),
+            "required effects should include audit"
         );
         assert_eq!(
             record
@@ -283,6 +409,39 @@ mod tests {
                 .get("metric_point.audit_id")
                 .and_then(Value::as_str),
             Some("audit-xyz")
+        );
+    }
+
+    #[test]
+    fn stage_mismatch_produces_guard_diagnostic() {
+        let metric = metric_point("latency.mean", 21.0_f64);
+        let required_effects = metric_required_effects();
+        let error = verify_metrics_capability(
+            StageRequirement::Exact(StageId::Beta),
+            &required_effects,
+        )
+        .expect_err("beta requirement should fail");
+        let diagnostic = stage_mismatch_diagnostic(
+            &metric,
+            StageRequirement::Exact(StageId::Beta),
+            &required_effects,
+            error,
+        );
+        assert_eq!(diagnostic.code, "effects.contract.stage_mismatch");
+        assert!(
+            diagnostic
+                .audit_metadata
+                .get("metric_point.name")
+                .and_then(Value::as_str)
+                .is_some(),
+            "metric metadata should be present"
+        );
+        assert_eq!(
+            diagnostic
+                .extensions
+                .get("effects.contract.capability")
+                .and_then(Value::as_str),
+            Some(METRIC_CAPABILITY_ID)
         );
     }
 }

@@ -21,10 +21,13 @@ impl CapabilityRegistry {
         if requirement.matches(actual) {
             Ok(actual)
         } else {
-            Err(CapabilityError::new(
-                "capability.stage.mismatch",
-                format!("required {:?} but runtime is {:?}", requirement, actual),
-            ))
+            Err(
+                CapabilityError::new(
+                    "capability.stage.mismatch",
+                    format!("required {:?} but runtime is {:?}", requirement, actual),
+                )
+                .with_actual_stage(actual),
+            )
         }
     }
 }
@@ -34,6 +37,7 @@ impl CapabilityRegistry {
 pub struct CapabilityError {
     code: &'static str,
     detail: String,
+    actual_stage: Option<StageId>,
 }
 
 impl CapabilityError {
@@ -41,6 +45,7 @@ impl CapabilityError {
         Self {
             code,
             detail: detail.into(),
+            actual_stage: None,
         }
     }
 
@@ -50,6 +55,15 @@ impl CapabilityError {
 
     pub fn detail(&self) -> &str {
         &self.detail
+    }
+
+    pub fn actual_stage(&self) -> Option<StageId> {
+        self.actual_stage
+    }
+
+    pub fn with_actual_stage(mut self, stage: StageId) -> Self {
+        self.actual_stage = Some(stage);
+        self
     }
 }
 

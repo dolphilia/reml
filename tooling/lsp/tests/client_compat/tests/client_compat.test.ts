@@ -76,6 +76,18 @@ describe("client compatibility scaffolding", () => {
     ).toBe(true);
   });
 
+  it("parses metrics stage mismatch fixture", () => {
+    const diagnostics = readDiagnostics(fixturesDir, "metrics-stage.json");
+    expect(diagnostics).toHaveLength(1);
+
+    const codes = Array.from(collectCodes(diagnostics));
+    expect(codes).toContain("effects.contract.stage_mismatch");
+
+    const [diag] = diagnostics;
+    expect(diag.extensions?.["effects.contract.capability"]).toBe("metrics.emit");
+    expect(diag.audit_metadata?.["effect.stage.required"]).toBe("beta");
+  });
+
   it("parses macOS-specific bridge fixture", () => {
     const diagnostics = readDiagnostics(fixturesDir, "diagnostic-v2-ffi-macos-sample.json");
     expect(diagnostics).toHaveLength(1);

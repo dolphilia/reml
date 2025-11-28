@@ -209,6 +209,11 @@
 - CLI (`remlc metrics emit`) と Runtime ブリッジに Stage mismatch 用の診断 (`effects.contract.stage_mismatch`) を追加し、`reports/dual-write/metrics-stage-mismatch.json` を作成する。
 - `compiler/rust/runtime/tests/metrics_capability.rs` と `tooling/lsp/tests/metrics_stage.json` を追加し、ステージ検証が Linux/macOS/Windows で一致するかを CI で確認する。
 
+> 進行ログ（Phase3 W46, 5.3）  
+> - `emit_metric` が `CapabilityRegistry::verify_capability_stage("metrics.emit", StageRequirement::Exact(StageId::Stable))` を必ず通過するよう変更。失敗時は `effects.contract.stage_mismatch` 診断を返し、`metric_point.*` と Stage 要件を含む監査メタデータを付与する（`compiler/rust/runtime/src/diagnostics/{metric_point.rs,audit_bridge.rs}`）。  
+> - `CapabilityError` に `actual_stage` を追加して Stage mismatch の詳細を診断へ渡し、`compiler/rust/runtime/tests/metrics_capability.rs` で Stable 成功 / Beta 失敗の両ケースを固定化。  
+> - LSP/CLI 向けに `tooling/lsp/tests/client_compat/fixtures/metrics-stage.json`・`tests/client_compat/tests/client_compat.test.ts` を更新し、`reports/dual-write/metrics-stage-mismatch.json` を Stage mismatch 再現ログとして記録。あわせて `docs/notes/runtime-metrics-capability.md` と `docs/notes/runtime-capability-stage-log.md` に設計・観測手順を追記した。
+
 ### 6. ドキュメント・サンプル更新（46-47週目）
 **担当領域**: 情報整備
 
