@@ -1,4 +1,5 @@
 use super::Timestamp;
+use crate::io::TimeEnvSnapshot;
 use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic};
 use crate::stage::{StageId, StageRequirement};
 use serde_json::{Map, Value};
@@ -21,6 +22,8 @@ pub struct TimeError {
     capability: Option<String>,
     required_stage: Option<String>,
     actual_stage: Option<String>,
+    env_timezone: Option<String>,
+    env_locale: Option<String>,
 }
 
 impl TimeError {
@@ -36,6 +39,8 @@ impl TimeError {
             capability: None,
             required_stage: None,
             actual_stage: None,
+            env_timezone: None,
+            env_locale: None,
         }
     }
 
@@ -83,6 +88,16 @@ impl TimeError {
         self
     }
 
+    pub fn with_env_snapshot(mut self, snapshot: &TimeEnvSnapshot) -> Self {
+        if let Some(tz) = snapshot.timezone_env() {
+            self.env_timezone = Some(tz.to_string());
+        }
+        if let Some(locale) = snapshot.locale_env() {
+            self.env_locale = Some(locale.to_string());
+        }
+        self
+    }
+
     pub fn system_clock_unavailable(message: impl Into<String>) -> Self {
         Self::new(TimeErrorKind::SystemClockUnavailable, message)
     }
@@ -121,6 +136,8 @@ impl IntoDiagnostic for TimeError {
             capability,
             required_stage,
             actual_stage,
+            env_timezone,
+            env_locale,
         } = self;
 
         let mut time_extensions = Map::new();
@@ -147,6 +164,12 @@ impl IntoDiagnostic for TimeError {
         }
         if let Some(actual) = actual_stage.as_ref() {
             time_extensions.insert("actual_stage".into(), Value::String(actual.clone()));
+        }
+        if let Some(tz) = env_timezone.as_ref() {
+            time_extensions.insert("env_timezone".into(), Value::String(tz.clone()));
+        }
+        if let Some(locale) = env_locale.as_ref() {
+            time_extensions.insert("env_locale".into(), Value::String(locale.clone()));
         }
 
         let mut extensions = Map::new();
@@ -177,6 +200,12 @@ impl IntoDiagnostic for TimeError {
             if let Ok(value) = serde_json::to_value(ts) {
                 audit_metadata.insert("time.timestamp".into(), value);
             }
+        }
+        if let Some(tz) = env_timezone.as_ref() {
+            audit_metadata.insert("time.env.timezone".into(), Value::String(tz.clone()));
+        }
+        if let Some(locale) = env_locale.as_ref() {
+            audit_metadata.insert("time.env.locale".into(), Value::String(locale.clone()));
         }
 
         GuardDiagnostic {

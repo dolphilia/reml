@@ -1,4 +1,5 @@
 use super::{Duration, TimeError, TimeResult, Timestamp, NANOS_PER_SECOND_I128};
+use crate::io::time_env_snapshot;
 use crate::registry::CapabilityRegistry;
 use crate::stage::{StageId, StageRequirement};
 use serde::{Deserialize, Serialize};
@@ -41,13 +42,18 @@ pub fn timezone(name: impl AsRef<str>) -> TimeResult<Timezone> {
     verify_capability(LOOKUP_CAPABILITY)?;
     let raw = name.as_ref().trim();
     if raw.is_empty() {
-        return Err(TimeError::invalid_timezone("timezone name cannot be empty"));
+        let snapshot = time_env_snapshot();
+        return Err(TimeError::invalid_timezone("timezone name cannot be empty")
+            .with_env_snapshot(&snapshot));
     }
     if let Some(tz) = timezone_from_iana(raw) {
         return Ok(tz);
     }
     let offset_seconds = parse_timezone_offset(raw).ok_or_else(|| {
-        TimeError::invalid_timezone(format!("unsupported timezone '{raw}'")).with_timezone(raw)
+        let snapshot = time_env_snapshot();
+        TimeError::invalid_timezone(format!("unsupported timezone '{raw}'"))
+            .with_timezone(raw)
+            .with_env_snapshot(&snapshot)
     })?;
     build_timezone(offset_seconds)
 }
@@ -55,7 +61,9 @@ pub fn timezone(name: impl AsRef<str>) -> TimeResult<Timezone> {
 pub fn local() -> TimeResult<Timezone> {
     verify_capability(LOCAL_CAPABILITY)?;
     let now = OffsetDateTime::now_local().map_err(|err| {
+        let snapshot = time_env_snapshot();
         TimeError::system_clock_unavailable(format!("failed to resolve local timezone: {err}"))
+            .with_env_snapshot(&snapshot)
     })?;
     let offset_seconds = now.offset().whole_seconds();
     build_timezone(i64::from(offset_seconds))
@@ -81,10 +89,12 @@ fn build_timezone_with_label(name: String, offset_seconds: i64) -> TimeResult<Ti
 
 fn ensure_offset_range(offset_seconds: i64) -> TimeResult<()> {
     if offset_seconds > MAX_OFFSET_SECONDS || offset_seconds < -MAX_OFFSET_SECONDS {
+        let snapshot = time_env_snapshot();
         return Err(TimeError::invalid_timezone(format!(
             "offset {offset_seconds} is out of range"
         ))
-        .with_timezone(format!("offset:{offset_seconds}")));
+        .with_timezone(format!("offset:{offset_seconds}"))
+        .with_env_snapshot(&snapshot));
     }
     Ok(())
 }
@@ -167,14 +177,13 @@ fn timezone_from_iana(raw: &str) -> Option<Timezone> {
 fn verify_capability(capability: &str) -> TimeResult<()> {
     let registry = CapabilityRegistry::registry();
     let requirement = StageRequirement::AtLeast(StageId::Beta);
+    let snapshot = time_env_snapshot();
     registry
         .verify_capability_stage(capability, requirement, &[])
         .map(|_| ())
         .map_err(|err| {
-            TimeError::system_clock_unavailable(err.detail().to_string()).with_capability_context(
-                capability.to_string(),
-                Some(requirement),
-                None,
-            )
+            TimeError::system_clock_unavailable(err.detail().to_string())
+                .with_capability_context(capability.to_string(), Some(requirement), None)
+                .with_env_snapshot(&snapshot)
         })
 }

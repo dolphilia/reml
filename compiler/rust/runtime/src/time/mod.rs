@@ -331,6 +331,7 @@ fn total_nanos_from_std_duration(duration: StdDuration) -> TimeResult<i128> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::io::time_env_snapshot;
     use crate::prelude::ensure::IntoDiagnostic;
     use crate::text::{self, LocaleId, Str};
     use serde_json::Value;
@@ -532,6 +533,26 @@ mod tests {
             diag.audit_metadata.get("time.locale"),
             Some(&Value::String("und".into()))
         );
+    }
+
+    #[test]
+    fn time_error_includes_env_snapshot_metadata() {
+        std::env::set_var("TZ", "UTC");
+        std::env::set_var("LC_TIME", "ja_JP");
+        let snapshot = time_env_snapshot();
+        let diag = TimeError::system_clock_unavailable("env metadata")
+            .with_env_snapshot(&snapshot)
+            .into_diagnostic();
+        assert_eq!(
+            diag.audit_metadata.get("time.env.timezone"),
+            Some(&Value::String("UTC".into()))
+        );
+        assert_eq!(
+            diag.audit_metadata.get("time.env.locale"),
+            Some(&Value::String("ja_JP".into()))
+        );
+        std::env::remove_var("TZ");
+        std::env::remove_var("LC_TIME");
     }
 
     #[test]

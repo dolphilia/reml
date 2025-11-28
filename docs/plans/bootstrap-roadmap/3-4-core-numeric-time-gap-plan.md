@@ -39,12 +39,13 @@
 | T-1 | ロケールテーブルの拡張 | `docs/plans/bootstrap-roadmap/assets/time-format-locale-map.csv` を仕様の全ロケールで更新し、`compiler/rust/runtime/src/time/format.rs` の `TIME_LOCALE_TABLE` を自動生成スクリプトに置き換える | `tooling/scripts/update_time_locale_table.py`, `compiler/rust/runtime/src/time/locale_table_data.rs`, `reports/spec-audit/ch3/time_format-locales.md` |
 | T-2 | ICU 互換/フォールバック実装 | `TimeFormat::Custom` に ICU 互換パターンを導入（`time` 記法へのトランスレータ + fallback）し、`effect {unicode}` 記録を `LocaleId` と同期 | `compiler/rust/runtime/src/time/format/icu.rs`, `tests/data/time/format/icu_cases.json`, `reports/spec-audit/ch3/time_format-locales.md` |
 | T-3 | IANA タイムゾーン/Capability 連携 | 代表的な IANA 名を認識して `timezone(name)` に反映、`CapabilityRegistry::verify_capability_stage` のログと `collect-iterator-audit-metrics.py --scenario timezone_lookup` のカバレッジを拡張 | `compiler/rust/runtime/src/time/timezone.rs`, `tests/data/time/timezone_iana.json`, `reports/spec-audit/ch3/time_timezone-iana.md` |
-| T-4 | Core.IO との接続 | `compiler/rust/runtime/src/io/env.rs` にタイムゾーン/ロケールのフェッチ API を追加し、`TimeError::with_capability_context` で `Env` 情報 (`time.platform.*`) を提供 | `reports/spec-audit/ch3/time_env-bridge.md` |
+| T-4 | Core.IO との接続 | `compiler/rust/runtime/src/io/env.rs` にタイムゾーン/ロケールのフェッチ API を追加し、`TimeError::with_capability_context` に `time.env.*` メタデータを渡す | `compiler/rust/runtime/src/io/env.rs`, `reports/spec-audit/ch3/time_env-bridge.md` |
 
 ### チェックリスト
 - [x] `TIME_LOCALE_TABLE` を CSV 由来の自動生成ファイルへ分離し、`python3 tooling/scripts/update_time_locale_table.py` で再現できるようにした。
 - [x] `TimeFormat::Custom` が ICU パターン（yyyy/MM/dd など）をトランスレートし、`tests/data/time/format/icu_cases.json` でフォーマット/パースの双方を検証。
 - [x] `collect-iterator-audit-metrics.py --section numeric_time --scenario timezone_lookup` に IANA 用 JSON（`tests/data/time/timezone_iana.json`）を追加で指定し、CI でケース数・プラットフォームリストを記録。
+- [x] Core.IO の `time_env_snapshot()` を追加し、`TimeError` で `time.env.{timezone,locale}` を監査メタデータとして出力。
 - [ ] `now()`/`sleep()` の KPI (`time.syscall.latency_ns`) を `0-3-audit-and-metrics.md` に追記。
 
 ---
