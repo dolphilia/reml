@@ -5,5 +5,9 @@
 
 mod audit_bridge;
 mod metric_point;
+mod stage_guard;
 
 pub use metric_point::*;
+pub(crate) use stage_guard::{
+    metric_required_effects, MetricsStageGuard, METRIC_CAPABILITY_ID, METRIC_STAGE_REQUIREMENT,
+};

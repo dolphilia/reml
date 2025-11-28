@@ -5,15 +5,17 @@ use serde_json::{json, Map, Number, Value};
 
 use crate::{
     prelude::ensure::{DiagnosticSeverity, GuardDiagnostic},
-    registry::{CapabilityError, CapabilityRegistry},
+    registry::CapabilityError,
     stage::{StageId, StageRequirement},
     time::{self, Duration, Timestamp},
 };
 
-use super::audit_bridge::{metric_audit_metadata, stage_requirement_label, METRIC_CAPABILITY_ID};
-
-const METRIC_STAGE_REQUIREMENT: StageRequirement = StageRequirement::Exact(StageId::Stable);
-const METRIC_REQUIRED_EFFECTS: [&str; 1] = ["audit"];
+use super::{
+    audit_bridge::{metric_audit_metadata, stage_requirement_label},
+    stage_guard::{
+        metric_required_effects, MetricsStageGuard, METRIC_CAPABILITY_ID, METRIC_STAGE_REQUIREMENT,
+    },
+};
 
 const METRIC_DOMAIN: &str = "runtime";
 const METRIC_EMIT_DIAGNOSTIC_CODE: &str = "core.diagnostics.metric_emit_failed";
@@ -69,14 +71,13 @@ impl MetricPoint {
         self
     }
 
-    fn into_record(
-        self,
-        stage_requirement: StageRequirement,
-        actual_stage: StageId,
-        required_effects: &[String],
-    ) -> MetricAuditRecord {
-        let metadata =
-            metric_audit_metadata(&self, stage_requirement, actual_stage, required_effects);
+    fn into_record(self, guard: &MetricsStageGuard) -> MetricAuditRecord {
+        let metadata = metric_audit_metadata(
+            &self,
+            guard.requirement(),
+            guard.actual_stage(),
+            guard.required_effects(),
+        );
         MetricAuditRecord {
             metric: self,
             metadata,
@@ -196,9 +197,8 @@ where
     S: MetricAuditSink,
 {
     let required_effects = metric_required_effects();
-    let actual_stage = match verify_metrics_capability(METRIC_STAGE_REQUIREMENT, &required_effects)
-    {
-        Ok(stage) => stage,
+    let guard = match MetricsStageGuard::verify(METRIC_STAGE_REQUIREMENT, &required_effects) {
+        Ok(guard) => guard,
         Err(err) => {
             return Err(stage_mismatch_diagnostic(
                 &metric,
@@ -208,7 +208,7 @@ where
             ))
         }
     };
-    let record = metric.into_record(METRIC_STAGE_REQUIREMENT, actual_stage, &required_effects);
+    let record = metric.into_record(&guard);
     sink.emit_metric(&record)
 }
 
@@ -246,24 +246,6 @@ pub fn default_emit_sink(record: &MetricAuditRecord) -> Result<(), GuardDiagnost
         extensions,
         audit_metadata: record.metadata().clone(),
     })
-}
-
-fn metric_required_effects() -> Vec<String> {
-    METRIC_REQUIRED_EFFECTS
-        .iter()
-        .map(|value| value.to_string())
-        .collect()
-}
-
-fn verify_metrics_capability(
-    requirement: StageRequirement,
-    required_effects: &[String],
-) -> Result<StageId, CapabilityError> {
-    CapabilityRegistry::registry().verify_capability_stage(
-        METRIC_CAPABILITY_ID,
-        requirement,
-        required_effects,
-    )
 }
 
 fn stage_mismatch_diagnostic(
@@ -327,7 +309,7 @@ fn stage_mismatch_diagnostic(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::diagnostics::audit_bridge::METRIC_CAPABILITY_ID;
+    use crate::diagnostics::{MetricsStageGuard, METRIC_CAPABILITY_ID};
 
     fn sample_timestamp() -> Timestamp {
         Timestamp::from_parts(1_700_000_000, 123_000_000)
@@ -414,9 +396,11 @@ mod tests {
     fn stage_mismatch_produces_guard_diagnostic() {
         let metric = metric_point("latency.mean", 21.0_f64);
         let required_effects = metric_required_effects();
-        let error =
-            verify_metrics_capability(StageRequirement::Exact(StageId::Beta), &required_effects)
-                .expect_err("beta requirement should fail");
+        let error = MetricsStageGuard::verify(
+            StageRequirement::Exact(StageId::Beta),
+            &required_effects,
+        )
+        .expect_err("beta requirement should fail");
         let diagnostic = stage_mismatch_diagnostic(
             &metric,
             StageRequirement::Exact(StageId::Beta),

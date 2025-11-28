@@ -225,6 +225,12 @@
 > - `CapabilityError` に `actual_stage` を追加して Stage mismatch の詳細を診断へ渡し、`compiler/rust/runtime/tests/metrics_capability.rs` で Stable 成功 / Beta 失敗の両ケースを固定化。  
 > - LSP/CLI 向けに `tooling/lsp/tests/client_compat/fixtures/metrics-stage.json`・`tests/client_compat/tests/client_compat.test.ts` を更新し、`reports/dual-write/metrics-stage-mismatch.json` を Stage mismatch 再現ログとして記録。あわせて `docs/notes/runtime-metrics-capability.md` と `docs/notes/runtime-capability-stage-log.md` に設計・観測手順を追記した。
 
+> 進行ログ（Phase3 W48, 5.1–5.2）  
+> - Feature ゲートを再編し、`compiler/rust/runtime/Cargo.toml` へ `metrics` を新設。`core_numeric`/`core_time` が自動的に `metrics` を有効化し、`compiler/rust/runtime/src/lib.rs` で `diagnostics` と `time` モジュールを `metrics` 基準で公開するよう更新した。  
+> - `compiler/rust/runtime/src/diagnostics/stage_guard.rs` を追加し、`metrics.emit` の Stage 検証を `MetricsStageGuard` へ集約。`metric_point.rs` はガードを通じて `metric_audit_metadata` を生成し、従来の `verify_metrics_capability` 重複を解消した。  
+> - `Iter<f64>::collect_numeric` へ `ensure_numeric_metrics_stage` を導入し、Stage mismatch を `CollectError::capability_denied` で報告。ユニットテスト `prelude::iter::tests::ensure_numeric_metrics_stage_reports_capability_error` を追加し、`metrics.emit` の検証失敗が再現できるようにした。  
+> - `cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core_numeric` を実行して `metrics` フィーチャー経路を確認（`core_time` 併用テストでは既存の `time::tests::custom_format_rejects_unsupported_locale` が `ja-JP` ロケールの仕様更新により失敗することを観測し、別途 TODO として記録）。
+
 ### 6. ドキュメント・サンプル更新（46-47週目）
 **担当領域**: 情報整備
 

@@ -18,10 +18,15 @@ use std::{
 };
 
 use super::collectors::{
-    CollectError, CollectOutcome, Collector, CollectorAuditTrail, List, ListCollector, Map,
-    MapCollector, NumericCollector, Set, SetCollector, Table, TableCollector, VecCollector,
+    CollectError, CollectOutcome, Collector, CollectorAuditTrail, CollectorEffectMarkers,
+    CollectorKind, CollectorStageProfile, List, ListCollector, Map, MapCollector, NumericCollector,
+    Set, SetCollector, Table, TableCollector, VecCollector,
 };
 use crate::collections::mutable::CoreVec;
+#[cfg(feature = "core_numeric")]
+use crate::diagnostics::{
+    metric_required_effects, MetricsStageGuard, METRIC_CAPABILITY_ID, METRIC_STAGE_REQUIREMENT,
+};
 use serde::Serialize;
 
 mod generators;
@@ -339,8 +344,44 @@ impl<T> FromIterator<T> for Iter<T> {
 impl Iter<f64> {
     /// 数値列を `NumericCollector` で収集するヘルパ。
     pub fn collect_numeric(self) -> Result<CollectOutcome<CoreVec<f64>>, CollectError> {
+        ensure_numeric_metrics_stage(METRIC_STAGE_REQUIREMENT, "Iter::collect_numeric")?;
         self.collect_into_collector(NumericCollector::new())
     }
+}
+
+#[cfg(feature = "core_numeric")]
+fn ensure_numeric_metrics_stage(
+    requirement: crate::StageRequirement,
+    source: &'static str,
+) -> Result<(), CollectError> {
+    let required_effects = metric_required_effects();
+    MetricsStageGuard::verify(requirement, &required_effects).map(|_| ()).map_err(|err| {
+        let profile = CollectorStageProfile::for_kind(CollectorKind::Numeric);
+        let snapshot = profile.snapshot(source);
+        let audit = CollectorAuditTrail::new(
+            CollectorKind::Numeric,
+            snapshot,
+            EffectLabels {
+                mem: false,
+                mutating: false,
+                debug: false,
+                async_pending: false,
+                audit: false,
+                cell: false,
+                rc: false,
+                unicode: false,
+                io: false,
+                transfer: false,
+                mem_bytes: 0,
+                predicate_calls: 0,
+                rc_ops: 0,
+                time: false,
+                time_calls: 0,
+            },
+            CollectorEffectMarkers::default(),
+        );
+        CollectError::capability_denied(METRIC_CAPABILITY_ID, audit, err)
+    })
 }
 
 impl<K, V> Iter<(K, V)> {
@@ -1115,6 +1156,21 @@ mod tests {
             matches!(err.kind(), CollectErrorKind::IteratorFailure),
             "expected iterator failure, got {:?}",
             err.kind()
+        );
+    }
+
+    #[cfg(feature = "core_numeric")]
+    #[test]
+    fn ensure_numeric_metrics_stage_reports_capability_error() {
+        let error = super::ensure_numeric_metrics_stage(
+            crate::StageRequirement::Exact(crate::StageId::Beta),
+            "iter.tests.collect_numeric",
+        )
+        .expect_err("beta requirement should fail for metrics");
+        assert!(
+            matches!(error.kind(), CollectErrorKind::CapabilityDenied),
+            "expected capability denied error, got {:?}",
+            error.kind()
         );
     }
 }

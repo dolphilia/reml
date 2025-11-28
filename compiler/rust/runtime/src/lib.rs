@@ -4,7 +4,7 @@
 
 pub mod collections;
 pub mod config;
-#[cfg(feature = "core_time")]
+#[cfg(feature = "metrics")]
 pub mod diagnostics;
 pub mod io;
 #[cfg(feature = "core_numeric")]
@@ -13,7 +13,7 @@ pub mod prelude;
 pub mod registry;
 pub mod stage;
 pub mod text;
-#[cfg(feature = "core_time")]
+#[cfg(any(feature = "core_time", feature = "metrics"))]
 pub mod time;
 
 pub use stage::{StageId, StageRequirement};

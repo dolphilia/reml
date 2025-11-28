@@ -55,12 +55,18 @@
 | ID | 作業内容 | 実施ステップ | 成果物 |
 | --- | --- | --- | --- |
 | M-1 | feature ゲートの整理 | `compiler/rust/runtime/src/lib.rs` から `#[cfg(feature = "core_time")] pub mod diagnostics;` を外し、`metrics` feature を新設。`core_numeric` 単独で `MetricPoint` が利用できるようにする | `Cargo.toml` feature 行、`docs/plans/bootstrap-roadmap/3-4-core-numeric-time-plan.md` §5 更新 |
-| M-2 | Stage 検証の共通化 | `CapabilityRegistry::verify_capability_stage` をラップする `MetricsStageGuard` を追加し、`emit_metric` 以外の API（例: `Iter::collect_numeric`）でも Stage mismatch 診断を出力 | `compiler/rust/runtime/src/diagnostics/metric_point.rs`、`tests/metrics_capability.rs` 更新 |
+| M-2 | Stage 検証の共通化 | `CapabilityRegistry::verify_capability_stage` をラップする `MetricsStageGuard` を追加し、`emit_metric` 以外の API（例: `Iter::collect_numeric`）でも Stage mismatch 診断を出力 | `compiler/rust/runtime/src/diagnostics/metric_point.rs`、`compiler/rust/runtime/src/prelude/iter/mod.rs`、`tests/metrics_capability.rs` 更新 |
 | M-3 | KPI/監査ログの一元管理 | `tooling/ci/collect-iterator-audit-metrics.py` に `numeric_time` の統合メトリクス出力 (`reports/metrics/numeric-time-latest.json`) を追加し、CI artefact を `docs/notes/core-numeric-time-ci-log.md` で追跡 | 新規 log ファイル、`README.md#core-numeric--time-進捗` へのリンク |
 
 ### チェックリスト
-- [ ] `cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features metrics` が通過。
+- [x] `cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core_numeric`（`metrics` 有効化） が通過。
 - [ ] `reports/audit/metric_point/*.audit.jsonl` が `effects.contract.stage_mismatch` を含む場合に CI で赤くなる。
+
+> 進行ログ（Phase3 W48, M-1〜M-2）  
+> - `compiler/rust/runtime/Cargo.toml` に `metrics` feature を追加し、`core_numeric`/`core_time` から継承する形へ移行。`compiler/rust/runtime/src/lib.rs` は `diagnostics` を `metrics`、`time` を `core_time` または `metrics` で公開する構成とし、`MetricPoint` が `core_time` なしでも利用可能になった。  
+> - `compiler/rust/runtime/src/diagnostics/stage_guard.rs` を新設し、`metrics.emit` Stage 検証を `MetricsStageGuard` へ統合。`emit_metric`・`metric_audit_metadata` はこのガードを介してメタデータを生成するよう更新した。  
+> - `Iter::collect_numeric` へ `ensure_numeric_metrics_stage` を挿入し、Stage mismatch が `CollectError::capability_denied` で露出するようにした（`prelude/iter/mod.rs`、テスト `prelude::iter::tests::ensure_numeric_metrics_stage_reports_capability_error` を追加）。  
+> - `cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core_numeric` を実施し、`metrics` フィーチャー経路のリグレッションを確認。`core_time` 専用テスト (`time::tests::custom_format_rejects_unsupported_locale`) は既存のロケール仕様と齟齬があるため別途 TODO として継続。
 
 ---
 

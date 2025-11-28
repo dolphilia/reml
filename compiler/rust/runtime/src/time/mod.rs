@@ -328,7 +328,7 @@ fn total_nanos_from_std_duration(duration: StdDuration) -> TimeResult<i128> {
     Ok(total)
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "core_time"))]
 mod tests {
     use super::*;
     use crate::io::time_env_snapshot;

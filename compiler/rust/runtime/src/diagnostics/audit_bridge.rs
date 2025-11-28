@@ -11,9 +11,7 @@ use serde_json::{Map, Number, Value};
 
 use crate::stage::{StageId, StageRequirement};
 
-use super::metric_point::MetricPoint;
-
-pub(crate) const METRIC_CAPABILITY_ID: &str = "metrics.emit";
+use super::{metric_point::MetricPoint, stage_guard::METRIC_CAPABILITY_ID};
 
 /// 指定したメトリクス情報を `AuditEnvelope.metadata` へ転写する。
 pub(crate) fn attach_audit(
