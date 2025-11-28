@@ -20,6 +20,35 @@ pub struct StatisticsError {
     pub audit_id: Option<String>,
 }
 
+/// `data.stats.*` メタデータをまとめて管理するタグ。
+#[derive(Debug, Clone, Default)]
+pub struct StatisticsTags {
+    pub column: Option<String>,
+    pub aggregation: Option<String>,
+    pub audit_id: Option<String>,
+}
+
+impl StatisticsTags {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn column(mut self, value: impl Into<String>) -> Self {
+        self.column = Some(value.into());
+        self
+    }
+
+    pub fn aggregation(mut self, value: impl Into<String>) -> Self {
+        self.aggregation = Some(value.into());
+        self
+    }
+
+    pub fn audit_id(mut self, value: impl Into<String>) -> Self {
+        self.audit_id = Some(value.into());
+        self
+    }
+}
+
 impl StatisticsError {
     pub fn insufficient_data(message: impl Into<String>) -> Self {
         Self::new(StatisticsErrorKind::InsufficientData, message)
@@ -81,6 +110,19 @@ impl StatisticsError {
 
     pub fn with_audit_id(mut self, audit_id: impl Into<String>) -> Self {
         self.audit_id = Some(audit_id.into());
+        self
+    }
+
+    pub fn with_tags(mut self, tags: StatisticsTags) -> Self {
+        if let Some(column) = tags.column {
+            self.column = Some(column);
+        }
+        if let Some(aggregation) = tags.aggregation {
+            self.aggregation = Some(aggregation);
+        }
+        if let Some(audit_id) = tags.audit_id {
+            self.audit_id = Some(audit_id);
+        }
         self
     }
 }
@@ -256,12 +298,14 @@ mod tests {
 
     #[test]
     fn statistics_error_carries_data_quality_context() {
+        let tags = StatisticsTags::new()
+            .column("latency_ms")
+            .aggregation("histogram")
+            .audit_id("audit-1234");
         let diag = StatisticsError::invalid_parameter("invalid bucket")
-            .with_column("latency_ms")
-            .with_aggregation("histogram")
-            .with_audit_id("audit-1234")
             .with_rule("H-04")
             .with_context_code("data.stats.invalid_bucket")
+            .with_tags(tags)
             .into_diagnostic();
 
         let numeric_meta = diag

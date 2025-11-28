@@ -1,0 +1,66 @@
+{
+  "diagnostics": [
+    {
+      "schema_version": "2.0.0-draft",
+      "message": "Decimal median requires at least one sample",
+      "severity": "error",
+      "domain": "runtime",
+      "timestamp": "1970-01-01T00:00:00Z",
+      "code": "core.numeric.statistics.invalid_parameter",
+      "codes": [
+        "core.numeric.statistics.invalid_parameter"
+      ],
+      "primary": {
+        "file": "tests/data/numeric/decimal_cases.reml",
+        "start_line": 4,
+        "start_col": 0,
+        "end_line": 6,
+        "end_col": 12
+      },
+      "audit_metadata": {
+        "numeric.statistics.kind": "invalid_parameter",
+        "numeric.statistics.column": "finance.apy",
+        "numeric.statistics.aggregation": "median",
+        "numeric.statistics.audit_id": "audit-decimal-demo",
+        "effect.required_capabilities": [],
+        "effect.actual_capabilities": []
+      },
+      "audit": {
+        "metadata": {
+          "numeric.statistics.kind": "invalid_parameter",
+          "numeric.statistics.column": "finance.apy",
+          "numeric.statistics.aggregation": "median",
+          "numeric.statistics.audit_id": "audit-decimal-demo",
+          "effect.required_capabilities": [],
+          "effect.actual_capabilities": []
+        },
+        "audit_id": "audit-decimal-demo",
+        "change_set": null,
+        "capability": null
+      },
+      "extensions": {
+        "numeric.statistics": {
+          "kind": "invalid_parameter",
+          "column": "finance.apy",
+          "aggregation": "median",
+          "audit_id": "audit-decimal-demo"
+        },
+        "data.stats": {
+          "column": "finance.apy",
+          "aggregation": "median",
+          "audit_id": "audit-decimal-demo"
+        },
+        "effects": {
+          "required_capabilities": [],
+          "actual_capabilities": []
+        },
+        "diagnostic.v2": {
+          "timestamp": "1970-01-01T00:00:00Z",
+          "codes": [
+            "core.numeric.statistics.invalid_parameter"
+          ]
+        }
+      }
+    }
+  ]
+}

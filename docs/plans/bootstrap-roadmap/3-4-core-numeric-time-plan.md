@@ -66,6 +66,11 @@
 > - `MetricPoint → AuditSink`、`StatisticsError → Diagnostic`、`Timestamp → IO` の 3 経路について `docs/notes/core-numeric-time-gap-log.md` に 2025-12-01 付けでバックログを登録し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` と README から追跡できるよう整理した。  
 > - `README.md#core-numeric--time-進捗` セクションを新設し、本計画書 §1.3 の進捗と依存図を Phase3 全体のロードマップへ共有（`Core.Collections`/`Core.Text` セクションと同一フォーマット）した。
 
+> 進行ログ（Phase3 W47, §1）  
+> - `median`/`mode`/`range` を `compiler/rust/runtime/src/numeric/mod.rs` に追加し、`IterNumericExt` から呼び出せるようにした。`reports/spec-audit/ch3/numeric_basic-extended.md` を作成し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core-numeric numeric::tests::median_mode_and_range_cover_basic_cases` の結果を保存。  
+> - `Decimal`/`BigInt`/`BigRational` へ `Numeric` トレイト実装を拡張。`compiler/rust/runtime/Cargo.toml` に `decimal`/`bigint`/`ratio` feature を追加し、`compiler/rust/runtime/src/numeric/decimal.rs` や `tests/data/numeric/decimal_cases.json`（`scripts/validate-diagnostic-json.sh --suite numeric` で検証）を通じてギャップ計画 N-2 の成果物を用意した。  
+> - `docs/plans/rust-migration/1-1-ast-and-ir-alignment.md` に Decimal/BigInt/Ratio 対応メモを追記し、Rust Frontend の型制約表と `core_numeric` feature の同期点を共有した。
+
 ### 2. 数値トレイト・ユーティリティ実装（44-45週目）
 **担当領域**: 基本演算
 
