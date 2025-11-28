@@ -8,10 +8,10 @@ use crate::{
     time::{self, Duration, Timestamp},
 };
 
+use super::audit_bridge::metric_audit_metadata;
+
 const METRIC_DOMAIN: &str = "runtime";
 const METRIC_EMIT_DIAGNOSTIC_CODE: &str = "core.diagnostics.metric_emit_failed";
-const METRIC_CAPABILITY_ID: &str = "metrics.emit";
-const METRIC_STAGE: &str = "stable";
 
 /// Core.Diagnostics で共有するメトリクスポイント。
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -65,7 +65,7 @@ impl MetricPoint {
     }
 
     fn into_record(self) -> MetricAuditRecord {
-        let metadata = build_audit_metadata(&self);
+        let metadata = metric_audit_metadata(&self);
         MetricAuditRecord {
             metric: self,
             metadata,
@@ -84,7 +84,7 @@ pub enum MetricValue {
 }
 
 impl MetricValue {
-    fn kind_label(&self) -> &'static str {
+    pub(crate) fn kind_label(&self) -> &'static str {
         match self {
             MetricValue::Float(_) => "float",
             MetricValue::Int(_) => "int",
@@ -93,7 +93,7 @@ impl MetricValue {
         }
     }
 
-    fn metadata_value(&self) -> Value {
+    pub(crate) fn metadata_value(&self) -> Value {
         match self {
             MetricValue::Float(value) => match Number::from_f64(*value) {
                 Some(number) => Value::Number(number),
@@ -193,15 +193,6 @@ pub fn metric_point(name: impl Into<String>, value: impl IntoMetricValue) -> Met
     MetricPoint::new(name, value.into_metric_value())
 }
 
-/// `MetricPoint` に `audit_id` を付与する。
-pub fn attach_audit(
-    mut metric: MetricPoint,
-    audit_id: Option<impl Into<String>>,
-) -> MetricPoint {
-    metric.audit_id = audit_id.map(|value| value.into());
-    metric
-}
-
 /// `MetricAuditRecord` を受け取る監査シンク。
 pub trait MetricAuditSink {
     fn emit_metric(&mut self, record: &MetricAuditRecord) -> Result<(), GuardDiagnostic>;
@@ -214,71 +205,6 @@ where
     fn emit_metric(&mut self, record: &MetricAuditRecord) -> Result<(), GuardDiagnostic> {
         self(record)
     }
-}
-
-fn build_audit_metadata(metric: &MetricPoint) -> Map<String, Value> {
-    let mut metadata = Map::new();
-    metadata.insert(
-        "metric_point.name".into(),
-        Value::String(metric.name.clone()),
-    );
-    metadata.insert(
-        "metric_point.kind".into(),
-        Value::String(metric.value.kind_label().into()),
-    );
-    metadata.insert(
-        "metric_point.value".into(),
-        metric.value.metadata_value(),
-    );
-    metadata.insert(
-        "metric_point.timestamp.seconds".into(),
-        Value::Number(Number::from(metric.timestamp.seconds())),
-    );
-    metadata.insert(
-        "metric_point.timestamp.nanos".into(),
-        Value::Number(Number::from(i64::from(metric.timestamp.nanos()))),
-    );
-
-    if let Some(audit_id) = metric.audit_id.as_ref() {
-        metadata.insert(
-            "metric_point.audit_id".into(),
-            Value::String(audit_id.clone()),
-        );
-    }
-
-    if !metric.tags.is_empty() {
-        let mut tag_object = Map::new();
-        for (key, value) in &metric.tags {
-            metadata.insert(
-                format!("metric_point.tag.{key}"),
-                Value::String(value.clone()),
-            );
-            tag_object.insert(key.clone(), Value::String(value.clone()));
-        }
-        metadata.insert("metric_point.tags".into(), Value::Object(tag_object));
-    }
-
-    metadata.insert(
-        "effect.capability".into(),
-        Value::String(METRIC_CAPABILITY_ID.into()),
-    );
-    metadata.insert(
-        "effect.stage.required".into(),
-        Value::String(METRIC_STAGE.into()),
-    );
-    metadata.insert(
-        "effect.stage.actual".into(),
-        Value::String(METRIC_STAGE.into()),
-    );
-    metadata.insert(
-        "effect.required_capabilities".into(),
-        Value::Array(vec![Value::String(METRIC_CAPABILITY_ID.into())]),
-    );
-    metadata.insert(
-        "effect.actual_capabilities".into(),
-        Value::Array(vec![Value::String(METRIC_CAPABILITY_ID.into())]),
-    );
-    metadata
 }
 
 /// `AuditSink` 側のデフォルト実装。
@@ -301,6 +227,7 @@ pub fn default_emit_sink(record: &MetricAuditRecord) -> Result<(), GuardDiagnost
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::diagnostics::audit_bridge::METRIC_CAPABILITY_ID;
 
     fn sample_timestamp() -> Timestamp {
         Timestamp::from_parts(1_700_000_000, 123_000_000)
@@ -317,10 +244,9 @@ mod tests {
     }
 
     #[test]
-    fn attach_audit_updates_identifier() {
-        let metric = metric_point("latency.p95", 99_i64);
-        let attached = attach_audit(metric, Some("audit-123"));
-        assert_eq!(attached.audit_id.as_deref(), Some("audit-123"));
+    fn with_audit_id_sets_identifier() {
+        let metric = metric_point("latency.p95", 99_i64).with_audit_id("audit-123");
+        assert_eq!(metric.audit_id.as_deref(), Some("audit-123"));
     }
 
     #[test]

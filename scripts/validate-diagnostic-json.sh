@@ -128,6 +128,9 @@ if [[ "${#TARGET_ARGS[@]}" -eq 0 && "${#PATTERNS[@]}" -gt 0 ]]; then
       TARGETS+=("$ROOT_DIR/reports/spec-audit/ch1/text_grapheme_stats.audit.jsonl")
     elif [[ "$pattern_lower" == *"numeric.histogram"* ]]; then
       TARGETS+=("$ROOT_DIR/tests/data/numeric/histogram")
+    elif [[ "$pattern_lower" == *"metrics.emit"* ]]; then
+      TARGETS+=("$ROOT_DIR/reports/audit/metric_point")
+      TARGETS+=("$ROOT_DIR/tests/data/metrics")
     fi
   done
 fi

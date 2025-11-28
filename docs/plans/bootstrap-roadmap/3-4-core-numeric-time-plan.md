@@ -198,6 +198,11 @@
 - KPI `metrics.emit.success_rate` を `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に登録し、`reports/audit/metric_point/*.jsonl` を自動生成する CI ジョブを設計する。
 - `scripts/validate-diagnostic-json.sh --pattern metrics.emit` を追加し、CLI/LSP/Runtime の監査ログが一致するかを検証する。
 
+> 進行ログ（Phase3 W46, 5.2）  
+> - `compiler/rust/runtime/src/diagnostics/audit_bridge.rs` を新設し、`attach_audit` / `with_metric_tags` / `metric_audit_metadata` を追加。`MetricPoint` 生成側（`metric_point.rs`）も同ヘルパを利用するよう更新し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml diagnostics` で `metric_point`/`audit_bridge` 両方の単体テストを通過させた。  
+> - `reports/audit/metric_point/emit_metric.audit.jsonl` を作成し、`metric_point` ケースを `AuditEnvelope` 形式で保存。`tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario emit_metric` の基準ログとして `0-3-audit-and-metrics.md` と共有した。  
+> - `scripts/validate-diagnostic-json.sh` に `--pattern metrics.emit` を追加し、監査ログ (`reports/audit/metric_point/*.audit.jsonl`) および `tests/data/metrics/metric_point_cases.json` を `diagnostic-v2`/`audit-schema` で一括検証できるようにした。README・0-3 KPI 表・ギャップログ（`docs/notes/core-numeric-time-gap-log.md`）へも本施策をリンク。  
+
 5.3. CLI/ランタイム (3-8) との契約を確認し、Capability Stage 検証のフックを追加する。  
 実施ステップ:
 - `docs/spec/3-8-core-runtime-capability.md` に沿って `emit_metric` 呼び出し前に `RuntimeBridgeRegistry::verify_capability_stage("metrics.emit")` を行う設計を `docs/notes/runtime-metrics-capability.md` にまとめる。
