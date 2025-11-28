@@ -1,7 +1,10 @@
+mod icu;
+
 use super::{
     timestamp_from_total_nanos, TimeError, TimeFormat, TimeResult, Timestamp, NANOS_PER_SECOND_I128,
 };
 use crate::text::{self, LocaleId, Str, String as TextString};
+use icu::resolve_custom_pattern;
 use time::error::InvalidFormatDescription;
 use time::format_description::{self, well_known::Rfc3339, FormatItem};
 use time::{Date, OffsetDateTime, PrimitiveDateTime, Time};
@@ -127,8 +130,9 @@ fn format_unix(ts: Timestamp, _locale: &LocaleId) -> TimeResult<TextString> {
 
 fn format_custom(ts: Timestamp, pattern: &str, locale: &LocaleId) -> TimeResult<TextString> {
     ensure_custom_pattern(pattern, locale)?;
+    let resolved = resolve_custom_pattern(pattern, locale)?;
     let description =
-        parse_description(pattern).map_err(|err| invalid_format_error(err, pattern, locale))?;
+        parse_description(&resolved).map_err(|err| invalid_format_error(err, pattern, locale))?;
     let datetime = timestamp_to_offset_datetime(ts)?;
     let formatted = datetime
         .format(&description)
@@ -171,8 +175,9 @@ fn parse_unix(input: &Str<'_>, locale: &LocaleId) -> TimeResult<Timestamp> {
 
 fn parse_custom(input: &Str<'_>, pattern: &str, locale: &LocaleId) -> TimeResult<Timestamp> {
     ensure_custom_pattern(pattern, locale)?;
+    let resolved = resolve_custom_pattern(pattern, locale)?;
     let description =
-        parse_description(pattern).map_err(|err| invalid_format_error(err, pattern, locale))?;
+        parse_description(&resolved).map_err(|err| invalid_format_error(err, pattern, locale))?;
     match OffsetDateTime::parse(input.as_str(), &description) {
         Ok(datetime) => timestamp_from_datetime(datetime),
         Err(offset_err) => {

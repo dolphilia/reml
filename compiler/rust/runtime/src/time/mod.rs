@@ -341,6 +341,11 @@ mod tests {
         "/../../..",
         "/tests/data/time/timezone_cases.json"
     ));
+    const TIMEZONE_IANA_JSON: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../..",
+        "/tests/data/time/timezone_iana.json"
+    ));
     const TIME_FORMAT_CASES_JSON: &str = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../..",
@@ -350,6 +355,11 @@ mod tests {
         env!("CARGO_MANIFEST_DIR"),
         "/../../..",
         "/tests/data/time/format/parse_cases.json"
+    ));
+    const TIME_ICU_FORMAT_JSON: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../..",
+        "/tests/data/time/format/icu_cases.json"
     ));
 
     #[test]
@@ -470,6 +480,19 @@ mod tests {
         } else {
             // `time::OffsetDateTime::now_local()` may fail inside hermetic CI environments.
         }
+
+        let iana_dataset: Value =
+            serde_json::from_str(TIMEZONE_IANA_JSON).expect("iana dataset json");
+        let iana_cases = iana_dataset["cases"].as_array().expect("iana cases array");
+        for case in iana_cases {
+            let name = case["name"].as_str().expect("iana name");
+            let expected = case["expected_offset_seconds"]
+                .as_i64()
+                .expect("iana expected offset");
+            let tz = timezone(name).expect("iana timezone lookup");
+            assert_eq!(tz.name(), name, "timezone should preserve IANA name");
+            assert_eq!(tz.offset().seconds(), expected);
+        }
     }
 
     #[test]
@@ -574,6 +597,50 @@ mod tests {
         let _ = format(ts, &TimeFormat::Rfc3339).expect("format");
         let labels = text::take_text_effects_snapshot();
         assert!(labels.unicode, "format should record unicode effect");
+    }
+
+    #[test]
+    fn time_format_icu_cases_from_dataset() {
+        let dataset: Value = serde_json::from_str(TIME_ICU_FORMAT_JSON).expect("icu dataset json");
+        let cases = dataset["cases"].as_array().expect("icu cases array");
+        for case in cases {
+            let ts = parse_timestamp_from_value(&case["timestamp"]);
+            let pattern = case["pattern"].as_str().expect("icu pattern");
+            let locale = parse_locale(case);
+            let fmt = TimeFormat::custom(pattern);
+            let formatted = if let Some(locale) = locale.as_ref() {
+                format_with_locale(ts, &fmt, Some(locale))
+            } else {
+                format(ts, &fmt)
+            }
+            .expect("icu format success");
+            assert_eq!(
+                formatted.as_str(),
+                case["expected"].as_str().expect("icu expected")
+            );
+        }
+    }
+
+    #[test]
+    fn time_parse_icu_cases_from_dataset() {
+        let dataset: Value = serde_json::from_str(TIME_ICU_FORMAT_JSON).expect("icu dataset json");
+        let cases = dataset["cases"].as_array().expect("icu cases array");
+        for case in cases {
+            let input = case["input"].as_str().expect("icu input");
+            let str_ref = Str::from(input);
+            let pattern = case["pattern"].as_str().expect("icu pattern");
+            let locale = parse_locale(case);
+            let fmt = TimeFormat::custom(pattern);
+            let parsed = if let Some(locale) = locale.as_ref() {
+                parse_with_locale(&str_ref, &fmt, Some(locale))
+            } else {
+                parse(&str_ref, &fmt)
+            }
+            .expect("icu parse success");
+            let expected = parse_timestamp_from_value(&case["timestamp"]);
+            assert_eq!(parsed.seconds(), expected.seconds());
+            assert_eq!(parsed.nanos(), expected.nanos());
+        }
     }
 
     #[test]

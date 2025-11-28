@@ -7,6 +7,11 @@ use time::OffsetDateTime;
 const LOOKUP_CAPABILITY: &str = "core.time.timezone.lookup";
 const LOCAL_CAPABILITY: &str = "core.time.timezone.local";
 const MAX_OFFSET_SECONDS: i64 = 18 * 60 * 60;
+const IANA_TIMEZONES: &[(&str, i64)] = &[
+    ("Asia/Tokyo", 9 * 3600),
+    ("Europe/London", 0),
+    ("America/New_York", -5 * 3600),
+];
 
 /// Core.Time タイムゾーン表現。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -38,6 +43,9 @@ pub fn timezone(name: impl AsRef<str>) -> TimeResult<Timezone> {
     if raw.is_empty() {
         return Err(TimeError::invalid_timezone("timezone name cannot be empty"));
     }
+    if let Some(tz) = timezone_from_iana(raw) {
+        return Ok(tz);
+    }
     let offset_seconds = parse_timezone_offset(raw).ok_or_else(|| {
         TimeError::invalid_timezone(format!("unsupported timezone '{raw}'")).with_timezone(raw)
     })?;
@@ -60,9 +68,14 @@ pub fn convert_timezone(ts: Timestamp, from: Timezone, to: Timezone) -> TimeResu
 }
 
 fn build_timezone(offset_seconds: i64) -> TimeResult<Timezone> {
-    ensure_offset_range(offset_seconds)?;
     let offset = Duration::from_parts(offset_seconds, 0);
     let name = canonical_name(offset);
+    build_timezone_with_label(name, offset_seconds)
+}
+
+fn build_timezone_with_label(name: String, offset_seconds: i64) -> TimeResult<Timezone> {
+    ensure_offset_range(offset_seconds)?;
+    let offset = Duration::from_parts(offset_seconds, 0);
     Ok(Timezone { name, offset })
 }
 
@@ -142,6 +155,13 @@ fn parse_offset_components(spec: &str) -> Option<i64> {
     }
     let total_minutes = hours * 60 + minutes;
     Some(sign * total_minutes * 60)
+}
+
+fn timezone_from_iana(raw: &str) -> Option<Timezone> {
+    IANA_TIMEZONES
+        .iter()
+        .find(|(name, _)| name.eq_ignore_ascii_case(raw))
+        .and_then(|(name, offset)| build_timezone_with_label((*name).to_string(), *offset).ok())
 }
 
 fn verify_capability(capability: &str) -> TimeResult<()> {
