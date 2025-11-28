@@ -4,3 +4,4 @@
 - 保存物: Rust Runtime/Adapter テスト結果、`collect-iterator-audit-metrics.py --section diagnostics|effects` の出力、`audit` JSON スナップショット。
 - 手順: `cargo test --manifest-path compiler/rust/runtime/ffi/Cargo.toml`, `cargo test --manifest-path compiler/rust/adapter/Cargo.toml`, `python3 tooling/ci/collect-iterator-audit-metrics.py --section diagnostics --require-success` を実行し、標準出力を貼付する。
 - 更新責任者: Rust Runtime WG（#rust-runtime）。
+- `metric_point-emit_metric.json` には `tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario emit_metric --metric-source tests/data/metrics/metric_point_cases.json` の結果を保存し、`MetricPoint` → `AuditSink` 連携の監査メタデータ確認に利用する。

@@ -4356,17 +4356,89 @@ def collect_numeric_time_timezone_lookup(paths: Sequence[Path]) -> Optional[Dict
     return summary
 
 
+def collect_numeric_time_emit_metric(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
+    if not paths:
+        return None
+    required_keys = [
+        "metric_point.name",
+        "metric_point.kind",
+        "metric_point.value",
+        "metric_point.timestamp.seconds",
+        "metric_point.timestamp.nanos",
+        "effect.capability",
+        "effect.stage.required",
+        "effect.stage.actual",
+    ]
+    cases_output: List[Dict[str, Any]] = []
+    total_cases = 0
+    failures: List[str] = []
+    for path in paths:
+        try:
+            data = load_json(path)
+        except ValueError as exc:
+            sys.stderr.write(f"[collect-iterator-audit-metrics] {exc}\n")
+            continue
+        if not isinstance(data, dict):
+            continue
+        cases = data.get("cases")
+        if not isinstance(cases, list):
+            continue
+        for entry in cases:
+            if not isinstance(entry, dict):
+                continue
+            metadata = _as_dict(entry.get("audit_metadata"))
+            name = entry.get("name")
+            source = str(path)
+            total_cases += 1
+            missing = []
+            if metadata is None:
+                missing = required_keys
+            else:
+                missing = [key for key in required_keys if key not in metadata]
+            case_status = "ok"
+            if missing:
+                case_status = "missing"
+                failures.append(
+                    f"{name or '<unknown>'}: missing metric audit keys {', '.join(missing)}"
+                )
+            cases_output.append(
+                {
+                    "name": name,
+                    "status": case_status,
+                    "missing_keys": missing or None,
+                    "source": source,
+                }
+            )
+    if total_cases == 0:
+        return None
+    status = "ok" if not failures else "needs-review"
+    metric = {
+        "metric": "core.time.emit_metric",
+        "scenario": "emit_metric",
+        "status": status,
+        "total_cases": total_cases,
+        "cases": cases_output,
+        "sources": [str(path) for path in paths],
+    }
+    if failures:
+        metric["failures"] = failures
+    return metric
+
+
 def collect_numeric_time_metrics(
     scenario_filters: Set[str],
     clock_sources: Sequence[Path],
     tz_sources: Sequence[Path],
+    metric_sources: Sequence[Path],
 ) -> Optional[Dict[str, Any]]:
     scenarios: List[Dict[str, Any]] = []
     relevant_filters = {
-        scenario for scenario in scenario_filters if scenario in {"clock_accuracy", "timezone_lookup"}
+        scenario
+        for scenario in scenario_filters
+        if scenario in {"clock_accuracy", "timezone_lookup", "emit_metric"}
     }
     if not relevant_filters:
-        relevant_filters = {"clock_accuracy", "timezone_lookup"}
+        relevant_filters = {"clock_accuracy", "timezone_lookup", "emit_metric"}
     if "clock_accuracy" in relevant_filters:
         clock_metric = collect_numeric_time_clock_accuracy(clock_sources)
         if clock_metric:
@@ -4375,6 +4447,10 @@ def collect_numeric_time_metrics(
         tz_metric = collect_numeric_time_timezone_lookup(tz_sources)
         if tz_metric:
             scenarios.append(tz_metric)
+    if "emit_metric" in relevant_filters:
+        metric_metric = collect_numeric_time_emit_metric(metric_sources)
+        if metric_metric:
+            scenarios.append(metric_metric)
     if not scenarios:
         return None
     return {
@@ -6134,6 +6210,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Path to Core.Time timezone coverage JSON (repeatable).",
     )
     parser.add_argument(
+        "--metric-source",
+        action="append",
+        dest="metric_sources",
+        help="Path to Core.Diagnostics metric emission JSON (repeatable).",
+    )
+    parser.add_argument(
         "--summary",
         type=Path,
         help="Generate Markdown summary from the specified audit index JSON.",
@@ -6186,6 +6268,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "normalization_conformance",
             "clock_accuracy",
             "timezone_lookup",
+            "emit_metric",
         ],
         help="Scenario-specific validation (repeatable).",
     )
@@ -6375,11 +6458,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     text_normalization_source_paths: List[Path] = _ensure_path_list(
         getattr(args, "text_normalization_sources", None)
     )
-    clock_source_paths: List[Path] = _ensure_path_list(
-        getattr(args, "time_sources", None)
-    )
-    tz_source_paths: List[Path] = _ensure_path_list(
-        getattr(args, "tz_sources", None)
+    clock_source_paths: List[Path] = _ensure_path_list(getattr(args, "time_sources", None))
+    tz_source_paths: List[Path] = _ensure_path_list(getattr(args, "tz_sources", None))
+    metric_source_paths: List[Path] = _ensure_path_list(
+        getattr(args, "metric_sources", None)
     )
     if not text_source_paths and TEXT_DEFAULT_METRICS_PATH.is_file():
         text_source_paths = [TEXT_DEFAULT_METRICS_PATH]
@@ -6616,29 +6698,43 @@ def main(argv: Optional[List[str]] = None) -> int:
         append_metrics.append(scenario_metric)
 
     numeric_time_metric: Optional[Dict[str, Any]] = None
-    numeric_time_scenarios = {"clock_accuracy", "timezone_lookup"}
+    numeric_time_scenarios = {"clock_accuracy", "timezone_lookup", "emit_metric"}
     numeric_time_requested = ("numeric_time" in sections) or bool(
         scenario_filters & numeric_time_scenarios
     )
     if numeric_time_requested:
-        numeric_sources = clock_source_paths + tz_source_paths
+        numeric_sources = clock_source_paths + tz_source_paths + metric_source_paths
         if not numeric_sources:
             sys.stderr.write(
-                "Numeric/Time metrics source not found. --time-source または --tz-source を指定してください。\n"
+                "Numeric/Time metrics source not found. --time-source / --tz-source / --metric-source を指定してください。\n"
             )
             return 2
-        missing_numeric_sources = [
-            str(path) for path in numeric_sources if not path.is_file()
-        ]
-        if missing_numeric_sources:
+        missing_clock_sources = [str(path) for path in clock_source_paths if not path.is_file()]
+        if missing_clock_sources:
             sys.stderr.write(
-                "Missing numeric/time metrics files: "
-                + ", ".join(missing_numeric_sources)
+                "Missing Core.Time clock metrics files: "
+                + ", ".join(missing_clock_sources)
+                + "\n"
+            )
+            return 2
+        missing_tz_sources = [str(path) for path in tz_source_paths if not path.is_file()]
+        if missing_tz_sources:
+            sys.stderr.write(
+                "Missing timezone metrics files: " + ", ".join(missing_tz_sources) + "\n"
+            )
+            return 2
+        missing_metric_sources = [
+            str(path) for path in metric_source_paths if not path.is_file()
+        ]
+        if missing_metric_sources:
+            sys.stderr.write(
+                "Missing metric emission files: "
+                + ", ".join(missing_metric_sources)
                 + "\n"
             )
             return 2
         numeric_time_metric = collect_numeric_time_metrics(
-            scenario_filters, clock_source_paths, tz_source_paths
+            scenario_filters, clock_source_paths, tz_source_paths, metric_source_paths
         )
         if numeric_time_metric is None:
             sys.stderr.write(

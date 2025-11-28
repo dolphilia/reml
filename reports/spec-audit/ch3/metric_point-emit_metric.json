@@ -1,0 +1,23 @@
+{
+  "metric": "core.time.emit_metric",
+  "scenario": "emit_metric",
+  "status": "ok",
+  "total_cases": 2,
+  "cases": [
+    {
+      "name": "latency.mean",
+      "status": "ok",
+      "missing_keys": null,
+      "source": "tests/data/metrics/metric_point_cases.json"
+    },
+    {
+      "name": "timer.sleep_ns",
+      "status": "ok",
+      "missing_keys": null,
+      "source": "tests/data/metrics/metric_point_cases.json"
+    }
+  ],
+  "sources": [
+    "tests/data/metrics/metric_point_cases.json"
+  ]
+}

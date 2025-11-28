@@ -187,6 +187,11 @@
 - `emit_metric` の JSON 形式を `docs/spec/3-6-core-diagnostics-audit.md` と照合し、`reports/spec-audit/ch3/metric_point-*.json` をゴールデンとして保存する。
 - `python3 tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario emit_metric --metric-source tests/data/metrics/metric_point_cases.json` を追加し、`effect {audit}` 計測を自動化する。
 
+> 進行ログ（Phase3 W46, 5.1）  
+> - `compiler/rust/runtime/src/diagnostics/{mod.rs,metric_point.rs}` を追加し、`MetricPoint`/`MetricValue`/`IntoMetricValue`/`emit_metric`/`MetricAuditSink` を実装。値種別（Float/Int/Duration/Timestamp）ごとに `metric_point.kind` と JSON 変換を固定し、`effect.capability = "metrics.emit"` や `effect.stage.required = "stable"` を `MetricAuditRecord.metadata` へ自動記録するようにした。  
+> - `tests/data/metrics/metric_point_cases.json` と `reports/spec-audit/ch3/metric_point-emit_metric.json` を追加し、`metric_point` ヘルパと `attach_audit` の期待メタデータ（`metric_point.tag.*`/`metric_point.value`/`effect.*`）をゴールデンで確認できるようにした。  
+> - `tooling/ci/collect-iterator-audit-metrics.py` に `--metric-source` オプションと `emit_metric` シナリオを追加し、`tests/data/metrics/metric_point_cases.json` を入力に `core.time.emit_metric` メトリクスを集計するよう拡張。`numeric_time` セクションで `clock_accuracy` / `timezone_lookup` と並べて監査レポートへ統合できる。
+
 5.2. `attach_audit` 等のヘルパで `AuditEnvelope` を取り扱うテストを整備し、監査ログ記録を `0-3-audit-and-metrics.md` に反映する。  
 実施ステップ:
 - `compiler/rust/runtime/src/diagnostics/audit_bridge.rs` に `attach_audit`/`with_metric_tags` を追加し、`AuditEnvelope.metadata.metric_point.*` を統一する。
