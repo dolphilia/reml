@@ -79,8 +79,14 @@
 | Q-3 | ゴールデン/CI 成果物 | `compiler/rust/runtime/tests/golden/numeric_time/*.json` を追加し、`scripts/validate-diagnostic-json.sh --suite numeric_time` を CI に統合。`phase3-rust.yml` で `core-numeric,core-time,metrics` を同時実行 | `.github/workflows/phase3-rust.yml` 更新、`reports/ci/numeric-time/latest.md` |
 
 ### チェックリスト
-- [ ] `scripts/validate-diagnostic-json.sh --suite numeric_time` が `tests/expected/time_{now,sleep}.json` と新ゴールデンを検証。
-- [ ] `cargo bench --features core-time --bench time_clock` の結果を `reports/benchmarks/numeric-time/` に保存。
+- [x] `scripts/validate-diagnostic-json.sh --suite numeric_time` が `tests/expected/time_{now,sleep}.json` と新ゴールデンを検証。
+- [x] `cargo bench --features core-time --bench time_clock` の結果を `reports/benchmarks/numeric-time/` に保存。
+
+> 実施ログ（Phase3 W50, §4）
+> - `compiler/rust/runtime/tests/time_props.rs` に `proptest` ベースの `duration_between`/`convert_timezone` 不変条件テストを追加し、`core-time` feature でのみビルドされるようにした。`timezone_offset_minutes_strategy` 経由で IANA/UTC 文字列を生成し、`duration_between` の対称性と `convert_timezone` の逆変換を検証【F:../../compiler/rust/runtime/tests/time_props.rs†L1-L94】。
+> - `compiler/rust/runtime/tests/iter_numeric_props.rs` のヘルパに `manual_lower_median` を追加し、`median` が lower median 仕様を満たすかシード/長さを変えて検証する `median_matches_manual_lower_median` を実装した【F:../../compiler/rust/runtime/tests/iter_numeric_props.rs†L1-L120】。
+> - `compiler/rust/runtime/benches/time_clock.rs` を追加し、`time_now_latency`/`time_monotonic_now_latency`/`duration_between_*` を Criterion で測定。結果を `reports/benchmarks/numeric-time/phase3-bench-20250107.json` に保存して Phase3 KPI の基準値とした【F:../../compiler/rust/runtime/benches/time_clock.rs†L1-L64】【F:../../reports/benchmarks/numeric-time/phase3-bench-20250107.json†L1-L24】。
+> - `compiler/rust/runtime/tests/golden/numeric_time/clock_accuracy.{json,audit.jsonl}` を追加し、`scripts/validate-diagnostic-json.sh --suite numeric_time` で `tests/expected/time_{now,sleep}.json` と併せて JSON パース検証できるようスイートを拡張した。CI 依存のない Generic JSON チェックとして Python バリデータを挿入している【F:../../compiler/rust/runtime/tests/golden/numeric_time/clock_accuracy.json†L1-L41】【F:../../compiler/rust/runtime/tests/golden/numeric_time/clock_accuracy.audit.jsonl†L1-L3】【F:../../scripts/validate-diagnostic-json.sh†L1-L220】。
 
 ---
 

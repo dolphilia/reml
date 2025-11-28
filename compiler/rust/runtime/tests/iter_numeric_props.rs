@@ -1,6 +1,6 @@
 #![cfg(feature = "core-numeric")]
 
-use reml_runtime::numeric::{rolling_average, take_numeric_effects_snapshot, z_score};
+use reml_runtime::numeric::{median, rolling_average, take_numeric_effects_snapshot, z_score};
 use reml_runtime::prelude::iter::Iter;
 
 fn collect_values(iter: Iter<f64>) -> Vec<f64> {
@@ -30,6 +30,16 @@ fn sample_sequence(seed: u64, len: usize) -> Vec<f64> {
         output.push(fraction * 20_000.0 - 10_000.0);
     }
     output
+}
+
+fn manual_lower_median(mut values: Vec<f64>) -> f64 {
+    values.sort_by(|a, b| a.partial_cmp(b).expect("no NaN in sample sequence"));
+    let mid = values.len() / 2;
+    if values.len() % 2 == 0 {
+        values[mid - 1]
+    } else {
+        values[mid]
+    }
 }
 
 #[test]
@@ -92,4 +102,19 @@ fn rolling_average_records_mem_effect() {
         effects.mem_bytes >= 3 * std::mem::size_of::<f64>(),
         "mem_bytes should reflect buffer allocation"
     );
+}
+
+#[test]
+fn median_matches_manual_lower_median() {
+    for seed in 1..=10u64 {
+        for len in 3..=17 {
+            let values = sample_sequence(seed * 19, len);
+            let expected = manual_lower_median(values.clone());
+            let actual = median(Iter::from_list(values)).expect("non-empty data");
+            assert!(
+                (actual - expected).abs() < 1e-9,
+                "seed={seed}, len={len}, expected={expected}, actual={actual}"
+            );
+        }
+    }
 }

@@ -40,7 +40,12 @@ num-rational = { version = "0.4", optional = true }
 [dev-dependencies]
 humantime = "2.1"
 criterion = { version = "0.3", default-features = false }
+proptest = { version = "=1.2.0", default-features = false, features = ["std"] }
 
 [[bench]]
 name = "bench_numeric_statistics"
+harness = false
+
+[[bench]]
+name = "time_clock"
 harness = false

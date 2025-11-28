@@ -30,6 +30,9 @@ Usage: scripts/validate-diagnostic-json.sh [PATH...]
 --suite numeric を指定した場合は以下を検証します:
   - tests/data/numeric 配下の JSON/JSONL
   - tests/expected/numeric_*.json
+--suite numeric_time を指定した場合は以下を検証します:
+  - tests/expected/time_{now,sleep}.json
+  - compiler/rust/runtime/tests/golden/numeric_time 配下の JSON/JSONL
 --section config を指定した場合は `schema_diff.*` キーの存在をチェックします。
 
 PATH には JSON ファイルまたはディレクトリを指定できます。
@@ -37,6 +40,7 @@ EOF
 }
 
 SUITE=""
+GENERIC_JSON_SUITE=0
 SECTION=""
 declare -a PATTERNS=()
 declare -a TARGET_ARGS=()
@@ -89,15 +93,21 @@ while [[ "$#" -gt 0 ]]; do
   esac
 done
 
-if ! command -v node >/dev/null 2>&1; then
-  echo "[validate-diagnostic-json] error: Node.js が見つかりません" >&2
-  exit 1
+if [[ "$SUITE" != "numeric_time" ]]; then
+  if ! command -v node >/dev/null 2>&1; then
+    echo "[validate-diagnostic-json] error: Node.js が見つかりません" >&2
+    exit 1
+  fi
+
+  if [[ ! -d "$NODE_PROJECT/node_modules" ]]; then
+    echo "[validate-diagnostic-json] warning: $NODE_PROJECT/node_modules が存在しません。" >&2
+    echo "  → 先に \`npm install\` (tooling/lsp/tests/client_compat) を実行してください。" >&2
+    exit 1
+  fi
 fi
 
-if [[ ! -d "$NODE_PROJECT/node_modules" ]]; then
-  echo "[validate-diagnostic-json] warning: $NODE_PROJECT/node_modules が存在しません。" >&2
-  echo "  → 先に \`npm install\` (tooling/lsp/tests/client_compat) を実行してください。" >&2
-  exit 1
+if [[ "$SUITE" == "numeric_time" ]]; then
+  GENERIC_JSON_SUITE=1
 fi
 
 declare -a TARGETS=()
@@ -111,6 +121,11 @@ if [[ "${#TARGET_ARGS[@]}" -eq 0 ]]; then
     TARGETS+=("$ROOT_DIR/tests/data/numeric")
     TARGETS+=("$ROOT_DIR/tests/expected/numeric_quantiles.json")
     TARGETS+=("$ROOT_DIR/tests/expected/numeric_regression.json")
+  elif [[ "$SUITE" == "numeric_time" ]]; then
+    GENERIC_JSON_SUITE=1
+    TARGETS+=("$ROOT_DIR/tests/expected/time_now.json")
+    TARGETS+=("$ROOT_DIR/tests/expected/time_sleep.json")
+    TARGETS+=("$ROOT_DIR/compiler/rust/runtime/tests/golden/numeric_time")
   else
     TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/diagnostics")
     TARGETS+=("$ROOT_DIR/compiler/ocaml/tests/golden/audit")
@@ -172,6 +187,55 @@ for target in "${TARGETS[@]}"; do
     fi
   done < <(expand_targets "$target")
 done
+
+validate_generic_json_files() {
+  if [[ "$#" -eq 0 ]]; then
+    echo "[validate-diagnostic-json] warning: 対象ファイルが見つかりません" >&2
+    return 0
+  fi
+  python3 - "$@" <<'PY'
+import json
+import pathlib
+import sys
+
+def validate_json(path: pathlib.Path) -> bool:
+    name = path.name.lower()
+    if name.endswith(".jsonl") or name.endswith(".jsonl.golden"):
+        ok = True
+        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if not line.strip():
+                continue
+            try:
+                json.loads(line)
+            except json.JSONDecodeError as exc:
+                print(f"[validate-diagnostic-json] error: {path}:{line_no}: {exc}", file=sys.stderr)
+                ok = False
+        return ok
+    try:
+        json.loads(path.read_text(encoding="utf-8"))
+        return True
+    except json.JSONDecodeError as exc:
+        print(f"[validate-diagnostic-json] error: {path}: {exc}", file=sys.stderr)
+        return False
+
+all_ok = True
+for raw in sys.argv[1:]:
+    path = pathlib.Path(raw)
+    if not path.exists():
+        print(f"[validate-diagnostic-json] warning: {path} が存在しません", file=sys.stderr)
+        continue
+    all_ok &= validate_json(path)
+sys.exit(0 if all_ok else 1)
+PY
+}
+
+if [[ "$GENERIC_JSON_SUITE" -eq 1 ]]; then
+  if validate_generic_json_files "${FILES[@]}"; then
+    exit 0
+  else
+    exit 1
+  fi
+fi
 
 if [[ "${#FILES[@]}" -eq 0 ]]; then
   echo "[validate-diagnostic-json] warning: 対象ファイルが見つかりません" >&2

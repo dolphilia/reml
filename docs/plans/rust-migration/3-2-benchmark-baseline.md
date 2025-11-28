@@ -39,6 +39,7 @@
 | CLI render | 診断文字列 | `scripts/benchmark-diagnostic.sh --frontend ocaml` | `--frontend rust` | 新規スクリプトを追加 |
 | Iter buffered | `Iter::buffered` アダプタ + `collect_vec`（backpressure/メモリ測定） | `cargo bench -p compiler-ocaml-frontend iter_buffered` (暫定) | `cargo bench -p compiler-rust-frontend iter_buffered -- warmup-time 3 --measurement-time 10` | KPI: `iterator.mem.window`（`reports/iterator-buffered-metrics.json`）と `windows_per_sec`（`reports/benchmarks/iter_buffered-YYYY-MM-DD.json`）。±10% 以内であれば合格。 |
 | `numeric_statistics` | Core.Numeric `mean`/`variance`/`percentile` の数値安定性・性能測定 | （OCaml 実装なし、参考値のみ） | `cargo bench --manifest-path compiler/rust/runtime/Cargo.toml --features core-numeric --bench bench_numeric_statistics -- --noplot` | `reports/benchmarks/numeric-phase3/phase3-baseline-2025-12-04.json` に `mean_large_drift`/`variance_random_walk`/`percentile_heavy_tail` の基準値を保存。Phase3 KPI `numeric.statistics.latency_ms` をここから抽出する。 |
+| `time_clock` | Core.Time `now`/`monotonic_now`/`duration_between` の syscall ジッター測定 | （OCaml 実装なし、参考値のみ） | `cargo bench --manifest-path compiler/rust/runtime/Cargo.toml --features core-time --bench time_clock -- --noplot` | `reports/benchmarks/numeric-time/phase3-bench-20250107.json` に `time_now_latency`/`time_monotonic_now_latency`/`duration_between_*` の中央値と outlier 比率を記録し、Phase3 KPI `time.syscall.latency_ns` を監視する。 |
 
 Rust 実装向けに `compiler/rust/benchmarks/` を作成し、OCaml スイートと同じ入力を利用する。ベンチ実行時は `cargo run --bin remlc -- --frontend rust ...` を内部で呼び出し、差分を `reports/benchmarks/dual` に保存する。
 

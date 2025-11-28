@@ -1,0 +1,46 @@
+{
+  "suite": "core.numeric_time.time_clock",
+  "recorded_at": "2025-01-07T00:00:00Z",
+  "command": "cargo bench --manifest-path compiler/rust/runtime/Cargo.toml --features core-time --bench time_clock -- --noplot",
+  "metrics": [
+    {
+      "name": "time_now_latency",
+      "min_ns": 73.013,
+      "median_ns": 73.187,
+      "max_ns": 73.363,
+      "iterations": 68000000
+    },
+    {
+      "name": "time_monotonic_now_latency",
+      "min_ns": 67.336,
+      "median_ns": 67.455,
+      "max_ns": 67.6,
+      "iterations": 74000000
+    },
+    {
+      "name": "duration_between_1ms",
+      "min_ns": 10.966,
+      "median_ns": 11.013,
+      "max_ns": 11.09,
+      "iterations": 454000000
+    },
+    {
+      "name": "duration_between_5ms",
+      "min_ns": 10.996,
+      "median_ns": 11.018,
+      "max_ns": 11.04,
+      "iterations": 453000000
+    },
+    {
+      "name": "duration_between_10ms",
+      "min_ns": 10.958,
+      "median_ns": 10.97,
+      "max_ns": 10.983,
+      "iterations": 450000000
+    }
+  ],
+  "notes": [
+    "Mac mini M2 Pro / macOS 14.6, rustc 1.69.0",
+    "Numbers are medians reported by Criterion; CI should flag ±15% regression on syscall latencies."
+  ]
+}
