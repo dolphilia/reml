@@ -3,8 +3,9 @@ use super::{
     NANOS_PER_SECOND_I128,
 };
 use crate::text::{self, LocaleId, Str, String as TextString};
+use time::error::InvalidFormatDescription;
 use time::format_description::{self, well_known::Rfc3339, FormatItem};
-use time::OffsetDateTime;
+use time::{Date, OffsetDateTime, PrimitiveDateTime, Time};
 
 const RFC3339_LABEL: &str = "rfc3339";
 const UNIX_LABEL: &str = "unix";
@@ -140,10 +141,20 @@ fn parse_unix(input: &Str<'_>, locale: &LocaleId) -> TimeResult<Timestamp> {
 
 fn parse_custom(input: &Str<'_>, pattern: &str, locale: &LocaleId) -> TimeResult<Timestamp> {
     ensure_custom_pattern(pattern, locale)?;
-    let description = parse_description(pattern).map_err(|err| invalid_format_error(err, pattern, locale))?;
-    OffsetDateTime::parse(input.as_str(), &description)
-        .map_err(|err| invalid_format_error(err, pattern, locale))
-        .and_then(timestamp_from_datetime)
+    let description =
+        parse_description(pattern).map_err(|err| invalid_format_error(err, pattern, locale))?;
+    match OffsetDateTime::parse(input.as_str(), &description) {
+        Ok(datetime) => timestamp_from_datetime(datetime),
+        Err(offset_err) => {
+            if let Ok(naive) = PrimitiveDateTime::parse(input.as_str(), &description) {
+                return timestamp_from_datetime(naive.assume_utc());
+            }
+            let date = Date::parse(input.as_str(), &description)
+                .map_err(|_| invalid_format_error(offset_err, pattern, locale))?;
+            let midnight = date.with_time(Time::MIDNIGHT);
+            timestamp_from_datetime(midnight.assume_utc())
+        }
+    }
 }
 
 fn timestamp_to_offset_datetime(ts: Timestamp) -> TimeResult<OffsetDateTime> {
@@ -170,9 +181,7 @@ fn ensure_custom_pattern(pattern: &str, locale: &LocaleId) -> TimeResult<()> {
     Ok(())
 }
 
-fn parse_description<'a>(
-    pattern: &'a str,
-) -> Result<Vec<FormatItem<'a>>, format_description::InvalidFormatDescription> {
+fn parse_description<'a>(pattern: &'a str) -> Result<Vec<FormatItem<'a>>, InvalidFormatDescription> {
     format_description::parse(pattern)
 }
 
