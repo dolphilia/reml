@@ -1,6 +1,7 @@
 //! Core.Time 仕様（`docs/spec/3-4-core-numeric-time.md`）の Timestamp / Duration 基本実装。
 
 mod effects;
+mod format;
 pub mod error;
 mod timezone;
 
@@ -13,6 +14,7 @@ use crate::prelude::iter::EffectLabels;
 
 pub use effects::TimeSyscallMetrics;
 pub use error::{TimeError, TimeErrorKind, TimeResult};
+pub use format::{format, format_with_locale, parse, parse_with_locale};
 pub use timezone::Timezone;
 
 const NANOS_PER_SECOND_I128: i128 = 1_000_000_000;
@@ -88,7 +90,7 @@ impl Timestamp {
         timestamp_from_total_nanos(total)
     }
 
-    fn total_nanoseconds(&self) -> i128 {
+    pub(crate) fn total_nanoseconds(&self) -> i128 {
         (self.seconds as i128) * NANOS_PER_SECOND_I128 + self.nanos as i128
     }
 }
@@ -330,6 +332,7 @@ fn total_nanos_from_std_duration(duration: StdDuration) -> TimeResult<i128> {
 mod tests {
     use super::*;
     use crate::prelude::ensure::IntoDiagnostic;
+    use crate::text::{self, LocaleId, Str};
     use serde_json::Value;
     use std::time::Duration as StdDuration;
 
@@ -337,6 +340,16 @@ mod tests {
         env!("CARGO_MANIFEST_DIR"),
         "/../../..",
         "/tests/data/time/timezone_cases.json"
+    ));
+    const TIME_FORMAT_CASES_JSON: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../..",
+        "/tests/data/time/format/format_cases.json"
+    ));
+    const TIME_FORMAT_PARSE_JSON: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../..",
+        "/tests/data/time/format/parse_cases.json"
     ));
 
     #[test]
@@ -480,5 +493,112 @@ mod tests {
             diag.audit_metadata.get("time.platform"),
             Some(&Value::String(std::env::consts::OS.into()))
         );
+    }
+
+    #[test]
+    fn time_error_includes_format_metadata() {
+        let diag = TimeError::invalid_format("bad pattern")
+            .with_format_pattern("custom")
+            .with_locale("und")
+            .into_diagnostic();
+        assert_eq!(
+            diag.audit_metadata.get("time.format.pattern"),
+            Some(&Value::String("custom".into()))
+        );
+        assert_eq!(
+            diag.audit_metadata.get("time.locale"),
+            Some(&Value::String("und".into()))
+        );
+    }
+
+    #[test]
+    fn time_format_cases_from_dataset() {
+        let dataset: Value =
+            serde_json::from_str(TIME_FORMAT_CASES_JSON).expect("format dataset json");
+        let cases = dataset["cases"]
+            .as_array()
+            .expect("format cases array");
+        for case in cases {
+            let ts = parse_timestamp_from_value(&case["timestamp"]);
+            let fmt_spec = parse_format_case(case);
+            let locale = parse_locale(case);
+            let result = if let Some(locale) = locale.as_ref() {
+                format_with_locale(ts, &fmt_spec, Some(locale))
+            } else {
+                format(ts, &fmt_spec)
+            }
+            .expect("format success");
+            assert_eq!(
+                result.as_str(),
+                case["expected"].as_str().expect("expected str")
+            );
+        }
+    }
+
+    #[test]
+    fn time_parse_cases_from_dataset() {
+        let dataset: Value =
+            serde_json::from_str(TIME_FORMAT_PARSE_JSON).expect("parse dataset json");
+        let cases = dataset["cases"].as_array().expect("parse cases array");
+        for case in cases {
+            let input_value = case["input"].as_str().expect("input string");
+            let str_ref = Str::from(input_value);
+            let fmt_spec = parse_format_case(case);
+            let locale = parse_locale(case);
+            let parsed = if let Some(locale) = locale.as_ref() {
+                parse_with_locale(&str_ref, &fmt_spec, Some(locale))
+            } else {
+                parse(&str_ref, &fmt_spec)
+            }
+            .expect("parse success");
+            let expected = parse_timestamp_from_value(&case["timestamp"]);
+            assert_eq!(parsed.seconds(), expected.seconds());
+            assert_eq!(parsed.nanos(), expected.nanos());
+        }
+    }
+
+    #[test]
+    fn custom_format_rejects_unsupported_locale() {
+        let locale = LocaleId::parse("ja-JP").expect("locale parse");
+        let err = format_with_locale(
+            Timestamp::unix_epoch(),
+            &TimeFormat::custom("[year]"),
+            Some(&locale),
+        )
+        .expect_err("unsupported locale should fail");
+        assert_eq!(err.kind(), TimeErrorKind::InvalidFormat);
+    }
+
+    #[test]
+    fn format_records_unicode_effects() {
+        text::take_text_effects_snapshot();
+        let ts = Timestamp::from_parts(0, 0);
+        let _ = format(ts, &TimeFormat::Rfc3339).expect("format");
+        let labels = text::take_text_effects_snapshot();
+        assert!(labels.unicode, "format should record unicode effect");
+    }
+
+    fn parse_timestamp_from_value(value: &Value) -> Timestamp {
+        let seconds = value["seconds"].as_i64().expect("seconds");
+        let nanos = value["nanos"].as_i64().unwrap_or(0) as i32;
+        Timestamp::from_parts(seconds, nanos)
+    }
+
+    fn parse_format_case(case: &Value) -> TimeFormat {
+        match case["format"].as_str().expect("format name") {
+            "rfc3339" => TimeFormat::Rfc3339,
+            "unix" => TimeFormat::Unix,
+            "custom" => {
+                let pattern = case["pattern"].as_str().expect("custom pattern");
+                TimeFormat::custom(pattern)
+            }
+            other => panic!("unsupported format {other}"),
+        }
+    }
+
+    fn parse_locale(case: &Value) -> Option<LocaleId> {
+        case.get("locale")
+            .and_then(|value| value.as_str())
+            .map(|raw| LocaleId::parse(raw).expect("locale parse"))
     }
 }

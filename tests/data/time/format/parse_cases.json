@@ -1,0 +1,21 @@
+{
+  "cases": [
+    {
+      "format": "rfc3339",
+      "input": "2024-01-02T03:04:05Z",
+      "timestamp": { "seconds": 1704164645, "nanos": 0 }
+    },
+    {
+      "format": "unix",
+      "input": "1700000000.250000000",
+      "timestamp": { "seconds": 1700000000, "nanos": 250000000 }
+    },
+    {
+      "format": "custom",
+      "pattern": "[year]-[month]-[day]",
+      "input": "2020-05-11",
+      "timestamp": { "seconds": 1589155200, "nanos": 0 },
+      "locale": "und"
+    }
+  ]
+}

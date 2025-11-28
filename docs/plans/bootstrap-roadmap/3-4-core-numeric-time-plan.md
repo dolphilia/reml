@@ -172,6 +172,12 @@
 - `TimeFormat` エラーを `TimeError` に変換する `impl From` を定義し、`Diagnostic` へ昇格する際に `time.format.pattern` と `locale` を必須メタデータとして出力する。
 - `tests/data/time/format/*.json` を整備し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml time_format_cases --features core-numeric` で ICU 互換性と `effect {unicode}` 計測を確認する。
 
+> 進行ログ（Phase3 W46, 4.3）  
+> - `compiler/rust/runtime/src/time/format.rs` を新設し、RFC3339/Unix/Custom のフォーマット/パースを `LocaleId` オプション付きで公開。`format_with_locale`/`parse_with_locale` が `effect {unicode}` を記録し、`Locale` チェックは `TIME_LOCALE_TABLE` で一元化した。【F:../../compiler/rust/runtime/src/time/format.rs†L1-L270】  
+> - `TimeError` を拡張し、`InvalidFormat` 種別と `with_format_pattern`/`with_locale` ビルダーを追加。診断オブジェクトへ `time.format.pattern`/`time.locale` を必須メタデータとしてエクスポートすることで、Plan 4.3 の要求を満たした。【F:../../compiler/rust/runtime/src/time/error.rs†L11-L200】  
+> - `tests/data/time/format/{format_cases,parse_cases}.json` を作成し、単体テストでフォーマット/パース双方をゴールデン化。`time::tests::time_format_cases_from_dataset` と `time_parse_cases_from_dataset` が JSON を読み込み、`LocaleId` の正規化や小数 UNIX 表現を検証する。併せて `format_records_unicode_effects` で `effect {unicode}` を確認した。【F:../../compiler/rust/runtime/src/time/mod.rs†L250-L360】  
+> - `docs/plans/bootstrap-roadmap/assets/time-format-locale-map.csv` を追加し、`und`/`ja-JP`/`az-Latn` のサポート状況と fallback を表形式で共有。Core.Text の `text-locale-support.csv` と同粒度の指標を定義し、ICU パターン昇格時は本表を更新する運用とした。
+
 ### 5. メトリクス・監査統合（46週目）
 **担当領域**: Diagnostics 連携
 

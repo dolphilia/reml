@@ -15,6 +15,8 @@ pub struct TimeError {
     message: String,
     timestamp: Option<Timestamp>,
     timezone: Option<String>,
+    format_pattern: Option<String>,
+    locale: Option<String>,
     platform: &'static str,
     capability: Option<String>,
     required_stage: Option<String>,
@@ -28,6 +30,8 @@ impl TimeError {
             message: message.into(),
             timestamp: None,
             timezone: None,
+            format_pattern: None,
+            locale: None,
             platform: std::env::consts::OS,
             capability: None,
             required_stage: None,
@@ -57,6 +61,16 @@ impl TimeError {
         self
     }
 
+    pub fn with_format_pattern(mut self, pattern: impl Into<String>) -> Self {
+        self.format_pattern = Some(pattern.into());
+        self
+    }
+
+    pub fn with_locale(mut self, locale: impl Into<String>) -> Self {
+        self.locale = Some(locale.into());
+        self
+    }
+
     pub fn with_capability_context(
         mut self,
         capability: impl Into<String>,
@@ -80,6 +94,10 @@ impl TimeError {
     pub fn invalid_timezone(message: impl Into<String>) -> Self {
         Self::new(TimeErrorKind::InvalidTimezone, message)
     }
+
+    pub fn invalid_format(message: impl Into<String>) -> Self {
+        Self::new(TimeErrorKind::InvalidFormat, message)
+    }
 }
 
 impl fmt::Display for TimeError {
@@ -97,6 +115,8 @@ impl IntoDiagnostic for TimeError {
             message,
             timestamp,
             timezone,
+            format_pattern,
+            locale,
             platform,
             capability,
             required_stage,
@@ -107,6 +127,12 @@ impl IntoDiagnostic for TimeError {
         time_extensions.insert("platform".into(), Value::String(platform.to_string()));
         if let Some(tz) = timezone.as_ref() {
             time_extensions.insert("timezone".into(), Value::String(tz.clone()));
+        }
+        if let Some(pattern) = format_pattern.as_ref() {
+            time_extensions.insert("format_pattern".into(), Value::String(pattern.clone()));
+        }
+        if let Some(locale) = locale.as_ref() {
+            time_extensions.insert("locale".into(), Value::String(locale.clone()));
         }
         if let Some(ts) = timestamp {
             if let Ok(value) = serde_json::to_value(ts) {
@@ -134,6 +160,15 @@ impl IntoDiagnostic for TimeError {
         );
         if let Some(tz) = timezone.as_ref() {
             audit_metadata.insert("time.timezone".into(), Value::String(tz.clone()));
+        }
+        if let Some(pattern) = format_pattern.as_ref() {
+            audit_metadata.insert(
+                "time.format.pattern".into(),
+                Value::String(pattern.clone()),
+            );
+        }
+        if let Some(locale) = locale.as_ref() {
+            audit_metadata.insert("time.locale".into(), Value::String(locale.clone()));
         }
         if let Some(capability) = capability.as_ref() {
             audit_metadata.insert("time.capability".into(), Value::String(capability.clone()));
@@ -167,6 +202,7 @@ pub enum TimeErrorKind {
     SystemClockUnavailable,
     InvalidTimezone,
     TimeOverflow,
+    InvalidFormat,
 }
 
 impl TimeErrorKind {
@@ -175,6 +211,7 @@ impl TimeErrorKind {
             TimeErrorKind::SystemClockUnavailable => "system_clock_unavailable",
             TimeErrorKind::InvalidTimezone => "invalid_timezone",
             TimeErrorKind::TimeOverflow => "time_overflow",
+            TimeErrorKind::InvalidFormat => "invalid_format",
         }
     }
 
@@ -183,6 +220,7 @@ impl TimeErrorKind {
             TimeErrorKind::SystemClockUnavailable => "core.time.system_clock_unavailable",
             TimeErrorKind::InvalidTimezone => "core.time.invalid_timezone",
             TimeErrorKind::TimeOverflow => "core.time.overflow",
+            TimeErrorKind::InvalidFormat => "core.time.invalid_format",
         }
     }
 }
