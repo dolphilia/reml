@@ -159,6 +159,13 @@
 - タイムゾーン解決 (`timezone`, `local`) を `runtime/src/capabilities/timezone.rs` 経由にまとめ、`docs/notes/runtime-capability-stage-log.md` に OS ごとの差分を保存する。
 - `tests/data/time/timezone_cases.json` を用意し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario timezone_lookup --tz-source tests/data/time/timezone_cases.json` で Linux/macOS/Windows の挙動を比較する。
 
+> 進行ログ（Phase3 W46, 4.2）  
+> - `compiler/rust/runtime/src/time/error.rs` に `IntoDiagnostic` 実装を追加し、`time.platform`/`time.timezone`/Capability Stage を診断・監査メタデータに出力。`TimeError::invalid_timezone` などのヘルパも整備して `TimeErrorKind` ごとの `core.time.*` コードを固定した。  
+> - `compiler/rust/runtime/src/time/timezone.rs` を新設し、`Timezone` 構造体と `utc`/`local`/`timezone`/`convert_timezone` を PoC 実装。`time` クレートの `OffsetDateTime::now_local()` 経由でローカル offset を取得し、Capability `core.time.timezone.{local,lookup}` を検証する経路を組み込んだ。  
+> - `TimeFormat` 列挙を `serde(tag="kind")` で定義し、4.3 フォーマット作業の前提となる API を確定。`tests/data/time/timezone_cases.json` と `compiler/rust/runtime/src/time/mod.rs` の単体テストで固定 offset／変換ケースを共有。  
+> - `tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario timezone_lookup --tz-source tests/data/time/timezone_cases.json` が動作するよう `numeric_time` セクション／CLI オプションを追加。`clock_accuracy` シナリオも同セクションから収集できるよう `--time-source` を導入し、0-3 指標表に `time.timezone.lookup_consistency` を登録した。  
+> - Capability Stage 連携メモ `docs/notes/runtime-capability-stage-log.md` を作成し、`time.timezone.local`/`time.timezone.lookup` の Stage 要件と監査メタデータのフローを記録した。
+
 4.3. フォーマット (`format`)/パース (`parse`) を実装し、`Locale`/ICU 依存部分のエラーハンドリングを確認する。  
 実施ステップ:
 - `compiler/rust/runtime/src/time/format.rs` に RFC3339/Unix/Custom をまとめ、`Core.Text` の `LocaleId` と共有する `docs/plans/bootstrap-roadmap/assets/time-format-locale-map.csv` を作る。

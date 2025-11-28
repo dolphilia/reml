@@ -1,0 +1,62 @@
+{
+  "metadata": {
+    "description": "Core.Time timezone lookup regression cases",
+    "updated_at": "2025-12-08",
+    "notes": [
+      "Aliases exercise case-insensitive lookups and short UTC forms.",
+      "platform_offsets acts as a placeholder for Linux/macOS/Windows parity logs."
+    ]
+  },
+  "cases": [
+    {
+      "name": "UTC",
+      "offset_seconds": 0,
+      "aliases": ["UTC", "utc", "Z", "GMT", "Etc/UTC"],
+      "platform_offsets": {
+        "linux-gnu": 0,
+        "macos": 0,
+        "windows-msvc": 0
+      }
+    },
+    {
+      "name": "UTC+09:00",
+      "offset_seconds": 32400,
+      "aliases": ["UTC+9", "UTC+09", "UTC+09:00", "+09:00", "utc+0900"],
+      "platform_offsets": {
+        "linux-gnu": 32400,
+        "macos": 32400,
+        "windows-msvc": 32400
+      }
+    },
+    {
+      "name": "UTC-05:30",
+      "offset_seconds": -19800,
+      "aliases": ["UTC-5:30", "UTC-0530", "-05:30", "utc-530"],
+      "platform_offsets": {
+        "linux-gnu": -19800,
+        "macos": -19800,
+        "windows-msvc": -19800
+      }
+    }
+  ],
+  "convert_cases": [
+    {
+      "timestamp": {"seconds": 1700000000, "nanos": 0},
+      "from": "UTC",
+      "to": "UTC+09:00",
+      "expected_seconds": 1700032400,
+      "expected_nanos": 0
+    },
+    {
+      "timestamp": {"seconds": 1700000000, "nanos": 123},
+      "from": "UTC-05:30",
+      "to": "UTC",
+      "expected_seconds": 1700019800,
+      "expected_nanos": 123
+    }
+  ],
+  "local_timezone_expectations": {
+    "allowed_min_offset_seconds": -50400,
+    "allowed_max_offset_seconds": 50400
+  }
+}

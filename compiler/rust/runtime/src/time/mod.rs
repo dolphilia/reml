@@ -2,6 +2,7 @@
 
 mod effects;
 pub mod error;
+mod timezone;
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -12,6 +13,7 @@ use crate::prelude::iter::EffectLabels;
 
 pub use effects::TimeSyscallMetrics;
 pub use error::{TimeError, TimeErrorKind, TimeResult};
+pub use timezone::Timezone;
 
 const NANOS_PER_SECOND_I128: i128 = 1_000_000_000;
 const MAX_TOTAL_NANOS: i128 =
@@ -98,6 +100,25 @@ pub struct Duration {
     nanos: i32,
 }
 
+/// Core.Time のフォーマット指定。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "pattern", rename_all = "snake_case")]
+pub enum TimeFormat {
+    Rfc3339,
+    Unix,
+    Custom(String),
+}
+
+impl TimeFormat {
+    pub fn custom(pattern: impl Into<String>) -> Self {
+        TimeFormat::Custom(pattern.into())
+    }
+
+    pub fn is_custom(&self) -> bool {
+        matches!(self, TimeFormat::Custom(_))
+    }
+}
+
 impl Duration {
     pub const fn zero() -> Self {
         Self {
@@ -156,6 +177,10 @@ impl Duration {
     pub fn total_nanoseconds(&self) -> i128 {
         (self.seconds as i128) * NANOS_PER_SECOND_I128 + self.nanos as i128
     }
+
+    pub(crate) fn from_total_nanoseconds(total: i128) -> TimeResult<Self> {
+        duration_from_total_nanos(total)
+    }
 }
 
 /// 現在のシステム時刻を返す。
@@ -192,6 +217,26 @@ pub fn take_time_effects_snapshot() -> EffectLabels {
 /// システムコールの遅延統計 Snapshot。
 pub fn take_time_syscall_metrics() -> TimeSyscallMetrics {
     effects::take_syscall_metrics()
+}
+
+/// UTC タイムゾーンを返す。
+pub fn utc() -> Timezone {
+    timezone::utc()
+}
+
+/// 指定名のタイムゾーンを解決する。
+pub fn timezone(name: impl AsRef<str>) -> TimeResult<Timezone> {
+    timezone::timezone(name)
+}
+
+/// ローカルタイムゾーンを返す。
+pub fn local() -> TimeResult<Timezone> {
+    timezone::local()
+}
+
+/// タイムゾーン間で Timestamp を変換する。
+pub fn convert_timezone(ts: Timestamp, from: Timezone, to: Timezone) -> TimeResult<Timestamp> {
+    timezone::convert_timezone(ts, from, to)
 }
 
 struct SystemClockAdapter {
@@ -284,7 +329,15 @@ fn total_nanos_from_std_duration(duration: StdDuration) -> TimeResult<i128> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prelude::ensure::IntoDiagnostic;
+    use serde_json::Value;
     use std::time::Duration as StdDuration;
+
+    const TIMEZONE_CASES_JSON: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../..",
+        "/tests/data/time/timezone_cases.json"
+    ));
 
     #[test]
     fn timestamp_from_parts_normalizes() {
@@ -343,5 +396,89 @@ mod tests {
         );
         let metrics = take_time_syscall_metrics();
         assert!(metrics.calls >= 2);
+    }
+
+    #[test]
+    fn timezone_cases_from_dataset() {
+        let dataset: Value =
+            serde_json::from_str(TIMEZONE_CASES_JSON).expect("timezone dataset json");
+        let cases = dataset["cases"]
+            .as_array()
+            .expect("cases array must exist");
+        for case in cases {
+            let expected = case["offset_seconds"]
+                .as_i64()
+                .expect("offset seconds as i64");
+            let aliases = case["aliases"]
+                .as_array()
+                .expect("aliases array must exist");
+            for alias in aliases {
+                let alias = alias.as_str().expect("alias as string");
+                let tz = timezone(alias).expect("timezone lookup should succeed");
+                assert_eq!(tz.offset().seconds(), expected);
+            }
+        }
+        let convert_cases = dataset["convert_cases"]
+            .as_array()
+            .expect("convert cases");
+        for case in convert_cases {
+            let ts_obj = case["timestamp"].as_object().expect("timestamp object");
+            let seconds = ts_obj["seconds"].as_i64().expect("seconds field");
+            let nanos = ts_obj["nanos"].as_i64().unwrap_or(0) as i32;
+            let ts = Timestamp::from_parts(seconds, nanos);
+            let from = case["from"].as_str().expect("from timezone");
+            let to = case["to"].as_str().expect("to timezone");
+            let converted = convert_timezone(
+                ts,
+                timezone(from).expect("source tz"),
+                timezone(to).expect("target tz"),
+            )
+            .expect("conversion");
+            assert_eq!(
+                converted.seconds(),
+                case["expected_seconds"].as_i64().expect("expected seconds")
+            );
+            assert_eq!(
+                converted.nanos(),
+                case["expected_nanos"].as_i64().unwrap_or(0) as i32
+            );
+        }
+        let bounds = dataset["local_timezone_expectations"]
+            .as_object()
+            .expect("local bounds");
+        if let Ok(local_zone) = local() {
+            let min = bounds["allowed_min_offset_seconds"].as_i64().unwrap_or(-50400);
+            let max = bounds["allowed_max_offset_seconds"].as_i64().unwrap_or(50400);
+            let actual = local_zone.offset().seconds();
+            assert!(
+                actual >= min && actual <= max,
+                "local offset {actual} is outside {min}..={max}"
+            );
+        } else {
+            // `time::OffsetDateTime::now_local()` may fail inside hermetic CI environments.
+        }
+    }
+
+    #[test]
+    fn time_error_into_diagnostic_includes_metadata() {
+        let ts = Timestamp::from_parts(42, 100);
+        let diag = TimeError::invalid_timezone("invalid tz")
+            .with_timezone("UTC+99:99")
+            .with_timestamp(ts)
+            .into_diagnostic();
+        assert_eq!(diag.code, "core.time.invalid_timezone");
+        let time_extension = diag
+            .extensions
+            .get("time")
+            .and_then(|value| value.as_object())
+            .expect("time extension");
+        assert_eq!(
+            time_extension.get("timezone"),
+            Some(&Value::String("UTC+99:99".into()))
+        );
+        assert_eq!(
+            diag.audit_metadata.get("time.platform"),
+            Some(&Value::String(std::env::consts::OS.into()))
+        );
     }
 }

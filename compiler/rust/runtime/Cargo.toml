@@ -28,6 +28,7 @@ indexmap = "1.9"
 unicode-normalization = "0.1"
 once_cell = "1.19"
 ordered-float = "4.2"
+time = { version = "0.3.30", features = ["local-offset"] }
 
 [dev-dependencies]
 humantime = "2.1"

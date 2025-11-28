@@ -4239,6 +4239,151 @@ def collect_text_normalization_metrics(
     return metric
 
 
+def collect_numeric_time_clock_accuracy(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
+    if not paths:
+        return None
+    entries: List[Dict[str, Any]] = []
+    total_inputs = 0
+    max_duration = 0
+    max_tolerance = 0
+    for path in paths:
+        try:
+            data = load_json(path)
+        except ValueError as exc:
+            sys.stderr.write(f"[collect-iterator-audit-metrics] {exc}\n")
+            continue
+        if not isinstance(data, dict):
+            continue
+        scenario = data.get("scenario")
+        if scenario not in (None, "clock_accuracy"):
+            continue
+        durations = data.get("durations_ns")
+        count = 0
+        if isinstance(durations, list):
+            for duration in durations:
+                if isinstance(duration, (int, float)):
+                    total_inputs += 1
+                    count += 1
+                    max_duration = max(max_duration, int(duration))
+        tolerance = data.get("tolerance_ns")
+        if isinstance(tolerance, (int, float)):
+            max_tolerance = max(max_tolerance, int(tolerance))
+        entries.append(
+            {
+                "api": data.get("api"),
+                "count": count,
+                "tolerance_ns": tolerance,
+                "source": str(path),
+            }
+        )
+    if not entries:
+        return None
+    status = "configured" if total_inputs > 0 else "pending"
+    return {
+        "metric": "core.time.clock_accuracy",
+        "scenario": "clock_accuracy",
+        "cases": entries,
+        "status": status,
+        "total_inputs": total_inputs,
+        "max_duration_ns": max_duration,
+        "max_tolerance_ns": max_tolerance,
+        "sources": [entry["source"] for entry in entries],
+    }
+
+
+def collect_numeric_time_timezone_lookup(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
+    if not paths:
+        return None
+    total_cases = 0
+    alias_total = 0
+    failures: List[str] = []
+    platforms: Set[str] = set()
+    local_bounds: Dict[str, Tuple[int, int]] = {}
+    for path in paths:
+        try:
+            data = load_json(path)
+        except ValueError as exc:
+            sys.stderr.write(f"[collect-iterator-audit-metrics] {exc}\n")
+            continue
+        if not isinstance(data, dict):
+            continue
+        cases = data.get("cases")
+        if isinstance(cases, list):
+            for case in cases:
+                if not isinstance(case, dict):
+                    continue
+                name = str(case.get("name", ""))
+                offset = case.get("offset_seconds")
+                platform_offsets = case.get("platform_offsets", {})
+                if isinstance(platform_offsets, dict):
+                    for platform, value in platform_offsets.items():
+                        platforms.add(str(platform))
+                        if isinstance(offset, (int, float)) and isinstance(value, (int, float)):
+                            if int(value) != int(offset):
+                                failures.append(
+                                    f"{name}: platform {platform} offset {value} != {offset}"
+                                )
+                aliases = case.get("aliases")
+                if isinstance(aliases, list):
+                    alias_total += sum(1 for alias in aliases if isinstance(alias, str))
+                total_cases += 1
+        bounds = data.get("local_timezone_expectations")
+        if isinstance(bounds, dict):
+            min_allowed = bounds.get("allowed_min_offset_seconds")
+            max_allowed = bounds.get("allowed_max_offset_seconds")
+            if isinstance(min_allowed, (int, float)) and isinstance(max_allowed, (int, float)):
+                local_bounds[str(path)] = (int(min_allowed), int(max_allowed))
+    if total_cases == 0 and alias_total == 0:
+        return None
+    summary: Dict[str, Any] = {
+        "metric": "core.time.timezone_lookup",
+        "scenario": "timezone_lookup",
+        "total_cases": total_cases,
+        "alias_total": alias_total,
+        "platforms": sorted(platforms),
+        "sources": [str(path) for path in paths],
+    }
+    if local_bounds:
+        summary["local_bounds"] = {
+            str(source): {"min": bounds[0], "max": bounds[1]}
+            for source, bounds in local_bounds.items()
+        }
+    if failures:
+        summary["status"] = "needs-review"
+        summary["failures"] = failures
+    else:
+        summary["status"] = "ok"
+    return summary
+
+
+def collect_numeric_time_metrics(
+    scenario_filters: Set[str],
+    clock_sources: Sequence[Path],
+    tz_sources: Sequence[Path],
+) -> Optional[Dict[str, Any]]:
+    scenarios: List[Dict[str, Any]] = []
+    relevant_filters = {
+        scenario for scenario in scenario_filters if scenario in {"clock_accuracy", "timezone_lookup"}
+    }
+    if not relevant_filters:
+        relevant_filters = {"clock_accuracy", "timezone_lookup"}
+    if "clock_accuracy" in relevant_filters:
+        clock_metric = collect_numeric_time_clock_accuracy(clock_sources)
+        if clock_metric:
+            scenarios.append(clock_metric)
+    if "timezone_lookup" in relevant_filters:
+        tz_metric = collect_numeric_time_timezone_lookup(tz_sources)
+        if tz_metric:
+            scenarios.append(tz_metric)
+    if not scenarios:
+        return None
+    return {
+        "metric": "core.numeric_time",
+        "scenario_filter": sorted(relevant_filters),
+        "scenarios": scenarios,
+    }
+
+
 def collect_audit_capability_metric(paths: Sequence[Path]) -> Optional[Dict[str, Any]]:
     total = 0
     passed = 0
@@ -5951,6 +6096,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "typeclass",
             "text",
             "review",
+            "numeric_time",
         ],
         default="all",
         help="Collect metrics for a specific section (default: all).",
@@ -5974,6 +6120,18 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         action="append",
         dest="platforms",
         help="bridge.platform を指定して各種メトリクスをフィルタ（繰り返し指定可）。",
+    )
+    parser.add_argument(
+        "--time-source",
+        action="append",
+        dest="time_sources",
+        help="Path to Core.Time clock accuracy JSON (repeatable).",
+    )
+    parser.add_argument(
+        "--tz-source",
+        action="append",
+        dest="tz_sources",
+        help="Path to Core.Time timezone coverage JSON (repeatable).",
     )
     parser.add_argument(
         "--summary",
@@ -6026,6 +6184,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "grapheme_stats",
             "bytes_clone",
             "normalization_conformance",
+            "clock_accuracy",
+            "timezone_lookup",
         ],
         help="Scenario-specific validation (repeatable).",
     )
@@ -6214,6 +6374,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     text_normalization_source_paths: List[Path] = _ensure_path_list(
         getattr(args, "text_normalization_sources", None)
+    )
+    clock_source_paths: List[Path] = _ensure_path_list(
+        getattr(args, "time_sources", None)
+    )
+    tz_source_paths: List[Path] = _ensure_path_list(
+        getattr(args, "tz_sources", None)
     )
     if not text_source_paths and TEXT_DEFAULT_METRICS_PATH.is_file():
         text_source_paths = [TEXT_DEFAULT_METRICS_PATH]
@@ -6449,6 +6615,37 @@ def main(argv: Optional[List[str]] = None) -> int:
         scenario_metric["scenario"] = "normalization_conformance"
         append_metrics.append(scenario_metric)
 
+    numeric_time_metric: Optional[Dict[str, Any]] = None
+    numeric_time_scenarios = {"clock_accuracy", "timezone_lookup"}
+    numeric_time_requested = ("numeric_time" in sections) or bool(
+        scenario_filters & numeric_time_scenarios
+    )
+    if numeric_time_requested:
+        numeric_sources = clock_source_paths + tz_source_paths
+        if not numeric_sources:
+            sys.stderr.write(
+                "Numeric/Time metrics source not found. --time-source または --tz-source を指定してください。\n"
+            )
+            return 2
+        missing_numeric_sources = [
+            str(path) for path in numeric_sources if not path.is_file()
+        ]
+        if missing_numeric_sources:
+            sys.stderr.write(
+                "Missing numeric/time metrics files: "
+                + ", ".join(missing_numeric_sources)
+                + "\n"
+            )
+            return 2
+        numeric_time_metric = collect_numeric_time_metrics(
+            scenario_filters, clock_source_paths, tz_source_paths
+        )
+        if numeric_time_metric is None:
+            sys.stderr.write(
+                "Numeric/Time metrics JSON にケースがありません。再生成してください。\n"
+            )
+            return 2
+
     text_metric: Optional[Dict[str, Any]] = None
     text_section_requested = (
         "text" in sections
@@ -6571,6 +6768,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         metrics_list.append(review_metrics)
     if diag_metric:
         metrics_list.append(diag_metric)
+    if numeric_time_metric and (
+        "numeric_time" in sections or numeric_time_scenarios & scenario_filters
+    ):
+        metrics_list.append(numeric_time_metric)
     if text_metric and "text" in sections:
         metrics_list.append(text_metric)
 
@@ -6648,6 +6849,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         combined["ffi_bridge"] = bridge_metrics
     if review_metrics:
         combined["audit_review"] = review_metrics
+    if numeric_time_metric and (
+        "numeric_time" in sections or numeric_time_scenarios & scenario_filters
+    ):
+        combined["numeric_time"] = numeric_time_metric
     if text_metric and "text" in sections:
         combined["text"] = text_metric
 

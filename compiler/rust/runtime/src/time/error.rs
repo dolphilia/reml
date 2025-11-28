@@ -1,4 +1,7 @@
 use super::Timestamp;
+use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic};
+use crate::stage::{StageId, StageRequirement};
+use serde_json::{Map, Value};
 use std::error::Error;
 use std::fmt;
 
@@ -11,6 +14,11 @@ pub struct TimeError {
     kind: TimeErrorKind,
     message: String,
     timestamp: Option<Timestamp>,
+    timezone: Option<String>,
+    platform: &'static str,
+    capability: Option<String>,
+    required_stage: Option<String>,
+    actual_stage: Option<String>,
 }
 
 impl TimeError {
@@ -19,6 +27,11 @@ impl TimeError {
             kind,
             message: message.into(),
             timestamp: None,
+            timezone: None,
+            platform: std::env::consts::OS,
+            capability: None,
+            required_stage: None,
+            actual_stage: None,
         }
     }
 
@@ -39,12 +52,33 @@ impl TimeError {
         self
     }
 
+    pub fn with_timezone(mut self, timezone: impl Into<String>) -> Self {
+        self.timezone = Some(timezone.into());
+        self
+    }
+
+    pub fn with_capability_context(
+        mut self,
+        capability: impl Into<String>,
+        required: Option<StageRequirement>,
+        actual: Option<StageId>,
+    ) -> Self {
+        self.capability = Some(capability.into());
+        self.required_stage = required.map(stage_requirement_label);
+        self.actual_stage = actual.map(|stage| stage.as_str().into());
+        self
+    }
+
     pub fn system_clock_unavailable(message: impl Into<String>) -> Self {
         Self::new(TimeErrorKind::SystemClockUnavailable, message)
     }
 
     pub fn time_overflow(message: impl Into<String>) -> Self {
         Self::new(TimeErrorKind::TimeOverflow, message)
+    }
+
+    pub fn invalid_timezone(message: impl Into<String>) -> Self {
+        Self::new(TimeErrorKind::InvalidTimezone, message)
     }
 }
 
@@ -56,10 +90,106 @@ impl fmt::Display for TimeError {
 
 impl Error for TimeError {}
 
+impl IntoDiagnostic for TimeError {
+    fn into_diagnostic(self) -> GuardDiagnostic {
+        let TimeError {
+            kind,
+            message,
+            timestamp,
+            timezone,
+            platform,
+            capability,
+            required_stage,
+            actual_stage,
+        } = self;
+
+        let mut time_extensions = Map::new();
+        time_extensions.insert("platform".into(), Value::String(platform.to_string()));
+        if let Some(tz) = timezone.as_ref() {
+            time_extensions.insert("timezone".into(), Value::String(tz.clone()));
+        }
+        if let Some(ts) = timestamp {
+            if let Ok(value) = serde_json::to_value(ts) {
+                time_extensions.insert("timestamp".into(), value);
+            }
+        }
+        if let Some(capability) = capability.as_ref() {
+            time_extensions.insert("capability".into(), Value::String(capability.clone()));
+        }
+        if let Some(stage) = required_stage.as_ref() {
+            time_extensions.insert("required_stage".into(), Value::String(stage.clone()));
+        }
+        if let Some(actual) = actual_stage.as_ref() {
+            time_extensions.insert("actual_stage".into(), Value::String(actual.clone()));
+        }
+
+        let mut extensions = Map::new();
+        extensions.insert("time".into(), Value::Object(time_extensions.clone()));
+        extensions.insert("message".into(), Value::String(message.clone()));
+
+        let mut audit_metadata = Map::new();
+        audit_metadata.insert(
+            "time.platform".into(),
+            Value::String(platform.to_string()),
+        );
+        if let Some(tz) = timezone.as_ref() {
+            audit_metadata.insert("time.timezone".into(), Value::String(tz.clone()));
+        }
+        if let Some(capability) = capability.as_ref() {
+            audit_metadata.insert("time.capability".into(), Value::String(capability.clone()));
+        }
+        if let Some(stage) = required_stage.as_ref() {
+            audit_metadata.insert("time.required_stage".into(), Value::String(stage.clone()));
+        }
+        if let Some(actual) = actual_stage.as_ref() {
+            audit_metadata.insert("time.actual_stage".into(), Value::String(actual.clone()));
+        }
+        if let Some(ts) = timestamp {
+            if let Ok(value) = serde_json::to_value(ts) {
+                audit_metadata.insert("time.timestamp".into(), value);
+            }
+        }
+
+        GuardDiagnostic {
+            code: kind.default_code(),
+            domain: "runtime",
+            severity: DiagnosticSeverity::Error,
+            message,
+            extensions,
+            audit_metadata,
+        }
+    }
+}
+
 /// 時刻エラー種別。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeErrorKind {
     SystemClockUnavailable,
     InvalidTimezone,
     TimeOverflow,
+}
+
+impl TimeErrorKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            TimeErrorKind::SystemClockUnavailable => "system_clock_unavailable",
+            TimeErrorKind::InvalidTimezone => "invalid_timezone",
+            TimeErrorKind::TimeOverflow => "time_overflow",
+        }
+    }
+
+    fn default_code(&self) -> &'static str {
+        match self {
+            TimeErrorKind::SystemClockUnavailable => "core.time.system_clock_unavailable",
+            TimeErrorKind::InvalidTimezone => "core.time.invalid_timezone",
+            TimeErrorKind::TimeOverflow => "core.time.overflow",
+        }
+    }
+}
+
+fn stage_requirement_label(requirement: StageRequirement) -> String {
+    match requirement {
+        StageRequirement::Exact(stage) => format!("exact:{}", stage.as_str()),
+        StageRequirement::AtLeast(stage) => format!("at_least:{}", stage.as_str()),
+    }
 }
