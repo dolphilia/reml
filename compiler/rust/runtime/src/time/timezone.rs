@@ -1,4 +1,4 @@
-use super::{Duration, Timestamp, TimeError, TimeResult, NANOS_PER_SECOND_I128};
+use super::{Duration, TimeError, TimeResult, Timestamp, NANOS_PER_SECOND_I128};
 use crate::registry::CapabilityRegistry;
 use crate::stage::{StageId, StageRequirement};
 use serde::{Deserialize, Serialize};
@@ -68,10 +68,10 @@ fn build_timezone(offset_seconds: i64) -> TimeResult<Timezone> {
 
 fn ensure_offset_range(offset_seconds: i64) -> TimeResult<()> {
     if offset_seconds > MAX_OFFSET_SECONDS || offset_seconds < -MAX_OFFSET_SECONDS {
-        return Err(
-            TimeError::invalid_timezone(format!("offset {offset_seconds} is out of range"))
-                .with_timezone(format!("offset:{offset_seconds}")),
-        );
+        return Err(TimeError::invalid_timezone(format!(
+            "offset {offset_seconds} is out of range"
+        ))
+        .with_timezone(format!("offset:{offset_seconds}")));
     }
     Ok(())
 }
@@ -151,7 +151,10 @@ fn verify_capability(capability: &str) -> TimeResult<()> {
         .verify_capability_stage(capability, requirement, &[])
         .map(|_| ())
         .map_err(|err| {
-            TimeError::system_clock_unavailable(err.detail().to_string())
-                .with_capability_context(capability.to_string(), Some(requirement), None)
+            TimeError::system_clock_unavailable(err.detail().to_string()).with_capability_context(
+                capability.to_string(),
+                Some(requirement),
+                None,
+            )
         })
 }

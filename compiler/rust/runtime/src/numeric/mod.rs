@@ -2,13 +2,13 @@
 //! トレイトと基本統計ユーティリティ。
 //! 仕様との整合が最優先であり、現時点では浮動小数点型を中心に提供する。
 
+#[cfg(feature = "decimal")]
+pub mod decimal;
 mod effects;
 pub mod error;
 pub mod histogram;
 mod iter;
 pub mod statistics;
-#[cfg(feature = "decimal")]
-pub mod decimal;
 #[cfg(feature = "decimal")]
 pub use decimal::Decimal;
 
@@ -235,9 +235,7 @@ pub trait IterNumericExt<T>: Sized {
         T: Numeric + Ord + Clone;
 }
 
-impl<T> IterNumericExt<T> for Iter<T>
-where
-{
+impl<T> IterNumericExt<T> for Iter<T> {
     fn mean(self) -> Option<T>
     where
         T: Floating,
@@ -561,7 +559,10 @@ mod tests {
         let three = Decimal::new(3, 0);
         let five = Decimal::new(5, 0);
         assert_eq!(<Decimal as Numeric>::abs(Decimal::new(-3, 0)), three);
-        assert_eq!(<Decimal as Numeric>::clamp(five, Decimal::new(0, 0), three), three);
+        assert_eq!(
+            <Decimal as Numeric>::clamp(five, Decimal::new(0, 0), three),
+            three
+        );
     }
 
     #[cfg(feature = "bigint")]
@@ -569,7 +570,10 @@ mod tests {
     fn bigint_numeric_handles_sign() {
         let neg = BigInt::from(-10);
         assert_eq!(<BigInt as Numeric>::abs(neg.clone()), BigInt::from(10));
-        assert_eq!(<BigInt as Numeric>::clamp(neg, BigInt::from(-5), BigInt::from(5)), BigInt::from(-5));
+        assert_eq!(
+            <BigInt as Numeric>::clamp(neg, BigInt::from(-5), BigInt::from(5)),
+            BigInt::from(-5)
+        );
     }
 
     #[cfg(feature = "ratio")]
@@ -579,6 +583,9 @@ mod tests {
         let two = BigRational::new(BigInt::from(2), BigInt::from(1));
         let four = BigRational::new(BigInt::from(4), BigInt::from(1));
         assert_eq!(<BigRational as Numeric>::abs(-half.clone()), half);
-        assert_eq!(<BigRational as Numeric>::clamp(four, half.clone(), two.clone()), two);
+        assert_eq!(
+            <BigRational as Numeric>::clamp(four, half.clone(), two.clone()),
+            two
+        );
     }
 }

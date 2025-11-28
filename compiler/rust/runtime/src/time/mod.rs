@@ -1,8 +1,8 @@
 //! Core.Time 仕様（`docs/spec/3-4-core-numeric-time.md`）の Timestamp / Duration 基本実装。
 
 mod effects;
-mod format;
 pub mod error;
+mod format;
 mod timezone;
 
 use once_cell::sync::Lazy;
@@ -415,9 +415,7 @@ mod tests {
     fn timezone_cases_from_dataset() {
         let dataset: Value =
             serde_json::from_str(TIMEZONE_CASES_JSON).expect("timezone dataset json");
-        let cases = dataset["cases"]
-            .as_array()
-            .expect("cases array must exist");
+        let cases = dataset["cases"].as_array().expect("cases array must exist");
         for case in cases {
             let expected = case["offset_seconds"]
                 .as_i64()
@@ -431,9 +429,7 @@ mod tests {
                 assert_eq!(tz.offset().seconds(), expected);
             }
         }
-        let convert_cases = dataset["convert_cases"]
-            .as_array()
-            .expect("convert cases");
+        let convert_cases = dataset["convert_cases"].as_array().expect("convert cases");
         for case in convert_cases {
             let ts_obj = case["timestamp"].as_object().expect("timestamp object");
             let seconds = ts_obj["seconds"].as_i64().expect("seconds field");
@@ -460,8 +456,12 @@ mod tests {
             .as_object()
             .expect("local bounds");
         if let Ok(local_zone) = local() {
-            let min = bounds["allowed_min_offset_seconds"].as_i64().unwrap_or(-50400);
-            let max = bounds["allowed_max_offset_seconds"].as_i64().unwrap_or(50400);
+            let min = bounds["allowed_min_offset_seconds"]
+                .as_i64()
+                .unwrap_or(-50400);
+            let max = bounds["allowed_max_offset_seconds"]
+                .as_i64()
+                .unwrap_or(50400);
             let actual = local_zone.offset().seconds();
             assert!(
                 actual >= min && actual <= max,
@@ -515,9 +515,7 @@ mod tests {
     fn time_format_cases_from_dataset() {
         let dataset: Value =
             serde_json::from_str(TIME_FORMAT_CASES_JSON).expect("format dataset json");
-        let cases = dataset["cases"]
-            .as_array()
-            .expect("format cases array");
+        let cases = dataset["cases"].as_array().expect("format cases array");
         for case in cases {
             let ts = parse_timestamp_from_value(&case["timestamp"]);
             let fmt_spec = parse_format_case(case);
@@ -576,6 +574,18 @@ mod tests {
         let _ = format(ts, &TimeFormat::Rfc3339).expect("format");
         let labels = text::take_text_effects_snapshot();
         assert!(labels.unicode, "format should record unicode effect");
+    }
+
+    #[test]
+    fn planned_locale_is_rejected() {
+        let locale = LocaleId::parse("az-Latn").expect("locale parse");
+        let err = format_with_locale(Timestamp::unix_epoch(), &TimeFormat::Rfc3339, Some(&locale))
+            .expect_err("planned locale should fail");
+        assert_eq!(err.kind(), TimeErrorKind::InvalidFormat);
+        assert!(
+            err.message().contains("status"),
+            "error message should reference status for planned locale"
+        );
     }
 
     fn parse_timestamp_from_value(value: &Value) -> Timestamp {

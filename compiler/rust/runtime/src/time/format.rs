@@ -1,6 +1,5 @@
 use super::{
-    timestamp_from_total_nanos, TimeError, TimeFormat, TimeResult, Timestamp,
-    NANOS_PER_SECOND_I128,
+    timestamp_from_total_nanos, TimeError, TimeFormat, TimeResult, Timestamp, NANOS_PER_SECOND_I128,
 };
 use crate::text::{self, LocaleId, Str, String as TextString};
 use time::error::InvalidFormatDescription;
@@ -10,24 +9,54 @@ use time::{Date, OffsetDateTime, PrimitiveDateTime, Time};
 const RFC3339_LABEL: &str = "rfc3339";
 const UNIX_LABEL: &str = "unix";
 
-struct TimeLocaleEntry {
-    id: &'static str,
-    supports_custom: bool,
-    fallback: Option<&'static str>,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LocaleStatus {
+    Supported,
+    Planned,
+    #[allow(dead_code)]
+    Deprecated,
 }
 
-const TIME_LOCALE_TABLE: &[TimeLocaleEntry] = &[
-    TimeLocaleEntry {
-        id: "und",
-        supports_custom: true,
-        fallback: None,
-    },
-    TimeLocaleEntry {
-        id: "ja-JP",
-        supports_custom: false,
-        fallback: Some("und"),
-    },
-];
+impl LocaleStatus {
+    fn is_supported(&self) -> bool {
+        matches!(self, LocaleStatus::Supported)
+    }
+
+    fn as_str(&self) -> &'static str {
+        match self {
+            LocaleStatus::Supported => "supported",
+            LocaleStatus::Planned => "planned",
+            LocaleStatus::Deprecated => "deprecated",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct TimeLocaleEntry {
+    pub id: &'static str,
+    pub supports_rfc3339: bool,
+    pub supports_unix: bool,
+    pub supports_custom: bool,
+    pub status: LocaleStatus,
+    pub fallback: Option<&'static str>,
+    #[allow(dead_code)]
+    pub notes: &'static str,
+}
+
+impl TimeLocaleEntry {
+    fn supports_format(&self, fmt: &TimeFormat) -> bool {
+        match fmt {
+            TimeFormat::Rfc3339 => self.supports_rfc3339,
+            TimeFormat::Unix => self.supports_unix,
+            TimeFormat::Custom(_) => self.supports_custom,
+        }
+    }
+}
+
+include!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/src/time/locale_table_data.rs"
+));
 
 /// Timestamp を指定フォーマットで文字列化する。
 pub fn format(ts: Timestamp, fmt: &TimeFormat) -> TimeResult<TextString> {
@@ -98,7 +127,8 @@ fn format_unix(ts: Timestamp, _locale: &LocaleId) -> TimeResult<TextString> {
 
 fn format_custom(ts: Timestamp, pattern: &str, locale: &LocaleId) -> TimeResult<TextString> {
     ensure_custom_pattern(pattern, locale)?;
-    let description = parse_description(pattern).map_err(|err| invalid_format_error(err, pattern, locale))?;
+    let description =
+        parse_description(pattern).map_err(|err| invalid_format_error(err, pattern, locale))?;
     let datetime = timestamp_to_offset_datetime(ts)?;
     let formatted = datetime
         .format(&description)
@@ -181,7 +211,9 @@ fn ensure_custom_pattern(pattern: &str, locale: &LocaleId) -> TimeResult<()> {
     Ok(())
 }
 
-fn parse_description<'a>(pattern: &'a str) -> Result<Vec<FormatItem<'a>>, InvalidFormatDescription> {
+fn parse_description<'a>(
+    pattern: &'a str,
+) -> Result<Vec<FormatItem<'a>>, InvalidFormatDescription> {
     format_description::parse(pattern)
 }
 
@@ -191,26 +223,13 @@ fn validate_locale(locale: LocaleId, fmt: &TimeFormat) -> TimeResult<LocaleId> {
     let Some(entry) = TIME_LOCALE_TABLE
         .iter()
         .find(|entry| entry.id.eq_ignore_ascii_case(&canonical)) else {
-        return Err(
-            TimeError::invalid_format(format!(
-                "locale `{canonical}` is not registered for Core.Time formatting"
-            ))
-            .with_locale(canonical)
-            .with_format_pattern(pattern),
-        );
+        return Err(unknown_locale_error(&canonical, &pattern));
     };
-    if matches!(fmt, TimeFormat::Custom(_)) && !entry.supports_custom {
-        let mut message = format!(
-            "locale `{canonical}` does not support custom Core.Time formats"
-        );
-        if let Some(fallback) = entry.fallback {
-            message.push_str(&format!(" (try `{fallback}`)"));
-        }
-        return Err(
-            TimeError::invalid_format(message)
-                .with_locale(canonical)
-                .with_format_pattern(pattern),
-        );
+    if !entry.status.is_supported() {
+        return Err(locale_status_error(&canonical, entry, &pattern));
+    }
+    if !entry.supports_format(fmt) {
+        return Err(locale_format_error(&canonical, fmt, entry, &pattern));
     }
     Ok(locale)
 }
@@ -276,4 +295,51 @@ fn invalid_format_error(
     TimeError::invalid_format(format!("{err}"))
         .with_format_pattern(pattern.to_string())
         .with_locale(locale.canonical().to_string())
+}
+
+fn unknown_locale_error(canonical: &str, pattern: &str) -> TimeError {
+    TimeError::invalid_format(format!(
+        "locale `{canonical}` is not registered for Core.Time formatting"
+    ))
+    .with_locale(canonical.to_string())
+    .with_format_pattern(pattern.to_string())
+}
+
+fn locale_status_error(canonical: &str, entry: &TimeLocaleEntry, pattern: &str) -> TimeError {
+    let mut message = format!(
+        "locale `{canonical}` is not available (status: {})",
+        entry.status.as_str()
+    );
+    if let Some(fallback) = entry.fallback {
+        message.push_str(&format!(" (try `{fallback}`)"));
+    }
+    TimeError::invalid_format(message)
+        .with_locale(canonical.to_string())
+        .with_format_pattern(pattern.to_string())
+}
+
+fn locale_format_error(
+    canonical: &str,
+    fmt: &TimeFormat,
+    entry: &TimeLocaleEntry,
+    pattern: &str,
+) -> TimeError {
+    let mut message = format!(
+        "locale `{canonical}` does not support {} formats",
+        format_kind(fmt)
+    );
+    if let Some(fallback) = entry.fallback {
+        message.push_str(&format!(" (try `{fallback}`)"));
+    }
+    TimeError::invalid_format(message)
+        .with_locale(canonical.to_string())
+        .with_format_pattern(pattern.to_string())
+}
+
+fn format_kind(fmt: &TimeFormat) -> &'static str {
+    match fmt {
+        TimeFormat::Rfc3339 => "RFC3339",
+        TimeFormat::Unix => "Unix",
+        TimeFormat::Custom(_) => "custom",
+    }
 }

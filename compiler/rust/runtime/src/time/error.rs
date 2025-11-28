@@ -154,18 +154,12 @@ impl IntoDiagnostic for TimeError {
         extensions.insert("message".into(), Value::String(message.clone()));
 
         let mut audit_metadata = Map::new();
-        audit_metadata.insert(
-            "time.platform".into(),
-            Value::String(platform.to_string()),
-        );
+        audit_metadata.insert("time.platform".into(), Value::String(platform.to_string()));
         if let Some(tz) = timezone.as_ref() {
             audit_metadata.insert("time.timezone".into(), Value::String(tz.clone()));
         }
         if let Some(pattern) = format_pattern.as_ref() {
-            audit_metadata.insert(
-                "time.format.pattern".into(),
-                Value::String(pattern.clone()),
-            );
+            audit_metadata.insert("time.format.pattern".into(), Value::String(pattern.clone()));
         }
         if let Some(locale) = locale.as_ref() {
             audit_metadata.insert("time.locale".into(), Value::String(locale.clone()));

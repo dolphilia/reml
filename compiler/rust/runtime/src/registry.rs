@@ -21,13 +21,11 @@ impl CapabilityRegistry {
         if requirement.matches(actual) {
             Ok(actual)
         } else {
-            Err(
-                CapabilityError::new(
-                    "capability.stage.mismatch",
-                    format!("required {:?} but runtime is {:?}", requirement, actual),
-                )
-                .with_actual_stage(actual),
+            Err(CapabilityError::new(
+                "capability.stage.mismatch",
+                format!("required {:?} but runtime is {:?}", requirement, actual),
             )
+            .with_actual_stage(actual))
         }
     }
 }

@@ -31,10 +31,7 @@ pub(crate) fn attach_audit(
         "metric_point.kind".into(),
         Value::String(metric.value.kind_label().into()),
     );
-    metadata.insert(
-        "metric_point.value".into(),
-        metric.value.metadata_value(),
-    );
+    metadata.insert("metric_point.value".into(), metric.value.metadata_value());
     metadata.insert(
         "metric_point.timestamp.seconds".into(),
         Value::Number(Number::from(metric.timestamp.seconds())),
@@ -85,10 +82,7 @@ pub(crate) fn attach_audit(
 }
 
 /// `metric_point.tag.*` と `metric_point.tags` の両方を整形する。
-pub(crate) fn with_metric_tags(
-    metadata: &mut Map<String, Value>,
-    tags: &BTreeMap<String, String>,
-) {
+pub(crate) fn with_metric_tags(metadata: &mut Map<String, Value>, tags: &BTreeMap<String, String>) {
     if tags.is_empty() {
         return;
     }
@@ -144,10 +138,7 @@ mod tests {
             .with_tag("unit", "ms")
             .with_audit_id("audit-latency");
         let mut metadata = Map::new();
-        metadata.insert(
-            "schema.version".into(),
-            Value::String("3.0.0-alpha".into()),
-        );
+        metadata.insert("schema.version".into(), Value::String("3.0.0-alpha".into()));
         attach_audit(
             &mut metadata,
             &metric,
@@ -203,18 +194,12 @@ mod tests {
             .get("metric_point.tags")
             .and_then(Value::as_object)
             .expect("tags object");
-        assert_eq!(
-            tag_object.get("env"),
-            Some(&Value::String("ci".into()))
-        );
+        assert_eq!(tag_object.get("env"), Some(&Value::String("ci".into())));
         assert_eq!(
             tag_object.get("component"),
             Some(&Value::String("runtime".into()))
         );
-        assert_eq!(
-            metadata.get("metric_point.tag.env"),
-            Some(&json!("ci"))
-        );
+        assert_eq!(metadata.get("metric_point.tag.env"), Some(&json!("ci")));
         assert_eq!(
             metadata.get("metric_point.tag.component"),
             Some(&json!("runtime"))

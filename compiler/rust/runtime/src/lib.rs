@@ -4,9 +4,9 @@
 
 pub mod collections;
 pub mod config;
-pub mod io;
 #[cfg(feature = "core_time")]
 pub mod diagnostics;
+pub mod io;
 #[cfg(feature = "core_numeric")]
 pub mod numeric;
 pub mod prelude;

@@ -16,6 +16,13 @@
       "timestamp": { "seconds": 915148800, "nanos": 0 },
       "expected": "1999-01-01 00:00:00",
       "locale": "und"
+    },
+    {
+      "format": "custom",
+      "pattern": "[day] [month repr:long] [year]",
+      "timestamp": { "seconds": 1702512000, "nanos": 0 },
+      "expected": "14 December 2023",
+      "locale": "tr-TR"
     }
   ]
 }

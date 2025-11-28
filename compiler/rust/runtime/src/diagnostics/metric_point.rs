@@ -75,7 +75,8 @@ impl MetricPoint {
         actual_stage: StageId,
         required_effects: &[String],
     ) -> MetricAuditRecord {
-        let metadata = metric_audit_metadata(&self, stage_requirement, actual_stage, required_effects);
+        let metadata =
+            metric_audit_metadata(&self, stage_requirement, actual_stage, required_effects);
         MetricAuditRecord {
             metric: self,
             metadata,
@@ -195,7 +196,8 @@ where
     S: MetricAuditSink,
 {
     let required_effects = metric_required_effects();
-    let actual_stage = match verify_metrics_capability(METRIC_STAGE_REQUIREMENT, &required_effects) {
+    let actual_stage = match verify_metrics_capability(METRIC_STAGE_REQUIREMENT, &required_effects)
+    {
         Ok(stage) => stage,
         Err(err) => {
             return Err(stage_mismatch_diagnostic(
@@ -206,11 +208,7 @@ where
             ))
         }
     };
-    let record = metric.into_record(
-        METRIC_STAGE_REQUIREMENT,
-        actual_stage,
-        &required_effects,
-    );
+    let record = metric.into_record(METRIC_STAGE_REQUIREMENT, actual_stage, &required_effects);
     sink.emit_metric(&record)
 }
 
@@ -416,11 +414,9 @@ mod tests {
     fn stage_mismatch_produces_guard_diagnostic() {
         let metric = metric_point("latency.mean", 21.0_f64);
         let required_effects = metric_required_effects();
-        let error = verify_metrics_capability(
-            StageRequirement::Exact(StageId::Beta),
-            &required_effects,
-        )
-        .expect_err("beta requirement should fail");
+        let error =
+            verify_metrics_capability(StageRequirement::Exact(StageId::Beta), &required_effects)
+                .expect_err("beta requirement should fail");
         let diagnostic = stage_mismatch_diagnostic(
             &metric,
             StageRequirement::Exact(StageId::Beta),
