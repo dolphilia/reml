@@ -33,6 +33,26 @@ pub(crate) fn record_security_event() {
     });
 }
 
+pub(crate) fn record_buffer_allocation(bytes: usize) {
+    record_mem_effect(bytes);
+}
+
+pub(crate) fn record_buffer_usage(bytes: usize) {
+    record_mem_effect(bytes);
+}
+
+fn record_mem_effect(bytes: usize) {
+    if bytes == 0 {
+        return;
+    }
+    IO_EFFECTS.with(|slot| {
+        let mut current = slot.get();
+        current.mark_mem();
+        current.record_mem_bytes(bytes);
+        slot.set(current);
+    });
+}
+
 /// 記録済みの効果を取り出し初期化する。テスト用のため `pub(crate)` とする。
 #[allow(dead_code)]
 pub(crate) fn take_recorded_effects() -> EffectSet {

@@ -69,6 +69,26 @@
 - `docs/plans/bootstrap-roadmap/assets/core-io-effects-matrix.md` の `BufferedReader` 行に `effect {mem}`/`{io.blocking}` を明記し、`take_io_effects_snapshot()`（新設）でメモリ使用量を計測する。
 - `tests/data/core_io/buffered_reader/*.json` を追加し、`scripts/validate-diagnostic-json.sh --suite core_io` と `cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core-io buffered_reader::tests::*` を CI へ組み込む。
 
+#### 2.2.1 BufferedReader リングバッファと API 設計
+- `BufferedReader<'a, R>` は `inner: R`, `buf: Box<[u8]>`, `start: usize`, `end: usize`, `line_cursor: Option<usize>` を保持し、`fill_buf` → `consume` の有限状態機械を `state_diagram.md`（`docs/notes/core-io-path-gap-log.md` へ添付予定）で明文化する。`reader.rs` の `Reader` トレイトをそのまま包むのではなく、`IoContext` を引き継ぐ `BufferedReaderContext` を `buffered.rs` 内で管理し `metadata.io.buffer.capacity` / `metadata.io.buffer.remaining` を記録する。
+- `buffered(reader, capacity)` は `IoCopyBuffer` と同一の `thread_local` バッファプールを利用し、`capacity` が 4 KiB 未満の場合は 4 KiB に切り上げる。`capacity` が 1 MiB を超える場合は `IoErrorKind::InvalidInput` を返す仕様を `docs/notes/core-io-path-gap-log.md` に反映し、`0-4-risk-handling.md` へメモリ過剰割当のリスクを追記する。
+- `read_line` / `read_until` は `Core.Text` の UTF-8 変換（`docs/spec/3-3-core-text-unicode.md` §2.3）を利用し、`Bytes`→`Str` 変換で失敗した場合に `IoErrorKind::InvalidInput` を生成する。`docs/plans/bootstrap-roadmap/assets/core-io-path-api-diff.csv` に `read_line` の戻り値が `Result<Option<Str>, IoError>` である理由と `impl_status=Missing` を `Due=W48` として追記する。
+
+#### 2.2.2 効果タグ・Capability 計測と IoContext 拡張
+- `BufferedReader` の初期化時に `EffectSet.mark_mem(buffer_capacity)` を呼び、`take_io_effects_snapshot()` に `IoEffectsSnapshot { mem_bytes, io_blocking, capability_id }` を記録する。`docs/plans/bootstrap-roadmap/assets/core-io-effects-matrix.md` `BufferedReader` 行へ `metadata.io.buffer.capacity`, `metadata.io.buffer.fill_ratio` の必須キーを追加し、`collect-iterator-audit-metrics.py --section core_io --scenario effects_matrix --check buffered` で突合する。
+- `IoContext` に `buffer: Option<BufferStats>` を追加し、`BufferStats { capacity: u32, fill: u32, last_fill_timestamp: Timestamp }` を `compiler/rust/runtime/src/io/context.rs` に定義する。`IoError::into_diagnostic()` は `metadata.io.buffer.capacity`, `metadata.io.buffer.fill` を自動転写し、`docs/spec/3-6-core-diagnostics-audit.md` §1.3 に記載された `core.io.read_error.buffered` 診断例と整合させる。
+- `CapabilityId = "memory.buffered_io"`（`docs/plans/rust-migration/2-2-adapter-layer-guidelines.md` §2.2.5）を `BufferedReader` の初期化で検証し、Stage ミスマッチ時は `core.io.buffered.capability_mismatch` を発火させる。`docs/notes/runtime-capability-stage-log.md` に `memory.buffered_io` の Stage ステータスを追加し、`3-8-core-runtime-capability-plan.md` の Phase3 TODO と同期する。
+
+#### 2.2.3 `read_line` テストスイートと診断整合
+- `tests/data/core_io/buffered_reader/` には `read_line_utf8.json`, `read_line_large.json`, `read_line_partial.json` を配置し、`metadata.io.buffer.remaining` / `effects.mem_bytes` の値をゴールデン化する。テストは `cargo test --manifest-path compiler/rust/runtime/Cargo.toml buffered_reader::tests::read_line_cases -- --include-ignored` にまとめ、CI では Linux/macOS/Windows で同一ログが生成されることを `reports/spec-audit/ch3/buffered_reader-YYYYMMDD.md` に記録する。
+- `scripts/validate-diagnostic-json.sh --suite core_io` に `--pattern core.io.buffered` を追加してゴールデン期待値を検証し、`docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の Phase3 指標へ `buffered_reader.mem_bytes_p99` と `buffered_reader.read_line_latency_ms` を登録する。計測値は `python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario buffered_reader --output reports/spec-audit/ch3/buffered_reader_effects.json --require-success` で収集する。
+- `docs/notes/core-io-path-gap-log.md` W48 エントリで `read_line` のエッジケース（CRLF, BOM, 4-byte UTF-8）が `docs/spec/3-3-core-text-unicode.md` の設計と整合するかを確認し、差分があれば `docs/notes/dsl-plugin-roadmap.md` の `Core.IO` 依存リストに TODO を登録する。
+
+> 進行ログ（Phase3 W48, 2.2）  
+> - BufferedReader のリングバッファ構造と `buffered()`／`read_line()` API の仕様を整理し、`docs/plans/bootstrap-roadmap/assets/core-io-path-api-diff.csv`・`docs/notes/core-io-path-gap-log.md` へ反映するタスク（Due=W48）を追加。`IoCopyBuffer` とバッファプール共有ポリシーを定義し、容量制限とリスクログを確定した。  
+> - `IoContext` 拡張と `memory.buffered_io` Capability の検証フローを `core-io-effects-matrix` 行と同期し、`collect-iterator-audit-metrics.py --section core_io --scenario buffered_reader` で `metadata.io.buffer.*` をチェックする CI 設計をまとめた。  
+> - `tests/data/core_io/buffered_reader/*.json` と `reports/spec-audit/ch3/buffered_reader_effects.json` を生成するテストスイート案を固め、`scripts/validate-diagnostic-json.sh --suite core_io --pattern core.io.buffered` の更新手順を `0-3-audit-and-metrics.md` へ追記する方針を確定した。
+
 2.3. `IoError` → `Diagnostic` 変換・監査メタデータ (`IoContext`) を実装し、CLI 出力と整合することを確認する。  
 実施ステップ:
 - `compiler/rust/runtime/src/io/error.rs` に `impl IntoDiagnostic for IoError` を追加し、`code = "core.io.*"`、`metadata.io.path`, `metadata.io.operation`, `metadata.io.capability` を設定する。

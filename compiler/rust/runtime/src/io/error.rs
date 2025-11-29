@@ -138,6 +138,7 @@ pub struct IoContext {
     bytes_processed: Option<u64>,
     timestamp: Timestamp,
     effects: EffectLabels,
+    buffer: Option<BufferStats>,
 }
 
 impl IoContext {
@@ -149,6 +150,7 @@ impl IoContext {
             bytes_processed: None,
             timestamp: current_timestamp(),
             effects: empty_effect_labels(),
+            buffer: None,
         }
     }
 
@@ -198,6 +200,65 @@ impl IoContext {
     pub fn with_effects(mut self, effects: EffectLabels) -> Self {
         self.effects = effects;
         self
+    }
+
+    pub fn set_effects(&mut self, effects: EffectLabels) {
+        self.effects = effects;
+    }
+
+    pub fn buffer(&self) -> Option<&BufferStats> {
+        self.buffer.as_ref()
+    }
+
+    pub fn with_buffer_stats(mut self, stats: BufferStats) -> Self {
+        self.buffer = Some(stats);
+        self
+    }
+
+    pub fn update_buffer_usage(&mut self, capacity: usize, fill: usize) {
+        let stats = self
+            .buffer
+            .get_or_insert_with(|| BufferStats::new(capacity));
+        stats.update(capacity, fill);
+    }
+
+    pub fn set_buffer_stats(&mut self, stats: BufferStats) {
+        self.buffer = Some(stats);
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct BufferStats {
+    capacity: u32,
+    fill: u32,
+    last_fill_timestamp: Timestamp,
+}
+
+impl BufferStats {
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            capacity: capacity.min(u32::MAX as usize) as u32,
+            fill: 0,
+            last_fill_timestamp: current_timestamp(),
+        }
+    }
+
+    fn update(&mut self, capacity: usize, fill: usize) {
+        self.capacity = capacity.min(u32::MAX as usize) as u32;
+        self.fill = fill.min(self.capacity as usize) as u32;
+        self.last_fill_timestamp = current_timestamp();
+    }
+
+    pub fn capacity(&self) -> u32 {
+        self.capacity
+    }
+
+    pub fn fill(&self) -> u32 {
+        self.fill
+    }
+
+    pub fn last_fill_timestamp(&self) -> Timestamp {
+        self.last_fill_timestamp
     }
 }
 
