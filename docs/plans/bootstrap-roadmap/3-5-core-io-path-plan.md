@@ -15,51 +15,149 @@
 ### 1. API 差分整理と依存調整（47週目）
 **担当領域**: 設計調整
 
-1.1. Reader/Writer/Path/Watcher に関する公開 API を一覧化し、既存実装との差分と優先度を決定する。
-1.2. 効果タグと Capability 要件 (`effect {io.blocking}`, `{security}` 等) を整理し、CI で検証するテスト計画を策定する。
-1.3. OS 依存機能 (permissions, symlink) の抽象化方針を決め、Runtime Capability (3-8) との連携を確認する。
+1.1. Reader/Writer/Path/Watcher に関する公開 API を一覧化し、既存実装との差分と優先度を決定する。  
+実施ステップ:
+- `docs/spec/3-5-core-io-path.md` から API 名・引数・戻り値・効果タグを抽出し、`docs/plans/bootstrap-roadmap/assets/core-io-path-api-diff.csv` に整理する。
+- `rg "pub (struct|enum|fn)" compiler/rust/runtime/src/io -g "*.rs"`、`rg -g "*path*" compiler/rust/runtime/src -n "pub"` を用いて Rust 実装の現状を洗い出し、CSV に `実装状況 (PoC/Done/Missing)` とファイルパスを追記する。
+- 差分を `docs/notes/core-io-path-gap-log.md` に登録し、優先順位 (Blocking/High/Normal) と依存タスク（Diagnostics/Runtime/Guides 更新）を紐付けた backlog を作成する。
+
+1.2. 効果タグと Capability 要件 (`effect {io.blocking}`, `{security}` 等) を整理し、CI で検証するテスト計画を策定する。  
+実施ステップ:
+- `docs/spec/3-6-core-diagnostics-audit.md`、`docs/spec/3-8-core-runtime-capability.md` から IO/Path 関連の効果タグ・Stage 要件を抜粋し、`docs/plans/bootstrap-roadmap/assets/core-io-effects-matrix.md` に API ごとの対応表を整備する。
+- `EffectSet`/`CollectorEffectMarkers` が `effect {io.blocking}`, `{io.async}`, `{security}` を追跡できるか確認し、必要であれば `compiler/rust/runtime/src/io/effects.rs` の TODO として記録する。
+- `python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario effects_matrix` の設計メモを `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` に追記し、CI で効果タグを検証するステップを定義する。
+
+1.3. OS 依存機能 (permissions, symlink) の抽象化方針を決め、Runtime Capability (3-8) との連携を確認する。  
+実施ステップ:
+- `docs/spec/3-8-core-runtime-capability.md` §8-§10 を参照し、`fs.permissions.*`, `fs.symlink.*`, `fs.watcher.*` などの Capability ID を `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md` に整理する。
+- `compiler/rust/runtime/src/runtime_bridge/` と `runtime/native/` を調査し、OS 固有実装を切り替えるアダプタ層（`FsAdapter`/`WatcherAdapter`）の責務を設計メモにまとめる。
+- Capability 連携の検証ポイントを `docs/notes/runtime-capability-stage-log.md` に追記し、CI で `verify_capability_stage` を実行する Runbook を `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md` と同期させる。
 
 ### 2. Reader/Writer 抽象実装（47-48週目）
 **担当領域**: IO 基盤
 
-2.1. `Reader`/`Writer` トレイトと共通ヘルパ (`copy`, `with_reader`) を実装し、`IoError` 体系を整備する。
-2.2. バッファリング (`BufferedReader`, `read_line`) を実装し、`effect {mem}`/`{io.blocking}` を伴う動作をテストする。
-2.3. `IoError` → `Diagnostic` 変換・監査メタデータ (`IoContext`) を実装し、CLI 出力と整合することを確認する。
+2.1. `Reader`/`Writer` トレイトと共通ヘルパ (`copy`, `with_reader`) を実装し、`IoError` 体系を整備する。  
+実施ステップ:
+- `compiler/rust/runtime/src/io/reader.rs` / `writer.rs` を追加し、`trait Reader { fn read(&mut self, buf: &mut [u8]) -> Result<usize, IoError>; }` 等を仕様準拠で定義する。
+- `docs/spec/3-5-core-io-path.md` のテーブルを参照し、`Reader::copy_to`/`Writer::flush`/`io::copy` などヘルパを `compiler/rust/runtime/src/io/mod.rs` に集約する。
+- `IoError`/`IoErrorKind` を `compiler/rust/runtime/src/io/error.rs` へ新設し、`std::io::ErrorKind` とのマッピングと `effect {io.blocking}` 記録処理を組み込む。
+
+2.2. バッファリング (`BufferedReader`, `read_line`) を実装し、`effect {mem}`/`{io.blocking}` を伴う動作をテストする。  
+実施ステップ:
+- `compiler/rust/runtime/src/io/buffered.rs` に `BufferedReader<'a, R: Reader>` を実装し、リングバッファ設計と `read_line`/`fill_buf` の状態管理を定義する。
+- `docs/plans/bootstrap-roadmap/assets/core-io-effects-matrix.md` の `BufferedReader` 行に `effect {mem}`/`{io.blocking}` を明記し、`take_io_effects_snapshot()`（新設）でメモリ使用量を計測する。
+- `tests/data/core_io/buffered_reader/*.json` を追加し、`scripts/validate-diagnostic-json.sh --suite core_io` と `cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core-io buffered_reader::tests::*` を CI へ組み込む。
+
+2.3. `IoError` → `Diagnostic` 変換・監査メタデータ (`IoContext`) を実装し、CLI 出力と整合することを確認する。  
+実施ステップ:
+- `compiler/rust/runtime/src/io/error.rs` に `impl IntoDiagnostic for IoError` を追加し、`code = "core.io.*"`、`metadata.io.path`, `metadata.io.operation`, `metadata.io.capability` を設定する。
+- `IoContext` 構造体を `compiler/rust/runtime/src/io/context.rs` に定義し、`Reader`/`Writer`/`File` 呼び出しからコンテキスト (path, mode, capability) を自動で注入する。
+- `docs/spec/3-6-core-diagnostics-audit.md` の `io.*` 例を再現する CLI ゴールデン (`compiler/rust/runtime/tests/expected/io_error_open.json`) を作成し、`scripts/validate-diagnostic-json.sh --pattern core.io` で整合性を確保する。
 
 ### 3. ファイル API とメタデータ（48週目）
 **担当領域**: ファイル操作
 
-3.1. `File::open/create/remove/metadata` 等の API を実装し、プラットフォームごとのエラー挙動をテストする。
-3.2. `FileOptions`/`FileMetadata` の定義を整備し、`Timestamp` (`Core.Numeric & Time`) と連携する。
-3.3. `sync`/`defer` 処理の統合を確認し、リソースリーク検出テストを追加する。
+3.1. `File::open/create/remove/metadata` 等の API を実装し、プラットフォームごとのエラー挙動をテストする。  
+実施ステップ:
+- `compiler/rust/runtime/src/io/file.rs` に `File` 構造体と `open`, `create`, `remove`, `metadata` を実装し、`std::fs::File` への委譲を Capability で包む。
+- `docs/plans/bootstrap-roadmap/assets/core-io-path-api-diff.csv` の `File` 行を更新し、POSIX/Windows の挙動差を `docs/notes/core-io-path-gap-log.md` に整理する。
+- `tests/data/core_io/file_ops/{posix,windows}/*.json` を作成し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario file_ops --platform {linux,windows}` で差分を検証する。
+
+3.2. `FileOptions`/`FileMetadata` の定義を整備し、`Timestamp` (`Core.Numeric & Time`) と連携する。  
+実施ステップ:
+- `FileOptions` を `compiler/rust/runtime/src/io/options.rs` に作成し、`read`, `write`, `append`, `truncate`, `create`、`permissions` をビルダー形式で設定できるようにする。
+- `FileMetadata` を `compiler/rust/runtime/src/io/metadata.rs` に定義し、`size`, `permissions`, `created_at`, `modified_at` を `Core.Time::Timestamp` で表現する。`3-4-core-numeric-time-plan.md` 側の `Timestamp → IO` バックログと依存関係を明記する。
+- `tests/expected/file_metadata.json` にメタデータ出力を保存し、`scripts/validate-diagnostic-json.sh --pattern core.io.metadata` で `Timestamp` のフォーマットと効果タグ (`effect {time}`) を検証する。
+
+3.3. `sync`/`defer` 処理の統合を確認し、リソースリーク検出テストを追加する。  
+実施ステップ:
+- `File::sync_all`/`sync_data`/`drop` 時の `IoError` を `compiler/rust/runtime/src/io/file.rs` でフックし、`effect {io.blocking}`/`{fs.sync}` を記録する。
+- `defer` (`with_file`/`with_temp_dir`) の RAII ヘルパを `compiler/rust/runtime/src/io/scope.rs` に定義し、`Drop` で確実に解放されることを `cargo test --features core-io io::scope::tests::*` で検証する。
+- `tests/data/core_io/leak_detection/*.json` を `reports/spec-audit/ch3/io_leak-detection.md` にまとめ、`valgrind`/`miri` ベースの自動チェック (CI optional) を `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` にリンクする。
 
 ### 4. Path 抽象とセキュリティ（48-49週目）
 **担当領域**: パス処理
 
-4.1. `Path`/`PathBuf` と基本操作 (`path`, `join`, `normalize`, `is_absolute`) を実装し、プラットフォーム差異に対するテストを作成する。
-4.2. セキュリティヘルパ (`validate_path`, `sandbox_path`, `is_safe_symlink`) を実装し、`effect {security}` の検証を行う。
-4.3. 文字列ユーティリティ (`normalize_path`, `join_paths`) を実装し、`Core.Text` と連携するテストを整備する。
+4.1. `Path`/`PathBuf` と基本操作 (`path`, `join`, `normalize`, `is_absolute`) を実装し、プラットフォーム差異に対するテストを作成する。  
+実施ステップ:
+- `compiler/rust/runtime/src/path/mod.rs` に `struct Path<'a>`/`PathBuf` を定義し、内部的には `std::path::{Path, PathBuf}` を利用しつつ Reml 仕様の `Effect`/`Capability` を付与する。
+- `normalize`, `join`, `split`, `is_absolute`, `components` 等の API を `3-5-core-io-path.md` の例と一致するよう設計し、POSIX/Windows 表現を `cfg` 切り替えで検証する。
+- `tests/data/core_path/normalize_{posix,windows}.json` を追加し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core-path path::tests::*` と `scripts/validate-diagnostic-json.sh --pattern core.path.normalize` を実行する。
+
+4.2. セキュリティヘルパ (`validate_path`, `sandbox_path`, `is_safe_symlink`) を実装し、`effect {security}` の検証を行う。  
+実施ステップ:
+- `compiler/rust/runtime/src/path/security.rs` に `validate_path`/`sandbox_path`/`is_safe_symlink` を実装し、`Core.Diagnostics` と連携する `PathSecurityError` を定義する。
+- `docs/spec/3-8-core-runtime-capability.md` の `security.fs.*` 要件を `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md` に反映し、`CapabilityStage` チェックを `security.rs` で行う。
+- `tests/data/core_path/security/*.json` を `scripts/validate-diagnostic-json.sh --pattern core.path.security` で検証し、`effect {security}` と `metadata.security.reason` を `collect-iterator-audit-metrics.py --section core_io --scenario path_security` から観測する。
+
+4.3. 文字列ユーティリティ (`normalize_path`, `join_paths`) を実装し、`Core.Text` と連携するテストを整備する。  
+実施ステップ:
+- `compiler/rust/runtime/src/path/string_utils.rs` を追加し、`normalize_path_str`, `join_paths_str`, `relative_to` を UTF-8 ベースで実装する（`Core.Text` の正規化ロジックを再利用）。
+- `docs/spec/3-3-core-text-unicode.md` の `TextNormalizer` と互換にするため、`Core.Text` サイドの API 参照 (`docs/plans/bootstrap-roadmap/3-3-core-text-unicode-plan.md`) を更新し、双方向リンクを README に追記する。
+- `tests/data/core_path/unicode_cases.json` を作成し、`rg --glob "*unicode*.json" docs/spec` で引いたサンプルを再利用しつつ、正規化差異を `reports/spec-audit/ch3/path_unicode-*.md` に記録する。
 
 ### 5. Watcher / 拡張機能（49週目）
 **担当領域**: オプション機能
 
-5.1. ファイル監視 API (`watch`, `watch_with_limits`, `close`) を実装し、`effect {io.async}` のハンドリングを確認する。
-5.2. 監視イベントを `AuditEnvelope` へ記録する仕組みを整備し、ログの構造化をテストする。
-5.3. クロスプラットフォームでサポートが異なる機能は `Capability` 判定と `IoErrorKind::UnsupportedPlatform` で扱う。
+5.1. ファイル監視 API (`watch`, `watch_with_limits`, `close`) を実装し、`effect {io.async}` のハンドリングを確認する。  
+実施ステップ:
+- `compiler/rust/runtime/src/io/watcher.rs` に `Watcher`, `WatcherHandle`, `WatchEvent` を実装し、`notify` crate (macOS FSEvents, Linux inotify, Windows ReadDirectoryChangesW) を抽象化する。
+- `effect {io.async}` を `Watcher` が記録できるよう `io/effects.rs` に非同期チャンネルのメトリクス (`watch.queue_size`, `watch.delay_ns`) を追加する。
+- `tests/fixtures/watcher/simple_case` を用意し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features core-io watch::tests::*` を実行して基本イベントの整合性を確認する。
+
+5.2. 監視イベントを `AuditEnvelope` へ記録する仕組みを整備し、ログの構造化をテストする。  
+実施ステップ:
+- `WatcherEventRecorder` を `compiler/rust/runtime/src/io/watcher_audit.rs` に作成し、イベントを `AuditEnvelope.metadata.io.watch.*` へ書き込む。
+- `reports/spec-audit/ch3/io_watcher-*.jsonl` を新設し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario watcher_audit` で監査レポートを収集する。
+- `docs/spec/3-6-core-diagnostics-audit.md` の監視例を参照し、CLI/Runtime のログフォーマットを `scripts/validate-diagnostic-json.sh --pattern core.io.watcher` で検証する。
+
+5.3. クロスプラットフォームでサポートが異なる機能は `Capability` 判定と `IoErrorKind::UnsupportedPlatform` で扱う。  
+実施ステップ:
+- `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md` に `watcher.fschange`, `watcher.recursive`, `watcher.resource_limits` の Stage/OS 対応を追記する。
+- `compiler/rust/runtime/src/io/error.rs` の `IoErrorKind::UnsupportedPlatform` に `platform`/`feature` メタデータを加え、`Capability` 判定前後のログを `AuditEnvelope` に保存する。
+- `docs/notes/runtime-capability-stage-log.md` に watcher 系 Capability のステータスを残し、`3-8-core-runtime-capability-plan.md` のフェーズ依存タスクと連動させる。
 
 ### 6. ドキュメント・サンプル更新（49-50週目）
 **担当領域**: 情報整備
 
-6.1. 仕様書サンプル・ガイド (`docs/guides/runtime-bridges.md`) を更新し、実装差分を解消する。
-6.2. `README.md`/`3-0-phase3-self-host.md` に IO/Path 実装ステータスを記載し、利用者向け注意事項を明示する。
-6.3. `examples/` にファイル操作・パス検証の例を追加し、CI で自動実行する。
+6.1. 仕様書サンプル・ガイド (`docs/guides/runtime-bridges.md`) を更新し、実装差分を解消する。  
+実施ステップ:
+- `docs/spec/3-5-core-io-path.md` のコードサンプル・脚注を最新 API に合わせて改稿し、`docs/spec/3-0-core-library-overview.md` に概要を追記する。
+- `docs/guides/runtime-bridges.md`/`docs/guides/plugin-authoring.md` に IO/Path の利用例を追加し、Capability チェックや `IoContext` の記録方法を解説する。
+- `docs/plans/bootstrap-roadmap/README.md` と `docs/plans/rust-migration/overview.md` に本計画書へのリンクと更新履歴を追記する。
+
+6.2. `README.md`/`3-0-phase3-self-host.md` に IO/Path 実装ステータスを記載し、利用者向け注意事項を明示する。  
+実施ステップ:
+- `README.md` の Phase3 進捗表に `Core.IO & Path` 行を追加し、マイルストーン/担当/完了条件を記載する。
+- `docs/plans/bootstrap-roadmap/3-0-phase3-self-host.md` M4/M5 行へ IO/Path の依存関係と完了条件 (`Watcher`, `Path security`, `IoError diagnostics`) を紐付ける。
+- 監査ログ (`docs/notes/runtime-bridges-roadmap.md`, `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md`) への記載箇所を更新し、読者が最新ステータスを追跡できるようにする。
+
+6.3. `examples/` にファイル操作・パス検証の例を追加し、CI で自動実行する。  
+実施ステップ:
+- `examples/core_io/file_copy.reml`, `examples/core_path/security_check.reml` を追加し、`Core.IO` API の実際の使い方とエラーハンドリングを示す。
+- `tooling/examples/run_examples.sh --suite core_io` を整備し、CI (`.github/workflows/examples.yml`) で Reml スクリプトを実行するよう設定する。
+- `docs/notes/examples-regression-log.md` に新例の実行結果とトラブルシューティングを記録し、リグレッション時の調査手順を共有する。
 
 ### 7. テスト・ベンチマーク統合（50週目）
 **担当領域**: 品質保証
 
-7.1. 単体・統合テストを追加し、エラー経路・効果タグ・Capability 検証を網羅する。
-7.2. IO 性能ベンチマークを実施し、Rust 実装の Phase 2 ベースライン比 ±15% を目標に評価する（OCaml 実装は参考資料としてのみ保持）。
-7.3. テスト結果とリスクを `0-3-audit-and-metrics.md`/`0-4-risk-handling.md` に記録し、追加調整が必要な項目を整理する。
+7.1. 単体・統合テストを追加し、エラー経路・効果タグ・Capability 検証を網羅する。  
+実施ステップ:
+- `cargo test --manifest-path compiler/rust/runtime/Cargo.toml --features "core-io core-path"` に統合テストターゲット (`io::tests::`, `path::tests::`) を追加し、`effect {io.*}`/`{security}` を `EffectSet` で確認する。
+- `scripts/validate-diagnostic-json.sh --suite core_io` を作成し、`tests/data/core_io/*.json` と `tests/data/core_path/*.json` の診断・監査出力を検証する。
+- Capability テスト (`tests/capabilities/core_io_*`) を GitHub Actions に追加し、`verify_capability_stage` の pass/fail を `reports/spec-audit/ch3/core_io_capability-*.md` に残す。
+
+7.2. IO 性能ベンチマークを実施し、Rust 実装の Phase 2 ベースライン比 ±15% を目標に評価する（OCaml 実装は参考資料としてのみ保持）。  
+実施ステップ:
+- `compiler/rust/runtime/benches/bench_core_io.rs` を `criterion` ベースで実装し、`reader_copy`, `buffered_read_line`, `path_normalize`, `watcher_throughput` のベンチを追加する。
+- `reports/benchmarks/core-io-path/phase3-baseline-YYYYMMDD.json` を作成し、`docs/plans/rust-migration/3-2-benchmark-baseline.md` に測定項目 (`io.copy_throughput_mb_s`, `path.normalize_ops_s`) を追記する。
+- OCaml 実装との差分を `docs/notes/core-io-path-gap-log.md` に記録し、±15% 以上の回帰が発生した場合は `0-4-risk-handling.md` にリスク登録する。
+
+7.3. テスト結果とリスクを `0-3-audit-and-metrics.md`/`0-4-risk-handling.md` に記録し、追加調整が必要な項目を整理する。  
+実施ステップ:
+- `docs/plans/bootstrap-roadmap/0-3-audit-and-metrics.md` の Phase3 指標に `io.error_rate`, `path.security.incident_count`, `watcher.audit.pass_rate` を追加し、CI から収集した数値を毎スプリント反映する。
+- `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` に IO/Path 特有のリスク（大量ファイル監視、権限不足、シンボリックリンク攻撃）を追記し、緩和策・責任者を明確化する。
+- `reports/spec-audit/ch3/core_io_summary-YYYYMMDD.md` を作成し、テスト・ベンチ結果と未解決課題をまとめて Phase3 定例に共有する。
 
 ## 成果物と検証
 - `Core.IO`/`Core.Path` API が仕様通りに実装され、効果タグ・Capability 検証が合致していること。
