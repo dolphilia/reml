@@ -20,6 +20,7 @@
 - `docs/spec/3-5-core-io-path.md` から API 名・引数・戻り値・効果タグを抽出し、`docs/plans/bootstrap-roadmap/assets/core-io-path-api-diff.csv` に整理する。
 - `rg "pub (struct|enum|fn)" compiler/rust/runtime/src/io -g "*.rs"`、`rg -g "*path*" compiler/rust/runtime/src -n "pub"` を用いて Rust 実装の現状を洗い出し、CSV に `実装状況 (PoC/Done/Missing)` とファイルパスを追記する。
 - 差分を `docs/notes/core-io-path-gap-log.md` に登録し、優先順位 (Blocking/High/Normal) と依存タスク（Diagnostics/Runtime/Guides 更新）を紐付けた backlog を作成する。
+- ✅ 2025-11-29: API 一覧と実装状況を `core-io-path-api-diff.csv` に追加し、主要な欠落項目（Reader/Writer ヘルパ、File/Buffered、Path/Security/Watcher）を `core-io-path-gap-log.md` に Blocking/High 優先度で記録した。
 
 1.2. 効果タグと Capability 要件 (`effect {io.blocking}`, `{security}` 等) を整理し、CI で検証するテスト計画を策定する。  
 実施ステップ:
