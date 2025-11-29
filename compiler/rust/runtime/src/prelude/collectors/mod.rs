@@ -188,6 +188,9 @@ pub struct CollectorEffectMarkers {
     pub finish: usize,
     pub cell_mutations: usize,
     pub time_calls: usize,
+    pub io_blocking_ops: usize,
+    pub io_async_ops: usize,
+    pub security_checks: usize,
 }
 
 impl CollectorEffectMarkers {
@@ -217,6 +220,21 @@ impl CollectorEffectMarkers {
             return;
         }
         self.time_calls = self.time_calls.saturating_add(calls);
+    }
+
+    /// `effect {io.blocking}` を発生させた回数を記録する。
+    pub fn record_io_blocking(&mut self) {
+        self.io_blocking_ops = self.io_blocking_ops.saturating_add(1);
+    }
+
+    /// `effect {io.async}` を発生させた回数を記録する。
+    pub fn record_io_async(&mut self) {
+        self.io_async_ops = self.io_async_ops.saturating_add(1);
+    }
+
+    /// `effect {security}` を発生させた回数を記録する。
+    pub fn record_security_check(&mut self) {
+        self.security_checks = self.security_checks.saturating_add(1);
     }
 }
 
@@ -301,8 +319,26 @@ impl CollectorAuditTrail {
         );
         effects.insert("io".into(), Value::Bool(self.effects.io));
         effects.insert(
+            "io_blocking".into(),
+            Value::Bool(self.effects.io_blocking),
+        );
+        effects.insert("io_async".into(), Value::Bool(self.effects.io_async));
+        effects.insert("security".into(), Value::Bool(self.effects.security));
+        effects.insert(
             "time_calls".into(),
             Value::Number(Number::from(self.effects.time_calls as u64)),
+        );
+        effects.insert(
+            "io_blocking_calls".into(),
+            Value::Number(Number::from(self.effects.io_blocking_calls as u64)),
+        );
+        effects.insert(
+            "io_async_calls".into(),
+            Value::Number(Number::from(self.effects.io_async_calls as u64)),
+        );
+        effects.insert(
+            "security_events".into(),
+            Value::Number(Number::from(self.effects.security_events as u64)),
         );
         obj.insert("effects".into(), Value::Object(effects));
 
@@ -322,6 +358,18 @@ impl CollectorAuditTrail {
         markers.insert(
             "time_calls".into(),
             Value::Number(Number::from(self.effects.time_calls as u64)),
+        );
+        markers.insert(
+            "io_blocking_ops".into(),
+            Value::Number(Number::from(self.markers.io_blocking_ops as u64)),
+        );
+        markers.insert(
+            "io_async_ops".into(),
+            Value::Number(Number::from(self.markers.io_async_ops as u64)),
+        );
+        markers.insert(
+            "security_checks".into(),
+            Value::Number(Number::from(self.markers.security_checks as u64)),
         );
         obj.insert("markers".into(), Value::Object(markers));
         obj
@@ -409,6 +457,18 @@ impl CollectorAuditTrail {
             Value::Bool(self.effects.io),
         );
         metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.io_blocking"),
+            Value::Bool(self.effects.io_blocking),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.io_async"),
+            Value::Bool(self.effects.io_async),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.security"),
+            Value::Bool(self.effects.security),
+        );
+        metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}effect.time"),
             Value::Bool(self.effects.time),
         );
@@ -431,6 +491,30 @@ impl CollectorAuditTrail {
         metadata.insert(
             format!("{COLLECTOR_AUDIT_PREFIX}effect.time_calls"),
             Value::Number(Number::from(self.effects.time_calls as u64)),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.io_blocking_calls"),
+            Value::Number(Number::from(self.effects.io_blocking_calls as u64)),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.io_async_calls"),
+            Value::Number(Number::from(self.effects.io_async_calls as u64)),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.security_events"),
+            Value::Number(Number::from(self.effects.security_events as u64)),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.io_blocking_ops"),
+            Value::Number(Number::from(self.markers.io_blocking_ops as u64)),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.io_async_ops"),
+            Value::Number(Number::from(self.markers.io_async_ops as u64)),
+        );
+        metadata.insert(
+            format!("{COLLECTOR_AUDIT_PREFIX}effect.security_checks"),
+            Value::Number(Number::from(self.markers.security_checks as u64)),
         );
         append_text_metadata(&mut metadata);
         metadata

@@ -292,12 +292,18 @@ mod tests {
             rc: false,
             unicode: false,
             io: false,
+            io_blocking: false,
+            io_async: false,
+            security: false,
             transfer: false,
             mem_bytes: 123,
             predicate_calls: 0,
             rc_ops: 0,
             time: false,
             time_calls: 0,
+            io_blocking_calls: 0,
+            io_async_calls: 0,
+            security_events: 0,
         };
         let schema_diff = SchemaDiff::from_change_set(&change_set, Some(labels));
         assert_eq!(schema_diff.metadata.mem_bytes, 123);

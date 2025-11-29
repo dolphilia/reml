@@ -371,12 +371,18 @@ fn ensure_numeric_metrics_stage(
                 rc: false,
                 unicode: false,
                 io: false,
+                io_blocking: false,
+                io_async: false,
+                security: false,
                 transfer: false,
                 mem_bytes: 0,
                 predicate_calls: 0,
                 rc_ops: 0,
                 time: false,
                 time_calls: 0,
+                io_blocking_calls: 0,
+                io_async_calls: 0,
+                security_events: 0,
             },
             CollectorEffectMarkers::default(),
         );
@@ -790,6 +796,9 @@ pub struct EffectSet {
     predicate_calls: usize,
     rc_ops: usize,
     time_calls: usize,
+    io_blocking_ops: usize,
+    io_async_ops: usize,
+    security_events: usize,
 }
 
 impl EffectSet {
@@ -804,6 +813,9 @@ impl EffectSet {
     const TRANSFER_BIT: u16 = 0b1_0000_0000;
     const UNICODE_BIT: u16 = 0b10_0000_0000;
     const TIME_BIT: u16 = 0b100_0000_0000;
+    const IO_BLOCKING_BIT: u16 = 0b1000_0000_0000;
+    const IO_ASYNC_BIT: u16 = 0b1_0000_0000_0000;
+    const SECURITY_BIT: u16 = 0b10_0000_0000_0000;
 
     pub const PURE: Self = Self {
         bits: 0,
@@ -811,6 +823,9 @@ impl EffectSet {
         predicate_calls: 0,
         rc_ops: 0,
         time_calls: 0,
+        io_blocking_ops: 0,
+        io_async_ops: 0,
+        security_events: 0,
     };
 
     pub fn mark_mut(&mut self) {
@@ -850,6 +865,32 @@ impl EffectSet {
         self.bits |= Self::IO_BIT;
     }
 
+    pub fn mark_io_blocking(&mut self) {
+        self.record_io_blocking_calls(1);
+    }
+
+    pub fn record_io_blocking_calls(&mut self, calls: usize) {
+        if calls == 0 {
+            return;
+        }
+        self.io_blocking_ops = self.io_blocking_ops.saturating_add(calls);
+        self.bits |= Self::IO_BLOCKING_BIT;
+        self.mark_io();
+    }
+
+    pub fn mark_io_async(&mut self) {
+        self.record_io_async_events(1);
+    }
+
+    pub fn record_io_async_events(&mut self, events: usize) {
+        if events == 0 {
+            return;
+        }
+        self.io_async_ops = self.io_async_ops.saturating_add(events);
+        self.bits |= Self::IO_ASYNC_BIT;
+        self.mark_io();
+    }
+
     pub fn mark_transfer(&mut self) {
         self.bits |= Self::TRANSFER_BIT;
     }
@@ -860,6 +901,18 @@ impl EffectSet {
 
     pub fn mark_time(&mut self) {
         self.bits |= Self::TIME_BIT;
+    }
+
+    pub fn mark_security(&mut self) {
+        self.record_security_events(1);
+    }
+
+    pub fn record_security_events(&mut self, events: usize) {
+        if events == 0 {
+            return;
+        }
+        self.security_events = self.security_events.saturating_add(events);
+        self.bits |= Self::SECURITY_BIT;
     }
 
     pub fn record_predicate_call(&mut self) {
@@ -899,6 +952,9 @@ impl EffectSet {
             predicate_calls: self.predicate_calls,
             rc_ops: self.rc_ops,
             time_calls: self.time_calls,
+            io_blocking_ops: self.io_blocking_ops,
+            io_async_ops: self.io_async_ops,
+            security_events: self.security_events,
         }
     }
 
@@ -909,6 +965,9 @@ impl EffectSet {
             predicate_calls: self.predicate_calls,
             rc_ops: self.rc_ops,
             time_calls: self.time_calls,
+            io_blocking_ops: self.io_blocking_ops,
+            io_async_ops: self.io_async_ops,
+            security_events: self.security_events,
         }
     }
 
@@ -919,6 +978,9 @@ impl EffectSet {
             predicate_calls: self.predicate_calls,
             rc_ops: self.rc_ops,
             time_calls: self.time_calls,
+            io_blocking_ops: self.io_blocking_ops,
+            io_async_ops: self.io_async_ops,
+            security_events: self.security_events,
         }
     }
 
@@ -929,6 +991,9 @@ impl EffectSet {
             predicate_calls: self.predicate_calls,
             rc_ops: self.rc_ops,
             time_calls: self.time_calls,
+            io_blocking_ops: self.io_blocking_ops,
+            io_async_ops: self.io_async_ops,
+            security_events: self.security_events,
         }
     }
 
@@ -957,6 +1022,13 @@ impl EffectSet {
             predicate_calls: self.predicate_calls.saturating_add(other.predicate_calls),
             rc_ops: self.rc_ops.saturating_add(other.rc_ops),
             time_calls: self.time_calls.saturating_add(other.time_calls),
+            io_blocking_ops: self
+                .io_blocking_ops
+                .saturating_add(other.io_blocking_ops),
+            io_async_ops: self.io_async_ops.saturating_add(other.io_async_ops),
+            security_events: self
+                .security_events
+                .saturating_add(other.security_events),
         }
     }
 
@@ -986,6 +1058,16 @@ impl EffectSet {
         if labels.io {
             self.mark_io();
         }
+        if labels.io_blocking_calls > 0 {
+            self.record_io_blocking_calls(labels.io_blocking_calls);
+        } else if labels.io_blocking {
+            self.mark_io_blocking();
+        }
+        if labels.io_async_calls > 0 {
+            self.record_io_async_events(labels.io_async_calls);
+        } else if labels.io_async {
+            self.mark_io_async();
+        }
         if labels.transfer {
             self.mark_transfer();
         }
@@ -994,6 +1076,11 @@ impl EffectSet {
         }
         if labels.time {
             self.mark_time();
+        }
+        if labels.security_events > 0 {
+            self.record_security_events(labels.security_events);
+        } else if labels.security {
+            self.mark_security();
         }
 
         self.record_mem_bytes(labels.mem_bytes);
@@ -1034,6 +1121,14 @@ impl EffectSet {
         self.bits & Self::IO_BIT != 0
     }
 
+    pub fn contains_io_blocking(self) -> bool {
+        self.bits & Self::IO_BLOCKING_BIT != 0
+    }
+
+    pub fn contains_io_async(self) -> bool {
+        self.bits & Self::IO_ASYNC_BIT != 0
+    }
+
     pub fn contains_transfer(self) -> bool {
         self.bits & Self::TRANSFER_BIT != 0
     }
@@ -1044,6 +1139,10 @@ impl EffectSet {
 
     pub fn contains_time(self) -> bool {
         self.bits & Self::TIME_BIT != 0
+    }
+
+    pub fn contains_security(self) -> bool {
+        self.bits & Self::SECURITY_BIT != 0
     }
 
     pub fn to_labels(self) -> EffectLabels {
@@ -1057,12 +1156,18 @@ impl EffectSet {
             rc: self.contains_rc(),
             unicode: self.contains_unicode(),
             io: self.contains_io(),
+            io_blocking: self.contains_io_blocking(),
+            io_async: self.contains_io_async(),
+            security: self.contains_security(),
             transfer: self.contains_transfer(),
             time: self.contains_time(),
             mem_bytes: self.mem_bytes,
             predicate_calls: self.predicate_calls,
             rc_ops: self.rc_ops,
             time_calls: self.time_calls,
+            io_blocking_calls: self.io_blocking_ops,
+            io_async_calls: self.io_async_ops,
+            security_events: self.security_events,
         }
     }
 }
@@ -1079,12 +1184,18 @@ pub struct EffectLabels {
     pub rc: bool,
     pub unicode: bool,
     pub io: bool,
+    pub io_blocking: bool,
+    pub io_async: bool,
+    pub security: bool,
     pub transfer: bool,
     pub mem_bytes: usize,
     pub predicate_calls: usize,
     pub rc_ops: usize,
     pub time: bool,
     pub time_calls: usize,
+    pub io_blocking_calls: usize,
+    pub io_async_calls: usize,
+    pub security_events: usize,
 }
 
 pub(crate) enum IterDriver<T> {

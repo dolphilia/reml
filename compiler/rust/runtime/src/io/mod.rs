@@ -10,6 +10,7 @@ mod writer;
 
 pub use env::{time_env_snapshot, TimeEnvSnapshot};
 pub use error::{IoContext, IoError, IoErrorKind, IoResult};
+pub use effects::take_io_effects_snapshot;
 pub use reader::Reader;
 pub use text_stream::{
     decode_stream, encode_stream, BomHandling, InvalidSequenceStrategy, TextDecodeOptions,

@@ -18,12 +18,18 @@ const PURE_EFFECTS: EffectLabels = EffectLabels {
     rc: false,
     unicode: false,
     io: false,
+    io_blocking: false,
+    io_async: false,
+    security: false,
     transfer: false,
     mem_bytes: 0,
     predicate_calls: 0,
     rc_ops: 0,
     time: false,
     time_calls: 0,
+    io_blocking_calls: 0,
+    io_async_calls: 0,
+    security_events: 0,
 };
 
 /// 可変バッファを返す `VecCollector`。
