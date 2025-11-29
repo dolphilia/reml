@@ -35,6 +35,9 @@ Core.Runtime の Capability で Stage 要件や監査メタデータの扱いに
   - すべての IO API で `IoContext` に `metadata.io.capability`, `metadata.io.operation`, `metadata.io.path`, `metadata.security.policy_digest`（policy 利用時）を記録する。
   - Stage 取得結果は `effect.stage.required` / `effect.stage.actual` / `effects.contract.stage_mismatch`（不一致時）へ転写し、Watcher 系は加えて `AuditEnvelope.metadata["io.watch.queue_size"]`, `["io.watch.delay_ns"]` を必須化する。
   - `security.fs.policy` 経由の拒否は `IoErrorKind::SecurityViolation` → `diagnostic("core.path.security.violation")` を生成し、`metadata.security.tripped_capability` に Capability ID を書き込む。
+- 接続状況:
+  - `compiler/rust/runtime/src/io/adapters.rs` に `FsAdapter`/`WatcherAdapter` を追加し、`Reader`/`Writer` から `FsAdapter::ensure_{read,write}` を呼び出すことで `io.fs.*` Capability を `verify_capability_stage` に渡している。
+  - Watcher Capability はまだ実装呼び出しが無いため、`WatcherAdapter` で Stage のキャッシュだけを提供し、監視 API 実装時に `ensure_{native,recursive}` を利用する。
 - 観測方法:
   - `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md` を基準に `python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario capability_matrix --matrix docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md --output reports/spec-audit/ch3/core_io_capabilities.json --require-success` を実行して Capability / Stage / effect ラベルの整合を確認する。
   - `scripts/validate-diagnostic-json.sh --pattern core.io --pattern core.path.security --pattern core.io.watcher` を用いて診断メタデータが欠落していないことを検証し、結果を `reports/spec-audit/ch3/core_io_summary-YYYYMMDD.md` に記録する。

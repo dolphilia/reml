@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use super::{effects::record_io_operation, IoError, IoErrorKind, IoResult};
+use super::{effects::record_io_operation, FsAdapter, IoError, IoErrorKind, IoResult};
 
 /// Core.IO 互換の Writer トレイト。
 pub trait Writer {
@@ -29,6 +29,7 @@ where
     T: Write,
 {
     fn write(&mut self, buf: &[u8]) -> IoResult<usize> {
+        FsAdapter::global().ensure_write_capability()?;
         match Write::write(self, buf) {
             Ok(bytes) => {
                 record_io_operation(bytes);

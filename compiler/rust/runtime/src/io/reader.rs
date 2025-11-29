@@ -1,6 +1,6 @@
 use std::io::Read;
 
-use super::{effects::record_io_operation, IoError, IoErrorKind, IoResult};
+use super::{effects::record_io_operation, FsAdapter, IoError, IoErrorKind, IoResult};
 
 /// Core.IO 互換の Reader トレイト。
 pub trait Reader {
@@ -29,6 +29,7 @@ where
     T: Read,
 {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
+        FsAdapter::global().ensure_read_capability()?;
         match Read::read(self, buf) {
             Ok(bytes) => {
                 record_io_operation(bytes);
