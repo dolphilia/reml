@@ -2,11 +2,11 @@ use std::error::Error;
 use std::fmt;
 use std::path::PathBuf;
 
-#[cfg(any(feature = "core_time", feature = "metrics"))]
-use crate::time::{self, Timestamp};
+use crate::prelude::ensure::{DiagnosticSeverity, GuardDiagnostic, IntoDiagnostic};
 use crate::prelude::iter::EffectLabels;
-#[cfg(not(any(feature = "core_time", feature = "metrics")))]
-use std::time::SystemTime as Timestamp;
+use serde_json::{Map, Number, Value};
+
+use super::{BufferStats, IoContext};
 
 /// IO 操作共通の結果型。
 pub type IoResult<T> = Result<T, IoError>;
@@ -129,172 +129,251 @@ impl From<std::io::ErrorKind> for IoErrorKind {
     }
 }
 
-/// IO 操作の文脈情報。
-#[derive(Debug, Clone)]
-pub struct IoContext {
-    operation: &'static str,
-    path: Option<PathBuf>,
-    capability: Option<&'static str>,
-    bytes_processed: Option<u64>,
-    timestamp: Timestamp,
-    effects: EffectLabels,
-    buffer: Option<BufferStats>,
-}
-
-impl IoContext {
-    pub fn new(operation: &'static str) -> Self {
-        Self {
-            operation,
-            path: None,
-            capability: None,
-            bytes_processed: None,
-            timestamp: current_timestamp(),
-            effects: empty_effect_labels(),
-            buffer: None,
+impl IoErrorKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            IoErrorKind::NotFound => "not_found",
+            IoErrorKind::PermissionDenied => "permission_denied",
+            IoErrorKind::ConnectionRefused => "connection_refused",
+            IoErrorKind::InvalidInput => "invalid_input",
+            IoErrorKind::TimedOut => "timed_out",
+            IoErrorKind::WriteZero => "write_zero",
+            IoErrorKind::Interrupted => "interrupted",
+            IoErrorKind::UnexpectedEof => "unexpected_eof",
+            IoErrorKind::OutOfMemory => "out_of_memory",
+            IoErrorKind::SecurityViolation => "security_violation",
+            IoErrorKind::UnsupportedPlatform => "unsupported_platform",
         }
     }
 
-    pub fn with_bytes_processed(mut self, bytes: u64) -> Self {
-        self.bytes_processed = Some(bytes);
-        self
-    }
-
-    pub fn with_path(mut self, path: impl Into<PathBuf>) -> Self {
-        self.path = Some(path.into());
-        self
-    }
-
-    pub fn with_capability(mut self, capability: &'static str) -> Self {
-        self.capability = Some(capability);
-        self
-    }
-
-    pub fn set_path(&mut self, path: PathBuf) {
-        self.path = Some(path);
-    }
-
-    pub fn operation(&self) -> &'static str {
-        self.operation
-    }
-
-    pub fn path(&self) -> Option<&PathBuf> {
-        self.path.as_ref()
-    }
-
-    pub fn capability(&self) -> Option<&'static str> {
-        self.capability
-    }
-
-    pub fn bytes_processed(&self) -> Option<u64> {
-        self.bytes_processed
-    }
-
-    pub fn timestamp(&self) -> Timestamp {
-        self.timestamp
-    }
-
-    pub fn effects(&self) -> EffectLabels {
-        self.effects
-    }
-
-    pub fn with_effects(mut self, effects: EffectLabels) -> Self {
-        self.effects = effects;
-        self
-    }
-
-    pub fn set_effects(&mut self, effects: EffectLabels) {
-        self.effects = effects;
-    }
-
-    pub fn buffer(&self) -> Option<&BufferStats> {
-        self.buffer.as_ref()
-    }
-
-    pub fn with_buffer_stats(mut self, stats: BufferStats) -> Self {
-        self.buffer = Some(stats);
-        self
-    }
-
-    pub fn update_buffer_usage(&mut self, capacity: usize, fill: usize) {
-        let stats = self
-            .buffer
-            .get_or_insert_with(|| BufferStats::new(capacity));
-        stats.update(capacity, fill);
-    }
-
-    pub fn set_buffer_stats(&mut self, stats: BufferStats) {
-        self.buffer = Some(stats);
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct BufferStats {
-    capacity: u32,
-    fill: u32,
-    last_fill_timestamp: Timestamp,
-}
-
-impl BufferStats {
-    pub fn new(capacity: usize) -> Self {
-        Self {
-            capacity: capacity.min(u32::MAX as usize) as u32,
-            fill: 0,
-            last_fill_timestamp: current_timestamp(),
+    fn default_code(&self) -> &'static str {
+        match self {
+            IoErrorKind::NotFound => "core.io.not_found",
+            IoErrorKind::PermissionDenied => "core.io.permission_denied",
+            IoErrorKind::ConnectionRefused => "core.io.connection_refused",
+            IoErrorKind::InvalidInput => "core.io.invalid_input",
+            IoErrorKind::TimedOut => "core.io.timed_out",
+            IoErrorKind::WriteZero => "core.io.write_zero",
+            IoErrorKind::Interrupted => "core.io.interrupted",
+            IoErrorKind::UnexpectedEof => "core.io.unexpected_eof",
+            IoErrorKind::OutOfMemory => "core.io.out_of_memory",
+            IoErrorKind::SecurityViolation => "core.io.security_violation",
+            IoErrorKind::UnsupportedPlatform => "core.io.unsupported_platform",
         }
     }
+}
 
-    fn update(&mut self, capacity: usize, fill: usize) {
-        self.capacity = capacity.min(u32::MAX as usize) as u32;
-        self.fill = fill.min(self.capacity as usize) as u32;
-        self.last_fill_timestamp = current_timestamp();
-    }
+impl IntoDiagnostic for IoError {
+    fn into_diagnostic(self) -> GuardDiagnostic {
+        let IoError {
+            kind,
+            message,
+            path,
+            context,
+        } = self;
 
-    pub fn capacity(&self) -> u32 {
-        self.capacity
-    }
+        let context_ref = context.as_ref();
+        let code = derive_diagnostic_code(kind, context_ref);
 
-    pub fn fill(&self) -> u32 {
-        self.fill
-    }
+        let resolved_path = path
+            .as_ref()
+            .map(path_to_string)
+            .or_else(|| context_ref.and_then(|ctx| ctx.path()).map(path_to_string));
 
-    pub fn last_fill_timestamp(&self) -> Timestamp {
-        self.last_fill_timestamp
+        let mut io_extensions = Map::new();
+        io_extensions.insert("kind".into(), Value::String(kind.as_str().into()));
+        if let Some(ref path_value) = resolved_path {
+            io_extensions.insert("path".into(), Value::String(path_value.clone()));
+        }
+        if let Some(ctx) = context_ref {
+            io_extensions.insert(
+                "operation".into(),
+                Value::String(ctx.operation().to_string()),
+            );
+            if let Some(capability) = ctx.capability() {
+                io_extensions.insert("capability".into(), Value::String(capability.into()));
+            }
+            if let Some(bytes) = ctx.bytes_processed() {
+                io_extensions.insert(
+                    "bytes_processed".into(),
+                    Value::Number(Number::from(bytes)),
+                );
+            }
+            if let Some(buffer) = ctx.buffer() {
+                let buffer_map = encode_buffer_stats(buffer);
+                io_extensions.insert("buffer".into(), Value::Object(buffer_map));
+            }
+            if let Ok(timestamp_value) = serde_json::to_value(ctx.timestamp()) {
+                io_extensions.insert("timestamp".into(), timestamp_value);
+            }
+        }
+
+        let mut extensions = Map::new();
+        extensions.insert("io".into(), Value::Object(io_extensions));
+        if let Some(ctx) = context_ref {
+            let effects_map = encode_effect_labels(ctx.effects());
+            extensions.insert("effects".into(), Value::Object(effects_map));
+        }
+        extensions.insert("message".into(), Value::String(message.clone()));
+
+        let mut audit_metadata = Map::new();
+        audit_metadata.insert(
+            "io.error.kind".into(),
+            Value::String(kind.as_str().into()),
+        );
+        if let Some(path_value) = resolved_path {
+            audit_metadata.insert("io.path".into(), Value::String(path_value));
+        }
+        if let Some(ctx) = context_ref {
+            audit_metadata.insert(
+                "io.operation".into(),
+                Value::String(ctx.operation().into()),
+            );
+            if let Some(capability) = ctx.capability() {
+                audit_metadata.insert(
+                    "io.capability".into(),
+                    Value::String(capability.into()),
+                );
+            }
+            if let Some(bytes) = ctx.bytes_processed() {
+                audit_metadata.insert(
+                    "io.bytes_processed".into(),
+                    Value::Number(Number::from(bytes)),
+                );
+            }
+            if let Ok(timestamp_value) = serde_json::to_value(ctx.timestamp()) {
+                audit_metadata.insert("io.timestamp".into(), timestamp_value);
+            }
+            if let Some(buffer) = ctx.buffer() {
+                let buffer_map = encode_buffer_stats(buffer);
+                for (key, value) in buffer_map {
+                    audit_metadata.insert(format!("io.buffer.{key}"), value);
+                }
+            }
+            let effects_map = encode_effect_labels(ctx.effects());
+            for (key, value) in effects_map {
+                audit_metadata.insert(format!("io.effects.{key}"), value);
+            }
+        }
+
+        let diag_message = format_diagnostic_message(kind, context_ref, &message);
+
+        GuardDiagnostic {
+            code,
+            domain: "runtime",
+            severity: DiagnosticSeverity::Error,
+            message: diag_message,
+            extensions,
+            audit_metadata,
+        }
     }
 }
 
-fn empty_effect_labels() -> EffectLabels {
-    EffectLabels {
-        mem: false,
-        mutating: false,
-        debug: false,
-        async_pending: false,
-        audit: false,
-        cell: false,
-        rc: false,
-        unicode: false,
-        io: false,
-        io_blocking: false,
-        io_async: false,
-        security: false,
-        transfer: false,
-        mem_bytes: 0,
-        predicate_calls: 0,
-        rc_ops: 0,
-        time: false,
-        time_calls: 0,
-        io_blocking_calls: 0,
-        io_async_calls: 0,
-        security_events: 0,
+const READ_ERROR_CODE: &str = "core.io.read_error";
+const WRITE_ERROR_CODE: &str = "core.io.write_error";
+const BUFFERED_READ_ERROR_CODE: &str = "core.io.read_error.buffered";
+const WATCHER_ERROR_CODE: &str = "core.io.watcher_error";
+
+fn derive_diagnostic_code(kind: IoErrorKind, context: Option<&IoContext>) -> &'static str {
+    if let Some(ctx) = context {
+        if let Some(code) = operation_diagnostic_code(ctx.operation()) {
+            return code;
+        }
+    }
+    kind.default_code()
+}
+
+fn operation_diagnostic_code(operation: &str) -> Option<&'static str> {
+    if operation.contains("watch") {
+        return Some(WATCHER_ERROR_CODE);
+    }
+    if operation.contains("buffer") && operation.contains("read") {
+        return Some(BUFFERED_READ_ERROR_CODE);
+    }
+    if operation.contains("write") || matches!(operation, "flush" | "sync_all" | "sync_data") {
+        return Some(WRITE_ERROR_CODE);
+    }
+    if operation.contains("read") || operation == "with_reader" {
+        return Some(READ_ERROR_CODE);
+    }
+    None
+}
+
+fn format_diagnostic_message(
+    kind: IoErrorKind,
+    context: Option<&IoContext>,
+    message: &str,
+) -> String {
+    if let Some(ctx) = context {
+        format!("Core.IO {} failed: {}", ctx.operation(), message)
+    } else {
+        format!("Core.IO {} error: {}", kind.as_str(), message)
     }
 }
 
-fn current_timestamp() -> Timestamp {
-    #[cfg(any(feature = "core_time", feature = "metrics"))]
-    {
-        time::now().unwrap_or_else(|_| Timestamp::unix_epoch())
+fn encode_effect_labels(labels: EffectLabels) -> Map<String, Value> {
+    let mut effects = Map::new();
+    effects.insert("mem".into(), Value::Bool(labels.mem));
+    effects.insert("mutating".into(), Value::Bool(labels.mutating));
+    effects.insert("debug".into(), Value::Bool(labels.debug));
+    effects.insert("async_pending".into(), Value::Bool(labels.async_pending));
+    effects.insert("audit".into(), Value::Bool(labels.audit));
+    effects.insert("cell".into(), Value::Bool(labels.cell));
+    effects.insert("rc".into(), Value::Bool(labels.rc));
+    effects.insert("unicode".into(), Value::Bool(labels.unicode));
+    effects.insert("io".into(), Value::Bool(labels.io));
+    effects.insert("io_blocking".into(), Value::Bool(labels.io_blocking));
+    effects.insert("io_async".into(), Value::Bool(labels.io_async));
+    effects.insert("security".into(), Value::Bool(labels.security));
+    effects.insert("transfer".into(), Value::Bool(labels.transfer));
+    effects.insert(
+        "mem_bytes".into(),
+        Value::Number(Number::from(labels.mem_bytes as u64)),
+    );
+    effects.insert(
+        "predicate_calls".into(),
+        Value::Number(Number::from(labels.predicate_calls as u64)),
+    );
+    effects.insert(
+        "rc_ops".into(),
+        Value::Number(Number::from(labels.rc_ops as u64)),
+    );
+    effects.insert("time".into(), Value::Bool(labels.time));
+    effects.insert(
+        "time_calls".into(),
+        Value::Number(Number::from(labels.time_calls as u64)),
+    );
+    effects.insert(
+        "io_blocking_calls".into(),
+        Value::Number(Number::from(labels.io_blocking_calls as u64)),
+    );
+    effects.insert(
+        "io_async_calls".into(),
+        Value::Number(Number::from(labels.io_async_calls as u64)),
+    );
+    effects.insert(
+        "security_events".into(),
+        Value::Number(Number::from(labels.security_events as u64)),
+    );
+    effects
+}
+
+fn encode_buffer_stats(stats: &BufferStats) -> Map<String, Value> {
+    let mut buffer = Map::new();
+    buffer.insert(
+        "capacity".into(),
+        Value::Number(Number::from(stats.capacity() as u64)),
+    );
+    buffer.insert(
+        "fill".into(),
+        Value::Number(Number::from(stats.fill() as u64)),
+    );
+    if let Ok(timestamp_value) = serde_json::to_value(stats.last_fill_timestamp()) {
+        buffer.insert("last_fill_timestamp".into(), timestamp_value);
     }
-    #[cfg(not(any(feature = "core_time", feature = "metrics")))]
-    {
-        Timestamp::now()
-    }
+    buffer
+}
+
+fn path_to_string(path: &PathBuf) -> String {
+    path.to_string_lossy().into_owned()
 }

@@ -95,6 +95,11 @@
 - `IoContext` 構造体を `compiler/rust/runtime/src/io/context.rs` に定義し、`Reader`/`Writer`/`File` 呼び出しからコンテキスト (path, mode, capability) を自動で注入する。
 - `docs/spec/3-6-core-diagnostics-audit.md` の `io.*` 例を再現する CLI ゴールデン (`compiler/rust/runtime/tests/expected/io_error_open.json`) を作成し、`scripts/validate-diagnostic-json.sh --pattern core.io` で整合性を確保する。
 
+> 進行ログ（Phase3 W48, 2.3）  
+> - `compiler/rust/runtime/src/io/context.rs` を新設して `IoContext`/`BufferStats`/タイムスタンプ初期化を分離し、`IoContext::with_timestamp`・`set_effects` 等から Reader/Writer/BufferedReader が同一 API で監査メタデータを注入できるようにした。`compiler/rust/runtime/src/io/mod.rs` では再エクスポートを更新し、既存コードの import を保った。  
+> - `compiler/rust/runtime/src/io/error.rs` に `IntoDiagnostic` 実装を追加し、`code` を `core.io.read_error/core.io.write_error` と `IoErrorKind::default_code` で切り替えるロジック、`extensions.io.*`／`audit["io.*"]`／`io.effects.*` の変換、`EffectLabels`→JSON 変換ヘルパを実装。Reader/Writer から渡された `IoContext` が `path/capability/bytes_processed/buffer/timestamp` を診断へ転写できるようになった。  
+> - `compiler/rust/runtime/tests/expected/io_error_open.json` と `tests/io_diagnostics.rs` を追加し、`IoError::new(...).into_diagnostic().into_json()` が CLI 想定 JSON の主要キー（`metadata.io.*`, `extensions.effects.*`）を満たすことを `assert_contains` で検証。`cargo test io_error_into_diagnostic_matches_expected_subset`（`compiler/rust/runtime`）を実行して新テストを通過済み。`scripts/validate-diagnostic-json.sh` 実行は未実施のため、CI 連携は Phase3 `core-io` ジョブで別途追跡する。
+
 ### 3. ファイル API とメタデータ（48週目）
 **担当領域**: ファイル操作
 

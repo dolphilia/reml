@@ -4,18 +4,20 @@
 use std::{fs::File, path::Path};
 
 mod adapters;
+mod context;
 mod effects;
 mod env;
 mod error;
+mod buffered;
 mod reader;
 mod text_stream;
 mod writer;
-mod buffered;
 
 pub use adapters::{FsAdapter, WatcherAdapter};
+pub use context::{BufferStats, IoContext};
 pub use effects::take_io_effects_snapshot;
 pub use env::{time_env_snapshot, TimeEnvSnapshot};
-pub use error::{BufferStats, IoContext, IoError, IoErrorKind, IoResult};
+pub use error::{IoError, IoErrorKind, IoResult};
 pub use reader::Reader;
 pub use text_stream::{
     decode_stream, encode_stream, BomHandling, InvalidSequenceStrategy, TextDecodeOptions,
