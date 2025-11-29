@@ -23,3 +23,20 @@ Core.Runtime の Capability で Stage 要件や監査メタデータの扱いに
   - `python3 tooling/ci/collect-iterator-audit-metrics.py --section numeric_time --scenario emit_metric --metric-source tests/data/metrics/metric_point_cases.json`
   - Stage mismatch の再現ログは `reports/dual-write/metrics-stage-mismatch.json`
 - 関連ドキュメント: `docs/plans/bootstrap-roadmap/3-4-core-numeric-time-plan.md` §5.3, `docs/notes/runtime-metrics-capability.md`
+
+## 2025-12-15 Core.IO / Path Security & Watcher
+- 対象 Capability: `io.fs.read`, `io.fs.write`, `fs.permissions.read`, `fs.permissions.modify`, `fs.symlink.query`, `fs.symlink.modify`, `fs.watcher.native`, `fs.watcher.recursive`, `security.fs.policy`
+- Stage 要件:
+  - `io.fs.*`: `StageRequirement::AtLeast(StageId::Beta)`（IO API 共有基盤）。`compiler/rust/runtime/src/io/{reader.rs,writer.rs}` から `CapabilityRegistry::verify_capability_stage("io.fs", ..)` を呼び出す設計。
+  - `fs.permissions.*` / `security.fs.policy`: `StageRequirement::Exact(StageId::Stable)`。`SecurityCapability` を経由して `effect.stage.required = "stable"` を診断へ転写。
+  - `fs.symlink.*`: `StageRequirement::AtLeast(StageId::Beta)`（Windows 開発者モードや POSIX `lstat` 依存のため）。
+  - `fs.watcher.*`: `StageRequirement::AtLeast(StageId::Beta)`（`watch_with_limits` の recursive 対応は Stable 昇格条件付き）。
+- 診断・監査メタデータ:
+  - すべての IO API で `IoContext` に `metadata.io.capability`, `metadata.io.operation`, `metadata.io.path`, `metadata.security.policy_digest`（policy 利用時）を記録する。
+  - Stage 取得結果は `effect.stage.required` / `effect.stage.actual` / `effects.contract.stage_mismatch`（不一致時）へ転写し、Watcher 系は加えて `AuditEnvelope.metadata["io.watch.queue_size"]`, `["io.watch.delay_ns"]` を必須化する。
+  - `security.fs.policy` 経由の拒否は `IoErrorKind::SecurityViolation` → `diagnostic("core.path.security.violation")` を生成し、`metadata.security.tripped_capability` に Capability ID を書き込む。
+- 観測方法:
+  - `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md` を基準に `python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario capability_matrix --matrix docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md --output reports/spec-audit/ch3/core_io_capabilities.json --require-success` を実行して Capability / Stage / effect ラベルの整合を確認する。
+  - `scripts/validate-diagnostic-json.sh --pattern core.io --pattern core.path.security --pattern core.io.watcher` を用いて診断メタデータが欠落していないことを検証し、結果を `reports/spec-audit/ch3/core_io_summary-YYYYMMDD.md` に記録する。
+  - Watcher 実装後は `RuntimeBridgeRegistry` の `describe_bridge("native.fs.watch")` 出力を `docs/notes/runtime-bridges-roadmap.md` に添付し、Stage mismtach が出た場合は本ログにも Run ID を追記する。
+- 関連ドキュメント: `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md`, `docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md` §1.3, `docs/plans/bootstrap-roadmap/3-8-core-runtime-capability-plan.md`（Runbook 追記）、`docs/guides/runtime-bridges.md`
