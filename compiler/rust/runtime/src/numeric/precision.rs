@@ -156,23 +156,27 @@ impl PrecisionValue for Decimal {
     fn apply_precision(self, precision: &Precision) -> Result<Self, NumericError> {
         match precision {
             Precision::Float32 => {
-                let float_value = self
-                    .to_f32()
-                    .ok_or_else(|| NumericError::conversion_failed("Decimal -> f32 conversion failed")
-                        .with_precision_kind("float32"))?;
+                let float_value = self.to_f32().ok_or_else(|| {
+                    NumericError::conversion_failed("Decimal -> f32 conversion failed")
+                        .with_precision_kind("float32")
+                })?;
                 Decimal::from_f32(float_value)
-                    .ok_or_else(|| NumericError::conversion_failed("f32 -> Decimal conversion failed")
-                        .with_precision_kind("float32"))
+                    .ok_or_else(|| {
+                        NumericError::conversion_failed("f32 -> Decimal conversion failed")
+                            .with_precision_kind("float32")
+                    })
                     .map(|value| value.normalize())
             }
             Precision::Float64 => {
-                let float_value = self
-                    .to_f64()
-                    .ok_or_else(|| NumericError::conversion_failed("Decimal -> f64 conversion failed")
-                        .with_precision_kind("float64"))?;
+                let float_value = self.to_f64().ok_or_else(|| {
+                    NumericError::conversion_failed("Decimal -> f64 conversion failed")
+                        .with_precision_kind("float64")
+                })?;
                 Decimal::from_f64(float_value)
-                    .ok_or_else(|| NumericError::conversion_failed("f64 -> Decimal conversion failed")
-                        .with_precision_kind("float64"))
+                    .ok_or_else(|| {
+                        NumericError::conversion_failed("f64 -> Decimal conversion failed")
+                            .with_precision_kind("float64")
+                    })
                     .map(|value| value.normalize())
             }
             Precision::Decimal { scale, precision } => {
@@ -183,11 +187,8 @@ impl PrecisionValue for Decimal {
     }
 
     fn round_decimal_places(self, places: u8) -> Self {
-        self.round_dp_with_strategy(
-            places as u32,
-            RoundingStrategy::MidpointNearestEven,
-        )
-        .normalize()
+        self.round_dp_with_strategy(places as u32, RoundingStrategy::MidpointNearestEven)
+            .normalize()
     }
 
     fn truncate_decimal_places(self, places: u8) -> Self {
@@ -237,10 +238,7 @@ fn apply_decimal_precision_decimal(
     digits: u8,
 ) -> Result<Decimal, NumericError> {
     validate_decimal_precision(scale, digits)?;
-    let rounded = value.round_dp_with_strategy(
-        scale as u32,
-        RoundingStrategy::MidpointNearestEven,
-    );
+    let rounded = value.round_dp_with_strategy(scale as u32, RoundingStrategy::MidpointNearestEven);
     let normalized = rounded.normalize();
     let digit_count = count_significant_digits(&normalized);
     if digit_count > u32::from(digits) {
@@ -310,8 +308,14 @@ mod tests {
     #[test]
     fn decimal_precision_enforces_digit_limits() {
         let value = Decimal::from_f64(1234.56789).expect("decimal");
-        let adjusted =
-            with_precision(value, Precision::Decimal { scale: 3, precision: 8 }).unwrap();
+        let adjusted = with_precision(
+            value,
+            Precision::Decimal {
+                scale: 3,
+                precision: 8,
+            },
+        )
+        .unwrap();
         assert_eq!(adjusted.to_string(), "1234.568");
     }
 
@@ -319,8 +323,14 @@ mod tests {
     #[test]
     fn decimal_precision_overflow_returns_error() {
         let value = Decimal::from_f64(999999999.0).expect("decimal");
-        let err = with_precision(value, Precision::Decimal { scale: 2, precision: 4 })
-            .expect_err("should fail");
+        let err = with_precision(
+            value,
+            Precision::Decimal {
+                scale: 2,
+                precision: 4,
+            },
+        )
+        .expect_err("should fail");
         assert_eq!(err.kind, NumericErrorKind::PrecisionOverflow);
     }
 }

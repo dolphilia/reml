@@ -350,15 +350,9 @@ impl IntoDiagnostic for NumericError {
         let code = context_code.unwrap_or_else(|| kind.default_code());
 
         let mut precision_extensions = Map::new();
-        precision_extensions.insert(
-            "error_kind".into(),
-            Value::String(kind.as_str().into()),
-        );
+        precision_extensions.insert("error_kind".into(), Value::String(kind.as_str().into()));
         if let Some(kind_label) = precision_kind.as_ref() {
-            precision_extensions.insert(
-                "precision_kind".into(),
-                Value::String(kind_label.clone()),
-            );
+            precision_extensions.insert("precision_kind".into(), Value::String(kind_label.clone()));
         }
         if let Some(scale) = precision_scale {
             precision_extensions.insert("scale".into(), Value::Number(Number::from(scale)));
@@ -396,10 +390,7 @@ impl IntoDiagnostic for NumericError {
         }
 
         for (key, value) in precision_extensions.iter() {
-            audit_metadata.insert(
-                format!("numeric.precision.{key}"),
-                value.clone(),
-            );
+            audit_metadata.insert(format!("numeric.precision.{key}"), value.clone());
         }
 
         GuardDiagnostic {
@@ -637,9 +628,6 @@ mod tests {
             finance_meta.get("currency_code").and_then(Value::as_str),
             Some("USD")
         );
-        assert_eq!(
-            finance_meta.get("scale").and_then(Value::as_u64),
-            Some(2)
-        );
+        assert_eq!(finance_meta.get("scale").and_then(Value::as_u64), Some(2));
     }
 }

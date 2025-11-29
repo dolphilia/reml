@@ -6,12 +6,12 @@
 pub mod decimal;
 mod effects;
 pub mod error;
-pub mod histogram;
-mod iter;
-pub mod statistics;
-pub mod precision;
 #[cfg(feature = "decimal")]
 pub mod finance;
+pub mod histogram;
+mod iter;
+pub mod precision;
+pub mod statistics;
 #[cfg(feature = "decimal")]
 pub use decimal::Decimal;
 
@@ -29,12 +29,12 @@ use num_rational::BigRational;
 use crate::prelude::iter::{EffectLabels, Iter};
 
 pub use error::{NumericError, NumericErrorKind, StatisticsError, StatisticsErrorKind};
-pub use histogram::{histogram, HistogramBucket, HistogramBucketState};
-pub use iter::{rolling_average, z_score};
-pub use statistics::{correlation, linear_regression, quantiles, LinearModel, QuantilePoint};
-pub use precision::{with_precision, round_to, truncate_to, Precision};
 #[cfg(feature = "decimal")]
 pub use finance::{compound_interest, currency_add, net_present_value, CurrencyCode};
+pub use histogram::{histogram, HistogramBucket, HistogramBucketState};
+pub use iter::{rolling_average, z_score};
+pub use precision::{round_to, truncate_to, with_precision, Precision};
+pub use statistics::{correlation, linear_regression, quantiles, LinearModel, QuantilePoint};
 
 /// Core.Numeric の基礎トレイト。
 pub trait Numeric: PartialOrd + Clone {
@@ -501,9 +501,9 @@ pub fn take_numeric_effects_snapshot() -> EffectLabels {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     #[cfg(feature = "decimal")]
     use super::Decimal;
+    use super::*;
     #[cfg(feature = "decimal")]
     use rust_decimal::prelude::FromPrimitive;
 

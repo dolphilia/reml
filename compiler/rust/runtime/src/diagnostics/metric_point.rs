@@ -396,11 +396,9 @@ mod tests {
     fn stage_mismatch_produces_guard_diagnostic() {
         let metric = metric_point("latency.mean", 21.0_f64);
         let required_effects = metric_required_effects();
-        let error = MetricsStageGuard::verify(
-            StageRequirement::Exact(StageId::Beta),
-            &required_effects,
-        )
-        .expect_err("beta requirement should fail");
+        let error =
+            MetricsStageGuard::verify(StageRequirement::Exact(StageId::Beta), &required_effects)
+                .expect_err("beta requirement should fail");
         let diagnostic = stage_mismatch_diagnostic(
             &metric,
             StageRequirement::Exact(StageId::Beta),

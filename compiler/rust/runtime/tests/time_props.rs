@@ -2,7 +2,7 @@
 
 use proptest::prelude::*;
 use reml_runtime::time::{
-    convert_timezone, duration_between, timezone, Duration, Timezone, Timestamp,
+    convert_timezone, duration_between, timezone, Duration, Timestamp, Timezone,
 };
 
 fn timestamp_strategy() -> impl Strategy<Value = Timestamp> {
@@ -16,13 +16,9 @@ fn timestamp_strategy() -> impl Strategy<Value = Timestamp> {
 }
 
 fn duration_strategy() -> impl Strategy<Value = Duration> {
-    (
-        -1_000_000i64..=1_000_000,
-        -750_000_000i32..=750_000_000,
-    )
-        .prop_map(|(seconds, nanos)| {
-            Duration::try_from_parts(seconds, nanos).expect("duration parts must normalize")
-        })
+    (-1_000_000i64..=1_000_000, -750_000_000i32..=750_000_000).prop_map(|(seconds, nanos)| {
+        Duration::try_from_parts(seconds, nanos).expect("duration parts must normalize")
+    })
 }
 
 fn timezone_offset_minutes_strategy() -> impl Strategy<Value = i32> {

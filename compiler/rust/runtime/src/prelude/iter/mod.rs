@@ -355,39 +355,41 @@ fn ensure_numeric_metrics_stage(
     source: &'static str,
 ) -> Result<(), CollectError> {
     let required_effects = metric_required_effects();
-    MetricsStageGuard::verify(requirement, &required_effects).map(|_| ()).map_err(|err| {
-        let profile = CollectorStageProfile::for_kind(CollectorKind::Numeric);
-        let snapshot = profile.snapshot(source);
-        let audit = CollectorAuditTrail::new(
-            CollectorKind::Numeric,
-            snapshot,
-            EffectLabels {
-                mem: false,
-                mutating: false,
-                debug: false,
-                async_pending: false,
-                audit: false,
-                cell: false,
-                rc: false,
-                unicode: false,
-                io: false,
-                io_blocking: false,
-                io_async: false,
-                security: false,
-                transfer: false,
-                mem_bytes: 0,
-                predicate_calls: 0,
-                rc_ops: 0,
-                time: false,
-                time_calls: 0,
-                io_blocking_calls: 0,
-                io_async_calls: 0,
-                security_events: 0,
-            },
-            CollectorEffectMarkers::default(),
-        );
-        CollectError::capability_denied(METRIC_CAPABILITY_ID, audit, err)
-    })
+    MetricsStageGuard::verify(requirement, &required_effects)
+        .map(|_| ())
+        .map_err(|err| {
+            let profile = CollectorStageProfile::for_kind(CollectorKind::Numeric);
+            let snapshot = profile.snapshot(source);
+            let audit = CollectorAuditTrail::new(
+                CollectorKind::Numeric,
+                snapshot,
+                EffectLabels {
+                    mem: false,
+                    mutating: false,
+                    debug: false,
+                    async_pending: false,
+                    audit: false,
+                    cell: false,
+                    rc: false,
+                    unicode: false,
+                    io: false,
+                    io_blocking: false,
+                    io_async: false,
+                    security: false,
+                    transfer: false,
+                    mem_bytes: 0,
+                    predicate_calls: 0,
+                    rc_ops: 0,
+                    time: false,
+                    time_calls: 0,
+                    io_blocking_calls: 0,
+                    io_async_calls: 0,
+                    security_events: 0,
+                },
+                CollectorEffectMarkers::default(),
+            );
+            CollectError::capability_denied(METRIC_CAPABILITY_ID, audit, err)
+        })
 }
 
 impl<K, V> Iter<(K, V)> {
@@ -1022,13 +1024,9 @@ impl EffectSet {
             predicate_calls: self.predicate_calls.saturating_add(other.predicate_calls),
             rc_ops: self.rc_ops.saturating_add(other.rc_ops),
             time_calls: self.time_calls.saturating_add(other.time_calls),
-            io_blocking_ops: self
-                .io_blocking_ops
-                .saturating_add(other.io_blocking_ops),
+            io_blocking_ops: self.io_blocking_ops.saturating_add(other.io_blocking_ops),
             io_async_ops: self.io_async_ops.saturating_add(other.io_async_ops),
-            security_events: self
-                .security_events
-                .saturating_add(other.security_events),
+            security_events: self.security_events.saturating_add(other.security_events),
         }
     }
 

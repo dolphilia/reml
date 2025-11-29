@@ -12,8 +12,8 @@ use crate::{
 
 use super::{IoError, IoErrorKind, IoResult};
 
-const CAP_IO_FS_READ: &str = "io.fs.read";
-const CAP_IO_FS_WRITE: &str = "io.fs.write";
+pub(crate) const CAP_IO_FS_READ: &str = "io.fs.read";
+pub(crate) const CAP_IO_FS_WRITE: &str = "io.fs.write";
 const CAP_FS_PERMISSIONS_READ: &str = "fs.permissions.read";
 const CAP_FS_PERMISSIONS_MODIFY: &str = "fs.permissions.modify";
 const CAP_FS_SYMLINK_QUERY: &str = "fs.symlink.query";

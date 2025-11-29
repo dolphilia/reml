@@ -33,8 +33,11 @@ impl MetricsStageGuard {
         required_effects: &[String],
     ) -> Result<Self, CapabilityError> {
         let registry = CapabilityRegistry::registry();
-        let actual_stage =
-            registry.verify_capability_stage(METRIC_CAPABILITY_ID, requirement, required_effects)?;
+        let actual_stage = registry.verify_capability_stage(
+            METRIC_CAPABILITY_ID,
+            requirement,
+            required_effects,
+        )?;
         Ok(Self {
             requirement,
             actual_stage,

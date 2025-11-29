@@ -47,3 +47,29 @@ pub(crate) fn take_recorded_effects() -> EffectSet {
 pub fn take_io_effects_snapshot() -> EffectLabels {
     take_recorded_effects().to_labels()
 }
+
+pub(crate) fn blocking_io_effect_labels() -> EffectLabels {
+    EffectLabels {
+        mem: false,
+        mutating: false,
+        debug: false,
+        async_pending: false,
+        audit: false,
+        cell: false,
+        rc: false,
+        unicode: false,
+        io: true,
+        io_blocking: true,
+        io_async: false,
+        security: false,
+        transfer: false,
+        mem_bytes: 0,
+        predicate_calls: 0,
+        rc_ops: 0,
+        time: false,
+        time_calls: 0,
+        io_blocking_calls: 1,
+        io_async_calls: 0,
+        security_events: 0,
+    }
+}

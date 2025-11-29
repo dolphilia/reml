@@ -43,6 +43,26 @@
 - `docs/spec/3-5-core-io-path.md` のテーブルを参照し、`Reader::copy_to`/`Writer::flush`/`io::copy` などヘルパを `compiler/rust/runtime/src/io/mod.rs` に集約する。
 - `IoError`/`IoErrorKind` を `compiler/rust/runtime/src/io/error.rs` へ新設し、`std::io::ErrorKind` とのマッピングと `effect {io.blocking}` 記録処理を組み込む。
 
+#### 2.1.1 Reader/Writer トレイト設計メモ
+- `Reader`/`Writer` 双方で `Bytes`（`Core.Text` の `Bytes` 別名）を第一級に扱う前提を明文化し、`docs/spec/3-5-core-io-path.md` §2 に合わせて `Result<usize, IoError>`／`Result<Bytes, IoError>` を返す API を固定する。`reader.rs`/`writer.rs` は `std::io::{Read, Write}` を包むだけでなく、`IoContext` を自動生成して `metadata.io.operation` を補完する責務を担う。
+- `EffectSet` と `collect-iterator-audit-metrics.py --section core_io --scenario effects_matrix` の整合を守るため、`Reader::read`/`Writer::write` 呼び出し直後に `take_io_effects_snapshot()`（`compiler/rust/runtime/src/io/effects.rs` 新設）を呼び出して `effect {io}`/`{io.blocking}` を測定する仕様にする。Snapshot は `IoContext.effect` と `Diagnostic.extensions["effects"]` の両方から参照できるよう `IoContext` に埋め込む。
+- `Core.Diagnostics` で要求される `core.io.*` コードと `effect.stage.required/actual` の転写ポイントを `Reader`/`Writer` のトレイトメソッド実装に集中させる。`Reader::read_exact` は `effect {mem}` を伴う一時バッファ確保を明示し、`IoCapabilityStage::Beta` の検証フローを `verify_capability_stage("io.fs")`→`IoContext.capability`→`Diagnostic.metadata.io.capability` の順に統一する。
+
+#### 2.1.2 ヘルパ API（copy / with_reader）設計
+- `copy` は 64 KiB 固定バッファを確保し、`Reader`/`Writer` インスタンスに `IoContext.bytes_processed` を累積記録させる。`effect {mem}` の発火を抑制するため、バッファは `IoCopyBuffer`（`compiler/rust/runtime/src/io/buffer.rs` に追加予定）経由で `thread_local` に再利用する。監査メトリクスは `reports/spec-audit/ch3/core_io_effects.json` で `io.copy.bytes_processed` を追跡する。
+- `with_reader` は RAII で `File::open` 後に `Reader` をクロージャへ渡し、`ScopeGuard`/`defer` を用いた安全な close を保証する。`docs/spec/3-5-core-io-path.md` の使用例（設定ファイル読み込み）を反映し、`with_reader("config.toml", |reader| { ... })` 形で `effect {io.blocking}` を 1 箇所へ閉じ込める。`core-io-path-api-diff.csv` に `with_reader` 実装計画の補足列（`ScopeGuard` 依存）を追記する。
+- 補助関数（`Reader::copy_to`, `Writer::write_all`, `Reader::read_to_end` 等）は `io/mod.rs` にまとめ、`core-io-effects-matrix.md` の Reader/Writer 行と突合できるよう `metadata.io.helper = <helper_name>` を記録する。エラー発生時には `IoContext.operation` を `copy`/`write_all` に更新し、`IoErrorKind::Interrupted` を自動リトライする方針を共有する。
+
+#### 2.1.3 IoError / IoContext / Diagnostic 連携
+- `IoErrorKind` と `std::io::ErrorKind` のマッピング表を `docs/plans/bootstrap-roadmap/assets/core-io-path-api-diff.csv` の `Notes` 列と `docs/notes/core-io-path-gap-log.md` に整理した。`SecurityViolation`/`UnsupportedPlatform` のように標準ライブラリに同等エントリが無い場合は、`ErrorKind::Other` + `metadata.io.platform` で補完する。`IoErrorKind::OutOfMemory` は `effect {mem}` を記録する Reader/Writer/BufferedReader 共通のフォールバックとして扱う。
+- `IoContext` へ `path: Option<PathBuf>`, `operation: IoOperation`, `bytes_processed: Option<u64>`, `capability: Option<CapabilityId>`, `effects: IoEffectsSnapshot`, `timestamp: Timestamp` を保持させ、`IoError::into_diagnostic()` が `metadata.io.*` と `metadata.effects.*` に転写する仕様を定義した。`Timestamp` は `Core.Time::SystemClockAdapter` から取得し Phase3 `3-4` との依存を明記。
+- `core-io-effects-matrix.md` の Reader/Writer 行に `diagnostic: core.io.read_error/core.io.write_error` を追記し、`scripts/validate-diagnostic-json.sh --pattern core.io` が `metadata.io.operation`, `metadata.io.capability`, `metadata.io.path`, `metadata.io.bytes_processed`, `effect.stage.required/actual` を必須キーとして検証するよう CI ルールを追加する計画を記述した。
+
+> 進行ログ（Phase3 W47, 2.1）  
+> - `docs/spec/3-5-core-io-path.md` §2 の API をベースに `Reader`/`Writer` トレイトの責務・`IoContext` 注入ポイント・`EffectSet` 連携フローを整理し、本節の `#### 2.1.1`〜`2.1.3` に詳細設計を追記。Rust 実装では `reader.rs`/`writer.rs`/`mod.rs`/`error.rs` を分割し、`IoContext` が `effect {io.blocking}` と Capability 情報を収集するロードマップを確定した。  
+> - `docs/plans/bootstrap-roadmap/assets/core-io-path-api-diff.csv` の Reader/Writer/IoError 行に `notes` を追記し、`copy`/`with_reader`/`IoErrorKind` の依存関係（`ScopeGuard`, `IoCopyBuffer`, `Core.Time`）と `impl_status=PoC` の補強要件を明記した。  
+> - `docs/notes/core-io-path-gap-log.md` 2025-11-29 エントリを更新し、Reader/Writer ギャップが `Plan 3-5 §2.1` に紐付いたこと、`effect {io}` 計測と `with_reader` の自動 close 方針が Phase3 Self-Host `config.load` シナリオの前提となることを明文化した。
+
 2.2. バッファリング (`BufferedReader`, `read_line`) を実装し、`effect {mem}`/`{io.blocking}` を伴う動作をテストする。  
 実施ステップ:
 - `compiler/rust/runtime/src/io/buffered.rs` に `BufferedReader<'a, R: Reader>` を実装し、リングバッファ設計と `read_line`/`fill_buf` の状態管理を定義する。

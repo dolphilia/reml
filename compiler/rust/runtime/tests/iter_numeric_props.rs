@@ -1,11 +1,11 @@
 #![cfg(feature = "core-numeric")]
 
+#[cfg(feature = "decimal")]
+use reml_runtime::numeric::Decimal;
 use reml_runtime::numeric::{
     median, rolling_average, take_numeric_effects_snapshot, z_score, IterNumericExt,
 };
 use reml_runtime::prelude::iter::Iter;
-#[cfg(feature = "decimal")]
-use reml_runtime::numeric::Decimal;
 
 fn collect_values(iter: Iter<f64>) -> Vec<f64> {
     let (core_vec, _) = iter
@@ -136,6 +136,12 @@ fn decimal_median_records_mem_effect() {
     let iter = Iter::from_list(values.clone());
     let _ = iter.median();
     let effects = take_numeric_effects_snapshot();
-    assert!(effects.mem, "effect {{mem}} should be recorded for decimal median");
-    assert!(effects.mem_bytes > 0, "mem_bytes should record allocation size");
+    assert!(
+        effects.mem,
+        "effect {{mem}} should be recorded for decimal median"
+    );
+    assert!(
+        effects.mem_bytes > 0,
+        "mem_bytes should record allocation size"
+    );
 }

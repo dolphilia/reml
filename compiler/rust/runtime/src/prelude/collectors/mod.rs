@@ -318,10 +318,7 @@ impl CollectorAuditTrail {
             Value::Number(Number::from(self.effects.mem_bytes as u64)),
         );
         effects.insert("io".into(), Value::Bool(self.effects.io));
-        effects.insert(
-            "io_blocking".into(),
-            Value::Bool(self.effects.io_blocking),
-        );
+        effects.insert("io_blocking".into(), Value::Bool(self.effects.io_blocking));
         effects.insert("io_async".into(), Value::Bool(self.effects.io_async));
         effects.insert("security".into(), Value::Bool(self.effects.security));
         effects.insert(

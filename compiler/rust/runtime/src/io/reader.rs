@@ -1,6 +1,12 @@
 use std::io::Read;
 
-use super::{effects::record_io_operation, FsAdapter, IoError, IoErrorKind, IoResult};
+use crate::text::{Bytes, UnicodeError};
+
+use super::{
+    adapters::CAP_IO_FS_READ,
+    effects::{blocking_io_effect_labels, record_io_operation},
+    FsAdapter, IoContext, IoError, IoErrorKind, IoResult, Writer,
+};
 
 /// Core.IO 互換の Reader トレイト。
 pub trait Reader {
@@ -22,6 +28,35 @@ pub trait Reader {
         }
         Ok(())
     }
+
+    /// 指定したサイズのバッファを確保して読み出し、`Bytes` として返す。
+    fn read_exact_bytes(&mut self, size: usize) -> IoResult<Bytes> {
+        let mut buffer = vec![0_u8; size];
+        self.read_exact(&mut buffer)?;
+        Bytes::from_vec(buffer).map_err(|error| unicode_error_to_io(error, "read_exact_bytes"))
+    }
+
+    /// EOF まで読み出し、`Bytes` として返す。メモリ効果を伴う。
+    fn read_to_end(&mut self) -> IoResult<Bytes> {
+        let mut buffer = Vec::with_capacity(8 * 1024);
+        let mut chunk = [0_u8; 8 * 1024];
+        loop {
+            let read = self.read(&mut chunk)?;
+            if read == 0 {
+                break;
+            }
+            buffer.extend_from_slice(&chunk[..read]);
+        }
+        Bytes::from_vec(buffer).map_err(|error| unicode_error_to_io(error, "read_to_end"))
+    }
+
+    /// `Writer` へコピーするショートカット。
+    fn copy_to<W: Writer>(&mut self, writer: &mut W) -> IoResult<u64>
+    where
+        Self: Sized,
+    {
+        super::copy(self, writer)
+    }
 }
 
 impl<T> Reader for T
@@ -29,13 +64,24 @@ where
     T: Read,
 {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
-        FsAdapter::global().ensure_read_capability()?;
+        FsAdapter::global()
+            .ensure_read_capability()
+            .map_err(|err| err.with_context(read_context("read")))?;
+        record_io_operation(1);
         match Read::read(self, buf) {
-            Ok(bytes) => {
-                record_io_operation(bytes);
-                Ok(bytes)
-            }
-            Err(err) => Err(IoError::from_std(err, "read")),
+            Ok(bytes) => Ok(bytes),
+            Err(err) => Err(IoError::from_std(err, read_context("read"))),
         }
     }
+}
+
+fn read_context(operation: &'static str) -> IoContext {
+    IoContext::new(operation)
+        .with_capability(CAP_IO_FS_READ)
+        .with_effects(blocking_io_effect_labels())
+}
+
+fn unicode_error_to_io(error: UnicodeError, operation: &'static str) -> IoError {
+    IoError::new(IoErrorKind::InvalidInput, error.message().to_owned())
+        .with_context(IoContext::new(operation))
 }

@@ -79,10 +79,8 @@ pub fn currency_add(
             .with_currency_code(currency.as_str())
     })?;
 
-    let result = (a + b).round_dp_with_strategy(
-        spec.scale as u32,
-        RoundingStrategy::MidpointNearestEven,
-    );
+    let result =
+        (a + b).round_dp_with_strategy(spec.scale as u32, RoundingStrategy::MidpointNearestEven);
     Ok(result)
 }
 
@@ -92,8 +90,7 @@ pub fn compound_interest(
     periods: u32,
 ) -> Result<Decimal, NumericError> {
     let rate_decimal = Decimal::from_f64(rate).ok_or_else(|| {
-        NumericError::conversion_failed("invalid rate provided")
-            .with_value_repr(rate.to_string())
+        NumericError::conversion_failed("invalid rate provided").with_value_repr(rate.to_string())
     })?;
     let factor = Decimal::ONE + rate_decimal;
     let result = if periods == 0 {
@@ -104,10 +101,7 @@ pub fn compound_interest(
     Ok(result.normalize())
 }
 
-pub fn net_present_value(
-    cashflows: Iter<Decimal>,
-    rate: f64,
-) -> Result<Decimal, NumericError> {
+pub fn net_present_value(cashflows: Iter<Decimal>, rate: f64) -> Result<Decimal, NumericError> {
     let rate_decimal = Decimal::from_f64(rate).ok_or_else(|| {
         NumericError::conversion_failed("invalid discount rate provided")
             .with_value_repr(rate.to_string())

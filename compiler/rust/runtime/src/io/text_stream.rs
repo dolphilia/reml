@@ -342,8 +342,8 @@ fn io_encode_error(error: IoError) -> UnicodeError {
 fn map_io_error(error: IoError, kind: UnicodeErrorKind, phase: &'static str) -> UnicodeError {
     let mut message = format!("IO error: {}", error.message());
     if let Some(context) = error.context() {
-        message.push_str(&format!(" (operation: {})", context.operation));
-        if let Some(bytes) = context.bytes_processed {
+        message.push_str(&format!(" (operation: {})", context.operation()));
+        if let Some(bytes) = context.bytes_processed() {
             message.push_str(&format!(", bytes_processed={bytes}"));
         }
     }
