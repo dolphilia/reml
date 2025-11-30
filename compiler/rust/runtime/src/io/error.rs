@@ -326,6 +326,7 @@ fn encode_effect_labels(labels: EffectLabels) -> Map<String, Value> {
     effects.insert("io_async".into(), Value::Bool(labels.io_async));
     effects.insert("security".into(), Value::Bool(labels.security));
     effects.insert("transfer".into(), Value::Bool(labels.transfer));
+    effects.insert("fs_sync".into(), Value::Bool(labels.fs_sync));
     effects.insert(
         "mem_bytes".into(),
         Value::Number(Number::from(labels.mem_bytes as u64)),
@@ -350,6 +351,10 @@ fn encode_effect_labels(labels: EffectLabels) -> Map<String, Value> {
     effects.insert(
         "io_async_calls".into(),
         Value::Number(Number::from(labels.io_async_calls as u64)),
+    );
+    effects.insert(
+        "fs_sync_calls".into(),
+        Value::Number(Number::from(labels.fs_sync_calls as u64)),
     );
     effects.insert(
         "security_events".into(),

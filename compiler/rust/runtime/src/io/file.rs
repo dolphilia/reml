@@ -6,9 +6,13 @@ use super::{
     adapters::{
         FsAdapter, CAP_FS_PERMISSIONS_READ, CAP_IO_FS_READ, CAP_IO_FS_WRITE,
     },
-    effects::{blocking_io_effect_labels, record_io_operation},
+    effects::{
+        blocking_io_effect_labels, fs_sync_effect_labels, record_fs_sync_operation,
+        record_io_operation,
+    },
     metadata::FileMetadata,
     options::FileOptions,
+    scope::FileHandleGuard,
     IoContext, IoError, IoResult,
 };
 
@@ -17,6 +21,7 @@ use super::{
 pub struct File {
     handle: std::fs::File,
     path: PathBuf,
+    handle_guard: FileHandleGuard,
 }
 
 impl File {
@@ -34,6 +39,7 @@ impl File {
         Ok(Self {
             handle,
             path: path_ref.to_path_buf(),
+            handle_guard: FileHandleGuard::new(),
         })
     }
 
@@ -67,6 +73,7 @@ impl File {
         Ok(Self {
             handle,
             path: path_ref.to_path_buf(),
+            handle_guard: FileHandleGuard::new(),
         })
     }
 
@@ -101,22 +108,18 @@ impl File {
 
     /// すべてのバッファを永続化する。
     pub fn sync_all(&mut self) -> IoResult<()> {
-        record_io_operation(1);
-        self.handle
-            .sync_all()
-            .map_err(|err| {
-                IoError::from_std(err, self.operation_context("file.sync_all", CAP_IO_FS_WRITE))
-            })
+        record_fs_sync_operation();
+        self.handle.sync_all().map_err(|err| {
+            IoError::from_std(err, self.sync_operation_context("file.sync_all", CAP_IO_FS_WRITE))
+        })
     }
 
     /// データ領域のバッファを永続化する。
     pub fn sync_data(&mut self) -> IoResult<()> {
-        record_io_operation(1);
-        self.handle
-            .sync_data()
-            .map_err(|err| {
-                IoError::from_std(err, self.operation_context("file.sync_data", CAP_IO_FS_WRITE))
-            })
+        record_fs_sync_operation();
+        self.handle.sync_data().map_err(|err| {
+            IoError::from_std(err, self.sync_operation_context("file.sync_data", CAP_IO_FS_WRITE))
+        })
     }
 
     pub(crate) fn as_std(&self) -> &std::fs::File {
@@ -128,6 +131,23 @@ impl File {
             .with_path(self.path.clone())
             .with_capability(capability)
             .with_effects(blocking_io_effect_labels())
+    }
+
+    fn sync_operation_context(
+        &self,
+        operation: &'static str,
+        capability: &'static str,
+    ) -> IoContext {
+        IoContext::new(operation)
+            .with_path(self.path.clone())
+            .with_capability(capability)
+            .with_effects(fs_sync_effect_labels())
+    }
+}
+
+impl Drop for File {
+    fn drop(&mut self) {
+        record_fs_sync_operation();
     }
 }
 

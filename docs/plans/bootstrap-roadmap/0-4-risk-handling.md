@@ -136,3 +136,7 @@
 - 状態: Mitigating
 - 関連フェーズ: Phase 1 (1-8)
 - 参照: `.github/workflows/bootstrap-linux.yml`, `docs/plans/bootstrap-roadmap/1-8-macos-prebuild-support.md` §0, `docs/plans/bootstrap-roadmap/1-7-to-1-8-handover.md`
+
+## 0.4.7 Core.IO リーク検出フォローアップ
+- `compiler/rust/runtime/src/io/scope.rs` のリークトラッカー (`leak_tracker_snapshot`, `reset_leak_tracker`) と `reports/spec-audit/ch3/io_leak-detection.md` を参照し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml leak_detection::scoped_resources_cleanup_matches_expected_snapshot` を週次運用に組み込む。
+- `tests/data/core_io/leak_detection/scoped_cleanup.json` の期待値（`open_files = 0`, `temp_dirs = 0`）が逸脱した場合は `valgrind`/`miri` チェックの導入計画を本節へ追記し、`docs/plans/bootstrap-roadmap/3-5-core-io-path-plan.md#33` の TODO と同期する。

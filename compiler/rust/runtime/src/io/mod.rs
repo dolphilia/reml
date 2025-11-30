@@ -13,6 +13,7 @@ mod file;
 mod metadata;
 mod options;
 mod permissions;
+mod scope;
 mod reader;
 mod text_stream;
 mod writer;
@@ -27,6 +28,10 @@ pub use file::File;
 pub use metadata::FileMetadata;
 pub use options::FileOptions;
 pub use permissions::FilePermissions;
+pub use scope::{
+    leak_tracker_snapshot, reset_leak_tracker, ScopedFileMode, ScopeGuard, TempDirGuard,
+    with_file, with_temp_dir,
+};
 pub use reader::Reader;
 pub use text_stream::{
     decode_stream, encode_stream, BomHandling, InvalidSequenceStrategy, TextDecodeOptions,

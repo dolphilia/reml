@@ -163,6 +163,7 @@ fn empty_effect_labels() -> EffectLabels {
         io_async: false,
         security: false,
         transfer: false,
+        fs_sync: false,
         mem_bytes: 0,
         predicate_calls: 0,
         rc_ops: 0,
@@ -170,6 +171,7 @@ fn empty_effect_labels() -> EffectLabels {
         time_calls: 0,
         io_blocking_calls: 0,
         io_async_calls: 0,
+        fs_sync_calls: 0,
         security_events: 0,
     }
 }

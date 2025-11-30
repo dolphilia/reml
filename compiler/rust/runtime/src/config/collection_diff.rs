@@ -296,6 +296,7 @@ mod tests {
             io_async: false,
             security: false,
             transfer: false,
+            fs_sync: false,
             mem_bytes: 123,
             predicate_calls: 0,
             rc_ops: 0,
@@ -303,6 +304,7 @@ mod tests {
             time_calls: 0,
             io_blocking_calls: 0,
             io_async_calls: 0,
+            fs_sync_calls: 0,
             security_events: 0,
         };
         let schema_diff = SchemaDiff::from_change_set(&change_set, Some(labels));

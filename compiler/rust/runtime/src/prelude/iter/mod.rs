@@ -377,6 +377,7 @@ fn ensure_numeric_metrics_stage(
                     io_async: false,
                     security: false,
                     transfer: false,
+                    fs_sync: false,
                     mem_bytes: 0,
                     predicate_calls: 0,
                     rc_ops: 0,
@@ -384,6 +385,7 @@ fn ensure_numeric_metrics_stage(
                     time_calls: 0,
                     io_blocking_calls: 0,
                     io_async_calls: 0,
+                    fs_sync_calls: 0,
                     security_events: 0,
                 },
                 CollectorEffectMarkers::default(),
@@ -800,6 +802,7 @@ pub struct EffectSet {
     time_calls: usize,
     io_blocking_ops: usize,
     io_async_ops: usize,
+    fs_sync_ops: usize,
     security_events: usize,
 }
 
@@ -818,6 +821,7 @@ impl EffectSet {
     const IO_BLOCKING_BIT: u16 = 0b1000_0000_0000;
     const IO_ASYNC_BIT: u16 = 0b1_0000_0000_0000;
     const SECURITY_BIT: u16 = 0b10_0000_0000_0000;
+    const FS_SYNC_BIT: u16 = 0b100_0000_0000_0000;
 
     pub const PURE: Self = Self {
         bits: 0,
@@ -827,6 +831,7 @@ impl EffectSet {
         time_calls: 0,
         io_blocking_ops: 0,
         io_async_ops: 0,
+        fs_sync_ops: 0,
         security_events: 0,
     };
 
@@ -901,6 +906,19 @@ impl EffectSet {
         self.bits |= Self::UNICODE_BIT;
     }
 
+    pub fn mark_fs_sync(&mut self) {
+        self.record_fs_sync_calls(1);
+    }
+
+    pub fn record_fs_sync_calls(&mut self, calls: usize) {
+        if calls == 0 {
+            return;
+        }
+        self.fs_sync_ops = self.fs_sync_ops.saturating_add(calls);
+        self.bits |= Self::FS_SYNC_BIT;
+        self.mark_io_blocking();
+    }
+
     pub fn mark_time(&mut self) {
         self.bits |= Self::TIME_BIT;
     }
@@ -956,6 +974,7 @@ impl EffectSet {
             time_calls: self.time_calls,
             io_blocking_ops: self.io_blocking_ops,
             io_async_ops: self.io_async_ops,
+            fs_sync_ops: self.fs_sync_ops,
             security_events: self.security_events,
         }
     }
@@ -969,6 +988,7 @@ impl EffectSet {
             time_calls: self.time_calls,
             io_blocking_ops: self.io_blocking_ops,
             io_async_ops: self.io_async_ops,
+            fs_sync_ops: self.fs_sync_ops,
             security_events: self.security_events,
         }
     }
@@ -982,6 +1002,7 @@ impl EffectSet {
             time_calls: self.time_calls,
             io_blocking_ops: self.io_blocking_ops,
             io_async_ops: self.io_async_ops,
+            fs_sync_ops: self.fs_sync_ops,
             security_events: self.security_events,
         }
     }
@@ -995,6 +1016,7 @@ impl EffectSet {
             time_calls: self.time_calls,
             io_blocking_ops: self.io_blocking_ops,
             io_async_ops: self.io_async_ops,
+            fs_sync_ops: self.fs_sync_ops,
             security_events: self.security_events,
         }
     }
@@ -1026,6 +1048,7 @@ impl EffectSet {
             time_calls: self.time_calls.saturating_add(other.time_calls),
             io_blocking_ops: self.io_blocking_ops.saturating_add(other.io_blocking_ops),
             io_async_ops: self.io_async_ops.saturating_add(other.io_async_ops),
+            fs_sync_ops: self.fs_sync_ops.saturating_add(other.fs_sync_ops),
             security_events: self.security_events.saturating_add(other.security_events),
         }
     }
@@ -1068,6 +1091,11 @@ impl EffectSet {
         }
         if labels.transfer {
             self.mark_transfer();
+        }
+        if labels.fs_sync_calls > 0 {
+            self.record_fs_sync_calls(labels.fs_sync_calls);
+        } else if labels.fs_sync {
+            self.mark_fs_sync();
         }
         if labels.unicode {
             self.mark_unicode();
@@ -1143,6 +1171,10 @@ impl EffectSet {
         self.bits & Self::SECURITY_BIT != 0
     }
 
+    pub fn contains_fs_sync(self) -> bool {
+        self.bits & Self::FS_SYNC_BIT != 0
+    }
+
     pub fn to_labels(self) -> EffectLabels {
         EffectLabels {
             mem: self.contains_mem(),
@@ -1157,6 +1189,7 @@ impl EffectSet {
             io_blocking: self.contains_io_blocking(),
             io_async: self.contains_io_async(),
             security: self.contains_security(),
+            fs_sync: self.contains_fs_sync(),
             transfer: self.contains_transfer(),
             time: self.contains_time(),
             mem_bytes: self.mem_bytes,
@@ -1165,6 +1198,7 @@ impl EffectSet {
             time_calls: self.time_calls,
             io_blocking_calls: self.io_blocking_ops,
             io_async_calls: self.io_async_ops,
+            fs_sync_calls: self.fs_sync_ops,
             security_events: self.security_events,
         }
     }
@@ -1186,6 +1220,7 @@ pub struct EffectLabels {
     pub io_async: bool,
     pub security: bool,
     pub transfer: bool,
+    pub fs_sync: bool,
     pub mem_bytes: usize,
     pub predicate_calls: usize,
     pub rc_ops: usize,
@@ -1193,6 +1228,7 @@ pub struct EffectLabels {
     pub time_calls: usize,
     pub io_blocking_calls: usize,
     pub io_async_calls: usize,
+    pub fs_sync_calls: usize,
     pub security_events: usize,
 }
 

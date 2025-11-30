@@ -149,6 +149,11 @@
 - `defer` (`with_file`/`with_temp_dir`) の RAII ヘルパを `compiler/rust/runtime/src/io/scope.rs` に定義し、`Drop` で確実に解放されることを `cargo test --features core-io io::scope::tests::*` で検証する。
 - `tests/data/core_io/leak_detection/*.json` を `reports/spec-audit/ch3/io_leak-detection.md` にまとめ、`valgrind`/`miri` ベースの自動チェック (CI optional) を `docs/plans/bootstrap-roadmap/0-4-risk-handling.md` にリンクする。
 
+> 進行ログ（Phase3 W48, 3.3）  
+> - `EffectSet`/`EffectLabels` に `fs_sync` を追加し、`compiler/rust/runtime/src/io/file.rs` の `sync_*` / `Drop` で `record_fs_sync_operation()` を発火させた。診断エンコード (`compiler/rust/runtime/src/io/error.rs`) へも `io.effects.fs_sync{,_calls}` を出力するロジックを実装。  
+> - `compiler/rust/runtime/src/io/scope.rs` を新設し、`ScopeGuard`・`with_file`・`with_temp_dir`・`FileHandleGuard`・リークトラッカー (`leak_tracker_snapshot`/`reset_leak_tracker`) を公開。`File` に `FileHandleGuard` を埋め込み、スコープ外で自動的にカウンタが減少するよう統合。  
+> - `compiler/rust/runtime/tests/leak_detection.rs` と `tests/data/core_io/leak_detection/scoped_cleanup.json` を追加し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml leak_detection::scoped_resources_cleanup_matches_expected_snapshot` でハンドル/TempDir カウンタが 0 に戻ることを確認。結果は `reports/spec-audit/ch3/io_leak-detection.md` に記録し、フォローアップ手順を `docs/plans/bootstrap-roadmap/0-4-risk-handling.md#0.4.7-coreio-リーク検出フォローアップ` へリンクした。
+
 ### 4. Path 抽象とセキュリティ（48-49週目）
 **担当領域**: パス処理
 

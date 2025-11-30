@@ -15,6 +15,15 @@ pub(crate) fn record_io_operation(_bytes: usize) {
     });
 }
 
+/// fs.sync 系の操作を記録する。
+pub(crate) fn record_fs_sync_operation() {
+    IO_EFFECTS.with(|slot| {
+        let mut current = slot.get();
+        current.mark_fs_sync();
+        slot.set(current);
+    });
+}
+
 /// 非同期 IO 操作を記録する。
 pub(crate) fn record_async_io_operation() {
     IO_EFFECTS.with(|slot| {
@@ -83,6 +92,7 @@ pub(crate) fn blocking_io_effect_labels() -> EffectLabels {
         io_async: false,
         security: false,
         transfer: false,
+        fs_sync: false,
         mem_bytes: 0,
         predicate_calls: 0,
         rc_ops: 0,
@@ -90,6 +100,14 @@ pub(crate) fn blocking_io_effect_labels() -> EffectLabels {
         time_calls: 0,
         io_blocking_calls: 1,
         io_async_calls: 0,
+        fs_sync_calls: 0,
         security_events: 0,
     }
+}
+
+pub(crate) fn fs_sync_effect_labels() -> EffectLabels {
+    let mut labels = blocking_io_effect_labels();
+    labels.fs_sync = true;
+    labels.fs_sync_calls = 1;
+    labels
 }

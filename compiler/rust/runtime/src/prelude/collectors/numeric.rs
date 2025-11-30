@@ -19,6 +19,7 @@ const PURE_EFFECTS: EffectLabels = EffectLabels {
     io_async: false,
     security: false,
     transfer: false,
+    fs_sync: false,
     mem_bytes: 0,
     predicate_calls: 0,
     rc_ops: 0,
@@ -26,6 +27,7 @@ const PURE_EFFECTS: EffectLabels = EffectLabels {
     time_calls: 0,
     io_blocking_calls: 0,
     io_async_calls: 0,
+    fs_sync_calls: 0,
     security_events: 0,
 };
 
