@@ -210,6 +210,10 @@
 - `reports/spec-audit/ch3/io_watcher-*.jsonl` を新設し、`python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario watcher_audit` で監査レポートを収集する。
 - `docs/spec/3-6-core-diagnostics-audit.md` の監視例を参照し、CLI/Runtime のログフォーマットを `scripts/validate-diagnostic-json.sh --pattern core.io.watcher` で検証する。
 
+> 進行ログ（Phase3 W49, 5.2）  
+> - `compiler/rust/runtime/src/io/watcher_audit.rs` に `WatcherEventRecorder` / `WatcherAuditSnapshot` / `WatcherAuditEvent` を追加し、`watch` 実行中に生成されるイベントを最大 64 件までリングバッファへ保持。`Watcher::audit_snapshot()` / `WatcherHandle::audit_snapshot()` から `AuditEnvelope.metadata` 互換の辞書 (`io.watch.paths`, `io.watch.events_total`, `io.watch.events[*].{kind,path,timestamp,queue_size,delay_ns}`) を取得できるようにした。`watcher.rs` では Runtime/State の両方に Recorder を配り、`record_watch_metrics` と同じタイミングで非同期イベントを記録する。  
+> - `compiler/rust/runtime/tests/watcher.rs` を拡張し、`watch_reports_create_and_delete_events` で `WatcherAuditSnapshot` をアサートしたうえで `reports/spec-audit/ch3/io_watcher-simple_case.jsonl` を生成。CI ではこの JSON Lines を `scripts/validate-diagnostic-json.sh --pattern core.io.watcher`・`python3 tooling/ci/collect-iterator-audit-metrics.py --section core_io --scenario watcher_audit --source reports/spec-audit/ch3/io_watcher-simple_case.jsonl --output reports/spec-audit/ch3/io_watcher-metrics.json --require-success` へ渡し、`watcher.audit.pass_rate` と `io.watch.events_total` の欠落を監視する。`docs/plans/bootstrap-roadmap/assets/core-io-effects-matrix.md` の Watcher 行にも `WatcherAuditSnapshot` を参照する脚注を追加した。
+
 5.3. クロスプラットフォームでサポートが異なる機能は `Capability` 判定と `IoErrorKind::UnsupportedPlatform` で扱う。  
 実施ステップ:
 - `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md` に `watcher.fschange`, `watcher.recursive`, `watcher.resource_limits` の Stage/OS 対応を追記する。

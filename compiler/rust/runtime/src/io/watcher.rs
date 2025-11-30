@@ -18,6 +18,7 @@ use super::{
         record_async_io_operation, record_watch_metrics, take_io_effects_snapshot,
         take_watch_metrics_snapshot, WatchMetricsSnapshot,
     },
+    watcher_audit::{WatcherAuditSnapshot, WatcherEventRecorder},
     IoContext, IoError, IoErrorKind, IoResult,
 };
 
@@ -42,6 +43,11 @@ impl Watcher {
     pub fn handle(&self) -> WatcherHandle {
         self.handle.clone()
     }
+
+    /// 収集済み監視イベントのスナップショットを取得する。
+    pub fn audit_snapshot(&self) -> WatcherAuditSnapshot {
+        self.handle.audit_snapshot()
+    }
 }
 
 impl Drop for Watcher {
@@ -59,6 +65,10 @@ pub struct WatcherHandle {
 impl WatcherHandle {
     pub fn close(&self) -> IoResult<()> {
         self.state.close()
+    }
+
+    pub fn audit_snapshot(&self) -> WatcherAuditSnapshot {
+        self.state.audit_snapshot()
     }
 }
 
@@ -183,8 +193,9 @@ where
             .map_err(|err| notify_to_io_error(err, Some(path), base_context.clone(), WatchMetricsSnapshot::EMPTY))?;
     }
 
+    let audit_recorder = WatcherEventRecorder::new(resolved_paths.clone());
     let (command_tx, command_rx) = mpsc::channel();
-    let state = Arc::new(WatcherState::new(command_tx));
+    let state = Arc::new(WatcherState::new(command_tx, audit_recorder.clone()));
     let runtime = WatchRuntime {
         config,
         callback,
@@ -193,6 +204,7 @@ where
         queue_depth,
         error_state: Arc::clone(&state.error),
         base_context: base_context.clone(),
+        audit: audit_recorder,
     };
 
     let join_handle = thread::Builder::new()
@@ -251,6 +263,7 @@ struct WatchRuntime {
     queue_depth: Arc<AtomicUsize>,
     error_state: Arc<Mutex<Option<IoError>>>,
     base_context: IoContext,
+    audit: WatcherEventRecorder,
 }
 
 impl WatchRuntime {
@@ -265,6 +278,7 @@ impl WatchRuntime {
     fn handle_event(&self, event: Event, started: Instant, rate_limiter: &mut RateLimiter) {
         let now = Instant::now();
         let Event { kind, paths, .. } = event;
+        let mut delivered_events: Vec<WatchEvent> = Vec::new();
         for path in paths {
             if !self.config.is_allowed(&path) {
                 continue;
@@ -273,7 +287,8 @@ impl WatchRuntime {
                 if !rate_limiter.allow(now) {
                     continue;
                 }
-                (self.callback)(watch_event);
+                (self.callback)(watch_event.clone());
+                delivered_events.push(watch_event);
             }
         }
 
@@ -282,6 +297,10 @@ impl WatchRuntime {
         record_async_io_operation();
         record_watch_metrics(queue_size, delay_ns);
         let _ = take_watch_metrics_snapshot();
+        for event in delivered_events {
+            self.audit
+                .record_event(&event, queue_size.min(u32::MAX as usize) as u32, delay_ns);
+        }
     }
 
     fn set_error(&self, error: IoError) {
@@ -320,14 +339,16 @@ struct WatcherState {
     command_tx: Mutex<Option<Sender<WatcherCommand>>>,
     join_handle: Mutex<Option<thread::JoinHandle<()>>>,
     error: Arc<Mutex<Option<IoError>>>,
+    audit: WatcherEventRecorder,
 }
 
 impl WatcherState {
-    fn new(command_tx: Sender<WatcherCommand>) -> Self {
+    fn new(command_tx: Sender<WatcherCommand>, audit: WatcherEventRecorder) -> Self {
         Self {
             command_tx: Mutex::new(Some(command_tx)),
             join_handle: Mutex::new(None),
             error: Arc::new(Mutex::new(None)),
+            audit,
         }
     }
 
@@ -355,6 +376,10 @@ impl WatcherState {
             return Err(err);
         }
         Ok(())
+    }
+
+    fn audit_snapshot(&self) -> WatcherAuditSnapshot {
+        self.audit.snapshot()
     }
 }
 

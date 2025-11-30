@@ -17,6 +17,7 @@ mod scope;
 mod reader;
 mod text_stream;
 mod watcher;
+mod watcher_audit;
 mod writer;
 
 pub use adapters::{FsAdapter, WatcherAdapter};
@@ -37,6 +38,7 @@ pub use reader::Reader;
 pub use watcher::{
     close_watcher, watch, watch_with_limits, WatchEvent, WatchLimits, Watcher,
 };
+pub use watcher_audit::{WatcherAuditEvent, WatcherAuditSnapshot};
 pub use text_stream::{
     decode_stream, encode_stream, BomHandling, InvalidSequenceStrategy, TextDecodeOptions,
     TextEncodeOptions,

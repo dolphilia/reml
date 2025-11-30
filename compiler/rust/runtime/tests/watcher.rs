@@ -1,10 +1,14 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use reml_runtime::io::{close_watcher, watch, watch_with_limits, IoErrorKind, WatchEvent, WatchLimits};
+use reml_runtime::io::{
+    close_watcher, watch, watch_with_limits, IoErrorKind, WatchEvent, WatchLimits,
+    WatcherAuditSnapshot,
+};
+use serde_json::json;
 use tempfile::tempdir;
 
 #[test]
@@ -22,6 +26,7 @@ fn watch_reports_create_and_delete_events() {
         }
     })
     .expect("watch should initialize");
+    let handle = watcher.handle();
 
     fs::copy(simple_case_fixture("initial.txt"), &file_path).expect("copy fixture file");
     thread::sleep(Duration::from_millis(100));
@@ -57,6 +62,12 @@ fn watch_reports_create_and_delete_events() {
     );
 
     close_watcher(watcher).expect("watcher should close");
+    let snapshot = handle.audit_snapshot();
+    assert!(
+        snapshot.total_events >= 2,
+        "audit snapshot should contain at least 2 events"
+    );
+    persist_watcher_audit_report("simple_case", &snapshot);
 }
 
 #[test]
@@ -72,4 +83,33 @@ fn simple_case_fixture(relative: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/watcher/simple_case")
         .join(relative)
+}
+
+fn persist_watcher_audit_report(case: &str, snapshot: &WatcherAuditSnapshot) {
+    if snapshot.is_empty() {
+        return;
+    }
+    let metadata = snapshot.clone().into_metadata();
+    let entry = json!({
+        "case": case,
+        "metadata": metadata,
+    });
+    let output_path = repo_root().join("reports/spec-audit/ch3/io_watcher-simple_case.jsonl");
+    if let Some(parent) = output_path.parent() {
+        if let Err(err) = fs::create_dir_all(parent) {
+            eprintln!("failed to create audit directory: {err}");
+            return;
+        }
+    }
+    if let Err(err) = fs::write(&output_path, format!("{}\n", entry)) {
+        eprintln!("failed to persist watcher audit report at {output_path:?}: {err}");
+    }
+}
+
+fn repo_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(3)
+        .map(Path::to_path_buf)
+        .expect("CARGO_MANIFEST_DIR should have at least 3 ancestors")
 }
