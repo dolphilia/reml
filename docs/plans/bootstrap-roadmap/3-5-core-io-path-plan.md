@@ -174,6 +174,11 @@
 - `docs/spec/3-8-core-runtime-capability.md` の `security.fs.*` 要件を `docs/plans/bootstrap-roadmap/assets/core-io-capability-map.md` に反映し、`CapabilityStage` チェックを `security.rs` で行う。
 - `tests/data/core_path/security/*.json` を `scripts/validate-diagnostic-json.sh --pattern core.path.security` で検証し、`effect {security}` と `metadata.security.reason` を `collect-iterator-audit-metrics.py --section core_io --scenario path_security` から観測する。
 
+> 進行ログ（Phase3 W49, 4.2 着手）  
+> - `compiler/rust/runtime/src/path/security.rs` を追加し、`SecurityPolicy`・`PathSecurityError`・`PathSecurityResult` を導入。`validate_path` / `sandbox_path` / `is_safe_symlink` で `FsAdapter::ensure_security_policy()`・`ensure_symlink_query()` を呼び出し、`EffectLabels.security` と `metadata.security.*` を `GuardDiagnostic` へ転写できるようになった。  
+> - `compiler/rust/runtime/tests/path_security.rs` と `tests/data/core_path/security/{relative_denied,sandbox_escape,symlink_absolute}.json` を作成し、`cargo test --manifest-path compiler/rust/runtime/Cargo.toml path_security` で `core.path.security.*` 診断が生成されることを確認。テストでは POSIX/Windows のサンドボックスルート（`sample_root()`）と Unix symlink ケースを分岐させ、CI で JSON ゴールデンを再利用できるようにした。  
+> - `docs/plans/bootstrap-roadmap/assets/{core-io-path-api-diff.csv,core-io-effects-matrix.md,core-io-capability-map.md}` を更新し、Security 行の `impl_status=In Progress (Rust runtime)`、`path_security` シナリオの検証ポイント（`metadata.security.reason`, `tests/path_security.rs`）を反映。`docs/notes/runtime-capability-stage-log.md` にも Capability `security.fs.policy`/`fs.symlink.query` の実測経路を追記した。
+
 4.3. 文字列ユーティリティ (`normalize_path`, `join_paths`) を実装し、`Core.Text` と連携するテストを整備する。  
 実施ステップ:
 - `compiler/rust/runtime/src/path/string_utils.rs` を追加し、`normalize_path_str`, `join_paths_str`, `relative_to` を UTF-8 ベースで実装する（`Core.Text` の正規化ロジックを再利用）。

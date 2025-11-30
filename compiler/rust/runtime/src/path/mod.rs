@@ -10,6 +10,13 @@ use std::path::{Component, Path as StdPath, PathBuf as StdPathBuf};
 
 use crate::text::Str;
 
+mod security;
+
+pub use security::{
+    is_safe_symlink, sandbox_path, validate_path, PathSecurityError, PathSecurityErrorKind,
+    PathSecurityResult, SecurityPolicy,
+};
+
 /// Path 関連 API の結果型。
 pub type PathResult<T> = Result<T, PathError>;
 
@@ -62,6 +69,11 @@ impl PathBuf {
     /// 借用参照を取得する。
     pub fn as_path(&self) -> Path<'_> {
         Path { inner: &self.inner }
+    }
+
+    /// 標準 Path への参照を得る。
+    pub fn as_std_path(&self) -> &StdPath {
+        &self.inner
     }
 
     /// 正規化済みの PathBuf を返す。
@@ -233,7 +245,7 @@ fn validate_input(value: &str) -> PathResult<()> {
     Ok(())
 }
 
-fn normalize_components(path: &StdPath) -> StdPathBuf {
+pub(super) fn normalize_components(path: &StdPath) -> StdPathBuf {
     let mut normalized = StdPathBuf::new();
     let is_absolute = path.is_absolute();
     for component in path.components() {

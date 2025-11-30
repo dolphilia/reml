@@ -1,0 +1,8 @@
+{
+  "code": "core.path.security.symlink",
+  "extensions": {
+    "security": {
+      "reason": "symlink_absolute_target"
+    }
+  }
+}
